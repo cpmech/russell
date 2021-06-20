@@ -1,0 +1,3 @@
+# Russell Stat - Statistics, Probabilites, and Random Numbers
+
+Work in progress...

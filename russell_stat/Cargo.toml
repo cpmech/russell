@@ -2,7 +2,11 @@
 name = "russell_stat"
 version = "0.1.0"
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "MIT"
+description = "Statistics calculations, probability distributions, and pseudo random numbers"
+homepage = "https://github.com/cpmech/russell"
+repository = "https://github.com/cpmech/russell"
+documentation = "https://docs.rs/russell_stat"
+readme = "README.md"
 
 [dependencies]

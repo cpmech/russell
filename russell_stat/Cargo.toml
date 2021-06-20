@@ -8,5 +8,7 @@ homepage = "https://github.com/cpmech/russell"
 repository = "https://github.com/cpmech/russell"
 documentation = "https://docs.rs/russell_stat"
 readme = "README.md"
+categories = ["mathematics", "science"]
+keywords = ["statistics", "probability", "random", "numerical"]
 
 [dependencies]

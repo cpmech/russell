@@ -1,3 +1,7 @@
+//! Russell - Rust Scientific Library
+//!
+//! **stat**: Statistics, Probabilites, and Random Numbers
+
 // errors ///////////////////////////////////////
 #[macro_use]
 extern crate error_chain;
@@ -11,4 +15,5 @@ mod err {
 mod stat_test;
 
 // modules //////////////////////////////////////
-pub mod stat;
+mod stat;
+pub use crate::stat::*;

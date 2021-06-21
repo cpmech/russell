@@ -1,7 +1,3 @@
 #[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+#[path = "./lib_test.rs"]
+mod lib_test;

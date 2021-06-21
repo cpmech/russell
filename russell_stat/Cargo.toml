@@ -12,3 +12,4 @@ categories = ["mathematics", "science"]
 keywords = ["statistics", "probability", "random", "numerical"]
 
 [dependencies]
+error-chain = "0.12"

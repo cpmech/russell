@@ -2,6 +2,9 @@
 //!
 //! **stat**: Statistics, Probabilites, and Random Numbers
 
+// auxiliary ////////////////////////////////////
+pub use assert_approx_eq::*;
+
 // errors ///////////////////////////////////////
 #[macro_use]
 extern crate error_chain;

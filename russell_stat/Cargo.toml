@@ -12,4 +12,5 @@ categories = ["mathematics", "science"]
 keywords = ["statistics", "probability", "random", "numerical"]
 
 [dependencies]
+assert_approx_eq = "1.1"
 error-chain = "0.12"

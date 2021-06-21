@@ -1,10 +1,9 @@
 // errors ///////////////////////////////////////
 #[macro_use]
 extern crate error_chain;
-mod errors {
+mod err {
     error_chain! {}
 }
-pub use errors::*;
 
 // tests ////////////////////////////////////////
 #[cfg(test)]

@@ -3,7 +3,6 @@
 //! **stat**: Statistics, Probabilites, and Random Numbers
 
 // auxiliary ////////////////////////////////////
-pub use assert_approx_eq::*;
 
 // errors ///////////////////////////////////////
 #[macro_use]
@@ -12,11 +11,8 @@ mod err {
     error_chain! {}
 }
 
-// tests ////////////////////////////////////////
-#[cfg(test)]
-#[path = "./stat_test.rs"]
-mod stat_test;
-
 // modules //////////////////////////////////////
+mod histogram;
 mod stat;
+pub use crate::histogram::*;
 pub use crate::stat::*;

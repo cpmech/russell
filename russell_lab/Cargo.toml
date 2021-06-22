@@ -1,0 +1,16 @@
+[package]
+name = "russell_lab"
+version = "0.1.0"
+edition = "2018"
+license = "MIT"
+description = "Functions and structures to create or operate on matrix and vectors"
+homepage = "https://github.com/cpmech/russell"
+repository = "https://github.com/cpmech/russell"
+documentation = "https://docs.rs/russell_lab"
+readme = "README.md"
+categories = ["mathematics", "science"]
+keywords = ["matrix", "vector", "linspace"]
+
+[dependencies]
+assert_approx_eq = "1.1"
+error-chain = "0.12"

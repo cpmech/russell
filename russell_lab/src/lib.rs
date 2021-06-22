@@ -1,6 +1,6 @@
 //! Russell - Rust Scientific Library
 //!
-//! **stat**: Statistics, Probabilites, and Random Numbers
+//! **lab**: matrix-vector "laboratory" tools
 
 // errors ///////////////////////////////////////
 #[macro_use]
@@ -10,7 +10,5 @@ mod err {
 }
 
 // modules //////////////////////////////////////
-mod histogram;
-mod stat;
-pub use crate::histogram::*;
-pub use crate::stat::*;
+mod linspace;
+pub use crate::linspace::*;

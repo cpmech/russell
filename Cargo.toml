@@ -1,5 +1,6 @@
 [workspace]
 
 members = [
+    "russell_lab",
     "russell_stat",
 ]

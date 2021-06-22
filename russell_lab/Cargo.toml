@@ -14,3 +14,4 @@ keywords = ["matrix", "vector", "linspace"]
 [dependencies]
 assert_approx_eq = "1.1"
 error-chain = "0.12"
+russell_chk = { path = "../russell_chk" }

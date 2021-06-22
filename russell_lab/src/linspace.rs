@@ -25,26 +25,15 @@ pub fn linspace(start: f64, stop: f64, count: usize) -> Vec<f64> {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-/*
 #[cfg(test)]
 mod tests {
     use super::*;
-    // use assert_approx_eq::*;
+    use russell_chk::*;
 
     #[test]
     fn linspace_works() {
         let x = linspace(0.0, 1.0, 11);
-        let y = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9];
-        let xy = x.iter().zip(y.iter());
-        let diff = xy.map(|(u, v)| u - v);
-        for i in diff {
-            println!("{}", i)
-        }
-        // assert_approx_eq!(
-        //     x,
-        //     &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        //     1e-17
-        // )
+        let x_correct = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+        assert_vec_approx_eq!(x, x_correct, 1e-15);
     }
 }
-*/

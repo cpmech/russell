@@ -1,5 +1,7 @@
 # Russell Chk - Check Results during Tests
 
+_This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
+
 Work in progress...
 
 This repository implements macros to assist in tests (numerical checks).

@@ -1,5 +1,7 @@
 # Russell Lab - Matrix-Vector Laboratory Tools
 
+_This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
+
 Work in progress...
 
 This repository is a "rust laboratory" for vectors and matrices.

@@ -1,5 +1,7 @@
 # Russell Stat - Statistics, Probabilites, and Random Numbers
 
+_This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
+
 Work in progress...
 
 This repository contains structures and functions to work with statistics and probability distributions.

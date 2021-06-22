@@ -1,0 +1,14 @@
+[package]
+name = "russell_chk"
+version = "0.1.0"
+edition = "2018"
+license = "MIT"
+description = "Functions to check vectors and other data during tests"
+homepage = "https://github.com/cpmech/russell"
+repository = "https://github.com/cpmech/russell"
+documentation = "https://docs.rs/russell_chk"
+readme = "README.md"
+categories = ["mathematics", "science"]
+keywords = ["testing", "arrays", "float"]
+
+[dependencies]

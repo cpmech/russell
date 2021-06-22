@@ -1,0 +1,3 @@
+# Russell Chk - Check Results during Tests
+
+Work in progress...

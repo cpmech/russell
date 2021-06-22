@@ -1,3 +1,3 @@
-# Russell Stat - Matrix-Vector Laboratory Tools
+# Russell Lab - Matrix-Vector Laboratory Tools
 
 Work in progress...

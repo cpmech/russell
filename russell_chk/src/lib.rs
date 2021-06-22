@@ -5,6 +5,8 @@
 ///
 /// A tolerance must be given for the absolute comparision of float-point numbers.
 ///
+/// Code inspired by [assert_approx_eq](https://github.com/ashleygwilliams/assert_approx_eq)
+///
 /// # Examples
 ///
 /// ```

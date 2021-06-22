@@ -4,6 +4,10 @@ Work in progress...
 
 This repository contains structures and functions to work with statistics and probability distributions.
 
+Documentation:
+
+- [API reference (docs.rs)](https://docs.rs/russell_stat)
+
 ## Installation
 
 Add this to your Cargo.toml:

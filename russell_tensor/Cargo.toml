@@ -1,0 +1,14 @@
+[package]
+name = "russell_tensor"
+version = "0.1.0"
+edition = "2018"
+license = "MIT"
+description = "Tensor analysis tools"
+homepage = "https://github.com/cpmech/russell"
+repository = "https://github.com/cpmech/russell"
+documentation = "https://docs.rs/russell_tensor"
+readme = "README.md"
+categories = ["mathematics", "science"]
+keywords = ["tensor", "Voigt", "Mandel"]
+
+[dependencies]

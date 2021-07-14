@@ -104,10 +104,12 @@ impl Tensor2 {
             + self.comps_mandel[3] * other.comps_mandel[3]
             + self.comps_mandel[4] * other.comps_mandel[4]
             + self.comps_mandel[5] * other.comps_mandel[5];
-        if !self.symmetric {
+        if !self.symmetric && !other.symmetric {
             res += self.comps_mandel[6] * other.comps_mandel[6]
                 + self.comps_mandel[7] * other.comps_mandel[7]
                 + self.comps_mandel[8] * other.comps_mandel[8];
+            // NOTE: if any tensor is unsymmetric, there is no need to augment res
+            // because the extra three components are zero
         };
         res
     }
@@ -279,5 +281,24 @@ mod tests {
         let a = Tensor2::from_tensor(a_comps_std, true);
         let b = Tensor2::from_tensor(b_comps_std, true);
         assert_approx_eq!(a.inner(&b), 162.0, 1e-13);
+    }
+
+    #[test]
+    fn inner_symmetric_with_unsymmetric_works() {
+        #[rustfmt::skip]
+        let a_comps_std = &[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ];
+        #[rustfmt::skip]
+        let b_comps_std = &[
+            [9.0, 8.0, 7.0],
+            [6.0, 5.0, 4.0],
+            [3.0, 2.0, 1.0],
+        ];
+        let a = Tensor2::from_tensor(a_comps_std, true);
+        let b = Tensor2::from_tensor(b_comps_std, false);
+        assert_approx_eq!(a.inner(&b), 168.0, 1e-13);
     }
 }

@@ -68,7 +68,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use assert_approx_eq::*;
+    use russell_chk::*;
 
     #[test]
     fn ave_works() -> err::Result<()> {

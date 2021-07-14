@@ -89,7 +89,7 @@ mod tests {
     }
 
     #[test]
-    fn ij_to_mandel_maps_are_correct() {
+    fn ij_to_mandel_map_is_correct() {
         #[rustfmt::skip]
         let vec = [
             (0, 0), (1, 1), (2, 2), // 0,1,2 => diagonal
@@ -99,6 +99,19 @@ mod tests {
         for a in 0..9 {
             let (i, j) = vec[a];
             assert_eq!(IJ_TO_MANDEL_VECTOR_I[i][j], a);
+        }
+    }
+
+    #[test]
+    fn ij_sym_to_mandel_map_is_correct() {
+        #[rustfmt::skip]
+        let vec = [
+            (0, 0), (1, 1), (2, 2), // 0,1,2 => diagonal
+            (0, 1), (1, 2), (0, 2), // 3,4,5 => upper-diagonal
+        ];
+        for a in 0..6 {
+            let (i, j) = vec[a];
+            assert_eq!(IJ_SYM_TO_MANDEL_VECTOR_I[i][j], a);
         }
     }
 

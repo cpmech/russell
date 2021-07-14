@@ -1,6 +1,6 @@
 //! Russell - Rust Scientific Library
 //!
-//! **stat**: Statistics, Probabilites, and Random Numbers
+//! **stat**: Statistics, Probabilities, and Random Numbers
 
 // errors ///////////////////////////////////////
 #[macro_use]

@@ -27,6 +27,7 @@ mod tests {
     fn new_tensor2_works() {
         let t2 = Tensor2::new(false);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        assert_eq!(t2.size, 9);
         assert_vec_approx_eq!(t2.components_mandel, correct, 1e-15);
     }
 
@@ -34,6 +35,7 @@ mod tests {
     fn new_symmetric_tensor2_works() {
         let t2 = Tensor2::new(true);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        assert_eq!(t2.size, 6);
         assert_vec_approx_eq!(t2.components_mandel, correct, 1e-15);
     }
 }

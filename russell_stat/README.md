@@ -1,4 +1,4 @@
-# Russell Stat - Statistics, Probabilites, and Random Numbers
+# Russell Stat - Statistics, Probabilities, and Random Numbers
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 

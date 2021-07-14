@@ -1,39 +1,39 @@
-// sqrt(2) https://oeis.org/A002193
+/// sqrt(2) https://oeis.org/A002193
 pub const SQRT_2: f64 = 1.41421356237309504880168872420969807856967187537694807317667973799073247846210703885038753432764157f64;
 
-// sqrt(3) https://oeis.org/A002194
+/// sqrt(3) https://oeis.org/A002194
 pub const SQRT_3: f64 = 1.7320508075688772935274463415058723669428052538103806280558069794519330169088000370811461867572485756756261414154f64;
 
-// sqrt(6) https://oeis.org/A010464
+/// sqrt(6) https://oeis.org/A010464
 pub const SQRT_6: f64 = 2.44948974278317809819728407470589139196594748065667012843269256725096037745731502653985943310464023f64;
 
-// sqrt(2/3) https://oeis.org/A157697
+/// sqrt(2/3) https://oeis.org/A157697
 pub const SQRT_2_BY_3: f64 = 0.816496580927726032732428024901963797321982493552223376144230855750320125819105008846619811034880078272864f64;
 
-// sqt(3/2) https://oeis.org/A115754
+/// sqt(3/2) https://oeis.org/A115754
 pub const SQRT_3_BY_2: f64 = 1.22474487139158904909864203735294569598297374032833506421634628362548018872865751326992971655232011f64;
 
-// 1/3
+/// 1/3
 pub const ONE_BY_3: f64 = 0.33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333f64;
 
-// 2/3
+/// 2/3
 pub const TWO_BY_3: f64 = 0.66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666f64;
 
-// maps the component (i,j) of a second order tensor to the i-position in the component-vector
+/// Maps the indices (i,j) of a second order tensor to the i-position in the component-vector
 pub const IJ_TO_I: [[usize; 3]; 3] = [
     [0, 3, 5], // comment to prevent auto format
     [6, 1, 4], // comment to prevent auto format
     [8, 7, 2], // comment to prevent auto format
 ];
 
-// maps the component (i,j) of a symmetric second order tensor to the i-position in the component-vector
+/// Maps the indices (i,j) of a symmetric second order tensor to the i-position in the component-vector
 pub const IJ_SYM_TO_I: [[usize; 3]; 3] = [
     [0, 3, 5], // comment to prevent auto format
     [3, 1, 4], // comment to prevent auto format
     [5, 4, 2], // comment to prevent auto format
 ];
 
-// maps the component (i,j,k,l) of a fourth order tensor to the i-position in the component-matrix
+/// Maps the indices (i,j,k,l) of a fourth order tensor to the i-position in the component-matrix
 pub const IJKL_TO_I: [[[[usize; 3]; 3]; 3]; 3] = [
     [
         [[0, 0, 0], [0, 0, 0], [0, 0, 0]], // [0][0][.][.]
@@ -52,7 +52,7 @@ pub const IJKL_TO_I: [[[[usize; 3]; 3]; 3]; 3] = [
     ],
 ];
 
-// maps the component (i,j,k,l) of a fourth order tensor to the j-position in the component-matrix
+/// Maps the indices (i,j,k,l) of a fourth order tensor to the j-position in the component-matrix
 pub const IJKL_TO_J: [[[[usize; 3]; 3]; 3]; 3] = [
     [
         [[0, 3, 5], [6, 1, 4], [8, 7, 2]], // [0][0][.][.]
@@ -71,7 +71,7 @@ pub const IJKL_TO_J: [[[[usize; 3]; 3]; 3]; 3] = [
     ],
 ];
 
-// maps the component (i,j,k,l) of a symmetric fourth order tensor to the i-position in the component-matrix
+/// Maps the indices (i,j,k,l) of a symmetric fourth order tensor to the i-position in the component-matrix
 pub const IJKL_SYM_TO_I: [[[[usize; 3]; 3]; 3]; 3] = [
     [
         [[0, 0, 0], [0, 0, 0], [0, 0, 0]], // [0][0][.][.]
@@ -90,7 +90,7 @@ pub const IJKL_SYM_TO_I: [[[[usize; 3]; 3]; 3]; 3] = [
     ],
 ];
 
-// maps the component (i,j,k,l) of a fourth order tensor to the j-position in the component-matrix
+/// Maps the indices (i,j,k,l) of a fourth order tensor to the j-position in the component-matrix
 pub const IJKL_SYM_TO_J: [[[[usize; 3]; 3]; 3]; 3] = [
     [
         [[0, 3, 5], [3, 1, 4], [5, 4, 2]], // [0][0][.][.]
@@ -107,6 +107,14 @@ pub const IJKL_SYM_TO_J: [[[[usize; 3]; 3]; 3]; 3] = [
         [[0, 3, 5], [3, 1, 4], [5, 4, 2]], // [2][1][.][.]
         [[0, 3, 5], [3, 1, 4], [5, 4, 2]], // [2][2][.][.]
     ],
+];
+
+/// Maps the index i in the component-vector to the indices (i,j) of the corresponding second order tensor
+#[rustfmt::skip]
+pub const I_TO_IJ: [[usize; 2]; 9] = [
+    [0, 0], [1, 1], [2, 2], // 0,1,2 => diagonal
+    [0, 1], [1, 2], [0, 2], // 3,4,5 => upper-diagonal
+    [1, 0], [2, 1], [2, 0], // 6,7,8 => lower-diagonal
 ];
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -199,6 +207,21 @@ mod tests {
                 assert_eq!(IJKL_SYM_TO_I[i][j][k][l], idx[a]);
                 assert_eq!(IJKL_SYM_TO_J[i][j][k][l], idx[b]);
             }
+        }
+    }
+
+    #[test]
+    fn i_to_ij_is_correct() {
+        #[rustfmt::skip]
+        let vec = [
+            (0, 0), (1, 1), (2, 2), // 0,1,2 => diagonal
+            (0, 1), (1, 2), (0, 2), // 3,4,5 => upper-diagonal
+            (1, 0), (2, 1), (2, 0), // 6,7,8 => lower-diagonal
+        ];
+        for a in 0..9 {
+            let res = I_TO_IJ[a];
+            assert_eq!(res[0], vec[a].0);
+            assert_eq!(res[1], vec[a].1);
         }
     }
 }

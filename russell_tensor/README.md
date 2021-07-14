@@ -4,7 +4,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 Work in progress...
 
-This repository contains structures and functions to perform tensor analysis in continuum mechanics. We give focus to second and fourth order tensors expressed by their components with respect to an orthonormal Mandel basis.
+This repository contains structures and functions to perform tensor analysis in continuum mechanics. We give focus to second and fourth order tensors expressed by their components placed in a vector or matrix. We also consider the Mandel basis.
 
 Documentation:
 

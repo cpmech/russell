@@ -1,7 +1,14 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+//! Russell - Rust Scientific Library
+//!
+//! **tensor**: tensor analysis tools
+
+// errors ///////////////////////////////////////
+// #[macro_use]
+// extern crate error_chain;
+// mod err {
+//     error_chain! {}
+// }
+
+// modules //////////////////////////////////////
+mod constants;
+pub use crate::constants::*;

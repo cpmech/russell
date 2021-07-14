@@ -26,13 +26,6 @@ pub const IJ_TO_I: [[usize; 3]; 3] = [
     [8, 7, 2], // comment to prevent auto format
 ];
 
-/// Maps the indices (i,j) of a symmetric second order tensor to the i-position in the component-vector
-pub const IJ_SYM_TO_I: [[usize; 3]; 3] = [
-    [0, 3, 5], // comment to prevent auto format
-    [3, 1, 4], // comment to prevent auto format
-    [5, 4, 2], // comment to prevent auto format
-];
-
 /// Maps the indices (i,j,k,l) of a fourth order tensor to the i-position in the component-matrix
 pub const IJKL_TO_I: [[[[usize; 3]; 3]; 3]; 3] = [
     [
@@ -145,21 +138,6 @@ mod tests {
         for a in 0..9 {
             let (i, j) = vec[a];
             assert_eq!(IJ_TO_I[i][j], a);
-        }
-    }
-
-    #[test]
-    fn ij_sym_to_i_is_correct() {
-        #[rustfmt::skip]
-        let vec = [
-            (0, 0), (1, 1), (2, 2), // 0,1,2 => diagonal
-            (0, 1), (1, 2), (0, 2), // 3,4,5 => upper-diagonal
-            (1, 0), (2, 1), (2, 0), // 6,7,8 => lower-diagonal
-        ];
-        for a in 0..9 {
-            let (i, j) = vec[a];
-            let idx = [0, 1, 2, 3, 4, 5, 3, 4, 5];
-            assert_eq!(IJ_SYM_TO_I[i][j], idx[a]);
         }
     }
 

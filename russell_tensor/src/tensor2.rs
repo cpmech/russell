@@ -36,24 +36,24 @@ impl Tensor2 {
             }
         }
         let size = if symmetric { 6 } else { 9 };
-        let mut components_mandel = vec![0.0; size];
+        let mut comps_mandel = vec![0.0; size];
         for i in 0..3 {
             let j0 = if symmetric { i } else { 0 };
             for j in j0..3 {
                 let a = IJ_TO_I[i][j];
                 if i == j {
-                    components_mandel[a] = comps_std[i][j];
+                    comps_mandel[a] = comps_std[i][j];
                 }
                 if i < j {
-                    components_mandel[a] = (comps_std[i][j] + comps_std[j][i]) / SQRT_2;
+                    comps_mandel[a] = (comps_std[i][j] + comps_std[j][i]) / SQRT_2;
                 }
                 if i > j {
-                    components_mandel[a] = (comps_std[j][i] - comps_std[i][j]) / SQRT_2;
+                    comps_mandel[a] = (comps_std[j][i] - comps_std[i][j]) / SQRT_2;
                 }
             }
         }
         Tensor2 {
-            comps_mandel: components_mandel,
+            comps_mandel,
             symmetric,
         }
     }
@@ -61,19 +61,35 @@ impl Tensor2 {
     /// Returns a 2D array with the standard components of this second order tensor
     pub fn to_tensor(&self) -> Vec<Vec<f64>> {
         let mut tensor = vec![vec![0.0; 3]; 3];
-        let map = if self.symmetric { IJ_SYM_TO_I } else { IJ_TO_I };
-        for i in 0..3 {
-            for j in 0..3 {
-                if i == j {
-                    tensor[i][j] = self.comps_mandel[map[i][j]];
+        let map = if self.symmetric { IJ_TO_I } else { IJ_TO_I };
+        if self.symmetric {
+            for i in 0..3 {
+                for j in 0..3 {
+                    if i == j {
+                        tensor[i][j] = self.comps_mandel[map[i][j]];
+                    }
+                    if i < j {
+                        tensor[i][j] = (self.comps_mandel[map[i][j]] + 0.0) / SQRT_2
+                    }
+                    if i > j {
+                        tensor[i][j] = (self.comps_mandel[map[j][i]] - 0.0) / SQRT_2
+                    }
                 }
-                if i < j {
-                    tensor[i][j] =
-                        (self.comps_mandel[map[i][j]] + self.comps_mandel[map[j][i]]) / SQRT_2
-                }
-                if i > j {
-                    tensor[i][j] =
-                        (self.comps_mandel[map[j][i]] - self.comps_mandel[map[i][j]]) / SQRT_2
+            }
+        } else {
+            for i in 0..3 {
+                for j in 0..3 {
+                    if i == j {
+                        tensor[i][j] = self.comps_mandel[map[i][j]];
+                    }
+                    if i < j {
+                        tensor[i][j] =
+                            (self.comps_mandel[map[i][j]] + self.comps_mandel[map[j][i]]) / SQRT_2
+                    }
+                    if i > j {
+                        tensor[i][j] =
+                            (self.comps_mandel[map[j][i]] - self.comps_mandel[map[i][j]]) / SQRT_2
+                    }
                 }
             }
         }
@@ -191,6 +207,24 @@ mod tests {
             [7.0, 8.0, 9.0],
         ];
         let symmetric = false;
+        let t2 = Tensor2::from_tensor(comps_std, symmetric);
+        let res = t2.to_tensor();
+        for i in 0..3 {
+            for j in 0..3 {
+                assert_approx_eq!(res[i][j], comps_std[i][j], 1e-14);
+            }
+        }
+    }
+
+    #[test]
+    fn to_tensor_symmetric_works() {
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ];
+        let symmetric = true;
         let t2 = Tensor2::from_tensor(comps_std, symmetric);
         let res = t2.to_tensor();
         for i in 0..3 {

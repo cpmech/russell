@@ -2,8 +2,7 @@ use super::*;
 
 /// Implements a second order tensor
 pub struct Tensor2 {
-    components_mandel: Vec<f64>, // components in Mandel basis
-    size: usize,                 // length of components_mandel: 9 or 6 (symmetric)
+    components_mandel: Vec<f64>, // components in Mandel basis. len = 9 or 6 (symmetric)
     symmetric: bool,             // this is a symmetric tensor
 }
 
@@ -13,7 +12,6 @@ impl Tensor2 {
         let size = if symmetric { 6 } else { 9 };
         Tensor2 {
             components_mandel: vec![0.0; size],
-            size,
             symmetric,
         }
     }
@@ -56,7 +54,6 @@ impl Tensor2 {
         }
         Tensor2 {
             components_mandel,
-            size,
             symmetric,
         }
     }
@@ -73,7 +70,6 @@ mod tests {
     fn new_tensor2_works() {
         let t2 = Tensor2::new(false);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-        assert_eq!(t2.size, 9);
         assert_vec_approx_eq!(t2.components_mandel, correct, 1e-15);
     }
 
@@ -81,7 +77,6 @@ mod tests {
     fn new_symmetric_tensor2_works() {
         let t2 = Tensor2::new(true);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-        assert_eq!(t2.size, 6);
         assert_vec_approx_eq!(t2.components_mandel, correct, 1e-15);
     }
 

@@ -10,6 +10,7 @@
 // }
 
 // modules //////////////////////////////////////
+mod auxiliary;
 mod constants;
 mod tensor2;
 mod tensor4;

@@ -19,22 +19,22 @@ pub const ONE_BY_3: f64 = 0.3333333333333333333333333333333333333333333333333333
 // 2/3
 pub const TWO_BY_3: f64 = 0.66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666f64;
 
-// maps the component (i,j) of a second order tensor to the i-position in the Mandel vector
-pub const IJ_TO_MANDEL_VECTOR_I: [[usize; 3]; 3] = [
+// maps the component (i,j) of a second order tensor to the i-position in the component-vector
+pub const IJ_TO_I: [[usize; 3]; 3] = [
     [0, 3, 5], // comment to prevent auto format
     [6, 1, 4], // comment to prevent auto format
     [8, 7, 2], // comment to prevent auto format
 ];
 
-// maps the component (i,j) of a symmetric second order tensor to the i-position in the Mandel vector
-pub const IJ_SYM_TO_MANDEL_VECTOR_I: [[usize; 3]; 3] = [
+// maps the component (i,j) of a symmetric second order tensor to the i-position in the component-vector
+pub const IJ_SYM_TO_I: [[usize; 3]; 3] = [
     [0, 3, 5], // comment to prevent auto format
     [3, 1, 4], // comment to prevent auto format
     [5, 4, 2], // comment to prevent auto format
 ];
 
-// maps the component (i,j,k,l) of a fourth order tensor to the i-position in the Mandel matrix
-pub const IJKL_TO_MANDEL_MATRIX_I: [[[[usize; 3]; 3]; 3]; 3] = [
+// maps the component (i,j,k,l) of a fourth order tensor to the i-position in the component-matrix
+pub const IJKL_TO_I: [[[[usize; 3]; 3]; 3]; 3] = [
     [
         [[0, 0, 0], [0, 0, 0], [0, 0, 0]], // [0][0][.][.]
         [[3, 3, 3], [3, 3, 3], [3, 3, 3]], // [0][1][.][.]
@@ -52,8 +52,8 @@ pub const IJKL_TO_MANDEL_MATRIX_I: [[[[usize; 3]; 3]; 3]; 3] = [
     ],
 ];
 
-// maps the component (i,j,k,l) of a fourth order tensor to the j-position in the Mandel matrix
-pub const IJKL_TO_MANDEL_MATRIX_J: [[[[usize; 3]; 3]; 3]; 3] = [
+// maps the component (i,j,k,l) of a fourth order tensor to the j-position in the component-matrix
+pub const IJKL_TO_J: [[[[usize; 3]; 3]; 3]; 3] = [
     [
         [[0, 3, 5], [6, 1, 4], [8, 7, 2]], // [0][0][.][.]
         [[0, 3, 5], [6, 1, 4], [8, 7, 2]], // [0][1][.][.]
@@ -71,8 +71,8 @@ pub const IJKL_TO_MANDEL_MATRIX_J: [[[[usize; 3]; 3]; 3]; 3] = [
     ],
 ];
 
-// maps the component (i,j,k,l) of a symmetric fourth order tensor to the i-position in the Mandel matrix
-pub const IJKL_SYM_TO_MANDEL_MATRIX_I: [[[[usize; 3]; 3]; 3]; 3] = [
+// maps the component (i,j,k,l) of a symmetric fourth order tensor to the i-position in the component-matrix
+pub const IJKL_SYM_TO_I: [[[[usize; 3]; 3]; 3]; 3] = [
     [
         [[0, 0, 0], [0, 0, 0], [0, 0, 0]], // [0][0][.][.]
         [[3, 3, 3], [3, 3, 3], [3, 3, 3]], // [0][1][.][.]
@@ -90,8 +90,8 @@ pub const IJKL_SYM_TO_MANDEL_MATRIX_I: [[[[usize; 3]; 3]; 3]; 3] = [
     ],
 ];
 
-// maps the component (i,j,k,l) of a fourth order tensor to the j-position in the Mandel matrix
-pub const IJKL_SYM_TO_MANDEL_MATRIX_J: [[[[usize; 3]; 3]; 3]; 3] = [
+// maps the component (i,j,k,l) of a fourth order tensor to the j-position in the component-matrix
+pub const IJKL_SYM_TO_J: [[[[usize; 3]; 3]; 3]; 3] = [
     [
         [[0, 3, 5], [3, 1, 4], [5, 4, 2]], // [0][0][.][.]
         [[0, 3, 5], [3, 1, 4], [5, 4, 2]], // [0][1][.][.]
@@ -127,7 +127,7 @@ mod tests {
     }
 
     #[test]
-    fn ij_to_mandel_map_is_correct() {
+    fn ij_to_i_is_correct() {
         #[rustfmt::skip]
         let vec = [
             (0, 0), (1, 1), (2, 2), // 0,1,2 => diagonal
@@ -136,12 +136,12 @@ mod tests {
         ];
         for a in 0..9 {
             let (i, j) = vec[a];
-            assert_eq!(IJ_TO_MANDEL_VECTOR_I[i][j], a);
+            assert_eq!(IJ_TO_I[i][j], a);
         }
     }
 
     #[test]
-    fn ij_sym_to_mandel_map_is_correct() {
+    fn ij_sym_to_i_is_correct() {
         #[rustfmt::skip]
         let vec = [
             (0, 0), (1, 1), (2, 2), // 0,1,2 => diagonal
@@ -151,12 +151,12 @@ mod tests {
         for a in 0..9 {
             let (i, j) = vec[a];
             let idx = [0, 1, 2, 3, 4, 5, 3, 4, 5];
-            assert_eq!(IJ_SYM_TO_MANDEL_VECTOR_I[i][j], idx[a]);
+            assert_eq!(IJ_SYM_TO_I[i][j], idx[a]);
         }
     }
 
     #[test]
-    fn ijkl_to_mandel_matrix_maps_are_correct() {
+    fn ijkl_to_i_and_j_are_correct() {
         #[rustfmt::skip]
         let mat = [
             [(0,0,0,0), (0,0,1,1), (0,0,2,2), (0,0,0,1), (0,0,1,2), (0,0,0,2), (0,0,1,0), (0,0,2,1), (0,0,2,0)], // 0
@@ -172,14 +172,14 @@ mod tests {
         for a in 0..9 {
             for b in 0..9 {
                 let (i, j, k, l) = mat[a][b];
-                assert_eq!(IJKL_TO_MANDEL_MATRIX_I[i][j][k][l], a);
-                assert_eq!(IJKL_TO_MANDEL_MATRIX_J[i][j][k][l], b);
+                assert_eq!(IJKL_TO_I[i][j][k][l], a);
+                assert_eq!(IJKL_TO_J[i][j][k][l], b);
             }
         }
     }
 
     #[test]
-    fn ijkl_sym_to_mandel_matrix_maps_are_correct() {
+    fn ijkl_sym_to_i_and_j_are_correct() {
         #[rustfmt::skip]
         let mat = [
             [(0,0,0,0), (0,0,1,1), (0,0,2,2), (0,0,0,1), (0,0,1,2), (0,0,0,2), (0,0,1,0), (0,0,2,1), (0,0,2,0)], // 0
@@ -196,8 +196,8 @@ mod tests {
             for b in 0..9 {
                 let (i, j, k, l) = mat[a][b];
                 let idx = [0, 1, 2, 3, 4, 5, 3, 4, 5];
-                assert_eq!(IJKL_SYM_TO_MANDEL_MATRIX_I[i][j][k][l], idx[a]);
-                assert_eq!(IJKL_SYM_TO_MANDEL_MATRIX_J[i][j][k][l], idx[b]);
+                assert_eq!(IJKL_SYM_TO_I[i][j][k][l], idx[a]);
+                assert_eq!(IJKL_SYM_TO_J[i][j][k][l], idx[b]);
             }
         }
     }

@@ -142,8 +142,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let symmetric = false;
-        let t2 = Tensor2::from_tensor(comps_std, symmetric);
+        let t2 = Tensor2::from_tensor(comps_std, false);
         let correct = &[
             1.0,
             5.0,
@@ -166,8 +165,7 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let symmetric = true;
-        let t2 = Tensor2::from_tensor(comps_std, symmetric);
+        let t2 = Tensor2::from_tensor(comps_std, true);
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2];
         assert_vec_approx_eq!(t2.comps_mandel, correct, 1e-14);
     }
@@ -182,8 +180,7 @@ mod tests {
             [4.0+eps, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let symmetric = true;
-        Tensor2::from_tensor(comps_std, symmetric);
+        Tensor2::from_tensor(comps_std, true);
     }
 
     #[test]
@@ -196,8 +193,7 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0+eps, 5.0, 3.0],
         ];
-        let symmetric = true;
-        Tensor2::from_tensor(comps_std, symmetric);
+        Tensor2::from_tensor(comps_std, true);
     }
 
     #[test]
@@ -210,8 +206,7 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0+eps, 3.0],
         ];
-        let symmetric = true;
-        Tensor2::from_tensor(comps_std, symmetric);
+        Tensor2::from_tensor(comps_std, true);
     }
 
     #[test]
@@ -222,8 +217,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let symmetric = false;
-        let t2 = Tensor2::from_tensor(comps_std, symmetric);
+        let t2 = Tensor2::from_tensor(comps_std, false);
         let res = t2.to_tensor();
         for i in 0..3 {
             for j in 0..3 {
@@ -240,8 +234,7 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let symmetric = true;
-        let t2 = Tensor2::from_tensor(comps_std, symmetric);
+        let t2 = Tensor2::from_tensor(comps_std, true);
         let res = t2.to_tensor();
         for i in 0..3 {
             for j in 0..3 {
@@ -267,5 +260,24 @@ mod tests {
         let a = Tensor2::from_tensor(a_comps_std, false);
         let b = Tensor2::from_tensor(b_comps_std, false);
         assert_approx_eq!(a.inner(&b), 165.0, 1e-15);
+    }
+
+    #[test]
+    fn inner_symmetric_works() {
+        #[rustfmt::skip]
+        let a_comps_std = &[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ];
+        #[rustfmt::skip]
+        let b_comps_std = &[
+            [3.0, 5.0, 6.0],
+            [5.0, 2.0, 4.0],
+            [6.0, 4.0, 1.0],
+        ];
+        let a = Tensor2::from_tensor(a_comps_std, true);
+        let b = Tensor2::from_tensor(b_comps_std, true);
+        assert_approx_eq!(a.inner(&b), 162.0, 1e-13);
     }
 }

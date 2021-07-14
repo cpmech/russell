@@ -1,16 +1,10 @@
 use super::*;
 
 /// Implements a second order tensor
-#[derive(Debug)]
 pub struct Tensor2 {
-    /// components in Mandel basis
-    components_mandel: Vec<f64>,
-
-    /// length of components_mandel: 9 or 6 (symmetric)
-    size: usize,
-
-    /// this is a symmetric tensor
-    symmetric: bool,
+    components_mandel: Vec<f64>, // components in Mandel basis
+    size: usize,                 // length of components_mandel: 9 or 6 (symmetric)
+    symmetric: bool,             // this is a symmetric tensor
 }
 
 impl Tensor2 {

@@ -1,13 +1,20 @@
 use super::*;
 
+/// Implements a second order tensor
 #[derive(Debug)]
 pub struct Tensor2 {
-    components_mandel: Vec<f64>, // components in Mandel basis
-    size: usize,                 // length of components_mandel: 9 or 6 (symmetric)
-    symmetric: bool,             // represents a symmetric tensor
+    /// components in Mandel basis
+    components_mandel: Vec<f64>,
+
+    /// length of components_mandel: 9 or 6 (symmetric)
+    size: usize,
+
+    /// this is a symmetric tensor
+    symmetric: bool,
 }
 
 impl Tensor2 {
+    /// Returns a new Tensor2, symmetric or not, with 0-valued components
     pub fn new(symmetric: bool) -> Self {
         let size = if symmetric { 6 } else { 9 };
         Tensor2 {
@@ -17,6 +24,16 @@ impl Tensor2 {
         }
     }
 
+    /// Returns a new Tensor2 constructed from the "standard" components
+    ///
+    /// # Arguments
+    ///
+    /// * components_std - the standard components are given with respect to an orthonormal Cartesian basis
+    /// * symmetric - this is a symmetric tensor
+    ///
+    /// # Panics
+    ///
+    /// This method panics if the tensor is symmetric and the components_std are not.
     pub fn from_tensor(components_std: &[[f64; 3]; 3], symmetric: bool) -> Self {
         if symmetric {
             if components_std[1][0] != components_std[0][1]

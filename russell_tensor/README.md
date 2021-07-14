@@ -1,10 +1,10 @@
-# Russell Tensor - Tensor Analysis
+# Russell Tensor - Tensor Analysis for Continuum Mechanics
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
 Work in progress...
 
-This repository contains structures and functions to perform tensor analysis, in particular with second and fourth order tensors expressed by their components with respect to the (orthonormal) Mandel basis.
+This repository contains structures and functions to perform tensor analysis in continuum mechanics. We give focus to second and fourth order tensors expressed by their components with respect to an orthonormal Mandel basis.
 
 Documentation:
 

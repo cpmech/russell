@@ -169,7 +169,23 @@ mod tests {
     use super::*;
 
     #[test]
-    fn components_of_tensor_are_correct() {
+    fn sample1_matches_matrices() {
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    for l in 0..3 {
+                        let a = IJKL_TO_I[i][j][k][l];
+                        let b = IJKL_TO_J[i][j][k][l];
+                        let val = Samples::TENSOR4_SAMPLE1_STD_MATRIX[a][b];
+                        assert_eq!(Samples::TENSOR4_SAMPLE1[i][j][k][l], val);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn components_of_sample2_are_correct() {
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {

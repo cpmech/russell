@@ -71,7 +71,6 @@ impl Tensor4 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use auxiliary::*;
     use russell_chk::*;
 
     #[test]
@@ -83,18 +82,7 @@ mod tests {
 
     #[test]
     fn from_tensor_works() {
-        let comps_std = FOURTH_ORDER_TENSOR_A;
-        for i in 0..3 {
-            for j in 0..3 {
-                for k in 0..3 {
-                    for l in 0..3 {
-                        let val = (i + 1) * 1000 + (j + 1) * 100 + (k + 1) * 10 + (l + 1);
-                        assert_eq!(comps_std[i][j][k][l], val as f64);
-                    }
-                }
-            }
-        }
-        let t4 = Tensor4::from_tensor(&comps_std, false);
+        let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, false);
         let correct = [
             // 0 1 2 3 4 5 6 7 8
             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], // 0

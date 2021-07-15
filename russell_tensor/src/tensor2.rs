@@ -32,7 +32,7 @@ impl Tensor2 {
                 || comps_std[2][1] != comps_std[1][2]
                 || comps_std[2][0] != comps_std[0][2]
             {
-                panic!("the components of symmetric tensor are invalid for symmetry");
+                panic!("the components of symmetric second order tensor do not pass symmetry check");
             }
         }
         let size = if symmetric { 6 } else { 9 };
@@ -171,7 +171,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "the components of symmetric tensor are invalid for symmetry")]
+    #[should_panic(expected = "the components of symmetric second order tensor do not pass symmetry check")]
     fn from_symmetric_tensor_panics_on_invalid_data_10() {
         let eps = 1e-15;
         #[rustfmt::skip]
@@ -184,7 +184,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "the components of symmetric tensor are invalid for symmetry")]
+    #[should_panic(expected = "the components of symmetric second order tensor do not pass symmetry check")]
     fn from_symmetric_tensor_panics_on_invalid_data_21() {
         let eps = 1e-15;
         #[rustfmt::skip]
@@ -197,7 +197,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "the components of symmetric tensor are invalid for symmetry")]
+    #[should_panic(expected = "the components of symmetric second order tensor do not pass symmetry check")]
     fn from_symmetric_tensor_panics_on_invalid_data_20() {
         let eps = 1e-15;
         #[rustfmt::skip]

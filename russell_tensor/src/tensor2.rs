@@ -83,12 +83,10 @@ impl Tensor2 {
                         tensor[i][j] = self.comps_mandel[map[i][j]];
                     }
                     if i < j {
-                        tensor[i][j] =
-                            (self.comps_mandel[map[i][j]] + self.comps_mandel[map[j][i]]) / SQRT_2
+                        tensor[i][j] = (self.comps_mandel[map[i][j]] + self.comps_mandel[map[j][i]]) / SQRT_2
                     }
                     if i > j {
-                        tensor[i][j] =
-                            (self.comps_mandel[map[j][i]] - self.comps_mandel[map[i][j]]) / SQRT_2
+                        tensor[i][j] = (self.comps_mandel[map[j][i]] - self.comps_mandel[map[i][j]]) / SQRT_2
                     }
                 }
             }
@@ -115,7 +113,7 @@ impl Tensor2 {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {

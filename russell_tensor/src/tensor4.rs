@@ -44,8 +44,7 @@ impl Tensor4 {
                                     panic!("the components of minor-symmetric tensor do not pass symmetry check");
                                 }
                             } else {
-                                let a = IJKL_TO_I[i][j][k][l];
-                                let b = IJKL_TO_J[i][j][k][l];
+                                let (a, b) = IJKL_TO_IJ[i][j][k][l];
                                 let p = a + b * size; // col-major
                                 if i == j && k == l {
                                     dd_bar[p] = dd[i][j][k][l];
@@ -69,8 +68,7 @@ impl Tensor4 {
                 for j in 0..3 {
                     for k in 0..3 {
                         for l in 0..3 {
-                            let a = IJKL_TO_I[i][j][k][l];
-                            let b = IJKL_TO_J[i][j][k][l];
+                            let (a, b) = IJKL_TO_IJ[i][j][k][l];
                             let p = a + b * size; // col-major
                             if i == j && k == l {
                                 dd_bar[p] = dd[i][j][k][l];
@@ -109,6 +107,76 @@ impl Tensor4 {
             minor_symmetric,
         }
     }
+
+    /// Returns a deep array with the standard components of this fourth-order tensor
+    pub fn to_tensor(&self) -> Vec<Vec<Vec<Vec<f64>>>> {
+        let mut dd = vec![vec![vec![vec![0.0; 3]; 3]; 3]; 3];
+        if self.minor_symmetric {
+            for a in 0..6 {
+                let [i, j] = I_TO_IJ[a];
+                for b in 0..6 {
+                    let [k, l] = I_TO_IJ[b];
+                    let p = a + b * 6; // col-major
+                    if i == j && k == l {
+                        dd[i][j][k][l] = self.comps_mandel[p];
+                    }
+                    if i == j && k < l {
+                        dd[i][j][k][l] = (self.comps_mandel[p] + 0.0) / SQRT_2;
+                        dd[i][j][l][k] = dd[i][j][k][l];
+                    }
+                    if i < j && k == l {
+                        dd[i][j][k][l] = (self.comps_mandel[p] + 0.0) / SQRT_2;
+                        dd[j][i][k][l] = dd[i][j][k][l];
+                    }
+                    if i < j && k < l {
+                        dd[i][j][k][l] = (self.comps_mandel[p] + 0.0 + 0.0 + 0.0) / 2.0;
+                        dd[i][j][l][k] = dd[i][j][k][l];
+                        dd[j][i][k][l] = dd[i][j][k][l];
+                        dd[j][i][l][k] = dd[i][j][k][l];
+                    }
+                }
+            }
+        } else {
+            for i in 0..3 {
+                for j in 0..3 {
+                    for k in 0..3 {
+                        for l in 0..3 {
+                            let (a, b) = IJKL_TO_IJ[i][j][k][l];
+                            let val = self.comps_mandel[a + b * 9];
+                            if i == j && k == l {
+                                dd[i][j][k][l] = val;
+                            }
+                            if i == j && k < l {
+                                dd[i][j][k][l] = (val + dd[i][j][l][k]) / SQRT_2;
+                            }
+                            if i == j && k > l {
+                                dd[i][j][k][l] = (dd[i][j][l][k] - val) / SQRT_2;
+                            }
+                            if i < j && k == l {
+                                dd[i][j][k][l] = (val + dd[j][i][k][l]) / SQRT_2;
+                            }
+                            if i < j && k < l {
+                                dd[i][j][k][l] = (val + dd[i][j][l][k] + dd[j][i][k][l] + dd[j][i][l][k]) / 2.0;
+                            }
+                            if i < j && k > l {
+                                dd[i][j][k][l] = (dd[i][j][l][k] - val + dd[j][i][l][k] - dd[j][i][k][l]) / 2.0;
+                            }
+                            if i > j && k == l {
+                                dd[i][j][k][l] = (dd[j][i][k][l] - val) / SQRT_2;
+                            }
+                            if i > j && k < l {
+                                dd[i][j][k][l] = (dd[j][i][k][l] + dd[j][i][l][k] - val - dd[i][j][l][k]) / 2.0;
+                            }
+                            if i > j && k > l {
+                                dd[i][j][k][l] = (dd[j][i][l][k] - dd[j][i][k][l] - dd[i][j][l][k] + val) / 2.0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        dd
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -143,6 +211,36 @@ mod tests {
             for b in 0..6 {
                 let p = a + b * 6; // col-major
                 assert_eq!(t4.comps_mandel[p], Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[a][b]);
+            }
+        }
+    }
+
+    #[test]
+    fn to_tensor_4_works() {
+        let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, false);
+        let res = t4.to_tensor();
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    for l in 0..3 {
+                        assert_eq!(res[i][j][k][l], Samples::TENSOR4_SAMPLE1[i][j][k][l]);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn to_tensor_symmetric_4_works() {
+        let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true);
+        let res = t4.to_tensor();
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    for l in 0..3 {
+                        assert_approx_eq!(res[i][j][k][l], Samples::TENSOR4_SYM_SAMPLE1[i][j][k][l], 1e-14);
+                    }
+                }
             }
         }
     }

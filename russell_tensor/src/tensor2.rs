@@ -59,7 +59,7 @@ impl Tensor2 {
         }
     }
 
-    /// Returns a 2D array with the standard components of this second order tensor
+    /// Returns a 2D array with the standard components of this second-order tensor
     pub fn to_tensor(&self) -> Vec<Vec<f64>> {
         let mut tensor = vec![vec![0.0; 3]; 3];
         let map = if self.symmetric { IJ_TO_I } else { IJ_TO_I };

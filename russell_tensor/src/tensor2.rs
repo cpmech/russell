@@ -58,38 +58,40 @@ impl Tensor2 {
 
     /// Returns a 2D array with the standard components of this second-order tensor
     pub fn to_tensor(&self) -> Vec<Vec<f64>> {
-        let mut tensor = vec![vec![0.0; 3]; 3];
-        let map = if self.symmetric { IJ_TO_I } else { IJ_TO_I };
+        let mut tt = vec![vec![0.0; 3]; 3];
         if self.symmetric {
-            for i in 0..3 {
-                for j in 0..3 {
-                    if i == j {
-                        tensor[i][j] = self.comps_mandel[map[i][j]];
-                    }
-                    if i < j {
-                        tensor[i][j] = (self.comps_mandel[map[i][j]] + 0.0) / SQRT_2
-                    }
-                    if i > j {
-                        tensor[i][j] = (self.comps_mandel[map[j][i]] - 0.0) / SQRT_2
-                    }
+            for m in 0..6 {
+                let (i, j) = I_TO_IJ[m];
+                if i == j {
+                    tt[i][j] = self.comps_mandel[m];
+                }
+                if i < j {
+                    tt[i][j] = (self.comps_mandel[m] + 0.0) / SQRT_2;
+                    tt[j][i] = tt[i][j];
                 }
             }
         } else {
             for i in 0..3 {
                 for j in 0..3 {
+                    let m = IJ_TO_I[i][j];
+                    let val = self.comps_mandel[m];
                     if i == j {
-                        tensor[i][j] = self.comps_mandel[map[i][j]];
+                        tt[i][j] = val;
                     }
                     if i < j {
-                        tensor[i][j] = (self.comps_mandel[map[i][j]] + self.comps_mandel[map[j][i]]) / SQRT_2
+                        let n = IJ_TO_I[j][i];
+                        let next = self.comps_mandel[n];
+                        tt[i][j] = (val + next) / SQRT_2;
                     }
                     if i > j {
-                        tensor[i][j] = (self.comps_mandel[map[j][i]] - self.comps_mandel[map[i][j]]) / SQRT_2
+                        let n = IJ_TO_I[j][i];
+                        let next = self.comps_mandel[n];
+                        tt[i][j] = (next - val) / SQRT_2;
                     }
                 }
             }
         }
-        tensor
+        tt
     }
 
     /// Inner product (double-dot of tensors)

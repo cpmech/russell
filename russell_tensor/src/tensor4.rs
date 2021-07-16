@@ -112,11 +112,11 @@ impl Tensor4 {
     pub fn to_tensor(&self) -> Vec<Vec<Vec<Vec<f64>>>> {
         let mut dd = vec![vec![vec![vec![0.0; 3]; 3]; 3]; 3];
         if self.minor_symmetric {
-            for a in 0..6 {
-                let (i, j) = I_TO_IJ[a];
-                for b in 0..6 {
-                    let (k, l) = I_TO_IJ[b];
-                    let p = a + b * 6; // col-major
+            for m in 0..6 {
+                let (i, j) = I_TO_IJ[m];
+                for n in 0..6 {
+                    let (k, l) = I_TO_IJ[n];
+                    let p = m + n * 6; // col-major
                     if i == j && k == l {
                         dd[i][j][k][l] = self.comps_mandel[p];
                     }

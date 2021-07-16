@@ -32,6 +32,14 @@ pub const IJ_TO_I: [[usize; 3]; 3] = [
     [8, 7, 2], // comment to prevent auto format
 ];
 
+/// Maps the index i in the component-vector to the indices (i,j) of the corresponding second order tensor
+#[rustfmt::skip]
+pub const I_TO_IJ: [(usize, usize); 9] = [
+    (0,0), (1,1), (2,2), // 0,1,2 => diagonal
+    (0,1), (1,2), (0,2), // 3,4,5 => upper-diagonal
+    (1,0), (2,1), (2,0), // 6,7,8 => lower-diagonal
+];
+
 /// Maps the indices (i,j,k,l) of a fourth order tensor to the (i,j)-position in the component-matrix
 #[rustfmt::skip]
 pub const IJKL_TO_IJ: [[[[(usize, usize); 3]; 3]; 3]; 3] = [
@@ -50,14 +58,6 @@ pub const IJKL_TO_IJ: [[[[(usize, usize); 3]; 3]; 3]; 3] = [
         [[(7,0), (7,3), (7,5)], [(7,6), (7,1), (7,4)], [(7,8), (7,7), (7,2)]], // [2][1][.][.]
         [[(2,0), (2,3), (2,5)], [(2,6), (2,1), (2,4)], [(2,8), (2,7), (2,2)]], // [2][2][.][.]
     ],
-];
-
-/// Maps the index i in the component-vector to the indices (i,j) of the corresponding second order tensor
-#[rustfmt::skip]
-pub const I_TO_IJ: [[usize; 2]; 9] = [
-    [0, 0], [1, 1], [2, 2], // 0,1,2 => diagonal
-    [0, 1], [1, 2], [0, 2], // 3,4,5 => upper-diagonal
-    [1, 0], [2, 1], [2, 0], // 6,7,8 => lower-diagonal
 ];
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -92,6 +92,19 @@ mod tests {
     }
 
     #[test]
+    fn i_to_ij_is_correct() {
+        #[rustfmt::skip]
+        let vec = [
+            (0,0), (1,1), (2,2), // 0,1,2 => diagonal
+            (0,1), (1,2), (0,2), // 3,4,5 => upper-diagonal
+            (1,0), (2,1), (2,0), // 6,7,8 => lower-diagonal
+        ];
+        for a in 0..9 {
+            assert_eq!(I_TO_IJ[a], vec[a]);
+        }
+    }
+
+    #[test]
     fn ijkl_to_ij_is_correct() {
         #[rustfmt::skip]
         let mat = [
@@ -110,21 +123,6 @@ mod tests {
                 let (i, j, k, l) = mat[a][b];
                 assert_eq!(IJKL_TO_IJ[i][j][k][l], (a, b));
             }
-        }
-    }
-
-    #[test]
-    fn i_to_ij_is_correct() {
-        #[rustfmt::skip]
-        let vec = [
-            (0, 0), (1, 1), (2, 2), // 0,1,2 => diagonal
-            (0, 1), (1, 2), (0, 2), // 3,4,5 => upper-diagonal
-            (1, 0), (2, 1), (2, 0), // 6,7,8 => lower-diagonal
-        ];
-        for a in 0..9 {
-            let res = I_TO_IJ[a];
-            assert_eq!(res[0], vec[a].0);
-            assert_eq!(res[1], vec[a].1);
         }
     }
 }

@@ -108,7 +108,7 @@ impl Tensor4 {
         }
     }
 
-    /// Returns a deep array with the standard components of this fourth-order tensor
+    /// Returns a nested array with the standard components of this fourth-order tensor
     pub fn to_tensor(&self) -> Vec<Vec<Vec<Vec<f64>>>> {
         let mut dd = vec![vec![vec![vec![0.0; 3]; 3]; 3]; 3];
         if self.minor_symmetric {

@@ -141,34 +141,66 @@ impl Tensor4 {
                 for j in 0..3 {
                     for k in 0..3 {
                         for l in 0..3 {
-                            let (a, b) = IJKL_TO_IJ[i][j][k][l];
-                            let val = self.comps_mandel[a + b * 9];
+                            let (m, n) = IJKL_TO_IJ[i][j][k][l];
+                            let val = self.comps_mandel[m + n * 9];
                             if i == j && k == l {
                                 dd[i][j][k][l] = val;
                             }
                             if i == j && k < l {
-                                dd[i][j][k][l] = (val + dd[i][j][l][k]) / SQRT_2;
+                                let (p, q) = IJKL_TO_IJ[i][j][l][k];
+                                let right = self.comps_mandel[p + q * 9];
+                                dd[i][j][k][l] = (val + right) / SQRT_2;
                             }
                             if i == j && k > l {
-                                dd[i][j][k][l] = (dd[i][j][l][k] - val) / SQRT_2;
+                                let (p, q) = IJKL_TO_IJ[i][j][l][k];
+                                let left = self.comps_mandel[p + q * 9];
+                                dd[i][j][k][l] = (left - val) / SQRT_2;
                             }
                             if i < j && k == l {
-                                dd[i][j][k][l] = (val + dd[j][i][k][l]) / SQRT_2;
+                                let (p, q) = IJKL_TO_IJ[j][i][k][l];
+                                let down = self.comps_mandel[p + q * 9];
+                                dd[i][j][k][l] = (val + down) / SQRT_2;
                             }
                             if i < j && k < l {
-                                dd[i][j][k][l] = (val + dd[i][j][l][k] + dd[j][i][k][l] + dd[j][i][l][k]) / 2.0;
+                                let (p, q) = IJKL_TO_IJ[i][j][l][k];
+                                let (r, s) = IJKL_TO_IJ[j][i][k][l];
+                                let (u, v) = IJKL_TO_IJ[j][i][l][k];
+                                let right = self.comps_mandel[p + q * 9];
+                                let down = self.comps_mandel[r + s * 9];
+                                let diag = self.comps_mandel[u + v * 9];
+                                dd[i][j][k][l] = (val + right + down + diag) / 2.0;
                             }
                             if i < j && k > l {
-                                dd[i][j][k][l] = (dd[i][j][l][k] - val + dd[j][i][l][k] - dd[j][i][k][l]) / 2.0;
+                                let (p, q) = IJKL_TO_IJ[i][j][l][k];
+                                let (r, s) = IJKL_TO_IJ[j][i][l][k];
+                                let (u, v) = IJKL_TO_IJ[j][i][k][l];
+                                let left = self.comps_mandel[p + q * 9];
+                                let diag = self.comps_mandel[r + s * 9];
+                                let down = self.comps_mandel[u + v * 9];
+                                dd[i][j][k][l] = (left - val + diag - down) / 2.0;
                             }
                             if i > j && k == l {
-                                dd[i][j][k][l] = (dd[j][i][k][l] - val) / SQRT_2;
+                                let (p, q) = IJKL_TO_IJ[j][i][k][l];
+                                let up = self.comps_mandel[p + q * 9];
+                                dd[i][j][k][l] = (up - val) / SQRT_2;
                             }
                             if i > j && k < l {
-                                dd[i][j][k][l] = (dd[j][i][k][l] + dd[j][i][l][k] - val - dd[i][j][l][k]) / 2.0;
+                                let (p, q) = IJKL_TO_IJ[j][i][k][l];
+                                let (r, s) = IJKL_TO_IJ[j][i][l][k];
+                                let (u, v) = IJKL_TO_IJ[i][j][l][k];
+                                let up = self.comps_mandel[p + q * 9];
+                                let diag = self.comps_mandel[r + s * 9];
+                                let right = self.comps_mandel[u + v * 9];
+                                dd[i][j][k][l] = (up + diag - val - right) / 2.0;
                             }
                             if i > j && k > l {
-                                dd[i][j][k][l] = (dd[j][i][l][k] - dd[j][i][k][l] - dd[i][j][l][k] + val) / 2.0;
+                                let (p, q) = IJKL_TO_IJ[j][i][l][k];
+                                let (r, s) = IJKL_TO_IJ[j][i][k][l];
+                                let (u, v) = IJKL_TO_IJ[i][j][l][k];
+                                let diag = self.comps_mandel[p + q * 9];
+                                let up = self.comps_mandel[r + s * 9];
+                                let left = self.comps_mandel[u + v * 9];
+                                dd[i][j][k][l] = (diag - up - left + val) / 2.0;
                             }
                         }
                     }
@@ -223,7 +255,7 @@ mod tests {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        assert_eq!(res[i][j][k][l], Samples::TENSOR4_SAMPLE1[i][j][k][l]);
+                        assert_approx_eq!(res[i][j][k][l], Samples::TENSOR4_SAMPLE1[i][j][k][l], 1e-13);
                     }
                 }
             }

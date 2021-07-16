@@ -20,41 +20,38 @@ impl Tensor2 {
     ///
     /// # Arguments
     ///
-    /// * comps_std - the standard components given with respect to an orthonormal Cartesian basis
+    /// * tt - the standard components given with respect to an orthonormal Cartesian basis
     /// * symmetric - this is a symmetric tensor
     ///
     /// # Panics
     ///
     /// This method panics symmetric=true but the components are not symmetric.
     ///
-    pub fn from_tensor(comps_std: &[[f64; 3]; 3], symmetric: bool) -> Self {
+    pub fn from_tensor(tt: &[[f64; 3]; 3], symmetric: bool) -> Self {
         if symmetric {
-            if comps_std[1][0] != comps_std[0][1]
-                || comps_std[2][1] != comps_std[1][2]
-                || comps_std[2][0] != comps_std[0][2]
-            {
+            if tt[1][0] != tt[0][1] || tt[2][1] != tt[1][2] || tt[2][0] != tt[0][2] {
                 panic!("the components of symmetric second order tensor do not pass symmetry check");
             }
         }
         let size = if symmetric { 6 } else { 9 };
-        let mut comps_mandel = vec![0.0; size];
+        let mut tt_bar = vec![0.0; size];
         for i in 0..3 {
             let j0 = if symmetric { i } else { 0 };
             for j in j0..3 {
                 let a = IJ_TO_I[i][j];
                 if i == j {
-                    comps_mandel[a] = comps_std[i][j];
+                    tt_bar[a] = tt[i][j];
                 }
                 if i < j {
-                    comps_mandel[a] = (comps_std[i][j] + comps_std[j][i]) / SQRT_2;
+                    tt_bar[a] = (tt[i][j] + tt[j][i]) / SQRT_2;
                 }
                 if i > j {
-                    comps_mandel[a] = (comps_std[j][i] - comps_std[i][j]) / SQRT_2;
+                    tt_bar[a] = (tt[j][i] - tt[i][j]) / SQRT_2;
                 }
             }
         }
         Tensor2 {
-            comps_mandel,
+            comps_mandel: tt_bar,
             symmetric,
         }
     }

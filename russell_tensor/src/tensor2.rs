@@ -66,7 +66,7 @@ impl Tensor2 {
                     tt[i][j] = self.comps_mandel[m];
                 }
                 if i < j {
-                    tt[i][j] = (self.comps_mandel[m] + 0.0) / SQRT_2;
+                    tt[i][j] = self.comps_mandel[m] / SQRT_2;
                     tt[j][i] = tt[i][j];
                 }
             }

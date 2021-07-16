@@ -121,15 +121,15 @@ impl Tensor4 {
                         dd[i][j][k][l] = self.comps_mandel[p];
                     }
                     if i == j && k < l {
-                        dd[i][j][k][l] = (self.comps_mandel[p] + 0.0) / SQRT_2;
+                        dd[i][j][k][l] = self.comps_mandel[p] / SQRT_2;
                         dd[i][j][l][k] = dd[i][j][k][l];
                     }
                     if i < j && k == l {
-                        dd[i][j][k][l] = (self.comps_mandel[p] + 0.0) / SQRT_2;
+                        dd[i][j][k][l] = self.comps_mandel[p] / SQRT_2;
                         dd[j][i][k][l] = dd[i][j][k][l];
                     }
                     if i < j && k < l {
-                        dd[i][j][k][l] = (self.comps_mandel[p] + 0.0 + 0.0 + 0.0) / 2.0;
+                        dd[i][j][k][l] = self.comps_mandel[p] / 2.0;
                         dd[i][j][l][k] = dd[i][j][k][l];
                         dd[j][i][k][l] = dd[i][j][k][l];
                         dd[j][i][l][k] = dd[i][j][k][l];

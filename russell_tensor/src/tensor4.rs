@@ -1,6 +1,6 @@
 use super::*;
 
-/// Implements a fourth order tensor
+/// Implements a fourth order-tensor, minor-symmetric or not
 pub struct Tensor4 {
     comps_mandel: Vec<f64>, // components in Mandel basis. len = 81 or 36 (minor-symmetric). col-major => Fortran
     minor_symmetric: bool,  // this tensor has minor-symmetry
@@ -16,6 +16,17 @@ impl Tensor4 {
         }
     }
 
+    /// Returns a new Tensor4 constructed from the "standard" components
+    ///
+    /// # Arguments
+    ///
+    /// * dd - the standard D[i][j][k][l] components given with respect to an orthonormal Cartesian basis
+    /// * minor_symmetric - this is a minor-symmetric tensor
+    ///
+    /// # Panics
+    ///
+    /// This method panics if minor_symmetric=true but the components are not symmetric.
+    ///
     pub fn from_tensor(dd: &[[[[f64; 3]; 3]; 3]; 3], minor_symmetric: bool) -> Self {
         let size = if minor_symmetric { 6 } else { 9 };
         let mut dd_bar = vec![0.0; size * size];
@@ -100,7 +111,7 @@ impl Tensor4 {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {

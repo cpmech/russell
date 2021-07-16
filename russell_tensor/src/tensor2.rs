@@ -1,6 +1,6 @@
 use super::*;
 
-/// Implements a second order tensor
+/// Implements a second-order tensor, symmetric or not
 pub struct Tensor2 {
     comps_mandel: Vec<f64>, // components in Mandel basis. len = 9 or 6 (symmetric)
     symmetric: bool,        // this is a symmetric tensor
@@ -25,7 +25,8 @@ impl Tensor2 {
     ///
     /// # Panics
     ///
-    /// This method panics if the tensor is symmetric and the components_std are not.
+    /// This method panics symmetric=true but the components are not symmetric.
+    ///
     pub fn from_tensor(comps_std: &[[f64; 3]; 3], symmetric: bool) -> Self {
         if symmetric {
             if comps_std[1][0] != comps_std[0][1]

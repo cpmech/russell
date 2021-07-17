@@ -100,7 +100,7 @@ impl fmt::Display for Tensor2 {
     /// Implements the Display trait
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let t2 = self.to_tensor();
-        match format_matrix(&t2, 3, 3) {
+        match fmt_2d_array(&t2) {
             Ok(buf) => write!(f, "{}", buf),
             Err(e) => Err(e),
         }
@@ -235,5 +235,23 @@ mod tests {
                 assert_approx_eq!(res[i][j], comps_std[i][j], 1e-14);
             }
         }
+    }
+
+    #[test]
+    fn display_trait_works() {
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let t2 = Tensor2::from_tensor(comps_std, false);
+        println!("{}", t2);
+        let correct = "┌                                                          ┐\n\
+                            │                  1 1.9999999999999998 2.9999999999999996 │\n\
+                            │ 3.9999999999999996                  5                  6 │\n\
+                            │  6.999999999999998  7.999999999999999                  9 │\n\
+                            └                                                          ┘";
+        assert_eq!(format!("{}", t2), correct);
     }
 }

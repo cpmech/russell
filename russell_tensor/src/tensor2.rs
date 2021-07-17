@@ -1,9 +1,12 @@
 use super::*;
+use std::cmp;
+use std::fmt;
+use std::fmt::Write;
 
 /// Implements a second-order tensor, symmetric or not
 pub struct Tensor2 {
-    comps_mandel: Vec<f64>, // components in Mandel basis. len = 9 or 6 (symmetric)
-    symmetric: bool,        // this is a symmetric tensor
+    pub(super) comps_mandel: Vec<f64>, // components in Mandel basis. len = 9 or 6 (symmetric)
+    pub(super) symmetric: bool,        // this is a symmetric tensor
 }
 
 impl Tensor2 {
@@ -110,6 +113,39 @@ impl Tensor2 {
             // because the extra three components are zero
         };
         res
+    }
+}
+
+impl fmt::Display for Tensor2 {
+    /// Implements the Display trait
+    /// Symbols from http://www.i2symbol.com/symbols/line
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let t2 = self.to_tensor();
+        let mut width = 0;
+        let mut buf = String::new();
+        for i in 0..3 {
+            for j in 0..3 {
+                buf.clear();
+                write!(&mut buf, "{}", t2[i][j])?;
+                width = cmp::max(buf.chars().count(), width);
+            }
+        }
+        width += 1;
+        write!(f, "┌{:1$}┐\n", " ", width * 3 + 1)?;
+        for i in 0..3 {
+            if i > 0 {
+                write!(f, " │\n")?;
+            }
+            for j in 0..3 {
+                if j == 0 {
+                    write!(f, "│")?;
+                }
+                write!(f, "{:>1$}", t2[i][j], width)?;
+            }
+        }
+        write!(f, " │\n")?;
+        write!(f, "└{:1$}┘", " ", width * 3 + 1)?;
+        Ok(())
     }
 }
 

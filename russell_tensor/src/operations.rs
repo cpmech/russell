@@ -32,27 +32,23 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 ///
 /// c = a . b
 ///
-/// # Arguments
+/// # Warning
 ///
-/// * `c` - [result] A place to save a second-order tensor
-/// * `a` - [input] A second-order tensor
-/// * `b` - [input] A second-order tensor
+/// This function is not efficient.
 ///
-/// # Notes
-///
-/// * If `a` and `b` are symmetric then `c` can be symmetric
-/// * If either `a` or `b` are not symmetric then `c` must be non-symmetric
-///
-/// # Panics
-///
-/// Panics if `c` is symmetric and either `a` or `b` are not symmetric.
-///
-pub fn t2_sdot_t2(c: &mut Tensor2, a: &Tensor2, b: &Tensor2) {
+pub fn t2_sdot_t2(a: &Tensor2, b: &Tensor2) -> Tensor2 {
     let all_symmetric = a.symmetric && b.symmetric;
-    if c.symmetric && !all_symmetric {
-        panic!("tensor c must not be symmetric when either a or b are not symmetric");
+    let ta = a.to_tensor();
+    let tb = b.to_tensor();
+    let mut tc = [[0.0; 3]; 3];
+    for i in 0..3 {
+        for j in 0..3 {
+            for k in 0..3 {
+                tc[i][j] += ta[i][k] * tb[k][j];
+            }
+        }
     }
-    // TODO
+    Tensor2::from_tensor(&tc, all_symmetric)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -115,5 +111,30 @@ mod tests {
         ], false);
         let s = t2_ddot_t2(&a, &b);
         assert_approx_eq!(s, 168.0, 1e-13);
+    }
+
+    #[test]
+    fn t2_sdot_t2_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_tensor(&[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ], false);
+        #[rustfmt::skip]
+        let b = Tensor2::from_tensor(&[
+            [9.0, 8.0, 7.0],
+            [6.0, 5.0, 4.0],
+            [3.0, 2.0, 1.0],
+        ], false);
+        let c = t2_sdot_t2(&a, &b);
+        println!("{}", c);
+        #[rustfmt::skip]
+        let correct = Tensor2::from_tensor(&[
+            [ 30.0,  24.0, 18.0],
+            [ 84.0,  69.0, 54.0],
+            [138.0, 114.0, 90.0],
+        ], false);
+        assert_vec_approx_eq!(c.comps_mandel, correct.comps_mandel, 1e-13);
     }
 }

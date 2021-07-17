@@ -94,24 +94,6 @@ impl Tensor2 {
         }
         tt
     }
-
-    /// Inner product (double-dot of tensors)
-    pub fn inner(&self, other: &Tensor2) -> f64 {
-        let mut res = self.comps_mandel[0] * other.comps_mandel[0]
-            + self.comps_mandel[1] * other.comps_mandel[1]
-            + self.comps_mandel[2] * other.comps_mandel[2]
-            + self.comps_mandel[3] * other.comps_mandel[3]
-            + self.comps_mandel[4] * other.comps_mandel[4]
-            + self.comps_mandel[5] * other.comps_mandel[5];
-        if !self.symmetric && !other.symmetric {
-            res += self.comps_mandel[6] * other.comps_mandel[6]
-                + self.comps_mandel[7] * other.comps_mandel[7]
-                + self.comps_mandel[8] * other.comps_mandel[8];
-            // NOTE: if any tensor is unsymmetric, there is no need to augment res
-            // because the extra three components are zero
-        };
-        res
-    }
 }
 
 impl fmt::Display for Tensor2 {
@@ -253,62 +235,5 @@ mod tests {
                 assert_approx_eq!(res[i][j], comps_std[i][j], 1e-14);
             }
         }
-    }
-
-    #[test]
-    fn inner_works() {
-        #[rustfmt::skip]
-        let a_comps_std = &[
-            [1.0, 2.0, 3.0],
-            [4.0, 5.0, 6.0],
-            [7.0, 8.0, 9.0],
-        ];
-        #[rustfmt::skip]
-        let b_comps_std = &[
-            [9.0, 8.0, 7.0],
-            [6.0, 5.0, 4.0],
-            [3.0, 2.0, 1.0],
-        ];
-        let a = Tensor2::from_tensor(a_comps_std, false);
-        let b = Tensor2::from_tensor(b_comps_std, false);
-        assert_approx_eq!(a.inner(&b), 165.0, 1e-15);
-    }
-
-    #[test]
-    fn inner_symmetric_works() {
-        #[rustfmt::skip]
-        let a_comps_std = &[
-            [1.0, 4.0, 6.0],
-            [4.0, 2.0, 5.0],
-            [6.0, 5.0, 3.0],
-        ];
-        #[rustfmt::skip]
-        let b_comps_std = &[
-            [3.0, 5.0, 6.0],
-            [5.0, 2.0, 4.0],
-            [6.0, 4.0, 1.0],
-        ];
-        let a = Tensor2::from_tensor(a_comps_std, true);
-        let b = Tensor2::from_tensor(b_comps_std, true);
-        assert_approx_eq!(a.inner(&b), 162.0, 1e-13);
-    }
-
-    #[test]
-    fn inner_symmetric_with_unsymmetric_works() {
-        #[rustfmt::skip]
-        let a_comps_std = &[
-            [1.0, 4.0, 6.0],
-            [4.0, 2.0, 5.0],
-            [6.0, 5.0, 3.0],
-        ];
-        #[rustfmt::skip]
-        let b_comps_std = &[
-            [9.0, 8.0, 7.0],
-            [6.0, 5.0, 4.0],
-            [3.0, 2.0, 1.0],
-        ];
-        let a = Tensor2::from_tensor(a_comps_std, true);
-        let b = Tensor2::from_tensor(b_comps_std, false);
-        assert_approx_eq!(a.inner(&b), 168.0, 1e-13);
     }
 }

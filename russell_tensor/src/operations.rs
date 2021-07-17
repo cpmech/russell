@@ -34,10 +34,14 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 ///
 /// # Warning
 ///
-/// This function is not efficient.
+/// This function is not very efficient.
+///
+/// # Note
+///
+/// - Even if `a` and `b` are symmetric, the result `c` may not be symmetric
+/// - Thus, the result is always set with symmetric = false
 ///
 pub fn t2_sdot_t2(a: &Tensor2, b: &Tensor2) -> Tensor2 {
-    let all_symmetric = a.symmetric && b.symmetric;
     let ta = a.to_tensor();
     let tb = b.to_tensor();
     let mut tc = [[0.0; 3]; 3];
@@ -48,7 +52,7 @@ pub fn t2_sdot_t2(a: &Tensor2, b: &Tensor2) -> Tensor2 {
             }
         }
     }
-    Tensor2::from_tensor(&tc, all_symmetric)
+    Tensor2::from_tensor(&tc, false)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -134,6 +138,31 @@ mod tests {
             [ 30.0,  24.0, 18.0],
             [ 84.0,  69.0, 54.0],
             [138.0, 114.0, 90.0],
+        ], false);
+        assert_vec_approx_eq!(c.comps_mandel, correct.comps_mandel, 1e-13);
+    }
+
+    #[test]
+    fn t2_sdot_t2_both_symmetric_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_tensor(&[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ], true);
+        #[rustfmt::skip]
+        let b = Tensor2::from_tensor(&[
+            [3.0, 5.0, 6.0],
+            [5.0, 2.0, 4.0],
+            [6.0, 4.0, 1.0],
+        ], true);
+        let c = t2_sdot_t2(&a, &b);
+        println!("{}", c);
+        #[rustfmt::skip]
+        let correct = Tensor2::from_tensor(&[
+            [59.0, 37.0, 28.0],
+            [52.0, 44.0, 37.0],
+            [61.0, 52.0, 59.0],
         ], false);
         assert_vec_approx_eq!(c.comps_mandel, correct.comps_mandel, 1e-13);
     }

@@ -4,14 +4,12 @@
 
 // modules //////////////////////////////////////
 mod constants;
-mod error;
 mod formatter;
 mod operations;
 mod samples;
 mod tensor2;
 mod tensor4;
 pub use crate::constants::*;
-pub use crate::error::*;
 pub use crate::formatter::*;
 pub use crate::operations::*;
 pub use crate::samples::*;

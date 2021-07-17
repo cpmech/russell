@@ -1,9 +1,9 @@
-use super::*;
 use std::cmp;
 use std::fmt::Write;
 
 /// Returns a string representation of a matrix
-pub fn format_matrix(mat: &Vec<Vec<f64>>, nrow: usize, ncol: usize) -> Result<String, Error> {
+/// Symbols from http://www.i2symbol.com/symbols/line
+pub fn format_matrix(mat: &Vec<Vec<f64>>, nrow: usize, ncol: usize) -> Result<String, std::fmt::Error> {
     let mut width = 0;
     let mut buf = String::new();
     for i in 0..nrow {
@@ -38,7 +38,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn format_matrix_works() -> Result<(), Error> {
+    fn format_matrix_works() -> Result<(), std::fmt::Error> {
         let mat = vec![vec![11.1, 22.2, 33.3], vec![44.4, 55.5, 66.6], vec![77.7, 88.8, 99.9]];
         let buf = format_matrix(&mat, 3, 3)?;
         println!("{}", buf);

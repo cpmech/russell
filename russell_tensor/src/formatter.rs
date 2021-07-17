@@ -2,6 +2,7 @@ use super::*;
 use std::cmp;
 use std::fmt::Write;
 
+/// Returns a string representation of a matrix
 pub fn format_matrix(mat: &Vec<Vec<f64>>, nrow: usize, ncol: usize) -> Result<String, Error> {
     let mut width = 0;
     let mut buf = String::new();

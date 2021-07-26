@@ -1,0 +1,14 @@
+[package]
+name = "russell_openblas"
+version = "0.1.0"
+edition = "2018"
+license = "MIT"
+description = "Thin wrapper to (some) OpenBLAS routines for linear algebra computations"
+homepage = "https://github.com/cpmech/russell"
+repository = "https://github.com/cpmech/russell"
+documentation = "https://docs.rs/russell_openblas"
+readme = "README.md"
+categories = ["mathematics", "science"]
+keywords = ["matrix", "vector", "eigenvalues", "decomposition"]
+
+[dependencies]

@@ -2,7 +2,8 @@ use std::cmp;
 use std::fmt::Write;
 
 /// Returns a string representation of a 2D array
-/// Symbols from http://www.i2symbol.com/symbols/line
+///
+/// Symbols from <http://www.i2symbol.com/symbols/line>
 ///
 /// # Examples
 ///

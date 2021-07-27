@@ -6,8 +6,8 @@ use super::*;
 ///
 /// # Arguments
 ///
-/// * `a` - [input] A second-order tensor
-/// * `b` - [input] A second-order tensor
+/// * `a` - A second-order tensor
+/// * `b` - A second-order tensor
 ///
 pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
     #[rustfmt::skip]

@@ -20,7 +20,7 @@ impl Tensor4 {
     ///
     /// # Arguments
     ///
-    /// * dd - the standard D[i][j][k][l] components given with respect to an orthonormal Cartesian basis
+    /// * dd - the standard Dijkl components given with respect to an orthonormal Cartesian basis
     /// * minor_symmetric - this is a minor-symmetric tensor
     ///
     /// # Panics

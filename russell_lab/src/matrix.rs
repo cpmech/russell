@@ -65,6 +65,16 @@ impl Matrix {
         }
         matrix
     }
+
+    /// Returns the number of rows
+    pub fn nrow(&self) -> usize {
+        self.nrow
+    }
+
+    /// Returns the number of columns
+    pub fn ncol(&self) -> usize {
+        self.ncol
+    }
 }
 
 impl fmt::Display for Matrix {
@@ -136,6 +146,18 @@ mod tests {
             &[4.0, 5.0],
             &[7.0, 8.0, 8.0],
         ]);
+    }
+
+    #[test]
+    fn nrow_works() {
+        let a = Matrix::new(4, 3);
+        assert_eq!(a.nrow(), 4);
+    }
+
+    #[test]
+    fn ncol_works() {
+        let a = Matrix::new(4, 3);
+        assert_eq!(a.ncol(), 3);
     }
 
     #[test]

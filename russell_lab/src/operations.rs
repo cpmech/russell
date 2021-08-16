@@ -73,20 +73,55 @@ pub fn outer(a: &mut Matrix, u: &Vector, v: &Vector) {
             a.ncol, n
         );
     }
-    let lda = m;
+    let m_i32: i32 = m.try_into().unwrap();
+    let n_i32: i32 = n.try_into().unwrap();
+    let lda_i32 = m_i32;
     dger(
-        m.try_into().unwrap(),
-        n.try_into().unwrap(),
+        m_i32,
+        n_i32,
         1.0,
         &u.data,
         1,
         &v.data,
         1,
         &mut a.data,
-        lda.try_into().unwrap(),
+        lda_i32,
     );
 }
 
+/// Performs the matrix-vector multiplication resulting in a vector
+///
+/// ```text
+///  u := a multiply v
+/// ```
+///
+/// # Note
+///
+/// The length of vector u must equal the rows of matrix a and
+/// the length of vector v must equal the columns of matrix a
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::*;
+/// let a = Matrix::from(&[
+///     &[ 5.0, -2.0, 1.0],
+///     &[-4.0,  0.0, 2.0],
+///     &[15.0, -6.0, 0.0],
+///     &[ 3.0,  5.0, 1.0],
+/// ]);
+/// let u = Vector::from(&[1.0, 2.0, 3.0]);
+/// let mut v = Vector::new(a.nrow());
+/// mat_vec_mul(&mut v, &a, &u);
+/// let correct = "┌    ┐\n\
+///                │  4 │\n\
+///                │  2 │\n\
+///                │  3 │\n\
+///                │ 16 │\n\
+///                └    ┘";
+/// assert_eq!(format!("{}", v), correct);
+/// ```
+///
 pub fn mat_vec_mul(v: &mut Vector, a: &Matrix, u: &Vector) {
     let m = v.data.len();
     let n = u.data.len();
@@ -102,6 +137,22 @@ pub fn mat_vec_mul(v: &mut Vector, a: &Matrix, u: &Vector) {
             n, a.ncol
         );
     }
+    let m_i32: i32 = m.try_into().unwrap();
+    let n_i32: i32 = n.try_into().unwrap();
+    let lda_i32 = m_i32;
+    dgemv(
+        false,
+        m_i32,
+        n_i32,
+        1.0,
+        &a.data,
+        lda_i32,
+        &u.data,
+        1,
+        0.0,
+        &mut v.data,
+        1,
+    );
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -148,5 +199,20 @@ mod tests {
             &[4.0, 4.0, -8.0],
         ]);
         assert_vec_approx_eq!(a.data, correct, 1e-15);
+    }
+
+    #[test]
+    fn mat_vec_mul_works() {
+        #[rustfmt::skip]
+        let a = Matrix::from(&[
+            &[ 5.0, -2.0, 0.0, 1.0],
+            &[10.0, -4.0, 0.0, 2.0],
+            &[15.0, -6.0, 0.0, 3.0],
+        ]);
+        let u = Vector::from(&[1.0, 3.0, 8.0, 5.0]);
+        let mut v = Vector::new(a.nrow());
+        mat_vec_mul(&mut v, &a, &u);
+        let correct = &[4.0, 8.0, 12.0];
+        assert_vec_approx_eq!(v.data, correct, 1e-15);
     }
 }

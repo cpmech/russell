@@ -128,13 +128,13 @@ mod tests {
     #[test]
     fn from_works() {
         #[rustfmt::skip]
-        let aa = Matrix::from(&[
+        let a = Matrix::from(&[
             &[1.0, 2.0, 3.0],
             &[4.0, 5.0, 6.0],
             &[7.0, 8.0, 9.0],
         ]);
         let correct = &[1.0, 4.0, 7.0, 2.0, 5.0, 8.0, 3.0, 6.0, 9.0];
-        assert_vec_approx_eq!(aa.data, correct, 1e-15);
+        assert_vec_approx_eq!(a.data, correct, 1e-15);
     }
 
     #[test]
@@ -163,7 +163,7 @@ mod tests {
     #[test]
     fn display_trait_works() {
         #[rustfmt::skip]
-        let aa = Matrix::from(&[
+        let a = Matrix::from(&[
             &[1.0, 2.0, 3.0],
             &[4.0, 5.0, 6.0],
             &[7.0, 8.0, 9.0],
@@ -173,6 +173,6 @@ mod tests {
                             │ 4 5 6 │\n\
                             │ 7 8 9 │\n\
                             └       ┘";
-        assert_eq!(format!("{}", aa), correct);
+        assert_eq!(format!("{}", a), correct);
     }
 }

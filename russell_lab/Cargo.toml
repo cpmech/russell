@@ -12,5 +12,4 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "vector", "linspace"]
 
 [dependencies]
-error-chain = "0.12"
 russell_chk = { path = "../russell_chk", version = "0.1" }

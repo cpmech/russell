@@ -12,4 +12,5 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "vector", "linspace"]
 
 [dependencies]
-russell_chk = { path = "../russell_chk", version = "0.1" }
+russell_chk = { path = "../russell_chk", version = "*" }
+russell_openblas = { path = "../russell_openblas", version = "*" }

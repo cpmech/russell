@@ -1,3 +1,6 @@
+use std::cmp;
+use std::fmt::{self, Write};
+
 pub struct Matrix {
     pub(super) nrow: usize,    // number of rows
     pub(super) ncol: usize,    // number of columns
@@ -61,6 +64,40 @@ impl Matrix {
     }
 }
 
+impl fmt::Display for Matrix {
+    /// Implements the Display trait
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // find largest width
+        let mut width = 0;
+        let mut buf = String::new();
+        for i in 0..self.nrow {
+            for j in 0..self.ncol {
+                let val = self.data[i + j * self.nrow];
+                write!(&mut buf, "{}", val)?;
+                width = cmp::max(buf.chars().count(), width);
+                buf.clear();
+            }
+        }
+        width += 1;
+        write!(f, "┌{:1$}┐\n", " ", width * self.ncol + 1)?;
+        for i in 0..self.nrow {
+            if i > 0 {
+                write!(f, " │\n")?;
+            }
+            for j in 0..self.ncol {
+                if j == 0 {
+                    write!(f, "│")?;
+                }
+                let val = self.data[i + j * self.nrow];
+                write!(f, "{:>1$}", val, width)?;
+            }
+        }
+        write!(f, " │\n")?;
+        write!(f, "└{:1$}┘", " ", width * self.ncol + 1)?;
+        Ok(())
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
@@ -81,9 +118,9 @@ mod tests {
         let aa = Matrix::from(&[
             &[1.0, 2.0, 3.0],
             &[4.0, 5.0, 6.0],
-            &[7.0, 8.0, 8.0],
+            &[7.0, 8.0, 9.0],
         ]);
-        let correct = &[1.0, 4.0, 7.0, 2.0, 5.0, 8.0, 3.0, 6.0, 8.0];
+        let correct = &[1.0, 4.0, 7.0, 2.0, 5.0, 8.0, 3.0, 6.0, 9.0];
         assert_vec_approx_eq!(aa.data, correct, 1e-15);
     }
 
@@ -96,5 +133,21 @@ mod tests {
             &[4.0, 5.0],
             &[7.0, 8.0, 8.0],
         ]);
+    }
+
+    #[test]
+    fn display_trait_works() {
+        #[rustfmt::skip]
+        let aa = Matrix::from(&[
+            &[1.0, 2.0, 3.0],
+            &[4.0, 5.0, 6.0],
+            &[7.0, 8.0, 9.0],
+        ]);
+        let correct = "┌       ┐\n\
+                            │ 1 2 3 │\n\
+                            │ 4 5 6 │\n\
+                            │ 7 8 9 │\n\
+                            └       ┘";
+        assert_eq!(format!("{}", aa), correct);
     }
 }

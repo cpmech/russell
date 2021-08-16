@@ -2,7 +2,6 @@
 //!
 //! **lab**: matrix-vector "laboratory" tools
 
-// modules //////////////////////////////////////
 mod linspace;
 mod matrix;
 mod operations;

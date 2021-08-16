@@ -1,4 +1,6 @@
 pub struct Matrix {
+    pub(super) nrow: usize,    // number of rows
+    pub(super) ncol: usize,    // number of columns
     pub(super) data: Vec<f64>, // col-major => Fortran
 }
 
@@ -20,6 +22,8 @@ impl Matrix {
     /// Creates new (nrow x ncol) Matrix filled with zeros
     pub fn new(nrow: usize, ncol: usize) -> Self {
         Matrix {
+            nrow,
+            ncol,
             data: vec![0.0; nrow * ncol],
         }
     }
@@ -33,10 +37,16 @@ impl Matrix {
     pub fn from(data: &[&[f64]]) -> Self {
         let nrow = data.len();
         if nrow == 0 {
-            return Matrix { data: Vec::new() };
+            return Matrix {
+                nrow: 0,
+                ncol: 0,
+                data: Vec::new(),
+            };
         }
         let ncol = data[0].len();
         let mut matrix = Matrix {
+            nrow,
+            ncol,
             data: vec![0.0; nrow * ncol],
         };
         for i in 0..nrow {

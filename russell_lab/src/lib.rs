@@ -4,4 +4,6 @@
 
 // modules //////////////////////////////////////
 mod linspace;
+mod vector;
 pub use crate::linspace::*;
+pub use crate::vector::*;

@@ -14,12 +14,15 @@ pub struct Matrix {
 /// Data is stored in col-major format
 ///
 /// Example of col-major data:
-///        _      _
-///       |  0  3  |
-///   A = |  1  4  |            ⇒     a = [0, 1, 2, 3, 4, 5]
-///       |_ 2  5 _|(m x n)
 ///
-///   a[i+j*m] = A[i][j]
+/// ```text
+///       _      _
+///      |  0  3  |
+///  A = |  1  4  |            ⇒     a = [0, 1, 2, 3, 4, 5]
+///      |_ 2  5 _|(m x n)
+///
+///  a[i+j*m] = A[i][j]
+/// ```
 ///
 impl Matrix {
     /// Creates new (nrow x ncol) Matrix filled with zeros

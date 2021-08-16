@@ -1,12 +1,16 @@
 /// Converts nested slice into vector representing a matrix in col-major format
 ///
 /// Example of col-major data:
+///
+/// ```text
 ///        _      _
 ///       |  0  3  |
 ///   A = |  1  4  |            ⇒     a = [0, 1, 2, 3, 4, 5]
 ///       |_ 2  5 _|(m x n)
 ///
 ///   a[i+j*m] = A[i][j]
+///
+/// ```
 ///
 /// # Panics
 ///

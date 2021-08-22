@@ -51,7 +51,7 @@ pub fn dscal(n: i32, alpha: f64, x: &mut [f64], incx: i32) {
 /// Computes constant times a vector plus a vector.
 ///
 /// ```text
-/// y += alpha*x + y
+/// y := alpha*x + y
 /// ```
 ///
 /// # Reference

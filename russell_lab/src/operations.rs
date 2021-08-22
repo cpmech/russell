@@ -92,7 +92,8 @@ pub fn outer(a: &mut Matrix, u: &Vector, v: &Vector) {
 /// Performs the matrix-vector multiplication resulting in a vector
 ///
 /// ```text
-///  u := a multiply v
+///  v  := alpha * a   multiply  u
+/// (m)          (m,n)          (n)
 /// ```
 ///
 /// # Note
@@ -112,17 +113,17 @@ pub fn outer(a: &mut Matrix, u: &Vector, v: &Vector) {
 /// ]);
 /// let u = Vector::from(&[1.0, 2.0, 3.0]);
 /// let mut v = Vector::new(a.nrow());
-/// mat_vec_mul(&mut v, &a, &u);
-/// let correct = "┌    ┐\n\
-///                │  4 │\n\
-///                │  2 │\n\
-///                │  3 │\n\
-///                │ 16 │\n\
-///                └    ┘";
+/// mat_vec_mul(&mut v, 0.5, &a, &u);
+/// let correct = "┌     ┐\n\
+///                │   2 │\n\
+///                │   1 │\n\
+///                │ 1.5 │\n\
+///                │   8 │\n\
+///                └     ┘";
 /// assert_eq!(format!("{}", v), correct);
 /// ```
 ///
-pub fn mat_vec_mul(v: &mut Vector, a: &Matrix, u: &Vector) {
+pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) {
     let m = v.data.len();
     let n = u.data.len();
     if m != a.nrow {
@@ -144,7 +145,7 @@ pub fn mat_vec_mul(v: &mut Vector, a: &Matrix, u: &Vector) {
         false,
         m_i32,
         n_i32,
-        1.0,
+        alpha,
         &a.data,
         lda_i32,
         &u.data,
@@ -321,7 +322,7 @@ mod tests {
         ]);
         let u = Vector::from(&[1.0, 3.0, 8.0, 5.0]);
         let mut v = Vector::new(a.nrow());
-        mat_vec_mul(&mut v, &a, &u);
+        mat_vec_mul(&mut v, 1.0, &a, &u);
         let correct = &[4.0, 8.0, 12.0];
         assert_vec_approx_eq!(v.data, correct, 1e-15);
     }

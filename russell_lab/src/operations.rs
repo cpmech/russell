@@ -248,11 +248,46 @@ pub fn scale_vector(u: &mut Vector, alpha: f64) {
     dscal(n, alpha, &mut u.data, 1);
 }
 
-/// w := u + v
-pub fn add_vectors(w: &mut Vector, u: &Vector, v: &Vector) {
-    // TODO
-    // remember to clear w using dscal
-    // daxpy
+/// Performs the addition of two vectors
+///
+/// ```text
+/// w := alpha * u + beta * v
+/// ```
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::*;
+/// let u = Vector::from(&[10.0, 20.0, 30.0, 40.0]);
+/// let v = Vector::from(&[2.0, 1.5, 1.0, 0.5]);
+/// let mut w = Vector::new(4);
+/// add_vectors(&mut w, 0.1, &u, 2.0, &v);
+/// let correct = "┌   ┐\n\
+///                │ 5 │\n\
+///                │ 5 │\n\
+///                │ 5 │\n\
+///                │ 5 │\n\
+///                └   ┘";
+/// assert_eq!(format!("{}", w), correct);
+/// ```
+///
+pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector) {
+    let n = w.data.len();
+    if u.data.len() != n {
+        #[rustfmt::skip]
+        panic!("the length of vector [u] (={}) must equal the length of vector [w] (={})", u.data.len(), n);
+    }
+    if v.data.len() != n {
+        #[rustfmt::skip]
+        panic!("the length of vector [v] (={}) must equal the length of vector [w] (={})", v.data.len(), n);
+    }
+    let n_i32: i32 = n.try_into().unwrap();
+    // w := v
+    dcopy(n_i32, &v.data, 1, &mut w.data, 1);
+    // w := beta * v
+    dscal(n_i32, beta, &mut w.data, 1);
+    // w := alpha*u + w
+    daxpy(n_i32, alpha, &u.data, 1, &mut w.data, 1);
 }
 
 /// v += alpha * u (daxpy)
@@ -358,5 +393,15 @@ mod tests {
         scale_vector(&mut u, 1.0 / 3.0);
         let correct = &[2.0, 3.0, 4.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
+    }
+
+    #[test]
+    fn add_vectors_works() {
+        let u = Vector::from(&[1.0, 2.0, 3.0, 4.0]);
+        let v = Vector::from(&[0.5, 1.0, 1.5, 2.0]);
+        let mut w = Vector::new(4);
+        add_vectors(&mut w, 1.0, &u, -2.0, &v);
+        let correct = &[0.0, 0.0, 0.0, 0.0];
+        assert_vec_approx_eq!(w.data, correct, 1e-15);
     }
 }

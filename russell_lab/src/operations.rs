@@ -281,13 +281,28 @@ pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector
         #[rustfmt::skip]
         panic!("the length of vector [v] (={}) must equal the length of vector [w] (={})", v.data.len(), n);
     }
-    let n_i32: i32 = n.try_into().unwrap();
-    // w := v
-    dcopy(n_i32, &v.data, 1, &mut w.data, 1);
-    // w := beta * v
-    dscal(n_i32, beta, &mut w.data, 1);
-    // w := alpha*u + w
-    daxpy(n_i32, alpha, &u.data, 1, &mut w.data, 1);
+    const SIZE_LIMIT: usize = 99;
+    let use_openblas = n > SIZE_LIMIT;
+    if use_openblas {
+        let n_i32: i32 = n.try_into().unwrap();
+        // w := v
+        dcopy(n_i32, &v.data, 1, &mut w.data, 1);
+        // w := beta * v
+        dscal(n_i32, beta, &mut w.data, 1);
+        // w := alpha*u + w
+        daxpy(n_i32, alpha, &u.data, 1, &mut w.data, 1);
+    } else {
+        let m = n % 4;
+        for i in 0..m {
+            w.data[i] = alpha * u.data[i] + beta * v.data[i];
+        }
+        for i in (m..n).step_by(4) {
+            w.data[i + 0] = alpha * u.data[i + 0] + beta * v.data[i + 0];
+            w.data[i + 1] = alpha * u.data[i + 1] + beta * v.data[i + 1];
+            w.data[i + 2] = alpha * u.data[i + 2] + beta * v.data[i + 2];
+            w.data[i + 3] = alpha * u.data[i + 3] + beta * v.data[i + 3];
+        }
+    }
 }
 
 /// v += alpha * u (daxpy)
@@ -397,11 +412,17 @@ mod tests {
 
     #[test]
     fn add_vectors_works() {
-        let u = Vector::from(&[1.0, 2.0, 3.0, 4.0]);
-        let v = Vector::from(&[0.5, 1.0, 1.5, 2.0]);
-        let mut w = Vector::new(4);
+        let u = Vector::from(&[
+            1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0,
+        ]);
+        let v = Vector::from(&[
+            0.5, 1.0, 1.5, 2.0, 0.5, 1.0, 1.5, 2.0, 0.5, 1.0, 1.5, 2.0, 0.5, 1.0, 1.5, 2.0,
+        ]);
+        let mut w = Vector::new(u.dim());
         add_vectors(&mut w, 1.0, &u, -2.0, &v);
-        let correct = &[0.0, 0.0, 0.0, 0.0];
+        let correct = &[
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        ];
         assert_vec_approx_eq!(w.data, correct, 1e-15);
     }
 }

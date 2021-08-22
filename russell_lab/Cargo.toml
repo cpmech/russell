@@ -14,3 +14,8 @@ keywords = ["matrix", "vector", "linspace"]
 [dependencies]
 russell_chk = { path = "../russell_chk", version = "*" }
 russell_openblas = { path = "../russell_openblas", version = "*" }
+criterion = "0.3"
+
+[[bench]]
+name = "add_vectors"
+harness = false

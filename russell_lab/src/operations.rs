@@ -34,7 +34,8 @@ pub fn inner(u: &Vector, v: &Vector) -> f64 {
 /// Performs the outer (tensor) product between two vectors resulting in a matrix
 ///
 /// ```text
-///  a := u outer v
+///   a  :=  alpha * u  outer  v
+/// (m,n)           (m)       (n)
 /// ```
 ///
 /// # Note
@@ -49,7 +50,7 @@ pub fn inner(u: &Vector, v: &Vector) -> f64 {
 /// let u = Vector::from(&[1.0, 2.0, 3.0]);
 /// let v = Vector::from(&[5.0, -2.0, 0.0, 1.0]);
 /// let mut a = Matrix::new(u.dim(), v.dim());
-/// outer(&mut a, &u, &v);
+/// outer(&mut a, 1.0, &u, &v);
 /// let correct = "┌             ┐\n\
 ///                │  5 -2  0  1 │\n\
 ///                │ 10 -4  0  2 │\n\
@@ -58,7 +59,7 @@ pub fn inner(u: &Vector, v: &Vector) -> f64 {
 /// assert_eq!(format!("{}", a), correct);
 /// ```
 ///
-pub fn outer(a: &mut Matrix, u: &Vector, v: &Vector) {
+pub fn outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) {
     let m = u.data.len();
     let n = v.data.len();
     if a.nrow != m {
@@ -79,7 +80,7 @@ pub fn outer(a: &mut Matrix, u: &Vector, v: &Vector) {
     dger(
         m_i32,
         n_i32,
-        1.0,
+        alpha,
         &u.data,
         1,
         &v.data,
@@ -286,12 +287,12 @@ mod tests {
         let u = Vector::from(&[1.0, 2.0, 3.0]);
         let v = Vector::from(&[5.0, -2.0, 0.0, 1.0]);
         let mut a = Matrix::new(u.data.len(), v.data.len());
-        outer(&mut a, &u, &v);
+        outer(&mut a, 3.0, &u, &v);
         #[rustfmt::skip]
         let correct = slice_to_colmajor(&[
-            &[ 5.0, -2.0, 0.0, 1.0],
-            &[10.0, -4.0, 0.0, 2.0],
-            &[15.0, -6.0, 0.0, 3.0],
+            &[15.0,  -6.0, 0.0, 3.0],
+            &[30.0, -12.0, 0.0, 6.0],
+            &[45.0, -18.0, 0.0, 9.0],
         ]);
         assert_vec_approx_eq!(a.data, correct, 1e-15);
     }
@@ -301,7 +302,7 @@ mod tests {
         let u = Vector::from(&[1.0, 2.0, 3.0, 4.0]);
         let v = Vector::from(&[1.0, 1.0, -2.0]);
         let mut a = Matrix::new(u.data.len(), v.data.len());
-        outer(&mut a, &u, &v);
+        outer(&mut a, 1.0, &u, &v);
         #[rustfmt::skip]
         let correct = slice_to_colmajor(&[
             &[1.0, 1.0, -2.0],

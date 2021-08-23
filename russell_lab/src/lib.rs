@@ -45,7 +45,8 @@
 //! ```
 //!
 
-#![feature(portable_simd)]
+// #![feature(portable_simd)]
+#![feature(stdsimd)]
 
 mod linspace;
 mod matrix;

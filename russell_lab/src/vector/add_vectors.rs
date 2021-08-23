@@ -1,6 +1,6 @@
 use super::*;
-use russell_openblas::*;
-use std::convert::TryInto;
+
+pub const USE_ADD_VECTORS_NATIVE: bool = false;
 
 /// Performs the addition of two vectors
 ///
@@ -26,6 +26,10 @@ use std::convert::TryInto;
 /// ```
 ///
 pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector) {
+    if USE_ADD_VECTORS_NATIVE {
+        add_vectors_native(w, alpha, u, beta, v);
+        return;
+    }
     let n = w.data.len();
     if u.data.len() != n {
         #[rustfmt::skip]
@@ -38,27 +42,9 @@ pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector
     const SIZE_LIMIT: usize = 99;
     let use_openblas = n > SIZE_LIMIT;
     if use_openblas {
-        let n_i32: i32 = n.try_into().unwrap();
-        // w := v
-        dcopy(n_i32, &v.data, 1, &mut w.data, 1);
-        // w := beta * v
-        dscal(n_i32, beta, &mut w.data, 1);
-        // w := alpha*u + w
-        daxpy(n_i32, alpha, &u.data, 1, &mut w.data, 1);
+        add_vectors_oblas(w, alpha, u, beta, v);
     } else {
         add_vectors_simd(w, alpha, u, beta, v);
-        /*
-        let m = n % 4;
-        for i in 0..m {
-            w.data[i] = alpha * u.data[i] + beta * v.data[i];
-        }
-        for i in (m..n).step_by(4) {
-            w.data[i + 0] = alpha * u.data[i + 0] + beta * v.data[i + 0];
-            w.data[i + 1] = alpha * u.data[i + 1] + beta * v.data[i + 1];
-            w.data[i + 2] = alpha * u.data[i + 2] + beta * v.data[i + 2];
-            w.data[i + 3] = alpha * u.data[i + 3] + beta * v.data[i + 3];
-        }
-        */
     }
 }
 

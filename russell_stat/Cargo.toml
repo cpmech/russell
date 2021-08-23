@@ -12,5 +12,4 @@ categories = ["mathematics", "science"]
 keywords = ["statistics", "probability", "random", "numerical"]
 
 [dependencies]
-error-chain = "0.12"
-russell_chk = { path = "../russell_chk", version = "0.1" }
+russell_chk = { path = "../russell_chk", version = "*" }

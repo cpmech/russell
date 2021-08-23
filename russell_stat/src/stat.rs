@@ -1,5 +1,3 @@
-use super::err;
-
 /// Returns the average of values in the a given slice
 ///
 /// # Examples
@@ -10,12 +8,12 @@ use super::err;
 /// let result = russell_stat::ave(&x);
 /// assert_eq!(result.unwrap(), 5.0);
 /// ```
-pub fn ave<T>(x: &[T]) -> err::Result<f64>
+pub fn ave<T>(x: &[T]) -> Result<f64, &'static str>
 where
     T: Into<f64> + Copy,
 {
     if x.len() == 0 {
-        bail!("cannot compute average of empty slice");
+        return Err("cannot compute average of empty slice");
     }
     let sum = x.iter().fold(0.0, |acc, &curr| acc + curr.into());
     let n = x.len() as f64;
@@ -34,12 +32,12 @@ where
 /// assert_eq!(ave, 5.0);
 /// assert_eq!(dev, ((32.0/7.0) as f64).sqrt());
 /// ```
-pub fn ave_dev<T>(x: &[T]) -> err::Result<(f64, f64)>
+pub fn ave_dev<T>(x: &[T]) -> Result<(f64, f64), &'static str>
 where
     T: Into<f64> + Copy,
 {
     if x.len() < 2 {
-        bail!("at least two values are needed");
+        return Err("at least two values are needed");
     }
 
     // average
@@ -71,7 +69,7 @@ mod tests {
     use russell_chk::*;
 
     #[test]
-    fn ave_works() -> err::Result<()> {
+    fn ave_works() -> Result<(), &'static str> {
         let x = [100, 100, 102, 98, 77, 99, 70, 105, 98];
         assert_eq!(ave(&x)?, 849.0 / 9.0);
         Ok(())
@@ -85,7 +83,7 @@ mod tests {
     }
 
     #[test]
-    fn ave_dev_works() -> err::Result<()> {
+    fn ave_dev_works() -> Result<(), &'static str> {
         let x = [100, 100, 102, 98, 77, 99, 70, 105, 98];
         let (ave, dev) = ave_dev(&x)?;
         assert_eq!(ave, 849.0 / 9.0);

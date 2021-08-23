@@ -1,10 +1,6 @@
 mod add_vectors;
-mod add_vectors_native;
-mod add_vectors_oblas;
 mod inner;
 mod vector;
 pub use crate::vector::add_vectors::*;
-use crate::vector::add_vectors_native::*;
-use crate::vector::add_vectors_oblas::*;
 pub use crate::vector::inner::*;
 pub use crate::vector::vector::*;

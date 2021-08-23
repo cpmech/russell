@@ -1,4 +1,5 @@
 use super::*;
+use russell_openblas::*;
 
 const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
 
@@ -39,9 +40,9 @@ pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector
         return;
     }
     if n > NATIVE_VERSUS_OPENBLAS_BOUNDARY {
-        add_vectors_oblas(w, alpha, u, beta, v);
+        add_vectors_oblas(&mut w.data, alpha, &u.data, beta, &v.data);
     } else {
-        add_vectors_native(w, alpha, u, beta, v);
+        add_vectors_native(&mut w.data, alpha, &u.data, beta, &v.data);
     }
 }
 

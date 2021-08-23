@@ -25,6 +25,7 @@ extern "C" {
 ///
 /// <http://www.netlib.org/lapack/explore-html/d5/df6/ddot_8f.html>
 ///
+#[inline]
 pub fn ddot(n: i32, x: &[f64], incx: i32, y: &[f64], incy: i32) -> f64 {
     unsafe { cblas_ddot(n, x.as_ptr(), incx, y.as_ptr(), incy) }
 }
@@ -43,6 +44,7 @@ pub fn ddot(n: i32, x: &[f64], incx: i32, y: &[f64], incy: i32) -> f64 {
 ///
 /// <https://www.netlib.org/lapack/explore-html/da/d6c/dcopy_8f.html>
 ///
+#[inline]
 pub fn dcopy(n: i32, x: &[f64], incx: i32, y: &mut [f64], incy: i32) {
     unsafe {
         cblas_dcopy(n, x.as_ptr(), incx, y.as_mut_ptr(), incy);
@@ -63,6 +65,7 @@ pub fn dcopy(n: i32, x: &[f64], incx: i32, y: &mut [f64], incy: i32) {
 ///
 /// <http://www.netlib.org/lapack/explore-html/d4/dd0/dscal_8f.html>
 ///
+#[inline]
 pub fn dscal(n: i32, alpha: f64, x: &mut [f64], incx: i32) {
     unsafe {
         cblas_dscal(n, alpha, x.as_ptr(), incx);
@@ -79,6 +82,7 @@ pub fn dscal(n: i32, alpha: f64, x: &mut [f64], incx: i32) {
 ///
 /// <http://www.netlib.org/lapack/explore-html/d9/dcd/daxpy_8f.html>
 ///
+#[inline]
 pub fn daxpy(n: i32, alpha: f64, x: &[f64], incx: i32, y: &mut [f64], incy: i32) {
     unsafe {
         cblas_daxpy(n, alpha, x.as_ptr(), incx, y.as_ptr(), incy);
@@ -100,6 +104,7 @@ pub fn daxpy(n: i32, alpha: f64, x: &[f64], incx: i32, y: &mut [f64], incy: i32)
 ///
 /// <http://www.netlib.org/lapack/explore-html/dc/da8/dger_8f.html>
 ///
+#[inline]
 pub fn dger(m: i32, n: i32, alpha: f64, x: &[f64], incx: i32, y: &[f64], incy: i32, a: &mut [f64], lda: i32) {
     unsafe {
         cblas_dger(
@@ -137,6 +142,7 @@ pub fn dger(m: i32, n: i32, alpha: f64, x: &[f64], incx: i32, y: &[f64], incy: i
 ///
 /// <http://www.netlib.org/lapack/explore-html/dc/da8/dgemv_8f.html>
 ///
+#[inline]
 pub fn dgemv(
     trans: bool,
     m: i32,
@@ -192,6 +198,7 @@ pub fn dgemv(
 ///
 /// <http://www.netlib.org/lapack/explore-html/d7/d2b/dgemm_8f.html>
 ///
+#[inline]
 pub fn dgemm(
     trans_a: bool,
     trans_b: bool,

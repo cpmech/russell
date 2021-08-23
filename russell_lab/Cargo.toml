@@ -17,5 +17,5 @@ russell_openblas = { path = "../russell_openblas", version = "*" }
 criterion = "0.3"
 
 [[bench]]
-name = "add_vectors"
+name = "lab_benches"
 harness = false

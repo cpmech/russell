@@ -10,6 +10,12 @@ Documentation:
 
 ## Installation
 
+Install OpenBLAS:
+
+```bash
+sudo apt-get install libopenblas-dev
+```
+
 Add this to your Cargo.toml:
 
 ```toml

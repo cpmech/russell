@@ -45,8 +45,6 @@
 //! ```
 //!
 
-#![feature(portable_simd)]
-
 mod linspace;
 mod matrix;
 mod matvec;

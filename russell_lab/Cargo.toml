@@ -14,6 +14,7 @@ keywords = ["matrix", "vector", "linspace"]
 [dependencies]
 russell_chk = { path = "../russell_chk", version = "*" }
 russell_openblas = { path = "../russell_openblas", version = "*" }
+core_simd = { git = "https://github.com/rust-lang/portable-simd" }
 criterion = "0.3"
 
 [[bench]]

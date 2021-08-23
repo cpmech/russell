@@ -5,7 +5,7 @@ use criterion::{criterion_group, criterion_main};
 use russell_lab::*;
 
 fn bench_add_vectors(c: &mut Criterion) {
-    let sizes = &[3, 10, 100, 150, 200, 500, 1000];
+    let sizes = &[1, 3, 10, 100, 150, 200, 400];
     let mut group = c.benchmark_group("add_vectors");
     for size in sizes {
         group.throughput(Throughput::Elements(*size as u64));

@@ -1,4 +1,5 @@
 use super::*;
+use crate::simd_operations::*;
 use russell_openblas::*;
 use std::convert::TryInto;
 
@@ -292,6 +293,8 @@ pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector
         // w := alpha*u + w
         daxpy(n_i32, alpha, &u.data, 1, &mut w.data, 1);
     } else {
+        simd_add_vectors(w, alpha, u, beta, v);
+        /*
         let m = n % 4;
         for i in 0..m {
             w.data[i] = alpha * u.data[i] + beta * v.data[i];
@@ -302,20 +305,21 @@ pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector
             w.data[i + 2] = alpha * u.data[i + 2] + beta * v.data[i + 2];
             w.data[i + 3] = alpha * u.data[i + 3] + beta * v.data[i + 3];
         }
+        */
     }
 }
 
 /// v += alpha * u (daxpy)
-pub fn update_vector(v: &mut Vector, alpha: f64, u: &Vector) {
-    // TODO
-    // remember to clear v
-    // daxpy
-}
+// pub fn update_vector(v: &mut Vector, alpha: f64, u: &Vector) {
+// TODO
+// remember to clear v
+// daxpy
+// }
 
 /// v := u
-pub fn copy_vector(v: &mut Vector, u: &Vector) {
-    // TODO
-}
+// pub fn copy_vector(v: &mut Vector, u: &Vector) {
+// TODO
+// }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -412,17 +416,48 @@ mod tests {
 
     #[test]
     fn add_vectors_works() {
+        #[rustfmt::skip]
         let u = Vector::from(&[
-            1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0,
+            1.0, 2.0,
+            1.0, 2.0, 3.0, 4.0,
+            1.0, 2.0, 3.0, 4.0,
+            1.0, 2.0, 3.0, 4.0,
+            1.0, 2.0, 3.0, 4.0,
         ]);
+        #[rustfmt::skip]
         let v = Vector::from(&[
-            0.5, 1.0, 1.5, 2.0, 0.5, 1.0, 1.5, 2.0, 0.5, 1.0, 1.5, 2.0, 0.5, 1.0, 1.5, 2.0,
+            0.5, 1.0,
+            0.5, 1.0, 1.5, 2.0,
+            0.5, 1.0, 1.5, 2.0,
+            0.5, 1.0, 1.5, 2.0,
+            0.5, 1.0, 1.5, 2.0,
         ]);
         let mut w = Vector::new(u.dim());
-        add_vectors(&mut w, 1.0, &u, -2.0, &v);
+        add_vectors(&mut w, 1.0, &u, -4.0, &v);
+        #[rustfmt::skip]
         let correct = &[
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            -1.0, -2.0,
+            -1.0, -2.0, -3.0, -4.0,
+            -1.0, -2.0, -3.0, -4.0,
+            -1.0, -2.0, -3.0, -4.0,
+            -1.0, -2.0, -3.0, -4.0,
         ];
+        assert_vec_approx_eq!(w.data, correct, 1e-15);
+    }
+
+    #[test]
+    fn add_vectors_openblas_works() {
+        let n = 100;
+        let mut u = Vector::new(n);
+        let mut v = Vector::new(n);
+        let mut correct = Vec::new();
+        for i in 0..n {
+            u.data[i] = i as f64;
+            v.data[i] = i as f64;
+            correct.push((2 * i) as f64);
+        }
+        let mut w = Vector::new(n);
+        add_vectors(&mut w, 1.0, &u, 1.0, &v);
         assert_vec_approx_eq!(w.data, correct, 1e-15);
     }
 }

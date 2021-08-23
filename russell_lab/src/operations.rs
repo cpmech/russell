@@ -1,5 +1,5 @@
+use super::vector::*;
 use super::*;
-use crate::simd_operations::*;
 use russell_openblas::*;
 use std::convert::TryInto;
 
@@ -249,6 +249,7 @@ pub fn scale_vector(u: &mut Vector, alpha: f64) {
     dscal(n, alpha, &mut u.data, 1);
 }
 
+/*
 /// Performs the addition of two vectors
 ///
 /// ```text
@@ -308,6 +309,7 @@ pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector
         */
     }
 }
+*/
 
 /// v += alpha * u (daxpy)
 // pub fn update_vector(v: &mut Vector, alpha: f64, u: &Vector) {
@@ -412,52 +414,5 @@ mod tests {
         scale_vector(&mut u, 1.0 / 3.0);
         let correct = &[2.0, 3.0, 4.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
-    }
-
-    #[test]
-    fn add_vectors_works() {
-        #[rustfmt::skip]
-        let u = Vector::from(&[
-            1.0, 2.0,
-            1.0, 2.0, 3.0, 4.0,
-            1.0, 2.0, 3.0, 4.0,
-            1.0, 2.0, 3.0, 4.0,
-            1.0, 2.0, 3.0, 4.0,
-        ]);
-        #[rustfmt::skip]
-        let v = Vector::from(&[
-            0.5, 1.0,
-            0.5, 1.0, 1.5, 2.0,
-            0.5, 1.0, 1.5, 2.0,
-            0.5, 1.0, 1.5, 2.0,
-            0.5, 1.0, 1.5, 2.0,
-        ]);
-        let mut w = Vector::new(u.dim());
-        add_vectors(&mut w, 1.0, &u, -4.0, &v);
-        #[rustfmt::skip]
-        let correct = &[
-            -1.0, -2.0,
-            -1.0, -2.0, -3.0, -4.0,
-            -1.0, -2.0, -3.0, -4.0,
-            -1.0, -2.0, -3.0, -4.0,
-            -1.0, -2.0, -3.0, -4.0,
-        ];
-        assert_vec_approx_eq!(w.data, correct, 1e-15);
-    }
-
-    #[test]
-    fn add_vectors_openblas_works() {
-        let n = 100;
-        let mut u = Vector::new(n);
-        let mut v = Vector::new(n);
-        let mut correct = Vec::new();
-        for i in 0..n {
-            u.data[i] = i as f64;
-            v.data[i] = i as f64;
-            correct.push((2 * i) as f64);
-        }
-        let mut w = Vector::new(n);
-        add_vectors(&mut w, 1.0, &u, 1.0, &v);
-        assert_vec_approx_eq!(w.data, correct, 1e-15);
     }
 }

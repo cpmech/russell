@@ -51,6 +51,11 @@ impl fmt::Display for Vector {
     }
 }
 
+mod add_vectors;
+mod add_vectors_simd;
+pub use crate::vector::add_vectors::*;
+use crate::vector::add_vectors_simd::*;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]

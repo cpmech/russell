@@ -1,7 +1,7 @@
 use super::*;
 use core_simd::*;
 
-pub(crate) fn simd_add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector) {
+pub(crate) fn add_vectors_simd(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector) {
     let n = w.data.len();
     if u.data.len() != n {
         #[rustfmt::skip]
@@ -55,7 +55,7 @@ mod tests {
             0.5, 1.0, 1.5, 2.0,
         ]);
         let mut w = Vector::new(u.dim());
-        simd_add_vectors(&mut w, 1.0, &u, -4.0, &v);
+        add_vectors_simd(&mut w, 1.0, &u, -4.0, &v);
         #[rustfmt::skip]
         let correct = &[
             -1.0, -2.0,

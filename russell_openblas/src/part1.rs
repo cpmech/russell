@@ -3,6 +3,7 @@ use super::*;
 #[rustfmt::skip]
 extern "C" {
     fn cblas_ddot(n: i32, x: *const f64, incx: i32, y: *const f64, incy: i32) -> f64;
+    fn cblas_dcopy(n: i32, x: *const f64, incx: i32, y: *mut f64, incy:i32);
     fn cblas_dscal(n: i32, alpha: f64, x: *const f64, incx: i32);
     fn cblas_daxpy(n: i32, alpha: f64, x: *const f64, incx: i32, y: *const f64, incy: i32);
     fn cblas_dgemv(order: i32, trans: i32, m: i32, n: i32, alpha: f64, a: *const f64, lda: i32, x: *const f64, incx: i32, beta: f64, y: *mut f64, incy: i32);
@@ -28,6 +29,26 @@ pub fn ddot(n: i32, x: &[f64], incx: i32, y: &[f64], incy: i32) -> f64 {
     unsafe { cblas_ddot(n, x.as_ptr(), incx, y.as_ptr(), incy) }
 }
 
+/// Copies a vector into another.
+///
+/// ```text
+/// y := x
+/// ```
+///
+/// # Note
+///
+/// Uses unrolled loops for increment equal to 1.
+///
+/// # Reference
+///
+/// <https://www.netlib.org/lapack/explore-html/da/d6c/dcopy_8f.html>
+///
+pub fn dcopy(n: i32, x: &[f64], incx: i32, y: &mut [f64], incy: i32) {
+    unsafe {
+        cblas_dcopy(n, x.as_ptr(), incx, y.as_mut_ptr(), incy);
+    }
+}
+
 /// Scales a vector by a constant.
 ///
 /// ```text
@@ -51,7 +72,7 @@ pub fn dscal(n: i32, alpha: f64, x: &mut [f64], incx: i32) {
 /// Computes constant times a vector plus a vector.
 ///
 /// ```text
-/// y += alpha*x + y
+/// y := alpha*x + y
 /// ```
 ///
 /// # Reference
@@ -220,6 +241,16 @@ mod tests {
         let y = [-15.0, -5.0, -24.0, IGNORED, IGNORED, IGNORED];
         let (n, incx, incy) = (3, 1, 1);
         assert_eq!(ddot(n, &x, incx, &y, incy), -1070.0);
+    }
+
+    #[test]
+    fn dcopy_works() {
+        const IGNORED: f64 = 100000.0;
+        let x = [20.0, 10.0, -30.0, IGNORED, IGNORED];
+        let mut y = [200.0, 100.0, -300.0, IGNORED, IGNORED];
+        let (n, incx, incy) = (3, 1, 1);
+        dcopy(n, &x, incx, &mut y, incy);
+        assert_vec_approx_eq!(x, &[20.0, 10.0, -30.0, IGNORED, IGNORED], 1e-15);
     }
 
     #[test]

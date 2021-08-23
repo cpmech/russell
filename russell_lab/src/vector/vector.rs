@@ -1,25 +1,89 @@
+use russell_openblas::*;
 use std::cmp;
+use std::convert::TryInto;
 use std::fmt::{self, Write};
 
 pub struct Vector {
-    pub(super) data: Vec<f64>,
+    pub(crate) data: Vec<f64>,
 }
 
 impl Vector {
+    /// Creates a new (zeroed) vector
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let u = Vector::new(3);
+    /// let correct = "┌   ┐\n\
+    ///                │ 0 │\n\
+    ///                │ 0 │\n\
+    ///                │ 0 │\n\
+    ///                └   ┘";
+    /// assert_eq!(format!("{}", u), correct);
+    /// ```
     pub fn new(dim: usize) -> Self {
         Vector {
             data: vec![0.0; dim],
         }
     }
 
+    /// Creates a vector from data
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// let correct = "┌   ┐\n\
+    ///                │ 1 │\n\
+    ///                │ 2 │\n\
+    ///                │ 3 │\n\
+    ///                └   ┘";
+    /// assert_eq!(format!("{}", u), correct);
+    /// ```
     pub fn from(data: &[f64]) -> Self {
         Vector {
             data: Vec::from(data),
         }
     }
 
+    /// Returs the dimension (size) of this vector
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// assert_eq!(u.dim(), 3);
+    /// ```
     pub fn dim(&self) -> usize {
         self.data.len()
+    }
+
+    /// Scales this vector
+    ///
+    /// ```text
+    /// u := alpha * u
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// u.scale(0.5);
+    /// let correct = "┌     ┐\n\
+    ///                │ 0.5 │\n\
+    ///                │   1 │\n\
+    ///                │ 1.5 │\n\
+    ///                └     ┘";
+    /// assert_eq!(format!("{}", u), correct);
+    /// ```
+    ///
+    pub fn scale(&mut self, alpha: f64) {
+        let n: i32 = self.data.len().try_into().unwrap();
+        dscal(n, alpha, &mut self.data, 1);
     }
 }
 
@@ -82,5 +146,13 @@ mod tests {
                             │ 3 │\n\
                             └   ┘";
         assert_eq!(format!("{}", u), correct);
+    }
+
+    #[test]
+    fn scale_works() {
+        let mut u = Vector::from(&[6.0, 9.0, 12.0]);
+        u.scale(1.0 / 3.0);
+        let correct = &[2.0, 3.0, 4.0];
+        assert_vec_approx_eq!(u.data, correct, 1e-15);
     }
 }

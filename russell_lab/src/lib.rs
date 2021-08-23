@@ -45,7 +45,6 @@
 //! ```
 //!
 
-// #![feature(portable_simd)]
 #![feature(stdsimd)]
 
 mod linspace;

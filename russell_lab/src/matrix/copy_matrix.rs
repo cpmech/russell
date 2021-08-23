@@ -56,7 +56,7 @@ mod tests {
         ]);
         copy_matrix(&mut b, &a);
         #[rustfmt::skip]
-        let correct =slice_to_colmajor(&[
+        let correct = slice_to_colmajor(&[
             &[10.0, 20.0, 30.0],
             &[40.0, 50.0, 60.0],
         ]);

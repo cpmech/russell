@@ -1,4 +1,6 @@
+use russell_openblas::*;
 use std::cmp;
+use std::convert::TryInto;
 use std::fmt::{self, Write};
 
 pub struct Matrix {
@@ -132,6 +134,33 @@ impl Matrix {
     pub fn dims(&self) -> (usize, usize) {
         (self.nrow, self.ncol)
     }
+
+    /// Scales this matrix
+    ///
+    /// ```text
+    /// a := alpha * a
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut a = Matrix::from(&[
+    ///     &[1.0, 2.0, 3.0],
+    ///     &[4.0, 5.0, 6.0],
+    /// ]);
+    /// a.scale(0.5);
+    /// let correct = "┌             ┐\n\
+    ///                │ 0.5   1 1.5 │\n\
+    ///                │   2 2.5   3 │\n\
+    ///                └             ┘";
+    /// assert_eq!(format!("{}", a), correct);
+    /// ```
+    ///
+    pub fn scale(&mut self, alpha: f64) {
+        let n: i32 = self.data.len().try_into().unwrap();
+        dscal(n, alpha, &mut self.data, 1);
+    }
 }
 
 impl fmt::Display for Matrix {
@@ -237,5 +266,21 @@ mod tests {
                             │ 7 8 9 │\n\
                             └       ┘";
         assert_eq!(format!("{}", a), correct);
+    }
+
+    #[test]
+    fn scale_works() {
+        #[rustfmt::skip]
+        let mut a = Matrix::from(&[
+            &[ 6.0,  9.0,  12.0],
+            &[-6.0, -9.0, -12.0],
+        ]);
+        a.scale(1.0 / 3.0);
+        #[rustfmt::skip]
+        let correct = slice_to_colmajor(&[
+            &[ 2.0,  3.0,  4.0],
+            &[-2.0, -3.0, -4.0],
+        ]);
+        assert_vec_approx_eq!(a.data, correct, 1e-15);
     }
 }

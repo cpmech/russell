@@ -49,9 +49,9 @@
 
 mod linspace;
 mod matrix;
-mod operations;
+mod matvec;
 mod vector;
 pub use crate::linspace::*;
 pub use crate::matrix::*;
-pub use crate::operations::*;
+pub use crate::matvec::*;
 pub use crate::vector::*;

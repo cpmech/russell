@@ -1,6 +1,10 @@
 mod add_matrices;
+mod copy_matrix;
 mod mat_mat_mul;
 mod matrix;
+mod update_matrix;
 pub use crate::matrix::add_matrices::*;
+pub use crate::matrix::copy_matrix::*;
 pub use crate::matrix::mat_mat_mul::*;
 pub use crate::matrix::matrix::*;
+pub use crate::matrix::update_matrix::*;

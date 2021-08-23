@@ -2,7 +2,7 @@ use super::*;
 use russell_openblas::*;
 use std::convert::TryInto;
 
-/// Copy vector into another vector
+/// Copies vector
 ///
 /// ```text
 /// v := u
@@ -22,7 +22,6 @@ use std::convert::TryInto;
 ///                └   ┘";
 /// assert_eq!(format!("{}", v), correct);
 /// ```
-/// v := u
 pub fn copy_vector(v: &mut Vector, u: &Vector) {
     let n = v.data.len();
     if u.data.len() != n {
@@ -40,7 +39,7 @@ mod tests {
     use russell_chk::*;
 
     #[test]
-    fn copy_vectors_works() {
+    fn copy_vector_works() {
         let u = Vector::from(&[1.0, 2.0, 3.0]);
         let mut v = Vector::from(&[100.0, 200.0, 300.0]);
         copy_vector(&mut v, &u);

@@ -1,5 +1,7 @@
 use super::*;
 
+const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
+
 /// Performs the addition of two vectors
 ///
 /// ```text
@@ -33,9 +35,10 @@ pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector
         #[rustfmt::skip]
         panic!("the length of vector [v] (={}) must equal the length of vector [w] (={})", v.data.len(), n);
     }
-    const SIZE_LIMIT: usize = 16;
-    let use_openblas = n > SIZE_LIMIT;
-    if use_openblas {
+    if n == 0 {
+        return;
+    }
+    if n > NATIVE_VERSUS_OPENBLAS_BOUNDARY {
         add_vectors_oblas(w, alpha, u, beta, v);
     } else {
         add_vectors_native(w, alpha, u, beta, v);
@@ -51,6 +54,7 @@ mod tests {
 
     #[test]
     fn add_vectors_works() {
+        const NOISE: f64 = 1234.567;
         #[rustfmt::skip]
         let u = Vector::from(&[
             1.0, 2.0,
@@ -67,7 +71,7 @@ mod tests {
             0.5, 1.0, 1.5, 2.0,
             0.5, 1.0, 1.5, 2.0,
         ]);
-        let mut w = Vector::new(u.dim());
+        let mut w = Vector::from(&vec![NOISE; u.dim()]);
         add_vectors(&mut w, 1.0, &u, -4.0, &v);
         #[rustfmt::skip]
         let correct = &[
@@ -81,18 +85,20 @@ mod tests {
     }
 
     #[test]
-    fn add_vectors_openblas_works() {
-        let n = 100;
-        let mut u = Vector::new(n);
-        let mut v = Vector::new(n);
-        let mut correct = Vec::new();
-        for i in 0..n {
-            u.data[i] = i as f64;
-            v.data[i] = i as f64;
-            correct.push((2 * i) as f64);
+    fn add_vectors_sizes_works() {
+        const NOISE: f64 = 1234.567;
+        for size in 0..(NATIVE_VERSUS_OPENBLAS_BOUNDARY + 3) {
+            let mut u = Vector::new(size);
+            let mut v = Vector::new(size);
+            let mut w = Vector::from(&vec![NOISE; u.dim()]);
+            let mut correct = vec![0.0; size];
+            for i in 0..size {
+                u.data[i] = i as f64;
+                v.data[i] = i as f64;
+                correct[i] = i as f64;
+            }
+            add_vectors(&mut w, 0.5, &u, 0.5, &v);
+            assert_vec_approx_eq!(w.data, correct, 1e-15);
         }
-        let mut w = Vector::new(n);
-        add_vectors(&mut w, 1.0, &u, 1.0, &v);
-        assert_vec_approx_eq!(w.data, correct, 1e-15);
     }
 }

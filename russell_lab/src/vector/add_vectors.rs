@@ -1,6 +1,6 @@
 use super::*;
 
-pub const USE_ADD_VECTORS_NATIVE: bool = false;
+const USE_ADD_VECTORS_NATIVE: bool = false;
 
 /// Performs the addition of two vectors
 ///

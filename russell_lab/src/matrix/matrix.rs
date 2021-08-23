@@ -26,6 +26,17 @@ pub struct Matrix {
 ///
 impl Matrix {
     /// Creates new (nrow x ncol) Matrix filled with zeros
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let a = Matrix::new(3, 3);
+    /// let correct = "┌       ┐\n\
+    ///                │ 0 0 0 │\n\
+    ///                │ 0 0 0 │\n\
+    ///                │ 0 0 0 │\n\
+    ///                └       ┘";
+    /// assert_eq!(format!("{}", a), correct);
+    /// ```
     pub fn new(nrow: usize, ncol: usize) -> Self {
         Matrix {
             nrow,
@@ -35,6 +46,23 @@ impl Matrix {
     }
 
     /// Creates new matrix from given data
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let a = Matrix::from(&[
+    ///     &[1.0, 2.0, 3.0],
+    ///     &[4.0, 5.0, 6.0],
+    ///     &[7.0, 8.0, 9.0],
+    /// ]);
+    /// let correct = "┌       ┐\n\
+    ///                │ 1 2 3 │\n\
+    ///                │ 4 5 6 │\n\
+    ///                │ 7 8 9 │\n\
+    ///                └       ┘";
+    /// assert_eq!(format!("{}", a), correct);
+    /// ```
     ///
     /// # Panics
     ///
@@ -67,11 +95,27 @@ impl Matrix {
     }
 
     /// Returns the number of rows
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let a = Matrix::new(4, 3);
+    /// assert_eq!(a.nrow(), 4);
+    /// ```
     pub fn nrow(&self) -> usize {
         self.nrow
     }
 
     /// Returns the number of columns
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let a = Matrix::new(4, 3);
+    /// assert_eq!(a.ncol(), 3);
+    /// ```
     pub fn ncol(&self) -> usize {
         self.ncol
     }

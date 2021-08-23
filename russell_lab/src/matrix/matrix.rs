@@ -119,6 +119,19 @@ impl Matrix {
     pub fn ncol(&self) -> usize {
         self.ncol
     }
+
+    /// Returns the dimensions (nrow, ncol) of this matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let a = Matrix::new(4, 3);
+    /// assert_eq!(a.dims(), (4, 3));
+    /// ```
+    pub fn dims(&self) -> (usize, usize) {
+        (self.nrow, self.ncol)
+    }
 }
 
 impl fmt::Display for Matrix {
@@ -202,6 +215,12 @@ mod tests {
     fn ncol_works() {
         let a = Matrix::new(4, 3);
         assert_eq!(a.ncol(), 3);
+    }
+
+    #[test]
+    fn dims_works() {
+        let a = Matrix::new(5, 4);
+        assert_eq!(a.dims(), (5, 4));
     }
 
     #[test]

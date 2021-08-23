@@ -45,8 +45,6 @@
 //! ```
 //!
 
-#![feature(stdsimd)]
-
 mod linspace;
 mod matrix;
 mod matvec;

@@ -1,7 +1,5 @@
 use super::*;
 
-const USE_ADD_VECTORS_NATIVE: bool = false;
-
 /// Performs the addition of two vectors
 ///
 /// ```text
@@ -26,10 +24,6 @@ const USE_ADD_VECTORS_NATIVE: bool = false;
 /// ```
 ///
 pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector) {
-    if USE_ADD_VECTORS_NATIVE {
-        add_vectors_native(w, alpha, u, beta, v);
-        return;
-    }
     let n = w.data.len();
     if u.data.len() != n {
         #[rustfmt::skip]
@@ -39,12 +33,12 @@ pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector
         #[rustfmt::skip]
         panic!("the length of vector [v] (={}) must equal the length of vector [w] (={})", v.data.len(), n);
     }
-    const SIZE_LIMIT: usize = 99;
+    const SIZE_LIMIT: usize = 16;
     let use_openblas = n > SIZE_LIMIT;
     if use_openblas {
         add_vectors_oblas(w, alpha, u, beta, v);
     } else {
-        add_vectors_simd(w, alpha, u, beta, v);
+        add_vectors_native(w, alpha, u, beta, v);
     }
 }
 

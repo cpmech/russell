@@ -1,6 +1,6 @@
 [package]
 name = "russell_tensor"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2018"
 license = "MIT"
 description = "Tensor analysis structures and functions for continuum mechanics"

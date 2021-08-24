@@ -215,6 +215,14 @@ mod tests {
     #[test]
     fn apply_works() {
         let mut u = Vector::from(&[-1.0, -2.0, -3.0]);
+        u.apply(|x| x * x * x);
+        let correct = &[-1.0, -8.0, -27.0];
+        assert_vec_approx_eq!(u.data, correct, 1e-15);
+    }
+
+    #[test]
+    fn apply_with_index_works() {
+        let mut u = Vector::from(&[-1.0, -2.0, -3.0]);
         u.apply_with_index(|i, x| x * x * x + (i as f64));
         let correct = &[-1.0, -7.0, -25.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);

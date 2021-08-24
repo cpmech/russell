@@ -2,7 +2,7 @@
 
 set -e
 
-if [[ $CI == "false" ]]; then
+if [[ $CI != "true" ]]; then
     echo "Install:"
     echo
     echo "cargo install cargo-tarpaulin"
@@ -17,7 +17,7 @@ cargo +nightly tarpaulin \
     --out Html \
     --out Xml
 
-if [[ $CI == "false" ]]; then
+if [[ $CI != "true" ]]; then
     pycobertura show \
         --format=html \
         --output cobertura.html \

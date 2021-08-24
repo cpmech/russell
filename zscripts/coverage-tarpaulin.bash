@@ -11,9 +11,17 @@ fi
 
 cd zcoverage
 
-cargo +nightly tarpaulin \
-    --all \
-    --out Html \
-    --out Xml
+if [[ $CI != "true" ]]; then
+    cargo +nightly tarpaulin \
+        --all \
+        --out Html \
+        --out Xml \
+        --fail-under 95
+else
+    cargo +nightly tarpaulin \
+        --all \
+        --out Html \
+        --out Xml
+fi
 
 cd ..

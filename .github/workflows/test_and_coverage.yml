@@ -1,0 +1,28 @@
+name: Test & Coverage
+on: [pull_request]
+jobs:
+  test_and_coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install OpenBLAS
+        run: |
+          apt-get update -y && apt-get install -y libopenblas-dev
+      - name: Install Rust
+        run: |
+          rustup toolchain install nightly --component llvm-tools-preview
+      - name: Run tests
+        run: |
+          cargo test
+      - name: Install cargo-llvm-cov
+        run: |
+          curl -LsSf https://github.com/taiki-e/cargo-llvm-cov/releases/latest/download/cargo-llvm-cov-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
+      - name: Generate code coverage
+        run: |
+          cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{secrets.CODECOV_TOKEN}}
+          files: lcov.info
+          fail_ci_if_error: true

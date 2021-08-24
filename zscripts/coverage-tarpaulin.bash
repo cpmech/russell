@@ -2,11 +2,13 @@
 
 set -e
 
-echo "Install:"
-echo
-echo "cargo install cargo-tarpaulin"
-echo "pip3 install pycobertura"
-echo
+if [[ $CI == "false" ]]; then
+    echo "Install:"
+    echo
+    echo "cargo install cargo-tarpaulin"
+    echo "pip3 install pycobertura"
+    echo
+fi
 
 cd zcoverage
 
@@ -15,12 +17,14 @@ cargo +nightly tarpaulin \
     --out Html \
     --out Xml
 
-pycobertura show \
-    --format=html \
-    --output cobertura.html \
-    cobertura.xml
+if [[ $CI == "false" ]]; then
+    pycobertura show \
+        --format=html \
+        --output cobertura.html \
+        cobertura.xml
 
-browse tarpaulin-report.html
-browse cobertura.html
+    browse tarpaulin-report.html
+    browse cobertura.html
+fi
 
 cd ..

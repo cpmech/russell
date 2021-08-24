@@ -6,10 +6,10 @@ extern "C" {
     fn cblas_dgemm(order: i32, transa: i32, transb: i32, m: i32, n: i32, k: i32, alpha: f64, a: *const f64, lda: i32, b: *const f64, ldb: i32, beta: f64, c: *mut f64, ldc: i32);
     fn LAPACKE_dgesv(matrix_layout: i32, n: i32, nrhs: i32, a: *mut f64, lda: i32, ipiv: *mut i32, b: *mut f64, ldb: i32) -> i32;
     fn LAPACKE_dgesvd(matrix_layout: i32, jobu: u8, jobvt: u8, m: i32, n: i32, a: *mut f64, lda: i32, s: *mut f64, u: *mut f64, ldu: i32, vt: *mut f64, ldvt: i32, superb: *mut f64) -> i32;
+    fn LAPACKE_dgetrf(matrix_layout: i32, m: i32, n: i32, a: *mut f64, lda: i32, ipiv: *mut i32) -> i32;
+    fn LAPACKE_dgetri(matrix_layout: i32, n: i32, a: *mut f64, lda: i32, ipiv: *const i32) -> i32;
     
     // fn cblas_dsyrk(order: i32, uplo: i32, trans: i32, n: i32, k: i32, alpha: f64, a: *mut f64, lda: i32, beta: f64, c: *mut f64, ldc: i32);
-    // fn LAPACKE_dgetrf(matrix_layout: i32, m: i32, n: i32, a: *mut f64, lda: i32, ipiv: *mut i32) -> i32;
-    // fn LAPACKE_dgetri(matrix_layout: i32, n: i32, a: *mut f64, lda: i32, ipiv: *const i32) -> i32;
     // fn LAPACKE_dgeev(matrix_layout: i32, jobvl: char, jobvr: char, n: i32, a: *mut f64, lda: i32, wr: *mut f64, wi: *mut f64, vl: *mut f64, ldvl: i32, vr: *mut f64, ldvr: i32) -> i32;
     // fn LAPACKE_dpotrf(matrix_layout: i32, uplo: char, n: i32, a: *mut f64, lda: i32) -> i32;
 }
@@ -191,6 +191,66 @@ pub fn dgesvd(
             ldvt,
             superb.as_mut_ptr(),
         );
+        if info != 0_i32 {
+            return Err("LAPACK failed");
+        }
+    }
+    Ok(())
+}
+
+/// Computes an LU factorization of a general M-by-N matrix A using partial pivoting with row interchanges.
+///
+/// The factorization has the form
+///
+/// ```text
+///    A = P * L * U
+/// ```
+///
+/// where P is a permutation matrix, L is lower triangular with unit
+/// diagonal elements (lower trapezoidal if m > n), and U is upper
+/// triangular (upper trapezoidal if m < n).
+///
+/// This is the right-looking Level 3 BLAS version of the algorithm.
+///
+/// # Note
+///
+/// 1. matrix 'a' will be modified
+/// 2. ipiv indices are 1-based (i.e. Fortran)
+/// 3. See **dgetri** to use the factorization in finding the inverse matrix
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/d3/d6a/dgetrf_8f.html>
+///
+pub fn dgetrf(m: i32, n: i32, a: &mut [f64], lda: i32, ipiv: &mut [i32]) -> Result<(), &'static str> {
+    unsafe {
+        let info = LAPACKE_dgetrf(LAPACK_COL_MAJOR, m, n, a.as_mut_ptr(), lda, ipiv.as_mut_ptr());
+        if info != 0_i32 {
+            return Err("LAPACK failed");
+        }
+    }
+    Ok(())
+}
+
+/// Computes the inverse of a matrix using the LU factorization computed by DGETRF.
+///
+/// This method inverts U and then computes inv(A) by solving the system
+///
+/// ```text
+///    inv(A)*L = inv(U) for inv(A).
+/// ```
+///
+/// # Note
+///
+/// 1. See **dgetrf** to compute the factorization
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/df/da4/dgetri_8f.html>
+///
+pub fn dgetri(n: i32, a: &mut [f64], lda: i32, ipiv: &[i32]) -> Result<(), &'static str> {
+    unsafe {
+        let info = LAPACKE_dgetri(LAPACK_COL_MAJOR, n, a.as_mut_ptr(), lda, ipiv.as_ptr());
         if info != 0_i32 {
             return Err("LAPACK failed");
         }
@@ -575,6 +635,71 @@ mod tests {
             }
         }
         assert_vec_approx_eq!(usv, a_copy, 1e-15);
+        Ok(())
+    }
+
+    #[test]
+    fn dgetrf_and_dgetri_work() -> Result<(), &'static str> {
+        // matrix
+        #[rustfmt::skip]
+        let mut a = slice_to_colmajor(&[
+            &[1.0, 2.0,  0.0, 1.0],
+            &[2.0, 3.0, -1.0, 1.0],
+            &[1.0, 2.0,  0.0, 4.0],
+            &[4.0, 0.0,  3.0, 1.0],
+        ]);
+        let a_copy = a.to_vec();
+        let (m, n) = (4_usize, 4_usize);
+        let min_mn = if m < n { m } else { n };
+
+        // run dgetrf
+        let m_i32 = m.try_into().unwrap();
+        let n_i32 = n.try_into().unwrap();
+        let lda_i32 = m_i32;
+        let mut ipiv = vec![0_i32; min_mn];
+        dgetrf(m_i32, n_i32, &mut a, lda_i32, &mut ipiv)?;
+
+        // check ipiv
+        let ipiv_correct = &[4_i32, 2_i32, 3_i32, 4_i32];
+        assert_eq!(ipiv, ipiv_correct);
+
+        // check LU
+        #[rustfmt::skip]
+        let lu_correct = slice_to_colmajor(&[
+            &[4.0e+00, 0.000000000000000e+00,  3.000000000000000e+00,  1.000000000000000e+00],
+            &[5.0e-01, 3.000000000000000e+00, -2.500000000000000e+00,  5.000000000000000e-01],
+            &[2.5e-01, 6.666666666666666e-01,  9.166666666666665e-01,  3.416666666666667e+00],
+            &[2.5e-01, 6.666666666666666e-01,  1.000000000000000e+00, -3.000000000000000e+00],
+        ]);
+        assert_vec_approx_eq!(a, lu_correct, 1e-15);
+
+        // run dgetri
+        dgetri(n_i32, &mut a, lda_i32, &ipiv)?;
+
+        // check inverse matrix
+        #[rustfmt::skip]
+        let ai_correct = slice_to_colmajor(&[
+            &[-8.484848484848487e-01,  5.454545454545455e-01,  3.030303030303039e-02,  1.818181818181818e-01],
+            &[ 1.090909090909091e+00, -2.727272727272728e-01, -1.818181818181817e-01, -9.090909090909091e-02],
+            &[ 1.242424242424243e+00, -7.272727272727273e-01, -1.515151515151516e-01,  9.090909090909088e-02],
+            &[-3.333333333333333e-01,  0.000000000000000e+00,  3.333333333333333e-01,  0.000000000000000e+00],
+        ]);
+        assert_vec_approx_eq!(a, ai_correct, 1e-15);
+
+        // check again: a⋅a⁻¹ = I
+        for i in 0..m {
+            for j in 0..n {
+                let mut res = 0.0;
+                for k in 0..m {
+                    res += a_copy[i + k * m] * ai_correct[k + j * m];
+                }
+                if i == j {
+                    assert_approx_eq!(res, 1.0, 1e-13);
+                } else {
+                    assert_approx_eq!(res, 0.0, 1e-13);
+                }
+            }
+        }
         Ok(())
     }
 }

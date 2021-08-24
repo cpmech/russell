@@ -48,7 +48,7 @@ impl Vector {
         }
     }
 
-    /// Returs the dimension (size) of this vector
+    /// Returns the dimension (size) of this vector
     ///
     /// # Examples
     ///
@@ -84,6 +84,34 @@ impl Vector {
     pub fn scale(&mut self, alpha: f64) {
         let n: i32 = self.data.len().try_into().unwrap();
         dscal(n, alpha, &mut self.data, 1);
+    }
+
+    /// Applies a function over all components of this vector
+    ///
+    /// ```text
+    /// u := apply(function(i, ui))
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// u.apply(|i, x| x * x + (i as f64));
+    /// let correct = "┌    ┐\n\
+    ///                │  1 │\n\
+    ///                │  5 │\n\
+    ///                │ 11 │\n\
+    ///                └    ┘";
+    /// assert_eq!(format!("{}", u), correct);
+    /// ```
+    pub fn apply<F>(&mut self, function: F)
+    where
+        F: Fn(usize, f64) -> f64,
+    {
+        for (index, elem) in self.data.iter_mut().enumerate() {
+            *elem = function(index, *elem);
+        }
     }
 }
 
@@ -153,6 +181,14 @@ mod tests {
         let mut u = Vector::from(&[6.0, 9.0, 12.0]);
         u.scale(1.0 / 3.0);
         let correct = &[2.0, 3.0, 4.0];
+        assert_vec_approx_eq!(u.data, correct, 1e-15);
+    }
+
+    #[test]
+    fn apply_works() {
+        let mut u = Vector::from(&[-1.0, -2.0, -3.0]);
+        u.apply(|i, x| x * x * x + (i as f64));
+        let correct = &[-1.0, -7.0, -25.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
     }
 }

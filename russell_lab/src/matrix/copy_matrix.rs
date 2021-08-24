@@ -28,8 +28,13 @@ use std::convert::TryInto;
 /// assert_eq!(format!("{}", b), correct);
 /// ```
 pub fn copy_matrix(b: &mut Matrix, a: &Matrix) {
-    if a.nrow != b.nrow || a.ncol != b.ncol {
-        panic!("the matrices must have the same dimensions");
+    if a.nrow != b.nrow {
+        #[rustfmt::skip]
+        panic!("nrow of matrix [a] (={}) must equal nrow of matrix [b] (={})", a.nrow, b.nrow);
+    }
+    if a.ncol != b.ncol {
+        #[rustfmt::skip]
+        panic!("ncol of matrix [a] (={}) must equal ncol of matrix [b] (={})", a.ncol, b.ncol);
     }
     let n_i32: i32 = b.data.len().try_into().unwrap();
     dcopy(n_i32, &a.data, 1, &mut b.data, 1);
@@ -61,5 +66,21 @@ mod tests {
             &[40.0, 50.0, 60.0],
         ]);
         assert_vec_approx_eq!(b.data, correct, 1e-15);
+    }
+
+    #[test]
+    #[should_panic(expected = "nrow of matrix [a] (=4) must equal nrow of matrix [b] (=3)")]
+    fn copy_matrix_panic_1() {
+        let a = Matrix::new(4, 4);
+        let mut b = Matrix::new(3, 4);
+        copy_matrix(&mut b, &a);
+    }
+
+    #[test]
+    #[should_panic(expected = "ncol of matrix [a] (=3) must equal ncol of matrix [b] (=4)")]
+    fn copy_matrix_panic_2() {
+        let a = Matrix::new(3, 3);
+        let mut b = Matrix::new(3, 4);
+        copy_matrix(&mut b, &a);
     }
 }

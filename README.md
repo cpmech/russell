@@ -6,7 +6,7 @@ Work in progress...
 
 ![Bertrand Russell](zassets/Bertrand_Russell_1957.jpg)
 
-(Figure: [Bertrand Russell](https://en.wikipedia.org/wiki/Bertrand_Russell) [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en))
+([CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en). Photo: [Bertrand Russell](https://en.wikipedia.org/wiki/Bertrand_Russell))
 
 **Russell** assists in the development of scientific computations using the Rust language. We mainly consider the development of numerical methods and solvers for differential equations.
 

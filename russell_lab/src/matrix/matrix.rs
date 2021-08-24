@@ -224,6 +224,13 @@ mod tests {
     }
 
     #[test]
+    fn from_0_works() {
+        let data: &[&[f64]] = &[&[]];
+        let a = Matrix::from(data);
+        assert_eq!(a.data.len(), 0);
+    }
+
+    #[test]
     #[should_panic(expected = "all rows must have the same number of columns")]
     fn from_panics_on_wrong_columns() {
         #[rustfmt::skip]

@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: Install OpenBLAS
         run: |
-          apt-get install libopenblas-dev
+          apt-get update -y && apt-get install -y libopenblas-dev
       - name: Checkout repository
         uses: actions/checkout@v2
       - name: Generate code coverage

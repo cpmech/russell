@@ -1,8 +1,17 @@
 use super::*;
+use std::convert::TryInto;
 
 #[rustfmt::skip]
 extern "C" {
     fn cblas_dgemm(order: i32, transa: i32, transb: i32, m: i32, n: i32, k: i32, alpha: f64, a: *const f64, lda: i32, b: *const f64, ldb: i32, beta: f64, c: *mut f64, ldc: i32);
+    fn LAPACKE_dgesv(matrix_layout: i32, n: i32, nrhs: i32, a: *mut f64, lda: i32, ipiv: *mut i32, b: *mut f64, ldb: i32) -> i32;
+    
+    // fn cblas_dsyrk(order: i32, uplo: i32, trans: i32, n: i32, k: i32, alpha: f64, a: *mut f64, lda: i32, beta: f64, c: *mut f64, ldc: i32);
+    // fn LAPACKE_dgesvd(matrix_layout: i32, jobu: char, jobvt: char, m: i32, n: i32, a: *mut f64, lda: i32, s: *mut f64, u: *mut f64, ldu: i32, vt: *mut f64, ldvt: i32, superb: *mut f64) -> i32;
+    // fn LAPACKE_dgetrf(matrix_layout: i32, m: i32, n: i32, a: *mut f64, lda: i32, ipiv: *mut i32) -> i32;
+    // fn LAPACKE_dgetri(matrix_layout: i32, n: i32, a: *mut f64, lda: i32, ipiv: *const i32) -> i32;
+    // fn LAPACKE_dgeev(matrix_layout: i32, jobvl: char, jobvr: char, n: i32, a: *mut f64, lda: i32, wr: *mut f64, wi: *mut f64, vl: *mut f64, ldvl: i32, vr: *mut f64, ldvr: i32) -> i32;
+    // fn LAPACKE_dpotrf(matrix_layout: i32, uplo: char, n: i32, a: *mut f64, lda: i32) -> i32;
 }
 
 /// Performs one of the matrix-matrix multiplications
@@ -63,6 +72,67 @@ pub fn dgemm(
             ldc,
         );
     }
+}
+
+/// Computes the solution to a real system of linear equations.
+///
+/// The system is:
+///
+/// ```text
+///    A * X = B,
+/// ```
+/// where A is an N-by-N matrix and X and B are N-by-NRHS matrices.
+///
+/// The LU decomposition with partial pivoting and row interchanges is
+/// used to factor A as
+///
+/// ```text
+///    A = P * L * U,
+/// ```
+///
+/// where P is a permutation matrix, L is unit lower triangular, and U is
+/// upper triangular.  The factored form of A is then used to solve the
+/// system of equations A * X = B.
+///
+/// # Note
+///
+/// 1. The length of ipiv must be equal to `n`
+/// 2. The matrix will be modified
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
+///
+#[inline]
+pub fn dgesv(
+    n: i32,
+    nrhs: i32,
+    a: &mut [f64],
+    lda: i32,
+    ipiv: &mut [i32],
+    b: &mut [f64],
+    ldb: i32,
+) -> Result<(), &'static str> {
+    unsafe {
+        let ipiv_len: i32 = ipiv.len().try_into().unwrap();
+        if ipiv_len != n {
+            return Err("the length of ipiv must equal n");
+        }
+        let info = LAPACKE_dgesv(
+            LAPACK_COL_MAJOR,
+            n,
+            nrhs,
+            a.as_mut_ptr(),
+            lda,
+            ipiv.as_mut_ptr(),
+            b.as_mut_ptr(),
+            ldb,
+        );
+        if info != 0_i32 {
+            return Err("LAPACK failed");
+        }
+    }
+    Ok(())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -268,5 +338,31 @@ mod tests {
             &[2.0,  1.0, 2.0],
         ]);
         assert_vec_approx_eq!(c, correct, 1e-15);
+    }
+
+    #[test]
+    fn dgesv_works() -> Result<(), &'static str> {
+        // matrix
+        #[rustfmt::skip]
+        let mut a = slice_to_colmajor(&[ // 5 x 4
+            &[2.0,  3.0,  0.0, 0.0, 0.0],
+            &[3.0,  0.0,  4.0, 0.0, 6.0],
+            &[0.0, -1.0, -3.0, 2.0, 0.0],
+            &[0.0,  0.0,  1.0, 0.0, 0.0],
+            &[0.0,  4.0,  2.0, 0.0, 1.0],
+        ]);
+
+        // right-hand-side
+        let mut b = vec![8.0, 45.0, -3.0, 3.0, 19.0];
+
+        // solve b := x := A⁻¹ b
+        let (n, lda, ldb, nrhs) = (5_i32, 5_i32, 5_i32, 1_i32);
+        let mut ipiv = vec![0; n as usize];
+        dgesv(n, nrhs, &mut a, lda, &mut ipiv, &mut b, ldb)?;
+
+        // check
+        let correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+        assert_vec_approx_eq!(b, correct, 1e-15);
+        Ok(())
     }
 }

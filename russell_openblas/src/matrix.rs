@@ -504,4 +504,77 @@ mod tests {
         assert_vec_approx_eq!(usv, a_copy, 1e-15);
         Ok(())
     }
+
+    #[test]
+    fn dgesvd_1_works() -> Result<(), &'static str> {
+        // matrix
+        let s33 = f64::sqrt(3.0) / 3.0;
+        #[rustfmt::skip]
+        let mut a = slice_to_colmajor(&[
+            &[-s33, -s33, 1.0],
+            &[ s33, -s33, 1.0],
+            &[-s33,  s33, 1.0],
+            &[ s33,  s33, 1.0],
+        ]);
+        let a_copy = a.to_vec();
+
+        // dimensions
+        let (m, n) = (4_usize, 3_usize);
+        let min_mn = if m < n { m } else { n };
+        let (lda, ldu, ldvt) = (m, m, n);
+
+        // allocate output arrays
+        let mut s = vec![0.0; min_mn as usize];
+        let mut u = vec![0.0; (m * m) as usize];
+        let mut vt = vec![0.0; (n * n) as usize];
+        let mut superb = vec![0.0; min_mn as usize];
+
+        // perform SVD
+        let (jobu, jobvt) = (b'A', b'A');
+        dgesvd(
+            jobu,
+            jobvt,
+            m.try_into().unwrap(),
+            n.try_into().unwrap(),
+            &mut a,
+            lda.try_into().unwrap(),
+            &mut s,
+            &mut u,
+            ldu.try_into().unwrap(),
+            &mut vt,
+            ldvt.try_into().unwrap(),
+            &mut superb,
+        )?;
+
+        // check
+        #[rustfmt::skip]
+        let u_correct = slice_to_colmajor(&[
+            &[-0.5, -0.5, -0.5,  0.5],
+            &[-0.5, -0.5,  0.5, -0.5],
+            &[-0.5,  0.5, -0.5, -0.5],
+            &[-0.5,  0.5,  0.5,  0.5],
+        ]);
+        let s_correct = &[2.0, 2.0 / f64::sqrt(3.0), 2.0 / f64::sqrt(3.0)];
+        #[rustfmt::skip]
+        let vt_correct = slice_to_colmajor(&[
+            &[0.0, 0.0, -1.0],
+            &[0.0, 1.0,  0.0],
+            &[1.0, 0.0,  0.0],
+        ]);
+        assert_vec_approx_eq!(u, u_correct, 1e-15);
+        assert_vec_approx_eq!(s, s_correct, 1e-15);
+        assert_vec_approx_eq!(vt, vt_correct, 1e-15);
+
+        // check SVD
+        let mut usv = vec![0.0; m * n];
+        for i in 0..m {
+            for j in 0..n {
+                for k in 0..min_mn {
+                    usv[i + j * m] += u[i + k * m] * s[k] * vt[k + j * n];
+                }
+            }
+        }
+        assert_vec_approx_eq!(usv, a_copy, 1e-15);
+        Ok(())
+    }
 }

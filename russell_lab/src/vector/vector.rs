@@ -89,6 +89,34 @@ impl Vector {
     /// Applies a function over all components of this vector
     ///
     /// ```text
+    /// u := apply(function(ui))
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// u.apply(|x| x * x);
+    /// let correct = "┌   ┐\n\
+    ///                │ 1 │\n\
+    ///                │ 4 │\n\
+    ///                │ 9 │\n\
+    ///                └   ┘";
+    /// assert_eq!(format!("{}", u), correct);
+    /// ```
+    pub fn apply<F>(&mut self, function: F)
+    where
+        F: Fn(f64) -> f64,
+    {
+        for elem in self.data.iter_mut() {
+            *elem = function(*elem);
+        }
+    }
+
+    /// Applies a function (with index) over all components of this vector
+    ///
+    /// ```text
     /// u := apply(function(i, ui))
     /// ```
     ///
@@ -97,7 +125,7 @@ impl Vector {
     /// ```
     /// use russell_lab::*;
     /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
-    /// u.apply(|i, x| x * x + (i as f64));
+    /// u.apply_with_index(|i, x| x * x + (i as f64));
     /// let correct = "┌    ┐\n\
     ///                │  1 │\n\
     ///                │  5 │\n\
@@ -105,7 +133,7 @@ impl Vector {
     ///                └    ┘";
     /// assert_eq!(format!("{}", u), correct);
     /// ```
-    pub fn apply<F>(&mut self, function: F)
+    pub fn apply_with_index<F>(&mut self, function: F)
     where
         F: Fn(usize, f64) -> f64,
     {
@@ -187,7 +215,7 @@ mod tests {
     #[test]
     fn apply_works() {
         let mut u = Vector::from(&[-1.0, -2.0, -3.0]);
-        u.apply(|i, x| x * x * x + (i as f64));
+        u.apply_with_index(|i, x| x * x * x + (i as f64));
         let correct = &[-1.0, -7.0, -25.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
     }

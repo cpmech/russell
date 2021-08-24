@@ -38,13 +38,16 @@ use std::convert::TryInto;
 ///
 pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) {
     if a.nrow != c.nrow {
-        panic!("the number of rows of matrix [a] (={}) must be equal to the number of rows of matrix [c] (={})", a.nrow, c.nrow);
+        #[rustfmt::skip]
+        panic!("nrow of matrix [a] (={}) must equal nrow of matrix [c] (={})", a.nrow, c.nrow);
     }
-    if b.nrow != a.ncol {
-        panic!("the number of rows of matrix [b] (={}) must be equal to the number of columns of matrix [a] (={})", b.nrow, a.ncol);
+    if a.ncol != b.nrow {
+        #[rustfmt::skip]
+        panic!("ncol of matrix [a] (={}) must equal nrow of matrix [b] (={})", a.ncol, b.nrow);
     }
     if b.ncol != c.ncol {
-        panic!("the number of columns of matrix [b] (={}) must be equal to the number of columns of matrix [c] (={})", b.ncol, c.ncol);
+        #[rustfmt::skip]
+        panic!("ncol of matrix [b] (={}) must equal ncol of matrix [c] (={})", b.ncol, c.ncol);
     }
     let m_i32: i32 = c.nrow.try_into().unwrap();
     let n_i32: i32 = c.ncol.try_into().unwrap();
@@ -97,5 +100,32 @@ mod tests {
             &[1.30,  5.0,  5.0, 5.25],
         ]);
         assert_vec_approx_eq!(c.data, correct, 1e-15);
+    }
+
+    #[test]
+    #[should_panic(expected = "nrow of matrix [a] (=4) must equal nrow of matrix [c] (=3)")]
+    fn mat_mat_mul_panic_1() {
+        let a = Matrix::new(4, 3);
+        let b = Matrix::new(3, 4);
+        let mut c = Matrix::new(3, 4);
+        mat_mat_mul(&mut c, 1.0, &a, &b);
+    }
+
+    #[test]
+    #[should_panic(expected = "ncol of matrix [a] (=4) must equal nrow of matrix [b] (=3)")]
+    fn mat_mat_mul_panic_2() {
+        let a = Matrix::new(3, 4);
+        let b = Matrix::new(3, 4);
+        let mut c = Matrix::new(3, 4);
+        mat_mat_mul(&mut c, 1.0, &a, &b);
+    }
+
+    #[test]
+    #[should_panic(expected = "ncol of matrix [b] (=3) must equal ncol of matrix [c] (=4)")]
+    fn mat_mat_mul_panic_3() {
+        let a = Matrix::new(3, 4);
+        let b = Matrix::new(4, 3);
+        let mut c = Matrix::new(3, 4);
+        mat_mat_mul(&mut c, 1.0, &a, &b);
     }
 }

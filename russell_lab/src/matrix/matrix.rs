@@ -72,13 +72,6 @@ impl Matrix {
     ///
     pub fn from(data: &[&[f64]]) -> Self {
         let nrow = data.len();
-        if nrow == 0 {
-            return Matrix {
-                nrow: 0,
-                ncol: 0,
-                data: Vec::new(),
-            };
-        }
         let ncol = data[0].len();
         let mut matrix = Matrix {
             nrow,

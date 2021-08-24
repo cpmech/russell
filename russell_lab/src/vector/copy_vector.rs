@@ -25,7 +25,8 @@ use std::convert::TryInto;
 pub fn copy_vector(v: &mut Vector, u: &Vector) {
     let n = v.data.len();
     if u.data.len() != n {
-        panic!("the vectors must have the same dimension");
+        #[rustfmt::skip]
+        panic!("dim of vector [u] (={}) must equal dim of vector [v] (={})", u.data.len(), n);
     }
     let n_i32: i32 = n.try_into().unwrap();
     dcopy(n_i32, &u.data, 1, &mut v.data, 1);
@@ -45,5 +46,13 @@ mod tests {
         copy_vector(&mut v, &u);
         let correct = &[1.0, 2.0, 3.0];
         assert_vec_approx_eq!(v.data, correct, 1e-15);
+    }
+
+    #[test]
+    #[should_panic(expected = "dim of vector [u] (=4) must equal dim of vector [v] (=3)")]
+    fn copy_vector_panic_1() {
+        let u = Vector::new(4);
+        let mut v = Vector::new(3);
+        copy_vector(&mut v, &u);
     }
 }

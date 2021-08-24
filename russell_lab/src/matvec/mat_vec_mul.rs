@@ -41,16 +41,12 @@ pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) {
     let m = v.data.len();
     let n = u.data.len();
     if m != a.nrow {
-        panic!(
-            "the size of lhs vector v (={}) must be equal to the number of rows of matrix a (={})",
-            m, a.nrow
-        );
+        #[rustfmt::skip]
+        panic!("dim of vector v (={}) must equal nrow of matrix a (={})", m, a.nrow);
     }
     if n != a.ncol {
-        panic!(
-            "the size of rhs vector u (={}) must be equal to the number of columns of matrix a (={})", 
-            n, a.ncol
-        );
+        #[rustfmt::skip]
+        panic!("dim of vector u (={}) must equal ncol of matrix a (={})", n, a.ncol);
     }
     let m_i32: i32 = m.try_into().unwrap();
     let n_i32: i32 = n.try_into().unwrap();
@@ -90,5 +86,23 @@ mod tests {
         mat_vec_mul(&mut v, 1.0, &a, &u);
         let correct = &[4.0, 8.0, 12.0];
         assert_vec_approx_eq!(v.data, correct, 1e-15);
+    }
+
+    #[test]
+    #[should_panic(expected = "dim of vector v (=4) must equal nrow of matrix a (=3)")]
+    fn mat_vec_mul_panic_1() {
+        let u = Vector::new(4);
+        let a = Matrix::new(3, 4);
+        let mut v = Vector::new(4);
+        mat_vec_mul(&mut v, 1.0, &a, &u);
+    }
+
+    #[test]
+    #[should_panic(expected = "dim of vector u (=3) must equal ncol of matrix a (=4)")]
+    fn mat_vec_mul_panic_2() {
+        let u = Vector::new(3);
+        let a = Matrix::new(3, 4);
+        let mut v = Vector::new(3);
+        mat_vec_mul(&mut v, 1.0, &a, &u);
     }
 }

@@ -8,23 +8,19 @@ echo "cargo install cargo-tarpaulin"
 echo "pip3 install pycobertura"
 echo
 
-OUTDIR=/tmp/russell
-
 cd zcoverage
 
 cargo tarpaulin \
     --all \
     --out Html \
-    --out Xml \
-    --target-dir=$OUTDIR \
-    --output-dir=$OUTDIR
+    --out Xml
 
 pycobertura show \
     --format=html \
-    --output $OUTDIR/cobertura.html \
-    $OUTDIR/cobertura.xml
+    --output cobertura.html \
+    cobertura.xml
 
-browse $OUTDIR/tarpaulin-report.html
-browse $OUTDIR/cobertura.html
+browse tarpaulin-report.html
+browse cobertura.html
 
 cd ..

@@ -12,7 +12,7 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "vector", "eigenvalues", "decomposition"]
 
 [dependencies]
-russell_chk = { path = "../russell_chk", version = "*" }
+russell_chk = { path = "../russell_chk", version = "0.1" }
 criterion = "0.3"
 
 [[bench]]

@@ -12,4 +12,4 @@ categories = ["mathematics", "science"]
 keywords = ["tensor", "Voigt", "Mandel", "continuum", "mechanics"]
 
 [dependencies]
-russell_chk = { path = "../russell_chk", version = "*" }
+russell_chk = { path = "../russell_chk", version = "0.1" }

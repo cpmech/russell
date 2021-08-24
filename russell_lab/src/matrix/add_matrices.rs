@@ -93,6 +93,42 @@ mod tests {
     }
 
     #[test]
+    fn add_matrix_oblas_works() {
+        const NOISE: f64 = 1234.567;
+        let a = Matrix::from(&[
+            &[1.0, 2.0, 3.0, 4.0, 5.0],
+            &[1.0, 2.0, 3.0, 4.0, 5.0],
+            &[1.0, 2.0, 3.0, 4.0, 5.0],
+            &[1.0, 2.0, 3.0, 4.0, 5.0],
+            &[1.0, 2.0, 3.0, 4.0, 5.0],
+        ]);
+        let b = Matrix::from(&[
+            &[0.5, 1.0, 1.5, 2.0, 2.5],
+            &[0.5, 1.0, 1.5, 2.0, 2.5],
+            &[0.5, 1.0, 1.5, 2.0, 2.5],
+            &[0.5, 1.0, 1.5, 2.0, 2.5],
+            &[0.5, 1.0, 1.5, 2.0, 2.5],
+        ]);
+        let mut c = Matrix::from(&[
+            &[NOISE, NOISE, NOISE, NOISE, NOISE],
+            &[NOISE, NOISE, NOISE, NOISE, NOISE],
+            &[NOISE, NOISE, NOISE, NOISE, NOISE],
+            &[NOISE, NOISE, NOISE, NOISE, NOISE],
+            &[NOISE, NOISE, NOISE, NOISE, NOISE],
+        ]);
+        add_matrices(&mut c, 1.0, &a, -4.0, &b);
+        #[rustfmt::skip]
+        let correct =slice_to_colmajor(&[
+            &[-1.0, -2.0, -3.0, -4.0, -5.0],
+            &[-1.0, -2.0, -3.0, -4.0, -5.0],
+            &[-1.0, -2.0, -3.0, -4.0, -5.0],
+            &[-1.0, -2.0, -3.0, -4.0, -5.0],
+            &[-1.0, -2.0, -3.0, -4.0, -5.0],
+        ]);
+        assert_vec_approx_eq!(c.data, correct, 1e-15);
+    }
+
+    #[test]
     #[should_panic(expected = "nrow of matrix [a] (=4) must equal nrow of matrix [c] (=3)")]
     fn add_matrices_panic_1() {
         let a = Matrix::new(4, 4);

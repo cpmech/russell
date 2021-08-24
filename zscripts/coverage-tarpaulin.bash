@@ -10,7 +10,7 @@ echo
 
 cd zcoverage
 
-cargo tarpaulin \
+cargo +nightly tarpaulin \
     --all \
     --out Html \
     --out Xml

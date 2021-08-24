@@ -4,6 +4,19 @@
 //!
 //! # Examples
 //!
+//! ## Linspace
+//!
+//! ```
+//! use russell_lab::*;
+//! let x = Vector::linspace(1.0, 3.0, 3);
+//! let correct = "┌   ┐\n\
+//!                │ 1 │\n\
+//!                │ 2 │\n\
+//!                │ 3 │\n\
+//!                └   ┘";
+//! assert_eq!(format!("{}", x), correct);
+//! ```
+//!
 //! ## Vector addition
 //!
 //! ```
@@ -50,11 +63,9 @@ pub fn desc() -> String {
     "Matrix-vector laboratory including linear algebra tools".to_string()
 }
 
-mod linspace;
 mod matrix;
 mod matvec;
 mod vector;
-pub use crate::linspace::*;
 pub use crate::matrix::*;
 pub use crate::matvec::*;
 pub use crate::vector::*;

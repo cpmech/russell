@@ -30,11 +30,11 @@ pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector
     let n = w.data.len();
     if u.data.len() != n {
         #[rustfmt::skip]
-        panic!("the length of vector [u] (={}) must equal the length of vector [w] (={})", u.data.len(), n);
+        panic!("dim of vector [u] (={}) must equal dim of vector [w] (={})", u.data.len(), n);
     }
     if v.data.len() != n {
         #[rustfmt::skip]
-        panic!("the length of vector [v] (={}) must equal the length of vector [w] (={})", v.data.len(), n);
+        panic!("dim of vector [v] (={}) must equal dim of vector [w] (={})", v.data.len(), n);
     }
     if n == 0 {
         return;
@@ -101,5 +101,23 @@ mod tests {
             add_vectors(&mut w, 0.5, &u, 0.5, &v);
             assert_vec_approx_eq!(w.data, correct, 1e-15);
         }
+    }
+
+    #[test]
+    #[should_panic(expected = "dim of vector [u] (=4) must equal dim of vector [w] (=3)")]
+    fn add_vectors_panic_1() {
+        let u = Vector::new(4);
+        let v = Vector::new(3);
+        let mut w = Vector::new(3);
+        add_vectors(&mut w, 1.0, &u, 1.0, &v);
+    }
+
+    #[test]
+    #[should_panic(expected = "dim of vector [v] (=4) must equal dim of vector [w] (=3)")]
+    fn add_vectors_panic_2() {
+        let u = Vector::new(3);
+        let v = Vector::new(4);
+        let mut w = Vector::new(3);
+        add_vectors(&mut w, 1.0, &u, 1.0, &v);
     }
 }

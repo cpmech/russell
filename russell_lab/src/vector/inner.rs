@@ -10,7 +10,7 @@ use std::convert::TryInto;
 ///
 /// # Note
 ///
-/// The lengths of both vectors may be different; the smaller length will be selected.
+/// The lengths of both vectors may be different; the smallest length will be selected.
 ///
 /// # Examples
 ///
@@ -42,6 +42,14 @@ mod tests {
         const IGNORED: f64 = 100000.0;
         let x = Vector::from(&[20.0, 10.0, 30.0, IGNORED]);
         let y = Vector::from(&[-15.0, -5.0, -24.0]);
+        assert_eq!(inner(&x, &y), -1070.0);
+    }
+
+    #[test]
+    fn inner_alt_works() {
+        const IGNORED: f64 = 100000.0;
+        let x = Vector::from(&[-15.0, -5.0, -24.0]);
+        let y = Vector::from(&[20.0, 10.0, 30.0, IGNORED]);
         assert_eq!(inner(&x, &y), -1070.0);
     }
 }

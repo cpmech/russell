@@ -2,29 +2,26 @@
 
 set -e
 
-if [[ $CI == "false" ]]; then
+if [[ $CI != "true" ]]; then
     echo "Install:"
     echo
     echo "cargo install cargo-tarpaulin"
-    echo "pip3 install pycobertura"
     echo
 fi
 
 cd zcoverage
 
-cargo +nightly tarpaulin \
-    --all \
-    --out Html \
-    --out Xml
-
-if [[ $CI == "false" ]]; then
-    pycobertura show \
-        --format=html \
-        --output cobertura.html \
-        cobertura.xml
-
-    browse tarpaulin-report.html
-    browse cobertura.html
+if [[ $CI != "true" ]]; then
+    cargo +nightly tarpaulin \
+        --all \
+        --out Html \
+        --out Xml \
+        --fail-under 95
+else
+    cargo +nightly tarpaulin \
+        --all \
+        --out Html \
+        --out Xml
 fi
 
 cd ..

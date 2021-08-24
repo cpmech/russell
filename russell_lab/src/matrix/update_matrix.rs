@@ -28,8 +28,13 @@ use std::convert::TryInto;
 /// assert_eq!(format!("{}", b), correct);
 /// ```
 pub fn update_matrix(b: &mut Matrix, alpha: f64, a: &Matrix) {
-    if a.nrow != b.nrow || a.ncol != b.ncol {
-        panic!("the matrices must have the same dimensions");
+    if a.nrow != b.nrow {
+        #[rustfmt::skip]
+        panic!("nrow of matrix [a] (={}) must equal nrow of matrix [b] (={})", a.nrow, b.nrow);
+    }
+    if a.ncol != b.ncol {
+        #[rustfmt::skip]
+        panic!("ncol of matrix [a] (={}) must equal ncol of matrix [b] (={})", a.ncol, b.ncol);
     }
     let n_i32: i32 = b.data.len().try_into().unwrap();
     daxpy(n_i32, alpha, &a.data, 1, &mut b.data, 1);
@@ -61,5 +66,21 @@ mod tests {
             &[480.0, 600.0, 720.0],
         ]);
         assert_vec_approx_eq!(b.data, correct, 1e-15);
+    }
+
+    #[test]
+    #[should_panic(expected = "nrow of matrix [a] (=4) must equal nrow of matrix [b] (=3)")]
+    fn update_matrix_panic_1() {
+        let a = Matrix::new(4, 4);
+        let mut b = Matrix::new(3, 4);
+        update_matrix(&mut b, 1.0, &a);
+    }
+
+    #[test]
+    #[should_panic(expected = "ncol of matrix [a] (=3) must equal ncol of matrix [b] (=4)")]
+    fn update_matrix_panic_2() {
+        let a = Matrix::new(3, 3);
+        let mut b = Matrix::new(3, 4);
+        update_matrix(&mut b, 1.0, &a);
     }
 }

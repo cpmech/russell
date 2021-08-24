@@ -25,7 +25,8 @@ use std::convert::TryInto;
 pub fn update_vector(v: &mut Vector, alpha: f64, u: &Vector) {
     let n = v.data.len();
     if u.data.len() != n {
-        panic!("the vectors must have the same dimension");
+        #[rustfmt::skip]
+        panic!("dim of vector [u] (={}) must equal dim of vector [v] (={})", u.data.len(), n);
     }
     let n_i32: i32 = n.try_into().unwrap();
     daxpy(n_i32, alpha, &u.data, 1, &mut v.data, 1);
@@ -45,5 +46,13 @@ mod tests {
         update_vector(&mut v, 2.0, &u);
         let correct = &[120.0, 240.0, 360.0];
         assert_vec_approx_eq!(v.data, correct, 1e-15);
+    }
+
+    #[test]
+    #[should_panic(expected = "dim of vector [u] (=4) must equal dim of vector [v] (=3)")]
+    fn update_vector_panic_1() {
+        let u = Vector::new(4);
+        let mut v = Vector::new(3);
+        update_vector(&mut v, 1.0, &u);
     }
 }

@@ -18,9 +18,6 @@
 ///
 pub fn slice_to_colmajor(a: &[&[f64]]) -> Vec<f64> {
     let nrow = a.len();
-    if nrow == 0 {
-        return Vec::new();
-    }
     let ncol = a[0].len();
     let mut data = vec![0.0; nrow * ncol];
     for i in 0..nrow {
@@ -51,6 +48,13 @@ mod tests {
         ]);
         let correct = &[1.0, 4.0, 7.0, 2.0, 5.0, 8.0, 3.0, 6.0, 8.0];
         assert_vec_approx_eq!(data, correct, 1e-15);
+    }
+
+    #[test]
+    fn slice_to_colmajor_0_works() {
+        let input: &[&[f64]] = &[&[]];
+        let data = slice_to_colmajor(input);
+        assert_eq!(data.len(), 0);
     }
 
     #[test]

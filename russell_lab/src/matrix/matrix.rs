@@ -72,13 +72,6 @@ impl Matrix {
     ///
     pub fn from(data: &[&[f64]]) -> Self {
         let nrow = data.len();
-        if nrow == 0 {
-            return Matrix {
-                nrow: 0,
-                ncol: 0,
-                data: Vec::new(),
-            };
-        }
         let ncol = data[0].len();
         let mut matrix = Matrix {
             nrow,
@@ -221,6 +214,13 @@ mod tests {
         ]);
         let correct = &[1.0, 4.0, 7.0, 2.0, 5.0, 8.0, 3.0, 6.0, 9.0];
         assert_vec_approx_eq!(a.data, correct, 1e-15);
+    }
+
+    #[test]
+    fn from_0_works() {
+        let data: &[&[f64]] = &[&[]];
+        let a = Matrix::from(data);
+        assert_eq!(a.data.len(), 0);
     }
 
     #[test]

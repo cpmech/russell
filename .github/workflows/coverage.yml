@@ -8,6 +8,9 @@ jobs:
       image: xd009642/tarpaulin:develop-nightly
       options: --security-opt seccomp=unconfined
     steps:
+      - name: Install OpenBLAS
+        run: |
+          sudo apt-get install libopenblas-dev
       - name: Checkout repository
         uses: actions/checkout@v2
       - name: Generate code coverage

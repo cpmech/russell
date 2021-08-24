@@ -1,6 +1,6 @@
 # Russell - Rust Scientific Library
 
-[![GH Stats](https://github-readme-stats.vercel.app/api?username=cpmech)](https://github.com/cpmech/russell)
+[![codecov](https://codecov.io/gh/cpmech/russell/branch/main/graph/badge.svg?token=PQWSKMZQXT)](https://codecov.io/gh/cpmech/russell)
 
 Work in progress...
 

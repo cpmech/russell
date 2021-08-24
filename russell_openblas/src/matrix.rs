@@ -5,9 +5,9 @@ use std::convert::TryInto;
 extern "C" {
     fn cblas_dgemm(order: i32, transa: i32, transb: i32, m: i32, n: i32, k: i32, alpha: f64, a: *const f64, lda: i32, b: *const f64, ldb: i32, beta: f64, c: *mut f64, ldc: i32);
     fn LAPACKE_dgesv(matrix_layout: i32, n: i32, nrhs: i32, a: *mut f64, lda: i32, ipiv: *mut i32, b: *mut f64, ldb: i32) -> i32;
+    fn LAPACKE_dgesvd(matrix_layout: i32, jobu: u8, jobvt: u8, m: i32, n: i32, a: *mut f64, lda: i32, s: *mut f64, u: *mut f64, ldu: i32, vt: *mut f64, ldvt: i32, superb: *mut f64) -> i32;
     
     // fn cblas_dsyrk(order: i32, uplo: i32, trans: i32, n: i32, k: i32, alpha: f64, a: *mut f64, lda: i32, beta: f64, c: *mut f64, ldc: i32);
-    // fn LAPACKE_dgesvd(matrix_layout: i32, jobu: char, jobvt: char, m: i32, n: i32, a: *mut f64, lda: i32, s: *mut f64, u: *mut f64, ldu: i32, vt: *mut f64, ldvt: i32, superb: *mut f64) -> i32;
     // fn LAPACKE_dgetrf(matrix_layout: i32, m: i32, n: i32, a: *mut f64, lda: i32, ipiv: *mut i32) -> i32;
     // fn LAPACKE_dgetri(matrix_layout: i32, n: i32, a: *mut f64, lda: i32, ipiv: *const i32) -> i32;
     // fn LAPACKE_dgeev(matrix_layout: i32, jobvl: char, jobvr: char, n: i32, a: *mut f64, lda: i32, wr: *mut f64, wi: *mut f64, vl: *mut f64, ldvl: i32, vr: *mut f64, ldvr: i32) -> i32;
@@ -127,6 +127,69 @@ pub fn dgesv(
             ipiv.as_mut_ptr(),
             b.as_mut_ptr(),
             ldb,
+        );
+        if info != 0_i32 {
+            return Err("LAPACK failed");
+        }
+    }
+    Ok(())
+}
+
+/// Computes the singular value decomposition (SVD) of a real M-by-N matrix A, optionally computing the left and/or right singular vectors.
+///
+/// The SVD is written
+///
+/// ```text
+///    A = U * SIGMA * transpose(V)
+/// ```
+///
+/// where SIGMA is an M-by-N matrix which is zero except for its
+/// min(m,n) diagonal elements, U is an M-by-M orthogonal matrix, and
+/// V is an N-by-N orthogonal matrix.  The diagonal elements of SIGMA
+/// are the singular values of A; they are real and non-negative, and
+/// are returned in descending order.  The first min(m,n) columns of
+/// U and V are the left and right singular vectors of A.
+///
+/// # Note
+///
+/// 1. The routine returns V**T, not V.
+/// 2. The matrix will be modified
+/// 3. jobu and jobvt are c_char and can be passed as b'A'
+///    (see LAPACK reference for further options)
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/d8/d2d/dgesvd_8f.html>
+///
+pub fn dgesvd(
+    jobu: u8,
+    jobvt: u8,
+    m: i32,
+    n: i32,
+    a: &mut [f64],
+    lda: i32,
+    s: &mut [f64],
+    u: &mut [f64],
+    ldu: i32,
+    vt: &mut [f64],
+    ldvt: i32,
+    superb: &mut [f64],
+) -> Result<(), &'static str> {
+    unsafe {
+        let info = LAPACKE_dgesvd(
+            LAPACK_COL_MAJOR,
+            jobu,
+            jobvt,
+            m,
+            n,
+            a.as_mut_ptr(),
+            lda,
+            s.as_mut_ptr(),
+            u.as_mut_ptr(),
+            ldu,
+            vt.as_mut_ptr(),
+            ldvt,
+            superb.as_mut_ptr(),
         );
         if info != 0_i32 {
             return Err("LAPACK failed");
@@ -344,7 +407,7 @@ mod tests {
     fn dgesv_works() -> Result<(), &'static str> {
         // matrix
         #[rustfmt::skip]
-        let mut a = slice_to_colmajor(&[ // 5 x 4
+        let mut a = slice_to_colmajor(&[
             &[2.0,  3.0,  0.0, 0.0, 0.0],
             &[3.0,  0.0,  4.0, 0.0, 6.0],
             &[0.0, -1.0, -3.0, 2.0, 0.0],
@@ -363,6 +426,82 @@ mod tests {
         // check
         let correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
         assert_vec_approx_eq!(b, correct, 1e-15);
+        Ok(())
+    }
+
+    #[test]
+    fn dgesvd_works() -> Result<(), &'static str> {
+        // matrix
+        #[rustfmt::skip]
+        let mut a = slice_to_colmajor(&[
+            &[1.0, 0.0, 0.0, 0.0, 2.0],
+            &[0.0, 0.0, 3.0, 0.0, 0.0],
+            &[0.0, 0.0, 0.0, 0.0, 0.0],
+            &[0.0, 2.0, 0.0, 0.0, 0.0],
+        ]);
+        let a_copy = a.to_vec();
+
+        // dimensions
+        let (m, n) = (4_usize, 5_usize);
+        let min_mn = if m < n { m } else { n };
+        let (lda, ldu, ldvt) = (m, m, n);
+
+        // allocate output arrays
+        let mut s = vec![0.0; min_mn as usize];
+        let mut u = vec![0.0; (m * m) as usize];
+        let mut vt = vec![0.0; (n * n) as usize];
+        let mut superb = vec![0.0; min_mn as usize];
+
+        // perform SVD
+        let (jobu, jobvt) = (b'A', b'A');
+        dgesvd(
+            jobu,
+            jobvt,
+            m.try_into().unwrap(),
+            n.try_into().unwrap(),
+            &mut a,
+            lda.try_into().unwrap(),
+            &mut s,
+            &mut u,
+            ldu.try_into().unwrap(),
+            &mut vt,
+            ldvt.try_into().unwrap(),
+            &mut superb,
+        )?;
+
+        // check
+        #[rustfmt::skip]
+        let u_correct = slice_to_colmajor(&[
+            &[0.0, 1.0, 0.0,  0.0],
+            &[1.0, 0.0, 0.0,  0.0],
+            &[0.0, 0.0, 0.0, -1.0],
+            &[0.0, 0.0, 1.0,  0.0],
+        ]);
+        let s_correct = &[3.0, f64::sqrt(5.0), 2.0, 0.0];
+        let s2 = f64::sqrt(0.2);
+        let s8 = f64::sqrt(0.8);
+        #[rustfmt::skip]
+        let vt_correct = slice_to_colmajor(&[
+            &[0.0, 0.0, 1.0, 0.0, 0.0],
+            &[ s2, 0.0, 0.0, 0.0,  s8],
+            &[0.0, 1.0, 0.0, 0.0, 0.0],
+            &[0.0, 0.0, 0.0, 1.0, 0.0],
+            &[-s8, 0.0, 0.0, 0.0,  s2],
+        ]);
+        assert_vec_approx_eq!(u, u_correct, 1e-15);
+        assert_vec_approx_eq!(s, s_correct, 1e-15);
+        assert_vec_approx_eq!(vt, vt_correct, 1e-15);
+
+        // check SVD
+        let mut usv = vec![0.0; m * n];
+        for i in 0..m {
+            for j in 0..n {
+                for k in 0..min_mn {
+                    usv[i + j * m] += u[i + k * m] * s[k] * vt[k + j * n];
+                }
+            }
+        }
+        assert_vec_approx_eq!(usv, a_copy, 1e-15);
         Ok(())
     }
 }

@@ -4,14 +4,13 @@ use std::convert::TryInto;
 #[rustfmt::skip]
 extern "C" {
     fn cblas_dgemm(order: i32, transa: i32, transb: i32, m: i32, n: i32, k: i32, alpha: f64, a: *const f64, lda: i32, b: *const f64, ldb: i32, beta: f64, c: *mut f64, ldc: i32);
+    fn cblas_dsyrk(order: i32, uplo: i32, trans: i32, n: i32, k: i32, alpha: f64, a: *const f64, lda: i32, beta: f64, c: *mut f64, ldc: i32);
     fn LAPACKE_dgesv(matrix_layout: i32, n: i32, nrhs: i32, a: *mut f64, lda: i32, ipiv: *mut i32, b: *mut f64, ldb: i32) -> i32;
     fn LAPACKE_dgesvd(matrix_layout: i32, jobu: u8, jobvt: u8, m: i32, n: i32, a: *mut f64, lda: i32, s: *mut f64, u: *mut f64, ldu: i32, vt: *mut f64, ldvt: i32, superb: *mut f64) -> i32;
     fn LAPACKE_dgetrf(matrix_layout: i32, m: i32, n: i32, a: *mut f64, lda: i32, ipiv: *mut i32) -> i32;
     fn LAPACKE_dgetri(matrix_layout: i32, n: i32, a: *mut f64, lda: i32, ipiv: *const i32) -> i32;
-    
-    // fn cblas_dsyrk(order: i32, uplo: i32, trans: i32, n: i32, k: i32, alpha: f64, a: *mut f64, lda: i32, beta: f64, c: *mut f64, ldc: i32);
-    // fn LAPACKE_dgeev(matrix_layout: i32, jobvl: char, jobvr: char, n: i32, a: *mut f64, lda: i32, wr: *mut f64, wi: *mut f64, vl: *mut f64, ldvl: i32, vr: *mut f64, ldvr: i32) -> i32;
-    // fn LAPACKE_dpotrf(matrix_layout: i32, uplo: char, n: i32, a: *mut f64, lda: i32) -> i32;
+    fn LAPACKE_dpotrf(matrix_layout: i32, uplo: u8, n: i32, a: *mut f64, lda: i32) -> i32;
+    fn LAPACKE_dgeev(matrix_layout: i32, jobvl: u8, jobvr: u8, n: i32, a: *mut f64, lda: i32, wr: *mut f64, wi: *mut f64, vl: *mut f64, ldvl: i32, vr: *mut f64, ldvr: i32) -> i32;
 }
 
 /// Performs one of the matrix-matrix multiplications
@@ -67,6 +66,56 @@ pub fn dgemm(
             lda,
             b.as_ptr(),
             ldb,
+            beta,
+            c.as_mut_ptr(),
+            ldc,
+        );
+    }
+}
+
+/// Performs one of the symmetric rank k operations
+///
+/// ```text
+///     C := alpha*A*A**T + beta*C
+/// ```
+///
+/// or
+///
+/// ```text
+///     C := alpha*A**T*A + beta*C
+/// ```
+///
+/// where alpha and beta are scalars, C is an n by n symmetric matrix
+/// and A is an n by k matrix in the first case and a k by n matrix
+/// in the second case.
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/dc/d05/dsyrk_8f.html>
+///
+#[inline]
+pub fn dsyrk(
+    up: bool,
+    trans: bool,
+    n: i32,
+    k: i32,
+    alpha: f64,
+    a: &[f64],
+    lda: i32,
+    beta: f64,
+    c: &mut [f64],
+    ldc: i32,
+) {
+    unsafe {
+        cblas_dsyrk(
+            CBLAS_COL_MAJOR,
+            cblas_uplo(up),
+            cblas_transpose(trans),
+            n,
+            k,
+            alpha,
+            a.as_ptr(),
+            lda,
             beta,
             c.as_mut_ptr(),
             ldc,
@@ -161,6 +210,7 @@ pub fn dgesv(
 ///
 /// <http://www.netlib.org/lapack/explore-html/d8/d2d/dgesvd_8f.html>
 ///
+#[inline]
 pub fn dgesvd(
     jobu: u8,
     jobvt: u8,
@@ -222,6 +272,7 @@ pub fn dgesvd(
 ///
 /// <http://www.netlib.org/lapack/explore-html/d3/d6a/dgetrf_8f.html>
 ///
+#[inline]
 pub fn dgetrf(m: i32, n: i32, a: &mut [f64], lda: i32, ipiv: &mut [i32]) -> Result<(), &'static str> {
     unsafe {
         let info = LAPACKE_dgetrf(LAPACK_COL_MAJOR, m, n, a.as_mut_ptr(), lda, ipiv.as_mut_ptr());
@@ -248,9 +299,110 @@ pub fn dgetrf(m: i32, n: i32, a: &mut [f64], lda: i32, ipiv: &mut [i32]) -> Resu
 ///
 /// <http://www.netlib.org/lapack/explore-html/df/da4/dgetri_8f.html>
 ///
+#[inline]
 pub fn dgetri(n: i32, a: &mut [f64], lda: i32, ipiv: &[i32]) -> Result<(), &'static str> {
     unsafe {
         let info = LAPACKE_dgetri(LAPACK_COL_MAJOR, n, a.as_mut_ptr(), lda, ipiv.as_ptr());
+        if info != 0_i32 {
+            return Err("LAPACK failed");
+        }
+    }
+    Ok(())
+}
+
+/// Computes the Cholesky factorization of a real symmetric positive definite matrix A.
+///
+/// The factorization has the form
+///
+/// ```text
+///    A = U**T * U,  if UPLO = 'U'
+/// ```
+///
+/// or
+///
+/// ```text
+///    A = L  * L**T,  if UPLO = 'L'
+/// ```
+///
+/// where U is an upper triangular matrix and L is lower triangular.
+///
+/// This is the block version of the algorithm, calling Level 3 BLAS.
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/d0/d8a/dpotrf_8f.html>
+///
+#[inline]
+pub fn dpotrf(up: bool, n: i32, a: &mut [f64], lda: i32) -> Result<(), &'static str> {
+    unsafe {
+        let info = LAPACKE_dpotrf(LAPACK_COL_MAJOR, lapack_uplo(up), n, a.as_mut_ptr(), lda);
+        if info != 0_i32 {
+            return Err("LAPACK failed");
+        }
+    }
+    Ok(())
+}
+
+/// Computes for an N-by-N real non-symmetric matrix A, the
+/// eigenvalues and, optionally, the left and/or right eigenvectors.
+///
+/// The right eigenvector v(j) of A satisfies
+///
+/// ```text
+///    A * v(j) = lambda(j) * v(j)
+/// ```
+///
+/// where lambda(j) is its eigenvalue.
+///
+/// The left eigenvector u(j) of A satisfies
+///
+/// ```text
+///    u(j)**H * A = lambda(j) * u(j)**H
+/// ```
+///
+/// where u(j)**H denotes the conjugate-transpose of u(j).
+///
+/// The computed eigenvectors are normalized to have Euclidean norm
+/// equal to 1 and largest component real.
+///
+/// # Notes
+///
+/// * If calc_vl==false, you may pass an empty vl array and must set ldvl=1
+/// * If calc_vr==false, you may pass an empty vr array and must set ldvr=1
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/d9/d28/dgeev_8f.html>
+///
+#[inline]
+pub fn dgeev(
+    calc_vl: bool,
+    calc_vr: bool,
+    n: i32,
+    a: &mut [f64],
+    lda: i32,
+    wr: &mut [f64],
+    wi: &mut [f64],
+    vl: &mut [f64],
+    ldvl: i32,
+    vr: &mut [f64],
+    ldvr: i32,
+) -> Result<(), &'static str> {
+    unsafe {
+        let info = LAPACKE_dgeev(
+            LAPACK_COL_MAJOR,
+            lapack_job_vlr(calc_vl),
+            lapack_job_vlr(calc_vr),
+            n,
+            a.as_mut_ptr(),
+            lda,
+            wr.as_mut_ptr(),
+            wi.as_mut_ptr(),
+            vl.as_mut_ptr(),
+            ldvl,
+            vr.as_mut_ptr(),
+            ldvr,
+        );
         if info != 0_i32 {
             return Err("LAPACK failed");
         }
@@ -461,6 +613,72 @@ mod tests {
             &[2.0,  1.0, 2.0],
         ]);
         assert_vec_approx_eq!(c, correct, 1e-15);
+    }
+
+    #[test]
+    fn dsyrk_works() -> Result<(), &'static str> {
+        // matrix c
+        #[rustfmt::skip]
+        let mut c_up = slice_to_colmajor(&[
+            &[ 3.0,  0.0, -3.0,  0.0],
+            &[ 0.0,  3.0,  1.0,  2.0],
+            &[ 0.0,  0.0,  4.0,  1.0],
+            &[ 0.0,  0.0,  0.0,  3.0],
+        ]);
+        #[rustfmt::skip]
+        let mut c_lo = slice_to_colmajor(&[
+            &[ 3.0,  0.0,  0.0,  0.0],
+            &[ 0.0,  3.0,  0.0,  0.0],
+            &[-3.0,  1.0,  4.0,  0.0],
+            &[ 0.0,  2.0,  1.0,  3.0],
+        ]);
+
+        // n-size
+        let n = 4_i32; // =c.ncol
+
+        // matrix a
+        #[rustfmt::skip]
+        let a = slice_to_colmajor(&[
+            &[ 1.0,  2.0,  1.0,  1.0, -1.0,  0.0],
+            &[ 2.0,  2.0,  1.0,  0.0,  0.0,  0.0],
+            &[ 3.0,  1.0,  3.0,  1.0,  2.0, -1.0],
+            &[ 1.0,  0.0,  1.0, -1.0,  0.0,  0.0],
+        ]);
+
+        // k-size
+        let k = 6_i32; // =a.ncol
+
+        // constants
+        let (alpha, beta) = (3.0, -1.0);
+
+        // run dsyrk with up part of matrix c
+        let trans = false;
+        let (lda, ldc) = (n, n);
+        dsyrk(true, trans, n, k, alpha, &a, lda, beta, &mut c_up, ldc);
+
+        // check results: c := up(3⋅a⋅aᵀ - c)
+        #[rustfmt::skip]
+        let c_up_correct = slice_to_colmajor(&[
+            &[21.0, 21.0, 24.0,  3.0],
+            &[ 0.0, 24.0, 32.0,  7.0],
+            &[ 0.0,  0.0, 71.0, 14.0],
+            &[ 0.0,  0.0,  0.0,  6.0],
+        ]);
+        assert_vec_approx_eq!(c_up, c_up_correct, 1e-15);
+
+        // run dsyrk with lo part of matrix c
+        dsyrk(false, trans, n, k, alpha, &a, lda, beta, &mut c_lo, ldc);
+
+        // check results: c := lo(3⋅a⋅aᵀ - c)
+        #[rustfmt::skip]
+        let c_lo_correct = slice_to_colmajor(&[
+            &[21.0,  0.0,  0.0,  0.0],
+            &[21.0, 24.0,  0.0,  0.0],
+            &[24.0, 32.0, 71.0,  0.0],
+            &[ 3.0,  7.0, 14.0,  6.0],
+        ]);
+        assert_vec_approx_eq!(c_lo, c_lo_correct, 1e-15);
+        Ok(())
     }
 
     #[test]
@@ -700,6 +918,56 @@ mod tests {
                 }
             }
         }
+        Ok(())
+    }
+
+    #[test]
+    fn dpotrf_works() -> Result<(), &'static str> {
+        // matrix a
+        #[rustfmt::skip]
+        let mut a_up = slice_to_colmajor(&[
+            &[ 3.0,  0.0, -3.0,  0.0],
+            &[ 0.0,  3.0,  1.0,  2.0],
+            &[ 0.0,  0.0,  4.0,  1.0],
+            &[ 0.0,  0.0,  0.0,  3.0],
+        ]);
+        #[rustfmt::skip]
+        let mut a_lo = slice_to_colmajor(&[
+            &[ 3.0,  0.0,  0.0,  0.0],
+            &[ 0.0,  3.0,  0.0,  0.0],
+            &[-3.0,  1.0,  4.0,  0.0],
+            &[ 0.0,  2.0,  1.0,  3.0],
+        ]);
+
+        // n-size
+        let n = 4_i32; // =a.ncol
+
+        // run dpotrf with up part of matrix a
+        let lda = n;
+        dpotrf(true, n, &mut a_up, lda)?;
+
+        // check Cholesky
+        #[rustfmt::skip]
+        let a_up_correct = slice_to_colmajor(&[
+            &[ 1.732050807568877e+00,  0.000000000000000e+00, -1.732050807568878e+00,  0.000000000000000e+00],
+            &[ 0.000000000000000e+00,  1.732050807568877e+00,  5.773502691896258e-01,  1.154700538379252e+00],
+            &[ 0.000000000000000e+00,  0.000000000000000e+00,  8.164965809277251e-01,  4.082482904638632e-01],
+            &[ 0.000000000000000e+00,  0.000000000000000e+00,  0.000000000000000e+00,  1.224744871391589e+00],
+        ]);
+        assert_vec_approx_eq!(a_up, a_up_correct, 1e-15);
+
+        // run dpotrf with lo part of matrix a
+        dpotrf(false, n, &mut a_lo, lda)?;
+
+        // check Cholesky
+        #[rustfmt::skip]
+        let a_lo_correct = slice_to_colmajor(&[
+            &[ 1.732050807568877e+00,  0.000000000000000e+00,  0.000000000000000e+00,  0.000000000000000e+00],
+            &[ 0.000000000000000e+00,  1.732050807568877e+00,  0.000000000000000e+00,  0.000000000000000e+00],
+            &[-1.732050807568878e+00,  5.773502691896258e-01,  8.164965809277251e-01,  0.000000000000000e+00],
+            &[ 0.000000000000000e+00,  1.154700538379252e+00,  4.082482904638632e-01,  1.224744871391589e+00],
+        ]);
+        assert_vec_approx_eq!(a_lo, a_lo_correct, 1e-15);
         Ok(())
     }
 }

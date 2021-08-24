@@ -30,21 +30,16 @@ use std::convert::TryInto;
 ///                └             ┘";
 /// assert_eq!(format!("{}", a), correct);
 /// ```
-///
 pub fn outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) {
     let m = u.data.len();
     let n = v.data.len();
     if a.nrow != m {
-        panic!(
-            "the number of rows of matrix a (={}) must equal the size of vector u (={})",
-            a.nrow, m
-        );
+        #[rustfmt::skip]
+        panic!("nrow of matrix a (={}) must equal dim of vector u (={})", a.nrow, m);
     }
     if a.ncol != n {
-        panic!(
-            "the number of columns of matrix a (={}) must equal the size of vector v (={})",
-            a.ncol, n
-        );
+        #[rustfmt::skip]
+        panic!("ncol of matrix a (={}) must equal dim of vector v (={})", a.ncol, n);
     }
     let m_i32: i32 = m.try_into().unwrap();
     let n_i32: i32 = n.try_into().unwrap();
@@ -98,5 +93,23 @@ mod tests {
             &[4.0, 4.0, -8.0],
         ]);
         assert_vec_approx_eq!(a.data, correct, 1e-15);
+    }
+
+    #[test]
+    #[should_panic(expected = "nrow of matrix a (=1) must equal dim of vector u (=2)")]
+    fn mat_vec_mul_panic_1() {
+        let u = Vector::new(2);
+        let v = Vector::new(3);
+        let mut a = Matrix::new(1, 3);
+        outer(&mut a, 1.0, &u, &v);
+    }
+
+    #[test]
+    #[should_panic(expected = "ncol of matrix a (=1) must equal dim of vector v (=3)")]
+    fn mat_vec_mul_panic_2() {
+        let u = Vector::new(2);
+        let v = Vector::new(3);
+        let mut a = Matrix::new(2, 1);
+        outer(&mut a, 1.0, &u, &v);
     }
 }

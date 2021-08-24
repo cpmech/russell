@@ -1,5 +1,7 @@
 # Russell - Rust Scientific Library
 
+[![GH Stats](https://github-readme-stats.vercel.app/api?username=cpmech)](https://github.com/cpmech/russell)
+
 Work in progress...
 
 **Russell** assists in the development of scientific computations using the Rust language. We mainly consider the development of numerical methods and solvers for differential equations.

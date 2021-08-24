@@ -3,7 +3,7 @@ name = "russell_tensor"
 version = "0.1.0"
 edition = "2018"
 license = "MIT"
-description = "Tensor analysis tools for continuum mechanics"
+description = "Tensor analysis structures and functions for continuum mechanics"
 homepage = "https://github.com/cpmech/russell"
 repository = "https://github.com/cpmech/russell"
 documentation = "https://docs.rs/russell_tensor"
@@ -12,4 +12,4 @@ categories = ["mathematics", "science"]
 keywords = ["tensor", "Voigt", "Mandel", "continuum", "mechanics"]
 
 [dependencies]
-russell_chk = { path = "../russell_chk", version = "0.1" }
+russell_chk = { path = "../russell_chk", version = "*" }

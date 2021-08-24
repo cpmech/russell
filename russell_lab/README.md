@@ -1,4 +1,4 @@
-# Russell Lab - Matrix-Vector Laboratory Tools
+# Russell Lab - Matrix-vector laboratory including linear algebra tools
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
@@ -12,9 +12,15 @@ Documentation:
 
 ## Installation
 
+Install OpenBLAS:
+
+```bash
+sudo apt-get install libopenblas-dev
+```
+
 Add this to your Cargo.toml:
 
 ```toml
 [dependencies]
-russell_lab = "0.1"
+russell_lab = "*"
 ```

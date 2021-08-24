@@ -1,0 +1,13 @@
+[package]
+name = "zcoverage"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+russell_chk = { path = "../russell_chk", version = "*" }
+russell_lab = { path = "../russell_lab", version = "*" }
+russell_openblas = { path = "../russell_openblas", version = "*" }
+russell_stat = { path = "../russell_stat", version = "*" }
+russell_tensor = { path = "../russell_tensor", version = "*" }

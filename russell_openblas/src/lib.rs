@@ -1,8 +1,12 @@
 //! Russell - Rust Scientific Library
 //!
-//! **openblas**: Thin wrapper to (some) OpenBLAS routines
+//! **openblas**: Thin wrapper to some OpenBLAS routines
 
-// modules //////////////////////////////////////
+/// Returns package description
+pub fn desc() -> String {
+    "Thin wrapper to some OpenBLAS routines".to_string()
+}
+
 mod constants;
 mod conversions;
 mod highlevel;

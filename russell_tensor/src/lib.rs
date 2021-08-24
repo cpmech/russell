@@ -1,8 +1,12 @@
 //! Russell - Rust Scientific Library
 //!
-//! **tensor**: tensor analysis tools for continuum mechanics
+//! **tensor**: Tensor analysis structures and functions for continuum mechanics
 
-// modules //////////////////////////////////////
+/// Returns package description
+pub fn desc() -> String {
+    "Tensor analysis structures and functions for continuum mechanics".to_string()
+}
+
 mod constants;
 mod formatter;
 mod operations;

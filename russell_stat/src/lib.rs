@@ -1,15 +1,12 @@
 //! Russell - Rust Scientific Library
 //!
-//! **stat**: Statistics, Probabilities, and Random Numbers
+//! **stat**: Statistics calculations, probability distributions, and pseudo random numbers
 
-// errors ///////////////////////////////////////
-#[macro_use]
-extern crate error_chain;
-mod err {
-    error_chain! {}
+/// Returns package description
+pub fn desc() -> String {
+    "Statistics calculations, probability distributions, and pseudo random numbers".to_string()
 }
 
-// modules //////////////////////////////////////
 mod histogram;
 mod stat;
 pub use crate::histogram::*;

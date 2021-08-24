@@ -1,4 +1,4 @@
-# Russell Chk - Check Results during Tests
+# Russell Chk - Functions to check vectors and other data in tests
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
@@ -14,5 +14,5 @@ Add this to your Cargo.toml:
 
 ```toml
 [dependencies]
-russell_chk = "0.1"
+russell_chk = "*"
 ```

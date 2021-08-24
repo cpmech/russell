@@ -1,4 +1,4 @@
-# Russell Stat - Statistics, Probabilities, and Random Numbers
+# Russell Stat - Statistics calculations, probability distributions, and pseudo random numbers
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
@@ -16,5 +16,5 @@ Add this to your Cargo.toml:
 
 ```toml
 [dependencies]
-russell_stat = "0.1"
+russell_stat = "*"
 ```

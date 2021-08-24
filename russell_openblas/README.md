@@ -1,4 +1,4 @@
-# Russell OpenBLAS - Thin wrapper to (some) OpenBLAS routines
+# Russell OpenBLAS - Thin wrapper to some OpenBLAS routines
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
@@ -20,5 +20,5 @@ Add this to your Cargo.toml:
 
 ```toml
 [dependencies]
-russell_openblas = "0.1"
+russell_openblas = "*"
 ```

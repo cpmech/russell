@@ -1,6 +1,6 @@
 //! Russell - Rust Scientific Library
 //!
-//! **lab**: matrix-vector "laboratory" tools
+//! **lab**: Matrix-vector laboratory including linear algebra tools
 //!
 //! # Examples
 //!
@@ -44,6 +44,11 @@
 //! assert_eq!(format!("{}", c), correct);
 //! ```
 //!
+
+/// Returns package description
+pub fn desc() -> String {
+    "Matrix-vector laboratory including linear algebra tools".to_string()
+}
 
 mod linspace;
 mod matrix;

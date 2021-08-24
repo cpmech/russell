@@ -6,4 +6,5 @@ members = [
     "russell_openblas",
     "russell_stat",
     "russell_tensor",
+    "zcoverage"
 ]

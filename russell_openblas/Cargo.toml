@@ -3,7 +3,7 @@ name = "russell_openblas"
 version = "0.1.0"
 edition = "2018"
 license = "MIT"
-description = "Thin wrapper to (some) OpenBLAS routines for linear algebra computations"
+description = "Thin wrapper to some OpenBLAS routines"
 homepage = "https://github.com/cpmech/russell"
 repository = "https://github.com/cpmech/russell"
 documentation = "https://docs.rs/russell_openblas"
@@ -12,7 +12,7 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "vector", "eigenvalues", "decomposition"]
 
 [dependencies]
-russell_chk = { path = "../russell_chk", version = "0.1" }
+russell_chk = { path = "../russell_chk", version = "*" }
 criterion = "0.3"
 
 [[bench]]

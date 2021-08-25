@@ -28,7 +28,9 @@ extern "C" {
 ///
 /// # Note
 ///
-/// op(X) = X   or   op(X) = X**T
+/// ```text
+///    op(X) = X   or   op(X) = X**T
+/// ```
 ///
 /// alpha and beta are scalars, and A, B and C are matrices, with op( A )
 /// an m by k matrix,  op( B )  a  k by n matrix and  C an m by n matrix.
@@ -367,8 +369,9 @@ pub fn dpotrf(up: bool, n: i32, a: &mut [f64], lda: i32) -> Result<(), &'static 
 ///
 /// # Notes
 ///
-/// * If calc_vl==false, you may pass an empty vl array and must set ldvl=1
-/// * If calc_vr==false, you may pass an empty vr array and must set ldvr=1
+/// 1. The matrix will be modified
+/// 2. If calc_vl==false, you may pass an empty vl array and must set ldvl=1
+/// 3. If calc_vr==false, you may pass an empty vr array and must set ldvr=1
 ///
 /// # Reference
 ///
@@ -968,6 +971,115 @@ mod tests {
             &[ 0.000000000000000e+00,  1.154700538379252e+00,  4.082482904638632e-01,  1.224744871391589e+00],
         ]);
         assert_vec_approx_eq!(a_lo, a_lo_correct, 1e-15);
+        Ok(())
+    }
+
+    #[test]
+    fn dgeev_works() -> Result<(), &'static str> {
+        // matrix a
+        #[rustfmt::skip]
+        let mut a = slice_to_colmajor(&[
+            &[ 0.35,  0.45, -0.14, -0.17],
+            &[ 0.09,  0.07, -0.54,  0.35],
+            &[-0.44, -0.33, -0.03,  0.17],
+            &[ 0.25, -0.32, -0.13,  0.11],
+        ]);
+
+        // n-size
+        let n = 4_i32; // =a.nrow=a.ncol
+
+        // eigen-arrays
+        let sz = n as usize;
+        let mut wr = vec![0.0; sz]; // eigen values (real part)
+        let mut wi = vec![0.0; sz]; // eigen values (imaginary part)
+        let mut vl = vec![0.0; sz * sz]; // left eigenvectors
+        let mut vr = vec![0.0; sz * sz]; // right eigenvectors
+
+        // compute eigen-things
+        let (lda, ldvl, ldvr) = (n, n, n);
+        #[rustfmt::skip]
+        dgeev(true, true, n, &mut a, lda, &mut wr, &mut wi, &mut vl, ldvl, &mut vr, ldvr)?;
+
+        // check eigenvalues
+        #[rustfmt::skip]
+        let wr_correct = &[
+             7.994821225862098e-01,
+            -9.941245329507467e-02,
+            -9.941245329507467e-02,
+            -1.006572159960587e-01,
+        ];
+        #[rustfmt::skip]
+        let wi_correct = &[
+             0.0,
+             4.007924719897546e-01,
+            -4.007924719897546e-01,
+             0.0,
+        ];
+        assert_vec_approx_eq!(wr, wr_correct, 1e-15);
+        assert_vec_approx_eq!(wi, wi_correct, 1e-15);
+
+        // extract eigenvalues from dgeev data
+        let mut vl_real = vec![0.0; sz * sz];
+        let mut vl_imag = vec![0.0; sz * sz];
+        let mut vr_real = vec![0.0; sz * sz];
+        let mut vr_imag = vec![0.0; sz * sz];
+        extract_lapack_eigenvectors(&mut vl_real, &mut vl_imag, &mut vr_real, &mut vr_imag, &wi, &vl, &vr)?;
+
+        // check left eigenvectors
+        #[rustfmt::skip]
+        let vl_real_correct = slice_to_colmajor(&[
+            &[-6.244707486379453e-01,  5.330229831716200e-01,  5.330229831716200e-01,  6.641410231734539e-01],
+            &[-5.994889025288728e-01, -2.666163325181558e-01, -2.666163325181558e-01, -1.068153340034493e-01],
+            &[ 4.999156725721429e-01,  3.455257668600027e-01,  3.455257668600027e-01,  7.293254091191846e-01],
+            &[-2.708616172576073e-02, -2.540814367391268e-01, -2.540814367391268e-01,  1.248664621625170e-01],
+        ]);
+        #[rustfmt::skip]
+        let vl_imag_correct = slice_to_colmajor(&[
+            &[0.0,  0.0,                    0.0,                   0.0],
+            &[0.0,  4.041362636762622e-01, -4.041362636762622e-01, 0.0],
+            &[0.0,  3.152853126680209e-01, -3.152853126680209e-01, 0.0],
+            &[0.0, -4.451133008385643e-01,  4.451133008385643e-01, 0.0],
+        ]);
+        assert_vec_approx_eq!(vl_real, vl_real_correct, 1e-15);
+        assert_vec_approx_eq!(vl_imag, vl_imag_correct, 1e-15);
+
+        // check right eigenvectors
+        #[rustfmt::skip]
+        let vr_real_correct = slice_to_colmajor(&[
+            &[-6.550887675124076e-01,-1.933015482642217e-01,-1.933015482642217e-01, 1.253326972309026e-01],
+            &[-5.236294609021240e-01, 2.518565317267399e-01, 2.518565317267399e-01, 3.320222155717508e-01],
+            &[ 5.362184613722345e-01, 9.718245844328152e-02, 9.718245844328152e-02, 5.938377595573312e-01],
+            &[-9.560677820122976e-02, 6.759540542547480e-01, 6.759540542547480e-01, 7.220870298624550e-01],
+        ]);
+        #[rustfmt::skip]
+        let vr_imag_correct = slice_to_colmajor(&[
+            &[0.0,  2.546315719275843e-01, -2.546315719275843e-01, 0.0],
+            &[0.0, -5.224047347116287e-01,  5.224047347116287e-01, 0.0],
+            &[0.0, -3.083837558972283e-01,  3.083837558972283e-01, 0.0],
+            &[0.0,  0.0,                    0.0,                   0.0],
+        ]);
+        assert_vec_approx_eq!(vr_real, vr_real_correct, 1e-15);
+        assert_vec_approx_eq!(vr_imag, vr_imag_correct, 1e-15);
+
+        // clear output arrays
+        wr.iter_mut().map(|x| *x = 0.0).count();
+        wi.iter_mut().map(|x| *x = 0.0).count();
+        vl.iter_mut().map(|x| *x = 0.0).count();
+        vr.iter_mut().map(|x| *x = 0.0).count();
+        let n_zeros = vec![0.0; sz];
+        let nn_zeros = vec![0.0; sz * sz];
+        assert_eq!(wr, n_zeros);
+        assert_eq!(wi, n_zeros);
+        assert_eq!(vl, nn_zeros);
+        assert_eq!(vr, nn_zeros);
+
+        // compute eigen-things again, without vr
+        let mut empty: Vec<f64> = Vec::new();
+        let one = 1_i32;
+        #[rustfmt::skip]
+        dgeev(false, true, n, &mut a, lda, &mut wr, &mut wi, &mut empty, one, &mut vr, ldvr)?;
+
+        // done
         Ok(())
     }
 }

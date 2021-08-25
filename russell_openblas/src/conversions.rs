@@ -149,7 +149,7 @@ pub fn extract_lapack_eigenvectors_single(
         return Err("length of v_imag must be n*n");
     }
     if v.len() != n * n {
-        return Err("length of vl must be n*n");
+        return Err("length of v must be n*n");
     }
 
     // step and increment for next conjugate pair
@@ -505,6 +505,21 @@ mod tests {
         let mut v_imag = vec![0.0; n * wrong];
         let w_imag = vec![0.0; n];
         let v = vec![0.0; n * n];
+        match extract_lapack_eigenvectors_single(&mut v_real, &mut v_imag, &w_imag, &v) {
+            Err(e) => panic!("{}", e),
+            _ => (),
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "length of v must be n*n")]
+    fn extract_lapack_eigenvectors_single_fails_on_wrong_dim_3() {
+        let n = 2_usize;
+        let wrong = 1_usize;
+        let mut v_real = vec![0.0; n * n];
+        let mut v_imag = vec![0.0; n * n];
+        let w_imag = vec![0.0; n];
+        let v = vec![0.0; n * wrong];
         match extract_lapack_eigenvectors_single(&mut v_real, &mut v_imag, &w_imag, &v) {
             Err(e) => panic!("{}", e),
             _ => (),

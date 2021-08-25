@@ -984,14 +984,16 @@ mod tests {
             &[-0.44, -0.33, -0.03,  0.17],
             &[ 0.25, -0.32, -0.13,  0.11],
         ]);
+        let mut a_copy1 = a.to_vec();
+        let mut a_copy2 = a.to_vec();
 
         // n-size
         let n = 4_i32; // =a.nrow=a.ncol
 
         // eigen-arrays
         let sz = n as usize;
-        let mut wr = vec![0.0; sz]; // eigen values (real part)
-        let mut wi = vec![0.0; sz]; // eigen values (imaginary part)
+        let mut wr = vec![0.0; sz]; // eigenvalues (real part)
+        let mut wi = vec![0.0; sz]; // eigenvalues (imaginary part)
         let mut vl = vec![0.0; sz * sz]; // left eigenvectors
         let mut vr = vec![0.0; sz * sz]; // right eigenvectors
 
@@ -1073,11 +1075,33 @@ mod tests {
         assert_eq!(vl, nn_zeros);
         assert_eq!(vr, nn_zeros);
 
-        // compute eigen-things again, without vr
+        // auxiliary
         let mut empty: Vec<f64> = Vec::new();
         let one = 1_i32;
+
+        // compute eigen-things again, vl only
         #[rustfmt::skip]
-        dgeev(false, true, n, &mut a, lda, &mut wr, &mut wi, &mut empty, one, &mut vr, ldvr)?;
+        dgeev(true, false, n, &mut a_copy1, lda, &mut wr, &mut wi, &mut vl, ldvl, &mut empty, one)?;
+
+        // extract eigenvalues from dgeev data
+        vl_real.iter_mut().map(|x| *x = 0.0).count();
+        vl_imag.iter_mut().map(|x| *x = 0.0).count();
+        extract_lapack_eigenvectors_single(&mut vl_real, &mut vl_imag, &wi, &vl)?;
+
+        // check left eigenvalues
+        assert_vec_approx_eq!(vl_real, vl_real_correct, 1e-15);
+
+        // compute eigen-things again, vr only
+        #[rustfmt::skip]
+        dgeev(false, true, n, &mut a_copy2, lda, &mut wr, &mut wi, &mut empty, one, &mut vr, ldvr)?;
+
+        // extract eigenvalues from dgeev data
+        vr_real.iter_mut().map(|x| *x = 0.0).count();
+        vr_imag.iter_mut().map(|x| *x = 0.0).count();
+        extract_lapack_eigenvectors_single(&mut vr_real, &mut vr_imag, &wi, &vr)?;
+
+        // check left eigenvalues
+        assert_vec_approx_eq!(vr_real, vr_real_correct, 1e-15);
 
         // done
         Ok(())

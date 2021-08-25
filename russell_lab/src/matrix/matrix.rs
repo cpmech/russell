@@ -276,6 +276,22 @@ mod tests {
     }
 
     #[test]
+    fn display_trait_precision_works() {
+        #[rustfmt::skip]
+        let a = Matrix::from(&[
+            &[1.0111111, 2.02222222, 3.033333],
+            &[4.0444444, 5.05555555, 6.066666],
+            &[7.0777777, 8.08888888, 9.099999],
+        ]);
+        let correct = "┌                ┐\n\
+                            │ 1.01 2.02 3.03 │\n\
+                            │ 4.04 5.06 6.07 │\n\
+                            │ 7.08 8.09 9.10 │\n\
+                            └                ┘";
+        assert_eq!(format!("{:.2}", a), correct);
+    }
+
+    #[test]
     fn scale_works() {
         #[rustfmt::skip]
         let mut a = Matrix::from(&[

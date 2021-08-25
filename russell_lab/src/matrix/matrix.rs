@@ -165,11 +165,15 @@ impl fmt::Display for Matrix {
         for i in 0..self.nrow {
             for j in 0..self.ncol {
                 let val = self.data[i + j * self.nrow];
-                write!(&mut buf, "{}", val)?;
+                match f.precision() {
+                    Some(v) => write!(&mut buf, "{:.1$}", val, v)?,
+                    None => write!(&mut buf, "{}", val)?,
+                }
                 width = cmp::max(buf.chars().count(), width);
                 buf.clear();
             }
         }
+        // draw matrix
         width += 1;
         write!(f, "┌{:1$}┐\n", " ", width * self.ncol + 1)?;
         for i in 0..self.nrow {
@@ -181,7 +185,10 @@ impl fmt::Display for Matrix {
                     write!(f, "│")?;
                 }
                 let val = self.data[i + j * self.nrow];
-                write!(f, "{:>1$}", val, width)?;
+                match f.precision() {
+                    Some(v) => write!(f, "{:>1$.2$}", val, width, v)?,
+                    None => write!(f, "{:>1$}", val, width)?,
+                }
             }
         }
         write!(f, " │\n")?;

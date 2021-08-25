@@ -1,0 +1,14 @@
+pub fn lu_factor() {}
+
+pub fn lu_to_inverse() {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use russell_chk::*;
+
+    #[test]
+    fn lu_factor_works() {}
+}

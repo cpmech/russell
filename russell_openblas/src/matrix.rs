@@ -133,17 +133,18 @@ pub fn dsyrk(
 ///
 /// where SIGMA is an M-by-N matrix which is zero except for its
 /// min(m,n) diagonal elements, U is an M-by-M orthogonal matrix, and
-/// V is an N-by-N orthogonal matrix.  The diagonal elements of SIGMA
+/// V is an N-by-N orthogonal matrix. The diagonal elements of SIGMA
 /// are the singular values of A; they are real and non-negative, and
-/// are returned in descending order.  The first min(m,n) columns of
+/// are returned in descending order. The first min(m,n) columns of
 /// U and V are the left and right singular vectors of A.
 ///
 /// # Note
 ///
 /// 1. The routine returns V**T, not V.
 /// 2. The matrix will be modified
-/// 3. jobu and jobvt are c_char and can be passed as b'A'
+/// 3. `jobu` and `jobvt` are c_char and can be passed as b'A'
 ///    (see LAPACK reference for further options)
+/// 4. `superb` is a work area of size min(m,n)-1; e.g., use min(m,n)
 ///
 /// # Reference
 ///

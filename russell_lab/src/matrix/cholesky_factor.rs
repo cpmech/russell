@@ -6,5 +6,5 @@ mod tests {
     use russell_chk::*;
 
     #[test]
-    fn sym_rank_works() {}
+    fn cholesky_factor_works() {}
 }

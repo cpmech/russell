@@ -30,6 +30,7 @@ pub fn slice_to_colmajor(a: &[&[f64]]) -> Vec<f64> {
     }
     data
 }
+
 /// Extracts LAPACK (dgeev) eigenvectors from its compact representation
 ///
 /// # Output
@@ -41,7 +42,7 @@ pub fn slice_to_colmajor(a: &[&[f64]]) -> Vec<f64> {
 ///
 /// # Input
 ///
-/// * `wr_imag` -- [n] eigenvalues; imaginary part
+/// * `w_imag` -- [n] eigenvalues; imaginary part
 /// * `vl` -- [n*n] output of dgeev
 /// * `vr` -- [n*n] output of dgeev
 ///
@@ -57,22 +58,22 @@ pub fn extract_lapack_eigenvectors(
     // check
     let n = w_imag.len();
     if vl_real.len() != n * n {
-        return Err("the length of vl_real must be n*n");
+        return Err("length of vl_real must be n*n");
     }
     if vl_imag.len() != n * n {
-        return Err("the length of vl_imag must be n*n");
+        return Err("length of vl_imag must be n*n");
     }
     if vr_real.len() != n * n {
-        return Err("the length of vr_real must be n*n");
+        return Err("length of vr_real must be n*n");
     }
     if vr_imag.len() != n * n {
-        return Err("the length of vr_imag must be n*n");
+        return Err("length of vr_imag must be n*n");
     }
     if vl.len() != n * n {
-        return Err("the length of vl must be n*n");
+        return Err("length of vl must be n*n");
     }
     if vr.len() != n * n {
-        return Err("the length of vr must be n*n");
+        return Err("length of vr must be n*n");
     }
 
     // step and increment for next conjugate pair
@@ -110,6 +111,76 @@ pub fn extract_lapack_eigenvectors(
                 vr_real[p] = vr[p];
                 vl_imag[p] = 0.0;
                 vr_imag[p] = 0.0;
+            }
+            dj = 1;
+        }
+        // next step
+        j += dj;
+    }
+    Ok(())
+}
+
+/// Extracts LAPACK (dgeev) eigenvectors from its compact representation (single set)
+///
+/// Single set: extracts either the left eigenvectors or the right eigenvectors
+///
+/// # Output
+///
+/// * `v_real` -- [pre-allocated, n*n col-major] eigenvectors; real part
+/// * `v_imag` -- [pre-allocated, n*n col-major] eigenvectors; imaginary part
+///
+/// # Input
+///
+/// * `w_imag` -- [n] eigenvalues; imaginary part
+/// * `v` -- [n*n] output of dgeev
+///
+pub fn extract_lapack_eigenvectors_single(
+    v_real: &mut [f64],
+    v_imag: &mut [f64],
+    w_imag: &[f64],
+    v: &[f64],
+) -> Result<(), &'static str> {
+    // check
+    let n = w_imag.len();
+    if v_real.len() != n * n {
+        return Err("length of v_real must be n*n");
+    }
+    if v_imag.len() != n * n {
+        return Err("length of v_imag must be n*n");
+    }
+    if v.len() != n * n {
+        return Err("length of vl must be n*n");
+    }
+
+    // step and increment for next conjugate pair
+    let mut j = 0_usize;
+    let mut dj: usize;
+
+    // loop over columns ~ eigenvalues
+    while j < n {
+        // eigenvalue is complex
+        if w_imag[j].abs() > 0.0 {
+            if j > n - 2 {
+                return Err("last eigenvalue cannot be complex");
+            }
+            // loop over rows
+            for i in 0..n {
+                let p = i + j * n;
+                let q = i + (j + 1) * n;
+                v_real[p] = v[p];
+                v_imag[p] = v[q];
+                v_real[q] = v[p];
+                v_imag[q] = -v[q];
+            }
+            dj = 2;
+
+        // eigenvalue is real
+        } else {
+            // loop over rows
+            for i in 0..n {
+                let p = i + j * n;
+                v_real[p] = v[p];
+                v_imag[p] = 0.0;
             }
             dj = 1;
         }
@@ -185,18 +256,27 @@ mod tests {
             0.04, 0.62, -0.04, 0.28, -0.04, 0.04, 0.62, -0.04, 0.28, -0.04, -0.13, 0.69, -0.39, -0.02, -0.40, -0.13,
             0.69, -0.39, -0.02, -0.40, 0.04, 0.56, -0.13, -0.80, 0.18,
         ];
-
-        assert_vec_approx_eq!(vl_real, correct_vl_real, 1e-15);
         let correct_vl_imag = &[
             0.29, 0.00, -0.58, 0.01, 0.34, -0.29, 0.00, 0.58, -0.01, -0.34, -0.33, 0.00, -0.07, -0.19, 0.22, 0.33,
             0.00, 0.07, 0.19, -0.22, 0.0, 0.0, 0.0, 0.0, 0.0,
         ];
+        let correct_vr_real = &[
+            0.11, 0.41, 0.10, 0.40, 0.54, 0.11, 0.41, 0.10, 0.40, 0.54, 0.73, -0.03, 0.19, -0.08, -0.29, 0.73, -0.03,
+            0.19, -0.08, -0.29, 0.46, 0.34, 0.31, -0.74, 0.16,
+        ];
+        let correct_vr_imag = &[
+            0.17, -0.26, -0.51, -0.09, 0.00, -0.17, 0.26, 0.51, 0.09, 0.00, 0.00, -0.02, -0.29, -0.08, -0.49, 0.00,
+            0.02, 0.29, 0.08, 0.49, 0.0, 0.0, 0.0, 0.0, 0.0,
+        ];
+        assert_vec_approx_eq!(vl_real, correct_vl_real, 1e-15);
         assert_vec_approx_eq!(vl_imag, correct_vl_imag, 1e-15);
+        assert_vec_approx_eq!(vr_real, correct_vr_real, 1e-15);
+        assert_vec_approx_eq!(vr_imag, correct_vr_imag, 1e-15);
         Ok(())
     }
 
     #[test]
-    #[should_panic(expected = "the length of vl_real must be n*n")]
+    #[should_panic(expected = "length of vl_real must be n*n")]
     fn extract_lapack_eigenvectors_fails_on_wrong_dim_1() {
         let n = 2_usize;
         let wrong = 1_usize;
@@ -222,7 +302,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "the length of vl_imag must be n*n")]
+    #[should_panic(expected = "length of vl_imag must be n*n")]
     fn extract_lapack_eigenvectors_fails_on_wrong_dim_2() {
         let n = 2_usize;
         let wrong = 1_usize;
@@ -248,7 +328,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "the length of vr_real must be n*n")]
+    #[should_panic(expected = "length of vr_real must be n*n")]
     fn extract_lapack_eigenvectors_fails_on_wrong_dim_3() {
         let n = 2_usize;
         let wrong = 1_usize;
@@ -274,7 +354,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "the length of vr_imag must be n*n")]
+    #[should_panic(expected = "length of vr_imag must be n*n")]
     fn extract_lapack_eigenvectors_fails_on_wrong_dim_4() {
         let n = 2_usize;
         let wrong = 1_usize;
@@ -300,7 +380,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "the length of vl must be n*n")]
+    #[should_panic(expected = "length of vl must be n*n")]
     fn extract_lapack_eigenvectors_fails_on_wrong_dim_5() {
         let n = 2_usize;
         let wrong = 1_usize;
@@ -326,7 +406,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "the length of vr must be n*n")]
+    #[should_panic(expected = "length of vr must be n*n")]
     fn extract_lapack_eigenvectors_fails_on_wrong_dim_6() {
         let n = 2_usize;
         let wrong = 1_usize;
@@ -372,6 +452,75 @@ mod tests {
             &vl,
             &vr,
         ) {
+            Err(e) => panic!("{}", e),
+            _ => (),
+        }
+    }
+
+    #[test]
+    fn extract_lapack_eigenvectors_single_works() -> Result<(), &'static str> {
+        let n = 5_usize;
+        let mut v_real = vec![0.0; n * n];
+        let mut v_imag = vec![0.0; n * n];
+        let w_imag = [10.76, -10.76, 4.70, -4.70, 0.0];
+        let v = [
+            0.04, 0.62, -0.04, 0.28, -0.04, 0.29, 0.00, -0.58, 0.01, 0.34, -0.13, 0.69, -0.39, -0.02, -0.40, -0.33,
+            0.00, -0.07, -0.19, 0.22, 0.04, 0.56, -0.13, -0.80, 0.18,
+        ];
+        extract_lapack_eigenvectors_single(&mut v_real, &mut v_imag, &w_imag, &v)?;
+        let correct_v_real = &[
+            0.04, 0.62, -0.04, 0.28, -0.04, 0.04, 0.62, -0.04, 0.28, -0.04, -0.13, 0.69, -0.39, -0.02, -0.40, -0.13,
+            0.69, -0.39, -0.02, -0.40, 0.04, 0.56, -0.13, -0.80, 0.18,
+        ];
+        let correct_v_imag = &[
+            0.29, 0.00, -0.58, 0.01, 0.34, -0.29, 0.00, 0.58, -0.01, -0.34, -0.33, 0.00, -0.07, -0.19, 0.22, 0.33,
+            0.00, 0.07, 0.19, -0.22, 0.0, 0.0, 0.0, 0.0, 0.0,
+        ];
+        assert_vec_approx_eq!(v_real, correct_v_real, 1e-15);
+        assert_vec_approx_eq!(v_imag, correct_v_imag, 1e-15);
+        Ok(())
+    }
+
+    #[test]
+    #[should_panic(expected = "length of v_real must be n*n")]
+    fn extract_lapack_eigenvectors_single_fails_on_wrong_dim_1() {
+        let n = 2_usize;
+        let wrong = 1_usize;
+        let mut v_real = vec![0.0; n * wrong];
+        let mut v_imag = vec![0.0; n * n];
+        let w_imag = vec![0.0; n];
+        let v = vec![0.0; n * n];
+        match extract_lapack_eigenvectors_single(&mut v_real, &mut v_imag, &w_imag, &v) {
+            Err(e) => panic!("{}", e),
+            _ => (),
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "length of v_imag must be n*n")]
+    fn extract_lapack_eigenvectors_single_fails_on_wrong_dim_2() {
+        let n = 2_usize;
+        let wrong = 1_usize;
+        let mut v_real = vec![0.0; n * n];
+        let mut v_imag = vec![0.0; n * wrong];
+        let w_imag = vec![0.0; n];
+        let v = vec![0.0; n * n];
+        match extract_lapack_eigenvectors_single(&mut v_real, &mut v_imag, &w_imag, &v) {
+            Err(e) => panic!("{}", e),
+            _ => (),
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "last eigenvalue cannot be complex")]
+    fn extract_lapack_eigenvectors_single_fails_on_wrong_ev() {
+        let n = 2_usize;
+        let mut v_real = vec![0.0; n * n];
+        let mut v_imag = vec![0.0; n * n];
+        const WRONG: f64 = 123.456;
+        let w_imag = [0.0, WRONG];
+        let v = vec![0.0; n * n];
+        match extract_lapack_eigenvectors_single(&mut v_real, &mut v_imag, &w_imag, &v) {
             Err(e) => panic!("{}", e),
             _ => (),
         }

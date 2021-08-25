@@ -187,10 +187,14 @@ impl fmt::Display for Vector {
         let mut buf = String::new();
         for i in 0..self.data.len() {
             let val = self.data[i];
-            write!(&mut buf, "{}", val)?;
+            match f.precision() {
+                Some(v) => write!(&mut buf, "{:.1$}", val, v)?,
+                None => write!(&mut buf, "{}", val)?,
+            }
             width = cmp::max(buf.chars().count(), width);
             buf.clear();
         }
+        // draw vector
         width += 1;
         write!(f, "┌{:1$}┐\n", " ", width + 1)?;
         for i in 0..self.data.len() {
@@ -199,7 +203,10 @@ impl fmt::Display for Vector {
             }
             write!(f, "│")?;
             let val = self.data[i];
-            write!(f, "{:>1$}", val, width)?;
+            match f.precision() {
+                Some(v) => write!(f, "{:>1$.2$}", val, width, v)?,
+                None => write!(f, "{:>1$}", val, width)?,
+            }
         }
         write!(f, " │\n")?;
         write!(f, "└{:1$}┘", " ", width + 1)?;
@@ -266,6 +273,18 @@ mod tests {
                             │ 3 │\n\
                             └   ┘";
         assert_eq!(format!("{}", u), correct);
+    }
+
+    #[test]
+    fn display_trait_precision_works() {
+        #[rustfmt::skip]
+        let u = Vector::from(&[1.012444, 2.034123, 3.05678]);
+        let correct = "┌      ┐\n\
+                            │ 1.01 │\n\
+                            │ 2.03 │\n\
+                            │ 3.06 │\n\
+                            └      ┘";
+        assert_eq!(format!("{:.2}", u), correct);
     }
 
     #[test]

@@ -154,6 +154,23 @@ impl Matrix {
         dscal(n, alpha, &mut self.data, 1);
     }
 
+    /// Returns the component ij
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let a = Matrix::from(&[
+    ///     &[1.0, 2.0],
+    ///     &[3.0, 4.0],
+    /// ]);
+    /// assert_eq!(a.get(1,1), 4.0);
+    /// ```
+    #[inline]
+    pub fn get(&self, i: usize, j: usize) -> f64 {
+        self.data[i + j * self.nrow]
+    }
+
     /// Executes the += operation on the component ij
     ///
     /// ```text
@@ -175,6 +192,7 @@ impl Matrix {
     ///                └           ┘";
     /// assert_eq!(format!("{:.2}", a), correct);
     /// ```
+    #[inline]
     pub fn plus_equal(&mut self, i: usize, j: usize, value: f64) {
         self.data[i + j * self.nrow] += value;
     }
@@ -329,5 +347,27 @@ mod tests {
             &[-2.0, -3.0, -4.0],
         ]);
         assert_vec_approx_eq!(a.data, correct, 1e-15);
+    }
+
+    #[test]
+    fn get_works() {
+        let a = Matrix::from(&[&[1.0, 2.0], &[3.0, 4.0]]);
+        assert_eq!(a.get(0, 0), 1.0);
+        assert_eq!(a.get(0, 1), 2.0);
+        assert_eq!(a.get(1, 0), 3.0);
+        assert_eq!(a.get(1, 1), 4.0);
+    }
+
+    #[test]
+    fn plus_equal_works() {
+        let mut a = Matrix::from(&[&[1.0, 2.0], &[3.0, 4.0]]);
+        a.plus_equal(0, 0, 0.11);
+        a.plus_equal(0, 1, 0.22);
+        a.plus_equal(1, 0, 0.33);
+        a.plus_equal(1, 1, 0.44);
+        assert_eq!(a.get(0, 0), 1.11);
+        assert_eq!(a.get(0, 1), 2.22);
+        assert_eq!(a.get(1, 0), 3.33);
+        assert_eq!(a.get(1, 1), 4.44);
     }
 }

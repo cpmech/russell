@@ -24,6 +24,43 @@ use std::convert::TryFrom;
 ///
 /// 1. The matrix [a] will be modified
 ///
+/// # Examples
+///
+/// ```
+/// # fn main() -> Result<(), &'static str> {
+/// use russell_lab::*;
+/// let mut a = Matrix::from(&[
+///     &[2.0, 4.0],
+///     &[1.0, 3.0],
+///     &[0.0, 0.0],
+///     &[0.0, 0.0],
+/// ]);
+/// let (m, n) = a.dims();
+/// let min_mn = if m < n { m } else { n };
+/// let mut s = Vector::new(min_mn);
+/// let mut u = Matrix::new(m, m);
+/// let mut vt = Matrix::new(n, n);
+/// sv_decomp(&mut s, &mut u, &mut vt, &mut a)?;
+/// let s_correct = "┌      ┐\n\
+///                  │ 5.46 │\n\
+///                  │ 0.37 │\n\
+///                  └      ┘";
+/// let u_correct = "┌                         ┐\n\
+///                  │ -0.82 -0.58  0.00  0.00 │\n\
+///                  │ -0.58  0.82  0.00  0.00 │\n\
+///                  │  0.00  0.00  1.00  0.00 │\n\
+///                  │  0.00  0.00  0.00  1.00 │\n\
+///                  └                         ┘";
+/// let vt_correct = "┌             ┐\n\
+///                   │ -0.40 -0.91 │\n\
+///                   │ -0.91  0.40 │\n\
+///                   └             ┘";
+/// assert_eq!(format!("{:.2}", s), s_correct);
+/// assert_eq!(format!("{:.2}", u), u_correct);
+/// assert_eq!(format!("{:.2}", vt), vt_correct);
+/// # Ok(())
+/// # }
+/// ```
 pub fn sv_decomp(
     s: &mut Vector,
     u: &mut Matrix,
@@ -73,12 +110,14 @@ mod tests {
         // matrix
         let s33 = f64::sqrt(3.0) / 3.0;
         #[rustfmt::skip]
-        let mut a = Matrix::from(&[
+        let data: &[&[f64]] = &[
             &[-s33, -s33, 1.0],
             &[ s33, -s33, 1.0],
             &[-s33,  s33, 1.0],
             &[ s33,  s33, 1.0],
-        ]);
+        ];
+        let mut a = Matrix::from(data);
+        let a_copy = Matrix::from(data);
 
         // allocate output data
         let (m, n) = a.dims();
@@ -113,6 +152,17 @@ mod tests {
         assert_vec_approx_eq!(u.data, u_correct.data, 1e-15);
         assert_vec_approx_eq!(s.data, s_correct.data, 1e-15);
         assert_vec_approx_eq!(vt.data, vt_correct.data, 1e-15);
+
+        // check SVD
+        let mut usv = vec![0.0; m * n];
+        for i in 0..m {
+            for j in 0..n {
+                for k in 0..min_mn {
+                    usv[i + j * m] += u.data[i + k * m] * s.data[k] * vt.data[k + j * n];
+                }
+            }
+        }
+        assert_vec_approx_eq!(usv, a_copy.data, 1e-15);
 
         // done
         Ok(())

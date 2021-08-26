@@ -171,6 +171,28 @@ impl Matrix {
         self.data[i + j * self.nrow]
     }
 
+    /// Change the component ij
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut a = Matrix::from(&[
+    ///     &[1.0, 2.0],
+    ///     &[3.0, 4.0],
+    /// ]);
+    /// a.set(1, 1, -4.0);
+    /// let correct = "┌       ┐\n\
+    ///                │  1  2 │\n\
+    ///                │  3 -4 │\n\
+    ///                └       ┘";
+    /// assert_eq!(format!("{}", a), correct);
+    /// ```
+    #[inline]
+    pub fn set(&mut self, i: usize, j: usize, value: f64) {
+        self.data[i + j * self.nrow] = value;
+    }
+
     /// Executes the += operation on the component ij
     ///
     /// ```text
@@ -359,15 +381,30 @@ mod tests {
     }
 
     #[test]
+    fn set_works() {
+        #[rustfmt::skip]
+        let mut a = Matrix::from(&[
+            &[1.0, 2.0],
+            &[3.0, 4.0],
+        ]);
+        a.set(0, 0, -1.0);
+        a.set(0, 1, -2.0);
+        a.set(1, 0, -3.0);
+        a.set(1, 1, -4.0);
+        assert_eq!(a.data, &[-1.0, -3.0, -2.0, -4.0]);
+    }
+
+    #[test]
     fn plus_equal_works() {
-        let mut a = Matrix::from(&[&[1.0, 2.0], &[3.0, 4.0]]);
+        #[rustfmt::skip]
+        let mut a = Matrix::from(&[
+            &[1.0, 2.0],
+            &[3.0, 4.0],
+        ]);
         a.plus_equal(0, 0, 0.11);
         a.plus_equal(0, 1, 0.22);
         a.plus_equal(1, 0, 0.33);
         a.plus_equal(1, 1, 0.44);
-        assert_eq!(a.get(0, 0), 1.11);
-        assert_eq!(a.get(0, 1), 2.22);
-        assert_eq!(a.get(1, 0), 3.33);
-        assert_eq!(a.get(1, 1), 4.44);
+        assert_eq!(a.data, &[1.11, 3.33, 2.22, 4.44]);
     }
 }

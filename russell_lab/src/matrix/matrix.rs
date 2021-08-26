@@ -149,10 +149,34 @@ impl Matrix {
     ///                └             ┘";
     /// assert_eq!(format!("{}", a), correct);
     /// ```
-    ///
     pub fn scale(&mut self, alpha: f64) {
         let n: i32 = self.data.len().try_into().unwrap();
         dscal(n, alpha, &mut self.data, 1);
+    }
+
+    /// Executes the += operation on the component ij
+    ///
+    /// ```text
+    /// a_ij += value
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut a = Matrix::from(&[
+    ///     &[1.0, 2.0],
+    ///     &[3.0, 4.0],
+    /// ]);
+    /// a.plus_equal(1, 1, 0.44);
+    /// let correct = "┌           ┐\n\
+    ///                │ 1.00 2.00 │\n\
+    ///                │ 3.00 4.44 │\n\
+    ///                └           ┘";
+    /// assert_eq!(format!("{:.2}", a), correct);
+    /// ```
+    pub fn plus_equal(&mut self, i: usize, j: usize, value: f64) {
+        self.data[i + j * self.nrow] += value;
     }
 }
 

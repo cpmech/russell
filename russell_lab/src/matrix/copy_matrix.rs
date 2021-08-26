@@ -32,7 +32,7 @@ use std::convert::TryInto;
 /// ```
 pub fn copy_matrix(b: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
     if a.nrow != b.nrow || a.ncol != b.ncol {
-        return Err("[a] and [b] matrices must have the same dimensions");
+        return Err("matrices have wrong dimensions");
     }
     let n_i32: i32 = b.data.len().try_into().unwrap();
     dcopy(n_i32, &a.data, 1, &mut b.data, 1);
@@ -78,19 +78,19 @@ mod tests {
         let mut b_1x2 = Matrix::new(1, 2);
         assert_eq!(
             copy_matrix(&mut b_2x2, &a_2x1),
-            Err("[a] and [b] matrices must have the same dimensions")
+            Err("matrices have wrong dimensions")
         );
         assert_eq!(
             copy_matrix(&mut b_2x2, &a_1x2),
-            Err("[a] and [b] matrices must have the same dimensions")
+            Err("matrices have wrong dimensions")
         );
         assert_eq!(
             copy_matrix(&mut b_2x1, &a_2x2),
-            Err("[a] and [b] matrices must have the same dimensions")
+            Err("matrices have wrong dimensions")
         );
         assert_eq!(
             copy_matrix(&mut b_1x2, &a_2x2),
-            Err("[a] and [b] matrices must have the same dimensions")
+            Err("matrices have wrong dimensions")
         );
     }
 }

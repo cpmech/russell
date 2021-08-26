@@ -15,7 +15,7 @@ use std::convert::TryInto;
 /// use russell_lab::*;
 /// let u = Vector::from(&[1.0, 2.0, 3.0]);
 /// let mut v = Vector::from(&[-1.0, -2.0, -3.0]);
-/// copy_vector(&mut v, &u);
+/// copy_vector(&mut v, &u)?;
 /// let correct = "┌   ┐\n\
 ///                │ 1 │\n\
 ///                │ 2 │\n\

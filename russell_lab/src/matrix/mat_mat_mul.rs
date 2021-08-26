@@ -36,7 +36,7 @@ use std::convert::TryInto;
 /// ```
 pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) -> Result<(), &'static str> {
     if a.nrow != c.nrow || a.ncol != b.nrow || b.ncol != c.ncol {
-        return Err("matrices have the wrong dimensions");
+        return Err("matrices have wrong dimensions");
     }
     let m_i32: i32 = c.nrow.try_into().unwrap();
     let n_i32: i32 = c.ncol.try_into().unwrap();
@@ -102,15 +102,15 @@ mod tests {
         let mut c_2x2 = Matrix::new(2, 2);
         assert_eq!(
             mat_mat_mul(&mut c_2x2, 1.0, &a_2x1, &b_2x1),
-            Err("matrices have the wrong dimensions")
+            Err("matrices have wrong dimensions")
         );
         assert_eq!(
             mat_mat_mul(&mut c_2x2, 1.0, &a_1x2, &b_2x1),
-            Err("matrices have the wrong dimensions")
+            Err("matrices have wrong dimensions")
         );
         assert_eq!(
             mat_mat_mul(&mut c_2x2, 1.0, &a_2x1, &b_1x3),
-            Err("matrices have the wrong dimensions")
+            Err("matrices have wrong dimensions")
         );
     }
 }

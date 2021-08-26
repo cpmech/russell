@@ -39,11 +39,8 @@ pub fn add_matrices(
     beta: f64,
     b: &Matrix,
 ) -> Result<(), &'static str> {
-    if a.nrow != c.nrow || a.ncol != c.ncol {
-        return Err("[a] and [c] matrices must have the same dimensions");
-    }
-    if b.nrow != c.nrow || b.ncol != c.ncol {
-        return Err("[b] and [c] matrices must have the same dimensions");
+    if a.nrow != c.nrow || a.ncol != c.ncol || b.nrow != c.nrow || b.ncol != c.ncol {
+        return Err("matrices have wrong dimensions");
     }
     if c.nrow == 0 && c.ncol == 0 {
         return Ok(());
@@ -140,19 +137,19 @@ mod tests {
         let mut c_2x2 = Matrix::new(2, 2);
         assert_eq!(
             add_matrices(&mut c_2x2, 1.0, &a_2x3, 1.0, &b_2x2),
-            Err("[a] and [c] matrices must have the same dimensions")
+            Err("matrices have wrong dimensions")
         );
         assert_eq!(
             add_matrices(&mut c_2x2, 1.0, &a_3x2, 1.0, &b_2x2),
-            Err("[a] and [c] matrices must have the same dimensions")
+            Err("matrices have wrong dimensions")
         );
         assert_eq!(
             add_matrices(&mut c_2x2, 1.0, &a_2x2, 1.0, &b_2x3),
-            Err("[b] and [c] matrices must have the same dimensions")
+            Err("matrices have wrong dimensions")
         );
         assert_eq!(
             add_matrices(&mut c_2x2, 1.0, &a_2x2, 1.0, &b_3x2),
-            Err("[b] and [c] matrices must have the same dimensions")
+            Err("matrices have wrong dimensions")
         );
     }
 

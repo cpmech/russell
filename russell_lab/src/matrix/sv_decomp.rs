@@ -1,7 +1,6 @@
 use crate::matrix::*;
 use crate::vector::*;
 use russell_openblas::*;
-use std::convert::TryFrom;
 
 /// Computes the singular value decomposition (SVD) of a matrix
 ///
@@ -169,8 +168,8 @@ pub fn sv_decomp(
     if vt.nrow != n || vt.ncol != n {
         return Err("[vt] must be an n-by-n square matrix");
     }
-    let m_i32 = to_i32!(m)?;
-    let n_i32 = to_i32!(n)?;
+    let m_i32 = to_i32(m);
+    let n_i32 = to_i32(n);
     let mut superb = vec![0.0; min_mn];
     dgesvd(
         b'A',

@@ -122,6 +122,62 @@ impl Vector {
         dscal(n, alpha, &mut self.data, 1);
     }
 
+    /// Returns the component i
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let u = Vector::from(&[1.0, 2.0]);
+    /// assert_eq!(u.get(1), 2.0);
+    /// ```
+    #[inline]
+    pub fn get(&self, i: usize) -> f64 {
+        self.data[i]
+    }
+
+    /// Change the component i
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut u = Vector::from(&[1.0, 2.0]);
+    /// u.set(1, -2.0);
+    /// let correct = "┌    ┐\n\
+    ///                │  1 │\n\
+    ///                │ -2 │\n\
+    ///                └    ┘";
+    /// assert_eq!(format!("{}", u), correct);
+    /// ```
+    #[inline]
+    pub fn set(&mut self, i: usize, value: f64) {
+        self.data[i] = value;
+    }
+
+    /// Executes the += operation on the component i
+    ///
+    /// ```text
+    /// u_i += value
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut u = Vector::from(&[1.0, 2.0]);
+    /// u.plus_equal(1, 0.22);
+    /// let correct = "┌      ┐\n\
+    ///                │ 1.00 │\n\
+    ///                │ 2.22 │\n\
+    ///                └      ┘";
+    /// assert_eq!(format!("{:.2}", u), correct);
+    /// ```
+    #[inline]
+    pub fn plus_equal(&mut self, i: usize, value: f64) {
+        self.data[i] += value;
+    }
+
     /// Applies a function over all components of this vector
     ///
     /// ```text
@@ -293,6 +349,29 @@ mod tests {
         u.scale(1.0 / 3.0);
         let correct = &[2.0, 3.0, 4.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
+    }
+
+    #[test]
+    fn get_works() {
+        let u = Vector::from(&[1.0, 2.0]);
+        assert_eq!(u.get(0), 1.0);
+        assert_eq!(u.get(1), 2.0);
+    }
+
+    #[test]
+    fn set_works() {
+        let mut u = Vector::from(&[1.0, 2.0]);
+        u.set(0, -1.0);
+        u.set(1, -2.0);
+        assert_eq!(u.data, &[-1.0, -2.0]);
+    }
+
+    #[test]
+    fn plus_equal_works() {
+        let mut u = Vector::from(&[1.0, 2.0]);
+        u.plus_equal(0, 0.11);
+        u.plus_equal(1, 0.22);
+        assert_eq!(u.data, &[1.11, 2.22]);
     }
 
     #[test]

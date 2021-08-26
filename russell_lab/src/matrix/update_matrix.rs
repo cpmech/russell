@@ -21,7 +21,7 @@ use std::convert::TryInto;
 ///     &[10.0, 20.0, 30.0],
 ///     &[40.0, 50.0, 60.0],
 /// ])?;
-/// update_matrix(&mut b, 0.1, &a);
+/// update_matrix(&mut b, 0.1, &a)?;
 /// let correct = "┌          ┐\n\
 ///                │ 11 22 33 │\n\
 ///                │ 44 55 66 │\n\
@@ -30,17 +30,13 @@ use std::convert::TryInto;
 /// # Ok(())
 /// # }
 /// ```
-pub fn update_matrix(b: &mut Matrix, alpha: f64, a: &Matrix) {
-    if a.nrow != b.nrow {
-        #[rustfmt::skip]
-        panic!("nrow of matrix [a] (={}) must equal nrow of matrix [b] (={})", a.nrow, b.nrow);
-    }
-    if a.ncol != b.ncol {
-        #[rustfmt::skip]
-        panic!("ncol of matrix [a] (={}) must equal ncol of matrix [b] (={})", a.ncol, b.ncol);
+pub fn update_matrix(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), &'static str> {
+    if a.nrow != b.nrow || a.ncol != b.ncol {
+        return Err("[a] and [b] matrices must have the same dimensions");
     }
     let n_i32: i32 = b.data.len().try_into().unwrap();
     daxpy(n_i32, alpha, &a.data, 1, &mut b.data, 1);
+    Ok(())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -62,7 +58,7 @@ mod tests {
             &[100.0, 200.0, 300.0],
             &[400.0, 500.0, 600.0],
         ])?;
-        update_matrix(&mut b, 2.0, &a);
+        update_matrix(&mut b, 2.0, &a)?;
         #[rustfmt::skip]
         let correct = slice_to_colmajor(&[
             &[120.0, 240.0, 360.0],
@@ -73,18 +69,28 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "nrow of matrix [a] (=4) must equal nrow of matrix [b] (=3)")]
     fn update_matrix_panic_1() {
-        let a = Matrix::new(4, 4);
-        let mut b = Matrix::new(3, 4);
-        update_matrix(&mut b, 1.0, &a);
-    }
-
-    #[test]
-    #[should_panic(expected = "ncol of matrix [a] (=3) must equal ncol of matrix [b] (=4)")]
-    fn update_matrix_panic_2() {
-        let a = Matrix::new(3, 3);
-        let mut b = Matrix::new(3, 4);
-        update_matrix(&mut b, 1.0, &a);
+        let a_2x2 = Matrix::new(2, 2);
+        let a_2x1 = Matrix::new(2, 1);
+        let a_1x2 = Matrix::new(1, 2);
+        let mut b_2x2 = Matrix::new(2, 2);
+        let mut b_2x1 = Matrix::new(2, 1);
+        let mut b_1x2 = Matrix::new(1, 2);
+        assert_eq!(
+            update_matrix(&mut b_2x2, 1.0, &a_2x1),
+            Err("[a] and [b] matrices must have the same dimensions")
+        );
+        assert_eq!(
+            update_matrix(&mut b_2x2, 1.0, &a_1x2),
+            Err("[a] and [b] matrices must have the same dimensions")
+        );
+        assert_eq!(
+            update_matrix(&mut b_2x1, 1.0, &a_2x2),
+            Err("[a] and [b] matrices must have the same dimensions")
+        );
+        assert_eq!(
+            update_matrix(&mut b_1x2, 1.0, &a_2x2),
+            Err("[a] and [b] matrices must have the same dimensions")
+        );
     }
 }

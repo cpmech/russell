@@ -18,13 +18,14 @@ use std::convert::TryInto;
 /// # Examples
 ///
 /// ```
+/// # fn main() -> Result<(), &'static str> {
 /// use russell_lab::*;
 /// let a = Matrix::from(&[
 ///     &[ 5.0, -2.0, 1.0],
 ///     &[-4.0,  0.0, 2.0],
 ///     &[15.0, -6.0, 0.0],
 ///     &[ 3.0,  5.0, 1.0],
-/// ]);
+/// ])?;
 /// let u = Vector::from(&[1.0, 2.0, 3.0]);
 /// let mut v = Vector::new(a.nrow());
 /// mat_vec_mul(&mut v, 0.5, &a, &u);
@@ -35,8 +36,9 @@ use std::convert::TryInto;
 ///                │   8 │\n\
 ///                └     ┘";
 /// assert_eq!(format!("{}", v), correct);
+/// # Ok(())
+/// # }
 /// ```
-///
 pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) {
     let m = v.data.len();
     let n = u.data.len();
@@ -74,18 +76,19 @@ mod tests {
     use russell_chk::*;
 
     #[test]
-    fn mat_vec_mul_works() {
+    fn mat_vec_mul_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             &[ 5.0, -2.0, 0.0, 1.0],
             &[10.0, -4.0, 0.0, 2.0],
             &[15.0, -6.0, 0.0, 3.0],
-        ]);
+        ])?;
         let u = Vector::from(&[1.0, 3.0, 8.0, 5.0]);
         let mut v = Vector::new(a.nrow());
         mat_vec_mul(&mut v, 1.0, &a, &u);
         let correct = &[4.0, 8.0, 12.0];
         assert_vec_approx_eq!(v.data, correct, 1e-15);
+        Ok(())
     }
 
     #[test]

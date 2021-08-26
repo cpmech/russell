@@ -16,11 +16,11 @@ use std::convert::TryInto;
 /// let a = Matrix::from(&[
 ///     &[1.0, 2.0, 3.0],
 ///     &[4.0, 5.0, 6.0],
-/// ]);
+/// ])?;
 /// let mut b = Matrix::from(&[
 ///     &[-1.0, -2.0, -3.0],
 ///     &[-4.0, -5.0, -6.0],
-/// ]);
+/// ])?;
 /// copy_matrix(&mut b, &a)?;
 /// let correct = "┌       ┐\n\
 ///                │ 1 2 3 │\n\
@@ -52,12 +52,12 @@ mod tests {
         let a = Matrix::from(&[
             &[10.0, 20.0, 30.0],
             &[40.0, 50.0, 60.0],
-        ]);
+        ])?;
         #[rustfmt::skip]
         let mut b = Matrix::from(&[
             &[100.0, 200.0, 300.0],
             &[400.0, 500.0, 600.0],
-        ]);
+        ])?;
         copy_matrix(&mut b, &a)?;
         #[rustfmt::skip]
         let correct = slice_to_colmajor(&[

@@ -37,16 +37,17 @@
 //! ## Matrix-Matrix multiplication
 //!
 //! ```
+//! # fn main() -> Result<(), &'static str> {
 //! use russell_lab::*;
 //! let a = Matrix::from(&[
 //!     &[1.0, 2.0],
 //!     &[3.0, 4.0],
 //!     &[5.0, 6.0],
-//! ]);
+//! ])?;
 //! let b = Matrix::from(&[
 //!     &[-1.0, -2.0, -3.0],
 //!     &[-4.0, -5.0, -6.0],
-//! ]);
+//! ])?;
 //! let mut c = Matrix::new(3, 3);
 //! mat_mat_mul(&mut c, 1.0, &a, &b);
 //! let correct = "┌             ┐\n\
@@ -55,8 +56,9 @@
 //!                │ -29 -40 -51 │\n\
 //!                └             ┘";
 //! assert_eq!(format!("{}", c), correct);
+//! # Ok(())
+//! # }
 //! ```
-//!
 
 /// Returns package description
 pub fn desc() -> String {

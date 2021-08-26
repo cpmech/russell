@@ -12,16 +12,17 @@ use std::convert::TryInto;
 /// # Examples
 ///
 /// ```
+/// # fn main() -> Result<(), &'static str> {
 /// use russell_lab::*;
 /// let a = Matrix::from(&[
 ///     &[1.0, 2.0],
 ///     &[3.0, 4.0],
 ///     &[5.0, 6.0],
-/// ]);
+/// ])?;
 /// let b = Matrix::from(&[
 ///     &[-1.0, -2.0, -3.0],
 ///     &[-4.0, -5.0, -6.0],
-/// ]);
+/// ])?;
 /// let mut c = Matrix::new(3, 3);
 /// mat_mat_mul(&mut c, 1.0, &a, &b);
 /// let correct = "┌             ┐\n\
@@ -30,6 +31,8 @@ use std::convert::TryInto;
 ///                │ -29 -40 -51 │\n\
 ///                └             ┘";
 /// assert_eq!(format!("{}", c), correct);
+/// # Ok(())
+/// # }
 /// ```
 pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) -> Result<(), &'static str> {
     if a.nrow != c.nrow || a.ncol != b.nrow || b.ncol != c.ncol {
@@ -71,13 +74,13 @@ mod tests {
             // 2 x 3
             &[1.0, 2.00, 3.0],
             &[0.5, 0.75, 1.5],
-        ]);
+        ])?;
         let b = Matrix::from(&[
             // 3 x 4
             &[0.1, 0.5, 0.5, 0.75],
             &[0.2, 2.0, 2.0, 2.00],
             &[0.3, 0.5, 0.5, 0.50],
-        ]);
+        ])?;
         let mut c = Matrix::new(2, 4);
         // c := 2⋅a⋅b
         mat_mat_mul(&mut c, 2.0, &a, &b)?;

@@ -52,25 +52,23 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
+    /// # fn main() -> Result<(), &'static str> {
     /// use russell_lab::*;
     /// let a = Matrix::from(&[
     ///     &[1.0, 2.0, 3.0],
     ///     &[4.0, 5.0, 6.0],
     ///     &[7.0, 8.0, 9.0],
-    /// ]);
+    /// ])?;
     /// let correct = "┌       ┐\n\
     ///                │ 1 2 3 │\n\
     ///                │ 4 5 6 │\n\
     ///                │ 7 8 9 │\n\
     ///                └       ┘";
     /// assert_eq!(format!("{}", a), correct);
+    /// # Ok(())
+    /// # }
     /// ```
-    ///
-    /// # Panics
-    ///
-    /// This function panics if there are rows with different number of columns
-    ///
-    pub fn from(data: &[&[f64]]) -> Self {
+    pub fn from(data: &[&[f64]]) -> Result<Self, &'static str> {
         let nrow = data.len();
         let ncol = data[0].len();
         let mut matrix = Matrix {
@@ -80,13 +78,13 @@ impl Matrix {
         };
         for i in 0..nrow {
             if data[i].len() != ncol {
-                panic!("all rows must have the same number of columns");
+                return Err("all rows must have the same number of columns");
             }
             for j in 0..ncol {
                 matrix.data[i + j * nrow] = data[i][j];
             }
         }
-        matrix
+        Ok(matrix)
     }
 
     /// Returns the number of rows
@@ -137,17 +135,20 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
+    /// # fn main() -> Result<(), &'static str> {
     /// use russell_lab::*;
     /// let mut a = Matrix::from(&[
     ///     &[1.0, 2.0, 3.0],
     ///     &[4.0, 5.0, 6.0],
-    /// ]);
+    /// ])?;
     /// a.scale(0.5);
     /// let correct = "┌             ┐\n\
     ///                │ 0.5   1 1.5 │\n\
     ///                │   2 2.5   3 │\n\
     ///                └             ┘";
     /// assert_eq!(format!("{}", a), correct);
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn scale(&mut self, alpha: f64) {
         let n: i32 = self.data.len().try_into().unwrap();
@@ -159,12 +160,15 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
+    /// # fn main() -> Result<(), &'static str> {
     /// use russell_lab::*;
     /// let a = Matrix::from(&[
     ///     &[1.0, 2.0],
     ///     &[3.0, 4.0],
-    /// ]);
+    /// ])?;
     /// assert_eq!(a.get(1,1), 4.0);
+    /// # Ok(())
+    /// # }
     /// ```
     #[inline]
     pub fn get(&self, i: usize, j: usize) -> f64 {
@@ -176,17 +180,20 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
+    /// # fn main() -> Result<(), &'static str> {
     /// use russell_lab::*;
     /// let mut a = Matrix::from(&[
     ///     &[1.0, 2.0],
     ///     &[3.0, 4.0],
-    /// ]);
+    /// ])?;
     /// a.set(1, 1, -4.0);
     /// let correct = "┌       ┐\n\
     ///                │  1  2 │\n\
     ///                │  3 -4 │\n\
     ///                └       ┘";
     /// assert_eq!(format!("{}", a), correct);
+    /// # Ok(())
+    /// # }
     /// ```
     #[inline]
     pub fn set(&mut self, i: usize, j: usize, value: f64) {
@@ -202,17 +209,20 @@ impl Matrix {
     /// # Examples
     ///
     /// ```
+    /// # fn main() -> Result<(), &'static str> {
     /// use russell_lab::*;
     /// let mut a = Matrix::from(&[
     ///     &[1.0, 2.0],
     ///     &[3.0, 4.0],
-    /// ]);
+    /// ])?;
     /// a.plus_equal(1, 1, 0.44);
     /// let correct = "┌           ┐\n\
     ///                │ 1.00 2.00 │\n\
     ///                │ 3.00 4.44 │\n\
     ///                └           ┘";
     /// assert_eq!(format!("{:.2}", a), correct);
+    /// # Ok(())
+    /// # }
     /// ```
     #[inline]
     pub fn plus_equal(&mut self, i: usize, j: usize, value: f64) {
@@ -276,33 +286,38 @@ mod tests {
     }
 
     #[test]
-    fn from_works() {
+    fn from_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             &[1.0, 2.0, 3.0],
             &[4.0, 5.0, 6.0],
             &[7.0, 8.0, 9.0],
-        ]);
+        ])?;
         let correct = &[1.0, 4.0, 7.0, 2.0, 5.0, 8.0, 3.0, 6.0, 9.0];
         assert_vec_approx_eq!(a.data, correct, 1e-15);
+        Ok(())
     }
 
     #[test]
-    fn from_0_works() {
+    fn from_0_works() -> Result<(), &'static str> {
         let data: &[&[f64]] = &[&[]];
-        let a = Matrix::from(data);
+        let a = Matrix::from(data)?;
         assert_eq!(a.data.len(), 0);
+        Ok(())
     }
 
     #[test]
-    #[should_panic(expected = "all rows must have the same number of columns")]
-    fn from_panics_on_wrong_columns() {
+    fn from_fails_on_wrong_columns() {
         #[rustfmt::skip]
-         Matrix::from(&[
+        let res = Matrix::from(&[
             &[1.0, 2.0, 3.0],
             &[4.0, 5.0],
             &[7.0, 8.0, 8.0],
         ]);
+        assert_eq!(
+            res.err(),
+            Some("all rows must have the same number of columns")
+        );
     }
 
     #[test]
@@ -324,35 +339,37 @@ mod tests {
     }
 
     #[test]
-    fn display_trait_works() {
+    fn display_trait_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             &[1.0, 2.0, 3.0],
             &[4.0, 5.0, 6.0],
             &[7.0, 8.0, 9.0],
-        ]);
+        ])?;
         let correct = "┌       ┐\n\
                             │ 1 2 3 │\n\
                             │ 4 5 6 │\n\
                             │ 7 8 9 │\n\
                             └       ┘";
         assert_eq!(format!("{}", a), correct);
+        Ok(())
     }
 
     #[test]
-    fn display_trait_precision_works() {
+    fn display_trait_precision_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             &[1.0111111, 2.02222222, 3.033333],
             &[4.0444444, 5.05555555, 6.066666],
             &[7.0777777, 8.08888888, 9.099999],
-        ]);
+        ])?;
         let correct = "┌                ┐\n\
                             │ 1.01 2.02 3.03 │\n\
                             │ 4.04 5.06 6.07 │\n\
                             │ 7.08 8.09 9.10 │\n\
                             └                ┘";
         assert_eq!(format!("{:.2}", a), correct);
+        Ok(())
     }
 
     #[test]
@@ -361,7 +378,7 @@ mod tests {
         let mut a = Matrix::from(&[
             &[ 6.0,  9.0,  12.0],
             &[-6.0, -9.0, -12.0],
-        ]);
+        ])?;
         a.scale(1.0 / 3.0);
         #[rustfmt::skip]
         let correct = slice_to_colmajor(&[
@@ -373,43 +390,46 @@ mod tests {
     }
 
     #[test]
-    fn get_works() {
+    fn get_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             &[1.0, 2.0],
             &[3.0, 4.0],
-        ]);
+        ])?;
         assert_eq!(a.get(0, 0), 1.0);
         assert_eq!(a.get(0, 1), 2.0);
         assert_eq!(a.get(1, 0), 3.0);
         assert_eq!(a.get(1, 1), 4.0);
+        Ok(())
     }
 
     #[test]
-    fn set_works() {
+    fn set_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
             &[1.0, 2.0],
             &[3.0, 4.0],
-        ]);
+        ])?;
         a.set(0, 0, -1.0);
         a.set(0, 1, -2.0);
         a.set(1, 0, -3.0);
         a.set(1, 1, -4.0);
         assert_eq!(a.data, &[-1.0, -3.0, -2.0, -4.0]);
+        Ok(())
     }
 
     #[test]
-    fn plus_equal_works() {
+    fn plus_equal_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
             &[1.0, 2.0],
             &[3.0, 4.0],
-        ]);
+        ])?;
         a.plus_equal(0, 0, 0.11);
         a.plus_equal(0, 1, 0.22);
         a.plus_equal(1, 0, 0.33);
         a.plus_equal(1, 1, 0.44);
         assert_eq!(a.data, &[1.11, 3.33, 2.22, 4.44]);
+        Ok(())
     }
 }

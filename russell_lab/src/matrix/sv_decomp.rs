@@ -37,7 +37,7 @@ use std::convert::TryFrom;
 /// let mut a = Matrix::from(&[
 ///     &[3.0, 2.0,  2.0],
 ///     &[2.0, 3.0, -2.0],
-/// ]);
+/// ])?;
 ///
 /// // allocate output structures
 /// let (m, n) = a.dims();
@@ -100,7 +100,7 @@ use std::convert::TryFrom;
 ///     &[1.0, 3.0],
 ///     &[0.0, 0.0],
 ///     &[0.0, 0.0],
-/// ]);
+/// ])?;
 ///
 /// // allocate output structures
 /// let (m, n) = a.dims();
@@ -207,8 +207,8 @@ mod tests {
             &[-s33,  s33, 1.0],
             &[ s33,  s33, 1.0],
         ];
-        let mut a = Matrix::from(data);
-        let a_copy = Matrix::from(data);
+        let mut a = Matrix::from(data)?;
+        let a_copy = Matrix::from(data)?;
 
         // allocate output data
         let (m, n) = a.dims();
@@ -233,13 +233,13 @@ mod tests {
             &[-0.5, -0.5,  0.5, -0.5],
             &[-0.5,  0.5, -0.5, -0.5],
             &[-0.5,  0.5,  0.5,  0.5],
-        ]);
+        ])?;
         #[rustfmt::skip]
-        let vt_correct =Matrix::from(&[
+        let vt_correct = Matrix::from(&[
             &[0.0,  0.0, -1.0],
             &[0.0,  1.0,  0.0],
             &[1.0,  0.0,  0.0],
-        ]);
+        ])?;
         assert_vec_approx_eq!(u.data, u_correct.data, 1e-15);
         assert_vec_approx_eq!(s.data, s_correct.data, 1e-15);
         assert_vec_approx_eq!(vt.data, vt_correct.data, 1e-15);
@@ -267,8 +267,8 @@ mod tests {
             &[1.0, 0.0, 1.0, 0.0],
             &[0.0, 1.0, 0.0, 1.0],
         ];
-        let mut a = Matrix::from(data);
-        let a_copy = Matrix::from(data);
+        let mut a = Matrix::from(data)?;
+        let a_copy = Matrix::from(data)?;
 
         // allocate output data
         let (m, n) = a.dims();
@@ -291,14 +291,14 @@ mod tests {
         let u_correct = Matrix::from(&[
             &[1.0, 0.0],
             &[0.0, 1.0],
-        ]);
+        ])?;
         #[rustfmt::skip]
-        let vt_correct =Matrix::from(&[
+        let vt_correct = Matrix::from(&[
             &[ 1.0/sqrt2,        0.0, 1.0/sqrt2,       0.0],
             &[       0.0,  1.0/sqrt2,       0.0, 1.0/sqrt2],
             &[-1.0/sqrt2,        0.0, 1.0/sqrt2,       0.0],
             &[       0.0, -1.0/sqrt2,       0.0, 1.0/sqrt2],
-        ]);
+        ])?;
         assert_vec_approx_eq!(u.data, u_correct.data, 1e-15);
         assert_vec_approx_eq!(s.data, s_correct.data, 1e-15);
         assert_vec_approx_eq!(vt.data, vt_correct.data, 1e-15);

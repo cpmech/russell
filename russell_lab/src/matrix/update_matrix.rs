@@ -48,7 +48,7 @@ mod tests {
     use russell_chk::*;
 
     #[test]
-    fn update_matrix_works() {
+    fn update_matrix_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             &[10.0, 20.0, 30.0],
@@ -61,11 +61,12 @@ mod tests {
         ]);
         update_matrix(&mut b, 2.0, &a);
         #[rustfmt::skip]
-        let correct =slice_to_colmajor(&[
+        let correct = slice_to_colmajor(&[
             &[120.0, 240.0, 360.0],
             &[480.0, 600.0, 720.0],
-        ]);
+        ])?;
         assert_vec_approx_eq!(b.data, correct, 1e-15);
+        Ok(())
     }
 
     #[test]

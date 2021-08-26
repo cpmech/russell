@@ -83,11 +83,11 @@ mod tests {
         ]);
         add_matrices(&mut c, 1.0, &a, -4.0, &b)?;
         #[rustfmt::skip]
-        let correct =slice_to_colmajor(&[
+        let correct = slice_to_colmajor(&[
             &[-1.0, -2.0, -3.0, -4.0],
             &[-1.0, -2.0, -3.0, -4.0],
             &[-1.0, -2.0, -3.0, -4.0],
-        ]);
+        ])?;
         assert_vec_approx_eq!(c.data, correct, 1e-15);
         Ok(())
     }
@@ -118,13 +118,13 @@ mod tests {
         ]);
         add_matrices(&mut c, 1.0, &a, -4.0, &b)?;
         #[rustfmt::skip]
-        let correct =slice_to_colmajor(&[
+        let correct = slice_to_colmajor(&[
             &[-1.0, -2.0, -3.0, -4.0, -5.0],
             &[-1.0, -2.0, -3.0, -4.0, -5.0],
             &[-1.0, -2.0, -3.0, -4.0, -5.0],
             &[-1.0, -2.0, -3.0, -4.0, -5.0],
             &[-1.0, -2.0, -3.0, -4.0, -5.0],
-        ]);
+        ])?;
         assert_vec_approx_eq!(c.data, correct, 1e-15);
         Ok(())
     }

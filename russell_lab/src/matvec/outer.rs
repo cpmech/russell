@@ -65,7 +65,7 @@ mod tests {
     use russell_chk::*;
 
     #[test]
-    fn outer_works() {
+    fn outer_works() -> Result<(), &'static str> {
         let u = Vector::from(&[1.0, 2.0, 3.0]);
         let v = Vector::from(&[5.0, -2.0, 0.0, 1.0]);
         let mut a = Matrix::new(u.data.len(), v.data.len());
@@ -75,12 +75,13 @@ mod tests {
             &[15.0,  -6.0, 0.0, 3.0],
             &[30.0, -12.0, 0.0, 6.0],
             &[45.0, -18.0, 0.0, 9.0],
-        ]);
+        ])?;
         assert_vec_approx_eq!(a.data, correct, 1e-15);
+        Ok(())
     }
 
     #[test]
-    fn outer_works_1() {
+    fn outer_works_1() -> Result<(), &'static str> {
         let u = Vector::from(&[1.0, 2.0, 3.0, 4.0]);
         let v = Vector::from(&[1.0, 1.0, -2.0]);
         let mut a = Matrix::new(u.data.len(), v.data.len());
@@ -91,8 +92,9 @@ mod tests {
             &[2.0, 2.0, -4.0],
             &[3.0, 3.0, -6.0],
             &[4.0, 4.0, -8.0],
-        ]);
+        ])?;
         assert_vec_approx_eq!(a.data, correct, 1e-15);
+        Ok(())
     }
 
     #[test]

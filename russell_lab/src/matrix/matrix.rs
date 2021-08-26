@@ -356,7 +356,7 @@ mod tests {
     }
 
     #[test]
-    fn scale_works() {
+    fn scale_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
             &[ 6.0,  9.0,  12.0],
@@ -367,8 +367,9 @@ mod tests {
         let correct = slice_to_colmajor(&[
             &[ 2.0,  3.0,  4.0],
             &[-2.0, -3.0, -4.0],
-        ]);
+        ])?;
         assert_vec_approx_eq!(a.data, correct, 1e-15);
+        Ok(())
     }
 
     #[test]

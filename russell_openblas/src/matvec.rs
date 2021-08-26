@@ -162,14 +162,14 @@ mod tests {
     use russell_chk::*;
 
     #[test]
-    fn dger_works() {
+    fn dger_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let mut a = slice_to_colmajor(&[
             &[100.0, 100.0, 100.0],
             &[100.0, 100.0, 100.0],
             &[100.0, 100.0, 100.0],
             &[100.0, 100.0, 100.0],
-        ]);
+        ])?;
         let u = &[1.0, 2.0, 3.0, 4.0];
         let v = &[4.0, 3.0, 2.0];
         let m = 4; // m = nrow(a) = len(u)
@@ -183,12 +183,13 @@ mod tests {
             &[104.0, 103.0, 102.0],
             &[106.0, 104.5, 103.0],
             &[108.0, 106.0, 104.0],
-        ]);
+        ])?;
         assert_vec_approx_eq!(a, correct, 1e-15);
+        Ok(())
     }
 
     #[test]
-    fn dgemv_works() {
+    fn dgemv_works() -> Result<(), &'static str> {
         // allocate matrix
         #[rustfmt::skip]
         let a = slice_to_colmajor(&[
@@ -196,7 +197,7 @@ mod tests {
             &[1.0, 0.2, 0.3],
             &[2.0, 0.2, 0.3],
             &[3.0, 0.2, 0.3]
-        ]);
+        ])?;
 
         // perform mv
         let (m, n) = (4, 3);
@@ -213,6 +214,7 @@ mod tests {
 
         // check that a is unmodified
         assert_vec_approx_eq!(a, &[0.1, 1.0, 2.0, 3.0, 0.2, 0.2, 0.2, 0.2, 0.3, 0.3, 0.3, 0.3], 1e-15);
+        Ok(())
     }
 
     #[test]
@@ -225,7 +227,7 @@ mod tests {
             &[0.0, -1.0, -3.0, 2.0, 0.0],
             &[0.0,  0.0,  1.0, 0.0, 0.0],
             &[0.0,  4.0,  2.0, 0.0, 1.0],
-        ]);
+        ])?;
 
         // right-hand-side
         let mut b = vec![8.0, 45.0, -3.0, 3.0, 19.0];

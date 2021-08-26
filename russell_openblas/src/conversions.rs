@@ -16,19 +16,19 @@
 ///
 /// This function panics if there are rows with different number of columns
 ///
-pub fn slice_to_colmajor(a: &[&[f64]]) -> Vec<f64> {
+pub fn slice_to_colmajor(a: &[&[f64]]) -> Result<Vec<f64>, &'static str> {
     let nrow = a.len();
     let ncol = a[0].len();
     let mut data = vec![0.0; nrow * ncol];
     for i in 0..nrow {
         if a[i].len() != ncol {
-            panic!("all rows must have the same number of columns");
+            return Err("all rows must have the same number of columns");
         }
         for j in 0..ncol {
             data[i + j * nrow] = a[i][j];
         }
     }
-    data
+    Ok(data)
 }
 
 /// Extracts LAPACK (dgeev) eigenvectors from its compact representation
@@ -186,33 +186,38 @@ mod tests {
     use russell_chk::*;
 
     #[test]
-    fn slice_to_colmajor_works() {
+    fn slice_to_colmajor_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let data = slice_to_colmajor(&[
             &[1.0, 2.0, 3.0],
             &[4.0, 5.0, 6.0],
             &[7.0, 8.0, 8.0],
-        ]);
+        ])?;
         let correct = &[1.0, 4.0, 7.0, 2.0, 5.0, 8.0, 3.0, 6.0, 8.0];
         assert_vec_approx_eq!(data, correct, 1e-15);
+        Ok(())
     }
 
     #[test]
-    fn slice_to_colmajor_0_works() {
+    fn slice_to_colmajor_0_works() -> Result<(), &'static str> {
         let input: &[&[f64]] = &[&[]];
-        let data = slice_to_colmajor(input);
+        let data = slice_to_colmajor(input)?;
         assert_eq!(data.len(), 0);
+        Ok(())
     }
 
     #[test]
-    #[should_panic(expected = "all rows must have the same number of columns")]
-    fn slice_to_colmajor_panics_on_wrong_columns() {
+    fn slice_to_colmajor_fails_on_wrong_columns() {
         #[rustfmt::skip]
-         slice_to_colmajor(&[
+        let input_data: &[&[f64]] = &[
             &[1.0, 2.0, 3.0],
             &[4.0, 5.0],
             &[7.0, 8.0, 8.0],
-        ]);
+        ];
+        assert_eq!(
+            slice_to_colmajor(input_data),
+            Err("all rows must have the same number of columns")
+        );
     }
 
     #[test]

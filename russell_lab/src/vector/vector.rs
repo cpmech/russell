@@ -1,6 +1,5 @@
 use russell_openblas::*;
 use std::cmp;
-use std::convert::TryInto;
 use std::fmt::{self, Write};
 
 pub struct Vector {
@@ -118,8 +117,8 @@ impl Vector {
     /// ```
     ///
     pub fn scale(&mut self, alpha: f64) {
-        let n: i32 = self.data.len().try_into().unwrap();
-        dscal(n, alpha, &mut self.data, 1);
+        let n_i32: i32 = to_i32(self.data.len());
+        dscal(n_i32, alpha, &mut self.data, 1);
     }
 
     /// Returns the component i

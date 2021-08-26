@@ -15,7 +15,7 @@ const SINGLE_VALUE_TOLERANCE: f64 = 1e-14;
 /// # Output
 ///
 /// * `ai` -- (n,m) inverse matrix
-/// * the matrix determinant if m == n
+/// * Returns the matrix determinant if m == n
 ///
 /// # Input
 ///

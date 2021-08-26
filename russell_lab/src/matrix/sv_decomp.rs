@@ -22,7 +22,7 @@ use std::convert::TryFrom;
 ///
 /// # Note
 ///
-/// 1. The matrix [a] will be modified
+/// 1. The matrix `a` will be modified
 ///
 /// # Examples
 ///

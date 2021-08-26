@@ -35,16 +35,16 @@ pub fn slice_to_colmajor(a: &[&[f64]]) -> Vec<f64> {
 ///
 /// # Output
 ///
-/// * `vl_real` -- [pre-allocated, n*n col-major] **left** eigenvectors; real part
-/// * `vl_imag` -- [pre-allocated, n*n col-major] **left** eigenvectors; imaginary part
-/// * `vr_real` -- [pre-allocated, n*n col-major] **right** eigenvectors; real part
-/// * `vr_imag` -- [pre-allocated, n*n col-major] **right** eigenvectors; imaginary part
+/// * `vl_real` -- pre-allocated, n*n col-major, **left** eigenvectors; real part
+/// * `vl_imag` -- pre-allocated, n*n col-major, **left** eigenvectors; imaginary part
+/// * `vr_real` -- pre-allocated, n*n col-major, **right** eigenvectors; real part
+/// * `vr_imag` -- pre-allocated, n*n col-major, **right** eigenvectors; imaginary part
 ///
 /// # Input
 ///
-/// * `w_imag` -- [n] eigenvalues; imaginary part
-/// * `vl` -- [n*n] output of dgeev
-/// * `vr` -- [n*n] output of dgeev
+/// * `w_imag` -- n, eigenvalues; imaginary part
+/// * `vl` -- n*n, output of dgeev
+/// * `vr` -- n*n, output of dgeev
 ///
 pub fn extract_lapack_eigenvectors(
     vl_real: &mut [f64],
@@ -126,13 +126,13 @@ pub fn extract_lapack_eigenvectors(
 ///
 /// # Output
 ///
-/// * `v_real` -- [pre-allocated, n*n col-major] eigenvectors; real part
-/// * `v_imag` -- [pre-allocated, n*n col-major] eigenvectors; imaginary part
+/// * `v_real` -- pre-allocated, n*n col-major, eigenvectors; real part
+/// * `v_imag` -- pre-allocated, n*n col-major, eigenvectors; imaginary part
 ///
 /// # Input
 ///
-/// * `w_imag` -- [n] eigenvalues; imaginary part
-/// * `v` -- [n*n] output of dgeev
+/// * `w_imag` -- n, eigenvalues; imaginary part
+/// * `v` -- n*n, output of dgeev
 ///
 pub fn extract_lapack_eigenvectors_single(
     v_real: &mut [f64],

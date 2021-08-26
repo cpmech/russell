@@ -2,8 +2,8 @@ use crate::matrix::*;
 use russell_openblas::*;
 
 // constants
-const ZERO_DETERMINANT: f64 = 1e-15;
-const SINGLE_VALUE_TOLERANCE: f64 = 1e-14;
+const ZERO_DETERMINANT: f64 = 1e-20;
+const SINGLE_VALUE_TOLERANCE: f64 = 1e-20;
 
 /// Computes the inverse or pseudo-inverse matrix and returns the determinant (if square matrix)
 ///
@@ -140,7 +140,7 @@ pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, &'static str> {
         let lda_i32 = m_i32;
         let mut ipiv = vec![0_i32; min_mn];
         dgetrf(m_i32, n_i32, &mut ai.data, lda_i32, &mut ipiv)?;
-        dgetri(n_i32, &mut ai.data, lda_i32, &ipiv)?;
+        // first, compute the determinant ai.data from dgetrf
         let mut det = 1.0;
         for i in 0..m_i32 {
             let iu = i as usize;
@@ -151,6 +151,8 @@ pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, &'static str> {
                 det = -det * ai.get(iu, iu);
             }
         }
+        // second, perform the inversion
+        dgetri(n_i32, &mut ai.data, lda_i32, &ipiv)?;
         return Ok(det);
     }
 
@@ -214,29 +216,29 @@ mod tests {
 
     #[test]
     fn inverse_0x0_works() -> Result<(), &'static str> {
-        let mut a_0x0 = Matrix::new(0, 0);
-        let mut ai_0x0 = Matrix::new(0, 0);
-        let det = inverse(&mut ai_0x0, &mut a_0x0)?;
+        let mut a = Matrix::new(0, 0);
+        let mut ai = Matrix::new(0, 0);
+        let det = inverse(&mut ai, &mut a)?;
         assert_eq!(det, 0.0);
-        assert_eq!(ai_0x0.data, []);
+        assert_eq!(ai.data, []);
         Ok(())
     }
 
     #[test]
     fn inverse_1x1_works() -> Result<(), &'static str> {
-        let mut a_1x1 = Matrix::from(&[&[2.0]])?;
-        let mut ai_1x1 = Matrix::new(1, 1);
-        let det = inverse(&mut ai_1x1, &mut a_1x1)?;
+        let mut a = Matrix::from(&[&[2.0]])?;
+        let mut ai = Matrix::new(1, 1);
+        let det = inverse(&mut ai, &mut a)?;
         assert_eq!(det, 2.0);
-        assert_vec_approx_eq!(ai_1x1.data, &[0.5], 1e-15);
+        assert_vec_approx_eq!(ai.data, &[0.5], 1e-15);
         Ok(())
     }
 
     #[test]
     fn inverse_1x1_fails_on_zero_det() -> Result<(), &'static str> {
-        let mut a_1x1 = Matrix::from(&[&[1e-15]])?;
-        let mut ai_1x1 = Matrix::new(1, 1);
-        let res = inverse(&mut ai_1x1, &mut a_1x1);
+        let mut a = Matrix::from(&[&[ZERO_DETERMINANT / 10.0]])?;
+        let mut ai = Matrix::new(1, 1);
+        let res = inverse(&mut ai, &mut a);
         assert_eq!(res, Err("cannot compute inverse due to zero determinant"));
         Ok(())
     }
@@ -244,26 +246,26 @@ mod tests {
     #[test]
     fn inverse_2x2_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
-        let mut a_2x2 = Matrix::from(&[
+        let mut a = Matrix::from(&[
             &[1.0, 2.0],
             &[3.0, 2.0],
         ])?;
-        let mut ai_2x2 = Matrix::new(2, 2);
-        let det = inverse(&mut ai_2x2, &mut a_2x2)?;
+        let mut ai = Matrix::new(2, 2);
+        let det = inverse(&mut ai, &mut a)?;
         assert_eq!(det, -4.0);
-        assert_vec_approx_eq!(ai_2x2.data, &[-0.5, 0.75, 0.5, -0.25], 1e-15);
+        assert_vec_approx_eq!(ai.data, &[-0.5, 0.75, 0.5, -0.25], 1e-15);
         Ok(())
     }
 
     #[test]
     fn inverse_2x2_fails_on_zero_det() -> Result<(), &'static str> {
         #[rustfmt::skip]
-        let mut a_2x2 = Matrix::from(&[
+        let mut a = Matrix::from(&[
             &[   -1.0, 3.0/2.0],
             &[2.0/3.0,    -1.0],
         ])?;
-        let mut ai_2x2 = Matrix::new(2, 2);
-        let res = inverse(&mut ai_2x2, &mut a_2x2);
+        let mut ai = Matrix::new(2, 2);
+        let res = inverse(&mut ai, &mut a);
         assert_eq!(res, Err("cannot compute inverse due to zero determinant"));
         Ok(())
     }
@@ -271,13 +273,13 @@ mod tests {
     #[test]
     fn inverse_3x3_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
-        let mut a_3x3 = Matrix::from(&[
+        let mut a = Matrix::from(&[
             &[1.0, 2.0, 3.0],
             &[0.0, 4.0, 5.0],
             &[1.0, 0.0, 6.0],
         ])?;
-        let mut ai_3x3 = Matrix::new(3, 3);
-        let det = inverse(&mut ai_3x3, &mut a_3x3)?;
+        let mut ai = Matrix::new(3, 3);
+        let det = inverse(&mut ai, &mut a)?;
         assert_eq!(det, 22.0);
         #[rustfmt::skip]
         let ai_correct = Matrix::from(&[
@@ -285,21 +287,96 @@ mod tests {
             &[  2.5/11.0,  1.5/11.0, -2.5/11.0],
             &[ -2.0/11.0,  1.0/11.0,  2.0/11.0],
         ])?;
-        assert_vec_approx_eq!(ai_3x3.data, ai_correct.data, 1e-15);
+        assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-15);
         Ok(())
     }
 
     #[test]
     fn inverse_3x3_fails_on_zero_det() -> Result<(), &'static str> {
         #[rustfmt::skip]
-        let mut a_3x3 = Matrix::from(&[
+        let mut a = Matrix::from(&[
             &[1.0, 0.0, 3.0],
             &[0.0, 0.0, 5.0],
             &[1.0, 0.0, 6.0],
         ])?;
-        let mut ai_3x3 = Matrix::new(3, 3);
-        let res = inverse(&mut ai_3x3, &mut a_3x3);
+        let mut ai = Matrix::new(3, 3);
+        let res = inverse(&mut ai, &mut a);
         assert_eq!(res, Err("cannot compute inverse due to zero determinant"));
+        Ok(())
+    }
+
+    #[test]
+    fn inverse_4x4_works() -> Result<(), &'static str> {
+        #[rustfmt::skip]
+        let mut a = Matrix::from(&[
+            &[ 3.0,  0.0,  2.0, -1.0],
+            &[ 1.0,  2.0,  0.0, -2.0],
+            &[ 4.0,  0.0,  6.0, -3.0],
+            &[ 5.0,  0.0,  2.0,  0.0],
+        ])?;
+        let mut ai = Matrix::new(4, 4);
+        let det = inverse(&mut ai, &mut a)?;
+        assert_approx_eq!(det, 20.0, 1e-14);
+        #[rustfmt::skip]
+        let ai_correct = Matrix::from(&[
+            &[ 0.6,  0.0, -0.2,  0.0],
+            &[-2.5,  0.5,  0.5,  1.0],
+            &[-1.5,  0.0,  0.5,  0.5],
+            &[-2.2,  0.0,  0.4,  1.0],
+        ])?;
+        assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-15);
+        Ok(())
+    }
+
+    #[test]
+    fn inverse_5x5_works() -> Result<(), &'static str> {
+        #[rustfmt::skip]
+        let mut a = Matrix::from(&[
+            &[12.0, 28.0, 22.0, 20.0,  8.0],
+            &[ 0.0,  3.0,  5.0, 17.0, 28.0],
+            &[56.0,  0.0, 23.0,  1.0,  0.0],
+            &[12.0, 29.0, 27.0, 10.0,  1.0],
+            &[ 9.0,  4.0, 13.0,  8.0, 22.0],
+        ])?;
+        let mut ai = Matrix::new(5, 5);
+        let det = inverse(&mut ai, &mut a)?;
+        assert_approx_eq!(det, -167402.0, 1e-9);
+        #[rustfmt::skip]
+        let ai_correct = Matrix::from(&[
+            &[ 6.9128803717996279e-01, -7.4226114383340802e-01, -9.8756287260606410e-02, -6.9062496266472417e-01,  7.2471057693456553e-01],
+            &[ 1.5936129795342968e+00, -1.7482347881148397e+00, -2.8304321334273236e-01, -1.5600769405383470e+00,  1.7164430532490673e+00],
+            &[-1.6345384165063759e+00,  1.7495848317224429e+00,  2.7469205863729274e-01,  1.6325730875377857e+00, -1.7065745928961444e+00],
+            &[-1.1177465024312745e+00,  1.3261729250546601e+00,  2.1243473793622566e-01,  1.1258168958554866e+00, -1.3325766717243535e+00],
+            &[ 7.9976941733073770e-01, -8.9457712572131853e-01, -1.4770432850264653e-01, -8.0791149448632715e-01,  9.2990525800169743e-01],
+        ])?;
+        assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-14);
+        Ok(())
+    }
+
+    #[test]
+    fn inverse_6x6_works() -> Result<(), &'static str> {
+        #[rustfmt::skip]
+        let mut a = Matrix::from(&[
+            &[ 3.46540497998689445e-05, -1.39368151175265866e-05, -1.39368151175265866e-05,  0.00000000000000000e+00, 7.15957288480514429e-23, -2.93617909908697186e+02],
+            &[-1.39368151175265866e-05,  3.46540497998689445e-05, -1.39368151175265866e-05,  0.00000000000000000e+00, 7.15957288480514429e-23, -2.93617909908697186e+02],
+            &[-1.39368151175265866e-05, -1.39368151175265866e-05,  3.46540497998689445e-05,  0.00000000000000000e+00, 7.15957288480514429e-23, -2.93617909908697186e+02],
+            &[ 0.00000000000000000e+00,  0.00000000000000000e+00,  0.00000000000000000e+00,  4.85908649173955311e-05, 0.00000000000000000e+00,  0.00000000000000000e+00],
+            &[ 3.13760264822604860e-18,  3.13760264822604860e-18,  3.13760264822604860e-18,  0.00000000000000000e+00, 1.00000000000000000e+00, -1.93012141894243434e+07],
+            &[ 0.00000000000000000e+00,  0.00000000000000000e+00,  0.00000000000000000e+00, -0.00000000000000000e+00, 0.00000000000000000e+00,  1.00000000000000000e+00],
+        ])?;
+        let mut ai = Matrix::new(6, 6);
+        let det = inverse(&mut ai, &mut a)?;
+        assert_approx_eq!(det, 7.778940633136385e-19, 1e-15);
+        #[rustfmt::skip]
+        let ai_correct = Matrix::from(&[
+            &[ 6.28811662297464645e+04,  4.23011662297464645e+04,  4.23011662297464645e+04, 0.00000000000000000e+00, -1.05591885817167332e-17, 4.33037966311565489e+07],
+            &[ 4.23011662297464645e+04,  6.28811662297464645e+04,  4.23011662297464645e+04, 0.00000000000000000e+00, -1.05591885817167332e-17, 4.33037966311565489e+07],
+            &[ 4.23011662297464645e+04,  4.23011662297464645e+04,  6.28811662297464645e+04, 0.00000000000000000e+00, -1.05591885817167348e-17, 4.33037966311565489e+07],
+            &[ 0.00000000000000000e+00,  0.00000000000000000e+00,  0.00000000000000000e+00, 2.05800000000000000e+04,  0.00000000000000000e+00, 0.00000000000000000e+00],
+            &[-4.62744616057000471e-13, -4.62744616057000471e-13, -4.62744616057000471e-13, 0.00000000000000000e+00,  1.00000000000000000e+00, 1.93012141894243434e+07],
+            &[ 0.00000000000000000e+00,  0.00000000000000000e+00,  0.00000000000000000e+00, 0.00000000000000000e+00,  0.00000000000000000e+00, 1.00000000000000000e+00],
+        ])?;
+        assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-8);
         Ok(())
     }
 

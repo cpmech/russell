@@ -1,6 +1,5 @@
 use super::*;
 use russell_openblas::*;
-use std::convert::TryInto;
 
 /// Updates matrix based on another matrix (axpy)
 ///
@@ -34,7 +33,7 @@ pub fn update_matrix(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), &'sta
     if a.nrow != b.nrow || a.ncol != b.ncol {
         return Err("matrices have wrong dimensions");
     }
-    let n_i32: i32 = b.data.len().try_into().unwrap();
+    let n_i32: i32 = to_i32(b.data.len());
     daxpy(n_i32, alpha, &a.data, 1, &mut b.data, 1);
     Ok(())
 }

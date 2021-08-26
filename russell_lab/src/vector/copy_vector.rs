@@ -1,6 +1,5 @@
 use super::*;
 use russell_openblas::*;
-use std::convert::TryInto;
 
 /// Copies vector
 ///
@@ -30,7 +29,7 @@ pub fn copy_vector(v: &mut Vector, u: &Vector) -> Result<(), &'static str> {
     if u.data.len() != n {
         return Err("vectors have wrong dimensions");
     }
-    let n_i32: i32 = n.try_into().unwrap();
+    let n_i32: i32 = to_i32(n);
     dcopy(n_i32, &u.data, 1, &mut v.data, 1);
     Ok(())
 }

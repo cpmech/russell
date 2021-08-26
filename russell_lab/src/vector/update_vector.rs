@@ -1,6 +1,5 @@
 use super::*;
 use russell_openblas::*;
-use std::convert::TryInto;
 
 /// Updates vector based on another vector (axpy)
 ///
@@ -30,7 +29,7 @@ pub fn update_vector(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), &'sta
     if u.data.len() != n {
         return Err("vectors have wrong dimensions");
     }
-    let n_i32: i32 = n.try_into().unwrap();
+    let n_i32: i32 = to_i32(n);
     daxpy(n_i32, alpha, &u.data, 1, &mut v.data, 1);
     Ok(())
 }

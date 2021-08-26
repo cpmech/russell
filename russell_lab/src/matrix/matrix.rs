@@ -1,6 +1,5 @@
 use russell_openblas::*;
 use std::cmp;
-use std::convert::TryInto;
 use std::fmt::{self, Write};
 
 pub struct Matrix {
@@ -151,7 +150,7 @@ impl Matrix {
     /// # }
     /// ```
     pub fn scale(&mut self, alpha: f64) {
-        let n: i32 = self.data.len().try_into().unwrap();
+        let n: i32 = to_i32(self.data.len());
         dscal(n, alpha, &mut self.data, 1);
     }
 

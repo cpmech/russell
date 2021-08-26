@@ -1,7 +1,6 @@
 use crate::matrix::*;
 use crate::vector::*;
 use russell_openblas::*;
-use std::convert::TryInto;
 
 /// Performs the matrix-vector multiplication resulting in a vector
 ///
@@ -45,8 +44,8 @@ pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) -> Result
     if m != a.nrow || n != a.ncol {
         return Err("matrix and vectors have incompatible dimensions");
     }
-    let m_i32: i32 = m.try_into().unwrap();
-    let n_i32: i32 = n.try_into().unwrap();
+    let m_i32: i32 = to_i32(m);
+    let n_i32: i32 = to_i32(n);
     let lda_i32 = m_i32;
     dgemv(
         false,

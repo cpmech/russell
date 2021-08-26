@@ -1,7 +1,6 @@
 use crate::matrix::*;
 use crate::vector::*;
 use russell_openblas::*;
-use std::convert::TryInto;
 
 /// Performs the outer (tensor) product between two vectors resulting in a matrix
 ///
@@ -39,8 +38,8 @@ pub fn outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) -> Result<(), &
     if a.nrow != m || a.ncol != n {
         return Err("matrix and vectors have incompatible dimensions");
     }
-    let m_i32: i32 = m.try_into().unwrap();
-    let n_i32: i32 = n.try_into().unwrap();
+    let m_i32: i32 = to_i32(m);
+    let n_i32: i32 = to_i32(n);
     let lda_i32 = m_i32;
     dger(
         m_i32,

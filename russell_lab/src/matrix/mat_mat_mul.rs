@@ -1,6 +1,5 @@
 use super::*;
 use russell_openblas::*;
-use std::convert::TryInto;
 
 /// Performs the matrix-matrix multiplication resulting in a matrix
 ///
@@ -38,11 +37,11 @@ pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) -> Result
     if a.nrow != c.nrow || a.ncol != b.nrow || b.ncol != c.ncol {
         return Err("matrices have wrong dimensions");
     }
-    let m_i32: i32 = c.nrow.try_into().unwrap();
-    let n_i32: i32 = c.ncol.try_into().unwrap();
-    let k_i32: i32 = a.ncol.try_into().unwrap();
-    let lda_i32: i32 = a.nrow.try_into().unwrap();
-    let ldb_i32: i32 = b.nrow.try_into().unwrap();
+    let m_i32: i32 = to_i32(c.nrow);
+    let n_i32: i32 = to_i32(c.ncol);
+    let k_i32: i32 = to_i32(a.ncol);
+    let lda_i32: i32 = to_i32(a.nrow);
+    let ldb_i32: i32 = to_i32(b.nrow);
     dgemm(
         false,
         false,

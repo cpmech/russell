@@ -1,4 +1,3 @@
-#[derive(Debug)]
 pub struct Histogram<T>
 where
     T: Into<f64> + Copy,

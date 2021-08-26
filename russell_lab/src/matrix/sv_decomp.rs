@@ -69,7 +69,7 @@ use std::convert::TryFrom;
 /// assert_eq!(format!("{:.3}", u), u_correct);
 /// assert_eq!(format!("{:.3}", vt), vt_correct);
 ///
-/// // check SVD: a == u * s * v
+/// // check SVD: a == u * s * vt
 /// let mut usv = Matrix::new(m, n);
 /// for i in 0..m {
 ///     for j in 0..n {
@@ -133,7 +133,7 @@ use std::convert::TryFrom;
 /// assert_eq!(format!("{:.2}", u), u_correct);
 /// assert_eq!(format!("{:.2}", vt), vt_correct);
 ///
-/// // check SVD: a == u * s * v
+/// // check SVD: a == u * s * vt
 /// let mut usv = Matrix::new(m, n);
 /// for i in 0..m {
 ///     for j in 0..n {

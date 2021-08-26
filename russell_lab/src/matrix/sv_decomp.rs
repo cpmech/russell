@@ -317,4 +317,37 @@ mod tests {
         // done
         Ok(())
     }
+
+    #[test]
+    fn sv_decomp_fails_on_wrong_dimensions() {
+        let mut a = Matrix::new(3, 2);
+        let mut s = Vector::new(2);
+        let mut u = Matrix::new(3, 3);
+        let mut vt = Matrix::new(2, 2);
+        let mut s_3 = Vector::new(3);
+        let mut u_2x2 = Matrix::new(2, 2);
+        let mut u_3x2 = Matrix::new(3, 2);
+        let mut vt_3x3 = Matrix::new(3, 3);
+        let mut vt_2x3 = Matrix::new(2, 3);
+        assert_eq!(
+            sv_decomp(&mut s_3, &mut u, &mut vt, &mut a),
+            Err("[s] must be an min(m,n) vector")
+        );
+        assert_eq!(
+            sv_decomp(&mut s, &mut u_2x2, &mut vt, &mut a),
+            Err("[u] must be an m-by-m square matrix")
+        );
+        assert_eq!(
+            sv_decomp(&mut s, &mut u_3x2, &mut vt, &mut a),
+            Err("[u] must be an m-by-m square matrix")
+        );
+        assert_eq!(
+            sv_decomp(&mut s, &mut u, &mut vt_3x3, &mut a),
+            Err("[vt] must be an n-by-n square matrix")
+        );
+        assert_eq!(
+            sv_decomp(&mut s, &mut u, &mut vt_2x3, &mut a),
+            Err("[vt] must be an n-by-n square matrix")
+        );
+    }
 }

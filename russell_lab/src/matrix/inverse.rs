@@ -1,19 +1,20 @@
 use crate::matrix::*;
 use russell_openblas::*;
 
-// set constant
+// constants
 const ZERO_DETERMINANT: f64 = 1e-15;
+const SINGLE_VALUE_TOLERANCE: f64 = 1e-14;
 
 /// Computes the inverse or pseudo-inverse matrix and returns the determinant (if square matrix)
 ///
 /// ```text
 ///   ai  :=  inverse(a)
-///  (m,n)      (m,n)
+/// (n,m)       (m,n)
 /// ```
 ///
 /// # Output
 ///
-/// * `ai` -- (m,n) inverse matrix
+/// * `ai` -- (n,m) inverse matrix
 /// * the matrix determinant if m == n
 ///
 /// # Input
@@ -66,8 +67,8 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, &'static str> {
     // check
     let (m, n) = (a.nrow, a.ncol);
-    if ai.nrow != m || ai.ncol != n {
-        return Err("matrices have wrong dimensions");
+    if ai.nrow != n || ai.ncol != m {
+        return Err("[ai] matrix has wrong dimensions");
     }
 
     // handle small square matrix
@@ -124,6 +125,7 @@ pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, &'static str> {
     }
 
     // copy a into ai
+    let min_mn = if m < n { m } else { n };
     let m_i32 = to_i32(m);
     let n_i32 = to_i32(n);
     dcopy(m_i32 * n_i32, &a.data, 1, &mut ai.data, 1);
@@ -131,7 +133,6 @@ pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, &'static str> {
     // handle square matrix
     if m == n {
         let lda_i32 = m_i32;
-        let min_mn = if m < n { m } else { n };
         let mut ipiv = vec![0_i32; min_mn];
         dgetrf(m_i32, n_i32, &mut ai.data, lda_i32, &mut ipiv)?;
         dgetri(n_i32, &mut ai.data, lda_i32, &ipiv)?;
@@ -148,7 +149,37 @@ pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, &'static str> {
         return Ok(det);
     }
 
+    // singular value decomposition
+    let mut s = vec![0.0; min_mn];
+    let mut u = vec![0.0; m * m];
+    let mut vt = vec![0.0; n * n];
+    let mut superb = vec![0.0; min_mn];
+    dgesvd(
+        b'A',
+        b'A',
+        m_i32,
+        n_i32,
+        &mut ai.data,
+        m_i32,
+        &mut s,
+        &mut u,
+        m_i32,
+        &mut vt,
+        n_i32,
+        &mut superb,
+    )?;
+
     // handle rectangular matrix => pseudo-inverse
+    for i in 0..n {
+        for j in 0..m {
+            ai.data[i + j * n] = 0.0;
+            for k in 0..min_mn {
+                if s[k] > SINGLE_VALUE_TOLERANCE {
+                    ai.data[i + j * n] += vt[k + i * n] * u[j + k * m] / s[k];
+                }
+            }
+        }
+    }
 
     // done
     Ok(0.0)
@@ -163,16 +194,16 @@ mod tests {
 
     #[test]
     fn inverse_fails_on_wrong_dimensions() {
-        let mut a_2x1 = Matrix::new(2, 1);
-        let mut a_1x2 = Matrix::new(1, 2);
-        let mut ai_2x3 = Matrix::new(2, 3);
+        let mut a_2x3 = Matrix::new(2, 3);
+        let mut ai_1x2 = Matrix::new(1, 2);
+        let mut ai_2x1 = Matrix::new(2, 1);
         assert_eq!(
-            inverse(&mut ai_2x3, &mut a_2x1),
-            Err("matrices have wrong dimensions")
+            inverse(&mut ai_1x2, &mut a_2x3),
+            Err("[ai] matrix has wrong dimensions")
         );
         assert_eq!(
-            inverse(&mut ai_2x3, &mut a_1x2),
-            Err("matrices have wrong dimensions")
+            inverse(&mut ai_2x1, &mut a_2x3),
+            Err("[ai] matrix has wrong dimensions")
         );
     }
 
@@ -234,12 +265,12 @@ mod tests {
         let det = inverse(&mut ai_3x3, &mut a_3x3)?;
         assert_eq!(det, 22.0);
         #[rustfmt::skip]
-        let correct = Matrix::from(&[
+        let ai_correct = Matrix::from(&[
             &[ 12.0/11.0, -6.0/11.0, -1.0/11.0],
             &[  2.5/11.0,  1.5/11.0, -2.5/11.0],
             &[ -2.0/11.0,  1.0/11.0,  2.0/11.0],
         ])?;
-        assert_vec_approx_eq!(ai_3x3.data, correct.data, 1e-15);
+        assert_vec_approx_eq!(ai_3x3.data, ai_correct.data, 1e-15);
         Ok(())
     }
 
@@ -254,6 +285,28 @@ mod tests {
         let mut ai_3x3 = Matrix::new(3, 3);
         let res = inverse(&mut ai_3x3, &mut a_3x3);
         assert_eq!(res, Err("cannot compute inverse due to zero determinant"));
+        Ok(())
+    }
+
+    #[test]
+    fn pseudo_inverse_works() -> Result<(), &'static str> {
+        #[rustfmt::skip]
+        let a = Matrix::from(&[
+            &[-5.773502691896260e-01, -5.773502691896260e-01, 1.000000000000000e+00],
+            &[ 5.773502691896260e-01, -5.773502691896260e-01, 1.000000000000000e+00],
+            &[-5.773502691896260e-01,  5.773502691896260e-01, 1.000000000000000e+00],
+            &[ 5.773502691896260e-01,  5.773502691896260e-01, 1.000000000000000e+00],
+        ])?;
+        let (m, n) = a.dims();
+        let mut ai = Matrix::new(n, m);
+        inverse(&mut ai, &a)?;
+        #[rustfmt::skip]
+        let ai_correct = Matrix::from(&[
+            &[-4.330127018922192e-01,  4.330127018922192e-01, -4.330127018922192e-01, 4.330127018922192e-01],
+            &[-4.330127018922192e-01, -4.330127018922192e-01,  4.330127018922192e-01, 4.330127018922192e-01],
+            &[ 2.500000000000000e-01,  2.500000000000000e-01,  2.500000000000000e-01, 2.500000000000000e-01],
+        ])?;
+        assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-15);
         Ok(())
     }
 }

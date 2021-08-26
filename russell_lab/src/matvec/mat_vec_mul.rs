@@ -28,7 +28,7 @@ use std::convert::TryInto;
 /// ])?;
 /// let u = Vector::from(&[1.0, 2.0, 3.0]);
 /// let mut v = Vector::new(a.nrow());
-/// mat_vec_mul(&mut v, 0.5, &a, &u);
+/// mat_vec_mul(&mut v, 0.5, &a, &u)?;
 /// let correct = "┌     ┐\n\
 ///                │   2 │\n\
 ///                │   1 │\n\
@@ -39,16 +39,11 @@ use std::convert::TryInto;
 /// # Ok(())
 /// # }
 /// ```
-pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) {
+pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) -> Result<(), &'static str> {
     let m = v.data.len();
     let n = u.data.len();
-    if m != a.nrow {
-        #[rustfmt::skip]
-        panic!("dim of vector v (={}) must equal nrow of matrix a (={})", m, a.nrow);
-    }
-    if n != a.ncol {
-        #[rustfmt::skip]
-        panic!("dim of vector u (={}) must equal ncol of matrix a (={})", n, a.ncol);
+    if m != a.nrow || n != a.ncol {
+        return Err("matrix and vectors have incompatible dimensions");
     }
     let m_i32: i32 = m.try_into().unwrap();
     let n_i32: i32 = n.try_into().unwrap();
@@ -66,6 +61,7 @@ pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) {
         &mut v.data,
         1,
     );
+    Ok(())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -85,27 +81,25 @@ mod tests {
         ])?;
         let u = Vector::from(&[1.0, 3.0, 8.0, 5.0]);
         let mut v = Vector::new(a.nrow());
-        mat_vec_mul(&mut v, 1.0, &a, &u);
+        mat_vec_mul(&mut v, 1.0, &a, &u)?;
         let correct = &[4.0, 8.0, 12.0];
         assert_vec_approx_eq!(v.data, correct, 1e-15);
         Ok(())
     }
 
     #[test]
-    #[should_panic(expected = "dim of vector v (=4) must equal nrow of matrix a (=3)")]
-    fn mat_vec_mul_panic_1() {
-        let u = Vector::new(4);
-        let a = Matrix::new(3, 4);
-        let mut v = Vector::new(4);
-        mat_vec_mul(&mut v, 1.0, &a, &u);
-    }
-
-    #[test]
-    #[should_panic(expected = "dim of vector u (=3) must equal ncol of matrix a (=4)")]
-    fn mat_vec_mul_panic_2() {
-        let u = Vector::new(3);
-        let a = Matrix::new(3, 4);
+    fn mat_vec_mul_fails_on_wrong_dimensions() {
+        let u = Vector::new(2);
+        let a_1x2 = Matrix::new(1, 2);
+        let a_3x1 = Matrix::new(3, 1);
         let mut v = Vector::new(3);
-        mat_vec_mul(&mut v, 1.0, &a, &u);
+        assert_eq!(
+            mat_vec_mul(&mut v, 1.0, &a_1x2, &u),
+            Err("matrix and vectors have incompatible dimensions")
+        );
+        assert_eq!(
+            mat_vec_mul(&mut v, 1.0, &a_3x1, &u),
+            Err("matrix and vectors have incompatible dimensions")
+        );
     }
 }

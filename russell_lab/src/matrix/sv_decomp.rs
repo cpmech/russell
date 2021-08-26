@@ -28,17 +28,27 @@ use std::convert::TryFrom;
 ///
 /// ```
 /// # fn main() -> Result<(), &'static str> {
+///
+/// // import
 /// use russell_lab::*;
+///
+/// // set matrix
 /// let mut a = Matrix::from(&[
 ///     &[3.0, 2.0,  2.0],
 ///     &[2.0, 3.0, -2.0],
 /// ]);
+///
+/// // allocate output structures
 /// let (m, n) = a.dims();
 /// let min_mn = if m < n { m } else { n };
 /// let mut s = Vector::new(min_mn);
 /// let mut u = Matrix::new(m, m);
 /// let mut vt = Matrix::new(n, n);
+///
+/// // perform SVD
 /// sv_decomp(&mut s, &mut u, &mut vt, &mut a)?;
+///
+/// // define correct data
 /// let s_correct = "┌       ┐\n\
 ///                  │ 5.000 │\n\
 ///                  │ 3.000 │\n\
@@ -52,9 +62,26 @@ use std::convert::TryFrom;
 ///                   │ -0.236  0.236 -0.943 │\n\
 ///                   │ -0.667  0.667  0.333 │\n\
 ///                   └                      ┘";
+///
+/// // check solution
 /// assert_eq!(format!("{:.3}", s), s_correct);
 /// assert_eq!(format!("{:.3}", u), u_correct);
 /// assert_eq!(format!("{:.3}", vt), vt_correct);
+///
+/// // check SVD: a == u * s * v
+/// let mut usv = Matrix::new(m, n);
+/// for i in 0..m {
+///     for j in 0..n {
+///         for k in 0..min_mn {
+///             usv.plus_equal(i,j, u.get(i,k) * s.get(k) * vt.get(k,j));
+///         }
+///     }
+/// }
+/// let usv_correct = "┌                               ┐\n\
+///                    │  3.000000  2.000000  2.000000 │\n\
+///                    │  2.000000  3.000000 -2.000000 │\n\
+///                    └                               ┘";
+/// assert_eq!(format!("{:.6}", usv), usv_correct);
 /// # Ok(())
 /// # }
 /// ```

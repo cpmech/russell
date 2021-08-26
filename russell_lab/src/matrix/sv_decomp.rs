@@ -30,6 +30,39 @@ use std::convert::TryFrom;
 /// # fn main() -> Result<(), &'static str> {
 /// use russell_lab::*;
 /// let mut a = Matrix::from(&[
+///     &[3.0, 2.0,  2.0],
+///     &[2.0, 3.0, -2.0],
+/// ]);
+/// let (m, n) = a.dims();
+/// let min_mn = if m < n { m } else { n };
+/// let mut s = Vector::new(min_mn);
+/// let mut u = Matrix::new(m, m);
+/// let mut vt = Matrix::new(n, n);
+/// sv_decomp(&mut s, &mut u, &mut vt, &mut a)?;
+/// let s_correct = "┌       ┐\n\
+///                  │ 5.000 │\n\
+///                  │ 3.000 │\n\
+///                  └       ┘";
+/// let u_correct = "┌               ┐\n\
+///                  │ -0.707 -0.707 │\n\
+///                  │ -0.707  0.707 │\n\
+///                  └               ┘";
+/// let vt_correct = "┌                      ┐\n\
+///                   │ -0.707 -0.707 -0.000 │\n\
+///                   │ -0.236  0.236 -0.943 │\n\
+///                   │ -0.667  0.667  0.333 │\n\
+///                   └                      ┘";
+/// assert_eq!(format!("{:.3}", s), s_correct);
+/// assert_eq!(format!("{:.3}", u), u_correct);
+/// assert_eq!(format!("{:.3}", vt), vt_correct);
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ```
+/// # fn main() -> Result<(), &'static str> {
+/// use russell_lab::*;
+/// let mut a = Matrix::from(&[
 ///     &[2.0, 4.0],
 ///     &[1.0, 3.0],
 ///     &[0.0, 0.0],

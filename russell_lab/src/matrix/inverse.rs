@@ -71,6 +71,11 @@ pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, &'static str> {
         return Err("[ai] matrix has wrong dimensions");
     }
 
+    // handle zero-sized matrix
+    if m == 0 && n == 0 {
+        return Ok(0.0);
+    }
+
     // handle small square matrix
     if m == 1 && n == 1 {
         let det = a.get(0, 0);
@@ -205,6 +210,16 @@ mod tests {
             inverse(&mut ai_2x1, &mut a_2x3),
             Err("[ai] matrix has wrong dimensions")
         );
+    }
+
+    #[test]
+    fn inverse_0x0_works() -> Result<(), &'static str> {
+        let mut a_0x0 = Matrix::new(0, 0);
+        let mut ai_0x0 = Matrix::new(0, 0);
+        let det = inverse(&mut ai_0x0, &mut a_0x0)?;
+        assert_eq!(det, 0.0);
+        assert_eq!(ai_0x0.data, []);
+        Ok(())
     }
 
     #[test]

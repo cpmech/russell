@@ -7,4 +7,4 @@
 # reference:
 #   https://github.com/taiki-e/cargo-llvm-cov
 
-cargo llvm-cov --open
+cargo llvm-cov --open --ignore-filename-regex build.rs

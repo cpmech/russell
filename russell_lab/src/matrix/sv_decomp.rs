@@ -200,4 +200,63 @@ mod tests {
         // done
         Ok(())
     }
+
+    #[test]
+    fn sv_decomp_1_works() -> Result<(), &'static str> {
+        // matrix
+        #[rustfmt::skip]
+        let data: &[&[f64]] = &[
+            &[1.0, 0.0, 1.0, 0.0],
+            &[0.0, 1.0, 0.0, 1.0],
+        ];
+        let mut a = Matrix::from(data);
+        let a_copy = Matrix::from(data);
+
+        // allocate output data
+        let (m, n) = a.dims();
+        let min_mn = if m < n { m } else { n };
+        let mut s = Vector::new(min_mn);
+        let mut u = Matrix::new(m, m);
+        let mut vt = Matrix::new(n, n);
+
+        // calculate SVD
+        sv_decomp(&mut s, &mut u, &mut vt, &mut a)?;
+
+        // check
+        let sqrt2 = std::f64::consts::SQRT_2;
+        #[rustfmt::skip]
+        let s_correct = Vector::from(&[
+            sqrt2,
+            sqrt2,
+        ]);
+        #[rustfmt::skip]
+        let u_correct = Matrix::from(&[
+            &[1.0, 0.0],
+            &[0.0, 1.0],
+        ]);
+        #[rustfmt::skip]
+        let vt_correct =Matrix::from(&[
+            &[ 1.0/sqrt2,        0.0, 1.0/sqrt2,       0.0],
+            &[       0.0,  1.0/sqrt2,       0.0, 1.0/sqrt2],
+            &[-1.0/sqrt2,        0.0, 1.0/sqrt2,       0.0],
+            &[       0.0, -1.0/sqrt2,       0.0, 1.0/sqrt2],
+        ]);
+        assert_vec_approx_eq!(u.data, u_correct.data, 1e-15);
+        assert_vec_approx_eq!(s.data, s_correct.data, 1e-15);
+        assert_vec_approx_eq!(vt.data, vt_correct.data, 1e-15);
+
+        // check SVD
+        let mut usv = vec![0.0; m * n];
+        for i in 0..m {
+            for j in 0..n {
+                for k in 0..min_mn {
+                    usv[i + j * m] += u.data[i + k * m] * s.data[k] * vt.data[k + j * n];
+                }
+            }
+        }
+        assert_vec_approx_eq!(usv, a_copy.data, 1e-15);
+
+        // done
+        Ok(())
+    }
 }

@@ -76,10 +76,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "cannot compute average of empty slice")]
-    fn ave_returns_error_on_empty_slice() {
+    fn ave_fails_on_empty_slice() {
         let x: [i32; 0] = [];
-        panic!("{}", ave(&x).unwrap_err().to_string());
+        assert_eq!(ave(&x), Err("cannot compute average of empty slice"));
     }
 
     #[test]

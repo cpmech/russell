@@ -69,7 +69,7 @@ mod tests {
     }
 
     #[test]
-    fn copy_matrix_panic_1() {
+    fn copy_matrix_fails_on_wrong_dimensions() {
         let a_2x2 = Matrix::new(2, 2);
         let a_2x1 = Matrix::new(2, 1);
         let a_1x2 = Matrix::new(1, 2);

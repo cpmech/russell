@@ -24,6 +24,11 @@ where
         }
     }
     */
+
+    pub fn todo(&self) {
+        println!("stations.len = {:?}", self.stations.len());
+        println!("counts.len = {:?}", self.counts.len());
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -37,5 +42,12 @@ mod tests {
         let stations = [0, 1, 2, 3, 4, 5];
         let hist = Histogram::new(&stations);
         assert_eq!(hist.stations, &[0, 1, 2, 3, 4, 5])
+    }
+
+    #[test]
+    fn todo_works() {
+        let stations = [0, 1, 2, 3, 4, 5];
+        let hist = Histogram::new(&stations);
+        hist.todo();
     }
 }

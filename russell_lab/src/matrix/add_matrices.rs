@@ -3,7 +3,7 @@ use russell_openblas::*;
 
 const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
 
-/// Performs the addition of two vectors
+/// Performs the addition of two matrices
 ///
 /// ```text
 /// c := alpha * a + beta * b
@@ -29,7 +29,6 @@ const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
 ///                └             ┘";
 /// assert_eq!(format!("{}", c), correct);
 /// ```
-///
 pub fn add_matrices(c: &mut Matrix, alpha: f64, a: &Matrix, beta: f64, b: &Matrix) {
     if a.nrow != c.nrow {
         #[rustfmt::skip]

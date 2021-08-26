@@ -1,5 +1,4 @@
 use super::*;
-use std::convert::TryInto;
 
 #[rustfmt::skip]
 extern "C" {
@@ -133,7 +132,7 @@ pub fn dgesv(
     ldb: i32,
 ) -> Result<(), &'static str> {
     unsafe {
-        let ipiv_len: i32 = ipiv.len().try_into().unwrap();
+        let ipiv_len: i32 = to_i32(ipiv.len());
         if ipiv_len != n {
             return Err("the length of ipiv must equal n");
         }

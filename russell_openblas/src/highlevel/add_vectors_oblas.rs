@@ -1,5 +1,4 @@
-use crate::{daxpy, dcopy, dscal};
-use std::convert::TryInto;
+use crate::{daxpy, dcopy, dscal, to_i32};
 
 /// Adds two vectors
 ///
@@ -16,7 +15,7 @@ use std::convert::TryInto;
 #[inline]
 pub fn add_vectors_oblas(w: &mut [f64], alpha: f64, u: &[f64], beta: f64, v: &[f64]) {
     let n = w.len();
-    let n_i32: i32 = n.try_into().unwrap();
+    let n_i32: i32 = to_i32(n);
     // w := v
     dcopy(n_i32, v, 1, w, 1);
     // w := beta * v

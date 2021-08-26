@@ -357,7 +357,6 @@ pub fn dgeev(
 mod tests {
     use super::*;
     use russell_chk::*;
-    use std::convert::TryInto;
 
     #[test]
     fn dgemm_notrans_notrans_works() -> Result<(), &'static str> {
@@ -655,15 +654,15 @@ mod tests {
         dgesvd(
             jobu,
             jobvt,
-            m.try_into().unwrap(),
-            n.try_into().unwrap(),
+            to_i32(m),
+            to_i32(n),
             &mut a,
-            lda.try_into().unwrap(),
+            to_i32(lda),
             &mut s,
             &mut u,
-            ldu.try_into().unwrap(),
+            to_i32(ldu),
             &mut vt,
-            ldvt.try_into().unwrap(),
+            to_i32(ldvt),
             &mut superb,
         )?;
 
@@ -732,15 +731,15 @@ mod tests {
         dgesvd(
             jobu,
             jobvt,
-            m.try_into().unwrap(),
-            n.try_into().unwrap(),
+            to_i32(m),
+            to_i32(n),
             &mut a,
-            lda.try_into().unwrap(),
+            to_i32(lda),
             &mut s,
             &mut u,
-            ldu.try_into().unwrap(),
+            to_i32(ldu),
             &mut vt,
-            ldvt.try_into().unwrap(),
+            to_i32(ldvt),
             &mut superb,
         )?;
 
@@ -791,8 +790,8 @@ mod tests {
         let min_mn = if m < n { m } else { n };
 
         // run dgetrf
-        let m_i32 = m.try_into().unwrap();
-        let n_i32 = n.try_into().unwrap();
+        let m_i32 = to_i32(m);
+        let n_i32 = to_i32(n);
         let lda_i32 = m_i32;
         let mut ipiv = vec![0_i32; min_mn];
         dgetrf(m_i32, n_i32, &mut a, lda_i32, &mut ipiv)?;

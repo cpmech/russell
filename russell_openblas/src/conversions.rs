@@ -11,11 +11,6 @@
 ///   a[i+j*m] = A[i][j]
 ///
 /// ```
-///
-/// # Panics
-///
-/// This function panics if there are rows with different number of columns
-///
 pub fn slice_to_colmajor(a: &[&[f64]]) -> Result<Vec<f64>, &'static str> {
     let nrow = a.len();
     let ncol = a[0].len();

@@ -373,7 +373,11 @@ mod tests {
 
     #[test]
     fn get_works() {
-        let a = Matrix::from(&[&[1.0, 2.0], &[3.0, 4.0]]);
+        #[rustfmt::skip]
+        let a = Matrix::from(&[
+            &[1.0, 2.0],
+            &[3.0, 4.0],
+        ]);
         assert_eq!(a.get(0, 0), 1.0);
         assert_eq!(a.get(0, 1), 2.0);
         assert_eq!(a.get(1, 0), 3.0);

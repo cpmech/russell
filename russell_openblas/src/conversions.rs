@@ -108,7 +108,7 @@ pub fn dgeev_data_lr(
     Ok(())
 }
 
-/// Extracts LAPACK (dgeev) eigenvectors from its compact representation (single set)
+/// Extracts LAPACK (dgeev) eigenvectors from its compact representation
 ///
 /// Single set: extracts either the left eigenvectors or the right eigenvectors
 ///
@@ -122,12 +122,7 @@ pub fn dgeev_data_lr(
 /// * `w_imag` -- n, eigenvalues; imaginary part
 /// * `v` -- n*n, output of dgeev
 ///
-pub fn dgeev_data_single(
-    v_real: &mut [f64],
-    v_imag: &mut [f64],
-    w_imag: &[f64],
-    v: &[f64],
-) -> Result<(), &'static str> {
+pub fn dgeev_data(v_real: &mut [f64], v_imag: &mut [f64], w_imag: &[f64], v: &[f64]) -> Result<(), &'static str> {
     // check
     let n = w_imag.len();
     let nn = n * n;
@@ -368,7 +363,7 @@ mod tests {
     }
 
     #[test]
-    fn dgeev_data_single_works() -> Result<(), &'static str> {
+    fn dgeev_data_works() -> Result<(), &'static str> {
         let n = 5_usize;
         let mut v_real = vec![0.0; n * n];
         let mut v_imag = vec![0.0; n * n];
@@ -377,7 +372,7 @@ mod tests {
             0.04, 0.62, -0.04, 0.28, -0.04, 0.29, 0.00, -0.58, 0.01, 0.34, -0.13, 0.69, -0.39, -0.02, -0.40, -0.33,
             0.00, -0.07, -0.19, 0.22, 0.04, 0.56, -0.13, -0.80, 0.18,
         ];
-        dgeev_data_single(&mut v_real, &mut v_imag, &w_imag, &v)?;
+        dgeev_data(&mut v_real, &mut v_imag, &w_imag, &v)?;
         let correct_v_real = &[
             0.04, 0.62, -0.04, 0.28, -0.04, 0.04, 0.62, -0.04, 0.28, -0.04, -0.13, 0.69, -0.39, -0.02, -0.40, -0.13,
             0.69, -0.39, -0.02, -0.40, 0.04, 0.56, -0.13, -0.80, 0.18,
@@ -392,7 +387,7 @@ mod tests {
     }
 
     #[test]
-    fn dgeev_data_single_fails_on_wrong_dim_1() {
+    fn dgeev_data_fails_on_wrong_dims() {
         let n = 2_usize;
         let wrong = 1_usize;
         let mut v_real = vec![0.0; n * n];
@@ -404,19 +399,19 @@ mod tests {
         let w_imag_wrong = vec![0.0; wrong];
         let v_wrong = vec![0.0; n * wrong];
         assert_eq!(
-            dgeev_data_single(&mut v_real_wrong, &mut v_imag, &w_imag, &v),
+            dgeev_data(&mut v_real_wrong, &mut v_imag, &w_imag, &v),
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            dgeev_data_single(&mut v_real, &mut v_imag_wrong, &w_imag, &v),
+            dgeev_data(&mut v_real, &mut v_imag_wrong, &w_imag, &v),
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            dgeev_data_single(&mut v_real, &mut v_imag, &w_imag_wrong, &v),
+            dgeev_data(&mut v_real, &mut v_imag, &w_imag_wrong, &v),
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            dgeev_data_single(&mut v_real, &mut v_imag, &w_imag, &v_wrong),
+            dgeev_data(&mut v_real, &mut v_imag, &w_imag, &v_wrong),
             Err("arrays have wrong dimensions")
         );
     }
@@ -430,7 +425,7 @@ mod tests {
         let w_imag = [0.0, WRONG];
         let v = vec![0.0; n * n];
         assert_eq!(
-            dgeev_data_single(&mut v_real, &mut v_imag, &w_imag, &v),
+            dgeev_data(&mut v_real, &mut v_imag, &w_imag, &v),
             Err("last eigenvalue cannot be complex")
         );
     }

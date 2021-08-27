@@ -1052,7 +1052,7 @@ mod tests {
         // extract eigenvalues from dgeev data
         vl_real.iter_mut().map(|x| *x = 0.0).count();
         vl_imag.iter_mut().map(|x| *x = 0.0).count();
-        dgeev_data_single(&mut vl_real, &mut vl_imag, &wi, &vl)?;
+        dgeev_data(&mut vl_real, &mut vl_imag, &wi, &vl)?;
 
         // check left eigenvalues
         assert_vec_approx_eq!(vl_real, vl_real_correct, 1e-15);
@@ -1064,7 +1064,7 @@ mod tests {
         // extract eigenvalues from dgeev data
         vr_real.iter_mut().map(|x| *x = 0.0).count();
         vr_imag.iter_mut().map(|x| *x = 0.0).count();
-        dgeev_data_single(&mut vr_real, &mut vr_imag, &wi, &vr)?;
+        dgeev_data(&mut vr_real, &mut vr_imag, &wi, &vr)?;
 
         // check left eigenvalues
         assert_vec_approx_eq!(vr_real, vr_real_correct, 1e-15);

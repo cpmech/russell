@@ -78,54 +78,58 @@ pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, &'static str> {
 
     // handle small square matrix
     if m == 1 && n == 1 {
-        let det = a.get(0, 0);
+        let det = a.data[0];
         if f64::abs(det) <= ZERO_DETERMINANT {
             return Err("cannot compute inverse due to zero determinant");
         }
-        ai.set(0, 0, 1.0 / det);
+        ai.data[0] = 1.0 / det;
         return Ok(det);
     }
 
     if m == 2 && n == 2 {
-        let det = a.get(0, 0) * a.get(1, 1) - a.get(0, 1) * a.get(1, 0);
+        let det = a.data[0 + 0 * m] * a.data[1 + 1 * m] - a.data[0 + 1 * m] * a.data[1 + 0 * m];
         if f64::abs(det) <= ZERO_DETERMINANT {
             return Err("cannot compute inverse due to zero determinant");
         }
-        ai.set(0, 0, a.get(1, 1) / det);
-        ai.set(0, 1, -a.get(0, 1) / det);
-        ai.set(1, 0, -a.get(1, 0) / det);
-        ai.set(1, 1, a.get(0, 0) / det);
+        ai.data[0 + 0 * n] = a.data[1 + 1 * m] / det;
+        ai.data[0 + 1 * n] = -a.data[0 + 1 * m] / det;
+        ai.data[1 + 0 * n] = -a.data[1 + 0 * m] / det;
+        ai.data[1 + 1 * n] = a.data[0 + 0 * m] / det;
         return Ok(det);
     }
 
     if m == 3 && n == 3 {
-        let det = a.get(0, 0) * (a.get(1, 1) * a.get(2, 2) - a.get(1, 2) * a.get(2, 1))
-            - a.get(0, 1) * (a.get(1, 0) * a.get(2, 2) - a.get(1, 2) * a.get(2, 0))
-            + a.get(0, 2) * (a.get(1, 0) * a.get(2, 1) - a.get(1, 1) * a.get(2, 0));
+        #[rustfmt::skip]
+        let det =
+              a.data[0+0*m] * (a.data[1+1*m] * a.data[2+ 2*m] - a.data[1+ 2*m] * a.data[2+ 1*m])
+            - a.data[0+1*m] * (a.data[1+0*m] * a.data[2+ 2*m] - a.data[1+ 2*m] * a.data[2+ 0*m])
+            + a.data[0+2*m] * (a.data[1+0*m] * a.data[2+ 1*m] - a.data[1+ 1*m] * a.data[2+ 0*m]);
+
         if f64::abs(det) <= ZERO_DETERMINANT {
             return Err("cannot compute inverse due to zero determinant");
         }
 
-        #[rustfmt::skip]
-		ai.set(0, 0, (a.get(1, 1)*a.get(2, 2)-a.get(1, 2)*a.get(2, 1))/det);
-        #[rustfmt::skip]
-		ai.set(0, 1, (a.get(0, 2)*a.get(2, 1)-a.get(0, 1)*a.get(2, 2))/det);
-        #[rustfmt::skip]
-		ai.set(0, 2, (a.get(0, 1)*a.get(1, 2)-a.get(0, 2)*a.get(1, 1))/det);
+        ai.data[0 + 0 * n] =
+            (a.data[1 + 1 * m] * a.data[2 + 2 * m] - a.data[1 + 2 * m] * a.data[2 + 1 * m]) / det;
+        ai.data[0 + 1 * n] =
+            (a.data[0 + 2 * m] * a.data[2 + 1 * m] - a.data[0 + 1 * m] * a.data[2 + 2 * m]) / det;
+        ai.data[0 + 2 * n] =
+            (a.data[0 + 1 * m] * a.data[1 + 2 * m] - a.data[0 + 2 * m] * a.data[1 + 1 * m]) / det;
 
-        #[rustfmt::skip]
-		ai.set(1, 0, (a.get(1, 2)*a.get(2, 0)-a.get(1, 0)*a.get(2, 2))/det);
-        #[rustfmt::skip]
-		ai.set(1, 1, (a.get(0, 0)*a.get(2, 2)-a.get(0, 2)*a.get(2, 0))/det);
-        #[rustfmt::skip]
-		ai.set(1, 2, (a.get(0, 2)*a.get(1, 0)-a.get(0, 0)*a.get(1, 2))/det);
+        ai.data[1 + 0 * n] =
+            (a.data[1 + 2 * m] * a.data[2 + 0 * m] - a.data[1 + 0 * m] * a.data[2 + 2 * m]) / det;
+        ai.data[1 + 1 * n] =
+            (a.data[0 + 0 * m] * a.data[2 + 2 * m] - a.data[0 + 2 * m] * a.data[2 + 0 * m]) / det;
+        ai.data[1 + 2 * n] =
+            (a.data[0 + 2 * m] * a.data[1 + 0 * m] - a.data[0 + 0 * m] * a.data[1 + 2 * m]) / det;
 
-        #[rustfmt::skip]
-		ai.set(2, 0, (a.get(1, 0)*a.get(2, 1)-a.get(1, 1)*a.get(2, 0))/det);
-        #[rustfmt::skip]
-		ai.set(2, 1, (a.get(0, 1)*a.get(2, 0)-a.get(0, 0)*a.get(2, 1))/det);
-        #[rustfmt::skip]
-		ai.set(2, 2, (a.get(0, 0)*a.get(1, 1)-a.get(0, 1)*a.get(1, 0))/det);
+        ai.data[2 + 0 * n] =
+            (a.data[1 + 0 * m] * a.data[2 + 1 * m] - a.data[1 + 1 * m] * a.data[2 + 0 * m]) / det;
+        ai.data[2 + 1 * n] =
+            (a.data[0 + 1 * m] * a.data[2 + 0 * m] - a.data[0 + 0 * m] * a.data[2 + 1 * m]) / det;
+        ai.data[2 + 2 * n] =
+            (a.data[0 + 0 * m] * a.data[1 + 1 * m] - a.data[0 + 1 * m] * a.data[1 + 0 * m]) / det;
+
         return Ok(det);
     }
 
@@ -146,9 +150,9 @@ pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, &'static str> {
             let iu = i as usize;
             // NOTE: ipiv are 1-based indices
             if ipiv[iu] - 1 == i {
-                det = det * ai.get(iu, iu);
+                det = det * ai.data[iu + iu * n];
             } else {
-                det = -det * ai.get(iu, iu);
+                det = -det * ai.data[iu + iu * n];
             }
         }
         // second, perform the inversion

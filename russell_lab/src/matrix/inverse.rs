@@ -204,9 +204,8 @@ mod tests {
     use super::*;
     use russell_chk::*;
 
-    /// Computes a⋅ai⋅a that should equal a
-    fn get_a_times_ai_times_a(a: &Matrix, ai: &Matrix) -> Matrix {
-        // compute a⋅ai
+    /// Computes a⋅ai that should equal I for a square matrix
+    fn get_a_times_ai(a: &Matrix, ai: &Matrix) -> Matrix {
         let (m, n) = (a.nrow, a.ncol);
         let mut a_ai = Matrix::new(m, m);
         for i in 0..m {
@@ -216,7 +215,15 @@ mod tests {
                 }
             }
         }
+        a_ai
+    }
+
+    /// Computes a⋅ai⋅a that should equal a
+    fn get_a_times_ai_times_a(a: &Matrix, ai: &Matrix) -> Matrix {
+        // compute a⋅ai
+        let a_ai = get_a_times_ai(&a, &ai);
         // compute a⋅ai⋅a == a
+        let (m, n) = (a.nrow, a.ncol);
         let mut a_ai_a = Matrix::new(m, n);
         for i in 0..m {
             for j in 0..n {
@@ -260,6 +267,8 @@ mod tests {
         let det = inverse(&mut ai, &mut a)?;
         assert_eq!(det, 2.0);
         assert_vec_approx_eq!(ai.data, &[0.5], 1e-15);
+        let a_ai = get_a_times_ai(&a, &ai);
+        assert_vec_approx_eq!(a_ai.data, &[1.0], 1e-15);
         Ok(())
     }
 
@@ -283,6 +292,8 @@ mod tests {
         let det = inverse(&mut ai, &mut a)?;
         assert_eq!(det, -4.0);
         assert_vec_approx_eq!(ai.data, &[-0.5, 0.75, 0.5, -0.25], 1e-15);
+        let a_ai = get_a_times_ai(&a, &ai);
+        assert_vec_approx_eq!(a_ai.data, &[1.0, 0.0, 0.0, 1.0], 1e-15);
         Ok(())
     }
 
@@ -317,6 +328,9 @@ mod tests {
             &[ -2.0/11.0,  1.0/11.0,  2.0/11.0],
         ])?;
         assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-15);
+        let identity = Matrix::identity(3);
+        let a_ai = get_a_times_ai(&a, &ai);
+        assert_vec_approx_eq!(a_ai.data, identity.data, 1e-15);
         Ok(())
     }
 
@@ -354,6 +368,9 @@ mod tests {
             &[-2.2,  0.0,  0.4,  1.0],
         ])?;
         assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-15);
+        let identity = Matrix::identity(4);
+        let a_ai = get_a_times_ai(&a, &ai);
+        assert_vec_approx_eq!(a_ai.data, identity.data, 1e-15);
         Ok(())
     }
 
@@ -379,6 +396,9 @@ mod tests {
             &[ 7.9976941733073770e-01, -8.9457712572131853e-01, -1.4770432850264653e-01, -8.0791149448632715e-01,  9.2990525800169743e-01],
         ])?;
         assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-14);
+        let identity = Matrix::identity(5);
+        let a_ai = get_a_times_ai(&a, &ai);
+        assert_vec_approx_eq!(a_ai.data, identity.data, 1e-13);
         Ok(())
     }
 
@@ -406,6 +426,9 @@ mod tests {
             &[ 0.00000000000000000e+00,  0.00000000000000000e+00,  0.00000000000000000e+00, 0.00000000000000000e+00,  0.00000000000000000e+00, 1.00000000000000000e+00],
         ])?;
         assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-8);
+        let identity = Matrix::identity(6);
+        let a_ai = get_a_times_ai(&a, &ai);
+        assert_vec_approx_eq!(a_ai.data, identity.data, 1e-12);
         Ok(())
     }
 

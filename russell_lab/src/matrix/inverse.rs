@@ -2,8 +2,8 @@ use crate::matrix::*;
 use russell_openblas::*;
 
 // constants
-const ZERO_DETERMINANT: f64 = 1e-20;
-const SINGLE_VALUE_TOLERANCE: f64 = 1e-20;
+const ZERO_DETERMINANT: f64 = 1e-15;
+const SINGLE_VALUE_RCOND: f64 = 1e-15;
 
 /// Computes the inverse or pseudo-inverse matrix and returns the determinant (if square matrix)
 ///
@@ -176,12 +176,17 @@ pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, &'static str> {
         &mut superb,
     )?;
 
+    // singular value tolerance (note that singular values are positive or zero)
+    let idx_largest = idamax(to_i32(min_mn), &s, 1) as usize;
+    let sv_largest = s[idx_largest];
+    let sv_tolerance = SINGLE_VALUE_RCOND * sv_largest;
+
     // handle rectangular matrix => pseudo-inverse
     for i in 0..n {
         for j in 0..m {
             ai.data[i + j * n] = 0.0;
             for k in 0..min_mn {
-                if s[k] > SINGLE_VALUE_TOLERANCE {
+                if s[k] > sv_tolerance {
                     ai.data[i + j * n] += vt[k + i * n] * u[j + k * m] / s[k];
                 }
             }
@@ -198,6 +203,30 @@ pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, &'static str> {
 mod tests {
     use super::*;
     use russell_chk::*;
+
+    /// Computes a⋅ai⋅a that should equal a
+    fn get_a_times_ai_times_a(a: &Matrix, ai: &Matrix) -> Matrix {
+        // compute a⋅ai
+        let (m, n) = (a.nrow, a.ncol);
+        let mut a_ai = Matrix::new(m, m);
+        for i in 0..m {
+            for j in 0..m {
+                for k in 0..n {
+                    a_ai.data[i + j * m] += a.data[i + k * m] * ai.data[k + j * n];
+                }
+            }
+        }
+        // compute a⋅ai⋅a == a
+        let mut a_ai_a = Matrix::new(m, n);
+        for i in 0..m {
+            for j in 0..n {
+                for k in 0..m {
+                    a_ai_a.data[i + j * m] += a_ai.data[i + k * m] * a.data[k + j * m];
+                }
+            }
+        }
+        a_ai_a
+    }
 
     #[test]
     fn inverse_fails_on_wrong_dimensions() {
@@ -381,15 +410,16 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_works() -> Result<(), &'static str> {
+    fn pseudo_inverse_4x3_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
-        let a = Matrix::from(&[
+        let data: &[&[f64]] = &[
             &[-5.773502691896260e-01, -5.773502691896260e-01, 1.000000000000000e+00],
             &[ 5.773502691896260e-01, -5.773502691896260e-01, 1.000000000000000e+00],
             &[-5.773502691896260e-01,  5.773502691896260e-01, 1.000000000000000e+00],
             &[ 5.773502691896260e-01,  5.773502691896260e-01, 1.000000000000000e+00],
-        ])?;
-        let (m, n) = a.dims();
+        ];
+        let a = Matrix::from(data)?;
+        let (m, n) = (a.nrow, a.ncol);
         let mut ai = Matrix::new(n, m);
         inverse(&mut ai, &a)?;
         #[rustfmt::skip]
@@ -399,6 +429,90 @@ mod tests {
             &[ 2.500000000000000e-01,  2.500000000000000e-01,  2.500000000000000e-01, 2.500000000000000e-01],
         ])?;
         assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-15);
+        let a_copy = Matrix::from(data)?;
+        let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
+        assert_vec_approx_eq!(a_ai_a.data, a_copy.data, 1e-15);
+        Ok(())
+    }
+
+    #[test]
+    fn pseudo_inverse_4x5_works() -> Result<(), &'static str> {
+        #[rustfmt::skip]
+        let data: &[&[f64]] = &[
+            &[1.0, 0.0, 0.0, 0.0, 2.0],
+            &[0.0, 0.0, 3.0, 0.0, 0.0],
+            &[0.0, 0.0, 0.0, 0.0, 0.0],
+            &[0.0, 4.0, 0.0, 0.0, 0.0],
+        ];
+        let a = Matrix::from(data)?;
+        let (m, n) = (a.nrow, a.ncol);
+        let mut ai = Matrix::new(n, m);
+        inverse(&mut ai, &a)?;
+        #[rustfmt::skip]
+        let ai_correct = Matrix::from(&[
+            &[0.2,     0.0, 0.0,     0.0],
+            &[0.0,     0.0, 0.0, 1.0/4.0],
+            &[0.0, 1.0/3.0, 0.0,     0.0],
+            &[0.0,     0.0, 0.0,     0.0],
+            &[0.4,     0.0, 0.0,     0.0],
+        ])?;
+        assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-15);
+        let a_copy = Matrix::from(data)?;
+        let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
+        assert_vec_approx_eq!(a_ai_a.data, a_copy.data, 1e-15);
+        Ok(())
+    }
+
+    #[test]
+    fn pseudo_inverse_5x6_works() -> Result<(), &'static str> {
+        #[rustfmt::skip]
+        let data: &[&[f64]] = &[
+            &[12.0, 28.0, 22.0, 20.0,  8.0, 1.0],
+            &[ 0.0,  3.0,  5.0, 17.0, 28.0, 1.0],
+            &[56.0,  0.0, 23.0,  1.0,  0.0, 1.0],
+            &[12.0, 29.0, 27.0, 10.0,  1.0, 1.0],
+            &[ 9.0,  4.0, 13.0,  8.0, 22.0, 1.0],
+        ];
+        let a = Matrix::from(data)?;
+        let (m, n) = (a.nrow, a.ncol);
+        let mut ai = Matrix::new(n, m);
+        inverse(&mut ai, &a)?;
+        #[rustfmt::skip]
+        let ai_correct = Matrix::from(&[
+            &[ 5.6387724512344639e-01, -6.0176177188969326e-01, -7.6500652148749224e-02, -5.6389938864086908e-01,  5.8595836573334192e-01],
+            &[ 1.2836912791395787e+00, -1.4064756360496755e+00, -2.2890726327210095e-01, -1.2518220058421685e+00,  1.3789338004227019e+00],
+            &[-1.2866745075158739e+00,  1.3659857664770796e+00,  2.1392850711928030e-01,  1.2865799982753852e+00, -1.3277457214130808e+00],
+            &[-8.8185982449865485e-01,  1.0660542211012198e+00,  1.7123094548599221e-01,  8.9119882164767850e-01, -1.0756926383722674e+00],
+            &[ 6.6698814093525072e-01, -7.4815557352521045e-01, -1.2451059750508876e-01, -6.7584431870600359e-01,  7.8530451101142418e-01],
+            &[-1.1017522295492406e+00,  1.2149323757487696e+00,  1.9244991110051662e-01,  1.0958269819071325e+00, -1.1998242501940171e+00],
+        ])?;
+        assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-13);
+        let a_copy = Matrix::from(data)?;
+        let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
+        assert_vec_approx_eq!(a_ai_a.data, a_copy.data, 1e-12);
+        Ok(())
+    }
+
+    #[test]
+    fn pseudo_inverse_8x6_works() -> Result<(), &'static str> {
+        #[rustfmt::skip]
+        let data :&[&[f64]]= &[
+            &[64.0,  2.0,  3.0, 61.0, 60.0,  6.0],
+            &[ 9.0, 55.0, 54.0, 12.0, 13.0, 51.0],
+            &[17.0, 47.0, 46.0, 20.0, 21.0, 43.0],
+            &[40.0, 26.0, 27.0, 37.0, 36.0, 30.0],
+            &[32.0, 34.0, 35.0, 29.0, 28.0, 38.0],
+            &[41.0, 23.0, 22.0, 44.0, 45.0, 19.0],
+            &[49.0, 15.0, 14.0, 52.0, 53.0, 11.0],
+            &[ 8.0, 58.0, 59.0,  5.0,  4.0, 62.0],
+        ];
+        let a = Matrix::from(data)?;
+        let (m, n) = (a.nrow, a.ncol);
+        let mut ai = Matrix::new(n, m);
+        inverse(&mut ai, &a)?;
+        let a_copy = Matrix::from(data)?;
+        let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
+        assert_vec_approx_eq!(a_ai_a.data, a_copy.data, 1e-13);
         Ok(())
     }
 }

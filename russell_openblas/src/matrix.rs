@@ -990,7 +990,7 @@ mod tests {
         let mut vl_imag = vec![0.0; sz * sz];
         let mut vr_real = vec![0.0; sz * sz];
         let mut vr_imag = vec![0.0; sz * sz];
-        extract_lapack_eigenvectors(&mut vl_real, &mut vl_imag, &mut vr_real, &mut vr_imag, &wi, &vl, &vr)?;
+        dgeev_data(&mut vl_real, &mut vl_imag, &mut vr_real, &mut vr_imag, &wi, &vl, &vr)?;
 
         // check left eigenvectors
         #[rustfmt::skip]
@@ -1051,7 +1051,7 @@ mod tests {
         // extract eigenvalues from dgeev data
         vl_real.iter_mut().map(|x| *x = 0.0).count();
         vl_imag.iter_mut().map(|x| *x = 0.0).count();
-        extract_lapack_eigenvectors_single(&mut vl_real, &mut vl_imag, &wi, &vl)?;
+        dgeev_data_single(&mut vl_real, &mut vl_imag, &wi, &vl)?;
 
         // check left eigenvalues
         assert_vec_approx_eq!(vl_real, vl_real_correct, 1e-15);
@@ -1063,7 +1063,7 @@ mod tests {
         // extract eigenvalues from dgeev data
         vr_real.iter_mut().map(|x| *x = 0.0).count();
         vr_imag.iter_mut().map(|x| *x = 0.0).count();
-        extract_lapack_eigenvectors_single(&mut vr_real, &mut vr_imag, &wi, &vr)?;
+        dgeev_data_single(&mut vr_real, &mut vr_imag, &wi, &vr)?;
 
         // check left eigenvalues
         assert_vec_approx_eq!(vr_real, vr_real_correct, 1e-15);

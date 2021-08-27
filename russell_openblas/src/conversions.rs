@@ -41,7 +41,7 @@ pub fn slice_to_colmajor(a: &[&[f64]]) -> Result<Vec<f64>, &'static str> {
 /// * `vl` -- n*n, output of dgeev
 /// * `vr` -- n*n, output of dgeev
 ///
-pub fn extract_lapack_eigenvectors(
+pub fn dgeev_data(
     vl_real: &mut [f64],
     vl_imag: &mut [f64],
     vr_real: &mut [f64],
@@ -122,7 +122,7 @@ pub fn extract_lapack_eigenvectors(
 /// * `w_imag` -- n, eigenvalues; imaginary part
 /// * `v` -- n*n, output of dgeev
 ///
-pub fn extract_lapack_eigenvectors_single(
+pub fn dgeev_data_single(
     v_real: &mut [f64],
     v_imag: &mut [f64],
     w_imag: &[f64],
@@ -231,7 +231,7 @@ mod tests {
             0.11, 0.41, 0.10, 0.40, 0.54, 0.17, -0.26, -0.51, -0.09, 0.00, 0.73, -0.03, 0.19, -0.08, -0.29, 0.00,
             -0.02, -0.29, -0.08, -0.49, 0.46, 0.34, 0.31, -0.74, 0.16,
         ];
-        extract_lapack_eigenvectors(
+        dgeev_data(
             &mut vl_real,
             &mut vl_imag,
             &mut vr_real,
@@ -282,7 +282,7 @@ mod tests {
         let vl_wrong = vec![0.0; n * wrong];
         let vr_wrong = vec![0.0; n * wrong];
         assert_eq!(
-            extract_lapack_eigenvectors(
+            dgeev_data(
                 &mut vl_real_wrong,
                 &mut vl_imag,
                 &mut vr_real,
@@ -294,7 +294,7 @@ mod tests {
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            extract_lapack_eigenvectors(
+            dgeev_data(
                 &mut vl_real,
                 &mut vl_imag_wrong,
                 &mut vr_real,
@@ -306,7 +306,7 @@ mod tests {
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            extract_lapack_eigenvectors(
+            dgeev_data(
                 &mut vl_real,
                 &mut vl_imag,
                 &mut vr_real_wrong,
@@ -318,7 +318,7 @@ mod tests {
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            extract_lapack_eigenvectors(
+            dgeev_data(
                 &mut vl_real,
                 &mut vl_imag,
                 &mut vr_real,
@@ -330,7 +330,7 @@ mod tests {
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            extract_lapack_eigenvectors(
+            dgeev_data(
                 &mut vl_real,
                 &mut vl_imag,
                 &mut vr_real,
@@ -342,7 +342,7 @@ mod tests {
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            extract_lapack_eigenvectors(
+            dgeev_data(
                 &mut vl_real,
                 &mut vl_imag,
                 &mut vr_real,
@@ -354,7 +354,7 @@ mod tests {
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            extract_lapack_eigenvectors(
+            dgeev_data(
                 &mut vl_real,
                 &mut vl_imag,
                 &mut vr_real,
@@ -377,7 +377,7 @@ mod tests {
             0.04, 0.62, -0.04, 0.28, -0.04, 0.29, 0.00, -0.58, 0.01, 0.34, -0.13, 0.69, -0.39, -0.02, -0.40, -0.33,
             0.00, -0.07, -0.19, 0.22, 0.04, 0.56, -0.13, -0.80, 0.18,
         ];
-        extract_lapack_eigenvectors_single(&mut v_real, &mut v_imag, &w_imag, &v)?;
+        dgeev_data_single(&mut v_real, &mut v_imag, &w_imag, &v)?;
         let correct_v_real = &[
             0.04, 0.62, -0.04, 0.28, -0.04, 0.04, 0.62, -0.04, 0.28, -0.04, -0.13, 0.69, -0.39, -0.02, -0.40, -0.13,
             0.69, -0.39, -0.02, -0.40, 0.04, 0.56, -0.13, -0.80, 0.18,
@@ -404,19 +404,19 @@ mod tests {
         let w_imag_wrong = vec![0.0; wrong];
         let v_wrong = vec![0.0; n * wrong];
         assert_eq!(
-            extract_lapack_eigenvectors_single(&mut v_real_wrong, &mut v_imag, &w_imag, &v),
+            dgeev_data_single(&mut v_real_wrong, &mut v_imag, &w_imag, &v),
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            extract_lapack_eigenvectors_single(&mut v_real, &mut v_imag_wrong, &w_imag, &v),
+            dgeev_data_single(&mut v_real, &mut v_imag_wrong, &w_imag, &v),
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            extract_lapack_eigenvectors_single(&mut v_real, &mut v_imag, &w_imag_wrong, &v),
+            dgeev_data_single(&mut v_real, &mut v_imag, &w_imag_wrong, &v),
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            extract_lapack_eigenvectors_single(&mut v_real, &mut v_imag, &w_imag, &v_wrong),
+            dgeev_data_single(&mut v_real, &mut v_imag, &w_imag, &v_wrong),
             Err("arrays have wrong dimensions")
         );
     }
@@ -430,7 +430,7 @@ mod tests {
         let w_imag = [0.0, WRONG];
         let v = vec![0.0; n * n];
         assert_eq!(
-            extract_lapack_eigenvectors_single(&mut v_real, &mut v_imag, &w_imag, &v),
+            dgeev_data_single(&mut v_real, &mut v_imag, &w_imag, &v),
             Err("last eigenvalue cannot be complex")
         );
     }

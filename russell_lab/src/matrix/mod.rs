@@ -1,4 +1,5 @@
 mod add_matrices;
+mod cholesky_factor;
 mod copy_matrix;
 mod inverse;
 mod mat_mat_mul;
@@ -7,6 +8,7 @@ mod pseudo_inverse;
 mod sv_decomp;
 mod update_matrix;
 pub use crate::matrix::add_matrices::*;
+pub use crate::matrix::cholesky_factor::*;
 pub use crate::matrix::copy_matrix::*;
 pub use crate::matrix::inverse::*;
 pub use crate::matrix::mat_mat_mul::*;

@@ -2,6 +2,121 @@ use crate::matrix::*;
 use crate::vector::*;
 use russell_openblas::*;
 
+/// Performs the eigen-decomposition of a square matrix
+///
+/// Computes the eigenvalues `l` and right eigenvectors `v`, such that:
+///
+/// ```text
+/// a ⋅ vj = lj ⋅ vj
+/// ```
+///
+/// where `lj` is the component j of `l` and `vj` is the column j of `v`.
+///
+/// # Output
+///
+/// * `l_real` -- (m) eigenvalues; real part
+/// * `l_imag` -- (m) eigenvalues; imaginary part
+/// * `v_real` -- (m,m) **right** eigenvectors (as columns); real part
+/// * `v_imag` -- (m,m) **right** eigenvectors (as columns); imaginary part
+///
+/// # Input
+///
+/// * `a` -- (m,m) general matrix [will be modified]
+///
+/// # Note
+///
+/// * The matrix `a` will be modified
+///
+/// # Examples
+///
+/// ```
+/// # fn main() -> Result<(), &'static str> {
+/// // import
+/// use russell_lab::*;
+///
+/// // set matrix
+/// let data: &[&[f64]] = &[
+///     &[2.0, 0.0, 0.0],
+///     &[0.0, 3.0, 4.0],
+///     &[0.0, 4.0, 9.0],
+/// ];
+/// let mut a = Matrix::from(data)?;
+///
+/// // allocate output arrays
+/// let m = a.nrow();
+/// let mut l_real = Vector::new(m);
+/// let mut l_imag = Vector::new(m);
+/// let mut v_real = Matrix::new(m, m);
+/// let mut v_imag = Matrix::new(m, m);
+///
+/// // perform the eigen-decomposition
+/// eigen_decomp(
+///     &mut l_real,
+///     &mut l_imag,
+///     &mut v_real,
+///     &mut v_imag,
+///     &mut a,
+/// )?;
+///
+/// // check results
+/// let l_real_correct = "┌    ┐\n\
+///                       │ 11 │\n\
+///                       │  1 │\n\
+///                       │  2 │\n\
+///                       └    ┘";
+/// let l_imag_correct = "┌   ┐\n\
+///                       │ 0 │\n\
+///                       │ 0 │\n\
+///                       │ 0 │\n\
+///                       └   ┘";
+/// let v_real_correct = "┌                      ┐\n\
+///                       │  0.000  0.000  1.000 │\n\
+///                       │  0.447  0.894  0.000 │\n\
+///                       │  0.894 -0.447  0.000 │\n\
+///                       └                      ┘";
+/// let v_imag_correct = "┌       ┐\n\
+///                       │ 0 0 0 │\n\
+///                       │ 0 0 0 │\n\
+///                       │ 0 0 0 │\n\
+///                       └       ┘";
+/// assert_eq!(format!("{}", l_real), l_real_correct);
+/// assert_eq!(format!("{}", l_imag), l_imag_correct);
+/// assert_eq!(format!("{:.3}", v_real), v_real_correct);
+/// assert_eq!(format!("{}", v_imag), v_imag_correct);
+/// # Ok(())
+/// # }
+/// ```
+pub fn eigen_decomp(
+    l_real: &mut Vector,
+    l_imag: &mut Vector,
+    v_real: &mut Matrix,
+    v_imag: &mut Matrix,
+    a: &mut Matrix,
+) -> Result<(), &'static str> {
+    let (m, n) = (a.nrow, a.ncol);
+    if m != n {
+        return Err("matrix must be square");
+    }
+    let m_i32 = to_i32(m);
+    let mut v = vec![0.0; m * m];
+    let mut empty: Vec<f64> = Vec::new();
+    dgeev(
+        false,
+        true,
+        m_i32,
+        &mut a.data,
+        m_i32,
+        &mut l_real.data,
+        &mut l_imag.data,
+        &mut empty,
+        1,
+        &mut v,
+        m_i32,
+    )?;
+    dgeev_data(&mut v_real.data, &mut v_imag.data, &l_imag.data, &v)?;
+    Ok(())
+}
+
 /// Performs the eigen-decomposition of a square matrix (left and right)
 ///
 /// Computes the eigenvalues `l` and left eigenvectors `u`, such that:
@@ -142,7 +257,7 @@ pub fn eigen_decomp_lr(
         &mut v,
         m_i32,
     )?;
-    dgeev_data(
+    dgeev_data_lr(
         &mut u_real.data,
         &mut u_imag.data,
         &mut v_real.data,
@@ -162,7 +277,50 @@ mod tests {
     use russell_chk::*;
 
     #[test]
-    fn eigen_decomp_both_works() -> Result<(), &'static str> {
+    fn eigen_decomp_works() -> Result<(), &'static str> {
+        #[rustfmt::skip]
+        let data: &[&[f64]] = &[
+            &[0.0, 1.0, 0.0],
+            &[0.0, 0.0, 1.0],
+            &[1.0, 0.0, 0.0],
+        ];
+        let mut a = Matrix::from(data)?;
+        let m = a.nrow;
+        let mut l_real = Vector::new(m);
+        let mut l_imag = Vector::new(m);
+        let mut v_real = Matrix::new(m, m);
+        let mut v_imag = Matrix::new(m, m);
+        eigen_decomp(
+            &mut l_real,
+            &mut l_imag,
+            &mut v_real,
+            &mut v_imag,
+            &mut a,
+        )?;
+        let s3 = f64::sqrt(3.0);
+        let l_real_correct = &[-0.5, -0.5, 1.0];
+        let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
+        #[rustfmt::skip]
+        let v_real_correct = Matrix::from(&[
+            &[ 1.0/s3,  1.0/s3, -1.0/s3],
+            &[-0.5/s3, -0.5/s3, -1.0/s3],
+            &[-0.5/s3, -0.5/s3, -1.0/s3],
+        ])?;
+        #[rustfmt::skip]
+        let v_imag_correct = Matrix::from(&[
+            &[ 0.0,  0.0, 0.0],
+            &[ 0.5, -0.5, 0.0],
+            &[-0.5,  0.5, 0.0],
+        ])?;
+        assert_vec_approx_eq!(l_real.data, l_real_correct, 1e-15);
+        assert_vec_approx_eq!(l_imag.data, l_imag_correct, 1e-15);
+        assert_vec_approx_eq!(v_real.data, v_real_correct.data, 1e-15);
+        assert_vec_approx_eq!(v_imag.data, v_imag_correct.data, 1e-15);
+        Ok(())
+    }
+
+    #[test]
+    fn eigen_decomp_lr_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let data: &[&[f64]] = &[
             &[0.0, 1.0, 0.0],

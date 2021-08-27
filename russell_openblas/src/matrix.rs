@@ -991,7 +991,7 @@ mod tests {
         let mut vl_imag = vec![0.0; sz * sz];
         let mut vr_real = vec![0.0; sz * sz];
         let mut vr_imag = vec![0.0; sz * sz];
-        dgeev_data(&mut vl_real, &mut vl_imag, &mut vr_real, &mut vr_imag, &wi, &vl, &vr)?;
+        dgeev_data_lr(&mut vl_real, &mut vl_imag, &mut vr_real, &mut vr_imag, &wi, &vl, &vr)?;
 
         // check left eigenvectors
         #[rustfmt::skip]

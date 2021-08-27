@@ -26,7 +26,7 @@ pub fn slice_to_colmajor(a: &[&[f64]]) -> Result<Vec<f64>, &'static str> {
     Ok(data)
 }
 
-/// Extracts LAPACK (dgeev) eigenvectors from its compact representation
+/// Extracts LAPACK (dgeev) eigenvectors from its compact representation (left and right)
 ///
 /// # Output
 ///
@@ -41,7 +41,7 @@ pub fn slice_to_colmajor(a: &[&[f64]]) -> Result<Vec<f64>, &'static str> {
 /// * `vl` -- n*n, output of dgeev
 /// * `vr` -- n*n, output of dgeev
 ///
-pub fn dgeev_data(
+pub fn dgeev_data_lr(
     vl_real: &mut [f64],
     vl_imag: &mut [f64],
     vr_real: &mut [f64],
@@ -216,7 +216,7 @@ mod tests {
     }
 
     #[test]
-    fn dgeev_data_works() -> Result<(), &'static str> {
+    fn dgeev_data_lr_works() -> Result<(), &'static str> {
         let n = 5_usize;
         let mut vl_real = vec![0.0; n * n];
         let mut vl_imag = vec![0.0; n * n];
@@ -231,7 +231,7 @@ mod tests {
             0.11, 0.41, 0.10, 0.40, 0.54, 0.17, -0.26, -0.51, -0.09, 0.00, 0.73, -0.03, 0.19, -0.08, -0.29, 0.00,
             -0.02, -0.29, -0.08, -0.49, 0.46, 0.34, 0.31, -0.74, 0.16,
         ];
-        dgeev_data(
+        dgeev_data_lr(
             &mut vl_real,
             &mut vl_imag,
             &mut vr_real,
@@ -264,7 +264,7 @@ mod tests {
     }
 
     #[test]
-    fn dgeev_data_fails_on_wrong_dims() {
+    fn dgeev_data_lr_fails_on_wrong_dims() {
         let n = 2_usize;
         let wrong = 1_usize;
         let mut vl_real = vec![0.0; n * n];
@@ -282,7 +282,7 @@ mod tests {
         let vl_wrong = vec![0.0; n * wrong];
         let vr_wrong = vec![0.0; n * wrong];
         assert_eq!(
-            dgeev_data(
+            dgeev_data_lr(
                 &mut vl_real_wrong,
                 &mut vl_imag,
                 &mut vr_real,
@@ -294,7 +294,7 @@ mod tests {
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            dgeev_data(
+            dgeev_data_lr(
                 &mut vl_real,
                 &mut vl_imag_wrong,
                 &mut vr_real,
@@ -306,7 +306,7 @@ mod tests {
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            dgeev_data(
+            dgeev_data_lr(
                 &mut vl_real,
                 &mut vl_imag,
                 &mut vr_real_wrong,
@@ -318,7 +318,7 @@ mod tests {
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            dgeev_data(
+            dgeev_data_lr(
                 &mut vl_real,
                 &mut vl_imag,
                 &mut vr_real,
@@ -330,7 +330,7 @@ mod tests {
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            dgeev_data(
+            dgeev_data_lr(
                 &mut vl_real,
                 &mut vl_imag,
                 &mut vr_real,
@@ -342,7 +342,7 @@ mod tests {
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            dgeev_data(
+            dgeev_data_lr(
                 &mut vl_real,
                 &mut vl_imag,
                 &mut vr_real,
@@ -354,7 +354,7 @@ mod tests {
             Err("arrays have wrong dimensions")
         );
         assert_eq!(
-            dgeev_data(
+            dgeev_data_lr(
                 &mut vl_real,
                 &mut vl_imag,
                 &mut vr_real,

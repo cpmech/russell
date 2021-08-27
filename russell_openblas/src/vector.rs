@@ -4,6 +4,7 @@ extern "C" {
     fn cblas_dcopy(n: i32, x: *const f64, incx: i32, y: *mut f64, incy:i32);
     fn cblas_dscal(n: i32, alpha: f64, x: *const f64, incx: i32);
     fn cblas_daxpy(n: i32, alpha: f64, x: *const f64, incx: i32, y: *const f64, incy: i32);
+    fn cblas_idamax(n:i32, x:*const f64, incx:i32) -> i32;
 }
 
 /// Calculates the dot product of two vectors.
@@ -84,11 +85,25 @@ pub fn daxpy(n: i32, alpha: f64, x: &[f64], incx: i32, y: &mut [f64], incy: i32)
     }
 }
 
+/// Finds the index of the maximum absolute value
+///
+/// <http://www.netlib.org/lapack/explore-html/dd/de0/idamax_8f.html>
+///
+/// # Note
+///
+/// The index is **random** if the array contains **NAN**
+///
+#[inline]
+pub fn idamax(n: i32, x: &[f64], incx: i32) -> i32 {
+    unsafe { cblas_idamax(n, x.as_ptr(), incx) }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::to_i32;
     use russell_chk::*;
 
     #[test]
@@ -130,5 +145,13 @@ mod tests {
         daxpy(n, alpha, &x, incx, &mut y, incy);
         assert_vec_approx_eq!(x, &[20.0, 10.0, 48.0, IGNORED, IGNORED], 1e-15);
         assert_vec_approx_eq!(y, &[-5.0, 0.0, 0.0, IGNORED, IGNORED, IGNORED], 1e-15);
+    }
+
+    #[test]
+    fn idamax_works() {
+        let x = [1.0, 2.0, 7.0, -8.0, -5.0, -10.0, -9.0, 10.0, 6.0];
+        let (n, incx) = (to_i32(x.len()), 1_i32);
+        let idx = idamax(n, &x, incx);
+        assert_eq!(idx, 5);
     }
 }

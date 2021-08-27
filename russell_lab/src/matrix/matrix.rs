@@ -113,6 +113,34 @@ impl Matrix {
         Ok(matrix)
     }
 
+    /// Creates new diagonal matrix with given diagonal data
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let a = Matrix::diagonal(&[1.0, 2.0, 3.0]);
+    /// let correct = "┌       ┐\n\
+    ///                │ 1 0 0 │\n\
+    ///                │ 0 2 0 │\n\
+    ///                │ 0 0 3 │\n\
+    ///                └       ┘";
+    /// assert_eq!(format!("{}", a), correct);
+    /// ```
+    pub fn diagonal(data: &[f64]) -> Self {
+        let nrow = data.len();
+        let ncol = nrow;
+        let mut matrix = Matrix {
+            nrow,
+            ncol,
+            data: vec![0.0; nrow * ncol],
+        };
+        for i in 0..nrow {
+            matrix.data[i + i * nrow] = data[i];
+        }
+        matrix
+    }
+
     /// Returns the number of rows
     ///
     /// # Examples
@@ -425,6 +453,14 @@ mod tests {
             res.err(),
             Some("all rows must have the same number of columns")
         );
+    }
+
+    #[test]
+    fn diagonal_works(){
+        let a = Matrix::diagonal(&[-8.0, 2.0, 1.0]);
+        assert_eq!(a.nrow, 3);
+        assert_eq!(a.ncol, 3);
+        assert_eq!(a.data, [-8.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 1.0]);
     }
 
     #[test]

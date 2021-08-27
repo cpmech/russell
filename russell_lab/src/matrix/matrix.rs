@@ -46,6 +46,32 @@ impl Matrix {
         }
     }
 
+    /// Creates new identity (square) matrix
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let identity = Matrix::identity(3);
+    /// let correct = "┌       ┐\n\
+    ///                │ 1 0 0 │\n\
+    ///                │ 0 1 0 │\n\
+    ///                │ 0 0 1 │\n\
+    ///                └       ┘";
+    /// assert_eq!(format!("{}", identity), correct);
+    /// ```
+    pub fn identity(m: usize) -> Self {
+        let mut matrix = Matrix {
+            nrow: m,
+            ncol: m,
+            data: vec![0.0; m * m],
+        };
+        for i in 0..m {
+            matrix.data[i + i * m] = 1.0;
+        }
+        matrix
+    }
+
     /// Creates new matrix from given data
     ///
     /// # Examples
@@ -282,6 +308,13 @@ mod tests {
         let u = Matrix::new(3, 3);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
+    }
+
+    #[test]
+    fn identity_works() {
+        let identity = Matrix::identity(2);
+        let correct = &[1.0, 0.0, 0.0, 1.0];
+        assert_vec_approx_eq!(identity.data, correct, 1e-15);
     }
 
     #[test]

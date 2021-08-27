@@ -1,6 +1,7 @@
 mod add_matrices;
 mod cholesky_factor;
 mod copy_matrix;
+mod eigen_decomp;
 mod inverse;
 mod mat_mat_mul;
 mod matrix;
@@ -10,6 +11,7 @@ mod update_matrix;
 pub use crate::matrix::add_matrices::*;
 pub use crate::matrix::cholesky_factor::*;
 pub use crate::matrix::copy_matrix::*;
+pub use crate::matrix::eigen_decomp::*;
 pub use crate::matrix::inverse::*;
 pub use crate::matrix::mat_mat_mul::*;
 pub use crate::matrix::matrix::*;

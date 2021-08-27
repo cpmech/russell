@@ -1,5 +1,4 @@
 use crate::matrix::*;
-use crate::vector::*;
 use russell_openblas::*;
 
 /// Performs the eigen-decomposition of a square matrix
@@ -44,8 +43,8 @@ use russell_openblas::*;
 ///
 /// // allocate output arrays
 /// let m = a.nrow();
-/// let mut l_real = Vector::new(m);
-/// let mut l_imag = Vector::new(m);
+/// let mut l_real = vec![0.0; m];
+/// let mut l_imag = vec![0.0; m];
 /// let mut v_real = Matrix::new(m, m);
 /// let mut v_imag = Matrix::new(m, m);
 ///
@@ -59,16 +58,8 @@ use russell_openblas::*;
 /// )?;
 ///
 /// // check results
-/// let l_real_correct = "┌    ┐\n\
-///                       │ 11 │\n\
-///                       │  1 │\n\
-///                       │  2 │\n\
-///                       └    ┘";
-/// let l_imag_correct = "┌   ┐\n\
-///                       │ 0 │\n\
-///                       │ 0 │\n\
-///                       │ 0 │\n\
-///                       └   ┘";
+/// let l_real_correct = "[11.0, 1.0, 2.0]";
+/// let l_imag_correct = "[0.0, 0.0, 0.0]";
 /// let v_real_correct = "┌                      ┐\n\
 ///                       │  0.000  0.000  1.000 │\n\
 ///                       │  0.447  0.894  0.000 │\n\
@@ -79,16 +70,16 @@ use russell_openblas::*;
 ///                       │ 0 0 0 │\n\
 ///                       │ 0 0 0 │\n\
 ///                       └       ┘";
-/// assert_eq!(format!("{}", l_real), l_real_correct);
-/// assert_eq!(format!("{}", l_imag), l_imag_correct);
+/// assert_eq!(format!("{:?}", l_real), l_real_correct);
+/// assert_eq!(format!("{:?}", l_imag), l_imag_correct);
 /// assert_eq!(format!("{:.3}", v_real), v_real_correct);
 /// assert_eq!(format!("{}", v_imag), v_imag_correct);
 /// # Ok(())
 /// # }
 /// ```
 pub fn eigen_decomp(
-    l_real: &mut Vector,
-    l_imag: &mut Vector,
+    l_real: &mut [f64],
+    l_imag: &mut [f64],
     v_real: &mut Matrix,
     v_imag: &mut Matrix,
     a: &mut Matrix,
@@ -106,14 +97,14 @@ pub fn eigen_decomp(
         m_i32,
         &mut a.data,
         m_i32,
-        &mut l_real.data,
-        &mut l_imag.data,
+        l_real,
+        l_imag,
         &mut empty,
         1,
         &mut v,
         m_i32,
     )?;
-    dgeev_data(&mut v_real.data, &mut v_imag.data, &l_imag.data, &v)?;
+    dgeev_data(&mut v_real.data, &mut v_imag.data, l_imag, &v)?;
     Ok(())
 }
 
@@ -170,8 +161,8 @@ pub fn eigen_decomp(
 ///
 /// // allocate output arrays
 /// let m = a.nrow();
-/// let mut l_real = Vector::new(m);
-/// let mut l_imag = Vector::new(m);
+/// let mut l_real = vec![0.0; m];
+/// let mut l_imag = vec![0.0; m];
 /// let mut u_real = Matrix::new(m, m);
 /// let mut u_imag = Matrix::new(m, m);
 /// let mut v_real = Matrix::new(m, m);
@@ -189,16 +180,8 @@ pub fn eigen_decomp(
 /// )?;
 ///
 /// // check results
-/// let l_real_correct = "┌        ┐\n\
-///                       │ -0.500 │\n\
-///                       │ -0.500 │\n\
-///                       │  1.000 │\n\
-///                       └        ┘";
-/// let l_imag_correct = "┌        ┐\n\
-///                       │  0.866 │\n\
-///                       │ -0.866 │\n\
-///                       │  0.000 │\n\
-///                       └        ┘";
+/// let l_real_correct = "[-0.5, -0.5, 0.9999999999999998]";
+/// let l_imag_correct = "[0.8660254037844389, -0.8660254037844389, 0.0]";
 /// let u_real_correct = "┌                      ┐\n\
 ///                       │ -0.289 -0.289 -0.577 │\n\
 ///                       │  0.577  0.577 -0.577 │\n\
@@ -219,8 +202,8 @@ pub fn eigen_decomp(
 ///                       │  0.500 -0.500  0.000 │\n\
 ///                       │ -0.500  0.500  0.000 │\n\
 ///                       └                      ┘";
-/// assert_eq!(format!("{:.3}", l_real), l_real_correct);
-/// assert_eq!(format!("{:.3}", l_imag), l_imag_correct);
+/// assert_eq!(format!("{:?}", l_real), l_real_correct);
+/// assert_eq!(format!("{:?}", l_imag), l_imag_correct);
 /// assert_eq!(format!("{:.3}", u_real), u_real_correct);
 /// assert_eq!(format!("{:.3}", u_imag), u_imag_correct);
 /// assert_eq!(format!("{:.3}", v_real), v_real_correct);
@@ -229,8 +212,8 @@ pub fn eigen_decomp(
 /// # }
 /// ```
 pub fn eigen_decomp_lr(
-    l_real: &mut Vector,
-    l_imag: &mut Vector,
+    l_real: &mut [f64],
+    l_imag: &mut [f64],
     u_real: &mut Matrix,
     u_imag: &mut Matrix,
     v_real: &mut Matrix,
@@ -250,8 +233,8 @@ pub fn eigen_decomp_lr(
         m_i32,
         &mut a.data,
         m_i32,
-        &mut l_real.data,
-        &mut l_imag.data,
+        l_real,
+        l_imag,
         &mut u,
         m_i32,
         &mut v,
@@ -262,7 +245,7 @@ pub fn eigen_decomp_lr(
         &mut u_imag.data,
         &mut v_real.data,
         &mut v_imag.data,
-        &l_imag.data,
+        l_imag,
         &u,
         &v,
     )?;
@@ -277,10 +260,10 @@ mod tests {
     use crate::EnumMatrixNorm;
     use russell_chk::*;
 
-    fn check_real_eigen(data: &[&[f64]], v: &Matrix, l: &Vector) -> Result<(), &'static str> {
+    fn check_real_eigen(data: &[&[f64]], v: &Matrix, l: &[f64]) -> Result<(), &'static str> {
         let a = Matrix::from(data)?;
         let m = a.nrow;
-        let lam = Matrix::diagonal(&l.data);
+        let lam = Matrix::diagonal(&l);
         let mut a_v = Matrix::new(m, m);
         let mut v_l = Matrix::new(m, m);
         let mut err = Matrix::new(m, m);
@@ -301,8 +284,8 @@ mod tests {
         ];
         let mut a = Matrix::from(data)?;
         let m = a.nrow;
-        let mut l_real = Vector::new(m);
-        let mut l_imag = Vector::new(m);
+        let mut l_real = vec![0.0; m];
+        let mut l_imag = vec![0.0; m];
         let mut v_real = Matrix::new(m, m);
         let mut v_imag = Matrix::new(m, m);
         eigen_decomp(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a)?;
@@ -321,8 +304,8 @@ mod tests {
             &[ 0.5, -0.5, 0.0],
             &[-0.5,  0.5, 0.0],
         ])?;
-        assert_vec_approx_eq!(l_real.data, l_real_correct, 1e-15);
-        assert_vec_approx_eq!(l_imag.data, l_imag_correct, 1e-15);
+        assert_vec_approx_eq!(l_real, l_real_correct, 1e-15);
+        assert_vec_approx_eq!(l_imag, l_imag_correct, 1e-15);
         assert_vec_approx_eq!(v_real.data, v_real_correct.data, 1e-15);
         assert_vec_approx_eq!(v_imag.data, v_imag_correct.data, 1e-15);
         Ok(())
@@ -340,8 +323,8 @@ mod tests {
         ];
         let mut a = Matrix::from(data)?;
         let m = a.nrow;
-        let mut l_real = Vector::new(m);
-        let mut l_imag = Vector::new(m);
+        let mut l_real = vec![0.0; m];
+        let mut l_imag = vec![0.0; m];
         let mut v_real = Matrix::new(m, m);
         let mut v_imag = Matrix::new(m, m);
         eigen_decomp(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a)?;
@@ -362,8 +345,8 @@ mod tests {
             &[0.0, 0.0, 0.0, 0.0],
             &[0.0, 0.0, 0.0, 0.0],
         ])?;
-        assert_vec_approx_eq!(l_real.data, l_real_correct, 1e-15);
-        assert_vec_approx_eq!(l_imag.data, l_imag_correct, 1e-15);
+        assert_vec_approx_eq!(l_real, l_real_correct, 1e-15);
+        assert_vec_approx_eq!(l_imag, l_imag_correct, 1e-15);
         assert_vec_approx_eq!(v_real.data, v_real_correct.data, 1e-15);
         assert_vec_approx_eq!(v_imag.data, v_imag_correct.data, 1e-15);
         check_real_eigen(&data, &v_real, &l_real)?;
@@ -380,8 +363,8 @@ mod tests {
         ];
         let mut a = Matrix::from(data)?;
         let m = a.nrow;
-        let mut l_real = Vector::new(m);
-        let mut l_imag = Vector::new(m);
+        let mut l_real = vec![0.0; m];
+        let mut l_imag = vec![0.0; m];
         let mut u_real = Matrix::new(m, m);
         let mut u_imag = Matrix::new(m, m);
         let mut v_real = Matrix::new(m, m);
@@ -422,8 +405,8 @@ mod tests {
             &[ 0.5, -0.5, 0.0],
             &[-0.5,  0.5, 0.0],
         ])?;
-        assert_vec_approx_eq!(l_real.data, l_real_correct, 1e-15);
-        assert_vec_approx_eq!(l_imag.data, l_imag_correct, 1e-15);
+        assert_vec_approx_eq!(l_real, l_real_correct, 1e-15);
+        assert_vec_approx_eq!(l_imag, l_imag_correct, 1e-15);
         assert_vec_approx_eq!(u_real.data, u_real_correct.data, 1e-15);
         assert_vec_approx_eq!(u_imag.data, u_imag_correct.data, 1e-15);
         assert_vec_approx_eq!(v_real.data, v_real_correct.data, 1e-15);

@@ -4,6 +4,7 @@ use super::*;
 extern "C" {
     fn cblas_dgemm(order: i32, transa: i32, transb: i32, m: i32, n: i32, k: i32, alpha: f64, a: *const f64, lda: i32, b: *const f64, ldb: i32, beta: f64, c: *mut f64, ldc: i32);
     fn cblas_dsyrk(order: i32, uplo: i32, trans: i32, n: i32, k: i32, alpha: f64, a: *const f64, lda: i32, beta: f64, c: *mut f64, ldc: i32);
+    fn LAPACKE_dlange(matrix_layout: i32, norm: u8, m:i32, n:i32, a: *const f64, lda:i32) -> f64;
     fn LAPACKE_dgesvd(matrix_layout: i32, jobu: u8, jobvt: u8, m: i32, n: i32, a: *mut f64, lda: i32, s: *mut f64, u: *mut f64, ldu: i32, vt: *mut f64, ldvt: i32, superb: *mut f64) -> i32;
     fn LAPACKE_dgetrf(matrix_layout: i32, m: i32, n: i32, a: *mut f64, lda: i32, ipiv: *mut i32) -> i32;
     fn LAPACKE_dgetri(matrix_layout: i32, n: i32, a: *mut f64, lda: i32, ipiv: *const i32) -> i32;
@@ -120,6 +121,39 @@ pub fn dsyrk(
             c.as_mut_ptr(),
             ldc,
         );
+    }
+}
+
+/// Computes the 1-norm, infinity-norm, Frobenius-norm, or the largest absolute value
+///
+/// Computes one of:
+///
+/// ```text
+/// ‖a‖_1 = max_j ( Σ_i |aij| )
+///
+/// ‖a‖_∞ = max_i ( Σ_j |aij| )
+///
+/// ‖a‖_F = sqrt(Σ_i Σ_j aij⋅aij) == ‖a‖_2
+///
+/// ‖a‖_max = max_ij ( |aij| )
+/// ```
+///
+/// # Input
+///
+/// * norm == b'1' -- computes the 1-norm
+/// * norm == b'I' -- computes the infinity-norm
+/// * norm == b'F' -- computes the Frobenius-norm
+/// * norm == b'M' -- computes max(abs(a(i,j)))
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/dc/d09/dlange_8f.html>
+///
+pub fn dlange(norm: u8, m: i32, n: i32, a: &[f64], lda: i32) -> f64 {
+    unsafe {
+        let res = LAPACKE_dlange(LAPACK_COL_MAJOR, norm, m, n, a.as_ptr(), lda);
+        println!("res = {}", res);
+        res
     }
 }
 
@@ -623,6 +657,25 @@ mod tests {
             &[ 3.0,  7.0, 14.0,  6.0],
         ])?;
         assert_vec_approx_eq!(c_lo, c_lo_correct, 1e-15);
+        Ok(())
+    }
+
+    #[test]
+    fn dlange_works() -> Result<(), &'static str> {
+        #[rustfmt::skip]
+        let a = slice_to_colmajor(&[
+            &[-3.0, 5.0, 7.0],
+            &[ 2.0, 6.0, 4.0],
+            &[ 0.0, 2.0, 8.0],
+        ])?;
+        let norm_one = dlange(b'1', 3, 3, &a, 3);
+        let norm_inf = dlange(b'I', 3, 3, &a, 3);
+        let norm_fro = dlange(b'F', 3, 3, &a, 3);
+        let norm_max = dlange(b'M', 3, 3, &a, 3);
+        assert_eq!(norm_one, 19.0);
+        assert_eq!(norm_inf, 15.0);
+        assert_eq!(norm_fro, f64::sqrt(207.0));
+        assert_eq!(norm_max, 8.0);
         Ok(())
     }
 

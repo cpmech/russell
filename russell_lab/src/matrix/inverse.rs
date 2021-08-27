@@ -35,6 +35,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 ///     &[-1.0,  1.5],
 ///     &[ 1.0, -1.0],
 /// ])?;
+/// let a_copy = a.get_copy();
 ///
 /// // compute inverse matrix
 /// let mut ai = Matrix::new(2, 2);
@@ -53,7 +54,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 /// for i in 0..m {
 ///     for j in 0..m {
 ///         for k in 0..n {
-///             a_ai.plus_equal(i,j, a.get(i,k) * ai.get(k,j));
+///             a_ai.plus_equal(i,j, a_copy.get(i,k) * ai.get(k,j));
 ///         }
 ///     }
 /// }
@@ -79,6 +80,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 ///     &[0.0, 1.0, 4.0],
 ///     &[5.0, 6.0, 0.0],
 /// ])?;
+/// let a_copy = a.get_copy();
 ///
 /// // compute inverse matrix
 /// let mut ai = Matrix::new(3, 3);
@@ -98,7 +100,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 /// for i in 0..m {
 ///     for j in 0..m {
 ///         for k in 0..n {
-///             a_ai.plus_equal(i,j, a.get(i,k) * ai.get(k,j));
+///             a_ai.plus_equal(i,j, a_copy.get(i,k) * ai.get(k,j));
 ///         }
 ///     }
 /// }
@@ -108,6 +110,62 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 ///                 │ 0 0 1 │\n\
 ///                 └       ┘";
 /// assert_eq!(format!("{}", a_ai), identity);
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Third -- Pseudo inverse
+///
+/// ```
+/// # fn main() -> Result<(), &'static str> {
+/// // import
+/// use russell_lab::*;
+///
+/// // set matrix
+/// let mut a = Matrix::from(&[
+///     &[1.0, 0.0],
+///     &[0.0, 1.0],
+///     &[0.0, 1.0],
+/// ])?;
+/// let a_copy = a.get_copy();
+///
+/// // compute pseudo-inverse matrix (because it's square)
+/// let mut ai = Matrix::new(2, 3);
+/// inverse(&mut ai, &mut a)?;
+///
+/// // compare with solution
+/// let ai_correct = "┌                ┐\n\
+///                   │ 1.00 0.00 0.00 │\n\
+///                   │ 0.00 0.50 0.50 │\n\
+///                   └                ┘";
+/// assert_eq!(format!("{:.2}", ai), ai_correct);
+///
+/// // compute a⋅ai
+/// let (m, n) = a.dims();
+/// let mut a_ai = Matrix::new(m, m);
+/// for i in 0..m {
+///     for j in 0..m {
+///         for k in 0..n {
+///             a_ai.plus_equal(i,j, a_copy.get(i,k) * ai.get(k,j));
+///         }
+///     }
+/// }
+///
+/// // check if a⋅ai⋅a == a
+/// let mut a_ai_a = Matrix::new(m, n);
+/// for i in 0..m {
+///     for j in 0..n {
+///         for k in 0..m {
+///             a_ai_a.plus_equal(i,j, a_ai.get(i,k) * a_copy.get(k,j));
+///         }
+///     }
+/// }
+/// let a_ai_a_correct = "┌           ┐\n\
+///                       │ 1.00 0.00 │\n\
+///                       │ 0.00 1.00 │\n\
+///                       │ 0.00 1.00 │\n\
+///                       └           ┘";
+/// assert_eq!(format!("{:.2}", a_ai_a), a_ai_a_correct);
 /// # Ok(())
 /// # }
 /// ```

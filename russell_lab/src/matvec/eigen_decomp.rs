@@ -320,6 +320,53 @@ mod tests {
     }
 
     #[test]
+    fn eigen_decomp_rep_works() -> Result<(), &'static str> {
+        // rep: repeated eigenvalues
+        #[rustfmt::skip]
+        let data: &[&[f64]] = &[
+            &[2.0, 0.0, 0.0, 0.0],
+            &[1.0, 2.0, 0.0, 0.0],
+            &[0.0, 1.0, 3.0, 0.0],
+            &[0.0, 0.0, 1.0, 3.0],
+        ];
+        let mut a = Matrix::from(data)?;
+        let m = a.nrow;
+        let mut l_real = Vector::new(m);
+        let mut l_imag = Vector::new(m);
+        let mut v_real = Matrix::new(m, m);
+        let mut v_imag = Matrix::new(m, m);
+        eigen_decomp(
+            &mut l_real,
+            &mut l_imag,
+            &mut v_real,
+            &mut v_imag,
+            &mut a,
+        )?;
+        let l_real_correct = &[3.0, 3.0, 2.0, 2.0];
+        let l_imag_correct = &[0.0, 0.0, 0.0, 0.0];
+        let os3 = 1.0/f64::sqrt(3.0);
+        #[rustfmt::skip]
+        let v_real_correct = Matrix::from(&[
+            &[ 0.0,  0.0,  0.0,  0.0],
+            &[ 0.0,  0.0,  os3, -os3],
+            &[ 0.0,  0.0, -os3,  os3],
+            &[ 1.0, -1.0,  os3, -os3],
+        ])?;
+        #[rustfmt::skip]
+        let v_imag_correct = Matrix::from(&[
+            &[0.0, 0.0, 0.0, 0.0],
+            &[0.0, 0.0, 0.0, 0.0],
+            &[0.0, 0.0, 0.0, 0.0],
+            &[0.0, 0.0, 0.0, 0.0],
+        ])?;
+        assert_vec_approx_eq!(l_real.data, l_real_correct, 1e-15);
+        assert_vec_approx_eq!(l_imag.data, l_imag_correct, 1e-15);
+        assert_vec_approx_eq!(v_real.data, v_real_correct.data, 1e-15);
+        assert_vec_approx_eq!(v_imag.data, v_imag_correct.data, 1e-15);
+        Ok(())
+    }
+
+    #[test]
     fn eigen_decomp_lr_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let data: &[&[f64]] = &[

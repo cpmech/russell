@@ -232,6 +232,32 @@ impl Vector {
             *elem = function(index, *elem);
         }
     }
+
+    /// Returns a copy of this vector
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// let u_copy = u.get_copy();
+    /// u.set(1, 5.0);
+    /// let u_correct = "┌   ┐\n\
+    ///                  │ 1 │\n\
+    ///                  │ 5 │\n\
+    ///                  │ 3 │\n\
+    ///                  └   ┘";
+    /// let u_copy_correct = "┌   ┐\n\
+    ///                       │ 1 │\n\
+    ///                       │ 2 │\n\
+    ///                       │ 3 │\n\
+    ///                       └   ┘";
+    /// assert_eq!(format!("{}", u), u_correct);
+    /// assert_eq!(format!("{}", u_copy), u_copy_correct);
+    /// ```
+    pub fn get_copy(&self) -> Self {
+        Vector {
+            data: self.data.to_vec(),
+        }
+    }
 }
 
 impl fmt::Display for Vector {
@@ -387,5 +413,18 @@ mod tests {
         u.apply_with_index(|i, x| x * x * x + (i as f64));
         let correct = &[-1.0, -7.0, -25.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
+    }
+
+    #[test]
+    fn get_copy_works() -> Result<(), &'static str> {
+        #[rustfmt::skip]
+        let mut u = Vector::from( &[1.0, 2.0, 3.0]);
+        let u_copy = u.get_copy();
+        u.set(0, 0.11);
+        u.set(1, 0.22);
+        u.set(2, 0.33);
+        assert_eq!(u.data, &[0.11, 0.22, 0.33]);
+        assert_eq!(u_copy.data, &[1.0, 2.0, 3.0]);
+        Ok(())
     }
 }

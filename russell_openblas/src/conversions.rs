@@ -216,7 +216,7 @@ mod tests {
     }
 
     #[test]
-    fn extract_lapack_eigenvectors_works() -> Result<(), &'static str> {
+    fn dgeev_data_works() -> Result<(), &'static str> {
         let n = 5_usize;
         let mut vl_real = vec![0.0; n * n];
         let mut vl_imag = vec![0.0; n * n];
@@ -264,7 +264,7 @@ mod tests {
     }
 
     #[test]
-    fn extract_lapack_eigenvectors_fails_on_wrong_dims() {
+    fn dgeev_data_fails_on_wrong_dims() {
         let n = 2_usize;
         let wrong = 1_usize;
         let mut vl_real = vec![0.0; n * n];
@@ -368,7 +368,7 @@ mod tests {
     }
 
     #[test]
-    fn extract_lapack_eigenvectors_single_works() -> Result<(), &'static str> {
+    fn dgeev_data_single_works() -> Result<(), &'static str> {
         let n = 5_usize;
         let mut v_real = vec![0.0; n * n];
         let mut v_imag = vec![0.0; n * n];
@@ -392,7 +392,7 @@ mod tests {
     }
 
     #[test]
-    fn extract_lapack_eigenvectors_single_fails_on_wrong_dim_1() {
+    fn dgeev_data_single_fails_on_wrong_dim_1() {
         let n = 2_usize;
         let wrong = 1_usize;
         let mut v_real = vec![0.0; n * n];
@@ -422,7 +422,7 @@ mod tests {
     }
 
     #[test]
-    fn extract_lapack_eigenvectors_single_fails_on_wrong_ev() {
+    fn dgeev_data_single_fails_on_wrong_ev() {
         let n = 2_usize;
         let mut v_real = vec![0.0; n * n];
         let mut v_imag = vec![0.0; n * n];

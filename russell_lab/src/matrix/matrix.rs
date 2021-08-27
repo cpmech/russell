@@ -1,3 +1,4 @@
+use crate::EnumMatrixNorm;
 use russell_openblas::*;
 use std::cmp;
 use std::fmt::{self, Write};
@@ -285,6 +286,48 @@ impl Matrix {
             data: self.data.to_vec(),
         }
     }
+
+    /// Returns the matrix norm
+    ///
+    /// Computes one of:
+    ///
+    /// ```text
+    /// ‖a‖_1 = max_j ( Σ_i |aij| )
+    ///
+    /// ‖a‖_∞ = max_i ( Σ_j |aij| )
+    ///
+    /// ‖a‖_F = sqrt(Σ_i Σ_j aij⋅aij) == ‖a‖_2
+    ///
+    /// ‖a‖_max = max_ij ( |aij| )
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_lab::*;
+    /// let a = Matrix::from(&[
+    ///     &[-2.0,  2.0],
+    ///     &[ 1.0, -4.0],
+    /// ])?;
+    /// assert_eq!(a.norm(EnumMatrixNorm::One), 6.0);
+    /// assert_eq!(a.norm(EnumMatrixNorm::Inf), 5.0);
+    /// assert_eq!(a.norm(EnumMatrixNorm::Fro), 5.0);
+    /// assert_eq!(a.norm(EnumMatrixNorm::Max), 4.0);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn norm(&self, kind: EnumMatrixNorm) -> f64 {
+        let norm = match kind {
+            EnumMatrixNorm::One => b'1',
+            EnumMatrixNorm::Inf => b'I',
+            EnumMatrixNorm::Fro => b'F',
+            EnumMatrixNorm::Max => b'M',
+        };
+        let (m, n) = (to_i32(self.nrow), to_i32(self.ncol));
+        let lda = m;
+        dlange(norm, m, n, &self.data, lda)
+    }
 }
 
 impl fmt::Display for Matrix {
@@ -511,6 +554,21 @@ mod tests {
         a.set(1, 1, 0.44);
         assert_eq!(a.data, &[0.11, 0.33, 0.22, 0.44]);
         assert_eq!(a_copy.data, &[1.0, 3.0, 2.0, 4.0]);
+        Ok(())
+    }
+
+    #[test]
+    fn norm_works() -> Result<(), &'static str> {
+        #[rustfmt::skip]
+        let a = Matrix::from(&[
+            &[ 5.0, -4.0, 2.0],
+            &[-1.0,  2.0, 3.0],
+            &[-2.0,  1.0, 0.0],
+        ])?;
+        assert_eq!(a.norm(EnumMatrixNorm::One), 8.0);
+        assert_eq!(a.norm(EnumMatrixNorm::Inf), 11.0);
+        assert_eq!(a.norm(EnumMatrixNorm::Fro), 8.0);
+        assert_eq!(a.norm(EnumMatrixNorm::Max), 5.0);
         Ok(())
     }
 }

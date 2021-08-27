@@ -150,11 +150,7 @@ pub fn dsyrk(
 /// <http://www.netlib.org/lapack/explore-html/dc/d09/dlange_8f.html>
 ///
 pub fn dlange(norm: u8, m: i32, n: i32, a: &[f64], lda: i32) -> f64 {
-    unsafe {
-        let res = LAPACKE_dlange(LAPACK_COL_MAJOR, norm, m, n, a.as_ptr(), lda);
-        println!("res = {}", res);
-        res
-    }
+    unsafe { LAPACKE_dlange(LAPACK_COL_MAJOR, norm, m, n, a.as_ptr(), lda) }
 }
 
 /// Computes the singular value decomposition (SVD) of a real M-by-N matrix A, optionally computing the left and/or right singular vectors.

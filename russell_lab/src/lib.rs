@@ -65,9 +65,11 @@ pub fn desc() -> String {
     "Matrix-vector laboratory including linear algebra tools".to_string()
 }
 
+mod enums;
 mod matrix;
 mod matvec;
 mod vector;
+pub use crate::enums::*;
 pub use crate::matrix::*;
 pub use crate::matvec::*;
 pub use crate::vector::*;

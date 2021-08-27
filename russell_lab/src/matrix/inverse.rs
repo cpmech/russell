@@ -23,44 +23,91 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 ///
 /// # Examples
 ///
-/// # First
+/// # First -- Small 2 x 2 square matrix
 ///
 /// ```
 /// # fn main() -> Result<(), &'static str> {
+/// // import
 /// use russell_lab::*;
+///
+/// // set matrix
 /// let mut a = Matrix::from(&[
 ///     &[-1.0,  1.5],
 ///     &[ 1.0, -1.0],
 /// ])?;
+///
+/// // compute inverse matrix
 /// let mut ai = Matrix::new(2, 2);
 /// inverse(&mut ai, &mut a)?;
+///
+/// // compare with solution
 /// let ai_correct = "┌     ┐\n\
 ///                   │ 2 3 │\n\
 ///                   │ 2 2 │\n\
 ///                   └     ┘";
 /// assert_eq!(format!("{}", ai), ai_correct);
+///
+/// // check if a⋅ai == identity
+/// let (m, n) = a.dims();
+/// let mut a_ai = Matrix::new(m, m);
+/// for i in 0..m {
+///     for j in 0..m {
+///         for k in 0..n {
+///             a_ai.plus_equal(i,j, a.get(i,k) * ai.get(k,j));
+///         }
+///     }
+/// }
+/// let identity = "┌     ┐\n\
+///                 │ 1 0 │\n\
+///                 │ 0 1 │\n\
+///                 └     ┘";
+/// assert_eq!(format!("{}", a_ai), identity);
 /// # Ok(())
 /// # }
 /// ```
 ///
-/// # Second
+/// # Second -- Small 3 x 3 square matrix
 ///
 /// ```
 /// # fn main() -> Result<(), &'static str> {
+/// // import
 /// use russell_lab::*;
+///
+/// // set matrix
 /// let mut a = Matrix::from(&[
 ///     &[1.0, 2.0, 3.0],
 ///     &[0.0, 1.0, 4.0],
 ///     &[5.0, 6.0, 0.0],
 /// ])?;
+///
+/// // compute inverse matrix
 /// let mut ai = Matrix::new(3, 3);
 /// inverse(&mut ai, &mut a)?;
+///
+/// // compare with solution
 /// let ai_correct = "┌             ┐\n\
 ///                   │ -24  18   5 │\n\
 ///                   │  20 -15  -4 │\n\
 ///                   │  -5   4   1 │\n\
 ///                   └             ┘";
 /// assert_eq!(format!("{}", ai), ai_correct);
+///
+/// // check if a⋅ai == identity
+/// let (m, n) = a.dims();
+/// let mut a_ai = Matrix::new(m, m);
+/// for i in 0..m {
+///     for j in 0..m {
+///         for k in 0..n {
+///             a_ai.plus_equal(i,j, a.get(i,k) * ai.get(k,j));
+///         }
+///     }
+/// }
+/// let identity = "┌       ┐\n\
+///                 │ 1 0 0 │\n\
+///                 │ 0 1 0 │\n\
+///                 │ 0 0 1 │\n\
+///                 └       ┘";
+/// assert_eq!(format!("{}", a_ai), identity);
 /// # Ok(())
 /// # }
 /// ```

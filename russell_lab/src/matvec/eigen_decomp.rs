@@ -274,7 +274,22 @@ pub fn eigen_decomp_lr(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::EnumMatrixNorm;
     use russell_chk::*;
+
+    fn check_real_eigen(data: &[&[f64]], v: &Matrix, l: &Vector) -> Result<(), &'static str> {
+        let a = Matrix::from(data)?;
+        let m = a.nrow;
+        let lam = Matrix::diagonal(&l.data);
+        let mut a_v = Matrix::new(m, m);
+        let mut v_l = Matrix::new(m, m);
+        let mut err = Matrix::new(m, m);
+        mat_mat_mul(&mut a_v, 1.0, &a, &v)?;
+        mat_mat_mul(&mut v_l, 1.0, &v, &lam)?;
+        add_matrices(&mut err, 1.0, &a_v, -1.0, &v_l)?;
+        assert_approx_eq!(err.norm(EnumMatrixNorm::Max), 0.0, 1e-15);
+        Ok(())
+    }
 
     #[test]
     fn eigen_decomp_works() -> Result<(), &'static str> {
@@ -290,13 +305,7 @@ mod tests {
         let mut l_imag = Vector::new(m);
         let mut v_real = Matrix::new(m, m);
         let mut v_imag = Matrix::new(m, m);
-        eigen_decomp(
-            &mut l_real,
-            &mut l_imag,
-            &mut v_real,
-            &mut v_imag,
-            &mut a,
-        )?;
+        eigen_decomp(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a)?;
         let s3 = f64::sqrt(3.0);
         let l_real_correct = &[-0.5, -0.5, 1.0];
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
@@ -335,16 +344,10 @@ mod tests {
         let mut l_imag = Vector::new(m);
         let mut v_real = Matrix::new(m, m);
         let mut v_imag = Matrix::new(m, m);
-        eigen_decomp(
-            &mut l_real,
-            &mut l_imag,
-            &mut v_real,
-            &mut v_imag,
-            &mut a,
-        )?;
+        eigen_decomp(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a)?;
         let l_real_correct = &[3.0, 3.0, 2.0, 2.0];
         let l_imag_correct = &[0.0, 0.0, 0.0, 0.0];
-        let os3 = 1.0/f64::sqrt(3.0);
+        let os3 = 1.0 / f64::sqrt(3.0);
         #[rustfmt::skip]
         let v_real_correct = Matrix::from(&[
             &[ 0.0,  0.0,  0.0,  0.0],
@@ -363,6 +366,7 @@ mod tests {
         assert_vec_approx_eq!(l_imag.data, l_imag_correct, 1e-15);
         assert_vec_approx_eq!(v_real.data, v_real_correct.data, 1e-15);
         assert_vec_approx_eq!(v_imag.data, v_imag_correct.data, 1e-15);
+        check_real_eigen(&data, &v_real, &l_real)?;
         Ok(())
     }
 

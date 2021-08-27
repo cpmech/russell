@@ -253,6 +253,38 @@ impl Matrix {
     pub fn plus_equal(&mut self, i: usize, j: usize, value: f64) {
         self.data[i + j * self.nrow] += value;
     }
+
+    /// Returns a copy of this matrix
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_lab::*;
+    /// let mut a = Matrix::from(&[
+    ///     &[1.0, 2.0],
+    ///     &[3.0, 4.0],
+    /// ])?;
+    /// let a_copy = a.get_copy();
+    /// a.set(0, 0, 5.0);
+    /// let a_correct = "┌     ┐\n\
+    ///                  │ 5 2 │\n\
+    ///                  │ 3 4 │\n\
+    ///                  └     ┘";
+    /// let a_copy_correct = "┌     ┐\n\
+    ///                       │ 1 2 │\n\
+    ///                       │ 3 4 │\n\
+    ///                       └     ┘";
+    /// assert_eq!(format!("{}", a), a_correct);
+    /// assert_eq!(format!("{}", a_copy), a_copy_correct);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn get_copy(&self) -> Self {
+        Matrix {
+            nrow: self.nrow,
+            ncol: self.ncol,
+            data: self.data.to_vec(),
+        }
+    }
 }
 
 impl fmt::Display for Matrix {
@@ -462,6 +494,23 @@ mod tests {
         a.plus_equal(1, 0, 0.33);
         a.plus_equal(1, 1, 0.44);
         assert_eq!(a.data, &[1.11, 3.33, 2.22, 4.44]);
+        Ok(())
+    }
+
+    #[test]
+    fn get_copy_works() -> Result<(), &'static str> {
+        #[rustfmt::skip]
+        let mut a = Matrix::from(&[
+            &[1.0, 2.0],
+            &[3.0, 4.0],
+        ])?;
+        let a_copy = a.get_copy();
+        a.set(0, 0, 0.11);
+        a.set(0, 1, 0.22);
+        a.set(1, 0, 0.33);
+        a.set(1, 1, 0.44);
+        assert_eq!(a.data, &[0.11, 0.33, 0.22, 0.44]);
+        assert_eq!(a_copy.data, &[1.0, 3.0, 2.0, 4.0]);
         Ok(())
     }
 }

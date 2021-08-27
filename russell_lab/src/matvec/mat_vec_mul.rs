@@ -5,8 +5,8 @@ use russell_openblas::*;
 /// Performs the matrix-vector multiplication resulting in a vector
 ///
 /// ```text
-///  v  := alpha * a   multiply  u
-/// (m)          (m,n)          (n)
+///  v  :=  α ⋅  a   ⋅  u
+/// (m)        (m,n)   (n)
 /// ```
 ///
 /// # Note

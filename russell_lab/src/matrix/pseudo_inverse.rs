@@ -6,11 +6,15 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 
 /// Computes the pseudo-inverse matrix
 ///
+/// Finds `ai` such that:
+///
+/// ```text
+/// a⋅ai⋅a == a
+/// ```
+///
 /// ```text
 ///   ai  :=  pseudo_inverse(a)
 /// (n,m)          (m,n)
-///
-///   a⋅ai⋅a == a
 /// ```
 ///
 /// # Output

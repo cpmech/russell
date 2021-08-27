@@ -6,7 +6,7 @@ const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
 /// Performs the addition of two vectors
 ///
 /// ```text
-/// w := alpha * u + beta * v
+/// w := α⋅u + β⋅v
 /// ```
 ///
 /// # Examples

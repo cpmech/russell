@@ -6,7 +6,7 @@ const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
 /// Performs the addition of two matrices
 ///
 /// ```text
-/// c := alpha * a + beta * b
+/// c := α⋅a + β⋅b
 /// ```
 ///
 /// # Examples

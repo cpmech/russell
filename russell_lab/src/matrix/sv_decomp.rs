@@ -4,9 +4,11 @@ use russell_openblas::*;
 
 /// Computes the singular value decomposition (SVD) of a matrix
 ///
+/// Finds `u`, `s`, and `v`, such that:
+///
 /// ```text
-///   a  :=  u  *   s  * trans(v)
-/// (m,n)  (m,m)  (m,n)    (n,n)
+///   a  :=  u   ⋅   s   ⋅   vᵀ
+/// (m,n)  (m,m)   (m,n)   (n,n)
 /// ```
 ///
 /// # Output

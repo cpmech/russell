@@ -4,8 +4,8 @@ use russell_openblas::*;
 /// Performs the matrix-matrix multiplication resulting in a matrix
 ///
 /// ```text
-///   c  := alpha *  a   multiply   b
-/// (m,n)          (m,k)          (k,n)
+///   c  :=  α ⋅  a   ⋅   b
+/// (m,n)       (m,k)   (k,n)
 /// ```
 ///
 /// # Examples

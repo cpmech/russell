@@ -5,8 +5,8 @@ use russell_openblas::*;
 /// Performs the outer (tensor) product between two vectors resulting in a matrix
 ///
 /// ```text
-///   a  :=  alpha * u  outer  v
-/// (m,n)           (m)       (n)
+///   a  :=   α ⋅ u  outer  v
+/// (m,n)        (m)       (n)
 /// ```
 ///
 /// # Note

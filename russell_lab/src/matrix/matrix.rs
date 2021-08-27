@@ -3,29 +3,29 @@ use russell_openblas::*;
 use std::cmp;
 use std::fmt::{self, Write};
 
+/// Holds matrix components and associated functions
 pub struct Matrix {
     pub(crate) nrow: usize,    // number of rows
     pub(crate) ncol: usize,    // number of columns
     pub(crate) data: Vec<f64>, // col-major => Fortran
 }
 
-/// Holds matrix components
-///
-/// # Note
-///
-/// Data is stored in col-major format
-///
-/// Example of col-major data:
-///
-/// ```text
-///       _      _
-///      |  0  3  |
-///  A = |  1  4  |            ⇒     a = [0, 1, 2, 3, 4, 5]
-///      |_ 2  5 _|(m x n)
-///
-///  a[i+j*m] = A[i][j]
-/// ```
-///
+// # Note
+//
+// Data is stored in col-major format
+//
+// Example of col-major data:
+//
+// ```text
+//       _      _
+//      |  0  3  |
+//  A = |  1  4  |            ⇒     a = [0, 1, 2, 3, 4, 5]
+//      |_ 2  5 _|(m x n)
+//
+//  a[i+j*m] = A[i][j]
+// ```
+//
+
 impl Matrix {
     /// Creates new (nrow x ncol) Matrix filled with zeros
     ///

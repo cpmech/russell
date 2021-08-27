@@ -2,6 +2,7 @@ use russell_openblas::*;
 use std::cmp;
 use std::fmt::{self, Write};
 
+/// Holds vector components and associated functions
 pub struct Vector {
     pub(crate) data: Vec<f64>,
 }

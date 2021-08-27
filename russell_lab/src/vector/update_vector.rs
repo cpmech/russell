@@ -1,10 +1,10 @@
 use super::*;
 use russell_openblas::*;
 
-/// Updates vector based on another vector (axpy)
+/// Updates vector based on another vector
 ///
 /// ```text
-/// v += alpha * u
+/// v += α⋅u
 /// ```
 ///
 /// # Examples

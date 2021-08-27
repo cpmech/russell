@@ -4,7 +4,7 @@ use russell_openblas::*;
 /// Updates matrix based on another matrix (axpy)
 ///
 /// ```text
-/// b += alpha * a
+/// b += α⋅a
 /// ```
 ///
 /// # Examples

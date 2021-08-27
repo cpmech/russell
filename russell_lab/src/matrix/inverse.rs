@@ -7,8 +7,7 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 /// Computes the inverse of a square matrix and returns its determinant
 ///
 /// ```text
-///   ai  :=  inverse(a)
-/// (m,m)       (m,m)
+/// ai := a⁻¹
 /// ```
 ///
 /// # Output

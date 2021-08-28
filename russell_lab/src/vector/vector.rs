@@ -28,6 +28,26 @@ impl Vector {
         }
     }
 
+    /// Creates new vector completely filled with the same value
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let u = Vector::filled(3, 4.0);
+    /// let correct = "┌   ┐\n\
+    ///                │ 4 │\n\
+    ///                │ 4 │\n\
+    ///                │ 4 │\n\
+    ///                └   ┘";
+    /// assert_eq!(format!("{}", u), correct);
+    /// ```
+    pub fn filled(dim: usize, value: f64) -> Self {
+        Vector {
+            data: vec![value; dim],
+        }
+    }
+
     /// Creates a vector from data
     ///
     /// # Examples
@@ -306,8 +326,13 @@ mod tests {
     #[test]
     fn new_vector_works() {
         let u = Vector::new(3);
-        let correct = &[0.0, 0.0, 0.0];
-        assert_vec_approx_eq!(u.data, correct, 1e-15);
+        assert_eq!(u.data, &[0.0, 0.0, 0.0])
+    }
+
+    #[test]
+    fn filled_works() {
+        let u = Vector::filled(3, 5.0);
+        assert_eq!(u.data, &[5.0, 5.0, 5.0]);
     }
 
     #[test]

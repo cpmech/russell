@@ -73,6 +73,28 @@ impl Matrix {
         matrix
     }
 
+    /// Creates new matrix completely filled with the same value
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let a = Matrix::filled(2, 3, 4.0);
+    /// let correct = "┌       ┐\n\
+    ///                │ 4 4 4 │\n\
+    ///                │ 4 4 4 │\n\
+    ///                └       ┘";
+    /// assert_eq!(format!("{}", a), correct);
+    /// ```
+    pub fn filled(m: usize, n: usize, value: f64) -> Self {
+        let matrix = Matrix {
+            nrow: m,
+            ncol: n,
+            data: vec![value; m * n],
+        };
+        matrix
+    }
+
     /// Creates new matrix from given data
     ///
     /// # Examples
@@ -416,8 +438,13 @@ mod tests {
     #[test]
     fn identity_works() {
         let identity = Matrix::identity(2);
-        let correct = &[1.0, 0.0, 0.0, 1.0];
-        assert_vec_approx_eq!(identity.data, correct, 1e-15);
+        assert_eq!(identity.data, &[1.0, 0.0, 0.0, 1.0]);
+    }
+
+    #[test]
+    fn filled_works() {
+        let a = Matrix::filled(2, 2, 3.0);
+        assert_eq!(a.data, &[3.0, 3.0, 3.0, 3.0]);
     }
 
     #[test]
@@ -456,7 +483,7 @@ mod tests {
     }
 
     #[test]
-    fn diagonal_works(){
+    fn diagonal_works() {
         let a = Matrix::diagonal(&[-8.0, 2.0, 1.0]);
         assert_eq!(a.nrow, 3);
         assert_eq!(a.ncol, 3);

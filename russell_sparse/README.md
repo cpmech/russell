@@ -15,7 +15,10 @@ Documentation:
 Install OpenBLAS:
 
 ```bash
-sudo apt-get install libopenblas-dev
+sudo apt-get install \
+    libopenblas-dev \
+    liblapacke-dev \
+    libmumps-seq-dev
 ```
 
 Add this to your Cargo.toml:

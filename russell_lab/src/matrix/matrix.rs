@@ -87,12 +87,11 @@ impl Matrix {
     /// assert_eq!(format!("{}", a), correct);
     /// ```
     pub fn filled(m: usize, n: usize, value: f64) -> Self {
-        let matrix = Matrix {
+        Matrix {
             nrow: m,
             ncol: n,
             data: vec![value; m * n],
-        };
-        matrix
+        }
     }
 
     /// Creates new matrix from given data

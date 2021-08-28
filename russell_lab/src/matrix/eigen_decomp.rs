@@ -47,7 +47,7 @@ use russell_openblas::*;
 /// err := a⋅v - v⋅λ
 /// ```
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
 /// # fn main() -> Result<(), &'static str> {

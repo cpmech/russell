@@ -1,6 +1,5 @@
 use super::*;
 use russell_openblas::*;
-use std::convert::TryInto;
 
 /// Copies matrix
 ///
@@ -8,36 +7,35 @@ use std::convert::TryInto;
 /// b := a
 /// ```
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
+/// # fn main() -> Result<(), &'static str> {
 /// use russell_lab::*;
 /// let a = Matrix::from(&[
 ///     &[1.0, 2.0, 3.0],
 ///     &[4.0, 5.0, 6.0],
-/// ]);
+/// ])?;
 /// let mut b = Matrix::from(&[
 ///     &[-1.0, -2.0, -3.0],
 ///     &[-4.0, -5.0, -6.0],
-/// ]);
-/// copy_matrix(&mut b, &a);
+/// ])?;
+/// copy_matrix(&mut b, &a)?;
 /// let correct = "┌       ┐\n\
 ///                │ 1 2 3 │\n\
 ///                │ 4 5 6 │\n\
 ///                └       ┘";
 /// assert_eq!(format!("{}", b), correct);
+/// # Ok(())
+/// # }
 /// ```
-pub fn copy_matrix(b: &mut Matrix, a: &Matrix) {
-    if a.nrow != b.nrow {
-        #[rustfmt::skip]
-        panic!("nrow of matrix [a] (={}) must equal nrow of matrix [b] (={})", a.nrow, b.nrow);
+pub fn copy_matrix(b: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
+    if a.nrow != b.nrow || a.ncol != b.ncol {
+        return Err("matrices have wrong dimensions");
     }
-    if a.ncol != b.ncol {
-        #[rustfmt::skip]
-        panic!("ncol of matrix [a] (={}) must equal ncol of matrix [b] (={})", a.ncol, b.ncol);
-    }
-    let n_i32: i32 = b.data.len().try_into().unwrap();
+    let n_i32: i32 = to_i32(b.data.len());
     dcopy(n_i32, &a.data, 1, &mut b.data, 1);
+    Ok(())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,39 +46,50 @@ mod tests {
     use russell_chk::*;
 
     #[test]
-    fn copy_matrix_works() {
+    fn copy_matrix_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             &[10.0, 20.0, 30.0],
             &[40.0, 50.0, 60.0],
-        ]);
+        ])?;
         #[rustfmt::skip]
         let mut b = Matrix::from(&[
             &[100.0, 200.0, 300.0],
             &[400.0, 500.0, 600.0],
-        ]);
-        copy_matrix(&mut b, &a);
+        ])?;
+        copy_matrix(&mut b, &a)?;
         #[rustfmt::skip]
         let correct = slice_to_colmajor(&[
             &[10.0, 20.0, 30.0],
             &[40.0, 50.0, 60.0],
-        ]);
+        ])?;
         assert_vec_approx_eq!(b.data, correct, 1e-15);
+        Ok(())
     }
 
     #[test]
-    #[should_panic(expected = "nrow of matrix [a] (=4) must equal nrow of matrix [b] (=3)")]
-    fn copy_matrix_panic_1() {
-        let a = Matrix::new(4, 4);
-        let mut b = Matrix::new(3, 4);
-        copy_matrix(&mut b, &a);
-    }
-
-    #[test]
-    #[should_panic(expected = "ncol of matrix [a] (=3) must equal ncol of matrix [b] (=4)")]
-    fn copy_matrix_panic_2() {
-        let a = Matrix::new(3, 3);
-        let mut b = Matrix::new(3, 4);
-        copy_matrix(&mut b, &a);
+    fn copy_matrix_fails_on_wrong_dimensions() {
+        let a_2x2 = Matrix::new(2, 2);
+        let a_2x1 = Matrix::new(2, 1);
+        let a_1x2 = Matrix::new(1, 2);
+        let mut b_2x2 = Matrix::new(2, 2);
+        let mut b_2x1 = Matrix::new(2, 1);
+        let mut b_1x2 = Matrix::new(1, 2);
+        assert_eq!(
+            copy_matrix(&mut b_2x2, &a_2x1),
+            Err("matrices have wrong dimensions")
+        );
+        assert_eq!(
+            copy_matrix(&mut b_2x2, &a_1x2),
+            Err("matrices have wrong dimensions")
+        );
+        assert_eq!(
+            copy_matrix(&mut b_2x1, &a_2x2),
+            Err("matrices have wrong dimensions")
+        );
+        assert_eq!(
+            copy_matrix(&mut b_1x2, &a_2x2),
+            Err("matrices have wrong dimensions")
+        );
     }
 }

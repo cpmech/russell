@@ -1,6 +1,5 @@
 use super::*;
 use russell_openblas::*;
-use std::convert::TryInto;
 
 /// Performs the inner (dot) product between two vectors resulting in a scalar value
 ///
@@ -12,7 +11,7 @@ use std::convert::TryInto;
 ///
 /// The lengths of both vectors may be different; the smallest length will be selected.
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
 /// use russell_lab::*;
@@ -28,7 +27,8 @@ pub fn inner(u: &Vector, v: &Vector) -> f64 {
     } else {
         v.data.len()
     };
-    ddot(n.try_into().unwrap(), &u.data, 1, &v.data, 1)
+    let n_i32 = to_i32(n);
+    ddot(n_i32, &u.data, 1, &v.data, 1)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

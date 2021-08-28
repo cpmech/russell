@@ -10,8 +10,14 @@ pub fn desc() -> String {
 mod constants;
 mod conversions;
 mod highlevel;
-mod part1;
+mod matrix;
+mod matvec;
+mod to_i32;
+mod vector;
 use crate::constants::*;
 pub use crate::conversions::*;
 pub use crate::highlevel::*;
-pub use crate::part1::*;
+pub use crate::matrix::*;
+pub use crate::matvec::*;
+pub use crate::to_i32::*;
+pub use crate::vector::*;

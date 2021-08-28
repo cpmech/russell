@@ -1,8 +1,8 @@
 use russell_openblas::*;
 use std::cmp;
-use std::convert::TryInto;
 use std::fmt::{self, Write};
 
+/// Holds vector components and associated functions
 pub struct Vector {
     pub(crate) data: Vec<f64>,
 }
@@ -10,7 +10,7 @@ pub struct Vector {
 impl Vector {
     /// Creates a new (zeroed) vector
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -28,9 +28,29 @@ impl Vector {
         }
     }
 
+    /// Creates new vector completely filled with the same value
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let u = Vector::filled(3, 4.0);
+    /// let correct = "┌   ┐\n\
+    ///                │ 4 │\n\
+    ///                │ 4 │\n\
+    ///                │ 4 │\n\
+    ///                └   ┘";
+    /// assert_eq!(format!("{}", u), correct);
+    /// ```
+    pub fn filled(dim: usize, value: f64) -> Self {
+        Vector {
+            data: vec![value; dim],
+        }
+    }
+
     /// Creates a vector from data
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -50,7 +70,7 @@ impl Vector {
 
     /// Returns evenly spaced numbers over a specified closed interval
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -86,7 +106,7 @@ impl Vector {
 
     /// Returns the dimension (size) of this vector
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -103,7 +123,7 @@ impl Vector {
     /// u := alpha * u
     /// ```
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -118,8 +138,64 @@ impl Vector {
     /// ```
     ///
     pub fn scale(&mut self, alpha: f64) {
-        let n: i32 = self.data.len().try_into().unwrap();
-        dscal(n, alpha, &mut self.data, 1);
+        let n_i32: i32 = to_i32(self.data.len());
+        dscal(n_i32, alpha, &mut self.data, 1);
+    }
+
+    /// Returns the component i
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let u = Vector::from(&[1.0, 2.0]);
+    /// assert_eq!(u.get(1), 2.0);
+    /// ```
+    #[inline]
+    pub fn get(&self, i: usize) -> f64 {
+        self.data[i]
+    }
+
+    /// Change the component i
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut u = Vector::from(&[1.0, 2.0]);
+    /// u.set(1, -2.0);
+    /// let correct = "┌    ┐\n\
+    ///                │  1 │\n\
+    ///                │ -2 │\n\
+    ///                └    ┘";
+    /// assert_eq!(format!("{}", u), correct);
+    /// ```
+    #[inline]
+    pub fn set(&mut self, i: usize, value: f64) {
+        self.data[i] = value;
+    }
+
+    /// Executes the += operation on the component i
+    ///
+    /// ```text
+    /// u_i += value
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut u = Vector::from(&[1.0, 2.0]);
+    /// u.plus_equal(1, 0.22);
+    /// let correct = "┌      ┐\n\
+    ///                │ 1.00 │\n\
+    ///                │ 2.22 │\n\
+    ///                └      ┘";
+    /// assert_eq!(format!("{:.2}", u), correct);
+    /// ```
+    #[inline]
+    pub fn plus_equal(&mut self, i: usize, value: f64) {
+        self.data[i] += value;
     }
 
     /// Applies a function over all components of this vector
@@ -128,7 +204,7 @@ impl Vector {
     /// u := apply(function(ui))
     /// ```
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -156,7 +232,7 @@ impl Vector {
     /// u := apply(function(i, ui))
     /// ```
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -177,6 +253,34 @@ impl Vector {
             *elem = function(index, *elem);
         }
     }
+
+    /// Returns a copy of this vector
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// let u_copy = u.get_copy();
+    /// u.set(1, 5.0);
+    /// let u_correct = "┌   ┐\n\
+    ///                  │ 1 │\n\
+    ///                  │ 5 │\n\
+    ///                  │ 3 │\n\
+    ///                  └   ┘";
+    /// let u_copy_correct = "┌   ┐\n\
+    ///                       │ 1 │\n\
+    ///                       │ 2 │\n\
+    ///                       │ 3 │\n\
+    ///                       └   ┘";
+    /// assert_eq!(format!("{}", u), u_correct);
+    /// assert_eq!(format!("{}", u_copy), u_copy_correct);
+    /// ```
+    pub fn get_copy(&self) -> Self {
+        Vector {
+            data: self.data.to_vec(),
+        }
+    }
 }
 
 impl fmt::Display for Vector {
@@ -187,10 +291,14 @@ impl fmt::Display for Vector {
         let mut buf = String::new();
         for i in 0..self.data.len() {
             let val = self.data[i];
-            write!(&mut buf, "{}", val)?;
+            match f.precision() {
+                Some(v) => write!(&mut buf, "{:.1$}", val, v)?,
+                None => write!(&mut buf, "{}", val)?,
+            }
             width = cmp::max(buf.chars().count(), width);
             buf.clear();
         }
+        // draw vector
         width += 1;
         write!(f, "┌{:1$}┐\n", " ", width + 1)?;
         for i in 0..self.data.len() {
@@ -199,7 +307,10 @@ impl fmt::Display for Vector {
             }
             write!(f, "│")?;
             let val = self.data[i];
-            write!(f, "{:>1$}", val, width)?;
+            match f.precision() {
+                Some(v) => write!(f, "{:>1$.2$}", val, width, v)?,
+                None => write!(f, "{:>1$}", val, width)?,
+            }
         }
         write!(f, " │\n")?;
         write!(f, "└{:1$}┘", " ", width + 1)?;
@@ -217,8 +328,13 @@ mod tests {
     #[test]
     fn new_vector_works() {
         let u = Vector::new(3);
-        let correct = &[0.0, 0.0, 0.0];
-        assert_vec_approx_eq!(u.data, correct, 1e-15);
+        assert_eq!(u.data, &[0.0, 0.0, 0.0])
+    }
+
+    #[test]
+    fn filled_works() {
+        let u = Vector::filled(3, 5.0);
+        assert_eq!(u.data, &[5.0, 5.0, 5.0]);
     }
 
     #[test]
@@ -269,11 +385,46 @@ mod tests {
     }
 
     #[test]
+    fn display_trait_precision_works() {
+        #[rustfmt::skip]
+        let u = Vector::from(&[1.012444, 2.034123, 3.05678]);
+        let correct = "┌      ┐\n\
+                            │ 1.01 │\n\
+                            │ 2.03 │\n\
+                            │ 3.06 │\n\
+                            └      ┘";
+        assert_eq!(format!("{:.2}", u), correct);
+    }
+
+    #[test]
     fn scale_works() {
         let mut u = Vector::from(&[6.0, 9.0, 12.0]);
         u.scale(1.0 / 3.0);
         let correct = &[2.0, 3.0, 4.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
+    }
+
+    #[test]
+    fn get_works() {
+        let u = Vector::from(&[1.0, 2.0]);
+        assert_eq!(u.get(0), 1.0);
+        assert_eq!(u.get(1), 2.0);
+    }
+
+    #[test]
+    fn set_works() {
+        let mut u = Vector::from(&[1.0, 2.0]);
+        u.set(0, -1.0);
+        u.set(1, -2.0);
+        assert_eq!(u.data, &[-1.0, -2.0]);
+    }
+
+    #[test]
+    fn plus_equal_works() {
+        let mut u = Vector::from(&[1.0, 2.0]);
+        u.plus_equal(0, 0.11);
+        u.plus_equal(1, 0.22);
+        assert_eq!(u.data, &[1.11, 2.22]);
     }
 
     #[test]
@@ -290,5 +441,18 @@ mod tests {
         u.apply_with_index(|i, x| x * x * x + (i as f64));
         let correct = &[-1.0, -7.0, -25.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
+    }
+
+    #[test]
+    fn get_copy_works() -> Result<(), &'static str> {
+        #[rustfmt::skip]
+        let mut u = Vector::from( &[1.0, 2.0, 3.0]);
+        let u_copy = u.get_copy();
+        u.set(0, 0.11);
+        u.set(1, 0.22);
+        u.set(2, 0.33);
+        assert_eq!(u.data, &[0.11, 0.22, 0.33]);
+        assert_eq!(u_copy.data, &[1.0, 2.0, 3.0]);
+        Ok(())
     }
 }

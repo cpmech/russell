@@ -23,11 +23,7 @@ impl Tensor4 {
     /// * dd - the standard Dijkl components given with respect to an orthonormal Cartesian basis
     /// * minor_symmetric - this is a minor-symmetric tensor
     ///
-    /// # Panics
-    ///
-    /// This method panics if minor_symmetric=true but the components are not symmetric.
-    ///
-    pub fn from_tensor(dd: &[[[[f64; 3]; 3]; 3]; 3], minor_symmetric: bool) -> Self {
+    pub fn from_tensor(dd: &[[[[f64; 3]; 3]; 3]; 3], minor_symmetric: bool) -> Result<Self, &'static str> {
         let size = if minor_symmetric { 6 } else { 9 };
         let mut dd_bar = vec![0.0; size * size];
         if minor_symmetric {
@@ -41,7 +37,7 @@ impl Tensor4 {
                                     || dd[i][j][k][l] != dd[i][j][l][k]
                                     || dd[i][j][k][l] != dd[j][i][l][k]
                                 {
-                                    panic!("the components of minor-symmetric tensor do not pass symmetry check");
+                                    return Err("the components of minor-symmetric tensor do not pass symmetry check");
                                 }
                             } else {
                                 let (a, b) = IJKL_TO_IJ[i][j][k][l];
@@ -102,10 +98,10 @@ impl Tensor4 {
                 }
             }
         }
-        Tensor4 {
+        Ok(Tensor4 {
             comps_mandel: dd_bar,
             minor_symmetric,
-        }
+        })
     }
 
     /// Returns a nested array with the standard components of this fourth-order tensor
@@ -226,30 +222,42 @@ mod tests {
     }
 
     #[test]
-    fn from_tensor_works() {
-        let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, false);
+    fn from_tensor_works() -> Result<(), &'static str> {
+        let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, false)?;
         for a in 0..9 {
             for b in 0..9 {
                 let p = a + b * 9; // col-major
                 assert_eq!(t4.comps_mandel[p], Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[a][b]);
             }
         }
+        Ok(())
     }
 
     #[test]
-    fn from_tensor_sym_works() {
-        let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true);
+    fn from_tensor_sym_fails() {
+        let minor_symmetric = true; // << ERROR
+        let res = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, minor_symmetric);
+        assert_eq!(
+            res.err(),
+            Some("the components of minor-symmetric tensor do not pass symmetry check")
+        );
+    }
+
+    #[test]
+    fn from_tensor_sym_works() -> Result<(), &'static str> {
+        let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true)?;
         for a in 0..6 {
             for b in 0..6 {
                 let p = a + b * 6; // col-major
                 assert_eq!(t4.comps_mandel[p], Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[a][b]);
             }
         }
+        Ok(())
     }
 
     #[test]
-    fn to_tensor_4_works() {
-        let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, false);
+    fn to_tensor_4_works() -> Result<(), &'static str> {
+        let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, false)?;
         let res = t4.to_tensor();
         for i in 0..3 {
             for j in 0..3 {
@@ -260,11 +268,12 @@ mod tests {
                 }
             }
         }
+        Ok(())
     }
 
     #[test]
-    fn to_tensor_symmetric_4_works() {
-        let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true);
+    fn to_tensor_symmetric_4_works() -> Result<(), &'static str> {
+        let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true)?;
         let res = t4.to_tensor();
         for i in 0..3 {
             for j in 0..3 {
@@ -275,5 +284,6 @@ mod tests {
                 }
             }
         }
+        Ok(())
     }
 }

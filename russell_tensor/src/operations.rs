@@ -41,7 +41,7 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 /// - Even if `a` and `b` are symmetric, the result `c` may not be symmetric
 /// - Thus, the result is always set with symmetric = false
 ///
-pub fn t2_sdot_t2(a: &Tensor2, b: &Tensor2) -> Tensor2 {
+pub fn t2_sdot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, &'static str> {
     let ta = a.to_tensor();
     let tb = b.to_tensor();
     let mut tc = [[0.0; 3]; 3];
@@ -63,107 +63,112 @@ mod tests {
     use russell_chk::*;
 
     #[test]
-    fn t2_ddot_t2_works() {
+    fn t2_ddot_t2_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Tensor2::from_tensor(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], false);
+        ], false)?;
 
         #[rustfmt::skip]
         let b = Tensor2::from_tensor(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
-        ], false);
+        ], false)?;
         let s = t2_ddot_t2(&a, &b);
         assert_eq!(s, 165.0);
+        Ok(())
     }
 
     #[test]
-    fn t2_ddot_t2_both_symmetric_works() {
+    fn t2_ddot_t2_both_symmetric_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Tensor2::from_tensor(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
-        ], true);
+        ], true)?;
         #[rustfmt::skip]
         let b = Tensor2::from_tensor(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
-        ], true);
+        ], true)?;
         let s = t2_ddot_t2(&a, &b);
         assert_approx_eq!(s, 162.0, 1e-13);
+        Ok(())
     }
 
     #[test]
-    fn t2_ddot_t2_sym_with_unsymmetric_works() {
+    fn t2_ddot_t2_sym_with_unsymmetric_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Tensor2::from_tensor(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
-        ], true);
+        ], true)?;
         #[rustfmt::skip]
         let b = Tensor2::from_tensor(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
-        ], false);
+        ], false)?;
         let s = t2_ddot_t2(&a, &b);
         assert_approx_eq!(s, 168.0, 1e-13);
+        Ok(())
     }
 
     #[test]
-    fn t2_sdot_t2_works() {
+    fn t2_sdot_t2_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Tensor2::from_tensor(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], false);
+        ], false)?;
         #[rustfmt::skip]
         let b = Tensor2::from_tensor(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
-        ], false);
-        let c = t2_sdot_t2(&a, &b);
+        ], false)?;
+        let c = t2_sdot_t2(&a, &b)?;
         println!("{}", c);
         #[rustfmt::skip]
         let correct = Tensor2::from_tensor(&[
             [ 30.0,  24.0, 18.0],
             [ 84.0,  69.0, 54.0],
             [138.0, 114.0, 90.0],
-        ], false);
+        ], false)?;
         assert_vec_approx_eq!(c.comps_mandel, correct.comps_mandel, 1e-13);
+        Ok(())
     }
 
     #[test]
-    fn t2_sdot_t2_both_symmetric_works() {
+    fn t2_sdot_t2_both_symmetric_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Tensor2::from_tensor(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
-        ], true);
+        ], true)?;
         #[rustfmt::skip]
         let b = Tensor2::from_tensor(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
-        ], true);
-        let c = t2_sdot_t2(&a, &b);
+        ], true)?;
+        let c = t2_sdot_t2(&a, &b)?;
         println!("{}", c);
         #[rustfmt::skip]
         let correct = Tensor2::from_tensor(&[
             [59.0, 37.0, 28.0],
             [52.0, 44.0, 37.0],
             [61.0, 52.0, 59.0],
-        ], false);
+        ], false)?;
         assert_vec_approx_eq!(c.comps_mandel, correct.comps_mandel, 1e-13);
+        Ok(())
     }
 }

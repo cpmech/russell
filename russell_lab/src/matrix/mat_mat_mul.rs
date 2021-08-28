@@ -1,31 +1,27 @@
 use super::*;
 use russell_openblas::*;
-use std::convert::TryInto;
 
 /// Performs the matrix-matrix multiplication resulting in a matrix
 ///
 /// ```text
-///   c  := alpha *  a   multiply   b
-/// (m,n)          (m,k)          (k,n)
+///   c  :=  α ⋅  a   ⋅   b
+/// (m,n)       (m,k)   (k,n)
 /// ```
 ///
-/// # Panics
-///
-/// This function panics if the matrix dimensions are incorrect
-///
-/// # Examples
+/// # Example
 ///
 /// ```
+/// # fn main() -> Result<(), &'static str> {
 /// use russell_lab::*;
 /// let a = Matrix::from(&[
 ///     &[1.0, 2.0],
 ///     &[3.0, 4.0],
 ///     &[5.0, 6.0],
-/// ]);
+/// ])?;
 /// let b = Matrix::from(&[
 ///     &[-1.0, -2.0, -3.0],
 ///     &[-4.0, -5.0, -6.0],
-/// ]);
+/// ])?;
 /// let mut c = Matrix::new(3, 3);
 /// mat_mat_mul(&mut c, 1.0, &a, &b);
 /// let correct = "┌             ┐\n\
@@ -34,26 +30,18 @@ use std::convert::TryInto;
 ///                │ -29 -40 -51 │\n\
 ///                └             ┘";
 /// assert_eq!(format!("{}", c), correct);
+/// # Ok(())
+/// # }
 /// ```
-///
-pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) {
-    if a.nrow != c.nrow {
-        #[rustfmt::skip]
-        panic!("nrow of matrix [a] (={}) must equal nrow of matrix [c] (={})", a.nrow, c.nrow);
+pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) -> Result<(), &'static str> {
+    if a.nrow != c.nrow || a.ncol != b.nrow || b.ncol != c.ncol {
+        return Err("matrices have wrong dimensions");
     }
-    if a.ncol != b.nrow {
-        #[rustfmt::skip]
-        panic!("ncol of matrix [a] (={}) must equal nrow of matrix [b] (={})", a.ncol, b.nrow);
-    }
-    if b.ncol != c.ncol {
-        #[rustfmt::skip]
-        panic!("ncol of matrix [b] (={}) must equal ncol of matrix [c] (={})", b.ncol, c.ncol);
-    }
-    let m_i32: i32 = c.nrow.try_into().unwrap();
-    let n_i32: i32 = c.ncol.try_into().unwrap();
-    let k_i32: i32 = a.ncol.try_into().unwrap();
-    let lda_i32: i32 = a.nrow.try_into().unwrap();
-    let ldb_i32: i32 = b.nrow.try_into().unwrap();
+    let m_i32: i32 = to_i32(c.nrow);
+    let n_i32: i32 = to_i32(c.ncol);
+    let k_i32: i32 = to_i32(a.ncol);
+    let lda_i32: i32 = to_i32(a.nrow);
+    let ldb_i32: i32 = to_i32(b.nrow);
     dgemm(
         false,
         false,
@@ -69,6 +57,7 @@ pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) {
         &mut c.data,
         m_i32,
     );
+    Ok(())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -79,53 +68,48 @@ mod tests {
     use russell_chk::*;
 
     #[test]
-    fn mat_mat_mul_works() {
+    fn mat_mat_mul_works() -> Result<(), &'static str> {
         let a = Matrix::from(&[
             // 2 x 3
             &[1.0, 2.00, 3.0],
             &[0.5, 0.75, 1.5],
-        ]);
+        ])?;
         let b = Matrix::from(&[
             // 3 x 4
             &[0.1, 0.5, 0.5, 0.75],
             &[0.2, 2.0, 2.0, 2.00],
             &[0.3, 0.5, 0.5, 0.50],
-        ]);
+        ])?;
         let mut c = Matrix::new(2, 4);
         // c := 2⋅a⋅b
-        mat_mat_mul(&mut c, 2.0, &a, &b);
+        mat_mat_mul(&mut c, 2.0, &a, &b)?;
         #[rustfmt::skip]
-        let correct =slice_to_colmajor(&[
+        let correct = slice_to_colmajor(&[
             &[2.80, 12.0, 12.0, 12.50],
             &[1.30,  5.0,  5.0, 5.25],
-        ]);
+        ])?;
         assert_vec_approx_eq!(c.data, correct, 1e-15);
+        Ok(())
     }
 
     #[test]
-    #[should_panic(expected = "nrow of matrix [a] (=4) must equal nrow of matrix [c] (=3)")]
-    fn mat_mat_mul_panic_1() {
-        let a = Matrix::new(4, 3);
-        let b = Matrix::new(3, 4);
-        let mut c = Matrix::new(3, 4);
-        mat_mat_mul(&mut c, 1.0, &a, &b);
-    }
-
-    #[test]
-    #[should_panic(expected = "ncol of matrix [a] (=4) must equal nrow of matrix [b] (=3)")]
-    fn mat_mat_mul_panic_2() {
-        let a = Matrix::new(3, 4);
-        let b = Matrix::new(3, 4);
-        let mut c = Matrix::new(3, 4);
-        mat_mat_mul(&mut c, 1.0, &a, &b);
-    }
-
-    #[test]
-    #[should_panic(expected = "ncol of matrix [b] (=3) must equal ncol of matrix [c] (=4)")]
-    fn mat_mat_mul_panic_3() {
-        let a = Matrix::new(3, 4);
-        let b = Matrix::new(4, 3);
-        let mut c = Matrix::new(3, 4);
-        mat_mat_mul(&mut c, 1.0, &a, &b);
+    fn mat_mat_mul_should_fail_on_wrong_dimensions() {
+        let a_2x1 = Matrix::new(2, 1);
+        let a_1x2 = Matrix::new(1, 2);
+        let b_2x1 = Matrix::new(2, 1);
+        let b_1x3 = Matrix::new(1, 3);
+        let mut c_2x2 = Matrix::new(2, 2);
+        assert_eq!(
+            mat_mat_mul(&mut c_2x2, 1.0, &a_2x1, &b_2x1),
+            Err("matrices have wrong dimensions")
+        );
+        assert_eq!(
+            mat_mat_mul(&mut c_2x2, 1.0, &a_1x2, &b_2x1),
+            Err("matrices have wrong dimensions")
+        );
+        assert_eq!(
+            mat_mat_mul(&mut c_2x2, 1.0, &a_2x1, &b_1x3),
+            Err("matrices have wrong dimensions")
+        );
     }
 }

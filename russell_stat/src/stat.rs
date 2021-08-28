@@ -1,6 +1,6 @@
 /// Returns the average of values in the a given slice
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
 /// use russell_stat;
@@ -22,7 +22,7 @@ where
 
 /// Returns the average of values and their standard deviation
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
 /// use russell_stat;
@@ -76,10 +76,15 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "cannot compute average of empty slice")]
-    fn ave_returns_error_on_empty_slice() {
+    fn ave_fails_on_empty_slice() {
         let x: [i32; 0] = [];
-        panic!("{}", ave(&x).unwrap_err().to_string());
+        assert_eq!(ave(&x), Err("cannot compute average of empty slice"));
+    }
+
+    #[test]
+    fn ave_dev_fails_on_wrong_input() {
+        let x: [i32; 0] = [];
+        assert_eq!(ave_dev(&x), Err("at least two values are needed"));
     }
 
     #[test]

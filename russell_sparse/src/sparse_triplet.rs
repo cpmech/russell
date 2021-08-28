@@ -1,3 +1,5 @@
+#[allow(dead_code)]
+
 /// Holds triples representing a sparse matrix
 pub struct SparseTriplet {
     pub(crate) m: usize,        // number of rows

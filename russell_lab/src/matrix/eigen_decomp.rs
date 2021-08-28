@@ -26,12 +26,34 @@ use russell_openblas::*;
 ///
 /// * The matrix `a` will be modified
 ///
+/// # Similarity transformation
+///
+/// The eigen-decomposition leads to a similarity transformation like so:
+///
+/// ```text
+/// a = v⋅λ⋅v⁻¹
+/// ```
+///
+/// where `v` is a matrix whose columns are the m linearly independent eigenvectors of `a`,
+/// and `λ` is a matrix whose diagonal are the eigenvalues of `a`. Thus, the following is valid:
+///
+/// ```text
+/// a⋅v = v⋅λ
+/// ```
+///
+/// Let us define the error `err` as follows:
+///
+/// ```text
+/// err := a⋅v - v⋅λ
+/// ```
+///
 /// # Examples
 ///
 /// ```
 /// # fn main() -> Result<(), &'static str> {
 /// // import
 /// use russell_lab::*;
+/// use russell_chk::*;
 ///
 /// // set matrix
 /// let data: &[&[f64]] = &[
@@ -74,6 +96,18 @@ use russell_openblas::*;
 /// assert_eq!(format!("{:?}", l_imag), l_imag_correct);
 /// assert_eq!(format!("{:.3}", v_real), v_real_correct);
 /// assert_eq!(format!("{}", v_imag), v_imag_correct);
+///
+/// // check eigen-decomposition (similarity transformation) of a
+/// // symmetric matrix with real-only eigenvalues and eigenvectors
+/// let a_copy = Matrix::from(data)?;
+/// let lam = Matrix::diagonal(&l_real);
+/// let mut a_v = Matrix::new(m, m);
+/// let mut v_l = Matrix::new(m, m);
+/// let mut err = Matrix::filled(m, m, f64::MAX);
+/// mat_mat_mul(&mut a_v, 1.0, &a_copy, &v_real)?;
+/// mat_mat_mul(&mut v_l, 1.0, &v_real, &lam)?;
+/// add_matrices(&mut err, 1.0, &a_v, -1.0, &v_l)?;
+/// assert_approx_eq!(err.norm(EnumMatrixNorm::Max), 0.0, 1e-15);
 /// # Ok(())
 /// # }
 /// ```
@@ -266,7 +300,7 @@ mod tests {
         let lam = Matrix::diagonal(&l);
         let mut a_v = Matrix::new(m, m);
         let mut v_l = Matrix::new(m, m);
-        let mut err = Matrix::new(m, m);
+        let mut err = Matrix::filled(m, m, f64::MAX);
         mat_mat_mul(&mut a_v, 1.0, &a, &v)?;
         mat_mat_mul(&mut v_l, 1.0, &v, &lam)?;
         add_matrices(&mut err, 1.0, &a_v, -1.0, &v_l)?;

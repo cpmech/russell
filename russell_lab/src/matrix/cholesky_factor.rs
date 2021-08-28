@@ -91,6 +91,14 @@ mod tests {
     use russell_chk::*;
 
     #[test]
+    fn cholesky_factor_fails_on_non_square() {
+        let a = Matrix::new(3, 4);
+        let m = a.nrow;
+        let mut l = Matrix::new(m, m);
+        assert_eq!(cholesky_factor(&mut l, &a), Err("matrix must be square"));
+    }
+
+    #[test]
     fn cholesky_factor_3x3_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[

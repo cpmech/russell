@@ -309,6 +309,44 @@ mod tests {
     }
 
     #[test]
+    fn eigen_decomp_fails_on_non_square() {
+        let mut a = Matrix::new(3, 4);
+        let m = a.nrow;
+        let mut l_real = vec![0.0; m];
+        let mut l_imag = vec![0.0; m];
+        let mut v_real = Matrix::new(m, m);
+        let mut v_imag = Matrix::new(m, m);
+        assert_eq!(
+            eigen_decomp(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a),
+            Err("matrix must be square")
+        );
+    }
+
+    #[test]
+    fn eigen_decomp_lr_fails_on_non_square() {
+        let mut a = Matrix::new(3, 4);
+        let m = a.nrow;
+        let mut l_real = vec![0.0; m];
+        let mut l_imag = vec![0.0; m];
+        let mut u_real = Matrix::new(m, m);
+        let mut u_imag = Matrix::new(m, m);
+        let mut v_real = Matrix::new(m, m);
+        let mut v_imag = Matrix::new(m, m);
+        assert_eq!(
+            eigen_decomp_lr(
+                &mut l_real,
+                &mut l_imag,
+                &mut u_real,
+                &mut u_imag,
+                &mut v_real,
+                &mut v_imag,
+                &mut a,
+            ),
+            Err("matrix must be square"),
+        );
+    }
+
+    #[test]
     fn eigen_decomp_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let data: &[&[f64]] = &[
@@ -388,20 +426,6 @@ mod tests {
     }
 
     #[test]
-    fn eigen_decomp_fails_on_non_square() {
-        let mut a = Matrix::new(3, 4);
-        let m = a.nrow;
-        let mut l_real = vec![0.0; m];
-        let mut l_imag = vec![0.0; m];
-        let mut v_real = Matrix::new(m, m);
-        let mut v_imag = Matrix::new(m, m);
-        assert_eq!(
-            eigen_decomp(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a),
-            Err("matrix must be square")
-        );
-    }
-
-    #[test]
     fn eigen_decomp_lr_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let data: &[&[f64]] = &[
@@ -460,29 +484,5 @@ mod tests {
         assert_vec_approx_eq!(v_real.data, v_real_correct.data, 1e-15);
         assert_vec_approx_eq!(v_imag.data, v_imag_correct.data, 1e-15);
         Ok(())
-    }
-
-    #[test]
-    fn eigen_decomp_lr_fails_on_non_square() {
-        let mut a = Matrix::new(3, 4);
-        let m = a.nrow;
-        let mut l_real = vec![0.0; m];
-        let mut l_imag = vec![0.0; m];
-        let mut u_real = Matrix::new(m, m);
-        let mut u_imag = Matrix::new(m, m);
-        let mut v_real = Matrix::new(m, m);
-        let mut v_imag = Matrix::new(m, m);
-        assert_eq!(
-            eigen_decomp_lr(
-                &mut l_real,
-                &mut l_imag,
-                &mut u_real,
-                &mut u_imag,
-                &mut v_real,
-                &mut v_imag,
-                &mut a,
-            ),
-            Err("matrix must be square"),
-        );
     }
 }

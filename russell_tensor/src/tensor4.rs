@@ -234,6 +234,16 @@ mod tests {
     }
 
     #[test]
+    fn from_tensor_sym_fails() {
+        let minor_symmetric = true; // << ERROR
+        let res = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, minor_symmetric);
+        assert_eq!(
+            res.err(),
+            Some("the components of minor-symmetric tensor do not pass symmetry check")
+        );
+    }
+
+    #[test]
     fn from_tensor_sym_works() -> Result<(), &'static str> {
         let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true)?;
         for a in 0..6 {

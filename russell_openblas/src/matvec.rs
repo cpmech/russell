@@ -217,6 +217,21 @@ mod tests {
     }
 
     #[test]
+    fn dgesv_fails() {
+        let m = 2;
+        let mut a = vec![0.0; m * m];
+        let mut b = vec![0.0; m];
+        let mut ipiv = vec![0; m];
+        let m_i32 = to_i32(m);
+        let lda = 0_i32; // << ERROR
+        let (ldb, nrhs) = (m_i32, 1_i32);
+        assert_eq!(
+            dgesv(m_i32, nrhs, &mut a, lda, &mut ipiv, &mut b, ldb),
+            Err("LAPACK failed")
+        );
+    }
+
+    #[test]
     fn dgesv_works() -> Result<(), &'static str> {
         // matrix
         #[rustfmt::skip]

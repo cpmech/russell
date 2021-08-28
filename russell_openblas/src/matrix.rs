@@ -677,6 +677,36 @@ mod tests {
     }
 
     #[test]
+    fn dgesvd_fails() {
+        let (jobu, jobvt) = (b'A', b'A');
+        let (m, n) = (2_usize, 3_usize);
+        let (ldu, ldvt) = (m, n);
+        let min_mn = if m < n { m } else { n };
+        let mut a = vec![0.0; m * n];
+        let mut s = vec![0.0; min_mn as usize];
+        let mut u = vec![0.0; (m * m) as usize];
+        let mut vt = vec![0.0; (n * n) as usize];
+        let mut superb = vec![0.0; min_mn as usize];
+        assert_eq!(
+            dgesvd(
+                jobu,
+                jobvt,
+                to_i32(m),
+                to_i32(n),
+                &mut a,
+                0, // <<<< ERROR
+                &mut s,
+                &mut u,
+                to_i32(ldu),
+                &mut vt,
+                to_i32(ldvt),
+                &mut superb,
+            ),
+            Err("LAPACK failed")
+        );
+    }
+
+    #[test]
     fn dgesvd_works() -> Result<(), &'static str> {
         // matrix
         #[rustfmt::skip]
@@ -826,6 +856,19 @@ mod tests {
     }
 
     #[test]
+    fn dgetrf_and_dgetri_fail() {
+        let (m, n) = (2, 2);
+        let min_mn = if m < n { m } else { n };
+        let m_i32 = to_i32(m);
+        let n_i32 = to_i32(n);
+        let lda_i32 = 0_i32; // <<< ERROR
+        let mut a = vec![0.0; m * n];
+        let mut ipiv = vec![0_i32; min_mn];
+        assert_eq!(dgetrf(m_i32, n_i32, &mut a, lda_i32, &mut ipiv), Err("LAPACK failed"));
+        assert_eq!(dgetri(n_i32, &mut a, lda_i32, &ipiv), Err("LAPACK failed"));
+    }
+
+    #[test]
     fn dgetrf_and_dgetri_work() -> Result<(), &'static str> {
         // matrix
         #[rustfmt::skip]
@@ -891,6 +934,13 @@ mod tests {
     }
 
     #[test]
+    fn dpotrf_fails() {
+        let mut a = vec![0.0; 4];
+        let lda = 0_i32; // << ERROR
+        assert_eq!(dpotrf(true, 2_i32, &mut a, lda), Err("LAPACK failed"));
+    }
+
+    #[test]
     fn dpotrf_works() -> Result<(), &'static str> {
         // matrix a
         #[rustfmt::skip]
@@ -938,6 +988,23 @@ mod tests {
         ])?;
         assert_vec_approx_eq!(a_lo, a_lo_correct, 1e-15);
         Ok(())
+    }
+
+    #[test]
+    fn dgeev_fails() {
+        let m = 2_usize;
+        let mut a = vec![0.0; m * m];
+        let mut wr = vec![0.0; m]; // eigenvalues (real part)
+        let mut wi = vec![0.0; m]; // eigenvalues (imaginary part)
+        let mut vl = vec![0.0; m * m]; // left eigenvectors
+        let mut vr = vec![0.0; m * m]; // right eigenvectors
+        let m_i32 = to_i32(m);
+        let (ldvl, ldvr) = (m_i32, m_i32);
+        let lda = 0_i32; // << ERROR
+        assert_eq!(
+            dgeev(true, true, m_i32, &mut a, lda, &mut wr, &mut wi, &mut vl, ldvl, &mut vr, ldvr,),
+            Err("LAPACK failed")
+        );
     }
 
     #[test]

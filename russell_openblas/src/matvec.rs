@@ -232,6 +232,20 @@ mod tests {
     }
 
     #[test]
+    fn dgesv_fails_on_wrong_ipiv() {
+        let m = 2;
+        let mut a = [1.0, 0.0, 0.0, 1.0];
+        let mut b = vec![0.0; m];
+        let mut ipiv = vec![0; 1]; // << ERROR
+        let m_i32 = to_i32(m);
+        let (lda, ldb, nrhs) = (m_i32, m_i32, 1_i32);
+        assert_eq!(
+            dgesv(m_i32, nrhs, &mut a, lda, &mut ipiv, &mut b, ldb),
+            Err("the length of ipiv must equal n")
+        );
+    }
+
+    #[test]
     fn dgesv_works() -> Result<(), &'static str> {
         // matrix
         #[rustfmt::skip]

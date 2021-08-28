@@ -1,6 +1,6 @@
 /// Returns the average of values in the a given slice
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
 /// use russell_stat;
@@ -22,7 +22,7 @@ where
 
 /// Returns the average of values and their standard deviation
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
 /// use russell_stat;

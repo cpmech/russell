@@ -14,7 +14,7 @@ use russell_openblas::*;
 /// The rows of matrix a must equal the length of vector u and
 /// the columns of matrix a must equal the length of vector v
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
 /// # fn main() -> Result<(), &'static str> {

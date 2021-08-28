@@ -7,7 +7,7 @@ use russell_openblas::*;
 /// b := a
 /// ```
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
 /// # fn main() -> Result<(), &'static str> {

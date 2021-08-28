@@ -8,7 +8,7 @@ use russell_openblas::*;
 /// (m,n)       (m,k)   (k,n)
 /// ```
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
 /// # fn main() -> Result<(), &'static str> {

@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 /// Converts number to i32
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
 /// use russell_openblas::*;

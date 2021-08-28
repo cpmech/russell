@@ -178,7 +178,7 @@ pub fn eigen_decomp(
 ///
 /// * The matrix `a` will be modified
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
 /// # fn main() -> Result<(), &'static str> {

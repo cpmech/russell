@@ -5,7 +5,7 @@ use std::fmt::Write;
 ///
 /// Symbols from <http://www.i2symbol.com/symbols/line>
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
 /// use russell_tensor::*;

@@ -10,7 +10,7 @@ pub struct Vector {
 impl Vector {
     /// Creates a new (zeroed) vector
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -30,7 +30,7 @@ impl Vector {
 
     /// Creates new vector completely filled with the same value
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -50,7 +50,7 @@ impl Vector {
 
     /// Creates a vector from data
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -70,7 +70,7 @@ impl Vector {
 
     /// Returns evenly spaced numbers over a specified closed interval
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -106,7 +106,7 @@ impl Vector {
 
     /// Returns the dimension (size) of this vector
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -123,7 +123,7 @@ impl Vector {
     /// u := alpha * u
     /// ```
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -144,7 +144,7 @@ impl Vector {
 
     /// Returns the component i
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -158,7 +158,7 @@ impl Vector {
 
     /// Change the component i
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -181,7 +181,7 @@ impl Vector {
     /// u_i += value
     /// ```
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -204,7 +204,7 @@ impl Vector {
     /// u := apply(function(ui))
     /// ```
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -232,7 +232,7 @@ impl Vector {
     /// u := apply(function(i, ui))
     /// ```
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -255,6 +255,8 @@ impl Vector {
     }
 
     /// Returns a copy of this vector
+    ///
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;

@@ -29,6 +29,8 @@ pub struct Matrix {
 impl Matrix {
     /// Creates new (nrow x ncol) Matrix filled with zeros
     ///
+    /// # Example
+    ///
     /// ```
     /// use russell_lab::*;
     /// let a = Matrix::new(3, 3);
@@ -49,7 +51,7 @@ impl Matrix {
 
     /// Creates new identity (square) matrix
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -75,7 +77,7 @@ impl Matrix {
 
     /// Creates new matrix completely filled with the same value
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -96,7 +98,7 @@ impl Matrix {
 
     /// Creates new matrix from given data
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// # fn main() -> Result<(), &'static str> {
@@ -136,7 +138,7 @@ impl Matrix {
 
     /// Creates new diagonal matrix with given diagonal data
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -164,7 +166,7 @@ impl Matrix {
 
     /// Returns the number of rows
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -177,7 +179,7 @@ impl Matrix {
 
     /// Returns the number of columns
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -190,7 +192,7 @@ impl Matrix {
 
     /// Returns the dimensions (nrow, ncol) of this matrix
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -207,7 +209,7 @@ impl Matrix {
     /// a := alpha * a
     /// ```
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// # fn main() -> Result<(), &'static str> {
@@ -232,7 +234,7 @@ impl Matrix {
 
     /// Returns the component ij
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// # fn main() -> Result<(), &'static str> {
@@ -252,7 +254,7 @@ impl Matrix {
 
     /// Change the component ij
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// # fn main() -> Result<(), &'static str> {
@@ -281,7 +283,7 @@ impl Matrix {
     /// a_ij += value
     /// ```
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// # fn main() -> Result<(), &'static str> {
@@ -350,7 +352,7 @@ impl Matrix {
     /// ‖a‖_max = max_ij ( |aij| )
     /// ```
     ///
-    /// # Examples
+    /// # Example
     ///
     /// ```
     /// # fn main() -> Result<(), &'static str> {

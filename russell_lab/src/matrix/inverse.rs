@@ -21,7 +21,7 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 ///
 /// # Examples
 ///
-/// ## First -- Small 2 x 2 square matrix
+/// ## First -- 2 x 2 square matrix
 ///
 /// ```
 /// # fn main() -> Result<(), &'static str> {
@@ -65,7 +65,7 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 /// # }
 /// ```
 ///
-/// ## Second -- Small 3 x 3 square matrix
+/// ## Second -- 3 x 3 square matrix
 ///
 /// ```
 /// # fn main() -> Result<(), &'static str> {

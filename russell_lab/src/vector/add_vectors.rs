@@ -9,7 +9,7 @@ const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
 /// w := α⋅u + β⋅v
 /// ```
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
 /// # fn main() -> Result<(), &'static str> {

@@ -26,7 +26,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 ///
 /// * `a` -- (m,n) matrix, symmetric or not
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
 /// # fn main() -> Result<(), &'static str> {

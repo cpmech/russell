@@ -27,7 +27,7 @@ use russell_openblas::*;
 ///
 /// # Examples
 ///
-/// ## First
+/// ## First - 2 x 3 rectangular matrix
 ///
 /// ```
 /// # fn main() -> Result<(), &'static str> {
@@ -88,7 +88,7 @@ use russell_openblas::*;
 /// # }
 /// ```
 ///
-/// ## Second
+/// ## Second - 4 x 2 rectangular matrix
 ///
 /// ```
 /// # fn main() -> Result<(), &'static str> {

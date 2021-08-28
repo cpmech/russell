@@ -11,7 +11,7 @@ use russell_openblas::*;
 ///
 /// The lengths of both vectors may be different; the smallest length will be selected.
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
 /// use russell_lab::*;

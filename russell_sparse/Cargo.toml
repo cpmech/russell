@@ -2,7 +2,12 @@
 name = "russell_sparse"
 version = "0.1.0"
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Sparse matrix tools and solvers"
+homepage = "https://github.com/cpmech/russell"
+repository = "https://github.com/cpmech/russell"
+documentation = "https://docs.rs/russell_sparse"
+readme = "README.md"
+categories = ["mathematics", "science"]
+keywords = ["matrix", "sparse", "solver"]
 
 [dependencies]

@@ -82,6 +82,12 @@ mod tests {
     }
 
     #[test]
+    fn ave_dev_fails_on_wrong_input() {
+        let x: [i32; 0] = [];
+        assert_eq!(ave_dev(&x), Err("at least two values are needed"));
+    }
+
+    #[test]
     fn ave_dev_works() -> Result<(), &'static str> {
         let x = [100, 100, 102, 98, 77, 99, 70, 105, 98];
         let (ave, dev) = ave_dev(&x)?;

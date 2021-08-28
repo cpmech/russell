@@ -1,7 +1,7 @@
 use super::*;
 use russell_openblas::*;
 
-/// Updates vector based on another vector
+/// Updates vector based on another vector (axpy)
 ///
 /// ```text
 /// v += α⋅u

@@ -10,6 +10,10 @@ pub fn desc() -> String {
 mod sparse_triplet;
 pub use crate::sparse_triplet::*;
 
+pub const MUMPS_SYMMETRY_NONE: i32 = 0;
+pub const MUMPS_SYMMETRY_POS_DEF: i32 = 1;
+pub const MUMPS_SYMMETRY_GENERAL: i32 = 2;
+
 #[repr(C)]
 pub struct CppSolverMumps {
     data: [u8; 0],
@@ -17,21 +21,22 @@ pub struct CppSolverMumps {
 }
 
 extern "C" {
-    pub fn new_dmumps() -> *mut CppSolverMumps;
-    pub fn drop_dmumps(data: *mut CppSolverMumps);
+    pub fn new_solver_mumps(symmetry: i32, verbose: i32) -> *mut CppSolverMumps;
+    pub fn drop_solver_mumps(solver: *mut CppSolverMumps);
 }
 
 #[derive(Debug)]
 
 pub struct SolverMumps {
-    cdata: *mut CppSolverMumps,
+    solver: *mut CppSolverMumps,
 }
 
 impl SolverMumps {
-    pub fn new() -> Self {
+    pub fn new(symmetry: i32, verbose: bool) -> Self {
+        let verb = if verbose { 1 } else { 0 };
         unsafe {
             SolverMumps {
-                cdata: new_dmumps(),
+                solver: new_solver_mumps(symmetry, verb),
             }
         }
     }
@@ -41,7 +46,7 @@ impl Drop for SolverMumps {
     fn drop(&mut self) {
         println!("Dropping THIS!");
         unsafe {
-            drop_dmumps(self.cdata);
+            drop_solver_mumps(self.solver);
         }
     }
 }
@@ -55,7 +60,7 @@ mod tests {
     #[test]
     fn c_code_works() {
         println!(">>>>>>>>>>>>>>>. hi from Rust");
-        let res = SolverMumps::new();
+        let res = SolverMumps::new(MUMPS_SYMMETRY_NONE, true);
         println!("{:?}", res);
     }
 }

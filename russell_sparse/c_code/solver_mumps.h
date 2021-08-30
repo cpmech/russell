@@ -97,6 +97,7 @@ int32_t solver_mumps_analyze(struct SolverMumps *solver,
     solver->dmumps.ICNTL(28) = MUMPS_ICNTL28_SEQUENTIAL;
     solver->dmumps.ICNTL(29) = MUMPS_IGNORED;
 
+    solver->dmumps.job = MUMPS_JOB_ANALYZE;
     dmumps_c(&solver->dmumps);
 
     return solver->dmumps.INFOG(1);

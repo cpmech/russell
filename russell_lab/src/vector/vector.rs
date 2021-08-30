@@ -142,7 +142,7 @@ impl Vector {
         dscal(n_i32, alpha, &mut self.data, 1);
     }
 
-    /// Returns the component i
+    /// Returns the i-th component
     ///
     /// # Example
     ///
@@ -162,7 +162,7 @@ impl Vector {
         Ok(self.data[i])
     }
 
-    /// Change the component i
+    /// Change the i-th component
     ///
     /// # Example
     ///
@@ -188,7 +188,7 @@ impl Vector {
         Ok(())
     }
 
-    /// Executes the += operation on the component i
+    /// Executes the += operation on the i-th component
     ///
     /// ```text
     /// u_i += value

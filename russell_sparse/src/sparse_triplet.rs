@@ -1,8 +1,6 @@
+use super::*;
 use russell_lab::*;
-use std::convert::TryFrom;
 use std::fmt;
-
-use crate::C_HAS_ERROR;
 
 #[repr(C)]
 pub struct ExternalSparseTriplet {
@@ -19,6 +17,13 @@ extern "C" {
         i: i32,
         j: i32,
         x: f64,
+    ) -> i32;
+    pub fn sparse_triplet_get(
+        trip: *mut ExternalSparseTriplet,
+        pos: i32,
+        i: *mut i32,
+        j: *mut i32,
+        x: *mut f64,
     ) -> i32;
 }
 
@@ -69,7 +74,7 @@ impl SparseTriplet {
         if nrow == 0 || ncol == 0 || max == 0 {
             return Err("nrow, ncol, and max must all be greater than zero");
         }
-        let max_i32 = i32::try_from(max).unwrap();
+        let max_i32 = to_i32(max);
         unsafe {
             let data = new_sparse_triplet(max_i32);
             if data.is_null() {
@@ -87,7 +92,9 @@ impl SparseTriplet {
     }
 
     /// Puts the next triple (i,j,x) into the Triplet
+    ///
     /// # Example
+    ///
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
@@ -116,15 +123,102 @@ impl SparseTriplet {
         if self.pos >= self.max {
             return Err("max number of entries reached");
         }
-        let i_i32 = i32::try_from(i).unwrap();
-        let j_i32 = i32::try_from(j).unwrap();
-        let pos_i32 = i32::try_from(self.pos).unwrap();
+        let i_i32 = to_i32(i);
+        let j_i32 = to_i32(j);
+        let pos_i32 = to_i32(self.pos);
         unsafe {
             let res = sparse_triplet_set(self.data, pos_i32, i_i32, j_i32, x);
             if res == C_HAS_ERROR {
                 return Err("c-code failed to put (i,j,x) triple");
             }
             self.pos += 1;
+        }
+        Ok(())
+    }
+
+    /// Returns the dimensions of the matrix represented by the (i,j,x) triples
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let trip = SparseTriplet::new(2, 2, 1)?;
+    /// assert_eq!(trip.dims(), (2, 2));
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn dims(&self) -> (usize, usize) {
+        (self.nrow, self.ncol)
+    }
+
+    /// Converts the triples data to a matrix, up to a limit
+    ///
+    /// # Input
+    ///
+    /// `a` -- (nrow_max, ncol_max) matrix to hold the triples data. Thus, the matrix may have less rows or less columns than the triplet data
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// // import
+    /// use russell_lab::*;
+    /// use russell_sparse::*;
+    ///
+    /// // define (4 x 4) sparse matrix with 6 non-zero values
+    /// let mut trip = SparseTriplet::new(4, 4, 6)?;
+    /// trip.put(0, 0, 1.0)?;
+    /// trip.put(0, 1, 2.0)?;
+    /// trip.put(1, 0, 3.0)?;
+    /// trip.put(1, 1, 4.0)?;
+    /// trip.put(2, 2, 5.0)?;
+    /// trip.put(3, 3, 6.0)?;
+    ///
+    /// // convert the first (3 x 3) values
+    /// let mut a = Matrix::new(3, 3);
+    /// trip.to_matrix(&mut a)?;
+    /// let correct = "┌       ┐\n\
+    ///                │ 1 2 0 │\n\
+    ///                │ 3 4 0 │\n\
+    ///                │ 0 0 5 │\n\
+    ///                └       ┘";
+    /// assert_eq!(format!("{}", a), correct);
+    ///
+    /// // convert the first (4 x 4) values
+    /// let mut b = Matrix::new(4, 4);
+    /// trip.to_matrix(&mut b)?;
+    /// let correct = "┌         ┐\n\
+    ///                │ 1 2 0 0 │\n\
+    ///                │ 3 4 0 0 │\n\
+    ///                │ 0 0 5 0 │\n\
+    ///                │ 0 0 0 6 │\n\
+    ///                └         ┘";
+    /// assert_eq!(format!("{}", b), correct);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn to_matrix(&self, a: &mut Matrix) -> Result<(), &'static str> {
+        let (m, n) = a.dims();
+        if m > self.nrow || n > self.ncol {
+            return Err("wrong matrix dimensions");
+        }
+        let m_i32 = to_i32(m);
+        let n_i32 = to_i32(n);
+        let mut i_32: i32 = 0;
+        let mut j_32: i32 = 0;
+        let mut x: f64 = 0.0;
+        for p in 0..self.pos {
+            let p_i32 = to_i32(p);
+            unsafe {
+                let res = sparse_triplet_get(self.data, p_i32, &mut i_32, &mut j_32, &mut x);
+                if res == C_HAS_ERROR {
+                    return Err("c-code failed to get (i,j,x) triple");
+                }
+            }
+            if i_32 < m_i32 && j_32 < n_i32 {
+                a.set(i_32 as usize, j_32 as usize, x)?;
+            }
         }
         Ok(())
     }
@@ -242,6 +336,34 @@ mod tests {
         assert_eq!(trip.pos, 4);
         trip.put(2, 2, 5.0)?;
         assert_eq!(trip.pos, 5);
+        Ok(())
+    }
+
+    #[test]
+    fn to_matrix_fails_on_wrong_dims() -> Result<(), &'static str> {
+        let trip = SparseTriplet::new(1, 1, 1)?;
+        let mut a_2x1 = Matrix::new(2, 1);
+        let mut a_1x2 = Matrix::new(1, 2);
+        assert_eq!(trip.to_matrix(&mut a_2x1), Err("wrong matrix dimensions"));
+        assert_eq!(trip.to_matrix(&mut a_1x2), Err("wrong matrix dimensions"));
+        Ok(())
+    }
+
+    #[test]
+    fn to_matrix_works() -> Result<(), &'static str> {
+        let mut trip = SparseTriplet::new(3, 3, 5)?;
+        trip.put(0, 0, 1.0)?;
+        trip.put(0, 1, 2.0)?;
+        trip.put(1, 0, 3.0)?;
+        trip.put(1, 1, 4.0)?;
+        trip.put(2, 2, 5.0)?;
+        let mut a = Matrix::new(3, 3);
+        trip.to_matrix(&mut a)?;
+        assert_eq!(a.get(0, 0), 1.0);
+        assert_eq!(a.get(0, 1), 2.0);
+        assert_eq!(a.get(1, 0), 3.0);
+        assert_eq!(a.get(1, 1), 4.0);
+        assert_eq!(a.get(2, 2), 5.0);
         Ok(())
     }
 }

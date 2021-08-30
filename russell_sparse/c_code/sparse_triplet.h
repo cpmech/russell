@@ -67,4 +67,14 @@ int32_t sparse_triplet_set(struct SparseTriplet *trip, int32_t pos, int32_t i, i
     return C_NO_ERROR;
 }
 
+int32_t sparse_triplet_get(struct SparseTriplet *trip, int32_t pos, int32_t *i, int32_t *j, double *x) {
+    if (trip == NULL) {
+        return C_HAS_ERROR;
+    }
+    *i = trip->indices_i[pos];
+    *j = trip->indices_j[pos];
+    *x = trip->values_x[pos];
+    return C_NO_ERROR;
+}
+
 #endif

@@ -2,15 +2,15 @@ use super::*;
 use std::fmt;
 
 #[repr(C)]
-pub struct ExternalSolverMumps {
+pub(crate) struct ExternalSolverMumps {
     data: [u8; 0],
     marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
 extern "C" {
-    pub fn new_solver_mumps(symmetry: i32, verbose: i32) -> *mut ExternalSolverMumps;
-    pub fn drop_solver_mumps(solver: *mut ExternalSolverMumps);
-    pub fn solver_mumps_analyze(
+    fn new_solver_mumps(symmetry: i32, verbose: i32) -> *mut ExternalSolverMumps;
+    fn drop_solver_mumps(solver: *mut ExternalSolverMumps);
+    fn solver_mumps_analyze(
         solver: *mut ExternalSolverMumps,
         trip: *mut ExternalSparseTriplet,
         ordering: i32,

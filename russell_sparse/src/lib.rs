@@ -12,7 +12,7 @@ mod enums;
 mod solver_mumps;
 mod sparse_triplet;
 mod to_i32;
-pub use crate::constants::*;
+use crate::constants::*;
 pub use crate::enums::*;
 pub use crate::solver_mumps::*;
 pub use crate::sparse_triplet::*;

@@ -3,22 +3,22 @@ use russell_lab::*;
 use std::fmt;
 
 #[repr(C)]
-pub struct ExternalSparseTriplet {
+pub(crate) struct ExternalSparseTriplet {
     data: [u8; 0],
     marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
 extern "C" {
-    pub fn new_sparse_triplet(max: i32) -> *mut ExternalSparseTriplet;
-    pub fn drop_sparse_triplet(trip: *mut ExternalSparseTriplet);
-    pub fn sparse_triplet_set(
+    fn new_sparse_triplet(max: i32) -> *mut ExternalSparseTriplet;
+    fn drop_sparse_triplet(trip: *mut ExternalSparseTriplet);
+    fn sparse_triplet_set(
         trip: *mut ExternalSparseTriplet,
         pos: i32,
         i: i32,
         j: i32,
         x: f64,
     ) -> i32;
-    pub fn sparse_triplet_get(
+    fn sparse_triplet_get(
         trip: *mut ExternalSparseTriplet,
         pos: i32,
         i: *mut i32,

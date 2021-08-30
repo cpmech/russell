@@ -129,7 +129,7 @@ impl SolverMumps {
     }
 
     /// Performs the analysis step
-    pub fn analyze(&mut self, trip: &mut SparseTriplet, verbose: bool) -> Result<(), &'static str> {
+    pub fn analyze(&mut self, trip: &SparseTriplet, verbose: bool) -> Result<(), &'static str> {
         if trip.nrow != trip.ncol {
             return Err("the matrix represented by the triplet must be square");
         }
@@ -137,7 +137,7 @@ impl SolverMumps {
         let ndim = to_i32(trip.nrow);
         let nnz = to_i32(trip.pos);
         unsafe {
-            let res = solver_mumps_analyze(
+            let infog_1 = solver_mumps_analyze(
                 self.solver,
                 trip.data,
                 ndim,
@@ -149,12 +149,24 @@ impl SolverMumps {
                 self.openmp_num_threads,
                 verb,
             );
-            if res == C_HAS_ERROR {
-                return Err("c-code failed to run solver_mumps_analyze");
+            if infog_1 != 0 {
+                return Err(self.handle_error_code(infog_1));
             }
             self.done_analyze = true;
         }
         Ok(())
+    }
+
+    /// Handles MUMPS error code
+    fn handle_error_code(&self, infog_1: i32) -> &'static str {
+        match infog_1 {
+            -6 => return "ERROR (-6) The matrix is singular in structure",
+            -9 => return "ERROR (-9) The main internal real/complex work-array is too small",
+            -10 => return "ERROR (-10) The matrix is numerically singular",
+            -13 => return "ERROR (-13) There is a problem with workspace allocation",
+            -19 => return "ERROR (-19) The maximum allowed size of working memory is too small",
+            _ => return "ERROR: Some error occurred with MUMPS solver",
+        }
     }
 }
 
@@ -274,6 +286,27 @@ mod tests {
                              done_factorize     = false\n\
                              ==========================";
         assert_eq!(format!("{}", solver), correct);
+        Ok(())
+    }
+
+    #[test]
+    fn analyze_works() -> Result<(), &'static str> {
+        let mut solver = SolverMumps::new(EnumMumpsSymmetry::No, true)?;
+        let mut trip = SparseTriplet::new(5, 5, 13)?;
+        trip.put(0, 0, 1.0)?; // << duplicated
+        trip.put(0, 0, 1.0)?; // << duplicated
+        trip.put(1, 0, 3.0)?;
+        trip.put(0, 1, 3.0)?;
+        trip.put(2, 1, -1.0)?;
+        trip.put(4, 1, 4.0)?;
+        trip.put(1, 2, 4.0)?;
+        trip.put(2, 2, -3.0)?;
+        trip.put(3, 2, 1.0)?;
+        trip.put(4, 2, 2.0)?;
+        trip.put(2, 3, 2.0)?;
+        trip.put(1, 4, 6.0)?;
+        trip.put(4, 4, 1.0)?;
+        solver.analyze(&trip, true)?;
         Ok(())
     }
 }

@@ -99,11 +99,7 @@ int32_t solver_mumps_analyze(struct SolverMumps *solver,
 
     dmumps_c(&solver->dmumps);
 
-    if (solver->dmumps.INFOG(1) != 0) {
-        return C_HAS_ERROR;
-    }
-
-    return C_NO_ERROR;
+    return solver->dmumps.INFOG(1);
 }
 
 #undef INFOG

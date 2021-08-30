@@ -62,6 +62,9 @@ impl SparseTriplet {
     /// # }
     /// ```
     pub fn new(nrow: usize, ncol: usize, max: usize) -> Result<Self, &'static str> {
+        if nrow == 0 || ncol == 0 || max == 0 {
+            return Err("nrow, ncol, and max must all be greater than zero");
+        }
         let m = i32::try_from(nrow).unwrap();
         let n = i32::try_from(ncol).unwrap();
         let max_i32 = i32::try_from(max).unwrap();
@@ -118,7 +121,22 @@ impl fmt::Display for SparseTriplet {
 #[cfg(test)]
 mod tests {
     use super::*;
-    // use russell_chk::*;
+
+    #[test]
+    fn new_fails_on_wrong_dims() {
+        assert_eq!(
+            SparseTriplet::new(0, 3, 5).err(),
+            Some("nrow, ncol, and max must all be greater than zero")
+        );
+        assert_eq!(
+            SparseTriplet::new(3, 0, 5).err(),
+            Some("nrow, ncol, and max must all be greater than zero")
+        );
+        assert_eq!(
+            SparseTriplet::new(3, 3, 0).err(),
+            Some("nrow, ncol, and max must all be greater than zero")
+        );
+    }
 
     #[test]
     fn new_works() -> Result<(), &'static str> {

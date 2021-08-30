@@ -13,6 +13,8 @@ extern "C" {
     fn solver_mumps_analyze(
         solver: *mut ExternalSolverMumps,
         trip: *mut ExternalSparseTriplet,
+        ndim: i32,
+        nnz: i32,
         ordering: i32,
         scaling: i32,
         pct_inc_workspace: i32,
@@ -22,8 +24,18 @@ extern "C" {
     ) -> i32;
 }
 
-/// Implements the sparse solver called MUMPS (not the infection! but MUltifrontal Massively Parallel sparse direct Solver)
+/// Implements the sparse solver called MUMPS (not the infection!)
 pub struct SolverMumps {
+    ordering: i32,           // symmetric permutation (ordering). ICNTL(7)
+    scaling: i32,            // scaling strategy. ICNTL(8)
+    pct_inc_workspace: i32,  // percentage increase in the estimated working space. ICNTL(14)
+    max_work_memory: i32,    // maximum size of the working memory in mega bytes. ICNTL(23)
+    openmp_num_threads: i32, // number of OpenMP threads. ICNTL(16)
+
+    done_analyze: bool,   // analysis completed
+    done_factorize: bool, // factorization completed
+
+    // solver holds the c-side data that needs to be allocated by the c-code
     solver: *mut ExternalSolverMumps,
 }
 
@@ -41,11 +53,18 @@ impl SolverMumps {
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
     /// let solver = SolverMumps::new(EnumMumpsSymmetry::No, true)?;
-    /// let correct: &str = "=========================\n\
+    /// let correct: &str = "==========================\n\
     ///                      SolverMumps\n\
-    ///                      -------------------------\n\
-    ///                      name = MUMPS\n\
-    ///                      =========================";
+    ///                      --------------------------\n\
+    ///                      name               = MUMPS\n\
+    ///                      ordering           = 5\n\
+    ///                      scaling            = 77\n\
+    ///                      pct_inc_workspace  = 100\n\
+    ///                      max_work_memory    = 0\n\
+    ///                      openmp_num_threads = 1\n\
+    ///                      done_analyze       = false\n\
+    ///                      done_factorize     = false\n\
+    ///                      ==========================";
     /// assert_eq!(format!("{}", solver), correct);
     /// # Ok(())
     /// # }
@@ -58,7 +77,16 @@ impl SolverMumps {
             if solver.is_null() {
                 return Err("c-code failed to allocate SolverMumps");
             }
-            Ok(SolverMumps { solver })
+            Ok(SolverMumps {
+                ordering: enum_mumps_ordering(EnumMumpsOrdering::Metis),
+                scaling: enum_mumps_scaling(EnumMumpsScaling::Auto),
+                pct_inc_workspace: 100,
+                max_work_memory: 0, // auto
+                openmp_num_threads: 1,
+                done_analyze: false,
+                done_factorize: false,
+                solver,
+            })
         }
     }
 
@@ -73,6 +101,60 @@ impl SolverMumps {
     /// ```
     pub fn name(&self) -> &'static str {
         "MUMPS"
+    }
+
+    /// Sets the method to compute a symmetric permutation (ordering)
+    pub fn set_ordering(&mut self, selection: EnumMumpsOrdering) {
+        self.ordering = enum_mumps_ordering(selection);
+    }
+
+    /// Sets the scaling strategy
+    pub fn set_scaling(&mut self, selection: EnumMumpsScaling) {
+        self.scaling = enum_mumps_scaling(selection);
+    }
+
+    /// Sets the percentage increase in the estimated working space
+    pub fn set_pct_inc_workspace(&mut self, value: usize) {
+        self.pct_inc_workspace = to_i32(value);
+    }
+
+    /// Sets the maximum size of the working memory in mega bytes
+    pub fn set_max_work_memory(&mut self, value: usize) {
+        self.max_work_memory = to_i32(value);
+    }
+
+    /// Sets the number of OpenMP threads
+    pub fn set_openmp_num_threads(&mut self, value: usize) {
+        self.openmp_num_threads = to_i32(value);
+    }
+
+    /// Performs the analysis step
+    pub fn analyze(&mut self, trip: &mut SparseTriplet, verbose: bool) -> Result<(), &'static str> {
+        if trip.nrow != trip.ncol {
+            return Err("the matrix represented by the triplet must be square");
+        }
+        let verb: i32 = if verbose { 1 } else { 0 };
+        let ndim = to_i32(trip.nrow);
+        let nnz = to_i32(trip.pos);
+        unsafe {
+            let res = solver_mumps_analyze(
+                self.solver,
+                trip.data,
+                ndim,
+                nnz,
+                self.ordering,
+                self.scaling,
+                self.pct_inc_workspace,
+                self.max_work_memory,
+                self.openmp_num_threads,
+                verb,
+            );
+            if res == C_HAS_ERROR {
+                return Err("c-code failed to run solver_mumps_analyze");
+            }
+            self.done_analyze = true;
+        }
+        Ok(())
     }
 }
 
@@ -90,12 +172,26 @@ impl fmt::Display for SolverMumps {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "=========================\n\
-             SolverMumps\n\
-             -------------------------\n\
-             name = {}\n\
-             =========================",
-            self.name()
+            "==========================\n\
+            SolverMumps\n\
+            --------------------------\n\
+            name               = {}\n\
+            ordering           = {}\n\
+            scaling            = {}\n\
+            pct_inc_workspace  = {}\n\
+            max_work_memory    = {}\n\
+            openmp_num_threads = {}\n\
+            done_analyze       = {}\n\
+            done_factorize     = {}\n\
+            ==========================",
+            self.name(),
+            self.ordering,
+            self.scaling,
+            self.pct_inc_workspace,
+            self.max_work_memory,
+            self.openmp_num_threads,
+            self.done_analyze,
+            self.done_factorize,
         )?;
         Ok(())
     }
@@ -116,13 +212,67 @@ mod tests {
     }
 
     #[test]
+    fn name_works() -> Result<(), &'static str> {
+        let solver = SolverMumps::new(EnumMumpsSymmetry::No, true)?;
+        assert_eq!(solver.name(), "MUMPS");
+        Ok(())
+    }
+
+    #[test]
+    fn set_ordering() -> Result<(), &'static str> {
+        let mut solver = SolverMumps::new(EnumMumpsSymmetry::No, true)?;
+        solver.set_ordering(EnumMumpsOrdering::Amf);
+        assert_eq!(solver.ordering, 2);
+        Ok(())
+    }
+
+    #[test]
+    fn set_scaling_works() -> Result<(), &'static str> {
+        let mut solver = SolverMumps::new(EnumMumpsSymmetry::No, true)?;
+        solver.set_scaling(EnumMumpsScaling::RowCol);
+        assert_eq!(solver.scaling, 4);
+        Ok(())
+    }
+
+    #[test]
+    fn set_pct_inc_workspace_works() -> Result<(), &'static str> {
+        let mut solver = SolverMumps::new(EnumMumpsSymmetry::No, true)?;
+        solver.set_pct_inc_workspace(15);
+        assert_eq!(solver.pct_inc_workspace, 15);
+        Ok(())
+    }
+
+    #[test]
+    fn set_max_work_memory_works() -> Result<(), &'static str> {
+        let mut solver = SolverMumps::new(EnumMumpsSymmetry::No, true)?;
+        solver.set_max_work_memory(500);
+        assert_eq!(solver.max_work_memory, 500);
+        Ok(())
+    }
+
+    #[test]
+    fn set_openmp_num_threads_works() -> Result<(), &'static str> {
+        let mut solver = SolverMumps::new(EnumMumpsSymmetry::No, true)?;
+        solver.set_openmp_num_threads(3);
+        assert_eq!(solver.openmp_num_threads, 3);
+        Ok(())
+    }
+
+    #[test]
     fn display_trait_works() -> Result<(), &'static str> {
         let solver = SolverMumps::new(EnumMumpsSymmetry::No, true)?;
-        let correct: &str = "=========================\n\
+        let correct: &str = "==========================\n\
                              SolverMumps\n\
-                             -------------------------\n\
-                             name = MUMPS\n\
-                             =========================";
+                             --------------------------\n\
+                             name               = MUMPS\n\
+                             ordering           = 5\n\
+                             scaling            = 77\n\
+                             pct_inc_workspace  = 100\n\
+                             max_work_memory    = 0\n\
+                             openmp_num_threads = 1\n\
+                             done_analyze       = false\n\
+                             done_factorize     = false\n\
+                             ==========================";
         assert_eq!(format!("{}", solver), correct);
         Ok(())
     }

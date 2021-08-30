@@ -232,7 +232,7 @@ impl Matrix {
         dscal(n, alpha, &mut self.data, 1);
     }
 
-    /// Returns the component ij
+    /// Returns the (i,j) component
     ///
     /// # Example
     ///
@@ -258,7 +258,7 @@ impl Matrix {
         Ok(self.data[i + j * self.nrow])
     }
 
-    /// Change the component ij
+    /// Change the (i,j) component
     ///
     /// # Example
     ///
@@ -290,7 +290,7 @@ impl Matrix {
         Ok(())
     }
 
-    /// Executes the += operation on the component ij
+    /// Executes the += operation on the (i,j) component
     ///
     /// ```text
     /// a_ij += value

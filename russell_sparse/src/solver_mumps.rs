@@ -22,8 +22,6 @@ extern "C" {
     ) -> i32;
 }
 
-#[derive(Debug)]
-
 /// Implements the sparse solver called MUMPS (not the infection! but MUltifrontal Massively Parallel sparse direct Solver)
 pub struct SolverMumps {
     solver: *mut ExternalSolverMumps,

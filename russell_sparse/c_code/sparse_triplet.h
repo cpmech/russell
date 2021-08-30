@@ -16,10 +16,6 @@ struct SparseTriplet {
 };
 
 struct SparseTriplet *new_sparse_triplet(int32_t m, int32_t n, int32_t max) {
-    if (m == 0 || n == 0 || max == 0) {
-        return NULL;
-    }
-
     struct SparseTriplet *trip = (struct SparseTriplet *)malloc(sizeof(struct SparseTriplet));
 
     if (trip == NULL) {
@@ -47,6 +43,8 @@ struct SparseTriplet *new_sparse_triplet(int32_t m, int32_t n, int32_t max) {
         return NULL;
     }
 
+    trip->m = m;
+    trip->n = n;
     trip->pos = 0;
     trip->indices_i = indices_i;
     trip->indices_j = indices_j;

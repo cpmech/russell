@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+use std::fmt;
 
 #[repr(C)]
 pub struct ExternalSparseTriplet {
@@ -43,7 +44,22 @@ impl SparseTriplet {
     ///
     /// # Example
     /// ```
+    /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
+    /// let trip = SparseTriplet::new(3, 3, 5)?;
+    /// let correct: &str = "=========================\n\
+    ///                      SparseTriplet\n\
+    ///                      -------------------------\n\
+    ///                      nrow      = 3\n\
+    ///                      ncol      = 3\n\
+    ///                      max       = 5\n\
+    ///                      pos       = 0\n\
+    ///                      one_based = false\n\
+    ///                      symmetric = false\n\
+    ///                      =========================";
+    /// assert_eq!(format!("{}", trip), correct);
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn new(nrow: usize, ncol: usize, max: usize) -> Result<Self, &'static str> {
         let m = i32::try_from(nrow).unwrap();
@@ -65,10 +81,23 @@ impl SparseTriplet {
             })
         }
     }
+}
 
-    /// Returns information about this Triplet
-    pub fn info(&self) -> String {
-        format!(
+impl Drop for SparseTriplet {
+    /// Tells the c-code to release memory
+    fn drop(&mut self) {
+        println!("++dropping SparseTriplet");
+        unsafe {
+            drop_sparse_triplet(self.data);
+        }
+    }
+}
+
+impl fmt::Display for SparseTriplet {
+    /// Implements the Display trait
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
             "=========================\n\
              SparseTriplet\n\
              -------------------------\n\
@@ -80,16 +109,8 @@ impl SparseTriplet {
              symmetric = {}\n\
              =========================",
             self.nrow, self.ncol, self.max, self.pos, self.one_based, self.symmetric
-        )
-    }
-}
-
-impl Drop for SparseTriplet {
-    fn drop(&mut self) {
-        println!("++dropping SparseTriplet");
-        unsafe {
-            drop_sparse_triplet(self.data);
-        }
+        )?;
+        Ok(())
     }
 }
 
@@ -125,7 +146,7 @@ mod tests {
                              one_based = false\n\
                              symmetric = false\n\
                              =========================";
-        assert_eq!(trip.info(), correct);
+        assert_eq!(format!("{}", trip), correct);
         Ok(())
     }
 }

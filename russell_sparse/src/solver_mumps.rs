@@ -1,4 +1,5 @@
 use super::*;
+use std::fmt;
 
 #[repr(C)]
 pub struct ExternalSolverMumps {
@@ -39,7 +40,17 @@ impl SolverMumps {
     /// # Example
     ///
     /// ```
+    /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
+    /// let solver = SolverMumps::new(EnumMumpsSymmetry::No, true)?;
+    /// let correct: &str = "=========================\n\
+    ///                      SolverMumps\n\
+    ///                      -------------------------\n\
+    ///                      name = MUMPS\n\
+    ///                      =========================";
+    /// assert_eq!(format!("{}", solver), correct);
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn new(symmetry: EnumMumpsSymmetry, verbose: bool) -> Result<Self, &'static str> {
         let verb: i32 = if verbose { 1 } else { 0 };
@@ -54,29 +65,42 @@ impl SolverMumps {
     }
 
     /// Returns the name of this solver
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let solver = SolverMumps::new(EnumMumpsSymmetry::No, true)?;
+    /// assert_eq!(solver.name(), "MUMPS");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn name(&self) -> &'static str {
         "MUMPS"
     }
+}
 
-    /// Returns information about this Solver
-    pub fn info(&self) -> String {
-        format!(
+impl Drop for SolverMumps {
+    /// Tells the c-code to release memory
+    fn drop(&mut self) {
+        println!("++dropping SolverMumps");
+        unsafe {
+            drop_solver_mumps(self.solver);
+        }
+    }
+}
+
+impl fmt::Display for SolverMumps {
+    /// Implements the Display trait
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
             "=========================\n\
              SolverMumps\n\
              -------------------------\n\
              name = {}\n\
              =========================",
             self.name()
-        )
-    }
-}
-
-impl Drop for SolverMumps {
-    fn drop(&mut self) {
-        println!("++dropping SolverMumps");
-        unsafe {
-            drop_solver_mumps(self.solver);
-        }
+        )?;
+        Ok(())
     }
 }
 
@@ -95,14 +119,14 @@ mod tests {
     }
 
     #[test]
-    fn info_works() -> Result<(), &'static str> {
+    fn display_trait_works() -> Result<(), &'static str> {
         let solver = SolverMumps::new(EnumMumpsSymmetry::No, true)?;
         let correct: &str = "=========================\n\
-                            SolverMumps\n\
-                            -------------------------\n\
-                            name = MUMPS\n\
-                            =========================";
-        assert_eq!(solver.info(), correct);
+                             SolverMumps\n\
+                             -------------------------\n\
+                             name = MUMPS\n\
+                             =========================";
+        assert_eq!(format!("{}", solver), correct);
         Ok(())
     }
 }

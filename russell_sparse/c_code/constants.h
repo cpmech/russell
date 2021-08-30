@@ -5,12 +5,12 @@
 
 #include "dmumps_c.h"
 
-const int32_t TRUE = 1;
-const int32_t FALSE = 0;
-const int32_t HAS_ERROR = 1;
-const int32_t NO_ERROR = 0;
+// const int32_t TRUE = 1;
+// const int32_t FALSE = 0;
+const int32_t C_HAS_ERROR = 1;
+const int32_t C_NO_ERROR = 0;
 
-const MUMPS_INT IGNORED = 0;
+const MUMPS_INT MUMPS_IGNORED = 0;
 
 const MUMPS_INT MUMPS_JOB_INITIALIZE = -1;
 const MUMPS_INT MUMPS_JOB_TERMINATE = -2;

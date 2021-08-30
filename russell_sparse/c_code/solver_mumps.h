@@ -31,7 +31,7 @@ struct SolverMumps {
 struct SolverMumps *new_solver_mumps(int32_t symmetry, int32_t verbose) {
     struct SolverMumps *solver = (struct SolverMumps *)malloc(sizeof(struct SolverMumps));
 
-    solver->dmumps.comm_fortran = IGNORED;
+    solver->dmumps.comm_fortran = MUMPS_IGNORED;
     solver->dmumps.par = MUMPS_PAR_HOST_ALSO_WORKS;
     solver->dmumps.sym = symmetry;
 
@@ -59,8 +59,14 @@ void drop_solver_mumps(struct SolverMumps *solver) {
     free(solver);
 }
 
+int32_t solver_mumps_get_last_error(struct SolverMumps *solver) {
+    return solver->dmumps.INFOG(1);
+}
+
 int32_t solver_mumps_analyze(struct SolverMumps *solver,
                              struct SparseTriplet *trip,
+                             int32_t ndim,
+                             int32_t nnz,
                              int32_t ordering,
                              int32_t scaling,
                              int32_t pct_inc_workspace,
@@ -68,7 +74,7 @@ int32_t solver_mumps_analyze(struct SolverMumps *solver,
                              int32_t openmp_num_threads,
                              int32_t verbose) {
     if (solver == NULL) {
-        return HAS_ERROR;
+        return C_HAS_ERROR;
     }
 
     set_verbose(&solver->dmumps, verbose);
@@ -79,25 +85,25 @@ int32_t solver_mumps_analyze(struct SolverMumps *solver,
     solver->dmumps.ICNTL(14) = pct_inc_workspace;
     solver->dmumps.ICNTL(23) = max_work_memory;
     solver->dmumps.ICNTL(16) = openmp_num_threads;
-    solver->dmumps.n = trip->m;
+    solver->dmumps.n = ndim;
 
     solver->dmumps.ICNTL(18) = MUMPS_ICNTL18_CENTRALIZED;
     solver->dmumps.ICNTL(6) = MUMPS_ICNTL6_PERMUT_AUTO;
-    solver->dmumps.nz = trip->pos;
+    solver->dmumps.nz = nnz,
     solver->dmumps.irn = trip->indices_i;
     solver->dmumps.jcn = trip->indices_j;
     solver->dmumps.a = trip->values_x;
 
     solver->dmumps.ICNTL(28) = MUMPS_ICNTL28_SEQUENTIAL;
-    solver->dmumps.ICNTL(29) = IGNORED;
+    solver->dmumps.ICNTL(29) = MUMPS_IGNORED;
 
     dmumps_c(&solver->dmumps);
 
     if (solver->dmumps.INFOG(1) != 0) {
-        return HAS_ERROR;
+        return C_HAS_ERROR;
     }
 
-    return NO_ERROR;
+    return C_NO_ERROR;
 }
 
 #undef INFOG

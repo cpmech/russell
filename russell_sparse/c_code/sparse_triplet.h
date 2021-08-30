@@ -7,15 +7,12 @@
 #include "dmumps_c.h"
 
 struct SparseTriplet {
-    int32_t m;             // number of rows
-    int32_t n;             // number of columns
-    int32_t pos;           // current index => nnz in the end
     MUMPS_INT *indices_i;  // zero- or one-based indices stored here
     MUMPS_INT *indices_j;  // zero- or one-based indices stored here
     double *values_x;      // the non-zero entries in the matrix
 };
 
-struct SparseTriplet *new_sparse_triplet(int32_t m, int32_t n, int32_t max) {
+struct SparseTriplet *new_sparse_triplet(int32_t max) {
     struct SparseTriplet *trip = (struct SparseTriplet *)malloc(sizeof(struct SparseTriplet));
 
     if (trip == NULL) {
@@ -43,9 +40,6 @@ struct SparseTriplet *new_sparse_triplet(int32_t m, int32_t n, int32_t max) {
         return NULL;
     }
 
-    trip->m = m;
-    trip->n = n;
-    trip->pos = 0;
     trip->indices_i = indices_i;
     trip->indices_j = indices_j;
     trip->values_x = values_x;
@@ -63,23 +57,14 @@ void drop_sparse_triplet(struct SparseTriplet *trip) {
     free(trip);
 }
 
-int32_t sparse_triplet_put(struct SparseTriplet *trip, int32_t i, int32_t j, double x) {
+int32_t sparse_triplet_set(struct SparseTriplet *trip, int32_t pos, int32_t i, int32_t j, double x) {
     if (trip == NULL) {
-        return HAS_ERROR;
+        return C_HAS_ERROR;
     }
-    trip->indices_i[trip->pos] = i;
-    trip->indices_j[trip->pos] = j;
-    trip->values_x[trip->pos] = x;
-    trip->pos += 1;
-    return NO_ERROR;
-}
-
-int32_t sparse_triplet_restart(struct SparseTriplet *trip) {
-    if (trip == NULL) {
-        return HAS_ERROR;
-    }
-    trip->pos = 0;
-    return NO_ERROR;
+    trip->indices_i[pos] = i;
+    trip->indices_j[pos] = j;
+    trip->values_x[pos] = x;
+    return C_NO_ERROR;
 }
 
 #endif

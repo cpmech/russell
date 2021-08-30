@@ -81,7 +81,6 @@ impl SolverMumps {
 impl Drop for SolverMumps {
     /// Tells the c-code to release memory
     fn drop(&mut self) {
-        println!("++dropping SolverMumps");
         unsafe {
             drop_solver_mumps(self.solver);
         }

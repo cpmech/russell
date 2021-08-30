@@ -1,7 +1,6 @@
 #ifndef SPARSE_TRIPLET_H
 #define SPARSE_TRIPLET_H
 
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "constants.h"
@@ -64,7 +63,6 @@ void drop_sparse_triplet(struct SparseTriplet *trip) {
     free(trip->indices_j);
     free(trip->values_x);
     free(trip);
-    printf("..done dropping SparseTriplet from c_code\n");
 }
 
 int32_t sparse_triplet_put(struct SparseTriplet *trip, int32_t i, int32_t j, double x) {

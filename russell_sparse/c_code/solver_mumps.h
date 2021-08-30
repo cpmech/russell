@@ -1,7 +1,6 @@
 #ifndef SOLVER_MUMPS_H
 #define SOLVER_MUMPS_H
 
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "constants.h"
@@ -58,7 +57,6 @@ void drop_solver_mumps(struct SolverMumps *solver) {
     solver->dmumps.job = MUMPS_JOB_TERMINATE;
     dmumps_c(&solver->dmumps);
     free(solver);
-    printf("..done dropping SolverMumps from c_code\n");
 }
 
 int32_t solver_mumps_analyze(struct SolverMumps *solver,

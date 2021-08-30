@@ -86,7 +86,6 @@ impl SparseTriplet {
 impl Drop for SparseTriplet {
     /// Tells the c-code to release memory
     fn drop(&mut self) {
-        println!("++dropping SparseTriplet");
         unsafe {
             drop_sparse_triplet(self.data);
         }

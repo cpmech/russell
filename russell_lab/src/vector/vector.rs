@@ -147,13 +147,19 @@ impl Vector {
     /// # Example
     ///
     /// ```
+    /// # fn main() -> Result<(), &'static str> {
     /// use russell_lab::*;
     /// let u = Vector::from(&[1.0, 2.0]);
-    /// assert_eq!(u.get(1), 2.0);
+    /// assert_eq!(u.get(1)?, 2.0);
+    /// # Ok(())
+    /// # }
     /// ```
     #[inline]
-    pub fn get(&self, i: usize) -> f64 {
-        self.data[i]
+    pub fn get(&self, i: usize) -> Result<f64, &'static str> {
+        if i >= self.data.len() {
+            return Err("index must be smaller than ndim");
+        }
+        Ok(self.data[i])
     }
 
     /// Change the component i
@@ -161,18 +167,25 @@ impl Vector {
     /// # Example
     ///
     /// ```
+    /// # fn main() -> Result<(), &'static str> {
     /// use russell_lab::*;
     /// let mut u = Vector::from(&[1.0, 2.0]);
-    /// u.set(1, -2.0);
+    /// u.set(1, -2.0)?;
     /// let correct = "┌    ┐\n\
     ///                │  1 │\n\
     ///                │ -2 │\n\
     ///                └    ┘";
     /// assert_eq!(format!("{}", u), correct);
+    /// # Ok(())
+    /// # }
     /// ```
     #[inline]
-    pub fn set(&mut self, i: usize, value: f64) {
+    pub fn set(&mut self, i: usize, value: f64) -> Result<(), &'static str> {
+        if i >= self.data.len() {
+            return Err("index must be smaller than ndim");
+        }
         self.data[i] = value;
+        Ok(())
     }
 
     /// Executes the += operation on the component i
@@ -405,18 +418,32 @@ mod tests {
     }
 
     #[test]
-    fn get_works() {
-        let u = Vector::from(&[1.0, 2.0]);
-        assert_eq!(u.get(0), 1.0);
-        assert_eq!(u.get(1), 2.0);
+    fn get_fails_on_wrong_index() {
+        let u = Vector::new(1);
+        assert_eq!(u.get(1).err(), Some("index must be smaller than ndim"));
     }
 
     #[test]
-    fn set_works() {
+    fn get_works() -> Result<(), &'static str> {
+        let u = Vector::from(&[1.0, 2.0]);
+        assert_eq!(u.get(0)?, 1.0);
+        assert_eq!(u.get(1)?, 2.0);
+        Ok(())
+    }
+
+    #[test]
+    fn set_fails_on_wrong_index() {
+        let mut u = Vector::new(1);
+        assert_eq!(u.set(1, 1.0), Err("index must be smaller than ndim"));
+    }
+
+    #[test]
+    fn set_works() -> Result<(), &'static str> {
         let mut u = Vector::from(&[1.0, 2.0]);
-        u.set(0, -1.0);
-        u.set(1, -2.0);
+        u.set(0, -1.0)?;
+        u.set(1, -2.0)?;
         assert_eq!(u.data, &[-1.0, -2.0]);
+        Ok(())
     }
 
     #[test]
@@ -448,9 +475,9 @@ mod tests {
         #[rustfmt::skip]
         let mut u = Vector::from( &[1.0, 2.0, 3.0]);
         let u_copy = u.get_copy();
-        u.set(0, 0.11);
-        u.set(1, 0.22);
-        u.set(2, 0.33);
+        u.set(0, 0.11)?;
+        u.set(1, 0.22)?;
+        u.set(2, 0.33)?;
         assert_eq!(u.data, &[0.11, 0.22, 0.33]);
         assert_eq!(u_copy.data, &[1.0, 2.0, 3.0]);
         Ok(())

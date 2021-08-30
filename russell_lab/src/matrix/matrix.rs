@@ -243,13 +243,19 @@ impl Matrix {
     ///     &[1.0, 2.0],
     ///     &[3.0, 4.0],
     /// ])?;
-    /// assert_eq!(a.get(1,1), 4.0);
+    /// assert_eq!(a.get(1,1)?, 4.0);
     /// # Ok(())
     /// # }
     /// ```
     #[inline]
-    pub fn get(&self, i: usize, j: usize) -> f64 {
-        self.data[i + j * self.nrow]
+    pub fn get(&self, i: usize, j: usize) -> Result<f64, &'static str> {
+        if i >= self.nrow {
+            return Err("i index must be smaller than nrow");
+        }
+        if j >= self.ncol {
+            return Err("j index must be smaller than ncol");
+        }
+        Ok(self.data[i + j * self.nrow])
     }
 
     /// Change the component ij
@@ -568,16 +574,23 @@ mod tests {
     }
 
     #[test]
+    fn get_fails_on_wrong_indices() {
+        let a = Matrix::new(1, 1);
+        assert_eq!(a.get(1, 0).err(), Some("i index must be smaller than nrow"));
+        assert_eq!(a.get(0, 1).err(), Some("j index must be smaller than ncol"));
+    }
+
+    #[test]
     fn get_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             &[1.0, 2.0],
             &[3.0, 4.0],
         ])?;
-        assert_eq!(a.get(0, 0), 1.0);
-        assert_eq!(a.get(0, 1), 2.0);
-        assert_eq!(a.get(1, 0), 3.0);
-        assert_eq!(a.get(1, 1), 4.0);
+        assert_eq!(a.get(0, 0)?, 1.0);
+        assert_eq!(a.get(0, 1)?, 2.0);
+        assert_eq!(a.get(1, 0)?, 3.0);
+        assert_eq!(a.get(1, 1)?, 4.0);
         Ok(())
     }
 

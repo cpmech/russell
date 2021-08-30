@@ -88,8 +88,11 @@ impl SparseTriplet {
     /// Puts the next triple (i,j,x) into the Triplet
     ///
     pub fn put(&mut self, i: usize, j: usize, x: f64) -> Result<(), &'static str> {
-        if i >= self.nrow || j >= self.ncol {
-            return Err("indices are outside range");
+        if i >= self.nrow {
+            return Err("i index must be smaller than nrow");
+        }
+        if j >= self.ncol {
+            return Err("j index must be smaller than ncol");
         }
         if self.pos >= self.max {
             return Err("max number of entries reached");
@@ -187,9 +190,34 @@ mod tests {
     }
 
     #[test]
+    fn put_fails_on_wrong_values() -> Result<(), &'static str> {
+        let mut trip = SparseTriplet::new(1, 1, 1)?;
+        assert_eq!(
+            trip.put(1, 0, 0.0),
+            Err("i index must be smaller than nrow")
+        );
+        assert_eq!(
+            trip.put(0, 1, 0.0),
+            Err("j index must be smaller than ncol")
+        );
+        trip.put(0, 0, 0.0)?; // << all spots occupied
+        assert_eq!(trip.put(0, 0, 0.0), Err("max number of entries reached"));
+        Ok(())
+    }
+
+    #[test]
     fn put_works() -> Result<(), &'static str> {
         let mut trip = SparseTriplet::new(3, 3, 5)?;
         trip.put(0, 0, 1.0)?;
+        assert_eq!(trip.pos, 1);
+        trip.put(0, 1, 2.0)?;
+        assert_eq!(trip.pos, 2);
+        trip.put(1, 0, 3.0)?;
+        assert_eq!(trip.pos, 3);
+        trip.put(1, 1, 4.0)?;
+        assert_eq!(trip.pos, 4);
+        trip.put(2, 2, 5.0)?;
+        assert_eq!(trip.pos, 5);
         Ok(())
     }
 }

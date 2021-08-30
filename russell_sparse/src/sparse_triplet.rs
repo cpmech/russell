@@ -1,30 +1,94 @@
+use std::convert::TryFrom;
+
+#[repr(C)]
+pub struct ExternalSparseTriplet {
+    data: [u8; 0],
+    marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
+
+extern "C" {
+    pub fn new_sparse_triplet(m: i32, n: i32, max: i32) -> *mut ExternalSparseTriplet;
+    pub fn drop_sparse_triplet(trip: *mut ExternalSparseTriplet);
+    pub fn sparse_triplet_put(trip: *mut ExternalSparseTriplet, i: i32, j: i32, x: f64) -> i32;
+    pub fn sparse_triplet_restart(trip: *mut ExternalSparseTriplet) -> i32;
+}
+
 #[allow(dead_code)]
 
-/// Holds triples representing a sparse matrix
+/// Holds triples (i,j,x) representing a sparse matrix
 pub struct SparseTriplet {
-    pub(crate) m: usize,        // number of rows
-    pub(crate) n: usize,        // number of columns
-    pub(crate) pos: usize,      // current index => nnz in the end
-    pub(crate) max: usize,      // max allowed number of entries
+    pub(crate) nrow: usize,     // [i32] number of rows
+    pub(crate) ncol: usize,     // [i32] number of columns
+    pub(crate) pos: usize,      // [i32] current index => nnz in the end
+    pub(crate) max: usize,      // [i32] max allowed number of entries
     pub(crate) one_based: bool, // indices (i; j) start with 1 instead of 0 (e.g. for MUMPS)
     pub(crate) symmetric: bool, // symmetric matrix?, but WITHOUT both sides of the diagonal
-    pub(crate) i: Vec<i32>,     // zero- or one-based indices stored here
-    pub(crate) j: Vec<i32>,     // zero- or one-based indices stored here
-    pub(crate) x: Vec<f64>,     // the non-zero entries in the matrix
+
+    data: *mut ExternalSparseTriplet,
 }
 
 impl SparseTriplet {
-    pub fn new() -> Self {
-        SparseTriplet {
-            m: 0,
-            n: 0,
-            pos: 0,
-            max: 0,
-            one_based: false,
-            symmetric: false,
-            i: vec![0; 0],
-            j: vec![0; 0],
-            x: vec![0.0; 0],
+    /// Creates a new SparseTriplet representing a sparse matrix
+    ///
+    /// ```text
+    /// trip  :=  sparse(a)
+    /// (max)    (nrow,ncol)
+    /// ```
+    ///
+    /// # Input
+    ///
+    /// `nrow` -- The number of rows of the sparse matrix
+    /// `ncol` -- The number of columns of the sparse matrix
+    /// `max` -- The maximum number fo non-zero values in the sparse matrix
+    ///
+    /// # Example
+    /// ```
+    /// use russell_sparse::*;
+    /// ```
+    pub fn new(nrow: usize, ncol: usize, max: usize) -> Result<Self, &'static str> {
+        let m = i32::try_from(nrow).unwrap();
+        let n = i32::try_from(ncol).unwrap();
+        let max_i32 = i32::try_from(max).unwrap();
+        unsafe {
+            let data = new_sparse_triplet(m, n, max_i32);
+            if data.is_null() {
+                return Err("c-code failed to allocate SparseTriplet");
+            }
+            Ok(SparseTriplet {
+                nrow,
+                ncol,
+                pos: 0,
+                max,
+                one_based: false,
+                symmetric: false,
+                data,
+            })
+        }
+    }
+
+    /// Returns information about this Triplet
+    pub fn info(&self) -> String {
+        format!(
+            "=========================\n\
+             SparseTriplet\n\
+             -------------------------\n\
+             nrow      = {}\n\
+             ncol      = {}\n\
+             max       = {}\n\
+             pos       = {}\n\
+             one_based = {}\n\
+             symmetric = {}\n\
+             =========================",
+            self.nrow, self.ncol, self.max, self.pos, self.one_based, self.symmetric
+        )
+    }
+}
+
+impl Drop for SparseTriplet {
+    fn drop(&mut self) {
+        println!("++dropping SparseTriplet");
+        unsafe {
+            drop_sparse_triplet(self.data);
         }
     }
 }
@@ -37,16 +101,31 @@ mod tests {
     // use russell_chk::*;
 
     #[test]
-    fn new_works() {
-        let t = SparseTriplet::new();
-        assert_eq!(t.m, 0);
-        assert_eq!(t.n, 0);
-        assert_eq!(t.pos, 0);
-        assert_eq!(t.max, 0);
-        assert_eq!(t.one_based, false);
-        assert_eq!(t.symmetric, false);
-        assert_eq!(t.i, &[]);
-        assert_eq!(t.j, &[]);
-        assert_eq!(t.x, &[]);
+    fn new_works() -> Result<(), &'static str> {
+        let trip = SparseTriplet::new(3, 3, 5)?;
+        assert_eq!(trip.nrow, 3);
+        assert_eq!(trip.ncol, 3);
+        assert_eq!(trip.pos, 0);
+        assert_eq!(trip.max, 5);
+        assert_eq!(trip.one_based, false);
+        assert_eq!(trip.symmetric, false);
+        Ok(())
+    }
+
+    #[test]
+    fn info_works() -> Result<(), &'static str> {
+        let trip = SparseTriplet::new(3, 3, 5)?;
+        let correct: &str = "=========================\n\
+                             SparseTriplet\n\
+                             -------------------------\n\
+                             nrow      = 3\n\
+                             ncol      = 3\n\
+                             max       = 5\n\
+                             pos       = 0\n\
+                             one_based = false\n\
+                             symmetric = false\n\
+                             =========================";
+        assert_eq!(trip.info(), correct);
+        Ok(())
     }
 }

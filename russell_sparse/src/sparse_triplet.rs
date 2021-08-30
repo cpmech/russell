@@ -293,17 +293,28 @@ mod tests {
 
     #[test]
     fn display_trait_works() -> Result<(), &'static str> {
-        let trip = SparseTriplet::new(3, 3, 5)?;
-        let correct: &str = "=========================\n\
+        let mut trip = SparseTriplet::new(3, 3, 1)?;
+        let correct_1: &str = "=========================\n\
                              SparseTriplet\n\
                              -------------------------\n\
                              nrow      = 3\n\
                              ncol      = 3\n\
-                             max       = 5\n\
+                             max       = 1\n\
                              pos       = 0\n\
                              symmetric = false\n\
                              =========================";
-        assert_eq!(format!("{}", trip), correct);
+        assert_eq!(format!("{}", trip), correct_1);
+        trip.put(0, 0, 1.0)?;
+        let correct_2: &str = "=========================\n\
+                             SparseTriplet\n\
+                             -------------------------\n\
+                             nrow      = 3\n\
+                             ncol      = 3\n\
+                             max       = 1\n\
+                             pos       = 1 (FULL)\n\
+                             symmetric = false\n\
+                             =========================";
+        assert_eq!(format!("{}", trip), correct_2);
         Ok(())
     }
 
@@ -340,6 +351,13 @@ mod tests {
     }
 
     #[test]
+    fn dims_works() -> Result<(), &'static str> {
+        let trip = SparseTriplet::new(3, 2, 1)?;
+        assert_eq!(trip.dims(), (3, 2));
+        Ok(())
+    }
+
+    #[test]
     fn to_matrix_fails_on_wrong_dims() -> Result<(), &'static str> {
         let trip = SparseTriplet::new(1, 1, 1)?;
         let mut a_2x1 = Matrix::new(2, 1);
@@ -359,11 +377,15 @@ mod tests {
         trip.put(2, 2, 5.0)?;
         let mut a = Matrix::new(3, 3);
         trip.to_matrix(&mut a)?;
-        assert_eq!(a.get(0, 0), 1.0);
-        assert_eq!(a.get(0, 1), 2.0);
-        assert_eq!(a.get(1, 0), 3.0);
-        assert_eq!(a.get(1, 1), 4.0);
-        assert_eq!(a.get(2, 2), 5.0);
+        assert_eq!(a.get(0, 0)?, 1.0);
+        assert_eq!(a.get(0, 1)?, 2.0);
+        assert_eq!(a.get(1, 0)?, 3.0);
+        assert_eq!(a.get(1, 1)?, 4.0);
+        assert_eq!(a.get(2, 2)?, 5.0);
+        let mut b = Matrix::new(2, 1);
+        trip.to_matrix(&mut b)?;
+        assert_eq!(b.get(0, 0)?, 1.0);
+        assert_eq!(b.get(1, 0)?, 3.0);
         Ok(())
     }
 }

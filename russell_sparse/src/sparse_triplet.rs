@@ -35,7 +35,10 @@ pub struct SparseTriplet {
     pub(crate) max: usize,      // [i32] max allowed number of entries
     pub(crate) symmetric: bool, // symmetric matrix?, but WITHOUT both sides of the diagonal
 
-    data: *mut ExternalSparseTriplet,
+    // data holds all (i,j,x) values
+    // It's best to let the c-code to allocate data because the pointers
+    // may have to be passed to other c-side functions
+    pub(crate) data: *mut ExternalSparseTriplet,
 }
 
 impl SparseTriplet {

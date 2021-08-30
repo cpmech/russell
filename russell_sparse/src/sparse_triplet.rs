@@ -1,3 +1,4 @@
+use russell_lab::*;
 use std::convert::TryFrom;
 use std::fmt;
 
@@ -86,7 +87,25 @@ impl SparseTriplet {
     }
 
     /// Puts the next triple (i,j,x) into the Triplet
-    ///
+    /// # Example
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let mut trip = SparseTriplet::new(2, 2, 1)?;
+    /// trip.put(0, 0, 1.0)?;
+    /// let correct: &str = "=========================\n\
+    ///                      SparseTriplet\n\
+    ///                      -------------------------\n\
+    ///                      nrow      = 2\n\
+    ///                      ncol      = 2\n\
+    ///                      max       = 1\n\
+    ///                      pos       = 1 (FULL)\n\
+    ///                      symmetric = false\n\
+    ///                      =========================";
+    /// assert_eq!(format!("{}", trip), correct);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn put(&mut self, i: usize, j: usize, x: f64) -> Result<(), &'static str> {
         if i >= self.nrow {
             return Err("i index must be smaller than nrow");
@@ -123,6 +142,11 @@ impl Drop for SparseTriplet {
 impl fmt::Display for SparseTriplet {
     /// Implements the Display trait
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let pos = if self.pos == self.max {
+            format!("{} (FULL)", self.pos)
+        } else {
+            format!("{}", self.pos)
+        };
         write!(
             f,
             "=========================\n\
@@ -134,7 +158,7 @@ impl fmt::Display for SparseTriplet {
              pos       = {}\n\
              symmetric = {}\n\
              =========================",
-            self.nrow, self.ncol, self.max, self.pos, self.symmetric
+            self.nrow, self.ncol, self.max, pos, self.symmetric
         )?;
         Ok(())
     }

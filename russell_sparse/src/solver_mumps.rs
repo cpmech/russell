@@ -306,7 +306,8 @@ mod tests {
         trip.put(2, 3, 2.0)?;
         trip.put(1, 4, 6.0)?;
         trip.put(4, 4, 1.0)?;
-        solver.analyze(&trip, true)?;
+        solver.analyze(&trip, false)?;
+        assert_eq!(solver.done_analyze, true);
         Ok(())
     }
 }

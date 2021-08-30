@@ -15,7 +15,7 @@ static inline void set_verbose(DMUMPS_STRUC_C *data, int32_t verbose) {
         data->ICNTL(1) = 6;  // standard output stream
         data->ICNTL(2) = 0;  // output stream
         data->ICNTL(3) = 6;  // standard output stream
-        data->ICNTL(4) = 2;  // errors, warnings, and main statistics printed
+        data->ICNTL(4) = 3;  // errors, warnings, and main statistics printed
     } else {
         data->ICNTL(1) = -1;  // no output messages
         data->ICNTL(2) = -1;  // no warnings

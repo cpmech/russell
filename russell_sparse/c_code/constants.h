@@ -5,8 +5,6 @@
 
 #include "dmumps_c.h"
 
-// const int32_t TRUE = 1;
-// const int32_t FALSE = 0;
 const int32_t C_HAS_ERROR = 1;
 const int32_t C_NO_ERROR = 0;
 

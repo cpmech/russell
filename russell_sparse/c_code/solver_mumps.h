@@ -103,6 +103,34 @@ int32_t solver_mumps_analyze(struct SolverMumps *solver,
     return solver->dmumps.INFOG(1);
 }
 
+int32_t solver_mumps_factorize(struct SolverMumps *solver, int32_t verbose) {
+    if (solver == NULL) {
+        return C_HAS_ERROR;
+    }
+
+    set_verbose(&solver->dmumps, verbose);
+
+    solver->dmumps.job = MUMPS_JOB_FACTORIZE;
+    dmumps_c(&solver->dmumps);
+
+    return solver->dmumps.INFOG(1);
+}
+
+int32_t solver_mumps_solve(struct SolverMumps *solver, struct SparseTriplet *trip, int32_t verbose) {
+    if (solver == NULL) {
+        return C_HAS_ERROR;
+    }
+
+    set_verbose(&solver->dmumps, verbose);
+
+    solver->dmumps.rhs = trip->rhs;
+
+    solver->dmumps.job = MUMPS_JOB_SOLVE;
+    dmumps_c(&solver->dmumps);
+
+    return solver->dmumps.INFOG(1);
+}
+
 #undef INFOG
 #undef ICNTL
 

@@ -22,6 +22,12 @@ extern "C" {
         openmp_num_threads: i32,
         verbose: i32,
     ) -> i32;
+    fn solver_mumps_factorize(solver: *mut ExternalSolverMumps, verbose: i32) -> i32;
+    fn solver_mumps_solve(
+        solver: *mut ExternalSolverMumps,
+        trip: *mut ExternalSparseTriplet,
+        verbose: i32,
+    ) -> i32;
 }
 
 /// Implements the sparse solver called MUMPS (not the infection!)
@@ -128,7 +134,7 @@ impl SolverMumps {
         self.openmp_num_threads = to_i32(value);
     }
 
-    /// Performs the analysis step
+    /// Performs the analysis
     pub fn analyze(&mut self, trip: &SparseTriplet, verbose: bool) -> Result<(), &'static str> {
         if trip.nrow != trip.ncol {
             return Err("the matrix represented by the triplet must be square");
@@ -153,6 +159,37 @@ impl SolverMumps {
                 return Err(self.handle_error_code(infog_1));
             }
             self.done_analyze = true;
+        }
+        Ok(())
+    }
+
+    /// Performs the factorization
+    pub fn factorize(&mut self, verbose: bool) -> Result<(), &'static str> {
+        if !self.done_analyze {
+            return Err("analysis must be done before factorization");
+        }
+        let verb: i32 = if verbose { 1 } else { 0 };
+        unsafe {
+            let infog_1 = solver_mumps_factorize(self.solver, verb);
+            if infog_1 != 0 {
+                return Err(self.handle_error_code(infog_1));
+            }
+            self.done_factorize = true;
+        }
+        Ok(())
+    }
+
+    /// Computes the solution
+    pub fn solve(&mut self, trip: &SparseTriplet, verbose: bool) -> Result<(), &'static str> {
+        if !self.done_factorize {
+            return Err("factorization must be done before solution");
+        }
+        let verb: i32 = if verbose { 1 } else { 0 };
+        unsafe {
+            let infog_1 = solver_mumps_solve(self.solver, trip.data, verb);
+            if infog_1 != 0 {
+                return Err(self.handle_error_code(infog_1));
+            }
         }
         Ok(())
     }
@@ -214,7 +251,8 @@ impl fmt::Display for SolverMumps {
 #[cfg(test)]
 mod tests {
     use super::*;
-    // use russell_chk::*;
+    use russell_chk::*;
+    use russell_lab::*;
 
     #[test]
     fn new_works() -> Result<(), &'static str> {
@@ -290,7 +328,7 @@ mod tests {
     }
 
     #[test]
-    fn analyze_works() -> Result<(), &'static str> {
+    fn analyze_factorize_and_solve_works() -> Result<(), &'static str> {
         let mut solver = SolverMumps::new(EnumMumpsSymmetry::No, true)?;
         let mut trip = SparseTriplet::new(5, 5, 13)?;
         trip.put(0, 0, 1.0)?; // << duplicated
@@ -306,8 +344,19 @@ mod tests {
         trip.put(2, 3, 2.0)?;
         trip.put(1, 4, 6.0)?;
         trip.put(4, 4, 1.0)?;
+        let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
+        trip.set_rhs(&rhs)?;
         solver.analyze(&trip, false)?;
         assert_eq!(solver.done_analyze, true);
+        solver.factorize(false)?;
+        assert_eq!(solver.done_factorize, true);
+        solver.solve(&trip, false)?;
+        let x = trip.get_rhs()?;
+        assert_approx_eq!(x.get(0)?, 1.0, 1e-15);
+        assert_approx_eq!(x.get(1)?, 2.0, 1e-15);
+        assert_approx_eq!(x.get(2)?, 3.0, 1e-15);
+        assert_approx_eq!(x.get(3)?, 4.0, 1e-15);
+        assert_approx_eq!(x.get(4)?, 5.0, 1e-15);
         Ok(())
     }
 }

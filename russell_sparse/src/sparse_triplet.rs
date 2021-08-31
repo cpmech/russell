@@ -9,7 +9,7 @@ pub(crate) struct ExternalSparseTriplet {
 }
 
 extern "C" {
-    fn new_sparse_triplet(max: i32) -> *mut ExternalSparseTriplet;
+    fn new_sparse_triplet(m: i32, max: i32) -> *mut ExternalSparseTriplet;
     fn drop_sparse_triplet(trip: *mut ExternalSparseTriplet);
     fn sparse_triplet_set(
         trip: *mut ExternalSparseTriplet,
@@ -25,6 +25,8 @@ extern "C" {
         j: *mut i32,
         x: *mut f64,
     ) -> i32;
+    fn sparse_triplet_set_rhs(trip: *mut ExternalSparseTriplet, i: i32, value: f64) -> i32;
+    fn sparse_triplet_get_rhs(trip: *mut ExternalSparseTriplet, i: i32, value: *mut f64) -> i32;
 }
 
 /// Holds triples (i,j,x) representing a sparse matrix
@@ -77,9 +79,10 @@ impl SparseTriplet {
         if nrow == 0 || ncol == 0 || max == 0 {
             return Err("nrow, ncol, and max must all be greater than zero");
         }
+        let m_i32 = to_i32(nrow);
         let max_i32 = to_i32(max);
         unsafe {
-            let data = new_sparse_triplet(max_i32);
+            let data = new_sparse_triplet(m_i32, max_i32);
             if data.is_null() {
                 return Err("c-code failed to allocate SparseTriplet");
             }
@@ -224,6 +227,40 @@ impl SparseTriplet {
             }
         }
         Ok(())
+    }
+
+    /// Sets the right-hand-side vector of a linear problem a ⋅ x = rhs
+    pub fn set_rhs(&mut self, rhs: &Vector) -> Result<(), &'static str> {
+        if rhs.dim() != self.nrow {
+            return Err("rhs vector ndim must equal nrow");
+        }
+        for i in 0..self.nrow {
+            let i_i32 = to_i32(i);
+            unsafe {
+                let res = sparse_triplet_set_rhs(self.data, i_i32, rhs.get(i)?);
+                if res == C_HAS_ERROR {
+                    return Err("c-code failed to set rhs(i)");
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Gets the right-hand-side vector of a linear problem a ⋅ x = rhs
+    pub fn get_rhs(&mut self) -> Result<Vector, &'static str> {
+        let mut rhs = Vector::new(self.nrow);
+        let mut value: f64 = 0.0;
+        for i in 0..self.nrow {
+            let i_i32 = to_i32(i);
+            unsafe {
+                let res = sparse_triplet_get_rhs(self.data, i_i32, &mut value);
+                if res == C_HAS_ERROR {
+                    return Err("c-code failed to set rhs(i)");
+                }
+                rhs.set(i, value)?
+            }
+        }
+        Ok(rhs)
     }
 }
 

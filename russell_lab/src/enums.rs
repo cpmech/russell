@@ -1,3 +1,4 @@
+/// Options to compute matrix norm
 pub enum EnumMatrixNorm {
     /// 1-norm
     ///

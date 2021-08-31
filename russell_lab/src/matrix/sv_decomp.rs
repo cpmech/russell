@@ -75,7 +75,7 @@ use russell_openblas::*;
 /// for i in 0..m {
 ///     for j in 0..n {
 ///         for k in 0..min_mn {
-///             usv.plus_equal(i,j, u.get(i,k) * s.get(k) * vt.get(k,j));
+///             usv.plus_equal(i,j, u.get(i,k)? * s.get(k)? * vt.get(k,j)?);
 ///         }
 ///     }
 /// }
@@ -139,7 +139,7 @@ use russell_openblas::*;
 /// for i in 0..m {
 ///     for j in 0..n {
 ///         for k in 0..min_mn {
-///             usv.plus_equal(i,j, u.get(i,k) * s.get(k) * vt.get(k,j));
+///             usv.plus_equal(i,j, u.get(i,k)? * s.get(k)? * vt.get(k,j)?);
 ///         }
 ///     }
 /// }

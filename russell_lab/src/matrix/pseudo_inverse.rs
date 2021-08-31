@@ -58,7 +58,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 /// for i in 0..m {
 ///     for j in 0..m {
 ///         for k in 0..n {
-///             a_ai.plus_equal(i,j, a_copy.get(i,k) * ai.get(k,j));
+///             a_ai.plus_equal(i,j, a_copy.get(i,k)? * ai.get(k,j)?);
 ///         }
 ///     }
 /// }
@@ -68,7 +68,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 /// for i in 0..m {
 ///     for j in 0..n {
 ///         for k in 0..m {
-///             a_ai_a.plus_equal(i,j, a_ai.get(i,k) * a_copy.get(k,j));
+///             a_ai_a.plus_equal(i,j, a_ai.get(i,k)? * a_copy.get(k,j)?);
 ///         }
 ///     }
 /// }

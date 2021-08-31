@@ -43,7 +43,7 @@ use russell_openblas::*;
 /// for i in 0..m {
 ///     for j in 0..m {
 ///         for k in 0..m {
-///             l_lt.plus_equal(i, j, l.get(i, k) * l.get(j, k));
+///             l_lt.plus_equal(i, j, l.get(i, k)? * l.get(j, k)?);
 ///         }
 ///     }
 /// }
@@ -120,7 +120,7 @@ mod tests {
         for i in 0..m {
             for j in 0..m {
                 for k in 0..m {
-                    l_lt.plus_equal(i, j, l.get(i, k) * l.get(j, k));
+                    l_lt.plus_equal(i, j, l.data[i + k * m] * l.data[j + k * m]);
                 }
             }
         }
@@ -155,7 +155,7 @@ mod tests {
         for i in 0..m {
             for j in 0..m {
                 for k in 0..m {
-                    l_lt.plus_equal(i, j, l.get(i, k) * l.get(j, k));
+                    l_lt.plus_equal(i, j, l.data[i + k * m] * l.data[j + k * m]);
                 }
             }
         }

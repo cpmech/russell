@@ -278,8 +278,8 @@ impl FrenchSolver {
             2 => "Error(+2): during error analysis the max-norm of the computed solution is close to zero",
             4 => "Error(+4): not used in current version",
             8 => "Error(+8): problem with the iterative refinement routine",
-            100000 => return "ERROR: Null pointer encountered",
-            _ => return "ERROR: Some error occurred with the French solver",
+            100000 => return "Error: c-code returned null pointer",
+            _ => return "Error: unknown error returned by the French solver",
         }
     }
 }
@@ -519,29 +519,27 @@ mod tests {
 
     #[test]
     fn handle_error_code_works() -> Result<(), &'static str> {
+        let default = "Error: unknown error returned by the French solver";
         let solver = FrenchSolver::new(EnumSymmetry::No, false)?;
         for c in 1..57 {
             let res = solver.handle_error_code(-c);
             assert!(res.len() > 0);
-            assert_ne!(res, "ERROR: Some error occurred with the French solver");
+            assert_ne!(res, default);
         }
         for c in 70..80 {
             let res = solver.handle_error_code(-c);
             assert!(res.len() > 0);
-            assert_ne!(res, "ERROR: Some error occurred with the French solver");
+            assert_ne!(res, default);
         }
         for c in &[-90, -800, 1, 2, 4, 8] {
             let res = solver.handle_error_code(*c);
             assert!(res.len() > 0);
-            assert_ne!(res, "ERROR: Some error occurred with the French solver");
+            assert_ne!(res, default);
         }
-        assert_eq!(
-            solver.handle_error_code(123),
-            "ERROR: Some error occurred with the French solver"
-        );
+        assert_eq!(solver.handle_error_code(123), default);
         assert_eq!(
             solver.handle_error_code(100000),
-            "ERROR: Null pointer encountered"
+            "Error: c-code returned null pointer"
         );
         Ok(())
     }

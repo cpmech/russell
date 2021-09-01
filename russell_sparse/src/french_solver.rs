@@ -434,7 +434,7 @@ mod tests {
     #[test]
     fn handle_error_code_works() -> Result<(), &'static str> {
         let solver = FrenchSolver::new(EnumSymmetry::No, false)?;
-        for c in 1..56 {
+        for c in 1..57 {
             let res = solver.handle_error_code(-c);
             assert!(res.len() > 0);
             assert_ne!(res, "ERROR: Some error occurred with the French solver");
@@ -444,8 +444,8 @@ mod tests {
             assert!(res.len() > 0);
             assert_ne!(res, "ERROR: Some error occurred with the French solver");
         }
-        for c in &[90, 800] {
-            let res = solver.handle_error_code(-c);
+        for c in &[-90, -800, 1, 2, 4, 8] {
+            let res = solver.handle_error_code(*c);
             assert!(res.len() > 0);
             assert_ne!(res, "ERROR: Some error occurred with the French solver");
         }

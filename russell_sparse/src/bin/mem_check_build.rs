@@ -61,8 +61,40 @@ fn main() {
         _ => (),
     }
 
+    match solver.solve(&mut x, &rhs, false) {
+        Err(e) => {
+            println!("FAIL(solve again): {}", e);
+            return;
+        }
+        _ => (),
+    }
+
     println!("{}", trip);
     println!("\n{}", solver);
     println!("\nx =\n{}", x);
+
+    let mut trip_singular = match SparseTriplet::new(5, 5, 2) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("FAIL(new singular matrix): {}", e);
+            return;
+        }
+    };
+
+    trip_singular.put(0, 0, 1.0);
+    trip_singular.put(4, 4, 1.0);
+    match solver.initialize(&trip_singular, false) {
+        Err(e) => {
+            println!("FAIL(initialize singular matrix): {}", e);
+            return;
+        }
+        _ => (),
+    };
+
+    match solver.factorize(false) {
+        Err(e) => println!("\nOk(factorize singular matrix): {}", e),
+        _ => (),
+    };
+
     println!("\nDone\n");
 }

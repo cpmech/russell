@@ -52,7 +52,7 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 /// for i in 0..m {
 ///     for j in 0..m {
 ///         for k in 0..n {
-///             a_ai.plus_equal(i,j, a_copy.get(i,k)? * ai.get(k,j)?);
+///             a_ai.plus_equal(i,j, a_copy.get(i,k) * ai.get(k,j));
 ///         }
 ///     }
 /// }
@@ -98,7 +98,7 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 /// for i in 0..m {
 ///     for j in 0..m {
 ///         for k in 0..n {
-///             a_ai.plus_equal(i,j, a_copy.get(i,k)? * ai.get(k,j)?);
+///             a_ai.plus_equal(i,j, a_copy.get(i,k) * ai.get(k,j));
 ///         }
 ///     }
 /// }

@@ -473,6 +473,20 @@ mod tests {
     }
 
     #[test]
+    fn factorize_fails_on_singular_matrix() -> Result<(), &'static str> {
+        let mut trip = SparseTriplet::new(2, 2, 2)?;
+        trip.put(0, 0, 1.0);
+        trip.put(1, 1, 0.0);
+        let mut solver = FrenchSolver::new(EnumSymmetry::No, false)?;
+        solver.initialize(&trip, false)?;
+        assert_eq!(
+            solver.factorize(false),
+            Err("Error(-10): numerically singular matrix")
+        );
+        Ok(())
+    }
+
+    #[test]
     fn initialize_factorize_and_solve_works() -> Result<(), &'static str> {
         let mut trip = SparseTriplet::new(5, 5, 13)?;
         trip.put(0, 0, 1.0); // << duplicated

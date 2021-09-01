@@ -33,15 +33,15 @@ impl SparseTriplet {
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
     /// let trip = SparseTriplet::new(3, 3, 5)?;
-    /// let correct: &str = "=========================\n\
+    /// let correct: &str = "===========================\n\
     ///                      SparseTriplet\n\
-    ///                      -------------------------\n\
+    ///                      ---------------------------\n\
     ///                      nrow      = 3\n\
     ///                      ncol      = 3\n\
     ///                      max       = 5\n\
     ///                      pos       = 0\n\
     ///                      symmetric = false\n\
-    ///                      =========================";
+    ///                      ===========================";
     /// assert_eq!(format!("{}", trip), correct);
     /// # Ok(())
     /// # }
@@ -71,15 +71,15 @@ impl SparseTriplet {
     /// use russell_sparse::*;
     /// let mut trip = SparseTriplet::new(2, 2, 1)?;
     /// trip.put(0, 0, 1.0);
-    /// let correct: &str = "=========================\n\
+    /// let correct: &str = "===========================\n\
     ///                      SparseTriplet\n\
-    ///                      -------------------------\n\
+    ///                      ---------------------------\n\
     ///                      nrow      = 2\n\
     ///                      ncol      = 2\n\
     ///                      max       = 1\n\
     ///                      pos       = 1 (FULL)\n\
     ///                      symmetric = false\n\
-    ///                      =========================";
+    ///                      ===========================";
     /// assert_eq!(format!("{}", trip), correct);
     /// # Ok(())
     /// # }
@@ -188,15 +188,15 @@ impl fmt::Display for SparseTriplet {
         };
         write!(
             f,
-            "=========================\n\
+            "===========================\n\
              SparseTriplet\n\
-             -------------------------\n\
+             ---------------------------\n\
              nrow      = {}\n\
              ncol      = {}\n\
              max       = {}\n\
              pos       = {}\n\
              symmetric = {}\n\
-             =========================",
+             ===========================",
             self.nrow, self.ncol, self.max, pos, self.symmetric
         )?;
         Ok(())
@@ -239,26 +239,26 @@ mod tests {
     #[test]
     fn display_trait_works() -> Result<(), &'static str> {
         let mut trip = SparseTriplet::new(3, 3, 1)?;
-        let correct_1: &str = "=========================\n\
-                             SparseTriplet\n\
-                             -------------------------\n\
-                             nrow      = 3\n\
-                             ncol      = 3\n\
-                             max       = 1\n\
-                             pos       = 0\n\
-                             symmetric = false\n\
-                             =========================";
+        let correct_1: &str = "===========================\n\
+                               SparseTriplet\n\
+                               ---------------------------\n\
+                               nrow      = 3\n\
+                               ncol      = 3\n\
+                               max       = 1\n\
+                               pos       = 0\n\
+                               symmetric = false\n\
+                               ===========================";
         assert_eq!(format!("{}", trip), correct_1);
         trip.put(0, 0, 1.0);
-        let correct_2: &str = "=========================\n\
-                             SparseTriplet\n\
-                             -------------------------\n\
-                             nrow      = 3\n\
-                             ncol      = 3\n\
-                             max       = 1\n\
-                             pos       = 1 (FULL)\n\
-                             symmetric = false\n\
-                             =========================";
+        let correct_2: &str = "===========================\n\
+                               SparseTriplet\n\
+                               ---------------------------\n\
+                               nrow      = 3\n\
+                               ncol      = 3\n\
+                               max       = 1\n\
+                               pos       = 1 (FULL)\n\
+                               symmetric = false\n\
+                               ===========================";
         assert_eq!(format!("{}", trip), correct_2);
         Ok(())
     }

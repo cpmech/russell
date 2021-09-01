@@ -34,7 +34,7 @@ fn main() {
         }
     };
 
-    match solver.initialize(&trip, true) {
+    match solver.initialize(&trip, false) {
         Err(e) => {
             println!("FAIL(initialize): {}", e);
             return;
@@ -42,7 +42,7 @@ fn main() {
         _ => (),
     };
 
-    match solver.factorize(true) {
+    match solver.factorize(false) {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
@@ -61,8 +61,8 @@ fn main() {
         _ => (),
     }
 
+    println!("{}", trip);
+    println!("{}", solver);
     println!("\nx =\n{}", x);
-    println!("\n{}", trip);
-    println!("\n{}", solver);
     println!("\nDone\n");
 }

@@ -7,7 +7,7 @@ pub struct SparseTriplet {
     pub(crate) nrow: usize,         // [i32] number of rows
     pub(crate) ncol: usize,         // [i32] number of columns
     pub(crate) pos: usize,          // [i32] current index => nnz in the end
-    pub(crate) max: usize,          // [i32] max allowed number of entries
+    pub(crate) max: usize,          // [i32] max allowed number of entries (may be > nnz)
     pub(crate) symmetric: bool,     // symmetric matrix?, but WITHOUT both sides of the diagonal
     pub(crate) indices_i: Vec<i32>, // [nnz] indices i
     pub(crate) indices_j: Vec<i32>, // [nnz] indices j
@@ -70,7 +70,7 @@ impl SparseTriplet {
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
     /// let mut trip = SparseTriplet::new(2, 2, 1)?;
-    /// trip.put(0, 0, 1.0)?;
+    /// trip.put(0, 0, 1.0);
     /// let correct: &str = "=========================\n\
     ///                      SparseTriplet\n\
     ///                      -------------------------\n\
@@ -84,23 +84,16 @@ impl SparseTriplet {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn put(&mut self, i: usize, j: usize, aij: f64) -> Result<(), &'static str> {
-        if i >= self.nrow {
-            return Err("i index must be smaller than nrow");
-        }
-        if j >= self.ncol {
-            return Err("j index must be smaller than ncol");
-        }
-        if self.pos >= self.max {
-            return Err("max number of entries reached");
-        }
+    pub fn put(&mut self, i: usize, j: usize, aij: f64) {
+        assert!(i < self.nrow);
+        assert!(j < self.ncol);
+        assert!(self.pos < self.max);
         let i_i32 = to_i32(i);
         let j_i32 = to_i32(j);
         self.indices_i[self.pos] = i_i32;
         self.indices_j[self.pos] = j_i32;
         self.values_a[self.pos] = aij;
         self.pos += 1;
-        Ok(())
     }
 
     /// Returns the dimensions of the matrix represented by the (i,j,aij) triples
@@ -135,12 +128,12 @@ impl SparseTriplet {
     ///
     /// // define (4 x 4) sparse matrix with 6 non-zero values
     /// let mut trip = SparseTriplet::new(4, 4, 6)?;
-    /// trip.put(0, 0, 1.0)?;
-    /// trip.put(0, 1, 2.0)?;
-    /// trip.put(1, 0, 3.0)?;
-    /// trip.put(1, 1, 4.0)?;
-    /// trip.put(2, 2, 5.0)?;
-    /// trip.put(3, 3, 6.0)?;
+    /// trip.put(0, 0, 1.0);
+    /// trip.put(0, 1, 2.0);
+    /// trip.put(1, 0, 3.0);
+    /// trip.put(1, 1, 4.0);
+    /// trip.put(2, 2, 5.0);
+    /// trip.put(3, 3, 6.0);
     ///
     /// // convert the first (3 x 3) values
     /// let mut a = Matrix::new(3, 3);
@@ -256,7 +249,7 @@ mod tests {
                              symmetric = false\n\
                              =========================";
         assert_eq!(format!("{}", trip), correct_1);
-        trip.put(0, 0, 1.0)?;
+        trip.put(0, 0, 1.0);
         let correct_2: &str = "=========================\n\
                              SparseTriplet\n\
                              -------------------------\n\
@@ -271,33 +264,39 @@ mod tests {
     }
 
     #[test]
-    fn put_fails_on_wrong_values() -> Result<(), &'static str> {
-        let mut trip = SparseTriplet::new(1, 1, 1)?;
-        assert_eq!(
-            trip.put(1, 0, 0.0),
-            Err("i index must be smaller than nrow")
-        );
-        assert_eq!(
-            trip.put(0, 1, 0.0),
-            Err("j index must be smaller than ncol")
-        );
-        trip.put(0, 0, 0.0)?; // << all spots occupied
-        assert_eq!(trip.put(0, 0, 0.0), Err("max number of entries reached"));
-        Ok(())
+    #[should_panic]
+    fn put_panics_on_wrong_values_1() {
+        let mut trip = SparseTriplet::new(1, 1, 1).unwrap();
+        trip.put(1, 0, 0.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn put_panics_on_wrong_values_2() {
+        let mut trip = SparseTriplet::new(1, 1, 1).unwrap();
+        trip.put(0, 1, 0.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn put_panics_on_wrong_values_3() {
+        let mut trip = SparseTriplet::new(1, 1, 1).unwrap();
+        trip.put(0, 0, 0.0); // << all spots occupied
+        trip.put(0, 0, 0.0);
     }
 
     #[test]
     fn put_works() -> Result<(), &'static str> {
         let mut trip = SparseTriplet::new(3, 3, 5)?;
-        trip.put(0, 0, 1.0)?;
+        trip.put(0, 0, 1.0);
         assert_eq!(trip.pos, 1);
-        trip.put(0, 1, 2.0)?;
+        trip.put(0, 1, 2.0);
         assert_eq!(trip.pos, 2);
-        trip.put(1, 0, 3.0)?;
+        trip.put(1, 0, 3.0);
         assert_eq!(trip.pos, 3);
-        trip.put(1, 1, 4.0)?;
+        trip.put(1, 1, 4.0);
         assert_eq!(trip.pos, 4);
-        trip.put(2, 2, 5.0)?;
+        trip.put(2, 2, 5.0);
         assert_eq!(trip.pos, 5);
         Ok(())
     }
@@ -322,11 +321,11 @@ mod tests {
     #[test]
     fn to_matrix_works() -> Result<(), &'static str> {
         let mut trip = SparseTriplet::new(3, 3, 5)?;
-        trip.put(0, 0, 1.0)?;
-        trip.put(0, 1, 2.0)?;
-        trip.put(1, 0, 3.0)?;
-        trip.put(1, 1, 4.0)?;
-        trip.put(2, 2, 5.0)?;
+        trip.put(0, 0, 1.0);
+        trip.put(0, 1, 2.0);
+        trip.put(1, 0, 3.0);
+        trip.put(1, 1, 4.0);
+        trip.put(2, 2, 5.0);
         let mut a = Matrix::new(3, 3);
         trip.to_matrix(&mut a)?;
         assert_eq!(a.get(0, 0)?, 1.0);

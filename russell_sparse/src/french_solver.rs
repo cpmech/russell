@@ -401,7 +401,79 @@ mod tests {
     }
 
     #[test]
-    fn analyze_factorize_and_solve_works() -> Result<(), &'static str> {
+    fn initialize_fails_on_non_square_matrix() -> Result<(), &'static str> {
+        let trip = SparseTriplet::new(3, 2, 1)?;
+        let mut solver = FrenchSolver::new(EnumSymmetry::No, false)?;
+        assert_eq!(
+            solver.initialize(&trip, false),
+            Err("the matrix represented by the triplet must be square")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn initialize_works() -> Result<(), &'static str> {
+        let mut trip = SparseTriplet::new(2, 2, 2)?;
+        trip.put(0, 0, 1.0);
+        trip.put(1, 1, 1.0);
+        let mut solver = FrenchSolver::new(EnumSymmetry::No, false)?;
+        solver.initialize(&trip, false)?;
+        assert!(solver.done_initialize);
+        Ok(())
+    }
+
+    #[test]
+    fn factorize_fails_on_non_initialized() -> Result<(), &'static str> {
+        let mut solver = FrenchSolver::new(EnumSymmetry::No, false)?;
+        assert_eq!(
+            solver.factorize(false),
+            Err("initialization must be done before factorization")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn initialize_and_factorize_works() -> Result<(), &'static str> {
+        let mut trip = SparseTriplet::new(2, 2, 2)?;
+        trip.put(0, 0, 1.0);
+        trip.put(1, 1, 1.0);
+        let mut solver = FrenchSolver::new(EnumSymmetry::No, false)?;
+        solver.initialize(&trip, false)?;
+        assert!(solver.done_initialize);
+        solver.factorize(false)?;
+        assert!(solver.done_factorize);
+        Ok(())
+    }
+
+    #[test]
+    fn solve_fails_on_wrong_input() -> Result<(), &'static str> {
+        let mut trip = SparseTriplet::new(2, 2, 2)?;
+        trip.put(0, 0, 1.0);
+        trip.put(1, 1, 1.0);
+        let mut solver = FrenchSolver::new(EnumSymmetry::No, false)?;
+        let mut x = Vector::new(2);
+        let rhs = Vector::from(&[1.0, 2.0]);
+        assert_eq!(
+            solver.solve(&mut x, &rhs, false),
+            Err("factorization must be done before solution")
+        );
+        solver.initialize(&trip, false)?;
+        solver.factorize(false)?;
+        let mut x_wrong = Vector::new(3);
+        assert_eq!(
+            solver.solve(&mut x_wrong, &rhs, false),
+            Err("x.ndim() and rhs.ndim() must equal the number of equations")
+        );
+        let rhs_wrong = Vector::from(&[1.0]);
+        assert_eq!(
+            solver.solve(&mut x, &rhs_wrong, false),
+            Err("x.ndim() and rhs.ndim() must equal the number of equations")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn initialize_factorize_and_solve_works() -> Result<(), &'static str> {
         let mut trip = SparseTriplet::new(5, 5, 13)?;
         trip.put(0, 0, 1.0); // << duplicated
         trip.put(0, 0, 1.0); // << duplicated
@@ -419,10 +491,10 @@ mod tests {
 
         let mut solver = FrenchSolver::new(EnumSymmetry::No, false)?;
         solver.initialize(&trip, false)?;
-        assert_eq!(solver.done_initialize, true);
+        assert!(solver.done_initialize);
 
         solver.factorize(false)?;
-        assert_eq!(solver.done_factorize, true);
+        assert!(solver.done_factorize);
 
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);

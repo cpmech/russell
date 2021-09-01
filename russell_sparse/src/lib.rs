@@ -7,13 +7,11 @@ pub fn desc() -> String {
     "Sparse matrix tools and solvers".to_string()
 }
 
-mod constants;
 mod enums;
-mod solver_mumps;
+mod french_solver;
 mod sparse_triplet;
 mod to_i32;
-use crate::constants::*;
 pub use crate::enums::*;
-pub use crate::solver_mumps::*;
+pub use crate::french_solver::*;
 pub use crate::sparse_triplet::*;
 pub use crate::to_i32::*;

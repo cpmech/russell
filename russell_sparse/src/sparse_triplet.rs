@@ -2,45 +2,16 @@ use super::*;
 use russell_lab::*;
 use std::fmt;
 
-#[repr(C)]
-pub(crate) struct ExternalSparseTriplet {
-    data: [u8; 0],
-    marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
-}
-
-extern "C" {
-    fn new_sparse_triplet(m: i32, max: i32) -> *mut ExternalSparseTriplet;
-    fn drop_sparse_triplet(trip: *mut ExternalSparseTriplet);
-    fn sparse_triplet_set(
-        trip: *mut ExternalSparseTriplet,
-        pos: i32,
-        i: i32,
-        j: i32,
-        x: f64,
-    ) -> i32;
-    fn sparse_triplet_get(
-        trip: *mut ExternalSparseTriplet,
-        pos: i32,
-        i: *mut i32,
-        j: *mut i32,
-        x: *mut f64,
-    ) -> i32;
-    fn sparse_triplet_set_rhs(trip: *mut ExternalSparseTriplet, i: i32, value: f64) -> i32;
-    fn sparse_triplet_get_rhs(trip: *mut ExternalSparseTriplet, i: i32, value: *mut f64) -> i32;
-}
-
 /// Holds triples (i,j,x) representing a sparse matrix
 pub struct SparseTriplet {
-    pub(crate) nrow: usize,     // [i32] number of rows
-    pub(crate) ncol: usize,     // [i32] number of columns
-    pub(crate) pos: usize,      // [i32] current index => nnz in the end
-    pub(crate) max: usize,      // [i32] max allowed number of entries
-    pub(crate) symmetric: bool, // symmetric matrix?, but WITHOUT both sides of the diagonal
-
-    // data holds all (i,j,x) values
-    // It's best to let the c-code to allocate data because the pointers
-    // may have to be passed to other c-side functions
-    pub(crate) data: *mut ExternalSparseTriplet,
+    pub(crate) nrow: usize,         // [i32] number of rows
+    pub(crate) ncol: usize,         // [i32] number of columns
+    pub(crate) pos: usize,          // [i32] current index => nnz in the end
+    pub(crate) max: usize,          // [i32] max allowed number of entries (may be > nnz)
+    pub(crate) symmetric: bool,     // symmetric matrix?, but WITHOUT both sides of the diagonal
+    pub(crate) indices_i: Vec<i32>, // [nnz] indices i
+    pub(crate) indices_j: Vec<i32>, // [nnz] indices j
+    pub(crate) values_a: Vec<f64>,  // [nnz] values a
 }
 
 impl SparseTriplet {
@@ -62,15 +33,15 @@ impl SparseTriplet {
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
     /// let trip = SparseTriplet::new(3, 3, 5)?;
-    /// let correct: &str = "=========================\n\
+    /// let correct: &str = "===========================\n\
     ///                      SparseTriplet\n\
-    ///                      -------------------------\n\
+    ///                      ---------------------------\n\
     ///                      nrow      = 3\n\
     ///                      ncol      = 3\n\
     ///                      max       = 5\n\
     ///                      pos       = 0\n\
     ///                      symmetric = false\n\
-    ///                      =========================";
+    ///                      ===========================";
     /// assert_eq!(format!("{}", trip), correct);
     /// # Ok(())
     /// # }
@@ -79,25 +50,19 @@ impl SparseTriplet {
         if nrow == 0 || ncol == 0 || max == 0 {
             return Err("nrow, ncol, and max must all be greater than zero");
         }
-        let m_i32 = to_i32(nrow);
-        let max_i32 = to_i32(max);
-        unsafe {
-            let data = new_sparse_triplet(m_i32, max_i32);
-            if data.is_null() {
-                return Err("c-code failed to allocate SparseTriplet");
-            }
-            Ok(SparseTriplet {
-                nrow,
-                ncol,
-                pos: 0,
-                max,
-                symmetric: false,
-                data,
-            })
-        }
+        Ok(SparseTriplet {
+            nrow,
+            ncol,
+            pos: 0,
+            max,
+            symmetric: false,
+            indices_i: vec![0; max],
+            indices_j: vec![0; max],
+            values_a: vec![0.0; max],
+        })
     }
 
-    /// Puts the next triple (i,j,x) into the Triplet
+    /// Puts the next triple (i,j,aij) into the Triplet
     ///
     /// # Example
     ///
@@ -105,44 +70,33 @@ impl SparseTriplet {
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
     /// let mut trip = SparseTriplet::new(2, 2, 1)?;
-    /// trip.put(0, 0, 1.0)?;
-    /// let correct: &str = "=========================\n\
+    /// trip.put(0, 0, 1.0);
+    /// let correct: &str = "===========================\n\
     ///                      SparseTriplet\n\
-    ///                      -------------------------\n\
+    ///                      ---------------------------\n\
     ///                      nrow      = 2\n\
     ///                      ncol      = 2\n\
     ///                      max       = 1\n\
     ///                      pos       = 1 (FULL)\n\
     ///                      symmetric = false\n\
-    ///                      =========================";
+    ///                      ===========================";
     /// assert_eq!(format!("{}", trip), correct);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn put(&mut self, i: usize, j: usize, x: f64) -> Result<(), &'static str> {
-        if i >= self.nrow {
-            return Err("i index must be smaller than nrow");
-        }
-        if j >= self.ncol {
-            return Err("j index must be smaller than ncol");
-        }
-        if self.pos >= self.max {
-            return Err("max number of entries reached");
-        }
+    pub fn put(&mut self, i: usize, j: usize, aij: f64) {
+        assert!(i < self.nrow);
+        assert!(j < self.ncol);
+        assert!(self.pos < self.max);
         let i_i32 = to_i32(i);
         let j_i32 = to_i32(j);
-        let pos_i32 = to_i32(self.pos);
-        unsafe {
-            let res = sparse_triplet_set(self.data, pos_i32, i_i32, j_i32, x);
-            if res == C_HAS_ERROR {
-                return Err("c-code failed to put (i,j,x) triple");
-            }
-            self.pos += 1;
-        }
-        Ok(())
+        self.indices_i[self.pos] = i_i32;
+        self.indices_j[self.pos] = j_i32;
+        self.values_a[self.pos] = aij;
+        self.pos += 1;
     }
 
-    /// Returns the dimensions of the matrix represented by the (i,j,x) triples
+    /// Returns the dimensions of the matrix represented by the (i,j,aij) triples
     ///
     /// # Example
     ///
@@ -174,12 +128,12 @@ impl SparseTriplet {
     ///
     /// // define (4 x 4) sparse matrix with 6 non-zero values
     /// let mut trip = SparseTriplet::new(4, 4, 6)?;
-    /// trip.put(0, 0, 1.0)?;
-    /// trip.put(0, 1, 2.0)?;
-    /// trip.put(1, 0, 3.0)?;
-    /// trip.put(1, 1, 4.0)?;
-    /// trip.put(2, 2, 5.0)?;
-    /// trip.put(3, 3, 6.0)?;
+    /// trip.put(0, 0, 1.0);
+    /// trip.put(0, 1, 2.0);
+    /// trip.put(1, 0, 3.0);
+    /// trip.put(1, 1, 4.0);
+    /// trip.put(2, 2, 5.0);
+    /// trip.put(3, 3, 6.0);
     ///
     /// // convert the first (3 x 3) values
     /// let mut a = Matrix::new(3, 3);
@@ -211,65 +165,16 @@ impl SparseTriplet {
         }
         let m_i32 = to_i32(m);
         let n_i32 = to_i32(n);
-        let mut i_32: i32 = 0;
-        let mut j_32: i32 = 0;
-        let mut x: f64 = 0.0;
         for p in 0..self.pos {
-            let p_i32 = to_i32(p);
-            unsafe {
-                let res = sparse_triplet_get(self.data, p_i32, &mut i_32, &mut j_32, &mut x);
-                if res == C_HAS_ERROR {
-                    return Err("c-code failed to get (i,j,x) triple");
-                }
-            }
-            if i_32 < m_i32 && j_32 < n_i32 {
-                a.set(i_32 as usize, j_32 as usize, x)?;
+            if self.indices_i[p] < m_i32 && self.indices_j[p] < n_i32 {
+                a.set(
+                    self.indices_i[p] as usize,
+                    self.indices_j[p] as usize,
+                    self.values_a[p],
+                )?;
             }
         }
         Ok(())
-    }
-
-    /// Sets the right-hand-side vector of a linear problem a ⋅ x = rhs
-    pub fn set_rhs(&mut self, rhs: &Vector) -> Result<(), &'static str> {
-        if rhs.dim() != self.nrow {
-            return Err("rhs vector ndim must equal nrow");
-        }
-        for i in 0..self.nrow {
-            let i_i32 = to_i32(i);
-            unsafe {
-                let res = sparse_triplet_set_rhs(self.data, i_i32, rhs.get(i)?);
-                if res == C_HAS_ERROR {
-                    return Err("c-code failed to set rhs(i)");
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// Gets the right-hand-side vector of a linear problem a ⋅ x = rhs
-    pub fn get_rhs(&mut self) -> Result<Vector, &'static str> {
-        let mut rhs = Vector::new(self.nrow);
-        let mut value: f64 = 0.0;
-        for i in 0..self.nrow {
-            let i_i32 = to_i32(i);
-            unsafe {
-                let res = sparse_triplet_get_rhs(self.data, i_i32, &mut value);
-                if res == C_HAS_ERROR {
-                    return Err("c-code failed to set rhs(i)");
-                }
-                rhs.set(i, value)?
-            }
-        }
-        Ok(rhs)
-    }
-}
-
-impl Drop for SparseTriplet {
-    /// Tells the c-code to release memory
-    fn drop(&mut self) {
-        unsafe {
-            drop_sparse_triplet(self.data);
-        }
     }
 }
 
@@ -283,15 +188,15 @@ impl fmt::Display for SparseTriplet {
         };
         write!(
             f,
-            "=========================\n\
+            "===========================\n\
              SparseTriplet\n\
-             -------------------------\n\
+             ---------------------------\n\
              nrow      = {}\n\
              ncol      = {}\n\
              max       = {}\n\
              pos       = {}\n\
              symmetric = {}\n\
-             =========================",
+             ===========================",
             self.nrow, self.ncol, self.max, pos, self.symmetric
         )?;
         Ok(())
@@ -334,58 +239,64 @@ mod tests {
     #[test]
     fn display_trait_works() -> Result<(), &'static str> {
         let mut trip = SparseTriplet::new(3, 3, 1)?;
-        let correct_1: &str = "=========================\n\
-                             SparseTriplet\n\
-                             -------------------------\n\
-                             nrow      = 3\n\
-                             ncol      = 3\n\
-                             max       = 1\n\
-                             pos       = 0\n\
-                             symmetric = false\n\
-                             =========================";
+        let correct_1: &str = "===========================\n\
+                               SparseTriplet\n\
+                               ---------------------------\n\
+                               nrow      = 3\n\
+                               ncol      = 3\n\
+                               max       = 1\n\
+                               pos       = 0\n\
+                               symmetric = false\n\
+                               ===========================";
         assert_eq!(format!("{}", trip), correct_1);
-        trip.put(0, 0, 1.0)?;
-        let correct_2: &str = "=========================\n\
-                             SparseTriplet\n\
-                             -------------------------\n\
-                             nrow      = 3\n\
-                             ncol      = 3\n\
-                             max       = 1\n\
-                             pos       = 1 (FULL)\n\
-                             symmetric = false\n\
-                             =========================";
+        trip.put(0, 0, 1.0);
+        let correct_2: &str = "===========================\n\
+                               SparseTriplet\n\
+                               ---------------------------\n\
+                               nrow      = 3\n\
+                               ncol      = 3\n\
+                               max       = 1\n\
+                               pos       = 1 (FULL)\n\
+                               symmetric = false\n\
+                               ===========================";
         assert_eq!(format!("{}", trip), correct_2);
         Ok(())
     }
 
     #[test]
-    fn put_fails_on_wrong_values() -> Result<(), &'static str> {
-        let mut trip = SparseTriplet::new(1, 1, 1)?;
-        assert_eq!(
-            trip.put(1, 0, 0.0),
-            Err("i index must be smaller than nrow")
-        );
-        assert_eq!(
-            trip.put(0, 1, 0.0),
-            Err("j index must be smaller than ncol")
-        );
-        trip.put(0, 0, 0.0)?; // << all spots occupied
-        assert_eq!(trip.put(0, 0, 0.0), Err("max number of entries reached"));
-        Ok(())
+    #[should_panic]
+    fn put_panics_on_wrong_values_1() {
+        let mut trip = SparseTriplet::new(1, 1, 1).unwrap();
+        trip.put(1, 0, 0.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn put_panics_on_wrong_values_2() {
+        let mut trip = SparseTriplet::new(1, 1, 1).unwrap();
+        trip.put(0, 1, 0.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn put_panics_on_wrong_values_3() {
+        let mut trip = SparseTriplet::new(1, 1, 1).unwrap();
+        trip.put(0, 0, 0.0); // << all spots occupied
+        trip.put(0, 0, 0.0);
     }
 
     #[test]
     fn put_works() -> Result<(), &'static str> {
         let mut trip = SparseTriplet::new(3, 3, 5)?;
-        trip.put(0, 0, 1.0)?;
+        trip.put(0, 0, 1.0);
         assert_eq!(trip.pos, 1);
-        trip.put(0, 1, 2.0)?;
+        trip.put(0, 1, 2.0);
         assert_eq!(trip.pos, 2);
-        trip.put(1, 0, 3.0)?;
+        trip.put(1, 0, 3.0);
         assert_eq!(trip.pos, 3);
-        trip.put(1, 1, 4.0)?;
+        trip.put(1, 1, 4.0);
         assert_eq!(trip.pos, 4);
-        trip.put(2, 2, 5.0)?;
+        trip.put(2, 2, 5.0);
         assert_eq!(trip.pos, 5);
         Ok(())
     }
@@ -410,11 +321,11 @@ mod tests {
     #[test]
     fn to_matrix_works() -> Result<(), &'static str> {
         let mut trip = SparseTriplet::new(3, 3, 5)?;
-        trip.put(0, 0, 1.0)?;
-        trip.put(0, 1, 2.0)?;
-        trip.put(1, 0, 3.0)?;
-        trip.put(1, 1, 4.0)?;
-        trip.put(2, 2, 5.0)?;
+        trip.put(0, 0, 1.0);
+        trip.put(0, 1, 2.0);
+        trip.put(1, 0, 3.0);
+        trip.put(1, 1, 4.0);
+        trip.put(2, 2, 5.0);
         let mut a = Matrix::new(3, 3);
         trip.to_matrix(&mut a)?;
         assert_eq!(a.get(0, 0)?, 1.0);

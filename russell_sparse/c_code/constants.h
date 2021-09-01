@@ -1,12 +1,11 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-#include <stdlib.h>
+#include <inttypes.h>
 
 #include "dmumps_c.h"
 
-const int32_t C_HAS_ERROR = 1;
-const int32_t C_NO_ERROR = 0;
+const int32_t NULL_POINTER_ERROR = 100000;
 
 const MUMPS_INT MUMPS_IGNORED = 0;
 

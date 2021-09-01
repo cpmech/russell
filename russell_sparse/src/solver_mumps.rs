@@ -1,4 +1,5 @@
 use super::*;
+use russell_lab::*;
 use std::fmt;
 
 #[repr(C)]
@@ -10,11 +11,13 @@ pub(crate) struct ExternalSolverMumps {
 extern "C" {
     fn new_solver_mumps(symmetry: i32, verbose: i32) -> *mut ExternalSolverMumps;
     fn drop_solver_mumps(solver: *mut ExternalSolverMumps);
-    fn solver_mumps_analyze(
+    fn solver_mumps_initialize(
         solver: *mut ExternalSolverMumps,
-        trip: *mut ExternalSparseTriplet,
-        ndim: i32,
+        n: i32,
         nnz: i32,
+        indices_i: *const i32,
+        indices_j: *const i32,
+        values_a: *const f64,
         ordering: i32,
         scaling: i32,
         pct_inc_workspace: i32,
@@ -25,7 +28,9 @@ extern "C" {
     fn solver_mumps_factorize(solver: *mut ExternalSolverMumps, verbose: i32) -> i32;
     fn solver_mumps_solve(
         solver: *mut ExternalSolverMumps,
-        trip: *mut ExternalSparseTriplet,
+        n: i32,
+        x: *mut f64,
+        rhs: *const f64,
         verbose: i32,
     ) -> i32;
 }
@@ -38,8 +43,8 @@ pub struct SolverMumps {
     max_work_memory: i32,    // maximum size of the working memory in mega bytes. ICNTL(23)
     openmp_num_threads: i32, // number of OpenMP threads. ICNTL(16)
 
-    done_analyze: bool,   // analysis completed
-    done_factorize: bool, // factorization completed
+    done_initialize: bool, // initialization completed
+    done_factorize: bool,  // factorization completed
 
     // solver holds the c-side data that needs to be allocated by the c-code
     solver: *mut ExternalSolverMumps,
@@ -89,7 +94,7 @@ impl SolverMumps {
                 pct_inc_workspace: 100,
                 max_work_memory: 0, // auto
                 openmp_num_threads: 1,
-                done_analyze: false,
+                done_initialize: false,
                 done_factorize: false,
                 solver,
             })
@@ -134,20 +139,22 @@ impl SolverMumps {
         self.openmp_num_threads = to_i32(value);
     }
 
-    /// Performs the analysis
-    pub fn analyze(&mut self, trip: &SparseTriplet, verbose: bool) -> Result<(), &'static str> {
+    /// Initializes the solver
+    pub fn initialize(&mut self, trip: &SparseTriplet, verbose: bool) -> Result<(), &'static str> {
         if trip.nrow != trip.ncol {
             return Err("the matrix represented by the triplet must be square");
         }
         let verb: i32 = if verbose { 1 } else { 0 };
-        let ndim = to_i32(trip.nrow);
+        let n = to_i32(trip.nrow);
         let nnz = to_i32(trip.pos);
         unsafe {
-            let infog_1 = solver_mumps_analyze(
+            let merr = solver_mumps_initialize(
                 self.solver,
-                trip.data,
-                ndim,
+                n,
                 nnz,
+                trip.indices_i.as_ptr(),
+                trip.indices_j.as_ptr(),
+                trip.values_a.as_ptr(),
                 self.ordering,
                 self.scaling,
                 self.pct_inc_workspace,
@@ -155,24 +162,24 @@ impl SolverMumps {
                 self.openmp_num_threads,
                 verb,
             );
-            if infog_1 != 0 {
-                return Err(self.handle_error_code(infog_1));
+            if merr != 0 {
+                return Err(self.handle_error_code(merr));
             }
-            self.done_analyze = true;
+            self.done_initialize = true;
         }
         Ok(())
     }
 
     /// Performs the factorization
     pub fn factorize(&mut self, verbose: bool) -> Result<(), &'static str> {
-        if !self.done_analyze {
-            return Err("analysis must be done before factorization");
+        if !self.done_initialize {
+            return Err("initialization must be done before factorization");
         }
         let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
-            let infog_1 = solver_mumps_factorize(self.solver, verb);
-            if infog_1 != 0 {
-                return Err(self.handle_error_code(infog_1));
+            let merr = solver_mumps_factorize(self.solver, verb);
+            if merr != 0 {
+                return Err(self.handle_error_code(merr));
             }
             self.done_factorize = true;
         }
@@ -180,23 +187,35 @@ impl SolverMumps {
     }
 
     /// Computes the solution
-    pub fn solve(&mut self, trip: &SparseTriplet, verbose: bool) -> Result<(), &'static str> {
+    pub fn solve(
+        &mut self,
+        x: &mut Vector,
+        rhs: &Vector,
+        verbose: bool,
+    ) -> Result<(), &'static str> {
         if !self.done_factorize {
             return Err("factorization must be done before solution");
         }
+        let n = to_i32(x.dim());
         let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
-            let infog_1 = solver_mumps_solve(self.solver, trip.data, verb);
-            if infog_1 != 0 {
-                return Err(self.handle_error_code(infog_1));
+            let merr = solver_mumps_solve(
+                self.solver,
+                n,
+                x.as_mut_data().as_mut_ptr(),
+                rhs.as_data().as_ptr(),
+                verb,
+            );
+            if merr != 0 {
+                return Err(self.handle_error_code(merr));
             }
         }
         Ok(())
     }
 
     /// Handles MUMPS error code
-    fn handle_error_code(&self, infog_1: i32) -> &'static str {
-        match infog_1 {
+    fn handle_error_code(&self, merr: i32) -> &'static str {
+        match merr {
             -6 => return "ERROR (-6) The matrix is singular in structure",
             -9 => return "ERROR (-9) The main internal real/complex work-array is too small",
             -10 => return "ERROR (-10) The matrix is numerically singular",
@@ -230,7 +249,7 @@ impl fmt::Display for SolverMumps {
             pct_inc_workspace  = {}\n\
             max_work_memory    = {}\n\
             openmp_num_threads = {}\n\
-            done_analyze       = {}\n\
+            done_initialize    = {}\n\
             done_factorize     = {}\n\
             ==========================",
             self.name(),
@@ -239,7 +258,7 @@ impl fmt::Display for SolverMumps {
             self.pct_inc_workspace,
             self.max_work_memory,
             self.openmp_num_threads,
-            self.done_analyze,
+            self.done_initialize,
             self.done_factorize,
         )?;
         Ok(())
@@ -252,7 +271,6 @@ impl fmt::Display for SolverMumps {
 mod tests {
     use super::*;
     use russell_chk::*;
-    use russell_lab::*;
 
     #[test]
     fn new_works() -> Result<(), &'static str> {
@@ -320,7 +338,7 @@ mod tests {
                              pct_inc_workspace  = 100\n\
                              max_work_memory    = 0\n\
                              openmp_num_threads = 1\n\
-                             done_analyze       = false\n\
+                             done_initialize    = false\n\
                              done_factorize     = false\n\
                              ==========================";
         assert_eq!(format!("{}", solver), correct);
@@ -344,19 +362,14 @@ mod tests {
         trip.put(2, 3, 2.0)?;
         trip.put(1, 4, 6.0)?;
         trip.put(4, 4, 1.0)?;
+        let mut x = Vector::new(5);
         let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
-        trip.set_rhs(&rhs)?;
-        solver.analyze(&trip, false)?;
-        assert_eq!(solver.done_analyze, true);
+        solver.initialize(&trip, false)?;
+        assert_eq!(solver.done_initialize, true);
         solver.factorize(false)?;
         assert_eq!(solver.done_factorize, true);
-        solver.solve(&trip, false)?;
-        let x = trip.get_rhs()?;
-        assert_approx_eq!(x.get(0)?, 1.0, 1e-15);
-        assert_approx_eq!(x.get(1)?, 2.0, 1e-15);
-        assert_approx_eq!(x.get(2)?, 3.0, 1e-15);
-        assert_approx_eq!(x.get(3)?, 4.0, 1e-15);
-        assert_approx_eq!(x.get(4)?, 5.0, 1e-15);
+        solver.solve(&mut x, &rhs, false)?;
+        assert_vec_approx_eq!(x.as_data(), &[1.0, 2.0, 3.0, 4.0, 5.0], 1e-15);
         Ok(())
     }
 }

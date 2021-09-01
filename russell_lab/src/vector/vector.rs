@@ -28,6 +28,14 @@ impl Vector {
         }
     }
 
+    pub fn as_data(&self) -> &Vec<f64> {
+        &self.data
+    }
+
+    pub fn as_mut_data(&mut self) -> &mut Vec<f64> {
+        &mut self.data
+    }
+
     /// Creates new vector completely filled with the same value
     ///
     /// # Example

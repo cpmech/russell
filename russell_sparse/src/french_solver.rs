@@ -230,13 +230,13 @@ impl FrenchSolver {
             -22 => "Error(-22): problem with a pointer array provided by the user",
             -23 => "Error(-23): mpi was not initialized",
             -24 => "Error(-24): nelt is out of range",
-            -25 => "Error(-25): problem with the initialization of blacs",
+            -25 => "Error(-25): problem with the initialization of BLACS",
             -26 => "Error(-26): lrhs is out of range",
             -27 => "Error(-27): nz rhs and irhs ptr(nrhs+1) do not match",
             -28 => "Error(-28): irhs ptr(1) is not equal to 1",
             -29 => "Error(-29): lsol loc is smaller than required",
-            -30 => "Error(-30): schur lld is out of range",
-            -31 => "Error(-31): block cyclic symmetric schur complement is required",
+            -30 => "Error(-30): Schur lld is out of range",
+            -31 => "Error(-31): block cyclic symmetric Schur complement is required",
             -32 => "Error(-32): incompatible values of nrhs",
             -33 => "Error(-33): ICNTL(26) was asked for during solve/factorization phase",
             -34 => "Error(-34): lredrhs is out of range",
@@ -254,7 +254,7 @@ impl FrenchSolver {
             -46 => "Error(-46): nz rhs less than 0",
             -47 => "Error(-47): problem with entries of A-1",
             -48 => "Error(-48): A-1 incompatible values of ICNTL(30) and ICNTL(xx)",
-            -49 => "Error(-49): size schur has an incorrect value",
+            -49 => "Error(-49): size Schur has an incorrect value",
             -50 => "Error(-50): problem with fill-reducing ordering during analysis",
             -51 => "Error(-51): problem with external ordering (Metis/ParMetis, SCOTCH/PT-SCOTCH, PORD)",
             -52 => "Error(-52): problem with default Fortran integers",
@@ -266,7 +266,7 @@ impl FrenchSolver {
             -71 => "Error(-71): problem with the creation of one of the files",
             -72 => "Error(-72): error while saving data",
             -73 => "Error(-73): problem with incompatible parameter of the current instance",
-            -74 => "Error(-74): problem with otuput file",
+            -74 => "Error(-74): problem with output file",
             -75 => "Error(-75): error while restoring data",
             -76 => "Error(-76): error while deleting the files",
             -77 => "Error(-77): neither save dir nor the environment variable are defined.",
@@ -417,7 +417,7 @@ mod tests {
         trip.put(1, 4, 6.0);
         trip.put(4, 4, 1.0);
 
-        let mut solver = FrenchSolver::new(EnumSymmetry::No, true)?;
+        let mut solver = FrenchSolver::new(EnumSymmetry::No, false)?;
         solver.initialize(&trip, false)?;
         assert_eq!(solver.done_initialize, true);
 
@@ -428,6 +428,35 @@ mod tests {
         let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
         solver.solve(&mut x, &rhs, false)?;
         assert_vec_approx_eq!(x.as_data(), &[1.0, 2.0, 3.0, 4.0, 5.0], 1e-15);
+        Ok(())
+    }
+
+    #[test]
+    fn handle_error_code_works() -> Result<(), &'static str> {
+        let solver = FrenchSolver::new(EnumSymmetry::No, false)?;
+        for c in 1..56 {
+            let res = solver.handle_error_code(-c);
+            assert!(res.len() > 0);
+            assert_ne!(res, "ERROR: Some error occurred with the French solver");
+        }
+        for c in 70..80 {
+            let res = solver.handle_error_code(-c);
+            assert!(res.len() > 0);
+            assert_ne!(res, "ERROR: Some error occurred with the French solver");
+        }
+        for c in &[90, 800] {
+            let res = solver.handle_error_code(-c);
+            assert!(res.len() > 0);
+            assert_ne!(res, "ERROR: Some error occurred with the French solver");
+        }
+        assert_eq!(
+            solver.handle_error_code(123),
+            "ERROR: Some error occurred with the French solver"
+        );
+        assert_eq!(
+            solver.handle_error_code(100000),
+            "ERROR: Null pointer encountered"
+        );
         Ok(())
     }
 }

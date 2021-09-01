@@ -405,96 +405,28 @@ mod tests {
         Ok(())
     }
 
-    /*
+    // this function tests many behaviors of the SolverMMP
+    // all of these must be in a single function because the
+    // solver is NOT thread-safe.
     #[test]
-    fn initialize_fails_on_non_square_matrix() -> Result<(), &'static str> {
-        let trip = SparseTriplet::new(3, 2, 1)?;
+    fn solver_mmp_behaves_as_expected() -> Result<(), &'static str> {
+        // allocate a new solver
         let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
+
+        // initialize fails on rectangular matrix
+        let trip_rect = SparseTriplet::new(3, 2, 1)?;
         assert_eq!(
-            solver.initialize(&trip, false),
+            solver.initialize(&trip_rect, false),
             Err("the matrix represented by the triplet must be square")
         );
-        Ok(())
-    }
 
-    #[test]
-    fn initialize_works() -> Result<(), &'static str> {
-        let mut trip = SparseTriplet::new(2, 2, 2)?;
-        trip.put(0, 0, 1.0);
-        trip.put(1, 1, 1.0);
-        let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
-        solver.initialize(&trip, false)?;
-        assert!(solver.done_initialize);
-        Ok(())
-    }
-
-    #[test]
-    fn factorize_fails_on_non_initialized() -> Result<(), &'static str> {
-        let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
+        // factorize fails on non-initialized solver
         assert_eq!(
             solver.factorize(false),
             Err("initialization must be done before factorization")
         );
-        Ok(())
-    }
 
-    #[test]
-    fn initialize_and_factorize_works() -> Result<(), &'static str> {
-        let mut trip = SparseTriplet::new(2, 2, 2)?;
-        trip.put(0, 0, 1.0);
-        trip.put(1, 1, 1.0);
-        let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
-        solver.initialize(&trip, false)?;
-        assert!(solver.done_initialize);
-        solver.factorize(false)?;
-        assert!(solver.done_factorize);
-        Ok(())
-    }
-
-    #[test]
-    fn solve_fails_on_wrong_input() -> Result<(), &'static str> {
-        let mut trip = SparseTriplet::new(2, 2, 2)?;
-        trip.put(0, 0, 1.0);
-        trip.put(1, 1, 1.0);
-        let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
-        let mut x = Vector::new(2);
-        let rhs = Vector::from(&[1.0, 2.0]);
-        assert_eq!(
-            solver.solve(&mut x, &rhs, false),
-            Err("factorization must be done before solution")
-        );
-        solver.initialize(&trip, false)?;
-        solver.factorize(false)?;
-        let mut x_wrong = Vector::new(3);
-        assert_eq!(
-            solver.solve(&mut x_wrong, &rhs, false),
-            Err("x.ndim() and rhs.ndim() must equal the number of equations")
-        );
-        let rhs_wrong = Vector::from(&[1.0]);
-        assert_eq!(
-            solver.solve(&mut x, &rhs_wrong, false),
-            Err("x.ndim() and rhs.ndim() must equal the number of equations")
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn factorize_fails_on_singular_matrix() -> Result<(), &'static str> {
-        let mut trip = SparseTriplet::new(2, 2, 2)?;
-        trip.put(0, 0, 1.0);
-        trip.put(1, 1, 0.0);
-        let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
-        solver.initialize(&trip, false)?;
-        assert_eq!(
-            solver.factorize(false),
-            Err("Error(-10): numerically singular matrix")
-        );
-        Ok(())
-    }
-    */
-
-    #[test]
-    fn initialize_factorize_and_solve_works() -> Result<(), &'static str> {
+        // allocate a square matrix
         let mut trip = SparseTriplet::new(5, 5, 13)?;
         trip.put(0, 0, 1.0); // << duplicated
         trip.put(0, 0, 1.0); // << duplicated
@@ -510,24 +442,59 @@ mod tests {
         trip.put(1, 4, 6.0);
         trip.put(4, 4, 1.0);
 
-        let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
-        solver.initialize(&trip, false)?;
-        assert!(solver.done_initialize);
-
-        solver.factorize(false)?;
-        assert!(solver.done_factorize);
-
+        // allocate x and rhs
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
         let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
 
+        // initialize works
+        solver.initialize(&trip, false)?;
+        assert!(solver.done_initialize);
+
+        // solve fails on non-factorized system
+        assert_eq!(
+            solver.solve(&mut x, &rhs, false),
+            Err("factorization must be done before solution")
+        );
+
+        // factorize works
+        solver.factorize(false)?;
+        assert!(solver.done_factorize);
+
+        // solve fails on wrong x vector
+        let mut x_wrong = Vector::new(3);
+        assert_eq!(
+            solver.solve(&mut x_wrong, &rhs, false),
+            Err("x.ndim() and rhs.ndim() must equal the number of equations")
+        );
+
+        // solve fails on wrong rhs vector
+        let rhs_wrong = Vector::from(&[1.0]);
+        assert_eq!(
+            solver.solve(&mut x, &rhs_wrong, false),
+            Err("x.ndim() and rhs.ndim() must equal the number of equations")
+        );
+
+        // solve works
         solver.solve(&mut x, &rhs, false)?;
         assert_vec_approx_eq!(x.as_data(), x_correct, 1e-14);
 
+        // calling solve again works
         let mut x_again = Vector::new(5);
         solver.solve(&mut x_again, &rhs, false)?;
         assert_vec_approx_eq!(x_again.as_data(), x_correct, 1e-14);
 
+        // factorize fails on singular matrix
+        let mut trip_singular = SparseTriplet::new(5, 5, 2)?;
+        trip_singular.put(0, 0, 1.0);
+        trip_singular.put(4, 4, 1.0);
+        solver.initialize(&trip_singular, false)?;
+        assert_eq!(
+            solver.factorize(false),
+            Err("Error(-10): numerically singular matrix")
+        );
+
+        // done
         Ok(())
     }
 

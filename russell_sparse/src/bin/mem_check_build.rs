@@ -62,7 +62,7 @@ fn main() {
     }
 
     println!("{}", trip);
-    println!("{}", solver);
+    println!("\n{}", solver);
     println!("\nx =\n{}", x);
     println!("\nDone\n");
 }

@@ -36,6 +36,7 @@ extern "C" {
 /// This solver cannot be used in multiple threads, because
 /// the Fortran implementation of Mu-M-P-S is not thread safe.
 pub struct SolverMMP {
+    symmetry: i32,             // symmetry code
     ordering: i32,             // symmetric permutation (ordering). ICNTL(7)
     scaling: i32,              // scaling strategy. ICNTL(8)
     pct_inc_workspace: i32,    // % increase in the estimated working space. ICNTL(14)
@@ -85,6 +86,7 @@ impl SolverMMP {
                 return Err("c-code failed to allocate SolverMMP");
             }
             Ok(SolverMMP {
+                symmetry: sym,
                 ordering: code_ordering(EnumOrdering::Metis),
                 scaling: code_scaling(EnumScaling::Auto),
                 pct_inc_workspace: 100,
@@ -145,6 +147,14 @@ impl SolverMMP {
         let nnz = to_i32(trip.pos);
         let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
+            if self.done_initialize {
+                drop_solver_mmp(self.solver);
+                let solver = new_solver_mmp(self.symmetry, 0);
+                if solver.is_null() {
+                    return Err("c-code failed to allocate SolverMMP");
+                }
+                self.solver = solver;
+            }
             let res = solver_mmp_initialize(
                 self.solver,
                 n,

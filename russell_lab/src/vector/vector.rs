@@ -28,14 +28,6 @@ impl Vector {
         }
     }
 
-    pub fn as_data(&self) -> &Vec<f64> {
-        &self.data
-    }
-
-    pub fn as_mut_data(&mut self) -> &mut Vec<f64> {
-        &mut self.data
-    }
-
     /// Creates new vector completely filled with the same value
     ///
     /// # Example
@@ -144,10 +136,37 @@ impl Vector {
     ///                └     ┘";
     /// assert_eq!(format!("{}", u), correct);
     /// ```
-    ///
     pub fn scale(&mut self, alpha: f64) {
         let n_i32: i32 = to_i32(self.data.len());
         dscal(n_i32, alpha, &mut self.data, 1);
+    }
+
+    /// Returns an access to the underlying data
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// assert_eq!(u.as_data(), &[1.0, 2.0, 3.0]);
+    /// ```
+    pub fn as_data(&self) -> &Vec<f64> {
+        &self.data
+    }
+
+    /// Returns a mutable access to the underlying data
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// let data = u.as_mut_data();
+    /// data[1] = 2.2;
+    /// assert_eq!(data, &[1.0, 2.2, 3.0]);
+    /// ```
+    pub fn as_mut_data(&mut self) -> &mut Vec<f64> {
+        &mut self.data
     }
 
     /// Returns the i-th component
@@ -423,6 +442,20 @@ mod tests {
         u.scale(1.0 / 3.0);
         let correct = &[2.0, 3.0, 4.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
+    }
+
+    #[test]
+    fn as_data_works() {
+        let u = Vector::from(&[1.0, 2.0, 3.0]);
+        assert_eq!(u.as_data(), &[1.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    fn as_mut_data_works() {
+        let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+        let data = u.as_mut_data();
+        data[1] = 2.2;
+        assert_eq!(data, &[1.0, 2.2, 3.0]);
     }
 
     #[test]

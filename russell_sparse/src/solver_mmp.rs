@@ -3,16 +3,16 @@ use russell_lab::*;
 use std::fmt;
 
 #[repr(C)]
-pub(crate) struct ExternalFrenchSolver {
+pub(crate) struct ExtSolverMMP {
     data: [u8; 0],
     marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
 extern "C" {
-    fn new_french_solver(symmetry: i32, verbose: i32) -> *mut ExternalFrenchSolver;
-    fn drop_french_solver(solver: *mut ExternalFrenchSolver);
-    fn french_solver_initialize(
-        solver: *mut ExternalFrenchSolver,
+    fn new_solver_mmp(symmetry: i32, verbose: i32) -> *mut ExtSolverMMP;
+    fn drop_solver_mmp(solver: *mut ExtSolverMMP);
+    fn solver_mmp_initialize(
+        solver: *mut ExtSolverMMP,
         n: i32,
         nnz: i32,
         indices_i: *const i32,
@@ -25,24 +25,29 @@ extern "C" {
         openmp_num_threads: i32,
         verbose: i32,
     ) -> i32;
-    fn french_solver_factorize(solver: *mut ExternalFrenchSolver, verbose: i32) -> i32;
-    fn french_solver_solve(solver: *mut ExternalFrenchSolver, rhs: *mut f64, verbose: i32) -> i32;
+    fn solver_mmp_factorize(solver: *mut ExtSolverMMP, verbose: i32) -> i32;
+    fn solver_mmp_solve(solver: *mut ExtSolverMMP, rhs: *mut f64, verbose: i32) -> i32;
 }
 
 /// Implements the French (Mu-M-P) Solver
-pub struct FrenchSolver {
-    ordering: i32,                     // symmetric permutation (ordering). ICNTL(7)
-    scaling: i32,                      // scaling strategy. ICNTL(8)
-    pct_inc_workspace: i32,            // % increase in the estimated working space. ICNTL(14)
-    max_work_memory: i32,              // max size of the working memory in mega bytes. ICNTL(23)
-    openmp_num_threads: i32,           // number of OpenMP threads. ICNTL(16)
-    done_initialize: bool,             // initialization completed
-    done_factorize: bool,              // factorization completed
-    ndim: usize,                       // number of equations == nrow(a) where a*x=rhs
-    solver: *mut ExternalFrenchSolver, // data allocated by the c-code
+///
+/// # Warning
+///
+/// This solver cannot be used in multiple threads, because
+/// the Fortran implementation of Mu-M-P-S is not thread safe.
+pub struct SolverMMP {
+    ordering: i32,             // symmetric permutation (ordering). ICNTL(7)
+    scaling: i32,              // scaling strategy. ICNTL(8)
+    pct_inc_workspace: i32,    // % increase in the estimated working space. ICNTL(14)
+    max_work_memory: i32,      // max size of the working memory in mega bytes. ICNTL(23)
+    openmp_num_threads: i32,   // number of OpenMP threads. ICNTL(16)
+    done_initialize: bool,     // initialization completed
+    done_factorize: bool,      // factorization completed
+    ndim: usize,               // number of equations == nrow(a) where a*x=rhs
+    solver: *mut ExtSolverMMP, // data allocated by the c-code
 }
 
-impl FrenchSolver {
+impl SolverMMP {
     /// Creates a new solver
     ///
     /// # Input
@@ -55,9 +60,9 @@ impl FrenchSolver {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let solver = FrenchSolver::new(EnumSymmetry::No, true)?;
+    /// let solver = SolverMMP::new(EnumSymmetry::No, true)?;
     /// let correct: &str = "===========================\n\
-    ///                      FrenchSolver\n\
+    ///                      SolverMMP\n\
     ///                      ---------------------------\n\
     ///                      ordering           = 5\n\
     ///                      scaling            = 77\n\
@@ -75,11 +80,11 @@ impl FrenchSolver {
         let sym = code_symmetry(symmetry);
         let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
-            let solver = new_french_solver(sym, verb);
+            let solver = new_solver_mmp(sym, verb);
             if solver.is_null() {
-                return Err("c-code failed to allocate FrenchSolver");
+                return Err("c-code failed to allocate SolverMMP");
             }
-            Ok(FrenchSolver {
+            Ok(SolverMMP {
                 ordering: code_ordering(EnumOrdering::Metis),
                 scaling: code_scaling(EnumScaling::Auto),
                 pct_inc_workspace: 100,
@@ -97,13 +102,13 @@ impl FrenchSolver {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let solver = FrenchSolver::new(EnumSymmetry::No, true)?;
-    /// assert_eq!(solver.name(), "French");
+    /// let solver = SolverMMP::new(EnumSymmetry::No, true)?;
+    /// assert_eq!(solver.name(), "SolverMMP");
     /// # Ok(())
     /// # }
     /// ```
     pub fn name(&self) -> &'static str {
-        "French"
+        "SolverMMP"
     }
 
     /// Sets the method to compute a symmetric permutation (ordering)
@@ -140,7 +145,7 @@ impl FrenchSolver {
         let nnz = to_i32(trip.pos);
         let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
-            let res = french_solver_initialize(
+            let res = solver_mmp_initialize(
                 self.solver,
                 n,
                 nnz,
@@ -170,7 +175,7 @@ impl FrenchSolver {
         }
         let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
-            let res = french_solver_factorize(self.solver, verb);
+            let res = solver_mmp_factorize(self.solver, verb);
             if res != 0 {
                 return Err(self.handle_error_code(res));
             }
@@ -195,7 +200,7 @@ impl FrenchSolver {
         copy_vector(x, rhs)?;
         let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
-            let res = french_solver_solve(self.solver, x.as_mut_data().as_mut_ptr(), verb);
+            let res = solver_mmp_solve(self.solver, x.as_mut_data().as_mut_ptr(), verb);
             if res != 0 {
                 return Err(self.handle_error_code(res));
             }
@@ -279,27 +284,27 @@ impl FrenchSolver {
             4 => "Error(+4): not used in current version",
             8 => "Error(+8): problem with the iterative refinement routine",
             100000 => return "Error: c-code returned null pointer",
-            _ => return "Error: unknown error returned by the French solver",
+            _ => return "Error: unknown error returned by SolverMMP (c-code)",
         }
     }
 }
 
-impl Drop for FrenchSolver {
+impl Drop for SolverMMP {
     /// Tells the c-code to release memory
     fn drop(&mut self) {
         unsafe {
-            drop_french_solver(self.solver);
+            drop_solver_mmp(self.solver);
         }
     }
 }
 
-impl fmt::Display for FrenchSolver {
+impl fmt::Display for SolverMMP {
     /// Display some information about this solver
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "===========================\n\
-            FrenchSolver\n\
+            SolverMMP\n\
             ---------------------------\n\
             ordering           = {}\n\
             scaling            = {}\n\
@@ -330,21 +335,21 @@ mod tests {
 
     #[test]
     fn new_works() -> Result<(), &'static str> {
-        let solver = FrenchSolver::new(EnumSymmetry::No, true)?;
+        let solver = SolverMMP::new(EnumSymmetry::No, true)?;
         assert_eq!(solver.solver.is_null(), false);
         Ok(())
     }
 
     #[test]
     fn name_works() -> Result<(), &'static str> {
-        let solver = FrenchSolver::new(EnumSymmetry::No, true)?;
-        assert_eq!(solver.name(), "French");
+        let solver = SolverMMP::new(EnumSymmetry::No, true)?;
+        assert_eq!(solver.name(), "SolverMMP");
         Ok(())
     }
 
     #[test]
     fn set_ordering() -> Result<(), &'static str> {
-        let mut solver = FrenchSolver::new(EnumSymmetry::No, true)?;
+        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
         solver.set_ordering(EnumOrdering::Amf);
         assert_eq!(solver.ordering, 2);
         Ok(())
@@ -352,7 +357,7 @@ mod tests {
 
     #[test]
     fn set_scaling_works() -> Result<(), &'static str> {
-        let mut solver = FrenchSolver::new(EnumSymmetry::No, true)?;
+        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
         solver.set_scaling(EnumScaling::RowCol);
         assert_eq!(solver.scaling, 4);
         Ok(())
@@ -360,7 +365,7 @@ mod tests {
 
     #[test]
     fn set_pct_inc_workspace_works() -> Result<(), &'static str> {
-        let mut solver = FrenchSolver::new(EnumSymmetry::No, true)?;
+        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
         solver.set_pct_inc_workspace(15);
         assert_eq!(solver.pct_inc_workspace, 15);
         Ok(())
@@ -368,7 +373,7 @@ mod tests {
 
     #[test]
     fn set_max_work_memory_works() -> Result<(), &'static str> {
-        let mut solver = FrenchSolver::new(EnumSymmetry::No, true)?;
+        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
         solver.set_max_work_memory(500);
         assert_eq!(solver.max_work_memory, 500);
         Ok(())
@@ -376,7 +381,7 @@ mod tests {
 
     #[test]
     fn set_openmp_num_threads_works() -> Result<(), &'static str> {
-        let mut solver = FrenchSolver::new(EnumSymmetry::No, true)?;
+        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
         solver.set_openmp_num_threads(3);
         assert_eq!(solver.openmp_num_threads, 3);
         Ok(())
@@ -384,9 +389,9 @@ mod tests {
 
     #[test]
     fn display_trait_works() -> Result<(), &'static str> {
-        let solver = FrenchSolver::new(EnumSymmetry::No, true)?;
+        let solver = SolverMMP::new(EnumSymmetry::No, true)?;
         let correct: &str = "===========================\n\
-                             FrenchSolver\n\
+                             SolverMMP\n\
                              ---------------------------\n\
                              ordering           = 5\n\
                              scaling            = 77\n\
@@ -404,7 +409,7 @@ mod tests {
     #[test]
     fn initialize_fails_on_non_square_matrix() -> Result<(), &'static str> {
         let trip = SparseTriplet::new(3, 2, 1)?;
-        let mut solver = FrenchSolver::new(EnumSymmetry::No, false)?;
+        let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
         assert_eq!(
             solver.initialize(&trip, false),
             Err("the matrix represented by the triplet must be square")
@@ -417,7 +422,7 @@ mod tests {
         let mut trip = SparseTriplet::new(2, 2, 2)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
-        let mut solver = FrenchSolver::new(EnumSymmetry::No, false)?;
+        let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
         solver.initialize(&trip, false)?;
         assert!(solver.done_initialize);
         Ok(())
@@ -425,7 +430,7 @@ mod tests {
 
     #[test]
     fn factorize_fails_on_non_initialized() -> Result<(), &'static str> {
-        let mut solver = FrenchSolver::new(EnumSymmetry::No, false)?;
+        let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
         assert_eq!(
             solver.factorize(false),
             Err("initialization must be done before factorization")
@@ -438,7 +443,7 @@ mod tests {
         let mut trip = SparseTriplet::new(2, 2, 2)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
-        let mut solver = FrenchSolver::new(EnumSymmetry::No, false)?;
+        let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
         solver.initialize(&trip, false)?;
         assert!(solver.done_initialize);
         solver.factorize(false)?;
@@ -451,7 +456,7 @@ mod tests {
         let mut trip = SparseTriplet::new(2, 2, 2)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
-        let mut solver = FrenchSolver::new(EnumSymmetry::No, false)?;
+        let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
         let mut x = Vector::new(2);
         let rhs = Vector::from(&[1.0, 2.0]);
         assert_eq!(
@@ -478,7 +483,7 @@ mod tests {
         let mut trip = SparseTriplet::new(2, 2, 2)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 0.0);
-        let mut solver = FrenchSolver::new(EnumSymmetry::No, false)?;
+        let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
         solver.initialize(&trip, false)?;
         assert_eq!(
             solver.factorize(false),
@@ -505,7 +510,7 @@ mod tests {
         trip.put(1, 4, 6.0);
         trip.put(4, 4, 1.0);
 
-        let mut solver = FrenchSolver::new(EnumSymmetry::No, false)?;
+        let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
         solver.initialize(&trip, false)?;
         assert!(solver.done_initialize);
 
@@ -528,8 +533,8 @@ mod tests {
 
     #[test]
     fn handle_error_code_works() -> Result<(), &'static str> {
-        let default = "Error: unknown error returned by the French solver";
-        let solver = FrenchSolver::new(EnumSymmetry::No, false)?;
+        let default = "Error: unknown error returned by SolverMMP (c-code)";
+        let solver = SolverMMP::new(EnumSymmetry::No, false)?;
         for c in 1..57 {
             let res = solver.handle_error_code(-c);
             assert!(res.len() > 0);

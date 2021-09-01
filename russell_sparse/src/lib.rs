@@ -8,10 +8,10 @@ pub fn desc() -> String {
 }
 
 mod enums;
-mod french_solver;
+mod solver_mmp;
 mod sparse_triplet;
 mod to_i32;
 pub use crate::enums::*;
-pub use crate::french_solver::*;
+pub use crate::solver_mmp::*;
 pub use crate::sparse_triplet::*;
 pub use crate::to_i32::*;

@@ -24,12 +24,12 @@ static inline void set_verbose(DMUMPS_STRUC_C *data, int32_t verbose) {
     }
 }
 
-struct FrenchSolver {
+struct SolverMMP {
     DMUMPS_STRUC_C data;  // data structure
 };
 
-struct FrenchSolver *new_french_solver(int32_t symmetry, int32_t verbose) {
-    struct FrenchSolver *solver = (struct FrenchSolver *)malloc(sizeof(struct FrenchSolver));
+struct SolverMMP *new_solver_mmp(int32_t symmetry, int32_t verbose) {
+    struct SolverMMP *solver = (struct SolverMMP *)malloc(sizeof(struct SolverMMP));
 
     solver->data.comm_fortran = MUMPS_IGNORED;
     solver->data.par = MUMPS_PAR_HOST_ALSO_WORKS;
@@ -47,7 +47,7 @@ struct FrenchSolver *new_french_solver(int32_t symmetry, int32_t verbose) {
     return solver;
 }
 
-void drop_french_solver(struct FrenchSolver *solver) {
+void drop_solver_mmp(struct SolverMMP *solver) {
     if (solver == NULL) {
         return;
     }
@@ -69,18 +69,18 @@ void drop_french_solver(struct FrenchSolver *solver) {
     free(solver);
 }
 
-int32_t french_solver_initialize(struct FrenchSolver *solver,
-                                 int32_t n,
-                                 int32_t nnz,
-                                 int32_t const *indices_i,
-                                 int32_t const *indices_j,
-                                 double const *values_a,
-                                 int32_t ordering,
-                                 int32_t scaling,
-                                 int32_t pct_inc_workspace,
-                                 int32_t max_work_memory,
-                                 int32_t openmp_num_threads,
-                                 int32_t verbose) {
+int32_t solver_mmp_initialize(struct SolverMMP *solver,
+                              int32_t n,
+                              int32_t nnz,
+                              int32_t const *indices_i,
+                              int32_t const *indices_j,
+                              double const *values_a,
+                              int32_t ordering,
+                              int32_t scaling,
+                              int32_t pct_inc_workspace,
+                              int32_t max_work_memory,
+                              int32_t openmp_num_threads,
+                              int32_t verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
@@ -131,7 +131,7 @@ int32_t french_solver_initialize(struct FrenchSolver *solver,
     return solver->data.INFOG(1);
 }
 
-int32_t french_solver_factorize(struct FrenchSolver *solver, int32_t verbose) {
+int32_t solver_mmp_factorize(struct SolverMMP *solver, int32_t verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
@@ -143,7 +143,7 @@ int32_t french_solver_factorize(struct FrenchSolver *solver, int32_t verbose) {
     return solver->data.INFOG(1);
 }
 
-int32_t french_solver_solve(struct FrenchSolver *solver, double *rhs, int32_t verbose) {
+int32_t solver_mmp_solve(struct SolverMMP *solver, double *rhs, int32_t verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }

@@ -26,7 +26,7 @@ fn main() {
     trip.put(1, 4, 6.0);
     trip.put(4, 4, 1.0);
 
-    let mut solver = match FrenchSolver::new(EnumSymmetry::No, true) {
+    let mut solver = match SolverMMP::new(EnumSymmetry::No, true) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new solver): {}", e);

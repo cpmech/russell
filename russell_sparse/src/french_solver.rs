@@ -400,6 +400,7 @@ mod tests {
         Ok(())
     }
 
+    /*
     #[test]
     fn initialize_fails_on_non_square_matrix() -> Result<(), &'static str> {
         let trip = SparseTriplet::new(3, 2, 1)?;
@@ -485,6 +486,7 @@ mod tests {
         );
         Ok(())
     }
+    */
 
     #[test]
     fn initialize_factorize_and_solve_works() -> Result<(), &'static str> {

@@ -28,14 +28,6 @@ impl Vector {
         }
     }
 
-    pub fn as_data(&self) -> &Vec<f64> {
-        &self.data
-    }
-
-    pub fn as_mut_data(&mut self) -> &mut Vec<f64> {
-        &mut self.data
-    }
-
     /// Creates new vector completely filled with the same value
     ///
     /// # Example
@@ -144,10 +136,37 @@ impl Vector {
     ///                └     ┘";
     /// assert_eq!(format!("{}", u), correct);
     /// ```
-    ///
     pub fn scale(&mut self, alpha: f64) {
         let n_i32: i32 = to_i32(self.data.len());
         dscal(n_i32, alpha, &mut self.data, 1);
+    }
+
+    /// Returns an access to the underlying data
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// assert_eq!(u.as_data(), &[1.0, 2.0, 3.0]);
+    /// ```
+    pub fn as_data(&self) -> &Vec<f64> {
+        &self.data
+    }
+
+    /// Returns a mutable access to the underlying data
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// let data = u.as_mut_data();
+    /// data[1] = 2.2;
+    /// assert_eq!(data, &[1.0, 2.2, 3.0]);
+    /// ```
+    pub fn as_mut_data(&mut self) -> &mut Vec<f64> {
+        &mut self.data
     }
 
     /// Returns the i-th component
@@ -155,19 +174,14 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> Result<(), &'static str> {
     /// use russell_lab::*;
     /// let u = Vector::from(&[1.0, 2.0]);
-    /// assert_eq!(u.get(1)?, 2.0);
-    /// # Ok(())
-    /// # }
+    /// assert_eq!(u.get(1), 2.0);
     /// ```
     #[inline]
-    pub fn get(&self, i: usize) -> Result<f64, &'static str> {
-        if i >= self.data.len() {
-            return Err("index must be smaller than ndim");
-        }
-        Ok(self.data[i])
+    pub fn get(&self, i: usize) -> f64 {
+        assert!(i < self.data.len());
+        self.data[i]
     }
 
     /// Change the i-th component
@@ -175,25 +189,19 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> Result<(), &'static str> {
     /// use russell_lab::*;
     /// let mut u = Vector::from(&[1.0, 2.0]);
-    /// u.set(1, -2.0)?;
+    /// u.set(1, -2.0);
     /// let correct = "┌    ┐\n\
     ///                │  1 │\n\
     ///                │ -2 │\n\
     ///                └    ┘";
     /// assert_eq!(format!("{}", u), correct);
-    /// # Ok(())
-    /// # }
     /// ```
     #[inline]
-    pub fn set(&mut self, i: usize, value: f64) -> Result<(), &'static str> {
-        if i >= self.data.len() {
-            return Err("index must be smaller than ndim");
-        }
+    pub fn set(&mut self, i: usize, value: f64) {
+        assert!(i < self.data.len());
         self.data[i] = value;
-        Ok(())
     }
 
     /// Executes the += operation on the i-th component
@@ -426,32 +434,46 @@ mod tests {
     }
 
     #[test]
-    fn get_fails_on_wrong_index() {
+    fn as_data_works() {
+        let u = Vector::from(&[1.0, 2.0, 3.0]);
+        assert_eq!(u.as_data(), &[1.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    fn as_mut_data_works() {
+        let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+        let data = u.as_mut_data();
+        data[1] = 2.2;
+        assert_eq!(data, &[1.0, 2.2, 3.0]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn get_panics_on_wrong_index() {
         let u = Vector::new(1);
-        assert_eq!(u.get(1).err(), Some("index must be smaller than ndim"));
+        u.get(1);
     }
 
     #[test]
-    fn get_works() -> Result<(), &'static str> {
+    fn get_works() {
         let u = Vector::from(&[1.0, 2.0]);
-        assert_eq!(u.get(0)?, 1.0);
-        assert_eq!(u.get(1)?, 2.0);
-        Ok(())
+        assert_eq!(u.get(0), 1.0);
+        assert_eq!(u.get(1), 2.0);
     }
 
     #[test]
-    fn set_fails_on_wrong_index() {
+    #[should_panic]
+    fn set_panics_on_wrong_index() {
         let mut u = Vector::new(1);
-        assert_eq!(u.set(1, 1.0), Err("index must be smaller than ndim"));
+        u.set(1, 1.0);
     }
 
     #[test]
-    fn set_works() -> Result<(), &'static str> {
+    fn set_works() {
         let mut u = Vector::from(&[1.0, 2.0]);
-        u.set(0, -1.0)?;
-        u.set(1, -2.0)?;
+        u.set(0, -1.0);
+        u.set(1, -2.0);
         assert_eq!(u.data, &[-1.0, -2.0]);
-        Ok(())
     }
 
     #[test]
@@ -479,15 +501,14 @@ mod tests {
     }
 
     #[test]
-    fn get_copy_works() -> Result<(), &'static str> {
+    fn get_copy_works() {
         #[rustfmt::skip]
         let mut u = Vector::from( &[1.0, 2.0, 3.0]);
         let u_copy = u.get_copy();
-        u.set(0, 0.11)?;
-        u.set(1, 0.22)?;
-        u.set(2, 0.33)?;
+        u.set(0, 0.11);
+        u.set(1, 0.22);
+        u.set(2, 0.33);
         assert_eq!(u.data, &[0.11, 0.22, 0.33]);
         assert_eq!(u_copy.data, &[1.0, 2.0, 3.0]);
-        Ok(())
     }
 }

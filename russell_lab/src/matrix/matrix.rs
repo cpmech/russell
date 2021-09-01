@@ -243,19 +243,15 @@ impl Matrix {
     ///     &[1.0, 2.0],
     ///     &[3.0, 4.0],
     /// ])?;
-    /// assert_eq!(a.get(1,1)?, 4.0);
+    /// assert_eq!(a.get(1,1), 4.0);
     /// # Ok(())
     /// # }
     /// ```
     #[inline]
-    pub fn get(&self, i: usize, j: usize) -> Result<f64, &'static str> {
-        if i >= self.nrow {
-            return Err("i index must be smaller than nrow");
-        }
-        if j >= self.ncol {
-            return Err("j index must be smaller than ncol");
-        }
-        Ok(self.data[i + j * self.nrow])
+    pub fn get(&self, i: usize, j: usize) -> f64 {
+        assert!(i < self.nrow);
+        assert!(j < self.ncol);
+        self.data[i + j * self.nrow]
     }
 
     /// Change the (i,j) component
@@ -269,7 +265,7 @@ impl Matrix {
     ///     &[1.0, 2.0],
     ///     &[3.0, 4.0],
     /// ])?;
-    /// a.set(1, 1, -4.0)?;
+    /// a.set(1, 1, -4.0);
     /// let correct = "┌       ┐\n\
     ///                │  1  2 │\n\
     ///                │  3 -4 │\n\
@@ -279,15 +275,10 @@ impl Matrix {
     /// # }
     /// ```
     #[inline]
-    pub fn set(&mut self, i: usize, j: usize, value: f64) -> Result<(), &'static str> {
-        if i >= self.nrow {
-            return Err("i index must be smaller than nrow");
-        }
-        if j >= self.ncol {
-            return Err("j index must be smaller than ncol");
-        }
+    pub fn set(&mut self, i: usize, j: usize, value: f64) {
+        assert!(i < self.nrow);
+        assert!(j < self.ncol);
         self.data[i + j * self.nrow] = value;
-        Ok(())
     }
 
     /// Executes the += operation on the (i,j) component
@@ -574,10 +565,10 @@ mod tests {
     }
 
     #[test]
-    fn get_fails_on_wrong_indices() {
+    #[should_panic]
+    fn get_panics_on_wrong_indices() {
         let a = Matrix::new(1, 1);
-        assert_eq!(a.get(1, 0).err(), Some("i index must be smaller than nrow"));
-        assert_eq!(a.get(0, 1).err(), Some("j index must be smaller than ncol"));
+        a.get(1, 0);
     }
 
     #[test]
@@ -587,19 +578,18 @@ mod tests {
             &[1.0, 2.0],
             &[3.0, 4.0],
         ])?;
-        assert_eq!(a.get(0, 0)?, 1.0);
-        assert_eq!(a.get(0, 1)?, 2.0);
-        assert_eq!(a.get(1, 0)?, 3.0);
-        assert_eq!(a.get(1, 1)?, 4.0);
+        assert_eq!(a.get(0, 0), 1.0);
+        assert_eq!(a.get(0, 1), 2.0);
+        assert_eq!(a.get(1, 0), 3.0);
+        assert_eq!(a.get(1, 1), 4.0);
         Ok(())
     }
 
     #[test]
-    fn set_fails_on_wrong_indices() -> Result<(), &'static str> {
+    #[should_panic]
+    fn set_panics_on_wrong_indices() {
         let mut a = Matrix::new(1, 1);
-        assert_eq!(a.set(1, 0, 0.0), Err("i index must be smaller than nrow"));
-        assert_eq!(a.set(0, 1, 0.0), Err("j index must be smaller than ncol"));
-        Ok(())
+        a.set(1, 0, 0.0);
     }
 
     #[test]
@@ -609,10 +599,10 @@ mod tests {
             &[1.0, 2.0],
             &[3.0, 4.0],
         ])?;
-        a.set(0, 0, -1.0)?;
-        a.set(0, 1, -2.0)?;
-        a.set(1, 0, -3.0)?;
-        a.set(1, 1, -4.0)?;
+        a.set(0, 0, -1.0);
+        a.set(0, 1, -2.0);
+        a.set(1, 0, -3.0);
+        a.set(1, 1, -4.0);
         assert_eq!(a.data, &[-1.0, -3.0, -2.0, -4.0]);
         Ok(())
     }
@@ -640,10 +630,10 @@ mod tests {
             &[3.0, 4.0],
         ])?;
         let a_copy = a.get_copy();
-        a.set(0, 0, 0.11)?;
-        a.set(0, 1, 0.22)?;
-        a.set(1, 0, 0.33)?;
-        a.set(1, 1, 0.44)?;
+        a.set(0, 0, 0.11);
+        a.set(0, 1, 0.22);
+        a.set(1, 0, 0.33);
+        a.set(1, 1, 0.44);
         assert_eq!(a.data, &[0.11, 0.33, 0.22, 0.44]);
         assert_eq!(a_copy.data, &[1.0, 3.0, 2.0, 4.0]);
         Ok(())

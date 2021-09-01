@@ -171,7 +171,7 @@ impl SparseTriplet {
                     self.indices_i[p] as usize,
                     self.indices_j[p] as usize,
                     self.values_a[p],
-                )?;
+                );
             }
         }
         Ok(())
@@ -328,15 +328,15 @@ mod tests {
         trip.put(2, 2, 5.0);
         let mut a = Matrix::new(3, 3);
         trip.to_matrix(&mut a)?;
-        assert_eq!(a.get(0, 0)?, 1.0);
-        assert_eq!(a.get(0, 1)?, 2.0);
-        assert_eq!(a.get(1, 0)?, 3.0);
-        assert_eq!(a.get(1, 1)?, 4.0);
-        assert_eq!(a.get(2, 2)?, 5.0);
+        assert_eq!(a.get(0, 0), 1.0);
+        assert_eq!(a.get(0, 1), 2.0);
+        assert_eq!(a.get(1, 0), 3.0);
+        assert_eq!(a.get(1, 1), 4.0);
+        assert_eq!(a.get(2, 2), 5.0);
         let mut b = Matrix::new(2, 1);
         trip.to_matrix(&mut b)?;
-        assert_eq!(b.get(0, 0)?, 1.0);
-        assert_eq!(b.get(1, 0)?, 3.0);
+        assert_eq!(b.get(0, 0), 1.0);
+        assert_eq!(b.get(1, 0), 3.0);
         Ok(())
     }
 }

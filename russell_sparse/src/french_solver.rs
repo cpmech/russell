@@ -512,8 +512,15 @@ mod tests {
 
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
+        let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+
         solver.solve(&mut x, &rhs, false)?;
-        assert_vec_approx_eq!(x.as_data(), &[1.0, 2.0, 3.0, 4.0, 5.0], 1e-15);
+        assert_vec_approx_eq!(x.as_data(), x_correct, 1e-15);
+
+        let mut x_again = Vector::new(5);
+        solver.solve(&mut x_again, &rhs, false)?;
+        assert_vec_approx_eq!(x_again.as_data(), x_correct, 1e-15);
+
         Ok(())
     }
 

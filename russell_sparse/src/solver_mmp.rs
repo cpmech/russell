@@ -281,7 +281,7 @@ impl SolverMMP {
             4 => "Error(+4): not used in current version",
             8 => "Error(+8): problem with the iterative refinement routine",
             100000 => return "Error: c-code returned null pointer",
-            200000 => return "Error: c-code failed during memory allocation",
+            200000 => return "Error: c-code failed to allocate memory",
             _ => return "Error: unknown error returned by SolverMMP (c-code)",
         }
     }
@@ -508,11 +508,15 @@ mod tests {
             assert!(res.len() > 0);
             assert_ne!(res, default);
         }
-        assert_eq!(solver.handle_error_code(123), default);
         assert_eq!(
             solver.handle_error_code(100000),
             "Error: c-code returned null pointer"
         );
+        assert_eq!(
+            solver.handle_error_code(200000),
+            "Error: c-code failed to allocate memory"
+        );
+        assert_eq!(solver.handle_error_code(123), default);
         Ok(())
     }
 }

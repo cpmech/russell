@@ -174,7 +174,7 @@ impl SolverUMF {
             -18 => return "Error(-18): Ordering method failed",
             -911 => return "Error(-911): An internal error has occurred",
             100000 => return "Error: c-code returned null pointer",
-            200000 => return "Error: c-code failed during memory allocation",
+            200000 => return "Error: c-code failed to allocate memory",
             _ => return "Error: unknown error returned by SolverUMF (c-code)",
         }
     }
@@ -325,6 +325,29 @@ mod tests {
     }
 
     #[test]
+    fn solve_fails_on_wrong_vectors() -> Result<(), &'static str> {
+        let mut solver = SolverUMF::new(false)?;
+        let mut trip = SparseTriplet::new(2, 2, 2, false)?;
+        trip.put(0, 0, 1.0);
+        trip.put(1, 1, 1.0);
+        solver.initialize(&trip)?;
+        solver.factorize(false)?;
+        let mut x = Vector::new(2);
+        let rhs = Vector::from(&[1.0, 1.0]);
+        let mut x_wrong = Vector::new(1);
+        let rhs_wrong = Vector::from(&[1.0]);
+        assert_eq!(
+            solver.solve(&mut x_wrong, &rhs, false),
+            Err("x.ndim() and rhs.ndim() must equal the number of equations")
+        );
+        assert_eq!(
+            solver.solve(&mut x, &rhs_wrong, false),
+            Err("x.ndim() and rhs.ndim() must equal the number of equations")
+        );
+        Ok(())
+    }
+
+    #[test]
     fn solve_works() -> Result<(), &'static str> {
         let mut solver = SolverUMF::new(false)?;
 
@@ -356,6 +379,40 @@ mod tests {
 
         // check
         assert_vec_approx_eq!(x.as_data(), x_correct, 1e-14);
+        Ok(())
+    }
+
+    #[test]
+    fn reinitialize_works() -> Result<(), &'static str> {
+        let mut solver = SolverUMF::new(false)?;
+        let mut trip = SparseTriplet::new(2, 2, 2, false)?;
+        trip.put(0, 0, 1.0);
+        trip.put(1, 1, 1.0);
+        solver.initialize(&trip)?;
+        solver.initialize(&trip)?;
+        Ok(())
+    }
+
+    #[test]
+    fn handle_error_code_works() -> Result<(), &'static str> {
+        let default = "Error: unknown error returned by SolverUMF (c-code)";
+        let solver = SolverUMF::new(false)?;
+        for c in &[
+            1, 2, 3, -1, -3, -4, -5, -6, -8, -11, -13, -15, -17, -18, -911,
+        ] {
+            let res = solver.handle_error_code(*c);
+            assert!(res.len() > 0);
+            assert_ne!(res, default);
+        }
+        assert_eq!(
+            solver.handle_error_code(100000),
+            "Error: c-code returned null pointer"
+        );
+        assert_eq!(
+            solver.handle_error_code(200000),
+            "Error: c-code failed to allocate memory"
+        );
+        assert_eq!(solver.handle_error_code(123), default);
         Ok(())
     }
 }

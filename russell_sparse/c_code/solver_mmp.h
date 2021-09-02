@@ -1,5 +1,5 @@
-#ifndef FRENCH_SOLVER_H
-#define FRENCH_SOLVER_H
+#ifndef SOLVER_MMP_H
+#define SOLVER_MMP_H
 
 #include <inttypes.h>
 #include <stdlib.h>

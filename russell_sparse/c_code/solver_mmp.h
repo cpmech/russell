@@ -10,8 +10,8 @@
 #define ICNTL(i) icntl[(i)-1]  // macro to make indices match documentation
 #define INFOG(i) infog[(i)-1]  // macro to make indices match documentation
 
-static inline void set_verbose(DMUMPS_STRUC_C *data, int32_t verbose) {
-    if (verbose > 0) {
+static inline void set_mmp_verbose(DMUMPS_STRUC_C *data, int32_t verbose) {
+    if (verbose == C_TRUE) {
         data->ICNTL(1) = 6;  // standard output stream
         data->ICNTL(2) = 0;  // output stream
         data->ICNTL(3) = 6;  // standard output stream
@@ -39,7 +39,7 @@ struct SolverMMP *new_solver_mmp(int32_t symmetry, int32_t verbose) {
     solver->data.par = MUMPS_PAR_HOST_ALSO_WORKS;
     solver->data.sym = symmetry;
 
-    set_verbose(&solver->data, verbose);
+    set_mmp_verbose(&solver->data, verbose);
     solver->data.job = MUMPS_JOB_INITIALIZE;
     dmumps_c(&solver->data);
 
@@ -56,7 +56,7 @@ void drop_solver_mmp(struct SolverMMP *solver) {
         return;
     }
 
-    set_verbose(&solver->data, 0);
+    set_mmp_verbose(&solver->data, 0);
     solver->data.job = MUMPS_JOB_TERMINATE;
     dmumps_c(&solver->data);
 
@@ -128,7 +128,7 @@ int32_t solver_mmp_initialize(struct SolverMMP *solver,
     solver->data.ICNTL(28) = MUMPS_ICNTL28_SEQUENTIAL;
     solver->data.ICNTL(29) = MUMPS_IGNORED;
 
-    set_verbose(&solver->data, verbose);
+    set_mmp_verbose(&solver->data, verbose);
     solver->data.job = MUMPS_JOB_ANALYZE;
     dmumps_c(&solver->data);
 
@@ -140,7 +140,7 @@ int32_t solver_mmp_factorize(struct SolverMMP *solver, int32_t verbose) {
         return NULL_POINTER_ERROR;
     }
 
-    set_verbose(&solver->data, verbose);
+    set_mmp_verbose(&solver->data, verbose);
     solver->data.job = MUMPS_JOB_FACTORIZE;
     dmumps_c(&solver->data);
 
@@ -154,7 +154,7 @@ int32_t solver_mmp_solve(struct SolverMMP *solver, double *rhs, int32_t verbose)
 
     solver->data.rhs = rhs;
 
-    set_verbose(&solver->data, verbose);
+    set_mmp_verbose(&solver->data, verbose);
     solver->data.job = MUMPS_JOB_SOLVE;
     dmumps_c(&solver->data);
 

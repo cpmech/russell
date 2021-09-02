@@ -1,4 +1,4 @@
-/// Options for matrix symmetry using MUMPS solver
+/// Matrix symmetry options for SolverMMP
 pub enum EnumMmpSymmetry {
     /// Unsymmetric matrix
     No,
@@ -10,7 +10,7 @@ pub enum EnumMmpSymmetry {
     General,
 }
 
-/// Options for ordering using MUMPS solver
+/// Ordering options for SolverMMP
 pub enum EnumMmpOrdering {
     /// Ordering using the approximate minimum degree
     Amd,
@@ -31,7 +31,7 @@ pub enum EnumMmpOrdering {
     Qamd,
 }
 
-/// Options for scaling using MUMPS solver
+/// Scaling options for SolverMMP
 pub enum EnumMmpScaling {
     /// Automatic scaling method selection
     Auto,

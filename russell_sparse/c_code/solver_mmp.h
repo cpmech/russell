@@ -31,6 +31,10 @@ struct SolverMMP {
 struct SolverMMP *new_solver_mmp(int32_t symmetry, int32_t verbose) {
     struct SolverMMP *solver = (struct SolverMMP *)malloc(sizeof(struct SolverMMP));
 
+    if (solver == NULL) {
+        return NULL;
+    }
+
     solver->data.comm_fortran = MUMPS_IGNORED;
     solver->data.par = MUMPS_PAR_HOST_ALSO_WORKS;
     solver->data.sym = symmetry;

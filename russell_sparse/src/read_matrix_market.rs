@@ -233,6 +233,148 @@ mod tests {
     use super::*;
 
     #[test]
+    fn parse_header_captures_errors() -> Result<(), &'static str> {
+        let mut data = MatrixMarketData::new();
+
+        assert_eq!(
+            data.parse_header(&String::from("  \n")),
+            Err("cannot find the keyword %%MatrixMarket on the first line")
+        );
+        assert_eq!(
+            data.parse_header(&String::from("MatrixMarket  ")),
+            Err("the header (first line) must start with %%MatrixMarket"),
+        );
+
+        assert_eq!(
+            data.parse_header(&String::from("  %%MatrixMarket")),
+            Err("cannot find the first option in the header line"),
+        );
+        assert_eq!(
+            data.parse_header(&String::from("%%MatrixMarket   wrong")),
+            Err("after %%MatrixMarket, the first option must be \"matrix\""),
+        );
+
+        assert_eq!(
+            data.parse_header(&String::from("%%MatrixMarket matrix  ")),
+            Err("cannot find the second option in the header line"),
+        );
+        assert_eq!(
+            data.parse_header(&String::from("%%MatrixMarket   matrix wrong")),
+            Err("after %%MatrixMarket, the second option must be \"coordinate\""),
+        );
+
+        assert_eq!(
+            data.parse_header(&String::from("%%MatrixMarket matrix  coordinate")),
+            Err("cannot find the third option in the header line"),
+        );
+        assert_eq!(
+            data.parse_header(&String::from("%%MatrixMarket matrix    coordinate  wrong")),
+            Err("after %%MatrixMarket, the third option must be \"real\""),
+        );
+
+        assert_eq!(
+            data.parse_header(&String::from("%%MatrixMarket  matrix coordinate real")),
+            Err("cannot find the fourth option in the header line"),
+        );
+        assert_eq!(
+            data.parse_header(&String::from("  %%MatrixMarket matrix coordinate real wrong")),
+               Err("after %%MatrixMarket, the fourth option must be either \"general\" or \"symmetric\""),
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn parse_dimensions_captures_errors() -> Result<(), &'static str> {
+        let mut data = MatrixMarketData::new();
+
+        assert_eq!(
+            data.parse_dimensions(&String::from(" wrong \n")).err(),
+            Some("cannot parse number of rows")
+        );
+
+        assert_eq!(
+            data.parse_dimensions(&String::from(" 1 \n")).err(),
+            Some("cannot read number of columns")
+        );
+        assert_eq!(
+            data.parse_dimensions(&String::from(" 1 wrong")).err(),
+            Some("cannot parse number of columns")
+        );
+
+        assert_eq!(
+            data.parse_dimensions(&String::from(" 1 1   \n")).err(),
+            Some("cannot read number of non-zeros")
+        );
+        assert_eq!(
+            data.parse_dimensions(&String::from(" 1 1  wrong")).err(),
+            Some("cannot parse number of non-zeros")
+        );
+
+        assert_eq!(
+            data.parse_dimensions(&String::from(" 0 1  1")).err(),
+            Some("found invalid (zero or negative) dimensions")
+        );
+        assert_eq!(
+            data.parse_dimensions(&String::from(" 1 0  1")).err(),
+            Some("found invalid (zero or negative) dimensions")
+        );
+        assert_eq!(
+            data.parse_dimensions(&String::from(" 1 1  0")).err(),
+            Some("found invalid (zero or negative) dimensions")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn parse_triple_captures_errors() -> Result<(), &'static str> {
+        let mut data = MatrixMarketData::new();
+        data.m = 2;
+        data.n = 2;
+        data.nnz = 1;
+
+        assert_eq!(
+            data.parse_triple(&String::from(" wrong \n")).err(),
+            Some("cannot parse index i")
+        );
+
+        assert_eq!(
+            data.parse_triple(&String::from(" 1 \n")).err(),
+            Some("cannot read index j")
+        );
+        assert_eq!(
+            data.parse_triple(&String::from(" 1 wrong")).err(),
+            Some("cannot parse index j")
+        );
+
+        assert_eq!(
+            data.parse_triple(&String::from(" 1 1   \n")).err(),
+            Some("cannot read value aij")
+        );
+        assert_eq!(
+            data.parse_triple(&String::from(" 1 1  wrong")).err(),
+            Some("cannot parse value aij")
+        );
+
+        assert_eq!(
+            data.parse_triple(&String::from(" 0 1  1")).err(),
+            Some("found invalid indices")
+        );
+        assert_eq!(
+            data.parse_triple(&String::from(" 3 1  1")).err(),
+            Some("found invalid indices")
+        );
+        assert_eq!(
+            data.parse_triple(&String::from(" 1 0  1")).err(),
+            Some("found invalid indices")
+        );
+        assert_eq!(
+            data.parse_triple(&String::from(" 1 3  1")).err(),
+            Some("found invalid indices")
+        );
+        Ok(())
+    }
+
+    #[test]
     fn read_matrix_market_works() -> Result<(), &'static str> {
         let filepath = "./data/sparse-matrix/ok1.mtx".to_string();
         let trip = read_matrix_market(&filepath)?;

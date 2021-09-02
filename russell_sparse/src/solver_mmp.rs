@@ -61,7 +61,7 @@ impl SolverMMP {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let solver = SolverMMP::new(EnumSymmetry::No, true)?;
+    /// let solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
     /// let correct: &str = "===========================\n\
     ///                      SolverMMP\n\
     ///                      ---------------------------\n\
@@ -77,8 +77,8 @@ impl SolverMMP {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn new(symmetry: EnumSymmetry, verbose: bool) -> Result<Self, &'static str> {
-        let sym = code_symmetry(symmetry);
+    pub fn new(symmetry: EnumMmpSymmetry, verbose: bool) -> Result<Self, &'static str> {
+        let sym = code_mmp_symmetry(symmetry);
         let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
             let solver = new_solver_mmp(sym, verb);
@@ -87,8 +87,8 @@ impl SolverMMP {
             }
             Ok(SolverMMP {
                 symmetry: sym,
-                ordering: code_ordering(EnumOrdering::Metis),
-                scaling: code_scaling(EnumScaling::Auto),
+                ordering: code_mmp_ordering(EnumMmpOrdering::Metis),
+                scaling: code_mmp_scaling(EnumMmpScaling::Auto),
                 pct_inc_workspace: 100,
                 max_work_memory: 0, // auto
                 openmp_num_threads: 1,
@@ -101,13 +101,13 @@ impl SolverMMP {
     }
 
     /// Sets the method to compute a symmetric permutation (ordering)
-    pub fn set_ordering(&mut self, selection: EnumOrdering) {
-        self.ordering = code_ordering(selection);
+    pub fn set_ordering(&mut self, selection: EnumMmpOrdering) {
+        self.ordering = code_mmp_ordering(selection);
     }
 
     /// Sets the scaling strategy
-    pub fn set_scaling(&mut self, selection: EnumScaling) {
-        self.scaling = code_scaling(selection);
+    pub fn set_scaling(&mut self, selection: EnumMmpScaling) {
+        self.scaling = code_mmp_scaling(selection);
     }
 
     /// Sets the percentage increase in the estimated working space
@@ -332,30 +332,30 @@ mod tests {
 
     #[test]
     fn new_works() -> Result<(), &'static str> {
-        let solver = SolverMMP::new(EnumSymmetry::No, true)?;
+        let solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
         assert_eq!(solver.solver.is_null(), false);
         Ok(())
     }
 
     #[test]
     fn set_ordering() -> Result<(), &'static str> {
-        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
-        solver.set_ordering(EnumOrdering::Amf);
+        let mut solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
+        solver.set_ordering(EnumMmpOrdering::Amf);
         assert_eq!(solver.ordering, 2);
         Ok(())
     }
 
     #[test]
     fn set_scaling_works() -> Result<(), &'static str> {
-        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
-        solver.set_scaling(EnumScaling::RowCol);
+        let mut solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
+        solver.set_scaling(EnumMmpScaling::RowCol);
         assert_eq!(solver.scaling, 4);
         Ok(())
     }
 
     #[test]
     fn set_pct_inc_workspace_works() -> Result<(), &'static str> {
-        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
+        let mut solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
         solver.set_pct_inc_workspace(15);
         assert_eq!(solver.pct_inc_workspace, 15);
         Ok(())
@@ -363,7 +363,7 @@ mod tests {
 
     #[test]
     fn set_max_work_memory_works() -> Result<(), &'static str> {
-        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
+        let mut solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
         solver.set_max_work_memory(500);
         assert_eq!(solver.max_work_memory, 500);
         Ok(())
@@ -371,7 +371,7 @@ mod tests {
 
     #[test]
     fn set_openmp_num_threads_works() -> Result<(), &'static str> {
-        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
+        let mut solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
         solver.set_openmp_num_threads(3);
         assert_eq!(solver.openmp_num_threads, 3);
         Ok(())
@@ -379,7 +379,7 @@ mod tests {
 
     #[test]
     fn display_trait_works() -> Result<(), &'static str> {
-        let solver = SolverMMP::new(EnumSymmetry::No, true)?;
+        let solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
         let correct: &str = "===========================\n\
                              SolverMMP\n\
                              ---------------------------\n\
@@ -401,7 +401,7 @@ mod tests {
     #[test]
     fn solver_mmp_behaves_as_expected() -> Result<(), &'static str> {
         // allocate a new solver
-        let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
+        let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
 
         // initialize fails on rectangular matrix
         let trip_rect = SparseTriplet::new(3, 2, 1, false)?;
@@ -491,7 +491,7 @@ mod tests {
     #[test]
     fn handle_error_code_works() -> Result<(), &'static str> {
         let default = "Error: unknown error returned by SolverMMP (c-code)";
-        let solver = SolverMMP::new(EnumSymmetry::No, false)?;
+        let solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
         for c in 1..57 {
             let res = solver.handle_error_code(-c);
             assert!(res.len() > 0);

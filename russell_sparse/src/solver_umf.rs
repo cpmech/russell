@@ -52,8 +52,8 @@ impl SolverUMF {
             }
             Ok(SolverUMF {
                 symmetric: sym,
-                ordering: code_ordering(EnumOrdering::Auto),
-                scaling: code_scaling(EnumScaling::Auto),
+                ordering: code_mmp_ordering(EnumMmpOrdering::Auto),
+                scaling: code_mmp_scaling(EnumMmpScaling::Auto),
                 done_initialize: false,
                 done_factorize: false,
                 ndim: 0,
@@ -63,13 +63,13 @@ impl SolverUMF {
     }
 
     /// Sets the method to compute a symmetric permutation (ordering)
-    pub fn set_ordering(&mut self, selection: EnumOrdering) {
-        self.ordering = code_ordering(selection);
+    pub fn set_ordering(&mut self, selection: EnumMmpOrdering) {
+        self.ordering = code_mmp_ordering(selection);
     }
 
     /// Sets the scaling strategy
-    pub fn set_scaling(&mut self, selection: EnumScaling) {
-        self.scaling = code_scaling(selection);
+    pub fn set_scaling(&mut self, selection: EnumMmpScaling) {
+        self.scaling = code_mmp_scaling(selection);
     }
 
     /// Initializes the solver

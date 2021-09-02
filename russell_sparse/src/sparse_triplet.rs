@@ -31,6 +31,7 @@ impl SparseTriplet {
     ///                  thus one side of the diagonal **must not** be provided
     ///
     /// # Example
+    ///
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;

@@ -223,6 +223,11 @@ pub fn read_matrix_market(filepath: &String) -> Result<SparseTriplet, &'static s
         }
     }
 
+    // check data
+    if data.pos != data.nnz {
+        return Err("not all triples (i,j,aij) have been found");
+    }
+
     Ok(trip)
 }
 
@@ -375,6 +380,27 @@ mod tests {
     }
 
     #[test]
+    fn read_matrix_market_handle_wrong_files() -> Result<(), &'static str> {
+        assert_eq!(
+            read_matrix_market(&String::from("__wrong__")).err(),
+            Some("cannot open file")
+        );
+        assert_eq!(
+            read_matrix_market(&String::from("./data/sparse-matrix/bad_empty_file.mtx")).err(),
+            Some("file is empty")
+        );
+        assert_eq!(
+            read_matrix_market(&String::from("./data/sparse-matrix/bad_missing_data.mtx")).err(),
+            Some("not all triples (i,j,aij) have been found")
+        );
+        assert_eq!(
+            read_matrix_market(&String::from("./data/sparse-matrix/bad_many_lines.mtx")).err(),
+            Some("there are more (i,j,aij) triples than specified")
+        );
+        Ok(())
+    }
+
+    #[test]
     fn read_matrix_market_works() -> Result<(), &'static str> {
         let filepath = "./data/sparse-matrix/ok1.mtx".to_string();
         let trip = read_matrix_market(&filepath)?;
@@ -385,6 +411,27 @@ mod tests {
         assert_eq!(
             trip.values_a,
             &[2.0, 3.0, 3.0, -1.0, 4.0, 4.0, -3.0, 1.0, 2.0, 2.0, 6.0, 1.0]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn read_matrix_market_sym_works() -> Result<(), &'static str> {
+        let filepath = "./data/sparse-matrix/ok2.mtx".to_string();
+        let trip = read_matrix_market(&filepath)?;
+        assert!(trip.symmetric == true);
+        assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 15, 15));
+        assert_eq!(
+            trip.indices_i,
+            &[0, 1, 2, 3, 4, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3]
+        );
+        assert_eq!(
+            trip.indices_j,
+            &[0, 1, 2, 3, 4, 1, 2, 3, 4, 2, 3, 4, 3, 4, 4]
+        );
+        assert_eq!(
+            trip.values_a,
+            &[2.0, 2.0, 9.0, 7.0, 8.0, 1.0, 1.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 5.0, 1.0],
         );
         Ok(())
     }

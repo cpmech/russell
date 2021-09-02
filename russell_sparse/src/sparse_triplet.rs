@@ -103,13 +103,12 @@ impl SparseTriplet {
         self.pos += 1;
     }
 
-    /// Returns (nrow, ncol, nnz)
+    /// Returns the (nrow x ncol) dimensions of the matrix represented by this Triplet
     ///
     /// # Output
     ///
     /// * `nrow` -- number of rows
     /// * `ncol` -- number of columns
-    /// * `nnz` -- number of non-zero values
     ///
     /// # Example
     ///
@@ -117,12 +116,12 @@ impl SparseTriplet {
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
     /// let trip = SparseTriplet::new(2, 2, 1, false)?;
-    /// assert_eq!(trip.dims(), (2, 2, 1));
+    /// assert_eq!(trip.dims(), (2, 2));
     /// # Ok(())
     /// # }
     /// ```
-    pub fn dims(&self) -> (usize, usize, usize) {
-        (self.nrow, self.ncol, self.pos)
+    pub fn dims(&self) -> (usize, usize) {
+        (self.nrow, self.ncol)
     }
 
     /// Converts the triples data to a matrix, up to a limit
@@ -317,7 +316,7 @@ mod tests {
     #[test]
     fn dims_works() -> Result<(), &'static str> {
         let trip = SparseTriplet::new(3, 2, 1, false)?;
-        assert_eq!(trip.dims(), (3, 2, 0));
+        assert_eq!(trip.dims(), (3, 2));
         Ok(())
     }
 

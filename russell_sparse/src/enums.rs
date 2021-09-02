@@ -1,144 +1,149 @@
 /// Matrix symmetry options for SolverMMP
 pub enum EnumMmpSymmetry {
     /// Unsymmetric matrix
-    No,
+    No = 0,
 
     /// Positive-definite symmetric matrix
-    PosDef,
+    PosDef = 1,
 
     /// General symmetric matrix
-    General,
+    General = 2,
 }
 
 /// Ordering options for SolverMMP
 pub enum EnumMmpOrdering {
     /// Ordering using the approximate minimum degree
-    Amd,
+    Amd = 0,
 
     /// Ordering using the approximate minimum fill-in ordering
-    Amf,
+    Amf = 2,
 
     /// Automatic ordering method selection
-    Auto,
+    Auto = 7,
 
     /// Ordering by Karpis & Kumar from the University of Minnesota
-    Metis,
+    Metis = 5,
 
     /// Ordering by Schulze from the University of Paderborn
-    Pord,
+    Pord = 4,
 
     /// Ordering using the automatic quasi-dense row detection
-    Qamd,
+    Qamd = 6,
 }
 
 /// Scaling options for SolverMMP
 pub enum EnumMmpScaling {
     /// Automatic scaling method selection
-    Auto,
+    Auto = 77,
 
     /// Column scaling
-    Column,
+    Column = 3,
 
     /// Diagonal scaling
-    Diagonal,
+    Diagonal = 1,
 
     /// No scaling applied or computed
-    No,
+    No = 0,
 
     /// Row and column scaling based on infinite row/column norms
-    RowCol,
+    RowCol = 4,
 
     /// Simultaneous row and column iterative scaling
-    RowColIterative,
+    RowColIter = 7,
 
     /// Similar to RcIterative but more rigorous and expensive to compute
-    RowColRigorous,
+    RowColRig = 8,
 }
 
 /// Ordering options for SolverUMF (page 17)
 pub enum EnumUmfOrdering {
     /// Ordering using the approximate minimum degree
-    Amd,
+    Amd = 0,
 
     /// Try three methods and take the best
-    Best,
+    Best = 1,
 
     /// Use Amd for symmetric, Colamd for unsymmetric, or Metis
-    Cholmod,
+    Cholmod = 2,
 
     /// Default ordering method == Amd
-    Default,
+    Default = 3,
 
     /// Ordering by Karpis & Kumar from the University of Minnesota
-    Metis,
+    Metis = 4,
 
     /// The matrix is factorized as-is (singletons removed)
-    No,
+    No = 5,
 }
 
 /// Scaling options for SolverUMF (page 49)
 pub enum EnumUmfScaling {
     /// Default scaling method
-    Default,
+    Default = 0,
 
     /// Use the max absolute value in the row
-    Max,
+    Max = 1,
 
     /// No scaling is performed
-    No,
+    No = 2,
 
     /// Use the sum of the absolute value in the row
-    Sum,
+    Sum = 3,
 }
 
-pub(crate) fn code_mmp_symmetry(selection: EnumMmpSymmetry) -> i32 {
-    match selection {
-        EnumMmpSymmetry::No => 0,
-        EnumMmpSymmetry::PosDef => 1,
-        EnumMmpSymmetry::General => 2,
+pub(crate) fn str_mmp_symmetry(code: i32) -> &'static str {
+    match code {
+        0 => "No",
+        1 => "PosDef",
+        2 => "General",
+        _ => panic!("invalid code"),
     }
 }
 
-pub(crate) fn code_mmp_ordering(selection: EnumMmpOrdering) -> i32 {
-    match selection {
-        EnumMmpOrdering::Amd => 0,
-        EnumMmpOrdering::Amf => 2,
-        EnumMmpOrdering::Auto => 7,
-        EnumMmpOrdering::Metis => 5,
-        EnumMmpOrdering::Pord => 4,
-        EnumMmpOrdering::Qamd => 6,
+pub(crate) fn str_mmp_ordering(code: i32) -> &'static str {
+    match code {
+        0 => "Amd",
+        2 => "Amf",
+        7 => "Auto",
+        5 => "Metis",
+        4 => "Pord",
+        6 => "Qamd",
+        _ => panic!("invalid code"),
     }
 }
 
-pub(crate) fn code_mmp_scaling(selection: EnumMmpScaling) -> i32 {
-    match selection {
-        EnumMmpScaling::Auto => 77,
-        EnumMmpScaling::Column => 3,
-        EnumMmpScaling::Diagonal => 1,
-        EnumMmpScaling::No => 0,
-        EnumMmpScaling::RowCol => 4,
-        EnumMmpScaling::RowColIterative => 7,
-        EnumMmpScaling::RowColRigorous => 8,
+pub(crate) fn str_mmp_scaling(code: i32) -> &'static str {
+    match code {
+        77 => "Auto",
+        3 => "Column",
+        1 => "Diagonal",
+        0 => "No",
+        4 => "RowCol",
+        7 => "RowColIter",
+        8 => "RowColRig",
+        _ => panic!("invalid code"),
     }
 }
 
-pub(crate) fn code_umf_ordering(selection: EnumUmfOrdering) -> i32 {
-    match selection {
-        EnumUmfOrdering::Amd => 0,
-        EnumUmfOrdering::Best => 1,
-        EnumUmfOrdering::Cholmod => 2,
-        EnumUmfOrdering::Default => 3,
-        EnumUmfOrdering::Metis => 4,
-        EnumUmfOrdering::No => 5,
+pub(crate) fn str_umf_ordering(code: i32) -> &'static str {
+    match code {
+        0 => "Amd",
+        1 => "Best",
+        2 => "Cholmod",
+        3 => "Default",
+        4 => "Metis",
+        5 => "No",
+        _ => panic!("invalid code"),
     }
 }
 
-pub(crate) fn code_umf_scaling(selection: EnumUmfScaling) -> i32 {
-    match selection {
-        EnumUmfScaling::Default => 0,
-        EnumUmfScaling::Max => 1,
-        EnumUmfScaling::No => 2,
-        EnumUmfScaling::Sum => 3,
+pub(crate) fn str_umf_scaling(code: i32) -> &'static str {
+    match code {
+        0 => "Default",
+        1 => "Max",
+        2 => "No",
+        3 => "Sum",
+        _ => panic!("invalid code"),
     }
 }
 
@@ -149,48 +154,48 @@ mod tests {
     use super::*;
 
     #[test]
-    fn code_mmp_symmetry_works() {
-        assert_eq!(code_mmp_symmetry(EnumMmpSymmetry::No), 0);
-        assert_eq!(code_mmp_symmetry(EnumMmpSymmetry::PosDef), 1);
-        assert_eq!(code_mmp_symmetry(EnumMmpSymmetry::General), 2);
+    fn str_mmp_symmetry_works() {
+        assert_eq!(str_mmp_symmetry(0), "No");
+        assert_eq!(str_mmp_symmetry(1), "PosDef");
+        assert_eq!(str_mmp_symmetry(2), "General");
     }
 
     #[test]
-    fn code_mmp_ordering_works() {
-        assert_eq!(code_mmp_ordering(EnumMmpOrdering::Amd), 0);
-        assert_eq!(code_mmp_ordering(EnumMmpOrdering::Amf), 2);
-        assert_eq!(code_mmp_ordering(EnumMmpOrdering::Auto), 7);
-        assert_eq!(code_mmp_ordering(EnumMmpOrdering::Metis), 5);
-        assert_eq!(code_mmp_ordering(EnumMmpOrdering::Pord), 4);
-        assert_eq!(code_mmp_ordering(EnumMmpOrdering::Qamd), 6);
+    fn str_mmp_ordering_works() {
+        assert_eq!(str_mmp_ordering(0), "Amd");
+        assert_eq!(str_mmp_ordering(2), "Amf");
+        assert_eq!(str_mmp_ordering(7), "Auto");
+        assert_eq!(str_mmp_ordering(5), "Metis");
+        assert_eq!(str_mmp_ordering(4), "Pord");
+        assert_eq!(str_mmp_ordering(6), "Qamd");
     }
 
     #[test]
-    fn code_mmp_scaling_works() {
-        assert_eq!(code_mmp_scaling(EnumMmpScaling::Auto), 77);
-        assert_eq!(code_mmp_scaling(EnumMmpScaling::Column), 3);
-        assert_eq!(code_mmp_scaling(EnumMmpScaling::Diagonal), 1);
-        assert_eq!(code_mmp_scaling(EnumMmpScaling::No), 0);
-        assert_eq!(code_mmp_scaling(EnumMmpScaling::RowCol), 4);
-        assert_eq!(code_mmp_scaling(EnumMmpScaling::RowColIterative), 7);
-        assert_eq!(code_mmp_scaling(EnumMmpScaling::RowColRigorous), 8);
+    fn str_mmp_scaling_works() {
+        assert_eq!(str_mmp_scaling(77), "Auto");
+        assert_eq!(str_mmp_scaling(3), "Column");
+        assert_eq!(str_mmp_scaling(1), "Diagonal");
+        assert_eq!(str_mmp_scaling(0), "No");
+        assert_eq!(str_mmp_scaling(4), "RowCol");
+        assert_eq!(str_mmp_scaling(7), "RowColIter");
+        assert_eq!(str_mmp_scaling(8), "RowColRig");
     }
 
     #[test]
-    fn code_umf_ordering_works() {
-        assert_eq!(code_umf_ordering(EnumUmfOrdering::Amd), 0);
-        assert_eq!(code_umf_ordering(EnumUmfOrdering::Best), 1);
-        assert_eq!(code_umf_ordering(EnumUmfOrdering::Cholmod), 2);
-        assert_eq!(code_umf_ordering(EnumUmfOrdering::Default), 3);
-        assert_eq!(code_umf_ordering(EnumUmfOrdering::Metis), 4);
-        assert_eq!(code_umf_ordering(EnumUmfOrdering::No), 5);
+    fn str_umf_ordering_works() {
+        assert_eq!(str_umf_ordering(0), "Amd");
+        assert_eq!(str_umf_ordering(1), "Best");
+        assert_eq!(str_umf_ordering(2), "Cholmod");
+        assert_eq!(str_umf_ordering(3), "Default");
+        assert_eq!(str_umf_ordering(4), "Metis");
+        assert_eq!(str_umf_ordering(5), "No");
     }
 
     #[test]
-    fn code_umf_scaling_works() {
-        assert_eq!(code_umf_scaling(EnumUmfScaling::Default), 0);
-        assert_eq!(code_umf_scaling(EnumUmfScaling::Max), 1);
-        assert_eq!(code_umf_scaling(EnumUmfScaling::No), 2);
-        assert_eq!(code_umf_scaling(EnumUmfScaling::Sum), 3);
+    fn str_umf_scaling_works() {
+        assert_eq!(str_umf_scaling(0), "Default");
+        assert_eq!(str_umf_scaling(1), "Max");
+        assert_eq!(str_umf_scaling(2), "No");
+        assert_eq!(str_umf_scaling(3), "Sum");
     }
 }

@@ -30,7 +30,7 @@ extern "C" {
     ) -> i32;
 }
 
-/// Implements Davis' UMFPACK Solver
+/// Implements Tim Davis' UMFPACK Solver
 pub struct SolverUMF {
     symmetric: i32,            // symmetric flag (0 or 1)
     ordering: i32,             // symmetric permutation (ordering)
@@ -47,6 +47,26 @@ impl SolverUMF {
     /// # Input
     ///
     /// `symmetric` -- Tells wether the system matrix is general symmetric or not
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let solver = SolverUMF::new(false)?;
+    /// let correct: &str = "==============================\n\
+    ///                      SolverUMF\n\
+    ///                      ------------------------------\n\
+    ///                      symmetric          = false\n\
+    ///                      ordering           = Default\n\
+    ///                      scaling            = Default\n\
+    ///                      done_initialize    = false\n\
+    ///                      done_factorize     = false\n\
+    ///                      ==============================";
+    /// assert_eq!(format!("{}", solver), correct);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn new(symmetric: bool) -> Result<Self, &'static str> {
         let sym: i32 = if symmetric { 1 } else { 0 };
         unsafe {
@@ -56,8 +76,8 @@ impl SolverUMF {
             }
             Ok(SolverUMF {
                 symmetric: sym,
-                ordering: code_umf_ordering(EnumUmfOrdering::Default),
-                scaling: code_umf_scaling(EnumUmfScaling::Default),
+                ordering: EnumUmfOrdering::Default as i32,
+                scaling: EnumUmfScaling::Default as i32,
                 done_initialize: false,
                 done_factorize: false,
                 ndim: 0,
@@ -68,12 +88,12 @@ impl SolverUMF {
 
     /// Sets the method to compute a symmetric permutation (ordering)
     pub fn set_ordering(&mut self, selection: EnumUmfOrdering) {
-        self.ordering = code_umf_ordering(selection);
+        self.ordering = selection as i32;
     }
 
     /// Sets the scaling strategy
     pub fn set_scaling(&mut self, selection: EnumUmfScaling) {
-        self.scaling = code_umf_scaling(selection);
+        self.scaling = selection as i32;
     }
 
     /// Initializes the solver
@@ -194,15 +214,20 @@ impl fmt::Display for SolverUMF {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "===========================\n\
+            "==============================\n\
             SolverUMF\n\
-            ---------------------------\n\
+            ------------------------------\n\
+            symmetric          = {}\n\
             ordering           = {}\n\
             scaling            = {}\n\
             done_initialize    = {}\n\
             done_factorize     = {}\n\
-            ===========================",
-            self.ordering, self.scaling, self.done_initialize, self.done_factorize,
+            ==============================",
+            if self.symmetric == 1 { "true" } else { "false" },
+            str_umf_ordering(self.ordering),
+            str_umf_scaling(self.scaling),
+            self.done_initialize,
+            self.done_factorize,
         )?;
         Ok(())
     }
@@ -241,14 +266,15 @@ mod tests {
     #[test]
     fn display_trait_works() -> Result<(), &'static str> {
         let solver = SolverUMF::new(false)?;
-        let correct: &str = "===========================\n\
+        let correct: &str = "==============================\n\
                              SolverUMF\n\
-                             ---------------------------\n\
-                             ordering           = 3\n\
-                             scaling            = 0\n\
+                             ------------------------------\n\
+                             symmetric          = false\n\
+                             ordering           = Default\n\
+                             scaling            = Default\n\
                              done_initialize    = false\n\
                              done_factorize     = false\n\
-                             ===========================";
+                             ==============================";
         assert_eq!(format!("{}", solver), correct);
         Ok(())
     }

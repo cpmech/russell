@@ -62,23 +62,24 @@ impl SolverMMP {
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
     /// let solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
-    /// let correct: &str = "===========================\n\
+    /// let correct: &str = "==============================\n\
     ///                      SolverMMP\n\
-    ///                      ---------------------------\n\
-    ///                      ordering           = 5\n\
-    ///                      scaling            = 77\n\
+    ///                      ------------------------------\n\
+    ///                      symmetry           = No\n\
+    ///                      ordering           = Metis\n\
+    ///                      scaling            = Auto\n\
     ///                      pct_inc_workspace  = 100\n\
     ///                      max_work_memory    = 0\n\
     ///                      openmp_num_threads = 1\n\
     ///                      done_initialize    = false\n\
     ///                      done_factorize     = false\n\
-    ///                      ===========================";
+    ///                      ==============================";
     /// assert_eq!(format!("{}", solver), correct);
     /// # Ok(())
     /// # }
     /// ```
     pub fn new(symmetry: EnumMmpSymmetry, verbose: bool) -> Result<Self, &'static str> {
-        let sym = code_mmp_symmetry(symmetry);
+        let sym = symmetry as i32;
         let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
             let solver = new_solver_mmp(sym, verb);
@@ -87,8 +88,8 @@ impl SolverMMP {
             }
             Ok(SolverMMP {
                 symmetry: sym,
-                ordering: code_mmp_ordering(EnumMmpOrdering::Metis),
-                scaling: code_mmp_scaling(EnumMmpScaling::Auto),
+                ordering: EnumMmpOrdering::Metis as i32,
+                scaling: EnumMmpScaling::Auto as i32,
                 pct_inc_workspace: 100,
                 max_work_memory: 0, // auto
                 openmp_num_threads: 1,
@@ -102,12 +103,12 @@ impl SolverMMP {
 
     /// Sets the method to compute a symmetric permutation (ordering)
     pub fn set_ordering(&mut self, selection: EnumMmpOrdering) {
-        self.ordering = code_mmp_ordering(selection);
+        self.ordering = selection as i32;
     }
 
     /// Sets the scaling strategy
     pub fn set_scaling(&mut self, selection: EnumMmpScaling) {
-        self.scaling = code_mmp_scaling(selection);
+        self.scaling = selection as i32;
     }
 
     /// Sets the percentage increase in the estimated working space
@@ -301,9 +302,10 @@ impl fmt::Display for SolverMMP {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "===========================\n\
+            "==============================\n\
             SolverMMP\n\
-            ---------------------------\n\
+            ------------------------------\n\
+            symmetry           = {}\n\
             ordering           = {}\n\
             scaling            = {}\n\
             pct_inc_workspace  = {}\n\
@@ -311,9 +313,10 @@ impl fmt::Display for SolverMMP {
             openmp_num_threads = {}\n\
             done_initialize    = {}\n\
             done_factorize     = {}\n\
-            ===========================",
-            self.ordering,
-            self.scaling,
+            ==============================",
+            str_mmp_symmetry(self.symmetry),
+            str_mmp_ordering(self.ordering),
+            str_mmp_scaling(self.scaling),
             self.pct_inc_workspace,
             self.max_work_memory,
             self.openmp_num_threads,
@@ -381,17 +384,18 @@ mod tests {
     #[test]
     fn display_trait_works() -> Result<(), &'static str> {
         let solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
-        let correct: &str = "===========================\n\
+        let correct: &str = "==============================\n\
                              SolverMMP\n\
-                             ---------------------------\n\
-                             ordering           = 5\n\
-                             scaling            = 77\n\
+                             ------------------------------\n\
+                             symmetry           = No\n\
+                             ordering           = Metis\n\
+                             scaling            = Auto\n\
                              pct_inc_workspace  = 100\n\
                              max_work_memory    = 0\n\
                              openmp_num_threads = 1\n\
                              done_initialize    = false\n\
                              done_factorize     = false\n\
-                             ===========================";
+                             ==============================";
         assert_eq!(format!("{}", solver), correct);
         Ok(())
     }

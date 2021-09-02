@@ -6,6 +6,7 @@
 #include "dmumps_c.h"
 
 const int32_t NULL_POINTER_ERROR = 100000;
+const int32_t C_TRUE = 1;
 
 const MUMPS_INT MUMPS_IGNORED = 0;
 
@@ -20,5 +21,8 @@ const MUMPS_INT MUMPS_ICNTL5_ASSEMBLED_MATRIX = 0;  // section 5.2.2, page 27
 const MUMPS_INT MUMPS_ICNTL18_CENTRALIZED = 0;      // section 5.2.2, page 27
 const MUMPS_INT MUMPS_ICNTL6_PERMUT_AUTO = 7;       // section 5.3, page 32
 const MUMPS_INT MUMPS_ICNTL28_SEQUENTIAL = 1;       // section 5.4, page 33
+
+const double UMF_PRINT_LEVEL_SILENT = 0.0;   // page 116
+const double UMF_PRINT_LEVEL_VERBOSE = 2.0;  // page 116
 
 #endif

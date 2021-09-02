@@ -38,6 +38,11 @@ pub struct SolverUMF {
 }
 
 impl SolverUMF {
+    /// Creates a new solver
+    ///
+    /// # Input
+    ///
+    /// `symmetric` -- Tells wether the system matrix is general symmetric or not
     pub fn new(symmetric: bool) -> Result<Self, &'static str> {
         let sym: i32 = if symmetric { 1 } else { 0 };
         unsafe {
@@ -55,6 +60,128 @@ impl SolverUMF {
                 solver,
             })
         }
+    }
+
+    /// Sets the method to compute a symmetric permutation (ordering)
+    pub fn set_ordering(&mut self, selection: EnumOrdering) {
+        self.ordering = code_ordering(selection);
+    }
+
+    /// Sets the scaling strategy
+    pub fn set_scaling(&mut self, selection: EnumScaling) {
+        self.scaling = code_scaling(selection);
+    }
+
+    /// Initializes the solver
+    pub fn initialize(&mut self, trip: &SparseTriplet, verbose: bool) -> Result<(), &'static str> {
+        if trip.nrow != trip.ncol {
+            return Err("the matrix represented by the triplet must be square");
+        }
+        let n = to_i32(trip.nrow);
+        let nnz = to_i32(trip.pos);
+        let verb: i32 = if verbose { 1 } else { 0 };
+        unsafe {
+            if self.done_initialize {
+                drop_solver_umf(self.solver);
+                let solver = new_solver_umf(self.symmetric);
+                if solver.is_null() {
+                    return Err("c-code failed to allocate SolverUMF");
+                }
+                self.solver = solver;
+            }
+            let res = solver_umf_initialize(
+                self.solver,
+                n,
+                nnz,
+                trip.indices_i.as_ptr(),
+                trip.indices_j.as_ptr(),
+                trip.values_a.as_ptr(),
+                self.ordering,
+                self.scaling,
+                verb,
+            );
+            if res != 0 {
+                return Err(self.handle_error_code(res));
+            }
+            self.done_initialize = true;
+            self.ndim = trip.nrow;
+        }
+        Ok(())
+    }
+
+    /// Performs the factorization
+    pub fn factorize(&mut self, verbose: bool) -> Result<(), &'static str> {
+        if !self.done_initialize {
+            return Err("initialization must be done before factorization");
+        }
+        let verb: i32 = if verbose { 1 } else { 0 };
+        unsafe {
+            let res = solver_umf_factorize(self.solver, verb);
+            if res != 0 {
+                return Err(self.handle_error_code(res));
+            }
+            self.done_factorize = true;
+        }
+        Ok(())
+    }
+
+    /// Computes the solution
+    pub fn solve(
+        &mut self,
+        x: &mut Vector,
+        rhs: &Vector,
+        verbose: bool,
+    ) -> Result<(), &'static str> {
+        if !self.done_factorize {
+            return Err("factorization must be done before solution");
+        }
+        if x.dim() != self.ndim || rhs.dim() != self.ndim {
+            return Err("x.ndim() and rhs.ndim() must equal the number of equations");
+        }
+        copy_vector(x, rhs)?;
+        let verb: i32 = if verbose { 1 } else { 0 };
+        unsafe {
+            let res = solver_umf_solve(self.solver, x.as_mut_data().as_mut_ptr(), verb);
+            if res != 0 {
+                return Err(self.handle_error_code(res));
+            }
+        }
+        Ok(())
+    }
+
+    /// Handles error code
+    fn handle_error_code(&self, err: i32) -> &'static str {
+        match err {
+            _ => "TODO",
+        }
+    }
+}
+
+impl Drop for SolverUMF {
+    /// Tells the c-code to release memory
+    fn drop(&mut self) {
+        unsafe {
+            drop_solver_umf(self.solver);
+        }
+    }
+}
+
+impl fmt::Display for SolverUMF {
+    /// Display some information about this solver
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "===========================\n\
+            SolverUMF\n\
+            ---------------------------\n\
+            ordering           = {}\n\
+            scaling            = {}\n\
+            done_initialize    = {}\n\
+            done_factorize     = {}\n\
+            ===========================",
+            self.ordering, self.scaling, self.done_initialize, self.done_factorize,
+        )?;
+        Ok(())
     }
 }
 

@@ -376,15 +376,15 @@ mod tests {
             Some("cannot open file")
         );
         assert_eq!(
-            read_matrix_market(&String::from("./data/sparse-matrix/bad_empty_file.mtx")).err(),
+            read_matrix_market(&String::from("./data/matrix_market/bad_empty_file.mtx")).err(),
             Some("file is empty")
         );
         assert_eq!(
-            read_matrix_market(&String::from("./data/sparse-matrix/bad_missing_data.mtx")).err(),
+            read_matrix_market(&String::from("./data/matrix_market/bad_missing_data.mtx")).err(),
             Some("not all triples (i,j,aij) have been found")
         );
         assert_eq!(
-            read_matrix_market(&String::from("./data/sparse-matrix/bad_many_lines.mtx")).err(),
+            read_matrix_market(&String::from("./data/matrix_market/bad_many_lines.mtx")).err(),
             Some("there are more (i,j,aij) triples than specified")
         );
         Ok(())
@@ -392,7 +392,7 @@ mod tests {
 
     #[test]
     fn read_matrix_market_works() -> Result<(), &'static str> {
-        let filepath = "./data/sparse-matrix/ok1.mtx".to_string();
+        let filepath = "./data/matrix_market/ok1.mtx".to_string();
         let trip = read_matrix_market(&filepath)?;
         assert!(trip.symmetric == false);
         assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 12, 12));
@@ -407,7 +407,7 @@ mod tests {
 
     #[test]
     fn read_matrix_market_sym_works() -> Result<(), &'static str> {
-        let filepath = "./data/sparse-matrix/ok2.mtx".to_string();
+        let filepath = "./data/matrix_market/ok2.mtx".to_string();
         let trip = read_matrix_market(&filepath)?;
         assert!(trip.symmetric == true);
         assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 15, 15));

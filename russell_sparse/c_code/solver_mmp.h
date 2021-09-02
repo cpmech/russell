@@ -91,20 +91,20 @@ int32_t solver_mmp_initialize(struct SolverMMP *solver,
 
     solver->data.irn = (MUMPS_INT *)malloc(nnz * sizeof(MUMPS_INT));
     if (solver->data.irn == NULL) {
-        return NULL_POINTER_ERROR;
+        return MALLOC_ERROR;
     }
 
     solver->data.jcn = (MUMPS_INT *)malloc(nnz * sizeof(MUMPS_INT));
     if (solver->data.jcn == NULL) {
         free(solver->data.irn);
-        return NULL_POINTER_ERROR;
+        return MALLOC_ERROR;
     }
 
     solver->data.a = (double *)malloc(nnz * sizeof(double));
     if (solver->data.a == NULL) {
         free(solver->data.jcn);
         free(solver->data.irn);
-        return NULL_POINTER_ERROR;
+        return MALLOC_ERROR;
     }
 
     int32_t p;

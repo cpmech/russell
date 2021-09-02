@@ -20,10 +20,14 @@ extern "C" {
         values_a: *const f64,
         ordering: i32,
         scaling: i32,
-        verbose: i32,
     ) -> i32;
     fn solver_umf_factorize(solver: *mut ExtSolverUMF, verbose: i32) -> i32;
-    fn solver_umf_solve(solver: *mut ExtSolverUMF, rhs: *mut f64, verbose: i32) -> i32;
+    fn solver_umf_solve(
+        solver: *mut ExtSolverUMF,
+        x: *mut f64,
+        rhs: *const f64,
+        verbose: i32,
+    ) -> i32;
 }
 
 /// Implements Davis' UMFPACK Solver
@@ -52,8 +56,8 @@ impl SolverUMF {
             }
             Ok(SolverUMF {
                 symmetric: sym,
-                ordering: code_mmp_ordering(EnumMmpOrdering::Auto),
-                scaling: code_mmp_scaling(EnumMmpScaling::Auto),
+                ordering: code_umf_ordering(EnumUmfOrdering::Default),
+                scaling: code_umf_scaling(EnumUmfScaling::Default),
                 done_initialize: false,
                 done_factorize: false,
                 ndim: 0,
@@ -63,23 +67,22 @@ impl SolverUMF {
     }
 
     /// Sets the method to compute a symmetric permutation (ordering)
-    pub fn set_ordering(&mut self, selection: EnumMmpOrdering) {
-        self.ordering = code_mmp_ordering(selection);
+    pub fn set_ordering(&mut self, selection: EnumUmfOrdering) {
+        self.ordering = code_umf_ordering(selection);
     }
 
     /// Sets the scaling strategy
-    pub fn set_scaling(&mut self, selection: EnumMmpScaling) {
-        self.scaling = code_mmp_scaling(selection);
+    pub fn set_scaling(&mut self, selection: EnumUmfScaling) {
+        self.scaling = code_umf_scaling(selection);
     }
 
     /// Initializes the solver
-    pub fn initialize(&mut self, trip: &SparseTriplet, verbose: bool) -> Result<(), &'static str> {
+    pub fn initialize(&mut self, trip: &SparseTriplet) -> Result<(), &'static str> {
         if trip.nrow != trip.ncol {
             return Err("the matrix represented by the triplet must be square");
         }
         let n = to_i32(trip.nrow);
         let nnz = to_i32(trip.pos);
-        let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
             if self.done_initialize {
                 drop_solver_umf(self.solver);
@@ -98,7 +101,6 @@ impl SolverUMF {
                 trip.values_a.as_ptr(),
                 self.ordering,
                 self.scaling,
-                verb,
             );
             if res != 0 {
                 return Err(self.handle_error_code(res));
@@ -138,10 +140,14 @@ impl SolverUMF {
         if x.dim() != self.ndim || rhs.dim() != self.ndim {
             return Err("x.ndim() and rhs.ndim() must equal the number of equations");
         }
-        copy_vector(x, rhs)?;
         let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
-            let res = solver_umf_solve(self.solver, x.as_mut_data().as_mut_ptr(), verb);
+            let res = solver_umf_solve(
+                self.solver,
+                x.as_mut_data().as_mut_ptr(),
+                rhs.as_data().as_ptr(),
+                verb,
+            );
             if res != 0 {
                 return Err(self.handle_error_code(res));
             }
@@ -152,7 +158,24 @@ impl SolverUMF {
     /// Handles error code
     fn handle_error_code(&self, err: i32) -> &'static str {
         match err {
-            _ => "TODO",
+            1 => return "Error(1): Matrix is singular",
+            2 => return "Error(2): The determinant is nonzero, but smaller than allowed",
+            3 => return "Error(3): The determinant is larger than allowed",
+            -1 => return "Error(-1): Not enough memory",
+            -3 => return "Error(-3): Invalid numeric object",
+            -4 => return "Error(-4): Invalid symbolic object",
+            -5 => return "Error(-5): Argument missing",
+            -6 => return "Error(-6): Nrow or ncol must be greater than zero",
+            -8 => return "Error(-8): Invalid matrix",
+            -11 => return "Error(-11): Different pattern",
+            -13 => return "Error(-13): Invalid system",
+            -15 => return "Error(-15): Invalid permutation",
+            -17 => return "Error(-17): Failed to save/load file",
+            -18 => return "Error(-18): Ordering method failed",
+            -911 => return "Error(-911): An internal error has occurred",
+            100000 => return "Error: c-code returned null pointer",
+            200000 => return "Error: c-code failed during memory allocation",
+            _ => return "Error: unknown error returned by SolverUMF (c-code)",
         }
     }
 }
@@ -196,6 +219,143 @@ mod tests {
     fn new_works() -> Result<(), &'static str> {
         let solver = SolverUMF::new(false)?;
         assert_eq!(solver.solver.is_null(), false);
+        Ok(())
+    }
+
+    #[test]
+    fn set_ordering() -> Result<(), &'static str> {
+        let mut solver = SolverUMF::new(false)?;
+        solver.set_ordering(EnumUmfOrdering::Metis);
+        assert_eq!(solver.ordering, 4);
+        Ok(())
+    }
+
+    #[test]
+    fn set_scaling_works() -> Result<(), &'static str> {
+        let mut solver = SolverUMF::new(false)?;
+        solver.set_scaling(EnumUmfScaling::Max);
+        assert_eq!(solver.scaling, 1);
+        Ok(())
+    }
+
+    #[test]
+    fn display_trait_works() -> Result<(), &'static str> {
+        let solver = SolverUMF::new(false)?;
+        let correct: &str = "===========================\n\
+                             SolverUMF\n\
+                             ---------------------------\n\
+                             ordering           = 3\n\
+                             scaling            = 0\n\
+                             done_initialize    = false\n\
+                             done_factorize     = false\n\
+                             ===========================";
+        assert_eq!(format!("{}", solver), correct);
+        Ok(())
+    }
+
+    #[test]
+    fn initialize_fails_on_rect_matrix() -> Result<(), &'static str> {
+        let mut solver = SolverUMF::new(false)?;
+        let trip_rect = SparseTriplet::new(3, 2, 1, false)?;
+        assert_eq!(
+            solver.initialize(&trip_rect),
+            Err("the matrix represented by the triplet must be square")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn initialize_works() -> Result<(), &'static str> {
+        let mut solver = SolverUMF::new(false)?;
+        let mut trip = SparseTriplet::new(2, 2, 2, false)?;
+        trip.put(0, 0, 1.0);
+        trip.put(1, 1, 1.0);
+        solver.initialize(&trip)?;
+        assert!(solver.done_initialize);
+        Ok(())
+    }
+
+    #[test]
+    fn factorize_fails_on_non_initialized() -> Result<(), &'static str> {
+        let mut solver = SolverUMF::new(false)?;
+        assert_eq!(
+            solver.factorize(false),
+            Err("initialization must be done before factorization")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn factorize_fails_on_singular_matrix() -> Result<(), &'static str> {
+        let mut solver = SolverUMF::new(false)?;
+        let mut trip = SparseTriplet::new(2, 2, 2, false)?;
+        trip.put(0, 0, 1.0);
+        trip.put(1, 1, 0.0);
+        solver.initialize(&trip)?;
+        assert_eq!(solver.factorize(false), Err("Error(1): Matrix is singular"));
+        Ok(())
+    }
+
+    #[test]
+    fn factorize_works() -> Result<(), &'static str> {
+        let mut solver = SolverUMF::new(false)?;
+        let mut trip = SparseTriplet::new(2, 2, 2, false)?;
+        trip.put(0, 0, 1.0);
+        trip.put(1, 1, 1.0);
+        solver.initialize(&trip)?;
+        solver.factorize(false)?;
+        assert!(solver.done_factorize);
+        Ok(())
+    }
+
+    #[test]
+    fn solve_fails_on_non_factorized() -> Result<(), &'static str> {
+        let mut solver = SolverUMF::new(false)?;
+        let mut trip = SparseTriplet::new(2, 2, 2, false)?;
+        trip.put(0, 0, 1.0);
+        trip.put(1, 1, 1.0);
+        solver.initialize(&trip)?;
+        let mut x = Vector::new(2);
+        let rhs = Vector::from(&[1.0, 1.0]);
+        assert_eq!(
+            solver.solve(&mut x, &rhs, false),
+            Err("factorization must be done before solution")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn solve_works() -> Result<(), &'static str> {
+        let mut solver = SolverUMF::new(false)?;
+
+        // allocate a square matrix
+        let mut trip = SparseTriplet::new(5, 5, 13, false)?;
+        trip.put(0, 0, 1.0); // << duplicated
+        trip.put(0, 0, 1.0); // << duplicated
+        trip.put(1, 0, 3.0);
+        trip.put(0, 1, 3.0);
+        trip.put(2, 1, -1.0);
+        trip.put(4, 1, 4.0);
+        trip.put(1, 2, 4.0);
+        trip.put(2, 2, -3.0);
+        trip.put(3, 2, 1.0);
+        trip.put(4, 2, 2.0);
+        trip.put(2, 3, 2.0);
+        trip.put(1, 4, 6.0);
+        trip.put(4, 4, 1.0);
+
+        // allocate x and rhs
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
+        let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+
+        // initialize, factorize, and solve
+        solver.initialize(&trip)?;
+        solver.factorize(false)?;
+        solver.solve(&mut x, &rhs, false)?;
+
+        // check
+        assert_vec_approx_eq!(x.as_data(), x_correct, 1e-14);
         Ok(())
     }
 }

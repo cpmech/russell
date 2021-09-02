@@ -130,7 +130,7 @@ fn test_solver_umf() {
         }
     };
 
-    match solver_umf.initialize(&trip, false) {
+    match solver_umf.initialize(&trip) {
         Err(e) => {
             println!("FAIL(initialize): {}", e);
             return;
@@ -179,7 +179,7 @@ fn test_solver_umf() {
 
     trip_singular.put(0, 0, 1.0);
     trip_singular.put(4, 4, 1.0);
-    match solver_umf.initialize(&trip_singular, false) {
+    match solver_umf.initialize(&trip_singular) {
         Err(e) => {
             println!("FAIL(initialize singular matrix): {}", e);
             return;

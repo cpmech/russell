@@ -281,6 +281,7 @@ impl SolverMMP {
             4 => "Error(+4): not used in current version",
             8 => "Error(+8): problem with the iterative refinement routine",
             100000 => return "Error: c-code returned null pointer",
+            200000 => return "Error: c-code failed during memory allocation",
             _ => return "Error: unknown error returned by SolverMMP (c-code)",
         }
     }

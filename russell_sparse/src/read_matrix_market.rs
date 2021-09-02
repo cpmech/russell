@@ -93,10 +93,11 @@ impl MatrixMarketData {
 
         let mut data = maybe_data.split_whitespace();
 
-        match data.next() {
-            Some(v) => self.m = v.parse().map_err(|_| "cannot parse number of rows")?,
-            None => return Err("cannot read number of rows"),
-        };
+        self.m = data
+            .next()
+            .unwrap() // must panic because no error expected here
+            .parse()
+            .map_err(|_| "cannot parse number of rows")?;
 
         match data.next() {
             Some(v) => self.n = v.parse().map_err(|_| "cannot parse number of columns")?,
@@ -128,10 +129,11 @@ impl MatrixMarketData {
 
         let mut data = maybe_data.split_whitespace();
 
-        match data.next() {
-            Some(v) => self.i = v.parse().map_err(|_| "cannot parse index i")?,
-            None => return Err("cannot read index i"),
-        };
+        self.i = data
+            .next()
+            .unwrap() // must panic because no error expected here
+            .parse()
+            .map_err(|_| "cannot parse index i")?;
 
         match data.next() {
             Some(v) => self.j = v.parse().map_err(|_| "cannot parse index j")?,
@@ -175,10 +177,7 @@ pub fn read_matrix_market(filepath: &String) -> Result<SparseTriplet, &'static s
 
     // read first line
     let header = match lines_iter.next() {
-        Some(v) => match v {
-            Ok(l) => l,
-            Err(_) => return Err("cannot read the first line"),
-        },
+        Some(v) => v.unwrap(), // must panic because no error expected here
         None => return Err("file is empty"),
     };
 
@@ -187,16 +186,9 @@ pub fn read_matrix_market(filepath: &String) -> Result<SparseTriplet, &'static s
 
     // read and parse dimensions
     loop {
-        match lines_iter.next() {
-            Some(v) => match v {
-                Ok(line) => {
-                    if data.parse_dimensions(&line)? {
-                        break;
-                    }
-                }
-                Err(_) => return Err("cannot find line with dimensions"),
-            },
-            None => break,
+        let line = lines_iter.next().unwrap().unwrap(); // must panic because no error expected here
+        if data.parse_dimensions(&line)? {
+            break;
         }
     }
 
@@ -211,14 +203,12 @@ pub fn read_matrix_market(filepath: &String) -> Result<SparseTriplet, &'static s
     // read and parse triples
     loop {
         match lines_iter.next() {
-            Some(v) => match v {
-                Ok(line) => {
-                    if data.parse_triple(&line)? {
-                        trip.put(data.i as usize, data.j as usize, data.aij);
-                    }
+            Some(v) => {
+                let line = v.unwrap(); // must panic because no error expected here
+                if data.parse_triple(&line)? {
+                    trip.put(data.i as usize, data.j as usize, data.aij);
                 }
-                Err(_) => return Err("cannot read line with (i,j,aij) triple"),
-            },
+            }
             None => break,
         }
     }

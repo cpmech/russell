@@ -4,7 +4,7 @@ use russell_sparse::*;
 fn main() {
     println!("\nRunning Mem Check\n");
 
-    let mut trip = match SparseTriplet::new(5, 5, 13) {
+    let mut trip = match SparseTriplet::new(5, 5, 13, false) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new triplet): {}", e);
@@ -73,7 +73,7 @@ fn main() {
     println!("\n{}", solver);
     println!("\nx =\n{}", x);
 
-    let mut trip_singular = match SparseTriplet::new(5, 5, 2) {
+    let mut trip_singular = match SparseTriplet::new(5, 5, 2, false) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new singular matrix): {}", e);

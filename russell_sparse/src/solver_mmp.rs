@@ -424,7 +424,7 @@ mod tests {
         let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
 
         // initialize fails on rectangular matrix
-        let trip_rect = SparseTriplet::new(3, 2, 1)?;
+        let trip_rect = SparseTriplet::new(3, 2, 1, false)?;
         assert_eq!(
             solver.initialize(&trip_rect, false),
             Err("the matrix represented by the triplet must be square")
@@ -437,7 +437,7 @@ mod tests {
         );
 
         // allocate a square matrix
-        let mut trip = SparseTriplet::new(5, 5, 13)?;
+        let mut trip = SparseTriplet::new(5, 5, 13, false)?;
         trip.put(0, 0, 1.0); // << duplicated
         trip.put(0, 0, 1.0); // << duplicated
         trip.put(1, 0, 3.0);
@@ -495,7 +495,7 @@ mod tests {
         assert_vec_approx_eq!(x_again.as_data(), x_correct, 1e-14);
 
         // factorize fails on singular matrix
-        let mut trip_singular = SparseTriplet::new(5, 5, 2)?;
+        let mut trip_singular = SparseTriplet::new(5, 5, 2, false)?;
         trip_singular.put(0, 0, 1.0);
         trip_singular.put(4, 4, 1.0);
         solver.initialize(&trip_singular, false)?;

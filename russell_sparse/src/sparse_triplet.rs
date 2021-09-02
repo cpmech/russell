@@ -32,7 +32,7 @@ impl SparseTriplet {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let trip = SparseTriplet::new(3, 3, 5)?;
+    /// let trip = SparseTriplet::new(3, 3, 5, false)?;
     /// let correct: &str = "===========================\n\
     ///                      SparseTriplet\n\
     ///                      ---------------------------\n\
@@ -46,7 +46,12 @@ impl SparseTriplet {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn new(nrow: usize, ncol: usize, max: usize) -> Result<Self, &'static str> {
+    pub fn new(
+        nrow: usize,
+        ncol: usize,
+        max: usize,
+        symmetric: bool,
+    ) -> Result<Self, &'static str> {
         if nrow == 0 || ncol == 0 || max == 0 {
             return Err("nrow, ncol, and max must all be greater than zero");
         }
@@ -55,7 +60,7 @@ impl SparseTriplet {
             ncol,
             pos: 0,
             max,
-            symmetric: false,
+            symmetric,
             indices_i: vec![0; max],
             indices_j: vec![0; max],
             values_a: vec![0.0; max],
@@ -69,7 +74,7 @@ impl SparseTriplet {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let mut trip = SparseTriplet::new(2, 2, 1)?;
+    /// let mut trip = SparseTriplet::new(2, 2, 1, false)?;
     /// trip.put(0, 0, 1.0);
     /// let correct: &str = "===========================\n\
     ///                      SparseTriplet\n\
@@ -103,7 +108,7 @@ impl SparseTriplet {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let trip = SparseTriplet::new(2, 2, 1)?;
+    /// let trip = SparseTriplet::new(2, 2, 1, false)?;
     /// assert_eq!(trip.dims(), (2, 2));
     /// # Ok(())
     /// # }
@@ -127,7 +132,7 @@ impl SparseTriplet {
     /// use russell_sparse::*;
     ///
     /// // define (4 x 4) sparse matrix with 6 non-zero values
-    /// let mut trip = SparseTriplet::new(4, 4, 6)?;
+    /// let mut trip = SparseTriplet::new(4, 4, 6, false)?;
     /// trip.put(0, 0, 1.0);
     /// trip.put(0, 1, 2.0);
     /// trip.put(1, 0, 3.0);
@@ -212,22 +217,22 @@ mod tests {
     #[test]
     fn new_fails_on_wrong_dims() {
         assert_eq!(
-            SparseTriplet::new(0, 3, 5).err(),
+            SparseTriplet::new(0, 3, 5, false).err(),
             Some("nrow, ncol, and max must all be greater than zero")
         );
         assert_eq!(
-            SparseTriplet::new(3, 0, 5).err(),
+            SparseTriplet::new(3, 0, 5, false).err(),
             Some("nrow, ncol, and max must all be greater than zero")
         );
         assert_eq!(
-            SparseTriplet::new(3, 3, 0).err(),
+            SparseTriplet::new(3, 3, 0, false).err(),
             Some("nrow, ncol, and max must all be greater than zero")
         );
     }
 
     #[test]
     fn new_works() -> Result<(), &'static str> {
-        let trip = SparseTriplet::new(3, 3, 5)?;
+        let trip = SparseTriplet::new(3, 3, 5, false)?;
         assert_eq!(trip.nrow, 3);
         assert_eq!(trip.ncol, 3);
         assert_eq!(trip.pos, 0);
@@ -238,7 +243,7 @@ mod tests {
 
     #[test]
     fn display_trait_works() -> Result<(), &'static str> {
-        let mut trip = SparseTriplet::new(3, 3, 1)?;
+        let mut trip = SparseTriplet::new(3, 3, 1, false)?;
         let correct_1: &str = "===========================\n\
                                SparseTriplet\n\
                                ---------------------------\n\
@@ -266,28 +271,28 @@ mod tests {
     #[test]
     #[should_panic]
     fn put_panics_on_wrong_values_1() {
-        let mut trip = SparseTriplet::new(1, 1, 1).unwrap();
+        let mut trip = SparseTriplet::new(1, 1, 1, false).unwrap();
         trip.put(1, 0, 0.0);
     }
 
     #[test]
     #[should_panic]
     fn put_panics_on_wrong_values_2() {
-        let mut trip = SparseTriplet::new(1, 1, 1).unwrap();
+        let mut trip = SparseTriplet::new(1, 1, 1, false).unwrap();
         trip.put(0, 1, 0.0);
     }
 
     #[test]
     #[should_panic]
     fn put_panics_on_wrong_values_3() {
-        let mut trip = SparseTriplet::new(1, 1, 1).unwrap();
+        let mut trip = SparseTriplet::new(1, 1, 1, false).unwrap();
         trip.put(0, 0, 0.0); // << all spots occupied
         trip.put(0, 0, 0.0);
     }
 
     #[test]
     fn put_works() -> Result<(), &'static str> {
-        let mut trip = SparseTriplet::new(3, 3, 5)?;
+        let mut trip = SparseTriplet::new(3, 3, 5, false)?;
         trip.put(0, 0, 1.0);
         assert_eq!(trip.pos, 1);
         trip.put(0, 1, 2.0);
@@ -303,14 +308,14 @@ mod tests {
 
     #[test]
     fn dims_works() -> Result<(), &'static str> {
-        let trip = SparseTriplet::new(3, 2, 1)?;
+        let trip = SparseTriplet::new(3, 2, 1, false)?;
         assert_eq!(trip.dims(), (3, 2));
         Ok(())
     }
 
     #[test]
     fn to_matrix_fails_on_wrong_dims() -> Result<(), &'static str> {
-        let trip = SparseTriplet::new(1, 1, 1)?;
+        let trip = SparseTriplet::new(1, 1, 1, false)?;
         let mut a_2x1 = Matrix::new(2, 1);
         let mut a_1x2 = Matrix::new(1, 2);
         assert_eq!(trip.to_matrix(&mut a_2x1), Err("wrong matrix dimensions"));
@@ -320,7 +325,7 @@ mod tests {
 
     #[test]
     fn to_matrix_works() -> Result<(), &'static str> {
-        let mut trip = SparseTriplet::new(3, 3, 5)?;
+        let mut trip = SparseTriplet::new(3, 3, 5, false)?;
         trip.put(0, 0, 1.0);
         trip.put(0, 1, 2.0);
         trip.put(1, 0, 3.0);

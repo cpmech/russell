@@ -154,6 +154,24 @@ mod tests {
     use super::*;
 
     #[test]
+    #[should_panic(expected = "invalid code")]
+    fn str_mmp_symmetry_panics_on_wrong_code() {
+        str_mmp_symmetry(123);
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid code")]
+    fn str_mmp_ordering_panics_on_wrong_code() {
+        str_mmp_ordering(123);
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid code")]
+    fn str_mmp_scaling_panics_on_wrong_code() {
+        str_mmp_scaling(123);
+    }
+
+    #[test]
     fn str_mmp_symmetry_works() {
         assert_eq!(str_mmp_symmetry(0), "No");
         assert_eq!(str_mmp_symmetry(1), "PosDef");
@@ -179,6 +197,18 @@ mod tests {
         assert_eq!(str_mmp_scaling(4), "RowCol");
         assert_eq!(str_mmp_scaling(7), "RowColIter");
         assert_eq!(str_mmp_scaling(8), "RowColRig");
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid code")]
+    fn str_umf_ordering_panics_on_wrong_code() {
+        str_umf_ordering(123);
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid code")]
+    fn str_umf_scaling_panics_on_wrong_code() {
+        str_umf_scaling(123);
     }
 
     #[test]

@@ -100,19 +100,6 @@ impl SolverMMP {
         }
     }
 
-    /// Returns the name of this solver
-    /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_sparse::*;
-    /// let solver = SolverMMP::new(EnumSymmetry::No, true)?;
-    /// assert_eq!(solver.name(), "SolverMMP");
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn name(&self) -> &'static str {
-        "SolverMMP"
-    }
-
     /// Sets the method to compute a symmetric permutation (ordering)
     pub fn set_ordering(&mut self, selection: EnumOrdering) {
         self.ordering = code_ordering(selection);
@@ -347,13 +334,6 @@ mod tests {
     fn new_works() -> Result<(), &'static str> {
         let solver = SolverMMP::new(EnumSymmetry::No, true)?;
         assert_eq!(solver.solver.is_null(), false);
-        Ok(())
-    }
-
-    #[test]
-    fn name_works() -> Result<(), &'static str> {
-        let solver = SolverMMP::new(EnumSymmetry::No, true)?;
-        assert_eq!(solver.name(), "SolverMMP");
         Ok(())
     }
 

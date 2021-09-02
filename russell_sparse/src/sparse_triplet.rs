@@ -8,7 +8,7 @@ pub struct SparseTriplet {
     pub(crate) ncol: usize,         // [i32] number of columns
     pub(crate) pos: usize,          // [i32] current index => nnz in the end
     pub(crate) max: usize,          // [i32] max allowed number of entries (may be > nnz)
-    pub(crate) symmetric: bool,     // symmetric matrix?, but WITHOUT both sides of the diagonal
+    pub(crate) symmetric: bool,     // general symmetric?, but WITHOUT one side of the diagonal
     pub(crate) indices_i: Vec<i32>, // [nnz] indices i
     pub(crate) indices_j: Vec<i32>, // [nnz] indices j
     pub(crate) values_a: Vec<f64>,  // [nnz] values a
@@ -24,9 +24,11 @@ impl SparseTriplet {
     ///
     /// # Input
     ///
-    /// `nrow` -- The number of rows of the sparse matrix
-    /// `ncol` -- The number of columns of the sparse matrix
-    /// `max` -- The maximum number fo non-zero values in the sparse matrix
+    /// * `nrow` -- The number of rows of the sparse matrix
+    /// * `ncol` -- The number of columns of the sparse matrix
+    /// * `max` -- The maximum number fo non-zero values in the sparse matrix
+    /// * `symmetric` -- This Triplet represents a **general** symmetric matrix,
+    ///                  thus one side of the diagonal **must not** be provided
     ///
     /// # Example
     /// ```

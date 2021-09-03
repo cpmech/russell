@@ -5,7 +5,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: cpmech/mumps_open
-      options: --security-opt seccomp=unconfined
     steps:
       - uses: actions/checkout@v2
       - name: Install OpenBLAS

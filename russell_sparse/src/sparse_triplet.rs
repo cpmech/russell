@@ -178,9 +178,10 @@ impl SparseTriplet {
         }
         let m_i32 = to_i32(m);
         let n_i32 = to_i32(n);
+        a.fill(0.0);
         for p in 0..self.pos {
             if self.indices_i[p] < m_i32 && self.indices_j[p] < n_i32 {
-                a.set(
+                a.plus_equal(
                     self.indices_i[p] as usize,
                     self.indices_j[p] as usize,
                     self.values_a[p],
@@ -350,6 +351,39 @@ mod tests {
         trip.to_matrix(&mut b)?;
         assert_eq!(b.get(0, 0), 1.0);
         assert_eq!(b.get(1, 0), 3.0);
+        Ok(())
+    }
+
+    #[test]
+    fn to_matrix_with_duplicates_works() -> Result<(), &'static str> {
+        // allocate a square matrix
+        let mut trip = SparseTriplet::new(5, 5, 13, false)?;
+        trip.put(0, 0, 1.0); // << duplicated
+        trip.put(0, 0, 1.0); // << duplicated
+        trip.put(1, 0, 3.0);
+        trip.put(0, 1, 3.0);
+        trip.put(2, 1, -1.0);
+        trip.put(4, 1, 4.0);
+        trip.put(1, 2, 4.0);
+        trip.put(2, 2, -3.0);
+        trip.put(3, 2, 1.0);
+        trip.put(4, 2, 2.0);
+        trip.put(2, 3, 2.0);
+        trip.put(1, 4, 6.0);
+        trip.put(4, 4, 1.0);
+
+        // print matrix
+        let (m, n) = trip.dims();
+        let mut a = Matrix::new(m, n);
+        trip.to_matrix(&mut a)?;
+        let correct = "┌                ┐\n\
+                            │  2  3  0  0  0 │\n\
+                            │  3  0  4  0  6 │\n\
+                            │  0 -1 -3  2  0 │\n\
+                            │  0  0  1  0  0 │\n\
+                            │  0  4  2  0  1 │\n\
+                            └                ┘";
+        assert_eq!(format!("{}", a), correct);
         Ok(())
     }
 }

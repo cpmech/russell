@@ -74,12 +74,12 @@ fn main() -> Result<(), &'static str> {
     let mut a = Matrix::new(m, n);
     trip.to_matrix(&mut a)?;
     let correct = "┌                ┐\n\
-                  │  2  3  0  0  0 │\n\
-                  │  3  0  4  0  6 │\n\
-                  │  0 -1 -3  2  0 │\n\
-                  │  0  0  1  0  0 │\n\
-                  │  0  4  2  0  1 │\n\
-                  └                ┘";
+                   │  2  3  0  0  0 │\n\
+                   │  3  0  4  0  6 │\n\
+                   │  0 -1 -3  2  0 │\n\
+                   │  0  0  1  0  0 │\n\
+                   │  0  4  2  0  1 │\n\
+                   └                ┘";
     assert_eq!(format!("{}", a), correct);
 
     // allocate x and rhs

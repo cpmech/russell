@@ -232,6 +232,27 @@ impl Matrix {
         dscal(n, alpha, &mut self.data, 1);
     }
 
+    /// Fills this matrix with a given value
+    ///
+    /// ```text
+    /// u[i][j] := value
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut a = Matrix::new(2, 2);
+    /// a.fill(8.8);
+    /// let correct = "┌         ┐\n\
+    ///                │ 8.8 8.8 │\n\
+    ///                │ 8.8 8.8 │\n\
+    ///                └         ┘";
+    /// assert_eq!(format!("{}", a), correct);
+    pub fn fill(&mut self, value: f64) {
+        self.data.iter_mut().map(|x| *x = value).count();
+    }
+
     /// Returns the (i,j) component
     ///
     /// # Example
@@ -562,6 +583,14 @@ mod tests {
         ])?;
         assert_vec_approx_eq!(a.data, correct, 1e-15);
         Ok(())
+    }
+
+    #[test]
+    fn fill_works() {
+        let mut a = Matrix::new(2, 2);
+        a.fill(7.7);
+        let correct = &[7.7, 7.7, 7.7, 7.7];
+        assert_vec_approx_eq!(a.data, correct, 1e-15);
     }
 
     #[test]

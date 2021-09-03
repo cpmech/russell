@@ -2,9 +2,10 @@ name: Test & Coverage
 on: [pull_request]
 jobs:
   test_and_coverage:
-    runs:
-      using: "docker"
-      image: "cpmech/mumps_open"
+    runs-on: ubuntu-latest
+    container:
+      image: cpmech/mumps_open
+      options: --security-opt seccomp=unconfined
     steps:
       - uses: actions/checkout@v2
       - name: Install OpenBLAS

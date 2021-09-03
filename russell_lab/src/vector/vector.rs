@@ -141,6 +141,28 @@ impl Vector {
         dscal(n_i32, alpha, &mut self.data, 1);
     }
 
+    /// Fills this vector with a given value
+    ///
+    /// ```text
+    /// u[i] := value
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut u = Vector::new(3);
+    /// u.fill(8.8);
+    /// let correct = "┌     ┐\n\
+    ///                │ 8.8 │\n\
+    ///                │ 8.8 │\n\
+    ///                │ 8.8 │\n\
+    ///                └     ┘";
+    /// assert_eq!(format!("{}", u), correct);
+    pub fn fill(&mut self, value: f64) {
+        self.data.iter_mut().map(|x| *x = value).count();
+    }
+
     /// Returns an access to the underlying data
     ///
     /// # Example
@@ -430,6 +452,14 @@ mod tests {
         let mut u = Vector::from(&[6.0, 9.0, 12.0]);
         u.scale(1.0 / 3.0);
         let correct = &[2.0, 3.0, 4.0];
+        assert_vec_approx_eq!(u.data, correct, 1e-15);
+    }
+
+    #[test]
+    fn fill_works() {
+        let mut u = Vector::from(&[6.0, 9.0, 12.0]);
+        u.fill(7.7);
+        let correct = &[7.7, 7.7, 7.7];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
     }
 

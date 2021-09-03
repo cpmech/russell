@@ -12,16 +12,18 @@ Documentation:
 
 ## Installation
 
-Install OpenBLAS:
+Install the following Debian packages:
 
 ```bash
 sudo apt-get install \
     libopenblas-dev \
     liblapacke-dev \
-    libmumps-seq-dev
+    libsuitesparse-dev
 ```
 
-Add this to your Cargo.toml:
+Compile and install the MUMPS solver using the procedure explained in https://github.com/cpmech/script-install-mumps
+
+Add this to your Cargo.toml (replace the right version):
 
 ```toml
 [dependencies]

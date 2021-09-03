@@ -2,6 +2,7 @@
 name = "russell_sparse"
 version = "0.1.0"
 edition = "2018"
+license = "MIT"
 description = "Sparse matrix tools and solvers"
 homepage = "https://github.com/cpmech/russell"
 repository = "https://github.com/cpmech/russell"

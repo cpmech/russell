@@ -29,12 +29,12 @@ extern "C" {
     fn solver_mmp_solve(solver: *mut ExtSolverMMP, rhs: *mut f64, verbose: i32) -> i32;
 }
 
-/// Implements the French (Mu-M-P) Solver
+/// Implements the NON-THREAD-SAFE (Mu-M-P) Solver
 ///
 /// # Warning
 ///
 /// This solver cannot be used in multiple threads, because
-/// the Fortran implementation of Mu-M-P-S is not thread safe.
+/// the Fortran implementation of Mu-M-P-S is **not thread safe.**
 pub struct SolverMMP {
     symmetry: i32,             // symmetry code
     ordering: i32,             // symmetric permutation (ordering). ICNTL(7)
@@ -102,31 +102,178 @@ impl SolverMMP {
     }
 
     /// Sets the method to compute a symmetric permutation (ordering)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
+    /// solver.set_ordering(EnumMmpOrdering::Pord);
+    /// let correct: &str = "==============================\n\
+    ///                      SolverMMP\n\
+    ///                      ------------------------------\n\
+    ///                      symmetry           = No\n\
+    ///                      ordering           = Pord\n\
+    ///                      scaling            = Auto\n\
+    ///                      pct_inc_workspace  = 100\n\
+    ///                      max_work_memory    = 0\n\
+    ///                      openmp_num_threads = 1\n\
+    ///                      done_initialize    = false\n\
+    ///                      done_factorize     = false\n\
+    ///                      ==============================";
+    /// assert_eq!(format!("{}", solver), correct);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn set_ordering(&mut self, selection: EnumMmpOrdering) {
         self.ordering = selection as i32;
     }
 
     /// Sets the scaling strategy
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
+    /// solver.set_scaling(EnumMmpScaling::RowColIter);
+    /// let correct: &str = "==============================\n\
+    ///                      SolverMMP\n\
+    ///                      ------------------------------\n\
+    ///                      symmetry           = No\n\
+    ///                      ordering           = Metis\n\
+    ///                      scaling            = RowColIter\n\
+    ///                      pct_inc_workspace  = 100\n\
+    ///                      max_work_memory    = 0\n\
+    ///                      openmp_num_threads = 1\n\
+    ///                      done_initialize    = false\n\
+    ///                      done_factorize     = false\n\
+    ///                      ==============================";
+    /// assert_eq!(format!("{}", solver), correct);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn set_scaling(&mut self, selection: EnumMmpScaling) {
         self.scaling = selection as i32;
     }
 
     /// Sets the percentage increase in the estimated working space
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
+    /// solver.set_pct_inc_workspace(25);
+    /// let correct: &str = "==============================\n\
+    ///                      SolverMMP\n\
+    ///                      ------------------------------\n\
+    ///                      symmetry           = No\n\
+    ///                      ordering           = Metis\n\
+    ///                      scaling            = Auto\n\
+    ///                      pct_inc_workspace  = 25\n\
+    ///                      max_work_memory    = 0\n\
+    ///                      openmp_num_threads = 1\n\
+    ///                      done_initialize    = false\n\
+    ///                      done_factorize     = false\n\
+    ///                      ==============================";
+    /// assert_eq!(format!("{}", solver), correct);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn set_pct_inc_workspace(&mut self, value: usize) {
         self.pct_inc_workspace = to_i32(value);
     }
 
     /// Sets the maximum size of the working memory in mega bytes
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
+    /// solver.set_max_work_memory(1234);
+    /// let correct: &str = "==============================\n\
+    ///                      SolverMMP\n\
+    ///                      ------------------------------\n\
+    ///                      symmetry           = No\n\
+    ///                      ordering           = Metis\n\
+    ///                      scaling            = Auto\n\
+    ///                      pct_inc_workspace  = 100\n\
+    ///                      max_work_memory    = 1234\n\
+    ///                      openmp_num_threads = 1\n\
+    ///                      done_initialize    = false\n\
+    ///                      done_factorize     = false\n\
+    ///                      ==============================";
+    /// assert_eq!(format!("{}", solver), correct);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn set_max_work_memory(&mut self, value: usize) {
         self.max_work_memory = to_i32(value);
     }
 
     /// Sets the number of OpenMP threads
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
+    /// solver.set_openmp_num_threads(4);
+    /// let correct: &str = "==============================\n\
+    ///                      SolverMMP\n\
+    ///                      ------------------------------\n\
+    ///                      symmetry           = No\n\
+    ///                      ordering           = Metis\n\
+    ///                      scaling            = Auto\n\
+    ///                      pct_inc_workspace  = 100\n\
+    ///                      max_work_memory    = 0\n\
+    ///                      openmp_num_threads = 4\n\
+    ///                      done_initialize    = false\n\
+    ///                      done_factorize     = false\n\
+    ///                      ==============================";
+    /// assert_eq!(format!("{}", solver), correct);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn set_openmp_num_threads(&mut self, value: usize) {
         self.openmp_num_threads = to_i32(value);
     }
 
     /// Initializes the solver
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
+    /// let mut trip = SparseTriplet::new(2, 2, 2, false)?;
+    /// trip.put(0, 0, 1.0);
+    /// trip.put(1, 1, 1.0);
+    /// solver.initialize(&trip, false)?;
+    /// let correct: &str = "==============================\n\
+    ///                      SolverMMP\n\
+    ///                      ------------------------------\n\
+    ///                      symmetry           = No\n\
+    ///                      ordering           = Metis\n\
+    ///                      scaling            = Auto\n\
+    ///                      pct_inc_workspace  = 100\n\
+    ///                      max_work_memory    = 0\n\
+    ///                      openmp_num_threads = 1\n\
+    ///                      done_initialize    = true\n\
+    ///                      done_factorize     = false\n\
+    ///                      ==============================";
+    /// assert_eq!(format!("{}", solver), correct);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn initialize(&mut self, trip: &SparseTriplet, verbose: bool) -> Result<(), &'static str> {
         if trip.nrow != trip.ncol {
             return Err("the matrix represented by the triplet must be square");
@@ -167,6 +314,34 @@ impl SolverMMP {
     }
 
     /// Performs the factorization
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
+    /// let mut trip = SparseTriplet::new(2, 2, 2, false)?;
+    /// trip.put(0, 0, 1.0);
+    /// trip.put(1, 1, 1.0);
+    /// solver.initialize(&trip, false)?;
+    /// solver.factorize(false)?;
+    /// let correct: &str = "==============================\n\
+    ///                      SolverMMP\n\
+    ///                      ------------------------------\n\
+    ///                      symmetry           = No\n\
+    ///                      ordering           = Metis\n\
+    ///                      scaling            = Auto\n\
+    ///                      pct_inc_workspace  = 100\n\
+    ///                      max_work_memory    = 0\n\
+    ///                      openmp_num_threads = 1\n\
+    ///                      done_initialize    = true\n\
+    ///                      done_factorize     = true\n\
+    ///                      ==============================";
+    /// assert_eq!(format!("{}", solver), correct);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn factorize(&mut self, verbose: bool) -> Result<(), &'static str> {
         if !self.done_initialize {
             return Err("initialization must be done before factorization");
@@ -183,6 +358,65 @@ impl SolverMMP {
     }
 
     /// Computes the solution
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_lab::*;
+    /// use russell_sparse::*;
+    ///
+    /// // allocate a square matrix
+    /// let mut trip = SparseTriplet::new(5, 5, 13, false)?;
+    /// trip.put(0, 0, 1.0); // << duplicated
+    /// trip.put(0, 0, 1.0); // << duplicated
+    /// trip.put(1, 0, 3.0);
+    /// trip.put(0, 1, 3.0);
+    /// trip.put(2, 1, -1.0);
+    /// trip.put(4, 1, 4.0);
+    /// trip.put(1, 2, 4.0);
+    /// trip.put(2, 2, -3.0);
+    /// trip.put(3, 2, 1.0);
+    /// trip.put(4, 2, 2.0);
+    /// trip.put(2, 3, 2.0);
+    /// trip.put(1, 4, 6.0);
+    /// trip.put(4, 4, 1.0);
+    ///
+    /// // print matrix
+    /// let (m, n) = trip.dims();
+    /// let mut a = Matrix::new(m, n);
+    /// trip.to_matrix(&mut a)?;
+    /// let correct = "┌                ┐\n\
+    ///                │  2  3  0  0  0 │\n\
+    ///                │  3  0  4  0  6 │\n\
+    ///                │  0 -1 -3  2  0 │\n\
+    ///                │  0  0  1  0  0 │\n\
+    ///                │  0  4  2  0  1 │\n\
+    ///                └                ┘";
+    /// assert_eq!(format!("{}", a), correct);
+    ///
+    /// // allocate x and rhs
+    /// let mut x = Vector::new(5);
+    /// let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
+    /// let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+    ///
+    /// // initialize, factorize, and solve
+    /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
+    /// solver.initialize(&trip, false)?;
+    /// solver.factorize(false)?;
+    /// solver.solve(&mut x, &rhs, false)?;
+    /// solver.solve(&mut x, &rhs, false)?;
+    /// let correct = "┌          ┐\n\
+    ///                │ 1.000000 │\n\
+    ///                │ 2.000000 │\n\
+    ///                │ 3.000000 │\n\
+    ///                │ 4.000000 │\n\
+    ///                │ 5.000000 │\n\
+    ///                └          ┘";
+    /// assert_eq!(format!("{:.6}", x), correct);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn solve(
         &mut self,
         x: &mut Vector,

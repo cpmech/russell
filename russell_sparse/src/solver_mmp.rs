@@ -250,7 +250,7 @@ impl SolverMMP {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```no_run
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
     /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
@@ -317,7 +317,7 @@ impl SolverMMP {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```no_run
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
     /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
@@ -361,7 +361,7 @@ impl SolverMMP {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```no_run
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_lab::*;
     /// use russell_sparse::*;

@@ -13,6 +13,8 @@ jobs:
       - name: Install Rust
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
+          export PATH=$PATH:$HOME/.cargo/bin
+          source $HOME/.cargo/env
           rustup toolchain install nightly --component llvm-tools-preview
       - name: Run tests
         run: |

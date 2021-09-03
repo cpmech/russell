@@ -94,12 +94,12 @@ fn main() -> Result<(), &'static str> {
     solver.solve(&mut x, &rhs, false)?;
     solver.solve(&mut x, &rhs, false)?;
     let correct = "┌          ┐\n\
-                  │ 1.000000 │\n\
-                  │ 2.000000 │\n\
-                  │ 3.000000 │\n\
-                  │ 4.000000 │\n\
-                  │ 5.000000 │\n\
-                  └          ┘";
+                   │ 1.000000 │\n\
+                   │ 2.000000 │\n\
+                   │ 3.000000 │\n\
+                   │ 4.000000 │\n\
+                   │ 5.000000 │\n\
+                   └          ┘";
     assert_eq!(format!("{:.6}", x), correct);
     Ok(())
 }

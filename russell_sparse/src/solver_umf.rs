@@ -286,7 +286,6 @@ impl SolverUMF {
     /// solver.initialize(&trip)?;
     /// solver.factorize(false)?;
     /// solver.solve(&mut x, &rhs, false)?;
-    /// solver.solve(&mut x, &rhs, false)?;
     /// let correct = "┌          ┐\n\
     ///                │ 1.000000 │\n\
     ///                │ 2.000000 │\n\

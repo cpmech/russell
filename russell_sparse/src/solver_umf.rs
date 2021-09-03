@@ -86,17 +86,83 @@ impl SolverUMF {
         }
     }
 
-    /// Sets the method to compute a symmetric permutation (ordering)
+    /// Sets the ordering strategy
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let mut solver = SolverUMF::new(false)?;
+    /// solver.set_ordering(EnumUmfOrdering::Best);
+    /// let correct: &str = "==============================\n\
+    ///                      SolverUMF\n\
+    ///                      ------------------------------\n\
+    ///                      symmetric          = false\n\
+    ///                      ordering           = Best\n\
+    ///                      scaling            = Default\n\
+    ///                      done_initialize    = false\n\
+    ///                      done_factorize     = false\n\
+    ///                      ==============================";
+    /// assert_eq!(format!("{}", solver), correct);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn set_ordering(&mut self, selection: EnumUmfOrdering) {
         self.ordering = selection as i32;
     }
 
     /// Sets the scaling strategy
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let mut solver = SolverUMF::new(false)?;
+    /// solver.set_scaling(EnumUmfScaling::No);
+    /// let correct: &str = "==============================\n\
+    ///                      SolverUMF\n\
+    ///                      ------------------------------\n\
+    ///                      symmetric          = false\n\
+    ///                      ordering           = Default\n\
+    ///                      scaling            = No\n\
+    ///                      done_initialize    = false\n\
+    ///                      done_factorize     = false\n\
+    ///                      ==============================";
+    /// assert_eq!(format!("{}", solver), correct);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn set_scaling(&mut self, selection: EnumUmfScaling) {
         self.scaling = selection as i32;
     }
 
     /// Initializes the solver
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let mut solver = SolverUMF::new(false)?;
+    /// let mut trip = SparseTriplet::new(2, 2, 2, false)?;
+    /// trip.put(0, 0, 1.0);
+    /// trip.put(1, 1, 1.0);
+    /// solver.initialize(&trip)?;
+    /// let correct: &str = "==============================\n\
+    ///                      SolverUMF\n\
+    ///                      ------------------------------\n\
+    ///                      symmetric          = false\n\
+    ///                      ordering           = Default\n\
+    ///                      scaling            = Default\n\
+    ///                      done_initialize    = true\n\
+    ///                      done_factorize     = false\n\
+    ///                      ==============================";
+    /// assert_eq!(format!("{}", solver), correct);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn initialize(&mut self, trip: &SparseTriplet) -> Result<(), &'static str> {
         if trip.nrow != trip.ncol {
             return Err("the matrix represented by the triplet must be square");
@@ -132,6 +198,31 @@ impl SolverUMF {
     }
 
     /// Performs the factorization
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let mut solver = SolverUMF::new(false)?;
+    /// let mut trip = SparseTriplet::new(2, 2, 2, false)?;
+    /// trip.put(0, 0, 1.0);
+    /// trip.put(1, 1, 1.0);
+    /// solver.initialize(&trip)?;
+    /// solver.factorize(false)?;
+    /// let correct: &str = "==============================\n\
+    ///                      SolverUMF\n\
+    ///                      ------------------------------\n\
+    ///                      symmetric          = false\n\
+    ///                      ordering           = Default\n\
+    ///                      scaling            = Default\n\
+    ///                      done_initialize    = true\n\
+    ///                      done_factorize     = true\n\
+    ///                      ==============================";
+    /// assert_eq!(format!("{}", solver), correct);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn factorize(&mut self, verbose: bool) -> Result<(), &'static str> {
         if !self.done_initialize {
             return Err("initialization must be done before factorization");
@@ -148,6 +239,65 @@ impl SolverUMF {
     }
 
     /// Computes the solution
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_lab::*;
+    /// use russell_sparse::*;
+    ///
+    /// // allocate a square matrix
+    /// let mut trip = SparseTriplet::new(5, 5, 13, false)?;
+    /// trip.put(0, 0, 1.0); // << duplicated
+    /// trip.put(0, 0, 1.0); // << duplicated
+    /// trip.put(1, 0, 3.0);
+    /// trip.put(0, 1, 3.0);
+    /// trip.put(2, 1, -1.0);
+    /// trip.put(4, 1, 4.0);
+    /// trip.put(1, 2, 4.0);
+    /// trip.put(2, 2, -3.0);
+    /// trip.put(3, 2, 1.0);
+    /// trip.put(4, 2, 2.0);
+    /// trip.put(2, 3, 2.0);
+    /// trip.put(1, 4, 6.0);
+    /// trip.put(4, 4, 1.0);
+    ///
+    /// // print matrix
+    /// let (m, n) = trip.dims();
+    /// let mut a = Matrix::new(m, n);
+    /// trip.to_matrix(&mut a)?;
+    /// let correct = "┌                ┐\n\
+    ///                │  2  3  0  0  0 │\n\
+    ///                │  3  0  4  0  6 │\n\
+    ///                │  0 -1 -3  2  0 │\n\
+    ///                │  0  0  1  0  0 │\n\
+    ///                │  0  4  2  0  1 │\n\
+    ///                └                ┘";
+    /// assert_eq!(format!("{}", a), correct);
+    ///
+    /// // allocate x and rhs
+    /// let mut x = Vector::new(5);
+    /// let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
+    /// let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+    ///
+    /// // initialize, factorize, and solve
+    /// let mut solver = SolverUMF::new(false)?;
+    /// solver.initialize(&trip)?;
+    /// solver.factorize(false)?;
+    /// solver.solve(&mut x, &rhs, false)?;
+    /// solver.solve(&mut x, &rhs, false)?;
+    /// let correct = "┌          ┐\n\
+    ///                │ 1.000000 │\n\
+    ///                │ 2.000000 │\n\
+    ///                │ 3.000000 │\n\
+    ///                │ 4.000000 │\n\
+    ///                │ 5.000000 │\n\
+    ///                └          ┘";
+    /// assert_eq!(format!("{:.6}", x), correct);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn solve(
         &mut self,
         x: &mut Vector,

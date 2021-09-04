@@ -41,17 +41,7 @@ pub fn outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) -> Result<(), &
     let m_i32: i32 = to_i32(m);
     let n_i32: i32 = to_i32(n);
     let lda_i32 = m_i32;
-    dger(
-        m_i32,
-        n_i32,
-        alpha,
-        &u.data,
-        1,
-        &v.data,
-        1,
-        &mut a.data,
-        lda_i32,
-    );
+    dger(m_i32, n_i32, alpha, &u.data, 1, &v.data, 1, &mut a.data, lda_i32);
     Ok(())
 }
 

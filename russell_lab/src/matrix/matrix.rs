@@ -502,10 +502,7 @@ mod tests {
             &[4.0, 5.0],
             &[7.0, 8.0, 8.0],
         ]);
-        assert_eq!(
-            res.err(),
-            Some("all rows must have the same number of columns")
-        );
+        assert_eq!(res.err(), Some("all rows must have the same number of columns"));
     }
 
     #[test]

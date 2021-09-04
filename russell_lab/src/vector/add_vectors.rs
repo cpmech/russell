@@ -28,13 +28,7 @@ const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
 /// # Ok(())
 /// # }
 /// ```
-pub fn add_vectors(
-    w: &mut Vector,
-    alpha: f64,
-    u: &Vector,
-    beta: f64,
-    v: &Vector,
-) -> Result<(), &'static str> {
+pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector) -> Result<(), &'static str> {
     let n = w.data.len();
     if u.data.len() != n || v.data.len() != n {
         return Err("vectors have wrong dimensions");

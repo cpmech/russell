@@ -55,9 +55,6 @@ mod tests {
     fn update_vector_fails_on_wrong_dimensions() {
         let u = Vector::new(4);
         let mut v = Vector::new(3);
-        assert_eq!(
-            update_vector(&mut v, 1.0, &u),
-            Err("vectors have wrong dimensions")
-        );
+        assert_eq!(update_vector(&mut v, 1.0, &u), Err("vectors have wrong dimensions"));
     }
 }

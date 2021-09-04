@@ -159,26 +159,17 @@ pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, &'static str> {
             return Err("cannot compute inverse due to zero determinant");
         }
 
-        ai.data[0 + 0 * m] =
-            (a.data[1 + 1 * m] * a.data[2 + 2 * m] - a.data[1 + 2 * m] * a.data[2 + 1 * m]) / det;
-        ai.data[0 + 1 * m] =
-            (a.data[0 + 2 * m] * a.data[2 + 1 * m] - a.data[0 + 1 * m] * a.data[2 + 2 * m]) / det;
-        ai.data[0 + 2 * m] =
-            (a.data[0 + 1 * m] * a.data[1 + 2 * m] - a.data[0 + 2 * m] * a.data[1 + 1 * m]) / det;
+        ai.data[0 + 0 * m] = (a.data[1 + 1 * m] * a.data[2 + 2 * m] - a.data[1 + 2 * m] * a.data[2 + 1 * m]) / det;
+        ai.data[0 + 1 * m] = (a.data[0 + 2 * m] * a.data[2 + 1 * m] - a.data[0 + 1 * m] * a.data[2 + 2 * m]) / det;
+        ai.data[0 + 2 * m] = (a.data[0 + 1 * m] * a.data[1 + 2 * m] - a.data[0 + 2 * m] * a.data[1 + 1 * m]) / det;
 
-        ai.data[1 + 0 * m] =
-            (a.data[1 + 2 * m] * a.data[2 + 0 * m] - a.data[1 + 0 * m] * a.data[2 + 2 * m]) / det;
-        ai.data[1 + 1 * m] =
-            (a.data[0 + 0 * m] * a.data[2 + 2 * m] - a.data[0 + 2 * m] * a.data[2 + 0 * m]) / det;
-        ai.data[1 + 2 * m] =
-            (a.data[0 + 2 * m] * a.data[1 + 0 * m] - a.data[0 + 0 * m] * a.data[1 + 2 * m]) / det;
+        ai.data[1 + 0 * m] = (a.data[1 + 2 * m] * a.data[2 + 0 * m] - a.data[1 + 0 * m] * a.data[2 + 2 * m]) / det;
+        ai.data[1 + 1 * m] = (a.data[0 + 0 * m] * a.data[2 + 2 * m] - a.data[0 + 2 * m] * a.data[2 + 0 * m]) / det;
+        ai.data[1 + 2 * m] = (a.data[0 + 2 * m] * a.data[1 + 0 * m] - a.data[0 + 0 * m] * a.data[1 + 2 * m]) / det;
 
-        ai.data[2 + 0 * m] =
-            (a.data[1 + 0 * m] * a.data[2 + 1 * m] - a.data[1 + 1 * m] * a.data[2 + 0 * m]) / det;
-        ai.data[2 + 1 * m] =
-            (a.data[0 + 1 * m] * a.data[2 + 0 * m] - a.data[0 + 0 * m] * a.data[2 + 1 * m]) / det;
-        ai.data[2 + 2 * m] =
-            (a.data[0 + 0 * m] * a.data[1 + 1 * m] - a.data[0 + 1 * m] * a.data[1 + 0 * m]) / det;
+        ai.data[2 + 0 * m] = (a.data[1 + 0 * m] * a.data[2 + 1 * m] - a.data[1 + 1 * m] * a.data[2 + 0 * m]) / det;
+        ai.data[2 + 1 * m] = (a.data[0 + 1 * m] * a.data[2 + 0 * m] - a.data[0 + 0 * m] * a.data[2 + 1 * m]) / det;
+        ai.data[2 + 2 * m] = (a.data[0 + 0 * m] * a.data[1 + 1 * m] - a.data[0 + 1 * m] * a.data[1 + 0 * m]) / det;
 
         return Ok(det);
     }
@@ -237,10 +228,7 @@ mod tests {
         let mut a_2x2 = Matrix::new(2, 2);
         let mut ai_1x2 = Matrix::new(1, 2);
         let mut ai_2x1 = Matrix::new(2, 1);
-        assert_eq!(
-            inverse(&mut ai_1x2, &mut a_2x3),
-            Err("matrix must be square")
-        );
+        assert_eq!(inverse(&mut ai_1x2, &mut a_2x3), Err("matrix must be square"));
         assert_eq!(
             inverse(&mut ai_1x2, &mut a_2x2),
             Err("[ai] matrix has wrong dimensions")

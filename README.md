@@ -85,7 +85,6 @@ fn main() -> Result<(), &'static str> {
     // allocate x and rhs
     let mut x = Vector::new(5);
     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
-    let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
 
     // initialize, factorize, and solve
     let mut solver = SolverUMF::new(false)?;

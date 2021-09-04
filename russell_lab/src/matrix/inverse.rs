@@ -405,7 +405,7 @@ mod tests {
             &[-1.1177465024312745e+00,  1.3261729250546601e+00,  2.1243473793622566e-01,  1.1258168958554866e+00, -1.3325766717243535e+00],
             &[ 7.9976941733073770e-01, -8.9457712572131853e-01, -1.4770432850264653e-01, -8.0791149448632715e-01,  9.2990525800169743e-01],
         ])?;
-        assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-14);
+        assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-13);
         let identity = Matrix::identity(5);
         let a_copy = Matrix::from(data)?;
         let a_ai = get_a_times_ai(&a_copy, &ai);

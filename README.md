@@ -48,9 +48,10 @@ russell_tensor = "*"
 ### Solving a sparse linear system
 
 ```rust
+use russell_lab::*;
+use russell_sparse::*;
+
 fn main() -> Result<(), &'static str> {
-    use russell_lab::*;
-    use russell_sparse::*;
 
     // allocate a square matrix
     let mut trip = SparseTriplet::new(5, 5, 13, false)?;

@@ -3,19 +3,13 @@ on: [pull_request]
 jobs:
   test_and_coverage:
     runs-on: ubuntu-latest
-    container:
-      image: cpmech/mumps_open
     steps:
       - uses: actions/checkout@v2
-      - name: Fix PATH
+      - name: Install OpenBLAS
         run: |
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-      - name: Install Dependencies
-        run: |
-          sudo apt-get update -y && sudo apt-get install -y libopenblas-dev liblapacke-dev libsuitesparse-dev
+          sudo apt-get update -y && sudo apt-get install -y liblapacke-dev libmumps-seq-dev libopenblas-dev libsuitesparse-dev
       - name: Install Rust
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
           rustup toolchain install nightly --component llvm-tools-preview
       - name: Run tests
         run: |

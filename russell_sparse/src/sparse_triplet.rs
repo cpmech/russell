@@ -125,6 +125,22 @@ impl SparseTriplet {
         (self.nrow, self.ncol)
     }
 
+    /// Returns the value of the symmetric flag
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let trip = SparseTriplet::new(2, 2, 1, true)?;
+    /// assert_eq!(trip.is_symmetric(), true);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn is_symmetric(&self) -> bool {
+        self.symmetric
+    }
+
     /// Converts the triples data to a matrix, up to a limit
     ///
     /// # Input
@@ -319,6 +335,13 @@ mod tests {
     fn dims_works() -> Result<(), &'static str> {
         let trip = SparseTriplet::new(3, 2, 1, false)?;
         assert_eq!(trip.dims(), (3, 2));
+        Ok(())
+    }
+
+    #[test]
+    fn is_symmetric_works() -> Result<(), &'static str> {
+        let trip = SparseTriplet::new(3, 2, 1, true)?;
+        assert_eq!(trip.is_symmetric(), true);
         Ok(())
     }
 

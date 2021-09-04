@@ -4,7 +4,7 @@
       "name": "Linux",
       "includePath": [
         "${default}",
-        "/usr/local/include/mumps",
+        "/usr/include",
         "/usr/include/suitesparse"
       ],
       "defines": [],

@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Install OpenBLAS
+      - name: Install Libraries
         run: |
           sudo apt-get update -y && sudo apt-get install -y liblapacke-dev libmumps-seq-dev libopenblas-dev libsuitesparse-dev
       - name: Install Rust

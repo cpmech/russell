@@ -17,7 +17,7 @@ const NS_PER_HOUR: u128 = 60 * NS_PER_MINUTE;
 ///
 /// ```
 /// use russell_lab::*;
-/// let res = format_nanoseconds(3723000000000);
+/// let res = format_nanoseconds(3_723_000_000_000);
 /// assert_eq!(res, "1h2m3s");
 /// ```
 pub fn format_nanoseconds(nanoseconds: u128) -> String {
@@ -77,67 +77,67 @@ mod tests {
         assert_eq!(res, "250ns");
 
         // 2500 (2.5e3) => 2.5µs
-        res = format_nanoseconds(2500);
+        res = format_nanoseconds(2_500);
         assert_eq!(res, "2.5µs");
 
         // 25,000 (2.5e4) = 25µs
-        res = format_nanoseconds(25000);
+        res = format_nanoseconds(25_000);
         assert_eq!(res, "25µs");
 
         // 250,000 (2.5e5) = 250µs
-        res = format_nanoseconds(250000);
+        res = format_nanoseconds(250_000);
         assert_eq!(res, "250µs");
 
         // 2,500,000 (2.5e6) = 2.5ms
-        res = format_nanoseconds(2500000);
+        res = format_nanoseconds(2_500_000);
         assert_eq!(res, "2.5ms");
 
         // 25,000,000 (2.5e7) = 25ms
-        res = format_nanoseconds(25000000);
+        res = format_nanoseconds(25_000_000);
         assert_eq!(res, "25ms");
 
         // 250,000,000 (2.5e8) = 250ms
-        res = format_nanoseconds(250000000);
+        res = format_nanoseconds(250_000_000);
         assert_eq!(res, "250ms");
 
         // 2,500,000,000 (2.5e9) = 2.5s
-        res = format_nanoseconds(2500000000);
+        res = format_nanoseconds(2_500_000_000);
         assert_eq!(res, "2.5s");
 
         // 25,000,000,000 (2.5e10) = 25s
-        res = format_nanoseconds(25000000000);
+        res = format_nanoseconds(25_000_000_000);
         assert_eq!(res, "25s");
 
         // 250,000,000,000 (2.5e11) = 250s = 4m10s
-        res = format_nanoseconds(250000000000);
+        res = format_nanoseconds(250_000_000_000);
         assert_eq!(res, "4m10s");
 
-        // 2,500,000,000,000 (2.5e12) = 2500s = 41m40s
-        res = format_nanoseconds(2500000000000);
+        // 2,500,000,000,000 (2.5e12) = 2,500s = 41m40s
+        res = format_nanoseconds(2_500_000_000_000);
         assert_eq!(res, "41m40s");
 
-        // 25,000,000,000,000 (2.5e13) = 25000s = 416m40s = 6h56m40s
-        res = format_nanoseconds(25000000000000);
+        // 25,000,000,000,000 (2.5e13) = 25,000s = 416m40s = 6h56m40s
+        res = format_nanoseconds(25_000_000_000_000);
         assert_eq!(res, "6h56m40s");
 
-        // 250,000,000,000,000 (2.5e14) = 250000s = 4166m40s = 69h26m40s
-        res = format_nanoseconds(250000000000000);
+        // 250,000,000,000,000 (2.5e14) = 250,000s = 4166m40s = 69h26m40s
+        res = format_nanoseconds(250_000_000_000_000);
         assert_eq!(res, "69h26m40s");
 
         // 60,000,000,000 (60e9, 6e10) = 1m
-        res = format_nanoseconds(60000000000);
+        res = format_nanoseconds(60_000_000_000);
         assert_eq!(res, "1m");
 
         // 120,000,000,000 (120e9, 1.2e11) = 2m
-        res = format_nanoseconds(120000000000);
+        res = format_nanoseconds(120_000_000_000);
         assert_eq!(res, "2m");
 
         // 3,600,000,000,000 (3.6e12) = 1h
-        res = format_nanoseconds(3600000000000);
+        res = format_nanoseconds(3_600_000_000_000);
         assert_eq!(res, "1h");
 
         // 3,723,000,000,000 = 1h2m3s
-        res = format_nanoseconds(3723000000000);
+        res = format_nanoseconds(3_723_000_000_000);
         assert_eq!(res, "1h2m3s");
     }
 }

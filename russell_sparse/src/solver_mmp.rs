@@ -66,7 +66,7 @@ impl SolverMMP {
     ///                      SolverMMP\n\
     ///                      ------------------------------\n\
     ///                      symmetry           = No\n\
-    ///                      ordering           = Metis\n\
+    ///                      ordering           = Auto\n\
     ///                      scaling            = Auto\n\
     ///                      pct_inc_workspace  = 100\n\
     ///                      max_work_memory    = 0\n\
@@ -88,7 +88,7 @@ impl SolverMMP {
             }
             Ok(SolverMMP {
                 symmetry: sym,
-                ordering: EnumMmpOrdering::Metis as i32,
+                ordering: EnumMmpOrdering::Auto as i32,
                 scaling: EnumMmpScaling::Auto as i32,
                 pct_inc_workspace: 100,
                 max_work_memory: 0, // auto
@@ -143,7 +143,7 @@ impl SolverMMP {
     ///                      SolverMMP\n\
     ///                      ------------------------------\n\
     ///                      symmetry           = No\n\
-    ///                      ordering           = Metis\n\
+    ///                      ordering           = Auto\n\
     ///                      scaling            = RowColIter\n\
     ///                      pct_inc_workspace  = 100\n\
     ///                      max_work_memory    = 0\n\
@@ -172,7 +172,7 @@ impl SolverMMP {
     ///                      SolverMMP\n\
     ///                      ------------------------------\n\
     ///                      symmetry           = No\n\
-    ///                      ordering           = Metis\n\
+    ///                      ordering           = Auto\n\
     ///                      scaling            = Auto\n\
     ///                      pct_inc_workspace  = 25\n\
     ///                      max_work_memory    = 0\n\
@@ -201,7 +201,7 @@ impl SolverMMP {
     ///                      SolverMMP\n\
     ///                      ------------------------------\n\
     ///                      symmetry           = No\n\
-    ///                      ordering           = Metis\n\
+    ///                      ordering           = Auto\n\
     ///                      scaling            = Auto\n\
     ///                      pct_inc_workspace  = 100\n\
     ///                      max_work_memory    = 1234\n\
@@ -230,7 +230,7 @@ impl SolverMMP {
     ///                      SolverMMP\n\
     ///                      ------------------------------\n\
     ///                      symmetry           = No\n\
-    ///                      ordering           = Metis\n\
+    ///                      ordering           = Auto\n\
     ///                      scaling            = Auto\n\
     ///                      pct_inc_workspace  = 100\n\
     ///                      max_work_memory    = 0\n\
@@ -262,7 +262,7 @@ impl SolverMMP {
     ///                      SolverMMP\n\
     ///                      ------------------------------\n\
     ///                      symmetry           = No\n\
-    ///                      ordering           = Metis\n\
+    ///                      ordering           = Auto\n\
     ///                      scaling            = Auto\n\
     ///                      pct_inc_workspace  = 100\n\
     ///                      max_work_memory    = 0\n\
@@ -330,7 +330,7 @@ impl SolverMMP {
     ///                      SolverMMP\n\
     ///                      ------------------------------\n\
     ///                      symmetry           = No\n\
-    ///                      ordering           = Metis\n\
+    ///                      ordering           = Auto\n\
     ///                      scaling            = Auto\n\
     ///                      pct_inc_workspace  = 100\n\
     ///                      max_work_memory    = 0\n\
@@ -620,7 +620,7 @@ mod tests {
                              SolverMMP\n\
                              ------------------------------\n\
                              symmetry           = No\n\
-                             ordering           = Metis\n\
+                             ordering           = Auto\n\
                              scaling            = Auto\n\
                              pct_inc_workspace  = 100\n\
                              max_work_memory    = 0\n\

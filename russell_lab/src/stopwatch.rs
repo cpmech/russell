@@ -2,7 +2,7 @@ use super::format_nanoseconds;
 use std::fmt;
 use std::time::Instant;
 
-/// Stopwatch assists in measuring computation time
+/// Assists in measuring computation time
 pub struct Stopwatch {
     label: &'static str,
     initial_time: Instant,
@@ -10,11 +10,15 @@ pub struct Stopwatch {
 }
 
 impl Stopwatch {
-    /// Creates a new Stopwatch
+    /// Creates and starts a new Stopwatch
     ///
     /// # Input
     ///
-    /// `label` -- is used when displaying the elapsed time
+    /// `label` -- used when displaying the elapsed time
+    ///
+    /// # Note
+    ///
+    /// The method `stop` (or `stop_and_reset`) must be called to measure the elapsed time. Until then, the displayed elapsed time is zero, even though the stopwatch has already started.
     ///
     /// # Example
     ///
@@ -32,7 +36,11 @@ impl Stopwatch {
         }
     }
 
-    /// Stops the stopwatch to measure a duration time
+    /// Stops the stopwatch and returns the elapsed time
+    ///
+    /// # Output
+    ///
+    /// Returns the elapsed time
     ///
     /// # Example
     ///
@@ -42,15 +50,19 @@ impl Stopwatch {
     /// use std::time::Duration;
     /// let mut sw = Stopwatch::new("");
     /// sleep(Duration::new(0, 1_000));
-    /// sw.stop();
-    /// // println!("{}", sw); will show something like:
+    /// let elapsed = sw.stop();
+    /// assert!(elapsed > 0);
+    /// // println!("{}", sw); // will show something like:
     /// // 63.099µs
     /// ```
-    pub fn stop(&mut self) {
+    pub fn stop(&mut self) -> u128 {
         self.final_time = Instant::now();
+        self.final_time.duration_since(self.initial_time).as_nanos()
     }
 
     /// Resets the stopwatch to zero elapsed time
+    ///
+    /// # Example
     ///
     /// ```
     /// use russell_lab::*;
@@ -66,6 +78,38 @@ impl Stopwatch {
         let now = Instant::now();
         self.initial_time = now;
         self.final_time = now;
+    }
+
+    /// Stops the stopwatch and resets it to zero elapsed time
+    ///
+    /// # Output
+    ///
+    /// Returns the elapsed time
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// use std::thread::sleep;
+    /// use std::time::Duration;
+    /// let mut sw = Stopwatch::new("current = ");
+    /// sleep(Duration::new(0, 1_000));
+    /// let elapsed = sw.stop_and_reset();
+    /// // println!("{}", format_nanoseconds(elapsed)); // will show something like
+    /// // current = 63.099µs
+    /// assert!(elapsed > 0);
+    /// assert_eq!(format!("{}", sw), "current = 0ns");
+    /// ```
+    pub fn stop_and_reset(&mut self) -> u128 {
+        // calc elapsed
+        self.final_time = Instant::now();
+        let elapsed = self.final_time.duration_since(self.initial_time).as_nanos();
+
+        // reset
+        let now = Instant::now();
+        self.initial_time = now;
+        self.final_time = now;
+        elapsed
     }
 }
 
@@ -97,17 +141,35 @@ mod tests {
     fn stop_works() {
         let mut sw = Stopwatch::new("");
         sleep(Duration::new(0, 1_000));
-        sw.stop();
-        let delta = sw.final_time.duration_since(sw.initial_time);
-        assert!(delta.as_nanos() > 0);
+        let elapsed = sw.stop();
+        assert!(elapsed > 0);
     }
 
     #[test]
     fn reset_works() {
         let mut sw = Stopwatch::new("");
+
         sleep(Duration::new(0, 1_000));
-        sw.stop();
+        let mut elapsed = sw.stop();
+        assert!(elapsed > 0);
+
         sw.reset();
+        let delta = sw.final_time.duration_since(sw.initial_time);
+        assert_eq!(delta.as_nanos(), 0);
+
+        sleep(Duration::new(0, 1_000));
+        elapsed = sw.stop();
+        assert!(elapsed > 0);
+    }
+
+    #[test]
+    fn stop_and_reset_works() {
+        let mut sw = Stopwatch::new("");
+
+        sleep(Duration::new(0, 1_000));
+        let elapsed = sw.stop_and_reset();
+        assert!(elapsed > 0);
+
         let delta = sw.final_time.duration_since(sw.initial_time);
         assert_eq!(delta.as_nanos(), 0);
     }

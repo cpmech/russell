@@ -119,8 +119,8 @@ int32_t solver_mmp_initialize(struct SolverMMP *solver,
 
     solver->data.ICNTL(5) = MUMPS_ICNTL5_ASSEMBLED_MATRIX;
     solver->data.ICNTL(6) = MUMPS_ICNTL6_PERMUT_AUTO;
-    solver->data.ICNTL(7) = ordering;
-    solver->data.ICNTL(8) = scaling;
+    solver->data.ICNTL(7) = MMP_ORDERING[ordering];
+    solver->data.ICNTL(8) = MMP_SCALING[scaling];
     solver->data.ICNTL(14) = pct_inc_workspace;
     solver->data.ICNTL(16) = openmp_num_threads;
     solver->data.ICNTL(18) = MUMPS_ICNTL18_CENTRALIZED;

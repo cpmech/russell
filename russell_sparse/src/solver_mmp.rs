@@ -35,20 +35,15 @@ extern "C" {
 ///
 /// This solver cannot be used in multiple threads, because
 /// the Fortran implementation of Mu-M-P-S is **not thread safe.**
-pub struct SolverMMP {
-    symmetry: i32,             // symmetry code
-    ordering: i32,             // symmetric permutation (ordering). ICNTL(7)
-    scaling: i32,              // scaling strategy. ICNTL(8)
-    pct_inc_workspace: i32,    // % increase in the estimated working space. ICNTL(14)
-    max_work_memory: i32,      // max size of the working memory in mega bytes. ICNTL(23)
-    openmp_num_threads: i32,   // number of OpenMP threads. ICNTL(16)
+pub struct SolverMMP<'a> {
+    config: &'a ConfigSolver,  // configuration
     done_initialize: bool,     // initialization completed
     done_factorize: bool,      // factorization completed
     ndim: usize,               // number of equations == nrow(a) where a*x=rhs
     solver: *mut ExtSolverMMP, // data allocated by the c-code
 }
 
-impl SolverMMP {
+impl<'a> SolverMMP<'a> {
     /// Creates a new solver
     ///
     /// # Input
@@ -61,188 +56,30 @@ impl SolverMMP {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let solver = SolverMMP::new(EnumSymmetry::No, true)?;
-    /// let correct: &str = "==============================\n\
-    ///                      SolverMMP\n\
-    ///                      ------------------------------\n\
-    ///                      symmetry           = No\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = Auto\n\
-    ///                      pct_inc_workspace  = 100\n\
-    ///                      max_work_memory    = 0\n\
-    ///                      openmp_num_threads = 1\n\
-    ///                      done_initialize    = false\n\
-    ///                      done_factorize     = false\n\
-    ///                      ==============================";
+    /// let config = ConfigSolver::new();
+    /// let solver = SolverMMP::new(&config)?;
+    /// let correct: &str = "solver_kind     = MMP\n\
+    ///                      done_initialize = false\n\
+    ///                      done_factorize  = false\n\
+    ///                      ndim            = 0\n";
     /// assert_eq!(format!("{}", solver), correct);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn new(symmetry: EnumSymmetry, verbose: bool) -> Result<Self, &'static str> {
-        let sym = symmetry as i32;
+    pub fn new(config: &'a ConfigSolver) -> Result<Self, &'static str> {
         unsafe {
-            let solver = new_solver_mmp(sym);
+            let solver = new_solver_mmp(config.symmetry);
             if solver.is_null() {
                 return Err("c-code failed to allocate SolverMMP");
             }
             Ok(SolverMMP {
-                symmetry: sym,
-                ordering: EnumOrdering::Auto as i32,
-                scaling: EnumScaling::Auto as i32,
-                pct_inc_workspace: 100,
-                max_work_memory: 0, // auto
-                openmp_num_threads: 1,
+                config,
                 done_initialize: false,
                 done_factorize: false,
                 ndim: 0,
                 solver,
             })
         }
-    }
-
-    /// Sets the method to compute a symmetric permutation (ordering)
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_sparse::*;
-    /// let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
-    /// solver.set_ordering(EnumOrdering::Pord);
-    /// let correct: &str = "==============================\n\
-    ///                      SolverMMP\n\
-    ///                      ------------------------------\n\
-    ///                      symmetry           = No\n\
-    ///                      ordering           = Pord (MMP-only, otherwise Auto)\n\
-    ///                      scaling            = Auto\n\
-    ///                      pct_inc_workspace  = 100\n\
-    ///                      max_work_memory    = 0\n\
-    ///                      openmp_num_threads = 1\n\
-    ///                      done_initialize    = false\n\
-    ///                      done_factorize     = false\n\
-    ///                      ==============================";
-    /// assert_eq!(format!("{}", solver), correct);
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn set_ordering(&mut self, selection: EnumOrdering) {
-        self.ordering = selection as i32;
-    }
-
-    /// Sets the scaling strategy
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_sparse::*;
-    /// let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
-    /// solver.set_scaling(EnumScaling::RowColIter);
-    /// let correct: &str = "==============================\n\
-    ///                      SolverMMP\n\
-    ///                      ------------------------------\n\
-    ///                      symmetry           = No\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = RowColIter (MMP-only, otherwise Auto)\n\
-    ///                      pct_inc_workspace  = 100\n\
-    ///                      max_work_memory    = 0\n\
-    ///                      openmp_num_threads = 1\n\
-    ///                      done_initialize    = false\n\
-    ///                      done_factorize     = false\n\
-    ///                      ==============================";
-    /// assert_eq!(format!("{}", solver), correct);
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn set_scaling(&mut self, selection: EnumScaling) {
-        self.scaling = selection as i32;
-    }
-
-    /// Sets the percentage increase in the estimated working space
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_sparse::*;
-    /// let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
-    /// solver.set_pct_inc_workspace(25);
-    /// let correct: &str = "==============================\n\
-    ///                      SolverMMP\n\
-    ///                      ------------------------------\n\
-    ///                      symmetry           = No\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = Auto\n\
-    ///                      pct_inc_workspace  = 25\n\
-    ///                      max_work_memory    = 0\n\
-    ///                      openmp_num_threads = 1\n\
-    ///                      done_initialize    = false\n\
-    ///                      done_factorize     = false\n\
-    ///                      ==============================";
-    /// assert_eq!(format!("{}", solver), correct);
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn set_pct_inc_workspace(&mut self, value: usize) {
-        self.pct_inc_workspace = to_i32(value);
-    }
-
-    /// Sets the maximum size of the working memory in mega bytes
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_sparse::*;
-    /// let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
-    /// solver.set_max_work_memory(1234);
-    /// let correct: &str = "==============================\n\
-    ///                      SolverMMP\n\
-    ///                      ------------------------------\n\
-    ///                      symmetry           = No\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = Auto\n\
-    ///                      pct_inc_workspace  = 100\n\
-    ///                      max_work_memory    = 1234\n\
-    ///                      openmp_num_threads = 1\n\
-    ///                      done_initialize    = false\n\
-    ///                      done_factorize     = false\n\
-    ///                      ==============================";
-    /// assert_eq!(format!("{}", solver), correct);
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn set_max_work_memory(&mut self, value: usize) {
-        self.max_work_memory = to_i32(value);
-    }
-
-    /// Sets the number of OpenMP threads
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_sparse::*;
-    /// let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
-    /// solver.set_openmp_num_threads(4);
-    /// let correct: &str = "==============================\n\
-    ///                      SolverMMP\n\
-    ///                      ------------------------------\n\
-    ///                      symmetry           = No\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = Auto\n\
-    ///                      pct_inc_workspace  = 100\n\
-    ///                      max_work_memory    = 0\n\
-    ///                      openmp_num_threads = 4\n\
-    ///                      done_initialize    = false\n\
-    ///                      done_factorize     = false\n\
-    ///                      ==============================";
-    /// assert_eq!(format!("{}", solver), correct);
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn set_openmp_num_threads(&mut self, value: usize) {
-        self.openmp_num_threads = to_i32(value);
     }
 
     /// Initializes the solver
@@ -252,38 +89,30 @@ impl SolverMMP {
     /// ```no_run
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
+    /// let config = ConfigSolver::new();
+    /// let mut solver = SolverMMP::new(&config)?;
     /// let mut trip = SparseTriplet::new(2, 2, 2, false)?;
     /// trip.put(0, 0, 1.0);
     /// trip.put(1, 1, 1.0);
-    /// solver.initialize(&trip, false)?;
-    /// let correct: &str = "==============================\n\
-    ///                      SolverMMP\n\
-    ///                      ------------------------------\n\
-    ///                      symmetry           = No\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = Auto\n\
-    ///                      pct_inc_workspace  = 100\n\
-    ///                      max_work_memory    = 0\n\
-    ///                      openmp_num_threads = 1\n\
-    ///                      done_initialize    = true\n\
-    ///                      done_factorize     = false\n\
-    ///                      ==============================";
+    /// solver.initialize(&trip)?;
+    /// let correct: &str = "solver_kind     = MMP\n\
+    ///                      done_initialize = true\n\
+    ///                      done_factorize  = false\n\
+    ///                      ndim            = 2\n";
     /// assert_eq!(format!("{}", solver), correct);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn initialize(&mut self, trip: &SparseTriplet, verbose: bool) -> Result<(), &'static str> {
+    pub fn initialize(&mut self, trip: &SparseTriplet) -> Result<(), &'static str> {
         if trip.nrow != trip.ncol {
             return Err("the matrix represented by the triplet must be square");
         }
         let n = to_i32(trip.nrow);
         let nnz = to_i32(trip.pos);
-        let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
             if self.done_initialize {
                 drop_solver_mmp(self.solver);
-                let solver = new_solver_mmp(self.symmetry);
+                let solver = new_solver_mmp(self.config.symmetry);
                 if solver.is_null() {
                     return Err("c-code failed to allocate SolverMMP");
                 }
@@ -296,12 +125,12 @@ impl SolverMMP {
                 trip.indices_i.as_ptr(),
                 trip.indices_j.as_ptr(),
                 trip.values_a.as_ptr(),
-                self.ordering,
-                self.scaling,
-                self.pct_inc_workspace,
-                self.max_work_memory,
-                self.openmp_num_threads,
-                verb,
+                self.config.ordering,
+                self.config.scaling,
+                self.config.pct_inc_workspace,
+                self.config.max_work_memory,
+                self.config.openmp_num_threads,
+                self.config.verbose,
             );
             if res != 0 {
                 return Err(self.handle_error_code(res));
@@ -319,35 +148,27 @@ impl SolverMMP {
     /// ```no_run
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
+    /// let config = ConfigSolver::new();
+    /// let mut solver = SolverMMP::new(&config)?;
     /// let mut trip = SparseTriplet::new(2, 2, 2, false)?;
     /// trip.put(0, 0, 1.0);
     /// trip.put(1, 1, 1.0);
-    /// solver.initialize(&trip, false)?;
-    /// solver.factorize(false)?;
-    /// let correct: &str = "==============================\n\
-    ///                      SolverMMP\n\
-    ///                      ------------------------------\n\
-    ///                      symmetry           = No\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = Auto\n\
-    ///                      pct_inc_workspace  = 100\n\
-    ///                      max_work_memory    = 0\n\
-    ///                      openmp_num_threads = 1\n\
-    ///                      done_initialize    = true\n\
-    ///                      done_factorize     = true\n\
-    ///                      ==============================";
+    /// solver.initialize(&trip)?;
+    /// solver.factorize()?;
+    /// let correct: &str = "solver_kind     = MMP\n\
+    ///                      done_initialize = true\n\
+    ///                      done_factorize  = true\n\
+    ///                      ndim            = 2\n";
     /// assert_eq!(format!("{}", solver), correct);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn factorize(&mut self, verbose: bool) -> Result<(), &'static str> {
+    pub fn factorize(&mut self) -> Result<(), &'static str> {
         if !self.done_initialize {
             return Err("initialization must be done before factorization");
         }
-        let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
-            let res = solver_mmp_factorize(self.solver, verb);
+            let res = solver_mmp_factorize(self.solver, self.config.verbose);
             if res != 0 {
                 return Err(self.handle_error_code(res));
             }
@@ -400,10 +221,11 @@ impl SolverMMP {
     /// let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
     ///
     /// // initialize, factorize, and solve
-    /// let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
-    /// solver.initialize(&trip, false)?;
-    /// solver.factorize(false)?;
-    /// solver.solve(&mut x, &rhs, false)?;
+    /// let config = ConfigSolver::new();
+    /// let mut solver = SolverMMP::new(&config)?;
+    /// solver.initialize(&trip)?;
+    /// solver.factorize()?;
+    /// solver.solve(&mut x, &rhs)?;
     /// let correct = "┌          ┐\n\
     ///                │ 1.000000 │\n\
     ///                │ 2.000000 │\n\
@@ -415,7 +237,7 @@ impl SolverMMP {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool) -> Result<(), &'static str> {
+    pub fn solve(&mut self, x: &mut Vector, rhs: &Vector) -> Result<(), &'static str> {
         if !self.done_factorize {
             return Err("factorization must be done before solution");
         }
@@ -423,9 +245,8 @@ impl SolverMMP {
             return Err("x.ndim() and rhs.ndim() must equal the number of equations");
         }
         copy_vector(x, rhs)?;
-        let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
-            let res = solver_mmp_solve(self.solver, x.as_mut_data().as_mut_ptr(), verb);
+            let res = solver_mmp_solve(self.solver, x.as_mut_data().as_mut_ptr(), self.config.verbose);
             if res != 0 {
                 return Err(self.handle_error_code(res));
             }
@@ -515,7 +336,7 @@ impl SolverMMP {
     }
 }
 
-impl Drop for SolverMMP {
+impl<'a> Drop for SolverMMP<'a> {
     /// Tells the c-code to release memory
     fn drop(&mut self) {
         unsafe {
@@ -524,30 +345,15 @@ impl Drop for SolverMMP {
     }
 }
 
-impl fmt::Display for SolverMMP {
+impl<'a> fmt::Display for SolverMMP<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "==============================\n\
-            SolverMMP\n\
-            ------------------------------\n\
-            symmetry           = {}\n\
-            ordering           = {}\n\
-            scaling            = {}\n\
-            pct_inc_workspace  = {}\n\
-            max_work_memory    = {}\n\
-            openmp_num_threads = {}\n\
-            done_initialize    = {}\n\
-            done_factorize     = {}\n\
-            ==============================",
-            str_enum_symmetry(self.symmetry),
-            str_enum_ordering(self.ordering),
-            str_enum_scaling(self.scaling),
-            self.pct_inc_workspace,
-            self.max_work_memory,
-            self.openmp_num_threads,
-            self.done_initialize,
-            self.done_factorize,
+            "solver_kind     = MMP\n\
+             done_initialize = {}\n\
+             done_factorize  = {}\n\
+             ndim            = {}\n",
+            self.done_initialize, self.done_factorize, self.ndim,
         )?;
         Ok(())
     }
@@ -562,66 +368,20 @@ mod tests {
 
     #[test]
     fn new_works() -> Result<(), &'static str> {
-        let solver = SolverMMP::new(EnumSymmetry::No, true)?;
+        let config = ConfigSolver::new();
+        let solver = SolverMMP::new(&config)?;
         assert_eq!(solver.solver.is_null(), false);
         Ok(())
     }
 
     #[test]
-    fn set_ordering() -> Result<(), &'static str> {
-        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
-        solver.set_ordering(EnumOrdering::Amf);
-        assert_eq!(solver.ordering, 1);
-        Ok(())
-    }
-
-    #[test]
-    fn set_scaling_works() -> Result<(), &'static str> {
-        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
-        solver.set_scaling(EnumScaling::RowCol);
-        assert_eq!(solver.scaling, 5);
-        Ok(())
-    }
-
-    #[test]
-    fn set_pct_inc_workspace_works() -> Result<(), &'static str> {
-        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
-        solver.set_pct_inc_workspace(15);
-        assert_eq!(solver.pct_inc_workspace, 15);
-        Ok(())
-    }
-
-    #[test]
-    fn set_max_work_memory_works() -> Result<(), &'static str> {
-        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
-        solver.set_max_work_memory(500);
-        assert_eq!(solver.max_work_memory, 500);
-        Ok(())
-    }
-
-    #[test]
-    fn set_openmp_num_threads_works() -> Result<(), &'static str> {
-        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
-        solver.set_openmp_num_threads(3);
-        assert_eq!(solver.openmp_num_threads, 3);
-        Ok(())
-    }
-
-    #[test]
     fn display_trait_works() -> Result<(), &'static str> {
-        let solver = SolverMMP::new(EnumSymmetry::No, true)?;
-        let correct: &str = "==============================\n\
-                             SolverMMP\n\
-                             ------------------------------\n\
-                             symmetry           = No\n\
-                             ordering           = Auto\n\
-                             scaling            = Auto\n\
-                             pct_inc_workspace  = 100\n\
-                             max_work_memory    = 0\n\
-                             openmp_num_threads = 1\n\
-                             done_initialize    = false\n\
-                             done_factorize     = false\n\
-                             ==============================";
+        let config = ConfigSolver::new();
+        let solver = SolverMMP::new(&config)?;
+        let correct: &str = "solver_kind     = MMP\n\
+                             done_initialize = false\n\
+                             done_factorize  = false\n\
+                             ndim            = 0\n";
         assert_eq!(format!("{}", solver), correct);
         Ok(())
     }
@@ -632,18 +392,19 @@ mod tests {
     #[test]
     fn solver_mmp_behaves_as_expected() -> Result<(), &'static str> {
         // allocate a new solver
-        let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
+        let config = ConfigSolver::new();
+        let mut solver = SolverMMP::new(&config)?;
 
         // initialize fails on rectangular matrix
         let trip_rect = SparseTriplet::new(3, 2, 1, false)?;
         assert_eq!(
-            solver.initialize(&trip_rect, false),
+            solver.initialize(&trip_rect),
             Err("the matrix represented by the triplet must be square")
         );
 
         // factorize fails on non-initialized solver
         assert_eq!(
-            solver.factorize(false),
+            solver.factorize(),
             Err("initialization must be done before factorization")
         );
 
@@ -669,48 +430,48 @@ mod tests {
         let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
 
         // initialize works
-        solver.initialize(&trip, false)?;
+        solver.initialize(&trip)?;
         assert!(solver.done_initialize);
 
         // solve fails on non-factorized system
         assert_eq!(
-            solver.solve(&mut x, &rhs, false),
+            solver.solve(&mut x, &rhs),
             Err("factorization must be done before solution")
         );
 
         // factorize works
-        solver.factorize(false)?;
+        solver.factorize()?;
         assert!(solver.done_factorize);
 
         // solve fails on wrong x vector
         let mut x_wrong = Vector::new(3);
         assert_eq!(
-            solver.solve(&mut x_wrong, &rhs, false),
+            solver.solve(&mut x_wrong, &rhs),
             Err("x.ndim() and rhs.ndim() must equal the number of equations")
         );
 
         // solve fails on wrong rhs vector
         let rhs_wrong = Vector::from(&[1.0]);
         assert_eq!(
-            solver.solve(&mut x, &rhs_wrong, false),
+            solver.solve(&mut x, &rhs_wrong),
             Err("x.ndim() and rhs.ndim() must equal the number of equations")
         );
 
         // solve works
-        solver.solve(&mut x, &rhs, false)?;
+        solver.solve(&mut x, &rhs)?;
         assert_vec_approx_eq!(x.as_data(), x_correct, 1e-14);
 
         // calling solve again works
         let mut x_again = Vector::new(5);
-        solver.solve(&mut x_again, &rhs, false)?;
+        solver.solve(&mut x_again, &rhs)?;
         assert_vec_approx_eq!(x_again.as_data(), x_correct, 1e-14);
 
         // factorize fails on singular matrix
         let mut trip_singular = SparseTriplet::new(5, 5, 2, false)?;
         trip_singular.put(0, 0, 1.0);
         trip_singular.put(4, 4, 1.0);
-        solver.initialize(&trip_singular, false)?;
-        assert_eq!(solver.factorize(false), Err("Error(-10): numerically singular matrix"));
+        solver.initialize(&trip_singular)?;
+        assert_eq!(solver.factorize(), Err("Error(-10): numerically singular matrix"));
 
         // done
         Ok(())
@@ -719,7 +480,8 @@ mod tests {
     #[test]
     fn handle_error_code_works() -> Result<(), &'static str> {
         let default = "Error: unknown error returned by SolverMMP (c-code)";
-        let solver = SolverMMP::new(EnumSymmetry::No, false)?;
+        let config = ConfigSolver::new();
+        let solver = SolverMMP::new(&config)?;
         for c in 1..57 {
             let res = solver.handle_error_code(-c);
             assert!(res.len() > 0);

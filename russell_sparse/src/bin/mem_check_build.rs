@@ -26,7 +26,7 @@ fn test_solver_mmp() {
     trip.put(1, 4, 6.0);
     trip.put(4, 4, 1.0);
 
-    let mut solver_mmp = match SolverMMP::new(EnumMmpSymmetry::No, true) {
+    let mut solver_mmp = match SolverMMP::new(EnumSymmetry::No, true) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new solver): {}", e);
@@ -198,6 +198,6 @@ fn test_solver_umf() {
 fn main() {
     println!("\nRunning Mem Check\n");
     test_solver_mmp();
-    test_solver_umf();
+    // test_solver_umf();
     println!("\nDone\n");
 }

@@ -22,12 +22,7 @@ extern "C" {
         scaling: i32,
     ) -> i32;
     fn solver_umf_factorize(solver: *mut ExtSolverUMF, verbose: i32) -> i32;
-    fn solver_umf_solve(
-        solver: *mut ExtSolverUMF,
-        x: *mut f64,
-        rhs: *const f64,
-        verbose: i32,
-    ) -> i32;
+    fn solver_umf_solve(solver: *mut ExtSolverUMF, x: *mut f64, rhs: *const f64, verbose: i32) -> i32;
 }
 
 /// Implements Tim Davis' UMFPACK Solver
@@ -58,8 +53,8 @@ impl SolverUMF {
     ///                      SolverUMF\n\
     ///                      ------------------------------\n\
     ///                      symmetric          = false\n\
-    ///                      ordering           = Default\n\
-    ///                      scaling            = Default\n\
+    ///                      ordering           = Auto\n\
+    ///                      scaling            = Auto\n\
     ///                      done_initialize    = false\n\
     ///                      done_factorize     = false\n\
     ///                      ==============================";
@@ -76,8 +71,8 @@ impl SolverUMF {
             }
             Ok(SolverUMF {
                 symmetric: sym,
-                ordering: EnumUmfOrdering::Default as i32,
-                scaling: EnumUmfScaling::Default as i32,
+                ordering: EnumOrdering::Auto as i32,
+                scaling: EnumScaling::Auto as i32,
                 done_initialize: false,
                 done_factorize: false,
                 ndim: 0,
@@ -94,13 +89,13 @@ impl SolverUMF {
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
     /// let mut solver = SolverUMF::new(false)?;
-    /// solver.set_ordering(EnumUmfOrdering::Best);
+    /// solver.set_ordering(EnumOrdering::Best);
     /// let correct: &str = "==============================\n\
     ///                      SolverUMF\n\
     ///                      ------------------------------\n\
     ///                      symmetric          = false\n\
-    ///                      ordering           = Best\n\
-    ///                      scaling            = Default\n\
+    ///                      ordering           = Best (UMF-only, otherwise Auto)\n\
+    ///                      scaling            = Auto\n\
     ///                      done_initialize    = false\n\
     ///                      done_factorize     = false\n\
     ///                      ==============================";
@@ -108,7 +103,7 @@ impl SolverUMF {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn set_ordering(&mut self, selection: EnumUmfOrdering) {
+    pub fn set_ordering(&mut self, selection: EnumOrdering) {
         self.ordering = selection as i32;
     }
 
@@ -120,12 +115,12 @@ impl SolverUMF {
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
     /// let mut solver = SolverUMF::new(false)?;
-    /// solver.set_scaling(EnumUmfScaling::No);
+    /// solver.set_scaling(EnumScaling::No);
     /// let correct: &str = "==============================\n\
     ///                      SolverUMF\n\
     ///                      ------------------------------\n\
     ///                      symmetric          = false\n\
-    ///                      ordering           = Default\n\
+    ///                      ordering           = Auto\n\
     ///                      scaling            = No\n\
     ///                      done_initialize    = false\n\
     ///                      done_factorize     = false\n\
@@ -134,7 +129,7 @@ impl SolverUMF {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn set_scaling(&mut self, selection: EnumUmfScaling) {
+    pub fn set_scaling(&mut self, selection: EnumScaling) {
         self.scaling = selection as i32;
     }
 
@@ -154,8 +149,8 @@ impl SolverUMF {
     ///                      SolverUMF\n\
     ///                      ------------------------------\n\
     ///                      symmetric          = false\n\
-    ///                      ordering           = Default\n\
-    ///                      scaling            = Default\n\
+    ///                      ordering           = Auto\n\
+    ///                      scaling            = Auto\n\
     ///                      done_initialize    = true\n\
     ///                      done_factorize     = false\n\
     ///                      ==============================";
@@ -214,8 +209,8 @@ impl SolverUMF {
     ///                      SolverUMF\n\
     ///                      ------------------------------\n\
     ///                      symmetric          = false\n\
-    ///                      ordering           = Default\n\
-    ///                      scaling            = Default\n\
+    ///                      ordering           = Auto\n\
+    ///                      scaling            = Auto\n\
     ///                      done_initialize    = true\n\
     ///                      done_factorize     = true\n\
     ///                      ==============================";
@@ -297,12 +292,7 @@ impl SolverUMF {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn solve(
-        &mut self,
-        x: &mut Vector,
-        rhs: &Vector,
-        verbose: bool,
-    ) -> Result<(), &'static str> {
+    pub fn solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool) -> Result<(), &'static str> {
         if !self.done_factorize {
             return Err("factorization must be done before solution");
         }
@@ -311,12 +301,7 @@ impl SolverUMF {
         }
         let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
-            let res = solver_umf_solve(
-                self.solver,
-                x.as_mut_data().as_mut_ptr(),
-                rhs.as_data().as_ptr(),
-                verb,
-            );
+            let res = solver_umf_solve(self.solver, x.as_mut_data().as_mut_ptr(), rhs.as_data().as_ptr(), verb);
             if res != 0 {
                 return Err(self.handle_error_code(res));
             }
@@ -372,8 +357,8 @@ impl fmt::Display for SolverUMF {
             done_factorize     = {}\n\
             ==============================",
             if self.symmetric == 1 { "true" } else { "false" },
-            str_umf_ordering(self.ordering),
-            str_umf_scaling(self.scaling),
+            str_enum_ordering(self.ordering),
+            str_enum_scaling(self.scaling),
             self.done_initialize,
             self.done_factorize,
         )?;
@@ -398,16 +383,16 @@ mod tests {
     #[test]
     fn set_ordering() -> Result<(), &'static str> {
         let mut solver = SolverUMF::new(false)?;
-        solver.set_ordering(EnumUmfOrdering::Metis);
-        assert_eq!(solver.ordering, 4);
+        solver.set_ordering(EnumOrdering::Metis);
+        assert_eq!(solver.ordering, 5);
         Ok(())
     }
 
     #[test]
     fn set_scaling_works() -> Result<(), &'static str> {
         let mut solver = SolverUMF::new(false)?;
-        solver.set_scaling(EnumUmfScaling::Max);
-        assert_eq!(solver.scaling, 1);
+        solver.set_scaling(EnumScaling::Max);
+        assert_eq!(solver.scaling, 3);
         Ok(())
     }
 
@@ -418,8 +403,8 @@ mod tests {
                              SolverUMF\n\
                              ------------------------------\n\
                              symmetric          = false\n\
-                             ordering           = Default\n\
-                             scaling            = Default\n\
+                             ordering           = Auto\n\
+                             scaling            = Auto\n\
                              done_initialize    = false\n\
                              done_factorize     = false\n\
                              ==============================";
@@ -571,17 +556,12 @@ mod tests {
     fn handle_error_code_works() -> Result<(), &'static str> {
         let default = "Error: unknown error returned by SolverUMF (c-code)";
         let solver = SolverUMF::new(false)?;
-        for c in &[
-            1, 2, 3, -1, -3, -4, -5, -6, -8, -11, -13, -15, -17, -18, -911,
-        ] {
+        for c in &[1, 2, 3, -1, -3, -4, -5, -6, -8, -11, -13, -15, -17, -18, -911] {
             let res = solver.handle_error_code(*c);
             assert!(res.len() > 0);
             assert_ne!(res, default);
         }
-        assert_eq!(
-            solver.handle_error_code(100000),
-            "Error: c-code returned null pointer"
-        );
+        assert_eq!(solver.handle_error_code(100000), "Error: c-code returned null pointer");
         assert_eq!(
             solver.handle_error_code(200000),
             "Error: c-code failed to allocate memory"

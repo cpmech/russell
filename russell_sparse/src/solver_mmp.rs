@@ -61,7 +61,7 @@ impl SolverMMP {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
+    /// let solver = SolverMMP::new(EnumSymmetry::No, true)?;
     /// let correct: &str = "==============================\n\
     ///                      SolverMMP\n\
     ///                      ------------------------------\n\
@@ -78,7 +78,7 @@ impl SolverMMP {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn new(symmetry: EnumMmpSymmetry, verbose: bool) -> Result<Self, &'static str> {
+    pub fn new(symmetry: EnumSymmetry, verbose: bool) -> Result<Self, &'static str> {
         let sym = symmetry as i32;
         let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
@@ -88,8 +88,8 @@ impl SolverMMP {
             }
             Ok(SolverMMP {
                 symmetry: sym,
-                ordering: EnumMmpOrdering::Auto as i32,
-                scaling: EnumMmpScaling::Auto as i32,
+                ordering: EnumOrdering::Auto as i32,
+                scaling: EnumScaling::Auto as i32,
                 pct_inc_workspace: 100,
                 max_work_memory: 0, // auto
                 openmp_num_threads: 1,
@@ -108,13 +108,13 @@ impl SolverMMP {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
-    /// solver.set_ordering(EnumMmpOrdering::Pord);
+    /// let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
+    /// solver.set_ordering(EnumOrdering::Pord);
     /// let correct: &str = "==============================\n\
     ///                      SolverMMP\n\
     ///                      ------------------------------\n\
     ///                      symmetry           = No\n\
-    ///                      ordering           = Pord\n\
+    ///                      ordering           = Pord (MMP-only, otherwise Auto)\n\
     ///                      scaling            = Auto\n\
     ///                      pct_inc_workspace  = 100\n\
     ///                      max_work_memory    = 0\n\
@@ -126,7 +126,7 @@ impl SolverMMP {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn set_ordering(&mut self, selection: EnumMmpOrdering) {
+    pub fn set_ordering(&mut self, selection: EnumOrdering) {
         self.ordering = selection as i32;
     }
 
@@ -137,14 +137,14 @@ impl SolverMMP {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
-    /// solver.set_scaling(EnumMmpScaling::RowColIter);
+    /// let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
+    /// solver.set_scaling(EnumScaling::RowColIter);
     /// let correct: &str = "==============================\n\
     ///                      SolverMMP\n\
     ///                      ------------------------------\n\
     ///                      symmetry           = No\n\
     ///                      ordering           = Auto\n\
-    ///                      scaling            = RowColIter\n\
+    ///                      scaling            = RowColIter (MMP-only, otherwise Auto)\n\
     ///                      pct_inc_workspace  = 100\n\
     ///                      max_work_memory    = 0\n\
     ///                      openmp_num_threads = 1\n\
@@ -155,7 +155,7 @@ impl SolverMMP {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn set_scaling(&mut self, selection: EnumMmpScaling) {
+    pub fn set_scaling(&mut self, selection: EnumScaling) {
         self.scaling = selection as i32;
     }
 
@@ -166,7 +166,7 @@ impl SolverMMP {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
+    /// let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
     /// solver.set_pct_inc_workspace(25);
     /// let correct: &str = "==============================\n\
     ///                      SolverMMP\n\
@@ -195,7 +195,7 @@ impl SolverMMP {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
+    /// let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
     /// solver.set_max_work_memory(1234);
     /// let correct: &str = "==============================\n\
     ///                      SolverMMP\n\
@@ -224,7 +224,7 @@ impl SolverMMP {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
+    /// let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
     /// solver.set_openmp_num_threads(4);
     /// let correct: &str = "==============================\n\
     ///                      SolverMMP\n\
@@ -253,7 +253,7 @@ impl SolverMMP {
     /// ```no_run
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
+    /// let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
     /// let mut trip = SparseTriplet::new(2, 2, 2, false)?;
     /// trip.put(0, 0, 1.0);
     /// trip.put(1, 1, 1.0);
@@ -320,7 +320,7 @@ impl SolverMMP {
     /// ```no_run
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
+    /// let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
     /// let mut trip = SparseTriplet::new(2, 2, 2, false)?;
     /// trip.put(0, 0, 1.0);
     /// trip.put(1, 1, 1.0);
@@ -401,7 +401,7 @@ impl SolverMMP {
     /// let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
     ///
     /// // initialize, factorize, and solve
-    /// let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
+    /// let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
     /// solver.initialize(&trip, false)?;
     /// solver.factorize(false)?;
     /// solver.solve(&mut x, &rhs, false)?;
@@ -416,12 +416,7 @@ impl SolverMMP {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn solve(
-        &mut self,
-        x: &mut Vector,
-        rhs: &Vector,
-        verbose: bool,
-    ) -> Result<(), &'static str> {
+    pub fn solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool) -> Result<(), &'static str> {
         if !self.done_factorize {
             return Err("factorization must be done before solution");
         }
@@ -442,15 +437,15 @@ impl SolverMMP {
     /// Handles error code
     fn handle_error_code(&self, err: i32) -> &'static str {
         match err {
-            -1  => "Error(-1): error on some processor",
-            -2  => "Error(-2): nnz is out of range",
-            -3  => "Error(-3): solver called with an invalid job value",
-            -4  => "Error(-4): error in user-provided permutation array",
-            -5  => "Error(-5): problem with real workspace allocation during analysis",
-            -6  => "Error(-6): matrix is singular in structure",
-            -7  => "Error(-7): problem with integer workspace allocation during analysis",
-            -8  => "Error(-8): internal integer work array is too small for factorization",
-            -9  => "Error(-9): internal real/complex work array is too small",
+            -1 => "Error(-1): error on some processor",
+            -2 => "Error(-2): nnz is out of range",
+            -3 => "Error(-3): solver called with an invalid job value",
+            -4 => "Error(-4): error in user-provided permutation array",
+            -5 => "Error(-5): problem with real workspace allocation during analysis",
+            -6 => "Error(-6): matrix is singular in structure",
+            -7 => "Error(-7): problem with integer workspace allocation during analysis",
+            -8 => "Error(-8): internal integer work array is too small for factorization",
+            -9 => "Error(-9): internal real/complex work array is too small",
             -10 => "Error(-10): numerically singular matrix",
             -11 => "Error(-11): real/complex work array or lwk user is too small for solution",
             -12 => "Error(-12): real/complex work array is too small for iterative refinement",
@@ -546,9 +541,9 @@ impl fmt::Display for SolverMMP {
             done_initialize    = {}\n\
             done_factorize     = {}\n\
             ==============================",
-            str_mmp_symmetry(self.symmetry),
-            str_mmp_ordering(self.ordering),
-            str_mmp_scaling(self.scaling),
+            str_enum_symmetry(self.symmetry),
+            str_enum_ordering(self.ordering),
+            str_enum_scaling(self.scaling),
             self.pct_inc_workspace,
             self.max_work_memory,
             self.openmp_num_threads,
@@ -568,30 +563,30 @@ mod tests {
 
     #[test]
     fn new_works() -> Result<(), &'static str> {
-        let solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
+        let solver = SolverMMP::new(EnumSymmetry::No, true)?;
         assert_eq!(solver.solver.is_null(), false);
         Ok(())
     }
 
     #[test]
     fn set_ordering() -> Result<(), &'static str> {
-        let mut solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
-        solver.set_ordering(EnumMmpOrdering::Amf);
-        assert_eq!(solver.ordering, 2);
+        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
+        solver.set_ordering(EnumOrdering::Amf);
+        assert_eq!(solver.ordering, 1);
         Ok(())
     }
 
     #[test]
     fn set_scaling_works() -> Result<(), &'static str> {
-        let mut solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
-        solver.set_scaling(EnumMmpScaling::RowCol);
-        assert_eq!(solver.scaling, 4);
+        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
+        solver.set_scaling(EnumScaling::RowCol);
+        assert_eq!(solver.scaling, 5);
         Ok(())
     }
 
     #[test]
     fn set_pct_inc_workspace_works() -> Result<(), &'static str> {
-        let mut solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
+        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
         solver.set_pct_inc_workspace(15);
         assert_eq!(solver.pct_inc_workspace, 15);
         Ok(())
@@ -599,7 +594,7 @@ mod tests {
 
     #[test]
     fn set_max_work_memory_works() -> Result<(), &'static str> {
-        let mut solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
+        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
         solver.set_max_work_memory(500);
         assert_eq!(solver.max_work_memory, 500);
         Ok(())
@@ -607,7 +602,7 @@ mod tests {
 
     #[test]
     fn set_openmp_num_threads_works() -> Result<(), &'static str> {
-        let mut solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
+        let mut solver = SolverMMP::new(EnumSymmetry::No, true)?;
         solver.set_openmp_num_threads(3);
         assert_eq!(solver.openmp_num_threads, 3);
         Ok(())
@@ -615,7 +610,7 @@ mod tests {
 
     #[test]
     fn display_trait_works() -> Result<(), &'static str> {
-        let solver = SolverMMP::new(EnumMmpSymmetry::No, true)?;
+        let solver = SolverMMP::new(EnumSymmetry::No, true)?;
         let correct: &str = "==============================\n\
                              SolverMMP\n\
                              ------------------------------\n\
@@ -638,7 +633,7 @@ mod tests {
     #[test]
     fn solver_mmp_behaves_as_expected() -> Result<(), &'static str> {
         // allocate a new solver
-        let mut solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
+        let mut solver = SolverMMP::new(EnumSymmetry::No, false)?;
 
         // initialize fails on rectangular matrix
         let trip_rect = SparseTriplet::new(3, 2, 1, false)?;
@@ -716,10 +711,7 @@ mod tests {
         trip_singular.put(0, 0, 1.0);
         trip_singular.put(4, 4, 1.0);
         solver.initialize(&trip_singular, false)?;
-        assert_eq!(
-            solver.factorize(false),
-            Err("Error(-10): numerically singular matrix")
-        );
+        assert_eq!(solver.factorize(false), Err("Error(-10): numerically singular matrix"));
 
         // done
         Ok(())
@@ -728,7 +720,7 @@ mod tests {
     #[test]
     fn handle_error_code_works() -> Result<(), &'static str> {
         let default = "Error: unknown error returned by SolverMMP (c-code)";
-        let solver = SolverMMP::new(EnumMmpSymmetry::No, false)?;
+        let solver = SolverMMP::new(EnumSymmetry::No, false)?;
         for c in 1..57 {
             let res = solver.handle_error_code(-c);
             assert!(res.len() > 0);
@@ -744,10 +736,7 @@ mod tests {
             assert!(res.len() > 0);
             assert_ne!(res, default);
         }
-        assert_eq!(
-            solver.handle_error_code(100000),
-            "Error: c-code returned null pointer"
-        );
+        assert_eq!(solver.handle_error_code(100000), "Error: c-code returned null pointer");
         assert_eq!(
             solver.handle_error_code(200000),
             "Error: c-code failed to allocate memory"

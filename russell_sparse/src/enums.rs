@@ -9,14 +9,16 @@ pub enum EnumSolverKind {
 
 /// Matrix symmetry options
 pub enum EnumSymmetry {
-    /// Unsymmetric matrix
-    No = 0,
-
-    /// Positive-definite symmetric matrix (MMP-only, otherwise General)
-    PosDef = 1,
+    Auto = 0, // Automatic detection (UMF-only, otherwise No)
 
     /// General symmetric matrix
-    General = 2,
+    General = 1,
+
+    /// Unsymmetric matrix
+    No = 2,
+
+    /// Positive-definite symmetric matrix (MMP-only, otherwise General)
+    PosDef = 3,
 }
 
 /// Ordering options
@@ -84,9 +86,10 @@ pub enum EnumScaling {
 
 pub(crate) fn str_enum_symmetry(code: i32) -> &'static str {
     match code {
-        0 => "No",
-        1 => "PosDef (MMP-only, otherwise General)",
-        2 => "General",
+        0 => "Auto (UMF-only, otherwise No)",
+        1 => "General",
+        2 => "No",
+        3 => "PosDef (MMP-only, otherwise General)",
         _ => panic!("<internal error: invalid code>"),
     }
 }
@@ -148,9 +151,10 @@ mod tests {
 
     #[test]
     fn str_enum_symmetry_works() {
-        assert_eq!(str_enum_symmetry(0), "No");
-        assert_eq!(str_enum_symmetry(1), "PosDef (MMP-only, otherwise General)");
-        assert_eq!(str_enum_symmetry(2), "General");
+        assert_eq!(str_enum_symmetry(0), "Auto (UMF-only, otherwise No)");
+        assert_eq!(str_enum_symmetry(1), "General");
+        assert_eq!(str_enum_symmetry(2), "No");
+        assert_eq!(str_enum_symmetry(3), "PosDef (MMP-only, otherwise General)");
     }
 
     #[test]

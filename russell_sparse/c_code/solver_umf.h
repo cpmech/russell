@@ -27,7 +27,7 @@ static inline void set_umf_verbose(struct SolverUMF *solver, int32_t verbose) {
     }
 }
 
-struct SolverUMF *new_solver_umf(int32_t symmetric) {
+struct SolverUMF *new_solver_umf(int32_t symmetry) {
     struct SolverUMF *solver = (struct SolverUMF *)malloc(sizeof(struct SolverUMF));
 
     if (solver == NULL) {
@@ -36,9 +36,7 @@ struct SolverUMF *new_solver_umf(int32_t symmetric) {
 
     umfpack_di_defaults(solver->control);
 
-    if (symmetric == C_TRUE) {
-        solver->control[UMFPACK_STRATEGY] = UMFPACK_STRATEGY_SYMMETRIC;
-    }
+    solver->control[UMFPACK_STRATEGY] = UMF_SYMMETRY[symmetry];
 
     solver->n = 0;
     solver->nnz = 0;

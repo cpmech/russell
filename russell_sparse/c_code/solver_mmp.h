@@ -37,7 +37,7 @@ struct SolverMMP *new_solver_mmp(int32_t symmetry, int32_t verbose) {
 
     solver->data.comm_fortran = MUMPS_IGNORED;
     solver->data.par = MUMPS_PAR_HOST_ALSO_WORKS;
-    solver->data.sym = symmetry;
+    solver->data.sym = MMP_SYMMETRY[symmetry];
 
     set_mmp_verbose(&solver->data, verbose);
     solver->data.job = MUMPS_JOB_INITIALIZE;

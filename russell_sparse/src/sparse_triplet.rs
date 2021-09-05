@@ -209,8 +209,7 @@ impl SparseTriplet {
 }
 
 impl fmt::Display for SparseTriplet {
-    /// Implements the Display trait
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let pos = if self.pos == self.max {
             format!("{} (FULL)", self.pos)
         } else {

@@ -70,7 +70,7 @@ impl Stopwatch {
 }
 
 impl fmt::Display for Stopwatch {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let delta = self.final_time.duration_since(self.initial_time);
         write!(f, "{}{}", self.label, format_nanoseconds(delta.as_nanos()))?;
         Ok(())

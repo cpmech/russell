@@ -329,8 +329,7 @@ impl Vector {
 }
 
 impl fmt::Display for Vector {
-    /// Implements the Display trait
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // find largest width
         let mut width = 0;
         let mut buf = String::new();

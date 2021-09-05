@@ -28,7 +28,7 @@ struct SolverMMP {
     DMUMPS_STRUC_C data;  // data structure
 };
 
-struct SolverMMP *new_solver_mmp(int32_t symmetry, int32_t verbose) {
+struct SolverMMP *new_solver_mmp(int32_t symmetry) {
     struct SolverMMP *solver = (struct SolverMMP *)malloc(sizeof(struct SolverMMP));
 
     if (solver == NULL) {
@@ -39,7 +39,7 @@ struct SolverMMP *new_solver_mmp(int32_t symmetry, int32_t verbose) {
     solver->data.par = MUMPS_PAR_HOST_ALSO_WORKS;
     solver->data.sym = MMP_SYMMETRY[symmetry];
 
-    set_mmp_verbose(&solver->data, verbose);
+    set_mmp_verbose(&solver->data, C_FALSE);
     solver->data.job = MUMPS_JOB_INITIALIZE;
     dmumps_c(&solver->data);
 

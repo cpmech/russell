@@ -9,7 +9,7 @@ pub(crate) struct ExtSolverUMF {
 }
 
 extern "C" {
-    fn new_solver_umf(symmetric: i32) -> *mut ExtSolverUMF;
+    fn new_solver_umf(symmetry: i32) -> *mut ExtSolverUMF;
     fn drop_solver_umf(solver: *mut ExtSolverUMF);
     fn solver_umf_initialize(
         solver: *mut ExtSolverUMF,
@@ -26,17 +26,15 @@ extern "C" {
 }
 
 /// Implements Tim Davis' UMFPACK Solver
-pub struct SolverUMF {
-    symmetric: i32,            // symmetric flag (0 or 1)
-    ordering: i32,             // symmetric permutation (ordering)
-    scaling: i32,              // scaling strategy
+pub struct SolverUMF<'a> {
+    config: &'a ConfigSolver,  // configuration
     done_initialize: bool,     // initialization completed
     done_factorize: bool,      // factorization completed
     ndim: usize,               // number of equations == nrow(a) where a*x=rhs
     solver: *mut ExtSolverUMF, // data allocated by the c-code
 }
 
-impl SolverUMF {
+impl<'a> SolverUMF<'a> {
     /// Creates a new solver
     ///
     /// # Input
@@ -48,89 +46,30 @@ impl SolverUMF {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let solver = SolverUMF::new(false)?;
-    /// let correct: &str = "==============================\n\
-    ///                      SolverUMF\n\
-    ///                      ------------------------------\n\
-    ///                      symmetric          = false\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = Auto\n\
-    ///                      done_initialize    = false\n\
-    ///                      done_factorize     = false\n\
-    ///                      ==============================";
+    /// let config = ConfigSolver::new();
+    /// let solver = SolverUMF::new(&config)?;
+    /// let correct: &str = "solver_kind     = UMF\n\
+    ///                      done_initialize = false\n\
+    ///                      done_factorize  = false\n\
+    ///                      ndim            = 0\n";
     /// assert_eq!(format!("{}", solver), correct);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn new(symmetric: bool) -> Result<Self, &'static str> {
-        let sym: i32 = if symmetric { 1 } else { 0 };
+    pub fn new(config: &'a ConfigSolver) -> Result<Self, &'static str> {
         unsafe {
-            let solver = new_solver_umf(sym);
+            let solver = new_solver_umf(config.symmetry);
             if solver.is_null() {
                 return Err("c-code failed to allocate SolverUMF");
             }
             Ok(SolverUMF {
-                symmetric: sym,
-                ordering: EnumOrdering::Auto as i32,
-                scaling: EnumScaling::Auto as i32,
+                config,
                 done_initialize: false,
                 done_factorize: false,
                 ndim: 0,
                 solver,
             })
         }
-    }
-
-    /// Sets the ordering strategy
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_sparse::*;
-    /// let mut solver = SolverUMF::new(false)?;
-    /// solver.set_ordering(EnumOrdering::Best);
-    /// let correct: &str = "==============================\n\
-    ///                      SolverUMF\n\
-    ///                      ------------------------------\n\
-    ///                      symmetric          = false\n\
-    ///                      ordering           = Best (UMF-only, otherwise Auto)\n\
-    ///                      scaling            = Auto\n\
-    ///                      done_initialize    = false\n\
-    ///                      done_factorize     = false\n\
-    ///                      ==============================";
-    /// assert_eq!(format!("{}", solver), correct);
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn set_ordering(&mut self, selection: EnumOrdering) {
-        self.ordering = selection as i32;
-    }
-
-    /// Sets the scaling strategy
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_sparse::*;
-    /// let mut solver = SolverUMF::new(false)?;
-    /// solver.set_scaling(EnumScaling::No);
-    /// let correct: &str = "==============================\n\
-    ///                      SolverUMF\n\
-    ///                      ------------------------------\n\
-    ///                      symmetric          = false\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = No\n\
-    ///                      done_initialize    = false\n\
-    ///                      done_factorize     = false\n\
-    ///                      ==============================";
-    /// assert_eq!(format!("{}", solver), correct);
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn set_scaling(&mut self, selection: EnumScaling) {
-        self.scaling = selection as i32;
     }
 
     /// Initializes the solver
@@ -140,20 +79,16 @@ impl SolverUMF {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let mut solver = SolverUMF::new(false)?;
+    /// let config = ConfigSolver::new();
+    /// let mut solver = SolverUMF::new(&config)?;
     /// let mut trip = SparseTriplet::new(2, 2, 2, false)?;
     /// trip.put(0, 0, 1.0);
     /// trip.put(1, 1, 1.0);
     /// solver.initialize(&trip)?;
-    /// let correct: &str = "==============================\n\
-    ///                      SolverUMF\n\
-    ///                      ------------------------------\n\
-    ///                      symmetric          = false\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = Auto\n\
-    ///                      done_initialize    = true\n\
-    ///                      done_factorize     = false\n\
-    ///                      ==============================";
+    /// let correct: &str = "solver_kind     = UMF\n\
+    ///                      done_initialize = true\n\
+    ///                      done_factorize  = false\n\
+    ///                      ndim            = 2\n";
     /// assert_eq!(format!("{}", solver), correct);
     /// # Ok(())
     /// # }
@@ -167,7 +102,7 @@ impl SolverUMF {
         unsafe {
             if self.done_initialize {
                 drop_solver_umf(self.solver);
-                let solver = new_solver_umf(self.symmetric);
+                let solver = new_solver_umf(self.config.symmetry);
                 if solver.is_null() {
                     return Err("c-code failed to allocate SolverUMF");
                 }
@@ -180,8 +115,8 @@ impl SolverUMF {
                 trip.indices_i.as_ptr(),
                 trip.indices_j.as_ptr(),
                 trip.values_a.as_ptr(),
-                self.ordering,
-                self.scaling,
+                self.config.ordering,
+                self.config.scaling,
             );
             if res != 0 {
                 return Err(self.handle_error_code(res));
@@ -199,32 +134,27 @@ impl SolverUMF {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let mut solver = SolverUMF::new(false)?;
+    /// let config = ConfigSolver::new();
+    /// let mut solver = SolverUMF::new(&config)?;
     /// let mut trip = SparseTriplet::new(2, 2, 2, false)?;
     /// trip.put(0, 0, 1.0);
     /// trip.put(1, 1, 1.0);
     /// solver.initialize(&trip)?;
-    /// solver.factorize(false)?;
-    /// let correct: &str = "==============================\n\
-    ///                      SolverUMF\n\
-    ///                      ------------------------------\n\
-    ///                      symmetric          = false\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = Auto\n\
-    ///                      done_initialize    = true\n\
-    ///                      done_factorize     = true\n\
-    ///                      ==============================";
+    /// solver.factorize()?;
+    /// let correct: &str = "solver_kind     = UMF\n\
+    ///                      done_initialize = true\n\
+    ///                      done_factorize  = true\n\
+    ///                      ndim            = 2\n";
     /// assert_eq!(format!("{}", solver), correct);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn factorize(&mut self, verbose: bool) -> Result<(), &'static str> {
+    pub fn factorize(&mut self) -> Result<(), &'static str> {
         if !self.done_initialize {
             return Err("initialization must be done before factorization");
         }
-        let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
-            let res = solver_umf_factorize(self.solver, verb);
+            let res = solver_umf_factorize(self.solver, self.config.verbose);
             if res != 0 {
                 return Err(self.handle_error_code(res));
             }
@@ -277,10 +207,11 @@ impl SolverUMF {
     /// let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
     ///
     /// // initialize, factorize, and solve
-    /// let mut solver = SolverUMF::new(false)?;
+    /// let config = ConfigSolver::new();
+    /// let mut solver = SolverUMF::new(&config)?;
     /// solver.initialize(&trip)?;
-    /// solver.factorize(false)?;
-    /// solver.solve(&mut x, &rhs, false)?;
+    /// solver.factorize()?;
+    /// solver.solve(&mut x, &rhs)?;
     /// let correct = "┌          ┐\n\
     ///                │ 1.000000 │\n\
     ///                │ 2.000000 │\n\
@@ -292,16 +223,20 @@ impl SolverUMF {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool) -> Result<(), &'static str> {
+    pub fn solve(&mut self, x: &mut Vector, rhs: &Vector) -> Result<(), &'static str> {
         if !self.done_factorize {
             return Err("factorization must be done before solution");
         }
         if x.dim() != self.ndim || rhs.dim() != self.ndim {
             return Err("x.ndim() and rhs.ndim() must equal the number of equations");
         }
-        let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
-            let res = solver_umf_solve(self.solver, x.as_mut_data().as_mut_ptr(), rhs.as_data().as_ptr(), verb);
+            let res = solver_umf_solve(
+                self.solver,
+                x.as_mut_data().as_mut_ptr(),
+                rhs.as_data().as_ptr(),
+                self.config.verbose,
+            );
             if res != 0 {
                 return Err(self.handle_error_code(res));
             }
@@ -334,7 +269,7 @@ impl SolverUMF {
     }
 }
 
-impl Drop for SolverUMF {
+impl<'a> Drop for SolverUMF<'a> {
     /// Tells the c-code to release memory
     fn drop(&mut self) {
         unsafe {
@@ -343,24 +278,15 @@ impl Drop for SolverUMF {
     }
 }
 
-impl fmt::Display for SolverUMF {
+impl<'a> fmt::Display for SolverUMF<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "==============================\n\
-            SolverUMF\n\
-            ------------------------------\n\
-            symmetric          = {}\n\
-            ordering           = {}\n\
-            scaling            = {}\n\
-            done_initialize    = {}\n\
-            done_factorize     = {}\n\
-            ==============================",
-            if self.symmetric == 1 { "true" } else { "false" },
-            str_enum_ordering(self.ordering),
-            str_enum_scaling(self.scaling),
-            self.done_initialize,
-            self.done_factorize,
+            "solver_kind     = UMF\n\
+             done_initialize = {}\n\
+             done_factorize  = {}\n\
+             ndim            = {}\n",
+            self.done_initialize, self.done_factorize, self.ndim,
         )?;
         Ok(())
     }
@@ -375,46 +301,28 @@ mod tests {
 
     #[test]
     fn new_works() -> Result<(), &'static str> {
-        let solver = SolverUMF::new(false)?;
+        let config = ConfigSolver::new();
+        let solver = SolverUMF::new(&config)?;
         assert_eq!(solver.solver.is_null(), false);
         Ok(())
     }
 
     #[test]
-    fn set_ordering() -> Result<(), &'static str> {
-        let mut solver = SolverUMF::new(false)?;
-        solver.set_ordering(EnumOrdering::Metis);
-        assert_eq!(solver.ordering, 5);
-        Ok(())
-    }
-
-    #[test]
-    fn set_scaling_works() -> Result<(), &'static str> {
-        let mut solver = SolverUMF::new(false)?;
-        solver.set_scaling(EnumScaling::Max);
-        assert_eq!(solver.scaling, 3);
-        Ok(())
-    }
-
-    #[test]
     fn display_trait_works() -> Result<(), &'static str> {
-        let solver = SolverUMF::new(false)?;
-        let correct: &str = "==============================\n\
-                             SolverUMF\n\
-                             ------------------------------\n\
-                             symmetric          = false\n\
-                             ordering           = Auto\n\
-                             scaling            = Auto\n\
-                             done_initialize    = false\n\
-                             done_factorize     = false\n\
-                             ==============================";
+        let config = ConfigSolver::new();
+        let solver = SolverUMF::new(&config)?;
+        let correct: &str = "solver_kind     = UMF\n\
+                             done_initialize = false\n\
+                             done_factorize  = false\n\
+                             ndim            = 0\n";
         assert_eq!(format!("{}", solver), correct);
         Ok(())
     }
 
     #[test]
     fn initialize_fails_on_rect_matrix() -> Result<(), &'static str> {
-        let mut solver = SolverUMF::new(false)?;
+        let config = ConfigSolver::new();
+        let mut solver = SolverUMF::new(&config)?;
         let trip_rect = SparseTriplet::new(3, 2, 1, false)?;
         assert_eq!(
             solver.initialize(&trip_rect),
@@ -425,7 +333,8 @@ mod tests {
 
     #[test]
     fn initialize_works() -> Result<(), &'static str> {
-        let mut solver = SolverUMF::new(false)?;
+        let config = ConfigSolver::new();
+        let mut solver = SolverUMF::new(&config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, false)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
@@ -436,9 +345,10 @@ mod tests {
 
     #[test]
     fn factorize_fails_on_non_initialized() -> Result<(), &'static str> {
-        let mut solver = SolverUMF::new(false)?;
+        let config = ConfigSolver::new();
+        let mut solver = SolverUMF::new(&config)?;
         assert_eq!(
-            solver.factorize(false),
+            solver.factorize(),
             Err("initialization must be done before factorization")
         );
         Ok(())
@@ -446,30 +356,33 @@ mod tests {
 
     #[test]
     fn factorize_fails_on_singular_matrix() -> Result<(), &'static str> {
-        let mut solver = SolverUMF::new(false)?;
+        let config = ConfigSolver::new();
+        let mut solver = SolverUMF::new(&config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, false)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 0.0);
         solver.initialize(&trip)?;
-        assert_eq!(solver.factorize(false), Err("Error(1): Matrix is singular"));
+        assert_eq!(solver.factorize(), Err("Error(1): Matrix is singular"));
         Ok(())
     }
 
     #[test]
     fn factorize_works() -> Result<(), &'static str> {
-        let mut solver = SolverUMF::new(false)?;
+        let config = ConfigSolver::new();
+        let mut solver = SolverUMF::new(&config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, false)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
         solver.initialize(&trip)?;
-        solver.factorize(false)?;
+        solver.factorize()?;
         assert!(solver.done_factorize);
         Ok(())
     }
 
     #[test]
     fn solve_fails_on_non_factorized() -> Result<(), &'static str> {
-        let mut solver = SolverUMF::new(false)?;
+        let config = ConfigSolver::new();
+        let mut solver = SolverUMF::new(&config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, false)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
@@ -477,7 +390,7 @@ mod tests {
         let mut x = Vector::new(2);
         let rhs = Vector::from(&[1.0, 1.0]);
         assert_eq!(
-            solver.solve(&mut x, &rhs, false),
+            solver.solve(&mut x, &rhs),
             Err("factorization must be done before solution")
         );
         Ok(())
@@ -485,22 +398,23 @@ mod tests {
 
     #[test]
     fn solve_fails_on_wrong_vectors() -> Result<(), &'static str> {
-        let mut solver = SolverUMF::new(false)?;
+        let config = ConfigSolver::new();
+        let mut solver = SolverUMF::new(&config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, false)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
         solver.initialize(&trip)?;
-        solver.factorize(false)?;
+        solver.factorize()?;
         let mut x = Vector::new(2);
         let rhs = Vector::from(&[1.0, 1.0]);
         let mut x_wrong = Vector::new(1);
         let rhs_wrong = Vector::from(&[1.0]);
         assert_eq!(
-            solver.solve(&mut x_wrong, &rhs, false),
+            solver.solve(&mut x_wrong, &rhs),
             Err("x.ndim() and rhs.ndim() must equal the number of equations")
         );
         assert_eq!(
-            solver.solve(&mut x, &rhs_wrong, false),
+            solver.solve(&mut x, &rhs_wrong),
             Err("x.ndim() and rhs.ndim() must equal the number of equations")
         );
         Ok(())
@@ -508,7 +422,8 @@ mod tests {
 
     #[test]
     fn solve_works() -> Result<(), &'static str> {
-        let mut solver = SolverUMF::new(false)?;
+        let config = ConfigSolver::new();
+        let mut solver = SolverUMF::new(&config)?;
 
         // allocate a square matrix
         let mut trip = SparseTriplet::new(5, 5, 13, false)?;
@@ -533,8 +448,8 @@ mod tests {
 
         // initialize, factorize, and solve
         solver.initialize(&trip)?;
-        solver.factorize(false)?;
-        solver.solve(&mut x, &rhs, false)?;
+        solver.factorize()?;
+        solver.solve(&mut x, &rhs)?;
 
         // check
         assert_vec_approx_eq!(x.as_data(), x_correct, 1e-14);
@@ -543,7 +458,8 @@ mod tests {
 
     #[test]
     fn reinitialize_works() -> Result<(), &'static str> {
-        let mut solver = SolverUMF::new(false)?;
+        let config = ConfigSolver::new();
+        let mut solver = SolverUMF::new(&config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, false)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
@@ -555,7 +471,8 @@ mod tests {
     #[test]
     fn handle_error_code_works() -> Result<(), &'static str> {
         let default = "Error: unknown error returned by SolverUMF (c-code)";
-        let solver = SolverUMF::new(false)?;
+        let config = ConfigSolver::new();
+        let solver = SolverUMF::new(&config)?;
         for c in &[1, 2, 3, -1, -3, -4, -5, -6, -8, -11, -13, -15, -17, -18, -911] {
             let res = solver.handle_error_code(*c);
             assert!(res.len() > 0);

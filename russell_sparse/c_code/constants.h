@@ -9,6 +9,7 @@
 const int32_t NULL_POINTER_ERROR = 100000;
 const int32_t MALLOC_ERROR = 200000;
 const int32_t C_TRUE = 1;
+const int32_t C_FALSE = 0;
 
 const MUMPS_INT MUMPS_IGNORED = 0;
 

@@ -8,6 +8,7 @@ pub struct ConfigSolver {
     pub(crate) pct_inc_workspace: i32,  // % increase in the estimated working space (MMP-only)
     pub(crate) max_work_memory: i32,    // max size of the working memory in mega bytes (MMP-only)
     pub(crate) openmp_num_threads: i32, // number of OpenMP threads (MMP-only)
+    pub(crate) verbose: i32,            // show messages, when available or possible
 }
 
 impl ConfigSolver {
@@ -20,6 +21,7 @@ impl ConfigSolver {
             pct_inc_workspace: 100, // (MMP-only)
             max_work_memory: 0,     // (MMP-only) 0 => Auto
             openmp_num_threads: 1,  // (MMP-only)
+            verbose: 0,
         }
     }
 
@@ -36,7 +38,8 @@ impl ConfigSolver {
     ///                      scaling            = Auto\n\
     ///                      pct_inc_workspace  = 100\n\
     ///                      max_work_memory    = 0\n\
-    ///                      openmp_num_threads = 1\n";
+    ///                      openmp_num_threads = 1\n\
+    ///                      verbose            = false\n";
     /// assert_eq!(format!("{}", config), correct);
     /// ```
     pub fn set_ordering(&mut self, selection: EnumOrdering) {
@@ -56,7 +59,8 @@ impl ConfigSolver {
     ///                      scaling            = No\n\
     ///                      pct_inc_workspace  = 100\n\
     ///                      max_work_memory    = 0\n\
-    ///                      openmp_num_threads = 1\n";
+    ///                      openmp_num_threads = 1\n\
+    ///                      verbose            = false\n";
     /// assert_eq!(format!("{}", config), correct);
     /// ```
     pub fn set_scaling(&mut self, selection: EnumScaling) {
@@ -76,7 +80,8 @@ impl ConfigSolver {
     ///                      scaling            = Auto\n\
     ///                      pct_inc_workspace  = 25\n\
     ///                      max_work_memory    = 0\n\
-    ///                      openmp_num_threads = 1\n";
+    ///                      openmp_num_threads = 1\n\
+    ///                      verbose            = false\n";
     /// assert_eq!(format!("{}", config), correct);
     /// ```
     pub fn set_pct_inc_workspace(&mut self, value: usize) {
@@ -96,7 +101,8 @@ impl ConfigSolver {
     ///                      scaling            = Auto\n\
     ///                      pct_inc_workspace  = 100\n\
     ///                      max_work_memory    = 1234\n\
-    ///                      openmp_num_threads = 1\n";
+    ///                      openmp_num_threads = 1\n\
+    ///                      verbose            = false\n";
     /// assert_eq!(format!("{}", config), correct);
     /// ```
     pub fn set_max_work_memory(&mut self, value: usize) {
@@ -116,11 +122,33 @@ impl ConfigSolver {
     ///                      scaling            = Auto\n\
     ///                      pct_inc_workspace  = 100\n\
     ///                      max_work_memory    = 0\n\
-    ///                      openmp_num_threads = 4\n";
+    ///                      openmp_num_threads = 4\n\
+    ///                      verbose            = false\n";
     /// assert_eq!(format!("{}", config), correct);
     /// ```
     pub fn set_openmp_num_threads(&mut self, value: usize) {
         self.openmp_num_threads = to_i32(value);
+    }
+
+    /// Sets verbose mode to show messages when available or possible
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_sparse::*;
+    /// let mut config = ConfigSolver::new();
+    /// config.set_verbose(true);
+    /// let correct: &str = "symmetry           = No\n\
+    ///                      ordering           = Auto\n\
+    ///                      scaling            = Auto\n\
+    ///                      pct_inc_workspace  = 100\n\
+    ///                      max_work_memory    = 0\n\
+    ///                      openmp_num_threads = 1\n\
+    ///                      verbose            = true\n";
+    /// assert_eq!(format!("{}", config), correct);
+    /// ```
+    pub fn set_verbose(&mut self, verbose: bool) {
+        self.verbose = if verbose { 1 } else { 0 };
     }
 }
 
@@ -133,13 +161,15 @@ impl fmt::Display for ConfigSolver {
              scaling            = {}\n\
              pct_inc_workspace  = {}\n\
              max_work_memory    = {}\n\
-             openmp_num_threads = {}\n",
+             openmp_num_threads = {}\n\
+             verbose            = {}\n",
             str_enum_symmetry(self.symmetry),
             str_enum_ordering(self.ordering),
             str_enum_scaling(self.scaling),
             self.pct_inc_workspace,
             self.max_work_memory,
             self.openmp_num_threads,
+            if self.verbose == 1 { true } else { false },
         )?;
         Ok(())
     }

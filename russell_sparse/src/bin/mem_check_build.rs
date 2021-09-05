@@ -122,7 +122,8 @@ fn test_solver_umf() {
     trip.put(1, 4, 6.0);
     trip.put(4, 4, 1.0);
 
-    let mut solver_umf = match SolverUMF::new(false) {
+    let config = ConfigSolver::new();
+    let mut solver_umf = match SolverUMF::new(&config) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new solver): {}", e);
@@ -138,7 +139,7 @@ fn test_solver_umf() {
         _ => (),
     };
 
-    match solver_umf.factorize(false) {
+    match solver_umf.factorize() {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
@@ -149,7 +150,7 @@ fn test_solver_umf() {
     let mut x = Vector::new(5);
     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
 
-    match solver_umf.solve(&mut x, &rhs, false) {
+    match solver_umf.solve(&mut x, &rhs) {
         Err(e) => {
             println!("FAIL(solve): {}", e);
             return;
@@ -157,7 +158,7 @@ fn test_solver_umf() {
         _ => (),
     }
 
-    match solver_umf.solve(&mut x, &rhs, false) {
+    match solver_umf.solve(&mut x, &rhs) {
         Err(e) => {
             println!("FAIL(solve again): {}", e);
             return;
@@ -187,7 +188,7 @@ fn test_solver_umf() {
         _ => (),
     };
 
-    match solver_umf.factorize(false) {
+    match solver_umf.factorize() {
         Err(e) => println!("\nOk(factorize singular matrix): {}", e),
         _ => (),
     };

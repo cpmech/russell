@@ -9,7 +9,7 @@ pub(crate) struct ExtSolverMMP {
 }
 
 extern "C" {
-    fn new_solver_mmp(symmetry: i32, verbose: i32) -> *mut ExtSolverMMP;
+    fn new_solver_mmp(symmetry: i32) -> *mut ExtSolverMMP;
     fn drop_solver_mmp(solver: *mut ExtSolverMMP);
     fn solver_mmp_initialize(
         solver: *mut ExtSolverMMP,
@@ -80,9 +80,8 @@ impl SolverMMP {
     /// ```
     pub fn new(symmetry: EnumSymmetry, verbose: bool) -> Result<Self, &'static str> {
         let sym = symmetry as i32;
-        let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
-            let solver = new_solver_mmp(sym, verb);
+            let solver = new_solver_mmp(sym);
             if solver.is_null() {
                 return Err("c-code failed to allocate SolverMMP");
             }
@@ -284,7 +283,7 @@ impl SolverMMP {
         unsafe {
             if self.done_initialize {
                 drop_solver_mmp(self.solver);
-                let solver = new_solver_mmp(self.symmetry, 0);
+                let solver = new_solver_mmp(self.symmetry);
                 if solver.is_null() {
                     return Err("c-code failed to allocate SolverMMP");
                 }

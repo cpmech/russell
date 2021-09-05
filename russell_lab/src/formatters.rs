@@ -7,6 +7,17 @@ const NS_PER_SECOND: u128 = 1000 * NS_PER_MILLISECOND;
 const NS_PER_MINUTE: u128 = 60 * NS_PER_SECOND;
 const NS_PER_HOUR: u128 = 60 * NS_PER_MINUTE;
 
+/// Formats the nanoseconds in 1 second; value < 1 second
+fn format_nanoseconds_in_seconds(buf: &mut String, value: u128) {
+    if value < NS_PER_MICROSECOND {
+        write!(buf, "{}ns", value).unwrap();
+    } else if value < NS_PER_MILLISECOND {
+        write!(buf, "{}µs", (value as f64) / (NS_PER_MICROSECOND as f64)).unwrap();
+    } else {
+        write!(buf, "{}ms", (value as f64) / (NS_PER_MILLISECOND as f64)).unwrap();
+    }
+}
+
 /// Returns a nice string representing the value in nanoseconds
 ///
 /// # Panics
@@ -29,13 +40,7 @@ pub fn format_nanoseconds(nanoseconds: u128) -> String {
     let mut value = nanoseconds;
     let mut buf = String::new();
     if value < NS_PER_SECOND {
-        if value < NS_PER_MICROSECOND {
-            write!(&mut buf, "{}ns", value).unwrap();
-        } else if value < NS_PER_MILLISECOND {
-            write!(&mut buf, "{}µs", (value as f64) / (NS_PER_MICROSECOND as f64)).unwrap();
-        } else {
-            write!(&mut buf, "{}ms", (value as f64) / (NS_PER_MILLISECOND as f64)).unwrap();
-        }
+        format_nanoseconds_in_seconds(&mut buf, value);
     }
     // nanoseconds is greater than a second => use large units such as 3m2.5s
     else {
@@ -50,10 +55,13 @@ pub fn format_nanoseconds(nanoseconds: u128) -> String {
             value -= minutes * NS_PER_MINUTE;
             write!(&mut buf, "{}m", minutes).unwrap();
         }
-
         if value > 0 {
-            let seconds = (value as f64) / (NS_PER_SECOND as f64);
-            write!(&mut buf, "{}s", &seconds).unwrap();
+            if value < NS_PER_SECOND {
+                format_nanoseconds_in_seconds(&mut buf, value);
+            } else {
+                let seconds = (value as f64) / (NS_PER_SECOND as f64);
+                write!(&mut buf, "{}s", &seconds).unwrap();
+            }
         }
     }
 
@@ -139,5 +147,29 @@ mod tests {
         // 3,723,000,000,000 = 1h2m3s
         res = format_nanoseconds(3_723_000_000_000);
         assert_eq!(res, "1h2m3s");
+
+        // 3,600,000,000,001 (3.6e12 + 1ns) = 1h1ns
+        res = format_nanoseconds(3_600_000_000_001);
+        assert_eq!(res, "1h1ns");
+
+        // 3,600,000,001,000 (3.6e12 + 1,000ns) = 1h1µs
+        res = format_nanoseconds(3_600_000_001_000);
+        assert_eq!(res, "1h1µs");
+
+        // 3,600,000,100,001 (3.6e12 + 1,000,100,001ns) = 1h100.001µs
+        res = format_nanoseconds(3_600_000_100_001);
+        assert_eq!(res, "1h100.001µs");
+
+        // 3,600,001,000,000 (3.6e12 + 1,000,000ns) = 1h1ms
+        res = format_nanoseconds(3_600_001_000_000);
+        assert_eq!(res, "1h1ms");
+
+        // 3,601,000,000,000 (3.6e12 + 1,000,000,000ns) = 1h1s
+        res = format_nanoseconds(3_601_000_000_000);
+        assert_eq!(res, "1h1s");
+
+        // 3,601,100,000,001 (3.6e12 + 1.1s) = 1h1.1s
+        res = format_nanoseconds(3_601_100_000_000);
+        assert_eq!(res, "1h1.1s");
     }
 }

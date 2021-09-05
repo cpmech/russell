@@ -407,8 +407,7 @@ impl Matrix {
 }
 
 impl fmt::Display for Matrix {
-    /// Implements the Display trait
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // find largest width
         let mut width = 0;
         let mut buf = String::new();
@@ -502,10 +501,7 @@ mod tests {
             &[4.0, 5.0],
             &[7.0, 8.0, 8.0],
         ]);
-        assert_eq!(
-            res.err(),
-            Some("all rows must have the same number of columns")
-        );
+        assert_eq!(res.err(), Some("all rows must have the same number of columns"));
     }
 
     #[test]

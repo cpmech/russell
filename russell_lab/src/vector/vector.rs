@@ -23,9 +23,7 @@ impl Vector {
     /// assert_eq!(format!("{}", u), correct);
     /// ```
     pub fn new(dim: usize) -> Self {
-        Vector {
-            data: vec![0.0; dim],
-        }
+        Vector { data: vec![0.0; dim] }
     }
 
     /// Creates new vector completely filled with the same value
@@ -43,9 +41,7 @@ impl Vector {
     /// assert_eq!(format!("{}", u), correct);
     /// ```
     pub fn filled(dim: usize, value: f64) -> Self {
-        Vector {
-            data: vec![value; dim],
-        }
+        Vector { data: vec![value; dim] }
     }
 
     /// Creates a vector from data
@@ -63,9 +59,7 @@ impl Vector {
     /// assert_eq!(format!("{}", u), correct);
     /// ```
     pub fn from(data: &[f64]) -> Self {
-        Vector {
-            data: Vec::from(data),
-        }
+        Vector { data: Vec::from(data) }
     }
 
     /// Returns evenly spaced numbers over a specified closed interval
@@ -335,8 +329,7 @@ impl Vector {
 }
 
 impl fmt::Display for Vector {
-    /// Implements the Display trait
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // find largest width
         let mut width = 0;
         let mut buf = String::new();

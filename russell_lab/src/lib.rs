@@ -8,10 +8,14 @@ pub fn desc() -> String {
 }
 
 mod enums;
+mod formatters;
 mod matrix;
 mod matvec;
+mod stopwatch;
 mod vector;
 pub use crate::enums::*;
+pub use crate::formatters::*;
 pub use crate::matrix::*;
 pub use crate::matvec::*;
+pub use crate::stopwatch::*;
 pub use crate::vector::*;

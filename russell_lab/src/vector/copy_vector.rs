@@ -55,9 +55,6 @@ mod tests {
     fn copy_vector_fails_on_wrong_dimensions() {
         let u = Vector::new(4);
         let mut v = Vector::new(3);
-        assert_eq!(
-            copy_vector(&mut v, &u),
-            Err("vectors have wrong dimensions")
-        );
+        assert_eq!(copy_vector(&mut v, &u), Err("vectors have wrong dimensions"));
     }
 }

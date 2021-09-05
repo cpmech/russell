@@ -153,12 +153,7 @@ use russell_openblas::*;
 /// # Ok(())
 /// # }
 /// ```
-pub fn sv_decomp(
-    s: &mut Vector,
-    u: &mut Matrix,
-    vt: &mut Matrix,
-    a: &mut Matrix,
-) -> Result<(), &'static str> {
+pub fn sv_decomp(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) -> Result<(), &'static str> {
     let (m, n) = (a.nrow, a.ncol);
     let min_mn = if m < n { m } else { n };
     if s.data.len() != min_mn {

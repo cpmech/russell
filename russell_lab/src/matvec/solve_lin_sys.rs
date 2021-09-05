@@ -83,10 +83,7 @@ mod tests {
     fn solve_lin_sys_fails_on_wrong_dims() {
         let mut a = Matrix::new(2, 2);
         let mut b = Vector::new(3);
-        assert_eq!(
-            solve_lin_sys(&mut b, &mut a),
-            Err("vector has wrong dimension")
-        );
+        assert_eq!(solve_lin_sys(&mut b, &mut a), Err("vector has wrong dimension"));
     }
 
     #[test]

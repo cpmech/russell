@@ -3,6 +3,62 @@ use std::fmt;
 use std::time::Instant;
 
 /// Assists in measuring computation time
+///
+/// # Examples
+///
+/// ## Printing elapsed times
+///
+/// ```
+/// use russell_lab::*;
+/// use std::thread::sleep;
+/// use std::time::Duration;
+///
+/// fn expensive_calculation() {
+///     sleep(Duration::new(0, 1_000));
+/// }
+///
+/// let mut sw = Stopwatch::new("current dt = ");
+/// expensive_calculation();
+/// sw.stop();
+/// println!("{}", sw);
+///
+/// sw.reset();
+/// expensive_calculation();
+/// sw.stop();
+/// println!("{}", sw);
+///
+/// sw.reset();
+/// expensive_calculation();
+/// sw.stop();
+/// println!("{}", sw);
+/// ```
+///
+/// ## Recording elapsed times
+///
+/// ```
+/// use russell_lab::*;
+/// use std::thread::sleep;
+/// use std::time::Duration;
+///
+/// fn expensive_calculation() {
+///     sleep(Duration::new(0, 1_000));
+/// }
+///
+/// let mut elapsed_times = vec![0_u128; 3];
+/// let mut sw = Stopwatch::new("");
+///
+/// expensive_calculation();
+/// elapsed_times[0] = sw.stop_and_reset();
+///
+/// expensive_calculation();
+/// elapsed_times[1] = sw.stop_and_reset();
+///
+/// expensive_calculation();
+/// elapsed_times[2] = sw.stop_and_reset();
+///
+/// // println!("{:?}", elapsed_times); // will show something like:
+/// // [57148, 55991, 55299]
+/// ```
 pub struct Stopwatch {
     label: &'static str,
     initial_time: Instant,

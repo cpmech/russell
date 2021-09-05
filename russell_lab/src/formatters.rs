@@ -36,20 +36,18 @@ pub fn format_nanoseconds(nanoseconds: u128) -> String {
         return "0ns".to_string();
     }
 
-    // nanoseconds is smaller than a second => use small units such as 2.5ms
     let mut value = nanoseconds;
     let mut buf = String::new();
     if value < NS_PER_SECOND {
+        // nanoseconds is smaller than a second => use small units such as 2.5ms
         format_nanoseconds_in_seconds(&mut buf, value);
-    }
-    // nanoseconds is greater than a second => use large units such as 3m2.5s
-    else {
+    } else {
+        // nanoseconds is greater than a second => use large units such as 3m2.5s
         if value >= NS_PER_HOUR {
             let hours = value / NS_PER_HOUR;
             value -= hours * NS_PER_HOUR;
             write!(&mut buf, "{}h", hours).unwrap();
         }
-
         if value >= NS_PER_MINUTE {
             let minutes = value / NS_PER_MINUTE;
             value -= minutes * NS_PER_MINUTE;

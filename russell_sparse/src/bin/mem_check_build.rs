@@ -27,7 +27,7 @@ fn test_solver_mmp() {
     trip.put(4, 4, 1.0);
 
     let config = ConfigSolver::new();
-    let mut solver_mmp = match SolverMMP::new(&config) {
+    let mut solver_mmp = match SolverMMP::new(config) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new solver): {}", e);
@@ -124,7 +124,7 @@ fn test_solver_umf() {
     trip.put(4, 4, 1.0);
 
     let config = ConfigSolver::new();
-    let mut solver_umf = match SolverUMF::new(&config) {
+    let mut solver_umf = match SolverUMF::new(config) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new solver): {}", e);

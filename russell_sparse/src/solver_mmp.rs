@@ -35,15 +35,15 @@ extern "C" {
 ///
 /// This solver cannot be used in multiple threads, because
 /// the Fortran implementation of Mu-M-P-S is **not thread safe.**
-pub struct SolverMMP<'a> {
-    config: &'a ConfigSolver,  // configuration
+pub struct SolverMMP {
+    config: ConfigSolver,      // configuration
     done_initialize: bool,     // initialization completed
     done_factorize: bool,      // factorization completed
     ndim: usize,               // number of equations == nrow(a) where a*x=rhs
     solver: *mut ExtSolverMMP, // data allocated by the c-code
 }
 
-impl<'a> SolverMMP<'a> {
+impl SolverMMP {
     /// Creates a new solver
     ///
     /// # Input
@@ -57,7 +57,7 @@ impl<'a> SolverMMP<'a> {
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
     /// let config = ConfigSolver::new();
-    /// let solver = SolverMMP::new(&config)?;
+    /// let solver = SolverMMP::new(config)?;
     /// let correct: &str = "solver_kind     = MMP\n\
     ///                      done_initialize = false\n\
     ///                      done_factorize  = false\n\
@@ -66,7 +66,7 @@ impl<'a> SolverMMP<'a> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn new(config: &'a ConfigSolver) -> Result<Self, &'static str> {
+    pub fn new(config: ConfigSolver) -> Result<Self, &'static str> {
         unsafe {
             let solver = new_solver_mmp(config.symmetry);
             if solver.is_null() {
@@ -90,7 +90,7 @@ impl<'a> SolverMMP<'a> {
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
     /// let config = ConfigSolver::new();
-    /// let mut solver = SolverMMP::new(&config)?;
+    /// let mut solver = SolverMMP::new(config)?;
     /// let mut trip = SparseTriplet::new(2, 2, 2, false)?;
     /// trip.put(0, 0, 1.0);
     /// trip.put(1, 1, 1.0);
@@ -149,7 +149,7 @@ impl<'a> SolverMMP<'a> {
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
     /// let config = ConfigSolver::new();
-    /// let mut solver = SolverMMP::new(&config)?;
+    /// let mut solver = SolverMMP::new(config)?;
     /// let mut trip = SparseTriplet::new(2, 2, 2, false)?;
     /// trip.put(0, 0, 1.0);
     /// trip.put(1, 1, 1.0);
@@ -222,7 +222,7 @@ impl<'a> SolverMMP<'a> {
     ///
     /// // initialize, factorize, and solve
     /// let config = ConfigSolver::new();
-    /// let mut solver = SolverMMP::new(&config)?;
+    /// let mut solver = SolverMMP::new(config)?;
     /// solver.initialize(&trip)?;
     /// solver.factorize()?;
     /// solver.solve(&mut x, &rhs)?;
@@ -336,7 +336,7 @@ impl<'a> SolverMMP<'a> {
     }
 }
 
-impl<'a> Drop for SolverMMP<'a> {
+impl Drop for SolverMMP {
     /// Tells the c-code to release memory
     fn drop(&mut self) {
         unsafe {
@@ -345,7 +345,7 @@ impl<'a> Drop for SolverMMP<'a> {
     }
 }
 
-impl<'a> fmt::Display for SolverMMP<'a> {
+impl fmt::Display for SolverMMP {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -369,7 +369,7 @@ mod tests {
     #[test]
     fn new_works() -> Result<(), &'static str> {
         let config = ConfigSolver::new();
-        let solver = SolverMMP::new(&config)?;
+        let solver = SolverMMP::new(config)?;
         assert_eq!(solver.solver.is_null(), false);
         Ok(())
     }
@@ -377,7 +377,7 @@ mod tests {
     #[test]
     fn display_trait_works() -> Result<(), &'static str> {
         let config = ConfigSolver::new();
-        let solver = SolverMMP::new(&config)?;
+        let solver = SolverMMP::new(config)?;
         let correct: &str = "solver_kind     = MMP\n\
                              done_initialize = false\n\
                              done_factorize  = false\n\
@@ -393,7 +393,7 @@ mod tests {
     fn solver_mmp_behaves_as_expected() -> Result<(), &'static str> {
         // allocate a new solver
         let config = ConfigSolver::new();
-        let mut solver = SolverMMP::new(&config)?;
+        let mut solver = SolverMMP::new(config)?;
 
         // initialize fails on rectangular matrix
         let trip_rect = SparseTriplet::new(3, 2, 1, false)?;
@@ -481,7 +481,7 @@ mod tests {
     fn handle_error_code_works() -> Result<(), &'static str> {
         let default = "Error: unknown error returned by SolverMMP (c-code)";
         let config = ConfigSolver::new();
-        let solver = SolverMMP::new(&config)?;
+        let solver = SolverMMP::new(config)?;
         for c in 1..57 {
             let res = solver.handle_error_code(-c);
             assert!(res.len() > 0);

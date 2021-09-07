@@ -1,10 +1,10 @@
 /// Defines the solver kinds
 pub enum EnumSolverKind {
     /// The NON-THREAD-SAFE (Mu-M-P) Solver
-    Mmp,
+    Mmp = 0,
 
     /// [recommended] Tim Davis' UMFPACK Solver
-    Umf,
+    Umf = 1,
 }
 
 /// Matrix symmetry options

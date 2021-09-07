@@ -40,3 +40,31 @@ Follow the instructions from https://github.com/cpmech/script-install-mumps and 
 ```
 export USE_LOCAL_MUMPS=1
 ```
+
+## Tools
+
+This crate includes a tool named `solve_mm_build` to study the performance of the available sparse solvers (currently MMP and UMF). The `_build` suffix is to disable the coverage tool.
+
+`solve_mm_build` reads a [Matrix Market file](https://math.nist.gov/MatrixMarket/formats.html) and solves the linear system:
+
+```
+a ⋅ x = rhs
+```
+
+with a right-hand-side containing only ones.
+
+The data directory contains an example of Matrix Market file named `bfwb62.mtx` and you may download more matrices from https://sparse.tamu.edu/
+
+Run the command:
+
+```
+cargo run --bin solve_mm_build -- data/matrix_market/bfwb62.mtx
+```
+
+Or
+
+```
+cargo run --bin solve_mm_build -- --help
+```
+
+for more options.

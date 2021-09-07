@@ -3,8 +3,8 @@ use russell_sparse::*;
 
 fn test_solver(kind: EnumSolverKind) {
     match kind {
-        EnumSolverKind::Mmp => println!("\nTesting MMP solver\n"),
-        EnumSolverKind::Umf => println!("\nTesting UMF solver\n"),
+        EnumSolverKind::Mmp => println!("Testing MMP solver\n"),
+        EnumSolverKind::Umf => println!("Testing UMF solver\n"),
     }
 
     let mut trip = match SparseTriplet::new(5, 5, 13, false) {
@@ -75,8 +75,8 @@ fn test_solver(kind: EnumSolverKind) {
     }
 
     println!("{}", trip);
-    println!("\n{}", solver);
-    println!("\nx =\n{}", x);
+    println!("{}", solver);
+    println!("x =\n{}", x);
 
     let mut trip_singular = match SparseTriplet::new(5, 5, 2, false) {
         Ok(v) => v,
@@ -97,14 +97,14 @@ fn test_solver(kind: EnumSolverKind) {
     };
 
     match solver.factorize() {
-        Err(e) => println!("\nOk(factorize singular matrix): {}", e),
+        Err(e) => println!("\nOk(factorize singular matrix): {}\n", e),
         _ => (),
     };
 }
 
 fn main() {
-    println!("\nRunning Mem Check\n");
+    println!("Running Mem Check\n");
     test_solver(EnumSolverKind::Mmp);
     test_solver(EnumSolverKind::Umf);
-    println!("\nDone\n");
+    println!("Done\n");
 }

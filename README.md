@@ -87,10 +87,11 @@ fn main() -> Result<(), &'static str> {
     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
 
     // initialize, factorize, and solve
-    let mut solver = SolverUMF::new(false)?;
+    let config = ConfigSolver::new();
+    let mut solver = Solver::new(config)?;
     solver.initialize(&trip)?;
-    solver.factorize(false)?;
-    solver.solve(&mut x, &rhs, false)?;
+    solver.factorize()?;
+    solver.solve(&mut x, &rhs)?;
     let correct = "┌          ┐\n\
                    │ 1.000000 │\n\
                    │ 2.000000 │\n\

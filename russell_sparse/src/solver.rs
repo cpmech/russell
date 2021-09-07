@@ -1,6 +1,6 @@
 use super::*;
 use russell_lab::*;
-use std::fmt;
+use std::fmt::{self, Write};
 
 #[repr(C)]
 pub(crate) struct ExtSolver {
@@ -62,6 +62,10 @@ pub struct Solver {
     done_factorize: bool,   // factorization completed
     ndim: usize,            // number of equations == nrow(a) where a*x=rhs
     solver: *mut ExtSolver, // data allocated by the c-code
+    stopwatch: Stopwatch,   // stopwatch to measure elapsed time
+    time_init: u128,        // elapsed time during initialize
+    time_fact: u128,        // elapsed time during factorize
+    time_solve: u128,       // elapsed time during solve
 }
 
 impl Solver {
@@ -100,6 +104,10 @@ impl Solver {
                 done_factorize: false,
                 ndim: 0,
                 solver,
+                stopwatch: Stopwatch::new(""),
+                time_init: 0,
+                time_fact: 0,
+                time_solve: 0,
             })
         }
     }
@@ -132,6 +140,7 @@ impl Solver {
         if trip.nrow != trip.ncol {
             return Err("the matrix represented by the triplet must be square");
         }
+        self.stopwatch.reset();
         let n = to_i32(trip.nrow);
         let nnz = to_i32(trip.pos);
         let verb: i32 = if verbose { 1 } else { 0 };
@@ -187,10 +196,11 @@ impl Solver {
                     }
                 }
             }
-            self.done_initialize = true;
-            self.done_factorize = false;
-            self.ndim = trip.nrow;
         }
+        self.done_initialize = true;
+        self.done_factorize = false;
+        self.ndim = trip.nrow;
+        self.time_init = self.stopwatch.stop();
         Ok(())
     }
 
@@ -223,6 +233,7 @@ impl Solver {
         if !self.done_initialize {
             return Err("initialization must be done before factorization");
         }
+        self.stopwatch.reset();
         let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
             match self.config.solver_kind {
@@ -239,8 +250,9 @@ impl Solver {
                     }
                 }
             }
-            self.done_factorize = true;
         }
+        self.done_factorize = true;
+        self.time_fact = self.stopwatch.stop();
         Ok(())
     }
 
@@ -310,6 +322,7 @@ impl Solver {
         if x.dim() != self.ndim || rhs.dim() != self.ndim {
             return Err("x.ndim() and rhs.ndim() must equal the number of equations");
         }
+        self.stopwatch.reset();
         let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
             match self.config.solver_kind {
@@ -328,10 +341,11 @@ impl Solver {
                 }
             }
         }
+        self.time_solve = self.stopwatch.stop();
         Ok(())
     }
 
-    /// Returns the solver and a solution x such that
+    /// Returns the solver and the solution x such that
     ///
     /// ```text
     ///   a   ⋅  x  =  rhs
@@ -415,6 +429,15 @@ impl Solver {
         solver.factorize(verb_fact)?;
         solver.solve(&mut x, &rhs, verb_solve)?;
         Ok((solver, x))
+    }
+
+    /// Returns a text containing the elapsed times
+    pub fn get_elapsed_times(&self) -> String {
+        let mut buf = String::new();
+        write!(&mut buf, "initialize = {}\n", format_nanoseconds(self.time_init)).unwrap();
+        write!(&mut buf, "factorize  = {}\n", format_nanoseconds(self.time_fact)).unwrap();
+        write!(&mut buf, "solve      = {}\n", format_nanoseconds(self.time_solve)).unwrap();
+        buf
     }
 
     /// Handles error code
@@ -841,6 +864,18 @@ mod tests {
         assert_vec_approx_eq!(x1.as_data(), &[-2.0, 3.0, 3.0], 1e-15);
         let mut x2 = Vector::new(trip.dims().0);
         solver.solve(&mut x2, &rhs2, false)?;
+        Ok(())
+    }
+
+    #[test]
+    fn get_elapsed_times_works() -> Result<(), &'static str> {
+        let config = ConfigSolver::new();
+        let solver = Solver::new(config)?;
+        let times = solver.get_elapsed_times();
+        let correct: &str = "initialize = 0ns\n\
+                             factorize  = 0ns\n\
+                             solve      = 0ns\n";
+        assert_eq!(format!("{}", times), correct);
         Ok(())
     }
 

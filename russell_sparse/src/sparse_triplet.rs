@@ -3,6 +3,16 @@ use russell_lab::*;
 use std::fmt;
 
 /// Holds triples (i,j,aij) representing a sparse matrix
+///
+/// # Remarks
+///
+/// - Only the non-zero values are required
+/// - Entries with repeated (i,j) indices are allowed
+/// - Repeated (i,j) entries will have the aij values summed when solving a linear system
+/// - The repeated (i,j) capability is of great convenience for Finite Element solvers
+/// - A maximum number of entries must be decided prior to allocating a new Triplet
+/// - The maximum number of entries includes possible entries with repeated indices
+/// - See the `to_matrix` method for an example
 pub struct SparseTriplet {
     pub(crate) nrow: usize,         // [i32] number of rows
     pub(crate) ncol: usize,         // [i32] number of columns
@@ -26,9 +36,10 @@ impl SparseTriplet {
     ///
     /// * `nrow` -- The number of rows of the sparse matrix
     /// * `ncol` -- The number of columns of the sparse matrix
-    /// * `max` -- The maximum number fo non-zero values in the sparse matrix
-    /// * `symmetric` -- This Triplet represents a **general** symmetric matrix,
-    ///                  thus one side of the diagonal **must not** be provided
+    /// * `max` -- The maximum number fo non-zero values in the sparse matrix,
+    ///            including entries with repeated indices
+    /// * `symmetric` -- This Triplet represents a **general** symmetric matrix.
+    ///                  In this case, one side of the diagonal may be ignored.
     ///
     /// # Example
     ///
@@ -150,9 +161,11 @@ impl SparseTriplet {
     /// use russell_lab::*;
     /// use russell_sparse::*;
     ///
-    /// // define (4 x 4) sparse matrix with 6 non-zero values
-    /// let mut trip = SparseTriplet::new(4, 4, 6, false)?;
-    /// trip.put(0, 0, 1.0);
+    /// // define (4 x 4) sparse matrix with 6+1 non-zero values
+    /// // (with an extra ij-repeated entry)
+    /// let mut trip = SparseTriplet::new(4, 4, 6+1, false)?;
+    /// trip.put(0, 0, 0.5); // (0, 0, a00/2)
+    /// trip.put(0, 0, 0.5); // (0, 0, a00/2)
     /// trip.put(0, 1, 2.0);
     /// trip.put(1, 0, 3.0);
     /// trip.put(1, 1, 4.0);

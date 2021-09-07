@@ -267,7 +267,7 @@ mod tests {
 
         // check
         let correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
-        assert_vec_approx_eq!(b, correct, 1e-15);
+        assert_vec_approx_eq!(b, correct, 1e-14);
         Ok(())
     }
 }

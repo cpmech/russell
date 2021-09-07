@@ -3,7 +3,7 @@ pub enum EnumSolverKind {
     /// The NON-THREAD-SAFE (Mu-M-P) Solver
     Mmp = 0,
 
-    /// [recommended] Tim Davis' UMFPACK Solver
+    /// Tim Davis' UMFPACK Solver (**recommended**)
     Umf = 1,
 }
 

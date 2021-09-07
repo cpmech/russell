@@ -1,6 +1,7 @@
 use super::*;
 use std::fmt;
 
+/// Holds configuration options for the sparse Solver
 pub struct ConfigSolver {
     pub(crate) solver_kind: EnumSolverKind, // Solver kind
     pub(crate) symmetry: i32,               // symmetry code

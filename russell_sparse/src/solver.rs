@@ -46,7 +46,7 @@ extern "C" {
     fn solver_umf_solve(solver: *mut ExtSolver, x: *mut f64, rhs: *const f64, verbose: i32) -> i32;
 }
 
-/// Implements Tim Davis' UMFPACK Solver
+/// Implements a sparse Solver
 pub struct Solver {
     config: ConfigSolver,   // configuration
     done_initialize: bool,  // initialization completed
@@ -245,8 +245,8 @@ impl Solver {
     ///
     /// // allocate a square matrix
     /// let mut trip = SparseTriplet::new(5, 5, 13, false)?;
-    /// trip.put(0, 0, 1.0); // << duplicated
-    /// trip.put(0, 0, 1.0); // << duplicated
+    /// trip.put(0, 0, 1.0); // << (0, 0, a00/2)
+    /// trip.put(0, 0, 1.0); // << (0, 0, a00/2)
     /// trip.put(1, 0, 3.0);
     /// trip.put(0, 1, 3.0);
     /// trip.put(2, 1, -1.0);
@@ -597,8 +597,8 @@ mod tests {
 
         // allocate a square matrix
         let mut trip = SparseTriplet::new(5, 5, 13, false)?;
-        trip.put(0, 0, 1.0); // << duplicated
-        trip.put(0, 0, 1.0); // << duplicated
+        trip.put(0, 0, 1.0); // << (0, 0, a00/2)
+        trip.put(0, 0, 1.0); // << (0, 0, a00/2)
         trip.put(1, 0, 3.0);
         trip.put(0, 1, 3.0);
         trip.put(2, 1, -1.0);
@@ -663,8 +663,8 @@ mod tests {
 
         // allocate a square matrix
         let mut trip = SparseTriplet::new(5, 5, 13, false)?;
-        trip.put(0, 0, 1.0); // << duplicated
-        trip.put(0, 0, 1.0); // << duplicated
+        trip.put(0, 0, 1.0); // << (0, 0, a00/2)
+        trip.put(0, 0, 1.0); // << (0, 0, a00/2)
         trip.put(1, 0, 3.0);
         trip.put(0, 1, 3.0);
         trip.put(2, 1, -1.0);

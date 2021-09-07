@@ -55,8 +55,8 @@ fn main() -> Result<(), &'static str> {
 
     // allocate a square matrix
     let mut trip = SparseTriplet::new(5, 5, 13, false)?;
-    trip.put(0, 0, 1.0); // << duplicated
-    trip.put(0, 0, 1.0); // << duplicated
+    trip.put(0, 0, 1.0); // << (0, 0, a00/2)
+    trip.put(0, 0, 1.0); // << (0, 0, a00/2)
     trip.put(1, 0, 3.0);
     trip.put(0, 1, 3.0);
     trip.put(2, 1, -1.0);

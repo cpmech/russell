@@ -4,4 +4,4 @@ Cargo.lock
 cobertura.html
 cobertura.xml
 tarpaulin-report.html
-output.txt
+output*.txt

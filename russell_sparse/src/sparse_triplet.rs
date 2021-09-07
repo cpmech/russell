@@ -2,7 +2,7 @@ use super::*;
 use russell_lab::*;
 use std::fmt;
 
-/// Holds triples (i,j,x) representing a sparse matrix
+/// Holds triples (i,j,aij) representing a sparse matrix
 pub struct SparseTriplet {
     pub(crate) nrow: usize,         // [i32] number of rows
     pub(crate) ncol: usize,         // [i32] number of columns
@@ -49,12 +49,7 @@ impl SparseTriplet {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn new(
-        nrow: usize,
-        ncol: usize,
-        max: usize,
-        symmetric: bool,
-    ) -> Result<Self, &'static str> {
+    pub fn new(nrow: usize, ncol: usize, max: usize, symmetric: bool) -> Result<Self, &'static str> {
         if nrow == 0 || ncol == 0 || max == 0 {
             return Err("nrow, ncol, and max must all be greater than zero");
         }
@@ -197,11 +192,7 @@ impl SparseTriplet {
         a.fill(0.0);
         for p in 0..self.pos {
             if self.indices_i[p] < m_i32 && self.indices_j[p] < n_i32 {
-                a.plus_equal(
-                    self.indices_i[p] as usize,
-                    self.indices_j[p] as usize,
-                    self.values_a[p],
-                );
+                a.plus_equal(self.indices_i[p] as usize, self.indices_j[p] as usize, self.values_a[p]);
             }
         }
         Ok(())
@@ -380,8 +371,8 @@ mod tests {
     fn to_matrix_with_duplicates_works() -> Result<(), &'static str> {
         // allocate a square matrix
         let mut trip = SparseTriplet::new(5, 5, 13, false)?;
-        trip.put(0, 0, 1.0); // << duplicated
-        trip.put(0, 0, 1.0); // << duplicated
+        trip.put(0, 0, 1.0); // << (0, 0, a00/2)
+        trip.put(0, 0, 1.0); // << (0, 0, a00/2)
         trip.put(1, 0, 3.0);
         trip.put(0, 1, 3.0);
         trip.put(2, 1, -1.0);

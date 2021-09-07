@@ -20,14 +20,14 @@ struct SolverUMF {
 };
 
 static inline void set_umf_verbose(struct SolverUMF *solver, int32_t verbose) {
-    if (verbose > C_TRUE) {
+    if (verbose == C_TRUE) {
         solver->control[UMFPACK_PRL] = UMF_PRINT_LEVEL_VERBOSE;
     } else {
         solver->control[UMFPACK_PRL] = UMF_PRINT_LEVEL_SILENT;
     }
 }
 
-struct SolverUMF *new_solver_umf(int32_t symmetric) {
+struct SolverUMF *new_solver_umf(int32_t symmetry) {
     struct SolverUMF *solver = (struct SolverUMF *)malloc(sizeof(struct SolverUMF));
 
     if (solver == NULL) {
@@ -36,9 +36,7 @@ struct SolverUMF *new_solver_umf(int32_t symmetric) {
 
     umfpack_di_defaults(solver->control);
 
-    if (symmetric == C_TRUE) {
-        solver->control[UMFPACK_STRATEGY] = UMFPACK_STRATEGY_SYMMETRIC;
-    }
+    solver->control[UMFPACK_STRATEGY] = UMF_SYMMETRY[symmetry];
 
     solver->n = 0;
     solver->nnz = 0;
@@ -86,7 +84,8 @@ int32_t solver_umf_initialize(struct SolverUMF *solver,
                               int32_t const *indices_j,
                               double const *values_a,
                               int32_t ordering,
-                              int32_t scaling) {
+                              int32_t scaling,
+                              int32_t verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
@@ -124,6 +123,12 @@ int32_t solver_umf_initialize(struct SolverUMF *solver,
     solver->control[UMFPACK_ORDERING] = UMF_ORDERING[ordering];
     solver->control[UMFPACK_SCALE] = UMF_SCALING[scaling];
 
+    set_umf_verbose(solver, verbose);
+
+    if (verbose == C_TRUE) {
+        umfpack_di_report_status(solver->control, code);
+    }
+
     return UMFPACK_OK;
 }
 
@@ -143,6 +148,10 @@ int32_t solver_umf_factorize(struct SolverUMF *solver, int32_t verbose) {
     code = umfpack_di_numeric(solver->ap, solver->ai, solver->ax,
                               solver->symbolic, &solver->numeric, solver->control, solver->info);
 
+    if (verbose == C_TRUE) {
+        umfpack_di_report_info(solver->control, solver->info);
+    }
+
     return code;
 }
 
@@ -155,6 +164,10 @@ int32_t solver_umf_solve(struct SolverUMF *solver, double *x, const double *rhs,
 
     int code = umfpack_di_solve(UMFPACK_A, solver->ap, solver->ai, solver->ax,
                                 x, rhs, solver->numeric, solver->control, solver->info);
+
+    if (verbose == C_TRUE) {
+        umfpack_di_report_info(solver->control, solver->info);
+    }
 
     return code;
 }

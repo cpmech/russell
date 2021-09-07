@@ -55,8 +55,8 @@ fn main() -> Result<(), &'static str> {
 
     // allocate a square matrix
     let mut trip = SparseTriplet::new(5, 5, 13, false)?;
-    trip.put(0, 0, 1.0); // << duplicated
-    trip.put(0, 0, 1.0); // << duplicated
+    trip.put(0, 0, 1.0); // << (0, 0, a00/2)
+    trip.put(0, 0, 1.0); // << (0, 0, a00/2)
     trip.put(1, 0, 3.0);
     trip.put(0, 1, 3.0);
     trip.put(2, 1, -1.0);
@@ -87,8 +87,9 @@ fn main() -> Result<(), &'static str> {
     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
 
     // initialize, factorize, and solve
-    let mut solver = SolverUMF::new(false)?;
-    solver.initialize(&trip)?;
+    let config = ConfigSolver::new();
+    let mut solver = Solver::new(config)?;
+    solver.initialize(&trip, false)?;
     solver.factorize(false)?;
     solver.solve(&mut x, &rhs, false)?;
     let correct = "┌          ┐\n\

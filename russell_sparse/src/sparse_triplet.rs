@@ -2,7 +2,17 @@ use super::*;
 use russell_lab::*;
 use std::fmt;
 
-/// Holds triples (i,j,x) representing a sparse matrix
+/// Holds triples (i,j,aij) representing a sparse matrix
+///
+/// # Remarks
+///
+/// - Only the non-zero values are required
+/// - Entries with repeated (i,j) indices are allowed
+/// - Repeated (i,j) entries will have the aij values summed when solving a linear system
+/// - The repeated (i,j) capability is of great convenience for Finite Element solvers
+/// - A maximum number of entries must be decided prior to allocating a new Triplet
+/// - The maximum number of entries includes possible entries with repeated indices
+/// - See the `to_matrix` method for an example
 pub struct SparseTriplet {
     pub(crate) nrow: usize,         // [i32] number of rows
     pub(crate) ncol: usize,         // [i32] number of columns
@@ -26,9 +36,10 @@ impl SparseTriplet {
     ///
     /// * `nrow` -- The number of rows of the sparse matrix
     /// * `ncol` -- The number of columns of the sparse matrix
-    /// * `max` -- The maximum number fo non-zero values in the sparse matrix
-    /// * `symmetric` -- This Triplet represents a **general** symmetric matrix,
-    ///                  thus one side of the diagonal **must not** be provided
+    /// * `max` -- The maximum number fo non-zero values in the sparse matrix,
+    ///            including entries with repeated indices
+    /// * `symmetric` -- This Triplet represents a **general** symmetric matrix.
+    ///                  In this case, one side of the diagonal may be ignored.
     ///
     /// # Example
     ///
@@ -36,25 +47,16 @@ impl SparseTriplet {
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
     /// let trip = SparseTriplet::new(3, 3, 5, false)?;
-    /// let correct: &str = "===========================\n\
-    ///                      SparseTriplet\n\
-    ///                      ---------------------------\n\
-    ///                      nrow      = 3\n\
+    /// let correct: &str = "nrow      = 3\n\
     ///                      ncol      = 3\n\
     ///                      max       = 5\n\
     ///                      pos       = 0\n\
-    ///                      symmetric = false\n\
-    ///                      ===========================";
+    ///                      symmetric = false\n";
     /// assert_eq!(format!("{}", trip), correct);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn new(
-        nrow: usize,
-        ncol: usize,
-        max: usize,
-        symmetric: bool,
-    ) -> Result<Self, &'static str> {
+    pub fn new(nrow: usize, ncol: usize, max: usize, symmetric: bool) -> Result<Self, &'static str> {
         if nrow == 0 || ncol == 0 || max == 0 {
             return Err("nrow, ncol, and max must all be greater than zero");
         }
@@ -79,15 +81,11 @@ impl SparseTriplet {
     /// use russell_sparse::*;
     /// let mut trip = SparseTriplet::new(2, 2, 1, false)?;
     /// trip.put(0, 0, 1.0);
-    /// let correct: &str = "===========================\n\
-    ///                      SparseTriplet\n\
-    ///                      ---------------------------\n\
-    ///                      nrow      = 2\n\
+    /// let correct: &str = "nrow      = 2\n\
     ///                      ncol      = 2\n\
     ///                      max       = 1\n\
     ///                      pos       = 1 (FULL)\n\
-    ///                      symmetric = false\n\
-    ///                      ===========================";
+    ///                      symmetric = false\n";
     /// assert_eq!(format!("{}", trip), correct);
     /// # Ok(())
     /// # }
@@ -155,9 +153,11 @@ impl SparseTriplet {
     /// use russell_lab::*;
     /// use russell_sparse::*;
     ///
-    /// // define (4 x 4) sparse matrix with 6 non-zero values
-    /// let mut trip = SparseTriplet::new(4, 4, 6, false)?;
-    /// trip.put(0, 0, 1.0);
+    /// // define (4 x 4) sparse matrix with 6+1 non-zero values
+    /// // (with an extra ij-repeated entry)
+    /// let mut trip = SparseTriplet::new(4, 4, 6+1, false)?;
+    /// trip.put(0, 0, 0.5); // (0, 0, a00/2)
+    /// trip.put(0, 0, 0.5); // (0, 0, a00/2)
     /// trip.put(0, 1, 2.0);
     /// trip.put(1, 0, 3.0);
     /// trip.put(1, 1, 4.0);
@@ -197,11 +197,7 @@ impl SparseTriplet {
         a.fill(0.0);
         for p in 0..self.pos {
             if self.indices_i[p] < m_i32 && self.indices_j[p] < n_i32 {
-                a.plus_equal(
-                    self.indices_i[p] as usize,
-                    self.indices_j[p] as usize,
-                    self.values_a[p],
-                );
+                a.plus_equal(self.indices_i[p] as usize, self.indices_j[p] as usize, self.values_a[p]);
             }
         }
         Ok(())
@@ -217,15 +213,11 @@ impl fmt::Display for SparseTriplet {
         };
         write!(
             f,
-            "===========================\n\
-             SparseTriplet\n\
-             ---------------------------\n\
-             nrow      = {}\n\
+            "nrow      = {}\n\
              ncol      = {}\n\
              max       = {}\n\
              pos       = {}\n\
-             symmetric = {}\n\
-             ===========================",
+             symmetric = {}\n",
             self.nrow, self.ncol, self.max, pos, self.symmetric
         )?;
         Ok(())
@@ -268,26 +260,18 @@ mod tests {
     #[test]
     fn display_trait_works() -> Result<(), &'static str> {
         let mut trip = SparseTriplet::new(3, 3, 1, false)?;
-        let correct_1: &str = "===========================\n\
-                               SparseTriplet\n\
-                               ---------------------------\n\
-                               nrow      = 3\n\
+        let correct_1: &str = "nrow      = 3\n\
                                ncol      = 3\n\
                                max       = 1\n\
                                pos       = 0\n\
-                               symmetric = false\n\
-                               ===========================";
+                               symmetric = false\n";
         assert_eq!(format!("{}", trip), correct_1);
         trip.put(0, 0, 1.0);
-        let correct_2: &str = "===========================\n\
-                               SparseTriplet\n\
-                               ---------------------------\n\
-                               nrow      = 3\n\
+        let correct_2: &str = "nrow      = 3\n\
                                ncol      = 3\n\
                                max       = 1\n\
                                pos       = 1 (FULL)\n\
-                               symmetric = false\n\
-                               ===========================";
+                               symmetric = false\n";
         assert_eq!(format!("{}", trip), correct_2);
         Ok(())
     }
@@ -380,8 +364,8 @@ mod tests {
     fn to_matrix_with_duplicates_works() -> Result<(), &'static str> {
         // allocate a square matrix
         let mut trip = SparseTriplet::new(5, 5, 13, false)?;
-        trip.put(0, 0, 1.0); // << duplicated
-        trip.put(0, 0, 1.0); // << duplicated
+        trip.put(0, 0, 1.0); // << (0, 0, a00/2)
+        trip.put(0, 0, 1.0); // << (0, 0, a00/2)
         trip.put(1, 0, 3.0);
         trip.put(0, 1, 3.0);
         trip.put(2, 1, -1.0);

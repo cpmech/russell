@@ -28,7 +28,7 @@ struct SolverMMP {
     DMUMPS_STRUC_C data;  // data structure
 };
 
-struct SolverMMP *new_solver_mmp(int32_t symmetry, int32_t verbose) {
+struct SolverMMP *new_solver_mmp(int32_t symmetry) {
     struct SolverMMP *solver = (struct SolverMMP *)malloc(sizeof(struct SolverMMP));
 
     if (solver == NULL) {
@@ -37,9 +37,9 @@ struct SolverMMP *new_solver_mmp(int32_t symmetry, int32_t verbose) {
 
     solver->data.comm_fortran = MUMPS_IGNORED;
     solver->data.par = MUMPS_PAR_HOST_ALSO_WORKS;
-    solver->data.sym = symmetry;
+    solver->data.sym = MMP_SYMMETRY[symmetry];
 
-    set_mmp_verbose(&solver->data, verbose);
+    set_mmp_verbose(&solver->data, C_FALSE);
     solver->data.job = MUMPS_JOB_INITIALIZE;
     dmumps_c(&solver->data);
 
@@ -119,8 +119,8 @@ int32_t solver_mmp_initialize(struct SolverMMP *solver,
 
     solver->data.ICNTL(5) = MUMPS_ICNTL5_ASSEMBLED_MATRIX;
     solver->data.ICNTL(6) = MUMPS_ICNTL6_PERMUT_AUTO;
-    solver->data.ICNTL(7) = ordering;
-    solver->data.ICNTL(8) = scaling;
+    solver->data.ICNTL(7) = MMP_ORDERING[ordering];
+    solver->data.ICNTL(8) = MMP_SCALING[scaling];
     solver->data.ICNTL(14) = pct_inc_workspace;
     solver->data.ICNTL(16) = openmp_num_threads;
     solver->data.ICNTL(18) = MUMPS_ICNTL18_CENTRALIZED;

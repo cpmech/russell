@@ -1,149 +1,127 @@
-/// Matrix symmetry options for SolverMMP
-pub enum EnumMmpSymmetry {
-    /// Unsymmetric matrix
-    No = 0,
+/// Defines the solver kinds
+pub enum EnumSolverKind {
+    /// The NON-THREAD-SAFE (Mu-M-P) Solver
+    Mmp = 0,
 
-    /// Positive-definite symmetric matrix
-    PosDef = 1,
-
-    /// General symmetric matrix
-    General = 2,
+    /// Tim Davis' UMFPACK Solver (**recommended**)
+    Umf = 1,
 }
 
-/// Ordering options for SolverMMP
-pub enum EnumMmpOrdering {
+/// Matrix symmetry options
+pub enum EnumSymmetry {
+    Auto = 0, // Automatic detection (UMF-only, otherwise No)
+
+    /// General symmetric matrix
+    General = 1,
+
+    /// Unsymmetric matrix
+    No = 2,
+
+    /// Positive-definite symmetric matrix (MMP-only, otherwise General)
+    PosDef = 3,
+}
+
+/// Ordering options
+pub enum EnumOrdering {
     /// Ordering using the approximate minimum degree
     Amd = 0,
 
-    /// Ordering using the approximate minimum fill-in ordering
-    Amf = 2,
+    /// Ordering using the approximate minimum fill-in (MMP-only, otherwise Auto)
+    Amf = 1,
 
     /// Automatic ordering method selection
-    Auto = 7,
+    Auto = 2,
+
+    /// Try three methods and take the best (UMF-only, otherwise Auto)
+    Best = 3,
+
+    /// Use Amd for symmetric, Colamd for unsymmetric, or Metis (UMF-only, otherwise Auto)
+    Cholmod = 4,
 
     /// Ordering by Karpis & Kumar from the University of Minnesota
     Metis = 5,
 
-    /// Ordering by Schulze from the University of Paderborn
-    Pord = 4,
+    /// The matrix is factorized as-is (UMF-only, otherwise Auto)
+    No = 6,
 
-    /// Ordering using the automatic quasi-dense row detection
-    Qamd = 6,
+    /// Ordering by Schulze from the University of Paderborn (MMP-only, otherwise Auto)
+    Pord = 7,
+
+    /// Ordering using the automatic quasi-dense row detection (MMP-only, otherwise Auto)
+    Qamd = 8,
+
+    /// Ordering using the Scotch package (MMP-only, otherwise Auto)
+    Scotch = 9,
 }
 
 /// Scaling options for SolverMMP
-pub enum EnumMmpScaling {
+pub enum EnumScaling {
     /// Automatic scaling method selection
-    Auto = 77,
+    Auto = 0,
 
-    /// Column scaling
-    Column = 3,
+    /// Column scaling (MMP-only, otherwise Auto)
+    Column = 1,
 
-    /// Diagonal scaling
-    Diagonal = 1,
+    /// Diagonal scaling (MMP-only, otherwise Auto)
+    Diagonal = 2,
+
+    /// Use the max absolute value in the row (UMF-only, otherwise Auto)
+    Max = 3,
 
     /// No scaling applied or computed
-    No = 0,
+    No = 4,
 
-    /// Row and column scaling based on infinite row/column norms
-    RowCol = 4,
+    /// Row and column scaling based on infinite row/column norms (MMP-only, otherwise Auto)
+    RowCol = 5,
 
-    /// Simultaneous row and column iterative scaling
-    RowColIter = 7,
+    /// Simultaneous row and column iterative scaling (MMP-only, otherwise Auto)
+    RowColIter = 6,
 
-    /// Similar to RcIterative but more rigorous and expensive to compute
-    RowColRig = 8,
+    /// Similar to RcIterative but more rigorous and expensive to compute (MMP-only, otherwise Auto)
+    RowColRig = 7,
+
+    /// Use the sum of the absolute value in the row (UMF-only, otherwise Auto)
+    Sum = 8,
 }
 
-/// Ordering options for SolverUMF (page 17)
-pub enum EnumUmfOrdering {
-    /// Ordering using the approximate minimum degree
-    Amd = 0,
-
-    /// Try three methods and take the best
-    Best = 1,
-
-    /// Use Amd for symmetric, Colamd for unsymmetric, or Metis
-    Cholmod = 2,
-
-    /// Default ordering method == Amd
-    Default = 3,
-
-    /// Ordering by Karpis & Kumar from the University of Minnesota
-    Metis = 4,
-
-    /// The matrix is factorized as-is (singletons removed)
-    No = 5,
-}
-
-/// Scaling options for SolverUMF (page 49)
-pub enum EnumUmfScaling {
-    /// Default scaling method
-    Default = 0,
-
-    /// Use the max absolute value in the row
-    Max = 1,
-
-    /// No scaling is performed
-    No = 2,
-
-    /// Use the sum of the absolute value in the row
-    Sum = 3,
-}
-
-pub(crate) fn str_mmp_symmetry(code: i32) -> &'static str {
+pub(crate) fn str_enum_symmetry(code: i32) -> &'static str {
     match code {
-        0 => "No",
-        1 => "PosDef",
-        2 => "General",
-        _ => panic!("invalid code"),
-    }
-}
-
-pub(crate) fn str_mmp_ordering(code: i32) -> &'static str {
-    match code {
-        0 => "Amd",
-        2 => "Amf",
-        7 => "Auto",
-        5 => "Metis",
-        4 => "Pord",
-        6 => "Qamd",
-        _ => panic!("invalid code"),
-    }
-}
-
-pub(crate) fn str_mmp_scaling(code: i32) -> &'static str {
-    match code {
-        77 => "Auto",
-        3 => "Column",
-        1 => "Diagonal",
-        0 => "No",
-        4 => "RowCol",
-        7 => "RowColIter",
-        8 => "RowColRig",
-        _ => panic!("invalid code"),
-    }
-}
-
-pub(crate) fn str_umf_ordering(code: i32) -> &'static str {
-    match code {
-        0 => "Amd",
-        1 => "Best",
-        2 => "Cholmod",
-        3 => "Default",
-        4 => "Metis",
-        5 => "No",
-        _ => panic!("invalid code"),
-    }
-}
-
-pub(crate) fn str_umf_scaling(code: i32) -> &'static str {
-    match code {
-        0 => "Default",
-        1 => "Max",
+        0 => "Auto (UMF-only, otherwise No)",
+        1 => "General",
         2 => "No",
-        3 => "Sum",
-        _ => panic!("invalid code"),
+        3 => "PosDef (MMP-only, otherwise General)",
+        _ => panic!("<internal error: invalid code>"),
+    }
+}
+
+pub(crate) fn str_enum_ordering(code: i32) -> &'static str {
+    match code {
+        0 => "Amd",
+        1 => "Amf (MMP-only, otherwise Auto)",
+        2 => "Auto",
+        3 => "Best (UMF-only, otherwise Auto)",
+        4 => "Cholmod (UMF-only, otherwise Auto)",
+        5 => "Metis",
+        6 => "No (UMF-only, otherwise Auto)",
+        7 => "Pord (MMP-only, otherwise Auto)",
+        8 => "Qamd (MMP-only, otherwise Auto)",
+        9 => "Scotch (MMP-only, otherwise Auto)",
+        _ => panic!("<internal error: invalid code>"),
+    }
+}
+
+pub(crate) fn str_enum_scaling(code: i32) -> &'static str {
+    match code {
+        0 => "Auto",
+        1 => "Column (MMP-only, otherwise Auto)",
+        2 => "Diagonal (MMP-only, otherwise Auto)",
+        3 => "Max (UMF-only, otherwise Auto)",
+        4 => "No",
+        5 => "RowCol (MMP-only, otherwise Auto)",
+        6 => "RowColIter (MMP-only, otherwise Auto)",
+        7 => "RowColRig (MMP-only, otherwise Auto)",
+        8 => "Sum (UMF-only, otherwise Auto)",
+        _ => panic!("<internal error: invalid code>"),
     }
 }
 
@@ -154,78 +132,55 @@ mod tests {
     use super::*;
 
     #[test]
-    #[should_panic(expected = "invalid code")]
-    fn str_mmp_symmetry_panics_on_wrong_code() {
-        str_mmp_symmetry(123);
+    #[should_panic(expected = "<internal error: invalid code>")]
+    fn str_enum_symmetry_panics_on_wrong_code() {
+        str_enum_symmetry(123);
     }
 
     #[test]
-    #[should_panic(expected = "invalid code")]
-    fn str_mmp_ordering_panics_on_wrong_code() {
-        str_mmp_ordering(123);
+    #[should_panic(expected = "<internal error: invalid code>")]
+    fn str_enum_ordering_panics_on_wrong_code() {
+        str_enum_ordering(123);
     }
 
     #[test]
-    #[should_panic(expected = "invalid code")]
-    fn str_mmp_scaling_panics_on_wrong_code() {
-        str_mmp_scaling(123);
+    #[should_panic(expected = "<internal error: invalid code>")]
+    fn str_enum_scaling_panics_on_wrong_code() {
+        str_enum_scaling(123);
     }
 
     #[test]
-    fn str_mmp_symmetry_works() {
-        assert_eq!(str_mmp_symmetry(0), "No");
-        assert_eq!(str_mmp_symmetry(1), "PosDef");
-        assert_eq!(str_mmp_symmetry(2), "General");
+    fn str_enum_symmetry_works() {
+        assert_eq!(str_enum_symmetry(0), "Auto (UMF-only, otherwise No)");
+        assert_eq!(str_enum_symmetry(1), "General");
+        assert_eq!(str_enum_symmetry(2), "No");
+        assert_eq!(str_enum_symmetry(3), "PosDef (MMP-only, otherwise General)");
     }
 
     #[test]
-    fn str_mmp_ordering_works() {
-        assert_eq!(str_mmp_ordering(0), "Amd");
-        assert_eq!(str_mmp_ordering(2), "Amf");
-        assert_eq!(str_mmp_ordering(7), "Auto");
-        assert_eq!(str_mmp_ordering(5), "Metis");
-        assert_eq!(str_mmp_ordering(4), "Pord");
-        assert_eq!(str_mmp_ordering(6), "Qamd");
+    fn str_enum_ordering_works() {
+        assert_eq!(str_enum_ordering(0), "Amd");
+        assert_eq!(str_enum_ordering(1), "Amf (MMP-only, otherwise Auto)");
+        assert_eq!(str_enum_ordering(2), "Auto");
+        assert_eq!(str_enum_ordering(3), "Best (UMF-only, otherwise Auto)");
+        assert_eq!(str_enum_ordering(4), "Cholmod (UMF-only, otherwise Auto)");
+        assert_eq!(str_enum_ordering(5), "Metis");
+        assert_eq!(str_enum_ordering(6), "No (UMF-only, otherwise Auto)");
+        assert_eq!(str_enum_ordering(7), "Pord (MMP-only, otherwise Auto)");
+        assert_eq!(str_enum_ordering(8), "Qamd (MMP-only, otherwise Auto)");
+        assert_eq!(str_enum_ordering(9), "Scotch (MMP-only, otherwise Auto)");
     }
 
     #[test]
-    fn str_mmp_scaling_works() {
-        assert_eq!(str_mmp_scaling(77), "Auto");
-        assert_eq!(str_mmp_scaling(3), "Column");
-        assert_eq!(str_mmp_scaling(1), "Diagonal");
-        assert_eq!(str_mmp_scaling(0), "No");
-        assert_eq!(str_mmp_scaling(4), "RowCol");
-        assert_eq!(str_mmp_scaling(7), "RowColIter");
-        assert_eq!(str_mmp_scaling(8), "RowColRig");
-    }
-
-    #[test]
-    #[should_panic(expected = "invalid code")]
-    fn str_umf_ordering_panics_on_wrong_code() {
-        str_umf_ordering(123);
-    }
-
-    #[test]
-    #[should_panic(expected = "invalid code")]
-    fn str_umf_scaling_panics_on_wrong_code() {
-        str_umf_scaling(123);
-    }
-
-    #[test]
-    fn str_umf_ordering_works() {
-        assert_eq!(str_umf_ordering(0), "Amd");
-        assert_eq!(str_umf_ordering(1), "Best");
-        assert_eq!(str_umf_ordering(2), "Cholmod");
-        assert_eq!(str_umf_ordering(3), "Default");
-        assert_eq!(str_umf_ordering(4), "Metis");
-        assert_eq!(str_umf_ordering(5), "No");
-    }
-
-    #[test]
-    fn str_umf_scaling_works() {
-        assert_eq!(str_umf_scaling(0), "Default");
-        assert_eq!(str_umf_scaling(1), "Max");
-        assert_eq!(str_umf_scaling(2), "No");
-        assert_eq!(str_umf_scaling(3), "Sum");
+    fn str_enum_scaling_works() {
+        assert_eq!(str_enum_scaling(0), "Auto");
+        assert_eq!(str_enum_scaling(1), "Column (MMP-only, otherwise Auto)");
+        assert_eq!(str_enum_scaling(2), "Diagonal (MMP-only, otherwise Auto)");
+        assert_eq!(str_enum_scaling(3), "Max (UMF-only, otherwise Auto)");
+        assert_eq!(str_enum_scaling(4), "No");
+        assert_eq!(str_enum_scaling(5), "RowCol (MMP-only, otherwise Auto)");
+        assert_eq!(str_enum_scaling(6), "RowColIter (MMP-only, otherwise Auto)");
+        assert_eq!(str_enum_scaling(7), "RowColRig (MMP-only, otherwise Auto)");
+        assert_eq!(str_enum_scaling(8), "Sum (UMF-only, otherwise Auto)");
     }
 }

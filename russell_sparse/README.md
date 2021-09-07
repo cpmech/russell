@@ -58,13 +58,13 @@ The data directory contains an example of Matrix Market file named `bfwb62.mtx` 
 Run the command:
 
 ```
-cargo run --bin solve_mm_build -- data/matrix_market/bfwb62.mtx
+cargo run --release --bin solve_mm_build -- data/matrix_market/bfwb62.mtx
 ```
 
 Or
 
 ```
-cargo run --bin solve_mm_build -- --help
+cargo run --release --bin solve_mm_build -- --help
 ```
 
 for more options.

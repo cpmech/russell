@@ -110,7 +110,7 @@ fn main() -> Result<(), &'static str> {
     // output
     println!("{}", trip);
     println!("{}", solver);
-    println!("elapsed times:\n{}", solver.get_elapsed_times());
+    println!("elapsed times:\n{}", solver.get_elapsed_times_str());
 
     // check
     let path = Path::new(&opt.matrix_market_file);

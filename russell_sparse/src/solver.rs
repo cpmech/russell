@@ -432,7 +432,45 @@ impl Solver {
     }
 
     /// Returns a text containing the elapsed times
-    pub fn get_elapsed_times(&self) -> String {
+    ///
+    /// # Output
+    ///
+    /// * `(time_init, time_fact, time_solve)` -- elapsed times during initialize, factorize, and solve, respectively
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let config = ConfigSolver::new();
+    /// let solver = Solver::new(config)?;
+    /// let times = solver.get_elapsed_times();
+    /// assert_eq!(times, (0, 0, 0));
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn get_elapsed_times(&self) -> (u128, u128, u128) {
+        (self.time_init, self.time_fact, self.time_solve)
+    }
+
+    /// Returns a text containing the elapsed times
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_sparse::*;
+    /// let config = ConfigSolver::new();
+    /// let solver = Solver::new(config)?;
+    /// let times = solver.get_elapsed_times_str();
+    /// let correct: &str = "initialize = 0ns\n\
+    ///                      factorize  = 0ns\n\
+    ///                      solve      = 0ns\n";
+    /// assert_eq!(format!("{}", times), correct);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn get_elapsed_times_str(&self) -> String {
         let mut buf = String::new();
         write!(&mut buf, "initialize = {}\n", format_nanoseconds(self.time_init)).unwrap();
         write!(&mut buf, "factorize  = {}\n", format_nanoseconds(self.time_fact)).unwrap();
@@ -872,6 +910,15 @@ mod tests {
         let config = ConfigSolver::new();
         let solver = Solver::new(config)?;
         let times = solver.get_elapsed_times();
+        assert_eq!(times, (0, 0, 0));
+        Ok(())
+    }
+
+    #[test]
+    fn get_elapsed_times_works_str() -> Result<(), &'static str> {
+        let config = ConfigSolver::new();
+        let solver = Solver::new(config)?;
+        let times = solver.get_elapsed_times_str();
         let correct: &str = "initialize = 0ns\n\
                              factorize  = 0ns\n\
                              solve      = 0ns\n";

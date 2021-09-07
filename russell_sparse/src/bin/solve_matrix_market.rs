@@ -41,6 +41,10 @@ struct Options {
     /// Activate verbose mode on solution step
     #[structopt(short = "s", long)]
     verb_solve: bool,
+
+    /// Number of threads for OpenMP
+    #[structopt(long, default_value = "1")]
+    omp_nt: u32,
 }
 
 fn main() -> Result<(), &'static str> {
@@ -85,6 +89,9 @@ fn main() -> Result<(), &'static str> {
         config.set_ordering(EnumOrdering::Pord);
     } else if opt.ord_scotch {
         config.set_ordering(EnumOrdering::Scotch);
+    }
+    if opt.omp_nt > 1 {
+        config.set_openmp_num_threads(opt.omp_nt as usize);
     }
 
     // initialize and factorize

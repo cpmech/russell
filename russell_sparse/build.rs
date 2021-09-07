@@ -1,16 +1,28 @@
-// paths
-const INC_UMFPACK: &str = "/usr/include/suitesparse";
-
-// libraries
-const LIB_DMUMPS: &str = "dmumps_seq";
-const LIB_UMFPACK: &str = "umfpack";
+use std::env;
 
 fn main() {
-    cc::Build::new()
-        .file("c_code/main.c")
-        .include(INC_UMFPACK)
-        .compile("c_code_main");
+    let use_local_mumps = match env::var("USE_LOCAL_MUMPS") {
+        Ok(v) => v == "1" || v.to_lowercase() == "true",
+        Err(_) => false,
+    };
 
-    println!("cargo:rustc-link-lib=dylib={}", LIB_DMUMPS);
-    println!("cargo:rustc-link-lib=dylib={}", LIB_UMFPACK);
+    if use_local_mumps {
+        cc::Build::new()
+            .file("c_code/main.c")
+            .include("/usr/include/suitesparse")
+            .include("/usr/local/include/mumps")
+            .compile("c_code_main");
+
+        println!("cargo:rustc-link-search=native=/usr/local/lib/mumps");
+        println!("cargo:rustc-link-lib=dylib=dmumps_open_seq_omp");
+        println!("cargo:rustc-link-lib=dylib=umfpack");
+    } else {
+        cc::Build::new()
+            .file("c_code/main.c")
+            .include("/usr/include/suitesparse")
+            .compile("c_code_main");
+
+        println!("cargo:rustc-link-lib=dylib=dmumps_seq");
+        println!("cargo:rustc-link-lib=dylib=umfpack");
+    }
 }

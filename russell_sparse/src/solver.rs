@@ -48,6 +48,14 @@ extern "C" {
 }
 
 /// Implements a sparse Solver
+///
+/// For a general sparse and square matrix `a` (symmetric, non-symmetric)
+/// find `x` such that:
+///
+/// ```text
+///   a   ⋅  x  =  rhs
+/// (m,m)   (m)    (m)
+/// ```
 pub struct Solver {
     config: ConfigSolver,   // configuration
     done_initialize: bool,  // initialization completed
@@ -180,6 +188,7 @@ impl Solver {
                 }
             }
             self.done_initialize = true;
+            self.done_factorize = false;
             self.ndim = trip.nrow;
         }
         Ok(())
@@ -276,7 +285,6 @@ impl Solver {
     /// // allocate x and rhs
     /// let mut x = Vector::new(5);
     /// let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
-    /// let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
     ///
     /// // initialize, factorize, and solve
     /// let config = ConfigSolver::new();
@@ -321,6 +329,92 @@ impl Solver {
             }
         }
         Ok(())
+    }
+
+    /// Returns the solver and a solution x such that
+    ///
+    /// ```text
+    ///   a   ⋅  x  =  rhs
+    /// (m,m)   (m)    (m)
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// `(solver, x)` -- the solver and the solution vector
+    ///
+    /// # Note
+    ///
+    /// The solver will be initialized, the matrix will be factorized, and
+    /// the solution will be calculated. These steps correspond to calling
+    /// `initialize`, `factorize`, and `solve`, one after another. Thus,
+    /// you may re-compute solutions with the already factorized matrix
+    /// by calling `solve`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_lab::*;
+    /// use russell_sparse::*;
+    ///
+    /// // allocate a square matrix
+    /// let mut trip = SparseTriplet::new(3, 3, 5, false)?;
+    /// trip.put(0, 0, 0.2);
+    /// trip.put(0, 1, 0.2);
+    /// trip.put(1, 0, 0.5);
+    /// trip.put(1, 1, -0.25);
+    /// trip.put(2, 2, 0.25);
+    ///
+    /// // print matrix
+    /// let (m, n) = trip.dims();
+    /// let mut a = Matrix::new(m, n);
+    /// trip.to_matrix(&mut a)?;
+    /// let correct = "┌                   ┐\n\
+    ///                │   0.2   0.2     0 │\n\
+    ///                │   0.5 -0.25     0 │\n\
+    ///                │     0     0  0.25 │\n\
+    ///                └                   ┘";
+    /// assert_eq!(format!("{}", a), correct);
+    ///
+    /// // allocate rhs
+    /// let rhs1 = Vector::from(&[1.0, 1.0, 1.0]);
+    /// let rhs2 = Vector::from(&[2.0, 2.0, 2.0]);
+    ///
+    /// // calculate solution
+    /// let config = ConfigSolver::new();
+    /// let (mut solver, x1) = Solver::new_solution(config, &trip, &rhs1, false, false)?;
+    /// let correct1 = "┌   ┐\n\
+    ///                 │ 3 │\n\
+    ///                 │ 2 │\n\
+    ///                 │ 4 │\n\
+    ///                 └   ┘";
+    /// assert_eq!(format!("{}", x1), correct1);
+    ///
+    /// // solve again
+    /// let mut x2 = Vector::new(trip.dims().0);
+    /// solver.solve(&mut x2, &rhs2, false)?;
+    /// let correct2 = "┌   ┐\n\
+    ///                 │ 6 │\n\
+    ///                 │ 4 │\n\
+    ///                 │ 8 │\n\
+    ///                 └   ┘";
+    /// assert_eq!(format!("{}", x2), correct2);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn new_solution(
+        config: ConfigSolver,
+        trip: &SparseTriplet,
+        rhs: &Vector,
+        verb_fact: bool,
+        verb_solve: bool,
+    ) -> Result<(Self, Vector), &'static str> {
+        let mut solver = Solver::new(config)?;
+        let mut x = Vector::new(trip.dims().0);
+        solver.initialize(&trip, false)?;
+        solver.factorize(verb_fact)?;
+        solver.solve(&mut x, &rhs, verb_solve)?;
+        Ok((solver, x))
     }
 
     /// Handles error code
@@ -630,7 +724,12 @@ mod tests {
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
         solver.initialize(&trip, false)?;
+        solver.factorize(false)?;
+        assert_eq!(solver.done_initialize, true);
+        assert_eq!(solver.done_factorize, true);
         solver.initialize(&trip, false)?;
+        assert_eq!(solver.done_initialize, true);
+        assert_eq!(solver.done_factorize, false);
         Ok(())
     }
 
@@ -723,6 +822,25 @@ mod tests {
         assert_eq!(solver.factorize(false), Err("Error(-10): numerically singular matrix"));
 
         // done
+        Ok(())
+    }
+
+    #[test]
+    fn new_solution_works() -> Result<(), &'static str> {
+        let mut trip = SparseTriplet::new(3, 3, 6, false)?;
+        trip.put(0, 0, 1.0);
+        trip.put(0, 1, 1.0);
+        trip.put(1, 0, 2.0);
+        trip.put(1, 1, 1.0);
+        trip.put(1, 2, 1.0);
+        trip.put(2, 2, 1.0);
+        let rhs1 = Vector::from(&[1.0, 2.0, 3.0]);
+        let rhs2 = Vector::from(&[2.0, 4.0, 6.0]);
+        let config = ConfigSolver::new();
+        let (mut solver, x1) = Solver::new_solution(config, &trip, &rhs1, false, false)?;
+        assert_vec_approx_eq!(x1.as_data(), &[-2.0, 3.0, 3.0], 1e-15);
+        let mut x2 = Vector::new(trip.dims().0);
+        solver.solve(&mut x2, &rhs2, false)?;
         Ok(())
     }
 

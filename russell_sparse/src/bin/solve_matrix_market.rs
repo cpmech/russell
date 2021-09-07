@@ -96,7 +96,7 @@ fn main() -> Result<(), &'static str> {
 
     // initialize and factorize
     let mut solver = Solver::new(config)?;
-    solver.initialize(&trip, false)?;
+    solver.initialize(&trip, if opt.mmp { opt.verb_fact } else { false })?;
     solver.factorize(opt.verb_fact)?;
 
     // allocate vectors

@@ -592,7 +592,8 @@ mod tests {
 
     #[test]
     fn solve_works() -> Result<(), &'static str> {
-        let config = ConfigSolver::new();
+        let mut config = ConfigSolver::new();
+        config.set_verbose(false);
         let mut solver = Solver::new(config)?;
 
         // allocate a square matrix

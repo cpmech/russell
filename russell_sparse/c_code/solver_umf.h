@@ -20,7 +20,7 @@ struct SolverUMF {
 };
 
 static inline void set_umf_verbose(struct SolverUMF *solver, int32_t verbose) {
-    if (verbose > C_TRUE) {
+    if (verbose == C_TRUE) {
         solver->control[UMFPACK_PRL] = UMF_PRINT_LEVEL_VERBOSE;
     } else {
         solver->control[UMFPACK_PRL] = UMF_PRINT_LEVEL_SILENT;
@@ -141,6 +141,10 @@ int32_t solver_umf_factorize(struct SolverUMF *solver, int32_t verbose) {
     code = umfpack_di_numeric(solver->ap, solver->ai, solver->ax,
                               solver->symbolic, &solver->numeric, solver->control, solver->info);
 
+    if (code == UMFPACK_OK && verbose == C_TRUE) {
+        umfpack_di_report_info(solver->control, solver->info);
+    }
+
     return code;
 }
 
@@ -153,6 +157,10 @@ int32_t solver_umf_solve(struct SolverUMF *solver, double *x, const double *rhs,
 
     int code = umfpack_di_solve(UMFPACK_A, solver->ap, solver->ai, solver->ax,
                                 x, rhs, solver->numeric, solver->control, solver->info);
+
+    if (code == UMFPACK_OK && verbose == C_TRUE) {
+        umfpack_di_report_info(solver->control, solver->info);
+    }
 
     return code;
 }

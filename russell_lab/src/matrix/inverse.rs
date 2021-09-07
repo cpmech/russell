@@ -384,7 +384,7 @@ mod tests {
         let mut a = Matrix::from(data)?;
         let mut ai = Matrix::new(5, 5);
         let det = inverse(&mut ai, &mut a)?;
-        assert_approx_eq!(det, -167402.0, 1e-9);
+        assert_approx_eq!(det, -167402.0, 1e-8);
         #[rustfmt::skip]
         let ai_correct = Matrix::from(&[
             &[ 6.9128803717996279e-01, -7.4226114383340802e-01, -9.8756287260606410e-02, -6.9062496266472417e-01,  7.2471057693456553e-01],

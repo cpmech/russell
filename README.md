@@ -89,9 +89,9 @@ fn main() -> Result<(), &'static str> {
     // initialize, factorize, and solve
     let config = ConfigSolver::new();
     let mut solver = Solver::new(config)?;
-    solver.initialize(&trip)?;
-    solver.factorize()?;
-    solver.solve(&mut x, &rhs)?;
+    solver.initialize(&trip, false)?;
+    solver.factorize(false)?;
+    solver.solve(&mut x, &rhs, false)?;
     let correct = "┌          ┐\n\
                    │ 1.000000 │\n\
                    │ 2.000000 │\n\

@@ -1,7 +1,7 @@
 use russell_lab::*;
 use russell_sparse::*;
 
-fn test_solver(kind: EnumSolverKind) {
+fn test_solver(kind: EnumSolverKind, verb_fact: bool, verb_sol: bool) {
     match kind {
         EnumSolverKind::Mmp => println!("Testing MMP solver\n"),
         EnumSolverKind::Umf => println!("Testing UMF solver\n"),
@@ -39,7 +39,7 @@ fn test_solver(kind: EnumSolverKind) {
         }
     };
 
-    match solver.initialize(&trip) {
+    match solver.initialize(&trip, false) {
         Err(e) => {
             println!("FAIL(initialize): {}", e);
             return;
@@ -47,7 +47,7 @@ fn test_solver(kind: EnumSolverKind) {
         _ => (),
     };
 
-    match solver.factorize() {
+    match solver.factorize(verb_fact) {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
@@ -58,7 +58,7 @@ fn test_solver(kind: EnumSolverKind) {
     let mut x = Vector::new(5);
     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
 
-    match solver.solve(&mut x, &rhs) {
+    match solver.solve(&mut x, &rhs, verb_sol) {
         Err(e) => {
             println!("FAIL(solve): {}", e);
             return;
@@ -66,7 +66,7 @@ fn test_solver(kind: EnumSolverKind) {
         _ => (),
     }
 
-    match solver.solve(&mut x, &rhs) {
+    match solver.solve(&mut x, &rhs, verb_sol) {
         Err(e) => {
             println!("FAIL(solve again): {}", e);
             return;
@@ -88,7 +88,7 @@ fn test_solver(kind: EnumSolverKind) {
 
     trip_singular.put(0, 0, 1.0);
     trip_singular.put(4, 4, 1.0);
-    match solver.initialize(&trip_singular) {
+    match solver.initialize(&trip_singular, false) {
         Err(e) => {
             println!("FAIL(initialize singular matrix): {}", e);
             return;
@@ -96,7 +96,7 @@ fn test_solver(kind: EnumSolverKind) {
         _ => (),
     };
 
-    match solver.factorize() {
+    match solver.factorize(verb_fact) {
         Err(e) => println!("\nOk(factorize singular matrix): {}\n", e),
         _ => (),
     };
@@ -104,7 +104,7 @@ fn test_solver(kind: EnumSolverKind) {
 
 fn main() {
     println!("Running Mem Check\n");
-    test_solver(EnumSolverKind::Mmp);
-    test_solver(EnumSolverKind::Umf);
+    test_solver(EnumSolverKind::Mmp, false, false);
+    test_solver(EnumSolverKind::Umf, false, false);
     println!("Done\n");
 }

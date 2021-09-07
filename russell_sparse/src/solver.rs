@@ -41,6 +41,7 @@ extern "C" {
         values_a: *const f64,
         ordering: i32,
         scaling: i32,
+        verbose: i32,
     ) -> i32;
     fn solver_umf_factorize(solver: *mut ExtSolver, verbose: i32) -> i32;
     fn solver_umf_solve(solver: *mut ExtSolver, x: *mut f64, rhs: *const f64, verbose: i32) -> i32;
@@ -69,7 +70,6 @@ impl Solver {
     ///                      symmetry           = No\n\
     ///                      ordering           = Auto\n\
     ///                      scaling            = Auto\n\
-    ///                      verbose            = false\n\
     ///                      done_initialize    = false\n\
     ///                      done_factorize     = false\n\
     ///                      ndim               = 0\n";
@@ -108,12 +108,11 @@ impl Solver {
     /// let mut trip = SparseTriplet::new(2, 2, 2, false)?;
     /// trip.put(0, 0, 1.0);
     /// trip.put(1, 1, 1.0);
-    /// solver.initialize(&trip)?;
+    /// solver.initialize(&trip, false)?;
     /// let correct: &str = "solver_kind        = UMF\n\
     ///                      symmetry           = No\n\
     ///                      ordering           = Auto\n\
     ///                      scaling            = Auto\n\
-    ///                      verbose            = false\n\
     ///                      done_initialize    = true\n\
     ///                      done_factorize     = false\n\
     ///                      ndim               = 2\n";
@@ -121,12 +120,13 @@ impl Solver {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn initialize(&mut self, trip: &SparseTriplet) -> Result<(), &'static str> {
+    pub fn initialize(&mut self, trip: &SparseTriplet, verbose: bool) -> Result<(), &'static str> {
         if trip.nrow != trip.ncol {
             return Err("the matrix represented by the triplet must be square");
         }
         let n = to_i32(trip.nrow);
         let nnz = to_i32(trip.pos);
+        let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
             match self.config.solver_kind {
                 EnumSolverKind::Mmp => {
@@ -149,7 +149,7 @@ impl Solver {
                         self.config.pct_inc_workspace,
                         self.config.max_work_memory,
                         self.config.openmp_num_threads,
-                        self.config.verbose,
+                        verb,
                     );
                     if res != 0 {
                         return Err(self.handle_mmp_error_code(res));
@@ -172,6 +172,7 @@ impl Solver {
                         trip.values_a.as_ptr(),
                         self.config.ordering,
                         self.config.scaling,
+                        verb,
                     );
                     if res != 0 {
                         return Err(self.handle_umf_error_code(res));
@@ -196,13 +197,12 @@ impl Solver {
     /// let mut trip = SparseTriplet::new(2, 2, 2, false)?;
     /// trip.put(0, 0, 1.0);
     /// trip.put(1, 1, 1.0);
-    /// solver.initialize(&trip)?;
-    /// solver.factorize()?;
+    /// solver.initialize(&trip, false)?;
+    /// solver.factorize(false)?;
     /// let correct: &str = "solver_kind        = UMF\n\
     ///                      symmetry           = No\n\
     ///                      ordering           = Auto\n\
     ///                      scaling            = Auto\n\
-    ///                      verbose            = false\n\
     ///                      done_initialize    = true\n\
     ///                      done_factorize     = true\n\
     ///                      ndim               = 2\n";
@@ -210,20 +210,21 @@ impl Solver {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn factorize(&mut self) -> Result<(), &'static str> {
+    pub fn factorize(&mut self, verbose: bool) -> Result<(), &'static str> {
         if !self.done_initialize {
             return Err("initialization must be done before factorization");
         }
+        let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
             match self.config.solver_kind {
                 EnumSolverKind::Mmp => {
-                    let res = solver_mmp_factorize(self.solver, self.config.verbose);
+                    let res = solver_mmp_factorize(self.solver, verb);
                     if res != 0 {
                         return Err(self.handle_mmp_error_code(res));
                     }
                 }
                 EnumSolverKind::Umf => {
-                    let res = solver_umf_factorize(self.solver, self.config.verbose);
+                    let res = solver_umf_factorize(self.solver, verb);
                     if res != 0 {
                         return Err(self.handle_umf_error_code(res));
                     }
@@ -280,9 +281,9 @@ impl Solver {
     /// // initialize, factorize, and solve
     /// let config = ConfigSolver::new();
     /// let mut solver = Solver::new(config)?;
-    /// solver.initialize(&trip)?;
-    /// solver.factorize()?;
-    /// solver.solve(&mut x, &rhs)?;
+    /// solver.initialize(&trip, false)?;
+    /// solver.factorize(false)?;
+    /// solver.solve(&mut x, &rhs, false)?;
     /// let correct = "┌          ┐\n\
     ///                │ 1.000000 │\n\
     ///                │ 2.000000 │\n\
@@ -294,29 +295,25 @@ impl Solver {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn solve(&mut self, x: &mut Vector, rhs: &Vector) -> Result<(), &'static str> {
+    pub fn solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool) -> Result<(), &'static str> {
         if !self.done_factorize {
             return Err("factorization must be done before solution");
         }
         if x.dim() != self.ndim || rhs.dim() != self.ndim {
             return Err("x.ndim() and rhs.ndim() must equal the number of equations");
         }
+        let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
             match self.config.solver_kind {
                 EnumSolverKind::Mmp => {
                     copy_vector(x, rhs)?;
-                    let res = solver_mmp_solve(self.solver, x.as_mut_data().as_mut_ptr(), self.config.verbose);
+                    let res = solver_mmp_solve(self.solver, x.as_mut_data().as_mut_ptr(), verb);
                     if res != 0 {
                         return Err(self.handle_mmp_error_code(res));
                     }
                 }
                 EnumSolverKind::Umf => {
-                    let res = solver_umf_solve(
-                        self.solver,
-                        x.as_mut_data().as_mut_ptr(),
-                        rhs.as_data().as_ptr(),
-                        self.config.verbose,
-                    );
+                    let res = solver_umf_solve(self.solver, x.as_mut_data().as_mut_ptr(), rhs.as_data().as_ptr(), verb);
                     if res != 0 {
                         return Err(self.handle_umf_error_code(res));
                     }
@@ -481,7 +478,6 @@ mod tests {
                              symmetry           = No\n\
                              ordering           = Auto\n\
                              scaling            = Auto\n\
-                             verbose            = false\n\
                              done_initialize    = false\n\
                              done_factorize     = false\n\
                              ndim               = 0\n";
@@ -495,7 +491,7 @@ mod tests {
         let mut solver = Solver::new(config)?;
         let trip_rect = SparseTriplet::new(3, 2, 1, false)?;
         assert_eq!(
-            solver.initialize(&trip_rect),
+            solver.initialize(&trip_rect, false),
             Err("the matrix represented by the triplet must be square")
         );
         Ok(())
@@ -508,7 +504,7 @@ mod tests {
         let mut trip = SparseTriplet::new(2, 2, 2, false)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
-        solver.initialize(&trip)?;
+        solver.initialize(&trip, false)?;
         assert!(solver.done_initialize);
         Ok(())
     }
@@ -518,7 +514,7 @@ mod tests {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         assert_eq!(
-            solver.factorize(),
+            solver.factorize(false),
             Err("initialization must be done before factorization")
         );
         Ok(())
@@ -531,8 +527,8 @@ mod tests {
         let mut trip = SparseTriplet::new(2, 2, 2, false)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 0.0);
-        solver.initialize(&trip)?;
-        assert_eq!(solver.factorize(), Err("Error(1): Matrix is singular"));
+        solver.initialize(&trip, false)?;
+        assert_eq!(solver.factorize(false), Err("Error(1): Matrix is singular"));
         Ok(())
     }
 
@@ -543,8 +539,8 @@ mod tests {
         let mut trip = SparseTriplet::new(2, 2, 2, false)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
-        solver.initialize(&trip)?;
-        solver.factorize()?;
+        solver.initialize(&trip, false)?;
+        solver.factorize(false)?;
         assert!(solver.done_factorize);
         Ok(())
     }
@@ -556,11 +552,11 @@ mod tests {
         let mut trip = SparseTriplet::new(2, 2, 2, false)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
-        solver.initialize(&trip)?;
+        solver.initialize(&trip, false)?;
         let mut x = Vector::new(2);
         let rhs = Vector::from(&[1.0, 1.0]);
         assert_eq!(
-            solver.solve(&mut x, &rhs),
+            solver.solve(&mut x, &rhs, false),
             Err("factorization must be done before solution")
         );
         Ok(())
@@ -573,18 +569,18 @@ mod tests {
         let mut trip = SparseTriplet::new(2, 2, 2, false)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
-        solver.initialize(&trip)?;
-        solver.factorize()?;
+        solver.initialize(&trip, false)?;
+        solver.factorize(false)?;
         let mut x = Vector::new(2);
         let rhs = Vector::from(&[1.0, 1.0]);
         let mut x_wrong = Vector::new(1);
         let rhs_wrong = Vector::from(&[1.0]);
         assert_eq!(
-            solver.solve(&mut x_wrong, &rhs),
+            solver.solve(&mut x_wrong, &rhs, false),
             Err("x.ndim() and rhs.ndim() must equal the number of equations")
         );
         assert_eq!(
-            solver.solve(&mut x, &rhs_wrong),
+            solver.solve(&mut x, &rhs_wrong, false),
             Err("x.ndim() and rhs.ndim() must equal the number of equations")
         );
         Ok(())
@@ -592,8 +588,7 @@ mod tests {
 
     #[test]
     fn solve_works() -> Result<(), &'static str> {
-        let mut config = ConfigSolver::new();
-        config.set_verbose(false);
+        let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
 
         // allocate a square matrix
@@ -618,9 +613,9 @@ mod tests {
         let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
 
         // initialize, factorize, and solve
-        solver.initialize(&trip)?;
-        solver.factorize()?;
-        solver.solve(&mut x, &rhs)?;
+        solver.initialize(&trip, false)?;
+        solver.factorize(false)?;
+        solver.solve(&mut x, &rhs, false)?;
 
         // check
         assert_vec_approx_eq!(x.as_data(), x_correct, 1e-14);
@@ -634,8 +629,8 @@ mod tests {
         let mut trip = SparseTriplet::new(2, 2, 2, false)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
-        solver.initialize(&trip)?;
-        solver.initialize(&trip)?;
+        solver.initialize(&trip, false)?;
+        solver.initialize(&trip, false)?;
         Ok(())
     }
 
@@ -652,13 +647,13 @@ mod tests {
         // initialize fails on rectangular matrix
         let trip_rect = SparseTriplet::new(3, 2, 1, false)?;
         assert_eq!(
-            solver.initialize(&trip_rect),
+            solver.initialize(&trip_rect, false),
             Err("the matrix represented by the triplet must be square")
         );
 
         // factorize fails on non-initialized solver
         assert_eq!(
-            solver.factorize(),
+            solver.factorize(false),
             Err("initialization must be done before factorization")
         );
 
@@ -684,48 +679,48 @@ mod tests {
         let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
 
         // initialize works
-        solver.initialize(&trip)?;
+        solver.initialize(&trip, false)?;
         assert!(solver.done_initialize);
 
         // solve fails on non-factorized system
         assert_eq!(
-            solver.solve(&mut x, &rhs),
+            solver.solve(&mut x, &rhs, false),
             Err("factorization must be done before solution")
         );
 
         // factorize works
-        solver.factorize()?;
+        solver.factorize(false)?;
         assert!(solver.done_factorize);
 
         // solve fails on wrong x vector
         let mut x_wrong = Vector::new(3);
         assert_eq!(
-            solver.solve(&mut x_wrong, &rhs),
+            solver.solve(&mut x_wrong, &rhs, false),
             Err("x.ndim() and rhs.ndim() must equal the number of equations")
         );
 
         // solve fails on wrong rhs vector
         let rhs_wrong = Vector::from(&[1.0]);
         assert_eq!(
-            solver.solve(&mut x, &rhs_wrong),
+            solver.solve(&mut x, &rhs_wrong, false),
             Err("x.ndim() and rhs.ndim() must equal the number of equations")
         );
 
         // solve works
-        solver.solve(&mut x, &rhs)?;
+        solver.solve(&mut x, &rhs, false)?;
         assert_vec_approx_eq!(x.as_data(), x_correct, 1e-14);
 
         // calling solve again works
         let mut x_again = Vector::new(5);
-        solver.solve(&mut x_again, &rhs)?;
+        solver.solve(&mut x_again, &rhs, false)?;
         assert_vec_approx_eq!(x_again.as_data(), x_correct, 1e-14);
 
         // factorize fails on singular matrix
         let mut trip_singular = SparseTriplet::new(5, 5, 2, false)?;
         trip_singular.put(0, 0, 1.0);
         trip_singular.put(4, 4, 1.0);
-        solver.initialize(&trip_singular)?;
-        assert_eq!(solver.factorize(), Err("Error(-10): numerically singular matrix"));
+        solver.initialize(&trip_singular, false)?;
+        assert_eq!(solver.factorize(false), Err("Error(-10): numerically singular matrix"));
 
         // done
         Ok(())

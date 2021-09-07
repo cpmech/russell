@@ -159,7 +159,8 @@ impl fmt::Display for ConfigSolver {
                     self.max_work_memory,
                     self.openmp_num_threads,
                     if self.verbose == 1 { true } else { false },
-                )?;
+                )
+                .unwrap();
             }
             EnumSolverKind::Umf => {
                 write!(
@@ -173,7 +174,8 @@ impl fmt::Display for ConfigSolver {
                     str_enum_ordering(self.ordering),
                     str_enum_scaling(self.scaling),
                     if self.verbose == 1 { true } else { false },
-                )?;
+                )
+                .unwrap();
             }
         };
         Ok(())
@@ -195,5 +197,102 @@ mod tests {
         assert_eq!(config.pct_inc_workspace, 100);
         assert_eq!(config.max_work_memory, 0);
         assert_eq!(config.openmp_num_threads, 1);
+    }
+
+    #[test]
+    fn set_solver_kind_works() {
+        let mut config = ConfigSolver::new();
+        for kind in [EnumSolverKind::Mmp, EnumSolverKind::Umf] {
+            config.set_solver_kind(kind);
+            match config.solver_kind {
+                EnumSolverKind::Mmp => assert!(true),
+                EnumSolverKind::Umf => assert!(true),
+            }
+        }
+    }
+
+    #[test]
+    fn set_symmetry_works() {
+        let mut config = ConfigSolver::new();
+        config.set_symmetry(EnumSymmetry::General);
+        assert_eq!(config.symmetry, EnumSymmetry::General as i32);
+    }
+
+    #[test]
+    fn set_ordering_works() {
+        let mut config = ConfigSolver::new();
+        config.set_ordering(EnumOrdering::Metis);
+        assert_eq!(config.ordering, EnumOrdering::Metis as i32);
+    }
+
+    #[test]
+    fn set_scaling_works() {
+        let mut config = ConfigSolver::new();
+        config.set_scaling(EnumScaling::No);
+        assert_eq!(config.scaling, EnumScaling::No as i32);
+    }
+
+    #[test]
+    fn set_pct_inc_workspace_works() {
+        let mut config = ConfigSolver::new();
+        config.set_pct_inc_workspace(25);
+        assert_eq!(config.pct_inc_workspace, 25);
+    }
+
+    #[test]
+    fn set_max_work_memory_works() {
+        let mut config = ConfigSolver::new();
+        config.set_max_work_memory(1234);
+        assert_eq!(config.max_work_memory, 1234);
+    }
+
+    #[test]
+    fn set_openmp_num_threads_works() {
+        let mut config = ConfigSolver::new();
+        config.set_openmp_num_threads(2);
+        assert_eq!(config.openmp_num_threads, 2);
+    }
+
+    #[test]
+    fn set_verbose_works() {
+        let mut config = ConfigSolver::new();
+        config.set_verbose(true);
+        assert_eq!(config.verbose, 1);
+    }
+
+    #[test]
+    fn display_trait_works() {
+        let mut config1 = ConfigSolver::new();
+        config1.set_verbose(true);
+        let correct1: &str = "solver_kind        = UMF\n\
+                              symmetry           = No\n\
+                              ordering           = Auto\n\
+                              scaling            = Auto\n\
+                              verbose            = true\n";
+        assert_eq!(format!("{}", config1), correct1);
+
+        let mut config2 = ConfigSolver::new();
+        config2.set_solver_kind(EnumSolverKind::Mmp);
+        config2.set_verbose(true);
+        let correct2: &str = "solver_kind        = MMP\n\
+                              symmetry           = No\n\
+                              ordering           = Auto\n\
+                              scaling            = Auto\n\
+                              pct_inc_workspace  = 100\n\
+                              max_work_memory    = 0\n\
+                              openmp_num_threads = 1\n\
+                              verbose            = true\n";
+        assert_eq!(format!("{}", config2), correct2);
+
+        config2.set_verbose(false);
+        let correct2b: &str = "solver_kind        = MMP\n\
+                               symmetry           = No\n\
+                               ordering           = Auto\n\
+                               scaling            = Auto\n\
+                               pct_inc_workspace  = 100\n\
+                               max_work_memory    = 0\n\
+                               openmp_num_threads = 1\n\
+                               verbose            = false\n";
+        assert_eq!(format!("{}", config2), correct2b);
     }
 }

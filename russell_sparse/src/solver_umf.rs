@@ -638,8 +638,133 @@ mod tests {
         Ok(())
     }
 
+    // This function tests many behaviors of the MMP solver.
+    // All of these calls must be in a single function because the
+    // MMP solver is NOT thread-safe.
     #[test]
-    fn handle_error_umf_code_works() -> Result<(), &'static str> {
+    fn solver_mmp_behaves_as_expected() -> Result<(), &'static str> {
+        // allocate a new solver
+        let mut config = ConfigSolver::new();
+        config.set_solver_kind(EnumSolverKind::Mmp);
+        let mut solver = SolverUMF::new(config)?;
+
+        // initialize fails on rectangular matrix
+        let trip_rect = SparseTriplet::new(3, 2, 1, false)?;
+        assert_eq!(
+            solver.initialize(&trip_rect),
+            Err("the matrix represented by the triplet must be square")
+        );
+
+        // factorize fails on non-initialized solver
+        assert_eq!(
+            solver.factorize(),
+            Err("initialization must be done before factorization")
+        );
+
+        // allocate a square matrix
+        let mut trip = SparseTriplet::new(5, 5, 13, false)?;
+        trip.put(0, 0, 1.0); // << duplicated
+        trip.put(0, 0, 1.0); // << duplicated
+        trip.put(1, 0, 3.0);
+        trip.put(0, 1, 3.0);
+        trip.put(2, 1, -1.0);
+        trip.put(4, 1, 4.0);
+        trip.put(1, 2, 4.0);
+        trip.put(2, 2, -3.0);
+        trip.put(3, 2, 1.0);
+        trip.put(4, 2, 2.0);
+        trip.put(2, 3, 2.0);
+        trip.put(1, 4, 6.0);
+        trip.put(4, 4, 1.0);
+
+        // allocate x and rhs
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
+        let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+
+        // initialize works
+        solver.initialize(&trip)?;
+        assert!(solver.done_initialize);
+
+        // solve fails on non-factorized system
+        assert_eq!(
+            solver.solve(&mut x, &rhs),
+            Err("factorization must be done before solution")
+        );
+
+        // factorize works
+        solver.factorize()?;
+        assert!(solver.done_factorize);
+
+        // solve fails on wrong x vector
+        let mut x_wrong = Vector::new(3);
+        assert_eq!(
+            solver.solve(&mut x_wrong, &rhs),
+            Err("x.ndim() and rhs.ndim() must equal the number of equations")
+        );
+
+        // solve fails on wrong rhs vector
+        let rhs_wrong = Vector::from(&[1.0]);
+        assert_eq!(
+            solver.solve(&mut x, &rhs_wrong),
+            Err("x.ndim() and rhs.ndim() must equal the number of equations")
+        );
+
+        // solve works
+        solver.solve(&mut x, &rhs)?;
+        assert_vec_approx_eq!(x.as_data(), x_correct, 1e-14);
+
+        // calling solve again works
+        let mut x_again = Vector::new(5);
+        solver.solve(&mut x_again, &rhs)?;
+        assert_vec_approx_eq!(x_again.as_data(), x_correct, 1e-14);
+
+        // factorize fails on singular matrix
+        let mut trip_singular = SparseTriplet::new(5, 5, 2, false)?;
+        trip_singular.put(0, 0, 1.0);
+        trip_singular.put(4, 4, 1.0);
+        solver.initialize(&trip_singular)?;
+        assert_eq!(solver.factorize(), Err("Error(-10): numerically singular matrix"));
+
+        // done
+        Ok(())
+    }
+
+    #[test]
+    fn handle_mmp_error_code_works() -> Result<(), &'static str> {
+        let default = "Error: unknown error returned by c-code (MMP)";
+        let mut config = ConfigSolver::new();
+        config.set_solver_kind(EnumSolverKind::Mmp);
+        let solver = SolverUMF::new(config)?;
+        for c in 1..57 {
+            let res = solver.handle_mmp_error_code(-c);
+            assert!(res.len() > 0);
+            assert_ne!(res, default);
+        }
+        for c in 70..80 {
+            let res = solver.handle_mmp_error_code(-c);
+            assert!(res.len() > 0);
+            assert_ne!(res, default);
+        }
+        for c in &[-90, -800, 1, 2, 4, 8] {
+            let res = solver.handle_mmp_error_code(*c);
+            assert!(res.len() > 0);
+            assert_ne!(res, default);
+        }
+        assert_eq!(
+            solver.handle_mmp_error_code(100000),
+            "Error: c-code returned null pointer (MMP)"
+        );
+        assert_eq!(
+            solver.handle_mmp_error_code(200000),
+            "Error: c-code failed to allocate memory (MMP)"
+        );
+        assert_eq!(solver.handle_mmp_error_code(123), default);
+        Ok(())
+    }
+
+    #[test]
+    fn handle_umf_error_code_works() -> Result<(), &'static str> {
         let default = "Error: unknown error returned by c-code (UMF)";
         let config = ConfigSolver::new();
         let solver = SolverUMF::new(config)?;

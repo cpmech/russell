@@ -100,6 +100,24 @@ mod tests {
     use super::*;
 
     #[test]
+    fn new_fails_on_wrong_vectors() -> Result<(), &'static str> {
+        let trip = SparseTriplet::new(3, 2, 1, false)?;
+        let x = Vector::new(2);
+        let rhs = Vector::new(3);
+        let x_wrong = Vector::new(3);
+        let rhs_wrong = Vector::new(2);
+        assert_eq!(
+            VerifyLinSys::new(&trip, &x_wrong, &rhs).err(),
+            Some("vector dimensions are incompatible")
+        );
+        assert_eq!(
+            VerifyLinSys::new(&trip, &x, &rhs_wrong).err(),
+            Some("vector dimensions are incompatible")
+        );
+        Ok(())
+    }
+
+    #[test]
     fn new_works() -> Result<(), &'static str> {
         // | 1  3 -2 |
         // | 3  5  6 |

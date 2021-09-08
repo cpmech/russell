@@ -112,9 +112,15 @@ fn main() -> Result<(), &'static str> {
     // verify solution
     let verify = VerifyLinSys::new(&trip, &x, &rhs)?;
 
+    // matrix name
+    let path = Path::new(&opt.matrix_market_file);
+    let matrix_name = path.file_stem().unwrap().to_str().unwrap();
+
     // output
     println!(
         "{{\n\
+            \x20\x20\"platform\": \"russell\",\n\
+            \x20\x20\"matrixName\": \"{}\",\n\
             \x20\x20\"read\": {{\n\
                 \x20\x20\x20\x20\"timeReadNs\": {},\n\
                 \x20\x20\x20\x20\"timeReadStr\": \"{}\"\n\
@@ -129,6 +135,7 @@ fn main() -> Result<(), &'static str> {
                 {}\n\
             \x20\x20}}\n\
         }}",
+        matrix_name,
         time_read,
         format_nanoseconds(time_read),
         trip,
@@ -137,7 +144,6 @@ fn main() -> Result<(), &'static str> {
     );
 
     // check
-    let path = Path::new(&opt.matrix_market_file);
     if path.ends_with("bfwb62.mtx") {
         let tolerance = if opt.mmp { 1e-10 } else { 1e-15 };
         let correct_x = get_bfwb62_correct_x();

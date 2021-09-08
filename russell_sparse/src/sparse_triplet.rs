@@ -222,8 +222,43 @@ impl SparseTriplet {
     ///
     /// ```
     /// # fn main() -> Result<(), &'static str> {
+    /// // import
     /// use russell_lab::*;
     /// use russell_sparse::*;
+    ///
+    /// // set sparse matrix (4 x 3) with 6 non-zeros
+    /// let mut trip = SparseTriplet::new(4, 3, 6, false)?;
+    /// trip.put(0, 0, 1.0);
+    /// trip.put(1, 0, 2.0);
+    /// trip.put(1, 1, 3.0);
+    /// trip.put(2, 0, 4.0);
+    /// trip.put(3, 0, 5.0);
+    /// trip.put(3, 2, 6.0);
+    ///
+    /// // check matrix
+    /// let (m, n) = trip.dims();
+    /// let mut a = Matrix::new(m, n);
+    /// trip.to_matrix(&mut a)?;
+    /// let correct_a = "┌       ┐\n\
+    ///                  │ 1 0 0 │\n\
+    ///                  │ 2 3 0 │\n\
+    ///                  │ 4 0 0 │\n\
+    ///                  │ 5 0 6 │\n\
+    ///                  └       ┘";
+    /// assert_eq!(format!("{}", a), correct_a);
+    ///
+    /// // perform mat-vec-mul
+    /// let u = Vector::from(&[1.0, 1.0, 1.0]);
+    /// let v = trip.mat_vec_mul(&u)?;
+    ///
+    /// // check vector
+    /// let correct_v = "┌    ┐\n\
+    ///                  │  1 │\n\
+    ///                  │  5 │\n\
+    ///                  │  4 │\n\
+    ///                  │ 11 │\n\
+    ///                  └    ┘";
+    /// assert_eq!(format!("{}", v), correct_v);
     /// # Ok(())
     /// # }
     /// ```

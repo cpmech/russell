@@ -117,40 +117,28 @@ impl ConfigSolver {
 
 impl fmt::Display for ConfigSolver {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.solver_kind {
-            EnumSolverKind::Mmp => {
-                write!(
-                    f,
-                    "solver_kind        = MMP\n\
-                     symmetry           = {}\n\
-                     ordering           = {}\n\
-                     scaling            = {}\n\
-                     pct_inc_workspace  = {}\n\
-                     max_work_memory    = {}\n\
-                     openmp_num_threads = {}\n",
-                    str_enum_symmetry(self.symmetry),
-                    str_enum_ordering(self.ordering),
-                    str_enum_scaling(self.scaling),
-                    self.pct_inc_workspace,
-                    self.max_work_memory,
-                    self.openmp_num_threads,
-                )
-                .unwrap();
-            }
-            EnumSolverKind::Umf => {
-                write!(
-                    f,
-                    "solver_kind        = UMF\n\
-                     symmetry           = {}\n\
-                     ordering           = {}\n\
-                     scaling            = {}\n",
-                    str_enum_symmetry(self.symmetry),
-                    str_enum_ordering(self.ordering),
-                    str_enum_scaling(self.scaling),
-                )
-                .unwrap();
-            }
+        let kind = match self.solver_kind {
+            EnumSolverKind::Mmp => "MMP",
+            EnumSolverKind::Umf => "UMF",
         };
+        write!(
+            f,
+            "\x20\x20\x20\x20\"solverKind\": \"{}\",\n\
+             \x20\x20\x20\x20\"symmetry\": \"{}\",\n\
+             \x20\x20\x20\x20\"ordering\": \"{}\",\n\
+             \x20\x20\x20\x20\"scaling\": \"{}\",\n\
+             \x20\x20\x20\x20\"pctIncWorkspace\": {},\n\
+             \x20\x20\x20\x20\"maxWorkMemory\": {},\n\
+             \x20\x20\x20\x20\"openmpNumThreads\": {}",
+            kind,
+            str_enum_symmetry(self.symmetry),
+            str_enum_ordering(self.ordering),
+            str_enum_scaling(self.scaling),
+            self.pct_inc_workspace,
+            self.max_work_memory,
+            self.openmp_num_threads,
+        )
+        .unwrap();
         Ok(())
     }
 }

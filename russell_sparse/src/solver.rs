@@ -599,13 +599,33 @@ impl Drop for Solver {
 
 impl fmt::Display for Solver {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let time_total = self.time_init + self.time_fact + self.time_solve;
         write!(
             f,
-            "{}\
-             done_initialize    = {}\n\
-             done_factorize     = {}\n\
-             ndim               = {}\n",
-            self.config, self.done_initialize, self.done_factorize, self.ndim,
+            "{},\n\
+             \x20\x20\x20\x20\"doneInitialize\": {},\n\
+             \x20\x20\x20\x20\"doneFactorize\": {},\n\
+             \x20\x20\x20\x20\"ndim\": {},\n\
+             \x20\x20\x20\x20\"timeInitNs\": {},\n\
+             \x20\x20\x20\x20\"timeFactNs\": {},\n\
+             \x20\x20\x20\x20\"timeSolveNs\": {},\n\
+             \x20\x20\x20\x20\"timeTotalNs\": {},\n\
+             \x20\x20\x20\x20\"timeInitStr\": \"{}\",\n\
+             \x20\x20\x20\x20\"timeFactStr\": \"{}\",\n\
+             \x20\x20\x20\x20\"timeSolveStr\": \"{}\",\n\
+             \x20\x20\x20\x20\"timeTotalStr\": \"{}\"",
+            self.config,
+            self.done_initialize,
+            self.done_factorize,
+            self.ndim,
+            self.time_init,
+            self.time_fact,
+            self.time_solve,
+            time_total,
+            format_nanoseconds(self.time_init),
+            format_nanoseconds(self.time_fact),
+            format_nanoseconds(self.time_solve),
+            format_nanoseconds(time_total)
         )?;
         Ok(())
     }

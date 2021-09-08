@@ -45,10 +45,6 @@ struct Options {
     /// Number of threads for OpenMP
     #[structopt(short = "n", long, default_value = "1")]
     omp_nt: u32,
-
-    /// Outputs a json string with the calculation summary
-    #[structopt(short = "j", long)]
-    json: bool,
 }
 
 fn main() -> Result<(), &'static str> {
@@ -112,42 +108,44 @@ fn main() -> Result<(), &'static str> {
 
     // solve linear system
     solver.solve(&mut x, &rhs, opt.verb_solve)?;
-    let (time_init, time_fact, time_solve) = solver.get_elapsed_times();
 
     // verify solution
     let verify = VerifyLinSys::new(&trip, &x, &rhs)?;
 
     // output
-    if opt.json {
-    } else {
-        println!("{}", trip);
-        println!("{}", solver);
-        println!("max_abs_a      = {}", verify.max_abs_a);
-        println!("max_abs_ax     = {}", verify.max_abs_ax);
-        println!("max_abs_diff   = {:e}", verify.max_abs_diff);
-        println!("relative_error = {:e}\n", verify.relative_error);
-        println!("time_read   = {}", format_nanoseconds(time_read));
-        println!("time_init   = {}", format_nanoseconds(time_init));
-        println!("time_fact   = {}", format_nanoseconds(time_fact));
-        println!("time_solve  = {}", format_nanoseconds(time_solve));
-        println!("time_verify = {}", format_nanoseconds(verify.time_check));
-    }
+    println!(
+        "{{\n\
+            \x20\x20\"read\": {{\n\
+                \x20\x20\x20\x20\"timeReadNs\": {},\n\
+                \x20\x20\x20\x20\"timeReadStr\": \"{}\"\n\
+            \x20\x20}},\n\
+            \x20\x20\"triplet\": {{\n\
+                {}\n\
+            \x20\x20}},\n\
+            \x20\x20\"solver\": {{\n\
+                {}\n\
+            \x20\x20}},\n\
+            \x20\x20\"verify\": {{\n\
+                {}\n\
+            \x20\x20}}\n\
+        }}",
+        time_read,
+        format_nanoseconds(time_read),
+        trip,
+        solver,
+        verify
+    );
 
     // check
     let path = Path::new(&opt.matrix_market_file);
     if path.ends_with("bfwb62.mtx") {
         let tolerance = if opt.mmp { 1e-10 } else { 1e-15 };
         let correct_x = get_bfwb62_correct_x();
-        let mut has_error = false;
         for i in 0..m {
             let diff = f64::abs(x.get(i) - correct_x.get(i));
             if diff > tolerance {
                 println!("ERROR: diff({}) = {}", i, diff);
-                has_error = true;
             }
-        }
-        if !has_error && !opt.json {
-            println!("OK");
         }
     }
 

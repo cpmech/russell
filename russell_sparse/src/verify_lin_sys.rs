@@ -2,6 +2,7 @@ use super::*;
 use russell_lab::*;
 use russell_openblas::idamax;
 use russell_openblas::to_i32;
+use std::fmt;
 
 /// Verifies the linear system a ⋅ x = rhs
 pub struct VerifyLinSys {
@@ -91,6 +92,27 @@ impl VerifyLinSys {
             relative_error,
             time_check,
         })
+    }
+}
+
+impl fmt::Display for VerifyLinSys {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "\x20\x20\x20\x20\"maxAbsA\": {},\n\
+             \x20\x20\x20\x20\"maxAbsAx\": {},\n\
+             \x20\x20\x20\x20\"maxAbsDiff\": {:e},\n\
+             \x20\x20\x20\x20\"relativeError\": {:e},\n\
+             \x20\x20\x20\x20\"timeCheckNs\": {},\n\
+             \x20\x20\x20\x20\"timeCheckStr\": \"{}\"",
+            self.max_abs_a,
+            self.max_abs_ax,
+            self.max_abs_diff,
+            self.relative_error,
+            self.time_check,
+            format_nanoseconds(self.time_check),
+        )?;
+        Ok(())
     }
 }
 

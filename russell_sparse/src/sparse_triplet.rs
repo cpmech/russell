@@ -295,20 +295,15 @@ impl SparseTriplet {
 
 impl fmt::Display for SparseTriplet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let pos = if self.pos == self.max {
-            format!("{} (FULL)", self.pos)
-        } else {
-            format!("{}", self.pos)
-        };
         write!(
             f,
-            "nrow     = {}\n\
-             ncol     = {}\n\
-             max      = {}\n\
-             pos      = {}\n\
-             sym_part = {}\n\
-             sym_full = {}\n",
-            self.nrow, self.ncol, self.max, pos, self.sym_part, self.sym_full
+            "\x20\x20\x20\x20\"nrow\": {},\n\
+             \x20\x20\x20\x20\"ncol\": {},\n\
+             \x20\x20\x20\x20\"pos\": {},\n\
+             \x20\x20\x20\x20\"max\": {},\n\
+             \x20\x20\x20\x20\"symPart\": {},\n\
+             \x20\x20\x20\x20\"symFull\": {}",
+            self.nrow, self.ncol, self.pos, self.max, self.sym_part, self.sym_full
         )?;
         Ok(())
     }

@@ -14,14 +14,14 @@ use std::fmt;
 /// - The maximum number of entries includes possible entries with repeated indices
 /// - See the `to_matrix` method for an example
 pub struct SparseTriplet {
-    pub(crate) nrow: usize,         // [i32] number of rows
-    pub(crate) ncol: usize,         // [i32] number of columns
-    pub(crate) pos: usize,          // [i32] current index => nnz in the end
-    pub(crate) max: usize,          // [i32] max allowed number of entries (may be > nnz)
-    pub(crate) symmetric: bool,     // general symmetric?, but WITHOUT one side of the diagonal
-    pub(crate) indices_i: Vec<i32>, // [nnz] indices i
-    pub(crate) indices_j: Vec<i32>, // [nnz] indices j
-    pub(crate) values_a: Vec<f64>,  // [nnz] values a
+    pub(crate) nrow: usize,          // [i32] number of rows
+    pub(crate) ncol: usize,          // [i32] number of columns
+    pub(crate) pos: usize,           // [i32] current index => nnz in the end
+    pub(crate) max: usize,           // [i32] max allowed number of entries (may be > nnz)
+    pub(crate) symmetric: bool,      // general symmetric?, but WITHOUT one side of the diagonal
+    pub(crate) indices_i: Vec<i32>,  // [nnz] indices i
+    pub(crate) indices_j: Vec<i32>,  // [nnz] indices j
+    pub(crate) values_aij: Vec<f64>, // [nnz] values aij
 }
 
 impl SparseTriplet {
@@ -39,7 +39,7 @@ impl SparseTriplet {
     /// * `max` -- The maximum number fo non-zero values in the sparse matrix,
     ///            including entries with repeated indices
     /// * `symmetric` -- This Triplet represents a **general** symmetric matrix.
-    ///                  In this case, one side of the diagonal may be ignored.
+    ///                  In this case, one side of the diagonal **must** be ignored.
     ///
     /// # Example
     ///
@@ -68,7 +68,7 @@ impl SparseTriplet {
             symmetric,
             indices_i: vec![0; max],
             indices_j: vec![0; max],
-            values_a: vec![0.0; max],
+            values_aij: vec![0.0; max],
         })
     }
 
@@ -98,7 +98,7 @@ impl SparseTriplet {
         let j_i32 = to_i32(j);
         self.indices_i[self.pos] = i_i32;
         self.indices_j[self.pos] = j_i32;
-        self.values_a[self.pos] = aij;
+        self.values_aij[self.pos] = aij;
         self.pos += 1;
     }
 
@@ -197,10 +197,51 @@ impl SparseTriplet {
         a.fill(0.0);
         for p in 0..self.pos {
             if self.indices_i[p] < m_i32 && self.indices_j[p] < n_i32 {
-                a.plus_equal(self.indices_i[p] as usize, self.indices_j[p] as usize, self.values_a[p]);
+                a.plus_equal(
+                    self.indices_i[p] as usize,
+                    self.indices_j[p] as usize,
+                    self.values_aij[p],
+                );
             }
         }
         Ok(())
+    }
+
+    /// Performs the matrix-vector multiplication
+    ///
+    /// ```text
+    ///  v  :=   a   ⋅  u
+    /// (m)    (m,n)   (n)
+    /// ```
+    ///
+    /// # Note
+    ///
+    /// This method is not highly efficient and should be used for testing only
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_lab::*;
+    /// use russell_sparse::*;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn mat_vec_mul(&self, u: &Vector) -> Result<Vector, &'static str> {
+        if u.dim() != self.ncol {
+            return Err("u.ndim must equal a.ncol");
+        }
+        let mut v = Vector::new(self.nrow);
+        for p in 0..self.pos {
+            let i = self.indices_i[p] as usize;
+            let j = self.indices_j[p] as usize;
+            let aij = self.values_aij[p];
+            v.plus_equal(i, aij * u.get(j));
+            if self.symmetric && i != j {
+                v.plus_equal(j, aij * u.get(i));
+            }
+        }
+        Ok(v)
     }
 }
 
@@ -228,6 +269,8 @@ impl fmt::Display for SparseTriplet {
 
 #[cfg(test)]
 mod tests {
+    use russell_chk::assert_vec_approx_eq;
+
     use super::*;
 
     #[test]
@@ -390,6 +433,72 @@ mod tests {
                             │  0  4  2  0  1 │\n\
                             └                ┘";
         assert_eq!(format!("{}", a), correct);
+        Ok(())
+    }
+
+    #[test]
+    fn mat_vec_mul_fails_on_wrong_input() -> Result<(), &'static str> {
+        let trip = SparseTriplet::new(2, 2, 1, false)?;
+        let u = Vector::new(3);
+        assert_eq!(trip.mat_vec_mul(&u).err(), Some("u.ndim must equal a.ncol"));
+        Ok(())
+    }
+
+    #[test]
+    fn mat_vec_mul_works() -> Result<(), &'static str> {
+        //  1.0  2.0  3.0  4.0  5.0
+        //  0.1  0.2  0.3  0.4  0.5
+        // 10.0 20.0 30.0 40.0 50.0
+        let mut trip = SparseTriplet::new(3, 5, 15, false)?;
+        trip.put(0, 0, 1.0);
+        trip.put(0, 1, 2.0);
+        trip.put(0, 2, 3.0);
+        trip.put(0, 3, 4.0);
+        trip.put(0, 4, 5.0);
+        trip.put(1, 0, 0.1);
+        trip.put(1, 1, 0.2);
+        trip.put(1, 2, 0.3);
+        trip.put(1, 3, 0.4);
+        trip.put(1, 4, 0.5);
+        trip.put(2, 0, 10.0);
+        trip.put(2, 1, 20.0);
+        trip.put(2, 2, 30.0);
+        trip.put(2, 3, 40.0);
+        trip.put(2, 4, 50.0);
+        let u = Vector::from(&[0.1, 0.2, 0.3, 0.4, 0.5]);
+        let correct_v = &[5.5, 0.55, 55.0];
+        let v = trip.mat_vec_mul(&u)?;
+        assert_vec_approx_eq!(v.as_data(), correct_v, 1e-15);
+        Ok(())
+    }
+
+    #[test]
+    fn mat_vec_mul_symmetric_works() -> Result<(), &'static str> {
+        // 2
+        // 1  2     sym
+        // 1  2  9
+        // 3  1  1  7
+        // 2  1  5  1  8
+        let mut trip = SparseTriplet::new(5, 5, 15, true)?;
+        trip.put(0, 0, 2.0);
+        trip.put(1, 1, 2.0);
+        trip.put(2, 2, 9.0);
+        trip.put(3, 3, 7.0);
+        trip.put(4, 4, 8.0);
+        trip.put(1, 0, 1.0);
+        trip.put(2, 0, 1.0);
+        trip.put(2, 1, 2.0);
+        trip.put(3, 0, 3.0);
+        trip.put(3, 1, 1.0);
+        trip.put(3, 2, 1.0);
+        trip.put(4, 0, 2.0);
+        trip.put(4, 1, 1.0);
+        trip.put(4, 2, 5.0);
+        trip.put(4, 3, 1.0);
+        let u = Vector::from(&[-629.0 / 98.0, 237.0 / 49.0, -53.0 / 49.0, 62.0 / 49.0, 23.0 / 14.0]);
+        let correct_v = &[-2.0, 4.0, 3.0, -5.0, 1.0];
+        let v = trip.mat_vec_mul(&u)?;
+        assert_vec_approx_eq!(v.as_data(), correct_v, 1e-14);
         Ok(())
     }
 }

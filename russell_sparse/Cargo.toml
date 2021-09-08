@@ -14,6 +14,7 @@ keywords = ["matrix", "sparse", "solver"]
 [dependencies]
 russell_chk = { path = "../russell_chk", version = "0.1" }
 russell_lab = { path = "../russell_lab", version = "0.1" }
+russell_openblas = { path = "../russell_openblas", version = "0.1" }
 structopt = "0.3"
 
 [build-dependencies]

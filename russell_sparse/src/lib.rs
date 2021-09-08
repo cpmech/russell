@@ -11,7 +11,7 @@
 //! fn main() -> Result<(), &'static str> {
 //!
 //!     // allocate a square matrix
-//!     let mut trip = SparseTriplet::new(5, 5, 13, false)?;
+//!     let mut trip = SparseTriplet::new(5, 5, 13, false, false)?;
 //!     trip.put(0, 0, 1.0); // << (0, 0, a00/2)
 //!     trip.put(0, 0, 1.0); // << (0, 0, a00/2)
 //!     trip.put(1, 0, 3.0);
@@ -71,10 +71,10 @@ mod enums;
 mod read_matrix_market;
 mod solver;
 mod sparse_triplet;
-mod to_i32;
+mod verify_lin_sys;
 pub use crate::config_solver::*;
 pub use crate::enums::*;
 pub use crate::read_matrix_market::*;
 pub use crate::solver::*;
 pub use crate::sparse_triplet::*;
-pub use crate::to_i32::*;
+pub use crate::verify_lin_sys::*;

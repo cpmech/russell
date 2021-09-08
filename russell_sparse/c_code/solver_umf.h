@@ -82,7 +82,7 @@ int32_t solver_umf_initialize(struct SolverUMF *solver,
                               int32_t nnz,
                               int32_t const *indices_i,
                               int32_t const *indices_j,
-                              double const *values_a,
+                              double const *values_aij,
                               int32_t ordering,
                               int32_t scaling,
                               int32_t verbose) {
@@ -111,7 +111,7 @@ int32_t solver_umf_initialize(struct SolverUMF *solver,
     solver->n = n;
     solver->nnz = nnz;
 
-    int code = umfpack_di_triplet_to_col(n, n, nnz, indices_i, indices_j, values_a,
+    int code = umfpack_di_triplet_to_col(n, n, nnz, indices_i, indices_j, values_aij,
                                          solver->ap, solver->ai, solver->ax, NULL);
     if (code != UMFPACK_OK) {
         free(solver->ap);

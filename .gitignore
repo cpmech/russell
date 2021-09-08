@@ -5,3 +5,4 @@ cobertura.html
 cobertura.xml
 tarpaulin-report.html
 output*.txt
+output*.json

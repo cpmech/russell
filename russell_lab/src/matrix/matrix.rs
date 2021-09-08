@@ -368,13 +368,21 @@ impl Matrix {
     /// Computes one of:
     ///
     /// ```text
-    /// ‖a‖_1 = max_j ( Σ_i |aij| )
+    /// One:  1-norm
     ///
-    /// ‖a‖_∞ = max_i ( Σ_j |aij| )
+    ///       ‖a‖_1 = max_j ( Σ_i |aᵢⱼ| )
     ///
-    /// ‖a‖_F = sqrt(Σ_i Σ_j aij⋅aij) == ‖a‖_2
+    /// Inf:  inf-norm
     ///
-    /// ‖a‖_max = max_ij ( |aij| )
+    ///       ‖a‖_∞ = max_i ( Σ_j |aᵢⱼ| )
+    ///
+    /// Fro:  Frobenius-norm (2-norm)
+    ///
+    ///       ‖a‖_F = sqrt(Σ_i Σ_j aᵢⱼ⋅aᵢⱼ) == ‖a‖_2
+    ///
+    /// Max: max-norm
+    ///
+    ///      ‖a‖_max = max_ij ( |aᵢⱼ| )
     /// ```
     ///
     /// # Example

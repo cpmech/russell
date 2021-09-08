@@ -77,7 +77,7 @@ impl MatrixMarketData {
                 "general" => self.symmetric = false,
                 "symmetric" => self.symmetric = true,
                 _ => return Err("after %%MatrixMarket, the fourth option must be either \"general\" or \"symmetric\""),
-            }
+            },
             None => return Err("cannot find the fourth option in the header line"),
         }
 
@@ -315,10 +315,7 @@ impl MatrixMarketData {
 /// # Ok(())
 /// # }
 /// ```
-pub fn read_matrix_market(
-    filepath: &String,
-    sym_mirror: bool,
-) -> Result<SparseTriplet, &'static str> {
+pub fn read_matrix_market(filepath: &String, sym_mirror: bool) -> Result<SparseTriplet, &'static str> {
     let input = File::open(filepath).map_err(|_| "cannot open file")?;
     let buffered = BufReader::new(input);
     let mut lines_iter = buffered.lines();
@@ -350,12 +347,9 @@ pub fn read_matrix_market(
     }
 
     // allocate triplet
-    let mut trip = SparseTriplet::new(
-        data.m as usize,
-        data.n as usize,
-        max as usize,
-        data.symmetric,
-    )?;
+    let sym_part = if data.symmetric && !sym_mirror { true } else { false };
+    let sym_full = if data.symmetric && sym_mirror { true } else { false };
+    let mut trip = SparseTriplet::new(data.m as usize, data.n as usize, max as usize, sym_part, sym_full)?;
 
     // read and parse triples
     loop {
@@ -434,7 +428,7 @@ mod tests {
         );
         assert_eq!(
             data.parse_header(&String::from("  %%MatrixMarket matrix coordinate real wrong")),
-               Err("after %%MatrixMarket, the fourth option must be either \"general\" or \"symmetric\""),
+            Err("after %%MatrixMarket, the fourth option must be either \"general\" or \"symmetric\""),
         );
         Ok(())
     }
@@ -537,27 +531,15 @@ mod tests {
             Some("cannot open file")
         );
         assert_eq!(
-            read_matrix_market(
-                &String::from("./data/matrix_market/bad_empty_file.mtx"),
-                false
-            )
-            .err(),
+            read_matrix_market(&String::from("./data/matrix_market/bad_empty_file.mtx"), false).err(),
             Some("file is empty")
         );
         assert_eq!(
-            read_matrix_market(
-                &String::from("./data/matrix_market/bad_missing_data.mtx"),
-                false
-            )
-            .err(),
+            read_matrix_market(&String::from("./data/matrix_market/bad_missing_data.mtx"), false).err(),
             Some("not all triples (i,j,aij) have been found")
         );
         assert_eq!(
-            read_matrix_market(
-                &String::from("./data/matrix_market/bad_many_lines.mtx"),
-                false
-            )
-            .err(),
+            read_matrix_market(&String::from("./data/matrix_market/bad_many_lines.mtx"), false).err(),
             Some("there are more (i,j,aij) triples than specified")
         );
         Ok(())
@@ -567,12 +549,13 @@ mod tests {
     fn read_matrix_market_works() -> Result<(), &'static str> {
         let filepath = "./data/matrix_market/ok1.mtx".to_string();
         let trip = read_matrix_market(&filepath, false)?;
-        assert!(trip.symmetric == false);
+        assert!(trip.sym_part == false);
+        assert!(trip.sym_full == false);
         assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 12, 12));
         assert_eq!(trip.indices_i, &[0, 1, 0, 2, 4, 1, 2, 3, 4, 2, 1, 4]);
         assert_eq!(trip.indices_j, &[0, 0, 1, 1, 1, 2, 2, 2, 2, 3, 4, 4]);
         assert_eq!(
-            trip.values_a,
+            trip.values_aij,
             &[2.0, 3.0, 3.0, -1.0, 4.0, 4.0, -3.0, 1.0, 2.0, 2.0, 6.0, 1.0]
         );
         Ok(())
@@ -582,18 +565,13 @@ mod tests {
     fn read_matrix_market_sym_works() -> Result<(), &'static str> {
         let filepath = "./data/matrix_market/ok2.mtx".to_string();
         let trip = read_matrix_market(&filepath, false)?;
-        assert!(trip.symmetric == true);
+        assert!(trip.sym_part == true);
+        assert!(trip.sym_full == false);
         assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 15, 15));
+        assert_eq!(trip.indices_i, &[0, 1, 2, 3, 4, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3]);
+        assert_eq!(trip.indices_j, &[0, 1, 2, 3, 4, 1, 2, 3, 4, 2, 3, 4, 3, 4, 4]);
         assert_eq!(
-            trip.indices_i,
-            &[0, 1, 2, 3, 4, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3]
-        );
-        assert_eq!(
-            trip.indices_j,
-            &[0, 1, 2, 3, 4, 1, 2, 3, 4, 2, 3, 4, 3, 4, 4]
-        );
-        assert_eq!(
-            trip.values_a,
+            trip.values_aij,
             &[2.0, 2.0, 9.0, 7.0, 8.0, 1.0, 1.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 5.0, 1.0],
         );
         Ok(())
@@ -603,12 +581,13 @@ mod tests {
     fn read_matrix_market_sym_mirror_works() -> Result<(), &'static str> {
         let filepath = "./data/matrix_market/ok3.mtx".to_string();
         let trip = read_matrix_market(&filepath, true)?;
-        assert!(trip.symmetric == true);
+        assert!(trip.sym_part == false);
+        assert!(trip.sym_full == true);
         assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 11, 14));
         assert_eq!(trip.indices_i, &[0, 1, 0, 2, 1, 3, 2, 3, 4, 1, 4, 0, 0, 0]);
         assert_eq!(trip.indices_j, &[0, 0, 1, 1, 2, 2, 3, 3, 1, 4, 4, 0, 0, 0]);
         assert_eq!(
-            trip.values_a,
+            trip.values_aij,
             &[2.0, 3.0, 3.0, -1.0, -1.0, 2.0, 2.0, 3.0, 6.0, 6.0, 1.0, 0.0, 0.0, 0.0]
         );
         let mut a = Matrix::new(5, 5);

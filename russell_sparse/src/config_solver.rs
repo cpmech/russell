@@ -1,4 +1,5 @@
 use super::*;
+use russell_openblas::to_i32;
 use std::fmt;
 
 /// Holds configuration options for the sparse Solver
@@ -27,73 +28,21 @@ impl ConfigSolver {
     }
 
     /// Sets the solver kind
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use russell_sparse::*;
-    /// let mut config = ConfigSolver::new();
-    /// config.set_solver_kind(EnumSolverKind::Umf);
-    /// let correct: &str = "solver_kind        = UMF\n\
-    ///                      symmetry           = No\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = Auto\n";
-    /// assert_eq!(format!("{}", config), correct);
-    /// ```
     pub fn set_solver_kind(&mut self, selection: EnumSolverKind) {
         self.solver_kind = selection;
     }
 
     /// Sets the symmetry option
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use russell_sparse::*;
-    /// let mut config = ConfigSolver::new();
-    /// config.set_symmetry(EnumSymmetry::General);
-    /// let correct: &str = "solver_kind        = UMF\n\
-    ///                      symmetry           = General\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = Auto\n";
-    /// assert_eq!(format!("{}", config), correct);
-    /// ```
     pub fn set_symmetry(&mut self, selection: EnumSymmetry) {
         self.symmetry = selection as i32;
     }
 
     /// Sets the method to compute a symmetric permutation (ordering)
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use russell_sparse::*;
-    /// let mut config = ConfigSolver::new();
-    /// config.set_ordering(EnumOrdering::Metis);
-    /// let correct: &str = "solver_kind        = UMF\n\
-    ///                      symmetry           = No\n\
-    ///                      ordering           = Metis\n\
-    ///                      scaling            = Auto\n";
-    /// assert_eq!(format!("{}", config), correct);
-    /// ```
     pub fn set_ordering(&mut self, selection: EnumOrdering) {
         self.ordering = selection as i32;
     }
 
     /// Sets the scaling strategy
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use russell_sparse::*;
-    /// let mut config = ConfigSolver::new();
-    /// config.set_scaling(EnumScaling::No);
-    /// let correct: &str = "solver_kind        = UMF\n\
-    ///                      symmetry           = No\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = No\n";
-    /// assert_eq!(format!("{}", config), correct);
-    /// ```
     pub fn set_scaling(&mut self, selection: EnumScaling) {
         self.scaling = selection as i32;
     }
@@ -116,40 +65,28 @@ impl ConfigSolver {
 
 impl fmt::Display for ConfigSolver {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.solver_kind {
-            EnumSolverKind::Mmp => {
-                write!(
-                    f,
-                    "solver_kind        = MMP\n\
-                     symmetry           = {}\n\
-                     ordering           = {}\n\
-                     scaling            = {}\n\
-                     pct_inc_workspace  = {}\n\
-                     max_work_memory    = {}\n\
-                     openmp_num_threads = {}\n",
-                    str_enum_symmetry(self.symmetry),
-                    str_enum_ordering(self.ordering),
-                    str_enum_scaling(self.scaling),
-                    self.pct_inc_workspace,
-                    self.max_work_memory,
-                    self.openmp_num_threads,
-                )
-                .unwrap();
-            }
-            EnumSolverKind::Umf => {
-                write!(
-                    f,
-                    "solver_kind        = UMF\n\
-                     symmetry           = {}\n\
-                     ordering           = {}\n\
-                     scaling            = {}\n",
-                    str_enum_symmetry(self.symmetry),
-                    str_enum_ordering(self.ordering),
-                    str_enum_scaling(self.scaling),
-                )
-                .unwrap();
-            }
+        let kind = match self.solver_kind {
+            EnumSolverKind::Mmp => "MMP",
+            EnumSolverKind::Umf => "UMF",
         };
+        write!(
+            f,
+            "\x20\x20\x20\x20\"solverKind\": \"{}\",\n\
+             \x20\x20\x20\x20\"symmetry\": \"{}\",\n\
+             \x20\x20\x20\x20\"ordering\": \"{}\",\n\
+             \x20\x20\x20\x20\"scaling\": \"{}\",\n\
+             \x20\x20\x20\x20\"pctIncWorkspace\": {},\n\
+             \x20\x20\x20\x20\"maxWorkMemory\": {},\n\
+             \x20\x20\x20\x20\"openmpNumThreads\": {}",
+            kind,
+            str_enum_symmetry(self.symmetry),
+            str_enum_ordering(self.ordering),
+            str_enum_scaling(self.scaling),
+            self.pct_inc_workspace,
+            self.max_work_memory,
+            self.openmp_num_threads,
+        )
+        .unwrap();
         Ok(())
     }
 }
@@ -228,21 +165,23 @@ mod tests {
     #[test]
     fn display_trait_works() {
         let config1 = ConfigSolver::new();
-        let correct1: &str = "solver_kind        = UMF\n\
-                              symmetry           = No\n\
-                              ordering           = Auto\n\
-                              scaling            = Auto\n";
+        let correct1: &str = "\x20\x20\x20\x20\"solverKind\": \"UMF\",\n\
+                              \x20\x20\x20\x20\"symmetry\": \"No\",\n\
+                              \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
+                              \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
+                              \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
+                              \x20\x20\x20\x20\"maxWorkMemory\": 0,\n\
+                              \x20\x20\x20\x20\"openmpNumThreads\": 1";
         assert_eq!(format!("{}", config1), correct1);
-
         let mut config2 = ConfigSolver::new();
         config2.set_solver_kind(EnumSolverKind::Mmp);
-        let correct2: &str = "solver_kind        = MMP\n\
-                              symmetry           = No\n\
-                              ordering           = Auto\n\
-                              scaling            = Auto\n\
-                              pct_inc_workspace  = 100\n\
-                              max_work_memory    = 0\n\
-                              openmp_num_threads = 1\n";
+        let correct2: &str = "\x20\x20\x20\x20\"solverKind\": \"MMP\",\n\
+                              \x20\x20\x20\x20\"symmetry\": \"No\",\n\
+                              \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
+                              \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
+                              \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
+                              \x20\x20\x20\x20\"maxWorkMemory\": 0,\n\
+                              \x20\x20\x20\x20\"openmpNumThreads\": 1";
         assert_eq!(format!("{}", config2), correct2);
     }
 }

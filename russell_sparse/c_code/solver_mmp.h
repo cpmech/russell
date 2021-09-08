@@ -78,7 +78,7 @@ int32_t solver_mmp_initialize(struct SolverMMP *solver,
                               int32_t nnz,
                               int32_t const *indices_i,
                               int32_t const *indices_j,
-                              double const *values_a,
+                              double const *values_aij,
                               int32_t ordering,
                               int32_t scaling,
                               int32_t pct_inc_workspace,
@@ -111,7 +111,7 @@ int32_t solver_mmp_initialize(struct SolverMMP *solver,
     for (p = 0; p < nnz; p++) {
         solver->data.irn[p] = indices_i[p] + 1;
         solver->data.jcn[p] = indices_j[p] + 1;
-        solver->data.a[p] = values_a[p];
+        solver->data.a[p] = values_aij[p];
     }
 
     solver->data.n = n;

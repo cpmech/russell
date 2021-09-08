@@ -46,13 +46,9 @@ struct Options {
     #[structopt(short = "n", long, default_value = "1")]
     omp_nt: u32,
 
-    /// Quiet mode
-    #[structopt(short = "q", long)]
-    quiet: bool,
-
-    /// Name of json file to save elapsed times
-    #[structopt(short = "j", long, default_value = "")]
-    json: String,
+    /// Outputs a json string with the calculation summary
+    #[structopt(short = "j", long)]
+    json: bool,
 }
 
 fn main() -> Result<(), &'static str> {
@@ -81,12 +77,16 @@ fn main() -> Result<(), &'static str> {
     }
 
     // read matrix
+    let mut sw = Stopwatch::new("");
     let trip = read_matrix_market(&opt.matrix_market_file, sym_mirror)?;
+    let time_read = sw.stop();
+    let (sym_part, sym_full) = trip.is_symmetric();
+    let symmetric = sym_part || sym_full;
 
     // set configuration
     let mut config = ConfigSolver::new();
     config.set_solver_kind(kind);
-    if !opt.ignore_sym && trip.is_symmetric() {
+    if !opt.ignore_sym && symmetric {
         config.set_symmetry(EnumSymmetry::General);
     }
     if opt.ord_metis {
@@ -112,12 +112,25 @@ fn main() -> Result<(), &'static str> {
 
     // solve linear system
     solver.solve(&mut x, &rhs, opt.verb_solve)?;
+    let (time_init, time_fact, time_solve) = solver.get_elapsed_times();
+
+    // verify solution
+    let verify = VerifyLinSys::new(&trip, &x, &rhs)?;
 
     // output
-    if !opt.quiet {
+    if opt.json {
+    } else {
         println!("{}", trip);
         println!("{}", solver);
-        println!("elapsed times:\n{}", solver.get_elapsed_times_str());
+        println!("max_abs_a      = {}", verify.max_abs_a);
+        println!("max_abs_ax     = {}", verify.max_abs_ax);
+        println!("max_abs_diff   = {:e}", verify.max_abs_diff);
+        println!("relative_error = {:e}\n", verify.relative_error);
+        println!("time_read   = {}", format_nanoseconds(time_read));
+        println!("time_init   = {}", format_nanoseconds(time_init));
+        println!("time_fact   = {}", format_nanoseconds(time_fact));
+        println!("time_solve  = {}", format_nanoseconds(time_solve));
+        println!("time_verify = {}", format_nanoseconds(verify.time_check));
     }
 
     // check
@@ -133,14 +146,9 @@ fn main() -> Result<(), &'static str> {
                 has_error = true;
             }
         }
-        if !has_error && !opt.quiet {
+        if !has_error && !opt.json {
             println!("OK");
         }
-    }
-
-    // save json file
-    if opt.json != "" {
-        println!("JSON file = {}", opt.json);
     }
 
     // done

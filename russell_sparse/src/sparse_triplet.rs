@@ -216,7 +216,7 @@ impl SparseTriplet {
     ///
     /// # Note
     ///
-    /// This method is not highly efficient and should be used for testing only
+    /// This method is not highly efficient but should useful in verifications.
     ///
     /// # Example
     ///

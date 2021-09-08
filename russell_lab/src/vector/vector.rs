@@ -1,3 +1,4 @@
+use crate::EnumVectorNorm;
 use russell_openblas::*;
 use std::cmp;
 use std::fmt::{self, Write};
@@ -326,6 +327,48 @@ impl Vector {
             data: self.data.to_vec(),
         }
     }
+
+    /// Returns the vector norm
+    ///
+    /// Computes one of:
+    ///
+    /// ```text
+    /// One:  1-norm (taxicab or sum of abs values)
+    ///
+    ///       ‖u‖_1 := sum_i |uᵢ|
+    ///
+    /// Euc:  Euclidean-norm
+    ///
+    ///       ‖u‖_2 = sqrt(Σ_i uᵢ⋅uᵢ)
+    ///
+    /// Max:  max-norm (inf-norm)
+    ///
+    ///       ‖u‖_max = max_i ( |uᵢ| ) == ‖u‖_∞
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_lab::*;
+    /// let u = Vector::from(&[2.0, -2.0, 2.0, -2.0, -3.0]);
+    /// assert_eq!(u.norm(EnumVectorNorm::One), 11.0);
+    /// assert_eq!(u.norm(EnumVectorNorm::Euc), 5.0);
+    /// assert_eq!(u.norm(EnumVectorNorm::Max), 3.0);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn norm(&self, kind: EnumVectorNorm) -> f64 {
+        let n = to_i32(self.data.len());
+        match kind {
+            EnumVectorNorm::One => dasum(n, &self.data, 1),
+            EnumVectorNorm::Euc => dnrm2(n, &self.data, 1),
+            EnumVectorNorm::Max => {
+                let idx = idamax(n, &self.data, 1);
+                f64::abs(self.data[idx as usize])
+            }
+        }
+    }
 }
 
 impl fmt::Display for Vector {
@@ -533,5 +576,13 @@ mod tests {
         u.set(2, 0.33);
         assert_eq!(u.data, &[0.11, 0.22, 0.33]);
         assert_eq!(u_copy.data, &[1.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    fn norm_works() {
+        let u = Vector::from(&[-3.0, 2.0, 1.0, 1.0, 1.0]);
+        assert_eq!(u.norm(EnumVectorNorm::One), 8.0);
+        assert_eq!(u.norm(EnumVectorNorm::Euc), 4.0);
+        assert_eq!(u.norm(EnumVectorNorm::Max), 3.0);
     }
 }

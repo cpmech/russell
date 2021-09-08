@@ -86,7 +86,7 @@ pub fn daxpy(n: i32, alpha: f64, x: &[f64], incx: i32, y: &mut [f64], incy: i32)
     }
 }
 
-/// Computes the sum of the absolute values (1-norm / taxicab norm)
+/// Computes the sum of the absolute values (1-norm or taxicab norm)
 ///
 /// ```text
 /// ‖x‖₁ := sum_i |xᵢ|

@@ -165,4 +165,23 @@ mod tests {
         assert!(verify.time_check > 0);
         Ok(())
     }
+
+    #[test]
+    fn display_trait_works() -> Result<(), &'static str> {
+        let mut trip = SparseTriplet::new(2, 2, 2, false, false)?;
+        trip.put(0, 0, 1.0);
+        trip.put(1, 1, 1.0);
+        let x = Vector::from(&[1.0, 1.0]);
+        let rhs = Vector::from(&[1.0, 1.0]);
+        let mut verify = VerifyLinSys::new(&trip, &x, &rhs)?;
+        verify.time_check = 0;
+        let correct: &str = "\x20\x20\x20\x20\"maxAbsA\": 1,\n\
+                             \x20\x20\x20\x20\"maxAbsAx\": 1,\n\
+                             \x20\x20\x20\x20\"maxAbsDiff\": 0e0,\n\
+                             \x20\x20\x20\x20\"relativeError\": 0e0,\n\
+                             \x20\x20\x20\x20\"timeCheckNs\": 0,\n\
+                             \x20\x20\x20\x20\"timeCheckStr\": \"0ns\"";
+        assert_eq!(format!("{}", verify), correct);
+        Ok(())
+    }
 }

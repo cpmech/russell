@@ -28,73 +28,21 @@ impl ConfigSolver {
     }
 
     /// Sets the solver kind
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use russell_sparse::*;
-    /// let mut config = ConfigSolver::new();
-    /// config.set_solver_kind(EnumSolverKind::Umf);
-    /// let correct: &str = "solver_kind        = UMF\n\
-    ///                      symmetry           = No\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = Auto\n";
-    /// assert_eq!(format!("{}", config), correct);
-    /// ```
     pub fn set_solver_kind(&mut self, selection: EnumSolverKind) {
         self.solver_kind = selection;
     }
 
     /// Sets the symmetry option
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use russell_sparse::*;
-    /// let mut config = ConfigSolver::new();
-    /// config.set_symmetry(EnumSymmetry::General);
-    /// let correct: &str = "solver_kind        = UMF\n\
-    ///                      symmetry           = General\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = Auto\n";
-    /// assert_eq!(format!("{}", config), correct);
-    /// ```
     pub fn set_symmetry(&mut self, selection: EnumSymmetry) {
         self.symmetry = selection as i32;
     }
 
     /// Sets the method to compute a symmetric permutation (ordering)
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use russell_sparse::*;
-    /// let mut config = ConfigSolver::new();
-    /// config.set_ordering(EnumOrdering::Metis);
-    /// let correct: &str = "solver_kind        = UMF\n\
-    ///                      symmetry           = No\n\
-    ///                      ordering           = Metis\n\
-    ///                      scaling            = Auto\n";
-    /// assert_eq!(format!("{}", config), correct);
-    /// ```
     pub fn set_ordering(&mut self, selection: EnumOrdering) {
         self.ordering = selection as i32;
     }
 
     /// Sets the scaling strategy
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use russell_sparse::*;
-    /// let mut config = ConfigSolver::new();
-    /// config.set_scaling(EnumScaling::No);
-    /// let correct: &str = "solver_kind        = UMF\n\
-    ///                      symmetry           = No\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = No\n";
-    /// assert_eq!(format!("{}", config), correct);
-    /// ```
     pub fn set_scaling(&mut self, selection: EnumScaling) {
         self.scaling = selection as i32;
     }
@@ -217,21 +165,23 @@ mod tests {
     #[test]
     fn display_trait_works() {
         let config1 = ConfigSolver::new();
-        let correct1: &str = "solver_kind        = UMF\n\
-                              symmetry           = No\n\
-                              ordering           = Auto\n\
-                              scaling            = Auto\n";
+        let correct1: &str = "\x20\x20\x20\x20\"solverKind\": \"UMF\",\n\
+                              \x20\x20\x20\x20\"symmetry\": \"No\",\n\
+                              \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
+                              \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
+                              \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
+                              \x20\x20\x20\x20\"maxWorkMemory\": 0,\n\
+                              \x20\x20\x20\x20\"openmpNumThreads\": 1";
         assert_eq!(format!("{}", config1), correct1);
-
         let mut config2 = ConfigSolver::new();
         config2.set_solver_kind(EnumSolverKind::Mmp);
-        let correct2: &str = "solver_kind        = MMP\n\
-                              symmetry           = No\n\
-                              ordering           = Auto\n\
-                              scaling            = Auto\n\
-                              pct_inc_workspace  = 100\n\
-                              max_work_memory    = 0\n\
-                              openmp_num_threads = 1\n";
+        let correct2: &str = "\x20\x20\x20\x20\"solverKind\": \"MMP\",\n\
+                              \x20\x20\x20\x20\"symmetry\": \"No\",\n\
+                              \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
+                              \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
+                              \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
+                              \x20\x20\x20\x20\"maxWorkMemory\": 0,\n\
+                              \x20\x20\x20\x20\"openmpNumThreads\": 1";
         assert_eq!(format!("{}", config2), correct2);
     }
 }

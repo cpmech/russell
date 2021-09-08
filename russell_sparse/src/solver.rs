@@ -1,7 +1,7 @@
 use super::*;
 use russell_lab::*;
 use russell_openblas::to_i32;
-use std::fmt::{self, Write};
+use std::fmt;
 
 #[repr(C)]
 pub(crate) struct ExtSolver {
@@ -71,25 +71,6 @@ pub struct Solver {
 
 impl Solver {
     /// Creates a new solver
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_sparse::*;
-    /// let config = ConfigSolver::new();
-    /// let solver = Solver::new(config)?;
-    /// let correct: &str = "solver_kind        = UMF\n\
-    ///                      symmetry           = No\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = Auto\n\
-    ///                      done_initialize    = false\n\
-    ///                      done_factorize     = false\n\
-    ///                      ndim               = 0\n";
-    /// assert_eq!(format!("{}", solver), correct);
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn new(config: ConfigSolver) -> Result<Self, &'static str> {
         unsafe {
             let solver = match config.solver_kind {
@@ -114,29 +95,6 @@ impl Solver {
     }
 
     /// Initializes the solver
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_sparse::*;
-    /// let config = ConfigSolver::new();
-    /// let mut solver = Solver::new(config)?;
-    /// let mut trip = SparseTriplet::new(2, 2, 2, false, false)?;
-    /// trip.put(0, 0, 1.0);
-    /// trip.put(1, 1, 1.0);
-    /// solver.initialize(&trip, false)?;
-    /// let correct: &str = "solver_kind        = UMF\n\
-    ///                      symmetry           = No\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = Auto\n\
-    ///                      done_initialize    = true\n\
-    ///                      done_factorize     = false\n\
-    ///                      ndim               = 2\n";
-    /// assert_eq!(format!("{}", solver), correct);
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn initialize(&mut self, trip: &SparseTriplet, verbose: bool) -> Result<(), &'static str> {
         if trip.nrow != trip.ncol {
             return Err("the matrix represented by the triplet must be square");
@@ -206,30 +164,6 @@ impl Solver {
     }
 
     /// Performs the factorization
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_sparse::*;
-    /// let config = ConfigSolver::new();
-    /// let mut solver = Solver::new(config)?;
-    /// let mut trip = SparseTriplet::new(2, 2, 2, false, false)?;
-    /// trip.put(0, 0, 1.0);
-    /// trip.put(1, 1, 1.0);
-    /// solver.initialize(&trip, false)?;
-    /// solver.factorize(false)?;
-    /// let correct: &str = "solver_kind        = UMF\n\
-    ///                      symmetry           = No\n\
-    ///                      ordering           = Auto\n\
-    ///                      scaling            = Auto\n\
-    ///                      done_initialize    = true\n\
-    ///                      done_factorize     = true\n\
-    ///                      ndim               = 2\n";
-    /// assert_eq!(format!("{}", solver), correct);
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn factorize(&mut self, verbose: bool) -> Result<(), &'static str> {
         if !self.done_initialize {
             return Err("initialization must be done before factorization");
@@ -432,7 +366,7 @@ impl Solver {
         Ok((solver, x))
     }
 
-    /// Returns a text containing the elapsed times
+    /// Returns the elapsed times
     ///
     /// # Output
     ///
@@ -452,31 +386,6 @@ impl Solver {
     /// ```
     pub fn get_elapsed_times(&self) -> (u128, u128, u128) {
         (self.time_init, self.time_fact, self.time_solve)
-    }
-
-    /// Returns a text containing the elapsed times
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_sparse::*;
-    /// let config = ConfigSolver::new();
-    /// let solver = Solver::new(config)?;
-    /// let times = solver.get_elapsed_times_str();
-    /// let correct: &str = "initialize = 0ns\n\
-    ///                      factorize  = 0ns\n\
-    ///                      solve      = 0ns\n";
-    /// assert_eq!(format!("{}", times), correct);
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn get_elapsed_times_str(&self) -> String {
-        let mut buf = String::new();
-        write!(&mut buf, "initialize = {}\n", format_nanoseconds(self.time_init)).unwrap();
-        write!(&mut buf, "factorize  = {}\n", format_nanoseconds(self.time_fact)).unwrap();
-        write!(&mut buf, "solve      = {}\n", format_nanoseconds(self.time_solve)).unwrap();
-        buf
     }
 
     /// Handles error code
@@ -643,21 +552,6 @@ mod tests {
         let config = ConfigSolver::new();
         let solver = Solver::new(config)?;
         assert_eq!(solver.solver.is_null(), false);
-        Ok(())
-    }
-
-    #[test]
-    fn display_trait_works() -> Result<(), &'static str> {
-        let config = ConfigSolver::new();
-        let solver = Solver::new(config)?;
-        let correct: &str = "solver_kind        = UMF\n\
-                             symmetry           = No\n\
-                             ordering           = Auto\n\
-                             scaling            = Auto\n\
-                             done_initialize    = false\n\
-                             done_factorize     = false\n\
-                             ndim               = 0\n";
-        assert_eq!(format!("{}", solver), correct);
         Ok(())
     }
 
@@ -936,18 +830,6 @@ mod tests {
     }
 
     #[test]
-    fn get_elapsed_times_works_str() -> Result<(), &'static str> {
-        let config = ConfigSolver::new();
-        let solver = Solver::new(config)?;
-        let times = solver.get_elapsed_times_str();
-        let correct: &str = "initialize = 0ns\n\
-                             factorize  = 0ns\n\
-                             solve      = 0ns\n";
-        assert_eq!(format!("{}", times), correct);
-        Ok(())
-    }
-
-    #[test]
     fn handle_mmp_error_code_works() -> Result<(), &'static str> {
         let default = "Error: unknown error returned by c-code (MMP)";
         let mut config = ConfigSolver::new();
@@ -999,6 +881,32 @@ mod tests {
             "Error: c-code failed to allocate memory (UMF)"
         );
         assert_eq!(solver.handle_umf_error_code(123), default);
+        Ok(())
+    }
+
+    #[test]
+    fn display_trait_works() -> Result<(), &'static str> {
+        let config = ConfigSolver::new();
+        let solver = Solver::new(config)?;
+        let correct: &str = "\x20\x20\x20\x20\"solverKind\": \"UMF\",\n\
+                             \x20\x20\x20\x20\"symmetry\": \"No\",\n\
+                             \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
+                             \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
+                             \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
+                             \x20\x20\x20\x20\"maxWorkMemory\": 0,\n\
+                             \x20\x20\x20\x20\"openmpNumThreads\": 1,\n\
+                             \x20\x20\x20\x20\"doneInitialize\": false,\n\
+                             \x20\x20\x20\x20\"doneFactorize\": false,\n\
+                             \x20\x20\x20\x20\"ndim\": 0,\n\
+                             \x20\x20\x20\x20\"timeInitNs\": 0,\n\
+                             \x20\x20\x20\x20\"timeFactNs\": 0,\n\
+                             \x20\x20\x20\x20\"timeSolveNs\": 0,\n\
+                             \x20\x20\x20\x20\"timeTotalNs\": 0,\n\
+                             \x20\x20\x20\x20\"timeInitStr\": \"0ns\",\n\
+                             \x20\x20\x20\x20\"timeFactStr\": \"0ns\",\n\
+                             \x20\x20\x20\x20\"timeSolveStr\": \"0ns\",\n\
+                             \x20\x20\x20\x20\"timeTotalStr\": \"0ns\"";
+        assert_eq!(format!("{}", solver), correct);
         Ok(())
     }
 }

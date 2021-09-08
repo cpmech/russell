@@ -1,10 +1,10 @@
-#[rustfmt::skip]
 extern "C" {
     fn cblas_ddot(n: i32, x: *const f64, incx: i32, y: *const f64, incy: i32) -> f64;
-    fn cblas_dcopy(n: i32, x: *const f64, incx: i32, y: *mut f64, incy:i32);
+    fn cblas_dcopy(n: i32, x: *const f64, incx: i32, y: *mut f64, incy: i32);
     fn cblas_dscal(n: i32, alpha: f64, x: *const f64, incx: i32);
     fn cblas_daxpy(n: i32, alpha: f64, x: *const f64, incx: i32, y: *const f64, incy: i32);
-    fn cblas_idamax(n:i32, x:*const f64, incx:i32) -> i32;
+    fn cblas_dnrm2(n: i32, x: *const f64, incx: i32) -> f64;
+    fn cblas_idamax(n: i32, x: *const f64, incx: i32) -> i32;
 }
 
 /// Calculates the dot product of two vectors.
@@ -85,13 +85,30 @@ pub fn daxpy(n: i32, alpha: f64, x: &[f64], incx: i32, y: &mut [f64], incy: i32)
     }
 }
 
-/// Finds the index of the maximum absolute value
+/// Computes the Euclidean norm
 ///
-/// <http://www.netlib.org/lapack/explore-html/dd/de0/idamax_8f.html>
+/// ```text
+/// ‖a‖_₂ := sqrt(xᵀ ⋅ x)
+/// ```
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/d6/de0/dnrm2_8f90.html>
+///
+#[inline]
+pub fn dnrm2(n: i32, x: &[f64], incx: i32) -> f64 {
+    unsafe { cblas_dnrm2(n, x.as_ptr(), incx) }
+}
+
+/// Finds the index of the maximum absolute value
 ///
 /// # Note
 ///
 /// The index is **random** if the array contains **NAN**
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/dd/de0/idamax_8f.html>
 ///
 #[inline]
 pub fn idamax(n: i32, x: &[f64], incx: i32) -> i32 {
@@ -145,6 +162,13 @@ mod tests {
         daxpy(n, alpha, &x, incx, &mut y, incy);
         assert_vec_approx_eq!(x, &[20.0, 10.0, 48.0, IGNORED, IGNORED], 1e-15);
         assert_vec_approx_eq!(y, &[-5.0, 0.0, 0.0, IGNORED, IGNORED, IGNORED], 1e-15);
+    }
+
+    #[test]
+    fn dnrm2_works() {
+        let x = [1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0];
+        let (n, incx) = (to_i32(x.len()), 1_i32);
+        assert_approx_eq!(dnrm2(n, &x, incx), 5.0, 1e-15);
     }
 
     #[test]

@@ -4,6 +4,7 @@ extern "C" {
     fn cblas_dscal(n: i32, alpha: f64, x: *const f64, incx: i32);
     fn cblas_daxpy(n: i32, alpha: f64, x: *const f64, incx: i32, y: *const f64, incy: i32);
     fn cblas_dnrm2(n: i32, x: *const f64, incx: i32) -> f64;
+    fn cblas_dasum(n: i32, x: *const f64, incx: i32) -> f64;
     fn cblas_idamax(n: i32, x: *const f64, incx: i32) -> i32;
 }
 
@@ -85,10 +86,25 @@ pub fn daxpy(n: i32, alpha: f64, x: &[f64], incx: i32, y: &mut [f64], incy: i32)
     }
 }
 
+/// Computes the sum of the absolute values (1-norm / taxicab norm)
+///
+/// ```text
+/// ‖x‖₁ := sum_i |xᵢ|
+/// ```
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/de/d05/dasum_8f.html>
+///
+#[inline]
+pub fn dasum(n: i32, x: &[f64], incx: i32) -> f64 {
+    unsafe { cblas_dasum(n, x.as_ptr(), incx) }
+}
+
 /// Computes the Euclidean norm
 ///
 /// ```text
-/// ‖a‖_₂ := sqrt(xᵀ ⋅ x)
+/// ‖x‖₂ := sqrt(xᵀ ⋅ x)
 /// ```
 ///
 /// # Reference
@@ -162,6 +178,13 @@ mod tests {
         daxpy(n, alpha, &x, incx, &mut y, incy);
         assert_vec_approx_eq!(x, &[20.0, 10.0, 48.0, IGNORED, IGNORED], 1e-15);
         assert_vec_approx_eq!(y, &[-5.0, 0.0, 0.0, IGNORED, IGNORED, IGNORED], 1e-15);
+    }
+
+    #[test]
+    fn dasum_works() {
+        let x = [-1.0, 1.0, -1.0, 1.0, 2.0, -2.0];
+        let (n, incx) = (to_i32(x.len()), 1_i32);
+        assert_approx_eq!(dasum(n, &x, incx), 8.0, 1e-15);
     }
 
     #[test]

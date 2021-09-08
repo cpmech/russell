@@ -1,4 +1,5 @@
 use super::*;
+use russell_openblas::to_i32;
 use std::fmt;
 
 /// Holds configuration options for the sparse Solver

@@ -1,6 +1,7 @@
 use super::*;
 use russell_lab::*;
 use russell_openblas::idamax;
+use russell_openblas::to_i32;
 
 /// Verifies the linear system a ⋅ x = rhs
 pub struct VerifyLinSys {

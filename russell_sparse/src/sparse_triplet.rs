@@ -1,5 +1,5 @@
-use super::*;
-use russell_lab::*;
+use russell_lab::{Matrix, Vector};
+use russell_openblas::to_i32;
 use std::fmt;
 
 /// Holds triples (i,j,aij) representing a sparse matrix

@@ -15,11 +15,11 @@ struct Options {
     matrix_market_file: String,
 
     /// Use MMP solver instead of UMF
-    #[structopt(long)]
+    #[structopt(short, long)]
     mmp: bool,
 
     /// Ignore symmetry, if existent
-    #[structopt(long)]
+    #[structopt(short, long)]
     ignore_sym: bool,
 
     /// Use METIS ordering, if available
@@ -43,8 +43,16 @@ struct Options {
     verb_solve: bool,
 
     /// Number of threads for OpenMP
-    #[structopt(long, default_value = "1")]
+    #[structopt(short = "n", long, default_value = "1")]
     omp_nt: u32,
+
+    /// Quiet mode
+    #[structopt(short = "q", long)]
+    quiet: bool,
+
+    /// Name of json file to save elapsed times
+    #[structopt(short = "j", long, default_value = "")]
+    json: String,
 }
 
 fn main() -> Result<(), &'static str> {
@@ -62,13 +70,11 @@ fn main() -> Result<(), &'static str> {
     let sym_mirror;
     match kind {
         EnumSolverKind::Mmp => {
-            println!("Using MMP solver\n");
             // MMP uses the lower-diagonal if symmetric. Thus, if the symmetry is
             // ignored, we have to tell the reader to fill the upper-diagonal as well
             sym_mirror = if opt.ignore_sym { true } else { false };
         }
         EnumSolverKind::Umf => {
-            println!("Using UMF solver\n");
             // UMF uses the full matrix, if symmetric or not
             sym_mirror = true;
         }
@@ -108,9 +114,11 @@ fn main() -> Result<(), &'static str> {
     solver.solve(&mut x, &rhs, opt.verb_solve)?;
 
     // output
-    println!("{}", trip);
-    println!("{}", solver);
-    println!("elapsed times:\n{}", solver.get_elapsed_times_str());
+    if !opt.quiet {
+        println!("{}", trip);
+        println!("{}", solver);
+        println!("elapsed times:\n{}", solver.get_elapsed_times_str());
+    }
 
     // check
     let path = Path::new(&opt.matrix_market_file);
@@ -125,13 +133,17 @@ fn main() -> Result<(), &'static str> {
                 has_error = true;
             }
         }
-        if !has_error {
+        if !has_error && !opt.quiet {
             println!("OK");
         }
     }
 
+    // save json file
+    if opt.json != "" {
+        println!("JSON file = {}", opt.json);
+    }
+
     // done
-    println!("DONE");
     Ok(())
 }
 

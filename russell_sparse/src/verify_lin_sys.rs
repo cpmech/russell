@@ -53,6 +53,7 @@ impl VerifyLinSys {
     /// assert_eq!(verify.max_abs_ax, 5.0);
     /// assert_eq!(verify.max_abs_diff, 0.0);
     /// assert_eq!(verify.relative_error, 0.0);
+    /// assert!(verify.time_check > 0);
     /// # Ok(())
     /// # }
     /// ```

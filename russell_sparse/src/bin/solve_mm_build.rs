@@ -1,7 +1,6 @@
 use russell_lab::*;
 use russell_sparse::EnumSolverKind;
 use russell_sparse::*;
-use std::env;
 use std::path::Path;
 use structopt::StructOpt;
 
@@ -50,10 +49,7 @@ struct Options {
 
 fn main() -> Result<(), &'static str> {
     // local MMP flag
-    let local_mmp = match env::var("USE_LOCAL_MUMPS") {
-        Ok(v) => v == "1" || v.to_lowercase() == "true",
-        Err(_) => false,
-    };
+    let local_mmp = if cfg!(local_mmp) { true } else { false };
 
     // parse options
     let opt = Options::from_args();

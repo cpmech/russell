@@ -54,6 +54,23 @@ pub enum EnumOrdering {
     Scotch = 9,
 }
 
+/// Returns the EnumOrdering given its name
+pub fn enum_ordering(ordering: &str) -> EnumOrdering {
+    match ordering {
+        "Amd" => EnumOrdering::Amd,
+        "Amf" => EnumOrdering::Amf,
+        "Auto" => EnumOrdering::Auto,
+        "Best" => EnumOrdering::Best,
+        "Cholmod" => EnumOrdering::Cholmod,
+        "Metis" => EnumOrdering::Metis,
+        "No" => EnumOrdering::No,
+        "Pord" => EnumOrdering::Pord,
+        "Qamd" => EnumOrdering::Qamd,
+        "Scotch" => EnumOrdering::Scotch,
+        _ => EnumOrdering::Auto,
+    }
+}
+
 /// Scaling options for SolverMMP
 pub enum EnumScaling {
     /// Automatic scaling method selection
@@ -84,18 +101,34 @@ pub enum EnumScaling {
     Sum = 8,
 }
 
-pub(crate) fn str_enum_symmetry(code: i32) -> &'static str {
-    match code {
+/// Returns the EnumScaling given its name
+pub fn enum_scaling(scaling: &str) -> EnumScaling {
+    match scaling {
+        "Auto" => EnumScaling::Auto,
+        "Column" => EnumScaling::Column,
+        "Diagonal" => EnumScaling::Diagonal,
+        "Max" => EnumScaling::Max,
+        "No" => EnumScaling::No,
+        "RowCol" => EnumScaling::RowCol,
+        "RowColIter" => EnumScaling::RowColIter,
+        "RowColRig" => EnumScaling::RowColRig,
+        "Sum" => EnumScaling::Sum,
+        _ => EnumScaling::Auto,
+    }
+}
+
+pub(crate) fn str_enum_symmetry(index: i32) -> &'static str {
+    match index {
         0 => "Auto (UMF-only, otherwise No)",
         1 => "General",
         2 => "No",
         3 => "PosDef (MMP-only, otherwise General)",
-        _ => panic!("<internal error: invalid code>"),
+        _ => panic!("<internal error: invalid index>"),
     }
 }
 
-pub(crate) fn str_enum_ordering(code: i32) -> &'static str {
-    match code {
+pub(crate) fn str_enum_ordering(index: i32) -> &'static str {
+    match index {
         0 => "Amd",
         1 => "Amf (MMP-only, otherwise Auto)",
         2 => "Auto",
@@ -106,12 +139,12 @@ pub(crate) fn str_enum_ordering(code: i32) -> &'static str {
         7 => "Pord (MMP-only, otherwise Auto)",
         8 => "Qamd (MMP-only, otherwise Auto)",
         9 => "Scotch (MMP-only, otherwise Auto)",
-        _ => panic!("<internal error: invalid code>"),
+        _ => panic!("<internal error: invalid index>"),
     }
 }
 
-pub(crate) fn str_enum_scaling(code: i32) -> &'static str {
-    match code {
+pub(crate) fn str_enum_scaling(index: i32) -> &'static str {
+    match index {
         0 => "Auto",
         1 => "Column (MMP-only, otherwise Auto)",
         2 => "Diagonal (MMP-only, otherwise Auto)",
@@ -121,7 +154,57 @@ pub(crate) fn str_enum_scaling(code: i32) -> &'static str {
         6 => "RowColIter (MMP-only, otherwise Auto)",
         7 => "RowColRig (MMP-only, otherwise Auto)",
         8 => "Sum (UMF-only, otherwise Auto)",
-        _ => panic!("<internal error: invalid code>"),
+        _ => panic!("<internal error: invalid index>"),
+    }
+}
+
+pub(crate) fn str_mmp_ordering(mmp_code: i32) -> &'static str {
+    match mmp_code {
+        0 => "Amd",
+        1 => "UserProvided",
+        2 => "Amf",
+        3 => "Scotch",
+        4 => "Pord",
+        5 => "Metis",
+        6 => "Qamd",
+        7 => "Auto",
+        _ => "Unknown",
+    }
+}
+
+pub(crate) fn str_mmp_scaling(mmp_code: i32) -> &'static str {
+    match mmp_code {
+        -1 => "UserProvided",
+        0 => "No",
+        1 => "Diagonal",
+        3 => "Column",
+        4 => "RowCol",
+        7 => "RowColIter",
+        8 => "RowColRig",
+        77 => "Auto",
+        _ => "Unknown",
+    }
+}
+
+pub(crate) fn str_umf_ordering(umf_code: i32) -> &'static str {
+    match umf_code {
+        0 => "Cholmod",
+        1 => "Amd",
+        2 => "UserProvided",
+        3 => "Metis",
+        4 => "Best",
+        5 => "No",
+        6 => "UserProvided",
+        _ => "Unknown",
+    }
+}
+
+pub(crate) fn str_umf_scaling(umf_code: i32) -> &'static str {
+    match umf_code {
+        0 => "No",
+        1 => "Sum",
+        2 => "Max",
+        _ => "Unknown",
     }
 }
 
@@ -132,19 +215,48 @@ mod tests {
     use super::*;
 
     #[test]
-    #[should_panic(expected = "<internal error: invalid code>")]
+    fn enum_ordering_works() {
+        assert!(matches!(enum_ordering("Amd"), EnumOrdering::Amd));
+        assert!(matches!(enum_ordering("Amf"), EnumOrdering::Amf));
+        assert!(matches!(enum_ordering("Auto"), EnumOrdering::Auto));
+        assert!(matches!(enum_ordering("Best"), EnumOrdering::Best));
+        assert!(matches!(enum_ordering("Cholmod"), EnumOrdering::Cholmod));
+        assert!(matches!(enum_ordering("Metis"), EnumOrdering::Metis));
+        assert!(matches!(enum_ordering("No"), EnumOrdering::No));
+        assert!(matches!(enum_ordering("Pord"), EnumOrdering::Pord));
+        assert!(matches!(enum_ordering("Qamd"), EnumOrdering::Qamd));
+        assert!(matches!(enum_ordering("Scotch"), EnumOrdering::Scotch));
+        assert!(matches!(enum_ordering("Unknown"), EnumOrdering::Auto));
+    }
+
+    #[test]
+    fn enum_scaling_works() {
+        assert!(matches!(enum_scaling("Auto"), EnumScaling::Auto));
+        assert!(matches!(enum_scaling("Column"), EnumScaling::Column));
+        assert!(matches!(enum_scaling("Diagonal"), EnumScaling::Diagonal));
+        assert!(matches!(enum_scaling("Max"), EnumScaling::Max));
+        assert!(matches!(enum_scaling("No"), EnumScaling::No));
+        assert!(matches!(enum_scaling("RowCol"), EnumScaling::RowCol));
+        assert!(matches!(enum_scaling("RowColIter"), EnumScaling::RowColIter));
+        assert!(matches!(enum_scaling("RowColRig"), EnumScaling::RowColRig));
+        assert!(matches!(enum_scaling("Sum"), EnumScaling::Sum));
+        assert!(matches!(enum_scaling("Unknown"), EnumScaling::Auto));
+    }
+
+    #[test]
+    #[should_panic(expected = "<internal error: invalid index>")]
     fn str_enum_symmetry_panics_on_wrong_code() {
         str_enum_symmetry(123);
     }
 
     #[test]
-    #[should_panic(expected = "<internal error: invalid code>")]
+    #[should_panic(expected = "<internal error: invalid index>")]
     fn str_enum_ordering_panics_on_wrong_code() {
         str_enum_ordering(123);
     }
 
     #[test]
-    #[should_panic(expected = "<internal error: invalid code>")]
+    #[should_panic(expected = "<internal error: invalid index>")]
     fn str_enum_scaling_panics_on_wrong_code() {
         str_enum_scaling(123);
     }
@@ -182,5 +294,51 @@ mod tests {
         assert_eq!(str_enum_scaling(6), "RowColIter (MMP-only, otherwise Auto)");
         assert_eq!(str_enum_scaling(7), "RowColRig (MMP-only, otherwise Auto)");
         assert_eq!(str_enum_scaling(8), "Sum (UMF-only, otherwise Auto)");
+    }
+
+    #[test]
+    fn str_mmp_ordering_works() {
+        assert_eq!(str_mmp_ordering(0), "Amd");
+        assert_eq!(str_mmp_ordering(1), "UserProvided");
+        assert_eq!(str_mmp_ordering(2), "Amf");
+        assert_eq!(str_mmp_ordering(3), "Scotch");
+        assert_eq!(str_mmp_ordering(4), "Pord");
+        assert_eq!(str_mmp_ordering(5), "Metis");
+        assert_eq!(str_mmp_ordering(6), "Qamd");
+        assert_eq!(str_mmp_ordering(7), "Auto");
+        assert_eq!(str_mmp_ordering(123), "Unknown");
+    }
+
+    #[test]
+    fn str_mmp_scaling_works() {
+        assert_eq!(str_mmp_scaling(-1), "UserProvided");
+        assert_eq!(str_mmp_scaling(0), "No");
+        assert_eq!(str_mmp_scaling(1), "Diagonal");
+        assert_eq!(str_mmp_scaling(3), "Column");
+        assert_eq!(str_mmp_scaling(4), "RowCol");
+        assert_eq!(str_mmp_scaling(7), "RowColIter");
+        assert_eq!(str_mmp_scaling(8), "RowColRig");
+        assert_eq!(str_mmp_scaling(77), "Auto");
+        assert_eq!(str_mmp_scaling(123), "Unknown");
+    }
+
+    #[test]
+    fn str_umf_ordering_works() {
+        assert_eq!(str_umf_ordering(0), "Cholmod");
+        assert_eq!(str_umf_ordering(1), "Amd");
+        assert_eq!(str_umf_ordering(2), "UserProvided");
+        assert_eq!(str_umf_ordering(3), "Metis");
+        assert_eq!(str_umf_ordering(4), "Best");
+        assert_eq!(str_umf_ordering(5), "No");
+        assert_eq!(str_umf_ordering(6), "UserProvided");
+        assert_eq!(str_umf_ordering(123), "Unknown");
+    }
+
+    #[test]
+    fn str_umf_scaling_works() {
+        assert_eq!(str_umf_scaling(0), "No");
+        assert_eq!(str_umf_scaling(1), "Sum");
+        assert_eq!(str_umf_scaling(2), "Max");
+        assert_eq!(str_umf_scaling(123), "Unknown");
     }
 }

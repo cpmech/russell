@@ -22,29 +22,21 @@ struct Options {
     #[structopt(short, long)]
     ignore_sym: bool,
 
-    /// Use METIS ordering, if available
-    #[structopt(long)]
-    ord_metis: bool,
+    /// Ordering strategy
+    #[structopt(short = "o", long, default_value = "Auto")]
+    ordering: String,
 
-    /// Use PORD ordering, if available
-    #[structopt(long)]
-    ord_pord: bool,
-
-    /// Use SCOTCH ordering, if available
-    #[structopt(long)]
-    ord_scotch: bool,
-
-    /// Activate verbose mode on factorization step
-    #[structopt(short = "f", long)]
-    verb_fact: bool,
-
-    /// Activate verbose mode on solution step
-    #[structopt(short = "s", long)]
-    verb_solve: bool,
+    /// Scaling strategy
+    #[structopt(short = "s", long, default_value = "Auto")]
+    scaling: String,
 
     /// Number of threads for OpenMP
     #[structopt(short = "n", long, default_value = "1")]
     omp_nt: u32,
+
+    /// Activate verbose mode
+    #[structopt(short = "v", long)]
+    verbose: bool,
 }
 
 fn main() -> Result<(), &'static str> {
@@ -85,21 +77,16 @@ fn main() -> Result<(), &'static str> {
     if !opt.ignore_sym && symmetric {
         config.set_symmetry(EnumSymmetry::General);
     }
-    if opt.ord_metis {
-        config.set_ordering(EnumOrdering::Metis);
-    } else if opt.ord_pord {
-        config.set_ordering(EnumOrdering::Pord);
-    } else if opt.ord_scotch {
-        config.set_ordering(EnumOrdering::Scotch);
-    }
+    config.set_ordering(enum_ordering(opt.ordering.as_str()));
+    config.set_scaling(enum_scaling(opt.scaling.as_str()));
     if opt.omp_nt > 1 {
         config.set_openmp_num_threads(opt.omp_nt as usize);
     }
 
     // initialize and factorize
     let mut solver = Solver::new(config)?;
-    solver.initialize(&trip, if opt.mmp { opt.verb_fact } else { false })?;
-    solver.factorize(opt.verb_fact)?;
+    solver.initialize(&trip, if opt.mmp { opt.verbose } else { false })?;
+    solver.factorize(opt.verbose)?;
 
     // allocate vectors
     let m = trip.dims().0;
@@ -107,7 +94,7 @@ fn main() -> Result<(), &'static str> {
     let rhs = Vector::filled(m, 1.0);
 
     // solve linear system
-    solver.solve(&mut x, &rhs, opt.verb_solve)?;
+    solver.solve(&mut x, &rhs, opt.verbose)?;
 
     // verify solution
     let verify = VerifyLinSys::new(&trip, &x, &rhs)?;

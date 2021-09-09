@@ -161,6 +161,14 @@ int32_t solver_mmp_solve(struct SolverMMP *solver, double *rhs, int32_t verbose)
     return solver->data.INFOG(1);
 }
 
+int32_t solver_mmp_used_ordering(struct SolverMMP *solver) {
+    return solver->data.INFOG(7);
+}
+
+int32_t solver_mmp_used_scaling(struct SolverMMP *solver) {
+    return solver->data.INFOG(33);
+}
+
 #undef INFOG
 #undef ICNTL
 

@@ -172,4 +172,12 @@ int32_t solver_umf_solve(struct SolverUMF *solver, double *x, const double *rhs,
     return code;
 }
 
+int32_t solver_umf_used_ordering(struct SolverUMF const *solver) {
+    return solver->info[UMFPACK_ORDERING_USED];
+}
+
+int32_t solver_umf_used_scaling(struct SolverUMF const *solver) {
+    return solver->control[UMFPACK_SCALE];
+}
+
 #endif

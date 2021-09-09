@@ -29,6 +29,8 @@ extern "C" {
     ) -> i32;
     fn solver_mmp_factorize(solver: *mut ExtSolver, verbose: i32) -> i32;
     fn solver_mmp_solve(solver: *mut ExtSolver, rhs: *mut f64, verbose: i32) -> i32;
+    fn solver_mmp_used_ordering(solver: *const ExtSolver) -> i32;
+    fn solver_mmp_used_scaling(solver: *const ExtSolver) -> i32;
 
     // UMF
     fn new_solver_umf(symmetry: i32) -> *mut ExtSolver;
@@ -46,6 +48,8 @@ extern "C" {
     ) -> i32;
     fn solver_umf_factorize(solver: *mut ExtSolver, verbose: i32) -> i32;
     fn solver_umf_solve(solver: *mut ExtSolver, x: *mut f64, rhs: *const f64, verbose: i32) -> i32;
+    fn solver_umf_used_ordering(solver: *const ExtSolver) -> i32;
+    fn solver_umf_used_scaling(solver: *const ExtSolver) -> i32;
 }
 
 /// Implements a sparse Solver
@@ -58,20 +62,24 @@ extern "C" {
 /// (m,m)   (m)    (m)
 /// ```
 pub struct Solver {
-    config: ConfigSolver,   // configuration
-    done_initialize: bool,  // initialization completed
-    done_factorize: bool,   // factorization completed
-    ndim: usize,            // number of equations == nrow(a) where a*x=rhs
-    solver: *mut ExtSolver, // data allocated by the c-code
-    stopwatch: Stopwatch,   // stopwatch to measure elapsed time
-    time_init: u128,        // elapsed time during initialize
-    time_fact: u128,        // elapsed time during factorize
-    time_solve: u128,       // elapsed time during solve
+    config: ConfigSolver,        // configuration
+    done_initialize: bool,       // initialization completed
+    done_factorize: bool,        // factorization completed
+    ndim: usize,                 // number of equations == nrow(a) where a*x=rhs
+    solver: *mut ExtSolver,      // data allocated by the c-code
+    stopwatch: Stopwatch,        // stopwatch to measure elapsed time
+    time_init: u128,             // elapsed time during initialize
+    time_fact: u128,             // elapsed time during factorize
+    time_solve: u128,            // elapsed time during solve
+    used_ordering: &'static str, // used ordering strategy
+    used_scaling: &'static str,  // used scaling strategy
 }
 
 impl Solver {
     /// Creates a new solver
     pub fn new(config: ConfigSolver) -> Result<Self, &'static str> {
+        let used_ordering = str_enum_ordering(config.ordering);
+        let used_scaling = str_enum_scaling(config.scaling);
         unsafe {
             let solver = match config.solver_kind {
                 EnumSolverKind::Mmp => new_solver_mmp(config.symmetry),
@@ -90,6 +98,8 @@ impl Solver {
                 time_init: 0,
                 time_fact: 0,
                 time_solve: 0,
+                used_ordering,
+                used_scaling,
             })
         }
     }
@@ -177,12 +187,20 @@ impl Solver {
                     if res != 0 {
                         return Err(self.handle_mmp_error_code(res));
                     }
+                    let ord = solver_mmp_used_ordering(self.solver);
+                    let sca = solver_mmp_used_scaling(self.solver);
+                    self.used_ordering = str_mmp_ordering(ord);
+                    self.used_scaling = str_mmp_scaling(sca);
                 }
                 EnumSolverKind::Umf => {
                     let res = solver_umf_factorize(self.solver, verb);
                     if res != 0 {
                         return Err(self.handle_umf_error_code(res));
                     }
+                    let ord = solver_umf_used_ordering(self.solver);
+                    let sca = solver_umf_used_scaling(self.solver);
+                    self.used_ordering = str_umf_ordering(ord);
+                    self.used_scaling = str_umf_scaling(sca);
                 }
             }
         }
@@ -512,6 +530,8 @@ impl fmt::Display for Solver {
         write!(
             f,
             "{},\n\
+             \x20\x20\x20\x20\"usedOrdering\": \"{}\",\n\
+             \x20\x20\x20\x20\"usedScaling\": \"{}\",\n\
              \x20\x20\x20\x20\"doneInitialize\": {},\n\
              \x20\x20\x20\x20\"doneFactorize\": {},\n\
              \x20\x20\x20\x20\"ndim\": {},\n\
@@ -524,6 +544,8 @@ impl fmt::Display for Solver {
              \x20\x20\x20\x20\"timeSolveStr\": \"{}\",\n\
              \x20\x20\x20\x20\"timeTotalStr\": \"{}\"",
             self.config,
+            self.used_ordering,
+            self.used_scaling,
             self.done_initialize,
             self.done_factorize,
             self.ndim,
@@ -895,6 +917,8 @@ mod tests {
                              \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
                              \x20\x20\x20\x20\"maxWorkMemory\": 0,\n\
                              \x20\x20\x20\x20\"openmpNumThreads\": 1,\n\
+                             \x20\x20\x20\x20\"usedOrdering\": \"Auto\",\n\
+                             \x20\x20\x20\x20\"usedScaling\": \"Auto\",\n\
                              \x20\x20\x20\x20\"doneInitialize\": false,\n\
                              \x20\x20\x20\x20\"doneFactorize\": false,\n\
                              \x20\x20\x20\x20\"ndim\": 0,\n\

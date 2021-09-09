@@ -115,3 +115,22 @@ fn main() -> Result<(), &'static str> {
     Ok(())
 }
 ```
+
+## Todo list
+
+- [ ] Add fundamental functions to `russell_lab`
+    - [ ] Implement the modified Bessel functions
+- [ ] Implement some numerical methods in `russell_lab`
+    - [ ] Implement Brent's solver
+    - [ ] Implement solver for the cubic equation
+    - [ ] Implement numerical derivation
+    - [ ] Implement numerical Jacobian function
+    - [ ] Implement Newton's method for nonlinear systems
+    - [ ] Implement numerical quadrature
+- [ ] Add interpolation and polynomials to `russell_lab`
+    - [ ] Implement Chebyshev interpolation and polynomials
+    - [ ] Implement Orthogonal polynomials
+    - [ ] Implement Lagrange interpolation
+- [ ] Add probability distribution functions to `russell_stat`
+- [ ] Finalize drawing of ASCII histogram in `russell_stat`
+- [ ] Implement standard continuum mechanics tensors in `russell_tensor`

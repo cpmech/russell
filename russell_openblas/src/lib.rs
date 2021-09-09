@@ -7,6 +7,7 @@ pub fn desc() -> String {
     "Thin wrapper to some OpenBLAS routines".to_string()
 }
 
+mod config;
 mod constants;
 mod conversions;
 mod highlevel;
@@ -14,6 +15,7 @@ mod matrix;
 mod matvec;
 mod to_i32;
 mod vector;
+pub use crate::config::*;
 use crate::constants::*;
 pub use crate::conversions::*;
 pub use crate::highlevel::*;

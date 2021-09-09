@@ -1,4 +1,5 @@
 use russell_lab::*;
+use russell_openblas::set_num_threads;
 use russell_sparse::EnumSolverKind;
 use russell_sparse::*;
 use std::path::Path;
@@ -42,6 +43,11 @@ struct Options {
 fn main() -> Result<(), &'static str> {
     // parse options
     let opt = Options::from_args();
+
+    // set openblas num of threads to 1
+    if opt.omp_nt > 1 {
+        set_num_threads(1);
+    }
 
     // set solver kind
     let kind = if opt.mmp {

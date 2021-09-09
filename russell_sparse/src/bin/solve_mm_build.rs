@@ -48,9 +48,6 @@ struct Options {
 }
 
 fn main() -> Result<(), &'static str> {
-    // local MMP flag
-    let local_mmp = if cfg!(local_mmp) { true } else { false };
-
     // parse options
     let opt = Options::from_args();
 
@@ -124,7 +121,6 @@ fn main() -> Result<(), &'static str> {
         "{{\n\
             \x20\x20\"platform\": \"russell\",\n\
             \x20\x20\"blasLib\": \"OpenBLAS\",\n\
-            \x20\x20\"localMMP\": {},\n\
             \x20\x20\"matrixName\": \"{}\",\n\
             \x20\x20\"read\": {{\n\
                 \x20\x20\x20\x20\"timeReadNs\": {},\n\
@@ -140,7 +136,6 @@ fn main() -> Result<(), &'static str> {
                 {}\n\
             \x20\x20}}\n\
         }}",
-        local_mmp,
         matrix_name,
         time_read,
         format_nanoseconds(time_read),

@@ -66,7 +66,13 @@ impl ConfigSolver {
 impl fmt::Display for ConfigSolver {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let kind = match self.solver_kind {
-            EnumSolverKind::Mmp => "MMP",
+            EnumSolverKind::Mmp => {
+                if cfg!(local_mmp) {
+                    "MMP-local"
+                } else {
+                    "MMP"
+                }
+            }
             EnumSolverKind::Umf => "UMF",
         };
         write!(
@@ -175,13 +181,23 @@ mod tests {
         assert_eq!(format!("{}", config1), correct1);
         let mut config2 = ConfigSolver::new();
         config2.set_solver_kind(EnumSolverKind::Mmp);
-        let correct2: &str = "\x20\x20\x20\x20\"solverKind\": \"MMP\",\n\
-                              \x20\x20\x20\x20\"symmetry\": \"No\",\n\
-                              \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
-                              \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
-                              \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
-                              \x20\x20\x20\x20\"maxWorkMemory\": 0,\n\
-                              \x20\x20\x20\x20\"openmpNumThreads\": 1";
+        let correct2: &str = if cfg!(local_mmp) {
+            "\x20\x20\x20\x20\"solverKind\": \"MMP-local\",\n\
+             \x20\x20\x20\x20\"symmetry\": \"No\",\n\
+             \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
+             \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
+             \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
+             \x20\x20\x20\x20\"maxWorkMemory\": 0,\n\
+             \x20\x20\x20\x20\"openmpNumThreads\": 1"
+        } else {
+            "\x20\x20\x20\x20\"solverKind\": \"MMP\",\n\
+             \x20\x20\x20\x20\"symmetry\": \"No\",\n\
+             \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
+             \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
+             \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
+             \x20\x20\x20\x20\"maxWorkMemory\": 0,\n\
+             \x20\x20\x20\x20\"openmpNumThreads\": 1"
+        };
         assert_eq!(format!("{}", config2), correct2);
     }
 }

@@ -24,3 +24,17 @@ Add this to your Cargo.toml:
 [dependencies]
 russell_openblas = "*"
 ```
+
+### Number of threads
+
+By default OpenBLAS will use all available threads, including Hyper-Threads that make the performance worse. Thus, it is best to set the following environment variable:
+
+```
+export OPENBLAS_NUM_THREADS=<real-core-count>
+```
+
+Furthermore, if working on a multi-threaded application, it is recommended to set:
+
+```
+export OPENBLAS_NUM_THREADS=1
+```

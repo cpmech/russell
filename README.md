@@ -2,8 +2,6 @@
 
 [![codecov](https://codecov.io/gh/cpmech/russell/branch/main/graph/badge.svg?token=PQWSKMZQXT)](https://codecov.io/gh/cpmech/russell)
 
-Work in progress...
-
 ![Bertrand Russell](zassets/Bertrand_Russell_1957.jpg)
 
 ([CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en). Photo: [Bertrand Russell](https://en.wikipedia.org/wiki/Bertrand_Russell))
@@ -41,6 +39,20 @@ russell_openblas = "*"
 russell_sparse = "*"
 russell_stat = "*"
 russell_tensor = "*"
+```
+
+### Number of threads
+
+By default OpenBLAS will use all available threads, including Hyper-Threads that make the performance worse. Thus, it is best to set the following environment variable:
+
+```
+export OPENBLAS_NUM_THREADS=<real-core-count>
+```
+
+Furthermore, if working on a multi-threaded application, it is recommended to set:
+
+```
+export OPENBLAS_NUM_THREADS=1
 ```
 
 ## Examples

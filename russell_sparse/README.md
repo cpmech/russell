@@ -2,8 +2,6 @@
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
-Work in progress...
-
 This repository contains tools for handling sparse matrices and functions to solve large sparse systems.
 
 Documentation:
@@ -40,6 +38,24 @@ Follow the instructions from https://github.com/cpmech/script-install-mumps and 
 ```
 export USE_LOCAL_MUMPS=1
 ```
+
+### Number of threads
+
+By default OpenBLAS will use all available threads, including Hyper-Threads that make the performance worse. Thus, it is best to set the following environment variable:
+
+```
+export OPENBLAS_NUM_THREADS=<real-core-count>
+```
+
+Furthermore, if working on a multi-threaded application, it is recommended to set:
+
+```
+export OPENBLAS_NUM_THREADS=1
+```
+
+## Sparse solvers
+
+We wrap two direct sparse solvers: UMFPACK (aka **UMF**) and MUMPS (aka **MMP**). The default solver is UMF; however UMF may run out of memory for large matrices, whereas MMP still may work. The MMP solver is **not** thread-safe and thus must be used in single-threaded applications.
 
 ## Tools
 

@@ -2,8 +2,6 @@
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
-Work in progress...
-
 This repository is a "rust laboratory" for vectors and matrices.
 
 Documentation:
@@ -25,4 +23,18 @@ Add this to your Cargo.toml:
 ```toml
 [dependencies]
 russell_lab = "*"
+```
+
+### Number of threads
+
+By default OpenBLAS will use all available threads, including Hyper-Threads that make the performance worse. Thus, it is best to set the following environment variable:
+
+```
+export OPENBLAS_NUM_THREADS=<real-core-count>
+```
+
+Furthermore, if working on a multi-threaded application, it is recommended to set:
+
+```
+export OPENBLAS_NUM_THREADS=1
 ```

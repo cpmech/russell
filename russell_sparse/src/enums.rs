@@ -1,9 +1,9 @@
 /// Defines the solver kinds
 pub enum EnumSolverKind {
-    /// The NON-THREAD-SAFE (Mu-M-P) Solver
+    /// The NON-THREAD-SAFE (Mu-M-P) Solver (use in single-thread apps / with huge matrices)
     Mmp = 0,
 
-    /// Tim Davis' UMFPACK Solver (**recommended**)
+    /// Tim Davis' UMFPACK Solver (recommended, unless the matrix is huge)
     Umf = 1,
 }
 

@@ -2,7 +2,9 @@
 #define SOLVER_MMP_H
 
 #include <inttypes.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "constants.h"
 #include "dmumps_c.h"
@@ -44,6 +46,20 @@ struct SolverMMP *new_solver_mmp(int32_t symmetry) {
     dmumps_c(&solver->data);
 
     if (solver->data.INFOG(1) != 0) {
+        free(solver);
+        return NULL;
+    }
+
+    if (strcmp(solver->data.version_number, MUMPS_VERSION) != 0) {
+        printf("\n\n\nERROR: MUMPS LIBRARY VERSION = ");
+        int i;
+        for (i = 0; i < MUMPS_VERSION_MAX_LEN; i++) {
+            printf("%c", solver->data.version_number[i]);
+        }
+        printf(" != INCLUDE VERSION = %s \n\n\n", MUMPS_VERSION);
+        set_mmp_verbose(&solver->data, C_FALSE);
+        solver->data.job = MUMPS_JOB_TERMINATE;
+        dmumps_c(&solver->data);
         free(solver);
         return NULL;
     }

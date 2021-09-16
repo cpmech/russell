@@ -463,11 +463,11 @@ mod tests {
     fn display_trait_works() {
         #[rustfmt::skip]
         let u = Vector::from(&[1.0, 2.0, 3.0]);
-        let correct = "┌   ┐\n\
-                            │ 1 │\n\
-                            │ 2 │\n\
-                            │ 3 │\n\
-                            └   ┘";
+        let correct: &str = "┌   ┐\n\
+                             │ 1 │\n\
+                             │ 2 │\n\
+                             │ 3 │\n\
+                             └   ┘";
         assert_eq!(format!("{}", u), correct);
     }
 
@@ -475,11 +475,11 @@ mod tests {
     fn display_trait_precision_works() {
         #[rustfmt::skip]
         let u = Vector::from(&[1.012444, 2.034123, 3.05678]);
-        let correct = "┌      ┐\n\
-                            │ 1.01 │\n\
-                            │ 2.03 │\n\
-                            │ 3.06 │\n\
-                            └      ┘";
+        let correct: &str = "┌      ┐\n\
+                             │ 1.01 │\n\
+                             │ 2.03 │\n\
+                             │ 3.06 │\n\
+                             └      ┘";
         assert_eq!(format!("{:.2}", u), correct);
     }
 

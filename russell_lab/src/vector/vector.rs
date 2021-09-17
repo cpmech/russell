@@ -2,6 +2,7 @@ use crate::{AsArray1D, EnumVectorNorm};
 use russell_openblas::*;
 use std::cmp;
 use std::fmt::{self, Write};
+use std::ops::{Index, IndexMut};
 
 /// Holds vector components and associated functions
 pub struct Vector {
@@ -410,6 +411,24 @@ impl Vector {
 }
 
 impl fmt::Display for Vector {
+    /// Generates a string representation of the Vector
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::Vector;
+    /// let u = Vector::from(&[4.0, 3.0, 1.0, 0.0, -4.04]);
+    /// assert_eq!(
+    ///     format!("{}", u),
+    ///     "┌       ┐\n\
+    ///      │     4 │\n\
+    ///      │     3 │\n\
+    ///      │     1 │\n\
+    ///      │     0 │\n\
+    ///      │ -4.04 │\n\
+    ///      └       ┘"
+    /// );
+    /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // find largest width
         let mut width = 0;
@@ -440,6 +459,108 @@ impl fmt::Display for Vector {
         write!(f, " │\n")?;
         write!(f, "└{:1$}┘", " ", width + 1)?;
         Ok(())
+    }
+}
+
+/// Allows to access Vector components using indices
+///
+/// # Example
+///
+/// ```
+/// use russell_lab::Vector;
+/// let u = Vector::from(&[-3.0, 1.2, 2.0]);
+/// assert_eq!(u[0], -3.0);
+/// assert_eq!(u[1],  1.2);
+/// assert_eq!(u[2],  2.0);
+/// ```
+impl Index<usize> for Vector {
+    type Output = f64;
+    #[inline]
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.data[index]
+    }
+}
+
+/// Allows to change Vector components using indices
+///
+/// # Example
+///
+/// ```
+/// use russell_lab::Vector;
+/// let mut u = Vector::from(&[-3.0, 1.2, 2.0]);
+/// u[0] -= 10.0;
+/// u[1] += 10.0;
+/// u[2] += 20.0;
+/// assert_eq!(u[0], -13.0);
+/// assert_eq!(u[1],  11.2);
+/// assert_eq!(u[2],  22.0);
+/// ```
+impl IndexMut<usize> for Vector {
+    #[inline]
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.data[index]
+    }
+}
+
+/// Allows to iterate over Vector components (move version)
+///
+/// # Example
+///
+/// ```
+/// use russell_lab::Vector;
+/// let u = Vector::from(&[10.0, 20.0, 30.0]);
+/// for (i, v) in u.into_iter().enumerate() {
+///     assert_eq!(v, (10 * (i + 1)) as f64);
+/// }
+/// ```
+impl IntoIterator for Vector {
+    type Item = f64;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.data.into_iter()
+    }
+}
+
+/// Allows to iterate over Vector components (borrow version)
+///
+/// # Example
+///
+/// ```
+/// use russell_lab::Vector;
+/// let u = Vector::from(&[10.0, 20.0, 30.0]);
+/// let mut x = 10.0;
+/// for v in &u {
+///     assert_eq!(*v, x);
+///     x += 10.0;
+/// }
+/// ```
+impl<'a> IntoIterator for &'a Vector {
+    type Item = &'a f64;
+    type IntoIter = std::slice::Iter<'a, f64>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.data.iter()
+    }
+}
+
+/// Allows to iterate over Vector components (mutable version)
+///
+/// # Example
+///
+/// ```
+/// use russell_lab::Vector;
+/// let mut u = Vector::from(&[10.0, 20.0, 30.0]);
+/// let mut x = 100.0;
+/// for v in &mut u {
+///     *v *= 10.0;
+///     assert_eq!(*v, x);
+///     x += 100.0;
+/// }
+/// ```
+impl<'a> IntoIterator for &'a mut Vector {
+    type Item = &'a mut f64;
+    type IntoIter = std::slice::IterMut<'a, f64>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.data.iter_mut()
     }
 }
 
@@ -506,30 +627,6 @@ mod tests {
         assert_eq!(x.data.len(), 2);
         assert_eq!(x.data[0], 2.0);
         assert_eq!(x.data[1], 3.0);
-    }
-
-    #[test]
-    fn display_trait_works() {
-        #[rustfmt::skip]
-        let u = Vector::from(&[1.0, 2.0, 3.0]);
-        let correct: &str = "┌   ┐\n\
-                             │ 1 │\n\
-                             │ 2 │\n\
-                             │ 3 │\n\
-                             └   ┘";
-        assert_eq!(format!("{}", u), correct);
-    }
-
-    #[test]
-    fn display_trait_precision_works() {
-        #[rustfmt::skip]
-        let u = Vector::from(&[1.012444, 2.034123, 3.05678]);
-        let correct: &str = "┌      ┐\n\
-                             │ 1.01 │\n\
-                             │ 2.03 │\n\
-                             │ 3.06 │\n\
-                             └      ┘";
-        assert_eq!(format!("{:.2}", u), correct);
     }
 
     #[test]
@@ -633,5 +730,97 @@ mod tests {
         assert_eq!(u.norm(EnumVectorNorm::One), 8.0);
         assert_eq!(u.norm(EnumVectorNorm::Euc), 4.0);
         assert_eq!(u.norm(EnumVectorNorm::Max), 3.0);
+    }
+
+    #[test]
+    fn display_works() {
+        let mut x = Vector::new(3);
+        x.data[0] = 1.0;
+        x.data[1] = 2.0;
+        x.data[2] = 3.0;
+        let correct: &str = "┌   ┐\n\
+                             │ 1 │\n\
+                             │ 2 │\n\
+                             │ 3 │\n\
+                             └   ┘";
+        assert_eq!(format!("{}", x), correct);
+    }
+
+    #[test]
+    fn display_precision_works() {
+        let u = Vector::from(&[1.012444, 2.034123, 3.05678]);
+        let correct: &str = "┌      ┐\n\
+                             │ 1.01 │\n\
+                             │ 2.03 │\n\
+                             │ 3.06 │\n\
+                             └      ┘";
+        assert_eq!(format!("{:.2}", u), correct);
+    }
+
+    #[test]
+    fn index_works() {
+        let mut x = Vector::new(3);
+        x.data[0] = 1.0;
+        x.data[1] = 2.0;
+        x.data[2] = 3.0;
+        assert_eq!(x[0], 1.0);
+        assert_eq!(x[1], 2.0);
+        assert_eq!(x[2], 3.0);
+    }
+
+    #[test]
+    fn index_mut_works() {
+        let mut x = Vector::new(3);
+        x.data[0] = 1.0;
+        x.data[1] = 2.0;
+        x.data[2] = 3.0;
+        x[0] += 10.0;
+        x[1] += 20.0;
+        x[2] += 30.0;
+        assert_eq!(x.data, &[11.0, 22.0, 33.0]);
+    }
+
+    #[test]
+    fn into_iterator_works() {
+        let mut x = Vector::new(3);
+        x.data[0] = 1.0;
+        x.data[1] = 2.0;
+        x.data[2] = 3.0;
+        // borrow x
+        let mut i = 0_usize;
+        for val in &x {
+            assert_eq!(*val, (i + 1) as f64);
+            i += 1;
+        }
+        // mut borrow x
+        for val in &mut x {
+            *val += 10.0;
+        }
+        assert_eq!(x.data, &[11.0, 12.0, 13.0]);
+        // move x
+        for (i, val) in x.into_iter().enumerate() {
+            assert_eq!(val, (i + 11) as f64);
+        }
+    }
+
+    #[test]
+    fn into_iterator_bound_works() {
+        fn vector_to_string<'a, T, U>(vector: &'a T) -> String
+        where
+            &'a T: IntoIterator<Item = U>,
+            U: 'a + std::fmt::Display,
+        {
+            let mut buf = String::new();
+            for (i, val) in vector.into_iter().enumerate() {
+                write!(&mut buf, "({}:{}), ", i, val).unwrap();
+            }
+            buf
+        }
+        let mut x = Vector::new(3);
+        x.data[0] = 1.0;
+        x.data[1] = 2.0;
+        x.data[2] = 3.0;
+        let res = vector_to_string(&x);
+        assert_eq!(res, "(0:1), (1:2), (2:3), ");
     }
 }

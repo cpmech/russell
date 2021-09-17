@@ -147,6 +147,7 @@ impl Vector {
     /// let u = Vector::from(&[1.0, 2.0, 3.0]);
     /// assert_eq!(u.dim(), 3);
     /// ```
+    #[inline]
     pub fn dim(&self) -> usize {
         self.data.len()
     }
@@ -206,6 +207,7 @@ impl Vector {
     /// let u = Vector::from(&[1.0, 2.0, 3.0]);
     /// assert_eq!(u.as_data(), &[1.0, 2.0, 3.0]);
     /// ```
+    #[inline]
     pub fn as_data(&self) -> &Vec<f64> {
         &self.data
     }
@@ -221,6 +223,7 @@ impl Vector {
     /// data[1] = 2.2;
     /// assert_eq!(data, &[1.0, 2.2, 3.0]);
     /// ```
+    #[inline]
     pub fn as_mut_data(&mut self) -> &mut Vec<f64> {
         &mut self.data
     }

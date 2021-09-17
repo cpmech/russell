@@ -1,4 +1,4 @@
-use crate::EnumVectorNorm;
+use crate::{AsArray1D, EnumVectorNorm};
 use russell_openblas::*;
 use std::cmp;
 use std::fmt::{self, Write};
@@ -51,16 +51,54 @@ impl Vector {
     ///
     /// ```
     /// use russell_lab::*;
-    /// let u = Vector::from(&[1.0, 2.0, 3.0]);
-    /// let correct = "┌   ┐\n\
-    ///                │ 1 │\n\
-    ///                │ 2 │\n\
-    ///                │ 3 │\n\
-    ///                └   ┘";
-    /// assert_eq!(format!("{}", u), correct);
+    ///
+    /// // heap-allocated 1D array (vector)
+    /// let u_data = vec![1.0, 2.0, 3.0];
+    /// let u = Vector::from(&u_data);
+    /// assert_eq!(
+    ///     format!("{}", &u),
+    ///     "┌   ┐\n\
+    ///      │ 1 │\n\
+    ///      │ 2 │\n\
+    ///      │ 3 │\n\
+    ///      └   ┘"
+    /// );
+    ///
+    /// // heap-allocated 1D array (slice)
+    /// let v_data: &[f64] = &[10.0, 20.0, 30.0];
+    /// let v = Vector::from(&v_data);
+    /// assert_eq!(
+    ///     format!("{}", &v),
+    ///     "┌    ┐\n\
+    ///      │ 10 │\n\
+    ///      │ 20 │\n\
+    ///      │ 30 │\n\
+    ///      └    ┘"
+    /// );
+    ///
+    /// // stack-allocated (fixed-size) 2D array
+    /// let w_data = [100.0, 200.0, 300.0];
+    /// let w = Vector::from(&w_data);
+    /// assert_eq!(
+    ///     format!("{}", &w),
+    ///     "┌     ┐\n\
+    ///      │ 100 │\n\
+    ///      │ 200 │\n\
+    ///      │ 300 │\n\
+    ///      └     ┘"
+    /// );
     /// ```
-    pub fn from(data: &[f64]) -> Self {
-        Vector { data: Vec::from(data) }
+    pub fn from<'a, T, U>(array: &'a T) -> Self
+    where
+        T: AsArray1D<'a, U>,
+        U: 'a + Into<f64>,
+    {
+        let dim = array.size();
+        let mut data = vec![0.0; dim];
+        for i in 0..dim {
+            data[i] = array.at(i).into();
+        }
+        Vector { data }
     }
 
     /// Returns evenly spaced numbers over a specified closed interval
@@ -426,9 +464,20 @@ mod tests {
 
     #[test]
     fn from_works() {
-        let u = Vector::from(&[1.0, 2.0, 3.0]);
-        let correct = &[1.0, 2.0, 3.0];
-        assert_vec_approx_eq!(u.data, correct, 1e-15);
+        // heap-allocated 1D array (vector)
+        let x_data = vec![1.0, 2.0, 3.0];
+        let x = Vector::from(&x_data);
+        assert_eq!(x.data, &[1.0, 2.0, 3.0]);
+
+        // heap-allocated 1D array (slice)
+        let y_data: &[f64] = &[10.0, 20.0, 30.0];
+        let y = Vector::from(&y_data);
+        assert_eq!(y.data, &[10.0, 20.0, 30.0]);
+
+        // stack-allocated (fixed-size) 2D array
+        let z_data = [100.0, 200.0, 300.0];
+        let z = Vector::from(&z_data);
+        assert_eq!(z.data, &[100.0, 200.0, 300.0]);
     }
 
     #[test]
@@ -463,11 +512,11 @@ mod tests {
     fn display_trait_works() {
         #[rustfmt::skip]
         let u = Vector::from(&[1.0, 2.0, 3.0]);
-        let correct = "┌   ┐\n\
-                            │ 1 │\n\
-                            │ 2 │\n\
-                            │ 3 │\n\
-                            └   ┘";
+        let correct: &str = "┌   ┐\n\
+                             │ 1 │\n\
+                             │ 2 │\n\
+                             │ 3 │\n\
+                             └   ┘";
         assert_eq!(format!("{}", u), correct);
     }
 
@@ -475,11 +524,11 @@ mod tests {
     fn display_trait_precision_works() {
         #[rustfmt::skip]
         let u = Vector::from(&[1.012444, 2.034123, 3.05678]);
-        let correct = "┌      ┐\n\
-                            │ 1.01 │\n\
-                            │ 2.03 │\n\
-                            │ 3.06 │\n\
-                            └      ┘";
+        let correct: &str = "┌      ┐\n\
+                             │ 1.01 │\n\
+                             │ 2.03 │\n\
+                             │ 3.06 │\n\
+                             └      ┘";
         assert_eq!(format!("{:.2}", u), correct);
     }
 

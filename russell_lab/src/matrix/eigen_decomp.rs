@@ -56,12 +56,12 @@ use russell_openblas::*;
 /// use russell_chk::*;
 ///
 /// // set matrix
-/// let data: &[&[f64]] = &[
-///     &[2.0, 0.0, 0.0],
-///     &[0.0, 3.0, 4.0],
-///     &[0.0, 4.0, 9.0],
+/// let data = [
+///     [2.0, 0.0, 0.0],
+///     [0.0, 3.0, 4.0],
+///     [0.0, 4.0, 9.0],
 /// ];
-/// let mut a = Matrix::from(data)?;
+/// let mut a = Matrix::from(&data);
 ///
 /// // allocate output arrays
 /// let m = a.nrow();
@@ -99,7 +99,7 @@ use russell_openblas::*;
 ///
 /// // check eigen-decomposition (similarity transformation) of a
 /// // symmetric matrix with real-only eigenvalues and eigenvectors
-/// let a_copy = Matrix::from(data)?;
+/// let a_copy = Matrix::from(&data);
 /// let lam = Matrix::diagonal(&l_real);
 /// let mut a_v = Matrix::new(m, m);
 /// let mut v_l = Matrix::new(m, m);
@@ -186,12 +186,12 @@ pub fn eigen_decomp(
 /// use russell_lab::*;
 ///
 /// // set matrix
-/// let data: &[&[f64]] = &[
-///     &[0.0, 1.0, 0.0],
-///     &[0.0, 0.0, 1.0],
-///     &[1.0, 0.0, 0.0],
+/// let data = [
+///     [0.0, 1.0, 0.0],
+///     [0.0, 0.0, 1.0],
+///     [1.0, 0.0, 0.0],
 /// ];
-/// let mut a = Matrix::from(data)?;
+/// let mut a = Matrix::from(&data);
 ///
 /// // allocate output arrays
 /// let m = a.nrow();
@@ -291,11 +291,14 @@ pub fn eigen_decomp_lr(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::EnumMatrixNorm;
+    use crate::{AsArray2D, EnumMatrixNorm};
     use russell_chk::*;
 
-    fn check_real_eigen(data: &[&[f64]], v: &Matrix, l: &[f64]) -> Result<(), &'static str> {
-        let a = Matrix::from(data)?;
+    fn check_real_eigen<'a, T>(data: &'a T, v: &Matrix, l: &[f64]) -> Result<(), &'static str>
+    where
+        T: AsArray2D<'a, f64>,
+    {
+        let a = Matrix::from(data);
         let m = a.nrow;
         let lam = Matrix::diagonal(&l);
         let mut a_v = Matrix::new(m, m);
@@ -349,12 +352,12 @@ mod tests {
     #[test]
     fn eigen_decomp_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
-        let data: &[&[f64]] = &[
-            &[0.0, 1.0, 0.0],
-            &[0.0, 0.0, 1.0],
-            &[1.0, 0.0, 0.0],
+        let data = [
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [1.0, 0.0, 0.0],
         ];
-        let mut a = Matrix::from(data)?;
+        let mut a = Matrix::from(&data);
         let m = a.nrow;
         let mut l_real = vec![0.0; m];
         let mut l_imag = vec![0.0; m];
@@ -366,16 +369,16 @@ mod tests {
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
         #[rustfmt::skip]
         let v_real_correct = Matrix::from(&[
-            &[ 1.0/s3,  1.0/s3, -1.0/s3],
-            &[-0.5/s3, -0.5/s3, -1.0/s3],
-            &[-0.5/s3, -0.5/s3, -1.0/s3],
-        ])?;
+            [ 1.0/s3,  1.0/s3, -1.0/s3],
+            [-0.5/s3, -0.5/s3, -1.0/s3],
+            [-0.5/s3, -0.5/s3, -1.0/s3],
+        ]);
         #[rustfmt::skip]
         let v_imag_correct = Matrix::from(&[
-            &[ 0.0,  0.0, 0.0],
-            &[ 0.5, -0.5, 0.0],
-            &[-0.5,  0.5, 0.0],
-        ])?;
+            [ 0.0,  0.0, 0.0],
+            [ 0.5, -0.5, 0.0],
+            [-0.5,  0.5, 0.0],
+        ]);
         assert_vec_approx_eq!(l_real, l_real_correct, 1e-15);
         assert_vec_approx_eq!(l_imag, l_imag_correct, 1e-15);
         assert_vec_approx_eq!(v_real.data, v_real_correct.data, 1e-15);
@@ -387,13 +390,13 @@ mod tests {
     fn eigen_decomp_rep_works() -> Result<(), &'static str> {
         // rep: repeated eigenvalues
         #[rustfmt::skip]
-        let data: &[&[f64]] = &[
-            &[2.0, 0.0, 0.0, 0.0],
-            &[1.0, 2.0, 0.0, 0.0],
-            &[0.0, 1.0, 3.0, 0.0],
-            &[0.0, 0.0, 1.0, 3.0],
+        let data = [
+            [2.0, 0.0, 0.0, 0.0],
+            [1.0, 2.0, 0.0, 0.0],
+            [0.0, 1.0, 3.0, 0.0],
+            [0.0, 0.0, 1.0, 3.0],
         ];
-        let mut a = Matrix::from(data)?;
+        let mut a = Matrix::from(&data);
         let m = a.nrow;
         let mut l_real = vec![0.0; m];
         let mut l_imag = vec![0.0; m];
@@ -405,18 +408,18 @@ mod tests {
         let os3 = 1.0 / f64::sqrt(3.0);
         #[rustfmt::skip]
         let v_real_correct = Matrix::from(&[
-            &[ 0.0,  0.0,  0.0,  0.0],
-            &[ 0.0,  0.0,  os3, -os3],
-            &[ 0.0,  0.0, -os3,  os3],
-            &[ 1.0, -1.0,  os3, -os3],
-        ])?;
+            [0.0,  0.0,  0.0,  0.0],
+            [0.0,  0.0,  os3, -os3],
+            [0.0,  0.0, -os3,  os3],
+            [1.0, -1.0,  os3, -os3],
+        ]);
         #[rustfmt::skip]
         let v_imag_correct = Matrix::from(&[
-            &[0.0, 0.0, 0.0, 0.0],
-            &[0.0, 0.0, 0.0, 0.0],
-            &[0.0, 0.0, 0.0, 0.0],
-            &[0.0, 0.0, 0.0, 0.0],
-        ])?;
+            [0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0],
+        ]);
         assert_vec_approx_eq!(l_real, l_real_correct, 1e-15);
         assert_vec_approx_eq!(l_imag, l_imag_correct, 1e-15);
         assert_vec_approx_eq!(v_real.data, v_real_correct.data, 1e-15);
@@ -428,12 +431,12 @@ mod tests {
     #[test]
     fn eigen_decomp_lr_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
-        let data: &[&[f64]] = &[
-            &[0.0, 1.0, 0.0],
-            &[0.0, 0.0, 1.0],
-            &[1.0, 0.0, 0.0],
+        let data = [
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [1.0, 0.0, 0.0],
         ];
-        let mut a = Matrix::from(data)?;
+        let mut a = Matrix::from(&data);
         let m = a.nrow;
         let mut l_real = vec![0.0; m];
         let mut l_imag = vec![0.0; m];
@@ -455,28 +458,28 @@ mod tests {
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
         #[rustfmt::skip]
         let u_real_correct = Matrix::from(&[
-            &[-0.5/s3, -0.5/s3, -1.0/s3],
-            &[ 1.0/s3,  1.0/s3, -1.0/s3],
-            &[-0.5/s3, -0.5/s3, -1.0/s3],
-        ])?;
+            [-0.5/s3, -0.5/s3, -1.0/s3],
+            [ 1.0/s3,  1.0/s3, -1.0/s3],
+            [-0.5/s3, -0.5/s3, -1.0/s3],
+        ]);
         #[rustfmt::skip]
         let u_imag_correct = Matrix::from(&[
-            &[-0.5,  0.5, 0.0],
-            &[ 0.0,  0.0, 0.0],
-            &[ 0.5, -0.5, 0.0],
-        ])?;
+            [-0.5,  0.5, 0.0],
+            [ 0.0,  0.0, 0.0],
+            [ 0.5, -0.5, 0.0],
+        ]);
         #[rustfmt::skip]
         let v_real_correct = Matrix::from(&[
-            &[ 1.0/s3,  1.0/s3, -1.0/s3],
-            &[-0.5/s3, -0.5/s3, -1.0/s3],
-            &[-0.5/s3, -0.5/s3, -1.0/s3],
-        ])?;
+            [ 1.0/s3,  1.0/s3, -1.0/s3],
+            [-0.5/s3, -0.5/s3, -1.0/s3],
+            [-0.5/s3, -0.5/s3, -1.0/s3],
+        ]);
         #[rustfmt::skip]
         let v_imag_correct = Matrix::from(&[
-            &[ 0.0,  0.0, 0.0],
-            &[ 0.5, -0.5, 0.0],
-            &[-0.5,  0.5, 0.0],
-        ])?;
+            [ 0.0,  0.0, 0.0],
+            [ 0.5, -0.5, 0.0],
+            [-0.5,  0.5, 0.0],
+        ]);
         assert_vec_approx_eq!(l_real, l_real_correct, 1e-15);
         assert_vec_approx_eq!(l_imag, l_imag_correct, 1e-15);
         assert_vec_approx_eq!(u_real.data, u_real_correct.data, 1e-15);

@@ -1,4 +1,4 @@
-use crate::EnumMatrixNorm;
+use crate::{AsArray2D, EnumMatrixNorm};
 use russell_openblas::*;
 use std::cmp;
 use std::fmt::{self, Write};
@@ -98,42 +98,85 @@ impl Matrix {
 
     /// Creates new matrix from given data
     ///
+    /// # Notes
+    ///
+    /// * For variable-length rows, the number of columns is defined by the first row
+    /// * The next rows must have at least the same number of columns as the first row
+    ///
     /// # Example
     ///
     /// ```
-    /// # fn main() -> Result<(), &'static str> {
     /// use russell_lab::*;
-    /// let a = Matrix::from(&[
-    ///     &[1.0, 2.0, 3.0],
-    ///     &[4.0, 5.0, 6.0],
-    ///     &[7.0, 8.0, 9.0],
-    /// ])?;
-    /// let correct = "┌       ┐\n\
-    ///                │ 1 2 3 │\n\
-    ///                │ 4 5 6 │\n\
-    ///                │ 7 8 9 │\n\
-    ///                └       ┘";
-    /// assert_eq!(format!("{}", a), correct);
-    /// # Ok(())
-    /// # }
+    ///
+    /// // heap-allocated 2D array (vector of vectors)
+    /// const IGNORED: f64 = 123.456;
+    /// let a_data = vec![
+    ///     vec![1.0, 2.0],
+    ///     vec![3.0, 4.0, IGNORED, IGNORED, IGNORED],
+    ///     vec![5.0, 6.0],
+    /// ];
+    /// let a = Matrix::from(&a_data);
+    /// assert_eq!(
+    ///     format!("{}", &a),
+    ///     "┌     ┐\n\
+    ///      │ 1 2 │\n\
+    ///      │ 3 4 │\n\
+    ///      │ 5 6 │\n\
+    ///      └     ┘"
+    /// );
+    ///
+    /// // heap-allocated 2D array (aka slice of slices)
+    /// let b_data: &[&[f64]] = &[
+    ///     &[10.0, 20.0],
+    ///     &[30.0, 40.0, IGNORED],
+    ///     &[50.0, 60.0, IGNORED, IGNORED],
+    /// ];
+    /// let b = Matrix::from(&b_data);
+    /// assert_eq!(
+    ///     format!("{}", &b),
+    ///     "┌       ┐\n\
+    ///      │ 10 20 │\n\
+    ///      │ 30 40 │\n\
+    ///      │ 50 60 │\n\
+    ///      └       ┘"
+    /// );
+    ///
+    /// // stack-allocated (fixed-size) 2D array
+    /// let c_data = [
+    ///     [100.0, 200.0],
+    ///     [300.0, 400.0],
+    ///     [500.0, 600.0],
+    /// ];
+    /// let c = Matrix::from(&c_data);
+    /// assert_eq!(
+    ///     format!("{}", &c),
+    ///     "┌         ┐\n\
+    ///      │ 100 200 │\n\
+    ///      │ 300 400 │\n\
+    ///      │ 500 600 │\n\
+    ///      └         ┘"
+    /// );
     /// ```
-    pub fn from(data: &[&[f64]]) -> Result<Self, &'static str> {
-        let nrow = data.len();
-        let ncol = data[0].len();
+    pub fn from<'a, T, U>(array: &'a T) -> Self
+    where
+        T: AsArray2D<'a, U>,
+        U: 'a + Into<f64>,
+    {
+        let (mut nrow, ncol) = array.size();
+        if ncol == 0 {
+            nrow = 0
+        }
         let mut matrix = Matrix {
             nrow,
             ncol,
             data: vec![0.0; nrow * ncol],
         };
         for i in 0..nrow {
-            if data[i].len() != ncol {
-                return Err("all rows must have the same number of columns");
-            }
             for j in 0..ncol {
-                matrix.data[i + j * nrow] = data[i][j];
+                matrix.data[i + j * nrow] = array.at(i, j).into();
             }
         }
-        Ok(matrix)
+        matrix
     }
 
     /// Creates new diagonal matrix with given diagonal data
@@ -212,20 +255,17 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> Result<(), &'static str> {
     /// use russell_lab::*;
     /// let mut a = Matrix::from(&[
-    ///     &[1.0, 2.0, 3.0],
-    ///     &[4.0, 5.0, 6.0],
-    /// ])?;
+    ///     [1.0, 2.0, 3.0],
+    ///     [4.0, 5.0, 6.0],
+    /// ]);
     /// a.scale(0.5);
     /// let correct = "┌             ┐\n\
     ///                │ 0.5   1 1.5 │\n\
     ///                │   2 2.5   3 │\n\
     ///                └             ┘";
     /// assert_eq!(format!("{}", a), correct);
-    /// # Ok(())
-    /// # }
     /// ```
     pub fn scale(&mut self, alpha: f64) {
         let n: i32 = to_i32(self.data.len());
@@ -258,15 +298,12 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> Result<(), &'static str> {
     /// use russell_lab::*;
     /// let a = Matrix::from(&[
-    ///     &[1.0, 2.0],
-    ///     &[3.0, 4.0],
-    /// ])?;
+    ///     [1.0, 2.0],
+    ///     [3.0, 4.0],
+    /// ]);
     /// assert_eq!(a.get(1,1), 4.0);
-    /// # Ok(())
-    /// # }
     /// ```
     #[inline]
     pub fn get(&self, i: usize, j: usize) -> f64 {
@@ -280,20 +317,17 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> Result<(), &'static str> {
     /// use russell_lab::*;
     /// let mut a = Matrix::from(&[
-    ///     &[1.0, 2.0],
-    ///     &[3.0, 4.0],
-    /// ])?;
+    ///     [1.0, 2.0],
+    ///     [3.0, 4.0],
+    /// ]);
     /// a.set(1, 1, -4.0);
     /// let correct = "┌       ┐\n\
     ///                │  1  2 │\n\
     ///                │  3 -4 │\n\
     ///                └       ┘";
     /// assert_eq!(format!("{}", a), correct);
-    /// # Ok(())
-    /// # }
     /// ```
     #[inline]
     pub fn set(&mut self, i: usize, j: usize, value: f64) {
@@ -311,20 +345,17 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> Result<(), &'static str> {
     /// use russell_lab::*;
     /// let mut a = Matrix::from(&[
-    ///     &[1.0, 2.0],
-    ///     &[3.0, 4.0],
-    /// ])?;
+    ///     [1.0, 2.0],
+    ///     [3.0, 4.0],
+    /// ]);
     /// a.plus_equal(1, 1, 0.44);
     /// let correct = "┌           ┐\n\
     ///                │ 1.00 2.00 │\n\
     ///                │ 3.00 4.44 │\n\
     ///                └           ┘";
     /// assert_eq!(format!("{:.2}", a), correct);
-    /// # Ok(())
-    /// # }
     /// ```
     #[inline]
     pub fn plus_equal(&mut self, i: usize, j: usize, value: f64) {
@@ -334,12 +365,11 @@ impl Matrix {
     /// Returns a copy of this matrix
     ///
     /// ```
-    /// # fn main() -> Result<(), &'static str> {
     /// use russell_lab::*;
     /// let mut a = Matrix::from(&[
-    ///     &[1.0, 2.0],
-    ///     &[3.0, 4.0],
-    /// ])?;
+    ///     [1.0, 2.0],
+    ///     [3.0, 4.0],
+    /// ]);
     /// let a_copy = a.get_copy();
     /// a.set(0, 0, 5.0);
     /// let a_correct = "┌     ┐\n\
@@ -352,8 +382,6 @@ impl Matrix {
     ///                       └     ┘";
     /// assert_eq!(format!("{}", a), a_correct);
     /// assert_eq!(format!("{}", a_copy), a_copy_correct);
-    /// # Ok(())
-    /// # }
     /// ```
     pub fn get_copy(&self) -> Self {
         Matrix {
@@ -388,18 +416,15 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> Result<(), &'static str> {
     /// use russell_lab::*;
     /// let a = Matrix::from(&[
-    ///     &[-2.0,  2.0],
-    ///     &[ 1.0, -4.0],
-    /// ])?;
+    ///     [-2.0,  2.0],
+    ///     [ 1.0, -4.0],
+    /// ]);
     /// assert_eq!(a.norm(EnumMatrixNorm::One), 6.0);
     /// assert_eq!(a.norm(EnumMatrixNorm::Inf), 5.0);
     /// assert_eq!(a.norm(EnumMatrixNorm::Fro), 5.0);
     /// assert_eq!(a.norm(EnumMatrixNorm::Max), 4.0);
-    /// # Ok(())
-    /// # }
     /// ```
     pub fn norm(&self, kind: EnumMatrixNorm) -> f64 {
         let norm = match kind {
@@ -481,35 +506,45 @@ mod tests {
     }
 
     #[test]
-    fn from_works() -> Result<(), &'static str> {
+    fn from_works() {
+        // heap-allocated 2D array (vector of vectors)
+        const IGNORED: f64 = 123.456;
+        let a_data = vec![
+            vec![1.0, 2.0],
+            vec![3.0, 4.0, IGNORED, IGNORED, IGNORED],
+            vec![5.0, 6.0],
+        ];
+        let a = Matrix::from(&a_data);
+        assert_eq!(a.data, &[1.0, 3.0, 5.0, 2.0, 4.0, 6.0]);
+
+        // heap-allocated 2D array (aka slice of slices)
         #[rustfmt::skip]
-        let a = Matrix::from(&[
-            &[1.0, 2.0, 3.0],
-            &[4.0, 5.0, 6.0],
-            &[7.0, 8.0, 9.0],
-        ])?;
-        let correct = &[1.0, 4.0, 7.0, 2.0, 5.0, 8.0, 3.0, 6.0, 9.0];
-        assert_vec_approx_eq!(a.data, correct, 1e-15);
-        Ok(())
+        let b_data: &[&[f64]] = &[
+            &[10.0, 20.0],
+            &[30.0, 40.0, IGNORED],
+            &[50.0, 60.0, IGNORED, IGNORED],
+        ];
+        let b = Matrix::from(&b_data);
+        assert_eq!(b.data, &[10.0, 30.0, 50.0, 20.0, 40.0, 60.0]);
+
+        // stack-allocated (fixed-size) 2D array
+        #[rustfmt::skip]
+        let c_data = [
+            [100.0, 200.0],
+            [300.0, 400.0],
+            [500.0, 600.0],
+        ];
+        let c = Matrix::from(&c_data);
+        assert_eq!(c.data, &[100.0, 300.0, 500.0, 200.0, 400.0, 600.0]);
     }
 
     #[test]
-    fn from_0_works() -> Result<(), &'static str> {
-        let data: &[&[f64]] = &[&[]];
-        let a = Matrix::from(data)?;
+    fn from_0_works() {
+        let a_data: &[&[f64]] = &[&[]];
+        let a = Matrix::from(&a_data);
+        assert_eq!(a.nrow, 0);
+        assert_eq!(a.ncol, 0);
         assert_eq!(a.data.len(), 0);
-        Ok(())
-    }
-
-    #[test]
-    fn from_fails_on_wrong_columns() {
-        #[rustfmt::skip]
-        let res = Matrix::from(&[
-            &[1.0, 2.0, 3.0],
-            &[4.0, 5.0],
-            &[7.0, 8.0, 8.0],
-        ]);
-        assert_eq!(res.err(), Some("all rows must have the same number of columns"));
     }
 
     #[test]
@@ -542,15 +577,15 @@ mod tests {
     fn display_trait_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
-            &[1.0, 2.0, 3.0],
-            &[4.0, 5.0, 6.0],
-            &[7.0, 8.0, 9.0],
-        ])?;
-        let correct = "┌       ┐\n\
-                            │ 1 2 3 │\n\
-                            │ 4 5 6 │\n\
-                            │ 7 8 9 │\n\
-                            └       ┘";
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ]);
+        let correct: &str = "┌       ┐\n\
+                             │ 1 2 3 │\n\
+                             │ 4 5 6 │\n\
+                             │ 7 8 9 │\n\
+                             └       ┘";
         assert_eq!(format!("{}", a), correct);
         Ok(())
     }
@@ -559,15 +594,15 @@ mod tests {
     fn display_trait_precision_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
-            &[1.0111111, 2.02222222, 3.033333],
-            &[4.0444444, 5.05555555, 6.066666],
-            &[7.0777777, 8.08888888, 9.099999],
-        ])?;
-        let correct = "┌                ┐\n\
-                            │ 1.01 2.02 3.03 │\n\
-                            │ 4.04 5.06 6.07 │\n\
-                            │ 7.08 8.09 9.10 │\n\
-                            └                ┘";
+            [1.0111111, 2.02222222, 3.033333],
+            [4.0444444, 5.05555555, 6.066666],
+            [7.0777777, 8.08888888, 9.099999],
+        ]);
+        let correct: &str = "┌                ┐\n\
+                             │ 1.01 2.02 3.03 │\n\
+                             │ 4.04 5.06 6.07 │\n\
+                             │ 7.08 8.09 9.10 │\n\
+                             └                ┘";
         assert_eq!(format!("{:.2}", a), correct);
         Ok(())
     }
@@ -576,9 +611,9 @@ mod tests {
     fn scale_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
-            &[ 6.0,  9.0,  12.0],
-            &[-6.0, -9.0, -12.0],
-        ])?;
+            [ 6.0,  9.0,  12.0],
+            [-6.0, -9.0, -12.0],
+        ]);
         a.scale(1.0 / 3.0);
         #[rustfmt::skip]
         let correct = slice_to_colmajor(&[
@@ -605,17 +640,16 @@ mod tests {
     }
 
     #[test]
-    fn get_works() -> Result<(), &'static str> {
+    fn get_works() {
         #[rustfmt::skip]
         let a = Matrix::from(&[
-            &[1.0, 2.0],
-            &[3.0, 4.0],
-        ])?;
+            [1.0, 2.0],
+            [3.0, 4.0],
+        ]);
         assert_eq!(a.get(0, 0), 1.0);
         assert_eq!(a.get(0, 1), 2.0);
         assert_eq!(a.get(1, 0), 3.0);
         assert_eq!(a.get(1, 1), 4.0);
-        Ok(())
     }
 
     #[test]
@@ -626,42 +660,40 @@ mod tests {
     }
 
     #[test]
-    fn set_works() -> Result<(), &'static str> {
+    fn set_works() {
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
-            &[1.0, 2.0],
-            &[3.0, 4.0],
-        ])?;
+            [1.0, 2.0],
+            [3.0, 4.0],
+        ]);
         a.set(0, 0, -1.0);
         a.set(0, 1, -2.0);
         a.set(1, 0, -3.0);
         a.set(1, 1, -4.0);
         assert_eq!(a.data, &[-1.0, -3.0, -2.0, -4.0]);
-        Ok(())
     }
 
     #[test]
-    fn plus_equal_works() -> Result<(), &'static str> {
+    fn plus_equal_works() {
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
-            &[1.0, 2.0],
-            &[3.0, 4.0],
-        ])?;
+            [1.0, 2.0],
+            [3.0, 4.0],
+        ]);
         a.plus_equal(0, 0, 0.11);
         a.plus_equal(0, 1, 0.22);
         a.plus_equal(1, 0, 0.33);
         a.plus_equal(1, 1, 0.44);
         assert_eq!(a.data, &[1.11, 3.33, 2.22, 4.44]);
-        Ok(())
     }
 
     #[test]
-    fn get_copy_works() -> Result<(), &'static str> {
+    fn get_copy_works() {
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
-            &[1.0, 2.0],
-            &[3.0, 4.0],
-        ])?;
+            [1.0, 2.0],
+            [3.0, 4.0],
+        ]);
         let a_copy = a.get_copy();
         a.set(0, 0, 0.11);
         a.set(0, 1, 0.22);
@@ -669,21 +701,19 @@ mod tests {
         a.set(1, 1, 0.44);
         assert_eq!(a.data, &[0.11, 0.33, 0.22, 0.44]);
         assert_eq!(a_copy.data, &[1.0, 3.0, 2.0, 4.0]);
-        Ok(())
     }
 
     #[test]
-    fn norm_works() -> Result<(), &'static str> {
+    fn norm_works() {
         #[rustfmt::skip]
         let a = Matrix::from(&[
-            &[ 5.0, -4.0, 2.0],
-            &[-1.0,  2.0, 3.0],
-            &[-2.0,  1.0, 0.0],
-        ])?;
+            [ 5.0, -4.0, 2.0],
+            [-1.0,  2.0, 3.0],
+            [-2.0,  1.0, 0.0],
+        ]);
         assert_eq!(a.norm(EnumMatrixNorm::One), 8.0);
         assert_eq!(a.norm(EnumMatrixNorm::Inf), 11.0);
         assert_eq!(a.norm(EnumMatrixNorm::Fro), 8.0);
         assert_eq!(a.norm(EnumMatrixNorm::Max), 5.0);
-        Ok(())
     }
 }

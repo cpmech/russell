@@ -20,11 +20,11 @@ use russell_openblas::*;
 /// # fn main() -> Result<(), &'static str> {
 /// use russell_lab::*;
 /// let a = Matrix::from(&[
-///     &[ 5.0, -2.0, 1.0],
-///     &[-4.0,  0.0, 2.0],
-///     &[15.0, -6.0, 0.0],
-///     &[ 3.0,  5.0, 1.0],
-/// ])?;
+///     [ 5.0, -2.0, 1.0],
+///     [-4.0,  0.0, 2.0],
+///     [15.0, -6.0, 0.0],
+///     [ 3.0,  5.0, 1.0],
+/// ]);
 /// let u = Vector::from(&[1.0, 2.0, 3.0]);
 /// let mut v = Vector::new(a.nrow());
 /// mat_vec_mul(&mut v, 0.5, &a, &u)?;
@@ -74,10 +74,10 @@ mod tests {
     fn mat_vec_mul_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
-            &[ 5.0, -2.0, 0.0, 1.0],
-            &[10.0, -4.0, 0.0, 2.0],
-            &[15.0, -6.0, 0.0, 3.0],
-        ])?;
+            [ 5.0, -2.0, 0.0, 1.0],
+            [10.0, -4.0, 0.0, 2.0],
+            [15.0, -6.0, 0.0, 3.0],
+        ]);
         let u = Vector::from(&[1.0, 3.0, 8.0, 5.0]);
         let mut v = Vector::new(a.nrow());
         mat_vec_mul(&mut v, 1.0, &a, &u)?;

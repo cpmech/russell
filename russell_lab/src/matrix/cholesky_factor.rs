@@ -20,10 +20,10 @@ use russell_openblas::*;
 ///
 /// // set matrix
 /// let a = Matrix::from(&[
-///     &[  4.0,  12.0, -16.0],
-///     &[ 12.0,  37.0, -43.0],
-///     &[-16.0, -43.0,  98.0],
-/// ])?;
+///     [  4.0,  12.0, -16.0],
+///     [ 12.0,  37.0, -43.0],
+///     [-16.0, -43.0,  98.0],
+/// ]);
 ///
 /// // perform factorization
 /// let m = a.nrow();
@@ -102,19 +102,19 @@ mod tests {
     fn cholesky_factor_3x3_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
-            &[25.0, 15.0, -5.0],
-            &[15.0, 18.0,  0.0],
-            &[-5.0,  0.0, 11.0],
-        ])?;
+            [25.0, 15.0, -5.0],
+            [15.0, 18.0,  0.0],
+            [-5.0,  0.0, 11.0],
+        ]);
         let m = a.nrow;
         let mut l = Matrix::new(m, m);
         cholesky_factor(&mut l, &a)?;
         #[rustfmt::skip]
         let l_correct = Matrix::from(&[
-            &[ 5.0, 0.0, 0.0],
-            &[ 3.0, 3.0, 0.0],
-            &[-1.0, 1.0, 3.0],
-        ])?;
+            [ 5.0, 0.0, 0.0],
+            [ 3.0, 3.0, 0.0],
+            [-1.0, 1.0, 3.0],
+        ]);
         assert_vec_approx_eq!(l.data, l_correct.data, 1e-15);
         let mut l_lt = Matrix::new(m, m);
         for i in 0..m {
@@ -132,24 +132,24 @@ mod tests {
     fn cholesky_factor_5x5_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
-            &[2.0, 1.0, 1.0, 3.0, 2.0],
-            &[1.0, 2.0, 2.0, 1.0, 1.0],
-            &[1.0, 2.0, 9.0, 1.0, 5.0],
-            &[3.0, 1.0, 1.0, 7.0, 1.0],
-            &[2.0, 1.0, 5.0, 1.0, 8.0],
-        ])?;
+            [2.0, 1.0, 1.0, 3.0, 2.0],
+            [1.0, 2.0, 2.0, 1.0, 1.0],
+            [1.0, 2.0, 9.0, 1.0, 5.0],
+            [3.0, 1.0, 1.0, 7.0, 1.0],
+            [2.0, 1.0, 5.0, 1.0, 8.0],
+        ]);
         let m = a.nrow;
         let mut l = Matrix::new(m, m);
         cholesky_factor(&mut l, &a)?;
         let sqrt2 = std::f64::consts::SQRT_2;
         #[rustfmt::skip]
         let l_correct = Matrix::from(&[
-            &[    sqrt2,                 0.0,                0.0,                     0.0,   0.0],
-            &[1.0/sqrt2,  f64::sqrt(3.0/2.0),                0.0,                     0.0,   0.0],
-            &[1.0/sqrt2,  f64::sqrt(3.0/2.0),     f64::sqrt(7.0),                     0.0,   0.0],
-            &[3.0/sqrt2, -1.0/f64::sqrt(6.0),                0.0,      f64::sqrt(7.0/3.0),   0.0],
-            &[    sqrt2,                 0.0, 4.0/f64::sqrt(7.0), -2.0*f64::sqrt(3.0/7.0), sqrt2],
-        ])?;
+            [    sqrt2,                 0.0,                0.0,                     0.0,   0.0],
+            [1.0/sqrt2,  f64::sqrt(3.0/2.0),                0.0,                     0.0,   0.0],
+            [1.0/sqrt2,  f64::sqrt(3.0/2.0),     f64::sqrt(7.0),                     0.0,   0.0],
+            [3.0/sqrt2, -1.0/f64::sqrt(6.0),                0.0,      f64::sqrt(7.0/3.0),   0.0],
+            [    sqrt2,                 0.0, 4.0/f64::sqrt(7.0), -2.0*f64::sqrt(3.0/7.0), sqrt2],
+        ]);
         assert_vec_approx_eq!(l.data, l_correct.data, 1e-15);
         let mut l_lt = Matrix::new(m, m);
         for i in 0..m {

@@ -36,9 +36,9 @@ use russell_openblas::*;
 ///
 /// // set matrix
 /// let mut a = Matrix::from(&[
-///     &[3.0, 2.0,  2.0],
-///     &[2.0, 3.0, -2.0],
-/// ])?;
+///     [3.0, 2.0,  2.0],
+///     [2.0, 3.0, -2.0],
+/// ]);
 ///
 /// // allocate output structures
 /// let (m, n) = a.dims();
@@ -97,11 +97,11 @@ use russell_openblas::*;
 ///
 /// // set matrix
 /// let mut a = Matrix::from(&[
-///     &[2.0, 4.0],
-///     &[1.0, 3.0],
-///     &[0.0, 0.0],
-///     &[0.0, 0.0],
-/// ])?;
+///     [2.0, 4.0],
+///     [1.0, 3.0],
+///     [0.0, 0.0],
+///     [0.0, 0.0],
+/// ]);
 ///
 /// // allocate output structures
 /// let (m, n) = a.dims();
@@ -197,14 +197,14 @@ mod tests {
         // matrix
         let s33 = f64::sqrt(3.0) / 3.0;
         #[rustfmt::skip]
-        let data: &[&[f64]] = &[
-            &[-s33, -s33, 1.0],
-            &[ s33, -s33, 1.0],
-            &[-s33,  s33, 1.0],
-            &[ s33,  s33, 1.0],
+        let data = [
+            [-s33, -s33, 1.0],
+            [ s33, -s33, 1.0],
+            [-s33,  s33, 1.0],
+            [ s33,  s33, 1.0],
         ];
-        let mut a = Matrix::from(data)?;
-        let a_copy = Matrix::from(data)?;
+        let mut a = Matrix::from(&data);
+        let a_copy = Matrix::from(&data);
 
         // allocate output data
         let (m, n) = a.dims();
@@ -225,17 +225,17 @@ mod tests {
         ]);
         #[rustfmt::skip]
         let u_correct = Matrix::from(&[
-            &[-0.5, -0.5, -0.5,  0.5],
-            &[-0.5, -0.5,  0.5, -0.5],
-            &[-0.5,  0.5, -0.5, -0.5],
-            &[-0.5,  0.5,  0.5,  0.5],
-        ])?;
+            [-0.5, -0.5, -0.5,  0.5],
+            [-0.5, -0.5,  0.5, -0.5],
+            [-0.5,  0.5, -0.5, -0.5],
+            [-0.5,  0.5,  0.5,  0.5],
+        ]);
         #[rustfmt::skip]
         let vt_correct = Matrix::from(&[
-            &[0.0,  0.0, -1.0],
-            &[0.0,  1.0,  0.0],
-            &[1.0,  0.0,  0.0],
-        ])?;
+            [0.0,  0.0, -1.0],
+            [0.0,  1.0,  0.0],
+            [1.0,  0.0,  0.0],
+        ]);
         assert_vec_approx_eq!(u.data, u_correct.data, 1e-15);
         assert_vec_approx_eq!(s.data, s_correct.data, 1e-15);
         assert_vec_approx_eq!(vt.data, vt_correct.data, 1e-15);
@@ -259,12 +259,12 @@ mod tests {
     fn sv_decomp_1_works() -> Result<(), &'static str> {
         // matrix
         #[rustfmt::skip]
-        let data: &[&[f64]] = &[
-            &[1.0, 0.0, 1.0, 0.0],
-            &[0.0, 1.0, 0.0, 1.0],
+        let data = [
+            [1.0, 0.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0, 1.0],
         ];
-        let mut a = Matrix::from(data)?;
-        let a_copy = Matrix::from(data)?;
+        let mut a = Matrix::from(&data);
+        let a_copy = Matrix::from(&data);
 
         // allocate output data
         let (m, n) = a.dims();
@@ -285,16 +285,16 @@ mod tests {
         ]);
         #[rustfmt::skip]
         let u_correct = Matrix::from(&[
-            &[1.0, 0.0],
-            &[0.0, 1.0],
-        ])?;
+            [1.0, 0.0],
+            [0.0, 1.0],
+        ]);
         #[rustfmt::skip]
         let vt_correct = Matrix::from(&[
-            &[ 1.0/sqrt2,        0.0, 1.0/sqrt2,       0.0],
-            &[       0.0,  1.0/sqrt2,       0.0, 1.0/sqrt2],
-            &[-1.0/sqrt2,        0.0, 1.0/sqrt2,       0.0],
-            &[       0.0, -1.0/sqrt2,       0.0, 1.0/sqrt2],
-        ])?;
+            [ 1.0/sqrt2,        0.0, 1.0/sqrt2,       0.0],
+            [       0.0,  1.0/sqrt2,       0.0, 1.0/sqrt2],
+            [-1.0/sqrt2,        0.0, 1.0/sqrt2,       0.0],
+            [       0.0, -1.0/sqrt2,       0.0, 1.0/sqrt2],
+        ]);
         assert_vec_approx_eq!(u.data, u_correct.data, 1e-15);
         assert_vec_approx_eq!(s.data, s_correct.data, 1e-15);
         assert_vec_approx_eq!(vt.data, vt_correct.data, 1e-15);

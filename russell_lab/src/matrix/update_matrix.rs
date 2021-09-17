@@ -13,13 +13,13 @@ use russell_openblas::*;
 /// # fn main() -> Result<(), &'static str> {
 /// use russell_lab::*;
 /// let a = Matrix::from(&[
-///     &[10.0, 20.0, 30.0],
-///     &[40.0, 50.0, 60.0],
-/// ])?;
+///     [10.0, 20.0, 30.0],
+///     [40.0, 50.0, 60.0],
+/// ]);
 /// let mut b = Matrix::from(&[
-///     &[10.0, 20.0, 30.0],
-///     &[40.0, 50.0, 60.0],
-/// ])?;
+///     [10.0, 20.0, 30.0],
+///     [40.0, 50.0, 60.0],
+/// ]);
 /// update_matrix(&mut b, 0.1, &a)?;
 /// let correct = "┌          ┐\n\
 ///                │ 11 22 33 │\n\
@@ -49,14 +49,14 @@ mod tests {
     fn update_matrix_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
-            &[10.0, 20.0, 30.0],
-            &[40.0, 50.0, 60.0],
-        ])?;
+            [10.0, 20.0, 30.0],
+            [40.0, 50.0, 60.0],
+        ]);
         #[rustfmt::skip]
         let mut b = Matrix::from(&[
-            &[100.0, 200.0, 300.0],
-            &[400.0, 500.0, 600.0],
-        ])?;
+            [100.0, 200.0, 300.0],
+            [400.0, 500.0, 600.0],
+        ]);
         update_matrix(&mut b, 2.0, &a)?;
         #[rustfmt::skip]
         let correct = slice_to_colmajor(&[

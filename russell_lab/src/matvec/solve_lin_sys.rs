@@ -32,10 +32,10 @@ use russell_openblas::*;
 ///
 /// // set matrix and right-hand side
 /// let mut a = Matrix::from(&[
-///     &[1.0,  3.0, -2.0],
-///     &[3.0,  5.0,  6.0],
-///     &[2.0,  4.0,  3.0],
-/// ])?;
+///     [1.0,  3.0, -2.0],
+///     [3.0,  5.0,  6.0],
+///     [2.0,  4.0,  3.0],
+/// ]);
 /// let mut b = Vector::from(&[5.0, 7.0, 8.0]);
 ///
 /// // solve linear system b := a⁻¹⋅b
@@ -90,12 +90,12 @@ mod tests {
     fn solve_lin_sys_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
-            &[2.0, 1.0, 1.0, 3.0, 2.0],
-            &[1.0, 2.0, 2.0, 1.0, 1.0],
-            &[1.0, 2.0, 9.0, 1.0, 5.0],
-            &[3.0, 1.0, 1.0, 7.0, 1.0],
-            &[2.0, 1.0, 5.0, 1.0, 8.0],
-        ])?;
+            [2.0, 1.0, 1.0, 3.0, 2.0],
+            [1.0, 2.0, 2.0, 1.0, 1.0],
+            [1.0, 2.0, 9.0, 1.0, 5.0],
+            [3.0, 1.0, 1.0, 7.0, 1.0],
+            [2.0, 1.0, 5.0, 1.0, 8.0],
+        ]);
         #[rustfmt::skip]
         let mut b = Vector::from(&[
             -2.0,
@@ -122,11 +122,11 @@ mod tests {
         // example from https://numericalalgorithmsgroup.github.io/LAPACK_Examples/examples/doc/dgesv_example.html
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
-            &[ 1.80,  2.88,  2.05, -0.89],
-            &[ 5.25, -2.95, -0.95, -3.80],
-            &[ 1.58, -2.69, -2.90, -1.04],
-            &[-1.11, -0.66, -0.59,  0.80],
-        ])?;
+            [ 1.80,  2.88,  2.05, -0.89],
+            [ 5.25, -2.95, -0.95, -3.80],
+            [ 1.58, -2.69, -2.90, -1.04],
+            [-1.11, -0.66, -0.59,  0.80],
+        ]);
         #[rustfmt::skip]
         let mut b = Vector::from(&[
              9.52,

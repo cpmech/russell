@@ -15,13 +15,13 @@ const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
 /// # fn main() -> Result<(), &'static str> {
 /// use russell_lab::*;
 /// let a = Matrix::from(&[
-///     &[ 10.0,  20.0,  30.0,  40.0],
-///     &[-10.0, -20.0, -30.0, -40.0],
-/// ])?;
+///     [ 10.0,  20.0,  30.0,  40.0],
+///     [-10.0, -20.0, -30.0, -40.0],
+/// ]);
 /// let b = Matrix::from(&[
-///     &[ 2.0,  1.5,  1.0,  0.5],
-///     &[-2.0, -1.5, -1.0, -0.5],
-/// ])?;
+///     [ 2.0,  1.5,  1.0,  0.5],
+///     [-2.0, -1.5, -1.0, -0.5],
+/// ]);
 /// let mut c = Matrix::new(2, 4);
 /// add_matrices(&mut c, 0.1, &a, 2.0, &b)?;
 /// let correct = "┌             ┐\n\
@@ -32,13 +32,7 @@ const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
 /// # Ok(())
 /// # }
 /// ```
-pub fn add_matrices(
-    c: &mut Matrix,
-    alpha: f64,
-    a: &Matrix,
-    beta: f64,
-    b: &Matrix,
-) -> Result<(), &'static str> {
+pub fn add_matrices(c: &mut Matrix, alpha: f64, a: &Matrix, beta: f64, b: &Matrix) -> Result<(), &'static str> {
     if a.nrow != c.nrow || a.ncol != c.ncol || b.nrow != c.nrow || b.ncol != c.ncol {
         return Err("matrices have wrong dimensions");
     }
@@ -63,21 +57,23 @@ mod tests {
     #[test]
     fn add_matrices_works() -> Result<(), &'static str> {
         const NOISE: f64 = 1234.567;
+        #[rustfmt::skip]
         let a = Matrix::from(&[
-            &[1.0, 2.0, 3.0, 4.0],
-            &[1.0, 2.0, 3.0, 4.0],
-            &[1.0, 2.0, 3.0, 4.0],
-        ])?;
+            [1.0, 2.0, 3.0, 4.0],
+            [1.0, 2.0, 3.0, 4.0],
+            [1.0, 2.0, 3.0, 4.0],
+        ]);
+        #[rustfmt::skip]
         let b = Matrix::from(&[
-            &[0.5, 1.0, 1.5, 2.0],
-            &[0.5, 1.0, 1.5, 2.0],
-            &[0.5, 1.0, 1.5, 2.0],
-        ])?;
+            [0.5, 1.0, 1.5, 2.0],
+            [0.5, 1.0, 1.5, 2.0],
+            [0.5, 1.0, 1.5, 2.0],
+        ]);
         let mut c = Matrix::from(&[
-            &[NOISE, NOISE, NOISE, NOISE],
-            &[NOISE, NOISE, NOISE, NOISE],
-            &[NOISE, NOISE, NOISE, NOISE],
-        ])?;
+            [NOISE, NOISE, NOISE, NOISE],
+            [NOISE, NOISE, NOISE, NOISE],
+            [NOISE, NOISE, NOISE, NOISE],
+        ]);
         add_matrices(&mut c, 1.0, &a, -4.0, &b)?;
         #[rustfmt::skip]
         let correct = slice_to_colmajor(&[
@@ -93,26 +89,26 @@ mod tests {
     fn add_matrix_oblas_works() -> Result<(), &'static str> {
         const NOISE: f64 = 1234.567;
         let a = Matrix::from(&[
-            &[1.0, 2.0, 3.0, 4.0, 5.0],
-            &[1.0, 2.0, 3.0, 4.0, 5.0],
-            &[1.0, 2.0, 3.0, 4.0, 5.0],
-            &[1.0, 2.0, 3.0, 4.0, 5.0],
-            &[1.0, 2.0, 3.0, 4.0, 5.0],
-        ])?;
+            [1.0, 2.0, 3.0, 4.0, 5.0],
+            [1.0, 2.0, 3.0, 4.0, 5.0],
+            [1.0, 2.0, 3.0, 4.0, 5.0],
+            [1.0, 2.0, 3.0, 4.0, 5.0],
+            [1.0, 2.0, 3.0, 4.0, 5.0],
+        ]);
         let b = Matrix::from(&[
-            &[0.5, 1.0, 1.5, 2.0, 2.5],
-            &[0.5, 1.0, 1.5, 2.0, 2.5],
-            &[0.5, 1.0, 1.5, 2.0, 2.5],
-            &[0.5, 1.0, 1.5, 2.0, 2.5],
-            &[0.5, 1.0, 1.5, 2.0, 2.5],
-        ])?;
+            [0.5, 1.0, 1.5, 2.0, 2.5],
+            [0.5, 1.0, 1.5, 2.0, 2.5],
+            [0.5, 1.0, 1.5, 2.0, 2.5],
+            [0.5, 1.0, 1.5, 2.0, 2.5],
+            [0.5, 1.0, 1.5, 2.0, 2.5],
+        ]);
         let mut c = Matrix::from(&[
-            &[NOISE, NOISE, NOISE, NOISE, NOISE],
-            &[NOISE, NOISE, NOISE, NOISE, NOISE],
-            &[NOISE, NOISE, NOISE, NOISE, NOISE],
-            &[NOISE, NOISE, NOISE, NOISE, NOISE],
-            &[NOISE, NOISE, NOISE, NOISE, NOISE],
-        ])?;
+            [NOISE, NOISE, NOISE, NOISE, NOISE],
+            [NOISE, NOISE, NOISE, NOISE, NOISE],
+            [NOISE, NOISE, NOISE, NOISE, NOISE],
+            [NOISE, NOISE, NOISE, NOISE, NOISE],
+            [NOISE, NOISE, NOISE, NOISE, NOISE],
+        ]);
         add_matrices(&mut c, 1.0, &a, -4.0, &b)?;
         #[rustfmt::skip]
         let correct = slice_to_colmajor(&[

@@ -440,6 +440,24 @@ impl Matrix {
 }
 
 impl fmt::Display for Matrix {
+    /// Generates a string representation of the Matrix
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::Matrix;
+    /// let a = Matrix::from(&[
+    ///     [1.0, 0.0, -1.0,   8.0],
+    ///     [4.0, 3.0,  1.0, -4.04],
+    /// ]);
+    /// assert_eq!(
+    ///     format!("{}", a),
+    ///     "┌                         ┐\n\
+    ///      │     1     0    -1     8 │\n\
+    ///      │     4     3     1 -4.04 │\n\
+    ///      └                         ┘"
+    /// );
+    /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // find largest width
         let mut width = 0;

@@ -532,6 +532,11 @@ impl fmt::Display for Matrix {
     /// );
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // handle empty matrix
+        if self.nrow == 0 || self.ncol == 0 {
+            write!(f, "[]")?;
+            return Ok(());
+        }
         // find largest width
         let mut width = 0;
         let mut buf = String::new();
@@ -629,8 +634,6 @@ impl IndexMut<usize> for Matrix {
 
 #[cfg(test)]
 mod tests {
-    use crate::{inverse, matrix::mat_mat_mul};
-
     use super::*;
     use russell_chk::*;
 
@@ -723,18 +726,32 @@ mod tests {
 
     #[test]
     fn display_works() -> Result<(), &'static str> {
+        let a_0x0 = Matrix::new(0, 0);
+        let a_0x1 = Matrix::new(0, 1);
+        let a_1x0 = Matrix::new(1, 0);
+        println!("{:?}", a_0x0.data);
+        println!("{:?}", a_0x1.data);
+        println!("{:?}", a_1x0.data);
+        println!("{}", a_0x0);
+        println!("{}", a_0x1);
+        println!("{}", a_1x0);
+        assert_eq!(format!("{}", a_0x0), "[]");
+        assert_eq!(format!("{}", a_0x1), "[]");
+        assert_eq!(format!("{}", a_1x0), "[]");
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ]);
-        let correct: &str = "┌       ┐\n\
-                             │ 1 2 3 │\n\
-                             │ 4 5 6 │\n\
-                             │ 7 8 9 │\n\
-                             └       ┘";
-        assert_eq!(format!("{}", a), correct);
+        assert_eq!(
+            format!("{}", a),
+            "┌       ┐\n\
+             │ 1 2 3 │\n\
+             │ 4 5 6 │\n\
+             │ 7 8 9 │\n\
+             └       ┘"
+        );
         Ok(())
     }
 

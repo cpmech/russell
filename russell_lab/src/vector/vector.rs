@@ -491,6 +491,11 @@ impl fmt::Display for Vector {
     /// );
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // handle empty vector
+        if self.dim() == 0 {
+            write!(f, "[]")?;
+            return Ok(());
+        }
         // find largest width
         let mut width = 0;
         let mut buf = String::new();
@@ -787,27 +792,33 @@ mod tests {
 
     #[test]
     fn display_works() {
+        let x0 = Vector::new(0);
+        assert_eq!(format!("{}", x0), "[]");
         let mut x = Vector::new(3);
         x.data[0] = 1.0;
         x.data[1] = 2.0;
         x.data[2] = 3.0;
-        let correct: &str = "┌   ┐\n\
-                             │ 1 │\n\
-                             │ 2 │\n\
-                             │ 3 │\n\
-                             └   ┘";
-        assert_eq!(format!("{}", x), correct);
+        assert_eq!(
+            format!("{}", x),
+            "┌   ┐\n\
+             │ 1 │\n\
+             │ 2 │\n\
+             │ 3 │\n\
+             └   ┘"
+        );
     }
 
     #[test]
     fn display_precision_works() {
         let u = Vector::from(&[1.012444, 2.034123, 3.05678]);
-        let correct: &str = "┌      ┐\n\
-                             │ 1.01 │\n\
-                             │ 2.03 │\n\
-                             │ 3.06 │\n\
-                             └      ┘";
-        assert_eq!(format!("{:.2}", u), correct);
+        assert_eq!(
+            format!("{:.2}", u),
+            "┌      ┐\n\
+             │ 1.01 │\n\
+             │ 2.03 │\n\
+             │ 3.06 │\n\
+             └      ┘"
+        );
     }
 
     #[test]

@@ -14,8 +14,8 @@ Install some libraries:
 
 ```bash
 sudo apt-get install \
-    libopenblas-dev \
-    liblapacke-dev
+    liblapacke-dev \
+    libopenblas-dev
 ```
 
 Add this to your Cargo.toml (choose the right version):

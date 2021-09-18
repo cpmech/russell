@@ -10,7 +10,7 @@ Documentation:
 
 ## Installation
 
-Install the following Debian packages:
+Install some libraries:
 
 ```bash
 sudo apt-get install \
@@ -20,7 +20,7 @@ sudo apt-get install \
     libsuitesparse-dev
 ```
 
-Add this to your Cargo.toml (replace the right version):
+Add this to your Cargo.toml (choose the right version):
 
 ```toml
 [dependencies]

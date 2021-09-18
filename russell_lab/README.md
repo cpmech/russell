@@ -10,7 +10,7 @@ Documentation:
 
 ## Installation
 
-Install OpenBLAS:
+Install some libraries:
 
 ```bash
 sudo apt-get install \
@@ -18,7 +18,7 @@ sudo apt-get install \
     liblapacke-dev
 ```
 
-Add this to your Cargo.toml:
+Add this to your Cargo.toml (choose the right version):
 
 ```toml
 [dependencies]

@@ -19,8 +19,11 @@ use std::ops::{Index, IndexMut};
 /// # Example
 ///
 /// ```
+/// # fn main() -> Result<(), &'static str> {
+/// // import
 /// use russell_lab::{Vector, add_vectors};
 ///
+/// // create vector
 /// let mut u = Vector::from(&[4.0, 9.0, 16.0, 25.0]);
 /// assert_eq!(
 ///     format!("{}", u),
@@ -32,6 +35,7 @@ use std::ops::{Index, IndexMut};
 ///      └    ┘"
 /// );
 ///
+/// // create vector filled with zeros
 /// let n = u.dim();
 /// let v = Vector::filled(n, 10.0);
 /// assert_eq!(
@@ -44,6 +48,7 @@ use std::ops::{Index, IndexMut};
 ///      └    ┘"
 /// );
 ///
+/// // create a copy and change its components
 /// let mut w = u.get_copy();
 /// w.apply(|x| f64::sqrt(x));
 /// w[0] *= -1.0;
@@ -60,12 +65,14 @@ use std::ops::{Index, IndexMut};
 ///      └    ┘"
 /// );
 ///
+/// // change the components
 /// for x in &mut u {
 ///     *x = f64::sqrt(*x);
 /// }
 ///
+/// // add vectors
 /// let mut z = Vector::new(n);
-/// add_vectors(&mut z, 1.0, &u, 1.0, &w).unwrap();
+/// add_vectors(&mut z, 1.0, &u, 1.0, &w)?;
 /// println!("{}", z);
 /// assert_eq!(
 ///     format!("{}", z),
@@ -76,6 +83,8 @@ use std::ops::{Index, IndexMut};
 ///      │ 0 │\n\
 ///      └   ┘"
 /// );
+/// # Ok(())
+/// # }
 /// ```
 pub struct Vector {
     data: Vec<f64>,

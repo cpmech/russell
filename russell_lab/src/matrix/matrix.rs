@@ -5,6 +5,74 @@ use std::fmt::{self, Write};
 use std::ops::{Index, IndexMut};
 
 /// Holds matrix components and associated functions
+///
+/// # Remarks
+///
+/// * Matrix implements the Index traits (mutable or not), thus, we can
+///   access components by indices
+/// * For faster computations, we recommend using the set of functions that
+///   operate on Vectors and Matrices; e.g., `add_matrices`, `cholesky_factor`,
+///   `eigen_decomp`, `inverse`, `pseudo_inverse`, `sv_decomp`, `mat_vec_mul`,
+///   `sv_decomp`, and others.
+///
+/// # Example
+///
+/// ```
+/// # fn main() -> Result<(), &'static str> {
+/// // import
+/// use russell_lab::{Matrix, inverse, mat_mat_mul};
+///
+/// // create new matrix filled with ones
+/// let mut a = Matrix::filled(2, 2, 1.0);
+///
+/// // change off-diagonal component
+/// a[0][1] *= -1.0;
+///
+/// // check
+/// assert_eq!(
+///     format!("{}", a),
+///     "┌       ┐\n\
+///      │  1 -1 │\n\
+///      │  1  1 │\n\
+///      └       ┘"
+/// );
+///
+/// // compute the inverse matrix `ai`
+/// let (m, n) = a.dims();
+/// let mut ai = Matrix::new(m, n);
+/// let det = inverse(&mut ai, &a)?;
+///
+/// // check the determinant
+/// assert_eq!(det, 2.0);
+///
+/// // check the inverse matrix
+/// assert_eq!(
+///     format!("{}", ai),
+///     "┌           ┐\n\
+///      │  0.5  0.5 │\n\
+///      │ -0.5  0.5 │\n\
+///      └           ┘"
+/// );
+///
+/// // multiply the matrix by its inverse
+/// let mut aia = Matrix::new(m, n);
+/// mat_mat_mul(&mut aia, 1.0, &ai, &a)?;
+///
+/// // check the results
+/// assert_eq!(
+///     format!("{}", aia),
+///     "┌     ┐\n\
+///      │ 1 0 │\n\
+///      │ 0 1 │\n\
+///      └     ┘"
+/// );
+///
+/// // create an identity matrix and check again
+/// let ii = Matrix::identity(m);
+/// assert_eq!(aia.as_data(), ii.as_data());
+/// # Ok(())
+/// # }
+/// ```
 pub struct Matrix {
     nrow: usize,    // number of rows
     ncol: usize,    // number of columns
@@ -561,6 +629,8 @@ impl IndexMut<usize> for Matrix {
 
 #[cfg(test)]
 mod tests {
+    use crate::{inverse, matrix::mat_mat_mul};
+
     use super::*;
     use russell_chk::*;
 

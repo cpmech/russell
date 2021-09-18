@@ -5,6 +5,74 @@ use std::fmt::{self, Write};
 use std::ops::{Index, IndexMut};
 
 /// Holds matrix components and associated functions
+///
+/// # Remarks
+///
+/// * Matrix implements the Index traits (mutable or not), thus, we can
+///   access components by indices
+/// * For faster computations, we recommend using the set of functions that
+///   operate on Vectors and Matrices; e.g., `add_matrices`, `cholesky_factor`,
+///   `eigen_decomp`, `inverse`, `pseudo_inverse`, `sv_decomp`, `mat_vec_mul`,
+///   `sv_decomp`, and others.
+///
+/// # Example
+///
+/// ```
+/// # fn main() -> Result<(), &'static str> {
+/// // import
+/// use russell_lab::{Matrix, inverse, mat_mat_mul};
+///
+/// // create new matrix filled with ones
+/// let mut a = Matrix::filled(2, 2, 1.0);
+///
+/// // change off-diagonal component
+/// a[0][1] *= -1.0;
+///
+/// // check
+/// assert_eq!(
+///     format!("{}", a),
+///     "┌       ┐\n\
+///      │  1 -1 │\n\
+///      │  1  1 │\n\
+///      └       ┘"
+/// );
+///
+/// // compute the inverse matrix `ai`
+/// let (m, n) = a.dims();
+/// let mut ai = Matrix::new(m, n);
+/// let det = inverse(&mut ai, &a)?;
+///
+/// // check the determinant
+/// assert_eq!(det, 2.0);
+///
+/// // check the inverse matrix
+/// assert_eq!(
+///     format!("{}", ai),
+///     "┌           ┐\n\
+///      │  0.5  0.5 │\n\
+///      │ -0.5  0.5 │\n\
+///      └           ┘"
+/// );
+///
+/// // multiply the matrix by its inverse
+/// let mut aia = Matrix::new(m, n);
+/// mat_mat_mul(&mut aia, 1.0, &ai, &a)?;
+///
+/// // check the results
+/// assert_eq!(
+///     format!("{}", aia),
+///     "┌     ┐\n\
+///      │ 1 0 │\n\
+///      │ 0 1 │\n\
+///      └     ┘"
+/// );
+///
+/// // create an identity matrix and check again
+/// let ii = Matrix::identity(m);
+/// assert_eq!(aia.as_data(), ii.as_data());
+/// # Ok(())
+/// # }
+/// ```
 pub struct Matrix {
     nrow: usize,    // number of rows
     ncol: usize,    // number of columns
@@ -433,13 +501,16 @@ impl Matrix {
     /// assert_eq!(a.norm(EnumMatrixNorm::Max), 4.0);
     /// ```
     pub fn norm(&self, kind: EnumMatrixNorm) -> f64 {
+        let (m, n) = (to_i32(self.nrow), to_i32(self.ncol));
+        if m == 0 || n == 0 {
+            return 0.0;
+        }
         let norm = match kind {
             EnumMatrixNorm::One => b'1',
             EnumMatrixNorm::Inf => b'I',
             EnumMatrixNorm::Fro => b'F',
             EnumMatrixNorm::Max => b'M',
         };
-        let (m, n) = (to_i32(self.nrow), to_i32(self.ncol));
         dlange(norm, m, n, &self.data)
     }
 }
@@ -464,6 +535,11 @@ impl fmt::Display for Matrix {
     /// );
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // handle empty matrix
+        if self.nrow == 0 || self.ncol == 0 {
+            write!(f, "[]")?;
+            return Ok(());
+        }
         // find largest width
         let mut width = 0;
         let mut buf = String::new();
@@ -653,18 +729,26 @@ mod tests {
 
     #[test]
     fn display_works() -> Result<(), &'static str> {
+        let a_0x0 = Matrix::new(0, 0);
+        let a_0x1 = Matrix::new(0, 1);
+        let a_1x0 = Matrix::new(1, 0);
+        assert_eq!(format!("{}", a_0x0), "[]");
+        assert_eq!(format!("{}", a_0x1), "[]");
+        assert_eq!(format!("{}", a_1x0), "[]");
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ]);
-        let correct: &str = "┌       ┐\n\
-                             │ 1 2 3 │\n\
-                             │ 4 5 6 │\n\
-                             │ 7 8 9 │\n\
-                             └       ┘";
-        assert_eq!(format!("{}", a), correct);
+        assert_eq!(
+            format!("{}", a),
+            "┌       ┐\n\
+             │ 1 2 3 │\n\
+             │ 4 5 6 │\n\
+             │ 7 8 9 │\n\
+             └       ┘"
+        );
         Ok(())
     }
 
@@ -769,6 +853,21 @@ mod tests {
 
     #[test]
     fn norm_works() {
+        let a_0x0 = Matrix::new(0, 0);
+        let a_0x1 = Matrix::new(0, 1);
+        let a_1x0 = Matrix::new(1, 0);
+        assert_eq!(a_0x0.norm(EnumMatrixNorm::One), 0.0);
+        assert_eq!(a_0x0.norm(EnumMatrixNorm::Inf), 0.0);
+        assert_eq!(a_0x0.norm(EnumMatrixNorm::Fro), 0.0);
+        assert_eq!(a_0x0.norm(EnumMatrixNorm::Max), 0.0);
+        assert_eq!(a_0x1.norm(EnumMatrixNorm::One), 0.0);
+        assert_eq!(a_0x1.norm(EnumMatrixNorm::Inf), 0.0);
+        assert_eq!(a_0x1.norm(EnumMatrixNorm::Fro), 0.0);
+        assert_eq!(a_0x1.norm(EnumMatrixNorm::Max), 0.0);
+        assert_eq!(a_1x0.norm(EnumMatrixNorm::One), 0.0);
+        assert_eq!(a_1x0.norm(EnumMatrixNorm::Inf), 0.0);
+        assert_eq!(a_1x0.norm(EnumMatrixNorm::Fro), 0.0);
+        assert_eq!(a_1x0.norm(EnumMatrixNorm::Max), 0.0);
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [ 5.0, -4.0, 2.0],

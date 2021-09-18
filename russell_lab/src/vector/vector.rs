@@ -1,10 +1,91 @@
 use crate::{AsArray1D, EnumVectorNorm};
-use russell_openblas::*;
+use russell_openblas::{dasum, dnrm2, dscal, idamax, to_i32};
 use std::cmp;
 use std::fmt::{self, Write};
 use std::ops::{Index, IndexMut};
 
 /// Holds vector components and associated functions
+///
+/// # Remarks
+///
+/// * Vector implements the Index and IntoIterator traits (mutable or not),
+///   thus, we can access components by indices or loop over the components
+/// * Vector has also methods to access the underlying data (mutable or not);
+///   e.g., using `as_data()` and `as_mut_data()`.
+/// * For faster computations, we recommend using the set of functions that
+///   operate on Vectors and Matrices; e.g., `add_vectors`, `inner`, `outer`,
+///   `copy_vectors`, `mat_vec_mul`, and others.
+///
+/// # Example
+///
+/// ```
+/// # fn main() -> Result<(), &'static str> {
+/// // import
+/// use russell_lab::{Vector, add_vectors};
+///
+/// // create vector
+/// let mut u = Vector::from(&[4.0, 9.0, 16.0, 25.0]);
+/// assert_eq!(
+///     format!("{}", u),
+///     "┌    ┐\n\
+///      │  4 │\n\
+///      │  9 │\n\
+///      │ 16 │\n\
+///      │ 25 │\n\
+///      └    ┘"
+/// );
+///
+/// // create vector filled with zeros
+/// let n = u.dim();
+/// let v = Vector::filled(n, 10.0);
+/// assert_eq!(
+///     format!("{}", v),
+///     "┌    ┐\n\
+///      │ 10 │\n\
+///      │ 10 │\n\
+///      │ 10 │\n\
+///      │ 10 │\n\
+///      └    ┘"
+/// );
+///
+/// // create a copy and change its components
+/// let mut w = u.get_copy();
+/// w.apply(|x| f64::sqrt(x));
+/// w[0] *= -1.0;
+/// w[1] *= -1.0;
+/// w[2] *= -1.0;
+/// w[3] *= -1.0;
+/// assert_eq!(
+///     format!("{}", w),
+///     "┌    ┐\n\
+///      │ -2 │\n\
+///      │ -3 │\n\
+///      │ -4 │\n\
+///      │ -5 │\n\
+///      └    ┘"
+/// );
+///
+/// // change the components
+/// for x in &mut u {
+///     *x = f64::sqrt(*x);
+/// }
+///
+/// // add vectors
+/// let mut z = Vector::new(n);
+/// add_vectors(&mut z, 1.0, &u, 1.0, &w)?;
+/// println!("{}", z);
+/// assert_eq!(
+///     format!("{}", z),
+///     "┌   ┐\n\
+///      │ 0 │\n\
+///      │ 0 │\n\
+///      │ 0 │\n\
+///      │ 0 │\n\
+///      └   ┘"
+/// );
+/// # Ok(())
+/// # }
+/// ```
 pub struct Vector {
     data: Vec<f64>,
 }
@@ -263,29 +344,6 @@ impl Vector {
         self.data[i] = value;
     }
 
-    /// Executes the += operation on the i-th component
-    ///
-    /// ```text
-    /// u_i += value
-    /// ```
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use russell_lab::*;
-    /// let mut u = Vector::from(&[1.0, 2.0]);
-    /// u.plus_equal(1, 0.22);
-    /// let correct = "┌      ┐\n\
-    ///                │ 1.00 │\n\
-    ///                │ 2.22 │\n\
-    ///                └      ┘";
-    /// assert_eq!(format!("{:.2}", u), correct);
-    /// ```
-    #[inline]
-    pub fn plus_equal(&mut self, i: usize, value: f64) {
-        self.data[i] += value;
-    }
-
     /// Applies a function over all components of this vector
     ///
     /// ```text
@@ -402,6 +460,9 @@ impl Vector {
     /// ```
     pub fn norm(&self, kind: EnumVectorNorm) -> f64 {
         let n = to_i32(self.data.len());
+        if n == 0 {
+            return 0.0;
+        }
         match kind {
             EnumVectorNorm::One => dasum(n, &self.data, 1),
             EnumVectorNorm::Euc => dnrm2(n, &self.data, 1),
@@ -433,6 +494,11 @@ impl fmt::Display for Vector {
     /// );
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // handle empty vector
+        if self.dim() == 0 {
+            write!(f, "[]")?;
+            return Ok(());
+        }
         // find largest width
         let mut width = 0;
         let mut buf = String::new();
@@ -692,14 +758,6 @@ mod tests {
     }
 
     #[test]
-    fn plus_equal_works() {
-        let mut u = Vector::from(&[1.0, 2.0]);
-        u.plus_equal(0, 0.11);
-        u.plus_equal(1, 0.22);
-        assert_eq!(u.data, &[1.11, 2.22]);
-    }
-
-    #[test]
     fn apply_works() {
         let mut u = Vector::from(&[-1.0, -2.0, -3.0]);
         u.apply(|x| x * x * x);
@@ -729,6 +787,10 @@ mod tests {
 
     #[test]
     fn norm_works() {
+        let u0 = Vector::new(0);
+        assert_eq!(u0.norm(EnumVectorNorm::One), 0.0);
+        assert_eq!(u0.norm(EnumVectorNorm::Euc), 0.0);
+        assert_eq!(u0.norm(EnumVectorNorm::Max), 0.0);
         let u = Vector::from(&[-3.0, 2.0, 1.0, 1.0, 1.0]);
         assert_eq!(u.norm(EnumVectorNorm::One), 8.0);
         assert_eq!(u.norm(EnumVectorNorm::Euc), 4.0);
@@ -737,27 +799,33 @@ mod tests {
 
     #[test]
     fn display_works() {
+        let x0 = Vector::new(0);
+        assert_eq!(format!("{}", x0), "[]");
         let mut x = Vector::new(3);
         x.data[0] = 1.0;
         x.data[1] = 2.0;
         x.data[2] = 3.0;
-        let correct: &str = "┌   ┐\n\
-                             │ 1 │\n\
-                             │ 2 │\n\
-                             │ 3 │\n\
-                             └   ┘";
-        assert_eq!(format!("{}", x), correct);
+        assert_eq!(
+            format!("{}", x),
+            "┌   ┐\n\
+             │ 1 │\n\
+             │ 2 │\n\
+             │ 3 │\n\
+             └   ┘"
+        );
     }
 
     #[test]
     fn display_precision_works() {
         let u = Vector::from(&[1.012444, 2.034123, 3.05678]);
-        let correct: &str = "┌      ┐\n\
-                             │ 1.01 │\n\
-                             │ 2.03 │\n\
-                             │ 3.06 │\n\
-                             └      ┘";
-        assert_eq!(format!("{:.2}", u), correct);
+        assert_eq!(
+            format!("{:.2}", u),
+            "┌      ┐\n\
+             │ 1.01 │\n\
+             │ 2.03 │\n\
+             │ 3.06 │\n\
+             └      ┘"
+        );
     }
 
     #[test]

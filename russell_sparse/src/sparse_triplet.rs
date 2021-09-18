@@ -246,9 +246,9 @@ impl SparseTriplet {
             let i = self.indices_i[p] as usize;
             let j = self.indices_j[p] as usize;
             let aij = self.values_aij[p];
-            v.plus_equal(i, aij * u.get(j));
+            v[i] += aij * u[j];
             if self.sym_part && i != j {
-                v.plus_equal(j, aij * u.get(i));
+                v[j] += aij * u[i];
             }
         }
         Ok(v)

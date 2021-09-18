@@ -263,29 +263,6 @@ impl Vector {
         self.data[i] = value;
     }
 
-    /// Executes the += operation on the i-th component
-    ///
-    /// ```text
-    /// u_i += value
-    /// ```
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use russell_lab::*;
-    /// let mut u = Vector::from(&[1.0, 2.0]);
-    /// u.plus_equal(1, 0.22);
-    /// let correct = "┌      ┐\n\
-    ///                │ 1.00 │\n\
-    ///                │ 2.22 │\n\
-    ///                └      ┘";
-    /// assert_eq!(format!("{:.2}", u), correct);
-    /// ```
-    #[inline]
-    pub fn plus_equal(&mut self, i: usize, value: f64) {
-        self.data[i] += value;
-    }
-
     /// Applies a function over all components of this vector
     ///
     /// ```text
@@ -689,14 +666,6 @@ mod tests {
         u.set(0, -1.0);
         u.set(1, -2.0);
         assert_eq!(u.data, &[-1.0, -2.0]);
-    }
-
-    #[test]
-    fn plus_equal_works() {
-        let mut u = Vector::from(&[1.0, 2.0]);
-        u.plus_equal(0, 0.11);
-        u.plus_equal(1, 0.22);
-        assert_eq!(u.data, &[1.11, 2.22]);
     }
 
     #[test]

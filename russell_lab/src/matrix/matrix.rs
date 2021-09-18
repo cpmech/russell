@@ -501,13 +501,16 @@ impl Matrix {
     /// assert_eq!(a.norm(EnumMatrixNorm::Max), 4.0);
     /// ```
     pub fn norm(&self, kind: EnumMatrixNorm) -> f64 {
+        let (m, n) = (to_i32(self.nrow), to_i32(self.ncol));
+        if m == 0 || n == 0 {
+            return 0.0;
+        }
         let norm = match kind {
             EnumMatrixNorm::One => b'1',
             EnumMatrixNorm::Inf => b'I',
             EnumMatrixNorm::Fro => b'F',
             EnumMatrixNorm::Max => b'M',
         };
-        let (m, n) = (to_i32(self.nrow), to_i32(self.ncol));
         dlange(norm, m, n, &self.data)
     }
 }
@@ -729,12 +732,6 @@ mod tests {
         let a_0x0 = Matrix::new(0, 0);
         let a_0x1 = Matrix::new(0, 1);
         let a_1x0 = Matrix::new(1, 0);
-        println!("{:?}", a_0x0.data);
-        println!("{:?}", a_0x1.data);
-        println!("{:?}", a_1x0.data);
-        println!("{}", a_0x0);
-        println!("{}", a_0x1);
-        println!("{}", a_1x0);
         assert_eq!(format!("{}", a_0x0), "[]");
         assert_eq!(format!("{}", a_0x1), "[]");
         assert_eq!(format!("{}", a_1x0), "[]");
@@ -856,6 +853,21 @@ mod tests {
 
     #[test]
     fn norm_works() {
+        let a_0x0 = Matrix::new(0, 0);
+        let a_0x1 = Matrix::new(0, 1);
+        let a_1x0 = Matrix::new(1, 0);
+        assert_eq!(a_0x0.norm(EnumMatrixNorm::One), 0.0);
+        assert_eq!(a_0x0.norm(EnumMatrixNorm::Inf), 0.0);
+        assert_eq!(a_0x0.norm(EnumMatrixNorm::Fro), 0.0);
+        assert_eq!(a_0x0.norm(EnumMatrixNorm::Max), 0.0);
+        assert_eq!(a_0x1.norm(EnumMatrixNorm::One), 0.0);
+        assert_eq!(a_0x1.norm(EnumMatrixNorm::Inf), 0.0);
+        assert_eq!(a_0x1.norm(EnumMatrixNorm::Fro), 0.0);
+        assert_eq!(a_0x1.norm(EnumMatrixNorm::Max), 0.0);
+        assert_eq!(a_1x0.norm(EnumMatrixNorm::One), 0.0);
+        assert_eq!(a_1x0.norm(EnumMatrixNorm::Inf), 0.0);
+        assert_eq!(a_1x0.norm(EnumMatrixNorm::Fro), 0.0);
+        assert_eq!(a_1x0.norm(EnumMatrixNorm::Max), 0.0);
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [ 5.0, -4.0, 2.0],

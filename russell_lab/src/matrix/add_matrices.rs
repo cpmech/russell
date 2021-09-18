@@ -33,16 +33,17 @@ const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
 /// # }
 /// ```
 pub fn add_matrices(c: &mut Matrix, alpha: f64, a: &Matrix, beta: f64, b: &Matrix) -> Result<(), &'static str> {
-    if a.nrow != c.nrow || a.ncol != c.ncol || b.nrow != c.nrow || b.ncol != c.ncol {
-        return Err("matrices have wrong dimensions");
+    let (m, n) = c.dims();
+    if a.nrow() != m || a.ncol() != n || b.nrow() != m || b.ncol() != n {
+        return Err("matrices are incompatible");
     }
-    if c.nrow == 0 && c.ncol == 0 {
+    if m == 0 && n == 0 {
         return Ok(());
     }
-    if c.data.len() > NATIVE_VERSUS_OPENBLAS_BOUNDARY {
-        add_vectors_oblas(&mut c.data, alpha, &a.data, beta, &b.data);
+    if m * n > NATIVE_VERSUS_OPENBLAS_BOUNDARY {
+        add_vectors_oblas(c.as_mut_data(), alpha, a.as_data(), beta, b.as_data());
     } else {
-        add_vectors_native(&mut c.data, alpha, &a.data, beta, &b.data);
+        add_vectors_native(c.as_mut_data(), alpha, a.as_data(), beta, b.as_data());
     }
     Ok(())
 }
@@ -53,6 +54,33 @@ pub fn add_matrices(c: &mut Matrix, alpha: f64, a: &Matrix, beta: f64, b: &Matri
 mod tests {
     use super::*;
     use russell_chk::*;
+
+    #[test]
+    fn add_matrices_fail_on_wrong_dims() {
+        let a_2x2 = Matrix::new(2, 2);
+        let a_2x3 = Matrix::new(2, 3);
+        let a_3x2 = Matrix::new(3, 2);
+        let b_2x2 = Matrix::new(2, 2);
+        let b_2x3 = Matrix::new(2, 3);
+        let b_3x2 = Matrix::new(3, 2);
+        let mut c_2x2 = Matrix::new(2, 2);
+        assert_eq!(
+            add_matrices(&mut c_2x2, 1.0, &a_2x3, 1.0, &b_2x2),
+            Err("matrices are incompatible")
+        );
+        assert_eq!(
+            add_matrices(&mut c_2x2, 1.0, &a_3x2, 1.0, &b_2x2),
+            Err("matrices are incompatible")
+        );
+        assert_eq!(
+            add_matrices(&mut c_2x2, 1.0, &a_2x2, 1.0, &b_2x3),
+            Err("matrices are incompatible")
+        );
+        assert_eq!(
+            add_matrices(&mut c_2x2, 1.0, &a_2x2, 1.0, &b_3x2),
+            Err("matrices are incompatible")
+        );
+    }
 
     #[test]
     fn add_matrices_works() -> Result<(), &'static str> {
@@ -76,12 +104,12 @@ mod tests {
         ]);
         add_matrices(&mut c, 1.0, &a, -4.0, &b)?;
         #[rustfmt::skip]
-        let correct = slice_to_colmajor(&[
-            &[-1.0, -2.0, -3.0, -4.0],
-            &[-1.0, -2.0, -3.0, -4.0],
-            &[-1.0, -2.0, -3.0, -4.0],
-        ])?;
-        assert_vec_approx_eq!(c.data, correct, 1e-15);
+        let correct = [
+            -1.0, -2.0, -3.0, -4.0,
+            -1.0, -2.0, -3.0, -4.0,
+            -1.0, -2.0, -3.0, -4.0,
+        ];
+        assert_vec_approx_eq!(c.as_data(), correct, 1e-15);
         Ok(())
     }
 
@@ -111,42 +139,15 @@ mod tests {
         ]);
         add_matrices(&mut c, 1.0, &a, -4.0, &b)?;
         #[rustfmt::skip]
-        let correct = slice_to_colmajor(&[
-            &[-1.0, -2.0, -3.0, -4.0, -5.0],
-            &[-1.0, -2.0, -3.0, -4.0, -5.0],
-            &[-1.0, -2.0, -3.0, -4.0, -5.0],
-            &[-1.0, -2.0, -3.0, -4.0, -5.0],
-            &[-1.0, -2.0, -3.0, -4.0, -5.0],
-        ])?;
-        assert_vec_approx_eq!(c.data, correct, 1e-15);
+        let correct = [
+            -1.0, -2.0, -3.0, -4.0, -5.0,
+            -1.0, -2.0, -3.0, -4.0, -5.0,
+            -1.0, -2.0, -3.0, -4.0, -5.0,
+            -1.0, -2.0, -3.0, -4.0, -5.0,
+            -1.0, -2.0, -3.0, -4.0, -5.0,
+        ];
+        assert_vec_approx_eq!(c.as_data(), correct, 1e-15);
         Ok(())
-    }
-
-    #[test]
-    fn add_matrices_handle_wrong_dimensions() {
-        let a_2x2 = Matrix::new(2, 2);
-        let a_2x3 = Matrix::new(2, 3);
-        let a_3x2 = Matrix::new(3, 2);
-        let b_2x2 = Matrix::new(2, 2);
-        let b_2x3 = Matrix::new(2, 3);
-        let b_3x2 = Matrix::new(3, 2);
-        let mut c_2x2 = Matrix::new(2, 2);
-        assert_eq!(
-            add_matrices(&mut c_2x2, 1.0, &a_2x3, 1.0, &b_2x2),
-            Err("matrices have wrong dimensions")
-        );
-        assert_eq!(
-            add_matrices(&mut c_2x2, 1.0, &a_3x2, 1.0, &b_2x2),
-            Err("matrices have wrong dimensions")
-        );
-        assert_eq!(
-            add_matrices(&mut c_2x2, 1.0, &a_2x2, 1.0, &b_2x3),
-            Err("matrices have wrong dimensions")
-        );
-        assert_eq!(
-            add_matrices(&mut c_2x2, 1.0, &a_2x2, 1.0, &b_3x2),
-            Err("matrices have wrong dimensions")
-        );
     }
 
     #[test]
@@ -156,7 +157,7 @@ mod tests {
         let mut c = Matrix::new(0, 0);
         add_matrices(&mut c, 1.0, &a, 1.0, &b)?;
         let correct: &[f64] = &[];
-        assert_vec_approx_eq!(c.data, correct, 1e-15);
+        assert_vec_approx_eq!(c.as_data(), correct, 1e-15);
         Ok(())
     }
 }

@@ -1,39 +1,11 @@
-/// Converts nested slice into vector representing a matrix in col-major format
-///
-/// Example of col-major data:
-///
-/// ```text
-///        _      _
-///       |  0  3  |
-///   A = |  1  4  |            ⇒     a = [0, 1, 2, 3, 4, 5]
-///       |_ 2  5 _|(m x n)
-///
-///   a[i+j*m] = A[i][j]
-///
-/// ```
-pub fn slice_to_colmajor(a: &[&[f64]]) -> Result<Vec<f64>, &'static str> {
-    let nrow = a.len();
-    let ncol = a[0].len();
-    let mut data = vec![0.0; nrow * ncol];
-    for i in 0..nrow {
-        if a[i].len() != ncol {
-            return Err("all rows must have the same number of columns");
-        }
-        for j in 0..ncol {
-            data[i + j * nrow] = a[i][j];
-        }
-    }
-    Ok(data)
-}
-
 /// Extracts LAPACK (dgeev) eigenvectors from its compact representation
 ///
 /// Single set: extracts either the left eigenvectors or the right eigenvectors
 ///
 /// # Output
 ///
-/// * `v_real` -- pre-allocated, n*n col-major, eigenvectors; real part
-/// * `v_imag` -- pre-allocated, n*n col-major, eigenvectors; imaginary part
+/// * `v_real` -- pre-allocated, n*n row-major, eigenvectors; real part
+/// * `v_imag` -- pre-allocated, n*n row-major, eigenvectors; imaginary part
 ///
 /// # Input
 ///
@@ -61,8 +33,8 @@ pub fn dgeev_data(v_real: &mut [f64], v_imag: &mut [f64], w_imag: &[f64], v: &[f
             }
             // loop over rows
             for i in 0..n {
-                let p = i + j * n;
-                let q = i + (j + 1) * n;
+                let p = i * n + j;
+                let q = i * n + (j + 1);
                 v_real[p] = v[p];
                 v_imag[p] = v[q];
                 v_real[q] = v[p];
@@ -74,7 +46,7 @@ pub fn dgeev_data(v_real: &mut [f64], v_imag: &mut [f64], w_imag: &[f64], v: &[f
         } else {
             // loop over rows
             for i in 0..n {
-                let p = i + j * n;
+                let p = i * n + j;
                 v_real[p] = v[p];
                 v_imag[p] = 0.0;
             }
@@ -90,10 +62,10 @@ pub fn dgeev_data(v_real: &mut [f64], v_imag: &mut [f64], w_imag: &[f64], v: &[f
 ///
 /// # Output
 ///
-/// * `vl_real` -- pre-allocated, n*n col-major, **left** eigenvectors; real part
-/// * `vl_imag` -- pre-allocated, n*n col-major, **left** eigenvectors; imaginary part
-/// * `vr_real` -- pre-allocated, n*n col-major, **right** eigenvectors; real part
-/// * `vr_imag` -- pre-allocated, n*n col-major, **right** eigenvectors; imaginary part
+/// * `vl_real` -- pre-allocated, n*n row-major, **left** eigenvectors; real part
+/// * `vl_imag` -- pre-allocated, n*n row-major, **left** eigenvectors; imaginary part
+/// * `vr_real` -- pre-allocated, n*n row-major, **right** eigenvectors; real part
+/// * `vr_imag` -- pre-allocated, n*n row-major, **right** eigenvectors; imaginary part
 ///
 /// # Input
 ///
@@ -137,8 +109,8 @@ pub fn dgeev_data_lr(
             }
             // loop over rows
             for i in 0..n {
-                let p = i + j * n;
-                let q = i + (j + 1) * n;
+                let p = i * n + j;
+                let q = i * n + (j + 1);
                 vl_real[p] = vl[p];
                 vl_imag[p] = vl[q];
                 vr_real[p] = vr[p];
@@ -154,7 +126,7 @@ pub fn dgeev_data_lr(
         } else {
             // loop over rows
             for i in 0..n {
-                let p = i + j * n;
+                let p = i * n + j;
                 vl_real[p] = vl[p];
                 vr_real[p] = vr[p];
                 vl_imag[p] = 0.0;
@@ -174,41 +146,6 @@ pub fn dgeev_data_lr(
 mod tests {
     use super::*;
     use russell_chk::*;
-
-    #[test]
-    fn slice_to_colmajor_fails_on_wrong_columns() {
-        #[rustfmt::skip]
-        let data: &[&[f64]] = &[
-            &[1.0, 2.0, 3.0],
-            &[4.0, 5.0],
-            &[7.0, 8.0, 8.0],
-        ];
-        assert_eq!(
-            slice_to_colmajor(data),
-            Err("all rows must have the same number of columns")
-        );
-    }
-
-    #[test]
-    fn slice_to_colmajor_works() -> Result<(), &'static str> {
-        #[rustfmt::skip]
-        let data = slice_to_colmajor(&[
-            &[1.0, 2.0, 3.0],
-            &[4.0, 5.0, 6.0],
-            &[7.0, 8.0, 8.0],
-        ])?;
-        let correct = &[1.0, 4.0, 7.0, 2.0, 5.0, 8.0, 3.0, 6.0, 8.0];
-        assert_vec_approx_eq!(data, correct, 1e-15);
-        Ok(())
-    }
-
-    #[test]
-    fn slice_to_colmajor_0_works() -> Result<(), &'static str> {
-        let input: &[&[f64]] = &[&[]];
-        let data = slice_to_colmajor(input)?;
-        assert_eq!(data.len(), 0);
-        Ok(())
-    }
 
     #[test]
     fn dgeev_data_fails_on_wrong_dims() {
@@ -261,17 +198,25 @@ mod tests {
         let mut v_imag = vec![0.0; n * n];
         let w_imag = [10.76, -10.76, 4.70, -4.70, 0.0];
         let v = [
-            0.04, 0.62, -0.04, 0.28, -0.04, 0.29, 0.00, -0.58, 0.01, 0.34, -0.13, 0.69, -0.39, -0.02, -0.40, -0.33,
-            0.00, -0.07, -0.19, 0.22, 0.04, 0.56, -0.13, -0.80, 0.18,
+            0.04, 0.29, -0.13, -0.33, 0.04, 0.62, 0.00, 0.69, 0.00, 0.56, -0.04, -0.58, -0.39, -0.07, -0.13, 0.28,
+            0.01, -0.02, -0.19, -0.80, -0.04, 0.34, -0.40, 0.22, 0.18,
         ];
         dgeev_data(&mut v_real, &mut v_imag, &w_imag, &v)?;
+        #[rustfmt::skip]
         let correct_v_real = &[
-            0.04, 0.62, -0.04, 0.28, -0.04, 0.04, 0.62, -0.04, 0.28, -0.04, -0.13, 0.69, -0.39, -0.02, -0.40, -0.13,
-            0.69, -0.39, -0.02, -0.40, 0.04, 0.56, -0.13, -0.80, 0.18,
+             0.04,  0.04, -0.13, -0.13,  0.04,
+             0.62,  0.62,  0.69,  0.69,  0.56,
+            -0.04, -0.04, -0.39, -0.39, -0.13,
+             0.28,  0.28, -0.02, -0.02, -0.80,
+            -0.04, -0.04, -0.40, -0.40,  0.18,
         ];
+        #[rustfmt::skip]
         let correct_v_imag = &[
-            0.29, 0.00, -0.58, 0.01, 0.34, -0.29, 0.00, 0.58, -0.01, -0.34, -0.33, 0.00, -0.07, -0.19, 0.22, 0.33,
-            0.00, 0.07, 0.19, -0.22, 0.0, 0.0, 0.0, 0.0, 0.0,
+             0.29, -0.29, -0.33,  0.33,  0.00,
+             0.00, -0.00,  0.00, -0.00,  0.00,
+            -0.58,  0.58, -0.07,  0.07,  0.00,
+             0.01, -0.01, -0.19,  0.19,  0.00,
+             0.34, -0.34,  0.22, -0.22,  0.00,
         ];
         assert_vec_approx_eq!(v_real, correct_v_real, 1e-15);
         assert_vec_approx_eq!(v_imag, correct_v_imag, 1e-15);
@@ -416,12 +361,12 @@ mod tests {
         let mut vr_imag = vec![0.0; n * n];
         let w_imag = [10.76, -10.76, 4.70, -4.70, 0.0];
         let vl = [
-            0.04, 0.62, -0.04, 0.28, -0.04, 0.29, 0.00, -0.58, 0.01, 0.34, -0.13, 0.69, -0.39, -0.02, -0.40, -0.33,
-            0.00, -0.07, -0.19, 0.22, 0.04, 0.56, -0.13, -0.80, 0.18,
+            0.04, 0.29, -0.13, -0.33, 0.04, 0.62, 0.00, 0.69, 0.00, 0.56, -0.04, -0.58, -0.39, -0.07, -0.13, 0.28,
+            0.01, -0.02, -0.19, -0.80, -0.04, 0.34, -0.40, 0.22, 0.18,
         ];
         let vr = [
-            0.11, 0.41, 0.10, 0.40, 0.54, 0.17, -0.26, -0.51, -0.09, 0.00, 0.73, -0.03, 0.19, -0.08, -0.29, 0.00,
-            -0.02, -0.29, -0.08, -0.49, 0.46, 0.34, 0.31, -0.74, 0.16,
+            0.11, 0.17, 0.73, 0.00, 0.46, 0.41, -0.26, -0.03, -0.02, 0.34, 0.10, -0.51, 0.19, -0.29, 0.31, 0.40, -0.09,
+            -0.08, -0.08, -0.74, 0.54, 0.00, -0.29, -0.49, 0.16,
         ];
         dgeev_data_lr(
             &mut vl_real,
@@ -432,21 +377,37 @@ mod tests {
             &vl,
             &vr,
         )?;
+        #[rustfmt::skip]
         let correct_vl_real = &[
-            0.04, 0.62, -0.04, 0.28, -0.04, 0.04, 0.62, -0.04, 0.28, -0.04, -0.13, 0.69, -0.39, -0.02, -0.40, -0.13,
-            0.69, -0.39, -0.02, -0.40, 0.04, 0.56, -0.13, -0.80, 0.18,
+             0.04,  0.04, -0.13, -0.13,  0.04,
+             0.62,  0.62,  0.69,  0.69,  0.56,
+            -0.04, -0.04, -0.39, -0.39, -0.13,
+             0.28,  0.28, -0.02, -0.02, -0.80,
+            -0.04, -0.04, -0.40, -0.40,  0.18,
         ];
+        #[rustfmt::skip]
         let correct_vl_imag = &[
-            0.29, 0.00, -0.58, 0.01, 0.34, -0.29, 0.00, 0.58, -0.01, -0.34, -0.33, 0.00, -0.07, -0.19, 0.22, 0.33,
-            0.00, 0.07, 0.19, -0.22, 0.0, 0.0, 0.0, 0.0, 0.0,
+             0.29, -0.29, -0.33,  0.33,  0.00,
+             0.00, -0.00,  0.00, -0.00,  0.00,
+            -0.58,  0.58, -0.07,  0.07,  0.00,
+             0.01, -0.01, -0.19,  0.19,  0.00,
+             0.34, -0.34,  0.22, -0.22,  0.00,
         ];
+        #[rustfmt::skip]
         let correct_vr_real = &[
-            0.11, 0.41, 0.10, 0.40, 0.54, 0.11, 0.41, 0.10, 0.40, 0.54, 0.73, -0.03, 0.19, -0.08, -0.29, 0.73, -0.03,
-            0.19, -0.08, -0.29, 0.46, 0.34, 0.31, -0.74, 0.16,
+             0.11,  0.11,  0.73,  0.73,  0.46,
+             0.41,  0.41, -0.03, -0.03,  0.34,
+             0.10,  0.10,  0.19,  0.19,  0.31,
+             0.40,  0.40, -0.08, -0.08, -0.74,
+             0.54,  0.54, -0.29, -0.29,  0.16,
         ];
+        #[rustfmt::skip]
         let correct_vr_imag = &[
-            0.17, -0.26, -0.51, -0.09, 0.00, -0.17, 0.26, 0.51, 0.09, 0.00, 0.00, -0.02, -0.29, -0.08, -0.49, 0.00,
-            0.02, 0.29, 0.08, 0.49, 0.0, 0.0, 0.0, 0.0, 0.0,
+             0.17, -0.17,  0.00, -0.00,  0.00,
+            -0.26,  0.26, -0.02,  0.02,  0.00,
+            -0.51,  0.51, -0.29,  0.29,  0.00,
+            -0.09,  0.09, -0.08,  0.08,  0.00,
+             0.00, -0.00, -0.49,  0.49,  0.00,
         ];
         assert_vec_approx_eq!(vl_real, correct_vl_real, 1e-15);
         assert_vec_approx_eq!(vl_imag, correct_vl_imag, 1e-15);

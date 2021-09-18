@@ -30,11 +30,12 @@ use russell_openblas::*;
 /// # }
 /// ```
 pub fn copy_matrix(b: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
-    if a.nrow != b.nrow || a.ncol != b.ncol {
-        return Err("matrices have wrong dimensions");
+    let (m, n) = b.dims();
+    if a.nrow() != m || a.ncol() != n {
+        return Err("matrices are incompatible");
     }
-    let n_i32: i32 = to_i32(b.data.len());
-    dcopy(n_i32, &a.data, 1, &mut b.data, 1);
+    let n_i32: i32 = to_i32(m * n);
+    dcopy(n_i32, a.as_data(), 1, b.as_mut_data(), 1);
     Ok(())
 }
 
@@ -44,6 +45,20 @@ pub fn copy_matrix(b: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
 mod tests {
     use super::*;
     use russell_chk::*;
+
+    #[test]
+    fn copy_matrix_fails_on_wrong_dimensions() {
+        let a_2x2 = Matrix::new(2, 2);
+        let a_2x1 = Matrix::new(2, 1);
+        let a_1x2 = Matrix::new(1, 2);
+        let mut b_2x2 = Matrix::new(2, 2);
+        let mut b_2x1 = Matrix::new(2, 1);
+        let mut b_1x2 = Matrix::new(1, 2);
+        assert_eq!(copy_matrix(&mut b_2x2, &a_2x1), Err("matrices are incompatible"));
+        assert_eq!(copy_matrix(&mut b_2x2, &a_1x2), Err("matrices are incompatible"));
+        assert_eq!(copy_matrix(&mut b_2x1, &a_2x2), Err("matrices are incompatible"));
+        assert_eq!(copy_matrix(&mut b_1x2, &a_2x2), Err("matrices are incompatible"));
+    }
 
     #[test]
     fn copy_matrix_works() -> Result<(), &'static str> {
@@ -59,25 +74,11 @@ mod tests {
         ]);
         copy_matrix(&mut b, &a)?;
         #[rustfmt::skip]
-        let correct = slice_to_colmajor(&[
-            &[10.0, 20.0, 30.0],
-            &[40.0, 50.0, 60.0],
-        ])?;
-        assert_vec_approx_eq!(b.data, correct, 1e-15);
+        let correct = [
+            10.0, 20.0, 30.0,
+            40.0, 50.0, 60.0,
+        ];
+        assert_vec_approx_eq!(b.as_data(), correct, 1e-15);
         Ok(())
-    }
-
-    #[test]
-    fn copy_matrix_fails_on_wrong_dimensions() {
-        let a_2x2 = Matrix::new(2, 2);
-        let a_2x1 = Matrix::new(2, 1);
-        let a_1x2 = Matrix::new(1, 2);
-        let mut b_2x2 = Matrix::new(2, 2);
-        let mut b_2x1 = Matrix::new(2, 1);
-        let mut b_1x2 = Matrix::new(1, 2);
-        assert_eq!(copy_matrix(&mut b_2x2, &a_2x1), Err("matrices have wrong dimensions"));
-        assert_eq!(copy_matrix(&mut b_2x2, &a_1x2), Err("matrices have wrong dimensions"));
-        assert_eq!(copy_matrix(&mut b_2x1, &a_2x2), Err("matrices have wrong dimensions"));
-        assert_eq!(copy_matrix(&mut b_1x2, &a_2x2), Err("matrices have wrong dimensions"));
     }
 }

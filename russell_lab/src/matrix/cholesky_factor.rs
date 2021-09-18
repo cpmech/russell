@@ -43,7 +43,7 @@ use russell_openblas::*;
 /// for i in 0..m {
 ///     for j in 0..m {
 ///         for k in 0..m {
-///             l_lt.plus_equal(i, j, l.get(i, k) * l.get(j, k));
+///             l_lt[i][j] += l[i][k] * l[j][k];
 ///         }
 ///     }
 /// }
@@ -58,26 +58,28 @@ use russell_openblas::*;
 /// ```
 pub fn cholesky_factor(l: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
     // check
-    let (m, n) = (a.nrow, a.ncol);
+    let (m, n) = a.dims();
     if m != n {
         return Err("matrix must be square");
+    }
+    if l.nrow() != m || l.ncol() != n {
+        return Err("matrices are incompatible");
     }
 
     // copy lower+diagonal part and set upper part to zero
     for i in 0..m {
         for j in 0..n {
             if i >= j {
-                l.data[i + j * m] = a.data[i + j * m];
+                l.set(i, j, a.get(i, j));
             } else {
-                l.data[i + j * m] = 0.0;
+                l.set(i, j, 0.0);
             }
         }
     }
 
     // perform factorization
     let m_i32 = to_i32(m);
-    let lda_i32 = m_i32;
-    dpotrf(false, m_i32, &mut l.data, lda_i32)?;
+    dpotrf(false, m_i32, l.as_mut_data())?;
 
     // done
     Ok(())
@@ -91,11 +93,15 @@ mod tests {
     use russell_chk::*;
 
     #[test]
-    fn cholesky_factor_fails_on_non_square() {
-        let a = Matrix::new(3, 4);
-        let m = a.nrow;
-        let mut l = Matrix::new(m, m);
-        assert_eq!(cholesky_factor(&mut l, &a), Err("matrix must be square"));
+    fn cholesky_factor_fails_on_wrong_dims() {
+        let a = Matrix::new(2, 2);
+        let a_wrong = Matrix::new(2, 3);
+        let mut l = Matrix::new(2, 2);
+        let mut l_wrong1 = Matrix::new(3, 2);
+        let mut l_wrong2 = Matrix::new(2, 3);
+        assert_eq!(cholesky_factor(&mut l, &a_wrong), Err("matrix must be square"));
+        assert_eq!(cholesky_factor(&mut l_wrong1, &a), Err("matrices are incompatible"));
+        assert_eq!(cholesky_factor(&mut l_wrong2, &a), Err("matrices are incompatible"));
     }
 
     #[test]
@@ -106,7 +112,7 @@ mod tests {
             [15.0, 18.0,  0.0],
             [-5.0,  0.0, 11.0],
         ]);
-        let m = a.nrow;
+        let m = a.nrow();
         let mut l = Matrix::new(m, m);
         cholesky_factor(&mut l, &a)?;
         #[rustfmt::skip]
@@ -115,16 +121,16 @@ mod tests {
             [ 3.0, 3.0, 0.0],
             [-1.0, 1.0, 3.0],
         ]);
-        assert_vec_approx_eq!(l.data, l_correct.data, 1e-15);
+        assert_vec_approx_eq!(l.as_data(), l_correct.as_data(), 1e-15);
         let mut l_lt = Matrix::new(m, m);
         for i in 0..m {
             for j in 0..m {
                 for k in 0..m {
-                    l_lt.plus_equal(i, j, l.data[i + k * m] * l.data[j + k * m]);
+                    l_lt[i][j] += l[i][k] * l[j][k];
                 }
             }
         }
-        assert_vec_approx_eq!(l_lt.data, a.data, 1e-15);
+        assert_vec_approx_eq!(l_lt.as_data(), a.as_data(), 1e-15);
         Ok(())
     }
 
@@ -138,7 +144,7 @@ mod tests {
             [3.0, 1.0, 1.0, 7.0, 1.0],
             [2.0, 1.0, 5.0, 1.0, 8.0],
         ]);
-        let m = a.nrow;
+        let m = a.nrow();
         let mut l = Matrix::new(m, m);
         cholesky_factor(&mut l, &a)?;
         let sqrt2 = std::f64::consts::SQRT_2;
@@ -150,16 +156,16 @@ mod tests {
             [3.0/sqrt2, -1.0/f64::sqrt(6.0),                0.0,      f64::sqrt(7.0/3.0),   0.0],
             [    sqrt2,                 0.0, 4.0/f64::sqrt(7.0), -2.0*f64::sqrt(3.0/7.0), sqrt2],
         ]);
-        assert_vec_approx_eq!(l.data, l_correct.data, 1e-15);
+        assert_vec_approx_eq!(l.as_data(), l_correct.as_data(), 1e-15);
         let mut l_lt = Matrix::new(m, m);
         for i in 0..m {
             for j in 0..m {
                 for k in 0..m {
-                    l_lt.plus_equal(i, j, l.data[i + k * m] * l.data[j + k * m]);
+                    l_lt[i][j] += l[i][k] * l[j][k];
                 }
             }
         }
-        assert_vec_approx_eq!(l_lt.data, a.data, 1e-15);
+        assert_vec_approx_eq!(l_lt.as_data(), a.as_data(), 1e-15);
         Ok(())
     }
 }

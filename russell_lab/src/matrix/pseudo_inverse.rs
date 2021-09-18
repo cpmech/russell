@@ -58,7 +58,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 /// for i in 0..m {
 ///     for j in 0..m {
 ///         for k in 0..n {
-///             a_ai.plus_equal(i,j, a_copy.get(i,k) * ai.get(k,j));
+///             a_ai[i][j] += a_copy[i][k] * ai[k][j];
 ///         }
 ///     }
 /// }
@@ -68,7 +68,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 /// for i in 0..m {
 ///     for j in 0..n {
 ///         for k in 0..m {
-///             a_ai_a.plus_equal(i,j, a_ai.get(i,k) * a_copy.get(k,j));
+///             a_ai_a[i][j] += a_ai[i][k] * a_copy[k][j];
 ///         }
 ///     }
 /// }
@@ -83,9 +83,9 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 /// ```
 pub fn pseudo_inverse(ai: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
     // check
-    let (m, n) = (a.nrow, a.ncol);
-    if ai.nrow != n || ai.ncol != m {
-        return Err("[ai] matrix has wrong dimensions");
+    let (m, n) = a.dims();
+    if ai.nrow() != n || ai.ncol() != m {
+        return Err("matrices are incompatible");
     }
 
     // handle zero-sized matrix
@@ -97,7 +97,7 @@ pub fn pseudo_inverse(ai: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
     let min_mn = if m < n { m } else { n };
     let m_i32 = to_i32(m);
     let n_i32 = to_i32(n);
-    dcopy(m_i32 * n_i32, &a.data, 1, &mut ai.data, 1);
+    dcopy(m_i32 * n_i32, a.as_data(), 1, ai.as_mut_data(), 1);
 
     // singular value decomposition
     let mut s = vec![0.0; min_mn];
@@ -109,13 +109,10 @@ pub fn pseudo_inverse(ai: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
         b'A',
         m_i32,
         n_i32,
-        &mut ai.data,
-        m_i32,
+        ai.as_mut_data(),
         &mut s,
         &mut u,
-        m_i32,
         &mut vt,
-        n_i32,
         &mut superb,
     )?;
 
@@ -127,10 +124,10 @@ pub fn pseudo_inverse(ai: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
     // rectangular matrix => pseudo-inverse
     for i in 0..n {
         for j in 0..m {
-            ai.data[i + j * n] = 0.0;
+            ai[i][j] = 0.0;
             for k in 0..min_mn {
                 if s[k] > sv_tolerance {
-                    ai.data[i + j * n] += vt[k + i * n] * u[j + k * m] / s[k];
+                    ai[i][j] += vt[k * n + i] * u[j * m + k] / s[k];
                 }
             }
         }
@@ -149,12 +146,12 @@ mod tests {
 
     /// Computes a⋅ai that should equal I for a square matrix
     fn get_a_times_ai(a: &Matrix, ai: &Matrix) -> Matrix {
-        let (m, n) = (a.nrow, a.ncol);
+        let (m, n) = a.dims();
         let mut a_ai = Matrix::new(m, m);
         for i in 0..m {
             for j in 0..m {
                 for k in 0..n {
-                    a_ai.data[i + j * m] += a.data[i + k * m] * ai.data[k + j * n];
+                    a_ai[i][j] += a[i][k] * ai[k][j];
                 }
             }
         }
@@ -166,12 +163,12 @@ mod tests {
         // compute a⋅ai
         let a_ai = get_a_times_ai(&a, &ai);
         // compute a⋅ai⋅a == a
-        let (m, n) = (a.nrow, a.ncol);
+        let (m, n) = a.dims();
         let mut a_ai_a = Matrix::new(m, n);
         for i in 0..m {
             for j in 0..n {
                 for k in 0..m {
-                    a_ai_a.data[i + j * m] += a_ai.data[i + k * m] * a.data[k + j * m];
+                    a_ai_a[i][j] += a_ai[i][k] * a[k][j];
                 }
             }
         }
@@ -179,17 +176,17 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_fails_on_wrong_dimensions() {
+    fn pseudo_inverse_fails_on_wrong_dims() {
         let mut a_2x3 = Matrix::new(2, 3);
         let mut ai_1x2 = Matrix::new(1, 2);
         let mut ai_2x1 = Matrix::new(2, 1);
         assert_eq!(
             pseudo_inverse(&mut ai_1x2, &mut a_2x3),
-            Err("[ai] matrix has wrong dimensions")
+            Err("matrices are incompatible")
         );
         assert_eq!(
             pseudo_inverse(&mut ai_2x1, &mut a_2x3),
-            Err("[ai] matrix has wrong dimensions")
+            Err("matrices are incompatible")
         );
     }
 
@@ -198,7 +195,7 @@ mod tests {
         let mut a = Matrix::new(0, 0);
         let mut ai = Matrix::new(0, 0);
         pseudo_inverse(&mut ai, &mut a)?;
-        assert_eq!(ai.data.len(), 0);
+        assert_eq!(ai.as_data().len(), 0);
         Ok(())
     }
 
@@ -208,10 +205,10 @@ mod tests {
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(1, 1);
         pseudo_inverse(&mut ai, &mut a)?;
-        assert_vec_approx_eq!(ai.data, &[0.5], 1e-15);
+        assert_vec_approx_eq!(ai.as_data(), &[0.5], 1e-15);
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
-        assert_vec_approx_eq!(a_ai_a.data, a_copy.data, 1e-15);
+        assert_vec_approx_eq!(a_ai_a.as_data(), a_copy.as_data(), 1e-15);
         Ok(())
     }
 
@@ -225,10 +222,10 @@ mod tests {
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(2, 2);
         pseudo_inverse(&mut ai, &mut a)?;
-        assert_vec_approx_eq!(ai.data, &[-0.5, 0.75, 0.5, -0.25], 1e-15);
+        assert_vec_approx_eq!(ai.as_data(), &[-0.5, 0.5, 0.75, -0.25], 1e-15);
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
-        assert_vec_approx_eq!(a_ai_a.data, a_copy.data, 1e-15);
+        assert_vec_approx_eq!(a_ai_a.as_data(), a_copy.as_data(), 1e-15);
         Ok(())
     }
 
@@ -244,15 +241,15 @@ mod tests {
         let mut ai = Matrix::new(3, 3);
         pseudo_inverse(&mut ai, &mut a)?;
         #[rustfmt::skip]
-        let ai_correct = Matrix::from(&[
-            [ 12.0/11.0, -6.0/11.0, -1.0/11.0],
-            [  2.5/11.0,  1.5/11.0, -2.5/11.0],
-            [ -2.0/11.0,  1.0/11.0,  2.0/11.0],
-        ]);
-        assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-15);
+        let ai_correct = [
+            12.0/11.0, -6.0/11.0, -1.0/11.0,
+             2.5/11.0,  1.5/11.0, -2.5/11.0,
+            -2.0/11.0,  1.0/11.0,  2.0/11.0,
+        ];
+        assert_vec_approx_eq!(ai.as_data(), ai_correct, 1e-15);
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
-        assert_vec_approx_eq!(a_ai_a.data, a_copy.data, 1e-14);
+        assert_vec_approx_eq!(a_ai_a.as_data(), a_copy.as_data(), 1e-14);
         Ok(())
     }
 
@@ -269,16 +266,16 @@ mod tests {
         let mut ai = Matrix::new(4, 4);
         pseudo_inverse(&mut ai, &mut a)?;
         #[rustfmt::skip]
-        let ai_correct = Matrix::from(&[
-            [ 0.6,  0.0, -0.2,  0.0],
-            [-2.5,  0.5,  0.5,  1.0],
-            [-1.5,  0.0,  0.5,  0.5],
-            [-2.2,  0.0,  0.4,  1.0],
-        ]);
-        assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-14);
+        let ai_correct = [
+             0.6,  0.0, -0.2,  0.0,
+            -2.5,  0.5,  0.5,  1.0,
+            -1.5,  0.0,  0.5,  0.5,
+            -2.2,  0.0,  0.4,  1.0,
+        ];
+        assert_vec_approx_eq!(ai.as_data(), ai_correct, 1e-14);
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
-        assert_vec_approx_eq!(a_ai_a.data, a_copy.data, 1e-14);
+        assert_vec_approx_eq!(a_ai_a.as_data(), a_copy.as_data(), 1e-14);
         Ok(())
     }
 
@@ -296,17 +293,17 @@ mod tests {
         let mut ai = Matrix::new(5, 5);
         pseudo_inverse(&mut ai, &mut a)?;
         #[rustfmt::skip]
-        let ai_correct = Matrix::from(&[
-            [ 6.9128803717996279e-01, -7.4226114383340802e-01, -9.8756287260606410e-02, -6.9062496266472417e-01,  7.2471057693456553e-01],
-            [ 1.5936129795342968e+00, -1.7482347881148397e+00, -2.8304321334273236e-01, -1.5600769405383470e+00,  1.7164430532490673e+00],
-            [-1.6345384165063759e+00,  1.7495848317224429e+00,  2.7469205863729274e-01,  1.6325730875377857e+00, -1.7065745928961444e+00],
-            [-1.1177465024312745e+00,  1.3261729250546601e+00,  2.1243473793622566e-01,  1.1258168958554866e+00, -1.3325766717243535e+00],
-            [ 7.9976941733073770e-01, -8.9457712572131853e-01, -1.4770432850264653e-01, -8.0791149448632715e-01,  9.2990525800169743e-01],
-        ]);
-        assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-13);
+        let ai_correct = [
+             6.9128803717996279e-01, -7.4226114383340802e-01, -9.8756287260606410e-02, -6.9062496266472417e-01,  7.2471057693456553e-01,
+             1.5936129795342968e+00, -1.7482347881148397e+00, -2.8304321334273236e-01, -1.5600769405383470e+00,  1.7164430532490673e+00,
+            -1.6345384165063759e+00,  1.7495848317224429e+00,  2.7469205863729274e-01,  1.6325730875377857e+00, -1.7065745928961444e+00,
+            -1.1177465024312745e+00,  1.3261729250546601e+00,  2.1243473793622566e-01,  1.1258168958554866e+00, -1.3325766717243535e+00,
+             7.9976941733073770e-01, -8.9457712572131853e-01, -1.4770432850264653e-01, -8.0791149448632715e-01,  9.2990525800169743e-01,
+        ];
+        assert_vec_approx_eq!(ai.as_data(), ai_correct, 1e-13);
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
-        assert_vec_approx_eq!(a_ai_a.data, a_copy.data, 1e-12);
+        assert_vec_approx_eq!(a_ai_a.as_data(), a_copy.as_data(), 1e-12);
         Ok(())
     }
 
@@ -327,7 +324,7 @@ mod tests {
         pseudo_inverse(&mut ai, &mut a)?;
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
-        assert_vec_approx_eq!(a_ai_a.data, a_copy.data, 1e-8);
+        assert_vec_approx_eq!(a_ai_a.as_data(), a_copy.as_data(), 1e-8);
         Ok(())
     }
 
@@ -341,19 +338,19 @@ mod tests {
             [ 5.773502691896260e-01,  5.773502691896260e-01, 1.000000000000000e+00],
         ];
         let a = Matrix::from(&data);
-        let (m, n) = (a.nrow, a.ncol);
+        let (m, n) = a.dims();
         let mut ai = Matrix::new(n, m);
         pseudo_inverse(&mut ai, &a)?;
         #[rustfmt::skip]
-        let ai_correct = Matrix::from(&[
-            [-4.330127018922192e-01,  4.330127018922192e-01, -4.330127018922192e-01, 4.330127018922192e-01],
-            [-4.330127018922192e-01, -4.330127018922192e-01,  4.330127018922192e-01, 4.330127018922192e-01],
-            [ 2.500000000000000e-01,  2.500000000000000e-01,  2.500000000000000e-01, 2.500000000000000e-01],
-        ]);
-        assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-15);
+        let ai_correct = [
+            -4.330127018922192e-01,  4.330127018922192e-01, -4.330127018922192e-01, 4.330127018922192e-01,
+            -4.330127018922192e-01, -4.330127018922192e-01,  4.330127018922192e-01, 4.330127018922192e-01,
+             2.500000000000000e-01,  2.500000000000000e-01,  2.500000000000000e-01, 2.500000000000000e-01,
+        ];
+        assert_vec_approx_eq!(ai.as_data(), ai_correct, 1e-15);
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
-        assert_vec_approx_eq!(a_ai_a.data, a_copy.data, 1e-15);
+        assert_vec_approx_eq!(a_ai_a.as_data(), a_copy.as_data(), 1e-15);
         Ok(())
     }
 
@@ -367,21 +364,21 @@ mod tests {
             [0.0, 4.0, 0.0, 0.0, 0.0],
         ];
         let a = Matrix::from(&data);
-        let (m, n) = (a.nrow, a.ncol);
+        let (m, n) = a.dims();
         let mut ai = Matrix::new(n, m);
         pseudo_inverse(&mut ai, &a)?;
         #[rustfmt::skip]
-        let ai_correct = Matrix::from(&[
-            [0.2,     0.0, 0.0,     0.0],
-            [0.0,     0.0, 0.0, 1.0/4.0],
-            [0.0, 1.0/3.0, 0.0,     0.0],
-            [0.0,     0.0, 0.0,     0.0],
-            [0.4,     0.0, 0.0,     0.0],
-        ]);
-        assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-15);
+        let ai_correct = [
+            0.2,     0.0, 0.0,     0.0,
+            0.0,     0.0, 0.0, 1.0/4.0,
+            0.0, 1.0/3.0, 0.0,     0.0,
+            0.0,     0.0, 0.0,     0.0,
+            0.4,     0.0, 0.0,     0.0,
+        ];
+        assert_vec_approx_eq!(ai.as_data(), ai_correct, 1e-15);
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
-        assert_vec_approx_eq!(a_ai_a.data, a_copy.data, 1e-15);
+        assert_vec_approx_eq!(a_ai_a.as_data(), a_copy.as_data(), 1e-15);
         Ok(())
     }
 
@@ -396,22 +393,22 @@ mod tests {
             [ 9.0,  4.0, 13.0,  8.0, 22.0, 1.0],
         ];
         let a = Matrix::from(&data);
-        let (m, n) = (a.nrow, a.ncol);
+        let (m, n) = a.dims();
         let mut ai = Matrix::new(n, m);
         pseudo_inverse(&mut ai, &a)?;
         #[rustfmt::skip]
-        let ai_correct = Matrix::from(&[
-            [ 5.6387724512344639e-01, -6.0176177188969326e-01, -7.6500652148749224e-02, -5.6389938864086908e-01,  5.8595836573334192e-01],
-            [ 1.2836912791395787e+00, -1.4064756360496755e+00, -2.2890726327210095e-01, -1.2518220058421685e+00,  1.3789338004227019e+00],
-            [-1.2866745075158739e+00,  1.3659857664770796e+00,  2.1392850711928030e-01,  1.2865799982753852e+00, -1.3277457214130808e+00],
-            [-8.8185982449865485e-01,  1.0660542211012198e+00,  1.7123094548599221e-01,  8.9119882164767850e-01, -1.0756926383722674e+00],
-            [ 6.6698814093525072e-01, -7.4815557352521045e-01, -1.2451059750508876e-01, -6.7584431870600359e-01,  7.8530451101142418e-01],
-            [-1.1017522295492406e+00,  1.2149323757487696e+00,  1.9244991110051662e-01,  1.0958269819071325e+00, -1.1998242501940171e+00],
-        ]);
-        assert_vec_approx_eq!(ai.data, ai_correct.data, 1e-13);
+        let ai_correct = [
+             5.6387724512344639e-01, -6.0176177188969326e-01, -7.6500652148749224e-02, -5.6389938864086908e-01,  5.8595836573334192e-01,
+             1.2836912791395787e+00, -1.4064756360496755e+00, -2.2890726327210095e-01, -1.2518220058421685e+00,  1.3789338004227019e+00,
+            -1.2866745075158739e+00,  1.3659857664770796e+00,  2.1392850711928030e-01,  1.2865799982753852e+00, -1.3277457214130808e+00,
+            -8.8185982449865485e-01,  1.0660542211012198e+00,  1.7123094548599221e-01,  8.9119882164767850e-01, -1.0756926383722674e+00,
+             6.6698814093525072e-01, -7.4815557352521045e-01, -1.2451059750508876e-01, -6.7584431870600359e-01,  7.8530451101142418e-01,
+            -1.1017522295492406e+00,  1.2149323757487696e+00,  1.9244991110051662e-01,  1.0958269819071325e+00, -1.1998242501940171e+00,
+        ];
+        assert_vec_approx_eq!(ai.as_data(), ai_correct, 1e-13);
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
-        assert_vec_approx_eq!(a_ai_a.data, a_copy.data, 1e-12);
+        assert_vec_approx_eq!(a_ai_a.as_data(), a_copy.as_data(), 1e-12);
         Ok(())
     }
 
@@ -429,12 +426,12 @@ mod tests {
             [ 8.0, 58.0, 59.0,  5.0,  4.0, 62.0],
         ];
         let a = Matrix::from(&data);
-        let (m, n) = (a.nrow, a.ncol);
+        let (m, n) = a.dims();
         let mut ai = Matrix::new(n, m);
         pseudo_inverse(&mut ai, &a)?;
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
-        assert_vec_approx_eq!(a_ai_a.data, a_copy.data, 1e-13);
+        assert_vec_approx_eq!(a_ai_a.as_data(), a_copy.as_data(), 1e-13);
         Ok(())
     }
 }

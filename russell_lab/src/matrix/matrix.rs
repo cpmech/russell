@@ -2,27 +2,26 @@ use crate::{AsArray2D, EnumMatrixNorm};
 use russell_openblas::*;
 use std::cmp;
 use std::fmt::{self, Write};
+use std::ops::{Index, IndexMut};
 
 /// Holds matrix components and associated functions
 pub struct Matrix {
-    pub(crate) nrow: usize,    // number of rows
-    pub(crate) ncol: usize,    // number of columns
-    pub(crate) data: Vec<f64>, // col-major => Fortran
+    nrow: usize,    // number of rows
+    ncol: usize,    // number of columns
+    data: Vec<f64>, // row-major
 }
 
 // # Note
 //
-// Data is stored in col-major format
-//
-// Example of col-major data:
+// Data is stored in row-major format as below
 //
 // ```text
 //       _      _
-//      |  0  3  |
-//  A = |  1  4  |            ⇒     a = [0, 1, 2, 3, 4, 5]
-//      |_ 2  5 _|(m x n)
+//      |  0  1  |
+//  a = |  2  3  |           a.data = [0, 1, 2, 3, 4, 5]
+//      |_ 4  5 _|(m x n)
 //
-//  a[i+j*m] = A[i][j]
+//  a.data[i * n + j] = a[i][j]
 // ```
 //
 
@@ -70,7 +69,7 @@ impl Matrix {
             data: vec![0.0; m * m],
         };
         for i in 0..m {
-            matrix.data[i + i * m] = 1.0;
+            matrix.data[i * m + i] = 1.0;
         }
         matrix
     }
@@ -173,7 +172,7 @@ impl Matrix {
         };
         for i in 0..nrow {
             for j in 0..ncol {
-                matrix.data[i + j * nrow] = array.at(i, j).into();
+                matrix.data[i * ncol + j] = array.at(i, j).into();
             }
         }
         matrix
@@ -202,7 +201,7 @@ impl Matrix {
             data: vec![0.0; nrow * ncol],
         };
         for i in 0..nrow {
-            matrix.data[i + i * nrow] = data[i];
+            matrix.data[i * ncol + i] = data[i];
         }
         matrix
     }
@@ -216,6 +215,7 @@ impl Matrix {
     /// let a = Matrix::new(4, 3);
     /// assert_eq!(a.nrow(), 4);
     /// ```
+    #[inline]
     pub fn nrow(&self) -> usize {
         self.nrow
     }
@@ -229,6 +229,7 @@ impl Matrix {
     /// let a = Matrix::new(4, 3);
     /// assert_eq!(a.ncol(), 3);
     /// ```
+    #[inline]
     pub fn ncol(&self) -> usize {
         self.ncol
     }
@@ -242,6 +243,7 @@ impl Matrix {
     /// let a = Matrix::new(4, 3);
     /// assert_eq!(a.dims(), (4, 3));
     /// ```
+    #[inline]
     pub fn dims(&self) -> (usize, usize) {
         (self.nrow, self.ncol)
     }
@@ -293,6 +295,36 @@ impl Matrix {
         self.data.iter_mut().map(|x| *x = value).count();
     }
 
+    /// Returns an access to the underlying data
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let a = Matrix::from(&[[1.0, 2.0], [3.0, 4.0]]);
+    /// assert_eq!(a.as_data(), &[1.0, 2.0, 3.0, 4.0]);
+    /// ```
+    #[inline]
+    pub fn as_data(&self) -> &Vec<f64> {
+        &self.data
+    }
+
+    /// Returns a mutable access to the underlying data
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut a = Matrix::from(&[[1.0, 2.0], [3.0, 4.0]]);
+    /// let data = a.as_mut_data();
+    /// data[1] = 2.2;
+    /// assert_eq!(data, &[1.0, 2.2, 3.0, 4.0]);
+    /// ```
+    #[inline]
+    pub fn as_mut_data(&mut self) -> &mut Vec<f64> {
+        &mut self.data
+    }
+
     /// Returns the (i,j) component
     ///
     /// # Example
@@ -309,7 +341,7 @@ impl Matrix {
     pub fn get(&self, i: usize, j: usize) -> f64 {
         assert!(i < self.nrow);
         assert!(j < self.ncol);
-        self.data[i + j * self.nrow]
+        self.data[i * self.ncol + j]
     }
 
     /// Change the (i,j) component
@@ -333,33 +365,7 @@ impl Matrix {
     pub fn set(&mut self, i: usize, j: usize, value: f64) {
         assert!(i < self.nrow);
         assert!(j < self.ncol);
-        self.data[i + j * self.nrow] = value;
-    }
-
-    /// Executes the += operation on the (i,j) component
-    ///
-    /// ```text
-    /// a_ij += value
-    /// ```
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use russell_lab::*;
-    /// let mut a = Matrix::from(&[
-    ///     [1.0, 2.0],
-    ///     [3.0, 4.0],
-    /// ]);
-    /// a.plus_equal(1, 1, 0.44);
-    /// let correct = "┌           ┐\n\
-    ///                │ 1.00 2.00 │\n\
-    ///                │ 3.00 4.44 │\n\
-    ///                └           ┘";
-    /// assert_eq!(format!("{:.2}", a), correct);
-    /// ```
-    #[inline]
-    pub fn plus_equal(&mut self, i: usize, j: usize, value: f64) {
-        self.data[i + j * self.nrow] += value;
+        self.data[i * self.ncol + j] = value;
     }
 
     /// Returns a copy of this matrix
@@ -434,8 +440,7 @@ impl Matrix {
             EnumMatrixNorm::Max => b'M',
         };
         let (m, n) = (to_i32(self.nrow), to_i32(self.ncol));
-        let lda = m;
-        dlange(norm, m, n, &self.data, lda)
+        dlange(norm, m, n, &self.data)
     }
 }
 
@@ -464,7 +469,7 @@ impl fmt::Display for Matrix {
         let mut buf = String::new();
         for i in 0..self.nrow {
             for j in 0..self.ncol {
-                let val = self.data[i + j * self.nrow];
+                let val = self[i][j];
                 match f.precision() {
                     Some(v) => write!(&mut buf, "{:.1$}", val, v)?,
                     None => write!(&mut buf, "{}", val)?,
@@ -484,7 +489,7 @@ impl fmt::Display for Matrix {
                 if j == 0 {
                     write!(f, "│")?;
                 }
-                let val = self.data[i + j * self.nrow];
+                let val = self[i][j];
                 match f.precision() {
                     Some(v) => write!(f, "{:>1$.2$}", val, width, v)?,
                     None => write!(f, "{:>1$}", val, width)?,
@@ -494,6 +499,61 @@ impl fmt::Display for Matrix {
         write!(f, " │\n")?;
         write!(f, "└{:1$}┘", " ", width * self.ncol + 1)?;
         Ok(())
+    }
+}
+
+/// Allows to access Matrix components using indices
+///
+/// # Example
+///
+/// ```
+/// use russell_lab::Matrix;
+/// let a = Matrix::from(&[
+///     [1.0, 2.0, 3.0],
+///     [4.0, 5.0, 6.0],
+/// ]);
+/// assert_eq!(a[0][0], 1.0);
+/// assert_eq!(a[0][1], 2.0);
+/// assert_eq!(a[0][2], 3.0);
+/// assert_eq!(a[1][0], 4.0);
+/// assert_eq!(a[1][1], 5.0);
+/// assert_eq!(a[1][2], 6.0);
+/// ```
+impl Index<usize> for Matrix {
+    type Output = [f64];
+    #[inline]
+    fn index(&self, i: usize) -> &Self::Output {
+        &self.data[(i * self.ncol)..((i + 1) * self.ncol)]
+    }
+}
+
+/// Allows to change Matrix components using indices
+///
+/// # Example
+///
+/// ```
+/// use russell_lab::Matrix;
+/// let mut a = Matrix::from(&[
+///     [1.0, 2.0, 3.0],
+///     [4.0, 5.0, 6.0],
+/// ]);
+/// a[0][0] -= 1.0;
+/// a[0][1] += 1.0;
+/// a[0][2] -= 1.0;
+/// a[1][0] += 1.0;
+/// a[1][1] -= 1.0;
+/// a[1][2] += 1.0;
+/// assert_eq!(a[0][0], 0.0);
+/// assert_eq!(a[0][1], 3.0);
+/// assert_eq!(a[0][2], 2.0);
+/// assert_eq!(a[1][0], 5.0);
+/// assert_eq!(a[1][1], 4.0);
+/// assert_eq!(a[1][2], 7.0);
+/// ```
+impl IndexMut<usize> for Matrix {
+    #[inline]
+    fn index_mut(&mut self, i: usize) -> &mut Self::Output {
+        &mut self.data[(i * self.ncol)..((i + 1) * self.ncol)]
     }
 }
 
@@ -533,7 +593,7 @@ mod tests {
             vec![5.0, 6.0],
         ];
         let a = Matrix::from(&a_data);
-        assert_eq!(a.data, &[1.0, 3.0, 5.0, 2.0, 4.0, 6.0]);
+        assert_eq!(a.data, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
 
         // heap-allocated 2D array (aka slice of slices)
         #[rustfmt::skip]
@@ -543,7 +603,7 @@ mod tests {
             &[50.0, 60.0, IGNORED, IGNORED],
         ];
         let b = Matrix::from(&b_data);
-        assert_eq!(b.data, &[10.0, 30.0, 50.0, 20.0, 40.0, 60.0]);
+        assert_eq!(b.data, &[10.0, 20.0, 30.0, 40.0, 50.0, 60.0]);
 
         // stack-allocated (fixed-size) 2D array
         #[rustfmt::skip]
@@ -553,7 +613,7 @@ mod tests {
             [500.0, 600.0],
         ];
         let c = Matrix::from(&c_data);
-        assert_eq!(c.data, &[100.0, 300.0, 500.0, 200.0, 400.0, 600.0]);
+        assert_eq!(c.data, &[100.0, 200.0, 300.0, 400.0, 500.0, 600.0]);
     }
 
     #[test]
@@ -592,7 +652,7 @@ mod tests {
     }
 
     #[test]
-    fn display_trait_works() -> Result<(), &'static str> {
+    fn display_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [1.0, 2.0, 3.0],
@@ -609,7 +669,7 @@ mod tests {
     }
 
     #[test]
-    fn display_trait_precision_works() -> Result<(), &'static str> {
+    fn display_precision_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [1.0111111, 2.02222222, 3.033333],
@@ -634,10 +694,10 @@ mod tests {
         ]);
         a.scale(1.0 / 3.0);
         #[rustfmt::skip]
-        let correct = slice_to_colmajor(&[
-            &[ 2.0,  3.0,  4.0],
-            &[-2.0, -3.0, -4.0],
-        ])?;
+        let correct = [
+             2.0,  3.0,  4.0,
+            -2.0, -3.0, -4.0,
+        ];
         assert_vec_approx_eq!(a.data, correct, 1e-15);
         Ok(())
     }
@@ -688,21 +748,7 @@ mod tests {
         a.set(0, 1, -2.0);
         a.set(1, 0, -3.0);
         a.set(1, 1, -4.0);
-        assert_eq!(a.data, &[-1.0, -3.0, -2.0, -4.0]);
-    }
-
-    #[test]
-    fn plus_equal_works() {
-        #[rustfmt::skip]
-        let mut a = Matrix::from(&[
-            [1.0, 2.0],
-            [3.0, 4.0],
-        ]);
-        a.plus_equal(0, 0, 0.11);
-        a.plus_equal(0, 1, 0.22);
-        a.plus_equal(1, 0, 0.33);
-        a.plus_equal(1, 1, 0.44);
-        assert_eq!(a.data, &[1.11, 3.33, 2.22, 4.44]);
+        assert_eq!(a.data, &[-1.0, -2.0, -3.0, -4.0]);
     }
 
     #[test]
@@ -717,8 +763,8 @@ mod tests {
         a.set(0, 1, 0.22);
         a.set(1, 0, 0.33);
         a.set(1, 1, 0.44);
-        assert_eq!(a.data, &[0.11, 0.33, 0.22, 0.44]);
-        assert_eq!(a_copy.data, &[1.0, 3.0, 2.0, 4.0]);
+        assert_eq!(a.data, &[0.11, 0.22, 0.33, 0.44]);
+        assert_eq!(a_copy.data, &[1.0, 2.0, 3.0, 4.0]);
     }
 
     #[test]

@@ -44,6 +44,9 @@ pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) -> Result
     if m != a.nrow() || n != a.ncol() {
         return Err("matrix and vectors are incompatible");
     }
+    if m == 0 || n == 0 {
+        return Ok(());
+    }
     let m_i32: i32 = to_i32(m);
     let n_i32: i32 = to_i32(n);
     dgemv(
@@ -97,6 +100,24 @@ mod tests {
         mat_vec_mul(&mut v, 1.0, &a, &u)?;
         let correct = &[4.0, 8.0, 12.0];
         assert_vec_approx_eq!(v.as_data(), correct, 1e-15);
+        Ok(())
+    }
+
+    #[test]
+    fn mat_vec_mul_zero_works() -> Result<(), &'static str> {
+        let a_0x0 = Matrix::new(0, 0);
+        let a_0x1 = Matrix::new(0, 1);
+        let a_1x0 = Matrix::new(1, 0);
+        let u0 = Vector::new(0);
+        let u1 = Vector::new(1);
+        let mut v0 = Vector::new(0);
+        let mut v1 = Vector::new(1);
+        mat_vec_mul(&mut v0, 1.0, &a_0x0, &u0)?;
+        assert_eq!(v0.as_data(), &[]);
+        mat_vec_mul(&mut v0, 1.0, &a_0x1, &u1)?;
+        assert_eq!(v0.as_data(), &[]);
+        mat_vec_mul(&mut v1, 1.0, &a_1x0, &u0)?;
+        assert_eq!(v1.as_data(), &[0.0]);
         Ok(())
     }
 }

@@ -1,10 +1,82 @@
 use crate::{AsArray1D, EnumVectorNorm};
-use russell_openblas::*;
+use russell_openblas::{dasum, dnrm2, dscal, idamax, to_i32};
 use std::cmp;
 use std::fmt::{self, Write};
 use std::ops::{Index, IndexMut};
 
 /// Holds vector components and associated functions
+///
+/// # Remarks
+///
+/// * Vector implements the Index and IntoIterator traits (mutable or not),
+///   thus, we can access components by indices or loop over the components
+/// * Vector has also methods to access the underlying data (mutable or not);
+///   e.g., using `as_data()` and `as_mut_data()`.
+/// * For faster computations, we recommend using the set of functions that
+///   operate on Vectors and Matrices; e.g., `add_vectors`, `inner`, `outer`,
+///   `copy_vectors`, `mat_vec_mul`, and others.
+///
+/// # Example
+///
+/// ```
+/// use russell_lab::{Vector, add_vectors};
+///
+/// let mut u = Vector::from(&[4.0, 9.0, 16.0, 25.0]);
+/// assert_eq!(
+///     format!("{}", u),
+///     "┌    ┐\n\
+///      │  4 │\n\
+///      │  9 │\n\
+///      │ 16 │\n\
+///      │ 25 │\n\
+///      └    ┘"
+/// );
+///
+/// let n = u.dim();
+/// let v = Vector::filled(n, 10.0);
+/// assert_eq!(
+///     format!("{}", v),
+///     "┌    ┐\n\
+///      │ 10 │\n\
+///      │ 10 │\n\
+///      │ 10 │\n\
+///      │ 10 │\n\
+///      └    ┘"
+/// );
+///
+/// let mut w = u.get_copy();
+/// w.apply(|x| f64::sqrt(x));
+/// w[0] *= -1.0;
+/// w[1] *= -1.0;
+/// w[2] *= -1.0;
+/// w[3] *= -1.0;
+/// assert_eq!(
+///     format!("{}", w),
+///     "┌    ┐\n\
+///      │ -2 │\n\
+///      │ -3 │\n\
+///      │ -4 │\n\
+///      │ -5 │\n\
+///      └    ┘"
+/// );
+///
+/// for x in &mut u {
+///     *x = f64::sqrt(*x);
+/// }
+///
+/// let mut z = Vector::new(n);
+/// add_vectors(&mut z, 1.0, &u, 1.0, &w).unwrap();
+/// println!("{}", z);
+/// assert_eq!(
+///     format!("{}", z),
+///     "┌   ┐\n\
+///      │ 0 │\n\
+///      │ 0 │\n\
+///      │ 0 │\n\
+///      │ 0 │\n\
+///      └   ┘"
+/// );
+/// ```
 pub struct Vector {
     data: Vec<f64>,
 }

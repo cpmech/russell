@@ -10,6 +10,9 @@ use std::ops::{Index, IndexMut};
 ///
 /// * Matrix implements the Index traits (mutable or not), thus, we can
 ///   access components by indices
+/// * Matrix has also methods to access the underlying data (mutable or not);
+///   e.g., using `as_data()` and `as_mut_data()`.
+/// * Internally, the data is stored in the [**row-major** order](https://en.wikipedia.org/wiki/Row-_and_column-major_order)
 /// * For faster computations, we recommend using the set of functions that
 ///   operate on Vectors and Matrices; e.g., `add_matrices`, `cholesky_factor`,
 ///   `eigen_decomp`, `inverse`, `pseudo_inverse`, `sv_decomp`, `mat_vec_mul`,
@@ -365,6 +368,10 @@ impl Matrix {
 
     /// Returns an access to the underlying data
     ///
+    /// # Note
+    ///
+    /// * Internally, the data is stored in the [**row-major** order](https://en.wikipedia.org/wiki/Row-_and_column-major_order)
+    ///
     /// # Example
     ///
     /// ```
@@ -378,6 +385,10 @@ impl Matrix {
     }
 
     /// Returns a mutable access to the underlying data
+    ///
+    /// # Note
+    ///
+    /// * Internally, the data is stored in the [**row-major** order](https://en.wikipedia.org/wiki/Row-_and_column-major_order)
     ///
     /// # Example
     ///

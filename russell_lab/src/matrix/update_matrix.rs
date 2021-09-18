@@ -30,11 +30,12 @@ use russell_openblas::*;
 /// # }
 /// ```
 pub fn update_matrix(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), &'static str> {
-    if a.nrow != b.nrow || a.ncol != b.ncol {
-        return Err("matrices have wrong dimensions");
+    let (m, n) = b.dims();
+    if a.nrow() != m || a.ncol() != n {
+        return Err("matrices are incompatible");
     }
-    let n_i32: i32 = to_i32(b.data.len());
-    daxpy(n_i32, alpha, &a.data, 1, &mut b.data, 1);
+    let mn_i32: i32 = to_i32(m * n);
+    daxpy(mn_i32, alpha, a.as_data(), 1, b.as_mut_data(), 1);
     Ok(())
 }
 
@@ -44,6 +45,20 @@ pub fn update_matrix(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), &'sta
 mod tests {
     use super::*;
     use russell_chk::*;
+
+    #[test]
+    fn update_matrix_fail_on_wrong_dims() {
+        let a_2x2 = Matrix::new(2, 2);
+        let a_2x1 = Matrix::new(2, 1);
+        let a_1x2 = Matrix::new(1, 2);
+        let mut b_2x2 = Matrix::new(2, 2);
+        let mut b_2x1 = Matrix::new(2, 1);
+        let mut b_1x2 = Matrix::new(1, 2);
+        assert_eq!(update_matrix(&mut b_2x2, 1.0, &a_2x1), Err("matrices are incompatible"));
+        assert_eq!(update_matrix(&mut b_2x2, 1.0, &a_1x2), Err("matrices are incompatible"));
+        assert_eq!(update_matrix(&mut b_2x1, 1.0, &a_2x2), Err("matrices are incompatible"));
+        assert_eq!(update_matrix(&mut b_1x2, 1.0, &a_2x2), Err("matrices are incompatible"));
+    }
 
     #[test]
     fn update_matrix_works() -> Result<(), &'static str> {
@@ -59,37 +74,11 @@ mod tests {
         ]);
         update_matrix(&mut b, 2.0, &a)?;
         #[rustfmt::skip]
-        let correct = slice_to_colmajor(&[
-            &[120.0, 240.0, 360.0],
-            &[480.0, 600.0, 720.0],
-        ])?;
-        assert_vec_approx_eq!(b.data, correct, 1e-15);
+        let correct = [
+            120.0, 240.0, 360.0,
+            480.0, 600.0, 720.0,
+        ];
+        assert_vec_approx_eq!(b.as_data(), correct, 1e-15);
         Ok(())
-    }
-
-    #[test]
-    fn update_matrix_fail_on_wrong_dimensions() {
-        let a_2x2 = Matrix::new(2, 2);
-        let a_2x1 = Matrix::new(2, 1);
-        let a_1x2 = Matrix::new(1, 2);
-        let mut b_2x2 = Matrix::new(2, 2);
-        let mut b_2x1 = Matrix::new(2, 1);
-        let mut b_1x2 = Matrix::new(1, 2);
-        assert_eq!(
-            update_matrix(&mut b_2x2, 1.0, &a_2x1),
-            Err("matrices have wrong dimensions")
-        );
-        assert_eq!(
-            update_matrix(&mut b_2x2, 1.0, &a_1x2),
-            Err("matrices have wrong dimensions")
-        );
-        assert_eq!(
-            update_matrix(&mut b_2x1, 1.0, &a_2x2),
-            Err("matrices have wrong dimensions")
-        );
-        assert_eq!(
-            update_matrix(&mut b_1x2, 1.0, &a_2x2),
-            Err("matrices have wrong dimensions")
-        );
     }
 }

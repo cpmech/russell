@@ -301,7 +301,7 @@ impl Matrix {
     ///
     /// ```
     /// use russell_lab::*;
-    /// let a = Matrix::from(&[[1.0, 2.0], [3.0, 4.0]);
+    /// let a = Matrix::from(&[[1.0, 2.0], [3.0, 4.0]]);
     /// assert_eq!(a.as_data(), &[1.0, 2.0, 3.0, 4.0]);
     /// ```
     #[inline]
@@ -440,7 +440,6 @@ impl Matrix {
             EnumMatrixNorm::Max => b'M',
         };
         let (m, n) = (to_i32(self.nrow), to_i32(self.ncol));
-        let lda = m;
         dlange(norm, m, n, &self.data)
     }
 }
@@ -470,7 +469,7 @@ impl fmt::Display for Matrix {
         let mut buf = String::new();
         for i in 0..self.nrow {
             for j in 0..self.ncol {
-                let val = self.data[i + j * self.nrow];
+                let val = self[i][j];
                 match f.precision() {
                     Some(v) => write!(&mut buf, "{:.1$}", val, v)?,
                     None => write!(&mut buf, "{}", val)?,
@@ -490,7 +489,7 @@ impl fmt::Display for Matrix {
                 if j == 0 {
                     write!(f, "│")?;
                 }
-                let val = self.data[i + j * self.nrow];
+                let val = self[i][j];
                 match f.precision() {
                     Some(v) => write!(f, "{:>1$.2$}", val, width, v)?,
                     None => write!(f, "{:>1$}", val, width)?,
@@ -508,7 +507,7 @@ impl fmt::Display for Matrix {
 /// # Example
 ///
 /// ```
-/// use sandbox::Matrix;
+/// use russell_lab::Matrix;
 /// let a = Matrix::from(&[
 ///     [1.0, 2.0, 3.0],
 ///     [4.0, 5.0, 6.0],
@@ -534,7 +533,7 @@ impl Index<usize> for Matrix {
 ///
 /// ```
 /// use russell_lab::Matrix;
-/// let a = Matrix::from(&[
+/// let mut a = Matrix::from(&[
 ///     [1.0, 2.0, 3.0],
 ///     [4.0, 5.0, 6.0],
 /// ]);
@@ -542,8 +541,8 @@ impl Index<usize> for Matrix {
 /// a[0][1] += 1.0;
 /// a[0][2] -= 1.0;
 /// a[1][0] += 1.0;
-/// a[2][1] -= 1.0;
-/// a[3][2] += 1.0;
+/// a[1][1] -= 1.0;
+/// a[1][2] += 1.0;
 /// assert_eq!(a[0][0], 0.0);
 /// assert_eq!(a[0][1], 3.0);
 /// assert_eq!(a[0][2], 2.0);
@@ -594,7 +593,7 @@ mod tests {
             vec![5.0, 6.0],
         ];
         let a = Matrix::from(&a_data);
-        assert_eq!(a.data, &[1.0, 3.0, 5.0, 2.0, 4.0, 6.0]);
+        assert_eq!(a.data, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
 
         // heap-allocated 2D array (aka slice of slices)
         #[rustfmt::skip]
@@ -604,7 +603,7 @@ mod tests {
             &[50.0, 60.0, IGNORED, IGNORED],
         ];
         let b = Matrix::from(&b_data);
-        assert_eq!(b.data, &[10.0, 30.0, 50.0, 20.0, 40.0, 60.0]);
+        assert_eq!(b.data, &[10.0, 20.0, 30.0, 40.0, 50.0, 60.0]);
 
         // stack-allocated (fixed-size) 2D array
         #[rustfmt::skip]
@@ -614,7 +613,7 @@ mod tests {
             [500.0, 600.0],
         ];
         let c = Matrix::from(&c_data);
-        assert_eq!(c.data, &[100.0, 300.0, 500.0, 200.0, 400.0, 600.0]);
+        assert_eq!(c.data, &[100.0, 200.0, 300.0, 400.0, 500.0, 600.0]);
     }
 
     #[test]
@@ -653,7 +652,7 @@ mod tests {
     }
 
     #[test]
-    fn display_trait_works() -> Result<(), &'static str> {
+    fn display_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [1.0, 2.0, 3.0],
@@ -670,7 +669,7 @@ mod tests {
     }
 
     #[test]
-    fn display_trait_precision_works() -> Result<(), &'static str> {
+    fn display_precision_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [1.0111111, 2.02222222, 3.033333],
@@ -749,7 +748,7 @@ mod tests {
         a.set(0, 1, -2.0);
         a.set(1, 0, -3.0);
         a.set(1, 1, -4.0);
-        assert_eq!(a.data, &[-1.0, -3.0, -2.0, -4.0]);
+        assert_eq!(a.data, &[-1.0, -2.0, -3.0, -4.0]);
     }
 
     #[test]
@@ -764,8 +763,8 @@ mod tests {
         a.set(0, 1, 0.22);
         a.set(1, 0, 0.33);
         a.set(1, 1, 0.44);
-        assert_eq!(a.data, &[0.11, 0.33, 0.22, 0.44]);
-        assert_eq!(a_copy.data, &[1.0, 3.0, 2.0, 4.0]);
+        assert_eq!(a.data, &[0.11, 0.22, 0.33, 0.44]);
+        assert_eq!(a_copy.data, &[1.0, 2.0, 3.0, 4.0]);
     }
 
     #[test]

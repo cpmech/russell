@@ -39,25 +39,23 @@ use russell_openblas::*;
 /// # }
 /// ```
 pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) -> Result<(), &'static str> {
-    let m = v.data.len();
-    let n = u.data.len();
-    if m != a.nrow || n != a.ncol {
-        return Err("matrix and vectors have incompatible dimensions");
+    let m = v.dim();
+    let n = u.dim();
+    if m != a.nrow() || n != a.ncol() {
+        return Err("matrix and vectors are incompatible");
     }
     let m_i32: i32 = to_i32(m);
     let n_i32: i32 = to_i32(n);
-    let lda_i32 = m_i32;
     dgemv(
         false,
         m_i32,
         n_i32,
         alpha,
-        &a.data,
-        lda_i32,
-        &u.data,
+        a.as_data(),
+        u.as_data(),
         1,
         0.0,
-        &mut v.data,
+        v.as_mut_data(),
         1,
     );
     Ok(())
@@ -71,6 +69,22 @@ mod tests {
     use russell_chk::*;
 
     #[test]
+    fn mat_vec_mul_fails_on_wrong_dims() {
+        let u = Vector::new(2);
+        let a_1x2 = Matrix::new(1, 2);
+        let a_3x1 = Matrix::new(3, 1);
+        let mut v = Vector::new(3);
+        assert_eq!(
+            mat_vec_mul(&mut v, 1.0, &a_1x2, &u),
+            Err("matrix and vectors are incompatible")
+        );
+        assert_eq!(
+            mat_vec_mul(&mut v, 1.0, &a_3x1, &u),
+            Err("matrix and vectors are incompatible")
+        );
+    }
+
+    #[test]
     fn mat_vec_mul_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
@@ -82,23 +96,7 @@ mod tests {
         let mut v = Vector::new(a.nrow());
         mat_vec_mul(&mut v, 1.0, &a, &u)?;
         let correct = &[4.0, 8.0, 12.0];
-        assert_vec_approx_eq!(v.data, correct, 1e-15);
+        assert_vec_approx_eq!(v.as_data(), correct, 1e-15);
         Ok(())
-    }
-
-    #[test]
-    fn mat_vec_mul_fails_on_wrong_dimensions() {
-        let u = Vector::new(2);
-        let a_1x2 = Matrix::new(1, 2);
-        let a_3x1 = Matrix::new(3, 1);
-        let mut v = Vector::new(3);
-        assert_eq!(
-            mat_vec_mul(&mut v, 1.0, &a_1x2, &u),
-            Err("matrix and vectors have incompatible dimensions")
-        );
-        assert_eq!(
-            mat_vec_mul(&mut v, 1.0, &a_3x1, &u),
-            Err("matrix and vectors have incompatible dimensions")
-        );
     }
 }

@@ -22,13 +22,9 @@ use russell_openblas::*;
 /// ```
 ///
 pub fn inner(u: &Vector, v: &Vector) -> f64 {
-    let n = if u.data.len() < v.data.len() {
-        u.data.len()
-    } else {
-        v.data.len()
-    };
+    let n = if u.dim() < v.dim() { u.dim() } else { v.dim() };
     let n_i32 = to_i32(n);
-    ddot(n_i32, &u.data, 1, &v.data, 1)
+    ddot(n_i32, u.as_data(), 1, v.as_data(), 1)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

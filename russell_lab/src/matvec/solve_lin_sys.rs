@@ -52,16 +52,16 @@ use russell_openblas::*;
 /// # }
 /// ```
 pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), &'static str> {
-    let (m, n) = (a.nrow, a.ncol);
+    let (m, n) = a.dims();
     if m != n {
         return Err("matrix must be square");
     }
-    if b.data.len() != m {
+    if b.dim() != m {
         return Err("vector has wrong dimension");
     }
     let mut ipiv = vec![0; m];
     let m_i32 = to_i32(m);
-    dgesv(m_i32, 1, &mut a.data, m_i32, &mut ipiv, &mut b.data, m_i32)?;
+    dgesv(m_i32, 1, a.as_mut_data(), &mut ipiv, b.as_mut_data())?;
     Ok(())
 }
 
@@ -106,14 +106,14 @@ mod tests {
         ]);
         solve_lin_sys(&mut b, &mut a)?;
         #[rustfmt::skip]
-        let x_correct = Vector::from(&[
+        let x_correct = [
             -629.0 / 98.0,
              237.0 / 49.0,
              -53.0 / 49.0,
               62.0 / 49.0,
               23.0 / 14.0,
-        ]);
-        assert_vec_approx_eq!(b.data, x_correct.data, 1e-13);
+        ];
+        assert_vec_approx_eq!(b.as_data(), x_correct, 1e-13);
         Ok(())
     }
 
@@ -136,13 +136,13 @@ mod tests {
         ]);
         solve_lin_sys(&mut b, &mut a)?;
         #[rustfmt::skip]
-        let x_correct = Vector::from(&[
+        let x_correct = [
              1.0,
             -1.0,
              3.0,
             -5.0,
-        ]);
-        assert_vec_approx_eq!(b.data, x_correct.data, 1e-14);
+        ];
+        assert_vec_approx_eq!(b.as_data(), x_correct, 1e-14);
         Ok(())
     }
 }

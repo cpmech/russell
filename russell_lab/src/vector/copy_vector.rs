@@ -25,12 +25,12 @@ use russell_openblas::*;
 /// # }
 /// ```
 pub fn copy_vector(v: &mut Vector, u: &Vector) -> Result<(), &'static str> {
-    let n = v.data.len();
-    if u.data.len() != n {
-        return Err("vectors have wrong dimensions");
+    let n = v.dim();
+    if u.dim() != n {
+        return Err("vectors are incompatible");
     }
     let n_i32: i32 = to_i32(n);
-    dcopy(n_i32, &u.data, 1, &mut v.data, 1);
+    dcopy(n_i32, u.as_data(), 1, v.as_mut_data(), 1);
     Ok(())
 }
 
@@ -42,19 +42,19 @@ mod tests {
     use russell_chk::*;
 
     #[test]
+    fn copy_vector_fails_on_wrong_dims() {
+        let u = Vector::new(4);
+        let mut v = Vector::new(3);
+        assert_eq!(copy_vector(&mut v, &u), Err("vectors are incompatible"));
+    }
+
+    #[test]
     fn copy_vector_works() -> Result<(), &'static str> {
         let u = Vector::from(&[1.0, 2.0, 3.0]);
         let mut v = Vector::from(&[100.0, 200.0, 300.0]);
         copy_vector(&mut v, &u)?;
         let correct = &[1.0, 2.0, 3.0];
-        assert_vec_approx_eq!(v.data, correct, 1e-15);
+        assert_vec_approx_eq!(v.as_data(), correct, 1e-15);
         Ok(())
-    }
-
-    #[test]
-    fn copy_vector_fails_on_wrong_dimensions() {
-        let u = Vector::new(4);
-        let mut v = Vector::new(3);
-        assert_eq!(copy_vector(&mut v, &u), Err("vectors have wrong dimensions"));
     }
 }

@@ -175,11 +175,8 @@ impl SparseTriplet {
         a.fill(0.0);
         for p in 0..self.pos {
             if self.indices_i[p] < m_i32 && self.indices_j[p] < n_i32 {
-                a.plus_equal(
-                    self.indices_i[p] as usize,
-                    self.indices_j[p] as usize,
-                    self.values_aij[p],
-                );
+                let (i, j) = (self.indices_i[p] as usize, self.indices_j[p] as usize);
+                a[i][j] += self.values_aij[p];
             }
         }
         Ok(())

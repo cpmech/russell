@@ -118,27 +118,21 @@ pub fn eigen_decomp(
     v_imag: &mut Matrix,
     a: &mut Matrix,
 ) -> Result<(), &'static str> {
-    let (m, n) = (a.nrow, a.ncol);
+    let (m, n) = a.dims();
     if m != n {
         return Err("matrix must be square");
+    }
+    if l_real.len() != m || l_imag.len() != m {
+        return Err("vectors are incompatible");
+    }
+    if v_real.nrow() != m || v_real.ncol() != m || v_imag.nrow() != m || v_imag.ncol() != m {
+        return Err("matrices are incompatible");
     }
     let m_i32 = to_i32(m);
     let mut v = vec![0.0; m * m];
     let mut empty: Vec<f64> = Vec::new();
-    dgeev(
-        false,
-        true,
-        m_i32,
-        &mut a.data,
-        m_i32,
-        l_real,
-        l_imag,
-        &mut empty,
-        1,
-        &mut v,
-        m_i32,
-    )?;
-    dgeev_data(&mut v_real.data, &mut v_imag.data, l_imag, &v)?;
+    dgeev(false, true, m_i32, a.as_mut_data(), l_real, l_imag, &mut empty, &mut v)?;
+    dgeev_data(v_real.as_mut_data(), v_imag.as_mut_data(), l_imag, &v)?;
     Ok(())
 }
 
@@ -254,31 +248,33 @@ pub fn eigen_decomp_lr(
     v_imag: &mut Matrix,
     a: &mut Matrix,
 ) -> Result<(), &'static str> {
-    let (m, n) = (a.nrow, a.ncol);
+    let (m, n) = a.dims();
     if m != n {
         return Err("matrix must be square");
+    }
+    if l_real.len() != m || l_imag.len() != m {
+        return Err("vectors are incompatible");
+    }
+    if u_real.nrow() != m
+        || u_real.ncol() != m
+        || u_imag.nrow() != m
+        || u_imag.ncol() != m
+        || v_real.nrow() != m
+        || v_real.ncol() != m
+        || v_imag.nrow() != m
+        || v_imag.ncol() != m
+    {
+        return Err("matrices are incompatible");
     }
     let m_i32 = to_i32(m);
     let mut u = vec![0.0; m * m];
     let mut v = vec![0.0; m * m];
-    dgeev(
-        true,
-        true,
-        m_i32,
-        &mut a.data,
-        m_i32,
-        l_real,
-        l_imag,
-        &mut u,
-        m_i32,
-        &mut v,
-        m_i32,
-    )?;
+    dgeev(true, true, m_i32, a.as_mut_data(), l_real, l_imag, &mut u, &mut v)?;
     dgeev_data_lr(
-        &mut u_real.data,
-        &mut u_imag.data,
-        &mut v_real.data,
-        &mut v_imag.data,
+        u_real.as_mut_data(),
+        u_imag.as_mut_data(),
+        v_real.as_mut_data(),
+        v_imag.as_mut_data(),
         l_imag,
         &u,
         &v,
@@ -299,7 +295,7 @@ mod tests {
         T: AsArray2D<'a, f64>,
     {
         let a = Matrix::from(data);
-        let m = a.nrow;
+        let m = a.nrow();
         let lam = Matrix::diagonal(&l);
         let mut a_v = Matrix::new(m, m);
         let mut v_l = Matrix::new(m, m);
@@ -314,7 +310,7 @@ mod tests {
     #[test]
     fn eigen_decomp_fails_on_non_square() {
         let mut a = Matrix::new(3, 4);
-        let m = a.nrow;
+        let m = a.nrow();
         let mut l_real = vec![0.0; m];
         let mut l_imag = vec![0.0; m];
         let mut v_real = Matrix::new(m, m);
@@ -326,9 +322,39 @@ mod tests {
     }
 
     #[test]
+    fn eigen_decomp_fails_on_wrong_dims() {
+        let mut a = Matrix::new(2, 2);
+        let m = a.nrow();
+        let mut l_real = vec![0.0; m];
+        let mut l_imag = vec![0.0; m];
+        let mut v_real = Matrix::new(m, m);
+        let mut v_imag = Matrix::new(m, m);
+        let mut l_real_wrong = vec![0.0; m + 1];
+        let mut l_imag_wrong = vec![0.0; m + 1];
+        let mut v_real_wrong = Matrix::new(m + 1, m);
+        let mut v_imag_wrong = Matrix::new(m, m + 1);
+        assert_eq!(
+            eigen_decomp(&mut l_real_wrong, &mut l_imag, &mut v_real, &mut v_imag, &mut a),
+            Err("vectors are incompatible")
+        );
+        assert_eq!(
+            eigen_decomp(&mut l_real, &mut l_imag_wrong, &mut v_real, &mut v_imag, &mut a),
+            Err("vectors are incompatible")
+        );
+        assert_eq!(
+            eigen_decomp(&mut l_real, &mut l_imag, &mut v_real_wrong, &mut v_imag, &mut a),
+            Err("matrices are incompatible")
+        );
+        assert_eq!(
+            eigen_decomp(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag_wrong, &mut a),
+            Err("matrices are incompatible")
+        );
+    }
+
+    #[test]
     fn eigen_decomp_lr_fails_on_non_square() {
         let mut a = Matrix::new(3, 4);
-        let m = a.nrow;
+        let m = a.nrow();
         let mut l_real = vec![0.0; m];
         let mut l_imag = vec![0.0; m];
         let mut u_real = Matrix::new(m, m);
@@ -350,6 +376,96 @@ mod tests {
     }
 
     #[test]
+    fn eigen_decomp_lr_fails_on_wrong_dims() {
+        let mut a = Matrix::new(2, 2);
+        let m = a.nrow();
+        let mut l_real = vec![0.0; m];
+        let mut l_imag = vec![0.0; m];
+        let mut u_real = Matrix::new(m, m);
+        let mut u_imag = Matrix::new(m, m);
+        let mut v_real = Matrix::new(m, m);
+        let mut v_imag = Matrix::new(m, m);
+        let mut l_real_wrong = vec![0.0; m + 1];
+        let mut l_imag_wrong = vec![0.0; m + 1];
+        let mut u_real_wrong = Matrix::new(m + 1, m);
+        let mut u_imag_wrong = Matrix::new(m, m + 1);
+        let mut v_real_wrong = Matrix::new(m + 1, m);
+        let mut v_imag_wrong = Matrix::new(m, m + 1);
+        assert_eq!(
+            eigen_decomp_lr(
+                &mut l_real_wrong,
+                &mut l_imag,
+                &mut u_real,
+                &mut u_imag,
+                &mut v_real,
+                &mut v_imag,
+                &mut a,
+            ),
+            Err("vectors are incompatible"),
+        );
+        assert_eq!(
+            eigen_decomp_lr(
+                &mut l_real,
+                &mut l_imag_wrong,
+                &mut u_real,
+                &mut u_imag,
+                &mut v_real,
+                &mut v_imag,
+                &mut a,
+            ),
+            Err("vectors are incompatible"),
+        );
+        assert_eq!(
+            eigen_decomp_lr(
+                &mut l_real,
+                &mut l_imag,
+                &mut u_real_wrong,
+                &mut u_imag,
+                &mut v_real,
+                &mut v_imag,
+                &mut a,
+            ),
+            Err("matrices are incompatible"),
+        );
+        assert_eq!(
+            eigen_decomp_lr(
+                &mut l_real,
+                &mut l_imag,
+                &mut u_real,
+                &mut u_imag_wrong,
+                &mut v_real,
+                &mut v_imag,
+                &mut a,
+            ),
+            Err("matrices are incompatible"),
+        );
+        assert_eq!(
+            eigen_decomp_lr(
+                &mut l_real,
+                &mut l_imag,
+                &mut u_real,
+                &mut u_imag,
+                &mut v_real_wrong,
+                &mut v_imag,
+                &mut a,
+            ),
+            Err("matrices are incompatible"),
+        );
+        assert_eq!(
+            eigen_decomp_lr(
+                &mut l_real,
+                &mut l_imag,
+                &mut u_real,
+                &mut u_imag,
+                &mut v_real,
+                &mut v_imag_wrong,
+                &mut a,
+            ),
+            Err("matrices are incompatible"),
+        );
+    }
+
+    #[test]
     fn eigen_decomp_works() -> Result<(), &'static str> {
         #[rustfmt::skip]
         let data = [
@@ -358,7 +474,7 @@ mod tests {
             [1.0, 0.0, 0.0],
         ];
         let mut a = Matrix::from(&data);
-        let m = a.nrow;
+        let m = a.nrow();
         let mut l_real = vec![0.0; m];
         let mut l_imag = vec![0.0; m];
         let mut v_real = Matrix::new(m, m);
@@ -368,21 +484,21 @@ mod tests {
         let l_real_correct = &[-0.5, -0.5, 1.0];
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
         #[rustfmt::skip]
-        let v_real_correct = Matrix::from(&[
-            [ 1.0/s3,  1.0/s3, -1.0/s3],
-            [-0.5/s3, -0.5/s3, -1.0/s3],
-            [-0.5/s3, -0.5/s3, -1.0/s3],
-        ]);
+        let v_real_correct = [
+             1.0/s3,  1.0/s3, -1.0/s3,
+            -0.5/s3, -0.5/s3, -1.0/s3,
+            -0.5/s3, -0.5/s3, -1.0/s3,
+        ];
         #[rustfmt::skip]
-        let v_imag_correct = Matrix::from(&[
-            [ 0.0,  0.0, 0.0],
-            [ 0.5, -0.5, 0.0],
-            [-0.5,  0.5, 0.0],
-        ]);
+        let v_imag_correct = [
+             0.0,  0.0, 0.0,
+             0.5, -0.5, 0.0,
+            -0.5,  0.5, 0.0,
+        ];
         assert_vec_approx_eq!(l_real, l_real_correct, 1e-15);
         assert_vec_approx_eq!(l_imag, l_imag_correct, 1e-15);
-        assert_vec_approx_eq!(v_real.data, v_real_correct.data, 1e-15);
-        assert_vec_approx_eq!(v_imag.data, v_imag_correct.data, 1e-15);
+        assert_vec_approx_eq!(v_real.as_data(), v_real_correct, 1e-15);
+        assert_vec_approx_eq!(v_imag.as_data(), v_imag_correct, 1e-15);
         Ok(())
     }
 
@@ -397,7 +513,7 @@ mod tests {
             [0.0, 0.0, 1.0, 3.0],
         ];
         let mut a = Matrix::from(&data);
-        let m = a.nrow;
+        let m = a.nrow();
         let mut l_real = vec![0.0; m];
         let mut l_imag = vec![0.0; m];
         let mut v_real = Matrix::new(m, m);
@@ -407,23 +523,23 @@ mod tests {
         let l_imag_correct = &[0.0, 0.0, 0.0, 0.0];
         let os3 = 1.0 / f64::sqrt(3.0);
         #[rustfmt::skip]
-        let v_real_correct = Matrix::from(&[
-            [0.0,  0.0,  0.0,  0.0],
-            [0.0,  0.0,  os3, -os3],
-            [0.0,  0.0, -os3,  os3],
-            [1.0, -1.0,  os3, -os3],
-        ]);
+        let v_real_correct = [
+            0.0,  0.0,  0.0,  0.0,
+            0.0,  0.0,  os3, -os3,
+            0.0,  0.0, -os3,  os3,
+            1.0, -1.0,  os3, -os3,
+        ];
         #[rustfmt::skip]
-        let v_imag_correct = Matrix::from(&[
-            [0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0],
-        ]);
+        let v_imag_correct = [
+            0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0,
+        ];
         assert_vec_approx_eq!(l_real, l_real_correct, 1e-15);
         assert_vec_approx_eq!(l_imag, l_imag_correct, 1e-15);
-        assert_vec_approx_eq!(v_real.data, v_real_correct.data, 1e-15);
-        assert_vec_approx_eq!(v_imag.data, v_imag_correct.data, 1e-15);
+        assert_vec_approx_eq!(v_real.as_data(), v_real_correct, 1e-15);
+        assert_vec_approx_eq!(v_imag.as_data(), v_imag_correct, 1e-15);
         check_real_eigen(&data, &v_real, &l_real)?;
         Ok(())
     }
@@ -437,7 +553,7 @@ mod tests {
             [1.0, 0.0, 0.0],
         ];
         let mut a = Matrix::from(&data);
-        let m = a.nrow;
+        let m = a.nrow();
         let mut l_real = vec![0.0; m];
         let mut l_imag = vec![0.0; m];
         let mut u_real = Matrix::new(m, m);
@@ -457,35 +573,35 @@ mod tests {
         let l_real_correct = &[-0.5, -0.5, 1.0];
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
         #[rustfmt::skip]
-        let u_real_correct = Matrix::from(&[
-            [-0.5/s3, -0.5/s3, -1.0/s3],
-            [ 1.0/s3,  1.0/s3, -1.0/s3],
-            [-0.5/s3, -0.5/s3, -1.0/s3],
-        ]);
+        let u_real_correct = [
+            -0.5/s3, -0.5/s3, -1.0/s3,
+             1.0/s3,  1.0/s3, -1.0/s3,
+            -0.5/s3, -0.5/s3, -1.0/s3,
+        ];
         #[rustfmt::skip]
-        let u_imag_correct = Matrix::from(&[
-            [-0.5,  0.5, 0.0],
-            [ 0.0,  0.0, 0.0],
-            [ 0.5, -0.5, 0.0],
-        ]);
+        let u_imag_correct = [
+            -0.5,  0.5, 0.0,
+             0.0,  0.0, 0.0,
+             0.5, -0.5, 0.0,
+        ];
         #[rustfmt::skip]
-        let v_real_correct = Matrix::from(&[
-            [ 1.0/s3,  1.0/s3, -1.0/s3],
-            [-0.5/s3, -0.5/s3, -1.0/s3],
-            [-0.5/s3, -0.5/s3, -1.0/s3],
-        ]);
+        let v_real_correct = [
+             1.0/s3,  1.0/s3, -1.0/s3,
+            -0.5/s3, -0.5/s3, -1.0/s3,
+            -0.5/s3, -0.5/s3, -1.0/s3,
+        ];
         #[rustfmt::skip]
-        let v_imag_correct = Matrix::from(&[
-            [ 0.0,  0.0, 0.0],
-            [ 0.5, -0.5, 0.0],
-            [-0.5,  0.5, 0.0],
-        ]);
+        let v_imag_correct = [
+             0.0,  0.0, 0.0,
+             0.5, -0.5, 0.0,
+            -0.5,  0.5, 0.0,
+        ];
         assert_vec_approx_eq!(l_real, l_real_correct, 1e-15);
         assert_vec_approx_eq!(l_imag, l_imag_correct, 1e-15);
-        assert_vec_approx_eq!(u_real.data, u_real_correct.data, 1e-15);
-        assert_vec_approx_eq!(u_imag.data, u_imag_correct.data, 1e-15);
-        assert_vec_approx_eq!(v_real.data, v_real_correct.data, 1e-15);
-        assert_vec_approx_eq!(v_imag.data, v_imag_correct.data, 1e-15);
+        assert_vec_approx_eq!(u_real.as_data(), u_real_correct, 1e-15);
+        assert_vec_approx_eq!(u_imag.as_data(), u_imag_correct, 1e-15);
+        assert_vec_approx_eq!(v_real.as_data(), v_real_correct, 1e-15);
+        assert_vec_approx_eq!(v_imag.as_data(), v_imag_correct, 1e-15);
         Ok(())
     }
 }

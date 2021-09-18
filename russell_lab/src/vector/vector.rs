@@ -6,7 +6,7 @@ use std::ops::{Index, IndexMut};
 
 /// Holds vector components and associated functions
 pub struct Vector {
-    pub(crate) data: Vec<f64>,
+    data: Vec<f64>,
 }
 
 impl Vector {

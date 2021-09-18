@@ -460,6 +460,9 @@ impl Vector {
     /// ```
     pub fn norm(&self, kind: EnumVectorNorm) -> f64 {
         let n = to_i32(self.data.len());
+        if n == 0 {
+            return 0.0;
+        }
         match kind {
             EnumVectorNorm::One => dasum(n, &self.data, 1),
             EnumVectorNorm::Euc => dnrm2(n, &self.data, 1),
@@ -784,6 +787,10 @@ mod tests {
 
     #[test]
     fn norm_works() {
+        let u0 = Vector::new(0);
+        assert_eq!(u0.norm(EnumVectorNorm::One), 0.0);
+        assert_eq!(u0.norm(EnumVectorNorm::Euc), 0.0);
+        assert_eq!(u0.norm(EnumVectorNorm::Max), 0.0);
         let u = Vector::from(&[-3.0, 2.0, 1.0, 1.0, 1.0]);
         assert_eq!(u.norm(EnumVectorNorm::One), 8.0);
         assert_eq!(u.norm(EnumVectorNorm::Euc), 4.0);

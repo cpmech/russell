@@ -8,11 +8,11 @@ use crate::Matrix;
 /// * `ymin`, `ymax` -- range along y
 /// * `nx` -- is the number of points along x (must be `>= 2`)
 /// * `ny` -- is the number of points along y (must be `>= 2`)
-/// * `calc_z` -- is a function of (x[i][j], y[i][j]) that calculates z[i][j]
+/// * `calc_z` -- is a function of (xij, yij) that calculates zij
 ///
 /// # Output
 ///
-/// * `x`, `y`, `z` -- (ny, nx) matrices
+/// * `x`, `y`, `z` -- (`ny` by `nx`) matrices
 ///
 /// # Example
 ///

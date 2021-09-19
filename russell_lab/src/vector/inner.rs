@@ -1,5 +1,5 @@
-use super::*;
-use russell_openblas::*;
+use super::Vector;
+use russell_openblas::{ddot, to_i32};
 
 /// Performs the inner (dot) product between two vectors resulting in a scalar value
 ///
@@ -31,7 +31,7 @@ pub fn inner(u: &Vector, v: &Vector) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{inner, Vector};
 
     #[test]
     fn inner_works() {

@@ -1,5 +1,5 @@
-use super::*;
-use russell_openblas::*;
+use super::Vector;
+use russell_openblas::{dcopy, to_i32};
 
 /// Copies vector
 ///
@@ -38,7 +38,7 @@ pub fn copy_vector(v: &mut Vector, u: &Vector) -> Result<(), &'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{copy_vector, Vector};
     use russell_chk::*;
 
     #[test]

@@ -1,5 +1,5 @@
-use super::*;
-use russell_openblas::*;
+use super::Vector;
+use russell_openblas::{add_vectors_native, add_vectors_oblas};
 
 const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
 
@@ -48,7 +48,7 @@ pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{add_vectors, Vector, NATIVE_VERSUS_OPENBLAS_BOUNDARY};
     use russell_chk::*;
 
     #[test]

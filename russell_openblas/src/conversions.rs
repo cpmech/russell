@@ -144,7 +144,7 @@ pub fn dgeev_data_lr(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{dgeev_data, dgeev_data_lr};
     use russell_chk::*;
 
     #[test]

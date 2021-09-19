@@ -204,7 +204,7 @@ pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, &'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{inverse, Matrix, ZERO_DETERMINANT};
     use russell_chk::*;
 
     /// Computes a⋅ai that should equal I for a square matrix

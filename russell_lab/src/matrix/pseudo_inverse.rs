@@ -141,7 +141,7 @@ pub fn pseudo_inverse(ai: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{pseudo_inverse, Matrix};
     use russell_chk::*;
 
     /// Computes a⋅ai that should equal I for a square matrix

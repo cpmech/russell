@@ -1,4 +1,4 @@
-use super::*;
+use super::Tensor2;
 
 /// Performs the double dot (ddot) operation between two Tensor2 (inner product)
 ///
@@ -59,7 +59,7 @@ pub fn t2_sdot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, &'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{t2_ddot_t2, t2_sdot_t2, Tensor2};
     use russell_chk::*;
 
     #[test]

@@ -225,7 +225,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{AsArray1D, AsArray2D};
     use std::fmt::Write;
 
     fn array_1d_str<'a, T, U>(array: &'a T) -> String

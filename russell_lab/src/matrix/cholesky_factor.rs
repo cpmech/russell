@@ -1,5 +1,5 @@
-use crate::matrix::*;
-use russell_openblas::*;
+use super::Matrix;
+use russell_openblas::{dpotrf, to_i32};
 
 /// Performs the Cholesky factorization of a symmetric positive-definite matrix
 ///
@@ -89,7 +89,7 @@ pub fn cholesky_factor(l: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{cholesky_factor, Matrix};
     use russell_chk::*;
 
     #[test]

@@ -1,5 +1,5 @@
-use super::*;
-use russell_openblas::*;
+use super::Matrix;
+use russell_openblas::{daxpy, to_i32};
 
 /// Updates matrix based on another matrix (axpy)
 ///
@@ -43,7 +43,7 @@ pub fn update_matrix(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), &'sta
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{update_matrix, Matrix};
     use russell_chk::*;
 
     #[test]

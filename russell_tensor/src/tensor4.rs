@@ -1,4 +1,4 @@
-use super::*;
+use super::{IJKL_TO_IJ, I_TO_IJ, SQRT_2};
 
 /// Implements a fourth order-tensor, minor-symmetric or not
 pub struct Tensor4 {
@@ -211,7 +211,8 @@ impl Tensor4 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::Tensor4;
+    use crate::Samples;
     use russell_chk::*;
 
     #[test]

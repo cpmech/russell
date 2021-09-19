@@ -69,7 +69,7 @@ pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), &'static str>
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{solve_lin_sys, Matrix, Vector};
     use russell_chk::*;
 
     #[test]

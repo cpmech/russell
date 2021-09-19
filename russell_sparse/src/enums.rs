@@ -212,7 +212,10 @@ pub(crate) fn str_umf_scaling(umf_code: i32) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{
+        enum_ordering, enum_scaling, str_enum_ordering, str_enum_scaling, str_enum_symmetry, str_mmp_ordering,
+        str_mmp_scaling, str_umf_ordering, str_umf_scaling, EnumOrdering, EnumScaling,
+    };
 
     #[test]
     fn enum_ordering_works() {

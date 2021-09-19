@@ -1,5 +1,5 @@
-use crate::matrix::*;
-use russell_openblas::*;
+use super::Matrix;
+use russell_openblas::{dgeev, dgeev_data, dgeev_data_lr, to_i32};
 
 /// Performs the eigen-decomposition of a square matrix
 ///
@@ -286,9 +286,9 @@ pub fn eigen_decomp_lr(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{AsArray2D, EnumMatrixNorm};
-    use russell_chk::*;
+    use super::{eigen_decomp, eigen_decomp_lr, Matrix};
+    use crate::{add_matrices, mat_mat_mul, AsArray2D, EnumMatrixNorm};
+    use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
 
     fn check_real_eigen<'a, T>(data: &'a T, v: &Matrix, l: &[f64]) -> Result<(), &'static str>
     where

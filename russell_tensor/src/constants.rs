@@ -64,7 +64,7 @@ pub const IJKL_TO_IJ: [[[[(usize, usize); 3]; 3]; 3]; 3] = [
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{IJKL_TO_IJ, IJ_TO_I, I_TO_IJ, ONE_BY_3, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6, TWO_BY_3};
 
     #[test]
     fn constants_are_correct() {

@@ -28,7 +28,7 @@ pub fn to_i32(num: usize) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::to_i32;
 
     #[test]
     fn usize_to_i32_works() {

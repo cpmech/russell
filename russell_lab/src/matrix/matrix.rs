@@ -648,7 +648,7 @@ impl IndexMut<usize> for Matrix {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{EnumMatrixNorm, Matrix};
     use russell_chk::*;
 
     #[test]

@@ -1,4 +1,4 @@
-use super::*;
+use super::{cblas_transpose, to_i32, CBLAS_ROW_MAJOR, LAPACK_ROW_MAJOR};
 
 #[rustfmt::skip]
 extern "C" {
@@ -154,7 +154,8 @@ pub fn dgesv(n: i32, nrhs: i32, a: &mut [f64], ipiv: &mut [i32], b: &mut [f64]) 
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{dgemv, dger, dgesv};
+    use crate::to_i32;
     use russell_chk::*;
 
     #[test]

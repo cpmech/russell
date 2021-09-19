@@ -68,7 +68,7 @@ pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) -> Result
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{mat_vec_mul, Matrix, Vector};
     use russell_chk::*;
 
     #[test]

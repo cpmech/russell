@@ -48,7 +48,7 @@ pub fn outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) -> Result<(), &
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{outer, Matrix, Vector};
     use russell_chk::*;
 
     #[test]

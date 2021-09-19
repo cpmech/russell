@@ -1,4 +1,4 @@
-use super::*;
+use super::{fmt_2d_array, IJ_TO_I, I_TO_IJ, SQRT_2};
 use std::fmt;
 
 /// Implements a second-order tensor, symmetric or not
@@ -106,7 +106,7 @@ impl fmt::Display for Tensor2 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{Tensor2, SQRT_2};
     use russell_chk::*;
 
     #[test]

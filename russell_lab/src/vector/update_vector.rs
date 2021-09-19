@@ -1,5 +1,5 @@
-use super::*;
-use russell_openblas::*;
+use super::Vector;
+use russell_openblas::{daxpy, to_i32};
 
 /// Updates vector based on another vector (axpy)
 ///
@@ -38,7 +38,7 @@ pub fn update_vector(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), &'sta
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{update_vector, Vector};
     use russell_chk::*;
 
     #[test]

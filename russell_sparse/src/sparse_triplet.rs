@@ -275,9 +275,9 @@ impl fmt::Display for SparseTriplet {
 
 #[cfg(test)]
 mod tests {
+    use super::SparseTriplet;
     use russell_chk::assert_vec_approx_eq;
-
-    use super::*;
+    use russell_lab::{Matrix, Vector};
 
     #[test]
     fn new_fails_on_wrong_input() {

@@ -35,7 +35,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::Histogram;
 
     #[test]
     fn histogram_new_works() {

@@ -181,7 +181,7 @@ impl fmt::Display for Stopwatch {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::Stopwatch;
     use std::thread::sleep;
     use std::time::Duration;
 

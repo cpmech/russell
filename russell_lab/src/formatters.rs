@@ -70,7 +70,7 @@ pub fn format_nanoseconds(nanoseconds: u128) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::format_nanoseconds;
 
     #[test]
     fn format_nanoseconds_works() {

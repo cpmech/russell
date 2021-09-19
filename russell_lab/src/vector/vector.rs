@@ -715,8 +715,9 @@ impl<'a> IntoIterator for &'a mut Vector {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{EnumVectorNorm, Vector};
     use russell_chk::*;
+    use std::fmt::Write;
 
     #[test]
     fn new_vector_works() {

@@ -89,7 +89,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::generate3d;
 
     #[test]
     fn generate3d_works() {

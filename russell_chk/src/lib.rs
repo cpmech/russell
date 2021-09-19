@@ -11,3 +11,15 @@ mod assert_approx_eq;
 mod assert_vec_approx_eq;
 pub use crate::assert_approx_eq::*;
 pub use crate::assert_vec_approx_eq::*;
+
+// run code from README file
+#[cfg(doctest)]
+mod test_readme {
+    macro_rules! external_doc_test {
+        ($x:expr) => {
+            #[doc = $x]
+            extern "C" {}
+        };
+    }
+    external_doc_test!(include_str!("../README.md"));
+}

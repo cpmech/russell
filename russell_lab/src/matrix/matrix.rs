@@ -1,5 +1,5 @@
 use crate::{AsArray2D, EnumMatrixNorm};
-use russell_openblas::*;
+use russell_openblas::{dlange, dscal, to_i32};
 use std::cmp;
 use std::fmt::{self, Write};
 use std::ops::{Index, IndexMut};

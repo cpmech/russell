@@ -1,5 +1,5 @@
 use super::Matrix;
-use russell_openblas::*;
+use russell_openblas::{dgemm, to_i32};
 
 /// Performs the matrix-matrix multiplication resulting in a matrix
 ///

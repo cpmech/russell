@@ -1,5 +1,5 @@
 use super::Matrix;
-use russell_openblas::*;
+use russell_openblas::{add_vectors_native, add_vectors_oblas};
 
 const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
 

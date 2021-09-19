@@ -1,6 +1,6 @@
-use crate::matrix::*;
-use crate::vector::*;
-use russell_openblas::*;
+use crate::matrix::Matrix;
+use crate::vector::Vector;
+use russell_openblas::{dgemv, to_i32};
 
 /// Performs the matrix-vector multiplication resulting in a vector
 ///

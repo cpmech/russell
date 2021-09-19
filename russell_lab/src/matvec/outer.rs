@@ -1,6 +1,6 @@
-use crate::matrix::*;
-use crate::vector::*;
-use russell_openblas::*;
+use crate::matrix::Matrix;
+use crate::vector::Vector;
+use russell_openblas::{dger, to_i32};
 
 /// Performs the outer (tensor) product between two vectors resulting in a matrix
 ///

@@ -1,6 +1,6 @@
-use crate::matrix::*;
-use crate::vector::*;
-use russell_openblas::*;
+use crate::matrix::Matrix;
+use crate::vector::Vector;
+use russell_openblas::{dgesvd, to_i32};
 
 /// Computes the singular value decomposition (SVD) of a matrix
 ///
@@ -185,8 +185,7 @@ pub fn sv_decomp(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix
 
 #[cfg(test)]
 mod tests {
-    use crate::matrix::*;
-    use crate::vector::*;
+    use super::{sv_decomp, Matrix, Vector};
     use russell_chk::*;
 
     #[test]

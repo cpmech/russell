@@ -1,5 +1,5 @@
-use crate::matrix::*;
-use russell_openblas::*;
+use crate::matrix::Matrix;
+use russell_openblas::{dcopy, dgetrf, dgetri, to_i32};
 
 // constants
 const ZERO_DETERMINANT: f64 = 1e-15;

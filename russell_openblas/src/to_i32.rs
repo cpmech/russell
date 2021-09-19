@@ -5,7 +5,7 @@ use std::convert::TryFrom;
 /// # Example
 ///
 /// ```
-/// use russell_openblas::*;
+/// use russell_openblas::to_i32;
 /// use std::convert::TryFrom;
 /// let m = 3_usize;
 /// let x = vec![0.0; m];

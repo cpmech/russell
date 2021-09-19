@@ -1,5 +1,5 @@
-use crate::matrix::*;
-use russell_openblas::*;
+use crate::matrix::Matrix;
+use russell_openblas::{dcopy, dgesvd, idamax, to_i32};
 
 // constants
 const SINGLE_VALUE_RCOND: f64 = 1e-15;

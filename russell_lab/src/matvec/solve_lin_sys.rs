@@ -1,6 +1,6 @@
-use crate::matrix::*;
-use crate::vector::*;
-use russell_openblas::*;
+use crate::matrix::Matrix;
+use crate::vector::Vector;
+use russell_openblas::{dgesv, to_i32};
 
 /// Solves a general linear system (real numbers)
 ///

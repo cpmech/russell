@@ -45,13 +45,13 @@ russell_tensor = "*"
 
 By default OpenBLAS will use all available threads, including Hyper-Threads that make the performance worse. Thus, it is best to set the following environment variable:
 
-```
+```bash
 export OPENBLAS_NUM_THREADS=<real-core-count>
 ```
 
 Furthermore, if working on a multi-threaded application, it is recommended to set:
 
-```
+```bash
 export OPENBLAS_NUM_THREADS=1
 ```
 
@@ -112,6 +112,72 @@ fn main() -> Result<(), &'static str> {
                    │ 5.000000 │\n\
                    └          ┘";
     assert_eq!(format!("{:.6}", x), correct);
+    Ok(())
+}
+```
+
+### Computing the singular value decomposition
+
+```rust
+// import
+use russell_lab::*;
+
+fn main() -> Result<(), &'static str> {
+    // set matrix
+    let mut a = Matrix::from(&[
+        [2.0, 4.0],
+        [1.0, 3.0],
+        [0.0, 0.0],
+        [0.0, 0.0],
+    ]);
+
+    // allocate output structures
+    let (m, n) = a.dims();
+    let min_mn = if m < n { m } else { n };
+    let mut s = Vector::new(min_mn);
+    let mut u = Matrix::new(m, m);
+    let mut vt = Matrix::new(n, n);
+
+    // perform SVD
+    sv_decomp(&mut s, &mut u, &mut vt, &mut a)?;
+
+    // define correct data
+    let s_correct = "┌      ┐\n\
+                     │ 5.46 │\n\
+                     │ 0.37 │\n\
+                     └      ┘";
+    let u_correct = "┌                         ┐\n\
+                     │ -0.82 -0.58  0.00  0.00 │\n\
+                     │ -0.58  0.82  0.00  0.00 │\n\
+                     │  0.00  0.00  1.00  0.00 │\n\
+                     │  0.00  0.00  0.00  1.00 │\n\
+                     └                         ┘";
+    let vt_correct = "┌             ┐\n\
+                      │ -0.40 -0.91 │\n\
+                      │ -0.91  0.40 │\n\
+                      └             ┘";
+
+    // check solution
+    assert_eq!(format!("{:.2}", s), s_correct);
+    assert_eq!(format!("{:.2}", u), u_correct);
+    assert_eq!(format!("{:.2}", vt), vt_correct);
+
+    // check SVD: a == u * s * vt
+    let mut usv = Matrix::new(m, n);
+    for i in 0..m {
+        for j in 0..n {
+            for k in 0..min_mn {
+                usv[i][j] += u[i][k] * s[k] * vt[k][j];
+            }
+        }
+    }
+    let usv_correct = "┌     ┐\n\
+                       │ 2 4 │\n\
+                       │ 1 3 │\n\
+                       │ 0 0 │\n\
+                       │ 0 0 │\n\
+                       └     ┘";
+    assert_eq!(format!("{}", usv), usv_correct);
     Ok(())
 }
 ```

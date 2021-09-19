@@ -2,7 +2,7 @@ use criterion::BenchmarkId;
 use criterion::Criterion;
 use criterion::Throughput;
 use criterion::{criterion_group, criterion_main};
-use russell_lab::*;
+use russell_lab::{add_vectors, Vector};
 
 fn bench_add_vectors(c: &mut Criterion) {
     let sizes = &[1, 4, 16, 32, 64, 128];

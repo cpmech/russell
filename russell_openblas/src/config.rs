@@ -21,7 +21,7 @@ pub fn get_num_threads() -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{get_num_threads, set_num_threads};
 
     #[test]
     fn set_get_num_threads_work() {

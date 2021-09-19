@@ -1,5 +1,5 @@
-use super::*;
-use russell_openblas::*;
+use super::Matrix;
+use russell_openblas::{dgemm, to_i32};
 
 /// Performs the matrix-matrix multiplication resulting in a matrix
 ///
@@ -61,7 +61,7 @@ pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) -> Result
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{mat_mat_mul, Matrix};
     use russell_chk::*;
 
     #[test]

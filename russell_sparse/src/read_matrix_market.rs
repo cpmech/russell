@@ -1,4 +1,4 @@
-use super::*;
+use super::SparseTriplet;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -379,7 +379,7 @@ pub fn read_matrix_market(filepath: &String, sym_mirror: bool) -> Result<SparseT
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{read_matrix_market, MatrixMarketData};
     use russell_lab::*;
 
     #[test]

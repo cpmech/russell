@@ -65,7 +65,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{ave, ave_dev};
     use russell_chk::*;
 
     #[test]

@@ -1,7 +1,6 @@
-use super::*;
-use russell_lab::*;
-use russell_openblas::idamax;
-use russell_openblas::to_i32;
+use super::SparseTriplet;
+use russell_lab::{format_nanoseconds, update_vector, EnumVectorNorm, Stopwatch, Vector};
+use russell_openblas::{idamax, to_i32};
 use std::fmt;
 
 /// Verifies the linear system a ⋅ x = rhs
@@ -120,7 +119,8 @@ impl fmt::Display for VerifyLinSys {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{SparseTriplet, VerifyLinSys};
+    use russell_lab::Vector;
 
     #[test]
     fn new_fails_on_wrong_vectors() -> Result<(), &'static str> {

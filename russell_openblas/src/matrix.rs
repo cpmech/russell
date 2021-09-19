@@ -1,4 +1,4 @@
-use super::*;
+use super::{cblas_transpose, cblas_uplo, lapack_job_vlr, lapack_uplo, CBLAS_ROW_MAJOR, LAPACK_ROW_MAJOR};
 
 #[rustfmt::skip]
 extern "C" {
@@ -404,7 +404,9 @@ pub fn dgeev(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{dgeev, dgemm, dgesvd, dgetrf, dgetri, dlange, dpotrf, dsyrk};
+    use crate::conversions::{dgeev_data, dgeev_data_lr};
+    use crate::to_i32;
     use russell_chk::*;
 
     #[test]

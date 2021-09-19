@@ -28,7 +28,7 @@ pub fn add_vectors_oblas(w: &mut [f64], alpha: f64, u: &[f64], beta: f64, v: &[f
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::add_vectors_oblas;
     use russell_chk::*;
 
     #[test]

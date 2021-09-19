@@ -9,7 +9,7 @@ use std::time::Instant;
 /// ## Printing elapsed times
 ///
 /// ```
-/// use russell_lab::*;
+/// use russell_lab::Stopwatch;
 /// use std::thread::sleep;
 /// use std::time::Duration;
 ///
@@ -36,7 +36,7 @@ use std::time::Instant;
 /// ## Recording elapsed times
 ///
 /// ```
-/// use russell_lab::*;
+/// use russell_lab::Stopwatch;
 /// use std::thread::sleep;
 /// use std::time::Duration;
 ///
@@ -79,7 +79,7 @@ impl Stopwatch {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Stopwatch;
     /// let sw = Stopwatch::new("elapsed time = ");
     /// assert_eq!(format!("{}", sw), "elapsed time = 0ns");
     /// ```
@@ -101,7 +101,7 @@ impl Stopwatch {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Stopwatch;
     /// use std::thread::sleep;
     /// use std::time::Duration;
     /// let mut sw = Stopwatch::new("");
@@ -121,7 +121,7 @@ impl Stopwatch {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Stopwatch;
     /// use std::thread::sleep;
     /// use std::time::Duration;
     /// let mut sw = Stopwatch::new("delta_t = ");
@@ -145,7 +145,7 @@ impl Stopwatch {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Stopwatch;
     /// use std::thread::sleep;
     /// use std::time::Duration;
     /// let mut sw = Stopwatch::new("current = ");
@@ -181,7 +181,7 @@ impl fmt::Display for Stopwatch {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::Stopwatch;
     use std::thread::sleep;
     use std::time::Duration;
 

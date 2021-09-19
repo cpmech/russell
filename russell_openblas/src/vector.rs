@@ -135,7 +135,7 @@ pub fn idamax(n: i32, x: &[f64], incx: i32) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{dasum, daxpy, dcopy, ddot, dnrm2, dscal, idamax};
     use crate::to_i32;
     use russell_chk::*;
 

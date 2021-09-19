@@ -50,7 +50,7 @@ use std::ops::{Index, IndexMut};
 ///
 /// // create a copy and change its components
 /// let mut w = u.get_copy();
-/// w.apply(|x| f64::sqrt(x));
+/// w.map(|x| f64::sqrt(x));
 /// w[0] *= -1.0;
 /// w[1] *= -1.0;
 /// w[2] *= -1.0;
@@ -96,7 +96,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let u = Vector::new(3);
     /// let correct = "┌   ┐\n\
     ///                │ 0 │\n\
@@ -114,7 +114,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let u = Vector::filled(3, 4.0);
     /// let correct = "┌   ┐\n\
     ///                │ 4 │\n\
@@ -132,7 +132,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     ///
     /// // heap-allocated 1D array (vector)
     /// let u_data = vec![1.0, 2.0, 3.0];
@@ -188,7 +188,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let x = Vector::linspace(2.0, 3.0, 5);
     /// let correct = "┌      ┐\n\
     ///                │    2 │\n\
@@ -219,12 +219,53 @@ impl Vector {
         res
     }
 
+    /// Returns a mapped linear-space; evenly spaced numbers modified by a function
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::Vector;
+    /// let x = Vector::mapped_linspace(0.0, 4.0, 5, |v| v * v);
+    /// assert_eq!(
+    ///     format!("{}", x),
+    ///     "┌    ┐\n\
+    ///      │  0 │\n\
+    ///      │  1 │\n\
+    ///      │  4 │\n\
+    ///      │  9 │\n\
+    ///      │ 16 │\n\
+    ///      └    ┘",
+    /// );
+    /// ```
+    pub fn mapped_linspace<F>(start: f64, stop: f64, count: usize, function: F) -> Self
+    where
+        F: Fn(f64) -> f64,
+    {
+        let mut res = Vector::new(count);
+        if count == 0 {
+            return res;
+        }
+        res.data[0] = function(start);
+        if count == 1 {
+            return res;
+        }
+        res.data[count - 1] = function(stop);
+        if count == 2 {
+            return res;
+        }
+        let step = (stop - start) / ((count - 1) as f64);
+        for i in 1..count {
+            res.data[i] = function(start + (i as f64) * step);
+        }
+        res
+    }
+
     /// Returns the dimension (size) of this vector
     ///
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let u = Vector::from(&[1.0, 2.0, 3.0]);
     /// assert_eq!(u.dim(), 3);
     /// ```
@@ -242,7 +283,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
     /// u.scale(0.5);
     /// let correct = "┌     ┐\n\
@@ -266,7 +307,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let mut u = Vector::new(3);
     /// u.fill(8.8);
     /// let correct = "┌     ┐\n\
@@ -284,7 +325,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let u = Vector::from(&[1.0, 2.0, 3.0]);
     /// assert_eq!(u.as_data(), &[1.0, 2.0, 3.0]);
     /// ```
@@ -298,7 +339,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
     /// let data = u.as_mut_data();
     /// data[1] = 2.2;
@@ -314,7 +355,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let u = Vector::from(&[1.0, 2.0]);
     /// assert_eq!(u.get(1), 2.0);
     /// ```
@@ -329,7 +370,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let mut u = Vector::from(&[1.0, 2.0]);
     /// u.set(1, -2.0);
     /// let correct = "┌    ┐\n\
@@ -347,15 +388,15 @@ impl Vector {
     /// Applies a function over all components of this vector
     ///
     /// ```text
-    /// u := apply(function(ui))
+    /// u := map(function(ui))
     /// ```
     ///
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
-    /// u.apply(|x| x * x);
+    /// u.map(|x| x * x);
     /// let correct = "┌   ┐\n\
     ///                │ 1 │\n\
     ///                │ 4 │\n\
@@ -363,7 +404,7 @@ impl Vector {
     ///                └   ┘";
     /// assert_eq!(format!("{}", u), correct);
     /// ```
-    pub fn apply<F>(&mut self, function: F)
+    pub fn map<F>(&mut self, function: F)
     where
         F: Fn(f64) -> f64,
     {
@@ -375,15 +416,15 @@ impl Vector {
     /// Applies a function (with index) over all components of this vector
     ///
     /// ```text
-    /// u := apply(function(i, ui))
+    /// u := map(function(i, ui))
     /// ```
     ///
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
-    /// u.apply_with_index(|i, x| x * x + (i as f64));
+    /// u.map_with_index(|i, x| x * x + (i as f64));
     /// let correct = "┌    ┐\n\
     ///                │  1 │\n\
     ///                │  5 │\n\
@@ -391,7 +432,7 @@ impl Vector {
     ///                └    ┘";
     /// assert_eq!(format!("{}", u), correct);
     /// ```
-    pub fn apply_with_index<F>(&mut self, function: F)
+    pub fn map_with_index<F>(&mut self, function: F)
     where
         F: Fn(usize, f64) -> f64,
     {
@@ -405,7 +446,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
     /// let u_copy = u.get_copy();
     /// u.set(1, 5.0);
@@ -426,6 +467,43 @@ impl Vector {
         Vector {
             data: self.data.to_vec(),
         }
+    }
+
+    /// Returns a mapped version of this vector
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::Vector;
+    /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// let v = u.get_mapped(|v| 4.0 - v);
+    /// u.set(1, 100.0);
+    /// assert_eq!(
+    ///     format!("{}", u),
+    ///     "┌     ┐\n\
+    ///      │   1 │\n\
+    ///      │ 100 │\n\
+    ///      │   3 │\n\
+    ///      └     ┘",
+    /// );
+    /// assert_eq!(
+    ///     format!("{}", v),
+    ///     "┌   ┐\n\
+    ///      │ 3 │\n\
+    ///      │ 2 │\n\
+    ///      │ 1 │\n\
+    ///      └   ┘",
+    /// );
+    /// ```
+    pub fn get_mapped<F>(&self, function: F) -> Self
+    where
+        F: Fn(f64) -> f64,
+    {
+        let mut data = self.data.to_vec();
+        for elem in data.iter_mut() {
+            *elem = function(*elem);
+        }
+        Vector { data }
     }
 
     /// Returns the vector norm
@@ -450,7 +528,7 @@ impl Vector {
     ///
     /// ```
     /// # fn main() -> Result<(), &'static str> {
-    /// use russell_lab::*;
+    /// use russell_lab::{EnumVectorNorm, Vector};
     /// let u = Vector::from(&[2.0, -2.0, 2.0, -2.0, -3.0]);
     /// assert_eq!(u.norm(EnumVectorNorm::One), 11.0);
     /// assert_eq!(u.norm(EnumVectorNorm::Euc), 5.0);
@@ -637,8 +715,9 @@ impl<'a> IntoIterator for &'a mut Vector {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{EnumVectorNorm, Vector};
     use russell_chk::*;
+    use std::fmt::Write;
 
     #[test]
     fn new_vector_works() {
@@ -675,27 +754,39 @@ mod tests {
         let x = Vector::linspace(0.0, 1.0, 11);
         let correct = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
         assert_vec_approx_eq!(x.data, correct, 1e-15);
-    }
 
-    #[test]
-    fn linspace_0_works() {
         let x = Vector::linspace(2.0, 3.0, 0);
         assert_eq!(x.data.len(), 0);
-    }
 
-    #[test]
-    fn linspace_1_works() {
         let x = Vector::linspace(2.0, 3.0, 1);
         assert_eq!(x.data.len(), 1);
         assert_eq!(x.data[0], 2.0);
-    }
 
-    #[test]
-    fn linspace_2_works() {
         let x = Vector::linspace(2.0, 3.0, 2);
         assert_eq!(x.data.len(), 2);
         assert_eq!(x.data[0], 2.0);
         assert_eq!(x.data[1], 3.0);
+    }
+
+    #[test]
+    fn mapped_linspace_works() {
+        let x = Vector::mapped_linspace(0.0, 4.0, 5, |v| v * v);
+        assert_eq!(x.data, &[0.0, 1.0, 4.0, 9.0, 16.0]);
+
+        let x = Vector::mapped_linspace(-1.0, 1.0, 5, |v| f64::abs(v));
+        assert_eq!(x.data, &[1.0, 0.5, 0.0, 0.5, 1.0]);
+
+        let x = Vector::mapped_linspace(2.0, 3.0, 0, |v| 1.0 + v);
+        assert_eq!(x.data.len(), 0);
+
+        let x = Vector::mapped_linspace(2.0, 3.0, 1, |v| 2.0 + v);
+        assert_eq!(x.data.len(), 1);
+        assert_eq!(x.data[0], 4.0);
+
+        let x = Vector::mapped_linspace(2.0, 3.0, 2, |v| 3.0 + v);
+        assert_eq!(x.data.len(), 2);
+        assert_eq!(x.data[0], 5.0);
+        assert_eq!(x.data[1], 6.0);
     }
 
     #[test]
@@ -758,31 +849,41 @@ mod tests {
     }
 
     #[test]
-    fn apply_works() {
+    fn map_works() {
         let mut u = Vector::from(&[-1.0, -2.0, -3.0]);
-        u.apply(|x| x * x * x);
+        u.map(|x| x * x * x);
         let correct = &[-1.0, -8.0, -27.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
     }
 
     #[test]
-    fn apply_with_index_works() {
+    fn map_with_index_works() {
         let mut u = Vector::from(&[-1.0, -2.0, -3.0]);
-        u.apply_with_index(|i, x| x * x * x + (i as f64));
+        u.map_with_index(|i, x| x * x * x + (i as f64));
         let correct = &[-1.0, -7.0, -25.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
     }
 
     #[test]
     fn get_copy_works() {
-        #[rustfmt::skip]
-        let mut u = Vector::from( &[1.0, 2.0, 3.0]);
+        let mut u = Vector::from(&[1.0, 2.0, 3.0]);
         let u_copy = u.get_copy();
         u.set(0, 0.11);
         u.set(1, 0.22);
         u.set(2, 0.33);
         assert_eq!(u.data, &[0.11, 0.22, 0.33]);
         assert_eq!(u_copy.data, &[1.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    fn get_mapped_works() {
+        let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+        let v = u.get_mapped(|v| v * v);
+        u.set(0, 0.11);
+        u.set(1, 0.22);
+        u.set(2, 0.33);
+        assert_eq!(u.data, &[0.11, 0.22, 0.33]);
+        assert_eq!(v.data, &[1.0, 4.0, 9.0]);
     }
 
     #[test]

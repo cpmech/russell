@@ -63,7 +63,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::fmt_2d_array;
 
     #[test]
     fn fmt_2d_array_works() -> Result<(), std::fmt::Error> {

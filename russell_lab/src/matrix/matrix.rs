@@ -1,5 +1,5 @@
 use crate::{AsArray2D, EnumMatrixNorm};
-use russell_openblas::*;
+use russell_openblas::{dlange, dscal, to_i32};
 use std::cmp;
 use std::fmt::{self, Write};
 use std::ops::{Index, IndexMut};
@@ -102,7 +102,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Matrix;
     /// let a = Matrix::new(3, 3);
     /// let correct = "┌       ┐\n\
     ///                │ 0 0 0 │\n\
@@ -124,7 +124,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Matrix;
     /// let identity = Matrix::identity(3);
     /// let correct = "┌       ┐\n\
     ///                │ 1 0 0 │\n\
@@ -150,7 +150,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Matrix;
     /// let a = Matrix::filled(2, 3, 4.0);
     /// let correct = "┌       ┐\n\
     ///                │ 4 4 4 │\n\
@@ -176,7 +176,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Matrix;
     ///
     /// // heap-allocated 2D array (vector of vectors)
     /// const IGNORED: f64 = 123.456;
@@ -254,7 +254,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Matrix;
     /// let a = Matrix::diagonal(&[1.0, 2.0, 3.0]);
     /// let correct = "┌       ┐\n\
     ///                │ 1 0 0 │\n\
@@ -282,7 +282,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Matrix;
     /// let a = Matrix::new(4, 3);
     /// assert_eq!(a.nrow(), 4);
     /// ```
@@ -296,7 +296,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Matrix;
     /// let a = Matrix::new(4, 3);
     /// assert_eq!(a.ncol(), 3);
     /// ```
@@ -310,7 +310,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Matrix;
     /// let a = Matrix::new(4, 3);
     /// assert_eq!(a.dims(), (4, 3));
     /// ```
@@ -328,7 +328,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Matrix;
     /// let mut a = Matrix::from(&[
     ///     [1.0, 2.0, 3.0],
     ///     [4.0, 5.0, 6.0],
@@ -354,7 +354,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Matrix;
     /// let mut a = Matrix::new(2, 2);
     /// a.fill(8.8);
     /// let correct = "┌         ┐\n\
@@ -375,7 +375,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Matrix;
     /// let a = Matrix::from(&[[1.0, 2.0], [3.0, 4.0]]);
     /// assert_eq!(a.as_data(), &[1.0, 2.0, 3.0, 4.0]);
     /// ```
@@ -393,7 +393,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Matrix;
     /// let mut a = Matrix::from(&[[1.0, 2.0], [3.0, 4.0]]);
     /// let data = a.as_mut_data();
     /// data[1] = 2.2;
@@ -409,7 +409,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Matrix;
     /// let a = Matrix::from(&[
     ///     [1.0, 2.0],
     ///     [3.0, 4.0],
@@ -428,7 +428,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Matrix;
     /// let mut a = Matrix::from(&[
     ///     [1.0, 2.0],
     ///     [3.0, 4.0],
@@ -450,7 +450,7 @@ impl Matrix {
     /// Returns a copy of this matrix
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Matrix;
     /// let mut a = Matrix::from(&[
     ///     [1.0, 2.0],
     ///     [3.0, 4.0],
@@ -501,7 +501,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::{EnumMatrixNorm, Matrix};
     /// let a = Matrix::from(&[
     ///     [-2.0,  2.0],
     ///     [ 1.0, -4.0],
@@ -648,7 +648,7 @@ impl IndexMut<usize> for Matrix {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{EnumMatrixNorm, Matrix};
     use russell_chk::*;
 
     #[test]

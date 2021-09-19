@@ -1,5 +1,8 @@
-use super::*;
-use russell_lab::*;
+use super::{
+    str_enum_ordering, str_enum_scaling, str_mmp_ordering, str_mmp_scaling, str_umf_ordering, str_umf_scaling,
+    ConfigSolver, EnumSolverKind, SparseTriplet,
+};
+use russell_lab::{copy_vector, format_nanoseconds, Stopwatch, Vector};
 use russell_openblas::to_i32;
 use std::fmt;
 
@@ -566,8 +569,9 @@ impl fmt::Display for Solver {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{ConfigSolver, EnumSolverKind, Solver, SparseTriplet};
     use russell_chk::*;
+    use russell_lab::Vector;
 
     #[test]
     fn new_works() -> Result<(), &'static str> {
@@ -910,27 +914,27 @@ mod tests {
     fn display_trait_works() -> Result<(), &'static str> {
         let config = ConfigSolver::new();
         let solver = Solver::new(config)?;
-        let correct: &str = "\x20\x20\x20\x20\"solverKind\": \"UMF\",\n\
-                             \x20\x20\x20\x20\"symmetry\": \"No\",\n\
-                             \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
-                             \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
-                             \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
-                             \x20\x20\x20\x20\"maxWorkMemory\": 0,\n\
-                             \x20\x20\x20\x20\"openmpNumThreads\": 1,\n\
-                             \x20\x20\x20\x20\"usedOrdering\": \"Auto\",\n\
-                             \x20\x20\x20\x20\"usedScaling\": \"Auto\",\n\
-                             \x20\x20\x20\x20\"doneInitialize\": false,\n\
-                             \x20\x20\x20\x20\"doneFactorize\": false,\n\
-                             \x20\x20\x20\x20\"ndim\": 0,\n\
-                             \x20\x20\x20\x20\"timeInitNs\": 0,\n\
-                             \x20\x20\x20\x20\"timeFactNs\": 0,\n\
-                             \x20\x20\x20\x20\"timeSolveNs\": 0,\n\
-                             \x20\x20\x20\x20\"timeTotalNs\": 0,\n\
-                             \x20\x20\x20\x20\"timeInitStr\": \"0ns\",\n\
-                             \x20\x20\x20\x20\"timeFactStr\": \"0ns\",\n\
-                             \x20\x20\x20\x20\"timeSolveStr\": \"0ns\",\n\
-                             \x20\x20\x20\x20\"timeTotalStr\": \"0ns\"";
-        assert_eq!(format!("{}", solver), correct);
+        let b: &str = "\x20\x20\x20\x20\"solverKind\": \"UMF\",\n\
+                       \x20\x20\x20\x20\"symmetry\": \"No\",\n\
+                       \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
+                       \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
+                       \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
+                       \x20\x20\x20\x20\"maxWorkMemory\": 0,\n\
+                       \x20\x20\x20\x20\"openmpNumThreads\": 1,\n\
+                       \x20\x20\x20\x20\"usedOrdering\": \"Auto\",\n\
+                       \x20\x20\x20\x20\"usedScaling\": \"Auto\",\n\
+                       \x20\x20\x20\x20\"doneInitialize\": false,\n\
+                       \x20\x20\x20\x20\"doneFactorize\": false,\n\
+                       \x20\x20\x20\x20\"ndim\": 0,\n\
+                       \x20\x20\x20\x20\"timeInitNs\": 0,\n\
+                       \x20\x20\x20\x20\"timeFactNs\": 0,\n\
+                       \x20\x20\x20\x20\"timeSolveNs\": 0,\n\
+                       \x20\x20\x20\x20\"timeTotalNs\": 0,\n\
+                       \x20\x20\x20\x20\"timeInitStr\": \"0ns\",\n\
+                       \x20\x20\x20\x20\"timeFactStr\": \"0ns\",\n\
+                       \x20\x20\x20\x20\"timeSolveStr\": \"0ns\",\n\
+                       \x20\x20\x20\x20\"timeTotalStr\": \"0ns\"";
+        assert_eq!(format!("{}", solver), b);
         Ok(())
     }
 }

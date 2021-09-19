@@ -1,6 +1,6 @@
-use crate::matrix::*;
-use crate::vector::*;
-use russell_openblas::*;
+use crate::matrix::Matrix;
+use crate::vector::Vector;
+use russell_openblas::{dger, to_i32};
 
 /// Performs the outer (tensor) product between two vectors resulting in a matrix
 ///
@@ -48,7 +48,7 @@ pub fn outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) -> Result<(), &
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{outer, Matrix, Vector};
     use russell_chk::*;
 
     #[test]

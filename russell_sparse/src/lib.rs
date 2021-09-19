@@ -78,3 +78,16 @@ pub use crate::read_matrix_market::*;
 pub use crate::solver::*;
 pub use crate::sparse_triplet::*;
 pub use crate::verify_lin_sys::*;
+
+// run code from README file
+#[cfg(doctest)]
+mod test_readme {
+    macro_rules! external_doc_test {
+        ($x:expr) => {
+            #[doc = $x]
+            extern "C" {}
+        };
+    }
+    external_doc_test!(include_str!("../README.md"));
+    external_doc_test!(include_str!("../../README.md"));
+}

@@ -1,5 +1,5 @@
-use super::*;
-use russell_openblas::*;
+use super::Matrix;
+use russell_openblas::{dcopy, to_i32};
 
 /// Copies matrix
 ///
@@ -43,7 +43,7 @@ pub fn copy_matrix(b: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{copy_matrix, Matrix};
     use russell_chk::*;
 
     #[test]

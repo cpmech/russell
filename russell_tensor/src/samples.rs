@@ -1,5 +1,6 @@
-use super::*;
+use super::SQRT_2;
 
+/// Holds samples
 pub struct Samples;
 
 impl Samples {
@@ -255,7 +256,8 @@ impl Samples {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::Samples;
+    use crate::constants::IJKL_TO_IJ;
 
     #[test]
     fn sample1_matches_std_matrix() {

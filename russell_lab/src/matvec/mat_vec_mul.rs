@@ -1,6 +1,6 @@
-use crate::matrix::*;
-use crate::vector::*;
-use russell_openblas::*;
+use crate::matrix::Matrix;
+use crate::vector::Vector;
+use russell_openblas::{dgemv, to_i32};
 
 /// Performs the matrix-vector multiplication resulting in a vector
 ///
@@ -68,7 +68,7 @@ pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) -> Result
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{mat_vec_mul, Matrix, Vector};
     use russell_chk::*;
 
     #[test]

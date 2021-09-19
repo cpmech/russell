@@ -1,4 +1,6 @@
-use super::*;
+use super::{
+    str_enum_ordering, str_enum_scaling, str_enum_symmetry, EnumOrdering, EnumScaling, EnumSolverKind, EnumSymmetry,
+};
 use russell_openblas::to_i32;
 use std::fmt;
 
@@ -101,7 +103,7 @@ impl fmt::Display for ConfigSolver {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{ConfigSolver, EnumOrdering, EnumScaling, EnumSolverKind, EnumSymmetry};
 
     #[test]
     fn new_works() {

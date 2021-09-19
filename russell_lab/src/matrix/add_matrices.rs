@@ -1,5 +1,5 @@
-use super::*;
-use russell_openblas::*;
+use super::Matrix;
+use russell_openblas::{add_vectors_native, add_vectors_oblas};
 
 const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
 
@@ -52,7 +52,7 @@ pub fn add_matrices(c: &mut Matrix, alpha: f64, a: &Matrix, beta: f64, b: &Matri
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{add_matrices, Matrix};
     use russell_chk::*;
 
     #[test]

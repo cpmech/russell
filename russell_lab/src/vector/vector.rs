@@ -469,6 +469,43 @@ impl Vector {
         }
     }
 
+    /// Returns a mapped version of this vector
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::*;
+    /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// let v = u.get_mapped(|v| 4.0 - v);
+    /// u.set(1, 100.0);
+    /// assert_eq!(
+    ///     format!("{}", u),
+    ///     "┌     ┐\n\
+    ///      │   1 │\n\
+    ///      │ 100 │\n\
+    ///      │   3 │\n\
+    ///      └     ┘",
+    /// );
+    /// assert_eq!(
+    ///     format!("{}", v),
+    ///     "┌   ┐\n\
+    ///      │ 3 │\n\
+    ///      │ 2 │\n\
+    ///      │ 1 │\n\
+    ///      └   ┘",
+    /// );
+    /// ```
+    pub fn get_mapped<F>(&self, function: F) -> Self
+    where
+        F: Fn(f64) -> f64,
+    {
+        let mut data = self.data.to_vec();
+        for elem in data.iter_mut() {
+            *elem = function(*elem);
+        }
+        Vector { data }
+    }
+
     /// Returns the vector norm
     ///
     /// Computes one of:
@@ -828,14 +865,24 @@ mod tests {
 
     #[test]
     fn get_copy_works() {
-        #[rustfmt::skip]
-        let mut u = Vector::from( &[1.0, 2.0, 3.0]);
+        let mut u = Vector::from(&[1.0, 2.0, 3.0]);
         let u_copy = u.get_copy();
         u.set(0, 0.11);
         u.set(1, 0.22);
         u.set(2, 0.33);
         assert_eq!(u.data, &[0.11, 0.22, 0.33]);
         assert_eq!(u_copy.data, &[1.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    fn get_mapped_works() {
+        let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+        let v = u.get_mapped(|v| v * v);
+        u.set(0, 0.11);
+        u.set(1, 0.22);
+        u.set(2, 0.33);
+        assert_eq!(u.data, &[0.11, 0.22, 0.33]);
+        assert_eq!(v.data, &[1.0, 4.0, 9.0]);
     }
 
     #[test]

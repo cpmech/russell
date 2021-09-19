@@ -16,3 +16,31 @@ Add this to your Cargo.toml:
 [dependencies]
 russell_chk = "*"
 ```
+
+## Examples
+
+### Check float point numbers
+
+```rust
+use russell_chk::*;
+
+fn main() {
+    assert_approx_eq!(0.123456789, 0.12345678, 1e-8);
+    assert_approx_eq!(0.123456789, 0.1234567, 1e-7);
+    assert_approx_eq!(0.123456789, 0.123456, 1e-6);
+    assert_approx_eq!(0.123456789, 0.12345, 1e-5);
+    assert_approx_eq!(0.123456789, 0.1234, 1e-4);
+}
+```
+
+### Check a vector of float point numbers
+
+```rust
+use russell_chk::*;
+
+fn main() {
+    let a = [0.123456789, 0.123456789, 0.123456789];
+    let b = [0.12345678,  0.1234567,   0.123456];
+    assert_vec_approx_eq!(&a, &b, 1e-6);
+}
+```

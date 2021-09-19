@@ -53,7 +53,9 @@ Furthermore, if working on a multi-threaded application, it is recommended to se
 export OPENBLAS_NUM_THREADS=1
 ```
 
-## Example
+## Examples
+
+### Solve a sparse linear system
 
 ```rust
 use russell_lab::*;

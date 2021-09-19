@@ -96,7 +96,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let u = Vector::new(3);
     /// let correct = "┌   ┐\n\
     ///                │ 0 │\n\
@@ -114,7 +114,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let u = Vector::filled(3, 4.0);
     /// let correct = "┌   ┐\n\
     ///                │ 4 │\n\
@@ -132,7 +132,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     ///
     /// // heap-allocated 1D array (vector)
     /// let u_data = vec![1.0, 2.0, 3.0];
@@ -265,7 +265,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let u = Vector::from(&[1.0, 2.0, 3.0]);
     /// assert_eq!(u.dim(), 3);
     /// ```
@@ -283,7 +283,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
     /// u.scale(0.5);
     /// let correct = "┌     ┐\n\
@@ -307,7 +307,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let mut u = Vector::new(3);
     /// u.fill(8.8);
     /// let correct = "┌     ┐\n\
@@ -325,7 +325,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let u = Vector::from(&[1.0, 2.0, 3.0]);
     /// assert_eq!(u.as_data(), &[1.0, 2.0, 3.0]);
     /// ```
@@ -339,7 +339,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
     /// let data = u.as_mut_data();
     /// data[1] = 2.2;
@@ -355,7 +355,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let u = Vector::from(&[1.0, 2.0]);
     /// assert_eq!(u.get(1), 2.0);
     /// ```
@@ -370,7 +370,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let mut u = Vector::from(&[1.0, 2.0]);
     /// u.set(1, -2.0);
     /// let correct = "┌    ┐\n\
@@ -394,7 +394,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
     /// u.map(|x| x * x);
     /// let correct = "┌   ┐\n\
@@ -422,7 +422,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
     /// u.map_with_index(|i, x| x * x + (i as f64));
     /// let correct = "┌    ┐\n\
@@ -446,7 +446,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
     /// let u_copy = u.get_copy();
     /// u.set(1, 5.0);
@@ -474,7 +474,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
     /// let v = u.get_mapped(|v| 4.0 - v);
     /// u.set(1, 100.0);
@@ -528,7 +528,7 @@ impl Vector {
     ///
     /// ```
     /// # fn main() -> Result<(), &'static str> {
-    /// use russell_lab::*;
+    /// use russell_lab::{EnumVectorNorm, Vector};
     /// let u = Vector::from(&[2.0, -2.0, 2.0, -2.0, -3.0]);
     /// assert_eq!(u.norm(EnumVectorNorm::One), 11.0);
     /// assert_eq!(u.norm(EnumVectorNorm::Euc), 5.0);

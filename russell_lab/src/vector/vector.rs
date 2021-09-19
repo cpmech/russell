@@ -188,7 +188,7 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::*;
+    /// use russell_lab::Vector;
     /// let x = Vector::linspace(2.0, 3.0, 5);
     /// let correct = "┌      ┐\n\
     ///                │    2 │\n\
@@ -215,6 +215,47 @@ impl Vector {
         let step = (stop - start) / ((count - 1) as f64);
         for i in 1..count {
             res.data[i] = start + (i as f64) * step;
+        }
+        res
+    }
+
+    /// Returns a mapped linear-space; evenly spaced numbers modified by a function
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::Vector;
+    /// let x = Vector::mapped_linspace(0.0, 4.0, 5, |v| v * v);
+    /// assert_eq!(
+    ///     format!("{}", x),
+    ///     "┌    ┐\n\
+    ///      │  0 │\n\
+    ///      │  1 │\n\
+    ///      │  4 │\n\
+    ///      │  9 │\n\
+    ///      │ 16 │\n\
+    ///      └    ┘",
+    /// );
+    /// ```
+    pub fn mapped_linspace<F>(start: f64, stop: f64, count: usize, function: F) -> Self
+    where
+        F: Fn(f64) -> f64,
+    {
+        let mut res = Vector::new(count);
+        if count == 0 {
+            return res;
+        }
+        res.data[0] = function(start);
+        if count == 1 {
+            return res;
+        }
+        res.data[count - 1] = function(stop);
+        if count == 2 {
+            return res;
+        }
+        let step = (stop - start) / ((count - 1) as f64);
+        for i in 1..count {
+            res.data[i] = function(start + (i as f64) * step);
         }
         res
     }
@@ -675,27 +716,39 @@ mod tests {
         let x = Vector::linspace(0.0, 1.0, 11);
         let correct = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
         assert_vec_approx_eq!(x.data, correct, 1e-15);
-    }
 
-    #[test]
-    fn linspace_0_works() {
         let x = Vector::linspace(2.0, 3.0, 0);
         assert_eq!(x.data.len(), 0);
-    }
 
-    #[test]
-    fn linspace_1_works() {
         let x = Vector::linspace(2.0, 3.0, 1);
         assert_eq!(x.data.len(), 1);
         assert_eq!(x.data[0], 2.0);
-    }
 
-    #[test]
-    fn linspace_2_works() {
         let x = Vector::linspace(2.0, 3.0, 2);
         assert_eq!(x.data.len(), 2);
         assert_eq!(x.data[0], 2.0);
         assert_eq!(x.data[1], 3.0);
+    }
+
+    #[test]
+    fn mapped_linspace_works() {
+        let x = Vector::mapped_linspace(0.0, 4.0, 5, |v| v * v);
+        assert_eq!(x.data, &[0.0, 1.0, 4.0, 9.0, 16.0]);
+
+        let x = Vector::mapped_linspace(-1.0, 1.0, 5, |v| f64::abs(v));
+        assert_eq!(x.data, &[1.0, 0.5, 0.0, 0.5, 1.0]);
+
+        let x = Vector::mapped_linspace(2.0, 3.0, 0, |v| 1.0 + v);
+        assert_eq!(x.data.len(), 0);
+
+        let x = Vector::mapped_linspace(2.0, 3.0, 1, |v| 2.0 + v);
+        assert_eq!(x.data.len(), 1);
+        assert_eq!(x.data[0], 4.0);
+
+        let x = Vector::mapped_linspace(2.0, 3.0, 2, |v| 3.0 + v);
+        assert_eq!(x.data.len(), 2);
+        assert_eq!(x.data[0], 5.0);
+        assert_eq!(x.data[1], 6.0);
     }
 
     #[test]

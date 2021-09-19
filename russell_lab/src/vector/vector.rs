@@ -50,7 +50,7 @@ use std::ops::{Index, IndexMut};
 ///
 /// // create a copy and change its components
 /// let mut w = u.get_copy();
-/// w.apply(|x| f64::sqrt(x));
+/// w.map(|x| f64::sqrt(x));
 /// w[0] *= -1.0;
 /// w[1] *= -1.0;
 /// w[2] *= -1.0;
@@ -388,7 +388,7 @@ impl Vector {
     /// Applies a function over all components of this vector
     ///
     /// ```text
-    /// u := apply(function(ui))
+    /// u := map(function(ui))
     /// ```
     ///
     /// # Example
@@ -396,7 +396,7 @@ impl Vector {
     /// ```
     /// use russell_lab::*;
     /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
-    /// u.apply(|x| x * x);
+    /// u.map(|x| x * x);
     /// let correct = "┌   ┐\n\
     ///                │ 1 │\n\
     ///                │ 4 │\n\
@@ -404,7 +404,7 @@ impl Vector {
     ///                └   ┘";
     /// assert_eq!(format!("{}", u), correct);
     /// ```
-    pub fn apply<F>(&mut self, function: F)
+    pub fn map<F>(&mut self, function: F)
     where
         F: Fn(f64) -> f64,
     {
@@ -416,7 +416,7 @@ impl Vector {
     /// Applies a function (with index) over all components of this vector
     ///
     /// ```text
-    /// u := apply(function(i, ui))
+    /// u := map(function(i, ui))
     /// ```
     ///
     /// # Example
@@ -424,7 +424,7 @@ impl Vector {
     /// ```
     /// use russell_lab::*;
     /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
-    /// u.apply_with_index(|i, x| x * x + (i as f64));
+    /// u.map_with_index(|i, x| x * x + (i as f64));
     /// let correct = "┌    ┐\n\
     ///                │  1 │\n\
     ///                │  5 │\n\
@@ -432,7 +432,7 @@ impl Vector {
     ///                └    ┘";
     /// assert_eq!(format!("{}", u), correct);
     /// ```
-    pub fn apply_with_index<F>(&mut self, function: F)
+    pub fn map_with_index<F>(&mut self, function: F)
     where
         F: Fn(usize, f64) -> f64,
     {
@@ -811,17 +811,17 @@ mod tests {
     }
 
     #[test]
-    fn apply_works() {
+    fn map_works() {
         let mut u = Vector::from(&[-1.0, -2.0, -3.0]);
-        u.apply(|x| x * x * x);
+        u.map(|x| x * x * x);
         let correct = &[-1.0, -8.0, -27.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
     }
 
     #[test]
-    fn apply_with_index_works() {
+    fn map_with_index_works() {
         let mut u = Vector::from(&[-1.0, -2.0, -3.0]);
-        u.apply_with_index(|i, x| x * x * x + (i as f64));
+        u.map_with_index(|i, x| x * x * x + (i as f64));
         let correct = &[-1.0, -7.0, -25.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
     }

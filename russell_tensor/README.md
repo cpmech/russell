@@ -2,7 +2,7 @@
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
-Work in progress...
+🚧 Work in progress...
 
 This repository contains structures and functions to perform tensor analysis in continuum mechanics. We give focus to second and fourth order tensors expressed by their components placed in a vector or matrix. We also consider the Mandel basis.
 
@@ -18,7 +18,7 @@ Install OpenBLAS:
 sudo apt-get install libopenblas-dev
 ```
 
-Add this to your Cargo.toml:
+Add this to your Cargo.toml (choose the right version):
 
 ```toml
 [dependencies]

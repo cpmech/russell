@@ -2,7 +2,7 @@
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
-Work in progress...
+🚧 Work in progress...
 
 This repository contains structures and functions to work with statistics and probability distributions.
 
@@ -12,7 +12,7 @@ Documentation:
 
 ## Installation
 
-Add this to your Cargo.toml:
+Add this to your Cargo.toml (choose the right version):
 
 ```toml
 [dependencies]

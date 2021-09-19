@@ -39,7 +39,64 @@ Furthermore, if working on a multi-threaded application, it is recommended to se
 export OPENBLAS_NUM_THREADS=1
 ```
 
-## Example
+## Examples
+
+### Compute the pseudo-inverse matrix
+
+```rust
+use russell_lab::*;
+
+fn main() -> Result<(), &'static str> {
+    // set matrix
+    let mut a = Matrix::from(&[
+        [1.0, 0.0],
+        [0.0, 1.0],
+        [0.0, 1.0],
+    ]);
+    let a_copy = a.get_copy();
+
+    // compute pseudo-inverse matrix (because it's square)
+    let mut ai = Matrix::new(2, 3);
+    pseudo_inverse(&mut ai, &mut a)?;
+
+    // compare with solution
+    let ai_correct = "┌                ┐\n\
+                      │ 1.00 0.00 0.00 │\n\
+                      │ 0.00 0.50 0.50 │\n\
+                      └                ┘";
+    assert_eq!(format!("{:.2}", ai), ai_correct);
+
+    // compute a⋅ai
+    let (m, n) = a.dims();
+    let mut a_ai = Matrix::new(m, m);
+    for i in 0..m {
+        for j in 0..m {
+            for k in 0..n {
+                a_ai[i][j] += a_copy[i][k] * ai[k][j];
+            }
+        }
+    }
+
+    // check if a⋅ai⋅a == a
+    let mut a_ai_a = Matrix::new(m, n);
+    for i in 0..m {
+        for j in 0..n {
+            for k in 0..m {
+                a_ai_a[i][j] += a_ai[i][k] * a_copy[k][j];
+            }
+        }
+    }
+    let a_ai_a_correct = "┌           ┐\n\
+                          │ 1.00 0.00 │\n\
+                          │ 0.00 1.00 │\n\
+                          │ 0.00 1.00 │\n\
+                          └           ┘";
+    assert_eq!(format!("{:.2}", a_ai_a), a_ai_a_correct);
+    Ok(())
+}
+```
+
+### Compute eigenvalues
 
 ```rust
 use russell_lab::*;

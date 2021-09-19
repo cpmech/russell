@@ -57,69 +57,9 @@ export OPENBLAS_NUM_THREADS=1
 
 ## Examples
 
-### Solving a sparse linear system
+### Compute a singular value decomposition
 
 ```rust
-use russell_lab::*;
-use russell_sparse::*;
-
-fn main() -> Result<(), &'static str> {
-
-    // allocate a square matrix
-    let mut trip = SparseTriplet::new(5, 5, 13, false, false)?;
-    trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-    trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-    trip.put(1, 0, 3.0);
-    trip.put(0, 1, 3.0);
-    trip.put(2, 1, -1.0);
-    trip.put(4, 1, 4.0);
-    trip.put(1, 2, 4.0);
-    trip.put(2, 2, -3.0);
-    trip.put(3, 2, 1.0);
-    trip.put(4, 2, 2.0);
-    trip.put(2, 3, 2.0);
-    trip.put(1, 4, 6.0);
-    trip.put(4, 4, 1.0);
-
-    // print matrix
-    let (m, n) = trip.dims();
-    let mut a = Matrix::new(m, n);
-    trip.to_matrix(&mut a)?;
-    let correct = "┌                ┐\n\
-                   │  2  3  0  0  0 │\n\
-                   │  3  0  4  0  6 │\n\
-                   │  0 -1 -3  2  0 │\n\
-                   │  0  0  1  0  0 │\n\
-                   │  0  4  2  0  1 │\n\
-                   └                ┘";
-    assert_eq!(format!("{}", a), correct);
-
-    // allocate x and rhs
-    let mut x = Vector::new(5);
-    let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
-
-    // initialize, factorize, and solve
-    let config = ConfigSolver::new();
-    let mut solver = Solver::new(config)?;
-    solver.initialize(&trip, false)?;
-    solver.factorize(false)?;
-    solver.solve(&mut x, &rhs, false)?;
-    let correct = "┌          ┐\n\
-                   │ 1.000000 │\n\
-                   │ 2.000000 │\n\
-                   │ 3.000000 │\n\
-                   │ 4.000000 │\n\
-                   │ 5.000000 │\n\
-                   └          ┘";
-    assert_eq!(format!("{:.6}", x), correct);
-    Ok(())
-}
-```
-
-### Computing the singular value decomposition
-
-```rust
-// import
 use russell_lab::*;
 
 fn main() -> Result<(), &'static str> {
@@ -178,6 +118,93 @@ fn main() -> Result<(), &'static str> {
                        │ 0 0 │\n\
                        └     ┘";
     assert_eq!(format!("{}", usv), usv_correct);
+    Ok(())
+}
+```
+
+### Solve a linear system
+
+```rust
+use russell_lab::*;
+
+fn main() -> Result<(), &'static str> {
+    // set matrix and right-hand side
+    let mut a = Matrix::from(&[
+        [1.0,  3.0, -2.0],
+        [3.0,  5.0,  6.0],
+        [2.0,  4.0,  3.0],
+    ]);
+    let mut b = Vector::from(&[5.0, 7.0, 8.0]);
+
+    // solve linear system b := a⁻¹⋅b
+    solve_lin_sys(&mut b, &mut a)?;
+
+    // check
+    let x_correct = "┌         ┐\n\
+                     │ -15.000 │\n\
+                     │   8.000 │\n\
+                     │   2.000 │\n\
+                     └         ┘";
+    assert_eq!(format!("{:.3}", b), x_correct);
+    Ok(())
+}
+```
+
+### Solve a sparse linear system
+
+```rust
+use russell_lab::*;
+use russell_sparse::*;
+
+fn main() -> Result<(), &'static str> {
+
+    // allocate a square matrix
+    let mut trip = SparseTriplet::new(5, 5, 13, false, false)?;
+    trip.put(0, 0,  1.0); // << (0, 0, a00/2)
+    trip.put(0, 0,  1.0); // << (0, 0, a00/2)
+    trip.put(1, 0,  3.0);
+    trip.put(0, 1,  3.0);
+    trip.put(2, 1, -1.0);
+    trip.put(4, 1,  4.0);
+    trip.put(1, 2,  4.0);
+    trip.put(2, 2, -3.0);
+    trip.put(3, 2,  1.0);
+    trip.put(4, 2,  2.0);
+    trip.put(2, 3,  2.0);
+    trip.put(1, 4,  6.0);
+    trip.put(4, 4,  1.0);
+
+    // print matrix
+    let (m, n) = trip.dims();
+    let mut a = Matrix::new(m, n);
+    trip.to_matrix(&mut a)?;
+    let correct = "┌                ┐\n\
+                   │  2  3  0  0  0 │\n\
+                   │  3  0  4  0  6 │\n\
+                   │  0 -1 -3  2  0 │\n\
+                   │  0  0  1  0  0 │\n\
+                   │  0  4  2  0  1 │\n\
+                   └                ┘";
+    assert_eq!(format!("{}", a), correct);
+
+    // allocate x and rhs
+    let mut x = Vector::new(5);
+    let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
+
+    // initialize, factorize, and solve
+    let config = ConfigSolver::new();
+    let mut solver = Solver::new(config)?;
+    solver.initialize(&trip, false)?;
+    solver.factorize(false)?;
+    solver.solve(&mut x, &rhs, false)?;
+    let correct = "┌          ┐\n\
+                   │ 1.000000 │\n\
+                   │ 2.000000 │\n\
+                   │ 3.000000 │\n\
+                   │ 4.000000 │\n\
+                   │ 5.000000 │\n\
+                   └          ┘";
+    assert_eq!(format!("{:.6}", x), correct);
     Ok(())
 }
 ```

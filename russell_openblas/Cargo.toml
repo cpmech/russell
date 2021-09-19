@@ -1,6 +1,6 @@
 [package]
 name = "russell_openblas"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2018"
 license = "MIT"
 description = "Thin wrapper to some OpenBLAS routines"

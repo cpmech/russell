@@ -1,6 +1,14 @@
 //! Russell - Rust Scientific Library
 //!
 //! **chk**: Functions to check vectors and other data in tests
+//!
+//! # Example
+//!
+//! ```
+//! # use russell_chk::*;
+//! assert_approx_eq!(0.0000123, 0.000012, 1e-6);
+//! assert_vec_approx_eq!(&[0.01, 0.012], &[0.012, 0.01], 1e-2);
+//! ```
 
 /// Returns package description
 pub fn desc() -> String {

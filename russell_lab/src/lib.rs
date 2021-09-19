@@ -1,6 +1,34 @@
 //! Russell - Rust Scientific Library
 //!
 //! **lab**: Matrix-vector laboratory including linear algebra tools
+//!
+//! # Example - Cholesky factorization
+//!
+//! ```
+//! # fn main() -> Result<(), &'static str> {
+//! # use russell_lab::*;
+//! // set matrix
+//! let a = Matrix::from(&[
+//!     [  4.0,  12.0, -16.0],
+//!     [ 12.0,  37.0, -43.0],
+//!     [-16.0, -43.0,  98.0],
+//! ]);
+//!
+//! // perform factorization
+//! let m = a.nrow();
+//! let mut l = Matrix::new(m, m);
+//! cholesky_factor(&mut l, &a)?;
+//!
+//! // compare with solution
+//! let l_correct = "┌          ┐\n\
+//!                  │  2  0  0 │\n\
+//!                  │  6  1  0 │\n\
+//!                  │ -8  5  3 │\n\
+//!                  └          ┘";
+//! assert_eq!(format!("{}", l), l_correct);
+//! # Ok(())
+//! # }
+//! ```
 
 /// Returns package description
 pub fn desc() -> String {

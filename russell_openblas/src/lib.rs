@@ -1,6 +1,16 @@
 //! Russell - Rust Scientific Library
 //!
 //! **openblas**: Thin wrapper to some OpenBLAS routines
+//!
+//! # Example - dnrm2
+//!
+//! ```
+//! use russell_chk::*;
+//! use russell_openblas::*;
+//! let x = [1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0];
+//! let (n, incx) = (to_i32(x.len()), 1_i32);
+//! assert_approx_eq!(dnrm2(n, &x, incx), 5.0, 1e-15);
+//! ```
 
 /// Returns package description
 pub fn desc() -> String {

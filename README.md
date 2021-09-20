@@ -6,7 +6,9 @@
 
 ([CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en). Photo: [Bertrand Russell](https://en.wikipedia.org/wiki/Bertrand_Russell))
 
-**Russell** assists in the development of scientific computations using the Rust language. We mainly consider the development of numerical methods and solvers for differential equations.
+**Russell** assists in the development of scientific computations using the Rust language. We focus on numerical methods and solvers for differential equations; however, anything is possible 😉.
+
+An essential goal of this library is to bring the best (fastest) solutions while maintaining a very **clean** (and idiomatic) code, thoroughly tested (min coverage of 95%), and yet simple to use. The best solutions are brought by wrapping **powerful** libraries such as OpenBLAS, MUMPS, and SuiteSparse (UMFPACK).
 
 Available crates:
 
@@ -227,3 +229,5 @@ fn main() -> Result<(), &'static str> {
 - [ ] Add probability distribution functions to `russell_stat`
 - [ ] Finalize drawing of ASCII histogram in `russell_stat`
 - [ ] Implement standard continuum mechanics tensors in `russell_tensor`
+- [ ] Implement more integration tests for linear algebra
+- [ ] Implement more examples

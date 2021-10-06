@@ -19,6 +19,10 @@ Available crates:
 - [stat](https://github.com/cpmech/russell/tree/main/russell_stat) Statistics calculations, probability distributions, and pseudo random numbers
 - [tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) Tensor analysis structures and functions for continuum mechanics
 
+External recommended crate:
+
+- [plotpy](https://github.com/cpmech/plotpy) Plotting tools using Python3/Matplotlib as an engine
+
 ## Installation
 
 Install the following Debian packages:

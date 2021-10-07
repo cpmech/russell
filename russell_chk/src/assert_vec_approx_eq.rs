@@ -91,11 +91,11 @@ mod tests {
 
     #[test]
     fn it_should_accept_approx_equal_values() {
-        assert_vec_approx_eq!(&[1.0, 2.0], &[1.0, 2.01], 1e-2);
+        assert_vec_approx_eq!(&[1.0, 2.0], &[1.0, 2.02], 0.03);
     }
 
     #[test]
     fn it_should_accept_approx_equal_values_f32() {
-        assert_vec_approx_eq!(&[1f32, 2f32], &[1f32, 2.01f32], 1e-2);
+        assert_vec_approx_eq!(&[1f32, 2f32], &[1f32, 2.02f32], 0.03);
     }
 }

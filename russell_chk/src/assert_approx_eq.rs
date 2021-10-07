@@ -63,11 +63,11 @@ mod tests {
 
     #[test]
     fn it_should_accept_approx_equal_values() {
-        assert_approx_eq!(2.0, 2.01, 1e-2);
+        assert_approx_eq!(2.0, 2.02, 0.03);
     }
 
     #[test]
     fn it_should_accept_approx_equal_values_f32() {
-        assert_approx_eq!(2f32, 2.01f32, 1e-2);
+        assert_approx_eq!(2f32, 2.02f32, 0.03);
     }
 }

@@ -63,39 +63,39 @@ mod tests {
     #[should_panic(expected = "assertion failed: `(left.len() != right.len())` \
                                (left: `[1.0, 2.0]`, right: `[1.0]`)")]
     fn it_should_panic_on_different_lengths() {
-        assert_vec_approx_eq!(&[1.0, 2.0], &[1.0], 1e-17);
+        assert_vec_approx_eq!(&[1.0, 2.0], &[1.0], 1e-1);
     }
 
     #[test]
     #[should_panic(expected = "assertion failed: `(left[1] != right[1])` \
                                (left[1]: `2.0`, right[1]: `2.5`, \
-                               expect diff: `0.000001`, real diff: `0.5`)")]
+                               expect diff: `0.1`, real diff: `0.5`)")]
     fn it_should_panic_on_different_values() {
-        assert_vec_approx_eq!(&[1.0, 2.0], &[1.0, 2.5], 1e-6);
+        assert_vec_approx_eq!(&[1.0, 2.0], &[1.0, 2.5], 1e-1);
     }
 
     #[test]
     #[should_panic(expected = "assertion failed: `(left.len() != right.len())` \
                                (left: `[1.0, 2.0]`, right: `[1.0]`)")]
     fn it_should_panic_on_different_lengths_f32() {
-        assert_vec_approx_eq!(&[1f32, 2f32], &[1f32], 1e-17);
+        assert_vec_approx_eq!(&[1f32, 2f32], &[1f32], 1e-1);
     }
 
     #[test]
     #[should_panic(expected = "assertion failed: `(left[1] != right[1])` \
                                (left[1]: `2.0`, right[1]: `2.5`, \
-                               expect diff: `0.000001`, real diff: `0.5`)")]
+                               expect diff: `0.1`, real diff: `0.5`)")]
     fn it_should_panic_on_different_values_f32() {
-        assert_vec_approx_eq!(&[1f32, 2f32], &[1f32, 2.5f32], 1e-6);
+        assert_vec_approx_eq!(&[1f32, 2f32], &[1f32, 2.5f32], 1e-1);
     }
 
     #[test]
     fn it_should_accept_approx_equal_values() {
-        assert_vec_approx_eq!(&[1.0, 2.0], &[1.0, 2.000001], 1e-5);
+        assert_vec_approx_eq!(&[1.0, 2.0], &[1.0, 2.01], 1e-2);
     }
 
     #[test]
     fn it_should_accept_approx_equal_values_f32() {
-        assert_vec_approx_eq!(&[1f32, 2f32], &[1f32, 2.000001f32], 1e-5);
+        assert_vec_approx_eq!(&[1f32, 2f32], &[1f32, 2.01f32], 1e-2);
     }
 }

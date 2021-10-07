@@ -48,26 +48,26 @@ mod tests {
     #[test]
     #[should_panic(expected = "assertion failed: `(left != right)` \
                                (left: `2.0`, right: `2.5`, \
-                               expect diff: `0.000001`, real diff: `0.5`)")]
+                               expect diff: `0.1`, real diff: `0.5`)")]
     fn it_should_panic_on_different_values() {
-        assert_approx_eq!(2.0, 2.5, 1e-6);
+        assert_approx_eq!(2.0, 2.5, 1e-1);
     }
 
     #[test]
     #[should_panic(expected = "assertion failed: `(left != right)` \
                                (left: `2.0`, right: `2.5`, \
-                               expect diff: `0.000001`, real diff: `0.5`)")]
+                               expect diff: `0.1`, real diff: `0.5`)")]
     fn it_should_panic_on_different_values_f32() {
-        assert_approx_eq!(2f32, 2.5f32, 1e-6);
+        assert_approx_eq!(2f32, 2.5f32, 1e-1);
     }
 
     #[test]
     fn it_should_accept_approx_equal_values() {
-        assert_approx_eq!(2.0, 2.000001, 1e-5);
+        assert_approx_eq!(2.0, 2.01, 1e-2);
     }
 
     #[test]
     fn it_should_accept_approx_equal_values_f32() {
-        assert_approx_eq!(2f32, 2.000001f32, 1e-5);
+        assert_approx_eq!(2f32, 2.01f32, 1e-2);
     }
 }

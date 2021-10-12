@@ -29,11 +29,10 @@ const MUMPS_INT MUMPS_ICNTL28_SEQUENTIAL = 1;       // section 5.4, page 33
 const double UMF_PRINT_LEVEL_SILENT = 0.0;   // page 116
 const double UMF_PRINT_LEVEL_VERBOSE = 2.0;  // page 116
 
-const MUMPS_INT MMP_SYMMETRY[4] = {
-    0,  // Auto => Unsymmetric
-    2,  // General symmetric
+const MUMPS_INT MMP_SYMMETRY[3] = {
     0,  // Unsymmetric
     1,  // Positive-definite symmetric
+    2,  // General symmetric
 };
 
 const MUMPS_INT MMP_ORDERING[10] = {
@@ -61,11 +60,9 @@ const MUMPS_INT MMP_SCALING[9] = {
     77,  // Sum => Auto
 };
 
-const double UMF_SYMMETRY[4] = {
-    UMFPACK_STRATEGY_AUTO,         // Auto
-    UMFPACK_STRATEGY_SYMMETRIC,    // General symmetric
+const double UMF_SYMMETRY[2] = {
     UMFPACK_STRATEGY_UNSYMMETRIC,  // Unsymmetric
-    UMFPACK_STRATEGY_SYMMETRIC,    // Positive-definite symmetric => General symmetric
+    UMFPACK_STRATEGY_SYMMETRIC,    // General symmetric
 };
 
 const double UMF_ORDERING[10] = {

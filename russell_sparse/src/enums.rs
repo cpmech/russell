@@ -1,20 +1,35 @@
 /// Matrix symmetry options
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum EnumSymmetry {
+    /// Unsymmetric matrix
+    No,
+
     /// General symmetric matrix
-    General = 1,
+    General,
 
     /// The matrix is symmetric and only the triangular part is present (MMP only)
-    GeneralTriangular = 4,
+    GeneralTriangular,
 
     /// The matrix is positive-definite, symmetric, and only the triangular part is present (MMP only)
-    PosDefTriangular = 5,
+    PosDefTriangular,
+}
 
-    /// Unsymmetric matrix
-    No = 2,
+pub(crate) fn code_symmetry_mmp(option: EnumSymmetry) -> Result<i32, &'static str> {
+    match option {
+        EnumSymmetry::No => Ok(0),
+        EnumSymmetry::General => Err("General symmetry option is not available for MMP"),
+        EnumSymmetry::GeneralTriangular => Ok(2),
+        EnumSymmetry::PosDefTriangular => Ok(1),
+    }
+}
 
-    /// Positive-definite symmetric matrix (MMP-only, otherwise General)
-    PosDef = 3,
+pub(crate) fn code_symmetry_umf(option: EnumSymmetry) -> Result<i32, &'static str> {
+    match option {
+        EnumSymmetry::No => Ok(0),
+        EnumSymmetry::General => Ok(1),
+        EnumSymmetry::GeneralTriangular => Err("GeneralTriangular symmetry option is not available for UMF"),
+        EnumSymmetry::PosDefTriangular => Err("PosDefTriangular symmetry option is not available for UMF"),
+    }
 }
 
 /// Defines the solver kinds

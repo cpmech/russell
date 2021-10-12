@@ -1,6 +1,6 @@
 use super::{
-    str_enum_ordering, str_enum_scaling, str_mmp_ordering, str_mmp_scaling, str_umf_ordering, str_umf_scaling,
-    ConfigSolver, EnumSolverKind, SparseTriplet,
+    code_symmetry_mmp, code_symmetry_umf, str_enum_ordering, str_enum_scaling, str_mmp_ordering, str_mmp_scaling,
+    str_umf_ordering, str_umf_scaling, ConfigSolver, EnumSolverKind, SparseTriplet,
 };
 use russell_lab::{copy_vector, format_nanoseconds, Stopwatch, Vector};
 use russell_openblas::to_i32;
@@ -135,7 +135,7 @@ impl Solver {
                         trip.indices_i.as_ptr(),
                         trip.indices_j.as_ptr(),
                         trip.values_aij.as_ptr(),
-                        trip.symmetry as i32,
+                        code_symmetry_mmp(trip.symmetry)?,
                         self.config.ordering,
                         self.config.scaling,
                         self.config.pct_inc_workspace,
@@ -162,7 +162,7 @@ impl Solver {
                         trip.indices_i.as_ptr(),
                         trip.indices_j.as_ptr(),
                         trip.values_aij.as_ptr(),
-                        trip.symmetry as i32,
+                        code_symmetry_umf(trip.symmetry)?,
                         self.config.ordering,
                         self.config.scaling,
                         verb,

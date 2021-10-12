@@ -63,7 +63,7 @@ use russell_sparse::*;
 
 fn main() -> Result<(), &'static str> {
     // allocate a square matrix
-    let mut trip = SparseTriplet::new(3, 3, 5, EnumSymmetry::Auto)?;
+    let mut trip = SparseTriplet::new(3, 3, 5, EnumSymmetry::No)?;
     trip.put(0, 0, 0.2);
     trip.put(0, 1, 0.2);
     trip.put(1, 0, 0.5);

@@ -354,7 +354,7 @@ pub fn read_matrix_market(filepath: &String, sym_mirror: bool) -> Result<SparseT
             EnumSymmetry::GeneralTriangular
         }
     } else {
-        EnumSymmetry::Auto
+        EnumSymmetry::No
     };
 
     // allocate triplet
@@ -559,7 +559,7 @@ mod tests {
     fn read_matrix_market_works() -> Result<(), &'static str> {
         let filepath = "./data/matrix_market/ok1.mtx".to_string();
         let trip = read_matrix_market(&filepath, false)?;
-        assert_eq!(trip.symmetry, EnumSymmetry::Auto);
+        assert_eq!(trip.symmetry, EnumSymmetry::No);
         assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 12, 12));
         assert_eq!(trip.indices_i, &[0, 1, 0, 2, 4, 1, 2, 3, 4, 2, 1, 4]);
         assert_eq!(trip.indices_j, &[0, 0, 1, 1, 1, 2, 2, 2, 2, 3, 4, 4]);

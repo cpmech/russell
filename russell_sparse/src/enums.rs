@@ -1,18 +1,6 @@
-/// Defines the solver kinds
-pub enum EnumSolverKind {
-    /// The NON-THREAD-SAFE (Mu-M-P) Solver (use in single-thread apps / with huge matrices)
-    Mmp = 0,
-
-    /// Tim Davis' UMFPACK Solver (recommended, unless the matrix is huge)
-    Umf = 1,
-}
-
 /// Matrix symmetry options
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum EnumSymmetry {
-    /// Automatic detection (UMF-only, otherwise No)
-    Auto = 0,
-
     /// General symmetric matrix
     General = 1,
 
@@ -27,6 +15,15 @@ pub enum EnumSymmetry {
 
     /// Positive-definite symmetric matrix (MMP-only, otherwise General)
     PosDef = 3,
+}
+
+/// Defines the solver kinds
+pub enum EnumSolverKind {
+    /// The NON-THREAD-SAFE (Mu-M-P) Solver (use in single-thread apps / with huge matrices)
+    Mmp = 0,
+
+    /// Tim Davis' UMFPACK Solver (recommended, unless the matrix is huge)
+    Umf = 1,
 }
 
 /// Ordering options
@@ -125,16 +122,6 @@ pub fn enum_scaling(scaling: &str) -> EnumScaling {
     }
 }
 
-pub(crate) fn str_enum_symmetry(index: i32) -> &'static str {
-    match index {
-        0 => "Auto (UMF-only, otherwise No)",
-        1 => "General",
-        2 => "No",
-        3 => "PosDef (MMP-only, otherwise General)",
-        _ => panic!("<internal error: invalid index>"),
-    }
-}
-
 pub(crate) fn str_enum_ordering(index: i32) -> &'static str {
     match index {
         0 => "Amd",
@@ -221,8 +208,8 @@ pub(crate) fn str_umf_scaling(umf_code: i32) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        enum_ordering, enum_scaling, str_enum_ordering, str_enum_scaling, str_enum_symmetry, str_mmp_ordering,
-        str_mmp_scaling, str_umf_ordering, str_umf_scaling, EnumOrdering, EnumScaling,
+        enum_ordering, enum_scaling, str_enum_ordering, str_enum_scaling, str_mmp_ordering, str_mmp_scaling,
+        str_umf_ordering, str_umf_scaling, EnumOrdering, EnumScaling,
     };
 
     #[test]
@@ -256,12 +243,6 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "<internal error: invalid index>")]
-    fn str_enum_symmetry_panics_on_wrong_code() {
-        str_enum_symmetry(123);
-    }
-
-    #[test]
-    #[should_panic(expected = "<internal error: invalid index>")]
     fn str_enum_ordering_panics_on_wrong_code() {
         str_enum_ordering(123);
     }
@@ -270,14 +251,6 @@ mod tests {
     #[should_panic(expected = "<internal error: invalid index>")]
     fn str_enum_scaling_panics_on_wrong_code() {
         str_enum_scaling(123);
-    }
-
-    #[test]
-    fn str_enum_symmetry_works() {
-        assert_eq!(str_enum_symmetry(0), "Auto (UMF-only, otherwise No)");
-        assert_eq!(str_enum_symmetry(1), "General");
-        assert_eq!(str_enum_symmetry(2), "No");
-        assert_eq!(str_enum_symmetry(3), "PosDef (MMP-only, otherwise General)");
     }
 
     #[test]

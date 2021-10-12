@@ -28,7 +28,7 @@ impl VerifyLinSys {
     /// use russell_sparse::*;
     ///
     /// // set sparse matrix (3 x 3) with 4 non-zeros
-    /// let mut trip = SparseTriplet::new(3, 3, 4, EnumSymmetry::Auto)?;
+    /// let mut trip = SparseTriplet::new(3, 3, 4, EnumSymmetry::No)?;
     /// trip.put(0, 0, 1.0);
     /// trip.put(0, 2, 4.0);
     /// trip.put(1, 1, 2.0);
@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn new_fails_on_wrong_vectors() -> Result<(), &'static str> {
-        let trip = SparseTriplet::new(3, 2, 1, EnumSymmetry::Auto)?;
+        let trip = SparseTriplet::new(3, 2, 1, EnumSymmetry::No)?;
         let x = Vector::new(2);
         let rhs = Vector::new(3);
         let x_wrong = Vector::new(3);
@@ -146,7 +146,7 @@ mod tests {
         // | 1  3 -2 |
         // | 3  5  6 |
         // | 2  4  3 |
-        let mut trip = SparseTriplet::new(3, 3, 9, EnumSymmetry::Auto)?;
+        let mut trip = SparseTriplet::new(3, 3, 9, EnumSymmetry::No)?;
         trip.put(0, 0, 1.0);
         trip.put(0, 1, 3.0);
         trip.put(0, 2, -2.0);
@@ -169,7 +169,7 @@ mod tests {
 
     #[test]
     fn display_trait_works() -> Result<(), &'static str> {
-        let mut trip = SparseTriplet::new(2, 2, 2, EnumSymmetry::Auto)?;
+        let mut trip = SparseTriplet::new(2, 2, 2, EnumSymmetry::No)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
         let x = Vector::from(&[1.0, 1.0]);

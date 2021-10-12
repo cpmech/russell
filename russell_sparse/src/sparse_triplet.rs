@@ -82,7 +82,7 @@ impl SparseTriplet {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let trip = SparseTriplet::new(2, 2, 1, EnumSymmetry::Auto)?;
+    /// let trip = SparseTriplet::new(2, 2, 1, EnumSymmetry::No)?;
     /// assert_eq!(trip.dims(), (2, 2));
     /// # Ok(())
     /// # }
@@ -107,7 +107,7 @@ impl SparseTriplet {
     ///
     /// // define (4 x 4) sparse matrix with 6+1 non-zero values
     /// // (with an extra ij-repeated entry)
-    /// let mut trip = SparseTriplet::new(4, 4, 6+1, EnumSymmetry::Auto)?;
+    /// let mut trip = SparseTriplet::new(4, 4, 6+1, EnumSymmetry::No)?;
     /// trip.put(0, 0, 0.5); // (0, 0, a00/2)
     /// trip.put(0, 0, 0.5); // (0, 0, a00/2)
     /// trip.put(0, 1, 2.0);
@@ -176,7 +176,7 @@ impl SparseTriplet {
     /// use russell_sparse::*;
     ///
     /// // set sparse matrix (4 x 3) with 6 non-zeros
-    /// let mut trip = SparseTriplet::new(4, 3, 6, EnumSymmetry::Auto)?;
+    /// let mut trip = SparseTriplet::new(4, 3, 6, EnumSymmetry::No)?;
     /// trip.put(0, 0, 1.0);
     /// trip.put(1, 0, 2.0);
     /// trip.put(1, 1, 3.0);
@@ -258,55 +258,55 @@ mod tests {
     #[test]
     fn new_fails_on_wrong_input() {
         assert_eq!(
-            SparseTriplet::new(0, 3, 5, EnumSymmetry::Auto).err(),
+            SparseTriplet::new(0, 3, 5, EnumSymmetry::No).err(),
             Some("nrow, ncol, and max must all be greater than zero")
         );
         assert_eq!(
-            SparseTriplet::new(3, 0, 5, EnumSymmetry::Auto).err(),
+            SparseTriplet::new(3, 0, 5, EnumSymmetry::No).err(),
             Some("nrow, ncol, and max must all be greater than zero")
         );
         assert_eq!(
-            SparseTriplet::new(3, 3, 0, EnumSymmetry::Auto).err(),
+            SparseTriplet::new(3, 3, 0, EnumSymmetry::No).err(),
             Some("nrow, ncol, and max must all be greater than zero")
         );
     }
 
     #[test]
     fn new_works() -> Result<(), &'static str> {
-        let trip = SparseTriplet::new(3, 3, 5, EnumSymmetry::Auto)?;
+        let trip = SparseTriplet::new(3, 3, 5, EnumSymmetry::No)?;
         assert_eq!(trip.nrow, 3);
         assert_eq!(trip.ncol, 3);
         assert_eq!(trip.pos, 0);
         assert_eq!(trip.max, 5);
-        assert_eq!(trip.symmetry, EnumSymmetry::Auto);
+        assert_eq!(trip.symmetry, EnumSymmetry::No);
         Ok(())
     }
 
     #[test]
     #[should_panic]
     fn put_panics_on_wrong_values_1() {
-        let mut trip = SparseTriplet::new(1, 1, 1, EnumSymmetry::Auto).unwrap();
+        let mut trip = SparseTriplet::new(1, 1, 1, EnumSymmetry::No).unwrap();
         trip.put(1, 0, 0.0);
     }
 
     #[test]
     #[should_panic]
     fn put_panics_on_wrong_values_2() {
-        let mut trip = SparseTriplet::new(1, 1, 1, EnumSymmetry::Auto).unwrap();
+        let mut trip = SparseTriplet::new(1, 1, 1, EnumSymmetry::No).unwrap();
         trip.put(0, 1, 0.0);
     }
 
     #[test]
     #[should_panic]
     fn put_panics_on_wrong_values_3() {
-        let mut trip = SparseTriplet::new(1, 1, 1, EnumSymmetry::Auto).unwrap();
+        let mut trip = SparseTriplet::new(1, 1, 1, EnumSymmetry::No).unwrap();
         trip.put(0, 0, 0.0); // << all spots occupied
         trip.put(0, 0, 0.0);
     }
 
     #[test]
     fn put_works() -> Result<(), &'static str> {
-        let mut trip = SparseTriplet::new(3, 3, 5, EnumSymmetry::Auto)?;
+        let mut trip = SparseTriplet::new(3, 3, 5, EnumSymmetry::No)?;
         trip.put(0, 0, 1.0);
         assert_eq!(trip.pos, 1);
         trip.put(0, 1, 2.0);
@@ -322,14 +322,14 @@ mod tests {
 
     #[test]
     fn dims_works() -> Result<(), &'static str> {
-        let trip = SparseTriplet::new(3, 2, 1, EnumSymmetry::Auto)?;
+        let trip = SparseTriplet::new(3, 2, 1, EnumSymmetry::No)?;
         assert_eq!(trip.dims(), (3, 2));
         Ok(())
     }
 
     #[test]
     fn to_matrix_fails_on_wrong_dims() -> Result<(), &'static str> {
-        let trip = SparseTriplet::new(1, 1, 1, EnumSymmetry::Auto)?;
+        let trip = SparseTriplet::new(1, 1, 1, EnumSymmetry::No)?;
         let mut a_2x1 = Matrix::new(2, 1);
         let mut a_1x2 = Matrix::new(1, 2);
         assert_eq!(trip.to_matrix(&mut a_2x1), Err("wrong matrix dimensions"));
@@ -339,7 +339,7 @@ mod tests {
 
     #[test]
     fn to_matrix_works() -> Result<(), &'static str> {
-        let mut trip = SparseTriplet::new(3, 3, 5, EnumSymmetry::Auto)?;
+        let mut trip = SparseTriplet::new(3, 3, 5, EnumSymmetry::No)?;
         trip.put(0, 0, 1.0);
         trip.put(0, 1, 2.0);
         trip.put(1, 0, 3.0);
@@ -362,7 +362,7 @@ mod tests {
     #[test]
     fn to_matrix_with_duplicates_works() -> Result<(), &'static str> {
         // allocate a square matrix
-        let mut trip = SparseTriplet::new(5, 5, 13, EnumSymmetry::Auto)?;
+        let mut trip = SparseTriplet::new(5, 5, 13, EnumSymmetry::No)?;
         trip.put(0, 0, 1.0); // << (0, 0, a00/2)
         trip.put(0, 0, 1.0); // << (0, 0, a00/2)
         trip.put(1, 0, 3.0);
@@ -394,7 +394,7 @@ mod tests {
 
     #[test]
     fn mat_vec_mul_fails_on_wrong_input() -> Result<(), &'static str> {
-        let trip = SparseTriplet::new(2, 2, 1, EnumSymmetry::Auto)?;
+        let trip = SparseTriplet::new(2, 2, 1, EnumSymmetry::No)?;
         let u = Vector::new(3);
         assert_eq!(trip.mat_vec_mul(&u).err(), Some("u.ndim must equal a.ncol"));
         Ok(())
@@ -405,7 +405,7 @@ mod tests {
         //  1.0  2.0  3.0  4.0  5.0
         //  0.1  0.2  0.3  0.4  0.5
         // 10.0 20.0 30.0 40.0 50.0
-        let mut trip = SparseTriplet::new(3, 5, 15, EnumSymmetry::Auto)?;
+        let mut trip = SparseTriplet::new(3, 5, 15, EnumSymmetry::No)?;
         trip.put(0, 0, 1.0);
         trip.put(0, 1, 2.0);
         trip.put(0, 2, 3.0);

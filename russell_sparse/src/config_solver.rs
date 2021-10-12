@@ -1,13 +1,10 @@
-use super::{
-    str_enum_ordering, str_enum_scaling, str_enum_symmetry, EnumOrdering, EnumScaling, EnumSolverKind, EnumSymmetry,
-};
+use super::{str_enum_ordering, str_enum_scaling, EnumOrdering, EnumScaling, EnumSolverKind};
 use russell_openblas::to_i32;
 use std::fmt;
 
 /// Holds configuration options for the sparse Solver
 pub struct ConfigSolver {
     pub(crate) solver_kind: EnumSolverKind, // Solver kind
-    pub(crate) symmetry: i32,               // symmetry code
     pub(crate) ordering: i32,               // symmetric permutation (ordering)
     pub(crate) scaling: i32,                // scaling strategy
     pub(crate) pct_inc_workspace: i32,      // % increase in the estimated working space (MMP-only)
@@ -20,7 +17,6 @@ impl ConfigSolver {
     pub fn new() -> Self {
         ConfigSolver {
             solver_kind: EnumSolverKind::Umf,
-            symmetry: EnumSymmetry::No as i32,
             ordering: EnumOrdering::Auto as i32,
             scaling: EnumScaling::Auto as i32,
             pct_inc_workspace: 100, // (MMP-only)
@@ -32,11 +28,6 @@ impl ConfigSolver {
     /// Sets the solver kind
     pub fn set_solver_kind(&mut self, selection: EnumSolverKind) {
         self.solver_kind = selection;
-    }
-
-    /// Sets the symmetry option
-    pub fn set_symmetry(&mut self, selection: EnumSymmetry) {
-        self.symmetry = selection as i32;
     }
 
     /// Sets the method to compute a symmetric permutation (ordering)
@@ -80,14 +71,12 @@ impl fmt::Display for ConfigSolver {
         write!(
             f,
             "\x20\x20\x20\x20\"solverKind\": \"{}\",\n\
-             \x20\x20\x20\x20\"symmetry\": \"{}\",\n\
              \x20\x20\x20\x20\"ordering\": \"{}\",\n\
              \x20\x20\x20\x20\"scaling\": \"{}\",\n\
              \x20\x20\x20\x20\"pctIncWorkspace\": {},\n\
              \x20\x20\x20\x20\"maxWorkMemory\": {},\n\
              \x20\x20\x20\x20\"openmpNumThreads\": {}",
             kind,
-            str_enum_symmetry(self.symmetry),
             str_enum_ordering(self.ordering),
             str_enum_scaling(self.scaling),
             self.pct_inc_workspace,
@@ -103,12 +92,11 @@ impl fmt::Display for ConfigSolver {
 
 #[cfg(test)]
 mod tests {
-    use super::{ConfigSolver, EnumOrdering, EnumScaling, EnumSolverKind, EnumSymmetry};
+    use super::{ConfigSolver, EnumOrdering, EnumScaling, EnumSolverKind};
 
     #[test]
     fn new_works() {
         let config = ConfigSolver::new();
-        assert_eq!(config.symmetry, EnumSymmetry::No as i32);
         assert_eq!(config.ordering, EnumOrdering::Auto as i32);
         assert_eq!(config.scaling, EnumScaling::Auto as i32);
         assert_eq!(config.pct_inc_workspace, 100);
@@ -126,13 +114,6 @@ mod tests {
                 EnumSolverKind::Umf => assert!(true),
             }
         }
-    }
-
-    #[test]
-    fn set_symmetry_works() {
-        let mut config = ConfigSolver::new();
-        config.set_symmetry(EnumSymmetry::General);
-        assert_eq!(config.symmetry, EnumSymmetry::General as i32);
     }
 
     #[test]
@@ -174,7 +155,6 @@ mod tests {
     fn display_trait_works() {
         let config1 = ConfigSolver::new();
         let correct1: &str = "\x20\x20\x20\x20\"solverKind\": \"UMF\",\n\
-                              \x20\x20\x20\x20\"symmetry\": \"No\",\n\
                               \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
                               \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
                               \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
@@ -185,7 +165,6 @@ mod tests {
         config2.set_solver_kind(EnumSolverKind::Mmp);
         let correct2: &str = if cfg!(local_mmp) {
             "\x20\x20\x20\x20\"solverKind\": \"MMP-local\",\n\
-             \x20\x20\x20\x20\"symmetry\": \"No\",\n\
              \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
              \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
              \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
@@ -193,7 +172,6 @@ mod tests {
              \x20\x20\x20\x20\"openmpNumThreads\": 1"
         } else {
             "\x20\x20\x20\x20\"solverKind\": \"MMP\",\n\
-             \x20\x20\x20\x20\"symmetry\": \"No\",\n\
              \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
              \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
              \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\

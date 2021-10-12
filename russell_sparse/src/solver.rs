@@ -14,7 +14,7 @@ pub(crate) struct ExtSolver {
 
 extern "C" {
     // MMP
-    fn new_solver_mmp(symmetry: i32) -> *mut ExtSolver;
+    fn new_solver_mmp() -> *mut ExtSolver;
     fn drop_solver_mmp(solver: *mut ExtSolver);
     fn solver_mmp_initialize(
         solver: *mut ExtSolver,
@@ -23,6 +23,7 @@ extern "C" {
         indices_i: *const i32,
         indices_j: *const i32,
         values_aij: *const f64,
+        symmetry: i32,
         ordering: i32,
         scaling: i32,
         pct_inc_workspace: i32,
@@ -36,7 +37,7 @@ extern "C" {
     fn solver_mmp_used_scaling(solver: *const ExtSolver) -> i32;
 
     // UMF
-    fn new_solver_umf(symmetry: i32) -> *mut ExtSolver;
+    fn new_solver_umf() -> *mut ExtSolver;
     fn drop_solver_umf(solver: *mut ExtSolver);
     fn solver_umf_initialize(
         solver: *mut ExtSolver,
@@ -45,6 +46,7 @@ extern "C" {
         indices_i: *const i32,
         indices_j: *const i32,
         values_aij: *const f64,
+        symmetry: i32,
         ordering: i32,
         scaling: i32,
         verbose: i32,
@@ -85,8 +87,8 @@ impl Solver {
         let used_scaling = str_enum_scaling(config.scaling);
         unsafe {
             let solver = match config.solver_kind {
-                EnumSolverKind::Mmp => new_solver_mmp(config.symmetry),
-                EnumSolverKind::Umf => new_solver_umf(config.symmetry),
+                EnumSolverKind::Mmp => new_solver_mmp(),
+                EnumSolverKind::Umf => new_solver_umf(),
             };
             if solver.is_null() {
                 return Err("c-code failed to allocate solver");
@@ -121,7 +123,7 @@ impl Solver {
                 EnumSolverKind::Mmp => {
                     if self.done_initialize {
                         drop_solver_mmp(self.solver);
-                        self.solver = new_solver_mmp(self.config.symmetry);
+                        self.solver = new_solver_mmp();
                         if self.solver.is_null() {
                             return Err("c-code failed to reallocate solver");
                         }
@@ -133,6 +135,7 @@ impl Solver {
                         trip.indices_i.as_ptr(),
                         trip.indices_j.as_ptr(),
                         trip.values_aij.as_ptr(),
+                        self.config.symmetry,
                         self.config.ordering,
                         self.config.scaling,
                         self.config.pct_inc_workspace,
@@ -147,7 +150,7 @@ impl Solver {
                 EnumSolverKind::Umf => {
                     if self.done_initialize {
                         drop_solver_umf(self.solver);
-                        self.solver = new_solver_umf(self.config.symmetry);
+                        self.solver = new_solver_umf();
                         if self.solver.is_null() {
                             return Err("c-code failed to reallocate solver");
                         }
@@ -159,6 +162,7 @@ impl Solver {
                         trip.indices_i.as_ptr(),
                         trip.indices_j.as_ptr(),
                         trip.values_aij.as_ptr(),
+                        self.config.symmetry,
                         self.config.ordering,
                         self.config.scaling,
                         verb,

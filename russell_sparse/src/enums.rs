@@ -14,24 +14,6 @@ pub enum Symmetry {
     PosDefTriangular,
 }
 
-pub(crate) fn code_symmetry_mmp(option: Symmetry) -> Result<i32, &'static str> {
-    match option {
-        Symmetry::No => Ok(0),
-        Symmetry::General => Err("General symmetry option is not available for MMP"),
-        Symmetry::GeneralTriangular => Ok(2),
-        Symmetry::PosDefTriangular => Ok(1),
-    }
-}
-
-pub(crate) fn code_symmetry_umf(option: Symmetry) -> Result<i32, &'static str> {
-    match option {
-        Symmetry::No => Ok(0),
-        Symmetry::General => Ok(1),
-        Symmetry::GeneralTriangular => Err("GeneralTriangular symmetry option is not available for UMF"),
-        Symmetry::PosDefTriangular => Err("PosDefTriangular symmetry option is not available for UMF"),
-    }
-}
-
 /// Defines the solver kinds
 pub enum EnumSolverKind {
     /// The NON-THREAD-SAFE (Mu-M-P) Solver (use in single-thread apps / with huge matrices)
@@ -74,23 +56,6 @@ pub enum EnumOrdering {
     Scotch = 9,
 }
 
-/// Returns the EnumOrdering given its name
-pub fn enum_ordering(ordering: &str) -> EnumOrdering {
-    match ordering {
-        "Amd" => EnumOrdering::Amd,
-        "Amf" => EnumOrdering::Amf,
-        "Auto" => EnumOrdering::Auto,
-        "Best" => EnumOrdering::Best,
-        "Cholmod" => EnumOrdering::Cholmod,
-        "Metis" => EnumOrdering::Metis,
-        "No" => EnumOrdering::No,
-        "Pord" => EnumOrdering::Pord,
-        "Qamd" => EnumOrdering::Qamd,
-        "Scotch" => EnumOrdering::Scotch,
-        _ => EnumOrdering::Auto,
-    }
-}
-
 /// Scaling options for SolverMMP
 pub enum EnumScaling {
     /// Automatic scaling method selection
@@ -121,6 +86,23 @@ pub enum EnumScaling {
     Sum = 8,
 }
 
+/// Returns the EnumOrdering given its name
+pub fn enum_ordering(ordering: &str) -> EnumOrdering {
+    match ordering {
+        "Amd" => EnumOrdering::Amd,
+        "Amf" => EnumOrdering::Amf,
+        "Auto" => EnumOrdering::Auto,
+        "Best" => EnumOrdering::Best,
+        "Cholmod" => EnumOrdering::Cholmod,
+        "Metis" => EnumOrdering::Metis,
+        "No" => EnumOrdering::No,
+        "Pord" => EnumOrdering::Pord,
+        "Qamd" => EnumOrdering::Qamd,
+        "Scotch" => EnumOrdering::Scotch,
+        _ => EnumOrdering::Auto,
+    }
+}
+
 /// Returns the EnumScaling given its name
 pub fn enum_scaling(scaling: &str) -> EnumScaling {
     match scaling {
@@ -134,6 +116,24 @@ pub fn enum_scaling(scaling: &str) -> EnumScaling {
         "RowColRig" => EnumScaling::RowColRig,
         "Sum" => EnumScaling::Sum,
         _ => EnumScaling::Auto,
+    }
+}
+
+pub(crate) fn code_symmetry_mmp(option: Symmetry) -> Result<i32, &'static str> {
+    match option {
+        Symmetry::No => Ok(0),
+        Symmetry::General => Err("General symmetry option is not available for MMP"),
+        Symmetry::GeneralTriangular => Ok(2),
+        Symmetry::PosDefTriangular => Ok(1),
+    }
+}
+
+pub(crate) fn code_symmetry_umf(option: Symmetry) -> Result<i32, &'static str> {
+    match option {
+        Symmetry::No => Ok(0),
+        Symmetry::General => Ok(1),
+        Symmetry::GeneralTriangular => Err("GeneralTriangular symmetry option is not available for UMF"),
+        Symmetry::PosDefTriangular => Err("PosDefTriangular symmetry option is not available for UMF"),
     }
 }
 
@@ -222,9 +222,10 @@ pub(crate) fn str_umf_scaling(umf_code: i32) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+
     use super::{
-        enum_ordering, enum_scaling, str_enum_ordering, str_enum_scaling, str_mmp_ordering, str_mmp_scaling,
-        str_umf_ordering, str_umf_scaling, EnumOrdering, EnumScaling,
+        code_symmetry_mmp, code_symmetry_umf, enum_ordering, enum_scaling, str_enum_ordering, str_enum_scaling,
+        str_mmp_ordering, str_mmp_scaling, str_umf_ordering, str_umf_scaling, EnumOrdering, EnumScaling, Symmetry,
     };
 
     #[test]
@@ -254,6 +255,31 @@ mod tests {
         assert!(matches!(enum_scaling("RowColRig"), EnumScaling::RowColRig));
         assert!(matches!(enum_scaling("Sum"), EnumScaling::Sum));
         assert!(matches!(enum_scaling("Unknown"), EnumScaling::Auto));
+    }
+
+    #[test]
+    fn code_symmetry_mmp_works() {
+        assert_eq!(code_symmetry_mmp(Symmetry::No), Ok(0));
+        assert_eq!(
+            code_symmetry_mmp(Symmetry::General),
+            Err("General symmetry option is not available for MMP")
+        );
+        assert_eq!(code_symmetry_mmp(Symmetry::GeneralTriangular), Ok(2));
+        assert_eq!(code_symmetry_mmp(Symmetry::PosDefTriangular), Ok(1));
+    }
+
+    #[test]
+    fn code_symmetry_umf_works() {
+        assert_eq!(code_symmetry_umf(Symmetry::No), Ok(0));
+        assert_eq!(code_symmetry_umf(Symmetry::General), Ok(1));
+        assert_eq!(
+            code_symmetry_umf(Symmetry::GeneralTriangular),
+            Err("GeneralTriangular symmetry option is not available for UMF")
+        );
+        assert_eq!(
+            code_symmetry_umf(Symmetry::PosDefTriangular),
+            Err("PosDefTriangular symmetry option is not available for UMF")
+        );
     }
 
     #[test]

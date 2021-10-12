@@ -165,7 +165,7 @@ use russell_sparse::*;
 fn main() -> Result<(), &'static str> {
 
     // allocate a square matrix
-    let mut trip = SparseTriplet::new(5, 5, 13, false, false)?;
+    let mut trip = SparseTriplet::new(5, 5, 13, EnumSymmetry::Auto)?;
     trip.put(0, 0,  1.0); // << (0, 0, a00/2)
     trip.put(0, 0,  1.0); // << (0, 0, a00/2)
     trip.put(1, 0,  3.0);

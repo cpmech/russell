@@ -7,7 +7,7 @@ fn test_solver(kind: EnumSolverKind, verb_fact: bool, verb_sol: bool) {
         EnumSolverKind::Umf => println!("Testing UMF solver\n"),
     }
 
-    let mut trip = match SparseTriplet::new(5, 5, 13, false, false) {
+    let mut trip = match SparseTriplet::new(5, 5, 13, EnumSymmetry::Auto) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new triplet): {}", e);
@@ -78,7 +78,7 @@ fn test_solver(kind: EnumSolverKind, verb_fact: bool, verb_sol: bool) {
     println!("{}", solver);
     println!("x =\n{}", x);
 
-    let mut trip_singular = match SparseTriplet::new(5, 5, 2, false, false) {
+    let mut trip_singular = match SparseTriplet::new(5, 5, 2, EnumSymmetry::Auto) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new singular matrix): {}", e);

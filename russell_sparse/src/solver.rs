@@ -226,7 +226,7 @@ impl Solver {
     /// use russell_sparse::*;
     ///
     /// // allocate a square matrix
-    /// let mut trip = SparseTriplet::new(5, 5, 13, false, false)?;
+    /// let mut trip = SparseTriplet::new(5, 5, 13, EnumSymmetry::Auto)?;
     /// trip.put(0, 0, 1.0); // << (0, 0, a00/2)
     /// trip.put(0, 0, 1.0); // << (0, 0, a00/2)
     /// trip.put(1, 0, 3.0);
@@ -332,7 +332,7 @@ impl Solver {
     /// use russell_sparse::*;
     ///
     /// // allocate a square matrix
-    /// let mut trip = SparseTriplet::new(3, 3, 5, false, false)?;
+    /// let mut trip = SparseTriplet::new(3, 3, 5, EnumSymmetry::Auto)?;
     /// trip.put(0, 0, 0.2);
     /// trip.put(0, 1, 0.2);
     /// trip.put(1, 0, 0.5);
@@ -574,6 +574,7 @@ impl fmt::Display for Solver {
 #[cfg(test)]
 mod tests {
     use super::{ConfigSolver, EnumSolverKind, Solver, SparseTriplet};
+    use crate::EnumSymmetry;
     use russell_chk::*;
     use russell_lab::Vector;
 
@@ -589,7 +590,7 @@ mod tests {
     fn initialize_fails_on_rect_matrix() -> Result<(), &'static str> {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
-        let trip_rect = SparseTriplet::new(3, 2, 1, false, false)?;
+        let trip_rect = SparseTriplet::new(3, 2, 1, EnumSymmetry::Auto)?;
         assert_eq!(
             solver.initialize(&trip_rect, false),
             Err("the matrix represented by the triplet must be square")
@@ -601,7 +602,7 @@ mod tests {
     fn initialize_works() -> Result<(), &'static str> {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
-        let mut trip = SparseTriplet::new(2, 2, 2, false, false)?;
+        let mut trip = SparseTriplet::new(2, 2, 2, EnumSymmetry::Auto)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
         solver.initialize(&trip, false)?;
@@ -624,7 +625,7 @@ mod tests {
     fn factorize_fails_on_singular_matrix() -> Result<(), &'static str> {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
-        let mut trip = SparseTriplet::new(2, 2, 2, false, false)?;
+        let mut trip = SparseTriplet::new(2, 2, 2, EnumSymmetry::Auto)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 0.0);
         solver.initialize(&trip, false)?;
@@ -636,7 +637,7 @@ mod tests {
     fn factorize_works() -> Result<(), &'static str> {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
-        let mut trip = SparseTriplet::new(2, 2, 2, false, false)?;
+        let mut trip = SparseTriplet::new(2, 2, 2, EnumSymmetry::Auto)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
         solver.initialize(&trip, false)?;
@@ -649,7 +650,7 @@ mod tests {
     fn solve_fails_on_non_factorized() -> Result<(), &'static str> {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
-        let mut trip = SparseTriplet::new(2, 2, 2, false, false)?;
+        let mut trip = SparseTriplet::new(2, 2, 2, EnumSymmetry::Auto)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
         solver.initialize(&trip, false)?;
@@ -666,7 +667,7 @@ mod tests {
     fn solve_fails_on_wrong_vectors() -> Result<(), &'static str> {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
-        let mut trip = SparseTriplet::new(2, 2, 2, false, false)?;
+        let mut trip = SparseTriplet::new(2, 2, 2, EnumSymmetry::Auto)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
         solver.initialize(&trip, false)?;
@@ -692,7 +693,7 @@ mod tests {
         let mut solver = Solver::new(config)?;
 
         // allocate a square matrix
-        let mut trip = SparseTriplet::new(5, 5, 13, false, false)?;
+        let mut trip = SparseTriplet::new(5, 5, 13, EnumSymmetry::Auto)?;
         trip.put(0, 0, 1.0); // << (0, 0, a00/2)
         trip.put(0, 0, 1.0); // << (0, 0, a00/2)
         trip.put(1, 0, 3.0);
@@ -726,7 +727,7 @@ mod tests {
     fn reinitialize_works() -> Result<(), &'static str> {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
-        let mut trip = SparseTriplet::new(2, 2, 2, false, false)?;
+        let mut trip = SparseTriplet::new(2, 2, 2, EnumSymmetry::Auto)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);
         solver.initialize(&trip, false)?;
@@ -750,7 +751,7 @@ mod tests {
         let mut solver = Solver::new(config)?;
 
         // initialize fails on rectangular matrix
-        let trip_rect = SparseTriplet::new(3, 2, 1, false, false)?;
+        let trip_rect = SparseTriplet::new(3, 2, 1, EnumSymmetry::Auto)?;
         assert_eq!(
             solver.initialize(&trip_rect, false),
             Err("the matrix represented by the triplet must be square")
@@ -763,7 +764,7 @@ mod tests {
         );
 
         // allocate a square matrix
-        let mut trip = SparseTriplet::new(5, 5, 13, false, false)?;
+        let mut trip = SparseTriplet::new(5, 5, 13, EnumSymmetry::Auto)?;
         trip.put(0, 0, 1.0); // << (0, 0, a00/2)
         trip.put(0, 0, 1.0); // << (0, 0, a00/2)
         trip.put(1, 0, 3.0);
@@ -821,7 +822,7 @@ mod tests {
         assert_vec_approx_eq!(x_again.as_data(), x_correct, 1e-14);
 
         // factorize fails on singular matrix
-        let mut trip_singular = SparseTriplet::new(5, 5, 2, false, false)?;
+        let mut trip_singular = SparseTriplet::new(5, 5, 2, EnumSymmetry::Auto)?;
         trip_singular.put(0, 0, 1.0);
         trip_singular.put(4, 4, 1.0);
         solver.initialize(&trip_singular, false)?;
@@ -833,7 +834,7 @@ mod tests {
 
     #[test]
     fn new_solution_works() -> Result<(), &'static str> {
-        let mut trip = SparseTriplet::new(3, 3, 6, false, false)?;
+        let mut trip = SparseTriplet::new(3, 3, 6, EnumSymmetry::Auto)?;
         trip.put(0, 0, 1.0);
         trip.put(0, 1, 1.0);
         trip.put(1, 0, 2.0);

@@ -8,11 +8,19 @@ pub enum EnumSolverKind {
 }
 
 /// Matrix symmetry options
+#[derive(Debug, PartialEq)]
 pub enum EnumSymmetry {
-    Auto = 0, // Automatic detection (UMF-only, otherwise No)
+    /// Automatic detection (UMF-only, otherwise No)
+    Auto = 0,
 
     /// General symmetric matrix
     General = 1,
+
+    /// The matrix is symmetric and only the triangular part is present (MMP only)
+    GeneralTriangular = 4,
+
+    /// The matrix is positive-definite, symmetric, and only the triangular part is present (MMP only)
+    PosDefTriangular = 5,
 
     /// Unsymmetric matrix
     No = 2,

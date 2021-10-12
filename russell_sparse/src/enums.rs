@@ -1,6 +1,6 @@
 /// Matrix symmetry options
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum EnumSymmetry {
+pub enum Symmetry {
     /// Unsymmetric matrix
     No,
 
@@ -14,21 +14,21 @@ pub enum EnumSymmetry {
     PosDefTriangular,
 }
 
-pub(crate) fn code_symmetry_mmp(option: EnumSymmetry) -> Result<i32, &'static str> {
+pub(crate) fn code_symmetry_mmp(option: Symmetry) -> Result<i32, &'static str> {
     match option {
-        EnumSymmetry::No => Ok(0),
-        EnumSymmetry::General => Err("General symmetry option is not available for MMP"),
-        EnumSymmetry::GeneralTriangular => Ok(2),
-        EnumSymmetry::PosDefTriangular => Ok(1),
+        Symmetry::No => Ok(0),
+        Symmetry::General => Err("General symmetry option is not available for MMP"),
+        Symmetry::GeneralTriangular => Ok(2),
+        Symmetry::PosDefTriangular => Ok(1),
     }
 }
 
-pub(crate) fn code_symmetry_umf(option: EnumSymmetry) -> Result<i32, &'static str> {
+pub(crate) fn code_symmetry_umf(option: Symmetry) -> Result<i32, &'static str> {
     match option {
-        EnumSymmetry::No => Ok(0),
-        EnumSymmetry::General => Ok(1),
-        EnumSymmetry::GeneralTriangular => Err("GeneralTriangular symmetry option is not available for UMF"),
-        EnumSymmetry::PosDefTriangular => Err("PosDefTriangular symmetry option is not available for UMF"),
+        Symmetry::No => Ok(0),
+        Symmetry::General => Ok(1),
+        Symmetry::GeneralTriangular => Err("GeneralTriangular symmetry option is not available for UMF"),
+        Symmetry::PosDefTriangular => Err("PosDefTriangular symmetry option is not available for UMF"),
     }
 }
 

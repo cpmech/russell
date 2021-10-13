@@ -15,13 +15,12 @@ pub enum Symmetry {
 }
 
 /// Linear solver options
-#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LinSol {
     /// The NON-THREAD-SAFE (Mu-M-P) Solver (use in single-thread apps / with huge matrices)
-    Mmp = 0,
+    Mmp,
 
     /// Tim Davis' UMFPACK Solver (recommended, unless the matrix is huge)
-    Umf = 1,
+    Umf,
 }
 
 /// Ordering options

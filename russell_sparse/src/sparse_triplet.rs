@@ -39,8 +39,7 @@ impl SparseTriplet {
     /// * `ncol` -- The number of columns of the sparse matrix
     /// * `max` -- The maximum number fo non-zero values in the sparse matrix,
     ///            including entries with repeated indices
-    /// * `sym` -- Specifies how the data is stored regarding symmetry.
-    ///            Unsymmetric matrices are set with Symmetry::Auto
+    /// * `sym` -- Specifies how the data is stored regarding symmetry
     pub fn new(nrow: usize, ncol: usize, max: usize, sym: Symmetry) -> Result<Self, &'static str> {
         if nrow == 0 || ncol == 0 || max == 0 {
             return Err("nrow, ncol, and max must all be greater than zero");

@@ -10,6 +10,7 @@ pub struct ConfigSolver {
     pub(crate) pct_inc_workspace: i32,  // % increase in the estimated working space (MMP-only)
     pub(crate) max_work_memory: i32,    // max size of the working memory in mega bytes (MMP-only)
     pub(crate) openmp_num_threads: i32, // number of OpenMP threads (MMP-only)
+    pub(crate) verbose: i32,            // show lower-level messages
 }
 
 impl ConfigSolver {
@@ -22,6 +23,7 @@ impl ConfigSolver {
             pct_inc_workspace: 100, // (MMP-only)
             max_work_memory: 0,     // (MMP-only) 0 => Auto
             openmp_num_threads: 1,  // (MMP-only)
+            verbose: 0,
         }
     }
 
@@ -58,6 +60,12 @@ impl ConfigSolver {
     /// Sets the number of OpenMP threads (MMP-only)
     pub fn set_openmp_num_threads(&mut self, value: usize) -> &mut Self {
         self.openmp_num_threads = to_i32(value);
+        self
+    }
+
+    /// Sets option to show lower-level messages
+    pub fn set_verbose(&mut self) -> &mut Self {
+        self.verbose = 1;
         self
     }
 }
@@ -108,6 +116,7 @@ mod tests {
         assert_eq!(config.pct_inc_workspace, 100);
         assert_eq!(config.max_work_memory, 0);
         assert_eq!(config.openmp_num_threads, 1);
+        assert_eq!(config.verbose, 0);
     }
 
     #[test]
@@ -155,6 +164,13 @@ mod tests {
         let mut config = ConfigSolver::new();
         config.set_openmp_num_threads(2);
         assert_eq!(config.openmp_num_threads, 2);
+    }
+
+    #[test]
+    fn set_verbose_works() {
+        let mut config = ConfigSolver::new();
+        config.set_verbose();
+        assert_eq!(config.verbose, 1);
     }
 
     #[test]

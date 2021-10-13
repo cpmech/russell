@@ -87,7 +87,7 @@ fn main() -> Result<(), &'static str> {
     
     // calculate solution
     let config = ConfigSolver::new();
-    let (mut solver, x1) = Solver::new_solution(config, &trip, &rhs1, false, false)?;
+    let (mut solver, x1) = Solver::new_solution(config, &trip, &rhs1)?;
     let correct1 = "┌   ┐\n\
                     │ 3 │\n\
                     │ 2 │\n\
@@ -97,7 +97,7 @@ fn main() -> Result<(), &'static str> {
     
     // solve again
     let mut x2 = Vector::new(trip.dims().0);
-    solver.solve(&mut x2, &rhs2, false)?;
+    solver.solve(&mut x2, &rhs2)?;
     let correct2 = "┌   ┐\n\
                     │ 6 │\n\
                     │ 4 │\n\

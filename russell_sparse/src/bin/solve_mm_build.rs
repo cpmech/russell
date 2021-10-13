@@ -74,11 +74,14 @@ fn main() -> Result<(), &'static str> {
     if opt.omp_nt > 1 {
         config.set_openmp_num_threads(opt.omp_nt as usize);
     }
+    if opt.verbose {
+        config.set_verbose();
+    }
 
     // initialize and factorize
     let mut solver = Solver::new(config)?;
-    solver.initialize(&trip, if opt.mmp { opt.verbose } else { false })?;
-    solver.factorize(opt.verbose)?;
+    solver.initialize(&trip)?;
+    solver.factorize()?;
 
     // allocate vectors
     let m = trip.dims().0;
@@ -86,7 +89,7 @@ fn main() -> Result<(), &'static str> {
     let rhs = Vector::filled(m, 1.0);
 
     // solve linear system
-    solver.solve(&mut x, &rhs, opt.verbose)?;
+    solver.solve(&mut x, &rhs)?;
 
     // verify solution
     let verify = VerifyLinSys::new(&trip, &x, &rhs)?;

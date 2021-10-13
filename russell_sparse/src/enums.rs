@@ -24,7 +24,7 @@ pub enum LinSol {
 }
 
 /// Ordering option
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Ordering {
     /// Ordering using the approximate minimum degree
     Amd = 0,
@@ -58,7 +58,7 @@ pub enum Ordering {
 }
 
 /// Scaling option
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Scaling {
     /// Automatic scaling method selection
     Auto = 0,

@@ -719,6 +719,18 @@ mod tests {
     use russell_chk::*;
     use std::fmt::Write;
 
+    fn pow2(x: f64) -> f64 {
+        x * x
+    }
+
+    fn pow3(x: f64) -> f64 {
+        x * x * x
+    }
+
+    fn pow3_plus_i(i: usize, x: f64) -> f64 {
+        x * x * x + (i as f64)
+    }
+
     #[test]
     fn new_vector_works() {
         let u = Vector::new(3);
@@ -770,23 +782,23 @@ mod tests {
 
     #[test]
     fn mapped_linspace_works() {
-        let x = Vector::mapped_linspace(0.0, 4.0, 5, |v| v * v);
+        let x = Vector::mapped_linspace(0.0, 4.0, 5, pow2);
         assert_eq!(x.data, &[0.0, 1.0, 4.0, 9.0, 16.0]);
 
-        let x = Vector::mapped_linspace(-1.0, 1.0, 5, |v| f64::abs(v));
+        let x = Vector::mapped_linspace(-1.0, 1.0, 5, f64::abs);
         assert_eq!(x.data, &[1.0, 0.5, 0.0, 0.5, 1.0]);
 
-        let x = Vector::mapped_linspace(2.0, 3.0, 0, |v| 1.0 + v);
+        let x = Vector::mapped_linspace(2.0, 3.0, 0, pow3);
         assert_eq!(x.data.len(), 0);
 
-        let x = Vector::mapped_linspace(2.0, 3.0, 1, |v| 2.0 + v);
+        let x = Vector::mapped_linspace(2.0, 3.0, 1, pow3);
         assert_eq!(x.data.len(), 1);
-        assert_eq!(x.data[0], 4.0);
+        assert_eq!(x.data[0], 8.0);
 
-        let x = Vector::mapped_linspace(2.0, 3.0, 2, |v| 3.0 + v);
+        let x = Vector::mapped_linspace(2.0, 3.0, 2, pow3);
         assert_eq!(x.data.len(), 2);
-        assert_eq!(x.data[0], 5.0);
-        assert_eq!(x.data[1], 6.0);
+        assert_eq!(x.data[0], 8.0);
+        assert_eq!(x.data[1], 27.0);
     }
 
     #[test]
@@ -851,7 +863,7 @@ mod tests {
     #[test]
     fn map_works() {
         let mut u = Vector::from(&[-1.0, -2.0, -3.0]);
-        u.map(|x| x * x * x);
+        u.map(pow3);
         let correct = &[-1.0, -8.0, -27.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
     }
@@ -859,7 +871,7 @@ mod tests {
     #[test]
     fn map_with_index_works() {
         let mut u = Vector::from(&[-1.0, -2.0, -3.0]);
-        u.map_with_index(|i, x| x * x * x + (i as f64));
+        u.map_with_index(pow3_plus_i);
         let correct = &[-1.0, -7.0, -25.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
     }
@@ -878,7 +890,7 @@ mod tests {
     #[test]
     fn get_mapped_works() {
         let mut u = Vector::from(&[1.0, 2.0, 3.0]);
-        let v = u.get_mapped(|v| v * v);
+        let v = u.get_mapped(pow2);
         u.set(0, 0.11);
         u.set(1, 0.22);
         u.set(2, 0.33);

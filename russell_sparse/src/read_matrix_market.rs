@@ -559,7 +559,7 @@ mod tests {
     fn read_matrix_market_works() -> Result<(), &'static str> {
         let filepath = "./data/matrix_market/ok1.mtx".to_string();
         let trip = read_matrix_market(&filepath, false)?;
-        assert_eq!(trip.symmetry, Symmetry::No);
+        assert!(matches!(trip.symmetry, Symmetry::No));
         assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 12, 12));
         assert_eq!(trip.indices_i, &[0, 1, 0, 2, 4, 1, 2, 3, 4, 2, 1, 4]);
         assert_eq!(trip.indices_j, &[0, 0, 1, 1, 1, 2, 2, 2, 2, 3, 4, 4]);
@@ -574,7 +574,7 @@ mod tests {
     fn read_matrix_market_sym_triangle_works() -> Result<(), &'static str> {
         let filepath = "./data/matrix_market/ok2.mtx".to_string();
         let trip = read_matrix_market(&filepath, false)?;
-        assert_eq!(trip.symmetry, Symmetry::GeneralTriangular);
+        assert!(matches!(trip.symmetry, Symmetry::GeneralTriangular));
         assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 15, 15));
         assert_eq!(trip.indices_i, &[0, 1, 2, 3, 4, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3]);
         assert_eq!(trip.indices_j, &[0, 1, 2, 3, 4, 1, 2, 3, 4, 2, 3, 4, 3, 4, 4]);
@@ -589,7 +589,7 @@ mod tests {
     fn read_matrix_market_sym_mirror_works() -> Result<(), &'static str> {
         let filepath = "./data/matrix_market/ok3.mtx".to_string();
         let trip = read_matrix_market(&filepath, true)?;
-        assert_eq!(trip.symmetry, Symmetry::General);
+        assert!(matches!(trip.symmetry, Symmetry::General));
         assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 11, 14));
         assert_eq!(trip.indices_i, &[0, 1, 0, 2, 1, 3, 2, 3, 4, 1, 4, 0, 0, 0]);
         assert_eq!(trip.indices_j, &[0, 0, 1, 1, 2, 2, 3, 3, 1, 4, 4, 0, 0, 0]);

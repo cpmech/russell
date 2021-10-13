@@ -214,7 +214,11 @@ impl SparseTriplet {
         if u.dim() != self.ncol {
             return Err("u.ndim must equal a.ncol");
         }
-        let sym_tri = self.symmetry == Symmetry::GeneralTriangular || self.symmetry == Symmetry::PosDefTriangular;
+        let sym_tri = match self.symmetry {
+            Symmetry::GeneralTriangular => true,
+            Symmetry::PosDefTriangular => true,
+            _ => false,
+        };
         let mut v = Vector::new(self.nrow);
         for p in 0..self.pos {
             let i = self.indices_i[p] as usize;
@@ -276,7 +280,7 @@ mod tests {
         assert_eq!(trip.ncol, 3);
         assert_eq!(trip.pos, 0);
         assert_eq!(trip.max, 5);
-        assert_eq!(trip.symmetry, Symmetry::No);
+        assert!(matches!(trip.symmetry, Symmetry::No));
         Ok(())
     }
 

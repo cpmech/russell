@@ -1,5 +1,5 @@
 /// Matrix symmetry option
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum Symmetry {
     /// Unsymmetric matrix
     No,

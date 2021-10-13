@@ -1,28 +1,30 @@
-/// Defines the solver kinds
-pub enum EnumSolverKind {
-    /// The NON-THREAD-SAFE (Mu-M-P) Solver (use in single-thread apps / with huge matrices)
-    Mmp = 0,
-
-    /// Tim Davis' UMFPACK Solver (recommended, unless the matrix is huge)
-    Umf = 1,
-}
-
-/// Matrix symmetry options
-pub enum EnumSymmetry {
-    Auto = 0, // Automatic detection (UMF-only, otherwise No)
+/// Matrix symmetry option
+#[derive(Debug)]
+pub enum Symmetry {
+    /// Unsymmetric matrix
+    No,
 
     /// General symmetric matrix
-    General = 1,
+    General,
 
-    /// Unsymmetric matrix
-    No = 2,
+    /// The matrix is symmetric and only the triangular part is present (MMP only)
+    GeneralTriangular,
 
-    /// Positive-definite symmetric matrix (MMP-only, otherwise General)
-    PosDef = 3,
+    /// The matrix is positive-definite, symmetric, and only the triangular part is present (MMP only)
+    PosDefTriangular,
 }
 
-/// Ordering options
-pub enum EnumOrdering {
+/// Linear solver name
+pub enum LinSol {
+    /// The NON-THREAD-SAFE (Mu-M-P) Solver (use in single-thread apps / with huge matrices)
+    Mmp,
+
+    /// Tim Davis' UMFPACK Solver (recommended, unless the matrix is huge)
+    Umf,
+}
+
+/// Ordering option
+pub enum Ordering {
     /// Ordering using the approximate minimum degree
     Amd = 0,
 
@@ -54,25 +56,8 @@ pub enum EnumOrdering {
     Scotch = 9,
 }
 
-/// Returns the EnumOrdering given its name
-pub fn enum_ordering(ordering: &str) -> EnumOrdering {
-    match ordering {
-        "Amd" => EnumOrdering::Amd,
-        "Amf" => EnumOrdering::Amf,
-        "Auto" => EnumOrdering::Auto,
-        "Best" => EnumOrdering::Best,
-        "Cholmod" => EnumOrdering::Cholmod,
-        "Metis" => EnumOrdering::Metis,
-        "No" => EnumOrdering::No,
-        "Pord" => EnumOrdering::Pord,
-        "Qamd" => EnumOrdering::Qamd,
-        "Scotch" => EnumOrdering::Scotch,
-        _ => EnumOrdering::Auto,
-    }
-}
-
-/// Scaling options for SolverMMP
-pub enum EnumScaling {
+/// Scaling option
+pub enum Scaling {
     /// Automatic scaling method selection
     Auto = 0,
 
@@ -101,29 +86,54 @@ pub enum EnumScaling {
     Sum = 8,
 }
 
-/// Returns the EnumScaling given its name
-pub fn enum_scaling(scaling: &str) -> EnumScaling {
-    match scaling {
-        "Auto" => EnumScaling::Auto,
-        "Column" => EnumScaling::Column,
-        "Diagonal" => EnumScaling::Diagonal,
-        "Max" => EnumScaling::Max,
-        "No" => EnumScaling::No,
-        "RowCol" => EnumScaling::RowCol,
-        "RowColIter" => EnumScaling::RowColIter,
-        "RowColRig" => EnumScaling::RowColRig,
-        "Sum" => EnumScaling::Sum,
-        _ => EnumScaling::Auto,
+/// Returns the Ordering by name
+pub fn enum_ordering(ordering: &str) -> Ordering {
+    match ordering {
+        "Amd" => Ordering::Amd,
+        "Amf" => Ordering::Amf,
+        "Auto" => Ordering::Auto,
+        "Best" => Ordering::Best,
+        "Cholmod" => Ordering::Cholmod,
+        "Metis" => Ordering::Metis,
+        "No" => Ordering::No,
+        "Pord" => Ordering::Pord,
+        "Qamd" => Ordering::Qamd,
+        "Scotch" => Ordering::Scotch,
+        _ => Ordering::Auto,
     }
 }
 
-pub(crate) fn str_enum_symmetry(index: i32) -> &'static str {
-    match index {
-        0 => "Auto (UMF-only, otherwise No)",
-        1 => "General",
-        2 => "No",
-        3 => "PosDef (MMP-only, otherwise General)",
-        _ => panic!("<internal error: invalid index>"),
+/// Returns the Scaling by name
+pub fn enum_scaling(scaling: &str) -> Scaling {
+    match scaling {
+        "Auto" => Scaling::Auto,
+        "Column" => Scaling::Column,
+        "Diagonal" => Scaling::Diagonal,
+        "Max" => Scaling::Max,
+        "No" => Scaling::No,
+        "RowCol" => Scaling::RowCol,
+        "RowColIter" => Scaling::RowColIter,
+        "RowColRig" => Scaling::RowColRig,
+        "Sum" => Scaling::Sum,
+        _ => Scaling::Auto,
+    }
+}
+
+pub(crate) fn code_symmetry_mmp(option: &Symmetry) -> Result<i32, &'static str> {
+    match option {
+        Symmetry::No => Ok(0),
+        Symmetry::General => Err("General symmetry option is not available for MMP"),
+        Symmetry::GeneralTriangular => Ok(2),
+        Symmetry::PosDefTriangular => Ok(1),
+    }
+}
+
+pub(crate) fn code_symmetry_umf(option: &Symmetry) -> Result<i32, &'static str> {
+    match option {
+        Symmetry::No => Ok(0),
+        Symmetry::General => Ok(1),
+        Symmetry::GeneralTriangular => Err("GeneralTriangular symmetry option is not available for UMF"),
+        Symmetry::PosDefTriangular => Err("PosDefTriangular symmetry option is not available for UMF"),
     }
 }
 
@@ -213,43 +223,62 @@ pub(crate) fn str_umf_scaling(umf_code: i32) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        enum_ordering, enum_scaling, str_enum_ordering, str_enum_scaling, str_enum_symmetry, str_mmp_ordering,
-        str_mmp_scaling, str_umf_ordering, str_umf_scaling, EnumOrdering, EnumScaling,
+        code_symmetry_mmp, code_symmetry_umf, enum_ordering, enum_scaling, str_enum_ordering, str_enum_scaling,
+        str_mmp_ordering, str_mmp_scaling, str_umf_ordering, str_umf_scaling, Ordering, Scaling, Symmetry,
     };
 
     #[test]
     fn enum_ordering_works() {
-        assert!(matches!(enum_ordering("Amd"), EnumOrdering::Amd));
-        assert!(matches!(enum_ordering("Amf"), EnumOrdering::Amf));
-        assert!(matches!(enum_ordering("Auto"), EnumOrdering::Auto));
-        assert!(matches!(enum_ordering("Best"), EnumOrdering::Best));
-        assert!(matches!(enum_ordering("Cholmod"), EnumOrdering::Cholmod));
-        assert!(matches!(enum_ordering("Metis"), EnumOrdering::Metis));
-        assert!(matches!(enum_ordering("No"), EnumOrdering::No));
-        assert!(matches!(enum_ordering("Pord"), EnumOrdering::Pord));
-        assert!(matches!(enum_ordering("Qamd"), EnumOrdering::Qamd));
-        assert!(matches!(enum_ordering("Scotch"), EnumOrdering::Scotch));
-        assert!(matches!(enum_ordering("Unknown"), EnumOrdering::Auto));
+        assert!(matches!(enum_ordering("Amd"), Ordering::Amd));
+        assert!(matches!(enum_ordering("Amf"), Ordering::Amf));
+        assert!(matches!(enum_ordering("Auto"), Ordering::Auto));
+        assert!(matches!(enum_ordering("Best"), Ordering::Best));
+        assert!(matches!(enum_ordering("Cholmod"), Ordering::Cholmod));
+        assert!(matches!(enum_ordering("Metis"), Ordering::Metis));
+        assert!(matches!(enum_ordering("No"), Ordering::No));
+        assert!(matches!(enum_ordering("Pord"), Ordering::Pord));
+        assert!(matches!(enum_ordering("Qamd"), Ordering::Qamd));
+        assert!(matches!(enum_ordering("Scotch"), Ordering::Scotch));
+        assert!(matches!(enum_ordering("Unknown"), Ordering::Auto));
     }
 
     #[test]
     fn enum_scaling_works() {
-        assert!(matches!(enum_scaling("Auto"), EnumScaling::Auto));
-        assert!(matches!(enum_scaling("Column"), EnumScaling::Column));
-        assert!(matches!(enum_scaling("Diagonal"), EnumScaling::Diagonal));
-        assert!(matches!(enum_scaling("Max"), EnumScaling::Max));
-        assert!(matches!(enum_scaling("No"), EnumScaling::No));
-        assert!(matches!(enum_scaling("RowCol"), EnumScaling::RowCol));
-        assert!(matches!(enum_scaling("RowColIter"), EnumScaling::RowColIter));
-        assert!(matches!(enum_scaling("RowColRig"), EnumScaling::RowColRig));
-        assert!(matches!(enum_scaling("Sum"), EnumScaling::Sum));
-        assert!(matches!(enum_scaling("Unknown"), EnumScaling::Auto));
+        assert!(matches!(enum_scaling("Auto"), Scaling::Auto));
+        assert!(matches!(enum_scaling("Column"), Scaling::Column));
+        assert!(matches!(enum_scaling("Diagonal"), Scaling::Diagonal));
+        assert!(matches!(enum_scaling("Max"), Scaling::Max));
+        assert!(matches!(enum_scaling("No"), Scaling::No));
+        assert!(matches!(enum_scaling("RowCol"), Scaling::RowCol));
+        assert!(matches!(enum_scaling("RowColIter"), Scaling::RowColIter));
+        assert!(matches!(enum_scaling("RowColRig"), Scaling::RowColRig));
+        assert!(matches!(enum_scaling("Sum"), Scaling::Sum));
+        assert!(matches!(enum_scaling("Unknown"), Scaling::Auto));
     }
 
     #[test]
-    #[should_panic(expected = "<internal error: invalid index>")]
-    fn str_enum_symmetry_panics_on_wrong_code() {
-        str_enum_symmetry(123);
+    fn code_symmetry_mmp_works() {
+        assert_eq!(code_symmetry_mmp(&Symmetry::No), Ok(0));
+        assert_eq!(
+            code_symmetry_mmp(&Symmetry::General),
+            Err("General symmetry option is not available for MMP")
+        );
+        assert_eq!(code_symmetry_mmp(&Symmetry::GeneralTriangular), Ok(2));
+        assert_eq!(code_symmetry_mmp(&Symmetry::PosDefTriangular), Ok(1));
+    }
+
+    #[test]
+    fn code_symmetry_umf_works() {
+        assert_eq!(code_symmetry_umf(&Symmetry::No), Ok(0));
+        assert_eq!(code_symmetry_umf(&Symmetry::General), Ok(1));
+        assert_eq!(
+            code_symmetry_umf(&Symmetry::GeneralTriangular),
+            Err("GeneralTriangular symmetry option is not available for UMF")
+        );
+        assert_eq!(
+            code_symmetry_umf(&Symmetry::PosDefTriangular),
+            Err("PosDefTriangular symmetry option is not available for UMF")
+        );
     }
 
     #[test]
@@ -262,14 +291,6 @@ mod tests {
     #[should_panic(expected = "<internal error: invalid index>")]
     fn str_enum_scaling_panics_on_wrong_code() {
         str_enum_scaling(123);
-    }
-
-    #[test]
-    fn str_enum_symmetry_works() {
-        assert_eq!(str_enum_symmetry(0), "Auto (UMF-only, otherwise No)");
-        assert_eq!(str_enum_symmetry(1), "General");
-        assert_eq!(str_enum_symmetry(2), "No");
-        assert_eq!(str_enum_symmetry(3), "PosDef (MMP-only, otherwise General)");
     }
 
     #[test]

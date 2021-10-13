@@ -165,7 +165,7 @@ use russell_sparse::*;
 fn main() -> Result<(), &'static str> {
 
     // allocate a square matrix
-    let mut trip = SparseTriplet::new(5, 5, 13, false, false)?;
+    let mut trip = SparseTriplet::new(5, 5, 13, Symmetry::No)?;
     trip.put(0, 0,  1.0); // << (0, 0, a00/2)
     trip.put(0, 0,  1.0); // << (0, 0, a00/2)
     trip.put(1, 0,  3.0);
@@ -200,9 +200,9 @@ fn main() -> Result<(), &'static str> {
     // initialize, factorize, and solve
     let config = ConfigSolver::new();
     let mut solver = Solver::new(config)?;
-    solver.initialize(&trip, false)?;
-    solver.factorize(false)?;
-    solver.solve(&mut x, &rhs, false)?;
+    solver.initialize(&trip)?;
+    solver.factorize()?;
+    solver.solve(&mut x, &rhs)?;
     let correct = "┌          ┐\n\
                    │ 1.000000 │\n\
                    │ 2.000000 │\n\

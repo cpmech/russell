@@ -27,42 +27,21 @@ static inline void set_mmp_verbose(DMUMPS_STRUC_C *data, int32_t verbose) {
 }
 
 struct SolverMMP {
-    DMUMPS_STRUC_C data;  // data structure
+    DMUMPS_STRUC_C data;    // data structure
+    int32_t done_job_init;  // job init successfully
 };
 
-struct SolverMMP *new_solver_mmp(int32_t symmetry) {
+struct SolverMMP *new_solver_mmp() {
     struct SolverMMP *solver = (struct SolverMMP *)malloc(sizeof(struct SolverMMP));
 
     if (solver == NULL) {
         return NULL;
     }
 
-    solver->data.comm_fortran = MUMPS_IGNORED;
-    solver->data.par = MUMPS_PAR_HOST_ALSO_WORKS;
-    solver->data.sym = MMP_SYMMETRY[symmetry];
-
-    set_mmp_verbose(&solver->data, C_FALSE);
-    solver->data.job = MUMPS_JOB_INITIALIZE;
-    dmumps_c(&solver->data);
-
-    if (solver->data.INFOG(1) != 0) {
-        free(solver);
-        return NULL;
-    }
-
-    if (strcmp(solver->data.version_number, MUMPS_VERSION) != 0) {
-        printf("\n\n\nERROR: MUMPS LIBRARY VERSION = ");
-        int i;
-        for (i = 0; i < MUMPS_VERSION_MAX_LEN; i++) {
-            printf("%c", solver->data.version_number[i]);
-        }
-        printf(" != INCLUDE VERSION = %s \n\n\n", MUMPS_VERSION);
-        set_mmp_verbose(&solver->data, C_FALSE);
-        solver->data.job = MUMPS_JOB_TERMINATE;
-        dmumps_c(&solver->data);
-        free(solver);
-        return NULL;
-    }
+    solver->data.irn = NULL;
+    solver->data.jcn = NULL;
+    solver->data.a = NULL;
+    solver->done_job_init = C_FALSE;
 
     return solver;
 }
@@ -72,18 +51,23 @@ void drop_solver_mmp(struct SolverMMP *solver) {
         return;
     }
 
-    set_mmp_verbose(&solver->data, 0);
-    solver->data.job = MUMPS_JOB_TERMINATE;
-    dmumps_c(&solver->data);
-
     if (solver->data.irn != NULL) {
         free(solver->data.irn);
+        solver->data.irn = NULL;
     }
     if (solver->data.jcn != NULL) {
         free(solver->data.jcn);
+        solver->data.jcn = NULL;
     }
     if (solver->data.a != NULL) {
         free(solver->data.a);
+        solver->data.a = NULL;
+    }
+
+    if (solver->done_job_init == C_TRUE) {
+        set_mmp_verbose(&solver->data, C_FALSE);
+        solver->data.job = MUMPS_JOB_TERMINATE;
+        dmumps_c(&solver->data);
     }
 
     free(solver);
@@ -95,6 +79,7 @@ int32_t solver_mmp_initialize(struct SolverMMP *solver,
                               int32_t const *indices_i,
                               int32_t const *indices_j,
                               double const *values_aij,
+                              int32_t symmetry,
                               int32_t ordering,
                               int32_t scaling,
                               int32_t pct_inc_workspace,
@@ -103,6 +88,28 @@ int32_t solver_mmp_initialize(struct SolverMMP *solver,
                               int32_t verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
+    }
+
+    solver->data.comm_fortran = MUMPS_IGNORED;
+    solver->data.par = MUMPS_PAR_HOST_ALSO_WORKS;
+    solver->data.sym = MMP_SYMMETRY[symmetry];
+
+    set_mmp_verbose(&solver->data, C_FALSE);
+    solver->data.job = MUMPS_JOB_INITIALIZE;
+    dmumps_c(&solver->data);
+    if (solver->data.INFOG(1) != 0) {
+        return solver->data.INFOG(1);
+    }
+    solver->done_job_init = C_TRUE;
+
+    if (strcmp(solver->data.version_number, MUMPS_VERSION) != 0) {
+        printf("\n\n\nERROR: MUMPS LIBRARY VERSION = ");
+        int i;
+        for (i = 0; i < MUMPS_VERSION_MAX_LEN; i++) {
+            printf("%c", solver->data.version_number[i]);
+        }
+        printf(" != INCLUDE VERSION = %s \n\n\n", MUMPS_VERSION);
+        return VERSION_ERROR;
     }
 
     solver->data.irn = (MUMPS_INT *)malloc(nnz * sizeof(MUMPS_INT));

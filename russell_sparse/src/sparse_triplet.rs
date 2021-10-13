@@ -1,3 +1,4 @@
+use super::Symmetry;
 use russell_lab::{Matrix, Vector};
 use russell_openblas::to_i32;
 use std::fmt;
@@ -18,8 +19,7 @@ pub struct SparseTriplet {
     pub(crate) ncol: usize,          // [i32] number of columns
     pub(crate) pos: usize,           // [i32] current index => nnz in the end
     pub(crate) max: usize,           // [i32] max allowed number of entries (may be > nnz)
-    pub(crate) sym_part: bool,       // general symmetric, without one side of the diagonal (lower or upper)
-    pub(crate) sym_full: bool,       // general symmetric, with both sides of the diagonal
+    pub(crate) symmetry: Symmetry,   // Storage option regarding symmetry
     pub(crate) indices_i: Vec<i32>,  // [nnz] indices i
     pub(crate) indices_j: Vec<i32>,  // [nnz] indices j
     pub(crate) values_aij: Vec<f64>, // [nnz] values aij
@@ -39,22 +39,17 @@ impl SparseTriplet {
     /// * `ncol` -- The number of columns of the sparse matrix
     /// * `max` -- The maximum number fo non-zero values in the sparse matrix,
     ///            including entries with repeated indices
-    /// * `sym_part` -- The matrix is symmetric, but represented by the lower- or upper-triangular part only (e.g., for the MMP solver)
-    /// * `sym_full` -- The matrix is symmetric and has both sides of the diagonal represented (e.g., for the UMF solver)
-    pub fn new(nrow: usize, ncol: usize, max: usize, sym_part: bool, sym_full: bool) -> Result<Self, &'static str> {
+    /// * `sym` -- Specifies how the data is stored regarding symmetry
+    pub fn new(nrow: usize, ncol: usize, max: usize, sym: Symmetry) -> Result<Self, &'static str> {
         if nrow == 0 || ncol == 0 || max == 0 {
             return Err("nrow, ncol, and max must all be greater than zero");
-        }
-        if sym_part && sym_full {
-            return Err("either sym_part xor sym_full may be true, but not both");
         }
         Ok(SparseTriplet {
             nrow,
             ncol,
             pos: 0,
             max,
-            sym_part,
-            sym_full,
+            symmetry: sym,
             indices_i: vec![0; max],
             indices_j: vec![0; max],
             values_aij: vec![0.0; max],
@@ -86,35 +81,13 @@ impl SparseTriplet {
     /// ```
     /// # fn main() -> Result<(), &'static str> {
     /// use russell_sparse::*;
-    /// let trip = SparseTriplet::new(2, 2, 1, false, false)?;
+    /// let trip = SparseTriplet::new(2, 2, 1, Symmetry::No)?;
     /// assert_eq!(trip.dims(), (2, 2));
     /// # Ok(())
     /// # }
     /// ```
     pub fn dims(&self) -> (usize, usize) {
         (self.nrow, self.ncol)
-    }
-
-    /// Returns the value of the symmetric flags
-    ///
-    /// # Output
-    ///
-    /// `(sym_part, sym_full)` -- where `sym_part` means a symmetric matrix with the
-    ///                           lower- (upper-) part only and `sym_full` means a
-    ///                           symmetric matrix with both sides of the diagonal
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_sparse::*;
-    /// let trip = SparseTriplet::new(2, 2, 1, true, false)?;
-    /// assert_eq!(trip.is_symmetric(), (true, false));
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn is_symmetric(&self) -> (bool, bool) {
-        (self.sym_part, self.sym_full)
     }
 
     /// Converts the triples data to a matrix, up to a limit
@@ -133,7 +106,7 @@ impl SparseTriplet {
     ///
     /// // define (4 x 4) sparse matrix with 6+1 non-zero values
     /// // (with an extra ij-repeated entry)
-    /// let mut trip = SparseTriplet::new(4, 4, 6+1, false, false)?;
+    /// let mut trip = SparseTriplet::new(4, 4, 6+1, Symmetry::No)?;
     /// trip.put(0, 0, 0.5); // (0, 0, a00/2)
     /// trip.put(0, 0, 0.5); // (0, 0, a00/2)
     /// trip.put(0, 1, 2.0);
@@ -202,7 +175,7 @@ impl SparseTriplet {
     /// use russell_sparse::*;
     ///
     /// // set sparse matrix (4 x 3) with 6 non-zeros
-    /// let mut trip = SparseTriplet::new(4, 3, 6, false, false)?;
+    /// let mut trip = SparseTriplet::new(4, 3, 6, Symmetry::No)?;
     /// trip.put(0, 0, 1.0);
     /// trip.put(1, 0, 2.0);
     /// trip.put(1, 1, 3.0);
@@ -241,13 +214,18 @@ impl SparseTriplet {
         if u.dim() != self.ncol {
             return Err("u.ndim must equal a.ncol");
         }
+        let sym_tri = match self.symmetry {
+            Symmetry::GeneralTriangular => true,
+            Symmetry::PosDefTriangular => true,
+            _ => false,
+        };
         let mut v = Vector::new(self.nrow);
         for p in 0..self.pos {
             let i = self.indices_i[p] as usize;
             let j = self.indices_j[p] as usize;
             let aij = self.values_aij[p];
             v[i] += aij * u[j];
-            if self.sym_part && i != j {
+            if sym_tri && i != j {
                 v[j] += aij * u[i];
             }
         }
@@ -263,9 +241,8 @@ impl fmt::Display for SparseTriplet {
              \x20\x20\x20\x20\"ncol\": {},\n\
              \x20\x20\x20\x20\"pos\": {},\n\
              \x20\x20\x20\x20\"max\": {},\n\
-             \x20\x20\x20\x20\"symPart\": {},\n\
-             \x20\x20\x20\x20\"symFull\": {}",
-            self.nrow, self.ncol, self.pos, self.max, self.sym_part, self.sym_full
+             \x20\x20\x20\x20\"symmetry\": \"{:?}\"",
+            self.nrow, self.ncol, self.pos, self.max, self.symmetry
         )?;
         Ok(())
     }
@@ -276,66 +253,62 @@ impl fmt::Display for SparseTriplet {
 #[cfg(test)]
 mod tests {
     use super::SparseTriplet;
+    use crate::Symmetry;
     use russell_chk::assert_vec_approx_eq;
     use russell_lab::{Matrix, Vector};
 
     #[test]
     fn new_fails_on_wrong_input() {
         assert_eq!(
-            SparseTriplet::new(0, 3, 5, false, false).err(),
+            SparseTriplet::new(0, 3, 5, Symmetry::No).err(),
             Some("nrow, ncol, and max must all be greater than zero")
         );
         assert_eq!(
-            SparseTriplet::new(3, 0, 5, false, false).err(),
+            SparseTriplet::new(3, 0, 5, Symmetry::No).err(),
             Some("nrow, ncol, and max must all be greater than zero")
         );
         assert_eq!(
-            SparseTriplet::new(3, 3, 0, false, false).err(),
+            SparseTriplet::new(3, 3, 0, Symmetry::No).err(),
             Some("nrow, ncol, and max must all be greater than zero")
         );
-        assert_eq!(
-            SparseTriplet::new(1, 1, 1, true, true).err(),
-            Some("either sym_part xor sym_full may be true, but not both")
-        )
     }
 
     #[test]
     fn new_works() -> Result<(), &'static str> {
-        let trip = SparseTriplet::new(3, 3, 5, false, false)?;
+        let trip = SparseTriplet::new(3, 3, 5, Symmetry::No)?;
         assert_eq!(trip.nrow, 3);
         assert_eq!(trip.ncol, 3);
         assert_eq!(trip.pos, 0);
         assert_eq!(trip.max, 5);
-        assert_eq!(trip.sym_part, false);
-        assert_eq!(trip.sym_full, false);
+        assert!(matches!(trip.symmetry, Symmetry::No));
         Ok(())
     }
 
     #[test]
     #[should_panic]
     fn put_panics_on_wrong_values_1() {
-        let mut trip = SparseTriplet::new(1, 1, 1, false, false).unwrap();
+        let mut trip = SparseTriplet::new(1, 1, 1, Symmetry::No).unwrap();
         trip.put(1, 0, 0.0);
     }
 
     #[test]
     #[should_panic]
     fn put_panics_on_wrong_values_2() {
-        let mut trip = SparseTriplet::new(1, 1, 1, false, false).unwrap();
+        let mut trip = SparseTriplet::new(1, 1, 1, Symmetry::No).unwrap();
         trip.put(0, 1, 0.0);
     }
 
     #[test]
     #[should_panic]
     fn put_panics_on_wrong_values_3() {
-        let mut trip = SparseTriplet::new(1, 1, 1, false, false).unwrap();
+        let mut trip = SparseTriplet::new(1, 1, 1, Symmetry::No).unwrap();
         trip.put(0, 0, 0.0); // << all spots occupied
         trip.put(0, 0, 0.0);
     }
 
     #[test]
     fn put_works() -> Result<(), &'static str> {
-        let mut trip = SparseTriplet::new(3, 3, 5, false, false)?;
+        let mut trip = SparseTriplet::new(3, 3, 5, Symmetry::No)?;
         trip.put(0, 0, 1.0);
         assert_eq!(trip.pos, 1);
         trip.put(0, 1, 2.0);
@@ -351,23 +324,14 @@ mod tests {
 
     #[test]
     fn dims_works() -> Result<(), &'static str> {
-        let trip = SparseTriplet::new(3, 2, 1, false, false)?;
+        let trip = SparseTriplet::new(3, 2, 1, Symmetry::No)?;
         assert_eq!(trip.dims(), (3, 2));
         Ok(())
     }
 
     #[test]
-    fn is_symmetric_works() -> Result<(), &'static str> {
-        let trip1 = SparseTriplet::new(1, 1, 1, true, false)?;
-        let trip2 = SparseTriplet::new(1, 1, 1, false, true)?;
-        assert_eq!(trip1.is_symmetric(), (true, false));
-        assert_eq!(trip2.is_symmetric(), (false, true));
-        Ok(())
-    }
-
-    #[test]
     fn to_matrix_fails_on_wrong_dims() -> Result<(), &'static str> {
-        let trip = SparseTriplet::new(1, 1, 1, false, false)?;
+        let trip = SparseTriplet::new(1, 1, 1, Symmetry::No)?;
         let mut a_2x1 = Matrix::new(2, 1);
         let mut a_1x2 = Matrix::new(1, 2);
         assert_eq!(trip.to_matrix(&mut a_2x1), Err("wrong matrix dimensions"));
@@ -377,7 +341,7 @@ mod tests {
 
     #[test]
     fn to_matrix_works() -> Result<(), &'static str> {
-        let mut trip = SparseTriplet::new(3, 3, 5, false, false)?;
+        let mut trip = SparseTriplet::new(3, 3, 5, Symmetry::No)?;
         trip.put(0, 0, 1.0);
         trip.put(0, 1, 2.0);
         trip.put(1, 0, 3.0);
@@ -400,7 +364,7 @@ mod tests {
     #[test]
     fn to_matrix_with_duplicates_works() -> Result<(), &'static str> {
         // allocate a square matrix
-        let mut trip = SparseTriplet::new(5, 5, 13, false, false)?;
+        let mut trip = SparseTriplet::new(5, 5, 13, Symmetry::No)?;
         trip.put(0, 0, 1.0); // << (0, 0, a00/2)
         trip.put(0, 0, 1.0); // << (0, 0, a00/2)
         trip.put(1, 0, 3.0);
@@ -432,7 +396,7 @@ mod tests {
 
     #[test]
     fn mat_vec_mul_fails_on_wrong_input() -> Result<(), &'static str> {
-        let trip = SparseTriplet::new(2, 2, 1, false, false)?;
+        let trip = SparseTriplet::new(2, 2, 1, Symmetry::No)?;
         let u = Vector::new(3);
         assert_eq!(trip.mat_vec_mul(&u).err(), Some("u.ndim must equal a.ncol"));
         Ok(())
@@ -443,7 +407,7 @@ mod tests {
         //  1.0  2.0  3.0  4.0  5.0
         //  0.1  0.2  0.3  0.4  0.5
         // 10.0 20.0 30.0 40.0 50.0
-        let mut trip = SparseTriplet::new(3, 5, 15, false, false)?;
+        let mut trip = SparseTriplet::new(3, 5, 15, Symmetry::No)?;
         trip.put(0, 0, 1.0);
         trip.put(0, 1, 2.0);
         trip.put(0, 2, 3.0);
@@ -473,7 +437,7 @@ mod tests {
         // 1  2  9
         // 3  1  1  7
         // 2  1  5  1  8
-        let mut trip = SparseTriplet::new(5, 5, 15, true, false)?;
+        let mut trip = SparseTriplet::new(5, 5, 15, Symmetry::GeneralTriangular)?;
         trip.put(0, 0, 2.0);
         trip.put(1, 1, 2.0);
         trip.put(2, 2, 9.0);
@@ -507,7 +471,7 @@ mod tests {
         // 1  2  9  1  5
         // 3  1  1  7  1
         // 2  1  5  1  8
-        let mut trip = SparseTriplet::new(5, 5, 25, false, true)?;
+        let mut trip = SparseTriplet::new(5, 5, 25, Symmetry::General)?;
         trip.put(0, 0, 2.0);
         trip.put(1, 1, 2.0);
         trip.put(2, 2, 9.0);
@@ -545,14 +509,31 @@ mod tests {
     }
 
     #[test]
+    fn mat_vec_mul_pos_def_works() -> Result<(), &'static str> {
+        //  2  -1              2     ...
+        // -1   2  -1    =>   -1   2    
+        //     -1   2             -1   2
+        let mut trip = SparseTriplet::new(3, 3, 5, Symmetry::PosDefTriangular)?;
+        trip.put(0, 0, 2.0);
+        trip.put(1, 1, 2.0);
+        trip.put(2, 2, 2.0);
+        trip.put(1, 0, -1.0);
+        trip.put(2, 1, -1.0);
+        let u = Vector::from(&[5.0, 8.0, 7.0]);
+        let correct_v = &[2.0, 4.0, 6.0];
+        let v = trip.mat_vec_mul(&u)?;
+        assert_vec_approx_eq!(v.as_data(), correct_v, 1e-15);
+        Ok(())
+    }
+
+    #[test]
     fn display_trait_works() -> Result<(), &'static str> {
-        let trip = SparseTriplet::new(3, 3, 1, false, true)?;
+        let trip = SparseTriplet::new(3, 3, 1, Symmetry::General)?;
         let correct: &str = "\x20\x20\x20\x20\"nrow\": 3,\n\
                              \x20\x20\x20\x20\"ncol\": 3,\n\
                              \x20\x20\x20\x20\"pos\": 0,\n\
                              \x20\x20\x20\x20\"max\": 1,\n\
-                             \x20\x20\x20\x20\"symPart\": false,\n\
-                             \x20\x20\x20\x20\"symFull\": true";
+                             \x20\x20\x20\x20\"symmetry\": \"General\"";
         assert_eq!(format!("{}", trip), correct);
         Ok(())
     }

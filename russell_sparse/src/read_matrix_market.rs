@@ -1,4 +1,4 @@
-use super::SparseTriplet;
+use super::{SparseTriplet, Symmetry};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -346,10 +346,19 @@ pub fn read_matrix_market(filepath: &String, sym_mirror: bool) -> Result<SparseT
         max = 2 * data.nnz;
     }
 
+    // symmetry option
+    let sym = if data.symmetric {
+        if sym_mirror {
+            Symmetry::General
+        } else {
+            Symmetry::GeneralTriangular
+        }
+    } else {
+        Symmetry::No
+    };
+
     // allocate triplet
-    let sym_part = if data.symmetric && !sym_mirror { true } else { false };
-    let sym_full = if data.symmetric && sym_mirror { true } else { false };
-    let mut trip = SparseTriplet::new(data.m as usize, data.n as usize, max as usize, sym_part, sym_full)?;
+    let mut trip = SparseTriplet::new(data.m as usize, data.n as usize, max as usize, sym)?;
 
     // read and parse triples
     loop {
@@ -380,6 +389,7 @@ pub fn read_matrix_market(filepath: &String, sym_mirror: bool) -> Result<SparseT
 #[cfg(test)]
 mod tests {
     use super::{read_matrix_market, MatrixMarketData};
+    use crate::Symmetry;
     use russell_lab::*;
 
     #[test]
@@ -549,8 +559,7 @@ mod tests {
     fn read_matrix_market_works() -> Result<(), &'static str> {
         let filepath = "./data/matrix_market/ok1.mtx".to_string();
         let trip = read_matrix_market(&filepath, false)?;
-        assert!(trip.sym_part == false);
-        assert!(trip.sym_full == false);
+        assert!(matches!(trip.symmetry, Symmetry::No));
         assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 12, 12));
         assert_eq!(trip.indices_i, &[0, 1, 0, 2, 4, 1, 2, 3, 4, 2, 1, 4]);
         assert_eq!(trip.indices_j, &[0, 0, 1, 1, 1, 2, 2, 2, 2, 3, 4, 4]);
@@ -562,11 +571,10 @@ mod tests {
     }
 
     #[test]
-    fn read_matrix_market_sym_works() -> Result<(), &'static str> {
+    fn read_matrix_market_sym_triangle_works() -> Result<(), &'static str> {
         let filepath = "./data/matrix_market/ok2.mtx".to_string();
         let trip = read_matrix_market(&filepath, false)?;
-        assert!(trip.sym_part == true);
-        assert!(trip.sym_full == false);
+        assert!(matches!(trip.symmetry, Symmetry::GeneralTriangular));
         assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 15, 15));
         assert_eq!(trip.indices_i, &[0, 1, 2, 3, 4, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3]);
         assert_eq!(trip.indices_j, &[0, 1, 2, 3, 4, 1, 2, 3, 4, 2, 3, 4, 3, 4, 4]);
@@ -581,8 +589,7 @@ mod tests {
     fn read_matrix_market_sym_mirror_works() -> Result<(), &'static str> {
         let filepath = "./data/matrix_market/ok3.mtx".to_string();
         let trip = read_matrix_market(&filepath, true)?;
-        assert!(trip.sym_part == false);
-        assert!(trip.sym_full == true);
+        assert!(matches!(trip.symmetry, Symmetry::General));
         assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 11, 14));
         assert_eq!(trip.indices_i, &[0, 1, 0, 2, 1, 3, 2, 3, 4, 1, 4, 0, 0, 0]);
         assert_eq!(trip.indices_j, &[0, 0, 1, 1, 2, 2, 3, 3, 1, 4, 4, 0, 0, 0]);

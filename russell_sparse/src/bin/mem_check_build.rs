@@ -1,13 +1,13 @@
 use russell_lab::*;
 use russell_sparse::*;
 
-fn test_solver(kind: EnumSolverKind, verb_fact: bool, verb_sol: bool) {
-    match kind {
-        EnumSolverKind::Mmp => println!("Testing MMP solver\n"),
-        EnumSolverKind::Umf => println!("Testing UMF solver\n"),
+fn test_solver(name: LinSol) {
+    match name {
+        LinSol::Mmp => println!("Testing MMP solver\n"),
+        LinSol::Umf => println!("Testing UMF solver\n"),
     }
 
-    let mut trip = match SparseTriplet::new(5, 5, 13, false, false) {
+    let mut trip = match SparseTriplet::new(5, 5, 13, Symmetry::No) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new triplet): {}", e);
@@ -30,7 +30,7 @@ fn test_solver(kind: EnumSolverKind, verb_fact: bool, verb_sol: bool) {
     trip.put(4, 4, 1.0);
 
     let mut config = ConfigSolver::new();
-    config.set_solver_kind(kind);
+    config.set_solver(name);
     let mut solver = match Solver::new(config) {
         Ok(v) => v,
         Err(e) => {
@@ -39,7 +39,7 @@ fn test_solver(kind: EnumSolverKind, verb_fact: bool, verb_sol: bool) {
         }
     };
 
-    match solver.initialize(&trip, false) {
+    match solver.initialize(&trip) {
         Err(e) => {
             println!("FAIL(initialize): {}", e);
             return;
@@ -47,7 +47,7 @@ fn test_solver(kind: EnumSolverKind, verb_fact: bool, verb_sol: bool) {
         _ => (),
     };
 
-    match solver.factorize(verb_fact) {
+    match solver.factorize() {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
@@ -58,7 +58,7 @@ fn test_solver(kind: EnumSolverKind, verb_fact: bool, verb_sol: bool) {
     let mut x = Vector::new(5);
     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
 
-    match solver.solve(&mut x, &rhs, verb_sol) {
+    match solver.solve(&mut x, &rhs) {
         Err(e) => {
             println!("FAIL(solve): {}", e);
             return;
@@ -66,7 +66,7 @@ fn test_solver(kind: EnumSolverKind, verb_fact: bool, verb_sol: bool) {
         _ => (),
     }
 
-    match solver.solve(&mut x, &rhs, verb_sol) {
+    match solver.solve(&mut x, &rhs) {
         Err(e) => {
             println!("FAIL(solve again): {}", e);
             return;
@@ -78,7 +78,7 @@ fn test_solver(kind: EnumSolverKind, verb_fact: bool, verb_sol: bool) {
     println!("{}", solver);
     println!("x =\n{}", x);
 
-    let mut trip_singular = match SparseTriplet::new(5, 5, 2, false, false) {
+    let mut trip_singular = match SparseTriplet::new(5, 5, 2, Symmetry::No) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new singular matrix): {}", e);
@@ -88,7 +88,7 @@ fn test_solver(kind: EnumSolverKind, verb_fact: bool, verb_sol: bool) {
 
     trip_singular.put(0, 0, 1.0);
     trip_singular.put(4, 4, 1.0);
-    match solver.initialize(&trip_singular, false) {
+    match solver.initialize(&trip_singular) {
         Err(e) => {
             println!("FAIL(initialize singular matrix): {}", e);
             return;
@@ -96,7 +96,7 @@ fn test_solver(kind: EnumSolverKind, verb_fact: bool, verb_sol: bool) {
         _ => (),
     };
 
-    match solver.factorize(verb_fact) {
+    match solver.factorize() {
         Err(e) => println!("\nOk(factorize singular matrix): {}\n", e),
         _ => (),
     };
@@ -104,7 +104,7 @@ fn test_solver(kind: EnumSolverKind, verb_fact: bool, verb_sol: bool) {
 
 fn main() {
     println!("Running Mem Check\n");
-    test_solver(EnumSolverKind::Mmp, false, false);
-    test_solver(EnumSolverKind::Umf, false, false);
+    test_solver(LinSol::Mmp);
+    test_solver(LinSol::Umf);
     println!("Done\n");
 }

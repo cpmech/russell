@@ -1,6 +1,5 @@
 use russell_lab::*;
 use russell_openblas::set_num_threads;
-use russell_sparse::EnumSolverKind;
 use russell_sparse::*;
 use std::path::Path;
 use structopt::StructOpt;
@@ -18,10 +17,6 @@ struct Options {
     /// Use MMP solver instead of UMF
     #[structopt(short, long)]
     mmp: bool,
-
-    /// Ignore symmetry, if existent
-    #[structopt(short, long)]
-    ignore_sym: bool,
 
     /// Ordering strategy
     #[structopt(short = "o", long, default_value = "Auto")]
@@ -49,22 +44,17 @@ fn main() -> Result<(), &'static str> {
         set_num_threads(1);
     }
 
-    // set solver kind
-    let kind = if opt.mmp {
-        EnumSolverKind::Mmp
-    } else {
-        EnumSolverKind::Umf
-    };
+    // select linear solver
+    let name = if opt.mmp { LinSol::Mmp } else { LinSol::Umf };
 
     // set the sym_mirror flag
     let sym_mirror;
-    match kind {
-        EnumSolverKind::Mmp => {
-            // MMP uses the lower-diagonal if symmetric. Thus, if the symmetry is
-            // ignored, we have to tell the reader to fill the upper-diagonal as well
-            sym_mirror = if opt.ignore_sym { true } else { false };
+    match name {
+        LinSol::Mmp => {
+            // MMP uses the lower-diagonal if symmetric.
+            sym_mirror = false;
         }
-        EnumSolverKind::Umf => {
+        LinSol::Umf => {
             // UMF uses the full matrix, if symmetric or not
             sym_mirror = true;
         }
@@ -74,25 +64,24 @@ fn main() -> Result<(), &'static str> {
     let mut sw = Stopwatch::new("");
     let trip = read_matrix_market(&opt.matrix_market_file, sym_mirror)?;
     let time_read = sw.stop();
-    let (sym_part, sym_full) = trip.is_symmetric();
-    let symmetric = sym_part || sym_full;
 
     // set configuration
     let mut config = ConfigSolver::new();
-    config.set_solver_kind(kind);
-    if !opt.ignore_sym && symmetric {
-        config.set_symmetry(EnumSymmetry::General);
-    }
-    config.set_ordering(enum_ordering(opt.ordering.as_str()));
-    config.set_scaling(enum_scaling(opt.scaling.as_str()));
+    config
+        .set_solver(name)
+        .set_ordering(enum_ordering(opt.ordering.as_str()))
+        .set_scaling(enum_scaling(opt.scaling.as_str()));
     if opt.omp_nt > 1 {
         config.set_openmp_num_threads(opt.omp_nt as usize);
+    }
+    if opt.verbose {
+        config.set_verbose();
     }
 
     // initialize and factorize
     let mut solver = Solver::new(config)?;
-    solver.initialize(&trip, if opt.mmp { opt.verbose } else { false })?;
-    solver.factorize(opt.verbose)?;
+    solver.initialize(&trip)?;
+    solver.factorize()?;
 
     // allocate vectors
     let m = trip.dims().0;
@@ -100,7 +89,7 @@ fn main() -> Result<(), &'static str> {
     let rhs = Vector::filled(m, 1.0);
 
     // solve linear system
-    solver.solve(&mut x, &rhs, opt.verbose)?;
+    solver.solve(&mut x, &rhs)?;
 
     // verify solution
     let verify = VerifyLinSys::new(&trip, &x, &rhs)?;

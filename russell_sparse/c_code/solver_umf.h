@@ -27,16 +27,12 @@ static inline void set_umf_verbose(struct SolverUMF *solver, int32_t verbose) {
     }
 }
 
-struct SolverUMF *new_solver_umf(int32_t symmetry) {
+struct SolverUMF *new_solver_umf() {
     struct SolverUMF *solver = (struct SolverUMF *)malloc(sizeof(struct SolverUMF));
 
     if (solver == NULL) {
         return NULL;
     }
-
-    umfpack_di_defaults(solver->control);
-
-    solver->control[UMFPACK_STRATEGY] = UMF_SYMMETRY[symmetry];
 
     solver->n = 0;
     solver->nnz = 0;
@@ -83,12 +79,16 @@ int32_t solver_umf_initialize(struct SolverUMF *solver,
                               int32_t const *indices_i,
                               int32_t const *indices_j,
                               double const *values_aij,
+                              int32_t symmetry,
                               int32_t ordering,
                               int32_t scaling,
                               int32_t verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
+
+    umfpack_di_defaults(solver->control);
+    solver->control[UMFPACK_STRATEGY] = UMF_SYMMETRY[symmetry];
 
     solver->ap = (int *)malloc((n + 1) * sizeof(int));
     if (solver->ap == NULL) {

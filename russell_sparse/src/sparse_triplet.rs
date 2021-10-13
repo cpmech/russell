@@ -509,6 +509,24 @@ mod tests {
     }
 
     #[test]
+    fn mat_vec_mul_pos_def_works() -> Result<(), &'static str> {
+        //  2  -1              2     ...
+        // -1   2  -1    =>   -1   2    
+        //     -1   2             -1   2
+        let mut trip = SparseTriplet::new(3, 3, 5, Symmetry::PosDefTriangular)?;
+        trip.put(0, 0, 2.0);
+        trip.put(1, 1, 2.0);
+        trip.put(2, 2, 2.0);
+        trip.put(1, 0, -1.0);
+        trip.put(2, 1, -1.0);
+        let u = Vector::from(&[5.0, 8.0, 7.0]);
+        let correct_v = &[2.0, 4.0, 6.0];
+        let v = trip.mat_vec_mul(&u)?;
+        assert_vec_approx_eq!(v.as_data(), correct_v, 1e-15);
+        Ok(())
+    }
+
+    #[test]
     fn display_trait_works() -> Result<(), &'static str> {
         let trip = SparseTriplet::new(3, 3, 1, Symmetry::General)?;
         let correct: &str = "\x20\x20\x20\x20\"nrow\": 3,\n\

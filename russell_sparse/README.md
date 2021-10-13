@@ -87,7 +87,7 @@ fn main() -> Result<(), &'static str> {
     
     // calculate solution
     let config = ConfigSolver::new();
-    let (mut solver, x1) = Solver::new_solution(config, &trip, &rhs1)?;
+    let (mut solver, x1) = Solver::compute(config, &trip, &rhs1)?;
     let correct1 = "┌   ┐\n\
                     │ 3 │\n\
                     │ 2 │\n\

@@ -307,7 +307,7 @@ impl Solver {
         Ok(())
     }
 
-    /// Returns the solver and the solution x such that
+    /// Computes a new solution
     ///
     /// ```text
     ///   a   ⋅  x  =  rhs
@@ -324,7 +324,7 @@ impl Solver {
     /// the solution will be calculated. These steps correspond to calling
     /// `initialize`, `factorize`, and `solve`, one after another. Thus,
     /// you may re-compute solutions with the already factorized matrix
-    /// by calling `solve`.
+    /// by calling `solve` again.
     ///
     /// # Example
     ///
@@ -358,7 +358,7 @@ impl Solver {
     ///
     /// // calculate solution
     /// let config = ConfigSolver::new();
-    /// let (mut solver, x1) = Solver::new_solution(config, &trip, &rhs1)?;
+    /// let (mut solver, x1) = Solver::compute(config, &trip, &rhs1)?;
     /// let correct1 = "┌   ┐\n\
     ///                 │ 3 │\n\
     ///                 │ 2 │\n\
@@ -378,11 +378,7 @@ impl Solver {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn new_solution(
-        config: ConfigSolver,
-        trip: &SparseTriplet,
-        rhs: &Vector,
-    ) -> Result<(Self, Vector), &'static str> {
+    pub fn compute(config: ConfigSolver, trip: &SparseTriplet, rhs: &Vector) -> Result<(Self, Vector), &'static str> {
         let mut solver = Solver::new(config)?;
         let mut x = Vector::new(trip.dims().0);
         solver.initialize(&trip)?;
@@ -833,7 +829,7 @@ mod tests {
     }
 
     #[test]
-    fn new_solution_works() -> Result<(), &'static str> {
+    fn compute_works() -> Result<(), &'static str> {
         let mut trip = SparseTriplet::new(3, 3, 6, Symmetry::No)?;
         trip.put(0, 0, 1.0);
         trip.put(0, 1, 1.0);
@@ -844,7 +840,7 @@ mod tests {
         let rhs1 = Vector::from(&[1.0, 2.0, 3.0]);
         let rhs2 = Vector::from(&[2.0, 4.0, 6.0]);
         let config = ConfigSolver::new();
-        let (mut solver, x1) = Solver::new_solution(config, &trip, &rhs1)?;
+        let (mut solver, x1) = Solver::compute(config, &trip, &rhs1)?;
         assert_vec_approx_eq!(x1.as_data(), &[-2.0, 3.0, 3.0], 1e-15);
         let mut x2 = Vector::new(trip.dims().0);
         solver.solve(&mut x2, &rhs2)?;

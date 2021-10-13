@@ -1,4 +1,4 @@
-use super::{str_enum_ordering, str_enum_scaling, EnumOrdering, EnumScaling, EnumSolverKind};
+use super::{str_enum_ordering, str_enum_scaling, EnumSolverKind, Ordering, Scaling};
 use russell_openblas::to_i32;
 use std::fmt;
 
@@ -17,8 +17,8 @@ impl ConfigSolver {
     pub fn new() -> Self {
         ConfigSolver {
             solver_kind: EnumSolverKind::Umf,
-            ordering: EnumOrdering::Auto as i32,
-            scaling: EnumScaling::Auto as i32,
+            ordering: Ordering::Auto as i32,
+            scaling: Scaling::Auto as i32,
             pct_inc_workspace: 100, // (MMP-only)
             max_work_memory: 0,     // (MMP-only) 0 => Auto
             openmp_num_threads: 1,  // (MMP-only)
@@ -31,12 +31,12 @@ impl ConfigSolver {
     }
 
     /// Sets the method to compute a symmetric permutation (ordering)
-    pub fn set_ordering(&mut self, selection: EnumOrdering) {
+    pub fn set_ordering(&mut self, selection: Ordering) {
         self.ordering = selection as i32;
     }
 
     /// Sets the scaling strategy
-    pub fn set_scaling(&mut self, selection: EnumScaling) {
+    pub fn set_scaling(&mut self, selection: Scaling) {
         self.scaling = selection as i32;
     }
 
@@ -92,13 +92,13 @@ impl fmt::Display for ConfigSolver {
 
 #[cfg(test)]
 mod tests {
-    use super::{ConfigSolver, EnumOrdering, EnumScaling, EnumSolverKind};
+    use super::{ConfigSolver, EnumSolverKind, Ordering, Scaling};
 
     #[test]
     fn new_works() {
         let config = ConfigSolver::new();
-        assert_eq!(config.ordering, EnumOrdering::Auto as i32);
-        assert_eq!(config.scaling, EnumScaling::Auto as i32);
+        assert_eq!(config.ordering, Ordering::Auto as i32);
+        assert_eq!(config.scaling, Scaling::Auto as i32);
         assert_eq!(config.pct_inc_workspace, 100);
         assert_eq!(config.max_work_memory, 0);
         assert_eq!(config.openmp_num_threads, 1);
@@ -119,15 +119,15 @@ mod tests {
     #[test]
     fn set_ordering_works() {
         let mut config = ConfigSolver::new();
-        config.set_ordering(EnumOrdering::Metis);
-        assert_eq!(config.ordering, EnumOrdering::Metis as i32);
+        config.set_ordering(Ordering::Metis);
+        assert_eq!(config.ordering, Ordering::Metis as i32);
     }
 
     #[test]
     fn set_scaling_works() {
         let mut config = ConfigSolver::new();
-        config.set_scaling(EnumScaling::No);
-        assert_eq!(config.scaling, EnumScaling::No as i32);
+        config.set_scaling(Scaling::No);
+        assert_eq!(config.scaling, Scaling::No as i32);
     }
 
     #[test]

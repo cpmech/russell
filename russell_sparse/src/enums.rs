@@ -24,7 +24,7 @@ pub enum EnumSolverKind {
 }
 
 /// Ordering options
-pub enum EnumOrdering {
+pub enum Ordering {
     /// Ordering using the approximate minimum degree
     Amd = 0,
 
@@ -57,7 +57,7 @@ pub enum EnumOrdering {
 }
 
 /// Scaling options for SolverMMP
-pub enum EnumScaling {
+pub enum Scaling {
     /// Automatic scaling method selection
     Auto = 0,
 
@@ -86,36 +86,36 @@ pub enum EnumScaling {
     Sum = 8,
 }
 
-/// Returns the EnumOrdering given its name
-pub fn enum_ordering(ordering: &str) -> EnumOrdering {
+/// Returns the Ordering given its name
+pub fn enum_ordering(ordering: &str) -> Ordering {
     match ordering {
-        "Amd" => EnumOrdering::Amd,
-        "Amf" => EnumOrdering::Amf,
-        "Auto" => EnumOrdering::Auto,
-        "Best" => EnumOrdering::Best,
-        "Cholmod" => EnumOrdering::Cholmod,
-        "Metis" => EnumOrdering::Metis,
-        "No" => EnumOrdering::No,
-        "Pord" => EnumOrdering::Pord,
-        "Qamd" => EnumOrdering::Qamd,
-        "Scotch" => EnumOrdering::Scotch,
-        _ => EnumOrdering::Auto,
+        "Amd" => Ordering::Amd,
+        "Amf" => Ordering::Amf,
+        "Auto" => Ordering::Auto,
+        "Best" => Ordering::Best,
+        "Cholmod" => Ordering::Cholmod,
+        "Metis" => Ordering::Metis,
+        "No" => Ordering::No,
+        "Pord" => Ordering::Pord,
+        "Qamd" => Ordering::Qamd,
+        "Scotch" => Ordering::Scotch,
+        _ => Ordering::Auto,
     }
 }
 
-/// Returns the EnumScaling given its name
-pub fn enum_scaling(scaling: &str) -> EnumScaling {
+/// Returns the Scaling given its name
+pub fn enum_scaling(scaling: &str) -> Scaling {
     match scaling {
-        "Auto" => EnumScaling::Auto,
-        "Column" => EnumScaling::Column,
-        "Diagonal" => EnumScaling::Diagonal,
-        "Max" => EnumScaling::Max,
-        "No" => EnumScaling::No,
-        "RowCol" => EnumScaling::RowCol,
-        "RowColIter" => EnumScaling::RowColIter,
-        "RowColRig" => EnumScaling::RowColRig,
-        "Sum" => EnumScaling::Sum,
-        _ => EnumScaling::Auto,
+        "Auto" => Scaling::Auto,
+        "Column" => Scaling::Column,
+        "Diagonal" => Scaling::Diagonal,
+        "Max" => Scaling::Max,
+        "No" => Scaling::No,
+        "RowCol" => Scaling::RowCol,
+        "RowColIter" => Scaling::RowColIter,
+        "RowColRig" => Scaling::RowColRig,
+        "Sum" => Scaling::Sum,
+        _ => Scaling::Auto,
     }
 }
 
@@ -225,36 +225,36 @@ mod tests {
 
     use super::{
         code_symmetry_mmp, code_symmetry_umf, enum_ordering, enum_scaling, str_enum_ordering, str_enum_scaling,
-        str_mmp_ordering, str_mmp_scaling, str_umf_ordering, str_umf_scaling, EnumOrdering, EnumScaling, Symmetry,
+        str_mmp_ordering, str_mmp_scaling, str_umf_ordering, str_umf_scaling, Ordering, Scaling, Symmetry,
     };
 
     #[test]
     fn enum_ordering_works() {
-        assert!(matches!(enum_ordering("Amd"), EnumOrdering::Amd));
-        assert!(matches!(enum_ordering("Amf"), EnumOrdering::Amf));
-        assert!(matches!(enum_ordering("Auto"), EnumOrdering::Auto));
-        assert!(matches!(enum_ordering("Best"), EnumOrdering::Best));
-        assert!(matches!(enum_ordering("Cholmod"), EnumOrdering::Cholmod));
-        assert!(matches!(enum_ordering("Metis"), EnumOrdering::Metis));
-        assert!(matches!(enum_ordering("No"), EnumOrdering::No));
-        assert!(matches!(enum_ordering("Pord"), EnumOrdering::Pord));
-        assert!(matches!(enum_ordering("Qamd"), EnumOrdering::Qamd));
-        assert!(matches!(enum_ordering("Scotch"), EnumOrdering::Scotch));
-        assert!(matches!(enum_ordering("Unknown"), EnumOrdering::Auto));
+        assert!(matches!(enum_ordering("Amd"), Ordering::Amd));
+        assert!(matches!(enum_ordering("Amf"), Ordering::Amf));
+        assert!(matches!(enum_ordering("Auto"), Ordering::Auto));
+        assert!(matches!(enum_ordering("Best"), Ordering::Best));
+        assert!(matches!(enum_ordering("Cholmod"), Ordering::Cholmod));
+        assert!(matches!(enum_ordering("Metis"), Ordering::Metis));
+        assert!(matches!(enum_ordering("No"), Ordering::No));
+        assert!(matches!(enum_ordering("Pord"), Ordering::Pord));
+        assert!(matches!(enum_ordering("Qamd"), Ordering::Qamd));
+        assert!(matches!(enum_ordering("Scotch"), Ordering::Scotch));
+        assert!(matches!(enum_ordering("Unknown"), Ordering::Auto));
     }
 
     #[test]
     fn enum_scaling_works() {
-        assert!(matches!(enum_scaling("Auto"), EnumScaling::Auto));
-        assert!(matches!(enum_scaling("Column"), EnumScaling::Column));
-        assert!(matches!(enum_scaling("Diagonal"), EnumScaling::Diagonal));
-        assert!(matches!(enum_scaling("Max"), EnumScaling::Max));
-        assert!(matches!(enum_scaling("No"), EnumScaling::No));
-        assert!(matches!(enum_scaling("RowCol"), EnumScaling::RowCol));
-        assert!(matches!(enum_scaling("RowColIter"), EnumScaling::RowColIter));
-        assert!(matches!(enum_scaling("RowColRig"), EnumScaling::RowColRig));
-        assert!(matches!(enum_scaling("Sum"), EnumScaling::Sum));
-        assert!(matches!(enum_scaling("Unknown"), EnumScaling::Auto));
+        assert!(matches!(enum_scaling("Auto"), Scaling::Auto));
+        assert!(matches!(enum_scaling("Column"), Scaling::Column));
+        assert!(matches!(enum_scaling("Diagonal"), Scaling::Diagonal));
+        assert!(matches!(enum_scaling("Max"), Scaling::Max));
+        assert!(matches!(enum_scaling("No"), Scaling::No));
+        assert!(matches!(enum_scaling("RowCol"), Scaling::RowCol));
+        assert!(matches!(enum_scaling("RowColIter"), Scaling::RowColIter));
+        assert!(matches!(enum_scaling("RowColRig"), Scaling::RowColRig));
+        assert!(matches!(enum_scaling("Sum"), Scaling::Sum));
+        assert!(matches!(enum_scaling("Unknown"), Scaling::Auto));
     }
 
     #[test]

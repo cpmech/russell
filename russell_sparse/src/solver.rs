@@ -1,6 +1,6 @@
 use super::{
     code_symmetry_mmp, code_symmetry_umf, str_enum_ordering, str_enum_scaling, str_mmp_ordering, str_mmp_scaling,
-    str_umf_ordering, str_umf_scaling, ConfigSolver, EnumSolverKind, SparseTriplet,
+    str_umf_ordering, str_umf_scaling, ConfigSolver, LinSol, SparseTriplet,
 };
 use russell_lab::{copy_vector, format_nanoseconds, Stopwatch, Vector};
 use russell_openblas::to_i32;
@@ -86,9 +86,9 @@ impl Solver {
         let used_ordering = str_enum_ordering(config.ordering);
         let used_scaling = str_enum_scaling(config.scaling);
         unsafe {
-            let solver = match config.solver_kind {
-                EnumSolverKind::Mmp => new_solver_mmp(),
-                EnumSolverKind::Umf => new_solver_umf(),
+            let solver = match config.name {
+                LinSol::Mmp => new_solver_mmp(),
+                LinSol::Umf => new_solver_umf(),
             };
             if solver.is_null() {
                 return Err("c-code failed to allocate solver");
@@ -119,8 +119,8 @@ impl Solver {
         let nnz = to_i32(trip.pos);
         let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
-            match self.config.solver_kind {
-                EnumSolverKind::Mmp => {
+            match self.config.name {
+                LinSol::Mmp => {
                     if self.done_initialize {
                         drop_solver_mmp(self.solver);
                         self.solver = new_solver_mmp();
@@ -147,7 +147,7 @@ impl Solver {
                         return Err(self.handle_mmp_error_code(res));
                     }
                 }
-                EnumSolverKind::Umf => {
+                LinSol::Umf => {
                     if self.done_initialize {
                         drop_solver_umf(self.solver);
                         self.solver = new_solver_umf();
@@ -188,8 +188,8 @@ impl Solver {
         self.stopwatch.reset();
         let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
-            match self.config.solver_kind {
-                EnumSolverKind::Mmp => {
+            match self.config.name {
+                LinSol::Mmp => {
                     let res = solver_mmp_factorize(self.solver, verb);
                     if res != 0 {
                         return Err(self.handle_mmp_error_code(res));
@@ -199,7 +199,7 @@ impl Solver {
                     self.used_ordering = str_mmp_ordering(ord);
                     self.used_scaling = str_mmp_scaling(sca);
                 }
-                EnumSolverKind::Umf => {
+                LinSol::Umf => {
                     let res = solver_umf_factorize(self.solver, verb);
                     if res != 0 {
                         return Err(self.handle_umf_error_code(res));
@@ -285,15 +285,15 @@ impl Solver {
         self.stopwatch.reset();
         let verb: i32 = if verbose { 1 } else { 0 };
         unsafe {
-            match self.config.solver_kind {
-                EnumSolverKind::Mmp => {
+            match self.config.name {
+                LinSol::Mmp => {
                     copy_vector(x, rhs)?;
                     let res = solver_mmp_solve(self.solver, x.as_mut_data().as_mut_ptr(), verb);
                     if res != 0 {
                         return Err(self.handle_mmp_error_code(res));
                     }
                 }
-                EnumSolverKind::Umf => {
+                LinSol::Umf => {
                     let res = solver_umf_solve(self.solver, x.as_mut_data().as_mut_ptr(), rhs.as_data().as_ptr(), verb);
                     if res != 0 {
                         return Err(self.handle_umf_error_code(res));
@@ -523,9 +523,9 @@ impl Drop for Solver {
     /// Tells the c-code to release memory
     fn drop(&mut self) {
         unsafe {
-            match self.config.solver_kind {
-                EnumSolverKind::Mmp => drop_solver_mmp(self.solver),
-                EnumSolverKind::Umf => drop_solver_umf(self.solver),
+            match self.config.name {
+                LinSol::Mmp => drop_solver_mmp(self.solver),
+                LinSol::Umf => drop_solver_umf(self.solver),
             }
         }
     }
@@ -573,7 +573,7 @@ impl fmt::Display for Solver {
 
 #[cfg(test)]
 mod tests {
-    use super::{ConfigSolver, EnumSolverKind, Solver, SparseTriplet};
+    use super::{ConfigSolver, LinSol, Solver, SparseTriplet};
     use crate::Symmetry;
     use russell_chk::*;
     use russell_lab::Vector;
@@ -747,7 +747,7 @@ mod tests {
     fn solver_mmp_behaves_as_expected() -> Result<(), &'static str> {
         // allocate a new solver
         let mut config = ConfigSolver::new();
-        config.set_solver_kind(EnumSolverKind::Mmp);
+        config.set_solver(LinSol::Mmp);
         let mut solver = Solver::new(config)?;
 
         // initialize fails on rectangular matrix
@@ -864,7 +864,7 @@ mod tests {
     fn handle_mmp_error_code_works() -> Result<(), &'static str> {
         let default = "Error: unknown error returned by c-code (MMP)";
         let mut config = ConfigSolver::new();
-        config.set_solver_kind(EnumSolverKind::Mmp);
+        config.set_solver(LinSol::Mmp);
         let solver = Solver::new(config)?;
         for c in 1..57 {
             let res = solver.handle_mmp_error_code(-c);
@@ -919,7 +919,7 @@ mod tests {
     fn display_trait_works() -> Result<(), &'static str> {
         let config = ConfigSolver::new();
         let solver = Solver::new(config)?;
-        let b: &str = "\x20\x20\x20\x20\"solverKind\": \"UMF\",\n\
+        let b: &str = "\x20\x20\x20\x20\"name\": \"UMF\",\n\
                        \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
                        \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
                        \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\

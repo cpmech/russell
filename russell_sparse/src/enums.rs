@@ -14,9 +14,9 @@ pub enum Symmetry {
     PosDefTriangular,
 }
 
-/// Defines the solver kinds
+/// Linear solver options
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum EnumSolverKind {
+pub enum LinSol {
     /// The NON-THREAD-SAFE (Mu-M-P) Solver (use in single-thread apps / with huge matrices)
     Mmp = 0,
 
@@ -58,7 +58,7 @@ pub enum Ordering {
     Scotch = 9,
 }
 
-/// Scaling options for SolverMMP
+/// Scaling options
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Scaling {
     /// Automatic scaling method selection

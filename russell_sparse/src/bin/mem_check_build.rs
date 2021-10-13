@@ -1,10 +1,10 @@
 use russell_lab::*;
 use russell_sparse::*;
 
-fn test_solver(kind: EnumSolverKind, verb_fact: bool, verb_sol: bool) {
-    match kind {
-        EnumSolverKind::Mmp => println!("Testing MMP solver\n"),
-        EnumSolverKind::Umf => println!("Testing UMF solver\n"),
+fn test_solver(name: LinSol, verb_fact: bool, verb_sol: bool) {
+    match name {
+        LinSol::Mmp => println!("Testing MMP solver\n"),
+        LinSol::Umf => println!("Testing UMF solver\n"),
     }
 
     let mut trip = match SparseTriplet::new(5, 5, 13, Symmetry::No) {
@@ -30,7 +30,7 @@ fn test_solver(kind: EnumSolverKind, verb_fact: bool, verb_sol: bool) {
     trip.put(4, 4, 1.0);
 
     let mut config = ConfigSolver::new();
-    config.set_solver_kind(kind);
+    config.set_solver(name);
     let mut solver = match Solver::new(config) {
         Ok(v) => v,
         Err(e) => {
@@ -104,7 +104,7 @@ fn test_solver(kind: EnumSolverKind, verb_fact: bool, verb_sol: bool) {
 
 fn main() {
     println!("Running Mem Check\n");
-    test_solver(EnumSolverKind::Mmp, false, false);
-    test_solver(EnumSolverKind::Umf, false, false);
+    test_solver(LinSol::Mmp, false, false);
+    test_solver(LinSol::Umf, false, false);
     println!("Done\n");
 }

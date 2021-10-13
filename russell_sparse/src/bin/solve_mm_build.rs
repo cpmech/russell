@@ -1,6 +1,5 @@
 use russell_lab::*;
 use russell_openblas::set_num_threads;
-use russell_sparse::EnumSolverKind;
 use russell_sparse::*;
 use std::path::Path;
 use structopt::StructOpt;
@@ -45,21 +44,17 @@ fn main() -> Result<(), &'static str> {
         set_num_threads(1);
     }
 
-    // set solver kind
-    let kind = if opt.mmp {
-        EnumSolverKind::Mmp
-    } else {
-        EnumSolverKind::Umf
-    };
+    // select linear solver
+    let name = if opt.mmp { LinSol::Mmp } else { LinSol::Umf };
 
     // set the sym_mirror flag
     let sym_mirror;
-    match kind {
-        EnumSolverKind::Mmp => {
+    match name {
+        LinSol::Mmp => {
             // MMP uses the lower-diagonal if symmetric.
             sym_mirror = false;
         }
-        EnumSolverKind::Umf => {
+        LinSol::Umf => {
             // UMF uses the full matrix, if symmetric or not
             sym_mirror = true;
         }
@@ -72,9 +67,10 @@ fn main() -> Result<(), &'static str> {
 
     // set configuration
     let mut config = ConfigSolver::new();
-    config.set_solver_kind(kind);
-    config.set_ordering(enum_ordering(opt.ordering.as_str()));
-    config.set_scaling(enum_scaling(opt.scaling.as_str()));
+    config
+        .set_solver(name)
+        .set_ordering(enum_ordering(opt.ordering.as_str()))
+        .set_scaling(enum_scaling(opt.scaling.as_str()));
     if opt.omp_nt > 1 {
         config.set_openmp_num_threads(opt.omp_nt as usize);
     }

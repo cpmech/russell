@@ -1,5 +1,5 @@
 /// Matrix symmetry option
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Symmetry {
     /// Unsymmetric matrix
     No,
@@ -121,7 +121,7 @@ pub fn enum_scaling(scaling: &str) -> Scaling {
     }
 }
 
-pub(crate) fn code_symmetry_mmp(option: Symmetry) -> Result<i32, &'static str> {
+pub(crate) fn code_symmetry_mmp(option: &Symmetry) -> Result<i32, &'static str> {
     match option {
         Symmetry::No => Ok(0),
         Symmetry::General => Err("General symmetry option is not available for MMP"),
@@ -130,7 +130,7 @@ pub(crate) fn code_symmetry_mmp(option: Symmetry) -> Result<i32, &'static str> {
     }
 }
 
-pub(crate) fn code_symmetry_umf(option: Symmetry) -> Result<i32, &'static str> {
+pub(crate) fn code_symmetry_umf(option: &Symmetry) -> Result<i32, &'static str> {
     match option {
         Symmetry::No => Ok(0),
         Symmetry::General => Ok(1),
@@ -260,25 +260,25 @@ mod tests {
 
     #[test]
     fn code_symmetry_mmp_works() {
-        assert_eq!(code_symmetry_mmp(Symmetry::No), Ok(0));
+        assert_eq!(code_symmetry_mmp(&Symmetry::No), Ok(0));
         assert_eq!(
-            code_symmetry_mmp(Symmetry::General),
+            code_symmetry_mmp(&Symmetry::General),
             Err("General symmetry option is not available for MMP")
         );
-        assert_eq!(code_symmetry_mmp(Symmetry::GeneralTriangular), Ok(2));
-        assert_eq!(code_symmetry_mmp(Symmetry::PosDefTriangular), Ok(1));
+        assert_eq!(code_symmetry_mmp(&Symmetry::GeneralTriangular), Ok(2));
+        assert_eq!(code_symmetry_mmp(&Symmetry::PosDefTriangular), Ok(1));
     }
 
     #[test]
     fn code_symmetry_umf_works() {
-        assert_eq!(code_symmetry_umf(Symmetry::No), Ok(0));
-        assert_eq!(code_symmetry_umf(Symmetry::General), Ok(1));
+        assert_eq!(code_symmetry_umf(&Symmetry::No), Ok(0));
+        assert_eq!(code_symmetry_umf(&Symmetry::General), Ok(1));
         assert_eq!(
-            code_symmetry_umf(Symmetry::GeneralTriangular),
+            code_symmetry_umf(&Symmetry::GeneralTriangular),
             Err("GeneralTriangular symmetry option is not available for UMF")
         );
         assert_eq!(
-            code_symmetry_umf(Symmetry::PosDefTriangular),
+            code_symmetry_umf(&Symmetry::PosDefTriangular),
             Err("PosDefTriangular symmetry option is not available for UMF")
         );
     }

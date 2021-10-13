@@ -1,4 +1,4 @@
-/// Matrix symmetry options
+/// Matrix symmetry option
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Symmetry {
     /// Unsymmetric matrix
@@ -14,7 +14,7 @@ pub enum Symmetry {
     PosDefTriangular,
 }
 
-/// Linear solver options
+/// Linear solver name
 pub enum LinSol {
     /// The NON-THREAD-SAFE (Mu-M-P) Solver (use in single-thread apps / with huge matrices)
     Mmp,
@@ -23,7 +23,7 @@ pub enum LinSol {
     Umf,
 }
 
-/// Ordering options
+/// Ordering option
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Ordering {
     /// Ordering using the approximate minimum degree
@@ -57,7 +57,7 @@ pub enum Ordering {
     Scotch = 9,
 }
 
-/// Scaling options
+/// Scaling option
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Scaling {
     /// Automatic scaling method selection
@@ -88,7 +88,7 @@ pub enum Scaling {
     Sum = 8,
 }
 
-/// Returns the Ordering given its name
+/// Returns the Ordering by name
 pub fn enum_ordering(ordering: &str) -> Ordering {
     match ordering {
         "Amd" => Ordering::Amd,
@@ -105,7 +105,7 @@ pub fn enum_ordering(ordering: &str) -> Ordering {
     }
 }
 
-/// Returns the Scaling given its name
+/// Returns the Scaling by name
 pub fn enum_scaling(scaling: &str) -> Scaling {
     match scaling {
         "Auto" => Scaling::Auto,

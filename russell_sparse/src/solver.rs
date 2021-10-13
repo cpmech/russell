@@ -57,7 +57,7 @@ extern "C" {
     fn solver_umf_used_scaling(solver: *const ExtSolver) -> i32;
 }
 
-/// Implements a sparse Solver
+/// Implements a sparse linear solver
 ///
 /// For a general sparse and square matrix `a` (symmetric, non-symmetric)
 /// find `x` such that:

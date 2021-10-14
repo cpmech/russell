@@ -11,9 +11,9 @@ fn test_mat_vec_mul() -> Result<(), &'static str> {
             let mut v = Vector::new(m);
             mat_vec_mul(&mut v, 1.0, &a, &u)?;
             if m == 0 {
-                assert_eq!(v.norm(EnumVectorNorm::Max), 0.0);
+                assert_eq!(v.norm(NormVec::Max), 0.0);
             } else {
-                assert_eq!(v.norm(EnumVectorNorm::Max), n as f64);
+                assert_eq!(v.norm(NormVec::Max), n as f64);
             }
         }
     }
@@ -32,9 +32,9 @@ fn test_mat_mat_mul() -> Result<(), &'static str> {
                 let b = Matrix::filled(k, n, 1.0);
                 mat_mat_mul(&mut c, 1.0, &a, &b)?;
                 if m == 0 || n == 0 {
-                    assert_eq!(c.norm(EnumMatrixNorm::Max), 0.0);
+                    assert_eq!(c.norm(NormMat::Max), 0.0);
                 } else {
-                    assert_eq!(c.norm(EnumMatrixNorm::Max), k as f64);
+                    assert_eq!(c.norm(NormMat::Max), k as f64);
                 }
             }
         }

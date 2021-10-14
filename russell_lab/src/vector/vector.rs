@@ -1,4 +1,4 @@
-use crate::{AsArray1D, EnumVectorNorm};
+use crate::{AsArray1D, NormVec};
 use russell_openblas::{dasum, dnrm2, dscal, idamax, to_i32};
 use std::cmp;
 use std::fmt::{self, Write};
@@ -528,23 +528,23 @@ impl Vector {
     ///
     /// ```
     /// # fn main() -> Result<(), &'static str> {
-    /// use russell_lab::{EnumVectorNorm, Vector};
+    /// use russell_lab::{NormVec, Vector};
     /// let u = Vector::from(&[2.0, -2.0, 2.0, -2.0, -3.0]);
-    /// assert_eq!(u.norm(EnumVectorNorm::One), 11.0);
-    /// assert_eq!(u.norm(EnumVectorNorm::Euc), 5.0);
-    /// assert_eq!(u.norm(EnumVectorNorm::Max), 3.0);
+    /// assert_eq!(u.norm(NormVec::One), 11.0);
+    /// assert_eq!(u.norm(NormVec::Euc), 5.0);
+    /// assert_eq!(u.norm(NormVec::Max), 3.0);
     /// # Ok(())
     /// # }
     /// ```
-    pub fn norm(&self, kind: EnumVectorNorm) -> f64 {
+    pub fn norm(&self, kind: NormVec) -> f64 {
         let n = to_i32(self.data.len());
         if n == 0 {
             return 0.0;
         }
         match kind {
-            EnumVectorNorm::One => dasum(n, &self.data, 1),
-            EnumVectorNorm::Euc => dnrm2(n, &self.data, 1),
-            EnumVectorNorm::Max => {
+            NormVec::One => dasum(n, &self.data, 1),
+            NormVec::Euc => dnrm2(n, &self.data, 1),
+            NormVec::Max => {
                 let idx = idamax(n, &self.data, 1);
                 f64::abs(self.data[idx as usize])
             }
@@ -715,7 +715,7 @@ impl<'a> IntoIterator for &'a mut Vector {
 
 #[cfg(test)]
 mod tests {
-    use super::{EnumVectorNorm, Vector};
+    use super::{NormVec, Vector};
     use russell_chk::*;
     use std::fmt::Write;
 
@@ -901,13 +901,13 @@ mod tests {
     #[test]
     fn norm_works() {
         let u0 = Vector::new(0);
-        assert_eq!(u0.norm(EnumVectorNorm::One), 0.0);
-        assert_eq!(u0.norm(EnumVectorNorm::Euc), 0.0);
-        assert_eq!(u0.norm(EnumVectorNorm::Max), 0.0);
+        assert_eq!(u0.norm(NormVec::One), 0.0);
+        assert_eq!(u0.norm(NormVec::Euc), 0.0);
+        assert_eq!(u0.norm(NormVec::Max), 0.0);
         let u = Vector::from(&[-3.0, 2.0, 1.0, 1.0, 1.0]);
-        assert_eq!(u.norm(EnumVectorNorm::One), 8.0);
-        assert_eq!(u.norm(EnumVectorNorm::Euc), 4.0);
-        assert_eq!(u.norm(EnumVectorNorm::Max), 3.0);
+        assert_eq!(u.norm(NormVec::One), 8.0);
+        assert_eq!(u.norm(NormVec::Euc), 4.0);
+        assert_eq!(u.norm(NormVec::Max), 3.0);
     }
 
     #[test]

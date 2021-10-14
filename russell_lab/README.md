@@ -155,7 +155,7 @@ fn main() -> Result<(), &'static str> {
     mat_mat_mul(&mut a_v, 1.0, &a_copy, &v_real)?;
     mat_mat_mul(&mut v_l, 1.0, &v_real, &lam)?;
     add_matrices(&mut err, 1.0, &a_v, -1.0, &v_l)?;
-    assert_approx_eq!(err.norm(EnumMatrixNorm::Max), 0.0, 1e-15);
+    assert_approx_eq!(err.norm(NormMat::Max), 0.0, 1e-15);
     Ok(())
 }
 ```

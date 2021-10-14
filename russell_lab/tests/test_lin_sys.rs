@@ -34,7 +34,7 @@ fn test_lin_sys() -> Result<(), &'static str> {
         let mut diff = Vector::new(m);
         mat_vec_mul(&mut rhs, 1.0, &a_copy, &b)?;
         add_vectors(&mut diff, 1.0, &rhs, -1.0, &b_copy)?;
-        assert_eq!(diff.norm(EnumVectorNorm::Max), 0.0);
+        assert_eq!(diff.norm(NormVec::Max), 0.0);
     }
     Ok(())
 }

@@ -1,4 +1,4 @@
-use crate::{AsArray2D, EnumMatrixNorm};
+use crate::{AsArray2D, NormMat};
 use russell_openblas::{dlange, dscal, to_i32};
 use std::cmp;
 use std::fmt::{self, Write};
@@ -501,26 +501,26 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::{EnumMatrixNorm, Matrix};
+    /// use russell_lab::{NormMat, Matrix};
     /// let a = Matrix::from(&[
     ///     [-2.0,  2.0],
     ///     [ 1.0, -4.0],
     /// ]);
-    /// assert_eq!(a.norm(EnumMatrixNorm::One), 6.0);
-    /// assert_eq!(a.norm(EnumMatrixNorm::Inf), 5.0);
-    /// assert_eq!(a.norm(EnumMatrixNorm::Fro), 5.0);
-    /// assert_eq!(a.norm(EnumMatrixNorm::Max), 4.0);
+    /// assert_eq!(a.norm(NormMat::One), 6.0);
+    /// assert_eq!(a.norm(NormMat::Inf), 5.0);
+    /// assert_eq!(a.norm(NormMat::Fro), 5.0);
+    /// assert_eq!(a.norm(NormMat::Max), 4.0);
     /// ```
-    pub fn norm(&self, kind: EnumMatrixNorm) -> f64 {
+    pub fn norm(&self, kind: NormMat) -> f64 {
         let (m, n) = (to_i32(self.nrow), to_i32(self.ncol));
         if m == 0 || n == 0 {
             return 0.0;
         }
         let norm = match kind {
-            EnumMatrixNorm::One => b'1',
-            EnumMatrixNorm::Inf => b'I',
-            EnumMatrixNorm::Fro => b'F',
-            EnumMatrixNorm::Max => b'M',
+            NormMat::One => b'1',
+            NormMat::Inf => b'I',
+            NormMat::Fro => b'F',
+            NormMat::Max => b'M',
         };
         dlange(norm, m, n, &self.data)
     }
@@ -648,7 +648,7 @@ impl IndexMut<usize> for Matrix {
 
 #[cfg(test)]
 mod tests {
-    use super::{EnumMatrixNorm, Matrix};
+    use super::{Matrix, NormMat};
     use russell_chk::*;
 
     #[test]
@@ -867,27 +867,27 @@ mod tests {
         let a_0x0 = Matrix::new(0, 0);
         let a_0x1 = Matrix::new(0, 1);
         let a_1x0 = Matrix::new(1, 0);
-        assert_eq!(a_0x0.norm(EnumMatrixNorm::One), 0.0);
-        assert_eq!(a_0x0.norm(EnumMatrixNorm::Inf), 0.0);
-        assert_eq!(a_0x0.norm(EnumMatrixNorm::Fro), 0.0);
-        assert_eq!(a_0x0.norm(EnumMatrixNorm::Max), 0.0);
-        assert_eq!(a_0x1.norm(EnumMatrixNorm::One), 0.0);
-        assert_eq!(a_0x1.norm(EnumMatrixNorm::Inf), 0.0);
-        assert_eq!(a_0x1.norm(EnumMatrixNorm::Fro), 0.0);
-        assert_eq!(a_0x1.norm(EnumMatrixNorm::Max), 0.0);
-        assert_eq!(a_1x0.norm(EnumMatrixNorm::One), 0.0);
-        assert_eq!(a_1x0.norm(EnumMatrixNorm::Inf), 0.0);
-        assert_eq!(a_1x0.norm(EnumMatrixNorm::Fro), 0.0);
-        assert_eq!(a_1x0.norm(EnumMatrixNorm::Max), 0.0);
+        assert_eq!(a_0x0.norm(NormMat::One), 0.0);
+        assert_eq!(a_0x0.norm(NormMat::Inf), 0.0);
+        assert_eq!(a_0x0.norm(NormMat::Fro), 0.0);
+        assert_eq!(a_0x0.norm(NormMat::Max), 0.0);
+        assert_eq!(a_0x1.norm(NormMat::One), 0.0);
+        assert_eq!(a_0x1.norm(NormMat::Inf), 0.0);
+        assert_eq!(a_0x1.norm(NormMat::Fro), 0.0);
+        assert_eq!(a_0x1.norm(NormMat::Max), 0.0);
+        assert_eq!(a_1x0.norm(NormMat::One), 0.0);
+        assert_eq!(a_1x0.norm(NormMat::Inf), 0.0);
+        assert_eq!(a_1x0.norm(NormMat::Fro), 0.0);
+        assert_eq!(a_1x0.norm(NormMat::Max), 0.0);
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [ 5.0, -4.0, 2.0],
             [-1.0,  2.0, 3.0],
             [-2.0,  1.0, 0.0],
         ]);
-        assert_eq!(a.norm(EnumMatrixNorm::One), 8.0);
-        assert_eq!(a.norm(EnumMatrixNorm::Inf), 11.0);
-        assert_eq!(a.norm(EnumMatrixNorm::Fro), 8.0);
-        assert_eq!(a.norm(EnumMatrixNorm::Max), 5.0);
+        assert_eq!(a.norm(NormMat::One), 8.0);
+        assert_eq!(a.norm(NormMat::Inf), 11.0);
+        assert_eq!(a.norm(NormMat::Fro), 8.0);
+        assert_eq!(a.norm(NormMat::Max), 5.0);
     }
 }

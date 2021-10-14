@@ -1,5 +1,5 @@
 /// Options to compute matrix norm
-pub enum EnumMatrixNorm {
+pub enum NormMat {
     /// 1-norm
     ///
     /// ‖a‖_1 = max_j ( Σ_i |aᵢⱼ| )
@@ -22,7 +22,7 @@ pub enum EnumMatrixNorm {
 }
 
 /// Options to compute vector norm
-pub enum EnumVectorNorm {
+pub enum NormVec {
     /// 1-norm (taxicab or sum of abs values)
     ///
     /// ‖u‖_1 := sum_i |uᵢ|

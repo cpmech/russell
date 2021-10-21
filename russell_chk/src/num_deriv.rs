@@ -1,3 +1,6 @@
+/// Initial stepsize h for deriv_central5
+pub const STEPSIZE_CENTRAL5: f64 = 1e-3;
+
 /// Computes the numerical derivative and errors using central differences with 5 points
 ///
 /// # Input
@@ -76,40 +79,83 @@ where
 ///
 /// # Example
 ///
-pub fn deriv_central5<F>(_f: F, _x: f64) -> f64
+pub fn deriv_central5<F>(f: F, x: f64) -> f64
 where
     F: Fn(f64) -> f64,
 {
-    0.0
+    // trial derivative
+    let h = STEPSIZE_CENTRAL5;
+    let (dfdx, err, rerr) = deriv_and_errors_central5(&f, x, h);
+    let err_total = err + rerr;
+
+    // done with zero-error
+    if err == 0.0 || rerr == 0.0 {
+        return dfdx;
+    }
+
+    // done with very small truncation error
+    if err < rerr {
+        return dfdx;
+    }
+
+    // improved derivative
+    let h_improv = h * f64::powf(rerr / (2.0 * err), 1.0 / 3.0);
+    let (dfdx_improv, err_improv, rerr_improv) = deriv_and_errors_central5(&f, x, h_improv);
+    let err_total_improv = err_improv + rerr_improv;
+
+    // ignore improved estimate because of larger error
+    if err_total_improv > err_total {
+        return dfdx;
+    }
+
+    // ignore improved estimate because of out-of-bounds value
+    if f64::abs(dfdx_improv - dfdx) > 4.0 * err_total {
+        return dfdx;
+    }
+
+    // return improved derivative
+    dfdx_improv
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::deriv_and_errors_central5;
+    use super::{deriv_and_errors_central5, deriv_central5};
     use std::f64::consts::PI;
 
     struct TestFunction {
-        pub name: &'static str, // name
-        pub f: fn(f64) -> f64,  // f(x)
-        pub g: fn(f64) -> f64,  // g=df/dx
-        pub x: f64,             // @x value
-        pub tol_diff: f64,      // tolerance for |num - ana|
-        pub tol_err: f64,       // tolerance for truncation error
-        pub tol_rerr: f64,      // tolerance for rounding error
+        pub name: &'static str,   // name
+        pub f: fn(f64) -> f64,    // f(x)
+        pub g: fn(f64) -> f64,    // g=df/dx
+        pub x: f64,               // @x value
+        pub tol_diff: f64,        // tolerance for |num - ana|
+        pub tol_err: f64,         // tolerance for truncation error
+        pub tol_rerr: f64,        // tolerance for rounding error
+        pub improv_tol_diff: f64, // tolerance for |num - ana|
     }
 
     fn gen_functions() -> Vec<TestFunction> {
         vec![
             TestFunction {
+                name: "x",
+                f: |x| x,
+                g: |_| 1.0,
+                x: 0.0,
+                tol_diff: 1e-15,
+                tol_err: 1e-15,
+                tol_rerr: 1e-15,
+                improv_tol_diff: 1e-15,
+            },
+            TestFunction {
                 name: "x²",
                 f: |x| x * x,
                 g: |x| 2.0 * x,
-                x: 2.0,
-                tol_diff: 1e-11,
-                tol_err: 1e-11,
+                x: 1.0,
+                tol_diff: 1e-12,
+                tol_err: 1e-13,
                 tol_rerr: 1e-11,
+                improv_tol_diff: 1e-12,
             },
             TestFunction {
                 name: "exp(x)",
@@ -119,6 +165,7 @@ mod tests {
                 tol_diff: 1e-11,
                 tol_err: 1e-5,
                 tol_rerr: 1e-10,
+                improv_tol_diff: 1e-10, // worse
             },
             TestFunction {
                 name: "exp(-x²)",
@@ -128,6 +175,7 @@ mod tests {
                 tol_diff: 1e-13,
                 tol_err: 1e-6,
                 tol_rerr: 1e-13,
+                improv_tol_diff: 1e-11, // worse
             },
             TestFunction {
                 name: "1/x",
@@ -137,6 +185,7 @@ mod tests {
                 tol_diff: 1e-8,
                 tol_err: 1e-3,
                 tol_rerr: 1e-11,
+                improv_tol_diff: 1e-9, // better
             },
             TestFunction {
                 name: "x⋅√x",
@@ -146,6 +195,7 @@ mod tests {
                 tol_diff: 1e-10,
                 tol_err: 1e-9,
                 tol_rerr: 1e-9,
+                improv_tol_diff: 1e-10,
             },
             TestFunction {
                 name: "sin(1/x)",
@@ -155,6 +205,7 @@ mod tests {
                 tol_diff: 1e-10,
                 tol_err: 1e-4,
                 tol_rerr: 1e-11,
+                improv_tol_diff: 1e-10,
             },
             TestFunction {
                 name: "cos(π⋅x/2)",
@@ -164,6 +215,7 @@ mod tests {
                 tol_diff: 1e-12,
                 tol_err: 1e-6,
                 tol_rerr: 1e-12,
+                improv_tol_diff: 1e-10, // worse
             },
         ]
     }
@@ -190,6 +242,28 @@ mod tests {
             assert!(f64::abs(d - d_correct) < test.tol_diff);
             assert!(err < test.tol_err);
             assert!(rerr < test.tol_rerr);
+        }
+    }
+
+    #[test]
+    fn deriv_central5_works() {
+        let tests = gen_functions();
+        println!(
+            "{:>10}{:>15}{:>22}{:>11}",
+            "function", "numerical", "analytical", "|num-ana|"
+        );
+        // for test in &[&tests[2]] {
+        for test in &tests {
+            let d = deriv_central5(test.f, test.x);
+            let d_correct = (test.g)(test.x);
+            println!(
+                "{:>10}{:15.9}{:22}{:11.2e}",
+                test.name,
+                d,
+                d_correct,
+                f64::abs(d - d_correct),
+            );
+            assert!(f64::abs(d - d_correct) < test.improv_tol_diff);
         }
     }
 }

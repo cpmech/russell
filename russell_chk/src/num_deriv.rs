@@ -1,4 +1,4 @@
-/// Estimates the derivative of f with respect to x
+/// Estimates the derivative of f with respect to x and associated errors
 ///
 /// ```text
 ///     df │
@@ -31,17 +31,17 @@
 /// # Example
 ///
 /// ```
-/// use russell_chk::central_deriv;
+/// use russell_chk::num_deriv_and_errors;
 /// let f = |x: f64| f64::exp(-2.0 * x);
 /// let g = |x: f64| -2.0 * f64::exp(-2.0 * x);
 /// let h = 1e-3;
 /// let x = 1.0;
-/// let (d, err, rerr) = central_deriv(f, x, h);
+/// let (d, err, rerr) = num_deriv_and_errors(f, x, h);
 /// assert!(f64::abs(d - g(x)) < 1e-13);
 /// assert!(err < 1e-6);
 /// assert!(rerr < 1e-11);
 /// ```
-pub fn central_deriv<F>(f: F, x: f64, h: f64) -> (f64, f64, f64)
+pub fn num_deriv_and_errors<F>(f: F, x: f64, h: f64) -> (f64, f64, f64)
 where
     F: Fn(f64) -> f64,
 {
@@ -72,16 +72,16 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::central_deriv;
+    use super::num_deriv_and_errors;
     use std::f64::consts::PI;
 
     #[test]
-    fn central_deriv_works() {
+    fn num_deriv_and_errors_works() {
         let f = |x: f64| f64::cos(PI * x / 2.0);
         let g = |x: f64| -f64::sin(PI * x / 2.0) * PI / 2.0;
         let h = 1e-3;
         let x = 1.0;
-        let (d, err, rerr) = central_deriv(f, x, h);
+        let (d, err, rerr) = num_deriv_and_errors(f, x, h);
         assert!(f64::abs(d - g(x)) < 1e-12);
         assert!(err < 1e-6);
         assert!(rerr < 1e-11);

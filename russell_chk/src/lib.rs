@@ -17,8 +17,10 @@ pub fn desc() -> String {
 
 mod assert_approx_eq;
 mod assert_vec_approx_eq;
+mod central_deriv;
 pub use crate::assert_approx_eq::*;
 pub use crate::assert_vec_approx_eq::*;
+pub use crate::central_deriv::*;
 
 // run code from README file
 #[cfg(doctest)]

@@ -1,16 +1,12 @@
-/// Estimates the derivative of f with respect to x and associated errors
-///
-/// ```text
-///     df │
-/// g = —— │
-///     dx │x
-/// ```
+/// Computes the numerical derivative and errors using central differences with 5 points
 ///
 /// # Input
 ///
 /// * `f` -- function f(x)
 /// * `x` -- location for the derivative f(x)
-/// * `h` -- stepsize
+/// * `h` -- stepsize (1e-3 recommended)
+///
+/// **IMPORTANT:** The function is evaluated in [x-h, x+h].
 ///
 /// # Output
 ///
@@ -22,26 +18,21 @@
 ///
 /// # Notes
 ///
-/// * The function computes the derivative using the 5-point rule
-///   (x-h, x-h/2, x, x+h/2, x+h); but the central point is not used
-/// * The truncation error in the r5 approximation is O(h⁴); however,
-///   for safety, we estimate the error from r5-r3, which is O(h²).
-///   This allows the automatic scaling of h.
+/// * Computes the derivative using the 5-point rule (x-h, x-h/2, x, x+h/2, x+h)
 ///
 /// # Example
 ///
 /// ```
-/// use russell_chk::num_deriv_and_errors;
+/// use russell_chk::*;
 /// let f = |x: f64| f64::exp(-2.0 * x);
-/// let g = |x: f64| -2.0 * f64::exp(-2.0 * x);
-/// let h = 1e-3;
 /// let x = 1.0;
-/// let (d, err, rerr) = num_deriv_and_errors(f, x, h);
-/// assert!(f64::abs(d - g(x)) < 1e-13);
+/// let (d, err, rerr) = deriv_and_errors_central5(f, x, 1e-3);
+/// let d_correct = -2.0 * f64::exp(-2.0 * x);
+/// assert!(f64::abs(d - d_correct) < 1e-13);
 /// assert!(err < 1e-6);
-/// assert!(rerr < 1e-11);
+/// assert!(rerr < 1e-12);
 /// ```
-pub fn num_deriv_and_errors<F>(f: F, x: f64, h: f64) -> (f64, f64, f64)
+pub fn deriv_and_errors_central5<F>(f: F, x: f64, h: f64) -> (f64, f64, f64)
 where
     F: Fn(f64) -> f64,
 {
@@ -54,13 +45,10 @@ where
     let r5 = (4.0 / 3.0) * (fph - fmh) - (1.0 / 3.0) * r3;
     let dfdx = r5 / h;
 
-    // smallest number satisfying 1.0 + EPS > 1.0
-    const EPS: f64 = 1.0e-15;
-
     // error estimation
-    let e3 = (f64::abs(fp1) + f64::abs(fm1)) * EPS;
-    let e5 = 2.0 * (f64::abs(fph) + f64::abs(fmh)) * EPS + e3;
-    let dy = f64::max(f64::abs(r3 / h), f64::abs(r5 / h)) * (f64::abs(x) / h) * EPS;
+    let e3 = (f64::abs(fp1) + f64::abs(fm1)) * f64::EPSILON;
+    let e5 = 2.0 * (f64::abs(fph) + f64::abs(fmh)) * f64::EPSILON + e3;
+    let dy = f64::max(f64::abs(r3 / h), f64::abs(r5 / h)) * (f64::abs(x) / h) * f64::EPSILON;
     let abs_trunc_err = f64::abs((r5 - r3) / h);
     let abs_round_err = f64::abs(e5 / h) + dy;
 
@@ -68,22 +56,140 @@ where
     (dfdx, abs_trunc_err, abs_round_err)
 }
 
+/// Computes the numerical derivative using central differences with 5 points
+///
+/// # Input
+///
+/// * `f` -- function f(x)
+/// * `x` -- location for the derivative f(x)
+///
+/// **IMPORTANT:** The function is evaluated around x (with a small tolerance).
+///
+/// # Output
+///
+/// * `dfdx` -- numerical derivative of f(x) w.r.t x @ x
+///
+/// # Notes
+///
+/// * Computes the derivative using the 5-point rule (x-h, x-h/2, x, x+h/2, x+h)
+/// * A pre-selected stepsize is scaled based on error estimates
+///
+/// # Example
+///
+pub fn deriv_central5<F>(_f: F, _x: f64) -> f64
+where
+    F: Fn(f64) -> f64,
+{
+    0.0
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::num_deriv_and_errors;
+    use super::deriv_and_errors_central5;
     use std::f64::consts::PI;
 
+    struct TestFunction {
+        pub name: &'static str, // name
+        pub f: fn(f64) -> f64,  // f(x)
+        pub g: fn(f64) -> f64,  // g=df/dx
+        pub x: f64,             // @x value
+        pub tol_diff: f64,      // tolerance for |num - ana|
+        pub tol_err: f64,       // tolerance for truncation error
+        pub tol_rerr: f64,      // tolerance for rounding error
+    }
+
+    fn gen_functions() -> Vec<TestFunction> {
+        vec![
+            TestFunction {
+                name: "x²",
+                f: |x| x * x,
+                g: |x| 2.0 * x,
+                x: 2.0,
+                tol_diff: 1e-11,
+                tol_err: 1e-11,
+                tol_rerr: 1e-11,
+            },
+            TestFunction {
+                name: "exp(x)",
+                f: |x| f64::exp(x),
+                g: |x| f64::exp(x),
+                x: 2.0,
+                tol_diff: 1e-11,
+                tol_err: 1e-5,
+                tol_rerr: 1e-10,
+            },
+            TestFunction {
+                name: "exp(-x²)",
+                f: |x| f64::exp(-x * x),
+                g: |x| -2.0 * x * f64::exp(-x * x),
+                x: 2.0,
+                tol_diff: 1e-13,
+                tol_err: 1e-6,
+                tol_rerr: 1e-13,
+            },
+            TestFunction {
+                name: "1/x",
+                f: |x| 1.0 / x,
+                g: |x| -1.0 / (x * x),
+                x: 0.2,
+                tol_diff: 1e-8,
+                tol_err: 1e-3,
+                tol_rerr: 1e-11,
+            },
+            TestFunction {
+                name: "x⋅√x",
+                f: |x| x * f64::sqrt(x),
+                g: |x| 1.5 * f64::sqrt(x),
+                x: 25.0,
+                tol_diff: 1e-10,
+                tol_err: 1e-9,
+                tol_rerr: 1e-9,
+            },
+            TestFunction {
+                name: "sin(1/x)",
+                f: |x| f64::sin(1.0 / x),
+                g: |x| -f64::cos(1.0 / x) / (x * x),
+                x: 0.5,
+                tol_diff: 1e-10,
+                tol_err: 1e-4,
+                tol_rerr: 1e-11,
+            },
+            TestFunction {
+                name: "cos(π⋅x/2)",
+                f: |x| f64::cos(PI * x / 2.0),
+                g: |x| -f64::sin(PI * x / 2.0) * PI / 2.0,
+                x: 1.0,
+                tol_diff: 1e-12,
+                tol_err: 1e-6,
+                tol_rerr: 1e-12,
+            },
+        ]
+    }
+
     #[test]
-    fn num_deriv_and_errors_works() {
-        let f = |x: f64| f64::cos(PI * x / 2.0);
-        let g = |x: f64| -f64::sin(PI * x / 2.0) * PI / 2.0;
-        let h = 1e-3;
-        let x = 1.0;
-        let (d, err, rerr) = num_deriv_and_errors(f, x, h);
-        assert!(f64::abs(d - g(x)) < 1e-12);
-        assert!(err < 1e-6);
-        assert!(rerr < 1e-11);
+    fn deriv_and_errors_central5_works() {
+        let tests = gen_functions();
+        println!(
+            "{:>10}{:>15}{:>22}{:>11}{:>10}{:>10}",
+            "function", "numerical", "analytical", "|num-ana|", "err", "rerr"
+        );
+        for test in &tests {
+            let (d, err, rerr) = deriv_and_errors_central5(test.f, test.x, 1e-3);
+            let d_correct = (test.g)(test.x);
+            println!(
+                "{:>10}{:15.9}{:22}{:11.2e}{:10.2e}{:10.2e}",
+                test.name,
+                d,
+                d_correct,
+                f64::abs(d - d_correct),
+                err,
+                rerr,
+            );
+            assert!(f64::abs(d - d_correct) < test.tol_diff);
+            assert!(err < test.tol_err);
+            assert!(rerr < test.tol_rerr);
+        }
     }
 }

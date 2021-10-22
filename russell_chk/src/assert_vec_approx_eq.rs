@@ -1,13 +1,18 @@
-/// Asserts that two vectors have the same length and approximately equal values.
+/// Asserts that two vectors have the same length and approximately equal values
 ///
-/// On panic, this macro will print the values of the expressions with their
-/// debug representations.
+/// # Input
 ///
-/// A tolerance must be given for the absolute comparison of float-point numbers.
+/// `a` -- Left vector
+/// `b` -- Right vector
+/// `tol: f64` -- Error tolerance such that `|a[i] - b[i]| < tol` for all `i in [0,a.len()]`
 ///
-/// Code inspired by [assert_approx_eq](https://github.com/ashleygwilliams/assert_approx_eq)
+/// # Note
+///
+/// This macro also checks that a.len() == b.len()
 ///
 /// # Examples
+///
+/// ## Accepts small error
 ///
 /// ```
 /// # #[macro_use] extern crate russell_chk;
@@ -17,6 +22,19 @@
 /// assert_vec_approx_eq!(a, b, 1e-6);
 /// # }
 /// ```
+///
+/// ## Panics on different values
+///
+/// ```should_panic
+/// # #[macro_use] extern crate russell_chk;
+/// # fn main() {
+/// let a = [1.0, 2.0, 3.0];
+/// let b = [1.0, 2.0, 4.0];
+/// assert_vec_approx_eq!(a, b, 1e-6);
+/// # }
+/// ```
+///
+/// ## Panics on different lengths
 ///
 /// ```should_panic
 /// # #[macro_use] extern crate russell_chk;

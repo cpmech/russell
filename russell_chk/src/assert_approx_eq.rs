@@ -1,13 +1,14 @@
-/// Asserts that two numbers are approximately equal to each other, given a tolerance.
+/// Asserts that two numbers are approximately equal to each other
 ///
-/// On panic, this macro will print the values of the expressions with their
-/// debug representations.
+/// # Input
 ///
-/// A tolerance must be given for the absolute comparison of float-point numbers.
-///
-/// Code based on [assert_approx_eq](https://github.com/ashleygwilliams/assert_approx_eq)
+/// `a` -- Left value
+/// `b` -- Right value
+/// `tol: f64` -- Error tolerance such that `|a - b| < tol`
 ///
 /// # Examples
+///
+/// ## Accepts small error
 ///
 /// ```
 /// # #[macro_use] extern crate russell_chk;
@@ -17,6 +18,8 @@
 /// assert_approx_eq!(a, b, 1e-6);
 /// # }
 /// ```
+///
+/// ## Panics on different value
 ///
 /// ```should_panic
 /// # #[macro_use] extern crate russell_chk;

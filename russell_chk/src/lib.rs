@@ -6,8 +6,17 @@
 //!
 //! ```
 //! # use russell_chk::*;
+//! // check float point number
 //! assert_approx_eq!(0.0000123, 0.000012, 1e-6);
+//!
+//! // check vector of float point numbers
 //! assert_vec_approx_eq!(&[0.01, 0.012], &[0.012, 0.01], 1e-2);
+//!
+//! // check derivative using central differences
+//! let f = |x: f64| -x;
+//! let at_x = 8.0;
+//! let dfdx_at_x = -1.01;
+//! assert_deriv_approx_eq!(dfdx_at_x, f, at_x, 1e-2);
 //! ```
 
 /// Returns package description
@@ -16,9 +25,11 @@ pub fn desc() -> String {
 }
 
 mod assert_approx_eq;
+mod assert_deriv_approx_eq;
 mod assert_vec_approx_eq;
 mod num_deriv;
 pub use crate::assert_approx_eq::*;
+pub use crate::assert_deriv_approx_eq::*;
 pub use crate::assert_vec_approx_eq::*;
 pub use crate::num_deriv::*;
 

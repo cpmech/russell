@@ -44,3 +44,17 @@ fn main() {
     assert_vec_approx_eq!(&a, &b, 1e-6);
 }
 ```
+
+
+### Check derivatives
+
+```rust
+use russell_chk::*;
+
+fn main() {
+  let f = |x: f64| -x;
+  let at_x = 8.0;
+  let dfdx_at_x = -1.01;
+  assert_deriv_approx_eq!(dfdx_at_x, f, at_x, 1e-2);
+}
+```

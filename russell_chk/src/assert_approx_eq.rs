@@ -1,13 +1,14 @@
-/// Asserts that two numbers are approximately equal to each other, given a tolerance.
+/// Asserts that two numbers are approximately equal to each other
 ///
-/// On panic, this macro will print the values of the expressions with their
-/// debug representations.
+/// # Input
 ///
-/// A tolerance must be given for the absolute comparison of float-point numbers.
-///
-/// Code based on [assert_approx_eq](https://github.com/ashleygwilliams/assert_approx_eq)
+/// `a` -- Left value
+/// `b` -- Right value
+/// `tol: f64` -- Error tolerance such that `|a - b| < tol`
 ///
 /// # Examples
+///
+/// ## Accepts small error
 ///
 /// ```
 /// # #[macro_use] extern crate russell_chk;
@@ -17,6 +18,8 @@
 /// assert_approx_eq!(a, b, 1e-6);
 /// # }
 /// ```
+///
+/// ## Panics on different value
 ///
 /// ```should_panic
 /// # #[macro_use] extern crate russell_chk;
@@ -49,7 +52,7 @@ mod tests {
     #[should_panic(expected = "assertion failed: `(left != right)` \
                                (left: `2.0`, right: `2.5`, \
                                expect diff: `0.1`, real diff: `0.5`)")]
-    fn it_should_panic_on_different_values() {
+    fn panics_on_different_values() {
         assert_approx_eq!(2.0, 2.5, 1e-1);
     }
 
@@ -57,17 +60,17 @@ mod tests {
     #[should_panic(expected = "assertion failed: `(left != right)` \
                                (left: `2.0`, right: `2.5`, \
                                expect diff: `0.1`, real diff: `0.5`)")]
-    fn it_should_panic_on_different_values_f32() {
+    fn panics_on_different_values_f32() {
         assert_approx_eq!(2f32, 2.5f32, 1e-1);
     }
 
     #[test]
-    fn it_should_accept_approx_equal_values() {
+    fn accepts_approx_equal_values() {
         assert_approx_eq!(2.0, 2.02, 0.03);
     }
 
     #[test]
-    fn it_should_accept_approx_equal_values_f32() {
+    fn accepts_approx_equal_values_f32() {
         assert_approx_eq!(2f32, 2.02f32, 0.03);
     }
 }

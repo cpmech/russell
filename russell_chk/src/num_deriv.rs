@@ -79,6 +79,14 @@ where
 ///
 /// # Example
 ///
+/// ```
+/// use russell_chk::*;
+/// let f = |x: f64| f64::exp(-2.0 * x);
+/// let x = 1.0;
+/// let d = deriv_central5(f, x);
+/// let d_correct = -2.0 * f64::exp(-2.0 * x);
+/// assert!(f64::abs(d - d_correct) < 1e-11);
+/// ```
 pub fn deriv_central5<F>(f: F, x: f64) -> f64
 where
     F: Fn(f64) -> f64,

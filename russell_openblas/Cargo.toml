@@ -1,6 +1,6 @@
 [package]
 name = "russell_openblas"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2018"
 license = "MIT"
 description = "Thin wrapper to some OpenBLAS routines"
@@ -12,7 +12,7 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "vector", "eigenvalues", "decomposition"]
 
 [dependencies]
-russell_chk = { path = "../russell_chk", version = "0.1" }
+russell_chk = { path = "../russell_chk", version = "0.2" }
 criterion = "0.3"
 
 [[bench]]

@@ -1,6 +1,6 @@
 [package]
 name = "russell_lab"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2018"
 license = "MIT"
 description = "Matrix-vector laboratory including linear algebra tools"
@@ -12,7 +12,7 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "vector", "linspace"]
 
 [dependencies]
-russell_chk = { path = "../russell_chk", version = "0.1" }
+russell_chk = { path = "../russell_chk", version = "0.2" }
 russell_openblas = { path = "../russell_openblas", version = "0.2" }
 criterion = "0.3"
 

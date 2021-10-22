@@ -1,6 +1,6 @@
 [package]
 name = "russell_sparse"
-version = "0.2.5"
+version = "0.2.6"
 edition = "2018"
 license = "MIT"
 description = "Sparse matrix tools and solvers"
@@ -12,7 +12,7 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "sparse", "solver"]
 
 [dependencies]
-russell_chk = { path = "../russell_chk", version = "0.1" }
+russell_chk = { path = "../russell_chk", version = "0.2" }
 russell_lab = { path = "../russell_lab", version = "0.2" }
 russell_openblas = { path = "../russell_openblas", version = "0.2" }
 structopt = "0.3"

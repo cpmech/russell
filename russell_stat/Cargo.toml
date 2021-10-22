@@ -1,6 +1,6 @@
 [package]
 name = "russell_stat"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2018"
 license = "MIT"
 description = "Statistics calculations, probability distributions, and pseudo random numbers"
@@ -12,4 +12,4 @@ categories = ["mathematics", "science"]
 keywords = ["statistics", "probability", "random", "numerical"]
 
 [dependencies]
-russell_chk = { path = "../russell_chk", version = "0.1" }
+russell_chk = { path = "../russell_chk", version = "0.2" }

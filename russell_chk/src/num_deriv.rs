@@ -29,8 +29,8 @@ pub const STEPSIZE_CENTRAL5: f64 = 1e-3;
 /// ```
 /// use russell_chk::*;
 /// struct Arguments {}
-/// let f = |x: f64, _: &Arguments| f64::exp(-2.0 * x);
-/// let args = &Arguments {};
+/// let f = |x: f64, _: &mut Arguments| f64::exp(-2.0 * x);
+/// let args = &mut Arguments {};
 /// let at_x = 1.0;
 /// let h = 1e-3;
 /// let (d, err, rerr) = deriv_and_errors_central5(at_x, f, args, h);
@@ -39,7 +39,7 @@ pub const STEPSIZE_CENTRAL5: f64 = 1e-3;
 /// assert!(err < 1e-6);
 /// assert!(rerr < 1e-12);
 /// ```
-pub fn deriv_and_errors_central5<A>(at_x: f64, f: fn(f64, &A) -> f64, args: &A, h: f64) -> (f64, f64, f64) {
+pub fn deriv_and_errors_central5<A>(at_x: f64, f: fn(f64, &mut A) -> f64, args: &mut A, h: f64) -> (f64, f64, f64) {
     // numerical derivative
     let fm1 = f(at_x - h, args);
     let fp1 = f(at_x + h, args);
@@ -84,14 +84,14 @@ pub fn deriv_and_errors_central5<A>(at_x: f64, f: fn(f64, &A) -> f64, args: &A, 
 /// ```
 /// use russell_chk::*;
 /// struct Arguments {}
-/// let f = |x: f64, _: &Arguments| f64::exp(-2.0 * x);
-/// let args = &Arguments {};
+/// let f = |x: f64, _: &mut Arguments| f64::exp(-2.0 * x);
+/// let args = &mut Arguments {};
 /// let at_x = 1.0;
 /// let d = deriv_central5(at_x, f, args);
 /// let d_correct = -2.0 * f64::exp(-2.0 * at_x);
 /// assert!(f64::abs(d - d_correct) < 1e-11);
 /// ```
-pub fn deriv_central5<A>(at_x: f64, f: fn(f64, &A) -> f64, args: &A) -> f64 {
+pub fn deriv_central5<A>(at_x: f64, f: fn(f64, &mut A) -> f64, args: &mut A) -> f64 {
     // trial derivative
     let h = STEPSIZE_CENTRAL5;
     let (dfdx, err, rerr) = deriv_and_errors_central5(at_x, f, args, h);
@@ -136,14 +136,14 @@ mod tests {
     struct Arguments {}
 
     struct TestFunction {
-        pub name: &'static str,            // name
-        pub f: fn(f64, &Arguments) -> f64, // f(x)
-        pub g: fn(f64, &Arguments) -> f64, // g=df/dx
-        pub at_x: f64,                     // @x value
-        pub tol_diff: f64,                 // tolerance for |num - ana|
-        pub tol_err: f64,                  // tolerance for truncation error
-        pub tol_rerr: f64,                 // tolerance for rounding error
-        pub improv_tol_diff: f64,          // tolerance for |num - ana|
+        pub name: &'static str,                // name
+        pub f: fn(f64, &mut Arguments) -> f64, // f(x)
+        pub g: fn(f64, &mut Arguments) -> f64, // g=df/dx
+        pub at_x: f64,                         // @x value
+        pub tol_diff: f64,                     // tolerance for |num - ana|
+        pub tol_err: f64,                      // tolerance for truncation error
+        pub tol_rerr: f64,                     // tolerance for rounding error
+        pub improv_tol_diff: f64,              // tolerance for |num - ana|
     }
 
     fn gen_functions() -> Vec<TestFunction> {
@@ -239,9 +239,9 @@ mod tests {
             "function", "numerical", "analytical", "|num-ana|", "err", "rerr"
         );
         for test in &tests {
-            let args = Arguments {};
-            let (d, err, rerr) = deriv_and_errors_central5(test.at_x, test.f, &args, 1e-3);
-            let d_correct = (test.g)(test.at_x, &args);
+            let args = &mut Arguments {};
+            let (d, err, rerr) = deriv_and_errors_central5(test.at_x, test.f, args, 1e-3);
+            let d_correct = (test.g)(test.at_x, args);
             println!(
                 "{:>10}{:15.9}{:22}{:11.2e}{:10.2e}{:10.2e}",
                 test.name,
@@ -266,9 +266,9 @@ mod tests {
         );
         // for test in &[&tests[2]] {
         for test in &tests {
-            let args = Arguments {};
-            let d = deriv_central5(test.at_x, test.f, &args);
-            let d_correct = (test.g)(test.at_x, &args);
+            let args = &mut Arguments {};
+            let d = deriv_central5(test.at_x, test.f, args);
+            let d_correct = (test.g)(test.at_x, args);
             println!(
                 "{:>10}{:15.9}{:22}{:11.2e}",
                 test.name,
@@ -278,19 +278,5 @@ mod tests {
             );
             assert!(f64::abs(d - d_correct) < test.improv_tol_diff);
         }
-    }
-
-    #[test]
-    fn another() {
-        struct Arguments {}
-        let f = |x: f64, _: &Arguments| f64::exp(-2.0 * x);
-        let args = &Arguments {};
-        let at_x = 1.0;
-        let h = 1e-3;
-        let (d, err, rerr) = deriv_and_errors_central5(at_x, f, args, h);
-        let d_correct = -2.0 * f64::exp(-2.0 * at_x);
-        assert!(f64::abs(d - d_correct) < 1e-13);
-        assert!(err < 1e-6);
-        assert!(rerr < 1e-12);
     }
 }

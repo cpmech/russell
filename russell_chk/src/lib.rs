@@ -14,8 +14,8 @@
 //!
 //! // check derivative using central differences
 //! struct Arguments {}
-//! let f = |x: f64, _: &Arguments| -x;
-//! let args = &Arguments {};
+//! let f = |x: f64, _: &mut Arguments| -x;
+//! let args = &mut Arguments {};
 //! let at_x = 8.0;
 //! let dfdx = -1.01;
 //! assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-2);

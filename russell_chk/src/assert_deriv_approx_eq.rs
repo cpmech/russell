@@ -15,8 +15,8 @@
 /// # #[macro_use] extern crate russell_chk;
 /// # fn main() {
 /// struct Arguments {}
-/// let f = |x: f64, _: &Arguments| -x;
-/// let args = &Arguments {};
+/// let f = |x: f64, _: &mut Arguments| -x;
+/// let args = &mut Arguments {};
 /// let at_x = 8.0;
 /// let dfdx = -1.01;
 /// assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-2);
@@ -29,8 +29,8 @@
 /// # #[macro_use] extern crate russell_chk;
 /// # fn main() {
 /// struct Arguments {}
-/// let f = |x: f64, _: &Arguments| -x;
-/// let args = &Arguments {};
+/// let f = |x: f64, _: &mut Arguments| -x;
+/// let args = &mut Arguments {};
 /// let at_x = 8.0;
 /// let dfdx = -1.01;
 /// assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-3);
@@ -39,9 +39,9 @@
 #[macro_export]
 macro_rules! assert_deriv_approx_eq {
     ($dfdx:expr, $at_x:expr, $f:expr, $args:expr, $tol:expr) => {{
-        let (dfdx, at_x, f, args) = (&$dfdx, &$at_x, &$f, &$args);
+        let (dfdx, at_x, f, args) = (&$dfdx, &$at_x, &$f, $args);
         let tol = &($tol as f64);
-        let dfdx_num = $crate::deriv_central5(*at_x, *f, *args);
+        let dfdx_num = $crate::deriv_central5(*at_x, *f, args);
         assert!(
             ((*dfdx - dfdx_num) as f64).abs() < *tol,
             "assert derivative failed: `(dfdx != dfdx_num)` \
@@ -61,8 +61,8 @@ mod tests {
     #[test]
     #[should_panic(expected = "assert derivative failed: `(dfdx != dfdx_num)`")]
     fn panics_on_different_deriv() {
-        let f = |x: f64, _: &Arguments| x * x / 2.0;
-        let args = &Arguments {};
+        let f = |x: f64, _: &mut Arguments| x * x / 2.0;
+        let args = &mut Arguments {};
         let at_x = 1.5;
         let dfdx = 1.51;
         assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-2);
@@ -70,8 +70,8 @@ mod tests {
 
     #[test]
     fn accepts_approx_equal_deriv() {
-        let f = |x: f64, _: &Arguments| x * x / 2.0;
-        let args = &Arguments {};
+        let f = |x: f64, _: &mut Arguments| x * x / 2.0;
+        let args = &mut Arguments {};
         let at_x = 1.5;
         let dfdx = 1.501;
         assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-2);
@@ -80,8 +80,8 @@ mod tests {
     #[test]
     fn another() {
         struct Arguments {}
-        let f = |x: f64, _: &Arguments| -x;
-        let args = &Arguments {};
+        let f = |x: f64, _: &mut Arguments| -x;
+        let args = &mut Arguments {};
         let at_x = 8.0;
         let dfdx = -1.01;
         assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-2);

@@ -33,9 +33,9 @@
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr, $tol:expr) => {{
         let (a, b) = (&$a, &$b);
-        let tol = $tol as f64;
+        let tol = &($tol as f64);
         assert!(
-            ((*a - *b) as f64).abs() < tol,
+            ((*a - *b) as f64).abs() < *tol,
             "assertion failed: `(left != right)` \
              (left: `{:?}`, right: `{:?}`, expect diff: `{:?}`, real diff: `{:?}`)",
             *a,

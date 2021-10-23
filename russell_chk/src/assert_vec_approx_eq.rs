@@ -55,10 +55,10 @@ macro_rules! assert_vec_approx_eq {
             *a,
             *b,
         );
-        let tol = $tol as f64;
+        let tol = &($tol as f64);
         for i in 0..a.len() {
             assert!(
-                ((a[i] - b[i]) as f64).abs() < tol,
+                ((a[i] - b[i]) as f64).abs() < *tol,
                 "assertion failed: `(left[{:?}] != right[{:?}])` \
                  (left[{:?}]: `{:?}`, right[{:?}]: `{:?}`, \
                  expect diff: `{:?}`, real diff: `{:?}`)",
@@ -68,7 +68,7 @@ macro_rules! assert_vec_approx_eq {
                 a[i],
                 i,
                 b[i],
-                tol,
+                *tol,
                 ((a[i] - b[i]) as f64).abs()
             );
         }

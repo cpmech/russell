@@ -47,29 +47,27 @@
 #[macro_export]
 macro_rules! assert_vec_approx_eq {
     ($a:expr, $b:expr, $tol:expr) => {{
-        let (a, b) = (&$a, &$b);
         assert!(
-            a.len() == b.len(),
+            $a.len() == $b.len(),
             "assertion failed: `(left.len() != right.len())` \
              (left: `{:?}`, right: `{:?}`)",
-            *a,
-            *b,
+            $a,
+            $b,
         );
-        let tol = &($tol as f64);
-        for i in 0..a.len() {
+        for i in 0..$a.len() {
             assert!(
-                ((a[i] - b[i]) as f64).abs() < *tol,
+                (($a[i] - $b[i]) as f64).abs() < $tol,
                 "assertion failed: `(left[{:?}] != right[{:?}])` \
                  (left[{:?}]: `{:?}`, right[{:?}]: `{:?}`, \
                  expect diff: `{:?}`, real diff: `{:?}`)",
                 i,
                 i,
                 i,
-                a[i],
+                $a[i],
                 i,
-                b[i],
-                *tol,
-                ((a[i] - b[i]) as f64).abs()
+                $b[i],
+                $tol,
+                (($a[i] - $b[i]) as f64).abs()
             );
         }
     }};
@@ -109,7 +107,13 @@ mod tests {
 
     #[test]
     fn accepts_approx_equal_values() {
-        assert_vec_approx_eq!(&[1.0, 2.0], &[1.0, 2.02], 0.03);
+        let u = [1.0, 2.0];
+        let v = [1.0, 2.02];
+        let tol = 0.03;
+        assert_vec_approx_eq!(u, v, tol);
+        assert_vec_approx_eq!(u, &v, tol);
+        assert_vec_approx_eq!(&u, v, tol);
+        assert_vec_approx_eq!(&u, &v, tol);
     }
 
     #[test]

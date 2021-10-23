@@ -39,17 +39,15 @@
 #[macro_export]
 macro_rules! assert_deriv_approx_eq {
     ($dfdx:expr, $at_x:expr, $f:expr, $args:expr, $tol:expr) => {{
-        let (dfdx, at_x, f, args) = (&$dfdx, &$at_x, &$f, $args);
-        let tol = &($tol as f64);
-        let dfdx_num = $crate::deriv_central5(*at_x, *f, args);
+        let dfdx_num = $crate::deriv_central5($at_x, $f, $args);
         assert!(
-            ((*dfdx - dfdx_num) as f64).abs() < *tol,
+            (($dfdx - dfdx_num) as f64).abs() < $tol,
             "assert derivative failed: `(dfdx != dfdx_num)` \
              (dfdx: `{:?}`, dfdx_num: `{:?}`, expect diff: `{:?}`, real diff: `{:?}`)",
-            *dfdx,
+            $dfdx,
             dfdx_num,
-            *tol,
-            ((*dfdx - dfdx_num) as f64).abs()
+            $tol,
+            (($dfdx - dfdx_num) as f64).abs()
         );
     }};
 }
@@ -75,15 +73,6 @@ mod tests {
         let at_x = 1.5;
         let dfdx = 1.501;
         assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-2);
-    }
-
-    #[test]
-    fn another() {
-        struct Arguments {}
-        let f = |x: f64, _: &mut Arguments| -x;
-        let args = &mut Arguments {};
-        let at_x = 8.0;
-        let dfdx = -1.01;
         assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-2);
     }
 }

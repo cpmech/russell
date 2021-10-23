@@ -32,16 +32,14 @@
 #[macro_export]
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr, $tol:expr) => {{
-        let (a, b) = (&$a, &$b);
-        let tol = &($tol as f64);
         assert!(
-            ((*a - *b) as f64).abs() < *tol,
+            (($a - $b) as f64).abs() < $tol,
             "assertion failed: `(left != right)` \
              (left: `{:?}`, right: `{:?}`, expect diff: `{:?}`, real diff: `{:?}`)",
-            *a,
-            *b,
-            tol,
-            ((*a - *b) as f64).abs()
+            $a,
+            $b,
+            $tol,
+            (($a - $b) as f64).abs()
         );
     }};
 }
@@ -66,7 +64,13 @@ mod tests {
 
     #[test]
     fn accepts_approx_equal_values() {
-        assert_approx_eq!(2.0, 2.02, 0.03);
+        let a = 2.0;
+        let b = 2.02;
+        let tol = 0.03;
+        assert_approx_eq!(a, b, tol);
+        assert_approx_eq!(a, &b, tol);
+        assert_approx_eq!(&a, b, tol);
+        assert_approx_eq!(&a, &b, tol);
     }
 
     #[test]

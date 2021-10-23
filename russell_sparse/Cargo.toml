@@ -1,7 +1,7 @@
 [package]
 name = "russell_sparse"
 version = "0.2.6"
-edition = "2018"
+edition = "2021"
 license = "MIT"
 description = "Sparse matrix tools and solvers"
 homepage = "https://github.com/cpmech/russell"

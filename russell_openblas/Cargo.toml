@@ -1,7 +1,7 @@
 [package]
 name = "russell_openblas"
 version = "0.2.3"
-edition = "2018"
+edition = "2021"
 license = "MIT"
 description = "Thin wrapper to some OpenBLAS routines"
 homepage = "https://github.com/cpmech/russell"

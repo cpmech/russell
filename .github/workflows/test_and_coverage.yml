@@ -11,6 +11,7 @@ jobs:
       - name: Install Rust
         run: |
           rustup toolchain install nightly --component llvm-tools-preview
+          rustup default nightly
       - name: Run tests
         run: |
           cargo test

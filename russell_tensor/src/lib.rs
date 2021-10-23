@@ -8,13 +8,11 @@ pub fn desc() -> String {
 }
 
 mod constants;
-mod formatter;
 mod operations;
 mod samples;
 mod tensor2;
 mod tensor4;
 pub use crate::constants::*;
-pub use crate::formatter::*;
 pub use crate::operations::*;
 pub use crate::samples::*;
 pub use crate::tensor2::*;

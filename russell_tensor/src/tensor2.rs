@@ -1,5 +1,6 @@
-use super::{fmt_2d_array, IJ_TO_I, I_TO_IJ, SQRT_2};
-use std::fmt;
+use super::{IJ_TO_I, I_TO_IJ, SQRT_2};
+use std::cmp;
+use std::fmt::{self, Write};
 
 /// Implements a second-order tensor, symmetric or not
 pub struct Tensor2 {
@@ -93,12 +94,68 @@ impl Tensor2 {
 }
 
 impl fmt::Display for Tensor2 {
+    /// Generates a string representation of the Matrix
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> Result<(), &'static str> {
+    /// use russell_tensor::Tensor2;
+    /// let comps_std = &[
+    ///     [1.0, 4.0, 6.0],
+    ///     [7.0, 2.0, 5.0],
+    ///     [9.0, 8.0, 3.0],
+    /// ];
+    /// let t2 = Tensor2::from_tensor(comps_std, false)?;
+    /// assert_eq!(
+    ///     format!("{:.2}", t2),
+    ///     "┌                ┐\n\
+    ///      │ 1.00 4.00 6.00 │\n\
+    ///      │ 7.00 2.00 5.00 │\n\
+    ///      │ 9.00 8.00 3.00 │\n\
+    ///      └                ┘"
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let t2 = self.to_tensor();
-        match fmt_2d_array(&t2) {
-            Ok(buf) => write!(f, "{}", buf),
-            Err(e) => Err(e),
+        // convert mandel values to full tensor
+        let tt = self.to_tensor();
+        // find largest width
+        let mut width = 0;
+        let mut buf = String::new();
+        for i in 0..3 {
+            for j in 0..3 {
+                let val = tt[i][j];
+                match f.precision() {
+                    Some(v) => write!(&mut buf, "{:.1$}", val, v)?,
+                    None => write!(&mut buf, "{}", val)?,
+                }
+                width = cmp::max(buf.chars().count(), width);
+                buf.clear();
+            }
         }
+        // draw matrix
+        width += 1;
+        write!(f, "┌{:1$}┐\n", " ", width * 3 + 1)?;
+        for i in 0..3 {
+            if i > 0 {
+                write!(f, " │\n")?;
+            }
+            for j in 0..3 {
+                if j == 0 {
+                    write!(f, "│")?;
+                }
+                let val = tt[i][j];
+                match f.precision() {
+                    Some(v) => write!(f, "{:>1$.2$}", val, width, v)?,
+                    None => write!(f, "{:>1$}", val, width)?,
+                }
+            }
+        }
+        write!(f, " │\n")?;
+        write!(f, "└{:1$}┘", " ", width * 3 + 1)?;
+        Ok(())
     }
 }
 
@@ -241,13 +298,14 @@ mod tests {
             [7.0, 8.0, 9.0],
         ];
         let t2 = Tensor2::from_tensor(comps_std, false)?;
-        println!("{}", t2);
-        let correct = "┌                                                          ┐\n\
-                            │                  1 1.9999999999999998 2.9999999999999996 │\n\
-                            │ 3.9999999999999996                  5                  6 │\n\
-                            │  6.999999999999998  7.999999999999999                  9 │\n\
-                            └                                                          ┘";
-        assert_eq!(format!("{}", t2), correct);
+        assert_eq!(
+            format!("{:.3}", t2),
+            "┌                   ┐\n\
+             │ 1.000 2.000 3.000 │\n\
+             │ 4.000 5.000 6.000 │\n\
+             │ 7.000 8.000 9.000 │\n\
+             └                   ┘"
+        );
         Ok(())
     }
 }

@@ -13,10 +13,12 @@
 //! assert_vec_approx_eq!(&[0.01, 0.012], &[0.012, 0.01], 1e-2);
 //!
 //! // check derivative using central differences
-//! let f = |x: f64| -x;
+//! struct Arguments {}
+//! let f = |x: f64, _: &Arguments| -x;
+//! let args = &Arguments {};
 //! let at_x = 8.0;
-//! let dfdx_at_x = -1.01;
-//! assert_deriv_approx_eq!(dfdx_at_x, f, at_x, 1e-2);
+//! let dfdx = -1.01;
+//! assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-2);
 //! ```
 
 /// Returns package description

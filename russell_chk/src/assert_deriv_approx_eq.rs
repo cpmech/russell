@@ -2,10 +2,10 @@
 ///
 /// # Input
 ///
-/// `dfdx: f64` -- Derivative of f with respect to x at a given x
-/// `f: Fn(f64) -> f64` -- (analytical) function f(x) to compute a numerical derivative
-/// `x: f64` -- Given x where the derivative is evaluated
-/// `tol: f64` -- Error tolerance such that `|dfdx - dfdx_num| < tol`
+/// * `dfdx: f64` -- derivative of f with respect to x at a given x
+/// * `at_x: f64` -- location for the derivative of f(x, {arguments}) w.r.t x
+/// * `f: fn(f64, &A) -> f64` -- function `f(x: f64, args: &A)`
+/// * `tol: f64` -- Error tolerance such that `|dfdx - dfdx_num| < tol`
 ///
 /// # Examples
 ///
@@ -14,10 +14,12 @@
 /// ```
 /// # #[macro_use] extern crate russell_chk;
 /// # fn main() {
-/// let f = |x: f64| -x;
+/// struct Arguments {}
+/// let f = |x: f64, _: &Arguments| -x;
+/// let args = &Arguments {};
 /// let at_x = 8.0;
-/// let dfdx_at_x = -1.01;
-/// assert_deriv_approx_eq!(dfdx_at_x, f, at_x, 1e-2);
+/// let dfdx = -1.01;
+/// assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-2);
 /// # }
 /// ```
 ///
@@ -26,25 +28,27 @@
 /// ```should_panic
 /// # #[macro_use] extern crate russell_chk;
 /// # fn main() {
-/// let f = |x: f64| -x;
+/// struct Arguments {}
+/// let f = |x: f64, _: &Arguments| -x;
+/// let args = &Arguments {};
 /// let at_x = 8.0;
-/// let dfdx_at_x = -1.01;
-/// assert_deriv_approx_eq!(dfdx_at_x, f, at_x, 1e-3);
+/// let dfdx = -1.01;
+/// assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-3);
 /// # }
 /// ```
 #[macro_export]
 macro_rules! assert_deriv_approx_eq {
-    ($dfdx:expr, $f:expr, $x:expr, $tol:expr) => {{
-        let (dfdx, f, x) = (&$dfdx, &$f, &$x);
-        let tol = $tol as f64;
-        let dfdx_num = $crate::deriv_central5(*f, *x);
+    ($dfdx:expr, $at_x:expr, $f:expr, $args:expr, $tol:expr) => {{
+        let (dfdx, at_x, f, args) = (&$dfdx, &$at_x, &$f, &$args);
+        let tol = &($tol as f64);
+        let dfdx_num = $crate::deriv_central5(*at_x, *f, *args);
         assert!(
-            ((*dfdx - dfdx_num) as f64).abs() < tol,
+            ((*dfdx - dfdx_num) as f64).abs() < *tol,
             "assert derivative failed: `(dfdx != dfdx_num)` \
              (dfdx: `{:?}`, dfdx_num: `{:?}`, expect diff: `{:?}`, real diff: `{:?}`)",
             *dfdx,
             dfdx_num,
-            tol,
+            *tol,
             ((*dfdx - dfdx_num) as f64).abs()
         );
     }};
@@ -52,20 +56,34 @@ macro_rules! assert_deriv_approx_eq {
 
 #[cfg(test)]
 mod tests {
+    struct Arguments {}
+
     #[test]
     #[should_panic(expected = "assert derivative failed: `(dfdx != dfdx_num)`")]
     fn panics_on_different_deriv() {
-        let f = |x: f64| x * x / 2.0;
+        let f = |x: f64, _: &Arguments| x * x / 2.0;
+        let args = &Arguments {};
         let at_x = 1.5;
-        let dfdx_at_x = 1.51;
-        assert_deriv_approx_eq!(dfdx_at_x, f, at_x, 1e-2);
+        let dfdx = 1.51;
+        assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-2);
     }
 
     #[test]
     fn accepts_approx_equal_deriv() {
-        let f = |x: f64| x * x / 2.0;
+        let f = |x: f64, _: &Arguments| x * x / 2.0;
+        let args = &Arguments {};
         let at_x = 1.5;
-        let dfdx_at_x = 1.501;
-        assert_deriv_approx_eq!(dfdx_at_x, f, at_x, 1e-2);
+        let dfdx = 1.501;
+        assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-2);
+    }
+
+    #[test]
+    fn another() {
+        struct Arguments {}
+        let f = |x: f64, _: &Arguments| -x;
+        let args = &Arguments {};
+        let at_x = 8.0;
+        let dfdx = -1.01;
+        assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-2);
     }
 }

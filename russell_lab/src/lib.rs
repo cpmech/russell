@@ -41,6 +41,7 @@ mod formatters;
 mod generators;
 mod matrix;
 mod matvec;
+mod sort;
 mod stopwatch;
 mod vector;
 pub use crate::as_array::*;
@@ -49,6 +50,7 @@ pub use crate::formatters::*;
 pub use crate::generators::*;
 pub use crate::matrix::*;
 pub use crate::matvec::*;
+pub use crate::sort::*;
 pub use crate::stopwatch::*;
 pub use crate::vector::*;
 

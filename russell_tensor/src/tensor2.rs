@@ -60,36 +60,44 @@ impl Tensor2 {
         if self.symmetric {
             for m in 0..6 {
                 let (i, j) = I_TO_IJ[m];
-                if i == j {
-                    tt[i][j] = self.comps_mandel[m];
-                }
+                tt[i][j] = self.get(i, j);
                 if i < j {
-                    tt[i][j] = self.comps_mandel[m] / SQRT_2;
                     tt[j][i] = tt[i][j];
                 }
             }
         } else {
             for i in 0..3 {
                 for j in 0..3 {
-                    let m = IJ_TO_I[i][j];
-                    let val = self.comps_mandel[m];
-                    if i == j {
-                        tt[i][j] = val;
-                    }
-                    if i < j {
-                        let n = IJ_TO_I[j][i];
-                        let next = self.comps_mandel[n];
-                        tt[i][j] = (val + next) / SQRT_2;
-                    }
-                    if i > j {
-                        let n = IJ_TO_I[j][i];
-                        let next = self.comps_mandel[n];
-                        tt[i][j] = (next - val) / SQRT_2;
-                    }
+                    tt[i][j] = self.get(i, j);
                 }
             }
         }
         tt
+    }
+
+    /// Returns the (i,j) component
+    pub fn get(&self, i: usize, j: usize) -> f64 {
+        let m = IJ_TO_I[i][j];
+        if self.symmetric {
+            if i == j {
+                self.comps_mandel[m]
+            } else {
+                self.comps_mandel[m] / SQRT_2
+            }
+        } else {
+            let val = self.comps_mandel[m];
+            if i == j {
+                val
+            } else if i < j {
+                let n = IJ_TO_I[j][i];
+                let next = self.comps_mandel[n];
+                (val + next) / SQRT_2
+            } else {
+                let n = IJ_TO_I[j][i];
+                let next = self.comps_mandel[n];
+                (next - val) / SQRT_2
+            }
+        }
     }
 }
 

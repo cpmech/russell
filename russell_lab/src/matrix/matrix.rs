@@ -76,6 +76,7 @@ use std::ops::{Index, IndexMut};
 /// # Ok(())
 /// # }
 /// ```
+#[derive(Debug)]
 pub struct Matrix {
     nrow: usize,    // number of rows
     ncol: usize,    // number of columns
@@ -778,6 +779,12 @@ mod tests {
                              └                ┘";
         assert_eq!(format!("{:.2}", a), correct);
         Ok(())
+    }
+
+    #[test]
+    fn debug_works() {
+        let a = Matrix::new(1, 1);
+        assert_eq!(format!("{:?}", a), "Matrix { nrow: 1, ncol: 1, data: [0.0] }");
     }
 
     #[test]

@@ -86,6 +86,7 @@ use std::ops::{Index, IndexMut};
 /// # Ok(())
 /// # }
 /// ```
+#[derive(Debug)]
 pub struct Vector {
     data: Vec<f64>,
 }
@@ -939,6 +940,12 @@ mod tests {
              │ 3.06 │\n\
              └      ┘"
         );
+    }
+
+    #[test]
+    fn debug_works() {
+        let u = Vector::new(1);
+        assert_eq!(format!("{:?}", u), "Vector { data: [0.0] }");
     }
 
     #[test]

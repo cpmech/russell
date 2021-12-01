@@ -102,7 +102,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::Matrix;
+    /// # use russell_lab::Matrix;
     /// let a = Matrix::new(3, 3);
     /// let correct = "┌       ┐\n\
     ///                │ 0 0 0 │\n\
@@ -124,7 +124,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::Matrix;
+    /// # use russell_lab::Matrix;
     /// let identity = Matrix::identity(3);
     /// let correct = "┌       ┐\n\
     ///                │ 1 0 0 │\n\
@@ -150,7 +150,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::Matrix;
+    /// # use russell_lab::Matrix;
     /// let a = Matrix::filled(2, 3, 4.0);
     /// let correct = "┌       ┐\n\
     ///                │ 4 4 4 │\n\
@@ -176,8 +176,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::Matrix;
-    ///
+    /// # use russell_lab::Matrix;
     /// // heap-allocated 2D array (vector of vectors)
     /// const IGNORED: f64 = 123.456;
     /// let a_data = vec![
@@ -254,7 +253,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::Matrix;
+    /// # use russell_lab::Matrix;
     /// let a = Matrix::diagonal(&[1.0, 2.0, 3.0]);
     /// let correct = "┌       ┐\n\
     ///                │ 1 0 0 │\n\
@@ -282,7 +281,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::Matrix;
+    /// # use russell_lab::Matrix;
     /// let a = Matrix::new(4, 3);
     /// assert_eq!(a.nrow(), 4);
     /// ```
@@ -296,7 +295,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::Matrix;
+    /// # use russell_lab::Matrix;
     /// let a = Matrix::new(4, 3);
     /// assert_eq!(a.ncol(), 3);
     /// ```
@@ -310,7 +309,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::Matrix;
+    /// # use russell_lab::Matrix;
     /// let a = Matrix::new(4, 3);
     /// assert_eq!(a.dims(), (4, 3));
     /// ```
@@ -328,7 +327,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::Matrix;
+    /// # use russell_lab::Matrix;
     /// let mut a = Matrix::from(&[
     ///     [1.0, 2.0, 3.0],
     ///     [4.0, 5.0, 6.0],
@@ -354,7 +353,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::Matrix;
+    /// # use russell_lab::Matrix;
     /// let mut a = Matrix::new(2, 2);
     /// a.fill(8.8);
     /// let correct = "┌         ┐\n\
@@ -375,7 +374,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::Matrix;
+    /// # use russell_lab::Matrix;
     /// let a = Matrix::from(&[[1.0, 2.0], [3.0, 4.0]]);
     /// assert_eq!(a.as_data(), &[1.0, 2.0, 3.0, 4.0]);
     /// ```
@@ -393,7 +392,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::Matrix;
+    /// # use russell_lab::Matrix;
     /// let mut a = Matrix::from(&[[1.0, 2.0], [3.0, 4.0]]);
     /// let data = a.as_mut_data();
     /// data[1] = 2.2;
@@ -409,7 +408,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::Matrix;
+    /// # use russell_lab::Matrix;
     /// let a = Matrix::from(&[
     ///     [1.0, 2.0],
     ///     [3.0, 4.0],
@@ -428,7 +427,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::Matrix;
+    /// # use russell_lab::Matrix;
     /// let mut a = Matrix::from(&[
     ///     [1.0, 2.0],
     ///     [3.0, 4.0],
@@ -450,7 +449,7 @@ impl Matrix {
     /// Returns a copy of this matrix
     ///
     /// ```
-    /// use russell_lab::Matrix;
+    /// # use russell_lab::Matrix;
     /// let mut a = Matrix::from(&[
     ///     [1.0, 2.0],
     ///     [3.0, 4.0],
@@ -501,7 +500,7 @@ impl Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::{NormMat, Matrix};
+    /// # use russell_lab::{NormMat, Matrix};
     /// let a = Matrix::from(&[
     ///     [-2.0,  2.0],
     ///     [ 1.0, -4.0],
@@ -532,7 +531,7 @@ impl fmt::Display for Matrix {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::Matrix;
+    /// # use russell_lab::Matrix;
     /// let a = Matrix::from(&[
     ///     [1.0, 0.0, -1.0,   8.0],
     ///     [4.0, 3.0,  1.0, -4.04],
@@ -594,7 +593,7 @@ impl fmt::Display for Matrix {
 /// # Example
 ///
 /// ```
-/// use russell_lab::Matrix;
+/// # use russell_lab::Matrix;
 /// let a = Matrix::from(&[
 ///     [1.0, 2.0, 3.0],
 ///     [4.0, 5.0, 6.0],
@@ -619,7 +618,7 @@ impl Index<usize> for Matrix {
 /// # Example
 ///
 /// ```
-/// use russell_lab::Matrix;
+/// # use russell_lab::Matrix;
 /// let mut a = Matrix::from(&[
 ///     [1.0, 2.0, 3.0],
 ///     [4.0, 5.0, 6.0],

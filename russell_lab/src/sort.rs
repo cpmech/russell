@@ -1,6 +1,6 @@
 use std::mem;
 
-// Sorts 2 values
+/// Sorts 2 values
 pub fn sort2<T>(x: &mut (T, T))
 where
     T: PartialOrd,
@@ -10,7 +10,7 @@ where
     }
 }
 
-// Sorts 3 values
+/// Sorts 3 values
 pub fn sort3<T>(x: &mut (T, T, T))
 where
     T: PartialOrd,
@@ -26,7 +26,7 @@ where
     }
 }
 
-// Sorts 4 values
+/// Sorts 4 values
 pub fn sort4<T>(x: &mut (T, T, T, T))
 where
     T: PartialOrd,

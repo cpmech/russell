@@ -40,6 +40,17 @@ impl SparseTriplet {
     /// * `max` -- The maximum number fo non-zero values in the sparse matrix,
     ///            including entries with repeated indices
     /// * `sym` -- Specifies how the data is stored regarding symmetry
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_sparse::{SparseTriplet, Symmetry, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let trip = SparseTriplet::new(3, 3, 4, Symmetry::No)?;
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn new(nrow: usize, ncol: usize, max: usize, sym: Symmetry) -> Result<Self, StrError> {
         if nrow == 0 || ncol == 0 || max == 0 {
             return Err("nrow, ncol, and max must all be greater than zero");
@@ -57,6 +68,21 @@ impl SparseTriplet {
     }
 
     /// Puts the next triple (i,j,aij) into the Triplet
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_sparse::{SparseTriplet, Symmetry, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut trip = SparseTriplet::new(3, 3, 4, Symmetry::No)?;
+    ///     trip.put(0, 0, 1.0);
+    ///     trip.put(1, 1, 2.0);
+    ///     trip.put(2, 2, 3.0);
+    ///     trip.put(0, 1, 4.0);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn put(&mut self, i: usize, j: usize, aij: f64) {
         assert!(i < self.nrow);
         assert!(j < self.ncol);

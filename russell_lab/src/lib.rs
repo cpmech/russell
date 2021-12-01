@@ -5,35 +5,39 @@
 //! # Example - Cholesky factorization
 //!
 //! ```
-//! # fn main() -> Result<(), &'static str> {
-//! # use russell_lab::*;
-//! // set matrix
-//! let a = Matrix::from(&[
-//!     [  4.0,  12.0, -16.0],
-//!     [ 12.0,  37.0, -43.0],
-//!     [-16.0, -43.0,  98.0],
-//! ]);
+//! use russell_lab::{cholesky_factor, Matrix, StrError};
 //!
-//! // perform factorization
-//! let m = a.nrow();
-//! let mut l = Matrix::new(m, m);
-//! cholesky_factor(&mut l, &a)?;
+//! fn main() -> Result<(), StrError> {
+//!     // set matrix
+//!     let a = Matrix::from(&[
+//!         [  4.0,  12.0, -16.0],
+//!         [ 12.0,  37.0, -43.0],
+//!         [-16.0, -43.0,  98.0],
+//!     ]);
 //!
-//! // compare with solution
-//! let l_correct = "┌          ┐\n\
-//!                  │  2  0  0 │\n\
-//!                  │  6  1  0 │\n\
-//!                  │ -8  5  3 │\n\
-//!                  └          ┘";
-//! assert_eq!(format!("{}", l), l_correct);
-//! # Ok(())
-//! # }
+//!     // perform factorization
+//!     let m = a.nrow();
+//!     let mut l = Matrix::new(m, m);
+//!     cholesky_factor(&mut l, &a)?;
+//!
+//!     // compare with solution
+//!     let l_correct = "┌          ┐\n\
+//!                      │  2  0  0 │\n\
+//!                      │  6  1  0 │\n\
+//!                      │ -8  5  3 │\n\
+//!                      └          ┘";
+//!     assert_eq!(format!("{}", l), l_correct);
+//!     Ok(())
+//! }
 //! ```
 
 /// Returns package description
 pub fn desc() -> String {
     "Matrix-vector laboratory including linear algebra tools".to_string()
 }
+
+/// Defines a type alias for the error type as a static string
+pub type StrError = &'static str;
 
 mod as_array;
 mod enums;

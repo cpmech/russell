@@ -1,4 +1,5 @@
 use super::{IJ_TO_I, I_TO_IJ, SQRT_2};
+use crate::StrError;
 use std::cmp;
 use std::fmt::{self, Write};
 
@@ -25,7 +26,7 @@ impl Tensor2 {
     /// * tt - the standard components given with respect to an orthonormal Cartesian basis
     /// * symmetric - this is a symmetric tensor
     ///
-    pub fn from_tensor(tt: &[[f64; 3]; 3], symmetric: bool) -> Result<Self, &'static str> {
+    pub fn from_tensor(tt: &[[f64; 3]; 3], symmetric: bool) -> Result<Self, StrError> {
         if symmetric {
             if tt[1][0] != tt[0][1] || tt[2][1] != tt[1][2] || tt[2][0] != tt[0][2] {
                 return Err("the components of symmetric second order tensor do not pass symmetry check");
@@ -107,24 +108,25 @@ impl fmt::Display for Tensor2 {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_tensor::Tensor2;
-    /// let comps_std = &[
-    ///     [1.0, 4.0, 6.0],
-    ///     [7.0, 2.0, 5.0],
-    ///     [9.0, 8.0, 3.0],
-    /// ];
-    /// let t2 = Tensor2::from_tensor(comps_std, false)?;
-    /// assert_eq!(
-    ///     format!("{:.2}", t2),
-    ///     "┌                ┐\n\
-    ///      │ 1.00 4.00 6.00 │\n\
-    ///      │ 7.00 2.00 5.00 │\n\
-    ///      │ 9.00 8.00 3.00 │\n\
-    ///      └                ┘"
-    /// );
-    /// # Ok(())
-    /// # }
+    /// use russell_tensor::{Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let comps_std = &[
+    ///         [1.0, 4.0, 6.0],
+    ///         [7.0, 2.0, 5.0],
+    ///         [9.0, 8.0, 3.0],
+    ///     ];
+    ///     let t2 = Tensor2::from_tensor(comps_std, false)?;
+    ///     assert_eq!(
+    ///         format!("{:.2}", t2),
+    ///         "┌                ┐\n\
+    ///          │ 1.00 4.00 6.00 │\n\
+    ///          │ 7.00 2.00 5.00 │\n\
+    ///          │ 9.00 8.00 3.00 │\n\
+    ///          └                ┘"
+    ///     );
+    ///     Ok(())
+    /// }
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // convert mandel values to full tensor
@@ -172,7 +174,8 @@ impl fmt::Display for Tensor2 {
 #[cfg(test)]
 mod tests {
     use super::{Tensor2, SQRT_2};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
 
     #[test]
     fn new_tensor2_works() {
@@ -189,7 +192,7 @@ mod tests {
     }
 
     #[test]
-    fn from_tensor_works() -> Result<(), &'static str> {
+    fn from_tensor_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 2.0, 3.0],
@@ -213,7 +216,7 @@ mod tests {
     }
 
     #[test]
-    fn from_symmetric_tensor_works() -> Result<(), &'static str> {
+    fn from_symmetric_tensor_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -262,7 +265,7 @@ mod tests {
     }
 
     #[test]
-    fn to_tensor_works() -> Result<(), &'static str> {
+    fn to_tensor_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 2.0, 3.0],
@@ -280,7 +283,7 @@ mod tests {
     }
 
     #[test]
-    fn to_tensor_symmetric_works() -> Result<(), &'static str> {
+    fn to_tensor_symmetric_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -298,7 +301,7 @@ mod tests {
     }
 
     #[test]
-    fn display_trait_works() -> Result<(), &'static str> {
+    fn display_trait_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 2.0, 3.0],

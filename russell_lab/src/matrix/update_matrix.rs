@@ -1,4 +1,5 @@
 use super::Matrix;
+use crate::StrError;
 use russell_openblas::{daxpy, to_i32};
 
 /// Updates matrix based on another matrix (axpy)
@@ -10,26 +11,27 @@ use russell_openblas::{daxpy, to_i32};
 /// # Example
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// use russell_lab::*;
-/// let a = Matrix::from(&[
-///     [10.0, 20.0, 30.0],
-///     [40.0, 50.0, 60.0],
-/// ]);
-/// let mut b = Matrix::from(&[
-///     [10.0, 20.0, 30.0],
-///     [40.0, 50.0, 60.0],
-/// ]);
-/// update_matrix(&mut b, 0.1, &a)?;
-/// let correct = "┌          ┐\n\
-///                │ 11 22 33 │\n\
-///                │ 44 55 66 │\n\
-///                └          ┘";
-/// assert_eq!(format!("{}", b), correct);
-/// # Ok(())
-/// # }
+/// use russell_lab::{update_matrix, Matrix, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     let a = Matrix::from(&[
+///         [10.0, 20.0, 30.0],
+///         [40.0, 50.0, 60.0],
+///     ]);
+///     let mut b = Matrix::from(&[
+///         [10.0, 20.0, 30.0],
+///         [40.0, 50.0, 60.0],
+///     ]);
+///     update_matrix(&mut b, 0.1, &a)?;
+///     let correct = "┌          ┐\n\
+///                    │ 11 22 33 │\n\
+///                    │ 44 55 66 │\n\
+///                    └          ┘";
+///     assert_eq!(format!("{}", b), correct);
+///     Ok(())
+/// }
 /// ```
-pub fn update_matrix(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), &'static str> {
+pub fn update_matrix(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), StrError> {
     let (m, n) = b.dims();
     if a.nrow() != m || a.ncol() != n {
         return Err("matrices are incompatible");
@@ -44,7 +46,8 @@ pub fn update_matrix(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), &'sta
 #[cfg(test)]
 mod tests {
     use super::{update_matrix, Matrix};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn update_matrix_fail_on_wrong_dims() {
@@ -61,7 +64,7 @@ mod tests {
     }
 
     #[test]
-    fn update_matrix_works() -> Result<(), &'static str> {
+    fn update_matrix_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [10.0, 20.0, 30.0],

@@ -1,5 +1,6 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
+use crate::StrError;
 use russell_openblas::{dger, to_i32};
 
 /// Performs the outer (tensor) product between two vectors resulting in a matrix
@@ -17,22 +18,23 @@ use russell_openblas::{dger, to_i32};
 /// # Example
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// use russell_lab::*;
-/// let u = Vector::from(&[1.0, 2.0, 3.0]);
-/// let v = Vector::from(&[5.0, -2.0, 0.0, 1.0]);
-/// let mut a = Matrix::new(u.dim(), v.dim());
-/// outer(&mut a, 1.0, &u, &v)?;
-/// let correct = "┌             ┐\n\
-///                │  5 -2  0  1 │\n\
-///                │ 10 -4  0  2 │\n\
-///                │ 15 -6  0  3 │\n\
-///                └             ┘";
-/// assert_eq!(format!("{}", a), correct);
-/// # Ok(())
-/// # }
+/// use russell_lab::{outer, Matrix, Vector, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     let u = Vector::from(&[1.0, 2.0, 3.0]);
+///     let v = Vector::from(&[5.0, -2.0, 0.0, 1.0]);
+///     let mut a = Matrix::new(u.dim(), v.dim());
+///     outer(&mut a, 1.0, &u, &v)?;
+///     let correct = "┌             ┐\n\
+///                    │  5 -2  0  1 │\n\
+///                    │ 10 -4  0  2 │\n\
+///                    │ 15 -6  0  3 │\n\
+///                    └             ┘";
+///     assert_eq!(format!("{}", a), correct);
+///     Ok(())
+/// }
 /// ```
-pub fn outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) -> Result<(), &'static str> {
+pub fn outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) -> Result<(), StrError> {
     let m = u.dim();
     let n = v.dim();
     if a.nrow() != m || a.ncol() != n {
@@ -49,7 +51,8 @@ pub fn outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) -> Result<(), &
 #[cfg(test)]
 mod tests {
     use super::{outer, Matrix, Vector};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn mat_vec_mul_fail_on_wrong_dims() {
@@ -68,7 +71,7 @@ mod tests {
     }
 
     #[test]
-    fn outer_works() -> Result<(), &'static str> {
+    fn outer_works() -> Result<(), StrError> {
         let u = Vector::from(&[1.0, 2.0, 3.0]);
         let v = Vector::from(&[5.0, -2.0, 0.0, 1.0]);
         let (m, n) = (u.dim(), v.dim());
@@ -85,7 +88,7 @@ mod tests {
     }
 
     #[test]
-    fn outer_works_1() -> Result<(), &'static str> {
+    fn outer_works_1() -> Result<(), StrError> {
         let u = Vector::from(&[1.0, 2.0, 3.0, 4.0]);
         let v = Vector::from(&[1.0, 1.0, -2.0]);
         let (m, n) = (u.dim(), v.dim());

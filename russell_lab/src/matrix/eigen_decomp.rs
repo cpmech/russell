@@ -1,4 +1,5 @@
 use super::Matrix;
+use crate::StrError;
 use russell_openblas::{dgeev, dgeev_data, dgeev_data_lr, to_i32};
 
 /// Performs the eigen-decomposition of a square matrix
@@ -50,66 +51,66 @@ use russell_openblas::{dgeev, dgeev_data, dgeev_data_lr, to_i32};
 /// # Example
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
 /// // import
-/// use russell_lab::*;
-/// use russell_chk::*;
+/// use russell_lab::{add_matrices, eigen_decomp, mat_mat_mul, Matrix, NormMat, StrError};
+/// use russell_chk::assert_approx_eq;
 ///
-/// // set matrix
-/// let data = [
-///     [2.0, 0.0, 0.0],
-///     [0.0, 3.0, 4.0],
-///     [0.0, 4.0, 9.0],
-/// ];
-/// let mut a = Matrix::from(&data);
+/// fn main() -> Result<(), StrError> {
+///     // set matrix
+///     let data = [
+///         [2.0, 0.0, 0.0],
+///         [0.0, 3.0, 4.0],
+///         [0.0, 4.0, 9.0],
+///     ];
+///     let mut a = Matrix::from(&data);
 ///
-/// // allocate output arrays
-/// let m = a.nrow();
-/// let mut l_real = vec![0.0; m];
-/// let mut l_imag = vec![0.0; m];
-/// let mut v_real = Matrix::new(m, m);
-/// let mut v_imag = Matrix::new(m, m);
+///     // allocate output arrays
+///     let m = a.nrow();
+///     let mut l_real = vec![0.0; m];
+///     let mut l_imag = vec![0.0; m];
+///     let mut v_real = Matrix::new(m, m);
+///     let mut v_imag = Matrix::new(m, m);
 ///
-/// // perform the eigen-decomposition
-/// eigen_decomp(
-///     &mut l_real,
-///     &mut l_imag,
-///     &mut v_real,
-///     &mut v_imag,
-///     &mut a,
-/// )?;
+///     // perform the eigen-decomposition
+///     eigen_decomp(
+///         &mut l_real,
+///         &mut l_imag,
+///         &mut v_real,
+///         &mut v_imag,
+///         &mut a,
+///     )?;
 ///
-/// // check results
-/// let l_real_correct = "[11.0, 1.0, 2.0]";
-/// let l_imag_correct = "[0.0, 0.0, 0.0]";
-/// let v_real_correct = "┌                      ┐\n\
-///                       │  0.000  0.000  1.000 │\n\
-///                       │  0.447  0.894  0.000 │\n\
-///                       │  0.894 -0.447  0.000 │\n\
-///                       └                      ┘";
-/// let v_imag_correct = "┌       ┐\n\
-///                       │ 0 0 0 │\n\
-///                       │ 0 0 0 │\n\
-///                       │ 0 0 0 │\n\
-///                       └       ┘";
-/// assert_eq!(format!("{:?}", l_real), l_real_correct);
-/// assert_eq!(format!("{:?}", l_imag), l_imag_correct);
-/// assert_eq!(format!("{:.3}", v_real), v_real_correct);
-/// assert_eq!(format!("{}", v_imag), v_imag_correct);
+///     // check results
+///     let l_real_correct = "[11.0, 1.0, 2.0]";
+///     let l_imag_correct = "[0.0, 0.0, 0.0]";
+///     let v_real_correct = "┌                      ┐\n\
+///                           │  0.000  0.000  1.000 │\n\
+///                           │  0.447  0.894  0.000 │\n\
+///                           │  0.894 -0.447  0.000 │\n\
+///                           └                      ┘";
+///     let v_imag_correct = "┌       ┐\n\
+///                           │ 0 0 0 │\n\
+///                           │ 0 0 0 │\n\
+///                           │ 0 0 0 │\n\
+///                           └       ┘";
+///     assert_eq!(format!("{:?}", l_real), l_real_correct);
+///     assert_eq!(format!("{:?}", l_imag), l_imag_correct);
+///     assert_eq!(format!("{:.3}", v_real), v_real_correct);
+///     assert_eq!(format!("{}", v_imag), v_imag_correct);
 ///
-/// // check eigen-decomposition (similarity transformation) of a
-/// // symmetric matrix with real-only eigenvalues and eigenvectors
-/// let a_copy = Matrix::from(&data);
-/// let lam = Matrix::diagonal(&l_real);
-/// let mut a_v = Matrix::new(m, m);
-/// let mut v_l = Matrix::new(m, m);
-/// let mut err = Matrix::filled(m, m, f64::MAX);
-/// mat_mat_mul(&mut a_v, 1.0, &a_copy, &v_real)?;
-/// mat_mat_mul(&mut v_l, 1.0, &v_real, &lam)?;
-/// add_matrices(&mut err, 1.0, &a_v, -1.0, &v_l)?;
-/// assert_approx_eq!(err.norm(NormMat::Max), 0.0, 1e-15);
-/// # Ok(())
-/// # }
+///     // check eigen-decomposition (similarity transformation) of a
+///     // symmetric matrix with real-only eigenvalues and eigenvectors
+///     let a_copy = Matrix::from(&data);
+///     let lam = Matrix::diagonal(&l_real);
+///     let mut a_v = Matrix::new(m, m);
+///     let mut v_l = Matrix::new(m, m);
+///     let mut err = Matrix::filled(m, m, f64::MAX);
+///     mat_mat_mul(&mut a_v, 1.0, &a_copy, &v_real)?;
+///     mat_mat_mul(&mut v_l, 1.0, &v_real, &lam)?;
+///     add_matrices(&mut err, 1.0, &a_v, -1.0, &v_l)?;
+///     assert_approx_eq!(err.norm(NormMat::Max), 0.0, 1e-15);
+///     Ok(())
+/// }
 /// ```
 pub fn eigen_decomp(
     l_real: &mut [f64],
@@ -117,7 +118,7 @@ pub fn eigen_decomp(
     v_real: &mut Matrix,
     v_imag: &mut Matrix,
     a: &mut Matrix,
-) -> Result<(), &'static str> {
+) -> Result<(), StrError> {
     let (m, n) = a.dims();
     if m != n {
         return Err("matrix must be square");
@@ -175,10 +176,8 @@ pub fn eigen_decomp(
 /// # Example
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// // import
-/// use russell_lab::*;
-///
+/// use russell_lab::{eigen_decomp_lr, Matrix, StrError};
+/// # fn main() -> Result<(), StrError> {
 /// // set matrix
 /// let data = [
 ///     [0.0, 1.0, 0.0],
@@ -247,7 +246,7 @@ pub fn eigen_decomp_lr(
     v_real: &mut Matrix,
     v_imag: &mut Matrix,
     a: &mut Matrix,
-) -> Result<(), &'static str> {
+) -> Result<(), StrError> {
     let (m, n) = a.dims();
     if m != n {
         return Err("matrix must be square");
@@ -287,10 +286,10 @@ pub fn eigen_decomp_lr(
 #[cfg(test)]
 mod tests {
     use super::{eigen_decomp, eigen_decomp_lr, Matrix};
-    use crate::{add_matrices, mat_mat_mul, AsArray2D, NormMat};
+    use crate::{add_matrices, mat_mat_mul, AsArray2D, NormMat, StrError};
     use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
 
-    fn check_real_eigen<'a, T>(data: &'a T, v: &Matrix, l: &[f64]) -> Result<(), &'static str>
+    fn check_real_eigen<'a, T>(data: &'a T, v: &Matrix, l: &[f64]) -> Result<(), StrError>
     where
         T: AsArray2D<'a, f64>,
     {
@@ -466,7 +465,7 @@ mod tests {
     }
 
     #[test]
-    fn eigen_decomp_works() -> Result<(), &'static str> {
+    fn eigen_decomp_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let data = [
             [0.0, 1.0, 0.0],
@@ -503,7 +502,7 @@ mod tests {
     }
 
     #[test]
-    fn eigen_decomp_rep_works() -> Result<(), &'static str> {
+    fn eigen_decomp_rep_works() -> Result<(), StrError> {
         // rep: repeated eigenvalues
         #[rustfmt::skip]
         let data = [
@@ -545,7 +544,7 @@ mod tests {
     }
 
     #[test]
-    fn eigen_decomp_lr_works() -> Result<(), &'static str> {
+    fn eigen_decomp_lr_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let data = [
             [0.0, 1.0, 0.0],

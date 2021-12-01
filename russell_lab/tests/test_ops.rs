@@ -1,7 +1,7 @@
-use russell_lab::*;
+use russell_lab::{mat_mat_mul, mat_vec_mul, Matrix, NormMat, NormVec, StrError, Vector};
 
 #[test]
-fn test_mat_vec_mul() -> Result<(), &'static str> {
+fn test_mat_vec_mul() -> Result<(), StrError> {
     // v  :=  a  ⋅ u
     // (m)  (m,n) (n)
     for m in [0, 7, 15_usize] {
@@ -21,7 +21,7 @@ fn test_mat_vec_mul() -> Result<(), &'static str> {
 }
 
 #[test]
-fn test_mat_mat_mul() -> Result<(), &'static str> {
+fn test_mat_mat_mul() -> Result<(), StrError> {
     //   c  :=  a  ⋅  b
     // (m,n)  (m,k) (k,n)
     for m in [0, 5, 7_usize] {

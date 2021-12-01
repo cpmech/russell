@@ -1,5 +1,6 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
+use crate::StrError;
 use russell_openblas::{dgemv, to_i32};
 
 /// Performs the matrix-vector multiplication resulting in a vector
@@ -17,28 +18,29 @@ use russell_openblas::{dgemv, to_i32};
 /// # Example
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// use russell_lab::*;
-/// let a = Matrix::from(&[
-///     [ 5.0, -2.0, 1.0],
-///     [-4.0,  0.0, 2.0],
-///     [15.0, -6.0, 0.0],
-///     [ 3.0,  5.0, 1.0],
-/// ]);
-/// let u = Vector::from(&[1.0, 2.0, 3.0]);
-/// let mut v = Vector::new(a.nrow());
-/// mat_vec_mul(&mut v, 0.5, &a, &u)?;
-/// let correct = "┌     ┐\n\
-///                │   2 │\n\
-///                │   1 │\n\
-///                │ 1.5 │\n\
-///                │   8 │\n\
-///                └     ┘";
-/// assert_eq!(format!("{}", v), correct);
-/// # Ok(())
-/// # }
+/// use russell_lab::{mat_vec_mul, Matrix, Vector, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     let a = Matrix::from(&[
+///         [ 5.0, -2.0, 1.0],
+///         [-4.0,  0.0, 2.0],
+///         [15.0, -6.0, 0.0],
+///         [ 3.0,  5.0, 1.0],
+///     ]);
+///     let u = Vector::from(&[1.0, 2.0, 3.0]);
+///     let mut v = Vector::new(a.nrow());
+///     mat_vec_mul(&mut v, 0.5, &a, &u)?;
+///     let correct = "┌     ┐\n\
+///                    │   2 │\n\
+///                    │   1 │\n\
+///                    │ 1.5 │\n\
+///                    │   8 │\n\
+///                    └     ┘";
+///     assert_eq!(format!("{}", v), correct);
+///     Ok(())
+/// }
 /// ```
-pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) -> Result<(), &'static str> {
+pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) -> Result<(), StrError> {
     let m = v.dim();
     let n = u.dim();
     if m != a.nrow() || n != a.ncol() {
@@ -69,7 +71,8 @@ pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) -> Result
 #[cfg(test)]
 mod tests {
     use super::{mat_vec_mul, Matrix, Vector};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn mat_vec_mul_fails_on_wrong_dims() {
@@ -88,7 +91,7 @@ mod tests {
     }
 
     #[test]
-    fn mat_vec_mul_works() -> Result<(), &'static str> {
+    fn mat_vec_mul_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [ 5.0, -2.0, 0.0, 1.0],
@@ -104,7 +107,7 @@ mod tests {
     }
 
     #[test]
-    fn mat_vec_mul_zero_works() -> Result<(), &'static str> {
+    fn mat_vec_mul_zero_works() -> Result<(), StrError> {
         let a_0x0 = Matrix::new(0, 0);
         let a_0x1 = Matrix::new(0, 1);
         let a_1x0 = Matrix::new(1, 0);
@@ -113,9 +116,9 @@ mod tests {
         let mut v0 = Vector::new(0);
         let mut v1 = Vector::new(1);
         mat_vec_mul(&mut v0, 1.0, &a_0x0, &u0)?;
-        assert_eq!(v0.as_data(), &[]);
+        assert_eq!(v0.as_data(), &[] as &[f64]);
         mat_vec_mul(&mut v0, 1.0, &a_0x1, &u1)?;
-        assert_eq!(v0.as_data(), &[]);
+        assert_eq!(v0.as_data(), &[] as &[f64]);
         mat_vec_mul(&mut v1, 1.0, &a_1x0, &u0)?;
         assert_eq!(v1.as_data(), &[0.0]);
         Ok(())

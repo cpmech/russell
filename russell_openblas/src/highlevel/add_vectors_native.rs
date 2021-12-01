@@ -93,7 +93,7 @@ pub fn add_vectors_native(w: &mut [f64], alpha: f64, u: &[f64], beta: f64, v: &[
 #[cfg(test)]
 mod tests {
     use super::add_vectors_native;
-    use russell_chk::*;
+    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn add_vectors_native_sizes_works() {

@@ -19,72 +19,71 @@ use std::ops::{Index, IndexMut};
 /// # Example
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// // import
-/// use russell_lab::{Vector, add_vectors};
+/// use russell_lab::{add_vectors, Vector, StrError};
 ///
-/// // create vector
-/// let mut u = Vector::from(&[4.0, 9.0, 16.0, 25.0]);
-/// assert_eq!(
-///     format!("{}", u),
-///     "┌    ┐\n\
-///      │  4 │\n\
-///      │  9 │\n\
-///      │ 16 │\n\
-///      │ 25 │\n\
-///      └    ┘"
-/// );
+/// fn main() -> Result<(), StrError> {
+///     // create vector
+///     let mut u = Vector::from(&[4.0, 9.0, 16.0, 25.0]);
+///     assert_eq!(
+///         format!("{}", u),
+///         "┌    ┐\n\
+///          │  4 │\n\
+///          │  9 │\n\
+///          │ 16 │\n\
+///          │ 25 │\n\
+///          └    ┘"
+///     );
 ///
-/// // create vector filled with zeros
-/// let n = u.dim();
-/// let v = Vector::filled(n, 10.0);
-/// assert_eq!(
-///     format!("{}", v),
-///     "┌    ┐\n\
-///      │ 10 │\n\
-///      │ 10 │\n\
-///      │ 10 │\n\
-///      │ 10 │\n\
-///      └    ┘"
-/// );
+///     // create vector filled with zeros
+///     let n = u.dim();
+///     let v = Vector::filled(n, 10.0);
+///     assert_eq!(
+///         format!("{}", v),
+///         "┌    ┐\n\
+///          │ 10 │\n\
+///          │ 10 │\n\
+///          │ 10 │\n\
+///          │ 10 │\n\
+///          └    ┘"
+///     );
 ///
-/// // create a copy and change its components
-/// let mut w = u.get_copy();
-/// w.map(|x| f64::sqrt(x));
-/// w[0] *= -1.0;
-/// w[1] *= -1.0;
-/// w[2] *= -1.0;
-/// w[3] *= -1.0;
-/// assert_eq!(
-///     format!("{}", w),
-///     "┌    ┐\n\
-///      │ -2 │\n\
-///      │ -3 │\n\
-///      │ -4 │\n\
-///      │ -5 │\n\
-///      └    ┘"
-/// );
+///     // create a copy and change its components
+///     let mut w = u.get_copy();
+///     w.map(|x| f64::sqrt(x));
+///     w[0] *= -1.0;
+///     w[1] *= -1.0;
+///     w[2] *= -1.0;
+///     w[3] *= -1.0;
+///     assert_eq!(
+///         format!("{}", w),
+///         "┌    ┐\n\
+///          │ -2 │\n\
+///          │ -3 │\n\
+///          │ -4 │\n\
+///          │ -5 │\n\
+///          └    ┘"
+///     );
 ///
-/// // change the components
-/// for x in &mut u {
-///     *x = f64::sqrt(*x);
+///     // change the components
+///     for x in &mut u {
+///         *x = f64::sqrt(*x);
+///     }
+///
+///     // add vectors
+///     let mut z = Vector::new(n);
+///     add_vectors(&mut z, 1.0, &u, 1.0, &w)?;
+///     println!("{}", z);
+///     assert_eq!(
+///         format!("{}", z),
+///         "┌   ┐\n\
+///          │ 0 │\n\
+///          │ 0 │\n\
+///          │ 0 │\n\
+///          │ 0 │\n\
+///          └   ┘"
+///     );
+///     Ok(())
 /// }
-///
-/// // add vectors
-/// let mut z = Vector::new(n);
-/// add_vectors(&mut z, 1.0, &u, 1.0, &w)?;
-/// println!("{}", z);
-/// assert_eq!(
-///     format!("{}", z),
-///     "┌   ┐\n\
-///      │ 0 │\n\
-///      │ 0 │\n\
-///      │ 0 │\n\
-///      │ 0 │\n\
-///      └   ┘"
-/// );
-/// # Ok(())
-/// # }
 /// ```
 #[derive(Debug)]
 pub struct Vector {
@@ -528,8 +527,8 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_lab::{NormVec, Vector};
+    /// use russell_lab::{NormVec, Vector, StrError};
+    /// # fn main() -> Result<(), StrError> {
     /// let u = Vector::from(&[2.0, -2.0, 2.0, -2.0, -3.0]);
     /// assert_eq!(u.norm(NormVec::One), 11.0);
     /// assert_eq!(u.norm(NormVec::Euc), 5.0);
@@ -717,7 +716,7 @@ impl<'a> IntoIterator for &'a mut Vector {
 #[cfg(test)]
 mod tests {
     use super::{NormVec, Vector};
-    use russell_chk::*;
+    use russell_chk::assert_vec_approx_eq;
     use std::fmt::Write;
 
     fn pow2(x: f64) -> f64 {

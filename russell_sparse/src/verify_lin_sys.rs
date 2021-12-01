@@ -1,4 +1,5 @@
 use super::SparseTriplet;
+use crate::StrError;
 use russell_lab::{format_nanoseconds, update_vector, NormVec, Stopwatch, Vector};
 use russell_openblas::{idamax, to_i32};
 use std::fmt;
@@ -22,42 +23,41 @@ impl VerifyLinSys {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// // import
-    /// use russell_lab::*;
-    /// use russell_sparse::*;
+    /// use russell_lab::{Matrix, Vector};
+    /// use russell_sparse::{SparseTriplet, Symmetry, VerifyLinSys, StrError};
     ///
-    /// // set sparse matrix (3 x 3) with 4 non-zeros
-    /// let mut trip = SparseTriplet::new(3, 3, 4, Symmetry::No)?;
-    /// trip.put(0, 0, 1.0);
-    /// trip.put(0, 2, 4.0);
-    /// trip.put(1, 1, 2.0);
-    /// trip.put(2, 2, 3.0);
+    /// fn main() -> Result<(), StrError> {
+    ///     // set sparse matrix (3 x 3) with 4 non-zeros
+    ///     let mut trip = SparseTriplet::new(3, 3, 4, Symmetry::No)?;
+    ///     trip.put(0, 0, 1.0);
+    ///     trip.put(0, 2, 4.0);
+    ///     trip.put(1, 1, 2.0);
+    ///     trip.put(2, 2, 3.0);
     ///
-    /// // check matrix
-    /// let (m, n) = trip.dims();
-    /// let mut a = Matrix::new(m, n);
-    /// trip.to_matrix(&mut a)?;
-    /// let correct_a = "┌       ┐\n\
-    ///                  │ 1 0 4 │\n\
-    ///                  │ 0 2 0 │\n\
-    ///                  │ 0 0 3 │\n\
-    ///                  └       ┘";
-    /// assert_eq!(format!("{}", a), correct_a);
+    ///     // check matrix
+    ///     let (m, n) = trip.dims();
+    ///     let mut a = Matrix::new(m, n);
+    ///     trip.to_matrix(&mut a)?;
+    ///     let correct_a = "┌       ┐\n\
+    ///                      │ 1 0 4 │\n\
+    ///                      │ 0 2 0 │\n\
+    ///                      │ 0 0 3 │\n\
+    ///                      └       ┘";
+    ///     assert_eq!(format!("{}", a), correct_a);
     ///
-    /// // verify lin-sys
-    /// let x = Vector::from(&[1.0, 1.0, 1.0]);
-    /// let rhs = Vector::from(&[5.0, 2.0, 3.0]);
-    /// let verify = VerifyLinSys::new(&trip, &x, &rhs)?;
-    /// assert_eq!(verify.max_abs_a, 4.0);
-    /// assert_eq!(verify.max_abs_ax, 5.0);
-    /// assert_eq!(verify.max_abs_diff, 0.0);
-    /// assert_eq!(verify.relative_error, 0.0);
-    /// assert!(verify.time_check > 0);
-    /// # Ok(())
-    /// # }
+    ///     // verify lin-sys
+    ///     let x = Vector::from(&[1.0, 1.0, 1.0]);
+    ///     let rhs = Vector::from(&[5.0, 2.0, 3.0]);
+    ///     let verify = VerifyLinSys::new(&trip, &x, &rhs)?;
+    ///     assert_eq!(verify.max_abs_a, 4.0);
+    ///     assert_eq!(verify.max_abs_ax, 5.0);
+    ///     assert_eq!(verify.max_abs_diff, 0.0);
+    ///     assert_eq!(verify.relative_error, 0.0);
+    ///     assert!(verify.time_check > 0);
+    ///     Ok(())
+    /// }
     /// ```
-    pub fn new(trip: &SparseTriplet, x: &Vector, rhs: &Vector) -> Result<Self, &'static str> {
+    pub fn new(trip: &SparseTriplet, x: &Vector, rhs: &Vector) -> Result<Self, StrError> {
         if x.dim() != trip.ncol || rhs.dim() != trip.nrow {
             return Err("vector dimensions are incompatible");
         }
@@ -120,11 +120,11 @@ impl fmt::Display for VerifyLinSys {
 #[cfg(test)]
 mod tests {
     use super::{SparseTriplet, VerifyLinSys};
-    use crate::Symmetry;
+    use crate::{StrError, Symmetry};
     use russell_lab::Vector;
 
     #[test]
-    fn new_fails_on_wrong_vectors() -> Result<(), &'static str> {
+    fn new_fails_on_wrong_vectors() -> Result<(), StrError> {
         let trip = SparseTriplet::new(3, 2, 1, Symmetry::No)?;
         let x = Vector::new(2);
         let rhs = Vector::new(3);
@@ -142,7 +142,7 @@ mod tests {
     }
 
     #[test]
-    fn new_works() -> Result<(), &'static str> {
+    fn new_works() -> Result<(), StrError> {
         // | 1  3 -2 |
         // | 3  5  6 |
         // | 2  4  3 |
@@ -168,7 +168,7 @@ mod tests {
     }
 
     #[test]
-    fn display_trait_works() -> Result<(), &'static str> {
+    fn display_trait_works() -> Result<(), StrError> {
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
         trip.put(0, 0, 1.0);
         trip.put(1, 1, 1.0);

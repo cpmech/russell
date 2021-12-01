@@ -22,7 +22,7 @@ russell_chk = "*"
 ### Check float point numbers
 
 ```rust
-use russell_chk::*;
+use russell_chk::assert_approx_eq;
 
 fn main() {
     assert_approx_eq!(0.123456789, 0.12345678, 1e-8);
@@ -36,7 +36,7 @@ fn main() {
 ### Check a vector of float point numbers
 
 ```rust
-use russell_chk::*;
+use russell_chk::assert_vec_approx_eq;
 
 fn main() {
     let a = [0.123456789, 0.123456789, 0.123456789];
@@ -49,7 +49,7 @@ fn main() {
 ### Check derivatives
 
 ```rust
-use russell_chk::*;
+use russell_chk::assert_deriv_approx_eq;
 
 struct Arguments {}
 

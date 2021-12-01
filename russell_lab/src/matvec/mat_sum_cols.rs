@@ -1,5 +1,6 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
+use crate::StrError;
 
 /// Sums the columns of a matrix
 ///
@@ -23,7 +24,7 @@ use crate::vector::Vector;
 /// # Note
 ///
 /// This function is not as optimized (e.g., multi-threaded) as it could be.
-pub fn mat_sum_cols(v: &mut Vector, a: &Matrix) -> Result<(), &'static str> {
+pub fn mat_sum_cols(v: &mut Vector, a: &Matrix) -> Result<(), StrError> {
     let (m, n) = a.dims();
     if v.dim() != m {
         return Err("vector is incompatible");
@@ -42,7 +43,8 @@ pub fn mat_sum_cols(v: &mut Vector, a: &Matrix) -> Result<(), &'static str> {
 #[cfg(test)]
 mod tests {
     use super::{mat_sum_cols, Matrix, Vector};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn mat_sum_cols_fails_on_wrong_dims() {
@@ -52,7 +54,7 @@ mod tests {
     }
 
     #[test]
-    fn mat_sum_cols_works() -> Result<(), &'static str> {
+    fn mat_sum_cols_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [ 5.0, -2.0, 0.0, 1.0],

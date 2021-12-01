@@ -1,4 +1,5 @@
 use super::Matrix;
+use crate::StrError;
 use russell_openblas::{dcopy, to_i32};
 
 /// Copies matrix
@@ -10,26 +11,27 @@ use russell_openblas::{dcopy, to_i32};
 /// # Example
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// use russell_lab::*;
-/// let a = Matrix::from(&[
-///     [1.0, 2.0, 3.0],
-///     [4.0, 5.0, 6.0],
-/// ]);
-/// let mut b = Matrix::from(&[
-///     [-1.0, -2.0, -3.0],
-///     [-4.0, -5.0, -6.0],
-/// ]);
-/// copy_matrix(&mut b, &a)?;
-/// let correct = "┌       ┐\n\
-///                │ 1 2 3 │\n\
-///                │ 4 5 6 │\n\
-///                └       ┘";
-/// assert_eq!(format!("{}", b), correct);
-/// # Ok(())
-/// # }
+/// use russell_lab::{copy_matrix, Matrix, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     let a = Matrix::from(&[
+///         [1.0, 2.0, 3.0],
+///         [4.0, 5.0, 6.0],
+///     ]);
+///     let mut b = Matrix::from(&[
+///         [-1.0, -2.0, -3.0],
+///         [-4.0, -5.0, -6.0],
+///     ]);
+///     copy_matrix(&mut b, &a)?;
+///     let correct = "┌       ┐\n\
+///                    │ 1 2 3 │\n\
+///                    │ 4 5 6 │\n\
+///                    └       ┘";
+///     assert_eq!(format!("{}", b), correct);
+///     Ok(())
+/// }
 /// ```
-pub fn copy_matrix(b: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
+pub fn copy_matrix(b: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
     let (m, n) = b.dims();
     if a.nrow() != m || a.ncol() != n {
         return Err("matrices are incompatible");
@@ -44,7 +46,8 @@ pub fn copy_matrix(b: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
 #[cfg(test)]
 mod tests {
     use super::{copy_matrix, Matrix};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn copy_matrix_fails_on_wrong_dimensions() {
@@ -61,7 +64,7 @@ mod tests {
     }
 
     #[test]
-    fn copy_matrix_works() -> Result<(), &'static str> {
+    fn copy_matrix_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [10.0, 20.0, 30.0],

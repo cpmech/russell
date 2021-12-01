@@ -1,4 +1,5 @@
 use super::{IJKL_TO_IJ, I_TO_IJ, SQRT_2};
+use crate::StrError;
 
 /// Implements a fourth order-tensor, minor-symmetric or not
 pub struct Tensor4 {
@@ -23,7 +24,7 @@ impl Tensor4 {
     /// * dd - the standard Dijkl components given with respect to an orthonormal Cartesian basis
     /// * minor_symmetric - this is a minor-symmetric tensor
     ///
-    pub fn from_tensor(dd: &[[[[f64; 3]; 3]; 3]; 3], minor_symmetric: bool) -> Result<Self, &'static str> {
+    pub fn from_tensor(dd: &[[[[f64; 3]; 3]; 3]; 3], minor_symmetric: bool) -> Result<Self, StrError> {
         let size = if minor_symmetric { 6 } else { 9 };
         let mut dd_bar = vec![0.0; size * size];
         if minor_symmetric {
@@ -212,8 +213,8 @@ impl Tensor4 {
 #[cfg(test)]
 mod tests {
     use super::Tensor4;
-    use crate::Samples;
-    use russell_chk::*;
+    use crate::{Samples, StrError};
+    use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
 
     #[test]
     fn new_tensor4_works() {
@@ -223,7 +224,7 @@ mod tests {
     }
 
     #[test]
-    fn from_tensor_works() -> Result<(), &'static str> {
+    fn from_tensor_works() -> Result<(), StrError> {
         let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, false)?;
         for a in 0..9 {
             for b in 0..9 {
@@ -245,7 +246,7 @@ mod tests {
     }
 
     #[test]
-    fn from_tensor_sym_works() -> Result<(), &'static str> {
+    fn from_tensor_sym_works() -> Result<(), StrError> {
         let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true)?;
         for a in 0..6 {
             for b in 0..6 {
@@ -257,7 +258,7 @@ mod tests {
     }
 
     #[test]
-    fn to_tensor_4_works() -> Result<(), &'static str> {
+    fn to_tensor_4_works() -> Result<(), StrError> {
         let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, false)?;
         let res = t4.to_tensor();
         for i in 0..3 {
@@ -273,7 +274,7 @@ mod tests {
     }
 
     #[test]
-    fn to_tensor_symmetric_4_works() -> Result<(), &'static str> {
+    fn to_tensor_symmetric_4_works() -> Result<(), StrError> {
         let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true)?;
         let res = t4.to_tensor();
         for i in 0..3 {

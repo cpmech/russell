@@ -1,4 +1,5 @@
 use super::Tensor2;
+use crate::StrError;
 
 /// Performs the double dot (ddot) operation between two Tensor2 (inner product)
 ///
@@ -41,7 +42,7 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 /// - Even if `a` and `b` are symmetric, the result `c` may not be symmetric
 /// - Thus, the result is always set with symmetric = false
 ///
-pub fn t2_sdot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, &'static str> {
+pub fn t2_sdot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, StrError> {
     let ta = a.to_tensor();
     let tb = b.to_tensor();
     let mut tc = [[0.0; 3]; 3];
@@ -60,10 +61,11 @@ pub fn t2_sdot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, &'static str> {
 #[cfg(test)]
 mod tests {
     use super::{t2_ddot_t2, t2_sdot_t2, Tensor2};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
 
     #[test]
-    fn t2_ddot_t2_works() -> Result<(), &'static str> {
+    fn t2_ddot_t2_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let a = Tensor2::from_tensor(&[
             [1.0, 2.0, 3.0],
@@ -83,7 +85,7 @@ mod tests {
     }
 
     #[test]
-    fn t2_ddot_t2_both_symmetric_works() -> Result<(), &'static str> {
+    fn t2_ddot_t2_both_symmetric_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let a = Tensor2::from_tensor(&[
             [1.0, 4.0, 6.0],
@@ -102,7 +104,7 @@ mod tests {
     }
 
     #[test]
-    fn t2_ddot_t2_sym_with_unsymmetric_works() -> Result<(), &'static str> {
+    fn t2_ddot_t2_sym_with_unsymmetric_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let a = Tensor2::from_tensor(&[
             [1.0, 4.0, 6.0],
@@ -121,7 +123,7 @@ mod tests {
     }
 
     #[test]
-    fn t2_sdot_t2_works() -> Result<(), &'static str> {
+    fn t2_sdot_t2_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let a = Tensor2::from_tensor(&[
             [1.0, 2.0, 3.0],
@@ -147,7 +149,7 @@ mod tests {
     }
 
     #[test]
-    fn t2_sdot_t2_both_symmetric_works() -> Result<(), &'static str> {
+    fn t2_sdot_t2_both_symmetric_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let a = Tensor2::from_tensor(&[
             [1.0, 4.0, 6.0],

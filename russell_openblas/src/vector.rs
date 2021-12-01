@@ -137,7 +137,7 @@ pub fn idamax(n: i32, x: &[f64], incx: i32) -> i32 {
 mod tests {
     use super::{dasum, daxpy, dcopy, ddot, dnrm2, dscal, idamax};
     use crate::to_i32;
-    use russell_chk::*;
+    use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
 
     #[test]
     fn ddot_works() {

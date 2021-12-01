@@ -1,3 +1,5 @@
+use crate::StrError;
+
 /// Matrix symmetry option
 #[derive(Debug)]
 pub enum Symmetry {
@@ -119,7 +121,7 @@ pub fn enum_scaling(scaling: &str) -> Scaling {
     }
 }
 
-pub(crate) fn code_symmetry_mmp(option: &Symmetry) -> Result<i32, &'static str> {
+pub(crate) fn code_symmetry_mmp(option: &Symmetry) -> Result<i32, StrError> {
     match option {
         Symmetry::No => Ok(0),
         Symmetry::General => Err("General symmetry option is not available for MMP"),
@@ -128,7 +130,7 @@ pub(crate) fn code_symmetry_mmp(option: &Symmetry) -> Result<i32, &'static str> 
     }
 }
 
-pub(crate) fn code_symmetry_umf(option: &Symmetry) -> Result<i32, &'static str> {
+pub(crate) fn code_symmetry_umf(option: &Symmetry) -> Result<i32, StrError> {
     match option {
         Symmetry::No => Ok(0),
         Symmetry::General => Ok(1),
@@ -137,7 +139,7 @@ pub(crate) fn code_symmetry_umf(option: &Symmetry) -> Result<i32, &'static str> 
     }
 }
 
-pub(crate) fn str_enum_ordering(index: i32) -> &'static str {
+pub(crate) fn str_enum_ordering(index: i32) -> StrError {
     match index {
         0 => "Amd",
         1 => "Amf (MMP-only, otherwise Auto)",
@@ -153,7 +155,7 @@ pub(crate) fn str_enum_ordering(index: i32) -> &'static str {
     }
 }
 
-pub(crate) fn str_enum_scaling(index: i32) -> &'static str {
+pub(crate) fn str_enum_scaling(index: i32) -> StrError {
     match index {
         0 => "Auto",
         1 => "Column (MMP-only, otherwise Auto)",
@@ -168,7 +170,7 @@ pub(crate) fn str_enum_scaling(index: i32) -> &'static str {
     }
 }
 
-pub(crate) fn str_mmp_ordering(mmp_code: i32) -> &'static str {
+pub(crate) fn str_mmp_ordering(mmp_code: i32) -> StrError {
     match mmp_code {
         0 => "Amd",
         1 => "UserProvided",
@@ -182,7 +184,7 @@ pub(crate) fn str_mmp_ordering(mmp_code: i32) -> &'static str {
     }
 }
 
-pub(crate) fn str_mmp_scaling(mmp_code: i32) -> &'static str {
+pub(crate) fn str_mmp_scaling(mmp_code: i32) -> StrError {
     match mmp_code {
         -1 => "UserProvided",
         0 => "No",
@@ -196,7 +198,7 @@ pub(crate) fn str_mmp_scaling(mmp_code: i32) -> &'static str {
     }
 }
 
-pub(crate) fn str_umf_ordering(umf_code: i32) -> &'static str {
+pub(crate) fn str_umf_ordering(umf_code: i32) -> StrError {
     match umf_code {
         0 => "Cholmod",
         1 => "Amd",
@@ -209,7 +211,7 @@ pub(crate) fn str_umf_ordering(umf_code: i32) -> &'static str {
     }
 }
 
-pub(crate) fn str_umf_scaling(umf_code: i32) -> &'static str {
+pub(crate) fn str_umf_scaling(umf_code: i32) -> StrError {
     match umf_code {
         0 => "No",
         1 => "Sum",

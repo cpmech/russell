@@ -1,4 +1,5 @@
 use super::Matrix;
+use crate::StrError;
 use russell_openblas::{add_vectors_native, add_vectors_oblas};
 
 const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
@@ -12,27 +13,28 @@ const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
 /// # Example
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// use russell_lab::*;
-/// let a = Matrix::from(&[
-///     [ 10.0,  20.0,  30.0,  40.0],
-///     [-10.0, -20.0, -30.0, -40.0],
-/// ]);
-/// let b = Matrix::from(&[
-///     [ 2.0,  1.5,  1.0,  0.5],
-///     [-2.0, -1.5, -1.0, -0.5],
-/// ]);
-/// let mut c = Matrix::new(2, 4);
-/// add_matrices(&mut c, 0.1, &a, 2.0, &b)?;
-/// let correct = "┌             ┐\n\
-///                │  5  5  5  5 │\n\
-///                │ -5 -5 -5 -5 │\n\
-///                └             ┘";
-/// assert_eq!(format!("{}", c), correct);
-/// # Ok(())
-/// # }
+/// use russell_lab::{add_matrices, Matrix, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     let a = Matrix::from(&[
+///         [ 10.0,  20.0,  30.0,  40.0],
+///         [-10.0, -20.0, -30.0, -40.0],
+///     ]);
+///     let b = Matrix::from(&[
+///         [ 2.0,  1.5,  1.0,  0.5],
+///         [-2.0, -1.5, -1.0, -0.5],
+///     ]);
+///     let mut c = Matrix::new(2, 4);
+///     add_matrices(&mut c, 0.1, &a, 2.0, &b)?;
+///     let correct = "┌             ┐\n\
+///                    │  5  5  5  5 │\n\
+///                    │ -5 -5 -5 -5 │\n\
+///                    └             ┘";
+///     assert_eq!(format!("{}", c), correct);
+///     Ok(())
+/// }
 /// ```
-pub fn add_matrices(c: &mut Matrix, alpha: f64, a: &Matrix, beta: f64, b: &Matrix) -> Result<(), &'static str> {
+pub fn add_matrices(c: &mut Matrix, alpha: f64, a: &Matrix, beta: f64, b: &Matrix) -> Result<(), StrError> {
     let (m, n) = c.dims();
     if a.nrow() != m || a.ncol() != n || b.nrow() != m || b.ncol() != n {
         return Err("matrices are incompatible");
@@ -53,7 +55,8 @@ pub fn add_matrices(c: &mut Matrix, alpha: f64, a: &Matrix, beta: f64, b: &Matri
 #[cfg(test)]
 mod tests {
     use super::{add_matrices, Matrix};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn add_matrices_fail_on_wrong_dims() {
@@ -83,7 +86,7 @@ mod tests {
     }
 
     #[test]
-    fn add_matrices_works() -> Result<(), &'static str> {
+    fn add_matrices_works() -> Result<(), StrError> {
         const NOISE: f64 = 1234.567;
         #[rustfmt::skip]
         let a = Matrix::from(&[
@@ -114,7 +117,7 @@ mod tests {
     }
 
     #[test]
-    fn add_matrix_oblas_works() -> Result<(), &'static str> {
+    fn add_matrix_oblas_works() -> Result<(), StrError> {
         const NOISE: f64 = 1234.567;
         let a = Matrix::from(&[
             [1.0, 2.0, 3.0, 4.0, 5.0],
@@ -151,7 +154,7 @@ mod tests {
     }
 
     #[test]
-    fn add_matrices_skip() -> Result<(), &'static str> {
+    fn add_matrices_skip() -> Result<(), StrError> {
         let a = Matrix::new(0, 0);
         let b = Matrix::new(0, 0);
         let mut c = Matrix::new(0, 0);

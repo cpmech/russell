@@ -1,5 +1,5 @@
-use russell_lab::*;
-use russell_sparse::*;
+use russell_lab::Vector;
+use russell_sparse::{ConfigSolver, LinSol, Solver, SparseTriplet, Symmetry};
 
 fn test_solver(name: LinSol) {
     match name {

@@ -101,9 +101,9 @@ mod tests {
         assert_eq!(x.dims(), (0, 0));
         assert_eq!(y.dims(), (0, 0));
         assert_eq!(z.dims(), (0, 0));
-        assert_eq!(x.as_data(), &[]);
-        assert_eq!(y.as_data(), &[]);
-        assert_eq!(z.as_data(), &[]);
+        assert_eq!(x.as_data(), &[] as &[f64]);
+        assert_eq!(y.as_data(), &[] as &[f64]);
+        assert_eq!(z.as_data(), &[] as &[f64]);
 
         let (x, y, z) = generate3d(-1.0, 1.0, -3.0, 3.0, 1, 1, calc_z);
         assert_eq!(x.dims(), (1, 1));
@@ -120,17 +120,17 @@ mod tests {
         assert_eq!(x.dims(), (2, 0));
         assert_eq!(y.dims(), (2, 0));
         assert_eq!(z.dims(), (2, 0));
-        assert_eq!(x.as_data(), &[]);
-        assert_eq!(y.as_data(), &[]);
-        assert_eq!(z.as_data(), &[]);
+        assert_eq!(x.as_data(), &[] as &[f64]);
+        assert_eq!(y.as_data(), &[] as &[f64]);
+        assert_eq!(z.as_data(), &[] as &[f64]);
 
         let (x, y, z) = generate3d(-1.0, 1.0, -3.0, 3.0, 2, 0, calc_z);
         assert_eq!(x.dims(), (0, 2));
         assert_eq!(y.dims(), (0, 2));
         assert_eq!(z.dims(), (0, 2));
-        assert_eq!(x.as_data(), &[]);
-        assert_eq!(y.as_data(), &[]);
-        assert_eq!(z.as_data(), &[]);
+        assert_eq!(x.as_data(), &[] as &[f64]);
+        assert_eq!(y.as_data(), &[] as &[f64]);
+        assert_eq!(z.as_data(), &[] as &[f64]);
 
         let (x, y, z) = generate3d(-1.0, 1.0, -3.0, 3.0, 1, 2, calc_z);
         assert_eq!(x.dims(), (2, 1));

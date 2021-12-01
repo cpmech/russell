@@ -21,60 +21,59 @@ use std::ops::{Index, IndexMut};
 /// # Example
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// // import
-/// use russell_lab::{Matrix, inverse, mat_mat_mul};
+/// use russell_lab::{inverse, mat_mat_mul, Matrix, StrError};
 ///
-/// // create new matrix filled with ones
-/// let mut a = Matrix::filled(2, 2, 1.0);
+/// fn main() -> Result<(), StrError> {
+///     // create new matrix filled with ones
+///     let mut a = Matrix::filled(2, 2, 1.0);
 ///
-/// // change off-diagonal component
-/// a[0][1] *= -1.0;
+///     // change off-diagonal component
+///     a[0][1] *= -1.0;
 ///
-/// // check
-/// assert_eq!(
-///     format!("{}", a),
-///     "┌       ┐\n\
-///      │  1 -1 │\n\
-///      │  1  1 │\n\
-///      └       ┘"
-/// );
+///     // check
+///     assert_eq!(
+///         format!("{}", a),
+///         "┌       ┐\n\
+///          │  1 -1 │\n\
+///          │  1  1 │\n\
+///          └       ┘"
+///     );
 ///
-/// // compute the inverse matrix `ai`
-/// let (m, n) = a.dims();
-/// let mut ai = Matrix::new(m, n);
-/// let det = inverse(&mut ai, &a)?;
+///     // compute the inverse matrix `ai`
+///     let (m, n) = a.dims();
+///     let mut ai = Matrix::new(m, n);
+///     let det = inverse(&mut ai, &a)?;
 ///
-/// // check the determinant
-/// assert_eq!(det, 2.0);
+///     // check the determinant
+///     assert_eq!(det, 2.0);
 ///
-/// // check the inverse matrix
-/// assert_eq!(
-///     format!("{}", ai),
-///     "┌           ┐\n\
-///      │  0.5  0.5 │\n\
-///      │ -0.5  0.5 │\n\
-///      └           ┘"
-/// );
+///     // check the inverse matrix
+///     assert_eq!(
+///         format!("{}", ai),
+///         "┌           ┐\n\
+///          │  0.5  0.5 │\n\
+///          │ -0.5  0.5 │\n\
+///          └           ┘"
+///     );
 ///
-/// // multiply the matrix by its inverse
-/// let mut aia = Matrix::new(m, n);
-/// mat_mat_mul(&mut aia, 1.0, &ai, &a)?;
+///     // multiply the matrix by its inverse
+///     let mut aia = Matrix::new(m, n);
+///     mat_mat_mul(&mut aia, 1.0, &ai, &a)?;
 ///
-/// // check the results
-/// assert_eq!(
-///     format!("{}", aia),
-///     "┌     ┐\n\
-///      │ 1 0 │\n\
-///      │ 0 1 │\n\
-///      └     ┘"
-/// );
+///     // check the results
+///     assert_eq!(
+///         format!("{}", aia),
+///         "┌     ┐\n\
+///          │ 1 0 │\n\
+///          │ 0 1 │\n\
+///          └     ┘"
+///     );
 ///
-/// // create an identity matrix and check again
-/// let ii = Matrix::identity(m);
-/// assert_eq!(aia.as_data(), ii.as_data());
-/// # Ok(())
-/// # }
+///     // create an identity matrix and check again
+///     let ii = Matrix::identity(m);
+///     assert_eq!(aia.as_data(), ii.as_data());
+///     Ok(())
+/// }
 /// ```
 #[derive(Debug)]
 pub struct Matrix {
@@ -650,7 +649,8 @@ impl IndexMut<usize> for Matrix {
 #[cfg(test)]
 mod tests {
     use super::{Matrix, NormMat};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn new_works() {
@@ -740,7 +740,7 @@ mod tests {
     }
 
     #[test]
-    fn display_works() -> Result<(), &'static str> {
+    fn display_works() -> Result<(), StrError> {
         let a_0x0 = Matrix::new(0, 0);
         let a_0x1 = Matrix::new(0, 1);
         let a_1x0 = Matrix::new(1, 0);
@@ -765,7 +765,7 @@ mod tests {
     }
 
     #[test]
-    fn display_precision_works() -> Result<(), &'static str> {
+    fn display_precision_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [1.0111111, 2.02222222, 3.033333],
@@ -788,7 +788,7 @@ mod tests {
     }
 
     #[test]
-    fn scale_works() -> Result<(), &'static str> {
+    fn scale_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
             [ 6.0,  9.0,  12.0],

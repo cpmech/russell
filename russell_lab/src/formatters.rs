@@ -27,7 +27,7 @@ fn format_nanoseconds_in_seconds(buf: &mut String, value: u128) {
 /// # Example
 ///
 /// ```
-/// use russell_lab::*;
+/// use russell_lab::format_nanoseconds;
 /// let res = format_nanoseconds(3_723_000_000_000);
 /// assert_eq!(res, "1h2m3s");
 /// ```

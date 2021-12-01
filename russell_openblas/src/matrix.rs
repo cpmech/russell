@@ -1,4 +1,5 @@
 use super::{cblas_transpose, cblas_uplo, lapack_job_vlr, lapack_uplo, CBLAS_ROW_MAJOR, LAPACK_ROW_MAJOR};
+use crate::StrError;
 
 #[rustfmt::skip]
 extern "C" {
@@ -203,7 +204,7 @@ pub fn dgesvd(
     u: &mut [f64],
     vt: &mut [f64],
     superb: &mut [f64],
-) -> Result<(), &'static str> {
+) -> Result<(), StrError> {
     unsafe {
         let info = LAPACKE_dgesvd(
             LAPACK_ROW_MAJOR,
@@ -254,7 +255,7 @@ pub fn dgesvd(
 /// <http://www.netlib.org/lapack/explore-html/d3/d6a/dgetrf_8f.html>
 ///
 #[inline]
-pub fn dgetrf(m: i32, n: i32, a: &mut [f64], ipiv: &mut [i32]) -> Result<(), &'static str> {
+pub fn dgetrf(m: i32, n: i32, a: &mut [f64], ipiv: &mut [i32]) -> Result<(), StrError> {
     unsafe {
         let info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, m, n, a.as_mut_ptr(), n, ipiv.as_mut_ptr());
         if info != 0_i32 {
@@ -285,7 +286,7 @@ pub fn dgetrf(m: i32, n: i32, a: &mut [f64], ipiv: &mut [i32]) -> Result<(), &'s
 /// <http://www.netlib.org/lapack/explore-html/df/da4/dgetri_8f.html>
 ///
 #[inline]
-pub fn dgetri(n: i32, a: &mut [f64], ipiv: &[i32]) -> Result<(), &'static str> {
+pub fn dgetri(n: i32, a: &mut [f64], ipiv: &[i32]) -> Result<(), StrError> {
     unsafe {
         let info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, n, a.as_mut_ptr(), n, ipiv.as_ptr());
         if info != 0_i32 {
@@ -322,7 +323,7 @@ pub fn dgetri(n: i32, a: &mut [f64], ipiv: &[i32]) -> Result<(), &'static str> {
 /// <http://www.netlib.org/lapack/explore-html/d0/d8a/dpotrf_8f.html>
 ///
 #[inline]
-pub fn dpotrf(up: bool, n: i32, a: &mut [f64]) -> Result<(), &'static str> {
+pub fn dpotrf(up: bool, n: i32, a: &mut [f64]) -> Result<(), StrError> {
     unsafe {
         let info = LAPACKE_dpotrf(LAPACK_ROW_MAJOR, lapack_uplo(up), n, a.as_mut_ptr(), n);
         if info != 0_i32 {
@@ -377,7 +378,7 @@ pub fn dgeev(
     wi: &mut [f64],
     vl: &mut [f64],
     vr: &mut [f64],
-) -> Result<(), &'static str> {
+) -> Result<(), StrError> {
     unsafe {
         let info = LAPACKE_dgeev(
             LAPACK_ROW_MAJOR,
@@ -406,8 +407,8 @@ pub fn dgeev(
 mod tests {
     use super::{dgeev, dgemm, dgesvd, dgetrf, dgetri, dlange, dpotrf, dsyrk};
     use crate::conversions::{dgeev_data, dgeev_data_lr};
-    use crate::to_i32;
-    use russell_chk::*;
+    use crate::{to_i32, StrError};
+    use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
 
     #[test]
     fn dgemm_notrans_notrans_works() {
@@ -711,7 +712,7 @@ mod tests {
     }
 
     #[test]
-    fn dgesvd_works() -> Result<(), &'static str> {
+    fn dgesvd_works() -> Result<(), StrError> {
         // matrix
         #[rustfmt::skip]
         let mut a = [
@@ -782,7 +783,7 @@ mod tests {
     }
 
     #[test]
-    fn dgesvd_1_works() -> Result<(), &'static str> {
+    fn dgesvd_1_works() -> Result<(), StrError> {
         // matrix
         let s33 = f64::sqrt(3.0) / 3.0;
         #[rustfmt::skip]
@@ -862,7 +863,7 @@ mod tests {
     }
 
     #[test]
-    fn dgetrf_and_dgetri_work() -> Result<(), &'static str> {
+    fn dgetrf_and_dgetri_work() -> Result<(), StrError> {
         // matrix
         #[rustfmt::skip]
         let mut a = [
@@ -932,7 +933,7 @@ mod tests {
     }
 
     #[test]
-    fn dpotrf_works() -> Result<(), &'static str> {
+    fn dpotrf_works() -> Result<(), StrError> {
         // matrix a
         #[rustfmt::skip]
         let mut a_up = [
@@ -996,7 +997,7 @@ mod tests {
     }
 
     #[test]
-    fn dgeev_works() -> Result<(), &'static str> {
+    fn dgeev_works() -> Result<(), StrError> {
         // matrix a
         #[rustfmt::skip]
         let mut a = [

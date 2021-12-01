@@ -44,7 +44,7 @@ export OPENBLAS_NUM_THREADS=1
 ### Vector operations
 
 ```rust
-use russell_openblas::*;
+use russell_openblas::{dcopy, ddot};
 
 fn main() {
     // ddot
@@ -62,8 +62,8 @@ fn main() {
 ### Matrix multiplication
 
 ```rust
-use russell_chk::*;
-use russell_openblas::*;
+use russell_chk::assert_vec_approx_eq;
+use russell_openblas::dgemm;
 
 fn main() {
     // 0.5⋅a⋅b + 2⋅c
@@ -113,10 +113,10 @@ fn main() {
 ### Solution of linear system
 
 ```rust
-use russell_chk::*;
-use russell_openblas::*;
+use russell_chk::assert_vec_approx_eq;
+use russell_openblas::{dgesv, StrError};
 
-fn main() -> Result<(), &'static str> {
+fn main() -> Result<(), StrError> {
     // matrix
     let mut a = [
         2.0,  3.0,  0.0, 0.0, 0.0,

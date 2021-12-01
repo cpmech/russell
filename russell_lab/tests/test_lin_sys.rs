@@ -1,7 +1,7 @@
-use russell_lab::*;
+use russell_lab::{add_vectors, mat_vec_mul, solve_lin_sys, Matrix, NormVec, StrError, Vector};
 
 #[test]
-fn test_lin_sys() -> Result<(), &'static str> {
+fn test_lin_sys() -> Result<(), StrError> {
     const TARGET: f64 = 1234.0;
     for m in [0, 5, 7, 12_usize] {
         // prepare matrix and rhs

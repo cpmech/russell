@@ -55,7 +55,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{sort2, sort3, sort4};
 
     #[test]
     fn sort2_works() {

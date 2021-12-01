@@ -1,5 +1,6 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
+use crate::StrError;
 use russell_openblas::{dgesvd, to_i32};
 
 /// Computes the singular value decomposition (SVD) of a matrix
@@ -30,130 +31,128 @@ use russell_openblas::{dgesvd, to_i32};
 /// ## First - 2 x 3 rectangular matrix
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// // import
-/// use russell_lab::*;
+/// use russell_lab::{sv_decomp, Matrix, Vector, StrError};
 ///
-/// // set matrix
-/// let mut a = Matrix::from(&[
-///     [3.0, 2.0,  2.0],
-///     [2.0, 3.0, -2.0],
-/// ]);
+/// fn main() -> Result<(), StrError> {
+///     // set matrix
+///     let mut a = Matrix::from(&[
+///         [3.0, 2.0,  2.0],
+///         [2.0, 3.0, -2.0],
+///     ]);
 ///
-/// // allocate output structures
-/// let (m, n) = a.dims();
-/// let min_mn = if m < n { m } else { n };
-/// let mut s = Vector::new(min_mn);
-/// let mut u = Matrix::new(m, m);
-/// let mut vt = Matrix::new(n, n);
+///     // allocate output structures
+///     let (m, n) = a.dims();
+///     let min_mn = if m < n { m } else { n };
+///     let mut s = Vector::new(min_mn);
+///     let mut u = Matrix::new(m, m);
+///     let mut vt = Matrix::new(n, n);
 ///
-/// // perform SVD
-/// sv_decomp(&mut s, &mut u, &mut vt, &mut a)?;
+///     // perform SVD
+///     sv_decomp(&mut s, &mut u, &mut vt, &mut a)?;
 ///
-/// // define correct data
-/// let s_correct = "┌       ┐\n\
-///                  │ 5.000 │\n\
-///                  │ 3.000 │\n\
-///                  └       ┘";
-/// let u_correct = "┌               ┐\n\
-///                  │ -0.707 -0.707 │\n\
-///                  │ -0.707  0.707 │\n\
-///                  └               ┘";
-/// let vt_correct = "┌                      ┐\n\
-///                   │ -0.707 -0.707 -0.000 │\n\
-///                   │ -0.236  0.236 -0.943 │\n\
-///                   │ -0.667  0.667  0.333 │\n\
-///                   └                      ┘";
+///     // define correct data
+///     let s_correct = "┌       ┐\n\
+///                      │ 5.000 │\n\
+///                      │ 3.000 │\n\
+///                      └       ┘";
+///     let u_correct = "┌               ┐\n\
+///                      │ -0.707 -0.707 │\n\
+///                      │ -0.707  0.707 │\n\
+///                      └               ┘";
+///     let vt_correct = "┌                      ┐\n\
+///                       │ -0.707 -0.707 -0.000 │\n\
+///                       │ -0.236  0.236 -0.943 │\n\
+///                       │ -0.667  0.667  0.333 │\n\
+///                       └                      ┘";
 ///
-/// // check solution
-/// assert_eq!(format!("{:.3}", s), s_correct);
-/// assert_eq!(format!("{:.3}", u), u_correct);
-/// assert_eq!(format!("{:.3}", vt), vt_correct);
+///     // check solution
+///     assert_eq!(format!("{:.3}", s), s_correct);
+///     assert_eq!(format!("{:.3}", u), u_correct);
+///     assert_eq!(format!("{:.3}", vt), vt_correct);
 ///
-/// // check SVD: a == u * s * vt
-/// let mut usv = Matrix::new(m, n);
-/// for i in 0..m {
-///     for j in 0..n {
-///         for k in 0..min_mn {
-///             usv[i][j] += u[i][k] * s[k] * vt[k][j];
+///     // check SVD: a == u * s * vt
+///     let mut usv = Matrix::new(m, n);
+///     for i in 0..m {
+///         for j in 0..n {
+///             for k in 0..min_mn {
+///                 usv[i][j] += u[i][k] * s[k] * vt[k][j];
+///             }
 ///         }
 ///     }
+///     let usv_correct = "┌                               ┐\n\
+///                        │  3.000000  2.000000  2.000000 │\n\
+///                        │  2.000000  3.000000 -2.000000 │\n\
+///                        └                               ┘";
+///     assert_eq!(format!("{:.6}", usv), usv_correct);
+///     Ok(())
 /// }
-/// let usv_correct = "┌                               ┐\n\
-///                    │  3.000000  2.000000  2.000000 │\n\
-///                    │  2.000000  3.000000 -2.000000 │\n\
-///                    └                               ┘";
-/// assert_eq!(format!("{:.6}", usv), usv_correct);
-/// # Ok(())
-/// # }
 /// ```
 ///
 /// ## Second - 4 x 2 rectangular matrix
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// // import
-/// use russell_lab::*;
+/// use russell_lab::{sv_decomp, Matrix, Vector, StrError};
 ///
-/// // set matrix
-/// let mut a = Matrix::from(&[
-///     [2.0, 4.0],
-///     [1.0, 3.0],
-///     [0.0, 0.0],
-///     [0.0, 0.0],
-/// ]);
+/// fn main() -> Result<(), StrError> {
+///     // set matrix
+///     let mut a = Matrix::from(&[
+///         [2.0, 4.0],
+///         [1.0, 3.0],
+///         [0.0, 0.0],
+///         [0.0, 0.0],
+///     ]);
 ///
-/// // allocate output structures
-/// let (m, n) = a.dims();
-/// let min_mn = if m < n { m } else { n };
-/// let mut s = Vector::new(min_mn);
-/// let mut u = Matrix::new(m, m);
-/// let mut vt = Matrix::new(n, n);
+///     // allocate output structures
+///     let (m, n) = a.dims();
+///     let min_mn = if m < n { m } else { n };
+///     let mut s = Vector::new(min_mn);
+///     let mut u = Matrix::new(m, m);
+///     let mut vt = Matrix::new(n, n);
 ///
-/// // perform SVD
-/// sv_decomp(&mut s, &mut u, &mut vt, &mut a)?;
+///     // perform SVD
+///     sv_decomp(&mut s, &mut u, &mut vt, &mut a)?;
 ///
-/// // define correct data
-/// let s_correct = "┌      ┐\n\
-///                  │ 5.46 │\n\
-///                  │ 0.37 │\n\
-///                  └      ┘";
-/// let u_correct = "┌                         ┐\n\
-///                  │ -0.82 -0.58  0.00  0.00 │\n\
-///                  │ -0.58  0.82  0.00  0.00 │\n\
-///                  │  0.00  0.00  1.00  0.00 │\n\
-///                  │  0.00  0.00  0.00  1.00 │\n\
-///                  └                         ┘";
-/// let vt_correct = "┌             ┐\n\
-///                   │ -0.40 -0.91 │\n\
-///                   │ -0.91  0.40 │\n\
-///                   └             ┘";
+///     // define correct data
+///     let s_correct = "┌      ┐\n\
+///                      │ 5.46 │\n\
+///                      │ 0.37 │\n\
+///                      └      ┘";
+///     let u_correct = "┌                         ┐\n\
+///                      │ -0.82 -0.58  0.00  0.00 │\n\
+///                      │ -0.58  0.82  0.00  0.00 │\n\
+///                      │  0.00  0.00  1.00  0.00 │\n\
+///                      │  0.00  0.00  0.00  1.00 │\n\
+///                      └                         ┘";
+///     let vt_correct = "┌             ┐\n\
+///                       │ -0.40 -0.91 │\n\
+///                       │ -0.91  0.40 │\n\
+///                       └             ┘";
 ///
-/// // check solution
-/// assert_eq!(format!("{:.2}", s), s_correct);
-/// assert_eq!(format!("{:.2}", u), u_correct);
-/// assert_eq!(format!("{:.2}", vt), vt_correct);
+///     // check solution
+///     assert_eq!(format!("{:.2}", s), s_correct);
+///     assert_eq!(format!("{:.2}", u), u_correct);
+///     assert_eq!(format!("{:.2}", vt), vt_correct);
 ///
-/// // check SVD: a == u * s * vt
-/// let mut usv = Matrix::new(m, n);
-/// for i in 0..m {
-///     for j in 0..n {
-///         for k in 0..min_mn {
-///             usv[i][j] += u[i][k] * s[k] * vt[k][j];
+///     // check SVD: a == u * s * vt
+///     let mut usv = Matrix::new(m, n);
+///     for i in 0..m {
+///         for j in 0..n {
+///             for k in 0..min_mn {
+///                 usv[i][j] += u[i][k] * s[k] * vt[k][j];
+///             }
 ///         }
 ///     }
+///     let usv_correct = "┌     ┐\n\
+///                        │ 2 4 │\n\
+///                        │ 1 3 │\n\
+///                        │ 0 0 │\n\
+///                        │ 0 0 │\n\
+///                        └     ┘";
+///     assert_eq!(format!("{}", usv), usv_correct);
+///     Ok(())
 /// }
-/// let usv_correct = "┌     ┐\n\
-///                    │ 2 4 │\n\
-///                    │ 1 3 │\n\
-///                    │ 0 0 │\n\
-///                    │ 0 0 │\n\
-///                    └     ┘";
-/// assert_eq!(format!("{}", usv), usv_correct);
-/// # Ok(())
-/// # }
 /// ```
-pub fn sv_decomp(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) -> Result<(), &'static str> {
+pub fn sv_decomp(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) -> Result<(), StrError> {
     let (m, n) = a.dims();
     let min_mn = if m < n { m } else { n };
     if s.dim() != min_mn {
@@ -186,7 +185,8 @@ pub fn sv_decomp(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix
 #[cfg(test)]
 mod tests {
     use super::{sv_decomp, Matrix, Vector};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn sv_decomp_fails_on_wrong_dims() {
@@ -222,7 +222,7 @@ mod tests {
     }
 
     #[test]
-    fn sv_decomp_works() -> Result<(), &'static str> {
+    fn sv_decomp_works() -> Result<(), StrError> {
         // matrix
         let s33 = f64::sqrt(3.0) / 3.0;
         #[rustfmt::skip]
@@ -285,7 +285,7 @@ mod tests {
     }
 
     #[test]
-    fn sv_decomp_1_works() -> Result<(), &'static str> {
+    fn sv_decomp_1_works() -> Result<(), StrError> {
         // matrix
         #[rustfmt::skip]
         let data = [

@@ -1,4 +1,5 @@
 use super::Vector;
+use crate::StrError;
 use russell_openblas::{daxpy, to_i32};
 
 /// Updates vector based on another vector (axpy)
@@ -10,21 +11,22 @@ use russell_openblas::{daxpy, to_i32};
 /// # Example
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// use russell_lab::*;
-/// let u = Vector::from(&[10.0, 20.0, 30.0]);
-/// let mut v = Vector::from(&[10.0, 20.0, 30.0]);
-/// update_vector(&mut v, 0.1, &u)?;
-/// let correct = "┌    ┐\n\
-///                │ 11 │\n\
-///                │ 22 │\n\
-///                │ 33 │\n\
-///                └    ┘";
-/// assert_eq!(format!("{}", v), correct);
-/// # Ok(())
-/// # }
+/// use russell_lab::{update_vector, Vector, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     let u = Vector::from(&[10.0, 20.0, 30.0]);
+///     let mut v = Vector::from(&[10.0, 20.0, 30.0]);
+///     update_vector(&mut v, 0.1, &u)?;
+///     let correct = "┌    ┐\n\
+///                    │ 11 │\n\
+///                    │ 22 │\n\
+///                    │ 33 │\n\
+///                    └    ┘";
+///     assert_eq!(format!("{}", v), correct);
+///     Ok(())
+/// }
 /// ```
-pub fn update_vector(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), &'static str> {
+pub fn update_vector(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
     let n = v.dim();
     if u.dim() != n {
         return Err("vectors are incompatible");
@@ -39,7 +41,8 @@ pub fn update_vector(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), &'sta
 #[cfg(test)]
 mod tests {
     use super::{update_vector, Vector};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn update_vector_fails_on_wrong_dims() {
@@ -49,7 +52,7 @@ mod tests {
     }
 
     #[test]
-    fn update_vector_works() -> Result<(), &'static str> {
+    fn update_vector_works() -> Result<(), StrError> {
         let u = Vector::from(&[10.0, 20.0, 30.0]);
         let mut v = Vector::from(&[100.0, 200.0, 300.0]);
         update_vector(&mut v, 2.0, &u)?;

@@ -1,4 +1,5 @@
 use super::Matrix;
+use crate::StrError;
 use russell_openblas::{dgemm, to_i32};
 
 /// Performs the matrix-matrix multiplication resulting in a matrix
@@ -11,29 +12,30 @@ use russell_openblas::{dgemm, to_i32};
 /// # Example
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// use russell_lab::*;
-/// let a = Matrix::from(&[
-///     [1.0, 2.0],
-///     [3.0, 4.0],
-///     [5.0, 6.0],
-/// ]);
-/// let b = Matrix::from(&[
-///     [-1.0, -2.0, -3.0],
-///     [-4.0, -5.0, -6.0],
-/// ]);
-/// let mut c = Matrix::new(3, 3);
-/// mat_mat_mul(&mut c, 1.0, &a, &b);
-/// let correct = "┌             ┐\n\
-///                │  -9 -12 -15 │\n\
-///                │ -19 -26 -33 │\n\
-///                │ -29 -40 -51 │\n\
-///                └             ┘";
-/// assert_eq!(format!("{}", c), correct);
-/// # Ok(())
-/// # }
+/// use russell_lab::{mat_mat_mul, Matrix, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     let a = Matrix::from(&[
+///         [1.0, 2.0],
+///         [3.0, 4.0],
+///         [5.0, 6.0],
+///     ]);
+///     let b = Matrix::from(&[
+///         [-1.0, -2.0, -3.0],
+///         [-4.0, -5.0, -6.0],
+///     ]);
+///     let mut c = Matrix::new(3, 3);
+///     mat_mat_mul(&mut c, 1.0, &a, &b);
+///     let correct = "┌             ┐\n\
+///                    │  -9 -12 -15 │\n\
+///                    │ -19 -26 -33 │\n\
+///                    │ -29 -40 -51 │\n\
+///                    └             ┘";
+///     assert_eq!(format!("{}", c), correct);
+///     Ok(())
+/// }
 /// ```
-pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) -> Result<(), &'static str> {
+pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) -> Result<(), StrError> {
     let (m, n) = c.dims();
     let k = a.ncol();
     if a.nrow() != m || b.nrow() != k || b.ncol() != n {
@@ -62,7 +64,8 @@ pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) -> Result
 #[cfg(test)]
 mod tests {
     use super::{mat_mat_mul, Matrix};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn mat_mat_mul_fails_on_wrong_dims() {
@@ -86,7 +89,7 @@ mod tests {
     }
 
     #[test]
-    fn mat_mat_mul_works() -> Result<(), &'static str> {
+    fn mat_mat_mul_works() -> Result<(), StrError> {
         let a = Matrix::from(&[
             // 2 x 3
             [1.0, 2.00, 3.0],

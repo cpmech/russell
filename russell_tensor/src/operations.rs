@@ -1,9 +1,12 @@
 use super::Tensor2;
-use crate::StrError;
+use crate::{StrError, SQRT_2};
+use russell_lab::Vector;
 
 /// Performs the double dot (ddot) operation between two Tensor2 (inner product)
 ///
+/// ```text
 /// s = a : b
+/// ```
 ///
 /// # Arguments
 ///
@@ -12,26 +15,26 @@ use crate::StrError;
 ///
 pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
     #[rustfmt::skip]
-    let mut res = a.comps_mandel[0] * b.comps_mandel[0]
-                    + a.comps_mandel[1] * b.comps_mandel[1]
-                    + a.comps_mandel[2] * b.comps_mandel[2]
-                    + a.comps_mandel[3] * b.comps_mandel[3]
-                    + a.comps_mandel[4] * b.comps_mandel[4]
-                    + a.comps_mandel[5] * b.comps_mandel[5];
-    #[rustfmt::skip]
-    if !a.symmetric && !b.symmetric {
-        res += a.comps_mandel[6] * b.comps_mandel[6]
-             + a.comps_mandel[7] * b.comps_mandel[7]
-             + a.comps_mandel[8] * b.comps_mandel[8];
-        // NOTE: if any tensor is unsymmetric, there is no need to augment res
-        //       because the extra three components are zero
-    };
+    let mut res = a.vec[0] * b.vec[0]
+                    + a.vec[1] * b.vec[1]
+                    + a.vec[2] * b.vec[2]
+                    + a.vec[3] * b.vec[3]
+                    + a.vec[4] * b.vec[4]
+                    + a.vec[5] * b.vec[5];
+    if a.vec.dim() == 9 && b.vec.dim() == 9 {
+        // NOTE: Only if both tensors are unsymmetric we have to
+        //       compute extra terms because, otherwise, the corresponding
+        //       components are zero any way.
+        res += a.vec[6] * b.vec[6] + a.vec[7] * b.vec[7] + a.vec[8] * b.vec[8];
+    }
     res
 }
 
-/// Performs the single dot (ddot) operation between two Tensor2 (matrix multiplication)
+/// Performs the single dot operation between two Tensor2 (matrix multiplication)
 ///
-/// c = a . b
+/// ```text
+/// c = a · b
+/// ```
 ///
 /// # Warning
 ///
@@ -42,7 +45,7 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 /// - Even if `a` and `b` are symmetric, the result `c` may not be symmetric
 /// - Thus, the result is always set with symmetric = false
 ///
-pub fn t2_sdot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, StrError> {
+pub fn t2_dot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, StrError> {
     let ta = a.to_tensor();
     let tb = b.to_tensor();
     let mut tc = [[0.0; 3]; 3];
@@ -53,14 +56,34 @@ pub fn t2_sdot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, StrError> {
             }
         }
     }
-    Tensor2::from_tensor(&tc, false)
+    Tensor2::from_tensor(&tc, false, false)
 }
+
+/// Performs the single dot operation between a vector and Tensor2
+///
+/// ```text
+/// v = α a · u
+/// ```
+pub fn t2_dot_vec(v: &mut Vector, alpha: f64, a: &Tensor2, u: &Vector) {
+    if a.vec.dim() < 9 {
+        v[0] = alpha * (a.vec[0] * u[0] + a.vec[3] * u[1] / SQRT_2 + a.vec[5] * u[2] / SQRT_2);
+        v[1] = alpha * (a.vec[3] * u[0] / SQRT_2 + a.vec[1] * u[1] + a.vec[4] / SQRT_2 * u[2]);
+        v[2] = alpha * (a.vec[5] * u[0] / SQRT_2 + a.vec[4] * u[1] / SQRT_2 + a.vec[2] * u[2]);
+    } else {
+        // fix this
+        v[0] = alpha * (a.vec[0] * u[0] + a.vec[3] * u[1] + a.vec[5] * u[2]);
+        v[1] = alpha * (a.vec[6] * u[0] + a.vec[1] * u[1] + a.vec[4] * u[2]);
+        v[2] = alpha * (a.vec[8] * u[0] + a.vec[7] * u[1] + a.vec[2] * u[2]);
+    }
+}
+
+pub fn vec_dot_t2() {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::{t2_ddot_t2, t2_sdot_t2, Tensor2};
+    use super::{t2_ddot_t2, t2_dot_t2, Tensor2};
     use crate::StrError;
     use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
 
@@ -71,14 +94,14 @@ mod tests {
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], false)?;
+        ], false, false)?;
 
         #[rustfmt::skip]
         let b = Tensor2::from_tensor(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
-        ], false)?;
+        ], false, false)?;
         let s = t2_ddot_t2(&a, &b);
         assert_eq!(s, 165.0);
         Ok(())
@@ -91,13 +114,13 @@ mod tests {
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
-        ], true)?;
+        ], true, false)?;
         #[rustfmt::skip]
         let b = Tensor2::from_tensor(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
-        ], true)?;
+        ], true, false)?;
         let s = t2_ddot_t2(&a, &b);
         assert_approx_eq!(s, 162.0, 1e-13);
         Ok(())
@@ -110,13 +133,13 @@ mod tests {
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
-        ], true)?;
+        ], true, false)?;
         #[rustfmt::skip]
         let b = Tensor2::from_tensor(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
-        ], false)?;
+        ], false, false)?;
         let s = t2_ddot_t2(&a, &b);
         assert_approx_eq!(s, 168.0, 1e-13);
         Ok(())
@@ -129,22 +152,22 @@ mod tests {
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], false)?;
+        ], false, false)?;
         #[rustfmt::skip]
         let b = Tensor2::from_tensor(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
-        ], false)?;
-        let c = t2_sdot_t2(&a, &b)?;
+        ], false, false)?;
+        let c = t2_dot_t2(&a, &b)?;
         println!("{}", c);
         #[rustfmt::skip]
         let correct = Tensor2::from_tensor(&[
             [ 30.0,  24.0, 18.0],
             [ 84.0,  69.0, 54.0],
             [138.0, 114.0, 90.0],
-        ], false)?;
-        assert_vec_approx_eq!(c.comps_mandel, correct.comps_mandel, 1e-13);
+        ], false, false)?;
+        assert_vec_approx_eq!(c.vec.as_data(), correct.vec.as_data(), 1e-13);
         Ok(())
     }
 
@@ -155,22 +178,22 @@ mod tests {
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
-        ], true)?;
+        ], true, false)?;
         #[rustfmt::skip]
         let b = Tensor2::from_tensor(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
-        ], true)?;
-        let c = t2_sdot_t2(&a, &b)?;
+        ], true, false)?;
+        let c = t2_dot_t2(&a, &b)?;
         println!("{}", c);
         #[rustfmt::skip]
         let correct = Tensor2::from_tensor(&[
             [59.0, 37.0, 28.0],
             [52.0, 44.0, 37.0],
             [61.0, 52.0, 59.0],
-        ], false)?;
-        assert_vec_approx_eq!(c.comps_mandel, correct.comps_mandel, 1e-13);
+        ], false, false)?;
+        assert_vec_approx_eq!(c.vec.as_data(), correct.vec.as_data(), 1e-13);
         Ok(())
     }
 }

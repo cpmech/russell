@@ -1,8 +1,8 @@
-use super::Tensor2;
-use crate::{StrError, SQRT_2};
-use russell_lab::Vector;
+use super::{Tensor2, Tensor4};
+use crate::StrError;
+use russell_lab::{mat_vec_mul, vec_mat_mul, Vector};
 
-/// Performs the double dot (ddot) operation between two Tensor2 (inner product)
+/// Performs the double-dot (ddot) operation between two Tensor2 (inner product)
 ///
 /// ```text
 /// s = a : b
@@ -59,25 +59,71 @@ pub fn t2_dot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, StrError> {
     Tensor2::from_matrix(&tc, false, false)
 }
 
-/// Performs the single dot operation between a vector and Tensor2
+/// Performs the single dot operation between a Tensor2 and a vector
 ///
 /// ```text
 /// v = α a · u
 /// ```
-pub fn t2_dot_vec(v: &mut Vector, alpha: f64, a: &Tensor2, u: &Vector) {
-    if a.vec.dim() < 9 {
-        v[0] = alpha * (a.vec[0] * u[0] + a.vec[3] * u[1] / SQRT_2 + a.vec[5] * u[2] / SQRT_2);
-        v[1] = alpha * (a.vec[3] * u[0] / SQRT_2 + a.vec[1] * u[1] + a.vec[4] / SQRT_2 * u[2]);
-        v[2] = alpha * (a.vec[5] * u[0] / SQRT_2 + a.vec[4] * u[1] / SQRT_2 + a.vec[2] * u[2]);
+pub fn t2_dot_vec(v: &mut Vector, alpha: f64, a: &Tensor2, u: &Vector) -> Result<(), StrError> {
+    if a.vec.dim() == 4 {
+        if v.dim() != 2 || u.dim() != 2 {
+            return Err("vectors must have dim = 2");
+        }
+        v[0] = alpha * (a.get(0, 0) * u[0] + a.get(0, 1) * u[1]);
+        v[1] = alpha * (a.get(1, 0) * u[0] + a.get(1, 1) * u[1]);
     } else {
-        // fix this
-        v[0] = alpha * (a.vec[0] * u[0] + a.vec[3] * u[1] + a.vec[5] * u[2]);
-        v[1] = alpha * (a.vec[6] * u[0] + a.vec[1] * u[1] + a.vec[4] * u[2]);
-        v[2] = alpha * (a.vec[8] * u[0] + a.vec[7] * u[1] + a.vec[2] * u[2]);
+        if v.dim() != 3 || u.dim() != 3 {
+            return Err("vectors must have dim = 3");
+        }
+        v[0] = alpha * (a.get(0, 0) * u[0] + a.get(0, 1) * u[1] + a.get(0, 2) * u[2]);
+        v[1] = alpha * (a.get(1, 0) * u[0] + a.get(1, 1) * u[1] + a.get(1, 2) * u[2]);
+        v[2] = alpha * (a.get(2, 0) * u[0] + a.get(2, 1) * u[1] + a.get(2, 2) * u[2]);
     }
+    Ok(())
 }
 
-pub fn vec_dot_t2() {}
+/// Performs the single dot operation between a vector and a Tensor2
+///
+/// ```text
+/// v = α u · a
+/// ```
+pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) -> Result<(), StrError> {
+    if a.vec.dim() == 4 {
+        if v.dim() != 2 || u.dim() != 2 {
+            return Err("vectors must have dim = 2");
+        }
+    } else {
+        if v.dim() != 3 || u.dim() != 3 {
+            return Err("vectors must have dim = 3");
+        }
+        v[0] = alpha * (u[0] * a.get(0, 0) + u[1] * a.get(1, 0) + u[2] * a.get(2, 0));
+        v[1] = alpha * (u[0] * a.get(0, 1) + u[1] * a.get(1, 1) + u[2] * a.get(2, 1));
+        v[2] = alpha * (u[0] * a.get(0, 2) + u[1] * a.get(1, 2) + u[2] * a.get(2, 2));
+    }
+    Ok(())
+}
+
+/// Performs the double-dot (ddot) operation between a Tensor4 and a Tensor2
+///
+/// ```text
+/// b = α D : a
+/// ```
+pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) -> Result<(), StrError> {
+    mat_vec_mul(&mut b.vec, alpha, &dd.mat, &a.vec)
+}
+
+/// Performs the double-dot (ddot) operation between a Tensor2 and a Tensor4
+///
+/// ```text
+/// b = α a : D
+/// ```
+pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) -> Result<(), StrError> {
+    vec_mat_mul(&mut b.vec, alpha, &a.vec, &dd.mat)
+}
+
+pub fn t2_dyad_t2() {
+    // TODO
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

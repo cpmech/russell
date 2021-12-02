@@ -239,6 +239,21 @@ impl Tensor4 {
         }
         dd
     }
+
+    /// Returns a matrix (standard components; not Mandel) representing this tensor
+    ///
+    /// Note: The matrix may be truncated depending on minor-symmetry.
+    pub fn to_matrix(&self) -> Matrix {
+        let dim = self.mat.dims().0;
+        let mut res = Matrix::new(dim, dim);
+        for m in 0..dim {
+            for n in 0..dim {
+                let (i, j, k, l) = MN_TO_IJKL[m][n];
+                res[m][n] = self.get(i, j, k, l);
+            }
+        }
+        res
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -371,6 +386,39 @@ mod tests {
                         assert_approx_eq!(res[i][j][k][l], Samples::TENSOR4_SYM_2D_SAMPLE1[i][j][k][l], 1e-14);
                     }
                 }
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn to_matrix_works() -> Result<(), StrError> {
+        // general
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, false)?;
+        let mat = dd.to_matrix();
+        for m in 0..9 {
+            for n in 0..9 {
+                assert_approx_eq!(mat[m][n], &Samples::TENSOR4_SAMPLE1_STD_MATRIX[m][n], 1e-13);
+            }
+        }
+
+        // sym-3D
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false)?;
+        let mat = dd.to_matrix();
+        assert_eq!(mat.dims(), (6, 6));
+        for m in 0..6 {
+            for n in 0..6 {
+                assert_approx_eq!(mat[m][n], &Samples::TENSOR4_SYM_SAMPLE1_STD_MATRIX[m][n], 1e-13);
+            }
+        }
+
+        // sym-2D
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true)?;
+        let mat = dd.to_matrix();
+        assert_eq!(mat.dims(), (4, 4));
+        for m in 0..4 {
+            for n in 0..4 {
+                assert_approx_eq!(mat[m][n], &Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX[m][n], 1e-13);
             }
         }
         Ok(())

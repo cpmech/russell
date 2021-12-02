@@ -134,30 +134,6 @@ impl Tensor2 {
 
 impl fmt::Display for Tensor2 {
     /// Generates a string representation of the Tensor2
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use russell_tensor::{Tensor2, StrError};
-    ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let comps_std = &[
-    ///         [1.0, 4.0, 6.0],
-    ///         [7.0, 2.0, 5.0],
-    ///         [9.0, 8.0, 3.0],
-    ///     ];
-    ///     let t2 = Tensor2::from_tensor(comps_std, false)?;
-    ///     assert_eq!(
-    ///         format!("{:.2}", t2),
-    ///         "┌                ┐\n\
-    ///          │ 1.00 4.00 6.00 │\n\
-    ///          │ 7.00 2.00 5.00 │\n\
-    ///          │ 9.00 8.00 3.00 │\n\
-    ///          └                ┘"
-    ///     );
-    ///     Ok(())
-    /// }
-    /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // convert mandel values to full tensor
         let tt = self.to_tensor();
@@ -222,27 +198,32 @@ mod tests {
 
     #[test]
     fn new_tensor2_works() {
-        let t2 = Tensor2::new(false, false);
+        // general
+        let tt = Tensor2::new(false, false);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-        assert_vec_approx_eq!(t2.vec.as_data(), correct, 1e-15);
-    }
+        assert_eq!(tt.vec.as_data(), correct);
 
-    #[test]
-    fn new_symmetric_tensor2_works() {
-        let t2 = Tensor2::new(true, false);
+        // symmetric 3D
+        let tt = Tensor2::new(true, false);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-        assert_vec_approx_eq!(t2.vec.as_data(), correct, 1e-15);
+        assert_eq!(tt.vec.as_data(), correct);
+
+        // symmetric 2D
+        let tt = Tensor2::new(true, true);
+        let correct = &[0.0, 0.0, 0.0, 0.0];
+        assert_eq!(tt.vec.as_data(), correct);
     }
 
     #[test]
     fn from_tensor_works() -> Result<(), StrError> {
+        // general
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let t2 = Tensor2::from_tensor(comps_std, false, false)?;
+        let tt = Tensor2::from_tensor(comps_std, false, false)?;
         let correct = &[
             1.0,
             5.0,
@@ -254,26 +235,35 @@ mod tests {
             -2.0 / SQRT_2,
             -4.0 / SQRT_2,
         ];
-        assert_vec_approx_eq!(t2.vec.as_data(), correct, 1e-15);
-        Ok(())
-    }
+        assert_vec_approx_eq!(tt.vec.as_data(), correct, 1e-15);
 
-    #[test]
-    fn from_symmetric_tensor_works() -> Result<(), StrError> {
+        // symmetric 3D
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let t2 = Tensor2::from_tensor(comps_std, true, false)?;
+        let tt = Tensor2::from_tensor(comps_std, true, false)?;
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2];
-        assert_vec_approx_eq!(t2.vec.as_data(), correct, 1e-14);
+        assert_vec_approx_eq!(tt.vec.as_data(), correct, 1e-14);
+
+        // symmetric 2D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let tt = Tensor2::from_tensor(comps_std, true, true)?;
+        let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2];
+        assert_vec_approx_eq!(tt.vec.as_data(), correct, 1e-14);
         Ok(())
     }
 
     #[test]
-    fn from_symmetric_tensor_fails_on_invalid_data() {
+    fn from_tensor_fails_on_invalid_data() {
+        // symmetric 3D
         let eps = 1e-15;
         #[rustfmt::skip]
         let comps_std_10 = &[
@@ -305,36 +295,72 @@ mod tests {
             Tensor2::from_tensor(comps_std_21, true, false).err(),
             Some("the components of the symmetric second order tensor do not pass symmetry check")
         );
+
+        // symmetric 2D
+        let eps = 1e-15;
+        #[rustfmt::skip]
+        let comps_std_12 = &[
+            [1.0,     4.0, 0.0+eps],
+            [4.0,     2.0, 0.0],
+            [0.0+eps, 0.0, 3.0],
+        ];
+        #[rustfmt::skip]
+        let comps_std_02 = &[
+            [1.0, 4.0,     0.0],
+            [4.0, 2.0,     0.0+eps],
+            [0.0, 0.0+eps, 3.0],
+        ];
+        assert_eq!(
+            Tensor2::from_tensor(comps_std_12, true, true).err(),
+            Some("the tensor cannot be represented in 2D because of non-zero off-diagonal values")
+        );
+        assert_eq!(
+            Tensor2::from_tensor(comps_std_02, true, true).err(),
+            Some("the tensor cannot be represented in 2D because of non-zero off-diagonal values")
+        );
     }
 
     #[test]
     fn to_tensor_works() -> Result<(), StrError> {
+        // general
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let t2 = Tensor2::from_tensor(comps_std, false, false)?;
-        let res = t2.to_tensor();
+        let tt = Tensor2::from_tensor(comps_std, false, false)?;
+        let res = tt.to_tensor();
         for i in 0..3 {
             for j in 0..3 {
                 assert_approx_eq!(res[i][j], comps_std[i][j], 1e-14);
             }
         }
-        Ok(())
-    }
 
-    #[test]
-    fn to_tensor_symmetric_works() -> Result<(), StrError> {
+        // symmetric 3D
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let t2 = Tensor2::from_tensor(comps_std, true, false)?;
-        let res = t2.to_tensor();
+        let tt = Tensor2::from_tensor(comps_std, true, false)?;
+        let res = tt.to_tensor();
+        for i in 0..3 {
+            for j in 0..3 {
+                assert_approx_eq!(res[i][j], comps_std[i][j], 1e-14);
+            }
+        }
+
+        // symmetric 2D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let tt = Tensor2::from_tensor(comps_std, true, true)?;
+        let res = tt.to_tensor();
         for i in 0..3 {
             for j in 0..3 {
                 assert_approx_eq!(res[i][j], comps_std[i][j], 1e-14);

@@ -26,10 +26,19 @@ pub const TWO_BY_3: f64 =
     0.66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666f64;
 
 /// Maps the indices (i,j) of a second order tensor to the i-position in the component-vector
+#[rustfmt::skip]
 pub const IJ_TO_I: [[usize; 3]; 3] = [
-    [0, 3, 5], // comment to prevent auto format
-    [6, 1, 4], // comment to prevent auto format
-    [8, 7, 2], // comment to prevent auto format
+    [0, 3, 5],
+    [6, 1, 4],
+    [8, 7, 2],
+];
+
+/// Maps the indices (i,j) of a second order tensor to the i-position in the component-vector (symmetric version)
+#[rustfmt::skip]
+pub const IJ_TO_I_SYM: [[usize; 3]; 3] = [
+    [0, 3, 5],
+    [3, 1, 4],
+    [5, 4, 2],
 ];
 
 /// Maps the index i in the component-vector to the indices (i,j) of the corresponding second order tensor

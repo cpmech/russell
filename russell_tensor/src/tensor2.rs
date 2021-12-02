@@ -1,4 +1,4 @@
-use super::{IJ_TO_I, I_TO_IJ, SQRT_2};
+use super::{IJ_TO_I, IJ_TO_I_SYM, I_TO_IJ, SQRT_2};
 use crate::StrError;
 use russell_lab::Vector;
 use std::cmp;
@@ -76,9 +76,9 @@ impl Tensor2 {
 
     /// Returns the (i,j) component
     pub fn get(&self, i: usize, j: usize) -> f64 {
-        let m = IJ_TO_I[i][j];
         match self.vec.dim() {
             4 => {
+                let m = IJ_TO_I_SYM[i][j];
                 if i == j {
                     self.vec[m]
                 } else if m < 4 {
@@ -88,15 +88,15 @@ impl Tensor2 {
                 }
             }
             6 => {
+                let m = IJ_TO_I_SYM[i][j];
                 if i == j {
                     self.vec[m]
-                } else if i < j {
-                    self.vec[m] / SQRT_2
                 } else {
-                    0.0
+                    self.vec[m] / SQRT_2
                 }
             }
             _ => {
+                let m = IJ_TO_I[i][j];
                 if i == j {
                     self.vec[m]
                 } else if i < j {
@@ -318,6 +318,52 @@ mod tests {
             Tensor2::from_tensor(comps_std_02, true, true).err(),
             Some("the tensor cannot be represented in 2D because of non-zero off-diagonal values")
         );
+    }
+
+    #[test]
+    fn get_works() -> Result<(), StrError> {
+        // general
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let tt = Tensor2::from_tensor(comps_std, false, false)?;
+        for i in 0..3 {
+            for j in 0..3 {
+                assert_approx_eq!(tt.get(i, j), comps_std[i][j], 1e-14);
+            }
+        }
+
+        // symmetric 3D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ];
+        let tt = Tensor2::from_tensor(comps_std, true, false)?;
+        for i in 0..3 {
+            for j in 0..3 {
+                assert_approx_eq!(tt.get(i, j), comps_std[i][j], 1e-14);
+            }
+        }
+
+        // symmetric 2D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let tt = Tensor2::from_tensor(comps_std, true, true)?;
+        for i in 0..3 {
+            for j in 0..3 {
+                assert_approx_eq!(tt.get(i, j), comps_std[i][j], 1e-14);
+            }
+        }
+        Ok(())
     }
 
     #[test]

@@ -73,7 +73,9 @@ pub const IJKL_TO_IJ: [[[[(usize, usize); 3]; 3]; 3]; 3] = [
 
 #[cfg(test)]
 mod tests {
-    use super::{IJKL_TO_IJ, IJ_TO_I, I_TO_IJ, ONE_BY_3, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6, TWO_BY_3};
+    use super::{
+        IJKL_TO_IJ, IJ_TO_I, IJ_TO_I_SYM, I_TO_IJ, ONE_BY_3, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6, TWO_BY_3,
+    };
 
     #[test]
     fn constants_are_correct() {
@@ -89,34 +91,48 @@ mod tests {
     #[test]
     fn ij_to_i_is_correct() {
         #[rustfmt::skip]
-        let vec = [
+        let res = [
             (0, 0), (1, 1), (2, 2), // 0,1,2 => diagonal
             (0, 1), (1, 2), (0, 2), // 3,4,5 => upper-diagonal
             (1, 0), (2, 1), (2, 0), // 6,7,8 => lower-diagonal
         ];
-        for a in 0..9 {
-            let (i, j) = vec[a];
-            assert_eq!(IJ_TO_I[i][j], a);
+        for m in 0..9 {
+            let (i, j) = res[m];
+            assert_eq!(IJ_TO_I[i][j], m);
+        }
+    }
+
+    #[test]
+    fn ij_to_i_sym_is_correct() {
+        #[rustfmt::skip]
+        let res = [
+            (0, 0, 0), (1, 1, 1), (2, 2, 2), // 0,1,2 => diagonal
+            (0, 1, 3), (1, 2, 4), (0, 2, 5), // 3,4,5 => upper-diagonal
+            (1, 0, 3), (2, 1, 4), (2, 0, 5), // 3,4,5 => lower-diagonal
+        ];
+        for r in 0..9 {
+            let (i, j, m) = res[r];
+            assert_eq!(IJ_TO_I_SYM[i][j], m);
         }
     }
 
     #[test]
     fn i_to_ij_is_correct() {
         #[rustfmt::skip]
-        let vec = [
+        let res = [
             (0,0), (1,1), (2,2), // 0,1,2 => diagonal
             (0,1), (1,2), (0,2), // 3,4,5 => upper-diagonal
             (1,0), (2,1), (2,0), // 6,7,8 => lower-diagonal
         ];
-        for a in 0..9 {
-            assert_eq!(I_TO_IJ[a], vec[a]);
+        for m in 0..9 {
+            assert_eq!(I_TO_IJ[m], res[m]);
         }
     }
 
     #[test]
     fn ijkl_to_ij_is_correct() {
         #[rustfmt::skip]
-        let mat = [
+        let res = [
             [(0,0,0,0), (0,0,1,1), (0,0,2,2), (0,0,0,1), (0,0,1,2), (0,0,0,2), (0,0,1,0), (0,0,2,1), (0,0,2,0)], // 0
             [(1,1,0,0), (1,1,1,1), (1,1,2,2), (1,1,0,1), (1,1,1,2), (1,1,0,2), (1,1,1,0), (1,1,2,1), (1,1,2,0)], // 1
             [(2,2,0,0), (2,2,1,1), (2,2,2,2), (2,2,0,1), (2,2,1,2), (2,2,0,2), (2,2,1,0), (2,2,2,1), (2,2,2,0)], // 2
@@ -127,10 +143,10 @@ mod tests {
             [(2,1,0,0), (2,1,1,1), (2,1,2,2), (2,1,0,1), (2,1,1,2), (2,1,0,2), (2,1,1,0), (2,1,2,1), (2,1,2,0)], // 7
             [(2,0,0,0), (2,0,1,1), (2,0,2,2), (2,0,0,1), (2,0,1,2), (2,0,0,2), (2,0,1,0), (2,0,2,1), (2,0,2,0)], // 8
         ];
-        for a in 0..9 {
-            for b in 0..9 {
-                let (i, j, k, l) = mat[a][b];
-                assert_eq!(IJKL_TO_IJ[i][j][k][l], (a, b));
+        for m in 0..9 {
+            for n in 0..9 {
+                let (i, j, k, l) = res[m][n];
+                assert_eq!(IJKL_TO_IJ[i][j][k][l], (m, n));
             }
         }
     }

@@ -126,6 +126,7 @@ impl Tensor4 {
         Ok(Tensor4 { mat })
     }
 
+    /// Returns the (i,j,k,l) component
     pub fn get(&self, i: usize, j: usize, k: usize, l: usize) -> f64 {
         match self.mat.dims().0 {
             4 => {

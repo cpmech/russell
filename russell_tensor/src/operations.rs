@@ -405,4 +405,108 @@ mod tests {
         assert_vec_approx_eq!(v.as_data(), &[-16.0, -38.0], 1e-13);
         Ok(())
     }
+
+    #[test]
+    fn t2_dyad_t2_works() -> Result<(), StrError> {
+        // general dyad general
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ], false, false)?;
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [0.5, 0.5, 0.5],
+            [0.5, 0.5, 0.5],
+            [0.5, 0.5, 0.5],
+        ], false, false)?;
+        let mut dd = Tensor4::new(false, false);
+        t2_dyad_t2(&mut dd, 2.0, &a, &b)?;
+        let mat = dd.to_matrix();
+        assert_eq!(
+            format!("{:.1}", mat),
+            "┌                                     ┐\n\
+             │ 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 │\n\
+             │ 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 │\n\
+             │ 9.0 9.0 9.0 9.0 9.0 9.0 9.0 9.0 9.0 │\n\
+             │ 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 │\n\
+             │ 6.0 6.0 6.0 6.0 6.0 6.0 6.0 6.0 6.0 │\n\
+             │ 3.0 3.0 3.0 3.0 3.0 3.0 3.0 3.0 3.0 │\n\
+             │ 4.0 4.0 4.0 4.0 4.0 4.0 4.0 4.0 4.0 │\n\
+             │ 8.0 8.0 8.0 8.0 8.0 8.0 8.0 8.0 8.0 │\n\
+             │ 7.0 7.0 7.0 7.0 7.0 7.0 7.0 7.0 7.0 │\n\
+             └                                     ┘"
+        );
+
+        // dym-3D dyad general
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 2.0, 3.0],
+            [2.0, 5.0, 6.0],
+            [3.0, 6.0, 9.0],
+        ], true, false)?;
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [0.5, 0.5, 0.5],
+            [0.5, 0.5, 0.5],
+            [0.5, 0.5, 0.5],
+        ], true, false)?;
+        let mut dd = Tensor4::new(true, false);
+        t2_dyad_t2(&mut dd, 2.0, &a, &b)?;
+        let mat = dd.to_matrix();
+        assert_eq!(
+            format!("{:.1}", mat),
+            "┌                         ┐\n\
+             │ 1.0 1.0 1.0 1.0 1.0 1.0 │\n\
+             │ 5.0 5.0 5.0 5.0 5.0 5.0 │\n\
+             │ 9.0 9.0 9.0 9.0 9.0 9.0 │\n\
+             │ 2.0 2.0 2.0 2.0 2.0 2.0 │\n\
+             │ 6.0 6.0 6.0 6.0 6.0 6.0 │\n\
+             │ 3.0 3.0 3.0 3.0 3.0 3.0 │\n\
+             └                         ┘"
+        );
+
+        // sym-2D dyad sym-2D
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 2.0, 0.0],
+            [2.0, 5.0, 0.0],
+            [0.0, 0.0, 9.0],
+        ], true, true)?;
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [0.5, 0.5, 0.0],
+            [0.5, 0.5, 0.0],
+            [0.0, 0.0, 0.5],
+        ], true, true)?;
+        let mut dd = Tensor4::new(true, true);
+        t2_dyad_t2(&mut dd, 2.0, &a, &b)?;
+        let mat = dd.to_matrix();
+        assert_eq!(
+            format!("{:.1}", mat),
+            "┌                 ┐\n\
+             │ 1.0 1.0 1.0 1.0 │\n\
+             │ 5.0 5.0 5.0 5.0 │\n\
+             │ 9.0 9.0 9.0 9.0 │\n\
+             │ 2.0 2.0 2.0 2.0 │\n\
+             └                 ┘"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn t4_ddot_t2_works() -> Result<(), StrError> {
+        Ok(())
+    }
+
+    #[test]
+    fn t2_ddot_t4_works() -> Result<(), StrError> {
+        Ok(())
+    }
+
+    #[test]
+    fn t4_ddot_t4_works() -> Result<(), StrError> {
+        Ok(())
+    }
 }

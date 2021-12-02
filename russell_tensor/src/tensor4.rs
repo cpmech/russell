@@ -1,33 +1,66 @@
-use super::{IJKL_TO_IJ, I_TO_IJ, SQRT_2};
+use super::{mandel_dim, IJKL_TO_MN, IJKL_TO_MN_SYM, MN_TO_IJKL, SQRT_2};
 use crate::StrError;
+use russell_lab::Matrix;
 
 /// Implements a fourth order-tensor, minor-symmetric or not
 pub struct Tensor4 {
-    comps_mandel: Vec<f64>, // components in Mandel basis. len = 81 or 36 (minor-symmetric). col-major => Fortran
-    minor_symmetric: bool,  // this tensor has minor-symmetry
+    /// Holds the components in Mandel basis as matrix.
+    /// General: (nrow,ncol) = (9,9)
+    /// Minor-symmetric in 3D: (nrow,ncol) = (6,6)
+    /// Minor-symmetric in 2D: (nrow,ncol) = (4,4)
+    pub mat: Matrix,
 }
 
 impl Tensor4 {
-    /// Returns a new Tensor4, minor-symmetric or not, with 0-valued components
-    pub fn new(minor_symmetric: bool) -> Self {
-        let size = if minor_symmetric { 36 } else { 81 };
+    /// Creates a new (zeroed) Tensor4
+    ///
+    /// The components are saved considering the Mandel basis and organized as follows:
+    ///
+    /// ```text
+    ///      0  0   0  1   0  2    0  3   0  4   0  5    0  6   0  7   0  8
+    ///    ----------------------------------------------------------------
+    /// 0 | 00_00  00_11  00_22   00_01  00_12  00_02   00_10  00_21  00_20
+    /// 1 | 11_00  11_11  11_22   11_01  11_12  11_02   11_10  11_21  11_20
+    /// 2 | 22_00  22_11  22_22   22_01  22_12  22_02   22_10  22_21  22_20
+    ///   |
+    /// 3 | 01_00  01_11  01_22   01_01  01_12  01_02   01_10  01_21  01_20
+    /// 4 | 12_00  12_11  12_22   12_01  12_12  12_02   12_10  12_21  12_20
+    /// 5 | 02_00  02_11  02_22   02_01  02_12  02_02   02_10  02_21  02_20
+    ///   |
+    /// 6 | 10_00  10_11  10_22   10_01  10_12  10_02   10_10  10_21  10_20
+    /// 7 | 21_00  21_11  21_22   21_01  21_12  21_02   21_10  21_21  21_20
+    /// 8 | 20_00  20_11  20_22   20_01  20_12  20_02   20_10  20_21  20_20
+    ///    ----------------------------------------------------------------
+    ///      8  0   8  1   8  2    8  3   8  4   8  5    8  6   8  7   8  8
+    /// ```
+    ///
+    /// # Input
+    ///
+    /// * `minor_symmetric` -- whether this tensor is minor symmetric or not,
+    ///                        i.e., Dijkl = Djikl = Dijlk = Djilk.
+    /// * `two_dim` -- 2D instead of 3D; effectively used only if minor-symmetric
+    ///                since general tensors have always (9,9) components.
+    pub fn new(minor_symmetric: bool, two_dim: bool) -> Self {
+        let dim = mandel_dim(minor_symmetric, two_dim);
         Tensor4 {
-            comps_mandel: vec![0.0; size],
-            minor_symmetric,
+            mat: Matrix::new(dim, dim),
         }
     }
 
     /// Returns a new Tensor4 constructed from the "standard" components
     ///
-    /// # Arguments
+    /// # Input
     ///
-    /// * dd - the standard Dijkl components given with respect to an orthonormal Cartesian basis
-    /// * minor_symmetric - this is a minor-symmetric tensor
-    ///
-    pub fn from_tensor(dd: &[[[[f64; 3]; 3]; 3]; 3], minor_symmetric: bool) -> Result<Self, StrError> {
-        let size = if minor_symmetric { 6 } else { 9 };
-        let mut dd_bar = vec![0.0; size * size];
+    /// * `dd` - the standard Dijkl components given with respect to an orthonormal Cartesian basis
+    /// * `minor_symmetric` -- whether this tensor is minor symmetric or not,
+    ///                        i.e., Dijkl = Djikl = Dijlk = Djilk.
+    /// * `two_dim` -- 2D instead of 3D; effectively used only if minor-symmetric
+    ///                since general tensors have always (9,9) components.
+    pub fn from_tensor(dd: &[[[[f64; 3]; 3]; 3]; 3], minor_symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
+        let dim = mandel_dim(minor_symmetric, two_dim);
+        let mut mat = Matrix::new(dim, dim);
         if minor_symmetric {
+            let max = if two_dim { 3 } else { 6 };
             for i in 0..3 {
                 for j in 0..3 {
                     for k in 0..3 {
@@ -38,22 +71,21 @@ impl Tensor4 {
                                     || dd[i][j][k][l] != dd[i][j][l][k]
                                     || dd[i][j][k][l] != dd[j][i][l][k]
                                 {
-                                    return Err("the components of minor-symmetric tensor do not pass symmetry check");
+                                    return Err("minor-symmetric Tensor4 does not pass symmetry check");
                                 }
                             } else {
-                                let (a, b) = IJKL_TO_IJ[i][j][k][l];
-                                let p = a + b * size; // col-major
-                                if i == j && k == l {
-                                    dd_bar[p] = dd[i][j][k][l];
-                                }
-                                if i == j && k < l {
-                                    dd_bar[p] = SQRT_2 * dd[i][j][k][l];
-                                }
-                                if i < j && k == l {
-                                    dd_bar[p] = SQRT_2 * dd[i][j][k][l];
-                                }
-                                if i < j && k < l {
-                                    dd_bar[p] = 2.0 * dd[i][j][k][l];
+                                let (m, n) = IJKL_TO_MN[i][j][k][l];
+                                if m > max || n > max {
+                                    if dd[i][j][k][l] != 0.0 {
+                                        return Err("cannot define 2D Tensor4 due to non-zero values");
+                                    }
+                                    continue;
+                                } else if m < 3 && n < 3 {
+                                    mat[m][n] = dd[i][j][k][l];
+                                } else if m > 2 && n > 2 {
+                                    mat[m][n] = 2.0 * dd[i][j][k][l];
+                                } else {
+                                    mat[m][n] = SQRT_2 * dd[i][j][k][l];
                                 }
                             }
                         }
@@ -65,70 +97,129 @@ impl Tensor4 {
                 for j in 0..3 {
                     for k in 0..3 {
                         for l in 0..3 {
-                            let (a, b) = IJKL_TO_IJ[i][j][k][l];
-                            let p = a + b * size; // col-major
+                            let (m, n) = IJKL_TO_MN[i][j][k][l];
                             if i == j && k == l {
-                                dd_bar[p] = dd[i][j][k][l];
-                            }
-                            if i == j && k < l {
-                                dd_bar[p] = (dd[i][j][k][l] + dd[i][j][l][k]) / SQRT_2;
-                            }
-                            if i == j && k > l {
-                                dd_bar[p] = (dd[i][j][l][k] - dd[i][j][k][l]) / SQRT_2;
-                            }
-                            if i < j && k == l {
-                                dd_bar[p] = (dd[i][j][k][l] + dd[j][i][k][l]) / SQRT_2;
-                            }
-                            if i < j && k < l {
-                                dd_bar[p] = (dd[i][j][k][l] + dd[i][j][l][k] + dd[j][i][k][l] + dd[j][i][l][k]) / 2.0;
-                            }
-                            if i < j && k > l {
-                                dd_bar[p] = (dd[i][j][l][k] - dd[i][j][k][l] + dd[j][i][l][k] - dd[j][i][k][l]) / 2.0;
-                            }
-                            if i > j && k == l {
-                                dd_bar[p] = (dd[j][i][k][l] - dd[i][j][k][l]) / SQRT_2;
-                            }
-                            if i > j && k < l {
-                                dd_bar[p] = (dd[j][i][k][l] + dd[j][i][l][k] - dd[i][j][k][l] - dd[i][j][l][k]) / 2.0;
-                            }
-                            if i > j && k > l {
-                                dd_bar[p] = (dd[j][i][l][k] - dd[j][i][k][l] - dd[i][j][l][k] + dd[i][j][k][l]) / 2.0;
+                                mat[m][n] = dd[i][j][k][l];
+                            } else if i == j && k < l {
+                                mat[m][n] = (dd[i][j][k][l] + dd[i][j][l][k]) / SQRT_2;
+                            } else if i == j && k > l {
+                                mat[m][n] = (dd[i][j][l][k] - dd[i][j][k][l]) / SQRT_2;
+                            } else if i < j && k == l {
+                                mat[m][n] = (dd[i][j][k][l] + dd[j][i][k][l]) / SQRT_2;
+                            } else if i < j && k < l {
+                                mat[m][n] = (dd[i][j][k][l] + dd[i][j][l][k] + dd[j][i][k][l] + dd[j][i][l][k]) / 2.0;
+                            } else if i < j && k > l {
+                                mat[m][n] = (dd[i][j][l][k] - dd[i][j][k][l] + dd[j][i][l][k] - dd[j][i][k][l]) / 2.0;
+                            } else if i > j && k == l {
+                                mat[m][n] = (dd[j][i][k][l] - dd[i][j][k][l]) / SQRT_2;
+                            } else if i > j && k < l {
+                                mat[m][n] = (dd[j][i][k][l] + dd[j][i][l][k] - dd[i][j][k][l] - dd[i][j][l][k]) / 2.0;
+                            } else {
+                                // i > j && k > l
+                                mat[m][n] = (dd[j][i][l][k] - dd[j][i][k][l] - dd[i][j][l][k] + dd[i][j][k][l]) / 2.0;
                             }
                         }
                     }
                 }
             }
         }
-        Ok(Tensor4 {
-            comps_mandel: dd_bar,
-            minor_symmetric,
-        })
+        Ok(Tensor4 { mat })
+    }
+
+    pub fn get(&self, i: usize, j: usize, k: usize, l: usize) -> f64 {
+        match self.mat.dims().0 {
+            4 => {
+                let (m, n) = IJKL_TO_MN_SYM[i][j][k][l];
+                if m > 3 || n > 3 {
+                    0.0
+                } else if m < 3 && n < 3 {
+                    self.mat[m][n]
+                } else if m > 2 && n > 2 {
+                    self.mat[m][n] / 2.0
+                } else {
+                    self.mat[m][n] / SQRT_2
+                }
+            }
+            6 => {
+                let (m, n) = IJKL_TO_MN_SYM[i][j][k][l];
+                if m < 3 && n < 3 {
+                    self.mat[m][n]
+                } else if m > 2 && n > 2 {
+                    self.mat[m][n] / 2.0
+                } else {
+                    self.mat[m][n] / SQRT_2
+                }
+            }
+            _ => {
+                let (m, n) = IJKL_TO_MN[i][j][k][l];
+                let val = self.mat[m][n];
+                if i == j && k == l {
+                    val
+                } else if i == j && k < l {
+                    let (p, q) = IJKL_TO_MN[i][j][l][k];
+                    let right = self.mat[p][q];
+                    (val + right) / SQRT_2
+                } else if i == j && k > l {
+                    let (p, q) = IJKL_TO_MN[i][j][l][k];
+                    let left = self.mat[p][q];
+                    (left - val) / SQRT_2
+                } else if i < j && k == l {
+                    let (p, q) = IJKL_TO_MN[j][i][k][l];
+                    let down = self.mat[p][q];
+                    (val + down) / SQRT_2
+                } else if i < j && k < l {
+                    let (p, q) = IJKL_TO_MN[i][j][l][k];
+                    let (r, s) = IJKL_TO_MN[j][i][k][l];
+                    let (u, v) = IJKL_TO_MN[j][i][l][k];
+                    let right = self.mat[p][q];
+                    let down = self.mat[r][s];
+                    let diag = self.mat[u][v];
+                    (val + right + down + diag) / 2.0
+                } else if i < j && k > l {
+                    let (p, q) = IJKL_TO_MN[i][j][l][k];
+                    let (r, s) = IJKL_TO_MN[j][i][l][k];
+                    let (u, v) = IJKL_TO_MN[j][i][k][l];
+                    let left = self.mat[p][q];
+                    let diag = self.mat[r][s];
+                    let down = self.mat[u][v];
+                    (left - val + diag - down) / 2.0
+                } else if i > j && k == l {
+                    let (p, q) = IJKL_TO_MN[j][i][k][l];
+                    let up = self.mat[p][q];
+                    (up - val) / SQRT_2
+                } else if i > j && k < l {
+                    let (p, q) = IJKL_TO_MN[j][i][k][l];
+                    let (r, s) = IJKL_TO_MN[j][i][l][k];
+                    let (u, v) = IJKL_TO_MN[i][j][l][k];
+                    let up = self.mat[p][q];
+                    let diag = self.mat[r][s];
+                    let right = self.mat[u][v];
+                    (up + diag - val - right) / 2.0
+                } else {
+                    let (p, q) = IJKL_TO_MN[j][i][l][k];
+                    let (r, s) = IJKL_TO_MN[j][i][k][l];
+                    let (u, v) = IJKL_TO_MN[i][j][l][k];
+                    let diag = self.mat[p][q];
+                    let up = self.mat[r][s];
+                    let left = self.mat[u][v];
+                    (diag - up - left + val) / 2.0
+                }
+            }
+        }
     }
 
     /// Returns a nested array with the standard components of this fourth-order tensor
     pub fn to_tensor(&self) -> Vec<Vec<Vec<Vec<f64>>>> {
         let mut dd = vec![vec![vec![vec![0.0; 3]; 3]; 3]; 3];
-        if self.minor_symmetric {
-            for m in 0..6 {
-                let (i, j) = I_TO_IJ[m];
-                for n in 0..6 {
-                    let (k, l) = I_TO_IJ[n];
-                    let p = m + n * 6; // col-major
-                    if i == j && k == l {
-                        dd[i][j][k][l] = self.comps_mandel[p];
-                    }
-                    if i == j && k < l {
-                        dd[i][j][k][l] = self.comps_mandel[p] / SQRT_2;
-                        dd[i][j][l][k] = dd[i][j][k][l];
-                    }
-                    if i < j && k == l {
-                        dd[i][j][k][l] = self.comps_mandel[p] / SQRT_2;
+        let dim = self.mat.dims().0;
+        if dim < 9 {
+            for m in 0..dim {
+                for n in 0..dim {
+                    let (i, j, k, l) = MN_TO_IJKL[m][n];
+                    dd[i][j][k][l] = self.get(i, j, k, l);
+                    if i != j || k != l {
                         dd[j][i][k][l] = dd[i][j][k][l];
-                    }
-                    if i < j && k < l {
-                        dd[i][j][k][l] = self.comps_mandel[p] / 2.0;
                         dd[i][j][l][k] = dd[i][j][k][l];
-                        dd[j][i][k][l] = dd[i][j][k][l];
                         dd[j][i][l][k] = dd[i][j][k][l];
                     }
                 }
@@ -138,67 +229,7 @@ impl Tensor4 {
                 for j in 0..3 {
                     for k in 0..3 {
                         for l in 0..3 {
-                            let (m, n) = IJKL_TO_IJ[i][j][k][l];
-                            let val = self.comps_mandel[m + n * 9];
-                            if i == j && k == l {
-                                dd[i][j][k][l] = val;
-                            }
-                            if i == j && k < l {
-                                let (p, q) = IJKL_TO_IJ[i][j][l][k];
-                                let right = self.comps_mandel[p + q * 9];
-                                dd[i][j][k][l] = (val + right) / SQRT_2;
-                            }
-                            if i == j && k > l {
-                                let (p, q) = IJKL_TO_IJ[i][j][l][k];
-                                let left = self.comps_mandel[p + q * 9];
-                                dd[i][j][k][l] = (left - val) / SQRT_2;
-                            }
-                            if i < j && k == l {
-                                let (p, q) = IJKL_TO_IJ[j][i][k][l];
-                                let down = self.comps_mandel[p + q * 9];
-                                dd[i][j][k][l] = (val + down) / SQRT_2;
-                            }
-                            if i < j && k < l {
-                                let (p, q) = IJKL_TO_IJ[i][j][l][k];
-                                let (r, s) = IJKL_TO_IJ[j][i][k][l];
-                                let (u, v) = IJKL_TO_IJ[j][i][l][k];
-                                let right = self.comps_mandel[p + q * 9];
-                                let down = self.comps_mandel[r + s * 9];
-                                let diag = self.comps_mandel[u + v * 9];
-                                dd[i][j][k][l] = (val + right + down + diag) / 2.0;
-                            }
-                            if i < j && k > l {
-                                let (p, q) = IJKL_TO_IJ[i][j][l][k];
-                                let (r, s) = IJKL_TO_IJ[j][i][l][k];
-                                let (u, v) = IJKL_TO_IJ[j][i][k][l];
-                                let left = self.comps_mandel[p + q * 9];
-                                let diag = self.comps_mandel[r + s * 9];
-                                let down = self.comps_mandel[u + v * 9];
-                                dd[i][j][k][l] = (left - val + diag - down) / 2.0;
-                            }
-                            if i > j && k == l {
-                                let (p, q) = IJKL_TO_IJ[j][i][k][l];
-                                let up = self.comps_mandel[p + q * 9];
-                                dd[i][j][k][l] = (up - val) / SQRT_2;
-                            }
-                            if i > j && k < l {
-                                let (p, q) = IJKL_TO_IJ[j][i][k][l];
-                                let (r, s) = IJKL_TO_IJ[j][i][l][k];
-                                let (u, v) = IJKL_TO_IJ[i][j][l][k];
-                                let up = self.comps_mandel[p + q * 9];
-                                let diag = self.comps_mandel[r + s * 9];
-                                let right = self.comps_mandel[u + v * 9];
-                                dd[i][j][k][l] = (up + diag - val - right) / 2.0;
-                            }
-                            if i > j && k > l {
-                                let (p, q) = IJKL_TO_IJ[j][i][l][k];
-                                let (r, s) = IJKL_TO_IJ[j][i][k][l];
-                                let (u, v) = IJKL_TO_IJ[i][j][l][k];
-                                let diag = self.comps_mandel[p + q * 9];
-                                let up = self.comps_mandel[r + s * 9];
-                                let left = self.comps_mandel[u + v * 9];
-                                dd[i][j][k][l] = (diag - up - left + val) / 2.0;
-                            }
+                            dd[i][j][k][l] = self.get(i, j, k, l);
                         }
                     }
                 }
@@ -218,49 +249,93 @@ mod tests {
 
     #[test]
     fn new_tensor4_works() {
-        let t4 = Tensor4::new(false);
+        let dd = Tensor4::new(false, false);
         let correct = &[0.0; 81];
-        assert_vec_approx_eq!(t4.comps_mandel, correct, 1e-15);
+        assert_vec_approx_eq!(dd.mat.as_data(), correct, 1e-15);
     }
 
     #[test]
     fn from_tensor_works() -> Result<(), StrError> {
-        let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, false)?;
-        for a in 0..9 {
-            for b in 0..9 {
-                let p = a + b * 9; // col-major
-                assert_eq!(t4.comps_mandel[p], Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[a][b]);
+        // general
+        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, false, false)?;
+        for m in 0..9 {
+            for n in 0..9 {
+                assert_eq!(dd.mat[m][n], Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[m][n]);
+            }
+        }
+
+        // sym-3D
+        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true, false)?;
+        for m in 0..6 {
+            for n in 0..6 {
+                assert_eq!(dd.mat[m][n], Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[m][n]);
+            }
+        }
+
+        // sym-2D
+        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true)?;
+        for m in 0..4 {
+            for n in 0..4 {
+                assert_eq!(dd.mat[m][n], Samples::TENSOR4_SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n]);
             }
         }
         Ok(())
     }
 
     #[test]
-    fn from_tensor_sym_fails() {
-        let minor_symmetric = true; // << ERROR
-        let res = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, minor_symmetric);
-        assert_eq!(
-            res.err(),
-            Some("the components of minor-symmetric tensor do not pass symmetry check")
-        );
+    fn from_tensor_fails_on_wrong_input() {
+        let res = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, true, false);
+        assert_eq!(res.err(), Some("minor-symmetric Tensor4 does not pass symmetry check"));
+
+        let res = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true, true);
+        assert_eq!(res.err(), Some("cannot define 2D Tensor4 due to non-zero values"));
     }
 
     #[test]
-    fn from_tensor_sym_works() -> Result<(), StrError> {
-        let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true)?;
-        for a in 0..6 {
-            for b in 0..6 {
-                let p = a + b * 6; // col-major
-                assert_eq!(t4.comps_mandel[p], Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[a][b]);
+    fn get_works() -> Result<(), StrError> {
+        // general
+        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, false, false)?;
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    for l in 0..3 {
+                        assert_approx_eq!(dd.get(i, j, k, l), Samples::TENSOR4_SAMPLE1[i][j][k][l], 1e-13);
+                    }
+                }
+            }
+        }
+
+        // sym-3D
+        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true, false)?;
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    for l in 0..3 {
+                        assert_approx_eq!(dd.get(i, j, k, l), Samples::TENSOR4_SYM_SAMPLE1[i][j][k][l], 1e-14);
+                    }
+                }
+            }
+        }
+
+        // sym-2D
+        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true)?;
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    for l in 0..3 {
+                        assert_approx_eq!(dd.get(i, j, k, l), Samples::TENSOR4_SYM_2D_SAMPLE1[i][j][k][l], 1e-14);
+                    }
+                }
             }
         }
         Ok(())
     }
 
     #[test]
-    fn to_tensor_4_works() -> Result<(), StrError> {
-        let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, false)?;
-        let res = t4.to_tensor();
+    fn to_tensor_works() -> Result<(), StrError> {
+        // general
+        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, false, false)?;
+        let res = dd.to_tensor();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -270,18 +345,28 @@ mod tests {
                 }
             }
         }
-        Ok(())
-    }
 
-    #[test]
-    fn to_tensor_symmetric_4_works() -> Result<(), StrError> {
-        let t4 = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true)?;
-        let res = t4.to_tensor();
+        // sym-3D
+        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true, false)?;
+        let res = dd.to_tensor();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
                         assert_approx_eq!(res[i][j][k][l], Samples::TENSOR4_SYM_SAMPLE1[i][j][k][l], 1e-14);
+                    }
+                }
+            }
+        }
+
+        // sym-2D
+        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true)?;
+        let res = dd.to_tensor();
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    for l in 0..3 {
+                        assert_approx_eq!(res[i][j][k][l], Samples::TENSOR4_SYM_2D_SAMPLE1[i][j][k][l], 1e-14);
                     }
                 }
             }

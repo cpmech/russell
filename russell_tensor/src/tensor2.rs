@@ -1,4 +1,4 @@
-use super::{IJ_TO_I, IJ_TO_I_SYM, I_TO_IJ, SQRT_2};
+use super::{mandel_dim, IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, SQRT_2};
 use crate::StrError;
 use russell_lab::Vector;
 use std::cmp;
@@ -6,13 +6,15 @@ use std::fmt::{self, Write};
 
 /// Implements a second-order tensor, symmetric or not
 pub struct Tensor2 {
-    /// Holds the components in Mandel basis as a 9D vector.
-    /// dim = 9 (general), 6 (symmetric), or 4 (symmetric)
-    pub(super) vec: Vector,
+    /// Holds the components in Mandel basis as a vector.
+    /// General: dim = 9
+    /// Symmetric in 3D: dim = 6
+    /// Symmetric in 2D: dim = 4
+    pub vec: Vector,
 }
 
 impl Tensor2 {
-    /// Returns a new Tensor2, symmetric or not, with 0-valued components
+    /// Creates a new (zeroed) Tensor2
     ///
     /// ```text
     ///                          ┌    ┐
@@ -30,7 +32,8 @@ impl Tensor2 {
     ///
     /// # Input
     ///
-    /// * `symmetric` -- whether this tensor is symmetric or not
+    /// * `symmetric` -- whether this tensor is symmetric or not,
+    ///                  i.e., Tij = Tji
     /// * `two_dim` -- 2D instead of 3D; effectively used only if symmetric
     ///                since unsymmetric tensors have always 9 components.
     pub fn new(symmetric: bool, two_dim: bool) -> Self {
@@ -43,52 +46,54 @@ impl Tensor2 {
     ///
     /// # Input
     ///
+    /// * `tt` - the standard Tij components given with respect to an orthonormal Cartesian basis
     /// * `symmetric` -- whether this tensor is symmetric or not
+    ///                  i.e., Tij = Tji
     /// * `two_dim` -- 2D instead of 3D; effectively used only if symmetric
     ///                since unsymmetric tensors have always 9 components.
     pub fn from_tensor(tt: &[[f64; 3]; 3], symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
         if symmetric {
             if tt[1][0] != tt[0][1] || tt[2][1] != tt[1][2] || tt[2][0] != tt[0][2] {
-                return Err("the components of the symmetric second order tensor do not pass symmetry check");
+                return Err("symmetric Tensor2 does not pass symmetry check");
             }
         }
         if two_dim {
             if tt[1][2] != 0.0 || tt[0][2] != 0.0 {
-                return Err("the tensor cannot be represented in 2D because of non-zero off-diagonal values");
+                return Err("cannot define 2D Tensor2 due to non-zero off-diagonal values");
             }
         }
         let dim = mandel_dim(symmetric, two_dim);
-        let mut data = Vector::new(dim);
+        let mut vec = Vector::new(dim);
         for m in 0..dim {
-            let (i, j) = I_TO_IJ[m];
+            let (i, j) = M_TO_IJ[m];
             if i == j {
-                data[m] = tt[i][j];
+                vec[m] = tt[i][j];
             }
             if i < j {
-                data[m] = (tt[i][j] + tt[j][i]) / SQRT_2;
+                vec[m] = (tt[i][j] + tt[j][i]) / SQRT_2;
             }
             if i > j {
-                data[m] = (tt[j][i] - tt[i][j]) / SQRT_2;
+                vec[m] = (tt[j][i] - tt[i][j]) / SQRT_2;
             }
         }
-        Ok(Tensor2 { vec: data })
+        Ok(Tensor2 { vec })
     }
 
     /// Returns the (i,j) component
     pub fn get(&self, i: usize, j: usize) -> f64 {
         match self.vec.dim() {
             4 => {
-                let m = IJ_TO_I_SYM[i][j];
-                if i == j {
-                    self.vec[m]
-                } else if m < 4 {
-                    self.vec[m] / SQRT_2
-                } else {
+                let m = IJ_TO_M_SYM[i][j];
+                if m > 3 {
                     0.0
+                } else if i == j {
+                    self.vec[m]
+                } else {
+                    self.vec[m] / SQRT_2
                 }
             }
             6 => {
-                let m = IJ_TO_I_SYM[i][j];
+                let m = IJ_TO_M_SYM[i][j];
                 if i == j {
                     self.vec[m]
                 } else {
@@ -96,14 +101,14 @@ impl Tensor2 {
                 }
             }
             _ => {
-                let m = IJ_TO_I[i][j];
+                let m = IJ_TO_M[i][j];
                 if i == j {
                     self.vec[m]
                 } else if i < j {
-                    let n = IJ_TO_I[j][i];
+                    let n = IJ_TO_M[j][i];
                     (self.vec[m] + self.vec[n]) / SQRT_2
                 } else {
-                    let n = IJ_TO_I[j][i];
+                    let n = IJ_TO_M[j][i];
                     (self.vec[n] - self.vec[m]) / SQRT_2
                 }
             }
@@ -113,11 +118,12 @@ impl Tensor2 {
     /// Returns a 2D array with the standard components of this second-order tensor
     pub fn to_tensor(&self) -> Vec<Vec<f64>> {
         let mut tt = vec![vec![0.0; 3]; 3];
-        if self.vec.dim() < 9 {
-            for m in 0..self.vec.dim() {
-                let (i, j) = I_TO_IJ[m];
+        let dim = self.vec.dim();
+        if dim < 9 {
+            for m in 0..dim {
+                let (i, j) = M_TO_IJ[m];
                 tt[i][j] = self.get(i, j);
-                if i < j {
+                if i != j {
                     tt[j][i] = tt[i][j];
                 }
             }
@@ -172,19 +178,6 @@ impl fmt::Display for Tensor2 {
         write!(f, " │\n")?;
         write!(f, "└{:1$}┘", " ", width * 3 + 1)?;
         Ok(())
-    }
-}
-
-#[inline]
-fn mandel_dim(symmetric: bool, two_dim: bool) -> usize {
-    if symmetric {
-        if two_dim {
-            4
-        } else {
-            6
-        }
-    } else {
-        9
     }
 }
 
@@ -262,7 +255,7 @@ mod tests {
     }
 
     #[test]
-    fn from_tensor_fails_on_invalid_data() {
+    fn from_tensor_fails_on_wrong_input() {
         // symmetric 3D
         let eps = 1e-15;
         #[rustfmt::skip]
@@ -285,15 +278,15 @@ mod tests {
         ];
         assert_eq!(
             Tensor2::from_tensor(comps_std_10, true, false).err(),
-            Some("the components of the symmetric second order tensor do not pass symmetry check")
+            Some("symmetric Tensor2 does not pass symmetry check")
         );
         assert_eq!(
             Tensor2::from_tensor(comps_std_20, true, false).err(),
-            Some("the components of the symmetric second order tensor do not pass symmetry check")
+            Some("symmetric Tensor2 does not pass symmetry check")
         );
         assert_eq!(
             Tensor2::from_tensor(comps_std_21, true, false).err(),
-            Some("the components of the symmetric second order tensor do not pass symmetry check")
+            Some("symmetric Tensor2 does not pass symmetry check")
         );
 
         // symmetric 2D
@@ -312,11 +305,11 @@ mod tests {
         ];
         assert_eq!(
             Tensor2::from_tensor(comps_std_12, true, true).err(),
-            Some("the tensor cannot be represented in 2D because of non-zero off-diagonal values")
+            Some("cannot define 2D Tensor2 due to non-zero off-diagonal values")
         );
         assert_eq!(
             Tensor2::from_tensor(comps_std_02, true, true).err(),
-            Some("the tensor cannot be represented in 2D because of non-zero off-diagonal values")
+            Some("cannot define 2D Tensor2 due to non-zero off-diagonal values")
         );
     }
 

@@ -25,33 +25,58 @@ pub const ONE_BY_3: f64 =
 pub const TWO_BY_3: f64 =
     0.66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666f64;
 
-/// Maps the indices (i,j) of a second order tensor to the i-position in the component-vector
+// --- maps -------------------------------------------------------------------------------------------------------------
+
+/// Maps the m-th position in the vector representation to the index (i,j) of Tensor2
 #[rustfmt::skip]
-pub const IJ_TO_I: [[usize; 3]; 3] = [
+pub const M_TO_IJ: [(usize, usize); 9] = [
+    // diagonal
+    (0,0), // 0
+    (1,1), // 1
+    (2,2), // 2
+    // upper-diagonal
+    (0,1), // 3
+    (1,2), // 4
+    (0,2), // 5
+    // lower-diagonal
+    (1,0), // 6
+    (2,1), // 7
+    (2,0), // 8
+];
+
+/// Maps (i,j) of Tensor2 to the m-th position in the vector representation
+#[rustfmt::skip]
+pub const IJ_TO_M: [[usize; 3]; 3] = [
     [0, 3, 5],
     [6, 1, 4],
     [8, 7, 2],
 ];
 
-/// Maps the indices (i,j) of a second order tensor to the i-position in the component-vector (symmetric version)
+/// Maps (i,j) of Tensor2 to the m-th position in the vector representation (symmetric version)
 #[rustfmt::skip]
-pub const IJ_TO_I_SYM: [[usize; 3]; 3] = [
+pub const IJ_TO_M_SYM: [[usize; 3]; 3] = [
     [0, 3, 5],
     [3, 1, 4],
     [5, 4, 2],
 ];
 
-/// Maps the index i in the component-vector to the indices (i,j) of the corresponding second order tensor
+/// Maps the (m,n)-th position in the matrix representation to (i,j,k,l) of Tensor4
 #[rustfmt::skip]
-pub const I_TO_IJ: [(usize, usize); 9] = [
-    (0,0), (1,1), (2,2), // 0,1,2 => diagonal
-    (0,1), (1,2), (0,2), // 3,4,5 => upper-diagonal
-    (1,0), (2,1), (2,0), // 6,7,8 => lower-diagonal
+pub const MN_TO_IJKL: [[(usize,usize,usize,usize); 9]; 9] = [
+    [(0,0,0,0), (0,0,1,1), (0,0,2,2), (0,0,0,1), (0,0,1,2), (0,0,0,2), (0,0,1,0), (0,0,2,1), (0,0,2,0)], // 0
+    [(1,1,0,0), (1,1,1,1), (1,1,2,2), (1,1,0,1), (1,1,1,2), (1,1,0,2), (1,1,1,0), (1,1,2,1), (1,1,2,0)], // 1
+    [(2,2,0,0), (2,2,1,1), (2,2,2,2), (2,2,0,1), (2,2,1,2), (2,2,0,2), (2,2,1,0), (2,2,2,1), (2,2,2,0)], // 2
+    [(0,1,0,0), (0,1,1,1), (0,1,2,2), (0,1,0,1), (0,1,1,2), (0,1,0,2), (0,1,1,0), (0,1,2,1), (0,1,2,0)], // 3
+    [(1,2,0,0), (1,2,1,1), (1,2,2,2), (1,2,0,1), (1,2,1,2), (1,2,0,2), (1,2,1,0), (1,2,2,1), (1,2,2,0)], // 4
+    [(0,2,0,0), (0,2,1,1), (0,2,2,2), (0,2,0,1), (0,2,1,2), (0,2,0,2), (0,2,1,0), (0,2,2,1), (0,2,2,0)], // 5
+    [(1,0,0,0), (1,0,1,1), (1,0,2,2), (1,0,0,1), (1,0,1,2), (1,0,0,2), (1,0,1,0), (1,0,2,1), (1,0,2,0)], // 6
+    [(2,1,0,0), (2,1,1,1), (2,1,2,2), (2,1,0,1), (2,1,1,2), (2,1,0,2), (2,1,1,0), (2,1,2,1), (2,1,2,0)], // 7
+    [(2,0,0,0), (2,0,1,1), (2,0,2,2), (2,0,0,1), (2,0,1,2), (2,0,0,2), (2,0,1,0), (2,0,2,1), (2,0,2,0)], // 8
 ];
 
-/// Maps the indices (i,j,k,l) of a fourth order tensor to the (i,j)-position in the component-matrix
+/// Maps (i,j,k,l) of Tensor4 to the (m,n)-th position in the matrix representation
 #[rustfmt::skip]
-pub const IJKL_TO_IJ: [[[[(usize, usize); 3]; 3]; 3]; 3] = [
+pub const IJKL_TO_MN: [[[[(usize, usize); 3]; 3]; 3]; 3] = [
     [
         [[(0,0), (0,3), (0,5)], [(0,6), (0,1), (0,4)], [(0,8), (0,7), (0,2)]], // [0][0][.][.]
         [[(3,0), (3,3), (3,5)], [(3,6), (3,1), (3,4)], [(3,8), (3,7), (3,2)]], // [0][1][.][.]
@@ -69,12 +94,33 @@ pub const IJKL_TO_IJ: [[[[(usize, usize); 3]; 3]; 3]; 3] = [
     ],
 ];
 
+/// Maps (i,j,k,l) of Tensor4 to the (m,n)-th position in the matrix representation (minor-symmetric version)
+#[rustfmt::skip]
+pub const IJKL_TO_MN_SYM: [[[[(usize, usize); 3]; 3]; 3]; 3] = [
+    [
+        [[(0,0), (0,3), (0,5)], [(0,3), (0,1), (0,4)], [(0,5), (0,4), (0,2)]], // [0][0][.][.]
+        [[(3,0), (3,3), (3,5)], [(3,3), (3,1), (3,4)], [(3,5), (3,4), (3,2)]], // [0][1][.][.]
+        [[(5,0), (5,3), (5,5)], [(5,3), (5,1), (5,4)], [(5,5), (5,4), (5,2)]], // [0][2][.][.]
+    ],
+    [
+        [[(3,0), (3,3), (3,5)], [(3,3), (3,1), (3,4)], [(3,5), (3,4), (3,2)]], // [1][0][.][.]
+        [[(1,0), (1,3), (1,5)], [(1,3), (1,1), (1,4)], [(1,5), (1,4), (1,2)]], // [1][1][.][.]
+        [[(4,0), (4,3), (4,5)], [(4,3), (4,1), (4,4)], [(4,5), (4,4), (4,2)]], // [1][2][.][.]
+    ],
+    [
+        [[(5,0), (5,3), (5,5)], [(5,3), (5,1), (5,4)], [(5,5), (5,4), (5,2)]], // [2][0][.][.]
+        [[(4,0), (4,3), (4,5)], [(4,3), (4,1), (4,4)], [(4,5), (4,4), (4,2)]], // [2][1][.][.]
+        [[(2,0), (2,3), (2,5)], [(2,3), (2,1), (2,4)], [(2,5), (2,4), (2,2)]], // [2][2][.][.]
+    ],
+];
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
     use super::{
-        IJKL_TO_IJ, IJ_TO_I, IJ_TO_I_SYM, I_TO_IJ, ONE_BY_3, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6, TWO_BY_3,
+        IJKL_TO_MN, IJKL_TO_MN_SYM, IJ_TO_M, IJ_TO_M_SYM, MN_TO_IJKL, M_TO_IJ, ONE_BY_3, SQRT_2, SQRT_2_BY_3, SQRT_3,
+        SQRT_3_BY_2, SQRT_6, TWO_BY_3,
     };
 
     #[test]
@@ -89,64 +135,38 @@ mod tests {
     }
 
     #[test]
-    fn ij_to_i_is_correct() {
-        #[rustfmt::skip]
-        let res = [
-            (0, 0), (1, 1), (2, 2), // 0,1,2 => diagonal
-            (0, 1), (1, 2), (0, 2), // 3,4,5 => upper-diagonal
-            (1, 0), (2, 1), (2, 0), // 6,7,8 => lower-diagonal
-        ];
+    fn maps_are_correct() {
+        // M_TO_IJ => IJ_TO_M and IJ_TO_M_SYM
         for m in 0..9 {
-            let (i, j) = res[m];
-            assert_eq!(IJ_TO_I[i][j], m);
+            let (i, j) = M_TO_IJ[m];
+            assert_eq!(IJ_TO_M[i][j], m);
+            let m_sym = match m {
+                6 => 3,
+                7 => 4,
+                8 => 5,
+                _ => m,
+            };
+            assert_eq!(IJ_TO_M_SYM[i][j], m_sym);
         }
-    }
 
-    #[test]
-    fn ij_to_i_sym_is_correct() {
-        #[rustfmt::skip]
-        let res = [
-            (0, 0, 0), (1, 1, 1), (2, 2, 2), // 0,1,2 => diagonal
-            (0, 1, 3), (1, 2, 4), (0, 2, 5), // 3,4,5 => upper-diagonal
-            (1, 0, 3), (2, 1, 4), (2, 0, 5), // 3,4,5 => lower-diagonal
-        ];
-        for r in 0..9 {
-            let (i, j, m) = res[r];
-            assert_eq!(IJ_TO_I_SYM[i][j], m);
-        }
-    }
-
-    #[test]
-    fn i_to_ij_is_correct() {
-        #[rustfmt::skip]
-        let res = [
-            (0,0), (1,1), (2,2), // 0,1,2 => diagonal
-            (0,1), (1,2), (0,2), // 3,4,5 => upper-diagonal
-            (1,0), (2,1), (2,0), // 6,7,8 => lower-diagonal
-        ];
+        // MN_TO_IJKL => IJKL_TO_MN and IJKL_TO_MN_SYM
         for m in 0..9 {
-            assert_eq!(I_TO_IJ[m], res[m]);
-        }
-    }
-
-    #[test]
-    fn ijkl_to_ij_is_correct() {
-        #[rustfmt::skip]
-        let res = [
-            [(0,0,0,0), (0,0,1,1), (0,0,2,2), (0,0,0,1), (0,0,1,2), (0,0,0,2), (0,0,1,0), (0,0,2,1), (0,0,2,0)], // 0
-            [(1,1,0,0), (1,1,1,1), (1,1,2,2), (1,1,0,1), (1,1,1,2), (1,1,0,2), (1,1,1,0), (1,1,2,1), (1,1,2,0)], // 1
-            [(2,2,0,0), (2,2,1,1), (2,2,2,2), (2,2,0,1), (2,2,1,2), (2,2,0,2), (2,2,1,0), (2,2,2,1), (2,2,2,0)], // 2
-            [(0,1,0,0), (0,1,1,1), (0,1,2,2), (0,1,0,1), (0,1,1,2), (0,1,0,2), (0,1,1,0), (0,1,2,1), (0,1,2,0)], // 3
-            [(1,2,0,0), (1,2,1,1), (1,2,2,2), (1,2,0,1), (1,2,1,2), (1,2,0,2), (1,2,1,0), (1,2,2,1), (1,2,2,0)], // 4
-            [(0,2,0,0), (0,2,1,1), (0,2,2,2), (0,2,0,1), (0,2,1,2), (0,2,0,2), (0,2,1,0), (0,2,2,1), (0,2,2,0)], // 5
-            [(1,0,0,0), (1,0,1,1), (1,0,2,2), (1,0,0,1), (1,0,1,2), (1,0,0,2), (1,0,1,0), (1,0,2,1), (1,0,2,0)], // 6
-            [(2,1,0,0), (2,1,1,1), (2,1,2,2), (2,1,0,1), (2,1,1,2), (2,1,0,2), (2,1,1,0), (2,1,2,1), (2,1,2,0)], // 7
-            [(2,0,0,0), (2,0,1,1), (2,0,2,2), (2,0,0,1), (2,0,1,2), (2,0,0,2), (2,0,1,0), (2,0,2,1), (2,0,2,0)], // 8
-        ];
-        for m in 0..9 {
+            let m_sym = match m {
+                6 => 3,
+                7 => 4,
+                8 => 5,
+                _ => m,
+            };
             for n in 0..9 {
-                let (i, j, k, l) = res[m][n];
-                assert_eq!(IJKL_TO_IJ[i][j][k][l], (m, n));
+                let (i, j, k, l) = MN_TO_IJKL[m][n];
+                assert_eq!(IJKL_TO_MN[i][j][k][l], (m, n));
+                let n_sym = match n {
+                    6 => 3,
+                    7 => 4,
+                    8 => 5,
+                    _ => n,
+                };
+                assert_eq!(IJKL_TO_MN_SYM[i][j][k][l], (m_sym, n_sym))
             }
         }
     }

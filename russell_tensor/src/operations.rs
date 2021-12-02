@@ -46,8 +46,8 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 /// - Thus, the result is always set with symmetric = false
 ///
 pub fn t2_dot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, StrError> {
-    let ta = a.to_tensor();
-    let tb = b.to_tensor();
+    let ta = a.to_matrix();
+    let tb = b.to_matrix();
     let mut tc = [[0.0; 3]; 3];
     for i in 0..3 {
         for j in 0..3 {
@@ -56,7 +56,7 @@ pub fn t2_dot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, StrError> {
             }
         }
     }
-    Tensor2::from_tensor(&tc, false, false)
+    Tensor2::from_matrix(&tc, false, false)
 }
 
 /// Performs the single dot operation between a vector and Tensor2
@@ -90,14 +90,14 @@ mod tests {
     #[test]
     fn t2_ddot_t2_works() -> Result<(), StrError> {
         #[rustfmt::skip]
-        let a = Tensor2::from_tensor(&[
+        let a = Tensor2::from_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ], false, false)?;
 
         #[rustfmt::skip]
-        let b = Tensor2::from_tensor(&[
+        let b = Tensor2::from_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
@@ -110,13 +110,13 @@ mod tests {
     #[test]
     fn t2_ddot_t2_both_symmetric_works() -> Result<(), StrError> {
         #[rustfmt::skip]
-        let a = Tensor2::from_tensor(&[
+        let a = Tensor2::from_matrix(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ], true, false)?;
         #[rustfmt::skip]
-        let b = Tensor2::from_tensor(&[
+        let b = Tensor2::from_matrix(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
@@ -129,13 +129,13 @@ mod tests {
     #[test]
     fn t2_ddot_t2_sym_with_unsymmetric_works() -> Result<(), StrError> {
         #[rustfmt::skip]
-        let a = Tensor2::from_tensor(&[
+        let a = Tensor2::from_matrix(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ], true, false)?;
         #[rustfmt::skip]
-        let b = Tensor2::from_tensor(&[
+        let b = Tensor2::from_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
@@ -148,21 +148,20 @@ mod tests {
     #[test]
     fn t2_sdot_t2_works() -> Result<(), StrError> {
         #[rustfmt::skip]
-        let a = Tensor2::from_tensor(&[
+        let a = Tensor2::from_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ], false, false)?;
         #[rustfmt::skip]
-        let b = Tensor2::from_tensor(&[
+        let b = Tensor2::from_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
         ], false, false)?;
         let c = t2_dot_t2(&a, &b)?;
-        println!("{}", c);
         #[rustfmt::skip]
-        let correct = Tensor2::from_tensor(&[
+        let correct = Tensor2::from_matrix(&[
             [ 30.0,  24.0, 18.0],
             [ 84.0,  69.0, 54.0],
             [138.0, 114.0, 90.0],
@@ -174,21 +173,20 @@ mod tests {
     #[test]
     fn t2_sdot_t2_both_symmetric_works() -> Result<(), StrError> {
         #[rustfmt::skip]
-        let a = Tensor2::from_tensor(&[
+        let a = Tensor2::from_matrix(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ], true, false)?;
         #[rustfmt::skip]
-        let b = Tensor2::from_tensor(&[
+        let b = Tensor2::from_matrix(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
         ], true, false)?;
         let c = t2_dot_t2(&a, &b)?;
-        println!("{}", c);
         #[rustfmt::skip]
-        let correct = Tensor2::from_tensor(&[
+        let correct = Tensor2::from_matrix(&[
             [59.0, 37.0, 28.0],
             [52.0, 44.0, 37.0],
             [61.0, 52.0, 59.0],

@@ -47,16 +47,17 @@ impl Tensor4 {
         }
     }
 
-    /// Returns a new Tensor4 constructed from the "standard" components
+    /// Creates a new Tensor4 constructed from a nested array
     ///
     /// # Input
     ///
-    /// * `dd` - the standard Dijkl components given with respect to an orthonormal Cartesian basis
+    /// * `dd` - the standard (not Mandel) Dijkl components given with
+    ///          respect to an orthonormal Cartesian basis
     /// * `minor_symmetric` -- whether this tensor is minor symmetric or not,
     ///                        i.e., Dijkl = Djikl = Dijlk = Djilk.
     /// * `two_dim` -- 2D instead of 3D; effectively used only if minor-symmetric
     ///                since general tensors have always (9,9) components.
-    pub fn from_tensor(dd: &[[[[f64; 3]; 3]; 3]; 3], minor_symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
+    pub fn from_array(dd: &[[[[f64; 3]; 3]; 3]; 3], minor_symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
         let dim = mandel_dim(minor_symmetric, two_dim);
         let mut mat = Matrix::new(dim, dim);
         if minor_symmetric {
@@ -126,7 +127,7 @@ impl Tensor4 {
         Ok(Tensor4 { mat })
     }
 
-    /// Returns the (i,j,k,l) component
+    /// Returns the (i,j,k,l) component (standard; not Mandel)
     pub fn get(&self, i: usize, j: usize, k: usize, l: usize) -> f64 {
         match self.mat.dims().0 {
             4 => {
@@ -209,8 +210,8 @@ impl Tensor4 {
         }
     }
 
-    /// Returns a nested array with the standard components of this fourth-order tensor
-    pub fn to_tensor(&self) -> Vec<Vec<Vec<Vec<f64>>>> {
+    /// Returns a nested array (standard components; not Mandel) representing this tensor
+    pub fn to_array(&self) -> Vec<Vec<Vec<Vec<f64>>>> {
         let mut dd = vec![vec![vec![vec![0.0; 3]; 3]; 3]; 3];
         let dim = self.mat.dims().0;
         if dim < 9 {
@@ -256,9 +257,9 @@ mod tests {
     }
 
     #[test]
-    fn from_tensor_works() -> Result<(), StrError> {
+    fn from_array_works() -> Result<(), StrError> {
         // general
-        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, false, false)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, false)?;
         for m in 0..9 {
             for n in 0..9 {
                 assert_eq!(dd.mat[m][n], Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[m][n]);
@@ -266,7 +267,7 @@ mod tests {
         }
 
         // sym-3D
-        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true, false)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false)?;
         for m in 0..6 {
             for n in 0..6 {
                 assert_eq!(dd.mat[m][n], Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[m][n]);
@@ -274,7 +275,7 @@ mod tests {
         }
 
         // sym-2D
-        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true)?;
         for m in 0..4 {
             for n in 0..4 {
                 assert_eq!(dd.mat[m][n], Samples::TENSOR4_SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n]);
@@ -284,18 +285,18 @@ mod tests {
     }
 
     #[test]
-    fn from_tensor_fails_on_wrong_input() {
-        let res = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, true, false);
+    fn from_array_fails_on_wrong_input() {
+        let res = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, true, false);
         assert_eq!(res.err(), Some("minor-symmetric Tensor4 does not pass symmetry check"));
 
-        let res = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true, true);
+        let res = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, true);
         assert_eq!(res.err(), Some("cannot define 2D Tensor4 due to non-zero values"));
     }
 
     #[test]
     fn get_works() -> Result<(), StrError> {
         // general
-        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, false, false)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, false)?;
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -307,7 +308,7 @@ mod tests {
         }
 
         // sym-3D
-        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true, false)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false)?;
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -319,7 +320,7 @@ mod tests {
         }
 
         // sym-2D
-        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true)?;
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -333,10 +334,10 @@ mod tests {
     }
 
     #[test]
-    fn to_tensor_works() -> Result<(), StrError> {
+    fn to_array_works() -> Result<(), StrError> {
         // general
-        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SAMPLE1, false, false)?;
-        let res = dd.to_tensor();
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, false)?;
+        let res = dd.to_array();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -348,8 +349,8 @@ mod tests {
         }
 
         // sym-3D
-        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SYM_SAMPLE1, true, false)?;
-        let res = dd.to_tensor();
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false)?;
+        let res = dd.to_array();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -361,8 +362,8 @@ mod tests {
         }
 
         // sym-2D
-        let dd = Tensor4::from_tensor(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true)?;
-        let res = dd.to_tensor();
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true)?;
+        let res = dd.to_array();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {

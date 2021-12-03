@@ -142,10 +142,10 @@ impl Tensor4 {
     ///
     /// # Input
     ///
-    /// * `std` - the standard (not Mandel) matrix of components given with
+    /// * `inp` - the standard (not Mandel) matrix of components given with
     ///           respect to an orthonormal Cartesian basis. The matrix must be (9,9),
     ///           even if it corresponds to a minor-symmetric tensor.
-    pub fn from_matrix(std: &[[f64; 9]; 9], minor_symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
+    pub fn from_matrix(inp: &[[f64; 9]; 9], minor_symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
         let dim = mandel_dim(minor_symmetric, two_dim);
         let mut mat = Matrix::new(dim, dim);
         if minor_symmetric {
@@ -160,21 +160,21 @@ impl Tensor4 {
                             let (u, v) = IJKL_TO_MN[j][i][l][k];
                             // check minor-symmetry
                             if i > j || k > l {
-                                if std[m][n] != std[p][q] || std[m][n] != std[r][s] || std[m][n] != std[u][v] {
+                                if inp[m][n] != inp[p][q] || inp[m][n] != inp[r][s] || inp[m][n] != inp[u][v] {
                                     return Err("minor-symmetric Tensor4 does not pass symmetry check");
                                 }
                             } else {
                                 if m > max || n > max {
-                                    if std[m][n] != 0.0 {
+                                    if inp[m][n] != 0.0 {
                                         return Err("cannot define 2D Tensor4 due to non-zero values");
                                     }
                                     continue;
                                 } else if m < 3 && n < 3 {
-                                    mat[m][n] = std[m][n];
+                                    mat[m][n] = inp[m][n];
                                 } else if m > 2 && n > 2 {
-                                    mat[m][n] = 2.0 * std[m][n];
+                                    mat[m][n] = 2.0 * inp[m][n];
                                 } else {
-                                    mat[m][n] = SQRT_2 * std[m][n];
+                                    mat[m][n] = SQRT_2 * inp[m][n];
                                 }
                             }
                         }
@@ -190,49 +190,49 @@ impl Tensor4 {
                             // ** i == j **
                             // 1
                             if i == j && k == l {
-                                mat[m][n] = std[m][n];
+                                mat[m][n] = inp[m][n];
                             // 2
                             } else if i == j && k < l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
-                                mat[m][n] = (std[m][n] + std[p][q]) / SQRT_2;
+                                mat[m][n] = (inp[m][n] + inp[p][q]) / SQRT_2;
                             // 3
                             } else if i == j && k > l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
-                                mat[m][n] = (std[p][q] - std[m][n]) / SQRT_2;
+                                mat[m][n] = (inp[p][q] - inp[m][n]) / SQRT_2;
                             // ** i < j **
                             // 4
                             } else if i < j && k == l {
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
-                                mat[m][n] = (std[m][n] + std[r][s]) / SQRT_2;
+                                mat[m][n] = (inp[m][n] + inp[r][s]) / SQRT_2;
                             // 5
                             } else if i < j && k < l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
                                 let (u, v) = IJKL_TO_MN[j][i][l][k];
-                                mat[m][n] = (std[m][n] + std[p][q] + std[r][s] + std[u][v]) / 2.0;
+                                mat[m][n] = (inp[m][n] + inp[p][q] + inp[r][s] + inp[u][v]) / 2.0;
                             // 6
                             } else if i < j && k > l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
                                 let (u, v) = IJKL_TO_MN[j][i][l][k];
-                                mat[m][n] = (std[p][q] - std[m][n] + std[u][v] - std[r][s]) / 2.0;
+                                mat[m][n] = (inp[p][q] - inp[m][n] + inp[u][v] - inp[r][s]) / 2.0;
                             // ** i > j **
                             // 7
                             } else if i > j && k == l {
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
-                                mat[m][n] = (std[r][s] - std[m][n]) / SQRT_2;
+                                mat[m][n] = (inp[r][s] - inp[m][n]) / SQRT_2;
                             // 8
                             } else if i > j && k < l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
                                 let (u, v) = IJKL_TO_MN[j][i][l][k];
-                                mat[m][n] = (std[r][s] + std[u][v] - std[m][n] - std[p][q]) / 2.0;
+                                mat[m][n] = (inp[r][s] + inp[u][v] - inp[m][n] - inp[p][q]) / 2.0;
                             // 9
                             } else if i > j && k > l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
                                 let (u, v) = IJKL_TO_MN[j][i][l][k];
-                                mat[m][n] = (std[u][v] - std[r][s] - std[p][q] + std[m][n]) / 2.0;
+                                mat[m][n] = (inp[u][v] - inp[r][s] - inp[p][q] + inp[m][n]) / 2.0;
                             }
                         }
                     }

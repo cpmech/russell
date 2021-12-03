@@ -145,11 +145,7 @@ impl Tensor4 {
     /// * `std` - the standard (not Mandel) matrix of components given with
     ///           respect to an orthonormal Cartesian basis. The matrix must be (9,9),
     ///           even if it corresponds to a minor-symmetric tensor.
-    pub fn from_matrix(std: &Matrix, minor_symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
-        let (nrow, ncol) = std.dims();
-        if nrow != 9 || ncol != 9 {
-            return Err("matrix must be (9,9)");
-        }
+    pub fn from_matrix(std: &[[f64; 9]; 9], minor_symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
         let dim = mandel_dim(minor_symmetric, two_dim);
         let mut mat = Matrix::new(dim, dim);
         if minor_symmetric {
@@ -373,7 +369,6 @@ impl Tensor4 {
 
     /// Returns a matrix (standard components; not Mandel) representing this tensor
     pub fn to_matrix(&self) -> Matrix {
-        let dim = self.mat.dims().0;
         let mut res = Matrix::new(9, 9);
         for m in 0..9 {
             for n in 0..9 {
@@ -392,7 +387,6 @@ mod tests {
     use super::Tensor4;
     use crate::{Samples, StrError};
     use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
-    use russell_lab::Matrix;
 
     #[test]
     fn new_tensor4_works() {
@@ -441,7 +435,7 @@ mod tests {
     #[test]
     fn from_matrix_works() -> Result<(), StrError> {
         // general
-        let dd = Tensor4::from_matrix(&Matrix::from(&Samples::TENSOR4_SAMPLE1_STD_MATRIX), false, false)?;
+        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SAMPLE1_STD_MATRIX, false, false)?;
         for m in 0..9 {
             for n in 0..9 {
                 assert_approx_eq!(dd.mat[m][n], Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[m][n], 1e-15);
@@ -449,7 +443,7 @@ mod tests {
         }
 
         // sym-3D
-        let dd = Tensor4::from_matrix(&Matrix::from(&Samples::TENSOR4_SYM_SAMPLE1_STD_MATRIX), true, false)?;
+        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_SAMPLE1_STD_MATRIX, true, false)?;
         for m in 0..6 {
             for n in 0..6 {
                 assert_approx_eq!(dd.mat[m][n], Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[m][n], 1e-14);
@@ -457,7 +451,7 @@ mod tests {
         }
 
         // sym-2D
-        let dd = Tensor4::from_matrix(&Matrix::from(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX), true, true)?;
+        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX, true, true)?;
         for m in 0..4 {
             for n in 0..4 {
                 assert_approx_eq!(dd.mat[m][n], Samples::TENSOR4_SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n], 1e-14);

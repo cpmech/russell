@@ -148,7 +148,7 @@ mod tests {
     };
     use crate::{Samples, StrError};
     use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
-    use russell_lab::{Matrix, Vector};
+    use russell_lab::Vector;
 
     #[test]
     fn t2_ddot_t2_works() -> Result<(), StrError> {
@@ -457,14 +457,17 @@ mod tests {
         let mat = dd.to_matrix();
         assert_eq!(
             format!("{:.1}", mat),
-            "┌                         ┐\n\
-             │ 1.0 1.0 1.0 1.0 1.0 1.0 │\n\
-             │ 5.0 5.0 5.0 5.0 5.0 5.0 │\n\
-             │ 9.0 9.0 9.0 9.0 9.0 9.0 │\n\
-             │ 2.0 2.0 2.0 2.0 2.0 2.0 │\n\
-             │ 6.0 6.0 6.0 6.0 6.0 6.0 │\n\
-             │ 3.0 3.0 3.0 3.0 3.0 3.0 │\n\
-             └                         ┘"
+            "┌                                     ┐\n\
+             │ 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 │\n\
+             │ 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 5.0 │\n\
+             │ 9.0 9.0 9.0 9.0 9.0 9.0 9.0 9.0 9.0 │\n\
+             │ 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 │\n\
+             │ 6.0 6.0 6.0 6.0 6.0 6.0 6.0 6.0 6.0 │\n\
+             │ 3.0 3.0 3.0 3.0 3.0 3.0 3.0 3.0 3.0 │\n\
+             │ 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 │\n\
+             │ 6.0 6.0 6.0 6.0 6.0 6.0 6.0 6.0 6.0 │\n\
+             │ 3.0 3.0 3.0 3.0 3.0 3.0 3.0 3.0 3.0 │\n\
+             └                                     ┘"
         );
 
         // sym-2D dyad sym-2D
@@ -485,20 +488,24 @@ mod tests {
         let mat = dd.to_matrix();
         assert_eq!(
             format!("{:.1}", mat),
-            "┌                 ┐\n\
-             │ 1.0 1.0 1.0 1.0 │\n\
-             │ 5.0 5.0 5.0 5.0 │\n\
-             │ 9.0 9.0 9.0 9.0 │\n\
-             │ 2.0 2.0 2.0 2.0 │\n\
-             └                 ┘"
+            "┌                                     ┐\n\
+             │ 1.0 1.0 1.0 1.0 0.0 0.0 1.0 0.0 0.0 │\n\
+             │ 5.0 5.0 5.0 5.0 0.0 0.0 5.0 0.0 0.0 │\n\
+             │ 9.0 9.0 9.0 9.0 0.0 0.0 9.0 0.0 0.0 │\n\
+             │ 2.0 2.0 2.0 2.0 0.0 0.0 2.0 0.0 0.0 │\n\
+             │ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 │\n\
+             │ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 │\n\
+             │ 2.0 2.0 2.0 2.0 0.0 0.0 2.0 0.0 0.0 │\n\
+             │ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 │\n\
+             │ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 │\n\
+             └                                     ┘"
         );
         Ok(())
     }
 
     #[test]
     fn t4_ddot_t2_works() -> Result<(), StrError> {
-        let inp = Matrix::from(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX);
-        let dd = Tensor4::from_matrix(&inp, true, true)?;
+        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX, true, true)?;
         #[rustfmt::skip]
         let a = Tensor2::from_matrix(&[
             [-1.0, -2.0,  0.0],
@@ -520,8 +527,7 @@ mod tests {
 
     #[test]
     fn t2_ddot_t4_works() -> Result<(), StrError> {
-        let inp = Matrix::from(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX);
-        let dd = Tensor4::from_matrix(&inp, true, true)?;
+        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX, true, true)?;
         #[rustfmt::skip]
         let a = Tensor2::from_matrix(&[
             [-1.0, -2.0,  0.0],
@@ -543,8 +549,7 @@ mod tests {
 
     #[test]
     fn t4_ddot_t4_works() -> Result<(), StrError> {
-        let inp = Matrix::from(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX);
-        let cc = Tensor4::from_matrix(&inp, true, true)?;
+        let cc = Tensor4::from_matrix(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX, true, true)?;
         let mut ee = Tensor4::new(true, true);
         t4_ddot_t4(&mut ee, 1.0, &cc, &cc)?;
         let out = ee.to_matrix();

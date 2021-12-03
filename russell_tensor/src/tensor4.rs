@@ -372,13 +372,11 @@ impl Tensor4 {
     }
 
     /// Returns a matrix (standard components; not Mandel) representing this tensor
-    ///
-    /// Note: The matrix may be truncated depending on minor-symmetry.
     pub fn to_matrix(&self) -> Matrix {
         let dim = self.mat.dims().0;
-        let mut res = Matrix::new(dim, dim);
-        for m in 0..dim {
-            for n in 0..dim {
+        let mut res = Matrix::new(9, 9);
+        for m in 0..9 {
+            for n in 0..9 {
                 let (i, j, k, l) = MN_TO_IJKL[m][n];
                 res[m][n] = self.get(i, j, k, l);
             }
@@ -565,9 +563,9 @@ mod tests {
         // sym-3D
         let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false)?;
         let mat = dd.to_matrix();
-        assert_eq!(mat.dims(), (6, 6));
-        for m in 0..6 {
-            for n in 0..6 {
+        assert_eq!(mat.dims(), (9, 9));
+        for m in 0..9 {
+            for n in 0..9 {
                 assert_approx_eq!(mat[m][n], &Samples::TENSOR4_SYM_SAMPLE1_STD_MATRIX[m][n], 1e-13);
             }
         }
@@ -575,9 +573,9 @@ mod tests {
         // sym-2D
         let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true)?;
         let mat = dd.to_matrix();
-        assert_eq!(mat.dims(), (4, 4));
-        for m in 0..4 {
-            for n in 0..4 {
+        assert_eq!(mat.dims(), (9, 9));
+        for m in 0..9 {
+            for n in 0..9 {
                 assert_approx_eq!(mat[m][n], &Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX[m][n], 1e-13);
             }
         }

@@ -146,9 +146,9 @@ mod tests {
     use super::{
         t2_ddot_t2, t2_ddot_t4, t2_dot_t2, t2_dot_vec, t2_dyad_t2, t4_ddot_t2, t4_ddot_t4, vec_dot_t2, Tensor2, Tensor4,
     };
-    use crate::StrError;
+    use crate::{Samples, StrError};
     use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
-    use russell_lab::Vector;
+    use russell_lab::{Matrix, Vector};
 
     #[test]
     fn t2_ddot_t2_works() -> Result<(), StrError> {
@@ -507,6 +507,25 @@ mod tests {
 
     #[test]
     fn t4_ddot_t4_works() -> Result<(), StrError> {
+        let inp = Matrix::from(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX);
+        let cc = Tensor4::from_matrix(&inp, true, true)?;
+        let mut ee = Tensor4::new(true, true);
+        t4_ddot_t4(&mut ee, 1.0, &cc, &cc)?;
+        let out = ee.to_matrix();
+        assert_eq!(
+            format!("{:.1}", out),
+            "┌                                                                ┐\n\
+             │  410.0  436.0  462.0  644.0    0.0    0.0  644.0    0.0    0.0 │\n\
+             │  560.0  601.0  642.0  929.0    0.0    0.0  929.0    0.0    0.0 │\n\
+             │  710.0  766.0  822.0 1214.0    0.0    0.0 1214.0    0.0    0.0 │\n\
+             │ 1310.0 1426.0 1542.0 2354.0    0.0    0.0 2354.0    0.0    0.0 │\n\
+             │    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0 │\n\
+             │    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0 │\n\
+             │ 1310.0 1426.0 1542.0 2354.0    0.0    0.0 2354.0    0.0    0.0 │\n\
+             │    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0 │\n\
+             │    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0 │\n\
+             └                                                                ┘"
+        );
         Ok(())
     }
 }

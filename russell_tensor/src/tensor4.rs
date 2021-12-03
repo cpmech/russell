@@ -433,6 +433,21 @@ mod tests {
     }
 
     #[test]
+    fn from_matrix_fails_on_wrong_input() -> Result<(), StrError> {
+        let mut inp = [[0.0; 9]; 9];
+        inp[0][3] = 1e-15;
+        let res = Tensor4::from_matrix(&inp, true, false);
+        assert_eq!(res.err(), Some("minor-symmetric Tensor4 does not pass symmetry check"));
+
+        inp[0][3] = 0.0;
+        inp[0][4] = 1.0;
+        inp[0][7] = 1.0;
+        let res = Tensor4::from_matrix(&inp, true, true);
+        assert_eq!(res.err(), Some("cannot define 2D Tensor4 due to non-zero values"));
+        Ok(())
+    }
+
+    #[test]
     fn from_matrix_works() -> Result<(), StrError> {
         // general
         let dd = Tensor4::from_matrix(&Samples::TENSOR4_SAMPLE1_STD_MATRIX, false, false)?;

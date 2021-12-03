@@ -497,11 +497,47 @@ mod tests {
 
     #[test]
     fn t4_ddot_t2_works() -> Result<(), StrError> {
+        let inp = Matrix::from(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX);
+        let dd = Tensor4::from_matrix(&inp, true, true)?;
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [-1.0, -2.0,  0.0],
+            [-2.0,  2.0,  0.0],
+            [ 0.0,  0.0, -3.0]], true, true)?;
+        let mut b = Tensor2::new(true, true);
+        t4_ddot_t2(&mut b, 1.0, &dd, &a)?;
+        let out = b.to_matrix();
+        assert_eq!(
+            format!("{:.1}", out),
+            "┌                      ┐\n\
+             │  -46.0 -154.0    0.0 │\n\
+             │ -154.0  -64.0    0.0 │\n\
+             │    0.0    0.0  -82.0 │\n\
+             └                      ┘"
+        );
         Ok(())
     }
 
     #[test]
     fn t2_ddot_t4_works() -> Result<(), StrError> {
+        let inp = Matrix::from(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX);
+        let dd = Tensor4::from_matrix(&inp, true, true)?;
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [-1.0, -2.0,  0.0],
+            [-2.0,  2.0,  0.0],
+            [ 0.0,  0.0, -3.0]], true, true)?;
+        let mut b = Tensor2::new(true, true);
+        t2_ddot_t4(&mut b, 1.0, &a, &dd)?;
+        let out = b.to_matrix();
+        assert_eq!(
+            format!("{:.1}", out),
+            "┌                      ┐\n\
+             │  -90.0 -144.0    0.0 │\n\
+             │ -144.0  -96.0    0.0 │\n\
+             │    0.0    0.0 -102.0 │\n\
+             └                      ┘"
+        );
         Ok(())
     }
 

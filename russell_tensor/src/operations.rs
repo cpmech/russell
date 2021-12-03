@@ -327,6 +327,20 @@ mod tests {
     }
 
     #[test]
+    fn t2_dot_vec_fails_on_wrong_input() -> Result<(), StrError> {
+        let mut v = Vector::new(3);
+        let a = Tensor2::new(false, false);
+        let u = Vector::new(4);
+        let res = t2_dot_vec(&mut v, 1.0, &a, &u);
+        assert_eq!(res.err(), Some("vectors must have dim = 3"));
+
+        let a = Tensor2::new(true, true);
+        let res = t2_dot_vec(&mut v, 1.0, &a, &u);
+        assert_eq!(res.err(), Some("vectors must have dim = 2"));
+        Ok(())
+    }
+
+    #[test]
     fn t2_dot_vec_works() -> Result<(), StrError> {
         // general . vec
         #[rustfmt::skip]
@@ -363,6 +377,20 @@ mod tests {
         let mut v = Vector::new(2);
         t2_dot_vec(&mut v, 2.0, &a, &u)?;
         assert_vec_approx_eq!(v.as_data(), &[-16.0, -38.0], 1e-13);
+        Ok(())
+    }
+
+    #[test]
+    fn vec_dot_t2_fails_on_wrong_input() -> Result<(), StrError> {
+        let mut v = Vector::new(3);
+        let a = Tensor2::new(false, false);
+        let u = Vector::new(4);
+        let res = vec_dot_t2(&mut v, 1.0, &u, &a);
+        assert_eq!(res.err(), Some("vectors must have dim = 3"));
+
+        let a = Tensor2::new(true, true);
+        let res = vec_dot_t2(&mut v, 1.0, &u, &a);
+        assert_eq!(res.err(), Some("vectors must have dim = 2"));
         Ok(())
     }
 

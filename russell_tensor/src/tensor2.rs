@@ -127,6 +127,24 @@ impl Tensor2 {
     }
 
     /// Returns the (i,j) component (standard; not Mandel)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::assert_approx_eq;
+    /// use russell_tensor::{Tensor2, StrError};
+    ///
+    /// # fn main() -> Result<(), StrError> {
+    /// let a = Tensor2::from_matrix(&[
+    ///     [1.0,  2.0, 0.0],
+    ///     [3.0, -1.0, 5.0],
+    ///     [0.0,  4.0, 1.0],
+    /// ], false, false)?;
+    ///
+    /// assert_approx_eq!(a.get(1,2), 5.0, 1e-15);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn get(&self, i: usize, j: usize) -> f64 {
         match self.vec.dim() {
             4 => {
@@ -163,6 +181,29 @@ impl Tensor2 {
     }
 
     /// Returns a matrix (standard components; not Mandel) representing this tensor
+    ///
+    /// ```
+    /// use russell_tensor::{Tensor2, StrError};
+    ///
+    /// # fn main() -> Result<(), StrError> {
+    /// let a = Tensor2::from_matrix(&[
+    ///     [1.0,  1.0, 0.0],
+    ///     [1.0, -1.0, 0.0],
+    ///     [0.0,  0.0, 1.0],
+    /// ], true, true)?;
+    ///
+    /// let out = a.to_matrix();
+    /// assert_eq!(
+    ///     format!("{:.1}", out),
+    ///     "┌                ┐\n\
+    ///      │  1.0  1.0  0.0 │\n\
+    ///      │  1.0 -1.0  0.0 │\n\
+    ///      │  0.0  0.0  1.0 │\n\
+    ///      └                ┘"
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn to_matrix(&self) -> Matrix {
         let mut tt = Matrix::new(3, 3);
         let dim = self.vec.dim();

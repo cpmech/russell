@@ -5,9 +5,10 @@ use russell_lab::{Matrix, Vector};
 /// Implements a second-order tensor, symmetric or not
 pub struct Tensor2 {
     /// Holds the components in Mandel basis as a vector.
-    /// General: dim = 9
-    /// Symmetric in 3D: dim = 6
-    /// Symmetric in 2D: dim = 4
+    ///
+    /// * General: `vec.dim = 9`
+    /// * Symmetric in 3D: `vec.dim = 6`
+    /// * Symmetric in 2D: `vec.dim = 4`
     pub vec: Vector,
 }
 
@@ -15,17 +16,17 @@ impl Tensor2 {
     /// Creates a new (zeroed) Tensor2
     ///
     /// ```text
-    ///                          ┌    ┐
-    ///                          │ M0 │
-    ///                          │ M1 │
-    ///     ┌             ┐      │ M2 │
-    ///     │ T00 T01 T02 │      │ M3 │
-    /// T = │ T10 T11 T12 │  =>  │ M4 │
-    ///     │ T20 T21 T22 │      │ M5 │
-    ///     └             ┘      │ M6 │
-    ///                          │ M7 │
-    ///                          │ M8 │
-    ///                          └    ┘
+    ///                 ┌    ┐    ┌   ┐
+    ///                 │ 00 │    │ 0 │
+    ///                 │ 11 │    │ 1 │
+    /// ┌          ┐    │ 22 │    │ 2 │
+    /// │ 00 01 02 │    │ 01 │    │ 3 │
+    /// │ 10 11 12 │ => │ 12 │ => │ 4 │
+    /// │ 20 21 22 │    │ 02 │    │ 5 │
+    /// └          ┘    │ 10 │    │ 6 │
+    ///                 │ 21 │    │ 7 │
+    ///                 │ 20 │    │ 8 │
+    ///                 └    ┘    └   ┘
     /// ```
     ///
     /// # Input

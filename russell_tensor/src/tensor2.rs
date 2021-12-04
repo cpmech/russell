@@ -30,10 +30,23 @@ impl Tensor2 {
     ///
     /// # Input
     ///
-    /// * `symmetric` -- whether this tensor is symmetric or not,
-    ///                  i.e., Tij = Tji
-    /// * `two_dim` -- 2D instead of 3D; effectively used only if symmetric
-    ///                since unsymmetric tensors have always 9 components.
+    /// * `symmetric` -- whether this tensor is symmetric or not, i.e., Tij = Tji
+    /// * `two_dim` -- 2D instead of 3D. Only used if symmetric == true.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_tensor::Tensor2;
+    ///
+    /// let a = Tensor2::new(false, false);
+    /// assert_eq!(a.vec.as_data(), &[0.0,0.0,0.0,  0.0,0.0,0.0,  0.0,0.0,0.0]);
+    ///
+    /// let b = Tensor2::new(true, false);
+    /// assert_eq!(b.vec.as_data(), &[0.0,0.0,0.0,  0.0,0.0,0.0]);
+    ///
+    /// let c = Tensor2::new(true, true);
+    /// assert_eq!(c.vec.as_data(), &[0.0,0.0,0.0,  0.0]);
+    /// ```
     pub fn new(symmetric: bool, two_dim: bool) -> Self {
         Tensor2 {
             vec: Vector::new(mandel_dim(symmetric, two_dim)),
@@ -46,10 +59,45 @@ impl Tensor2 {
     ///
     /// * `tt` - the standard (not Mandel) Tij components given
     ///          with respect to an orthonormal Cartesian basis
-    /// * `symmetric` -- whether this tensor is symmetric or not
-    ///                  i.e., Tij = Tji
-    /// * `two_dim` -- 2D instead of 3D; effectively used only if symmetric
-    ///                since unsymmetric tensors have always 9 components.
+    /// * `symmetric` -- whether this tensor is symmetric or not i.e., Tij = Tji
+    /// * `two_dim` -- 2D instead of 3D. Only used if symmetric == true.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::assert_vec_approx_eq;
+    /// use russell_tensor::{Tensor2, SQRT_2, StrError};
+    ///
+    /// # fn main() -> Result<(), StrError> {
+    /// // general
+    /// let a = Tensor2::from_matrix(&[
+    ///     [       1.0, SQRT_2*2.0, SQRT_2*3.0],
+    ///     [SQRT_2*4.0,        5.0, SQRT_2*6.0],
+    ///     [SQRT_2*7.0, SQRT_2*8.0,        9.0],
+    /// ], false, false)?;
+    /// let correct = &[1.0,5.0,9.0, 6.0,14.0,10.0, -2.0,-2.0,-4.0];
+    /// assert_vec_approx_eq!(a.vec.as_data(), correct, 1e-14);
+    ///
+    /// // symmetric-3D
+    /// let b = Tensor2::from_matrix(&[
+    ///     [1.0,        4.0/SQRT_2, 6.0/SQRT_2],
+    ///     [4.0/SQRT_2, 2.0,        5.0/SQRT_2],
+    ///     [6.0/SQRT_2, 5.0/SQRT_2, 3.0       ],
+    /// ], true, false)?;
+    /// let correct = &[1.0,2.0,3.0, 4.0,5.0,6.0];
+    /// assert_vec_approx_eq!(b.vec.as_data(), correct, 1e-14);
+    ///
+    /// // symmetric-2D
+    /// let c = Tensor2::from_matrix(&[
+    ///     [1.0,        4.0/SQRT_2, 0.0],
+    ///     [4.0/SQRT_2, 2.0,        0.0],
+    ///     [0.0,        0.0,        3.0],
+    /// ], true, true)?;
+    /// let correct = &[1.0,2.0,3.0, 4.0];
+    /// assert_vec_approx_eq!(c.vec.as_data(), correct, 1e-14);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn from_matrix(tt: &[[f64; 3]; 3], symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
         if symmetric {
             if tt[1][0] != tt[0][1] || tt[2][1] != tt[1][2] || tt[2][0] != tt[0][2] {

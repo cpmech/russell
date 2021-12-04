@@ -38,8 +38,7 @@ impl Tensor4 {
     ///
     /// * `minor_symmetric` -- whether this tensor is minor symmetric or not,
     ///                        i.e., Dijkl = Djikl = Dijlk = Djilk.
-    /// * `two_dim` -- 2D instead of 3D; effectively used only if minor-symmetric
-    ///                since general tensors have always (9,9) components.
+    /// * `two_dim` -- 2D instead of 3D. Only used if minor_symmetric == true.
     pub fn new(minor_symmetric: bool, two_dim: bool) -> Self {
         let dim = mandel_dim(minor_symmetric, two_dim);
         Tensor4 {
@@ -55,8 +54,7 @@ impl Tensor4 {
     ///          respect to an orthonormal Cartesian basis
     /// * `minor_symmetric` -- whether this tensor is minor symmetric or not,
     ///                        i.e., Dijkl = Djikl = Dijlk = Djilk.
-    /// * `two_dim` -- 2D instead of 3D; effectively used only if minor-symmetric
-    ///                since general tensors have always (9,9) components.
+    /// * `two_dim` -- 2D instead of 3D. Only used if minor_symmetric == true.
     pub fn from_array(dd: &[[[[f64; 3]; 3]; 3]; 3], minor_symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
         let dim = mandel_dim(minor_symmetric, two_dim);
         let mut mat = Matrix::new(dim, dim);

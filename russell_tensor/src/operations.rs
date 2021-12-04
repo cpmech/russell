@@ -15,18 +15,22 @@ use russell_lab::{inner, mat_mat_mul, mat_vec_mul, outer, vec_mat_mul, Vector};
 /// ```
 /// use russell_chk::assert_approx_eq;
 /// use russell_tensor::{t2_ddot_t2, Tensor2, StrError};
+///
 /// # fn main() -> Result<(), StrError> {
 /// let a = Tensor2::from_matrix(&[
 ///     [1.0,  1.0, 0.0],
 ///     [1.0, -1.0, 0.0],
 ///     [0.0,  0.0, 1.0],
 /// ], true, true)?;
+///
 /// let b = Tensor2::from_matrix(&[
 ///     [1.0,  2.0, 0.0],
 ///     [3.0, -1.0, 5.0],
 ///     [0.0,  4.0, 1.0],
 /// ], false, false)?;
+///
 /// let res = t2_ddot_t2(&a, &b);
+///
 /// assert_approx_eq!(res, 8.0, 1e-15);
 /// # Ok(())
 /// # }
@@ -58,18 +62,22 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 ///
 /// ```
 /// use russell_tensor::{t2_dot_t2, Tensor2, StrError};
+///
 /// # fn main() -> Result<(), StrError> {
 /// let a = Tensor2::from_matrix(&[
 ///     [1.0,  1.0, 0.0],
 ///     [1.0, -1.0, 0.0],
 ///     [0.0,  0.0, 1.0],
 /// ], true, true)?;
+///
 /// let b = Tensor2::from_matrix(&[
 ///     [1.0,  2.0, 0.0],
 ///     [3.0, -1.0, 5.0],
 ///     [0.0,  4.0, 1.0],
 /// ], false, false)?;
+///
 /// let c = t2_dot_t2(&a, &b)?;
+///
 /// let out = c.to_matrix();
 /// assert_eq!(
 ///     format!("{:.1}", out),
@@ -105,9 +113,23 @@ pub fn t2_dot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, StrError> {
 /// # Example
 ///
 /// ```
+/// use russell_chk::assert_vec_approx_eq;
 /// use russell_lab::Vector;
 /// use russell_tensor::{t2_dot_vec, Tensor2, StrError};
+///
 /// # fn main() -> Result<(), StrError> {
+/// let a = Tensor2::from_matrix(&[
+///     [1.0,  1.0, 0.0],
+///     [1.0, -1.0, 0.0],
+///     [0.0,  0.0, 1.0],
+/// ], true, true)?;
+///
+/// let u = Vector::from(&[1.0, 2.0]);
+///
+/// let mut v = Vector::new(2);
+/// t2_dot_vec(&mut v, 2.0, &a, &u)?;
+///
+/// assert_vec_approx_eq!(v.as_data(), &[6.0, -2.0], 1e-15);
 /// # Ok(())
 /// # }
 /// ```
@@ -138,9 +160,23 @@ pub fn t2_dot_vec(v: &mut Vector, alpha: f64, a: &Tensor2, u: &Vector) -> Result
 /// # Example
 ///
 /// ```
+/// use russell_chk::assert_vec_approx_eq;
 /// use russell_lab::Vector;
 /// use russell_tensor::{vec_dot_t2, Tensor2, StrError};
+///
 /// # fn main() -> Result<(), StrError> {
+/// let u = Vector::from(&[1.0, 2.0]);
+///
+/// let a = Tensor2::from_matrix(&[
+///     [1.0,  1.0, 0.0],
+///     [1.0, -1.0, 0.0],
+///     [0.0,  0.0, 1.0],
+/// ], true, true)?;
+///
+/// let mut v = Vector::new(2);
+/// vec_dot_t2(&mut v, 2.0, &u, &a)?;
+///
+/// assert_vec_approx_eq!(v.as_data(), &[6.0, -2.0], 1e-15);
 /// # Ok(())
 /// # }
 /// ```
@@ -175,6 +211,37 @@ pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) -> Result
 /// ```
 /// use russell_tensor::{t2_dyad_t2, Tensor2, Tensor4, StrError};
 /// # fn main() -> Result<(), StrError> {
+/// let a = Tensor2::from_matrix(&[
+///     [ 1.0, 10.0, 0.0],
+///     [-2.0, -1.0, 0.0],
+///     [ 0.0,  0.0, 2.0],
+/// ], false, false)?;
+///
+/// let b = Tensor2::from_matrix(&[
+///     [1.0, 4.0, 6.0],
+///     [7.0, 2.0, 5.0],
+///     [9.0, 8.0, 3.0],
+/// ], false, false)?;
+///
+/// let mut dd = Tensor4::new(false, false);
+///
+/// t2_dyad_t2(&mut dd, 1.0, &a, &b)?;
+///
+/// let out = dd.to_matrix();
+/// assert_eq!(
+///     format!("{:.1}", out),
+///     "┌                                                       ┐\n\
+///      │   1.0   2.0   3.0   4.0   5.0   6.0   7.0   8.0   9.0 │\n\
+///      │  -1.0  -2.0  -3.0  -4.0  -5.0  -6.0  -7.0  -8.0  -9.0 │\n\
+///      │   2.0   4.0   6.0   8.0  10.0  12.0  14.0  16.0  18.0 │\n\
+///      │  10.0  20.0  30.0  40.0  50.0  60.0  70.0  80.0  90.0 │\n\
+///      │   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0 │\n\
+///      │   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0 │\n\
+///      │  -2.0  -4.0  -6.0  -8.0 -10.0 -12.0 -14.0 -16.0 -18.0 │\n\
+///      │   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0 │\n\
+///      │   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0   0.0 │\n\
+///      └                                                       ┘"
+/// );
 /// # Ok(())
 /// # }
 /// ```

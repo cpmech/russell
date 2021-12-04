@@ -9,6 +9,28 @@ use russell_lab::{inner, mat_mat_mul, mat_vec_mul, outer, vec_mat_mul, Vector};
 /// ```
 ///
 /// Note: this function works with mixed symmetry types.
+///
+/// # Example
+///
+/// ```
+/// use russell_chk::assert_approx_eq;
+/// use russell_tensor::{t2_ddot_t2, Tensor2, StrError};
+/// # fn main() -> Result<(), StrError> {
+/// let a = Tensor2::from_matrix(&[
+///     [1.0,  1.0, 0.0],
+///     [1.0, -1.0, 0.0],
+///     [0.0,  0.0, 1.0],
+/// ], true, true)?;
+/// let b = Tensor2::from_matrix(&[
+///     [1.0,  2.0, 0.0],
+///     [3.0, -1.0, 5.0],
+///     [0.0,  4.0, 1.0],
+/// ], false, false)?;
+/// let res = t2_ddot_t2(&a, &b);
+/// assert_approx_eq!(res, 8.0, 1e-15);
+/// # Ok(())
+/// # }
+/// ```
 #[inline]
 pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
     inner(&a.vec, &b.vec)
@@ -31,6 +53,35 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 ///
 /// This function is not very efficient because we convert both tensors to
 /// a full matrix representation first.
+///
+/// # Example
+///
+/// ```
+/// use russell_tensor::{t2_dot_t2, Tensor2, StrError};
+/// # fn main() -> Result<(), StrError> {
+/// let a = Tensor2::from_matrix(&[
+///     [1.0,  1.0, 0.0],
+///     [1.0, -1.0, 0.0],
+///     [0.0,  0.0, 1.0],
+/// ], true, true)?;
+/// let b = Tensor2::from_matrix(&[
+///     [1.0,  2.0, 0.0],
+///     [3.0, -1.0, 5.0],
+///     [0.0,  4.0, 1.0],
+/// ], false, false)?;
+/// let c = t2_dot_t2(&a, &b)?;
+/// let out = c.to_matrix();
+/// assert_eq!(
+///     format!("{:.1}", out),
+///     "┌                ┐\n\
+///      │  4.0  1.0  5.0 │\n\
+///      │ -2.0  3.0 -5.0 │\n\
+///      │  0.0  4.0  1.0 │\n\
+///      └                ┘"
+/// );
+/// # Ok(())
+/// # }
+/// ```
 pub fn t2_dot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, StrError> {
     let ta = a.to_matrix();
     let tb = b.to_matrix();
@@ -49,6 +100,16 @@ pub fn t2_dot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, StrError> {
 ///
 /// ```text
 /// v = α a · u
+/// ```
+///
+/// # Example
+///
+/// ```
+/// use russell_lab::Vector;
+/// use russell_tensor::{t2_dot_vec, Tensor2, StrError};
+/// # fn main() -> Result<(), StrError> {
+/// # Ok(())
+/// # }
 /// ```
 pub fn t2_dot_vec(v: &mut Vector, alpha: f64, a: &Tensor2, u: &Vector) -> Result<(), StrError> {
     if a.vec.dim() == 4 {
@@ -72,6 +133,16 @@ pub fn t2_dot_vec(v: &mut Vector, alpha: f64, a: &Tensor2, u: &Vector) -> Result
 ///
 /// ```text
 /// v = α u · a
+/// ```
+///
+/// # Example
+///
+/// ```
+/// use russell_lab::Vector;
+/// use russell_tensor::{vec_dot_t2, Tensor2, StrError};
+/// # fn main() -> Result<(), StrError> {
+/// # Ok(())
+/// # }
 /// ```
 pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) -> Result<(), StrError> {
     if a.vec.dim() == 4 {
@@ -98,6 +169,15 @@ pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) -> Result
 /// ```
 ///
 /// Note: this function does NOT work with mixed symmetry types.
+///
+/// # Example
+///
+/// ```
+/// use russell_tensor::{t2_dyad_t2, Tensor2, Tensor4, StrError};
+/// # fn main() -> Result<(), StrError> {
+/// # Ok(())
+/// # }
+/// ```
 #[inline]
 pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) -> Result<(), StrError> {
     outer(&mut dd.mat, alpha, &a.vec, &b.vec)
@@ -110,6 +190,15 @@ pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) -> Res
 /// ```
 ///
 /// Note: this function does NOT work with mixed symmetry types.
+///
+/// # Example
+///
+/// ```
+/// use russell_tensor::{t4_ddot_t2, Tensor2, Tensor4, StrError};
+/// # fn main() -> Result<(), StrError> {
+/// # Ok(())
+/// # }
+/// ```
 #[inline]
 pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) -> Result<(), StrError> {
     mat_vec_mul(&mut b.vec, alpha, &dd.mat, &a.vec)
@@ -122,6 +211,15 @@ pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) -> Res
 /// ```
 ///
 /// Note: this function does NOT work with mixed symmetry types.
+///
+/// # Example
+///
+/// ```
+/// use russell_tensor::{t2_ddot_t4, Tensor2, Tensor4, StrError};
+/// # fn main() -> Result<(), StrError> {
+/// # Ok(())
+/// # }
+/// ```
 #[inline]
 pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) -> Result<(), StrError> {
     vec_mat_mul(&mut b.vec, alpha, &a.vec, &dd.mat)
@@ -134,6 +232,15 @@ pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) -> Res
 /// ```
 ///
 /// Note: this function does NOT work with mixed symmetry types.
+///
+/// # Example
+///
+/// ```
+/// use russell_tensor::{t4_ddot_t4, Tensor4, StrError};
+/// # fn main() -> Result<(), StrError> {
+/// # Ok(())
+/// # }
+/// ```
 #[inline]
 pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) -> Result<(), StrError> {
     mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat)

@@ -21,4 +21,4 @@ pub use crate::operations::*;
 pub use crate::samples::*;
 pub use crate::tensor2::*;
 pub use crate::tensor4::*;
-use crate::util::*;
+pub use crate::util::*;

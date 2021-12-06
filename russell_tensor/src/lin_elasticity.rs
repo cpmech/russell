@@ -1,4 +1,4 @@
-use crate::Tensor4;
+use crate::{t4_ddot_t2, StrError, Tensor2, Tensor4};
 
 /// Implements the linear elasticity equations for small-strain problems
 pub struct LinElasticity {
@@ -43,6 +43,45 @@ impl LinElasticity {
         self.calc_modulus();
     }
 
+    /// Get an access to the elasticity modulus such that σ = D : ε
+    pub fn get_modulus(&self) -> &Tensor4 {
+        &self.dd
+    }
+
+    /// Calculates stress from strain
+    ///
+    /// ```text
+    /// σ = D : ε
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// * `stress` -- the stress tensor σ
+    ///
+    /// # Input
+    ///
+    /// * `strain` -- the strain tensor ε
+    pub fn calc_stress(&self, stress: &mut Tensor2, strain: &Tensor2) -> Result<(), StrError> {
+        t4_ddot_t2(stress, 1.0, &self.dd, strain)
+    }
+
+    /// Calculates and sets the out-of-plane strain in the Plane-Stress case
+    ///
+    /// # Input
+    ///
+    /// * `stress` -- the stress tensor σ
+    ///
+    /// # Output
+    ///
+    /// * Returns the `εzz` (out-of-plane) component
+    pub fn out_of_plane_strain(&self, stress: &Tensor2) -> Result<f64, StrError> {
+        if !self.plane_stress {
+            return Err("problem must be set to plane-stress");
+        }
+        let eps_zz = -(stress.vec[0] + stress.vec[1]) * self.poisson / self.young;
+        Ok(eps_zz)
+    }
+
     /// Computes elasticity modulus
     fn calc_modulus(&mut self) {
         if self.plane_stress {
@@ -77,9 +116,12 @@ impl LinElasticity {
 #[cfg(test)]
 mod tests {
     use super::LinElasticity;
+    use crate::{StrError, Tensor2};
+    use russell_chk::assert_approx_eq;
 
     #[test]
     fn new_works() {
+        // plane-stress
         let ela = LinElasticity::new(3000.0, 0.2, false, true);
         let out = ela.dd.to_matrix();
         assert_eq!(
@@ -96,5 +138,58 @@ mod tests {
              │    0    0    0    0    0    0    0    0    0 │\n\
              └                                              ┘"
         );
+    }
+
+    #[test]
+    fn get_modulus_works() {
+        let ela = LinElasticity::new(3000.0, 0.2, false, true);
+        let dd = ela.get_modulus();
+        assert_eq!(dd.mat[0][0], 3125.0);
+    }
+
+    #[test]
+    fn calc_stress_works() -> Result<(), StrError> {
+        // example from Bhatti, page 514
+        let ela = LinElasticity::new(3000.0, 0.2, false, true);
+        #[rustfmt::skip]
+        let strain = Tensor2::from_matrix(
+            &[
+                [-0.036760, 0.0667910, 0.0],
+                [ 0.066791, 0.0164861, 0.0],
+                [ 0.0,      0.0,       0.0],
+            ],
+            true,
+            true,
+        )?;
+        let mut stress = Tensor2::new(true, true);
+        ela.calc_stress(&mut stress, &strain)?;
+        let out = stress.to_matrix();
+        assert_eq!(
+            format!("{:.3}", out),
+            "┌                            ┐\n\
+             │ -104.571  166.977    0.000 │\n\
+             │  166.977   28.544    0.000 │\n\
+             │    0.000    0.000    0.000 │\n\
+             └                            ┘"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn out_of_plane_strain_works() -> Result<(), StrError> {
+        let ela = LinElasticity::new(3000.0, 0.2, false, true);
+        #[rustfmt::skip]
+        let stress = Tensor2::from_matrix(
+            &[
+                [-104.571, 166.977, 0.0],
+                [ 166.977,  28.544, 0.0],
+                [   0.0,     0.0,   0.0],
+            ],
+            true,
+            true,
+        )?;
+        let eps_zz = ela.out_of_plane_strain(&stress)?;
+        assert_approx_eq!(eps_zz, 0.0050847, 1e-4);
+        Ok(())
     }
 }

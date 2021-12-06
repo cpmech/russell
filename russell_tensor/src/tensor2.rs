@@ -317,7 +317,7 @@ mod tests {
     use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
 
     #[test]
-    fn new_tensor2_works() {
+    fn new_works() {
         // general
         let tt = Tensor2::new(false, false);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];

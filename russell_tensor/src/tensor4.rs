@@ -713,7 +713,7 @@ mod tests {
     use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
 
     #[test]
-    fn new_tensor4_works() {
+    fn new_works() {
         let dd = Tensor4::new(false, false);
         let correct = &[0.0; 81];
         assert_vec_approx_eq!(dd.mat.as_data(), correct, 1e-15);

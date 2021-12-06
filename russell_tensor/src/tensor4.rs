@@ -3,6 +3,110 @@ use crate::StrError;
 use russell_lab::Matrix;
 
 /// Implements a fourth order-tensor, minor-symmetric or not
+///
+/// Internally, the components are converted to the Mandel basis. On the Mandel basis,
+/// depending on the symmetry, we may store fewer components. Also, we may store
+/// only 16 components of Minor-Symmetric 2D tensors.
+///
+/// First, we consider the following mapping to the Mandel space:
+///
+/// ```text
+/// i=j & k=l:  Mijkl := Dijkl
+/// i=j & k<l:  Mijkl := (Dijkl + Dijlk) / √2
+/// i=j & k>l:  Mijkl := (Dijlk − Dijkl) / √2
+///
+/// i<j & k=l:  Mijkl := (Dijkl + Djikl) / √2
+/// i<j & k<l:  Mijkl := (Dijkl + Dijlk + Djikl + Djilk) / 2
+/// i<j & k>l:  Mijkl := (Dijlk − Dijkl + Djilk − Djikl) / 2
+///
+/// i>j & k=l:  Mijkl := (Djikl − Dijkl) / √2
+/// i>j & k<l:  Mijkl := (Djikl + Djilk − Dijkl − Dijlk) / 2
+/// i>j & k>l:  Mijkl := (Djilk − Djikl − Dijlk + Dijkl) / 2
+/// ```
+///
+/// **General case:**
+///
+/// Then, the 81 Mijkl components of a Tensor4 are organized as follows:
+///
+/// ```text
+///      0 0    0 1    0 2     0 3    0 4    0 5     0 6    0 7    0 8
+///    ----------------------------------------------------------------
+/// 0 │ M0000  M0011  M0022   M0001  M0012  M0002   M0010  M0021  M0020
+/// 1 │ M1100  M1111  M1122   M1101  M1112  M1102   M1110  M1121  M1120
+/// 2 │ M2200  M2211  M2222   M2201  M2212  M2202   M2210  M2221  M2220
+///   │
+/// 3 │ M0100  M0111  M0122   M0101  M0112  M0102   M0110  M0121  M0120
+/// 4 │ M1200  M1211  M1222   M1201  M1212  M1202   M1210  M1221  M1220
+/// 5 │ M0200  M0211  M0222   M0201  M0212  M0202   M0210  M0221  M0220
+///   │
+/// 6 │ M1000  M1011  M1022   M1001  M1012  M1002   M1010  M1021  M1020
+/// 7 │ M2100  M2111  M2122   M2101  M2112  M2102   M2110  M2121  M2120
+/// 8 │ M2000  M2011  M2022   M2001  M2012  M2002   M2010  M2021  M2020
+///    ----------------------------------------------------------------
+///      8 0    8 1    8 2     8 3    8 4    8 5     8 6    8 7    8 8
+/// ```
+///
+/// Note that the order of row indices (pairs (i,j) in (i,j,k,l)) follow
+/// the same order as the one for Tensor2. Likewise, the order of column
+/// indices (pairs (k,l) in (i,j,k,l)) follow the same order as for Tensor2.
+///
+/// **Minor-symmetric 3D:**
+///
+/// If the tensor has Dijkl = Djikl = Dijlk = Djilk, the mapping simplifies to:
+///
+/// ```text
+/// i=j & k=l:  Mijkl := Dijkl
+/// i=j & k<l:  Mijkl := Dijkl * √2
+/// i=j & k>l:  Mijkl := 0
+///
+/// i<j & k=l:  Mijkl := Dijkl * √2
+/// i<j & k<l:  Mijkl := Dijkl * 2
+/// i<j & k>l:  Mijkl := 0
+///
+/// i>j & k=l:  Mijkl := 0
+/// i>j & k<l:  Mijkl := 0
+/// i>j & k>l:  Mijkl := 0
+/// ```
+///
+/// Then, we only need to store 36 components as follows:
+///
+/// ```text
+///      0 0       0 1       0 2        0 3       0 4       0 5
+///    ------------------------------------------------------------
+/// 0 │ D0000     D0011     D0022      D0001*√2  D0012*√2  D0002*√2
+/// 1 │ D1100     D1111     D1122      D1101*√2  D1112*√2  D1102*√2
+/// 2 │ D2200     D2211     D2222      D2201*√2  D2212*√2  D2202*√2
+///   │
+/// 3 │ D0100*√2  D0111*√2  D0122*√2   D0101*2   D0112*2   D0102*2
+/// 4 │ D1200*√2  D1211*√2  D1222*√2   D1201*2   D1212*2   D1202*2
+/// 5 │ D0200*√2  D0211*√2  D0222*√2   D0201*2   D0212*2   D0202*2
+///    ------------------------------------------------------------
+///      5 0       5 1       5 2        5 3       5 4       5 5
+/// ```
+///
+/// **Minor-symmetric 2D:**
+///
+/// In 2D, some components are zero, thus we may store only 16 components:
+///
+/// ```text
+///      0 0       0 1       0 2        0 3    
+///    ----------------------------------------
+/// 0 │ D0000     D0011     D0022      D0001*√2
+/// 1 │ D1100     D1111     D1122      D1101*√2
+/// 2 │ D2200     D2211     D2222      D2201*√2
+///   │
+/// 3 │ D0100*√2  D0111*√2  D0122*√2   D0101*2
+///    ----------------------------------------
+///      3 0       3 1       3 2        3 3    
+/// ```
+///
+/// # Notes
+///
+/// * The tensor is represented as a (9D x 9D), (6D x 6D) or (4D x 4D) matrix and saved as `mat`
+/// * You may perform operations on `mat` directly because it is isomorphic with the tensor itself
+/// * For example, the norm of the tensor equals `mat.norm()`
+/// * However, you must be careful when setting a single component of `mat` directly
+///   because you may "break" the Mandel representation.
 pub struct Tensor4 {
     /// Holds the components in Mandel basis as matrix.
     ///
@@ -14,26 +118,6 @@ pub struct Tensor4 {
 
 impl Tensor4 {
     /// Creates a new (zeroed) Tensor4
-    ///
-    /// The components are saved considering the Mandel basis and organized as follows:
-    ///
-    /// ```text
-    ///      0  0   0  1   0  2    0  3   0  4   0  5    0  6   0  7   0  8
-    ///    ----------------------------------------------------------------
-    /// 0 │ 00_00  00_11  00_22   00_01  00_12  00_02   00_10  00_21  00_20
-    /// 1 │ 11_00  11_11  11_22   11_01  11_12  11_02   11_10  11_21  11_20
-    /// 2 │ 22_00  22_11  22_22   22_01  22_12  22_02   22_10  22_21  22_20
-    ///   │
-    /// 3 │ 01_00  01_11  01_22   01_01  01_12  01_02   01_10  01_21  01_20
-    /// 4 │ 12_00  12_11  12_22   12_01  12_12  12_02   12_10  12_21  12_20
-    /// 5 │ 02_00  02_11  02_22   02_01  02_12  02_02   02_10  02_21  02_20
-    ///   │
-    /// 6 │ 10_00  10_11  10_22   10_01  10_12  10_02   10_10  10_21  10_20
-    /// 7 │ 21_00  21_11  21_22   21_01  21_12  21_02   21_10  21_21  21_20
-    /// 8 │ 20_00  20_11  20_22   20_01  20_12  20_02   20_10  20_21  20_20
-    ///    ----------------------------------------------------------------
-    ///      8  0   8  1   8  2    8  3   8  4   8  5    8  6   8  7   8  8
-    /// ```
     ///
     /// # Input
     ///
@@ -522,6 +606,8 @@ impl Tensor4 {
 
     /// Returns a matrix (standard components; not Mandel) representing this tensor
     ///
+    /// # Example
+    ///
     /// ```
     /// use russell_tensor::{MN_TO_IJKL, Tensor4, StrError};
     ///
@@ -565,13 +651,64 @@ impl Tensor4 {
         }
         res
     }
+
+    /// Sets the (i,j,k,l) component of a minor-symmetric Tensor4
+    ///
+    /// # Panics
+    ///
+    /// The tensor must be symmetric and (i,j) must correspond to the possible
+    /// combination due to the space dimension, otherwise a panic may occur.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_tensor::{MN_TO_IJKL, Tensor4, StrError};
+    ///
+    /// # fn main() -> Result<(), StrError> {
+    /// let mut dd = Tensor4::new(true, true);
+    /// for m in 0..4 {
+    ///     for n in 0..4 {
+    ///         let (i, j, k, l) = MN_TO_IJKL[m][n];
+    ///         let value = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+    ///         dd.sym_set(i, j, k, l, value);
+    ///     }
+    /// }
+    ///
+    /// let out = dd.to_matrix();
+    /// assert_eq!(
+    ///     format!("{:.0}", out),
+    ///     "┌                                              ┐\n\
+    ///      │ 1111 1122 1133 1112    0    0 1112    0    0 │\n\
+    ///      │ 2211 2222 2233 2212    0    0 2212    0    0 │\n\
+    ///      │ 3311 3322 3333 3312    0    0 3312    0    0 │\n\
+    ///      │ 1211 1222 1233 1212    0    0 1212    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │ 1211 1222 1233 1212    0    0 1212    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      └                                              ┘"
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn sym_set(&mut self, i: usize, j: usize, k: usize, l: usize, value: f64) {
+        let (m, n) = IJKL_TO_MN_SYM[i][j][k][l];
+        if m < 3 && n < 3 {
+            self.mat[m][n] = value;
+        } else if m > 2 && n > 2 {
+            self.mat[m][n] = value * 2.0;
+        } else {
+            self.mat[m][n] = value * SQRT_2;
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::Tensor4;
+    use super::{Tensor4, MN_TO_IJKL};
     use crate::{Samples, StrError};
     use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
 
@@ -779,5 +916,30 @@ mod tests {
     }
 
     #[test]
-    fn temp() {}
+    fn sym_set_works() -> Result<(), StrError> {
+        let mut dd = Tensor4::new(true, false);
+        for m in 0..6 {
+            for n in 0..6 {
+                let (i, j, k, l) = MN_TO_IJKL[m][n];
+                let value = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+                dd.sym_set(i, j, k, l, value);
+            }
+        }
+        let out = dd.to_matrix();
+        assert_eq!(
+            format!("{:.0}", out),
+            "┌                                              ┐\n\
+             │ 1111 1122 1133 1112 1123 1113 1112 1123 1113 │\n\
+             │ 2211 2222 2233 2212 2223 2213 2212 2223 2213 │\n\
+             │ 3311 3322 3333 3312 3323 3313 3312 3323 3313 │\n\
+             │ 1211 1222 1233 1212 1223 1213 1212 1223 1213 │\n\
+             │ 2311 2322 2333 2312 2323 2313 2312 2323 2313 │\n\
+             │ 1311 1322 1333 1312 1323 1313 1312 1323 1313 │\n\
+             │ 1211 1222 1233 1212 1223 1213 1212 1223 1213 │\n\
+             │ 2311 2322 2333 2312 2323 2313 2312 2323 2313 │\n\
+             │ 1311 1322 1333 1312 1323 1313 1312 1323 1313 │\n\
+             └                                              ┘"
+        );
+        Ok(())
+    }
 }

@@ -3,6 +3,58 @@ use crate::StrError;
 use russell_lab::{Matrix, Vector};
 
 /// Implements a second-order tensor, symmetric or not
+///
+/// Internally, the components are converted to the Mandel basis. On the Mandel basis,
+/// depending on the symmetry, we may store fewer components. Also, we may store
+/// only 4 components of Symmetric 2D tensors.
+///
+/// **General case:**
+///
+/// ```text
+///                       ┌                ┐
+///                    00 │      T00       │ 0
+///                    11 │      T11       │ 1
+/// ┌             ┐    22 │      T22       │ 2
+/// │ T00 T01 T02 │    01 │ (T01+T10) / √2 │ 3
+/// │ T10 T11 T12 │ => 12 │ (T12+T21) / √2 │ 4
+/// │ T20 T21 T22 │    02 │ (T02+T20) / √2 │ 5
+/// └             ┘    10 │ (T01-T10) / √2 │ 6
+///                    21 │ (T12-T21) / √2 │ 7
+///                    20 │ (T02-T20) / √2 │ 8
+///                       └                ┘
+/// ```
+///
+/// **Symmetric 3D:**
+///
+/// ```text
+///                       ┌          ┐
+/// ┌             ┐    00 │   T00    │ 0
+/// │ T00 T01 T02 │    11 │   T11    │ 1
+/// │ T01 T11 T12 │ => 22 │   T22    │ 2
+/// │ T02 T12 T22 │    01 │ T01 * √2 │ 3
+/// └             ┘    12 │ T12 * √2 │ 4
+///                    02 │ T02 * √2 │ 5
+///                       └          ┘
+/// ```
+///
+/// **Symmetric 3D:**
+///
+/// ```text
+/// ┌             ┐       ┌          ┐
+/// │ T00 T01     │    00 │   T00    │ 0
+/// │ T01 T11 T12 │ => 11 │   T11    │ 1
+/// │         T22 │    22 │   T22    │ 2
+/// └             ┘    01 │ T01 * √2 │ 3
+///                       └          ┘
+/// ```
+///
+/// # Notes
+///
+/// * The tensor is represented as a 9D, 6D or 4D vector and saved as `vec`
+/// * You may perform operations on `vec` directly because it is isomorphic with the tensor itself
+/// * For example, the norm of the tensor equals `vec.norm()`
+/// * However, you must be careful when setting a single component of `vec` directly
+///   because you may "break" the Mandel representation.
 pub struct Tensor2 {
     /// Holds the components in Mandel basis as a vector.
     ///
@@ -14,20 +66,6 @@ pub struct Tensor2 {
 
 impl Tensor2 {
     /// Creates a new (zeroed) Tensor2
-    ///
-    /// ```text
-    ///                 ┌    ┐    ┌   ┐
-    ///                 │ 00 │    │ 0 │
-    ///                 │ 11 │    │ 1 │
-    /// ┌          ┐    │ 22 │    │ 2 │
-    /// │ 00 01 02 │    │ 01 │    │ 3 │
-    /// │ 10 11 12 │ => │ 12 │ => │ 4 │
-    /// │ 20 21 22 │    │ 02 │    │ 5 │
-    /// └          ┘    │ 10 │    │ 6 │
-    ///                 │ 21 │    │ 7 │
-    ///                 │ 20 │    │ 8 │
-    ///                 └    ┘    └   ┘
-    /// ```
     ///
     /// # Input
     ///
@@ -183,6 +221,8 @@ impl Tensor2 {
 
     /// Returns a matrix (standard components; not Mandel) representing this tensor
     ///
+    /// # Example
+    ///
     /// ```
     /// use russell_tensor::{Tensor2, StrError};
     ///
@@ -224,6 +264,47 @@ impl Tensor2 {
             }
         }
         tt
+    }
+
+    /// Sets the (i,j) component of a symmetric Tensor2
+    ///
+    /// # Panics
+    ///
+    /// The tensor must be symmetric and (i,j) must correspond to the possible
+    /// combination due to the space dimension, otherwise a panic may occur.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_tensor::{Tensor2, StrError};
+    ///
+    /// # fn main() -> Result<(), StrError> {
+    /// let mut a = Tensor2::new(true, true);
+    /// a.sym_set(0, 0, 1.0);
+    /// a.sym_set(1, 1, 2.0);
+    /// a.sym_set(2, 2, 3.0);
+    /// a.sym_set(0, 1, 4.0);
+    /// a.sym_set(1, 0, 4.0);
+    ///
+    /// let out = a.to_matrix();
+    /// assert_eq!(
+    ///     format!("{:.1}", out),
+    ///     "┌             ┐\n\
+    ///      │ 1.0 4.0 0.0 │\n\
+    ///      │ 4.0 2.0 0.0 │\n\
+    ///      │ 0.0 0.0 3.0 │\n\
+    ///      └             ┘"
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn sym_set(&mut self, i: usize, j: usize, value: f64) {
+        let m = IJ_TO_M_SYM[i][j];
+        if i == j {
+            self.vec[m] = value;
+        } else {
+            self.vec[m] = value * SQRT_2;
+        }
     }
 }
 
@@ -451,6 +532,27 @@ mod tests {
                 assert_approx_eq!(res[i][j], comps_std[i][j], 1e-14);
             }
         }
+        Ok(())
+    }
+
+    #[test]
+    fn sym_set_works() -> Result<(), StrError> {
+        let mut a = Tensor2::new(true, false);
+        a.sym_set(0, 0, 1.0);
+        a.sym_set(1, 1, 2.0);
+        a.sym_set(2, 2, 3.0);
+        a.sym_set(0, 1, 4.0);
+        a.sym_set(1, 0, 4.0);
+        a.sym_set(2, 0, 5.0);
+        let out = a.to_matrix();
+        assert_eq!(
+            format!("{:.1}", out),
+            "┌             ┐\n\
+             │ 1.0 4.0 5.0 │\n\
+             │ 4.0 2.0 0.0 │\n\
+             │ 5.0 0.0 3.0 │\n\
+             └             ┘"
+        );
         Ok(())
     }
 }

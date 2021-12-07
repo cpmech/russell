@@ -122,6 +122,7 @@ mod tests {
     #[test]
     fn new_works() {
         // plane-stress
+        // from Bhatti page 511 (Young divided by 1000)
         let ela = LinElasticity::new(3000.0, 0.2, false, true);
         let out = ela.dd.to_matrix();
         assert_eq!(
@@ -138,6 +139,25 @@ mod tests {
              │    0    0    0    0    0    0    0    0    0 │\n\
              └                                              ┘"
         );
+
+        // plane-strain
+        // from Bhatti page 519
+        let ela = LinElasticity::new(30000.0, 0.3, true, false);
+        let out = ela.dd.to_matrix();
+        assert_eq!(
+            format!("{:.1}", out),
+            "┌                                                                         ┐\n\
+             │ 40384.6 17307.7 17307.7     0.0     0.0     0.0     0.0     0.0     0.0 │\n\
+             │ 17307.7 40384.6 17307.7     0.0     0.0     0.0     0.0     0.0     0.0 │\n\
+             │ 17307.7 17307.7 40384.6     0.0     0.0     0.0     0.0     0.0     0.0 │\n\
+             │     0.0     0.0     0.0 11538.5     0.0     0.0 11538.5     0.0     0.0 │\n\
+             │     0.0     0.0     0.0     0.0     0.0     0.0     0.0     0.0     0.0 │\n\
+             │     0.0     0.0     0.0     0.0     0.0     0.0     0.0     0.0     0.0 │\n\
+             │     0.0     0.0     0.0 11538.5     0.0     0.0 11538.5     0.0     0.0 │\n\
+             │     0.0     0.0     0.0     0.0     0.0     0.0     0.0     0.0     0.0 │\n\
+             │     0.0     0.0     0.0     0.0     0.0     0.0     0.0     0.0     0.0 │\n\
+             └                                                                         ┘"
+        );
     }
 
     #[test]
@@ -149,14 +169,15 @@ mod tests {
 
     #[test]
     fn calc_stress_works() -> Result<(), StrError> {
-        // example from Bhatti, page 514
+        // plane-stress
+        // from Bhatti page 514 (Young divided by 1000)
         let ela = LinElasticity::new(3000.0, 0.2, false, true);
         #[rustfmt::skip]
         let strain = Tensor2::from_matrix(
             &[
-                [-0.036760, 0.0667910, 0.0],
-                [ 0.066791, 0.0164861, 0.0],
-                [ 0.0,      0.0,       0.0],
+                [-0.036760, 0.0667910,       0.0],
+                [ 0.066791, 0.0164861,       0.0],
+                [      0.0,       0.0, 0.0050847],
             ],
             true,
             true,
@@ -171,6 +192,31 @@ mod tests {
              │  166.977   28.544    0.000 │\n\
              │    0.000    0.000    0.000 │\n\
              └                            ┘"
+        );
+
+        // plane-strain
+        // from Bhatti page 523
+        let ela = LinElasticity::new(30000.0, 0.3, true, false);
+        #[rustfmt::skip]
+        let strain = Tensor2::from_matrix(
+            &[
+                [    3.6836e-6, -2.675290e-4, 0.0],
+                [ -2.675290e-4,    3.6836e-6, 0.0],
+                [          0.0,          0.0, 0.0],
+            ],
+            true,
+            true,
+        )?;
+        let mut stress = Tensor2::new(true, true);
+        ela.calc_stress(&mut stress, &strain)?;
+        let out = stress.to_matrix();
+        assert_eq!(
+            format!("{:.6}", out),
+            "┌                               ┐\n\
+             │  0.212515 -6.173746  0.000000 │\n\
+             │ -6.173746  0.212515  0.000000 │\n\
+             │  0.000000  0.000000  0.127509 │\n\
+             └                               ┘"
         );
         Ok(())
     }

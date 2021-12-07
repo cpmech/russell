@@ -25,6 +25,49 @@ impl LinElasticity {
     /// * `two_dim` -- 2D instead of 3D
     /// * `plane_stress` -- if `two_dim == 2`, specifies a Plane-Stress problem.
     ///                     Note: if true, this flag automatically turns `two_dim` to true.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_tensor::LinElasticity;
+    ///
+    /// // 3D
+    /// let ela = LinElasticity::new(900.0, 0.25, false, false);
+    /// let out = ela.get_modulus().to_matrix();
+    /// println!("{}", out);
+    /// assert_eq!(
+    ///     format!("{}", out),
+    ///     "┌                                              ┐\n\
+    ///      │ 1080  360  360    0    0    0    0    0    0 │\n\
+    ///      │  360 1080  360    0    0    0    0    0    0 │\n\
+    ///      │  360  360 1080    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0  360    0    0  360    0    0 │\n\
+    ///      │    0    0    0    0  360    0    0  360    0 │\n\
+    ///      │    0    0    0    0    0  360    0    0  360 │\n\
+    ///      │    0    0    0  360    0    0  360    0    0 │\n\
+    ///      │    0    0    0    0  360    0    0  360    0 │\n\
+    ///      │    0    0    0    0    0  360    0    0  360 │\n\
+    ///      └                                              ┘"
+    /// );
+    ///
+    /// // plane-stress
+    /// let ela = LinElasticity::new(3000.0, 0.2, false, true);
+    /// let out = ela.get_modulus().to_matrix();
+    /// assert_eq!(
+    ///     format!("{}", out),
+    ///     "┌                                              ┐\n\
+    ///      │ 3125  625    0    0    0    0    0    0    0 │\n\
+    ///      │  625 3125    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0 1250    0    0 1250    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0 1250    0    0 1250    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      └                                              ┘"
+    /// );
+    /// ```
     pub fn new(young: f64, poisson: f64, two_dim: bool, plane_stress: bool) -> Self {
         let mut res = LinElasticity {
             young,
@@ -37,13 +80,58 @@ impl LinElasticity {
     }
 
     /// Sets the Young's modulus and Poisson's coefficient
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_tensor::LinElasticity;
+    /// let mut ela = LinElasticity::new(3000.0, 0.2, false, true);
+    /// ela.set_young_poisson(6000.0, 0.2);
+    /// let out = ela.get_modulus().to_matrix();
+    /// assert_eq!(
+    ///     format!("{}", out),
+    ///     "┌                                              ┐\n\
+    ///      │ 6250 1250    0    0    0    0    0    0    0 │\n\
+    ///      │ 1250 6250    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0 2500    0    0 2500    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0 2500    0    0 2500    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      └                                              ┘"
+    /// );
+    /// ```
     pub fn set_young_poisson(&mut self, young: f64, poisson: f64) {
         self.young = young;
         self.poisson = poisson;
         self.calc_modulus();
     }
 
-    /// Get an access to the elasticity modulus such that σ = D : ε
+    /// Get an access to the elasticity modulus D defined in σ = D : ε
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_tensor::LinElasticity;
+    /// let ela = LinElasticity::new(3000.0, 0.2, false, true);
+    /// let out = ela.get_modulus().to_matrix();
+    /// assert_eq!(
+    ///     format!("{}", out),
+    ///     "┌                                              ┐\n\
+    ///      │ 3125  625    0    0    0    0    0    0    0 │\n\
+    ///      │  625 3125    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0 1250    0    0 1250    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0 1250    0    0 1250    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      └                                              ┘"
+    /// );
+    /// ```
     pub fn get_modulus(&self) -> &Tensor4 {
         &self.dd
     }
@@ -61,6 +149,92 @@ impl LinElasticity {
     /// # Input
     ///
     /// * `strain` -- the strain tensor ε
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_tensor::{LinElasticity, StrError, Tensor2};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // define the strain matrix => will cause sum of rows of D
+    ///     let strain_matrix_3d = &[
+    ///         [1.0, 1.0, 1.0],
+    ///         [1.0, 1.0, 1.0],
+    ///         [1.0, 1.0, 1.0]
+    ///     ];
+    ///     let strain_matrix_2d = &[
+    ///         [1.0, 1.0, 0.0],
+    ///         [1.0, 1.0, 0.0],
+    ///         [0.0, 0.0, 1.0]
+    ///     ];
+    ///
+    ///     // 3D
+    ///     // sum of first 3 rows = 1800
+    ///     // sum of other rows = 720
+    ///     let ela = LinElasticity::new(900.0, 0.25, false, false);
+    ///     let out = ela.get_modulus().to_matrix();
+    ///     assert_eq!(
+    ///         format!("{}", out),
+    ///         "┌                                              ┐\n\
+    ///          │ 1080  360  360    0    0    0    0    0    0 │\n\
+    ///          │  360 1080  360    0    0    0    0    0    0 │\n\
+    ///          │  360  360 1080    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0  360    0    0  360    0    0 │\n\
+    ///          │    0    0    0    0  360    0    0  360    0 │\n\
+    ///          │    0    0    0    0    0  360    0    0  360 │\n\
+    ///          │    0    0    0  360    0    0  360    0    0 │\n\
+    ///          │    0    0    0    0  360    0    0  360    0 │\n\
+    ///          │    0    0    0    0    0  360    0    0  360 │\n\
+    ///          └                                              ┘"
+    ///     );
+    ///     let strain = Tensor2::from_matrix(strain_matrix_3d, true, false)?;
+    ///     let mut stress = Tensor2::new(true, false);
+    ///     ela.calc_stress(&mut stress, &strain)?;
+    ///     let out = stress.to_matrix();
+    ///     assert_eq!(
+    ///         format!("{:.0}", out),
+    ///         "┌                ┐\n\
+    ///          │ 1800  720  720 │\n\
+    ///          │  720 1800  720 │\n\
+    ///          │  720  720 1800 │\n\
+    ///          └                ┘"
+    ///     );
+    ///
+    ///     // 2D plane-strain
+    ///     // sum of first 3 rows = 1800
+    ///     // sum of other rows = 720
+    ///     let ela = LinElasticity::new(900.0, 0.25, true, false);
+    ///     let out = ela.get_modulus().to_matrix();
+    ///     println!("{}", out);
+    ///     assert_eq!(
+    ///         format!("{}", out),
+    ///         "┌                                              ┐\n\
+    ///          │ 1080  360  360    0    0    0    0    0    0 │\n\
+    ///          │  360 1080  360    0    0    0    0    0    0 │\n\
+    ///          │  360  360 1080    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0  360    0    0  360    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0  360    0    0  360    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          └                                              ┘"
+    ///     );
+    ///     let strain = Tensor2::from_matrix(strain_matrix_2d, true, true)?;
+    ///     let mut stress = Tensor2::new(true, true);
+    ///     ela.calc_stress(&mut stress, &strain)?;
+    ///     let out = stress.to_matrix();
+    ///     assert_eq!(
+    ///         format!("{:.0}", out),
+    ///         "┌                ┐\n\
+    ///          │ 1800  720    0 │\n\
+    ///          │  720 1800    0 │\n\
+    ///          │    0    0 1800 │\n\
+    ///          └                ┘"
+    ///     );
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn calc_stress(&self, stress: &mut Tensor2, strain: &Tensor2) -> Result<(), StrError> {
         t4_ddot_t2(stress, 1.0, &self.dd, strain)
     }
@@ -161,6 +335,13 @@ mod tests {
     }
 
     #[test]
+    fn set_young_poisson_works() {
+        let mut ela = LinElasticity::new(3000.0, 0.2, false, true);
+        ela.set_young_poisson(6000.0, 0.2);
+        assert_eq!(ela.dd.mat[0][0], 6250.0);
+    }
+
+    #[test]
     fn get_modulus_works() {
         let ela = LinElasticity::new(3000.0, 0.2, false, true);
         let dd = ela.get_modulus();
@@ -217,6 +398,38 @@ mod tests {
              │ -6.173746  0.212515  0.000000 │\n\
              │  0.000000  0.000000  0.127509 │\n\
              └                               ┘"
+        );
+
+        // 3D
+        // sum of first 3 rows = 1800
+        // sum of other rows = 720
+        let ela = LinElasticity::new(900.0, 0.25, false, false);
+        let out = ela.dd.to_matrix();
+        assert_eq!(
+            format!("{}", out),
+            "┌                                              ┐\n\
+             │ 1080  360  360    0    0    0    0    0    0 │\n\
+             │  360 1080  360    0    0    0    0    0    0 │\n\
+             │  360  360 1080    0    0    0    0    0    0 │\n\
+             │    0    0    0  360    0    0  360    0    0 │\n\
+             │    0    0    0    0  360    0    0  360    0 │\n\
+             │    0    0    0    0    0  360    0    0  360 │\n\
+             │    0    0    0  360    0    0  360    0    0 │\n\
+             │    0    0    0    0  360    0    0  360    0 │\n\
+             │    0    0    0    0    0  360    0    0  360 │\n\
+             └                                              ┘"
+        );
+        let strain = Tensor2::from_matrix(&[[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]], true, false)?;
+        let mut stress = Tensor2::new(true, false);
+        ela.calc_stress(&mut stress, &strain)?;
+        let out = stress.to_matrix();
+        assert_eq!(
+            format!("{:.0}", out),
+            "┌                ┐\n\
+             │ 1800  720  720 │\n\
+             │  720 1800  720 │\n\
+             │  720  720 1800 │\n\
+             └                ┘"
         );
         Ok(())
     }

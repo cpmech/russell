@@ -34,7 +34,6 @@ impl LinElasticity {
     /// // 3D
     /// let ela = LinElasticity::new(900.0, 0.25, false, false);
     /// let out = ela.get_modulus().to_matrix();
-    /// println!("{}", out);
     /// assert_eq!(
     ///     format!("{}", out),
     ///     "┌                                              ┐\n\
@@ -50,7 +49,25 @@ impl LinElasticity {
     ///      └                                              ┘"
     /// );
     ///
-    /// // plane-stress
+    /// // 2D plane-strain
+    /// let ela = LinElasticity::new(900.0, 0.25, true, false);
+    /// let out = ela.get_modulus().to_matrix();
+    /// assert_eq!(
+    ///     format!("{}", out),
+    ///     "┌                                              ┐\n\
+    ///      │ 1080  360  360    0    0    0    0    0    0 │\n\
+    ///      │  360 1080  360    0    0    0    0    0    0 │\n\
+    ///      │  360  360 1080    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0  360    0    0  360    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0  360    0    0  360    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      │    0    0    0    0    0    0    0    0    0 │\n\
+    ///      └                                              ┘"
+    /// );
+    ///
+    /// // 2D plane-stress
     /// let ela = LinElasticity::new(3000.0, 0.2, false, true);
     /// let out = ela.get_modulus().to_matrix();
     /// assert_eq!(

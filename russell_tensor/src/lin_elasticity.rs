@@ -273,7 +273,7 @@ impl LinElasticity {
     /// ```
     pub fn out_of_plane_strain(&self, stress: &Tensor2) -> Result<f64, StrError> {
         if !self.plane_stress {
-            return Err("problem must be set to plane-stress");
+            return Err("out-of-plane strain works with plane-stress only");
         }
         let eps_zz = -(stress.vec[0] + stress.vec[1]) * self.poisson / self.young;
         Ok(eps_zz)
@@ -459,6 +459,24 @@ mod tests {
              │  720  720 1800 │\n\
              └                ┘"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn out_of_plane_strain_fails_on_wrong_input() -> Result<(), StrError> {
+        let ela = LinElasticity::new(900.0, 0.25, true, false);
+        #[rustfmt::skip]
+        let stress = Tensor2::from_matrix(
+            &[
+                [100.0,   0.0, 0.0],
+                [  0.0, 100.0, 0.0],
+                [  0.0,   0.0, 0.0],
+            ],
+            true,
+            true,
+        )?;
+        let res = ela.out_of_plane_strain(&stress);
+        assert_eq!(res.err(), Some("out-of-plane strain works with plane-stress only"));
         Ok(())
     }
 

@@ -248,6 +248,29 @@ impl LinElasticity {
     /// # Output
     ///
     /// * Returns the `εzz` (out-of-plane) component
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_tensor::{LinElasticity, StrError, Tensor2};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let young = 2500.0;
+    ///     let poisson = 0.25;
+    ///     let ela = LinElasticity::new(young, poisson, true, true);
+    ///     let (sig_xx, sig_yy) = (2000.0, 1000.0);
+    ///     let stress = Tensor2::from_matrix(&[
+    ///             [sig_xx,     0.0, 0.0],
+    ///             [   0.0,  sig_yy, 0.0],
+    ///             [   0.0,     0.0, 0.0],
+    ///         ], true, true,
+    ///     )?;
+    ///     let eps_zz = ela.out_of_plane_strain(&stress)?;
+    ///     let eps_zz_correct = -(poisson / young) * (sig_xx + sig_yy);
+    ///     assert_eq!(eps_zz, eps_zz);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn out_of_plane_strain(&self, stress: &Tensor2) -> Result<f64, StrError> {
         if !self.plane_stress {
             return Err("problem must be set to plane-stress");
@@ -419,7 +442,12 @@ mod tests {
              │    0    0    0    0    0  360    0    0  360 │\n\
              └                                              ┘"
         );
-        let strain = Tensor2::from_matrix(&[[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]], true, false)?;
+        #[rustfmt::skip]
+        let strain = Tensor2::from_matrix(&[
+            [1.0, 1.0, 1.0],
+            [1.0, 1.0, 1.0],
+            [1.0, 1.0, 1.0]],
+        true, false)?;
         let mut stress = Tensor2::new(true, false);
         ela.calc_stress(&mut stress, &strain)?;
         let out = stress.to_matrix();

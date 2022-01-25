@@ -74,7 +74,7 @@ pub fn format_nanoseconds(nanoseconds: u128) -> String {
 /// # Example
 ///
 /// ```
-/// use russell_tensor::*;
+/// use russell_lab::format_2d_array;
 /// let a = [[11.1, 22.2, 33.3], [44.4, 55.5, 66.6], [77.7, 88.8, 99.9]];
 /// let b = vec![vec![1.1, 2.2, 3.3], vec![4.4, 5.5, 6.6], vec![7.7, 8.8, 9.9]];
 /// let str_a = "┌                ┐\n\

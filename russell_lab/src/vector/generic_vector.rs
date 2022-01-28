@@ -208,6 +208,8 @@ where
     ///                    │    3 │\n\
     ///                    └      ┘";
     ///     assert_eq!(format!("{}", x), correct);
+    ///     let indices = GenericVector::<usize>::linspace(0, 10, 4)?;
+    ///     assert_eq!(*indices.as_data(), [0, 3, 6, 9]);
     ///     Ok(())
     /// }
     /// ```
@@ -748,6 +750,17 @@ mod tests {
         assert_eq!(x.data.len(), 2);
         assert_eq!(x.data[0], 2.0);
         assert_eq!(x.data[1], 3.0);
+
+        let i = GenericVector::<usize>::linspace(0, 10, 0)?;
+        assert_eq!(i.data, []);
+        let i = GenericVector::<usize>::linspace(0, 10, 1)?;
+        assert_eq!(i.data, [0]);
+        let i = GenericVector::<usize>::linspace(0, 10, 2)?;
+        assert_eq!(i.data, [0, 10]);
+        let i = GenericVector::<usize>::linspace(0, 10, 3)?;
+        assert_eq!(i.data, [0, 5, 10]);
+        let i = GenericVector::<usize>::linspace(0, 10, 4)?;
+        assert_eq!(i.data, [0, 3, 6, 9]);
         Ok(())
     }
 
@@ -770,6 +783,9 @@ mod tests {
         assert_eq!(x.data.len(), 2);
         assert_eq!(x.data[0], 8.0);
         assert_eq!(x.data[1], 27.0);
+
+        let i = GenericVector::<usize>::mapped_linspace(0, 10, 4, |v| v * 2)?;
+        assert_eq!(i.data, [0, 6, 12, 18]);
         Ok(())
     }
 

@@ -52,7 +52,7 @@ use russell_openblas::{dgeev, dgeev_data, dgeev_data_lr, to_i32};
 ///
 /// ```
 /// // import
-/// use russell_lab::{add_matrices, eigen_decomp, mat_mat_mul, Matrix, NormMat, StrError};
+/// use russell_lab::{add_matrices, eigen_decomp, mat_mat_mul, matrix_norm, Matrix, NormMat, StrError};
 /// use russell_chk::assert_approx_eq;
 ///
 /// fn main() -> Result<(), StrError> {
@@ -108,7 +108,7 @@ use russell_openblas::{dgeev, dgeev_data, dgeev_data_lr, to_i32};
 ///     mat_mat_mul(&mut a_v, 1.0, &a_copy, &v_real)?;
 ///     mat_mat_mul(&mut v_l, 1.0, &v_real, &lam)?;
 ///     add_matrices(&mut err, 1.0, &a_v, -1.0, &v_l)?;
-///     assert_approx_eq!(err.norm(NormMat::Max), 0.0, 1e-15);
+///     assert_approx_eq!(matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
 ///     Ok(())
 /// }
 /// ```
@@ -286,7 +286,7 @@ pub fn eigen_decomp_lr(
 #[cfg(test)]
 mod tests {
     use super::{eigen_decomp, eigen_decomp_lr, Matrix};
-    use crate::{add_matrices, mat_mat_mul, AsArray2D, NormMat, StrError};
+    use crate::{add_matrices, mat_mat_mul, matrix_norm, AsArray2D, NormMat, StrError};
     use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
 
     fn check_real_eigen<'a, T>(data: &'a T, v: &Matrix, l: &[f64]) -> Result<(), StrError>
@@ -302,7 +302,7 @@ mod tests {
         mat_mat_mul(&mut a_v, 1.0, &a, &v)?;
         mat_mat_mul(&mut v_l, 1.0, &v, &lam)?;
         add_matrices(&mut err, 1.0, &a_v, -1.0, &v_l)?;
-        assert_approx_eq!(err.norm(NormMat::Max), 0.0, 1e-15);
+        assert_approx_eq!(matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
         Ok(())
     }
 

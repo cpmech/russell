@@ -15,6 +15,7 @@ keywords = ["matrix", "vector", "linspace"]
 russell_chk = { path = "../russell_chk", version = "0.2" }
 russell_openblas = { path = "../russell_openblas", version = "0.2" }
 criterion = "0.3"
+num-traits = "0.2"
 
 [[bench]]
 name = "lab_benches"

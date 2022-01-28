@@ -22,24 +22,30 @@ extern "C" {
 ///
 ///   c  := α ⋅  a  ⋅  b  +  β ⋅  c
 /// (m,n)      (m,k) (k,n)      (m,n)
+/// ```
 ///
-///
+/// ```text
 /// trans_a = false, trans_b = true:
 ///
 ///   c  := α ⋅  a  ⋅  bᵀ  +  β ⋅  c
 /// (m,n)      (m,k) (k,n)       (m,n)
+///                b:(n,k)
+/// ```
 ///
-///
+/// ```text
 /// trans_a = true, trans_b = false:
 ///
 ///   c  := α ⋅  aᵀ  ⋅  b  +  β ⋅  c
 /// (m,n)      (m,k) (k,n)       (m,n)
+///          a:(k,m)
+/// ```
 ///
-///
+/// ```text
 /// trans_a = true, trans_b = true:
 ///
-///   c  := α ⋅  aᵀ ⋅  bᵀ +  β ⋅  c
-/// (m,n)      (m,k) (k,n)      (m,n)
+///   c  := α ⋅  aᵀ   ⋅   bᵀ +  β ⋅  c
+/// (m,n)      (m,k)    (k,n)      (m,n)
+///          a:(k,m)  b:(n,k)
 /// ```
 ///
 /// # Important

@@ -1,4 +1,4 @@
-use russell_lab::{mat_mat_mul, mat_vec_mul, matrix_norm, Matrix, NormMat, NormVec, StrError, Vector};
+use russell_lab::{mat_mat_mul, mat_vec_mul, matrix_norm, vector_norm, Matrix, NormMat, NormVec, StrError, Vector};
 
 #[test]
 fn test_mat_vec_mul() -> Result<(), StrError> {
@@ -11,9 +11,9 @@ fn test_mat_vec_mul() -> Result<(), StrError> {
             let mut v = Vector::new(m);
             mat_vec_mul(&mut v, 1.0, &a, &u)?;
             if m == 0 {
-                assert_eq!(v.norm(NormVec::Max), 0.0);
+                assert_eq!(vector_norm(&v, NormVec::Max), 0.0);
             } else {
-                assert_eq!(v.norm(NormVec::Max), n as f64);
+                assert_eq!(vector_norm(&v, NormVec::Max), n as f64);
             }
         }
     }

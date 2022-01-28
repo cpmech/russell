@@ -1,6 +1,6 @@
 use super::SparseTriplet;
 use crate::StrError;
-use russell_lab::{format_nanoseconds, update_vector, NormVec, Stopwatch, Vector};
+use russell_lab::{format_nanoseconds, update_vector, vector_norm, NormVec, Stopwatch, Vector};
 use russell_openblas::{idamax, to_i32};
 use std::fmt;
 
@@ -71,11 +71,11 @@ impl VerifyLinSys {
 
         // compute max_abs_ax
         let mut ax = trip.mat_vec_mul(&x)?;
-        let max_abs_ax = ax.norm(NormVec::Max);
+        let max_abs_ax = vector_norm(&ax, NormVec::Max);
 
         // compute max_abs_diff
         update_vector(&mut ax, -1.0, &rhs)?; // ax := ax - rhs
-        let max_abs_diff = ax.norm(NormVec::Max);
+        let max_abs_diff = vector_norm(&ax, NormVec::Max);
 
         // compute relative_error
         let relative_error = max_abs_diff / (max_abs_a + 1.0);

@@ -78,7 +78,7 @@ use std::ops::{Index, IndexMut};
 #[derive(Debug)]
 pub struct GenericMatrix<T>
 where
-    T: Num,
+    T: Num + Copy,
 {
     nrow: usize,  // number of rows
     ncol: usize,  // number of columns

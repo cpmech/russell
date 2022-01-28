@@ -36,7 +36,6 @@ use russell_openblas::{dlange, to_i32};
 /// use russell_lab::{matrix_norm, Matrix, NormMat};
 ///
 /// fn main() {
-///
 ///     let a = Matrix::from(&[
 ///         [-2.0,  2.0],
 ///         [ 1.0, -4.0],
@@ -70,7 +69,7 @@ mod tests {
     use crate::NormMat;
 
     #[test]
-    fn norm_works() {
+    fn matrix_norm_works() {
         let a_0x0 = Matrix::new(0, 0);
         let a_0x1 = Matrix::new(0, 1);
         let a_1x0 = Matrix::new(1, 0);

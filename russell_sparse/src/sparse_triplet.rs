@@ -26,56 +26,6 @@ pub struct SparseTriplet {
 }
 
 impl SparseTriplet {
-    /// Creates a new unsized SparseTriplet representing a sparse matrix
-    ///
-    /// NOTE: call `resize` to set all sizes.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use russell_sparse::{SparseTriplet, Symmetry};
-    /// let trip = SparseTriplet::new_unsized(Symmetry::No);
-    /// ```
-    pub fn new_unsized(symmetry: Symmetry) -> Self {
-        SparseTriplet {
-            nrow: 0,
-            ncol: 0,
-            pos: 0,
-            max: 0,
-            symmetry,
-            indices_i: Vec::new(),
-            indices_j: Vec::new(),
-            values_aij: Vec::new(),
-        }
-    }
-
-    /// Resizes (and erases) the SparseTriplet
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use russell_sparse::{SparseTriplet, Symmetry, StrError};
-    ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let mut trip = SparseTriplet::new_unsized(Symmetry::No);
-    ///     trip.resize(3, 3, 4)?;
-    ///     Ok(())
-    /// }
-    /// ```
-    pub fn resize(&mut self, nrow: usize, ncol: usize, max: usize) -> Result<(), StrError> {
-        if nrow == 0 || ncol == 0 || max == 0 {
-            return Err("nrow, ncol, and max must all be greater than zero");
-        }
-        self.nrow = nrow;
-        self.ncol = ncol;
-        self.pos = 0;
-        self.max = max;
-        self.indices_i = vec![0; max];
-        self.indices_j = vec![0; max];
-        self.values_aij = vec![0.0; max];
-        Ok(())
-    }
-
     /// Creates a new SparseTriplet representing a sparse matrix
     ///
     /// ```text
@@ -333,51 +283,6 @@ mod tests {
     use russell_lab::{Matrix, Vector};
 
     #[test]
-    fn new_unsized_works() {
-        let trip = SparseTriplet::new_unsized(Symmetry::No);
-        assert_eq!(trip.nrow, 0);
-        assert_eq!(trip.ncol, 0);
-        assert_eq!(trip.pos, 0);
-        assert_eq!(trip.max, 0);
-        assert!(matches!(trip.symmetry, Symmetry::No));
-        assert_eq!(trip.indices_i, []);
-        assert_eq!(trip.indices_j, []);
-        assert_eq!(trip.values_aij, []);
-    }
-
-    #[test]
-    fn resize_fails_on_wrong_input() {
-        let mut trip = SparseTriplet::new_unsized(Symmetry::No);
-        assert_eq!(
-            trip.resize(0, 3, 5).err(),
-            Some("nrow, ncol, and max must all be greater than zero")
-        );
-        assert_eq!(
-            trip.resize(3, 0, 5).err(),
-            Some("nrow, ncol, and max must all be greater than zero")
-        );
-        assert_eq!(
-            trip.resize(3, 3, 0).err(),
-            Some("nrow, ncol, and max must all be greater than zero")
-        );
-    }
-
-    #[test]
-    fn resize_works() -> Result<(), StrError> {
-        let mut trip = SparseTriplet::new_unsized(Symmetry::No);
-        trip.resize(2, 2, 3)?;
-        assert_eq!(trip.nrow, 2);
-        assert_eq!(trip.ncol, 2);
-        assert_eq!(trip.pos, 0);
-        assert_eq!(trip.max, 3);
-        assert!(matches!(trip.symmetry, Symmetry::No));
-        assert_eq!(trip.indices_i, [0, 0, 0]);
-        assert_eq!(trip.indices_j, [0, 0, 0]);
-        assert_eq!(trip.values_aij, [0.0, 0.0, 0.0]);
-        Ok(())
-    }
-
-    #[test]
     fn new_fails_on_wrong_input() {
         assert_eq!(
             SparseTriplet::new(0, 3, 5, Symmetry::No).err(),
@@ -423,13 +328,6 @@ mod tests {
     fn put_panics_on_wrong_values_3() {
         let mut trip = SparseTriplet::new(1, 1, 1, Symmetry::No).unwrap();
         trip.put(0, 0, 0.0); // << all spots occupied
-        trip.put(0, 0, 0.0);
-    }
-
-    #[test]
-    #[should_panic]
-    fn put_panics_on_unsized_triplet() {
-        let mut trip = SparseTriplet::new_unsized(Symmetry::No);
         trip.put(0, 0, 0.0);
     }
 

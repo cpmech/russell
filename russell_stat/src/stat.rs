@@ -1,3 +1,5 @@
+use crate::StrError;
+
 /// Returns the average of values in the a given slice
 ///
 /// # Example
@@ -8,7 +10,7 @@
 /// let result = russell_stat::ave(&x);
 /// assert_eq!(result.unwrap(), 5.0);
 /// ```
-pub fn ave<T>(x: &[T]) -> Result<f64, &'static str>
+pub fn ave<T>(x: &[T]) -> Result<f64, StrError>
 where
     T: Into<f64> + Copy,
 {
@@ -32,7 +34,7 @@ where
 /// assert_eq!(ave, 5.0);
 /// assert_eq!(dev, ((32.0/7.0) as f64).sqrt());
 /// ```
-pub fn ave_dev<T>(x: &[T]) -> Result<(f64, f64), &'static str>
+pub fn ave_dev<T>(x: &[T]) -> Result<(f64, f64), StrError>
 where
     T: Into<f64> + Copy,
 {
@@ -66,10 +68,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::{ave, ave_dev};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::assert_approx_eq;
 
     #[test]
-    fn ave_works() -> Result<(), &'static str> {
+    fn ave_works() -> Result<(), StrError> {
         let x = [100, 100, 102, 98, 77, 99, 70, 105, 98];
         assert_eq!(ave(&x)?, 849.0 / 9.0);
         Ok(())
@@ -88,7 +91,7 @@ mod tests {
     }
 
     #[test]
-    fn ave_dev_works() -> Result<(), &'static str> {
+    fn ave_dev_works() -> Result<(), StrError> {
         let x = [100, 100, 102, 98, 77, 99, 70, 105, 98];
         let (ave, dev) = ave_dev(&x)?;
         assert_eq!(ave, 849.0 / 9.0);

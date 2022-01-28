@@ -5,8 +5,8 @@
 //! # Example - dnrm2
 //!
 //! ```
-//! use russell_chk::*;
-//! use russell_openblas::*;
+//! use russell_chk::assert_approx_eq;
+//! use russell_openblas::{dnrm2, to_i32};
 //! let x = [1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0];
 //! let (n, incx) = (to_i32(x.len()), 1_i32);
 //! assert_approx_eq!(dnrm2(n, &x, incx), 5.0, 1e-15);
@@ -16,6 +16,9 @@
 pub fn desc() -> String {
     "Thin wrapper to some OpenBLAS routines".to_string()
 }
+
+/// Defines a type alias for the error type as a static string
+pub type StrError = &'static str;
 
 mod config;
 mod constants;

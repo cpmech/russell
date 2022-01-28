@@ -44,9 +44,9 @@ export OPENBLAS_NUM_THREADS=1
 ### Compute the pseudo-inverse matrix
 
 ```rust
-use russell_lab::*;
+use russell_lab::{pseudo_inverse, Matrix, StrError};
 
-fn main() -> Result<(), &'static str> {
+fn main() -> Result<(), StrError> {
     // set matrix
     let mut a = Matrix::from(&[
         [1.0, 0.0],
@@ -99,10 +99,10 @@ fn main() -> Result<(), &'static str> {
 ### Compute eigenvalues
 
 ```rust
-use russell_lab::*;
-use russell_chk::*;
+use russell_lab::{add_matrices, eigen_decomp, mat_mat_mul, matrix_norm, NormMat, Matrix, StrError};
+use russell_chk::assert_approx_eq;
 
-fn main() -> Result<(), &'static str> {
+fn main() -> Result<(), StrError> {
     // set matrix
     let data = [
         [2.0, 0.0, 0.0],
@@ -155,7 +155,7 @@ fn main() -> Result<(), &'static str> {
     mat_mat_mul(&mut a_v, 1.0, &a_copy, &v_real)?;
     mat_mat_mul(&mut v_l, 1.0, &v_real, &lam)?;
     add_matrices(&mut err, 1.0, &a_v, -1.0, &v_l)?;
-    assert_approx_eq!(err.norm(NormMat::Max), 0.0, 1e-15);
+    assert_approx_eq!(matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
     Ok(())
 }
 ```

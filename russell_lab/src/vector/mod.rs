@@ -1,10 +1,16 @@
 mod add_vectors;
+mod aliases;
 mod copy_vector;
+mod generic_vector;
 mod inner;
+mod scale_vector;
 mod update_vector;
-mod vector;
+mod vector_norm;
 pub use crate::vector::add_vectors::*;
+pub use crate::vector::aliases::*;
 pub use crate::vector::copy_vector::*;
+pub use crate::vector::generic_vector::*;
 pub use crate::vector::inner::*;
+pub use crate::vector::scale_vector::*;
 pub use crate::vector::update_vector::*;
-pub use crate::vector::vector::*;
+pub use crate::vector::vector_norm::*;

@@ -1,5 +1,6 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
+use crate::StrError;
 use russell_openblas::{dgesv, to_i32};
 
 /// Solves a general linear system (real numbers)
@@ -26,32 +27,31 @@ use russell_openblas::{dgesv, to_i32};
 /// 2. The right-hand-side `b` will contain the solution `x`
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// // import
-/// use russell_lab::*;
+/// use russell_lab::{solve_lin_sys, Matrix, Vector, StrError};
 ///
-/// // set matrix and right-hand side
-/// let mut a = Matrix::from(&[
-///     [1.0,  3.0, -2.0],
-///     [3.0,  5.0,  6.0],
-///     [2.0,  4.0,  3.0],
-/// ]);
-/// let mut b = Vector::from(&[5.0, 7.0, 8.0]);
+/// fn main() -> Result<(), StrError> {
+///     // set matrix and right-hand side
+///     let mut a = Matrix::from(&[
+///         [1.0,  3.0, -2.0],
+///         [3.0,  5.0,  6.0],
+///         [2.0,  4.0,  3.0],
+///     ]);
+///     let mut b = Vector::from(&[5.0, 7.0, 8.0]);
 ///
-/// // solve linear system b := a⁻¹⋅b
-/// solve_lin_sys(&mut b, &mut a)?;
+///     // solve linear system b := a⁻¹⋅b
+///     solve_lin_sys(&mut b, &mut a)?;
 ///
-/// // check
-/// let x_correct = "┌         ┐\n\
-///                  │ -15.000 │\n\
-///                  │   8.000 │\n\
-///                  │   2.000 │\n\
-///                  └         ┘";
-/// assert_eq!(format!("{:.3}", b), x_correct);
-/// # Ok(())
-/// # }
+///     // check
+///     let x_correct = "┌         ┐\n\
+///                      │ -15.000 │\n\
+///                      │   8.000 │\n\
+///                      │   2.000 │\n\
+///                      └         ┘";
+///     assert_eq!(format!("{:.3}", b), x_correct);
+///     Ok(())
+/// }
 /// ```
-pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), &'static str> {
+pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
     let (m, n) = a.dims();
     if m != n {
         return Err("matrix must be square");
@@ -70,7 +70,8 @@ pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), &'static str>
 #[cfg(test)]
 mod tests {
     use super::{solve_lin_sys, Matrix, Vector};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn solve_lin_sys_fails_on_non_square() {
@@ -87,7 +88,7 @@ mod tests {
     }
 
     #[test]
-    fn solve_lin_sys_works() -> Result<(), &'static str> {
+    fn solve_lin_sys_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
             [2.0, 1.0, 1.0, 3.0, 2.0],
@@ -118,7 +119,7 @@ mod tests {
     }
 
     #[test]
-    fn solve_lin_sys_1_works() -> Result<(), &'static str> {
+    fn solve_lin_sys_1_works() -> Result<(), StrError> {
         // example from https://numericalalgorithmsgroup.github.io/LAPACK_Examples/examples/doc/dgesv_example.html
         #[rustfmt::skip]
         let mut a = Matrix::from(&[

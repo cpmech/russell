@@ -1,4 +1,5 @@
 use crate::matrix::Matrix;
+use crate::StrError;
 use russell_openblas::{dcopy, dgesvd, idamax, to_i32};
 
 // constants
@@ -29,59 +30,58 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 /// # Example
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// // import
-/// use russell_lab::*;
+/// use russell_lab::{pseudo_inverse, Matrix, StrError};
 ///
-/// // set matrix
-/// let mut a = Matrix::from(&[
-///     [1.0, 0.0],
-///     [0.0, 1.0],
-///     [0.0, 1.0],
-/// ]);
-/// let a_copy = a.get_copy();
+/// fn main() -> Result<(), StrError> {
+///     // set matrix
+///     let mut a = Matrix::from(&[
+///         [1.0, 0.0],
+///         [0.0, 1.0],
+///         [0.0, 1.0],
+///     ]);
+///     let a_copy = a.get_copy();
 ///
-/// // compute pseudo-inverse matrix (because it's square)
-/// let mut ai = Matrix::new(2, 3);
-/// pseudo_inverse(&mut ai, &mut a)?;
+///     // compute pseudo-inverse matrix (because it's square)
+///     let mut ai = Matrix::new(2, 3);
+///     pseudo_inverse(&mut ai, &mut a)?;
 ///
-/// // compare with solution
-/// let ai_correct = "┌                ┐\n\
-///                   │ 1.00 0.00 0.00 │\n\
-///                   │ 0.00 0.50 0.50 │\n\
-///                   └                ┘";
-/// assert_eq!(format!("{:.2}", ai), ai_correct);
+///     // compare with solution
+///     let ai_correct = "┌                ┐\n\
+///                       │ 1.00 0.00 0.00 │\n\
+///                       │ 0.00 0.50 0.50 │\n\
+///                       └                ┘";
+///     assert_eq!(format!("{:.2}", ai), ai_correct);
 ///
-/// // compute a⋅ai
-/// let (m, n) = a.dims();
-/// let mut a_ai = Matrix::new(m, m);
-/// for i in 0..m {
-///     for j in 0..m {
-///         for k in 0..n {
-///             a_ai[i][j] += a_copy[i][k] * ai[k][j];
+///     // compute a⋅ai
+///     let (m, n) = a.dims();
+///     let mut a_ai = Matrix::new(m, m);
+///     for i in 0..m {
+///         for j in 0..m {
+///             for k in 0..n {
+///                 a_ai[i][j] += a_copy[i][k] * ai[k][j];
+///             }
 ///         }
 ///     }
-/// }
 ///
-/// // check if a⋅ai⋅a == a
-/// let mut a_ai_a = Matrix::new(m, n);
-/// for i in 0..m {
-///     for j in 0..n {
-///         for k in 0..m {
-///             a_ai_a[i][j] += a_ai[i][k] * a_copy[k][j];
+///     // check if a⋅ai⋅a == a
+///     let mut a_ai_a = Matrix::new(m, n);
+///     for i in 0..m {
+///         for j in 0..n {
+///             for k in 0..m {
+///                 a_ai_a[i][j] += a_ai[i][k] * a_copy[k][j];
+///             }
 ///         }
 ///     }
+///     let a_ai_a_correct = "┌           ┐\n\
+///                           │ 1.00 0.00 │\n\
+///                           │ 0.00 1.00 │\n\
+///                           │ 0.00 1.00 │\n\
+///                           └           ┘";
+///     assert_eq!(format!("{:.2}", a_ai_a), a_ai_a_correct);
+///     Ok(())
 /// }
-/// let a_ai_a_correct = "┌           ┐\n\
-///                       │ 1.00 0.00 │\n\
-///                       │ 0.00 1.00 │\n\
-///                       │ 0.00 1.00 │\n\
-///                       └           ┘";
-/// assert_eq!(format!("{:.2}", a_ai_a), a_ai_a_correct);
-/// # Ok(())
-/// # }
 /// ```
-pub fn pseudo_inverse(ai: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
+pub fn pseudo_inverse(ai: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
     // check
     let (m, n) = a.dims();
     if ai.nrow() != n || ai.ncol() != m {
@@ -142,7 +142,8 @@ pub fn pseudo_inverse(ai: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
 #[cfg(test)]
 mod tests {
     use super::{pseudo_inverse, Matrix};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::assert_vec_approx_eq;
 
     /// Computes a⋅ai that should equal I for a square matrix
     fn get_a_times_ai(a: &Matrix, ai: &Matrix) -> Matrix {
@@ -191,7 +192,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_0x0_works() -> Result<(), &'static str> {
+    fn pseudo_inverse_0x0_works() -> Result<(), StrError> {
         let mut a = Matrix::new(0, 0);
         let mut ai = Matrix::new(0, 0);
         pseudo_inverse(&mut ai, &mut a)?;
@@ -200,7 +201,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_1x1_works() -> Result<(), &'static str> {
+    fn pseudo_inverse_1x1_works() -> Result<(), StrError> {
         let data = [[2.0]];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(1, 1);
@@ -213,7 +214,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_2x2_works() -> Result<(), &'static str> {
+    fn pseudo_inverse_2x2_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let data = [
             [1.0, 2.0],
@@ -230,7 +231,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_3x3_works() -> Result<(), &'static str> {
+    fn pseudo_inverse_3x3_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let data = [
             [1.0, 2.0, 3.0],
@@ -254,7 +255,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_4x4_works() -> Result<(), &'static str> {
+    fn pseudo_inverse_4x4_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let data = [
             [ 3.0,  0.0,  2.0, -1.0],
@@ -280,7 +281,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_5x5_works() -> Result<(), &'static str> {
+    fn pseudo_inverse_5x5_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let data = [
             [12.0, 28.0, 22.0, 20.0,  8.0],
@@ -308,7 +309,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_6x6_works() -> Result<(), &'static str> {
+    fn pseudo_inverse_6x6_works() -> Result<(), StrError> {
         // NOTE: this matrix is nearly non-invertible; it originated from an FEM analysis
         #[rustfmt::skip]
         let data = [
@@ -329,7 +330,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_4x3_works() -> Result<(), &'static str> {
+    fn pseudo_inverse_4x3_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let data = [
             [-5.773502691896260e-01, -5.773502691896260e-01, 1.000000000000000e+00],
@@ -355,7 +356,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_4x5_works() -> Result<(), &'static str> {
+    fn pseudo_inverse_4x5_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let data = [
             [1.0, 0.0, 0.0, 0.0, 2.0],
@@ -383,7 +384,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_5x6_works() -> Result<(), &'static str> {
+    fn pseudo_inverse_5x6_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let data = [
             [12.0, 28.0, 22.0, 20.0,  8.0, 1.0],
@@ -413,7 +414,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_8x6_works() -> Result<(), &'static str> {
+    fn pseudo_inverse_8x6_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let data = [
             [64.0,  2.0,  3.0, 61.0, 60.0,  6.0],

@@ -1,6 +1,6 @@
-use russell_lab::*;
+use russell_lab::{format_nanoseconds, Stopwatch, StrError, Vector};
 use russell_openblas::set_num_threads;
-use russell_sparse::*;
+use russell_sparse::{enum_ordering, enum_scaling, read_matrix_market, ConfigSolver, LinSol, Solver, VerifyLinSys};
 use std::path::Path;
 use structopt::StructOpt;
 
@@ -35,7 +35,7 @@ struct Options {
     verbose: bool,
 }
 
-fn main() -> Result<(), &'static str> {
+fn main() -> Result<(), StrError> {
     // parse options
     let opt = Options::from_args();
 

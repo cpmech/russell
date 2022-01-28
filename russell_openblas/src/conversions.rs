@@ -1,3 +1,5 @@
+use crate::StrError;
+
 /// Extracts LAPACK (dgeev) eigenvectors from its compact representation
 ///
 /// Single set: extracts either the left eigenvectors or the right eigenvectors
@@ -12,7 +14,7 @@
 /// * `w_imag` -- n, eigenvalues; imaginary part
 /// * `v` -- n*n, output of dgeev
 ///
-pub fn dgeev_data(v_real: &mut [f64], v_imag: &mut [f64], w_imag: &[f64], v: &[f64]) -> Result<(), &'static str> {
+pub fn dgeev_data(v_real: &mut [f64], v_imag: &mut [f64], w_imag: &[f64], v: &[f64]) -> Result<(), StrError> {
     // check
     let n = w_imag.len();
     let nn = n * n;
@@ -81,7 +83,7 @@ pub fn dgeev_data_lr(
     w_imag: &[f64],
     vl: &[f64],
     vr: &[f64],
-) -> Result<(), &'static str> {
+) -> Result<(), StrError> {
     // check
     let n = w_imag.len();
     let nn = n * n;
@@ -145,7 +147,8 @@ pub fn dgeev_data_lr(
 #[cfg(test)]
 mod tests {
     use super::{dgeev_data, dgeev_data_lr};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn dgeev_data_fails_on_wrong_dims() {
@@ -192,7 +195,7 @@ mod tests {
     }
 
     #[test]
-    fn dgeev_data_works() -> Result<(), &'static str> {
+    fn dgeev_data_works() -> Result<(), StrError> {
         let n = 5_usize;
         let mut v_real = vec![0.0; n * n];
         let mut v_imag = vec![0.0; n * n];
@@ -353,7 +356,7 @@ mod tests {
     }
 
     #[test]
-    fn dgeev_data_lr_works() -> Result<(), &'static str> {
+    fn dgeev_data_lr_works() -> Result<(), StrError> {
         let n = 5_usize;
         let mut vl_real = vec![0.0; n * n];
         let mut vl_imag = vec![0.0; n * n];

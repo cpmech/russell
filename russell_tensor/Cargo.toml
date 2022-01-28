@@ -13,3 +13,4 @@ keywords = ["tensor", "Voigt", "Mandel", "continuum", "mechanics"]
 
 [dependencies]
 russell_chk = { path = "../russell_chk", version = "0.2" }
+russell_lab = { path = "../russell_lab", version = "0.2" }

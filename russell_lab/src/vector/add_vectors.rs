@@ -1,4 +1,5 @@
 use super::Vector;
+use crate::StrError;
 use russell_openblas::{add_vectors_native, add_vectors_oblas};
 
 const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
@@ -12,23 +13,24 @@ const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
 /// # Example
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// use russell_lab::*;
-/// let u = Vector::from(&[10.0, 20.0, 30.0, 40.0]);
-/// let v = Vector::from(&[2.0, 1.5, 1.0, 0.5]);
-/// let mut w = Vector::new(4);
-/// add_vectors(&mut w, 0.1, &u, 2.0, &v)?;
-/// let correct = "┌   ┐\n\
-///                │ 5 │\n\
-///                │ 5 │\n\
-///                │ 5 │\n\
-///                │ 5 │\n\
-///                └   ┘";
-/// assert_eq!(format!("{}", w), correct);
-/// # Ok(())
-/// # }
+/// use russell_lab::{add_vectors, Vector, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     let u = Vector::from(&[10.0, 20.0, 30.0, 40.0]);
+///     let v = Vector::from(&[2.0, 1.5, 1.0, 0.5]);
+///     let mut w = Vector::new(4);
+///     add_vectors(&mut w, 0.1, &u, 2.0, &v)?;
+///     let correct = "┌   ┐\n\
+///                    │ 5 │\n\
+///                    │ 5 │\n\
+///                    │ 5 │\n\
+///                    │ 5 │\n\
+///                    └   ┘";
+///     assert_eq!(format!("{}", w), correct);
+///     Ok(())
+/// }
 /// ```
-pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector) -> Result<(), &'static str> {
+pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector) -> Result<(), StrError> {
     let n = w.dim();
     if u.dim() != n || v.dim() != n {
         return Err("vectors are incompatible");
@@ -49,7 +51,8 @@ pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector
 #[cfg(test)]
 mod tests {
     use super::{add_vectors, Vector, NATIVE_VERSUS_OPENBLAS_BOUNDARY};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn add_vectors_fail_on_wrong_dims() {
@@ -69,7 +72,7 @@ mod tests {
     }
 
     #[test]
-    fn add_vectors_works() -> Result<(), &'static str> {
+    fn add_vectors_works() -> Result<(), StrError> {
         const NOISE: f64 = 1234.567;
         #[rustfmt::skip]
         let u = Vector::from(&[
@@ -102,7 +105,7 @@ mod tests {
     }
 
     #[test]
-    fn add_vectors_sizes_works() -> Result<(), &'static str> {
+    fn add_vectors_sizes_works() -> Result<(), StrError> {
         const NOISE: f64 = 1234.567;
         for size in 0..(NATIVE_VERSUS_OPENBLAS_BOUNDARY + 3) {
             let mut u = Vector::new(size);

@@ -1,5 +1,5 @@
-use crate::{AsArray1D, NormVec};
-use russell_openblas::{dasum, dnrm2, dscal, idamax, to_i32};
+use crate::{AsArray1D, StrError};
+use num_traits::{cast, Num, NumCast};
 use std::cmp;
 use std::fmt::{self, Write};
 use std::ops::{Index, IndexMut};
@@ -8,9 +8,9 @@ use std::ops::{Index, IndexMut};
 ///
 /// # Remarks
 ///
-/// * Vector implements the Index and IntoIterator traits (mutable or not),
+/// * GenericVector implements the Index and IntoIterator traits (mutable or not),
 ///   thus, we can access components by indices or loop over the components
-/// * Vector has also methods to access the underlying data (mutable or not);
+/// * GenericVector has also methods to access the underlying data (mutable or not);
 ///   e.g., using `as_data()` and `as_mut_data()`.
 /// * For faster computations, we recommend using the set of functions that
 ///   operate on Vectors and Matrices; e.g., `add_vectors`, `inner`, `outer`,
@@ -19,11 +19,11 @@ use std::ops::{Index, IndexMut};
 /// # Example
 ///
 /// ```
-/// use russell_lab::{add_vectors, Vector, StrError};
+/// use russell_lab::{add_vectors, GenericVector, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // create vector
-///     let mut u = Vector::from(&[4.0, 9.0, 16.0, 25.0]);
+///     let mut u = GenericVector::<f64>::from(&[4.0, 9.0, 16.0, 25.0]);
 ///     assert_eq!(
 ///         format!("{}", u),
 ///         "┌    ┐\n\
@@ -36,7 +36,7 @@ use std::ops::{Index, IndexMut};
 ///
 ///     // create vector filled with zeros
 ///     let n = u.dim();
-///     let v = Vector::filled(n, 10.0);
+///     let v = GenericVector::<f64>::filled(n, 10.0);
 ///     assert_eq!(
 ///         format!("{}", v),
 ///         "┌    ┐\n\
@@ -70,7 +70,7 @@ use std::ops::{Index, IndexMut};
 ///     }
 ///
 ///     // add vectors
-///     let mut z = Vector::new(n);
+///     let mut z = GenericVector::<f64>::new(n);
 ///     add_vectors(&mut z, 1.0, &u, 1.0, &w)?;
 ///     println!("{}", z);
 ///     assert_eq!(
@@ -86,18 +86,24 @@ use std::ops::{Index, IndexMut};
 /// }
 /// ```
 #[derive(Debug)]
-pub struct Vector {
-    data: Vec<f64>,
+pub struct GenericVector<T>
+where
+    T: Num + NumCast + Copy,
+{
+    data: Vec<T>,
 }
 
-impl Vector {
+impl<T> GenericVector<T>
+where
+    T: Num + NumCast + Copy,
+{
     /// Creates a new (zeroed) vector
     ///
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::Vector;
-    /// let u = Vector::new(3);
+    /// # use russell_lab::GenericVector;
+    /// let u = GenericVector::<f64>::new(3);
     /// let correct = "┌   ┐\n\
     ///                │ 0 │\n\
     ///                │ 0 │\n\
@@ -106,7 +112,9 @@ impl Vector {
     /// assert_eq!(format!("{}", u), correct);
     /// ```
     pub fn new(dim: usize) -> Self {
-        Vector { data: vec![0.0; dim] }
+        GenericVector {
+            data: vec![T::zero(); dim],
+        }
     }
 
     /// Creates new vector completely filled with the same value
@@ -114,8 +122,8 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::Vector;
-    /// let u = Vector::filled(3, 4.0);
+    /// # use russell_lab::GenericVector;
+    /// let u = GenericVector::<f64>::filled(3, 4.0);
     /// let correct = "┌   ┐\n\
     ///                │ 4 │\n\
     ///                │ 4 │\n\
@@ -123,8 +131,8 @@ impl Vector {
     ///                └   ┘";
     /// assert_eq!(format!("{}", u), correct);
     /// ```
-    pub fn filled(dim: usize, value: f64) -> Self {
-        Vector { data: vec![value; dim] }
+    pub fn filled(dim: usize, value: T) -> Self {
+        GenericVector { data: vec![value; dim] }
     }
 
     /// Creates a vector from data
@@ -132,11 +140,11 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::Vector;
+    /// # use russell_lab::GenericVector;
     ///
     /// // heap-allocated 1D array (vector)
     /// let u_data = vec![1.0, 2.0, 3.0];
-    /// let u = Vector::from(&u_data);
+    /// let u = GenericVector::<f64>::from(&u_data);
     /// assert_eq!(
     ///     format!("{}", &u),
     ///     "┌   ┐\n\
@@ -148,7 +156,7 @@ impl Vector {
     ///
     /// // heap-allocated 1D array (slice)
     /// let v_data: &[f64] = &[10.0, 20.0, 30.0];
-    /// let v = Vector::from(&v_data);
+    /// let v = GenericVector::<f64>::from(&v_data);
     /// assert_eq!(
     ///     format!("{}", &v),
     ///     "┌    ┐\n\
@@ -160,7 +168,7 @@ impl Vector {
     ///
     /// // stack-allocated (fixed-size) 2D array
     /// let w_data = [100.0, 200.0, 300.0];
-    /// let w = Vector::from(&w_data);
+    /// let w = GenericVector::<f64>::from(&w_data);
     /// assert_eq!(
     ///     format!("{}", &w),
     ///     "┌     ┐\n\
@@ -170,17 +178,17 @@ impl Vector {
     ///      └     ┘"
     /// );
     /// ```
-    pub fn from<'a, T, U>(array: &'a T) -> Self
+    pub fn from<'a, S, U>(array: &'a S) -> Self
     where
-        T: AsArray1D<'a, U>,
-        U: 'a + Into<f64>,
+        S: AsArray1D<'a, U>,
+        U: 'a + Into<T>,
     {
         let dim = array.size();
-        let mut data = vec![0.0; dim];
+        let mut data = vec![T::zero(); dim];
         for i in 0..dim {
             data[i] = array.at(i).into();
         }
-        Vector { data }
+        GenericVector { data }
     }
 
     /// Returns evenly spaced numbers over a specified closed interval
@@ -188,35 +196,43 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::Vector;
-    /// let x = Vector::linspace(2.0, 3.0, 5);
-    /// let correct = "┌      ┐\n\
-    ///                │    2 │\n\
-    ///                │ 2.25 │\n\
-    ///                │  2.5 │\n\
-    ///                │ 2.75 │\n\
-    ///                │    3 │\n\
-    ///                └      ┘";
-    /// assert_eq!(format!("{}", x), correct);
+    /// use russell_lab::{GenericVector, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let x = GenericVector::<f64>::linspace(2.0, 3.0, 5)?;
+    ///     let correct = "┌      ┐\n\
+    ///                    │    2 │\n\
+    ///                    │ 2.25 │\n\
+    ///                    │  2.5 │\n\
+    ///                    │ 2.75 │\n\
+    ///                    │    3 │\n\
+    ///                    └      ┘";
+    ///     assert_eq!(format!("{}", x), correct);
+    ///     let indices = GenericVector::<usize>::linspace(0, 10, 4)?;
+    ///     assert_eq!(*indices.as_data(), [0, 3, 6, 9]);
+    ///     Ok(())
+    /// }
     /// ```
-    pub fn linspace(start: f64, stop: f64, count: usize) -> Self {
-        let mut res = Vector::new(count);
+    pub fn linspace(start: T, stop: T, count: usize) -> Result<Self, StrError> {
+        let mut res = GenericVector::new(count);
         if count == 0 {
-            return res;
+            return Ok(res);
         }
         res.data[0] = start;
         if count == 1 {
-            return res;
+            return Ok(res);
         }
         res.data[count - 1] = stop;
         if count == 2 {
-            return res;
+            return Ok(res);
         }
-        let step = (stop - start) / ((count - 1) as f64);
+        let den = cast::<usize, T>(count - 1).ok_or("cannot cast 'count' to the selected number type")?;
+        let step = (stop - start) / den;
         for i in 1..count {
-            res.data[i] = start + (i as f64) * step;
+            let p = cast::<usize, T>(i).ok_or("cannot cast increment to the selected number type")?;
+            res.data[i] = start + p * step;
         }
-        res
+        Ok(res)
     }
 
     /// Returns a mapped linear-space; evenly spaced numbers modified by a function
@@ -224,40 +240,46 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::Vector;
-    /// let x = Vector::mapped_linspace(0.0, 4.0, 5, |v| v * v);
-    /// assert_eq!(
-    ///     format!("{}", x),
-    ///     "┌    ┐\n\
-    ///      │  0 │\n\
-    ///      │  1 │\n\
-    ///      │  4 │\n\
-    ///      │  9 │\n\
-    ///      │ 16 │\n\
-    ///      └    ┘",
-    /// );
+    /// use russell_lab::{GenericVector, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let x = GenericVector::<f64>::mapped_linspace(0.0, 4.0, 5, |v| v * v)?;
+    ///     assert_eq!(
+    ///         format!("{}", x),
+    ///         "┌    ┐\n\
+    ///          │  0 │\n\
+    ///          │  1 │\n\
+    ///          │  4 │\n\
+    ///          │  9 │\n\
+    ///          │ 16 │\n\
+    ///          └    ┘",
+    ///     );
+    ///     Ok(())
+    /// }
     /// ```
-    pub fn mapped_linspace<F>(start: f64, stop: f64, count: usize, function: F) -> Self
+    pub fn mapped_linspace<F>(start: T, stop: T, count: usize, function: F) -> Result<Self, StrError>
     where
-        F: Fn(f64) -> f64,
+        F: Fn(T) -> T,
     {
-        let mut res = Vector::new(count);
+        let mut res = GenericVector::new(count);
         if count == 0 {
-            return res;
+            return Ok(res);
         }
         res.data[0] = function(start);
         if count == 1 {
-            return res;
+            return Ok(res);
         }
         res.data[count - 1] = function(stop);
         if count == 2 {
-            return res;
+            return Ok(res);
         }
-        let step = (stop - start) / ((count - 1) as f64);
+        let den = cast::<usize, T>(count - 1).ok_or("cannot cast 'count' to the selected number type")?;
+        let step = (stop - start) / den;
         for i in 1..count {
-            res.data[i] = function(start + (i as f64) * step);
+            let p = cast::<usize, T>(i).ok_or("cannot cast increment to the selected number type")?;
+            res.data[i] = function(start + p * step);
         }
-        res
+        Ok(res)
     }
 
     /// Returns the dimension (size) of this vector
@@ -265,37 +287,13 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::Vector;
-    /// let u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// # use russell_lab::GenericVector;
+    /// let u = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
     /// assert_eq!(u.dim(), 3);
     /// ```
     #[inline]
     pub fn dim(&self) -> usize {
         self.data.len()
-    }
-
-    /// Scales this vector
-    ///
-    /// ```text
-    /// u := alpha * u
-    /// ```
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use russell_lab::Vector;
-    /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
-    /// u.scale(0.5);
-    /// let correct = "┌     ┐\n\
-    ///                │ 0.5 │\n\
-    ///                │   1 │\n\
-    ///                │ 1.5 │\n\
-    ///                └     ┘";
-    /// assert_eq!(format!("{}", u), correct);
-    /// ```
-    pub fn scale(&mut self, alpha: f64) {
-        let n_i32: i32 = to_i32(self.data.len());
-        dscal(n_i32, alpha, &mut self.data, 1);
     }
 
     /// Fills this vector with a given value
@@ -307,8 +305,8 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::Vector;
-    /// let mut u = Vector::new(3);
+    /// # use russell_lab::GenericVector;
+    /// let mut u = GenericVector::<f64>::new(3);
     /// u.fill(8.8);
     /// let correct = "┌     ┐\n\
     ///                │ 8.8 │\n\
@@ -316,7 +314,7 @@ impl Vector {
     ///                │ 8.8 │\n\
     ///                └     ┘";
     /// assert_eq!(format!("{}", u), correct);
-    pub fn fill(&mut self, value: f64) {
+    pub fn fill(&mut self, value: T) {
         self.data.iter_mut().map(|x| *x = value).count();
     }
 
@@ -325,12 +323,12 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::Vector;
-    /// let u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// # use russell_lab::GenericVector;
+    /// let u = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
     /// assert_eq!(u.as_data(), &[1.0, 2.0, 3.0]);
     /// ```
     #[inline]
-    pub fn as_data(&self) -> &Vec<f64> {
+    pub fn as_data(&self) -> &Vec<T> {
         &self.data
     }
 
@@ -339,14 +337,14 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::Vector;
-    /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// # use russell_lab::GenericVector;
+    /// let mut u = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
     /// let data = u.as_mut_data();
     /// data[1] = 2.2;
     /// assert_eq!(data, &[1.0, 2.2, 3.0]);
     /// ```
     #[inline]
-    pub fn as_mut_data(&mut self) -> &mut Vec<f64> {
+    pub fn as_mut_data(&mut self) -> &mut Vec<T> {
         &mut self.data
     }
 
@@ -355,12 +353,12 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::Vector;
-    /// let u = Vector::from(&[1.0, 2.0]);
+    /// # use russell_lab::GenericVector;
+    /// let u = GenericVector::<f64>::from(&[1.0, 2.0]);
     /// assert_eq!(u.get(1), 2.0);
     /// ```
     #[inline]
-    pub fn get(&self, i: usize) -> f64 {
+    pub fn get(&self, i: usize) -> T {
         assert!(i < self.data.len());
         self.data[i]
     }
@@ -370,8 +368,8 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::Vector;
-    /// let mut u = Vector::from(&[1.0, 2.0]);
+    /// # use russell_lab::GenericVector;
+    /// let mut u = GenericVector::<f64>::from(&[1.0, 2.0]);
     /// u.set(1, -2.0);
     /// let correct = "┌    ┐\n\
     ///                │  1 │\n\
@@ -380,7 +378,7 @@ impl Vector {
     /// assert_eq!(format!("{}", u), correct);
     /// ```
     #[inline]
-    pub fn set(&mut self, i: usize, value: f64) {
+    pub fn set(&mut self, i: usize, value: T) {
         assert!(i < self.data.len());
         self.data[i] = value;
     }
@@ -394,8 +392,8 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::Vector;
-    /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// # use russell_lab::GenericVector;
+    /// let mut u = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
     /// u.map(|x| x * x);
     /// let correct = "┌   ┐\n\
     ///                │ 1 │\n\
@@ -406,7 +404,7 @@ impl Vector {
     /// ```
     pub fn map<F>(&mut self, function: F)
     where
-        F: Fn(f64) -> f64,
+        F: Fn(T) -> T,
     {
         for elem in self.data.iter_mut() {
             *elem = function(*elem);
@@ -422,8 +420,8 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::Vector;
-    /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// # use russell_lab::GenericVector;
+    /// let mut u = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
     /// u.map_with_index(|i, x| x * x + (i as f64));
     /// let correct = "┌    ┐\n\
     ///                │  1 │\n\
@@ -434,7 +432,7 @@ impl Vector {
     /// ```
     pub fn map_with_index<F>(&mut self, function: F)
     where
-        F: Fn(usize, f64) -> f64,
+        F: Fn(usize, T) -> T,
     {
         for (index, elem) in self.data.iter_mut().enumerate() {
             *elem = function(index, *elem);
@@ -446,8 +444,8 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::Vector;
-    /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// # use russell_lab::GenericVector;
+    /// let mut u = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
     /// let u_copy = u.get_copy();
     /// u.set(1, 5.0);
     /// let u_correct = "┌   ┐\n\
@@ -464,7 +462,7 @@ impl Vector {
     /// assert_eq!(format!("{}", u_copy), u_copy_correct);
     /// ```
     pub fn get_copy(&self) -> Self {
-        Vector {
+        GenericVector {
             data: self.data.to_vec(),
         }
     }
@@ -474,8 +472,8 @@ impl Vector {
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::Vector;
-    /// let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+    /// # use russell_lab::GenericVector;
+    /// let mut u = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
     /// let v = u.get_mapped(|v| 4.0 - v);
     /// u.set(1, 100.0);
     /// assert_eq!(
@@ -497,66 +495,27 @@ impl Vector {
     /// ```
     pub fn get_mapped<F>(&self, function: F) -> Self
     where
-        F: Fn(f64) -> f64,
+        F: Fn(T) -> T,
     {
         let mut data = self.data.to_vec();
         for elem in data.iter_mut() {
             *elem = function(*elem);
         }
-        Vector { data }
-    }
-
-    /// Returns the vector norm
-    ///
-    /// Computes one of:
-    ///
-    /// ```text
-    /// One:  1-norm (taxicab or sum of abs values)
-    ///
-    ///       ‖u‖_1 := sum_i |uᵢ|
-    ///
-    /// Euc:  Euclidean-norm
-    ///
-    ///       ‖u‖_2 = sqrt(Σ_i uᵢ⋅uᵢ)
-    ///
-    /// Max:  max-norm (inf-norm)
-    ///
-    ///       ‖u‖_max = max_i ( |uᵢ| ) == ‖u‖_∞
-    /// ```
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use russell_lab::{NormVec, Vector};
-    /// let u = Vector::from(&[2.0, -2.0, 2.0, -2.0, -3.0]);
-    /// assert_eq!(u.norm(NormVec::One), 11.0);
-    /// assert_eq!(u.norm(NormVec::Euc), 5.0);
-    /// assert_eq!(u.norm(NormVec::Max), 3.0);
-    /// ```
-    pub fn norm(&self, kind: NormVec) -> f64 {
-        let n = to_i32(self.data.len());
-        if n == 0 {
-            return 0.0;
-        }
-        match kind {
-            NormVec::One => dasum(n, &self.data, 1),
-            NormVec::Euc => dnrm2(n, &self.data, 1),
-            NormVec::Max => {
-                let idx = idamax(n, &self.data, 1);
-                f64::abs(self.data[idx as usize])
-            }
-        }
+        GenericVector { data }
     }
 }
 
-impl fmt::Display for Vector {
-    /// Generates a string representation of the Vector
+impl<T> fmt::Display for GenericVector<T>
+where
+    T: Num + NumCast + Copy + fmt::Display,
+{
+    /// Generates a string representation of the GenericVector
     ///
     /// # Example
     ///
     /// ```
-    /// use russell_lab::Vector;
-    /// let u = Vector::from(&[4.0, 3.0, 1.0, 0.0, -4.04]);
+    /// use russell_lab::GenericVector;
+    /// let u = GenericVector::<f64>::from(&[4.0, 3.0, 1.0, 0.0, -4.04]);
     /// assert_eq!(
     ///     format!("{}", u),
     ///     "┌       ┐\n\
@@ -606,32 +565,35 @@ impl fmt::Display for Vector {
     }
 }
 
-/// Allows to access Vector components using indices
+/// Allows to access GenericVector components using indices
 ///
 /// # Example
 ///
 /// ```
-/// use russell_lab::Vector;
-/// let u = Vector::from(&[-3.0, 1.2, 2.0]);
+/// use russell_lab::GenericVector;
+/// let u = GenericVector::<f64>::from(&[-3.0, 1.2, 2.0]);
 /// assert_eq!(u[0], -3.0);
 /// assert_eq!(u[1],  1.2);
 /// assert_eq!(u[2],  2.0);
 /// ```
-impl Index<usize> for Vector {
-    type Output = f64;
+impl<T> Index<usize> for GenericVector<T>
+where
+    T: Num + NumCast + Copy,
+{
+    type Output = T;
     #[inline]
     fn index(&self, index: usize) -> &Self::Output {
         &self.data[index]
     }
 }
 
-/// Allows to change Vector components using indices
+/// Allows to change GenericVector components using indices
 ///
 /// # Example
 ///
 /// ```
-/// use russell_lab::Vector;
-/// let mut u = Vector::from(&[-3.0, 1.2, 2.0]);
+/// use russell_lab::GenericVector;
+/// let mut u = GenericVector::<f64>::from(&[-3.0, 1.2, 2.0]);
 /// u[0] -= 10.0;
 /// u[1] += 10.0;
 /// u[2] += 20.0;
@@ -639,60 +601,69 @@ impl Index<usize> for Vector {
 /// assert_eq!(u[1],  11.2);
 /// assert_eq!(u[2],  22.0);
 /// ```
-impl IndexMut<usize> for Vector {
+impl<T> IndexMut<usize> for GenericVector<T>
+where
+    T: Num + NumCast + Copy,
+{
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.data[index]
     }
 }
 
-/// Allows to iterate over Vector components (move version)
+/// Allows to iterate over GenericVector components (move version)
 ///
 /// # Example
 ///
 /// ```
-/// use russell_lab::Vector;
-/// let u = Vector::from(&[10.0, 20.0, 30.0]);
+/// use russell_lab::GenericVector;
+/// let u = GenericVector::<f64>::from(&[10.0, 20.0, 30.0]);
 /// for (i, v) in u.into_iter().enumerate() {
 ///     assert_eq!(v, (10 * (i + 1)) as f64);
 /// }
 /// ```
-impl IntoIterator for Vector {
-    type Item = f64;
+impl<T> IntoIterator for GenericVector<T>
+where
+    T: Num + NumCast + Copy,
+{
+    type Item = T;
     type IntoIter = std::vec::IntoIter<Self::Item>;
     fn into_iter(self) -> Self::IntoIter {
         self.data.into_iter()
     }
 }
 
-/// Allows to iterate over Vector components (borrow version)
+/// Allows to iterate over GenericVector components (borrow version)
 ///
 /// # Example
 ///
 /// ```
-/// use russell_lab::Vector;
-/// let u = Vector::from(&[10.0, 20.0, 30.0]);
+/// use russell_lab::GenericVector;
+/// let u = GenericVector::<f64>::from(&[10.0, 20.0, 30.0]);
 /// let mut x = 10.0;
 /// for v in &u {
 ///     assert_eq!(*v, x);
 ///     x += 10.0;
 /// }
 /// ```
-impl<'a> IntoIterator for &'a Vector {
-    type Item = &'a f64;
-    type IntoIter = std::slice::Iter<'a, f64>;
+impl<'a, T> IntoIterator for &'a GenericVector<T>
+where
+    T: Num + NumCast + Copy,
+{
+    type Item = &'a T;
+    type IntoIter = std::slice::Iter<'a, T>;
     fn into_iter(self) -> Self::IntoIter {
         self.data.iter()
     }
 }
 
-/// Allows to iterate over Vector components (mutable version)
+/// Allows to iterate over GenericVector components (mutable version)
 ///
 /// # Example
 ///
 /// ```
-/// use russell_lab::Vector;
-/// let mut u = Vector::from(&[10.0, 20.0, 30.0]);
+/// use russell_lab::GenericVector;
+/// let mut u = GenericVector::<f64>::from(&[10.0, 20.0, 30.0]);
 /// let mut x = 100.0;
 /// for v in &mut u {
 ///     *v *= 10.0;
@@ -700,9 +671,12 @@ impl<'a> IntoIterator for &'a Vector {
 ///     x += 100.0;
 /// }
 /// ```
-impl<'a> IntoIterator for &'a mut Vector {
-    type Item = &'a mut f64;
-    type IntoIter = std::slice::IterMut<'a, f64>;
+impl<'a, T> IntoIterator for &'a mut GenericVector<T>
+where
+    T: Num + NumCast + Copy,
+{
+    type Item = &'a mut T;
+    type IntoIter = std::slice::IterMut<'a, T>;
     fn into_iter(self) -> Self::IntoIter {
         self.data.iter_mut()
     }
@@ -712,7 +686,8 @@ impl<'a> IntoIterator for &'a mut Vector {
 
 #[cfg(test)]
 mod tests {
-    use super::{NormVec, Vector};
+    use super::GenericVector;
+    use crate::StrError;
     use russell_chk::assert_vec_approx_eq;
     use std::fmt::Write;
 
@@ -730,13 +705,13 @@ mod tests {
 
     #[test]
     fn new_vector_works() {
-        let u = Vector::new(3);
+        let u = GenericVector::<f64>::new(3);
         assert_eq!(u.data, &[0.0, 0.0, 0.0])
     }
 
     #[test]
     fn filled_works() {
-        let u = Vector::filled(3, 5.0);
+        let u = GenericVector::<f64>::filled(3, 5.0);
         assert_eq!(u.data, &[5.0, 5.0, 5.0]);
     }
 
@@ -744,71 +719,79 @@ mod tests {
     fn from_works() {
         // heap-allocated 1D array (vector)
         let x_data = vec![1.0, 2.0, 3.0];
-        let x = Vector::from(&x_data);
+        let x = GenericVector::<f64>::from(&x_data);
         assert_eq!(x.data, &[1.0, 2.0, 3.0]);
 
         // heap-allocated 1D array (slice)
         let y_data: &[f64] = &[10.0, 20.0, 30.0];
-        let y = Vector::from(&y_data);
+        let y = GenericVector::<f64>::from(&y_data);
         assert_eq!(y.data, &[10.0, 20.0, 30.0]);
 
         // stack-allocated (fixed-size) 2D array
         let z_data = [100.0, 200.0, 300.0];
-        let z = Vector::from(&z_data);
+        let z = GenericVector::<f64>::from(&z_data);
         assert_eq!(z.data, &[100.0, 200.0, 300.0]);
     }
 
     #[test]
-    fn linspace_works() {
-        let x = Vector::linspace(0.0, 1.0, 11);
+    fn linspace_works() -> Result<(), StrError> {
+        let x = GenericVector::<f64>::linspace(0.0, 1.0, 11)?;
         let correct = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
         assert_vec_approx_eq!(x.data, correct, 1e-15);
 
-        let x = Vector::linspace(2.0, 3.0, 0);
+        let x = GenericVector::<f64>::linspace(2.0, 3.0, 0)?;
         assert_eq!(x.data.len(), 0);
 
-        let x = Vector::linspace(2.0, 3.0, 1);
+        let x = GenericVector::<f64>::linspace(2.0, 3.0, 1)?;
         assert_eq!(x.data.len(), 1);
         assert_eq!(x.data[0], 2.0);
 
-        let x = Vector::linspace(2.0, 3.0, 2);
+        let x = GenericVector::<f64>::linspace(2.0, 3.0, 2)?;
         assert_eq!(x.data.len(), 2);
         assert_eq!(x.data[0], 2.0);
         assert_eq!(x.data[1], 3.0);
+
+        let i = GenericVector::<usize>::linspace(0, 10, 0)?;
+        assert_eq!(i.data, []);
+        let i = GenericVector::<usize>::linspace(0, 10, 1)?;
+        assert_eq!(i.data, [0]);
+        let i = GenericVector::<usize>::linspace(0, 10, 2)?;
+        assert_eq!(i.data, [0, 10]);
+        let i = GenericVector::<usize>::linspace(0, 10, 3)?;
+        assert_eq!(i.data, [0, 5, 10]);
+        let i = GenericVector::<usize>::linspace(0, 10, 4)?;
+        assert_eq!(i.data, [0, 3, 6, 9]);
+        Ok(())
     }
 
     #[test]
-    fn mapped_linspace_works() {
-        let x = Vector::mapped_linspace(0.0, 4.0, 5, pow2);
+    fn mapped_linspace_works() -> Result<(), StrError> {
+        let x = GenericVector::<f64>::mapped_linspace(0.0, 4.0, 5, pow2)?;
         assert_eq!(x.data, &[0.0, 1.0, 4.0, 9.0, 16.0]);
 
-        let x = Vector::mapped_linspace(-1.0, 1.0, 5, f64::abs);
+        let x = GenericVector::<f64>::mapped_linspace(-1.0, 1.0, 5, f64::abs)?;
         assert_eq!(x.data, &[1.0, 0.5, 0.0, 0.5, 1.0]);
 
-        let x = Vector::mapped_linspace(2.0, 3.0, 0, pow3);
+        let x = GenericVector::<f64>::mapped_linspace(2.0, 3.0, 0, pow3)?;
         assert_eq!(x.data.len(), 0);
 
-        let x = Vector::mapped_linspace(2.0, 3.0, 1, pow3);
+        let x = GenericVector::<f64>::mapped_linspace(2.0, 3.0, 1, pow3)?;
         assert_eq!(x.data.len(), 1);
         assert_eq!(x.data[0], 8.0);
 
-        let x = Vector::mapped_linspace(2.0, 3.0, 2, pow3);
+        let x = GenericVector::<f64>::mapped_linspace(2.0, 3.0, 2, pow3)?;
         assert_eq!(x.data.len(), 2);
         assert_eq!(x.data[0], 8.0);
         assert_eq!(x.data[1], 27.0);
-    }
 
-    #[test]
-    fn scale_works() {
-        let mut u = Vector::from(&[6.0, 9.0, 12.0]);
-        u.scale(1.0 / 3.0);
-        let correct = &[2.0, 3.0, 4.0];
-        assert_vec_approx_eq!(u.data, correct, 1e-15);
+        let i = GenericVector::<usize>::mapped_linspace(0, 10, 4, |v| v * 2)?;
+        assert_eq!(i.data, [0, 6, 12, 18]);
+        Ok(())
     }
 
     #[test]
     fn fill_works() {
-        let mut u = Vector::from(&[6.0, 9.0, 12.0]);
+        let mut u = GenericVector::<f64>::from(&[6.0, 9.0, 12.0]);
         u.fill(7.7);
         let correct = &[7.7, 7.7, 7.7];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
@@ -816,13 +799,13 @@ mod tests {
 
     #[test]
     fn as_data_works() {
-        let u = Vector::from(&[1.0, 2.0, 3.0]);
+        let u = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
         assert_eq!(u.as_data(), &[1.0, 2.0, 3.0]);
     }
 
     #[test]
     fn as_mut_data_works() {
-        let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+        let mut u = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
         let data = u.as_mut_data();
         data[1] = 2.2;
         assert_eq!(data, &[1.0, 2.2, 3.0]);
@@ -831,13 +814,13 @@ mod tests {
     #[test]
     #[should_panic]
     fn get_panics_on_wrong_index() {
-        let u = Vector::new(1);
+        let u = GenericVector::<f64>::new(1);
         u.get(1);
     }
 
     #[test]
     fn get_works() {
-        let u = Vector::from(&[1.0, 2.0]);
+        let u = GenericVector::<f64>::from(&[1.0, 2.0]);
         assert_eq!(u.get(0), 1.0);
         assert_eq!(u.get(1), 2.0);
     }
@@ -845,13 +828,13 @@ mod tests {
     #[test]
     #[should_panic]
     fn set_panics_on_wrong_index() {
-        let mut u = Vector::new(1);
+        let mut u = GenericVector::<f64>::new(1);
         u.set(1, 1.0);
     }
 
     #[test]
     fn set_works() {
-        let mut u = Vector::from(&[1.0, 2.0]);
+        let mut u = GenericVector::<f64>::from(&[1.0, 2.0]);
         u.set(0, -1.0);
         u.set(1, -2.0);
         assert_eq!(u.data, &[-1.0, -2.0]);
@@ -859,7 +842,7 @@ mod tests {
 
     #[test]
     fn map_works() {
-        let mut u = Vector::from(&[-1.0, -2.0, -3.0]);
+        let mut u = GenericVector::<f64>::from(&[-1.0, -2.0, -3.0]);
         u.map(pow3);
         let correct = &[-1.0, -8.0, -27.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
@@ -867,7 +850,7 @@ mod tests {
 
     #[test]
     fn map_with_index_works() {
-        let mut u = Vector::from(&[-1.0, -2.0, -3.0]);
+        let mut u = GenericVector::<f64>::from(&[-1.0, -2.0, -3.0]);
         u.map_with_index(pow3_plus_i);
         let correct = &[-1.0, -7.0, -25.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
@@ -875,7 +858,7 @@ mod tests {
 
     #[test]
     fn get_copy_works() {
-        let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+        let mut u = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
         let u_copy = u.get_copy();
         u.set(0, 0.11);
         u.set(1, 0.22);
@@ -886,7 +869,7 @@ mod tests {
 
     #[test]
     fn get_mapped_works() {
-        let mut u = Vector::from(&[1.0, 2.0, 3.0]);
+        let mut u = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
         let v = u.get_mapped(pow2);
         u.set(0, 0.11);
         u.set(1, 0.22);
@@ -896,22 +879,10 @@ mod tests {
     }
 
     #[test]
-    fn norm_works() {
-        let u0 = Vector::new(0);
-        assert_eq!(u0.norm(NormVec::One), 0.0);
-        assert_eq!(u0.norm(NormVec::Euc), 0.0);
-        assert_eq!(u0.norm(NormVec::Max), 0.0);
-        let u = Vector::from(&[-3.0, 2.0, 1.0, 1.0, 1.0]);
-        assert_eq!(u.norm(NormVec::One), 8.0);
-        assert_eq!(u.norm(NormVec::Euc), 4.0);
-        assert_eq!(u.norm(NormVec::Max), 3.0);
-    }
-
-    #[test]
     fn display_works() {
-        let x0 = Vector::new(0);
+        let x0 = GenericVector::<f64>::new(0);
         assert_eq!(format!("{}", x0), "[]");
-        let mut x = Vector::new(3);
+        let mut x = GenericVector::<f64>::new(3);
         x.data[0] = 1.0;
         x.data[1] = 2.0;
         x.data[2] = 3.0;
@@ -927,7 +898,7 @@ mod tests {
 
     #[test]
     fn display_precision_works() {
-        let u = Vector::from(&[1.012444, 2.034123, 3.05678]);
+        let u = GenericVector::<f64>::from(&[1.012444, 2.034123, 3.05678]);
         assert_eq!(
             format!("{:.2}", u),
             "┌      ┐\n\
@@ -940,13 +911,13 @@ mod tests {
 
     #[test]
     fn debug_works() {
-        let u = Vector::new(1);
-        assert_eq!(format!("{:?}", u), "Vector { data: [0.0] }");
+        let u = GenericVector::<f64>::new(1);
+        assert_eq!(format!("{:?}", u), "GenericVector { data: [0.0] }");
     }
 
     #[test]
     fn index_works() {
-        let mut x = Vector::new(3);
+        let mut x = GenericVector::<f64>::new(3);
         x.data[0] = 1.0;
         x.data[1] = 2.0;
         x.data[2] = 3.0;
@@ -957,7 +928,7 @@ mod tests {
 
     #[test]
     fn index_mut_works() {
-        let mut x = Vector::new(3);
+        let mut x = GenericVector::<f64>::new(3);
         x.data[0] = 1.0;
         x.data[1] = 2.0;
         x.data[2] = 3.0;
@@ -969,7 +940,7 @@ mod tests {
 
     #[test]
     fn into_iterator_works() {
-        let mut x = Vector::new(3);
+        let mut x = GenericVector::<f64>::new(3);
         x.data[0] = 1.0;
         x.data[1] = 2.0;
         x.data[2] = 3.0;
@@ -1003,7 +974,7 @@ mod tests {
             }
             buf
         }
-        let mut x = Vector::new(3);
+        let mut x = GenericVector::<f64>::new(3);
         x.data[0] = 1.0;
         x.data[1] = 2.0;
         x.data[2] = 3.0;

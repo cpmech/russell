@@ -1,4 +1,5 @@
 use crate::matrix::Matrix;
+use crate::StrError;
 use russell_openblas::{dcopy, dgetrf, dgetri, to_i32};
 
 // constants
@@ -24,94 +25,92 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 /// ## First -- 2 x 2 square matrix
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// // import
-/// use russell_lab::*;
+/// use russell_lab::{inverse, Matrix, StrError};
 ///
-/// // set matrix
-/// let mut a = Matrix::from(&[
-///     [-1.0,  1.5],
-///     [ 1.0, -1.0],
-/// ]);
-/// let a_copy = a.get_copy();
+/// fn main() -> Result<(), StrError> {
+///     // set matrix
+///     let mut a = Matrix::from(&[
+///         [-1.0,  1.5],
+///         [ 1.0, -1.0],
+///     ]);
+///     let a_copy = a.get_copy();
 ///
-/// // compute inverse matrix
-/// let mut ai = Matrix::new(2, 2);
-/// inverse(&mut ai, &mut a)?;
+///     // compute inverse matrix
+///     let mut ai = Matrix::new(2, 2);
+///     inverse(&mut ai, &mut a)?;
 ///
-/// // compare with solution
-/// let ai_correct = "┌     ┐\n\
-///                   │ 2 3 │\n\
-///                   │ 2 2 │\n\
-///                   └     ┘";
-/// assert_eq!(format!("{}", ai), ai_correct);
+///     // compare with solution
+///     let ai_correct = "┌     ┐\n\
+///                       │ 2 3 │\n\
+///                       │ 2 2 │\n\
+///                       └     ┘";
+///     assert_eq!(format!("{}", ai), ai_correct);
 ///
-/// // check if a⋅ai == identity
-/// let (m, n) = a.dims();
-/// let mut a_ai = Matrix::new(m, m);
-/// for i in 0..m {
-///     for j in 0..m {
-///         for k in 0..n {
-///             a_ai[i][j] += a_copy[i][k] * ai[k][j];
+///     // check if a⋅ai == identity
+///     let (m, n) = a.dims();
+///     let mut a_ai = Matrix::new(m, m);
+///     for i in 0..m {
+///         for j in 0..m {
+///             for k in 0..n {
+///                 a_ai[i][j] += a_copy[i][k] * ai[k][j];
+///             }
 ///         }
 ///     }
+///     let identity = "┌     ┐\n\
+///                     │ 1 0 │\n\
+///                     │ 0 1 │\n\
+///                     └     ┘";
+///     assert_eq!(format!("{}", a_ai), identity);
+///     Ok(())
 /// }
-/// let identity = "┌     ┐\n\
-///                 │ 1 0 │\n\
-///                 │ 0 1 │\n\
-///                 └     ┘";
-/// assert_eq!(format!("{}", a_ai), identity);
-/// # Ok(())
-/// # }
 /// ```
 ///
 /// ## Second -- 3 x 3 square matrix
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// // import
-/// use russell_lab::*;
+/// use russell_lab::{inverse, Matrix, StrError};
 ///
-/// // set matrix
-/// let mut a = Matrix::from(&[
-///     [1.0, 2.0, 3.0],
-///     [0.0, 1.0, 4.0],
-///     [5.0, 6.0, 0.0],
-/// ]);
-/// let a_copy = a.get_copy();
+/// fn main() -> Result<(), StrError> {
+///     // set matrix
+///     let mut a = Matrix::from(&[
+///         [1.0, 2.0, 3.0],
+///         [0.0, 1.0, 4.0],
+///         [5.0, 6.0, 0.0],
+///     ]);
+///     let a_copy = a.get_copy();
 ///
-/// // compute inverse matrix
-/// let mut ai = Matrix::new(3, 3);
-/// inverse(&mut ai, &mut a)?;
+///     // compute inverse matrix
+///     let mut ai = Matrix::new(3, 3);
+///     inverse(&mut ai, &mut a)?;
 ///
-/// // compare with solution
-/// let ai_correct = "┌             ┐\n\
-///                   │ -24  18   5 │\n\
-///                   │  20 -15  -4 │\n\
-///                   │  -5   4   1 │\n\
-///                   └             ┘";
-/// assert_eq!(format!("{}", ai), ai_correct);
+///     // compare with solution
+///     let ai_correct = "┌             ┐\n\
+///                       │ -24  18   5 │\n\
+///                       │  20 -15  -4 │\n\
+///                       │  -5   4   1 │\n\
+///                       └             ┘";
+///     assert_eq!(format!("{}", ai), ai_correct);
 ///
-/// // check if a⋅ai == identity
-/// let (m, n) = a.dims();
-/// let mut a_ai = Matrix::new(m, m);
-/// for i in 0..m {
-///     for j in 0..m {
-///         for k in 0..n {
-///             a_ai[i][j] += a_copy[i][k] * ai[k][j];
+///     // check if a⋅ai == identity
+///     let (m, n) = a.dims();
+///     let mut a_ai = Matrix::new(m, m);
+///     for i in 0..m {
+///         for j in 0..m {
+///             for k in 0..n {
+///                 a_ai[i][j] += a_copy[i][k] * ai[k][j];
+///             }
 ///         }
 ///     }
+///     let identity = "┌       ┐\n\
+///                     │ 1 0 0 │\n\
+///                     │ 0 1 0 │\n\
+///                     │ 0 0 1 │\n\
+///                     └       ┘";
+///     assert_eq!(format!("{}", a_ai), identity);
+///     Ok(())
 /// }
-/// let identity = "┌       ┐\n\
-///                 │ 1 0 0 │\n\
-///                 │ 0 1 0 │\n\
-///                 │ 0 0 1 │\n\
-///                 └       ┘";
-/// assert_eq!(format!("{}", a_ai), identity);
-/// # Ok(())
-/// # }
 /// ```
-pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, &'static str> {
+pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
     // check
     let (m, n) = a.dims();
     if m != n {
@@ -205,7 +204,8 @@ pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, &'static str> {
 #[cfg(test)]
 mod tests {
     use super::{inverse, Matrix, ZERO_DETERMINANT};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
 
     /// Computes a⋅ai that should equal I for a square matrix
     fn get_a_times_ai(a: &Matrix, ai: &Matrix) -> Matrix {
@@ -233,7 +233,7 @@ mod tests {
     }
 
     #[test]
-    fn inverse_0x0_works() -> Result<(), &'static str> {
+    fn inverse_0x0_works() -> Result<(), StrError> {
         let mut a = Matrix::new(0, 0);
         let mut ai = Matrix::new(0, 0);
         let det = inverse(&mut ai, &mut a)?;
@@ -243,7 +243,7 @@ mod tests {
     }
 
     #[test]
-    fn inverse_1x1_works() -> Result<(), &'static str> {
+    fn inverse_1x1_works() -> Result<(), StrError> {
         let data = [[2.0]];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(1, 1);
@@ -257,7 +257,7 @@ mod tests {
     }
 
     #[test]
-    fn inverse_1x1_fails_on_zero_det() -> Result<(), &'static str> {
+    fn inverse_1x1_fails_on_zero_det() -> Result<(), StrError> {
         let mut a = Matrix::from(&[[ZERO_DETERMINANT / 10.0]]);
         let mut ai = Matrix::new(1, 1);
         let res = inverse(&mut ai, &mut a);
@@ -266,7 +266,7 @@ mod tests {
     }
 
     #[test]
-    fn inverse_2x2_works() -> Result<(), &'static str> {
+    fn inverse_2x2_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let data = [
             [1.0, 2.0],
@@ -284,7 +284,7 @@ mod tests {
     }
 
     #[test]
-    fn inverse_2x2_fails_on_zero_det() -> Result<(), &'static str> {
+    fn inverse_2x2_fails_on_zero_det() -> Result<(), StrError> {
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
             [   -1.0, 3.0/2.0],
@@ -297,7 +297,7 @@ mod tests {
     }
 
     #[test]
-    fn inverse_3x3_works() -> Result<(), &'static str> {
+    fn inverse_3x3_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let data = [
             [1.0, 2.0, 3.0],
@@ -323,7 +323,7 @@ mod tests {
     }
 
     #[test]
-    fn inverse_3x3_fails_on_zero_det() -> Result<(), &'static str> {
+    fn inverse_3x3_fails_on_zero_det() -> Result<(), StrError> {
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
             [1.0, 0.0, 3.0],
@@ -337,7 +337,7 @@ mod tests {
     }
 
     #[test]
-    fn inverse_4x4_works() -> Result<(), &'static str> {
+    fn inverse_4x4_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let data = [
             [ 3.0,  0.0,  2.0, -1.0],
@@ -365,7 +365,7 @@ mod tests {
     }
 
     #[test]
-    fn inverse_5x5_works() -> Result<(), &'static str> {
+    fn inverse_5x5_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let data = [
             [12.0, 28.0, 22.0, 20.0,  8.0],
@@ -395,7 +395,7 @@ mod tests {
     }
 
     #[test]
-    fn inverse_6x6_works() -> Result<(), &'static str> {
+    fn inverse_6x6_works() -> Result<(), StrError> {
         // NOTE: this matrix is nearly non-invertible; it originated from an FEM analysis
         #[rustfmt::skip]
         let data = [

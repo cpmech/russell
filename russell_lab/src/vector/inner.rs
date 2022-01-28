@@ -14,7 +14,7 @@ use russell_openblas::{ddot, to_i32};
 /// # Example
 ///
 /// ```
-/// use russell_lab::*;
+/// use russell_lab::{inner, Vector};
 /// let u = Vector::from(&[1.0, 2.0, 3.0]);
 /// let v = Vector::from(&[5.0, -2.0, 0.0, 1.0]);
 /// let s = inner(&u, &v);

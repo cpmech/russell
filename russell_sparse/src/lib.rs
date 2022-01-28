@@ -5,10 +5,10 @@
 //! # Example - solving a sparse linear system
 //!
 //! ```
-//! use russell_lab::*;
-//! use russell_sparse::*;
+//! use russell_lab::{Matrix, Vector};
+//! use russell_sparse::{ConfigSolver, Solver, SparseTriplet, Symmetry, StrError};
 //!
-//! fn main() -> Result<(), &'static str> {
+//! fn main() -> Result<(), StrError> {
 //!
 //!     // allocate a square matrix
 //!     let mut trip = SparseTriplet::new(5, 5, 13, Symmetry::No)?;
@@ -65,6 +65,9 @@
 pub fn desc() -> String {
     "Sparse matrix tools and solvers".to_string()
 }
+
+/// Defines a type alias for the error type as a static string
+pub type StrError = &'static str;
 
 mod config_solver;
 mod enums;

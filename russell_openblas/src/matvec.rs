@@ -1,4 +1,5 @@
 use super::{cblas_transpose, to_i32, CBLAS_ROW_MAJOR, LAPACK_ROW_MAJOR};
+use crate::StrError;
 
 #[rustfmt::skip]
 extern "C" {
@@ -127,7 +128,7 @@ pub fn dgemv(
 /// <http://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
 ///
 #[inline]
-pub fn dgesv(n: i32, nrhs: i32, a: &mut [f64], ipiv: &mut [i32], b: &mut [f64]) -> Result<(), &'static str> {
+pub fn dgesv(n: i32, nrhs: i32, a: &mut [f64], ipiv: &mut [i32], b: &mut [f64]) -> Result<(), StrError> {
     unsafe {
         let ipiv_len: i32 = to_i32(ipiv.len());
         if ipiv_len != n {
@@ -155,8 +156,8 @@ pub fn dgesv(n: i32, nrhs: i32, a: &mut [f64], ipiv: &mut [i32], b: &mut [f64]) 
 #[cfg(test)]
 mod tests {
     use super::{dgemv, dger, dgesv};
-    use crate::to_i32;
-    use russell_chk::*;
+    use crate::{to_i32, StrError};
+    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn dger_works() {
@@ -239,7 +240,7 @@ mod tests {
     }
 
     #[test]
-    fn dgesv_works() -> Result<(), &'static str> {
+    fn dgesv_works() -> Result<(), StrError> {
         // matrix
         #[rustfmt::skip]
         let mut a = [

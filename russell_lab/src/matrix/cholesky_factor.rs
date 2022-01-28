@@ -1,4 +1,5 @@
 use super::Matrix;
+use crate::StrError;
 use russell_openblas::{dpotrf, to_i32};
 
 /// Performs the Cholesky factorization of a symmetric positive-definite matrix
@@ -14,49 +15,48 @@ use russell_openblas::{dpotrf, to_i32};
 /// # Examples
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// // import
-/// use russell_lab::*;
+/// use russell_lab::{cholesky_factor, Matrix, StrError};
 ///
-/// // set matrix
-/// let a = Matrix::from(&[
-///     [  4.0,  12.0, -16.0],
-///     [ 12.0,  37.0, -43.0],
-///     [-16.0, -43.0,  98.0],
-/// ]);
+/// fn main() -> Result<(), StrError> {
+///     // set matrix
+///     let a = Matrix::from(&[
+///         [  4.0,  12.0, -16.0],
+///         [ 12.0,  37.0, -43.0],
+///         [-16.0, -43.0,  98.0],
+///     ]);
 ///
-/// // perform factorization
-/// let m = a.nrow();
-/// let mut l = Matrix::new(m, m);
-/// cholesky_factor(&mut l, &a)?;
+///     // perform factorization
+///     let m = a.nrow();
+///     let mut l = Matrix::new(m, m);
+///     cholesky_factor(&mut l, &a)?;
 ///
-/// // compare with solution
-/// let l_correct = "┌          ┐\n\
-///                  │  2  0  0 │\n\
-///                  │  6  1  0 │\n\
-///                  │ -8  5  3 │\n\
-///                  └          ┘";
-/// assert_eq!(format!("{}", l), l_correct);
+///     // compare with solution
+///     let l_correct = "┌          ┐\n\
+///                      │  2  0  0 │\n\
+///                      │  6  1  0 │\n\
+///                      │ -8  5  3 │\n\
+///                      └          ┘";
+///     assert_eq!(format!("{}", l), l_correct);
 ///
-/// // check if l⋅lᵀ == a
-/// let mut l_lt = Matrix::new(m, m);
-/// for i in 0..m {
-///     for j in 0..m {
-///         for k in 0..m {
-///             l_lt[i][j] += l[i][k] * l[j][k];
+///     // check if l⋅lᵀ == a
+///     let mut l_lt = Matrix::new(m, m);
+///     for i in 0..m {
+///         for j in 0..m {
+///             for k in 0..m {
+///                 l_lt[i][j] += l[i][k] * l[j][k];
+///             }
 ///         }
 ///     }
+///     let l_lt_correct = "┌             ┐\n\
+///                         │   4  12 -16 │\n\
+///                         │  12  37 -43 │\n\
+///                         │ -16 -43  98 │\n\
+///                         └             ┘";
+///     assert_eq!(format!("{}", l), l_correct);
+///     Ok(())
 /// }
-/// let l_lt_correct = "┌             ┐\n\
-///                     │   4  12 -16 │\n\
-///                     │  12  37 -43 │\n\
-///                     │ -16 -43  98 │\n\
-///                     └             ┘";
-/// assert_eq!(format!("{}", l), l_correct);
-/// # Ok(())
-/// # }
 /// ```
-pub fn cholesky_factor(l: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
+pub fn cholesky_factor(l: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
     // check
     let (m, n) = a.dims();
     if m != n {
@@ -90,7 +90,8 @@ pub fn cholesky_factor(l: &mut Matrix, a: &Matrix) -> Result<(), &'static str> {
 #[cfg(test)]
 mod tests {
     use super::{cholesky_factor, Matrix};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn cholesky_factor_fails_on_wrong_dims() {
@@ -105,7 +106,7 @@ mod tests {
     }
 
     #[test]
-    fn cholesky_factor_3x3_works() -> Result<(), &'static str> {
+    fn cholesky_factor_3x3_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [25.0, 15.0, -5.0],
@@ -135,7 +136,7 @@ mod tests {
     }
 
     #[test]
-    fn cholesky_factor_5x5_works() -> Result<(), &'static str> {
+    fn cholesky_factor_5x5_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [2.0, 1.0, 1.0, 3.0, 2.0],

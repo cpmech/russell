@@ -5,7 +5,8 @@
 //! # Example
 //!
 //! ```
-//! # use russell_chk::*;
+//! use russell_chk::{assert_approx_eq, assert_vec_approx_eq, assert_deriv_approx_eq};
+//!
 //! // check float point number
 //! assert_approx_eq!(0.0000123, 0.000012, 1e-6);
 //!
@@ -25,6 +26,9 @@
 pub fn desc() -> String {
     "Functions to check vectors and other data in tests".to_string()
 }
+
+/// Defines a type alias for the error type as a static string
+pub type StrError = &'static str;
 
 mod assert_approx_eq;
 mod assert_deriv_approx_eq;

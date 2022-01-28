@@ -58,10 +58,10 @@ export OPENBLAS_NUM_THREADS=1
 ### Solve a sparse linear system
 
 ```rust
-use russell_lab::*;
-use russell_sparse::*;
+use russell_lab::{Matrix, Vector};
+use russell_sparse::{ConfigSolver, Solver, SparseTriplet, Symmetry, StrError};
 
-fn main() -> Result<(), &'static str> {
+fn main() -> Result<(), StrError> {
     // allocate a square matrix
     let mut trip = SparseTriplet::new(3, 3, 5, Symmetry::No)?;
     trip.put(0, 0, 0.2);

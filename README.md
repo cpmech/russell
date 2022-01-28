@@ -66,9 +66,9 @@ export OPENBLAS_NUM_THREADS=1
 ### Compute a singular value decomposition
 
 ```rust
-use russell_lab::*;
+use russell_lab::{sv_decomp, Matrix, Vector, StrError};
 
-fn main() -> Result<(), &'static str> {
+fn main() -> Result<(), StrError> {
     // set matrix
     let mut a = Matrix::from(&[
         [2.0, 4.0],
@@ -131,9 +131,9 @@ fn main() -> Result<(), &'static str> {
 ### Solve a linear system
 
 ```rust
-use russell_lab::*;
+use russell_lab::{solve_lin_sys, Matrix, Vector, StrError};
 
-fn main() -> Result<(), &'static str> {
+fn main() -> Result<(), StrError> {
     // set matrix and right-hand side
     let mut a = Matrix::from(&[
         [1.0,  3.0, -2.0],
@@ -159,10 +159,10 @@ fn main() -> Result<(), &'static str> {
 ### Solve a sparse linear system
 
 ```rust
-use russell_lab::*;
-use russell_sparse::*;
+use russell_lab::{Matrix, Vector, StrError};
+use russell_sparse::{ConfigSolver, Solver, SparseTriplet, Symmetry};
 
-fn main() -> Result<(), &'static str> {
+fn main() -> Result<(), StrError> {
 
     // allocate a square matrix
     let mut trip = SparseTriplet::new(5, 5, 13, Symmetry::No)?;

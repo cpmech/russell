@@ -2,6 +2,7 @@ use super::{
     code_symmetry_mmp, code_symmetry_umf, str_enum_ordering, str_enum_scaling, str_mmp_ordering, str_mmp_scaling,
     str_umf_ordering, str_umf_scaling, ConfigSolver, LinSol, SparseTriplet,
 };
+use crate::StrError;
 use russell_lab::{copy_vector, format_nanoseconds, Stopwatch, Vector};
 use russell_openblas::to_i32;
 use std::fmt;
@@ -82,7 +83,7 @@ pub struct Solver {
 
 impl Solver {
     /// Creates a new solver
-    pub fn new(config: ConfigSolver) -> Result<Self, &'static str> {
+    pub fn new(config: ConfigSolver) -> Result<Self, StrError> {
         let used_ordering = str_enum_ordering(config.ordering);
         let used_scaling = str_enum_scaling(config.scaling);
         unsafe {
@@ -110,7 +111,7 @@ impl Solver {
     }
 
     /// Initializes the solver
-    pub fn initialize(&mut self, trip: &SparseTriplet) -> Result<(), &'static str> {
+    pub fn initialize(&mut self, trip: &SparseTriplet) -> Result<(), StrError> {
         if trip.nrow != trip.ncol {
             return Err("the matrix represented by the triplet must be square");
         }
@@ -180,7 +181,7 @@ impl Solver {
     }
 
     /// Performs the factorization
-    pub fn factorize(&mut self) -> Result<(), &'static str> {
+    pub fn factorize(&mut self) -> Result<(), StrError> {
         if !self.done_initialize {
             return Err("initialization must be done before factorization");
         }
@@ -219,61 +220,61 @@ impl Solver {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_lab::*;
-    /// use russell_sparse::*;
+    /// use russell_lab::{Matrix, Vector};
+    /// use russell_sparse::{ConfigSolver, SparseTriplet, Solver, Symmetry, StrError};
     ///
-    /// // allocate a square matrix
-    /// let mut trip = SparseTriplet::new(5, 5, 13, Symmetry::No)?;
-    /// trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-    /// trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-    /// trip.put(1, 0, 3.0);
-    /// trip.put(0, 1, 3.0);
-    /// trip.put(2, 1, -1.0);
-    /// trip.put(4, 1, 4.0);
-    /// trip.put(1, 2, 4.0);
-    /// trip.put(2, 2, -3.0);
-    /// trip.put(3, 2, 1.0);
-    /// trip.put(4, 2, 2.0);
-    /// trip.put(2, 3, 2.0);
-    /// trip.put(1, 4, 6.0);
-    /// trip.put(4, 4, 1.0);
+    /// fn main() -> Result<(), StrError> {
+    ///     // allocate a square matrix
+    ///     let mut trip = SparseTriplet::new(5, 5, 13, Symmetry::No)?;
+    ///     trip.put(0, 0, 1.0); // << (0, 0, a00/2)
+    ///     trip.put(0, 0, 1.0); // << (0, 0, a00/2)
+    ///     trip.put(1, 0, 3.0);
+    ///     trip.put(0, 1, 3.0);
+    ///     trip.put(2, 1, -1.0);
+    ///     trip.put(4, 1, 4.0);
+    ///     trip.put(1, 2, 4.0);
+    ///     trip.put(2, 2, -3.0);
+    ///     trip.put(3, 2, 1.0);
+    ///     trip.put(4, 2, 2.0);
+    ///     trip.put(2, 3, 2.0);
+    ///     trip.put(1, 4, 6.0);
+    ///     trip.put(4, 4, 1.0);
     ///
-    /// // print matrix
-    /// let (m, n) = trip.dims();
-    /// let mut a = Matrix::new(m, n);
-    /// trip.to_matrix(&mut a)?;
-    /// let correct = "┌                ┐\n\
-    ///                │  2  3  0  0  0 │\n\
-    ///                │  3  0  4  0  6 │\n\
-    ///                │  0 -1 -3  2  0 │\n\
-    ///                │  0  0  1  0  0 │\n\
-    ///                │  0  4  2  0  1 │\n\
-    ///                └                ┘";
-    /// assert_eq!(format!("{}", a), correct);
+    ///     // print matrix
+    ///     let (m, n) = trip.dims();
+    ///     let mut a = Matrix::new(m, n);
+    ///     trip.to_matrix(&mut a)?;
+    ///     let correct = "┌                ┐\n\
+    ///                    │  2  3  0  0  0 │\n\
+    ///                    │  3  0  4  0  6 │\n\
+    ///                    │  0 -1 -3  2  0 │\n\
+    ///                    │  0  0  1  0  0 │\n\
+    ///                    │  0  4  2  0  1 │\n\
+    ///                    └                ┘";
+    ///     assert_eq!(format!("{}", a), correct);
     ///
-    /// // allocate x and rhs
-    /// let mut x = Vector::new(5);
-    /// let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
+    ///     // allocate x and rhs
+    ///     let mut x = Vector::new(5);
+    ///     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
     ///
-    /// // initialize, factorize, and solve
-    /// let config = ConfigSolver::new();
-    /// let mut solver = Solver::new(config)?;
-    /// solver.initialize(&trip)?;
-    /// solver.factorize()?;
-    /// solver.solve(&mut x, &rhs)?;
-    /// let correct = "┌          ┐\n\
-    ///                │ 1.000000 │\n\
-    ///                │ 2.000000 │\n\
-    ///                │ 3.000000 │\n\
-    ///                │ 4.000000 │\n\
-    ///                │ 5.000000 │\n\
-    ///                └          ┘";
-    /// assert_eq!(format!("{:.6}", x), correct);
-    /// # Ok(())
-    /// # }
+    ///     // initialize, factorize, and solve
+    ///     let config = ConfigSolver::new();
+    ///     let mut solver = Solver::new(config)?;
+    ///     solver.initialize(&trip)?;
+    ///     solver.factorize()?;
+    ///     solver.solve(&mut x, &rhs)?;
+    ///     let correct = "┌          ┐\n\
+    ///                    │ 1.000000 │\n\
+    ///                    │ 2.000000 │\n\
+    ///                    │ 3.000000 │\n\
+    ///                    │ 4.000000 │\n\
+    ///                    │ 5.000000 │\n\
+    ///                    └          ┘";
+    ///     assert_eq!(format!("{:.6}", x), correct);
+    ///     Ok(())
+    /// }
     /// ```
-    pub fn solve(&mut self, x: &mut Vector, rhs: &Vector) -> Result<(), &'static str> {
+    pub fn solve(&mut self, x: &mut Vector, rhs: &Vector) -> Result<(), StrError> {
         if !self.done_factorize {
             return Err("factorization must be done before solution");
         }
@@ -329,56 +330,56 @@ impl Solver {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_lab::*;
-    /// use russell_sparse::*;
+    /// use russell_lab::{Matrix, Vector};
+    /// use russell_sparse::{ConfigSolver, Solver, SparseTriplet, Symmetry, StrError};
     ///
-    /// // allocate a square matrix
-    /// let mut trip = SparseTriplet::new(3, 3, 5, Symmetry::No)?;
-    /// trip.put(0, 0, 0.2);
-    /// trip.put(0, 1, 0.2);
-    /// trip.put(1, 0, 0.5);
-    /// trip.put(1, 1, -0.25);
-    /// trip.put(2, 2, 0.25);
+    /// fn main() -> Result<(), StrError> {
+    ///     // allocate a square matrix
+    ///     let mut trip = SparseTriplet::new(3, 3, 5, Symmetry::No)?;
+    ///     trip.put(0, 0, 0.2);
+    ///     trip.put(0, 1, 0.2);
+    ///     trip.put(1, 0, 0.5);
+    ///     trip.put(1, 1, -0.25);
+    ///     trip.put(2, 2, 0.25);
     ///
-    /// // print matrix
-    /// let (m, n) = trip.dims();
-    /// let mut a = Matrix::new(m, n);
-    /// trip.to_matrix(&mut a)?;
-    /// let correct = "┌                   ┐\n\
-    ///                │   0.2   0.2     0 │\n\
-    ///                │   0.5 -0.25     0 │\n\
-    ///                │     0     0  0.25 │\n\
-    ///                └                   ┘";
-    /// assert_eq!(format!("{}", a), correct);
+    ///     // print matrix
+    ///     let (m, n) = trip.dims();
+    ///     let mut a = Matrix::new(m, n);
+    ///     trip.to_matrix(&mut a)?;
+    ///     let correct = "┌                   ┐\n\
+    ///                    │   0.2   0.2     0 │\n\
+    ///                    │   0.5 -0.25     0 │\n\
+    ///                    │     0     0  0.25 │\n\
+    ///                    └                   ┘";
+    ///     assert_eq!(format!("{}", a), correct);
     ///
-    /// // allocate rhs
-    /// let rhs1 = Vector::from(&[1.0, 1.0, 1.0]);
-    /// let rhs2 = Vector::from(&[2.0, 2.0, 2.0]);
+    ///     // allocate rhs
+    ///     let rhs1 = Vector::from(&[1.0, 1.0, 1.0]);
+    ///     let rhs2 = Vector::from(&[2.0, 2.0, 2.0]);
     ///
-    /// // calculate solution
-    /// let config = ConfigSolver::new();
-    /// let (mut solver, x1) = Solver::compute(config, &trip, &rhs1)?;
-    /// let correct1 = "┌   ┐\n\
-    ///                 │ 3 │\n\
-    ///                 │ 2 │\n\
-    ///                 │ 4 │\n\
-    ///                 └   ┘";
-    /// assert_eq!(format!("{}", x1), correct1);
+    ///     // calculate solution
+    ///     let config = ConfigSolver::new();
+    ///     let (mut solver, x1) = Solver::compute(config, &trip, &rhs1)?;
+    ///     let correct1 = "┌   ┐\n\
+    ///                     │ 3 │\n\
+    ///                     │ 2 │\n\
+    ///                     │ 4 │\n\
+    ///                     └   ┘";
+    ///     assert_eq!(format!("{}", x1), correct1);
     ///
-    /// // solve again
-    /// let mut x2 = Vector::new(trip.dims().0);
-    /// solver.solve(&mut x2, &rhs2)?;
-    /// let correct2 = "┌   ┐\n\
-    ///                 │ 6 │\n\
-    ///                 │ 4 │\n\
-    ///                 │ 8 │\n\
-    ///                 └   ┘";
-    /// assert_eq!(format!("{}", x2), correct2);
-    /// # Ok(())
-    /// # }
+    ///     // solve again
+    ///     let mut x2 = Vector::new(trip.dims().0);
+    ///     solver.solve(&mut x2, &rhs2)?;
+    ///     let correct2 = "┌   ┐\n\
+    ///                     │ 6 │\n\
+    ///                     │ 4 │\n\
+    ///                     │ 8 │\n\
+    ///                     └   ┘";
+    ///     assert_eq!(format!("{}", x2), correct2);
+    ///     Ok(())
+    /// }
     /// ```
-    pub fn compute(config: ConfigSolver, trip: &SparseTriplet, rhs: &Vector) -> Result<(Self, Vector), &'static str> {
+    pub fn compute(config: ConfigSolver, trip: &SparseTriplet, rhs: &Vector) -> Result<(Self, Vector), StrError> {
         let mut solver = Solver::new(config)?;
         let mut x = Vector::new(trip.dims().0);
         solver.initialize(&trip)?;
@@ -396,21 +397,22 @@ impl Solver {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> Result<(), &'static str> {
-    /// use russell_sparse::*;
-    /// let config = ConfigSolver::new();
-    /// let solver = Solver::new(config)?;
-    /// let times = solver.get_elapsed_times();
-    /// assert_eq!(times, (0, 0, 0));
-    /// # Ok(())
-    /// # }
+    /// use russell_sparse::{ConfigSolver, Solver, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let config = ConfigSolver::new();
+    ///     let solver = Solver::new(config)?;
+    ///     let times = solver.get_elapsed_times();
+    ///     assert_eq!(times, (0, 0, 0));
+    ///     Ok(())
+    /// }
     /// ```
     pub fn get_elapsed_times(&self) -> (u128, u128, u128) {
         (self.time_init, self.time_fact, self.time_solve)
     }
 
     /// Handles error code
-    fn handle_mmp_error_code(&self, err: i32) -> &'static str {
+    fn handle_mmp_error_code(&self, err: i32) -> StrError {
         match err {
             -1 => "Error(-1): error on some processor",
             -2 => "Error(-2): nnz is out of range",
@@ -491,7 +493,7 @@ impl Solver {
     }
 
     /// Handles UMF error code
-    fn handle_umf_error_code(&self, err: i32) -> &'static str {
+    fn handle_umf_error_code(&self, err: i32) -> StrError {
         match err {
             1 => return "Error(1): Matrix is singular",
             2 => return "Error(2): The determinant is nonzero, but smaller than allowed",
@@ -570,12 +572,12 @@ impl fmt::Display for Solver {
 #[cfg(test)]
 mod tests {
     use super::{ConfigSolver, LinSol, Solver, SparseTriplet};
-    use crate::Symmetry;
-    use russell_chk::*;
+    use crate::{StrError, Symmetry};
+    use russell_chk::assert_vec_approx_eq;
     use russell_lab::Vector;
 
     #[test]
-    fn new_works() -> Result<(), &'static str> {
+    fn new_works() -> Result<(), StrError> {
         let config = ConfigSolver::new();
         let solver = Solver::new(config)?;
         assert_eq!(solver.solver.is_null(), false);
@@ -583,7 +585,7 @@ mod tests {
     }
 
     #[test]
-    fn initialize_fails_on_rect_matrix() -> Result<(), &'static str> {
+    fn initialize_fails_on_rect_matrix() -> Result<(), StrError> {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let trip_rect = SparseTriplet::new(3, 2, 1, Symmetry::No)?;
@@ -595,7 +597,7 @@ mod tests {
     }
 
     #[test]
-    fn initialize_works() -> Result<(), &'static str> {
+    fn initialize_works() -> Result<(), StrError> {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
@@ -607,7 +609,7 @@ mod tests {
     }
 
     #[test]
-    fn factorize_fails_on_non_initialized() -> Result<(), &'static str> {
+    fn factorize_fails_on_non_initialized() -> Result<(), StrError> {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         assert_eq!(
@@ -618,7 +620,7 @@ mod tests {
     }
 
     #[test]
-    fn factorize_fails_on_singular_matrix() -> Result<(), &'static str> {
+    fn factorize_fails_on_singular_matrix() -> Result<(), StrError> {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
@@ -630,7 +632,7 @@ mod tests {
     }
 
     #[test]
-    fn factorize_works() -> Result<(), &'static str> {
+    fn factorize_works() -> Result<(), StrError> {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
@@ -643,7 +645,7 @@ mod tests {
     }
 
     #[test]
-    fn solve_fails_on_non_factorized() -> Result<(), &'static str> {
+    fn solve_fails_on_non_factorized() -> Result<(), StrError> {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
@@ -660,7 +662,7 @@ mod tests {
     }
 
     #[test]
-    fn solve_fails_on_wrong_vectors() -> Result<(), &'static str> {
+    fn solve_fails_on_wrong_vectors() -> Result<(), StrError> {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
@@ -684,7 +686,7 @@ mod tests {
     }
 
     #[test]
-    fn solve_works() -> Result<(), &'static str> {
+    fn solve_works() -> Result<(), StrError> {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
 
@@ -720,7 +722,7 @@ mod tests {
     }
 
     #[test]
-    fn reinitialize_works() -> Result<(), &'static str> {
+    fn reinitialize_works() -> Result<(), StrError> {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
@@ -740,7 +742,7 @@ mod tests {
     // All of these calls must be in a single function because the
     // MMP solver is NOT thread-safe.
     #[test]
-    fn solver_mmp_behaves_as_expected() -> Result<(), &'static str> {
+    fn solver_mmp_behaves_as_expected() -> Result<(), StrError> {
         // allocate a new solver
         let mut config = ConfigSolver::new();
         config.set_solver(LinSol::Mmp);
@@ -829,7 +831,7 @@ mod tests {
     }
 
     #[test]
-    fn compute_works() -> Result<(), &'static str> {
+    fn compute_works() -> Result<(), StrError> {
         let mut trip = SparseTriplet::new(3, 3, 6, Symmetry::No)?;
         trip.put(0, 0, 1.0);
         trip.put(0, 1, 1.0);
@@ -848,7 +850,7 @@ mod tests {
     }
 
     #[test]
-    fn get_elapsed_times_works() -> Result<(), &'static str> {
+    fn get_elapsed_times_works() -> Result<(), StrError> {
         let config = ConfigSolver::new();
         let solver = Solver::new(config)?;
         let times = solver.get_elapsed_times();
@@ -857,7 +859,7 @@ mod tests {
     }
 
     #[test]
-    fn handle_mmp_error_code_works() -> Result<(), &'static str> {
+    fn handle_mmp_error_code_works() -> Result<(), StrError> {
         let default = "Error: unknown error returned by c-code (MMP)";
         let mut config = ConfigSolver::new();
         config.set_solver(LinSol::Mmp);
@@ -890,7 +892,7 @@ mod tests {
     }
 
     #[test]
-    fn handle_umf_error_code_works() -> Result<(), &'static str> {
+    fn handle_umf_error_code_works() -> Result<(), StrError> {
         let default = "Error: unknown error returned by c-code (UMF)";
         let config = ConfigSolver::new();
         let solver = Solver::new(config)?;
@@ -912,7 +914,7 @@ mod tests {
     }
 
     #[test]
-    fn display_trait_works() -> Result<(), &'static str> {
+    fn display_trait_works() -> Result<(), StrError> {
         let config = ConfigSolver::new();
         let solver = Solver::new(config)?;
         let b: &str = "\x20\x20\x20\x20\"name\": \"UMF\",\n\

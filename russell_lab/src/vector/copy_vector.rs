@@ -1,4 +1,5 @@
 use super::Vector;
+use crate::StrError;
 use russell_openblas::{dcopy, to_i32};
 
 /// Copies vector
@@ -10,21 +11,22 @@ use russell_openblas::{dcopy, to_i32};
 /// # Example
 ///
 /// ```
-/// # fn main() -> Result<(), &'static str> {
-/// use russell_lab::*;
-/// let u = Vector::from(&[1.0, 2.0, 3.0]);
-/// let mut v = Vector::from(&[-1.0, -2.0, -3.0]);
-/// copy_vector(&mut v, &u)?;
-/// let correct = "┌   ┐\n\
-///                │ 1 │\n\
-///                │ 2 │\n\
-///                │ 3 │\n\
-///                └   ┘";
-/// assert_eq!(format!("{}", v), correct);
-/// # Ok(())
-/// # }
+/// use russell_lab::{copy_vector, Vector, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     let u = Vector::from(&[1.0, 2.0, 3.0]);
+///     let mut v = Vector::from(&[-1.0, -2.0, -3.0]);
+///     copy_vector(&mut v, &u)?;
+///     let correct = "┌   ┐\n\
+///                    │ 1 │\n\
+///                    │ 2 │\n\
+///                    │ 3 │\n\
+///                    └   ┘";
+///     assert_eq!(format!("{}", v), correct);
+///     Ok(())
+/// }
 /// ```
-pub fn copy_vector(v: &mut Vector, u: &Vector) -> Result<(), &'static str> {
+pub fn copy_vector(v: &mut Vector, u: &Vector) -> Result<(), StrError> {
     let n = v.dim();
     if u.dim() != n {
         return Err("vectors are incompatible");
@@ -39,7 +41,8 @@ pub fn copy_vector(v: &mut Vector, u: &Vector) -> Result<(), &'static str> {
 #[cfg(test)]
 mod tests {
     use super::{copy_vector, Vector};
-    use russell_chk::*;
+    use crate::StrError;
+    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn copy_vector_fails_on_wrong_dims() {
@@ -49,7 +52,7 @@ mod tests {
     }
 
     #[test]
-    fn copy_vector_works() -> Result<(), &'static str> {
+    fn copy_vector_works() -> Result<(), StrError> {
         let u = Vector::from(&[1.0, 2.0, 3.0]);
         let mut v = Vector::from(&[100.0, 200.0, 300.0]);
         copy_vector(&mut v, &u)?;

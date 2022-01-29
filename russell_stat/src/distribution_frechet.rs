@@ -1,4 +1,4 @@
-use crate::Distribution;
+use crate::{gamma, Distribution};
 
 const FRECHET_MIN_DELTA_X: f64 = 1e-15;
 
@@ -38,6 +38,24 @@ impl Distribution for DistributionFrechet {
         }
         let z = (x - self.location) / self.scale;
         f64::exp(-f64::powf(z, -self.shape))
+    }
+
+    /// Returns the Mean
+    fn mean(&self) -> f64 {
+        if self.shape > 1.0 {
+            return self.location + self.scale * gamma(1.0 - 1.0 / self.shape);
+        }
+        f64::INFINITY
+    }
+
+    /// Returns the Variance
+    fn variance(&self) -> f64 {
+        if self.shape > 2.0 {
+            return self.scale
+                * self.scale
+                * (gamma(1.0 - 2.0 / self.shape) - f64::powf(gamma(1.0 - 1.0 / self.shape), 2.0));
+        }
+        f64::INFINITY
     }
 }
 
@@ -198,5 +216,15 @@ mod tests {
             assert_approx_eq!(d.pdf(x), pdf, 1e-14);
             assert_approx_eq!(d.cdf(x), cdf, 1e-14);
         }
+    }
+
+    #[test]
+    fn mean_and_variance_work() {
+        let location = 8.782275;
+        let scale = 1.0;
+        let shape = 4.095645;
+        let d = DistributionFrechet::new(location, scale, shape);
+        assert_approx_eq!(d.mean(), 10.0, 1e-6);
+        assert_approx_eq!(d.variance(), 0.25, 1e-6);
     }
 }

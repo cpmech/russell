@@ -35,6 +35,16 @@ impl Distribution for DistributionUniform {
         }
         (x - self.xmin) / (self.xmax - self.xmin)
     }
+
+    /// Returns the Mean
+    fn mean(&self) -> f64 {
+        (self.xmin + self.xmax) / 2.0
+    }
+
+    /// Returns the Variance
+    fn variance(&self) -> f64 {
+        (self.xmax - self.xmin) * (self.xmax - self.xmin) / 12.0
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -83,5 +93,12 @@ mod tests {
             assert_approx_eq!(d.pdf(x), pdf, 1e-14);
             assert_approx_eq!(d.cdf(x), cdf, 1e-14);
         }
+    }
+
+    #[test]
+    fn mean_and_variance_work() {
+        let d = DistributionUniform::new(1.0, 3.0);
+        assert_approx_eq!(d.mean(), 2.0, 1e-14);
+        assert_approx_eq!(d.variance(), 1.0 / 3.0, 1e-14);
     }
 }

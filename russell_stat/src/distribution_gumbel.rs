@@ -42,6 +42,16 @@ impl Distribution for DistributionGumbel {
         let mz = (self.location - x) / self.scale;
         f64::exp(-f64::exp(mz))
     }
+
+    /// Returns the Mean
+    fn mean(&self) -> f64 {
+        self.location + EULER * self.scale
+    }
+
+    /// Returns the Variance
+    fn variance(&self) -> f64 {
+        self.scale * self.scale * PI * PI / 6.0
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -215,5 +225,13 @@ mod tests {
         let d = DistributionGumbel::new_from_mu_sig(61.3, 7.52);
         assert_approx_eq!(d.location, 57.9157, 0.00011);
         assert_approx_eq!(d.scale, 1.0 / 0.17055, 1e-4);
+    }
+
+    #[test]
+    fn mean_and_variance_work() {
+        let (mu, sig) = (1.0, 0.25);
+        let d = DistributionGumbel::new_from_mu_sig(mu, sig);
+        assert_approx_eq!(d.mean(), mu, 1e-14);
+        assert_approx_eq!(d.variance(), sig * sig, 1e-14);
     }
 }

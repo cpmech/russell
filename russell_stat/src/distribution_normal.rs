@@ -1,8 +1,4 @@
-use crate::{Distribution, SQRT_2, SQRT_PI};
-
-extern "C" {
-    fn erf(x: f64) -> f64;
-}
+use crate::{erf, Distribution, SQRT_2, SQRT_PI};
 
 /// Defines the Normal distribution
 pub struct DistributionNormal {
@@ -37,7 +33,17 @@ impl Distribution for DistributionNormal {
 
     /// Implements the Cumulative Density Function (CDF)
     fn cdf(&self, x: f64) -> f64 {
-        unsafe { (1.0 + erf((x - self.mu) / (self.sig * SQRT_2))) / 2.0 }
+        (1.0 + erf((x - self.mu) / (self.sig * SQRT_2))) / 2.0
+    }
+
+    /// Returns the Mean
+    fn mean(&self) -> f64 {
+        self.mu
+    }
+
+    /// Returns the Variance
+    fn variance(&self) -> f64 {
+        self.sig * self.sig
     }
 }
 
@@ -238,5 +244,13 @@ mod tests {
             assert_approx_eq!(d.pdf(x), pdf, 1e-14);
             assert_approx_eq!(d.cdf(x), cdf, 1e-14);
         }
+    }
+
+    #[test]
+    fn mean_and_variance_work() {
+        let (mu, sig) = (1.0, 0.25);
+        let d = DistributionNormal::new(mu, sig);
+        assert_approx_eq!(d.mean(), mu, 1e-14);
+        assert_approx_eq!(d.variance(), sig * sig, 1e-14);
     }
 }

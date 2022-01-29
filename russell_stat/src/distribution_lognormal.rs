@@ -1,10 +1,6 @@
-use crate::{Distribution, SQRT_2, SQRT_PI};
+use crate::{erf, Distribution, SQRT_2, SQRT_PI};
 
 const LOGNORMAL_MIN_X: f64 = 1e-15;
-
-extern "C" {
-    fn erf(x: f64) -> f64;
-}
 
 /// Defines the Lognormal distribution
 pub struct DistributionLognormal {
@@ -66,7 +62,18 @@ impl Distribution for DistributionLognormal {
         if x < LOGNORMAL_MIN_X {
             return 0.0;
         }
-        unsafe { (1.0 + erf((f64::ln(x) - self.mu_logx) / (self.sig_logx * SQRT_2))) / 2.0 }
+        (1.0 + erf((f64::ln(x) - self.mu_logx) / (self.sig_logx * SQRT_2))) / 2.0
+    }
+
+    /// Returns the Mean
+    fn mean(&self) -> f64 {
+        f64::exp(self.mu_logx + self.sig_logx * self.sig_logx / 2.0)
+    }
+
+    /// Returns the Variance
+    fn variance(&self) -> f64 {
+        let ss = self.sig_logx * self.sig_logx;
+        (f64::exp(ss) - 1.0) * f64::exp(2.0 * self.mu_logx + ss)
     }
 }
 
@@ -242,5 +249,13 @@ mod tests {
         let var = (f64::exp(ss) - 1.0) * f64::exp(2.0 * d.mu_logx + ss);
         assert_approx_eq!(mean, mu, 1e-15);
         assert_approx_eq!(f64::sqrt(var), sig, 1e-15);
+    }
+
+    #[test]
+    fn mean_and_variance_work() {
+        let (mu, sig) = (1.0, 0.25);
+        let d = DistributionLognormal::new_from_mu_sig(mu, sig);
+        assert_approx_eq!(d.mean(), mu, 1e-14);
+        assert_approx_eq!(d.variance(), sig * sig, 1e-14);
     }
 }

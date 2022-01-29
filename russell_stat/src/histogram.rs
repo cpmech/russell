@@ -1,13 +1,31 @@
-use num_traits::Num;
-
 use crate::StrError;
+use num_traits::Num;
+use std::cmp;
+use std::fmt::{self, Write};
 
+/// Implements a Histogram to count frequencies
+///
+/// The stations/bins are set as follows:
+///
+/// ```text
+///    [ bin[0] )[ bin[1] )[ bin[2] )[ bin[3] )[ bin[4] )
+/// ---|---------|---------|---------|---------|---------|---  x
+///  s[0]      s[1]      s[2]      s[3]      s[4]      s[5]
+/// ```
+///
+/// bin[i] corresponds to station[i] <= x < station[i+1]
+///
 pub struct Histogram<T>
 where
     T: Num + Copy,
 {
+    // data
     stations: Vec<T>,
     counts: Vec<usize>,
+
+    // used in Display
+    bar_char: char,     // character used in bars
+    bar_max_len: usize, // maximum length of bar (max number of characters)
 }
 
 impl<T> Histogram<T>
@@ -23,14 +41,9 @@ where
         Ok(Histogram {
             stations: Vec::from(stations),
             counts: vec![0; nbins],
+            bar_char: '🟦',
+            bar_max_len: 30,
         })
-    }
-
-    /// Erase all counts
-    pub fn reset(&mut self) {
-        for i in 0..self.counts.len() {
-            self.counts[i] = 0;
-        }
     }
 
     /// Counts how many items fall within each bin
@@ -40,6 +53,25 @@ where
                 self.counts[i] += 1;
             }
         }
+    }
+
+    /// Erase all counts
+    pub fn reset(&mut self) {
+        for i in 0..self.counts.len() {
+            self.counts[i] = 0;
+        }
+    }
+
+    /// Sets the character used in histogram drawn by Display
+    pub fn set_bar_char(&mut self, bar_char: char) -> &mut Self {
+        self.bar_char = bar_char;
+        self
+    }
+
+    /// Sets the maximum length (number of characters) used in histogram draw by Display
+    pub fn set_bar_max_len(&mut self, bar_max_len: usize) -> &mut Self {
+        self.bar_max_len = bar_max_len;
+        self
     }
 
     /// Finds which bin contains x
@@ -66,6 +98,72 @@ where
             }
         }
         Some(lower)
+    }
+}
+
+impl<T> fmt::Display for Histogram<T>
+where
+    T: Num + Copy + fmt::Display,
+{
+    /// Draws histogram
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // check stations
+        let nstation = self.stations.len();
+        if nstation < 2 {
+            write!(f, "too few stations").unwrap();
+            return Ok(());
+        }
+
+        // find limits and number of characters
+        let nbins = self.counts.len();
+        let mut c_max = 0; // count_max
+        let mut l_c_max = 0; // max length of c_max string
+        let mut buf = String::new();
+        for i in 0..nbins {
+            // find c_max and string l_c_max
+            let c = self.counts[i];
+            write!(&mut buf, "{}", c)?;
+            c_max = cmp::max(c_max, c);
+            l_c_max = cmp::max(l_c_max, buf.chars().count());
+            buf.clear();
+        }
+
+        // check count_max
+        if c_max < 1 {
+            write!(f, "zero data").unwrap();
+            return Ok(());
+        }
+
+        // find number of characters of station number
+        let mut l_s_max = 0; // max length of station numbers
+        for i in 0..nstation {
+            let station = self.stations[i];
+            match f.precision() {
+                Some(digits) => write!(&mut buf, "{:.1$}", station, digits)?,
+                None => write!(&mut buf, "{}", station)?,
+            }
+            l_s_max = cmp::max(l_s_max, buf.chars().count());
+            buf.clear();
+        }
+
+        // draw histogram
+        let scale = self.bar_max_len / c_max;
+        for i in 0..nbins {
+            let count = self.counts[i];
+            let (left, right) = (self.stations[i], self.stations[i + 1]);
+            match f.precision() {
+                Some(digits) => write!(
+                    f,
+                    "[{:>3$.4$},{:>3$.4$}) | {:>5$}",
+                    left, right, count, l_s_max, digits, l_c_max
+                )?,
+                None => write!(f, "[{},{}] | {:>3$}", left, right, count, l_c_max)?,
+            }
+            let n = scale * count;
+            let bar = std::iter::repeat(self.bar_char).take(n).collect::<String>();
+            write!(f, " {}\n", bar)?;
+        }
+        Ok(())
     }
 }
 
@@ -133,7 +231,7 @@ mod tests {
     }
 
     #[test]
-    fn count_works() -> Result<(), StrError> {
+    fn count_and_reset_work() -> Result<(), StrError> {
         #[rustfmt::skip]
         let data = [
             0.0, 0.1, 0.2, 0.3, 0.9, // 5
@@ -148,6 +246,8 @@ mod tests {
         let mut hist = Histogram::new(&stations)?;
         hist.count(&data);
         assert_eq!(hist.counts, &[5, 8, 2, 2, 3]);
+        hist.reset();
+        assert_eq!(hist.counts, &[0, 0, 0, 0, 0]);
 
         #[rustfmt::skip]
         let data: [i32; 12]= [
@@ -163,6 +263,38 @@ mod tests {
         let mut hist = Histogram::new(&stations)?;
         hist.count(&data);
         assert_eq!(hist.counts, &[4, 1, 3, 0, 0]);
+        hist.reset();
+        assert_eq!(hist.counts, &[0, 0, 0, 0, 0]);
+        Ok(())
+    }
+
+    #[test]
+    fn display_works() -> Result<(), StrError> {
+        #[rustfmt::skip]
+        let data = [
+            0.0, 0.1, 0.2, 0.3, 0.9, // 5
+            1.0, 1.0, 1.0, 1.0, 1.0, 1.2, 1.3, 1.4, 1.5, 1.99, // 10
+            2.0, 2.5, // 2
+            // 0
+            4.1, 4.5, 4.9, // 3
+        ];
+        let stations: [f64; 11] = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
+        let mut hist = Histogram::new(&stations)?;
+        hist.count(&data);
+        hist.set_bar_char('🔶').set_bar_max_len(10);
+        assert_eq!(
+            format!("{:.3}", hist),
+            "[ 0.000, 1.000) |  5 🔶🔶🔶🔶🔶\n\
+             [ 1.000, 2.000) | 10 🔶🔶🔶🔶🔶🔶🔶🔶🔶🔶\n\
+             [ 2.000, 3.000) |  2 🔶🔶\n\
+             [ 3.000, 4.000) |  0 \n\
+             [ 4.000, 5.000) |  3 🔶🔶🔶\n\
+             [ 5.000, 6.000) |  0 \n\
+             [ 6.000, 7.000) |  0 \n\
+             [ 7.000, 8.000) |  0 \n\
+             [ 8.000, 9.000) |  0 \n\
+             [ 9.000,10.000) |  0 \n"
+        );
         Ok(())
     }
 }

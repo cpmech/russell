@@ -15,6 +15,47 @@ use std::fmt::{self, Write};
 ///
 /// bin[i] corresponds to station[i] <= x < station[i+1]
 ///
+/// # Example
+/// ```
+/// use russell_stat::{Histogram, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     let data = [
+///         -1.0, // outside
+///         10.0, 10.1, // outside
+///         9.0, // count = 1
+///         8.1, 8.2, // count = 2
+///         7.1, 7.2, 7.2, // count = 3
+///         6.0, 6.1, 6.1, 6.2, 6.99, // count = 5
+///         5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, // count = 9
+///         4.0, 4.1, 4.1, 4.2, 4.99, // count = 5
+///         3.1, 3.2, 3.2, // count = 3
+///         2.1, // count = 1
+///     ];
+///
+///     let stations: [f64; 11] = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
+///
+///     let mut hist = Histogram::new(&stations)?;
+///
+///     hist.count(&data);
+///     assert_eq!(hist.get_counts(), &[0, 0, 1, 3, 5, 9, 5, 3, 2, 1]);
+///
+///     hist.set_bar_max_len(10);
+///     assert_eq!(
+///         format!("{}", hist),
+///         "[ 0, 1) | 0 \n\
+///          [ 1, 2) | 0 \n\
+///          [ 2, 3) | 1 🟦\n\
+///          [ 3, 4) | 3 🟦🟦🟦\n\
+///          [ 4, 5) | 5 🟦🟦🟦🟦🟦\n\
+///          [ 5, 6) | 9 🟦🟦🟦🟦🟦🟦🟦🟦🟦\n\
+///          [ 6, 7) | 5 🟦🟦🟦🟦🟦\n\
+///          [ 7, 8) | 3 🟦🟦🟦\n\
+///          [ 8, 9) | 2 🟦🟦\n\
+///          [ 9,10) | 1 🟦\n"
+///     );
+///     Ok(())
+/// }
 pub struct Histogram<T>
 where
     T: Num + Copy,
@@ -60,6 +101,11 @@ where
         for i in 0..self.counts.len() {
             self.counts[i] = 0;
         }
+    }
+
+    /// Returns a read-only access to the counts (frequencies)
+    pub fn get_counts(&self) -> &Vec<usize> {
+        &self.counts
     }
 
     /// Sets the character used in histogram drawn by Display
@@ -157,7 +203,11 @@ where
                     "[{:>3$.4$},{:>3$.4$}) | {:>5$}",
                     left, right, count, l_s_max, digits, l_c_max
                 )?,
-                None => write!(f, "[{},{}] | {:>3$}", left, right, count, l_c_max)?,
+                None => write!(
+                    f,
+                    "[{:>3$},{:>3$}) | {:>4$}",
+                    left, right, count, l_s_max, l_c_max
+                )?,
             }
             let n = scale * count;
             let bar = std::iter::repeat(self.bar_char).take(n).collect::<String>();
@@ -245,9 +295,9 @@ mod tests {
         let stations: [f64; 6] = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
         let mut hist = Histogram::new(&stations)?;
         hist.count(&data);
-        assert_eq!(hist.counts, &[5, 8, 2, 2, 3]);
+        assert_eq!(hist.get_counts(), &[5, 8, 2, 2, 3]);
         hist.reset();
-        assert_eq!(hist.counts, &[0, 0, 0, 0, 0]);
+        assert_eq!(hist.get_counts(), &[0, 0, 0, 0, 0]);
 
         #[rustfmt::skip]
         let data: [i32; 12]= [
@@ -294,6 +344,34 @@ mod tests {
              [ 7.000, 8.000) |  0 \n\
              [ 8.000, 9.000) |  0 \n\
              [ 9.000,10.000) |  0 \n"
+        );
+
+        #[rustfmt::skip]
+        let data = [
+            0.0, 0.1, 0.2, 0.3, 0.9, // 5
+            1.0, 1.0, 1.0, 1.2, 1.3, 1.4, 1.5, 1.99, // 8
+            2.0, 2.5, // 2
+            3.0, 3.5, // 2
+            4.1, 4.5, 4.9, // 3
+            -3.0, -2.0, -1.0, // outside
+            50.0, 60.0, 70.0, 80.0, // outside
+        ];
+        let stations: [f64; 11] = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
+        let mut hist = Histogram::new(&stations)?;
+        hist.count(&data);
+        assert_eq!(hist.counts, &[5, 8, 2, 2, 3, 0, 0, 0, 0, 0]);
+        assert_eq!(
+            format!("{}", hist),
+            "[ 0, 1) | 5 🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦\n\
+             [ 1, 2) | 8 🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦\n\
+             [ 2, 3) | 2 🟦🟦🟦🟦🟦🟦\n\
+             [ 3, 4) | 2 🟦🟦🟦🟦🟦🟦\n\
+             [ 4, 5) | 3 🟦🟦🟦🟦🟦🟦🟦🟦🟦\n\
+             [ 5, 6) | 0 \n\
+             [ 6, 7) | 0 \n\
+             [ 7, 8) | 0 \n\
+             [ 8, 9) | 0 \n\
+             [ 9,10) | 0 \n"
         );
         Ok(())
     }

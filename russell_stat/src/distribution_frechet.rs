@@ -47,8 +47,7 @@ mod tests {
     use crate::{Distribution, DistributionFrechet};
     use russell_chk::assert_approx_eq;
 
-    // Data from the following R-code (run with Rscript file.R):
-
+    // Data from the following R-code (run with Rscript frechet.R):
     /*
     # needs r-cran-evd
     library(evd)

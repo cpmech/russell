@@ -238,7 +238,7 @@ mod tests {
         let stations: [i32; 6] = [0, 1, 2, 3, 4, 5];
         let hist = Histogram::new(&stations)?;
         assert_eq!(hist.stations.len(), 6);
-        assert_eq!(hist.counts.len(), 0);
+        assert_eq!(hist.counts.len(), 5);
         Ok(())
     }
 

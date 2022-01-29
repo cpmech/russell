@@ -2,6 +2,7 @@ use crate::Distribution;
 
 const FRECHET_MIN_DELTA_X: f64 = 1e-15;
 
+/// Defines the Frechet / Type II Extreme Value Distribution (largest value)
 pub struct DistributionFrechet {
     location: f64,
     scale: f64,

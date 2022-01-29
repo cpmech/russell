@@ -4,21 +4,27 @@ extern "C" {
     fn erf(x: f64) -> f64;
 }
 
+/// Defines the Normal distribution
 pub struct DistributionNormal {
-    mean: f64,    // μ: mean
-    std_dev: f64, // σ: standard deviation
-    a: f64,       // 1 / (σ sqrt(2 π))
-    b: f64,       // -1 / (2 σ²)
+    mu: f64,  // μ: mean
+    sig: f64, // σ: standard deviation
+    a: f64,   // 1 / (σ sqrt(2 π))
+    b: f64,   // -1 / (2 σ²)
 }
 
 impl DistributionNormal {
     /// Creates a new Normal distribution
-    pub fn new(mean: f64, std_dev: f64) -> Self {
+    ///
+    /// # Input
+    ///
+    /// * `mu` -- mean μ
+    /// * `sig` -- standard deviation σ
+    pub fn new(mu: f64, sig: f64) -> Self {
         DistributionNormal {
-            mean,
-            std_dev,
-            a: 1.0 / (std_dev * SQRT_2 * SQRT_PI),
-            b: -1.0 / (2.0 * std_dev * std_dev),
+            mu,
+            sig,
+            a: 1.0 / (sig * SQRT_2 * SQRT_PI),
+            b: -1.0 / (2.0 * sig * sig),
         }
     }
 }
@@ -26,12 +32,12 @@ impl DistributionNormal {
 impl Distribution for DistributionNormal {
     /// Implements the Probability Density Function (CDF)
     fn pdf(&self, x: f64) -> f64 {
-        self.a * f64::exp(self.b * f64::powf(x - self.mean, 2.0))
+        self.a * f64::exp(self.b * f64::powf(x - self.mu, 2.0))
     }
 
     /// Implements the Cumulative Density Function (CDF)
     fn cdf(&self, x: f64) -> f64 {
-        unsafe { (1.0 + erf((x - self.mean) / (self.std_dev * SQRT_2))) / 2.0 }
+        unsafe { (1.0 + erf((x - self.mu) / (self.sig * SQRT_2))) / 2.0 }
     }
 }
 

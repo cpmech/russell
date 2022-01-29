@@ -17,11 +17,7 @@ impl DistributionFrechet {
     /// * `location` -- location parameter
     /// * `shape` -- shape parameter
     pub fn new(location: f64, scale: f64, shape: f64) -> Self {
-        DistributionFrechet {
-            location,
-            scale,
-            shape,
-        }
+        DistributionFrechet { location, scale, shape }
     }
 }
 
@@ -32,8 +28,7 @@ impl Distribution for DistributionFrechet {
             return 0.0;
         }
         let z = (x - self.location) / self.scale;
-        f64::exp(-f64::powf(z, -self.shape)) * f64::powf(z, -1.0 - self.shape) * self.shape
-            / self.scale
+        f64::exp(-f64::powf(z, -self.shape)) * f64::powf(z, -1.0 - self.shape) * self.shape / self.scale
     }
 
     /// Implements the Cumulative Density Function (CDF)

@@ -196,11 +196,7 @@ where
                     "[{:>3$.4$},{:>3$.4$}) | {:>5$}",
                     left, right, count, l_s_max, digits, l_c_max
                 )?,
-                None => write!(
-                    f,
-                    "[{:>3$},{:>3$}) | {:>4$}",
-                    left, right, count, l_s_max, l_c_max
-                )?,
+                None => write!(f, "[{:>3$},{:>3$}) | {:>4$}", left, right, count, l_s_max, l_c_max)?,
             }
             let n = scale * count;
             let bar = std::iter::repeat(self.bar_char).take(n).collect::<String>();

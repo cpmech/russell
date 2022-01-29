@@ -153,13 +153,6 @@ where
 {
     /// Draws histogram
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // check stations
-        let nstation = self.stations.len();
-        if nstation < 2 {
-            write!(f, "too few stations").unwrap();
-            return Ok(());
-        }
-
         // find limits and number of characters
         let nbins = self.counts.len();
         let mut c_max = 0; // count_max
@@ -176,13 +169,13 @@ where
 
         // check count_max
         if c_max < 1 {
-            write!(f, "zero data").unwrap();
+            write!(f, "zero data\n").unwrap();
             return Ok(());
         }
 
         // find number of characters of station number
         let mut l_s_max = 0; // max length of station numbers
-        for i in 0..nstation {
+        for i in 0..self.stations.len() {
             let station = self.stations[i];
             match f.precision() {
                 Some(digits) => write!(&mut buf, "{:.1$}", station, digits)?,
@@ -315,6 +308,13 @@ mod tests {
         assert_eq!(hist.counts, &[4, 1, 3, 0, 0]);
         hist.reset();
         assert_eq!(hist.counts, &[0, 0, 0, 0, 0]);
+        Ok(())
+    }
+
+    #[test]
+    fn display_returns_errors() -> Result<(), StrError> {
+        let hist = Histogram::new(&[1, 2])?;
+        assert_eq!(format!("{:.3}", hist), "zero data\n");
         Ok(())
     }
 

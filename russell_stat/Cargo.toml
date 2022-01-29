@@ -13,6 +13,7 @@ keywords = ["statistics", "probability", "random", "numerical"]
 
 [dependencies]
 russell_chk = { path = "../russell_chk", version = "0.2" }
+num-traits = "0.2"
 
 [build-dependencies]
 cc = "1.0"

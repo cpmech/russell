@@ -1,4 +1,4 @@
-use crate::{erf, Distribution, SQRT_2, SQRT_PI};
+use crate::{erf, Distribution, StrError, SQRT_2, SQRT_PI};
 
 /// Defines the Normal distribution
 pub struct DistributionNormal {
@@ -15,13 +15,13 @@ impl DistributionNormal {
     ///
     /// * `mu` -- mean μ
     /// * `sig` -- standard deviation σ
-    pub fn new(mu: f64, sig: f64) -> Self {
-        DistributionNormal {
+    pub fn new(mu: f64, sig: f64) -> Result<Self, StrError> {
+        Ok(DistributionNormal {
             mu,
             sig,
             a: 1.0 / (sig * SQRT_2 * SQRT_PI),
             b: -1.0 / (2.0 * sig * sig),
-        }
+        })
     }
 }
 
@@ -45,13 +45,18 @@ impl Distribution for DistributionNormal {
     fn variance(&self) -> f64 {
         self.sig * self.sig
     }
+
+    /// Generates a pseudo-random number belonging to this probability distribution
+    fn sample(&self) -> f64 {
+        0.0
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use crate::{Distribution, DistributionNormal};
+    use crate::{Distribution, DistributionNormal, StrError};
     use russell_chk::assert_approx_eq;
 
     // Data from the following R-code (run with Rscript normal.R):
@@ -80,7 +85,7 @@ mod tests {
     */
 
     #[test]
-    fn normal_works() {
+    fn normal_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         // x, mu, sig, pdf, cdf
         let data = [
@@ -240,17 +245,19 @@ mod tests {
         ];
         for row in data {
             let [x, mu, sig, pdf, cdf] = row;
-            let d = DistributionNormal::new(mu, sig);
+            let d = DistributionNormal::new(mu, sig)?;
             assert_approx_eq!(d.pdf(x), pdf, 1e-14);
             assert_approx_eq!(d.cdf(x), cdf, 1e-14);
         }
+        Ok(())
     }
 
     #[test]
-    fn mean_and_variance_work() {
+    fn mean_and_variance_work() -> Result<(), StrError> {
         let (mu, sig) = (1.0, 0.25);
-        let d = DistributionNormal::new(mu, sig);
+        let d = DistributionNormal::new(mu, sig)?;
         assert_approx_eq!(d.mean(), mu, 1e-14);
         assert_approx_eq!(d.variance(), sig * sig, 1e-14);
+        Ok(())
     }
 }

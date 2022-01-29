@@ -1,4 +1,4 @@
-use crate::Distribution;
+use crate::{Distribution, StrError};
 
 /// Defines the Uniform / Type II Extreme Value Distribution (largest value)
 pub struct DistributionUniform {
@@ -13,8 +13,8 @@ impl DistributionUniform {
     ///
     /// * `xmin` -- min x value
     /// * `xmax` -- max x value
-    pub fn new(xmin: f64, xmax: f64) -> Self {
-        DistributionUniform { xmin, xmax }
+    pub fn new(xmin: f64, xmax: f64) -> Result<Self, StrError> {
+        Ok(DistributionUniform { xmin, xmax })
     }
 }
 
@@ -50,13 +50,18 @@ impl Distribution for DistributionUniform {
     fn variance(&self) -> f64 {
         (self.xmax - self.xmin) * (self.xmax - self.xmin) / 12.0
     }
+
+    /// Generates a pseudo-random number belonging to this probability distribution
+    fn sample(&self) -> f64 {
+        0.0
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use crate::{Distribution, DistributionUniform};
+    use crate::{Distribution, DistributionUniform, StrError};
     use russell_chk::assert_approx_eq;
 
     // Data from the following R-code (run with Rscript uniform.R):
@@ -81,7 +86,7 @@ mod tests {
     */
 
     #[test]
-    fn uniform_works() {
+    fn uniform_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         // x, xmin, xmax, pdf, cdf
         let data = [
@@ -94,16 +99,18 @@ mod tests {
         ];
         for row in data {
             let [x, xmin, xmax, pdf, cdf] = row;
-            let d = DistributionUniform::new(xmin, xmax);
+            let d = DistributionUniform::new(xmin, xmax)?;
             assert_approx_eq!(d.pdf(x), pdf, 1e-14);
             assert_approx_eq!(d.cdf(x), cdf, 1e-14);
         }
+        Ok(())
     }
 
     #[test]
-    fn mean_and_variance_work() {
-        let d = DistributionUniform::new(1.0, 3.0);
+    fn mean_and_variance_work() -> Result<(), StrError> {
+        let d = DistributionUniform::new(1.0, 3.0)?;
         assert_approx_eq!(d.mean(), 2.0, 1e-14);
         assert_approx_eq!(d.variance(), 1.0 / 3.0, 1e-14);
+        Ok(())
     }
 }

@@ -1,4 +1,4 @@
-use crate::{erf, Distribution, SQRT_2, SQRT_PI};
+use crate::{erf, Distribution, StrError, SQRT_2, SQRT_PI};
 
 const LOGNORMAL_MIN_X: f64 = 1e-15;
 
@@ -17,13 +17,13 @@ impl DistributionLognormal {
     ///
     /// * `mu_logx` -- mean (μ) of log(x)
     /// * `sig_logx` -- standard deviation (σ) of log(x)
-    pub fn new(mu_logx: f64, sig_logx: f64) -> Self {
-        DistributionLognormal {
+    pub fn new(mu_logx: f64, sig_logx: f64) -> Result<Self, StrError> {
+        Ok(DistributionLognormal {
             mu_logx,
             sig_logx,
             a: 1.0 / (sig_logx * SQRT_2 * SQRT_PI),
             b: -1.0 / (2.0 * sig_logx * sig_logx),
-        }
+        })
     }
 
     /// Creates a new Lognormal distribution given mean and standard deviation parameters
@@ -34,17 +34,17 @@ impl DistributionLognormal {
     /// * `sig` -- standard deviation σ
     ///
     /// This function will hence calculate `mu_logx` (mean of log(x)) and `sig_logx` (std-dev of log(x))
-    pub fn new_from_mu_sig(mu: f64, sig: f64) -> Self {
+    pub fn new_from_mu_sig(mu: f64, sig: f64) -> Result<Self, StrError> {
         let d = sig / mu;
         let v = f64::ln(1.0 + d * d);
         let sig_logx = f64::sqrt(v);
         let mu_logx = f64::ln(mu) - v / 2.0;
-        DistributionLognormal {
+        Ok(DistributionLognormal {
             mu_logx,
             sig_logx,
             a: 1.0 / (sig_logx * SQRT_2 * SQRT_PI),
             b: -1.0 / (2.0 * sig_logx * sig_logx),
-        }
+        })
     }
 }
 
@@ -75,13 +75,18 @@ impl Distribution for DistributionLognormal {
         let ss = self.sig_logx * self.sig_logx;
         (f64::exp(ss) - 1.0) * f64::exp(2.0 * self.mu_logx + ss)
     }
+
+    /// Generates a pseudo-random number belonging to this probability distribution
+    fn sample(&self) -> f64 {
+        0.0
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use crate::{Distribution, DistributionLognormal};
+    use crate::{Distribution, DistributionLognormal, StrError};
     use russell_chk::assert_approx_eq;
 
     // Data from the following R-code (run with Rscript lognormal.R):
@@ -110,7 +115,7 @@ mod tests {
     */
 
     #[test]
-    fn lognormal_works() {
+    fn lognormal_works() -> Result<(), StrError> {
         #[rustfmt::skip]
         // x mu_logx sig_logx pdf cdf
         let data = [
@@ -234,28 +239,31 @@ mod tests {
         ];
         for row in data {
             let [x, mu_logx, sig_logx, pdf, cdf] = row;
-            let d = DistributionLognormal::new(mu_logx, sig_logx);
+            let d = DistributionLognormal::new(mu_logx, sig_logx)?;
             assert_approx_eq!(d.pdf(x), pdf, 1e-14);
             assert_approx_eq!(d.cdf(x), cdf, 1e-14);
         }
+        Ok(())
     }
 
     #[test]
-    fn new_from_mu_sig_works() {
+    fn new_from_mu_sig_works() -> Result<(), StrError> {
         let (mu, sig) = (1.0, 0.25);
-        let d = DistributionLognormal::new_from_mu_sig(mu, sig);
+        let d = DistributionLognormal::new_from_mu_sig(mu, sig)?;
         let ss = d.sig_logx * d.sig_logx;
         let mean = f64::exp(d.mu_logx + ss / 2.0);
         let var = (f64::exp(ss) - 1.0) * f64::exp(2.0 * d.mu_logx + ss);
         assert_approx_eq!(mean, mu, 1e-15);
         assert_approx_eq!(f64::sqrt(var), sig, 1e-15);
+        Ok(())
     }
 
     #[test]
-    fn mean_and_variance_work() {
+    fn mean_and_variance_work() -> Result<(), StrError> {
         let (mu, sig) = (1.0, 0.25);
-        let d = DistributionLognormal::new_from_mu_sig(mu, sig);
+        let d = DistributionLognormal::new_from_mu_sig(mu, sig)?;
         assert_approx_eq!(d.mean(), mu, 1e-14);
         assert_approx_eq!(d.variance(), sig * sig, 1e-14);
+        Ok(())
     }
 }

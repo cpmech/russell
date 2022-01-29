@@ -11,4 +11,7 @@ pub trait Distribution {
 
     /// Returns the Variance
     fn variance(&self) -> f64;
+
+    /// Generates a pseudo-random number belonging to this probability distribution
+    fn sample(&self) -> f64;
 }

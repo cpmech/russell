@@ -10,7 +10,15 @@ pub fn desc() -> String {
 /// Defines a type alias for the error type as a static string
 pub type StrError = &'static str;
 
+mod constants;
+mod distribution;
+mod distribution_frechet;
+mod distribution_normal;
 mod histogram;
 mod stat;
+pub use crate::constants::*;
+pub use crate::distribution::*;
+pub use crate::distribution_frechet::*;
+pub use crate::distribution_normal::*;
 pub use crate::histogram::*;
 pub use crate::stat::*;

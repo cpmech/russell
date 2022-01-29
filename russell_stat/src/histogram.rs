@@ -13,7 +13,7 @@ use std::fmt::{self, Write};
 ///  s[0]      s[1]      s[2]      s[3]      s[4]      s[5]
 /// ```
 ///
-/// bin[i] corresponds to station[i] <= x < station[i+1]
+/// bin_i corresponds to station_i <= x < station_(i+1)
 ///
 /// # Example
 /// ```

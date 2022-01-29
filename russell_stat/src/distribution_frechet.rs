@@ -11,6 +11,11 @@ pub struct DistributionFrechet {
 
 impl DistributionFrechet {
     /// Creates a new Frechet distribution
+    ///
+    /// # Input
+    ///
+    /// * `location` -- location parameter
+    /// * `shape` -- shape parameter
     pub fn new(location: f64, scale: f64, shape: f64) -> Self {
         DistributionFrechet {
             location,

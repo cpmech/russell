@@ -8,6 +8,11 @@ pub struct DistributionUniform {
 
 impl DistributionUniform {
     /// Creates a new Uniform distribution
+    ///
+    /// # Input
+    ///
+    /// * `xmin` -- min x value
+    /// * `xmax` -- max x value
     pub fn new(xmin: f64, xmax: f64) -> Self {
         DistributionUniform { xmin, xmax }
     }

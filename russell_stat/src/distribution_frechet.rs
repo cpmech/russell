@@ -231,5 +231,9 @@ mod tests {
         let d = DistributionFrechet::new(location, scale, shape);
         assert_approx_eq!(d.mean(), 10.0, 1e-6);
         assert_approx_eq!(d.variance(), 0.25, 1e-6);
+
+        let d = DistributionFrechet::new(location, scale, 0.0);
+        assert_eq!(d.mean(), f64::INFINITY);
+        assert_eq!(d.variance(), f64::INFINITY);
     }
 }

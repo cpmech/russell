@@ -41,6 +41,9 @@
 
 /// Defines the Probability Distribution trait
 pub trait Distribution {
-    fn probability_density_function(&self, x: f64) -> f64;
-    fn cumulative_density_function(&self, x: f64) -> f64;
+    /// Implements the Probability Density Function (CDF)
+    fn pdf(&self, x: f64) -> f64;
+
+    /// Implements the Cumulative Density Function (CDF)
+    fn cdf(&self, x: f64) -> f64;
 }

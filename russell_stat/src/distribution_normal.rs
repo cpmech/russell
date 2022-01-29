@@ -24,11 +24,13 @@ impl DistributionNormal {
 }
 
 impl Distribution for DistributionNormal {
-    fn probability_density_function(&self, x: f64) -> f64 {
+    /// Implements the Probability Density Function (CDF)
+    fn pdf(&self, x: f64) -> f64 {
         self.a * f64::exp(self.b * f64::powf(x - self.mean, 2.0))
     }
 
-    fn cumulative_density_function(&self, x: f64) -> f64 {
+    /// Implements the Cumulative Density Function (CDF)
+    fn cdf(&self, x: f64) -> f64 {
         unsafe { (1.0 + erf((x - self.mean) / (self.std_dev * SQRT_2))) / 2.0 }
     }
 }

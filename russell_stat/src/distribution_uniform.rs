@@ -1,0 +1,87 @@
+use crate::Distribution;
+
+/// Defines the Uniform / Type II Extreme Value Distribution (largest value)
+pub struct DistributionUniform {
+    xmin: f64,
+    xmax: f64,
+}
+
+impl DistributionUniform {
+    /// Creates a new Uniform distribution
+    pub fn new(xmin: f64, xmax: f64) -> Self {
+        DistributionUniform { xmin, xmax }
+    }
+}
+
+impl Distribution for DistributionUniform {
+    /// Implements the Probability Density Function (CDF)
+    fn pdf(&self, x: f64) -> f64 {
+        if x < self.xmin {
+            return 0.0;
+        }
+        if x > self.xmax {
+            return 0.0;
+        }
+        1.0 / (self.xmax - self.xmin)
+    }
+
+    /// Implements the Cumulative Density Function (CDF)
+    fn cdf(&self, x: f64) -> f64 {
+        if x < self.xmin {
+            return 0.0;
+        }
+        if x > self.xmax {
+            return 1.0;
+        }
+        (x - self.xmin) / (self.xmax - self.xmin)
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use crate::{Distribution, DistributionUniform};
+    use russell_chk::assert_approx_eq;
+
+    // Data from the following R-code (run with Rscript uniform.R):
+    /*
+    a <- 1.5 # xmin
+    b <- 2.5 # xmax
+    X <- seq(0.5, 3.0, 0.5)
+    Y <- matrix(ncol=5)
+    first <- TRUE
+    pdf <- dunif(X, a, b)
+    cdf <- punif(X, a, b)
+    for (i in 1:length(X)) {
+        if (first) {
+            Y <- rbind(c(X[i], a, b, pdf[i], cdf[i]))
+            first <- FALSE
+        } else {
+            Y <- rbind(Y, c(X[i], a, b, pdf[i], cdf[i]))
+        }
+    }
+    write.table(format(Y, digits=15), "/tmp/uniform.dat", row.names=FALSE, col.names=c("x","xmin","xmax","pdf","cdf"), quote=FALSE)
+    print("file </tmp/uniform.dat> written")
+    */
+
+    #[test]
+    fn uniform_works() {
+        #[rustfmt::skip]
+        // x, xmin, xmax, pdf, cdf
+        let data = [
+            [0.5, 1.5, 2.5, 0.0, 0.0],
+            [1.0, 1.5, 2.5, 0.0, 0.0],
+            [1.5, 1.5, 2.5, 1.0, 0.0],
+            [2.0, 1.5, 2.5, 1.0, 0.5],
+            [2.5, 1.5, 2.5, 1.0, 1.0],
+            [3.0, 1.5, 2.5, 0.0, 1.0],
+        ];
+        for row in data {
+            let [x, xmin, xmax, pdf, cdf] = row;
+            let d = DistributionUniform::new(xmin, xmax);
+            assert_approx_eq!(d.pdf(x), pdf, 1e-14);
+            assert_approx_eq!(d.cdf(x), cdf, 1e-14);
+        }
+    }
+}

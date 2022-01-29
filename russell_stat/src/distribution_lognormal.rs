@@ -1,4 +1,6 @@
-use crate::{erf, Distribution, StrError, SQRT_2, SQRT_PI};
+use crate::{erf, ProbabilityDistribution, StrError, SQRT_2, SQRT_PI};
+use rand::Rng;
+use rand_distr::{Distribution, LogNormal};
 
 const LOGNORMAL_MIN_X: f64 = 1e-15;
 
@@ -8,6 +10,8 @@ pub struct DistributionLognormal {
     sig_logx: f64, // standard deviation (σ) of log(x)
     a: f64,        // 1 / (sig_logx sqrt(2 π))
     b: f64,        // -1 / (2 sig_logx²)
+
+    sampler: LogNormal<f64>, // sampler
 }
 
 impl DistributionLognormal {
@@ -23,6 +27,7 @@ impl DistributionLognormal {
             sig_logx,
             a: 1.0 / (sig_logx * SQRT_2 * SQRT_PI),
             b: -1.0 / (2.0 * sig_logx * sig_logx),
+            sampler: LogNormal::new(mu_logx, sig_logx).map_err(|_| "invalid parameters")?,
         })
     }
 
@@ -44,11 +49,12 @@ impl DistributionLognormal {
             sig_logx,
             a: 1.0 / (sig_logx * SQRT_2 * SQRT_PI),
             b: -1.0 / (2.0 * sig_logx * sig_logx),
+            sampler: LogNormal::new(mu_logx, sig_logx).map_err(|_| "invalid parameters")?,
         })
     }
 }
 
-impl Distribution for DistributionLognormal {
+impl ProbabilityDistribution for DistributionLognormal {
     /// Implements the Probability Density Function (CDF)
     fn pdf(&self, x: f64) -> f64 {
         if x < LOGNORMAL_MIN_X {
@@ -77,8 +83,8 @@ impl Distribution for DistributionLognormal {
     }
 
     /// Generates a pseudo-random number belonging to this probability distribution
-    fn sample(&self) -> f64 {
-        0.0
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64 {
+        self.sampler.sample(rng)
     }
 }
 
@@ -86,7 +92,7 @@ impl Distribution for DistributionLognormal {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Distribution, DistributionLognormal, StrError};
+    use crate::{DistributionLognormal, ProbabilityDistribution, StrError};
     use russell_chk::assert_approx_eq;
 
     // Data from the following R-code (run with Rscript lognormal.R):

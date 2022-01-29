@@ -1,5 +1,7 @@
+use rand::Rng;
+
 /// Defines the Probability Distribution trait
-pub trait Distribution {
+pub trait ProbabilityDistribution {
     /// Implements the Probability Density Function (CDF)
     fn pdf(&self, x: f64) -> f64;
 
@@ -13,5 +15,5 @@ pub trait Distribution {
     fn variance(&self) -> f64;
 
     /// Generates a pseudo-random number belonging to this probability distribution
-    fn sample(&self) -> f64;
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64;
 }

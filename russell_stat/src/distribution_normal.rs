@@ -1,4 +1,6 @@
-use crate::{erf, Distribution, StrError, SQRT_2, SQRT_PI};
+use crate::{erf, ProbabilityDistribution, StrError, SQRT_2, SQRT_PI};
+use rand::Rng;
+use rand_distr::{Distribution, Normal};
 
 /// Defines the Normal distribution
 pub struct DistributionNormal {
@@ -6,6 +8,8 @@ pub struct DistributionNormal {
     sig: f64, // σ: standard deviation
     a: f64,   // 1 / (σ sqrt(2 π))
     b: f64,   // -1 / (2 σ²)
+
+    sampler: Normal<f64>, // sampler
 }
 
 impl DistributionNormal {
@@ -21,11 +25,12 @@ impl DistributionNormal {
             sig,
             a: 1.0 / (sig * SQRT_2 * SQRT_PI),
             b: -1.0 / (2.0 * sig * sig),
+            sampler: Normal::new(mu, sig).map_err(|_| "invalid parameters")?,
         })
     }
 }
 
-impl Distribution for DistributionNormal {
+impl ProbabilityDistribution for DistributionNormal {
     /// Implements the Probability Density Function (CDF)
     fn pdf(&self, x: f64) -> f64 {
         self.a * f64::exp(self.b * f64::powf(x - self.mu, 2.0))
@@ -47,8 +52,8 @@ impl Distribution for DistributionNormal {
     }
 
     /// Generates a pseudo-random number belonging to this probability distribution
-    fn sample(&self) -> f64 {
-        0.0
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64 {
+        self.sampler.sample(rng)
     }
 }
 
@@ -56,7 +61,7 @@ impl Distribution for DistributionNormal {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Distribution, DistributionNormal, StrError};
+    use crate::{DistributionNormal, ProbabilityDistribution, StrError};
     use russell_chk::assert_approx_eq;
 
     // Data from the following R-code (run with Rscript normal.R):

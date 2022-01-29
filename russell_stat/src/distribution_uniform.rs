@@ -1,9 +1,13 @@
-use crate::{Distribution, StrError};
+use crate::{ProbabilityDistribution, StrError};
+use rand::Rng;
+use rand_distr::{Distribution, Uniform};
 
 /// Defines the Uniform / Type II Extreme Value Distribution (largest value)
 pub struct DistributionUniform {
-    xmin: f64,
-    xmax: f64,
+    xmin: f64, // min x value
+    xmax: f64, // max x value
+
+    sampler: Uniform<f64>, // sampler
 }
 
 impl DistributionUniform {
@@ -14,11 +18,18 @@ impl DistributionUniform {
     /// * `xmin` -- min x value
     /// * `xmax` -- max x value
     pub fn new(xmin: f64, xmax: f64) -> Result<Self, StrError> {
-        Ok(DistributionUniform { xmin, xmax })
+        if xmax < xmin {
+            return Err("invalid parameters");
+        }
+        Ok(DistributionUniform {
+            xmin,
+            xmax,
+            sampler: Uniform::new(xmin, xmax),
+        })
     }
 }
 
-impl Distribution for DistributionUniform {
+impl ProbabilityDistribution for DistributionUniform {
     /// Implements the Probability Density Function (CDF)
     fn pdf(&self, x: f64) -> f64 {
         if x < self.xmin {
@@ -52,8 +63,8 @@ impl Distribution for DistributionUniform {
     }
 
     /// Generates a pseudo-random number belonging to this probability distribution
-    fn sample(&self) -> f64 {
-        0.0
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64 {
+        self.sampler.sample(rng)
     }
 }
 
@@ -61,7 +72,7 @@ impl Distribution for DistributionUniform {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Distribution, DistributionUniform, StrError};
+    use crate::{DistributionUniform, ProbabilityDistribution, StrError};
     use russell_chk::assert_approx_eq;
 
     // Data from the following R-code (run with Rscript uniform.R):

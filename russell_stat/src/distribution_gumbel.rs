@@ -1,9 +1,13 @@
-use crate::{Distribution, StrError, EULER, PI, SQRT_6};
+use crate::{ProbabilityDistribution, StrError, EULER, PI, SQRT_6};
+use rand::Rng;
+use rand_distr::{Distribution, Gumbel};
 
 /// Defines the Gumbel / Type I Extreme Value Distribution (largest value)
 pub struct DistributionGumbel {
     location: f64, // location: characteristic largest value
     scale: f64,    // scale: measure of dispersion of the largest value
+
+    sampler: Gumbel<f64>, // sampler
 }
 
 impl DistributionGumbel {
@@ -14,7 +18,11 @@ impl DistributionGumbel {
     /// * `location` -- characteristic largest value
     /// * `scale` -- measure of dispersion of the largest value
     pub fn new(location: f64, scale: f64) -> Result<Self, StrError> {
-        Ok(DistributionGumbel { location, scale })
+        Ok(DistributionGumbel {
+            location,
+            scale,
+            sampler: Gumbel::new(location, scale).map_err(|_| "invalid parameters")?,
+        })
     }
 
     /// Creates a new Gumbel distribution given mean and standard deviation parameters
@@ -26,11 +34,15 @@ impl DistributionGumbel {
     pub fn new_from_mu_sig(mu: f64, sig: f64) -> Result<Self, StrError> {
         let scale = sig * SQRT_6 / PI;
         let location = mu - EULER * scale;
-        Ok(DistributionGumbel { location, scale })
+        Ok(DistributionGumbel {
+            location,
+            scale,
+            sampler: Gumbel::new(location, scale).map_err(|_| "invalid parameters")?,
+        })
     }
 }
 
-impl Distribution for DistributionGumbel {
+impl ProbabilityDistribution for DistributionGumbel {
     /// Implements the Probability Density Function (CDF)
     fn pdf(&self, x: f64) -> f64 {
         let mz = (self.location - x) / self.scale;
@@ -54,8 +66,8 @@ impl Distribution for DistributionGumbel {
     }
 
     /// Generates a pseudo-random number belonging to this probability distribution
-    fn sample(&self) -> f64 {
-        0.0
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64 {
+        self.sampler.sample(rng)
     }
 }
 
@@ -63,7 +75,7 @@ impl Distribution for DistributionGumbel {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Distribution, DistributionGumbel, StrError};
+    use crate::{DistributionGumbel, ProbabilityDistribution, StrError};
     use russell_chk::assert_approx_eq;
 
     // Data from the following R-code (run with Rscript gumbel.R):

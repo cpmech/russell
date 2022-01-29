@@ -1,12 +1,16 @@
-use crate::{gamma, Distribution, StrError};
+use crate::{gamma, ProbabilityDistribution, StrError};
+use rand::Rng;
+use rand_distr::{Distribution, Frechet};
 
 const FRECHET_MIN_DELTA_X: f64 = 1e-15;
 
 /// Defines the Frechet / Type II Extreme Value Distribution (largest value)
 pub struct DistributionFrechet {
-    location: f64,
-    scale: f64,
-    shape: f64,
+    location: f64, // location parameter
+    scale: f64,    // scale parameter
+    shape: f64,    // shape parameter
+
+    sampler: Frechet<f64>, // sampler
 }
 
 impl DistributionFrechet {
@@ -17,11 +21,16 @@ impl DistributionFrechet {
     /// * `location` -- location parameter
     /// * `shape` -- shape parameter
     pub fn new(location: f64, scale: f64, shape: f64) -> Result<Self, StrError> {
-        Ok(DistributionFrechet { location, scale, shape })
+        Ok(DistributionFrechet {
+            location,
+            scale,
+            shape,
+            sampler: Frechet::new(location, scale, shape).map_err(|_| "invalid parameters")?,
+        })
     }
 }
 
-impl Distribution for DistributionFrechet {
+impl ProbabilityDistribution for DistributionFrechet {
     /// Implements the Probability Density Function (CDF)
     fn pdf(&self, x: f64) -> f64 {
         if x - self.location < FRECHET_MIN_DELTA_X {
@@ -59,8 +68,8 @@ impl Distribution for DistributionFrechet {
     }
 
     /// Generates a pseudo-random number belonging to this probability distribution
-    fn sample(&self) -> f64 {
-        0.0
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64 {
+        self.sampler.sample(rng)
     }
 }
 
@@ -68,7 +77,7 @@ impl Distribution for DistributionFrechet {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Distribution, DistributionFrechet, StrError};
+    use crate::{DistributionFrechet, ProbabilityDistribution, StrError};
     use russell_chk::assert_approx_eq;
 
     // Data from the following R-code (run with Rscript frechet.R):
@@ -233,7 +242,7 @@ mod tests {
         assert_approx_eq!(d.mean(), 10.0, 1e-6);
         assert_approx_eq!(d.variance(), 0.25, 1e-6);
 
-        let d = DistributionFrechet::new(location, scale, 0.0)?;
+        let d = DistributionFrechet::new(location, scale, 1.0)?;
         assert_eq!(d.mean(), f64::INFINITY);
         assert_eq!(d.variance(), f64::INFINITY);
         Ok(())

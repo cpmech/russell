@@ -1,7 +1,6 @@
 use std::fmt;
 
 /// Holds basic statistics of a dataset
-#[derive(Debug)]
 pub struct Statistics {
     /// Minimum value
     pub min: f64,
@@ -22,7 +21,7 @@ pub struct Statistics {
 ///
 /// ```
 /// use russell_stat::statistics;
-/// 
+///
 /// let res = statistics(&[2, 4, 4, 4, 5, 5, 7, 9]);
 /// assert_eq!(res.min, 2.0);
 /// assert_eq!(res.max, 9.0);

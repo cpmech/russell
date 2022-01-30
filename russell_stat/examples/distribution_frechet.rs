@@ -1,6 +1,6 @@
 use russell_stat::{statistics, DistributionFrechet, Histogram, ProbabilityDistribution, StrError};
 
-/* Example output
+/* Sample output
 
 min = 0.09073675834496424
 max = 7694.599272007603

@@ -22,7 +22,6 @@ russell_stat = "*"
 ```rust
 use russell_stat::{statistics, DistributionFrechet, Histogram, ProbabilityDistribution, StrError};
 
-
 fn main() -> Result<(), StrError> {
     // generate samples
     let mut rng = rand::thread_rng();
@@ -43,7 +42,7 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-Example output
+Sample output
 
 ```text
 min = 0.09073675834496424

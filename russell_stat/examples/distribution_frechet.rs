@@ -1,5 +1,24 @@
 use russell_stat::{statistics, DistributionFrechet, Histogram, ProbabilityDistribution, StrError};
 
+fn main() -> Result<(), StrError> {
+    // generate samples
+    let mut rng = rand::thread_rng();
+    let dist = DistributionFrechet::new(0.0, 1.0, 1.0)?;
+    let nsamples = 10_000;
+    let mut data = vec![0.0; nsamples];
+    for i in 0..nsamples {
+        data[i] = dist.sample(&mut rng);
+    }
+    println!("{}", statistics(&data));
+
+    // text-plot
+    let stations = (0..20).map(|i| (i as f64) * 0.5).collect::<Vec<f64>>();
+    let mut hist = Histogram::new(&stations)?;
+    hist.count(&data);
+    println!("{}", hist);
+    Ok(())
+}
+
 /* Sample output
 
 min = 0.09073675834496424
@@ -28,22 +47,3 @@ std_dev = 137.11729225249485
 [  9,9.5) |   53
       sum = 8985
 */
-
-fn main() -> Result<(), StrError> {
-    // generate samples
-    let mut rng = rand::thread_rng();
-    let dist = DistributionFrechet::new(0.0, 1.0, 1.0)?;
-    let nsamples = 10_000;
-    let mut data = vec![0.0; nsamples];
-    for i in 0..nsamples {
-        data[i] = dist.sample(&mut rng);
-    }
-    println!("{}", statistics(&data));
-
-    // text-plot
-    let stations = (0..20).map(|i| (i as f64) * 0.5).collect::<Vec<f64>>();
-    let mut hist = Histogram::new(&stations)?;
-    hist.count(&data);
-    println!("{}", hist);
-    Ok(())
-}

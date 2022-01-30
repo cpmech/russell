@@ -1,5 +1,25 @@
 use russell_stat::{statistics, DistributionGumbel, Histogram, ProbabilityDistribution, StrError};
 
+fn main() -> Result<(), StrError> {
+    // generate samples
+    let mut rng = rand::thread_rng();
+    let dist = DistributionGumbel::new(0.5, 2.0)?;
+    let nsamples = 10_000;
+    let mut data = vec![0.0; nsamples];
+    for i in 0..nsamples {
+        data[i] = dist.sample(&mut rng);
+    }
+    println!("{}", statistics(&data));
+
+    // text-plot
+    let stations = (0..20).map(|i| -5.0 + (i as f64)).collect::<Vec<f64>>();
+    let mut hist = Histogram::new(&stations)?;
+    hist.set_bar_char('#').set_bar_max_len(40);
+    hist.count(&data);
+    println!("{}", hist);
+    Ok(())
+}
+
 /* Sample output
 
 min = -3.8702217016220706
@@ -28,23 +48,3 @@ std_dev = 2.5805268053167527
 [13,14) |   14
     sum = 9992
 */
-
-fn main() -> Result<(), StrError> {
-    // generate samples
-    let mut rng = rand::thread_rng();
-    let dist = DistributionGumbel::new(0.5, 2.0)?;
-    let nsamples = 10_000;
-    let mut data = vec![0.0; nsamples];
-    for i in 0..nsamples {
-        data[i] = dist.sample(&mut rng);
-    }
-    println!("{}", statistics(&data));
-
-    // text-plot
-    let stations = (0..20).map(|i| -5.0 + (i as f64)).collect::<Vec<f64>>();
-    let mut hist = Histogram::new(&stations)?;
-    hist.set_bar_char('#').set_bar_max_len(40);
-    hist.count(&data);
-    println!("{}", hist);
-    Ok(())
-}

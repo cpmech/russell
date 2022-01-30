@@ -1,4 +1,7 @@
+use std::fmt;
+
 /// Holds basic statistics of a dataset
+#[derive(Debug)]
 pub struct Statistics {
     /// Minimum value
     pub min: f64,
@@ -9,7 +12,7 @@ pub struct Statistics {
     /// Arithmetic mean
     pub mean: f64,
 
-    /// Standard deviation
+    /// (sample) Standard deviation (applying Bessel's correction)
     pub std_dev: f64,
 }
 
@@ -19,11 +22,21 @@ pub struct Statistics {
 ///
 /// ```
 /// use russell_stat::statistics;
+/// 
 /// let res = statistics(&[2, 4, 4, 4, 5, 5, 7, 9]);
 /// assert_eq!(res.min, 2.0);
 /// assert_eq!(res.max, 9.0);
 /// assert_eq!(res.mean, 5.0);
 /// assert_eq!(res.std_dev, f64::sqrt(32.0/7.0));
+///
+/// let res = statistics(&[1.0, 1.0, 1.0]);
+/// assert_eq!(
+///     format!("{}", res),
+///     "min = 1\n\
+///      max = 1\n\
+///      mean = 1\n\
+///      std_dev = 0\n"
+/// );
 /// ```
 pub fn statistics<T>(x: &[T]) -> Statistics
 where
@@ -70,7 +83,7 @@ where
         variance += diff * diff; // variance ← Σ diff²
     }
 
-    // standard deviation
+    // (sample) standard deviation (applying Bessel's correction)
     variance = (variance - corrector * corrector / n) / (n - 1.0);
     let std_dev = variance.sqrt();
 
@@ -80,6 +93,25 @@ where
         max,
         mean,
         std_dev,
+    }
+}
+
+impl fmt::Display for Statistics {
+    /// Prints statistics
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match f.precision() {
+            Some(digits) => write!(
+                f,
+                "min = {:.4$}\nmax = {:.4$}\nmean = {:.4$}\nstd_dev = {:.4$}\n",
+                self.min, self.max, self.mean, self.std_dev, digits
+            )?,
+            None => write!(
+                f,
+                "min = {}\nmax = {}\nmean = {}\nstd_dev = {}\n",
+                self.min, self.max, self.mean, self.std_dev
+            )?,
+        }
+        Ok(())
     }
 }
 
@@ -115,5 +147,35 @@ mod tests {
         assert_eq!(res.max, 105.0);
         assert_eq!(res.mean, 849.0 / 9.0);
         assert_approx_eq!(res.std_dev, 12.134661099511597, 1e-17);
+
+        let x = [9, 2, 5, 4, 12, 7, 8, 11, 9, 3, 7, 4, 12, 5, 4, 10, 9, 6, 9, 4];
+        let res = statistics(&x);
+        assert_eq!(res.min, 2.0);
+        assert_eq!(res.max, 12.0);
+        assert_eq!(res.mean, 7.0);
+        assert_approx_eq!(res.std_dev, f64::sqrt(178.0 / 19.0), 1e-17);
+    }
+
+    #[test]
+    fn display_works() {
+        let x = [9, 2, 5, 4, 12, 7, 8, 11, 9, 3, 7, 4, 12, 5, 4, 10, 9, 6, 9, 4];
+        let res = statistics(&x);
+        assert_eq!(
+            format!("{:.3}", res),
+            "min = 2.000\n\
+             max = 12.000\n\
+             mean = 7.000\n\
+             std_dev = 3.061\n"
+        );
+
+        let x = [1, 1, 1];
+        let res = statistics(&x);
+        assert_eq!(
+            format!("{}", res),
+            "min = 1\n\
+             max = 1\n\
+             mean = 1\n\
+             std_dev = 0\n"
+        );
     }
 }

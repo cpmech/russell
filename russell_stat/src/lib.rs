@@ -30,3 +30,15 @@ pub use crate::histogram::*;
 pub use crate::math::*;
 pub use crate::probability_distribution::*;
 pub use crate::statistics::*;
+
+// run code from README file
+#[cfg(doctest)]
+mod test_readme {
+    macro_rules! external_doc_test {
+        ($x:expr) => {
+            #[doc = $x]
+            extern "C" {}
+        };
+    }
+    external_doc_test!(include_str!("../README.md"));
+}

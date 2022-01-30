@@ -48,18 +48,19 @@ where
     let ave = sum / n;
 
     // variance
-    let mut c = 0.0; // corrector
-    let mut vari = 0.0; // variance
+    let mut corrector = 0.0;
+    let mut variance = 0.0;
     for &val in x {
-        let d = val.into() - ave; // d ← xi - bar(x)
-        c += d; // c ← Σ d  (corrector)
-        vari += d * d; // vari ← Σ d²
+        let diff = val.into() - ave; // diff ← xi - bar(x)
+        corrector += diff; // corrector ← Σ diff
+        variance += diff * diff; // variance ← Σ diff²
     }
 
     // standard deviation
-    vari = (vari - c * c / n) / (n - 1.0);
-    let dev = vari.sqrt();
+    variance = (variance - corrector * corrector / n) / (n - 1.0);
+    let dev = variance.sqrt();
 
+    // results
     Ok((ave, dev))
 }
 
@@ -72,16 +73,17 @@ mod tests {
     use russell_chk::assert_approx_eq;
 
     #[test]
-    fn ave_works() -> Result<(), StrError> {
-        let x = [100, 100, 102, 98, 77, 99, 70, 105, 98];
-        assert_eq!(ave(&x)?, 849.0 / 9.0);
-        Ok(())
-    }
-
-    #[test]
     fn ave_fails_on_empty_slice() {
         let x: [i32; 0] = [];
         assert_eq!(ave(&x), Err("cannot compute average of empty slice"));
+    }
+
+    #[test]
+    fn ave_works() -> Result<(), StrError> {
+        let x = [100, 100, 102, 98, 77, 99, 70, 105, 98];
+        assert_eq!(ave(&x)?, 849.0 / 9.0);
+        assert_eq!(ave(&x)?, 849.0 / 9.0); // again, to check move vs borrow
+        Ok(())
     }
 
     #[test]
@@ -96,6 +98,7 @@ mod tests {
         let (ave, dev) = ave_dev(&x)?;
         assert_eq!(ave, 849.0 / 9.0);
         assert_approx_eq!(dev, 12.134661099511597, 1e-17);
+        ave_dev(&x)?; // again, to check move vs borrow
         Ok(())
     }
 }

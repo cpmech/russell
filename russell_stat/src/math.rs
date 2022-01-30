@@ -5,9 +5,9 @@ extern "C" {
 
 /// Returns the error function (wraps C-code: erf)
 ///
-/// Code from: https://www.cplusplus.com/reference/cmath/erf/
+/// Code from: <https://www.cplusplus.com/reference/cmath/erf/>
 ///
-/// https://en.wikipedia.org/wiki/Error_function
+/// Reference: <https://en.wikipedia.org/wiki/Error_function>
 #[inline]
 pub fn erf(x: f64) -> f64 {
     unsafe { c_erf(x) }
@@ -15,7 +15,7 @@ pub fn erf(x: f64) -> f64 {
 
 /// Returns the Gamma function Γ (wraps C-code: tgamma)
 ///
-/// Code from: https://www.cplusplus.com/reference/cmath/tgamma/
+/// Code from: <https://www.cplusplus.com/reference/cmath/tgamma/>
 #[inline]
 pub fn gamma(x: f64) -> f64 {
     unsafe { c_gamma(x) }

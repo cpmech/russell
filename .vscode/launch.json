@@ -1,0 +1,291 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'russell_chk'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=russell_chk"
+        ],
+        "filter": {
+          "name": "russell_chk",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'russell_lab'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=russell_lab"
+        ],
+        "filter": {
+          "name": "russell_lab",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug integration test 'test_lin_sys'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--test=test_lin_sys",
+          "--package=russell_lab"
+        ],
+        "filter": {
+          "name": "test_lin_sys",
+          "kind": "test"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug integration test 'test_ops'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--test=test_ops",
+          "--package=russell_lab"
+        ],
+        "filter": {
+          "name": "test_ops",
+          "kind": "test"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug benchmark 'lab_benches'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--bench=lab_benches",
+          "--package=russell_lab"
+        ],
+        "filter": {
+          "name": "lab_benches",
+          "kind": "bench"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'russell_openblas'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=russell_openblas"
+        ],
+        "filter": {
+          "name": "russell_openblas",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug benchmark 'openblas_benches'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--bench=openblas_benches",
+          "--package=russell_openblas"
+        ],
+        "filter": {
+          "name": "openblas_benches",
+          "kind": "bench"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'russell_sparse'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=russell_sparse"
+        ],
+        "filter": {
+          "name": "russell_sparse",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'solve_mm_build'",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=solve_mm_build",
+          "--package=russell_sparse"
+        ],
+        "filter": {
+          "name": "solve_mm_build",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in executable 'solve_mm_build'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--bin=solve_mm_build",
+          "--package=russell_sparse"
+        ],
+        "filter": {
+          "name": "solve_mm_build",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'mem_check_build'",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=mem_check_build",
+          "--package=russell_sparse"
+        ],
+        "filter": {
+          "name": "mem_check_build",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in executable 'mem_check_build'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--bin=mem_check_build",
+          "--package=russell_sparse"
+        ],
+        "filter": {
+          "name": "mem_check_build",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'russell_stat'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=russell_stat"
+        ],
+        "filter": {
+          "name": "russell_stat",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'russell_tensor'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=russell_tensor"
+        ],
+        "filter": {
+          "name": "russell_tensor",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in library 'zcoverage'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=zcoverage"
+        ],
+        "filter": {
+          "name": "zcoverage",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

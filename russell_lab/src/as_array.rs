@@ -166,9 +166,17 @@ where
 /// ```
 pub trait AsArray2D<'a, U: 'a> {
     /// Returns the (m,n) size of the array
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the array is empty.
     fn size(&self) -> (usize, usize);
 
     /// Returns the value at (i,j) indices
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the indices are out of range.
     fn at(&self, i: usize, j: usize) -> U;
 }
 

@@ -1,6 +1,7 @@
 use super::{mandel_dim, IJKL_TO_MN, IJKL_TO_MN_SYM, MN_TO_IJKL, SQRT_2};
 use crate::StrError;
 use russell_lab::Matrix;
+use serde::{Deserialize, Serialize};
 
 /// Implements a fourth order-tensor, minor-symmetric or not
 ///
@@ -107,6 +108,7 @@ use russell_lab::Matrix;
 /// * For example, the norm of the tensor equals `mat.norm()`
 /// * However, you must be careful when setting a single component of `mat` directly
 ///   because you may "break" the Mandel representation.
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Tensor4 {
     /// Holds the components in Mandel basis as matrix.
     ///
@@ -711,6 +713,7 @@ mod tests {
     use super::{Tensor4, MN_TO_IJKL};
     use crate::{Samples, StrError};
     use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
+    use serde::{Deserialize, Serialize};
 
     #[test]
     fn new_works() {
@@ -915,8 +918,7 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn sym_set_works() -> Result<(), StrError> {
+    fn generate_dd() -> Tensor4 {
         let mut dd = Tensor4::new(true, false);
         for m in 0..6 {
             for n in 0..6 {
@@ -925,9 +927,73 @@ mod tests {
                 dd.sym_set(i, j, k, l, value);
             }
         }
-        let out = dd.to_matrix();
+        dd
+    }
+
+    #[test]
+    fn sym_set_works() -> Result<(), StrError> {
+        let dd = generate_dd();
         assert_eq!(
-            format!("{:.0}", out),
+            format!("{:.0}", dd.to_matrix()),
+            "┌                                              ┐\n\
+             │ 1111 1122 1133 1112 1123 1113 1112 1123 1113 │\n\
+             │ 2211 2222 2233 2212 2223 2213 2212 2223 2213 │\n\
+             │ 3311 3322 3333 3312 3323 3313 3312 3323 3313 │\n\
+             │ 1211 1222 1233 1212 1223 1213 1212 1223 1213 │\n\
+             │ 2311 2322 2333 2312 2323 2313 2312 2323 2313 │\n\
+             │ 1311 1322 1333 1312 1323 1313 1312 1323 1313 │\n\
+             │ 1211 1222 1233 1212 1223 1213 1212 1223 1213 │\n\
+             │ 2311 2322 2333 2312 2323 2313 2312 2323 2313 │\n\
+             │ 1311 1322 1333 1312 1323 1313 1312 1323 1313 │\n\
+             └                                              ┘"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn clone_and_serialize_work() -> Result<(), StrError> {
+        let dd = generate_dd();
+        // clone
+        let mut cloned = dd.clone();
+        cloned.mat[0][0] = 9999.0;
+        assert_eq!(
+            format!("{:.0}", dd.to_matrix()),
+            "┌                                              ┐\n\
+             │ 1111 1122 1133 1112 1123 1113 1112 1123 1113 │\n\
+             │ 2211 2222 2233 2212 2223 2213 2212 2223 2213 │\n\
+             │ 3311 3322 3333 3312 3323 3313 3312 3323 3313 │\n\
+             │ 1211 1222 1233 1212 1223 1213 1212 1223 1213 │\n\
+             │ 2311 2322 2333 2312 2323 2313 2312 2323 2313 │\n\
+             │ 1311 1322 1333 1312 1323 1313 1312 1323 1313 │\n\
+             │ 1211 1222 1233 1212 1223 1213 1212 1223 1213 │\n\
+             │ 2311 2322 2333 2312 2323 2313 2312 2323 2313 │\n\
+             │ 1311 1322 1333 1312 1323 1313 1312 1323 1313 │\n\
+             └                                              ┘"
+        );
+        assert_eq!(
+            format!("{:.0}", cloned.to_matrix()),
+            "┌                                              ┐\n\
+             │ 9999 1122 1133 1112 1123 1113 1112 1123 1113 │\n\
+             │ 2211 2222 2233 2212 2223 2213 2212 2223 2213 │\n\
+             │ 3311 3322 3333 3312 3323 3313 3312 3323 3313 │\n\
+             │ 1211 1222 1233 1212 1223 1213 1212 1223 1213 │\n\
+             │ 2311 2322 2333 2312 2323 2313 2312 2323 2313 │\n\
+             │ 1311 1322 1333 1312 1323 1313 1312 1323 1313 │\n\
+             │ 1211 1222 1233 1212 1223 1213 1212 1223 1213 │\n\
+             │ 2311 2322 2333 2312 2323 2313 2312 2323 2313 │\n\
+             │ 1311 1322 1333 1312 1323 1313 1312 1323 1313 │\n\
+             └                                              ┘"
+        );
+        // serialize
+        let mut serialized = Vec::new();
+        let mut serializer = rmp_serde::Serializer::new(&mut serialized);
+        dd.serialize(&mut serializer).map_err(|_| "tensor serialize failed")?;
+        assert!(serialized.len() > 0);
+        // deserialize
+        let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
+        let ee: Tensor4 = Deserialize::deserialize(&mut deserializer).map_err(|_| "cannot deserialize tensor data")?;
+        assert_eq!(
+            format!("{:.0}", ee.to_matrix()),
             "┌                                              ┐\n\
              │ 1111 1122 1133 1112 1123 1113 1112 1123 1113 │\n\
              │ 2211 2222 2233 2212 2223 2213 2212 2223 2213 │\n\

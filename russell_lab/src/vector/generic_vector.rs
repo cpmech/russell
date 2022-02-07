@@ -1,5 +1,7 @@
 use crate::{AsArray1D, StrError};
 use num_traits::{cast, Num, NumCast};
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fmt::{self, Write};
 use std::ops::{Index, IndexMut};
@@ -85,17 +87,18 @@ use std::ops::{Index, IndexMut};
 ///     Ok(())
 /// }
 /// ```
-#[derive(Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GenericVector<T>
 where
-    T: Num + NumCast + Copy,
+    T: Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
+    #[serde(bound(deserialize = "Vec<T>: Deserialize<'de>"))]
     data: Vec<T>,
 }
 
 impl<T> GenericVector<T>
 where
-    T: Num + NumCast + Copy,
+    T: Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     /// Creates a new (zeroed) vector
     ///
@@ -503,11 +506,26 @@ where
         }
         GenericVector { data }
     }
+
+    /// Encodes Vector as serialized data
+    pub fn encode(&self) -> Result<Vec<u8>, StrError> {
+        let mut serialized = Vec::new();
+        let mut serializer = rmp_serde::Serializer::new(&mut serialized);
+        self.serialize(&mut serializer).map_err(|_| "vector serialize failed")?;
+        Ok(serialized)
+    }
+
+    /// Decodes serialized data as Vector
+    pub fn decode(serialized: &Vec<u8>) -> Result<Self, StrError> {
+        let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
+        let res = Deserialize::deserialize(&mut deserializer).map_err(|_| "cannot deserialize vector data")?;
+        Ok(res)
+    }
 }
 
 impl<T> fmt::Display for GenericVector<T>
 where
-    T: Num + NumCast + Copy + fmt::Display,
+    T: Num + NumCast + Copy + DeserializeOwned + Serialize + fmt::Display,
 {
     /// Generates a string representation of the GenericVector
     ///
@@ -578,7 +596,7 @@ where
 /// ```
 impl<T> Index<usize> for GenericVector<T>
 where
-    T: Num + NumCast + Copy,
+    T: Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     type Output = T;
     #[inline]
@@ -603,7 +621,7 @@ where
 /// ```
 impl<T> IndexMut<usize> for GenericVector<T>
 where
-    T: Num + NumCast + Copy,
+    T: Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
@@ -624,7 +642,7 @@ where
 /// ```
 impl<T> IntoIterator for GenericVector<T>
 where
-    T: Num + NumCast + Copy,
+    T: Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     type Item = T;
     type IntoIter = std::vec::IntoIter<Self::Item>;
@@ -648,7 +666,7 @@ where
 /// ```
 impl<'a, T> IntoIterator for &'a GenericVector<T>
 where
-    T: Num + NumCast + Copy,
+    T: Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     type Item = &'a T;
     type IntoIter = std::slice::Iter<'a, T>;
@@ -673,7 +691,7 @@ where
 /// ```
 impl<'a, T> IntoIterator for &'a mut GenericVector<T>
 where
-    T: Num + NumCast + Copy,
+    T: Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     type Item = &'a mut T;
     type IntoIter = std::slice::IterMut<'a, T>;
@@ -980,5 +998,40 @@ mod tests {
         x.data[2] = 3.0;
         let res = vector_to_string(&x);
         assert_eq!(res, "(0:1), (1:2), (2:3), ");
+    }
+
+    #[test]
+    fn clone_encode_and_decode_work() -> Result<(), StrError> {
+        let a = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
+        let mut cloned = a.clone();
+        cloned[0] = -1.0;
+        assert_eq!(
+            format!("{}", a),
+            "┌   ┐\n\
+             │ 1 │\n\
+             │ 2 │\n\
+             │ 3 │\n\
+             └   ┘"
+        );
+        assert_eq!(
+            format!("{}", cloned),
+            "┌    ┐\n\
+             │ -1 │\n\
+             │  2 │\n\
+             │  3 │\n\
+             └    ┘"
+        );
+        let serialized = a.encode()?;
+        assert!(serialized.len() > 0);
+        let b = GenericVector::<f64>::decode(&serialized)?;
+        assert_eq!(
+            format!("{}", b),
+            "┌   ┐\n\
+             │ 1 │\n\
+             │ 2 │\n\
+             │ 3 │\n\
+             └   ┘"
+        );
+        Ok(())
     }
 }

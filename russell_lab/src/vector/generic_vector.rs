@@ -691,7 +691,6 @@ where
 mod tests {
     use super::GenericVector;
     use crate::StrError;
-    use rmp_serde;
     use russell_chk::assert_vec_approx_eq;
     use serde::{Deserialize, Serialize};
     use std::fmt::Write;

@@ -16,6 +16,8 @@ russell_chk = { path = "../russell_chk", version = "0.2" }
 russell_openblas = { path = "../russell_openblas", version = "0.2" }
 criterion = "0.3"
 num-traits = "0.2"
+rmp-serde = "1.0.0"
+serde = { version = "1.0.133", features = ["derive"] }
 
 [[bench]]
 name = "lab_benches"

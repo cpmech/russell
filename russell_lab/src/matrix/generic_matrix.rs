@@ -1,5 +1,7 @@
-use crate::AsArray2D;
+use crate::{AsArray2D, StrError};
 use num_traits::Num;
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fmt::{self, Write};
 use std::ops::{Index, IndexMut};
@@ -75,13 +77,14 @@ use std::ops::{Index, IndexMut};
 ///     Ok(())
 /// }
 /// ```
-#[derive(Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct GenericMatrix<T>
 where
-    T: Num + Copy,
+    T: Num + Copy + DeserializeOwned + Serialize,
 {
-    nrow: usize,  // number of rows
-    ncol: usize,  // number of columns
+    nrow: usize, // number of rows
+    ncol: usize, // number of columns
+    #[serde(bound(deserialize = "Vec<T>: Deserialize<'de>"))]
     data: Vec<T>, // row-major
 }
 
@@ -101,7 +104,7 @@ where
 
 impl<T> GenericMatrix<T>
 where
-    T: Num + Copy,
+    T: Num + Copy + DeserializeOwned + Serialize,
 {
     /// Creates new (nrow x ncol) GenericMatrix filled with zeros
     ///
@@ -455,11 +458,26 @@ where
             data: self.data.to_vec(),
         }
     }
+
+    /// Encodes Matrix as serialized data
+    pub fn encode(&self) -> Result<Vec<u8>, StrError> {
+        let mut serialized = Vec::new();
+        let mut serializer = rmp_serde::Serializer::new(&mut serialized);
+        self.serialize(&mut serializer).map_err(|_| "matrix serialize failed")?;
+        Ok(serialized)
+    }
+
+    /// Decodes serialized data as Matrix
+    pub fn decode(serialized: &Vec<u8>) -> Result<Self, StrError> {
+        let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
+        let res = Deserialize::deserialize(&mut deserializer).map_err(|_| "cannot deserialize matrix data")?;
+        Ok(res)
+    }
 }
 
 impl<T> fmt::Display for GenericMatrix<T>
 where
-    T: Num + Copy + fmt::Display,
+    T: Num + Copy + DeserializeOwned + Serialize + fmt::Display,
 {
     /// Generates a string representation of the GenericMatrix
     ///
@@ -542,7 +560,7 @@ where
 /// ```
 impl<T> Index<usize> for GenericMatrix<T>
 where
-    T: Num + Copy,
+    T: Num + Copy + DeserializeOwned + Serialize,
 {
     type Output = [T];
     #[inline]
@@ -576,7 +594,7 @@ where
 /// ```
 impl<T> IndexMut<usize> for GenericMatrix<T>
 where
-    T: Num + Copy,
+    T: Num + Copy + DeserializeOwned + Serialize,
 {
     #[inline]
     fn index_mut(&mut self, i: usize) -> &mut Self::Output {
@@ -790,5 +808,45 @@ mod tests {
         a.set(1, 1, 0.44);
         assert_eq!(a.data, &[0.11, 0.22, 0.33, 0.44]);
         assert_eq!(a_copy.data, &[1.0, 2.0, 3.0, 4.0]);
+    }
+
+    #[test]
+    fn clone_encode_and_decode_work() -> Result<(), StrError> {
+        #[rustfmt::skip]
+        let a = GenericMatrix::<f64>::from(&[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ]);
+        let mut cloned = a.clone();
+        cloned[0][0] = -1.0;
+        assert_eq!(
+            format!("{}", a),
+            "┌       ┐\n\
+             │ 1 2 3 │\n\
+             │ 4 5 6 │\n\
+             │ 7 8 9 │\n\
+             └       ┘"
+        );
+        assert_eq!(
+            format!("{}", cloned),
+            "┌          ┐\n\
+             │ -1  2  3 │\n\
+             │  4  5  6 │\n\
+             │  7  8  9 │\n\
+             └          ┘"
+        );
+        let serialized = a.encode()?;
+        assert!(serialized.len() > 0);
+        let b = GenericMatrix::<f64>::decode(&serialized)?;
+        assert_eq!(
+            format!("{}", b),
+            "┌       ┐\n\
+             │ 1 2 3 │\n\
+             │ 4 5 6 │\n\
+             │ 7 8 9 │\n\
+             └       ┘"
+        );
+        Ok(())
     }
 }

@@ -506,21 +506,6 @@ where
         }
         GenericVector { data }
     }
-
-    /// Encodes Vector as serialized data
-    pub fn encode(&self) -> Result<Vec<u8>, StrError> {
-        let mut serialized = Vec::new();
-        let mut serializer = rmp_serde::Serializer::new(&mut serialized);
-        self.serialize(&mut serializer).map_err(|_| "vector serialize failed")?;
-        Ok(serialized)
-    }
-
-    /// Decodes serialized data as Vector
-    pub fn decode(serialized: &Vec<u8>) -> Result<Self, StrError> {
-        let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
-        let res = Deserialize::deserialize(&mut deserializer).map_err(|_| "cannot deserialize vector data")?;
-        Ok(res)
-    }
 }
 
 impl<T> fmt::Display for GenericVector<T>
@@ -706,7 +691,9 @@ where
 mod tests {
     use super::GenericVector;
     use crate::StrError;
+    use rmp_serde;
     use russell_chk::assert_vec_approx_eq;
+    use serde::{Deserialize, Serialize};
     use std::fmt::Write;
 
     fn pow2(x: f64) -> f64 {
@@ -1001,12 +988,12 @@ mod tests {
     }
 
     #[test]
-    fn clone_encode_and_decode_work() -> Result<(), StrError> {
-        let a = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
-        let mut cloned = a.clone();
+    fn clone_and_serialize_work() -> Result<(), StrError> {
+        let u = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
+        let mut cloned = u.clone();
         cloned[0] = -1.0;
         assert_eq!(
-            format!("{}", a),
+            format!("{}", u),
             "┌   ┐\n\
              │ 1 │\n\
              │ 2 │\n\
@@ -1021,9 +1008,15 @@ mod tests {
              │  3 │\n\
              └    ┘"
         );
-        let serialized = a.encode()?;
+        // serialize
+        let mut serialized = Vec::new();
+        let mut serializer = rmp_serde::Serializer::new(&mut serialized);
+        u.serialize(&mut serializer).map_err(|_| "vector serialize failed")?;
         assert!(serialized.len() > 0);
-        let b = GenericVector::<f64>::decode(&serialized)?;
+        // deserialize
+        let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
+        let b: GenericVector<f64> =
+            Deserialize::deserialize(&mut deserializer).map_err(|_| "cannot deserialize vector data")?;
         assert_eq!(
             format!("{}", b),
             "┌   ┐\n\

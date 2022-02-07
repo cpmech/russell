@@ -1,4 +1,4 @@
-use crate::{AsArray2D, StrError};
+use crate::AsArray2D;
 use num_traits::Num;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -458,21 +458,6 @@ where
             data: self.data.to_vec(),
         }
     }
-
-    /// Encodes Matrix as serialized data
-    pub fn encode(&self) -> Result<Vec<u8>, StrError> {
-        let mut serialized = Vec::new();
-        let mut serializer = rmp_serde::Serializer::new(&mut serialized);
-        self.serialize(&mut serializer).map_err(|_| "matrix serialize failed")?;
-        Ok(serialized)
-    }
-
-    /// Decodes serialized data as Matrix
-    pub fn decode(serialized: &Vec<u8>) -> Result<Self, StrError> {
-        let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
-        let res = Deserialize::deserialize(&mut deserializer).map_err(|_| "cannot deserialize matrix data")?;
-        Ok(res)
-    }
 }
 
 impl<T> fmt::Display for GenericMatrix<T>
@@ -608,7 +593,9 @@ where
 mod tests {
     use super::GenericMatrix;
     use crate::StrError;
+    use rmp_serde;
     use russell_chk::assert_vec_approx_eq;
+    use serde::{Deserialize, Serialize};
 
     #[test]
     fn new_works() {
@@ -811,13 +798,14 @@ mod tests {
     }
 
     #[test]
-    fn clone_encode_and_decode_work() -> Result<(), StrError> {
+    fn clone_and_serialize_work() -> Result<(), StrError> {
         #[rustfmt::skip]
         let a = GenericMatrix::<f64>::from(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ]);
+        // clone
         let mut cloned = a.clone();
         cloned[0][0] = -1.0;
         assert_eq!(
@@ -836,9 +824,15 @@ mod tests {
              │  7  8  9 │\n\
              └          ┘"
         );
-        let serialized = a.encode()?;
+        // serialize
+        let mut serialized = Vec::new();
+        let mut serializer = rmp_serde::Serializer::new(&mut serialized);
+        a.serialize(&mut serializer).map_err(|_| "matrix serialize failed")?;
         assert!(serialized.len() > 0);
-        let b = GenericMatrix::<f64>::decode(&serialized)?;
+        // deserialize
+        let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
+        let b: GenericMatrix<f64> =
+            Deserialize::deserialize(&mut deserializer).map_err(|_| "cannot deserialize matrix data")?;
         assert_eq!(
             format!("{}", b),
             "┌       ┐\n\

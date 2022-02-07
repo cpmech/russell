@@ -605,4 +605,11 @@ mod tests {
         );
         Ok(())
     }
+
+    #[test]
+    fn debug_works() -> Result<(), StrError> {
+        let tt = Tensor2::new(false, false);
+        assert!(format!("{:?}", tt).len() > 0);
+        Ok(())
+    }
 }

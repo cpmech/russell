@@ -1008,4 +1008,11 @@ mod tests {
         );
         Ok(())
     }
+
+    #[test]
+    fn debug_works() -> Result<(), StrError> {
+        let dd = Tensor4::new(false, false);
+        assert!(format!("{:?}", dd).len() > 0);
+        Ok(())
+    }
 }

@@ -20,10 +20,12 @@ use std::ops::{Index, IndexMut};
 ///   `eigen_decomp`, `inverse`, `pseudo_inverse`, `sv_decomp`, `mat_vec_mul`,
 ///   `sv_decomp`, and others.
 ///
-/// # Example
+/// # Examples
+///
+/// ## Initialization, setting values and printing
 ///
 /// ```
-/// use russell_lab::{inverse, mat_mat_mul, GenericMatrix, StrError};
+/// use russell_lab::{GenericMatrix, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // create new matrix filled with ones
@@ -40,6 +42,21 @@ use std::ops::{Index, IndexMut};
 ///          │  1  1 │\n\
 ///          └       ┘"
 ///     );
+///     Ok(())
+/// }
+/// ```
+///
+/// ## Inverse and matrix multiplication
+///
+/// ```
+/// use russell_lab::{inverse, mat_mat_mul, GenericMatrix, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     // create new matrix filled with ones
+///     let mut a = GenericMatrix::<f64>::filled(2, 2, 1.0);
+///
+///     // change off-diagonal component
+///     a[0][1] *= -1.0;
 ///
 ///     // compute the inverse matrix `ai`
 ///     let (m, n) = a.dims();
@@ -74,6 +91,45 @@ use std::ops::{Index, IndexMut};
 ///     // create an identity matrix and check again
 ///     let ii = GenericMatrix::<f64>::identity(m);
 ///     assert_eq!(aia.as_data(), ii.as_data());
+///     Ok(())
+/// }
+/// ```
+///
+/// ## Copying a matrix (cloning)
+///
+/// ```
+/// use russell_lab::{GenericMatrix, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     // new matrix
+///     let a = GenericMatrix::<f64>::from(&[
+///         [1.0, 2.0],
+///         [3.0, 4.0],
+///     ]);
+///
+///     // clone
+///     let mut b = a.clone();
+///
+///     // change clone
+///     b.set(0, 0, 5.0);
+///
+///     // check that clone is correct
+///     assert_eq!(
+///         format!("{}", b),
+///         "┌     ┐\n\
+///          │ 5 2 │\n\
+///          │ 3 4 │\n\
+///          └     ┘"
+///     );
+///
+///     // check that the changed matrix is unmodified
+///     assert_eq!(
+///         format!("{}", a),
+///         "┌     ┐\n\
+///          │ 1 2 │\n\
+///          │ 3 4 │\n\
+///          └     ┘"
+///     );
 ///     Ok(())
 /// }
 /// ```
@@ -429,35 +485,6 @@ where
         assert!(j < self.ncol);
         self.data[i * self.ncol + j] = value;
     }
-
-    /// Returns a copy of this matrix
-    ///
-    /// ```
-    /// # use russell_lab::GenericMatrix;
-    /// let mut a = GenericMatrix::<f64>::from(&[
-    ///     [1.0, 2.0],
-    ///     [3.0, 4.0],
-    /// ]);
-    /// let a_copy = a.get_copy();
-    /// a.set(0, 0, 5.0);
-    /// let a_correct = "┌     ┐\n\
-    ///                  │ 5 2 │\n\
-    ///                  │ 3 4 │\n\
-    ///                  └     ┘";
-    /// let a_copy_correct = "┌     ┐\n\
-    ///                       │ 1 2 │\n\
-    ///                       │ 3 4 │\n\
-    ///                       └     ┘";
-    /// assert_eq!(format!("{}", a), a_correct);
-    /// assert_eq!(format!("{}", a_copy), a_copy_correct);
-    /// ```
-    pub fn get_copy(&self) -> Self {
-        GenericMatrix {
-            nrow: self.nrow,
-            ncol: self.ncol,
-            data: self.data.to_vec(),
-        }
-    }
 }
 
 impl<T> fmt::Display for GenericMatrix<T>
@@ -781,23 +808,20 @@ mod tests {
     }
 
     #[test]
-    fn get_copy_works() {
+    fn clone_and_serialize_work() -> Result<(), StrError> {
         #[rustfmt::skip]
         let mut a = GenericMatrix::<f64>::from(&[
             [1.0, 2.0],
             [3.0, 4.0],
         ]);
-        let a_copy = a.get_copy();
+        let a_copy = a.clone();
         a.set(0, 0, 0.11);
         a.set(0, 1, 0.22);
         a.set(1, 0, 0.33);
         a.set(1, 1, 0.44);
         assert_eq!(a.data, &[0.11, 0.22, 0.33, 0.44]);
         assert_eq!(a_copy.data, &[1.0, 2.0, 3.0, 4.0]);
-    }
 
-    #[test]
-    fn clone_and_serialize_work() -> Result<(), StrError> {
         #[rustfmt::skip]
         let a = GenericMatrix::<f64>::from(&[
             [1.0, 2.0, 3.0],

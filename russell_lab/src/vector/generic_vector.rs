@@ -50,7 +50,7 @@ use std::ops::{Index, IndexMut};
 ///     );
 ///
 ///     // create a copy and change its components
-///     let mut w = u.get_copy();
+///     let mut w = u.clone();
 ///     w.map(|x| f64::sqrt(x));
 ///     w[0] *= -1.0;
 ///     w[1] *= -1.0;
@@ -439,34 +439,6 @@ where
     {
         for (index, elem) in self.data.iter_mut().enumerate() {
             *elem = function(index, *elem);
-        }
-    }
-
-    /// Returns a copy of this vector
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use russell_lab::GenericVector;
-    /// let mut u = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
-    /// let u_copy = u.get_copy();
-    /// u.set(1, 5.0);
-    /// let u_correct = "┌   ┐\n\
-    ///                  │ 1 │\n\
-    ///                  │ 5 │\n\
-    ///                  │ 3 │\n\
-    ///                  └   ┘";
-    /// let u_copy_correct = "┌   ┐\n\
-    ///                       │ 1 │\n\
-    ///                       │ 2 │\n\
-    ///                       │ 3 │\n\
-    ///                       └   ┘";
-    /// assert_eq!(format!("{}", u), u_correct);
-    /// assert_eq!(format!("{}", u_copy), u_copy_correct);
-    /// ```
-    pub fn get_copy(&self) -> Self {
-        GenericVector {
-            data: self.data.to_vec(),
         }
     }
 
@@ -861,17 +833,6 @@ mod tests {
     }
 
     #[test]
-    fn get_copy_works() {
-        let mut u = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
-        let u_copy = u.get_copy();
-        u.set(0, 0.11);
-        u.set(1, 0.22);
-        u.set(2, 0.33);
-        assert_eq!(u.data, &[0.11, 0.22, 0.33]);
-        assert_eq!(u_copy.data, &[1.0, 2.0, 3.0]);
-    }
-
-    #[test]
     fn get_mapped_works() {
         let mut u = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
         let v = u.get_mapped(pow2);
@@ -988,6 +949,14 @@ mod tests {
 
     #[test]
     fn clone_and_serialize_work() -> Result<(), StrError> {
+        let mut u = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
+        let u_copy = u.clone();
+        u.set(0, 0.11);
+        u.set(1, 0.22);
+        u.set(2, 0.33);
+        assert_eq!(u.data, &[0.11, 0.22, 0.33]);
+        assert_eq!(u_copy.data, &[1.0, 2.0, 3.0]);
+
         let u = GenericVector::<f64>::from(&[1.0, 2.0, 3.0]);
         let mut cloned = u.clone();
         cloned[0] = -1.0;

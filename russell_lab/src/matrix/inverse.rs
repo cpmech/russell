@@ -33,7 +33,7 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 ///         [-1.0,  1.5],
 ///         [ 1.0, -1.0],
 ///     ]);
-///     let a_copy = a.get_copy();
+///     let a_copy = a.clone();
 ///
 ///     // compute inverse matrix
 ///     let mut ai = Matrix::new(2, 2);
@@ -77,7 +77,7 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 ///         [0.0, 1.0, 4.0],
 ///         [5.0, 6.0, 0.0],
 ///     ]);
-///     let a_copy = a.get_copy();
+///     let a_copy = a.clone();
 ///
 ///     // compute inverse matrix
 ///     let mut ai = Matrix::new(3, 3);

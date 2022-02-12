@@ -360,6 +360,10 @@ where
     /// let u = GenericVector::<f64>::from(&[1.0, 2.0]);
     /// assert_eq!(u.get(1), 2.0);
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the index is out-of-bounds.
     #[inline]
     pub fn get(&self, i: usize) -> T {
         assert!(i < self.data.len());
@@ -380,6 +384,10 @@ where
     ///                └    ┘";
     /// assert_eq!(format!("{}", u), correct);
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the index is out-of-bounds.
     #[inline]
     pub fn set(&mut self, i: usize, value: T) {
         assert!(i < self.data.len());
@@ -551,6 +559,10 @@ where
 /// assert_eq!(u[1],  1.2);
 /// assert_eq!(u[2],  2.0);
 /// ```
+///
+/// # Panics
+///
+/// The index function may panic if the index is out-of-bounds.
 impl<T> Index<usize> for GenericVector<T>
 where
     T: Num + NumCast + Copy + DeserializeOwned + Serialize,
@@ -576,6 +588,10 @@ where
 /// assert_eq!(u[1],  11.2);
 /// assert_eq!(u[2],  22.0);
 /// ```
+///
+/// # Panics
+///
+/// The index function may panic if the index is out-of-bounds.
 impl<T> IndexMut<usize> for GenericVector<T>
 where
     T: Num + NumCast + Copy + DeserializeOwned + Serialize,

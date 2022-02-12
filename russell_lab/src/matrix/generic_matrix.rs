@@ -455,6 +455,10 @@ where
     /// ]);
     /// assert_eq!(a.get(1,1), 4.0);
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the indices are out-of-bounds.
     #[inline]
     pub fn get(&self, i: usize, j: usize) -> T {
         assert!(i < self.nrow);
@@ -479,6 +483,10 @@ where
     ///                └       ┘";
     /// assert_eq!(format!("{}", a), correct);
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the indices are out-of-bounds.
     #[inline]
     pub fn set(&mut self, i: usize, j: usize, value: T) {
         assert!(i < self.nrow);
@@ -574,11 +582,20 @@ where
 /// assert_eq!(a[1][1], 5.0);
 /// assert_eq!(a[1][2], 6.0);
 /// ```
+///
+/// # Panics
+///
+/// The index function may panic if the row index is out-of-bounds.
 impl<T> Index<usize> for GenericMatrix<T>
 where
     T: Num + Copy + DeserializeOwned + Serialize,
 {
     type Output = [T];
+    /// Returns an access to a row of the matrix
+    ///
+    /// # Panics
+    ///
+    /// This function function may panic if the row index is out-of-bounds.
     #[inline]
     fn index(&self, i: usize) -> &Self::Output {
         &self.data[(i * self.ncol)..((i + 1) * self.ncol)]
@@ -608,10 +625,19 @@ where
 /// assert_eq!(a[1][1], 4.0);
 /// assert_eq!(a[1][2], 7.0);
 /// ```
+///
+/// # Panics
+///
+/// The index function may panic if the row index is out-of-bounds.
 impl<T> IndexMut<usize> for GenericMatrix<T>
 where
     T: Num + Copy + DeserializeOwned + Serialize,
 {
+    /// Returns a mutable access to a row of the matrix
+    ///
+    /// # Panics
+    ///
+    /// This function function may panic if the row index is out-of-bounds.
     #[inline]
     fn index_mut(&mut self, i: usize) -> &mut Self::Output {
         &mut self.data[(i * self.ncol)..((i + 1) * self.ncol)]

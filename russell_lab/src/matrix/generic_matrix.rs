@@ -493,6 +493,36 @@ where
         assert!(j < self.ncol);
         self.data[i * self.ncol + j] = value;
     }
+
+    /// Extracts a column given its index
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use russell_lab::GenericMatrix;
+    /// let a = GenericMatrix::<f64>::from(&[
+    ///     [1.0, 2.0],
+    ///     [3.0, 4.0],
+    ///     [5.0, 6.0],
+    ///     [7.0, 8.0],
+    /// ]);
+    /// let first_column = a.extract_column(0);
+    /// let second_column = a.extract_column(1);
+    /// assert_eq!(first_column, [1.0, 3.0, 5.0, 7.0]);
+    /// assert_eq!(second_column, [2.0, 4.0, 6.0, 8.0]);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the column index is out-of-bounds.
+    pub fn extract_column(&self, j: usize) -> Vec<T> {
+        assert!(j < self.ncol);
+        let mut res = vec![T::zero(); self.nrow];
+        for i in 0..self.nrow {
+            res[i] = self.data[i * self.ncol + j];
+        }
+        res
+    }
 }
 
 impl<T> fmt::Display for GenericMatrix<T>
@@ -835,6 +865,21 @@ mod tests {
         a.set(1, 0, -3.0);
         a.set(1, 1, -4.0);
         assert_eq!(a.data, &[-1.0, -2.0, -3.0, -4.0]);
+    }
+
+    #[test]
+    fn extract_column_works() {
+        #[rustfmt::skip]
+        let a = GenericMatrix::<f64>::from(&[
+            [1.0, 5.0],
+            [2.0, 6.0],
+            [3.0, 7.0],
+            [4.0, 8.0],
+        ]);
+        let first_column = a.extract_column(0);
+        let second_column = a.extract_column(1);
+        assert_eq!(first_column, [1.0, 2.0, 3.0, 4.0]);
+        assert_eq!(second_column, [5.0, 6.0, 7.0, 8.0]);
     }
 
     #[test]

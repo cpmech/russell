@@ -833,8 +833,50 @@ mod tests {
     }
 
     #[test]
+    fn from_text_file_handles_problems() {
+        assert_eq!(GenericMatrix::<f64>::from_text_file("").err(), Some("cannot open file"),);
+        assert_eq!(
+            GenericMatrix::<f64>::from_text_file("not-found").err(),
+            Some("cannot open file"),
+        );
+        assert_eq!(
+            GenericMatrix::<f64>::from_text_file("./data/matrices/bad_missing_data.txt").err(),
+            Some("column data is missing"),
+        );
+        assert_eq!(
+            GenericMatrix::<f64>::from_text_file("./data/matrices/bad_wrong_data.txt").err(),
+            Some("cannot parse value"),
+        );
+    }
+
+    #[test]
     fn from_text_file_works() -> Result<(), StrError> {
+        let a = GenericMatrix::<f64>::from_text_file("./data/matrices/ok_empty_file.txt")?;
+        assert_eq!(a.nrow, 0);
+        assert_eq!(a.ncol, 0);
+        assert_eq!(a.data.len(), 0);
+
+        let a = GenericMatrix::<f64>::from_text_file("./data/matrices/ok_no_data.txt")?;
+        assert_eq!(a.nrow, 0);
+        assert_eq!(a.ncol, 0);
+        assert_eq!(a.data.len(), 0);
+        assert_eq!(format!("{}", a), "[]");
+
+        let a = GenericMatrix::<f64>::from_text_file("./data/matrices/ok_single_value.txt")?;
+        assert_eq!(a.nrow, 1);
+        assert_eq!(a.ncol, 1);
+        assert_eq!(a.data.len(), 1);
+        assert_eq!(
+            format!("{}", a),
+            "┌   ┐\n\
+             │ 1 │\n\
+             └   ┘"
+        );
+
         let a = GenericMatrix::<f64>::from_text_file("./data/matrices/ok1.txt")?;
+        assert_eq!(a.nrow, 3);
+        assert_eq!(a.ncol, 3);
+        assert_eq!(a.data.len(), 9);
         assert_eq!(
             format!("{}", a),
             "┌       ┐\n\

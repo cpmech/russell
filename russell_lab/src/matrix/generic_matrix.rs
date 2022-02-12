@@ -1,10 +1,14 @@
-use crate::AsArray2D;
+use crate::{AsArray2D, StrError};
 use num_traits::Num;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::cmp;
+use std::ffi::OsStr;
 use std::fmt::{self, Write};
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::ops::{Index, IndexMut};
+use std::path::Path;
 
 /// Holds matrix components and associated functions
 ///
@@ -340,6 +344,82 @@ where
             matrix.data[i * ncol + i] = data[i];
         }
         matrix
+    }
+
+    /// Creates matrix from text file
+    ///
+    /// # Input
+    ///
+    /// * `full_path` -- may be a String, &str, or Path
+    ///
+    /// # Notes
+    ///
+    /// * Comments start with the hash character '#'
+    /// * Ignores lines starting with '#' or empty lines
+    /// * The end of the row (line) may contain comments too and will cause to stop reading data,
+    ///   thus, the '#' marker in a row (line) must be at the end of the line.
+    pub fn from_text_file<P>(full_path: &P) -> Result<Self, StrError>
+    where
+        P: AsRef<OsStr> + ?Sized,
+    {
+        // read file
+        let path = Path::new(full_path).to_path_buf();
+        let input = File::open(path).map_err(|_| "cannot open file")?;
+        let buffered = BufReader::new(input);
+        let mut lines_iter = buffered.lines();
+
+        // parse rows, ignoring comments and empty lines
+        let mut current_row_index = 0;
+        let mut number_of_columns = 0;
+        let mut data = Vec::<T>::new();
+        loop {
+            match lines_iter.next() {
+                Some(v) => {
+                    // extract line
+                    let line = v.unwrap(); // must panic because no error expected here
+
+                    // ignore comments or empty lines
+                    let maybe_data = line.trim_start().trim_end_matches("\n");
+                    if maybe_data.starts_with("#") || maybe_data == "" {
+                        continue; // nothing to parse
+                    }
+
+                    // remove whitespace
+                    let mut row_values = maybe_data.split_whitespace();
+
+                    // loop over columns
+                    let mut column_index = 0;
+                    loop {
+                        match row_values.next() {
+                            Some(s) => {
+                                if s.starts_with("#") {
+                                    break; // ignore comments at the end of the row
+                                }
+                                data.push(T::from_str_radix(s, 10).map_err(|_| "cannot parse value")?);
+                                column_index += 1;
+                            }
+                            None => break,
+                        }
+                    }
+
+                    // set or check the number of columns
+                    if current_row_index == 0 {
+                        number_of_columns = column_index; // the first row determines the number of columns
+                    } else {
+                        if column_index != number_of_columns {
+                            return Err("column data is missing");
+                        }
+                    }
+                    current_row_index += 1;
+                }
+                None => break,
+            }
+        }
+        Ok(GenericMatrix {
+            nrow: current_row_index,
+            ncol: number_of_columns,
+            data,
+        })
     }
 
     /// Returns the number of rows
@@ -750,6 +830,20 @@ mod tests {
         assert_eq!(a.nrow, 3);
         assert_eq!(a.ncol, 3);
         assert_eq!(a.data, [-8.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 1.0]);
+    }
+
+    #[test]
+    fn from_text_file_works() -> Result<(), StrError> {
+        let a = GenericMatrix::<f64>::from_text_file("./data/matrices/ok1.txt")?;
+        assert_eq!(
+            format!("{}", a),
+            "┌       ┐\n\
+             │ 1 2 3 │\n\
+             │ 4 5 6 │\n\
+             │ 7 8 9 │\n\
+             └       ┘"
+        );
+        Ok(())
     }
 
     #[test]

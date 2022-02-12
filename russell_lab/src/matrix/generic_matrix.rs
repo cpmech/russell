@@ -352,10 +352,42 @@ where
     ///
     /// * `full_path` -- may be a String, &str, or Path
     ///
+    /// # Example
+    ///
+    /// The code below will read the following file:
+    ///
+    /// ```text
+    ///  ## hash indicates comments
+    ///
+    ///  1   4  # the first column defines the number of rows
+    ///   2   5  
+    ///     3   6   # more comments here
+    ///   
+    ///  ## empty lines are ok  
+    ///        ## misalignment is fine
+    /// ```
+    ///
+    /// ```
+    /// use russell_lab::{GenericMatrix, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut a = GenericMatrix::<f64>::from_text_file("./data/matrices/example.txt")?;
+    ///     assert_eq!(
+    ///         format!("{}", a),
+    ///         "┌     ┐\n\
+    ///          │ 1 4 │\n\
+    ///          │ 2 5 │\n\
+    ///          │ 3 6 │\n\
+    ///          └     ┘"
+    ///     );
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
     /// # Notes
     ///
     /// * Comments start with the hash character '#'
-    /// * Ignores lines starting with '#' or empty lines
+    /// * Lines starting with '#' or empty lines are ignored
     /// * The end of the row (line) may contain comments too and will cause to stop reading data,
     ///   thus, the '#' marker in a row (line) must be at the end of the line.
     pub fn from_text_file<P>(full_path: &P) -> Result<Self, StrError>

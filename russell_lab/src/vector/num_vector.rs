@@ -6,7 +6,7 @@ use std::cmp;
 use std::fmt::{self, Write};
 use std::ops::{Index, IndexMut};
 
-/// Holds vector components and associated functions
+/// Implements a vector with numeric components for linear algebra
 ///
 /// # Remarks
 ///

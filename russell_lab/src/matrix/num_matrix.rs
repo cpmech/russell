@@ -10,7 +10,7 @@ use std::io::{BufRead, BufReader};
 use std::ops::{Index, IndexMut};
 use std::path::Path;
 
-/// Holds matrix components and associated functions
+/// Implements a matrix with numeric components for linear algebra
 ///
 /// # Remarks
 ///

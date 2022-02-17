@@ -123,7 +123,7 @@ pub fn logistic_deriv(x: f64) -> f64 {
 /// Implements a smooth ramp function
 ///
 /// ```text
-///                  │ 0   if -β·x > 100
+///                  │ 0   if -β·x > 500
 ///                  |
 /// smooth_ramp(x) = │     log(1 + exp(-β·x))
 ///                  │ x + ——————————————————  otherwise
@@ -131,7 +131,7 @@ pub fn logistic_deriv(x: f64) -> f64 {
 /// ```
 #[inline]
 pub fn smooth_ramp(x: f64, beta: f64) -> f64 {
-    if -beta * x > 100.0 {
+    if -beta * x > 500.0 {
         return 0.0;
     }
     x + f64::ln(1.0 + f64::exp(-beta * x)) / beta
@@ -140,7 +140,7 @@ pub fn smooth_ramp(x: f64, beta: f64) -> f64 {
 /// Returns the first derivative of smooth_ramp
 #[inline]
 pub fn smooth_ramp_deriv(x: f64, beta: f64) -> f64 {
-    if -beta * x > 100.0 {
+    if -beta * x > 500.0 {
         return 0.0;
     }
     return 1.0 / (1.0 + f64::exp(-beta * x));
@@ -149,10 +149,32 @@ pub fn smooth_ramp_deriv(x: f64, beta: f64) -> f64 {
 /// Returns the second derivative of smooth_ramp
 #[inline]
 pub fn smooth_ramp_deriv2(x: f64, beta: f64) -> f64 {
-    if beta * x > 100.0 {
+    if beta * x > 500.0 {
         return 0.0;
     }
     beta * f64::exp(beta * x) / f64::powf(f64::exp(beta * x) + 1.0, 2.0)
+}
+
+/// Implements the superquadric function involving sin(x)
+///
+/// ```text
+/// suq_sin(x;k) = sign(sin(x)) · |sin(x)|ᵏ
+/// ```
+///
+/// `suq_sin(x;k)` is the `f(ω;m)` function from <https://en.wikipedia.org/wiki/Superquadrics>
+pub fn suq_sin(x: f64, k: f64) -> f64 {
+    sign(f64::sin(x)) * f64::powf(f64::abs(f64::sin(x)), k)
+}
+
+/// Implements the superquadric auxiliary involving cos(x)
+///
+/// ```text
+/// suq_cos(x;k) = sign(cos(x)) · |cos(x)|ᵏ
+/// ```
+///
+/// `suq_cos(x;k)` is the `g(ω;m)` function from <https://en.wikipedia.org/wiki/Superquadrics>
+pub fn suq_cos(x: f64, k: f64) -> f64 {
+    sign(f64::cos(x)) * f64::powf(f64::abs(f64::cos(x)), k)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -161,8 +183,10 @@ pub fn smooth_ramp_deriv2(x: f64, beta: f64) -> f64 {
 mod tests {
     use super::{
         boxcar, heaviside, logistic, logistic_deriv, ramp, sign, smooth_ramp, smooth_ramp_deriv, smooth_ramp_deriv2,
+        suq_cos, suq_sin,
     };
     use russell_chk::{assert_approx_eq, assert_deriv_approx_eq};
+    use std::f64::consts::PI;
 
     #[test]
     fn sign_ramp_heaviside_boxcar_work() {
@@ -173,7 +197,6 @@ mod tests {
             let r = ramp(x);
             let h = heaviside(x);
             let bxc = boxcar(x, a, b);
-            println!("{}: b={}", x, bxc);
             if x == 0.0 {
                 assert_eq!(s, 0.0);
             } else {
@@ -204,8 +227,12 @@ mod tests {
 
     #[test]
     fn smooth_ramp_and_deriv_work() {
-        assert_eq!(smooth_ramp(-1.0, 100.1), 0.0);
-        assert_eq!(smooth_ramp(-1.0, 99.9), 0.0);
+        assert_eq!(smooth_ramp(-1.0, 500.1), 0.0);
+        assert_eq!(smooth_ramp(-1.0, 499.9), 0.0);
+        assert_eq!(smooth_ramp_deriv(-1.0, 500.1), 0.0);
+        assert_approx_eq!(smooth_ramp_deriv(-1.0, 499.99), 0.0, 1e-15);
+        assert_eq!(smooth_ramp_deriv2(1.0, 500.1), 0.0);
+        assert_approx_eq!(smooth_ramp_deriv2(1.0, 499.99), 0.0, 1e-15);
         let beta = 2.0;
         struct Arguments {
             beta: f64,
@@ -220,5 +247,24 @@ mod tests {
             assert_deriv_approx_eq!(d, x, f, args, 1e-9);
             assert_deriv_approx_eq!(d2, x, g, args, 1e-9);
         }
+    }
+
+    #[test]
+    fn suq_sin_and_cos_work() {
+        assert_approx_eq!(suq_sin(0.0, 1.0), 0.0, 1e-14);
+        assert_approx_eq!(suq_sin(PI, 1.0), 0.0, 1e-14);
+        assert_approx_eq!(suq_sin(PI / 2.0, 0.0), 1.0, 1e-14);
+        assert_approx_eq!(suq_sin(PI / 2.0, 1.0), 1.0, 1e-14);
+        assert_approx_eq!(suq_sin(PI / 2.0, 2.0), 1.0, 1e-14);
+        assert_approx_eq!(suq_sin(PI / 4.0, 2.0), 0.5, 1e-14);
+        assert_approx_eq!(suq_sin(-PI / 4.0, 2.0), -0.5, 1e-14);
+
+        assert_approx_eq!(suq_cos(0.0, 1.0), 1.0, 1e-14);
+        assert_approx_eq!(suq_cos(PI, 1.0), -1.0, 1e-14);
+        assert_approx_eq!(suq_cos(PI / 2.0, 0.0), 1.0, 1e-14); // because sign(cos(pi/2))=1
+        assert_approx_eq!(suq_cos(PI / 2.0, 1.0), 0.0, 1e-14);
+        assert_approx_eq!(suq_cos(PI / 2.0, 2.0), 0.0, 1e-14);
+        assert_approx_eq!(suq_cos(PI / 4.0, 2.0), 0.5, 1e-14);
+        assert_approx_eq!(suq_cos(-PI / 4.0, 2.0), 0.5, 1e-14);
     }
 }

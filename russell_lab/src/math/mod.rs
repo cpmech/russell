@@ -162,6 +162,7 @@ pub fn smooth_ramp_deriv2(x: f64, beta: f64) -> f64 {
 /// ```
 ///
 /// `suq_sin(x;k)` is the `f(ω;m)` function from <https://en.wikipedia.org/wiki/Superquadrics>
+#[inline]
 pub fn suq_sin(x: f64, k: f64) -> f64 {
     sign(f64::sin(x)) * f64::powf(f64::abs(f64::sin(x)), k)
 }
@@ -173,6 +174,7 @@ pub fn suq_sin(x: f64, k: f64) -> f64 {
 /// ```
 ///
 /// `suq_cos(x;k)` is the `g(ω;m)` function from <https://en.wikipedia.org/wiki/Superquadrics>
+#[inline]
 pub fn suq_cos(x: f64, k: f64) -> f64 {
     sign(f64::cos(x)) * f64::powf(f64::abs(f64::cos(x)), k)
 }

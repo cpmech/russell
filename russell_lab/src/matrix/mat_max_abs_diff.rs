@@ -6,12 +6,12 @@ use crate::StrError;
 /// Returns (i,j,max_abs_diff)
 ///
 /// ```text
-///      max_abs_diff := max_ij ( |aᵢⱼ - bᵢⱼ| )
+/// max_abs_diff := max_ij ( |aᵢⱼ - bᵢⱼ| )
 /// ```
 ///
 /// # Warning
 ///
-/// This function may be slow for huge matrices.
+/// This function may be slow for large matrices.
 ///
 /// # Example
 ///

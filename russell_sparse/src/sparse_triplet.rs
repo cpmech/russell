@@ -166,8 +166,14 @@ impl SparseTriplet {
     /// use russell_sparse::{SparseTriplet, Symmetry, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let trip = SparseTriplet::new(2, 2, 1, Symmetry::No)?;
-    ///     assert_eq!(trip.dims(), (2, 2));
+    ///     let mut trip = SparseTriplet::new(3, 3, 4, Symmetry::No)?;
+    ///     trip.put(0, 0, 1.0)?;
+    ///     trip.put(1, 1, 2.0)?;
+    ///     trip.put(2, 2, 3.0)?;
+    ///     trip.put(0, 1, 4.0)?;
+    ///     assert_eq!(trip.nnz_current(), 4);
+    ///     trip.reset();
+    ///     assert_eq!(trip.nnz_current(), 0);
     ///     Ok(())
     /// }
     /// ```
@@ -402,9 +408,18 @@ mod tests {
     }
 
     #[test]
-    fn dims_works() -> Result<(), StrError> {
-        let trip = SparseTriplet::new(3, 2, 1, Symmetry::No)?;
+    fn getters_and_reset_work() -> Result<(), StrError> {
+        let mut trip = SparseTriplet::new(3, 2, 4, Symmetry::No)?;
+        assert_eq!(trip.nnz_current(), 0);
+        trip.put(0, 0, 1.0)?;
+        trip.put(0, 1, 4.0)?;
+        trip.put(1, 1, 2.0)?;
+        trip.put(2, 0, 3.0)?;
         assert_eq!(trip.dims(), (3, 2));
+        assert_eq!(trip.nnz_current(), 4);
+        assert_eq!(trip.nnz_max(), 4);
+        trip.reset();
+        assert_eq!(trip.nnz_current(), 0);
         Ok(())
     }
 

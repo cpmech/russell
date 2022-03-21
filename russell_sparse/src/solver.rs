@@ -226,19 +226,19 @@ impl Solver {
     /// fn main() -> Result<(), StrError> {
     ///     // allocate a square matrix
     ///     let mut trip = SparseTriplet::new(5, 5, 13, Symmetry::No)?;
-    ///     trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-    ///     trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-    ///     trip.put(1, 0, 3.0);
-    ///     trip.put(0, 1, 3.0);
-    ///     trip.put(2, 1, -1.0);
-    ///     trip.put(4, 1, 4.0);
-    ///     trip.put(1, 2, 4.0);
-    ///     trip.put(2, 2, -3.0);
-    ///     trip.put(3, 2, 1.0);
-    ///     trip.put(4, 2, 2.0);
-    ///     trip.put(2, 3, 2.0);
-    ///     trip.put(1, 4, 6.0);
-    ///     trip.put(4, 4, 1.0);
+    ///     trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
+    ///     trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
+    ///     trip.put(1, 0, 3.0)?;
+    ///     trip.put(0, 1, 3.0)?;
+    ///     trip.put(2, 1, -1.0)?;
+    ///     trip.put(4, 1, 4.0)?;
+    ///     trip.put(1, 2, 4.0)?;
+    ///     trip.put(2, 2, -3.0)?;
+    ///     trip.put(3, 2, 1.0)?;
+    ///     trip.put(4, 2, 2.0)?;
+    ///     trip.put(2, 3, 2.0)?;
+    ///     trip.put(1, 4, 6.0)?;
+    ///     trip.put(4, 4, 1.0)?;
     ///
     ///     // print matrix
     ///     let (m, n) = trip.dims();
@@ -336,11 +336,11 @@ impl Solver {
     /// fn main() -> Result<(), StrError> {
     ///     // allocate a square matrix
     ///     let mut trip = SparseTriplet::new(3, 3, 5, Symmetry::No)?;
-    ///     trip.put(0, 0, 0.2);
-    ///     trip.put(0, 1, 0.2);
-    ///     trip.put(1, 0, 0.5);
-    ///     trip.put(1, 1, -0.25);
-    ///     trip.put(2, 2, 0.25);
+    ///     trip.put(0, 0, 0.2)?;
+    ///     trip.put(0, 1, 0.2)?;
+    ///     trip.put(1, 0, 0.5)?;
+    ///     trip.put(1, 1, -0.25)?;
+    ///     trip.put(2, 2, 0.25)?;
     ///
     ///     // print matrix
     ///     let (m, n) = trip.dims();
@@ -601,8 +601,8 @@ mod tests {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
-        trip.put(0, 0, 1.0);
-        trip.put(1, 1, 1.0);
+        trip.put(0, 0, 1.0)?;
+        trip.put(1, 1, 1.0)?;
         solver.initialize(&trip)?;
         assert!(solver.done_initialize);
         Ok(())
@@ -624,8 +624,8 @@ mod tests {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
-        trip.put(0, 0, 1.0);
-        trip.put(1, 1, 0.0);
+        trip.put(0, 0, 1.0)?;
+        trip.put(1, 1, 0.0)?;
         solver.initialize(&trip)?;
         assert_eq!(solver.factorize(), Err("Error(1): Matrix is singular"));
         Ok(())
@@ -636,8 +636,8 @@ mod tests {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
-        trip.put(0, 0, 1.0);
-        trip.put(1, 1, 1.0);
+        trip.put(0, 0, 1.0)?;
+        trip.put(1, 1, 1.0)?;
         solver.initialize(&trip)?;
         solver.factorize()?;
         assert!(solver.done_factorize);
@@ -649,8 +649,8 @@ mod tests {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
-        trip.put(0, 0, 1.0);
-        trip.put(1, 1, 1.0);
+        trip.put(0, 0, 1.0)?;
+        trip.put(1, 1, 1.0)?;
         solver.initialize(&trip)?;
         let mut x = Vector::new(2);
         let rhs = Vector::from(&[1.0, 1.0]);
@@ -666,8 +666,8 @@ mod tests {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
-        trip.put(0, 0, 1.0);
-        trip.put(1, 1, 1.0);
+        trip.put(0, 0, 1.0)?;
+        trip.put(1, 1, 1.0)?;
         solver.initialize(&trip)?;
         solver.factorize()?;
         let mut x = Vector::new(2);
@@ -692,19 +692,19 @@ mod tests {
 
         // allocate a square matrix
         let mut trip = SparseTriplet::new(5, 5, 13, Symmetry::No)?;
-        trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-        trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-        trip.put(1, 0, 3.0);
-        trip.put(0, 1, 3.0);
-        trip.put(2, 1, -1.0);
-        trip.put(4, 1, 4.0);
-        trip.put(1, 2, 4.0);
-        trip.put(2, 2, -3.0);
-        trip.put(3, 2, 1.0);
-        trip.put(4, 2, 2.0);
-        trip.put(2, 3, 2.0);
-        trip.put(1, 4, 6.0);
-        trip.put(4, 4, 1.0);
+        trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
+        trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
+        trip.put(1, 0, 3.0)?;
+        trip.put(0, 1, 3.0)?;
+        trip.put(2, 1, -1.0)?;
+        trip.put(4, 1, 4.0)?;
+        trip.put(1, 2, 4.0)?;
+        trip.put(2, 2, -3.0)?;
+        trip.put(3, 2, 1.0)?;
+        trip.put(4, 2, 2.0)?;
+        trip.put(2, 3, 2.0)?;
+        trip.put(1, 4, 6.0)?;
+        trip.put(4, 4, 1.0)?;
 
         // allocate x and rhs
         let mut x = Vector::new(5);
@@ -726,8 +726,8 @@ mod tests {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
-        trip.put(0, 0, 1.0);
-        trip.put(1, 1, 1.0);
+        trip.put(0, 0, 1.0)?;
+        trip.put(1, 1, 1.0)?;
         solver.initialize(&trip)?;
         solver.factorize()?;
         assert_eq!(solver.done_initialize, true);
@@ -763,19 +763,19 @@ mod tests {
 
         // allocate a square matrix
         let mut trip = SparseTriplet::new(5, 5, 13, Symmetry::No)?;
-        trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-        trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-        trip.put(1, 0, 3.0);
-        trip.put(0, 1, 3.0);
-        trip.put(2, 1, -1.0);
-        trip.put(4, 1, 4.0);
-        trip.put(1, 2, 4.0);
-        trip.put(2, 2, -3.0);
-        trip.put(3, 2, 1.0);
-        trip.put(4, 2, 2.0);
-        trip.put(2, 3, 2.0);
-        trip.put(1, 4, 6.0);
-        trip.put(4, 4, 1.0);
+        trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
+        trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
+        trip.put(1, 0, 3.0)?;
+        trip.put(0, 1, 3.0)?;
+        trip.put(2, 1, -1.0)?;
+        trip.put(4, 1, 4.0)?;
+        trip.put(1, 2, 4.0)?;
+        trip.put(2, 2, -3.0)?;
+        trip.put(3, 2, 1.0)?;
+        trip.put(4, 2, 2.0)?;
+        trip.put(2, 3, 2.0)?;
+        trip.put(1, 4, 6.0)?;
+        trip.put(4, 4, 1.0)?;
 
         // allocate x and rhs
         let mut x = Vector::new(5);
@@ -821,8 +821,8 @@ mod tests {
 
         // factorize fails on singular matrix
         let mut trip_singular = SparseTriplet::new(5, 5, 2, Symmetry::No)?;
-        trip_singular.put(0, 0, 1.0);
-        trip_singular.put(4, 4, 1.0);
+        trip_singular.put(0, 0, 1.0)?;
+        trip_singular.put(4, 4, 1.0)?;
         solver.initialize(&trip_singular)?;
         assert_eq!(solver.factorize(), Err("Error(-10): numerically singular matrix"));
 
@@ -833,12 +833,12 @@ mod tests {
     #[test]
     fn compute_works() -> Result<(), StrError> {
         let mut trip = SparseTriplet::new(3, 3, 6, Symmetry::No)?;
-        trip.put(0, 0, 1.0);
-        trip.put(0, 1, 1.0);
-        trip.put(1, 0, 2.0);
-        trip.put(1, 1, 1.0);
-        trip.put(1, 2, 1.0);
-        trip.put(2, 2, 1.0);
+        trip.put(0, 0, 1.0)?;
+        trip.put(0, 1, 1.0)?;
+        trip.put(1, 0, 2.0)?;
+        trip.put(1, 1, 1.0)?;
+        trip.put(1, 2, 1.0)?;
+        trip.put(2, 2, 1.0)?;
         let rhs1 = Vector::from(&[1.0, 2.0, 3.0]);
         let rhs2 = Vector::from(&[2.0, 4.0, 6.0]);
         let config = ConfigSolver::new();

@@ -15,19 +15,19 @@ fn test_solver(name: LinSol) {
         }
     };
 
-    trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-    trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-    trip.put(1, 0, 3.0);
-    trip.put(0, 1, 3.0);
-    trip.put(2, 1, -1.0);
-    trip.put(4, 1, 4.0);
-    trip.put(1, 2, 4.0);
-    trip.put(2, 2, -3.0);
-    trip.put(3, 2, 1.0);
-    trip.put(4, 2, 2.0);
-    trip.put(2, 3, 2.0);
-    trip.put(1, 4, 6.0);
-    trip.put(4, 4, 1.0);
+    trip.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
+    trip.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
+    trip.put(1, 0, 3.0).unwrap();
+    trip.put(0, 1, 3.0).unwrap();
+    trip.put(2, 1, -1.0).unwrap();
+    trip.put(4, 1, 4.0).unwrap();
+    trip.put(1, 2, 4.0).unwrap();
+    trip.put(2, 2, -3.0).unwrap();
+    trip.put(3, 2, 1.0).unwrap();
+    trip.put(4, 2, 2.0).unwrap();
+    trip.put(2, 3, 2.0).unwrap();
+    trip.put(1, 4, 6.0).unwrap();
+    trip.put(4, 4, 1.0).unwrap();
 
     let mut config = ConfigSolver::new();
     config.set_solver(name);
@@ -86,8 +86,8 @@ fn test_solver(name: LinSol) {
         }
     };
 
-    trip_singular.put(0, 0, 1.0);
-    trip_singular.put(4, 4, 1.0);
+    trip_singular.put(0, 0, 1.0).unwrap();
+    trip_singular.put(4, 4, 1.0).unwrap();
     match solver.initialize(&trip_singular) {
         Err(e) => {
             println!("FAIL(initialize singular matrix): {}", e);

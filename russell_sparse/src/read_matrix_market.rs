@@ -369,9 +369,9 @@ pub fn read_matrix_market(filepath: &String, sym_mirror: bool) -> Result<SparseT
             Some(v) => {
                 let line = v.unwrap(); // must panic because no error expected here
                 if data.parse_triple(&line)? {
-                    trip.put(data.i as usize, data.j as usize, data.aij);
+                    trip.put(data.i as usize, data.j as usize, data.aij)?;
                     if data.symmetric && sym_mirror && data.i != data.j {
-                        trip.put(data.j as usize, data.i as usize, data.aij);
+                        trip.put(data.j as usize, data.i as usize, data.aij)?;
                     }
                 }
             }

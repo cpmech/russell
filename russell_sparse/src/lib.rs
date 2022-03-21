@@ -12,19 +12,19 @@
 //!
 //!     // allocate a square matrix
 //!     let mut trip = SparseTriplet::new(5, 5, 13, Symmetry::No)?;
-//!     trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-//!     trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-//!     trip.put(1, 0, 3.0);
-//!     trip.put(0, 1, 3.0);
-//!     trip.put(2, 1, -1.0);
-//!     trip.put(4, 1, 4.0);
-//!     trip.put(1, 2, 4.0);
-//!     trip.put(2, 2, -3.0);
-//!     trip.put(3, 2, 1.0);
-//!     trip.put(4, 2, 2.0);
-//!     trip.put(2, 3, 2.0);
-//!     trip.put(1, 4, 6.0);
-//!     trip.put(4, 4, 1.0);
+//!     trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
+//!     trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
+//!     trip.put(1, 0, 3.0)?;
+//!     trip.put(0, 1, 3.0)?;
+//!     trip.put(2, 1, -1.0)?;
+//!     trip.put(4, 1, 4.0)?;
+//!     trip.put(1, 2, 4.0)?;
+//!     trip.put(2, 2, -3.0)?;
+//!     trip.put(3, 2, 1.0)?;
+//!     trip.put(4, 2, 2.0)?;
+//!     trip.put(2, 3, 2.0)?;
+//!     trip.put(1, 4, 6.0)?;
+//!     trip.put(4, 4, 1.0)?;
 //!
 //!     // print matrix
 //!     let (m, n) = trip.dims();

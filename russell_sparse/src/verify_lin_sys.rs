@@ -29,10 +29,10 @@ impl VerifyLinSys {
     /// fn main() -> Result<(), StrError> {
     ///     // set sparse matrix (3 x 3) with 4 non-zeros
     ///     let mut trip = SparseTriplet::new(3, 3, 4, Symmetry::No)?;
-    ///     trip.put(0, 0, 1.0);
-    ///     trip.put(0, 2, 4.0);
-    ///     trip.put(1, 1, 2.0);
-    ///     trip.put(2, 2, 3.0);
+    ///     trip.put(0, 0, 1.0)?;
+    ///     trip.put(0, 2, 4.0)?;
+    ///     trip.put(1, 1, 2.0)?;
+    ///     trip.put(2, 2, 3.0)?;
     ///
     ///     // check matrix
     ///     let (m, n) = trip.dims();
@@ -147,15 +147,15 @@ mod tests {
         // | 3  5  6 |
         // | 2  4  3 |
         let mut trip = SparseTriplet::new(3, 3, 9, Symmetry::No)?;
-        trip.put(0, 0, 1.0);
-        trip.put(0, 1, 3.0);
-        trip.put(0, 2, -2.0);
-        trip.put(1, 0, 3.0);
-        trip.put(1, 1, 5.0);
-        trip.put(1, 2, 6.0);
-        trip.put(2, 0, 2.0);
-        trip.put(2, 1, 4.0);
-        trip.put(2, 2, 3.0);
+        trip.put(0, 0, 1.0)?;
+        trip.put(0, 1, 3.0)?;
+        trip.put(0, 2, -2.0)?;
+        trip.put(1, 0, 3.0)?;
+        trip.put(1, 1, 5.0)?;
+        trip.put(1, 2, 6.0)?;
+        trip.put(2, 0, 2.0)?;
+        trip.put(2, 1, 4.0)?;
+        trip.put(2, 2, 3.0)?;
         let x = Vector::from(&[-15.0, 8.0, 2.0]);
         let rhs = Vector::from(&[5.0, 7.0, 8.0]);
         let verify = VerifyLinSys::new(&trip, &x, &rhs)?;
@@ -170,8 +170,8 @@ mod tests {
     #[test]
     fn display_trait_works() -> Result<(), StrError> {
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
-        trip.put(0, 0, 1.0);
-        trip.put(1, 1, 1.0);
+        trip.put(0, 0, 1.0)?;
+        trip.put(1, 1, 1.0)?;
         let x = Vector::from(&[1.0, 1.0]);
         let rhs = Vector::from(&[1.0, 1.0]);
         let mut verify = VerifyLinSys::new(&trip, &x, &rhs)?;

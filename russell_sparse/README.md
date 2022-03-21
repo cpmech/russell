@@ -64,11 +64,11 @@ use russell_sparse::{ConfigSolver, Solver, SparseTriplet, Symmetry, StrError};
 fn main() -> Result<(), StrError> {
     // allocate a square matrix
     let mut trip = SparseTriplet::new(3, 3, 5, Symmetry::No)?;
-    trip.put(0, 0, 0.2);
-    trip.put(0, 1, 0.2);
-    trip.put(1, 0, 0.5);
-    trip.put(1, 1, -0.25);
-    trip.put(2, 2, 0.25);
+    trip.put(0, 0, 0.2)?;
+    trip.put(0, 1, 0.2)?;
+    trip.put(1, 0, 0.5)?;
+    trip.put(1, 1, -0.25)?;
+    trip.put(2, 2, 0.25)?;
     
     // print matrix
     let (m, n) = trip.dims();

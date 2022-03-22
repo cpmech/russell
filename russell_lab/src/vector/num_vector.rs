@@ -744,7 +744,7 @@ mod tests {
         assert_eq!(x.data[1], 3.0);
 
         let i = NumVector::<usize>::linspace(0, 10, 0)?;
-        assert_eq!(i.data, []);
+        assert_eq!(i.data, [] as [usize; 0]);
         let i = NumVector::<usize>::linspace(0, 10, 1)?;
         assert_eq!(i.data, [0]);
         let i = NumVector::<usize>::linspace(0, 10, 2)?;

@@ -1071,6 +1071,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ]);
+
         // clone
         let mut cloned = a.clone();
         cloned[0][0] = -1.0;
@@ -1090,17 +1091,37 @@ mod tests {
              │  7  8  9 │\n\
              └          ┘"
         );
+
         // serialize
         let mut serialized = Vec::new();
         let mut serializer = rmp_serde::Serializer::new(&mut serialized);
         a.serialize(&mut serializer).map_err(|_| "matrix serialize failed")?;
         assert!(serialized.len() > 0);
+
         // deserialize
         let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
         let b: NumMatrix<f64> =
             Deserialize::deserialize(&mut deserializer).map_err(|_| "cannot deserialize matrix data")?;
         assert_eq!(
             format!("{}", b),
+            "┌       ┐\n\
+             │ 1 2 3 │\n\
+             │ 4 5 6 │\n\
+             │ 7 8 9 │\n\
+             └       ┘"
+        );
+
+        // serialize to json
+        let json = serde_json::to_string(&a).map_err(|_| "serde_json::to_string failed")?;
+        assert_eq!(
+            json,
+            r#"{"nrow":3,"ncol":3,"data":[1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0]}"#
+        );
+
+        // deserialize from json
+        let from_json: NumMatrix<f64> = serde_json::from_str(&json).map_err(|_| "serde_json::from_str failed")?;
+        assert_eq!(
+            format!("{}", from_json),
             "┌       ┐\n\
              │ 1 2 3 │\n\
              │ 4 5 6 │\n\

@@ -20,6 +20,7 @@ serde = { version = "1.0.136", features = ["derive"] }
 
 [dev-dependencies]
 rmp-serde = "1.0.0"
+serde_json = "1.0.78"
 
 [[bench]]
 name = "lab_benches"

@@ -1,6 +1,6 @@
 use russell_lab::{format_nanoseconds, Stopwatch, StrError, Vector};
 use russell_openblas::set_num_threads;
-use russell_sparse::{enum_ordering, enum_scaling, read_matrix_market, ConfigSolver, LinSol, Solver, VerifyLinSys};
+use russell_sparse::{enum_ordering, enum_scaling, read_matrix_market, ConfigSolver, LinSolKind, Solver, VerifyLinSys};
 use std::path::Path;
 use structopt::StructOpt;
 
@@ -45,16 +45,16 @@ fn main() -> Result<(), StrError> {
     }
 
     // select linear solver
-    let name = if opt.mmp { LinSol::Mmp } else { LinSol::Umf };
+    let name = if opt.mmp { LinSolKind::Mmp } else { LinSolKind::Umf };
 
     // set the sym_mirror flag
     let sym_mirror;
     match name {
-        LinSol::Mmp => {
+        LinSolKind::Mmp => {
             // MMP uses the lower-diagonal if symmetric.
             sym_mirror = false;
         }
-        LinSol::Umf => {
+        LinSolKind::Umf => {
             // UMF uses the full matrix, if symmetric or not
             sym_mirror = true;
         }
@@ -68,14 +68,14 @@ fn main() -> Result<(), StrError> {
     // set configuration
     let mut config = ConfigSolver::new();
     config
-        .set_solver(name)
-        .set_ordering(enum_ordering(opt.ordering.as_str()))
-        .set_scaling(enum_scaling(opt.scaling.as_str()));
+        .lin_sol_kind(name)
+        .ordering(enum_ordering(opt.ordering.as_str()))
+        .scaling(enum_scaling(opt.scaling.as_str()));
     if opt.omp_nt > 1 {
-        config.set_openmp_num_threads(opt.omp_nt as usize);
+        config.openmp_num_threads(opt.omp_nt as usize);
     }
     if opt.verbose {
-        config.set_verbose();
+        config.verbose();
     }
 
     // initialize and factorize

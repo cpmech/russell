@@ -1,7 +1,7 @@
 use crate::StrError;
 
 /// Matrix symmetry option
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Symmetry {
     /// Unsymmetric matrix
     No,
@@ -16,8 +16,9 @@ pub enum Symmetry {
     PosDefTriangular,
 }
 
-/// Linear solver name
-pub enum LinSol {
+/// Linear solver kind
+#[derive(Clone, Copy, Debug)]
+pub enum LinSolKind {
     /// The NON-THREAD-SAFE (Mu-M-P) Solver (use in single-thread apps / with huge matrices)
     Mmp,
 
@@ -26,6 +27,7 @@ pub enum LinSol {
 }
 
 /// Ordering option
+#[derive(Clone, Copy, Debug)]
 pub enum Ordering {
     /// Ordering using the approximate minimum degree
     Amd = 0,
@@ -59,6 +61,7 @@ pub enum Ordering {
 }
 
 /// Scaling option
+#[derive(Clone, Copy, Debug)]
 pub enum Scaling {
     /// Automatic scaling method selection
     Auto = 0,
@@ -226,8 +229,39 @@ pub(crate) fn str_umf_scaling(umf_code: i32) -> StrError {
 mod tests {
     use super::{
         code_symmetry_mmp, code_symmetry_umf, enum_ordering, enum_scaling, str_enum_ordering, str_enum_scaling,
-        str_mmp_ordering, str_mmp_scaling, str_umf_ordering, str_umf_scaling, Ordering, Scaling, Symmetry,
+        str_mmp_ordering, str_mmp_scaling, str_umf_ordering, str_umf_scaling, LinSolKind, Ordering, Scaling, Symmetry,
     };
+
+    #[test]
+    fn clone_copy_and_debug_work() {
+        let symmetry = Symmetry::General;
+        let copy = symmetry;
+        let clone = symmetry.clone();
+        assert_eq!(format!("{:?}", symmetry), "General");
+        assert_eq!(format!("{:?}", copy), "General");
+        assert_eq!(format!("{:?}", clone), "General");
+
+        let lin_sol_kind = LinSolKind::Mmp;
+        let copy = lin_sol_kind;
+        let clone = lin_sol_kind.clone();
+        assert_eq!(format!("{:?}", lin_sol_kind), "Mmp");
+        assert_eq!(format!("{:?}", copy), "Mmp");
+        assert_eq!(format!("{:?}", clone), "Mmp");
+
+        let ordering = Ordering::Amd;
+        let copy = ordering;
+        let clone = ordering.clone();
+        assert_eq!(format!("{:?}", ordering), "Amd");
+        assert_eq!(format!("{:?}", copy), "Amd");
+        assert_eq!(format!("{:?}", clone), "Amd");
+
+        let scaling = Scaling::Column;
+        let copy = scaling;
+        let clone = scaling.clone();
+        assert_eq!(format!("{:?}", scaling), "Column");
+        assert_eq!(format!("{:?}", copy), "Column");
+        assert_eq!(format!("{:?}", clone), "Column");
+    }
 
     #[test]
     fn enum_ordering_works() {

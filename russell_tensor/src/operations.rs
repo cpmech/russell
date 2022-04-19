@@ -2,6 +2,48 @@ use super::{Tensor2, Tensor4};
 use crate::StrError;
 use russell_lab::{inner, mat_mat_mul, mat_vec_mul, outer, vec_mat_mul, Vector};
 
+/// Copies Tensor2
+///
+/// ```text
+/// b := a
+/// ```
+///
+/// # Example
+///
+/// ```
+/// use russell_tensor::{copy_tensor2, Tensor2, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     let a = Tensor2::from_matrix(&[
+///         [1.0, 4.0, 6.0],
+///         [7.0, 2.0, 5.0],
+///         [9.0, 8.0, 3.0],
+///     ], false, false)?;
+///
+///     let mut b = Tensor2::new(false, false);
+///
+///     copy_tensor2(&mut b, &a)?;
+///
+///     assert_eq!(
+///         format!("{:.1}", b.to_matrix()),
+///         "┌             ┐\n\
+///          │ 1.0 4.0 6.0 │\n\
+///          │ 7.0 2.0 5.0 │\n\
+///          │ 9.0 8.0 3.0 │\n\
+///          └             ┘"
+///     );
+///     Ok(())
+/// }
+/// ```
+pub fn copy_tensor2(b: &mut Tensor2, a: &Tensor2) -> Result<(), StrError> {
+    let n = a.vec.dim();
+    if b.vec.dim() != n {
+        return Err("second-order tensors are incompatible");
+    }
+    b.vec.as_mut_data().clone_from_slice(&a.vec.as_data()[..]);
+    Ok(())
+}
+
 /// Performs the double-dot (ddot) operation between two Tensor2 (inner product)
 ///
 /// ```text
@@ -426,11 +468,49 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) -> R
 #[cfg(test)]
 mod tests {
     use super::{
-        t2_ddot_t2, t2_ddot_t4, t2_dot_t2, t2_dot_vec, t2_dyad_t2, t4_ddot_t2, t4_ddot_t4, vec_dot_t2, Tensor2, Tensor4,
+        copy_tensor2, t2_ddot_t2, t2_ddot_t4, t2_dot_t2, t2_dot_vec, t2_dyad_t2, t4_ddot_t2, t4_ddot_t4, vec_dot_t2,
+        Tensor2, Tensor4,
     };
     use crate::{Samples, StrError};
     use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
     use russell_lab::Vector;
+
+    #[test]
+    fn copy_tensor2_fails_on_wrong_input() -> Result<(), StrError> {
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ], false, false)?;
+        let mut b = Tensor2::new(true, true);
+        assert_eq!(
+            copy_tensor2(&mut b, &a).err(),
+            Some("second-order tensors are incompatible")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn copy_tensor2_works() -> Result<(), StrError> {
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ], false, false)?;
+        let mut b = Tensor2::new(false, false);
+        copy_tensor2(&mut b, &a)?;
+        assert_eq!(
+            format!("{:.1}", b.to_matrix()),
+            "┌             ┐\n\
+             │ 1.0 2.0 3.0 │\n\
+             │ 4.0 5.0 6.0 │\n\
+             │ 7.0 8.0 9.0 │\n\
+             └             ┘"
+        );
+        Ok(())
+    }
 
     #[test]
     fn t2_ddot_t2_works() -> Result<(), StrError> {

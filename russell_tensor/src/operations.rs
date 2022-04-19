@@ -40,7 +40,7 @@ pub fn copy_tensor2(b: &mut Tensor2, a: &Tensor2) -> Result<(), StrError> {
     if b.vec.dim() != n {
         return Err("second-order tensors are incompatible");
     }
-    b.vec.as_mut_data().clone_from_slice(&a.vec.as_data()[..]);
+    b.vec.as_mut_data().clone_from_slice(&a.vec.as_data());
     Ok(())
 }
 

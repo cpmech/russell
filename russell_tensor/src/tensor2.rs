@@ -1,6 +1,7 @@
 use super::{mandel_dim, IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, SQRT_2};
 use crate::StrError;
 use russell_lab::{Matrix, Vector};
+use serde::{Deserialize, Serialize};
 
 /// Implements a second-order tensor, symmetric or not
 ///
@@ -55,6 +56,7 @@ use russell_lab::{Matrix, Vector};
 /// * For example, the norm of the tensor equals `vec.norm()`
 /// * However, you must be careful when setting a single component of `vec` directly
 ///   because you may "break" the Mandel representation.
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Tensor2 {
     /// Holds the components in Mandel basis as a vector.
     ///
@@ -315,6 +317,7 @@ mod tests {
     use super::{Tensor2, SQRT_2};
     use crate::StrError;
     use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
+    use serde::{Deserialize, Serialize};
 
     #[test]
     fn new_works() {
@@ -553,6 +556,60 @@ mod tests {
              │ 5.0 0.0 3.0 │\n\
              └             ┘"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn clone_and_serialize_work() -> Result<(), StrError> {
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, false, false)?;
+        // clone
+        let mut cloned = tt.clone();
+        cloned.vec[0] = -1.0;
+        assert_eq!(
+            format!("{:.1}", tt.to_matrix()),
+            "┌             ┐\n\
+             │ 1.0 2.0 3.0 │\n\
+             │ 4.0 5.0 6.0 │\n\
+             │ 7.0 8.0 9.0 │\n\
+             └             ┘"
+        );
+        assert_eq!(
+            format!("{:.1}", cloned.to_matrix()),
+            "┌                ┐\n\
+             │ -1.0  2.0  3.0 │\n\
+             │  4.0  5.0  6.0 │\n\
+             │  7.0  8.0  9.0 │\n\
+             └                ┘"
+        );
+        // serialize
+        let mut serialized = Vec::new();
+        let mut serializer = rmp_serde::Serializer::new(&mut serialized);
+        tt.serialize(&mut serializer).map_err(|_| "tensor serialize failed")?;
+        assert!(serialized.len() > 0);
+        // deserialize
+        let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
+        let ss: Tensor2 = Deserialize::deserialize(&mut deserializer).map_err(|_| "cannot deserialize tensor data")?;
+        assert_eq!(
+            format!("{:.1}", ss.to_matrix()),
+            "┌             ┐\n\
+             │ 1.0 2.0 3.0 │\n\
+             │ 4.0 5.0 6.0 │\n\
+             │ 7.0 8.0 9.0 │\n\
+             └             ┘"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn debug_works() -> Result<(), StrError> {
+        let tt = Tensor2::new(false, false);
+        assert!(format!("{:?}", tt).len() > 0);
         Ok(())
     }
 }

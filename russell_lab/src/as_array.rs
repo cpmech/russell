@@ -166,9 +166,17 @@ where
 /// ```
 pub trait AsArray2D<'a, U: 'a> {
     /// Returns the (m,n) size of the array
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the array is empty.
     fn size(&self) -> (usize, usize);
 
     /// Returns the value at (i,j) indices
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the indices are out of range.
     fn at(&self, i: usize, j: usize) -> U;
 }
 
@@ -178,6 +186,10 @@ pub trait AsArray2D<'a, U: 'a> {
 ///
 /// * The number of columns is defined by the first row
 /// * The next rows must have at least the same number of columns as the first row
+///
+/// # Panics
+///
+/// The methods may panic if the array is empty.
 impl<'a, U: 'a> AsArray2D<'a, U> for Vec<Vec<U>>
 where
     U: 'a + Copy,
@@ -196,6 +208,10 @@ where
 ///
 /// * The number of columns is defined by the first row
 /// * The next rows must have at least the same number of columns as the first row
+///
+/// # Panics
+///
+/// The methods may panic if the array is empty.
 impl<'a, U> AsArray2D<'a, U> for &'a [&'a [U]]
 where
     U: 'a + Copy,
@@ -209,6 +225,10 @@ where
 }
 
 /// Defines a stack-allocated (fixed-size) 2D array
+///
+/// # Panics
+///
+/// The methods may panic if the array is empty.
 impl<'a, U, const M: usize, const N: usize> AsArray2D<'a, U> for [[U; N]; M]
 where
     U: 'a + Copy,

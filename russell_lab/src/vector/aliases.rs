@@ -1,4 +1,4 @@
-use crate::GenericVector;
+use crate::NumVector;
 
-/// Vector is an alias to GenericVector<f64> and is used in most functions that call OpenBLAS
-pub type Vector = GenericVector<f64>;
+/// Vector is an alias to NumVector<f64> and is used in most functions that call OpenBLAS
+pub type Vector = NumVector<f64>;

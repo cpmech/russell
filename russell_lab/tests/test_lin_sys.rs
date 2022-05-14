@@ -14,8 +14,8 @@ fn test_lin_sys() -> Result<(), StrError> {
         }
 
         // take copies
-        let a_copy = a.get_copy();
-        let b_copy = b.get_copy();
+        let a_copy = a.clone();
+        let b_copy = b.clone();
 
         // solve linear system: b := a⁻¹⋅b == x
         solve_lin_sys(&mut b, &mut a)?;

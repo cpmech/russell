@@ -1,16 +1,22 @@
-use crate::AsArray2D;
+use crate::{AsArray2D, StrError};
 use num_traits::Num;
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use std::cmp;
+use std::ffi::OsStr;
 use std::fmt::{self, Write};
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::ops::{Index, IndexMut};
+use std::path::Path;
 
-/// Holds matrix components and associated functions
+/// Implements a matrix with numeric components for linear algebra
 ///
 /// # Remarks
 ///
-/// * GenericMatrix implements the Index traits (mutable or not), thus, we can
+/// * NumMatrix implements the Index traits (mutable or not), thus, we can
 ///   access components by indices
-/// * GenericMatrix has also methods to access the underlying data (mutable or not);
+/// * NumMatrix has also methods to access the underlying data (mutable or not);
 ///   e.g., using `as_data()` and `as_mut_data()`.
 /// * Internally, the data is stored in the [**row-major** order](https://en.wikipedia.org/wiki/Row-_and_column-major_order)
 /// * For faster computations, we recommend using the set of functions that
@@ -18,14 +24,16 @@ use std::ops::{Index, IndexMut};
 ///   `eigen_decomp`, `inverse`, `pseudo_inverse`, `sv_decomp`, `mat_vec_mul`,
 ///   `sv_decomp`, and others.
 ///
-/// # Example
+/// # Examples
+///
+/// ## Initialization, setting values and printing
 ///
 /// ```
-/// use russell_lab::{inverse, mat_mat_mul, GenericMatrix, StrError};
+/// use russell_lab::{NumMatrix, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // create new matrix filled with ones
-///     let mut a = GenericMatrix::<f64>::filled(2, 2, 1.0);
+///     let mut a = NumMatrix::<f64>::filled(2, 2, 1.0);
 ///
 ///     // change off-diagonal component
 ///     a[0][1] *= -1.0;
@@ -38,10 +46,25 @@ use std::ops::{Index, IndexMut};
 ///          │  1  1 │\n\
 ///          └       ┘"
 ///     );
+///     Ok(())
+/// }
+/// ```
+///
+/// ## Inverse and matrix multiplication
+///
+/// ```
+/// use russell_lab::{inverse, mat_mat_mul, NumMatrix, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     // create new matrix filled with ones
+///     let mut a = NumMatrix::<f64>::filled(2, 2, 1.0);
+///
+///     // change off-diagonal component
+///     a[0][1] *= -1.0;
 ///
 ///     // compute the inverse matrix `ai`
 ///     let (m, n) = a.dims();
-///     let mut ai = GenericMatrix::<f64>::new(m, n);
+///     let mut ai = NumMatrix::<f64>::new(m, n);
 ///     let det = inverse(&mut ai, &a)?;
 ///
 ///     // check the determinant
@@ -57,7 +80,7 @@ use std::ops::{Index, IndexMut};
 ///     );
 ///
 ///     // multiply the matrix by its inverse
-///     let mut aia = GenericMatrix::<f64>::new(m, n);
+///     let mut aia = NumMatrix::<f64>::new(m, n);
 ///     mat_mat_mul(&mut aia, 1.0, &ai, &a)?;
 ///
 ///     // check the results
@@ -70,18 +93,58 @@ use std::ops::{Index, IndexMut};
 ///     );
 ///
 ///     // create an identity matrix and check again
-///     let ii = GenericMatrix::<f64>::identity(m);
+///     let ii = NumMatrix::<f64>::identity(m);
 ///     assert_eq!(aia.as_data(), ii.as_data());
 ///     Ok(())
 /// }
 /// ```
-#[derive(Debug)]
-pub struct GenericMatrix<T>
+///
+/// ## Copying a matrix (cloning)
+///
+/// ```
+/// use russell_lab::{NumMatrix, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     // new matrix
+///     let a = NumMatrix::<f64>::from(&[
+///         [1.0, 2.0],
+///         [3.0, 4.0],
+///     ]);
+///
+///     // clone
+///     let mut b = a.clone();
+///
+///     // change clone
+///     b.set(0, 0, 5.0);
+///
+///     // check that clone is correct
+///     assert_eq!(
+///         format!("{}", b),
+///         "┌     ┐\n\
+///          │ 5 2 │\n\
+///          │ 3 4 │\n\
+///          └     ┘"
+///     );
+///
+///     // check that the changed matrix is unmodified
+///     assert_eq!(
+///         format!("{}", a),
+///         "┌     ┐\n\
+///          │ 1 2 │\n\
+///          │ 3 4 │\n\
+///          └     ┘"
+///     );
+///     Ok(())
+/// }
+/// ```
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct NumMatrix<T>
 where
-    T: Num + Copy,
+    T: Num + Copy + DeserializeOwned + Serialize,
 {
-    nrow: usize,  // number of rows
-    ncol: usize,  // number of columns
+    nrow: usize, // number of rows
+    ncol: usize, // number of columns
+    #[serde(bound(deserialize = "Vec<T>: Deserialize<'de>"))]
     data: Vec<T>, // row-major
 }
 
@@ -99,17 +162,17 @@ where
 // ```
 //
 
-impl<T> GenericMatrix<T>
+impl<T> NumMatrix<T>
 where
-    T: Num + Copy,
+    T: Num + Copy + DeserializeOwned + Serialize,
 {
-    /// Creates new (nrow x ncol) GenericMatrix filled with zeros
+    /// Creates new (nrow x ncol) NumMatrix filled with zeros
     ///
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::GenericMatrix;
-    /// let a = GenericMatrix::<f64>::new(3, 3);
+    /// # use russell_lab::NumMatrix;
+    /// let a = NumMatrix::<f64>::new(3, 3);
     /// let correct = "┌       ┐\n\
     ///                │ 0 0 0 │\n\
     ///                │ 0 0 0 │\n\
@@ -118,7 +181,7 @@ where
     /// assert_eq!(format!("{}", a), correct);
     /// ```
     pub fn new(nrow: usize, ncol: usize) -> Self {
-        GenericMatrix {
+        NumMatrix {
             nrow,
             ncol,
             data: vec![T::zero(); nrow * ncol],
@@ -130,8 +193,8 @@ where
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::GenericMatrix;
-    /// let identity = GenericMatrix::<f64>::identity(3);
+    /// # use russell_lab::NumMatrix;
+    /// let identity = NumMatrix::<f64>::identity(3);
     /// let correct = "┌       ┐\n\
     ///                │ 1 0 0 │\n\
     ///                │ 0 1 0 │\n\
@@ -140,7 +203,7 @@ where
     /// assert_eq!(format!("{}", identity), correct);
     /// ```
     pub fn identity(m: usize) -> Self {
-        let mut matrix = GenericMatrix {
+        let mut matrix = NumMatrix {
             nrow: m,
             ncol: m,
             data: vec![T::zero(); m * m],
@@ -157,8 +220,8 @@ where
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::GenericMatrix;
-    /// let a = GenericMatrix::<f64>::filled(2, 3, 4.0);
+    /// # use russell_lab::NumMatrix;
+    /// let a = NumMatrix::<f64>::filled(2, 3, 4.0);
     /// let correct = "┌       ┐\n\
     ///                │ 4 4 4 │\n\
     ///                │ 4 4 4 │\n\
@@ -166,7 +229,7 @@ where
     /// assert_eq!(format!("{}", a), correct);
     /// ```
     pub fn filled(m: usize, n: usize, value: T) -> Self {
-        GenericMatrix {
+        NumMatrix {
             nrow: m,
             ncol: n,
             data: vec![value; m * n],
@@ -183,7 +246,7 @@ where
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::GenericMatrix;
+    /// # use russell_lab::NumMatrix;
     /// // heap-allocated 2D array (vector of vectors)
     /// const IGNORED: f64 = 123.456;
     /// let a_data = vec![
@@ -191,7 +254,7 @@ where
     ///     vec![3.0, 4.0, IGNORED, IGNORED, IGNORED],
     ///     vec![5.0, 6.0],
     /// ];
-    /// let a = GenericMatrix::<f64>::from(&a_data);
+    /// let a = NumMatrix::<f64>::from(&a_data);
     /// assert_eq!(
     ///     format!("{}", &a),
     ///     "┌     ┐\n\
@@ -207,7 +270,7 @@ where
     ///     &[30.0, 40.0, IGNORED],
     ///     &[50.0, 60.0, IGNORED, IGNORED],
     /// ];
-    /// let b = GenericMatrix::<f64>::from(&b_data);
+    /// let b = NumMatrix::<f64>::from(&b_data);
     /// assert_eq!(
     ///     format!("{}", &b),
     ///     "┌       ┐\n\
@@ -223,7 +286,7 @@ where
     ///     [300.0, 400.0],
     ///     [500.0, 600.0],
     /// ];
-    /// let c = GenericMatrix::<f64>::from(&c_data);
+    /// let c = NumMatrix::<f64>::from(&c_data);
     /// assert_eq!(
     ///     format!("{}", &c),
     ///     "┌         ┐\n\
@@ -242,7 +305,7 @@ where
         if ncol == 0 {
             nrow = 0
         }
-        let mut matrix = GenericMatrix {
+        let mut matrix = NumMatrix {
             nrow,
             ncol,
             data: vec![T::zero(); nrow * ncol],
@@ -260,8 +323,8 @@ where
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::GenericMatrix;
-    /// let a = GenericMatrix::<f64>::diagonal(&[1.0, 2.0, 3.0]);
+    /// # use russell_lab::NumMatrix;
+    /// let a = NumMatrix::<f64>::diagonal(&[1.0, 2.0, 3.0]);
     /// let correct = "┌       ┐\n\
     ///                │ 1 0 0 │\n\
     ///                │ 0 2 0 │\n\
@@ -272,7 +335,7 @@ where
     pub fn diagonal(data: &[T]) -> Self {
         let nrow = data.len();
         let ncol = nrow;
-        let mut matrix = GenericMatrix {
+        let mut matrix = NumMatrix {
             nrow,
             ncol,
             data: vec![T::zero(); nrow * ncol],
@@ -283,13 +346,121 @@ where
         matrix
     }
 
+    /// Creates matrix from text file
+    ///
+    /// # Input
+    ///
+    /// * `full_path` -- may be a String, &str, or Path
+    ///
+    /// # Example
+    ///
+    /// The code below will read the following file:
+    ///
+    /// ```text
+    ///  ## hash indicates comments
+    ///
+    ///  1   4  # the first column defines the number of rows
+    ///   2   5  
+    ///     3   6   # more comments here
+    ///   
+    ///  ## empty lines are ok  
+    ///        ## misalignment is fine
+    /// ```
+    ///
+    /// ```
+    /// use russell_lab::{NumMatrix, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut a = NumMatrix::<f64>::from_text_file("./data/matrices/example.txt")?;
+    ///     assert_eq!(
+    ///         format!("{}", a),
+    ///         "┌     ┐\n\
+    ///          │ 1 4 │\n\
+    ///          │ 2 5 │\n\
+    ///          │ 3 6 │\n\
+    ///          └     ┘"
+    ///     );
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// # Notes
+    ///
+    /// * Comments start with the hash character '#'
+    /// * Lines starting with '#' or empty lines are ignored
+    /// * The end of the row (line) may contain comments too and will cause to stop reading data,
+    ///   thus, the '#' marker in a row (line) must be at the end of the line.
+    pub fn from_text_file<P>(full_path: &P) -> Result<Self, StrError>
+    where
+        P: AsRef<OsStr> + ?Sized,
+    {
+        // read file
+        let path = Path::new(full_path).to_path_buf();
+        let input = File::open(path).map_err(|_| "cannot open file")?;
+        let buffered = BufReader::new(input);
+        let mut lines_iter = buffered.lines();
+
+        // parse rows, ignoring comments and empty lines
+        let mut current_row_index = 0;
+        let mut number_of_columns = 0;
+        let mut data = Vec::<T>::new();
+        loop {
+            match lines_iter.next() {
+                Some(v) => {
+                    // extract line
+                    let line = v.unwrap(); // must panic because no error expected here
+
+                    // ignore comments or empty lines
+                    let maybe_data = line.trim_start().trim_end_matches("\n");
+                    if maybe_data.starts_with("#") || maybe_data == "" {
+                        continue; // nothing to parse
+                    }
+
+                    // remove whitespace
+                    let mut row_values = maybe_data.split_whitespace();
+
+                    // loop over columns
+                    let mut column_index = 0;
+                    loop {
+                        match row_values.next() {
+                            Some(s) => {
+                                if s.starts_with("#") {
+                                    break; // ignore comments at the end of the row
+                                }
+                                data.push(T::from_str_radix(s, 10).map_err(|_| "cannot parse value")?);
+                                column_index += 1;
+                            }
+                            None => break,
+                        }
+                    }
+
+                    // set or check the number of columns
+                    if current_row_index == 0 {
+                        number_of_columns = column_index; // the first row determines the number of columns
+                    } else {
+                        if column_index != number_of_columns {
+                            return Err("column data is missing");
+                        }
+                    }
+                    current_row_index += 1;
+                }
+                None => break,
+            }
+        }
+        Ok(NumMatrix {
+            nrow: current_row_index,
+            ncol: number_of_columns,
+            data,
+        })
+    }
+
     /// Returns the number of rows
     ///
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::GenericMatrix;
-    /// let a = GenericMatrix::<f64>::new(4, 3);
+    /// # use russell_lab::NumMatrix;
+    /// let a = NumMatrix::<f64>::new(4, 3);
     /// assert_eq!(a.nrow(), 4);
     /// ```
     #[inline]
@@ -302,8 +473,8 @@ where
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::GenericMatrix;
-    /// let a = GenericMatrix::<f64>::new(4, 3);
+    /// # use russell_lab::NumMatrix;
+    /// let a = NumMatrix::<f64>::new(4, 3);
     /// assert_eq!(a.ncol(), 3);
     /// ```
     #[inline]
@@ -316,8 +487,8 @@ where
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::GenericMatrix;
-    /// let a = GenericMatrix::<f64>::new(4, 3);
+    /// # use russell_lab::NumMatrix;
+    /// let a = NumMatrix::<f64>::new(4, 3);
     /// assert_eq!(a.dims(), (4, 3));
     /// ```
     #[inline]
@@ -334,8 +505,8 @@ where
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::GenericMatrix;
-    /// let mut a = GenericMatrix::<f64>::new(2, 2);
+    /// # use russell_lab::NumMatrix;
+    /// let mut a = NumMatrix::<f64>::new(2, 2);
     /// a.fill(8.8);
     /// let correct = "┌         ┐\n\
     ///                │ 8.8 8.8 │\n\
@@ -355,8 +526,8 @@ where
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::GenericMatrix;
-    /// let a = GenericMatrix::<f64>::from(&[[1.0, 2.0], [3.0, 4.0]]);
+    /// # use russell_lab::NumMatrix;
+    /// let a = NumMatrix::<f64>::from(&[[1.0, 2.0], [3.0, 4.0]]);
     /// assert_eq!(a.as_data(), &[1.0, 2.0, 3.0, 4.0]);
     /// ```
     #[inline]
@@ -373,8 +544,8 @@ where
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::GenericMatrix;
-    /// let mut a = GenericMatrix::<f64>::from(&[[1.0, 2.0], [3.0, 4.0]]);
+    /// # use russell_lab::NumMatrix;
+    /// let mut a = NumMatrix::<f64>::from(&[[1.0, 2.0], [3.0, 4.0]]);
     /// let data = a.as_mut_data();
     /// data[1] = 2.2;
     /// assert_eq!(data, &[1.0, 2.2, 3.0, 4.0]);
@@ -389,13 +560,17 @@ where
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::GenericMatrix;
-    /// let a = GenericMatrix::<f64>::from(&[
+    /// # use russell_lab::NumMatrix;
+    /// let a = NumMatrix::<f64>::from(&[
     ///     [1.0, 2.0],
     ///     [3.0, 4.0],
     /// ]);
     /// assert_eq!(a.get(1,1), 4.0);
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the indices are out-of-bounds.
     #[inline]
     pub fn get(&self, i: usize, j: usize) -> T {
         assert!(i < self.nrow);
@@ -408,8 +583,8 @@ where
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::GenericMatrix;
-    /// let mut a = GenericMatrix::<f64>::from(&[
+    /// # use russell_lab::NumMatrix;
+    /// let mut a = NumMatrix::<f64>::from(&[
     ///     [1.0, 2.0],
     ///     [3.0, 4.0],
     /// ]);
@@ -420,6 +595,10 @@ where
     ///                └       ┘";
     /// assert_eq!(format!("{}", a), correct);
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the indices are out-of-bounds.
     #[inline]
     pub fn set(&mut self, i: usize, j: usize, value: T) {
         assert!(i < self.nrow);
@@ -427,47 +606,48 @@ where
         self.data[i * self.ncol + j] = value;
     }
 
-    /// Returns a copy of this matrix
-    ///
-    /// ```
-    /// # use russell_lab::GenericMatrix;
-    /// let mut a = GenericMatrix::<f64>::from(&[
-    ///     [1.0, 2.0],
-    ///     [3.0, 4.0],
-    /// ]);
-    /// let a_copy = a.get_copy();
-    /// a.set(0, 0, 5.0);
-    /// let a_correct = "┌     ┐\n\
-    ///                  │ 5 2 │\n\
-    ///                  │ 3 4 │\n\
-    ///                  └     ┘";
-    /// let a_copy_correct = "┌     ┐\n\
-    ///                       │ 1 2 │\n\
-    ///                       │ 3 4 │\n\
-    ///                       └     ┘";
-    /// assert_eq!(format!("{}", a), a_correct);
-    /// assert_eq!(format!("{}", a_copy), a_copy_correct);
-    /// ```
-    pub fn get_copy(&self) -> Self {
-        GenericMatrix {
-            nrow: self.nrow,
-            ncol: self.ncol,
-            data: self.data.to_vec(),
-        }
-    }
-}
-
-impl<T> fmt::Display for GenericMatrix<T>
-where
-    T: Num + Copy + fmt::Display,
-{
-    /// Generates a string representation of the GenericMatrix
+    /// Extracts a column given its index
     ///
     /// # Example
     ///
     /// ```
-    /// # use russell_lab::GenericMatrix;
-    /// let a = GenericMatrix::<f64>::from(&[
+    /// # use russell_lab::NumMatrix;
+    /// let a = NumMatrix::<f64>::from(&[
+    ///     [1.0, 2.0],
+    ///     [3.0, 4.0],
+    ///     [5.0, 6.0],
+    ///     [7.0, 8.0],
+    /// ]);
+    /// let first_column = a.extract_column(0);
+    /// let second_column = a.extract_column(1);
+    /// assert_eq!(first_column, [1.0, 3.0, 5.0, 7.0]);
+    /// assert_eq!(second_column, [2.0, 4.0, 6.0, 8.0]);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the column index is out-of-bounds.
+    pub fn extract_column(&self, j: usize) -> Vec<T> {
+        assert!(j < self.ncol);
+        let mut res = vec![T::zero(); self.nrow];
+        for i in 0..self.nrow {
+            res[i] = self.data[i * self.ncol + j];
+        }
+        res
+    }
+}
+
+impl<T> fmt::Display for NumMatrix<T>
+where
+    T: Num + Copy + DeserializeOwned + Serialize + fmt::Display,
+{
+    /// Generates a string representation of the NumMatrix
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use russell_lab::NumMatrix;
+    /// let a = NumMatrix::<f64>::from(&[
     ///     [1.0, 0.0, -1.0,   8.0],
     ///     [4.0, 3.0,  1.0, -4.04],
     /// ]);
@@ -523,16 +703,20 @@ where
     }
 }
 
-/// Allows to access GenericMatrix components using indices
+/// Allows to access NumMatrix components using indices
 ///
 /// # Example
 ///
 /// ```
-/// # use russell_lab::GenericMatrix;
-/// let a = GenericMatrix::<f64>::from(&[
+/// # use russell_lab::NumMatrix;
+/// let a = NumMatrix::<f64>::from(&[
 ///     [1.0, 2.0, 3.0],
 ///     [4.0, 5.0, 6.0],
 /// ]);
+/// // first and second rows
+/// assert_eq!(a[0], [1.0, 2.0, 3.0]);
+/// assert_eq!(a[1], [4.0, 5.0, 6.0]);
+/// // components
 /// assert_eq!(a[0][0], 1.0);
 /// assert_eq!(a[0][1], 2.0);
 /// assert_eq!(a[0][2], 3.0);
@@ -540,24 +724,33 @@ where
 /// assert_eq!(a[1][1], 5.0);
 /// assert_eq!(a[1][2], 6.0);
 /// ```
-impl<T> Index<usize> for GenericMatrix<T>
+///
+/// # Panics
+///
+/// The index function may panic if the row index is out-of-bounds.
+impl<T> Index<usize> for NumMatrix<T>
 where
-    T: Num + Copy,
+    T: Num + Copy + DeserializeOwned + Serialize,
 {
     type Output = [T];
+    /// Returns an access to a row of the matrix
+    ///
+    /// # Panics
+    ///
+    /// This function function may panic if the row index is out-of-bounds.
     #[inline]
     fn index(&self, i: usize) -> &Self::Output {
         &self.data[(i * self.ncol)..((i + 1) * self.ncol)]
     }
 }
 
-/// Allows to change GenericMatrix components using indices
+/// Allows to change NumMatrix components using indices
 ///
 /// # Example
 ///
 /// ```
-/// # use russell_lab::GenericMatrix;
-/// let mut a = GenericMatrix::<f64>::from(&[
+/// # use russell_lab::NumMatrix;
+/// let mut a = NumMatrix::<f64>::from(&[
 ///     [1.0, 2.0, 3.0],
 ///     [4.0, 5.0, 6.0],
 /// ]);
@@ -574,10 +767,19 @@ where
 /// assert_eq!(a[1][1], 4.0);
 /// assert_eq!(a[1][2], 7.0);
 /// ```
-impl<T> IndexMut<usize> for GenericMatrix<T>
+///
+/// # Panics
+///
+/// The index function may panic if the row index is out-of-bounds.
+impl<T> IndexMut<usize> for NumMatrix<T>
 where
-    T: Num + Copy,
+    T: Num + Copy + DeserializeOwned + Serialize,
 {
+    /// Returns a mutable access to a row of the matrix
+    ///
+    /// # Panics
+    ///
+    /// This function function may panic if the row index is out-of-bounds.
     #[inline]
     fn index_mut(&mut self, i: usize) -> &mut Self::Output {
         &mut self.data[(i * self.ncol)..((i + 1) * self.ncol)]
@@ -588,26 +790,27 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::GenericMatrix;
+    use super::NumMatrix;
     use crate::StrError;
     use russell_chk::assert_vec_approx_eq;
+    use serde::{Deserialize, Serialize};
 
     #[test]
     fn new_works() {
-        let u = GenericMatrix::<f64>::new(3, 3);
+        let u = NumMatrix::<f64>::new(3, 3);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         assert_vec_approx_eq!(u.data, correct, 1e-15);
     }
 
     #[test]
     fn identity_works() {
-        let identity = GenericMatrix::<f64>::identity(2);
+        let identity = NumMatrix::<f64>::identity(2);
         assert_eq!(identity.data, &[1.0, 0.0, 0.0, 1.0]);
     }
 
     #[test]
     fn filled_works() {
-        let a = GenericMatrix::<f64>::filled(2, 2, 3.0);
+        let a = NumMatrix::<f64>::filled(2, 2, 3.0);
         assert_eq!(a.data, &[3.0, 3.0, 3.0, 3.0]);
     }
 
@@ -620,7 +823,7 @@ mod tests {
             vec![3.0, 4.0, IGNORED, IGNORED, IGNORED],
             vec![5.0, 6.0],
         ];
-        let a = GenericMatrix::<f64>::from(&a_data);
+        let a = NumMatrix::<f64>::from(&a_data);
         assert_eq!(a.data, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
 
         // heap-allocated 2D array (aka slice of slices)
@@ -630,7 +833,7 @@ mod tests {
             &[30.0, 40.0, IGNORED],
             &[50.0, 60.0, IGNORED, IGNORED],
         ];
-        let b = GenericMatrix::<f64>::from(&b_data);
+        let b = NumMatrix::<f64>::from(&b_data);
         assert_eq!(b.data, &[10.0, 20.0, 30.0, 40.0, 50.0, 60.0]);
 
         // stack-allocated (fixed-size) 2D array
@@ -640,14 +843,14 @@ mod tests {
             [300.0, 400.0],
             [500.0, 600.0],
         ];
-        let c = GenericMatrix::<f64>::from(&c_data);
+        let c = NumMatrix::<f64>::from(&c_data);
         assert_eq!(c.data, &[100.0, 200.0, 300.0, 400.0, 500.0, 600.0]);
     }
 
     #[test]
     fn from_0_works() {
         let a_data: &[&[f64]] = &[&[]];
-        let a = GenericMatrix::<f64>::from(&a_data);
+        let a = NumMatrix::<f64>::from(&a_data);
         assert_eq!(a.nrow, 0);
         assert_eq!(a.ncol, 0);
         assert_eq!(a.data.len(), 0);
@@ -655,40 +858,96 @@ mod tests {
 
     #[test]
     fn diagonal_works() {
-        let a = GenericMatrix::<f64>::diagonal(&[-8.0, 2.0, 1.0]);
+        let a = NumMatrix::<f64>::diagonal(&[-8.0, 2.0, 1.0]);
         assert_eq!(a.nrow, 3);
         assert_eq!(a.ncol, 3);
         assert_eq!(a.data, [-8.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 1.0]);
     }
 
     #[test]
+    fn from_text_file_handles_problems() {
+        assert_eq!(NumMatrix::<f64>::from_text_file("").err(), Some("cannot open file"),);
+        assert_eq!(
+            NumMatrix::<f64>::from_text_file("not-found").err(),
+            Some("cannot open file"),
+        );
+        assert_eq!(
+            NumMatrix::<f64>::from_text_file("./data/matrices/bad_missing_data.txt").err(),
+            Some("column data is missing"),
+        );
+        assert_eq!(
+            NumMatrix::<f64>::from_text_file("./data/matrices/bad_wrong_data.txt").err(),
+            Some("cannot parse value"),
+        );
+    }
+
+    #[test]
+    fn from_text_file_works() -> Result<(), StrError> {
+        let a = NumMatrix::<f64>::from_text_file("./data/matrices/ok_empty_file.txt")?;
+        assert_eq!(a.nrow, 0);
+        assert_eq!(a.ncol, 0);
+        assert_eq!(a.data.len(), 0);
+
+        let a = NumMatrix::<f64>::from_text_file("./data/matrices/ok_no_data.txt")?;
+        assert_eq!(a.nrow, 0);
+        assert_eq!(a.ncol, 0);
+        assert_eq!(a.data.len(), 0);
+        assert_eq!(format!("{}", a), "[]");
+
+        let a = NumMatrix::<f64>::from_text_file("./data/matrices/ok_single_value.txt")?;
+        assert_eq!(a.nrow, 1);
+        assert_eq!(a.ncol, 1);
+        assert_eq!(a.data.len(), 1);
+        assert_eq!(
+            format!("{}", a),
+            "┌   ┐\n\
+             │ 1 │\n\
+             └   ┘"
+        );
+
+        let a = NumMatrix::<f64>::from_text_file("./data/matrices/ok1.txt")?;
+        assert_eq!(a.nrow, 3);
+        assert_eq!(a.ncol, 3);
+        assert_eq!(a.data.len(), 9);
+        assert_eq!(
+            format!("{}", a),
+            "┌       ┐\n\
+             │ 1 2 3 │\n\
+             │ 4 5 6 │\n\
+             │ 7 8 9 │\n\
+             └       ┘"
+        );
+        Ok(())
+    }
+
+    #[test]
     fn nrow_works() {
-        let a = GenericMatrix::<f64>::new(4, 3);
+        let a = NumMatrix::<f64>::new(4, 3);
         assert_eq!(a.nrow(), 4);
     }
 
     #[test]
     fn ncol_works() {
-        let a = GenericMatrix::<f64>::new(4, 3);
+        let a = NumMatrix::<f64>::new(4, 3);
         assert_eq!(a.ncol(), 3);
     }
 
     #[test]
     fn dims_works() {
-        let a = GenericMatrix::<f64>::new(5, 4);
+        let a = NumMatrix::<f64>::new(5, 4);
         assert_eq!(a.dims(), (5, 4));
     }
 
     #[test]
     fn display_works() -> Result<(), StrError> {
-        let a_0x0 = GenericMatrix::<f64>::new(0, 0);
-        let a_0x1 = GenericMatrix::<f64>::new(0, 1);
-        let a_1x0 = GenericMatrix::<f64>::new(1, 0);
+        let a_0x0 = NumMatrix::<f64>::new(0, 0);
+        let a_0x1 = NumMatrix::<f64>::new(0, 1);
+        let a_1x0 = NumMatrix::<f64>::new(1, 0);
         assert_eq!(format!("{}", a_0x0), "[]");
         assert_eq!(format!("{}", a_0x1), "[]");
         assert_eq!(format!("{}", a_1x0), "[]");
         #[rustfmt::skip]
-        let a = GenericMatrix::<f64>::from(&[
+        let a = NumMatrix::<f64>::from(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
@@ -707,7 +966,7 @@ mod tests {
     #[test]
     fn display_precision_works() -> Result<(), StrError> {
         #[rustfmt::skip]
-        let a = GenericMatrix::<f64>::from(&[
+        let a = NumMatrix::<f64>::from(&[
             [1.0111111, 2.02222222, 3.033333],
             [4.0444444, 5.05555555, 6.066666],
             [7.0777777, 8.08888888, 9.099999],
@@ -723,13 +982,13 @@ mod tests {
 
     #[test]
     fn debug_works() {
-        let a = GenericMatrix::<f64>::new(1, 1);
-        assert_eq!(format!("{:?}", a), "GenericMatrix { nrow: 1, ncol: 1, data: [0.0] }");
+        let a = NumMatrix::<f64>::new(1, 1);
+        assert_eq!(format!("{:?}", a), "NumMatrix { nrow: 1, ncol: 1, data: [0.0] }");
     }
 
     #[test]
     fn fill_works() {
-        let mut a = GenericMatrix::<f64>::new(2, 2);
+        let mut a = NumMatrix::<f64>::new(2, 2);
         a.fill(7.7);
         let correct = &[7.7, 7.7, 7.7, 7.7];
         assert_vec_approx_eq!(a.data, correct, 1e-15);
@@ -738,14 +997,14 @@ mod tests {
     #[test]
     #[should_panic]
     fn get_panics_on_wrong_indices() {
-        let a = GenericMatrix::<f64>::new(1, 1);
+        let a = NumMatrix::<f64>::new(1, 1);
         a.get(1, 0);
     }
 
     #[test]
     fn get_works() {
         #[rustfmt::skip]
-        let a = GenericMatrix::<f64>::from(&[
+        let a = NumMatrix::<f64>::from(&[
             [1.0, 2.0],
             [3.0, 4.0],
         ]);
@@ -758,14 +1017,14 @@ mod tests {
     #[test]
     #[should_panic]
     fn set_panics_on_wrong_indices() {
-        let mut a = GenericMatrix::<f64>::new(1, 1);
+        let mut a = NumMatrix::<f64>::new(1, 1);
         a.set(1, 0, 0.0);
     }
 
     #[test]
     fn set_works() {
         #[rustfmt::skip]
-        let mut a = GenericMatrix::<f64>::from(&[
+        let mut a = NumMatrix::<f64>::from(&[
             [1.0, 2.0],
             [3.0, 4.0],
         ]);
@@ -777,18 +1036,98 @@ mod tests {
     }
 
     #[test]
-    fn get_copy_works() {
+    fn extract_column_works() {
         #[rustfmt::skip]
-        let mut a = GenericMatrix::<f64>::from(&[
+        let a = NumMatrix::<f64>::from(&[
+            [1.0, 5.0],
+            [2.0, 6.0],
+            [3.0, 7.0],
+            [4.0, 8.0],
+        ]);
+        let first_column = a.extract_column(0);
+        let second_column = a.extract_column(1);
+        assert_eq!(first_column, [1.0, 2.0, 3.0, 4.0]);
+        assert_eq!(second_column, [5.0, 6.0, 7.0, 8.0]);
+    }
+
+    #[test]
+    fn clone_and_serialize_work() -> Result<(), StrError> {
+        #[rustfmt::skip]
+        let mut a = NumMatrix::<f64>::from(&[
             [1.0, 2.0],
             [3.0, 4.0],
         ]);
-        let a_copy = a.get_copy();
+        let a_copy = a.clone();
         a.set(0, 0, 0.11);
         a.set(0, 1, 0.22);
         a.set(1, 0, 0.33);
         a.set(1, 1, 0.44);
         assert_eq!(a.data, &[0.11, 0.22, 0.33, 0.44]);
         assert_eq!(a_copy.data, &[1.0, 2.0, 3.0, 4.0]);
+
+        #[rustfmt::skip]
+        let a = NumMatrix::<f64>::from(&[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ]);
+
+        // clone
+        let mut cloned = a.clone();
+        cloned[0][0] = -1.0;
+        assert_eq!(
+            format!("{}", a),
+            "┌       ┐\n\
+             │ 1 2 3 │\n\
+             │ 4 5 6 │\n\
+             │ 7 8 9 │\n\
+             └       ┘"
+        );
+        assert_eq!(
+            format!("{}", cloned),
+            "┌          ┐\n\
+             │ -1  2  3 │\n\
+             │  4  5  6 │\n\
+             │  7  8  9 │\n\
+             └          ┘"
+        );
+
+        // serialize
+        let mut serialized = Vec::new();
+        let mut serializer = rmp_serde::Serializer::new(&mut serialized);
+        a.serialize(&mut serializer).map_err(|_| "matrix serialize failed")?;
+        assert!(serialized.len() > 0);
+
+        // deserialize
+        let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
+        let b: NumMatrix<f64> =
+            Deserialize::deserialize(&mut deserializer).map_err(|_| "cannot deserialize matrix data")?;
+        assert_eq!(
+            format!("{}", b),
+            "┌       ┐\n\
+             │ 1 2 3 │\n\
+             │ 4 5 6 │\n\
+             │ 7 8 9 │\n\
+             └       ┘"
+        );
+
+        // serialize to json
+        let json = serde_json::to_string(&a).map_err(|_| "serde_json::to_string failed")?;
+        assert_eq!(
+            json,
+            r#"{"nrow":3,"ncol":3,"data":[1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0]}"#
+        );
+
+        // deserialize from json
+        let from_json: NumMatrix<f64> = serde_json::from_str(&json).map_err(|_| "serde_json::from_str failed")?;
+        assert_eq!(
+            format!("{}", from_json),
+            "┌       ┐\n\
+             │ 1 2 3 │\n\
+             │ 4 5 6 │\n\
+             │ 7 8 9 │\n\
+             └       ┘"
+        );
+        Ok(())
     }
 }

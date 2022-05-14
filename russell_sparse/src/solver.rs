@@ -1,6 +1,6 @@
 use super::{
     code_symmetry_mmp, code_symmetry_umf, str_enum_ordering, str_enum_scaling, str_mmp_ordering, str_mmp_scaling,
-    str_umf_ordering, str_umf_scaling, ConfigSolver, LinSol, SparseTriplet,
+    str_umf_ordering, str_umf_scaling, ConfigSolver, LinSolKind, SparseTriplet,
 };
 use crate::StrError;
 use russell_lab::{copy_vector, format_nanoseconds, Stopwatch, Vector};
@@ -87,9 +87,9 @@ impl Solver {
         let used_ordering = str_enum_ordering(config.ordering);
         let used_scaling = str_enum_scaling(config.scaling);
         unsafe {
-            let solver = match config.name {
-                LinSol::Mmp => new_solver_mmp(),
-                LinSol::Umf => new_solver_umf(),
+            let solver = match config.lin_sol_kind {
+                LinSolKind::Mmp => new_solver_mmp(),
+                LinSolKind::Umf => new_solver_umf(),
             };
             if solver.is_null() {
                 return Err("c-code failed to allocate solver");
@@ -119,8 +119,8 @@ impl Solver {
         let n = to_i32(trip.nrow);
         let nnz = to_i32(trip.pos);
         unsafe {
-            match self.config.name {
-                LinSol::Mmp => {
+            match self.config.lin_sol_kind {
+                LinSolKind::Mmp => {
                     if self.done_initialize {
                         drop_solver_mmp(self.solver);
                         self.solver = new_solver_mmp();
@@ -147,7 +147,7 @@ impl Solver {
                         return Err(self.handle_mmp_error_code(res));
                     }
                 }
-                LinSol::Umf => {
+                LinSolKind::Umf => {
                     if self.done_initialize {
                         drop_solver_umf(self.solver);
                         self.solver = new_solver_umf();
@@ -187,8 +187,8 @@ impl Solver {
         }
         self.stopwatch.reset();
         unsafe {
-            match self.config.name {
-                LinSol::Mmp => {
+            match self.config.lin_sol_kind {
+                LinSolKind::Mmp => {
                     let res = solver_mmp_factorize(self.solver, self.config.verbose);
                     if res != 0 {
                         return Err(self.handle_mmp_error_code(res));
@@ -198,7 +198,7 @@ impl Solver {
                     self.used_ordering = str_mmp_ordering(ord);
                     self.used_scaling = str_mmp_scaling(sca);
                 }
-                LinSol::Umf => {
+                LinSolKind::Umf => {
                     let res = solver_umf_factorize(self.solver, self.config.verbose);
                     if res != 0 {
                         return Err(self.handle_umf_error_code(res));
@@ -226,19 +226,19 @@ impl Solver {
     /// fn main() -> Result<(), StrError> {
     ///     // allocate a square matrix
     ///     let mut trip = SparseTriplet::new(5, 5, 13, Symmetry::No)?;
-    ///     trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-    ///     trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-    ///     trip.put(1, 0, 3.0);
-    ///     trip.put(0, 1, 3.0);
-    ///     trip.put(2, 1, -1.0);
-    ///     trip.put(4, 1, 4.0);
-    ///     trip.put(1, 2, 4.0);
-    ///     trip.put(2, 2, -3.0);
-    ///     trip.put(3, 2, 1.0);
-    ///     trip.put(4, 2, 2.0);
-    ///     trip.put(2, 3, 2.0);
-    ///     trip.put(1, 4, 6.0);
-    ///     trip.put(4, 4, 1.0);
+    ///     trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
+    ///     trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
+    ///     trip.put(1, 0, 3.0)?;
+    ///     trip.put(0, 1, 3.0)?;
+    ///     trip.put(2, 1, -1.0)?;
+    ///     trip.put(4, 1, 4.0)?;
+    ///     trip.put(1, 2, 4.0)?;
+    ///     trip.put(2, 2, -3.0)?;
+    ///     trip.put(3, 2, 1.0)?;
+    ///     trip.put(4, 2, 2.0)?;
+    ///     trip.put(2, 3, 2.0)?;
+    ///     trip.put(1, 4, 6.0)?;
+    ///     trip.put(4, 4, 1.0)?;
     ///
     ///     // print matrix
     ///     let (m, n) = trip.dims();
@@ -283,15 +283,15 @@ impl Solver {
         }
         self.stopwatch.reset();
         unsafe {
-            match self.config.name {
-                LinSol::Mmp => {
+            match self.config.lin_sol_kind {
+                LinSolKind::Mmp => {
                     copy_vector(x, rhs)?;
                     let res = solver_mmp_solve(self.solver, x.as_mut_data().as_mut_ptr(), self.config.verbose);
                     if res != 0 {
                         return Err(self.handle_mmp_error_code(res));
                     }
                 }
-                LinSol::Umf => {
+                LinSolKind::Umf => {
                     let res = solver_umf_solve(
                         self.solver,
                         x.as_mut_data().as_mut_ptr(),
@@ -336,11 +336,11 @@ impl Solver {
     /// fn main() -> Result<(), StrError> {
     ///     // allocate a square matrix
     ///     let mut trip = SparseTriplet::new(3, 3, 5, Symmetry::No)?;
-    ///     trip.put(0, 0, 0.2);
-    ///     trip.put(0, 1, 0.2);
-    ///     trip.put(1, 0, 0.5);
-    ///     trip.put(1, 1, -0.25);
-    ///     trip.put(2, 2, 0.25);
+    ///     trip.put(0, 0, 0.2)?;
+    ///     trip.put(0, 1, 0.2)?;
+    ///     trip.put(1, 0, 0.5)?;
+    ///     trip.put(1, 1, -0.25)?;
+    ///     trip.put(2, 2, 0.25)?;
     ///
     ///     // print matrix
     ///     let (m, n) = trip.dims();
@@ -521,9 +521,9 @@ impl Drop for Solver {
     /// Tells the c-code to release memory
     fn drop(&mut self) {
         unsafe {
-            match self.config.name {
-                LinSol::Mmp => drop_solver_mmp(self.solver),
-                LinSol::Umf => drop_solver_umf(self.solver),
+            match self.config.lin_sol_kind {
+                LinSolKind::Mmp => drop_solver_mmp(self.solver),
+                LinSolKind::Umf => drop_solver_umf(self.solver),
             }
         }
     }
@@ -571,7 +571,7 @@ impl fmt::Display for Solver {
 
 #[cfg(test)]
 mod tests {
-    use super::{ConfigSolver, LinSol, Solver, SparseTriplet};
+    use super::{ConfigSolver, LinSolKind, Solver, SparseTriplet};
     use crate::{StrError, Symmetry};
     use russell_chk::assert_vec_approx_eq;
     use russell_lab::Vector;
@@ -601,8 +601,8 @@ mod tests {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
-        trip.put(0, 0, 1.0);
-        trip.put(1, 1, 1.0);
+        trip.put(0, 0, 1.0)?;
+        trip.put(1, 1, 1.0)?;
         solver.initialize(&trip)?;
         assert!(solver.done_initialize);
         Ok(())
@@ -624,8 +624,8 @@ mod tests {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
-        trip.put(0, 0, 1.0);
-        trip.put(1, 1, 0.0);
+        trip.put(0, 0, 1.0)?;
+        trip.put(1, 1, 0.0)?;
         solver.initialize(&trip)?;
         assert_eq!(solver.factorize(), Err("Error(1): Matrix is singular"));
         Ok(())
@@ -636,8 +636,8 @@ mod tests {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
-        trip.put(0, 0, 1.0);
-        trip.put(1, 1, 1.0);
+        trip.put(0, 0, 1.0)?;
+        trip.put(1, 1, 1.0)?;
         solver.initialize(&trip)?;
         solver.factorize()?;
         assert!(solver.done_factorize);
@@ -649,8 +649,8 @@ mod tests {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
-        trip.put(0, 0, 1.0);
-        trip.put(1, 1, 1.0);
+        trip.put(0, 0, 1.0)?;
+        trip.put(1, 1, 1.0)?;
         solver.initialize(&trip)?;
         let mut x = Vector::new(2);
         let rhs = Vector::from(&[1.0, 1.0]);
@@ -666,8 +666,8 @@ mod tests {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
-        trip.put(0, 0, 1.0);
-        trip.put(1, 1, 1.0);
+        trip.put(0, 0, 1.0)?;
+        trip.put(1, 1, 1.0)?;
         solver.initialize(&trip)?;
         solver.factorize()?;
         let mut x = Vector::new(2);
@@ -692,19 +692,19 @@ mod tests {
 
         // allocate a square matrix
         let mut trip = SparseTriplet::new(5, 5, 13, Symmetry::No)?;
-        trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-        trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-        trip.put(1, 0, 3.0);
-        trip.put(0, 1, 3.0);
-        trip.put(2, 1, -1.0);
-        trip.put(4, 1, 4.0);
-        trip.put(1, 2, 4.0);
-        trip.put(2, 2, -3.0);
-        trip.put(3, 2, 1.0);
-        trip.put(4, 2, 2.0);
-        trip.put(2, 3, 2.0);
-        trip.put(1, 4, 6.0);
-        trip.put(4, 4, 1.0);
+        trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
+        trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
+        trip.put(1, 0, 3.0)?;
+        trip.put(0, 1, 3.0)?;
+        trip.put(2, 1, -1.0)?;
+        trip.put(4, 1, 4.0)?;
+        trip.put(1, 2, 4.0)?;
+        trip.put(2, 2, -3.0)?;
+        trip.put(3, 2, 1.0)?;
+        trip.put(4, 2, 2.0)?;
+        trip.put(2, 3, 2.0)?;
+        trip.put(1, 4, 6.0)?;
+        trip.put(4, 4, 1.0)?;
 
         // allocate x and rhs
         let mut x = Vector::new(5);
@@ -726,8 +726,8 @@ mod tests {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config)?;
         let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No)?;
-        trip.put(0, 0, 1.0);
-        trip.put(1, 1, 1.0);
+        trip.put(0, 0, 1.0)?;
+        trip.put(1, 1, 1.0)?;
         solver.initialize(&trip)?;
         solver.factorize()?;
         assert_eq!(solver.done_initialize, true);
@@ -745,7 +745,7 @@ mod tests {
     fn solver_mmp_behaves_as_expected() -> Result<(), StrError> {
         // allocate a new solver
         let mut config = ConfigSolver::new();
-        config.set_solver(LinSol::Mmp);
+        config.lin_sol_kind(LinSolKind::Mmp);
         let mut solver = Solver::new(config)?;
 
         // initialize fails on rectangular matrix
@@ -763,19 +763,19 @@ mod tests {
 
         // allocate a square matrix
         let mut trip = SparseTriplet::new(5, 5, 13, Symmetry::No)?;
-        trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-        trip.put(0, 0, 1.0); // << (0, 0, a00/2)
-        trip.put(1, 0, 3.0);
-        trip.put(0, 1, 3.0);
-        trip.put(2, 1, -1.0);
-        trip.put(4, 1, 4.0);
-        trip.put(1, 2, 4.0);
-        trip.put(2, 2, -3.0);
-        trip.put(3, 2, 1.0);
-        trip.put(4, 2, 2.0);
-        trip.put(2, 3, 2.0);
-        trip.put(1, 4, 6.0);
-        trip.put(4, 4, 1.0);
+        trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
+        trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
+        trip.put(1, 0, 3.0)?;
+        trip.put(0, 1, 3.0)?;
+        trip.put(2, 1, -1.0)?;
+        trip.put(4, 1, 4.0)?;
+        trip.put(1, 2, 4.0)?;
+        trip.put(2, 2, -3.0)?;
+        trip.put(3, 2, 1.0)?;
+        trip.put(4, 2, 2.0)?;
+        trip.put(2, 3, 2.0)?;
+        trip.put(1, 4, 6.0)?;
+        trip.put(4, 4, 1.0)?;
 
         // allocate x and rhs
         let mut x = Vector::new(5);
@@ -821,8 +821,8 @@ mod tests {
 
         // factorize fails on singular matrix
         let mut trip_singular = SparseTriplet::new(5, 5, 2, Symmetry::No)?;
-        trip_singular.put(0, 0, 1.0);
-        trip_singular.put(4, 4, 1.0);
+        trip_singular.put(0, 0, 1.0)?;
+        trip_singular.put(4, 4, 1.0)?;
         solver.initialize(&trip_singular)?;
         assert_eq!(solver.factorize(), Err("Error(-10): numerically singular matrix"));
 
@@ -833,12 +833,12 @@ mod tests {
     #[test]
     fn compute_works() -> Result<(), StrError> {
         let mut trip = SparseTriplet::new(3, 3, 6, Symmetry::No)?;
-        trip.put(0, 0, 1.0);
-        trip.put(0, 1, 1.0);
-        trip.put(1, 0, 2.0);
-        trip.put(1, 1, 1.0);
-        trip.put(1, 2, 1.0);
-        trip.put(2, 2, 1.0);
+        trip.put(0, 0, 1.0)?;
+        trip.put(0, 1, 1.0)?;
+        trip.put(1, 0, 2.0)?;
+        trip.put(1, 1, 1.0)?;
+        trip.put(1, 2, 1.0)?;
+        trip.put(2, 2, 1.0)?;
         let rhs1 = Vector::from(&[1.0, 2.0, 3.0]);
         let rhs2 = Vector::from(&[2.0, 4.0, 6.0]);
         let config = ConfigSolver::new();
@@ -862,7 +862,7 @@ mod tests {
     fn handle_mmp_error_code_works() -> Result<(), StrError> {
         let default = "Error: unknown error returned by c-code (MMP)";
         let mut config = ConfigSolver::new();
-        config.set_solver(LinSol::Mmp);
+        config.lin_sol_kind(LinSolKind::Mmp);
         let solver = Solver::new(config)?;
         for c in 1..57 {
             let res = solver.handle_mmp_error_code(-c);

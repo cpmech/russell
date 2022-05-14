@@ -39,7 +39,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 ///         [0.0, 1.0],
 ///         [0.0, 1.0],
 ///     ]);
-///     let a_copy = a.get_copy();
+///     let a_copy = a.clone();
 ///
 ///     // compute pseudo-inverse matrix (because it's square)
 ///     let mut ai = Matrix::new(2, 3);

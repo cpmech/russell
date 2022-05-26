@@ -270,6 +270,8 @@ impl Tensor2 {
 
     /// Sets the (i,j) component of a symmetric Tensor2
     ///
+    /// **Note:** Only the diagonal and upper-diagonal components need to be set.
+    ///
     /// # Panics
     ///
     /// The tensor must be symmetric and (i,j) must correspond to the possible
@@ -281,12 +283,13 @@ impl Tensor2 {
     /// use russell_tensor::{Tensor2, StrError};
     ///
     /// # fn main() -> Result<(), StrError> {
-    /// let mut a = Tensor2::new(true, true);
+    /// let symmetric = true;
+    /// let is_2d = true;
+    /// let mut a = Tensor2::new(symmetric, is_2d);
     /// a.sym_set(0, 0, 1.0);
     /// a.sym_set(1, 1, 2.0);
     /// a.sym_set(2, 2, 3.0);
     /// a.sym_set(0, 1, 4.0);
-    /// a.sym_set(1, 0, 4.0);
     ///
     /// let out = a.to_matrix();
     /// assert_eq!(
@@ -295,6 +298,24 @@ impl Tensor2 {
     ///      │ 1.0 4.0 0.0 │\n\
     ///      │ 4.0 2.0 0.0 │\n\
     ///      │ 0.0 0.0 3.0 │\n\
+    ///      └             ┘"
+    /// );
+    ///
+    /// let not_2d = false;
+    /// let mut b = Tensor2::new(symmetric, not_2d);
+    /// b.sym_set(0, 0, 1.0);
+    /// b.sym_set(1, 1, 2.0);
+    /// b.sym_set(2, 2, 3.0);
+    /// b.sym_set(0, 1, 4.0);
+    /// b.sym_set(1, 0, 4.0);
+    /// b.sym_set(2, 0, 5.0);
+    /// let out = b.to_matrix();
+    /// assert_eq!(
+    ///     format!("{:.1}", out),
+    ///     "┌             ┐\n\
+    ///      │ 1.0 4.0 5.0 │\n\
+    ///      │ 4.0 2.0 0.0 │\n\
+    ///      │ 5.0 0.0 3.0 │\n\
     ///      └             ┘"
     /// );
     /// # Ok(())

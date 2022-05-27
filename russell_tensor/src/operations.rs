@@ -829,7 +829,7 @@ mod tests {
              └                                     ┘"
         );
 
-        // dym-3D dyad general
+        // sym-3D dyad general
         #[rustfmt::skip]
         let a = Tensor2::from_matrix(&[
             [1.0, 2.0, 3.0],

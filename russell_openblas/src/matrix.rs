@@ -3,6 +3,7 @@ use crate::StrError;
 
 #[rustfmt::skip]
 extern "C" {
+    // from /usr/include/x86_64-linux-gnu/cblas.h
     fn cblas_dgemm(order: i32, transa: i32, transb: i32, m: i32, n: i32, k: i32, alpha: f64, a: *const f64, lda: i32, b: *const f64, ldb: i32, beta: f64, c: *mut f64, ldc: i32);
     fn cblas_dsyrk(order: i32, uplo: i32, trans: i32, n: i32, k: i32, alpha: f64, a: *const f64, lda: i32, beta: f64, c: *mut f64, ldc: i32);
     fn LAPACKE_dlange(matrix_layout: i32, norm: u8, m:i32, n:i32, a: *const f64, lda:i32) -> f64;

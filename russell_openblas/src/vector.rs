@@ -1,8 +1,10 @@
 extern "C" {
+    // from /usr/include/x86_64-linux-gnu/cblas.h
     fn cblas_ddot(n: i32, x: *const f64, incx: i32, y: *const f64, incy: i32) -> f64;
     fn cblas_dcopy(n: i32, x: *const f64, incx: i32, y: *mut f64, incy: i32);
     fn cblas_dscal(n: i32, alpha: f64, x: *const f64, incx: i32);
     fn cblas_daxpy(n: i32, alpha: f64, x: *const f64, incx: i32, y: *const f64, incy: i32);
+    fn cblas_zaxpy(n: i32, alpha: *const f64, x: *const f64, incx: i32, y: *const f64, incy: i32);
     fn cblas_dnrm2(n: i32, x: *const f64, incx: i32) -> f64;
     fn cblas_dasum(n: i32, x: *const f64, incx: i32) -> f64;
     fn cblas_idamax(n: i32, x: *const f64, incx: i32) -> i32;
@@ -86,6 +88,28 @@ pub fn daxpy(n: i32, alpha: f64, x: &[f64], incx: i32, y: &mut [f64], incy: i32)
     }
 }
 
+/// Computes constant times a vector plus a vector (Complex version).
+///
+/// ```text
+/// y := alpha*x + y
+/// ```
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/d7/db2/zaxpy_8f.html>
+///
+/// # Note
+///
+/// The arrays of complex numbers must be like so: x = [real, imag, real, imag, ... real, imag]
+/// Thus, x.len() = 2 * x_complex.len() if we had x_complex: Vector<Complex>.
+#[inline]
+pub fn zaxpy(n: i32, alpha_real: f64, alpha_imag: f64, x: &[f64], incx: i32, y: &mut [f64], incy: i32) {
+    unsafe {
+        let alpha = &[alpha_real, alpha_imag];
+        cblas_zaxpy(n, alpha.as_ptr(), x.as_ptr(), incx, y.as_ptr(), incy);
+    }
+}
+
 /// Computes the sum of the absolute values (1-norm or taxicab norm)
 ///
 /// ```text
@@ -135,7 +159,7 @@ pub fn idamax(n: i32, x: &[f64], incx: i32) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{dasum, daxpy, dcopy, ddot, dnrm2, dscal, idamax};
+    use super::{dasum, daxpy, dcopy, ddot, dnrm2, dscal, idamax, zaxpy};
     use crate::to_i32;
     use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
 
@@ -178,6 +202,65 @@ mod tests {
         daxpy(n, alpha, &x, incx, &mut y, incy);
         assert_vec_approx_eq!(x, &[20.0, 10.0, 48.0, IGNORED, IGNORED], 1e-15);
         assert_vec_approx_eq!(y, &[-5.0, 0.0, 0.0, IGNORED, IGNORED, IGNORED], 1e-15);
+    }
+
+    #[test]
+    fn zaxpy_works() {
+        let alpha_real = 1.0;
+        let alpha_imag = 0.0;
+        let x = [
+            20.0, 1.0, // 0
+            10.0, 2.0, // 1
+            30.0, 1.5, // 2
+            -123.0, 0.5, // 3
+            -123.0, 0.5, // 4
+        ];
+        let mut y = [
+            -15.0, 1.5, // 0
+            -5.0, -2.0, // 1
+            -24.0, 1.0, // 2
+            666.0, -0.5, // 3
+            666.0, 5.0, // 4
+        ];
+        let (n, incx, incy) = ((x.len() / 2) as i32, 1, 1);
+        zaxpy(n, alpha_real, alpha_imag, &x, incx, &mut y, incy);
+        assert_vec_approx_eq!(
+            x,
+            &[
+                20.0, 1.0, // 0
+                10.0, 2.0, // 1
+                30.0, 1.5, // 2
+                -123.0, 0.5, // 3
+                -123.0, 0.5, // 4
+            ],
+            1e-15
+        );
+        assert_vec_approx_eq!(
+            y,
+            &[
+                5.0, 2.5, // 0
+                5.0, 0.0, // 1
+                6.0, 2.5, // 2
+                543.0, 0.0, // 3
+                543.0, 5.5, // 4
+            ],
+            1e-15
+        );
+
+        let alpha_real = 0.5;
+        let alpha_imag = 1.0;
+        zaxpy(n, alpha_real, alpha_imag, &x, incx, &mut y, incy);
+        assert_vec_approx_eq!(
+            y,
+            &[
+                14.0, 23.0, // 0
+                8.0, 11.0, // 1
+                19.5, 33.25, // 2
+                481.0, -122.75, // 3
+                481.0, -117.25, // 4
+            ],
+            1e-15
+        );
     }
 
     #[test]

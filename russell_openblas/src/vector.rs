@@ -5,8 +5,8 @@ extern "C" {
     fn cblas_ddot(n: i32, x: *const f64, incx: i32, y: *const f64, incy: i32) -> f64;
     fn cblas_dcopy(n: i32, x: *const f64, incx: i32, y: *mut f64, incy: i32);
     fn cblas_dscal(n: i32, alpha: f64, x: *const f64, incx: i32);
-    fn cblas_daxpy(n: i32, alpha: f64, x: *const f64, incx: i32, y: *const f64, incy: i32);
-    fn cblas_zaxpy(n: i32, alpha: *const Complex64, x: *const Complex64, incx: i32, y: *const Complex64, incy: i32);
+    fn cblas_daxpy(n: i32, alpha: f64, x: *const f64, incx: i32, y: *mut f64, incy: i32);
+    fn cblas_zaxpy(n: i32, alpha: *const Complex64, x: *const Complex64, incx: i32, y: *mut Complex64, incy: i32);
     fn cblas_dnrm2(n: i32, x: *const f64, incx: i32) -> f64;
     fn cblas_dasum(n: i32, x: *const f64, incx: i32) -> f64;
     fn cblas_idamax(n: i32, x: *const f64, incx: i32) -> i32;
@@ -86,7 +86,7 @@ pub fn dscal(n: i32, alpha: f64, x: &mut [f64], incx: i32) {
 #[inline]
 pub fn daxpy(n: i32, alpha: f64, x: &[f64], incx: i32, y: &mut [f64], incy: i32) {
     unsafe {
-        cblas_daxpy(n, alpha, x.as_ptr(), incx, y.as_ptr(), incy);
+        cblas_daxpy(n, alpha, x.as_ptr(), incx, y.as_mut_ptr(), incy);
     }
 }
 
@@ -103,7 +103,7 @@ pub fn daxpy(n: i32, alpha: f64, x: &[f64], incx: i32, y: &mut [f64], incy: i32)
 #[inline]
 pub fn zaxpy(n: i32, alpha: Complex64, x: &[Complex64], incx: i32, y: &mut [Complex64], incy: i32) {
     unsafe {
-        cblas_zaxpy(n, &alpha, x.as_ptr(), incx, y.as_ptr(), incy);
+        cblas_zaxpy(n, &alpha, x.as_ptr(), incx, y.as_mut_ptr(), incy);
     }
 }
 
@@ -159,7 +159,7 @@ mod tests {
     use super::{dasum, daxpy, dcopy, ddot, dnrm2, dscal, idamax, zaxpy};
     use crate::to_i32;
     use num_complex::Complex64;
-    use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
+    use russell_chk::{assert_approx_eq, assert_complex_vec_approx_eq, assert_vec_approx_eq};
 
     #[test]
     fn ddot_works() {
@@ -227,10 +227,7 @@ mod tests {
             Complex64::new(-123.0, 0.5), // 3
             Complex64::new(-123.0, 0.5), // 4
         ];
-        for i in 0..x.len() {
-            assert_approx_eq!(x[i].re, x_correct[i].re, 1e-15);
-            assert_approx_eq!(x[i].im, x_correct[i].im, 1e-15);
-        }
+        assert_complex_vec_approx_eq!(x, x_correct, 1e-15);
         let y_correct = &[
             Complex64::new(5.0, 2.5),   // 0
             Complex64::new(5.0, 0.0),   // 1
@@ -238,10 +235,7 @@ mod tests {
             Complex64::new(543.0, 0.0), // 3
             Complex64::new(543.0, 5.5), // 4
         ];
-        for i in 0..y.len() {
-            assert_approx_eq!(y[i].re, y_correct[i].re, 1e-15);
-            assert_approx_eq!(y[i].im, y_correct[i].im, 1e-15);
-        }
+        assert_complex_vec_approx_eq!(y, y_correct, 1e-15);
 
         zaxpy(n, Complex64::new(0.5, 1.0), &x, incx, &mut y, incy);
         let y_correct = &[
@@ -251,10 +245,7 @@ mod tests {
             Complex64::new(481.0, -122.75), // 3
             Complex64::new(481.0, -117.25), // 4
         ];
-        for i in 0..y.len() {
-            assert_approx_eq!(y[i].re, y_correct[i].re, 1e-15);
-            assert_approx_eq!(y[i].im, y_correct[i].im, 1e-15);
-        }
+        assert_complex_vec_approx_eq!(y, y_correct, 1e-15);
     }
 
     #[test]

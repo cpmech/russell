@@ -375,7 +375,7 @@ mod tests {
     }
 
     #[test]
-    fn dgesv_fails() {
+    fn dgesv_captures_errors() {
         let m = 2;
         let mut a = vec![0.0; m * m];
         let mut b = vec![0.0; m];
@@ -389,7 +389,7 @@ mod tests {
     }
 
     #[test]
-    fn dgesv_fails_on_wrong_ipiv() {
+    fn dgesv_captures_wrong_ipiv() {
         let m = 2;
         let mut a = [1.0, 0.0, 0.0, 1.0];
         let mut b = vec![0.0; m];
@@ -429,7 +429,7 @@ mod tests {
     }
 
     #[test]
-    fn zgesv_fails() {
+    fn zgesv_captures_errors() {
         let m = 2;
         let mut a = vec![Complex64::new(0.0, 0.0); m * m];
         let mut b = vec![Complex64::new(0.0, 0.0); m];
@@ -443,7 +443,7 @@ mod tests {
     }
 
     #[test]
-    fn zgesv_fails_on_wrong_ipiv() {
+    fn zgesv_captures_wrong_ipiv() {
         let m = 2;
         let mut a = [
             Complex64::new(1.0, 0.0),

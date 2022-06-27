@@ -1,6 +1,6 @@
 [package]
 name = "russell_chk"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 license = "MIT"
 description = "Functions to check vectors and other data in tests"

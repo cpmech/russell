@@ -12,7 +12,7 @@ categories = ["mathematics", "science"]
 keywords = ["tensor", "Voigt", "Mandel", "continuum", "mechanics"]
 
 [dependencies]
-russell_chk = { path = "../russell_chk", version = "0.2" }
+russell_chk = { path = "../russell_chk", version = "0.3" }
 russell_lab = { path = "../russell_lab", version = "0.3" }
 serde = { version = "1.0.136", features = ["derive"] }
 

@@ -12,7 +12,7 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "vector", "linspace"]
 
 [dependencies]
-russell_chk = { path = "../russell_chk", version = "0.2" }
+russell_chk = { path = "../russell_chk", version = "0.3" }
 russell_openblas = { path = "../russell_openblas", version = "0.2" }
 criterion = "0.3"
 num-traits = "0.2"

@@ -1,16 +1,25 @@
 use super::{cblas_transpose, cblas_uplo, lapack_job_vlr, lapack_uplo, CBLAS_ROW_MAJOR, LAPACK_ROW_MAJOR};
 use crate::StrError;
+use num_complex::Complex64;
 
 #[rustfmt::skip]
 extern "C" {
     // from /usr/include/x86_64-linux-gnu/cblas.h
     fn cblas_dgemm(order: i32, transa: i32, transb: i32, m: i32, n: i32, k: i32, alpha: f64, a: *const f64, lda: i32, b: *const f64, ldb: i32, beta: f64, c: *mut f64, ldc: i32);
+    fn cblas_zgemm(order: i32, transa: i32, transb: i32, m: i32, n: i32, k: i32, alpha: *const Complex64, a: *const Complex64, lda: i32, b: *const Complex64, ldb: i32, beta: *const Complex64, c: *mut Complex64, ldc: i32);
     fn cblas_dsyrk(order: i32, uplo: i32, trans: i32, n: i32, k: i32, alpha: f64, a: *const f64, lda: i32, beta: f64, c: *mut f64, ldc: i32);
+    fn cblas_zsyrk(order: i32, uplo: i32, trans: i32, n: i32, k: i32, alpha: *const Complex64, a: *const Complex64, lda: i32, beta: *const Complex64, c: *mut Complex64, ldc: i32);
+    fn cblas_zherk(order: i32, uplo: i32, trans: i32, n: i32, k: i32, alpha: f64, a: *const Complex64, lda: i32, beta: f64, c: *const Complex64, ldc: i32);
+    // from /usr/include/lapacke.h
     fn LAPACKE_dlange(matrix_layout: i32, norm: u8, m:i32, n:i32, a: *const f64, lda:i32) -> f64;
     fn LAPACKE_dgesvd(matrix_layout: i32, jobu: u8, jobvt: u8, m: i32, n: i32, a: *mut f64, lda: i32, s: *mut f64, u: *mut f64, ldu: i32, vt: *mut f64, ldvt: i32, superb: *mut f64) -> i32;
+    fn LAPACKE_zgesvd(matrix_layout: i32, jobu: u8, jobvt: u8, m: i32, n: i32, a: *mut Complex64, lda: i32, s: *mut f64, u: *mut Complex64, ldu: i32, vt: *mut Complex64, ldvt: i32, superb: *mut f64) -> i32;
     fn LAPACKE_dgetrf(matrix_layout: i32, m: i32, n: i32, a: *mut f64, lda: i32, ipiv: *mut i32) -> i32;
+    fn LAPACKE_zgetrf(matrix_layout: i32, m: i32, n: i32, a: *mut Complex64, lda: i32, ipiv: *mut i32) -> i32;
     fn LAPACKE_dgetri(matrix_layout: i32, n: i32, a: *mut f64, lda: i32, ipiv: *const i32) -> i32;
+    fn LAPACKE_zgetri(matrix_layout: i32, n: i32, a: *mut Complex64, lda: i32, ipiv: *const i32) -> i32;
     fn LAPACKE_dpotrf(matrix_layout: i32, uplo: u8, n: i32, a: *mut f64, lda: i32) -> i32;
+    fn LAPACKE_zpotrf(matrix_layout: i32, uplo: u8, n: i32, a: *mut Complex64, lda: i32) -> i32;
     fn LAPACKE_dgeev(matrix_layout: i32, jobvl: u8, jobvr: u8, n: i32, a: *mut f64, lda: i32, wr: *mut f64, wi: *mut f64, vl: *mut f64, ldvl: i32, vr: *mut f64, ldvr: i32) -> i32;
 }
 
@@ -92,6 +101,84 @@ pub fn dgemm(
     }
 }
 
+/// Performs the matrix-matrix multiplication (complex version)
+///
+/// Computes one of:
+///
+/// ```text
+/// trans_a = false, trans_b = false:
+///
+///   c  := α ⋅  a  ⋅  b  +  β ⋅  c
+/// (m,n)      (m,k) (k,n)      (m,n)
+/// ```
+///
+/// ```text
+/// trans_a = false, trans_b = true:
+///
+///   c  := α ⋅  a  ⋅  bᵀ  +  β ⋅  c
+/// (m,n)      (m,k) (k,n)       (m,n)
+///                b:(n,k)
+/// ```
+///
+/// ```text
+/// trans_a = true, trans_b = false:
+///
+///   c  := α ⋅  aᵀ  ⋅  b  +  β ⋅  c
+/// (m,n)      (m,k) (k,n)       (m,n)
+///          a:(k,m)
+/// ```
+///
+/// ```text
+/// trans_a = true, trans_b = true:
+///
+///   c  := α ⋅  aᵀ   ⋅   bᵀ +  β ⋅  c
+/// (m,n)      (m,k)    (k,n)      (m,n)
+///          a:(k,m)  b:(n,k)
+/// ```
+///
+/// # Important
+///
+/// * The data must be in **row-major** order
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/d7/d76/zgemm_8f.html>
+///
+#[inline]
+pub fn zgemm(
+    trans_a: bool,
+    trans_b: bool,
+    m: i32,
+    n: i32,
+    k: i32,
+    alpha: Complex64,
+    a: &[Complex64],
+    b: &[Complex64],
+    beta: Complex64,
+    c: &mut [Complex64],
+) {
+    let lda = if trans_a { m } else { k };
+    let ldb = if trans_b { k } else { n };
+    unsafe {
+        cblas_zgemm(
+            CBLAS_ROW_MAJOR,
+            cblas_transpose(trans_a),
+            cblas_transpose(trans_b),
+            m,
+            n,
+            k,
+            &alpha,
+            a.as_ptr(),
+            lda,
+            b.as_ptr(),
+            ldb,
+            &beta,
+            c.as_mut_ptr(),
+            n,
+        );
+    }
+}
+
 /// Performs one of the symmetric rank k operations
 ///
 /// Computes one of:
@@ -128,6 +215,57 @@ pub fn dsyrk(up: bool, trans: bool, n: i32, k: i32, alpha: f64, a: &[f64], beta:
             a.as_ptr(),
             lda,
             beta,
+            c.as_mut_ptr(),
+            n,
+        );
+    }
+}
+
+/// Performs one of the symmetric rank k operations (complex version)
+///
+/// Computes one of:
+///
+/// ```text
+///   c := α ⋅ a  ⋅  aᵀ  +  β ⋅  c
+/// (n,n)    (n,k) (k,n)       (n,n)
+///
+/// or
+///
+///   c := α ⋅ aᵀ  ⋅  a  +  β ⋅  c
+/// (n,n)    (n,k)  (k,n)      (n,n)
+/// ```
+///
+/// # Important
+///
+/// * The data must be in **row-major** order
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/de/d54/zsyrk_8f.html>
+///
+#[inline]
+pub fn zsyrk(
+    up: bool,
+    trans: bool,
+    n: i32,
+    k: i32,
+    alpha: Complex64,
+    a: &[Complex64],
+    beta: Complex64,
+    c: &mut [Complex64],
+) {
+    let lda = if trans { n } else { k };
+    unsafe {
+        cblas_zsyrk(
+            CBLAS_ROW_MAJOR,
+            cblas_uplo(up),
+            cblas_transpose(trans),
+            n,
+            k,
+            &alpha,
+            a.as_ptr(),
+            lda,
+            &beta,
             c.as_mut_ptr(),
             n,
         );
@@ -412,10 +550,11 @@ pub fn dgeev(
 
 #[cfg(test)]
 mod tests {
-    use super::{dgeev, dgemm, dgesvd, dgetrf, dgetri, dlange, dpotrf, dsyrk};
+    use super::{dgeev, dgemm, dgesvd, dgetrf, dgetri, dlange, dpotrf, dsyrk, zgemm, zsyrk};
     use crate::conversions::{dgeev_data, dgeev_data_lr};
     use crate::{to_i32, StrError};
-    use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
+    use num_complex::Complex64;
+    use russell_chk::{assert_approx_eq, assert_complex_vec_approx_eq, assert_vec_approx_eq};
 
     #[test]
     fn dgemm_notrans_notrans_works() {
@@ -612,6 +751,55 @@ mod tests {
     }
 
     #[test]
+    fn zgemm_notrans_notrans_works() {
+        // (0.5-2i)⋅a⋅b + (2-4i)⋅c
+
+        // allocate matrices
+        #[rustfmt::skip]
+        let a = [
+        	Complex64::new(1.0, 0.0), Complex64::new(2.0, 0.0), Complex64::new( 0.0,  1.0), Complex64::new(1.0, 0.0), Complex64::new(-1.0, 0.0),
+        	Complex64::new(2.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new(-1.0, -1.0), Complex64::new(1.0, 0.0), Complex64::new( 1.0, 0.0),
+        	Complex64::new(1.0, 0.0), Complex64::new(2.0, 0.0), Complex64::new( 0.0,  1.0), Complex64::new(4.0, 0.0), Complex64::new(-1.0, 0.0),
+        	Complex64::new(4.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new( 3.0, -1.0), Complex64::new(1.0, 0.0), Complex64::new( 1.0, 0.0),
+        ];
+        #[rustfmt::skip]
+        let b = [
+        	Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0,  1.0),
+        	Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(3.0, -1.0),
+        	Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0,  1.0),
+        	Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, -1.0),
+        	Complex64::new(0.0, 0.0), Complex64::new(2.0, 0.0), Complex64::new(0.0,  1.0),
+        ];
+        #[rustfmt::skip]
+        let mut c = [
+        	Complex64::new( 0.50, 0.0), Complex64::new(0.0, 1.0), Complex64::new( 0.25, 0.0),
+        	Complex64::new( 0.25, 0.0), Complex64::new(0.0, 1.0), Complex64::new(-0.25, 0.0),
+        	Complex64::new(-0.25, 0.0), Complex64::new(0.0, 1.0), Complex64::new( 0.00, 0.0),
+        	Complex64::new(-0.25, 0.0), Complex64::new(0.0, 1.0), Complex64::new( 0.00, 0.0),
+        ];
+
+        // sizes
+        let m = 4; // m = nrow(a) = a.M = nrow(c)
+        let k = 5; // k = ncol(a) = a.N = nrow(b)
+        let n = 3; // n = ncol(b) = b.N = ncol(c)
+
+        // run zgemm
+        let (trans_a, trans_b) = (false, false);
+        let (alpha, beta) = (Complex64::new(0.5, -2.0), Complex64::new(2.0, -4.0));
+        zgemm(trans_a, trans_b, m, n, k, alpha, &a, &b, beta, &mut c);
+
+        // check
+        #[rustfmt::skip]
+        let correct = [
+        	Complex64::new(2.0, -6.0), Complex64::new(3.0,  6.0), Complex64::new(-0.5, -14.0),
+        	Complex64::new(2.0, -7.0), Complex64::new(5.0, -2.0), Complex64::new(-1.5, -20.5),
+        	Complex64::new(2.0, -9.0), Complex64::new(3.0,  6.0), Complex64::new(-5.5, -20.5),
+        	Complex64::new(2.0, -9.0), Complex64::new(5.0, -2.0), Complex64::new(14.5, -7.0),
+        ];
+        assert_complex_vec_approx_eq!(c, correct, 1e-15);
+    }
+
+    #[test]
     fn dsyrk_works() {
         // matrix c
         #[rustfmt::skip]
@@ -673,6 +861,70 @@ mod tests {
              3.0,  7.0, 14.0,  6.0,
         ];
         assert_vec_approx_eq!(c_lo, c_lo_correct, 1e-15);
+    }
+
+    #[test]
+    fn zsyrk_works() {
+        // matrix c
+        #[rustfmt::skip]
+        let mut c_up = [
+            Complex64::new(3.0, 1.0), Complex64::new(0.0, 0.0), Complex64::new(-2.0, 0.0), Complex64::new(0.0,  0.0),
+            Complex64::new(0.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new(2.0,  0.0),
+            Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new( 3.0, 0.0), Complex64::new(1.0,  0.0),
+            Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new(3.0, -1.0),
+        ];
+        #[rustfmt::skip]
+        let mut c_lo = [
+            Complex64::new( 3.0, 1.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0,  0.0),
+            Complex64::new(-1.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0,  0.0),
+            Complex64::new(-4.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new(0.0,  0.0),
+            Complex64::new(-1.0, 0.0), Complex64::new(2.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(3.0, -1.0),
+        ];
+
+        // n-size
+        let n = 4_i32; // =c.ncol
+
+        // matrix a
+        #[rustfmt::skip]
+        let a = [
+            Complex64::new(1.0, -1.0), Complex64::new(2.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new( 1.0, 0.0), Complex64::new(-1.0, 0.0), Complex64::new( 0.0, 0.0),
+            Complex64::new(2.0,  0.0), Complex64::new(2.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new( 0.0, 1.0),
+            Complex64::new(3.0,  1.0), Complex64::new(1.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new( 1.0, 0.0), Complex64::new( 2.0, 0.0), Complex64::new(-1.0, 0.0),
+            Complex64::new(1.0,  0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new(-1.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new( 0.0, 1.0),
+        ];
+
+        // k-size
+        let k = 6_i32; // =a.ncol
+
+        // constants
+        let (alpha, beta) = (Complex64::new(3.0, 0.0), Complex64::new(1.0, 0.0));
+
+        // run zsyrk with up part of matrix c
+        let trans = false;
+        zsyrk(true, trans, n, k, alpha, &a, beta, &mut c_up);
+
+        // check results: c := up(3⋅a⋅aᵀ - c)
+        #[rustfmt::skip]
+        let c_up_correct = [
+            Complex64::new(24.0, -5.0), Complex64::new(21.0, -6.0), Complex64::new(22.0, -6.0), Complex64::new( 3.0, -3.0),
+            Complex64::new( 0.0,  0.0), Complex64::new(27.0,  0.0), Complex64::new(33.0,  3.0), Complex64::new( 8.0,  0.0),
+            Complex64::new( 0.0,  0.0), Complex64::new( 0.0,  0.0), Complex64::new(75.0, 18.0), Complex64::new(16.0,  0.0),
+            Complex64::new( 0.0,  0.0), Complex64::new( 0.0,  0.0), Complex64::new( 0.0,  0.0), Complex64::new( 9.0, -1.0),
+        ];
+        assert_complex_vec_approx_eq!(c_up, c_up_correct, 1e-15);
+
+        // run zsyrk with lo part of matrix c
+        zsyrk(false, trans, n, k, alpha, &a, beta, &mut c_lo);
+
+        // check results: c := lo(3⋅a⋅aᵀ - c)
+        #[rustfmt::skip]
+        let c_lo_correct = [
+            Complex64::new(24.0, -5.0), Complex64::new( 0.0, 0.0), Complex64::new( 0.0,  0.0), Complex64::new(0.0,  0.0),
+            Complex64::new(20.0, -6.0), Complex64::new(27.0, 0.0), Complex64::new( 0.0,  0.0), Complex64::new(0.0,  0.0),
+            Complex64::new(20.0, -6.0), Complex64::new(34.0, 3.0), Complex64::new(75.0, 18.0), Complex64::new(0.0,  0.0),
+            Complex64::new( 2.0, -3.0), Complex64::new( 8.0, 0.0), Complex64::new(15.0,  0.0), Complex64::new(9.0, -1.0),
+        ];
+        assert_complex_vec_approx_eq!(c_lo, c_lo_correct, 1e-15);
     }
 
     #[test]

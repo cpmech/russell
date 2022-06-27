@@ -5,7 +5,9 @@
 //! # Example
 //!
 //! ```
-//! use russell_chk::{assert_approx_eq, assert_vec_approx_eq, assert_deriv_approx_eq};
+//! use russell_chk::{assert_complex_approx_eq, assert_complex_vec_approx_eq,
+//!     assert_approx_eq, assert_vec_approx_eq, assert_deriv_approx_eq};
+//! use num_complex::Complex64;
 //!
 //! // check float point number
 //! assert_approx_eq!(0.0000123, 0.000012, 1e-6);
@@ -20,6 +22,19 @@
 //! let at_x = 8.0;
 //! let dfdx = -1.01;
 //! assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-2);
+//!
+//! // check complex numbers
+//! assert_complex_approx_eq!(Complex64::new(1.0,8.0), Complex64::new(1.001,8.0), 1e-2);
+//!
+//! let a = [
+//!     Complex64::new(0.123456789, 5.01),
+//!     Complex64::new(0.123456789, 5.01),
+//!     Complex64::new(0.123456789, 5.01)];
+//! let b = [
+//!     Complex64::new(0.12345678, 5.01),
+//!     Complex64::new(0.1234567, 5.01),
+//!     Complex64::new(0.123456, 5.01)];
+//! assert_complex_vec_approx_eq!(&a, &b, 1e-6);
 //! ```
 
 /// Returns package description

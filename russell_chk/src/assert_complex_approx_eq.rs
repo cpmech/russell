@@ -11,8 +11,7 @@
 /// ## Accepts small error
 ///
 /// ```
-/// #[macro_use] extern crate russell_chk;
-///
+/// use russell_chk::assert_complex_approx_eq;
 /// use num_complex::Complex64;
 ///
 /// fn main() {
@@ -25,8 +24,7 @@
 /// ## Panics on different values
 ///
 /// ```should_panic
-/// #[macro_use] extern crate russell_chk;
-///
+/// use russell_chk::assert_complex_approx_eq;
 /// use num_complex::Complex64;
 ///
 /// fn main() {
@@ -37,8 +35,7 @@
 /// ```
 ///
 /// ```should_panic
-/// #[macro_use] extern crate russell_chk;
-///
+/// use russell_chk::assert_complex_approx_eq;
 /// use num_complex::Complex64;
 ///
 /// fn main() {

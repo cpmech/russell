@@ -415,6 +415,73 @@ pub fn dgesvd(
     Ok(())
 }
 
+/// Computes the singular value decomposition (SVD) (complex version)
+///
+/// The SVD is written as follows:
+///
+/// ```text
+///   A  =   U  ⋅ SIGMA ⋅ Vᴴ
+/// (m,n)  (m,m)  (m,n)  (n,n)
+/// ```
+///
+/// where SIGMA is an M-by-N matrix which is zero except for its
+/// min(m,n) diagonal elements, U is an M-by-M orthogonal matrix, and
+/// V is an N-by-N orthogonal matrix. The diagonal elements of SIGMA
+/// are the singular values of A; they are real and non-negative, and
+/// are returned in descending order. The first min(m,n) columns of
+/// U and V are the left and right singular vectors of A.
+///
+/// # Note
+///
+/// 1. The routine returns Vᴴ, not V.
+/// 2. The matrix will be modified
+/// 3. `jobu` and `jobvt` are c_char and can be passed as b'A'
+///    (see LAPACK reference for further options)
+/// 4. `superb` is a work area of size min(m,n)-1; e.g., use min(m,n)
+///
+/// # Important
+///
+/// * The data must be in **row-major** order
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/d6/d42/zgesvd_8f.html>
+///
+#[inline]
+pub fn zgesvd(
+    jobu: u8,
+    jobvt: u8,
+    m: i32,
+    n: i32,
+    a: &mut [Complex64],
+    s: &mut [f64],
+    u: &mut [Complex64],
+    vh: &mut [Complex64],
+    superb: &mut [f64],
+) -> Result<(), StrError> {
+    unsafe {
+        let info = LAPACKE_zgesvd(
+            LAPACK_ROW_MAJOR,
+            jobu,
+            jobvt,
+            m,
+            n,
+            a.as_mut_ptr(),
+            n,
+            s.as_mut_ptr(),
+            u.as_mut_ptr(),
+            m,
+            vh.as_mut_ptr(),
+            n,
+            superb.as_mut_ptr(),
+        );
+        if info != 0_i32 {
+            return Err("LAPACK zgesvd failed");
+        }
+    }
+    Ok(())
+}
+
 /// Computes an LU factorization of a general (m,n) matrix
 ///
 /// The factorization has the form:
@@ -592,7 +659,7 @@ pub fn dgeev(
 
 #[cfg(test)]
 mod tests {
-    use super::{dgeev, dgemm, dgesvd, dgetrf, dgetri, dlange, dpotrf, dsyrk, zgemm, zherk, zsyrk};
+    use super::{dgeev, dgemm, dgesvd, dgetrf, dgetri, dlange, dpotrf, dsyrk, zgemm, zgesvd, zherk, zsyrk};
     use crate::conversions::{dgeev_data, dgeev_data_lr};
     use crate::{to_i32, StrError};
     use num_complex::Complex64;
@@ -1052,7 +1119,7 @@ mod tests {
     }
 
     #[test]
-    fn dgesvd_fails() {
+    fn dgesvd_captures_errors() {
         let (m, n) = (2_usize, 3_usize);
         let min_mn = if m < n { m } else { n };
         let mut a = vec![0.0; m * n];
@@ -1216,6 +1283,138 @@ mod tests {
     }
 
     #[test]
+    fn zgesvd_captures_errors() {
+        let (m, n) = (2_usize, 3_usize);
+        let min_mn = if m < n { m } else { n };
+        let mut a = vec![Complex64::new(0.0, 0.0); m * n];
+        let mut s = vec![0.0; min_mn as usize];
+        let mut u = vec![Complex64::new(0.0, 0.0); (m * m) as usize];
+        let mut vh = vec![Complex64::new(0.0, 0.0); (n * n) as usize];
+        let mut superb = vec![0.0; min_mn as usize];
+        assert_eq!(
+            zgesvd(
+                b'A',
+                b'X', // <<<< ERROR
+                to_i32(m),
+                to_i32(n),
+                &mut a,
+                &mut s,
+                &mut u,
+                &mut vh,
+                &mut superb,
+            ),
+            Err("LAPACK zgesvd failed")
+        );
+    }
+
+    #[test]
+    fn zgesvd_works_1() -> Result<(), StrError> {
+        // matrix
+        #[rustfmt::skip]
+        let mut a = [
+            Complex64::new( 0.000000000000000e+00, 0.000000000000000e+00), Complex64::new(7.071067811865475e-01, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.000000000000000e+00), Complex64::new(-7.071067811865475e-01, 0.000000000000000e+00),
+            Complex64::new( 7.071067811865475e-01, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 7.071067811865475e-01), Complex64::new( 0.000000000000000e+00, 0.000000000000000e+00),
+            Complex64::new( 0.000000000000000e+00, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 7.071067811865475e-01), Complex64::new(0.000000000000000e+00, 0.000000000000000e+00), Complex64::new( 0.000000000000000e+00, 7.071067811865475e-01),
+            Complex64::new(-7.071067811865475e-01, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 7.071067811865475e-01), Complex64::new( 0.000000000000000e+00, 0.000000000000000e+00),
+        ];
+        let a_copy = a.to_vec();
+
+        // dimensions
+        let (m, n) = (4_usize, 4_usize);
+        let min_mn = if m < n { m } else { n };
+
+        // allocate output arrays
+        let mut s = vec![0.0; min_mn as usize];
+        let mut u = vec![Complex64::new(0.0, 0.0); (m * m) as usize];
+        let mut vt = vec![Complex64::new(0.0, 0.0); (n * n) as usize];
+        let mut superb = vec![0.0; min_mn as usize];
+
+        // perform the SVD
+        zgesvd(
+            b'A',
+            b'A',
+            to_i32(m),
+            to_i32(n),
+            &mut a,
+            &mut s,
+            &mut u,
+            &mut vt,
+            &mut superb,
+        )?;
+
+        let s_correct = &[1.0, 1.0, 1.0, 1.0];
+        assert_vec_approx_eq!(s, s_correct, 1e-15);
+
+        // check SVD
+        let mut usv = vec![Complex64::new(0.0, 0.0); m * n];
+        for i in 0..m {
+            for j in 0..n {
+                for k in 0..min_mn {
+                    usv[i * n + j] += u[i * m + k] * s[k] * vt[k * n + j];
+                }
+            }
+        }
+        assert_complex_vec_approx_eq!(usv, a_copy, 1e-15);
+        Ok(())
+    }
+
+    #[test]
+    fn zgesvd_works_2() -> Result<(), StrError> {
+        // matrix
+        #[rustfmt::skip]
+        let mut a = [
+            Complex64::new(0.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new(2.0, 0.0), Complex64::new(1.0, 0.0),
+            Complex64::new(1.0, 0.0), Complex64::new(0.0, 1.0), Complex64::new(0.0, 1.0), Complex64::new(0.0, 1.0),
+            Complex64::new(2.0, 0.0), Complex64::new(2.0, 0.0), Complex64::new(0.0, 2.0), Complex64::new(0.0, 2.0),
+            Complex64::new(3.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new(0.0, 3.0),
+        ];
+        let a_copy = a.to_vec();
+
+        // dimensions
+        let (m, n) = (4_usize, 4_usize);
+        let min_mn = if m < n { m } else { n };
+
+        // allocate output arrays
+        let mut s = vec![0.0; min_mn as usize];
+        let mut u = vec![Complex64::new(0.0, 0.0); (m * m) as usize];
+        let mut vt = vec![Complex64::new(0.0, 0.0); (n * n) as usize];
+        let mut superb = vec![0.0; min_mn as usize];
+
+        // perform the SVD
+        zgesvd(
+            b'A',
+            b'A',
+            to_i32(m),
+            to_i32(n),
+            &mut a,
+            &mut s,
+            &mut u,
+            &mut vt,
+            &mut superb,
+        )?;
+
+        let s_correct = &[
+            7.578301582272183e+00,
+            3.008108139593885e+00,
+            1.854745532331560e+00,
+            2.838125418935204e-01,
+        ];
+        assert_vec_approx_eq!(s, s_correct, 1e-15);
+
+        // check SVD
+        let mut usv = vec![Complex64::new(0.0, 0.0); m * n];
+        for i in 0..m {
+            for j in 0..n {
+                for k in 0..min_mn {
+                    usv[i * n + j] += u[i * m + k] * s[k] * vt[k * n + j];
+                }
+            }
+        }
+        assert_complex_vec_approx_eq!(usv, a_copy, 1e-14);
+        Ok(())
+    }
+
+    #[test]
     fn dgetrf_and_dgetri_fail() {
         let (m, n) = (2, 2);
         let min_mn = if m < n { m } else { n };
@@ -1292,7 +1491,7 @@ mod tests {
     }
 
     #[test]
-    fn dpotrf_fails() {
+    fn dpotrf_captures_errors() {
         let mut a = vec![0.0; 4];
         assert_eq!(dpotrf(true, 2_i32, &mut a), Err("LAPACK dpotrf failed"));
     }
@@ -1347,7 +1546,7 @@ mod tests {
     }
 
     #[test]
-    fn dgeev_fails() {
+    fn dgeev_captures_errors() {
         let m = 1_usize;
         let mut a = vec![0.0; m * m];
         let mut wr = vec![0.0; m]; // eigenvalues (real part)

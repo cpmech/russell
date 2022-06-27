@@ -31,10 +31,14 @@ pub fn desc() -> String {
 pub type StrError = &'static str;
 
 mod assert_approx_eq;
+mod assert_complex_approx_eq;
+mod assert_complex_vec_approx_eq;
 mod assert_deriv_approx_eq;
 mod assert_vec_approx_eq;
 mod num_deriv;
 pub use crate::assert_approx_eq::*;
+pub use crate::assert_complex_approx_eq::*;
+pub use crate::assert_complex_vec_approx_eq::*;
 pub use crate::assert_deriv_approx_eq::*;
 pub use crate::assert_vec_approx_eq::*;
 pub use crate::num_deriv::*;

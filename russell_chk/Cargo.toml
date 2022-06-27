@@ -12,3 +12,4 @@ categories = ["mathematics", "science"]
 keywords = ["testing", "arrays", "float"]
 
 [dependencies]
+num-complex = "0.4"

@@ -13,8 +13,9 @@ keywords = ["matrix", "vector", "linspace"]
 
 [dependencies]
 russell_chk = { path = "../russell_chk", version = "0.3" }
-russell_openblas = { path = "../russell_openblas", version = "0.2" }
+russell_openblas = { path = "../russell_openblas", version = "0.3" }
 criterion = "0.3"
+num-complex = "0.4"
 num-traits = "0.2"
 serde = { version = "1.0.136", features = ["derive"] }
 

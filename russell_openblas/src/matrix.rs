@@ -519,6 +519,43 @@ pub fn dgetrf(m: i32, n: i32, a: &mut [f64], ipiv: &mut [i32]) -> Result<(), Str
     Ok(())
 }
 
+/// Computes an LU factorization of a general (m,n) matrix (complex version)
+///
+/// The factorization has the form:
+///
+/// ```text
+/// A  =  P ⋅ L ⋅ U
+/// ```
+///
+/// where P is a permutation matrix, L is lower triangular with unit
+/// diagonal elements (lower trapezoidal if m > n), and U is upper
+/// triangular (upper trapezoidal if m < n).
+///
+/// # Note
+///
+/// 1. matrix `a` will be modified
+/// 2. ipiv indices are 1-based (i.e. Fortran)
+/// 3. See **dgetri** to use the factorization in finding the inverse matrix
+///
+/// # Important
+///
+/// * The data must be in **row-major** order
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/dd/dd1/zgetrf_8f.html>
+///
+#[inline]
+pub fn zgetrf(m: i32, n: i32, a: &mut [Complex64], ipiv: &mut [i32]) -> Result<(), StrError> {
+    unsafe {
+        let info = LAPACKE_zgetrf(LAPACK_ROW_MAJOR, m, n, a.as_mut_ptr(), n, ipiv.as_mut_ptr());
+        if info != 0_i32 {
+            return Err("LAPACK zgetrf failed");
+        }
+    }
+    Ok(())
+}
+
 /// Computes the inverse of a matrix using the LU factorization computed by dgetrf
 ///
 /// This method inverts U and then computes inv(A) by solving the system
@@ -545,6 +582,37 @@ pub fn dgetri(n: i32, a: &mut [f64], ipiv: &[i32]) -> Result<(), StrError> {
         let info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, n, a.as_mut_ptr(), n, ipiv.as_ptr());
         if info != 0_i32 {
             return Err("LAPACK dgetri failed");
+        }
+    }
+    Ok(())
+}
+
+/// Computes the inverse of a matrix using the LU factorization computed by zgetrf (complex version)
+///
+/// This method inverts U and then computes inv(A) by solving the system
+///
+/// ```text
+/// inv(A)*L = inv(U) for inv(A)
+/// ```
+///
+/// # Note
+///
+/// 1. See **dgetrf** to compute the factorization
+///
+/// # Important
+///
+/// * The data must be in **row-major** order
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/d0/db3/zgetri_8f.html>
+///
+#[inline]
+pub fn zgetri(n: i32, a: &mut [Complex64], ipiv: &[i32]) -> Result<(), StrError> {
+    unsafe {
+        let info = LAPACKE_zgetri(LAPACK_ROW_MAJOR, n, a.as_mut_ptr(), n, ipiv.as_ptr());
+        if info != 0_i32 {
+            return Err("LAPACK zgetri failed");
         }
     }
     Ok(())
@@ -582,6 +650,43 @@ pub fn dpotrf(up: bool, n: i32, a: &mut [f64]) -> Result<(), StrError> {
         let info = LAPACKE_dpotrf(LAPACK_ROW_MAJOR, lapack_uplo(up), n, a.as_mut_ptr(), n);
         if info != 0_i32 {
             return Err("LAPACK dpotrf failed");
+        }
+    }
+    Ok(())
+}
+
+/// Computes the Cholesky factorization of a complex Hermitian positive definite matrix A
+///
+/// The factorization has the form
+///
+/// ```text
+/// up = true:
+///
+/// A = Uᴴ ⋅ U
+///
+/// or
+///
+/// up = false:
+///
+/// A = L ⋅ Lᴴ
+/// ```
+///
+/// where U is an upper triangular matrix and L is lower triangular.
+///
+/// # Important
+///
+/// * The data must be in **row-major** order
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/d1/db9/zpotrf_8f.html>
+///
+#[inline]
+pub fn zpotrf(up: bool, n: i32, a: &mut [Complex64]) -> Result<(), StrError> {
+    unsafe {
+        let info = LAPACKE_zpotrf(LAPACK_ROW_MAJOR, lapack_uplo(up), n, a.as_mut_ptr(), n);
+        if info != 0_i32 {
+            return Err("LAPACK zpotrf failed");
         }
     }
     Ok(())
@@ -659,11 +764,14 @@ pub fn dgeev(
 
 #[cfg(test)]
 mod tests {
-    use super::{dgeev, dgemm, dgesvd, dgetrf, dgetri, dlange, dpotrf, dsyrk, zgemm, zgesvd, zherk, zsyrk};
+    use super::{
+        dgeev, dgemm, dgesvd, dgetrf, dgetri, dlange, dpotrf, dsyrk, zgemm, zgesvd, zgetrf, zgetri, zherk, zpotrf,
+        zsyrk,
+    };
     use crate::conversions::{dgeev_data, dgeev_data_lr};
     use crate::{to_i32, StrError};
     use num_complex::Complex64;
-    use russell_chk::{assert_approx_eq, assert_complex_vec_approx_eq, assert_vec_approx_eq};
+    use russell_chk::{assert_approx_eq, assert_complex_approx_eq, assert_complex_vec_approx_eq, assert_vec_approx_eq};
 
     #[test]
     fn dgemm_notrans_notrans_works() {
@@ -1415,7 +1523,7 @@ mod tests {
     }
 
     #[test]
-    fn dgetrf_and_dgetri_fail() {
+    fn dgetrf_and_dgetri_capture_errors() {
         let (m, n) = (2, 2);
         let min_mn = if m < n { m } else { n };
         let m_i32 = to_i32(m);
@@ -1491,6 +1599,84 @@ mod tests {
     }
 
     #[test]
+    fn zgetrf_and_zgetri_capture_errors() {
+        let (m, n) = (2, 2);
+        let min_mn = if m < n { m } else { n };
+        let m_i32 = to_i32(m);
+        let n_i32 = to_i32(n);
+        let mut a = vec![Complex64::new(0.0, 0.0); m * n];
+        let mut ipiv = vec![0_i32; min_mn];
+        assert_eq!(zgetrf(m_i32, n_i32, &mut a, &mut ipiv), Err("LAPACK zgetrf failed"));
+        assert_eq!(zgetri(n_i32, &mut a, &ipiv), Err("LAPACK zgetri failed"));
+    }
+
+    #[test]
+    fn zgetrf_and_zgetri_work() -> Result<(), StrError> {
+        // matrix
+        #[rustfmt::skip]
+        let mut a = [
+            Complex64::new(1.0, 1.0), Complex64::new(2.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new(1.0, -1.0),
+            Complex64::new(2.0, 1.0), Complex64::new(3.0, 0.0), Complex64::new(-1.0, 0.0), Complex64::new(1.0, -1.0),
+            Complex64::new(1.0, 1.0), Complex64::new(2.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new(4.0, -1.0),
+            Complex64::new(4.0, 1.0), Complex64::new(0.0, 0.0), Complex64::new( 3.0, 0.0), Complex64::new(1.0, -1.0),
+        ];
+        let a_copy = a.to_vec();
+        let (m, n) = (4_usize, 4_usize);
+        let min_mn = if m < n { m } else { n };
+
+        // run zgetrf
+        let m_i32 = to_i32(m);
+        let n_i32 = to_i32(n);
+        let mut ipiv = vec![0_i32; min_mn];
+        zgetrf(m_i32, n_i32, &mut a, &mut ipiv)?;
+
+        // check ipiv
+        let ipiv_correct = &[4_i32, 2_i32, 3_i32, 4_i32];
+        assert_eq!(ipiv, ipiv_correct);
+
+        // check LU
+        #[rustfmt::skip]
+        let lu_correct = [
+            Complex64::new(4.000000000000000e+00, 1.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.0), Complex64::new( 3.000000000000000e+00,  0.000000000000000e+00), Complex64::new( 1.000000000000000e+00, -1.000000000000000e+00),
+            Complex64::new(5.294117647058824e-01, 1.176470588235294e-01), Complex64::new(3.000000000000000e+00, 0.0), Complex64::new(-2.588235294117647e+00, -3.529411764705882e-01), Complex64::new( 3.529411764705882e-01, -5.882352941176471e-01),
+            Complex64::new(2.941176470588235e-01, 1.764705882352941e-01), Complex64::new(6.666666666666666e-01, 0.0), Complex64::new( 8.431372549019609e-01, -2.941176470588235e-01), Complex64::new( 3.294117647058823e+00, -4.901960784313725e-01),
+            Complex64::new(2.941176470588235e-01, 1.764705882352941e-01), Complex64::new(6.666666666666666e-01, 0.0), Complex64::new( 1.000000000000000e+00,  0.000000000000000e+00), Complex64::new(-3.000000000000000e+00,  0.000000000000000e+00),
+        ];
+        assert_complex_vec_approx_eq!(a, lu_correct, 1e-15);
+
+        // run zgetri
+        zgetri(n_i32, &mut a, &ipiv)?;
+
+        // check inverse matrix
+        #[rustfmt::skip]
+        let ai_correct = [
+            Complex64::new(-8.442622950819669e-01, -4.644808743169393e-02), Complex64::new( 5.409836065573769e-01,  4.918032786885240e-02), Complex64::new( 3.278688524590156e-02, -2.732240437158467e-02), Complex64::new( 1.803278688524591e-01,  1.639344262295081e-02),
+            Complex64::new( 1.065573770491803e+00,  2.786885245901638e-01), Complex64::new(-2.459016393442623e-01, -2.950819672131146e-01), Complex64::new(-1.967213114754096e-01,  1.639344262295082e-01), Complex64::new(-8.196721311475419e-02, -9.836065573770497e-02),
+            Complex64::new( 1.221311475409836e+00,  2.322404371584698e-01), Complex64::new(-7.049180327868851e-01, -2.459016393442622e-01), Complex64::new(-1.639344262295082e-01,  1.366120218579235e-01), Complex64::new( 9.836065573770481e-02, -8.196721311475411e-02),
+            Complex64::new(-3.333333333333333e-01,  0.000000000000000e+00), Complex64::new( 0.000000000000000e+00,  0.000000000000000e+00), Complex64::new( 3.333333333333333e-01,  0.000000000000000e+00), Complex64::new( 0.000000000000000e+00,  0.000000000000000e+00),
+        ];
+        assert_complex_vec_approx_eq!(a, ai_correct, 1e-15);
+
+        // check again: a⋅a⁻¹ = I
+        let one = Complex64::new(1.0, 0.0);
+        let zero = Complex64::new(0.0, 0.0);
+        for i in 0..m {
+            for j in 0..n {
+                let mut res = zero.clone();
+                for k in 0..m {
+                    res += a_copy[i * n + k] * ai_correct[k * n + j];
+                }
+                if i == j {
+                    assert_complex_approx_eq!(res, one, 1e-15);
+                } else {
+                    assert_complex_approx_eq!(res, zero, 1e-15);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
     fn dpotrf_captures_errors() {
         let mut a = vec![0.0; 4];
         assert_eq!(dpotrf(true, 2_i32, &mut a), Err("LAPACK dpotrf failed"));
@@ -1542,6 +1728,61 @@ mod tests {
              0.000000000000000e+00,  1.154700538379252e+00,  4.082482904638632e-01,  1.224744871391589e+00,
         ];
         assert_vec_approx_eq!(a_lo, a_lo_correct, 1e-15);
+        Ok(())
+    }
+
+    #[test]
+    fn zpotrf_captures_errors() {
+        let mut a = vec![Complex64::new(0.0, 0.0); 4];
+        assert_eq!(zpotrf(true, 2_i32, &mut a), Err("LAPACK zpotrf failed"));
+    }
+
+    #[test]
+    fn zpotrf_works() -> Result<(), StrError> {
+        // matrix a
+        #[rustfmt::skip]
+        let mut a_up = [
+            Complex64::new(4.0, 0.0), Complex64::new(0.0, 1.0), Complex64::new(-3.0, 1.0), Complex64::new(0.0,  2.0),
+            Complex64::new(0.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new( 1.0, 0.0), Complex64::new(2.0,  0.0),
+            Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new( 4.0, 0.0), Complex64::new(1.0, -1.0),
+            Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new(4.0,  0.0),
+        ];
+        #[rustfmt::skip]
+        let mut a_lo = [
+            Complex64::new( 4.0,  0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
+            Complex64::new( 0.0, -1.0), Complex64::new(3.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
+            Complex64::new(-3.0, -1.0), Complex64::new(1.0, 0.0), Complex64::new(4.0, 0.0), Complex64::new(0.0, 0.0),
+            Complex64::new( 0.0, -2.0), Complex64::new(2.0, 0.0), Complex64::new(1.0, 1.0), Complex64::new(4.0, 0.0),
+        ];
+
+        // n-size
+        let n = 4_i32; // =a.ncol
+
+        // run zpotrf with up part of matrix a
+        zpotrf(true, n, &mut a_up)?;
+
+        // check Cholesky
+        #[rustfmt::skip]
+        let a_up_correct = [
+            Complex64::new(2.0, 0.0), Complex64::new(0.000000000000000e+00, 5.0e-01), Complex64::new(-1.500000000000000e+00,  5.000000000000000e-01), Complex64::new(0.000000000000000e+00, 1.000000000000000e+00),
+            Complex64::new(0.0, 0.0), Complex64::new(1.658312395177700e+00, 0.0e+00), Complex64::new( 4.522670168666454e-01, -4.522670168666454e-01), Complex64::new(9.045340337332909e-01, 0.000000000000000e+00),
+            Complex64::new(0.0, 0.0), Complex64::new(0.000000000000000e+00, 0.0e+00), Complex64::new( 1.044465935734187e+00,  0.000000000000000e+00), Complex64::new(8.703882797784884e-02, 8.703882797784884e-02),
+            Complex64::new(0.0, 0.0), Complex64::new(0.000000000000000e+00, 0.0e+00), Complex64::new( 0.000000000000000e+00,  0.000000000000000e+00), Complex64::new(1.471960144387974e+00, 0.000000000000000e+00),
+        ];
+        assert_complex_vec_approx_eq!(a_up, a_up_correct, 1e-15);
+
+        // run zpotrf with lo part of matrix a
+        zpotrf(false, n, &mut a_lo)?;
+
+        // check Cholesky
+        #[rustfmt::skip]
+        let a_lo_correct = [
+            Complex64::new( 2.0,  0.0e+00), Complex64::new(0.000000000000000e+00, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00,  0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.0),
+            Complex64::new( 0.0, -5.0e-01), Complex64::new(1.658312395177700e+00, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00,  0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.0),
+            Complex64::new(-1.5, -5.0e-01), Complex64::new(4.522670168666454e-01, 4.522670168666454e-01), Complex64::new(1.044465935734187e+00,  0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.0),
+            Complex64::new( 0.0, -1.0e+00), Complex64::new(9.045340337332909e-01, 0.000000000000000e+00), Complex64::new(8.703882797784884e-02, -8.703882797784884e-02), Complex64::new(1.471960144387974e+00, 0.0),
+        ];
+        assert_complex_vec_approx_eq!(a_lo, a_lo_correct, 1e-15);
         Ok(())
     }
 

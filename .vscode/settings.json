@@ -16,6 +16,7 @@
     "ldvl",
     "ldvr",
     "ldvt",
+    "zcopy",
     "zgemm",
     "zgemv",
     "zgesv",
@@ -24,6 +25,7 @@
     "zgetri",
     "zherk",
     "zpotrf",
+    "zscal",
     "zsyrk"
   ]
 }

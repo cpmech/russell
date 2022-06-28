@@ -61,11 +61,6 @@
 //! }
 //! ```
 
-/// Returns package description
-pub fn desc() -> String {
-    "Sparse matrix tools and solvers".to_string()
-}
-
 /// Defines a type alias for the error type as a static string
 pub type StrError = &'static str;
 

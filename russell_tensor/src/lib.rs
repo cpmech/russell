@@ -2,11 +2,6 @@
 //!
 //! **tensor**: Tensor analysis structures and functions for continuum mechanics
 
-/// Returns package description
-pub fn desc() -> String {
-    "Tensor analysis structures and functions for continuum mechanics".to_string()
-}
-
 /// Defines a type alias for the error type as a static string
 pub type StrError = &'static str;
 

@@ -31,11 +31,6 @@
 //! }
 //! ```
 
-/// Returns package description
-pub fn desc() -> String {
-    "Matrix-vector laboratory including linear algebra tools".to_string()
-}
-
 /// Defines a type alias for the error type as a static string
 pub type StrError = &'static str;
 

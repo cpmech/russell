@@ -37,11 +37,6 @@
 //! assert_complex_vec_approx_eq!(&a, &b, 1e-6);
 //! ```
 
-/// Returns package description
-pub fn desc() -> String {
-    "Functions to check vectors and other data in tests".to_string()
-}
-
 /// Defines a type alias for the error type as a static string
 pub type StrError = &'static str;
 

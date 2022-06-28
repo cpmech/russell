@@ -12,11 +12,6 @@
 //! assert_approx_eq!(dnrm2(n, &x, incx), 5.0, 1e-15);
 //! ```
 
-/// Returns package description
-pub fn desc() -> String {
-    "Thin wrapper to some OpenBLAS routines".to_string()
-}
-
 /// Defines a type alias for the error type as a static string
 pub type StrError = &'static str;
 

@@ -1,6 +1,12 @@
 # Russell - Rust Scientific Library
 
 [![codecov](https://codecov.io/gh/cpmech/russell/branch/main/graph/badge.svg?token=PQWSKMZQXT)](https://codecov.io/gh/cpmech/russell)
+[![Crates.io](https://img.shields.io/crates/v/russell_chk.svg)](https://crates.io/crates/russell_chk)
+[![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab)
+[![Crates.io](https://img.shields.io/crates/v/russell_openblas.svg)](https://crates.io/crates/russell_openblas)
+[![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse)
+[![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat)
+[![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor)
 
 ![Bertrand Russell](zassets/Bertrand_Russell_1957.jpg)
 

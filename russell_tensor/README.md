@@ -1,5 +1,7 @@
 # Russell Tensor - Tensor analysis structures and functions for continuum mechanics
 
+[![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor)
+
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
 🚧 Work in progress...

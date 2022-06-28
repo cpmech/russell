@@ -1,5 +1,7 @@
 # Russell Stat - Statistics calculations, probability distributions, and pseudo random numbers
 
+[![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat)
+
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
 This repository contains structures and functions to work with statistics and probability distributions. Internally, we wrap and use the [rand_distr](https://docs.rs/rand_distr/latest/rand_distr/) crate for generating samples.

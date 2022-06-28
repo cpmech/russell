@@ -1,5 +1,7 @@
 # Russell Sparse - Sparse matrix tools and solvers
 
+[![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse)
+
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
 This repository contains tools for handling sparse matrices and functions to solve large sparse systems.

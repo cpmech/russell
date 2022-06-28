@@ -21,7 +21,7 @@ use russell_openblas::{dlange, to_i32};
 /// ```text
 /// Fro:  Frobenius-norm (2-norm)
 ///
-///       ‖a‖_F = sqrt(Σ_i Σ_j aᵢⱼ⋅aᵢⱼ) == ‖a‖_2
+///       ‖a‖_F = sqrt(Σ_i Σ_j |aij|²) == ‖a‖_2
 /// ```
 ///
 /// ```text

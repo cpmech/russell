@@ -805,8 +805,7 @@ mod tests {
     };
     use crate::conversions::{dgeev_data, dgeev_data_lr};
     use crate::{to_i32, StrError};
-    use num_complex::Complex64;
-    use num_complex::ComplexFloat;
+    use num_complex::{Complex64, ComplexFloat};
     use russell_chk::{assert_approx_eq, assert_complex_approx_eq, assert_complex_vec_approx_eq, assert_vec_approx_eq};
 
     #[test]

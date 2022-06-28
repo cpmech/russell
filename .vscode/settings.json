@@ -24,6 +24,7 @@
     "zgetrf",
     "zgetri",
     "zherk",
+    "zlange",
     "zpotrf",
     "zscal",
     "zsyrk"

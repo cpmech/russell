@@ -11,7 +11,8 @@ extern "C" {
     fn cblas_zsyrk(order: i32, uplo: i32, trans: i32, n: i32, k: i32, alpha: *const Complex64, a: *const Complex64, lda: i32, beta: *const Complex64, c: *mut Complex64, ldc: i32);
     fn cblas_zherk(order: i32, uplo: i32, trans: i32, n: i32, k: i32, alpha: f64, a: *const Complex64, lda: i32, beta: f64, c: *const Complex64, ldc: i32);
     // from /usr/include/lapacke.h
-    fn LAPACKE_dlange(matrix_layout: i32, norm: u8, m:i32, n:i32, a: *const f64, lda:i32) -> f64;
+    fn LAPACKE_dlange(matrix_layout: i32, norm: u8, m: i32, n: i32, a: *const f64, lda: i32) -> f64;
+    fn LAPACKE_zlange(matrix_layout: i32, norm: u8, m: i32, n: i32, a: *const Complex64, lda: i32) -> f64;
     fn LAPACKE_dgesvd(matrix_layout: i32, jobu: u8, jobvt: u8, m: i32, n: i32, a: *mut f64, lda: i32, s: *mut f64, u: *mut f64, ldu: i32, vt: *mut f64, ldvt: i32, superb: *mut f64) -> i32;
     fn LAPACKE_zgesvd(matrix_layout: i32, jobu: u8, jobvt: u8, m: i32, n: i32, a: *mut Complex64, lda: i32, s: *mut f64, u: *mut Complex64, ldu: i32, vt: *mut Complex64, ldvt: i32, superb: *mut f64) -> i32;
     fn LAPACKE_dgetrf(matrix_layout: i32, m: i32, n: i32, a: *mut f64, lda: i32, ipiv: *mut i32) -> i32;
@@ -323,17 +324,17 @@ pub fn zherk(up: bool, trans: bool, n: i32, k: i32, alpha: f64, a: &[Complex64],
 ///
 /// ‖a‖_∞ = max_i ( Σ_j |aij| )
 ///
-/// ‖a‖_F = sqrt(Σ_i Σ_j aij⋅aij) == ‖a‖_2
+/// ‖a‖_F = sqrt(Σ_i Σ_j |aij|²) == ‖a‖_2
 ///
 /// ‖a‖_max = max_ij ( |aij| )
 /// ```
 ///
 /// # Input
 ///
-/// * norm == b'1' -- computes the 1-norm
-/// * norm == b'I' -- computes the infinity-norm
-/// * norm == b'F' -- computes the Frobenius-norm
-/// * norm == b'M' -- computes max(abs(a(i,j)))
+/// * norm == b'1' -- computes the 1-norm (maximum column sum)
+/// * norm == b'I' -- computes the infinity-norm (maximum row sum)
+/// * norm == b'F' -- computes the Frobenius-norm (square root of sum of abs of squares)
+/// * norm == b'M' -- computes max(abs(a(i,j))). Note that this is not a consistent matrix norm
 ///
 /// # Important
 ///
@@ -346,6 +347,40 @@ pub fn zherk(up: bool, trans: bool, n: i32, k: i32, alpha: f64, a: &[Complex64],
 #[inline]
 pub fn dlange(norm: u8, m: i32, n: i32, a: &[f64]) -> f64 {
     unsafe { LAPACKE_dlange(LAPACK_ROW_MAJOR, norm, m, n, a.as_ptr(), n) }
+}
+
+/// Computes the matrix norm (complex version)
+///
+/// Computes one of:
+///
+/// ```text
+/// ‖a‖_1 = max_j ( Σ_i |aij| )
+///
+/// ‖a‖_∞ = max_i ( Σ_j |aij| )
+///
+/// ‖a‖_F = sqrt(Σ_i Σ_j |aij|²) == ‖a‖_2
+///
+/// ‖a‖_max = max_ij ( |aij| )
+/// ```
+///
+/// # Input
+///
+/// * norm == b'1' -- computes the 1-norm (maximum column sum)
+/// * norm == b'I' -- computes the infinity-norm (maximum row sum)
+/// * norm == b'F' -- computes the Frobenius-norm (square root of sum of abs of squares)
+/// * norm == b'M' -- computes max(abs(a(i,j))). Note that this is not a consistent matrix norm
+///
+/// # Important
+///
+/// * The data must be in **row-major** order
+///
+/// # Reference
+///
+/// <http://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
+///
+#[inline]
+pub fn zlange(norm: u8, m: i32, n: i32, a: &[Complex64]) -> f64 {
+    unsafe { LAPACKE_zlange(LAPACK_ROW_MAJOR, norm, m, n, a.as_ptr(), n) }
 }
 
 /// Computes the singular value decomposition (SVD)
@@ -765,12 +800,13 @@ pub fn dgeev(
 #[cfg(test)]
 mod tests {
     use super::{
-        dgeev, dgemm, dgesvd, dgetrf, dgetri, dlange, dpotrf, dsyrk, zgemm, zgesvd, zgetrf, zgetri, zherk, zpotrf,
-        zsyrk,
+        dgeev, dgemm, dgesvd, dgetrf, dgetri, dlange, dpotrf, dsyrk, zgemm, zgesvd, zgetrf, zgetri, zherk, zlange,
+        zpotrf, zsyrk,
     };
     use crate::conversions::{dgeev_data, dgeev_data_lr};
     use crate::{to_i32, StrError};
     use num_complex::Complex64;
+    use num_complex::ComplexFloat;
     use russell_chk::{assert_approx_eq, assert_complex_approx_eq, assert_complex_vec_approx_eq, assert_vec_approx_eq};
 
     #[test]
@@ -1224,6 +1260,44 @@ mod tests {
         assert_eq!(norm_inf, 15.0);
         assert_eq!(norm_fro, f64::sqrt(207.0));
         assert_eq!(norm_max, 8.0);
+    }
+
+    #[test]
+    fn zlange_works() {
+        #[rustfmt::skip]
+        let a = [
+            Complex64::new(-3.0,0.0), Complex64::new(5.0,0.0), Complex64::new(7.0,0.0),
+            Complex64::new( 2.0,0.0), Complex64::new(6.0,0.0), Complex64::new(4.0,0.0),
+            Complex64::new( 0.0,0.0), Complex64::new(2.0,0.0), Complex64::new(8.0,0.0),
+        ];
+        let norm_one = zlange(b'1', 3, 3, &a);
+        let norm_inf = zlange(b'I', 3, 3, &a);
+        let norm_fro = zlange(b'F', 3, 3, &a);
+        let norm_max = zlange(b'M', 3, 3, &a);
+        assert_eq!(norm_one, 19.0);
+        assert_eq!(norm_inf, 15.0);
+        assert_eq!(norm_fro, f64::sqrt(207.0));
+        assert_eq!(norm_max, 8.0);
+
+        #[rustfmt::skip]
+        let b = [
+            Complex64::new(-3.0,1.0), Complex64::new(5.0,3.0), Complex64::new(7.0,-1.0),
+            Complex64::new( 2.0,2.0), Complex64::new(6.0,2.0), Complex64::new(4.0,-2.0),
+            Complex64::new( 0.0,3.0), Complex64::new(2.0,1.0), Complex64::new(8.0,-3.0),
+        ];
+        let mut fro = 0.0;
+        for v in b {
+            fro += v.abs() * v.abs();
+        }
+        fro = f64::sqrt(fro);
+        let norm_one = zlange(b'1', 3, 3, &b);
+        let norm_inf = zlange(b'I', 3, 3, &b);
+        let norm_fro = zlange(b'F', 3, 3, &b);
+        let norm_max = zlange(b'M', 3, 3, &b);
+        assert_approx_eq!(norm_one, b[2].abs() + b[5].abs() + b[8].abs(), 1e-15);
+        assert_approx_eq!(norm_inf, b[0].abs() + b[1].abs() + b[2].abs(), 1e-15);
+        assert_approx_eq!(norm_fro, fro, 1e-15);
+        assert_approx_eq!(norm_max, b[8].abs(), 1e-15);
     }
 
     #[test]

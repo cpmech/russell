@@ -1,4 +1,5 @@
-use super::{ComplexVector, NATIVE_VERSUS_OPENBLAS_BOUNDARY};
+use super::ComplexVector;
+use crate::constants;
 use crate::StrError;
 use num_complex::Complex64;
 use russell_openblas::{complex_add_vectors_native, complex_add_vectors_oblas};
@@ -46,7 +47,7 @@ pub fn complex_add_vectors(
     if n == 0 {
         return Ok(());
     }
-    if n > NATIVE_VERSUS_OPENBLAS_BOUNDARY {
+    if n > constants::NATIVE_VERSUS_OPENBLAS_BOUNDARY {
         complex_add_vectors_oblas(w.as_mut_data(), alpha, u.as_data(), beta, v.as_data());
     } else {
         complex_add_vectors_native(w.as_mut_data(), alpha, u.as_data(), beta, v.as_data());
@@ -59,8 +60,8 @@ pub fn complex_add_vectors(
 #[cfg(test)]
 mod tests {
     use super::{complex_add_vectors, ComplexVector};
+    use crate::constants;
     use crate::StrError;
-    use crate::NATIVE_VERSUS_OPENBLAS_BOUNDARY;
     use num_complex::Complex64;
     use russell_chk::assert_complex_vec_approx_eq;
 
@@ -123,7 +124,7 @@ mod tests {
         const NOISE: Complex64 = Complex64::new(1234.567, 3456.789);
         let alpha = Complex64::new(0.5, 0.0);
         let beta = Complex64::new(0.5, 0.0);
-        for size in 0..(NATIVE_VERSUS_OPENBLAS_BOUNDARY + 3) {
+        for size in 0..(constants::NATIVE_VERSUS_OPENBLAS_BOUNDARY + 3) {
             let mut u = ComplexVector::new(size);
             let mut v = ComplexVector::new(size);
             let mut w = ComplexVector::from(&vec![NOISE; u.dim()]);

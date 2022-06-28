@@ -1,8 +1,7 @@
 use super::Vector;
+use crate::constants;
 use crate::StrError;
 use russell_openblas::{add_vectors_native, add_vectors_oblas};
-
-pub(crate) const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
 
 /// Performs the addition of two vectors
 ///
@@ -38,7 +37,7 @@ pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector
     if n == 0 {
         return Ok(());
     }
-    if n > NATIVE_VERSUS_OPENBLAS_BOUNDARY {
+    if n > constants::NATIVE_VERSUS_OPENBLAS_BOUNDARY {
         add_vectors_oblas(w.as_mut_data(), alpha, u.as_data(), beta, v.as_data());
     } else {
         add_vectors_native(w.as_mut_data(), alpha, u.as_data(), beta, v.as_data());
@@ -50,7 +49,8 @@ pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector
 
 #[cfg(test)]
 mod tests {
-    use super::{add_vectors, Vector, NATIVE_VERSUS_OPENBLAS_BOUNDARY};
+    use super::{add_vectors, Vector};
+    use crate::constants;
     use crate::StrError;
     use russell_chk::assert_vec_approx_eq;
 
@@ -107,7 +107,7 @@ mod tests {
     #[test]
     fn add_vectors_sizes_works() -> Result<(), StrError> {
         const NOISE: f64 = 1234.567;
-        for size in 0..(NATIVE_VERSUS_OPENBLAS_BOUNDARY + 3) {
+        for size in 0..(constants::NATIVE_VERSUS_OPENBLAS_BOUNDARY + 3) {
             let mut u = Vector::new(size);
             let mut v = Vector::new(size);
             let mut w = Vector::from(&vec![NOISE; u.dim()]);

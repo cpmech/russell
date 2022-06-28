@@ -2,7 +2,7 @@ use super::Vector;
 use crate::StrError;
 use russell_openblas::{add_vectors_native, add_vectors_oblas};
 
-const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
+pub(crate) const NATIVE_VERSUS_OPENBLAS_BOUNDARY: usize = 16;
 
 /// Performs the addition of two vectors
 ///

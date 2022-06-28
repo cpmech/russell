@@ -217,6 +217,8 @@ fn main() -> Result<(), StrError> {
 
 ## Todo list
 
+- [x] Add complex numbers functions to `russell_openblas`
+- [ ] Add more complex numbers functions to `russell_lab`
 - [ ] Add fundamental functions to `russell_lab`
     - [ ] Implement the modified Bessel functions
 - [ ] Implement some numerical methods in `russell_lab`
@@ -230,8 +232,8 @@ fn main() -> Result<(), StrError> {
     - [ ] Implement Chebyshev interpolation and polynomials
     - [ ] Implement Orthogonal polynomials
     - [ ] Implement Lagrange interpolation
-- [ ] Add probability distribution functions to `russell_stat`
-- [ ] Finalize drawing of ASCII histogram in `russell_stat`
+- [x] Add probability distribution functions to `russell_stat`
+- [x] Finalize drawing of ASCII histogram in `russell_stat`
 - [ ] Implement standard continuum mechanics tensors in `russell_tensor`
 - [ ] Implement more integration tests for linear algebra
 - [ ] Implement more examples

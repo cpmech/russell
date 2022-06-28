@@ -11,23 +11,25 @@
 /// ## Accepts small error
 ///
 /// ```
-/// # #[macro_use] extern crate russell_chk;
-/// # fn main() {
-/// let a = 3.0000001;
-/// let b = 3.0;
-/// assert_approx_eq!(a, b, 1e-6);
-/// # }
+/// use russell_chk::assert_approx_eq;
+///
+/// fn main() {
+///     let a = 3.0000001;
+///     let b = 3.0;
+///     assert_approx_eq!(a, b, 1e-6);
+/// }
 /// ```
 ///
 /// ## Panics on different value
 ///
 /// ```should_panic
-/// # #[macro_use] extern crate russell_chk;
-/// # fn main() {
-/// let a = 1.0;
-/// let b = 2.0;
-/// assert_approx_eq!(a, b, 1e-6);
-/// # }
+/// use russell_chk::assert_approx_eq;
+///
+/// fn main() {
+///     let a = 1.0;
+///     let b = 2.0;
+///     assert_approx_eq!(a, b, 1e-6);
+/// }
 /// ```
 #[macro_export]
 macro_rules! assert_approx_eq {

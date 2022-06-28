@@ -1,0 +1,32 @@
+{
+  "cSpell.words": [
+    "dgeev",
+    "dgemm",
+    "dgemv",
+    "dger",
+    "dgesv",
+    "dgesvd",
+    "dgetrf",
+    "dgetri",
+    "dpotrf",
+    "dscal",
+    "dsyrk",
+    "jobvl",
+    "jobvr",
+    "ldvl",
+    "ldvr",
+    "ldvt",
+    "zcopy",
+    "zgemm",
+    "zgemv",
+    "zgesv",
+    "zgesvd",
+    "zgetrf",
+    "zgetri",
+    "zherk",
+    "zlange",
+    "zpotrf",
+    "zscal",
+    "zsyrk"
+  ]
+}

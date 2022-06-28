@@ -130,20 +130,8 @@ fn main() -> Result<(), StrError> {
     // check results
     let l_real_correct = "[11.0, 1.0, 2.0]";
     let l_imag_correct = "[0.0, 0.0, 0.0]";
-    let v_real_correct = "┌                      ┐\n\
-                          │  0.000  0.000  1.000 │\n\
-                          │  0.447  0.894  0.000 │\n\
-                          │  0.894 -0.447  0.000 │\n\
-                          └                      ┘";
-    let v_imag_correct = "┌       ┐\n\
-                          │ 0 0 0 │\n\
-                          │ 0 0 0 │\n\
-                          │ 0 0 0 │\n\
-                          └       ┘";
     assert_eq!(format!("{:?}", l_real), l_real_correct);
     assert_eq!(format!("{:?}", l_imag), l_imag_correct);
-    assert_eq!(format!("{:.3}", v_real), v_real_correct);
-    assert_eq!(format!("{}", v_imag), v_imag_correct);
 
     // check eigen-decomposition (similarity transformation) of a
     // symmetric matrix with real-only eigenvalues and eigenvectors

@@ -15,34 +15,37 @@
 /// ## Accepts small error
 ///
 /// ```
-/// # #[macro_use] extern crate russell_chk;
-/// # fn main() {
-/// let a = [1.0, 2.0, 3.0000001];
-/// let b = [1.0, 2.0, 3.0];
-/// assert_vec_approx_eq!(a, b, 1e-6);
-/// # }
+/// use russell_chk::assert_vec_approx_eq;
+///
+/// fn main() {
+///     let a = [1.0, 2.0, 3.0000001];
+///     let b = [1.0, 2.0, 3.0];
+///     assert_vec_approx_eq!(a, b, 1e-6);
+/// }
 /// ```
 ///
 /// ## Panics on different values
 ///
 /// ```should_panic
-/// # #[macro_use] extern crate russell_chk;
-/// # fn main() {
-/// let a = [1.0, 2.0, 3.0];
-/// let b = [1.0, 2.0, 4.0];
-/// assert_vec_approx_eq!(a, b, 1e-6);
-/// # }
+/// use russell_chk::assert_vec_approx_eq;
+///
+/// fn main() {
+///     let a = [1.0, 2.0, 3.0];
+///     let b = [1.0, 2.0, 4.0];
+///     assert_vec_approx_eq!(a, b, 1e-6);
+/// }
 /// ```
 ///
 /// ## Panics on different lengths
 ///
 /// ```should_panic
-/// # #[macro_use] extern crate russell_chk;
-/// # fn main() {
-/// let a = [1.0, 2.0, 3.0];
-/// let b = [1.0, 2.0];
-/// assert_vec_approx_eq!(a, b, 1e-6);
-/// # }
+/// use russell_chk::assert_vec_approx_eq;
+///
+/// fn main() {
+///     let a = [1.0, 2.0, 3.0];
+///     let b = [1.0, 2.0];
+///     assert_vec_approx_eq!(a, b, 1e-6);
+/// }
 /// ```
 #[macro_export]
 macro_rules! assert_vec_approx_eq {

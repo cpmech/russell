@@ -55,20 +55,9 @@ use russell_openblas::{dgesvd, to_i32};
 ///                      │ 5.000 │\n\
 ///                      │ 3.000 │\n\
 ///                      └       ┘";
-///     let u_correct = "┌               ┐\n\
-///                      │ -0.707 -0.707 │\n\
-///                      │ -0.707  0.707 │\n\
-///                      └               ┘";
-///     let vt_correct = "┌                      ┐\n\
-///                       │ -0.707 -0.707 -0.000 │\n\
-///                       │ -0.236  0.236 -0.943 │\n\
-///                       │ -0.667  0.667  0.333 │\n\
-///                       └                      ┘";
 ///
 ///     // check solution
 ///     assert_eq!(format!("{:.3}", s), s_correct);
-///     assert_eq!(format!("{:.3}", u), u_correct);
-///     assert_eq!(format!("{:.3}", vt), vt_correct);
 ///
 ///     // check SVD: a == u * s * vt
 ///     let mut usv = Matrix::new(m, n);

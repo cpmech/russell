@@ -40,6 +40,7 @@ pub fn desc() -> String {
 pub type StrError = &'static str;
 
 mod as_array;
+mod constants;
 mod enums;
 mod formatters;
 mod generators;
@@ -50,6 +51,7 @@ mod sort;
 mod stopwatch;
 mod vector;
 pub use crate::as_array::*;
+use crate::constants::*;
 pub use crate::enums::*;
 pub use crate::formatters::*;
 pub use crate::generators::*;

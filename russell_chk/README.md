@@ -45,7 +45,6 @@ fn main() {
 }
 ```
 
-
 ### Check derivatives
 
 ```rust
@@ -59,5 +58,24 @@ fn main() {
     let at_x = 8.0;
     let dfdx = -1.01;
     assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-2);
+}
+```
+
+### Check complex numbers
+
+```rust
+use russell_chk::assert_complex_vec_approx_eq;
+use num_complex::Complex64;
+
+fn main() {
+    let a = [
+        Complex64::new(0.123456789, 5.01),
+        Complex64::new(0.123456789, 5.01),
+        Complex64::new(0.123456789, 5.01)];
+    let b = [
+        Complex64::new(0.12345678, 5.01),
+        Complex64::new(0.1234567, 5.01),
+        Complex64::new(0.123456, 5.01)];
+    assert_complex_vec_approx_eq!(&a, &b, 1e-6);
 }
 ```

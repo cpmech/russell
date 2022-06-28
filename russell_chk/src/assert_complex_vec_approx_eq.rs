@@ -68,16 +68,14 @@ macro_rules! assert_complex_vec_approx_eq {
             assert!(
                 ((($a[i].re - $b[i].re) as f64).abs() < $tol) && ((($a[i].im - $b[i].im) as f64).abs() < $tol),
                 "assertion failed: `(left[{:?}] != right[{:?}])` \
-                 (left[{:?}]: `({:?},{:?})`, right[{:?}]: `({:?},{:?})`, \
+                 (left[{:?}]: `{}`, right[{:?}]: `{}`, \
                  expect diff: `({:?},{:?})`, real diff: `({:?},{:?})`)",
                 i,
                 i,
                 i,
-                $a[i].re,
-                $a[i].im,
+                $a[i],
                 i,
-                $b[i].re,
-                $b[i].im,
+                $b[i],
                 $tol,
                 $tol,
                 (($a[i].re - $b[i].re) as f64).abs(),
@@ -104,7 +102,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "assertion failed: `(left[1] != right[1])` \
-                               (left[1]: `(2.0,5.0)`, right[1]: `(2.5,5.0)`, \
+                               (left[1]: `2+5i`, right[1]: `2.5+5i`, \
                                expect diff: `(0.1,0.1)`, real diff: `(0.5,0.0)`)")]
     fn panics_on_different_values_re() {
         assert_complex_vec_approx_eq!(
@@ -116,7 +114,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "assertion failed: `(left[1] != right[1])` \
-                               (left[1]: `(2.0,5.0)`, right[1]: `(2.0,5.5)`, \
+                               (left[1]: `2+5i`, right[1]: `2+5.5i`, \
                                expect diff: `(0.1,0.1)`, real diff: `(0.0,0.5)`)")]
     fn panics_on_different_values_im() {
         assert_complex_vec_approx_eq!(
@@ -139,7 +137,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "assertion failed: `(left[1] != right[1])` \
-                               (left[1]: `(2.0,5.0)`, right[1]: `(2.5,5.0)`, \
+                               (left[1]: `2+5i`, right[1]: `2.5+5i`, \
                                expect diff: `(0.1,0.1)`, real diff: `(0.5,0.0)`)")]
     fn panics_on_different_values_f32_re() {
         assert_complex_vec_approx_eq!(
@@ -151,7 +149,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "assertion failed: `(left[1] != right[1])` \
-                               (left[1]: `(2.0,5.0)`, right[1]: `(2.0,5.5)`, \
+                               (left[1]: `2+5i`, right[1]: `2+5.5i`, \
                                expect diff: `(0.1,0.1)`, real diff: `(0.0,0.5)`)")]
     fn panics_on_different_values_f32_im() {
         assert_complex_vec_approx_eq!(

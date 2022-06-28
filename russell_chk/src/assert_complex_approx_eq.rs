@@ -50,11 +50,9 @@ macro_rules! assert_complex_approx_eq {
         assert!(
             ((($a.re - $b.re) as f64).abs() < $tol) && ((($a.im - $b.im) as f64).abs() < $tol),
             "assertion failed: `(left != right)` \
-             (left: `({:?},{:?})`, right: `({:?},{:?})`, expect diff: `({:?},{:?})`, real diff: `({:?},{:?})`)",
-            $a.re,
-            $a.im,
-            $b.re,
-            $b.im,
+             (left: `{}`, right: `{}`, expect diff: `({:?},{:?})`, real diff: `({:?},{:?})`)",
+            $a,
+            $b,
             $tol,
             $tol,
             (($a.re - $b.re) as f64).abs(),
@@ -69,7 +67,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "assertion failed: `(left != right)` \
-                               (left: `(2.0,3.0)`, right: `(2.5,3.0)`, \
+                               (left: `2+3i`, right: `2.5+3i`, \
                                expect diff: `(0.1,0.1)`, real diff: `(0.5,0.0)`)")]
     fn panics_on_different_values_re() {
         assert_complex_approx_eq!(Complex64::new(2.0, 3.0), Complex64::new(2.5, 3.0), 1e-1);
@@ -77,7 +75,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "assertion failed: `(left != right)` \
-                               (left: `(2.0,3.0)`, right: `(2.0,3.5)`, \
+                               (left: `2+3i`, right: `2+3.5i`, \
                                expect diff: `(0.1,0.1)`, real diff: `(0.0,0.5)`)")]
     fn panics_on_different_values_im() {
         assert_complex_approx_eq!(Complex64::new(2.0, 3.0), Complex64::new(2.0, 3.5), 1e-1);
@@ -85,7 +83,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "assertion failed: `(left != right)` \
-                               (left: `(2.0,3.0)`, right: `(2.5,3.0)`, \
+                               (left: `2+3i`, right: `2.5+3i`, \
                                expect diff: `(0.1,0.1)`, real diff: `(0.5,0.0)`)")]
     fn panics_on_different_values_f32_re() {
         assert_complex_approx_eq!(Complex32::new(2f32, 3f32), Complex32::new(2.5f32, 3f32), 1e-1);
@@ -93,7 +91,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "assertion failed: `(left != right)` \
-                               (left: `(2.0,3.0)`, right: `(2.0,3.5)`, \
+                               (left: `2+3i`, right: `2+3.5i`, \
                                expect diff: `(0.1,0.1)`, real diff: `(0.0,0.5)`)")]
     fn panics_on_different_values_f32_im() {
         assert_complex_approx_eq!(Complex32::new(2f32, 3f32), Complex32::new(2f32, 3.5f32), 1e-1);

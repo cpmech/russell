@@ -83,20 +83,8 @@ use russell_openblas::{dgeev, dgeev_data, dgeev_data_lr, to_i32};
 ///     // check results
 ///     let l_real_correct = "[11.0, 1.0, 2.0]";
 ///     let l_imag_correct = "[0.0, 0.0, 0.0]";
-///     let v_real_correct = "┌                      ┐\n\
-///                           │  0.000  0.000  1.000 │\n\
-///                           │  0.447  0.894  0.000 │\n\
-///                           │  0.894 -0.447  0.000 │\n\
-///                           └                      ┘";
-///     let v_imag_correct = "┌       ┐\n\
-///                           │ 0 0 0 │\n\
-///                           │ 0 0 0 │\n\
-///                           │ 0 0 0 │\n\
-///                           └       ┘";
 ///     assert_eq!(format!("{:?}", l_real), l_real_correct);
 ///     assert_eq!(format!("{:?}", l_imag), l_imag_correct);
-///     assert_eq!(format!("{:.3}", v_real), v_real_correct);
-///     assert_eq!(format!("{}", v_imag), v_imag_correct);
 ///
 ///     // check eigen-decomposition (similarity transformation) of a
 ///     // symmetric matrix with real-only eigenvalues and eigenvectors
@@ -176,67 +164,65 @@ pub fn eigen_decomp(
 /// # Example
 ///
 /// ```
+/// use num_complex::Complex64;
+/// use russell_chk::assert_approx_eq;
+/// use russell_lab::{
+///     complex_add_matrices, complex_mat_mat_mul, complex_mat_zip,
+///     complex_matrix_norm, complex_vec_zip, ComplexMatrix, NormMat,
+/// };
 /// use russell_lab::{eigen_decomp_lr, Matrix, StrError};
-/// # fn main() -> Result<(), StrError> {
-/// // set matrix
-/// let data = [
-///     [0.0, 1.0, 0.0],
-///     [0.0, 0.0, 1.0],
-///     [1.0, 0.0, 0.0],
-/// ];
-/// let mut a = Matrix::from(&data);
 ///
-/// // allocate output arrays
-/// let m = a.nrow();
-/// let mut l_real = vec![0.0; m];
-/// let mut l_imag = vec![0.0; m];
-/// let mut u_real = Matrix::new(m, m);
-/// let mut u_imag = Matrix::new(m, m);
-/// let mut v_real = Matrix::new(m, m);
-/// let mut v_imag = Matrix::new(m, m);
+/// fn main() -> Result<(), StrError> {
+///     // set matrix
+///     let data = [[0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]];
+///     let mut a = Matrix::from(&data);
 ///
-/// // perform the eigen-decomposition
-/// eigen_decomp_lr(
-///     &mut l_real,
-///     &mut l_imag,
-///     &mut u_real,
-///     &mut u_imag,
-///     &mut v_real,
-///     &mut v_imag,
-///     &mut a,
-/// )?;
+///     // allocate output arrays
+///     let m = a.nrow();
+///     let mut l_real = vec![0.0; m];
+///     let mut l_imag = vec![0.0; m];
+///     let mut u_real = Matrix::new(m, m);
+///     let mut u_imag = Matrix::new(m, m);
+///     let mut v_real = Matrix::new(m, m);
+///     let mut v_imag = Matrix::new(m, m);
 ///
-/// // check results
-/// let l_real_correct = "[-0.5, -0.5, 0.9999999999999998]";
-/// let l_imag_correct = "[0.8660254037844389, -0.8660254037844389, 0.0]";
-/// let u_real_correct = "┌                      ┐\n\
-///                       │ -0.289 -0.289 -0.577 │\n\
-///                       │  0.577  0.577 -0.577 │\n\
-///                       │ -0.289 -0.289 -0.577 │\n\
-///                       └                      ┘";
-/// let u_imag_correct = "┌                      ┐\n\
-///                       │ -0.500  0.500  0.000 │\n\
-///                       │  0.000 -0.000  0.000 │\n\
-///                       │  0.500 -0.500  0.000 │\n\
-///                       └                      ┘";
-/// let v_real_correct = "┌                      ┐\n\
-///                       │  0.577  0.577 -0.577 │\n\
-///                       │ -0.289 -0.289 -0.577 │\n\
-///                       │ -0.289 -0.289 -0.577 │\n\
-///                       └                      ┘";
-/// let v_imag_correct = "┌                      ┐\n\
-///                       │  0.000 -0.000  0.000 │\n\
-///                       │  0.500 -0.500  0.000 │\n\
-///                       │ -0.500  0.500  0.000 │\n\
-///                       └                      ┘";
-/// assert_eq!(format!("{:?}", l_real), l_real_correct);
-/// assert_eq!(format!("{:?}", l_imag), l_imag_correct);
-/// assert_eq!(format!("{:.3}", u_real), u_real_correct);
-/// assert_eq!(format!("{:.3}", u_imag), u_imag_correct);
-/// assert_eq!(format!("{:.3}", v_real), v_real_correct);
-/// assert_eq!(format!("{:.3}", v_imag), v_imag_correct);
-/// # Ok(())
-/// # }
+///     // perform the eigen-decomposition
+///     eigen_decomp_lr(
+///         &mut l_real,
+///         &mut l_imag,
+///         &mut u_real,
+///         &mut u_imag,
+///         &mut v_real,
+///         &mut v_imag,
+///         &mut a,
+///     )?;
+///
+///     // check results
+///     let l_real_correct = "[-0.5, -0.5, 0.9999999999999998]";
+///     let l_imag_correct = "[0.8660254037844389, -0.8660254037844389, 0.0]";
+///     assert_eq!(format!("{:?}", l_real), l_real_correct);
+///     assert_eq!(format!("{:?}", l_imag), l_imag_correct);
+///
+///     // check the eigen-decomposition (similarity transformation)
+///     // ```text
+///     // a⋅v = v⋅λ
+///     // err := a⋅v - v⋅λ
+///     // ```
+///     let a = ComplexMatrix::from(&data);
+///     let v = complex_mat_zip(&v_real, &v_imag)?;
+///     let d = complex_vec_zip(&l_real, &l_imag)?;
+///     let lam = ComplexMatrix::diagonal(d.as_data());
+///     let mut a_v = ComplexMatrix::new(m, m);
+///     let mut v_l = ComplexMatrix::new(m, m);
+///     let mut err = ComplexMatrix::filled(m, m, Complex64::new(f64::MAX, f64::MAX));
+///     let one = Complex64::new(1.0, 0.0);
+///     let m_one = Complex64::new(-1.0, 0.0);
+///     complex_mat_mat_mul(&mut a_v, one, &a, &v)?;
+///     complex_mat_mat_mul(&mut v_l, one, &v, &lam)?;
+///     complex_add_matrices(&mut err, one, &a_v, m_one, &v_l)?;
+///     assert_approx_eq!(complex_matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
+///     Ok(())
+/// }
 /// ```
 pub fn eigen_decomp_lr(
     l_real: &mut [f64],
@@ -316,8 +302,7 @@ mod tests {
         Ok(())
     }
 
-    // Checks the eigen-decomposition (similarity transformation) of a
-    // symmetric matrix with real-only eigenvalues and eigenvectors
+    // Checks the eigen-decomposition (similarity transformation)
     // ```text
     // a⋅v = v⋅λ
     // err := a⋅v - v⋅λ

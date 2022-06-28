@@ -1360,27 +1360,8 @@ mod tests {
         )?;
 
         // check
-        #[rustfmt::skip]
-        let u_correct = [
-            0.0, 1.0, 0.0,  0.0,
-            1.0, 0.0, 0.0,  0.0,
-            0.0, 0.0, 0.0, -1.0,
-            0.0, 0.0, 1.0,  0.0,
-        ];
         let s_correct = &[3.0, f64::sqrt(5.0), 2.0, 0.0];
-        let s2 = f64::sqrt(0.2);
-        let s8 = f64::sqrt(0.8);
-        #[rustfmt::skip]
-        let vt_correct = [
-            0.0, 0.0, 1.0, 0.0, 0.0,
-             s2, 0.0, 0.0, 0.0,  s8,
-            0.0, 1.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 1.0, 0.0,
-            -s8, 0.0, 0.0, 0.0,  s2,
-        ];
-        assert_vec_approx_eq!(u, u_correct, 1e-15);
         assert_vec_approx_eq!(s, s_correct, 1e-15);
-        assert_vec_approx_eq!(vt, vt_correct, 1e-15);
 
         // check SVD
         let mut usv = vec![0.0; m * n];
@@ -1432,23 +1413,8 @@ mod tests {
         )?;
 
         // check
-        #[rustfmt::skip]
-        let u_correct = [
-            -0.5, -0.5, -0.5,  0.5,
-            -0.5, -0.5,  0.5, -0.5,
-            -0.5,  0.5, -0.5, -0.5,
-            -0.5,  0.5,  0.5,  0.5,
-        ];
         let s_correct = &[2.0, 2.0 / f64::sqrt(3.0), 2.0 / f64::sqrt(3.0)];
-        #[rustfmt::skip]
-        let vt_correct = [
-            0.0, 0.0, -1.0,
-            0.0, 1.0,  0.0,
-            1.0, 0.0,  0.0,
-        ];
-        assert_vec_approx_eq!(u, u_correct, 1e-15);
         assert_vec_approx_eq!(s, s_correct, 1e-15);
-        assert_vec_approx_eq!(vt, vt_correct, 1e-15);
 
         // check SVD
         let mut usv = vec![0.0; m * n];
@@ -1580,7 +1546,7 @@ mod tests {
             1.854745532331560e+00,
             2.838125418935204e-01,
         ];
-        assert_vec_approx_eq!(s, s_correct, 1e-15);
+        assert_vec_approx_eq!(s, s_correct, 1e-14);
 
         // check SVD
         let mut usv = vec![Complex64::new(0.0, 0.0); m * n];

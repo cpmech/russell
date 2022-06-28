@@ -285,10 +285,20 @@ pub fn eigen_decomp_lr(
 
 #[cfg(test)]
 mod tests {
-    use super::{eigen_decomp, eigen_decomp_lr, Matrix};
-    use crate::{add_matrices, mat_mat_mul, matrix_norm, AsArray2D, NormMat, StrError};
+    use super::{eigen_decomp, eigen_decomp_lr};
+    use crate::{
+        add_matrices, complex_add_matrices, complex_mat_mat_mul, complex_mat_zip, complex_matrix_norm, complex_vec_zip,
+        mat_mat_mul, matrix_norm, AsArray2D, ComplexMatrix, Matrix, NormMat, StrError,
+    };
+    use num_complex::Complex64;
     use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
 
+    // Checks the eigen-decomposition (similarity transformation) of a
+    // symmetric matrix with real-only eigenvalues and eigenvectors
+    // ```text
+    // a⋅v = v⋅λ
+    // err := a⋅v - v⋅λ
+    // ```
     fn check_real_eigen<'a, T>(data: &'a T, v: &Matrix, l: &[f64]) -> Result<(), StrError>
     where
         T: AsArray2D<'a, f64>,
@@ -303,6 +313,39 @@ mod tests {
         mat_mat_mul(&mut v_l, 1.0, &v, &lam)?;
         add_matrices(&mut err, 1.0, &a_v, -1.0, &v_l)?;
         assert_approx_eq!(matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
+        Ok(())
+    }
+
+    // Checks the eigen-decomposition (similarity transformation) of a
+    // symmetric matrix with real-only eigenvalues and eigenvectors
+    // ```text
+    // a⋅v = v⋅λ
+    // err := a⋅v - v⋅λ
+    // ```
+    fn check_general_eigen<'a, T>(
+        data: &'a T,
+        v_real: &Matrix,
+        l_real: &[f64],
+        v_imag: &Matrix,
+        l_imag: &[f64],
+    ) -> Result<(), StrError>
+    where
+        T: AsArray2D<'a, f64>,
+    {
+        let a = ComplexMatrix::from(data);
+        let m = a.nrow();
+        let v = complex_mat_zip(v_real, v_imag)?;
+        let d = complex_vec_zip(l_real, l_imag)?;
+        let lam = ComplexMatrix::diagonal(d.as_data());
+        let mut a_v = ComplexMatrix::new(m, m);
+        let mut v_l = ComplexMatrix::new(m, m);
+        let mut err = ComplexMatrix::filled(m, m, Complex64::new(f64::MAX, f64::MAX));
+        let one = Complex64::new(1.0, 0.0);
+        let m_one = Complex64::new(-1.0, 0.0);
+        complex_mat_mat_mul(&mut a_v, one, &a, &v)?;
+        complex_mat_mat_mul(&mut v_l, one, &v, &lam)?;
+        complex_add_matrices(&mut err, one, &a_v, m_one, &v_l)?;
+        assert_approx_eq!(complex_matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
         Ok(())
     }
 
@@ -482,27 +525,14 @@ mod tests {
         let s3 = f64::sqrt(3.0);
         let l_real_correct = &[-0.5, -0.5, 1.0];
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
-        #[rustfmt::skip]
-        let v_real_correct = [
-             1.0/s3,  1.0/s3, -1.0/s3,
-            -0.5/s3, -0.5/s3, -1.0/s3,
-            -0.5/s3, -0.5/s3, -1.0/s3,
-        ];
-        #[rustfmt::skip]
-        let v_imag_correct = [
-             0.0,  0.0, 0.0,
-             0.5, -0.5, 0.0,
-            -0.5,  0.5, 0.0,
-        ];
         assert_vec_approx_eq!(l_real, l_real_correct, 1e-15);
         assert_vec_approx_eq!(l_imag, l_imag_correct, 1e-15);
-        assert_vec_approx_eq!(v_real.as_data(), v_real_correct, 1e-15);
-        assert_vec_approx_eq!(v_imag.as_data(), v_imag_correct, 1e-15);
+        check_general_eigen(&data, &v_real, &l_real, &v_imag, &l_imag)?;
         Ok(())
     }
 
     #[test]
-    fn eigen_decomp_rep_works() -> Result<(), StrError> {
+    fn eigen_decomp_repeated_eval_works() -> Result<(), StrError> {
         // rep: repeated eigenvalues
         #[rustfmt::skip]
         let data = [
@@ -571,36 +601,9 @@ mod tests {
         let s3 = f64::sqrt(3.0);
         let l_real_correct = &[-0.5, -0.5, 1.0];
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
-        #[rustfmt::skip]
-        let u_real_correct = [
-            -0.5/s3, -0.5/s3, -1.0/s3,
-             1.0/s3,  1.0/s3, -1.0/s3,
-            -0.5/s3, -0.5/s3, -1.0/s3,
-        ];
-        #[rustfmt::skip]
-        let u_imag_correct = [
-            -0.5,  0.5, 0.0,
-             0.0,  0.0, 0.0,
-             0.5, -0.5, 0.0,
-        ];
-        #[rustfmt::skip]
-        let v_real_correct = [
-             1.0/s3,  1.0/s3, -1.0/s3,
-            -0.5/s3, -0.5/s3, -1.0/s3,
-            -0.5/s3, -0.5/s3, -1.0/s3,
-        ];
-        #[rustfmt::skip]
-        let v_imag_correct = [
-             0.0,  0.0, 0.0,
-             0.5, -0.5, 0.0,
-            -0.5,  0.5, 0.0,
-        ];
         assert_vec_approx_eq!(l_real, l_real_correct, 1e-15);
         assert_vec_approx_eq!(l_imag, l_imag_correct, 1e-15);
-        assert_vec_approx_eq!(u_real.as_data(), u_real_correct, 1e-15);
-        assert_vec_approx_eq!(u_imag.as_data(), u_imag_correct, 1e-15);
-        assert_vec_approx_eq!(v_real.as_data(), v_real_correct, 1e-15);
-        assert_vec_approx_eq!(v_imag.as_data(), v_imag_correct, 1e-15);
+        check_general_eigen(&data, &v_real, &l_real, &v_imag, &l_imag)?;
         Ok(())
     }
 }

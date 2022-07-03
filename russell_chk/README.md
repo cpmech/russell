@@ -12,7 +12,9 @@ Documentation:
 
 ## Installation
 
-Add this to your Cargo.toml:
+[![Crates.io](https://img.shields.io/crates/v/russell_chk.svg)](https://crates.io/crates/russell_chk)
+
+👆 Check the crate version and update your Cargo.toml accordingly:
 
 ```toml
 [dependencies]

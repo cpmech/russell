@@ -22,7 +22,9 @@ sudo apt-get install \
     libsuitesparse-dev
 ```
 
-Add this to your Cargo.toml (choose the right version):
+[![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse)
+
+👆 Check the crate version and update your Cargo.toml accordingly:
 
 ```toml
 [dependencies]

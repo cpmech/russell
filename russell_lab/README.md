@@ -20,7 +20,9 @@ sudo apt-get install \
     libopenblas-dev
 ```
 
-Add this to your Cargo.toml (choose the right version):
+[![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab)
+
+👆 Check the crate version and update your Cargo.toml accordingly:
 
 ```toml
 [dependencies]

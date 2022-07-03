@@ -1,7 +1,5 @@
 # Russell OpenBLAS - Thin wrapper to some OpenBLAS routines
 
-[![Crates.io](https://img.shields.io/crates/v/russell_openblas.svg)](https://crates.io/crates/russell_openblas)
-
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
 This package implements a thin wrapper to a few of the OpenBLAS routines for performing linear algebra computations.

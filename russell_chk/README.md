@@ -1,7 +1,5 @@
 # Russell Chk - Functions to check vectors and other data in tests
 
-[![Crates.io](https://img.shields.io/crates/v/russell_chk.svg)](https://crates.io/crates/russell_chk)
-
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
 This repository implements macros to assist in tests (numerical checks).

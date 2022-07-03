@@ -1,7 +1,5 @@
 # Russell Lab - Matrix-vector laboratory including linear algebra tools
 
-[![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab)
-
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
 This repository is a "rust laboratory" for vectors and matrices.

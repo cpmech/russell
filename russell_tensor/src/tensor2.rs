@@ -38,7 +38,7 @@ use serde::{Deserialize, Serialize};
 ///                       └          ┘
 /// ```
 ///
-/// **Symmetric 3D:**
+/// **Symmetric 2D:**
 ///
 /// ```text
 /// ┌             ┐       ┌          ┐

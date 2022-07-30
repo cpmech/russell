@@ -260,6 +260,45 @@ mod tests {
         SQRT_3_BY_2, SQRT_6, TWO_BY_3,
     };
 
+    // #[test]
+    // #[rustfmt::skip]
+    // fn generate_mathematica_code() {
+    //     print!("MNtoIJKL = {{");
+    //     for m in 0..9 {
+    //         if m > 0 { print!(","); } print!("{{");
+    //         for n in 0..9 {
+    //             if n > 0 { print!(","); }
+    //             let (i, j, k, l) = MN_TO_IJKL[m][n];
+    //             print!("{{{},{},{},{}}}", i + 1, j + 1, k + 1, l + 1);
+    //         }
+    //         print!("}}");
+    //     }
+    //     println!("}};");
+    //     print!("IJKLtoMN = {{");
+    //     for i in 0..3 {
+    //         if i > 0 { print!(","); }
+    //         print!("{{");
+    //         for j in 0..3 {
+    //             if j > 0 { print!(","); }
+    //             print!("{{");
+    //             for k in 0..3 {
+    //                 if k > 0 { print!(","); } print!("{{");
+    //                 for l in 0..3 {
+    //                     if l > 0 {
+    //                         print!(",");
+    //                     }
+    //                     let (m, n) = IJKL_TO_MN_SYM[i][j][k][l];
+    //                     print!("{{{},{}}}", m + 1, n + 1);
+    //                 }
+    //                 print!("}}");
+    //             }
+    //             print!("}}");
+    //         }
+    //         print!("}}");
+    //     }
+    //     println!("}};");
+    // }
+
     #[test]
     fn constants_are_correct() {
         assert_eq!(SQRT_2, 2_f64.sqrt());

@@ -20,7 +20,7 @@ use std::path::Path;
 /// * Lines starting with '#' or empty lines are ignored
 /// * The end of the row (line) may contain comments too and will cause to stop reading data,
 ///   thus, the '#' marker in a row (line) must be at the end of the line.
-pub fn read_table<T, P>(full_path: &P, labels: Option<&[String]>) -> Result<HashMap<String, Vec<T>>, StrError>
+pub fn read_table<T, P>(full_path: &P, labels: Option<&[&str]>) -> Result<HashMap<String, Vec<T>>, StrError>
 where
     T: Num + Copy,
     P: AsRef<OsStr> + ?Sized,
@@ -126,7 +126,7 @@ mod tests {
         table = read_table("not-found", None);
         assert_eq!(table.err(), Some("cannot open file"));
 
-        table = read_table("./data/tables/ok1.txt", Some(&["column_0".to_string()]));
+        table = read_table("./data/tables/ok1.txt", Some(&["column_0"]));
         assert_eq!(table.err(), Some("there are more columns than labels"));
 
         table = read_table("./data/tables/bad_more_columns_than_labels.txt", None);
@@ -139,28 +139,34 @@ mod tests {
         assert_eq!(table.err(), Some("column data is missing"));
     }
 
+    const OK2_COL0: [f64; 5] = [0.50, 0.64, 0.70, 0.78, 0.87];
+    const OK2_COL1: [f64; 5] = [-0.003, 0.034, 0.063, 0.137, 0.208];
+    const OK2_COL2: [f64; 5] = [0.002, 0.083, 0.169, 0.332, 0.497];
+    const OK2_COL3: [f64; 5] = [0.78328, 0.77971, 0.77613, 0.76900, 0.76184];
+    const OK2_COL4: [f64; 5] = [-0.24, -0.25, -0.25, -0.26, -0.27];
+
     #[test]
     fn read_table_works() {
-        let table: HashMap<String, Vec<f64>> = read_table("./data/tables/table1.txt", None).unwrap();
+        let full_path = "./data/tables/ok2.txt";
+        let mut table: HashMap<String, Vec<f64>>;
+        table = read_table(full_path, None).unwrap();
         let mut labels: Vec<_> = table.keys().collect();
         labels.sort();
-        assert_eq!(
-            labels,
-            &["col0", "col1", "col2", "col3", "col4", "col5", "col6", "col7"]
-        );
-        let col0 = table.get("col0").unwrap();
-        assert_vec_approx_eq!(col0, &[0.5, 0.64, 0.7, 0.78, 0.87, 0.96, 1.07, 1.19, 1.32, 1.46], 1e-15);
-        let col2 = table.get("col2").unwrap();
-        assert_vec_approx_eq!(
-            col2,
-            &[0.002, 0.083, 0.169, 0.332, 0.497, 0.658, 0.819, 0.972, 1.126, 1.287],
-            1e-15
-        );
-        let col7 = table.get("col7").unwrap();
-        assert_vec_approx_eq!(
-            col7,
-            &[-0.24, -0.25, -0.25, -0.26, -0.27, -0.28, -0.29, -0.30, -0.31, -0.32],
-            1e-15
-        );
+        assert_eq!(labels, &["col0", "col1", "col2", "col3", "col4"]);
+        assert_vec_approx_eq!(table.get("col0").unwrap(), &OK2_COL0, 1e-15);
+        assert_vec_approx_eq!(table.get("col1").unwrap(), &OK2_COL1, 1e-15);
+        assert_vec_approx_eq!(table.get("col2").unwrap(), &OK2_COL2, 1e-15);
+        assert_vec_approx_eq!(table.get("col3").unwrap(), &OK2_COL3, 1e-15);
+        assert_vec_approx_eq!(table.get("col4").unwrap(), &OK2_COL4, 1e-15);
+
+        table = read_table(full_path, Some(&["sr", "ea", "er", "e", "lne"])).unwrap();
+        let mut labels: Vec<_> = table.keys().collect();
+        labels.sort();
+        assert_eq!(labels, &["e", "ea", "er", "lne", "sr"]);
+        assert_vec_approx_eq!(table.get("sr").unwrap(), &OK2_COL0, 1e-15);
+        assert_vec_approx_eq!(table.get("ea").unwrap(), &OK2_COL1, 1e-15);
+        assert_vec_approx_eq!(table.get("er").unwrap(), &OK2_COL2, 1e-15);
+        assert_vec_approx_eq!(table.get("e").unwrap(), &OK2_COL3, 1e-15);
+        assert_vec_approx_eq!(table.get("lne").unwrap(), &OK2_COL4, 1e-15);
     }
 }

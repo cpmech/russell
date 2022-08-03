@@ -1,10 +1,10 @@
 use crate::StrError;
-use num_traits::Num;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use std::str::FromStr;
 
 /// Reads a file containing tabled data
 ///
@@ -22,7 +22,7 @@ use std::path::Path;
 ///   thus, the '#' marker in a row (line) must be at the end of the line.
 pub fn read_table<T, P>(full_path: &P, labels: Option<&[&str]>) -> Result<HashMap<String, Vec<T>>, StrError>
 where
-    T: Num + Copy,
+    T: FromStr,
     P: AsRef<OsStr> + ?Sized,
 {
     // read file
@@ -82,7 +82,7 @@ where
                                 }
                                 let label = header_labels[column_index].clone();
                                 let column = table.entry(label).or_insert(Vec::new());
-                                let value = T::from_str_radix(s, 10).map_err(|_| "cannot parse value")?;
+                                let value = s.parse::<T>().map_err(|_| "cannot parse value")?;
                                 column.push(value);
                             };
                             column_index += 1;
@@ -114,7 +114,6 @@ where
 mod tests {
     use super::read_table;
     use crate::StrError;
-    use russell_chk::assert_vec_approx_eq;
     use std::collections::HashMap;
 
     #[test]
@@ -139,11 +138,9 @@ mod tests {
         assert_eq!(table.err(), Some("column data is missing"));
     }
 
-    const OK2_COL0: [f64; 5] = [0.50, 0.64, 0.70, 0.78, 0.87];
-    const OK2_COL1: [f64; 5] = [-0.003, 0.034, 0.063, 0.137, 0.208];
-    const OK2_COL2: [f64; 5] = [0.002, 0.083, 0.169, 0.332, 0.497];
-    const OK2_COL3: [f64; 5] = [0.78328, 0.77971, 0.77613, 0.76900, 0.76184];
-    const OK2_COL4: [f64; 5] = [-0.24, -0.25, -0.25, -0.26, -0.27];
+    const OK2_COL0: [f64; 5] = [1.0, 2.0, 3.0, 4.0, 5.0];
+    const OK2_COL1: [f64; 5] = [-6.0, 7.0, 8.0, 9.0, 10.0];
+    const OK2_COL2: [f64; 5] = [0.1, 0.2, 0.2, 0.4, 0.5];
 
     #[test]
     fn read_table_works() {
@@ -152,21 +149,31 @@ mod tests {
         table = read_table(full_path, None).unwrap();
         let mut labels: Vec<_> = table.keys().collect();
         labels.sort();
-        assert_eq!(labels, &["col0", "col1", "col2", "col3", "col4"]);
-        assert_vec_approx_eq!(table.get("col0").unwrap(), &OK2_COL0, 1e-15);
-        assert_vec_approx_eq!(table.get("col1").unwrap(), &OK2_COL1, 1e-15);
-        assert_vec_approx_eq!(table.get("col2").unwrap(), &OK2_COL2, 1e-15);
-        assert_vec_approx_eq!(table.get("col3").unwrap(), &OK2_COL3, 1e-15);
-        assert_vec_approx_eq!(table.get("col4").unwrap(), &OK2_COL4, 1e-15);
+        assert_eq!(labels, &["col0", "col1", "col2"]);
+        assert_eq!(table.get("col0").unwrap(), &OK2_COL0);
+        assert_eq!(table.get("col1").unwrap(), &OK2_COL1);
+        assert_eq!(table.get("col2").unwrap(), &OK2_COL2);
 
-        table = read_table(full_path, Some(&["sr", "ea", "er", "e", "lne"])).unwrap();
+        table = read_table(full_path, Some(&["sr", "ea", "er"])).unwrap();
         let mut labels: Vec<_> = table.keys().collect();
         labels.sort();
-        assert_eq!(labels, &["e", "ea", "er", "lne", "sr"]);
-        assert_vec_approx_eq!(table.get("sr").unwrap(), &OK2_COL0, 1e-15);
-        assert_vec_approx_eq!(table.get("ea").unwrap(), &OK2_COL1, 1e-15);
-        assert_vec_approx_eq!(table.get("er").unwrap(), &OK2_COL2, 1e-15);
-        assert_vec_approx_eq!(table.get("e").unwrap(), &OK2_COL3, 1e-15);
-        assert_vec_approx_eq!(table.get("lne").unwrap(), &OK2_COL4, 1e-15);
+        assert_eq!(labels, &["ea", "er", "sr"]);
+        assert_eq!(table.get("sr").unwrap(), &OK2_COL0);
+        assert_eq!(table.get("ea").unwrap(), &OK2_COL1);
+        assert_eq!(table.get("er").unwrap(), &OK2_COL2);
+    }
+
+    #[test]
+    fn read_table_string_works() {
+        let full_path = "./data/tables/ok3.txt";
+        let table: HashMap<String, Vec<String>> = read_table(full_path, Some(&["names", "colors"])).unwrap();
+        let mut labels: Vec<_> = table.keys().collect();
+        labels.sort();
+        assert_eq!(labels, &["colors", "names"]);
+        assert_eq!(table.get("names").unwrap(), &["red", "green", "blue"]);
+        assert_eq!(
+            table.get("colors").unwrap(),
+            &["\"#ff0000\"", "\"#00ff00\"", "\"#0000ff\""]
+        );
     }
 }

@@ -80,10 +80,14 @@ where
                                 if column_index >= header_labels.len() {
                                     return Err("there are more columns than labels");
                                 }
-                                let label = header_labels[column_index].clone();
-                                let column = table.entry(label).or_insert(Vec::new());
                                 let value = s.parse::<T>().map_err(|_| "cannot parse value")?;
-                                column.push(value);
+                                let label = &header_labels[column_index];
+                                match table.get_mut(label) {
+                                    Some(column) => column.push(value),
+                                    None => {
+                                        table.insert(label.clone(), vec![value]);
+                                    }
+                                }
                             };
                             column_index += 1;
                         }
@@ -118,7 +122,7 @@ mod tests {
 
     #[test]
     fn read_table_handles_problems() {
-        let mut table: Result<HashMap<String, Vec<i32>>, StrError>;
+        let mut table: Result<HashMap<String, Vec<f64>>, StrError>;
         table = read_table("", None);
         assert_eq!(table.err(), Some("cannot open file"));
 
@@ -133,6 +137,22 @@ mod tests {
 
         table = read_table("./data/tables/bad_cannot_parse_value.txt", None);
         assert_eq!(table.err(), Some("cannot parse value"));
+
+        table = read_table("./data/tables/bad_missing_data.txt", None);
+        assert_eq!(table.err(), Some("column data is missing"));
+
+        let mut table: Result<HashMap<String, Vec<String>>, StrError>;
+        table = read_table("", None);
+        assert_eq!(table.err(), Some("cannot open file"));
+
+        table = read_table("not-found", None);
+        assert_eq!(table.err(), Some("cannot open file"));
+
+        table = read_table("./data/tables/ok1.txt", Some(&["column_0"]));
+        assert_eq!(table.err(), Some("there are more columns than labels"));
+
+        table = read_table("./data/tables/bad_more_columns_than_labels.txt", None);
+        assert_eq!(table.err(), Some("there are more columns than labels"));
 
         table = read_table("./data/tables/bad_missing_data.txt", None);
         assert_eq!(table.err(), Some("column data is missing"));

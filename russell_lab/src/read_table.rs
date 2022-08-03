@@ -20,7 +20,7 @@ use std::path::Path;
 /// * Lines starting with '#' or empty lines are ignored
 /// * The end of the row (line) may contain comments too and will cause to stop reading data,
 ///   thus, the '#' marker in a row (line) must be at the end of the line.
-pub fn read_table<T, P>(full_path: &P, labels: Option<Vec<String>>) -> Result<HashMap<String, Vec<T>>, StrError>
+pub fn read_table<T, P>(full_path: &P, labels: Option<&[String]>) -> Result<HashMap<String, Vec<T>>, StrError>
 where
     T: Num + Copy,
     P: AsRef<OsStr> + ?Sized,
@@ -36,7 +36,7 @@ where
     let mut table: HashMap<String, Vec<T>> = HashMap::new();
 
     // parse rows, ignoring comments and empty lines
-    let mut current_row_index = -1;
+    let mut first_row = true;
     let mut number_of_columns = 0;
     loop {
         match lines_iter.next() {
@@ -61,7 +61,7 @@ where
                             if s.starts_with("#") {
                                 break; // ignore comments at the end of the row
                             }
-                            if current_row_index == -1 {
+                            if first_row {
                                 // check header labels or create new labels
                                 let label = match &labels {
                                     Some(ls) => {
@@ -77,6 +77,9 @@ where
                                 header_labels.push(label);
                             } else {
                                 // parse value
+                                if column_index >= header_labels.len() {
+                                    return Err("there are more columns than labels");
+                                }
                                 let label = header_labels[column_index].clone();
                                 let column = table.entry(label).or_insert(Vec::new());
                                 let value = T::from_str_radix(s, 10).map_err(|_| "cannot parse value")?;
@@ -88,21 +91,15 @@ where
                     }
                 }
 
-                // handle header line
-                if current_row_index == -1 {
-                    current_row_index += 1;
-                    continue;
-                }
-
                 // set or check the number of columns
-                if current_row_index == 0 {
+                if first_row {
                     number_of_columns = column_index; // the first row determines the number of columns
+                    first_row = false;
                 } else {
                     if column_index != number_of_columns {
                         return Err("column data is missing");
                     }
                 }
-                current_row_index += 1;
             }
             None => break,
         }
@@ -116,8 +113,31 @@ where
 #[cfg(test)]
 mod tests {
     use super::read_table;
+    use crate::StrError;
     use russell_chk::assert_vec_approx_eq;
     use std::collections::HashMap;
+
+    #[test]
+    fn read_table_handles_problems() {
+        let mut table: Result<HashMap<String, Vec<i32>>, StrError>;
+        table = read_table("", None);
+        assert_eq!(table.err(), Some("cannot open file"));
+
+        table = read_table("not-found", None);
+        assert_eq!(table.err(), Some("cannot open file"));
+
+        table = read_table("./data/tables/ok1.txt", Some(&["column_0".to_string()]));
+        assert_eq!(table.err(), Some("there are more columns than labels"));
+
+        table = read_table("./data/tables/bad_more_columns_than_labels.txt", None);
+        assert_eq!(table.err(), Some("there are more columns than labels"));
+
+        table = read_table("./data/tables/bad_cannot_parse_value.txt", None);
+        assert_eq!(table.err(), Some("cannot parse value"));
+
+        table = read_table("./data/tables/bad_missing_data.txt", None);
+        assert_eq!(table.err(), Some("column data is missing"));
+    }
 
     #[test]
     fn read_table_works() {

@@ -23,44 +23,6 @@ External recommended crate:
 
 - [plotpy](https://github.com/cpmech/plotpy) Plotting tools using Python3/Matplotlib as an engine
 
-## Installation
-
-Install the following Debian packages:
-
-```bash
-sudo apt-get install \
-    liblapacke-dev \
-    libmumps-seq-dev \
-    libopenblas-dev \
-    libsuitesparse-dev
-```
-
-Add this to your Cargo.toml (select only the crates you want and replace the right version):
-
-```toml
-[dependencies]
-russell_chk = "*"
-russell_lab = "*"
-russell_openblas = "*"
-russell_sparse = "*"
-russell_stat = "*"
-russell_tensor = "*"
-```
-
-### Number of threads
-
-By default OpenBLAS will use all available threads, including Hyper-Threads that make the performance worse. Thus, it is best to set the following environment variable:
-
-```bash
-export OPENBLAS_NUM_THREADS=<real-core-count>
-```
-
-Furthermore, if working on a multi-threaded application, it is recommended to set:
-
-```bash
-export OPENBLAS_NUM_THREADS=1
-```
-
 ## Examples
 
 ### Compute a singular value decomposition

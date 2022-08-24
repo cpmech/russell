@@ -10,6 +10,8 @@ Documentation:
 
 ## Installation
 
+### Dependencies: Debian/Ubuntu Linux
+
 Install some libraries:
 
 ```bash
@@ -17,6 +19,22 @@ sudo apt-get install \
     liblapacke-dev \
     libopenblas-dev
 ```
+
+### Dependencies: macOS
+
+In macOS, you may use [Homebrew](https://brew.sh/) to install the dependencies:
+
+```bash
+brew install openblas lapack
+```
+
+**Note** In macOS, we have to set the `LIBRARY_PATH` all the time.
+
+```bash
+export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/openblas/lib:$(brew --prefix)/opt/lapack/lib
+```
+
+### Cargo.toml
 
 [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab)
 

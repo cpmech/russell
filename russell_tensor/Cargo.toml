@@ -14,7 +14,7 @@ keywords = ["tensor", "Voigt", "Mandel", "continuum", "mechanics"]
 [dependencies]
 russell_chk = { path = "../russell_chk", version = "0.4.1" }
 russell_lab = { path = "../russell_lab", version = "0.4" }
-serde = { version = "1.0.136", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]
-rmp-serde = "1.0.0"
+rmp-serde = "1.1"

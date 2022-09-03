@@ -332,7 +332,8 @@ impl fmt::Display for SparseTriplet {
              \x20\x20\x20\x20\"max\": {},\n\
              \x20\x20\x20\x20\"symmetry\": \"{:?}\"",
             self.nrow, self.ncol, self.pos, self.max, self.symmetry
-        )?;
+        )
+        .unwrap();
         Ok(())
     }
 }

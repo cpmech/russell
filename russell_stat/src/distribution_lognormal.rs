@@ -92,7 +92,7 @@ impl ProbabilityDistribution for DistributionLognormal {
 
 #[cfg(test)]
 mod tests {
-    use crate::{DistributionLognormal, ProbabilityDistribution, StrError};
+    use crate::{DistributionLognormal, ProbabilityDistribution};
     use russell_chk::assert_approx_eq;
 
     // Data from the following R-code (run with Rscript lognormal.R):
@@ -121,7 +121,7 @@ mod tests {
     */
 
     #[test]
-    fn lognormal_works() -> Result<(), StrError> {
+    fn lognormal_works() {
         #[rustfmt::skip]
         // x mu_logx sig_logx pdf cdf
         let data = [
@@ -245,31 +245,28 @@ mod tests {
         ];
         for row in data {
             let [x, mu_logx, sig_logx, pdf, cdf] = row;
-            let d = DistributionLognormal::new(mu_logx, sig_logx)?;
+            let d = DistributionLognormal::new(mu_logx, sig_logx).unwrap();
             assert_approx_eq!(d.pdf(x), pdf, 1e-14);
             assert_approx_eq!(d.cdf(x), cdf, 1e-14);
         }
-        Ok(())
     }
 
     #[test]
-    fn new_from_mu_sig_works() -> Result<(), StrError> {
+    fn new_from_mu_sig_works() {
         let (mu, sig) = (1.0, 0.25);
-        let d = DistributionLognormal::new_from_mu_sig(mu, sig)?;
+        let d = DistributionLognormal::new_from_mu_sig(mu, sig).unwrap();
         let ss = d.sig_logx * d.sig_logx;
         let mean = f64::exp(d.mu_logx + ss / 2.0);
         let var = (f64::exp(ss) - 1.0) * f64::exp(2.0 * d.mu_logx + ss);
         assert_approx_eq!(mean, mu, 1e-15);
         assert_approx_eq!(f64::sqrt(var), sig, 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn mean_and_variance_work() -> Result<(), StrError> {
+    fn mean_and_variance_work() {
         let (mu, sig) = (1.0, 0.25);
-        let d = DistributionLognormal::new_from_mu_sig(mu, sig)?;
+        let d = DistributionLognormal::new_from_mu_sig(mu, sig).unwrap();
         assert_approx_eq!(d.mean(), mu, 1e-14);
         assert_approx_eq!(d.variance(), sig * sig, 1e-14);
-        Ok(())
     }
 }

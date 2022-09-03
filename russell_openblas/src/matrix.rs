@@ -806,7 +806,7 @@ mod tests {
     use crate::conversions::{dgeev_data, dgeev_data_lr};
     use crate::{to_i32, StrError};
     use num_complex::{Complex64, ComplexFloat};
-    use russell_chk::{assert_approx_eq, assert_complex_approx_eq, assert_complex_vec_approx_eq, assert_vec_approx_eq};
+    use russell_chk::{approx_eq, assert_complex_approx_eq, assert_complex_vec_approx_eq, assert_vec_approx_eq};
 
     #[test]
     fn dgemm_notrans_notrans_works() {
@@ -1293,10 +1293,10 @@ mod tests {
         let norm_inf = zlange(b'I', 3, 3, &b);
         let norm_fro = zlange(b'F', 3, 3, &b);
         let norm_max = zlange(b'M', 3, 3, &b);
-        assert_approx_eq!(norm_one, b[2].abs() + b[5].abs() + b[8].abs(), 1e-15);
-        assert_approx_eq!(norm_inf, b[0].abs() + b[1].abs() + b[2].abs(), 1e-15);
-        assert_approx_eq!(norm_fro, fro, 1e-15);
-        assert_approx_eq!(norm_max, b[8].abs(), 1e-15);
+        approx_eq(norm_one, b[2].abs() + b[5].abs() + b[8].abs(), 1e-15);
+        approx_eq(norm_inf, b[0].abs() + b[1].abs() + b[2].abs(), 1e-15);
+        approx_eq(norm_fro, fro, 1e-15);
+        approx_eq(norm_max, b[8].abs(), 1e-15);
     }
 
     #[test]
@@ -1628,9 +1628,9 @@ mod tests {
                     res += a_copy[i * n + k] * ai_correct[k * n + j];
                 }
                 if i == j {
-                    assert_approx_eq!(res, 1.0, 1e-13);
+                    approx_eq(res, 1.0, 1e-13);
                 } else {
-                    assert_approx_eq!(res, 0.0, 1e-13);
+                    approx_eq(res, 0.0, 1e-13);
                 }
             }
         }

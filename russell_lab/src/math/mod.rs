@@ -187,7 +187,7 @@ mod tests {
         boxcar, heaviside, logistic, logistic_deriv, ramp, sign, smooth_ramp, smooth_ramp_deriv, smooth_ramp_deriv2,
         suq_cos, suq_sin,
     };
-    use russell_chk::{assert_approx_eq, assert_deriv_approx_eq};
+    use russell_chk::{approx_eq, assert_deriv_approx_eq};
     use std::f64::consts::PI;
 
     #[test]
@@ -222,7 +222,7 @@ mod tests {
         for x in xx {
             let l = logistic(x);
             let d = logistic_deriv(x);
-            assert_approx_eq!(l, 0.5 + 0.5 * f64::tanh(x / 2.0), 1e-14);
+            approx_eq(l, 0.5 + 0.5 * f64::tanh(x / 2.0), 1e-14);
             assert_deriv_approx_eq!(d, x, f, args, 1e-10);
         }
     }
@@ -232,9 +232,9 @@ mod tests {
         assert_eq!(smooth_ramp(-1.0, 500.1), 0.0);
         assert_eq!(smooth_ramp(-1.0, 499.9), 0.0);
         assert_eq!(smooth_ramp_deriv(-1.0, 500.1), 0.0);
-        assert_approx_eq!(smooth_ramp_deriv(-1.0, 499.99), 0.0, 1e-15);
+        approx_eq(smooth_ramp_deriv(-1.0, 499.99), 0.0, 1e-15);
         assert_eq!(smooth_ramp_deriv2(1.0, 500.1), 0.0);
-        assert_approx_eq!(smooth_ramp_deriv2(1.0, 499.99), 0.0, 1e-15);
+        approx_eq(smooth_ramp_deriv2(1.0, 499.99), 0.0, 1e-15);
         let beta = 2.0;
         struct Arguments {
             beta: f64,
@@ -253,20 +253,20 @@ mod tests {
 
     #[test]
     fn suq_sin_and_cos_work() {
-        assert_approx_eq!(suq_sin(0.0, 1.0), 0.0, 1e-14);
-        assert_approx_eq!(suq_sin(PI, 1.0), 0.0, 1e-14);
-        assert_approx_eq!(suq_sin(PI / 2.0, 0.0), 1.0, 1e-14);
-        assert_approx_eq!(suq_sin(PI / 2.0, 1.0), 1.0, 1e-14);
-        assert_approx_eq!(suq_sin(PI / 2.0, 2.0), 1.0, 1e-14);
-        assert_approx_eq!(suq_sin(PI / 4.0, 2.0), 0.5, 1e-14);
-        assert_approx_eq!(suq_sin(-PI / 4.0, 2.0), -0.5, 1e-14);
+        approx_eq(suq_sin(0.0, 1.0), 0.0, 1e-14);
+        approx_eq(suq_sin(PI, 1.0), 0.0, 1e-14);
+        approx_eq(suq_sin(PI / 2.0, 0.0), 1.0, 1e-14);
+        approx_eq(suq_sin(PI / 2.0, 1.0), 1.0, 1e-14);
+        approx_eq(suq_sin(PI / 2.0, 2.0), 1.0, 1e-14);
+        approx_eq(suq_sin(PI / 4.0, 2.0), 0.5, 1e-14);
+        approx_eq(suq_sin(-PI / 4.0, 2.0), -0.5, 1e-14);
 
-        assert_approx_eq!(suq_cos(0.0, 1.0), 1.0, 1e-14);
-        assert_approx_eq!(suq_cos(PI, 1.0), -1.0, 1e-14);
-        assert_approx_eq!(suq_cos(PI / 2.0, 0.0), 1.0, 1e-14); // because sign(cos(pi/2))=1
-        assert_approx_eq!(suq_cos(PI / 2.0, 1.0), 0.0, 1e-14);
-        assert_approx_eq!(suq_cos(PI / 2.0, 2.0), 0.0, 1e-14);
-        assert_approx_eq!(suq_cos(PI / 4.0, 2.0), 0.5, 1e-14);
-        assert_approx_eq!(suq_cos(-PI / 4.0, 2.0), 0.5, 1e-14);
+        approx_eq(suq_cos(0.0, 1.0), 1.0, 1e-14);
+        approx_eq(suq_cos(PI, 1.0), -1.0, 1e-14);
+        approx_eq(suq_cos(PI / 2.0, 0.0), 1.0, 1e-14); // because sign(cos(pi/2))=1
+        approx_eq(suq_cos(PI / 2.0, 1.0), 0.0, 1e-14);
+        approx_eq(suq_cos(PI / 2.0, 2.0), 0.0, 1e-14);
+        approx_eq(suq_cos(PI / 4.0, 2.0), 0.5, 1e-14);
+        approx_eq(suq_cos(-PI / 4.0, 2.0), 0.5, 1e-14);
     }
 }

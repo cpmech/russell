@@ -51,7 +51,7 @@ use russell_openblas::{dgeev, dgeev_data, dgeev_data_lr, to_i32};
 /// # Example
 ///
 /// ```
-/// use russell_chk::assert_approx_eq;
+/// use russell_chk::approx_eq;
 /// use russell_lab::{add_matrices, eigen_decomp, mat_mat_mul, matrix_norm, Matrix, NormMat, StrError, Vector};
 ///
 /// fn main() -> Result<(), StrError> {
@@ -97,7 +97,7 @@ use russell_openblas::{dgeev, dgeev_data, dgeev_data_lr, to_i32};
 ///     mat_mat_mul(&mut a_v, 1.0, &a_copy, &v_real)?;
 ///     mat_mat_mul(&mut v_l, 1.0, &v_real, &lam)?;
 ///     add_matrices(&mut err, 1.0, &a_v, -1.0, &v_l)?;
-///     assert_approx_eq!(matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
+///     approx_eq(matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
 ///     Ok(())
 /// }
 /// ```
@@ -175,7 +175,7 @@ pub fn eigen_decomp(
 ///
 /// ```
 /// use num_complex::Complex64;
-/// use russell_chk::assert_approx_eq;
+/// use russell_chk::approx_eq;
 /// use russell_lab::{
 ///     complex_add_matrices, complex_mat_mat_mul, complex_mat_zip, complex_matrix_norm, complex_vec_zip, ComplexMatrix,
 ///     NormMat,
@@ -242,7 +242,7 @@ pub fn eigen_decomp(
 ///     complex_mat_mat_mul(&mut a_v, one, &a, &v)?;
 ///     complex_mat_mat_mul(&mut v_l, one, &v, &lam)?;
 ///     complex_add_matrices(&mut err, one, &a_v, m_one, &v_l)?;
-///     assert_approx_eq!(complex_matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
+///     approx_eq(complex_matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
 ///     Ok(())
 /// }
 /// ```
@@ -309,7 +309,7 @@ mod tests {
     };
     use crate::{mat_approx_eq, vec_approx_eq};
     use num_complex::Complex64;
-    use russell_chk::assert_approx_eq;
+    use russell_chk::approx_eq;
 
     // Checks the eigen-decomposition (similarity transformation) of a
     // symmetric matrix with real-only eigenvalues and eigenvectors
@@ -330,7 +330,7 @@ mod tests {
         mat_mat_mul(&mut a_v, 1.0, &a, &v).unwrap();
         mat_mat_mul(&mut v_l, 1.0, &v, &lam).unwrap();
         add_matrices(&mut err, 1.0, &a_v, -1.0, &v_l).unwrap();
-        assert_approx_eq!(matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
+        approx_eq(matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
     }
 
     // Checks the eigen-decomposition (similarity transformation)
@@ -355,7 +355,7 @@ mod tests {
         complex_mat_mat_mul(&mut a_v, one, &a, &v).unwrap();
         complex_mat_mat_mul(&mut v_l, one, &v, &lam).unwrap();
         complex_add_matrices(&mut err, one, &a_v, m_one, &v_l).unwrap();
-        assert_approx_eq!(complex_matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
+        approx_eq(complex_matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
     }
 
     #[test]

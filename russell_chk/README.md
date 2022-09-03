@@ -24,14 +24,14 @@ russell_chk = "*"
 ### Check float point numbers
 
 ```rust
-use russell_chk::assert_approx_eq;
+use russell_chk::approx_eq;
 
 fn main() {
-    assert_approx_eq!(0.123456789, 0.12345678, 1e-8);
-    assert_approx_eq!(0.123456789, 0.1234567, 1e-7);
-    assert_approx_eq!(0.123456789, 0.123456, 1e-6);
-    assert_approx_eq!(0.123456789, 0.12345, 1e-5);
-    assert_approx_eq!(0.123456789, 0.1234, 1e-4);
+    approx_eq(0.123456789, 0.12345678, 1e-8);
+    approx_eq(0.123456789, 0.1234567, 1e-7);
+    approx_eq(0.123456789, 0.123456, 1e-6);
+    approx_eq(0.123456789, 0.12345, 1e-5);
+    approx_eq(0.123456789, 0.1234, 1e-4);
 }
 ```
 

@@ -1,4 +1,4 @@
-use russell_chk::assert_approx_eq;
+use russell_chk::approx_eq;
 use russell_lab::{add_matrices, eigen_decomp, mat_mat_mul, matrix_norm, Matrix, NormMat, StrError, Vector};
 
 fn main() -> Result<(), StrError> {
@@ -44,6 +44,6 @@ fn main() -> Result<(), StrError> {
     mat_mat_mul(&mut a_v, 1.0, &a_copy, &v_real)?;
     mat_mat_mul(&mut v_l, 1.0, &v_real, &lam)?;
     add_matrices(&mut err, 1.0, &a_v, -1.0, &v_l)?;
-    assert_approx_eq!(matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
+    approx_eq(matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
     Ok(())
 }

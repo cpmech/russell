@@ -172,7 +172,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::assert_approx_eq;
+    /// use russell_chk::approx_eq;
     /// use russell_tensor::{Tensor2, StrError};
     ///
     /// # fn main() -> Result<(), StrError> {
@@ -182,7 +182,7 @@ impl Tensor2 {
     ///     [0.0,  4.0, 1.0],
     /// ], false, false)?;
     ///
-    /// assert_approx_eq!(a.get(1,2), 5.0, 1e-15);
+    /// approx_eq(a.get(1,2), 5.0, 1e-15);
     /// # Ok(())
     /// # }
     /// ```
@@ -336,7 +336,7 @@ impl Tensor2 {
 #[cfg(test)]
 mod tests {
     use super::{Tensor2, SQRT_2};
-    use russell_chk::assert_approx_eq;
+    use russell_chk::approx_eq;
     use russell_lab::vec_approx_eq;
     use serde::{Deserialize, Serialize};
 
@@ -475,7 +475,7 @@ mod tests {
         let tt = Tensor2::from_matrix(comps_std, false, false).unwrap();
         for i in 0..3 {
             for j in 0..3 {
-                assert_approx_eq!(tt.get(i, j), comps_std[i][j], 1e-14);
+                approx_eq(tt.get(i, j), comps_std[i][j], 1e-14);
             }
         }
 
@@ -489,7 +489,7 @@ mod tests {
         let tt = Tensor2::from_matrix(comps_std, true, false).unwrap();
         for i in 0..3 {
             for j in 0..3 {
-                assert_approx_eq!(tt.get(i, j), comps_std[i][j], 1e-14);
+                approx_eq(tt.get(i, j), comps_std[i][j], 1e-14);
             }
         }
 
@@ -503,7 +503,7 @@ mod tests {
         let tt = Tensor2::from_matrix(comps_std, true, true).unwrap();
         for i in 0..3 {
             for j in 0..3 {
-                assert_approx_eq!(tt.get(i, j), comps_std[i][j], 1e-14);
+                approx_eq(tt.get(i, j), comps_std[i][j], 1e-14);
             }
         }
     }
@@ -521,7 +521,7 @@ mod tests {
         let res = tt.to_matrix();
         for i in 0..3 {
             for j in 0..3 {
-                assert_approx_eq!(res[i][j], comps_std[i][j], 1e-14);
+                approx_eq(res[i][j], comps_std[i][j], 1e-14);
             }
         }
 
@@ -536,7 +536,7 @@ mod tests {
         let res = tt.to_matrix();
         for i in 0..3 {
             for j in 0..3 {
-                assert_approx_eq!(res[i][j], comps_std[i][j], 1e-14);
+                approx_eq(res[i][j], comps_std[i][j], 1e-14);
             }
         }
 
@@ -551,7 +551,7 @@ mod tests {
         let res = tt.to_matrix();
         for i in 0..3 {
             for j in 0..3 {
-                assert_approx_eq!(res[i][j], comps_std[i][j], 1e-14);
+                approx_eq(res[i][j], comps_std[i][j], 1e-14);
             }
         }
     }

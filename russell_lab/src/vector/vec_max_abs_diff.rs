@@ -17,14 +17,14 @@ use crate::StrError;
 ///
 /// ```
 /// use russell_lab::{vec_max_abs_diff, Vector, StrError};
-/// use russell_chk::assert_approx_eq;
+/// use russell_chk::approx_eq;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let u = Vector::from(&[10.0, -20.0]);
 ///     let v = Vector::from(&[10.0, -20.01]);
 ///     let (i, max_abs_diff) = vec_max_abs_diff(&u, &v)?;
 ///     assert_eq!(i, 1);
-///     assert_approx_eq!(max_abs_diff, 0.01, 1e-14);
+///     approx_eq(max_abs_diff, 0.01, 1e-14);
 ///     Ok(())
 /// }
 /// ```

@@ -76,7 +76,7 @@ impl ProbabilityDistribution for DistributionGumbel {
 #[cfg(test)]
 mod tests {
     use crate::{DistributionGumbel, ProbabilityDistribution};
-    use russell_chk::assert_approx_eq;
+    use russell_chk::approx_eq;
 
     // Data from the following R-code (run with Rscript gumbel.R):
     /*
@@ -231,8 +231,8 @@ mod tests {
         for row in data {
             let [x, location, scale, pdf, cdf] = row;
             let d = DistributionGumbel::new(location, scale).unwrap();
-            assert_approx_eq!(d.pdf(x), pdf, 1e-14);
-            assert_approx_eq!(d.cdf(x), cdf, 1e-14);
+            approx_eq(d.pdf(x), pdf, 1e-14);
+            approx_eq(d.cdf(x), cdf, 1e-14);
         }
     }
 
@@ -240,15 +240,15 @@ mod tests {
     fn new_from_mu_sig_works() {
         // from Haldar & Mahadevan page 90
         let d = DistributionGumbel::new_from_mu_sig(61.3, 7.52).unwrap();
-        assert_approx_eq!(d.location, 57.9157, 0.00011);
-        assert_approx_eq!(d.scale, 1.0 / 0.17055, 1e-4);
+        approx_eq(d.location, 57.9157, 0.00011);
+        approx_eq(d.scale, 1.0 / 0.17055, 1e-4);
     }
 
     #[test]
     fn mean_and_variance_work() {
         let (mu, sig) = (1.0, 0.25);
         let d = DistributionGumbel::new_from_mu_sig(mu, sig).unwrap();
-        assert_approx_eq!(d.mean(), mu, 1e-14);
-        assert_approx_eq!(d.variance(), sig * sig, 1e-14);
+        approx_eq(d.mean(), mu, 1e-14);
+        approx_eq(d.variance(), sig * sig, 1e-14);
     }
 }

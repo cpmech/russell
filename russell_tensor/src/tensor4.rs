@@ -429,7 +429,7 @@ impl Tensor4 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::assert_approx_eq;
+    /// use russell_chk::approx_eq;
     /// use russell_tensor::{MN_TO_IJKL, Tensor4, StrError};
     ///
     /// # fn main() -> Result<(), StrError> {
@@ -447,7 +447,7 @@ impl Tensor4 {
     ///     for n in 0..9 {
     ///         let (i, j, k, l) = MN_TO_IJKL[m][n];
     ///         let val = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
-    ///         assert_approx_eq!(dd.get(i,j,k,l), val, 1e-12);
+    ///         approx_eq(dd.get(i,j,k,l), val, 1e-12);
     ///     }
     /// }
     /// # Ok(())
@@ -552,7 +552,7 @@ impl Tensor4 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::assert_approx_eq;
+    /// use russell_chk::approx_eq;
     /// use russell_tensor::{MN_TO_IJKL, Tensor4, StrError};
     ///
     /// # fn main() -> Result<(), StrError> {
@@ -571,7 +571,7 @@ impl Tensor4 {
     ///     for n in 0..9 {
     ///         let (i, j, k, l) = MN_TO_IJKL[m][n];
     ///         let val = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
-    ///         assert_approx_eq!(arr[i][j][k][l], val, 1e-12);
+    ///         approx_eq(arr[i][j][k][l], val, 1e-12);
     ///     }
     /// }
     /// # Ok(())
@@ -712,7 +712,7 @@ impl Tensor4 {
 mod tests {
     use super::{Tensor4, MN_TO_IJKL};
     use crate::Samples;
-    use russell_chk::assert_approx_eq;
+    use russell_chk::approx_eq;
     use serde::{Deserialize, Serialize};
 
     #[test]
@@ -777,7 +777,7 @@ mod tests {
         let dd = Tensor4::from_matrix(&Samples::TENSOR4_SAMPLE1_STD_MATRIX, false, false).unwrap();
         for m in 0..9 {
             for n in 0..9 {
-                assert_approx_eq!(dd.mat[m][n], Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[m][n], 1e-15);
+                approx_eq(dd.mat[m][n], Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[m][n], 1e-15);
             }
         }
 
@@ -785,7 +785,7 @@ mod tests {
         let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_SAMPLE1_STD_MATRIX, true, false).unwrap();
         for m in 0..6 {
             for n in 0..6 {
-                assert_approx_eq!(dd.mat[m][n], Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[m][n], 1e-14);
+                approx_eq(dd.mat[m][n], Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[m][n], 1e-14);
             }
         }
 
@@ -793,7 +793,7 @@ mod tests {
         let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX, true, true).unwrap();
         for m in 0..4 {
             for n in 0..4 {
-                assert_approx_eq!(dd.mat[m][n], Samples::TENSOR4_SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n], 1e-14);
+                approx_eq(dd.mat[m][n], Samples::TENSOR4_SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n], 1e-14);
             }
         }
     }
@@ -806,7 +806,7 @@ mod tests {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        assert_approx_eq!(dd.get(i, j, k, l), Samples::TENSOR4_SAMPLE1[i][j][k][l], 1e-13);
+                        approx_eq(dd.get(i, j, k, l), Samples::TENSOR4_SAMPLE1[i][j][k][l], 1e-13);
                     }
                 }
             }
@@ -818,7 +818,7 @@ mod tests {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        assert_approx_eq!(dd.get(i, j, k, l), Samples::TENSOR4_SYM_SAMPLE1[i][j][k][l], 1e-14);
+                        approx_eq(dd.get(i, j, k, l), Samples::TENSOR4_SYM_SAMPLE1[i][j][k][l], 1e-14);
                     }
                 }
             }
@@ -830,7 +830,7 @@ mod tests {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        assert_approx_eq!(dd.get(i, j, k, l), Samples::TENSOR4_SYM_2D_SAMPLE1[i][j][k][l], 1e-14);
+                        approx_eq(dd.get(i, j, k, l), Samples::TENSOR4_SYM_2D_SAMPLE1[i][j][k][l], 1e-14);
                     }
                 }
             }
@@ -846,7 +846,7 @@ mod tests {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        assert_approx_eq!(res[i][j][k][l], Samples::TENSOR4_SAMPLE1[i][j][k][l], 1e-13);
+                        approx_eq(res[i][j][k][l], Samples::TENSOR4_SAMPLE1[i][j][k][l], 1e-13);
                     }
                 }
             }
@@ -859,7 +859,7 @@ mod tests {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        assert_approx_eq!(res[i][j][k][l], Samples::TENSOR4_SYM_SAMPLE1[i][j][k][l], 1e-14);
+                        approx_eq(res[i][j][k][l], Samples::TENSOR4_SYM_SAMPLE1[i][j][k][l], 1e-14);
                     }
                 }
             }
@@ -872,7 +872,7 @@ mod tests {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        assert_approx_eq!(res[i][j][k][l], Samples::TENSOR4_SYM_2D_SAMPLE1[i][j][k][l], 1e-14);
+                        approx_eq(res[i][j][k][l], Samples::TENSOR4_SYM_2D_SAMPLE1[i][j][k][l], 1e-14);
                     }
                 }
             }
@@ -886,7 +886,7 @@ mod tests {
         let mat = dd.to_matrix();
         for m in 0..9 {
             for n in 0..9 {
-                assert_approx_eq!(mat[m][n], &Samples::TENSOR4_SAMPLE1_STD_MATRIX[m][n], 1e-13);
+                approx_eq(mat[m][n], Samples::TENSOR4_SAMPLE1_STD_MATRIX[m][n], 1e-13);
             }
         }
 
@@ -896,7 +896,7 @@ mod tests {
         assert_eq!(mat.dims(), (9, 9));
         for m in 0..9 {
             for n in 0..9 {
-                assert_approx_eq!(mat[m][n], &Samples::TENSOR4_SYM_SAMPLE1_STD_MATRIX[m][n], 1e-13);
+                approx_eq(mat[m][n], Samples::TENSOR4_SYM_SAMPLE1_STD_MATRIX[m][n], 1e-13);
             }
         }
 
@@ -906,7 +906,7 @@ mod tests {
         assert_eq!(mat.dims(), (9, 9));
         for m in 0..9 {
             for n in 0..9 {
-                assert_approx_eq!(mat[m][n], &Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX[m][n], 1e-13);
+                approx_eq(mat[m][n], Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX[m][n], 1e-13);
             }
         }
     }

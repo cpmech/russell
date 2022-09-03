@@ -23,12 +23,12 @@ pub const SQRT_6: f64 =
 #[cfg(test)]
 mod tests {
     use super::{PI, SQRT_2, SQRT_6, SQRT_PI};
-    use russell_chk::assert_approx_eq;
+    use russell_chk::approx_eq;
 
     #[test]
     fn constants_are_correct() {
         assert_eq!(PI, std::f64::consts::PI);
-        assert_approx_eq!(SQRT_PI, f64::sqrt(PI), 1e-15);
+        approx_eq(SQRT_PI, f64::sqrt(PI), 1e-15);
         assert_eq!(SQRT_2, 2_f64.sqrt());
         assert_eq!(SQRT_6, 6_f64.sqrt());
     }

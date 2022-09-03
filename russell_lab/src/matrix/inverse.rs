@@ -205,7 +205,7 @@ pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
 mod tests {
     use super::{inverse, Matrix, ZERO_DETERMINANT};
     use crate::mat_approx_eq;
-    use russell_chk::assert_approx_eq;
+    use russell_chk::approx_eq;
 
     /// Computes a⋅ai that should equal I for a square matrix
     fn get_a_times_ai(a: &Matrix, ai: &Matrix) -> Matrix {
@@ -341,7 +341,7 @@ mod tests {
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(4, 4);
         let det = inverse(&mut ai, &mut a).unwrap();
-        assert_approx_eq!(det, 20.0, 1e-14);
+        approx_eq(det, 20.0, 1e-14);
         #[rustfmt::skip]
         let ai_correct = &[
             [ 0.6,  0.0, -0.2,  0.0],
@@ -369,7 +369,7 @@ mod tests {
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(5, 5);
         let det = inverse(&mut ai, &mut a).unwrap();
-        assert_approx_eq!(det, -167402.0, 1e-8);
+        approx_eq(det, -167402.0, 1e-8);
         #[rustfmt::skip]
         let ai_correct = &[
             [ 6.9128803717996279e-01, -7.4226114383340802e-01, -9.8756287260606410e-02, -6.9062496266472417e-01,  7.2471057693456553e-01],
@@ -400,7 +400,7 @@ mod tests {
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(6, 6);
         let det = inverse(&mut ai, &mut a).unwrap();
-        assert_approx_eq!(det, 7.778940633136385e-19, 1e-15);
+        approx_eq(det, 7.778940633136385e-19, 1e-15);
         #[rustfmt::skip]
         let ai_correct = &[
             [ 6.28811662297464645e+04,  4.23011662297464645e+04,  4.23011662297464645e+04, 0.00000000000000000e+00, -1.05591885817167332e-17, 4.33037966311565489e+07],

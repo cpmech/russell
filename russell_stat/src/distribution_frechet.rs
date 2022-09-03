@@ -78,7 +78,7 @@ impl ProbabilityDistribution for DistributionFrechet {
 #[cfg(test)]
 mod tests {
     use crate::{DistributionFrechet, ProbabilityDistribution};
-    use russell_chk::assert_approx_eq;
+    use russell_chk::approx_eq;
 
     // Data from the following R-code (run with Rscript frechet.R):
     /*
@@ -227,8 +227,8 @@ mod tests {
         for row in data {
             let [x, location, scale, shape, pdf, cdf] = row;
             let d = DistributionFrechet::new(location, scale, shape).unwrap();
-            assert_approx_eq!(d.pdf(x), pdf, 1e-14);
-            assert_approx_eq!(d.cdf(x), cdf, 1e-14);
+            approx_eq(d.pdf(x), pdf, 1e-14);
+            approx_eq(d.cdf(x), cdf, 1e-14);
         }
     }
 
@@ -238,8 +238,8 @@ mod tests {
         let scale = 1.0;
         let shape = 4.095645;
         let d = DistributionFrechet::new(location, scale, shape).unwrap();
-        assert_approx_eq!(d.mean(), 10.0, 1e-6);
-        assert_approx_eq!(d.variance(), 0.25, 1e-6);
+        approx_eq(d.mean(), 10.0, 1e-6);
+        approx_eq(d.variance(), 0.25, 1e-6);
 
         let d = DistributionFrechet::new(location, scale, 1.0).unwrap();
         assert_eq!(d.mean(), f64::INFINITY);

@@ -119,7 +119,7 @@ impl fmt::Display for Statistics {
 #[cfg(test)]
 mod tests {
     use super::statistics;
-    use russell_chk::assert_approx_eq;
+    use russell_chk::approx_eq;
 
     #[test]
     fn statistics_handle_small_slices() {
@@ -145,14 +145,14 @@ mod tests {
         assert_eq!(res.min, 70.0);
         assert_eq!(res.max, 105.0);
         assert_eq!(res.mean, 849.0 / 9.0);
-        assert_approx_eq!(res.std_dev, 12.134661099511597, 1e-17);
+        approx_eq(res.std_dev, 12.134661099511597, 1e-17);
 
         let x = [9, 2, 5, 4, 12, 7, 8, 11, 9, 3, 7, 4, 12, 5, 4, 10, 9, 6, 9, 4];
         let res = statistics(&x);
         assert_eq!(res.min, 2.0);
         assert_eq!(res.max, 12.0);
         assert_eq!(res.mean, 7.0);
-        assert_approx_eq!(res.std_dev, f64::sqrt(178.0 / 19.0), 1e-17);
+        approx_eq(res.std_dev, f64::sqrt(178.0 / 19.0), 1e-17);
     }
 
     #[test]

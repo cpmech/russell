@@ -17,7 +17,7 @@ use crate::StrError;
 ///
 /// ```
 /// use russell_lab::{mat_max_abs_diff, Matrix, StrError};
-/// use russell_chk::assert_approx_eq;
+/// use russell_chk::approx_eq;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let a = Matrix::from(&[
@@ -31,7 +31,7 @@ use crate::StrError;
 ///     let (i, j, max_abs_diff) = mat_max_abs_diff(&a, &b)?;
 ///     assert_eq!(i, 1);
 ///     assert_eq!(j, 1);
-///     assert_approx_eq!(max_abs_diff, 0.01, 1e-14);
+///     approx_eq(max_abs_diff, 0.01, 1e-14);
 ///     Ok(())
 /// }
 /// ```

@@ -195,7 +195,7 @@ mod tests {
     use super::{dasum, daxpy, dcopy, ddot, dnrm2, dscal, idamax, zaxpy, zcopy, zscal};
     use crate::to_i32;
     use num_complex::Complex64;
-    use russell_chk::{assert_approx_eq, assert_complex_vec_approx_eq, assert_vec_approx_eq};
+    use russell_chk::{approx_eq, assert_complex_vec_approx_eq, assert_vec_approx_eq};
 
     #[test]
     fn ddot_works() {
@@ -368,14 +368,14 @@ mod tests {
     fn dasum_works() {
         let x = [-1.0, 1.0, -1.0, 1.0, 2.0, -2.0];
         let (n, incx) = (to_i32(x.len()), 1_i32);
-        assert_approx_eq!(dasum(n, &x, incx), 8.0, 1e-15);
+        approx_eq(dasum(n, &x, incx), 8.0, 1e-15);
     }
 
     #[test]
     fn dnrm2_works() {
         let x = [1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0];
         let (n, incx) = (to_i32(x.len()), 1_i32);
-        assert_approx_eq!(dnrm2(n, &x, incx), 5.0, 1e-15);
+        approx_eq(dnrm2(n, &x, incx), 5.0, 1e-15);
     }
 
     #[test]

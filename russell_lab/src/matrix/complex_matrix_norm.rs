@@ -34,17 +34,17 @@ use russell_openblas::{to_i32, zlange};
 ///
 /// ```
 /// use russell_lab::{complex_matrix_norm, ComplexMatrix, NormMat};
-/// use russell_chk::assert_approx_eq;
+/// use russell_chk::approx_eq;
 ///
 /// fn main() {
 ///     let a = ComplexMatrix::from(&[
 ///         [-2.0,  2.0],
 ///         [ 1.0, -4.0],
 ///     ]);
-///     assert_approx_eq!(complex_matrix_norm(&a, NormMat::One), 6.0, 1e-15);
-///     assert_approx_eq!(complex_matrix_norm(&a, NormMat::Inf), 5.0, 1e-15);
-///     assert_approx_eq!(complex_matrix_norm(&a, NormMat::Fro), 5.0, 1e-15);
-///     assert_approx_eq!(complex_matrix_norm(&a, NormMat::Max), 4.0, 1e-15);
+///     approx_eq(complex_matrix_norm(&a, NormMat::One), 6.0, 1e-15);
+///     approx_eq(complex_matrix_norm(&a, NormMat::Inf), 5.0, 1e-15);
+///     approx_eq(complex_matrix_norm(&a, NormMat::Fro), 5.0, 1e-15);
+///     approx_eq(complex_matrix_norm(&a, NormMat::Max), 4.0, 1e-15);
 /// }
 /// ```
 pub fn complex_matrix_norm(a: &ComplexMatrix, kind: NormMat) -> f64 {
@@ -69,7 +69,7 @@ mod tests {
     use super::{complex_matrix_norm, ComplexMatrix};
     use crate::NormMat;
     use num_complex::{Complex64, ComplexFloat};
-    use russell_chk::assert_approx_eq;
+    use russell_chk::approx_eq;
 
     #[test]
     fn complex_matrix_norm_works() {
@@ -94,26 +94,26 @@ mod tests {
             [Complex64::new(-1.0, 1.0), Complex64::new( 2.0, 2.0), Complex64::new(3.0, 3.0)],
             [Complex64::new(-2.0, 1.0), Complex64::new( 1.0, 2.0), Complex64::new(0.0, 3.0)],
         ]);
-        assert_approx_eq!(
+        approx_eq(
             complex_matrix_norm(&a, NormMat::One),
             a[0][2].abs() + a[1][2].abs() + a[2][2].abs(),
-            1e-15
+            1e-15,
         );
-        assert_approx_eq!(
+        approx_eq(
             complex_matrix_norm(&a, NormMat::Inf),
             a[0][0].abs() + a[0][1].abs() + a[0][2].abs(),
-            1e-15
+            1e-15,
         );
         let mut fro = 0.0;
         for v in a.as_data() {
             fro += v.abs() * v.abs();
         }
         fro = f64::sqrt(fro);
-        assert_approx_eq!(complex_matrix_norm(&a, NormMat::Fro), fro, 1e-15);
-        assert_approx_eq!(
+        approx_eq(complex_matrix_norm(&a, NormMat::Fro), fro, 1e-15);
+        approx_eq(
             complex_matrix_norm(&a, NormMat::Max),
             Complex64::new(5.0, 1.0).abs(),
-            1e-15
+            1e-15,
         );
     }
 }

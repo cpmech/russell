@@ -75,7 +75,7 @@ mod tests {
     use crate::{DistributionUniform, ProbabilityDistribution};
     use rand::prelude::StdRng;
     use rand::SeedableRng;
-    use russell_chk::assert_approx_eq;
+    use russell_chk::approx_eq;
 
     // Data from the following R-code (run with Rscript uniform.R):
     /*
@@ -113,16 +113,16 @@ mod tests {
         for row in data {
             let [x, xmin, xmax, pdf, cdf] = row;
             let d = DistributionUniform::new(xmin, xmax).unwrap();
-            assert_approx_eq!(d.pdf(x), pdf, 1e-14);
-            assert_approx_eq!(d.cdf(x), cdf, 1e-14);
+            approx_eq(d.pdf(x), pdf, 1e-14);
+            approx_eq(d.cdf(x), cdf, 1e-14);
         }
     }
 
     #[test]
     fn mean_and_variance_work() {
         let d = DistributionUniform::new(1.0, 3.0).unwrap();
-        assert_approx_eq!(d.mean(), 2.0, 1e-14);
-        assert_approx_eq!(d.variance(), 1.0 / 3.0, 1e-14);
+        approx_eq(d.mean(), 2.0, 1e-14);
+        approx_eq(d.variance(), 1.0 / 3.0, 1e-14);
     }
 
     #[test]
@@ -132,7 +132,7 @@ mod tests {
         let dist_y = DistributionUniform::new(0.0, 1.0).unwrap();
         let x = dist_x.sample(&mut rng);
         let y = dist_y.sample(&mut rng);
-        assert_approx_eq!(x, 0.23691851694908816, 1e-15);
-        assert_approx_eq!(y, 0.16964948689475423, 1e-15);
+        approx_eq(x, 0.23691851694908816, 1e-15);
+        approx_eq(y, 0.16964948689475423, 1e-15);
     }
 }

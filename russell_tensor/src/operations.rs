@@ -92,7 +92,7 @@ pub fn copy_tensor4(ee: &mut Tensor4, dd: &Tensor4) -> Result<(), StrError> {
 /// # Example
 ///
 /// ```
-/// use russell_chk::assert_approx_eq;
+/// use russell_chk::approx_eq;
 /// use russell_tensor::{t2_ddot_t2, Tensor2, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
@@ -110,7 +110,7 @@ pub fn copy_tensor4(ee: &mut Tensor4, dd: &Tensor4) -> Result<(), StrError> {
 ///
 ///     let res = t2_ddot_t2(&a, &b);
 ///
-///     assert_approx_eq!(res, 8.0, 1e-15);
+///     approx_eq(res, 8.0, 1e-15);
 ///     Ok(())
 /// }
 /// ```
@@ -445,7 +445,7 @@ pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) -> Res
 /// # Example
 ///
 /// ```
-/// use russell_chk::assert_approx_eq;
+/// use russell_chk::approx_eq;
 /// use russell_tensor::{t4_ddot_t4, StrError, Tensor4};
 ///
 /// fn main() -> Result<(), StrError> {
@@ -489,9 +489,9 @@ pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) -> Res
 ///     for i in 0..9 {
 ///         for j in 0..9 {
 ///             if i == j {
-///                 assert_approx_eq!(out[i][j], 1.0, 1e-15);
+///                 approx_eq(out[i][j], 1.0, 1e-15);
 ///             } else {
-///                 assert_approx_eq!(out[i][j], 0.0, 1e-15);
+///                 approx_eq(out[i][j], 0.0, 1e-15);
 ///             }
 ///         }
 ///     }
@@ -512,7 +512,7 @@ mod tests {
         vec_dot_t2, Tensor2, Tensor4,
     };
     use crate::Samples;
-    use russell_chk::assert_approx_eq;
+    use russell_chk::approx_eq;
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
@@ -612,7 +612,7 @@ mod tests {
             [6.0, 4.0, 1.0],
         ], true, false).unwrap();
         let s = t2_ddot_t2(&a, &b);
-        assert_approx_eq!(s, 162.0, 1e-13);
+        approx_eq(s, 162.0, 1e-13);
 
         // sym-3D : general
         #[rustfmt::skip]
@@ -628,7 +628,7 @@ mod tests {
             [3.0, 2.0, 1.0],
         ], false, false).unwrap();
         let s = t2_ddot_t2(&a, &b);
-        assert_approx_eq!(s, 168.0, 1e-13);
+        approx_eq(s, 168.0, 1e-13);
 
         // sym-2D : sym-2D
         #[rustfmt::skip]
@@ -644,7 +644,7 @@ mod tests {
             [0.0, 0.0, 1.0],
         ], true, true).unwrap();
         let s = t2_ddot_t2(&a, &b);
-        assert_approx_eq!(s, 50.0, 1e-13);
+        approx_eq(s, 50.0, 1e-13);
 
         // sym-2D : sym-3D
         #[rustfmt::skip]
@@ -660,7 +660,7 @@ mod tests {
             [6.0, 4.0, 1.0],
         ], true, false).unwrap();
         let s = t2_ddot_t2(&a, &b);
-        assert_approx_eq!(s, 50.0, 1e-13);
+        approx_eq(s, 50.0, 1e-13);
     }
 
     #[test]

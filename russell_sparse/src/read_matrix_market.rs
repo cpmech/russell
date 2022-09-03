@@ -545,6 +545,14 @@ mod tests {
             Some("file is empty")
         );
         assert_eq!(
+            read_matrix_market(&String::from("./data/matrix_market/bad_wrong_header.mtx"), false).err(),
+            Some("after %%MatrixMarket, the first option must be \"matrix\"")
+        );
+        assert_eq!(
+            read_matrix_market(&String::from("./data/matrix_market/bad_wrong_dims.mtx"), false).err(),
+            Some("found invalid (zero or negative) dimensions")
+        );
+        assert_eq!(
             read_matrix_market(&String::from("./data/matrix_market/bad_missing_data.mtx"), false).err(),
             Some("not all triples (i,j,aij) have been found")
         );

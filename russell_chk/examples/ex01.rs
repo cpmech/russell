@@ -1,12 +1,12 @@
 use num_complex::Complex64;
-use russell_chk::{approx_eq, assert_deriv_approx_eq, assert_vec_approx_eq, complex_approx_eq};
+use russell_chk::{approx_eq, assert_deriv_approx_eq, complex_approx_eq, vec_approx_eq};
 
 fn main() {
     // check float point number
     approx_eq(0.0000123, 0.000012, 1e-6);
 
     // check vector of float point numbers
-    assert_vec_approx_eq!(&[0.01, 0.012], &[0.012, 0.01], 1e-2);
+    vec_approx_eq(&[0.01, 0.012], &[0.012, 0.01], 1e-2);
 
     // check derivative using central differences
     struct Arguments {}

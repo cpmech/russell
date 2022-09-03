@@ -41,7 +41,7 @@ pub fn copy_vector(v: &mut Vector, u: &Vector) -> Result<(), StrError> {
 #[cfg(test)]
 mod tests {
     use super::{copy_vector, Vector};
-    use crate::vec_approx_eq;
+    use russell_chk::vec_approx_eq;
 
     #[test]
     fn copy_vector_fails_on_wrong_dims() {
@@ -56,6 +56,6 @@ mod tests {
         let mut v = Vector::from(&[100.0, 200.0, 300.0]);
         copy_vector(&mut v, &u).unwrap();
         let correct = &[1.0, 2.0, 3.0];
-        vec_approx_eq(&v, correct, 1e-15);
+        vec_approx_eq(v.as_data(), correct, 1e-15);
     }
 }

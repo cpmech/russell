@@ -694,7 +694,7 @@ where
 mod tests {
     use super::NumVector;
     use crate::AsArray1D;
-    use russell_chk::assert_vec_approx_eq;
+    use russell_chk::vec_approx_eq;
     use serde::{Deserialize, Serialize};
     use std::fmt::Write;
 
@@ -743,8 +743,8 @@ mod tests {
     #[test]
     fn linspace_works() {
         let x = NumVector::<f64>::linspace(0.0, 1.0, 11).unwrap();
-        let correct = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
-        assert_vec_approx_eq!(x.data, correct, 1e-15);
+        let correct = &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+        vec_approx_eq(&x.data, correct, 1e-15);
 
         let x = NumVector::<f64>::linspace(2.0, 3.0, 0).unwrap();
         assert_eq!(x.data.len(), 0);

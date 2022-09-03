@@ -43,7 +43,7 @@ pub fn mat_sum_cols(v: &mut Vector, a: &Matrix) -> Result<(), StrError> {
 #[cfg(test)]
 mod tests {
     use super::{mat_sum_cols, Matrix, Vector};
-    use crate::vec_approx_eq;
+    use russell_chk::vec_approx_eq;
 
     #[test]
     fn mat_sum_cols_fails_on_wrong_dims() {
@@ -63,6 +63,6 @@ mod tests {
         let mut v = Vector::new(a.nrow());
         mat_sum_cols(&mut v, &a).unwrap();
         let correct = &[4.0, 8.0, 12.0];
-        vec_approx_eq(&v, correct, 1e-15);
+        vec_approx_eq(v.as_data(), correct, 1e-15);
     }
 }

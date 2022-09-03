@@ -148,7 +148,7 @@ pub fn dgeev_data_lr(
 mod tests {
     use super::{dgeev_data, dgeev_data_lr};
     use crate::StrError;
-    use russell_chk::assert_vec_approx_eq;
+    use russell_chk::vec_approx_eq;
 
     #[test]
     fn dgeev_data_fails_on_wrong_dims() {
@@ -221,8 +221,8 @@ mod tests {
              0.01, -0.01, -0.19,  0.19,  0.00,
              0.34, -0.34,  0.22, -0.22,  0.00,
         ];
-        assert_vec_approx_eq!(v_real, correct_v_real, 1e-15);
-        assert_vec_approx_eq!(v_imag, correct_v_imag, 1e-15);
+        vec_approx_eq(&v_real, correct_v_real, 1e-15);
+        vec_approx_eq(&v_imag, correct_v_imag, 1e-15);
         Ok(())
     }
 
@@ -412,10 +412,10 @@ mod tests {
             -0.09,  0.09, -0.08,  0.08,  0.00,
              0.00, -0.00, -0.49,  0.49,  0.00,
         ];
-        assert_vec_approx_eq!(vl_real, correct_vl_real, 1e-15);
-        assert_vec_approx_eq!(vl_imag, correct_vl_imag, 1e-15);
-        assert_vec_approx_eq!(vr_real, correct_vr_real, 1e-15);
-        assert_vec_approx_eq!(vr_imag, correct_vr_imag, 1e-15);
+        vec_approx_eq(&vl_real, correct_vl_real, 1e-15);
+        vec_approx_eq(&vl_imag, correct_vl_imag, 1e-15);
+        vec_approx_eq(&vr_real, correct_vr_real, 1e-15);
+        vec_approx_eq(&vr_imag, correct_vr_imag, 1e-15);
         Ok(())
     }
 }

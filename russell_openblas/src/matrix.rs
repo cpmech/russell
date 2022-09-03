@@ -806,7 +806,7 @@ mod tests {
     use crate::conversions::{dgeev_data, dgeev_data_lr};
     use crate::{to_i32, StrError};
     use num_complex::{Complex64, ComplexFloat};
-    use russell_chk::{approx_eq, assert_vec_approx_eq, complex_approx_eq, complex_vec_approx_eq};
+    use russell_chk::{approx_eq, complex_approx_eq, complex_vec_approx_eq, vec_approx_eq};
 
     #[test]
     fn dgemm_notrans_notrans_works() {
@@ -848,13 +848,13 @@ mod tests {
 
         // check
         #[rustfmt::skip]
-        let correct = [
+        let correct = &[
             2.0, -1.0, 4.0,
             2.0,  1.0, 4.0,
             2.0, -1.0, 5.0,
             2.0,  1.0, 2.0,
         ];
-        assert_vec_approx_eq!(c, correct, 1e-15);
+        vec_approx_eq(&c, correct, 1e-15);
     }
 
     #[test]
@@ -895,13 +895,13 @@ mod tests {
 
         // check
         #[rustfmt::skip]
-        let correct = [
+        let correct = &[
             2.0, -1.0, 4.0,
             2.0,  1.0, 4.0,
             2.0, -1.0, 5.0,
             2.0,  1.0, 2.0,
         ];
-        assert_vec_approx_eq!(c, correct, 1e-15);
+        vec_approx_eq(&c, correct, 1e-15);
     }
 
     #[test]
@@ -945,13 +945,13 @@ mod tests {
 
         // check
         #[rustfmt::skip]
-        let correct = [
+        let correct = &[
             2.0, -1.0, 4.0,
             2.0,  1.0, 4.0,
             2.0, -1.0, 5.0,
             2.0,  1.0, 2.0,
         ];
-        assert_vec_approx_eq!(c, correct, 1e-15);
+        vec_approx_eq(&c, correct, 1e-15);
     }
 
     #[test]
@@ -993,13 +993,13 @@ mod tests {
 
         // check
         #[rustfmt::skip]
-        let correct = [
+        let correct = &[
             2.0, -1.0, 4.0,
             2.0,  1.0, 4.0,
             2.0, -1.0, 5.0,
             2.0,  1.0, 2.0,
         ];
-        assert_vec_approx_eq!(c, correct, 1e-15);
+        vec_approx_eq(&c, correct, 1e-15);
     }
 
     #[test]
@@ -1093,26 +1093,26 @@ mod tests {
 
         // check results: c := up(3⋅a⋅aᵀ - c)
         #[rustfmt::skip]
-        let c_up_correct = [
+        let c_up_correct = &[
             21.0, 21.0, 24.0,  3.0,
              0.0, 24.0, 32.0,  7.0,
              0.0,  0.0, 71.0, 14.0,
              0.0,  0.0,  0.0,  6.0,
         ];
-        assert_vec_approx_eq!(c_up, c_up_correct, 1e-15);
+        vec_approx_eq(&c_up, c_up_correct, 1e-15);
 
         // run dsyrk with lo part of matrix c
         dsyrk(false, trans, n, k, alpha, &a, beta, &mut c_lo);
 
         // check results: c := lo(3⋅a⋅aᵀ - c)
         #[rustfmt::skip]
-        let c_lo_correct = [
+        let c_lo_correct = &[
             21.0,  0.0,  0.0,  0.0,
             21.0, 24.0,  0.0,  0.0,
             24.0, 32.0, 71.0,  0.0,
              3.0,  7.0, 14.0,  6.0,
         ];
-        assert_vec_approx_eq!(c_lo, c_lo_correct, 1e-15);
+        vec_approx_eq(&c_lo, c_lo_correct, 1e-15);
     }
 
     #[test]
@@ -1361,7 +1361,7 @@ mod tests {
 
         // check
         let s_correct = &[3.0, f64::sqrt(5.0), 2.0, 0.0];
-        assert_vec_approx_eq!(s, s_correct, 1e-15);
+        vec_approx_eq(&s, s_correct, 1e-15);
 
         // check SVD
         let mut usv = vec![0.0; m * n];
@@ -1372,7 +1372,7 @@ mod tests {
                 }
             }
         }
-        assert_vec_approx_eq!(usv, a_copy, 1e-15);
+        vec_approx_eq(&usv, &a_copy, 1e-15);
         Ok(())
     }
 
@@ -1414,7 +1414,7 @@ mod tests {
 
         // check
         let s_correct = &[2.0, 2.0 / f64::sqrt(3.0), 2.0 / f64::sqrt(3.0)];
-        assert_vec_approx_eq!(s, s_correct, 1e-15);
+        vec_approx_eq(&s, s_correct, 1e-15);
 
         // check SVD
         let mut usv = vec![0.0; m * n];
@@ -1425,7 +1425,7 @@ mod tests {
                 }
             }
         }
-        assert_vec_approx_eq!(usv, a_copy, 1e-15);
+        vec_approx_eq(&usv, &a_copy, 1e-15);
         Ok(())
     }
 
@@ -1490,7 +1490,7 @@ mod tests {
         )?;
 
         let s_correct = &[1.0, 1.0, 1.0, 1.0];
-        assert_vec_approx_eq!(s, s_correct, 1e-15);
+        vec_approx_eq(&s, s_correct, 1e-15);
 
         // check SVD
         let mut usv = vec![Complex64::new(0.0, 0.0); m * n];
@@ -1546,7 +1546,7 @@ mod tests {
             1.854745532331560e+00,
             2.838125418935204e-01,
         ];
-        assert_vec_approx_eq!(s, s_correct, 1e-14);
+        vec_approx_eq(&s, s_correct, 1e-14);
 
         // check SVD
         let mut usv = vec![Complex64::new(0.0, 0.0); m * n];
@@ -1599,26 +1599,26 @@ mod tests {
 
         // check LU
         #[rustfmt::skip]
-        let lu_correct = [
+        let lu_correct = &[
             4.0e+00, 0.000000000000000e+00,  3.000000000000000e+00,  1.000000000000000e+00,
             5.0e-01, 3.000000000000000e+00, -2.500000000000000e+00,  5.000000000000000e-01,
             2.5e-01, 6.666666666666666e-01,  9.166666666666665e-01,  3.416666666666667e+00,
             2.5e-01, 6.666666666666666e-01,  1.000000000000000e+00, -3.000000000000000e+00,
         ];
-        assert_vec_approx_eq!(a, lu_correct, 1e-15);
+        vec_approx_eq(&a, lu_correct, 1e-15);
 
         // run dgetri
         dgetri(n_i32, &mut a, &ipiv)?;
 
         // check inverse matrix
         #[rustfmt::skip]
-        let ai_correct = [
+        let ai_correct = &[
             -8.484848484848487e-01,  5.454545454545455e-01,  3.030303030303039e-02,  1.818181818181818e-01,
              1.090909090909091e+00, -2.727272727272728e-01, -1.818181818181817e-01, -9.090909090909091e-02,
              1.242424242424243e+00, -7.272727272727273e-01, -1.515151515151516e-01,  9.090909090909088e-02,
             -3.333333333333333e-01,  0.000000000000000e+00,  3.333333333333333e-01,  0.000000000000000e+00,
         ];
-        assert_vec_approx_eq!(a, ai_correct, 1e-15);
+        vec_approx_eq(&a, ai_correct, 1e-15);
 
         // check again: a⋅a⁻¹ = I
         for i in 0..m {
@@ -1747,26 +1747,26 @@ mod tests {
 
         // check Cholesky
         #[rustfmt::skip]
-        let a_up_correct = [
+        let a_up_correct = &[
             1.732050807568877e+00,  0.000000000000000e+00, -1.732050807568878e+00,  0.000000000000000e+00,
             0.000000000000000e+00,  1.732050807568877e+00,  5.773502691896258e-01,  1.154700538379252e+00,
             0.000000000000000e+00,  0.000000000000000e+00,  8.164965809277251e-01,  4.082482904638632e-01,
             0.000000000000000e+00,  0.000000000000000e+00,  0.000000000000000e+00,  1.224744871391589e+00,
         ];
-        assert_vec_approx_eq!(a_up, a_up_correct, 1e-15);
+        vec_approx_eq(&a_up, a_up_correct, 1e-15);
 
         // run dpotrf with lo part of matrix a
         dpotrf(false, n, &mut a_lo)?;
 
         // check Cholesky
         #[rustfmt::skip]
-        let a_lo_correct = [
+        let a_lo_correct = &[
              1.732050807568877e+00,  0.000000000000000e+00,  0.000000000000000e+00,  0.000000000000000e+00,
              0.000000000000000e+00,  1.732050807568877e+00,  0.000000000000000e+00,  0.000000000000000e+00,
             -1.732050807568878e+00,  5.773502691896258e-01,  8.164965809277251e-01,  0.000000000000000e+00,
              0.000000000000000e+00,  1.154700538379252e+00,  4.082482904638632e-01,  1.224744871391589e+00,
         ];
-        assert_vec_approx_eq!(a_lo, a_lo_correct, 1e-15);
+        vec_approx_eq(&a_lo, a_lo_correct, 1e-15);
         Ok(())
     }
 
@@ -1868,21 +1868,21 @@ mod tests {
 
         // check eigenvalues
         #[rustfmt::skip]
-        let wr_correct = [
+        let wr_correct = &[
              7.994821225862098e-01,
             -9.941245329507467e-02,
             -9.941245329507467e-02,
             -1.006572159960587e-01,
         ];
         #[rustfmt::skip]
-        let wi_correct = [
+        let wi_correct = &[
              0.0,
              4.007924719897546e-01,
             -4.007924719897546e-01,
              0.0,
         ];
-        assert_vec_approx_eq!(wr, wr_correct, 1e-15);
-        assert_vec_approx_eq!(wi, wi_correct, 1e-15);
+        vec_approx_eq(&wr, wr_correct, 1e-15);
+        vec_approx_eq(&wi, wi_correct, 1e-15);
 
         // extract eigenvalues from dgeev data
         let mut vl_real = vec![0.0; sz * sz];
@@ -1893,39 +1893,39 @@ mod tests {
 
         // check left eigenvectors
         #[rustfmt::skip]
-        let vl_real_correct = [
+        let vl_real_correct = &[
             -6.244707486379453e-01,  5.330229831716200e-01,  5.330229831716200e-01,  6.641410231734539e-01,
             -5.994889025288728e-01, -2.666163325181558e-01, -2.666163325181558e-01, -1.068153340034493e-01,
              4.999156725721429e-01,  3.455257668600027e-01,  3.455257668600027e-01,  7.293254091191846e-01,
             -2.708616172576073e-02, -2.540814367391268e-01, -2.540814367391268e-01,  1.248664621625170e-01,
         ];
         #[rustfmt::skip]
-        let vl_imag_correct = [
+        let vl_imag_correct = &[
             0.0,  0.0,                    0.0,                   0.0,
             0.0,  4.041362636762622e-01, -4.041362636762622e-01, 0.0,
             0.0,  3.152853126680209e-01, -3.152853126680209e-01, 0.0,
             0.0, -4.451133008385643e-01,  4.451133008385643e-01, 0.0,
         ];
-        assert_vec_approx_eq!(vl_real, vl_real_correct, 1e-15);
-        assert_vec_approx_eq!(vl_imag, vl_imag_correct, 1e-15);
+        vec_approx_eq(&vl_real, vl_real_correct, 1e-15);
+        vec_approx_eq(&vl_imag, vl_imag_correct, 1e-15);
 
         // check right eigenvectors
         #[rustfmt::skip]
-        let vr_real_correct = [
+        let vr_real_correct = &[
             -6.550887675124076e-01,-1.933015482642217e-01,-1.933015482642217e-01, 1.253326972309026e-01,
             -5.236294609021240e-01, 2.518565317267399e-01, 2.518565317267399e-01, 3.320222155717508e-01,
              5.362184613722345e-01, 9.718245844328152e-02, 9.718245844328152e-02, 5.938377595573312e-01,
             -9.560677820122976e-02, 6.759540542547480e-01, 6.759540542547480e-01, 7.220870298624550e-01,
         ];
         #[rustfmt::skip]
-        let vr_imag_correct = [
+        let vr_imag_correct = &[
             0.0,  2.546315719275843e-01, -2.546315719275843e-01, 0.0,
             0.0, -5.224047347116287e-01,  5.224047347116287e-01, 0.0,
             0.0, -3.083837558972283e-01,  3.083837558972283e-01, 0.0,
             0.0,  0.0,                    0.0,                   0.0,
         ];
-        assert_vec_approx_eq!(vr_real, vr_real_correct, 1e-15);
-        assert_vec_approx_eq!(vr_imag, vr_imag_correct, 1e-15);
+        vec_approx_eq(&vr_real, vr_real_correct, 1e-15);
+        vec_approx_eq(&vr_imag, vr_imag_correct, 1e-15);
 
         // clear output arrays
         wr.iter_mut().map(|x| *x = 0.0).count();
@@ -1951,7 +1951,7 @@ mod tests {
         dgeev_data(&mut vl_real, &mut vl_imag, &wi, &vl)?;
 
         // check left eigenvalues
-        assert_vec_approx_eq!(vl_real, vl_real_correct, 1e-15);
+        vec_approx_eq(&vl_real, vl_real_correct, 1e-15);
 
         // compute eigen-things again, vr only
         dgeev(false, true, n, &mut a_copy2, &mut wr, &mut wi, &mut empty, &mut vr)?;
@@ -1962,7 +1962,7 @@ mod tests {
         dgeev_data(&mut vr_real, &mut vr_imag, &wi, &vr)?;
 
         // check left eigenvalues
-        assert_vec_approx_eq!(vr_real, vr_real_correct, 1e-15);
+        vec_approx_eq(&vr_real, vr_real_correct, 1e-15);
 
         // done
         Ok(())

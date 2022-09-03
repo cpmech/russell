@@ -33,13 +33,13 @@ pub fn scale_vector(v: &mut Vector, alpha: f64) {
 #[cfg(test)]
 mod tests {
     use super::{scale_vector, Vector};
-    use crate::vec_approx_eq;
+    use russell_chk::vec_approx_eq;
 
     #[test]
     fn scale_vector_works() {
         let mut u = Vector::from(&[6.0, 9.0, 12.0]);
         scale_vector(&mut u, 1.0 / 3.0);
         let correct = &[2.0, 3.0, 4.0];
-        vec_approx_eq(&u, correct, 1e-15);
+        vec_approx_eq(u.as_data(), correct, 1e-15);
     }
 }

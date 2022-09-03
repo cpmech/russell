@@ -192,7 +192,7 @@ pub fn t2_dot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, StrError> {
 /// # Example
 ///
 /// ```
-/// use russell_lab::{vec_approx_eq, Vector};
+/// use russell_lab::Vector;
 /// use russell_tensor::{t2_dot_vec, Tensor2, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
@@ -207,7 +207,13 @@ pub fn t2_dot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, StrError> {
 ///     let mut v = Vector::new(2);
 ///     t2_dot_vec(&mut v, 2.0, &a, &u)?;
 ///
-///     vec_approx_eq(&v, &[6.0, -2.0], 1e-15);
+///     assert_eq!(
+///         format!("{:.1}", v),
+///         "┌      ┐\n\
+///          │  6.0 │\n\
+///          │ -2.0 │\n\
+///          └      ┘"
+///     );
 ///     Ok(())
 /// }
 /// ```
@@ -238,7 +244,7 @@ pub fn t2_dot_vec(v: &mut Vector, alpha: f64, a: &Tensor2, u: &Vector) -> Result
 /// # Example
 ///
 /// ```
-/// use russell_lab::{vec_approx_eq, Vector};
+/// use russell_lab::Vector;
 /// use russell_tensor::{vec_dot_t2, Tensor2, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
@@ -253,7 +259,13 @@ pub fn t2_dot_vec(v: &mut Vector, alpha: f64, a: &Tensor2, u: &Vector) -> Result
 ///     let mut v = Vector::new(2);
 ///     vec_dot_t2(&mut v, 2.0, &u, &a)?;
 ///
-///     vec_approx_eq(&v, &[6.0, -2.0], 1e-15);
+///     assert_eq!(
+///         format!("{:.1}", v),
+///         "┌      ┐\n\
+///          │  6.0 │\n\
+///          │ -2.0 │\n\
+///          └      ┘"
+///     );
 ///     Ok(())
 /// }
 /// ```
@@ -512,8 +524,8 @@ mod tests {
         vec_dot_t2, Tensor2, Tensor4,
     };
     use crate::Samples;
-    use russell_chk::approx_eq;
-    use russell_lab::{vec_approx_eq, Vector};
+    use russell_chk::{approx_eq, vec_approx_eq};
+    use russell_lab::Vector;
 
     #[test]
     fn copy_tensor2_fails_on_wrong_input() {
@@ -685,7 +697,7 @@ mod tests {
             [ 84.0,  69.0, 54.0],
             [138.0, 114.0, 90.0],
         ], false, false).unwrap();
-        vec_approx_eq(&c.vec, &correct.vec, 1e-13);
+        vec_approx_eq(c.vec.as_data(), correct.vec.as_data(), 1e-13);
 
         // sym-3D . sym-3D
         #[rustfmt::skip]
@@ -707,7 +719,7 @@ mod tests {
             [52.0, 44.0, 37.0],
             [61.0, 52.0, 59.0],
         ], false, false).unwrap();
-        vec_approx_eq(&c.vec, &correct.vec, 1e-13);
+        vec_approx_eq(c.vec.as_data(), correct.vec.as_data(), 1e-13);
 
         // sym-3D . general
         #[rustfmt::skip]
@@ -729,7 +741,7 @@ mod tests {
             [66.0, 53.0, 40.0],
             [90.0, 72.0, 54.0],
         ], false, false).unwrap();
-        vec_approx_eq(&c.vec, &correct.vec, 1e-13);
+        vec_approx_eq(c.vec.as_data(), correct.vec.as_data(), 1e-13);
 
         // sym-3D . sym-2D
         #[rustfmt::skip]
@@ -751,7 +763,7 @@ mod tests {
             [58.0, 41.0, 6.0],
             [75.0, 54.0, 9.0],
         ], false, false).unwrap();
-        vec_approx_eq(&c.vec, &correct.vec, 1e-13);
+        vec_approx_eq(c.vec.as_data(), correct.vec.as_data(), 1e-13);
     }
 
     #[test]
@@ -779,7 +791,7 @@ mod tests {
         let u = Vector::from(&[-2.0, -3.0, -4.0]);
         let mut v = Vector::new(3);
         t2_dot_vec(&mut v, 2.0, &a, &u).unwrap();
-        vec_approx_eq(&v, &[-40.0, -94.0, -148.0], 1e-13);
+        vec_approx_eq(v.as_data(), &[-40.0, -94.0, -148.0], 1e-13);
 
         // sym-3D . vec
         #[rustfmt::skip]
@@ -791,7 +803,7 @@ mod tests {
         let u = Vector::from(&[-2.0, -3.0, -4.0]);
         let mut v = Vector::new(3);
         t2_dot_vec(&mut v, 2.0, &a, &u).unwrap();
-        vec_approx_eq(&v, &[-40.0, -86.0, -120.0], 1e-13);
+        vec_approx_eq(v.as_data(), &[-40.0, -86.0, -120.0], 1e-13);
 
         // sym-2D . vec
         #[rustfmt::skip]
@@ -803,7 +815,7 @@ mod tests {
         let u = Vector::from(&[-2.0, -3.0]);
         let mut v = Vector::new(2);
         t2_dot_vec(&mut v, 2.0, &a, &u).unwrap();
-        vec_approx_eq(&v, &[-16.0, -38.0], 1e-13);
+        vec_approx_eq(v.as_data(), &[-16.0, -38.0], 1e-13);
     }
 
     #[test]
@@ -831,7 +843,7 @@ mod tests {
         ], false, false).unwrap();
         let mut v = Vector::new(3);
         vec_dot_t2(&mut v, 2.0, &u, &a).unwrap();
-        vec_approx_eq(&v, &[-84.0, -102.0, -120.0], 1e-13);
+        vec_approx_eq(v.as_data(), &[-84.0, -102.0, -120.0], 1e-13);
 
         // sym-3D . vec
         let u = Vector::from(&[-2.0, -3.0, -4.0]);
@@ -843,7 +855,7 @@ mod tests {
         ], true, false).unwrap();
         let mut v = Vector::new(3);
         vec_dot_t2(&mut v, 2.0, &u, &a).unwrap();
-        vec_approx_eq(&v, &[-40.0, -86.0, -120.0], 1e-13);
+        vec_approx_eq(v.as_data(), &[-40.0, -86.0, -120.0], 1e-13);
 
         // sym-2D . vec
         let u = Vector::from(&[-2.0, -3.0]);
@@ -855,7 +867,7 @@ mod tests {
         ], true, true).unwrap();
         let mut v = Vector::new(2);
         vec_dot_t2(&mut v, 2.0, &u, &a).unwrap();
-        vec_approx_eq(&v, &[-16.0, -38.0], 1e-13);
+        vec_approx_eq(v.as_data(), &[-16.0, -38.0], 1e-13);
     }
 
     #[test]

@@ -303,13 +303,13 @@ pub fn eigen_decomp_lr(
 #[cfg(test)]
 mod tests {
     use super::{eigen_decomp, eigen_decomp_lr};
+    use crate::mat_approx_eq;
     use crate::{
         add_matrices, complex_add_matrices, complex_mat_mat_mul, complex_mat_zip, complex_matrix_norm, complex_vec_zip,
         mat_mat_mul, matrix_norm, AsArray2D, ComplexMatrix, Matrix, NormMat, Vector,
     };
-    use crate::{mat_approx_eq, vec_approx_eq};
     use num_complex::Complex64;
-    use russell_chk::approx_eq;
+    use russell_chk::{approx_eq, vec_approx_eq};
 
     // Checks the eigen-decomposition (similarity transformation) of a
     // symmetric matrix with real-only eigenvalues and eigenvectors
@@ -534,8 +534,8 @@ mod tests {
         let s3 = f64::sqrt(3.0);
         let l_real_correct = &[-0.5, -0.5, 1.0];
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
-        vec_approx_eq(&l_real, l_real_correct, 1e-15);
-        vec_approx_eq(&l_imag, l_imag_correct, 1e-15);
+        vec_approx_eq(l_real.as_data(), l_real_correct, 1e-15);
+        vec_approx_eq(l_imag.as_data(), l_imag_correct, 1e-15);
         check_general_eigen(&data, &v_real, &l_real, &v_imag, &l_imag);
     }
 
@@ -567,8 +567,8 @@ mod tests {
             [1.0, -1.0,  os3, -os3],
         ];
         let v_imag_correct = Matrix::new(4, 4);
-        vec_approx_eq(&l_real, l_real_correct, 1e-15);
-        vec_approx_eq(&l_imag, l_imag_correct, 1e-15);
+        vec_approx_eq(l_real.as_data(), l_real_correct, 1e-15);
+        vec_approx_eq(l_imag.as_data(), l_imag_correct, 1e-15);
         mat_approx_eq(&v_real, v_real_correct, 1e-15);
         mat_approx_eq(&v_imag, &v_imag_correct, 1e-15);
         check_real_eigen(&data, &v_real, &l_real);
@@ -603,8 +603,8 @@ mod tests {
         let s3 = f64::sqrt(3.0);
         let l_real_correct = &[-0.5, -0.5, 1.0];
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
-        vec_approx_eq(&l_real, l_real_correct, 1e-15);
-        vec_approx_eq(&l_imag, l_imag_correct, 1e-15);
+        vec_approx_eq(l_real.as_data(), l_real_correct, 1e-15);
+        vec_approx_eq(l_imag.as_data(), l_imag_correct, 1e-15);
         check_general_eigen(&data, &v_real, &l_real, &v_imag, &l_imag);
     }
 }

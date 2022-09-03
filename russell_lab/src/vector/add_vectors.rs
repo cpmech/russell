@@ -51,7 +51,7 @@ pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector
 mod tests {
     use super::{add_vectors, Vector};
     use crate::constants;
-    use crate::vec_approx_eq;
+    use russell_chk::vec_approx_eq;
 
     #[test]
     fn add_vectors_fail_on_wrong_dims() {
@@ -92,14 +92,14 @@ mod tests {
         let mut w = Vector::from(&vec![NOISE; u.dim()]);
         add_vectors(&mut w, 1.0, &u, -4.0, &v).unwrap();
         #[rustfmt::skip]
-        let correct = [
+        let correct = &[
             -1.0, -2.0,
             -1.0, -2.0, -3.0, -4.0,
             -1.0, -2.0, -3.0, -4.0,
             -1.0, -2.0, -3.0, -4.0,
             -1.0, -2.0, -3.0, -4.0,
         ];
-        vec_approx_eq(&w, &correct, 1e-15);
+        vec_approx_eq(w.as_data(), correct, 1e-15);
     }
 
     #[test]
@@ -116,7 +116,7 @@ mod tests {
                 correct[i] = i as f64;
             }
             add_vectors(&mut w, 0.5, &u, 0.5, &v).unwrap();
-            vec_approx_eq(&w, &correct, 1e-15);
+            vec_approx_eq(w.as_data(), &correct, 1e-15);
         }
     }
 }

@@ -195,7 +195,7 @@ mod tests {
     use super::{dasum, daxpy, dcopy, ddot, dnrm2, dscal, idamax, zaxpy, zcopy, zscal};
     use crate::to_i32;
     use num_complex::Complex64;
-    use russell_chk::{approx_eq, assert_vec_approx_eq, complex_vec_approx_eq};
+    use russell_chk::{approx_eq, complex_vec_approx_eq, vec_approx_eq};
 
     #[test]
     fn ddot_works() {
@@ -213,7 +213,7 @@ mod tests {
         let mut y = [200.0, 100.0, -300.0, IGNORED, IGNORED];
         let (n, incx, incy) = (3, 1, 1);
         dcopy(n, &x, incx, &mut y, incy);
-        assert_vec_approx_eq!(x, &[20.0, 10.0, -30.0, IGNORED, IGNORED], 1e-15);
+        vec_approx_eq(&x, &[20.0, 10.0, -30.0, IGNORED, IGNORED], 1e-15);
     }
 
     #[test]
@@ -255,7 +255,7 @@ mod tests {
         let mut x = [20.0, 10.0, -30.0, IGNORED, IGNORED];
         let (n, incx) = (3, 1);
         dscal(n, alpha, &mut x, incx);
-        assert_vec_approx_eq!(x, &[10.0, 5.0, -15.0, IGNORED, IGNORED], 1e-15);
+        vec_approx_eq(&x, &[10.0, 5.0, -15.0, IGNORED, IGNORED], 1e-15);
     }
 
     #[test]
@@ -314,8 +314,8 @@ mod tests {
         let mut y = [-15.0, -5.0, -24.0, IGNORED, IGNORED, IGNORED];
         let (n, incx, incy) = (3, 1, 1);
         daxpy(n, alpha, &x, incx, &mut y, incy);
-        assert_vec_approx_eq!(x, &[20.0, 10.0, 48.0, IGNORED, IGNORED], 1e-15);
-        assert_vec_approx_eq!(y, &[-5.0, 0.0, 0.0, IGNORED, IGNORED, IGNORED], 1e-15);
+        vec_approx_eq(&x, &[20.0, 10.0, 48.0, IGNORED, IGNORED], 1e-15);
+        vec_approx_eq(&y, &[-5.0, 0.0, 0.0, IGNORED, IGNORED, IGNORED], 1e-15);
     }
 
     #[test]

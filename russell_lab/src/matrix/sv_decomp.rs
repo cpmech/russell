@@ -173,9 +173,10 @@ pub fn sv_decomp(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix
 
 #[cfg(test)]
 mod tests {
+    use russell_chk::vec_approx_eq;
+
     use super::{sv_decomp, Matrix, Vector};
     use crate::mat_approx_eq;
-    use crate::vec_approx_eq;
 
     #[test]
     fn sv_decomp_fails_on_wrong_dims() {
@@ -255,7 +256,7 @@ mod tests {
             [1.0,  0.0,  0.0],
         ];
         mat_approx_eq(&u, u_correct, 1e-15);
-        vec_approx_eq(&s, s_correct, 1e-15);
+        vec_approx_eq(s.as_data(), s_correct, 1e-15);
         mat_approx_eq(&vt, vt_correct, 1e-15);
 
         // check SVD
@@ -311,7 +312,7 @@ mod tests {
             [       0.0, -1.0/sqrt2,       0.0, 1.0/sqrt2],
         ];
         mat_approx_eq(&u, u_correct, 1e-15);
-        vec_approx_eq(&s, s_correct, 1e-15);
+        vec_approx_eq(s.as_data(), s_correct, 1e-15);
         mat_approx_eq(&vt, vt_correct, 1e-15);
 
         // check SVD

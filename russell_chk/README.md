@@ -38,12 +38,12 @@ fn main() {
 ### Check a vector of float point numbers
 
 ```rust
-use russell_chk::assert_vec_approx_eq;
+use russell_chk::vec_approx_eq;
 
 fn main() {
     let a = [0.123456789, 0.123456789, 0.123456789];
     let b = [0.12345678,  0.1234567,   0.123456];
-    assert_vec_approx_eq!(&a, &b, 1e-6);
+    vec_approx_eq(&a, &b, 1e-6);
 }
 ```
 

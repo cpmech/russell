@@ -273,7 +273,7 @@ mod tests {
     use super::{dgemv, dger, dgesv, zgemv, zgesv};
     use crate::{to_i32, StrError};
     use num_complex::Complex64;
-    use russell_chk::{assert_vec_approx_eq, complex_vec_approx_eq};
+    use russell_chk::{complex_vec_approx_eq, vec_approx_eq};
 
     #[test]
     fn dger_works() {
@@ -292,13 +292,13 @@ mod tests {
         dger(m, n, alpha, u, 1, v, 1, &mut a);
         // a = 100 + 0.5⋅u⋅vᵀ
         #[rustfmt::skip]
-        let correct = [
+        let correct = &[
             102.0, 101.5, 101.0,
             104.0, 103.0, 102.0,
             106.0, 104.5, 103.0,
             108.0, 106.0, 104.0,
         ];
-        assert_vec_approx_eq!(a, correct, 1e-15);
+        vec_approx_eq(&a, correct, 1e-15);
     }
 
     #[test]
@@ -317,14 +317,14 @@ mod tests {
         let mut x = [20.0, 10.0, 30.0];
         let mut y = [3.0, 1.0, 2.0, 4.0];
         dgemv(false, 4, 3, alpha, &a, &x, 1, beta, &mut y, 1);
-        assert_vec_approx_eq!(y, &[12.5, 17.5, 29.5, 43.5], 1e-15);
+        vec_approx_eq(&y, &[12.5, 17.5, 29.5, 43.5], 1e-15);
 
         // perform mv with transpose
         dgemv(true, 4, 3, alpha, &a, &y, 1, beta, &mut x, 1);
-        assert_vec_approx_eq!(x, &[144.125, 30.3, 75.45], 1e-15);
+        vec_approx_eq(&x, &[144.125, 30.3, 75.45], 1e-15);
 
         // check that a is unmodified
-        assert_vec_approx_eq!(a, &[0.1, 0.2, 0.3, 1.0, 0.2, 0.3, 2.0, 0.2, 0.3, 3.0, 0.2, 0.3], 1e-15);
+        vec_approx_eq(&a, &[0.1, 0.2, 0.3, 1.0, 0.2, 0.3, 2.0, 0.2, 0.3, 3.0, 0.2, 0.3], 1e-15);
     }
 
     #[test]
@@ -424,7 +424,7 @@ mod tests {
 
         // check
         let correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
-        assert_vec_approx_eq!(b, correct, 1e-14);
+        vec_approx_eq(&b, correct, 1e-14);
         Ok(())
     }
 

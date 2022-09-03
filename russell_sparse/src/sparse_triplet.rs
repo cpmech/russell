@@ -343,7 +343,8 @@ impl fmt::Display for SparseTriplet {
 mod tests {
     use super::SparseTriplet;
     use crate::{StrError, Symmetry};
-    use russell_lab::{vec_approx_eq, Matrix, Vector};
+    use russell_chk::vec_approx_eq;
+    use russell_lab::{Matrix, Vector};
 
     #[test]
     fn new_fails_on_wrong_input() {
@@ -519,7 +520,7 @@ mod tests {
         let u = Vector::from(&[0.1, 0.2, 0.3, 0.4, 0.5]);
         let correct_v = &[5.5, 0.55, 55.0];
         let v = trip.mat_vec_mul(&u)?;
-        vec_approx_eq(&v, correct_v, 1e-15);
+        vec_approx_eq(v.as_data(), correct_v, 1e-15);
         Ok(())
     }
 
@@ -553,7 +554,7 @@ mod tests {
         let u = Vector::from(&[-629.0 / 98.0, 237.0 / 49.0, -53.0 / 49.0, 62.0 / 49.0, 23.0 / 14.0]);
         let correct_v = &[-2.0, 4.0, 3.0, -5.0, 1.0];
         let v = trip.mat_vec_mul(&u)?;
-        vec_approx_eq(&v, correct_v, 1e-14);
+        vec_approx_eq(v.as_data(), correct_v, 1e-14);
         Ok(())
     }
 
@@ -597,7 +598,7 @@ mod tests {
         let u = Vector::from(&[-629.0 / 98.0, 237.0 / 49.0, -53.0 / 49.0, 62.0 / 49.0, 23.0 / 14.0]);
         let correct_v = &[-2.0, 4.0, 3.0, -5.0, 1.0];
         let v = trip.mat_vec_mul(&u)?;
-        vec_approx_eq(&v, correct_v, 1e-14);
+        vec_approx_eq(v.as_data(), correct_v, 1e-14);
         Ok(())
     }
 
@@ -615,7 +616,7 @@ mod tests {
         let u = Vector::from(&[5.0, 8.0, 7.0]);
         let correct_v = &[2.0, 4.0, 6.0];
         let v = trip.mat_vec_mul(&u)?;
-        vec_approx_eq(&v, correct_v, 1e-15);
+        vec_approx_eq(v.as_data(), correct_v, 1e-15);
         Ok(())
     }
 

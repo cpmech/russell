@@ -12,16 +12,16 @@ pub type StrError = &'static str;
 
 mod approx_eq;
 mod assert_deriv_approx_eq;
-mod assert_vec_approx_eq;
 mod complex_approx_eq;
 mod complex_vec_approx_eq;
 mod num_deriv;
+mod vec_approx_eq;
 pub use crate::approx_eq::*;
 pub use crate::assert_deriv_approx_eq::*;
-pub use crate::assert_vec_approx_eq::*;
 pub use crate::complex_approx_eq::*;
 pub use crate::complex_vec_approx_eq::*;
 pub use crate::num_deriv::*;
+pub use crate::vec_approx_eq::*;
 
 // run code from README file
 #[cfg(doctest)]

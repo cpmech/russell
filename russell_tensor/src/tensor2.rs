@@ -106,38 +106,73 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_lab::vec_approx_eq;
-    /// use russell_tensor::{Tensor2, SQRT_2, StrError};
+    /// use russell_tensor::{StrError, Tensor2, SQRT_2};
     ///
-    /// # fn main() -> Result<(), StrError> {
-    /// // general
-    /// let a = Tensor2::from_matrix(&[
-    ///     [       1.0, SQRT_2*2.0, SQRT_2*3.0],
-    ///     [SQRT_2*4.0,        5.0, SQRT_2*6.0],
-    ///     [SQRT_2*7.0, SQRT_2*8.0,        9.0],
-    /// ], false, false)?;
-    /// let correct = &[1.0,5.0,9.0, 6.0,14.0,10.0, -2.0,-2.0,-4.0];
-    /// vec_approx_eq(&a.vec, correct, 1e-14);
+    /// fn main() -> Result<(), StrError> {
+    ///     // general
+    ///     let a = Tensor2::from_matrix(
+    ///         &[
+    ///             [1.0, SQRT_2 * 2.0, SQRT_2 * 3.0],
+    ///             [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
+    ///             [SQRT_2 * 7.0, SQRT_2 * 8.0, 9.0],
+    ///         ],
+    ///         false,
+    ///         false,
+    ///     )?;
+    ///     assert_eq!(
+    ///         format!("{:.1}", a.vec),
+    ///         "┌      ┐\n\
+    ///          │  1.0 │\n\
+    ///          │  5.0 │\n\
+    ///          │  9.0 │\n\
+    ///          │  6.0 │\n\
+    ///          │ 14.0 │\n\
+    ///          │ 10.0 │\n\
+    ///          │ -2.0 │\n\
+    ///          │ -2.0 │\n\
+    ///          │ -4.0 │\n\
+    ///          └      ┘"
+    ///     );
     ///
-    /// // symmetric-3D
-    /// let b = Tensor2::from_matrix(&[
-    ///     [1.0,        4.0/SQRT_2, 6.0/SQRT_2],
-    ///     [4.0/SQRT_2, 2.0,        5.0/SQRT_2],
-    ///     [6.0/SQRT_2, 5.0/SQRT_2, 3.0       ],
-    /// ], true, false)?;
-    /// let correct = &[1.0,2.0,3.0, 4.0,5.0,6.0];
-    /// vec_approx_eq(&b.vec, correct, 1e-14);
+    ///     // symmetric-3D
+    ///     let b = Tensor2::from_matrix(
+    ///         &[
+    ///             [1.0, 4.0 / SQRT_2, 6.0 / SQRT_2],
+    ///             [4.0 / SQRT_2, 2.0, 5.0 / SQRT_2],
+    ///             [6.0 / SQRT_2, 5.0 / SQRT_2, 3.0],
+    ///         ],
+    ///         true,
+    ///         false,
+    ///     )?;
+    ///     assert_eq!(
+    ///         format!("{:.1}", b.vec),
+    ///         "┌     ┐\n\
+    ///          │ 1.0 │\n\
+    ///          │ 2.0 │\n\
+    ///          │ 3.0 │\n\
+    ///          │ 4.0 │\n\
+    ///          │ 5.0 │\n\
+    ///          │ 6.0 │\n\
+    ///          └     ┘"
+    ///     );
     ///
-    /// // symmetric-2D
-    /// let c = Tensor2::from_matrix(&[
-    ///     [1.0,        4.0/SQRT_2, 0.0],
-    ///     [4.0/SQRT_2, 2.0,        0.0],
-    ///     [0.0,        0.0,        3.0],
-    /// ], true, true)?;
-    /// let correct = &[1.0,2.0,3.0, 4.0];
-    /// vec_approx_eq(&c.vec, correct, 1e-14);
-    /// # Ok(())
-    /// # }
+    ///     // symmetric-2D
+    ///     let c = Tensor2::from_matrix(
+    ///         &[[1.0, 4.0 / SQRT_2, 0.0], [4.0 / SQRT_2, 2.0, 0.0], [0.0, 0.0, 3.0]],
+    ///         true,
+    ///         true,
+    ///     )?;
+    ///     assert_eq!(
+    ///         format!("{:.1}", c.vec),
+    ///         "┌     ┐\n\
+    ///          │ 1.0 │\n\
+    ///          │ 2.0 │\n\
+    ///          │ 3.0 │\n\
+    ///          │ 4.0 │\n\
+    ///          └     ┘"
+    ///     );
+    ///     Ok(())
+    /// }
     /// ```
     pub fn from_matrix(tt: &[[f64; 3]; 3], symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
         if symmetric {
@@ -336,8 +371,7 @@ impl Tensor2 {
 #[cfg(test)]
 mod tests {
     use super::{Tensor2, SQRT_2};
-    use russell_chk::approx_eq;
-    use russell_lab::vec_approx_eq;
+    use russell_chk::{approx_eq, vec_approx_eq};
     use serde::{Deserialize, Serialize};
 
     #[test]
@@ -379,7 +413,7 @@ mod tests {
             -2.0 / SQRT_2,
             -4.0 / SQRT_2,
         ];
-        vec_approx_eq(&tt.vec, correct, 1e-15);
+        vec_approx_eq(tt.vec.as_data(), correct, 1e-15);
 
         // symmetric 3D
         #[rustfmt::skip]
@@ -390,7 +424,7 @@ mod tests {
         ];
         let tt = Tensor2::from_matrix(comps_std, true, false).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2];
-        vec_approx_eq(&tt.vec, correct, 1e-14);
+        vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
 
         // symmetric 2D
         #[rustfmt::skip]
@@ -401,7 +435,7 @@ mod tests {
         ];
         let tt = Tensor2::from_matrix(comps_std, true, true).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2];
-        vec_approx_eq(&tt.vec, correct, 1e-14);
+        vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
     }
 
     #[test]

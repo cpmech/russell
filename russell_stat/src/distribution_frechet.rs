@@ -253,4 +253,11 @@ mod tests {
         assert_eq!(d.mean(), f64::INFINITY);
         assert_eq!(d.variance(), f64::INFINITY);
     }
+
+    #[test]
+    fn sample_works() {
+        let d = DistributionFrechet::new(1.0, 2.0, 3.0).unwrap();
+        let mut rng = rand::thread_rng();
+        d.sample(&mut rng);
+    }
 }

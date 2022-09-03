@@ -259,4 +259,11 @@ mod tests {
         approx_eq(d.mean(), mu, 1e-14);
         approx_eq(d.variance(), sig * sig, 1e-14);
     }
+
+    #[test]
+    fn sample_works() {
+        let d = DistributionGumbel::new(1.0, 2.0).unwrap();
+        let mut rng = rand::thread_rng();
+        d.sample(&mut rng);
+    }
 }

@@ -1,6 +1,38 @@
 use num_traits::{Num, NumCast};
 
 /// Panics if two numbers are not approximately equal to each other
+///
+/// # Input
+///
+/// `a` -- Left value
+/// `b` -- Right value
+/// `tol: f64` -- Error tolerance: panic occurs if `|a - b| > tol`
+///
+/// # Examples
+///
+/// ## Accepts small error
+///
+/// ```
+/// use russell_chk::approx_eq;
+///
+/// fn main() {
+///     let a = 3.0000001;
+///     let b = 3.0;
+///     approx_eq(a, b, 1e-6);
+/// }
+/// ```
+///
+/// ## Panics on different value
+///
+/// ```should_panic
+/// use russell_chk::approx_eq;
+///
+/// fn main() {
+///     let a = 1.0;
+///     let b = 2.0;
+///     approx_eq(a, b, 1e-6);
+/// }
+/// ```
 pub fn approx_eq<T>(a: T, b: T, tol: f64)
 where
     T: Num + NumCast + Copy,

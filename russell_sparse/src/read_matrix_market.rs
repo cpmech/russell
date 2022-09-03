@@ -392,11 +392,11 @@ pub fn read_matrix_market(filepath: &String, sym_mirror: bool) -> Result<SparseT
 #[cfg(test)]
 mod tests {
     use super::{read_matrix_market, MatrixMarketData};
-    use crate::{StrError, Symmetry};
+    use crate::Symmetry;
     use russell_lab::Matrix;
 
     #[test]
-    fn parse_header_captures_errors() -> Result<(), StrError> {
+    fn parse_header_captures_errors() {
         let mut data = MatrixMarketData::new();
 
         assert_eq!(
@@ -443,11 +443,10 @@ mod tests {
             data.parse_header(&String::from("  %%MatrixMarket matrix coordinate real wrong")),
             Err("after %%MatrixMarket, the fourth option must be either \"general\" or \"symmetric\""),
         );
-        Ok(())
     }
 
     #[test]
-    fn parse_dimensions_captures_errors() -> Result<(), StrError> {
+    fn parse_dimensions_captures_errors() {
         let mut data = MatrixMarketData::new();
 
         assert_eq!(
@@ -485,11 +484,10 @@ mod tests {
             data.parse_dimensions(&String::from(" 1 1  0")).err(),
             Some("found invalid (zero or negative) dimensions")
         );
-        Ok(())
     }
 
     #[test]
-    fn parse_triple_captures_errors() -> Result<(), StrError> {
+    fn parse_triple_captures_errors() {
         let mut data = MatrixMarketData::new();
         data.m = 2;
         data.n = 2;
@@ -534,11 +532,10 @@ mod tests {
             data.parse_triple(&String::from(" 1 3  1")).err(),
             Some("found invalid indices")
         );
-        Ok(())
     }
 
     #[test]
-    fn read_matrix_market_handle_wrong_files() -> Result<(), StrError> {
+    fn read_matrix_market_handle_wrong_files() {
         assert_eq!(
             read_matrix_market(&String::from("__wrong__"), false).err(),
             Some("cannot open file")
@@ -555,13 +552,12 @@ mod tests {
             read_matrix_market(&String::from("./data/matrix_market/bad_many_lines.mtx"), false).err(),
             Some("there are more (i,j,aij) triples than specified")
         );
-        Ok(())
     }
 
     #[test]
-    fn read_matrix_market_works() -> Result<(), StrError> {
+    fn read_matrix_market_works() {
         let filepath = "./data/matrix_market/ok1.mtx".to_string();
-        let trip = read_matrix_market(&filepath, false)?;
+        let trip = read_matrix_market(&filepath, false).unwrap();
         assert!(matches!(trip.symmetry, Symmetry::No));
         assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 12, 12));
         assert_eq!(trip.indices_i, &[0, 1, 0, 2, 4, 1, 2, 3, 4, 2, 1, 4]);
@@ -570,13 +566,12 @@ mod tests {
             trip.values_aij,
             &[2.0, 3.0, 3.0, -1.0, 4.0, 4.0, -3.0, 1.0, 2.0, 2.0, 6.0, 1.0]
         );
-        Ok(())
     }
 
     #[test]
-    fn read_matrix_market_sym_triangle_works() -> Result<(), StrError> {
+    fn read_matrix_market_sym_triangle_works() {
         let filepath = "./data/matrix_market/ok2.mtx".to_string();
-        let trip = read_matrix_market(&filepath, false)?;
+        let trip = read_matrix_market(&filepath, false).unwrap();
         assert!(matches!(trip.symmetry, Symmetry::GeneralTriangular));
         assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 15, 15));
         assert_eq!(trip.indices_i, &[0, 1, 2, 3, 4, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3]);
@@ -585,13 +580,12 @@ mod tests {
             trip.values_aij,
             &[2.0, 2.0, 9.0, 7.0, 8.0, 1.0, 1.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 5.0, 1.0],
         );
-        Ok(())
     }
 
     #[test]
-    fn read_matrix_market_sym_mirror_works() -> Result<(), StrError> {
+    fn read_matrix_market_sym_mirror_works() {
         let filepath = "./data/matrix_market/ok3.mtx".to_string();
-        let trip = read_matrix_market(&filepath, true)?;
+        let trip = read_matrix_market(&filepath, true).unwrap();
         assert!(matches!(trip.symmetry, Symmetry::General));
         assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 11, 14));
         assert_eq!(trip.indices_i, &[0, 1, 0, 2, 1, 3, 2, 3, 4, 1, 4, 0, 0, 0]);
@@ -601,15 +595,14 @@ mod tests {
             &[2.0, 3.0, 3.0, -1.0, -1.0, 2.0, 2.0, 3.0, 6.0, 6.0, 1.0, 0.0, 0.0, 0.0]
         );
         let mut a = Matrix::new(5, 5);
-        trip.to_matrix(&mut a)?;
+        trip.to_matrix(&mut a).unwrap();
         let correct = "┌                ┐\n\
-                            │  2  3  0  0  0 │\n\
-                            │  3  0 -1  0  6 │\n\
-                            │  0 -1  0  2  0 │\n\
-                            │  0  0  2  3  0 │\n\
-                            │  0  6  0  0  1 │\n\
-                            └                ┘";
+                       │  2  3  0  0  0 │\n\
+                       │  3  0 -1  0  6 │\n\
+                       │  0 -1  0  2  0 │\n\
+                       │  0  0  2  3  0 │\n\
+                       │  0  6  0  0  1 │\n\
+                       └                ┘";
         assert_eq!(format!("{}", a), correct);
-        Ok(())
     }
 }

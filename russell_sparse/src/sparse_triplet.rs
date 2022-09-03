@@ -343,7 +343,7 @@ impl fmt::Display for SparseTriplet {
 #[cfg(test)]
 mod tests {
     use super::SparseTriplet;
-    use crate::{StrError, Symmetry};
+    use crate::Symmetry;
     use russell_chk::vec_approx_eq;
     use russell_lab::{Matrix, Vector};
 
@@ -364,14 +364,13 @@ mod tests {
     }
 
     #[test]
-    fn new_works() -> Result<(), StrError> {
-        let trip = SparseTriplet::new(3, 3, 5, Symmetry::No)?;
+    fn new_works() {
+        let trip = SparseTriplet::new(3, 3, 5, Symmetry::No).unwrap();
         assert_eq!(trip.nrow, 3);
         assert_eq!(trip.ncol, 3);
         assert_eq!(trip.pos, 0);
         assert_eq!(trip.max, 5);
         assert!(matches!(trip.symmetry, Symmetry::No));
-        Ok(())
     }
 
     #[test]
@@ -393,243 +392,232 @@ mod tests {
     }
 
     #[test]
-    fn put_works() -> Result<(), StrError> {
-        let mut trip = SparseTriplet::new(3, 3, 5, Symmetry::No)?;
-        trip.put(0, 0, 1.0)?;
+    fn put_works() {
+        let mut trip = SparseTriplet::new(3, 3, 5, Symmetry::No).unwrap();
+        trip.put(0, 0, 1.0).unwrap();
         assert_eq!(trip.pos, 1);
-        trip.put(0, 1, 2.0)?;
+        trip.put(0, 1, 2.0).unwrap();
         assert_eq!(trip.pos, 2);
-        trip.put(1, 0, 3.0)?;
+        trip.put(1, 0, 3.0).unwrap();
         assert_eq!(trip.pos, 3);
-        trip.put(1, 1, 4.0)?;
+        trip.put(1, 1, 4.0).unwrap();
         assert_eq!(trip.pos, 4);
-        trip.put(2, 2, 5.0)?;
+        trip.put(2, 2, 5.0).unwrap();
         assert_eq!(trip.pos, 5);
-        Ok(())
     }
 
     #[test]
-    fn getters_and_reset_work() -> Result<(), StrError> {
-        let mut trip = SparseTriplet::new(3, 2, 4, Symmetry::No)?;
+    fn getters_and_reset_work() {
+        let mut trip = SparseTriplet::new(3, 2, 4, Symmetry::No).unwrap();
         assert_eq!(trip.nnz_current(), 0);
-        trip.put(0, 0, 1.0)?;
-        trip.put(0, 1, 4.0)?;
-        trip.put(1, 1, 2.0)?;
-        trip.put(2, 0, 3.0)?;
+        trip.put(0, 0, 1.0).unwrap();
+        trip.put(0, 1, 4.0).unwrap();
+        trip.put(1, 1, 2.0).unwrap();
+        trip.put(2, 0, 3.0).unwrap();
         assert_eq!(trip.dims(), (3, 2));
         assert_eq!(trip.nnz_current(), 4);
         assert_eq!(trip.nnz_max(), 4);
         trip.reset();
         assert_eq!(trip.nnz_current(), 0);
-        Ok(())
     }
 
     #[test]
-    fn to_matrix_fails_on_wrong_dims() -> Result<(), StrError> {
-        let trip = SparseTriplet::new(1, 1, 1, Symmetry::No)?;
+    fn to_matrix_fails_on_wrong_dims() {
+        let trip = SparseTriplet::new(1, 1, 1, Symmetry::No).unwrap();
         let mut a_2x1 = Matrix::new(2, 1);
         let mut a_1x2 = Matrix::new(1, 2);
         assert_eq!(trip.to_matrix(&mut a_2x1), Err("wrong matrix dimensions"));
         assert_eq!(trip.to_matrix(&mut a_1x2), Err("wrong matrix dimensions"));
-        Ok(())
     }
 
     #[test]
-    fn to_matrix_works() -> Result<(), StrError> {
-        let mut trip = SparseTriplet::new(3, 3, 5, Symmetry::No)?;
-        trip.put(0, 0, 1.0)?;
-        trip.put(0, 1, 2.0)?;
-        trip.put(1, 0, 3.0)?;
-        trip.put(1, 1, 4.0)?;
-        trip.put(2, 2, 5.0)?;
+    fn to_matrix_works() {
+        let mut trip = SparseTriplet::new(3, 3, 5, Symmetry::No).unwrap();
+        trip.put(0, 0, 1.0).unwrap();
+        trip.put(0, 1, 2.0).unwrap();
+        trip.put(1, 0, 3.0).unwrap();
+        trip.put(1, 1, 4.0).unwrap();
+        trip.put(2, 2, 5.0).unwrap();
         let mut a = Matrix::new(3, 3);
-        trip.to_matrix(&mut a)?;
+        trip.to_matrix(&mut a).unwrap();
         assert_eq!(a.get(0, 0), 1.0);
         assert_eq!(a.get(0, 1), 2.0);
         assert_eq!(a.get(1, 0), 3.0);
         assert_eq!(a.get(1, 1), 4.0);
         assert_eq!(a.get(2, 2), 5.0);
         let mut b = Matrix::new(2, 1);
-        trip.to_matrix(&mut b)?;
+        trip.to_matrix(&mut b).unwrap();
         assert_eq!(b.get(0, 0), 1.0);
         assert_eq!(b.get(1, 0), 3.0);
-        Ok(())
     }
 
     #[test]
-    fn to_matrix_with_duplicates_works() -> Result<(), StrError> {
+    fn to_matrix_with_duplicates_works() {
         // allocate a square matrix
-        let mut trip = SparseTriplet::new(5, 5, 13, Symmetry::No)?;
-        trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
-        trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
-        trip.put(1, 0, 3.0)?;
-        trip.put(0, 1, 3.0)?;
-        trip.put(2, 1, -1.0)?;
-        trip.put(4, 1, 4.0)?;
-        trip.put(1, 2, 4.0)?;
-        trip.put(2, 2, -3.0)?;
-        trip.put(3, 2, 1.0)?;
-        trip.put(4, 2, 2.0)?;
-        trip.put(2, 3, 2.0)?;
-        trip.put(1, 4, 6.0)?;
-        trip.put(4, 4, 1.0)?;
+        let mut trip = SparseTriplet::new(5, 5, 13, Symmetry::No).unwrap();
+        trip.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
+        trip.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
+        trip.put(1, 0, 3.0).unwrap();
+        trip.put(0, 1, 3.0).unwrap();
+        trip.put(2, 1, -1.0).unwrap();
+        trip.put(4, 1, 4.0).unwrap();
+        trip.put(1, 2, 4.0).unwrap();
+        trip.put(2, 2, -3.0).unwrap();
+        trip.put(3, 2, 1.0).unwrap();
+        trip.put(4, 2, 2.0).unwrap();
+        trip.put(2, 3, 2.0).unwrap();
+        trip.put(1, 4, 6.0).unwrap();
+        trip.put(4, 4, 1.0).unwrap();
 
         // print matrix
         let (m, n) = trip.dims();
         let mut a = Matrix::new(m, n);
-        trip.to_matrix(&mut a)?;
+        trip.to_matrix(&mut a).unwrap();
         let correct = "┌                ┐\n\
-                            │  2  3  0  0  0 │\n\
-                            │  3  0  4  0  6 │\n\
-                            │  0 -1 -3  2  0 │\n\
-                            │  0  0  1  0  0 │\n\
-                            │  0  4  2  0  1 │\n\
-                            └                ┘";
+                       │  2  3  0  0  0 │\n\
+                       │  3  0  4  0  6 │\n\
+                       │  0 -1 -3  2  0 │\n\
+                       │  0  0  1  0  0 │\n\
+                       │  0  4  2  0  1 │\n\
+                       └                ┘";
         assert_eq!(format!("{}", a), correct);
-        Ok(())
     }
 
     #[test]
-    fn mat_vec_mul_fails_on_wrong_input() -> Result<(), StrError> {
-        let trip = SparseTriplet::new(2, 2, 1, Symmetry::No)?;
+    fn mat_vec_mul_fails_on_wrong_input() {
+        let trip = SparseTriplet::new(2, 2, 1, Symmetry::No).unwrap();
         let u = Vector::new(3);
         assert_eq!(trip.mat_vec_mul(&u).err(), Some("u.ndim must equal a.ncol"));
-        Ok(())
     }
 
     #[test]
-    fn mat_vec_mul_works() -> Result<(), StrError> {
+    fn mat_vec_mul_works() {
         //  1.0  2.0  3.0  4.0  5.0
         //  0.1  0.2  0.3  0.4  0.5
         // 10.0 20.0 30.0 40.0 50.0
-        let mut trip = SparseTriplet::new(3, 5, 15, Symmetry::No)?;
-        trip.put(0, 0, 1.0)?;
-        trip.put(0, 1, 2.0)?;
-        trip.put(0, 2, 3.0)?;
-        trip.put(0, 3, 4.0)?;
-        trip.put(0, 4, 5.0)?;
-        trip.put(1, 0, 0.1)?;
-        trip.put(1, 1, 0.2)?;
-        trip.put(1, 2, 0.3)?;
-        trip.put(1, 3, 0.4)?;
-        trip.put(1, 4, 0.5)?;
-        trip.put(2, 0, 10.0)?;
-        trip.put(2, 1, 20.0)?;
-        trip.put(2, 2, 30.0)?;
-        trip.put(2, 3, 40.0)?;
-        trip.put(2, 4, 50.0)?;
+        let mut trip = SparseTriplet::new(3, 5, 15, Symmetry::No).unwrap();
+        trip.put(0, 0, 1.0).unwrap();
+        trip.put(0, 1, 2.0).unwrap();
+        trip.put(0, 2, 3.0).unwrap();
+        trip.put(0, 3, 4.0).unwrap();
+        trip.put(0, 4, 5.0).unwrap();
+        trip.put(1, 0, 0.1).unwrap();
+        trip.put(1, 1, 0.2).unwrap();
+        trip.put(1, 2, 0.3).unwrap();
+        trip.put(1, 3, 0.4).unwrap();
+        trip.put(1, 4, 0.5).unwrap();
+        trip.put(2, 0, 10.0).unwrap();
+        trip.put(2, 1, 20.0).unwrap();
+        trip.put(2, 2, 30.0).unwrap();
+        trip.put(2, 3, 40.0).unwrap();
+        trip.put(2, 4, 50.0).unwrap();
         let u = Vector::from(&[0.1, 0.2, 0.3, 0.4, 0.5]);
         let correct_v = &[5.5, 0.55, 55.0];
-        let v = trip.mat_vec_mul(&u)?;
+        let v = trip.mat_vec_mul(&u).unwrap();
         vec_approx_eq(v.as_data(), correct_v, 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn mat_vec_mul_sym_part_works() -> Result<(), StrError> {
+    fn mat_vec_mul_sym_part_works() {
         // 2
         // 1  2     sym
         // 1  2  9
         // 3  1  1  7
         // 2  1  5  1  8
-        let mut trip = SparseTriplet::new(5, 5, 15, Symmetry::GeneralTriangular)?;
-        trip.put(0, 0, 2.0)?;
-        trip.put(1, 1, 2.0)?;
-        trip.put(2, 2, 9.0)?;
-        trip.put(3, 3, 7.0)?;
-        trip.put(4, 4, 8.0)?;
+        let mut trip = SparseTriplet::new(5, 5, 15, Symmetry::GeneralTriangular).unwrap();
+        trip.put(0, 0, 2.0).unwrap();
+        trip.put(1, 1, 2.0).unwrap();
+        trip.put(2, 2, 9.0).unwrap();
+        trip.put(3, 3, 7.0).unwrap();
+        trip.put(4, 4, 8.0).unwrap();
 
-        trip.put(1, 0, 1.0)?;
+        trip.put(1, 0, 1.0).unwrap();
 
-        trip.put(2, 0, 1.0)?;
-        trip.put(2, 1, 2.0)?;
+        trip.put(2, 0, 1.0).unwrap();
+        trip.put(2, 1, 2.0).unwrap();
 
-        trip.put(3, 0, 3.0)?;
-        trip.put(3, 1, 1.0)?;
-        trip.put(3, 2, 1.0)?;
+        trip.put(3, 0, 3.0).unwrap();
+        trip.put(3, 1, 1.0).unwrap();
+        trip.put(3, 2, 1.0).unwrap();
 
-        trip.put(4, 0, 2.0)?;
-        trip.put(4, 1, 1.0)?;
-        trip.put(4, 2, 5.0)?;
-        trip.put(4, 3, 1.0)?;
+        trip.put(4, 0, 2.0).unwrap();
+        trip.put(4, 1, 1.0).unwrap();
+        trip.put(4, 2, 5.0).unwrap();
+        trip.put(4, 3, 1.0).unwrap();
         let u = Vector::from(&[-629.0 / 98.0, 237.0 / 49.0, -53.0 / 49.0, 62.0 / 49.0, 23.0 / 14.0]);
         let correct_v = &[-2.0, 4.0, 3.0, -5.0, 1.0];
-        let v = trip.mat_vec_mul(&u)?;
+        let v = trip.mat_vec_mul(&u).unwrap();
         vec_approx_eq(v.as_data(), correct_v, 1e-14);
-        Ok(())
     }
 
     #[test]
-    fn mat_vec_mul_sym_full_works() -> Result<(), StrError> {
+    fn mat_vec_mul_sym_full_works() {
         // 2  1  1  3  2
         // 1  2  2  1  1
         // 1  2  9  1  5
         // 3  1  1  7  1
         // 2  1  5  1  8
-        let mut trip = SparseTriplet::new(5, 5, 25, Symmetry::General)?;
-        trip.put(0, 0, 2.0)?;
-        trip.put(1, 1, 2.0)?;
-        trip.put(2, 2, 9.0)?;
-        trip.put(3, 3, 7.0)?;
-        trip.put(4, 4, 8.0)?;
+        let mut trip = SparseTriplet::new(5, 5, 25, Symmetry::General).unwrap();
+        trip.put(0, 0, 2.0).unwrap();
+        trip.put(1, 1, 2.0).unwrap();
+        trip.put(2, 2, 9.0).unwrap();
+        trip.put(3, 3, 7.0).unwrap();
+        trip.put(4, 4, 8.0).unwrap();
 
-        trip.put(1, 0, 1.0)?;
-        trip.put(0, 1, 1.0)?;
+        trip.put(1, 0, 1.0).unwrap();
+        trip.put(0, 1, 1.0).unwrap();
 
-        trip.put(2, 0, 1.0)?;
-        trip.put(0, 2, 1.0)?;
-        trip.put(2, 1, 2.0)?;
-        trip.put(1, 2, 2.0)?;
+        trip.put(2, 0, 1.0).unwrap();
+        trip.put(0, 2, 1.0).unwrap();
+        trip.put(2, 1, 2.0).unwrap();
+        trip.put(1, 2, 2.0).unwrap();
 
-        trip.put(3, 0, 3.0)?;
-        trip.put(0, 3, 3.0)?;
-        trip.put(3, 1, 1.0)?;
-        trip.put(1, 3, 1.0)?;
-        trip.put(3, 2, 1.0)?;
-        trip.put(2, 3, 1.0)?;
+        trip.put(3, 0, 3.0).unwrap();
+        trip.put(0, 3, 3.0).unwrap();
+        trip.put(3, 1, 1.0).unwrap();
+        trip.put(1, 3, 1.0).unwrap();
+        trip.put(3, 2, 1.0).unwrap();
+        trip.put(2, 3, 1.0).unwrap();
 
-        trip.put(4, 0, 2.0)?;
-        trip.put(0, 4, 2.0)?;
-        trip.put(4, 1, 1.0)?;
-        trip.put(1, 4, 1.0)?;
-        trip.put(4, 2, 5.0)?;
-        trip.put(2, 4, 5.0)?;
-        trip.put(4, 3, 1.0)?;
-        trip.put(3, 4, 1.0)?;
+        trip.put(4, 0, 2.0).unwrap();
+        trip.put(0, 4, 2.0).unwrap();
+        trip.put(4, 1, 1.0).unwrap();
+        trip.put(1, 4, 1.0).unwrap();
+        trip.put(4, 2, 5.0).unwrap();
+        trip.put(2, 4, 5.0).unwrap();
+        trip.put(4, 3, 1.0).unwrap();
+        trip.put(3, 4, 1.0).unwrap();
         let u = Vector::from(&[-629.0 / 98.0, 237.0 / 49.0, -53.0 / 49.0, 62.0 / 49.0, 23.0 / 14.0]);
         let correct_v = &[-2.0, 4.0, 3.0, -5.0, 1.0];
-        let v = trip.mat_vec_mul(&u)?;
+        let v = trip.mat_vec_mul(&u).unwrap();
         vec_approx_eq(v.as_data(), correct_v, 1e-14);
-        Ok(())
     }
 
     #[test]
-    fn mat_vec_mul_pos_def_works() -> Result<(), StrError> {
+    fn mat_vec_mul_pos_def_works() {
         //  2  -1              2     ...
         // -1   2  -1    =>   -1   2
         //     -1   2             -1   2
-        let mut trip = SparseTriplet::new(3, 3, 5, Symmetry::PosDefTriangular)?;
-        trip.put(0, 0, 2.0)?;
-        trip.put(1, 1, 2.0)?;
-        trip.put(2, 2, 2.0)?;
-        trip.put(1, 0, -1.0)?;
-        trip.put(2, 1, -1.0)?;
+        let mut trip = SparseTriplet::new(3, 3, 5, Symmetry::PosDefTriangular).unwrap();
+        trip.put(0, 0, 2.0).unwrap();
+        trip.put(1, 1, 2.0).unwrap();
+        trip.put(2, 2, 2.0).unwrap();
+        trip.put(1, 0, -1.0).unwrap();
+        trip.put(2, 1, -1.0).unwrap();
         let u = Vector::from(&[5.0, 8.0, 7.0]);
         let correct_v = &[2.0, 4.0, 6.0];
-        let v = trip.mat_vec_mul(&u)?;
+        let v = trip.mat_vec_mul(&u).unwrap();
         vec_approx_eq(v.as_data(), correct_v, 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn display_trait_works() -> Result<(), StrError> {
-        let trip = SparseTriplet::new(3, 3, 1, Symmetry::General)?;
+    fn display_trait_works() {
+        let trip = SparseTriplet::new(3, 3, 1, Symmetry::General).unwrap();
         let correct: &str = "\x20\x20\x20\x20\"nrow\": 3,\n\
                              \x20\x20\x20\x20\"ncol\": 3,\n\
                              \x20\x20\x20\x20\"pos\": 0,\n\
                              \x20\x20\x20\x20\"max\": 1,\n\
                              \x20\x20\x20\x20\"symmetry\": \"General\"";
         assert_eq!(format!("{}", trip), correct);
-        Ok(())
     }
 }

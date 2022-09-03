@@ -47,7 +47,6 @@ pub fn update_matrix(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), StrEr
 mod tests {
     use super::{update_matrix, Matrix};
     use crate::mat_approx_eq;
-    use crate::StrError;
 
     #[test]
     fn update_matrix_fail_on_wrong_dims() {
@@ -64,7 +63,7 @@ mod tests {
     }
 
     #[test]
-    fn update_matrix_works() -> Result<(), StrError> {
+    fn update_matrix_works() {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [10.0, 20.0, 30.0],
@@ -75,13 +74,12 @@ mod tests {
             [100.0, 200.0, 300.0],
             [400.0, 500.0, 600.0],
         ]);
-        update_matrix(&mut b, 2.0, &a)?;
+        update_matrix(&mut b, 2.0, &a).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [120.0, 240.0, 360.0],
             [480.0, 600.0, 720.0],
         ];
         mat_approx_eq(&b, correct, 1e-15);
-        Ok(())
     }
 }

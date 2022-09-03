@@ -74,7 +74,6 @@ pub fn complex_mat_mat_mul(
 mod tests {
     use super::{complex_mat_mat_mul, ComplexMatrix};
     use crate::complex_mat_approx_eq;
-    use crate::StrError;
     use num_complex::Complex64;
 
     #[test]
@@ -100,7 +99,7 @@ mod tests {
     }
 
     #[test]
-    fn mat_mat_mul_works() -> Result<(), StrError> {
+    fn mat_mat_mul_works() {
         let a = ComplexMatrix::from(&[
             // 2 x 3
             [1.0, 2.00, 3.0],
@@ -115,13 +114,12 @@ mod tests {
         let mut c = ComplexMatrix::new(2, 4);
         // c := 2⋅a⋅b
         let alpha = Complex64::new(2.0, 0.0);
-        complex_mat_mat_mul(&mut c, alpha, &a, &b)?;
+        complex_mat_mat_mul(&mut c, alpha, &a, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [Complex64::new(2.80,0.0), Complex64::new(12.0,0.0), Complex64::new(12.0,0.0), Complex64::new(12.50,0.0)],
             [Complex64::new(1.30,0.0), Complex64::new( 5.0,0.0), Complex64::new( 5.0,0.0), Complex64::new( 5.25,0.0)],
         ];
         complex_mat_approx_eq(&c, correct, 1e-15);
-        Ok(())
     }
 }

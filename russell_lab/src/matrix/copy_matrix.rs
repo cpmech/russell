@@ -47,7 +47,6 @@ pub fn copy_matrix(b: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
 mod tests {
     use super::{copy_matrix, Matrix};
     use crate::mat_approx_eq;
-    use crate::StrError;
 
     #[test]
     fn copy_matrix_fails_on_wrong_dimensions() {
@@ -64,7 +63,7 @@ mod tests {
     }
 
     #[test]
-    fn copy_matrix_works() -> Result<(), StrError> {
+    fn copy_matrix_works() {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [10.0, 20.0, 30.0],
@@ -75,13 +74,12 @@ mod tests {
             [100.0, 200.0, 300.0],
             [400.0, 500.0, 600.0],
         ]);
-        copy_matrix(&mut b, &a)?;
+        copy_matrix(&mut b, &a).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [10.0, 20.0, 30.0],
             [40.0, 50.0, 60.0],
         ];
         mat_approx_eq(&b, correct, 1e-15);
-        Ok(())
     }
 }

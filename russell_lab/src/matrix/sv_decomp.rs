@@ -176,7 +176,6 @@ mod tests {
     use super::{sv_decomp, Matrix, Vector};
     use crate::mat_approx_eq;
     use crate::vec_approx_eq;
-    use crate::StrError;
 
     #[test]
     fn sv_decomp_fails_on_wrong_dims() {
@@ -212,7 +211,7 @@ mod tests {
     }
 
     #[test]
-    fn sv_decomp_works() -> Result<(), StrError> {
+    fn sv_decomp_works() {
         // matrix
         let s33 = f64::sqrt(3.0) / 3.0;
         #[rustfmt::skip]
@@ -233,7 +232,7 @@ mod tests {
         let mut vt = Matrix::new(n, n);
 
         // calculate SVD
-        sv_decomp(&mut s, &mut u, &mut vt, &mut a)?;
+        sv_decomp(&mut s, &mut u, &mut vt, &mut a).unwrap();
 
         // check
         #[rustfmt::skip]
@@ -269,13 +268,10 @@ mod tests {
             }
         }
         mat_approx_eq(&usv, &a_copy, 1e-15);
-
-        // done
-        Ok(())
     }
 
     #[test]
-    fn sv_decomp_1_works() -> Result<(), StrError> {
+    fn sv_decomp_1_works() {
         // matrix
         #[rustfmt::skip]
         let data = [
@@ -293,7 +289,7 @@ mod tests {
         let mut vt = Matrix::new(n, n);
 
         // calculate SVD
-        sv_decomp(&mut s, &mut u, &mut vt, &mut a)?;
+        sv_decomp(&mut s, &mut u, &mut vt, &mut a).unwrap();
 
         // check
         let sqrt2 = std::f64::consts::SQRT_2;
@@ -328,8 +324,5 @@ mod tests {
             }
         }
         mat_approx_eq(&usv, &a_copy, 1e-15);
-
-        // done
-        Ok(())
     }
 }

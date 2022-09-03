@@ -305,7 +305,7 @@ mod tests {
     use super::{eigen_decomp, eigen_decomp_lr};
     use crate::{
         add_matrices, complex_add_matrices, complex_mat_mat_mul, complex_mat_zip, complex_matrix_norm, complex_vec_zip,
-        mat_mat_mul, matrix_norm, AsArray2D, ComplexMatrix, Matrix, NormMat, StrError, Vector,
+        mat_mat_mul, matrix_norm, AsArray2D, ComplexMatrix, Matrix, NormMat, Vector,
     };
     use crate::{mat_approx_eq, vec_approx_eq};
     use num_complex::Complex64;
@@ -317,7 +317,7 @@ mod tests {
     // a⋅v = v⋅λ
     // err := a⋅v - v⋅λ
     // ```
-    fn check_real_eigen<'a, T>(data: &'a T, v: &Matrix, l: &Vector) -> Result<(), StrError>
+    fn check_real_eigen<'a, T>(data: &'a T, v: &Matrix, l: &Vector)
     where
         T: AsArray2D<'a, f64>,
     {
@@ -327,11 +327,10 @@ mod tests {
         let mut a_v = Matrix::new(m, m);
         let mut v_l = Matrix::new(m, m);
         let mut err = Matrix::filled(m, m, f64::MAX);
-        mat_mat_mul(&mut a_v, 1.0, &a, &v)?;
-        mat_mat_mul(&mut v_l, 1.0, &v, &lam)?;
-        add_matrices(&mut err, 1.0, &a_v, -1.0, &v_l)?;
+        mat_mat_mul(&mut a_v, 1.0, &a, &v).unwrap();
+        mat_mat_mul(&mut v_l, 1.0, &v, &lam).unwrap();
+        add_matrices(&mut err, 1.0, &a_v, -1.0, &v_l).unwrap();
         assert_approx_eq!(matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
-        Ok(())
     }
 
     // Checks the eigen-decomposition (similarity transformation)
@@ -339,31 +338,24 @@ mod tests {
     // a⋅v = v⋅λ
     // err := a⋅v - v⋅λ
     // ```
-    fn check_general_eigen<'a, T>(
-        data: &'a T,
-        v_real: &Matrix,
-        l_real: &Vector,
-        v_imag: &Matrix,
-        l_imag: &Vector,
-    ) -> Result<(), StrError>
+    fn check_general_eigen<'a, T>(data: &'a T, v_real: &Matrix, l_real: &Vector, v_imag: &Matrix, l_imag: &Vector)
     where
         T: AsArray2D<'a, f64>,
     {
         let a = ComplexMatrix::from(data);
         let m = a.nrow();
-        let v = complex_mat_zip(v_real, v_imag)?;
-        let d = complex_vec_zip(l_real, l_imag)?;
+        let v = complex_mat_zip(v_real, v_imag).unwrap();
+        let d = complex_vec_zip(l_real, l_imag).unwrap();
         let lam = ComplexMatrix::diagonal(d.as_data());
         let mut a_v = ComplexMatrix::new(m, m);
         let mut v_l = ComplexMatrix::new(m, m);
         let mut err = ComplexMatrix::filled(m, m, Complex64::new(f64::MAX, f64::MAX));
         let one = Complex64::new(1.0, 0.0);
         let m_one = Complex64::new(-1.0, 0.0);
-        complex_mat_mat_mul(&mut a_v, one, &a, &v)?;
-        complex_mat_mat_mul(&mut v_l, one, &v, &lam)?;
-        complex_add_matrices(&mut err, one, &a_v, m_one, &v_l)?;
+        complex_mat_mat_mul(&mut a_v, one, &a, &v).unwrap();
+        complex_mat_mat_mul(&mut v_l, one, &v, &lam).unwrap();
+        complex_add_matrices(&mut err, one, &a_v, m_one, &v_l).unwrap();
         assert_approx_eq!(complex_matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
-        Ok(())
     }
 
     #[test]
@@ -525,7 +517,7 @@ mod tests {
     }
 
     #[test]
-    fn eigen_decomp_works() -> Result<(), StrError> {
+    fn eigen_decomp_works() {
         #[rustfmt::skip]
         let data = [
             [0.0, 1.0, 0.0],
@@ -538,18 +530,17 @@ mod tests {
         let mut l_imag = Vector::new(m);
         let mut v_real = Matrix::new(m, m);
         let mut v_imag = Matrix::new(m, m);
-        eigen_decomp(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a)?;
+        eigen_decomp(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a).unwrap();
         let s3 = f64::sqrt(3.0);
         let l_real_correct = &[-0.5, -0.5, 1.0];
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
         vec_approx_eq(&l_real, l_real_correct, 1e-15);
         vec_approx_eq(&l_imag, l_imag_correct, 1e-15);
-        check_general_eigen(&data, &v_real, &l_real, &v_imag, &l_imag)?;
-        Ok(())
+        check_general_eigen(&data, &v_real, &l_real, &v_imag, &l_imag);
     }
 
     #[test]
-    fn eigen_decomp_repeated_eval_works() -> Result<(), StrError> {
+    fn eigen_decomp_repeated_eval_works() {
         // rep: repeated eigenvalues
         #[rustfmt::skip]
         let data = [
@@ -564,7 +555,7 @@ mod tests {
         let mut l_imag = Vector::new(m);
         let mut v_real = Matrix::new(m, m);
         let mut v_imag = Matrix::new(m, m);
-        eigen_decomp(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a)?;
+        eigen_decomp(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a).unwrap();
         let l_real_correct = &[3.0, 3.0, 2.0, 2.0];
         let l_imag_correct = &[0.0, 0.0, 0.0, 0.0];
         let os3 = 1.0 / f64::sqrt(3.0);
@@ -580,12 +571,11 @@ mod tests {
         vec_approx_eq(&l_imag, l_imag_correct, 1e-15);
         mat_approx_eq(&v_real, v_real_correct, 1e-15);
         mat_approx_eq(&v_imag, &v_imag_correct, 1e-15);
-        check_real_eigen(&data, &v_real, &l_real)?;
-        Ok(())
+        check_real_eigen(&data, &v_real, &l_real);
     }
 
     #[test]
-    fn eigen_decomp_lr_works() -> Result<(), StrError> {
+    fn eigen_decomp_lr_works() {
         #[rustfmt::skip]
         let data = [
             [0.0, 1.0, 0.0],
@@ -608,13 +598,13 @@ mod tests {
             &mut v_real,
             &mut v_imag,
             &mut a,
-        )?;
+        )
+        .unwrap();
         let s3 = f64::sqrt(3.0);
         let l_real_correct = &[-0.5, -0.5, 1.0];
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
         vec_approx_eq(&l_real, l_real_correct, 1e-15);
         vec_approx_eq(&l_imag, l_imag_correct, 1e-15);
-        check_general_eigen(&data, &v_real, &l_real, &v_imag, &l_imag)?;
-        Ok(())
+        check_general_eigen(&data, &v_real, &l_real, &v_imag, &l_imag);
     }
 }

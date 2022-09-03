@@ -143,7 +143,6 @@ pub fn pseudo_inverse(ai: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
 mod tests {
     use super::{pseudo_inverse, Matrix};
     use crate::mat_approx_eq;
-    use crate::StrError;
 
     /// Computes a⋅ai that should equal I for a square matrix
     fn get_a_times_ai(a: &Matrix, ai: &Matrix) -> Matrix {
@@ -192,29 +191,27 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_0x0_works() -> Result<(), StrError> {
+    fn pseudo_inverse_0x0_works() {
         let mut a = Matrix::new(0, 0);
         let mut ai = Matrix::new(0, 0);
-        pseudo_inverse(&mut ai, &mut a)?;
+        pseudo_inverse(&mut ai, &mut a).unwrap();
         assert_eq!(ai.as_data().len(), 0);
-        Ok(())
     }
 
     #[test]
-    fn pseudo_inverse_1x1_works() -> Result<(), StrError> {
+    fn pseudo_inverse_1x1_works() {
         let data = [[2.0]];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(1, 1);
-        pseudo_inverse(&mut ai, &mut a)?;
+        pseudo_inverse(&mut ai, &mut a).unwrap();
         mat_approx_eq(&ai, &[[0.5]], 1e-15);
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
         mat_approx_eq(&a_ai_a, &a_copy, 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn pseudo_inverse_2x2_works() -> Result<(), StrError> {
+    fn pseudo_inverse_2x2_works() {
         #[rustfmt::skip]
         let data = [
             [1.0, 2.0],
@@ -222,16 +219,15 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(2, 2);
-        pseudo_inverse(&mut ai, &mut a)?;
+        pseudo_inverse(&mut ai, &mut a).unwrap();
         mat_approx_eq(&ai, &[[-0.5, 0.5], [0.75, -0.25]], 1e-15);
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
         mat_approx_eq(&a_ai_a, &a_copy, 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn pseudo_inverse_3x3_works() -> Result<(), StrError> {
+    fn pseudo_inverse_3x3_works() {
         #[rustfmt::skip]
         let data = [
             [1.0, 2.0, 3.0],
@@ -240,7 +236,7 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(3, 3);
-        pseudo_inverse(&mut ai, &mut a)?;
+        pseudo_inverse(&mut ai, &mut a).unwrap();
         #[rustfmt::skip]
         let ai_correct = &[
             [12.0/11.0, -6.0/11.0, -1.0/11.0],
@@ -251,11 +247,10 @@ mod tests {
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
         mat_approx_eq(&a_ai_a, &a_copy, 1e-14);
-        Ok(())
     }
 
     #[test]
-    fn pseudo_inverse_4x4_works() -> Result<(), StrError> {
+    fn pseudo_inverse_4x4_works() {
         #[rustfmt::skip]
         let data = [
             [ 3.0,  0.0,  2.0, -1.0],
@@ -265,7 +260,7 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(4, 4);
-        pseudo_inverse(&mut ai, &mut a)?;
+        pseudo_inverse(&mut ai, &mut a).unwrap();
         #[rustfmt::skip]
         let ai_correct = &[
             [ 0.6,  0.0, -0.2,  0.0],
@@ -277,11 +272,10 @@ mod tests {
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
         mat_approx_eq(&a_ai_a, &a_copy, 1e-14);
-        Ok(())
     }
 
     #[test]
-    fn pseudo_inverse_5x5_works() -> Result<(), StrError> {
+    fn pseudo_inverse_5x5_works() {
         #[rustfmt::skip]
         let data = [
             [12.0, 28.0, 22.0, 20.0,  8.0],
@@ -292,7 +286,7 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(5, 5);
-        pseudo_inverse(&mut ai, &mut a)?;
+        pseudo_inverse(&mut ai, &mut a).unwrap();
         #[rustfmt::skip]
         let ai_correct = &[
             [ 6.9128803717996279e-01, -7.4226114383340802e-01, -9.8756287260606410e-02, -6.9062496266472417e-01,  7.2471057693456553e-01],
@@ -305,11 +299,10 @@ mod tests {
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
         mat_approx_eq(&a_ai_a, &a_copy, 1e-12);
-        Ok(())
     }
 
     #[test]
-    fn pseudo_inverse_6x6_works() -> Result<(), StrError> {
+    fn pseudo_inverse_6x6_works() {
         // NOTE: this matrix is nearly non-invertible; it originated from an FEM analysis
         #[rustfmt::skip]
         let data = [
@@ -322,15 +315,14 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(6, 6);
-        pseudo_inverse(&mut ai, &mut a)?;
+        pseudo_inverse(&mut ai, &mut a).unwrap();
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
         mat_approx_eq(&a_ai_a, &a_copy, 1e-8);
-        Ok(())
     }
 
     #[test]
-    fn pseudo_inverse_4x3_works() -> Result<(), StrError> {
+    fn pseudo_inverse_4x3_works() {
         #[rustfmt::skip]
         let data = [
             [-5.773502691896260e-01, -5.773502691896260e-01, 1.000000000000000e+00],
@@ -341,7 +333,7 @@ mod tests {
         let a = Matrix::from(&data);
         let (m, n) = a.dims();
         let mut ai = Matrix::new(n, m);
-        pseudo_inverse(&mut ai, &a)?;
+        pseudo_inverse(&mut ai, &a).unwrap();
         #[rustfmt::skip]
         let ai_correct = &[
             [-4.330127018922192e-01,  4.330127018922192e-01, -4.330127018922192e-01, 4.330127018922192e-01],
@@ -352,11 +344,10 @@ mod tests {
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
         mat_approx_eq(&a_ai_a, &a_copy, 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn pseudo_inverse_4x5_works() -> Result<(), StrError> {
+    fn pseudo_inverse_4x5_works() {
         #[rustfmt::skip]
         let data = [
             [1.0, 0.0, 0.0, 0.0, 2.0],
@@ -367,7 +358,7 @@ mod tests {
         let a = Matrix::from(&data);
         let (m, n) = a.dims();
         let mut ai = Matrix::new(n, m);
-        pseudo_inverse(&mut ai, &a)?;
+        pseudo_inverse(&mut ai, &a).unwrap();
         #[rustfmt::skip]
         let ai_correct = &[
             [0.2,     0.0, 0.0,     0.0],
@@ -380,11 +371,10 @@ mod tests {
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
         mat_approx_eq(&a_ai_a, &a_copy, 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn pseudo_inverse_5x6_works() -> Result<(), StrError> {
+    fn pseudo_inverse_5x6_works() {
         #[rustfmt::skip]
         let data = [
             [12.0, 28.0, 22.0, 20.0,  8.0, 1.0],
@@ -396,7 +386,7 @@ mod tests {
         let a = Matrix::from(&data);
         let (m, n) = a.dims();
         let mut ai = Matrix::new(n, m);
-        pseudo_inverse(&mut ai, &a)?;
+        pseudo_inverse(&mut ai, &a).unwrap();
         #[rustfmt::skip]
         let ai_correct = &[
             [ 5.6387724512344639e-01, -6.0176177188969326e-01, -7.6500652148749224e-02, -5.6389938864086908e-01,  5.8595836573334192e-01],
@@ -410,11 +400,10 @@ mod tests {
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
         mat_approx_eq(&a_ai_a, &a_copy, 1e-12);
-        Ok(())
     }
 
     #[test]
-    fn pseudo_inverse_8x6_works() -> Result<(), StrError> {
+    fn pseudo_inverse_8x6_works() {
         #[rustfmt::skip]
         let data = [
             [64.0,  2.0,  3.0, 61.0, 60.0,  6.0],
@@ -429,10 +418,9 @@ mod tests {
         let a = Matrix::from(&data);
         let (m, n) = a.dims();
         let mut ai = Matrix::new(n, m);
-        pseudo_inverse(&mut ai, &a)?;
+        pseudo_inverse(&mut ai, &a).unwrap();
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
         mat_approx_eq(&a_ai_a, &a_copy, 1e-13);
-        Ok(())
     }
 }

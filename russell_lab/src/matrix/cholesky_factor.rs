@@ -91,7 +91,6 @@ pub fn cholesky_factor(l: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
 mod tests {
     use super::{cholesky_factor, Matrix};
     use crate::mat_approx_eq;
-    use crate::StrError;
 
     #[test]
     fn cholesky_factor_fails_on_wrong_dims() {
@@ -106,7 +105,7 @@ mod tests {
     }
 
     #[test]
-    fn cholesky_factor_3x3_works() -> Result<(), StrError> {
+    fn cholesky_factor_3x3_works() {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [25.0, 15.0, -5.0],
@@ -115,7 +114,7 @@ mod tests {
         ]);
         let m = a.nrow();
         let mut l = Matrix::new(m, m);
-        cholesky_factor(&mut l, &a)?;
+        cholesky_factor(&mut l, &a).unwrap();
         #[rustfmt::skip]
         let l_correct = Matrix::from(&[
             [ 5.0, 0.0, 0.0],
@@ -132,11 +131,10 @@ mod tests {
             }
         }
         mat_approx_eq(&l_lt, &a, 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn cholesky_factor_5x5_works() -> Result<(), StrError> {
+    fn cholesky_factor_5x5_works() {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [2.0, 1.0, 1.0, 3.0, 2.0],
@@ -147,7 +145,7 @@ mod tests {
         ]);
         let m = a.nrow();
         let mut l = Matrix::new(m, m);
-        cholesky_factor(&mut l, &a)?;
+        cholesky_factor(&mut l, &a).unwrap();
         let sqrt2 = std::f64::consts::SQRT_2;
         #[rustfmt::skip]
         let l_correct = Matrix::from(&[
@@ -167,6 +165,5 @@ mod tests {
             }
         }
         mat_approx_eq(&l_lt, &a, 1e-15);
-        Ok(())
     }
 }

@@ -59,7 +59,6 @@ pub fn mat_max_abs_diff(a: &Matrix, b: &Matrix) -> Result<(usize, usize, f64), S
 #[cfg(test)]
 mod tests {
     use super::{mat_max_abs_diff, Matrix};
-    use crate::StrError;
 
     #[test]
     fn mat_max_abs_diff_fail_on_wrong_dims() {
@@ -71,7 +70,7 @@ mod tests {
     }
 
     #[test]
-    fn mat_max_abs_diff_works() -> Result<(), StrError> {
+    fn mat_max_abs_diff_works() {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [1.0, 2.0, 3.0, 4.0],
@@ -82,10 +81,9 @@ mod tests {
             [0.5, 1.0, 1.5, 2.0],
             [0.5, 1.0, 1.5, -2.0],
         ]);
-        let (i, j, max_abs_diff) = mat_max_abs_diff(&a, &b)?;
+        let (i, j, max_abs_diff) = mat_max_abs_diff(&a, &b).unwrap();
         assert_eq!(i, 1);
         assert_eq!(j, 3);
         assert_eq!(max_abs_diff, 6.0);
-        Ok(())
     }
 }

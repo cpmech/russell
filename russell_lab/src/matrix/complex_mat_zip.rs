@@ -45,7 +45,6 @@ pub fn complex_mat_zip(real: &Matrix, imag: &Matrix) -> Result<ComplexMatrix, St
 mod tests {
     use super::complex_mat_zip;
     use crate::Matrix;
-    use crate::StrError;
 
     #[test]
     fn complex_mat_zip_handles_errors() {
@@ -55,10 +54,10 @@ mod tests {
     }
 
     #[test]
-    fn complex_mat_zip_works() -> Result<(), StrError> {
+    fn complex_mat_zip_works() {
         let a = Matrix::from(&[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]);
         let b = Matrix::from(&[[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]);
-        let c = complex_mat_zip(&a, &b)?;
+        let c = complex_mat_zip(&a, &b).unwrap();
         assert_eq!(
             format!("{}", c),
             "┌                      ┐\n\
@@ -66,6 +65,5 @@ mod tests {
              │ 4+0.4i 5+0.5i 6+0.6i │\n\
              └                      ┘"
         );
-        Ok(())
     }
 }

@@ -65,7 +65,6 @@ pub fn complex_add_matrices(
 mod tests {
     use super::{complex_add_matrices, ComplexMatrix};
     use crate::complex_mat_approx_eq;
-    use crate::StrError;
     use num_complex::Complex64;
 
     #[test]
@@ -98,7 +97,7 @@ mod tests {
     }
 
     #[test]
-    fn complex_add_matrices_works() -> Result<(), StrError> {
+    fn complex_add_matrices_works() {
         const NOISE: Complex64 = Complex64::new(1234.567, 3456.789);
         #[rustfmt::skip]
         let a = ComplexMatrix::from(&[
@@ -119,7 +118,7 @@ mod tests {
         ]);
         let alpha = Complex64::new(1.0, 0.0);
         let beta = Complex64::new(-4.0, 0.0);
-        complex_add_matrices(&mut c, alpha, &a, beta, &b)?;
+        complex_add_matrices(&mut c, alpha, &a, beta, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [Complex64::new(-1.0, 0.0), Complex64::new(-2.0, 0.0), Complex64::new(-3.0, 0.0), Complex64::new(-4.0, 0.0)],
@@ -127,11 +126,10 @@ mod tests {
             [Complex64::new(-1.0, 0.0), Complex64::new(-2.0, 0.0), Complex64::new(-3.0, 0.0), Complex64::new(-4.0, 0.0)],
         ];
         complex_mat_approx_eq(&c, correct, 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn complex_add_matrix_oblas_works() -> Result<(), StrError> {
+    fn complex_add_matrix_oblas_works() {
         const NOISE: Complex64 = Complex64::new(1234.567, 3456.789);
         let a = ComplexMatrix::from(&[
             [1.0, 2.0, 3.0, 4.0, 5.0],
@@ -156,7 +154,7 @@ mod tests {
         ]);
         let alpha = Complex64::new(1.0, 0.0);
         let beta = Complex64::new(-4.0, 0.0);
-        complex_add_matrices(&mut c, alpha, &a, beta, &b)?;
+        complex_add_matrices(&mut c, alpha, &a, beta, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0)],
@@ -166,18 +164,16 @@ mod tests {
             [Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0)],
         ];
         complex_mat_approx_eq(&c, correct, 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn complex_add_matrices_skip() -> Result<(), StrError> {
+    fn complex_add_matrices_skip() {
         let a = ComplexMatrix::new(0, 0);
         let b = ComplexMatrix::new(0, 0);
         let mut c = ComplexMatrix::new(0, 0);
         let alpha = Complex64::new(1.0, 0.0);
         let beta = Complex64::new(1.0, 0.0);
-        complex_add_matrices(&mut c, alpha, &a, beta, &b)?;
+        complex_add_matrices(&mut c, alpha, &a, beta, &b).unwrap();
         assert_eq!(c.as_data().len(), 0);
-        Ok(())
     }
 }

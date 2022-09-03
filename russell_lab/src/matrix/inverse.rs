@@ -205,7 +205,6 @@ pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
 mod tests {
     use super::{inverse, Matrix, ZERO_DETERMINANT};
     use crate::mat_approx_eq;
-    use crate::StrError;
     use russell_chk::assert_approx_eq;
 
     /// Computes a⋅ai that should equal I for a square matrix
@@ -234,40 +233,37 @@ mod tests {
     }
 
     #[test]
-    fn inverse_0x0_works() -> Result<(), StrError> {
+    fn inverse_0x0_works() {
         let mut a = Matrix::new(0, 0);
         let mut ai = Matrix::new(0, 0);
-        let det = inverse(&mut ai, &mut a)?;
+        let det = inverse(&mut ai, &mut a).unwrap();
         assert_eq!(det, 0.0);
         assert_eq!(ai.as_data().len(), 0);
-        Ok(())
     }
 
     #[test]
-    fn inverse_1x1_works() -> Result<(), StrError> {
+    fn inverse_1x1_works() {
         let data = [[2.0]];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(1, 1);
-        let det = inverse(&mut ai, &mut a)?;
+        let det = inverse(&mut ai, &mut a).unwrap();
         assert_eq!(det, 2.0);
         mat_approx_eq(&ai, &[[0.5]], 1e-15);
         let a_copy = Matrix::from(&data);
         let a_ai = get_a_times_ai(&a_copy, &ai);
         mat_approx_eq(&a_ai, &[[1.0]], 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn inverse_1x1_fails_on_zero_det() -> Result<(), StrError> {
+    fn inverse_1x1_fails_on_zero_det() {
         let mut a = Matrix::from(&[[ZERO_DETERMINANT / 10.0]]);
         let mut ai = Matrix::new(1, 1);
         let res = inverse(&mut ai, &mut a);
         assert_eq!(res, Err("cannot compute inverse due to zero determinant"));
-        Ok(())
     }
 
     #[test]
-    fn inverse_2x2_works() -> Result<(), StrError> {
+    fn inverse_2x2_works() {
         #[rustfmt::skip]
         let data = [
             [1.0, 2.0],
@@ -275,17 +271,16 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(2, 2);
-        let det = inverse(&mut ai, &mut a)?;
+        let det = inverse(&mut ai, &mut a).unwrap();
         assert_eq!(det, -4.0);
         mat_approx_eq(&ai, &[[-0.5, 0.5], [0.75, -0.25]], 1e-15);
         let a_copy = Matrix::from(&data);
         let a_ai = get_a_times_ai(&a_copy, &ai);
         mat_approx_eq(&a_ai, &[[1.0, 0.0], [0.0, 1.0]], 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn inverse_2x2_fails_on_zero_det() -> Result<(), StrError> {
+    fn inverse_2x2_fails_on_zero_det() {
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
             [   -1.0, 3.0/2.0],
@@ -294,11 +289,10 @@ mod tests {
         let mut ai = Matrix::new(2, 2);
         let res = inverse(&mut ai, &mut a);
         assert_eq!(res, Err("cannot compute inverse due to zero determinant"));
-        Ok(())
     }
 
     #[test]
-    fn inverse_3x3_works() -> Result<(), StrError> {
+    fn inverse_3x3_works() {
         #[rustfmt::skip]
         let data = [
             [1.0, 2.0, 3.0],
@@ -307,7 +301,7 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(3, 3);
-        let det = inverse(&mut ai, &mut a)?;
+        let det = inverse(&mut ai, &mut a).unwrap();
         assert_eq!(det, 22.0);
         #[rustfmt::skip]
         let ai_correct = &[
@@ -320,11 +314,10 @@ mod tests {
         let a_copy = Matrix::from(&data);
         let a_ai = get_a_times_ai(&a_copy, &ai);
         mat_approx_eq(&a_ai, &identity, 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn inverse_3x3_fails_on_zero_det() -> Result<(), StrError> {
+    fn inverse_3x3_fails_on_zero_det() {
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
             [1.0, 0.0, 3.0],
@@ -334,11 +327,10 @@ mod tests {
         let mut ai = Matrix::new(3, 3);
         let res = inverse(&mut ai, &mut a);
         assert_eq!(res, Err("cannot compute inverse due to zero determinant"));
-        Ok(())
     }
 
     #[test]
-    fn inverse_4x4_works() -> Result<(), StrError> {
+    fn inverse_4x4_works() {
         #[rustfmt::skip]
         let data = [
             [ 3.0,  0.0,  2.0, -1.0],
@@ -348,7 +340,7 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(4, 4);
-        let det = inverse(&mut ai, &mut a)?;
+        let det = inverse(&mut ai, &mut a).unwrap();
         assert_approx_eq!(det, 20.0, 1e-14);
         #[rustfmt::skip]
         let ai_correct = &[
@@ -362,11 +354,10 @@ mod tests {
         let a_copy = Matrix::from(&data);
         let a_ai = get_a_times_ai(&a_copy, &ai);
         mat_approx_eq(&a_ai, &identity, 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn inverse_5x5_works() -> Result<(), StrError> {
+    fn inverse_5x5_works() {
         #[rustfmt::skip]
         let data = [
             [12.0, 28.0, 22.0, 20.0,  8.0],
@@ -377,7 +368,7 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(5, 5);
-        let det = inverse(&mut ai, &mut a)?;
+        let det = inverse(&mut ai, &mut a).unwrap();
         assert_approx_eq!(det, -167402.0, 1e-8);
         #[rustfmt::skip]
         let ai_correct = &[
@@ -392,11 +383,10 @@ mod tests {
         let a_copy = Matrix::from(&data);
         let a_ai = get_a_times_ai(&a_copy, &ai);
         mat_approx_eq(&a_ai, &identity, 1e-13);
-        Ok(())
     }
 
     #[test]
-    fn inverse_6x6_works() -> Result<(), StrError> {
+    fn inverse_6x6_works() {
         // NOTE: this matrix is nearly non-invertible; it originated from an FEM analysis
         #[rustfmt::skip]
         let data = [
@@ -409,7 +399,7 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(6, 6);
-        let det = inverse(&mut ai, &mut a)?;
+        let det = inverse(&mut ai, &mut a).unwrap();
         assert_approx_eq!(det, 7.778940633136385e-19, 1e-15);
         #[rustfmt::skip]
         let ai_correct = &[
@@ -425,6 +415,5 @@ mod tests {
         let a_copy = Matrix::from(&data);
         let a_ai = get_a_times_ai(&a_copy, &ai);
         mat_approx_eq(&a_ai, &identity, 1e-12);
-        Ok(())
     }
 }

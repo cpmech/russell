@@ -106,6 +106,14 @@ mod tests {
     */
 
     #[test]
+    fn gumbel_handles_errors() {
+        assert_eq!(
+            DistributionGumbel::new(2.0, f64::INFINITY).err(),
+            Some("invalid parameters")
+        );
+    }
+
+    #[test]
     fn gumbel_works() {
         #[rustfmt::skip]
         // x location scale pdf cdf

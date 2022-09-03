@@ -90,6 +90,14 @@ mod tests {
     */
 
     #[test]
+    fn normal_handles_errors() {
+        assert_eq!(
+            DistributionNormal::new(2.0, f64::INFINITY).err(),
+            Some("invalid parameters")
+        );
+    }
+
+    #[test]
     fn normal_works() {
         #[rustfmt::skip]
         // x, mu, sig, pdf, cdf

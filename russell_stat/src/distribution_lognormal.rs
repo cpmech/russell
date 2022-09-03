@@ -121,6 +121,14 @@ mod tests {
     */
 
     #[test]
+    fn lognormal_handles_errors() {
+        assert_eq!(
+            DistributionLognormal::new(2.0, f64::INFINITY).err(),
+            Some("invalid parameters")
+        );
+    }
+
+    #[test]
     fn lognormal_works() {
         #[rustfmt::skip]
         // x mu_logx sig_logx pdf cdf

@@ -693,7 +693,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::NumVector;
-    use crate::{AsArray1D, StrError};
+    use crate::AsArray1D;
     use russell_chk::assert_vec_approx_eq;
     use serde::{Deserialize, Serialize};
     use std::fmt::Write;
@@ -741,59 +741,57 @@ mod tests {
     }
 
     #[test]
-    fn linspace_works() -> Result<(), StrError> {
-        let x = NumVector::<f64>::linspace(0.0, 1.0, 11)?;
+    fn linspace_works() {
+        let x = NumVector::<f64>::linspace(0.0, 1.0, 11).unwrap();
         let correct = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
         assert_vec_approx_eq!(x.data, correct, 1e-15);
 
-        let x = NumVector::<f64>::linspace(2.0, 3.0, 0)?;
+        let x = NumVector::<f64>::linspace(2.0, 3.0, 0).unwrap();
         assert_eq!(x.data.len(), 0);
 
-        let x = NumVector::<f64>::linspace(2.0, 3.0, 1)?;
+        let x = NumVector::<f64>::linspace(2.0, 3.0, 1).unwrap();
         assert_eq!(x.data.len(), 1);
         assert_eq!(x.data[0], 2.0);
 
-        let x = NumVector::<f64>::linspace(2.0, 3.0, 2)?;
+        let x = NumVector::<f64>::linspace(2.0, 3.0, 2).unwrap();
         assert_eq!(x.data.len(), 2);
         assert_eq!(x.data[0], 2.0);
         assert_eq!(x.data[1], 3.0);
 
-        let i = NumVector::<usize>::linspace(0, 10, 0)?;
+        let i = NumVector::<usize>::linspace(0, 10, 0).unwrap();
         assert_eq!(i.data, [] as [usize; 0]);
-        let i = NumVector::<usize>::linspace(0, 10, 1)?;
+        let i = NumVector::<usize>::linspace(0, 10, 1).unwrap();
         assert_eq!(i.data, [0]);
-        let i = NumVector::<usize>::linspace(0, 10, 2)?;
+        let i = NumVector::<usize>::linspace(0, 10, 2).unwrap();
         assert_eq!(i.data, [0, 10]);
-        let i = NumVector::<usize>::linspace(0, 10, 3)?;
+        let i = NumVector::<usize>::linspace(0, 10, 3).unwrap();
         assert_eq!(i.data, [0, 5, 10]);
-        let i = NumVector::<usize>::linspace(0, 10, 4)?;
+        let i = NumVector::<usize>::linspace(0, 10, 4).unwrap();
         assert_eq!(i.data, [0, 3, 6, 9]);
-        Ok(())
     }
 
     #[test]
-    fn mapped_linspace_works() -> Result<(), StrError> {
-        let x = NumVector::<f64>::mapped_linspace(0.0, 4.0, 5, pow2)?;
+    fn mapped_linspace_works() {
+        let x = NumVector::<f64>::mapped_linspace(0.0, 4.0, 5, pow2).unwrap();
         assert_eq!(x.data, &[0.0, 1.0, 4.0, 9.0, 16.0]);
 
-        let x = NumVector::<f64>::mapped_linspace(-1.0, 1.0, 5, f64::abs)?;
+        let x = NumVector::<f64>::mapped_linspace(-1.0, 1.0, 5, f64::abs).unwrap();
         assert_eq!(x.data, &[1.0, 0.5, 0.0, 0.5, 1.0]);
 
-        let x = NumVector::<f64>::mapped_linspace(2.0, 3.0, 0, pow3)?;
+        let x = NumVector::<f64>::mapped_linspace(2.0, 3.0, 0, pow3).unwrap();
         assert_eq!(x.data.len(), 0);
 
-        let x = NumVector::<f64>::mapped_linspace(2.0, 3.0, 1, pow3)?;
+        let x = NumVector::<f64>::mapped_linspace(2.0, 3.0, 1, pow3).unwrap();
         assert_eq!(x.data.len(), 1);
         assert_eq!(x.data[0], 8.0);
 
-        let x = NumVector::<f64>::mapped_linspace(2.0, 3.0, 2, pow3)?;
+        let x = NumVector::<f64>::mapped_linspace(2.0, 3.0, 2, pow3).unwrap();
         assert_eq!(x.data.len(), 2);
         assert_eq!(x.data[0], 8.0);
         assert_eq!(x.data[1], 27.0);
 
-        let i = NumVector::<usize>::mapped_linspace(0, 10, 4, |v| v * 2)?;
+        let i = NumVector::<usize>::mapped_linspace(0, 10, 4, |v| v * 2).unwrap();
         assert_eq!(i.data, [0, 6, 12, 18]);
-        Ok(())
     }
 
     #[test]
@@ -979,7 +977,7 @@ mod tests {
     }
 
     #[test]
-    fn clone_and_serialize_work() -> Result<(), StrError> {
+    fn clone_and_serialize_work() {
         let mut u = NumVector::<f64>::from(&[1.0, 2.0, 3.0]);
         let u_copy = u.clone();
         u.set(0, 0.11);
@@ -1010,12 +1008,15 @@ mod tests {
         // serialize
         let mut serialized = Vec::new();
         let mut serializer = rmp_serde::Serializer::new(&mut serialized);
-        u.serialize(&mut serializer).map_err(|_| "vector serialize failed")?;
+        u.serialize(&mut serializer)
+            .map_err(|_| "vector serialize failed")
+            .unwrap();
         assert!(serialized.len() > 0);
         // deserialize
         let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
-        let b: NumVector<f64> =
-            Deserialize::deserialize(&mut deserializer).map_err(|_| "cannot deserialize vector data")?;
+        let b: NumVector<f64> = Deserialize::deserialize(&mut deserializer)
+            .map_err(|_| "cannot deserialize vector data")
+            .unwrap();
         assert_eq!(
             format!("{}", b),
             "┌   ┐\n\
@@ -1024,7 +1025,6 @@ mod tests {
              │ 3 │\n\
              └   ┘"
         );
-        Ok(())
     }
 
     fn array_1d_test<'a, T, U>(array: &'a T) -> String

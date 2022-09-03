@@ -42,7 +42,7 @@ pub fn complex_vec_zip(real: &Vector, imag: &Vector) -> Result<ComplexVector, St
 #[cfg(test)]
 mod tests {
     use super::complex_vec_zip;
-    use crate::{StrError, Vector};
+    use crate::Vector;
 
     #[test]
     fn complex_vec_zip_handles_errors() {
@@ -53,10 +53,10 @@ mod tests {
     }
 
     #[test]
-    fn complex_vec_zip_works() -> Result<(), StrError> {
+    fn complex_vec_zip_works() {
         let real = Vector::from(&[1.0, 2.0, 3.0]);
         let imag = Vector::from(&[4.0, 5.0, 6.0]);
-        let v = complex_vec_zip(&real, &imag)?;
+        let v = complex_vec_zip(&real, &imag).unwrap();
         assert_eq!(
             format!("{}", v),
             "┌      ┐\n\
@@ -65,6 +65,5 @@ mod tests {
              │ 3+6i │\n\
              └      ┘"
         );
-        Ok(())
     }
 }

@@ -42,7 +42,6 @@ pub fn update_vector(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrEr
 mod tests {
     use super::{update_vector, Vector};
     use crate::vec_approx_eq;
-    use crate::StrError;
 
     #[test]
     fn update_vector_fails_on_wrong_dims() {
@@ -52,12 +51,11 @@ mod tests {
     }
 
     #[test]
-    fn update_vector_works() -> Result<(), StrError> {
+    fn update_vector_works() {
         let u = Vector::from(&[10.0, 20.0, 30.0]);
         let mut v = Vector::from(&[100.0, 200.0, 300.0]);
-        update_vector(&mut v, 2.0, &u)?;
+        update_vector(&mut v, 2.0, &u).unwrap();
         let correct = &[120.0, 240.0, 360.0];
         vec_approx_eq(&v, correct, 1e-15);
-        Ok(())
     }
 }

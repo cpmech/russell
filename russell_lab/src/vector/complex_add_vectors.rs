@@ -62,7 +62,6 @@ mod tests {
     use super::{complex_add_vectors, ComplexVector};
     use crate::complex_vec_approx_eq;
     use crate::constants;
-    use crate::StrError;
     use num_complex::Complex64;
 
     #[test]
@@ -85,7 +84,7 @@ mod tests {
     }
 
     #[test]
-    fn complex_add_vectors_works() -> Result<(), StrError> {
+    fn complex_add_vectors_works() {
         const NOISE: Complex64 = Complex64::new(1234.567, 3456.789);
         #[rustfmt::skip]
         let u = ComplexVector::from(&[
@@ -106,7 +105,7 @@ mod tests {
         let mut w = ComplexVector::from(&vec![NOISE; u.dim()]);
         let alpha = Complex64::new(1.0, 0.0);
         let beta = Complex64::new(-4.0, 0.0);
-        complex_add_vectors(&mut w, alpha, &u, beta, &v)?;
+        complex_add_vectors(&mut w, alpha, &u, beta, &v).unwrap();
         #[rustfmt::skip]
         let correct = &[
             Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0),
@@ -116,11 +115,10 @@ mod tests {
             Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0),
         ];
         complex_vec_approx_eq(&w, correct, 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn complex_add_vectors_sizes_works() -> Result<(), StrError> {
+    fn complex_add_vectors_sizes_works() {
         const NOISE: Complex64 = Complex64::new(1234.567, 3456.789);
         let alpha = Complex64::new(0.5, 0.0);
         let beta = Complex64::new(0.5, 0.0);
@@ -134,9 +132,8 @@ mod tests {
                 v[i] = Complex64::new(i as f64, i as f64);
                 correct[i] = Complex64::new(i as f64, i as f64);
             }
-            complex_add_vectors(&mut w, alpha, &u, beta, &v)?;
+            complex_add_vectors(&mut w, alpha, &u, beta, &v).unwrap();
             complex_vec_approx_eq(&w, &correct, 1e-15);
         }
-        Ok(())
     }
 }

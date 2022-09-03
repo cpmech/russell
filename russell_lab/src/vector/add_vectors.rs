@@ -52,7 +52,6 @@ mod tests {
     use super::{add_vectors, Vector};
     use crate::constants;
     use crate::vec_approx_eq;
-    use crate::StrError;
 
     #[test]
     fn add_vectors_fail_on_wrong_dims() {
@@ -72,7 +71,7 @@ mod tests {
     }
 
     #[test]
-    fn add_vectors_works() -> Result<(), StrError> {
+    fn add_vectors_works() {
         const NOISE: f64 = 1234.567;
         #[rustfmt::skip]
         let u = Vector::from(&[
@@ -91,7 +90,7 @@ mod tests {
             0.5, 1.0, 1.5, 2.0,
         ]);
         let mut w = Vector::from(&vec![NOISE; u.dim()]);
-        add_vectors(&mut w, 1.0, &u, -4.0, &v)?;
+        add_vectors(&mut w, 1.0, &u, -4.0, &v).unwrap();
         #[rustfmt::skip]
         let correct = [
             -1.0, -2.0,
@@ -101,11 +100,10 @@ mod tests {
             -1.0, -2.0, -3.0, -4.0,
         ];
         vec_approx_eq(&w, &correct, 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn add_vectors_sizes_works() -> Result<(), StrError> {
+    fn add_vectors_sizes_works() {
         const NOISE: f64 = 1234.567;
         for size in 0..(constants::NATIVE_VERSUS_OPENBLAS_BOUNDARY + 3) {
             let mut u = Vector::new(size);
@@ -117,9 +115,8 @@ mod tests {
                 v[i] = i as f64;
                 correct[i] = i as f64;
             }
-            add_vectors(&mut w, 0.5, &u, 0.5, &v)?;
+            add_vectors(&mut w, 0.5, &u, 0.5, &v).unwrap();
             vec_approx_eq(&w, &correct, 1e-15);
         }
-        Ok(())
     }
 }

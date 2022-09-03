@@ -42,7 +42,6 @@ pub fn complex_copy_vector(v: &mut ComplexVector, u: &ComplexVector) -> Result<(
 mod tests {
     use super::{complex_copy_vector, ComplexVector};
     use crate::complex_vec_approx_eq;
-    use crate::StrError;
     use num_complex::Complex64;
 
     #[test]
@@ -53,16 +52,15 @@ mod tests {
     }
 
     #[test]
-    fn complex_copy_vector_works() -> Result<(), StrError> {
+    fn complex_copy_vector_works() {
         let u = ComplexVector::from(&[1.0, 2.0, 3.0]);
         let mut v = ComplexVector::from(&[100.0, 200.0, 300.0]);
-        complex_copy_vector(&mut v, &u)?;
+        complex_copy_vector(&mut v, &u).unwrap();
         let correct = &[
             Complex64::new(1.0, 0.0),
             Complex64::new(2.0, 0.0),
             Complex64::new(3.0, 0.0),
         ];
         complex_vec_approx_eq(&v, correct, 1e-15);
-        Ok(())
     }
 }

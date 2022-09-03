@@ -70,11 +70,11 @@ impl VerifyLinSys {
         let max_abs_a = f64::abs(trip.values_aij[idx as usize]);
 
         // compute max_abs_ax
-        let mut ax = trip.mat_vec_mul(&x)?;
+        let mut ax = trip.mat_vec_mul(&x).unwrap(); // already checked
         let max_abs_ax = vector_norm(&ax, NormVec::Max);
 
         // compute max_abs_diff
-        update_vector(&mut ax, -1.0, &rhs)?; // ax := ax - rhs
+        update_vector(&mut ax, -1.0, &rhs).unwrap(); // ax := ax - rhs
         let max_abs_diff = vector_norm(&ax, NormVec::Max);
 
         // compute relative_error
@@ -110,7 +110,8 @@ impl fmt::Display for VerifyLinSys {
             self.relative_error,
             self.time_check,
             format_nanoseconds(self.time_check),
-        )?;
+        )
+        .unwrap();
         Ok(())
     }
 }

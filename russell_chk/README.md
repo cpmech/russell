@@ -66,18 +66,18 @@ fn main() {
 ### Check complex numbers
 
 ```rust
-use russell_chk::assert_complex_vec_approx_eq;
+use russell_chk::complex_vec_approx_eq;
 use num_complex::Complex64;
 
 fn main() {
-    let a = [
+    let a = &[
         Complex64::new(0.123456789, 5.01),
         Complex64::new(0.123456789, 5.01),
         Complex64::new(0.123456789, 5.01)];
-    let b = [
+    let b = &[
         Complex64::new(0.12345678, 5.01),
         Complex64::new(0.1234567, 5.01),
         Complex64::new(0.123456, 5.01)];
-    assert_complex_vec_approx_eq!(&a, &b, 1e-6);
+    complex_vec_approx_eq(a, b, 1e-6);
 }
 ```

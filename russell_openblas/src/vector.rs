@@ -195,7 +195,7 @@ mod tests {
     use super::{dasum, daxpy, dcopy, ddot, dnrm2, dscal, idamax, zaxpy, zcopy, zscal};
     use crate::to_i32;
     use num_complex::Complex64;
-    use russell_chk::{approx_eq, assert_complex_vec_approx_eq, assert_vec_approx_eq};
+    use russell_chk::{approx_eq, assert_vec_approx_eq, complex_vec_approx_eq};
 
     #[test]
     fn ddot_works() {
@@ -235,16 +235,16 @@ mod tests {
         ];
         let (n, incx, incy) = (3, 1, 1);
         zcopy(n, &x, incx, &mut y, incy);
-        assert_complex_vec_approx_eq!(
-            x,
+        complex_vec_approx_eq(
+            &x,
             &[
                 Complex64::new(20.0, 21.0),
                 Complex64::new(10.0, 11.0),
                 Complex64::new(-30.0, -31.0),
                 IGNORED,
-                IGNORED
+                IGNORED,
             ],
-            1e-15
+            1e-15,
         );
     }
 
@@ -271,16 +271,16 @@ mod tests {
         ];
         let (n, incx) = (3, 1);
         zscal(n, alpha, &mut x, incx);
-        assert_complex_vec_approx_eq!(
-            x,
+        complex_vec_approx_eq(
+            &x,
             &[
                 Complex64::new(10.0, 10.5),
                 Complex64::new(5.0, 5.5),
                 Complex64::new(-15.0, -15.5),
                 IGNORED,
-                IGNORED
+                IGNORED,
             ],
-            1e-15
+            1e-15,
         );
 
         let alpha = Complex64::new(0.5, 1.0);
@@ -293,16 +293,16 @@ mod tests {
         ];
         let (n, incx) = (3, 1);
         zscal(n, alpha, &mut x, incx);
-        assert_complex_vec_approx_eq!(
-            x,
+        complex_vec_approx_eq(
+            &x,
             &[
                 Complex64::new(-11.0, 30.5),
                 Complex64::new(-6.0, 15.5),
                 Complex64::new(16.0, -45.5),
                 IGNORED,
-                IGNORED
+                IGNORED,
             ],
-            1e-15
+            1e-15,
         );
     }
 
@@ -343,7 +343,7 @@ mod tests {
             Complex64::new(-123.0, 0.5), // 3
             Complex64::new(-123.0, 0.5), // 4
         ];
-        assert_complex_vec_approx_eq!(x, x_correct, 1e-15);
+        complex_vec_approx_eq(&x, x_correct, 1e-15);
         let y_correct = &[
             Complex64::new(5.0, 2.5),   // 0
             Complex64::new(5.0, 0.0),   // 1
@@ -351,7 +351,7 @@ mod tests {
             Complex64::new(543.0, 0.0), // 3
             Complex64::new(543.0, 5.5), // 4
         ];
-        assert_complex_vec_approx_eq!(y, y_correct, 1e-15);
+        complex_vec_approx_eq(&y, y_correct, 1e-15);
 
         zaxpy(n, Complex64::new(0.5, 1.0), &x, incx, &mut y, incy);
         let y_correct = &[
@@ -361,7 +361,7 @@ mod tests {
             Complex64::new(481.0, -122.75), // 3
             Complex64::new(481.0, -117.25), // 4
         ];
-        assert_complex_vec_approx_eq!(y, y_correct, 1e-15);
+        complex_vec_approx_eq(&y, y_correct, 1e-15);
     }
 
     #[test]

@@ -806,7 +806,7 @@ mod tests {
     use crate::conversions::{dgeev_data, dgeev_data_lr};
     use crate::{to_i32, StrError};
     use num_complex::{Complex64, ComplexFloat};
-    use russell_chk::{approx_eq, assert_complex_vec_approx_eq, assert_vec_approx_eq, complex_approx_eq};
+    use russell_chk::{approx_eq, assert_vec_approx_eq, complex_approx_eq, complex_vec_approx_eq};
 
     #[test]
     fn dgemm_notrans_notrans_works() {
@@ -1042,13 +1042,13 @@ mod tests {
 
         // check
         #[rustfmt::skip]
-        let correct = [
+        let correct = &[
         	Complex64::new(2.0, -6.0), Complex64::new(3.0,  6.0), Complex64::new(-0.5, -14.0),
         	Complex64::new(2.0, -7.0), Complex64::new(5.0, -2.0), Complex64::new(-1.5, -20.5),
         	Complex64::new(2.0, -9.0), Complex64::new(3.0,  6.0), Complex64::new(-5.5, -20.5),
         	Complex64::new(2.0, -9.0), Complex64::new(5.0, -2.0), Complex64::new(14.5, -7.0),
         ];
-        assert_complex_vec_approx_eq!(c, correct, 1e-15);
+        complex_vec_approx_eq(&c, correct, 1e-15);
     }
 
     #[test]
@@ -1157,26 +1157,26 @@ mod tests {
 
         // check results: c := up(3⋅a⋅aᵀ - c)
         #[rustfmt::skip]
-        let c_up_correct = [
+        let c_up_correct = &[
             Complex64::new(24.0, -5.0), Complex64::new(21.0, -6.0), Complex64::new(22.0, -6.0), Complex64::new( 3.0, -3.0),
             Complex64::new( 0.0,  0.0), Complex64::new(27.0,  0.0), Complex64::new(33.0,  3.0), Complex64::new( 8.0,  0.0),
             Complex64::new( 0.0,  0.0), Complex64::new( 0.0,  0.0), Complex64::new(75.0, 18.0), Complex64::new(16.0,  0.0),
             Complex64::new( 0.0,  0.0), Complex64::new( 0.0,  0.0), Complex64::new( 0.0,  0.0), Complex64::new( 9.0, -1.0),
         ];
-        assert_complex_vec_approx_eq!(c_up, c_up_correct, 1e-15);
+        complex_vec_approx_eq(&c_up, c_up_correct, 1e-15);
 
         // run zsyrk with lo part of matrix c
         zsyrk(false, trans, n, k, alpha, &a, beta, &mut c_lo);
 
         // check results: c := lo(3⋅a⋅aᵀ - c)
         #[rustfmt::skip]
-        let c_lo_correct = [
+        let c_lo_correct = &[
             Complex64::new(24.0, -5.0), Complex64::new( 0.0, 0.0), Complex64::new( 0.0,  0.0), Complex64::new(0.0,  0.0),
             Complex64::new(20.0, -6.0), Complex64::new(27.0, 0.0), Complex64::new( 0.0,  0.0), Complex64::new(0.0,  0.0),
             Complex64::new(20.0, -6.0), Complex64::new(34.0, 3.0), Complex64::new(75.0, 18.0), Complex64::new(0.0,  0.0),
             Complex64::new( 2.0, -3.0), Complex64::new( 8.0, 0.0), Complex64::new(15.0,  0.0), Complex64::new(9.0, -1.0),
         ];
-        assert_complex_vec_approx_eq!(c_lo, c_lo_correct, 1e-15);
+        complex_vec_approx_eq(&c_lo, c_lo_correct, 1e-15);
     }
 
     #[test]
@@ -1221,26 +1221,26 @@ mod tests {
 
         // check results: c := up(3⋅a⋅aᴴ - c)
         #[rustfmt::skip]
-        let c_up_correct = [
+        let c_up_correct = &[
             Complex64::new(31.0, 0.0), Complex64::new(21.0, -5.0), Complex64::new(15.0, -11.0), Complex64::new( 3.0, -1.0),
             Complex64::new( 0.0, 0.0), Complex64::new(33.0,  0.0), Complex64::new(34.0, - 9.0), Complex64::new(14.0,  0.0),
             Complex64::new( 0.0, 0.0), Complex64::new( 0.0,  0.0), Complex64::new(82.0,   0.0), Complex64::new(16.0,  5.0),
             Complex64::new( 0.0, 0.0), Complex64::new( 0.0,  0.0), Complex64::new( 0.0,   0.0), Complex64::new(16.0,  0.0),
         ];
-        assert_complex_vec_approx_eq!(c_up, c_up_correct, 1e-15);
+        complex_vec_approx_eq(&c_up, c_up_correct, 1e-15);
 
         // run zherk with lo part of matrix c
         zherk(false, trans, n, k, alpha, &a, beta, &mut c_lo);
 
         // check results: c := lo(3⋅a⋅aᴴ - c)
         #[rustfmt::skip]
-        let c_lo_correct = [
+        let c_lo_correct = &[
             Complex64::new(31.0,  0.0), Complex64::new( 0.0, 0.0), Complex64::new( 0.0,  0.0), Complex64::new( 0.0, 0.0),
             Complex64::new(21.0,  5.0), Complex64::new(33.0, 0.0), Complex64::new( 0.0,  0.0), Complex64::new( 0.0, 0.0),
             Complex64::new(15.0, 11.0), Complex64::new(34.0, 9.0), Complex64::new(82.0,  0.0), Complex64::new( 0.0, 0.0),
             Complex64::new( 3.0,  1.0), Complex64::new(14.0, 0.0), Complex64::new(16.0, -5.0), Complex64::new(16.0, 0.0),
         ];
-        assert_complex_vec_approx_eq!(c_lo, c_lo_correct, 1e-15);
+        complex_vec_approx_eq(&c_lo, c_lo_correct, 1e-15);
     }
 
     #[test]
@@ -1501,7 +1501,7 @@ mod tests {
                 }
             }
         }
-        assert_complex_vec_approx_eq!(usv, a_copy, 1e-15);
+        complex_vec_approx_eq(&usv, &a_copy, 1e-15);
         Ok(())
     }
 
@@ -1557,7 +1557,7 @@ mod tests {
                 }
             }
         }
-        assert_complex_vec_approx_eq!(usv, a_copy, 1e-14);
+        complex_vec_approx_eq(&usv, &a_copy, 1e-14);
         Ok(())
     }
 
@@ -1675,26 +1675,26 @@ mod tests {
 
         // check LU
         #[rustfmt::skip]
-        let lu_correct = [
+        let lu_correct = &[
             Complex64::new(4.000000000000000e+00, 1.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.0), Complex64::new( 3.000000000000000e+00,  0.000000000000000e+00), Complex64::new( 1.000000000000000e+00, -1.000000000000000e+00),
             Complex64::new(5.294117647058824e-01, 1.176470588235294e-01), Complex64::new(3.000000000000000e+00, 0.0), Complex64::new(-2.588235294117647e+00, -3.529411764705882e-01), Complex64::new( 3.529411764705882e-01, -5.882352941176471e-01),
             Complex64::new(2.941176470588235e-01, 1.764705882352941e-01), Complex64::new(6.666666666666666e-01, 0.0), Complex64::new( 8.431372549019609e-01, -2.941176470588235e-01), Complex64::new( 3.294117647058823e+00, -4.901960784313725e-01),
             Complex64::new(2.941176470588235e-01, 1.764705882352941e-01), Complex64::new(6.666666666666666e-01, 0.0), Complex64::new( 1.000000000000000e+00,  0.000000000000000e+00), Complex64::new(-3.000000000000000e+00,  0.000000000000000e+00),
         ];
-        assert_complex_vec_approx_eq!(a, lu_correct, 1e-15);
+        complex_vec_approx_eq(&a, lu_correct, 1e-15);
 
         // run zgetri
         zgetri(n_i32, &mut a, &ipiv)?;
 
         // check inverse matrix
         #[rustfmt::skip]
-        let ai_correct = [
+        let ai_correct = &[
             Complex64::new(-8.442622950819669e-01, -4.644808743169393e-02), Complex64::new( 5.409836065573769e-01,  4.918032786885240e-02), Complex64::new( 3.278688524590156e-02, -2.732240437158467e-02), Complex64::new( 1.803278688524591e-01,  1.639344262295081e-02),
             Complex64::new( 1.065573770491803e+00,  2.786885245901638e-01), Complex64::new(-2.459016393442623e-01, -2.950819672131146e-01), Complex64::new(-1.967213114754096e-01,  1.639344262295082e-01), Complex64::new(-8.196721311475419e-02, -9.836065573770497e-02),
             Complex64::new( 1.221311475409836e+00,  2.322404371584698e-01), Complex64::new(-7.049180327868851e-01, -2.459016393442622e-01), Complex64::new(-1.639344262295082e-01,  1.366120218579235e-01), Complex64::new( 9.836065573770481e-02, -8.196721311475411e-02),
             Complex64::new(-3.333333333333333e-01,  0.000000000000000e+00), Complex64::new( 0.000000000000000e+00,  0.000000000000000e+00), Complex64::new( 3.333333333333333e-01,  0.000000000000000e+00), Complex64::new( 0.000000000000000e+00,  0.000000000000000e+00),
         ];
-        assert_complex_vec_approx_eq!(a, ai_correct, 1e-15);
+        complex_vec_approx_eq(&a, ai_correct, 1e-15);
 
         // check again: a⋅a⁻¹ = I
         let one = Complex64::new(1.0, 0.0);
@@ -1802,26 +1802,26 @@ mod tests {
 
         // check Cholesky
         #[rustfmt::skip]
-        let a_up_correct = [
+        let a_up_correct = &[
             Complex64::new(2.0, 0.0), Complex64::new(0.000000000000000e+00, 5.0e-01), Complex64::new(-1.500000000000000e+00,  5.000000000000000e-01), Complex64::new(0.000000000000000e+00, 1.000000000000000e+00),
             Complex64::new(0.0, 0.0), Complex64::new(1.658312395177700e+00, 0.0e+00), Complex64::new( 4.522670168666454e-01, -4.522670168666454e-01), Complex64::new(9.045340337332909e-01, 0.000000000000000e+00),
             Complex64::new(0.0, 0.0), Complex64::new(0.000000000000000e+00, 0.0e+00), Complex64::new( 1.044465935734187e+00,  0.000000000000000e+00), Complex64::new(8.703882797784884e-02, 8.703882797784884e-02),
             Complex64::new(0.0, 0.0), Complex64::new(0.000000000000000e+00, 0.0e+00), Complex64::new( 0.000000000000000e+00,  0.000000000000000e+00), Complex64::new(1.471960144387974e+00, 0.000000000000000e+00),
         ];
-        assert_complex_vec_approx_eq!(a_up, a_up_correct, 1e-15);
+        complex_vec_approx_eq(&a_up, a_up_correct, 1e-15);
 
         // run zpotrf with lo part of matrix a
         zpotrf(false, n, &mut a_lo)?;
 
         // check Cholesky
         #[rustfmt::skip]
-        let a_lo_correct = [
+        let a_lo_correct = &[
             Complex64::new( 2.0,  0.0e+00), Complex64::new(0.000000000000000e+00, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00,  0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.0),
             Complex64::new( 0.0, -5.0e-01), Complex64::new(1.658312395177700e+00, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00,  0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.0),
             Complex64::new(-1.5, -5.0e-01), Complex64::new(4.522670168666454e-01, 4.522670168666454e-01), Complex64::new(1.044465935734187e+00,  0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.0),
             Complex64::new( 0.0, -1.0e+00), Complex64::new(9.045340337332909e-01, 0.000000000000000e+00), Complex64::new(8.703882797784884e-02, -8.703882797784884e-02), Complex64::new(1.471960144387974e+00, 0.0),
         ];
-        assert_complex_vec_approx_eq!(a_lo, a_lo_correct, 1e-15);
+        complex_vec_approx_eq(&a_lo, a_lo_correct, 1e-15);
         Ok(())
     }
 

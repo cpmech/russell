@@ -41,8 +41,8 @@ pub fn complex_copy_vector(v: &mut ComplexVector, u: &ComplexVector) -> Result<(
 #[cfg(test)]
 mod tests {
     use super::{complex_copy_vector, ComplexVector};
-    use crate::complex_vec_approx_eq;
     use num_complex::Complex64;
+    use russell_chk::complex_vec_approx_eq;
 
     #[test]
     fn complex_copy_vector_fails_on_wrong_dims() {
@@ -61,6 +61,6 @@ mod tests {
             Complex64::new(2.0, 0.0),
             Complex64::new(3.0, 0.0),
         ];
-        complex_vec_approx_eq(&v, correct, 1e-15);
+        complex_vec_approx_eq(v.as_data(), correct, 1e-15);
     }
 }

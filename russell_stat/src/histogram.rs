@@ -162,7 +162,7 @@ where
         for i in 0..nbins {
             // find c_max and string l_c_max
             let c = self.counts[i];
-            write!(&mut buf, "{}", c)?;
+            write!(&mut buf, "{}", c).unwrap();
             c_max = cmp::max(c_max, c);
             l_c_max = cmp::max(l_c_max, buf.chars().count());
             buf.clear();
@@ -179,8 +179,8 @@ where
         for i in 0..self.stations.len() {
             let station = self.stations[i];
             match f.precision() {
-                Some(digits) => write!(&mut buf, "{:.1$}", station, digits)?,
-                None => write!(&mut buf, "{}", station)?,
+                Some(digits) => write!(&mut buf, "{:.1$}", station, digits).unwrap(),
+                None => write!(&mut buf, "{}", station).unwrap(),
             }
             l_s_max = cmp::max(l_s_max, buf.chars().count());
             buf.clear();
@@ -198,14 +198,15 @@ where
                     f,
                     "[{:>3$.4$},{:>3$.4$}) | {:>5$}",
                     left, right, count, l_s_max, digits, l_c_max
-                )?,
-                None => write!(f, "[{:>3$},{:>3$}) | {:>4$}", left, right, count, l_s_max, l_c_max)?,
+                )
+                .unwrap(),
+                None => write!(f, "[{:>3$},{:>3$}) | {:>4$}", left, right, count, l_s_max, l_c_max).unwrap(),
             }
             let n = scale * (count as f64);
             let bar = std::iter::repeat(self.bar_char).take(n as usize).collect::<String>();
-            write!(f, " {}\n", bar)?;
+            write!(f, " {}\n", bar).unwrap();
         }
-        write!(f, "{:>1$}\n", format!("sum = {}", total), 2 * l_s_max + l_c_max + 6)?;
+        write!(f, "{:>1$}\n", format!("sum = {}", total), 2 * l_s_max + l_c_max + 6).unwrap();
         Ok(())
     }
 }

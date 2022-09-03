@@ -673,12 +673,27 @@ where
     }
 }
 
+/// Allows accessing NumVector as an Array1D
+impl<'a, T: 'a> AsArray1D<'a, T> for NumVector<T>
+where
+    T: Num + NumCast + Copy + DeserializeOwned + Serialize,
+{
+    #[inline]
+    fn size(&self) -> usize {
+        self.dim()
+    }
+    #[inline]
+    fn at(&self, i: usize) -> T {
+        self[i]
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
     use super::NumVector;
-    use crate::StrError;
+    use crate::{AsArray1D, StrError};
     use russell_chk::assert_vec_approx_eq;
     use serde::{Deserialize, Serialize};
     use std::fmt::Write;
@@ -786,7 +801,7 @@ mod tests {
         let mut u = NumVector::<f64>::from(&[6.0, 9.0, 12.0]);
         u.fill(7.7);
         let correct = &[7.7, 7.7, 7.7];
-        assert_vec_approx_eq!(u.data, correct, 1e-15);
+        assert_eq!(u.data, correct);
     }
 
     #[test]
@@ -837,7 +852,7 @@ mod tests {
         let mut u = NumVector::<f64>::from(&[-1.0, -2.0, -3.0]);
         u.map(pow3);
         let correct = &[-1.0, -8.0, -27.0];
-        assert_vec_approx_eq!(u.data, correct, 1e-15);
+        assert_eq!(u.data, correct);
     }
 
     #[test]
@@ -845,7 +860,7 @@ mod tests {
         let mut u = NumVector::<f64>::from(&[-1.0, -2.0, -3.0]);
         u.map_with_index(pow3_plus_i);
         let correct = &[-1.0, -7.0, -25.0];
-        assert_vec_approx_eq!(u.data, correct, 1e-15);
+        assert_eq!(u.data, correct);
     }
 
     #[test]
@@ -1010,5 +1025,19 @@ mod tests {
              └   ┘"
         );
         Ok(())
+    }
+
+    fn array_1d_test<'a, T, U>(array: &'a T) -> String
+    where
+        T: AsArray1D<'a, U>,
+        U: 'a + std::fmt::Debug,
+    {
+        format!("size = {:?}", array.size()).to_string()
+    }
+
+    #[test]
+    fn as_array_1d_works() {
+        let u = NumVector::<i32>::from(&[1, 2]);
+        assert_eq!(array_1d_test(&u), "size = 2");
     }
 }

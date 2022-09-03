@@ -39,7 +39,7 @@ pub fn scale_matrix(a: &mut Matrix, alpha: f64) {
 #[cfg(test)]
 mod tests {
     use super::{scale_matrix, Matrix};
-    use russell_chk::assert_vec_approx_eq;
+    use crate::mat_approx_eq;
 
     #[test]
     fn scale_matrix_works() {
@@ -50,10 +50,10 @@ mod tests {
         ]);
         scale_matrix(&mut a, 1.0 / 3.0);
         #[rustfmt::skip]
-        let correct = [
-             2.0,  3.0,  4.0,
-            -2.0, -3.0, -4.0,
+        let correct = &[
+            [ 2.0,  3.0,  4.0],
+            [-2.0, -3.0, -4.0],
         ];
-        assert_vec_approx_eq!(a.as_data(), correct, 1e-15);
+        mat_approx_eq(&a, correct, 1e-15);
     }
 }

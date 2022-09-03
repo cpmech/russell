@@ -573,8 +573,7 @@ impl fmt::Display for Solver {
 mod tests {
     use super::{ConfigSolver, LinSolKind, Solver, SparseTriplet};
     use crate::{StrError, Symmetry};
-    use russell_chk::assert_vec_approx_eq;
-    use russell_lab::Vector;
+    use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
     fn new_works() -> Result<(), StrError> {
@@ -717,7 +716,7 @@ mod tests {
         solver.solve(&mut x, &rhs)?;
 
         // check
-        assert_vec_approx_eq!(x.as_data(), x_correct, 1e-14);
+        vec_approx_eq(&x, x_correct, 1e-14);
         Ok(())
     }
 
@@ -812,12 +811,12 @@ mod tests {
 
         // solve works
         solver.solve(&mut x, &rhs)?;
-        assert_vec_approx_eq!(x.as_data(), x_correct, 1e-14);
+        vec_approx_eq(&x, x_correct, 1e-14);
 
         // calling solve again works
         let mut x_again = Vector::new(5);
         solver.solve(&mut x_again, &rhs)?;
-        assert_vec_approx_eq!(x_again.as_data(), x_correct, 1e-14);
+        vec_approx_eq(&x_again, x_correct, 1e-14);
 
         // factorize fails on singular matrix
         let mut trip_singular = SparseTriplet::new(5, 5, 2, Symmetry::No)?;
@@ -843,7 +842,7 @@ mod tests {
         let rhs2 = Vector::from(&[2.0, 4.0, 6.0]);
         let config = ConfigSolver::new();
         let (mut solver, x1) = Solver::compute(config, &trip, &rhs1)?;
-        assert_vec_approx_eq!(x1.as_data(), &[-2.0, 3.0, 3.0], 1e-15);
+        vec_approx_eq(&x1, &[-2.0, 3.0, 3.0], 1e-15);
         let mut x2 = Vector::new(trip.dims().0);
         solver.solve(&mut x2, &rhs2)?;
         Ok(())

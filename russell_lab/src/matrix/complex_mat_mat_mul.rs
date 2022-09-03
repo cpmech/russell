@@ -73,9 +73,9 @@ pub fn complex_mat_mat_mul(
 #[cfg(test)]
 mod tests {
     use super::{complex_mat_mat_mul, ComplexMatrix};
+    use crate::complex_mat_approx_eq;
     use crate::StrError;
     use num_complex::Complex64;
-    use russell_chk::assert_complex_vec_approx_eq;
 
     #[test]
     fn mat_mat_mul_fails_on_wrong_dims() {
@@ -117,11 +117,11 @@ mod tests {
         let alpha = Complex64::new(2.0, 0.0);
         complex_mat_mat_mul(&mut c, alpha, &a, &b)?;
         #[rustfmt::skip]
-        let correct = [
-            Complex64::new(2.80,0.0), Complex64::new(12.0,0.0), Complex64::new(12.0,0.0), Complex64::new(12.50,0.0),
-            Complex64::new(1.30,0.0), Complex64::new( 5.0,0.0), Complex64::new( 5.0,0.0), Complex64::new( 5.25,0.0),
+        let correct = &[
+            [Complex64::new(2.80,0.0), Complex64::new(12.0,0.0), Complex64::new(12.0,0.0), Complex64::new(12.50,0.0)],
+            [Complex64::new(1.30,0.0), Complex64::new( 5.0,0.0), Complex64::new( 5.0,0.0), Complex64::new( 5.25,0.0)],
         ];
-        assert_complex_vec_approx_eq!(c.as_data(), correct, 1e-15);
+        complex_mat_approx_eq(&c, correct, 1e-15);
         Ok(())
     }
 }

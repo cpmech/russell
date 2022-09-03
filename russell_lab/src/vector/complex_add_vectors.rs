@@ -60,10 +60,10 @@ pub fn complex_add_vectors(
 #[cfg(test)]
 mod tests {
     use super::{complex_add_vectors, ComplexVector};
+    use crate::complex_vec_approx_eq;
     use crate::constants;
     use crate::StrError;
     use num_complex::Complex64;
-    use russell_chk::assert_complex_vec_approx_eq;
 
     #[test]
     fn complex_add_vectors_fail_on_wrong_dims() {
@@ -115,7 +115,7 @@ mod tests {
             Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0),
             Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0),
         ];
-        assert_complex_vec_approx_eq!(w.as_data(), correct, 1e-15);
+        complex_vec_approx_eq(&w, correct, 1e-15);
         Ok(())
     }
 
@@ -135,7 +135,7 @@ mod tests {
                 correct[i] = Complex64::new(i as f64, i as f64);
             }
             complex_add_vectors(&mut w, alpha, &u, beta, &v)?;
-            assert_complex_vec_approx_eq!(w.as_data(), correct, 1e-15);
+            complex_vec_approx_eq(&w, &correct, 1e-15);
         }
         Ok(())
     }

@@ -54,8 +54,8 @@ pub fn add_matrices(c: &mut Matrix, alpha: f64, a: &Matrix, beta: f64, b: &Matri
 #[cfg(test)]
 mod tests {
     use super::{add_matrices, Matrix};
+    use crate::mat_approx_eq;
     use crate::StrError;
-    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn add_matrices_fail_on_wrong_dims() {
@@ -106,12 +106,12 @@ mod tests {
         ]);
         add_matrices(&mut c, 1.0, &a, -4.0, &b)?;
         #[rustfmt::skip]
-        let correct = [
-            -1.0, -2.0, -3.0, -4.0,
-            -1.0, -2.0, -3.0, -4.0,
-            -1.0, -2.0, -3.0, -4.0,
+        let correct = &[
+            [-1.0, -2.0, -3.0, -4.0],
+            [-1.0, -2.0, -3.0, -4.0],
+            [-1.0, -2.0, -3.0, -4.0],
         ];
-        assert_vec_approx_eq!(c.as_data(), correct, 1e-15);
+        mat_approx_eq(&c, correct, 1e-15);
         Ok(())
     }
 
@@ -141,14 +141,14 @@ mod tests {
         ]);
         add_matrices(&mut c, 1.0, &a, -4.0, &b)?;
         #[rustfmt::skip]
-        let correct = [
-            -1.0, -2.0, -3.0, -4.0, -5.0,
-            -1.0, -2.0, -3.0, -4.0, -5.0,
-            -1.0, -2.0, -3.0, -4.0, -5.0,
-            -1.0, -2.0, -3.0, -4.0, -5.0,
-            -1.0, -2.0, -3.0, -4.0, -5.0,
+        let correct = &[
+            [-1.0, -2.0, -3.0, -4.0, -5.0],
+            [-1.0, -2.0, -3.0, -4.0, -5.0],
+            [-1.0, -2.0, -3.0, -4.0, -5.0],
+            [-1.0, -2.0, -3.0, -4.0, -5.0],
+            [-1.0, -2.0, -3.0, -4.0, -5.0],
         ];
-        assert_vec_approx_eq!(c.as_data(), correct, 1e-15);
+        mat_approx_eq(&c, correct, 1e-15);
         Ok(())
     }
 
@@ -158,8 +158,7 @@ mod tests {
         let b = Matrix::new(0, 0);
         let mut c = Matrix::new(0, 0);
         add_matrices(&mut c, 1.0, &a, 1.0, &b)?;
-        let correct: &[f64] = &[];
-        assert_vec_approx_eq!(c.as_data(), correct, 1e-15);
+        assert_eq!(a.as_data().len(), 0);
         Ok(())
     }
 }

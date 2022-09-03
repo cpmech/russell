@@ -51,8 +51,8 @@ pub fn outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) -> Result<(), S
 #[cfg(test)]
 mod tests {
     use super::{outer, Matrix, Vector};
+    use crate::mat_approx_eq;
     use crate::StrError;
-    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn mat_vec_mul_fail_on_wrong_dims() {
@@ -78,12 +78,12 @@ mod tests {
         let mut a = Matrix::new(m, n);
         outer(&mut a, 3.0, &u, &v)?;
         #[rustfmt::skip]
-        let correct = [
-            15.0,  -6.0, 0.0, 3.0,
-            30.0, -12.0, 0.0, 6.0,
-            45.0, -18.0, 0.0, 9.0,
+        let correct = &[
+            [15.0,  -6.0, 0.0, 3.0],
+            [30.0, -12.0, 0.0, 6.0],
+            [45.0, -18.0, 0.0, 9.0],
         ];
-        assert_vec_approx_eq!(a.as_data(), correct, 1e-15);
+        mat_approx_eq(&a, correct, 1e-15);
         Ok(())
     }
 
@@ -95,13 +95,13 @@ mod tests {
         let mut a = Matrix::new(m, n);
         outer(&mut a, 1.0, &u, &v)?;
         #[rustfmt::skip]
-        let correct = [
-            1.0, 1.0, -2.0,
-            2.0, 2.0, -4.0,
-            3.0, 3.0, -6.0,
-            4.0, 4.0, -8.0,
+        let correct = &[
+            [1.0, 1.0, -2.0],
+            [2.0, 2.0, -4.0],
+            [3.0, 3.0, -6.0],
+            [4.0, 4.0, -8.0],
         ];
-        assert_vec_approx_eq!(a.as_data(), correct, 1e-15);
+        mat_approx_eq(&a, correct, 1e-15);
         Ok(())
     }
 }

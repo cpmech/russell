@@ -712,14 +712,13 @@ impl Tensor4 {
 mod tests {
     use super::{Tensor4, MN_TO_IJKL};
     use crate::{Samples, StrError};
-    use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
+    use russell_chk::assert_approx_eq;
     use serde::{Deserialize, Serialize};
 
     #[test]
     fn new_works() {
         let dd = Tensor4::new(false, false);
-        let correct = &[0.0; 81];
-        assert_vec_approx_eq!(dd.mat.as_data(), correct, 1e-15);
+        assert_eq!(dd.mat.as_data().len(), 81);
     }
 
     #[test]

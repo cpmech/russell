@@ -90,8 +90,8 @@ pub fn cholesky_factor(l: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
 #[cfg(test)]
 mod tests {
     use super::{cholesky_factor, Matrix};
+    use crate::mat_approx_eq;
     use crate::StrError;
-    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn cholesky_factor_fails_on_wrong_dims() {
@@ -122,7 +122,7 @@ mod tests {
             [ 3.0, 3.0, 0.0],
             [-1.0, 1.0, 3.0],
         ]);
-        assert_vec_approx_eq!(l.as_data(), l_correct.as_data(), 1e-15);
+        mat_approx_eq(&l, &l_correct, 1e-15);
         let mut l_lt = Matrix::new(m, m);
         for i in 0..m {
             for j in 0..m {
@@ -131,7 +131,7 @@ mod tests {
                 }
             }
         }
-        assert_vec_approx_eq!(l_lt.as_data(), a.as_data(), 1e-15);
+        mat_approx_eq(&l_lt, &a, 1e-15);
         Ok(())
     }
 
@@ -157,7 +157,7 @@ mod tests {
             [3.0/sqrt2, -1.0/f64::sqrt(6.0),                0.0,      f64::sqrt(7.0/3.0),   0.0],
             [    sqrt2,                 0.0, 4.0/f64::sqrt(7.0), -2.0*f64::sqrt(3.0/7.0), sqrt2],
         ]);
-        assert_vec_approx_eq!(l.as_data(), l_correct.as_data(), 1e-15);
+        mat_approx_eq(&l, &l_correct, 1e-15);
         let mut l_lt = Matrix::new(m, m);
         for i in 0..m {
             for j in 0..m {
@@ -166,7 +166,7 @@ mod tests {
                 }
             }
         }
-        assert_vec_approx_eq!(l_lt.as_data(), a.as_data(), 1e-15);
+        mat_approx_eq(&l_lt, &a, 1e-15);
         Ok(())
     }
 }

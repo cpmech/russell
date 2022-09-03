@@ -64,8 +64,8 @@ pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) -> Result
 #[cfg(test)]
 mod tests {
     use super::{mat_mat_mul, Matrix};
+    use crate::mat_approx_eq;
     use crate::StrError;
-    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn mat_mat_mul_fails_on_wrong_dims() {
@@ -105,11 +105,11 @@ mod tests {
         // c := 2⋅a⋅b
         mat_mat_mul(&mut c, 2.0, &a, &b)?;
         #[rustfmt::skip]
-        let correct = [
-            2.80, 12.0, 12.0, 12.50,
-            1.30,  5.0,  5.0, 5.25,
+        let correct = &[
+            [2.80, 12.0, 12.0, 12.50],
+            [1.30,  5.0,  5.0, 5.25],
         ];
-        assert_vec_approx_eq!(c.as_data(), correct, 1e-15);
+        mat_approx_eq(&c, correct, 1e-15);
         Ok(())
     }
 }

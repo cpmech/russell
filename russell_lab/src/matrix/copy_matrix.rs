@@ -46,8 +46,8 @@ pub fn copy_matrix(b: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
 #[cfg(test)]
 mod tests {
     use super::{copy_matrix, Matrix};
+    use crate::mat_approx_eq;
     use crate::StrError;
-    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn copy_matrix_fails_on_wrong_dimensions() {
@@ -77,11 +77,11 @@ mod tests {
         ]);
         copy_matrix(&mut b, &a)?;
         #[rustfmt::skip]
-        let correct = [
-            10.0, 20.0, 30.0,
-            40.0, 50.0, 60.0,
+        let correct = &[
+            [10.0, 20.0, 30.0],
+            [40.0, 50.0, 60.0],
         ];
-        assert_vec_approx_eq!(b.as_data(), correct, 1e-15);
+        mat_approx_eq(&b, correct, 1e-15);
         Ok(())
     }
 }

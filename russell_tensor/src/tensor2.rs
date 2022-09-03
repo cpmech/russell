@@ -106,7 +106,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::assert_vec_approx_eq;
+    /// use russell_lab::vec_approx_eq;
     /// use russell_tensor::{Tensor2, SQRT_2, StrError};
     ///
     /// # fn main() -> Result<(), StrError> {
@@ -117,7 +117,7 @@ impl Tensor2 {
     ///     [SQRT_2*7.0, SQRT_2*8.0,        9.0],
     /// ], false, false)?;
     /// let correct = &[1.0,5.0,9.0, 6.0,14.0,10.0, -2.0,-2.0,-4.0];
-    /// assert_vec_approx_eq!(a.vec.as_data(), correct, 1e-14);
+    /// vec_approx_eq(&a.vec, correct, 1e-14);
     ///
     /// // symmetric-3D
     /// let b = Tensor2::from_matrix(&[
@@ -126,7 +126,7 @@ impl Tensor2 {
     ///     [6.0/SQRT_2, 5.0/SQRT_2, 3.0       ],
     /// ], true, false)?;
     /// let correct = &[1.0,2.0,3.0, 4.0,5.0,6.0];
-    /// assert_vec_approx_eq!(b.vec.as_data(), correct, 1e-14);
+    /// vec_approx_eq(&b.vec, correct, 1e-14);
     ///
     /// // symmetric-2D
     /// let c = Tensor2::from_matrix(&[
@@ -135,7 +135,7 @@ impl Tensor2 {
     ///     [0.0,        0.0,        3.0],
     /// ], true, true)?;
     /// let correct = &[1.0,2.0,3.0, 4.0];
-    /// assert_vec_approx_eq!(c.vec.as_data(), correct, 1e-14);
+    /// vec_approx_eq(&c.vec, correct, 1e-14);
     /// # Ok(())
     /// # }
     /// ```
@@ -337,7 +337,8 @@ impl Tensor2 {
 mod tests {
     use super::{Tensor2, SQRT_2};
     use crate::StrError;
-    use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
+    use russell_chk::assert_approx_eq;
+    use russell_lab::vec_approx_eq;
     use serde::{Deserialize, Serialize};
 
     #[test]
@@ -379,7 +380,7 @@ mod tests {
             -2.0 / SQRT_2,
             -4.0 / SQRT_2,
         ];
-        assert_vec_approx_eq!(tt.vec.as_data(), correct, 1e-15);
+        vec_approx_eq(&tt.vec, correct, 1e-15);
 
         // symmetric 3D
         #[rustfmt::skip]
@@ -390,7 +391,7 @@ mod tests {
         ];
         let tt = Tensor2::from_matrix(comps_std, true, false)?;
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2];
-        assert_vec_approx_eq!(tt.vec.as_data(), correct, 1e-14);
+        vec_approx_eq(&tt.vec, correct, 1e-14);
 
         // symmetric 2D
         #[rustfmt::skip]
@@ -401,7 +402,7 @@ mod tests {
         ];
         let tt = Tensor2::from_matrix(comps_std, true, true)?;
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2];
-        assert_vec_approx_eq!(tt.vec.as_data(), correct, 1e-14);
+        vec_approx_eq(&tt.vec, correct, 1e-14);
         Ok(())
     }
 

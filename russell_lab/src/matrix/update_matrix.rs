@@ -2,7 +2,7 @@ use super::Matrix;
 use crate::StrError;
 use russell_openblas::{daxpy, to_i32};
 
-/// Updates matrix based on another matrix (axpy)
+/// Updates matrix based on another matrix
 ///
 /// ```text
 /// b += α⋅a
@@ -46,8 +46,8 @@ pub fn update_matrix(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), StrEr
 #[cfg(test)]
 mod tests {
     use super::{update_matrix, Matrix};
+    use crate::mat_approx_eq;
     use crate::StrError;
-    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn update_matrix_fail_on_wrong_dims() {
@@ -77,11 +77,11 @@ mod tests {
         ]);
         update_matrix(&mut b, 2.0, &a)?;
         #[rustfmt::skip]
-        let correct = [
-            120.0, 240.0, 360.0,
-            480.0, 600.0, 720.0,
+        let correct = &[
+            [120.0, 240.0, 360.0],
+            [480.0, 600.0, 720.0],
         ];
-        assert_vec_approx_eq!(b.as_data(), correct, 1e-15);
+        mat_approx_eq(&b, correct, 1e-15);
         Ok(())
     }
 }

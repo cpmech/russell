@@ -1,5 +1,5 @@
 use super::Matrix;
-use crate::StrError;
+use crate::{StrError, Vector};
 use russell_openblas::{dgeev, dgeev_data, dgeev_data_lr, to_i32};
 
 /// Performs the eigen-decomposition of a square matrix
@@ -51,45 +51,46 @@ use russell_openblas::{dgeev, dgeev_data, dgeev_data_lr, to_i32};
 /// # Example
 ///
 /// ```
-/// // import
-/// use russell_lab::{add_matrices, eigen_decomp, mat_mat_mul, matrix_norm, Matrix, NormMat, StrError};
 /// use russell_chk::assert_approx_eq;
+/// use russell_lab::{add_matrices, eigen_decomp, mat_mat_mul, matrix_norm, Matrix, NormMat, StrError, Vector};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // set matrix
-///     let data = [
-///         [2.0, 0.0, 0.0],
-///         [0.0, 3.0, 4.0],
-///         [0.0, 4.0, 9.0],
-///     ];
+///     let data = [[2.0, 0.0, 0.0], [0.0, 3.0, 4.0], [0.0, 4.0, 9.0]];
 ///     let mut a = Matrix::from(&data);
 ///
 ///     // allocate output arrays
 ///     let m = a.nrow();
-///     let mut l_real = vec![0.0; m];
-///     let mut l_imag = vec![0.0; m];
+///     let mut l_real = Vector::new(m);
+///     let mut l_imag = Vector::new(m);
 ///     let mut v_real = Matrix::new(m, m);
 ///     let mut v_imag = Matrix::new(m, m);
 ///
 ///     // perform the eigen-decomposition
-///     eigen_decomp(
-///         &mut l_real,
-///         &mut l_imag,
-///         &mut v_real,
-///         &mut v_imag,
-///         &mut a,
-///     )?;
+///     eigen_decomp(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a)?;
 ///
 ///     // check results
-///     let l_real_correct = "[11.0, 1.0, 2.0]";
-///     let l_imag_correct = "[0.0, 0.0, 0.0]";
-///     assert_eq!(format!("{:?}", l_real), l_real_correct);
-///     assert_eq!(format!("{:?}", l_imag), l_imag_correct);
+///     assert_eq!(
+///         format!("{:.1}", l_real),
+///         "┌      ┐\n\
+///          │ 11.0 │\n\
+///          │  1.0 │\n\
+///          │  2.0 │\n\
+///          └      ┘"
+///     );
+///     assert_eq!(
+///         format!("{}", l_imag),
+///         "┌   ┐\n\
+///          │ 0 │\n\
+///          │ 0 │\n\
+///          │ 0 │\n\
+///          └   ┘"
+///     );
 ///
 ///     // check eigen-decomposition (similarity transformation) of a
 ///     // symmetric matrix with real-only eigenvalues and eigenvectors
 ///     let a_copy = Matrix::from(&data);
-///     let lam = Matrix::diagonal(&l_real);
+///     let lam = Matrix::diagonal(l_real.as_data());
 ///     let mut a_v = Matrix::new(m, m);
 ///     let mut v_l = Matrix::new(m, m);
 ///     let mut err = Matrix::filled(m, m, f64::MAX);
@@ -101,8 +102,8 @@ use russell_openblas::{dgeev, dgeev_data, dgeev_data_lr, to_i32};
 /// }
 /// ```
 pub fn eigen_decomp(
-    l_real: &mut [f64],
-    l_imag: &mut [f64],
+    l_real: &mut Vector,
+    l_imag: &mut Vector,
     v_real: &mut Matrix,
     v_imag: &mut Matrix,
     a: &mut Matrix,
@@ -111,7 +112,7 @@ pub fn eigen_decomp(
     if m != n {
         return Err("matrix must be square");
     }
-    if l_real.len() != m || l_imag.len() != m {
+    if l_real.dim() != m || l_imag.dim() != m {
         return Err("vectors are incompatible");
     }
     if v_real.nrow() != m || v_real.ncol() != m || v_imag.nrow() != m || v_imag.ncol() != m {
@@ -120,8 +121,17 @@ pub fn eigen_decomp(
     let m_i32 = to_i32(m);
     let mut v = vec![0.0; m * m];
     let mut empty: Vec<f64> = Vec::new();
-    dgeev(false, true, m_i32, a.as_mut_data(), l_real, l_imag, &mut empty, &mut v)?;
-    dgeev_data(v_real.as_mut_data(), v_imag.as_mut_data(), l_imag, &v)?;
+    dgeev(
+        false,
+        true,
+        m_i32,
+        a.as_mut_data(),
+        l_real.as_mut_data(),
+        l_imag.as_mut_data(),
+        &mut empty,
+        &mut v,
+    )?;
+    dgeev_data(v_real.as_mut_data(), v_imag.as_mut_data(), l_imag.as_data(), &v)?;
     Ok(())
 }
 
@@ -167,10 +177,10 @@ pub fn eigen_decomp(
 /// use num_complex::Complex64;
 /// use russell_chk::assert_approx_eq;
 /// use russell_lab::{
-///     complex_add_matrices, complex_mat_mat_mul, complex_mat_zip,
-///     complex_matrix_norm, complex_vec_zip, ComplexMatrix, NormMat,
+///     complex_add_matrices, complex_mat_mat_mul, complex_mat_zip, complex_matrix_norm, complex_vec_zip, ComplexMatrix,
+///     NormMat,
 /// };
-/// use russell_lab::{eigen_decomp_lr, Matrix, StrError};
+/// use russell_lab::{eigen_decomp_lr, Matrix, StrError, Vector};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // set matrix
@@ -179,8 +189,8 @@ pub fn eigen_decomp(
 ///
 ///     // allocate output arrays
 ///     let m = a.nrow();
-///     let mut l_real = vec![0.0; m];
-///     let mut l_imag = vec![0.0; m];
+///     let mut l_real = Vector::new(m);
+///     let mut l_imag = Vector::new(m);
 ///     let mut u_real = Matrix::new(m, m);
 ///     let mut u_imag = Matrix::new(m, m);
 ///     let mut v_real = Matrix::new(m, m);
@@ -198,10 +208,22 @@ pub fn eigen_decomp(
 ///     )?;
 ///
 ///     // check results
-///     let l_real_correct = "[-0.5, -0.5, 0.9999999999999998]";
-///     let l_imag_correct = "[0.8660254037844389, -0.8660254037844389, 0.0]";
-///     assert_eq!(format!("{:?}", l_real), l_real_correct);
-///     assert_eq!(format!("{:?}", l_imag), l_imag_correct);
+///     assert_eq!(
+///         format!("{:.3}", l_real),
+///         "┌        ┐\n\
+///          │ -0.500 │\n\
+///          │ -0.500 │\n\
+///          │  1.000 │\n\
+///          └        ┘"
+///     );
+///     assert_eq!(
+///         format!("{:.3}", l_imag),
+///         "┌        ┐\n\
+///          │  0.866 │\n\
+///          │ -0.866 │\n\
+///          │  0.000 │\n\
+///          └        ┘"
+///     );
 ///
 ///     // check the eigen-decomposition (similarity transformation)
 ///     // ```text
@@ -225,8 +247,8 @@ pub fn eigen_decomp(
 /// }
 /// ```
 pub fn eigen_decomp_lr(
-    l_real: &mut [f64],
-    l_imag: &mut [f64],
+    l_real: &mut Vector,
+    l_imag: &mut Vector,
     u_real: &mut Matrix,
     u_imag: &mut Matrix,
     v_real: &mut Matrix,
@@ -237,7 +259,7 @@ pub fn eigen_decomp_lr(
     if m != n {
         return Err("matrix must be square");
     }
-    if l_real.len() != m || l_imag.len() != m {
+    if l_real.dim() != m || l_imag.dim() != m {
         return Err("vectors are incompatible");
     }
     if u_real.nrow() != m
@@ -254,13 +276,22 @@ pub fn eigen_decomp_lr(
     let m_i32 = to_i32(m);
     let mut u = vec![0.0; m * m];
     let mut v = vec![0.0; m * m];
-    dgeev(true, true, m_i32, a.as_mut_data(), l_real, l_imag, &mut u, &mut v)?;
+    dgeev(
+        true,
+        true,
+        m_i32,
+        a.as_mut_data(),
+        l_real.as_mut_data(),
+        l_imag.as_mut_data(),
+        &mut u,
+        &mut v,
+    )?;
     dgeev_data_lr(
         u_real.as_mut_data(),
         u_imag.as_mut_data(),
         v_real.as_mut_data(),
         v_imag.as_mut_data(),
-        l_imag,
+        l_imag.as_data(),
         &u,
         &v,
     )?;
@@ -274,10 +305,11 @@ mod tests {
     use super::{eigen_decomp, eigen_decomp_lr};
     use crate::{
         add_matrices, complex_add_matrices, complex_mat_mat_mul, complex_mat_zip, complex_matrix_norm, complex_vec_zip,
-        mat_mat_mul, matrix_norm, AsArray2D, ComplexMatrix, Matrix, NormMat, StrError,
+        mat_mat_mul, matrix_norm, AsArray2D, ComplexMatrix, Matrix, NormMat, StrError, Vector,
     };
+    use crate::{mat_approx_eq, vec_approx_eq};
     use num_complex::Complex64;
-    use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
+    use russell_chk::assert_approx_eq;
 
     // Checks the eigen-decomposition (similarity transformation) of a
     // symmetric matrix with real-only eigenvalues and eigenvectors
@@ -285,13 +317,13 @@ mod tests {
     // a⋅v = v⋅λ
     // err := a⋅v - v⋅λ
     // ```
-    fn check_real_eigen<'a, T>(data: &'a T, v: &Matrix, l: &[f64]) -> Result<(), StrError>
+    fn check_real_eigen<'a, T>(data: &'a T, v: &Matrix, l: &Vector) -> Result<(), StrError>
     where
         T: AsArray2D<'a, f64>,
     {
         let a = Matrix::from(data);
         let m = a.nrow();
-        let lam = Matrix::diagonal(&l);
+        let lam = Matrix::diagonal(l.as_data());
         let mut a_v = Matrix::new(m, m);
         let mut v_l = Matrix::new(m, m);
         let mut err = Matrix::filled(m, m, f64::MAX);
@@ -310,9 +342,9 @@ mod tests {
     fn check_general_eigen<'a, T>(
         data: &'a T,
         v_real: &Matrix,
-        l_real: &[f64],
+        l_real: &Vector,
         v_imag: &Matrix,
-        l_imag: &[f64],
+        l_imag: &Vector,
     ) -> Result<(), StrError>
     where
         T: AsArray2D<'a, f64>,
@@ -338,8 +370,8 @@ mod tests {
     fn eigen_decomp_fails_on_non_square() {
         let mut a = Matrix::new(3, 4);
         let m = a.nrow();
-        let mut l_real = vec![0.0; m];
-        let mut l_imag = vec![0.0; m];
+        let mut l_real = Vector::new(m);
+        let mut l_imag = Vector::new(m);
         let mut v_real = Matrix::new(m, m);
         let mut v_imag = Matrix::new(m, m);
         assert_eq!(
@@ -352,12 +384,12 @@ mod tests {
     fn eigen_decomp_fails_on_wrong_dims() {
         let mut a = Matrix::new(2, 2);
         let m = a.nrow();
-        let mut l_real = vec![0.0; m];
-        let mut l_imag = vec![0.0; m];
+        let mut l_real = Vector::new(m);
+        let mut l_imag = Vector::new(m);
         let mut v_real = Matrix::new(m, m);
         let mut v_imag = Matrix::new(m, m);
-        let mut l_real_wrong = vec![0.0; m + 1];
-        let mut l_imag_wrong = vec![0.0; m + 1];
+        let mut l_real_wrong = Vector::new(m + 1);
+        let mut l_imag_wrong = Vector::new(m + 1);
         let mut v_real_wrong = Matrix::new(m + 1, m);
         let mut v_imag_wrong = Matrix::new(m, m + 1);
         assert_eq!(
@@ -382,8 +414,8 @@ mod tests {
     fn eigen_decomp_lr_fails_on_non_square() {
         let mut a = Matrix::new(3, 4);
         let m = a.nrow();
-        let mut l_real = vec![0.0; m];
-        let mut l_imag = vec![0.0; m];
+        let mut l_real = Vector::new(m);
+        let mut l_imag = Vector::new(m);
         let mut u_real = Matrix::new(m, m);
         let mut u_imag = Matrix::new(m, m);
         let mut v_real = Matrix::new(m, m);
@@ -406,14 +438,14 @@ mod tests {
     fn eigen_decomp_lr_fails_on_wrong_dims() {
         let mut a = Matrix::new(2, 2);
         let m = a.nrow();
-        let mut l_real = vec![0.0; m];
-        let mut l_imag = vec![0.0; m];
+        let mut l_real = Vector::new(m);
+        let mut l_imag = Vector::new(m);
         let mut u_real = Matrix::new(m, m);
         let mut u_imag = Matrix::new(m, m);
         let mut v_real = Matrix::new(m, m);
         let mut v_imag = Matrix::new(m, m);
-        let mut l_real_wrong = vec![0.0; m + 1];
-        let mut l_imag_wrong = vec![0.0; m + 1];
+        let mut l_real_wrong = Vector::new(m + 1);
+        let mut l_imag_wrong = Vector::new(m + 1);
         let mut u_real_wrong = Matrix::new(m + 1, m);
         let mut u_imag_wrong = Matrix::new(m, m + 1);
         let mut v_real_wrong = Matrix::new(m + 1, m);
@@ -502,16 +534,16 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let m = a.nrow();
-        let mut l_real = vec![0.0; m];
-        let mut l_imag = vec![0.0; m];
+        let mut l_real = Vector::new(m);
+        let mut l_imag = Vector::new(m);
         let mut v_real = Matrix::new(m, m);
         let mut v_imag = Matrix::new(m, m);
         eigen_decomp(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a)?;
         let s3 = f64::sqrt(3.0);
         let l_real_correct = &[-0.5, -0.5, 1.0];
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
-        assert_vec_approx_eq!(l_real, l_real_correct, 1e-15);
-        assert_vec_approx_eq!(l_imag, l_imag_correct, 1e-15);
+        vec_approx_eq(&l_real, l_real_correct, 1e-15);
+        vec_approx_eq(&l_imag, l_imag_correct, 1e-15);
         check_general_eigen(&data, &v_real, &l_real, &v_imag, &l_imag)?;
         Ok(())
     }
@@ -528,8 +560,8 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let m = a.nrow();
-        let mut l_real = vec![0.0; m];
-        let mut l_imag = vec![0.0; m];
+        let mut l_real = Vector::new(m);
+        let mut l_imag = Vector::new(m);
         let mut v_real = Matrix::new(m, m);
         let mut v_imag = Matrix::new(m, m);
         eigen_decomp(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a)?;
@@ -537,23 +569,17 @@ mod tests {
         let l_imag_correct = &[0.0, 0.0, 0.0, 0.0];
         let os3 = 1.0 / f64::sqrt(3.0);
         #[rustfmt::skip]
-        let v_real_correct = [
-            0.0,  0.0,  0.0,  0.0,
-            0.0,  0.0,  os3, -os3,
-            0.0,  0.0, -os3,  os3,
-            1.0, -1.0,  os3, -os3,
+        let v_real_correct = &[
+            [0.0,  0.0,  0.0,  0.0],
+            [0.0,  0.0,  os3, -os3],
+            [0.0,  0.0, -os3,  os3],
+            [1.0, -1.0,  os3, -os3],
         ];
-        #[rustfmt::skip]
-        let v_imag_correct = [
-            0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0,
-        ];
-        assert_vec_approx_eq!(l_real, l_real_correct, 1e-15);
-        assert_vec_approx_eq!(l_imag, l_imag_correct, 1e-15);
-        assert_vec_approx_eq!(v_real.as_data(), v_real_correct, 1e-15);
-        assert_vec_approx_eq!(v_imag.as_data(), v_imag_correct, 1e-15);
+        let v_imag_correct = Matrix::new(4, 4);
+        vec_approx_eq(&l_real, l_real_correct, 1e-15);
+        vec_approx_eq(&l_imag, l_imag_correct, 1e-15);
+        mat_approx_eq(&v_real, v_real_correct, 1e-15);
+        mat_approx_eq(&v_imag, &v_imag_correct, 1e-15);
         check_real_eigen(&data, &v_real, &l_real)?;
         Ok(())
     }
@@ -568,8 +594,8 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let m = a.nrow();
-        let mut l_real = vec![0.0; m];
-        let mut l_imag = vec![0.0; m];
+        let mut l_real = Vector::new(m);
+        let mut l_imag = Vector::new(m);
         let mut u_real = Matrix::new(m, m);
         let mut u_imag = Matrix::new(m, m);
         let mut v_real = Matrix::new(m, m);
@@ -586,8 +612,8 @@ mod tests {
         let s3 = f64::sqrt(3.0);
         let l_real_correct = &[-0.5, -0.5, 1.0];
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
-        assert_vec_approx_eq!(l_real, l_real_correct, 1e-15);
-        assert_vec_approx_eq!(l_imag, l_imag_correct, 1e-15);
+        vec_approx_eq(&l_real, l_real_correct, 1e-15);
+        vec_approx_eq(&l_imag, l_imag_correct, 1e-15);
         check_general_eigen(&data, &v_real, &l_real, &v_imag, &l_imag)?;
         Ok(())
     }

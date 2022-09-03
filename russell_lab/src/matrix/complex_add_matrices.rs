@@ -64,9 +64,9 @@ pub fn complex_add_matrices(
 #[cfg(test)]
 mod tests {
     use super::{complex_add_matrices, ComplexMatrix};
+    use crate::complex_mat_approx_eq;
     use crate::StrError;
     use num_complex::Complex64;
-    use russell_chk::assert_complex_vec_approx_eq;
 
     #[test]
     fn complex_add_matrices_fail_on_wrong_dims() {
@@ -121,12 +121,12 @@ mod tests {
         let beta = Complex64::new(-4.0, 0.0);
         complex_add_matrices(&mut c, alpha, &a, beta, &b)?;
         #[rustfmt::skip]
-        let correct = [
-            Complex64::new(-1.0, 0.0), Complex64::new(-2.0, 0.0), Complex64::new(-3.0, 0.0), Complex64::new(-4.0, 0.0),
-            Complex64::new(-1.0, 0.0), Complex64::new(-2.0, 0.0), Complex64::new(-3.0, 0.0), Complex64::new(-4.0, 0.0),
-            Complex64::new(-1.0, 0.0), Complex64::new(-2.0, 0.0), Complex64::new(-3.0, 0.0), Complex64::new(-4.0, 0.0),
+        let correct = &[
+            [Complex64::new(-1.0, 0.0), Complex64::new(-2.0, 0.0), Complex64::new(-3.0, 0.0), Complex64::new(-4.0, 0.0)],
+            [Complex64::new(-1.0, 0.0), Complex64::new(-2.0, 0.0), Complex64::new(-3.0, 0.0), Complex64::new(-4.0, 0.0)],
+            [Complex64::new(-1.0, 0.0), Complex64::new(-2.0, 0.0), Complex64::new(-3.0, 0.0), Complex64::new(-4.0, 0.0)],
         ];
-        assert_complex_vec_approx_eq!(c.as_data(), correct, 1e-15);
+        complex_mat_approx_eq(&c, correct, 1e-15);
         Ok(())
     }
 
@@ -158,14 +158,14 @@ mod tests {
         let beta = Complex64::new(-4.0, 0.0);
         complex_add_matrices(&mut c, alpha, &a, beta, &b)?;
         #[rustfmt::skip]
-        let correct = [
-            Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0),
-            Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0),
-            Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0),
-            Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0),
-            Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0),
+        let correct = &[
+            [Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0)],
+            [Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0)],
+            [Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0)],
+            [Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0)],
+            [Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0)],
         ];
-        assert_complex_vec_approx_eq!(c.as_data(), correct, 1e-15);
+        complex_mat_approx_eq(&c, correct, 1e-15);
         Ok(())
     }
 
@@ -177,8 +177,7 @@ mod tests {
         let alpha = Complex64::new(1.0, 0.0);
         let beta = Complex64::new(1.0, 0.0);
         complex_add_matrices(&mut c, alpha, &a, beta, &b)?;
-        let correct: &[Complex64] = &[];
-        assert_complex_vec_approx_eq!(c.as_data(), correct, 1e-15);
+        assert_eq!(c.as_data().len(), 0);
         Ok(())
     }
 }

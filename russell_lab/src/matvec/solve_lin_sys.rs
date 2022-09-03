@@ -70,8 +70,8 @@ pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
 #[cfg(test)]
 mod tests {
     use super::{solve_lin_sys, Matrix, Vector};
+    use crate::vec_approx_eq;
     use crate::StrError;
-    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn solve_lin_sys_fails_on_non_square() {
@@ -107,14 +107,14 @@ mod tests {
         ]);
         solve_lin_sys(&mut b, &mut a)?;
         #[rustfmt::skip]
-        let x_correct = [
+        let x_correct = &[
             -629.0 / 98.0,
              237.0 / 49.0,
              -53.0 / 49.0,
               62.0 / 49.0,
               23.0 / 14.0,
         ];
-        assert_vec_approx_eq!(b.as_data(), x_correct, 1e-13);
+        vec_approx_eq(&b, x_correct, 1e-13);
         Ok(())
     }
 
@@ -137,13 +137,13 @@ mod tests {
         ]);
         solve_lin_sys(&mut b, &mut a)?;
         #[rustfmt::skip]
-        let x_correct = [
+        let x_correct = &[
              1.0,
             -1.0,
              3.0,
             -5.0,
         ];
-        assert_vec_approx_eq!(b.as_data(), x_correct, 1e-14);
+        vec_approx_eq(&b, x_correct, 1e-14);
         Ok(())
     }
 }

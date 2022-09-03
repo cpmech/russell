@@ -1,15 +1,18 @@
 use crate::ComplexVector;
 use crate::StrError;
+use crate::Vector;
 
 /// Zips two arrays (real and imag) to make a new ComplexVector
 ///
 /// # Example
 ///
 /// ```
-/// use russell_lab::{complex_vec_zip, StrError};
+/// use russell_lab::{complex_vec_zip, StrError, Vector};
 ///
 /// fn main() -> Result<(), StrError> {
-///     let v = complex_vec_zip(&[1.0, 2.0, 3.0], &[0.1, 0.2, 0.3])?;
+///     let real = Vector::from(&[1.0, 2.0, 3.0]);
+///     let imag = Vector::from(&[0.1, 0.2, 0.3]);
+///     let v = complex_vec_zip(&real, &imag)?;
 ///     assert_eq!(
 ///         format!("{}", v),
 ///         "┌        ┐\n\
@@ -21,9 +24,9 @@ use crate::StrError;
 ///     Ok(())
 /// }
 /// ```
-pub fn complex_vec_zip(real: &[f64], imag: &[f64]) -> Result<ComplexVector, StrError> {
-    let n = real.len();
-    if imag.len() != n {
+pub fn complex_vec_zip(real: &Vector, imag: &Vector) -> Result<ComplexVector, StrError> {
+    let n = real.dim();
+    if imag.dim() != n {
         return Err("arrays are incompatible");
     }
     let mut v = ComplexVector::new(n);
@@ -39,16 +42,21 @@ pub fn complex_vec_zip(real: &[f64], imag: &[f64]) -> Result<ComplexVector, StrE
 #[cfg(test)]
 mod tests {
     use super::complex_vec_zip;
-    use crate::StrError;
+    use crate::{StrError, Vector};
 
     #[test]
     fn complex_vec_zip_handles_errors() {
-        assert_eq!(complex_vec_zip(&[1.0], &[]).err(), Some("arrays are incompatible"));
+        assert_eq!(
+            complex_vec_zip(&Vector::from(&[1.0]), &Vector::new(0)).err(),
+            Some("arrays are incompatible")
+        );
     }
 
     #[test]
     fn complex_vec_zip_works() -> Result<(), StrError> {
-        let v = complex_vec_zip(&[1.0, 2.0, 3.0], &[4.0, 5.0, 6.0])?;
+        let real = Vector::from(&[1.0, 2.0, 3.0]);
+        let imag = Vector::from(&[4.0, 5.0, 6.0]);
+        let v = complex_vec_zip(&real, &imag)?;
         assert_eq!(
             format!("{}", v),
             "┌      ┐\n\

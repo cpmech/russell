@@ -204,8 +204,9 @@ pub fn inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
 #[cfg(test)]
 mod tests {
     use super::{inverse, Matrix, ZERO_DETERMINANT};
+    use crate::mat_approx_eq;
     use crate::StrError;
-    use russell_chk::{assert_approx_eq, assert_vec_approx_eq};
+    use russell_chk::assert_approx_eq;
 
     /// Computes a⋅ai that should equal I for a square matrix
     fn get_a_times_ai(a: &Matrix, ai: &Matrix) -> Matrix {
@@ -249,10 +250,10 @@ mod tests {
         let mut ai = Matrix::new(1, 1);
         let det = inverse(&mut ai, &mut a)?;
         assert_eq!(det, 2.0);
-        assert_vec_approx_eq!(ai.as_data(), &[0.5], 1e-15);
+        mat_approx_eq(&ai, &[[0.5]], 1e-15);
         let a_copy = Matrix::from(&data);
         let a_ai = get_a_times_ai(&a_copy, &ai);
-        assert_vec_approx_eq!(a_ai.as_data(), &[1.0], 1e-15);
+        mat_approx_eq(&a_ai, &[[1.0]], 1e-15);
         Ok(())
     }
 
@@ -276,10 +277,10 @@ mod tests {
         let mut ai = Matrix::new(2, 2);
         let det = inverse(&mut ai, &mut a)?;
         assert_eq!(det, -4.0);
-        assert_vec_approx_eq!(ai.as_data(), &[-0.5, 0.5, 0.75, -0.25], 1e-15);
+        mat_approx_eq(&ai, &[[-0.5, 0.5], [0.75, -0.25]], 1e-15);
         let a_copy = Matrix::from(&data);
         let a_ai = get_a_times_ai(&a_copy, &ai);
-        assert_vec_approx_eq!(a_ai.as_data(), &[1.0, 0.0, 0.0, 1.0], 1e-15);
+        mat_approx_eq(&a_ai, &[[1.0, 0.0], [0.0, 1.0]], 1e-15);
         Ok(())
     }
 
@@ -309,16 +310,16 @@ mod tests {
         let det = inverse(&mut ai, &mut a)?;
         assert_eq!(det, 22.0);
         #[rustfmt::skip]
-        let ai_correct = [
-            12.0/11.0, -6.0/11.0, -1.0/11.0,
-             2.5/11.0,  1.5/11.0, -2.5/11.0,
-            -2.0/11.0,  1.0/11.0,  2.0/11.0,
+        let ai_correct = &[
+            [12.0/11.0, -6.0/11.0, -1.0/11.0],
+            [ 2.5/11.0,  1.5/11.0, -2.5/11.0],
+            [-2.0/11.0,  1.0/11.0,  2.0/11.0],
         ];
-        assert_vec_approx_eq!(ai.as_data(), ai_correct, 1e-15);
+        mat_approx_eq(&ai, ai_correct, 1e-15);
         let identity = Matrix::identity(3);
         let a_copy = Matrix::from(&data);
         let a_ai = get_a_times_ai(&a_copy, &ai);
-        assert_vec_approx_eq!(a_ai.as_data(), identity.as_data(), 1e-15);
+        mat_approx_eq(&a_ai, &identity, 1e-15);
         Ok(())
     }
 
@@ -350,17 +351,17 @@ mod tests {
         let det = inverse(&mut ai, &mut a)?;
         assert_approx_eq!(det, 20.0, 1e-14);
         #[rustfmt::skip]
-        let ai_correct = [
-             0.6,  0.0, -0.2,  0.0,
-            -2.5,  0.5,  0.5,  1.0,
-            -1.5,  0.0,  0.5,  0.5,
-            -2.2,  0.0,  0.4,  1.0,
+        let ai_correct = &[
+            [ 0.6,  0.0, -0.2,  0.0],
+            [-2.5,  0.5,  0.5,  1.0],
+            [-1.5,  0.0,  0.5,  0.5],
+            [-2.2,  0.0,  0.4,  1.0],
         ];
-        assert_vec_approx_eq!(ai.as_data(), ai_correct, 1e-15);
+        mat_approx_eq(&ai, ai_correct, 1e-15);
         let identity = Matrix::identity(4);
         let a_copy = Matrix::from(&data);
         let a_ai = get_a_times_ai(&a_copy, &ai);
-        assert_vec_approx_eq!(a_ai.as_data(), identity.as_data(), 1e-15);
+        mat_approx_eq(&a_ai, &identity, 1e-15);
         Ok(())
     }
 
@@ -379,18 +380,18 @@ mod tests {
         let det = inverse(&mut ai, &mut a)?;
         assert_approx_eq!(det, -167402.0, 1e-8);
         #[rustfmt::skip]
-        let ai_correct = [
-             6.9128803717996279e-01, -7.4226114383340802e-01, -9.8756287260606410e-02, -6.9062496266472417e-01,  7.2471057693456553e-01,
-             1.5936129795342968e+00, -1.7482347881148397e+00, -2.8304321334273236e-01, -1.5600769405383470e+00,  1.7164430532490673e+00,
-            -1.6345384165063759e+00,  1.7495848317224429e+00,  2.7469205863729274e-01,  1.6325730875377857e+00, -1.7065745928961444e+00,
-            -1.1177465024312745e+00,  1.3261729250546601e+00,  2.1243473793622566e-01,  1.1258168958554866e+00, -1.3325766717243535e+00,
-             7.9976941733073770e-01, -8.9457712572131853e-01, -1.4770432850264653e-01, -8.0791149448632715e-01,  9.2990525800169743e-01,
+        let ai_correct = &[
+            [ 6.9128803717996279e-01, -7.4226114383340802e-01, -9.8756287260606410e-02, -6.9062496266472417e-01,  7.2471057693456553e-01],
+            [ 1.5936129795342968e+00, -1.7482347881148397e+00, -2.8304321334273236e-01, -1.5600769405383470e+00,  1.7164430532490673e+00],
+            [-1.6345384165063759e+00,  1.7495848317224429e+00,  2.7469205863729274e-01,  1.6325730875377857e+00, -1.7065745928961444e+00],
+            [-1.1177465024312745e+00,  1.3261729250546601e+00,  2.1243473793622566e-01,  1.1258168958554866e+00, -1.3325766717243535e+00],
+            [ 7.9976941733073770e-01, -8.9457712572131853e-01, -1.4770432850264653e-01, -8.0791149448632715e-01,  9.2990525800169743e-01],
         ];
-        assert_vec_approx_eq!(ai.as_data(), ai_correct, 1e-13);
+        mat_approx_eq(&ai, ai_correct, 1e-13);
         let identity = Matrix::identity(5);
         let a_copy = Matrix::from(&data);
         let a_ai = get_a_times_ai(&a_copy, &ai);
-        assert_vec_approx_eq!(a_ai.as_data(), identity.as_data(), 1e-13);
+        mat_approx_eq(&a_ai, &identity, 1e-13);
         Ok(())
     }
 
@@ -411,19 +412,19 @@ mod tests {
         let det = inverse(&mut ai, &mut a)?;
         assert_approx_eq!(det, 7.778940633136385e-19, 1e-15);
         #[rustfmt::skip]
-        let ai_correct = [
-             6.28811662297464645e+04,  4.23011662297464645e+04,  4.23011662297464645e+04, 0.00000000000000000e+00, -1.05591885817167332e-17, 4.33037966311565489e+07,
-             4.23011662297464645e+04,  6.28811662297464645e+04,  4.23011662297464645e+04, 0.00000000000000000e+00, -1.05591885817167332e-17, 4.33037966311565489e+07,
-             4.23011662297464645e+04,  4.23011662297464645e+04,  6.28811662297464645e+04, 0.00000000000000000e+00, -1.05591885817167348e-17, 4.33037966311565489e+07,
-             0.00000000000000000e+00,  0.00000000000000000e+00,  0.00000000000000000e+00, 2.05800000000000000e+04,  0.00000000000000000e+00, 0.00000000000000000e+00,
-            -4.62744616057000471e-13, -4.62744616057000471e-13, -4.62744616057000471e-13, 0.00000000000000000e+00,  1.00000000000000000e+00, 1.93012141894243434e+07,
-             0.00000000000000000e+00,  0.00000000000000000e+00,  0.00000000000000000e+00, 0.00000000000000000e+00,  0.00000000000000000e+00, 1.00000000000000000e+00,
+        let ai_correct = &[
+            [ 6.28811662297464645e+04,  4.23011662297464645e+04,  4.23011662297464645e+04, 0.00000000000000000e+00, -1.05591885817167332e-17, 4.33037966311565489e+07],
+            [ 4.23011662297464645e+04,  6.28811662297464645e+04,  4.23011662297464645e+04, 0.00000000000000000e+00, -1.05591885817167332e-17, 4.33037966311565489e+07],
+            [ 4.23011662297464645e+04,  4.23011662297464645e+04,  6.28811662297464645e+04, 0.00000000000000000e+00, -1.05591885817167348e-17, 4.33037966311565489e+07],
+            [ 0.00000000000000000e+00,  0.00000000000000000e+00,  0.00000000000000000e+00, 2.05800000000000000e+04,  0.00000000000000000e+00, 0.00000000000000000e+00],
+            [-4.62744616057000471e-13, -4.62744616057000471e-13, -4.62744616057000471e-13, 0.00000000000000000e+00,  1.00000000000000000e+00, 1.93012141894243434e+07],
+            [ 0.00000000000000000e+00,  0.00000000000000000e+00,  0.00000000000000000e+00, 0.00000000000000000e+00,  0.00000000000000000e+00, 1.00000000000000000e+00],
         ];
-        assert_vec_approx_eq!(ai.as_data(), ai_correct, 1e-8);
+        mat_approx_eq(&ai, ai_correct, 1e-8);
         let identity = Matrix::identity(6);
         let a_copy = Matrix::from(&data);
         let a_ai = get_a_times_ai(&a_copy, &ai);
-        assert_vec_approx_eq!(a_ai.as_data(), identity.as_data(), 1e-12);
+        mat_approx_eq(&a_ai, &identity, 1e-12);
         Ok(())
     }
 }

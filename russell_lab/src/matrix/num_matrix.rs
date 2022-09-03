@@ -786,20 +786,34 @@ where
     }
 }
 
+/// Allows accessing NumMatrix as an Array2D
+impl<'a, T: 'a> AsArray2D<'a, T> for NumMatrix<T>
+where
+    T: Num + Copy + DeserializeOwned + Serialize,
+{
+    #[inline]
+    fn size(&self) -> (usize, usize) {
+        self.dims()
+    }
+    #[inline]
+    fn at(&self, i: usize, j: usize) -> T {
+        self[i][j]
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
     use super::NumMatrix;
-    use crate::StrError;
-    use russell_chk::assert_vec_approx_eq;
+    use crate::{AsArray2D, StrError};
     use serde::{Deserialize, Serialize};
 
     #[test]
     fn new_works() {
         let u = NumMatrix::<f64>::new(3, 3);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-        assert_vec_approx_eq!(u.data, correct, 1e-15);
+        assert_eq!(u.data, correct);
     }
 
     #[test]
@@ -991,7 +1005,7 @@ mod tests {
         let mut a = NumMatrix::<f64>::new(2, 2);
         a.fill(7.7);
         let correct = &[7.7, 7.7, 7.7, 7.7];
-        assert_vec_approx_eq!(a.data, correct, 1e-15);
+        assert_eq!(a.data, correct);
     }
 
     #[test]
@@ -1129,5 +1143,19 @@ mod tests {
              └       ┘"
         );
         Ok(())
+    }
+
+    fn array_2d_test<'a, T, U>(array: &'a T) -> String
+    where
+        T: AsArray2D<'a, U>,
+        U: 'a + std::fmt::Debug,
+    {
+        format!("size = {:?}", array.size()).to_string()
+    }
+
+    #[test]
+    fn as_array_2d_works() {
+        let u = NumMatrix::<i32>::from(&[[1, 2], [3, 4]]);
+        assert_eq!(array_2d_test(&u), "size = (2, 2)");
     }
 }

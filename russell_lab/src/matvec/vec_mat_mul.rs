@@ -77,8 +77,8 @@ pub fn vec_mat_mul(v: &mut Vector, alpha: f64, u: &Vector, a: &Matrix) -> Result
 #[cfg(test)]
 mod tests {
     use super::{vec_mat_mul, Matrix, Vector};
+    use crate::vec_approx_eq;
     use crate::StrError;
-    use russell_chk::assert_vec_approx_eq;
 
     #[test]
     fn vec_mat_mul_fails_on_wrong_dims() {
@@ -108,7 +108,7 @@ mod tests {
         let mut v = Vector::new(a.ncol());
         vec_mat_mul(&mut v, 1.0, &u, &a)?;
         let correct = &[155.0, -62.0, 0.0, 31.0];
-        assert_vec_approx_eq!(v.as_data(), correct, 1e-15);
+        vec_approx_eq(&v, correct, 1e-15);
         Ok(())
     }
 

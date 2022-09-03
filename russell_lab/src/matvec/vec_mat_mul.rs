@@ -78,7 +78,6 @@ pub fn vec_mat_mul(v: &mut Vector, alpha: f64, u: &Vector, a: &Matrix) -> Result
 mod tests {
     use super::{vec_mat_mul, Matrix, Vector};
     use crate::vec_approx_eq;
-    use crate::StrError;
 
     #[test]
     fn vec_mat_mul_fails_on_wrong_dims() {
@@ -97,7 +96,7 @@ mod tests {
     }
 
     #[test]
-    fn vec_mat_mul_works() -> Result<(), StrError> {
+    fn vec_mat_mul_works() {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [ 5.0, -2.0, 0.0, 1.0],
@@ -106,14 +105,13 @@ mod tests {
         ]);
         let u = Vector::from(&[1.0, 3.0, 8.0]);
         let mut v = Vector::new(a.ncol());
-        vec_mat_mul(&mut v, 1.0, &u, &a)?;
+        vec_mat_mul(&mut v, 1.0, &u, &a).unwrap();
         let correct = &[155.0, -62.0, 0.0, 31.0];
         vec_approx_eq(&v, correct, 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn vec_mat_mul_zero_works() -> Result<(), StrError> {
+    fn vec_mat_mul_zero_works() {
         let a_0x0 = Matrix::new(0, 0);
         let a_0x1 = Matrix::new(0, 1);
         let a_1x0 = Matrix::new(1, 0);
@@ -121,12 +119,11 @@ mod tests {
         let u1 = Vector::new(1);
         let mut v0 = Vector::new(0);
         let mut v1 = Vector::new(1);
-        vec_mat_mul(&mut v0, 1.0, &u0, &a_0x0)?;
+        vec_mat_mul(&mut v0, 1.0, &u0, &a_0x0).unwrap();
         assert_eq!(v0.as_data(), &[] as &[f64]);
-        vec_mat_mul(&mut v1, 1.0, &u0, &a_0x1)?;
+        vec_mat_mul(&mut v1, 1.0, &u0, &a_0x1).unwrap();
         assert_eq!(v1.as_data(), &[0.0]);
-        vec_mat_mul(&mut v0, 1.0, &u1, &a_1x0)?;
+        vec_mat_mul(&mut v0, 1.0, &u1, &a_1x0).unwrap();
         assert_eq!(v0.as_data(), &[] as &[f64]);
-        Ok(())
     }
 }

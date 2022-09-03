@@ -71,7 +71,6 @@ pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
 mod tests {
     use super::{solve_lin_sys, Matrix, Vector};
     use crate::vec_approx_eq;
-    use crate::StrError;
 
     #[test]
     fn solve_lin_sys_fails_on_non_square() {
@@ -88,7 +87,7 @@ mod tests {
     }
 
     #[test]
-    fn solve_lin_sys_works() -> Result<(), StrError> {
+    fn solve_lin_sys_works() {
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
             [2.0, 1.0, 1.0, 3.0, 2.0],
@@ -105,7 +104,7 @@ mod tests {
             -5.0,
              1.0,
         ]);
-        solve_lin_sys(&mut b, &mut a)?;
+        solve_lin_sys(&mut b, &mut a).unwrap();
         #[rustfmt::skip]
         let x_correct = &[
             -629.0 / 98.0,
@@ -115,11 +114,10 @@ mod tests {
               23.0 / 14.0,
         ];
         vec_approx_eq(&b, x_correct, 1e-13);
-        Ok(())
     }
 
     #[test]
-    fn solve_lin_sys_1_works() -> Result<(), StrError> {
+    fn solve_lin_sys_1_works() {
         // example from https://numericalalgorithmsgroup.github.io/LAPACK_Examples/examples/doc/dgesv_example.html
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
@@ -135,7 +133,7 @@ mod tests {
              0.77,
             -6.22,
         ]);
-        solve_lin_sys(&mut b, &mut a)?;
+        solve_lin_sys(&mut b, &mut a).unwrap();
         #[rustfmt::skip]
         let x_correct = &[
              1.0,
@@ -144,6 +142,5 @@ mod tests {
             -5.0,
         ];
         vec_approx_eq(&b, x_correct, 1e-14);
-        Ok(())
     }
 }

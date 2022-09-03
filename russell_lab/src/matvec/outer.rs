@@ -52,7 +52,6 @@ pub fn outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) -> Result<(), S
 mod tests {
     use super::{outer, Matrix, Vector};
     use crate::mat_approx_eq;
-    use crate::StrError;
 
     #[test]
     fn mat_vec_mul_fail_on_wrong_dims() {
@@ -71,12 +70,12 @@ mod tests {
     }
 
     #[test]
-    fn outer_works() -> Result<(), StrError> {
+    fn outer_works() {
         let u = Vector::from(&[1.0, 2.0, 3.0]);
         let v = Vector::from(&[5.0, -2.0, 0.0, 1.0]);
         let (m, n) = (u.dim(), v.dim());
         let mut a = Matrix::new(m, n);
-        outer(&mut a, 3.0, &u, &v)?;
+        outer(&mut a, 3.0, &u, &v).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [15.0,  -6.0, 0.0, 3.0],
@@ -84,16 +83,15 @@ mod tests {
             [45.0, -18.0, 0.0, 9.0],
         ];
         mat_approx_eq(&a, correct, 1e-15);
-        Ok(())
     }
 
     #[test]
-    fn outer_works_1() -> Result<(), StrError> {
+    fn outer_works_1() {
         let u = Vector::from(&[1.0, 2.0, 3.0, 4.0]);
         let v = Vector::from(&[1.0, 1.0, -2.0]);
         let (m, n) = (u.dim(), v.dim());
         let mut a = Matrix::new(m, n);
-        outer(&mut a, 1.0, &u, &v)?;
+        outer(&mut a, 1.0, &u, &v).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [1.0, 1.0, -2.0],
@@ -102,6 +100,5 @@ mod tests {
             [4.0, 4.0, -8.0],
         ];
         mat_approx_eq(&a, correct, 1e-15);
-        Ok(())
     }
 }

@@ -187,7 +187,7 @@ mod tests {
         boxcar, heaviside, logistic, logistic_deriv, ramp, sign, smooth_ramp, smooth_ramp_deriv, smooth_ramp_deriv2,
         suq_cos, suq_sin,
     };
-    use russell_chk::{approx_eq, assert_deriv_approx_eq};
+    use russell_chk::{approx_eq, deriv_approx_eq};
     use std::f64::consts::PI;
 
     #[test]
@@ -223,7 +223,7 @@ mod tests {
             let l = logistic(x);
             let d = logistic_deriv(x);
             approx_eq(l, 0.5 + 0.5 * f64::tanh(x / 2.0), 1e-14);
-            assert_deriv_approx_eq!(d, x, f, args, 1e-10);
+            deriv_approx_eq(d, x, f, args, 1e-10);
         }
     }
 
@@ -246,8 +246,8 @@ mod tests {
         for x in xx {
             let d = smooth_ramp_deriv(x, beta);
             let d2 = smooth_ramp_deriv2(x, beta);
-            assert_deriv_approx_eq!(d, x, f, args, 1e-9);
-            assert_deriv_approx_eq!(d2, x, g, args, 1e-9);
+            deriv_approx_eq(d, x, f, args, 1e-9);
+            deriv_approx_eq(d2, x, g, args, 1e-9);
         }
     }
 

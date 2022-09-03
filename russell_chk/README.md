@@ -50,7 +50,7 @@ fn main() {
 ### Check derivatives
 
 ```rust
-use russell_chk::assert_deriv_approx_eq;
+use russell_chk::deriv_approx_eq;
 
 struct Arguments {}
 
@@ -59,7 +59,7 @@ fn main() {
     let args = &mut Arguments {};
     let at_x = 8.0;
     let dfdx = -1.01;
-    assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-2);
+    deriv_approx_eq(dfdx, at_x, f, args, 1e-2);
 }
 ```
 

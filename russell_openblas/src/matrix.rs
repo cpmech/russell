@@ -806,7 +806,7 @@ mod tests {
     use crate::conversions::{dgeev_data, dgeev_data_lr};
     use crate::{to_i32, StrError};
     use num_complex::{Complex64, ComplexFloat};
-    use russell_chk::{approx_eq, assert_complex_approx_eq, assert_complex_vec_approx_eq, assert_vec_approx_eq};
+    use russell_chk::{approx_eq, assert_complex_vec_approx_eq, assert_vec_approx_eq, complex_approx_eq};
 
     #[test]
     fn dgemm_notrans_notrans_works() {
@@ -1706,9 +1706,9 @@ mod tests {
                     res += a_copy[i * n + k] * ai_correct[k * n + j];
                 }
                 if i == j {
-                    assert_complex_approx_eq!(res, one, 1e-15);
+                    complex_approx_eq(res, one, 1e-15);
                 } else {
-                    assert_complex_approx_eq!(res, zero, 1e-15);
+                    complex_approx_eq(res, zero, 1e-15);
                 }
             }
         }

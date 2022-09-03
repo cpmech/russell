@@ -5,7 +5,7 @@
 //! # Example
 //!
 //! ```
-//! use russell_chk::{assert_complex_approx_eq, assert_complex_vec_approx_eq,
+//! use russell_chk::{complex_approx_eq, assert_complex_vec_approx_eq,
 //!     approx_eq, assert_vec_approx_eq, assert_deriv_approx_eq};
 //! use num_complex::Complex64;
 //!
@@ -24,7 +24,7 @@
 //! assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-2);
 //!
 //! // check complex numbers
-//! assert_complex_approx_eq!(Complex64::new(1.0,8.0), Complex64::new(1.001,8.0), 1e-2);
+//! complex_approx_eq(Complex64::new(1.0,8.0), Complex64::new(1.001,8.0), 1e-2);
 //!
 //! let a = [
 //!     Complex64::new(0.123456789, 5.01),
@@ -41,14 +41,12 @@
 pub type StrError = &'static str;
 
 mod approx_eq;
-mod assert_complex_approx_eq;
 mod assert_complex_vec_approx_eq;
 mod assert_deriv_approx_eq;
 mod assert_vec_approx_eq;
 mod complex_approx_eq;
 mod num_deriv;
 pub use crate::approx_eq::*;
-pub use crate::assert_complex_approx_eq::*;
 pub use crate::assert_complex_vec_approx_eq::*;
 pub use crate::assert_deriv_approx_eq::*;
 pub use crate::assert_vec_approx_eq::*;

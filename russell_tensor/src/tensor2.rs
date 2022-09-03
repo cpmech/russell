@@ -336,7 +336,6 @@ impl Tensor2 {
 #[cfg(test)]
 mod tests {
     use super::{Tensor2, SQRT_2};
-    use crate::StrError;
     use russell_chk::assert_approx_eq;
     use russell_lab::vec_approx_eq;
     use serde::{Deserialize, Serialize};
@@ -360,7 +359,7 @@ mod tests {
     }
 
     #[test]
-    fn from_matrix_works() -> Result<(), StrError> {
+    fn from_matrix_works() {
         // general
         #[rustfmt::skip]
         let comps_std = &[
@@ -368,7 +367,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, false, false)?;
+        let tt = Tensor2::from_matrix(comps_std, false, false).unwrap();
         let correct = &[
             1.0,
             5.0,
@@ -389,7 +388,7 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, true, false)?;
+        let tt = Tensor2::from_matrix(comps_std, true, false).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2];
         vec_approx_eq(&tt.vec, correct, 1e-14);
 
@@ -400,10 +399,9 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, true, true)?;
+        let tt = Tensor2::from_matrix(comps_std, true, true).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2];
         vec_approx_eq(&tt.vec, correct, 1e-14);
-        Ok(())
     }
 
     #[test]
@@ -466,7 +464,7 @@ mod tests {
     }
 
     #[test]
-    fn get_works() -> Result<(), StrError> {
+    fn get_works() {
         // general
         #[rustfmt::skip]
         let comps_std = &[
@@ -474,7 +472,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, false, false)?;
+        let tt = Tensor2::from_matrix(comps_std, false, false).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 assert_approx_eq!(tt.get(i, j), comps_std[i][j], 1e-14);
@@ -488,7 +486,7 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, true, false)?;
+        let tt = Tensor2::from_matrix(comps_std, true, false).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 assert_approx_eq!(tt.get(i, j), comps_std[i][j], 1e-14);
@@ -502,17 +500,16 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, true, true)?;
+        let tt = Tensor2::from_matrix(comps_std, true, true).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 assert_approx_eq!(tt.get(i, j), comps_std[i][j], 1e-14);
             }
         }
-        Ok(())
     }
 
     #[test]
-    fn to_matrix_works() -> Result<(), StrError> {
+    fn to_matrix_works() {
         // general
         #[rustfmt::skip]
         let comps_std = &[
@@ -520,7 +517,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, false, false)?;
+        let tt = Tensor2::from_matrix(comps_std, false, false).unwrap();
         let res = tt.to_matrix();
         for i in 0..3 {
             for j in 0..3 {
@@ -535,7 +532,7 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, true, false)?;
+        let tt = Tensor2::from_matrix(comps_std, true, false).unwrap();
         let res = tt.to_matrix();
         for i in 0..3 {
             for j in 0..3 {
@@ -550,18 +547,17 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, true, true)?;
+        let tt = Tensor2::from_matrix(comps_std, true, true).unwrap();
         let res = tt.to_matrix();
         for i in 0..3 {
             for j in 0..3 {
                 assert_approx_eq!(res[i][j], comps_std[i][j], 1e-14);
             }
         }
-        Ok(())
     }
 
     #[test]
-    fn sym_set_works() -> Result<(), StrError> {
+    fn sym_set_works() {
         let mut a = Tensor2::new(true, false);
         a.sym_set(0, 0, 1.0);
         a.sym_set(1, 1, 2.0);
@@ -578,18 +574,17 @@ mod tests {
              │ 5.0 0.0 3.0 │\n\
              └             ┘"
         );
-        Ok(())
     }
 
     #[test]
-    fn clone_and_serialize_work() -> Result<(), StrError> {
+    fn clone_and_serialize_work() {
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, false, false)?;
+        let tt = Tensor2::from_matrix(comps_std, false, false).unwrap();
         // clone
         let mut cloned = tt.clone();
         cloned.vec[0] = -1.0;
@@ -612,11 +607,15 @@ mod tests {
         // serialize
         let mut serialized = Vec::new();
         let mut serializer = rmp_serde::Serializer::new(&mut serialized);
-        tt.serialize(&mut serializer).map_err(|_| "tensor serialize failed")?;
+        tt.serialize(&mut serializer)
+            .map_err(|_| "tensor serialize failed")
+            .unwrap();
         assert!(serialized.len() > 0);
         // deserialize
         let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
-        let ss: Tensor2 = Deserialize::deserialize(&mut deserializer).map_err(|_| "cannot deserialize tensor data")?;
+        let ss: Tensor2 = Deserialize::deserialize(&mut deserializer)
+            .map_err(|_| "cannot deserialize tensor data")
+            .unwrap();
         assert_eq!(
             format!("{:.1}", ss.to_matrix()),
             "┌             ┐\n\
@@ -625,13 +624,11 @@ mod tests {
              │ 7.0 8.0 9.0 │\n\
              └             ┘"
         );
-        Ok(())
     }
 
     #[test]
-    fn debug_works() -> Result<(), StrError> {
+    fn debug_works() {
         let tt = Tensor2::new(false, false);
         assert!(format!("{:?}", tt).len() > 0);
-        Ok(())
     }
 }

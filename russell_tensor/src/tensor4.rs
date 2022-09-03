@@ -711,7 +711,7 @@ impl Tensor4 {
 #[cfg(test)]
 mod tests {
     use super::{Tensor4, MN_TO_IJKL};
-    use crate::{Samples, StrError};
+    use crate::Samples;
     use russell_chk::assert_approx_eq;
     use serde::{Deserialize, Serialize};
 
@@ -731,9 +731,9 @@ mod tests {
     }
 
     #[test]
-    fn from_array_works() -> Result<(), StrError> {
+    fn from_array_works() {
         // general
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, false)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, false).unwrap();
         for m in 0..9 {
             for n in 0..9 {
                 assert_eq!(dd.mat[m][n], Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[m][n]);
@@ -741,7 +741,7 @@ mod tests {
         }
 
         // sym-3D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false).unwrap();
         for m in 0..6 {
             for n in 0..6 {
                 assert_eq!(dd.mat[m][n], Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[m][n]);
@@ -749,17 +749,16 @@ mod tests {
         }
 
         // sym-2D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true).unwrap();
         for m in 0..4 {
             for n in 0..4 {
                 assert_eq!(dd.mat[m][n], Samples::TENSOR4_SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n]);
             }
         }
-        Ok(())
     }
 
     #[test]
-    fn from_matrix_fails_on_wrong_input() -> Result<(), StrError> {
+    fn from_matrix_fails_on_wrong_input() {
         let mut inp = [[0.0; 9]; 9];
         inp[0][3] = 1e-15;
         let res = Tensor4::from_matrix(&inp, true, false);
@@ -770,13 +769,12 @@ mod tests {
         inp[0][7] = 1.0;
         let res = Tensor4::from_matrix(&inp, true, true);
         assert_eq!(res.err(), Some("cannot define 2D Tensor4 due to non-zero values"));
-        Ok(())
     }
 
     #[test]
-    fn from_matrix_works() -> Result<(), StrError> {
+    fn from_matrix_works() {
         // general
-        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SAMPLE1_STD_MATRIX, false, false)?;
+        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SAMPLE1_STD_MATRIX, false, false).unwrap();
         for m in 0..9 {
             for n in 0..9 {
                 assert_approx_eq!(dd.mat[m][n], Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[m][n], 1e-15);
@@ -784,7 +782,7 @@ mod tests {
         }
 
         // sym-3D
-        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_SAMPLE1_STD_MATRIX, true, false)?;
+        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_SAMPLE1_STD_MATRIX, true, false).unwrap();
         for m in 0..6 {
             for n in 0..6 {
                 assert_approx_eq!(dd.mat[m][n], Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[m][n], 1e-14);
@@ -792,19 +790,18 @@ mod tests {
         }
 
         // sym-2D
-        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX, true, true)?;
+        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX, true, true).unwrap();
         for m in 0..4 {
             for n in 0..4 {
                 assert_approx_eq!(dd.mat[m][n], Samples::TENSOR4_SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n], 1e-14);
             }
         }
-        Ok(())
     }
 
     #[test]
-    fn get_works() -> Result<(), StrError> {
+    fn get_works() {
         // general
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, false)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, false).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -816,7 +813,7 @@ mod tests {
         }
 
         // sym-3D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -828,7 +825,7 @@ mod tests {
         }
 
         // sym-2D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -838,13 +835,12 @@ mod tests {
                 }
             }
         }
-        Ok(())
     }
 
     #[test]
-    fn to_array_works() -> Result<(), StrError> {
+    fn to_array_works() {
         // general
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, false)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, false).unwrap();
         let res = dd.to_array();
         for i in 0..3 {
             for j in 0..3 {
@@ -857,7 +853,7 @@ mod tests {
         }
 
         // sym-3D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false).unwrap();
         let res = dd.to_array();
         for i in 0..3 {
             for j in 0..3 {
@@ -870,7 +866,7 @@ mod tests {
         }
 
         // sym-2D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true).unwrap();
         let res = dd.to_array();
         for i in 0..3 {
             for j in 0..3 {
@@ -881,13 +877,12 @@ mod tests {
                 }
             }
         }
-        Ok(())
     }
 
     #[test]
-    fn to_matrix_works() -> Result<(), StrError> {
+    fn to_matrix_works() {
         // general
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, false)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, false).unwrap();
         let mat = dd.to_matrix();
         for m in 0..9 {
             for n in 0..9 {
@@ -896,7 +891,7 @@ mod tests {
         }
 
         // sym-3D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false).unwrap();
         let mat = dd.to_matrix();
         assert_eq!(mat.dims(), (9, 9));
         for m in 0..9 {
@@ -906,7 +901,7 @@ mod tests {
         }
 
         // sym-2D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true)?;
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true).unwrap();
         let mat = dd.to_matrix();
         assert_eq!(mat.dims(), (9, 9));
         for m in 0..9 {
@@ -914,7 +909,6 @@ mod tests {
                 assert_approx_eq!(mat[m][n], &Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX[m][n], 1e-13);
             }
         }
-        Ok(())
     }
 
     fn generate_dd() -> Tensor4 {
@@ -930,7 +924,7 @@ mod tests {
     }
 
     #[test]
-    fn sym_set_works() -> Result<(), StrError> {
+    fn sym_set_works() {
         let dd = generate_dd();
         assert_eq!(
             format!("{:.0}", dd.to_matrix()),
@@ -946,11 +940,10 @@ mod tests {
              │ 1311 1322 1333 1312 1323 1313 1312 1323 1313 │\n\
              └                                              ┘"
         );
-        Ok(())
     }
 
     #[test]
-    fn clone_and_serialize_work() -> Result<(), StrError> {
+    fn clone_and_serialize_work() {
         let dd = generate_dd();
         // clone
         let mut cloned = dd.clone();
@@ -986,11 +979,15 @@ mod tests {
         // serialize
         let mut serialized = Vec::new();
         let mut serializer = rmp_serde::Serializer::new(&mut serialized);
-        dd.serialize(&mut serializer).map_err(|_| "tensor serialize failed")?;
+        dd.serialize(&mut serializer)
+            .map_err(|_| "tensor serialize failed")
+            .unwrap();
         assert!(serialized.len() > 0);
         // deserialize
         let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
-        let ee: Tensor4 = Deserialize::deserialize(&mut deserializer).map_err(|_| "cannot deserialize tensor data")?;
+        let ee: Tensor4 = Deserialize::deserialize(&mut deserializer)
+            .map_err(|_| "cannot deserialize tensor data")
+            .unwrap();
         assert_eq!(
             format!("{:.0}", ee.to_matrix()),
             "┌                                              ┐\n\
@@ -1005,13 +1002,11 @@ mod tests {
              │ 1311 1322 1333 1312 1323 1313 1312 1323 1313 │\n\
              └                                              ┘"
         );
-        Ok(())
     }
 
     #[test]
-    fn debug_works() -> Result<(), StrError> {
+    fn debug_works() {
         let dd = Tensor4::new(false, false);
         assert!(format!("{:?}", dd).len() > 0);
-        Ok(())
     }
 }

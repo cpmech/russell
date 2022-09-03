@@ -522,28 +522,28 @@ where
         for i in 0..self.data.len() {
             let val = self.data[i];
             match f.precision() {
-                Some(v) => write!(&mut buf, "{:.1$}", val, v)?,
-                None => write!(&mut buf, "{}", val)?,
+                Some(v) => write!(&mut buf, "{:.1$}", val, v).unwrap(),
+                None => write!(&mut buf, "{}", val).unwrap(),
             }
             width = cmp::max(buf.chars().count(), width);
             buf.clear();
         }
         // draw vector
         width += 1;
-        write!(f, "┌{:1$}┐\n", " ", width + 1)?;
+        write!(f, "┌{:1$}┐\n", " ", width + 1).unwrap();
         for i in 0..self.data.len() {
             if i > 0 {
-                write!(f, " │\n")?;
+                write!(f, " │\n").unwrap();
             }
-            write!(f, "│")?;
+            write!(f, "│").unwrap();
             let val = self.data[i];
             match f.precision() {
-                Some(v) => write!(f, "{:>1$.2$}", val, width, v)?,
-                None => write!(f, "{:>1$}", val, width)?,
+                Some(v) => write!(f, "{:>1$.2$}", val, width, v).unwrap(),
+                None => write!(f, "{:>1$}", val, width).unwrap(),
             }
         }
-        write!(f, " │\n")?;
-        write!(f, "└{:1$}┘", " ", width + 1)?;
+        write!(f, " │\n").unwrap();
+        write!(f, "└{:1$}┘", " ", width + 1).unwrap();
         Ok(())
     }
 }

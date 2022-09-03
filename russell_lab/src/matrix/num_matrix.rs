@@ -662,7 +662,7 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // handle empty matrix
         if self.nrow == 0 || self.ncol == 0 {
-            write!(f, "[]")?;
+            write!(f, "[]").unwrap();
             return Ok(());
         }
         // find largest width
@@ -672,8 +672,8 @@ where
             for j in 0..self.ncol {
                 let val = self[i][j];
                 match f.precision() {
-                    Some(v) => write!(&mut buf, "{:.1$}", val, v)?,
-                    None => write!(&mut buf, "{}", val)?,
+                    Some(v) => write!(&mut buf, "{:.1$}", val, v).unwrap(),
+                    None => write!(&mut buf, "{}", val).unwrap(),
                 }
                 width = cmp::max(buf.chars().count(), width);
                 buf.clear();
@@ -681,24 +681,24 @@ where
         }
         // draw matrix
         width += 1;
-        write!(f, "┌{:1$}┐\n", " ", width * self.ncol + 1)?;
+        write!(f, "┌{:1$}┐\n", " ", width * self.ncol + 1).unwrap();
         for i in 0..self.nrow {
             if i > 0 {
-                write!(f, " │\n")?;
+                write!(f, " │\n").unwrap();
             }
             for j in 0..self.ncol {
                 if j == 0 {
-                    write!(f, "│")?;
+                    write!(f, "│").unwrap();
                 }
                 let val = self[i][j];
                 match f.precision() {
-                    Some(v) => write!(f, "{:>1$.2$}", val, width, v)?,
-                    None => write!(f, "{:>1$}", val, width)?,
+                    Some(v) => write!(f, "{:>1$.2$}", val, width, v).unwrap(),
+                    None => write!(f, "{:>1$}", val, width).unwrap(),
                 }
             }
         }
-        write!(f, " │\n")?;
-        write!(f, "└{:1$}┘", " ", width * self.ncol + 1)?;
+        write!(f, " │\n").unwrap();
+        write!(f, "└{:1$}┘", " ", width * self.ncol + 1).unwrap();
         Ok(())
     }
 }

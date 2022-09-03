@@ -370,7 +370,6 @@ mod tests {
         assert_eq!(trip.ncol, 3);
         assert_eq!(trip.pos, 0);
         assert_eq!(trip.max, 5);
-        assert!(matches!(trip.symmetry, Symmetry::No));
     }
 
     #[test]

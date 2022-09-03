@@ -103,12 +103,14 @@ impl fmt::Display for Statistics {
                 f,
                 "min = {:.4$}\nmax = {:.4$}\nmean = {:.4$}\nstd_dev = {:.4$}\n",
                 self.min, self.max, self.mean, self.std_dev, digits
-            )?,
+            )
+            .unwrap(),
             None => write!(
                 f,
                 "min = {}\nmax = {}\nmean = {}\nstd_dev = {}\n",
                 self.min, self.max, self.mean, self.std_dev
-            )?,
+            )
+            .unwrap(),
         }
         Ok(())
     }

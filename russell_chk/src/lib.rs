@@ -40,12 +40,14 @@
 /// Defines a type alias for the error type as a static string
 pub type StrError = &'static str;
 
+mod approx_eq;
 mod assert_approx_eq;
 mod assert_complex_approx_eq;
 mod assert_complex_vec_approx_eq;
 mod assert_deriv_approx_eq;
 mod assert_vec_approx_eq;
 mod num_deriv;
+pub use crate::approx_eq::*;
 pub use crate::assert_approx_eq::*;
 pub use crate::assert_complex_approx_eq::*;
 pub use crate::assert_complex_vec_approx_eq::*;

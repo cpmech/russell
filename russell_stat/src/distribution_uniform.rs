@@ -99,6 +99,11 @@ mod tests {
     */
 
     #[test]
+    fn uniform_handles_errors() {
+        assert_eq!(DistributionUniform::new(2.0, 1.0).err(), Some("invalid parameters"));
+    }
+
+    #[test]
     fn uniform_works() {
         #[rustfmt::skip]
         // x, xmin, xmax, pdf, cdf

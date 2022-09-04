@@ -39,7 +39,10 @@ pub const STEPSIZE_CENTRAL5: f64 = 1e-3;
 /// assert!(err < 1e-6);
 /// assert!(rerr < 1e-12);
 /// ```
-pub fn deriv_and_errors_central5<A>(at_x: f64, f: fn(f64, &mut A) -> f64, args: &mut A, h: f64) -> (f64, f64, f64) {
+pub fn deriv_and_errors_central5<F, A>(at_x: f64, f: F, args: &mut A, h: f64) -> (f64, f64, f64)
+where
+    F: Fn(f64, &mut A) -> f64,
+{
     // numerical derivative
     let fm1 = f(at_x - h, args);
     let fp1 = f(at_x + h, args);
@@ -91,10 +94,13 @@ pub fn deriv_and_errors_central5<A>(at_x: f64, f: fn(f64, &mut A) -> f64, args: 
 /// let d_correct = -2.0 * f64::exp(-2.0 * at_x);
 /// assert!(f64::abs(d - d_correct) < 1e-11);
 /// ```
-pub fn deriv_central5<A>(at_x: f64, f: fn(f64, &mut A) -> f64, args: &mut A) -> f64 {
+pub fn deriv_central5<F, A>(at_x: f64, f: F, args: &mut A) -> f64
+where
+    F: Fn(f64, &mut A) -> f64,
+{
     // trial derivative
     let h = STEPSIZE_CENTRAL5;
-    let (dfdx, err, rerr) = deriv_and_errors_central5(at_x, f, args, h);
+    let (dfdx, err, rerr) = deriv_and_errors_central5(at_x, &f, args, h);
     let err_total = err + rerr;
 
     // done with zero-error
@@ -109,7 +115,7 @@ pub fn deriv_central5<A>(at_x: f64, f: fn(f64, &mut A) -> f64, args: &mut A) -> 
 
     // improved derivative
     let h_improv = h * f64::powf(rerr / (2.0 * err), 1.0 / 3.0);
-    let (dfdx_improv, err_improv, rerr_improv) = deriv_and_errors_central5(at_x, f, args, h_improv);
+    let (dfdx_improv, err_improv, rerr_improv) = deriv_and_errors_central5(at_x, &f, args, h_improv);
     let err_total_improv = err_improv + rerr_improv;
 
     // ignore improved estimate because of larger error

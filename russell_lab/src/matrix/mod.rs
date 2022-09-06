@@ -1,3 +1,5 @@
+//! This module contains functions for calculations with matrices
+
 mod add_matrices;
 mod aliases;
 mod cholesky_factor;

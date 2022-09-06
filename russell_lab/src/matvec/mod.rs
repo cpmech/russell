@@ -1,3 +1,5 @@
+//! This module contains functions for calculations with matrices and vectors
+
 mod mat_sum_cols;
 mod mat_sum_rows;
 mod mat_vec_mul;

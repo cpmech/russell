@@ -16,6 +16,7 @@
     "ldvl",
     "ldvr",
     "ldvt",
+    "tgamma",
     "zcopy",
     "zgemm",
     "zgemv",

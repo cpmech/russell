@@ -23,6 +23,9 @@ serde = { version = "1.0", features = ["derive"] }
 rmp-serde = "1.1"
 serde_json = "1.0"
 
+[build-dependencies]
+cc = "1.0"
+
 [[bench]]
 name = "lab_benches"
 harness = false

@@ -1,6 +1,7 @@
-use crate::{erf, ProbabilityDistribution, StrError, SQRT_2, SQRT_PI};
+use crate::{ProbabilityDistribution, StrError};
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
+use russell_lab::{erf, SQRT_2, SQRT_PI};
 
 /// Defines the Normal distribution
 pub struct DistributionNormal {

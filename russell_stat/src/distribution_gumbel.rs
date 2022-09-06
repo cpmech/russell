@@ -1,6 +1,7 @@
-use crate::{ProbabilityDistribution, StrError, EULER, PI, SQRT_6};
+use crate::{ProbabilityDistribution, StrError};
 use rand::Rng;
 use rand_distr::{Distribution, Gumbel};
+use russell_lab::{EULER, PI, SQRT_6};
 
 /// Defines the Gumbel / Type I Extreme Value Distribution (largest value)
 pub struct DistributionGumbel {

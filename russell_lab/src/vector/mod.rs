@@ -1,3 +1,5 @@
+//! This module contains functions for calculations with vectors
+
 mod add_vectors;
 mod aliases;
 mod complex_add_vectors;

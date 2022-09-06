@@ -5,24 +5,20 @@
 /// Defines a type alias for the error type as a static string
 pub type StrError = &'static str;
 
-mod constants;
 mod distribution_frechet;
 mod distribution_gumbel;
 mod distribution_lognormal;
 mod distribution_normal;
 mod distribution_uniform;
 mod histogram;
-mod math;
 mod probability_distribution;
 mod statistics;
-pub use crate::constants::*;
 pub use crate::distribution_frechet::*;
 pub use crate::distribution_gumbel::*;
 pub use crate::distribution_lognormal::*;
 pub use crate::distribution_normal::*;
 pub use crate::distribution_uniform::*;
 pub use crate::histogram::*;
-pub use crate::math::*;
 pub use crate::probability_distribution::*;
 pub use crate::statistics::*;
 

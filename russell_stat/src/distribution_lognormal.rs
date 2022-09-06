@@ -1,7 +1,7 @@
 use crate::{ProbabilityDistribution, StrError};
 use rand::Rng;
 use rand_distr::{Distribution, LogNormal};
-use russell_lab::{erf, SQRT_2, SQRT_PI};
+use russell_lab::math::{erf, SQRT_2, SQRT_PI};
 
 const LOGNORMAL_MIN_X: f64 = 1e-15;
 

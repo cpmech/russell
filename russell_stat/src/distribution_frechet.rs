@@ -1,7 +1,7 @@
 use crate::{ProbabilityDistribution, StrError};
 use rand::Rng;
 use rand_distr::{Distribution, Frechet};
-use russell_lab::gamma;
+use russell_lab::math::gamma;
 
 const FRECHET_MIN_DELTA_X: f64 = 1e-15;
 

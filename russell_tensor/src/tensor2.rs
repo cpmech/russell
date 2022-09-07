@@ -305,6 +305,10 @@ impl Tensor2 {
 
     /// Sets the (i,j) component of a symmetric Tensor2
     ///
+    /// ```text
+    /// σᵢⱼ = value
+    /// ```
+    ///
     /// **Note:** Only the diagonal and upper-diagonal components need to be set.
     ///
     /// # Panics
@@ -362,6 +366,30 @@ impl Tensor2 {
             self.vec[m] = value;
         } else {
             self.vec[m] = value * SQRT_2;
+        }
+    }
+
+    /// Updates the (i,j) component of a symmetric Tensor2
+    ///
+    /// ```text
+    /// σᵢⱼ += α·value
+    /// ```
+    ///
+    /// **Note:** Only the diagonal and upper-diagonal components **must** be set.
+    ///
+    /// # Panics
+    ///
+    /// The tensor must be symmetric and (i,j) must correspond to the possible
+    /// combination due to the space dimension, otherwise a panic may occur.
+    ///
+    /// This function will panic also if i > j (lower-diagonal)
+    pub fn sym_update(&mut self, i: usize, j: usize, alpha: f64, value: f64) {
+        assert!(i <= j);
+        let m = IJ_TO_M_SYM[i][j];
+        if i == j {
+            self.vec[m] += alpha * value;
+        } else {
+            self.vec[m] += alpha * value * SQRT_2;
         }
     }
 }
@@ -608,6 +636,62 @@ mod tests {
              │ 5.0 0.0 3.0 │\n\
              └             ┘"
         );
+    }
+
+    #[test]
+    fn sym_update_works() {
+        // symmetric 2D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let mut a = Tensor2::from_matrix(comps_std, true, true).unwrap();
+        a.sym_update(0, 0, 10.0, 10.0);
+        a.sym_update(1, 1, 10.0, 10.0);
+        a.sym_update(2, 2, 10.0, 10.0);
+        a.sym_update(0, 1, 10.0, 10.0); // must not do (1,0)
+        let out = a.to_matrix();
+        assert_eq!(
+            format!("{:.1}", out),
+            "┌                   ┐\n\
+             │ 101.0 104.0   0.0 │\n\
+             │ 104.0 102.0   0.0 │\n\
+             │   0.0   0.0 103.0 │\n\
+             └                   ┘"
+        );
+
+        // // symmetric 3D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ];
+        let mut a = Tensor2::from_matrix(comps_std, true, false).unwrap();
+        a.sym_update(0, 0, 10.0, 10.0);
+        a.sym_update(1, 1, 10.0, 10.0);
+        a.sym_update(2, 2, 10.0, 10.0);
+        a.sym_update(0, 1, 10.0, 10.0); // must nod do (1,0)
+        a.sym_update(0, 2, 10.0, 10.0); // must not do (2,0)
+        a.sym_update(1, 2, 10.0, 10.0); // must not do (2,1)
+        let out = a.to_matrix();
+        assert_eq!(
+            format!("{:.1}", out),
+            "┌                   ┐\n\
+             │ 101.0 104.0 106.0 │\n\
+             │ 104.0 102.0 105.0 │\n\
+             │ 106.0 105.0 103.0 │\n\
+             └                   ┘"
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn sym_update_panics_on_lower_diagonal() {
+        let mut a = Tensor2::new(true, true);
+        a.sym_update(1, 0, 1.0, 0.0);
     }
 
     #[test]

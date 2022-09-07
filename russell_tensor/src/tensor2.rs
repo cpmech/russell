@@ -303,6 +303,12 @@ impl Tensor2 {
         tt
     }
 
+    /// Set all values to zero
+    #[inline]
+    pub fn clear(&mut self) {
+        self.vec.fill(0.0);
+    }
+
     /// Sets the (i,j) component of a symmetric Tensor2
     ///
     /// ```text
@@ -636,6 +642,19 @@ mod tests {
              │ 5.0 0.0 3.0 │\n\
              └             ┘"
         );
+    }
+
+    #[test]
+    fn clear_works() {
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let mut a = Tensor2::from_matrix(comps_std, true, true).unwrap();
+        a.clear();
+        assert_eq!(a.vec.as_data(), &[0.0, 0.0, 0.0, 0.0]);
     }
 
     #[test]

@@ -1,6 +1,6 @@
 use super::{mandel_dim, IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, SQRT_2};
 use crate::StrError;
-use russell_lab::{Matrix, Vector};
+use russell_lab::{copy_vector, update_vector, Matrix, Vector};
 use serde::{Deserialize, Serialize};
 
 /// Implements a second-order tensor, symmetric or not
@@ -398,6 +398,18 @@ impl Tensor2 {
             self.vec[m] += alpha * value * SQRT_2;
         }
     }
+
+    /// Sets this tensor equal to another one
+    #[inline]
+    pub fn set(&mut self, other: &Tensor2) -> Result<(), StrError> {
+        copy_vector(&mut self.vec, &other.vec)
+    }
+
+    /// Adds another tensor to this one
+    #[inline]
+    pub fn add(&mut self, alpha: f64, other: &Tensor2) -> Result<(), StrError> {
+        update_vector(&mut self.vec, alpha, &other.vec)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -711,6 +723,34 @@ mod tests {
     fn sym_update_panics_on_lower_diagonal() {
         let mut a = Tensor2::new(true, true);
         a.sym_update(1, 0, 1.0, 0.0);
+    }
+
+    #[test]
+    fn set_and_add_work() {
+        let mut a = Tensor2::new(false, false);
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [1.0, 3.0, 1.0], 
+            [2.0, 2.0, 2.0], 
+            [3.0, 1.0, 3.0]],
+        false, false).unwrap();
+        let c = Tensor2::from_matrix(
+            &[[100.0, 100.0, 100.0], [100.0, 100.0, 100.0], [100.0, 100.0, 100.0]],
+            false,
+            false,
+        )
+        .unwrap();
+        a.set(&b).unwrap();
+        a.add(10.0, &c).unwrap();
+        let out = a.to_matrix();
+        assert_eq!(
+            format!("{:.1}", out),
+            "┌                      ┐\n\
+             │ 1001.0 1003.0 1001.0 │\n\
+             │ 1002.0 1002.0 1002.0 │\n\
+             │ 1003.0 1001.0 1003.0 │\n\
+             └                      ┘"
+        );
     }
 
     #[test]

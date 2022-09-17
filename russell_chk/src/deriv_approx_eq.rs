@@ -1,8 +1,11 @@
 use crate::deriv_central5;
 
 /// Panics if derivative is not approximately equal to numerical derivative
-pub fn deriv_approx_eq<A>(dfdx: f64, at_x: f64, f: fn(f64, &mut A) -> f64, args: &mut A, tol: f64) {
-    let dfdx_num = deriv_central5(at_x, f, args);
+pub fn deriv_approx_eq<F, A>(dfdx: f64, at_x: f64, args: &mut A, tol: f64, f: F)
+where
+    F: FnMut(f64, &mut A) -> f64,
+{
+    let dfdx_num = deriv_central5(at_x, args, f);
     let diff = f64::abs(dfdx - dfdx_num);
     if diff > tol {
         panic!(
@@ -27,7 +30,7 @@ mod tests {
         let args = &mut Arguments {};
         let at_x = 1.5;
         let dfdx = 1.51;
-        deriv_approx_eq(dfdx, at_x, f, args, 1e-2);
+        deriv_approx_eq(dfdx, at_x, args, 1e-2, f);
     }
 
     #[test]
@@ -36,7 +39,7 @@ mod tests {
         let args = &mut Arguments {};
         let at_x = 1.5;
         let dfdx = 1.501;
-        deriv_approx_eq(dfdx, at_x, f, args, 1e-2);
-        deriv_approx_eq(dfdx, at_x, f, args, 1e-2);
+        deriv_approx_eq(dfdx, at_x, args, 1e-2, f);
+        deriv_approx_eq(dfdx, at_x, args, 1e-2, f);
     }
 }

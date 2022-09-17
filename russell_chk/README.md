@@ -59,7 +59,7 @@ fn main() {
     let args = &mut Arguments {};
     let at_x = 8.0;
     let dfdx = -1.01;
-    deriv_approx_eq(dfdx, at_x, f, args, 1e-2);
+    deriv_approx_eq(dfdx, at_x, args, 1e-2, f);
 }
 ```
 

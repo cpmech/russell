@@ -81,7 +81,7 @@ fn main() -> Result<(), StrError> {
     // initialize and factorize
     let mut solver = Solver::new(config)?;
     solver.initialize(&trip)?;
-    solver.factorize()?;
+    solver.factorize(&trip)?;
 
     // allocate vectors
     let m = trip.dims().0;

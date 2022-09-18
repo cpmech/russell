@@ -47,7 +47,7 @@
 //!     let config = ConfigSolver::new();
 //!     let mut solver = Solver::new(config)?;
 //!     solver.initialize(&trip)?;
-//!     solver.factorize()?;
+//!     solver.factorize(&trip)?;
 //!     solver.solve(&mut x, &rhs)?;
 //!     let correct = "┌          ┐\n\
 //!                    │ 1.000000 │\n\

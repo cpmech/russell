@@ -21,18 +21,20 @@ extern "C" {
         solver: *mut ExtSolver,
         n: i32,
         nnz: i32,
-        indices_i: *const i32,
-        indices_j: *const i32,
-        values_aij: *const f64,
         symmetry: i32,
         ordering: i32,
         scaling: i32,
         pct_inc_workspace: i32,
         max_work_memory: i32,
         openmp_num_threads: i32,
+    ) -> i32;
+    fn solver_mmp_factorize(
+        solver: *mut ExtSolver,
+        indices_i: *const i32,
+        indices_j: *const i32,
+        values_aij: *const f64,
         verbose: i32,
     ) -> i32;
-    fn solver_mmp_factorize(solver: *mut ExtSolver, verbose: i32) -> i32;
     fn solver_mmp_solve(solver: *mut ExtSolver, rhs: *mut f64, verbose: i32) -> i32;
     fn solver_mmp_used_ordering(solver: *const ExtSolver) -> i32;
     fn solver_mmp_used_scaling(solver: *const ExtSolver) -> i32;
@@ -44,15 +46,18 @@ extern "C" {
         solver: *mut ExtSolver,
         n: i32,
         nnz: i32,
-        indices_i: *const i32,
-        indices_j: *const i32,
-        values_aij: *const f64,
         symmetry: i32,
         ordering: i32,
         scaling: i32,
         verbose: i32,
     ) -> i32;
-    fn solver_umf_factorize(solver: *mut ExtSolver, verbose: i32) -> i32;
+    fn solver_umf_factorize(
+        solver: *mut ExtSolver,
+        indices_i: *const i32,
+        indices_j: *const i32,
+        values_aij: *const f64,
+        verbose: i32,
+    ) -> i32;
     fn solver_umf_solve(solver: *mut ExtSolver, x: *mut f64, rhs: *const f64, verbose: i32) -> i32;
     fn solver_umf_used_ordering(solver: *const ExtSolver) -> i32;
     fn solver_umf_used_scaling(solver: *const ExtSolver) -> i32;
@@ -132,16 +137,12 @@ impl Solver {
                         self.solver,
                         n,
                         nnz,
-                        trip.indices_i.as_ptr(),
-                        trip.indices_j.as_ptr(),
-                        trip.values_aij.as_ptr(),
                         code_symmetry_mmp(&trip.symmetry)?,
                         self.config.ordering,
                         self.config.scaling,
                         self.config.pct_inc_workspace,
                         self.config.max_work_memory,
                         self.config.openmp_num_threads,
-                        self.config.verbose,
                     );
                     if res != 0 {
                         return Err(self.handle_mmp_error_code(res));
@@ -159,9 +160,6 @@ impl Solver {
                         self.solver,
                         n,
                         nnz,
-                        trip.indices_i.as_ptr(),
-                        trip.indices_j.as_ptr(),
-                        trip.values_aij.as_ptr(),
                         code_symmetry_umf(&trip.symmetry)?,
                         self.config.ordering,
                         self.config.scaling,
@@ -181,7 +179,7 @@ impl Solver {
     }
 
     /// Performs the factorization
-    pub fn factorize(&mut self) -> Result<(), StrError> {
+    pub fn factorize(&mut self, trip: &SparseTriplet) -> Result<(), StrError> {
         if !self.done_initialize {
             return Err("initialization must be done before factorization");
         }
@@ -189,7 +187,13 @@ impl Solver {
         unsafe {
             match self.config.lin_sol_kind {
                 LinSolKind::Mmp => {
-                    let res = solver_mmp_factorize(self.solver, self.config.verbose);
+                    let res = solver_mmp_factorize(
+                        self.solver,
+                        trip.indices_i.as_ptr(),
+                        trip.indices_j.as_ptr(),
+                        trip.values_aij.as_ptr(),
+                        self.config.verbose,
+                    );
                     if res != 0 {
                         return Err(self.handle_mmp_error_code(res));
                     }
@@ -199,7 +203,13 @@ impl Solver {
                     self.used_scaling = str_mmp_scaling(sca);
                 }
                 LinSolKind::Umf => {
-                    let res = solver_umf_factorize(self.solver, self.config.verbose);
+                    let res = solver_umf_factorize(
+                        self.solver,
+                        trip.indices_i.as_ptr(),
+                        trip.indices_j.as_ptr(),
+                        trip.values_aij.as_ptr(),
+                        self.config.verbose,
+                    );
                     if res != 0 {
                         return Err(self.handle_umf_error_code(res));
                     }
@@ -261,7 +271,7 @@ impl Solver {
     ///     let config = ConfigSolver::new();
     ///     let mut solver = Solver::new(config)?;
     ///     solver.initialize(&trip)?;
-    ///     solver.factorize()?;
+    ///     solver.factorize(&trip)?;
     ///     solver.solve(&mut x, &rhs)?;
     ///     let correct = "┌          ┐\n\
     ///                    │ 1.000000 │\n\
@@ -383,7 +393,7 @@ impl Solver {
         let mut solver = Solver::new(config)?;
         let mut x = Vector::new(trip.dims().0);
         solver.initialize(&trip)?;
-        solver.factorize()?;
+        solver.factorize(&trip)?;
         solver.solve(&mut x, &rhs)?;
         Ok((solver, x))
     }
@@ -609,8 +619,9 @@ mod tests {
     fn factorize_fails_on_non_initialized() {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config).unwrap();
+        let trip = SparseTriplet::new(1, 1, 1, Symmetry::No).unwrap();
         assert_eq!(
-            solver.factorize(),
+            solver.factorize(&trip),
             Err("initialization must be done before factorization")
         );
     }
@@ -623,7 +634,7 @@ mod tests {
         trip.put(0, 0, 1.0).unwrap();
         trip.put(1, 1, 0.0).unwrap();
         solver.initialize(&trip).unwrap();
-        assert_eq!(solver.factorize(), Err("Error(1): Matrix is singular"));
+        assert_eq!(solver.factorize(&trip), Err("Error(1): Matrix is singular"));
     }
 
     #[test]
@@ -634,7 +645,7 @@ mod tests {
         trip.put(0, 0, 1.0).unwrap();
         trip.put(1, 1, 1.0).unwrap();
         solver.initialize(&trip).unwrap();
-        solver.factorize().unwrap();
+        solver.factorize(&trip).unwrap();
         assert!(solver.done_factorize);
     }
 
@@ -662,7 +673,7 @@ mod tests {
         trip.put(0, 0, 1.0).unwrap();
         trip.put(1, 1, 1.0).unwrap();
         solver.initialize(&trip).unwrap();
-        solver.factorize().unwrap();
+        solver.factorize(&trip).unwrap();
         let mut x = Vector::new(2);
         let rhs = Vector::from(&[1.0, 1.0]);
         let mut x_wrong = Vector::new(1);
@@ -705,7 +716,7 @@ mod tests {
 
         // initialize, factorize, and solve
         solver.initialize(&trip).unwrap();
-        solver.factorize().unwrap();
+        solver.factorize(&trip).unwrap();
         solver.solve(&mut x, &rhs).unwrap();
 
         // check
@@ -720,7 +731,7 @@ mod tests {
         trip.put(0, 0, 1.0).unwrap();
         trip.put(1, 1, 1.0).unwrap();
         solver.initialize(&trip).unwrap();
-        solver.factorize().unwrap();
+        solver.factorize(&trip).unwrap();
         assert_eq!(solver.done_initialize, true);
         assert_eq!(solver.done_factorize, true);
         solver.initialize(&trip).unwrap();
@@ -747,7 +758,7 @@ mod tests {
 
         // factorize fails on non-initialized solver
         assert_eq!(
-            solver.factorize(),
+            solver.factorize(&trip_rect),
             Err("initialization must be done before factorization")
         );
 
@@ -783,7 +794,7 @@ mod tests {
         );
 
         // factorize works
-        solver.factorize().unwrap();
+        solver.factorize(&trip).unwrap();
         assert!(solver.done_factorize);
 
         // solve fails on wrong x vector
@@ -814,7 +825,7 @@ mod tests {
         trip_singular.put(0, 0, 1.0).unwrap();
         trip_singular.put(4, 4, 1.0).unwrap();
         solver.initialize(&trip_singular).unwrap();
-        assert_eq!(solver.factorize(), Err("Error(-10): numerically singular matrix"));
+        assert_eq!(solver.factorize(&trip), Err("Error(-10): numerically singular matrix"));
 
         // done
     }

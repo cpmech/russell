@@ -47,7 +47,7 @@ fn test_solver(name: LinSolKind) {
         _ => (),
     };
 
-    match solver.factorize() {
+    match solver.factorize(&trip) {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
@@ -96,7 +96,7 @@ fn test_solver(name: LinSolKind) {
         _ => (),
     };
 
-    match solver.factorize() {
+    match solver.factorize(&trip_singular) {
         Err(e) => println!("\nOk(factorize singular matrix): {}\n", e),
         _ => (),
     };

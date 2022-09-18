@@ -1,6 +1,6 @@
 use russell_chk::{deriv_central5, vec_approx_eq};
 use russell_lab::{mat_approx_eq, update_vector, vector_norm, Matrix, NormVec, Vector};
-use russell_sparse::{ConfigSolver, Solver, SparseTriplet, StrError, Symmetry};
+use russell_sparse::{ConfigSolver, LinSolKind, Solver, SparseTriplet, StrError, Symmetry};
 
 fn calc_residual(rr: &mut Vector, uu: &Vector) {
     let (d1, d2, d3, d4) = (uu[0], uu[1], uu[2], uu[3]);
@@ -69,10 +69,11 @@ fn check_jacobian() {
     mat_approx_eq(&jj_ana, &jj_num, 1e-8);
 }
 
-#[test]
-fn test_nonlinear_system() -> Result<(), StrError> {
+fn solve_nonlinear_system(kind: LinSolKind) -> Result<(), StrError> {
     let neq = 4;
-    let config = ConfigSolver::new();
+    let mut config = ConfigSolver::new();
+    config.lin_sol_kind(kind);
+    // config.verbose();
     let mut solver = Solver::new(config)?;
     let mut jj = SparseTriplet::new(neq, neq, neq * neq, Symmetry::No).unwrap();
     let mut rr = Vector::new(neq);
@@ -112,7 +113,7 @@ fn test_nonlinear_system() -> Result<(), StrError> {
         if it == 0 {
             solver.initialize(&jj)?;
         }
-        solver.factorize()?;
+        solver.factorize(&jj)?;
         solver.solve(&mut mdu, &rr)?;
         update_vector(&mut uu, -1.0, &mdu)?;
         it += 1;
@@ -122,4 +123,14 @@ fn test_nonlinear_system() -> Result<(), StrError> {
     } else {
         Ok(())
     }
+}
+
+#[test]
+fn test_nonlinear_system_mmp() -> Result<(), StrError> {
+    solve_nonlinear_system(LinSolKind::Mmp)
+}
+
+#[test]
+fn test_nonlinear_system_umf() -> Result<(), StrError> {
+    solve_nonlinear_system(LinSolKind::Umf)
 }

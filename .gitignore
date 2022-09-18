@@ -7,4 +7,4 @@ tarpaulin-report.html
 output*.txt
 output*.json
 *.profraw
-
+inline_1.mtx

@@ -67,7 +67,7 @@ fn main() -> Result<(), StrError> {
     // allocate a square matrix
     let neq = 3; // number of equations
     let nnz = 5; // number of non-zeros
-    let mut trip = SparseTriplet::new(neq, neq, nnz)?;
+    let mut trip = SparseTriplet::new(neq, nnz)?;
     trip.put(0, 0, 0.2)?;
     trip.put(0, 1, 0.2)?;
     trip.put(1, 0, 0.5)?;

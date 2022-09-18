@@ -12,7 +12,7 @@
 //!
 //!     // allocate a square matrix
 //!     let (neq, nnz) = (5, 13);
-//!     let mut trip = SparseTriplet::new(neq, neq, nnz)?;
+//!     let mut trip = SparseTriplet::new(neq, nnz)?;
 //!     trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
 //!     trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
 //!     trip.put(1, 0, 3.0)?;

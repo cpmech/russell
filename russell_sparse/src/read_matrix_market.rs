@@ -161,6 +161,8 @@ impl MatrixMarketData {
 
 /// Reads a MatrixMarket file into a SparseTriplet
 ///
+/// **Note:** This function works only with square matrices.
+///
 /// # Input
 ///
 /// * `filepath` -- The full file path with filename
@@ -272,8 +274,8 @@ impl MatrixMarketData {
 /// fn main() -> Result<(), StrError> {
 ///     let filepath = "./data/matrix_market/simple_gen.mtx".to_string();
 ///     let (trip, symmetric) = read_matrix_market(&filepath, false)?;
-///     let (m, n) = trip.dims();
-///     let mut a = Matrix::new(m, n);
+///     let neq = trip.neq();
+///     let mut a = Matrix::new(neq, neq);
 ///     trip.to_matrix(&mut a)?;
 ///     let correct = "┌       ┐\n\
 ///                    │ 1 2 0 │\n\
@@ -308,8 +310,8 @@ impl MatrixMarketData {
 /// fn main() -> Result<(), StrError> {
 ///     let filepath = "./data/matrix_market/simple_sym.mtx".to_string();
 ///     let (trip, symmetric) = read_matrix_market(&filepath, true)?;
-///     let (m, n) = trip.dims();
-///     let mut a = Matrix::new(m, n);
+///     let neq = trip.neq();
+///     let mut a = Matrix::new(neq, neq);
 ///     trip.to_matrix(&mut a)?;
 ///     let correct = "┌       ┐\n\
 ///                    │ 1 2 0 │\n\
@@ -346,6 +348,11 @@ pub fn read_matrix_market(filepath: &String, sym_mirror: bool) -> Result<(Sparse
         }
     }
 
+    // check dimensions
+    if data.m != data.n {
+        return Err("cannot read non-square matrix");
+    }
+
     // set max number of entries
     let mut max = data.nnz;
     if data.symmetric && sym_mirror {
@@ -353,7 +360,7 @@ pub fn read_matrix_market(filepath: &String, sym_mirror: bool) -> Result<(Sparse
     }
 
     // allocate triplet
-    let mut trip = SparseTriplet::new(data.m as usize, data.n as usize, max as usize)?;
+    let mut trip = SparseTriplet::new(data.m as usize, max as usize)?;
 
     // read and parse triples
     loop {
@@ -544,6 +551,10 @@ mod tests {
             Some("found invalid (zero or negative) dimensions")
         );
         assert_eq!(
+            read_matrix_market(&String::from("./data/matrix_market/bad_rectangular.mtx"), false).err(),
+            Some("cannot read non-square matrix")
+        );
+        assert_eq!(
             read_matrix_market(&String::from("./data/matrix_market/bad_missing_data.mtx"), false).err(),
             Some("not all triples (i,j,aij) have been found")
         );
@@ -558,7 +569,7 @@ mod tests {
         let filepath = "./data/matrix_market/ok1.mtx".to_string();
         let (trip, sym) = read_matrix_market(&filepath, false).unwrap();
         assert_eq!(sym, false);
-        assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 12, 12));
+        assert_eq!((trip.neq, trip.pos, trip.max), (5, 12, 12));
         assert_eq!(trip.indices_i, &[0, 1, 0, 2, 4, 1, 2, 3, 4, 2, 1, 4]);
         assert_eq!(trip.indices_j, &[0, 0, 1, 1, 1, 2, 2, 2, 2, 3, 4, 4]);
         assert_eq!(
@@ -572,7 +583,7 @@ mod tests {
         let filepath = "./data/matrix_market/ok2.mtx".to_string();
         let (trip, sym) = read_matrix_market(&filepath, false).unwrap();
         assert_eq!(sym, true);
-        assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 15, 15));
+        assert_eq!((trip.neq, trip.pos, trip.max), (5, 15, 15));
         assert_eq!(trip.indices_i, &[0, 1, 2, 3, 4, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3]);
         assert_eq!(trip.indices_j, &[0, 1, 2, 3, 4, 1, 2, 3, 4, 2, 3, 4, 3, 4, 4]);
         assert_eq!(
@@ -586,7 +597,7 @@ mod tests {
         let filepath = "./data/matrix_market/ok3.mtx".to_string();
         let (trip, sym) = read_matrix_market(&filepath, true).unwrap();
         assert_eq!(sym, true);
-        assert_eq!((trip.nrow, trip.ncol, trip.pos, trip.max), (5, 5, 11, 14));
+        assert_eq!((trip.neq, trip.pos, trip.max), (5, 11, 14));
         assert_eq!(trip.indices_i, &[0, 1, 0, 2, 1, 3, 2, 3, 4, 1, 4, 0, 0, 0]);
         assert_eq!(trip.indices_j, &[0, 0, 1, 1, 2, 2, 3, 3, 1, 4, 4, 0, 0, 0]);
         assert_eq!(

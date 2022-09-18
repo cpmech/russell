@@ -62,7 +62,8 @@ fn check_jacobian() {
             });
         }
     }
-    let mut jj_tri = SparseTriplet::new(neq, neq, neq * neq).unwrap();
+    let nnz = neq * neq;
+    let mut jj_tri = SparseTriplet::new(neq, nnz).unwrap();
     calc_jacobian(&mut jj_tri, &uu).unwrap();
     let mut jj_ana = Matrix::new(neq, neq);
     jj_tri.to_matrix(&mut jj_ana).unwrap();
@@ -75,7 +76,7 @@ fn solve_nonlinear_system(kind: LinSolKind) -> Result<(), StrError> {
     // config.verbose();
     let (neq, nnz) = (4, 16);
     let mut solver = Solver::new(config, neq, nnz, None)?;
-    let mut jj = SparseTriplet::new(neq, neq, neq * neq).unwrap();
+    let mut jj = SparseTriplet::new(neq, nnz).unwrap();
     let mut rr = Vector::new(neq);
     let mut uu = Vector::from(&[0.0, 0.0, 0.0, 0.0]);
     let mut mdu = Vector::new(neq);

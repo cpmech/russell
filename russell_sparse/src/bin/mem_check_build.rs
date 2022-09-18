@@ -9,7 +9,7 @@ fn test_solver(name: LinSolKind) {
 
     let (neq, nnz) = (5, 13);
 
-    let mut trip = match SparseTriplet::new(neq, neq, nnz) {
+    let mut trip = match SparseTriplet::new(neq, nnz) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new triplet): {}", e);
@@ -74,7 +74,7 @@ fn test_solver(name: LinSolKind) {
 
     let (neq, nnz) = (5, 2);
 
-    let mut trip_singular = match SparseTriplet::new(neq, neq, nnz) {
+    let mut trip_singular = match SparseTriplet::new(neq, nnz) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new singular matrix): {}", e);

@@ -79,18 +79,13 @@ fn main() -> Result<(), StrError> {
     }
 
     // initialize and factorize
-    let (nrow, ncol) = trip.dims();
-    if nrow != ncol {
-        return Err("nrow must be equal to ncol");
-    }
-    let (neq, nnz) = (nrow, trip.nnz_current());
+    let (neq, nnz) = (trip.neq(), trip.nnz_current());
     let mut solver = Solver::new(config, neq, nnz, None)?;
     solver.factorize(&trip)?;
 
     // allocate vectors
-    let m = trip.dims().0;
-    let mut x = Vector::new(m);
-    let rhs = Vector::filled(m, 1.0);
+    let mut x = Vector::new(neq);
+    let rhs = Vector::filled(neq, 1.0);
 
     // solve linear system
     solver.solve(&mut x, &rhs)?;
@@ -134,7 +129,7 @@ fn main() -> Result<(), StrError> {
     if path.ends_with("bfwb62.mtx") {
         let tolerance = if opt.mmp { 1e-10 } else { 1e-15 };
         let correct_x = get_bfwb62_correct_x();
-        for i in 0..m {
+        for i in 0..neq {
             let diff = f64::abs(x.get(i) - correct_x.get(i));
             if diff > tolerance {
                 println!("ERROR: diff({}) = {}", i, diff);

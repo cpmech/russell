@@ -62,7 +62,7 @@ fn main() -> Result<(), StrError> {
 
     // read matrix
     let mut sw = Stopwatch::new("");
-    let trip = read_matrix_market(&opt.matrix_market_file, sym_mirror)?;
+    let (trip, symmetric) = read_matrix_market(&opt.matrix_market_file, sym_mirror)?;
     let time_read = sw.stop();
 
     // set configuration
@@ -79,8 +79,12 @@ fn main() -> Result<(), StrError> {
     }
 
     // initialize and factorize
-    let mut solver = Solver::new(config)?;
-    solver.initialize(&trip)?;
+    let (nrow, ncol) = trip.dims();
+    if nrow != ncol {
+        return Err("nrow must be equal to ncol");
+    }
+    let (neq, nnz) = (nrow, trip.nnz_current());
+    let mut solver = Solver::new(config, neq, nnz, None)?;
     solver.factorize(&trip)?;
 
     // allocate vectors
@@ -92,7 +96,7 @@ fn main() -> Result<(), StrError> {
     solver.solve(&mut x, &rhs)?;
 
     // verify solution
-    let verify = VerifyLinSys::new(&trip, &x, &rhs)?;
+    let verify = VerifyLinSys::new(&trip, &x, &rhs, symmetric)?;
 
     // matrix name
     let path = Path::new(&opt.matrix_market_file);

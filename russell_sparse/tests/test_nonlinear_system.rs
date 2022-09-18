@@ -1,6 +1,6 @@
 use russell_chk::{deriv_central5, vec_approx_eq};
 use russell_lab::{mat_approx_eq, update_vector, vector_norm, Matrix, NormVec, Vector};
-use russell_sparse::{ConfigSolver, LinSolKind, Solver, SparseTriplet, StrError, Symmetry};
+use russell_sparse::{ConfigSolver, LinSolKind, Solver, SparseTriplet, StrError};
 
 fn calc_residual(rr: &mut Vector, uu: &Vector) {
     let (d1, d2, d3, d4) = (uu[0], uu[1], uu[2], uu[3]);
@@ -62,7 +62,7 @@ fn check_jacobian() {
             });
         }
     }
-    let mut jj_tri = SparseTriplet::new(neq, neq, neq * neq, Symmetry::No).unwrap();
+    let mut jj_tri = SparseTriplet::new(neq, neq, neq * neq).unwrap();
     calc_jacobian(&mut jj_tri, &uu).unwrap();
     let mut jj_ana = Matrix::new(neq, neq);
     jj_tri.to_matrix(&mut jj_ana).unwrap();
@@ -70,12 +70,12 @@ fn check_jacobian() {
 }
 
 fn solve_nonlinear_system(kind: LinSolKind) -> Result<(), StrError> {
-    let neq = 4;
     let mut config = ConfigSolver::new();
     config.lin_sol_kind(kind);
     // config.verbose();
-    let mut solver = Solver::new(config)?;
-    let mut jj = SparseTriplet::new(neq, neq, neq * neq, Symmetry::No).unwrap();
+    let (neq, nnz) = (4, 16);
+    let mut solver = Solver::new(config, neq, nnz, None)?;
+    let mut jj = SparseTriplet::new(neq, neq, neq * neq).unwrap();
     let mut rr = Vector::new(neq);
     let mut uu = Vector::from(&[0.0, 0.0, 0.0, 0.0]);
     let mut mdu = Vector::new(neq);
@@ -110,9 +110,6 @@ fn solve_nonlinear_system(kind: LinSolKind) -> Result<(), StrError> {
             break;
         }
         calc_jacobian(&mut jj, &uu)?;
-        if it == 0 {
-            solver.initialize(&jj)?;
-        }
         solver.factorize(&jj)?;
         solver.solve(&mut mdu, &rr)?;
         update_vector(&mut uu, -1.0, &mdu)?;

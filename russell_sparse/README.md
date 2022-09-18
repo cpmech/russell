@@ -61,11 +61,13 @@ export OPENBLAS_NUM_THREADS=1
 
 ```rust
 use russell_lab::{Matrix, Vector};
-use russell_sparse::{ConfigSolver, Solver, SparseTriplet, Symmetry, StrError};
+use russell_sparse::{ConfigSolver, Solver, SparseTriplet, StrError};
 
 fn main() -> Result<(), StrError> {
     // allocate a square matrix
-    let mut trip = SparseTriplet::new(3, 3, 5, Symmetry::No)?;
+    let neq = 3; // number of equations
+    let nnz = 5; // number of non-zeros
+    let mut trip = SparseTriplet::new(neq, neq, nnz)?;
     trip.put(0, 0, 0.2)?;
     trip.put(0, 1, 0.2)?;
     trip.put(1, 0, 0.5)?;
@@ -73,8 +75,7 @@ fn main() -> Result<(), StrError> {
     trip.put(2, 2, 0.25)?;
     
     // print matrix
-    let (m, n) = trip.dims();
-    let mut a = Matrix::new(m, n);
+    let mut a = Matrix::new(neq, neq);
     trip.to_matrix(&mut a)?;
     let correct = "┌                   ┐\n\
                    │   0.2   0.2     0 │\n\
@@ -98,7 +99,7 @@ fn main() -> Result<(), StrError> {
     assert_eq!(format!("{}", x1), correct1);
     
     // solve again
-    let mut x2 = Vector::new(trip.dims().0);
+    let mut x2 = Vector::new(neq);
     solver.solve(&mut x2, &rhs2)?;
     let correct2 = "┌   ┐\n\
                     │ 6 │\n\

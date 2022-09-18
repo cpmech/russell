@@ -6,12 +6,13 @@
 //!
 //! ```
 //! use russell_lab::{Matrix, Vector};
-//! use russell_sparse::{ConfigSolver, Solver, SparseTriplet, Symmetry, StrError};
+//! use russell_sparse::{ConfigSolver, Solver, SparseTriplet, StrError};
 //!
 //! fn main() -> Result<(), StrError> {
 //!
 //!     // allocate a square matrix
-//!     let mut trip = SparseTriplet::new(5, 5, 13, Symmetry::No)?;
+//!     let (neq, nnz) = (5, 13);
+//!     let mut trip = SparseTriplet::new(neq, neq, nnz)?;
 //!     trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
 //!     trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
 //!     trip.put(1, 0, 3.0)?;
@@ -27,8 +28,7 @@
 //!     trip.put(4, 4, 1.0)?;
 //!
 //!     // print matrix
-//!     let (m, n) = trip.dims();
-//!     let mut a = Matrix::new(m, n);
+//!     let mut a = Matrix::new(neq, neq);
 //!     trip.to_matrix(&mut a)?;
 //!     let correct = "┌                ┐\n\
 //!                    │  2  3  0  0  0 │\n\
@@ -40,13 +40,12 @@
 //!     assert_eq!(format!("{}", a), correct);
 //!
 //!     // allocate x and rhs
-//!     let mut x = Vector::new(5);
+//!     let mut x = Vector::new(neq);
 //!     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
 //!
 //!     // initialize, factorize, and solve
 //!     let config = ConfigSolver::new();
-//!     let mut solver = Solver::new(config)?;
-//!     solver.initialize(&trip)?;
+//!     let mut solver = Solver::new(config, neq, nnz, None)?;
 //!     solver.factorize(&trip)?;
 //!     solver.solve(&mut x, &rhs)?;
 //!     let correct = "┌          ┐\n\

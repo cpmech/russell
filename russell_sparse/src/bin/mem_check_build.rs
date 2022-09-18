@@ -1,5 +1,5 @@
 use russell_lab::Vector;
-use russell_sparse::{ConfigSolver, LinSolKind, Solver, SparseTriplet, Symmetry};
+use russell_sparse::{ConfigSolver, LinSolKind, Solver, SparseTriplet};
 
 fn test_solver(name: LinSolKind) {
     match name {
@@ -7,7 +7,9 @@ fn test_solver(name: LinSolKind) {
         LinSolKind::Umf => println!("Testing UMF solver\n"),
     }
 
-    let mut trip = match SparseTriplet::new(5, 5, 13, Symmetry::No) {
+    let (neq, nnz) = (5, 13);
+
+    let mut trip = match SparseTriplet::new(neq, neq, nnz) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new triplet): {}", e);
@@ -31,20 +33,12 @@ fn test_solver(name: LinSolKind) {
 
     let mut config = ConfigSolver::new();
     config.lin_sol_kind(name);
-    let mut solver = match Solver::new(config) {
+    let mut solver = match Solver::new(config, neq, nnz, None) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new solver): {}", e);
             return;
         }
-    };
-
-    match solver.initialize(&trip) {
-        Err(e) => {
-            println!("FAIL(initialize): {}", e);
-            return;
-        }
-        _ => (),
     };
 
     match solver.factorize(&trip) {
@@ -78,7 +72,9 @@ fn test_solver(name: LinSolKind) {
     println!("{}", solver);
     println!("x =\n{}", x);
 
-    let mut trip_singular = match SparseTriplet::new(5, 5, 2, Symmetry::No) {
+    let (neq, nnz) = (5, 2);
+
+    let mut trip_singular = match SparseTriplet::new(neq, neq, nnz) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new singular matrix): {}", e);
@@ -88,13 +84,6 @@ fn test_solver(name: LinSolKind) {
 
     trip_singular.put(0, 0, 1.0).unwrap();
     trip_singular.put(4, 4, 1.0).unwrap();
-    match solver.initialize(&trip_singular) {
-        Err(e) => {
-            println!("FAIL(initialize singular matrix): {}", e);
-            return;
-        }
-        _ => (),
-    };
 
     match solver.factorize(&trip_singular) {
         Err(e) => println!("\nOk(factorize singular matrix): {}\n", e),

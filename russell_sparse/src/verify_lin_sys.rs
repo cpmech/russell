@@ -24,11 +24,12 @@ impl VerifyLinSys {
     ///
     /// ```
     /// use russell_lab::{Matrix, Vector};
-    /// use russell_sparse::{SparseTriplet, Symmetry, VerifyLinSys, StrError};
+    /// use russell_sparse::{SparseTriplet, VerifyLinSys, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // set sparse matrix (3 x 3) with 4 non-zeros
-    ///     let mut trip = SparseTriplet::new(3, 3, 4, Symmetry::No)?;
+    ///     let (neq, nnz) = (3, 4);
+    ///     let mut trip = SparseTriplet::new(neq, neq, nnz)?;
     ///     trip.put(0, 0, 1.0)?;
     ///     trip.put(0, 2, 4.0)?;
     ///     trip.put(1, 1, 2.0)?;
@@ -48,7 +49,7 @@ impl VerifyLinSys {
     ///     // verify lin-sys
     ///     let x = Vector::from(&[1.0, 1.0, 1.0]);
     ///     let rhs = Vector::from(&[5.0, 2.0, 3.0]);
-    ///     let verify = VerifyLinSys::new(&trip, &x, &rhs)?;
+    ///     let verify = VerifyLinSys::new(&trip, &x, &rhs, false)?;
     ///     assert_eq!(verify.max_abs_a, 4.0);
     ///     assert_eq!(verify.max_abs_ax, 5.0);
     ///     assert_eq!(verify.max_abs_diff, 0.0);
@@ -57,7 +58,7 @@ impl VerifyLinSys {
     ///     Ok(())
     /// }
     /// ```
-    pub fn new(trip: &SparseTriplet, x: &Vector, rhs: &Vector) -> Result<Self, StrError> {
+    pub fn new(trip: &SparseTriplet, x: &Vector, rhs: &Vector, triangular: bool) -> Result<Self, StrError> {
         if x.dim() != trip.ncol || rhs.dim() != trip.nrow {
             return Err("vector dimensions are incompatible");
         }
@@ -70,7 +71,7 @@ impl VerifyLinSys {
         let max_abs_a = f64::abs(trip.values_aij[idx as usize]);
 
         // compute max_abs_ax
-        let mut ax = trip.mat_vec_mul(&x).unwrap(); // already checked
+        let mut ax = trip.mat_vec_mul(&x, triangular).unwrap(); // already checked
         let max_abs_ax = vector_norm(&ax, NormVec::Max);
 
         // compute max_abs_diff
@@ -121,22 +122,21 @@ impl fmt::Display for VerifyLinSys {
 #[cfg(test)]
 mod tests {
     use super::{SparseTriplet, VerifyLinSys};
-    use crate::Symmetry;
     use russell_lab::Vector;
 
     #[test]
     fn new_fails_on_wrong_vectors() {
-        let trip = SparseTriplet::new(3, 2, 1, Symmetry::No).unwrap();
+        let trip = SparseTriplet::new(3, 2, 1).unwrap();
         let x = Vector::new(2);
         let rhs = Vector::new(3);
         let x_wrong = Vector::new(3);
         let rhs_wrong = Vector::new(2);
         assert_eq!(
-            VerifyLinSys::new(&trip, &x_wrong, &rhs).err(),
+            VerifyLinSys::new(&trip, &x_wrong, &rhs, false).err(),
             Some("vector dimensions are incompatible")
         );
         assert_eq!(
-            VerifyLinSys::new(&trip, &x, &rhs_wrong).err(),
+            VerifyLinSys::new(&trip, &x, &rhs_wrong, false).err(),
             Some("vector dimensions are incompatible")
         );
     }
@@ -146,7 +146,7 @@ mod tests {
         // | 1  3 -2 |
         // | 3  5  6 |
         // | 2  4  3 |
-        let mut trip = SparseTriplet::new(3, 3, 9, Symmetry::No).unwrap();
+        let mut trip = SparseTriplet::new(3, 3, 9).unwrap();
         trip.put(0, 0, 1.0).unwrap();
         trip.put(0, 1, 3.0).unwrap();
         trip.put(0, 2, -2.0).unwrap();
@@ -158,7 +158,7 @@ mod tests {
         trip.put(2, 2, 3.0).unwrap();
         let x = Vector::from(&[-15.0, 8.0, 2.0]);
         let rhs = Vector::from(&[5.0, 7.0, 8.0]);
-        let verify = VerifyLinSys::new(&trip, &x, &rhs).unwrap();
+        let verify = VerifyLinSys::new(&trip, &x, &rhs, false).unwrap();
         assert_eq!(verify.max_abs_a, 6.0);
         assert_eq!(verify.max_abs_ax, 8.0);
         assert_eq!(verify.max_abs_diff, 0.0);
@@ -168,12 +168,12 @@ mod tests {
 
     #[test]
     fn display_trait_works() {
-        let mut trip = SparseTriplet::new(2, 2, 2, Symmetry::No).unwrap();
+        let mut trip = SparseTriplet::new(2, 2, 2).unwrap();
         trip.put(0, 0, 1.0).unwrap();
         trip.put(1, 1, 1.0).unwrap();
         let x = Vector::from(&[1.0, 1.0]);
         let rhs = Vector::from(&[1.0, 1.0]);
-        let mut verify = VerifyLinSys::new(&trip, &x, &rhs).unwrap();
+        let mut verify = VerifyLinSys::new(&trip, &x, &rhs, false).unwrap();
         verify.time_check = 0;
         let correct: &str = "\x20\x20\x20\x20\"maxAbsA\": 1,\n\
                              \x20\x20\x20\x20\"maxAbsAx\": 1,\n\

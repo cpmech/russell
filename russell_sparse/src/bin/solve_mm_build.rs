@@ -1,6 +1,8 @@
 use russell_lab::{format_nanoseconds, Stopwatch, StrError, Vector};
 use russell_openblas::set_num_threads;
-use russell_sparse::{enum_ordering, enum_scaling, read_matrix_market, ConfigSolver, LinSolKind, Solver, VerifyLinSys};
+use russell_sparse::{
+    enum_ordering, enum_scaling, read_matrix_market, ConfigSolver, LinSolKind, Solver, Symmetry, VerifyLinSys,
+};
 use std::path::Path;
 use structopt::StructOpt;
 
@@ -48,22 +50,24 @@ fn main() -> Result<(), StrError> {
     let name = if opt.mmp { LinSolKind::Mmp } else { LinSolKind::Umf };
 
     // set the sym_mirror flag
-    let sym_mirror;
-    match name {
+    let sym_mirror = match name {
         LinSolKind::Mmp => {
             // MMP uses the lower-diagonal if symmetric.
-            sym_mirror = false;
+            false
         }
         LinSolKind::Umf => {
             // UMF uses the full matrix, if symmetric or not
-            sym_mirror = true;
+            true
         }
-    }
+    };
 
     // read matrix
     let mut sw = Stopwatch::new("");
     let (trip, symmetric) = read_matrix_market(&opt.matrix_market_file, sym_mirror)?;
     let time_read = sw.stop();
+
+    // set the symmetry option
+    let symmetry = if symmetric { Some(Symmetry::General) } else { None };
 
     // set configuration
     let mut config = ConfigSolver::new();
@@ -80,7 +84,7 @@ fn main() -> Result<(), StrError> {
 
     // initialize and factorize
     let (neq, nnz) = (trip.neq(), trip.nnz_current());
-    let mut solver = Solver::new(config, neq, nnz, None)?;
+    let mut solver = Solver::new(config, neq, nnz, symmetry)?;
     solver.factorize(&trip)?;
 
     // allocate vectors
@@ -91,7 +95,8 @@ fn main() -> Result<(), StrError> {
     solver.solve(&mut x, &rhs)?;
 
     // verify solution
-    let verify = VerifyLinSys::new(&trip, &x, &rhs, symmetric)?;
+    let triangular = symmetric && !sym_mirror;
+    let verify = VerifyLinSys::new(&trip, &x, &rhs, triangular)?;
 
     // matrix name
     let path = Path::new(&opt.matrix_market_file);
@@ -110,7 +115,9 @@ fn main() -> Result<(), StrError> {
             \x20\x20\"triplet\": {{\n\
                 {}\n\
             \x20\x20}},\n\
+            \x20\x20\"symmetry\": \"{:?}\"\n\
             \x20\x20\"solver\": {{\n\
+                {}\n\
                 {}\n\
             \x20\x20}},\n\
             \x20\x20\"verify\": {{\n\
@@ -121,6 +128,8 @@ fn main() -> Result<(), StrError> {
         time_read,
         format_nanoseconds(time_read),
         trip,
+        symmetry,
+        config,
         solver,
         verify
     );

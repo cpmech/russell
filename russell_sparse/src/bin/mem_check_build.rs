@@ -71,19 +71,33 @@ fn test_solver(name: LinSolKind) {
     println!("{}", trip);
     println!("{}", solver);
     println!("x =\n{}", x);
+}
 
-    let (neq, nnz) = (5, 2);
+fn test_solver_singular(name: LinSolKind) {
+    match name {
+        LinSolKind::Mmp => println!("Testing MMP solver\n"),
+        LinSolKind::Umf => println!("Testing UMF solver\n"),
+    }
 
-    let mut trip_singular = match SparseTriplet::new(neq, nnz) {
+    let (neq, nnz) = (2, 2);
+
+    let trip_singular = match SparseTriplet::new(neq, nnz) {
         Ok(v) => v,
         Err(e) => {
-            println!("FAIL(new singular matrix): {}", e);
+            println!("FAIL(new triplet): {}", e);
             return;
         }
     };
 
-    trip_singular.put(0, 0, 1.0).unwrap();
-    trip_singular.put(4, 4, 1.0).unwrap();
+    let mut config = ConfigSolver::new();
+    config.lin_sol_kind(name);
+    let mut solver = match Solver::new(config, neq, nnz, None) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("FAIL(new solver): {}", e);
+            return;
+        }
+    };
 
     match solver.factorize(&trip_singular) {
         Err(e) => println!("\nOk(factorize singular matrix): {}\n", e),
@@ -95,5 +109,7 @@ fn main() {
     println!("Running Mem Check\n");
     test_solver(LinSolKind::Mmp);
     test_solver(LinSolKind::Umf);
+    test_solver_singular(LinSolKind::Mmp);
+    test_solver_singular(LinSolKind::Umf);
     println!("Done\n");
 }

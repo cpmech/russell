@@ -1,4 +1,4 @@
-use russell_lab::{mat_vec_mul, solve_lin_sys, vec_add, vec_norm, Matrix, NormVec, StrError, Vector};
+use russell_lab::{mat_vec_mul, solve_lin_sys, vec_add, vec_norm, Matrix, Norm, StrError, Vector};
 
 #[test]
 fn test_lin_sys() -> Result<(), StrError> {
@@ -34,7 +34,7 @@ fn test_lin_sys() -> Result<(), StrError> {
         let mut diff = Vector::new(m);
         mat_vec_mul(&mut rhs, 1.0, &a_copy, &b)?;
         vec_add(&mut diff, 1.0, &rhs, -1.0, &b_copy)?;
-        assert_eq!(vec_norm(&diff, NormVec::Max), 0.0);
+        assert_eq!(vec_norm(&diff, Norm::Max), 0.0);
     }
     Ok(())
 }

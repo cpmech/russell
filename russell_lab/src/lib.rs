@@ -42,6 +42,7 @@ mod generators;
 pub mod math;
 mod matrix;
 mod matvec;
+pub mod prelude;
 mod read_table;
 mod sort;
 mod stopwatch;

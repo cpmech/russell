@@ -52,7 +52,7 @@ use russell_openblas::{dgeev, dgeev_data, dgeev_data_lr, to_i32};
 ///
 /// ```
 /// use russell_chk::approx_eq;
-/// use russell_lab::{mat_add, mat_eigen, mat_mat_mul, mat_norm, Matrix, NormMat, StrError, Vector};
+/// use russell_lab::{mat_add, mat_eigen, mat_mat_mul, mat_norm, Matrix, Norm, StrError, Vector};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // set matrix
@@ -97,7 +97,7 @@ use russell_openblas::{dgeev, dgeev_data, dgeev_data_lr, to_i32};
 ///     mat_mat_mul(&mut a_v, 1.0, &a_copy, &v_real)?;
 ///     mat_mat_mul(&mut v_l, 1.0, &v_real, &lam)?;
 ///     mat_add(&mut err, 1.0, &a_v, -1.0, &v_l)?;
-///     approx_eq(mat_norm(&err, NormMat::Max), 0.0, 1e-15);
+///     approx_eq(mat_norm(&err, Norm::Max), 0.0, 1e-15);
 ///     Ok(())
 /// }
 /// ```
@@ -178,7 +178,7 @@ pub fn mat_eigen(
 /// use russell_chk::approx_eq;
 /// use russell_lab::{
 ///     complex_mat_add, complex_mat_mat_mul, complex_mat_zip, complex_mat_norm, complex_vec_zip, ComplexMatrix,
-///     NormMat,
+///     Norm,
 /// };
 /// use russell_lab::{mat_eigen_lr, Matrix, StrError, Vector};
 ///
@@ -242,7 +242,7 @@ pub fn mat_eigen(
 ///     complex_mat_mat_mul(&mut a_v, one, &a, &v)?;
 ///     complex_mat_mat_mul(&mut v_l, one, &v, &lam)?;
 ///     complex_mat_add(&mut err, one, &a_v, m_one, &v_l)?;
-///     approx_eq(complex_mat_norm(&err, NormMat::Max), 0.0, 1e-15);
+///     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, 1e-15);
 ///     Ok(())
 /// }
 /// ```
@@ -306,7 +306,7 @@ mod tests {
     use crate::mat_approx_eq;
     use crate::{
         complex_mat_add, complex_mat_mat_mul, complex_mat_norm, complex_mat_zip, complex_vec_zip, mat_add, mat_mat_mul,
-        mat_norm, AsArray2D, ComplexMatrix, Matrix, NormMat, Vector,
+        mat_norm, AsArray2D, ComplexMatrix, Matrix, Norm, Vector,
     };
     use num_complex::Complex64;
     use russell_chk::{approx_eq, vec_approx_eq};
@@ -330,7 +330,7 @@ mod tests {
         mat_mat_mul(&mut a_v, 1.0, &a, &v).unwrap();
         mat_mat_mul(&mut v_l, 1.0, &v, &lam).unwrap();
         mat_add(&mut err, 1.0, &a_v, -1.0, &v_l).unwrap();
-        approx_eq(mat_norm(&err, NormMat::Max), 0.0, 1e-15);
+        approx_eq(mat_norm(&err, Norm::Max), 0.0, 1e-15);
     }
 
     // Checks the eigen-decomposition (similarity transformation)
@@ -355,7 +355,7 @@ mod tests {
         complex_mat_mat_mul(&mut a_v, one, &a, &v).unwrap();
         complex_mat_mat_mul(&mut v_l, one, &v, &lam).unwrap();
         complex_mat_add(&mut err, one, &a_v, m_one, &v_l).unwrap();
-        approx_eq(complex_mat_norm(&err, NormMat::Max), 0.0, 1e-15);
+        approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, 1e-15);
     }
 
     #[test]

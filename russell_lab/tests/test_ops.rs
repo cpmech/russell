@@ -1,4 +1,4 @@
-use russell_lab::{mat_mat_mul, mat_norm, mat_vec_mul, vec_norm, Matrix, NormMat, NormVec, StrError, Vector};
+use russell_lab::{mat_mat_mul, mat_norm, mat_vec_mul, vec_norm, Matrix, Norm, StrError, Vector};
 
 #[test]
 fn test_mat_vec_mul() -> Result<(), StrError> {
@@ -11,9 +11,9 @@ fn test_mat_vec_mul() -> Result<(), StrError> {
             let mut v = Vector::new(m);
             mat_vec_mul(&mut v, 1.0, &a, &u)?;
             if m == 0 {
-                assert_eq!(vec_norm(&v, NormVec::Max), 0.0);
+                assert_eq!(vec_norm(&v, Norm::Max), 0.0);
             } else {
-                assert_eq!(vec_norm(&v, NormVec::Max), n as f64);
+                assert_eq!(vec_norm(&v, Norm::Max), n as f64);
             }
         }
     }
@@ -32,9 +32,9 @@ fn test_mat_mat_mul() -> Result<(), StrError> {
                 let b = Matrix::filled(k, n, 1.0);
                 mat_mat_mul(&mut c, 1.0, &a, &b)?;
                 if m == 0 || n == 0 {
-                    assert_eq!(mat_norm(&c, NormMat::Max), 0.0);
+                    assert_eq!(mat_norm(&c, Norm::Max), 0.0);
                 } else {
-                    assert_eq!(mat_norm(&c, NormMat::Max), k as f64);
+                    assert_eq!(mat_norm(&c, Norm::Max), k as f64);
                 }
             }
         }

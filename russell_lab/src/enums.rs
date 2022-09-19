@@ -1,40 +1,71 @@
-/// Options to compute matrix norm
-pub enum NormMat {
-    /// 1-norm
+/// Options to compute vector and matrix norms
+pub enum Norm {
+    /// Specifies the Euclidean-norm
     ///
-    /// ‖a‖_1 = max_j ( Σ_i |aᵢⱼ| )
-    One,
-
-    /// inf-norm
+    /// **matrix**
     ///
-    /// ‖a‖_∞ = max_i ( Σ_j |aᵢⱼ| )
-    Inf,
-
-    /// Frobenius-norm (2-norm)
+    /// Will compute the same as [Norm::Fro]
     ///
-    /// ‖a‖_F = sqrt(Σ_i Σ_j aᵢⱼ⋅aᵢⱼ) == ‖a‖_2
-    Fro,
-
-    /// max-norm
+    /// **vector**
     ///
-    /// ‖a‖_max = max_ij ( |aᵢⱼ| )
-    Max,
-}
-
-/// Options to compute vector norm
-pub enum NormVec {
-    /// 1-norm (taxicab or sum of abs values)
-    ///
-    /// ‖u‖_1 := sum_i |uᵢ|
-    One,
-
-    /// Euclidean-norm
-    ///
-    /// ‖u‖_2 = sqrt(Σ_i uᵢ⋅uᵢ)
+    /// ```text
+    /// ‖u‖_2 = sqrt(Σ_i |uᵢ⋅uᵢ|)
+    /// ```
     Euc,
 
-    /// max-norm (inf-norm)
+    /// Specifies the Frobenius-norm (2-norm)
     ///
+    /// **matrix**
+    ///
+    /// ```text
+    /// ‖a‖_F = sqrt(Σ_i Σ_j |aᵢⱼ⋅aᵢⱼ|) == ‖a‖_2
+    /// ```
+    ///
+    /// **vector**
+    ///
+    /// Will compute the same as [Norm::Euc]
+    Fro,
+
+    /// Specifies the Inf-norm
+    ///
+    /// **matrix**
+    ///
+    /// ```text
+    /// ‖a‖_∞ = max_i ( Σ_j |aᵢⱼ| )
+    /// ```
+    ///
+    /// **vector**
+    ///
+    /// Will compute that same as [Norm::Max]
+    Inf,
+
+    /// Specifies the Max-norm
+    ///
+    /// **matrix**
+    ///
+    /// ```text
+    /// ‖a‖_max = max_ij ( |aᵢⱼ| )
+    /// ```
+    ///
+    /// **vector**
+    ///
+    /// ```text
     /// ‖u‖_max = max_i ( |uᵢ| ) == ‖u‖_∞
+    /// ```
     Max,
+
+    /// Specifies the 1-norm
+    ///
+    /// **matrix**
+    ///
+    /// ```text
+    /// ‖a‖_1 = max_j ( Σ_i |aᵢⱼ| )
+    /// ```
+    ///
+    /// **vector** (taxicab or sum of abs values)
+    ///
+    /// ```text
+    /// ‖u‖_1 := sum_i |uᵢ|
+    /// ```
+    One,
 }

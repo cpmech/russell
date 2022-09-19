@@ -116,7 +116,7 @@ fn main() -> Result<(), StrError> {
 
 ```rust
 use russell_chk::approx_eq;
-use russell_lab::{mat_add, mat_eigen, mat_mat_mul, mat_norm, Matrix, NormMat, StrError, Vector};
+use russell_lab::{mat_add, mat_eigen, mat_mat_mul, mat_norm, Matrix, Norm, StrError, Vector};
 
 fn main() -> Result<(), StrError> {
     // set matrix
@@ -161,7 +161,7 @@ fn main() -> Result<(), StrError> {
     mat_mat_mul(&mut a_v, 1.0, &a_copy, &v_real)?;
     mat_mat_mul(&mut v_l, 1.0, &v_real, &lam)?;
     mat_add(&mut err, 1.0, &a_v, -1.0, &v_l)?;
-    approx_eq(mat_norm(&err, NormMat::Max), 0.0, 1e-15);
+    approx_eq(mat_norm(&err, Norm::Max), 0.0, 1e-15);
     Ok(())
 }
 ```

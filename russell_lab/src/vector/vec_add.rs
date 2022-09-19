@@ -12,13 +12,13 @@ use russell_openblas::{add_vectors_native, add_vectors_oblas};
 /// # Example
 ///
 /// ```
-/// use russell_lab::{add_vectors, Vector, StrError};
+/// use russell_lab::{vec_add, Vector, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let u = Vector::from(&[10.0, 20.0, 30.0, 40.0]);
 ///     let v = Vector::from(&[2.0, 1.5, 1.0, 0.5]);
 ///     let mut w = Vector::new(4);
-///     add_vectors(&mut w, 0.1, &u, 2.0, &v)?;
+///     vec_add(&mut w, 0.1, &u, 2.0, &v)?;
 ///     let correct = "┌   ┐\n\
 ///                    │ 5 │\n\
 ///                    │ 5 │\n\
@@ -29,7 +29,7 @@ use russell_openblas::{add_vectors_native, add_vectors_oblas};
 ///     Ok(())
 /// }
 /// ```
-pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector) -> Result<(), StrError> {
+pub fn vec_add(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector) -> Result<(), StrError> {
     let n = w.dim();
     if u.dim() != n || v.dim() != n {
         return Err("vectors are incompatible");
@@ -49,29 +49,23 @@ pub fn add_vectors(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector
 
 #[cfg(test)]
 mod tests {
-    use super::{add_vectors, Vector};
+    use super::{vec_add, Vector};
     use crate::constants;
     use russell_chk::vec_approx_eq;
 
     #[test]
-    fn add_vectors_fail_on_wrong_dims() {
+    fn vec_add_fail_on_wrong_dims() {
         let u_2 = Vector::new(2);
         let u_3 = Vector::new(3);
         let v_2 = Vector::new(2);
         let v_3 = Vector::new(3);
         let mut w_2 = Vector::new(2);
-        assert_eq!(
-            add_vectors(&mut w_2, 1.0, &u_3, 1.0, &v_2),
-            Err("vectors are incompatible")
-        );
-        assert_eq!(
-            add_vectors(&mut w_2, 1.0, &u_2, 1.0, &v_3),
-            Err("vectors are incompatible")
-        );
+        assert_eq!(vec_add(&mut w_2, 1.0, &u_3, 1.0, &v_2), Err("vectors are incompatible"));
+        assert_eq!(vec_add(&mut w_2, 1.0, &u_2, 1.0, &v_3), Err("vectors are incompatible"));
     }
 
     #[test]
-    fn add_vectors_works() {
+    fn vec_add_works() {
         const NOISE: f64 = 1234.567;
         #[rustfmt::skip]
         let u = Vector::from(&[
@@ -90,7 +84,7 @@ mod tests {
             0.5, 1.0, 1.5, 2.0,
         ]);
         let mut w = Vector::from(&vec![NOISE; u.dim()]);
-        add_vectors(&mut w, 1.0, &u, -4.0, &v).unwrap();
+        vec_add(&mut w, 1.0, &u, -4.0, &v).unwrap();
         #[rustfmt::skip]
         let correct = &[
             -1.0, -2.0,
@@ -103,7 +97,7 @@ mod tests {
     }
 
     #[test]
-    fn add_vectors_sizes_works() {
+    fn vec_add_sizes_works() {
         const NOISE: f64 = 1234.567;
         for size in 0..(constants::NATIVE_VERSUS_OPENBLAS_BOUNDARY + 3) {
             let mut u = Vector::new(size);
@@ -115,7 +109,7 @@ mod tests {
                 v[i] = i as f64;
                 correct[i] = i as f64;
             }
-            add_vectors(&mut w, 0.5, &u, 0.5, &v).unwrap();
+            vec_add(&mut w, 0.5, &u, 0.5, &v).unwrap();
             vec_approx_eq(w.as_data(), &correct, 1e-15);
         }
     }

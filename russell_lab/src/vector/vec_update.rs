@@ -2,7 +2,7 @@ use super::Vector;
 use crate::StrError;
 use russell_openblas::{daxpy, to_i32};
 
-/// Updates vector based on another vector (axpy)
+/// Updates vector based on another vector
 ///
 /// ```text
 /// v += α⋅u
@@ -11,12 +11,12 @@ use russell_openblas::{daxpy, to_i32};
 /// # Example
 ///
 /// ```
-/// use russell_lab::{update_vector, Vector, StrError};
+/// use russell_lab::{vec_update, Vector, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let u = Vector::from(&[10.0, 20.0, 30.0]);
 ///     let mut v = Vector::from(&[10.0, 20.0, 30.0]);
-///     update_vector(&mut v, 0.1, &u)?;
+///     vec_update(&mut v, 0.1, &u)?;
 ///     let correct = "┌    ┐\n\
 ///                    │ 11 │\n\
 ///                    │ 22 │\n\
@@ -26,7 +26,7 @@ use russell_openblas::{daxpy, to_i32};
 ///     Ok(())
 /// }
 /// ```
-pub fn update_vector(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
+pub fn vec_update(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
     let n = v.dim();
     if u.dim() != n {
         return Err("vectors are incompatible");
@@ -40,21 +40,21 @@ pub fn update_vector(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrEr
 
 #[cfg(test)]
 mod tests {
-    use super::{update_vector, Vector};
+    use super::{vec_update, Vector};
     use russell_chk::vec_approx_eq;
 
     #[test]
-    fn update_vector_fails_on_wrong_dims() {
+    fn vec_update_fails_on_wrong_dims() {
         let u = Vector::new(4);
         let mut v = Vector::new(3);
-        assert_eq!(update_vector(&mut v, 1.0, &u), Err("vectors are incompatible"));
+        assert_eq!(vec_update(&mut v, 1.0, &u), Err("vectors are incompatible"));
     }
 
     #[test]
-    fn update_vector_works() {
+    fn vec_update_works() {
         let u = Vector::from(&[10.0, 20.0, 30.0]);
         let mut v = Vector::from(&[100.0, 200.0, 300.0]);
-        update_vector(&mut v, 2.0, &u).unwrap();
+        vec_update(&mut v, 2.0, &u).unwrap();
         let correct = &[120.0, 240.0, 360.0];
         vec_approx_eq(v.as_data(), correct, 1e-15);
     }

@@ -11,12 +11,12 @@ use russell_openblas::{dcopy, to_i32};
 /// # Example
 ///
 /// ```
-/// use russell_lab::{copy_vector, Vector, StrError};
+/// use russell_lab::{vec_copy, Vector, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let u = Vector::from(&[1.0, 2.0, 3.0]);
 ///     let mut v = Vector::from(&[-1.0, -2.0, -3.0]);
-///     copy_vector(&mut v, &u)?;
+///     vec_copy(&mut v, &u)?;
 ///     let correct = "┌   ┐\n\
 ///                    │ 1 │\n\
 ///                    │ 2 │\n\
@@ -26,7 +26,7 @@ use russell_openblas::{dcopy, to_i32};
 ///     Ok(())
 /// }
 /// ```
-pub fn copy_vector(v: &mut Vector, u: &Vector) -> Result<(), StrError> {
+pub fn vec_copy(v: &mut Vector, u: &Vector) -> Result<(), StrError> {
     let n = v.dim();
     if u.dim() != n {
         return Err("vectors are incompatible");
@@ -40,21 +40,21 @@ pub fn copy_vector(v: &mut Vector, u: &Vector) -> Result<(), StrError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{copy_vector, Vector};
+    use super::{vec_copy, Vector};
     use russell_chk::vec_approx_eq;
 
     #[test]
-    fn copy_vector_fails_on_wrong_dims() {
+    fn vec_copy_fails_on_wrong_dims() {
         let u = Vector::new(4);
         let mut v = Vector::new(3);
-        assert_eq!(copy_vector(&mut v, &u), Err("vectors are incompatible"));
+        assert_eq!(vec_copy(&mut v, &u), Err("vectors are incompatible"));
     }
 
     #[test]
-    fn copy_vector_works() {
+    fn vec_copy_works() {
         let u = Vector::from(&[1.0, 2.0, 3.0]);
         let mut v = Vector::from(&[100.0, 200.0, 300.0]);
-        copy_vector(&mut v, &u).unwrap();
+        vec_copy(&mut v, &u).unwrap();
         let correct = &[1.0, 2.0, 3.0];
         vec_approx_eq(v.as_data(), correct, 1e-15);
     }

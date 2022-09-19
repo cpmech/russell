@@ -1,6 +1,6 @@
 use super::{mandel_dim, IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, SQRT_2};
 use crate::StrError;
-use russell_lab::{copy_vector, update_vector, Matrix, Vector};
+use russell_lab::{vec_copy, vec_update, Matrix, Vector};
 use serde::{Deserialize, Serialize};
 
 /// Implements a second-order tensor, symmetric or not
@@ -402,13 +402,13 @@ impl Tensor2 {
     /// Sets this tensor equal to another one
     #[inline]
     pub fn set(&mut self, other: &Tensor2) -> Result<(), StrError> {
-        copy_vector(&mut self.vec, &other.vec)
+        vec_copy(&mut self.vec, &other.vec)
     }
 
     /// Adds another tensor to this one
     #[inline]
     pub fn add(&mut self, alpha: f64, other: &Tensor2) -> Result<(), StrError> {
-        update_vector(&mut self.vec, alpha, &other.vec)
+        vec_update(&mut self.vec, alpha, &other.vec)
     }
 }
 

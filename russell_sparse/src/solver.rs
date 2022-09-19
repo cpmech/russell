@@ -3,7 +3,7 @@ use super::{
     str_umf_ordering, str_umf_scaling, ConfigSolver, LinSolKind, SparseTriplet,
 };
 use crate::{StrError, Symmetry};
-use russell_lab::{copy_vector, format_nanoseconds, Stopwatch, Vector};
+use russell_lab::{format_nanoseconds, vec_copy, Stopwatch, Vector};
 use russell_openblas::to_i32;
 use std::fmt;
 
@@ -263,7 +263,7 @@ impl Solver {
         unsafe {
             match self.kind {
                 LinSolKind::Mmp => {
-                    copy_vector(x, rhs)?;
+                    vec_copy(x, rhs)?;
                     let res = solver_mmp_solve(self.solver, x.as_mut_data().as_mut_ptr(), self.verbose);
                     if res != 0 {
                         return Err(Solver::handle_mmp_error_code(res));

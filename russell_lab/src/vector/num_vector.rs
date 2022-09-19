@@ -15,13 +15,13 @@ use std::ops::{Index, IndexMut};
 /// * NumVector has also methods to access the underlying data (mutable or not);
 ///   e.g., using `as_data()` and `as_mut_data()`.
 /// * For faster computations, we recommend using the set of functions that
-///   operate on Vectors and Matrices; e.g., `add_vectors`, `inner`, `outer`,
-///   `copy_vectors`, `mat_vec_mul`, and others.
+///   operate on Vectors and Matrices; e.g., `vec_add`, `inner`, `outer`,
+///   `vec_copy`, `mat_vec_mul`, and others.
 ///
 /// # Example
 ///
 /// ```
-/// use russell_lab::{add_vectors, NumVector, StrError};
+/// use russell_lab::{vec_add, NumVector, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // create vector
@@ -73,7 +73,7 @@ use std::ops::{Index, IndexMut};
 ///
 ///     // add vectors
 ///     let mut z = NumVector::<f64>::new(n);
-///     add_vectors(&mut z, 1.0, &u, 1.0, &w)?;
+///     vec_add(&mut z, 1.0, &u, 1.0, &w)?;
 ///     println!("{}", z);
 ///     assert_eq!(
 ///         format!("{}", z),

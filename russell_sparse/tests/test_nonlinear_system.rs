@@ -1,5 +1,5 @@
 use russell_chk::{deriv_central5, vec_approx_eq};
-use russell_lab::{mat_approx_eq, update_vector, vector_norm, Matrix, NormVec, Vector};
+use russell_lab::{mat_approx_eq, vec_norm, vec_update, Matrix, NormVec, Vector};
 use russell_sparse::{ConfigSolver, LinSolKind, Solver, SparseTriplet, StrError};
 
 fn calc_residual(rr: &mut Vector, uu: &Vector) {
@@ -97,10 +97,10 @@ fn solve_nonlinear_system(kind: LinSolKind) -> Result<(), StrError> {
     while it < 10 {
         calc_residual(&mut rr, &uu);
         let err = if it == 0 {
-            norm_rr0 = vector_norm(&rr, NormVec::Euc);
+            norm_rr0 = vec_norm(&rr, NormVec::Euc);
             1.0
         } else {
-            vector_norm(&rr, NormVec::Euc) / norm_rr0
+            vec_norm(&rr, NormVec::Euc) / norm_rr0
         };
         println!(
             "{:>4}{:>13.6}{:>13.6}{:>13.6}{:>13.6}{:>15.6e}",
@@ -113,7 +113,7 @@ fn solve_nonlinear_system(kind: LinSolKind) -> Result<(), StrError> {
         calc_jacobian(&mut jj, &uu)?;
         solver.factorize(&jj)?;
         solver.solve(&mut mdu, &rr)?;
-        update_vector(&mut uu, -1.0, &mdu)?;
+        vec_update(&mut uu, -1.0, &mdu)?;
         it += 1;
     }
     if it != 5 {

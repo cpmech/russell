@@ -1,6 +1,6 @@
 use super::{Tensor2, Tensor4};
 use crate::StrError;
-use russell_lab::{copy_matrix, inner, mat_mat_mul, mat_vec_mul, outer, vec_mat_mul, Vector};
+use russell_lab::{copy_matrix, mat_mat_mul, mat_vec_mul, outer, vec_inner, vec_mat_mul, Vector};
 
 /// Copies Tensor2
 ///
@@ -116,7 +116,7 @@ pub fn copy_tensor4(ee: &mut Tensor4, dd: &Tensor4) -> Result<(), StrError> {
 /// ```
 #[inline]
 pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
-    inner(&a.vec, &b.vec)
+    vec_inner(&a.vec, &b.vec)
 }
 
 /// Performs the single dot operation between two Tensor2 (matrix multiplication)

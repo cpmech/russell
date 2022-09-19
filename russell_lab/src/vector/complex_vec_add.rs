@@ -13,7 +13,7 @@ use russell_openblas::{complex_add_vectors_native, complex_add_vectors_oblas};
 /// # Example
 ///
 /// ```
-/// use russell_lab::{complex_add_vectors, ComplexVector, StrError};
+/// use russell_lab::{complex_vec_add, ComplexVector, StrError};
 /// use num_complex::Complex64;
 ///
 /// fn main() -> Result<(), StrError> {
@@ -22,7 +22,7 @@ use russell_openblas::{complex_add_vectors_native, complex_add_vectors_oblas};
 ///     let mut w = ComplexVector::new(4);
 ///     let alpha = Complex64::new(0.1, 0.0);
 ///     let beta = Complex64::new(2.0, 0.0);
-///     complex_add_vectors(&mut w, alpha, &u, beta, &v)?;
+///     complex_vec_add(&mut w, alpha, &u, beta, &v)?;
 ///     let correct = "┌      ┐\n\
 ///                    │ 5+0i │\n\
 ///                    │ 5+0i │\n\
@@ -33,7 +33,7 @@ use russell_openblas::{complex_add_vectors_native, complex_add_vectors_oblas};
 ///     Ok(())
 /// }
 /// ```
-pub fn complex_add_vectors(
+pub fn complex_vec_add(
     w: &mut ComplexVector,
     alpha: Complex64,
     u: &ComplexVector,
@@ -59,13 +59,13 @@ pub fn complex_add_vectors(
 
 #[cfg(test)]
 mod tests {
-    use super::{complex_add_vectors, ComplexVector};
+    use super::{complex_vec_add, ComplexVector};
     use crate::constants;
     use num_complex::Complex64;
     use russell_chk::complex_vec_approx_eq;
 
     #[test]
-    fn complex_add_vectors_fail_on_wrong_dims() {
+    fn complex_vec_add_fail_on_wrong_dims() {
         let u_2 = ComplexVector::new(2);
         let u_3 = ComplexVector::new(3);
         let v_2 = ComplexVector::new(2);
@@ -74,17 +74,17 @@ mod tests {
         let alpha = Complex64::new(1.0, 0.0);
         let beta = Complex64::new(1.0, 0.0);
         assert_eq!(
-            complex_add_vectors(&mut w_2, alpha, &u_3, beta, &v_2),
+            complex_vec_add(&mut w_2, alpha, &u_3, beta, &v_2),
             Err("vectors are incompatible")
         );
         assert_eq!(
-            complex_add_vectors(&mut w_2, alpha, &u_2, beta, &v_3),
+            complex_vec_add(&mut w_2, alpha, &u_2, beta, &v_3),
             Err("vectors are incompatible")
         );
     }
 
     #[test]
-    fn complex_add_vectors_works() {
+    fn complex_vec_add_works() {
         const NOISE: Complex64 = Complex64::new(1234.567, 3456.789);
         #[rustfmt::skip]
         let u = ComplexVector::from(&[
@@ -105,7 +105,7 @@ mod tests {
         let mut w = ComplexVector::from(&vec![NOISE; u.dim()]);
         let alpha = Complex64::new(1.0, 0.0);
         let beta = Complex64::new(-4.0, 0.0);
-        complex_add_vectors(&mut w, alpha, &u, beta, &v).unwrap();
+        complex_vec_add(&mut w, alpha, &u, beta, &v).unwrap();
         #[rustfmt::skip]
         let correct = &[
             Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0),
@@ -118,7 +118,7 @@ mod tests {
     }
 
     #[test]
-    fn complex_add_vectors_sizes_works() {
+    fn complex_vec_add_sizes_works() {
         const NOISE: Complex64 = Complex64::new(1234.567, 3456.789);
         let alpha = Complex64::new(0.5, 0.0);
         let beta = Complex64::new(0.5, 0.0);
@@ -132,7 +132,7 @@ mod tests {
                 v[i] = Complex64::new(i as f64, i as f64);
                 correct[i] = Complex64::new(i as f64, i as f64);
             }
-            complex_add_vectors(&mut w, alpha, &u, beta, &v).unwrap();
+            complex_vec_add(&mut w, alpha, &u, beta, &v).unwrap();
             complex_vec_approx_eq(w.as_data(), &correct, 1e-15);
         }
     }

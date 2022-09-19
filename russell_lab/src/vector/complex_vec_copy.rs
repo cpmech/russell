@@ -11,12 +11,12 @@ use russell_openblas::{to_i32, zcopy};
 /// # Example
 ///
 /// ```
-/// use russell_lab::{complex_copy_vector, ComplexVector, StrError};
+/// use russell_lab::{complex_vec_copy, ComplexVector, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let u = ComplexVector::from(&[1.0, 2.0, 3.0]);
 ///     let mut v = ComplexVector::from(&[-1.0, -2.0, -3.0]);
-///     complex_copy_vector(&mut v, &u)?;
+///     complex_vec_copy(&mut v, &u)?;
 ///     let correct = "┌      ┐\n\
 ///                    │ 1+0i │\n\
 ///                    │ 2+0i │\n\
@@ -26,7 +26,7 @@ use russell_openblas::{to_i32, zcopy};
 ///     Ok(())
 /// }
 /// ```
-pub fn complex_copy_vector(v: &mut ComplexVector, u: &ComplexVector) -> Result<(), StrError> {
+pub fn complex_vec_copy(v: &mut ComplexVector, u: &ComplexVector) -> Result<(), StrError> {
     let n = v.dim();
     if u.dim() != n {
         return Err("vectors are incompatible");
@@ -40,22 +40,22 @@ pub fn complex_copy_vector(v: &mut ComplexVector, u: &ComplexVector) -> Result<(
 
 #[cfg(test)]
 mod tests {
-    use super::{complex_copy_vector, ComplexVector};
+    use super::{complex_vec_copy, ComplexVector};
     use num_complex::Complex64;
     use russell_chk::complex_vec_approx_eq;
 
     #[test]
-    fn complex_copy_vector_fails_on_wrong_dims() {
+    fn complex_vec_copy_fails_on_wrong_dims() {
         let u = ComplexVector::new(4);
         let mut v = ComplexVector::new(3);
-        assert_eq!(complex_copy_vector(&mut v, &u), Err("vectors are incompatible"));
+        assert_eq!(complex_vec_copy(&mut v, &u), Err("vectors are incompatible"));
     }
 
     #[test]
-    fn complex_copy_vector_works() {
+    fn complex_vec_copy_works() {
         let u = ComplexVector::from(&[1.0, 2.0, 3.0]);
         let mut v = ComplexVector::from(&[100.0, 200.0, 300.0]);
-        complex_copy_vector(&mut v, &u).unwrap();
+        complex_vec_copy(&mut v, &u).unwrap();
         let correct = &[
             Complex64::new(1.0, 0.0),
             Complex64::new(2.0, 0.0),

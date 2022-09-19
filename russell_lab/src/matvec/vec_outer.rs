@@ -18,13 +18,13 @@ use russell_openblas::{dger, to_i32};
 /// # Example
 ///
 /// ```
-/// use russell_lab::{outer, Matrix, Vector, StrError};
+/// use russell_lab::{vec_outer, Matrix, Vector, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let u = Vector::from(&[1.0, 2.0, 3.0]);
 ///     let v = Vector::from(&[5.0, -2.0, 0.0, 1.0]);
 ///     let mut a = Matrix::new(u.dim(), v.dim());
-///     outer(&mut a, 1.0, &u, &v)?;
+///     vec_outer(&mut a, 1.0, &u, &v)?;
 ///     let correct = "┌             ┐\n\
 ///                    │  5 -2  0  1 │\n\
 ///                    │ 10 -4  0  2 │\n\
@@ -34,7 +34,7 @@ use russell_openblas::{dger, to_i32};
 ///     Ok(())
 /// }
 /// ```
-pub fn outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) -> Result<(), StrError> {
+pub fn vec_outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) -> Result<(), StrError> {
     let m = u.dim();
     let n = v.dim();
     if a.nrow() != m || a.ncol() != n {
@@ -50,7 +50,7 @@ pub fn outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) -> Result<(), S
 
 #[cfg(test)]
 mod tests {
-    use super::{outer, Matrix, Vector};
+    use super::{vec_outer, Matrix, Vector};
     use crate::mat_approx_eq;
 
     #[test]
@@ -60,22 +60,22 @@ mod tests {
         let mut a_1x3 = Matrix::new(1, 3);
         let mut a_2x1 = Matrix::new(2, 1);
         assert_eq!(
-            outer(&mut a_1x3, 1.0, &u, &v),
+            vec_outer(&mut a_1x3, 1.0, &u, &v),
             Err("matrix and vectors are incompatible")
         );
         assert_eq!(
-            outer(&mut a_2x1, 1.0, &u, &v),
+            vec_outer(&mut a_2x1, 1.0, &u, &v),
             Err("matrix and vectors are incompatible")
         );
     }
 
     #[test]
-    fn outer_works() {
+    fn vec_outer_works() {
         let u = Vector::from(&[1.0, 2.0, 3.0]);
         let v = Vector::from(&[5.0, -2.0, 0.0, 1.0]);
         let (m, n) = (u.dim(), v.dim());
         let mut a = Matrix::new(m, n);
-        outer(&mut a, 3.0, &u, &v).unwrap();
+        vec_outer(&mut a, 3.0, &u, &v).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [15.0,  -6.0, 0.0, 3.0],
@@ -86,12 +86,12 @@ mod tests {
     }
 
     #[test]
-    fn outer_works_1() {
+    fn vec_outer_works_1() {
         let u = Vector::from(&[1.0, 2.0, 3.0, 4.0]);
         let v = Vector::from(&[1.0, 1.0, -2.0]);
         let (m, n) = (u.dim(), v.dim());
         let mut a = Matrix::new(m, n);
-        outer(&mut a, 1.0, &u, &v).unwrap();
+        vec_outer(&mut a, 1.0, &u, &v).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [1.0, 1.0, -2.0],

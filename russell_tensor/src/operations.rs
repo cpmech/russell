@@ -1,6 +1,6 @@
 use super::{Tensor2, Tensor4};
 use crate::StrError;
-use russell_lab::{mat_copy, mat_mat_mul, mat_vec_mul, outer, vec_inner, vec_mat_mul, Vector};
+use russell_lab::{mat_copy, mat_mat_mul, mat_vec_mul, vec_inner, vec_mat_mul, vec_outer, Vector};
 
 /// Copies Tensor2
 ///
@@ -337,7 +337,7 @@ pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) -> Result
 /// ```
 #[inline]
 pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) -> Result<(), StrError> {
-    outer(&mut dd.mat, alpha, &a.vec, &b.vec)
+    vec_outer(&mut dd.mat, alpha, &a.vec, &b.vec)
 }
 
 /// Performs the double-dot (ddot) operation between a Tensor4 and a Tensor2

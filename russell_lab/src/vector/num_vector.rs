@@ -15,7 +15,7 @@ use std::ops::{Index, IndexMut};
 /// * NumVector has also methods to access the underlying data (mutable or not);
 ///   e.g., using `as_data()` and `as_mut_data()`.
 /// * For faster computations, we recommend using the set of functions that
-///   operate on Vectors and Matrices; e.g., `vec_add`, `inner`, `outer`,
+///   operate on Vectors and Matrices; e.g., `vec_add`, `vec_inner`, `vec_outer`,
 ///   `vec_copy`, `mat_vec_mul`, and others.
 ///
 /// # Example

@@ -49,7 +49,6 @@ pub fn vec_max_abs_diff(u: &Vector, v: &Vector) -> Result<(usize, f64), StrError
 #[cfg(test)]
 mod tests {
     use super::{vec_max_abs_diff, Vector};
-    use crate::StrError;
 
     #[test]
     fn vec_max_abs_diff_fail_on_wrong_dims() {
@@ -59,12 +58,11 @@ mod tests {
     }
 
     #[test]
-    fn vec_max_abs_diff_works() -> Result<(), StrError> {
+    fn vec_max_abs_diff_works() {
         let u = Vector::from(&[1.0, 2.0, 3.0, 4.0]);
         let v = Vector::from(&[2.5, 1.0, 1.5, 2.0]);
-        let (i, max_abs_diff) = vec_max_abs_diff(&u, &v)?;
+        let (i, max_abs_diff) = vec_max_abs_diff(&u, &v).unwrap();
         assert_eq!(i, 3);
         assert_eq!(max_abs_diff, 2.0);
-        Ok(())
     }
 }

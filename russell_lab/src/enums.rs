@@ -9,7 +9,7 @@ pub enum Norm {
     /// **vector**
     ///
     /// ```text
-    /// ‖u‖_2 = sqrt(Σ_i |uᵢ⋅uᵢ|)
+    /// ‖u‖_2 = sqrt(Σ_i |uᵢ|⋅|uᵢ|)
     /// ```
     Euc,
 
@@ -18,7 +18,7 @@ pub enum Norm {
     /// **matrix**
     ///
     /// ```text
-    /// ‖a‖_F = sqrt(Σ_i Σ_j |aᵢⱼ⋅aᵢⱼ|) == ‖a‖_2
+    /// ‖a‖_F = sqrt(Σ_i Σ_j |aᵢⱼ|⋅|aᵢⱼ|) == ‖a‖_2
     /// ```
     ///
     /// **vector**

@@ -65,6 +65,7 @@ pub type StrError = &'static str;
 
 mod config_solver;
 mod enums;
+pub mod prelude;
 mod read_matrix_market;
 mod solver;
 mod sparse_triplet;

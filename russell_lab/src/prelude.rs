@@ -1,6 +1,6 @@
-//! Makes available common structures needed to run a simulation
+//! Makes available essential functions to perform matrix-vector computations
 //!
-//! You may write `use pmsim::prelude::*` in your code and obtain
+//! You may write `use russell_lab::prelude::*` in your code and obtain
 //! access to commonly used functionality.
 
 pub use crate::enums::*;

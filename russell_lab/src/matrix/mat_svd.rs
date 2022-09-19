@@ -31,7 +31,7 @@ use russell_openblas::{dgesvd, to_i32};
 /// ## First - 2 x 3 rectangular matrix
 ///
 /// ```
-/// use russell_lab::{sv_decomp, Matrix, Vector, StrError};
+/// use russell_lab::{mat_svd, Matrix, Vector, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // set matrix
@@ -48,7 +48,7 @@ use russell_openblas::{dgesvd, to_i32};
 ///     let mut vt = Matrix::new(n, n);
 ///
 ///     // perform SVD
-///     sv_decomp(&mut s, &mut u, &mut vt, &mut a)?;
+///     mat_svd(&mut s, &mut u, &mut vt, &mut a)?;
 ///
 ///     // define correct data
 ///     let s_correct = "┌       ┐\n\
@@ -80,7 +80,7 @@ use russell_openblas::{dgesvd, to_i32};
 /// ## Second - 4 x 2 rectangular matrix
 ///
 /// ```
-/// use russell_lab::{sv_decomp, Matrix, Vector, StrError};
+/// use russell_lab::{mat_svd, Matrix, Vector, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // set matrix
@@ -99,7 +99,7 @@ use russell_openblas::{dgesvd, to_i32};
 ///     let mut vt = Matrix::new(n, n);
 ///
 ///     // perform SVD
-///     sv_decomp(&mut s, &mut u, &mut vt, &mut a)?;
+///     mat_svd(&mut s, &mut u, &mut vt, &mut a)?;
 ///
 ///     // define correct data
 ///     let s_correct = "┌      ┐\n\
@@ -141,7 +141,7 @@ use russell_openblas::{dgesvd, to_i32};
 ///     Ok(())
 /// }
 /// ```
-pub fn sv_decomp(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) -> Result<(), StrError> {
+pub fn mat_svd(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) -> Result<(), StrError> {
     let (m, n) = a.dims();
     let min_mn = if m < n { m } else { n };
     if s.dim() != min_mn {
@@ -175,11 +175,11 @@ pub fn sv_decomp(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix
 mod tests {
     use russell_chk::vec_approx_eq;
 
-    use super::{sv_decomp, Matrix, Vector};
+    use super::{mat_svd, Matrix, Vector};
     use crate::mat_approx_eq;
 
     #[test]
-    fn sv_decomp_fails_on_wrong_dims() {
+    fn mat_svd_fails_on_wrong_dims() {
         let mut a = Matrix::new(3, 2);
         let mut s = Vector::new(2);
         let mut u = Matrix::new(3, 3);
@@ -190,29 +190,29 @@ mod tests {
         let mut vt_3x3 = Matrix::new(3, 3);
         let mut vt_2x3 = Matrix::new(2, 3);
         assert_eq!(
-            sv_decomp(&mut s_3, &mut u, &mut vt, &mut a),
+            mat_svd(&mut s_3, &mut u, &mut vt, &mut a),
             Err("[s] must be an min(m,n) vector")
         );
         assert_eq!(
-            sv_decomp(&mut s, &mut u_2x2, &mut vt, &mut a),
+            mat_svd(&mut s, &mut u_2x2, &mut vt, &mut a),
             Err("[u] must be an m-by-m square matrix")
         );
         assert_eq!(
-            sv_decomp(&mut s, &mut u_3x2, &mut vt, &mut a),
+            mat_svd(&mut s, &mut u_3x2, &mut vt, &mut a),
             Err("[u] must be an m-by-m square matrix")
         );
         assert_eq!(
-            sv_decomp(&mut s, &mut u, &mut vt_3x3, &mut a),
+            mat_svd(&mut s, &mut u, &mut vt_3x3, &mut a),
             Err("[vt] must be an n-by-n square matrix")
         );
         assert_eq!(
-            sv_decomp(&mut s, &mut u, &mut vt_2x3, &mut a),
+            mat_svd(&mut s, &mut u, &mut vt_2x3, &mut a),
             Err("[vt] must be an n-by-n square matrix")
         );
     }
 
     #[test]
-    fn sv_decomp_works() {
+    fn mat_svd_works() {
         // matrix
         let s33 = f64::sqrt(3.0) / 3.0;
         #[rustfmt::skip]
@@ -233,7 +233,7 @@ mod tests {
         let mut vt = Matrix::new(n, n);
 
         // calculate SVD
-        sv_decomp(&mut s, &mut u, &mut vt, &mut a).unwrap();
+        mat_svd(&mut s, &mut u, &mut vt, &mut a).unwrap();
 
         // check
         #[rustfmt::skip]
@@ -272,7 +272,7 @@ mod tests {
     }
 
     #[test]
-    fn sv_decomp_1_works() {
+    fn mat_svd_1_works() {
         // matrix
         #[rustfmt::skip]
         let data = [
@@ -290,7 +290,7 @@ mod tests {
         let mut vt = Matrix::new(n, n);
 
         // calculate SVD
-        sv_decomp(&mut s, &mut u, &mut vt, &mut a).unwrap();
+        mat_svd(&mut s, &mut u, &mut vt, &mut a).unwrap();
 
         // check
         let sqrt2 = std::f64::consts::SQRT_2;

@@ -14,7 +14,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 /// ```
 ///
 /// ```text
-///   ai  :=  pseudo_inverse(a)
+///   ai  :=  mat_pseudo_inverse(a)
 /// (n,m)          (m,n)
 /// ```
 ///
@@ -30,7 +30,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 /// # Example
 ///
 /// ```
-/// use russell_lab::{pseudo_inverse, Matrix, StrError};
+/// use russell_lab::{mat_pseudo_inverse, Matrix, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // set matrix
@@ -43,7 +43,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 ///
 ///     // compute pseudo-inverse matrix (because it's square)
 ///     let mut ai = Matrix::new(2, 3);
-///     pseudo_inverse(&mut ai, &mut a)?;
+///     mat_pseudo_inverse(&mut ai, &mut a)?;
 ///
 ///     // compare with solution
 ///     let ai_correct = "┌                ┐\n\
@@ -81,7 +81,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 ///     Ok(())
 /// }
 /// ```
-pub fn pseudo_inverse(ai: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
+pub fn mat_pseudo_inverse(ai: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
     // check
     let (m, n) = a.dims();
     if ai.nrow() != n || ai.ncol() != m {
@@ -141,7 +141,7 @@ pub fn pseudo_inverse(ai: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{pseudo_inverse, Matrix};
+    use super::{mat_pseudo_inverse, Matrix};
     use crate::mat_approx_eq;
 
     /// Computes a⋅ai that should equal I for a square matrix
@@ -176,34 +176,34 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_fails_on_wrong_dims() {
+    fn mat_pseudo_inverse_fails_on_wrong_dims() {
         let mut a_2x3 = Matrix::new(2, 3);
         let mut ai_1x2 = Matrix::new(1, 2);
         let mut ai_2x1 = Matrix::new(2, 1);
         assert_eq!(
-            pseudo_inverse(&mut ai_1x2, &mut a_2x3),
+            mat_pseudo_inverse(&mut ai_1x2, &mut a_2x3),
             Err("matrices are incompatible")
         );
         assert_eq!(
-            pseudo_inverse(&mut ai_2x1, &mut a_2x3),
+            mat_pseudo_inverse(&mut ai_2x1, &mut a_2x3),
             Err("matrices are incompatible")
         );
     }
 
     #[test]
-    fn pseudo_inverse_0x0_works() {
+    fn mat_pseudo_inverse_0x0_works() {
         let mut a = Matrix::new(0, 0);
         let mut ai = Matrix::new(0, 0);
-        pseudo_inverse(&mut ai, &mut a).unwrap();
+        mat_pseudo_inverse(&mut ai, &mut a).unwrap();
         assert_eq!(ai.as_data().len(), 0);
     }
 
     #[test]
-    fn pseudo_inverse_1x1_works() {
+    fn mat_pseudo_inverse_1x1_works() {
         let data = [[2.0]];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(1, 1);
-        pseudo_inverse(&mut ai, &mut a).unwrap();
+        mat_pseudo_inverse(&mut ai, &mut a).unwrap();
         mat_approx_eq(&ai, &[[0.5]], 1e-15);
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
@@ -211,7 +211,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_2x2_works() {
+    fn mat_pseudo_inverse_2x2_works() {
         #[rustfmt::skip]
         let data = [
             [1.0, 2.0],
@@ -219,7 +219,7 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(2, 2);
-        pseudo_inverse(&mut ai, &mut a).unwrap();
+        mat_pseudo_inverse(&mut ai, &mut a).unwrap();
         mat_approx_eq(&ai, &[[-0.5, 0.5], [0.75, -0.25]], 1e-15);
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
@@ -227,7 +227,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_3x3_works() {
+    fn mat_pseudo_inverse_3x3_works() {
         #[rustfmt::skip]
         let data = [
             [1.0, 2.0, 3.0],
@@ -236,7 +236,7 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(3, 3);
-        pseudo_inverse(&mut ai, &mut a).unwrap();
+        mat_pseudo_inverse(&mut ai, &mut a).unwrap();
         #[rustfmt::skip]
         let ai_correct = &[
             [12.0/11.0, -6.0/11.0, -1.0/11.0],
@@ -250,7 +250,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_4x4_works() {
+    fn mat_pseudo_inverse_4x4_works() {
         #[rustfmt::skip]
         let data = [
             [ 3.0,  0.0,  2.0, -1.0],
@@ -260,7 +260,7 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(4, 4);
-        pseudo_inverse(&mut ai, &mut a).unwrap();
+        mat_pseudo_inverse(&mut ai, &mut a).unwrap();
         #[rustfmt::skip]
         let ai_correct = &[
             [ 0.6,  0.0, -0.2,  0.0],
@@ -275,7 +275,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_5x5_works() {
+    fn mat_pseudo_inverse_5x5_works() {
         #[rustfmt::skip]
         let data = [
             [12.0, 28.0, 22.0, 20.0,  8.0],
@@ -286,7 +286,7 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(5, 5);
-        pseudo_inverse(&mut ai, &mut a).unwrap();
+        mat_pseudo_inverse(&mut ai, &mut a).unwrap();
         #[rustfmt::skip]
         let ai_correct = &[
             [ 6.9128803717996279e-01, -7.4226114383340802e-01, -9.8756287260606410e-02, -6.9062496266472417e-01,  7.2471057693456553e-01],
@@ -302,7 +302,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_6x6_works() {
+    fn mat_pseudo_inverse_6x6_works() {
         // NOTE: this matrix is nearly non-invertible; it originated from an FEM analysis
         #[rustfmt::skip]
         let data = [
@@ -315,14 +315,14 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(6, 6);
-        pseudo_inverse(&mut ai, &mut a).unwrap();
+        mat_pseudo_inverse(&mut ai, &mut a).unwrap();
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
         mat_approx_eq(&a_ai_a, &a_copy, 1e-8);
     }
 
     #[test]
-    fn pseudo_inverse_4x3_works() {
+    fn mat_pseudo_inverse_4x3_works() {
         #[rustfmt::skip]
         let data = [
             [-5.773502691896260e-01, -5.773502691896260e-01, 1.000000000000000e+00],
@@ -333,7 +333,7 @@ mod tests {
         let a = Matrix::from(&data);
         let (m, n) = a.dims();
         let mut ai = Matrix::new(n, m);
-        pseudo_inverse(&mut ai, &a).unwrap();
+        mat_pseudo_inverse(&mut ai, &a).unwrap();
         #[rustfmt::skip]
         let ai_correct = &[
             [-4.330127018922192e-01,  4.330127018922192e-01, -4.330127018922192e-01, 4.330127018922192e-01],
@@ -347,7 +347,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_4x5_works() {
+    fn mat_pseudo_inverse_4x5_works() {
         #[rustfmt::skip]
         let data = [
             [1.0, 0.0, 0.0, 0.0, 2.0],
@@ -358,7 +358,7 @@ mod tests {
         let a = Matrix::from(&data);
         let (m, n) = a.dims();
         let mut ai = Matrix::new(n, m);
-        pseudo_inverse(&mut ai, &a).unwrap();
+        mat_pseudo_inverse(&mut ai, &a).unwrap();
         #[rustfmt::skip]
         let ai_correct = &[
             [0.2,     0.0, 0.0,     0.0],
@@ -374,7 +374,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_5x6_works() {
+    fn mat_pseudo_inverse_5x6_works() {
         #[rustfmt::skip]
         let data = [
             [12.0, 28.0, 22.0, 20.0,  8.0, 1.0],
@@ -386,7 +386,7 @@ mod tests {
         let a = Matrix::from(&data);
         let (m, n) = a.dims();
         let mut ai = Matrix::new(n, m);
-        pseudo_inverse(&mut ai, &a).unwrap();
+        mat_pseudo_inverse(&mut ai, &a).unwrap();
         #[rustfmt::skip]
         let ai_correct = &[
             [ 5.6387724512344639e-01, -6.0176177188969326e-01, -7.6500652148749224e-02, -5.6389938864086908e-01,  5.8595836573334192e-01],
@@ -403,7 +403,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_inverse_8x6_works() {
+    fn mat_pseudo_inverse_8x6_works() {
         #[rustfmt::skip]
         let data = [
             [64.0,  2.0,  3.0, 61.0, 60.0,  6.0],
@@ -418,7 +418,7 @@ mod tests {
         let a = Matrix::from(&data);
         let (m, n) = a.dims();
         let mut ai = Matrix::new(n, m);
-        pseudo_inverse(&mut ai, &a).unwrap();
+        mat_pseudo_inverse(&mut ai, &a).unwrap();
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
         mat_approx_eq(&a_ai_a, &a_copy, 1e-13);

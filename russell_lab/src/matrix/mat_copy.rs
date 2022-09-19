@@ -11,7 +11,7 @@ use russell_openblas::{dcopy, to_i32};
 /// # Example
 ///
 /// ```
-/// use russell_lab::{copy_matrix, Matrix, StrError};
+/// use russell_lab::{mat_copy, Matrix, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let a = Matrix::from(&[
@@ -22,7 +22,7 @@ use russell_openblas::{dcopy, to_i32};
 ///         [-1.0, -2.0, -3.0],
 ///         [-4.0, -5.0, -6.0],
 ///     ]);
-///     copy_matrix(&mut b, &a)?;
+///     mat_copy(&mut b, &a)?;
 ///     let correct = "┌       ┐\n\
 ///                    │ 1 2 3 │\n\
 ///                    │ 4 5 6 │\n\
@@ -31,7 +31,7 @@ use russell_openblas::{dcopy, to_i32};
 ///     Ok(())
 /// }
 /// ```
-pub fn copy_matrix(b: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
+pub fn mat_copy(b: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
     let (m, n) = b.dims();
     if a.nrow() != m || a.ncol() != n {
         return Err("matrices are incompatible");
@@ -45,25 +45,25 @@ pub fn copy_matrix(b: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{copy_matrix, Matrix};
+    use super::{mat_copy, Matrix};
     use crate::mat_approx_eq;
 
     #[test]
-    fn copy_matrix_fails_on_wrong_dimensions() {
+    fn mat_copy_fails_on_wrong_dimensions() {
         let a_2x2 = Matrix::new(2, 2);
         let a_2x1 = Matrix::new(2, 1);
         let a_1x2 = Matrix::new(1, 2);
         let mut b_2x2 = Matrix::new(2, 2);
         let mut b_2x1 = Matrix::new(2, 1);
         let mut b_1x2 = Matrix::new(1, 2);
-        assert_eq!(copy_matrix(&mut b_2x2, &a_2x1), Err("matrices are incompatible"));
-        assert_eq!(copy_matrix(&mut b_2x2, &a_1x2), Err("matrices are incompatible"));
-        assert_eq!(copy_matrix(&mut b_2x1, &a_2x2), Err("matrices are incompatible"));
-        assert_eq!(copy_matrix(&mut b_1x2, &a_2x2), Err("matrices are incompatible"));
+        assert_eq!(mat_copy(&mut b_2x2, &a_2x1), Err("matrices are incompatible"));
+        assert_eq!(mat_copy(&mut b_2x2, &a_1x2), Err("matrices are incompatible"));
+        assert_eq!(mat_copy(&mut b_2x1, &a_2x2), Err("matrices are incompatible"));
+        assert_eq!(mat_copy(&mut b_1x2, &a_2x2), Err("matrices are incompatible"));
     }
 
     #[test]
-    fn copy_matrix_works() {
+    fn mat_copy_works() {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [10.0, 20.0, 30.0],
@@ -74,7 +74,7 @@ mod tests {
             [100.0, 200.0, 300.0],
             [400.0, 500.0, 600.0],
         ]);
-        copy_matrix(&mut b, &a).unwrap();
+        mat_copy(&mut b, &a).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [10.0, 20.0, 30.0],

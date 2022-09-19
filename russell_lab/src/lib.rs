@@ -5,7 +5,7 @@
 //! # Example - Cholesky factorization
 //!
 //! ```
-//! use russell_lab::{cholesky_factor, Matrix, StrError};
+//! use russell_lab::{mat_cholesky, Matrix, StrError};
 //!
 //! fn main() -> Result<(), StrError> {
 //!     // set matrix
@@ -18,7 +18,7 @@
 //!     // perform factorization
 //!     let m = a.nrow();
 //!     let mut l = Matrix::new(m, m);
-//!     cholesky_factor(&mut l, &a)?;
+//!     mat_cholesky(&mut l, &a)?;
 //!
 //!     // compare with solution
 //!     let l_correct = "┌          ┐\n\

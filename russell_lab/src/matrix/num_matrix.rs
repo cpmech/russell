@@ -20,9 +20,8 @@ use std::path::Path;
 ///   e.g., using `as_data()` and `as_mut_data()`.
 /// * Internally, the data is stored in the [**row-major** order](https://en.wikipedia.org/wiki/Row-_and_column-major_order)
 /// * For faster computations, we recommend using the set of functions that
-///   operate on Vectors and Matrices; e.g., `add_matrices`, `cholesky_factor`,
-///   `eigen_decomp`, `inverse`, `pseudo_inverse`, `sv_decomp`, `mat_vec_mul`,
-///   `sv_decomp`, and others.
+///   operate on Vectors and Matrices; e.g., `mat_add`, `mat_cholesky`,
+///   `mat_eigen`, `mat_inverse`, `mat_pseudo_inverse`, `mat_svd`, `mat_vec_mul`, and others.
 ///
 /// # Examples
 ///
@@ -53,7 +52,7 @@ use std::path::Path;
 /// ## Inverse and matrix multiplication
 ///
 /// ```
-/// use russell_lab::{inverse, mat_mat_mul, NumMatrix, StrError};
+/// use russell_lab::{mat_inverse, mat_mat_mul, NumMatrix, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // create new matrix filled with ones
@@ -65,7 +64,7 @@ use std::path::Path;
 ///     // compute the inverse matrix `ai`
 ///     let (m, n) = a.dims();
 ///     let mut ai = NumMatrix::<f64>::new(m, n);
-///     let det = inverse(&mut ai, &a)?;
+///     let det = mat_inverse(&mut ai, &a)?;
 ///
 ///     // check the determinant
 ///     assert_eq!(det, 2.0);

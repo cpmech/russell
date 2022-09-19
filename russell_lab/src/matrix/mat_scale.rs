@@ -10,7 +10,7 @@ use russell_openblas::{dscal, to_i32};
 /// # Example
 ///
 /// ```
-/// use russell_lab::{scale_matrix, Matrix};
+/// use russell_lab::{mat_scale, Matrix};
 ///
 /// fn main() {
 ///     let mut a = Matrix::from(&[
@@ -18,7 +18,7 @@ use russell_openblas::{dscal, to_i32};
 ///         [4.0, 5.0, 6.0],
 ///     ]);
 ///
-///     scale_matrix(&mut a, 0.5);
+///     mat_scale(&mut a, 0.5);
 ///
 ///     let correct = "┌             ┐\n\
 ///                    │ 0.5   1 1.5 │\n\
@@ -28,7 +28,7 @@ use russell_openblas::{dscal, to_i32};
 ///     assert_eq!(format!("{}", a), correct);
 /// }
 /// ```
-pub fn scale_matrix(a: &mut Matrix, alpha: f64) {
+pub fn mat_scale(a: &mut Matrix, alpha: f64) {
     let mut data = a.as_mut_data();
     let n: i32 = to_i32(data.len());
     dscal(n, alpha, &mut data, 1);
@@ -38,17 +38,17 @@ pub fn scale_matrix(a: &mut Matrix, alpha: f64) {
 
 #[cfg(test)]
 mod tests {
-    use super::{scale_matrix, Matrix};
+    use super::{mat_scale, Matrix};
     use crate::mat_approx_eq;
 
     #[test]
-    fn scale_matrix_works() {
+    fn mat_scale_works() {
         #[rustfmt::skip]
         let mut a = Matrix::from(&[
             [ 6.0,  9.0,  12.0],
             [-6.0, -9.0, -12.0],
         ]);
-        scale_matrix(&mut a, 1.0 / 3.0);
+        mat_scale(&mut a, 1.0 / 3.0);
         #[rustfmt::skip]
         let correct = &[
             [ 2.0,  3.0,  4.0],

@@ -15,7 +15,7 @@ use russell_openblas::{dpotrf, to_i32};
 /// # Examples
 ///
 /// ```
-/// use russell_lab::{cholesky_factor, Matrix, StrError};
+/// use russell_lab::{mat_cholesky, Matrix, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // set matrix
@@ -28,7 +28,7 @@ use russell_openblas::{dpotrf, to_i32};
 ///     // perform factorization
 ///     let m = a.nrow();
 ///     let mut l = Matrix::new(m, m);
-///     cholesky_factor(&mut l, &a)?;
+///     mat_cholesky(&mut l, &a)?;
 ///
 ///     // compare with solution
 ///     let l_correct = "┌          ┐\n\
@@ -56,7 +56,7 @@ use russell_openblas::{dpotrf, to_i32};
 ///     Ok(())
 /// }
 /// ```
-pub fn cholesky_factor(l: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
+pub fn mat_cholesky(l: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
     // check
     let (m, n) = a.dims();
     if m != n {
@@ -89,23 +89,23 @@ pub fn cholesky_factor(l: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{cholesky_factor, Matrix};
+    use super::{mat_cholesky, Matrix};
     use crate::mat_approx_eq;
 
     #[test]
-    fn cholesky_factor_fails_on_wrong_dims() {
+    fn mat_cholesky_fails_on_wrong_dims() {
         let a = Matrix::new(2, 2);
         let a_wrong = Matrix::new(2, 3);
         let mut l = Matrix::new(2, 2);
         let mut l_wrong1 = Matrix::new(3, 2);
         let mut l_wrong2 = Matrix::new(2, 3);
-        assert_eq!(cholesky_factor(&mut l, &a_wrong), Err("matrix must be square"));
-        assert_eq!(cholesky_factor(&mut l_wrong1, &a), Err("matrices are incompatible"));
-        assert_eq!(cholesky_factor(&mut l_wrong2, &a), Err("matrices are incompatible"));
+        assert_eq!(mat_cholesky(&mut l, &a_wrong), Err("matrix must be square"));
+        assert_eq!(mat_cholesky(&mut l_wrong1, &a), Err("matrices are incompatible"));
+        assert_eq!(mat_cholesky(&mut l_wrong2, &a), Err("matrices are incompatible"));
     }
 
     #[test]
-    fn cholesky_factor_3x3_works() {
+    fn mat_cholesky_3x3_works() {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [25.0, 15.0, -5.0],
@@ -114,7 +114,7 @@ mod tests {
         ]);
         let m = a.nrow();
         let mut l = Matrix::new(m, m);
-        cholesky_factor(&mut l, &a).unwrap();
+        mat_cholesky(&mut l, &a).unwrap();
         #[rustfmt::skip]
         let l_correct = Matrix::from(&[
             [ 5.0, 0.0, 0.0],
@@ -134,7 +134,7 @@ mod tests {
     }
 
     #[test]
-    fn cholesky_factor_5x5_works() {
+    fn mat_cholesky_5x5_works() {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [2.0, 1.0, 1.0, 3.0, 2.0],
@@ -145,7 +145,7 @@ mod tests {
         ]);
         let m = a.nrow();
         let mut l = Matrix::new(m, m);
-        cholesky_factor(&mut l, &a).unwrap();
+        mat_cholesky(&mut l, &a).unwrap();
         let sqrt2 = std::f64::consts::SQRT_2;
         #[rustfmt::skip]
         let l_correct = Matrix::from(&[

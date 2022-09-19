@@ -11,7 +11,7 @@ use russell_openblas::{daxpy, to_i32};
 /// # Example
 ///
 /// ```
-/// use russell_lab::{update_matrix, Matrix, StrError};
+/// use russell_lab::{mat_update, Matrix, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let a = Matrix::from(&[
@@ -22,7 +22,7 @@ use russell_openblas::{daxpy, to_i32};
 ///         [10.0, 20.0, 30.0],
 ///         [40.0, 50.0, 60.0],
 ///     ]);
-///     update_matrix(&mut b, 0.1, &a)?;
+///     mat_update(&mut b, 0.1, &a)?;
 ///     let correct = "┌          ┐\n\
 ///                    │ 11 22 33 │\n\
 ///                    │ 44 55 66 │\n\
@@ -31,7 +31,7 @@ use russell_openblas::{daxpy, to_i32};
 ///     Ok(())
 /// }
 /// ```
-pub fn update_matrix(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), StrError> {
+pub fn mat_update(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), StrError> {
     let (m, n) = b.dims();
     if a.nrow() != m || a.ncol() != n {
         return Err("matrices are incompatible");
@@ -45,25 +45,25 @@ pub fn update_matrix(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), StrEr
 
 #[cfg(test)]
 mod tests {
-    use super::{update_matrix, Matrix};
+    use super::{mat_update, Matrix};
     use crate::mat_approx_eq;
 
     #[test]
-    fn update_matrix_fail_on_wrong_dims() {
+    fn mat_update_fail_on_wrong_dims() {
         let a_2x2 = Matrix::new(2, 2);
         let a_2x1 = Matrix::new(2, 1);
         let a_1x2 = Matrix::new(1, 2);
         let mut b_2x2 = Matrix::new(2, 2);
         let mut b_2x1 = Matrix::new(2, 1);
         let mut b_1x2 = Matrix::new(1, 2);
-        assert_eq!(update_matrix(&mut b_2x2, 1.0, &a_2x1), Err("matrices are incompatible"));
-        assert_eq!(update_matrix(&mut b_2x2, 1.0, &a_1x2), Err("matrices are incompatible"));
-        assert_eq!(update_matrix(&mut b_2x1, 1.0, &a_2x2), Err("matrices are incompatible"));
-        assert_eq!(update_matrix(&mut b_1x2, 1.0, &a_2x2), Err("matrices are incompatible"));
+        assert_eq!(mat_update(&mut b_2x2, 1.0, &a_2x1), Err("matrices are incompatible"));
+        assert_eq!(mat_update(&mut b_2x2, 1.0, &a_1x2), Err("matrices are incompatible"));
+        assert_eq!(mat_update(&mut b_2x1, 1.0, &a_2x2), Err("matrices are incompatible"));
+        assert_eq!(mat_update(&mut b_1x2, 1.0, &a_2x2), Err("matrices are incompatible"));
     }
 
     #[test]
-    fn update_matrix_works() {
+    fn mat_update_works() {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [10.0, 20.0, 30.0],
@@ -74,7 +74,7 @@ mod tests {
             [100.0, 200.0, 300.0],
             [400.0, 500.0, 600.0],
         ]);
-        update_matrix(&mut b, 2.0, &a).unwrap();
+        mat_update(&mut b, 2.0, &a).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [120.0, 240.0, 360.0],

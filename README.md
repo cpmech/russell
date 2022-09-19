@@ -28,7 +28,7 @@ External recommended crate:
 ### Compute a singular value decomposition
 
 ```rust
-use russell_lab::{sv_decomp, Matrix, Vector, StrError};
+use russell_lab::{mat_svd, Matrix, Vector, StrError};
 
 fn main() -> Result<(), StrError> {
     // set matrix
@@ -47,7 +47,7 @@ fn main() -> Result<(), StrError> {
     let mut vt = Matrix::new(n, n);
 
     // perform SVD
-    sv_decomp(&mut s, &mut u, &mut vt, &mut a)?;
+    mat_svd(&mut s, &mut u, &mut vt, &mut a)?;
 
     // define correct data
     let s_correct = "┌      ┐\n\

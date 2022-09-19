@@ -1,5 +1,5 @@
 use russell_chk::approx_eq;
-use russell_lab::{add_matrices, eigen_decomp, mat_mat_mul, matrix_norm, Matrix, NormMat, StrError, Vector};
+use russell_lab::{mat_add, mat_eigen, mat_mat_mul, mat_norm, Matrix, NormMat, StrError, Vector};
 
 fn main() -> Result<(), StrError> {
     // set matrix
@@ -14,7 +14,7 @@ fn main() -> Result<(), StrError> {
     let mut v_imag = Matrix::new(m, m);
 
     // perform the eigen-decomposition
-    eigen_decomp(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a)?;
+    mat_eigen(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a)?;
 
     // check results
     assert_eq!(
@@ -43,7 +43,7 @@ fn main() -> Result<(), StrError> {
     let mut err = Matrix::filled(m, m, f64::MAX);
     mat_mat_mul(&mut a_v, 1.0, &a_copy, &v_real)?;
     mat_mat_mul(&mut v_l, 1.0, &v_real, &lam)?;
-    add_matrices(&mut err, 1.0, &a_v, -1.0, &v_l)?;
-    approx_eq(matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
+    mat_add(&mut err, 1.0, &a_v, -1.0, &v_l)?;
+    approx_eq(mat_norm(&err, NormMat::Max), 0.0, 1e-15);
     Ok(())
 }

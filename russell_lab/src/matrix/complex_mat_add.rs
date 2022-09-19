@@ -13,7 +13,7 @@ use russell_openblas::{complex_add_vectors_native, complex_add_vectors_oblas};
 /// # Example
 ///
 /// ```
-/// use russell_lab::{complex_add_matrices, ComplexMatrix, StrError};
+/// use russell_lab::{complex_mat_add, ComplexMatrix, StrError};
 /// use num_complex::Complex64;
 ///
 /// fn main() -> Result<(), StrError> {
@@ -28,7 +28,7 @@ use russell_openblas::{complex_add_vectors_native, complex_add_vectors_oblas};
 ///     let mut c = ComplexMatrix::new(2, 4);
 ///     let alpha = Complex64::new(0.1, 0.0);
 ///     let beta = Complex64::new(2.0, 0.0);
-///     complex_add_matrices(&mut c, alpha, &a, beta, &b)?;
+///     complex_mat_add(&mut c, alpha, &a, beta, &b)?;
 ///     let correct = "┌                         ┐\n\
 ///                    │  5+0i  5+0i  5+0i  5+0i │\n\
 ///                    │ -5+0i -5+0i -5+0i -5+0i │\n\
@@ -37,7 +37,7 @@ use russell_openblas::{complex_add_vectors_native, complex_add_vectors_oblas};
 ///     Ok(())
 /// }
 /// ```
-pub fn complex_add_matrices(
+pub fn complex_mat_add(
     c: &mut ComplexMatrix,
     alpha: Complex64,
     a: &ComplexMatrix,
@@ -63,12 +63,12 @@ pub fn complex_add_matrices(
 
 #[cfg(test)]
 mod tests {
-    use super::{complex_add_matrices, ComplexMatrix};
+    use super::{complex_mat_add, ComplexMatrix};
     use crate::complex_mat_approx_eq;
     use num_complex::Complex64;
 
     #[test]
-    fn complex_add_matrices_fail_on_wrong_dims() {
+    fn complex_mat_add_fails_on_wrong_dims() {
         let a_2x2 = ComplexMatrix::new(2, 2);
         let a_2x3 = ComplexMatrix::new(2, 3);
         let a_3x2 = ComplexMatrix::new(3, 2);
@@ -79,25 +79,25 @@ mod tests {
         let alpha = Complex64::new(1.0, 0.0);
         let beta = Complex64::new(1.0, 0.0);
         assert_eq!(
-            complex_add_matrices(&mut c_2x2, alpha, &a_2x3, beta, &b_2x2),
+            complex_mat_add(&mut c_2x2, alpha, &a_2x3, beta, &b_2x2),
             Err("matrices are incompatible")
         );
         assert_eq!(
-            complex_add_matrices(&mut c_2x2, alpha, &a_3x2, beta, &b_2x2),
+            complex_mat_add(&mut c_2x2, alpha, &a_3x2, beta, &b_2x2),
             Err("matrices are incompatible")
         );
         assert_eq!(
-            complex_add_matrices(&mut c_2x2, alpha, &a_2x2, beta, &b_2x3),
+            complex_mat_add(&mut c_2x2, alpha, &a_2x2, beta, &b_2x3),
             Err("matrices are incompatible")
         );
         assert_eq!(
-            complex_add_matrices(&mut c_2x2, alpha, &a_2x2, beta, &b_3x2),
+            complex_mat_add(&mut c_2x2, alpha, &a_2x2, beta, &b_3x2),
             Err("matrices are incompatible")
         );
     }
 
     #[test]
-    fn complex_add_matrices_works() {
+    fn complex_mat_add_works() {
         const NOISE: Complex64 = Complex64::new(1234.567, 3456.789);
         #[rustfmt::skip]
         let a = ComplexMatrix::from(&[
@@ -118,7 +118,7 @@ mod tests {
         ]);
         let alpha = Complex64::new(1.0, 0.0);
         let beta = Complex64::new(-4.0, 0.0);
-        complex_add_matrices(&mut c, alpha, &a, beta, &b).unwrap();
+        complex_mat_add(&mut c, alpha, &a, beta, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [Complex64::new(-1.0, 0.0), Complex64::new(-2.0, 0.0), Complex64::new(-3.0, 0.0), Complex64::new(-4.0, 0.0)],
@@ -154,7 +154,7 @@ mod tests {
         ]);
         let alpha = Complex64::new(1.0, 0.0);
         let beta = Complex64::new(-4.0, 0.0);
-        complex_add_matrices(&mut c, alpha, &a, beta, &b).unwrap();
+        complex_mat_add(&mut c, alpha, &a, beta, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0)],
@@ -167,13 +167,13 @@ mod tests {
     }
 
     #[test]
-    fn complex_add_matrices_skip() {
+    fn complex_mat_add_skip() {
         let a = ComplexMatrix::new(0, 0);
         let b = ComplexMatrix::new(0, 0);
         let mut c = ComplexMatrix::new(0, 0);
         let alpha = Complex64::new(1.0, 0.0);
         let beta = Complex64::new(1.0, 0.0);
-        complex_add_matrices(&mut c, alpha, &a, beta, &b).unwrap();
+        complex_mat_add(&mut c, alpha, &a, beta, &b).unwrap();
         assert_eq!(c.as_data().len(), 0);
     }
 }

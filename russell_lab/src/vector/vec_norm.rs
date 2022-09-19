@@ -37,6 +37,7 @@ pub fn vec_norm(v: &Vector, kind: Norm) -> f64 {
 mod tests {
     use super::{vec_norm, Vector};
     use crate::Norm;
+    use russell_chk::approx_eq;
 
     #[test]
     fn vec_norm_works() {
@@ -53,5 +54,11 @@ mod tests {
         assert_eq!(vec_norm(&u, Norm::Inf), 3.0);
         assert_eq!(vec_norm(&u, Norm::Max), 3.0);
         assert_eq!(vec_norm(&u, Norm::One), 8.0);
+
+        // example from https://netlib.org/lapack/lug/node75.html
+        let diff = Vector::from(&[-0.1, 1.0, -2.0]);
+        approx_eq(vec_norm(&diff, Norm::Euc), 2.238, 0.001);
+        assert_eq!(vec_norm(&diff, Norm::Inf), 2.0);
+        assert_eq!(vec_norm(&diff, Norm::One), 3.1);
     }
 }

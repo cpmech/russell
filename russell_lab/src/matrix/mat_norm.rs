@@ -41,6 +41,7 @@ pub fn mat_norm(a: &Matrix, kind: Norm) -> f64 {
 mod tests {
     use super::{mat_norm, Matrix};
     use crate::Norm;
+    use russell_chk::approx_eq;
 
     #[test]
     fn mat_norm_works() {
@@ -71,5 +72,16 @@ mod tests {
         assert_eq!(mat_norm(&a, Norm::Euc), 8.0);
         assert_eq!(mat_norm(&a, Norm::Fro), 8.0);
         assert_eq!(mat_norm(&a, Norm::Max), 5.0);
+
+        // example from https://netlib.org/lapack/lug/node75.html
+        #[rustfmt::skip]
+        let diff = Matrix::from(&[
+            [ 0.56, -0.36, -0.04],
+            [ 0.91, -0.87, -0.66],
+            [-0.36,  0.23,  0.93],
+        ]);
+        assert_eq!(mat_norm(&diff, Norm::Inf), 2.44);
+        assert_eq!(mat_norm(&diff, Norm::One), 1.83);
+        approx_eq(mat_norm(&diff, Norm::Fro), 1.87, 0.01);
     }
 }

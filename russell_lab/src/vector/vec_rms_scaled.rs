@@ -5,12 +5,12 @@ use super::Vector;
 /// The scaling factor is calculated from a reference vector and an absolute and a relative tolerance.
 ///
 /// ```text
-///              _______________________________________
-///             /     ————                            2 `
-///       \    /  1   \    /          v[i]           \
-/// rms =  \  /  ———  /    | ——————————————————————— |
-///         \/    N   ———— \ ϵ_abs + ϵ_rel ⋅ |v0[i]| /
-///
+///              ____________________________________
+///             /     ————                         2 `
+///       \    /  1   \    /          vᵢ           \
+/// rms =  \  /  ———  /    | ————————————————————— |
+///         \/    N   ———— \ ϵ_abs + ϵ_rel ⋅ |v0ᵢ| /
+///                     i
 /// N = v.dim()
 /// ```
 ///

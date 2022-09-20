@@ -30,6 +30,9 @@ use super::Vector;
 pub fn vec_rms_scaled(v: &Vector, v0: &Vector, abs_tol: f64, rel_tol: f64) -> f64 {
     let m = v.dim();
     assert!(v0.dim() == m);
+    if m == 0 {
+        return 0.0;
+    }
     let mut sum = 0.0;
     for i in 0..m {
         let den = abs_tol + rel_tol * f64::abs(v0[i]);
@@ -48,6 +51,9 @@ mod tests {
 
     #[test]
     fn vec_rms_error_works() {
+        let empty = Vector::new(0);
+        assert_eq!(vec_rms_scaled(&empty, &empty, 1.0, 1.0), 0.0);
+
         let v = Vector::from(&[-2.0, 0.0, 2.0]);
         let v0 = Vector::from(&[-1.0, -1.0, -1.0]);
         let rms = vec_rms_scaled(&v, &v0, 1.0, 1.0);

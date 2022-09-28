@@ -179,11 +179,52 @@ impl SparseTriplet {
         self.pos = 0;
     }
 
-    /// Converts the triples data to a matrix, up to a limit
+    /// Returns the Matrix corresponding to this Triplet
+    ///
+    /// Note: this function calls [SparseTriplet::to_matrix].
+    ///
+    /// ```
+    /// use russell_sparse::{SparseTriplet, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // define (4 x 4) sparse matrix with 6+1 non-zero values
+    ///     // (with an extra ij-repeated entry)
+    ///     let (neq, nnz) = (4, 7);
+    ///     let mut trip = SparseTriplet::new(neq, nnz)?;
+    ///     trip.put(0, 0, 0.5)?; // (0, 0, a00/2)
+    ///     trip.put(0, 0, 0.5)?; // (0, 0, a00/2)
+    ///     trip.put(0, 1, 2.0)?;
+    ///     trip.put(1, 0, 3.0)?;
+    ///     trip.put(1, 1, 4.0)?;
+    ///     trip.put(2, 2, 5.0)?;
+    ///     trip.put(3, 3, 6.0)?;
+    ///
+    ///     // convert to matrix
+    ///     let a = trip.as_matrix();
+    ///     let correct = "┌         ┐\n\
+    ///                    │ 1 2 0 0 │\n\
+    ///                    │ 3 4 0 0 │\n\
+    ///                    │ 0 0 5 0 │\n\
+    ///                    │ 0 0 0 6 │\n\
+    ///                    └         ┘";
+    ///     assert_eq!(format!("{}", a), correct);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn as_matrix(&self) -> Matrix {
+        let mut a = Matrix::new(self.neq, self.neq);
+        self.to_matrix(&mut a).unwrap();
+        a
+    }
+
+    /// Converts the triplet data to a matrix, up to a limit
+    ///
+    /// Note: see the function [SparseTriplet::as_matrix] that returns the Matrix already.
     ///
     /// # Input
     ///
-    /// `a` -- (nrow_max, ncol_max) matrix to hold the triples data. Thus, the matrix may have less rows or less columns than the triplet data
+    /// `a` -- (nrow_max, ncol_max) matrix to hold the triplet data.
+    ///  The output matrix may have fewer rows or fewer columns than the triplet data.
     ///
     /// # Example
     ///
@@ -438,6 +479,10 @@ mod tests {
         trip.to_matrix(&mut b).unwrap();
         assert_eq!(b.get(0, 0), 1.0);
         assert_eq!(b.get(1, 0), 3.0);
+        // using as_matrix
+        let bb = trip.as_matrix();
+        assert_eq!(bb.get(0, 0), 1.0);
+        assert_eq!(bb.get(1, 0), 3.0);
     }
 
     #[test]

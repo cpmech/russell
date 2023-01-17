@@ -8,7 +8,7 @@ use std::path::Path;
 
 /// Writes a text file that can be visualized with VisMatrix
 ///
-/// See [https://github.com/cpmech/vismatrix]
+/// See [github.com/cpmech/vismatrix](https://github.com/cpmech/vismatrix)
 ///
 /// # Input
 ///

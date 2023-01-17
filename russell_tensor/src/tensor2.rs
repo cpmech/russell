@@ -1,6 +1,6 @@
 use super::{mandel_dim, IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, SQRT_2};
 use crate::StrError;
-use russell_lab::{vec_copy, vec_update, Matrix, Vector};
+use russell_lab::{vec_copy, vec_norm, vec_update, Matrix, Norm, Vector};
 use serde::{Deserialize, Serialize};
 
 /// Implements a second-order tensor, symmetric or not
@@ -410,6 +410,82 @@ impl Tensor2 {
     pub fn add(&mut self, alpha: f64, other: &Tensor2) -> Result<(), StrError> {
         vec_update(&mut self.vec, alpha, &other.vec)
     }
+
+    /// Calculates the determinant
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::approx_eq;
+    /// use russell_tensor::{Tensor2, StrError};
+    ///
+    /// # fn main() -> Result<(), StrError> {
+    /// let a = Tensor2::from_matrix(&[
+    ///     [1.0,  2.0, 3.0],
+    ///     [4.0,  5.0, 6.0],
+    ///     [7.0,  8.0, 9.0],
+    /// ], false, false)?;
+    ///
+    /// approx_eq(a.det(), 0.0, 1e-13);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn determinant(&self) -> f64 {
+        let a = &self.vec;
+        match self.vec.dim() {
+            4 => a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0,
+            6 => {
+                a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0 - (a[0] * a[4] * a[4]) / 2.0
+                    + (a[3] * a[4] * a[5]) / SQRT_2
+                    - (a[1] * a[5] * a[5]) / 2.0
+            }
+            _ => {
+                a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0 - (a[0] * a[4] * a[4]) / 2.0
+                    + (a[3] * a[4] * a[5]) / SQRT_2
+                    - (a[1] * a[5] * a[5]) / 2.0
+                    + (a[2] * a[6] * a[6]) / 2.0
+                    + (a[5] * a[6] * a[7]) / SQRT_2
+                    + (a[0] * a[7] * a[7]) / 2.0
+                    - (a[4] * a[6] * a[8]) / SQRT_2
+                    - (a[3] * a[7] * a[8]) / SQRT_2
+                    + (a[1] * a[8] * a[8]) / 2.0
+            }
+        }
+    }
+
+    /// Calculates the trace
+    ///
+    /// ```text
+    /// tr(σ) = σ:I = Σᵢ σᵢᵢ
+    /// ```
+    #[inline]
+    pub fn trace(&self) -> f64 {
+        self.vec[0] + self.vec[1] + self.vec[2]
+    }
+
+    /// Calculates the Euclidean norm
+    ///
+    /// ```text
+    /// norm(σ) = √(σ:σ)
+    /// ```
+    #[inline]
+    pub fn norm(&self) -> f64 {
+        vec_norm(&self.vec, Norm::Euc)
+    }
+
+    /// Calculates the deviator tensor
+    ///
+    /// ```text
+    /// dev(σ) = σ - ⅓ tr(σ) I
+    /// ```
+    pub fn deviator(&self, dev: &mut Tensor2) -> Result<(), StrError> {
+        vec_copy(&mut dev.vec, &self.vec)?;
+        let m = (self.vec[0] + self.vec[1] + self.vec[2]) / 3.0;
+        dev.vec[0] -= m;
+        dev.vec[1] -= m;
+        dev.vec[2] -= m;
+        Ok(())
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -732,7 +808,8 @@ mod tests {
         let b = Tensor2::from_matrix(&[
             [1.0, 3.0, 1.0], 
             [2.0, 2.0, 2.0], 
-            [3.0, 1.0, 3.0]],
+            [3.0, 1.0, 3.0],
+        ],
         false, false).unwrap();
         let c = Tensor2::from_matrix(
             &[[100.0, 100.0, 100.0], [100.0, 100.0, 100.0], [100.0, 100.0, 100.0]],
@@ -807,5 +884,139 @@ mod tests {
     fn debug_works() {
         let tt = Tensor2::new(false, false);
         assert!(format!("{:?}", tt).len() > 0);
+    }
+
+    #[test]
+    fn det_works() {
+        // general
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, false, false).unwrap();
+        approx_eq(tt.determinant(), 0.0, 1e-13);
+
+        // symmetric 3D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, true, false).unwrap();
+        approx_eq(tt.determinant(), 101.0, 1e-13);
+
+        // symmetric 3D (another test)
+        #[rustfmt::skip]
+        let comps_std = &[
+            [ 1.0, -3.0, 4.0],
+            [-3.0, -6.0, 1.0],
+            [ 4.0,  1.0, 5.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, true, false).unwrap();
+        approx_eq(tt.determinant(), -4.0, 1e-13);
+
+        // symmetric 2D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, true, true).unwrap();
+        approx_eq(tt.determinant(), -42.0, 1e-13);
+    }
+
+    #[test]
+    fn trace_works() {
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, false, false).unwrap();
+        approx_eq(tt.trace(), 15.0, 1e-15);
+    }
+
+    #[test]
+    fn norm_works() {
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, false, false).unwrap();
+        approx_eq(tt.norm(), f64::sqrt(285.0), 1e-14);
+    }
+
+    #[test]
+    fn deviator_works() {
+        // general
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, false, false).unwrap();
+        let mut dev = Tensor2::new(false, false);
+        tt.deviator(&mut dev).unwrap();
+        approx_eq(dev.trace(), 0.0, 1e-15);
+        assert_eq!(
+            format!("{:.1}", dev.to_matrix()),
+            "┌                ┐\n\
+             │ -4.0  2.0  3.0 │\n\
+             │  4.0  0.0  6.0 │\n\
+             │  7.0  8.0  4.0 │\n\
+             └                ┘"
+        );
+
+        // symmetric 3D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [ 2.0, -3.0, 4.0],
+            [-3.0, -5.0, 1.0],
+            [ 4.0,  1.0, 6.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, true, false).unwrap();
+        let mut dev = Tensor2::new(true, false);
+        tt.deviator(&mut dev).unwrap();
+        approx_eq(dev.trace(), 0.0, 1e-15);
+        assert_eq!(
+            format!("{:.1}", dev.to_matrix()),
+            "┌                ┐\n\
+             │  1.0 -3.0  4.0 │\n\
+             │ -3.0 -6.0  1.0 │\n\
+             │  4.0  1.0  5.0 │\n\
+             └                ┘"
+        );
+
+        // symmetric 2D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, true, true).unwrap();
+        let mut dev = Tensor2::new(true, true);
+        tt.deviator(&mut dev).unwrap();
+        approx_eq(dev.trace(), 0.0, 1e-15);
+        assert_eq!(
+            format!("{:.1}", dev.to_matrix()),
+            "┌                ┐\n\
+             │ -1.0  4.0  0.0 │\n\
+             │  4.0  0.0  0.0 │\n\
+             │  0.0  0.0  1.0 │\n\
+             └                ┘"
+        );
+
+        // catch error
+        let mut dev = Tensor2::new(true, false);
+        assert_eq!(tt.deviator(&mut dev).err(), Some("vectors are incompatible"));
     }
 }

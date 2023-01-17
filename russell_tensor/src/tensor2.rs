@@ -419,16 +419,15 @@ impl Tensor2 {
     /// use russell_chk::approx_eq;
     /// use russell_tensor::{Tensor2, StrError};
     ///
-    /// # fn main() -> Result<(), StrError> {
-    /// let a = Tensor2::from_matrix(&[
-    ///     [1.0, 2.0, 3.0],
-    ///     [4.0, 5.0, 6.0],
-    ///     [7.0, 8.0, 9.0],
-    /// ], false, false)?;
-    ///
-    /// approx_eq(a.determinant(), 0.0, 1e-13);
-    /// # Ok(())
-    /// # }
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [1.0, 2.0, 3.0],
+    ///         [4.0, 5.0, 6.0],
+    ///         [7.0, 8.0, 9.0],
+    ///     ], false, false)?;
+    ///     approx_eq(a.determinant(), 0.0, 1e-13);
+    ///     Ok(())
+    /// }
     /// ```
     pub fn determinant(&self) -> f64 {
         let a = &self.vec;
@@ -458,6 +457,23 @@ impl Tensor2 {
     /// ```text
     /// tr(σ) = σ:I = Σᵢ σᵢᵢ
     /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::approx_eq;
+    /// use russell_tensor::{Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [1.0, 2.0, 3.0],
+    ///         [4.0, 5.0, 6.0],
+    ///         [7.0, 8.0, 9.0],
+    ///     ], false, false)?;
+    ///     approx_eq(a.trace(), 15.0, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     #[inline]
     pub fn trace(&self) -> f64 {
         self.vec[0] + self.vec[1] + self.vec[2]
@@ -468,6 +484,23 @@ impl Tensor2 {
     /// ```text
     /// norm(σ) = √(σ:σ)
     /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::approx_eq;
+    /// use russell_tensor::{Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [1.0, 2.0, 3.0],
+    ///         [4.0, 5.0, 6.0],
+    ///         [7.0, 8.0, 9.0],
+    ///     ], false, false)?;
+    ///     approx_eq(a.norm(), f64::sqrt(285.0), 1e-13);
+    ///     Ok(())
+    /// }
+    /// ```
     #[inline]
     pub fn norm(&self) -> f64 {
         vec_norm(&self.vec, Norm::Euc)
@@ -477,6 +510,35 @@ impl Tensor2 {
     ///
     /// ```text
     /// dev(σ) = σ - ⅓ tr(σ) I
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::approx_eq;
+    /// use russell_tensor::{Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [1.0, 2.0, 3.0],
+    ///         [4.0, 5.0, 6.0],
+    ///         [7.0, 8.0, 9.0],
+    ///     ], false, false)?;
+    ///
+    ///     let mut dev = Tensor2::new(false, false);
+    ///     a.deviator(&mut dev).unwrap();
+    ///     approx_eq(dev.trace(), 0.0, 1e-15);
+    ///
+    ///     assert_eq!(
+    ///         format!("{:.1}", dev.to_matrix()),
+    ///         "┌                ┐\n\
+    ///          │ -4.0  2.0  3.0 │\n\
+    ///          │  4.0  0.0  6.0 │\n\
+    ///          │  7.0  8.0  4.0 │\n\
+    ///          └                ┘"
+    ///     );
+    ///     Ok(())
+    /// }
     /// ```
     pub fn deviator(&self, dev: &mut Tensor2) -> Result<(), StrError> {
         vec_copy(&mut dev.vec, &self.vec)?;

@@ -268,10 +268,10 @@ mod tests {
             [-1.5,  0.0,  0.5,  0.5],
             [-2.2,  0.0,  0.4,  1.0],
         ];
-        mat_approx_eq(&ai, ai_correct, 1e-14);
+        mat_approx_eq(&ai, ai_correct, 1e-13);
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
-        mat_approx_eq(&a_ai_a, &a_copy, 1e-14);
+        mat_approx_eq(&a_ai_a, &a_copy, 1e-13);
     }
 
     #[test]

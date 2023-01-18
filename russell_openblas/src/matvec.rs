@@ -1,4 +1,4 @@
-use super::{cblas_transpose, to_i32, CBLAS_ROW_MAJOR, LAPACK_ROW_MAJOR};
+use super::{cblas_transpose, to_i32, CBLAS_COL_MAJOR, LAPACK_COL_MAJOR};
 use crate::StrError;
 use num_complex::Complex64;
 
@@ -22,7 +22,7 @@ extern "C" {
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -32,7 +32,7 @@ extern "C" {
 pub fn dger(m: i32, n: i32, alpha: f64, x: &[f64], incx: i32, y: &[f64], incy: i32, a: &mut [f64]) {
     unsafe {
         cblas_dger(
-            CBLAS_ROW_MAJOR,
+            CBLAS_COL_MAJOR,
             m,
             n,
             alpha,
@@ -41,7 +41,7 @@ pub fn dger(m: i32, n: i32, alpha: f64, x: &[f64], incx: i32, y: &[f64], incy: i
             y.as_ptr(),
             incy,
             a.as_mut_ptr(),
-            n,
+            m,
         );
     }
 }
@@ -60,7 +60,7 @@ pub fn dger(m: i32, n: i32, alpha: f64, x: &[f64], incx: i32, y: &[f64], incy: i
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -81,13 +81,13 @@ pub fn dgemv(
 ) {
     unsafe {
         cblas_dgemv(
-            CBLAS_ROW_MAJOR,
+            CBLAS_COL_MAJOR,
             cblas_transpose(trans),
             m,
             n,
             alpha,
             a.as_ptr(),
-            n,
+            m,
             x.as_ptr(),
             incx,
             beta,
@@ -111,7 +111,7 @@ pub fn dgemv(
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -132,13 +132,13 @@ pub fn zgemv(
 ) {
     unsafe {
         cblas_zgemv(
-            CBLAS_ROW_MAJOR,
+            CBLAS_COL_MAJOR,
             cblas_transpose(trans),
             m,
             n,
             &alpha,
             a.as_ptr(),
-            n,
+            m,
             x.as_ptr(),
             incx,
             &beta,
@@ -177,7 +177,7 @@ pub fn zgemv(
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -191,14 +191,14 @@ pub fn dgesv(n: i32, nrhs: i32, a: &mut [f64], ipiv: &mut [i32], b: &mut [f64]) 
             return Err("the length of ipiv must equal n");
         }
         let info = LAPACKE_dgesv(
-            LAPACK_ROW_MAJOR,
+            LAPACK_COL_MAJOR,
             n,
             nrhs,
             a.as_mut_ptr(),
             n,
             ipiv.as_mut_ptr(),
             b.as_mut_ptr(),
-            nrhs,
+            n,
         );
         if info != 0_i32 {
             return Err("LAPACK dgesv failed");
@@ -236,7 +236,7 @@ pub fn dgesv(n: i32, nrhs: i32, a: &mut [f64], ipiv: &mut [i32], b: &mut [f64]) 
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -250,14 +250,14 @@ pub fn zgesv(n: i32, nrhs: i32, a: &mut [Complex64], ipiv: &mut [i32], b: &mut [
             return Err("the length of ipiv must equal n");
         }
         let info = LAPACKE_zgesv(
-            LAPACK_ROW_MAJOR,
+            LAPACK_COL_MAJOR,
             n,
             nrhs,
             a.as_mut_ptr(),
             n,
             ipiv.as_mut_ptr(),
             b.as_mut_ptr(),
-            nrhs,
+            n,
         );
         if info != 0_i32 {
             return Err("LAPACK zgesv failed");
@@ -271,6 +271,7 @@ pub fn zgesv(n: i32, nrhs: i32, a: &mut [Complex64], ipiv: &mut [i32], b: &mut [
 #[cfg(test)]
 mod tests {
     use super::{dgemv, dger, dgesv, zgemv, zgesv};
+    use crate::conversions::{col_major, col_major_complex};
     use crate::{to_i32, StrError};
     use num_complex::Complex64;
     use russell_chk::{complex_vec_approx_eq, vec_approx_eq};
@@ -278,12 +279,12 @@ mod tests {
     #[test]
     fn dger_works() {
         #[rustfmt::skip]
-        let mut a = [
+        let mut a = col_major(4, 3, &[
             100.0, 100.0, 100.0,
             100.0, 100.0, 100.0,
             100.0, 100.0, 100.0,
             100.0, 100.0, 100.0,
-        ];
+        ]);
         let u = &[1.0, 2.0, 3.0, 4.0];
         let v = &[4.0, 3.0, 2.0];
         let m = 4; // m = nrow(a) = len(u)
@@ -292,25 +293,25 @@ mod tests {
         dger(m, n, alpha, u, 1, v, 1, &mut a);
         // a = 100 + 0.5⋅u⋅vᵀ
         #[rustfmt::skip]
-        let correct = &[
+        let correct = col_major(4, 3, &[
             102.0, 101.5, 101.0,
             104.0, 103.0, 102.0,
             106.0, 104.5, 103.0,
             108.0, 106.0, 104.0,
-        ];
-        vec_approx_eq(&a, correct, 1e-15);
+        ]);
+        vec_approx_eq(&a, &correct, 1e-15);
     }
 
     #[test]
     fn dgemv_works() {
         // allocate matrix
         #[rustfmt::skip]
-        let a = [
+        let a = col_major(4, 3, &[
             0.1, 0.2, 0.3,
             1.0, 0.2, 0.3,
             2.0, 0.2, 0.3,
             3.0, 0.2, 0.3,
-        ];
+        ]);
 
         // perform mv
         let (alpha, beta) = (0.5, 2.0);
@@ -324,19 +325,19 @@ mod tests {
         vec_approx_eq(&x, &[144.125, 30.3, 75.45], 1e-15);
 
         // check that a is unmodified
-        vec_approx_eq(&a, &[0.1, 0.2, 0.3, 1.0, 0.2, 0.3, 2.0, 0.2, 0.3, 3.0, 0.2, 0.3], 1e-15);
+        vec_approx_eq(&a, &[0.1, 1.0, 2.0, 3.0, 0.2, 0.2, 0.2, 0.2, 0.3, 0.3, 0.3, 0.3], 1e-15);
     }
 
     #[test]
     fn zgemv_works() {
         // allocate matrix
         #[rustfmt::skip]
-        let a = [
+        let a = col_major_complex(4, 3, &[
             Complex64::new(0.1, 3.0), Complex64::new(0.2, 0.0), Complex64::new(0.3, -0.3),
             Complex64::new(1.0, 2.0), Complex64::new(0.2, 0.0), Complex64::new(0.3, -0.4),
             Complex64::new(2.0, 1.0), Complex64::new(0.2, 0.0), Complex64::new(0.3, -0.5),
             Complex64::new(3.0, 0.1), Complex64::new(0.2, 0.0), Complex64::new(0.3, -0.6),
-        ];
+        ]);
         let a_clone = a.clone();
 
         // perform mv
@@ -406,13 +407,13 @@ mod tests {
     fn dgesv_works() -> Result<(), StrError> {
         // matrix
         #[rustfmt::skip]
-        let mut a = [
+        let mut a = col_major(5, 5, &[
             2.0,  3.0,  0.0, 0.0, 0.0,
             3.0,  0.0,  4.0, 0.0, 6.0,
             0.0, -1.0, -3.0, 2.0, 0.0,
             0.0,  0.0,  1.0, 0.0, 0.0,
             0.0,  4.0,  2.0, 0.0, 1.0,
-        ];
+        ]);
 
         // right-hand-side
         let mut b = vec![8.0, 45.0, -3.0, 3.0, 19.0];
@@ -465,13 +466,13 @@ mod tests {
     fn zgesv_works_1() -> Result<(), StrError> {
         // matrix
         #[rustfmt::skip]
-        let mut a = [
+        let mut a = col_major_complex(5, 5, &[
             Complex64::new(2.0, 0.0), Complex64::new( 3.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
             Complex64::new(3.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new( 4.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(6.0, 0.0),
             Complex64::new(0.0, 0.0), Complex64::new(-1.0, 0.0), Complex64::new(-3.0, 0.0), Complex64::new(2.0, 0.0), Complex64::new(0.0, 0.0),
             Complex64::new(0.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new( 1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
             Complex64::new(0.0, 0.0), Complex64::new( 4.0, 0.0), Complex64::new( 2.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0),
-        ];
+        ]);
 
         // right-hand-side
         let mut b = vec![
@@ -506,13 +507,13 @@ mod tests {
 
         // matrix
         #[rustfmt::skip]
-        let mut a = [
+        let mut a = col_major_complex(5, 5, &[
             Complex64::new(19.730,  0.000), Complex64::new(12.110, - 1.000), Complex64::new( 0.000, 5.000), Complex64::new( 0.000,  0.000), Complex64::new( 0.000, 0.000),
             Complex64::new( 0.000, -0.510), Complex64::new(32.300,   7.000), Complex64::new(23.070, 0.000), Complex64::new( 0.000,  1.000), Complex64::new( 0.000, 0.000),
             Complex64::new( 0.000,  0.000), Complex64::new( 0.000, - 0.510), Complex64::new(70.000, 7.300), Complex64::new( 3.950,  0.000), Complex64::new(19.000, 31.830),
             Complex64::new( 0.000,  0.000), Complex64::new( 0.000,   0.000), Complex64::new( 1.000, 1.100), Complex64::new(50.170,  0.000), Complex64::new(45.510, 0.000),
             Complex64::new( 0.000,  0.000), Complex64::new( 0.000,   0.000), Complex64::new( 0.000, 0.000), Complex64::new( 0.000, -9.351), Complex64::new(55.000, 0.000),
-        ];
+        ]);
 
         // right-hand-side
         let mut b = [

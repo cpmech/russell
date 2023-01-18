@@ -64,7 +64,7 @@ use russell_openblas::{dgesvd, to_i32};
 ///     for i in 0..m {
 ///         for j in 0..n {
 ///             for k in 0..min_mn {
-///                 usv[i][j] += u[i][k] * s[k] * vt[k][j];
+///                 usv.add(i, j, u.get(i, k) * s[k] * vt.get(k, j));
 ///             }
 ///         }
 ///     }
@@ -127,7 +127,7 @@ use russell_openblas::{dgesvd, to_i32};
 ///     for i in 0..m {
 ///         for j in 0..n {
 ///             for k in 0..min_mn {
-///                 usv[i][j] += u[i][k] * s[k] * vt[k][j];
+///                 usv.add(i, j, u.get(i, k) * s[k] * vt.get(k, j));
 ///             }
 ///         }
 ///     }
@@ -264,7 +264,7 @@ mod tests {
         for i in 0..m {
             for j in 0..n {
                 for k in 0..min_mn {
-                    usv[i][j] += u[i][k] * s[k] * vt[k][j];
+                    usv.add(i, j, u.get(i, k) * s[k] * vt.get(k, j));
                 }
             }
         }
@@ -320,7 +320,7 @@ mod tests {
         for i in 0..m {
             for j in 0..n {
                 for k in 0..min_mn {
-                    usv[i][j] += u[i][k] * s[k] * vt[k][j];
+                    usv.add(i, j, u.get(i, k) * s[k] * vt.get(k, j));
                 }
             }
         }

@@ -32,7 +32,7 @@ pub fn mat_sum_cols(v: &mut Vector, a: &Matrix) -> Result<(), StrError> {
     for i in 0..m {
         v[i] = 0.0;
         for j in 0..n {
-            v[i] += a[i][j];
+            v[i] += a.get(i, j);
         }
     }
     Ok(())

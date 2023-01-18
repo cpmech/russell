@@ -300,27 +300,27 @@ impl LinElasticity {
     fn calc_modulus(&mut self) {
         if self.plane_stress {
             let c = self.young / (1.0 - self.poisson * self.poisson);
-            self.dd.mat[0][0] = c;
-            self.dd.mat[0][1] = c * self.poisson;
-            self.dd.mat[1][0] = c * self.poisson;
-            self.dd.mat[1][1] = c;
-            self.dd.mat[3][3] = c * (1.0 - self.poisson); // Mandel: multiply by 2, so 1/2 disappears
+            self.dd.mat.set(0, 0, c);
+            self.dd.mat.set(0, 1, c * self.poisson);
+            self.dd.mat.set(1, 0, c * self.poisson);
+            self.dd.mat.set(1, 1, c);
+            self.dd.mat.set(3, 3, c * (1.0 - self.poisson)); // Mandel: multiply by 2, so 1/2 disappears
         } else {
             let c = self.young / ((1.0 + self.poisson) * (1.0 - 2.0 * self.poisson));
-            self.dd.mat[0][0] = c * (1.0 - self.poisson);
-            self.dd.mat[0][1] = c * self.poisson;
-            self.dd.mat[0][2] = c * self.poisson;
-            self.dd.mat[1][0] = c * self.poisson;
-            self.dd.mat[1][1] = c * (1.0 - self.poisson);
-            self.dd.mat[1][2] = c * self.poisson;
-            self.dd.mat[2][0] = c * self.poisson;
-            self.dd.mat[2][1] = c * self.poisson;
-            self.dd.mat[2][2] = c * (1.0 - self.poisson);
-            self.dd.mat[3][3] = c * (1.0 - 2.0 * self.poisson); // Mandel: multiply by 2, so 1/2 disappears
+            self.dd.mat.set(0, 0, c * (1.0 - self.poisson));
+            self.dd.mat.set(0, 1, c * self.poisson);
+            self.dd.mat.set(0, 2, c * self.poisson);
+            self.dd.mat.set(1, 0, c * self.poisson);
+            self.dd.mat.set(1, 1, c * (1.0 - self.poisson));
+            self.dd.mat.set(1, 2, c * self.poisson);
+            self.dd.mat.set(2, 0, c * self.poisson);
+            self.dd.mat.set(2, 1, c * self.poisson);
+            self.dd.mat.set(2, 2, c * (1.0 - self.poisson));
+            self.dd.mat.set(3, 3, c * (1.0 - 2.0 * self.poisson)); // Mandel: multiply by 2, so 1/2 disappears
         }
         if self.dd.mat.dims().0 > 4 {
-            self.dd.mat[4][4] = self.dd.mat[3][3];
-            self.dd.mat[5][5] = self.dd.mat[3][3];
+            self.dd.mat.set(4, 4, self.dd.mat.get(3, 3));
+            self.dd.mat.set(5, 5, self.dd.mat.get(3, 3));
         }
     }
 }
@@ -378,14 +378,14 @@ mod tests {
     fn set_young_poisson_works() {
         let mut ela = LinElasticity::new(3000.0, 0.2, false, true);
         ela.set_young_poisson(6000.0, 0.2);
-        assert_eq!(ela.dd.mat[0][0], 6250.0);
+        assert_eq!(ela.dd.mat.get(0, 0), 6250.0);
     }
 
     #[test]
     fn get_modulus_works() {
         let ela = LinElasticity::new(3000.0, 0.2, false, true);
         let dd = ela.get_modulus();
-        assert_eq!(dd.mat[0][0], 3125.0);
+        assert_eq!(dd.mat.get(0, 0), 3125.0);
     }
 
     #[test]

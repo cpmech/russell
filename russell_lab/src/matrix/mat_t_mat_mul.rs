@@ -41,6 +41,9 @@ pub fn mat_t_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) -> Resu
     if a.ncol() != m || b.nrow() != k || b.ncol() != n {
         return Err("matrices are incompatible");
     }
+    if m == 0 || n == 0 {
+        return Ok(());
+    }
     let m_i32: i32 = to_i32(m);
     let n_i32: i32 = to_i32(n);
     let k_i32: i32 = to_i32(k);
@@ -85,6 +88,14 @@ mod tests {
             mat_t_mat_mul(&mut c_2x2, 1.0, &a_2x1, &b_1x3),
             Err("matrices are incompatible")
         );
+    }
+
+    #[test]
+    fn mat_t_mat_mul_0x0_works() {
+        let a = Matrix::new(0, 0);
+        let b = Matrix::new(0, 0);
+        let mut c = Matrix::new(0, 0);
+        mat_t_mat_mul(&mut c, 2.0, &a, &b).unwrap();
     }
 
     #[test]

@@ -65,31 +65,31 @@ fn main() {
 
 ```rust
 use russell_chk::vec_approx_eq;
-use russell_openblas::dgemm;
+use russell_openblas::{col_major, dgemm};
 
 fn main() {
     // 0.5⋅a⋅b + 2⋅c
 
     // allocate matrices
-    let a = [ // (m, k) = (4, 5)
+    let a = col_major(4, 5, &[ // (m, k) = (4, 5)
         1.0, 2.0,  0.0, 1.0, -1.0,
         2.0, 3.0, -1.0, 1.0,  1.0,
         1.0, 2.0,  0.0, 4.0, -1.0,
         4.0, 0.0,  3.0, 1.0,  1.0,
-    ];
-    let b = [ // (k, n) = (5, 3)
+    ]);
+    let b = col_major(5, 3, &[ // (k, n) = (5, 3)
         1.0, 0.0, 0.0,
         0.0, 0.0, 3.0,
         0.0, 0.0, 1.0,
         1.0, 0.0, 1.0,
         0.0, 2.0, 0.0,
-    ];
-    let mut c = [ // (m, n) = (4, 3)
+    ]);
+    let mut c = col_major(4, 3, &[ // (m, n) = (4, 3)
           0.50, 0.0,  0.25,
           0.25, 0.0, -0.25,
         -0.25, 0.0,  0.00,
         -0.25, 0.0,  0.00,
-    ];
+    ]);
 
     // sizes
     let m = 4; // m = nrow(a) = a.M = nrow(c)
@@ -102,13 +102,13 @@ fn main() {
     dgemm(trans_a, trans_b, m, n, k, alpha, &a, &b, beta, &mut c);
 
     // check
-    let correct = &[
+    let correct = col_major(4, 3, &[
         2.0, -1.0, 4.0,
         2.0,  1.0, 4.0,
         2.0, -1.0, 5.0,
         2.0,  1.0, 2.0,
-    ];
-    vec_approx_eq(&c, correct, 1e-15);
+    ]);
+    vec_approx_eq(&c, &correct, 1e-15);
 }
 ```
 
@@ -116,17 +116,17 @@ fn main() {
 
 ```rust
 use russell_chk::vec_approx_eq;
-use russell_openblas::{dgesv, StrError};
+use russell_openblas::{col_major, dgesv, StrError};
 
 fn main() -> Result<(), StrError> {
     // matrix
-    let mut a = [
+    let mut a = col_major(5, 5, &[
         2.0,  3.0,  0.0, 0.0, 0.0,
         3.0,  0.0,  4.0, 0.0, 6.0,
         0.0, -1.0, -3.0, 2.0, 0.0,
         0.0,  0.0,  1.0, 0.0, 0.0,
         0.0,  4.0,  2.0, 0.0, 1.0,
-    ];
+    ]);
 
     // right-hand-side
     let mut b = vec![8.0, 45.0, -3.0, 3.0, 19.0];
@@ -142,3 +142,26 @@ fn main() -> Result<(), StrError> {
     Ok(())
 }
 ```
+
+## On the column-major representation
+
+Only the COL-MAJOR representation is considered here.
+
+```text
+    ┌     ┐  row_major = {0, 3,
+    │ 0 3 │               1, 4,
+A = │ 1 4 │               2, 5};
+    │ 2 5 │
+    └     ┘  col_major = {0, 1, 2,
+    (m × n)               3, 4, 5}
+
+Aᵢⱼ = col_major[i + j·m] = row_major[i·n + j]
+        ↑
+COL-MAJOR IS ADOPTED HERE
+```
+
+The main reason to use the **col-major** representation is to make the code work
+better with BLAS/LAPACK written in Fortran. Although those libraries have functions
+to handle row-major data, they usually add an overhead due to temporary memory
+allocation and copies, including transposing matrices. Moreover, the row-major
+versions of some BLAS/LAPACK libraries produce incorrect results (notably the DSYEV).

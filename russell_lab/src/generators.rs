@@ -56,8 +56,8 @@ pub fn generate2d(xmin: f64, xmax: f64, ymin: f64, ymax: f64, nx: usize, ny: usi
         let v = ymin + (i as f64) * dy;
         for j in 0..nx {
             let u = xmin + (j as f64) * dx;
-            x[i][j] = u;
-            y[i][j] = v;
+            x.set(i, j, u);
+            y.set(i, j, v);
         }
     }
     (x, y)
@@ -140,9 +140,9 @@ where
         let v = ymin + (i as f64) * dy;
         for j in 0..nx {
             let u = xmin + (j as f64) * dx;
-            x[i][j] = u;
-            y[i][j] = v;
-            z[i][j] = calc_z(u, v);
+            x.set(i, j, u);
+            y.set(i, j, v);
+            z.set(i, j, calc_z(u, v));
         }
     }
     (x, y, z)
@@ -153,6 +153,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::{generate2d, generate3d};
+    use russell_openblas::col_major;
 
     #[test]
     fn generate2d_edge_cases_work() {
@@ -198,8 +199,8 @@ mod tests {
         let (x, y) = generate2d(-1.0, 1.0, -3.0, 3.0, 2, 3);
         assert_eq!(x.dims(), (3, 2));
         assert_eq!(y.dims(), (3, 2));
-        assert_eq!(x.as_data(), &[-1.0, 1.0, -1.0, 1.0, -1.0, 1.0]);
-        assert_eq!(y.as_data(), &[-3.0, -3.0, 0.0, 0.0, 3.0, 3.0]);
+        assert_eq!(x.as_data(), &col_major(3, 2, &[-1.0, 1.0, -1.0, 1.0, -1.0, 1.0]));
+        assert_eq!(y.as_data(), &col_major(3, 2, &[-3.0, -3.0, 0.0, 0.0, 3.0, 3.0]));
     }
 
     fn calc_z(x: f64, y: f64) -> f64 {
@@ -263,8 +264,8 @@ mod tests {
         assert_eq!(x.dims(), (3, 2));
         assert_eq!(y.dims(), (3, 2));
         assert_eq!(z.dims(), (3, 2));
-        assert_eq!(x.as_data(), &[-1.0, 1.0, -1.0, 1.0, -1.0, 1.0]);
-        assert_eq!(y.as_data(), &[-3.0, -3.0, 0.0, 0.0, 3.0, 3.0]);
-        assert_eq!(z.as_data(), &[-4.0, -2.0, -1.0, 1.0, 2.0, 4.0]);
+        assert_eq!(x.as_data(), &col_major(3, 2, &[-1.0, 1.0, -1.0, 1.0, -1.0, 1.0]));
+        assert_eq!(y.as_data(), &col_major(3, 2, &[-3.0, -3.0, 0.0, 0.0, 3.0, 3.0]));
+        assert_eq!(z.as_data(), &col_major(3, 2, &[-4.0, -2.0, -1.0, 1.0, 2.0, 4.0]));
     }
 }

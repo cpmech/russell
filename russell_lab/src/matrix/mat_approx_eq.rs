@@ -18,7 +18,7 @@ where
     }
     for i in 0..m {
         for j in 0..n {
-            let diff = f64::abs(a[i][j] - b.at(i, j));
+            let diff = f64::abs(a.get(i, j) - b.at(i, j));
             if diff > tol {
                 panic!(
                     "matrices are not approximately equal. @ ({},{}) diff = {:?}",

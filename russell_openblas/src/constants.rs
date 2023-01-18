@@ -1,7 +1,10 @@
-pub(crate) const CBLAS_ROW_MAJOR: i32 = 101;
+// from /usr/include/x86_64-linux-gnu/cblas.h
+// from /usr/include/lapacke.h
+
+pub(crate) const LAPACK_COL_MAJOR: i32 = 102;
+pub(crate) const CBLAS_COL_MAJOR: i32 = 102;
 pub(crate) const CBLAS_NO_TRANS: i32 = 111;
 pub(crate) const CBLAS_TRANS: i32 = 112;
-pub(crate) const LAPACK_ROW_MAJOR: i32 = 101;
 pub(crate) const CBLAS_UPPER: i32 = 121;
 pub(crate) const CBLAS_LOWER: i32 = 122;
 

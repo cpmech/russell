@@ -43,7 +43,7 @@ pub fn mat_max_abs_diff(a: &Matrix, b: &Matrix) -> Result<(usize, usize, f64), S
     let (mut i_found, mut j_found, mut max_abs_diff) = (0, 0, 0.0);
     for i in 0..m {
         for j in 0..n {
-            let abs_diff = f64::abs(a[i][j] - b[i][j]);
+            let abs_diff = f64::abs(a.get(i, j) - b.get(i, j));
             if abs_diff > max_abs_diff {
                 i_found = i;
                 j_found = j;

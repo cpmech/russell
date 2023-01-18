@@ -1,4 +1,4 @@
-use super::{cblas_transpose, cblas_uplo, lapack_job_vlr, lapack_uplo, CBLAS_ROW_MAJOR, LAPACK_ROW_MAJOR};
+use super::{cblas_transpose, cblas_uplo, lapack_job_vlr, lapack_uplo, CBLAS_COL_MAJOR, LAPACK_COL_MAJOR};
 use crate::StrError;
 use num_complex::Complex64;
 
@@ -61,7 +61,7 @@ extern "C" {
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -80,11 +80,11 @@ pub fn dgemm(
     beta: f64,
     c: &mut [f64],
 ) {
-    let lda = if trans_a { m } else { k };
-    let ldb = if trans_b { k } else { n };
+    let lda = if trans_a { k } else { m };
+    let ldb = if trans_b { n } else { k };
     unsafe {
         cblas_dgemm(
-            CBLAS_ROW_MAJOR,
+            CBLAS_COL_MAJOR,
             cblas_transpose(trans_a),
             cblas_transpose(trans_b),
             m,
@@ -97,7 +97,7 @@ pub fn dgemm(
             ldb,
             beta,
             c.as_mut_ptr(),
-            n,
+            m,
         );
     }
 }
@@ -139,7 +139,7 @@ pub fn dgemm(
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -158,11 +158,11 @@ pub fn zgemm(
     beta: Complex64,
     c: &mut [Complex64],
 ) {
-    let lda = if trans_a { m } else { k };
-    let ldb = if trans_b { k } else { n };
+    let lda = if trans_a { k } else { m };
+    let ldb = if trans_b { n } else { k };
     unsafe {
         cblas_zgemm(
-            CBLAS_ROW_MAJOR,
+            CBLAS_COL_MAJOR,
             cblas_transpose(trans_a),
             cblas_transpose(trans_b),
             m,
@@ -175,7 +175,7 @@ pub fn zgemm(
             ldb,
             &beta,
             c.as_mut_ptr(),
-            n,
+            m,
         );
     }
 }
@@ -196,7 +196,7 @@ pub fn zgemm(
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -204,10 +204,10 @@ pub fn zgemm(
 ///
 #[inline]
 pub fn dsyrk(up: bool, trans: bool, n: i32, k: i32, alpha: f64, a: &[f64], beta: f64, c: &mut [f64]) {
-    let lda = if trans { n } else { k };
+    let lda = if trans { k } else { n };
     unsafe {
         cblas_dsyrk(
-            CBLAS_ROW_MAJOR,
+            CBLAS_COL_MAJOR,
             cblas_uplo(up),
             cblas_transpose(trans),
             n,
@@ -238,7 +238,7 @@ pub fn dsyrk(up: bool, trans: bool, n: i32, k: i32, alpha: f64, a: &[f64], beta:
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -255,10 +255,10 @@ pub fn zsyrk(
     beta: Complex64,
     c: &mut [Complex64],
 ) {
-    let lda = if trans { n } else { k };
+    let lda = if trans { k } else { n };
     unsafe {
         cblas_zsyrk(
-            CBLAS_ROW_MAJOR,
+            CBLAS_COL_MAJOR,
             cblas_uplo(up),
             cblas_transpose(trans),
             n,
@@ -289,7 +289,7 @@ pub fn zsyrk(
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -297,10 +297,10 @@ pub fn zsyrk(
 ///
 #[inline]
 pub fn zherk(up: bool, trans: bool, n: i32, k: i32, alpha: f64, a: &[Complex64], beta: f64, c: &mut [Complex64]) {
-    let lda = if trans { n } else { k };
+    let lda = if trans { k } else { n };
     unsafe {
         cblas_zherk(
-            CBLAS_ROW_MAJOR,
+            CBLAS_COL_MAJOR,
             cblas_uplo(up),
             cblas_transpose(trans),
             n,
@@ -338,7 +338,7 @@ pub fn zherk(up: bool, trans: bool, n: i32, k: i32, alpha: f64, a: &[Complex64],
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -346,7 +346,7 @@ pub fn zherk(up: bool, trans: bool, n: i32, k: i32, alpha: f64, a: &[Complex64],
 ///
 #[inline]
 pub fn dlange(norm: u8, m: i32, n: i32, a: &[f64]) -> f64 {
-    unsafe { LAPACKE_dlange(LAPACK_ROW_MAJOR, norm, m, n, a.as_ptr(), n) }
+    unsafe { LAPACKE_dlange(LAPACK_COL_MAJOR, norm, m, n, a.as_ptr(), n) }
 }
 
 /// Computes the matrix norm (complex version)
@@ -372,7 +372,7 @@ pub fn dlange(norm: u8, m: i32, n: i32, a: &[f64]) -> f64 {
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -380,7 +380,7 @@ pub fn dlange(norm: u8, m: i32, n: i32, a: &[f64]) -> f64 {
 ///
 #[inline]
 pub fn zlange(norm: u8, m: i32, n: i32, a: &[Complex64]) -> f64 {
-    unsafe { LAPACKE_zlange(LAPACK_ROW_MAJOR, norm, m, n, a.as_ptr(), n) }
+    unsafe { LAPACKE_zlange(LAPACK_COL_MAJOR, norm, m, n, a.as_ptr(), n) }
 }
 
 /// Computes the singular value decomposition (SVD)
@@ -409,7 +409,7 @@ pub fn zlange(norm: u8, m: i32, n: i32, a: &[Complex64]) -> f64 {
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -429,13 +429,13 @@ pub fn dgesvd(
 ) -> Result<(), StrError> {
     unsafe {
         let info = LAPACKE_dgesvd(
-            LAPACK_ROW_MAJOR,
+            LAPACK_COL_MAJOR,
             jobu,
             jobvt,
             m,
             n,
             a.as_mut_ptr(),
-            n,
+            m,
             s.as_mut_ptr(),
             u.as_mut_ptr(),
             m,
@@ -476,7 +476,7 @@ pub fn dgesvd(
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -496,13 +496,13 @@ pub fn zgesvd(
 ) -> Result<(), StrError> {
     unsafe {
         let info = LAPACKE_zgesvd(
-            LAPACK_ROW_MAJOR,
+            LAPACK_COL_MAJOR,
             jobu,
             jobvt,
             m,
             n,
             a.as_mut_ptr(),
-            n,
+            m,
             s.as_mut_ptr(),
             u.as_mut_ptr(),
             m,
@@ -522,7 +522,7 @@ pub fn zgesvd(
 /// The factorization has the form:
 ///
 /// ```text
-/// A  =  P ⋅ L ⋅ U
+/// A = P ⋅ L ⋅ U
 /// ```
 ///
 /// where P is a permutation matrix, L is lower triangular with unit
@@ -532,12 +532,12 @@ pub fn zgesvd(
 /// # Note
 ///
 /// 1. matrix `a` will be modified
-/// 2. ipiv indices are 1-based (i.e. Fortran)
+/// 2. ipiv indices are 1-based (i.e. Fortran). **size = min(m, n)**
 /// 3. See **dgetri** to use the factorization in finding the inverse matrix
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -546,7 +546,7 @@ pub fn zgesvd(
 #[inline]
 pub fn dgetrf(m: i32, n: i32, a: &mut [f64], ipiv: &mut [i32]) -> Result<(), StrError> {
     unsafe {
-        let info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, m, n, a.as_mut_ptr(), n, ipiv.as_mut_ptr());
+        let info = LAPACKE_dgetrf(LAPACK_COL_MAJOR, m, n, a.as_mut_ptr(), m, ipiv.as_mut_ptr());
         if info != 0_i32 {
             return Err("LAPACK dgetrf failed");
         }
@@ -574,7 +574,7 @@ pub fn dgetrf(m: i32, n: i32, a: &mut [f64], ipiv: &mut [i32]) -> Result<(), Str
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -583,7 +583,7 @@ pub fn dgetrf(m: i32, n: i32, a: &mut [f64], ipiv: &mut [i32]) -> Result<(), Str
 #[inline]
 pub fn zgetrf(m: i32, n: i32, a: &mut [Complex64], ipiv: &mut [i32]) -> Result<(), StrError> {
     unsafe {
-        let info = LAPACKE_zgetrf(LAPACK_ROW_MAJOR, m, n, a.as_mut_ptr(), n, ipiv.as_mut_ptr());
+        let info = LAPACKE_zgetrf(LAPACK_COL_MAJOR, m, n, a.as_mut_ptr(), n, ipiv.as_mut_ptr());
         if info != 0_i32 {
             return Err("LAPACK zgetrf failed");
         }
@@ -605,7 +605,7 @@ pub fn zgetrf(m: i32, n: i32, a: &mut [Complex64], ipiv: &mut [i32]) -> Result<(
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -614,7 +614,7 @@ pub fn zgetrf(m: i32, n: i32, a: &mut [Complex64], ipiv: &mut [i32]) -> Result<(
 #[inline]
 pub fn dgetri(n: i32, a: &mut [f64], ipiv: &[i32]) -> Result<(), StrError> {
     unsafe {
-        let info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, n, a.as_mut_ptr(), n, ipiv.as_ptr());
+        let info = LAPACKE_dgetri(LAPACK_COL_MAJOR, n, a.as_mut_ptr(), n, ipiv.as_ptr());
         if info != 0_i32 {
             return Err("LAPACK dgetri failed");
         }
@@ -636,7 +636,7 @@ pub fn dgetri(n: i32, a: &mut [f64], ipiv: &[i32]) -> Result<(), StrError> {
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -645,7 +645,7 @@ pub fn dgetri(n: i32, a: &mut [f64], ipiv: &[i32]) -> Result<(), StrError> {
 #[inline]
 pub fn zgetri(n: i32, a: &mut [Complex64], ipiv: &[i32]) -> Result<(), StrError> {
     unsafe {
-        let info = LAPACKE_zgetri(LAPACK_ROW_MAJOR, n, a.as_mut_ptr(), n, ipiv.as_ptr());
+        let info = LAPACKE_zgetri(LAPACK_COL_MAJOR, n, a.as_mut_ptr(), n, ipiv.as_ptr());
         if info != 0_i32 {
             return Err("LAPACK zgetri failed");
         }
@@ -673,7 +673,7 @@ pub fn zgetri(n: i32, a: &mut [Complex64], ipiv: &[i32]) -> Result<(), StrError>
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -682,7 +682,7 @@ pub fn zgetri(n: i32, a: &mut [Complex64], ipiv: &[i32]) -> Result<(), StrError>
 #[inline]
 pub fn dpotrf(up: bool, n: i32, a: &mut [f64]) -> Result<(), StrError> {
     unsafe {
-        let info = LAPACKE_dpotrf(LAPACK_ROW_MAJOR, lapack_uplo(up), n, a.as_mut_ptr(), n);
+        let info = LAPACKE_dpotrf(LAPACK_COL_MAJOR, lapack_uplo(up), n, a.as_mut_ptr(), n);
         if info != 0_i32 {
             return Err("LAPACK dpotrf failed");
         }
@@ -710,7 +710,7 @@ pub fn dpotrf(up: bool, n: i32, a: &mut [f64]) -> Result<(), StrError> {
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -719,7 +719,7 @@ pub fn dpotrf(up: bool, n: i32, a: &mut [f64]) -> Result<(), StrError> {
 #[inline]
 pub fn zpotrf(up: bool, n: i32, a: &mut [Complex64]) -> Result<(), StrError> {
     unsafe {
-        let info = LAPACKE_zpotrf(LAPACK_ROW_MAJOR, lapack_uplo(up), n, a.as_mut_ptr(), n);
+        let info = LAPACKE_zpotrf(LAPACK_COL_MAJOR, lapack_uplo(up), n, a.as_mut_ptr(), n);
         if info != 0_i32 {
             return Err("LAPACK zpotrf failed");
         }
@@ -756,7 +756,7 @@ pub fn zpotrf(up: bool, n: i32, a: &mut [Complex64]) -> Result<(), StrError> {
 ///
 /// # Important
 ///
-/// * The data must be in **row-major** order
+/// * The data must be in **col-major** order
 ///
 /// # Reference
 ///
@@ -773,9 +773,11 @@ pub fn dgeev(
     vl: &mut [f64],
     vr: &mut [f64],
 ) -> Result<(), StrError> {
+    let ldvl = if calc_vl { n } else { 1 };
+    let ldvr = if calc_vr { n } else { 1 };
     unsafe {
         let info = LAPACKE_dgeev(
-            LAPACK_ROW_MAJOR,
+            LAPACK_COL_MAJOR,
             lapack_job_vlr(calc_vl),
             lapack_job_vlr(calc_vr),
             n,
@@ -784,9 +786,9 @@ pub fn dgeev(
             wr.as_mut_ptr(),
             wi.as_mut_ptr(),
             vl.as_mut_ptr(),
-            n, // should be 1 if !calc_vl; but lapack works differently in row-major
+            ldvl,
             vr.as_mut_ptr(),
-            n, // should be 1 if !calc_vr; but lapack works differently in row-major
+            ldvr,
         );
         if info != 0_i32 {
             return Err("LAPACK dgeev failed");
@@ -803,7 +805,7 @@ mod tests {
         dgeev, dgemm, dgesvd, dgetrf, dgetri, dlange, dpotrf, dsyrk, zgemm, zgesvd, zgetrf, zgetri, zherk, zlange,
         zpotrf, zsyrk,
     };
-    use crate::conversions::{dgeev_data, dgeev_data_lr};
+    use crate::conversions::{col_major, col_major_complex, dgeev_data, dgeev_data_lr};
     use crate::{to_i32, StrError};
     use num_complex::{Complex64, ComplexFloat};
     use russell_chk::{approx_eq, complex_approx_eq, complex_vec_approx_eq, vec_approx_eq};
@@ -814,27 +816,27 @@ mod tests {
 
         // allocate matrices
         #[rustfmt::skip]
-        let a = [ // (m, k) = (4, 5)
+        let a = col_major(4, 5, &[ // (m, k) = (4, 5)
             1.0, 2.0,  0.0, 1.0, -1.0,
             2.0, 3.0, -1.0, 1.0,  1.0,
             1.0, 2.0,  0.0, 4.0, -1.0,
             4.0, 0.0,  3.0, 1.0,  1.0,
-        ];
+        ]);
         #[rustfmt::skip]
-        let b = [ // (k, n) = (5, 3)
+        let b = col_major(5, 3, &[ // (k, n) = (5, 3)
             1.0, 0.0, 0.0,
             0.0, 0.0, 3.0,
             0.0, 0.0, 1.0,
             1.0, 0.0, 1.0,
             0.0, 2.0, 0.0,
-        ];
+        ]);
         #[rustfmt::skip]
-        let mut c = [ // (m, n) = (4, 3)
+        let mut c = col_major(4, 3, &[ // (m, n) = (4, 3)
              0.50, 0.0,  0.25,
              0.25, 0.0, -0.25,
             -0.25, 0.0,  0.00,
             -0.25, 0.0,  0.00,
-        ];
+        ]);
 
         // sizes
         let m = 4; // m = nrow(a) = a.M = nrow(c)
@@ -848,13 +850,13 @@ mod tests {
 
         // check
         #[rustfmt::skip]
-        let correct = &[
+        let correct = col_major(4, 3, &[
             2.0, -1.0, 4.0,
             2.0,  1.0, 4.0,
             2.0, -1.0, 5.0,
             2.0,  1.0, 2.0,
-        ];
-        vec_approx_eq(&c, correct, 1e-15);
+        ]);
+        vec_approx_eq(&c, &correct, 1e-15);
     }
 
     #[test]
@@ -863,25 +865,25 @@ mod tests {
 
         // allocate matrices
         #[rustfmt::skip]
-        let a = [ // (m, k) = (4, 5)
+        let a = col_major(4, 5, &[ // (m, k) = (4, 5)
             1.0, 2.0,  0.0, 1.0, -1.0,
             2.0, 3.0, -1.0, 1.0,  1.0,
             1.0, 2.0,  0.0, 4.0, -1.0,
             4.0, 0.0,  3.0, 1.0,  1.0,
-        ];
+        ]);
         #[rustfmt::skip]
-        let b = [ // (n, k) = (3, 5)
+        let b = col_major(3, 5, &[ // (n, k) = (3, 5)
             1.0, 0.0, 0.0, 1.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 2.0,
             0.0, 3.0, 1.0, 1.0, 0.0,
-        ];
+        ]);
         #[rustfmt::skip]
-        let mut c = [ // (m, n) = (4, 3)
+        let mut c = col_major(4, 3, &[ // (m, n) = (4, 3)
              0.50, 0.0,  0.25,
              0.25, 0.0, -0.25,
             -0.25, 0.0,  0.00,
             -0.25, 0.0,  0.00,
-        ];
+        ]);
 
         // sizes
         let m = 4; // m = nrow(a)        = a.M = nrow(c)
@@ -895,13 +897,13 @@ mod tests {
 
         // check
         #[rustfmt::skip]
-        let correct = &[
+        let correct = col_major(4, 3, &[
             2.0, -1.0, 4.0,
             2.0,  1.0, 4.0,
             2.0, -1.0, 5.0,
             2.0,  1.0, 2.0,
-        ];
-        vec_approx_eq(&c, correct, 1e-15);
+        ]);
+        vec_approx_eq(&c, &correct, 1e-15);
     }
 
     #[test]
@@ -910,28 +912,28 @@ mod tests {
 
         // allocate matrices
         #[rustfmt::skip]
-        let a = [ // (k, m) = (5, 4)
+        let a = col_major(5, 4, &[ // (k, m) = (5, 4)
              1.0,  2.0,  1.0, 4.0,
              2.0,  3.0,  2.0, 0.0,
              0.0, -1.0,  0.0, 3.0,
              1.0,  1.0,  4.0, 1.0,
             -1.0,  1.0, -1.0, 1.0,
-        ];
+        ]);
         #[rustfmt::skip]
-        let b = [ // (k, n) = (5, 3)
+        let b = col_major(5, 3, &[ // (k, n) = (5, 3)
             1.0, 0.0, 0.0,
             0.0, 0.0, 3.0,
             0.0, 0.0, 1.0,
             1.0, 0.0, 1.0,
             0.0, 2.0, 0.0,
-        ];
+        ]);
         #[rustfmt::skip]
-        let mut c = [ // (m, n) = (4, 3)
+        let mut c = col_major(4, 3, &[ // (m, n) = (4, 3)
              0.50, 0.0,  0.25,
              0.25, 0.0, -0.25,
             -0.25, 0.0,  0.00,
             -0.25, 0.0,  0.00,
-        ];
+        ]);
 
         // sizes
         let m = 4; // m = nrow(trans(a)) = a.N = nrow(c)
@@ -945,13 +947,13 @@ mod tests {
 
         // check
         #[rustfmt::skip]
-        let correct = &[
+        let correct = col_major(4, 3, &[
             2.0, -1.0, 4.0,
             2.0,  1.0, 4.0,
             2.0, -1.0, 5.0,
             2.0,  1.0, 2.0,
-        ];
-        vec_approx_eq(&c, correct, 1e-15);
+        ]);
+        vec_approx_eq(&c, &correct, 1e-15);
     }
 
     #[test]
@@ -960,26 +962,26 @@ mod tests {
 
         // allocate matrices
         #[rustfmt::skip]
-        let a = [ // (k, m) = (5, 4)
+        let a = col_major(5, 4, &[ // (k, m) = (5, 4)
              1.0,  2.0,  1.0, 4.0,
              2.0,  3.0,  2.0, 0.0,
              0.0, -1.0,  0.0, 3.0,
              1.0,  1.0,  4.0, 1.0,
             -1.0,  1.0, -1.0, 1.0,
-        ];
+        ]);
         #[rustfmt::skip]
-        let b = [ // (n, k) = (3, 5)
+        let b = col_major(3, 5, &[ // (n, k) = (3, 5)
             1.0, 0.0, 0.0, 1.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 2.0,
             0.0, 3.0, 1.0, 1.0, 0.0,
-        ];
+        ]);
         #[rustfmt::skip]
-        let mut c = [ // (m, n) = (4, 3)
+        let mut c = col_major(4, 3, &[ // (m, n) = (4, 3)
              0.50, 0.0,  0.25,
              0.25, 0.0, -0.25,
             -0.25, 0.0,  0.00,
             -0.25, 0.0,  0.00,
-        ];
+        ]);
 
         // sizes
         let m = 4; // m = nrow(trans(a)) = a.N = nrow(c)
@@ -993,13 +995,13 @@ mod tests {
 
         // check
         #[rustfmt::skip]
-        let correct = &[
+        let correct = col_major(4, 3, &[
             2.0, -1.0, 4.0,
             2.0,  1.0, 4.0,
             2.0, -1.0, 5.0,
             2.0,  1.0, 2.0,
-        ];
-        vec_approx_eq(&c, correct, 1e-15);
+        ]);
+        vec_approx_eq(&c, &correct, 1e-15);
     }
 
     #[test]
@@ -1008,27 +1010,27 @@ mod tests {
 
         // allocate matrices
         #[rustfmt::skip]
-        let a = [
+        let a = col_major_complex(4, 5, &[
         	Complex64::new(1.0, 0.0), Complex64::new(2.0, 0.0), Complex64::new( 0.0,  1.0), Complex64::new(1.0, 0.0), Complex64::new(-1.0, 0.0),
         	Complex64::new(2.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new(-1.0, -1.0), Complex64::new(1.0, 0.0), Complex64::new( 1.0, 0.0),
         	Complex64::new(1.0, 0.0), Complex64::new(2.0, 0.0), Complex64::new( 0.0,  1.0), Complex64::new(4.0, 0.0), Complex64::new(-1.0, 0.0),
         	Complex64::new(4.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new( 3.0, -1.0), Complex64::new(1.0, 0.0), Complex64::new( 1.0, 0.0),
-        ];
+        ]);
         #[rustfmt::skip]
-        let b = [
+        let b = col_major_complex(5, 3, &[
         	Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0,  1.0),
         	Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(3.0, -1.0),
         	Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0,  1.0),
         	Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, -1.0),
         	Complex64::new(0.0, 0.0), Complex64::new(2.0, 0.0), Complex64::new(0.0,  1.0),
-        ];
+        ]);
         #[rustfmt::skip]
-        let mut c = [
+        let mut c = col_major_complex(4, 3, &[
         	Complex64::new( 0.50, 0.0), Complex64::new(0.0, 1.0), Complex64::new( 0.25, 0.0),
         	Complex64::new( 0.25, 0.0), Complex64::new(0.0, 1.0), Complex64::new(-0.25, 0.0),
         	Complex64::new(-0.25, 0.0), Complex64::new(0.0, 1.0), Complex64::new( 0.00, 0.0),
         	Complex64::new(-0.25, 0.0), Complex64::new(0.0, 1.0), Complex64::new( 0.00, 0.0),
-        ];
+        ]);
 
         // sizes
         let m = 4; // m = nrow(a) = a.M = nrow(c)
@@ -1042,44 +1044,44 @@ mod tests {
 
         // check
         #[rustfmt::skip]
-        let correct = &[
+        let correct = &col_major_complex(4, 3, &[
         	Complex64::new(2.0, -6.0), Complex64::new(3.0,  6.0), Complex64::new(-0.5, -14.0),
         	Complex64::new(2.0, -7.0), Complex64::new(5.0, -2.0), Complex64::new(-1.5, -20.5),
         	Complex64::new(2.0, -9.0), Complex64::new(3.0,  6.0), Complex64::new(-5.5, -20.5),
         	Complex64::new(2.0, -9.0), Complex64::new(5.0, -2.0), Complex64::new(14.5, -7.0),
-        ];
-        complex_vec_approx_eq(&c, correct, 1e-15);
+        ]);
+        complex_vec_approx_eq(&c, &correct, 1e-15);
     }
 
     #[test]
     fn dsyrk_works() {
         // matrix c
         #[rustfmt::skip]
-        let mut c_up = [
+        let mut c_up = col_major(4, 4, &[
             3.0,  0.0, -3.0,  0.0,
             0.0,  3.0,  1.0,  2.0,
             0.0,  0.0,  4.0,  1.0,
             0.0,  0.0,  0.0,  3.0,
-        ];
+        ]);
         #[rustfmt::skip]
-        let mut c_lo = [
+        let mut c_lo = col_major(4, 4, &[
              3.0,  0.0,  0.0,  0.0,
              0.0,  3.0,  0.0,  0.0,
             -3.0,  1.0,  4.0,  0.0,
              0.0,  2.0,  1.0,  3.0,
-        ];
+        ]);
 
         // n-size
         let n = 4_i32; // =c.ncol
 
         // matrix a
         #[rustfmt::skip]
-        let a = [
+        let a = col_major(4, 6, &[
             1.0,  2.0,  1.0,  1.0, -1.0,  0.0,
             2.0,  2.0,  1.0,  0.0,  0.0,  0.0,
             3.0,  1.0,  3.0,  1.0,  2.0, -1.0,
             1.0,  0.0,  1.0, -1.0,  0.0,  0.0,
-        ];
+        ]);
 
         // k-size
         let k = 6_i32; // =a.ncol
@@ -1093,57 +1095,57 @@ mod tests {
 
         // check results: c := up(3⋅a⋅aᵀ - c)
         #[rustfmt::skip]
-        let c_up_correct = &[
+        let c_up_correct = col_major(4, 4, &[
             21.0, 21.0, 24.0,  3.0,
              0.0, 24.0, 32.0,  7.0,
              0.0,  0.0, 71.0, 14.0,
              0.0,  0.0,  0.0,  6.0,
-        ];
-        vec_approx_eq(&c_up, c_up_correct, 1e-15);
+        ]);
+        vec_approx_eq(&c_up, &c_up_correct, 1e-15);
 
         // run dsyrk with lo part of matrix c
         dsyrk(false, trans, n, k, alpha, &a, beta, &mut c_lo);
 
         // check results: c := lo(3⋅a⋅aᵀ - c)
         #[rustfmt::skip]
-        let c_lo_correct = &[
+        let c_lo_correct = col_major(4, 4, &[
             21.0,  0.0,  0.0,  0.0,
             21.0, 24.0,  0.0,  0.0,
             24.0, 32.0, 71.0,  0.0,
              3.0,  7.0, 14.0,  6.0,
-        ];
-        vec_approx_eq(&c_lo, c_lo_correct, 1e-15);
+        ]);
+        vec_approx_eq(&c_lo, &c_lo_correct, 1e-15);
     }
 
     #[test]
     fn zsyrk_works() {
         // matrix c
         #[rustfmt::skip]
-        let mut c_up = [
+        let mut c_up = col_major_complex(4, 4, &[
             Complex64::new(3.0, 1.0), Complex64::new(0.0, 0.0), Complex64::new(-2.0, 0.0), Complex64::new(0.0,  0.0),
             Complex64::new(0.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new(2.0,  0.0),
             Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new( 3.0, 0.0), Complex64::new(1.0,  0.0),
             Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new(3.0, -1.0),
-        ];
+        ]);
         #[rustfmt::skip]
-        let mut c_lo = [
+        let mut c_lo = col_major_complex(4, 4, &[
             Complex64::new( 3.0, 1.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0,  0.0),
             Complex64::new(-1.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0,  0.0),
             Complex64::new(-4.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new(0.0,  0.0),
             Complex64::new(-1.0, 0.0), Complex64::new(2.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(3.0, -1.0),
-        ];
+        ]);
 
         // n-size
         let n = 4_i32; // =c.ncol
 
         // matrix a
         #[rustfmt::skip]
-        let a = [
+        let a = col_major_complex(4, 6, &[
             Complex64::new(1.0, -1.0), Complex64::new(2.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new( 1.0, 0.0), Complex64::new(-1.0, 0.0), Complex64::new( 0.0, 0.0),
             Complex64::new(2.0,  0.0), Complex64::new(2.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new( 0.0, 1.0),
             Complex64::new(3.0,  1.0), Complex64::new(1.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new( 1.0, 0.0), Complex64::new( 2.0, 0.0), Complex64::new(-1.0, 0.0),
             Complex64::new(1.0,  0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new(-1.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new( 0.0, 1.0),
-        ];
+        ]);
 
         // k-size
         let k = 6_i32; // =a.ncol
@@ -1157,57 +1159,57 @@ mod tests {
 
         // check results: c := up(3⋅a⋅aᵀ - c)
         #[rustfmt::skip]
-        let c_up_correct = &[
+        let c_up_correct = col_major_complex(4, 4, &[
             Complex64::new(24.0, -5.0), Complex64::new(21.0, -6.0), Complex64::new(22.0, -6.0), Complex64::new( 3.0, -3.0),
             Complex64::new( 0.0,  0.0), Complex64::new(27.0,  0.0), Complex64::new(33.0,  3.0), Complex64::new( 8.0,  0.0),
             Complex64::new( 0.0,  0.0), Complex64::new( 0.0,  0.0), Complex64::new(75.0, 18.0), Complex64::new(16.0,  0.0),
             Complex64::new( 0.0,  0.0), Complex64::new( 0.0,  0.0), Complex64::new( 0.0,  0.0), Complex64::new( 9.0, -1.0),
-        ];
-        complex_vec_approx_eq(&c_up, c_up_correct, 1e-15);
+        ]);
+        complex_vec_approx_eq(&c_up, &c_up_correct, 1e-15);
 
         // run zsyrk with lo part of matrix c
         zsyrk(false, trans, n, k, alpha, &a, beta, &mut c_lo);
 
         // check results: c := lo(3⋅a⋅aᵀ - c)
         #[rustfmt::skip]
-        let c_lo_correct = &[
+        let c_lo_correct = col_major_complex(4, 4, &[
             Complex64::new(24.0, -5.0), Complex64::new( 0.0, 0.0), Complex64::new( 0.0,  0.0), Complex64::new(0.0,  0.0),
             Complex64::new(20.0, -6.0), Complex64::new(27.0, 0.0), Complex64::new( 0.0,  0.0), Complex64::new(0.0,  0.0),
             Complex64::new(20.0, -6.0), Complex64::new(34.0, 3.0), Complex64::new(75.0, 18.0), Complex64::new(0.0,  0.0),
             Complex64::new( 2.0, -3.0), Complex64::new( 8.0, 0.0), Complex64::new(15.0,  0.0), Complex64::new(9.0, -1.0),
-        ];
-        complex_vec_approx_eq(&c_lo, c_lo_correct, 1e-15);
+        ]);
+        complex_vec_approx_eq(&c_lo, &c_lo_correct, 1e-15);
     }
 
     #[test]
     fn zherk_works() {
         // matrix c
         #[rustfmt::skip]
-        let mut c_up = [
+        let mut c_up = col_major_complex(4, 4, &[
             Complex64::new(4.0, 0.0), Complex64::new(0.0, 1.0), Complex64::new(-3.0, 1.0), Complex64::new(0.0,  2.0),
             Complex64::new(0.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new( 1.0, 0.0), Complex64::new(2.0,  0.0),
             Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new( 4.0, 0.0), Complex64::new(1.0, -1.0),
             Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new(4.0,  0.0),
-        ];
+        ]);
         #[rustfmt::skip]
-        let mut c_lo = [
+        let mut c_lo = col_major_complex(4, 4, &[
             Complex64::new( 4.0,  0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
             Complex64::new( 0.0, -1.0), Complex64::new(3.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
             Complex64::new(-3.0, -1.0), Complex64::new(1.0, 0.0), Complex64::new(4.0, 0.0), Complex64::new(0.0, 0.0),
             Complex64::new( 0.0, -2.0), Complex64::new(2.0, 0.0), Complex64::new(1.0, 1.0), Complex64::new(4.0, 0.0),
-        ];
+        ]);
 
         // n-size
         let n = 4_i32; // =c.ncol
 
         // matrix a
         #[rustfmt::skip]
-        let a = [
+        let a = col_major_complex(4, 6, &[
             Complex64::new(1.0, -1.0), Complex64::new(2.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new( 1.0, 0.0), Complex64::new(-1.0, 0.0), Complex64::new( 0.0, 0.0),
             Complex64::new(2.0,  0.0), Complex64::new(2.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new( 0.0, 1.0),
             Complex64::new(3.0,  1.0), Complex64::new(1.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new( 1.0, 0.0), Complex64::new( 2.0, 0.0), Complex64::new(-1.0, 0.0),
             Complex64::new(1.0,  0.0), Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0), Complex64::new(-1.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new( 0.0, 1.0),
-        ];
+        ]);
 
         // k-size
         let k = 6_i32; // =a.ncol
@@ -1221,36 +1223,36 @@ mod tests {
 
         // check results: c := up(3⋅a⋅aᴴ - c)
         #[rustfmt::skip]
-        let c_up_correct = &[
+        let c_up_correct = col_major_complex(4, 4, &[
             Complex64::new(31.0, 0.0), Complex64::new(21.0, -5.0), Complex64::new(15.0, -11.0), Complex64::new( 3.0, -1.0),
             Complex64::new( 0.0, 0.0), Complex64::new(33.0,  0.0), Complex64::new(34.0, - 9.0), Complex64::new(14.0,  0.0),
             Complex64::new( 0.0, 0.0), Complex64::new( 0.0,  0.0), Complex64::new(82.0,   0.0), Complex64::new(16.0,  5.0),
             Complex64::new( 0.0, 0.0), Complex64::new( 0.0,  0.0), Complex64::new( 0.0,   0.0), Complex64::new(16.0,  0.0),
-        ];
-        complex_vec_approx_eq(&c_up, c_up_correct, 1e-15);
+        ]);
+        complex_vec_approx_eq(&c_up, &c_up_correct, 1e-15);
 
         // run zherk with lo part of matrix c
         zherk(false, trans, n, k, alpha, &a, beta, &mut c_lo);
 
         // check results: c := lo(3⋅a⋅aᴴ - c)
         #[rustfmt::skip]
-        let c_lo_correct = &[
+        let c_lo_correct = col_major_complex(4, 4, &[
             Complex64::new(31.0,  0.0), Complex64::new( 0.0, 0.0), Complex64::new( 0.0,  0.0), Complex64::new( 0.0, 0.0),
             Complex64::new(21.0,  5.0), Complex64::new(33.0, 0.0), Complex64::new( 0.0,  0.0), Complex64::new( 0.0, 0.0),
             Complex64::new(15.0, 11.0), Complex64::new(34.0, 9.0), Complex64::new(82.0,  0.0), Complex64::new( 0.0, 0.0),
             Complex64::new( 3.0,  1.0), Complex64::new(14.0, 0.0), Complex64::new(16.0, -5.0), Complex64::new(16.0, 0.0),
-        ];
-        complex_vec_approx_eq(&c_lo, c_lo_correct, 1e-15);
+        ]);
+        complex_vec_approx_eq(&c_lo, &c_lo_correct, 1e-15);
     }
 
     #[test]
     fn dlange_works() {
         #[rustfmt::skip]
-        let a = [
+        let a = col_major(3, 3, &[
             -3.0, 5.0, 7.0,
              2.0, 6.0, 4.0,
              0.0, 2.0, 8.0,
-        ];
+        ]);
         let norm_one = dlange(b'1', 3, 3, &a);
         let norm_inf = dlange(b'I', 3, 3, &a);
         let norm_fro = dlange(b'F', 3, 3, &a);
@@ -1264,11 +1266,11 @@ mod tests {
     #[test]
     fn zlange_works() {
         #[rustfmt::skip]
-        let a = [
+        let a = col_major_complex(3, 3, &[
             Complex64::new(-3.0,0.0), Complex64::new(5.0,0.0), Complex64::new(7.0,0.0),
             Complex64::new( 2.0,0.0), Complex64::new(6.0,0.0), Complex64::new(4.0,0.0),
             Complex64::new( 0.0,0.0), Complex64::new(2.0,0.0), Complex64::new(8.0,0.0),
-        ];
+        ]);
         let norm_one = zlange(b'1', 3, 3, &a);
         let norm_inf = zlange(b'I', 3, 3, &a);
         let norm_fro = zlange(b'F', 3, 3, &a);
@@ -1279,13 +1281,13 @@ mod tests {
         assert_eq!(norm_max, 8.0);
 
         #[rustfmt::skip]
-        let b = [
+        let b = col_major_complex(3, 3, &[
             Complex64::new(-3.0,1.0), Complex64::new(5.0,3.0), Complex64::new(7.0,-1.0),
             Complex64::new( 2.0,2.0), Complex64::new(6.0,2.0), Complex64::new(4.0,-2.0),
             Complex64::new( 0.0,3.0), Complex64::new(2.0,1.0), Complex64::new(8.0,-3.0),
-        ];
+        ]);
         let mut fro = 0.0;
-        for v in b {
+        for v in &b {
             fro += v.abs() * v.abs();
         }
         fro = f64::sqrt(fro);
@@ -1293,8 +1295,8 @@ mod tests {
         let norm_inf = zlange(b'I', 3, 3, &b);
         let norm_fro = zlange(b'F', 3, 3, &b);
         let norm_max = zlange(b'M', 3, 3, &b);
-        approx_eq(norm_one, b[2].abs() + b[5].abs() + b[8].abs(), 1e-15);
-        approx_eq(norm_inf, b[0].abs() + b[1].abs() + b[2].abs(), 1e-15);
+        approx_eq(norm_one, b[6].abs() + b[7].abs() + b[8].abs(), 1e-15);
+        approx_eq(norm_inf, b[0].abs() + b[3].abs() + b[6].abs(), 1e-15);
         approx_eq(norm_fro, fro, 1e-15);
         approx_eq(norm_max, b[8].abs(), 1e-15);
     }
@@ -1328,12 +1330,12 @@ mod tests {
     fn dgesvd_works() -> Result<(), StrError> {
         // matrix
         #[rustfmt::skip]
-        let mut a = [
+        let mut a = col_major(4, 5, &[
             1.0, 0.0, 0.0, 0.0, 2.0,
             0.0, 0.0, 3.0, 0.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 0.0,
             0.0, 2.0, 0.0, 0.0, 0.0,
-        ];
+        ]);
         let a_copy = a.to_vec();
 
         // dimensions
@@ -1368,7 +1370,7 @@ mod tests {
         for i in 0..m {
             for j in 0..n {
                 for k in 0..min_mn {
-                    usv[i * n + j] += u[i * m + k] * s[k] * vt[k * n + j];
+                    usv[i + j * m] += u[i + k * m] * s[k] * vt[k + j * n];
                 }
             }
         }
@@ -1381,12 +1383,12 @@ mod tests {
         // matrix
         let s33 = f64::sqrt(3.0) / 3.0;
         #[rustfmt::skip]
-        let mut a = [
+        let mut a = col_major(4, 3, &[
             -s33, -s33, 1.0,
              s33, -s33, 1.0,
             -s33,  s33, 1.0,
              s33,  s33, 1.0,
-        ];
+        ]);
         let a_copy = a.to_vec();
 
         // dimensions
@@ -1421,7 +1423,7 @@ mod tests {
         for i in 0..m {
             for j in 0..n {
                 for k in 0..min_mn {
-                    usv[i * n + j] += u[i * m + k] * s[k] * vt[k * n + j];
+                    usv[i + j * m] += u[i + k * m] * s[k] * vt[k + j * n];
                 }
             }
         }
@@ -1458,12 +1460,12 @@ mod tests {
     fn zgesvd_works_1() -> Result<(), StrError> {
         // matrix
         #[rustfmt::skip]
-        let mut a = [
+        let mut a = col_major_complex(4, 4, &[
             Complex64::new( 0.000000000000000e+00, 0.000000000000000e+00), Complex64::new(7.071067811865475e-01, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.000000000000000e+00), Complex64::new(-7.071067811865475e-01, 0.000000000000000e+00),
             Complex64::new( 7.071067811865475e-01, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 7.071067811865475e-01), Complex64::new( 0.000000000000000e+00, 0.000000000000000e+00),
             Complex64::new( 0.000000000000000e+00, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 7.071067811865475e-01), Complex64::new(0.000000000000000e+00, 0.000000000000000e+00), Complex64::new( 0.000000000000000e+00, 7.071067811865475e-01),
             Complex64::new(-7.071067811865475e-01, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 7.071067811865475e-01), Complex64::new( 0.000000000000000e+00, 0.000000000000000e+00),
-        ];
+        ]);
         let a_copy = a.to_vec();
 
         // dimensions
@@ -1497,7 +1499,7 @@ mod tests {
         for i in 0..m {
             for j in 0..n {
                 for k in 0..min_mn {
-                    usv[i * n + j] += u[i * m + k] * s[k] * vt[k * n + j];
+                    usv[i + j * m] += u[i + k * m] * s[k] * vt[k + j * n];
                 }
             }
         }
@@ -1509,12 +1511,12 @@ mod tests {
     fn zgesvd_works_2() -> Result<(), StrError> {
         // matrix
         #[rustfmt::skip]
-        let mut a = [
+        let mut a = col_major_complex(4, 4, &[
             Complex64::new(0.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new(2.0, 0.0), Complex64::new(1.0, 0.0),
             Complex64::new(1.0, 0.0), Complex64::new(0.0, 1.0), Complex64::new(0.0, 1.0), Complex64::new(0.0, 1.0),
             Complex64::new(2.0, 0.0), Complex64::new(2.0, 0.0), Complex64::new(0.0, 2.0), Complex64::new(0.0, 2.0),
             Complex64::new(3.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new(0.0, 3.0),
-        ];
+        ]);
         let a_copy = a.to_vec();
 
         // dimensions
@@ -1553,7 +1555,7 @@ mod tests {
         for i in 0..m {
             for j in 0..n {
                 for k in 0..min_mn {
-                    usv[i * n + j] += u[i * m + k] * s[k] * vt[k * n + j];
+                    usv[i + j * m] += u[i + k * m] * s[k] * vt[k + j * n];
                 }
             }
         }
@@ -1577,12 +1579,12 @@ mod tests {
     fn dgetrf_and_dgetri_work() -> Result<(), StrError> {
         // matrix
         #[rustfmt::skip]
-        let mut a = [
+        let mut a = col_major(4, 4, &[
             1.0, 2.0,  0.0, 1.0,
             2.0, 3.0, -1.0, 1.0,
             1.0, 2.0,  0.0, 4.0,
             4.0, 0.0,  3.0, 1.0,
-        ];
+        ]);
         let a_copy = a.to_vec();
         let (m, n) = (4_usize, 4_usize);
         let min_mn = if m < n { m } else { n };
@@ -1599,33 +1601,33 @@ mod tests {
 
         // check LU
         #[rustfmt::skip]
-        let lu_correct = &[
+        let lu_correct = col_major(4, 4, &[
             4.0e+00, 0.000000000000000e+00,  3.000000000000000e+00,  1.000000000000000e+00,
             5.0e-01, 3.000000000000000e+00, -2.500000000000000e+00,  5.000000000000000e-01,
             2.5e-01, 6.666666666666666e-01,  9.166666666666665e-01,  3.416666666666667e+00,
             2.5e-01, 6.666666666666666e-01,  1.000000000000000e+00, -3.000000000000000e+00,
-        ];
-        vec_approx_eq(&a, lu_correct, 1e-15);
+        ]);
+        vec_approx_eq(&a, &lu_correct, 1e-15);
 
         // run dgetri
         dgetri(n_i32, &mut a, &ipiv)?;
 
         // check inverse matrix
         #[rustfmt::skip]
-        let ai_correct = &[
+        let ai_correct = col_major(4, 4, &[
             -8.484848484848487e-01,  5.454545454545455e-01,  3.030303030303039e-02,  1.818181818181818e-01,
              1.090909090909091e+00, -2.727272727272728e-01, -1.818181818181817e-01, -9.090909090909091e-02,
              1.242424242424243e+00, -7.272727272727273e-01, -1.515151515151516e-01,  9.090909090909088e-02,
             -3.333333333333333e-01,  0.000000000000000e+00,  3.333333333333333e-01,  0.000000000000000e+00,
-        ];
-        vec_approx_eq(&a, ai_correct, 1e-15);
+        ]);
+        vec_approx_eq(&a, &ai_correct, 1e-15);
 
         // check again: a⋅a⁻¹ = I
         for i in 0..m {
             for j in 0..n {
                 let mut res = 0.0;
                 for k in 0..m {
-                    res += a_copy[i * n + k] * ai_correct[k * n + j];
+                    res += a_copy[i + k * m] * ai_correct[k + j * m];
                 }
                 if i == j {
                     approx_eq(res, 1.0, 1e-13);
@@ -1653,12 +1655,12 @@ mod tests {
     fn zgetrf_and_zgetri_work() -> Result<(), StrError> {
         // matrix
         #[rustfmt::skip]
-        let mut a = [
+        let mut a = col_major_complex(4, 4, &[
             Complex64::new(1.0, 1.0), Complex64::new(2.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new(1.0, -1.0),
             Complex64::new(2.0, 1.0), Complex64::new(3.0, 0.0), Complex64::new(-1.0, 0.0), Complex64::new(1.0, -1.0),
             Complex64::new(1.0, 1.0), Complex64::new(2.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new(4.0, -1.0),
             Complex64::new(4.0, 1.0), Complex64::new(0.0, 0.0), Complex64::new( 3.0, 0.0), Complex64::new(1.0, -1.0),
-        ];
+        ]);
         let a_copy = a.to_vec();
         let (m, n) = (4_usize, 4_usize);
         let min_mn = if m < n { m } else { n };
@@ -1675,26 +1677,26 @@ mod tests {
 
         // check LU
         #[rustfmt::skip]
-        let lu_correct = &[
+        let lu_correct = col_major_complex(4, 4, &[
             Complex64::new(4.000000000000000e+00, 1.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.0), Complex64::new( 3.000000000000000e+00,  0.000000000000000e+00), Complex64::new( 1.000000000000000e+00, -1.000000000000000e+00),
             Complex64::new(5.294117647058824e-01, 1.176470588235294e-01), Complex64::new(3.000000000000000e+00, 0.0), Complex64::new(-2.588235294117647e+00, -3.529411764705882e-01), Complex64::new( 3.529411764705882e-01, -5.882352941176471e-01),
             Complex64::new(2.941176470588235e-01, 1.764705882352941e-01), Complex64::new(6.666666666666666e-01, 0.0), Complex64::new( 8.431372549019609e-01, -2.941176470588235e-01), Complex64::new( 3.294117647058823e+00, -4.901960784313725e-01),
             Complex64::new(2.941176470588235e-01, 1.764705882352941e-01), Complex64::new(6.666666666666666e-01, 0.0), Complex64::new( 1.000000000000000e+00,  0.000000000000000e+00), Complex64::new(-3.000000000000000e+00,  0.000000000000000e+00),
-        ];
-        complex_vec_approx_eq(&a, lu_correct, 1e-15);
+        ]);
+        complex_vec_approx_eq(&a, &lu_correct, 1e-15);
 
         // run zgetri
         zgetri(n_i32, &mut a, &ipiv)?;
 
         // check inverse matrix
         #[rustfmt::skip]
-        let ai_correct = &[
+        let ai_correct = col_major_complex(4, 4, &[
             Complex64::new(-8.442622950819669e-01, -4.644808743169393e-02), Complex64::new( 5.409836065573769e-01,  4.918032786885240e-02), Complex64::new( 3.278688524590156e-02, -2.732240437158467e-02), Complex64::new( 1.803278688524591e-01,  1.639344262295081e-02),
             Complex64::new( 1.065573770491803e+00,  2.786885245901638e-01), Complex64::new(-2.459016393442623e-01, -2.950819672131146e-01), Complex64::new(-1.967213114754096e-01,  1.639344262295082e-01), Complex64::new(-8.196721311475419e-02, -9.836065573770497e-02),
             Complex64::new( 1.221311475409836e+00,  2.322404371584698e-01), Complex64::new(-7.049180327868851e-01, -2.459016393442622e-01), Complex64::new(-1.639344262295082e-01,  1.366120218579235e-01), Complex64::new( 9.836065573770481e-02, -8.196721311475411e-02),
             Complex64::new(-3.333333333333333e-01,  0.000000000000000e+00), Complex64::new( 0.000000000000000e+00,  0.000000000000000e+00), Complex64::new( 3.333333333333333e-01,  0.000000000000000e+00), Complex64::new( 0.000000000000000e+00,  0.000000000000000e+00),
-        ];
-        complex_vec_approx_eq(&a, ai_correct, 1e-15);
+        ]);
+        complex_vec_approx_eq(&a, &ai_correct, 1e-15);
 
         // check again: a⋅a⁻¹ = I
         let one = Complex64::new(1.0, 0.0);
@@ -1703,7 +1705,7 @@ mod tests {
             for j in 0..n {
                 let mut res = zero.clone();
                 for k in 0..m {
-                    res += a_copy[i * n + k] * ai_correct[k * n + j];
+                    res += a_copy[i + k * m] * ai_correct[k + j * m];
                 }
                 if i == j {
                     complex_approx_eq(res, one, 1e-15);
@@ -1725,19 +1727,19 @@ mod tests {
     fn dpotrf_works() -> Result<(), StrError> {
         // matrix a
         #[rustfmt::skip]
-        let mut a_up = [
+        let mut a_up = col_major(4, 4, &[
             3.0,  0.0, -3.0,  0.0,
             0.0,  3.0,  1.0,  2.0,
             0.0,  0.0,  4.0,  1.0,
             0.0,  0.0,  0.0,  3.0,
-        ];
+        ]);
         #[rustfmt::skip]
-        let mut a_lo = [
+        let mut a_lo = col_major(4, 4, &[
              3.0,  0.0,  0.0,  0.0,
              0.0,  3.0,  0.0,  0.0,
             -3.0,  1.0,  4.0,  0.0,
              0.0,  2.0,  1.0,  3.0,
-        ];
+        ]);
 
         // n-size
         let n = 4_i32; // =a.ncol
@@ -1747,26 +1749,26 @@ mod tests {
 
         // check Cholesky
         #[rustfmt::skip]
-        let a_up_correct = &[
+        let a_up_correct = col_major(4, 4, &[
             1.732050807568877e+00,  0.000000000000000e+00, -1.732050807568878e+00,  0.000000000000000e+00,
             0.000000000000000e+00,  1.732050807568877e+00,  5.773502691896258e-01,  1.154700538379252e+00,
             0.000000000000000e+00,  0.000000000000000e+00,  8.164965809277251e-01,  4.082482904638632e-01,
             0.000000000000000e+00,  0.000000000000000e+00,  0.000000000000000e+00,  1.224744871391589e+00,
-        ];
-        vec_approx_eq(&a_up, a_up_correct, 1e-15);
+        ]);
+        vec_approx_eq(&a_up, &a_up_correct, 1e-15);
 
         // run dpotrf with lo part of matrix a
         dpotrf(false, n, &mut a_lo)?;
 
         // check Cholesky
         #[rustfmt::skip]
-        let a_lo_correct = &[
+        let a_lo_correct = col_major(4, 4, &[
              1.732050807568877e+00,  0.000000000000000e+00,  0.000000000000000e+00,  0.000000000000000e+00,
              0.000000000000000e+00,  1.732050807568877e+00,  0.000000000000000e+00,  0.000000000000000e+00,
             -1.732050807568878e+00,  5.773502691896258e-01,  8.164965809277251e-01,  0.000000000000000e+00,
              0.000000000000000e+00,  1.154700538379252e+00,  4.082482904638632e-01,  1.224744871391589e+00,
-        ];
-        vec_approx_eq(&a_lo, a_lo_correct, 1e-15);
+        ]);
+        vec_approx_eq(&a_lo, &a_lo_correct, 1e-15);
         Ok(())
     }
 
@@ -1780,19 +1782,19 @@ mod tests {
     fn zpotrf_works() -> Result<(), StrError> {
         // matrix a
         #[rustfmt::skip]
-        let mut a_up = [
+        let mut a_up = col_major_complex(4, 4, &[
             Complex64::new(4.0, 0.0), Complex64::new(0.0, 1.0), Complex64::new(-3.0, 1.0), Complex64::new(0.0,  2.0),
             Complex64::new(0.0, 0.0), Complex64::new(3.0, 0.0), Complex64::new( 1.0, 0.0), Complex64::new(2.0,  0.0),
             Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new( 4.0, 0.0), Complex64::new(1.0, -1.0),
             Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new( 0.0, 0.0), Complex64::new(4.0,  0.0),
-        ];
+        ]);
         #[rustfmt::skip]
-        let mut a_lo = [
+        let mut a_lo = col_major_complex(4, 4, &[
             Complex64::new( 4.0,  0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
             Complex64::new( 0.0, -1.0), Complex64::new(3.0, 0.0), Complex64::new(0.0, 0.0), Complex64::new(0.0, 0.0),
             Complex64::new(-3.0, -1.0), Complex64::new(1.0, 0.0), Complex64::new(4.0, 0.0), Complex64::new(0.0, 0.0),
             Complex64::new( 0.0, -2.0), Complex64::new(2.0, 0.0), Complex64::new(1.0, 1.0), Complex64::new(4.0, 0.0),
-        ];
+        ]);
 
         // n-size
         let n = 4_i32; // =a.ncol
@@ -1802,26 +1804,26 @@ mod tests {
 
         // check Cholesky
         #[rustfmt::skip]
-        let a_up_correct = &[
+        let a_up_correct = col_major_complex(4, 4, &[
             Complex64::new(2.0, 0.0), Complex64::new(0.000000000000000e+00, 5.0e-01), Complex64::new(-1.500000000000000e+00,  5.000000000000000e-01), Complex64::new(0.000000000000000e+00, 1.000000000000000e+00),
             Complex64::new(0.0, 0.0), Complex64::new(1.658312395177700e+00, 0.0e+00), Complex64::new( 4.522670168666454e-01, -4.522670168666454e-01), Complex64::new(9.045340337332909e-01, 0.000000000000000e+00),
             Complex64::new(0.0, 0.0), Complex64::new(0.000000000000000e+00, 0.0e+00), Complex64::new( 1.044465935734187e+00,  0.000000000000000e+00), Complex64::new(8.703882797784884e-02, 8.703882797784884e-02),
             Complex64::new(0.0, 0.0), Complex64::new(0.000000000000000e+00, 0.0e+00), Complex64::new( 0.000000000000000e+00,  0.000000000000000e+00), Complex64::new(1.471960144387974e+00, 0.000000000000000e+00),
-        ];
-        complex_vec_approx_eq(&a_up, a_up_correct, 1e-15);
+        ]);
+        complex_vec_approx_eq(&a_up, &a_up_correct, 1e-15);
 
         // run zpotrf with lo part of matrix a
         zpotrf(false, n, &mut a_lo)?;
 
         // check Cholesky
         #[rustfmt::skip]
-        let a_lo_correct = &[
+        let a_lo_correct = col_major_complex(4, 4, &[
             Complex64::new( 2.0,  0.0e+00), Complex64::new(0.000000000000000e+00, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00,  0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.0),
             Complex64::new( 0.0, -5.0e-01), Complex64::new(1.658312395177700e+00, 0.000000000000000e+00), Complex64::new(0.000000000000000e+00,  0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.0),
             Complex64::new(-1.5, -5.0e-01), Complex64::new(4.522670168666454e-01, 4.522670168666454e-01), Complex64::new(1.044465935734187e+00,  0.000000000000000e+00), Complex64::new(0.000000000000000e+00, 0.0),
             Complex64::new( 0.0, -1.0e+00), Complex64::new(9.045340337332909e-01, 0.000000000000000e+00), Complex64::new(8.703882797784884e-02, -8.703882797784884e-02), Complex64::new(1.471960144387974e+00, 0.0),
-        ];
-        complex_vec_approx_eq(&a_lo, a_lo_correct, 1e-15);
+        ]);
+        complex_vec_approx_eq(&a_lo, &a_lo_correct, 1e-15);
         Ok(())
     }
 
@@ -1844,12 +1846,12 @@ mod tests {
     fn dgeev_works() -> Result<(), StrError> {
         // matrix a
         #[rustfmt::skip]
-        let mut a = [
+        let mut a = col_major(4, 4, &[
              0.35,  0.45, -0.14, -0.17,
              0.09,  0.07, -0.54,  0.35,
             -0.44, -0.33, -0.03,  0.17,
              0.25, -0.32, -0.13,  0.11,
-        ];
+        ]);
         let mut a_copy1 = a.to_vec();
         let mut a_copy2 = a.to_vec();
 
@@ -1893,39 +1895,39 @@ mod tests {
 
         // check left eigenvectors
         #[rustfmt::skip]
-        let vl_real_correct = &[
+        let vl_real_correct = col_major(4, 4, &[
             -6.244707486379453e-01,  5.330229831716200e-01,  5.330229831716200e-01,  6.641410231734539e-01,
             -5.994889025288728e-01, -2.666163325181558e-01, -2.666163325181558e-01, -1.068153340034493e-01,
              4.999156725721429e-01,  3.455257668600027e-01,  3.455257668600027e-01,  7.293254091191846e-01,
             -2.708616172576073e-02, -2.540814367391268e-01, -2.540814367391268e-01,  1.248664621625170e-01,
-        ];
+        ]);
         #[rustfmt::skip]
-        let vl_imag_correct = &[
+        let vl_imag_correct = col_major(4, 4, &[
             0.0,  0.0,                    0.0,                   0.0,
             0.0,  4.041362636762622e-01, -4.041362636762622e-01, 0.0,
             0.0,  3.152853126680209e-01, -3.152853126680209e-01, 0.0,
             0.0, -4.451133008385643e-01,  4.451133008385643e-01, 0.0,
-        ];
-        vec_approx_eq(&vl_real, vl_real_correct, 1e-15);
-        vec_approx_eq(&vl_imag, vl_imag_correct, 1e-15);
+        ]);
+        vec_approx_eq(&vl_real, &vl_real_correct, 1e-15);
+        vec_approx_eq(&vl_imag, &vl_imag_correct, 1e-15);
 
         // check right eigenvectors
         #[rustfmt::skip]
-        let vr_real_correct = &[
+        let vr_real_correct = col_major(4, 4, &[
             -6.550887675124076e-01,-1.933015482642217e-01,-1.933015482642217e-01, 1.253326972309026e-01,
             -5.236294609021240e-01, 2.518565317267399e-01, 2.518565317267399e-01, 3.320222155717508e-01,
              5.362184613722345e-01, 9.718245844328152e-02, 9.718245844328152e-02, 5.938377595573312e-01,
             -9.560677820122976e-02, 6.759540542547480e-01, 6.759540542547480e-01, 7.220870298624550e-01,
-        ];
+        ]);
         #[rustfmt::skip]
-        let vr_imag_correct = &[
+        let vr_imag_correct = col_major(4, 4, &[
             0.0,  2.546315719275843e-01, -2.546315719275843e-01, 0.0,
             0.0, -5.224047347116287e-01,  5.224047347116287e-01, 0.0,
             0.0, -3.083837558972283e-01,  3.083837558972283e-01, 0.0,
             0.0,  0.0,                    0.0,                   0.0,
-        ];
-        vec_approx_eq(&vr_real, vr_real_correct, 1e-15);
-        vec_approx_eq(&vr_imag, vr_imag_correct, 1e-15);
+        ]);
+        vec_approx_eq(&vr_real, &vr_real_correct, 1e-15);
+        vec_approx_eq(&vr_imag, &vr_imag_correct, 1e-15);
 
         // clear output arrays
         wr.iter_mut().map(|x| *x = 0.0).count();
@@ -1951,7 +1953,7 @@ mod tests {
         dgeev_data(&mut vl_real, &mut vl_imag, &wi, &vl)?;
 
         // check left eigenvalues
-        vec_approx_eq(&vl_real, vl_real_correct, 1e-15);
+        vec_approx_eq(&vl_real, &vl_real_correct, 1e-15);
 
         // compute eigen-things again, vr only
         dgeev(false, true, n, &mut a_copy2, &mut wr, &mut wi, &mut empty, &mut vr)?;
@@ -1962,7 +1964,7 @@ mod tests {
         dgeev_data(&mut vr_real, &mut vr_imag, &wi, &vr)?;
 
         // check left eigenvalues
-        vec_approx_eq(&vr_real, vr_real_correct, 1e-15);
+        vec_approx_eq(&vr_real, &vr_real_correct, 1e-15);
 
         // done
         Ok(())

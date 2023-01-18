@@ -176,7 +176,7 @@ pub fn t2_dot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, StrError> {
     for i in 0..3 {
         for j in 0..3 {
             for k in 0..3 {
-                tc[i][j] += ta[i][k] * tb[k][j];
+                tc[i][j] += ta.get(i, k) * tb.get(k, j);
             }
         }
     }
@@ -501,9 +501,9 @@ pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) -> Res
 ///     for i in 0..9 {
 ///         for j in 0..9 {
 ///             if i == j {
-///                 approx_eq(out[i][j], 1.0, 1e-15);
+///                 approx_eq(out.get(i, j), 1.0, 1e-15);
 ///             } else {
-///                 approx_eq(out[i][j], 0.0, 1e-15);
+///                 approx_eq(out.get(i, j), 0.0, 1e-15);
 ///             }
 ///         }
 ///     }

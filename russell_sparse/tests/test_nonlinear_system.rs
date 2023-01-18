@@ -53,13 +53,17 @@ fn check_jacobian() {
     for i in 0..neq {
         for j in 0..neq {
             let at_u = uu[j];
-            jj_num[i][j] = deriv_central5(at_u, &mut args, |u, a| {
-                let original = a.uu[j];
-                a.uu[j] = u;
-                calc_residual(&mut a.rr, &a.uu);
-                a.uu[j] = original;
-                a.rr[i]
-            });
+            jj_num.set(
+                i,
+                j,
+                deriv_central5(at_u, &mut args, |u, a| {
+                    let original = a.uu[j];
+                    a.uu[j] = u;
+                    calc_residual(&mut a.rr, &a.uu);
+                    a.uu[j] = original;
+                    a.rr[i]
+                }),
+            );
         }
     }
     let nnz = neq * neq;

@@ -7,6 +7,7 @@ use std::ffi::OsStr;
 use std::fmt::{self, Write};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::ops::{AddAssign, MulAssign};
 use std::path::Path;
 
 /// Implements a matrix with numeric components for linear algebra
@@ -17,10 +18,23 @@ use std::path::Path;
 ///   access components by indices
 /// * NumMatrix has also methods to access the underlying data (mutable or not);
 ///   e.g., using `as_data()` and `as_mut_data()`.
-/// * Internally, the data is stored in the [**row-major** order](https://en.wikipedia.org/wiki/Row-_and_column-major_order)
+/// * Internally, the data is stored in the **col-major** order
 /// * For faster computations, we recommend using the set of functions that
 ///   operate on Vectors and Matrices; e.g., `mat_add`, `mat_cholesky`,
 ///   `mat_eigen`, `mat_inverse`, `mat_pseudo_inverse`, `mat_svd`, `mat_vec_mul`, and others.
+///
+/// ```text
+///     ┌     ┐  row_major = {0, 3,
+///     │ 0 3 │               1, 4,
+/// A = │ 1 4 │               2, 5};
+///     │ 2 5 │
+///     └     ┘  col_major = {0, 1, 2,
+///     (m × n)               3, 4, 5}
+///
+/// Aᵢⱼ = col_major[i + j·m] = row_major[i·n + j]
+///         ↑
+/// COL-MAJOR IS ADOPTED HERE
+/// ```
 ///
 /// # Examples
 ///
@@ -138,31 +152,17 @@ use std::path::Path;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct NumMatrix<T>
 where
-    T: Num + Copy + DeserializeOwned + Serialize,
+    T: AddAssign + MulAssign + Num + Copy + DeserializeOwned + Serialize,
 {
     nrow: usize, // number of rows
     ncol: usize, // number of columns
     #[serde(bound(deserialize = "Vec<T>: Deserialize<'de>"))]
-    data: Vec<T>, // row-major
+    data: Vec<T>, // col-major
 }
-
-// # Note
-//
-// Data is stored in row-major format as below
-//
-// ```text
-//       _      _
-//      |  0  1  |
-//  a = |  2  3  |           a.data = [0, 1, 2, 3, 4, 5]
-//      |_ 4  5 _|(m x n)
-//
-//  a.data[i * n + j] = a[i][j]
-// ```
-//
 
 impl<T> NumMatrix<T>
 where
-    T: Num + Copy + DeserializeOwned + Serialize,
+    T: AddAssign + MulAssign + Num + Copy + DeserializeOwned + Serialize,
 {
     /// Creates new (nrow x ncol) NumMatrix filled with zeros
     ///
@@ -208,7 +208,7 @@ where
         };
         let one = T::one();
         for i in 0..m {
-            matrix.data[i * m + i] = one;
+            matrix.data[i + i * m] = one;
         }
         matrix
     }
@@ -310,7 +310,7 @@ where
         };
         for i in 0..nrow {
             for j in 0..ncol {
-                matrix.data[i * ncol + j] = array.at(i, j).into();
+                matrix.data[i + j * nrow] = array.at(i, j).into();
             }
         }
         matrix
@@ -339,7 +339,7 @@ where
             data: vec![T::zero(); nrow * ncol],
         };
         for i in 0..nrow {
-            matrix.data[i * ncol + i] = data[i];
+            matrix.data[i + i * nrow] = data[i];
         }
         matrix
     }
@@ -401,7 +401,7 @@ where
         // parse rows, ignoring comments and empty lines
         let mut current_row_index = 0;
         let mut number_of_columns = 0;
-        let mut data = Vec::<T>::new();
+        let mut data_row_major = Vec::<T>::new();
         loop {
             match lines_iter.next() {
                 Some(v) => {
@@ -425,7 +425,7 @@ where
                                 if s.starts_with("#") {
                                     break; // ignore comments at the end of the row
                                 }
-                                data.push(T::from_str_radix(s, 10).map_err(|_| "cannot parse value")?);
+                                data_row_major.push(T::from_str_radix(s, 10).map_err(|_| "cannot parse value")?);
                                 column_index += 1;
                             }
                             None => break,
@@ -445,11 +445,14 @@ where
                 None => break,
             }
         }
-        Ok(NumMatrix {
-            nrow: current_row_index,
-            ncol: number_of_columns,
-            data,
-        })
+        let (nrow, ncol) = (current_row_index, number_of_columns);
+        let mut data = vec![T::zero(); nrow * ncol];
+        for i in 0..current_row_index {
+            for j in 0..number_of_columns {
+                data[i + j * nrow] = data_row_major[i * ncol + j];
+            }
+        }
+        Ok(NumMatrix { nrow, ncol, data })
     }
 
     /// Returns the number of rows
@@ -519,14 +522,27 @@ where
     ///
     /// # Note
     ///
-    /// * Internally, the data is stored in the [**row-major** order](https://en.wikipedia.org/wiki/Row-_and_column-major_order)
+    /// * Internally, the data is stored in the **col-major** order
+    ///
+    /// ```text
+    ///     ┌     ┐  row_major = {0, 3,
+    ///     │ 0 3 │               1, 4,
+    /// A = │ 1 4 │               2, 5};
+    ///     │ 2 5 │
+    ///     └     ┘  col_major = {0, 1, 2,
+    ///     (m × n)               3, 4, 5}
+    ///
+    /// Aᵢⱼ = col_major[i + j·m] = row_major[i·n + j]
+    ///         ↑
+    /// COL-MAJOR IS ADOPTED HERE
+    /// ```
     ///
     /// # Example
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
     /// let a = NumMatrix::<f64>::from(&[[1.0, 2.0], [3.0, 4.0]]);
-    /// assert_eq!(a.as_data(), &[1.0, 2.0, 3.0, 4.0]);
+    /// assert_eq!(a.as_data(), &[1.0, 3.0, 2.0, 4.0]);
     /// ```
     #[inline]
     pub fn as_data(&self) -> &Vec<T> {
@@ -537,7 +553,20 @@ where
     ///
     /// # Note
     ///
-    /// * Internally, the data is stored in the [**row-major** order](https://en.wikipedia.org/wiki/Row-_and_column-major_order)
+    /// * Internally, the data is stored in the **col-major** order
+    ///
+    /// ```text
+    ///     ┌     ┐  row_major = {0, 3,
+    ///     │ 0 3 │               1, 4,
+    /// A = │ 1 4 │               2, 5};
+    ///     │ 2 5 │
+    ///     └     ┘  col_major = {0, 1, 2,
+    ///     (m × n)               3, 4, 5}
+    ///
+    /// Aᵢⱼ = col_major[i + j·m] = row_major[i·n + j]
+    ///         ↑
+    /// COL-MAJOR IS ADOPTED HERE
+    /// ```
     ///
     /// # Example
     ///
@@ -546,7 +575,7 @@ where
     /// let mut a = NumMatrix::<f64>::from(&[[1.0, 2.0], [3.0, 4.0]]);
     /// let data = a.as_mut_data();
     /// data[1] = 2.2;
-    /// assert_eq!(data, &[1.0, 2.2, 3.0, 4.0]);
+    /// assert_eq!(data, &[1.0, 2.2, 2.0, 4.0]);
     /// ```
     #[inline]
     pub fn as_mut_data(&mut self) -> &mut Vec<T> {
@@ -573,7 +602,7 @@ where
     pub fn get(&self, i: usize, j: usize) -> T {
         assert!(i < self.nrow);
         assert!(j < self.ncol);
-        self.data[i * self.ncol + j]
+        self.data[i + j * self.nrow]
     }
 
     /// Change the (i,j) component
@@ -601,7 +630,7 @@ where
     pub fn set(&mut self, i: usize, j: usize, value: T) {
         assert!(i < self.nrow);
         assert!(j < self.ncol);
-        self.data[i * self.ncol + j] = value;
+        self.data[i + j * self.nrow] = value;
     }
 
     /// Adds a value to the (i,j) component
@@ -633,7 +662,7 @@ where
     pub fn add(&mut self, i: usize, j: usize, value: T) {
         assert!(i < self.nrow);
         assert!(j < self.ncol);
-        self.data[i * self.ncol + j] = self.data[i * self.ncol + j] + value;
+        self.data[i + j * self.nrow] += value;
     }
 
     /// Multiply a value to the (i,j) component
@@ -665,7 +694,37 @@ where
     pub fn mul(&mut self, i: usize, j: usize, value: T) {
         assert!(i < self.nrow);
         assert!(j < self.ncol);
-        self.data[i * self.ncol + j] = self.data[i * self.ncol + j] * value;
+        self.data[i + j * self.nrow] *= value;
+    }
+
+    /// Extracts a row given its index
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use russell_lab::NumMatrix;
+    /// let a = NumMatrix::<f64>::from(&[
+    ///     [1.0, 2.0],
+    ///     [3.0, 4.0],
+    ///     [5.0, 6.0],
+    ///     [7.0, 8.0],
+    /// ]);
+    /// let first_row = a.extract_row(0);
+    /// let second_row = a.extract_row(1);
+    /// assert_eq!(first_row, [1.0, 2.0]);
+    /// assert_eq!(second_row, [3.0, 4.0]);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the row index is out-of-bounds.
+    pub fn extract_row(&self, i: usize) -> Vec<T> {
+        assert!(i < self.nrow);
+        let mut res = vec![T::zero(); self.ncol];
+        for j in 0..self.ncol {
+            res[j] = self.data[i + j * self.nrow];
+        }
+        res
     }
 
     /// Extracts a column given its index
@@ -693,7 +752,7 @@ where
         assert!(j < self.ncol);
         let mut res = vec![T::zero(); self.nrow];
         for i in 0..self.nrow {
-            res[i] = self.data[i * self.ncol + j];
+            res[i] = self.data[i + j * self.nrow];
         }
         res
     }
@@ -701,7 +760,7 @@ where
 
 impl<T> fmt::Display for NumMatrix<T>
 where
-    T: Num + Copy + DeserializeOwned + Serialize + fmt::Display,
+    T: AddAssign + MulAssign + Num + Copy + DeserializeOwned + Serialize + fmt::Display,
 {
     /// Generates a string representation of the NumMatrix
     ///
@@ -768,7 +827,7 @@ where
 /// Allows accessing NumMatrix as an Array2D
 impl<'a, T: 'a> AsArray2D<'a, T> for NumMatrix<T>
 where
-    T: Num + Copy + DeserializeOwned + Serialize,
+    T: AddAssign + MulAssign + Num + Copy + DeserializeOwned + Serialize,
 {
     #[inline]
     fn size(&self) -> (usize, usize) {
@@ -817,7 +876,7 @@ mod tests {
             vec![5.0, 6.0],
         ];
         let a = NumMatrix::<f64>::from(&a_data);
-        assert_eq!(a.data, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+        assert_eq!(a.data, &[1.0, 3.0, 5.0, 2.0, 4.0, 6.0]);
 
         // heap-allocated 2D array (aka slice of slices)
         #[rustfmt::skip]
@@ -827,7 +886,7 @@ mod tests {
             &[50.0, 60.0, IGNORED, IGNORED],
         ];
         let b = NumMatrix::<f64>::from(&b_data);
-        assert_eq!(b.data, &[10.0, 20.0, 30.0, 40.0, 50.0, 60.0]);
+        assert_eq!(b.data, &[10.0, 30.0, 50.0, 20.0, 40.0, 60.0]);
 
         // stack-allocated (fixed-size) 2D array
         #[rustfmt::skip]
@@ -837,7 +896,7 @@ mod tests {
             [500.0, 600.0],
         ];
         let c = NumMatrix::<f64>::from(&c_data);
-        assert_eq!(c.data, &[100.0, 200.0, 300.0, 400.0, 500.0, 600.0]);
+        assert_eq!(c.data, &[100.0, 300.0, 500.0, 200.0, 400.0, 600.0]);
     }
 
     #[test]
@@ -1022,7 +1081,7 @@ mod tests {
         a.set(0, 1, -2.0);
         a.set(1, 0, -3.0);
         a.set(1, 1, -4.0);
-        assert_eq!(a.data, &[-1.0, -2.0, -3.0, -4.0]);
+        assert_eq!(a.data, &[-1.0, -3.0, -2.0, -4.0]);
     }
 
     #[test]
@@ -1039,11 +1098,11 @@ mod tests {
             [1.0, 2.0],
             [3.0, 4.0],
         ]);
-        a.add(0, 0, -1.0);
-        a.add(0, 1, -2.0);
-        a.add(1, 0, -3.0);
-        a.add(1, 1, -4.0);
-        assert_eq!(a.data, &[0.0, 0.0, 0.0, 0.0]);
+        a.add(0, 0, 1.0);
+        a.add(0, 1, 2.0);
+        a.add(1, 0, 3.0);
+        a.add(1, 1, 4.0);
+        assert_eq!(a.data, &[2.0, 6.0, 4.0, 8.0]);
     }
 
     #[test]
@@ -1064,7 +1123,22 @@ mod tests {
         a.mul(0, 1, -2.0);
         a.mul(1, 0, -3.0);
         a.mul(1, 1, -4.0);
-        assert_eq!(a.data, &[-1.0, -4.0, -9.0, -16.0]);
+        assert_eq!(a.data, &[-1.0, -9.0, -4.0, -16.0]);
+    }
+
+    #[test]
+    fn extract_row_works() {
+        #[rustfmt::skip]
+        let a = NumMatrix::<f64>::from(&[
+            [1.0, 5.0],
+            [2.0, 6.0],
+            [3.0, 7.0],
+            [4.0, 8.0],
+        ]);
+        let first_row = a.extract_row(0);
+        let second_row = a.extract_row(1);
+        assert_eq!(first_row, [1.0, 5.0]);
+        assert_eq!(second_row, [2.0, 6.0]);
     }
 
     #[test]
@@ -1094,8 +1168,8 @@ mod tests {
         a.set(0, 1, 0.22);
         a.set(1, 0, 0.33);
         a.set(1, 1, 0.44);
-        assert_eq!(a.data, &[0.11, 0.22, 0.33, 0.44]);
-        assert_eq!(a_copy.data, &[1.0, 2.0, 3.0, 4.0]);
+        assert_eq!(a.data, &[0.11, 0.33, 0.22, 0.44]);
+        assert_eq!(a_copy.data, &[1.0, 3.0, 2.0, 4.0]);
 
         #[rustfmt::skip]
         let a = NumMatrix::<f64>::from(&[
@@ -1152,7 +1226,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             json,
-            r#"{"nrow":3,"ncol":3,"data":[1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0]}"#
+            r#"{"nrow":3,"ncol":3,"data":[1.0,4.0,7.0,2.0,5.0,8.0,3.0,6.0,9.0]}"#
         );
 
         // deserialize from json

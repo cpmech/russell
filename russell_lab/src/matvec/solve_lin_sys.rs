@@ -59,6 +59,9 @@ pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
     if b.dim() != m {
         return Err("vector has wrong dimension");
     }
+    if m == 0 {
+        return Ok(());
+    }
     let mut ipiv = vec![0; m];
     let m_i32 = to_i32(m);
     dgesv(m_i32, 1, a.as_mut_data(), &mut ipiv, b.as_mut_data())?;
@@ -84,6 +87,14 @@ mod tests {
         let mut a = Matrix::new(2, 2);
         let mut b = Vector::new(3);
         assert_eq!(solve_lin_sys(&mut b, &mut a), Err("vector has wrong dimension"));
+    }
+
+    #[test]
+    fn solve_lin_sys_0x0_works() {
+        let mut a = Matrix::new(0, 0);
+        let mut b = Vector::new(0);
+        solve_lin_sys(&mut b, &mut a).unwrap();
+        assert_eq!(b.dim(), 0);
     }
 
     #[test]

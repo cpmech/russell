@@ -127,7 +127,7 @@ pub fn mat_pseudo_inverse(ai: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
             ai.set(i, j, 0.0);
             for k in 0..min_mn {
                 if s[k] > sv_tolerance {
-                    ai.add(i, j, vt[k * n + i] * u[j * m + k] / s[k]);
+                    ai.add(i, j, vt[k + i * n] * u[j + k * m] / s[k]);
                 }
             }
         }

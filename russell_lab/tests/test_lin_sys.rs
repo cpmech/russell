@@ -3,7 +3,7 @@ use russell_lab::{mat_vec_mul, solve_lin_sys, vec_add, vec_norm, Matrix, Norm, S
 #[test]
 fn test_lin_sys() -> Result<(), StrError> {
     const TARGET: f64 = 1234.0;
-    for m in [0, 5, 7, 12_usize] {
+    for m in [0, 1, 5, 7, 12_usize] {
         // prepare matrix and rhs
         let mut a = Matrix::filled(m, m, 1.0);
         let mut b = Vector::filled(m, TARGET);

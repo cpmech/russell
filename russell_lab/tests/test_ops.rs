@@ -1,4 +1,3 @@
-use russell_chk::approx_eq;
 use russell_lab::{mat_mat_mul, mat_norm, mat_vec_mul, vec_norm, Matrix, Norm, StrError, Vector};
 
 #[test]
@@ -35,7 +34,7 @@ fn test_mat_mat_mul() -> Result<(), StrError> {
                 if m == 0 || n == 0 {
                     assert_eq!(mat_norm(&c, Norm::Max), 0.0);
                 } else {
-                    approx_eq(mat_norm(&c, Norm::Max), k as f64, 1e-15);
+                    assert_eq!(mat_norm(&c, Norm::Max), k as f64);
                 }
             }
         }

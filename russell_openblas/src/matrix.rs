@@ -346,7 +346,7 @@ pub fn zherk(up: bool, trans: bool, n: i32, k: i32, alpha: f64, a: &[Complex64],
 ///
 #[inline]
 pub fn dlange(norm: u8, m: i32, n: i32, a: &[f64]) -> f64 {
-    unsafe { LAPACKE_dlange(LAPACK_COL_MAJOR, norm, m, n, a.as_ptr(), n) }
+    unsafe { LAPACKE_dlange(LAPACK_COL_MAJOR, norm, m, n, a.as_ptr(), m) }
 }
 
 /// Computes the matrix norm (complex version)
@@ -380,7 +380,7 @@ pub fn dlange(norm: u8, m: i32, n: i32, a: &[f64]) -> f64 {
 ///
 #[inline]
 pub fn zlange(norm: u8, m: i32, n: i32, a: &[Complex64]) -> f64 {
-    unsafe { LAPACKE_zlange(LAPACK_COL_MAJOR, norm, m, n, a.as_ptr(), n) }
+    unsafe { LAPACKE_zlange(LAPACK_COL_MAJOR, norm, m, n, a.as_ptr(), m) }
 }
 
 /// Computes the singular value decomposition (SVD)
@@ -1261,6 +1261,23 @@ mod tests {
         assert_eq!(norm_inf, 15.0);
         assert_eq!(norm_fro, f64::sqrt(207.0));
         assert_eq!(norm_max, 8.0);
+
+        #[rustfmt::skip]
+        let a = col_major(5, 3, &[
+            -3.0, 5.0, 7.0,
+             2.0, 6.0, 4.0,
+             0.0, 2.0, 8.0,
+             2.0, 5.0, 9.0,
+             3.0, 3.0, 3.0,
+        ]);
+        let norm_one = dlange(b'1', 5, 3, &a);
+        let norm_inf = dlange(b'I', 5, 3, &a);
+        let norm_fro = dlange(b'F', 5, 3, &a);
+        let norm_max = dlange(b'M', 5, 3, &a);
+        assert_eq!(norm_one, 31.0);
+        assert_eq!(norm_inf, 16.0);
+        assert_eq!(norm_fro, f64::sqrt(344.0));
+        assert_eq!(norm_max, 9.0);
     }
 
     #[test]
@@ -1279,6 +1296,23 @@ mod tests {
         assert_eq!(norm_inf, 15.0);
         assert_eq!(norm_fro, f64::sqrt(207.0));
         assert_eq!(norm_max, 8.0);
+
+        #[rustfmt::skip]
+        let a = col_major_complex(5, 3, &[
+            Complex64::new(-3.0,0.0), Complex64::new(5.0,0.0), Complex64::new(7.0,0.0),
+            Complex64::new( 2.0,0.0), Complex64::new(6.0,0.0), Complex64::new(4.0,0.0),
+            Complex64::new( 0.0,0.0), Complex64::new(2.0,0.0), Complex64::new(8.0,0.0),
+            Complex64::new( 2.0,0.0), Complex64::new(5.0,0.0), Complex64::new(9.0,0.0),
+            Complex64::new( 3.0,0.0), Complex64::new(3.0,0.0), Complex64::new(3.0,0.0),
+        ]);
+        let norm_one = zlange(b'1', 5, 3, &a);
+        let norm_inf = zlange(b'I', 5, 3, &a);
+        let norm_fro = zlange(b'F', 5, 3, &a);
+        let norm_max = zlange(b'M', 5, 3, &a);
+        assert_eq!(norm_one, 31.0);
+        assert_eq!(norm_inf, 16.0);
+        assert_eq!(norm_fro, f64::sqrt(344.0));
+        assert_eq!(norm_max, 9.0);
 
         #[rustfmt::skip]
         let b = col_major_complex(3, 3, &[

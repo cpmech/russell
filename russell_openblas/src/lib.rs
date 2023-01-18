@@ -5,11 +5,11 @@
 //! # Example - dnrm2
 //!
 //! ```
-//! use russell_chk::assert_approx_eq;
+//! use russell_chk::approx_eq;
 //! use russell_openblas::{dnrm2, to_i32};
 //! let x = [1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0];
 //! let (n, incx) = (to_i32(x.len()), 1_i32);
-//! assert_approx_eq!(dnrm2(n, &x, incx), 5.0, 1e-15);
+//! approx_eq(dnrm2(n, &x, incx), 5.0, 1e-15);
 //! ```
 
 /// Defines a type alias for the error type as a static string

@@ -162,7 +162,7 @@ where
         for i in 0..nbins {
             // find c_max and string l_c_max
             let c = self.counts[i];
-            write!(&mut buf, "{}", c)?;
+            write!(&mut buf, "{}", c).unwrap();
             c_max = cmp::max(c_max, c);
             l_c_max = cmp::max(l_c_max, buf.chars().count());
             buf.clear();
@@ -179,8 +179,8 @@ where
         for i in 0..self.stations.len() {
             let station = self.stations[i];
             match f.precision() {
-                Some(digits) => write!(&mut buf, "{:.1$}", station, digits)?,
-                None => write!(&mut buf, "{}", station)?,
+                Some(digits) => write!(&mut buf, "{:.1$}", station, digits).unwrap(),
+                None => write!(&mut buf, "{}", station).unwrap(),
             }
             l_s_max = cmp::max(l_s_max, buf.chars().count());
             buf.clear();
@@ -198,14 +198,15 @@ where
                     f,
                     "[{:>3$.4$},{:>3$.4$}) | {:>5$}",
                     left, right, count, l_s_max, digits, l_c_max
-                )?,
-                None => write!(f, "[{:>3$},{:>3$}) | {:>4$}", left, right, count, l_s_max, l_c_max)?,
+                )
+                .unwrap(),
+                None => write!(f, "[{:>3$},{:>3$}) | {:>4$}", left, right, count, l_s_max, l_c_max).unwrap(),
             }
             let n = scale * (count as f64);
             let bar = std::iter::repeat(self.bar_char).take(n as usize).collect::<String>();
-            write!(f, " {}\n", bar)?;
+            write!(f, " {}\n", bar).unwrap();
         }
-        write!(f, "{:>1$}\n", format!("sum = {}", total), 2 * l_s_max + l_c_max + 6)?;
+        write!(f, "{:>1$}\n", format!("sum = {}", total), 2 * l_s_max + l_c_max + 6).unwrap();
         Ok(())
     }
 }
@@ -215,30 +216,27 @@ where
 #[cfg(test)]
 mod tests {
     use super::Histogram;
-    use crate::StrError;
 
     #[test]
-    fn new_fails_on_wrong_input() -> Result<(), StrError> {
+    fn new_fails_on_wrong_input() {
         assert_eq!(
             Histogram::<i32>::new(&[]).err(),
             Some("histogram must have at least 2 stations")
         );
-        Ok(())
     }
 
     #[test]
-    fn new_works() -> Result<(), StrError> {
+    fn new_works() {
         let stations: [i32; 6] = [0, 1, 2, 3, 4, 5];
-        let hist = Histogram::new(&stations)?;
+        let hist = Histogram::new(&stations).unwrap();
         assert_eq!(hist.stations.len(), 6);
         assert_eq!(hist.counts.len(), 5);
-        Ok(())
     }
 
     #[test]
-    fn find_bin_works() -> Result<(), StrError> {
+    fn find_bin_works() {
         let stations: [f64; 6] = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
-        let hist = Histogram::new(&stations)?;
+        let hist = Histogram::new(&stations).unwrap();
 
         let res = hist.find_bin(-3.3);
         assert_eq!(res, None);
@@ -269,12 +267,10 @@ mod tests {
 
         let res = hist.find_bin(4.999999);
         assert_eq!(res, Some(4));
-
-        Ok(())
     }
 
     #[test]
-    fn count_and_reset_work() -> Result<(), StrError> {
+    fn count_and_reset_work() {
         #[rustfmt::skip]
         let data = [
             0.0, 0.1, 0.2, 0.3, 0.9, // 5
@@ -286,7 +282,7 @@ mod tests {
             5.0, 6.0, 7.0, 8.0, // outside
         ];
         let stations: [f64; 6] = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
-        let mut hist = Histogram::new(&stations)?;
+        let mut hist = Histogram::new(&stations).unwrap();
         hist.count(&data);
         assert_eq!(hist.get_counts(), &[5, 8, 2, 2, 3]);
         hist.reset();
@@ -303,23 +299,21 @@ mod tests {
             -1, 10, // outside
         ];
         let stations: [i32; 6] = [0, 1, 2, 3, 4, 5];
-        let mut hist = Histogram::new(&stations)?;
+        let mut hist = Histogram::new(&stations).unwrap();
         hist.count(&data);
         assert_eq!(hist.counts, &[4, 1, 3, 0, 0]);
         hist.reset();
         assert_eq!(hist.counts, &[0, 0, 0, 0, 0]);
-        Ok(())
     }
 
     #[test]
-    fn display_returns_errors() -> Result<(), StrError> {
-        let hist = Histogram::new(&[1, 2])?;
+    fn display_returns_errors() {
+        let hist = Histogram::new(&[1, 2]).unwrap();
         assert_eq!(format!("{:.3}", hist), "zero data\n");
-        Ok(())
     }
 
     #[test]
-    fn display_works() -> Result<(), StrError> {
+    fn display_works() {
         #[rustfmt::skip]
         let data = [
             0.0, 0.1, 0.2, 0.3, 0.9, // 5
@@ -329,7 +323,7 @@ mod tests {
             4.1, 4.5, 4.9, // 3
         ];
         let stations: [f64; 11] = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
-        let mut hist = Histogram::new(&stations)?;
+        let mut hist = Histogram::new(&stations).unwrap();
         hist.count(&data);
         hist.set_bar_char('🔶').set_bar_max_len(10);
         assert_eq!(
@@ -358,7 +352,7 @@ mod tests {
             50.0, 60.0, 70.0, 80.0, // outside
         ];
         let stations: [f64; 11] = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
-        let mut hist = Histogram::new(&stations)?;
+        let mut hist = Histogram::new(&stations).unwrap();
         hist.count(&data);
         assert_eq!(hist.counts, &[5, 8, 2, 2, 3, 0, 0, 0, 0, 0]);
         assert_eq!(
@@ -375,6 +369,5 @@ mod tests {
              [ 9,10) | 0 \n\
              \x20\x20\x20sum = 20\n"
         );
-        Ok(())
     }
 }

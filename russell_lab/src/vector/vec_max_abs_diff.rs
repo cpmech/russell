@@ -17,14 +17,14 @@ use crate::StrError;
 ///
 /// ```
 /// use russell_lab::{vec_max_abs_diff, Vector, StrError};
-/// use russell_chk::assert_approx_eq;
+/// use russell_chk::approx_eq;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let u = Vector::from(&[10.0, -20.0]);
 ///     let v = Vector::from(&[10.0, -20.01]);
 ///     let (i, max_abs_diff) = vec_max_abs_diff(&u, &v)?;
 ///     assert_eq!(i, 1);
-///     assert_approx_eq!(max_abs_diff, 0.01, 1e-14);
+///     approx_eq(max_abs_diff, 0.01, 1e-14);
 ///     Ok(())
 /// }
 /// ```
@@ -49,7 +49,6 @@ pub fn vec_max_abs_diff(u: &Vector, v: &Vector) -> Result<(usize, f64), StrError
 #[cfg(test)]
 mod tests {
     use super::{vec_max_abs_diff, Vector};
-    use crate::StrError;
 
     #[test]
     fn vec_max_abs_diff_fail_on_wrong_dims() {
@@ -59,12 +58,11 @@ mod tests {
     }
 
     #[test]
-    fn vec_max_abs_diff_works() -> Result<(), StrError> {
+    fn vec_max_abs_diff_works() {
         let u = Vector::from(&[1.0, 2.0, 3.0, 4.0]);
         let v = Vector::from(&[2.5, 1.0, 1.5, 2.0]);
-        let (i, max_abs_diff) = vec_max_abs_diff(&u, &v)?;
+        let (i, max_abs_diff) = vec_max_abs_diff(&u, &v).unwrap();
         assert_eq!(i, 3);
         assert_eq!(max_abs_diff, 2.0);
-        Ok(())
     }
 }

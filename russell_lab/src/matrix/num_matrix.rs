@@ -20,9 +20,8 @@ use std::path::Path;
 ///   e.g., using `as_data()` and `as_mut_data()`.
 /// * Internally, the data is stored in the [**row-major** order](https://en.wikipedia.org/wiki/Row-_and_column-major_order)
 /// * For faster computations, we recommend using the set of functions that
-///   operate on Vectors and Matrices; e.g., `add_matrices`, `cholesky_factor`,
-///   `eigen_decomp`, `inverse`, `pseudo_inverse`, `sv_decomp`, `mat_vec_mul`,
-///   `sv_decomp`, and others.
+///   operate on Vectors and Matrices; e.g., `mat_add`, `mat_cholesky`,
+///   `mat_eigen`, `mat_inverse`, `mat_pseudo_inverse`, `mat_svd`, `mat_vec_mul`, and others.
 ///
 /// # Examples
 ///
@@ -53,7 +52,7 @@ use std::path::Path;
 /// ## Inverse and matrix multiplication
 ///
 /// ```
-/// use russell_lab::{inverse, mat_mat_mul, NumMatrix, StrError};
+/// use russell_lab::{mat_inverse, mat_mat_mul, NumMatrix, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // create new matrix filled with ones
@@ -65,7 +64,7 @@ use std::path::Path;
 ///     // compute the inverse matrix `ai`
 ///     let (m, n) = a.dims();
 ///     let mut ai = NumMatrix::<f64>::new(m, n);
-///     let det = inverse(&mut ai, &a)?;
+///     let det = mat_inverse(&mut ai, &a)?;
 ///
 ///     // check the determinant
 ///     assert_eq!(det, 2.0);
@@ -662,7 +661,7 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // handle empty matrix
         if self.nrow == 0 || self.ncol == 0 {
-            write!(f, "[]")?;
+            write!(f, "[]").unwrap();
             return Ok(());
         }
         // find largest width
@@ -672,8 +671,8 @@ where
             for j in 0..self.ncol {
                 let val = self[i][j];
                 match f.precision() {
-                    Some(v) => write!(&mut buf, "{:.1$}", val, v)?,
-                    None => write!(&mut buf, "{}", val)?,
+                    Some(v) => write!(&mut buf, "{:.1$}", val, v).unwrap(),
+                    None => write!(&mut buf, "{}", val).unwrap(),
                 }
                 width = cmp::max(buf.chars().count(), width);
                 buf.clear();
@@ -681,24 +680,24 @@ where
         }
         // draw matrix
         width += 1;
-        write!(f, "┌{:1$}┐\n", " ", width * self.ncol + 1)?;
+        write!(f, "┌{:1$}┐\n", " ", width * self.ncol + 1).unwrap();
         for i in 0..self.nrow {
             if i > 0 {
-                write!(f, " │\n")?;
+                write!(f, " │\n").unwrap();
             }
             for j in 0..self.ncol {
                 if j == 0 {
-                    write!(f, "│")?;
+                    write!(f, "│").unwrap();
                 }
                 let val = self[i][j];
                 match f.precision() {
-                    Some(v) => write!(f, "{:>1$.2$}", val, width, v)?,
-                    None => write!(f, "{:>1$}", val, width)?,
+                    Some(v) => write!(f, "{:>1$.2$}", val, width, v).unwrap(),
+                    None => write!(f, "{:>1$}", val, width).unwrap(),
                 }
             }
         }
-        write!(f, " │\n")?;
-        write!(f, "└{:1$}┘", " ", width * self.ncol + 1)?;
+        write!(f, " │\n").unwrap();
+        write!(f, "└{:1$}┘", " ", width * self.ncol + 1).unwrap();
         Ok(())
     }
 }
@@ -786,20 +785,34 @@ where
     }
 }
 
+/// Allows accessing NumMatrix as an Array2D
+impl<'a, T: 'a> AsArray2D<'a, T> for NumMatrix<T>
+where
+    T: Num + Copy + DeserializeOwned + Serialize,
+{
+    #[inline]
+    fn size(&self) -> (usize, usize) {
+        self.dims()
+    }
+    #[inline]
+    fn at(&self, i: usize, j: usize) -> T {
+        self[i][j]
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
     use super::NumMatrix;
-    use crate::StrError;
-    use russell_chk::assert_vec_approx_eq;
+    use crate::AsArray2D;
     use serde::{Deserialize, Serialize};
 
     #[test]
     fn new_works() {
         let u = NumMatrix::<f64>::new(3, 3);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-        assert_vec_approx_eq!(u.data, correct, 1e-15);
+        assert_eq!(u.data, correct);
     }
 
     #[test]
@@ -882,19 +895,19 @@ mod tests {
     }
 
     #[test]
-    fn from_text_file_works() -> Result<(), StrError> {
-        let a = NumMatrix::<f64>::from_text_file("./data/matrices/ok_empty_file.txt")?;
+    fn from_text_file_works() {
+        let a = NumMatrix::<f64>::from_text_file("./data/matrices/ok_empty_file.txt").unwrap();
         assert_eq!(a.nrow, 0);
         assert_eq!(a.ncol, 0);
         assert_eq!(a.data.len(), 0);
 
-        let a = NumMatrix::<f64>::from_text_file("./data/matrices/ok_no_data.txt")?;
+        let a = NumMatrix::<f64>::from_text_file("./data/matrices/ok_no_data.txt").unwrap();
         assert_eq!(a.nrow, 0);
         assert_eq!(a.ncol, 0);
         assert_eq!(a.data.len(), 0);
         assert_eq!(format!("{}", a), "[]");
 
-        let a = NumMatrix::<f64>::from_text_file("./data/matrices/ok_single_value.txt")?;
+        let a = NumMatrix::<f64>::from_text_file("./data/matrices/ok_single_value.txt").unwrap();
         assert_eq!(a.nrow, 1);
         assert_eq!(a.ncol, 1);
         assert_eq!(a.data.len(), 1);
@@ -905,7 +918,7 @@ mod tests {
              └   ┘"
         );
 
-        let a = NumMatrix::<f64>::from_text_file("./data/matrices/ok1.txt")?;
+        let a = NumMatrix::<f64>::from_text_file("./data/matrices/ok1.txt").unwrap();
         assert_eq!(a.nrow, 3);
         assert_eq!(a.ncol, 3);
         assert_eq!(a.data.len(), 9);
@@ -917,7 +930,6 @@ mod tests {
              │ 7 8 9 │\n\
              └       ┘"
         );
-        Ok(())
     }
 
     #[test]
@@ -939,7 +951,7 @@ mod tests {
     }
 
     #[test]
-    fn display_works() -> Result<(), StrError> {
+    fn display_works() {
         let a_0x0 = NumMatrix::<f64>::new(0, 0);
         let a_0x1 = NumMatrix::<f64>::new(0, 1);
         let a_1x0 = NumMatrix::<f64>::new(1, 0);
@@ -960,11 +972,10 @@ mod tests {
              │ 7 8 9 │\n\
              └       ┘"
         );
-        Ok(())
     }
 
     #[test]
-    fn display_precision_works() -> Result<(), StrError> {
+    fn display_precision_works() {
         #[rustfmt::skip]
         let a = NumMatrix::<f64>::from(&[
             [1.0111111, 2.02222222, 3.033333],
@@ -977,7 +988,6 @@ mod tests {
                              │ 7.08 8.09 9.10 │\n\
                              └                ┘";
         assert_eq!(format!("{:.2}", a), correct);
-        Ok(())
     }
 
     #[test]
@@ -991,7 +1001,7 @@ mod tests {
         let mut a = NumMatrix::<f64>::new(2, 2);
         a.fill(7.7);
         let correct = &[7.7, 7.7, 7.7, 7.7];
-        assert_vec_approx_eq!(a.data, correct, 1e-15);
+        assert_eq!(a.data, correct);
     }
 
     #[test]
@@ -1051,7 +1061,7 @@ mod tests {
     }
 
     #[test]
-    fn clone_and_serialize_work() -> Result<(), StrError> {
+    fn clone_and_serialize_work() {
         #[rustfmt::skip]
         let mut a = NumMatrix::<f64>::from(&[
             [1.0, 2.0],
@@ -1095,13 +1105,16 @@ mod tests {
         // serialize
         let mut serialized = Vec::new();
         let mut serializer = rmp_serde::Serializer::new(&mut serialized);
-        a.serialize(&mut serializer).map_err(|_| "matrix serialize failed")?;
+        a.serialize(&mut serializer)
+            .map_err(|_| "matrix serialize failed")
+            .unwrap();
         assert!(serialized.len() > 0);
 
         // deserialize
         let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
-        let b: NumMatrix<f64> =
-            Deserialize::deserialize(&mut deserializer).map_err(|_| "cannot deserialize matrix data")?;
+        let b: NumMatrix<f64> = Deserialize::deserialize(&mut deserializer)
+            .map_err(|_| "cannot deserialize matrix data")
+            .unwrap();
         assert_eq!(
             format!("{}", b),
             "┌       ┐\n\
@@ -1112,14 +1125,18 @@ mod tests {
         );
 
         // serialize to json
-        let json = serde_json::to_string(&a).map_err(|_| "serde_json::to_string failed")?;
+        let json = serde_json::to_string(&a)
+            .map_err(|_| "serde_json::to_string failed")
+            .unwrap();
         assert_eq!(
             json,
             r#"{"nrow":3,"ncol":3,"data":[1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0]}"#
         );
 
         // deserialize from json
-        let from_json: NumMatrix<f64> = serde_json::from_str(&json).map_err(|_| "serde_json::from_str failed")?;
+        let from_json: NumMatrix<f64> = serde_json::from_str(&json)
+            .map_err(|_| "serde_json::from_str failed")
+            .unwrap();
         assert_eq!(
             format!("{}", from_json),
             "┌       ┐\n\
@@ -1128,6 +1145,19 @@ mod tests {
              │ 7 8 9 │\n\
              └       ┘"
         );
-        Ok(())
+    }
+
+    fn array_2d_test<'a, T, U>(array: &'a T) -> String
+    where
+        T: AsArray2D<'a, U>,
+        U: 'a + std::fmt::Debug,
+    {
+        format!("size = {:?}", array.size()).to_string()
+    }
+
+    #[test]
+    fn as_array_2d_works() {
+        let u = NumMatrix::<i32>::from(&[[1, 2], [3, 4]]);
+        assert_eq!(array_2d_test(&u), "size = (2, 2)");
     }
 }

@@ -37,7 +37,7 @@ pub fn complex_add_vectors_oblas(
 mod tests {
     use super::complex_add_vectors_oblas;
     use num_complex::Complex64;
-    use russell_chk::assert_complex_vec_approx_eq;
+    use russell_chk::complex_vec_approx_eq;
 
     #[test]
     fn complex_add_vectors_oblas_sizes_works() {
@@ -53,7 +53,7 @@ mod tests {
                 correct[i] = Complex64::new(i as f64, i as f64);
             }
             complex_add_vectors_oblas(&mut w, Complex64::new(0.5, 0.0), &u, Complex64::new(0.5, 0.0), &v);
-            assert_complex_vec_approx_eq!(w, correct, 1e-15);
+            complex_vec_approx_eq(&w, &correct, 1e-15);
         }
     }
 
@@ -86,6 +86,6 @@ mod tests {
             Complex64::new(-1.0,-1.0), Complex64::new(-2.0,-2.0), Complex64::new(-3.0,-3.0), Complex64::new(-4.0,-4.0),
             Complex64::new(-1.0,-1.0), Complex64::new(-2.0,-2.0), Complex64::new(-3.0,-3.0), Complex64::new(-4.0,-4.0),
         ];
-        assert_complex_vec_approx_eq!(w, correct, 1e-15);
+        complex_vec_approx_eq(&w, correct, 1e-15);
     }
 }

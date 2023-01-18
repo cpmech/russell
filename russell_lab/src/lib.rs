@@ -5,7 +5,7 @@
 //! # Example - Cholesky factorization
 //!
 //! ```
-//! use russell_lab::{cholesky_factor, Matrix, StrError};
+//! use russell_lab::{mat_cholesky, Matrix, StrError};
 //!
 //! fn main() -> Result<(), StrError> {
 //!     // set matrix
@@ -18,7 +18,7 @@
 //!     // perform factorization
 //!     let m = a.nrow();
 //!     let mut l = Matrix::new(m, m);
-//!     cholesky_factor(&mut l, &a)?;
+//!     mat_cholesky(&mut l, &a)?;
 //!
 //!     // compare with solution
 //!     let l_correct = "┌          ┐\n\
@@ -39,9 +39,11 @@ mod constants;
 mod enums;
 mod formatters;
 mod generators;
-mod math;
+pub mod math;
 mod matrix;
 mod matvec;
+pub mod prelude;
+mod read_table;
 mod sort;
 mod stopwatch;
 mod vector;
@@ -50,9 +52,9 @@ use crate::constants::*;
 pub use crate::enums::*;
 pub use crate::formatters::*;
 pub use crate::generators::*;
-pub use crate::math::*;
 pub use crate::matrix::*;
 pub use crate::matvec::*;
+pub use crate::read_table::*;
 pub use crate::sort::*;
 pub use crate::stopwatch::*;
 pub use crate::vector::*;

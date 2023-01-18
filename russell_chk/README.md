@@ -24,33 +24,33 @@ russell_chk = "*"
 ### Check float point numbers
 
 ```rust
-use russell_chk::assert_approx_eq;
+use russell_chk::approx_eq;
 
 fn main() {
-    assert_approx_eq!(0.123456789, 0.12345678, 1e-8);
-    assert_approx_eq!(0.123456789, 0.1234567, 1e-7);
-    assert_approx_eq!(0.123456789, 0.123456, 1e-6);
-    assert_approx_eq!(0.123456789, 0.12345, 1e-5);
-    assert_approx_eq!(0.123456789, 0.1234, 1e-4);
+    approx_eq(0.123456789, 0.12345678, 1e-8);
+    approx_eq(0.123456789, 0.1234567, 1e-7);
+    approx_eq(0.123456789, 0.123456, 1e-6);
+    approx_eq(0.123456789, 0.12345, 1e-5);
+    approx_eq(0.123456789, 0.1234, 1e-4);
 }
 ```
 
 ### Check a vector of float point numbers
 
 ```rust
-use russell_chk::assert_vec_approx_eq;
+use russell_chk::vec_approx_eq;
 
 fn main() {
     let a = [0.123456789, 0.123456789, 0.123456789];
     let b = [0.12345678,  0.1234567,   0.123456];
-    assert_vec_approx_eq!(&a, &b, 1e-6);
+    vec_approx_eq(&a, &b, 1e-6);
 }
 ```
 
 ### Check derivatives
 
 ```rust
-use russell_chk::assert_deriv_approx_eq;
+use russell_chk::deriv_approx_eq;
 
 struct Arguments {}
 
@@ -59,25 +59,25 @@ fn main() {
     let args = &mut Arguments {};
     let at_x = 8.0;
     let dfdx = -1.01;
-    assert_deriv_approx_eq!(dfdx, at_x, f, args, 1e-2);
+    deriv_approx_eq(dfdx, at_x, args, 1e-2, f);
 }
 ```
 
 ### Check complex numbers
 
 ```rust
-use russell_chk::assert_complex_vec_approx_eq;
+use russell_chk::complex_vec_approx_eq;
 use num_complex::Complex64;
 
 fn main() {
-    let a = [
+    let a = &[
         Complex64::new(0.123456789, 5.01),
         Complex64::new(0.123456789, 5.01),
         Complex64::new(0.123456789, 5.01)];
-    let b = [
+    let b = &[
         Complex64::new(0.12345678, 5.01),
         Complex64::new(0.1234567, 5.01),
         Complex64::new(0.123456, 5.01)];
-    assert_complex_vec_approx_eq!(&a, &b, 1e-6);
+    complex_vec_approx_eq(a, b, 1e-6);
 }
 ```

@@ -33,13 +33,16 @@ pub const STEPSIZE_CENTRAL5: f64 = 1e-3;
 /// let args = &mut Arguments {};
 /// let at_x = 1.0;
 /// let h = 1e-3;
-/// let (d, err, rerr) = deriv_and_errors_central5(at_x, f, args, h);
+/// let (d, err, rerr) = deriv_and_errors_central5(at_x, args, h, f);
 /// let d_correct = -2.0 * f64::exp(-2.0 * at_x);
 /// assert!(f64::abs(d - d_correct) < 1e-13);
 /// assert!(err < 1e-6);
 /// assert!(rerr < 1e-12);
 /// ```
-pub fn deriv_and_errors_central5<A>(at_x: f64, f: fn(f64, &mut A) -> f64, args: &mut A, h: f64) -> (f64, f64, f64) {
+pub fn deriv_and_errors_central5<F, A>(at_x: f64, args: &mut A, h: f64, mut f: F) -> (f64, f64, f64)
+where
+    F: FnMut(f64, &mut A) -> f64,
+{
     // numerical derivative
     let fm1 = f(at_x - h, args);
     let fp1 = f(at_x + h, args);
@@ -87,14 +90,17 @@ pub fn deriv_and_errors_central5<A>(at_x: f64, f: fn(f64, &mut A) -> f64, args: 
 /// let f = |x: f64, _: &mut Arguments| f64::exp(-2.0 * x);
 /// let args = &mut Arguments {};
 /// let at_x = 1.0;
-/// let d = deriv_central5(at_x, f, args);
+/// let d = deriv_central5(at_x, args, f);
 /// let d_correct = -2.0 * f64::exp(-2.0 * at_x);
 /// assert!(f64::abs(d - d_correct) < 1e-11);
 /// ```
-pub fn deriv_central5<A>(at_x: f64, f: fn(f64, &mut A) -> f64, args: &mut A) -> f64 {
+pub fn deriv_central5<F, A>(at_x: f64, args: &mut A, mut f: F) -> f64
+where
+    F: FnMut(f64, &mut A) -> f64,
+{
     // trial derivative
     let h = STEPSIZE_CENTRAL5;
-    let (dfdx, err, rerr) = deriv_and_errors_central5(at_x, f, args, h);
+    let (dfdx, err, rerr) = deriv_and_errors_central5(at_x, args, h, &mut f);
     let err_total = err + rerr;
 
     // done with zero-error
@@ -109,7 +115,7 @@ pub fn deriv_central5<A>(at_x: f64, f: fn(f64, &mut A) -> f64, args: &mut A) -> 
 
     // improved derivative
     let h_improv = h * f64::powf(rerr / (2.0 * err), 1.0 / 3.0);
-    let (dfdx_improv, err_improv, rerr_improv) = deriv_and_errors_central5(at_x, f, args, h_improv);
+    let (dfdx_improv, err_improv, rerr_improv) = deriv_and_errors_central5(at_x, args, h_improv, &mut f);
     let err_total_improv = err_improv + rerr_improv;
 
     // ignore improved estimate because of larger error
@@ -240,7 +246,7 @@ mod tests {
         );
         for test in &tests {
             let args = &mut Arguments {};
-            let (d, err, rerr) = deriv_and_errors_central5(test.at_x, test.f, args, 1e-3);
+            let (d, err, rerr) = deriv_and_errors_central5(test.at_x, args, 1e-3, test.f);
             let d_correct = (test.g)(test.at_x, args);
             println!(
                 "{:>10}{:15.9}{:22}{:11.2e}{:10.2e}{:10.2e}",
@@ -267,7 +273,7 @@ mod tests {
         // for test in &[&tests[2]] {
         for test in &tests {
             let args = &mut Arguments {};
-            let d = deriv_central5(test.at_x, test.f, args);
+            let d = deriv_central5(test.at_x, args, test.f);
             let d_correct = (test.g)(test.at_x, args);
             println!(
                 "{:>10}{:15.9}{:22}{:11.2e}",

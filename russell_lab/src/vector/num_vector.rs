@@ -15,13 +15,13 @@ use std::ops::{Index, IndexMut};
 /// * NumVector has also methods to access the underlying data (mutable or not);
 ///   e.g., using `as_data()` and `as_mut_data()`.
 /// * For faster computations, we recommend using the set of functions that
-///   operate on Vectors and Matrices; e.g., `add_vectors`, `inner`, `outer`,
-///   `copy_vectors`, `mat_vec_mul`, and others.
+///   operate on Vectors and Matrices; e.g., `vec_add`, `vec_inner`, `vec_outer`,
+///   `vec_copy`, `mat_vec_mul`, and others.
 ///
 /// # Example
 ///
 /// ```
-/// use russell_lab::{add_vectors, NumVector, StrError};
+/// use russell_lab::{vec_add, NumVector, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // create vector
@@ -73,7 +73,7 @@ use std::ops::{Index, IndexMut};
 ///
 ///     // add vectors
 ///     let mut z = NumVector::<f64>::new(n);
-///     add_vectors(&mut z, 1.0, &u, 1.0, &w)?;
+///     vec_add(&mut z, 1.0, &u, 1.0, &w)?;
 ///     println!("{}", z);
 ///     assert_eq!(
 ///         format!("{}", z),
@@ -522,28 +522,28 @@ where
         for i in 0..self.data.len() {
             let val = self.data[i];
             match f.precision() {
-                Some(v) => write!(&mut buf, "{:.1$}", val, v)?,
-                None => write!(&mut buf, "{}", val)?,
+                Some(v) => write!(&mut buf, "{:.1$}", val, v).unwrap(),
+                None => write!(&mut buf, "{}", val).unwrap(),
             }
             width = cmp::max(buf.chars().count(), width);
             buf.clear();
         }
         // draw vector
         width += 1;
-        write!(f, "┌{:1$}┐\n", " ", width + 1)?;
+        write!(f, "┌{:1$}┐\n", " ", width + 1).unwrap();
         for i in 0..self.data.len() {
             if i > 0 {
-                write!(f, " │\n")?;
+                write!(f, " │\n").unwrap();
             }
-            write!(f, "│")?;
+            write!(f, "│").unwrap();
             let val = self.data[i];
             match f.precision() {
-                Some(v) => write!(f, "{:>1$.2$}", val, width, v)?,
-                None => write!(f, "{:>1$}", val, width)?,
+                Some(v) => write!(f, "{:>1$.2$}", val, width, v).unwrap(),
+                None => write!(f, "{:>1$}", val, width).unwrap(),
             }
         }
-        write!(f, " │\n")?;
-        write!(f, "└{:1$}┘", " ", width + 1)?;
+        write!(f, " │\n").unwrap();
+        write!(f, "└{:1$}┘", " ", width + 1).unwrap();
         Ok(())
     }
 }
@@ -673,13 +673,28 @@ where
     }
 }
 
+/// Allows accessing NumVector as an Array1D
+impl<'a, T: 'a> AsArray1D<'a, T> for NumVector<T>
+where
+    T: Num + NumCast + Copy + DeserializeOwned + Serialize,
+{
+    #[inline]
+    fn size(&self) -> usize {
+        self.dim()
+    }
+    #[inline]
+    fn at(&self, i: usize) -> T {
+        self[i]
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
     use super::NumVector;
-    use crate::StrError;
-    use russell_chk::assert_vec_approx_eq;
+    use crate::AsArray1D;
+    use russell_chk::vec_approx_eq;
     use serde::{Deserialize, Serialize};
     use std::fmt::Write;
 
@@ -726,59 +741,57 @@ mod tests {
     }
 
     #[test]
-    fn linspace_works() -> Result<(), StrError> {
-        let x = NumVector::<f64>::linspace(0.0, 1.0, 11)?;
-        let correct = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
-        assert_vec_approx_eq!(x.data, correct, 1e-15);
+    fn linspace_works() {
+        let x = NumVector::<f64>::linspace(0.0, 1.0, 11).unwrap();
+        let correct = &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+        vec_approx_eq(&x.data, correct, 1e-15);
 
-        let x = NumVector::<f64>::linspace(2.0, 3.0, 0)?;
+        let x = NumVector::<f64>::linspace(2.0, 3.0, 0).unwrap();
         assert_eq!(x.data.len(), 0);
 
-        let x = NumVector::<f64>::linspace(2.0, 3.0, 1)?;
+        let x = NumVector::<f64>::linspace(2.0, 3.0, 1).unwrap();
         assert_eq!(x.data.len(), 1);
         assert_eq!(x.data[0], 2.0);
 
-        let x = NumVector::<f64>::linspace(2.0, 3.0, 2)?;
+        let x = NumVector::<f64>::linspace(2.0, 3.0, 2).unwrap();
         assert_eq!(x.data.len(), 2);
         assert_eq!(x.data[0], 2.0);
         assert_eq!(x.data[1], 3.0);
 
-        let i = NumVector::<usize>::linspace(0, 10, 0)?;
+        let i = NumVector::<usize>::linspace(0, 10, 0).unwrap();
         assert_eq!(i.data, [] as [usize; 0]);
-        let i = NumVector::<usize>::linspace(0, 10, 1)?;
+        let i = NumVector::<usize>::linspace(0, 10, 1).unwrap();
         assert_eq!(i.data, [0]);
-        let i = NumVector::<usize>::linspace(0, 10, 2)?;
+        let i = NumVector::<usize>::linspace(0, 10, 2).unwrap();
         assert_eq!(i.data, [0, 10]);
-        let i = NumVector::<usize>::linspace(0, 10, 3)?;
+        let i = NumVector::<usize>::linspace(0, 10, 3).unwrap();
         assert_eq!(i.data, [0, 5, 10]);
-        let i = NumVector::<usize>::linspace(0, 10, 4)?;
+        let i = NumVector::<usize>::linspace(0, 10, 4).unwrap();
         assert_eq!(i.data, [0, 3, 6, 9]);
-        Ok(())
     }
 
     #[test]
-    fn mapped_linspace_works() -> Result<(), StrError> {
-        let x = NumVector::<f64>::mapped_linspace(0.0, 4.0, 5, pow2)?;
+    fn mapped_linspace_works() {
+        let x = NumVector::<f64>::mapped_linspace(0.0, 4.0, 5, pow2).unwrap();
         assert_eq!(x.data, &[0.0, 1.0, 4.0, 9.0, 16.0]);
 
-        let x = NumVector::<f64>::mapped_linspace(-1.0, 1.0, 5, f64::abs)?;
+        let x = NumVector::<f64>::mapped_linspace(-1.0, 1.0, 5, f64::abs).unwrap();
         assert_eq!(x.data, &[1.0, 0.5, 0.0, 0.5, 1.0]);
 
-        let x = NumVector::<f64>::mapped_linspace(2.0, 3.0, 0, pow3)?;
+        let x = NumVector::<f64>::mapped_linspace(2.0, 3.0, 0, pow3).unwrap();
         assert_eq!(x.data.len(), 0);
 
-        let x = NumVector::<f64>::mapped_linspace(2.0, 3.0, 1, pow3)?;
+        let x = NumVector::<f64>::mapped_linspace(2.0, 3.0, 1, pow3).unwrap();
         assert_eq!(x.data.len(), 1);
         assert_eq!(x.data[0], 8.0);
 
-        let x = NumVector::<f64>::mapped_linspace(2.0, 3.0, 2, pow3)?;
+        let x = NumVector::<f64>::mapped_linspace(2.0, 3.0, 2, pow3).unwrap();
         assert_eq!(x.data.len(), 2);
         assert_eq!(x.data[0], 8.0);
         assert_eq!(x.data[1], 27.0);
 
-        let i = NumVector::<usize>::mapped_linspace(0, 10, 4, |v| v * 2)?;
+        let i = NumVector::<usize>::mapped_linspace(0, 10, 4, |v| v * 2).unwrap();
         assert_eq!(i.data, [0, 6, 12, 18]);
-        Ok(())
     }
 
     #[test]
@@ -786,7 +799,7 @@ mod tests {
         let mut u = NumVector::<f64>::from(&[6.0, 9.0, 12.0]);
         u.fill(7.7);
         let correct = &[7.7, 7.7, 7.7];
-        assert_vec_approx_eq!(u.data, correct, 1e-15);
+        assert_eq!(u.data, correct);
     }
 
     #[test]
@@ -837,7 +850,7 @@ mod tests {
         let mut u = NumVector::<f64>::from(&[-1.0, -2.0, -3.0]);
         u.map(pow3);
         let correct = &[-1.0, -8.0, -27.0];
-        assert_vec_approx_eq!(u.data, correct, 1e-15);
+        assert_eq!(u.data, correct);
     }
 
     #[test]
@@ -845,7 +858,7 @@ mod tests {
         let mut u = NumVector::<f64>::from(&[-1.0, -2.0, -3.0]);
         u.map_with_index(pow3_plus_i);
         let correct = &[-1.0, -7.0, -25.0];
-        assert_vec_approx_eq!(u.data, correct, 1e-15);
+        assert_eq!(u.data, correct);
     }
 
     #[test]
@@ -964,7 +977,7 @@ mod tests {
     }
 
     #[test]
-    fn clone_and_serialize_work() -> Result<(), StrError> {
+    fn clone_and_serialize_work() {
         let mut u = NumVector::<f64>::from(&[1.0, 2.0, 3.0]);
         let u_copy = u.clone();
         u.set(0, 0.11);
@@ -995,12 +1008,15 @@ mod tests {
         // serialize
         let mut serialized = Vec::new();
         let mut serializer = rmp_serde::Serializer::new(&mut serialized);
-        u.serialize(&mut serializer).map_err(|_| "vector serialize failed")?;
+        u.serialize(&mut serializer)
+            .map_err(|_| "vector serialize failed")
+            .unwrap();
         assert!(serialized.len() > 0);
         // deserialize
         let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
-        let b: NumVector<f64> =
-            Deserialize::deserialize(&mut deserializer).map_err(|_| "cannot deserialize vector data")?;
+        let b: NumVector<f64> = Deserialize::deserialize(&mut deserializer)
+            .map_err(|_| "cannot deserialize vector data")
+            .unwrap();
         assert_eq!(
             format!("{}", b),
             "┌   ┐\n\
@@ -1009,6 +1025,19 @@ mod tests {
              │ 3 │\n\
              └   ┘"
         );
-        Ok(())
+    }
+
+    fn array_1d_test<'a, T, U>(array: &'a T) -> String
+    where
+        T: AsArray1D<'a, U>,
+        U: 'a + std::fmt::Debug,
+    {
+        format!("size = {:?}", array.size()).to_string()
+    }
+
+    #[test]
+    fn as_array_1d_works() {
+        let u = NumVector::<i32>::from(&[1, 2]);
+        assert_eq!(array_1d_test(&u), "size = 2");
     }
 }

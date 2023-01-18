@@ -1,6 +1,7 @@
-use crate::{erf, ProbabilityDistribution, StrError, SQRT_2, SQRT_PI};
+use crate::{ProbabilityDistribution, StrError};
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
+use russell_lab::math::{erf, SQRT_2, SQRT_PI};
 
 /// Defines the Normal distribution
 pub struct DistributionNormal {
@@ -61,8 +62,8 @@ impl ProbabilityDistribution for DistributionNormal {
 
 #[cfg(test)]
 mod tests {
-    use crate::{DistributionNormal, ProbabilityDistribution, StrError};
-    use russell_chk::assert_approx_eq;
+    use crate::{DistributionNormal, ProbabilityDistribution};
+    use russell_chk::approx_eq;
 
     // Data from the following R-code (run with Rscript normal.R):
     /*
@@ -90,7 +91,15 @@ mod tests {
     */
 
     #[test]
-    fn normal_works() -> Result<(), StrError> {
+    fn normal_handles_errors() {
+        assert_eq!(
+            DistributionNormal::new(2.0, f64::INFINITY).err(),
+            Some("invalid parameters")
+        );
+    }
+
+    #[test]
+    fn normal_works() {
         #[rustfmt::skip]
         // x, mu, sig, pdf, cdf
         let data = [
@@ -250,19 +259,24 @@ mod tests {
         ];
         for row in data {
             let [x, mu, sig, pdf, cdf] = row;
-            let d = DistributionNormal::new(mu, sig)?;
-            assert_approx_eq!(d.pdf(x), pdf, 1e-14);
-            assert_approx_eq!(d.cdf(x), cdf, 1e-14);
+            let d = DistributionNormal::new(mu, sig).unwrap();
+            approx_eq(d.pdf(x), pdf, 1e-14);
+            approx_eq(d.cdf(x), cdf, 1e-14);
         }
-        Ok(())
     }
 
     #[test]
-    fn mean_and_variance_work() -> Result<(), StrError> {
+    fn mean_and_variance_work() {
         let (mu, sig) = (1.0, 0.25);
-        let d = DistributionNormal::new(mu, sig)?;
-        assert_approx_eq!(d.mean(), mu, 1e-14);
-        assert_approx_eq!(d.variance(), sig * sig, 1e-14);
-        Ok(())
+        let d = DistributionNormal::new(mu, sig).unwrap();
+        approx_eq(d.mean(), mu, 1e-14);
+        approx_eq(d.variance(), sig * sig, 1e-14);
+    }
+
+    #[test]
+    fn sample_works() {
+        let d = DistributionNormal::new(1.0, 2.0).unwrap();
+        let mut rng = rand::thread_rng();
+        d.sample(&mut rng);
     }
 }

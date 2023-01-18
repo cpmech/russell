@@ -45,8 +45,7 @@ pub fn mat_sum_rows(v: &mut Vector, a: &Matrix) -> Result<(), StrError> {
 #[cfg(test)]
 mod tests {
     use super::{mat_sum_rows, Matrix, Vector};
-    use crate::StrError;
-    use russell_chk::assert_vec_approx_eq;
+    use russell_chk::vec_approx_eq;
 
     #[test]
     fn mat_sum_rows_fails_on_wrong_dims() {
@@ -56,7 +55,7 @@ mod tests {
     }
 
     #[test]
-    fn mat_sum_rows_works() -> Result<(), StrError> {
+    fn mat_sum_rows_works() {
         #[rustfmt::skip]
         let a = Matrix::from(&[
             [ 5.0, -2.0, 0.0, 1.0],
@@ -64,9 +63,8 @@ mod tests {
             [15.0, -6.0, 0.0, 3.0],
         ]);
         let mut v = Vector::new(a.ncol());
-        mat_sum_rows(&mut v, &a)?;
+        mat_sum_rows(&mut v, &a).unwrap();
         let correct = &[30.0, -12.0, 0.0, 6.0];
-        assert_vec_approx_eq!(v.as_data(), correct, 1e-15);
-        Ok(())
+        vec_approx_eq(v.as_data(), correct, 1e-15);
     }
 }

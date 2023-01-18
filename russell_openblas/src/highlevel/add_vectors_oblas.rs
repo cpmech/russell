@@ -29,7 +29,7 @@ pub fn add_vectors_oblas(w: &mut [f64], alpha: f64, u: &[f64], beta: f64, v: &[f
 #[cfg(test)]
 mod tests {
     use super::add_vectors_oblas;
-    use russell_chk::assert_vec_approx_eq;
+    use russell_chk::vec_approx_eq;
 
     #[test]
     fn add_vectors_oblas_sizes_works() {
@@ -45,7 +45,7 @@ mod tests {
                 correct[i] = i as f64;
             }
             add_vectors_oblas(&mut w, 0.5, &u, 0.5, &v);
-            assert_vec_approx_eq!(w, correct, 1e-15);
+            vec_approx_eq(&w, &correct, 1e-15);
         }
     }
 
@@ -78,6 +78,6 @@ mod tests {
             -1.0, -2.0, -3.0, -4.0,
             -1.0, -2.0, -3.0, -4.0,
         ];
-        assert_vec_approx_eq!(w, correct, 1e-15);
+        vec_approx_eq(&w, correct, 1e-15);
     }
 }

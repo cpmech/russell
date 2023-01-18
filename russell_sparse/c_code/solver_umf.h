@@ -76,9 +76,6 @@ void drop_solver_umf(struct SolverUMF *solver) {
 int32_t solver_umf_initialize(struct SolverUMF *solver,
                               int32_t n,
                               int32_t nnz,
-                              int32_t const *indices_i,
-                              int32_t const *indices_j,
-                              double const *values_aij,
                               int32_t symmetry,
                               int32_t ordering,
                               int32_t scaling,
@@ -111,36 +108,41 @@ int32_t solver_umf_initialize(struct SolverUMF *solver,
     solver->n = n;
     solver->nnz = nnz;
 
-    int code = umfpack_di_triplet_to_col(n, n, nnz, indices_i, indices_j, values_aij,
-                                         solver->ap, solver->ai, solver->ax, NULL);
-    if (code != UMFPACK_OK) {
-        free(solver->ap);
-        free(solver->ai);
-        free(solver->ax);
-        return code;
-    }
-
     solver->control[UMFPACK_ORDERING] = UMF_ORDERING[ordering];
     solver->control[UMFPACK_SCALE] = UMF_SCALING[scaling];
 
     set_umf_verbose(solver, verbose);
 
-    if (verbose == C_TRUE) {
-        umfpack_di_report_status(solver->control, code);
-    }
-
     return UMFPACK_OK;
 }
 
-int32_t solver_umf_factorize(struct SolverUMF *solver, int32_t verbose) {
+int32_t solver_umf_factorize(struct SolverUMF *solver,
+                             int32_t const *indices_i,
+                             int32_t const *indices_j,
+                             double const *values_aij,
+                             int32_t verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
 
     set_umf_verbose(solver, verbose);
 
-    int code = umfpack_di_symbolic(solver->n, solver->n, solver->ap, solver->ai, solver->ax,
-                                   &solver->symbolic, solver->control, solver->info);
+    // convert triplet to compressed column (must be done for every factorization)
+
+    int code = umfpack_di_triplet_to_col(solver->n, solver->n, solver->nnz,
+                                         indices_i, indices_j, values_aij,
+                                         solver->ap, solver->ai, solver->ax, NULL);
+    if (code != UMFPACK_OK) {
+        return code;
+    }
+    if (verbose == C_TRUE) {
+        umfpack_di_report_status(solver->control, code);
+    }
+
+    // perform factorization
+
+    code = umfpack_di_symbolic(solver->n, solver->n, solver->ap, solver->ai, solver->ax,
+                               &solver->symbolic, solver->control, solver->info);
     if (code != UMFPACK_OK) {
         return code;
     }

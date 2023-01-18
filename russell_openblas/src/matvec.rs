@@ -273,7 +273,7 @@ mod tests {
     use super::{dgemv, dger, dgesv, zgemv, zgesv};
     use crate::{to_i32, StrError};
     use num_complex::Complex64;
-    use russell_chk::{assert_complex_vec_approx_eq, assert_vec_approx_eq};
+    use russell_chk::{complex_vec_approx_eq, vec_approx_eq};
 
     #[test]
     fn dger_works() {
@@ -292,13 +292,13 @@ mod tests {
         dger(m, n, alpha, u, 1, v, 1, &mut a);
         // a = 100 + 0.5⋅u⋅vᵀ
         #[rustfmt::skip]
-        let correct = [
+        let correct = &[
             102.0, 101.5, 101.0,
             104.0, 103.0, 102.0,
             106.0, 104.5, 103.0,
             108.0, 106.0, 104.0,
         ];
-        assert_vec_approx_eq!(a, correct, 1e-15);
+        vec_approx_eq(&a, correct, 1e-15);
     }
 
     #[test]
@@ -317,14 +317,14 @@ mod tests {
         let mut x = [20.0, 10.0, 30.0];
         let mut y = [3.0, 1.0, 2.0, 4.0];
         dgemv(false, 4, 3, alpha, &a, &x, 1, beta, &mut y, 1);
-        assert_vec_approx_eq!(y, &[12.5, 17.5, 29.5, 43.5], 1e-15);
+        vec_approx_eq(&y, &[12.5, 17.5, 29.5, 43.5], 1e-15);
 
         // perform mv with transpose
         dgemv(true, 4, 3, alpha, &a, &y, 1, beta, &mut x, 1);
-        assert_vec_approx_eq!(x, &[144.125, 30.3, 75.45], 1e-15);
+        vec_approx_eq(&x, &[144.125, 30.3, 75.45], 1e-15);
 
         // check that a is unmodified
-        assert_vec_approx_eq!(a, &[0.1, 0.2, 0.3, 1.0, 0.2, 0.3, 2.0, 0.2, 0.3, 3.0, 0.2, 0.3], 1e-15);
+        vec_approx_eq(&a, &[0.1, 0.2, 0.3, 1.0, 0.2, 0.3, 2.0, 0.2, 0.3, 3.0, 0.2, 0.3], 1e-15);
     }
 
     #[test]
@@ -353,25 +353,25 @@ mod tests {
             Complex64::new(4.0, 0.0),
         ];
         zgemv(false, 4, 3, alpha, &a, &x, 1, beta, &mut y, 1);
-        let y_correct = [
+        let y_correct = &[
             Complex64::new(-38.5, 41.5),
             Complex64::new(-10.5, 46.0),
             Complex64::new(24.5, 55.5),
             Complex64::new(59.5, 67.0),
         ];
-        assert_complex_vec_approx_eq!(y, y_correct, 1e-15);
+        complex_vec_approx_eq(&y, y_correct, 1e-15);
 
         // perform mv with transpose
         zgemv(true, 4, 3, alpha, &a, &y, 1, beta, &mut x, 1);
-        let x_correct = [
+        let x_correct = &[
             Complex64::new(-248.875, 82.5),
             Complex64::new(-18.5, 38.0),
             Complex64::new(83.85, 154.7),
         ];
-        assert_complex_vec_approx_eq!(x, x_correct, 1e-13);
+        complex_vec_approx_eq(&x, x_correct, 1e-13);
 
         // check that a is unmodified
-        assert_complex_vec_approx_eq!(a, a_clone, 1e-15);
+        complex_vec_approx_eq(&a, &a_clone, 1e-15);
     }
 
     #[test]
@@ -424,7 +424,7 @@ mod tests {
 
         // check
         let correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
-        assert_vec_approx_eq!(b, correct, 1e-14);
+        vec_approx_eq(&b, correct, 1e-14);
         Ok(())
     }
 
@@ -495,7 +495,7 @@ mod tests {
             Complex64::new(4.0, 0.0),
             Complex64::new(5.0, 0.0),
         ];
-        assert_complex_vec_approx_eq!(b, correct, 1e-14);
+        complex_vec_approx_eq(&b, correct, 1e-14);
         Ok(())
     }
 
@@ -524,7 +524,7 @@ mod tests {
         ];
 
         // solution
-        let x_correct = [
+        let x_correct = &[
             Complex64::new(3.3, -1.00),
             Complex64::new(1.0, 0.17),
             Complex64::new(5.5, 0.00),
@@ -537,17 +537,17 @@ mod tests {
         let (n, nrhs) = (5_i32, 1_i32);
         let mut ipiv = vec![0; n as usize];
         zgesv(n, nrhs, &mut a, &mut ipiv, &mut b)?;
-        assert_complex_vec_approx_eq!(b, x_correct, 0.00049);
+        complex_vec_approx_eq(&b, x_correct, 0.00049);
 
         // compare with python results
-        let x_python = [
+        let x_python = &[
             Complex64::new(3.299687426933794e+00, -1.000372829305209e+00),
             Complex64::new(9.997606020636992e-01, 1.698383755401385e-01),
             Complex64::new(5.500074759292877e+00, -4.556001293922560e-05),
             Complex64::new(8.999787912842375e+00, -6.662818244209770e-05),
             Complex64::new(1.000001132800243e+01, -1.774987242230929e+01),
         ];
-        assert_complex_vec_approx_eq!(b, x_python, 1e-13);
+        complex_vec_approx_eq(&b, x_python, 1e-13);
 
         // check ipiv
         assert_eq!(ipiv, [1, 2, 3, 4, 5]);

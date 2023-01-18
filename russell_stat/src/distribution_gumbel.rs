@@ -1,6 +1,7 @@
-use crate::{ProbabilityDistribution, StrError, EULER, PI, SQRT_6};
+use crate::{ProbabilityDistribution, StrError};
 use rand::Rng;
 use rand_distr::{Distribution, Gumbel};
+use russell_lab::math::{EULER, PI, SQRT_6};
 
 /// Defines the Gumbel / Type I Extreme Value Distribution (largest value)
 pub struct DistributionGumbel {
@@ -75,8 +76,8 @@ impl ProbabilityDistribution for DistributionGumbel {
 
 #[cfg(test)]
 mod tests {
-    use crate::{DistributionGumbel, ProbabilityDistribution, StrError};
-    use russell_chk::assert_approx_eq;
+    use crate::{DistributionGumbel, ProbabilityDistribution};
+    use russell_chk::approx_eq;
 
     // Data from the following R-code (run with Rscript gumbel.R):
     /*
@@ -106,7 +107,19 @@ mod tests {
     */
 
     #[test]
-    fn gumbel_works() -> Result<(), StrError> {
+    fn gumbel_handles_errors() {
+        assert_eq!(
+            DistributionGumbel::new(2.0, f64::INFINITY).err(),
+            Some("invalid parameters")
+        );
+        assert_eq!(
+            DistributionGumbel::new_from_mu_sig(2.0, f64::INFINITY).err(),
+            Some("invalid parameters")
+        );
+    }
+
+    #[test]
+    fn gumbel_works() {
         #[rustfmt::skip]
         // x location scale pdf cdf
         let data = [
@@ -230,28 +243,32 @@ mod tests {
         ];
         for row in data {
             let [x, location, scale, pdf, cdf] = row;
-            let d = DistributionGumbel::new(location, scale)?;
-            assert_approx_eq!(d.pdf(x), pdf, 1e-14);
-            assert_approx_eq!(d.cdf(x), cdf, 1e-14);
+            let d = DistributionGumbel::new(location, scale).unwrap();
+            approx_eq(d.pdf(x), pdf, 1e-14);
+            approx_eq(d.cdf(x), cdf, 1e-14);
         }
-        Ok(())
     }
 
     #[test]
-    fn new_from_mu_sig_works() -> Result<(), StrError> {
+    fn new_from_mu_sig_works() {
         // from Haldar & Mahadevan page 90
-        let d = DistributionGumbel::new_from_mu_sig(61.3, 7.52)?;
-        assert_approx_eq!(d.location, 57.9157, 0.00011);
-        assert_approx_eq!(d.scale, 1.0 / 0.17055, 1e-4);
-        Ok(())
+        let d = DistributionGumbel::new_from_mu_sig(61.3, 7.52).unwrap();
+        approx_eq(d.location, 57.9157, 0.00011);
+        approx_eq(d.scale, 1.0 / 0.17055, 1e-4);
     }
 
     #[test]
-    fn mean_and_variance_work() -> Result<(), StrError> {
+    fn mean_and_variance_work() {
         let (mu, sig) = (1.0, 0.25);
-        let d = DistributionGumbel::new_from_mu_sig(mu, sig)?;
-        assert_approx_eq!(d.mean(), mu, 1e-14);
-        assert_approx_eq!(d.variance(), sig * sig, 1e-14);
-        Ok(())
+        let d = DistributionGumbel::new_from_mu_sig(mu, sig).unwrap();
+        approx_eq(d.mean(), mu, 1e-14);
+        approx_eq(d.variance(), sig * sig, 1e-14);
+    }
+
+    #[test]
+    fn sample_works() {
+        let d = DistributionGumbel::new(1.0, 2.0).unwrap();
+        let mut rng = rand::thread_rng();
+        d.sample(&mut rng);
     }
 }

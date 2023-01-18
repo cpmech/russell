@@ -23,50 +23,12 @@ External recommended crate:
 
 - [plotpy](https://github.com/cpmech/plotpy) Plotting tools using Python3/Matplotlib as an engine
 
-## Installation
-
-Install the following Debian packages:
-
-```bash
-sudo apt-get install \
-    liblapacke-dev \
-    libmumps-seq-dev \
-    libopenblas-dev \
-    libsuitesparse-dev
-```
-
-Add this to your Cargo.toml (select only the crates you want and replace the right version):
-
-```toml
-[dependencies]
-russell_chk = "*"
-russell_lab = "*"
-russell_openblas = "*"
-russell_sparse = "*"
-russell_stat = "*"
-russell_tensor = "*"
-```
-
-### Number of threads
-
-By default OpenBLAS will use all available threads, including Hyper-Threads that make the performance worse. Thus, it is best to set the following environment variable:
-
-```bash
-export OPENBLAS_NUM_THREADS=<real-core-count>
-```
-
-Furthermore, if working on a multi-threaded application, it is recommended to set:
-
-```bash
-export OPENBLAS_NUM_THREADS=1
-```
-
 ## Examples
 
 ### Compute a singular value decomposition
 
 ```rust
-use russell_lab::{sv_decomp, Matrix, Vector, StrError};
+use russell_lab::{mat_svd, Matrix, Vector, StrError};
 
 fn main() -> Result<(), StrError> {
     // set matrix
@@ -85,7 +47,7 @@ fn main() -> Result<(), StrError> {
     let mut vt = Matrix::new(n, n);
 
     // perform SVD
-    sv_decomp(&mut s, &mut u, &mut vt, &mut a)?;
+    mat_svd(&mut s, &mut u, &mut vt, &mut a)?;
 
     // define correct data
     let s_correct = "┌      ┐\n\
@@ -160,12 +122,14 @@ fn main() -> Result<(), StrError> {
 
 ```rust
 use russell_lab::{Matrix, Vector, StrError};
-use russell_sparse::{ConfigSolver, Solver, SparseTriplet, Symmetry};
+use russell_sparse::{ConfigSolver, Solver, SparseTriplet};
 
 fn main() -> Result<(), StrError> {
 
     // allocate a square matrix
-    let mut trip = SparseTriplet::new(5, 5, 13, Symmetry::No)?;
+    let neq = 5; // number of equations
+    let nnz = 13; // number of non-zeros
+    let mut trip = SparseTriplet::new(neq, nnz)?;
     trip.put(0, 0,  1.0)?; // << (0, 0, a00/2)
     trip.put(0, 0,  1.0)?; // << (0, 0, a00/2)
     trip.put(1, 0,  3.0)?;
@@ -181,8 +145,7 @@ fn main() -> Result<(), StrError> {
     trip.put(4, 4,  1.0)?;
 
     // print matrix
-    let (m, n) = trip.dims();
-    let mut a = Matrix::new(m, n);
+    let mut a = Matrix::new(neq, neq);
     trip.to_matrix(&mut a)?;
     let correct = "┌                ┐\n\
                    │  2  3  0  0  0 │\n\
@@ -194,14 +157,13 @@ fn main() -> Result<(), StrError> {
     assert_eq!(format!("{}", a), correct);
 
     // allocate x and rhs
-    let mut x = Vector::new(5);
+    let mut x = Vector::new(neq);
     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
 
     // initialize, factorize, and solve
     let config = ConfigSolver::new();
-    let mut solver = Solver::new(config)?;
-    solver.initialize(&trip)?;
-    solver.factorize()?;
+    let mut solver = Solver::new(config, neq, nnz, None)?;
+    solver.factorize(&trip)?;
     solver.solve(&mut x, &rhs)?;
     let correct = "┌          ┐\n\
                    │ 1.000000 │\n\

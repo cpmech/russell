@@ -331,7 +331,7 @@ impl LinElasticity {
 mod tests {
     use super::LinElasticity;
     use crate::{StrError, Tensor2};
-    use russell_chk::assert_approx_eq;
+    use russell_chk::approx_eq;
 
     #[test]
     fn new_works() {
@@ -511,7 +511,7 @@ mod tests {
             true,
         )?;
         let eps_zz = ela.out_of_plane_strain(&stress)?;
-        assert_approx_eq!(eps_zz, 0.0050847, 1e-4);
+        approx_eq(eps_zz, 0.0050847, 1e-4);
         Ok(())
     }
 }

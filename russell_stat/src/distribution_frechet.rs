@@ -1,6 +1,7 @@
-use crate::{gamma, ProbabilityDistribution, StrError};
+use crate::{ProbabilityDistribution, StrError};
 use rand::Rng;
 use rand_distr::{Distribution, Frechet};
+use russell_lab::math::gamma;
 
 const FRECHET_MIN_DELTA_X: f64 = 1e-15;
 
@@ -77,8 +78,8 @@ impl ProbabilityDistribution for DistributionFrechet {
 
 #[cfg(test)]
 mod tests {
-    use crate::{DistributionFrechet, ProbabilityDistribution, StrError};
-    use russell_chk::assert_approx_eq;
+    use crate::{DistributionFrechet, ProbabilityDistribution};
+    use russell_chk::approx_eq;
 
     // Data from the following R-code (run with Rscript frechet.R):
     /*
@@ -111,7 +112,15 @@ mod tests {
     */
 
     #[test]
-    fn frechet_works() -> Result<(), StrError> {
+    fn frechet_handles_errors() {
+        assert_eq!(
+            DistributionFrechet::new(2.0, 3.0, f64::INFINITY).err(),
+            Some("invalid parameters")
+        );
+    }
+
+    #[test]
+    fn frechet_works() {
         #[rustfmt::skip]
         // x, location, scale, shape, pdf, cdf
         let data = [
@@ -226,25 +235,30 @@ mod tests {
         ];
         for row in data {
             let [x, location, scale, shape, pdf, cdf] = row;
-            let d = DistributionFrechet::new(location, scale, shape)?;
-            assert_approx_eq!(d.pdf(x), pdf, 1e-14);
-            assert_approx_eq!(d.cdf(x), cdf, 1e-14);
+            let d = DistributionFrechet::new(location, scale, shape).unwrap();
+            approx_eq(d.pdf(x), pdf, 1e-14);
+            approx_eq(d.cdf(x), cdf, 1e-14);
         }
-        Ok(())
     }
 
     #[test]
-    fn mean_and_variance_work() -> Result<(), StrError> {
+    fn mean_and_variance_work() {
         let location = 8.782275;
         let scale = 1.0;
         let shape = 4.095645;
-        let d = DistributionFrechet::new(location, scale, shape)?;
-        assert_approx_eq!(d.mean(), 10.0, 1e-6);
-        assert_approx_eq!(d.variance(), 0.25, 1e-6);
+        let d = DistributionFrechet::new(location, scale, shape).unwrap();
+        approx_eq(d.mean(), 10.0, 1e-6);
+        approx_eq(d.variance(), 0.25, 1e-6);
 
-        let d = DistributionFrechet::new(location, scale, 1.0)?;
+        let d = DistributionFrechet::new(location, scale, 1.0).unwrap();
         assert_eq!(d.mean(), f64::INFINITY);
         assert_eq!(d.variance(), f64::INFINITY);
-        Ok(())
+    }
+
+    #[test]
+    fn sample_works() {
+        let d = DistributionFrechet::new(1.0, 2.0, 3.0).unwrap();
+        let mut rng = rand::thread_rng();
+        d.sample(&mut rng);
     }
 }

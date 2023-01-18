@@ -64,7 +64,7 @@ fn main() {
 ### Matrix multiplication
 
 ```rust
-use russell_chk::assert_vec_approx_eq;
+use russell_chk::vec_approx_eq;
 use russell_openblas::dgemm;
 
 fn main() {
@@ -102,20 +102,20 @@ fn main() {
     dgemm(trans_a, trans_b, m, n, k, alpha, &a, &b, beta, &mut c);
 
     // check
-    let correct = [
+    let correct = &[
         2.0, -1.0, 4.0,
         2.0,  1.0, 4.0,
         2.0, -1.0, 5.0,
         2.0,  1.0, 2.0,
     ];
-    assert_vec_approx_eq!(c, correct, 1e-15);
+    vec_approx_eq(&c, correct, 1e-15);
 }
 ```
 
 ### Solution of linear system
 
 ```rust
-use russell_chk::assert_vec_approx_eq;
+use russell_chk::vec_approx_eq;
 use russell_openblas::{dgesv, StrError};
 
 fn main() -> Result<(), StrError> {
@@ -138,7 +138,7 @@ fn main() -> Result<(), StrError> {
 
     // check
     let correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
-    assert_vec_approx_eq!(b, correct, 1e-14);
+    vec_approx_eq(&b, correct, 1e-14);
     Ok(())
 }
 ```

@@ -72,10 +72,10 @@ impl ProbabilityDistribution for DistributionUniform {
 
 #[cfg(test)]
 mod tests {
-    use crate::{DistributionUniform, ProbabilityDistribution, StrError};
+    use crate::{DistributionUniform, ProbabilityDistribution};
     use rand::prelude::StdRng;
     use rand::SeedableRng;
-    use russell_chk::assert_approx_eq;
+    use russell_chk::approx_eq;
 
     // Data from the following R-code (run with Rscript uniform.R):
     /*
@@ -99,7 +99,12 @@ mod tests {
     */
 
     #[test]
-    fn uniform_works() -> Result<(), StrError> {
+    fn uniform_handles_errors() {
+        assert_eq!(DistributionUniform::new(2.0, 1.0).err(), Some("invalid parameters"));
+    }
+
+    #[test]
+    fn uniform_works() {
         #[rustfmt::skip]
         // x, xmin, xmax, pdf, cdf
         let data = [
@@ -112,30 +117,27 @@ mod tests {
         ];
         for row in data {
             let [x, xmin, xmax, pdf, cdf] = row;
-            let d = DistributionUniform::new(xmin, xmax)?;
-            assert_approx_eq!(d.pdf(x), pdf, 1e-14);
-            assert_approx_eq!(d.cdf(x), cdf, 1e-14);
+            let d = DistributionUniform::new(xmin, xmax).unwrap();
+            approx_eq(d.pdf(x), pdf, 1e-14);
+            approx_eq(d.cdf(x), cdf, 1e-14);
         }
-        Ok(())
     }
 
     #[test]
-    fn mean_and_variance_work() -> Result<(), StrError> {
-        let d = DistributionUniform::new(1.0, 3.0)?;
-        assert_approx_eq!(d.mean(), 2.0, 1e-14);
-        assert_approx_eq!(d.variance(), 1.0 / 3.0, 1e-14);
-        Ok(())
+    fn mean_and_variance_work() {
+        let d = DistributionUniform::new(1.0, 3.0).unwrap();
+        approx_eq(d.mean(), 2.0, 1e-14);
+        approx_eq(d.variance(), 1.0 / 3.0, 1e-14);
     }
 
     #[test]
-    fn sample_works() -> Result<(), StrError> {
+    fn sample_works() {
         let mut rng = StdRng::seed_from_u64(1234);
-        let dist_x = DistributionUniform::new(0.0, 2.0)?;
-        let dist_y = DistributionUniform::new(0.0, 1.0)?;
+        let dist_x = DistributionUniform::new(0.0, 2.0).unwrap();
+        let dist_y = DistributionUniform::new(0.0, 1.0).unwrap();
         let x = dist_x.sample(&mut rng);
         let y = dist_y.sample(&mut rng);
-        assert_approx_eq!(x, 0.23691851694908816, 1e-15);
-        assert_approx_eq!(y, 0.16964948689475423, 1e-15);
-        Ok(())
+        approx_eq(x, 0.23691851694908816, 1e-15);
+        approx_eq(y, 0.16964948689475423, 1e-15);
     }
 }

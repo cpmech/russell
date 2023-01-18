@@ -10,6 +10,8 @@ Documentation:
 
 ## Installation
 
+### Dependencies: Debian/Ubuntu Linux
+
 Install some libraries:
 
 ```bash
@@ -17,6 +19,22 @@ sudo apt-get install \
     liblapacke-dev \
     libopenblas-dev
 ```
+
+### Dependencies: macOS
+
+In macOS, you may use [Homebrew](https://brew.sh/) to install the dependencies:
+
+```bash
+brew install openblas lapack
+```
+
+**Note** In macOS, we have to set the `LIBRARY_PATH` all the time.
+
+```bash
+export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/openblas/lib:$(brew --prefix)/opt/lapack/lib
+```
+
+### Cargo.toml
 
 [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab)
 
@@ -46,20 +64,16 @@ export OPENBLAS_NUM_THREADS=1
 ### Compute the pseudo-inverse matrix
 
 ```rust
-use russell_lab::{pseudo_inverse, Matrix, StrError};
+use russell_lab::{mat_pseudo_inverse, Matrix, StrError};
 
 fn main() -> Result<(), StrError> {
     // set matrix
-    let mut a = Matrix::from(&[
-        [1.0, 0.0],
-        [0.0, 1.0],
-        [0.0, 1.0],
-    ]);
+    let mut a = Matrix::from(&[[1.0, 0.0], [0.0, 1.0], [0.0, 1.0]]);
     let a_copy = a.clone();
 
     // compute pseudo-inverse matrix (because it's square)
     let mut ai = Matrix::new(2, 3);
-    pseudo_inverse(&mut ai, &mut a)?;
+    mat_pseudo_inverse(&mut ai, &mut a)?;
 
     // compare with solution
     let ai_correct = "┌                ┐\n\
@@ -101,51 +115,53 @@ fn main() -> Result<(), StrError> {
 ### Compute eigenvalues
 
 ```rust
-use russell_lab::{add_matrices, eigen_decomp, mat_mat_mul, matrix_norm, NormMat, Matrix, StrError};
-use russell_chk::assert_approx_eq;
+use russell_chk::approx_eq;
+use russell_lab::{mat_add, mat_eigen, mat_mat_mul, mat_norm, Matrix, Norm, StrError, Vector};
 
 fn main() -> Result<(), StrError> {
     // set matrix
-    let data = [
-        [2.0, 0.0, 0.0],
-        [0.0, 3.0, 4.0],
-        [0.0, 4.0, 9.0],
-    ];
+    let data = [[2.0, 0.0, 0.0], [0.0, 3.0, 4.0], [0.0, 4.0, 9.0]];
     let mut a = Matrix::from(&data);
 
     // allocate output arrays
     let m = a.nrow();
-    let mut l_real = vec![0.0; m];
-    let mut l_imag = vec![0.0; m];
+    let mut l_real = Vector::new(m);
+    let mut l_imag = Vector::new(m);
     let mut v_real = Matrix::new(m, m);
     let mut v_imag = Matrix::new(m, m);
 
     // perform the eigen-decomposition
-    eigen_decomp(
-        &mut l_real,
-        &mut l_imag,
-        &mut v_real,
-        &mut v_imag,
-        &mut a,
-    )?;
+    mat_eigen(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a)?;
 
     // check results
-    let l_real_correct = "[11.0, 1.0, 2.0]";
-    let l_imag_correct = "[0.0, 0.0, 0.0]";
-    assert_eq!(format!("{:?}", l_real), l_real_correct);
-    assert_eq!(format!("{:?}", l_imag), l_imag_correct);
+    assert_eq!(
+        format!("{:.1}", l_real),
+        "┌      ┐\n\
+         │ 11.0 │\n\
+         │  1.0 │\n\
+         │  2.0 │\n\
+         └      ┘"
+    );
+    assert_eq!(
+        format!("{}", l_imag),
+        "┌   ┐\n\
+         │ 0 │\n\
+         │ 0 │\n\
+         │ 0 │\n\
+         └   ┘"
+    );
 
     // check eigen-decomposition (similarity transformation) of a
     // symmetric matrix with real-only eigenvalues and eigenvectors
     let a_copy = Matrix::from(&data);
-    let lam = Matrix::diagonal(&l_real);
+    let lam = Matrix::diagonal(l_real.as_data());
     let mut a_v = Matrix::new(m, m);
     let mut v_l = Matrix::new(m, m);
     let mut err = Matrix::filled(m, m, f64::MAX);
     mat_mat_mul(&mut a_v, 1.0, &a_copy, &v_real)?;
     mat_mat_mul(&mut v_l, 1.0, &v_real, &lam)?;
-    add_matrices(&mut err, 1.0, &a_v, -1.0, &v_l)?;
-    assert_approx_eq!(matrix_norm(&err, NormMat::Max), 0.0, 1e-15);
+    mat_add(&mut err, 1.0, &a_v, -1.0, &v_l)?;
+    approx_eq(mat_norm(&err, Norm::Max), 0.0, 1e-15);
     Ok(())
 }
 ```

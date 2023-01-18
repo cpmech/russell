@@ -14,14 +14,7 @@ use std::path::Path;
 ///
 /// # Remarks
 ///
-/// * NumMatrix implements the Index traits (mutable or not), thus, we can
-///   access components by indices
-/// * NumMatrix has also methods to access the underlying data (mutable or not);
-///   e.g., using `as_data()` and `as_mut_data()`.
-/// * Internally, the data is stored in the **col-major** order
-/// * For faster computations, we recommend using the set of functions that
-///   operate on Vectors and Matrices; e.g., `mat_add`, `mat_cholesky`,
-///   `mat_eigen`, `mat_inverse`, `mat_pseudo_inverse`, `mat_svd`, `mat_vec_mul`, and others.
+/// Internally, the data is stored in the **col-major** order.
 ///
 /// ```text
 ///     ┌     ┐  row_major = {0, 3,
@@ -35,6 +28,16 @@ use std::path::Path;
 ///         ↑
 /// COL-MAJOR IS ADOPTED HERE
 /// ```
+///
+/// The main reason to use the **col-major** representation is to make the code work
+/// better with BLAS/LAPACK written in Fortran. Although those libraries have functions
+/// to handle row-major data, they usually add an overhead due to temporary memory
+/// allocation and copies, including transposing matrices. Moreover, the row-major
+/// versions of some BLAS/LAPACK libraries produce incorrect results (notably the DSYEV).
+///
+/// Unfortunately, because of the col-major representation, it is no longer possible
+/// to use the Index trait to mimic the access of matrix components in the form of a\[i\]\[j\].
+/// Therefore, only the `get(i, j)` and `set(i, j, value)` functions are implemented.
 ///
 /// # Examples
 ///

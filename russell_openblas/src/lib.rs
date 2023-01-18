@@ -2,6 +2,27 @@
 //!
 //! **openblas**: Thin wrapper to some OpenBLAS routines
 //!
+//! **NOTE**: Only the COL-MAJOR representation is considered here.
+//!
+//! ```text
+//!     ┌     ┐  row_major = {0, 3,
+//!     │ 0 3 │               1, 4,
+//! A = │ 1 4 │               2, 5};
+//!     │ 2 5 │
+//!     └     ┘  col_major = {0, 1, 2,
+//!     (m × n)               3, 4, 5}
+//!
+//! Aᵢⱼ = col_major[i + j·m] = row_major[i·n + j]
+//!         ↑
+//! COL-MAJOR IS ADOPTED HERE
+//! ```
+//!
+//! The main reason to use the **col-major** representation is to make the code work
+//! better with BLAS/LAPACK written in Fortran. Although those libraries have functions
+//! to handle row-major data, they usually add an overhead due to temporary memory
+//! allocation and copies, including transposing matrices. Moreover, the row-major
+//! versions of some BLAS/LAPACK libraries produce incorrect results (notably the DSYEV).
+//!
 //! # Example - dnrm2
 //!
 //! ```

@@ -288,15 +288,15 @@ impl Tensor2 {
         if dim < 9 {
             for m in 0..dim {
                 let (i, j) = M_TO_IJ[m];
-                tt[i][j] = self.get(i, j);
+                tt.set(i, j, self.get(i, j));
                 if i != j {
-                    tt[j][i] = tt[i][j];
+                    tt.set(j, i, tt.get(i, j));
                 }
             }
         } else {
             for i in 0..3 {
                 for j in 0..3 {
-                    tt[i][j] = self.get(i, j);
+                    tt.set(i, j, self.get(i, j));
                 }
             }
         }
@@ -739,7 +739,7 @@ mod tests {
         let res = tt.to_matrix();
         for i in 0..3 {
             for j in 0..3 {
-                approx_eq(res[i][j], comps_std[i][j], 1e-14);
+                approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
             }
         }
 
@@ -754,7 +754,7 @@ mod tests {
         let res = tt.to_matrix();
         for i in 0..3 {
             for j in 0..3 {
-                approx_eq(res[i][j], comps_std[i][j], 1e-14);
+                approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
             }
         }
 
@@ -769,7 +769,7 @@ mod tests {
         let res = tt.to_matrix();
         for i in 0..3 {
             for j in 0..3 {
-                approx_eq(res[i][j], comps_std[i][j], 1e-14);
+                approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
             }
         }
     }

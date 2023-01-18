@@ -70,12 +70,12 @@ mod tests {
         ]);
         approx_eq(
             complex_mat_norm(&a, Norm::One),
-            a[0][2].abs() + a[1][2].abs() + a[2][2].abs(),
+            a.get(0, 2).abs() + a.get(1, 2).abs() + a.get(2, 2).abs(),
             1e-15,
         );
         approx_eq(
             complex_mat_norm(&a, Norm::Inf),
-            a[0][0].abs() + a[0][1].abs() + a[0][2].abs(),
+            a.get(0, 0).abs() + a.get(0, 1).abs() + a.get(0, 2).abs(),
             1e-15,
         );
         let mut fro = 0.0;

@@ -88,7 +88,7 @@ fn main() -> Result<(), StrError> {
     for i in 0..m {
         for j in 0..m {
             for k in 0..n {
-                a_ai[i][j] += a_copy[i][k] * ai[k][j];
+                a_ai.add(i, j, a_copy.get(i, k) * ai.get(k, j));
             }
         }
     }
@@ -98,7 +98,7 @@ fn main() -> Result<(), StrError> {
     for i in 0..m {
         for j in 0..n {
             for k in 0..m {
-                a_ai_a[i][j] += a_ai[i][k] * a_copy[k][j];
+                a_ai_a.add(i, j, a_ai.get(i, k) * a_copy.get(k, j));
             }
         }
     }

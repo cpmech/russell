@@ -56,8 +56,8 @@ pub fn generate2d(xmin: f64, xmax: f64, ymin: f64, ymax: f64, nx: usize, ny: usi
         let v = ymin + (i as f64) * dy;
         for j in 0..nx {
             let u = xmin + (j as f64) * dx;
-            x[i][j] = u;
-            y[i][j] = v;
+            x.set(i, j, u);
+            y.set(i, j, v);
         }
     }
     (x, y)
@@ -140,9 +140,9 @@ where
         let v = ymin + (i as f64) * dy;
         for j in 0..nx {
             let u = xmin + (j as f64) * dx;
-            x[i][j] = u;
-            y[i][j] = v;
-            z[i][j] = calc_z(u, v);
+            x.set(i, j, u);
+            y.set(i, j, v);
+            z.set(i, j, calc_z(u, v));
         }
     }
     (x, y, z)

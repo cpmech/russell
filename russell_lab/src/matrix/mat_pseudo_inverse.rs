@@ -58,7 +58,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 ///     for i in 0..m {
 ///         for j in 0..m {
 ///             for k in 0..n {
-///                 a_ai[i][j] += a_copy[i][k] * ai[k][j];
+///                 a_ai.add(i, j, a_copy.get(i, k) * ai.get(k, j));
 ///             }
 ///         }
 ///     }
@@ -68,7 +68,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 ///     for i in 0..m {
 ///         for j in 0..n {
 ///             for k in 0..m {
-///                 a_ai_a[i][j] += a_ai[i][k] * a_copy[k][j];
+///                 a_ai_a.add(i, j, a_ai.get(i, k) * a_copy.get(k, j));
 ///             }
 ///         }
 ///     }
@@ -124,10 +124,10 @@ pub fn mat_pseudo_inverse(ai: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
     // rectangular matrix => pseudo-inverse
     for i in 0..n {
         for j in 0..m {
-            ai[i][j] = 0.0;
+            ai.set(i, j, 0.0);
             for k in 0..min_mn {
                 if s[k] > sv_tolerance {
-                    ai[i][j] += vt[k * n + i] * u[j * m + k] / s[k];
+                    ai.add(i, j, vt[k * n + i] * u[j * m + k] / s[k]);
                 }
             }
         }
@@ -151,7 +151,7 @@ mod tests {
         for i in 0..m {
             for j in 0..m {
                 for k in 0..n {
-                    a_ai[i][j] += a[i][k] * ai[k][j];
+                    a_ai.add(i, j, a.get(i, k) * ai.get(k, j));
                 }
             }
         }
@@ -168,7 +168,7 @@ mod tests {
         for i in 0..m {
             for j in 0..n {
                 for k in 0..m {
-                    a_ai_a[i][j] += a_ai[i][k] * a[k][j];
+                    a_ai_a.add(i, j, a_ai.get(i, k) * a.get(k, j));
                 }
             }
         }

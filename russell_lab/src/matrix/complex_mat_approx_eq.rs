@@ -19,14 +19,14 @@ where
     }
     for i in 0..m {
         for j in 0..n {
-            let diff_re = f64::abs(a[i][j].re - b.at(i, j).re);
+            let diff_re = f64::abs(a.get(i, j).re - b.at(i, j).re);
             if diff_re > tol {
                 panic!(
                     "complex matrices are not approximately equal. @ ({},{}) diff_re = {:?}",
                     i, j, diff_re
                 );
             }
-            let diff_im = f64::abs(a[i][j].im - b.at(i, j).im);
+            let diff_im = f64::abs(a.get(i, j).im - b.at(i, j).im);
             if diff_im > tol {
                 panic!(
                     "complex matrices are not approximately equal. @ ({},{}) diff_im = {:?}",

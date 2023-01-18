@@ -52,7 +52,7 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 ///     for i in 0..m {
 ///         for j in 0..m {
 ///             for k in 0..n {
-///                 a_ai[i][j] += a_copy[i][k] * ai[k][j];
+///                 a_ai.add(i, j, a_copy.get(i, k) * ai.get(k, j));
 ///             }
 ///         }
 ///     }
@@ -97,7 +97,7 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 ///     for i in 0..m {
 ///         for j in 0..m {
 ///             for k in 0..n {
-///                 a_ai[i][j] += a_copy[i][k] * ai[k][j];
+///                 a_ai.add(i, j, a_copy.get(i, k) * ai.get(k, j));
 ///             }
 ///         }
 ///     }
@@ -127,48 +127,48 @@ pub fn mat_inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
 
     // handle small matrix
     if m == 1 {
-        let det = a[0][0];
+        let det = a.get(0, 0);
         if f64::abs(det) <= ZERO_DETERMINANT {
             return Err("cannot compute inverse due to zero determinant");
         }
-        ai[0][0] = 1.0 / det;
+        ai.set(0, 0, 1.0 / det);
         return Ok(det);
     }
 
     if m == 2 {
-        let det = a[0][0] * a[1][1] - a[0][1] * a[1][0];
+        let det = a.get(0, 0) * a.get(1, 1) - a.get(0, 1) * a.get(1, 0);
         if f64::abs(det) <= ZERO_DETERMINANT {
             return Err("cannot compute inverse due to zero determinant");
         }
-        ai[0][0] = a[1][1] / det;
-        ai[0][1] = -a[0][1] / det;
-        ai[1][0] = -a[1][0] / det;
-        ai[1][1] = a[0][0] / det;
+        ai.set(0, 0, a.get(1, 1) / det);
+        ai.set(0, 1, -a.get(0, 1) / det);
+        ai.set(1, 0, -a.get(1, 0) / det);
+        ai.set(1, 1, a.get(0, 0) / det);
         return Ok(det);
     }
 
     if m == 3 {
         #[rustfmt::skip]
         let det =
-              a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1])
-            - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0])
-            + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
+              a.get(0,0) * (a.get(1,1) * a.get(2,2) - a.get(1,2) * a.get(2,1))
+            - a.get(0,1) * (a.get(1,0) * a.get(2,2) - a.get(1,2) * a.get(2,0))
+            + a.get(0,2) * (a.get(1,0) * a.get(2,1) - a.get(1,1) * a.get(2,0));
 
         if f64::abs(det) <= ZERO_DETERMINANT {
             return Err("cannot compute inverse due to zero determinant");
         }
 
-        ai[0][0] = (a[1][1] * a[2][2] - a[1][2] * a[2][1]) / det;
-        ai[0][1] = (a[0][2] * a[2][1] - a[0][1] * a[2][2]) / det;
-        ai[0][2] = (a[0][1] * a[1][2] - a[0][2] * a[1][1]) / det;
+        ai.set(0, 0, (a.get(1, 1) * a.get(2, 2) - a.get(1, 2) * a.get(2, 1)) / det);
+        ai.set(0, 1, (a.get(0, 2) * a.get(2, 1) - a.get(0, 1) * a.get(2, 2)) / det);
+        ai.set(0, 2, (a.get(0, 1) * a.get(1, 2) - a.get(0, 2) * a.get(1, 1)) / det);
 
-        ai[1][0] = (a[1][2] * a[2][0] - a[1][0] * a[2][2]) / det;
-        ai[1][1] = (a[0][0] * a[2][2] - a[0][2] * a[2][0]) / det;
-        ai[1][2] = (a[0][2] * a[1][0] - a[0][0] * a[1][2]) / det;
+        ai.set(1, 0, (a.get(1, 2) * a.get(2, 0) - a.get(1, 0) * a.get(2, 2)) / det);
+        ai.set(1, 1, (a.get(0, 0) * a.get(2, 2) - a.get(0, 2) * a.get(2, 0)) / det);
+        ai.set(1, 2, (a.get(0, 2) * a.get(1, 0) - a.get(0, 0) * a.get(1, 2)) / det);
 
-        ai[2][0] = (a[1][0] * a[2][1] - a[1][1] * a[2][0]) / det;
-        ai[2][1] = (a[0][1] * a[2][0] - a[0][0] * a[2][1]) / det;
-        ai[2][2] = (a[0][0] * a[1][1] - a[0][1] * a[1][0]) / det;
+        ai.set(2, 0, (a.get(1, 0) * a.get(2, 1) - a.get(1, 1) * a.get(2, 0)) / det);
+        ai.set(2, 1, (a.get(0, 1) * a.get(2, 0) - a.get(0, 0) * a.get(2, 1)) / det);
+        ai.set(2, 2, (a.get(0, 0) * a.get(1, 1) - a.get(0, 1) * a.get(1, 0)) / det);
 
         return Ok(det);
     }
@@ -187,9 +187,9 @@ pub fn mat_inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
         let iu = i as usize;
         // NOTE: ipiv are 1-based indices
         if ipiv[iu] - 1 == i {
-            det = det * ai[iu][iu];
+            det = det * ai.get(iu, iu);
         } else {
-            det = -det * ai[iu][iu];
+            det = -det * ai.get(iu, iu);
         }
     }
     // second, perform the inversion
@@ -214,7 +214,7 @@ mod tests {
         for i in 0..m {
             for j in 0..m {
                 for k in 0..n {
-                    a_ai[i][j] += a[i][k] * ai[k][j];
+                    a_ai.add(i, j, a.get(i, k) * ai.get(k, j));
                 }
             }
         }

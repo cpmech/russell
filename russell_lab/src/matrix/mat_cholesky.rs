@@ -43,7 +43,7 @@ use russell_openblas::{dpotrf, to_i32};
 ///     for i in 0..m {
 ///         for j in 0..m {
 ///             for k in 0..m {
-///                 l_lt[i][j] += l[i][k] * l[j][k];
+///                 l_lt.add(i, j, l.get(i, k) * l.get(j, k));
 ///             }
 ///         }
 ///     }
@@ -126,7 +126,7 @@ mod tests {
         for i in 0..m {
             for j in 0..m {
                 for k in 0..m {
-                    l_lt[i][j] += l[i][k] * l[j][k];
+                    l_lt.add(i, j, l.get(i, k) * l.get(j, k));
                 }
             }
         }
@@ -160,7 +160,7 @@ mod tests {
         for i in 0..m {
             for j in 0..m {
                 for k in 0..m {
-                    l_lt[i][j] += l[i][k] * l[j][k];
+                    l_lt.add(i, j, l.get(i, k) * l.get(j, k));
                 }
             }
         }

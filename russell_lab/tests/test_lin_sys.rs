@@ -9,7 +9,7 @@ fn test_lin_sys() -> Result<(), StrError> {
         let mut b = Vector::filled(m, TARGET);
         for i in 0..m {
             for j in (i + 1)..m {
-                a[i][j] *= -1.0;
+                a.mul(i, j, -1.0);
             }
         }
 

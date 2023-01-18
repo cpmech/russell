@@ -7,7 +7,6 @@ use std::ffi::OsStr;
 use std::fmt::{self, Write};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::ops::{Index, IndexMut};
 use std::path::Path;
 
 /// Implements a matrix with numeric components for linear algebra
@@ -35,7 +34,7 @@ use std::path::Path;
 ///     let mut a = NumMatrix::<f64>::filled(2, 2, 1.0);
 ///
 ///     // change off-diagonal component
-///     a[0][1] *= -1.0;
+///     a.mul(0, 1, -1.0);
 ///
 ///     // check
 ///     assert_eq!(
@@ -59,7 +58,7 @@ use std::path::Path;
 ///     let mut a = NumMatrix::<f64>::filled(2, 2, 1.0);
 ///
 ///     // change off-diagonal component
-///     a[0][1] *= -1.0;
+///     a.mul(0, 1, -1.0);
 ///
 ///     // compute the inverse matrix `ai`
 ///     let (m, n) = a.dims();
@@ -605,6 +604,70 @@ where
         self.data[i * self.ncol + j] = value;
     }
 
+    /// Adds a value to the (i,j) component
+    ///
+    /// ```text
+    /// aᵢⱼ += value
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use russell_lab::NumMatrix;
+    /// let mut a = NumMatrix::<f64>::from(&[
+    ///     [1.0, 2.0],
+    ///     [3.0, 4.0],
+    /// ]);
+    /// a.add(1, 1, -4.0);
+    /// let correct = "┌     ┐\n\
+    ///                │ 1 2 │\n\
+    ///                │ 3 0 │\n\
+    ///                └     ┘";
+    /// assert_eq!(format!("{}", a), correct);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the indices are out-of-bounds.
+    #[inline]
+    pub fn add(&mut self, i: usize, j: usize, value: T) {
+        assert!(i < self.nrow);
+        assert!(j < self.ncol);
+        self.data[i * self.ncol + j] = self.data[i * self.ncol + j] + value;
+    }
+
+    /// Multiply a value to the (i,j) component
+    ///
+    /// ```text
+    /// aᵢⱼ *= value
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use russell_lab::NumMatrix;
+    /// let mut a = NumMatrix::<f64>::from(&[
+    ///     [1.0, 2.0],
+    ///     [3.0, 4.0],
+    /// ]);
+    /// a.mul(1, 1, -4.0);
+    /// let correct = "┌         ┐\n\
+    ///                │   1   2 │\n\
+    ///                │   3 -16 │\n\
+    ///                └         ┘";
+    /// assert_eq!(format!("{}", a), correct);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the indices are out-of-bounds.
+    #[inline]
+    pub fn mul(&mut self, i: usize, j: usize, value: T) {
+        assert!(i < self.nrow);
+        assert!(j < self.ncol);
+        self.data[i * self.ncol + j] = self.data[i * self.ncol + j] * value;
+    }
+
     /// Extracts a column given its index
     ///
     /// # Example
@@ -669,7 +732,7 @@ where
         let mut buf = String::new();
         for i in 0..self.nrow {
             for j in 0..self.ncol {
-                let val = self[i][j];
+                let val = self.get(i, j);
                 match f.precision() {
                     Some(v) => write!(&mut buf, "{:.1$}", val, v).unwrap(),
                     None => write!(&mut buf, "{}", val).unwrap(),
@@ -689,7 +752,7 @@ where
                 if j == 0 {
                     write!(f, "│").unwrap();
                 }
-                let val = self[i][j];
+                let val = self.get(i, j);
                 match f.precision() {
                     Some(v) => write!(f, "{:>1$.2$}", val, width, v).unwrap(),
                     None => write!(f, "{:>1$}", val, width).unwrap(),
@@ -699,89 +762,6 @@ where
         write!(f, " │\n").unwrap();
         write!(f, "└{:1$}┘", " ", width * self.ncol + 1).unwrap();
         Ok(())
-    }
-}
-
-/// Allows to access NumMatrix components using indices
-///
-/// # Example
-///
-/// ```
-/// # use russell_lab::NumMatrix;
-/// let a = NumMatrix::<f64>::from(&[
-///     [1.0, 2.0, 3.0],
-///     [4.0, 5.0, 6.0],
-/// ]);
-/// // first and second rows
-/// assert_eq!(a[0], [1.0, 2.0, 3.0]);
-/// assert_eq!(a[1], [4.0, 5.0, 6.0]);
-/// // components
-/// assert_eq!(a[0][0], 1.0);
-/// assert_eq!(a[0][1], 2.0);
-/// assert_eq!(a[0][2], 3.0);
-/// assert_eq!(a[1][0], 4.0);
-/// assert_eq!(a[1][1], 5.0);
-/// assert_eq!(a[1][2], 6.0);
-/// ```
-///
-/// # Panics
-///
-/// The index function may panic if the row index is out-of-bounds.
-impl<T> Index<usize> for NumMatrix<T>
-where
-    T: Num + Copy + DeserializeOwned + Serialize,
-{
-    type Output = [T];
-    /// Returns an access to a row of the matrix
-    ///
-    /// # Panics
-    ///
-    /// This function function may panic if the row index is out-of-bounds.
-    #[inline]
-    fn index(&self, i: usize) -> &Self::Output {
-        &self.data[(i * self.ncol)..((i + 1) * self.ncol)]
-    }
-}
-
-/// Allows to change NumMatrix components using indices
-///
-/// # Example
-///
-/// ```
-/// # use russell_lab::NumMatrix;
-/// let mut a = NumMatrix::<f64>::from(&[
-///     [1.0, 2.0, 3.0],
-///     [4.0, 5.0, 6.0],
-/// ]);
-/// a[0][0] -= 1.0;
-/// a[0][1] += 1.0;
-/// a[0][2] -= 1.0;
-/// a[1][0] += 1.0;
-/// a[1][1] -= 1.0;
-/// a[1][2] += 1.0;
-/// assert_eq!(a[0][0], 0.0);
-/// assert_eq!(a[0][1], 3.0);
-/// assert_eq!(a[0][2], 2.0);
-/// assert_eq!(a[1][0], 5.0);
-/// assert_eq!(a[1][1], 4.0);
-/// assert_eq!(a[1][2], 7.0);
-/// ```
-///
-/// # Panics
-///
-/// The index function may panic if the row index is out-of-bounds.
-impl<T> IndexMut<usize> for NumMatrix<T>
-where
-    T: Num + Copy + DeserializeOwned + Serialize,
-{
-    /// Returns a mutable access to a row of the matrix
-    ///
-    /// # Panics
-    ///
-    /// This function function may panic if the row index is out-of-bounds.
-    #[inline]
-    fn index_mut(&mut self, i: usize) -> &mut Self::Output {
-        &mut self.data[(i * self.ncol)..((i + 1) * self.ncol)]
     }
 }
 
@@ -796,7 +776,7 @@ where
     }
     #[inline]
     fn at(&self, i: usize, j: usize) -> T {
-        self[i][j]
+        self.get(i, j)
     }
 }
 
@@ -1046,6 +1026,48 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn add_panics_on_wrong_indices() {
+        let mut a = NumMatrix::<f64>::new(1, 1);
+        a.add(1, 0, 0.0);
+    }
+
+    #[test]
+    fn add_works() {
+        #[rustfmt::skip]
+        let mut a = NumMatrix::<f64>::from(&[
+            [1.0, 2.0],
+            [3.0, 4.0],
+        ]);
+        a.add(0, 0, -1.0);
+        a.add(0, 1, -2.0);
+        a.add(1, 0, -3.0);
+        a.add(1, 1, -4.0);
+        assert_eq!(a.data, &[0.0, 0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn mul_panics_on_wrong_indices() {
+        let mut a = NumMatrix::<f64>::new(1, 1);
+        a.mul(1, 0, 0.0);
+    }
+
+    #[test]
+    fn mul_works() {
+        #[rustfmt::skip]
+        let mut a = NumMatrix::<f64>::from(&[
+            [1.0, 2.0],
+            [3.0, 4.0],
+        ]);
+        a.mul(0, 0, -1.0);
+        a.mul(0, 1, -2.0);
+        a.mul(1, 0, -3.0);
+        a.mul(1, 1, -4.0);
+        assert_eq!(a.data, &[-1.0, -4.0, -9.0, -16.0]);
+    }
+
+    #[test]
     fn extract_column_works() {
         #[rustfmt::skip]
         let a = NumMatrix::<f64>::from(&[
@@ -1084,7 +1106,7 @@ mod tests {
 
         // clone
         let mut cloned = a.clone();
-        cloned[0][0] = -1.0;
+        cloned.set(0, 0, -1.0);
         assert_eq!(
             format!("{}", a),
             "┌       ┐\n\

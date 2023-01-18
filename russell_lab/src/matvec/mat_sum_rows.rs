@@ -34,7 +34,7 @@ pub fn mat_sum_rows(v: &mut Vector, a: &Matrix) -> Result<(), StrError> {
     for j in 0..n {
         v[j] = 0.0;
         for i in 0..m {
-            v[j] += a[i][j];
+            v[j] += a.get(i, j);
         }
     }
     Ok(())

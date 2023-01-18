@@ -1,3 +1,5 @@
+use num_complex::Complex64;
+
 use crate::ComplexMatrix;
 use crate::Matrix;
 use crate::StrError;
@@ -32,8 +34,7 @@ pub fn complex_mat_zip(real: &Matrix, imag: &Matrix) -> Result<ComplexMatrix, St
     let mut a = ComplexMatrix::new(m, n);
     for i in 0..m {
         for j in 0..n {
-            a[i][j].re = real[i][j];
-            a[i][j].im = imag[i][j]
+            a.set(i, j, Complex64::new(real.get(i, j), imag.get(i, j)));
         }
     }
     Ok(a)

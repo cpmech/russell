@@ -221,11 +221,11 @@ impl Tensor4 {
                                     }
                                     continue;
                                 } else if m < 3 && n < 3 {
-                                    mat[m][n] = inp[i][j][k][l];
+                                    mat.set(m, n, inp[i][j][k][l]);
                                 } else if m > 2 && n > 2 {
-                                    mat[m][n] = 2.0 * inp[i][j][k][l];
+                                    mat.set(m, n, 2.0 * inp[i][j][k][l]);
                                 } else {
-                                    mat[m][n] = SQRT_2 * inp[i][j][k][l];
+                                    mat.set(m, n, SQRT_2 * inp[i][j][k][l]);
                                 }
                             }
                         }
@@ -241,37 +241,49 @@ impl Tensor4 {
                             // ** i == j **
                             // 1
                             if i == j && k == l {
-                                mat[m][n] = inp[i][j][k][l];
+                                mat.set(m, n, inp[i][j][k][l]);
                             // 2
                             } else if i == j && k < l {
-                                mat[m][n] = (inp[i][j][k][l] + inp[i][j][l][k]) / SQRT_2;
+                                mat.set(m, n, (inp[i][j][k][l] + inp[i][j][l][k]) / SQRT_2);
                             // 3
                             } else if i == j && k > l {
-                                mat[m][n] = (inp[i][j][l][k] - inp[i][j][k][l]) / SQRT_2;
+                                mat.set(m, n, (inp[i][j][l][k] - inp[i][j][k][l]) / SQRT_2);
                             // ** i < j **
                             // 4
                             } else if i < j && k == l {
-                                mat[m][n] = (inp[i][j][k][l] + inp[j][i][k][l]) / SQRT_2;
+                                mat.set(m, n, (inp[i][j][k][l] + inp[j][i][k][l]) / SQRT_2);
                             // 5
                             } else if i < j && k < l {
-                                mat[m][n] =
-                                    (inp[i][j][k][l] + inp[i][j][l][k] + inp[j][i][k][l] + inp[j][i][l][k]) / 2.0;
+                                mat.set(
+                                    m,
+                                    n,
+                                    (inp[i][j][k][l] + inp[i][j][l][k] + inp[j][i][k][l] + inp[j][i][l][k]) / 2.0,
+                                );
                             // 6
                             } else if i < j && k > l {
-                                mat[m][n] =
-                                    (inp[i][j][l][k] - inp[i][j][k][l] + inp[j][i][l][k] - inp[j][i][k][l]) / 2.0;
+                                mat.set(
+                                    m,
+                                    n,
+                                    (inp[i][j][l][k] - inp[i][j][k][l] + inp[j][i][l][k] - inp[j][i][k][l]) / 2.0,
+                                );
                             // ** i > j **
                             // 7
                             } else if i > j && k == l {
-                                mat[m][n] = (inp[j][i][k][l] - inp[i][j][k][l]) / SQRT_2;
+                                mat.set(m, n, (inp[j][i][k][l] - inp[i][j][k][l]) / SQRT_2);
                             // 8
                             } else if i > j && k < l {
-                                mat[m][n] =
-                                    (inp[j][i][k][l] + inp[j][i][l][k] - inp[i][j][k][l] - inp[i][j][l][k]) / 2.0;
+                                mat.set(
+                                    m,
+                                    n,
+                                    (inp[j][i][k][l] + inp[j][i][l][k] - inp[i][j][k][l] - inp[i][j][l][k]) / 2.0,
+                                );
                             // 9
                             } else if i > j && k > l {
-                                mat[m][n] =
-                                    (inp[j][i][l][k] - inp[j][i][k][l] - inp[i][j][l][k] + inp[i][j][k][l]) / 2.0;
+                                mat.set(
+                                    m,
+                                    n,
+                                    (inp[j][i][l][k] - inp[j][i][k][l] - inp[i][j][l][k] + inp[i][j][k][l]) / 2.0,
+                                );
                             }
                         }
                     }
@@ -352,11 +364,11 @@ impl Tensor4 {
                                     }
                                     continue;
                                 } else if m < 3 && n < 3 {
-                                    mat[m][n] = inp[m][n];
+                                    mat.set(m, n, inp[m][n]);
                                 } else if m > 2 && n > 2 {
-                                    mat[m][n] = 2.0 * inp[m][n];
+                                    mat.set(m, n, 2.0 * inp[m][n]);
                                 } else {
-                                    mat[m][n] = SQRT_2 * inp[m][n];
+                                    mat.set(m, n, SQRT_2 * inp[m][n]);
                                 }
                             }
                         }
@@ -372,49 +384,49 @@ impl Tensor4 {
                             // ** i == j **
                             // 1
                             if i == j && k == l {
-                                mat[m][n] = inp[m][n];
+                                mat.set(m, n, inp[m][n]);
                             // 2
                             } else if i == j && k < l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
-                                mat[m][n] = (inp[m][n] + inp[p][q]) / SQRT_2;
+                                mat.set(m, n, (inp[m][n] + inp[p][q]) / SQRT_2);
                             // 3
                             } else if i == j && k > l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
-                                mat[m][n] = (inp[p][q] - inp[m][n]) / SQRT_2;
+                                mat.set(m, n, (inp[p][q] - inp[m][n]) / SQRT_2);
                             // ** i < j **
                             // 4
                             } else if i < j && k == l {
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
-                                mat[m][n] = (inp[m][n] + inp[r][s]) / SQRT_2;
+                                mat.set(m, n, (inp[m][n] + inp[r][s]) / SQRT_2);
                             // 5
                             } else if i < j && k < l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
                                 let (u, v) = IJKL_TO_MN[j][i][l][k];
-                                mat[m][n] = (inp[m][n] + inp[p][q] + inp[r][s] + inp[u][v]) / 2.0;
+                                mat.set(m, n, (inp[m][n] + inp[p][q] + inp[r][s] + inp[u][v]) / 2.0);
                             // 6
                             } else if i < j && k > l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
                                 let (u, v) = IJKL_TO_MN[j][i][l][k];
-                                mat[m][n] = (inp[p][q] - inp[m][n] + inp[u][v] - inp[r][s]) / 2.0;
+                                mat.set(m, n, (inp[p][q] - inp[m][n] + inp[u][v] - inp[r][s]) / 2.0);
                             // ** i > j **
                             // 7
                             } else if i > j && k == l {
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
-                                mat[m][n] = (inp[r][s] - inp[m][n]) / SQRT_2;
+                                mat.set(m, n, (inp[r][s] - inp[m][n]) / SQRT_2);
                             // 8
                             } else if i > j && k < l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
                                 let (u, v) = IJKL_TO_MN[j][i][l][k];
-                                mat[m][n] = (inp[r][s] + inp[u][v] - inp[m][n] - inp[p][q]) / 2.0;
+                                mat.set(m, n, (inp[r][s] + inp[u][v] - inp[m][n] - inp[p][q]) / 2.0);
                             // 9
                             } else if i > j && k > l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
                                 let (u, v) = IJKL_TO_MN[j][i][l][k];
-                                mat[m][n] = (inp[u][v] - inp[r][s] - inp[p][q] + inp[m][n]) / 2.0;
+                                mat.set(m, n, (inp[u][v] - inp[r][s] - inp[p][q] + inp[m][n]) / 2.0);
                             }
                         }
                     }
@@ -460,26 +472,26 @@ impl Tensor4 {
                 if m > 3 || n > 3 {
                     0.0
                 } else if m < 3 && n < 3 {
-                    self.mat[m][n]
+                    self.mat.get(m, n)
                 } else if m > 2 && n > 2 {
-                    self.mat[m][n] / 2.0
+                    self.mat.get(m, n) / 2.0
                 } else {
-                    self.mat[m][n] / SQRT_2
+                    self.mat.get(m, n) / SQRT_2
                 }
             }
             6 => {
                 let (m, n) = IJKL_TO_MN_SYM[i][j][k][l];
                 if m < 3 && n < 3 {
-                    self.mat[m][n]
+                    self.mat.get(m, n)
                 } else if m > 2 && n > 2 {
-                    self.mat[m][n] / 2.0
+                    self.mat.get(m, n) / 2.0
                 } else {
-                    self.mat[m][n] / SQRT_2
+                    self.mat.get(m, n) / SQRT_2
                 }
             }
             _ => {
                 let (m, n) = IJKL_TO_MN[i][j][k][l];
-                let val = self.mat[m][n];
+                let val = self.mat.get(m, n);
                 // ** i == j **
                 // 1
                 if i == j && k == l {
@@ -487,60 +499,60 @@ impl Tensor4 {
                 // 2
                 } else if i == j && k < l {
                     let (p, q) = IJKL_TO_MN[i][j][l][k];
-                    let right = self.mat[p][q];
+                    let right = self.mat.get(p, q);
                     (val + right) / SQRT_2
                 // 3
                 } else if i == j && k > l {
                     let (p, q) = IJKL_TO_MN[i][j][l][k];
-                    let left = self.mat[p][q];
+                    let left = self.mat.get(p, q);
                     (left - val) / SQRT_2
                 // ** i < j **
                 // 4
                 } else if i < j && k == l {
                     let (r, s) = IJKL_TO_MN[j][i][k][l];
-                    let down = self.mat[r][s];
+                    let down = self.mat.get(r, s);
                     (val + down) / SQRT_2
                 // 5
                 } else if i < j && k < l {
                     let (p, q) = IJKL_TO_MN[i][j][l][k];
                     let (r, s) = IJKL_TO_MN[j][i][k][l];
                     let (u, v) = IJKL_TO_MN[j][i][l][k];
-                    let right = self.mat[p][q];
-                    let down = self.mat[r][s];
-                    let diag = self.mat[u][v];
+                    let right = self.mat.get(p, q);
+                    let down = self.mat.get(r, s);
+                    let diag = self.mat.get(u, v);
                     (val + right + down + diag) / 2.0
                 // 6
                 } else if i < j && k > l {
                     let (p, q) = IJKL_TO_MN[i][j][l][k];
                     let (r, s) = IJKL_TO_MN[j][i][k][l];
                     let (u, v) = IJKL_TO_MN[j][i][l][k];
-                    let left = self.mat[p][q];
-                    let diag = self.mat[u][v];
-                    let down = self.mat[r][s];
+                    let left = self.mat.get(p, q);
+                    let diag = self.mat.get(u, v);
+                    let down = self.mat.get(r, s);
                     (left - val + diag - down) / 2.0
                 // ** i > j **
                 // 7
                 } else if i > j && k == l {
                     let (r, s) = IJKL_TO_MN[j][i][k][l];
-                    let up = self.mat[r][s];
+                    let up = self.mat.get(r, s);
                     (up - val) / SQRT_2
                 // 8
                 } else if i > j && k < l {
                     let (p, q) = IJKL_TO_MN[i][j][l][k];
                     let (r, s) = IJKL_TO_MN[j][i][k][l];
                     let (u, v) = IJKL_TO_MN[j][i][l][k];
-                    let up = self.mat[r][s];
-                    let diag = self.mat[u][v];
-                    let right = self.mat[p][q];
+                    let up = self.mat.get(r, s);
+                    let diag = self.mat.get(u, v);
+                    let right = self.mat.get(p, q);
                     (up + diag - val - right) / 2.0
                 // 9: i > j && k > l
                 } else {
                     let (p, q) = IJKL_TO_MN[i][j][l][k];
                     let (r, s) = IJKL_TO_MN[j][i][k][l];
                     let (u, v) = IJKL_TO_MN[j][i][l][k];
-                    let diag = self.mat[u][v];
-                    let up = self.mat[r][s];
-                    let left = self.mat[p][q];
+                    let diag = self.mat.get(u, v);
+                    let up = self.mat.get(r, s);
+                    let left = self.mat.get(p, q);
                     (diag - up - left + val) / 2.0
                 }
             }
@@ -648,7 +660,7 @@ impl Tensor4 {
         for m in 0..9 {
             for n in 0..9 {
                 let (i, j, k, l) = MN_TO_IJKL[m][n];
-                res[m][n] = self.get(i, j, k, l);
+                res.set(m, n, self.get(i, j, k, l));
             }
         }
         res
@@ -697,11 +709,11 @@ impl Tensor4 {
     pub fn sym_set(&mut self, i: usize, j: usize, k: usize, l: usize, value: f64) {
         let (m, n) = IJKL_TO_MN_SYM[i][j][k][l];
         if m < 3 && n < 3 {
-            self.mat[m][n] = value;
+            self.mat.set(m, n, value);
         } else if m > 2 && n > 2 {
-            self.mat[m][n] = value * 2.0;
+            self.mat.set(m, n, value * 2.0);
         } else {
-            self.mat[m][n] = value * SQRT_2;
+            self.mat.set(m, n, value * SQRT_2);
         }
     }
 }
@@ -736,7 +748,7 @@ mod tests {
         let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, false).unwrap();
         for m in 0..9 {
             for n in 0..9 {
-                assert_eq!(dd.mat[m][n], Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[m][n]);
+                assert_eq!(dd.mat.get(m, n), Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[m][n]);
             }
         }
 
@@ -744,7 +756,7 @@ mod tests {
         let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false).unwrap();
         for m in 0..6 {
             for n in 0..6 {
-                assert_eq!(dd.mat[m][n], Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[m][n]);
+                assert_eq!(dd.mat.get(m, n), Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[m][n]);
             }
         }
 
@@ -752,7 +764,7 @@ mod tests {
         let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true).unwrap();
         for m in 0..4 {
             for n in 0..4 {
-                assert_eq!(dd.mat[m][n], Samples::TENSOR4_SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n]);
+                assert_eq!(dd.mat.get(m, n), Samples::TENSOR4_SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n]);
             }
         }
     }
@@ -777,7 +789,7 @@ mod tests {
         let dd = Tensor4::from_matrix(&Samples::TENSOR4_SAMPLE1_STD_MATRIX, false, false).unwrap();
         for m in 0..9 {
             for n in 0..9 {
-                approx_eq(dd.mat[m][n], Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[m][n], 1e-15);
+                approx_eq(dd.mat.get(m, n), Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[m][n], 1e-15);
             }
         }
 
@@ -785,7 +797,11 @@ mod tests {
         let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_SAMPLE1_STD_MATRIX, true, false).unwrap();
         for m in 0..6 {
             for n in 0..6 {
-                approx_eq(dd.mat[m][n], Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[m][n], 1e-14);
+                approx_eq(
+                    dd.mat.get(m, n),
+                    Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[m][n],
+                    1e-14,
+                );
             }
         }
 
@@ -793,7 +809,11 @@ mod tests {
         let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX, true, true).unwrap();
         for m in 0..4 {
             for n in 0..4 {
-                approx_eq(dd.mat[m][n], Samples::TENSOR4_SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n], 1e-14);
+                approx_eq(
+                    dd.mat.get(m, n),
+                    Samples::TENSOR4_SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n],
+                    1e-14,
+                );
             }
         }
     }
@@ -886,7 +906,7 @@ mod tests {
         let mat = dd.to_matrix();
         for m in 0..9 {
             for n in 0..9 {
-                approx_eq(mat[m][n], Samples::TENSOR4_SAMPLE1_STD_MATRIX[m][n], 1e-13);
+                approx_eq(mat.get(m, n), Samples::TENSOR4_SAMPLE1_STD_MATRIX[m][n], 1e-13);
             }
         }
 
@@ -896,7 +916,7 @@ mod tests {
         assert_eq!(mat.dims(), (9, 9));
         for m in 0..9 {
             for n in 0..9 {
-                approx_eq(mat[m][n], Samples::TENSOR4_SYM_SAMPLE1_STD_MATRIX[m][n], 1e-13);
+                approx_eq(mat.get(m, n), Samples::TENSOR4_SYM_SAMPLE1_STD_MATRIX[m][n], 1e-13);
             }
         }
 
@@ -906,7 +926,7 @@ mod tests {
         assert_eq!(mat.dims(), (9, 9));
         for m in 0..9 {
             for n in 0..9 {
-                approx_eq(mat[m][n], Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX[m][n], 1e-13);
+                approx_eq(mat.get(m, n), Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX[m][n], 1e-13);
             }
         }
     }
@@ -947,7 +967,7 @@ mod tests {
         let dd = generate_dd();
         // clone
         let mut cloned = dd.clone();
-        cloned.mat[0][0] = 9999.0;
+        cloned.mat.set(0, 0, 9999.0);
         assert_eq!(
             format!("{:.0}", dd.to_matrix()),
             "┌                                              ┐\n\

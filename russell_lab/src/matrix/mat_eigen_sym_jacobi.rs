@@ -70,7 +70,7 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
         l[p] = b[p];
     }
 
-    // initialize V to the identity matrix
+    // initialize v to the identity matrix
     for p in 0..n {
         for q in 0..n {
             v.set(p, q, 0.0);
@@ -80,7 +80,6 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
 
     // auxiliary variables
     let mut sm: f64;
-    let mut threshold: f64;
     let mut h: f64;
     let mut t: f64;
     let mut theta: f64;
@@ -91,7 +90,7 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
 
     // perform iterations
     for iteration in 0..N_MAX_ITERATIONS {
-        // sum magnitude of off-diagonal elements
+        // sum magnitude of upper off-diagonal elements
         sm = 0.0;
         for p in 0..(n - 1) {
             for q in (p + 1)..n {
@@ -104,33 +103,12 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
             return Ok(iteration + 1);
         }
 
-        // calculate threshold value
-        if iteration < 4 {
-            threshold = 0.2 * sm / ((n * n) as f64);
-        } else {
-            threshold = 0.0;
-        }
-
         // rotations
         for p in 0..(n - 1) {
             for q in (p + 1)..n {
-                g = 100.0 * f64::abs(a.get(p, q));
-                let skip_rotation =
-                    if iteration > 4 && g <= f64::EPSILON * f64::abs(l[p]) && g <= f64::EPSILON * f64::abs(l[q]) {
-                        // after four sweeps, skip the rotation if the off-diagonal element is small
-                        a.set(p, q, 0.0);
-                        true
-                    } else if f64::abs(a.get(p, q)) > threshold {
-                        false
-                    } else {
-                        true
-                    };
-                if skip_rotation {
-                    continue;
-                }
                 h = l[q] - l[p];
-                if g <= f64::EPSILON * f64::abs(h) {
-                    t = a.get(p, q) / h;
+                if f64::abs(h) <= TOLERANCE {
+                    t = 1.0;
                 } else {
                     theta = 0.5 * h / (a.get(p, q));
                     t = 1.0 / (f64::abs(theta) + f64::sqrt(1.0 + theta * theta));
@@ -287,7 +265,7 @@ mod tests {
             [3.0, 2.0, 2.0],
         ];
         let (nit, l, v) = calc_eigen(data);
-        assert_eq!(nit, 6);
+        assert_eq!(nit, 5);
         #[rustfmt::skip]
         let correct = &[
             [ 7.81993314738381295e-01, 5.26633230856907386e-01,  3.33382506832158143e-01],

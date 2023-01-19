@@ -1,9 +1,47 @@
 use super::Matrix;
 use crate::{StrError, Vector};
 
-/// Performs the Jacobi transformation of a symmetric matrix to find its eigenvectors and eigenvalues (old version)
+/// Performs the Jacobi transformation of a symmetric matrix to find its eigenvectors and eigenvalues
 ///
-/// See [mat_eigen_sym_jacobi]
+/// The Jacobi method consists of a sequence of orthogonal similarity transformations. Each
+/// transformation (a Jacobi rotation) is just a plane rotation designed to annihilate one of the
+/// off-diagonal matrix elements. Successive transformations undo previously set zeros, but the
+/// off-diagonal elements nevertheless get smaller and smaller. Accumulating the product of the
+/// transformations as you go gives the matrix of eigenvectors (Q), while the elements of the final
+/// diagonal matrix (A) are the eigenvalues.
+///
+/// The Jacobi method is absolutely foolproof for all real symmetric matrices.
+///
+/// ```text
+/// A = V ⋅ L ⋅ Vᵀ
+/// ```
+///
+/// # Input
+///
+/// * `a` -- matrix to compute eigenvalues (SYMMETRIC and SQUARE)
+///
+/// # Output
+///
+/// * `l` -- the eigenvalues (unsorted)
+/// * `v` -- matrix which columns are the eigenvectors (unsorted)
+/// * `a` -- will be modified
+/// * Returns the number of iterations
+///
+/// # Notes
+///
+/// 1. The tolerance is fixed at `1e-15`
+///    (for the sum of the absolute value of the upper off-diagonal elements)
+/// 2. The maximum number of iterations is fixed at `20`
+/// 3. For matrices of order greater than about 10, say, the algorithm is slower,
+///    by a significant constant factor, than the QR method.
+/// 4. This function is recommended to very small matrices only, e.g. 3x3 or 4x4
+///
+/// # Reference
+///
+/// This code is based on Section 11.1 Jacobi Transformations (page 574) of Numerical Recipes.
+///
+/// * Press WH, Teukolsky SA, Vetterling WT and Flannery BP (2007),
+///   Numerical Recipes in C: The Art of Scientific Computing, 3rd Edition
 pub fn mat_eigen_sym_jacobi_old(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> Result<usize, StrError> {
     // constants
     const TOLERANCE: f64 = 1e-15;

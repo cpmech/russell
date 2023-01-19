@@ -167,7 +167,8 @@ pub fn mat_eigen_sym_jacobi(qq: &mut Matrix, v: &mut Vector, aa: &mut Matrix) ->
 #[cfg(test)]
 mod tests {
     use super::{mat_eigen_sym_jacobi, Matrix};
-    use crate::{mat_approx_eq, testing::check_eigen_real, Vector};
+    use crate::testing::check_eigen_real;
+    use crate::{mat_approx_eq, Vector};
     use russell_chk::vec_approx_eq;
 
     #[test]

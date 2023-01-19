@@ -133,28 +133,64 @@ pub fn mat_eigen_sym_jacobi_old(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) 
 mod tests {
     use super::{mat_eigen_sym_jacobi_old, Matrix};
     use crate::testing::check_eigen_real;
-    use crate::{mat_approx_eq, Vector};
+    use crate::{mat_approx_eq, AsArray2D, Vector};
     use russell_chk::vec_approx_eq;
+
+    fn calc_eigen<'a, T>(data: &'a T) -> (usize, Vector, Matrix)
+    where
+        T: AsArray2D<'a, f64>,
+    {
+        let mut a = Matrix::from(data);
+        let (m, n) = a.dims();
+        let mut v = Matrix::new(m, n);
+        let mut l = Vector::new(n);
+        let nit = mat_eigen_sym_jacobi_old(&mut l, &mut v, &mut a).unwrap();
+        (nit, l, v)
+    }
 
     #[test]
     fn mat_eigen_sym_jacobi_works_1() {
-        #[rustfmt::skip]
-        let data = &[
-            [2.0, 0.0, 0.0],
-            [0.0, 2.0, 0.0],
-            [0.0, 0.0, 2.0],
-        ];
-        let mut a = Matrix::from(data);
-        let mut v = Matrix::new(3, 3);
-        let mut l = Vector::new(3);
-        let nit = mat_eigen_sym_jacobi_old(&mut l, &mut v, &mut a).unwrap();
-        assert_eq!(nit, 1);
         #[rustfmt::skip]
         let correct = &[
             [1.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
             [0.0, 0.0, 1.0],
         ];
+
+        // all zero
+        #[rustfmt::skip]
+        let data = &[
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ];
+        let (nit, l, v) = calc_eigen(data);
+        assert_eq!(nit, 1);
+        mat_approx_eq(&v, correct, 1e-15);
+        vec_approx_eq(l.as_data(), &[0.0, 0.0, 0.0], 1e-15);
+
+        // 2-repeated, with one zero diagonal entry
+        #[rustfmt::skip]
+        let data = &[
+            [2.0, 0.0, 0.0],
+            [0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ];
+        let (nit, l, v) = calc_eigen(data);
+        assert_eq!(nit, 1);
+        mat_approx_eq(&v, correct, 1e-15);
+        vec_approx_eq(l.as_data(), &[2.0, 2.0, 0.0], 1e-15);
+        check_eigen_real(data, &v, &l, 1e-15);
+
+        // 3-repeated / diagonal
+        #[rustfmt::skip]
+        let data = &[
+            [2.0, 0.0, 0.0],
+            [0.0, 2.0, 0.0],
+            [0.0, 0.0, 2.0],
+        ];
+        let (nit, l, v) = calc_eigen(data);
+        assert_eq!(nit, 1);
         mat_approx_eq(&v, correct, 1e-15);
         vec_approx_eq(l.as_data(), &[2.0, 2.0, 2.0], 1e-15);
         check_eigen_real(data, &v, &l, 1e-15);
@@ -168,10 +204,7 @@ mod tests {
 		    [0.0, 3.0, 4.0],
 		    [0.0, 4.0, 9.0],
         ];
-        let mut a = Matrix::from(data);
-        let mut v = Matrix::new(3, 3);
-        let mut l = Vector::new(3);
-        let nit = mat_eigen_sym_jacobi_old(&mut l, &mut v, &mut a).unwrap();
+        let (nit, l, v) = calc_eigen(data);
         assert_eq!(nit, 2);
         let d = 1.0 / f64::sqrt(5.0);
         #[rustfmt::skip]
@@ -193,10 +226,7 @@ mod tests {
             [2.0, 3.0, 2.0],
             [3.0, 2.0, 2.0],
         ];
-        let mut a = Matrix::from(data);
-        let mut v = Matrix::new(3, 3);
-        let mut l = Vector::new(3);
-        let nit = mat_eigen_sym_jacobi_old(&mut l, &mut v, &mut a).unwrap();
+        let (nit, l, v) = calc_eigen(data);
         assert_eq!(nit, 5);
         #[rustfmt::skip]
         let correct = &[
@@ -227,10 +257,7 @@ mod tests {
             [4.0, 2.0, 1.0, 1.0, 2.0],
             [5.0, 4.0, 3.0, 2.0, 1.0],
         ];
-        let mut a = Matrix::from(data);
-        let mut v = Matrix::new(5, 5);
-        let mut l = Vector::new(5);
-        let nit = mat_eigen_sym_jacobi_old(&mut l, &mut v, &mut a).unwrap();
+        let (nit, l, v) = calc_eigen(data);
         assert_eq!(nit, 6);
         #[rustfmt::skip]
         let correct = &[
@@ -253,5 +280,66 @@ mod tests {
             1e-12,
         );
         check_eigen_real(data, &v, &l, 1e-14);
+    }
+
+    #[test]
+    fn mat_eigen_sym_jacobi_works_5() {
+        let samples = &[
+            [
+                [1.0, 2.0, 0.0], // 0
+                [2.0, -2.0, 0.0],
+                [0.0, 0.0, -2.0],
+            ],
+            [
+                [-100.0, 33.0, 0.0], // 1
+                [33.0, -200.0, 0.0],
+                [0.0, 0.0, 150.0],
+            ],
+            [
+                [1.0, 2.0, 4.0], // 2
+                [2.0, -2.0, 3.0],
+                [4.0, 3.0, -2.0],
+            ],
+            [
+                [-100.0, -10.0, 20.0], // 3
+                [-10.0, -200.0, 15.0],
+                [20.0, 15.0, -300.0],
+            ],
+            [
+                [-100.0, 0.0, -10.0], // 4
+                [0.0, -200.0, 0.0],
+                [-10.0, 0.0, 100.0],
+            ],
+            [
+                [0.13, 1.2, 0.0], // 5
+                [1.2, -20.0, 0.0],
+                [0.0, 0.0, -28.0],
+            ],
+            [
+                [-10.0, 3.3, 0.0], // 6
+                [3.3, -2.0, 0.0],
+                [0.0, 0.0, 1.5],
+            ],
+            [
+                [0.1, 0.2, 0.8], // 7
+                [0.2, -1.3, 0.3],
+                [0.8, 0.3, -0.2],
+            ],
+            [
+                [-10.0, -1.0, 2.0], // 8
+                [-1.0, -20.0, 1.0],
+                [2.0, 1.0, -30.0],
+            ],
+            [
+                [-10.0, 0.0, -1.0], // 9
+                [0.0, -20.0, 0.0],
+                [-1.0, 0.0, 10.0],
+            ],
+        ];
+        for data in samples {
+            let (nit, l, v) = calc_eigen(data);
+            println!("nit = {}", nit);
+            check_eigen_real(data, &v, &l, 1e-13);
+        }
     }
 }

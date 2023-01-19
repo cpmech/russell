@@ -23,7 +23,6 @@ mod mat_t_mat_mul;
 mod mat_update;
 mod mat_write_vismatrix;
 mod num_matrix;
-mod testing;
 pub use crate::matrix::aliases::*;
 pub use crate::matrix::complex_mat_add::*;
 pub use crate::matrix::complex_mat_approx_eq::*;

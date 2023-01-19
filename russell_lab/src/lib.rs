@@ -46,6 +46,7 @@ pub mod prelude;
 mod read_table;
 mod sort;
 mod stopwatch;
+mod testing;
 mod vector;
 pub use crate::as_array::*;
 use crate::constants::*;

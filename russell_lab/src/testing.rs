@@ -12,7 +12,7 @@ use russell_chk::approx_eq;
 // a⋅v = v⋅λ
 // err := a⋅v - v⋅λ
 // ```
-pub(super) fn check_eigen_real<'a, T>(data: &'a T, v: &Matrix, l: &Vector)
+pub(crate) fn check_eigen_real<'a, T>(data: &'a T, v: &Matrix, l: &Vector)
 where
     T: AsArray2D<'a, f64>,
 {
@@ -34,7 +34,7 @@ where
 // a⋅v = v⋅λ
 // err := a⋅v - v⋅λ
 // ```
-pub(super) fn check_eigen_general<'a, T>(
+pub(crate) fn check_eigen_general<'a, T>(
     data: &'a T,
     v_real: &Matrix,
     l_real: &Vector,

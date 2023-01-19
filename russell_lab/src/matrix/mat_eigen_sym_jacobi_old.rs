@@ -1,48 +1,10 @@
 use super::Matrix;
 use crate::{StrError, Vector};
 
-/// Performs the Jacobi transformation of a symmetric matrix to find its eigenvectors and eigenvalues
+/// Performs the Jacobi transformation of a symmetric matrix to find its eigenvectors and eigenvalues (old version)
 ///
-/// The Jacobi method consists of a sequence of orthogonal similarity transformations. Each
-/// transformation (a Jacobi rotation) is just a plane rotation designed to annihilate one of the
-/// off-diagonal matrix elements. Successive transformations undo previously set zeros, but the
-/// off-diagonal elements nevertheless get smaller and smaller. Accumulating the product of the
-/// transformations as you go gives the matrix of eigenvectors (Q), while the elements of the final
-/// diagonal matrix (A) are the eigenvalues.
-///
-/// The Jacobi method is absolutely foolproof for all real symmetric matrices.
-///
-/// ```text
-/// A = V ⋅ L ⋅ Vᵀ
-/// ```
-///
-/// # Input
-///
-/// * `a` -- matrix to compute eigenvalues (SYMMETRIC and SQUARE)
-///
-/// # Output
-///
-/// * `l` -- the eigenvalues (unsorted)
-/// * `v` -- matrix which columns are the eigenvectors (unsorted)
-/// * `a` -- will be modified
-/// * Returns the number of iterations
-///
-/// # Notes
-///
-/// 1. The tolerance is fixed at `1e-15`
-///    (for the sum of the absolute value of the upper off-diagonal elements)
-/// 2. The maximum number of iterations is fixed at `20`
-/// 3. For matrices of order greater than about 10, say, the algorithm is slower,
-///    by a significant constant factor, than the QR method.
-/// 4. This function is recommended to very small matrices only, e.g. 3x3 or 4x4
-///
-/// # Reference
-///
-/// This code is based on Section 11.1 Jacobi Transformations (page 574) of Numerical Recipes.
-///
-/// * Press WH, Teukolsky SA, Vetterling WT and Flannery BP (2007),
-///   Numerical Recipes in C: The Art of Scientific Computing, 3rd Edition
-pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> Result<usize, StrError> {
+/// See [mat_eigen_sym_jacobi]
+pub fn mat_eigen_sym_jacobi_old(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> Result<usize, StrError> {
     // constants
     const TOLERANCE: f64 = 1e-15;
     const N_MAX_ITERATIONS: usize = 20;
@@ -70,7 +32,7 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
         l[p] = b[p];
     }
 
-    // initialize V to the identity matrix
+    // initialize v to the identity matrix
     for p in 0..n {
         for q in 0..n {
             v.set(p, q, 0.0);
@@ -80,7 +42,6 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
 
     // auxiliary variables
     let mut sm: f64;
-    let mut threshold: f64;
     let mut h: f64;
     let mut t: f64;
     let mut theta: f64;
@@ -91,7 +52,7 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
 
     // perform iterations
     for iteration in 0..N_MAX_ITERATIONS {
-        // sum magnitude of off-diagonal elements
+        // sum off-diagonal elements
         sm = 0.0;
         for p in 0..(n - 1) {
             for q in (p + 1)..n {
@@ -104,33 +65,12 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
             return Ok(iteration + 1);
         }
 
-        // calculate threshold value
-        if iteration < 4 {
-            threshold = 0.2 * sm / ((n * n) as f64);
-        } else {
-            threshold = 0.0;
-        }
-
         // rotations
         for p in 0..(n - 1) {
             for q in (p + 1)..n {
-                g = 100.0 * f64::abs(a.get(p, q));
-                let skip_rotation =
-                    if iteration > 4 && g <= f64::EPSILON * f64::abs(l[p]) && g <= f64::EPSILON * f64::abs(l[q]) {
-                        // after four sweeps, skip the rotation if the off-diagonal element is small
-                        a.set(p, q, 0.0);
-                        true
-                    } else if f64::abs(a.get(p, q)) > threshold {
-                        false
-                    } else {
-                        true
-                    };
-                if skip_rotation {
-                    continue;
-                }
                 h = l[q] - l[p];
-                if g <= f64::EPSILON * f64::abs(h) {
-                    t = a.get(p, q) / h;
+                if f64::abs(h) <= TOLERANCE {
+                    t = 1.0;
                 } else {
                     theta = 0.5 * h / (a.get(p, q));
                     t = 1.0 / (f64::abs(theta) + f64::sqrt(1.0 + theta * theta));
@@ -191,7 +131,7 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_eigen_sym_jacobi, Matrix};
+    use super::{mat_eigen_sym_jacobi_old, Matrix};
     use crate::testing::check_eigen_real;
     use crate::{mat_approx_eq, Vector};
     use russell_chk::vec_approx_eq;
@@ -207,7 +147,7 @@ mod tests {
         let mut a = Matrix::from(data);
         let mut v = Matrix::new(3, 3);
         let mut l = Vector::new(3);
-        let nit = mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).unwrap();
+        let nit = mat_eigen_sym_jacobi_old(&mut l, &mut v, &mut a).unwrap();
         assert_eq!(nit, 1);
         #[rustfmt::skip]
         let correct = &[
@@ -231,7 +171,7 @@ mod tests {
         let mut a = Matrix::from(data);
         let mut v = Matrix::new(3, 3);
         let mut l = Vector::new(3);
-        let nit = mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).unwrap();
+        let nit = mat_eigen_sym_jacobi_old(&mut l, &mut v, &mut a).unwrap();
         assert_eq!(nit, 2);
         let d = 1.0 / f64::sqrt(5.0);
         #[rustfmt::skip]
@@ -256,8 +196,8 @@ mod tests {
         let mut a = Matrix::from(data);
         let mut v = Matrix::new(3, 3);
         let mut l = Vector::new(3);
-        let nit = mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).unwrap();
-        assert_eq!(nit, 6);
+        let nit = mat_eigen_sym_jacobi_old(&mut l, &mut v, &mut a).unwrap();
+        assert_eq!(nit, 5);
         #[rustfmt::skip]
         let correct = &[
             [ 7.81993314738381295e-01, 5.26633230856907386e-01,  3.33382506832158143e-01],
@@ -290,7 +230,7 @@ mod tests {
         let mut a = Matrix::from(data);
         let mut v = Matrix::new(5, 5);
         let mut l = Vector::new(5);
-        let nit = mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).unwrap();
+        let nit = mat_eigen_sym_jacobi_old(&mut l, &mut v, &mut a).unwrap();
         assert_eq!(nit, 6);
         #[rustfmt::skip]
         let correct = &[

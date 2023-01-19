@@ -5,13 +5,13 @@ use crate::{
 use num_complex::Complex64;
 use russell_chk::approx_eq;
 
-// Checks the eigen-decomposition (similarity transformation) of a
-// symmetric matrix with real-only eigenvalues and eigenvectors
-//
-// ```text
-// a⋅v = v⋅λ
-// err := a⋅v - v⋅λ
-// ```
+/// Checks the eigen-decomposition (similarity transformation) of a
+/// symmetric matrix with real-only eigenvalues and eigenvectors
+///
+/// ```text
+/// a⋅v = v⋅λ
+/// err := a⋅v - v⋅λ
+/// ```
 pub(crate) fn check_eigen_real<'a, T>(data: &'a T, v: &Matrix, l: &Vector)
 where
     T: AsArray2D<'a, f64>,
@@ -28,12 +28,13 @@ where
     approx_eq(mat_norm(&err, Norm::Max), 0.0, 1e-15);
 }
 
-// Checks the eigen-decomposition (similarity transformation)
-//
-// ```text
-// a⋅v = v⋅λ
-// err := a⋅v - v⋅λ
-// ```
+/// Checks the eigen-decomposition (similarity transformation) of a
+/// general matrix
+///
+/// ```text
+/// a⋅v = v⋅λ
+/// err := a⋅v - v⋅λ
+/// ```
 pub(crate) fn check_eigen_general<'a, T>(
     data: &'a T,
     v_real: &Matrix,

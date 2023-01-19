@@ -1,5 +1,5 @@
 use super::Matrix;
-use crate::StrError;
+use crate::{StrError, Vector};
 
 /// Performs the Jacobi transformation of a symmetric matrix to find its eigenvectors and eigenvalues
 ///
@@ -39,7 +39,7 @@ use crate::StrError;
 ///
 /// * Press WH, Teukolsky SA, Vetterling WT and Flannery BP (1992),
 ///   Numerical Recipes in C: The Art of Scientific Computing, 2nd Edition
-pub fn mat_eigen_sym_jacobi(qq: &mut Matrix, v: &mut [f64], aa: &mut Matrix) -> Result<(), StrError> {
+pub fn mat_eigen_sym_jacobi(qq: &mut Matrix, v: &mut Vector, aa: &mut Matrix) -> Result<(), StrError> {
     // constants
     const TOLERANCE: f64 = 1e-15;
     const N_MAX_ITERATIONS: usize = 20;
@@ -53,8 +53,8 @@ pub fn mat_eigen_sym_jacobi(qq: &mut Matrix, v: &mut [f64], aa: &mut Matrix) -> 
     if mm != m || nn != n {
         return Err("Q matrix mut have the same dimensions as A matrix");
     }
-    if v.len() != n {
-        return Err("v array must have the same dimension as the number of rows of A matrix");
+    if v.dim() != n {
+        return Err("v vector must have the same dimension as the number of rows of A matrix");
     }
 
     // auxiliary arrays
@@ -167,20 +167,21 @@ pub fn mat_eigen_sym_jacobi(qq: &mut Matrix, v: &mut [f64], aa: &mut Matrix) -> 
 #[cfg(test)]
 mod tests {
     use super::{mat_eigen_sym_jacobi, Matrix};
-    use crate::mat_approx_eq;
+    use crate::{mat_approx_eq, testing::check_eigen_real, Vector};
     use russell_chk::vec_approx_eq;
 
     #[test]
     fn mat_eigen_sym_jacobi_works_1() {
         #[rustfmt::skip]
-        let mut aa = Matrix::from(&[
+        let data = &[
             [2.0, 0.0, 0.0],
             [0.0, 2.0, 0.0],
             [0.0, 0.0, 2.0],
-        ]);
+        ];
+        let mut aa = Matrix::from(data);
 
         let mut qq = Matrix::new(3, 3);
-        let mut v = vec![0.0; 3];
+        let mut v = Vector::new(3);
         mat_eigen_sym_jacobi(&mut qq, &mut v, &mut aa).unwrap();
 
         #[rustfmt::skip]
@@ -190,20 +191,22 @@ mod tests {
             [0.0, 0.0, 1.0],
         ];
         mat_approx_eq(&qq, correct, 1e-15);
-        vec_approx_eq(&v, &[2.0, 2.0, 2.0], 1e-15);
+        vec_approx_eq(v.as_data(), &[2.0, 2.0, 2.0], 1e-15);
+        check_eigen_real(data, &qq, &v, 1e-15);
     }
 
     #[test]
     fn mat_eigen_sym_jacobi_works_2() {
         #[rustfmt::skip]
-        let mut aa = Matrix::from(&[
+        let data = &[
 		    [2.0, 0.0, 0.0],
 		    [0.0, 3.0, 4.0],
 		    [0.0, 4.0, 9.0],
-        ]);
+        ];
+        let mut aa = Matrix::from(data);
 
         let mut qq = Matrix::new(3, 3);
-        let mut v = vec![0.0; 3];
+        let mut v = Vector::new(3);
         mat_eigen_sym_jacobi(&mut qq, &mut v, &mut aa).unwrap();
 
         let d = 1.0 / f64::sqrt(5.0);
@@ -214,20 +217,22 @@ mod tests {
             [0.0, -1.0*d, 2.0*d],
         ];
         mat_approx_eq(&qq, correct, 1e-15);
-        vec_approx_eq(&v, &[2.0, 1.0, 11.0], 1e-15);
+        vec_approx_eq(v.as_data(), &[2.0, 1.0, 11.0], 1e-15);
+        check_eigen_real(data, &qq, &v, 1e-15);
     }
 
     #[test]
     fn mat_eigen_sym_jacobi_works_3() {
         #[rustfmt::skip]
-        let mut aa = Matrix::from(&[
+        let data = &[
             [1.0, 2.0, 3.0],
             [2.0, 3.0, 2.0],
             [3.0, 2.0, 2.0],
-        ]);
+        ];
+        let mut aa = Matrix::from(data);
 
         let mut qq = Matrix::new(3, 3);
-        let mut v = vec![0.0; 3];
+        let mut v = Vector::new(3);
         mat_eigen_sym_jacobi(&mut qq, &mut v, &mut aa).unwrap();
 
         #[rustfmt::skip]
@@ -238,7 +243,7 @@ mod tests {
         ];
         mat_approx_eq(&qq, correct, 1e-15);
         vec_approx_eq(
-            &v,
+            v.as_data(),
             &[
                 -1.55809924785903786e+00,
                 6.69537390404459476e+00,
@@ -246,21 +251,23 @@ mod tests {
             ],
             1e-15,
         );
+        check_eigen_real(data, &qq, &v, 1e-14);
     }
 
     #[test]
     fn mat_eigen_sym_jacobi_works_4() {
         #[rustfmt::skip]
-        let mut aa = Matrix::from(&[
+        let data = &[
             [1.0, 2.0, 3.0, 4.0, 5.0],
             [2.0, 3.0, 0.0, 2.0, 4.0],
             [3.0, 0.0, 2.0, 1.0, 3.0],
             [4.0, 2.0, 1.0, 1.0, 2.0],
             [5.0, 4.0, 3.0, 2.0, 1.0],
-        ]);
+        ];
+        let mut aa = Matrix::from(data);
 
         let mut qq = Matrix::new(5, 5);
-        let mut v = vec![0.0; 5];
+        let mut v = Vector::new(5);
         mat_eigen_sym_jacobi(&mut qq, &mut v, &mut aa).unwrap();
 
         #[rustfmt::skip]
@@ -273,7 +280,7 @@ mod tests {
         ];
         mat_approx_eq(&qq, correct, 1e-13);
         vec_approx_eq(
-            &v,
+            v.as_data(),
             &[
                 -2.485704750172629e+00,
                 1.244545682971212e+01,
@@ -283,5 +290,6 @@ mod tests {
             ],
             1e-12,
         );
+        check_eigen_real(data, &qq, &v, 1e-14);
     }
 }

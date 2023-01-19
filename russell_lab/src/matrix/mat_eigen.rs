@@ -486,7 +486,7 @@ mod tests {
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
         vec_approx_eq(l_real.as_data(), l_real_correct, 1e-15);
         vec_approx_eq(l_imag.as_data(), l_imag_correct, 1e-15);
-        check_eigen_general(&data, &v_real, &l_real, &v_imag, &l_imag);
+        check_eigen_general(&data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
     }
 
     #[test]
@@ -521,7 +521,7 @@ mod tests {
         vec_approx_eq(l_imag.as_data(), l_imag_correct, 1e-15);
         mat_approx_eq(&v_real, v_real_correct, 1e-15);
         mat_approx_eq(&v_imag, &v_imag_correct, 1e-15);
-        check_eigen_real(&data, &v_real, &l_real);
+        check_eigen_real(&data, &v_real, &l_real, 1e-15);
     }
 
     #[test]
@@ -555,6 +555,6 @@ mod tests {
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
         vec_approx_eq(l_real.as_data(), l_real_correct, 1e-15);
         vec_approx_eq(l_imag.as_data(), l_imag_correct, 1e-15);
-        check_eigen_general(&data, &v_real, &l_real, &v_imag, &l_imag);
+        check_eigen_general(&data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
     }
 }

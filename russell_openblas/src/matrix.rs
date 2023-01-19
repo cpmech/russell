@@ -22,6 +22,7 @@ extern "C" {
     fn LAPACKE_dpotrf(matrix_layout: i32, uplo: u8, n: i32, a: *mut f64, lda: i32) -> i32;
     fn LAPACKE_zpotrf(matrix_layout: i32, uplo: u8, n: i32, a: *mut Complex64, lda: i32) -> i32;
     fn LAPACKE_dgeev(matrix_layout: i32, jobvl: u8, jobvr: u8, n: i32, a: *mut f64, lda: i32, wr: *mut f64, wi: *mut f64, vl: *mut f64, ldvl: i32, vr: *mut f64, ldvr: i32) -> i32;
+    fn LAPACKE_dsyev(matrix_layout: i32, jobz: u8, uplo: u8, n: i32, a: *mut f64, lda: i32, w: *mut f64) -> i32;
 }
 
 /// Performs the matrix-matrix multiplication
@@ -797,13 +798,57 @@ pub fn dgeev(
     Ok(())
 }
 
+/// Computes the eigenvalues and eigenvectors of a symmetric matrix
+///
+/// The eigenvector v(j) of A satisfies
+///
+/// ```text
+/// A ⋅ v(j) = lambda(j) ⋅ v(j)
+/// ```
+///
+/// where lambda(j) is its eigenvalue.
+///
+/// The computed eigenvectors are normalized to have Euclidean norm
+/// equal to 1 and largest component real.
+///
+/// # Notes
+///
+/// * The matrix will be modified (it will contain the eigenvectors as columns)
+///
+/// # Important
+///
+/// * The data must be in **col-major** order
+///
+/// # Reference
+///
+/// <https://netlib.org/lapack/explore-html/dd/d4c/dsyev_8f.html>
+///
+#[inline]
+pub fn dsyev(calc_v: bool, up: bool, n: i32, a: &mut [f64], w: &mut [f64]) -> Result<(), StrError> {
+    unsafe {
+        let info = LAPACKE_dsyev(
+            LAPACK_COL_MAJOR,
+            lapack_job_vlr(calc_v),
+            lapack_uplo(up),
+            n,
+            a.as_mut_ptr(),
+            n,
+            w.as_mut_ptr(),
+        );
+        if info != 0_i32 {
+            return Err("LAPACK dsyev failed");
+        }
+    }
+    Ok(())
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
     use super::{
-        dgeev, dgemm, dgesvd, dgetrf, dgetri, dlange, dpotrf, dsyrk, zgemm, zgesvd, zgetrf, zgetri, zherk, zlange,
-        zpotrf, zsyrk,
+        dgeev, dgemm, dgesvd, dgetrf, dgetri, dlange, dpotrf, dsyev, dsyrk, zgemm, zgesvd, zgetrf, zgetri, zherk,
+        zlange, zpotrf, zsyrk,
     };
     use crate::conversions::{col_major, col_major_complex, dgeev_data, dgeev_data_lr};
     use crate::{to_i32, StrError};
@@ -2002,5 +2047,115 @@ mod tests {
 
         // done
         Ok(())
+    }
+
+    #[test]
+    fn dsyev_captures_errors() {
+        let m = 1_usize;
+        let mut a = vec![0.0; m * m];
+        let mut w = vec![0.0; m]; // eigenvalues (real part)
+        let wrong = -1_i32; // <<< wrong
+        assert_eq!(dsyev(true, true, wrong, &mut a, &mut w), Err("LAPACK dsyev failed"));
+    }
+
+    #[test]
+    fn dsyev_works() -> Result<(), StrError> {
+        // matrix a
+        #[rustfmt::skip]
+        let mut a_full = col_major(5, 5, &[
+             1.96, -6.49, -0.47, -7.20, -0.65,
+            -6.49,  3.80, -6.39,  1.50, -6.34,
+            -0.47, -6.39,  4.17, -1.51,  2.67,
+            -7.20,  1.50, -1.51,  5.70,  1.80,
+            -0.65, -6.34,  2.67,  1.80, -7.10,
+        ]);
+        #[rustfmt::skip]
+        let mut a_upper = col_major(5, 5, &[
+             1.96, -6.49, -0.47, -7.20, -0.65,
+             0.00,  3.80, -6.39,  1.50, -6.34,
+             0.00,  0.00,  4.17, -1.51,  2.67,
+             0.00,  0.00,  0.00,  5.70,  1.80,
+             0.00,  0.00,  0.00,  0.00, -7.10,
+        ]);
+        #[rustfmt::skip]
+        let mut a_lower = col_major(5, 5, &[
+             1.96,  0.00,  0.00, 0.00,  0.00,
+            -6.49,  3.80,  0.00, 0.00,  0.00,
+            -0.47, -6.39,  4.17, 0.00,  0.00,
+            -7.20,  1.50, -1.51, 5.70,  0.00,
+            -0.65, -6.34,  2.67, 1.80, -7.10,
+        ]);
+        let a_copy = a_full.to_vec();
+
+        // n-size
+        let n = 5_i32; // =a.nrow=a.ncol
+
+        // eigen-arrays
+        let sz = n as usize;
+        let mut w_full = vec![0.0; sz]; // eigenvalues
+        let mut w_upper = vec![0.0; sz]; // eigenvalues
+        let mut w_lower = vec![0.0; sz]; // eigenvalues
+
+        // compute eigen-things
+        dsyev(true, true, n, &mut a_full, &mut w_full)?;
+        dsyev(true, true, n, &mut a_upper, &mut w_upper)?;
+        dsyev(true, false, n, &mut a_lower, &mut w_lower)?;
+
+        // check eigenvalues
+        #[rustfmt::skip]
+        let w_correct = &[
+            -11.065575263268386,
+             -6.228746932398536,
+              0.864027975272061,
+              8.865457108365517,
+             16.094837112029339,
+        ];
+        vec_approx_eq(&w_full, w_correct, 1e-14);
+        vec_approx_eq(&w_upper, w_correct, 1e-14);
+        vec_approx_eq(&w_lower, w_correct, 1e-14);
+
+        // check eigenvectors
+        #[rustfmt::skip]
+        let v_correct = col_major(5, 5, &[
+            -0.298066989325562, -0.607513440222985,  0.402619958410724, -0.374480966979739,  0.489637278280664,
+            -0.507798436762473, -0.287967567468551, -0.406585676439824, -0.357168835627883, -0.605255267038650,
+            -0.081606200081990, -0.384320415784010, -0.659965507677461,  0.500763838634574,  0.399148284114790,
+            -0.003589307637544, -0.446729768968521,  0.455289865985113,  0.620365211335316, -0.456374597106544,
+            -0.804129568213261,  0.448031730532131,  0.172458468654360,  0.310768419738872,  0.162247563445297,
+        ]);
+        vec_approx_eq(&a_full, &v_correct, 1e-14);
+        vec_approx_eq(&a_upper, &v_correct, 1e-14);
+        check_eigen_sym(n as usize, &a_copy, &w_full, &a_full, 1e-14);
+        check_eigen_sym(n as usize, &a_copy, &w_upper, &a_upper, 1e-14);
+        check_eigen_sym(n as usize, &a_copy, &w_lower, &a_lower, 1e-14);
+
+        // done
+        Ok(())
+    }
+
+    // Checks eigenvalues and eigenvectors of a symmetric matrix
+    //
+    // ```text
+    // col is the column-index in the v_matrix, 0 ≤ col < n
+    //
+    // A ⋅ v[col] = λ[col] ⋅ v[col]
+    //
+    // error_i = | (A⋅v[col])_i - (λ[col]⋅v[col])_i |
+    // ```
+    fn check_eigen_sym(n: usize, a: &[f64], lambda: &[f64], v_matrix: &[f64], tol: f64) {
+        let col = 0;
+        for i in 0..n {
+            let mut a_times_v_i = 0.0;
+            for k in 0..n {
+                a_times_v_i += a[i + k * n] * v_matrix[k + col * n];
+            }
+            let error = f64::abs(a_times_v_i - lambda[col] * v_matrix[i + col * n]);
+            if error > tol {
+                panic!(
+                    "A ⋅ v[{}] = λ[{}] ⋅ v[{}] failed at index {}. error = {:?}",
+                    col, col, col, i, error
+                );
+            }
+        }
     }
 }

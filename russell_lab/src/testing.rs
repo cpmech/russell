@@ -25,6 +25,10 @@ where
     let mut v_l = Matrix::new(m, m);
     let mut err = Matrix::filled(m, m, f64::MAX);
     mat_mat_mul(&mut a_v, 1.0, &a, &v).unwrap();
+    let norm_a_v = mat_norm(&a_v, Norm::Max);
+    if norm_a_v <= f64::EPSILON {
+        panic!("norm(a⋅v) cannot be zero");
+    }
     mat_mat_mul(&mut v_l, 1.0, &v, &lam).unwrap();
     mat_add(&mut err, 1.0, &a_v, -1.0, &v_l).unwrap();
     approx_eq(mat_norm(&err, Norm::Max), 0.0, tolerance);
@@ -58,6 +62,10 @@ pub(crate) fn check_eigen_general<'a, T>(
     let one = Complex64::new(1.0, 0.0);
     let m_one = Complex64::new(-1.0, 0.0);
     complex_mat_mat_mul(&mut a_v, one, &a, &v).unwrap();
+    let norm_a_v = complex_mat_norm(&a_v, Norm::Max);
+    if norm_a_v <= f64::EPSILON {
+        panic!("norm(a⋅v) cannot be zero");
+    }
     complex_mat_mat_mul(&mut v_l, one, &v, &lam).unwrap();
     complex_mat_add(&mut err, one, &a_v, m_one, &v_l).unwrap();
     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, tolerance);
@@ -77,6 +85,15 @@ mod tests {
         let data = &[[2.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 2.0]];
         let v = Matrix::from(&[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]);
         let l = Vector::from(&[2.0, 2.0, WRONG]);
+        check_eigen_real(data, &v, &l, 1e-15);
+    }
+
+    #[test]
+    #[should_panic]
+    fn check_eigen_real_panics_on_zero_matrix() {
+        let data = &[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]];
+        let v = Matrix::from(&[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]);
+        let l = Vector::from(&[0.0, 0.0, 0.0]);
         check_eigen_real(data, &v, &l, 1e-15);
     }
 
@@ -102,6 +119,17 @@ mod tests {
             [-0.5 / s3, -0.5 / s3, WRONG / s3],
         ]);
         let v_imag = Matrix::from(&[[0.0, 0.0, 0.0], [0.5, -0.5, 0.0], [-0.5, 0.5, 0.0]]);
+        check_eigen_general(data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
+    }
+
+    #[test]
+    #[should_panic]
+    fn check_eigen_general_panics_on_zero_matrix() {
+        let data = &[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]];
+        let l_real = Vector::from(&[0.0, 0.0, 0.0]);
+        let l_imag = Vector::from(&[0.0, 0.0, 0.0]);
+        let v_real = Matrix::from(&[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]);
+        let v_imag = Matrix::from(&[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]);
         check_eigen_general(data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
     }
 

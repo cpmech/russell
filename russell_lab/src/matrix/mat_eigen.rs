@@ -313,11 +313,12 @@ mod tests {
 
     // Checks the eigen-decomposition (similarity transformation) of a
     // symmetric matrix with real-only eigenvalues and eigenvectors
+    //
     // ```text
     // a⋅v = v⋅λ
     // err := a⋅v - v⋅λ
     // ```
-    fn check_real_eigen<'a, T>(data: &'a T, v: &Matrix, l: &Vector)
+    fn check_eigen_real<'a, T>(data: &'a T, v: &Matrix, l: &Vector)
     where
         T: AsArray2D<'a, f64>,
     {
@@ -334,11 +335,12 @@ mod tests {
     }
 
     // Checks the eigen-decomposition (similarity transformation)
+    //
     // ```text
     // a⋅v = v⋅λ
     // err := a⋅v - v⋅λ
     // ```
-    fn check_general_eigen<'a, T>(data: &'a T, v_real: &Matrix, l_real: &Vector, v_imag: &Matrix, l_imag: &Vector)
+    fn check_eigen_general<'a, T>(data: &'a T, v_real: &Matrix, l_real: &Vector, v_imag: &Matrix, l_imag: &Vector)
     where
         T: AsArray2D<'a, f64>,
     {
@@ -536,7 +538,7 @@ mod tests {
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
         vec_approx_eq(l_real.as_data(), l_real_correct, 1e-15);
         vec_approx_eq(l_imag.as_data(), l_imag_correct, 1e-15);
-        check_general_eigen(&data, &v_real, &l_real, &v_imag, &l_imag);
+        check_eigen_general(&data, &v_real, &l_real, &v_imag, &l_imag);
     }
 
     #[test]
@@ -571,7 +573,7 @@ mod tests {
         vec_approx_eq(l_imag.as_data(), l_imag_correct, 1e-15);
         mat_approx_eq(&v_real, v_real_correct, 1e-15);
         mat_approx_eq(&v_imag, &v_imag_correct, 1e-15);
-        check_real_eigen(&data, &v_real, &l_real);
+        check_eigen_real(&data, &v_real, &l_real);
     }
 
     #[test]
@@ -605,6 +607,6 @@ mod tests {
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
         vec_approx_eq(l_real.as_data(), l_real_correct, 1e-15);
         vec_approx_eq(l_imag.as_data(), l_imag_correct, 1e-15);
-        check_general_eigen(&data, &v_real, &l_real, &v_imag, &l_imag);
+        check_eigen_general(&data, &v_real, &l_real, &v_imag, &l_imag);
     }
 }

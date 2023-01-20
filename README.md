@@ -206,4 +206,6 @@ fn main() -> Result<(), StrError> {
 
 Comparison of the performances of `mat_eigen_sym_jacobi` (Jacobi rotation) versus `mat_eigen_sym` (calling LAPACK DSYEV).
 
-![Jacobi Rotation versus LAPACK DSYEV](zassets/bench_mat_eigen_sym_1-32.svg)
+![Jacobi Rotation versus LAPACK DSYEV (1-5)](zassets/bench_mat_eigen_sym_1-5.svg)
+
+![Jacobi Rotation versus LAPACK DSYEV (1-32)](zassets/bench_mat_eigen_sym_1-32.svg)

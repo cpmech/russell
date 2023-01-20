@@ -45,7 +45,9 @@ mod matvec;
 pub mod prelude;
 mod read_table;
 mod sort;
+mod sort_vec_mat;
 mod stopwatch;
+mod testing;
 mod vector;
 pub use crate::as_array::*;
 use crate::constants::*;
@@ -56,6 +58,7 @@ pub use crate::matrix::*;
 pub use crate::matvec::*;
 pub use crate::read_table::*;
 pub use crate::sort::*;
+pub use crate::sort_vec_mat::*;
 pub use crate::stopwatch::*;
 pub use crate::vector::*;
 

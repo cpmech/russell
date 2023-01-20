@@ -304,59 +304,9 @@ pub fn mat_eigen_lr(
 mod tests {
     use super::{mat_eigen, mat_eigen_lr};
     use crate::mat_approx_eq;
-    use crate::{
-        complex_mat_add, complex_mat_mat_mul, complex_mat_norm, complex_mat_zip, complex_vec_zip, mat_add, mat_mat_mul,
-        mat_norm, AsArray2D, ComplexMatrix, Matrix, Norm, Vector,
-    };
-    use num_complex::Complex64;
-    use russell_chk::{approx_eq, vec_approx_eq};
-
-    // Checks the eigen-decomposition (similarity transformation) of a
-    // symmetric matrix with real-only eigenvalues and eigenvectors
-    // ```text
-    // a⋅v = v⋅λ
-    // err := a⋅v - v⋅λ
-    // ```
-    fn check_real_eigen<'a, T>(data: &'a T, v: &Matrix, l: &Vector)
-    where
-        T: AsArray2D<'a, f64>,
-    {
-        let a = Matrix::from(data);
-        let m = a.nrow();
-        let lam = Matrix::diagonal(l.as_data());
-        let mut a_v = Matrix::new(m, m);
-        let mut v_l = Matrix::new(m, m);
-        let mut err = Matrix::filled(m, m, f64::MAX);
-        mat_mat_mul(&mut a_v, 1.0, &a, &v).unwrap();
-        mat_mat_mul(&mut v_l, 1.0, &v, &lam).unwrap();
-        mat_add(&mut err, 1.0, &a_v, -1.0, &v_l).unwrap();
-        approx_eq(mat_norm(&err, Norm::Max), 0.0, 1e-15);
-    }
-
-    // Checks the eigen-decomposition (similarity transformation)
-    // ```text
-    // a⋅v = v⋅λ
-    // err := a⋅v - v⋅λ
-    // ```
-    fn check_general_eigen<'a, T>(data: &'a T, v_real: &Matrix, l_real: &Vector, v_imag: &Matrix, l_imag: &Vector)
-    where
-        T: AsArray2D<'a, f64>,
-    {
-        let a = ComplexMatrix::from(data);
-        let m = a.nrow();
-        let v = complex_mat_zip(v_real, v_imag).unwrap();
-        let d = complex_vec_zip(l_real, l_imag).unwrap();
-        let lam = ComplexMatrix::diagonal(d.as_data());
-        let mut a_v = ComplexMatrix::new(m, m);
-        let mut v_l = ComplexMatrix::new(m, m);
-        let mut err = ComplexMatrix::filled(m, m, Complex64::new(f64::MAX, f64::MAX));
-        let one = Complex64::new(1.0, 0.0);
-        let m_one = Complex64::new(-1.0, 0.0);
-        complex_mat_mat_mul(&mut a_v, one, &a, &v).unwrap();
-        complex_mat_mat_mul(&mut v_l, one, &v, &lam).unwrap();
-        complex_mat_add(&mut err, one, &a_v, m_one, &v_l).unwrap();
-        approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, 1e-15);
-    }
+    use crate::testing::{check_eigen_general, check_eigen_real};
+    use crate::{Matrix, Vector};
+    use russell_chk::vec_approx_eq;
 
     #[test]
     fn mat_eigen_fails_on_non_square() {
@@ -536,7 +486,7 @@ mod tests {
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
         vec_approx_eq(l_real.as_data(), l_real_correct, 1e-15);
         vec_approx_eq(l_imag.as_data(), l_imag_correct, 1e-15);
-        check_general_eigen(&data, &v_real, &l_real, &v_imag, &l_imag);
+        check_eigen_general(&data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
     }
 
     #[test]
@@ -571,7 +521,7 @@ mod tests {
         vec_approx_eq(l_imag.as_data(), l_imag_correct, 1e-15);
         mat_approx_eq(&v_real, v_real_correct, 1e-15);
         mat_approx_eq(&v_imag, &v_imag_correct, 1e-15);
-        check_real_eigen(&data, &v_real, &l_real);
+        check_eigen_real(&data, &v_real, &l_real, 1e-15);
     }
 
     #[test]
@@ -605,6 +555,6 @@ mod tests {
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
         vec_approx_eq(l_real.as_data(), l_real_correct, 1e-15);
         vec_approx_eq(l_imag.as_data(), l_imag_correct, 1e-15);
-        check_general_eigen(&data, &v_real, &l_real, &v_imag, &l_imag);
+        check_eigen_general(&data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
     }
 }

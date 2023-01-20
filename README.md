@@ -199,3 +199,13 @@ fn main() -> Result<(), StrError> {
 - [ ] Implement standard continuum mechanics tensors in `russell_tensor`
 - [ ] Implement more integration tests for linear algebra
 - [ ] Implement more examples
+
+## Benchmarks
+
+### Jacobi Rotation versus LAPACK DSYEV
+
+Comparison of the performances of `mat_eigen_sym_jacobi` (Jacobi rotation) versus `mat_eigen_sym` (calling LAPACK DSYEV).
+
+![Jacobi Rotation versus LAPACK DSYEV (1-5)](zassets/bench_mat_eigen_sym_1-5.svg)
+
+![Jacobi Rotation versus LAPACK DSYEV (1-32)](zassets/bench_mat_eigen_sym_1-32.svg)

@@ -202,6 +202,18 @@ impl Tensor2 {
         Ok(Tensor2 { vec })
     }
 
+    /// Tells whether this tensor is symmetric or not
+    #[inline]
+    pub fn is_symmetric(&self) -> bool {
+        self.vec.dim() != 9
+    }
+
+    /// Tells whether this tensor is 2D or not
+    #[inline]
+    pub fn is_two_dim(&self) -> bool {
+        self.vec.dim() == 4
+    }
+
     /// Returns the (i,j) component (standard; not Mandel)
     ///
     /// # Example
@@ -564,16 +576,22 @@ mod tests {
         let tt = Tensor2::new(false, false);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.vec.as_data(), correct);
+        assert_eq!(tt.is_symmetric(), false);
+        assert_eq!(tt.is_two_dim(), false);
 
         // symmetric 3D
         let tt = Tensor2::new(true, false);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.vec.as_data(), correct);
+        assert_eq!(tt.is_symmetric(), true);
+        assert_eq!(tt.is_two_dim(), false);
 
         // symmetric 2D
         let tt = Tensor2::new(true, true);
         let correct = &[0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.vec.as_data(), correct);
+        assert_eq!(tt.is_symmetric(), true);
+        assert_eq!(tt.is_two_dim(), true);
     }
 
     #[test]

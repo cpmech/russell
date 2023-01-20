@@ -304,25 +304,25 @@ pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) -> Result
 /// # Example
 ///
 /// ```
+/// use russell_lab::Vector;
 /// use russell_tensor::{vec_dyad_vec, Tensor2, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let u = Vector::from(&[1.0, 1.0, 1.0]);
 ///     let v = Vector::from(&[2.0, 2.0, 2.0]);
 ///
-///     let mut tt = Tensor4::new(false, false);
+///     let mut tt = Tensor2::new(true, false);
 ///
 ///     vec_dyad_vec(&mut tt, 1.0, &u, &v)?;
 ///
 ///     let out = tt.to_matrix();
 ///     assert_eq!(
 ///         format!("{:.1}", out),
-///         "┌                   ┐\n\
-///          │   1.0   8.0   9.0 │\n\
-///          │  -1.0  -8.0  -9.0 │\n\
-///          │   0.0   0.0   0.0 │\n\
-///          │   0.0   0.0   0.0 │\n\
-///          └                   ┘"
+///         "┌             ┐\n\
+///          │ 2.0 2.0 2.0 │\n\
+///          │ 2.0 2.0 2.0 │\n\
+///          │ 2.0 2.0 2.0 │\n\
+///          └             ┘"
 ///     );
 ///     Ok(())
 /// }

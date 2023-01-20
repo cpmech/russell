@@ -25,8 +25,11 @@ pub fn mat_eigen_sym(l: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
     if m != n {
         return Err("matrix must be square");
     }
+    if m == 0 {
+        return Err("matrix dimension must be ≥ 1");
+    }
     if l.dim() != n {
-        return Err("L vector must have the same dimension as the number of rows of A matrix");
+        return Err("l vector has incompatible dimension");
     }
     let n_i32 = to_i32(n);
     dsyev(true, true, n_i32, a.as_mut_data(), l.as_mut_data())?;
@@ -38,6 +41,7 @@ pub fn mat_eigen_sym(l: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
 #[cfg(test)]
 mod tests {
     use super::{mat_eigen_sym, Matrix};
+    use crate::math::SQRT_2;
     use crate::testing::check_eigen_real;
     use crate::{mat_approx_eq, AsArray2D, Vector};
     use russell_chk::vec_approx_eq;
@@ -51,6 +55,42 @@ mod tests {
         let mut l = Vector::new(n);
         mat_eigen_sym(&mut l, &mut a).unwrap();
         (l, a)
+    }
+
+    #[test]
+    fn mat_eigen_sym_handles_errors() {
+        let mut a = Matrix::new(0, 1);
+        let mut l = Vector::new(0);
+        assert_eq!(mat_eigen_sym(&mut l, &mut a).err(), Some("matrix must be square"));
+        let mut a = Matrix::new(0, 0);
+        assert_eq!(
+            mat_eigen_sym(&mut l, &mut a).err(),
+            Some("matrix dimension must be ≥ 1")
+        );
+        let mut a = Matrix::new(1, 1);
+        assert_eq!(
+            mat_eigen_sym(&mut l, &mut a).err(),
+            Some("l vector has incompatible dimension")
+        );
+    }
+
+    #[test]
+    fn mat_eigen_sym_works_0() {
+        // 1x1 matrix
+        let data = &[[2.0]];
+        let (l, v) = calc_eigen(data);
+        mat_approx_eq(&v, &[[1.0]], 1e-15);
+        vec_approx_eq(l.as_data(), &[2.0], 1e-15);
+
+        // 2x2 matrix
+        let data = &[[2.0, 1.0], [1.0, 2.0]];
+        let (l, v) = calc_eigen(data);
+        mat_approx_eq(
+            &v,
+            &[[-1.0 / SQRT_2, 1.0 / SQRT_2], [1.0 / SQRT_2, 1.0 / SQRT_2]],
+            1e-15,
+        );
+        vec_approx_eq(l.as_data(), &[1.0, 3.0], 1e-15);
     }
 
     #[test]

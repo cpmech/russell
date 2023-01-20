@@ -52,12 +52,15 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
     if m != n {
         return Err("matrix must be square");
     }
+    if m == 0 {
+        return Err("matrix dimension must be ≥ 1");
+    }
     let (mm, nn) = v.dims();
     if mm != m || nn != n {
-        return Err("V matrix must have the same dimension as A matrix");
+        return Err("v and a matrices must have the same dimensions");
     }
     if l.dim() != n {
-        return Err("L vector must have the same dimension as the number of rows of A matrix");
+        return Err("l vector has incompatible dimension");
     }
 
     // auxiliary arrays
@@ -170,6 +173,7 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
 #[cfg(test)]
 mod tests {
     use super::{mat_eigen_sym_jacobi, Matrix};
+    use crate::math::SQRT_2;
     use crate::testing::check_eigen_real;
     use crate::{mat_approx_eq, AsArray2D, Vector};
     use russell_chk::vec_approx_eq;
@@ -184,6 +188,53 @@ mod tests {
         let mut l = Vector::new(n);
         let nit = mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).unwrap();
         (nit, l, v)
+    }
+
+    #[test]
+    fn mat_eigen_sym_jacobi_handles_errors() {
+        let mut a = Matrix::new(0, 1);
+        let mut v = Matrix::new(1, 1);
+        let mut l = Vector::new(0);
+        assert_eq!(
+            mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).err(),
+            Some("matrix must be square")
+        );
+        let mut a = Matrix::new(0, 0);
+        assert_eq!(
+            mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).err(),
+            Some("matrix dimension must be ≥ 1")
+        );
+        let mut a = Matrix::new(2, 2);
+        assert_eq!(
+            mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).err(),
+            Some("v and a matrices must have the same dimensions")
+        );
+        let mut a = Matrix::new(1, 1);
+        assert_eq!(
+            mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).err(),
+            Some("l vector has incompatible dimension")
+        );
+    }
+
+    #[test]
+    fn mat_eigen_sym_jacobi_works_0() {
+        // 1x1 matrix
+        let data = &[[2.0]];
+        let (nit, l, v) = calc_eigen(data);
+        assert_eq!(nit, 1);
+        mat_approx_eq(&v, &[[1.0]], 1e-15);
+        vec_approx_eq(l.as_data(), &[2.0], 1e-15);
+
+        // 2x2 matrix
+        let data = &[[2.0, 1.0], [1.0, 2.0]];
+        let (nit, l, v) = calc_eigen(data);
+        assert_eq!(nit, 2);
+        mat_approx_eq(
+            &v,
+            &[[1.0 / SQRT_2, 1.0 / SQRT_2], [-1.0 / SQRT_2, 1.0 / SQRT_2]],
+            1e-15,
+        );
+        vec_approx_eq(l.as_data(), &[1.0, 3.0], 1e-15);
     }
 
     #[test]

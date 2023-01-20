@@ -20,7 +20,7 @@ fn _bench_vec_add(c: &mut Criterion) {
 }
 
 fn bench_mat_eigen_sym(c: &mut Criterion) {
-    let sizes: Vec<usize> = (1..16).collect();
+    let sizes: Vec<usize> = (1..33).collect();
     let mut group = c.benchmark_group("lab_mat_eigen_sym");
     for size in &sizes {
         group.throughput(Throughput::Elements(*size as u64));
@@ -28,12 +28,12 @@ fn bench_mat_eigen_sym(c: &mut Criterion) {
             let mut a = Matrix::filled(size, size, 2.0);
             let mut v = Matrix::new(size, size);
             let mut l = Vector::new(size);
-            b.iter(|| mat_eigen_sym_jacobi(&mut l, &mut v, &mut a));
+            b.iter(|| mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).unwrap());
         });
         group.bench_with_input(BenchmarkId::new("OpenBLAS", size), size, |b, &size| {
             let mut a = Matrix::filled(size, size, 2.0);
             let mut l = Vector::new(size);
-            b.iter(|| mat_eigen_sym(&mut l, &mut a));
+            b.iter(|| mat_eigen_sym(&mut l, &mut a).unwrap());
         });
     }
     group.finish();

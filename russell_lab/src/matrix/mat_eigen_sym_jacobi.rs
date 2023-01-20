@@ -54,10 +54,10 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
     }
     let (mm, nn) = v.dims();
     if mm != m || nn != n {
-        return Err("Q matrix mut have the same dimensions as A matrix");
+        return Err("V matrix must have the same dimension as A matrix");
     }
     if l.dim() != n {
-        return Err("v vector must have the same dimension as the number of rows of A matrix");
+        return Err("L vector must have the same dimension as the number of rows of A matrix");
     }
 
     // auxiliary arrays

@@ -1,5 +1,5 @@
 use super::{Tensor2, Tensor4};
-use crate::StrError;
+use crate::{StrError, SQRT_2};
 use russell_lab::{mat_copy, mat_mat_mul, mat_vec_mul, vec_inner, vec_mat_mul, vec_outer, Vector};
 
 /// Copies Tensor2
@@ -287,7 +287,84 @@ pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) -> Result
     Ok(())
 }
 
-/// Performs the dyadic product between two Tensor2
+/// Performs the dyadic product between two vectors resulting in a second-order tensor
+///
+/// ```text
+/// T = α u ⊗ v
+/// ```
+///
+/// # Notes
+///
+/// * Note that, in general, the dyadic product between two vectors
+///   may result in a **non-symmetric** second-order tensor. Therefore,
+///   if the input tensor `T` is symmetric, an error may occur. Thus,
+///   make sure that the you expect `u ⊗ v` to be symmetric when passing
+///   a symmetric tensor `T`.
+///
+/// # Example
+///
+/// ```
+/// use russell_tensor::{vec_dyad_vec, Tensor2, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     let u = Vector::from(&[1.0, 1.0, 1.0]);
+///     let v = Vector::from(&[2.0, 2.0, 2.0]);
+///
+///     let mut tt = Tensor4::new(false, false);
+///
+///     vec_dyad_vec(&mut tt, 1.0, &u, &v)?;
+///
+///     let out = tt.to_matrix();
+///     assert_eq!(
+///         format!("{:.1}", out),
+///         "┌                   ┐\n\
+///          │   1.0   8.0   9.0 │\n\
+///          │  -1.0  -8.0  -9.0 │\n\
+///          │   0.0   0.0   0.0 │\n\
+///          │   0.0   0.0   0.0 │\n\
+///          └                   ┘"
+///     );
+///     Ok(())
+/// }
+/// ```
+#[inline]
+pub fn vec_dyad_vec(tt: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Result<(), StrError> {
+    if tt.is_two_dim() {
+        // and symmetric
+        if u.dim() != 2 || v.dim() != 2 {
+            return Err("vectors must have dim = 2");
+        }
+        if (u[0] * v[1]) != (u[1] * v[0]) {
+            return Err("dyadic product between u and v does not generate a symmetric tensor");
+        }
+        tt.vec[0] = alpha * u[0] * v[0];
+        tt.vec[1] = alpha * u[1] * v[1];
+        tt.vec[2] = 0.0;
+        tt.vec[3] = alpha * (u[0] * v[1] + u[1] * v[0]) / SQRT_2;
+    } else {
+        if u.dim() != 3 || v.dim() != 3 {
+            return Err("vectors must have dim = 3");
+        }
+        tt.vec[0] = alpha * u[0] * v[0];
+        tt.vec[1] = alpha * u[1] * v[1];
+        tt.vec[2] = alpha * u[2] * v[2];
+        tt.vec[3] = alpha * (u[0] * v[1] + u[1] * v[0]) / SQRT_2;
+        tt.vec[4] = alpha * (u[1] * v[2] + u[2] * v[1]) / SQRT_2;
+        tt.vec[5] = alpha * (u[0] * v[2] + u[2] * v[0]) / SQRT_2;
+        if tt.is_symmetric() {
+            if (u[0] * v[1]) != (u[1] * v[0]) || (u[1] * v[2]) != (u[2] * v[1]) || (u[0] * v[2]) != (u[2] * v[0]) {
+                return Err("dyadic product between u and v does not generate a symmetric tensor");
+            }
+        } else {
+            tt.vec[6] = alpha * (u[0] * v[1] - u[1] * v[0]) / SQRT_2;
+            tt.vec[7] = alpha * (u[1] * v[2] - u[2] * v[1]) / SQRT_2;
+            tt.vec[8] = alpha * (u[0] * v[2] - u[2] * v[0]) / SQRT_2;
+        }
+    }
+    Ok(())
+}
+
+/// Performs the dyadic product between two Tensor2 resulting in a fourth-order tensor
 ///
 /// ```text
 /// D = α a ⊗ b
@@ -521,9 +598,9 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) -> R
 mod tests {
     use super::{
         copy_tensor2, copy_tensor4, t2_ddot_t2, t2_ddot_t4, t2_dot_t2, t2_dot_vec, t2_dyad_t2, t4_ddot_t2, t4_ddot_t4,
-        vec_dot_t2, Tensor2, Tensor4,
+        vec_dot_t2, vec_dyad_vec, Tensor2, Tensor4,
     };
-    use crate::Samples;
+    use crate::{Samples, SQRT_2};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 
@@ -868,6 +945,92 @@ mod tests {
         let mut v = Vector::new(2);
         vec_dot_t2(&mut v, 2.0, &u, &a).unwrap();
         vec_approx_eq(v.as_data(), &[-16.0, -38.0], 1e-13);
+    }
+
+    #[test]
+    fn vec_dyad_vec_captures_errors() {
+        // general
+        const WRONG: f64 = 123.0;
+        let u = Vector::from(&[-2.0, -3.0, -4.0, WRONG]);
+        let v = Vector::from(&[4.0, 3.0, 2.0]);
+        let mut tt = Tensor2::new(false, false);
+        assert_eq!(
+            vec_dyad_vec(&mut tt, 1.0, &u, &v).err(),
+            Some("vectors must have dim = 3")
+        );
+        let u = Vector::from(&[-2.0, -3.0, -4.0]);
+        let v = Vector::from(&[4.0, 3.0, 2.0, WRONG]);
+        assert_eq!(
+            vec_dyad_vec(&mut tt, 1.0, &u, &v).err(),
+            Some("vectors must have dim = 3")
+        );
+
+        // symmetric 3D
+        let u = Vector::from(&[-2.0, -3.0, -4.0]);
+        let v = Vector::from(&[4.0, 3.0, 2.0]);
+        let mut tt = Tensor2::new(true, false);
+        assert_eq!(
+            vec_dyad_vec(&mut tt, 1.0, &u, &v).err(),
+            Some("dyadic product between u and v does not generate a symmetric tensor")
+        );
+
+        // symmetric 2D
+        let u = Vector::from(&[-2.0, -3.0, WRONG]);
+        let v = Vector::from(&[4.0, 3.0]);
+        let mut tt = Tensor2::new(true, true);
+        assert_eq!(
+            vec_dyad_vec(&mut tt, 1.0, &u, &v).err(),
+            Some("vectors must have dim = 2")
+        );
+        let u = Vector::from(&[-2.0, -3.0]);
+        let v = Vector::from(&[4.0, 3.0, WRONG]);
+        assert_eq!(
+            vec_dyad_vec(&mut tt, 1.0, &u, &v).err(),
+            Some("vectors must have dim = 2")
+        );
+        let u = Vector::from(&[-2.0, -3.0]);
+        let v = Vector::from(&[4.0, 3.0]);
+        assert_eq!(
+            vec_dyad_vec(&mut tt, 1.0, &u, &v).err(),
+            Some("dyadic product between u and v does not generate a symmetric tensor")
+        );
+    }
+
+    #[test]
+    fn vec_dyad_vec_works() {
+        // general
+        let u = Vector::from(&[-2.0, -3.0, -4.0]);
+        let v = Vector::from(&[4.0, 3.0, 2.0]);
+        let mut tt = Tensor2::new(false, false);
+        vec_dyad_vec(&mut tt, 2.0, &u, &v).unwrap();
+        let correct = &[
+            -16.0,
+            -18.0,
+            -16.0,
+            -18.0 * SQRT_2,
+            -18.0 * SQRT_2,
+            -20.0 * SQRT_2,
+            6.0 * SQRT_2,
+            6.0 * SQRT_2,
+            12.0 * SQRT_2,
+        ];
+        vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
+
+        // symmetric 3D
+        let u = Vector::from(&[-2.0, -3.0, -4.0]);
+        let v = Vector::from(&[2.0, 3.0, 4.0]);
+        let mut tt = Tensor2::new(true, false);
+        vec_dyad_vec(&mut tt, 2.0, &u, &v).unwrap();
+        let correct = &[-8.0, -18.0, -32.0, -12.0 * SQRT_2, -24.0 * SQRT_2, -16.0 * SQRT_2];
+        vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
+
+        // symmetric 2D
+        let u = Vector::from(&[-2.0, -3.0]);
+        let v = Vector::from(&[2.0, 3.0]);
+        let mut tt = Tensor2::new(true, true);
+        vec_dyad_vec(&mut tt, 2.0, &u, &v).unwrap();
+        let correct = &[-8.0, -18.0, 0.0, -12.0 * SQRT_2];
+        vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
     }
 
     #[test]

@@ -98,10 +98,16 @@ impl Tensor2 {
     ///
     /// # Input
     ///
-    /// * `tt` - the standard (not Mandel) Tij components given
+    /// * `tt` -- the standard (not Mandel) Tij components given
     ///          with respect to an orthonormal Cartesian basis
     /// * `symmetric` -- whether this tensor is symmetric or not i.e., Tij = Tji
     /// * `two_dim` -- 2D instead of 3D. Only used if symmetric == true.
+    ///
+    /// # Notes
+    ///
+    /// * In all cases, even in 2D, the input matrix must be 3×3
+    /// * If symmetric, the off-diagonal components must equal the corresponding ones
+    /// * If 2D, tt[1][2] and tt[0][2] must both be equal to zero
     ///
     /// # Example
     ///

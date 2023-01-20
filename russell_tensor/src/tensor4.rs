@@ -436,6 +436,18 @@ impl Tensor4 {
         Ok(Tensor4 { mat })
     }
 
+    /// Tells whether this tensor is minor-symmetric or not
+    #[inline]
+    pub fn is_minor_symmetric(&self) -> bool {
+        self.mat.nrow() != 9
+    }
+
+    /// Tells whether this tensor is 2D or not
+    #[inline]
+    pub fn is_two_dim(&self) -> bool {
+        self.mat.nrow() == 4
+    }
+
     /// Returns the (i,j,k,l) component (standard; not Mandel)
     ///
     /// # Example
@@ -751,6 +763,8 @@ mod tests {
                 assert_eq!(dd.mat.get(m, n), Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[m][n]);
             }
         }
+        assert_eq!(dd.is_minor_symmetric(), false);
+        assert_eq!(dd.is_two_dim(), false);
 
         // sym-3D
         let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false).unwrap();
@@ -759,6 +773,8 @@ mod tests {
                 assert_eq!(dd.mat.get(m, n), Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[m][n]);
             }
         }
+        assert_eq!(dd.is_minor_symmetric(), true);
+        assert_eq!(dd.is_two_dim(), false);
 
         // sym-2D
         let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true).unwrap();
@@ -767,6 +783,8 @@ mod tests {
                 assert_eq!(dd.mat.get(m, n), Samples::TENSOR4_SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n]);
             }
         }
+        assert_eq!(dd.is_minor_symmetric(), true);
+        assert_eq!(dd.is_two_dim(), true);
     }
 
     #[test]

@@ -34,7 +34,7 @@ use crate::{StrError, Vector};
 /// 2. The maximum number of iterations is fixed at `20`
 /// 3. For matrices of order greater than about 10, say, the algorithm is slower,
 ///    by a significant constant factor, than the QR method.
-/// 4. This function is recommended to very small matrices only, e.g. 3x3 or 4x4
+/// 4. This function is recommended for small matrices only, e.g., dim ≤ 32
 ///
 /// # Reference
 ///
@@ -443,5 +443,40 @@ mod tests {
             check_eigen_real(data, &v, &l, *tol);
             test_id += 1;
         }
+    }
+
+    #[test]
+    fn mat_eigen_sym_jacobi_works_6() {
+        let size = 8;
+
+        let mut a = Matrix::filled(size, size, 2.0);
+        let a_copy = a.clone();
+        let mut v = Matrix::new(size, size);
+        let mut l = Vector::new(size);
+        let nit = mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).unwrap();
+        assert_eq!(nit, 4);
+        // println!("a =\n{}", a);
+        // println!("nit = {}", nit);
+        // println!("l =\n{}", l);
+        // println!("v =\n{}", v);
+        check_eigen_real(&a_copy, &v, &l, 1e-14);
+
+        let mut a = Matrix::filled(size, size, (size + 1) as f64);
+        for i in 0..(size - 1) {
+            for j in (i + 1)..size {
+                a.set(i, j, (i + j) as f64);
+                a.set(j, i, (i + j) as f64);
+            }
+        }
+        let a_copy = a.clone();
+        let mut v = Matrix::new(size, size);
+        let mut l = Vector::new(size);
+        let nit = mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).unwrap();
+        assert_eq!(nit, 7);
+        // println!("a =\n{}", a);
+        // println!("nit = {}", nit);
+        // println!("l =\n{}", l);
+        // println!("v =\n{}", v);
+        check_eigen_real(&a_copy, &v, &l, 1e-12);
     }
 }

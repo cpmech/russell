@@ -15,7 +15,7 @@ fn benchmark_add_vectors(c: &mut Criterion) {
             let mut w = vec![0.0; size];
             b.iter(|| add_vectors_native(&mut w, 1.0, &u, 1.0, &v));
         });
-        group.bench_with_input(BenchmarkId::new("Oblas", size), size, |b, &size| {
+        group.bench_with_input(BenchmarkId::new("OpenBLAS", size), size, |b, &size| {
             let u = vec![0.0; size];
             let v = vec![0.0; size];
             let mut w = vec![0.0; size];

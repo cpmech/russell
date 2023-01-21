@@ -1,5 +1,5 @@
 use super::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, SQRT_2};
-use crate::{Mandel, StrError};
+use crate::{Mandel, StrError, SQRT_2_BY_3, SQRT_3_BY_2};
 use russell_lab::{Matrix, Vector};
 use serde::{Deserialize, Serialize};
 
@@ -800,6 +800,86 @@ impl Tensor2 {
         }
         f64::sqrt(sm)
     }
+
+    pub fn deviator_determinant(&self) -> f64 {
+        let a = &self.vec;
+        match self.vec.dim() {
+            4 => {
+                ((-a[0] - a[1] - a[2]) / 3.0 + a[2])
+                    * ((-2.0 * a[0] * a[0]) / 9.0 + (5.0 * a[0] * a[1]) / 9.0
+                        - (2.0 * a[1] * a[1]) / 9.0
+                        - (a[0] * a[2]) / 9.0
+                        - (a[1] * a[2]) / 9.0
+                        + a[2] * a[2] / 9.0
+                        - a[3] * a[3] / 2.0)
+            }
+            6 => {
+                (2.0 * f64::powf(a[0], 3.0)) / 27.0
+                    - (f64::powf(a[0], 2.0) * a[1]) / 9.0
+                    - (a[0] * f64::powf(a[1], 2.0)) / 9.0
+                    + (2.0 * f64::powf(a[1], 3.0)) / 27.0
+                    - (f64::powf(a[0], 2.0) * a[2]) / 9.0
+                    + (4.0 * a[0] * a[1] * a[2]) / 9.0
+                    - (f64::powf(a[1], 2.0) * a[2]) / 9.0
+                    - (a[0] * f64::powf(a[2], 2.0)) / 9.0
+                    - (a[1] * f64::powf(a[2], 2.0)) / 9.0
+                    + (2.0 * f64::powf(a[2], 3.0)) / 27.0
+                    + (a[0] * f64::powf(a[3], 2.0)) / 6.0
+                    + (a[1] * f64::powf(a[3], 2.0)) / 6.0
+                    - (a[2] * f64::powf(a[3], 2.0)) / 3.0
+                    - (a[0] * f64::powf(a[4], 2.0)) / 3.0
+                    + (a[1] * f64::powf(a[4], 2.0)) / 6.0
+                    + (a[2] * f64::powf(a[4], 2.0)) / 6.0
+                    + (a[3] * a[4] * a[5]) / SQRT_2
+                    + (a[0] * f64::powf(a[5], 2.0)) / 6.0
+                    - (a[1] * f64::powf(a[5], 2.0)) / 3.0
+                    + (a[2] * f64::powf(a[5], 2.0)) / 6.0
+            }
+            _ => {
+                ((-a[0] - a[1] - a[2]) / 3.0 + a[2])
+                    * ((-2.0 * a[0] * a[0]) / 9.0 + (5.0 * a[0] * a[1]) / 9.0
+                        - (2.0 * a[1] * a[1]) / 9.0
+                        - (a[0] * a[2]) / 9.0
+                        - (a[1] * a[2]) / 9.0
+                        + a[2] * a[2] / 9.0
+                        - a[3] * a[3] / 2.0
+                        + a[6] * a[6] / 2.0)
+                    + ((a[5] - a[8])
+                        * (((a[3] + a[6]) * (a[4] + a[7])) / 2.0
+                            - ((a[1] + (-a[0] - a[1] - a[2]) / 3.0) * (a[5] + a[8])) / SQRT_2))
+                        / SQRT_2
+                    - ((a[4] - a[7])
+                        * (((a[0] + (-a[0] - a[1] - a[2]) / 3.0) * (a[4] + a[7])) / SQRT_2
+                            - ((a[3] - a[6]) * (a[5] + a[8])) / 2.0))
+                        / SQRT_2
+            }
+        }
+    }
+
+    #[inline]
+    pub fn invariant_sigma_m(&self) -> f64 {
+        self.trace() / 3.0
+    }
+
+    #[inline]
+    pub fn invariant_sigma_d(&self) -> f64 {
+        self.deviator_norm() * SQRT_3_BY_2
+    }
+
+    #[inline]
+    pub fn invariant_eps_v(&self) -> f64 {
+        self.trace()
+    }
+
+    #[inline]
+    pub fn invariant_eps_d(&self) -> f64 {
+        self.deviator_norm() * SQRT_2_BY_3
+    }
+
+    #[inline]
+    pub fn invariant_lode(&self) -> f64 {
+        27.0 * self.determinant()
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1441,7 +1521,7 @@ mod tests {
     }
 
     #[test]
-    fn deviator_and_norm_work() {
+    fn deviator_norm_and_determinant_work() {
         // general
         #[rustfmt::skip]
         let comps_std = &[
@@ -1462,6 +1542,7 @@ mod tests {
              └                ┘"
         );
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-15);
+        approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-12);
 
         // symmetric 3D
         #[rustfmt::skip]
@@ -1483,6 +1564,7 @@ mod tests {
              └                ┘"
         );
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-14);
+        approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-13);
 
         // symmetric 2D
         #[rustfmt::skip]
@@ -1504,5 +1586,6 @@ mod tests {
              └                ┘"
         );
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-15);
+        approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-15);
     }
 }

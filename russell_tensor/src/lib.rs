@@ -6,6 +6,7 @@
 pub type StrError = &'static str;
 
 mod constants;
+mod enums;
 mod lin_elasticity;
 mod operations;
 mod samples;
@@ -14,6 +15,7 @@ mod tensor2;
 mod tensor4;
 mod util;
 pub use crate::constants::*;
+pub use crate::enums::*;
 pub use crate::lin_elasticity::*;
 pub use crate::operations::*;
 pub use crate::samples::*;

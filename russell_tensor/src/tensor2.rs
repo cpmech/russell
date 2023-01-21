@@ -1,6 +1,6 @@
 use super::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, SQRT_2};
 use crate::{Mandel, StrError};
-use russell_lab::{vec_copy, vec_norm, vec_update, Matrix, Norm, Vector};
+use russell_lab::{vec_copy, vec_update, Matrix, Vector};
 use serde::{Deserialize, Serialize};
 
 /// Implements a second-order tensor, symmetric or not
@@ -647,7 +647,18 @@ impl Tensor2 {
     /// ```
     #[inline]
     pub fn norm(&self) -> f64 {
-        vec_norm(&self.vec, Norm::Euc)
+        let mut sm = self.vec[0] * self.vec[0]
+            + self.vec[1] * self.vec[1]
+            + self.vec[2] * self.vec[2]
+            + self.vec[3] * self.vec[3];
+        let dim = self.vec.dim();
+        if dim > 4 {
+            sm += self.vec[4] * self.vec[4] + self.vec[5] * self.vec[5];
+        }
+        if dim > 6 {
+            sm += self.vec[6] * self.vec[6] + self.vec[7] * self.vec[7] + self.vec[8] * self.vec[8];
+        }
+        f64::sqrt(sm)
     }
 
     /// Calculates the deviator tensor
@@ -691,6 +702,58 @@ impl Tensor2 {
         dev.vec[1] -= m;
         dev.vec[2] -= m;
         Ok(())
+    }
+
+    /// Calculates the norm of the deviator tensor
+    ///
+    /// ```text
+    /// || σ - ⅓ tr(σ) I ||
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::approx_eq;
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [6.0,  1.0,  2.0],
+    ///         [3.0, 12.0,  4.0],
+    ///         [5.0,  6.0, 15.0],
+    ///     ], Mandel::General)?;
+    ///
+    ///     let mut dev = Tensor2::new(Mandel::General);
+    ///     a.deviator(&mut dev).unwrap();
+    ///     approx_eq(dev.trace(), 0.0, 1e-15);
+    ///
+    ///     assert_eq!(
+    ///         format!("{:.1}", dev.to_matrix()),
+    ///         "┌                ┐\n\
+    ///          │ -5.0  1.0  2.0 │\n\
+    ///          │  3.0  1.0  4.0 │\n\
+    ///          │  5.0  6.0  4.0 │\n\
+    ///          └                ┘"
+    ///     );
+    ///
+    ///     approx_eq(dev.norm(), f64::sqrt(133.0), 1e-15);
+    ///     approx_eq(a.deviator_norm(), f64::sqrt(133.0), 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn deviator_norm(&self) -> f64 {
+        let mut sm = self.vec[3] * self.vec[3]
+            + (self.vec[0] - self.vec[1]) * (self.vec[0] - self.vec[1]) / 3.0
+            + (self.vec[1] - self.vec[2]) * (self.vec[1] - self.vec[2]) / 3.0
+            + (self.vec[2] - self.vec[0]) * (self.vec[2] - self.vec[0]) / 3.0;
+        let dim = self.vec.dim();
+        if dim > 4 {
+            sm += self.vec[4] * self.vec[4] + self.vec[5] * self.vec[5];
+        }
+        if dim > 6 {
+            sm += self.vec[6] * self.vec[6] + self.vec[7] * self.vec[7] + self.vec[8] * self.vec[8];
+        }
+        f64::sqrt(sm)
     }
 }
 
@@ -1233,6 +1296,7 @@ mod tests {
 
     #[test]
     fn norm_works() {
+        // general
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 2.0, 3.0],
@@ -1240,11 +1304,38 @@ mod tests {
             [7.0, 8.0, 9.0],
         ];
         let tt = Tensor2::from_matrix(comps_std, Mandel::General).unwrap();
-        approx_eq(tt.norm(), f64::sqrt(285.0), 1e-14);
+        approx_eq(tt.norm(), f64::sqrt(285.0), 1e-15);
+
+        // symmetric 3D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [ 2.0, -3.0, 4.0],
+            [-3.0, -5.0, 1.0],
+            [ 4.0,  1.0, 6.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric).unwrap();
+        approx_eq(tt.norm(), f64::sqrt(117.0), 1e-15);
+
+        // symmetric 2D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric2D).unwrap();
+        approx_eq(tt.norm(), f64::sqrt(46.0), 1e-15);
     }
 
     #[test]
-    fn deviator_works() {
+    fn deviator_catches_errors() {
+        let tt = Tensor2::new(Mandel::General);
+        let mut dev = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(tt.deviator(&mut dev).err(), Some("vectors are incompatible"));
+    }
+
+    #[test]
+    fn deviator_and_norm_work() {
         // general
         #[rustfmt::skip]
         let comps_std = &[
@@ -1264,6 +1355,7 @@ mod tests {
              │  7.0  8.0  4.0 │\n\
              └                ┘"
         );
+        approx_eq(dev.norm(), tt.deviator_norm(), 1e-15);
 
         // symmetric 3D
         #[rustfmt::skip]
@@ -1284,6 +1376,7 @@ mod tests {
              │  4.0  1.0  5.0 │\n\
              └                ┘"
         );
+        approx_eq(dev.norm(), tt.deviator_norm(), 1e-14);
 
         // symmetric 2D
         #[rustfmt::skip]
@@ -1304,9 +1397,6 @@ mod tests {
              │  0.0  0.0  1.0 │\n\
              └                ┘"
         );
-
-        // catch error
-        let mut dev = Tensor2::new(Mandel::Symmetric);
-        assert_eq!(tt.deviator(&mut dev).err(), Some("vectors are incompatible"));
+        approx_eq(dev.norm(), tt.deviator_norm(), 1e-15);
     }
 }

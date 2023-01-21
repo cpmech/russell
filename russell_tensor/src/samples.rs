@@ -1,10 +1,10 @@
 use super::SQRT_2;
 
 /// Holds samples
-pub struct Samples;
+pub struct SamplesTensor4;
 
-impl Samples {
-    pub const TENSOR4_SAMPLE1: [[[[f64; 3]; 3]; 3]; 3] = [
+impl SamplesTensor4 {
+    pub const SAMPLE1: [[[[f64; 3]; 3]; 3]; 3] = [
         // [0]
         [
             // [0][0]
@@ -71,7 +71,7 @@ impl Samples {
     ];
 
     #[rustfmt::skip]
-    pub const TENSOR4_SAMPLE1_STD_MATRIX: [[f64; 9]; 9] = [
+    pub const SAMPLE1_STD_MATRIX: [[f64; 9]; 9] = [
         [ 1.0,  2.0,  3.0,  10.0, 11.0, 12.0,  19.0, 20.0, 21.0], // [0][0]...
         [ 4.0,  5.0,  6.0,  13.0, 14.0, 15.0,  22.0, 23.0, 24.0], // [1][1]...
         [ 7.0,  8.0,  9.0,  16.0, 17.0, 18.0,  25.0, 26.0, 27.0], // [2][2]...
@@ -84,7 +84,7 @@ impl Samples {
     ];
 
     #[rustfmt::skip]
-    pub const TENSOR4_SAMPLE1_MANDEL_MATRIX:[[f64; 9]; 9] = [
+    pub const SAMPLE1_MANDEL_MATRIX:[[f64; 9]; 9] = [
         [         1.0 ,          2.0 ,          3.0 , 29.0/SQRT_2 , 31.0/SQRT_2 , 33.0/SQRT_2 , -9.0/SQRT_2 , -9.0/SQRT_2 , -9.0/SQRT_2 ],
         [         4.0 ,          5.0 ,          6.0 , 35.0/SQRT_2 , 37.0/SQRT_2 , 39.0/SQRT_2 , -9.0/SQRT_2 , -9.0/SQRT_2 , -9.0/SQRT_2 ],
         [         7.0 ,          8.0 ,          9.0 , 41.0/SQRT_2 , 43.0/SQRT_2 , 45.0/SQRT_2 , -9.0/SQRT_2 , -9.0/SQRT_2 , -9.0/SQRT_2 ],
@@ -96,7 +96,7 @@ impl Samples {
         [-27.0/SQRT_2 , -27.0/SQRT_2 , -27.0/SQRT_2 ,       -27.0 ,       -27.0 ,       -27.0 ,         0.0 ,         0.0 ,         0.0 ],
     ];
 
-    pub const TENSOR4_SAMPLE2: [[[[f64; 3]; 3]; 3]; 3] = [
+    pub const SAMPLE2: [[[[f64; 3]; 3]; 3]; 3] = [
         // [0]
         [
             // [0][0]
@@ -162,7 +162,7 @@ impl Samples {
         ],
     ];
 
-    pub const TENSOR4_SYM_SAMPLE1: [[[[f64; 3]; 3]; 3]; 3] = [
+    pub const SYM_SAMPLE1: [[[[f64; 3]; 3]; 3]; 3] = [
         // [0]
         [
             // [0][0]
@@ -229,7 +229,7 @@ impl Samples {
     ];
 
     #[rustfmt::skip]
-    pub const TENSOR4_SYM_SAMPLE1_STD_MATRIX: [[f64; 9]; 9] = [
+    pub const SYM_SAMPLE1_STD_MATRIX: [[f64; 9]; 9] = [
         [ 1.0,  2.0,  3.0,  10.0, 11.0, 12.0,  10.0, 11.0, 12.0], // [0][0]...
         [ 4.0,  5.0,  6.0,  13.0, 14.0, 15.0,  13.0, 14.0, 15.0], // [1][1]...
         [ 7.0,  8.0,  9.0,  16.0, 17.0, 18.0,  16.0, 17.0, 18.0], // [2][2]...
@@ -242,7 +242,7 @@ impl Samples {
     ];
 
     #[rustfmt::skip]
-    pub const TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX:[[f64; 6]; 6] = [
+    pub const SYM_SAMPLE1_MANDEL_MATRIX:[[f64; 6]; 6] = [
         [ 1.0       ,  2.0       ,  3.0       , 10.0*SQRT_2, 11.0*SQRT_2, 12.0*SQRT_2],
         [ 4.0       ,  5.0       ,  6.0       , 13.0*SQRT_2, 14.0*SQRT_2, 15.0*SQRT_2],
         [ 7.0       ,  8.0       ,  9.0       , 16.0*SQRT_2, 17.0*SQRT_2, 18.0*SQRT_2],
@@ -251,7 +251,7 @@ impl Samples {
         [25.0*SQRT_2, 26.0*SQRT_2, 27.0*SQRT_2, 68.0       , 70.0       , 72.0       ],
     ];
 
-    pub const TENSOR4_SYM_2D_SAMPLE1: [[[[f64; 3]; 3]; 3]; 3] = [
+    pub const SYM_2D_SAMPLE1: [[[[f64; 3]; 3]; 3]; 3] = [
         // [0]
         [
             // [0][0]
@@ -318,7 +318,7 @@ impl Samples {
     ];
 
     #[rustfmt::skip]
-    pub const TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX: [[f64; 9]; 9] = [
+    pub const SYM_2D_SAMPLE1_STD_MATRIX: [[f64; 9]; 9] = [
         [ 1.0,  2.0,  3.0,  10.0, 0.0, 0.0,  10.0, 0.0, 0.0], // [0][0]...
         [ 4.0,  5.0,  6.0,  13.0, 0.0, 0.0,  13.0, 0.0, 0.0], // [1][1]...
         [ 7.0,  8.0,  9.0,  16.0, 0.0, 0.0,  16.0, 0.0, 0.0], // [2][2]...
@@ -331,7 +331,7 @@ impl Samples {
     ];
 
     #[rustfmt::skip]
-    pub const TENSOR4_SYM_2D_SAMPLE1_MANDEL_MATRIX:[[f64; 4]; 4] = [
+    pub const SYM_2D_SAMPLE1_MANDEL_MATRIX:[[f64; 4]; 4] = [
         [ 1.0       ,  2.0       ,  3.0       , 10.0*SQRT_2],
         [ 4.0       ,  5.0       ,  6.0       , 13.0*SQRT_2],
         [ 7.0       ,  8.0       ,  9.0       , 16.0*SQRT_2],
@@ -343,7 +343,7 @@ impl Samples {
 
 #[cfg(test)]
 mod tests {
-    use super::Samples;
+    use super::SamplesTensor4;
     use crate::constants::IJKL_TO_MN;
 
     #[test]
@@ -353,8 +353,8 @@ mod tests {
                 for k in 0..3 {
                     for l in 0..3 {
                         let (m, n) = IJKL_TO_MN[i][j][k][l];
-                        let val = Samples::TENSOR4_SAMPLE1_STD_MATRIX[m][n];
-                        assert_eq!(Samples::TENSOR4_SAMPLE1[i][j][k][l], val);
+                        let val = SamplesTensor4::SAMPLE1_STD_MATRIX[m][n];
+                        assert_eq!(SamplesTensor4::SAMPLE1[i][j][k][l], val);
                     }
                 }
             }
@@ -368,7 +368,7 @@ mod tests {
                 for k in 0..3 {
                     for l in 0..3 {
                         let val = (i + 1) * 1000 + (j + 1) * 100 + (k + 1) * 10 + (l + 1);
-                        assert_eq!(Samples::TENSOR4_SAMPLE2[i][j][k][l], val as f64);
+                        assert_eq!(SamplesTensor4::SAMPLE2[i][j][k][l], val as f64);
                     }
                 }
             }
@@ -382,8 +382,8 @@ mod tests {
                 for k in 0..3 {
                     for l in 0..3 {
                         let (a, b) = IJKL_TO_MN[i][j][k][l];
-                        let val = Samples::TENSOR4_SYM_SAMPLE1_STD_MATRIX[a][b];
-                        assert_eq!(Samples::TENSOR4_SYM_SAMPLE1[i][j][k][l], val);
+                        let val = SamplesTensor4::SYM_SAMPLE1_STD_MATRIX[a][b];
+                        assert_eq!(SamplesTensor4::SYM_SAMPLE1[i][j][k][l], val);
                     }
                 }
             }
@@ -397,8 +397,8 @@ mod tests {
                 for k in 0..3 {
                     for l in 0..3 {
                         let (m, n) = IJKL_TO_MN[i][j][k][l];
-                        let val = Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX[m][n];
-                        assert_eq!(Samples::TENSOR4_SYM_2D_SAMPLE1[i][j][k][l], val);
+                        let val = SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX[m][n];
+                        assert_eq!(SamplesTensor4::SYM_2D_SAMPLE1[i][j][k][l], val);
                     }
                 }
             }

@@ -716,7 +716,7 @@ impl Tensor4 {
 #[cfg(test)]
 mod tests {
     use super::{Tensor4, MN_TO_IJKL};
-    use crate::{Mandel, Samples};
+    use crate::{Mandel, SamplesTensor4};
     use russell_chk::approx_eq;
     use serde::{Deserialize, Serialize};
 
@@ -728,40 +728,40 @@ mod tests {
 
     #[test]
     fn from_array_fails_captures_errors() {
-        let res = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, Mandel::Symmetric);
+        let res = Tensor4::from_array(&SamplesTensor4::SAMPLE1, Mandel::Symmetric);
         assert_eq!(res.err(), Some("minor-symmetric Tensor4 does not pass symmetry check"));
 
-        let res = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, Mandel::Symmetric2D);
+        let res = Tensor4::from_array(&SamplesTensor4::SYM_SAMPLE1, Mandel::Symmetric2D);
         assert_eq!(res.err(), Some("cannot define 2D Tensor4 due to non-zero values"));
     }
 
     #[test]
     fn from_array_works() {
         // general
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, Mandel::General).unwrap();
+        let dd = Tensor4::from_array(&SamplesTensor4::SAMPLE1, Mandel::General).unwrap();
         for m in 0..9 {
             for n in 0..9 {
-                assert_eq!(dd.mat.get(m, n), Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[m][n]);
+                assert_eq!(dd.mat.get(m, n), SamplesTensor4::SAMPLE1_MANDEL_MATRIX[m][n]);
             }
         }
         assert_eq!(dd.minor_symmetric(), false);
         assert_eq!(dd.two_dim(), false);
 
         // sym-3D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, Mandel::Symmetric).unwrap();
+        let dd = Tensor4::from_array(&SamplesTensor4::SYM_SAMPLE1, Mandel::Symmetric).unwrap();
         for m in 0..6 {
             for n in 0..6 {
-                assert_eq!(dd.mat.get(m, n), Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[m][n]);
+                assert_eq!(dd.mat.get(m, n), SamplesTensor4::SYM_SAMPLE1_MANDEL_MATRIX[m][n]);
             }
         }
         assert_eq!(dd.minor_symmetric(), true);
         assert_eq!(dd.two_dim(), false);
 
         // sym-2D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
+        let dd = Tensor4::from_array(&SamplesTensor4::SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
         for m in 0..4 {
             for n in 0..4 {
-                assert_eq!(dd.mat.get(m, n), Samples::TENSOR4_SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n]);
+                assert_eq!(dd.mat.get(m, n), SamplesTensor4::SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n]);
             }
         }
         assert_eq!(dd.minor_symmetric(), true);
@@ -785,32 +785,28 @@ mod tests {
     #[test]
     fn from_matrix_works() {
         // general
-        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SAMPLE1_STD_MATRIX, Mandel::General).unwrap();
+        let dd = Tensor4::from_matrix(&SamplesTensor4::SAMPLE1_STD_MATRIX, Mandel::General).unwrap();
         for m in 0..9 {
             for n in 0..9 {
-                approx_eq(dd.mat.get(m, n), Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[m][n], 1e-15);
+                approx_eq(dd.mat.get(m, n), SamplesTensor4::SAMPLE1_MANDEL_MATRIX[m][n], 1e-15);
             }
         }
 
         // symmetric 3D
-        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_SAMPLE1_STD_MATRIX, Mandel::Symmetric).unwrap();
+        let dd = Tensor4::from_matrix(&SamplesTensor4::SYM_SAMPLE1_STD_MATRIX, Mandel::Symmetric).unwrap();
         for m in 0..6 {
             for n in 0..6 {
-                approx_eq(
-                    dd.mat.get(m, n),
-                    Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[m][n],
-                    1e-14,
-                );
+                approx_eq(dd.mat.get(m, n), SamplesTensor4::SYM_SAMPLE1_MANDEL_MATRIX[m][n], 1e-14);
             }
         }
 
         // symmetric 2D
-        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX, Mandel::Symmetric2D).unwrap();
+        let dd = Tensor4::from_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Mandel::Symmetric2D).unwrap();
         for m in 0..4 {
             for n in 0..4 {
                 approx_eq(
                     dd.mat.get(m, n),
-                    Samples::TENSOR4_SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n],
+                    SamplesTensor4::SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n],
                     1e-14,
                 );
             }
@@ -820,36 +816,36 @@ mod tests {
     #[test]
     fn get_works() {
         // general
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, Mandel::General).unwrap();
+        let dd = Tensor4::from_array(&SamplesTensor4::SAMPLE1, Mandel::General).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        approx_eq(dd.get(i, j, k, l), Samples::TENSOR4_SAMPLE1[i][j][k][l], 1e-13);
+                        approx_eq(dd.get(i, j, k, l), SamplesTensor4::SAMPLE1[i][j][k][l], 1e-13);
                     }
                 }
             }
         }
 
         // symmetric 3D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, Mandel::Symmetric).unwrap();
+        let dd = Tensor4::from_array(&SamplesTensor4::SYM_SAMPLE1, Mandel::Symmetric).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        approx_eq(dd.get(i, j, k, l), Samples::TENSOR4_SYM_SAMPLE1[i][j][k][l], 1e-14);
+                        approx_eq(dd.get(i, j, k, l), SamplesTensor4::SYM_SAMPLE1[i][j][k][l], 1e-14);
                     }
                 }
             }
         }
 
         // symmetric 2D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
+        let dd = Tensor4::from_array(&SamplesTensor4::SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        approx_eq(dd.get(i, j, k, l), Samples::TENSOR4_SYM_2D_SAMPLE1[i][j][k][l], 1e-14);
+                        approx_eq(dd.get(i, j, k, l), SamplesTensor4::SYM_2D_SAMPLE1[i][j][k][l], 1e-14);
                     }
                 }
             }
@@ -859,39 +855,39 @@ mod tests {
     #[test]
     fn to_array_works() {
         // general
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, Mandel::General).unwrap();
+        let dd = Tensor4::from_array(&SamplesTensor4::SAMPLE1, Mandel::General).unwrap();
         let res = dd.to_array();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        approx_eq(res[i][j][k][l], Samples::TENSOR4_SAMPLE1[i][j][k][l], 1e-13);
+                        approx_eq(res[i][j][k][l], SamplesTensor4::SAMPLE1[i][j][k][l], 1e-13);
                     }
                 }
             }
         }
 
         // symmetric 3D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, Mandel::Symmetric).unwrap();
+        let dd = Tensor4::from_array(&SamplesTensor4::SYM_SAMPLE1, Mandel::Symmetric).unwrap();
         let res = dd.to_array();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        approx_eq(res[i][j][k][l], Samples::TENSOR4_SYM_SAMPLE1[i][j][k][l], 1e-14);
+                        approx_eq(res[i][j][k][l], SamplesTensor4::SYM_SAMPLE1[i][j][k][l], 1e-14);
                     }
                 }
             }
         }
 
         // symmetric 2D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
+        let dd = Tensor4::from_array(&SamplesTensor4::SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
         let res = dd.to_array();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        approx_eq(res[i][j][k][l], Samples::TENSOR4_SYM_2D_SAMPLE1[i][j][k][l], 1e-14);
+                        approx_eq(res[i][j][k][l], SamplesTensor4::SYM_2D_SAMPLE1[i][j][k][l], 1e-14);
                     }
                 }
             }
@@ -901,31 +897,31 @@ mod tests {
     #[test]
     fn to_matrix_works() {
         // general
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, Mandel::General).unwrap();
+        let dd = Tensor4::from_array(&SamplesTensor4::SAMPLE1, Mandel::General).unwrap();
         let mat = dd.to_matrix();
         for m in 0..9 {
             for n in 0..9 {
-                approx_eq(mat.get(m, n), Samples::TENSOR4_SAMPLE1_STD_MATRIX[m][n], 1e-13);
+                approx_eq(mat.get(m, n), SamplesTensor4::SAMPLE1_STD_MATRIX[m][n], 1e-13);
             }
         }
 
         // symmetric 3D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, Mandel::Symmetric).unwrap();
+        let dd = Tensor4::from_array(&SamplesTensor4::SYM_SAMPLE1, Mandel::Symmetric).unwrap();
         let mat = dd.to_matrix();
         assert_eq!(mat.dims(), (9, 9));
         for m in 0..9 {
             for n in 0..9 {
-                approx_eq(mat.get(m, n), Samples::TENSOR4_SYM_SAMPLE1_STD_MATRIX[m][n], 1e-13);
+                approx_eq(mat.get(m, n), SamplesTensor4::SYM_SAMPLE1_STD_MATRIX[m][n], 1e-13);
             }
         }
 
         // symmetric 2D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
+        let dd = Tensor4::from_array(&SamplesTensor4::SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
         let mat = dd.to_matrix();
         assert_eq!(mat.dims(), (9, 9));
         for m in 0..9 {
             for n in 0..9 {
-                approx_eq(mat.get(m, n), Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX[m][n], 1e-13);
+                approx_eq(mat.get(m, n), SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX[m][n], 1e-13);
             }
         }
     }

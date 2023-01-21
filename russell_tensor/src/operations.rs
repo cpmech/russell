@@ -583,7 +583,7 @@ mod tests {
         copy_tensor2, copy_tensor4, t2_ddot_t2, t2_ddot_t4, t2_dot_t2, t2_dot_vec, t2_dyad_t2, t4_ddot_t2, t4_ddot_t4,
         vec_dot_t2, vec_dyad_vec, Tensor2, Tensor4,
     };
-    use crate::{Mandel, Samples, SQRT_2};
+    use crate::{Mandel, SamplesTensor4, SQRT_2};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 
@@ -1113,7 +1113,7 @@ mod tests {
 
     #[test]
     fn t4_ddot_t2_works() {
-        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX, Mandel::Symmetric2D).unwrap();
+        let dd = Tensor4::from_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Mandel::Symmetric2D).unwrap();
         #[rustfmt::skip]
         let a = Tensor2::from_matrix(&[
             [-1.0, -2.0,  0.0],
@@ -1134,7 +1134,7 @@ mod tests {
 
     #[test]
     fn t2_ddot_t4_works() {
-        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX, Mandel::Symmetric2D).unwrap();
+        let dd = Tensor4::from_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Mandel::Symmetric2D).unwrap();
         #[rustfmt::skip]
         let a = Tensor2::from_matrix(&[
             [-1.0, -2.0,  0.0],
@@ -1155,7 +1155,7 @@ mod tests {
 
     #[test]
     fn t4_ddot_t4_works() {
-        let cc = Tensor4::from_matrix(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX, Mandel::Symmetric2D).unwrap();
+        let cc = Tensor4::from_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Mandel::Symmetric2D).unwrap();
         let mut ee = Tensor4::new(Mandel::Symmetric2D);
         t4_ddot_t4(&mut ee, 1.0, &cc, &cc).unwrap();
         let out = ee.to_matrix();

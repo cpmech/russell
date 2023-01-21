@@ -1,6 +1,6 @@
 use super::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, SQRT_2};
 use crate::{Mandel, StrError};
-use russell_lab::{vec_copy, vec_update, Matrix, Vector};
+use russell_lab::{Matrix, Vector};
 use serde::{Deserialize, Serialize};
 
 /// Implements a second-order tensor, symmetric or not
@@ -497,7 +497,7 @@ impl Tensor2 {
     ///         [70.0, 80.0, 90.0],
     ///     ], Mandel::General)?;
     ///
-    ///     a.set(&b);
+    ///     a.mirror(&b);
     ///
     ///     assert_eq!(
     ///         format!("{:.1}", a.to_matrix()),
@@ -510,9 +510,25 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    #[inline]
-    pub fn set(&mut self, other: &Tensor2) -> Result<(), StrError> {
-        vec_copy(&mut self.vec, &other.vec)
+    pub fn mirror(&mut self, other: &Tensor2) -> Result<(), StrError> {
+        let dim = self.vec.dim();
+        if other.vec.dim() != dim {
+            return Err("tensors are incompatible");
+        }
+        self.vec[0] = other.vec[0];
+        self.vec[1] = other.vec[1];
+        self.vec[2] = other.vec[2];
+        self.vec[3] = other.vec[3];
+        if dim > 4 {
+            self.vec[4] = other.vec[4];
+            self.vec[5] = other.vec[5];
+        }
+        if dim > 6 {
+            self.vec[6] = other.vec[6];
+            self.vec[7] = other.vec[7];
+            self.vec[8] = other.vec[8];
+        }
+        Ok(())
     }
 
     /// Adds another tensor to this one
@@ -549,7 +565,24 @@ impl Tensor2 {
     /// ```
     #[inline]
     pub fn add(&mut self, alpha: f64, other: &Tensor2) -> Result<(), StrError> {
-        vec_update(&mut self.vec, alpha, &other.vec)
+        let dim = self.vec.dim();
+        if other.vec.dim() != dim {
+            return Err("tensors are incompatible");
+        }
+        self.vec[0] += alpha * other.vec[0];
+        self.vec[1] += alpha * other.vec[1];
+        self.vec[2] += alpha * other.vec[2];
+        self.vec[3] += alpha * other.vec[3];
+        if dim > 4 {
+            self.vec[4] += alpha * other.vec[4];
+            self.vec[5] += alpha * other.vec[5];
+        }
+        if dim > 6 {
+            self.vec[6] += alpha * other.vec[6];
+            self.vec[7] += alpha * other.vec[7];
+            self.vec[8] += alpha * other.vec[8];
+        }
+        Ok(())
     }
 
     /// Calculates the determinant
@@ -645,7 +678,6 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    #[inline]
     pub fn norm(&self) -> f64 {
         let mut sm = self.vec[0] * self.vec[0]
             + self.vec[1] * self.vec[1]
@@ -696,11 +728,24 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn deviator(&self, dev: &mut Tensor2) -> Result<(), StrError> {
-        vec_copy(&mut dev.vec, &self.vec)?;
+        let dim = self.vec.dim();
+        if dev.vec.dim() != dim {
+            return Err("tensors are incompatible");
+        }
         let m = (self.vec[0] + self.vec[1] + self.vec[2]) / 3.0;
-        dev.vec[0] -= m;
-        dev.vec[1] -= m;
-        dev.vec[2] -= m;
+        dev.vec[0] = self.vec[0] - m;
+        dev.vec[1] = self.vec[1] - m;
+        dev.vec[2] = self.vec[2] - m;
+        dev.vec[3] = self.vec[3];
+        if dim > 4 {
+            dev.vec[4] = self.vec[4];
+            dev.vec[5] = self.vec[5];
+        }
+        if dim > 6 {
+            dev.vec[6] = self.vec[6];
+            dev.vec[7] = self.vec[7];
+            dev.vec[8] = self.vec[8];
+        }
         Ok(())
     }
 
@@ -1156,7 +1201,16 @@ mod tests {
     }
 
     #[test]
-    fn set_and_add_work() {
+    fn mirror_and_add_capture_errors() {
+        let mut a = Tensor2::new(Mandel::General);
+        let b = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(a.mirror(&b).err(), Some("tensors are incompatible"));
+        assert_eq!(a.add(1.0, &b).err(), Some("tensors are incompatible"));
+    }
+
+    #[test]
+    fn mirror_and_add_work() {
+        // general
         let mut a = Tensor2::new(Mandel::General);
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
@@ -1170,7 +1224,7 @@ mod tests {
             Mandel::General,
         )
         .unwrap();
-        a.set(&b).unwrap();
+        a.mirror(&b).unwrap();
         a.add(10.0, &c).unwrap();
         let out = a.to_matrix();
         assert_eq!(
@@ -1179,6 +1233,58 @@ mod tests {
              │ 1001.0 1003.0 1001.0 │\n\
              │ 1002.0 1002.0 1002.0 │\n\
              │ 1003.0 1001.0 1003.0 │\n\
+             └                      ┘"
+        );
+
+        // symmetric 3D
+        let mut a = Tensor2::new(Mandel::Symmetric);
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [1.0, 3.0, 1.0], 
+            [3.0, 2.0, 2.0], 
+            [1.0, 2.0, 3.0],
+        ],
+        Mandel::Symmetric).unwrap();
+        let c = Tensor2::from_matrix(
+            &[[100.0, 100.0, 100.0], [100.0, 100.0, 100.0], [100.0, 100.0, 100.0]],
+            Mandel::Symmetric,
+        )
+        .unwrap();
+        a.mirror(&b).unwrap();
+        a.add(10.0, &c).unwrap();
+        let out = a.to_matrix();
+        assert_eq!(
+            format!("{:.1}", out),
+            "┌                      ┐\n\
+             │ 1001.0 1003.0 1001.0 │\n\
+             │ 1003.0 1002.0 1002.0 │\n\
+             │ 1001.0 1002.0 1003.0 │\n\
+             └                      ┘"
+        );
+
+        // symmetric 2D
+        let mut a = Tensor2::new(Mandel::Symmetric2D);
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [1.0, 3.0, 0.0], 
+            [3.0, 2.0, 0.0], 
+            [0.0, 0.0, 3.0],
+        ],
+        Mandel::Symmetric2D).unwrap();
+        let c = Tensor2::from_matrix(
+            &[[100.0, 100.0, 0.0], [100.0, 100.0, 0.0], [0.0, 0.0, 100.0]],
+            Mandel::Symmetric2D,
+        )
+        .unwrap();
+        a.mirror(&b).unwrap();
+        a.add(10.0, &c).unwrap();
+        let out = a.to_matrix();
+        assert_eq!(
+            format!("{:.1}", out),
+            "┌                      ┐\n\
+             │ 1001.0 1003.0    0.0 │\n\
+             │ 1003.0 1002.0    0.0 │\n\
+             │    0.0    0.0 1003.0 │\n\
              └                      ┘"
         );
     }
@@ -1331,7 +1437,7 @@ mod tests {
     fn deviator_catches_errors() {
         let tt = Tensor2::new(Mandel::General);
         let mut dev = Tensor2::new(Mandel::Symmetric);
-        assert_eq!(tt.deviator(&mut dev).err(), Some("vectors are incompatible"));
+        assert_eq!(tt.deviator(&mut dev).err(), Some("tensors are incompatible"));
     }
 
     #[test]

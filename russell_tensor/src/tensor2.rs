@@ -281,24 +281,24 @@ impl Tensor2 {
     /// ```
     /// use russell_tensor::{Tensor2, StrError};
     ///
-    /// # fn main() -> Result<(), StrError> {
-    /// let a = Tensor2::from_matrix(&[
-    ///     [1.0,  1.0, 0.0],
-    ///     [1.0, -1.0, 0.0],
-    ///     [0.0,  0.0, 1.0],
-    /// ], true, true)?;
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [1.0,  1.0, 0.0],
+    ///         [1.0, -1.0, 0.0],
+    ///         [0.0,  0.0, 1.0],
+    ///     ], true, true)?;
     ///
-    /// let out = a.to_matrix();
-    /// assert_eq!(
-    ///     format!("{:.1}", out),
-    ///     "┌                ┐\n\
-    ///      │  1.0  1.0  0.0 │\n\
-    ///      │  1.0 -1.0  0.0 │\n\
-    ///      │  0.0  0.0  1.0 │\n\
-    ///      └                ┘"
-    /// );
-    /// # Ok(())
-    /// # }
+    ///     let out = a.to_matrix();
+    ///     assert_eq!(
+    ///         format!("{:.1}", out),
+    ///         "┌                ┐\n\
+    ///          │  1.0  1.0  0.0 │\n\
+    ///          │  1.0 -1.0  0.0 │\n\
+    ///          │  0.0  0.0  1.0 │\n\
+    ///          └                ┘"
+    ///     );
+    ///     Ok(())
+    /// }
     /// ```
     pub fn to_matrix(&self) -> Matrix {
         let mut tt = Matrix::new(3, 3);
@@ -319,6 +319,48 @@ impl Tensor2 {
             }
         }
         tt
+    }
+
+    /// Returns a 2x2 matrix (standard components; not Mandel) representing this tensor (2D)
+    ///
+    /// This function returns the third diagonal component T22 and the 2x2 matrix
+    ///
+    /// # Panics
+    ///
+    /// This function works only if the Tensor is 2D
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_tensor::{Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let comps_std = &[
+    ///         [1.0, 2.0, 0.0],
+    ///         [2.0, 3.0, 0.0],
+    ///         [0.0, 0.0, 4.0],
+    ///     ];
+    ///     let tt = Tensor2::from_matrix(comps_std, true, true)?;
+    ///     let (t22, res) = tt.to_matrix_2d();
+    ///     assert_eq!(t22, 4.0);
+    ///     assert_eq!(
+    ///         format!("{:.1}", res),
+    ///         "┌         ┐\n\
+    ///          │ 1.0 2.0 │\n\
+    ///          │ 2.0 3.0 │\n\
+    ///          └         ┘"
+    ///     );
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn to_matrix_2d(&self) -> (f64, Matrix) {
+        assert!(self.is_two_dim());
+        let mut tt = Matrix::new(2, 2);
+        tt.set(0, 0, self.get(0, 0));
+        tt.set(0, 1, self.get(0, 1));
+        tt.set(1, 0, self.get(1, 0));
+        tt.set(1, 1, self.get(1, 1));
+        (self.get(2, 2), tt)
     }
 
     /// Set all values to zero
@@ -796,6 +838,26 @@ mod tests {
                 approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
             }
         }
+    }
+
+    #[test]
+    fn to_matrix_2d_works() {
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, true, true).unwrap();
+        let (t22, res) = tt.to_matrix_2d();
+        assert_eq!(t22, 3.0);
+        assert_eq!(
+            format!("{:.1}", res),
+            "┌         ┐\n\
+             │ 1.0 4.0 │\n\
+             │ 4.0 2.0 │\n\
+             └         ┘"
+        );
     }
 
     #[test]

@@ -228,16 +228,16 @@ impl Tensor2 {
     /// use russell_chk::approx_eq;
     /// use russell_tensor::{Tensor2, StrError};
     ///
-    /// # fn main() -> Result<(), StrError> {
-    /// let a = Tensor2::from_matrix(&[
-    ///     [1.0,  2.0, 0.0],
-    ///     [3.0, -1.0, 5.0],
-    ///     [0.0,  4.0, 1.0],
-    /// ], false, false)?;
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [1.0,  2.0, 0.0],
+    ///         [3.0, -1.0, 5.0],
+    ///         [0.0,  4.0, 1.0],
+    ///     ], false, false)?;
     ///
-    /// approx_eq(a.get(1,2), 5.0, 1e-15);
-    /// # Ok(())
-    /// # }
+    ///     approx_eq(a.get(1,2), 5.0, 1e-15);
+    ///     Ok(())
+    /// }
     /// ```
     pub fn get(&self, i: usize, j: usize) -> f64 {
         match self.vec.dim() {
@@ -387,44 +387,44 @@ impl Tensor2 {
     /// ```
     /// use russell_tensor::{Tensor2, StrError};
     ///
-    /// # fn main() -> Result<(), StrError> {
-    /// let symmetric = true;
-    /// let is_2d = true;
-    /// let mut a = Tensor2::new(symmetric, is_2d);
-    /// a.sym_set(0, 0, 1.0);
-    /// a.sym_set(1, 1, 2.0);
-    /// a.sym_set(2, 2, 3.0);
-    /// a.sym_set(0, 1, 4.0);
+    /// fn main() -> Result<(), StrError> {
+    ///     let symmetric = true;
+    ///     let is_2d = true;
+    ///     let mut a = Tensor2::new(symmetric, is_2d);
+    ///     a.sym_set(0, 0, 1.0);
+    ///     a.sym_set(1, 1, 2.0);
+    ///     a.sym_set(2, 2, 3.0);
+    ///     a.sym_set(0, 1, 4.0);
     ///
-    /// let out = a.to_matrix();
-    /// assert_eq!(
-    ///     format!("{:.1}", out),
-    ///     "┌             ┐\n\
-    ///      │ 1.0 4.0 0.0 │\n\
-    ///      │ 4.0 2.0 0.0 │\n\
-    ///      │ 0.0 0.0 3.0 │\n\
-    ///      └             ┘"
-    /// );
+    ///     let out = a.to_matrix();
+    ///     assert_eq!(
+    ///         format!("{:.1}", out),
+    ///         "┌             ┐\n\
+    ///          │ 1.0 4.0 0.0 │\n\
+    ///          │ 4.0 2.0 0.0 │\n\
+    ///          │ 0.0 0.0 3.0 │\n\
+    ///          └             ┘"
+    ///     );
     ///
-    /// let not_2d = false;
-    /// let mut b = Tensor2::new(symmetric, not_2d);
-    /// b.sym_set(0, 0, 1.0);
-    /// b.sym_set(1, 1, 2.0);
-    /// b.sym_set(2, 2, 3.0);
-    /// b.sym_set(0, 1, 4.0);
-    /// b.sym_set(1, 0, 4.0);
-    /// b.sym_set(2, 0, 5.0);
-    /// let out = b.to_matrix();
-    /// assert_eq!(
-    ///     format!("{:.1}", out),
-    ///     "┌             ┐\n\
-    ///      │ 1.0 4.0 5.0 │\n\
-    ///      │ 4.0 2.0 0.0 │\n\
-    ///      │ 5.0 0.0 3.0 │\n\
-    ///      └             ┘"
-    /// );
-    /// # Ok(())
-    /// # }
+    ///     let not_2d = false;
+    ///     let mut b = Tensor2::new(symmetric, not_2d);
+    ///     b.sym_set(0, 0, 1.0);
+    ///     b.sym_set(1, 1, 2.0);
+    ///     b.sym_set(2, 2, 3.0);
+    ///     b.sym_set(0, 1, 4.0);
+    ///     b.sym_set(1, 0, 4.0);
+    ///     b.sym_set(2, 0, 5.0);
+    ///     let out = b.to_matrix();
+    ///     assert_eq!(
+    ///         format!("{:.1}", out),
+    ///         "┌             ┐\n\
+    ///          │ 1.0 4.0 5.0 │\n\
+    ///          │ 4.0 2.0 0.0 │\n\
+    ///          │ 5.0 0.0 3.0 │\n\
+    ///          └             ┘"
+    ///     );
+    ///     Ok(())
+    /// }
     /// ```
     pub fn sym_set(&mut self, i: usize, j: usize, value: f64) {
         let m = IJ_TO_M_SYM[i][j];
@@ -449,7 +449,34 @@ impl Tensor2 {
     /// combination due to the space dimension, otherwise a panic may occur.
     ///
     /// This function will panic also if i > j (lower-diagonal)
-    pub fn sym_update(&mut self, i: usize, j: usize, alpha: f64, value: f64) {
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_tensor::{Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut a = Tensor2::from_matrix(&[
+    ///         [1.0, 2.0, 3.0],
+    ///         [2.0, 5.0, 6.0],
+    ///         [3.0, 6.0, 9.0],
+    ///     ], true, false)?;
+    ///
+    ///     a.sym_add(0, 1, 2.0, 10.0);
+    ///
+    ///     assert_eq!(
+    ///         format!("{:.1}", a.to_matrix()),
+    ///         "┌                ┐\n\
+    ///          │  1.0 22.0  3.0 │\n\
+    ///          │ 22.0  5.0  6.0 │\n\
+    ///          │  3.0  6.0  9.0 │\n\
+    ///          └                ┘"
+    ///     );
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn sym_add(&mut self, i: usize, j: usize, alpha: f64, value: f64) {
+        assert!(self.is_symmetric());
         assert!(i <= j);
         let m = IJ_TO_M_SYM[i][j];
         if i == j {
@@ -460,12 +487,74 @@ impl Tensor2 {
     }
 
     /// Sets this tensor equal to another one
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_tensor::{Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut a = Tensor2::from_matrix(&[
+    ///         [1.0, 2.0, 3.0],
+    ///         [4.0, 5.0, 6.0],
+    ///         [7.0, 8.0, 9.0],
+    ///     ], false, false)?;
+    ///     let b = Tensor2::from_matrix(&[
+    ///         [10.0, 20.0, 30.0],
+    ///         [40.0, 50.0, 60.0],
+    ///         [70.0, 80.0, 90.0],
+    ///     ], false, false)?;
+    ///
+    ///     a.set(&b);
+    ///
+    ///     assert_eq!(
+    ///         format!("{:.1}", a.to_matrix()),
+    ///         "┌                ┐\n\
+    ///          │ 10.0 20.0 30.0 │\n\
+    ///          │ 40.0 50.0 60.0 │\n\
+    ///          │ 70.0 80.0 90.0 │\n\
+    ///          └                ┘"
+    ///     );
+    ///     Ok(())
+    /// }
+    /// ```
     #[inline]
     pub fn set(&mut self, other: &Tensor2) -> Result<(), StrError> {
         vec_copy(&mut self.vec, &other.vec)
     }
 
     /// Adds another tensor to this one
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_tensor::{Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut a = Tensor2::from_matrix(&[
+    ///         [1.0, 2.0, 3.0],
+    ///         [4.0, 5.0, 6.0],
+    ///         [7.0, 8.0, 9.0],
+    ///     ], false, false)?;
+    ///     let b = Tensor2::from_matrix(&[
+    ///         [10.0, 20.0, 30.0],
+    ///         [40.0, 50.0, 60.0],
+    ///         [70.0, 80.0, 90.0],
+    ///     ], false, false)?;
+    ///
+    ///     a.add(2.0, &b);
+    ///
+    ///     assert_eq!(
+    ///         format!("{:.1}", a.to_matrix()),
+    ///         "┌                   ┐\n\
+    ///          │  21.0  42.0  63.0 │\n\
+    ///          │  84.0 105.0 126.0 │\n\
+    ///          │ 147.0 168.0 189.0 │\n\
+    ///          └                   ┘"
+    ///     );
+    ///     Ok(())
+    /// }
+    /// ```
     #[inline]
     pub fn add(&mut self, alpha: f64, other: &Tensor2) -> Result<(), StrError> {
         vec_update(&mut self.vec, alpha, &other.vec)
@@ -485,6 +574,7 @@ impl Tensor2 {
     ///         [4.0, 5.0, 6.0],
     ///         [7.0, 8.0, 9.0],
     ///     ], false, false)?;
+    ///
     ///     approx_eq(a.determinant(), 0.0, 1e-13);
     ///     Ok(())
     /// }
@@ -530,6 +620,7 @@ impl Tensor2 {
     ///         [4.0, 5.0, 6.0],
     ///         [7.0, 8.0, 9.0],
     ///     ], false, false)?;
+    ///
     ///     approx_eq(a.trace(), 15.0, 1e-15);
     ///     Ok(())
     /// }
@@ -557,6 +648,7 @@ impl Tensor2 {
     ///         [4.0, 5.0, 6.0],
     ///         [7.0, 8.0, 9.0],
     ///     ], false, false)?;
+    ///
     ///     approx_eq(a.norm(), f64::sqrt(285.0), 1e-13);
     ///     Ok(())
     /// }
@@ -907,7 +999,22 @@ mod tests {
     }
 
     #[test]
-    fn sym_update_works() {
+    #[should_panic]
+    fn sym_add_panics_on_non_sym() {
+        // symmetric 2D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let mut a = Tensor2::from_matrix(comps_std, false, true).unwrap();
+        a.sym_add(0, 0, 1.0, 1.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn sym_add_panics_on_i_greater_than_j() {
         // symmetric 2D
         #[rustfmt::skip]
         let comps_std = &[
@@ -916,10 +1023,23 @@ mod tests {
             [0.0, 0.0, 3.0],
         ];
         let mut a = Tensor2::from_matrix(comps_std, true, true).unwrap();
-        a.sym_update(0, 0, 10.0, 10.0);
-        a.sym_update(1, 1, 10.0, 10.0);
-        a.sym_update(2, 2, 10.0, 10.0);
-        a.sym_update(0, 1, 10.0, 10.0); // must not do (1,0)
+        a.sym_add(1, 0, 1.0, 1.0);
+    }
+
+    #[test]
+    fn sym_add_works() {
+        // symmetric 2D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let mut a = Tensor2::from_matrix(comps_std, true, true).unwrap();
+        a.sym_add(0, 0, 10.0, 10.0);
+        a.sym_add(1, 1, 10.0, 10.0);
+        a.sym_add(2, 2, 10.0, 10.0);
+        a.sym_add(0, 1, 10.0, 10.0); // must not do (1,0)
         let out = a.to_matrix();
         assert_eq!(
             format!("{:.1}", out),
@@ -938,12 +1058,12 @@ mod tests {
             [6.0, 5.0, 3.0],
         ];
         let mut a = Tensor2::from_matrix(comps_std, true, false).unwrap();
-        a.sym_update(0, 0, 10.0, 10.0);
-        a.sym_update(1, 1, 10.0, 10.0);
-        a.sym_update(2, 2, 10.0, 10.0);
-        a.sym_update(0, 1, 10.0, 10.0); // must nod do (1,0)
-        a.sym_update(0, 2, 10.0, 10.0); // must not do (2,0)
-        a.sym_update(1, 2, 10.0, 10.0); // must not do (2,1)
+        a.sym_add(0, 0, 10.0, 10.0);
+        a.sym_add(1, 1, 10.0, 10.0);
+        a.sym_add(2, 2, 10.0, 10.0);
+        a.sym_add(0, 1, 10.0, 10.0); // must nod do (1,0)
+        a.sym_add(0, 2, 10.0, 10.0); // must not do (2,0)
+        a.sym_add(1, 2, 10.0, 10.0); // must not do (2,1)
         let out = a.to_matrix();
         assert_eq!(
             format!("{:.1}", out),
@@ -959,7 +1079,7 @@ mod tests {
     #[should_panic]
     fn sym_update_panics_on_lower_diagonal() {
         let mut a = Tensor2::new(true, true);
-        a.sym_update(1, 0, 1.0, 0.0);
+        a.sym_add(1, 0, 1.0, 0.0);
     }
 
     #[test]

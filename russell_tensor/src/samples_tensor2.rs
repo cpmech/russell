@@ -71,6 +71,25 @@ impl SamplesTensor2 {
             [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 1.0]],
         ],
     };
+
+    pub const SAMPLE5: SampleTensor2 = SampleTensor2 {
+        desc: "Symmetric 2D tensor with zero out-of-plane component (T22)",
+        matrix: [[7.0, 2.0, 0.0], [2.0, 4.0, 0.0], [0.0, 0.0, 0.0]],
+        eigenvalues: [8.0, 3.0, 0.0],
+        eigenprojectors: [
+            [
+                [4.0 / 5.0, 2.0 / 5.0, 0.0],
+                [2.0 / 5.0, 1.0 / 5.0, 0.0],
+                [0.0, 0.0, 0.0],
+            ],
+            [
+                [1.0 / 5.0, -2.0 / 5.0, 0.0],
+                [-2.0 / 5.0, 4.0 / 5.0, 0.0],
+                [0.0, 0.0, 0.0],
+            ],
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 1.0]],
+        ],
+    };
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -103,5 +122,6 @@ mod tests {
         check_spectral(&SamplesTensor2::SAMPLE2, 1e-14);
         check_spectral(&SamplesTensor2::SAMPLE3, 1e-15);
         check_spectral(&SamplesTensor2::SAMPLE4, 1e-15);
+        check_spectral(&SamplesTensor2::SAMPLE5, 1e-15);
     }
 }

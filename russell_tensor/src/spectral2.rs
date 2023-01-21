@@ -118,7 +118,14 @@ mod tests {
         );
     }
 
-    fn check(spec: &mut Spectral2, sample: &SampleTensor2, tol_lambda: f64, tol_proj: f64, tol_spectral: f64) {
+    fn check(
+        spec: &mut Spectral2,
+        sample: &SampleTensor2,
+        tol_lambda: f64,
+        tol_proj: f64,
+        tol_spectral: f64,
+        verbose: bool,
+    ) {
         // perform spectral decomposition of symmetric matrix
         let case = if spec.projectors[0].two_dim() {
             Mandel::Symmetric2D
@@ -127,6 +134,15 @@ mod tests {
         };
         let tt = Tensor2::from_matrix(&sample.matrix, case).unwrap();
         spec.decompose(&tt).unwrap();
+
+        // print results
+        if verbose {
+            println!("a =\n{}", tt.to_matrix());
+            println!("λ = {}, {}, {}", spec.lambda[0], spec.lambda[1], spec.lambda[2]);
+            println!("P0 =\n{}", spec.projectors[0].to_matrix());
+            println!("P1 =\n{}", spec.projectors[1].to_matrix());
+            println!("P2 =\n{}", spec.projectors[2].to_matrix());
+        }
 
         // check eigenvalues
         vec_approx_eq(spec.lambda.as_data(), &sample.eigenvalues, tol_lambda);
@@ -153,17 +169,19 @@ mod tests {
     #[test]
     fn decompose_and_compose_work_3d() {
         let mut spec = Spectral2::new(false);
-        check(&mut spec, &SamplesTensor2::SAMPLE1, 1e-13, 1e-15, 1e-14);
-        check(&mut spec, &SamplesTensor2::SAMPLE2, 1e-14, 1e-15, 1e-15);
-        check(&mut spec, &SamplesTensor2::SAMPLE3, 1e-15, 1e-15, 1e-15);
-        check(&mut spec, &SamplesTensor2::SAMPLE4, 1e-15, 1e-15, 1e-15);
+        check(&mut spec, &SamplesTensor2::SAMPLE1, 1e-13, 1e-15, 1e-14, false);
+        check(&mut spec, &SamplesTensor2::SAMPLE2, 1e-14, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::SAMPLE3, 1e-15, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::SAMPLE4, 1e-15, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::SAMPLE5, 1e-15, 1e-15, 1e-15, false);
     }
 
     #[test]
     fn decompose_and_compose_work_2d() {
         let mut spec = Spectral2::new(true);
-        check(&mut spec, &SamplesTensor2::SAMPLE2, 1e-14, 1e-15, 1e-15);
-        check(&mut spec, &SamplesTensor2::SAMPLE3, 1e-15, 1e-15, 1e-15);
-        check(&mut spec, &SamplesTensor2::SAMPLE4, 1e-15, 1e-15, 1e-15);
+        check(&mut spec, &SamplesTensor2::SAMPLE2, 1e-14, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::SAMPLE3, 1e-15, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::SAMPLE4, 1e-15, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::SAMPLE5, 1e-15, 1e-15, 1e-15, false);
     }
 }

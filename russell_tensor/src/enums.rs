@@ -57,6 +57,15 @@ impl Mandel {
             Mandel::Symmetric2D => 4,
         }
     }
+
+    /// Returns whether the tensor may be symmetric or not
+    pub fn symmetric(&self) -> bool {
+        match self {
+            Mandel::General => false,
+            Mandel::Symmetric => true,
+            Mandel::Symmetric2D => true,
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -74,9 +83,13 @@ mod tests {
     }
 
     #[test]
-    fn dim_works() {
+    fn member_functions_work() {
         assert_eq!(Mandel::General.dim(), 9);
         assert_eq!(Mandel::Symmetric.dim(), 6);
         assert_eq!(Mandel::Symmetric2D.dim(), 4);
+
+        assert_eq!(Mandel::General.symmetric(), false);
+        assert_eq!(Mandel::Symmetric.symmetric(), true);
+        assert_eq!(Mandel::Symmetric2D.symmetric(), true);
     }
 }

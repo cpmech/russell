@@ -1,4 +1,4 @@
-use crate::{vec_dyad_vec, StrError, Tensor2};
+use crate::{vec_dyad_vec, Mandel, StrError, Tensor2};
 use russell_lab::{mat_eigen_sym_jacobi, Matrix, Vector};
 
 /// Holds the spectral representation of a symmetric second-order tensor
@@ -14,11 +14,11 @@ impl Spectral2 {
     /// Returns a new instance
     pub fn new(tt: &Tensor2) -> Result<Self, StrError> {
         // check
-        if !tt.is_symmetric() {
+        if !tt.symmetric() {
             return Err("tensor must be symmetric");
         }
 
-        if tt.is_two_dim() {
+        if tt.two_dim() {
             let (t22, mut a) = tt.to_matrix_2d();
             let mut l = Vector::new(2);
             let mut v = Matrix::new(2, 2);
@@ -43,9 +43,9 @@ impl Spectral2 {
         let u2 = Vector::from(&[v.get(0, 2), v.get(1, 2), v.get(2, 2)]);
 
         // compute eigenprojectors
-        let mut p0 = Tensor2::new(true, false)?;
-        let mut p1 = Tensor2::new(true, false)?;
-        let mut p2 = Tensor2::new(true, false)?;
+        let mut p0 = Tensor2::new(Mandel::Symmetric);
+        let mut p1 = Tensor2::new(Mandel::Symmetric);
+        let mut p2 = Tensor2::new(Mandel::Symmetric);
         vec_dyad_vec(&mut p0, 1.0, &u0, &u0)?;
         vec_dyad_vec(&mut p1, 1.0, &u1, &u1)?;
         vec_dyad_vec(&mut p2, 1.0, &u2, &u2)?;
@@ -80,7 +80,7 @@ impl Spectral2 {
 #[cfg(test)]
 mod tests {
     use super::Spectral2;
-    use crate::Tensor2;
+    use crate::{Mandel, Tensor2};
     use russell_chk::vec_approx_eq;
     use russell_lab::{mat_approx_eq, Matrix};
 
@@ -93,7 +93,7 @@ mod tests {
             [2.0, 4.0, 5.0],
             [3.0, 5.0, 6.0],
         ];
-        let tt = Tensor2::from_matrix(data, true, false).unwrap();
+        let tt = Tensor2::from_matrix(data, Mandel::Symmetric).unwrap();
         let s = Spectral2::new(&tt).unwrap();
 
         // check eigenvalues
@@ -127,7 +127,7 @@ mod tests {
         mat_approx_eq(&correct2, &pp2, 1e-15);
 
         // compose
-        let mut tt_new = Tensor2::new(true, false).unwrap();
+        let mut tt_new = Tensor2::new(Mandel::Symmetric);
         s.compose(&mut tt_new, &s.lambda).unwrap();
         let a_new = tt_new.to_matrix();
         let a = Matrix::from(data);
@@ -143,7 +143,7 @@ mod tests {
             [2.0, 3.0, 0.0],
             [0.0, 0.0, 4.0],
         ];
-        let tt = Tensor2::from_matrix(data, true, true).unwrap();
+        let tt = Tensor2::from_matrix(data, Mandel::Symmetric2D).unwrap();
         println!("tt.vec =\n{}", tt.vec);
         let s = Spectral2::new(&tt).unwrap();
         println!("lambda =\n{}", s.lambda);

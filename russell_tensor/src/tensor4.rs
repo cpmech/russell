@@ -1,5 +1,5 @@
-use super::{mandel_dim, IJKL_TO_MN, IJKL_TO_MN_SYM, MN_TO_IJKL, SQRT_2};
-use crate::StrError;
+use super::{IJKL_TO_MN, IJKL_TO_MN_SYM, MN_TO_IJKL, SQRT_2};
+use crate::{Mandel, StrError};
 use russell_lab::Matrix;
 use serde::{Deserialize, Serialize};
 
@@ -123,53 +123,43 @@ impl Tensor4 {
     ///
     /// # Input
     ///
-    /// * `minor_symmetric` -- whether this tensor is minor symmetric or not,
-    ///                        i.e., Dijkl = Djikl = Dijlk = Djilk.
-    /// * `two_dim` -- 2D instead of 3D. In this case, minor_symmetric must also be set to true,
-    ///   otherwise an error will occur
+    /// * `case` -- the [Mandel] case
     ///
     /// # Example
     ///
     /// ```
-    /// use russell_tensor::{StrError, Tensor4};
+    /// use russell_tensor::{Mandel, StrError, Tensor4};
     ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let cc = Tensor4::new(false, false)?;
+    /// fn main() {
+    ///     let cc = Tensor4::new(Mandel::General);
     ///     assert_eq!(cc.mat.dims(), (9,9));
     ///
-    ///     let dd = Tensor4::new(true, false)?;
+    ///     let dd = Tensor4::new(Mandel::Symmetric);
     ///     assert_eq!(dd.mat.dims(), (6,6));
     ///
-    ///     let ee = Tensor4::new(true, true)?;
+    ///     let ee = Tensor4::new(Mandel::Symmetric2D);
     ///     assert_eq!(ee.mat.dims(), (4,4));
-    ///     Ok(())
     /// }
     /// ```
-    pub fn new(minor_symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
-        if two_dim && !minor_symmetric {
-            return Err("in 2D, minor_symmetric must be true");
-        }
-        let dim = mandel_dim(minor_symmetric, two_dim);
-        Ok(Tensor4 {
+    pub fn new(case: Mandel) -> Self {
+        let dim = case.dim();
+        Tensor4 {
             mat: Matrix::new(dim, dim),
-        })
+        }
     }
 
     /// Creates a new Tensor4 constructed from a nested array
     ///
     /// # Input
     ///
-    /// * `inp` - the standard (not Mandel) Dijkl components given with
-    ///           respect to an orthonormal Cartesian basis
-    /// * `minor_symmetric` -- whether this tensor is minor symmetric or not,
-    ///                        i.e., Dijkl = Djikl = Dijlk = Djilk.
-    /// * `two_dim` -- 2D instead of 3D. In this case, minor_symmetric must also be set to true,
-    ///   otherwise an error will occur
+    /// * `inp` -- the standard (not Mandel) Dijkl components given with
+    ///   respect to an orthonormal Cartesian basis
+    /// * `case` -- the [Mandel] case
     ///
     /// # Example
     ///
     /// ```
-    /// use russell_tensor::{Tensor4, StrError};
+    /// use russell_tensor::{Mandel, Tensor4, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let mut inp = [[[[0.0; 3]; 3]; 3]; 3];
@@ -182,7 +172,7 @@ impl Tensor4 {
     ///             }
     ///         }
     ///     }
-    ///     let dd = Tensor4::from_array(&inp, false, false)?;
+    ///     let dd = Tensor4::from_array(&inp, Mandel::General)?;
     ///     assert_eq!(
     ///         format!("{:.0}", dd.to_matrix()),
     ///         "┌                                              ┐\n\
@@ -200,14 +190,11 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_array(inp: &[[[[f64; 3]; 3]; 3]; 3], minor_symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
-        if two_dim && !minor_symmetric {
-            return Err("in 2D, minor_symmetric must be true");
-        }
-        let dim = mandel_dim(minor_symmetric, two_dim);
+    pub fn from_array(inp: &[[[[f64; 3]; 3]; 3]; 3], case: Mandel) -> Result<Self, StrError> {
+        let dim = case.dim();
         let mut mat = Matrix::new(dim, dim);
-        if minor_symmetric {
-            let max = if two_dim { 3 } else { 6 };
+        if case.symmetric() {
+            let max = if dim == 4 { 3 } else { 6 };
             for i in 0..3 {
                 for j in 0..3 {
                     for k in 0..3 {
@@ -304,18 +291,15 @@ impl Tensor4 {
     ///
     /// # Input
     ///
-    /// * `inp` - the standard (not Mandel) matrix of components given with
-    ///           respect to an orthonormal Cartesian basis. The matrix must be (9,9),
-    ///           even if it corresponds to a minor-symmetric tensor.
-    /// * `minor_symmetric` -- whether this tensor is minor symmetric or not,
-    ///                        i.e., Dijkl = Djikl = Dijlk = Djilk.
-    /// * `two_dim` -- 2D instead of 3D. In this case, minor_symmetric must also be set to true,
-    ///   otherwise an error will occur
+    /// * `inp` -- the standard (not Mandel) matrix of components given with
+    ///   respect to an orthonormal Cartesian basis. The matrix must be (9,9),
+    ///   even if it corresponds to a minor-symmetric tensor.
+    /// * `case` -- the [Mandel] case
     ///
     /// # Example
     ///
     /// ```
-    /// use russell_tensor::{MN_TO_IJKL, Tensor4, StrError};
+    /// use russell_tensor::{Mandel, MN_TO_IJKL, Tensor4, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let mut inp = [[0.0; 9]; 9];
@@ -325,7 +309,7 @@ impl Tensor4 {
     ///             inp[m][n] = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
     ///         }
     ///     }
-    ///     let dd = Tensor4::from_matrix(&inp, false, false)?;
+    ///     let dd = Tensor4::from_matrix(&inp, Mandel::General)?;
     ///     assert_eq!(
     ///         format!("{:.0}", dd.to_matrix()),
     ///         "┌                                              ┐\n\
@@ -343,14 +327,11 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_matrix(inp: &[[f64; 9]; 9], minor_symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
-        if two_dim && !minor_symmetric {
-            return Err("in 2D, minor_symmetric must be true");
-        }
-        let dim = mandel_dim(minor_symmetric, two_dim);
+    pub fn from_matrix(inp: &[[f64; 9]; 9], case: Mandel) -> Result<Self, StrError> {
+        let dim = case.dim();
         let mut mat = Matrix::new(dim, dim);
-        if minor_symmetric {
-            let max = if two_dim { 3 } else { 6 };
+        if case.symmetric() {
+            let max = if dim == 4 { 3 } else { 6 };
             for i in 0..3 {
                 for j in 0..3 {
                     for k in 0..3 {
@@ -445,13 +426,13 @@ impl Tensor4 {
 
     /// Tells whether this tensor is minor-symmetric or not
     #[inline]
-    pub fn is_minor_symmetric(&self) -> bool {
+    pub fn minor_symmetric(&self) -> bool {
         self.mat.nrow() != 9
     }
 
     /// Tells whether this tensor is 2D or not
     #[inline]
-    pub fn is_two_dim(&self) -> bool {
+    pub fn two_dim(&self) -> bool {
         self.mat.nrow() == 4
     }
 
@@ -461,7 +442,7 @@ impl Tensor4 {
     ///
     /// ```
     /// use russell_chk::approx_eq;
-    /// use russell_tensor::{MN_TO_IJKL, Tensor4, StrError};
+    /// use russell_tensor::{Mandel, MN_TO_IJKL, Tensor4, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let mut inp = [[0.0; 9]; 9];
@@ -472,7 +453,7 @@ impl Tensor4 {
     ///         }
     ///     }
     ///
-    ///     let dd = Tensor4::from_matrix(&inp, false, false)?;
+    ///     let dd = Tensor4::from_matrix(&inp, Mandel::General)?;
     ///
     ///     for m in 0..9 {
     ///         for n in 0..9 {
@@ -584,7 +565,7 @@ impl Tensor4 {
     ///
     /// ```
     /// use russell_chk::approx_eq;
-    /// use russell_tensor::{MN_TO_IJKL, Tensor4, StrError};
+    /// use russell_tensor::{Mandel, MN_TO_IJKL, Tensor4, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let mut inp = [[0.0; 9]; 9];
@@ -595,7 +576,7 @@ impl Tensor4 {
     ///         }
     ///     }
     ///
-    ///     let dd = Tensor4::from_matrix(&inp, false, false)?;
+    ///     let dd = Tensor4::from_matrix(&inp, Mandel::General)?;
     ///     let arr = dd.to_array();
     ///
     ///     for m in 0..9 {
@@ -642,7 +623,7 @@ impl Tensor4 {
     /// # Example
     ///
     /// ```
-    /// use russell_tensor::{MN_TO_IJKL, Tensor4, StrError};
+    /// use russell_tensor::{Mandel, MN_TO_IJKL, Tensor4, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let mut inp = [[0.0; 9]; 9];
@@ -652,7 +633,7 @@ impl Tensor4 {
     ///             inp[m][n] = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
     ///         }
     ///     }
-    ///     let dd = Tensor4::from_matrix(&inp, false, false)?;
+    ///     let dd = Tensor4::from_matrix(&inp, Mandel::General)?;
     ///     assert_eq!(
     ///         format!("{:.0}", dd.to_matrix()),
     ///         "┌                                              ┐\n\
@@ -691,10 +672,10 @@ impl Tensor4 {
     /// # Example
     ///
     /// ```
-    /// use russell_tensor::{MN_TO_IJKL, Tensor4, StrError};
+    /// use russell_tensor::{Mandel, MN_TO_IJKL, Tensor4};
     ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let mut dd = Tensor4::new(true, true)?;
+    /// fn main() {
+    ///     let mut dd = Tensor4::new(Mandel::Symmetric2D);
     ///     for m in 0..4 {
     ///         for n in 0..4 {
     ///             let (i, j, k, l) = MN_TO_IJKL[m][n];
@@ -716,7 +697,6 @@ impl Tensor4 {
     ///          │    0    0    0    0    0    0    0    0    0 │\n\
     ///          └                                              ┘"
     ///     );
-    ///     Ok(())
     /// }
     /// ```
     pub fn sym_set(&mut self, i: usize, j: usize, k: usize, l: usize, value: f64) {
@@ -736,98 +716,84 @@ impl Tensor4 {
 #[cfg(test)]
 mod tests {
     use super::{Tensor4, MN_TO_IJKL};
-    use crate::Samples;
+    use crate::{Mandel, Samples};
     use russell_chk::approx_eq;
     use serde::{Deserialize, Serialize};
 
     #[test]
-    fn new_captures_errors() {
-        assert_eq!(
-            Tensor4::new(false, true).err(),
-            Some("in 2D, minor_symmetric must be true")
-        );
-    }
-
-    #[test]
     fn new_works() {
-        let dd = Tensor4::new(false, false).unwrap();
+        let dd = Tensor4::new(Mandel::General);
         assert_eq!(dd.mat.as_data().len(), 81);
     }
 
     #[test]
     fn from_array_fails_captures_errors() {
-        let res = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, true);
-        assert_eq!(res.err(), Some("in 2D, minor_symmetric must be true"));
-
-        let res = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, true, false);
+        let res = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, Mandel::Symmetric);
         assert_eq!(res.err(), Some("minor-symmetric Tensor4 does not pass symmetry check"));
 
-        let res = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, true);
+        let res = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, Mandel::Symmetric2D);
         assert_eq!(res.err(), Some("cannot define 2D Tensor4 due to non-zero values"));
     }
 
     #[test]
     fn from_array_works() {
         // general
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, false).unwrap();
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, Mandel::General).unwrap();
         for m in 0..9 {
             for n in 0..9 {
                 assert_eq!(dd.mat.get(m, n), Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[m][n]);
             }
         }
-        assert_eq!(dd.is_minor_symmetric(), false);
-        assert_eq!(dd.is_two_dim(), false);
+        assert_eq!(dd.minor_symmetric(), false);
+        assert_eq!(dd.two_dim(), false);
 
         // sym-3D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false).unwrap();
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, Mandel::Symmetric).unwrap();
         for m in 0..6 {
             for n in 0..6 {
                 assert_eq!(dd.mat.get(m, n), Samples::TENSOR4_SYM_SAMPLE1_MANDEL_MATRIX[m][n]);
             }
         }
-        assert_eq!(dd.is_minor_symmetric(), true);
-        assert_eq!(dd.is_two_dim(), false);
+        assert_eq!(dd.minor_symmetric(), true);
+        assert_eq!(dd.two_dim(), false);
 
         // sym-2D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true).unwrap();
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
         for m in 0..4 {
             for n in 0..4 {
                 assert_eq!(dd.mat.get(m, n), Samples::TENSOR4_SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n]);
             }
         }
-        assert_eq!(dd.is_minor_symmetric(), true);
-        assert_eq!(dd.is_two_dim(), true);
+        assert_eq!(dd.minor_symmetric(), true);
+        assert_eq!(dd.two_dim(), true);
     }
 
     #[test]
     fn from_matrix_fails_captures_errors() {
         let mut inp = [[0.0; 9]; 9];
-        let res = Tensor4::from_matrix(&inp, false, true);
-        assert_eq!(res.err(), Some("in 2D, minor_symmetric must be true"));
-
         inp[0][3] = 1e-15;
-        let res = Tensor4::from_matrix(&inp, true, false);
+        let res = Tensor4::from_matrix(&inp, Mandel::Symmetric);
         assert_eq!(res.err(), Some("minor-symmetric Tensor4 does not pass symmetry check"));
 
         inp[0][3] = 0.0;
         inp[0][4] = 1.0;
         inp[0][7] = 1.0;
-        let res = Tensor4::from_matrix(&inp, true, true);
+        let res = Tensor4::from_matrix(&inp, Mandel::Symmetric2D);
         assert_eq!(res.err(), Some("cannot define 2D Tensor4 due to non-zero values"));
     }
 
     #[test]
     fn from_matrix_works() {
         // general
-        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SAMPLE1_STD_MATRIX, false, false).unwrap();
+        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SAMPLE1_STD_MATRIX, Mandel::General).unwrap();
         for m in 0..9 {
             for n in 0..9 {
                 approx_eq(dd.mat.get(m, n), Samples::TENSOR4_SAMPLE1_MANDEL_MATRIX[m][n], 1e-15);
             }
         }
 
-        // sym-3D
-        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_SAMPLE1_STD_MATRIX, true, false).unwrap();
+        // symmetric 3D
+        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_SAMPLE1_STD_MATRIX, Mandel::Symmetric).unwrap();
         for m in 0..6 {
             for n in 0..6 {
                 approx_eq(
@@ -838,8 +804,8 @@ mod tests {
             }
         }
 
-        // sym-2D
-        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX, true, true).unwrap();
+        // symmetric 2D
+        let dd = Tensor4::from_matrix(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX, Mandel::Symmetric2D).unwrap();
         for m in 0..4 {
             for n in 0..4 {
                 approx_eq(
@@ -854,7 +820,7 @@ mod tests {
     #[test]
     fn get_works() {
         // general
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, false).unwrap();
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, Mandel::General).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -865,8 +831,8 @@ mod tests {
             }
         }
 
-        // sym-3D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false).unwrap();
+        // symmetric 3D
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, Mandel::Symmetric).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -877,8 +843,8 @@ mod tests {
             }
         }
 
-        // sym-2D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true).unwrap();
+        // symmetric 2D
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -893,7 +859,7 @@ mod tests {
     #[test]
     fn to_array_works() {
         // general
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, false).unwrap();
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, Mandel::General).unwrap();
         let res = dd.to_array();
         for i in 0..3 {
             for j in 0..3 {
@@ -905,8 +871,8 @@ mod tests {
             }
         }
 
-        // sym-3D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false).unwrap();
+        // symmetric 3D
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, Mandel::Symmetric).unwrap();
         let res = dd.to_array();
         for i in 0..3 {
             for j in 0..3 {
@@ -918,8 +884,8 @@ mod tests {
             }
         }
 
-        // sym-2D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true).unwrap();
+        // symmetric 2D
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
         let res = dd.to_array();
         for i in 0..3 {
             for j in 0..3 {
@@ -935,7 +901,7 @@ mod tests {
     #[test]
     fn to_matrix_works() {
         // general
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, false).unwrap();
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, Mandel::General).unwrap();
         let mat = dd.to_matrix();
         for m in 0..9 {
             for n in 0..9 {
@@ -943,8 +909,8 @@ mod tests {
             }
         }
 
-        // sym-3D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, true, false).unwrap();
+        // symmetric 3D
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_SAMPLE1, Mandel::Symmetric).unwrap();
         let mat = dd.to_matrix();
         assert_eq!(mat.dims(), (9, 9));
         for m in 0..9 {
@@ -953,8 +919,8 @@ mod tests {
             }
         }
 
-        // sym-2D
-        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, true, true).unwrap();
+        // symmetric 2D
+        let dd = Tensor4::from_array(&Samples::TENSOR4_SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
         let mat = dd.to_matrix();
         assert_eq!(mat.dims(), (9, 9));
         for m in 0..9 {
@@ -965,7 +931,7 @@ mod tests {
     }
 
     fn generate_dd() -> Tensor4 {
-        let mut dd = Tensor4::new(true, false).unwrap();
+        let mut dd = Tensor4::new(Mandel::Symmetric);
         for m in 0..6 {
             for n in 0..6 {
                 let (i, j, k, l) = MN_TO_IJKL[m][n];
@@ -1059,7 +1025,7 @@ mod tests {
 
     #[test]
     fn debug_works() {
-        let dd = Tensor4::new(false, false);
+        let dd = Tensor4::new(Mandel::General);
         assert!(format!("{:?}", dd).len() > 0);
     }
 }

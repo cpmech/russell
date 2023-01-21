@@ -18,30 +18,43 @@ impl Spectral2 {
             return Err("tensor must be symmetric");
         }
 
+        if tt.is_two_dim() {
+            let (t22, mut a) = tt.to_matrix_2d();
+            let mut l = Vector::new(2);
+            let mut v = Matrix::new(2, 2);
+            mat_eigen_sym_jacobi(&mut l, &mut v, &mut a)?;
+            println!("t22 = {}", t22);
+            println!("a =\n{}", a);
+            println!("lambda = {}", l);
+            println!("v =\n{}", v);
+            panic!("TODO");
+            // return Ok(())
+        }
+
         // eigenvalues and eigenvectors
         let mut a = tt.to_matrix();
         let mut l = Vector::new(3);
         let mut v = Matrix::new(3, 3);
         mat_eigen_sym_jacobi(&mut l, &mut v, &mut a)?;
 
-        // eigenprojectors
-        let zero = Tensor2::new(true, tt.is_two_dim());
-        let mut projectors = vec![zero; 3];
-        if tt.is_two_dim() {
-            let u = Vector::from(&[v.get(0, 0), v.get(1, 0)]);
-            vec_dyad_vec(&mut projectors[0], 1.0, &u, &u)?;
-            panic!("TODO");
-        } else {
-            let u0 = Vector::from(&[v.get(0, 0), v.get(1, 0), v.get(2, 0)]);
-            let u1 = Vector::from(&[v.get(0, 1), v.get(1, 1), v.get(2, 1)]);
-            let u2 = Vector::from(&[v.get(0, 2), v.get(1, 2), v.get(2, 2)]);
-            vec_dyad_vec(&mut projectors[0], 1.0, &u0, &u0)?;
-            vec_dyad_vec(&mut projectors[1], 1.0, &u1, &u1)?;
-            vec_dyad_vec(&mut projectors[2], 1.0, &u2, &u2)?;
-        }
+        // extract eigenvectors
+        let u0 = Vector::from(&[v.get(0, 0), v.get(1, 0), v.get(2, 0)]);
+        let u1 = Vector::from(&[v.get(0, 1), v.get(1, 1), v.get(2, 1)]);
+        let u2 = Vector::from(&[v.get(0, 2), v.get(1, 2), v.get(2, 2)]);
 
-        // done
-        Ok(Spectral2 { lambda: l, projectors })
+        // compute eigenprojectors
+        let mut p0 = Tensor2::new(true, false)?;
+        let mut p1 = Tensor2::new(true, false)?;
+        let mut p2 = Tensor2::new(true, false)?;
+        vec_dyad_vec(&mut p0, 1.0, &u0, &u0)?;
+        vec_dyad_vec(&mut p1, 1.0, &u1, &u1)?;
+        vec_dyad_vec(&mut p2, 1.0, &u2, &u2)?;
+
+        // done (3D)
+        Ok(Spectral2 {
+            lambda: l,
+            projectors: vec![p0, p1, p2],
+        })
     }
 
     /// Composes a new tensor from the eigenprojectors
@@ -114,15 +127,25 @@ mod tests {
         mat_approx_eq(&correct2, &pp2, 1e-15);
 
         // compose
-        let mut tt_new = Tensor2::new(true, false);
+        let mut tt_new = Tensor2::new(true, false).unwrap();
         s.compose(&mut tt_new, &s.lambda).unwrap();
         let a_new = tt_new.to_matrix();
         let a = Matrix::from(data);
         mat_approx_eq(&a, &a_new, 1e-14);
     }
 
-    #[test]
-    fn new_and_compose_2d_work() {
-        // TODO
+    // #[test]
+    fn _new_and_compose_2d_work() {
+        // perform spectral decomposition of symmetric matrix
+        #[rustfmt::skip]
+        let data = &[
+            [1.0, 2.0, 0.0],
+            [2.0, 3.0, 0.0],
+            [0.0, 0.0, 4.0],
+        ];
+        let tt = Tensor2::from_matrix(data, true, true).unwrap();
+        println!("tt.vec =\n{}", tt.vec);
+        let s = Spectral2::new(&tt).unwrap();
+        println!("lambda =\n{}", s.lambda);
     }
 }

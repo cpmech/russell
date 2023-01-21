@@ -90,7 +90,7 @@ impl LinElasticity {
             young,
             poisson,
             plane_stress,
-            dd: Tensor4::new(true, two_dim || plane_stress),
+            dd: Tensor4::new(true, two_dim || plane_stress).unwrap(),
         };
         res.calc_modulus();
         res
@@ -205,7 +205,7 @@ impl LinElasticity {
     ///          └                                              ┘"
     ///     );
     ///     let strain = Tensor2::from_matrix(strain_matrix_3d, true, false)?;
-    ///     let mut stress = Tensor2::new(true, false);
+    ///     let mut stress = Tensor2::new(true, false)?;
     ///     ela.calc_stress(&mut stress, &strain)?;
     ///     let out = stress.to_matrix();
     ///     assert_eq!(
@@ -238,7 +238,7 @@ impl LinElasticity {
     ///          └                                              ┘"
     ///     );
     ///     let strain = Tensor2::from_matrix(strain_matrix_2d, true, true)?;
-    ///     let mut stress = Tensor2::new(true, true);
+    ///     let mut stress = Tensor2::new(true, true)?;
     ///     ela.calc_stress(&mut stress, &strain)?;
     ///     let out = stress.to_matrix();
     ///     assert_eq!(
@@ -330,7 +330,7 @@ impl LinElasticity {
 #[cfg(test)]
 mod tests {
     use super::LinElasticity;
-    use crate::{StrError, Tensor2};
+    use crate::Tensor2;
     use russell_chk::approx_eq;
 
     #[test]
@@ -389,7 +389,7 @@ mod tests {
     }
 
     #[test]
-    fn calc_stress_works() -> Result<(), StrError> {
+    fn calc_stress_works() {
         // plane-stress
         // from Bhatti page 514 (Young divided by 1000)
         let ela = LinElasticity::new(3000.0, 0.2, false, true);
@@ -402,9 +402,9 @@ mod tests {
             ],
             true,
             true,
-        )?;
-        let mut stress = Tensor2::new(true, true);
-        ela.calc_stress(&mut stress, &strain)?;
+        ).unwrap();
+        let mut stress = Tensor2::new(true, true).unwrap();
+        ela.calc_stress(&mut stress, &strain).unwrap();
         let out = stress.to_matrix();
         assert_eq!(
             format!("{:.3}", out),
@@ -427,9 +427,9 @@ mod tests {
             ],
             true,
             true,
-        )?;
-        let mut stress = Tensor2::new(true, true);
-        ela.calc_stress(&mut stress, &strain)?;
+        ).unwrap();
+        let mut stress = Tensor2::new(true, true).unwrap();
+        ela.calc_stress(&mut stress, &strain).unwrap();
         let out = stress.to_matrix();
         assert_eq!(
             format!("{:.6}", out),
@@ -464,9 +464,9 @@ mod tests {
             [1.0, 1.0, 1.0],
             [1.0, 1.0, 1.0],
             [1.0, 1.0, 1.0]],
-        true, false)?;
-        let mut stress = Tensor2::new(true, false);
-        ela.calc_stress(&mut stress, &strain)?;
+        true, false).unwrap();
+        let mut stress = Tensor2::new(true, false).unwrap();
+        ela.calc_stress(&mut stress, &strain).unwrap();
         let out = stress.to_matrix();
         assert_eq!(
             format!("{:.0}", out),
@@ -476,11 +476,10 @@ mod tests {
              │  720  720 1800 │\n\
              └                ┘"
         );
-        Ok(())
     }
 
     #[test]
-    fn out_of_plane_strain_fails_on_wrong_input() -> Result<(), StrError> {
+    fn out_of_plane_strain_fails_on_wrong_input() {
         let ela = LinElasticity::new(900.0, 0.25, true, false);
         #[rustfmt::skip]
         let stress = Tensor2::from_matrix(
@@ -491,14 +490,13 @@ mod tests {
             ],
             true,
             true,
-        )?;
+        ).unwrap();
         let res = ela.out_of_plane_strain(&stress);
         assert_eq!(res.err(), Some("out-of-plane strain works with plane-stress only"));
-        Ok(())
     }
 
     #[test]
-    fn out_of_plane_strain_works() -> Result<(), StrError> {
+    fn out_of_plane_strain_works() {
         let ela = LinElasticity::new(3000.0, 0.2, false, true);
         #[rustfmt::skip]
         let stress = Tensor2::from_matrix(
@@ -509,9 +507,8 @@ mod tests {
             ],
             true,
             true,
-        )?;
-        let eps_zz = ela.out_of_plane_strain(&stress)?;
+        ).unwrap();
+        let eps_zz = ela.out_of_plane_strain(&stress).unwrap();
         approx_eq(eps_zz, 0.0050847, 1e-4);
-        Ok(())
     }
 }

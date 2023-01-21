@@ -20,7 +20,7 @@ use russell_lab::{mat_copy, mat_mat_mul, mat_vec_mul, vec_inner, vec_mat_mul, ve
 ///         [9.0, 8.0, 3.0],
 ///     ], false, false)?;
 ///
-///     let mut b = Tensor2::new(false, false);
+///     let mut b = Tensor2::new(false, false)?;
 ///
 ///     copy_tensor2(&mut b, &a)?;
 ///
@@ -68,7 +68,7 @@ pub fn copy_tensor2(b: &mut Tensor2, a: &Tensor2) -> Result<(), StrError> {
 ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
 ///     ], false, false)?;
 ///
-///     let mut ee = Tensor4::new(false, false);
+///     let mut ee = Tensor4::new(false, false)?;
 ///
 ///     copy_tensor4(&mut ee, &dd)?;
 ///
@@ -311,7 +311,7 @@ pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) -> Result
 ///     let u = Vector::from(&[1.0, 1.0, 1.0]);
 ///     let v = Vector::from(&[2.0, 2.0, 2.0]);
 ///
-///     let mut tt = Tensor2::new(true, false);
+///     let mut tt = Tensor2::new(true, false)?;
 ///
 ///     vec_dyad_vec(&mut tt, 1.0, &u, &v)?;
 ///
@@ -390,7 +390,7 @@ pub fn vec_dyad_vec(tt: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Res
 ///         [9.0, 8.0, 3.0],
 ///     ], false, false)?;
 ///
-///     let mut dd = Tensor4::new(false, false);
+///     let mut dd = Tensor4::new(false, false)?;
 ///
 ///     t2_dyad_t2(&mut dd, 1.0, &a, &b)?;
 ///
@@ -449,7 +449,7 @@ pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) -> Res
 ///         [9.0, 8.0, 3.0],
 ///     ], false, false)?;
 ///
-///     let mut b = Tensor2::new(false, false);
+///     let mut b = Tensor2::new(false, false)?;
 ///
 ///     t4_ddot_t2(&mut b, 1.0, &dd, &a)?;
 ///
@@ -502,7 +502,7 @@ pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) -> Res
 ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
 ///     ], false, false)?;
 ///
-///     let mut b = Tensor2::new(false, false);
+///     let mut b = Tensor2::new(false, false)?;
 ///
 ///     t2_ddot_t4(&mut b, 1.0, &a, &dd)?;
 ///
@@ -570,7 +570,7 @@ pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) -> Res
 ///         false,
 ///     )?;
 ///
-///     let mut ee = Tensor4::new(false, false);
+///     let mut ee = Tensor4::new(false, false)?;
 ///
 ///     t4_ddot_t4(&mut ee, 1.0, &cc, &dd)?;
 ///
@@ -612,7 +612,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ], false, false).unwrap();
-        let mut b = Tensor2::new(true, true);
+        let mut b = Tensor2::new(true, true).unwrap();
         assert_eq!(
             copy_tensor2(&mut b, &a).err(),
             Some("second-order tensors are incompatible")
@@ -627,7 +627,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ], false, false).unwrap();
-        let mut b = Tensor2::new(false, false);
+        let mut b = Tensor2::new(false, false).unwrap();
         copy_tensor2(&mut b, &a).unwrap();
         assert_eq!(
             format!("{:.1}", b.to_matrix()),
@@ -641,8 +641,8 @@ mod tests {
 
     #[test]
     fn copy_tensor4_fails_on_wrong_input() {
-        let dd = Tensor4::new(true, false);
-        let mut ee = Tensor4::new(false, false);
+        let dd = Tensor4::new(true, false).unwrap();
+        let mut ee = Tensor4::new(false, false).unwrap();
         assert_eq!(copy_tensor4(&mut ee, &dd).err(), Some("matrices are incompatible"));
     }
 
@@ -664,7 +664,7 @@ mod tests {
             false,
         )
         .unwrap();
-        let mut ee = Tensor4::new(false, false);
+        let mut ee = Tensor4::new(false, false).unwrap();
         copy_tensor4(&mut ee, &dd).unwrap();
         assert_eq!(format!("{:.1}", ee.to_matrix()), format!("{:.1}", dd.to_matrix()));
     }
@@ -832,7 +832,7 @@ mod tests {
             [9.0, 8.0, 0.0],
             [8.0, 5.0, 0.0],
             [0.0, 0.0, 1.0],
-        ], false, true).unwrap();
+        ], true, true).unwrap();
         let c = t2_dot_t2(&a, &b).unwrap();
         #[rustfmt::skip]
         let correct = Tensor2::from_matrix(&[
@@ -846,12 +846,12 @@ mod tests {
     #[test]
     fn t2_dot_vec_fails_on_wrong_input() {
         let mut v = Vector::new(3);
-        let a = Tensor2::new(false, false);
+        let a = Tensor2::new(false, false).unwrap();
         let u = Vector::new(4);
         let res = t2_dot_vec(&mut v, 1.0, &a, &u);
         assert_eq!(res.err(), Some("vectors must have dim = 3"));
 
-        let a = Tensor2::new(true, true);
+        let a = Tensor2::new(true, true).unwrap();
         let res = t2_dot_vec(&mut v, 1.0, &a, &u);
         assert_eq!(res.err(), Some("vectors must have dim = 2"));
     }
@@ -898,12 +898,12 @@ mod tests {
     #[test]
     fn vec_dot_t2_fails_on_wrong_input() {
         let mut v = Vector::new(3);
-        let a = Tensor2::new(false, false);
+        let a = Tensor2::new(false, false).unwrap();
         let u = Vector::new(4);
         let res = vec_dot_t2(&mut v, 1.0, &u, &a);
         assert_eq!(res.err(), Some("vectors must have dim = 3"));
 
-        let a = Tensor2::new(true, true);
+        let a = Tensor2::new(true, true).unwrap();
         let res = vec_dot_t2(&mut v, 1.0, &u, &a);
         assert_eq!(res.err(), Some("vectors must have dim = 2"));
     }
@@ -953,7 +953,7 @@ mod tests {
         const WRONG: f64 = 123.0;
         let u = Vector::from(&[-2.0, -3.0, -4.0, WRONG]);
         let v = Vector::from(&[4.0, 3.0, 2.0]);
-        let mut tt = Tensor2::new(false, false);
+        let mut tt = Tensor2::new(false, false).unwrap();
         assert_eq!(
             vec_dyad_vec(&mut tt, 1.0, &u, &v).err(),
             Some("vectors must have dim = 3")
@@ -968,7 +968,7 @@ mod tests {
         // symmetric 3D
         let u = Vector::from(&[-2.0, -3.0, -4.0]);
         let v = Vector::from(&[4.0, 3.0, 2.0]);
-        let mut tt = Tensor2::new(true, false);
+        let mut tt = Tensor2::new(true, false).unwrap();
         assert_eq!(
             vec_dyad_vec(&mut tt, 1.0, &u, &v).err(),
             Some("dyadic product between u and v does not generate a symmetric tensor")
@@ -977,7 +977,7 @@ mod tests {
         // symmetric 2D
         let u = Vector::from(&[-2.0, -3.0, WRONG]);
         let v = Vector::from(&[4.0, 3.0]);
-        let mut tt = Tensor2::new(true, true);
+        let mut tt = Tensor2::new(true, true).unwrap();
         assert_eq!(
             vec_dyad_vec(&mut tt, 1.0, &u, &v).err(),
             Some("vectors must have dim = 2")
@@ -1001,7 +1001,7 @@ mod tests {
         // general
         let u = Vector::from(&[-2.0, -3.0, -4.0]);
         let v = Vector::from(&[4.0, 3.0, 2.0]);
-        let mut tt = Tensor2::new(false, false);
+        let mut tt = Tensor2::new(false, false).unwrap();
         vec_dyad_vec(&mut tt, 2.0, &u, &v).unwrap();
         let correct = &[
             -16.0,
@@ -1019,7 +1019,7 @@ mod tests {
         // symmetric 3D
         let u = Vector::from(&[-2.0, -3.0, -4.0]);
         let v = Vector::from(&[2.0, 3.0, 4.0]);
-        let mut tt = Tensor2::new(true, false);
+        let mut tt = Tensor2::new(true, false).unwrap();
         vec_dyad_vec(&mut tt, 2.0, &u, &v).unwrap();
         let correct = &[-8.0, -18.0, -32.0, -12.0 * SQRT_2, -24.0 * SQRT_2, -16.0 * SQRT_2];
         vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
@@ -1027,7 +1027,7 @@ mod tests {
         // symmetric 2D
         let u = Vector::from(&[-2.0, -3.0]);
         let v = Vector::from(&[2.0, 3.0]);
-        let mut tt = Tensor2::new(true, true);
+        let mut tt = Tensor2::new(true, true).unwrap();
         vec_dyad_vec(&mut tt, 2.0, &u, &v).unwrap();
         let correct = &[-8.0, -18.0, 0.0, -12.0 * SQRT_2];
         vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
@@ -1048,7 +1048,7 @@ mod tests {
             [0.5, 0.5, 0.5],
             [0.5, 0.5, 0.5],
         ], false, false).unwrap();
-        let mut dd = Tensor4::new(false, false);
+        let mut dd = Tensor4::new(false, false).unwrap();
         t2_dyad_t2(&mut dd, 2.0, &a, &b).unwrap();
         let mat = dd.to_matrix();
         assert_eq!(
@@ -1079,7 +1079,7 @@ mod tests {
             [0.5, 0.5, 0.5],
             [0.5, 0.5, 0.5],
         ], true, false).unwrap();
-        let mut dd = Tensor4::new(true, false);
+        let mut dd = Tensor4::new(true, false).unwrap();
         t2_dyad_t2(&mut dd, 2.0, &a, &b).unwrap();
         let mat = dd.to_matrix();
         assert_eq!(
@@ -1110,7 +1110,7 @@ mod tests {
             [0.5, 0.5, 0.0],
             [0.0, 0.0, 0.5],
         ], true, true).unwrap();
-        let mut dd = Tensor4::new(true, true);
+        let mut dd = Tensor4::new(true, true).unwrap();
         t2_dyad_t2(&mut dd, 2.0, &a, &b).unwrap();
         let mat = dd.to_matrix();
         assert_eq!(
@@ -1137,7 +1137,7 @@ mod tests {
             [-1.0, -2.0,  0.0],
             [-2.0,  2.0,  0.0],
             [ 0.0,  0.0, -3.0]], true, true).unwrap();
-        let mut b = Tensor2::new(true, true);
+        let mut b = Tensor2::new(true, true).unwrap();
         t4_ddot_t2(&mut b, 1.0, &dd, &a).unwrap();
         let out = b.to_matrix();
         assert_eq!(
@@ -1158,7 +1158,7 @@ mod tests {
             [-1.0, -2.0,  0.0],
             [-2.0,  2.0,  0.0],
             [ 0.0,  0.0, -3.0]], true, true).unwrap();
-        let mut b = Tensor2::new(true, true);
+        let mut b = Tensor2::new(true, true).unwrap();
         t2_ddot_t4(&mut b, 1.0, &a, &dd).unwrap();
         let out = b.to_matrix();
         assert_eq!(
@@ -1174,7 +1174,7 @@ mod tests {
     #[test]
     fn t4_ddot_t4_works() {
         let cc = Tensor4::from_matrix(&Samples::TENSOR4_SYM_2D_SAMPLE1_STD_MATRIX, true, true).unwrap();
-        let mut ee = Tensor4::new(true, true);
+        let mut ee = Tensor4::new(true, true).unwrap();
         t4_ddot_t4(&mut ee, 1.0, &cc, &cc).unwrap();
         let out = ee.to_matrix();
         assert_eq!(

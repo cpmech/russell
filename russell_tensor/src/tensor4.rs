@@ -125,27 +125,34 @@ impl Tensor4 {
     ///
     /// * `minor_symmetric` -- whether this tensor is minor symmetric or not,
     ///                        i.e., Dijkl = Djikl = Dijlk = Djilk.
-    /// * `two_dim` -- 2D instead of 3D. Only used if minor_symmetric == true.
+    /// * `two_dim` -- 2D instead of 3D. In this case, minor_symmetric must also be set to true,
+    ///   otherwise an error will occur
     ///
     /// # Example
     ///
     /// ```
-    /// use russell_tensor::Tensor4;
+    /// use russell_tensor::{StrError, Tensor4};
     ///
-    /// let cc = Tensor4::new(false, false);
-    /// assert_eq!(cc.mat.dims(), (9,9));
+    /// fn main() -> Result<(), StrError> {
+    ///     let cc = Tensor4::new(false, false)?;
+    ///     assert_eq!(cc.mat.dims(), (9,9));
     ///
-    /// let dd = Tensor4::new(true, false);
-    /// assert_eq!(dd.mat.dims(), (6,6));
+    ///     let dd = Tensor4::new(true, false)?;
+    ///     assert_eq!(dd.mat.dims(), (6,6));
     ///
-    /// let ee = Tensor4::new(true, true);
-    /// assert_eq!(ee.mat.dims(), (4,4));
+    ///     let ee = Tensor4::new(true, true)?;
+    ///     assert_eq!(ee.mat.dims(), (4,4));
+    ///     Ok(())
+    /// }
     /// ```
-    pub fn new(minor_symmetric: bool, two_dim: bool) -> Self {
-        let dim = mandel_dim(minor_symmetric, two_dim);
-        Tensor4 {
-            mat: Matrix::new(dim, dim),
+    pub fn new(minor_symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
+        if two_dim && !minor_symmetric {
+            return Err("in 2D, minor_symmetric must be true");
         }
+        let dim = mandel_dim(minor_symmetric, two_dim);
+        Ok(Tensor4 {
+            mat: Matrix::new(dim, dim),
+        })
     }
 
     /// Creates a new Tensor4 constructed from a nested array
@@ -156,47 +163,47 @@ impl Tensor4 {
     ///           respect to an orthonormal Cartesian basis
     /// * `minor_symmetric` -- whether this tensor is minor symmetric or not,
     ///                        i.e., Dijkl = Djikl = Dijlk = Djilk.
-    /// * `two_dim` -- 2D instead of 3D. Only used if minor_symmetric == true.
+    /// * `two_dim` -- 2D instead of 3D. In this case, minor_symmetric must also be set to true,
+    ///   otherwise an error will occur
     ///
     /// # Example
     ///
     /// ```
     /// use russell_tensor::{Tensor4, StrError};
     ///
-    /// # fn main() -> Result<(), StrError> {
-    /// let mut inp = [[[[0.0; 3]; 3]; 3]; 3];
-    /// for i in 0..3 {
-    ///     for j in 0..3 {
-    ///         for k in 0..3 {
-    ///             for l in 0..3 {
-    ///                 inp[i][j][k][l] = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut inp = [[[[0.0; 3]; 3]; 3]; 3];
+    ///     for i in 0..3 {
+    ///         for j in 0..3 {
+    ///             for k in 0..3 {
+    ///                 for l in 0..3 {
+    ///                     inp[i][j][k][l] = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+    ///                 }
     ///             }
     ///         }
     ///     }
+    ///     let dd = Tensor4::from_array(&inp, false, false)?;
+    ///     assert_eq!(
+    ///         format!("{:.0}", dd.to_matrix()),
+    ///         "┌                                              ┐\n\
+    ///          │ 1111 1122 1133 1112 1123 1113 1121 1132 1131 │\n\
+    ///          │ 2211 2222 2233 2212 2223 2213 2221 2232 2231 │\n\
+    ///          │ 3311 3322 3333 3312 3323 3313 3321 3332 3331 │\n\
+    ///          │ 1211 1222 1233 1212 1223 1213 1221 1232 1231 │\n\
+    ///          │ 2311 2322 2333 2312 2323 2313 2321 2332 2331 │\n\
+    ///          │ 1311 1322 1333 1312 1323 1313 1321 1332 1331 │\n\
+    ///          │ 2111 2122 2133 2112 2123 2113 2121 2132 2131 │\n\
+    ///          │ 3211 3222 3233 3212 3223 3213 3221 3232 3231 │\n\
+    ///          │ 3111 3122 3133 3112 3123 3113 3121 3132 3131 │\n\
+    ///          └                                              ┘"
+    ///     );
+    ///     Ok(())
     /// }
-    ///
-    /// let dd = Tensor4::from_array(&inp, false, false)?;
-    ///
-    /// let out = dd.to_matrix();
-    ///
-    /// assert_eq!(
-    ///     format!("{:.0}", out),
-    ///     "┌                                              ┐\n\
-    ///      │ 1111 1122 1133 1112 1123 1113 1121 1132 1131 │\n\
-    ///      │ 2211 2222 2233 2212 2223 2213 2221 2232 2231 │\n\
-    ///      │ 3311 3322 3333 3312 3323 3313 3321 3332 3331 │\n\
-    ///      │ 1211 1222 1233 1212 1223 1213 1221 1232 1231 │\n\
-    ///      │ 2311 2322 2333 2312 2323 2313 2321 2332 2331 │\n\
-    ///      │ 1311 1322 1333 1312 1323 1313 1321 1332 1331 │\n\
-    ///      │ 2111 2122 2133 2112 2123 2113 2121 2132 2131 │\n\
-    ///      │ 3211 3222 3233 3212 3223 3213 3221 3232 3231 │\n\
-    ///      │ 3111 3122 3133 3112 3123 3113 3121 3132 3131 │\n\
-    ///      └                                              ┘"
-    /// );
-    /// # Ok(())
-    /// # }
     /// ```
     pub fn from_array(inp: &[[[[f64; 3]; 3]; 3]; 3], minor_symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
+        if two_dim && !minor_symmetric {
+            return Err("in 2D, minor_symmetric must be true");
+        }
         let dim = mandel_dim(minor_symmetric, two_dim);
         let mut mat = Matrix::new(dim, dim);
         if minor_symmetric {
@@ -302,44 +309,44 @@ impl Tensor4 {
     ///           even if it corresponds to a minor-symmetric tensor.
     /// * `minor_symmetric` -- whether this tensor is minor symmetric or not,
     ///                        i.e., Dijkl = Djikl = Dijlk = Djilk.
-    /// * `two_dim` -- 2D instead of 3D. Only used if minor_symmetric == true.
+    /// * `two_dim` -- 2D instead of 3D. In this case, minor_symmetric must also be set to true,
+    ///   otherwise an error will occur
     ///
     /// # Example
     ///
     /// ```
     /// use russell_tensor::{MN_TO_IJKL, Tensor4, StrError};
     ///
-    /// # fn main() -> Result<(), StrError> {
-    /// let mut inp = [[0.0; 9]; 9];
-    /// for m in 0..9 {
-    ///     for n in 0..9 {
-    ///         let (i, j, k, l) = MN_TO_IJKL[m][n];
-    ///         inp[m][n] = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut inp = [[0.0; 9]; 9];
+    ///     for m in 0..9 {
+    ///         for n in 0..9 {
+    ///             let (i, j, k, l) = MN_TO_IJKL[m][n];
+    ///             inp[m][n] = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+    ///         }
     ///     }
+    ///     let dd = Tensor4::from_matrix(&inp, false, false)?;
+    ///     assert_eq!(
+    ///         format!("{:.0}", dd.to_matrix()),
+    ///         "┌                                              ┐\n\
+    ///          │ 1111 1122 1133 1112 1123 1113 1121 1132 1131 │\n\
+    ///          │ 2211 2222 2233 2212 2223 2213 2221 2232 2231 │\n\
+    ///          │ 3311 3322 3333 3312 3323 3313 3321 3332 3331 │\n\
+    ///          │ 1211 1222 1233 1212 1223 1213 1221 1232 1231 │\n\
+    ///          │ 2311 2322 2333 2312 2323 2313 2321 2332 2331 │\n\
+    ///          │ 1311 1322 1333 1312 1323 1313 1321 1332 1331 │\n\
+    ///          │ 2111 2122 2133 2112 2123 2113 2121 2132 2131 │\n\
+    ///          │ 3211 3222 3233 3212 3223 3213 3221 3232 3231 │\n\
+    ///          │ 3111 3122 3133 3112 3123 3113 3121 3132 3131 │\n\
+    ///          └                                              ┘"
+    ///     );
+    ///     Ok(())
     /// }
-    ///
-    /// let dd = Tensor4::from_matrix(&inp, false, false)?;
-    ///
-    /// let out = dd.to_matrix();
-    ///
-    /// assert_eq!(
-    ///     format!("{:.0}", out),
-    ///     "┌                                              ┐\n\
-    ///      │ 1111 1122 1133 1112 1123 1113 1121 1132 1131 │\n\
-    ///      │ 2211 2222 2233 2212 2223 2213 2221 2232 2231 │\n\
-    ///      │ 3311 3322 3333 3312 3323 3313 3321 3332 3331 │\n\
-    ///      │ 1211 1222 1233 1212 1223 1213 1221 1232 1231 │\n\
-    ///      │ 2311 2322 2333 2312 2323 2313 2321 2332 2331 │\n\
-    ///      │ 1311 1322 1333 1312 1323 1313 1321 1332 1331 │\n\
-    ///      │ 2111 2122 2133 2112 2123 2113 2121 2132 2131 │\n\
-    ///      │ 3211 3222 3233 3212 3223 3213 3221 3232 3231 │\n\
-    ///      │ 3111 3122 3133 3112 3123 3113 3121 3132 3131 │\n\
-    ///      └                                              ┘"
-    /// );
-    /// # Ok(())
-    /// # }
     /// ```
     pub fn from_matrix(inp: &[[f64; 9]; 9], minor_symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
+        if two_dim && !minor_symmetric {
+            return Err("in 2D, minor_symmetric must be true");
+        }
         let dim = mandel_dim(minor_symmetric, two_dim);
         let mut mat = Matrix::new(dim, dim);
         if minor_symmetric {
@@ -456,26 +463,26 @@ impl Tensor4 {
     /// use russell_chk::approx_eq;
     /// use russell_tensor::{MN_TO_IJKL, Tensor4, StrError};
     ///
-    /// # fn main() -> Result<(), StrError> {
-    /// let mut inp = [[0.0; 9]; 9];
-    /// for m in 0..9 {
-    ///     for n in 0..9 {
-    ///         let (i, j, k, l) = MN_TO_IJKL[m][n];
-    ///         inp[m][n] = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut inp = [[0.0; 9]; 9];
+    ///     for m in 0..9 {
+    ///         for n in 0..9 {
+    ///             let (i, j, k, l) = MN_TO_IJKL[m][n];
+    ///             inp[m][n] = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+    ///         }
     ///     }
-    /// }
     ///
-    /// let dd = Tensor4::from_matrix(&inp, false, false)?;
+    ///     let dd = Tensor4::from_matrix(&inp, false, false)?;
     ///
-    /// for m in 0..9 {
-    ///     for n in 0..9 {
-    ///         let (i, j, k, l) = MN_TO_IJKL[m][n];
-    ///         let val = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
-    ///         approx_eq(dd.get(i,j,k,l), val, 1e-12);
+    ///     for m in 0..9 {
+    ///         for n in 0..9 {
+    ///             let (i, j, k, l) = MN_TO_IJKL[m][n];
+    ///             let val = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+    ///             approx_eq(dd.get(i,j,k,l), val, 1e-12);
+    ///         }
     ///     }
+    ///     Ok(())
     /// }
-    /// # Ok(())
-    /// # }
     /// ```
     pub fn get(&self, i: usize, j: usize, k: usize, l: usize) -> f64 {
         match self.mat.dims().0 {
@@ -579,27 +586,27 @@ impl Tensor4 {
     /// use russell_chk::approx_eq;
     /// use russell_tensor::{MN_TO_IJKL, Tensor4, StrError};
     ///
-    /// # fn main() -> Result<(), StrError> {
-    /// let mut inp = [[0.0; 9]; 9];
-    /// for m in 0..9 {
-    ///     for n in 0..9 {
-    ///         let (i, j, k, l) = MN_TO_IJKL[m][n];
-    ///         inp[m][n] = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut inp = [[0.0; 9]; 9];
+    ///     for m in 0..9 {
+    ///         for n in 0..9 {
+    ///             let (i, j, k, l) = MN_TO_IJKL[m][n];
+    ///             inp[m][n] = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+    ///         }
     ///     }
-    /// }
     ///
-    /// let dd = Tensor4::from_matrix(&inp, false, false)?;
-    /// let arr = dd.to_array();
+    ///     let dd = Tensor4::from_matrix(&inp, false, false)?;
+    ///     let arr = dd.to_array();
     ///
-    /// for m in 0..9 {
-    ///     for n in 0..9 {
-    ///         let (i, j, k, l) = MN_TO_IJKL[m][n];
-    ///         let val = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
-    ///         approx_eq(arr[i][j][k][l], val, 1e-12);
+    ///     for m in 0..9 {
+    ///         for n in 0..9 {
+    ///             let (i, j, k, l) = MN_TO_IJKL[m][n];
+    ///             let val = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+    ///             approx_eq(arr[i][j][k][l], val, 1e-12);
+    ///         }
     ///     }
+    ///     Ok(())
     /// }
-    /// # Ok(())
-    /// # }
     /// ```
     pub fn to_array(&self) -> Vec<Vec<Vec<Vec<f64>>>> {
         let mut dd = vec![vec![vec![vec![0.0; 3]; 3]; 3]; 3];
@@ -637,35 +644,31 @@ impl Tensor4 {
     /// ```
     /// use russell_tensor::{MN_TO_IJKL, Tensor4, StrError};
     ///
-    /// # fn main() -> Result<(), StrError> {
-    /// let mut inp = [[0.0; 9]; 9];
-    /// for m in 0..9 {
-    ///     for n in 0..9 {
-    ///         let (i, j, k, l) = MN_TO_IJKL[m][n];
-    ///         inp[m][n] = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut inp = [[0.0; 9]; 9];
+    ///     for m in 0..9 {
+    ///         for n in 0..9 {
+    ///             let (i, j, k, l) = MN_TO_IJKL[m][n];
+    ///             inp[m][n] = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+    ///         }
     ///     }
+    ///     let dd = Tensor4::from_matrix(&inp, false, false)?;
+    ///     assert_eq!(
+    ///         format!("{:.0}", dd.to_matrix()),
+    ///         "┌                                              ┐\n\
+    ///          │ 1111 1122 1133 1112 1123 1113 1121 1132 1131 │\n\
+    ///          │ 2211 2222 2233 2212 2223 2213 2221 2232 2231 │\n\
+    ///          │ 3311 3322 3333 3312 3323 3313 3321 3332 3331 │\n\
+    ///          │ 1211 1222 1233 1212 1223 1213 1221 1232 1231 │\n\
+    ///          │ 2311 2322 2333 2312 2323 2313 2321 2332 2331 │\n\
+    ///          │ 1311 1322 1333 1312 1323 1313 1321 1332 1331 │\n\
+    ///          │ 2111 2122 2133 2112 2123 2113 2121 2132 2131 │\n\
+    ///          │ 3211 3222 3233 3212 3223 3213 3221 3232 3231 │\n\
+    ///          │ 3111 3122 3133 3112 3123 3113 3121 3132 3131 │\n\
+    ///          └                                              ┘"
+    ///     );
+    ///     Ok(())
     /// }
-    ///
-    /// let dd = Tensor4::from_matrix(&inp, false, false)?;
-    ///
-    /// let out = dd.to_matrix();
-    ///
-    /// assert_eq!(
-    ///     format!("{:.0}", out),
-    ///     "┌                                              ┐\n\
-    ///      │ 1111 1122 1133 1112 1123 1113 1121 1132 1131 │\n\
-    ///      │ 2211 2222 2233 2212 2223 2213 2221 2232 2231 │\n\
-    ///      │ 3311 3322 3333 3312 3323 3313 3321 3332 3331 │\n\
-    ///      │ 1211 1222 1233 1212 1223 1213 1221 1232 1231 │\n\
-    ///      │ 2311 2322 2333 2312 2323 2313 2321 2332 2331 │\n\
-    ///      │ 1311 1322 1333 1312 1323 1313 1321 1332 1331 │\n\
-    ///      │ 2111 2122 2133 2112 2123 2113 2121 2132 2131 │\n\
-    ///      │ 3211 3222 3233 3212 3223 3213 3221 3232 3231 │\n\
-    ///      │ 3111 3122 3133 3112 3123 3113 3121 3132 3131 │\n\
-    ///      └                                              ┘"
-    /// );
-    /// # Ok(())
-    /// # }
     /// ```
     pub fn to_matrix(&self) -> Matrix {
         let mut res = Matrix::new(9, 9);
@@ -690,33 +693,31 @@ impl Tensor4 {
     /// ```
     /// use russell_tensor::{MN_TO_IJKL, Tensor4, StrError};
     ///
-    /// # fn main() -> Result<(), StrError> {
-    /// let mut dd = Tensor4::new(true, true);
-    /// for m in 0..4 {
-    ///     for n in 0..4 {
-    ///         let (i, j, k, l) = MN_TO_IJKL[m][n];
-    ///         let value = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
-    ///         dd.sym_set(i, j, k, l, value);
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut dd = Tensor4::new(true, true)?;
+    ///     for m in 0..4 {
+    ///         for n in 0..4 {
+    ///             let (i, j, k, l) = MN_TO_IJKL[m][n];
+    ///             let value = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+    ///             dd.sym_set(i, j, k, l, value);
+    ///         }
     ///     }
+    ///     assert_eq!(
+    ///         format!("{:.0}", dd.to_matrix()),
+    ///         "┌                                              ┐\n\
+    ///          │ 1111 1122 1133 1112    0    0 1112    0    0 │\n\
+    ///          │ 2211 2222 2233 2212    0    0 2212    0    0 │\n\
+    ///          │ 3311 3322 3333 3312    0    0 3312    0    0 │\n\
+    ///          │ 1211 1222 1233 1212    0    0 1212    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │ 1211 1222 1233 1212    0    0 1212    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          └                                              ┘"
+    ///     );
+    ///     Ok(())
     /// }
-    ///
-    /// let out = dd.to_matrix();
-    /// assert_eq!(
-    ///     format!("{:.0}", out),
-    ///     "┌                                              ┐\n\
-    ///      │ 1111 1122 1133 1112    0    0 1112    0    0 │\n\
-    ///      │ 2211 2222 2233 2212    0    0 2212    0    0 │\n\
-    ///      │ 3311 3322 3333 3312    0    0 3312    0    0 │\n\
-    ///      │ 1211 1222 1233 1212    0    0 1212    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │ 1211 1222 1233 1212    0    0 1212    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      └                                              ┘"
-    /// );
-    /// # Ok(())
-    /// # }
     /// ```
     pub fn sym_set(&mut self, i: usize, j: usize, k: usize, l: usize, value: f64) {
         let (m, n) = IJKL_TO_MN_SYM[i][j][k][l];
@@ -740,13 +741,24 @@ mod tests {
     use serde::{Deserialize, Serialize};
 
     #[test]
+    fn new_captures_errors() {
+        assert_eq!(
+            Tensor4::new(false, true).err(),
+            Some("in 2D, minor_symmetric must be true")
+        );
+    }
+
+    #[test]
     fn new_works() {
-        let dd = Tensor4::new(false, false);
+        let dd = Tensor4::new(false, false).unwrap();
         assert_eq!(dd.mat.as_data().len(), 81);
     }
 
     #[test]
-    fn from_array_fails_on_wrong_input() {
+    fn from_array_fails_captures_errors() {
+        let res = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, false, true);
+        assert_eq!(res.err(), Some("in 2D, minor_symmetric must be true"));
+
         let res = Tensor4::from_array(&Samples::TENSOR4_SAMPLE1, true, false);
         assert_eq!(res.err(), Some("minor-symmetric Tensor4 does not pass symmetry check"));
 
@@ -788,8 +800,11 @@ mod tests {
     }
 
     #[test]
-    fn from_matrix_fails_on_wrong_input() {
+    fn from_matrix_fails_captures_errors() {
         let mut inp = [[0.0; 9]; 9];
+        let res = Tensor4::from_matrix(&inp, false, true);
+        assert_eq!(res.err(), Some("in 2D, minor_symmetric must be true"));
+
         inp[0][3] = 1e-15;
         let res = Tensor4::from_matrix(&inp, true, false);
         assert_eq!(res.err(), Some("minor-symmetric Tensor4 does not pass symmetry check"));
@@ -950,7 +965,7 @@ mod tests {
     }
 
     fn generate_dd() -> Tensor4 {
-        let mut dd = Tensor4::new(true, false);
+        let mut dd = Tensor4::new(true, false).unwrap();
         for m in 0..6 {
             for n in 0..6 {
                 let (i, j, k, l) = MN_TO_IJKL[m][n];

@@ -72,26 +72,33 @@ impl Tensor2 {
     /// # Input
     ///
     /// * `symmetric` -- whether this tensor is symmetric or not, i.e., Tij = Tji
-    /// * `two_dim` -- 2D instead of 3D. Only used if symmetric == true.
+    /// * `two_dim` -- 2D instead of 3D. In this case, symmetric must also be set to true,
+    ///   otherwise an error will occur
     ///
     /// # Example
     ///
     /// ```
-    /// use russell_tensor::Tensor2;
+    /// use russell_tensor::{StrError, Tensor2};
     ///
-    /// let a = Tensor2::new(false, false);
-    /// assert_eq!(a.vec.as_data(), &[0.0,0.0,0.0,  0.0,0.0,0.0,  0.0,0.0,0.0]);
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::new(false, false)?;
+    ///     assert_eq!(a.vec.as_data(), &[0.0,0.0,0.0,  0.0,0.0,0.0,  0.0,0.0,0.0]);
     ///
-    /// let b = Tensor2::new(true, false);
-    /// assert_eq!(b.vec.as_data(), &[0.0,0.0,0.0,  0.0,0.0,0.0]);
+    ///     let b = Tensor2::new(true, false)?;
+    ///     assert_eq!(b.vec.as_data(), &[0.0,0.0,0.0,  0.0,0.0,0.0]);
     ///
-    /// let c = Tensor2::new(true, true);
-    /// assert_eq!(c.vec.as_data(), &[0.0,0.0,0.0,  0.0]);
+    ///     let c = Tensor2::new(true, true)?;
+    ///     assert_eq!(c.vec.as_data(), &[0.0,0.0,0.0,  0.0]);
+    ///     Ok(())
+    /// }
     /// ```
-    pub fn new(symmetric: bool, two_dim: bool) -> Self {
-        Tensor2 {
-            vec: Vector::new(mandel_dim(symmetric, two_dim)),
+    pub fn new(symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
+        if two_dim && !symmetric {
+            return Err("in 2D, symmetric must be true");
         }
+        Ok(Tensor2 {
+            vec: Vector::new(mandel_dim(symmetric, two_dim)),
+        })
     }
 
     /// Creates a new Tensor2 constructed from a matrix
@@ -101,13 +108,15 @@ impl Tensor2 {
     /// * `tt` -- the standard (not Mandel) Tij components given
     ///          with respect to an orthonormal Cartesian basis
     /// * `symmetric` -- whether this tensor is symmetric or not i.e., Tij = Tji
-    /// * `two_dim` -- 2D instead of 3D. Only used if symmetric == true.
+    /// * `two_dim` -- 2D instead of 3D. In this case, symmetric must also be set to true,
+    ///   otherwise an error will occur
     ///
     /// # Notes
     ///
     /// * In all cases, even in 2D, the input matrix must be 3×3
     /// * If symmetric, the off-diagonal components must equal the corresponding ones
     /// * If 2D, tt[1][2] and tt[0][2] must both be equal to zero
+    /// * If 2D, symmetric must be true
     ///
     /// # Example
     ///
@@ -181,6 +190,9 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn from_matrix(tt: &[[f64; 3]; 3], symmetric: bool, two_dim: bool) -> Result<Self, StrError> {
+        if two_dim && !symmetric {
+            return Err("in 2D, symmetric must be true");
+        }
         if symmetric {
             if tt[1][0] != tt[0][1] || tt[2][1] != tt[1][2] || tt[2][0] != tt[0][2] {
                 return Err("symmetric Tensor2 does not pass symmetry check");
@@ -390,7 +402,7 @@ impl Tensor2 {
     /// fn main() -> Result<(), StrError> {
     ///     let symmetric = true;
     ///     let is_2d = true;
-    ///     let mut a = Tensor2::new(symmetric, is_2d);
+    ///     let mut a = Tensor2::new(symmetric, is_2d)?;
     ///     a.sym_set(0, 0, 1.0);
     ///     a.sym_set(1, 1, 2.0);
     ///     a.sym_set(2, 2, 3.0);
@@ -407,7 +419,7 @@ impl Tensor2 {
     ///     );
     ///
     ///     let not_2d = false;
-    ///     let mut b = Tensor2::new(symmetric, not_2d);
+    ///     let mut b = Tensor2::new(symmetric, not_2d)?;
     ///     b.sym_set(0, 0, 1.0);
     ///     b.sym_set(1, 1, 2.0);
     ///     b.sym_set(2, 2, 3.0);
@@ -677,7 +689,7 @@ impl Tensor2 {
     ///         [7.0, 8.0, 9.0],
     ///     ], false, false)?;
     ///
-    ///     let mut dev = Tensor2::new(false, false);
+    ///     let mut dev = Tensor2::new(false, false)?;
     ///     a.deviator(&mut dev).unwrap();
     ///     approx_eq(dev.trace(), 0.0, 1e-15);
     ///
@@ -711,23 +723,28 @@ mod tests {
     use serde::{Deserialize, Serialize};
 
     #[test]
+    fn new_captures_errors() {
+        assert_eq!(Tensor2::new(false, true).err(), Some("in 2D, symmetric must be true"));
+    }
+
+    #[test]
     fn new_works() {
         // general
-        let tt = Tensor2::new(false, false);
+        let tt = Tensor2::new(false, false).unwrap();
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.vec.as_data(), correct);
         assert_eq!(tt.is_symmetric(), false);
         assert_eq!(tt.is_two_dim(), false);
 
         // symmetric 3D
-        let tt = Tensor2::new(true, false);
+        let tt = Tensor2::new(true, false).unwrap();
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.vec.as_data(), correct);
         assert_eq!(tt.is_symmetric(), true);
         assert_eq!(tt.is_two_dim(), false);
 
         // symmetric 2D
-        let tt = Tensor2::new(true, true);
+        let tt = Tensor2::new(true, true).unwrap();
         let correct = &[0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.vec.as_data(), correct);
         assert_eq!(tt.is_symmetric(), true);
@@ -781,7 +798,7 @@ mod tests {
     }
 
     #[test]
-    fn from_matrix_fails_on_wrong_input() {
+    fn from_matrix_captures_errors() {
         // symmetric 3D
         let eps = 1e-15;
         #[rustfmt::skip]
@@ -818,6 +835,12 @@ mod tests {
         // symmetric 2D
         let eps = 1e-15;
         #[rustfmt::skip]
+        let comps_std_ok = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        #[rustfmt::skip]
         let comps_std_12 = &[
             [1.0,     4.0, 0.0+eps],
             [4.0,     2.0, 0.0],
@@ -829,6 +852,10 @@ mod tests {
             [4.0, 2.0,     0.0+eps],
             [0.0, 0.0+eps, 3.0],
         ];
+        assert_eq!(
+            Tensor2::from_matrix(comps_std_ok, false, true).err(),
+            Some("in 2D, symmetric must be true")
+        );
         assert_eq!(
             Tensor2::from_matrix(comps_std_12, true, true).err(),
             Some("cannot define 2D Tensor2 due to non-zero off-diagonal values")
@@ -967,7 +994,7 @@ mod tests {
 
     #[test]
     fn sym_set_works() {
-        let mut a = Tensor2::new(true, false);
+        let mut a = Tensor2::new(true, false).unwrap();
         a.sym_set(0, 0, 1.0);
         a.sym_set(1, 1, 2.0);
         a.sym_set(2, 2, 3.0);
@@ -1078,13 +1105,13 @@ mod tests {
     #[test]
     #[should_panic]
     fn sym_update_panics_on_lower_diagonal() {
-        let mut a = Tensor2::new(true, true);
+        let mut a = Tensor2::new(true, true).unwrap();
         a.sym_add(1, 0, 1.0, 0.0);
     }
 
     #[test]
     fn set_and_add_work() {
-        let mut a = Tensor2::new(false, false);
+        let mut a = Tensor2::new(false, false).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [1.0, 3.0, 1.0], 
@@ -1244,7 +1271,7 @@ mod tests {
             [7.0, 8.0, 9.0],
         ];
         let tt = Tensor2::from_matrix(comps_std, false, false).unwrap();
-        let mut dev = Tensor2::new(false, false);
+        let mut dev = Tensor2::new(false, false).unwrap();
         tt.deviator(&mut dev).unwrap();
         approx_eq(dev.trace(), 0.0, 1e-15);
         assert_eq!(
@@ -1264,7 +1291,7 @@ mod tests {
             [ 4.0,  1.0, 6.0],
         ];
         let tt = Tensor2::from_matrix(comps_std, true, false).unwrap();
-        let mut dev = Tensor2::new(true, false);
+        let mut dev = Tensor2::new(true, false).unwrap();
         tt.deviator(&mut dev).unwrap();
         approx_eq(dev.trace(), 0.0, 1e-15);
         assert_eq!(
@@ -1284,7 +1311,7 @@ mod tests {
             [0.0, 0.0, 3.0],
         ];
         let tt = Tensor2::from_matrix(comps_std, true, true).unwrap();
-        let mut dev = Tensor2::new(true, true);
+        let mut dev = Tensor2::new(true, true).unwrap();
         tt.deviator(&mut dev).unwrap();
         approx_eq(dev.trace(), 0.0, 1e-15);
         assert_eq!(
@@ -1297,7 +1324,7 @@ mod tests {
         );
 
         // catch error
-        let mut dev = Tensor2::new(true, false);
+        let mut dev = Tensor2::new(true, false).unwrap();
         assert_eq!(tt.deviator(&mut dev).err(), Some("vectors are incompatible"));
     }
 }

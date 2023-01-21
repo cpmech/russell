@@ -841,6 +841,19 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn to_matrix_2d_panics_on_3d_case() {
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, true, false).unwrap();
+        tt.to_matrix_2d();
+    }
+
+    #[test]
     fn to_matrix_2d_works() {
         #[rustfmt::skip]
         let comps_std = &[

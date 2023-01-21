@@ -91,7 +91,7 @@ impl Spectral2 {
 #[cfg(test)]
 mod tests {
     use super::Spectral2;
-    use crate::{Mandel, Tensor2};
+    use crate::{Mandel, SampleTensor2, SamplesTensor2, Tensor2};
     use russell_chk::vec_approx_eq;
     use russell_lab::{mat_approx_eq, Matrix, Vector};
 
@@ -103,235 +103,67 @@ mod tests {
     }
 
     #[test]
-    fn new_and_compose_3d_work() {
-        // allocate Spectral2
-        let mut spec = Spectral2::new(false);
-
-        // perform spectral decomposition of symmetric matrix
-        #[rustfmt::skip]
-        let data = &[
-            [1.0, 2.0, 3.0],
-            [2.0, 4.0, 5.0],
-            [3.0, 5.0, 6.0],
-        ];
-        let tt = Tensor2::from_matrix(data, Mandel::Symmetric).unwrap();
-        spec.decompose(&tt).unwrap();
-
-        // check eigenvalues
-        vec_approx_eq(
-            spec.lambda.as_data(),
-            &[0.170915188827179, -0.515729471589257, 11.3448142827621],
-            1e-13,
-        );
-
-        // check eigenprojectors
-        let correct0 = Matrix::from(&[
-            [0.34929169541608923, -0.4355596199317577, 0.19384226684174433],
-            [-0.4355596199317577, 0.5431339622578344, -0.24171735309001413],
-            [0.19384226684174433, -0.24171735309001413, 0.10757434232607645],
-        ]);
-        let correct1 = Matrix::from(&[
-            [0.5431339622578346, 0.24171735309001352, -0.435559619931758],
-            [0.24171735309001352, 0.10757434232607586, -0.1938422668417439],
-            [-0.435559619931758, -0.1938422668417439, 0.3492916954160896],
-        ]);
-        let correct2 = Matrix::from(&[
-            [0.10757434232607616, 0.19384226684174424, 0.24171735309001374],
-            [0.19384226684174424, 0.3492916954160899, 0.43555961993175796],
-            [0.24171735309001374, 0.43555961993175796, 0.5431339622578341],
-        ]);
-        let pp0 = spec.projectors[0].to_matrix();
-        let pp1 = spec.projectors[1].to_matrix();
-        let pp2 = spec.projectors[2].to_matrix();
-        mat_approx_eq(&correct0, &pp0, 1e-15);
-        mat_approx_eq(&correct1, &pp1, 1e-15);
-        mat_approx_eq(&correct2, &pp2, 1e-15);
-
-        // compose
-        let mut tt_new = Tensor2::new(Mandel::Symmetric);
-        spec.compose(&mut tt_new, &spec.lambda).unwrap();
-        let a_new = tt_new.to_matrix();
-        let a = Matrix::from(data);
-        mat_approx_eq(&a, &a_new, 1e-14);
-
-        // check compose
-        let mut tt_wrong = Tensor2::new(Mandel::Symmetric2D);
+    fn compose_capture_errors() {
+        let spec = Spectral2::new(false);
+        let mut tt = Tensor2::new(Mandel::Symmetric2D);
         assert_eq!(
-            spec.compose(&mut tt_wrong, &spec.lambda).err(),
+            spec.compose(&mut tt, &spec.lambda).err(),
             Some("composed tensor has incorrect dimension")
         );
-        let lambda_wrong = Vector::new(1);
+        let mut tt = Tensor2::new(Mandel::Symmetric);
+        let lambda = Vector::new(1);
         assert_eq!(
-            spec.compose(&mut tt_new, &lambda_wrong).err(),
+            spec.compose(&mut tt, &lambda).err(),
             Some("lambda.dim must be equal to 3")
         );
     }
 
-    #[test]
-    fn new_and_compose_2d_work() {
-        // allocate Spectral2
-        let mut spec = Spectral2::new(true);
-
+    fn check(spec: &mut Spectral2, sample: &SampleTensor2, tol_lambda: f64, tol_proj: f64, tol_spectral: f64) {
         // perform spectral decomposition of symmetric matrix
-        #[rustfmt::skip]
-        let data = &[
-            [1.0, 2.0, 0.0],
-            [2.0, 3.0, 0.0],
-            [0.0, 0.0, 4.0],
-        ];
-        let tt = Tensor2::from_matrix(data, Mandel::Symmetric2D).unwrap();
+        let case = if spec.projectors[0].two_dim() {
+            Mandel::Symmetric2D
+        } else {
+            Mandel::Symmetric
+        };
+        let tt = Tensor2::from_matrix(&sample.matrix, case).unwrap();
         spec.decompose(&tt).unwrap();
 
         // check eigenvalues
-        vec_approx_eq(
-            spec.lambda.as_data(),
-            &[-0.23606797749978803, 4.23606797749979, 4.0],
-            1e-14,
-        );
+        vec_approx_eq(spec.lambda.as_data(), &sample.eigenvalues, tol_lambda);
 
         // check eigenprojectors
-        let correct0 = Matrix::from(&[
-            [0.723606797749979, -0.44721359549995776, 0.0],
-            [-0.44721359549995776, 0.2763932022500208, 0.0],
-            [0.0, 0.0, 0.0],
-        ]);
-        let correct1 = Matrix::from(&[
-            [0.2763932022500209, 0.4472135954999578, 0.0],
-            [0.4472135954999578, 0.7236067977499788, 0.0],
-            [0.0, 0.0, 0.0],
-        ]);
-        #[rustfmt::skip]
-        let correct2 = Matrix::from(&[
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, 1.0],
-        ]);
         let pp0 = spec.projectors[0].to_matrix();
         let pp1 = spec.projectors[1].to_matrix();
         let pp2 = spec.projectors[2].to_matrix();
-        mat_approx_eq(&correct0, &pp0, 1e-15);
-        mat_approx_eq(&correct1, &pp1, 1e-15);
-        mat_approx_eq(&correct2, &pp2, 1e-15);
+        let correct0 = Matrix::from(&sample.eigenprojectors[0]);
+        let correct1 = Matrix::from(&sample.eigenprojectors[1]);
+        let correct2 = Matrix::from(&sample.eigenprojectors[2]);
+        mat_approx_eq(&correct0, &pp0, tol_proj);
+        mat_approx_eq(&correct1, &pp1, tol_proj);
+        mat_approx_eq(&correct2, &pp2, tol_proj);
 
         // compose
-        let mut tt_new = Tensor2::new(Mandel::Symmetric2D);
+        let mut tt_new = Tensor2::new(case);
         spec.compose(&mut tt_new, &spec.lambda).unwrap();
         let a_new = tt_new.to_matrix();
-        let a = Matrix::from(data);
-        mat_approx_eq(&a, &a_new, 1e-15);
+        let a = Matrix::from(&sample.matrix);
+        mat_approx_eq(&a, &a_new, tol_spectral);
     }
 
     #[test]
-    fn new_and_compose_3d_work_zero_and_diagonal() {
+    fn decompose_and_compose_work_3d() {
         let mut spec = Spectral2::new(false);
-
-        #[rustfmt::skip]
-        let samples = &[
-            [
-                [0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0],
-            ],
-            [
-                [2.0, 0.0, 0.0],
-                [0.0, 3.0, 0.0],
-                [0.0, 0.0, 4.0],
-            ],
-        ];
-
-        #[rustfmt::skip]
-        let correct0 = Matrix::from(&[
-            [1.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0],
-        ]);
-        #[rustfmt::skip]
-        let correct1 = Matrix::from(&[
-            [0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [0.0, 0.0, 0.0],
-        ]);
-        #[rustfmt::skip]
-        let correct2 = Matrix::from(&[
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, 1.0],
-        ]);
-
-        let mut test_id = 0;
-        for data in samples {
-            // perform spectral decomposition of symmetric matrix
-            let tt = Tensor2::from_matrix(data, Mandel::Symmetric).unwrap();
-            spec.decompose(&tt).unwrap();
-
-            // check eigenvalues
-            if test_id == 0 {
-                vec_approx_eq(spec.lambda.as_data(), &[0.0, 0.0, 0.0], 1e-15);
-            } else {
-                vec_approx_eq(spec.lambda.as_data(), &[2.0, 3.0, 4.0], 1e-15);
-            };
-
-            // check eigenprojectors
-            let pp0 = spec.projectors[0].to_matrix();
-            let pp1 = spec.projectors[1].to_matrix();
-            let pp2 = spec.projectors[2].to_matrix();
-            mat_approx_eq(&correct0, &pp0, 1e-15);
-            mat_approx_eq(&correct1, &pp1, 1e-15);
-            mat_approx_eq(&correct2, &pp2, 1e-15);
-
-            // compose
-            let mut tt_new = Tensor2::new(Mandel::Symmetric);
-            spec.compose(&mut tt_new, &spec.lambda).unwrap();
-            let a_new = tt_new.to_matrix();
-            let a = Matrix::from(data);
-            mat_approx_eq(&a, &a_new, 1e-15);
-            test_id += 1;
-        }
+        check(&mut spec, &SamplesTensor2::SAMPLE1, 1e-13, 1e-15, 1e-14);
+        check(&mut spec, &SamplesTensor2::SAMPLE2, 1e-14, 1e-15, 1e-15);
+        check(&mut spec, &SamplesTensor2::SAMPLE3, 1e-15, 1e-15, 1e-15);
+        check(&mut spec, &SamplesTensor2::SAMPLE4, 1e-15, 1e-15, 1e-15);
     }
 
     #[test]
-    fn new_and_compose_2d_work_zero_and_diagonal() {
+    fn decompose_and_compose_work_2d() {
         let mut spec = Spectral2::new(true);
-
-        #[rustfmt::skip]
-        let samples = &[
-            [
-                [0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0],
-            ],
-            [
-                [2.0, 0.0, 0.0],
-                [0.0, 3.0, 0.0],
-                [0.0, 0.0, 4.0],
-            ],
-        ];
-
-        let mut test_id = 0;
-        for data in samples {
-            // perform spectral decomposition of symmetric matrix
-            let tt = Tensor2::from_matrix(data, Mandel::Symmetric2D).unwrap();
-            spec.decompose(&tt).unwrap();
-
-            // check eigenvalues
-            if test_id == 0 {
-                vec_approx_eq(spec.lambda.as_data(), &[0.0, 0.0, 0.0], 1e-15);
-            } else {
-                vec_approx_eq(spec.lambda.as_data(), &[2.0, 3.0, 4.0], 1e-15);
-            };
-
-            // check eigenprojectors
-            vec_approx_eq(spec.projectors[0].vec.as_data(), &[1.0, 0.0, 0.0, 0.0], 1e-15);
-            vec_approx_eq(spec.projectors[1].vec.as_data(), &[0.0, 1.0, 0.0, 0.0], 1e-15);
-            vec_approx_eq(spec.projectors[2].vec.as_data(), &[0.0, 0.0, 1.0, 0.0], 1e-15);
-
-            // compose
-            let mut tt_new = Tensor2::new(Mandel::Symmetric2D);
-            spec.compose(&mut tt_new, &spec.lambda).unwrap();
-            let a_new = tt_new.to_matrix();
-            let a = Matrix::from(data);
-            mat_approx_eq(&a, &a_new, 1e-15);
-            test_id += 1;
-        }
+        check(&mut spec, &SamplesTensor2::SAMPLE2, 1e-14, 1e-15, 1e-15);
+        check(&mut spec, &SamplesTensor2::SAMPLE3, 1e-15, 1e-15, 1e-15);
+        check(&mut spec, &SamplesTensor2::SAMPLE4, 1e-15, 1e-15, 1e-15);
     }
 }

@@ -1,8 +1,5 @@
-use crate::Mandel;
-
 pub struct SampleTensor2 {
     pub desc: &'static str,
-    pub case: Mandel,
     pub matrix: [[f64; 3]; 3],
     pub eigenvalues: [f64; 3],
     pub eigenprojectors: [[[f64; 3]; 3]; 3],
@@ -12,8 +9,7 @@ pub struct SamplesTensor2 {}
 
 impl SamplesTensor2 {
     pub const SAMPLE1: SampleTensor2 = SampleTensor2 {
-        desc: "Symmetric tensor in 3D",
-        case: Mandel::Symmetric,
+        desc: "Symmetric tensor",
         matrix: [[1.0, 2.0, 3.0], [2.0, 4.0, 5.0], [3.0, 5.0, 6.0]],
         eigenvalues: [0.170915188827179, -0.515729471589257, 11.3448142827621],
         eigenprojectors: [
@@ -37,7 +33,6 @@ impl SamplesTensor2 {
 
     pub const SAMPLE2: SampleTensor2 = SampleTensor2 {
         desc: "Symmetric tensor in 2D",
-        case: Mandel::Symmetric2D,
         matrix: [[1.0, 2.0, 0.0], [2.0, 3.0, 0.0], [0.0, 0.0, 4.0]],
         eigenvalues: [-0.23606797749978803, 4.23606797749979, 4.0],
         eigenprojectors: [
@@ -56,8 +51,7 @@ impl SamplesTensor2 {
     };
 
     pub const SAMPLE3: SampleTensor2 = SampleTensor2 {
-        desc: "Tensor with all zero components in 3D",
-        case: Mandel::Symmetric,
+        desc: "Tensor with all zero components",
         matrix: [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
         eigenvalues: [0.0, 0.0, 0.0],
         eigenprojectors: [
@@ -68,8 +62,7 @@ impl SamplesTensor2 {
     };
 
     pub const SAMPLE4: SampleTensor2 = SampleTensor2 {
-        desc: "Diagonal tensor in 3D",
-        case: Mandel::Symmetric,
+        desc: "Diagonal tensor",
         matrix: [[2.0, 0.0, 0.0], [0.0, 3.0, 0.0], [0.0, 0.0, 4.0]],
         eigenvalues: [2.0, 3.0, 4.0],
         eigenprojectors: [

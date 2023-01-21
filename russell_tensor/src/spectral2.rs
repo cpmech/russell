@@ -45,8 +45,8 @@ impl Spectral2 {
             let u1 = Vector::from(&[v.get(0, 1), v.get(1, 1)]);
 
             // compute eigenprojectors
-            vec_dyad_vec(&mut self.projectors[0], 1.0, &u0, &u0)?;
-            vec_dyad_vec(&mut self.projectors[1], 1.0, &u1, &u1)?;
+            vec_dyad_vec(&mut self.projectors[0], 1.0, &u0, &u0).unwrap();
+            vec_dyad_vec(&mut self.projectors[1], 1.0, &u1, &u1).unwrap();
             self.projectors[2].clear();
             self.projectors[2].vec[2] = 1.0;
         } else {
@@ -61,9 +61,9 @@ impl Spectral2 {
             let u2 = Vector::from(&[v.get(0, 2), v.get(1, 2), v.get(2, 2)]);
 
             // compute eigenprojectors
-            vec_dyad_vec(&mut self.projectors[0], 1.0, &u0, &u0)?;
-            vec_dyad_vec(&mut self.projectors[1], 1.0, &u1, &u1)?;
-            vec_dyad_vec(&mut self.projectors[2], 1.0, &u2, &u2)?;
+            vec_dyad_vec(&mut self.projectors[0], 1.0, &u0, &u0).unwrap();
+            vec_dyad_vec(&mut self.projectors[1], 1.0, &u1, &u1).unwrap();
+            vec_dyad_vec(&mut self.projectors[2], 1.0, &u2, &u2).unwrap();
         }
         Ok(())
     }

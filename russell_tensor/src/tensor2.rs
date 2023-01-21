@@ -956,6 +956,23 @@ mod tests {
              │ 4.0 2.0 │\n\
              └         ┘"
         );
+
+        #[rustfmt::skip]
+        let data = &[
+            [1.0, 2.0, 0.0],
+            [2.0, 3.0, 0.0],
+            [0.0, 0.0, 4.0],
+        ];
+        let tt = Tensor2::from_matrix(data, Mandel::Symmetric2D).unwrap();
+        let (t22, a) = tt.to_matrix_2d();
+        assert_eq!(t22, 4.0);
+        assert_eq!(
+            format!("{:.1}", a),
+            "┌         ┐\n\
+             │ 1.0 2.0 │\n\
+             │ 2.0 3.0 │\n\
+             └         ┘"
+        );
     }
 
     #[test]

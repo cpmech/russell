@@ -801,6 +801,43 @@ impl Tensor2 {
         f64::sqrt(sm)
     }
 
+    /// Calculates the determinant of the deviator tensor
+    ///
+    /// ```text
+    /// det( σ - ⅓ tr(σ) I )
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::approx_eq;
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [6.0,  1.0,  2.0],
+    ///         [3.0, 12.0,  4.0],
+    ///         [5.0,  6.0, 15.0],
+    ///     ], Mandel::General)?;
+    ///
+    ///     let mut dev = Tensor2::new(Mandel::General);
+    ///     a.deviator(&mut dev).unwrap();
+    ///     approx_eq(dev.trace(), 0.0, 1e-15);
+    ///
+    ///     assert_eq!(
+    ///         format!("{:.1}", dev.to_matrix()),
+    ///         "┌                ┐\n\
+    ///          │ -5.0  1.0  2.0 │\n\
+    ///          │  3.0  1.0  4.0 │\n\
+    ///          │  5.0  6.0  4.0 │\n\
+    ///          └                ┘"
+    ///     );
+    ///
+    ///     approx_eq(dev.determinant(), 134.0, 1e-13);
+    ///     approx_eq(a.deviator_determinant(), 134.0, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn deviator_determinant(&self) -> f64 {
         let a = &self.vec;
         let m = (a[0] + a[1] + a[2]) / 3.0;

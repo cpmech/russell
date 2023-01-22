@@ -1532,7 +1532,7 @@ mod tests {
              └                ┘"
         );
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-14);
-        approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-13);
+        approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-15);
 
         // symmetric 2D
         #[rustfmt::skip]

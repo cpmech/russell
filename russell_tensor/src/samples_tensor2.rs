@@ -180,6 +180,64 @@ impl SamplesTensor2 {
             ],
         ]),
     };
+
+    /// Collects data for a symmetric tensor in 3D (Tensor S)
+    pub const TENSOR_S: SampleTensor2 = SampleTensor2 {
+        desc: "Tensor S: symmetric tensor in 3D",
+        matrix: [[5.0, 4.0, 3.0], [4.0, 6.0, 1.0], [3.0, 1.0, 1.0]],
+        deviator: [[1.0, 4.0, 3.0], [4.0, 2.0, 1.0], [3.0, 1.0, -3.0]],
+        norm: 10.6770782520313, // f64::sqrt(114.0)
+        trace: 12.0,
+        determinant: -21.0,
+        deviator_norm: 8.12403840463596, // f64::sqrt(66.0)
+        deviator_determinant: 47.0,
+        eigenvalues: Some([2.46647252957463, 10.3557010334017, -0.822173562976294]),
+        eigenprojectors: Some([
+            [
+                [0.238267467437297, -0.34172021416371, 0.254407894197923],
+                [-0.34172021416371, 0.490090846325138, -0.364868611839051],
+                [0.254407894197923, -0.364868611839051, 0.271641686237565],
+            ],
+            [
+                [0.45076513819893, 0.458387397610942, 0.193537908676564],
+                [0.458387397610942, 0.466138546401525, 0.196810557825709],
+                [0.193537908676564, 0.196810557825709, 0.0830963153995457],
+            ],
+            [
+                [0.310967394363773, -0.116667183447231, -0.447945802874487],
+                [-0.116667183447231, 0.0437706072733379, 0.168058054013342],
+                [-0.447945802874487, 0.168058054013342, 0.645261998362889],
+            ],
+        ]),
+    };
+
+    /// Collects data for a symmetric tensor in 3D (Tensor R)
+    pub const TENSOR_R: SampleTensor2 = SampleTensor2 {
+        desc: "Tensor R: non-symmetric tensor",
+        matrix: [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]],
+        deviator: [[-4.0, 2.0, 3.0], [4.0, 0.0, 6.0], [7.0, 8.0, 4.0]],
+        norm: 16.8819430161341, // f64::sqrt(285.0)
+        trace: 15.0,
+        determinant: 0.0,
+        deviator_norm: 14.4913767461894, // f64::sqrt(210.0)
+        deviator_determinant: 340.0,
+        eigenvalues: None,
+        eigenprojectors: None,
+    };
+
+    /// Collects data for a symmetric tensor in 3D (Tensor T)
+    pub const TENSOR_T: SampleTensor2 = SampleTensor2 {
+        desc: "Tensor T: non-symmetric tensor",
+        matrix: [[6.0, 1.0, 2.0], [3.0, 12.0, 4.0], [5.0, 6.0, 15.0]],
+        deviator: [[-5.0, 1.0, 2.0], [3.0, 1.0, 4.0], [5.0, 6.0, 4.0]],
+        norm: 22.2710574513201, // 4.0 * f64::sqrt(31.0)
+        trace: 33.0,
+        determinant: 0.0,
+        deviator_norm: 11.5325625946708, // f64::sqrt(133.0)
+        deviator_determinant: 134.0,
+        eigenvalues: None,
+        eigenprojectors: None,
+    };
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -212,6 +270,7 @@ mod tests {
         check_spectral(&SamplesTensor2::TENSOR_O, 1e-15);
         check_spectral(&SamplesTensor2::TENSOR_I, 1e-15);
         check_spectral(&SamplesTensor2::TENSOR_U, 1e-13);
+        check_spectral(&SamplesTensor2::TENSOR_S, 1e-13);
         check_spectral(&SamplesTensor2::TENSOR_X, 1e-15);
         check_spectral(&SamplesTensor2::TENSOR_Y, 1e-13);
         check_spectral(&SamplesTensor2::TENSOR_Z, 1e-14);

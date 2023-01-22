@@ -892,7 +892,7 @@ impl Tensor2 {
 #[cfg(test)]
 mod tests {
     use super::{Tensor2, SQRT_2};
-    use crate::Mandel;
+    use crate::{Mandel, SampleTensor2, SamplesTensor2};
     use russell_chk::{approx_eq, vec_approx_eq};
     use serde::{Deserialize, Serialize};
 
@@ -1592,5 +1592,53 @@ mod tests {
         );
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-15);
         approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-15);
+    }
+
+    fn check_sample(
+        sample: &SampleTensor2,
+        case: Mandel,
+        tol_norm: f64,
+        tol_trace: f64,
+        tol_det: f64,
+        tol_dev_norm: f64,
+        tol_dev_det: f64,
+        verbose: bool,
+    ) {
+        let tt = Tensor2::from_matrix(&sample.matrix, case).unwrap();
+        if verbose {
+            println!("{}", sample.desc);
+            println!("    err(norm) = {:?}", tt.norm() - sample.norm);
+            println!("    err(trace) = {:?}", tt.trace() - sample.trace);
+            println!("    err(determinant) = {:?}", tt.determinant() - sample.determinant);
+            println!(
+                "    err(deviator_norm) = {:?}",
+                tt.deviator_norm() - sample.deviator_norm
+            );
+            println!(
+                "    err(deviator_determinant) = {:?}",
+                tt.deviator_determinant() - sample.deviator_determinant
+            );
+        }
+        approx_eq(tt.norm(), sample.norm, tol_norm);
+        approx_eq(tt.trace(), sample.trace, tol_trace);
+        approx_eq(tt.determinant(), sample.determinant, tol_det);
+        approx_eq(tt.deviator_norm(), sample.deviator_norm, tol_dev_norm);
+        approx_eq(tt.deviator_determinant(), sample.deviator_determinant, tol_dev_det);
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn prop_functions_are_correct() {
+        let verb = false;
+        //                                                       norm   trace   det dev_norm dev_det
+        check_sample(&SamplesTensor2::TENSOR_O, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_sample(&SamplesTensor2::TENSOR_I, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_sample(&SamplesTensor2::TENSOR_X, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13, verb);
+        check_sample(&SamplesTensor2::TENSOR_Y, Mandel::General, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_sample(&SamplesTensor2::TENSOR_Z, Mandel::General, 1e-15, 1e-15, 1e-14, 1e-14, 1e-15, verb);
+        check_sample(&SamplesTensor2::TENSOR_U, Mandel::General, 1e-13, 1e-15, 1e-14, 1e-14, 1e-13, verb);
+        check_sample(&SamplesTensor2::TENSOR_S, Mandel::General, 1e-13, 1e-15, 1e-14, 1e-15, 1e-13, verb);
+        check_sample(&SamplesTensor2::TENSOR_R, Mandel::General, 1e-13, 1e-15, 1e-13, 1e-13, 1e-15, verb);
+        check_sample(&SamplesTensor2::TENSOR_T, Mandel::General, 1e-13, 1e-15, 1e-15, 1e-14, 1e-15, verb);
     }
 }

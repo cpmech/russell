@@ -232,7 +232,7 @@ impl SamplesTensor2 {
         deviator: [[-5.0, 1.0, 2.0], [3.0, 1.0, 4.0], [5.0, 6.0, 4.0]],
         norm: 22.2710574513201, // 4.0 * f64::sqrt(31.0)
         trace: 33.0,
-        determinant: 0.0,
+        determinant: 827.0,
         deviator_norm: 11.5325625946708, // f64::sqrt(133.0)
         deviator_determinant: 134.0,
         eigenvalues: None,

@@ -126,62 +126,66 @@ mod tests {
         tol_spectral: f64,
         verbose: bool,
     ) {
-        // perform spectral decomposition of symmetric matrix
-        let case = if spec.projectors[0].two_dim() {
-            Mandel::Symmetric2D
-        } else {
-            Mandel::Symmetric
+        if let Some(correct_lambda) = sample.eigenvalues {
+            if let Some(correct_projectors) = sample.eigenprojectors {
+                // perform spectral decomposition of symmetric matrix
+                let case = if spec.projectors[0].two_dim() {
+                    Mandel::Symmetric2D
+                } else {
+                    Mandel::Symmetric
+                };
+                let tt = Tensor2::from_matrix(&sample.matrix, case).unwrap();
+                spec.decompose(&tt).unwrap();
+
+                // print results
+                if verbose {
+                    println!("a =\n{}", tt.to_matrix());
+                    println!("λ = {}, {}, {}", spec.lambda[0], spec.lambda[1], spec.lambda[2]);
+                    println!("P0 =\n{}", spec.projectors[0].to_matrix());
+                    println!("P1 =\n{}", spec.projectors[1].to_matrix());
+                    println!("P2 =\n{}", spec.projectors[2].to_matrix());
+                }
+
+                // check eigenvalues
+                vec_approx_eq(spec.lambda.as_data(), &correct_lambda, tol_lambda);
+
+                // check eigenprojectors
+                let pp0 = spec.projectors[0].to_matrix();
+                let pp1 = spec.projectors[1].to_matrix();
+                let pp2 = spec.projectors[2].to_matrix();
+                let correct0 = Matrix::from(&correct_projectors[0]);
+                let correct1 = Matrix::from(&correct_projectors[1]);
+                let correct2 = Matrix::from(&correct_projectors[2]);
+                mat_approx_eq(&correct0, &pp0, tol_proj);
+                mat_approx_eq(&correct1, &pp1, tol_proj);
+                mat_approx_eq(&correct2, &pp2, tol_proj);
+
+                // compose
+                let mut tt_new = Tensor2::new(case);
+                spec.compose(&mut tt_new, &spec.lambda).unwrap();
+                let a_new = tt_new.to_matrix();
+                let a = Matrix::from(&sample.matrix);
+                mat_approx_eq(&a, &a_new, tol_spectral);
+            }
         };
-        let tt = Tensor2::from_matrix(&sample.matrix, case).unwrap();
-        spec.decompose(&tt).unwrap();
-
-        // print results
-        if verbose {
-            println!("a =\n{}", tt.to_matrix());
-            println!("λ = {}, {}, {}", spec.lambda[0], spec.lambda[1], spec.lambda[2]);
-            println!("P0 =\n{}", spec.projectors[0].to_matrix());
-            println!("P1 =\n{}", spec.projectors[1].to_matrix());
-            println!("P2 =\n{}", spec.projectors[2].to_matrix());
-        }
-
-        // check eigenvalues
-        vec_approx_eq(spec.lambda.as_data(), &sample.eigenvalues, tol_lambda);
-
-        // check eigenprojectors
-        let pp0 = spec.projectors[0].to_matrix();
-        let pp1 = spec.projectors[1].to_matrix();
-        let pp2 = spec.projectors[2].to_matrix();
-        let correct0 = Matrix::from(&sample.eigenprojectors[0]);
-        let correct1 = Matrix::from(&sample.eigenprojectors[1]);
-        let correct2 = Matrix::from(&sample.eigenprojectors[2]);
-        mat_approx_eq(&correct0, &pp0, tol_proj);
-        mat_approx_eq(&correct1, &pp1, tol_proj);
-        mat_approx_eq(&correct2, &pp2, tol_proj);
-
-        // compose
-        let mut tt_new = Tensor2::new(case);
-        spec.compose(&mut tt_new, &spec.lambda).unwrap();
-        let a_new = tt_new.to_matrix();
-        let a = Matrix::from(&sample.matrix);
-        mat_approx_eq(&a, &a_new, tol_spectral);
     }
 
     #[test]
     fn decompose_and_compose_work_3d() {
         let mut spec = Spectral2::new(false);
-        check(&mut spec, &SamplesTensor2::SAMPLE1, 1e-13, 1e-15, 1e-14, false);
-        check(&mut spec, &SamplesTensor2::SAMPLE2, 1e-14, 1e-15, 1e-15, false);
-        check(&mut spec, &SamplesTensor2::SAMPLE3, 1e-15, 1e-15, 1e-15, false);
-        check(&mut spec, &SamplesTensor2::SAMPLE4, 1e-15, 1e-15, 1e-15, false);
-        check(&mut spec, &SamplesTensor2::SAMPLE5, 1e-15, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::TENSOR_U, 1e-13, 1e-15, 1e-14, false);
     }
 
     #[test]
     fn decompose_and_compose_work_2d() {
         let mut spec = Spectral2::new(true);
-        check(&mut spec, &SamplesTensor2::SAMPLE2, 1e-14, 1e-15, 1e-15, false);
-        check(&mut spec, &SamplesTensor2::SAMPLE3, 1e-15, 1e-15, 1e-15, false);
-        check(&mut spec, &SamplesTensor2::SAMPLE4, 1e-15, 1e-15, 1e-15, false);
-        check(&mut spec, &SamplesTensor2::SAMPLE5, 1e-15, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15, false);
     }
 }

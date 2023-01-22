@@ -99,6 +99,32 @@ impl SamplesTensor2 {
         ]),
     };
 
+    /// Collects data for a symmetric tensor in 2D (as in plane-stress analyses) (Tensor Y)
+    pub const TENSOR_Y: SampleTensor2 = SampleTensor2 {
+        desc: "Tensor Y: symmetric 2D tensor with zero out-of-plane component (T22)",
+        matrix: [[11.0, 3.0, 0.0], [3.0, 4.0, 0.0], [0.0, 0.0, 9.0]],
+        deviator: [[3.0, 3.0, 0.0], [3.0, -4.0, 0.0], [0.0, 0.0, 1.0]],
+        norm: 15.3622914957372, // 2.0 * f64::sqrt(59.0)
+        trace: 24.0,
+        determinant: 315.0,
+        deviator_norm: 6.6332495807108, // 2.0 * f64::sqrt(11.0)
+        deviator_determinant: -21.0,
+        eigenvalues: Some([12.1097722286464, 2.89022777135355, 9.0]),
+        eigenprojectors: Some([
+            [
+                [0.8796283011826486, 0.32539568672798447, 0.0],
+                [0.32539568672798447, 0.12037169881735181, 0.0],
+                [0.0, 0.0, 0.0],
+            ],
+            [
+                [0.12037169881735181, -0.3253956867279844, 0.0],
+                [-0.3253956867279844, 0.8796283011826483, 0.0],
+                [0.0, 0.0, 0.0],
+            ],
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 1.0]],
+        ]),
+    };
+
     /// Collects data for a symmetric tensor in 2D (Tensor Z)
     pub const TENSOR_Z: SampleTensor2 = SampleTensor2 {
         desc: "Tensor Z: symmetric tensor in 2D",
@@ -187,6 +213,7 @@ mod tests {
         check_spectral(&SamplesTensor2::TENSOR_I, 1e-15);
         check_spectral(&SamplesTensor2::TENSOR_U, 1e-13);
         check_spectral(&SamplesTensor2::TENSOR_X, 1e-15);
+        check_spectral(&SamplesTensor2::TENSOR_Y, 1e-13);
         check_spectral(&SamplesTensor2::TENSOR_Z, 1e-14);
     }
 }

@@ -176,6 +176,7 @@ mod tests {
         check(&mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, false);
         check(&mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, false);
         check(&mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15, true);
         check(&mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15, false);
         check(&mut spec, &SamplesTensor2::TENSOR_U, 1e-13, 1e-15, 1e-14, false);
     }
@@ -186,6 +187,7 @@ mod tests {
         check(&mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, false);
         check(&mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, false);
         check(&mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15, false);
         check(&mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15, false);
     }
 }

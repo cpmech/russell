@@ -1,5 +1,5 @@
 use super::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, SQRT_2};
-use crate::{Mandel, StrError, SQRT_2_BY_3, SQRT_3_BY_2};
+use crate::{Mandel, StrError, SQRT_2_BY_3, SQRT_3_BY_2, SQRT_6};
 use russell_lab::{Matrix, Vector};
 use serde::{Deserialize, Serialize};
 
@@ -883,7 +883,13 @@ impl Tensor2 {
 
     #[inline]
     pub fn invariant_lode(&self) -> f64 {
-        27.0 * self.determinant()
+        let n = self.deviator_norm();
+        let nnn = n * n * n;
+        if f64::abs(nnn) > 0.0 {
+            3.0 * SQRT_6 * self.deviator_determinant() / nnn
+        } else {
+            0.0
+        }
     }
 }
 
@@ -891,9 +897,10 @@ impl Tensor2 {
 
 #[cfg(test)]
 mod tests {
-    use super::{Tensor2, SQRT_2};
-    use crate::{Mandel, SampleTensor2, SamplesTensor2};
+    use super::Tensor2;
+    use crate::{Mandel, SampleTensor2, SamplesTensor2, SQRT_2, SQRT_3};
     use russell_chk::{approx_eq, vec_approx_eq};
+    use russell_lab::math::PI;
     use serde::{Deserialize, Serialize};
 
     #[test]
@@ -1658,5 +1665,153 @@ mod tests {
         check_sample(&SamplesTensor2::TENSOR_X, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13, verb);
         check_sample(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric2D, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15, verb);
         check_sample(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14, verb);
+    }
+
+    fn alpha_deg(l1: f64, l2: f64, l3: f64) -> f64 {
+        f64::atan2(2.0 * l1 - l2 - l3, (l3 - l2) * SQRT_3) * 180.0 / PI
+    }
+
+    #[test]
+    fn invariants_are_correct() {
+        let c = Mandel::Symmetric;
+        let sigma_d_1 = SQRT_3 / 2.0; // sqrt(((0.5+0.5)² + (0.5)² + (-0.5)²)/3) * sqrt(3/2)
+        let eps_d_1 = 1.0 / SQRT_3; // sqrt(((0.5+0.5)² + (0.5)² + (-0.5)²)/3) * sqrt(2/3)
+        let sigma_d_2 = 1.0; // sqrt((1² + 1²)/3)* sqrt(3/2)
+        let eps_d_2 = 2.0 / 3.0; // sqrt((1² + 1²)/3)* sqrt(2/3)
+
+        // α = 0
+        let (l1, l2, l3) = (0.0, -0.5, 0.5);
+        approx_eq(alpha_deg(l1, l2, l3), 0.0, 1e-15);
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        approx_eq(tt.invariant_sigma_m(), 0.0, 1e-15);
+        approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
+        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
+        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
+        approx_eq(tt.invariant_lode(), 0.0, 1e-15);
+
+        // α = 30
+        let (l1, l2, l3) = (1.0, 0.0, 1.0);
+        approx_eq(alpha_deg(l1, l2, l3), 30.0, 1e-14);
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        approx_eq(tt.invariant_sigma_m(), 2.0 / 3.0, 1e-15);
+        approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
+        approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
+        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
+        approx_eq(tt.invariant_lode(), -1.0, 1e-15);
+
+        // α = 60
+        let (l1, l2, l3) = (0.5, -0.5, 0.0);
+        approx_eq(alpha_deg(l1, l2, l3), 60.0, 1e-14);
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        approx_eq(tt.invariant_sigma_m(), 0.0, 1e-15);
+        approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
+        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
+        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
+        approx_eq(tt.invariant_lode(), 0.0, 1e-15);
+
+        // α = 90
+        let (l1, l2, l3) = (1.0, 0.0, 0.0);
+        approx_eq(alpha_deg(l1, l2, l3), 90.0, 1e-15);
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        approx_eq(tt.invariant_sigma_m(), 1.0 / 3.0, 1e-15);
+        approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
+        approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
+        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
+        approx_eq(tt.invariant_lode(), 1.0, 1e-15);
+
+        // α = 120
+        let (l1, l2, l3) = (0.5, 0.0, -0.5);
+        approx_eq(alpha_deg(l1, l2, l3), 120.0, 1e-13);
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        approx_eq(tt.invariant_sigma_m(), 0.0, 1e-15);
+        approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
+        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
+        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
+        approx_eq(tt.invariant_lode(), 0.0, 1e-15);
+
+        // α = 150
+        let (l1, l2, l3) = (1.0, 1.0, 0.0);
+        approx_eq(alpha_deg(l1, l2, l3), 150.0, 1e-13);
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        approx_eq(tt.invariant_sigma_m(), 2.0 / 3.0, 1e-15);
+        approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
+        approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
+        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
+        approx_eq(tt.invariant_lode(), -1.0, 1e-15);
+
+        // α = 180
+        let (l1, l2, l3) = (0.0, 0.5, -0.5);
+        approx_eq(alpha_deg(l1, l2, l3), 180.0, 1e-13);
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        approx_eq(tt.invariant_sigma_m(), 0.0, 1e-15);
+        approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
+        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
+        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
+        approx_eq(tt.invariant_lode(), 0.0, 1e-15);
+
+        // α = -150
+        let (l1, l2, l3) = (0.0, 1.0, 0.0);
+        approx_eq(alpha_deg(l1, l2, l3), -150.0, 1e-13);
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        approx_eq(tt.invariant_sigma_m(), 1.0 / 3.0, 1e-15);
+        approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
+        approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
+        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
+        approx_eq(tt.invariant_lode(), 1.0, 1e-15);
+
+        // α = -120
+        let (l1, l2, l3) = (-0.5, 0.5, 0.0);
+        approx_eq(alpha_deg(l1, l2, l3), -120.0, 1e-13);
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        approx_eq(tt.invariant_sigma_m(), 0.0, 1e-15);
+        approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
+        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
+        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
+        approx_eq(tt.invariant_lode(), 0.0, 1e-15);
+
+        // α = -90
+        let (l1, l2, l3) = (0.0, 1.0, 1.0);
+        approx_eq(alpha_deg(l1, l2, l3), -90.0, 1e-13);
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        approx_eq(tt.invariant_sigma_m(), 2.0 / 3.0, 1e-15);
+        approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
+        approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
+        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
+        approx_eq(tt.invariant_lode(), -1.0, 1e-15);
+
+        // α = -60
+        let (l1, l2, l3) = (-0.5, 0.0, 0.5);
+        approx_eq(alpha_deg(l1, l2, l3), -60.0, 1e-13);
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        approx_eq(tt.invariant_sigma_m(), 0.0, 1e-15);
+        approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
+        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
+        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
+        approx_eq(tt.invariant_lode(), 0.0, 1e-15);
+
+        // α = -30
+        let (l1, l2, l3) = (0.0, 0.0, 1.0);
+        approx_eq(alpha_deg(l1, l2, l3), -30.0, 1e-13);
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        approx_eq(tt.invariant_sigma_m(), 1.0 / 3.0, 1e-15);
+        approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
+        approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
+        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
+        approx_eq(tt.invariant_lode(), 1.0, 1e-15);
+
+        // norm(deviator) = 0  with l = 0
+        let (l1, l2, l3) = (2.0, 2.0, 2.0);
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        approx_eq(tt.invariant_lode(), 0.0, 1e-15);
+
+        // norm(deviator) > 1e-15  with l ~ 0
+        let (l1, l2, l3) = (2.0, 2.0, 2.0 - 1e-5);
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        approx_eq(tt.invariant_lode(), 0.0, 1e-15);
+
+        // norm(deviator) > 1e-15  with l ~ -1 (notice how l jumps from 0 to -1)
+        let (l1, l2, l3) = (2.0, 2.0, 2.0 - 1e-3);
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        approx_eq(tt.invariant_lode(), -1.0, 1e-7);
     }
 }

@@ -1630,7 +1630,7 @@ mod tests {
     #[rustfmt::skip]
     fn prop_functions_are_correct() {
         let verb = false;
-        //                                                       norm   trace   det dev_norm dev_det
+        //                                                       norm   trace  det dev_norm dev_det
         check_sample(&SamplesTensor2::TENSOR_O, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15, verb);
         check_sample(&SamplesTensor2::TENSOR_I, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15, verb);
         check_sample(&SamplesTensor2::TENSOR_X, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13, verb);
@@ -1640,5 +1640,23 @@ mod tests {
         check_sample(&SamplesTensor2::TENSOR_S, Mandel::General, 1e-13, 1e-15, 1e-14, 1e-15, 1e-13, verb);
         check_sample(&SamplesTensor2::TENSOR_R, Mandel::General, 1e-13, 1e-15, 1e-13, 1e-13, 1e-15, verb);
         check_sample(&SamplesTensor2::TENSOR_T, Mandel::General, 1e-13, 1e-15, 1e-15, 1e-14, 1e-15, verb);
+
+        let verb = false;
+        //                                                         norm   trace  det dev_norm dev_det
+        check_sample(&SamplesTensor2::TENSOR_O, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_sample(&SamplesTensor2::TENSOR_I, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_sample(&SamplesTensor2::TENSOR_X, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13, verb);
+        check_sample(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_sample(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14, verb);
+        check_sample(&SamplesTensor2::TENSOR_U, Mandel::Symmetric, 1e-13, 1e-15, 1e-14, 1e-14, 1e-13, verb);
+        check_sample(&SamplesTensor2::TENSOR_S, Mandel::Symmetric, 1e-13, 1e-15, 1e-14, 1e-15, 1e-13, verb);
+
+        let verb = false;
+        //                                                           norm   trace  det dev_norm dev_det
+        check_sample(&SamplesTensor2::TENSOR_O, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_sample(&SamplesTensor2::TENSOR_I, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_sample(&SamplesTensor2::TENSOR_X, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13, verb);
+        check_sample(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric2D, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_sample(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14, verb);
     }
 }

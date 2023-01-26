@@ -107,7 +107,7 @@ impl Tensor2 {
     ///
     /// * In all cases, even in 2D, the input matrix must be 3×3
     /// * If symmetric, the off-diagonal components must equal the corresponding ones
-    /// * If 2D, tt[1][2] and tt[0][2] must both be equal to zero
+    /// * If 2D, `tt[1][2]` and `tt[0][2]` must both be equal to zero
     /// * If 2D, symmetric must be true
     ///
     /// # Example

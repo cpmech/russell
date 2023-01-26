@@ -752,7 +752,10 @@ impl Tensor2 {
     /// Calculates the norm of the deviator tensor
     ///
     /// ```text
-    /// || σ - ⅓ tr(σ) I ||
+    /// norm(dev(σ)) = ‖s‖ = ‖ σ - ⅓ tr(σ) I ‖
+    ///
+    /// ‖s‖² = ⅓ [(σ₁₁-σ₂₂)² + (σ₂₂-σ₃₃)² + (σ₃₃-σ₁₁)²]
+    ///       + σ₁₂² + σ₂₃² + σ₁₃² + σ₂₁² + σ₃₂² + σ₃₁²
     /// ```
     ///
     /// # Example
@@ -861,26 +864,139 @@ impl Tensor2 {
         }
     }
 
+    /// Returns the mean pressure invariant
+    ///
+    /// ```text
+    /// σm = ⅓ trace(σ)
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::approx_eq;
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [1.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 1.0],
+    ///     ], Mandel::Symmetric)?;
+    ///     approx_eq(a.invariant_sigma_m(), 2.0 / 3.0, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     #[inline]
     pub fn invariant_sigma_m(&self) -> f64 {
         self.trace() / 3.0
     }
 
+    /// Returns the deviatoric stress invariant (von Mises)
+    ///
+    /// This quantity is also known as the von Mises effective invariant
+    /// or equivalent stress.
+    ///
+    /// ```text
+    /// σd = norm(dev(σ)) × √3/√2 = ‖s‖ √3/√2
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::approx_eq;
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [1.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 1.0],
+    ///     ], Mandel::Symmetric)?;
+    ///     approx_eq(a.invariant_sigma_d(), 1.0, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     #[inline]
     pub fn invariant_sigma_d(&self) -> f64 {
         self.deviator_norm() * SQRT_3_BY_2
     }
 
+    /// Returns the volumetric strain invariant
+    ///
+    /// ```text
+    /// εv = trace(ε)
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::approx_eq;
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [1.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 1.0],
+    ///     ], Mandel::Symmetric)?;
+    ///     approx_eq(a.invariant_eps_v(), 2.0, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     #[inline]
     pub fn invariant_eps_v(&self) -> f64 {
         self.trace()
     }
 
+    /// Returns the deviatoric strain invariant
+    ///
+    /// ```text
+    /// εd = norm(dev(ε)) × √2/√3
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::approx_eq;
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [1.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 1.0],
+    ///     ], Mandel::Symmetric)?;
+    ///     approx_eq(a.invariant_eps_d(), 2.0 / 3.0, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     #[inline]
     pub fn invariant_eps_d(&self) -> f64 {
         self.deviator_norm() * SQRT_2_BY_3
     }
 
+    /// Returns the lode invariant
+    ///
+    /// ```text
+    /// l = cos(3θ) = 3√6 det(s) / ‖s‖³
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::approx_eq;
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [1.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 1.0],
+    ///     ], Mandel::Symmetric)?;
+    ///     approx_eq(a.invariant_lode(), -1.0, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     #[inline]
     pub fn invariant_lode(&self) -> f64 {
         let n = self.deviator_norm();

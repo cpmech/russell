@@ -211,7 +211,7 @@ impl SamplesTensor2 {
         ]),
     };
 
-    /// Collects data for a symmetric tensor in 3D (Tensor R)
+    /// Collects data for a non-symmetric tensor in 3D (Tensor R)
     pub const TENSOR_R: SampleTensor2 = SampleTensor2 {
         desc: "Tensor R: non-symmetric tensor",
         matrix: [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]],
@@ -225,7 +225,7 @@ impl SamplesTensor2 {
         eigenprojectors: None,
     };
 
-    /// Collects data for a symmetric tensor in 3D (Tensor T)
+    /// Collects data for a non-symmetric tensor in 3D (Tensor T)
     pub const TENSOR_T: SampleTensor2 = SampleTensor2 {
         desc: "Tensor T: non-symmetric tensor",
         matrix: [[6.0, 1.0, 2.0], [3.0, 12.0, 4.0], [5.0, 6.0, 15.0]],

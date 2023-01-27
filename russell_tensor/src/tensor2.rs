@@ -1,5 +1,5 @@
 use super::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, SQRT_2};
-use crate::{Mandel, StrError, SQRT_2_BY_3, SQRT_3_BY_2, SQRT_6};
+use crate::{Mandel, StrError, Tensor4, ONE_BY_3, SQRT_2_BY_3, SQRT_3_BY_2, SQRT_6};
 use russell_lab::{Matrix, Vector};
 use serde::{Deserialize, Serialize};
 
@@ -893,7 +893,7 @@ impl Tensor2 {
 
     /// Returns the deviatoric stress invariant (von Mises)
     ///
-    /// This quantity is also known as the von Mises effective invariant
+    /// This quantity is also known as the **von Mises** effective invariant
     /// or equivalent stress.
     ///
     /// ```text
@@ -1010,6 +1010,66 @@ impl Tensor2 {
         } else {
             None
         }
+    }
+
+    /// Computes the first derivative of the mean pressure invariant w.r.t. the defining tensor
+    ///
+    /// ```text
+    /// dσm   1
+    /// ─── = ─ I
+    ///  dσ   3
+    /// ```
+    pub fn deriv1_invariant_sigma_m(&self, d1: &mut Tensor2) -> Result<(), StrError> {
+        if d1.vec.dim() != self.vec.dim() {
+            return Err("tensors are incompatible");
+        }
+        d1.clear();
+        d1.vec[0] = ONE_BY_3;
+        d1.vec[1] = ONE_BY_3;
+        d1.vec[2] = ONE_BY_3;
+        Ok(())
+    }
+
+    /// Computes the first derivative of the deviatoric stress invariant (von Mises) w.r.t. the defining tensor
+    ///
+    /// ```text
+    /// dσd   √3  s
+    /// ─── = ── ───
+    /// dσ    √2 ‖s‖
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// * This function returns `Some(‖s‖)` if ‖s‖ > 0 and the computation was successful
+    /// * Otherwise, this function returns `None` and the derivative cannot be computed
+    ///   because the deviatoric stress invariant is zero
+    pub fn deriv1_invariant_sigma_d(&self, d1: &mut Tensor2) -> Result<Option<f64>, StrError> {
+        let n = self.deviator_norm();
+        if n > 0.0 {
+            self.deviator(d1)?;
+            for i in 0..d1.vec.dim() {
+                d1.vec[i] *= SQRT_3_BY_2 / n;
+            }
+            Ok(Some(n))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn deriv1_invariant_lode(&self, d1: &mut Tensor2) {
+        // todo
+    }
+
+    pub fn deriv2_invariant_sigma_m(&self, d2: &mut Tensor4) {
+        // todo
+    }
+
+    pub fn deriv2_invariant_sigma_d(&self, d2: &mut Tensor4) {
+        // todo
+    }
+
+    pub fn deriv2_invariant_lode(&self, d2: &mut Tensor4) {
+        // todo
     }
 }
 

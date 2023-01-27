@@ -1079,7 +1079,7 @@ impl Tensor2 {
 mod tests {
     use super::Tensor2;
     use crate::{Mandel, SampleTensor2, SamplesTensor2, SQRT_2, SQRT_3};
-    use russell_chk::{approx_eq, vec_approx_eq};
+    use russell_chk::{approx_eq, deriv_approx_eq, vec_approx_eq};
     use russell_lab::math::PI;
     use serde::{Deserialize, Serialize};
 
@@ -2010,5 +2010,95 @@ mod tests {
         let (l1, l2, l3) = (2.0, 2.0, 2.0 - 1e-3);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
         check_lode(tt.invariant_lode(), -1.0, 1e-7, false);
+    }
+
+    // Holds arguments for numerical differentiation of a scalar (#) w.r.t. σᵢⱼ (with symmetric σ)
+    struct ArgsNumDeriv1 {
+        at_sigma: Tensor2,   // @ σ value
+        temp_sigma: Tensor2, // temporary σ
+        i: usize,            // index i of ∂#/∂σᵢⱼ
+        j: usize,            // index j of ∂#/∂σᵢⱼ
+    }
+
+    // Computes σm with variable v := σᵢⱼ (with symmetric σ)
+    fn sigma_m_given_sigma(v: f64, args: &mut ArgsNumDeriv1) -> f64 {
+        args.temp_sigma.mirror(&args.at_sigma).unwrap();
+        args.temp_sigma.sym_set(args.i, args.j, v);
+        args.temp_sigma.invariant_sigma_m()
+    }
+
+    // Computes σd with variable v := σᵢⱼ (with symmetric σ)
+    fn sigma_d_given_sigma(v: f64, args: &mut ArgsNumDeriv1) -> f64 {
+        args.temp_sigma.mirror(&args.at_sigma).unwrap();
+        args.temp_sigma.sym_set(args.i, args.j, v);
+        args.temp_sigma.invariant_sigma_d()
+    }
+
+    #[test]
+    fn deriv1_invariant_sigma_m_works() {
+        #[rustfmt::skip]
+        let data = &[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ];
+        let sigma = Tensor2::from_matrix(data, Mandel::Symmetric).unwrap();
+        let mut ana_deriv1_sigma_m = Tensor2::new(Mandel::Symmetric);
+        sigma.deriv1_invariant_sigma_m(&mut ana_deriv1_sigma_m).unwrap();
+        println!("analytical dσm/dσ =\n{}", ana_deriv1_sigma_m.to_matrix());
+        let mut args = ArgsNumDeriv1 {
+            at_sigma: Tensor2::from_matrix(data, Mandel::Symmetric).unwrap(),
+            temp_sigma: Tensor2::new(Mandel::Symmetric),
+            i: 0,
+            j: 0,
+        };
+        for i in 0..3 {
+            for j in i..3 {
+                println!("∂σm/∂σ{}{}", i, j);
+                args.i = i;
+                args.j = j;
+                deriv_approx_eq(
+                    ana_deriv1_sigma_m.get(i, j),
+                    args.at_sigma.get(i, j),
+                    &mut args,
+                    1e-12,
+                    sigma_m_given_sigma,
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn deriv1_invariant_sigma_d_works() {
+        #[rustfmt::skip]
+        let data = &[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ];
+        let sigma = Tensor2::from_matrix(data, Mandel::Symmetric).unwrap();
+        let mut ana_deriv1_sigma_d = Tensor2::new(Mandel::Symmetric);
+        sigma.deriv1_invariant_sigma_d(&mut ana_deriv1_sigma_d).unwrap();
+        println!("analytical dσd/dσ =\n{}", ana_deriv1_sigma_d.to_matrix());
+        let mut args = ArgsNumDeriv1 {
+            at_sigma: Tensor2::from_matrix(data, Mandel::Symmetric).unwrap(),
+            temp_sigma: Tensor2::new(Mandel::Symmetric),
+            i: 0,
+            j: 0,
+        };
+        for i in 0..3 {
+            for j in i..3 {
+                println!("∂σd/∂σ{}{}", i, j);
+                args.i = i;
+                args.j = j;
+                deriv_approx_eq(
+                    ana_deriv1_sigma_d.get(i, j),
+                    args.at_sigma.get(i, j),
+                    &mut args,
+                    1e-11,
+                    sigma_d_given_sigma,
+                );
+            }
+        }
     }
 }

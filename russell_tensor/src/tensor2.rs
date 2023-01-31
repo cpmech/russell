@@ -2045,6 +2045,22 @@ mod tests {
         m: usize,            // index i of ∂f/∂σₘ
     }
 
+    // -- deriv1_norm ---------------------------------------------------------------------------------------
+
+    #[test]
+    fn deriv1_norm_captures_errors() {
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::General).unwrap();
+        let mut d1 = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(sigma.deriv1_norm(&mut d1).err(), Some("tensors are incompatible"));
+    }
+
+    #[test]
+    fn deriv1_norm_handles_indeterminate_case() {
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_O.matrix, Mandel::General).unwrap();
+        let mut d1 = Tensor2::new(Mandel::General);
+        assert_eq!(sigma.deriv1_norm(&mut d1), Ok(None));
+    }
+
     // Computes ‖σ‖ for varying v_mandel := MandelComponent(σᵢⱼ)
     fn norm_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDeriv1) -> f64 {
         args.temp_sigma.mirror(&args.at_sigma).unwrap();
@@ -2052,8 +2068,8 @@ mod tests {
         args.temp_sigma.norm()
     }
 
-    // Checks the derivative of ‖σ‖ w.r.t. σ
-    fn check_deriv_norm(case: Mandel, sample: &SampleTensor2, tol: f64, tol_num: f64, verbose: bool) {
+    // Checks first the derivative of ‖σ‖ w.r.t. σ
+    fn check_deriv1_norm(case: Mandel, sample: &SampleTensor2, tol: f64, tol_num: f64, verbose: bool) {
         // compare with correct solution
         let mat = sample.matrix;
         let norm = sample.norm;
@@ -2091,9 +2107,21 @@ mod tests {
 
     #[test]
     fn deriv1_norm_works() {
-        check_deriv_norm(Mandel::General, &SamplesTensor2::TENSOR_T, 1e-15, 1e-10, false);
-        check_deriv_norm(Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-15, 1e-10, false);
-        check_deriv_norm(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-15, 1e-10, false);
+        check_deriv1_norm(Mandel::General, &SamplesTensor2::TENSOR_T, 1e-15, 1e-10, false);
+        check_deriv1_norm(Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-15, 1e-10, false);
+        check_deriv1_norm(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-15, 1e-10, false);
+    }
+
+    // -- deriv1_invariant_sigma_m --------------------------------------------------------------------------
+
+    #[test]
+    fn deriv1_invariant_sigma_m_captures_errors() {
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::General).unwrap();
+        let mut d1 = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(
+            sigma.deriv1_invariant_sigma_m(&mut d1).err(),
+            Some("tensors are incompatible")
+        );
     }
 
     // Computes σm for varying v_mandel := MandelComponent(σᵢⱼ)
@@ -2103,8 +2131,8 @@ mod tests {
         args.temp_sigma.invariant_sigma_m()
     }
 
-    // Checks the derivative of σm w.r.t. σ
-    fn check_deriv_sigma_m(case: Mandel, sample: &SampleTensor2, tol: f64, tol_num: f64, verbose: bool) {
+    // Checks the first derivative of σm w.r.t. σ
+    fn check_deriv1_sigma_m(case: Mandel, sample: &SampleTensor2, tol: f64, tol_num: f64, verbose: bool) {
         // compare with correct solution
         let correct = Matrix::from(&[[ONE_BY_3, 0.0, 0.0], [0.0, ONE_BY_3, 0.0], [0.0, 0.0, ONE_BY_3]]);
         let sigma = Tensor2::from_matrix(&sample.matrix, case).unwrap();
@@ -2136,9 +2164,28 @@ mod tests {
 
     #[test]
     fn deriv1_sigma_m_works() {
-        check_deriv_sigma_m(Mandel::General, &SamplesTensor2::TENSOR_T, 1e-15, 1e-12, false);
-        check_deriv_sigma_m(Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-15, 1e-11, false);
-        check_deriv_sigma_m(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-15, 1e-12, false);
+        check_deriv1_sigma_m(Mandel::General, &SamplesTensor2::TENSOR_T, 1e-15, 1e-12, false);
+        check_deriv1_sigma_m(Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-15, 1e-11, false);
+        check_deriv1_sigma_m(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-15, 1e-12, false);
+    }
+
+    // -- deriv1_invariant_sigma_d --------------------------------------------------------------------------
+
+    #[test]
+    fn deriv1_invariant_sigma_d_captures_errors() {
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_T.matrix, Mandel::General).unwrap();
+        let mut d1 = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(
+            sigma.deriv1_invariant_sigma_d(&mut d1).err(),
+            Some("tensors are incompatible")
+        );
+    }
+
+    #[test]
+    fn deriv1_invariant_sigma_d_handles_indeterminate_case() {
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_O.matrix, Mandel::General).unwrap();
+        let mut d1 = Tensor2::new(Mandel::General);
+        assert_eq!(sigma.deriv1_invariant_sigma_d(&mut d1), Ok(None));
     }
 
     // Computes σd for varying v_mandel := MandelComponent(σᵢⱼ)
@@ -2148,8 +2195,8 @@ mod tests {
         args.temp_sigma.invariant_sigma_d()
     }
 
-    // Checks the derivative of σd w.r.t. σ
-    fn check_deriv_sigma_d(case: Mandel, sample: &SampleTensor2, tol: f64, tol_num: f64, verbose: bool) {
+    // Checks the first derivative of σd w.r.t. σ
+    fn check_deriv1_sigma_d(case: Mandel, sample: &SampleTensor2, tol: f64, tol_num: f64, verbose: bool) {
         // compare with correct solution
         let mut correct = Matrix::from(&sample.deviator);
         for i in 0..3 {
@@ -2186,8 +2233,8 @@ mod tests {
 
     #[test]
     fn deriv1_sigma_d_works() {
-        check_deriv_sigma_d(Mandel::General, &SamplesTensor2::TENSOR_T, 1e-15, 1e-10, false);
-        check_deriv_sigma_d(Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-15, 1e-10, false);
-        check_deriv_sigma_d(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-15, 1e-11, false);
+        check_deriv1_sigma_d(Mandel::General, &SamplesTensor2::TENSOR_T, 1e-15, 1e-10, false);
+        check_deriv1_sigma_d(Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-15, 1e-10, false);
+        check_deriv1_sigma_d(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-15, 1e-11, false);
     }
 }

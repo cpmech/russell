@@ -864,6 +864,111 @@ impl Tensor2 {
         }
     }
 
+    /////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////
+
+    pub fn inverse(&self, ai: &mut Tensor2) -> Result<Option<f64>, StrError> {
+        let dim = self.vec.dim();
+        if ai.vec.dim() != dim {
+            return Err("tensors are incompatible");
+        }
+        let a = &self.vec;
+        match dim {
+            4 => {
+                let det = a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0;
+                if f64::abs(det) > 0.0 {
+                    // let aiMat = [
+                    //     [(a[1] * a[2]) / det, -((a[2] * a[3]) / (SQRT_2 * det)), 0.0],
+                    //     [-((a[2] * a[3]) / (SQRT_2 * det)), (a[0] * a[2]) / det, 0.0],
+                    //     [0.0, 0.0, (a[0] * a[1] - a[3] * a[3] / 2.0) / det],
+                    // ];
+                    ai.vec[0] = (a[1] * a[2]) / det;
+                    ai.vec[1] = (a[0] * a[2]) / det;
+                    ai.vec[2] = (a[0] * a[1] - a[3] * a[3] / 2.0) / det;
+                    ai.vec[3] = -((a[2] * a[3]) / det);
+                    return Ok(Some(det));
+                }
+            }
+            6 => {
+                let det = 2.0 * a[0] * a[1] * a[2] - a[2] * a[3] * a[3] - a[0] * a[4] * a[4]
+                    + SQRT_2 * a[3] * a[4] * a[5]
+                    - a[1] * a[5] * a[5];
+                if f64::abs(det) > 0.0 {
+                    // let aiMat = [
+                    //     [
+                    //         (2.0 * a[1] * a[2] - a[4] * a[4]) / det,
+                    //         (-(SQRT_2 * a[2] * a[3]) + a[4] * a[5]) / det,
+                    //         (a[3] * a[4] - SQRT_2 * a[1] * a[5]) / det,
+                    //     ],
+                    //     [
+                    //         (-(SQRT_2 * a[2] * a[3]) + a[4] * a[5]) / det,
+                    //         (2.0 * a[0] * a[2] - a[5] * a[5]) / det,
+                    //         (-(SQRT_2 * a[0] * a[4]) + a[3] * a[5]) / det,
+                    //     ],
+                    //     [
+                    //         (a[3] * a[4] - SQRT_2 * a[1] * a[5]) / det,
+                    //         (-(SQRT_2 * a[0] * a[4]) + a[3] * a[5]) / det,
+                    //         (2.0 * a[0] * a[1] - a[3] * a[3]) / det,
+                    //     ],
+                    // ];
+                    ai.vec[0] = (2.0 * a[1] * a[2] - a[4] * a[4]) / det;
+                    ai.vec[1] = (2.0 * a[0] * a[2] - a[5] * a[5]) / det;
+                    ai.vec[2] = (2.0 * a[0] * a[1] - a[3] * a[3]) / det;
+                    ai.vec[3] = (-2.0 * a[2] * a[3] + SQRT_2 * a[4] * a[5]) / det;
+                    ai.vec[4] = (-2.0 * a[0] * a[4] + SQRT_2 * a[3] * a[5]) / det;
+                    ai.vec[5] = (SQRT_2 * a[3] * a[4] - 2.0 * a[1] * a[5]) / det;
+                    return Ok(Some(det));
+                }
+            }
+            _ => {
+                let det = SQRT_2 * a[3] * a[4] * a[5] - a[1] * a[5] * a[5]
+                    + a[2] * (-a[3] * a[3] + a[6] * a[6])
+                    + SQRT_2 * a[5] * a[6] * a[7]
+                    + a[0] * (2.0 * a[1] * a[2] - a[4] * a[4] + a[7] * a[7])
+                    - SQRT_2 * a[4] * a[6] * a[8]
+                    - SQRT_2 * a[3] * a[7] * a[8]
+                    + a[1] * a[8] * a[8];
+
+                if f64::abs(det) > 0.0 {
+                    // let aiMat = [
+                    //     [
+                    //         (2.0 * a[1] * a[2] - a[4] * a[4] + a[7] * a[7]) / det,
+                    //         (-(SQRT_2 * a[2] * (a[3] + a[6])) + (a[4] - a[7]) * (a[5] + a[8])) / det,
+                    //         (a[3] * (a[4] + a[7]) + a[6] * (a[4] + a[7]) - SQRT_2 * a[1] * (a[5] + a[8])) / det,
+                    //     ],
+                    //     [
+                    //         (SQRT_2 * a[2] * (-a[3] + a[6]) + (a[4] + a[7]) * (a[5] - a[8])) / det,
+                    //         (2.0 * a[0] * a[2] - a[5] * a[5] + a[8] * a[8]) / det,
+                    //         (-(SQRT_2 * a[0] * (a[4] + a[7])) + (a[3] - a[6]) * (a[5] + a[8])) / det,
+                    //     ],
+                    //     [
+                    //         (a[3] * (a[4] - a[7]) + a[6] * (-a[4] + a[7]) + SQRT_2 * a[1] * (-a[5] + a[8])) / det,
+                    //         (SQRT_2 * a[0] * (-a[4] + a[7]) + (a[3] + a[6]) * (a[5] - a[8])) / det,
+                    //         (2.0 * a[0] * a[1] - a[3] * a[3] + a[6] * a[6]) / det,
+                    //     ],
+                    // ];
+                    ai.vec[0] = (2.0 * a[1] * a[2] - a[4] * a[4] + a[7] * a[7]) / det;
+                    ai.vec[1] = (2.0 * a[0] * a[2] - a[5] * a[5] + a[8] * a[8]) / det;
+                    ai.vec[2] = (2.0 * a[0] * a[1] - a[3] * a[3] + a[6] * a[6]) / det;
+                    ai.vec[3] = (-2.0 * a[2] * a[3] + SQRT_2 * (a[4] * a[5] - a[7] * a[8])) / det;
+                    ai.vec[4] = (-2.0 * a[0] * a[4] + SQRT_2 * (a[3] * a[5] - a[6] * a[8])) / det;
+                    ai.vec[5] = (SQRT_2 * a[3] * a[4] - 2.0 * a[1] * a[5] + SQRT_2 * a[6] * a[7]) / det;
+                    ai.vec[6] = (-2.0 * a[2] * a[6] + SQRT_2 * (-(a[5] * a[7]) + a[4] * a[8])) / det;
+                    ai.vec[7] = -((SQRT_2 * (a[5] * a[6] + SQRT_2 * a[0] * a[7] - a[3] * a[8])) / det);
+                    ai.vec[8] = (SQRT_2 * a[4] * a[6] + SQRT_2 * a[3] * a[7] - 2.0 * a[1] * a[8]) / det;
+                    return Ok(Some(det));
+                }
+            }
+        }
+        Ok(None)
+    }
+
+    /////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////
+
     /// Returns the mean pressure invariant
     ///
     /// ```text
@@ -1082,7 +1187,18 @@ impl Tensor2 {
         }
     }
 
-    pub fn deriv1_invariant_lode(&self, _d1: &mut Tensor2) {
+    pub fn deriv1_invariant_lode(&self, _ll: &mut Tensor2) {
+        /*
+        self.deviator(s);
+        s_mat = s.to_matrix();
+        mat_inverse(si_mat, s_mat);
+        si = Tensor2::from_matrix(&s_mat, case);
+        psi = si.deviator();
+        l = self.invariant_lode();
+        ns = self.deviator_norm();
+        m = 3 * l / (ns * ns);
+        vec_add(ll, l, psi.vec, -m, s.vec);
+        */
         panic!("TODO");
     }
 

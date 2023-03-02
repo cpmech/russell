@@ -627,6 +627,96 @@ impl Tensor2 {
         }
     }
 
+    /// Calculates the inverse tensor
+    ///
+    /// ## Input
+    ///
+    /// * `ai` -- a Tensor2 with matching dimensions to hold the inverse tensor
+    /// * `tolerance` -- a tolerance for the determinant such that the inverse is computed only if |det| > tolerance
+    ///
+    /// ## Output
+    ///
+    /// * If the determinant is zero, the inverse is not computed and returns `None`
+    /// * Otherwise, the inverse is computed and returns the determinant
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::approx_eq;
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [1.0, 2.0, 3.0],
+    ///         [4.0, 5.0, 6.0],
+    ///         [7.0, 8.0, 9.0],
+    ///     ], Mandel::General)?;
+    ///
+    ///     if let Some(det) = a.inverse(&mut ai) {
+    ///         approx_eq(a.determinant(), det, 1e-13);
+    ///     }
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn inverse(&self, ai: &mut Tensor2, tolerance: f64) -> Result<Option<f64>, StrError> {
+        let dim = self.vec.dim();
+        if ai.vec.dim() != dim {
+            return Err("tensors are incompatible");
+        }
+        let a = &self.vec;
+        match dim {
+            4 => {
+                let det = a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0;
+                if f64::abs(det) > tolerance {
+                    ai.vec[0] = (a[1] * a[2]) / det;
+                    ai.vec[1] = (a[0] * a[2]) / det;
+                    ai.vec[2] = (a[0] * a[1] - a[3] * a[3] / 2.0) / det;
+                    ai.vec[3] = -((a[2] * a[3]) / det);
+                    return Ok(Some(det));
+                }
+            }
+            6 => {
+                let det = a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0 - (a[0] * a[4] * a[4]) / 2.0
+                    + (a[3] * a[4] * a[5]) / SQRT_2
+                    - (a[1] * a[5] * a[5]) / 2.0;
+                if f64::abs(det) > tolerance {
+                    ai.vec[0] = (a[1] * a[2] - a[4] * a[4] / 2.0) / det;
+                    ai.vec[1] = (a[0] * a[2] - a[5] * a[5] / 2.0) / det;
+                    ai.vec[2] = (a[0] * a[1] - a[3] * a[3] / 2.0) / det;
+                    ai.vec[3] = (-2.0 * a[2] * a[3] + SQRT_2 * a[4] * a[5]) / (2.0 * det);
+                    ai.vec[4] = (-2.0 * a[0] * a[4] + SQRT_2 * a[3] * a[5]) / (2.0 * det);
+                    ai.vec[5] = (SQRT_2 * a[3] * a[4] - 2.0 * a[1] * a[5]) / (2.0 * det);
+                    return Ok(Some(det));
+                }
+            }
+            _ => {
+                let det = a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0 - (a[0] * a[4] * a[4]) / 2.0
+                    + (a[3] * a[4] * a[5]) / SQRT_2
+                    - (a[1] * a[5] * a[5]) / 2.0
+                    + (a[2] * a[6] * a[6]) / 2.0
+                    + (a[5] * a[6] * a[7]) / SQRT_2
+                    + (a[0] * a[7] * a[7]) / 2.0
+                    - (a[4] * a[6] * a[8]) / SQRT_2
+                    - (a[3] * a[7] * a[8]) / SQRT_2
+                    + (a[1] * a[8] * a[8]) / 2.0;
+                if f64::abs(det) > tolerance {
+                    ai.vec[0] = (2.0 * a[1] * a[2] - a[4] * a[4] + a[7] * a[7]) / (2.0 * det);
+                    ai.vec[1] = (2.0 * a[0] * a[2] - a[5] * a[5] + a[8] * a[8]) / (2.0 * det);
+                    ai.vec[2] = (2.0 * a[0] * a[1] - a[3] * a[3] + a[6] * a[6]) / (2.0 * det);
+                    ai.vec[3] = -((SQRT_2 * a[2] * a[3] - a[4] * a[5] + a[7] * a[8]) / (SQRT_2 * det));
+                    ai.vec[4] = -((SQRT_2 * a[0] * a[4] - a[3] * a[5] + a[6] * a[8]) / (SQRT_2 * det));
+                    ai.vec[5] = (a[3] * a[4] - SQRT_2 * a[1] * a[5] + a[6] * a[7]) / (SQRT_2 * det);
+                    ai.vec[6] = -((SQRT_2 * a[2] * a[6] + a[5] * a[7] - a[4] * a[8]) / (SQRT_2 * det));
+                    ai.vec[7] = -((a[5] * a[6] + SQRT_2 * a[0] * a[7] - a[3] * a[8]) / (SQRT_2 * det));
+                    ai.vec[8] = (a[4] * a[6] + a[3] * a[7] - SQRT_2 * a[1] * a[8]) / (SQRT_2 * det);
+                    return Ok(Some(det));
+                }
+            }
+        }
+        Ok(None)
+    }
+
     /// Calculates the trace
     ///
     /// ```text
@@ -862,88 +952,6 @@ impl Tensor2 {
                     / 4.0
             }
         }
-    }
-
-    /// Calculates the inverse
-    ///
-    /// Returns the tensor determinant, if non-zero, otherwise returns None.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use russell_chk::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
-    ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
-    ///         [1.0, 2.0, 3.0],
-    ///         [4.0, 5.0, 6.0],
-    ///         [7.0, 8.0, 9.0],
-    ///     ], Mandel::General)?;
-    ///
-    ///     if let Some(det) = a.inverse(&mut ai) {
-    ///         approx_eq(a.determinant(), det, 1e-13);
-    ///     }
-    ///
-    ///     Ok(())
-    /// }
-    /// ```
-    pub fn inverse(&self, ai: &mut Tensor2) -> Result<Option<f64>, StrError> {
-        let dim = self.vec.dim();
-        if ai.vec.dim() != dim {
-            return Err("tensors are incompatible");
-        }
-        let a = &self.vec;
-        match dim {
-            4 => {
-                let det = a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0;
-                if f64::abs(det) > 0.0 {
-                    ai.vec[0] = (a[1] * a[2]) / det;
-                    ai.vec[1] = (a[0] * a[2]) / det;
-                    ai.vec[2] = (a[0] * a[1] - a[3] * a[3] / 2.0) / det;
-                    ai.vec[3] = -((a[2] * a[3]) / det);
-                    return Ok(Some(det));
-                }
-            }
-            6 => {
-                let det = a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0 - (a[0] * a[4] * a[4]) / 2.0
-                    + (a[3] * a[4] * a[5]) / SQRT_2
-                    - (a[1] * a[5] * a[5]) / 2.0;
-                if f64::abs(det) > 0.0 {
-                    ai.vec[0] = (a[1] * a[2] - a[4] * a[4] / 2.0) / det;
-                    ai.vec[1] = (a[0] * a[2] - a[5] * a[5] / 2.0) / det;
-                    ai.vec[2] = (a[0] * a[1] - a[3] * a[3] / 2.0) / det;
-                    ai.vec[3] = (-2.0 * a[2] * a[3] + SQRT_2 * a[4] * a[5]) / (2.0 * det);
-                    ai.vec[4] = (-2.0 * a[0] * a[4] + SQRT_2 * a[3] * a[5]) / (2.0 * det);
-                    ai.vec[5] = (SQRT_2 * a[3] * a[4] - 2.0 * a[1] * a[5]) / (2.0 * det);
-                    return Ok(Some(det));
-                }
-            }
-            _ => {
-                let det = a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0 - (a[0] * a[4] * a[4]) / 2.0
-                    + (a[3] * a[4] * a[5]) / SQRT_2
-                    - (a[1] * a[5] * a[5]) / 2.0
-                    + (a[2] * a[6] * a[6]) / 2.0
-                    + (a[5] * a[6] * a[7]) / SQRT_2
-                    + (a[0] * a[7] * a[7]) / 2.0
-                    - (a[4] * a[6] * a[8]) / SQRT_2
-                    - (a[3] * a[7] * a[8]) / SQRT_2
-                    + (a[1] * a[8] * a[8]) / 2.0;
-                if f64::abs(det) > 0.0 {
-                    ai.vec[0] = (2.0 * a[1] * a[2] - a[4] * a[4] + a[7] * a[7]) / (2.0 * det);
-                    ai.vec[1] = (2.0 * a[0] * a[2] - a[5] * a[5] + a[8] * a[8]) / (2.0 * det);
-                    ai.vec[2] = (2.0 * a[0] * a[1] - a[3] * a[3] + a[6] * a[6]) / (2.0 * det);
-                    ai.vec[3] = -((SQRT_2 * a[2] * a[3] - a[4] * a[5] + a[7] * a[8]) / (SQRT_2 * det));
-                    ai.vec[4] = -((SQRT_2 * a[0] * a[4] - a[3] * a[5] + a[6] * a[8]) / (SQRT_2 * det));
-                    ai.vec[5] = (a[3] * a[4] - SQRT_2 * a[1] * a[5] + a[6] * a[7]) / (SQRT_2 * det);
-                    ai.vec[6] = -((SQRT_2 * a[2] * a[6] + a[5] * a[7] - a[4] * a[8]) / (SQRT_2 * det));
-                    ai.vec[7] = -((a[5] * a[6] + SQRT_2 * a[0] * a[7] - a[3] * a[8]) / (SQRT_2 * det));
-                    ai.vec[8] = (a[4] * a[6] + a[3] * a[7] - SQRT_2 * a[1] * a[8]) / (SQRT_2 * det);
-                    return Ok(Some(det));
-                }
-            }
-        }
-        Ok(None)
     }
 
     /// Returns the mean pressure invariant
@@ -1199,7 +1207,7 @@ mod tests {
     use super::Tensor2;
     use crate::{Mandel, SampleTensor2, SamplesTensor2, ONE_BY_3, SQRT_2, SQRT_3, SQRT_3_BY_2};
     use russell_chk::{approx_eq, deriv_central5, vec_approx_eq};
-    use russell_lab::{mat_approx_eq, math::PI, Matrix};
+    use russell_lab::{mat_approx_eq, mat_mat_mul, math::PI, Matrix};
     use serde::{Deserialize, Serialize};
 
     #[test]
@@ -1737,7 +1745,7 @@ mod tests {
     }
 
     #[test]
-    fn det_works() {
+    fn determinant_works() {
         // general
         #[rustfmt::skip]
         let comps_std = &[
@@ -1777,6 +1785,45 @@ mod tests {
         ];
         let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric2D).unwrap();
         approx_eq(tt.determinant(), -42.0, 1e-13);
+    }
+
+    fn check_inverse(tt: &Tensor2, tti: &Tensor2, tol: f64) {
+        let aa = tt.to_matrix();
+        let aai = tti.to_matrix();
+        let mut ii = Matrix::new(3, 3);
+        mat_mat_mul(&mut ii, 1.0, &aa, &aai).unwrap();
+        for i in 0..3 {
+            for j in 0..3 {
+                if i == j {
+                    approx_eq(ii.get(i, j), 1.0, tol);
+                } else {
+                    approx_eq(ii.get(i, j), 0.0, tol);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn inverse_works() {
+        // general with zero determinant
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, Mandel::General).unwrap();
+        let mut tti = Tensor2::new(Mandel::General);
+        let res = tt.inverse(&mut tti, 1e-10).unwrap();
+        assert_eq!(res, None);
+
+        // general with non-zero determinant
+        let s = &SamplesTensor2::TENSOR_T;
+        let tt = Tensor2::from_matrix(&s.matrix, Mandel::General).unwrap();
+        let mut tti = Tensor2::new(Mandel::General);
+        let res = tt.inverse(&mut tti, 1e-10).unwrap();
+        assert_eq!(res, Some(s.determinant));
+        check_inverse(&tt, &tti, 1e-15);
     }
 
     #[test]

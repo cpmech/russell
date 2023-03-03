@@ -1787,6 +1787,13 @@ mod tests {
         approx_eq(tt.determinant(), -42.0, 1e-13);
     }
 
+    #[test]
+    fn inverse_catches_errors() {
+        let tt = Tensor2::new(Mandel::General);
+        let mut dev = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(tt.inverse(&mut dev, 0.0).err(), Some("tensors are incompatible"));
+    }
+
     fn check_inverse(tt: &Tensor2, tti: &Tensor2, tol: f64) {
         let aa = tt.to_matrix();
         let aai = tti.to_matrix();

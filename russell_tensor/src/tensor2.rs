@@ -1832,9 +1832,23 @@ mod tests {
         let s = &SamplesTensor2::TENSOR_T;
         let tt = Tensor2::from_matrix(&s.matrix, Mandel::General).unwrap();
         let mut tti = Tensor2::new(Mandel::General);
-        let res = tt.inverse(&mut tti, 1e-10).unwrap();
-        assert_eq!(res, Some(s.determinant));
+        if let Some(det) = tt.inverse(&mut tti, 1e-10).unwrap() {
+            assert_eq!(det, s.determinant);
+        } else {
+            panic!("zero determinant found");
+        }
         check_inverse(&tt, &tti, 1e-15);
+
+        // symmetric 3D
+        let s = &SamplesTensor2::TENSOR_U;
+        let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric).unwrap();
+        let mut tti = Tensor2::new(Mandel::Symmetric);
+        if let Some(det) = tt.inverse(&mut tti, 1e-10).unwrap() {
+            approx_eq(det, s.determinant, 1e-14);
+        } else {
+            panic!("zero determinant found");
+        }
+        check_inverse(&tt, &tti, 1e-13);
     }
 
     #[test]

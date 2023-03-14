@@ -647,13 +647,17 @@ impl Tensor2 {
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
-    ///         [1.0, 2.0, 3.0],
-    ///         [4.0, 5.0, 6.0],
-    ///         [7.0, 8.0, 9.0],
+    ///         [6.0,  1.0,  2.0],
+    ///         [3.0, 12.0,  4.0],
+    ///         [5.0,  6.0, 15.0],
     ///     ], Mandel::General)?;
     ///
-    ///     if let Some(det) = a.inverse(&mut ai) {
-    ///         approx_eq(a.determinant(), det, 1e-13);
+    ///     let mut ai = Tensor2::new(Mandel::General);
+    ///
+    ///     if let Some(det) = a.inverse(&mut ai, 1e-10)? {
+    ///         assert_eq!(det, 827.0);
+    ///     } else {
+    ///         panic!("determinant is zero");
     ///     }
     ///
     ///     Ok(())

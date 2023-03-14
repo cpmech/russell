@@ -1849,6 +1849,17 @@ mod tests {
             panic!("zero determinant found");
         }
         check_inverse(&tt, &tti, 1e-13);
+
+        // symmetric 2D
+        let s = &SamplesTensor2::TENSOR_Y;
+        let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric).unwrap();
+        let mut tti = Tensor2::new(Mandel::Symmetric);
+        if let Some(det) = tt.inverse(&mut tti, 1e-10).unwrap() {
+            assert_eq!(det, s.determinant);
+        } else {
+            panic!("zero determinant found");
+        }
+        check_inverse(&tt, &tti, 1e-15);
     }
 
     #[test]

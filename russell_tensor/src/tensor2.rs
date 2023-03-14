@@ -1,6 +1,6 @@
 use super::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, SQRT_2};
 use crate::{Mandel, StrError, Tensor4, ONE_BY_3, SQRT_2_BY_3, SQRT_3_BY_2, SQRT_6};
-use russell_lab::{Matrix, Vector};
+use russell_lab::{vec_add, Matrix, Vector};
 use serde::{Deserialize, Serialize};
 
 /// Implements a second-order tensor, symmetric or not
@@ -1176,19 +1176,56 @@ impl Tensor2 {
         }
     }
 
-    pub fn deriv1_invariant_lode(&self, _ll: &mut Tensor2) {
-        /*
-        self.deviator(s);
-        s_mat = s.to_matrix();
-        mat_inverse(si_mat, s_mat);
-        si = Tensor2::from_matrix(&s_mat, case);
-        psi = si.deviator();
-        l = self.invariant_lode();
-        ns = self.deviator_norm();
-        m = 3 * l / (ns * ns);
-        vec_add(ll, l, psi.vec, -m, s.vec);
-        */
-        panic!("TODO");
+    /// Computes the first derivative of the Lode invariant
+    ///
+    /// ```text
+    /// σ represents this tensor
+    /// l is the Lode invariant
+    ///
+    /// s = dev(σ)
+    ///
+    /// ψ = dev(s⁻¹)
+    ///
+    /// m = 3 l / ‖s‖²
+    ///
+    ///      dl
+    /// L := ── = l ψ - m s
+    ///      dσ
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// * `ll` -- L = dl/dσ is the first derivative of the Lode invariant
+    /// * `s` -- s = dev(σ) is the deviator of σ (this tensor)
+    /// * `si` -- si = inverse(s) is the inverse of the deviator tensor
+    /// * `psi` -- psi = dev(inverse(s)) is the deviator of the inverse of the deviator tensor
+    /// * `tolerance` -- is a tolerance to compute the determinant of the deviator tensor
+    ///
+    /// # Returns
+    ///
+    /// * If the norm and determinant of `s` (deviator) are not null, returns the Lode invariant `l`
+    /// * Otherwise, returns None
+    pub fn deriv1_invariant_lode(
+        &self,
+        ll: &mut Tensor2,
+        s: &mut Tensor2,
+        si: &mut Tensor2,
+        psi: &mut Tensor2,
+        tolerance: f64,
+    ) -> Result<Option<f64>, StrError> {
+        let n = self.deviator_norm();
+        let nnn = n * n * n;
+        if f64::abs(nnn) > 0.0 {
+            self.deviator(s)?;
+            if let Some(det) = s.inverse(si, tolerance)? {
+                si.deviator(psi)?;
+                let l = 3.0 * SQRT_6 * det / nnn;
+                let m = 3.0 * l / (n * n);
+                vec_add(&mut ll.vec, l, &psi.vec, -m, &s.vec)?;
+                return Ok(Some(l));
+            }
+        }
+        Ok(None)
     }
 
     pub fn deriv2_invariant_sigma_m(&self, _d2: &mut Tensor4) {
@@ -2426,5 +2463,27 @@ mod tests {
         check_deriv1_sigma_d(Mandel::General, &SamplesTensor2::TENSOR_T, 1e-15, 1e-10, false);
         check_deriv1_sigma_d(Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-15, 1e-10, false);
         check_deriv1_sigma_d(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-15, 1e-11, false);
+    }
+
+    // -- deriv1_invariant_lode --------------------------------------------------------------------------
+    #[test]
+    fn deriv1_invariant_lode_works() {
+        // α = 30
+        let (l1, l2, l3) = (1.0, 0.0, 1.0);
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], Mandel::Symmetric2D).unwrap();
+        check_lode(tt.invariant_lode(), -1.0, 1e-15, false);
+        let mut ll = Tensor2::new(Mandel::Symmetric2D);
+        let mut s = Tensor2::new(Mandel::Symmetric2D);
+        let mut si = Tensor2::new(Mandel::Symmetric2D);
+        let mut psi = Tensor2::new(Mandel::Symmetric2D);
+        if let Some(l) = tt
+            .deriv1_invariant_lode(&mut ll, &mut s, &mut si, &mut psi, 1e-10)
+            .unwrap()
+        {
+            approx_eq(l, -1.0, 1e-15);
+            println!("L =\n{}", ll.to_matrix());
+        } else {
+            panic!("Lode invariant is None");
+        }
     }
 }

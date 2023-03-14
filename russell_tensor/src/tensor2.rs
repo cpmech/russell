@@ -1839,6 +1839,13 @@ mod tests {
         }
         check_inverse(&tt, &tti, 1e-15);
 
+        // symmetric 3D with zero determinant
+        let s = &SamplesTensor2::TENSOR_X;
+        let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric).unwrap();
+        let mut tti = Tensor2::new(Mandel::Symmetric);
+        let res = tt.inverse(&mut tti, 1e-10).unwrap();
+        assert_eq!(res, None);
+
         // symmetric 3D
         let s = &SamplesTensor2::TENSOR_U;
         let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric).unwrap();
@@ -1849,6 +1856,13 @@ mod tests {
             panic!("zero determinant found");
         }
         check_inverse(&tt, &tti, 1e-13);
+
+        // symmetric 2D with zero determinant
+        let s = &SamplesTensor2::TENSOR_X;
+        let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric2D).unwrap();
+        let mut tti = Tensor2::new(Mandel::Symmetric2D);
+        let res = tt.inverse(&mut tti, 1e-10).unwrap();
+        assert_eq!(res, None);
 
         // symmetric 2D
         let s = &SamplesTensor2::TENSOR_Y;

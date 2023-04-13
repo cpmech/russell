@@ -958,6 +958,36 @@ impl Tensor2 {
         }
     }
 
+    /// Computes the first derivative of the norm w.r.t. the defining tensor
+    ///
+    /// ```text
+    /// d‖σ‖    σ
+    /// ──── = ───
+    ///  dσ    ‖σ‖
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// * This function returns `Some(‖σ‖)` if ‖σ‖ > 0 and the computation was successful
+    /// * Otherwise, this function returns `None` and the derivative cannot be computed
+    ///   because the norm is zero
+    pub fn deriv1_norm(&self, d1: &mut Tensor2) -> Result<Option<f64>, StrError> {
+        let n = self.norm();
+        if n > 0.0 {
+            d1.mirror(self)?;
+            for i in 0..d1.vec.dim() {
+                d1.vec[i] /= n;
+            }
+            Ok(Some(n))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// --- CHARACTERISTIC INVARIANTS --------------------------------------------------------------------------------------
+
+    /// --- OCTAHEDRAL INVARIANTS ------------------------------------------------------------------------------------------
+
     /// Returns the mean pressure invariant
     ///
     /// ```text
@@ -1103,32 +1133,6 @@ impl Tensor2 {
             Some(3.0 * SQRT_6 * self.deviator_determinant() / nnn)
         } else {
             None
-        }
-    }
-
-    /// Computes the first derivative of the norm w.r.t. the defining tensor
-    ///
-    /// ```text
-    /// d‖σ‖    σ
-    /// ──── = ───
-    ///  dσ    ‖σ‖
-    /// ```
-    ///
-    /// # Output
-    ///
-    /// * This function returns `Some(‖σ‖)` if ‖σ‖ > 0 and the computation was successful
-    /// * Otherwise, this function returns `None` and the derivative cannot be computed
-    ///   because the norm is zero
-    pub fn deriv1_norm(&self, d1: &mut Tensor2) -> Result<Option<f64>, StrError> {
-        let n = self.norm();
-        if n > 0.0 {
-            d1.mirror(self)?;
-            for i in 0..d1.vec.dim() {
-                d1.vec[i] /= n;
-            }
-            Ok(Some(n))
-        } else {
-            Ok(None)
         }
     }
 

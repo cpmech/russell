@@ -629,7 +629,13 @@ impl Tensor2 {
 
     /// Calculates the inverse tensor
     ///
-    /// ## Input
+    /// ```text
+    /// A⁻¹ = inverse(A)
+    ///
+    /// A · A⁻¹ = I
+    /// ```
+    ///
+    /// ## Input/Output
     ///
     /// * `ai` -- a Tensor2 with matching dimensions to hold the inverse tensor
     /// * `tolerance` -- a tolerance for the determinant such that the inverse is computed only if |det| > tolerance
@@ -643,6 +649,7 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_chk::approx_eq;
+    /// use russell_lab::{mat_approx_eq, mat_mat_mul, Matrix};
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -659,6 +666,14 @@ impl Tensor2 {
     ///     } else {
     ///         panic!("determinant is zero");
     ///     }
+    ///
+    ///     let a_mat = a.to_matrix();
+    ///     let ai_mat = ai.to_matrix();
+    ///     let mut a_times_ai = Matrix::new(3, 3);
+    ///     mat_mat_mul(&mut a_times_ai, 1.0, &a_mat, &ai_mat)?;
+    ///
+    ///     let ii = Matrix::diagonal(&[1.0, 1.0, 1.0]);
+    ///     mat_approx_eq(&a_times_ai, &ii, 1e-15);
     ///
     ///     Ok(())
     /// }
@@ -722,6 +737,41 @@ impl Tensor2 {
     }
 
     /// Calculates the squared tensor
+    ///
+    /// ```text
+    /// A² = A · A
+    /// ```
+    ///
+    /// ## Input/Output
+    ///
+    /// * `a2` -- a Tensor2 with matching dimensions to hold the squared tensor
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::vec_approx_eq;
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [10.0, 20.0, 10.0],
+    ///         [ 4.0,  5.0,  6.0],
+    ///         [ 2.0,  3.0,  5.0],
+    ///     ], Mandel::General)?;
+    ///
+    ///     let mut a2 = Tensor2::new(Mandel::General);
+    ///     a.squared(&mut a2)?;
+    ///
+    ///     let a2_correct = Tensor2::from_matrix(&[
+    ///         [200.0, 330.0, 270.0],
+    ///         [ 72.0, 123.0, 100.0],
+    ///         [ 42.0,  70.0,  63.0],
+    ///     ], Mandel::General)?;
+    ///     vec_approx_eq(&a2.vec.as_data(), &a2_correct.vec.as_data(), 1e-13);
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn squared(&self, a2: &mut Tensor2) -> Result<(), StrError> {
         let dim = self.vec.dim();
         if a2.vec.dim() != dim {
@@ -1919,8 +1969,8 @@ mod tests {
     #[test]
     fn inverse_catches_errors() {
         let tt = Tensor2::new(Mandel::General);
-        let mut dev = Tensor2::new(Mandel::Symmetric);
-        assert_eq!(tt.inverse(&mut dev, 0.0).err(), Some("tensors are incompatible"));
+        let mut tti = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(tt.inverse(&mut tti, 0.0).err(), Some("tensors are incompatible"));
     }
 
     fn check_inverse(tt: &Tensor2, tti: &Tensor2, tol: f64) {
@@ -1999,6 +2049,45 @@ mod tests {
             panic!("zero determinant found");
         }
         check_inverse(&tt, &tti, 1e-15);
+    }
+
+    #[test]
+    fn squared_catches_errors() {
+        let tt = Tensor2::new(Mandel::General);
+        let mut tt2 = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(tt.squared(&mut tt2).err(), Some("tensors are incompatible"));
+    }
+
+    fn check_squared(tt: &Tensor2, tt2: &Tensor2, tol: f64) {
+        let aa = tt.to_matrix();
+        let aa2 = tt2.to_matrix();
+        let mut aa2_correct = Matrix::new(3, 3);
+        mat_mat_mul(&mut aa2_correct, 1.0, &aa, &aa).unwrap();
+        mat_approx_eq(&aa2, &aa2_correct, tol);
+    }
+
+    #[test]
+    fn squared_works() {
+        // general
+        let s = &SamplesTensor2::TENSOR_T;
+        let tt = Tensor2::from_matrix(&s.matrix, Mandel::General).unwrap();
+        let mut tt2 = Tensor2::new(Mandel::General);
+        tt.squared(&mut tt2).unwrap();
+        check_squared(&tt, &tt2, 1e-13);
+
+        // symmetric 3D
+        let s = &SamplesTensor2::TENSOR_U;
+        let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric).unwrap();
+        let mut tt2 = Tensor2::new(Mandel::Symmetric);
+        tt.squared(&mut tt2).unwrap();
+        check_squared(&tt, &tt2, 1e-14);
+
+        // symmetric 2D
+        let s = &SamplesTensor2::TENSOR_Y;
+        let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric2D).unwrap();
+        let mut tt2 = Tensor2::new(Mandel::Symmetric2D);
+        tt.squared(&mut tt2).unwrap();
+        check_squared(&tt, &tt2, 1e-15);
     }
 
     #[test]

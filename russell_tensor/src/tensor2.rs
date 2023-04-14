@@ -1005,18 +1005,18 @@ impl Tensor2 {
     /// ```
     pub fn deviator_norm(&self) -> f64 {
         let a = &self.vec;
-        let mut sm = a[3] * a[3]
+        let mut sq_norm_s = a[3] * a[3]
             + (a[0] - a[1]) * (a[0] - a[1]) / 3.0
             + (a[1] - a[2]) * (a[1] - a[2]) / 3.0
             + (a[2] - a[0]) * (a[2] - a[0]) / 3.0;
         let dim = a.dim();
         if dim > 4 {
-            sm += a[4] * a[4] + a[5] * a[5];
+            sq_norm_s += a[4] * a[4] + a[5] * a[5];
         }
         if dim > 6 {
-            sm += a[6] * a[6] + a[7] * a[7] + a[8] * a[8];
+            sq_norm_s += a[6] * a[6] + a[7] * a[7] + a[8] * a[8];
         }
-        f64::sqrt(sm)
+        f64::sqrt(sq_norm_s)
     }
 
     /// Calculates the determinant of the deviator tensor

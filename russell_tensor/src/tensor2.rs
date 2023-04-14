@@ -1109,10 +1109,21 @@ impl Tensor2 {
 
     /// --- PRINCIPAL INVARIANTS -------------------------------------------------------------------------------------------
 
+    /// Calculates I1, the first principal invariant
+    ///
+    /// ```text
+    /// I1 = trace(σ)
+    /// ```
+    #[inline]
     pub fn invariant_ii1(&self) -> f64 {
         self.trace()
     }
 
+    /// Calculates I2, the second principal invariant
+    ///
+    /// ```text
+    /// I2 = ½ (trace(σ))² - ½ trace(σ·σ)
+    /// ```
     pub fn invariant_ii2(&self) -> f64 {
         let a = &self.vec;
         let mut ii2 = a[0] * a[1] + a[0] * a[2] + a[1] * a[2] - a[3] * a[3] / 2.0;
@@ -1126,14 +1137,35 @@ impl Tensor2 {
         ii2
     }
 
+    /// Calculates I3, the third principal invariant
+    ///
+    /// ```text
+    /// I3 = determinant(σ)
+    /// ```
+    #[inline]
     pub fn invariant_ii3(&self) -> f64 {
         self.determinant()
     }
 
+    /// Calculates J1, the first invariant of the deviatoric tensor corresponding to this tensor
+    ///
+    /// ```text
+    /// s = deviator(σ)
+    ///
+    /// J1 = trace(s) = 0
+    /// ```
+    #[inline]
     pub fn invariant_jj1(&self) -> f64 {
         0.0
     }
 
+    /// Calculates J2, the second invariant of the deviatoric tensor corresponding to this tensor
+    ///
+    /// ```text
+    /// s = deviator(σ)
+    ///
+    /// J2 = ½ ‖s‖²
+    /// ```
     pub fn invariant_jj2(&self) -> f64 {
         let a = &self.vec;
         let mut sq_norm_s = a[3] * a[3]
@@ -1150,6 +1182,14 @@ impl Tensor2 {
         sq_norm_s / 2.0
     }
 
+    /// Calculates J3, the second invariant of the deviatoric tensor corresponding to this tensor
+    ///
+    /// ```text
+    /// s = deviator(σ)
+    ///
+    /// J3 = determinant(s)
+    /// ```
+    #[inline]
     pub fn invariant_jj3(&self) -> f64 {
         self.deviator_determinant()
     }

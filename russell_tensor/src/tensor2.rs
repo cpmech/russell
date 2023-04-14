@@ -1004,16 +1004,17 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn deviator_norm(&self) -> f64 {
-        let mut sm = self.vec[3] * self.vec[3]
-            + (self.vec[0] - self.vec[1]) * (self.vec[0] - self.vec[1]) / 3.0
-            + (self.vec[1] - self.vec[2]) * (self.vec[1] - self.vec[2]) / 3.0
-            + (self.vec[2] - self.vec[0]) * (self.vec[2] - self.vec[0]) / 3.0;
-        let dim = self.vec.dim();
+        let a = &self.vec;
+        let mut sm = a[3] * a[3]
+            + (a[0] - a[1]) * (a[0] - a[1]) / 3.0
+            + (a[1] - a[2]) * (a[1] - a[2]) / 3.0
+            + (a[2] - a[0]) * (a[2] - a[0]) / 3.0;
+        let dim = a.dim();
         if dim > 4 {
-            sm += self.vec[4] * self.vec[4] + self.vec[5] * self.vec[5];
+            sm += a[4] * a[4] + a[5] * a[5];
         }
         if dim > 6 {
-            sm += self.vec[6] * self.vec[6] + self.vec[7] * self.vec[7] + self.vec[8] * self.vec[8];
+            sm += a[6] * a[6] + a[7] * a[7] + a[8] * a[8];
         }
         f64::sqrt(sm)
     }
@@ -1108,16 +1109,49 @@ impl Tensor2 {
 
     /// --- PRINCIPAL INVARIANTS -------------------------------------------------------------------------------------------
 
-    pub fn invariant_principal_1(&self) -> f64 {
+    pub fn invariant_ii1(&self) -> f64 {
         self.trace()
     }
 
-    pub fn invariant_principal_2(&self) -> f64 {
+    pub fn invariant_ii2(&self) -> f64 {
+        let a = &self.vec;
+        let mut ii2 = a[0] * a[1] + a[0] * a[2] + a[1] * a[2] - a[3] * a[3] / 2.0;
+        let dim = self.vec.dim();
+        if dim > 4 {
+            ii2 -= (a[4] * a[4] + a[5] * a[5]) / 2.0;
+        }
+        if dim > 6 {
+            ii2 += (a[6] * a[6] + a[7] * a[7] + a[8] * a[8]) / 2.0;
+        }
+        ii2
+    }
+
+    pub fn invariant_ii3(&self) -> f64 {
+        self.determinant()
+    }
+
+    pub fn invariant_jj1(&self) -> f64 {
         0.0
     }
 
-    pub fn invariant_principal_3(&self) -> f64 {
-        self.determinant()
+    pub fn invariant_jj2(&self) -> f64 {
+        let a = &self.vec;
+        let mut sq_norm_s = a[3] * a[3]
+            + (a[0] - a[1]) * (a[0] - a[1]) / 3.0
+            + (a[1] - a[2]) * (a[1] - a[2]) / 3.0
+            + (a[2] - a[0]) * (a[2] - a[0]) / 3.0;
+        let dim = a.dim();
+        if dim > 4 {
+            sq_norm_s += a[4] * a[4] + a[5] * a[5];
+        }
+        if dim > 6 {
+            sq_norm_s += a[6] * a[6] + a[7] * a[7] + a[8] * a[8];
+        }
+        sq_norm_s / 2.0
+    }
+
+    pub fn invariant_jj3(&self) -> f64 {
+        self.deviator_determinant()
     }
 
     /// --- OCTAHEDRAL INVARIANTS ------------------------------------------------------------------------------------------

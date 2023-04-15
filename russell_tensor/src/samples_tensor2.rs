@@ -14,14 +14,20 @@ pub struct SampleTensor2 {
     /// Holds the Frobenius norm of the corresponding matrix representation
     pub norm: f64,
 
-    /// Holds the trace
+    /// Holds the trace (equals the first invariant Iᴛ)
     pub trace: f64,
 
-    /// Holds the determinant of the corresponding matrix representation
+    /// Holds the second principal invariant IIᴛ
+    pub second_invariant: f64,
+
+    /// Holds the determinant of the corresponding matrix representation (equals the third invariant IIIᴛ)
     pub determinant: f64,
 
     /// Holds the Frobenius norm of deviator tensor
     pub deviator_norm: f64,
+
+    /// Holds the second principal invariant IIᴛ of the deviator tensor
+    pub deviator_second_invariant: f64,
 
     /// Holds the determinant of the deviator tensor
     pub deviator_determinant: f64,
@@ -44,8 +50,10 @@ impl SamplesTensor2 {
         deviator: [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
         norm: 0.0,
         trace: 0.0,
+        second_invariant: 0.0,
         determinant: 0.0,
         deviator_norm: 0.0,
+        deviator_second_invariant: 0.0,
         deviator_determinant: 0.0,
         eigenvalues: Some([0.0, 0.0, 0.0]),
         eigenprojectors: Some([
@@ -62,8 +70,10 @@ impl SamplesTensor2 {
         deviator: [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
         norm: SQRT_3,
         trace: 3.0,
+        second_invariant: 3.0,
         determinant: 1.0,
         deviator_norm: 0.0,
+        deviator_second_invariant: 0.0,
         deviator_determinant: 0.0,
         eigenvalues: Some([1.0, 1.0, 1.0]),
         eigenprojectors: Some([
@@ -80,8 +90,10 @@ impl SamplesTensor2 {
         deviator: [[10.0 / 3.0, 2.0, 0.0], [2.0, 1.0 / 3.0, 0.0], [0.0, 0.0, -11.0 / 3.0]],
         norm: 8.54400374531753, // f64::sqrt(73.0)
         trace: 11.0,
+        second_invariant: 24.0,
         determinant: 0.0,
         deviator_norm: 7.0 * SQRT_2_BY_3,
+        deviator_second_invariant: -49.0 / 3.0,
         deviator_determinant: 286.0 / 27.0,
         eigenvalues: Some([8.0, 3.0, 0.0]),
         eigenprojectors: Some([
@@ -106,8 +118,10 @@ impl SamplesTensor2 {
         deviator: [[3.0, 3.0, 0.0], [3.0, -4.0, 0.0], [0.0, 0.0, 1.0]],
         norm: 15.3622914957372, // 2.0 * f64::sqrt(59.0)
         trace: 24.0,
+        second_invariant: 170.0,
         determinant: 315.0,
         deviator_norm: 6.6332495807108, // 2.0 * f64::sqrt(11.0)
+        deviator_second_invariant: -22.0,
         deviator_determinant: -21.0,
         eigenvalues: Some([12.1097722286464, 2.89022777135355, 9.0]),
         eigenprojectors: Some([
@@ -132,8 +146,10 @@ impl SamplesTensor2 {
         deviator: [[-5.0 / 3.0, 2.0, 0.0], [2.0, 1.0 / 3.0, 0.0], [0.0, 0.0, 4.0 / 3.0]],
         norm: 5.8309518948453, // f64::sqrt(34.0)
         trace: 8.0,
+        second_invariant: 15.0,
         determinant: -4.0,
         deviator_norm: 3.55902608401044, // f64::sqrt(38.0 / 3.0)
+        deviator_second_invariant: -19.0 / 3.0,
         deviator_determinant: -164.0 / 27.0,
         eigenvalues: Some([-0.23606797749978803, 4.23606797749979, 4.0]),
         eigenprojectors: Some([
@@ -158,8 +174,10 @@ impl SamplesTensor2 {
         deviator: [[-8.0 / 3.0, 2.0, 3.0], [2.0, 1.0 / 3.0, 5.0], [3.0, 5.0, 7.0 / 3.0]],
         norm: 11.3578166916005, // f64::sqrt(129.0)
         trace: 11.0,
+        second_invariant: -4.0,
         determinant: -1.0,
         deviator_norm: 9.41629792788369, // f64::sqrt(266.0 / 3.0)
+        deviator_second_invariant: -133.0 / 3.0,
         deviator_determinant: 3031.0 / 27.0,
         eigenvalues: Some([0.170915188827179, -0.515729471589257, 11.3448142827621]),
         eigenprojectors: Some([
@@ -188,8 +206,10 @@ impl SamplesTensor2 {
         deviator: [[1.0, 4.0, 3.0], [4.0, 2.0, 1.0], [3.0, 1.0, -3.0]],
         norm: 10.6770782520313, // f64::sqrt(114.0)
         trace: 12.0,
+        second_invariant: 15.0,
         determinant: -21.0,
         deviator_norm: 8.12403840463596, // f64::sqrt(66.0)
+        deviator_second_invariant: -33.0,
         deviator_determinant: 47.0,
         eigenvalues: Some([2.46647252957463, 10.3557010334017, -0.822173562976294]),
         eigenprojectors: Some([
@@ -218,8 +238,10 @@ impl SamplesTensor2 {
         deviator: [[-4.0, 2.0, 3.0], [4.0, 0.0, 6.0], [7.0, 8.0, 4.0]],
         norm: 16.8819430161341, // f64::sqrt(285.0)
         trace: 15.0,
+        second_invariant: -18.0,
         determinant: 0.0,
         deviator_norm: 14.4913767461894, // f64::sqrt(210.0)
+        deviator_second_invariant: -93.0,
         deviator_determinant: 340.0,
         eigenvalues: None,
         eigenprojectors: None,
@@ -232,8 +254,10 @@ impl SamplesTensor2 {
         deviator: [[-5.0, 1.0, 2.0], [3.0, 1.0, 4.0], [5.0, 6.0, 4.0]],
         norm: 22.2710574513201, // 4.0 * f64::sqrt(31.0)
         trace: 33.0,
+        second_invariant: 305.0,
         determinant: 827.0,
         deviator_norm: 11.5325625946708, // f64::sqrt(133.0)
+        deviator_second_invariant: -58.0,
         deviator_determinant: 134.0,
         eigenvalues: None,
         eigenprojectors: None,

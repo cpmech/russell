@@ -1019,6 +1019,32 @@ impl Tensor2 {
         f64::sqrt(sq_norm_s)
     }
 
+    /// Computes the first derivative of the norm w.r.t. the defining tensor
+    ///
+    /// ```text
+    /// d‖σ‖    σ
+    /// ──── = ───
+    ///  dσ    ‖σ‖
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// * This function returns `Some(‖σ‖)` if ‖σ‖ > 0 and the computation was successful
+    /// * Otherwise, this function returns `None` and the derivative cannot be computed
+    ///   because the norm is zero
+    pub fn deriv1_norm(&self, d1: &mut Tensor2) -> Result<Option<f64>, StrError> {
+        let n = self.norm();
+        if n > 0.0 {
+            d1.mirror(self)?;
+            for i in 0..d1.vec.dim() {
+                d1.vec[i] /= n;
+            }
+            Ok(Some(n))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Calculates the determinant of the deviator tensor
     ///
     /// ```text
@@ -1079,40 +1105,29 @@ impl Tensor2 {
         }
     }
 
-    /// --- DERIVATIVES ----------------------------------------------------------------------------------------------------
-
-    /// Computes the first derivative of the norm w.r.t. the defining tensor
-    ///
-    /// ```text
-    /// d‖σ‖    σ
-    /// ──── = ───
-    ///  dσ    ‖σ‖
-    /// ```
-    ///
-    /// # Output
-    ///
-    /// * This function returns `Some(‖σ‖)` if ‖σ‖ > 0 and the computation was successful
-    /// * Otherwise, this function returns `None` and the derivative cannot be computed
-    ///   because the norm is zero
-    pub fn deriv1_norm(&self, d1: &mut Tensor2) -> Result<Option<f64>, StrError> {
-        let n = self.norm();
-        if n > 0.0 {
-            d1.mirror(self)?;
-            for i in 0..d1.vec.dim() {
-                d1.vec[i] /= n;
-            }
-            Ok(Some(n))
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// --- PRINCIPAL INVARIANTS -------------------------------------------------------------------------------------------
+    // --- PRINCIPAL INVARIANTS -------------------------------------------------------------------------------------------
 
     /// Calculates I1, the first principal invariant
     ///
     /// ```text
     /// I1 = trace(σ)
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::approx_eq;
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let sig = Tensor2::from_matrix(&[
+    ///         [50.0,  30.0,  20.0],
+    ///         [30.0, -20.0, -10.0],
+    ///         [20.0, -10.0,  10.0]
+    ///     ], Mandel::General)?;
+    ///     approx_eq(sig.invariant_ii1(), 40.0, 1e-15);
+    ///     Ok(())
+    /// }
     /// ```
     #[inline]
     pub fn invariant_ii1(&self) -> f64 {
@@ -1123,6 +1138,23 @@ impl Tensor2 {
     ///
     /// ```text
     /// I2 = ½ (trace(σ))² - ½ trace(σ·σ)
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::approx_eq;
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let sig = Tensor2::from_matrix(&[
+    ///         [50.0,  30.0,  20.0],
+    ///         [30.0, -20.0, -10.0],
+    ///         [20.0, -10.0,  10.0]
+    ///     ], Mandel::General)?;
+    ///     approx_eq(sig.invariant_ii2(), -2100.0, 1e-12);
+    ///     Ok(())
+    /// }
     /// ```
     pub fn invariant_ii2(&self) -> f64 {
         let a = &self.vec;
@@ -1142,6 +1174,23 @@ impl Tensor2 {
     /// ```text
     /// I3 = determinant(σ)
     /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::approx_eq;
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let sig = Tensor2::from_matrix(&[
+    ///         [50.0,  30.0,  20.0],
+    ///         [30.0, -20.0, -10.0],
+    ///         [20.0, -10.0,  10.0]
+    ///     ], Mandel::General)?;
+    ///     approx_eq(sig.invariant_ii3(), -28000.0, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     #[inline]
     pub fn invariant_ii3(&self) -> f64 {
         self.determinant()
@@ -1152,7 +1201,7 @@ impl Tensor2 {
     /// ```text
     /// s = deviator(σ)
     ///
-    /// J1 = trace(s) = 0
+    /// J1 = Iₛ = trace(s) = 0
     /// ```
     #[inline]
     pub fn invariant_jj1(&self) -> f64 {
@@ -1164,22 +1213,27 @@ impl Tensor2 {
     /// ```text
     /// s = deviator(σ)
     ///
-    /// J2 = ½ ‖s‖²
+    /// J2 = -IIₛ = ½ trace(s·s)
     /// ```
     pub fn invariant_jj2(&self) -> f64 {
         let a = &self.vec;
-        let mut sq_norm_s = a[3] * a[3]
-            + (a[0] - a[1]) * (a[0] - a[1]) / 3.0
-            + (a[1] - a[2]) * (a[1] - a[2]) / 3.0
-            + (a[2] - a[0]) * (a[2] - a[0]) / 3.0;
-        let dim = a.dim();
-        if dim > 4 {
-            sq_norm_s += a[4] * a[4] + a[5] * a[5];
+        match self.vec.dim() {
+            4 => {
+                (2.0 * (a[0] * a[0] + a[1] * a[1] - a[1] * a[2] + a[2] * a[2] - a[0] * (a[1] + a[2]))
+                    + 3.0 * a[3] * a[3])
+                    / 6.0
+            }
+            6 => {
+                (2.0 * (a[0] * a[0] + a[1] * a[1] - a[1] * a[2] + a[2] * a[2] - a[0] * (a[1] + a[2]))
+                    + 3.0 * (a[3] * a[3] + a[4] * a[4] + a[5] * a[5]))
+                    / 6.0
+            }
+            _ => {
+                (2.0 * (a[0] * a[0] + a[1] * a[1] - a[1] * a[2] + a[2] * a[2] - a[0] * (a[1] + a[2]))
+                    + 3.0 * (a[3] * a[3] + a[4] * a[4] + a[5] * a[5] - a[6] * a[6] - a[7] * a[7] - a[8] * a[8]))
+                    / 6.0
+            }
         }
-        if dim > 6 {
-            sq_norm_s += a[6] * a[6] + a[7] * a[7] + a[8] * a[8];
-        }
-        sq_norm_s / 2.0
     }
 
     /// Calculates J3, the second invariant of the deviatoric tensor corresponding to this tensor
@@ -1187,14 +1241,14 @@ impl Tensor2 {
     /// ```text
     /// s = deviator(σ)
     ///
-    /// J3 = determinant(s)
+    /// J3 = IIIₛ = determinant(s)
     /// ```
     #[inline]
     pub fn invariant_jj3(&self) -> f64 {
         self.deviator_determinant()
     }
 
-    /// --- OCTAHEDRAL INVARIANTS ------------------------------------------------------------------------------------------
+    // --- OCTAHEDRAL INVARIANTS ------------------------------------------------------------------------------------------
 
     /// Returns the mean pressure invariant
     ///
@@ -2319,7 +2373,7 @@ mod tests {
 
     #[test]
     #[rustfmt::skip]
-    fn prop_functions_are_correct() {
+    fn properties_are_correct() {
         let verb = false;
         //                                                       norm   trace  det dev_norm dev_det
         check_sample(&SamplesTensor2::TENSOR_O, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15, verb);
@@ -2351,6 +2405,147 @@ mod tests {
         check_sample(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14, verb);
     }
 
+    // -- deriv1_norm ---------------------------------------------------------------------------------------
+
+    // Holds arguments for numerical differentiation of a scalar f(σ) w.r.t. σₘ with m being the Mandel index
+    struct ArgsNumDeriv1 {
+        at_sigma: Tensor2,   // @ σ value
+        temp_sigma: Tensor2, // temporary σ
+        m: usize,            // index i of ∂f/∂σₘ
+    }
+
+    #[test]
+    fn deriv1_norm_captures_errors() {
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::General).unwrap();
+        let mut d1 = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(sigma.deriv1_norm(&mut d1).err(), Some("tensors are incompatible"));
+    }
+
+    #[test]
+    fn deriv1_norm_handles_indeterminate_case() {
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_O.matrix, Mandel::General).unwrap();
+        let mut d1 = Tensor2::new(Mandel::General);
+        assert_eq!(sigma.deriv1_norm(&mut d1), Ok(None));
+    }
+
+    // Computes ‖σ‖ for varying v_mandel := MandelComponent(σᵢⱼ)
+    fn norm_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDeriv1) -> f64 {
+        args.temp_sigma.mirror(&args.at_sigma).unwrap();
+        args.temp_sigma.vec[args.m] = v_mandel;
+        args.temp_sigma.norm()
+    }
+
+    // Checks first the derivative of ‖σ‖ w.r.t. σ
+    fn check_deriv1_norm(case: Mandel, sample: &SampleTensor2, tol: f64, tol_num: f64, verbose: bool) {
+        // compare with correct solution
+        let mat = sample.matrix;
+        let norm = sample.norm;
+        let correct = Matrix::from(&[
+            [mat[0][0] / norm, mat[0][1] / norm, mat[0][2] / norm],
+            [mat[1][0] / norm, mat[1][1] / norm, mat[1][2] / norm],
+            [mat[2][0] / norm, mat[2][1] / norm, mat[2][2] / norm],
+        ]);
+        let sigma = Tensor2::from_matrix(&sample.matrix, case).unwrap();
+        let mut ana_deriv = Tensor2::new(case);
+        sigma.deriv1_norm(&mut ana_deriv).unwrap();
+        if verbose {
+            println!("analytical d‖σ‖/dσ =\n{}", ana_deriv.to_matrix());
+            println!("correct d‖σ‖/dσ =\n{}", correct);
+        }
+        mat_approx_eq(&ana_deriv.to_matrix(), &correct, tol);
+
+        // compare with numerical derivative
+        let mut args = ArgsNumDeriv1 {
+            at_sigma: Tensor2::from_matrix(&sample.matrix, case).unwrap(),
+            temp_sigma: Tensor2::new(case),
+            m: 0,
+        };
+        let mut num_deriv = Tensor2::new(case);
+        for m in 0..ana_deriv.vec.dim() {
+            args.m = m;
+            let res = deriv_central5(args.at_sigma.vec[m], &mut args, norm_given_sigma_mandel);
+            num_deriv.vec[m] = res;
+        }
+        if verbose {
+            println!("numerical d‖σ‖/dσ =\n{}", num_deriv.to_matrix());
+        }
+        vec_approx_eq(ana_deriv.vec.as_data(), num_deriv.vec.as_data(), tol_num);
+    }
+
+    #[test]
+    fn deriv1_norm_works() {
+        check_deriv1_norm(Mandel::General, &SamplesTensor2::TENSOR_T, 1e-15, 1e-10, false);
+        check_deriv1_norm(Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-15, 1e-10, false);
+        check_deriv1_norm(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-15, 1e-10, false);
+    }
+
+    /// --- PRINCIPAL INVARIANTS -------------------------------------------------------------------------------------------
+
+    fn check_iis(sample: &SampleTensor2, case: Mandel, tol_a: f64, tol_b: f64, tol_c: f64, tol_d: f64, verbose: bool) {
+        let tt = Tensor2::from_matrix(&sample.matrix, case).unwrap();
+        let jj2 = -sample.deviator_second_invariant;
+        let jj3 = sample.deviator_determinant;
+        if verbose {
+            println!("{}", sample.desc);
+            println!("    err(I1) = {:?}", f64::abs(tt.invariant_ii1() - sample.trace));
+            println!(
+                "    err(I2) = {:?}",
+                f64::abs(tt.invariant_ii2() - sample.second_invariant)
+            );
+            println!("    err(I3) = {:?}", f64::abs(tt.invariant_ii3() - sample.determinant));
+            println!("    err(J1) = {:?}", f64::abs(tt.invariant_jj1() - 0.0));
+            println!("    err(J2) = {:?}", f64::abs(tt.invariant_jj2() - jj2));
+            println!("    err(J3) = {:?}", f64::abs(tt.invariant_jj3() - jj3));
+            if case.symmetric() {
+                let norm_s = tt.deviator_norm();
+                println!("    err(J2 - ½‖s‖²) = {:?}", f64::abs(jj2 - norm_s * norm_s / 2.0));
+            }
+        }
+        approx_eq(tt.invariant_ii1(), sample.trace, tol_a);
+        approx_eq(tt.invariant_ii2(), sample.second_invariant, tol_b);
+        approx_eq(tt.invariant_ii3(), sample.determinant, tol_b);
+        assert_eq!(tt.invariant_jj1(), 0.0);
+        approx_eq(tt.invariant_jj2(), jj2, tol_c);
+        approx_eq(tt.invariant_jj3(), jj3, tol_c);
+        if case.symmetric() {
+            let norm_s = tt.deviator_norm();
+            approx_eq(jj2, norm_s * norm_s / 2.0, tol_d);
+        }
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn principal_invariants_are_correct() {
+        let verb = false;
+        check_iis(&SamplesTensor2::TENSOR_O, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_iis(&SamplesTensor2::TENSOR_I, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_iis(&SamplesTensor2::TENSOR_X, Mandel::General, 1e-15, 1e-15, 1e-13, 1e-13, verb);
+        check_iis(&SamplesTensor2::TENSOR_Y, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_iis(&SamplesTensor2::TENSOR_Z, Mandel::General, 1e-15, 1e-14, 1e-15, 1e-15, verb);
+        check_iis(&SamplesTensor2::TENSOR_U, Mandel::General, 1e-15, 1e-14, 1e-13, 1e-13, verb);
+        check_iis(&SamplesTensor2::TENSOR_S, Mandel::General, 1e-15, 1e-14, 1e-13, 1e-13, verb);
+        check_iis(&SamplesTensor2::TENSOR_R, Mandel::General, 1e-15, 1e-13, 1e-15, 1e-15, verb);
+        check_iis(&SamplesTensor2::TENSOR_T, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+
+        let verb = false;
+        check_iis(&SamplesTensor2::TENSOR_O, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_iis(&SamplesTensor2::TENSOR_I, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_iis(&SamplesTensor2::TENSOR_X, Mandel::Symmetric, 1e-15, 1e-15, 1e-13, 1e-15, verb);
+        check_iis(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric, 1e-13, 1e-15, 1e-15, 1e-15, verb);
+        check_iis(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric, 1e-15, 1e-14, 1e-14, 1e-15, verb);
+        check_iis(&SamplesTensor2::TENSOR_U, Mandel::Symmetric, 1e-15, 1e-14, 1e-13, 1e-13, verb);
+        check_iis(&SamplesTensor2::TENSOR_S, Mandel::Symmetric, 1e-15, 1e-14, 1e-13, 1e-14, verb);
+
+        let verb = false;
+        check_iis(&SamplesTensor2::TENSOR_O, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_iis(&SamplesTensor2::TENSOR_I, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_iis(&SamplesTensor2::TENSOR_X, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-13, 1e-15, verb);
+        check_iis(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_iis(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric2D, 1e-15, 1e-14, 1e-15, 1e-15, verb);
+    }
+
+    /// --- OCTAHEDRAL INVARIANTS ------------------------------------------------------------------------------------------
+
     fn alpha_deg(l1: f64, l2: f64, l3: f64) -> f64 {
         f64::atan2(2.0 * l1 - l2 - l3, (l3 - l2) * SQRT_3) * 180.0 / PI
     }
@@ -2373,7 +2568,7 @@ mod tests {
     }
 
     #[test]
-    fn invariants_are_correct() {
+    fn octahedral_invariants_are_correct() {
         let c = Mandel::Symmetric;
         let sigma_d_1 = SQRT_3 / 2.0; // sqrt(((0.5+0.5)² + (0.5)² + (-0.5)²)/3) * sqrt(3/2)
         let eps_d_1 = 1.0 / SQRT_3; // sqrt(((0.5+0.5)² + (0.5)² + (-0.5)²)/3) * sqrt(2/3)
@@ -2516,80 +2711,6 @@ mod tests {
         check_lode(tt.invariant_lode(), -1.0, 1e-7, false);
     }
 
-    // Holds arguments for numerical differentiation of a scalar f(σ) w.r.t. σₘ with m being the Mandel index
-    struct ArgsNumDeriv1 {
-        at_sigma: Tensor2,   // @ σ value
-        temp_sigma: Tensor2, // temporary σ
-        m: usize,            // index i of ∂f/∂σₘ
-    }
-
-    // -- deriv1_norm ---------------------------------------------------------------------------------------
-
-    #[test]
-    fn deriv1_norm_captures_errors() {
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::General).unwrap();
-        let mut d1 = Tensor2::new(Mandel::Symmetric);
-        assert_eq!(sigma.deriv1_norm(&mut d1).err(), Some("tensors are incompatible"));
-    }
-
-    #[test]
-    fn deriv1_norm_handles_indeterminate_case() {
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_O.matrix, Mandel::General).unwrap();
-        let mut d1 = Tensor2::new(Mandel::General);
-        assert_eq!(sigma.deriv1_norm(&mut d1), Ok(None));
-    }
-
-    // Computes ‖σ‖ for varying v_mandel := MandelComponent(σᵢⱼ)
-    fn norm_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDeriv1) -> f64 {
-        args.temp_sigma.mirror(&args.at_sigma).unwrap();
-        args.temp_sigma.vec[args.m] = v_mandel;
-        args.temp_sigma.norm()
-    }
-
-    // Checks first the derivative of ‖σ‖ w.r.t. σ
-    fn check_deriv1_norm(case: Mandel, sample: &SampleTensor2, tol: f64, tol_num: f64, verbose: bool) {
-        // compare with correct solution
-        let mat = sample.matrix;
-        let norm = sample.norm;
-        let correct = Matrix::from(&[
-            [mat[0][0] / norm, mat[0][1] / norm, mat[0][2] / norm],
-            [mat[1][0] / norm, mat[1][1] / norm, mat[1][2] / norm],
-            [mat[2][0] / norm, mat[2][1] / norm, mat[2][2] / norm],
-        ]);
-        let sigma = Tensor2::from_matrix(&sample.matrix, case).unwrap();
-        let mut ana_deriv = Tensor2::new(case);
-        sigma.deriv1_norm(&mut ana_deriv).unwrap();
-        if verbose {
-            println!("analytical d‖σ‖/dσ =\n{}", ana_deriv.to_matrix());
-            println!("correct d‖σ‖/dσ =\n{}", correct);
-        }
-        mat_approx_eq(&ana_deriv.to_matrix(), &correct, tol);
-
-        // compare with numerical derivative
-        let mut args = ArgsNumDeriv1 {
-            at_sigma: Tensor2::from_matrix(&sample.matrix, case).unwrap(),
-            temp_sigma: Tensor2::new(case),
-            m: 0,
-        };
-        let mut num_deriv = Tensor2::new(case);
-        for m in 0..ana_deriv.vec.dim() {
-            args.m = m;
-            let res = deriv_central5(args.at_sigma.vec[m], &mut args, norm_given_sigma_mandel);
-            num_deriv.vec[m] = res;
-        }
-        if verbose {
-            println!("numerical d‖σ‖/dσ =\n{}", num_deriv.to_matrix());
-        }
-        vec_approx_eq(ana_deriv.vec.as_data(), num_deriv.vec.as_data(), tol_num);
-    }
-
-    #[test]
-    fn deriv1_norm_works() {
-        check_deriv1_norm(Mandel::General, &SamplesTensor2::TENSOR_T, 1e-15, 1e-10, false);
-        check_deriv1_norm(Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-15, 1e-10, false);
-        check_deriv1_norm(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-15, 1e-10, false);
-    }
-
     // -- deriv1_invariant_sigma_m --------------------------------------------------------------------------
 
     #[test]
@@ -2717,6 +2838,7 @@ mod tests {
     }
 
     // -- deriv1_invariant_lode --------------------------------------------------------------------------
+
     #[test]
     fn deriv1_invariant_lode_works() {
         // α = 30

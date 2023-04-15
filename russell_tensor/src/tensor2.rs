@@ -1216,7 +1216,7 @@ impl Tensor2 {
     /// J2 = -IIₛ = ½ trace(s·s) = ½ s : sᵀ
     /// ```
     ///
-    /// Note: if the tensor is symmetric, then:
+    /// **Note:** if the tensor is symmetric, then:
     ///
     /// ```text
     /// J2 = ½ s : sᵀ = ½ s : s = ½ ‖s‖² (symmetric σ and s)
@@ -1326,6 +1326,9 @@ impl Tensor2 {
     /// σd = norm(dev(σ)) × √3/√2 = ‖s‖ √3/√2
     /// ```
     ///
+    /// **Warning:** This function only makes sense for **symmetric** tensors.
+    /// The check for symmetry is **not** made here.
+    ///
     /// # Example
     ///
     /// ```
@@ -1353,6 +1356,9 @@ impl Tensor2 {
     /// εv = trace(ε)
     /// ```
     ///
+    /// **Warning:** This function only makes sense for **symmetric** tensors.
+    /// The check for symmetry is **not** made here.
+    ///
     /// # Example
     ///
     /// ```
@@ -1379,6 +1385,9 @@ impl Tensor2 {
     /// ```text
     /// εd = norm(dev(ε)) × √2/√3
     /// ```
+    ///
+    /// **Warning:** This function only makes sense for **symmetric** tensors.
+    /// The check for symmetry is **not** made here.
     ///
     /// # Example
     ///
@@ -1408,6 +1417,9 @@ impl Tensor2 {
     /// ```
     ///
     /// **Note** that this function returns `None` if `abs(‖s‖³) = 0`.
+    ///
+    /// **Warning:** This function only makes sense for **symmetric** tensors.
+    /// The check for symmetry is **not** made here.
     ///
     /// # Example
     ///
@@ -1445,6 +1457,9 @@ impl Tensor2 {
     /// ─── = ─ I
     ///  dσ   3
     /// ```
+    ///
+    /// **Warning:** This function only makes sense for **symmetric** tensors.
+    /// The check for symmetry is **not** made here.
     pub fn deriv1_invariant_sigma_m(&self, d1: &mut Tensor2) -> Result<(), StrError> {
         if d1.vec.dim() != self.vec.dim() {
             return Err("tensors are incompatible");
@@ -1463,6 +1478,9 @@ impl Tensor2 {
     /// ─── = ── ───
     /// dσ    √2 ‖s‖
     /// ```
+    ///
+    /// **Warning:** This function only makes sense for **symmetric** tensors.
+    /// The check for symmetry is **not** made here.
     ///
     /// # Output
     ///
@@ -1498,6 +1516,9 @@ impl Tensor2 {
     /// L := ── = l ψ - m s
     ///      dσ
     /// ```
+    ///
+    /// **Warning:** This function only makes sense for **symmetric** tensors.
+    /// The check for symmetry is **not** made here.
     ///
     /// # Output
     ///

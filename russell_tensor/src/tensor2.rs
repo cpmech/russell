@@ -1481,7 +1481,7 @@ impl Tensor2 {
     ///
     /// # Output
     ///
-    /// * This function returns `Some(‖s‖)` if ‖s‖ > 0 and the computation was successful
+    /// * This function returns `Some(‖s‖)` if `‖s‖ > 0` and the computation was successful
     /// * Otherwise, this function returns `None` and the derivative cannot be computed
     ///   because the deviatoric stress invariant is zero
     pub fn deriv1_invariant_sigma_d(&self, d1: &mut Tensor2) -> Result<Option<f64>, StrError> {

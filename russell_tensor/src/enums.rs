@@ -49,6 +49,15 @@ pub enum Mandel {
 }
 
 impl Mandel {
+    /// Returns a new Mandel enum given the vector size (4, 6, 9)
+    pub fn new(vector_dim: usize) -> Self {
+        match vector_dim {
+            4 => Mandel::Symmetric2D,
+            6 => Mandel::Symmetric,
+            _ => Mandel::General,
+        }
+    }
+
     /// Returns the dimension of the Mandel vector
     pub fn dim(&self) -> usize {
         match self {
@@ -80,6 +89,14 @@ mod tests {
         assert_eq!(case, Mandel::General);
         assert_eq!(format!("{:?}", case), "General");
         assert_eq!(case, Mandel::General);
+    }
+
+    #[test]
+    fn new_works() {
+        assert_eq!(Mandel::new(4), Mandel::Symmetric2D);
+        assert_eq!(Mandel::new(6), Mandel::Symmetric);
+        assert_eq!(Mandel::new(9), Mandel::General);
+        assert_eq!(Mandel::new(123), Mandel::General);
     }
 
     #[test]

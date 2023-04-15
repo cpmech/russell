@@ -1457,9 +1457,6 @@ impl Tensor2 {
     /// ─── = ─ I
     ///  dσ   3
     /// ```
-    ///
-    /// **Warning:** This function only makes sense for **symmetric** tensors.
-    /// The check for symmetry is **not** made here.
     pub fn deriv1_invariant_sigma_m(&self, d1: &mut Tensor2) -> Result<(), StrError> {
         if d1.vec.dim() != self.vec.dim() {
             return Err("tensors are incompatible");

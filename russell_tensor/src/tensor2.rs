@@ -1123,8 +1123,8 @@ impl Tensor2 {
     ///     let sig = Tensor2::from_matrix(&[
     ///         [50.0,  30.0,  20.0],
     ///         [30.0, -20.0, -10.0],
-    ///         [20.0, -10.0,  10.0]
-    ///     ], Mandel::General)?;
+    ///         [20.0, -10.0,  10.0],
+    ///     ], Mandel::Symmetric)?;
     ///     approx_eq(sig.invariant_ii1(), 40.0, 1e-15);
     ///     Ok(())
     /// }
@@ -1150,8 +1150,8 @@ impl Tensor2 {
     ///     let sig = Tensor2::from_matrix(&[
     ///         [50.0,  30.0,  20.0],
     ///         [30.0, -20.0, -10.0],
-    ///         [20.0, -10.0,  10.0]
-    ///     ], Mandel::General)?;
+    ///         [20.0, -10.0,  10.0],
+    ///     ], Mandel::Symmetric)?;
     ///     approx_eq(sig.invariant_ii2(), -2100.0, 1e-12);
     ///     Ok(())
     /// }
@@ -1185,8 +1185,8 @@ impl Tensor2 {
     ///     let sig = Tensor2::from_matrix(&[
     ///         [50.0,  30.0,  20.0],
     ///         [30.0, -20.0, -10.0],
-    ///         [20.0, -10.0,  10.0]
-    ///     ], Mandel::General)?;
+    ///         [20.0, -10.0,  10.0],
+    ///     ], Mandel::Symmetric)?;
     ///     approx_eq(sig.invariant_ii3(), -28000.0, 1e-15);
     ///     Ok(())
     /// }
@@ -1213,7 +1213,30 @@ impl Tensor2 {
     /// ```text
     /// s = deviator(σ)
     ///
-    /// J2 = -IIₛ = ½ trace(s·s)
+    /// J2 = -IIₛ = ½ trace(s·s) = ½ s : sᵀ
+    /// ```
+    ///
+    /// Note: if the tensor is symmetric, then:
+    ///
+    /// ```text
+    /// J2 = ½ s : sᵀ = ½ s : s = ½ ‖s‖² (symmetric σ and s)
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::approx_eq;
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let sig = Tensor2::from_matrix(&[
+    ///         [ 2.0, -3.0, 4.0],
+    ///         [-3.0, -5.0, 1.0],
+    ///         [ 4.0,  1.0, 6.0],
+    ///     ], Mandel::Symmetric)?;
+    ///     approx_eq(sig.invariant_jj2(), 57.0, 1e-14);
+    ///     Ok(())
+    /// }
     /// ```
     pub fn invariant_jj2(&self) -> f64 {
         let a = &self.vec;
@@ -1242,6 +1265,23 @@ impl Tensor2 {
     /// s = deviator(σ)
     ///
     /// J3 = IIIₛ = determinant(s)
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::approx_eq;
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let sig = Tensor2::from_matrix(&[
+    ///         [ 2.0, -3.0, 4.0],
+    ///         [-3.0, -5.0, 1.0],
+    ///         [ 4.0,  1.0, 6.0],
+    ///     ], Mandel::Symmetric)?;
+    ///     approx_eq(sig.invariant_jj3(), -4.0, 1e-13);
+    ///     Ok(())
+    /// }
     /// ```
     #[inline]
     pub fn invariant_jj3(&self) -> f64 {

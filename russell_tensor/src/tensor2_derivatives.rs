@@ -307,6 +307,8 @@ mod tests {
         check_deriv1_jj2(Mandel::General, &SamplesTensor2::TENSOR_T, 1e-10, false);
         check_deriv1_jj2(Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-11, false);
         check_deriv1_jj2(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-12, false);
+        check_deriv1_jj2(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_O, 1e-15, false);
+        check_deriv1_jj2(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_I, 1e-12, false);
     }
 
     // -- deriv1_invariant_jj3 ------------------------------------------------------------------------------
@@ -352,6 +354,8 @@ mod tests {
         check_deriv1_jj3(Mandel::General, &SamplesTensor2::TENSOR_T, 1e-8, false);
         check_deriv1_jj3(Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-9, false);
         check_deriv1_jj3(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, false);
+        check_deriv1_jj3(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_O, 1e-15, false);
+        check_deriv1_jj3(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_I, 1e-15, false);
     }
 
     // -- deriv1_invariant_sigma_m --------------------------------------------------------------------------

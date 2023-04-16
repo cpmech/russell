@@ -1,4 +1,4 @@
-use crate::{StrError, Tensor2, ONE_BY_3, SQRT_3_BY_2, SQRT_6, TWO_BY_3};
+use crate::{Mandel, StrError, Tensor2, ONE_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6, TWO_BY_3};
 use russell_lab::vec_add;
 
 impl Tensor2 {
@@ -63,7 +63,7 @@ impl Tensor2 {
     /// ─── = s·s - ──── I (if σ is symmetric)
     ///  dσ           3
     /// ```
-    pub fn deriv1_invariant_jj3(&self, s: &mut Tensor2, d1: &mut Tensor2) -> Result<(), StrError> {
+    pub fn deriv1_invariant_jj3(&self, d1: &mut Tensor2, s: &mut Tensor2) -> Result<(), StrError> {
         self.deviator(s)?;
         s.squared(d1)?; // d1 := s·s
         let jj2 = self.invariant_jj2();
@@ -105,8 +105,9 @@ impl Tensor2 {
     /// dσ    √2 ‖s‖
     /// ```
     ///
-    /// **Warning:** This function only makes sense for **symmetric** tensors.
-    /// The check for symmetry is **not** made here.
+    /// # Panics
+    ///
+    /// This function only makes sense for **symmetric** tensors. Otherwise, it will panic.
     ///
     /// # Output
     ///
@@ -114,6 +115,7 @@ impl Tensor2 {
     /// * Otherwise, this function returns `None` and the derivative cannot be computed
     ///   because the deviatoric stress invariant is zero
     pub fn deriv1_invariant_sigma_d(&self, d1: &mut Tensor2) -> Result<Option<f64>, StrError> {
+        assert!(Mandel::is_symmetric(self.vec.dim()));
         let n = self.deviator_norm();
         if n > 0.0 {
             self.deviator(d1)?;
@@ -134,21 +136,68 @@ impl Tensor2 {
     ///
     /// s = dev(σ)
     ///
+    /// dl       3 √3       dJ3      9 √3 J3    dJ2
+    /// ── = ─────────────  ─── - ───────────── ───
+    /// dσ   2 pow(J2,1.5)  dσ    4 pow(J2,2.5) dσ
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function only makes sense for **symmetric** tensors. Otherwise, it will panic.
+    ///
+    /// # Returns
+    ///
+    /// If `J2 > tol_jj2`, returns `J2` and the derivative in `d1`. Otherwise, returns None.
+    pub fn deriv1_invariant_lode(
+        &self,
+        d1: &mut Tensor2,
+        aux: &mut Tensor2,
+        tol_jj2: f64,
+    ) -> Result<Option<f64>, StrError> {
+        let ndim = d1.vec.dim();
+        assert!(Mandel::is_symmetric(ndim));
+        if d1.vec.dim() != ndim || aux.vec.dim() != ndim {
+            return Err("tensors are incompatible");
+        }
+        let jj2 = self.invariant_jj2();
+        if jj2 > tol_jj2 {
+            self.deriv1_invariant_jj3(d1, aux)?; // d1 := dJ3/dσ
+            self.deriv1_invariant_jj2(aux)?; // aux := dJ2/dσ
+            let jj3 = self.invariant_jj3();
+            let a = 1.5 * SQRT_3 / f64::powf(jj2, 1.5);
+            let b = 2.25 * SQRT_3 * jj3 / f64::powf(jj2, 2.5);
+            for i in 0..ndim {
+                d1.vec[i] = a * d1.vec[i] - b * aux.vec[i];
+            }
+            return Ok(Some(jj2));
+        }
+        Ok(None)
+    }
+
+    /// Computes the first derivative of the Lode invariant (alternative method)
+    ///
+    /// ```text
+    /// σ represents this tensor
+    /// l is the Lode invariant
+    ///
+    /// s = dev(σ)
+    ///
     /// ψ = dev(s⁻¹)
     ///
     /// m = 3 l / ‖s‖²
     ///
-    ///      dl
-    /// L := ── = l ψ - m s
-    ///      dσ
+    /// dl
+    /// ── = l ψ - m s
+    /// dσ
     /// ```
     ///
-    /// **Warning:** This function only makes sense for **symmetric** tensors.
-    /// The check for symmetry is **not** made here.
+    /// # Panics
+    ///
+    /// This function only makes sense for **symmetric** tensors. Otherwise, it will panic.
     ///
     /// # Output
     ///
-    /// * `ll` -- L = dl/dσ is the first derivative of the Lode invariant
+    /// * `d1` -- d1 = dl/dσ is the first derivative of the Lode invariant
     /// * `s` -- s = dev(σ) is the deviator of σ (this tensor)
     /// * `si` -- si = inverse(s) is the inverse of the deviator tensor
     /// * `psi` -- psi = dev(inverse(s)) is the deviator of the inverse of the deviator tensor
@@ -156,16 +205,17 @@ impl Tensor2 {
     ///
     /// # Returns
     ///
-    /// * If the norm and determinant of `s` (deviator) are not null, returns the Lode invariant `l`
-    /// * Otherwise, returns None
-    pub fn deriv1_invariant_lode(
+    /// If the norm and determinant of `s` (deviator) are not null, returns the derivative in `d1`
+    /// and the Lode invariant `l`. Otherwise, returns None.
+    pub fn deriv1_invariant_lode_alt(
         &self,
-        ll: &mut Tensor2,
+        d1: &mut Tensor2,
         s: &mut Tensor2,
         si: &mut Tensor2,
         psi: &mut Tensor2,
         tolerance: f64,
     ) -> Result<Option<f64>, StrError> {
+        assert!(Mandel::is_symmetric(self.vec.dim()));
         let n = self.deviator_norm();
         let nnn = n * n * n;
         if f64::abs(nnn) > 0.0 {
@@ -174,7 +224,7 @@ impl Tensor2 {
                 si.deviator(psi)?;
                 let l = 3.0 * SQRT_6 * det / nnn;
                 let m = 3.0 * l / (n * n);
-                vec_add(&mut ll.vec, l, &psi.vec, -m, &s.vec)?;
+                vec_add(&mut d1.vec, l, &psi.vec, -m, &s.vec)?;
                 return Ok(Some(l));
             }
         }
@@ -267,6 +317,16 @@ mod tests {
 
     // -- deriv1_invariant_jj2 ------------------------------------------------------------------------------
 
+    #[test]
+    fn deriv1_invariant_jj2_captures_errors() {
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::General).unwrap();
+        let mut d1 = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(
+            sigma.deriv1_invariant_jj2(&mut d1).err(),
+            Some("tensors are incompatible")
+        );
+    }
+
     // Computes J2 for varying v_mandel := MandelComponent(σᵢⱼ)
     fn jj2_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDeriv1) -> f64 {
         args.temp_sigma.mirror(&args.at_sigma).unwrap();
@@ -313,6 +373,23 @@ mod tests {
 
     // -- deriv1_invariant_jj3 ------------------------------------------------------------------------------
 
+    #[test]
+    fn deriv1_invariant_jj3_captures_errors() {
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::General).unwrap();
+        let mut d1 = Tensor2::new(Mandel::Symmetric);
+        let mut s = Tensor2::new(Mandel::General);
+        assert_eq!(
+            sigma.deriv1_invariant_jj3(&mut d1, &mut s).err(),
+            Some("tensors are incompatible")
+        );
+        let mut d1 = Tensor2::new(Mandel::General);
+        let mut s = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(
+            sigma.deriv1_invariant_jj3(&mut d1, &mut s).err(),
+            Some("tensors are incompatible")
+        );
+    }
+
     // Computes J3 for varying v_mandel := MandelComponent(σᵢⱼ)
     fn jj3_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDeriv1) -> f64 {
         args.temp_sigma.mirror(&args.at_sigma).unwrap();
@@ -326,7 +403,7 @@ mod tests {
         let sigma = Tensor2::from_matrix(&sample.matrix, case).unwrap();
         let mut s = Tensor2::new(case);
         let mut ana_deriv = Tensor2::new(case);
-        sigma.deriv1_invariant_jj3(&mut s, &mut ana_deriv).unwrap();
+        sigma.deriv1_invariant_jj3(&mut ana_deriv, &mut s).unwrap();
         if verbose {
             println!("analytical dJ3/dσ =\n{}", ana_deriv.to_matrix());
         }
@@ -419,8 +496,8 @@ mod tests {
 
     #[test]
     fn deriv1_invariant_sigma_d_captures_errors() {
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_T.matrix, Mandel::General).unwrap();
-        let mut d1 = Tensor2::new(Mandel::Symmetric);
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_S.matrix, Mandel::Symmetric).unwrap();
+        let mut d1 = Tensor2::new(Mandel::Symmetric2D);
         assert_eq!(
             sigma.deriv1_invariant_sigma_d(&mut d1).err(),
             Some("tensors are incompatible")
@@ -429,8 +506,8 @@ mod tests {
 
     #[test]
     fn deriv1_invariant_sigma_d_handles_indeterminate_case() {
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_O.matrix, Mandel::General).unwrap();
-        let mut d1 = Tensor2::new(Mandel::General);
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_O.matrix, Mandel::Symmetric).unwrap();
+        let mut d1 = Tensor2::new(Mandel::Symmetric);
         assert_eq!(sigma.deriv1_invariant_sigma_d(&mut d1), Ok(None));
     }
 
@@ -479,15 +556,109 @@ mod tests {
 
     #[test]
     fn deriv1_sigma_d_works() {
-        check_deriv1_sigma_d(Mandel::General, &SamplesTensor2::TENSOR_T, 1e-15, 1e-10, false);
+        check_deriv1_sigma_d(Mandel::Symmetric, &SamplesTensor2::TENSOR_U, 1e-15, 1e-10, false);
         check_deriv1_sigma_d(Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-15, 1e-10, false);
+        check_deriv1_sigma_d(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_X, 1e-15, 1e-11, false);
+        check_deriv1_sigma_d(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Y, 1e-15, 1e-10, false);
         check_deriv1_sigma_d(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-15, 1e-11, false);
     }
 
     // -- deriv1_invariant_lode --------------------------------------------------------------------------
 
     #[test]
+    fn deriv1_invariant_lode_captures_errors() {
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::Symmetric).unwrap();
+        let mut d1 = Tensor2::new(Mandel::Symmetric2D);
+        let mut aux = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(
+            sigma.deriv1_invariant_lode(&mut d1, &mut aux, 1e-10).err(),
+            Some("tensors are incompatible")
+        );
+        let mut d1 = Tensor2::new(Mandel::Symmetric2D);
+        let mut s = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(
+            sigma.deriv1_invariant_lode(&mut d1, &mut s, 1e-10).err(),
+            Some("tensors are incompatible")
+        );
+    }
+
+    #[test]
+    fn deriv1_invariant_lode_handles_indeterminate_case() {
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_O.matrix, Mandel::Symmetric).unwrap();
+        let mut d1 = Tensor2::new(Mandel::Symmetric);
+        let mut aux = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(sigma.deriv1_invariant_lode(&mut d1, &mut aux, 1e-10), Ok(None));
+    }
+
+    // Computes l for varying v_mandel := MandelComponent(σᵢⱼ)
+    fn lode_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDeriv1) -> f64 {
+        args.temp_sigma.mirror(&args.at_sigma).unwrap();
+        args.temp_sigma.vec[args.m] = v_mandel;
+        match args.temp_sigma.invariant_lode(1e-10) {
+            Some(l) => l,
+            None => panic!("cannot compute numerical derivative for None l value"),
+        }
+    }
+
+    // Checks the first derivative of l w.r.t. σ
+    fn check_deriv1_lode(case: Mandel, sample: &SampleTensor2, tol_num: f64, verbose: bool) {
+        // analytical derivative
+        let sigma = Tensor2::from_matrix(&sample.matrix, case).unwrap();
+        let mut aux = Tensor2::new(case);
+        let mut ana_deriv = Tensor2::new(case);
+        sigma.deriv1_invariant_lode(&mut ana_deriv, &mut aux, 1e-15).unwrap();
+        if verbose {
+            println!("analytical dl/dσ =\n{}", ana_deriv.to_matrix());
+        }
+
+        // analytical derivative using alternative method
+        let mut ana_deriv_alt = Tensor2::new(case);
+        let mut s = Tensor2::new(case);
+        let mut si = Tensor2::new(case);
+        let mut psi = Tensor2::new(case);
+        if let Some(_) = sigma
+            .deriv1_invariant_lode_alt(&mut ana_deriv_alt, &mut s, &mut si, &mut psi, 1e-10)
+            .unwrap()
+        {
+            if verbose {
+                println!("analytical (alt) dl/dσ =\n{}", ana_deriv_alt.to_matrix());
+            }
+        } else {
+            panic!("Lode invariant is None");
+        }
+        vec_approx_eq(&ana_deriv.vec.as_data(), &ana_deriv_alt.vec.as_data(), 1e-15);
+
+        // compare with numerical derivative
+        let mut args = ArgsNumDeriv1 {
+            at_sigma: Tensor2::from_matrix(&sample.matrix, case).unwrap(),
+            temp_sigma: Tensor2::new(case),
+            m: 0,
+        };
+        let mut num_deriv = Tensor2::new(case);
+        for m in 0..ana_deriv.vec.dim() {
+            args.m = m;
+            let res = deriv_central5(args.at_sigma.vec[m], &mut args, lode_given_sigma_mandel);
+            num_deriv.vec[m] = res;
+        }
+        if verbose {
+            println!("numerical dl/dσ =\n{}", num_deriv.to_matrix());
+        }
+        vec_approx_eq(ana_deriv.vec.as_data(), num_deriv.vec.as_data(), tol_num);
+    }
+
+    #[test]
     fn deriv1_invariant_lode_works() {
+        check_deriv1_lode(Mandel::Symmetric, &SamplesTensor2::TENSOR_U, 1e-10, false);
+        check_deriv1_lode(Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, false);
+        check_deriv1_lode(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_X, 1e-10, false);
+        check_deriv1_lode(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Y, 1e-10, false);
+        check_deriv1_lode(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, false);
+    }
+
+    // -- deriv1_invariant_lode_alt ----------------------------------------------------------------------
+
+    #[test]
+    fn deriv1_invariant_lode_alt_works() {
         // α = 30
         let (l1, l2, l3) = (1.0, 0.0, 1.0);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], Mandel::Symmetric2D).unwrap();
@@ -496,7 +667,7 @@ mod tests {
         let mut si = Tensor2::new(Mandel::Symmetric2D);
         let mut psi = Tensor2::new(Mandel::Symmetric2D);
         if let Some(l) = tt
-            .deriv1_invariant_lode(&mut ll, &mut s, &mut si, &mut psi, 1e-10)
+            .deriv1_invariant_lode_alt(&mut ll, &mut s, &mut si, &mut psi, 1e-10)
             .unwrap()
         {
             approx_eq(l, -1.0, 1e-15);

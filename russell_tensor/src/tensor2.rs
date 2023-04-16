@@ -627,6 +627,64 @@ impl Tensor2 {
         }
     }
 
+    /// Returns the transpose tensor
+    ///
+    /// ```text
+    /// Aᵀ = transpose(A)
+    ///
+    /// [Aᵀ]ᵢⱼ = [A]ⱼᵢ
+    /// ```
+    ///
+    /// ## Input/Output
+    ///
+    /// * `ai` -- a Tensor2 with matching dimensions to hold the transpose tensor
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_chk::vec_approx_eq;
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [1.1, 1.2, 1.3],
+    ///         [2.1, 2.2, 2.3],
+    ///         [3.1, 3.2, 3.3],
+    ///     ], Mandel::General)?;
+    ///
+    ///     let mut at = Tensor2::new(Mandel::General);
+    ///     a.transpose(&mut at)?;
+    ///
+    ///     let at_correct = Tensor2::from_matrix(&[
+    ///         [1.1, 2.1, 3.1],
+    ///         [1.2, 2.2, 3.2],
+    ///         [1.3, 2.3, 3.3],
+    ///     ], Mandel::General)?;
+    ///     vec_approx_eq(&at.vec.as_data(), &at_correct.vec.as_data(), 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn transpose(&self, at: &mut Tensor2) -> Result<(), StrError> {
+        let dim = self.vec.dim();
+        if at.vec.dim() != dim {
+            return Err("tensors are incompatible");
+        }
+        at.vec[0] = self.vec[0];
+        at.vec[1] = self.vec[1];
+        at.vec[2] = self.vec[2];
+        at.vec[3] = self.vec[3];
+        if dim > 4 {
+            at.vec[4] = self.vec[4];
+            at.vec[5] = self.vec[5];
+        }
+        if dim > 6 {
+            at.vec[6] = -self.vec[6];
+            at.vec[7] = -self.vec[7];
+            at.vec[8] = -self.vec[8];
+        }
+        Ok(())
+    }
+
     /// Calculates the inverse tensor
     ///
     /// ```text
@@ -674,7 +732,6 @@ impl Tensor2 {
     ///
     ///     let ii = Matrix::diagonal(&[1.0, 1.0, 1.0]);
     ///     mat_approx_eq(&a_times_ai, &ii, 1e-15);
-    ///
     ///     Ok(())
     /// }
     /// ```
@@ -1256,6 +1313,16 @@ impl Tensor2 {
                     + 3.0 * (a[3] * a[3] + a[4] * a[4] + a[5] * a[5] - a[6] * a[6] - a[7] * a[7] - a[8] * a[8]))
                     / 6.0
             }
+        }
+    }
+
+    /// TODO
+    pub fn deriv1_invariant_jj2(&self, d1: &mut Tensor2) -> Result<(), StrError> {
+        if self.vec.dim() > 6 {
+            self.deviator(d1)?;
+            Ok(())
+        } else {
+            self.deviator(d1)
         }
     }
 
@@ -2150,6 +2217,47 @@ mod tests {
         ];
         let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric2D).unwrap();
         approx_eq(tt.determinant(), -42.0, 1e-13);
+    }
+
+    #[test]
+    fn transpose_catches_errors() {
+        let tt = Tensor2::new(Mandel::General);
+        let mut tt2 = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(tt.transpose(&mut tt2).err(), Some("tensors are incompatible"));
+    }
+
+    fn check_transpose(tt: &Tensor2, tt_tran: &Tensor2) {
+        let aa = tt.to_matrix();
+        let aa_tran = tt_tran.to_matrix();
+        for i in 1..3 {
+            for j in 1..3 {
+                assert_eq!(aa.get(i, j), aa_tran.get(j, i));
+            }
+        }
+    }
+
+    #[test]
+    fn transpose_works() {
+        // general
+        let s = &SamplesTensor2::TENSOR_T;
+        let tt = Tensor2::from_matrix(&s.matrix, Mandel::General).unwrap();
+        let mut tt2 = Tensor2::new(Mandel::General);
+        tt.transpose(&mut tt2).unwrap();
+        check_transpose(&tt, &tt2);
+
+        // symmetric 3D
+        let s = &SamplesTensor2::TENSOR_U;
+        let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric).unwrap();
+        let mut tt2 = Tensor2::new(Mandel::Symmetric);
+        tt.transpose(&mut tt2).unwrap();
+        check_transpose(&tt, &tt2);
+
+        // symmetric 2D
+        let s = &SamplesTensor2::TENSOR_Y;
+        let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric2D).unwrap();
+        let mut tt2 = Tensor2::new(Mandel::Symmetric2D);
+        tt.transpose(&mut tt2).unwrap();
+        check_transpose(&tt, &tt2);
     }
 
     #[test]

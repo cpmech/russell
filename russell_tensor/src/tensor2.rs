@@ -1316,14 +1316,24 @@ impl Tensor2 {
         }
     }
 
-    /// TODO
+    /// Computes the first derivative of the J2 invariant w.r.t. the defining tensor
+    ///
+    /// ```text
+    /// s = deviator(σ)
+    ///
+    /// dJ2            dJ2
+    /// ─── = sᵀ  or   ─── = s (if σ is symmetric)
+    ///  dσ             dσ
+    /// ```
     pub fn deriv1_invariant_jj2(&self, d1: &mut Tensor2) -> Result<(), StrError> {
+        self.deviator(d1)?;
         if self.vec.dim() > 6 {
-            self.deviator(d1)?;
-            Ok(())
-        } else {
-            self.deviator(d1)
+            // transpose
+            d1.vec[6] *= -1.0;
+            d1.vec[7] *= -1.0;
+            d1.vec[8] *= -1.0;
         }
+        Ok(())
     }
 
     /// Calculates J3, the second invariant of the deviatoric tensor corresponding to this tensor
@@ -2708,6 +2718,48 @@ mod tests {
         check_iis(&SamplesTensor2::TENSOR_X, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-13, 1e-15, verb);
         check_iis(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, verb);
         check_iis(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric2D, 1e-15, 1e-14, 1e-15, 1e-15, verb);
+    }
+
+    // Computes J2 for varying v_mandel := MandelComponent(σᵢⱼ)
+    fn jj2_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDeriv1) -> f64 {
+        args.temp_sigma.mirror(&args.at_sigma).unwrap();
+        args.temp_sigma.vec[args.m] = v_mandel;
+        args.temp_sigma.invariant_jj2()
+    }
+
+    // Checks the first derivative of J2 w.r.t. σ
+    fn check_deriv1_jj2(case: Mandel, sample: &SampleTensor2, tol_num: f64, verbose: bool) {
+        // analytical derivative
+        let sigma = Tensor2::from_matrix(&sample.matrix, case).unwrap();
+        let mut ana_deriv = Tensor2::new(case);
+        sigma.deriv1_invariant_jj2(&mut ana_deriv).unwrap();
+        if verbose {
+            println!("analytical dJ2/dσ =\n{}", ana_deriv.to_matrix());
+        }
+
+        // compare with numerical derivative
+        let mut args = ArgsNumDeriv1 {
+            at_sigma: Tensor2::from_matrix(&sample.matrix, case).unwrap(),
+            temp_sigma: Tensor2::new(case),
+            m: 0,
+        };
+        let mut num_deriv = Tensor2::new(case);
+        for m in 0..ana_deriv.vec.dim() {
+            args.m = m;
+            let res = deriv_central5(args.at_sigma.vec[m], &mut args, jj2_given_sigma_mandel);
+            num_deriv.vec[m] = res;
+        }
+        if verbose {
+            println!("numerical dJ2/dσ =\n{}", num_deriv.to_matrix());
+        }
+        vec_approx_eq(ana_deriv.vec.as_data(), num_deriv.vec.as_data(), tol_num);
+    }
+
+    #[test]
+    fn deriv1_invariant_jj2_works() {
+        check_deriv1_jj2(Mandel::General, &SamplesTensor2::TENSOR_T, 1e-10, false);
+        check_deriv1_jj2(Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-11, false);
+        check_deriv1_jj2(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-12, false);
     }
 
     /// --- OCTAHEDRAL INVARIANTS ------------------------------------------------------------------------------------------

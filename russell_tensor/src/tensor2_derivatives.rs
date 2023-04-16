@@ -1,4 +1,4 @@
-use crate::{StrError, Tensor2, ONE_BY_3, SQRT_3_BY_2, SQRT_6};
+use crate::{StrError, Tensor2, ONE_BY_3, SQRT_3_BY_2, SQRT_6, TWO_BY_3};
 use russell_lab::vec_add;
 
 impl Tensor2 {
@@ -39,6 +39,31 @@ impl Tensor2 {
     /// ```
     pub fn deriv1_invariant_jj2(&self, d1: &mut Tensor2) -> Result<(), StrError> {
         self.deviator(d1)?;
+        if self.vec.dim() > 6 {
+            // transpose
+            d1.vec[6] *= -1.0;
+            d1.vec[7] *= -1.0;
+            d1.vec[8] *= -1.0;
+        }
+        Ok(())
+    }
+
+    /// Computes the first derivative of the J3 invariant w.r.t. the defining tensor
+    ///
+    /// ```text
+    /// s = deviator(σ)
+    ///
+    /// dJ3            2 J2
+    /// ─── = (s·s)ᵀ - ──── I
+    ///  dσ              3
+    /// ```
+    pub fn deriv1_invariant_jj3(&self, s: &mut Tensor2, d1: &mut Tensor2) -> Result<(), StrError> {
+        self.deviator(s)?;
+        s.squared(d1)?; // d1 := s·s
+        let jj2 = self.invariant_jj2();
+        d1.vec[0] -= TWO_BY_3 * jj2;
+        d1.vec[1] -= TWO_BY_3 * jj2;
+        d1.vec[2] -= TWO_BY_3 * jj2;
         if self.vec.dim() > 6 {
             // transpose
             d1.vec[6] *= -1.0;
@@ -276,6 +301,51 @@ mod tests {
         check_deriv1_jj2(Mandel::General, &SamplesTensor2::TENSOR_T, 1e-10, false);
         check_deriv1_jj2(Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-11, false);
         check_deriv1_jj2(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-12, false);
+    }
+
+    // -- deriv1_invariant_jj3 ------------------------------------------------------------------------------
+
+    // Computes J3 for varying v_mandel := MandelComponent(σᵢⱼ)
+    fn jj3_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDeriv1) -> f64 {
+        args.temp_sigma.mirror(&args.at_sigma).unwrap();
+        args.temp_sigma.vec[args.m] = v_mandel;
+        args.temp_sigma.invariant_jj3()
+    }
+
+    // Checks the first derivative of J3 w.r.t. σ
+    fn check_deriv1_jj3(case: Mandel, sample: &SampleTensor2, tol_num: f64, verbose: bool) {
+        // analytical derivative
+        let sigma = Tensor2::from_matrix(&sample.matrix, case).unwrap();
+        let mut s = Tensor2::new(case);
+        let mut ana_deriv = Tensor2::new(case);
+        sigma.deriv1_invariant_jj3(&mut s, &mut ana_deriv).unwrap();
+        if verbose {
+            println!("analytical dJ3/dσ =\n{}", ana_deriv.to_matrix());
+        }
+
+        // compare with numerical derivative
+        let mut args = ArgsNumDeriv1 {
+            at_sigma: Tensor2::from_matrix(&sample.matrix, case).unwrap(),
+            temp_sigma: Tensor2::new(case),
+            m: 0,
+        };
+        let mut num_deriv = Tensor2::new(case);
+        for m in 0..ana_deriv.vec.dim() {
+            args.m = m;
+            let res = deriv_central5(args.at_sigma.vec[m], &mut args, jj3_given_sigma_mandel);
+            num_deriv.vec[m] = res;
+        }
+        if verbose {
+            println!("numerical dJ3/dσ =\n{}", num_deriv.to_matrix());
+        }
+        vec_approx_eq(ana_deriv.vec.as_data(), num_deriv.vec.as_data(), tol_num);
+    }
+
+    #[test]
+    fn deriv1_invariant_jj3_works() {
+        check_deriv1_jj3(Mandel::General, &SamplesTensor2::TENSOR_T, 1e-8, false);
+        check_deriv1_jj3(Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-9, false);
+        check_deriv1_jj3(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, false);
     }
 
     // -- deriv1_invariant_sigma_m --------------------------------------------------------------------------

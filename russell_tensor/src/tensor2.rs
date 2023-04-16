@@ -1227,18 +1227,6 @@ impl Tensor2 {
         self.determinant()
     }
 
-    /// Calculates J1, the first invariant of the deviatoric tensor corresponding to this tensor
-    ///
-    /// ```text
-    /// s = deviator(σ)
-    ///
-    /// J1 = Iₛ = trace(s) = 0
-    /// ```
-    #[inline]
-    pub fn invariant_jj1(&self) -> f64 {
-        0.0
-    }
-
     /// Calculates J2, the second invariant of the deviatoric tensor corresponding to this tensor
     ///
     /// ```text
@@ -2441,7 +2429,6 @@ mod tests {
                 f64::abs(tt.invariant_ii2() - sample.second_invariant)
             );
             println!("    err(I3) = {:?}", f64::abs(tt.invariant_ii3() - sample.determinant));
-            println!("    err(J1) = {:?}", f64::abs(tt.invariant_jj1() - 0.0));
             println!("    err(J2) = {:?}", f64::abs(tt.invariant_jj2() - jj2));
             println!("    err(J3) = {:?}", f64::abs(tt.invariant_jj3() - jj3));
             if case.symmetric() {
@@ -2452,7 +2439,6 @@ mod tests {
         approx_eq(tt.invariant_ii1(), sample.trace, tol_a);
         approx_eq(tt.invariant_ii2(), sample.second_invariant, tol_b);
         approx_eq(tt.invariant_ii3(), sample.determinant, tol_b);
-        assert_eq!(tt.invariant_jj1(), 0.0);
         approx_eq(tt.invariant_jj2(), jj2, tol_c);
         approx_eq(tt.invariant_jj3(), jj3, tol_c);
         if case.symmetric() {

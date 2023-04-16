@@ -1,5 +1,5 @@
 use super::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, SQRT_2};
-use crate::{Mandel, StrError, SQRT_2_BY_3, SQRT_3_BY_2, SQRT_6};
+use crate::{Mandel, StrError, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2};
 use russell_lab::{Matrix, Vector};
 use serde::{Deserialize, Serialize};
 
@@ -1357,8 +1357,9 @@ impl Tensor2 {
     /// σd = norm(dev(σ)) × √3/√2 = ‖s‖ √3/√2
     /// ```
     ///
-    /// **Warning:** This function only makes sense for **symmetric** tensors.
-    /// The check for symmetry is **not** made here.
+    /// # Panics
+    ///
+    /// This function only makes sense for **symmetric** tensors. Otherwise, it will panic.
     ///
     /// # Example
     ///
@@ -1378,6 +1379,7 @@ impl Tensor2 {
     /// ```
     #[inline]
     pub fn invariant_sigma_d(&self) -> f64 {
+        assert!(Mandel::is_symmetric(self.vec.dim()));
         self.deviator_norm() * SQRT_3_BY_2
     }
 
@@ -1386,9 +1388,6 @@ impl Tensor2 {
     /// ```text
     /// εv = trace(ε)
     /// ```
-    ///
-    /// **Warning:** This function only makes sense for **symmetric** tensors.
-    /// The check for symmetry is **not** made here.
     ///
     /// # Example
     ///
@@ -1417,8 +1416,9 @@ impl Tensor2 {
     /// εd = norm(dev(ε)) × √2/√3
     /// ```
     ///
-    /// **Warning:** This function only makes sense for **symmetric** tensors.
-    /// The check for symmetry is **not** made here.
+    /// # Panics
+    ///
+    /// This function only makes sense for **symmetric** tensors. Otherwise, it will panic.
     ///
     /// # Example
     ///
@@ -1438,19 +1438,25 @@ impl Tensor2 {
     /// ```
     #[inline]
     pub fn invariant_eps_d(&self) -> f64 {
+        assert!(Mandel::is_symmetric(self.vec.dim()));
         self.deviator_norm() * SQRT_2_BY_3
     }
 
     /// Returns the lode invariant
     ///
     /// ```text
-    /// l = cos(3θ) = 3√6 det(s) / ‖s‖³
+    ///                  3 √3 J3
+    /// l = cos(3θ) = ─────────────
+    ///               2 pow(J2,1.5)
     /// ```
     ///
-    /// **Note** that this function returns `None` if `abs(‖s‖³) = 0`.
+    /// # Panics
     ///
-    /// **Warning:** This function only makes sense for **symmetric** tensors.
-    /// The check for symmetry is **not** made here.
+    /// This function only makes sense for **symmetric** tensors. Otherwise, it will panic.
+    ///
+    /// # Returns
+    ///
+    /// If `J2 > tol_jj2`, returns `l`. Otherwise, returns None.
     ///
     /// # Example
     ///
@@ -1464,18 +1470,18 @@ impl Tensor2 {
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
     ///     ], Mandel::Symmetric)?;
-    ///     if let Some(l) = a.invariant_lode() {
+    ///     if let Some(l) = a.invariant_lode(1e-10) {
     ///         approx_eq(l, -1.0, 1e-15);
     ///     }
     ///     Ok(())
     /// }
     /// ```
     #[inline]
-    pub fn invariant_lode(&self) -> Option<f64> {
-        let n = self.deviator_norm();
-        let nnn = n * n * n;
-        if f64::abs(nnn) > 0.0 {
-            Some(3.0 * SQRT_6 * self.deviator_determinant() / nnn)
+    pub fn invariant_lode(&self, tol_jj2: f64) -> Option<f64> {
+        let jj2 = self.invariant_jj2();
+        if jj2 > tol_jj2 {
+            let jj3 = self.invariant_jj3();
+            Some(1.5 * SQRT_3 * jj3 / f64::powf(jj2, 1.5))
         } else {
             None
         }
@@ -2516,6 +2522,7 @@ mod tests {
         let eps_d_1 = 1.0 / SQRT_3; // sqrt(((0.5+0.5)² + (0.5)² + (-0.5)²)/3) * sqrt(2/3)
         let sigma_d_2 = 1.0; // sqrt((1² + 1²)/3)* sqrt(3/2)
         let eps_d_2 = 2.0 / 3.0; // sqrt((1² + 1²)/3)* sqrt(2/3)
+        let tol = 1e-10;
 
         // α = 0
         let (l1, l2, l3) = (0.0, -0.5, 0.5);
@@ -2525,7 +2532,7 @@ mod tests {
         approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
-        check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
+        check_lode(tt.invariant_lode(tol), 0.0, 1e-15, false);
 
         // α = 30
         let (l1, l2, l3) = (1.0, 0.0, 1.0);
@@ -2535,7 +2542,7 @@ mod tests {
         approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        check_lode(tt.invariant_lode(), -1.0, 1e-15, false);
+        check_lode(tt.invariant_lode(tol), -1.0, 1e-15, false);
 
         // α = 60
         let (l1, l2, l3) = (0.5, -0.5, 0.0);
@@ -2545,7 +2552,7 @@ mod tests {
         approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
-        check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
+        check_lode(tt.invariant_lode(tol), 0.0, 1e-15, false);
 
         // α = 90
         let (l1, l2, l3) = (1.0, 0.0, 0.0);
@@ -2555,7 +2562,7 @@ mod tests {
         approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        check_lode(tt.invariant_lode(), 1.0, 1e-15, false);
+        check_lode(tt.invariant_lode(tol), 1.0, 1e-15, false);
 
         // α = 120
         let (l1, l2, l3) = (0.5, 0.0, -0.5);
@@ -2565,7 +2572,7 @@ mod tests {
         approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
-        check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
+        check_lode(tt.invariant_lode(tol), 0.0, 1e-15, false);
 
         // α = 150
         let (l1, l2, l3) = (1.0, 1.0, 0.0);
@@ -2575,7 +2582,7 @@ mod tests {
         approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        check_lode(tt.invariant_lode(), -1.0, 1e-15, false);
+        check_lode(tt.invariant_lode(tol), -1.0, 1e-15, false);
 
         // α = 180
         let (l1, l2, l3) = (0.0, 0.5, -0.5);
@@ -2585,7 +2592,7 @@ mod tests {
         approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
-        check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
+        check_lode(tt.invariant_lode(tol), 0.0, 1e-15, false);
 
         // α = -150
         let (l1, l2, l3) = (0.0, 1.0, 0.0);
@@ -2595,7 +2602,7 @@ mod tests {
         approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        check_lode(tt.invariant_lode(), 1.0, 1e-15, false);
+        check_lode(tt.invariant_lode(tol), 1.0, 1e-15, false);
 
         // α = -120
         let (l1, l2, l3) = (-0.5, 0.5, 0.0);
@@ -2605,7 +2612,7 @@ mod tests {
         approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
-        check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
+        check_lode(tt.invariant_lode(tol), 0.0, 1e-15, false);
 
         // α = -90
         let (l1, l2, l3) = (0.0, 1.0, 1.0);
@@ -2615,7 +2622,7 @@ mod tests {
         approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        check_lode(tt.invariant_lode(), -1.0, 1e-15, false);
+        check_lode(tt.invariant_lode(tol), -1.0, 1e-15, false);
 
         // α = -60
         let (l1, l2, l3) = (-0.5, 0.0, 0.5);
@@ -2625,7 +2632,7 @@ mod tests {
         approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
-        check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
+        check_lode(tt.invariant_lode(tol), 0.0, 1e-15, false);
 
         // α = -30
         let (l1, l2, l3) = (0.0, 0.0, 1.0);
@@ -2635,21 +2642,27 @@ mod tests {
         approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        check_lode(tt.invariant_lode(), 1.0, 1e-15, false);
+        check_lode(tt.invariant_lode(tol), 1.0, 1e-15, false);
+    }
+
+    #[test]
+    fn lode_invariant_handles_spacial_cases() {
+        let c = Mandel::Symmetric;
+        let tol = 1e-12;
 
         // norm(deviator) = 0  with l = 0
         let (l1, l2, l3) = (2.0, 2.0, 2.0);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
-        check_lode(tt.invariant_lode(), 0.0, 1e-15, true);
+        check_lode(tt.invariant_lode(tol), 0.0, 1e-15, true);
 
-        // norm(deviator) > 1e-15  with l ~ 0
+        // norm(deviator) > 0  with l ~ 0
         let (l1, l2, l3) = (2.0, 2.0, 2.0 - 1e-5);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
-        check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
+        check_lode(tt.invariant_lode(tol), 0.0, 1e-15, false);
 
         // norm(deviator) > 1e-15  with l ~ -1 (note how l jumps from 0 to -1 for eps from -1e-5 to -1e-3)
         let (l1, l2, l3) = (2.0, 2.0, 2.0 - 1e-3);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
-        check_lode(tt.invariant_lode(), -1.0, 1e-7, false);
+        check_lode(tt.invariant_lode(tol), -1.0, 1e-7, false);
     }
 }

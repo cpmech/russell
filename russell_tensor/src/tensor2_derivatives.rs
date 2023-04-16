@@ -56,6 +56,12 @@ impl Tensor2 {
     /// dJ3            2 J2
     /// ─── = (s·s)ᵀ - ──── I
     ///  dσ              3
+    ///
+    /// or
+    ///
+    /// dJ3         2 J2
+    /// ─── = s·s - ──── I (if σ is symmetric)
+    ///  dσ           3
     /// ```
     pub fn deriv1_invariant_jj3(&self, s: &mut Tensor2, d1: &mut Tensor2) -> Result<(), StrError> {
         self.deviator(s)?;

@@ -181,9 +181,7 @@ impl Tensor2 {
     /// l is the Lode invariant
     ///
     /// s = dev(σ)
-    ///
     /// ψ = dev(s⁻¹)
-    ///
     /// m = 3 l / ‖s‖²
     ///
     /// dl

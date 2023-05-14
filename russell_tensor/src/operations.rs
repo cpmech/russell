@@ -356,10 +356,16 @@ pub fn vec_dyad_vec(tt: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Res
     Ok(())
 }
 
-/// Performs the dyadic product between two Tensor2 resulting in a fourth-order tensor
+/// Performs the dyadic product between two Tensor2 resulting in a Tensor4
 ///
 /// ```text
 /// D = α a ⊗ b
+/// ```
+///
+/// ```text
+/// With orthonormal Cartesian components:
+///
+/// Dᵢⱼₖₗ = α aᵢⱼ bₖₗ
 /// ```
 ///
 /// Note: this function does NOT work with mixed symmetry types.
@@ -405,6 +411,66 @@ pub fn vec_dyad_vec(tt: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Res
 #[inline]
 pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) -> Result<(), StrError> {
     vec_outer(&mut dd.mat, alpha, &a.vec, &b.vec)
+}
+
+/// Performs the overbar dyadic product between two Tensor2 resulting in a (general) Tensor4
+///
+/// ```text
+///         _
+/// D = α a ⊗ b
+/// ```
+///
+/// ```text
+/// With orthonormal Cartesian components:
+///
+/// Dᵢⱼₖₗ = α aᵢₖ bⱼₗ
+/// ```
+///
+/// **Important:** The result is **not** necessarily minor-symmetric; therefore `dd` must be General.
+#[inline]
+pub fn t2_odyad_t2(_dd: &mut Tensor4, _alpha: f64, _a: &Tensor2, _b: &Tensor2) -> Result<(), StrError> {
+    Err("TODO")
+}
+
+/// Performs the underbar dyadic product between two Tensor2 resulting in a (general) Tensor4
+///
+/// ```text
+/// D = α a ⊗ b
+///         ‾
+/// ```
+///
+/// ```text
+/// With orthonormal Cartesian components:
+///
+/// Dᵢⱼₖₗ = α aᵢₗ bⱼₖ
+/// ```
+///
+/// **Important:** The result is **not** necessarily minor-symmetric; therefore `dd` must be [Mandel::General].
+#[inline]
+pub fn t2_udyad_t2(_dd: &mut Tensor4, _alpha: f64, _a: &Tensor2, _b: &Tensor2) -> Result<(), StrError> {
+    Err("TODO")
+}
+
+/// Performs the symmetric dyad operation with symmetric Tensor2 resulting in a minor-symmetric Tensor4
+///
+/// ```text
+///          _
+/// D = α (a ⊗ b + a ⊗ b)
+///                  ‾
+/// ```
+///
+/// ```text
+/// With orthonormal Cartesian components:
+///
+/// Dᵢⱼₖₗ = α (aᵢₖ bⱼₗ + aᵢₗ bⱼₖ)
+/// ```
+///
+/// Note: `a` and `b` must be [Mandel::Symmetric] or [Mandel::Symmetric2D].
+///
+/// The result is minor-symmetric; therefore `dd` is required to be [Mandel::Symmetric] or [Mandel::Symmetric2D].
+#[inline]
+pub fn t2_sym_dyad_t2(_dd: &mut Tensor4, _alpha: f64, _a: &Tensor2, _b: &Tensor2) -> Result<(), StrError> {
+    Err("TODO")
 }
 
 /// Performs the double-dot (ddot) operation between a Tensor4 and a Tensor2

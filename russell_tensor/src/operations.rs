@@ -932,7 +932,7 @@ mod tests {
     };
     use crate::{Mandel, SamplesTensor4, SQRT_2};
     use russell_chk::{approx_eq, vec_approx_eq};
-    use russell_lab::Vector;
+    use russell_lab::{mat_approx_eq, Matrix, Vector};
 
     #[test]
     fn copy_tensor2_fails_on_wrong_input() {
@@ -1476,7 +1476,6 @@ mod tests {
         let mut dd = Tensor4::new(Mandel::General);
         t2_odyad_t2(&mut dd, 2.0, &a, &b).unwrap();
         let mat = dd.to_matrix();
-        println!("{:.1}", mat);
         assert_eq!(
             format!("{:.1}", mat),
             "┌                                              ┐\n\
@@ -1508,7 +1507,6 @@ mod tests {
         let mut dd = Tensor4::new(Mandel::General);
         t2_odyad_t2(&mut dd, 2.0, &a, &b).unwrap();
         let mat = dd.to_matrix();
-        println!("{:.1}", mat);
         assert_eq!(
             format!("{:.1}", mat),
             "┌                                              ┐\n\
@@ -1523,6 +1521,36 @@ mod tests {
              │ 18.0 25.0 18.0 30.0 30.0 36.0 15.0 15.0  9.0 │\n\
              └                                              ┘"
         );
+
+        // symmetric 2D odyad symmetric 2D
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ], Mandel::Symmetric2D).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [3.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ], Mandel::Symmetric2D).unwrap();
+        let mut dd = Tensor4::new(Mandel::General);
+        t2_odyad_t2(&mut dd, 2.0, &a, &b).unwrap();
+        let mat = dd.to_matrix();
+        // println!("{:.1}", mat);
+        let correct = Matrix::from(&[
+            [3.0, 16.0, 0.0, 4.0, 0.0, 0.0, 12.0, 0.0, 0.0],
+            [16.0, 4.0, 0.0, 8.0, 0.0, 0.0, 8.0, 0.0, 0.0],
+            [0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [4.0, 8.0, 0.0, 2.0, 0.0, 0.0, 16.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 2.0, 4.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 4.0, 1.0, 0.0, 0.0, 0.0],
+            [12.0, 8.0, 0.0, 16.0, 0.0, 0.0, 6.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 6.0, 12.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.0, 9.0],
+        ]);
+        mat_approx_eq(&mat, &correct, 1e-14);
     }
 
     #[test]

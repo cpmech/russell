@@ -417,19 +417,112 @@ pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) -> Res
 ///
 /// ```text
 ///         _
-/// D = α a ⊗ b
+/// D = α A ⊗ B
 /// ```
 ///
 /// ```text
 /// With orthonormal Cartesian components:
 ///
-/// Dᵢⱼₖₗ = α aᵢₖ bⱼₗ
+/// Dᵢⱼₖₗ = α Aᵢₖ Bⱼₗ
 /// ```
 ///
 /// **Important:** The result is **not** necessarily minor-symmetric; therefore `dd` must be General.
-#[inline]
-pub fn t2_odyad_t2(_dd: &mut Tensor4, _alpha: f64, _a: &Tensor2, _b: &Tensor2) -> Result<(), StrError> {
-    Err("TODO")
+#[rustfmt::skip]
+pub fn t2_odyad_t2(dd: &mut Tensor4, _alpha: f64, aa: &Tensor2, bb: &Tensor2) -> Result<(), StrError> {
+    let a = &aa.vec;
+    let b = &bb.vec;
+    let tsq2 = 2.0 * SQRT_2;
+
+    dd.mat.set(0,0, a[0]*b[0]);
+    dd.mat.set(0,1, ((a[3] + a[6])*(b[3] + b[6]))/2.0);
+    dd.mat.set(0,2, ((a[5] + a[8])*(b[5] + b[8]))/2.0);
+    dd.mat.set(0,3, (a[3]*b[0] + a[6]*b[0] + a[0]*(b[3] + b[6]))/2.0);
+    dd.mat.set(0,4, ((a[5] + a[8])*(b[3] + b[6]) + (a[3] + a[6])*(b[5] + b[8]))/tsq2);
+    dd.mat.set(0,5, (a[5]*b[0] + a[8]*b[0] + a[0]*(b[5] + b[8]))/2.0);
+    dd.mat.set(0,6, (-(a[3]*b[0]) - a[6]*b[0] + a[0]*(b[3] + b[6]))/2.0);
+    dd.mat.set(0,7, (-((a[5] + a[8])*(b[3] + b[6])) + (a[3] + a[6])*(b[5] + b[8]))/tsq2);
+    dd.mat.set(0,8, (-(a[5]*b[0]) - a[8]*b[0] + a[0]*(b[5] + b[8]))/2.0);
+
+    dd.mat.set(1,0, ((a[3] - a[6])*(b[3] - b[6]))/2.0);
+    dd.mat.set(1,1, a[1]*b[1]);
+    dd.mat.set(1,2, ((a[4] + a[7])*(b[4] + b[7]))/2.0);
+    dd.mat.set(1,3, (a[3]*b[1] - a[6]*b[1] + a[1]*(b[3] - b[6]))/2.0);
+    dd.mat.set(1,4, (a[4]*b[1] + a[7]*b[1] + a[1]*(b[4] + b[7]))/2.0);
+    dd.mat.set(1,5, ((a[4] + a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] + b[7]))/tsq2);
+    dd.mat.set(1,6, (a[3]*b[1] - a[6]*b[1] + a[1]*(-b[3] + b[6]))/2.0);
+    dd.mat.set(1,7, (-(a[4]*b[1]) - a[7]*b[1] + a[1]*(b[4] + b[7]))/2.0);
+    dd.mat.set(1,8, (-((a[4] + a[7])*(b[3] - b[6])) + (a[3] - a[6])*(b[4] + b[7]))/tsq2);
+
+    dd.mat.set(2,0, ((a[5] - a[8])*(b[5] - b[8]))/2.0);
+    dd.mat.set(2,1, ((a[4] - a[7])*(b[4] - b[7]))/2.0);
+    dd.mat.set(2,2, a[2]*b[2]);
+    dd.mat.set(2,3, ((a[5] - a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] - b[8]))/tsq2);
+    dd.mat.set(2,4, (a[4]*b[2] - a[7]*b[2] + a[2]*(b[4] - b[7]))/2.0);
+    dd.mat.set(2,5, (a[5]*b[2] - a[8]*b[2] + a[2]*(b[5] - b[8]))/2.0);
+    dd.mat.set(2,6, ((a[5] - a[8])*(b[4] - b[7]) - (a[4] - a[7])*(b[5] - b[8]))/tsq2);
+    dd.mat.set(2,7, (a[4]*b[2] - a[7]*b[2] + a[2]*(-b[4] + b[7]))/2.0);
+    dd.mat.set(2,8, (a[5]*b[2] - a[8]*b[2] + a[2]*(-b[5] + b[8]))/2.0);
+
+    dd.mat.set(3,0, (a[3]*b[0] - a[6]*b[0] + a[0]*(b[3] - b[6]))/2.0);
+    dd.mat.set(3,1, (a[3]*b[1] + a[6]*b[1] + a[1]*(b[3] + b[6]))/2.0);
+    dd.mat.set(3,2, ((a[5] + a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] + b[8]))/tsq2);
+    dd.mat.set(3,3, (a[1]*b[0] + a[0]*b[1] + a[3]*b[3] - a[6]*b[6])/2.0);
+    dd.mat.set(3,4, (SQRT_2*(a[5] + a[8])*b[1] + (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) + SQRT_2*a[1]*(b[5] + b[8]))/4.0);
+    dd.mat.set(3,5, (SQRT_2*(a[4] + a[7])*b[0] + (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) + (a[3] - a[6])*(b[5] + b[8]))/4.0);
+    dd.mat.set(3,6, (-(a[1]*b[0]) + a[0]*b[1] - a[6]*b[3] + a[3]*b[6])/2.0);
+    dd.mat.set(3,7, (-(SQRT_2*(a[5] + a[8])*b[1]) - (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) + SQRT_2*a[1]*(b[5] + b[8]))/4.0);
+    dd.mat.set(3,8, (-(SQRT_2*(a[4] + a[7])*b[0]) - (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) + (a[3] - a[6])*(b[5] + b[8]))/4.0);
+
+    dd.mat.set(4,0, ((a[5] - a[8])*(b[3] - b[6]) + (a[3] - a[6])*(b[5] - b[8]))/tsq2);
+    dd.mat.set(4,1, (a[4]*b[1] - a[7]*b[1] + a[1]*(b[4] - b[7]))/2.0);
+    dd.mat.set(4,2, (a[4]*b[2] + a[7]*b[2] + a[2]*(b[4] + b[7]))/2.0);
+    dd.mat.set(4,3, (SQRT_2*(a[5] - a[8])*b[1] + (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8]))/4.0);
+    dd.mat.set(4,4, (a[2]*b[1] + a[1]*b[2] + a[4]*b[4] - a[7]*b[7])/2.0);
+    dd.mat.set(4,5, (SQRT_2*(a[3] - a[6])*b[2] + SQRT_2*a[2]*(b[3] - b[6]) + (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8]))/4.0);
+    dd.mat.set(4,6, (SQRT_2*(a[5] - a[8])*b[1] - (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) - SQRT_2*a[1]*(b[5] - b[8]))/4.0);
+    dd.mat.set(4,7, (-(a[2]*b[1]) + a[1]*b[2] - a[7]*b[4] + a[4]*b[7])/2.0);
+    dd.mat.set(4,8, (SQRT_2*(a[3] - a[6])*b[2] - SQRT_2*a[2]*(b[3] - b[6]) + (a[5] - a[8])*(b[4] + b[7]) - (a[4] + a[7])*(b[5] - b[8]))/4.0);
+
+    dd.mat.set(5,0, (a[5]*b[0] - a[8]*b[0] + a[0]*(b[5] - b[8]))/2.0);
+    dd.mat.set(5,1, ((a[4] - a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] - b[7]))/tsq2);
+    dd.mat.set(5,2, (a[5]*b[2] + a[8]*b[2] + a[2]*(b[5] + b[8]))/2.0);
+    dd.mat.set(5,3, (SQRT_2*(a[4] - a[7])*b[0] + (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8]))/4.0);
+    dd.mat.set(5,4, (SQRT_2*(a[3] + a[6])*b[2] + SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] + b[8]))/4.0);
+    dd.mat.set(5,5, (a[2]*b[0] + a[0]*b[2] + a[5]*b[5] - a[8]*b[8])/2.0);
+    dd.mat.set(5,6, (-(SQRT_2*(a[4] - a[7])*b[0]) + (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) - (a[3] + a[6])*(b[5] - b[8]))/4.0);
+    dd.mat.set(5,7, (SQRT_2*(a[3] + a[6])*b[2] - SQRT_2*a[2]*(b[3] + b[6]) - (a[5] + a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] + b[8]))/4.0);
+    dd.mat.set(5,8, (-(a[2]*b[0]) + a[0]*b[2] - a[8]*b[5] + a[5]*b[8])/2.0);
+
+    dd.mat.set(6,0, (-(a[3]*b[0]) + a[6]*b[0] + a[0]*(b[3] - b[6]))/2.0);
+    dd.mat.set(6,1, (a[3]*b[1] + a[6]*b[1] - a[1]*(b[3] + b[6]))/2.0);
+    dd.mat.set(6,2, ((a[5] + a[8])*(b[4] + b[7]) - (a[4] + a[7])*(b[5] + b[8]))/tsq2);
+    dd.mat.set(6,3, (-(a[1]*b[0]) + a[0]*b[1] + a[6]*b[3] - a[3]*b[6])/2.0);
+    dd.mat.set(6,4, (SQRT_2*(a[5] + a[8])*b[1] - (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) - SQRT_2*a[1]*(b[5] + b[8]))/4.0);
+    dd.mat.set(6,5, (-(SQRT_2*(a[4] + a[7])*b[0]) + (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) - (a[3] - a[6])*(b[5] + b[8]))/4.0);
+    dd.mat.set(6,6, (a[1]*b[0] + a[0]*b[1] - a[3]*b[3] + a[6]*b[6])/2.0);
+    dd.mat.set(6,7, (-(SQRT_2*(a[5] + a[8])*b[1]) + (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) - SQRT_2*a[1]*(b[5] + b[8]))/4.0);
+    dd.mat.set(6,8, (SQRT_2*(a[4] + a[7])*b[0] - (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) - (a[3] - a[6])*(b[5] + b[8]))/4.0);
+
+    dd.mat.set(7,0, (-((a[5] - a[8])*(b[3] - b[6])) + (a[3] - a[6])*(b[5] - b[8]))/tsq2);
+    dd.mat.set(7,1, (-(a[4]*b[1]) + a[7]*b[1] + a[1]*(b[4] - b[7]))/2.0);
+    dd.mat.set(7,2, (a[4]*b[2] + a[7]*b[2] - a[2]*(b[4] + b[7]))/2.0);
+    dd.mat.set(7,3, (-(SQRT_2*(a[5] - a[8])*b[1]) - (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8]))/4.0);
+    dd.mat.set(7,4, (-(a[2]*b[1]) + a[1]*b[2] + a[7]*b[4] - a[4]*b[7])/2.0);
+    dd.mat.set(7,5, (SQRT_2*(a[3] - a[6])*b[2] - SQRT_2*a[2]*(b[3] - b[6]) - (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8]))/4.0);
+    dd.mat.set(7,6, (-(SQRT_2*(a[5] - a[8])*b[1]) + (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) - SQRT_2*a[1]*(b[5] - b[8]))/4.0);
+    dd.mat.set(7,7, (a[2]*b[1] + a[1]*b[2] - a[4]*b[4] + a[7]*b[7])/2.0);
+    dd.mat.set(7,8, (SQRT_2*(a[3] - a[6])*b[2] + SQRT_2*a[2]*(b[3] - b[6]) - (a[5] - a[8])*(b[4] + b[7]) - (a[4] + a[7])*(b[5] - b[8]))/4.0);
+
+    dd.mat.set(8,0, (-(a[5]*b[0]) + a[8]*b[0] + a[0]*(b[5] - b[8]))/2.0);
+    dd.mat.set(8,1, (-((a[4] - a[7])*(b[3] + b[6])) + (a[3] + a[6])*(b[4] - b[7]))/tsq2);
+    dd.mat.set(8,2, (a[5]*b[2] + a[8]*b[2] - a[2]*(b[5] + b[8]))/2.0);
+    dd.mat.set(8,3, (-(SQRT_2*(a[4] - a[7])*b[0]) - (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8]))/4.0);
+    dd.mat.set(8,4, (SQRT_2*(a[3] + a[6])*b[2] - SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) - (a[4] - a[7])*(b[5] + b[8]))/4.0);
+    dd.mat.set(8,5, (-(a[2]*b[0]) + a[0]*b[2] + a[8]*b[5] - a[5]*b[8])/2.0);
+    dd.mat.set(8,6, (SQRT_2*(a[4] - a[7])*b[0] - (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) - (a[3] + a[6])*(b[5] - b[8]))/4.0);
+    dd.mat.set(8,7, (SQRT_2*(a[3] + a[6])*b[2] + SQRT_2*a[2]*(b[3] + b[6]) - (a[5] + a[8])*(b[4] - b[7]) - (a[4] - a[7])*(b[5] + b[8]))/4.0);
+    dd.mat.set(8,8, (a[2]*b[0] + a[0]*b[2] - a[5]*b[5] + a[8]*b[8])/2.0);
+    Ok(())
 }
 
 /// Performs the underbar dyadic product between two Tensor2 resulting in a (general) Tensor4
@@ -646,8 +739,8 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) -> R
 #[cfg(test)]
 mod tests {
     use super::{
-        copy_tensor2, copy_tensor4, t2_ddot_t2, t2_ddot_t4, t2_dot_t2, t2_dot_vec, t2_dyad_t2, t4_ddot_t2, t4_ddot_t4,
-        vec_dot_t2, vec_dyad_vec, Tensor2, Tensor4,
+        copy_tensor2, copy_tensor4, t2_ddot_t2, t2_ddot_t4, t2_dot_t2, t2_dot_vec, t2_dyad_t2, t2_odyad_t2, t4_ddot_t2,
+        t4_ddot_t4, vec_dot_t2, vec_dyad_vec, Tensor2, Tensor4,
     };
     use crate::{Mandel, SamplesTensor4, SQRT_2};
     use russell_chk::{approx_eq, vec_approx_eq};
@@ -1174,6 +1267,41 @@ mod tests {
              │ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 │\n\
              │ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 │\n\
              └                                     ┘"
+        );
+    }
+
+    #[test]
+    fn t2_odyad_t2_works() {
+        // general odyad general
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ], Mandel::General).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [9.0, 8.0, 7.0],
+            [6.0, 5.0, 4.0],
+            [3.0, 2.0, 1.0],
+        ], Mandel::General).unwrap();
+        let mut dd = Tensor4::new(Mandel::General);
+        t2_odyad_t2(&mut dd, 2.0, &a, &b).unwrap();
+        let mat = dd.to_matrix();
+        println!("{:.1}", mat);
+        assert_eq!(
+            format!("{:.1}", mat),
+            "┌                                              ┐\n\
+             │  9.0 16.0 21.0  8.0 14.0  7.0 18.0 24.0 27.0 │\n\
+             │ 24.0 25.0 24.0 20.0 20.0 16.0 30.0 30.0 36.0 │\n\
+             │ 21.0 16.0  9.0 14.0  8.0  7.0 24.0 18.0 27.0 │\n\
+             │  6.0 10.0 12.0  5.0  8.0  4.0 12.0 15.0 18.0 │\n\
+             │ 12.0 10.0  6.0  8.0  5.0  4.0 15.0 12.0 18.0 │\n\
+             │  3.0  4.0  3.0  2.0  2.0  1.0  6.0  6.0  9.0 │\n\
+             │ 36.0 40.0 42.0 32.0 35.0 28.0 45.0 48.0 54.0 │\n\
+             │ 42.0 40.0 36.0 35.0 32.0 28.0 48.0 45.0 54.0 │\n\
+             │ 63.0 64.0 63.0 56.0 56.0 49.0 72.0 72.0 81.0 │\n\
+             └                                              ┘"
         );
     }
 

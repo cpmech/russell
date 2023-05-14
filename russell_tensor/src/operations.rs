@@ -434,7 +434,7 @@ pub fn t2_odyad_t2(dd: &mut Tensor4, _alpha: f64, aa: &Tensor2, bb: &Tensor2) ->
     }
     let dim = aa.vec.dim();
     if bb.vec.dim() != dim {
-        return Err("A and B tensors are incompatible");
+        return Err("A and B tensors must be compatible");
     }
     let a = &aa.vec;
     let b = &bb.vec;
@@ -1455,6 +1455,23 @@ mod tests {
              │ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 │\n\
              │ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 │\n\
              └                                     ┘"
+        );
+    }
+
+    #[test]
+    fn t2_odyad_t2_captures_errors() {
+        let a = Tensor2::new(Mandel::General);
+        let b = Tensor2::new(Mandel::General);
+        let mut dd = Tensor4::new(Mandel::Symmetric);
+        assert_eq!(
+            t2_odyad_t2(&mut dd, 1.0, &a, &b).err(),
+            Some("D tensor must be General")
+        );
+        let a = Tensor2::new(Mandel::Symmetric);
+        let mut dd = Tensor4::new(Mandel::General);
+        assert_eq!(
+            t2_odyad_t2(&mut dd, 1.0, &a, &b).err(),
+            Some("A and B tensors must be compatible")
         );
     }
 

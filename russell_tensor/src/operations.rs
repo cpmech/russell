@@ -1,5 +1,5 @@
 use super::{Tensor2, Tensor4};
-use crate::{Mandel, StrError, SQRT_2};
+use crate::{StrError, SQRT_2};
 use russell_lab::{mat_copy, mat_mat_mul, mat_vec_mul, vec_inner, vec_mat_mul, vec_outer, Vector};
 
 /// Copies Tensor2
@@ -120,20 +120,13 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 /// Performs the single dot operation between two Tensor2 (matrix multiplication)
 ///
 /// ```text
-/// c = a · b
+/// C = A · B
 /// ```
 ///
 /// # Note
 ///
-/// Even if `a` and `b` are symmetric, the result `c` may not be symmetric.
-/// Thus, the result is always a general tensor.
-///
-/// This function works with mixed symmetry types.
-///
-/// # Warning
-///
-/// This function is not very efficient because we convert both tensors to
-/// a full matrix representation first.
+/// Even if `A` and `B` are symmetric, the result `C` may not be symmetric.
+/// Thus, `C` must be a [Mandel::General] tensor.
 ///
 /// # Example
 ///
@@ -145,7 +138,7 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 ///         [1.0,  1.0, 0.0],
 ///         [1.0, -1.0, 0.0],
 ///         [0.0,  0.0, 1.0],
-///     ], Mandel::Symmetric)?;
+///     ], Mandel::General)?;
 ///
 ///     let b = Tensor2::from_matrix(&[
 ///         [1.0,  2.0, 0.0],
@@ -153,7 +146,8 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 ///         [0.0,  4.0, 1.0],
 ///     ], Mandel::General)?;
 ///
-///     let c = t2_dot_t2(&a, &b)?;
+///     let mut c = Tensor2::new(Mandel::General);
+///     t2_dot_t2(&mut c, &a, &b)?;
 ///     assert_eq!(
 ///         format!("{:.1}", c.to_matrix()),
 ///         "┌                ┐\n\
@@ -165,18 +159,51 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 ///     Ok(())
 /// }
 /// ```
-pub fn t2_dot_t2(a: &Tensor2, b: &Tensor2) -> Result<Tensor2, StrError> {
-    let ta = a.to_matrix();
-    let tb = b.to_matrix();
-    let mut tc = [[0.0; 3]; 3];
-    for i in 0..3 {
-        for j in 0..3 {
-            for k in 0..3 {
-                tc[i][j] += ta.get(i, k) * tb.get(k, j);
-            }
-        }
+#[rustfmt::skip]
+pub fn t2_dot_t2(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) -> Result<(), StrError> {
+    let dim = aa.vec.dim();
+    if cc.vec.dim() != 9 {
+        return Err("C tensor must be General");
     }
-    Tensor2::from_matrix(&tc, Mandel::General)
+    if bb.vec.dim() != dim {
+        return Err("A and B tensors must be compatible");
+    }
+    let a = &aa.vec;
+    let b = &bb.vec;
+    let c = &mut cc.vec;
+    let tsq2 = 2.0 * SQRT_2;
+    if dim == 4 {
+        c[0] = a[0] * b[0] + (a[3] * b[3]) / 2.0;
+        c[1] = a[1] * b[1] + (a[3] * b[3]) / 2.0;
+        c[2] = a[2] * b[2];
+        c[3] = (a[3] * (b[0] + b[1]) + (a[0] + a[1]) * b[3]) / 2.0;
+        c[4] = 0.0;
+        c[5] = 0.0;
+        c[6] = (a[3] * (-b[0] + b[1]) + (a[0] - a[1]) * b[3]) / 2.0;
+        c[7] = 0.0;
+        c[8] = 0.0;
+    } else if dim == 6 {
+        c[0] = (2.0 * a[0] * b[0] + a[3] * b[3] + a[5] * b[5]) / 2.0;
+        c[1] = (2.0 * a[1] * b[1] + a[3] * b[3] + a[4] * b[4]) / 2.0;
+        c[2] = (2.0 * a[2] * b[2] + a[4] * b[4] + a[5] * b[5]) / 2.0;
+        c[3] = (SQRT_2 * a[3] * (b[0] + b[1]) + SQRT_2 * a[0] * b[3] + SQRT_2 * a[1] * b[3] + a[5] * b[4] + a[4] * b[5]) / tsq2;
+        c[4] = (SQRT_2 * a[4] * (b[1] + b[2]) + a[5] * b[3] + SQRT_2 * a[1] * b[4] + SQRT_2 * a[2] * b[4] + a[3] * b[5]) / tsq2;
+        c[5] = (SQRT_2 * a[5] * (b[0] + b[2]) + a[4] * b[3] + a[3] * b[4] + SQRT_2 * a[0] * b[5] + SQRT_2 * a[2] * b[5]) / tsq2;
+        c[6] = (SQRT_2 * a[3] * (-b[0] + b[1]) + SQRT_2 * a[0] * b[3] - SQRT_2 * a[1] * b[3] + a[5] * b[4] - a[4] * b[5]) / tsq2;
+        c[7] = (SQRT_2 * a[4] * (-b[1] + b[2]) - a[5] * b[3] + SQRT_2 * a[1] * b[4] - SQRT_2 * a[2] * b[4] + a[3] * b[5]) / tsq2;
+        c[8] = (SQRT_2 * a[5] * (-b[0] + b[2]) - a[4] * b[3] + a[3] * b[4] + SQRT_2 * a[0] * b[5] - SQRT_2 * a[2] * b[5]) / tsq2;
+    } else {
+        c[0] = (2.0 * a[0] * b[0] + (a[3] + a[6]) * (b[3] - b[6]) + (a[5] + a[8]) * (b[5] - b[8])) / 2.0;
+        c[1] = (2.0 * a[1] * b[1] + (a[3] - a[6]) * (b[3] + b[6]) + (a[4] + a[7]) * (b[4] - b[7])) / 2.0;
+        c[2] = (2.0 * a[2] * b[2] + (a[4] - a[7]) * (b[4] + b[7]) + (a[5] - a[8]) * (b[5] + b[8])) / 2.0;
+        c[3] = (2.0 * (a[3] - a[6]) * b[0] + 2.0 * (a[3] + a[6]) * b[1] + 2.0 * a[1] * (b[3] - b[6]) + 2.0 * a[0] * (b[3] + b[6]) + SQRT_2 * (a[5] + a[8]) * (b[4] - b[7]) + SQRT_2 * (a[4] + a[7]) * (b[5] - b[8])) / 4.0;
+        c[4] = (2.0 * (a[4] - a[7]) * b[1] + 2.0 * (a[4] + a[7]) * b[2] + SQRT_2 * (a[5] - a[8]) * (b[3] + b[6]) + 2.0 * a[2] * (b[4] - b[7]) + 2.0 * a[1] * (b[4] + b[7]) + SQRT_2 * (a[3] - a[6]) * (b[5] + b[8])) / 4.0;
+        c[5] = (2.0 * (a[5] - a[8]) * b[0] + 2.0 * (a[5] + a[8]) * b[2] + SQRT_2 * (a[4] - a[7]) * (b[3] - b[6]) + SQRT_2 * (a[3] + a[6]) * (b[4] + b[7]) + 2.0 * a[2] * (b[5] - b[8]) + 2.0 * a[0] * (b[5] + b[8])) / 4.0;
+        c[6] = (-2.0 * (a[3] - a[6]) * b[0] + 2.0 * (a[3] + a[6]) * b[1] - 2.0 * a[1] * (b[3] - b[6]) + 2.0 * a[0] * (b[3] + b[6]) + SQRT_2 * (a[5] + a[8]) * (b[4] - b[7]) - SQRT_2 * (a[4] + a[7]) * (b[5] - b[8])) / 4.0;
+        c[7] = (-2.0 * (a[4] - a[7]) * b[1] + 2.0 * (a[4] + a[7]) * b[2] - SQRT_2 * (a[5] - a[8]) * (b[3] + b[6]) - 2.0 * a[2] * (b[4] - b[7]) + 2.0 * a[1] * (b[4] + b[7]) + SQRT_2 * (a[3] - a[6]) * (b[5] + b[8])) / 4.0;
+        c[8] = (-2.0 * (a[5] - a[8]) * b[0] + 2.0 * (a[5] + a[8]) * b[2] - SQRT_2 * (a[4] - a[7]) * (b[3] - b[6]) + SQRT_2 * (a[3] + a[6]) * (b[4] + b[7]) - 2.0 * a[2] * (b[5] - b[8]) + 2.0 * a[0] * (b[5] + b[8])) / 4.0;
+    }
+    Ok(())
 }
 
 /// Performs the single dot operation between a Tensor2 and a vector
@@ -429,7 +456,7 @@ pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) -> Res
 /// **Important:** The result is **not** necessarily minor-symmetric; therefore `dd` must be General.
 #[rustfmt::skip]
 pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Result<(), StrError> {
-    if dd.mat.dims().1!=9{
+    if dd.mat.dims().1 != 9 {
         return Err("D tensor must be General");
     }
     let dim = aa.vec.dim();
@@ -1082,7 +1109,20 @@ mod tests {
     }
 
     #[test]
-    fn t2_sdot_t2_works() {
+    fn t2_dot_t2_captures_errors() {
+        let a = Tensor2::new(Mandel::Symmetric);
+        let b = Tensor2::new(Mandel::General);
+        let mut c = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(t2_dot_t2(&mut c, &a, &b).err(), Some("C tensor must be General"));
+        let mut c = Tensor2::new(Mandel::General);
+        assert_eq!(
+            t2_dot_t2(&mut c, &a, &b).err(),
+            Some("A and B tensors must be compatible")
+        );
+    }
+
+    #[test]
+    fn t2_dot_t2_works() {
         // general . general
         #[rustfmt::skip]
         let a = Tensor2::from_matrix(&[
@@ -1096,7 +1136,8 @@ mod tests {
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
         ], Mandel::General).unwrap();
-        let c = t2_dot_t2(&a, &b).unwrap();
+        let mut c = Tensor2::new(Mandel::General);
+        t2_dot_t2(&mut c, &a, &b).unwrap();
         #[rustfmt::skip]
         let correct = Tensor2::from_matrix(&[
             [ 30.0,  24.0, 18.0],
@@ -1118,7 +1159,8 @@ mod tests {
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
         ], Mandel::Symmetric).unwrap();
-        let c = t2_dot_t2(&a, &b).unwrap();
+        let mut c = Tensor2::new(Mandel::General);
+        t2_dot_t2(&mut c, &a, &b).unwrap();
         #[rustfmt::skip]
         let correct = Tensor2::from_matrix(&[
             [59.0, 37.0, 28.0],
@@ -1127,47 +1169,26 @@ mod tests {
         ], Mandel::General).unwrap();
         vec_approx_eq(c.vec.as_data(), correct.vec.as_data(), 1e-13);
 
-        // sym-3D . general
+        // sym-2D . sym-2D
         #[rustfmt::skip]
         let a = Tensor2::from_matrix(&[
-            [1.0, 2.0, 3.0],
-            [2.0, 5.0, 6.0],
-            [3.0, 6.0, 9.0],
-        ], Mandel::Symmetric).unwrap();
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ], Mandel::Symmetric2D).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
-            [9.0, 8.0, 7.0],
-            [6.0, 5.0, 4.0],
-            [3.0, 2.0, 1.0],
-        ], Mandel::General).unwrap();
-        let c = t2_dot_t2(&a, &b).unwrap();
-        #[rustfmt::skip]
-        let correct = Tensor2::from_matrix(&[
-            [30.0, 24.0, 18.0],
-            [66.0, 53.0, 40.0],
-            [90.0, 72.0, 54.0],
-        ], Mandel::General).unwrap();
-        vec_approx_eq(c.vec.as_data(), correct.vec.as_data(), 1e-13);
-
-        // sym-3D . sym-2D
-        #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
-            [1.0, 2.0, 3.0],
-            [2.0, 5.0, 6.0],
-            [3.0, 6.0, 9.0],
-        ], Mandel::Symmetric).unwrap();
-        #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
-            [9.0, 8.0, 0.0],
-            [8.0, 5.0, 0.0],
+            [3.0, 5.0, 0.0],
+            [5.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],
         ], Mandel::Symmetric2D).unwrap();
-        let c = t2_dot_t2(&a, &b).unwrap();
+        let mut c = Tensor2::new(Mandel::General);
+        t2_dot_t2(&mut c, &a, &b).unwrap();
         #[rustfmt::skip]
         let correct = Tensor2::from_matrix(&[
-            [25.0, 18.0, 3.0],
-            [58.0, 41.0, 6.0],
-            [75.0, 54.0, 9.0],
+            [23.0, 13.0, 0.0],
+            [22.0, 24.0, 0.0],
+            [ 0.0,  0.0, 3.0],
         ], Mandel::General).unwrap();
         vec_approx_eq(c.vec.as_data(), correct.vec.as_data(), 1e-13);
     }

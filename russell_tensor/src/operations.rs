@@ -1041,26 +1041,335 @@ pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Resu
     Ok(())
 }
 
-/// Performs the symmetric dyad operation with symmetric Tensor2 resulting in a minor-symmetric Tensor4
+/// Performs the self-sum-dyadic (ssd) operation with a Tensor2 yielding a minor-symmetric Tensor4
 ///
 /// ```text
 ///          _
-/// D = α (a ⊗ b + a ⊗ b)
+/// D = s (A ⊗ A + A ⊗ A)
 ///                  ‾
 /// ```
 ///
 /// ```text
 /// With orthonormal Cartesian components:
 ///
-/// Dᵢⱼₖₗ = α (aᵢₖ bⱼₗ + aᵢₗ bⱼₖ)
+/// Dᵢⱼₖₗ = s (Aᵢₖ Aⱼₗ + Aᵢₗ Aⱼₖ)
 /// ```
 ///
-/// Note: `a` and `b` must be [Mandel::Symmetric] or [Mandel::Symmetric2D].
+/// # Output
 ///
-/// The result is minor-symmetric; therefore `dd` is required to be [Mandel::Symmetric] or [Mandel::Symmetric2D].
+/// * `dd` -- The result is minor-symmetric; therefore `dd` must be [Mandel::Symmetric] (but not 2D).
+///
+/// # Input
+///
+/// * `aa` -- Second-order tensor, symmetric or not.
+///
+/// # Note
+///
+/// Even if `A` is Symmetric 2D, the result may not be expressed by a Symmetric 2D Tensor4.
 #[inline]
-pub fn t2_sym_dyad_t2(_dd: &mut Tensor4, _alpha: f64, _a: &Tensor2, _b: &Tensor2) -> Result<(), StrError> {
-    Err("TODO")
+#[rustfmt::skip]
+pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) -> Result<(), StrError> {
+    if dd.mat.dims().1 != 6 {
+        return Err("D tensor must be Symmetric");
+    }
+    let dim = aa.vec.dim();
+    let a = &aa.vec;
+    if dim == 4 {
+        dd.mat.set(0,0, s*(2.0*a[0]*a[0]));
+        dd.mat.set(0,1, s*(a[3]*a[3]));
+        dd.mat.set(0,2, 0.0);
+        dd.mat.set(0,3, s*(2.0*a[0]*a[3]));
+        dd.mat.set(0,4, 0.0);
+        dd.mat.set(0,5, 0.0);
+
+        dd.mat.set(1,0, s*(a[3]*a[3]));
+        dd.mat.set(1,1, s*(2.0*a[1]*a[1]));
+        dd.mat.set(1,2, 0.0);
+        dd.mat.set(1,3, s*(2.0*a[1]*a[3]));
+        dd.mat.set(1,4, 0.0);
+        dd.mat.set(1,5, 0.0);
+
+        dd.mat.set(2,0, 0.0);
+        dd.mat.set(2,1, 0.0);
+        dd.mat.set(2,2, s*(2.0*a[2]*a[2]));
+        dd.mat.set(2,3, 0.0);
+        dd.mat.set(2,4, 0.0);
+        dd.mat.set(2,5, 0.0);
+
+        dd.mat.set(3,0, s*(2.0*a[0]*a[3]));
+        dd.mat.set(3,1, s*(2.0*a[1]*a[3]));
+        dd.mat.set(3,2, 0.0);
+        dd.mat.set(3,3, s*(2.0*a[0]*a[1] + a[3]*a[3]));
+        dd.mat.set(3,4, 0.0);
+        dd.mat.set(3,5, 0.0);
+
+        dd.mat.set(4,0, 0.0);
+        dd.mat.set(4,1, 0.0);
+        dd.mat.set(4,2, 0.0);
+        dd.mat.set(4,3, 0.0);
+        dd.mat.set(4,4, s*(2.0*a[1]*a[2]));
+        dd.mat.set(4,5, s*(SQRT_2*a[2]*a[3]));
+
+        dd.mat.set(5,0, 0.0);
+        dd.mat.set(5,1, 0.0);
+        dd.mat.set(5,2, 0.0);
+        dd.mat.set(5,3, 0.0);
+        dd.mat.set(5,4, s*(SQRT_2*a[2]*a[3]));
+        dd.mat.set(5,5, s*(2.0*a[0]*a[2]));
+    } else if dim == 6 {
+        dd.mat.set(0,0, s*(2.0*a[0]*a[0]));
+        dd.mat.set(0,1, s*(a[3]*a[3]));
+        dd.mat.set(0,2, s*(a[5]*a[5]));
+        dd.mat.set(0,3, s*(2.0*a[0]*a[3]));
+        dd.mat.set(0,4, s*(SQRT_2*a[3]*a[5]));
+        dd.mat.set(0,5, s*(2.0*a[ 0]*a[5]));
+
+        dd.mat.set(1,0, s*(a[3]*a[3]));
+        dd.mat.set(1,1, s*(2.0*a[1]*a[1]));
+        dd.mat.set(1,2, s*(a[4]*a[4]));
+        dd.mat.set(1,3, s*(2.0*a[1]*a[3]));
+        dd.mat.set(1,4, s*(2.0*a[1]*a[4]));
+        dd.mat.set(1,5, s*(SQRT_2*a[3]*a[4]));
+
+        dd.mat.set(2,0, s*(a[5]*a[5]));
+        dd.mat.set(2,1, s*(a[4]*a[4]));
+        dd.mat.set(2,2, s*(2.0*a[2]*a[2]));
+        dd.mat.set(2,3, s*(SQRT_2*a[4]*a[ 5]));
+        dd.mat.set(2,4, s*(2.0*a[2]*a[4]));
+        dd.mat.set(2,5, s*(2.0*a[2]*a[5]));
+
+        dd.mat.set(3,0, s*(2.0*a[0]*a[3]));
+        dd.mat.set(3,1, s*(2.0*a[1]*a[3]));
+        dd.mat.set(3,2, s*(SQRT_2*a[4]* a[5]));
+        dd.mat.set(3,3, s*(2.0*a[0]*a[1] + a[3]*a[3]));
+        dd.mat.set(3,4, s*(a[3]*a[4] + SQRT_2*a[1]*a[5]));
+        dd.mat.set(3,5, s*(SQRT_2*a[0]*a[4] + a[3]*a[5]));
+
+        dd.mat.set(4,0, s*(SQRT_2*a[3]*a[5]));
+        dd.mat.set(4,1, s*(2.0*a[1]*a[4]));
+        dd.mat.set(4,2, s*(2.0*a[2]*a[4]));
+        dd.mat.set(4,3, s*(a[3]*a[4] + SQRT_2*a[1]*a[5]));
+        dd.mat.set(4,4, s*(2.0*a[1]*a[2] + a[4]*a[4]));
+        dd.mat.set(4,5, s*(SQRT_2*a[2]*a[3] + a[4]*a[5]));
+
+        dd.mat.set(5,0, s*(2.0*a[0]*a[5]));
+        dd.mat.set(5,1, s*(SQRT_2*a[3]*a[4]));
+        dd.mat.set(5,2, s*(2.0*a[2]*a[5]));
+        dd.mat.set(5,3, s*(SQRT_2*a[0]* a[4] + a[3]*a[5]));
+        dd.mat.set(5,4, s*(SQRT_2*a[2]*a[3] + a[4]*a[5]));
+        dd.mat.set(5,5, s*(2.0*a[0]*a[2] + a[5]*a[5]));
+    } else {
+        dd.mat.set(0,0, s*(2.0*a[0]*a[0]));
+        dd.mat.set(0,1, s*((a[3] + a[6])*(a[3] + a[6])));
+        dd.mat.set(0,2, s*((a[5] + a[8])*(a[5] + a[8])));
+        dd.mat.set(0,3, s*(2.0*a[0]*(a[3] + a[6])));
+        dd.mat.set(0,4, s*(SQRT_2*(a[3] + a[6])*(a[5] + a[8])));
+        dd.mat.set(0,5, s*(2.0*a[0]*(a[5] + a[8])));
+
+        dd.mat.set(1,0, s*((a[3] - a[6])*(a[3] - a[6])));
+        dd.mat.set(1,1, s*(2.0*a[1]*a[1]));
+        dd.mat.set(1,2, s*((a[4] + a[7])*(a[4] + a[7])));
+        dd.mat.set(1,3, s*(2.0*a[1]*(a[3] - a[6])));
+        dd.mat.set(1,4, s*(2.0*a[1]*(a[4] + a[7])));
+        dd.mat.set(1,5, s*(SQRT_2*(a[3] - a[6])*(a[4] + a[7])));
+
+        dd.mat.set(2,0, s*((a[5] - a[8])*(a[5] - a[8])));
+        dd.mat.set(2,1, s*((a[4] - a[7])*(a[4] - a[7])));
+        dd.mat.set(2,2, s*(2.0*a[2]*a[2]));
+        dd.mat.set(2,3, s*(SQRT_2*(a[4] - a[7])*(a[5] - a[8])));
+        dd.mat.set(2,4, s*(2.0*a[2]*(a[4] - a[7])));
+        dd.mat.set(2,5, s*(2.0*a[2]*(a[5] - a[8])));
+
+        dd.mat.set(3,0, s*(2.0*a[0]*(a[3] - a[6])));
+        dd.mat.set(3,1, s*(2.0*a[1]*(a[3] + a[6])));
+        dd.mat.set(3,2, s*(SQRT_2*(a[4] + a[7])*(a[5] + a[8])));
+        dd.mat.set(3,3, s*(2.0*a[0]*a[1] + a[3]*a[3] - a[6]*a[6]));
+        dd.mat.set(3,4, s*((a[3] + a[6])*(a[4] + a[7]) + SQRT_2*a[1]*(a[5] + a[8])));
+        dd.mat.set(3,5, s*(SQRT_2*a[0]*(a[4] + a[7]) + (a[3] - a[6])*(a[5] + a[8])));
+
+        dd.mat.set(4,0, s*(SQRT_2*(a[3] - a[6])*(a[5] - a[8])));
+        dd.mat.set(4,1, s*(2.0*a[1]*(a[4] - a[7])));
+        dd.mat.set(4,2, s*(2.0*a[2]*(a[4] + a[7])));
+        dd.mat.set(4,3, s*((a[3] - a[6])*(a[4] - a[7]) + SQRT_2*a[1]*(a[5] - a[8])));
+        dd.mat.set(4,4, s*(2.0*a[1]*a[2] + a[4]*a[4] - a[7]*a[7]));
+        dd.mat.set(4,5, s*(SQRT_2*a[2]*(a[3] - a[6]) + (a[4] + a[7])*(a[5] - a[8])));
+
+        dd.mat.set(5,0, s*(2.0*a[0]*(a[5] - a[8])));
+        dd.mat.set(5,1, s*(SQRT_2*(a[3] + a[6])*(a[4] - a[7])));
+        dd.mat.set(5,2, s*(2.0*a[2]*(a[5] + a[8])));
+        dd.mat.set(5,3, s*(SQRT_2*a[0]*(a[4] - a[7]) + (a[3] + a[6])*(a[5] - a[8])));
+        dd.mat.set(5,4, s*(SQRT_2*a[2]*(a[3] + a[6]) + (a[4] - a[7])*(a[5] + a[8])));
+        dd.mat.set(5,5, s*(2.0*a[0]*a[2] + a[5]*a[5] - a[8]*a[8]));
+    }
+    Ok(())
+}
+
+/// Performs the quad-sum-dyadic (qsd) operation with two Tensor2 yielding a minor-symmetric Tensor4
+///
+/// ```text
+///          _               _
+/// D = s (A ⊗ B + A ⊗ B + B ⊗ A + B ⊗ A)
+///                  ‾               ‾
+/// ```
+///
+/// ```text
+/// With orthonormal Cartesian components:
+///
+/// Dᵢⱼₖₗ = s (Aᵢₖ Bⱼₗ + Aᵢₗ Bⱼₖ + Bᵢₖ Aⱼₗ + Bᵢₗ Aⱼₖ)
+/// ```
+///
+/// # Output
+///
+/// * `dd` -- The result is minor-symmetric; therefore `dd` must be [Mandel::Symmetric] (but not 2D).
+///
+/// # Input
+///
+/// * `aa` -- Second-order tensor, symmetric or not (with the same Mandel type as `bb`)
+/// * `bb` -- Second-order tensor, symmetric or not (with the same Mandel type as `aa`)
+///
+/// # Note
+///
+/// Even if `A` and `B` are Symmetric 2D, the result may not be expressed by a Symmetric 2D Tensor4.
+#[inline]
+#[rustfmt::skip]
+pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Result<(), StrError> {
+    if dd.mat.dims().1 != 6 {
+        return Err("D tensor must be Symmetric");
+    }
+    let dim = aa.vec.dim();
+    if bb.vec.dim() != dim {
+        return Err("A and B tensors must be compatible");
+    }
+    let a = &aa.vec;
+    let b = &bb.vec;
+    if dim == 4 {
+        dd.mat.set(0,0, s*(4.0*a[0]*b[0]));
+        dd.mat.set(0,1, s*(2.0*a[3]*b[3]));
+        dd.mat.set(0,2, 0.0);
+        dd.mat.set(0,3, s*(2.0*(a[3]*b[0] + a[0]*b[3])));
+        dd.mat.set(0,4, 0.0);
+        dd.mat.set(0,5, 0.0);
+
+        dd.mat.set(1,0, s*(2.0*a[3]*b[3]));
+        dd.mat.set(1,1, s*(4.0*a[1]*b[1]));
+        dd.mat.set(1,2, 0.0);
+        dd.mat.set(1,3, s*(2.0*(a[3]*b[1] + a[1]*b[3])));
+        dd.mat.set(1,4, 0.0);
+        dd.mat.set(1,5, 0.0);
+
+        dd.mat.set(2,0, 0.0);
+        dd.mat.set(2,1, 0.0);
+        dd.mat.set(2,2, s*(4.0*a[2]*b[2]));
+        dd.mat.set(2,3, 0.0);
+        dd.mat.set(2,4, 0.0);
+        dd.mat.set(2,5, 0.0);
+
+        dd.mat.set(3,0, s*(2.0*(a[3]*b[0] + a[0]*b[3])));
+        dd.mat.set(3,1, s*(2.0*(a[3]*b[1] + a[1]*b[3])));
+        dd.mat.set(3,2, 0.0);
+        dd.mat.set(3,3, s*(2.0*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3])));
+        dd.mat.set(3,4, 0.0);
+        dd.mat.set(3,5, 0.0);
+
+        dd.mat.set(4,0, 0.0);
+        dd.mat.set(4,1, 0.0);
+        dd.mat.set(4,2, 0.0);
+        dd.mat.set(4,3, 0.0);
+        dd.mat.set(4,4, s*(2.0*(a[2]*b[1] + a[1]*b[2])));
+        dd.mat.set(4,5, s*(SQRT_2*(a[3]*b[2] + a[2]*b[3])));
+
+        dd.mat.set(5,0, 0.0);
+        dd.mat.set(5,1, 0.0);
+        dd.mat.set(5,2, 0.0);
+        dd.mat.set(5,3, 0.0);
+        dd.mat.set(5,4, s*(SQRT_2*(a[3]*b[2] + a[2]*b[3])));
+        dd.mat.set(5,5, s*(2.0*(a[2]*b[0] + a[0]*b[2])));
+    } else if dim == 6 {
+        dd.mat.set(0,0, s*(4.0*a[0]*b[0]));
+        dd.mat.set(0,1, s*(2.0*a[3]*b[3]));
+        dd.mat.set(0,2, s*(2.0*a[5]*b[5]));
+        dd.mat.set(0,3, s*(2.0*(a[3]*b[0] + a[0]*b[3])));
+        dd.mat.set(0,4, s*(SQRT_2*(a[5]*b[3] + a[3]*b[5])));
+        dd.mat.set(0,5, s*(2.0*(a[5]*b[0] + a[0]*b[5])));
+
+        dd.mat.set(1,0, s*(2.0*a[3]*b[3]));
+        dd.mat.set(1,1, s*(4.0*a[1]*b[1]));
+        dd.mat.set(1,2, s*(2.0*a[4]*b[4]));
+        dd.mat.set(1,3, s*(2.0*(a[3]*b[1] + a[1]*b[3])));
+        dd.mat.set(1,4, s*(2.0*(a[4]*b[1] + a[1]*b[4])));
+        dd.mat.set(1,5, s*(SQRT_2*(a[4]*b[3] + a[3]*b[4])));
+
+        dd.mat.set(2,0, s*(2.0*a[5]*b[5]));
+        dd.mat.set(2,1, s*(2.0*a[4]*b[4]));
+        dd.mat.set(2,2, s*(4.0*a[2]*b[2]));
+        dd.mat.set(2,3, s*(SQRT_2*(a[5]*b[4] + a[4]*b[5])));
+        dd.mat.set(2,4, s*(2.0*(a[4]*b[2] + a[2]*b[4])));
+        dd.mat.set(2,5, s*(2.0*(a[5]*b[2] + a[2]*b[5])));
+
+        dd.mat.set(3,0, s*(2.0*(a[3]*b[0] + a[0]*b[3])));
+        dd.mat.set(3,1, s*(2.0*(a[3]*b[1] + a[1]*b[3])));
+        dd.mat.set(3,2, s*(SQRT_2*(a[5]*b[4] + a[4]*b[5])));
+        dd.mat.set(3,3, s*(2.0*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3])));
+        dd.mat.set(3,4, s*(SQRT_2*a[5]*b[1] + a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5]));
+        dd.mat.set(3,5, s*(SQRT_2*a[4]*b[0] + a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5]));
+
+        dd.mat.set(4,0, s*(SQRT_2*(a[5]*b[3] + a[3]*b[5])));
+        dd.mat.set(4,1, s*(2.0*(a[4]*b[1] + a[1]*b[4])));
+        dd.mat.set(4,2, s*(2.0*(a[4]*b[2] + a[2]*b[4])));
+        dd.mat.set(4,3, s*(SQRT_2*a[5]*b[1] + a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5]));
+        dd.mat.set(4,4, s*(2.0*(a[2]*b[1] + a[1]*b[2] + a[4]*b[4])));
+        dd.mat.set(4,5, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5]));
+
+        dd.mat.set(5,0, s*(2.0*(a[5]*b[0] + a[0]*b[5])));
+        dd.mat.set(5,1, s*(SQRT_2*(a[4]*b[3] + a[3]*b[4])));
+        dd.mat.set(5,2, s*(2.0*(a[5]*b[2] + a[2]*b[5])));
+        dd.mat.set(5,3, s*(SQRT_2*a[4]*b[0] + a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5]));
+        dd.mat.set(5,4, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5]));
+        dd.mat.set(5,5, s*(2.0*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5])));
+    } else {
+        dd.mat.set(0,0, s*(4.0*a[0]*b[0]));
+        dd.mat.set(0,1, s*(2.0*(a[3] + a[6])*(b[3] + b[6])));
+        dd.mat.set(0,2, s*(2.0*(a[5] + a[8])*(b[5] + b[8])));
+        dd.mat.set(0,3, s*(2.0*(a[3]*b[0] + a[6]*b[0] + a[0]*(b[3] + b[6]))));
+        dd.mat.set(0,4, s*(SQRT_2*((a[5] + a[8])*(b[3] + b[6]) + (a[3] + a[6])*(b[5] + b[8]))));
+        dd.mat.set(0,5, s*(2.0*(a[5]*b[0] + a[8]*b[0] + a[0]*(b[5] + b[8]))));
+
+        dd.mat.set(1,0, s*(2.0*(a[3] - a[6])*(b[3] - b[6])));
+        dd.mat.set(1,1, s*(4.0*a[1]*b[1]));
+        dd.mat.set(1,2, s*(2.0*(a[4] + a[7])*(b[4] + b[7])));
+        dd.mat.set(1,3, s*(2.0*(a[3]*b[1] - a[6]*b[1] + a[1]*(b[3] - b[6]))));
+        dd.mat.set(1,4, s*(2.0*(a[4]*b[1] + a[7]*b[1] + a[1]*(b[4] + b[7]))));
+        dd.mat.set(1,5, s*(SQRT_2*((a[4] + a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] + b[7]))));
+
+        dd.mat.set(2,0, s*(2.0*(a[5] - a[8])*(b[5] - b[8])));
+        dd.mat.set(2,1, s*(2.0*(a[4] - a[7])*(b[4] - b[7])));
+        dd.mat.set(2,2, s*(4.0*a[2]*b[2]));
+        dd.mat.set(2,3, s*(SQRT_2*((a[5] - a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] - b[8]))));
+        dd.mat.set(2,4, s*(2.0*(a[4]*b[2] - a[7]*b[2] + a[2]*(b[4] - b[7]))));
+        dd.mat.set(2,5, s*(2.0*(a[5]*b[2] - a[8]*b[2] + a[2]*(b[5] - b[8]))));
+
+        dd.mat.set(3,0, s*(2.0*(a[3]*b[0] - a[6]*b[0] + a[0]*(b[3] - b[6]))));
+        dd.mat.set(3,1, s*(2.0*(a[3]*b[1] + a[6]*b[1] + a[1]*(b[3] + b[6]))));
+        dd.mat.set(3,2, s*(SQRT_2*((a[5] + a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] + b[8]))));
+        dd.mat.set(3,3, s*(2.0*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3] - a[6]*b[6])));
+        dd.mat.set(3,4, s*(SQRT_2*(a[5] + a[8])*b[1] + (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) + SQRT_2*a[1]*(b[5] + b[8])));
+        dd.mat.set(3,5, s*(SQRT_2*(a[4] + a[7])*b[0] + (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) + (a[3] - a[6])*(b[5] + b[8])));
+
+        dd.mat.set(4,0, s*(SQRT_2*((a[5] - a[8])*(b[3] - b[6]) + (a[3] - a[6])*(b[5] - b[8]))));
+        dd.mat.set(4,1, s*(2.0*(a[4]*b[1] - a[7]*b[1] + a[1]*(b[4] - b[7]))));
+        dd.mat.set(4,2, s*(2.0*(a[4]*b[2] + a[7]*b[2] + a[2]*(b[4] + b[7]))));
+        dd.mat.set(4,3, s*(SQRT_2*(a[5] - a[8])*b[1] + (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8])));
+        dd.mat.set(4,4, s*(2.0*(a[2]*b[1] + a[1]*b[2] + a[4]*b[4] - a[7]*b[7])));
+        dd.mat.set(4,5, s*(SQRT_2*(a[3] - a[6])*b[2] + SQRT_2*a[2]*(b[3] - b[6]) + (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8])));
+
+        dd.mat.set(5,0, s*(2.0*(a[5]*b[0] - a[8]*b[0] + a[0]*(b[5] - b[8]))));
+        dd.mat.set(5,1, s*(SQRT_2*((a[4] - a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] - b[7]))));
+        dd.mat.set(5,2, s*(2.0*(a[5]*b[2] + a[8]*b[2] + a[2]*(b[5] + b[8]))));
+        dd.mat.set(5,3, s*(SQRT_2*(a[4] - a[7])*b[0] + (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8])));
+        dd.mat.set(5,4, s*(SQRT_2*(a[3] + a[6])*b[2] + SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] + b[8])));
+        dd.mat.set(5,5, s*(2.0*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5] - a[8]*b[8])));
+    }
+    Ok(())
 }
 
 /// Performs the double-dot (ddot) operation between a Tensor4 and a Tensor2
@@ -1236,8 +1545,8 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) -> R
 #[cfg(test)]
 mod tests {
     use super::{
-        copy_tensor2, copy_tensor4, t2_ddot_t2, t2_ddot_t4, t2_dot_t2, t2_dot_vec, t2_dyad_t2, t2_odyad_t2,
-        t2_udyad_t2, t4_ddot_t2, t4_ddot_t4, vec_dot_t2, vec_dyad_vec, Tensor2, Tensor4,
+        copy_tensor2, copy_tensor4, t2_ddot_t2, t2_ddot_t4, t2_dot_t2, t2_dot_vec, t2_dyad_t2, t2_odyad_t2, t2_qsd_t2,
+        t2_ssd, t2_udyad_t2, t4_ddot_t2, t4_ddot_t4, vec_dot_t2, vec_dyad_vec, Tensor2, Tensor4,
     };
     use crate::{Mandel, SamplesTensor4, MN_TO_IJKL, SQRT_2};
     use russell_chk::{approx_eq, vec_approx_eq};
@@ -2130,6 +2439,233 @@ mod tests {
         ]);
         mat_approx_eq(&mat, &correct, 1e-14);
         check_udyad(2.0, &a, &b, &dd, 1e-15);
+    }
+
+    #[test]
+    fn t2_ssd_captures_errors() {
+        let a = Tensor2::new(Mandel::General);
+        let mut dd = Tensor4::new(Mandel::General);
+        assert_eq!(t2_ssd(&mut dd, 1.0, &a).err(), Some("D tensor must be Symmetric"));
+    }
+
+    fn check_ssd(s: f64, a_ten: &Tensor2, dd_ten: &Tensor4, tol: f64) {
+        let a = a_ten.to_matrix();
+        let dd = dd_ten.to_matrix();
+        let mut correct = Matrix::new(9, 9);
+        for m in 0..9 {
+            for n in 0..9 {
+                let (i, j, k, l) = MN_TO_IJKL[m][n];
+                correct.set(m, n, s * (a.get(i, k) * a.get(j, l) + a.get(i, l) * a.get(j, k)));
+            }
+        }
+        mat_approx_eq(&dd, &correct, tol);
+    }
+
+    #[test]
+    fn t2_ssd_works() {
+        // general
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ], Mandel::General).unwrap();
+        let mut dd = Tensor4::new(Mandel::Symmetric);
+        t2_ssd(&mut dd, 2.0, &a).unwrap();
+        let mat = dd.to_matrix();
+        let correct = Matrix::from(&[
+            [4.0, 16.0, 36.0, 8.0, 24.0, 12.0, 8.0, 24.0, 12.0],
+            [64.0, 100.0, 144.0, 80.0, 120.0, 96.0, 80.0, 120.0, 96.0],
+            [196.0, 256.0, 324.0, 224.0, 288.0, 252.0, 224.0, 288.0, 252.0],
+            [16.0, 40.0, 72.0, 26.0, 54.0, 36.0, 26.0, 54.0, 36.0],
+            [112.0, 160.0, 216.0, 134.0, 186.0, 156.0, 134.0, 186.0, 156.0],
+            [28.0, 64.0, 108.0, 44.0, 84.0, 60.0, 44.0, 84.0, 60.0],
+            [16.0, 40.0, 72.0, 26.0, 54.0, 36.0, 26.0, 54.0, 36.0],
+            [112.0, 160.0, 216.0, 134.0, 186.0, 156.0, 134.0, 186.0, 156.0],
+            [28.0, 64.0, 108.0, 44.0, 84.0, 60.0, 44.0, 84.0, 60.0],
+        ]);
+        mat_approx_eq(&mat, &correct, 1e-13);
+        check_ssd(2.0, &a, &dd, 1e-13);
+
+        // symmetric
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ], Mandel::Symmetric).unwrap();
+        let mut dd = Tensor4::new(Mandel::Symmetric);
+        t2_ssd(&mut dd, 2.0, &a).unwrap();
+        let mat = dd.to_matrix();
+        let correct = Matrix::from(&[
+            [4.0, 64.0, 144.0, 16.0, 96.0, 24.0, 16.0, 96.0, 24.0],
+            [64.0, 16.0, 100.0, 32.0, 40.0, 80.0, 32.0, 40.0, 80.0],
+            [144.0, 100.0, 36.0, 120.0, 60.0, 72.0, 120.0, 60.0, 72.0],
+            [16.0, 32.0, 120.0, 36.0, 64.0, 58.0, 36.0, 64.0, 58.0],
+            [96.0, 40.0, 60.0, 64.0, 62.0, 84.0, 64.0, 62.0, 84.0],
+            [24.0, 80.0, 72.0, 58.0, 84.0, 78.0, 58.0, 84.0, 78.0],
+            [16.0, 32.0, 120.0, 36.0, 64.0, 58.0, 36.0, 64.0, 58.0],
+            [96.0, 40.0, 60.0, 64.0, 62.0, 84.0, 64.0, 62.0, 84.0],
+            [24.0, 80.0, 72.0, 58.0, 84.0, 78.0, 58.0, 84.0, 78.0],
+        ]);
+        mat_approx_eq(&mat, &correct, 1e-13);
+        check_ssd(2.0, &a, &dd, 1e-13);
+
+        // symmetric 2D
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ], Mandel::Symmetric2D).unwrap();
+        let mut dd = Tensor4::new(Mandel::Symmetric);
+        t2_ssd(&mut dd, 2.0, &a).unwrap();
+        let mat = dd.to_matrix();
+        let correct = Matrix::from(&[
+            [4.0, 64.0, 0.0, 16.0, 0.0, 0.0, 16.0, 0.0, 0.0],
+            [64.0, 16.0, 0.0, 32.0, 0.0, 0.0, 32.0, 0.0, 0.0],
+            [0.0, 0.0, 36.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [16.0, 32.0, 0.0, 36.0, 0.0, 0.0, 36.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 12.0, 24.0, 0.0, 12.0, 24.0],
+            [0.0, 0.0, 0.0, 0.0, 24.0, 6.0, 0.0, 24.0, 6.0],
+            [16.0, 32.0, 0.0, 36.0, 0.0, 0.0, 36.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 12.0, 24.0, 0.0, 12.0, 24.0],
+            [0.0, 0.0, 0.0, 0.0, 24.0, 6.0, 0.0, 24.0, 6.0],
+        ]);
+        mat_approx_eq(&mat, &correct, 1e-13);
+        check_ssd(2.0, &a, &dd, 1e-14);
+    }
+
+    #[test]
+    fn t2_qsd_t2_captures_errors() {
+        let a = Tensor2::new(Mandel::General);
+        let b = Tensor2::new(Mandel::General);
+        let mut dd = Tensor4::new(Mandel::General);
+        assert_eq!(
+            t2_qsd_t2(&mut dd, 1.0, &a, &b).err(),
+            Some("D tensor must be Symmetric")
+        );
+        let a = Tensor2::new(Mandel::Symmetric);
+        let mut dd = Tensor4::new(Mandel::Symmetric);
+        assert_eq!(
+            t2_qsd_t2(&mut dd, 1.0, &a, &b).err(),
+            Some("A and B tensors must be compatible")
+        );
+    }
+
+    fn check_qsd(s: f64, a_ten: &Tensor2, b_ten: &Tensor2, dd_ten: &Tensor4, tol: f64) {
+        let a = a_ten.to_matrix();
+        let b = b_ten.to_matrix();
+        let dd = dd_ten.to_matrix();
+        let mut correct = Matrix::new(9, 9);
+        for m in 0..9 {
+            for n in 0..9 {
+                let (i, j, k, l) = MN_TO_IJKL[m][n];
+                correct.set(m, n, s * a.get(i, l) * b.get(j, k));
+                correct.set(
+                    m,
+                    n,
+                    s * (a.get(i, k) * b.get(j, l)
+                        + a.get(i, l) * b.get(j, k)
+                        + b.get(i, k) * a.get(j, l)
+                        + b.get(i, l) * a.get(j, k)),
+                );
+            }
+        }
+        mat_approx_eq(&dd, &correct, tol);
+    }
+
+    #[test]
+    fn t2_qsd_t2_works() {
+        // general qsd general
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ], Mandel::General).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [9.0, 8.0, 7.0],
+            [6.0, 5.0, 4.0],
+            [3.0, 2.0, 1.0],
+        ], Mandel::General).unwrap();
+        let mut dd = Tensor4::new(Mandel::Symmetric);
+        t2_qsd_t2(&mut dd, 2.0, &a, &b).unwrap();
+        let mat = dd.to_matrix();
+        let correct = Matrix::from(&[
+            [72.0, 128.0, 168.0, 104.0, 152.0, 136.0, 104.0, 152.0, 136.0],
+            [192.0, 200.0, 192.0, 200.0, 200.0, 208.0, 200.0, 200.0, 208.0],
+            [168.0, 128.0, 72.0, 152.0, 104.0, 136.0, 152.0, 104.0, 136.0],
+            [168.0, 200.0, 216.0, 188.0, 212.0, 208.0, 188.0, 212.0, 208.0],
+            [216.0, 200.0, 168.0, 212.0, 188.0, 208.0, 212.0, 188.0, 208.0],
+            [264.0, 272.0, 264.0, 272.0, 272.0, 280.0, 272.0, 272.0, 280.0],
+            [168.0, 200.0, 216.0, 188.0, 212.0, 208.0, 188.0, 212.0, 208.0],
+            [216.0, 200.0, 168.0, 212.0, 188.0, 208.0, 212.0, 188.0, 208.0],
+            [264.0, 272.0, 264.0, 272.0, 272.0, 280.0, 272.0, 272.0, 280.0],
+        ]);
+        mat_approx_eq(&mat, &correct, 1e-13);
+        check_qsd(2.0, &a, &b, &dd, 1e-13);
+
+        // symmetric qsd symmetric
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ], Mandel::Symmetric).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [3.0, 5.0, 6.0],
+            [5.0, 2.0, 4.0],
+            [6.0, 4.0, 1.0],
+        ], Mandel::Symmetric).unwrap();
+        let mut dd = Tensor4::new(Mandel::Symmetric);
+        t2_qsd_t2(&mut dd, 2.0, &a, &b).unwrap();
+        let mat = dd.to_matrix();
+        let correct = Matrix::from(&[
+            [24.0, 160.0, 288.0, 68.0, 216.0, 96.0, 68.0, 216.0, 96.0],
+            [160.0, 32.0, 160.0, 72.0, 72.0, 164.0, 72.0, 72.0, 164.0],
+            [288.0, 160.0, 24.0, 216.0, 68.0, 96.0, 216.0, 68.0, 96.0],
+            [68.0, 72.0, 216.0, 96.0, 130.0, 146.0, 96.0, 130.0, 146.0],
+            [216.0, 72.0, 68.0, 130.0, 96.0, 146.0, 130.0, 96.0, 146.0],
+            [96.0, 164.0, 96.0, 146.0, 146.0, 164.0, 146.0, 146.0, 164.0],
+            [68.0, 72.0, 216.0, 96.0, 130.0, 146.0, 96.0, 130.0, 146.0],
+            [216.0, 72.0, 68.0, 130.0, 96.0, 146.0, 130.0, 96.0, 146.0],
+            [96.0, 164.0, 96.0, 146.0, 146.0, 164.0, 146.0, 146.0, 164.0],
+        ]);
+        mat_approx_eq(&mat, &correct, 1e-13);
+        check_qsd(2.0, &a, &b, &dd, 1e-13);
+
+        // symmetric 2D qsd symmetric 2D
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ], Mandel::Symmetric2D).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [3.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ], Mandel::Symmetric2D).unwrap();
+        let mut dd = Tensor4::new(Mandel::Symmetric);
+        t2_qsd_t2(&mut dd, 2.0, &a, &b).unwrap();
+        let mat = dd.to_matrix();
+        let correct = Matrix::from(&[
+            [24.0, 128.0, 0.0, 64.0, 0.0, 0.0, 64.0, 0.0, 0.0],
+            [128.0, 32.0, 0.0, 64.0, 0.0, 0.0, 64.0, 0.0, 0.0],
+            [0.0, 0.0, 24.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [64.0, 64.0, 0.0, 80.0, 0.0, 0.0, 80.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 16.0, 32.0, 0.0, 16.0, 32.0],
+            [0.0, 0.0, 0.0, 0.0, 32.0, 20.0, 0.0, 32.0, 20.0],
+            [64.0, 64.0, 0.0, 80.0, 0.0, 0.0, 80.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 16.0, 32.0, 0.0, 16.0, 32.0],
+            [0.0, 0.0, 0.0, 0.0, 32.0, 20.0, 0.0, 32.0, 20.0],
+        ]);
+        mat_approx_eq(&mat, &correct, 1e-13);
+        check_qsd(2.0, &a, &b, &dd, 1e-14);
     }
 
     #[test]

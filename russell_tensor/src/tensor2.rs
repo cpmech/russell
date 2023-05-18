@@ -95,20 +95,124 @@ impl Tensor2 {
         }
     }
 
+    /// Sets the Tensor2 with standard components given in matrix form
+    ///
+    /// # Input
+    ///
+    /// * `tt` -- the standard (not Mandel) Tij components given  with respect to an orthonormal Cartesian basis
+    ///
+    /// # Notes
+    ///
+    /// * In all cases, even in 2D, the input matrix must be 3×3
+    /// * If symmetric, the off-diagonal components must equal each other
+    /// * If 2D, `data[1][2]` and `data[0][2]` must be equal to zero
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_tensor::{Mandel, StrError, Tensor2, SQRT_2};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // general
+    ///     let mut a = Tensor2::new(Mandel::General);
+    ///     a.set_matrix(&[
+    ///         [1.0, SQRT_2 * 2.0, SQRT_2 * 3.0],
+    ///         [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
+    ///         [SQRT_2 * 7.0, SQRT_2 * 8.0, 9.0],
+    ///     ])?;
+    ///     assert_eq!(
+    ///         format!("{:.1}", a.vec),
+    ///         "┌      ┐\n\
+    ///          │  1.0 │\n\
+    ///          │  5.0 │\n\
+    ///          │  9.0 │\n\
+    ///          │  6.0 │\n\
+    ///          │ 14.0 │\n\
+    ///          │ 10.0 │\n\
+    ///          │ -2.0 │\n\
+    ///          │ -2.0 │\n\
+    ///          │ -4.0 │\n\
+    ///          └      ┘"
+    ///     );
+    ///
+    ///     // symmetric-3D
+    ///     let mut b = Tensor2::new(Mandel::Symmetric);
+    ///     b.set_matrix(&[
+    ///             [1.0, 4.0 / SQRT_2, 6.0 / SQRT_2],
+    ///             [4.0 / SQRT_2, 2.0, 5.0 / SQRT_2],
+    ///             [6.0 / SQRT_2, 5.0 / SQRT_2, 3.0],
+    ///     ])?;
+    ///     assert_eq!(
+    ///         format!("{:.1}", b.vec),
+    ///         "┌     ┐\n\
+    ///          │ 1.0 │\n\
+    ///          │ 2.0 │\n\
+    ///          │ 3.0 │\n\
+    ///          │ 4.0 │\n\
+    ///          │ 5.0 │\n\
+    ///          │ 6.0 │\n\
+    ///          └     ┘"
+    ///     );
+    ///
+    ///     // symmetric-2D
+    ///     let mut c = Tensor2::new(Mandel::Symmetric2D);
+    ///     c.set_matrix(&[
+    ///             [       1.0, 4.0/SQRT_2, 0.0],
+    ///             [4.0/SQRT_2,        2.0, 0.0],
+    ///             [       0.0,        0.0, 3.0],
+    ///     ])?;
+    ///     assert_eq!(
+    ///         format!("{:.1}", c.vec),
+    ///         "┌     ┐\n\
+    ///          │ 1.0 │\n\
+    ///          │ 2.0 │\n\
+    ///          │ 3.0 │\n\
+    ///          │ 4.0 │\n\
+    ///          └     ┘"
+    ///     );
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn set_matrix(&mut self, tt: &[[f64; 3]; 3]) -> Result<(), StrError> {
+        if self.symmetric() {
+            if tt[1][0] != tt[0][1] || tt[2][1] != tt[1][2] || tt[2][0] != tt[0][2] {
+                return Err("cannot set Symmetric Tensor2 with non-symmetric data");
+            }
+        }
+        let dim = self.vec.dim();
+        if dim == 4 {
+            if tt[1][2] != 0.0 || tt[0][2] != 0.0 {
+                return Err("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data");
+            }
+        }
+        for m in 0..dim {
+            let (i, j) = M_TO_IJ[m];
+            if i == j {
+                self.vec[m] = tt[i][j];
+            }
+            if i < j {
+                self.vec[m] = (tt[i][j] + tt[j][i]) / SQRT_2;
+            }
+            if i > j {
+                self.vec[m] = (tt[j][i] - tt[i][j]) / SQRT_2;
+            }
+        }
+        Ok(())
+    }
+
     /// Creates a new Tensor2 constructed from a matrix
     ///
     /// # Input
     ///
-    /// * `tt` -- the standard (not Mandel) Tij components given
-    ///   with respect to an orthonormal Cartesian basis
+    /// * `tt` -- the standard (not Mandel) Tij components given  with respect to an orthonormal Cartesian basis
     /// * `case` -- the [Mandel] case
     ///
     /// # Notes
     ///
     /// * In all cases, even in 2D, the input matrix must be 3×3
-    /// * If symmetric, the off-diagonal components must equal the corresponding ones
-    /// * If 2D, `tt[1][2]` and `tt[0][2]` must both be equal to zero
-    /// * If 2D, symmetric must be true
+    /// * If symmetric, the off-diagonal components must equal each other
+    /// * If 2D, `data[1][2]` and `data[0][2]` must be equal to zero
     ///
     /// # Example
     ///
@@ -182,32 +286,11 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
+    #[inline]
     pub fn from_matrix(tt: &[[f64; 3]; 3], case: Mandel) -> Result<Self, StrError> {
-        if case.symmetric() {
-            if tt[1][0] != tt[0][1] || tt[2][1] != tt[1][2] || tt[2][0] != tt[0][2] {
-                return Err("symmetric Tensor2 does not pass symmetry check");
-            }
-        }
-        let dim = case.dim();
-        if case.dim() == 4 {
-            if tt[1][2] != 0.0 || tt[0][2] != 0.0 {
-                return Err("cannot define 2D Tensor2 due to non-zero off-diagonal values");
-            }
-        }
-        let mut vec = Vector::new(dim);
-        for m in 0..dim {
-            let (i, j) = M_TO_IJ[m];
-            if i == j {
-                vec[m] = tt[i][j];
-            }
-            if i < j {
-                vec[m] = (tt[i][j] + tt[j][i]) / SQRT_2;
-            }
-            if i > j {
-                vec[m] = (tt[j][i] - tt[i][j]) / SQRT_2;
-            }
-        }
-        Ok(Tensor2 { vec })
+        let mut res = Tensor2::new(case);
+        res.set_matrix(tt)?;
+        Ok(res)
     }
 
     /// Tells whether this tensor is symmetric or not
@@ -1511,6 +1594,164 @@ mod tests {
     }
 
     #[test]
+    fn set_matrix_captures_errors() {
+        // symmetric 3D
+        let eps = 1e-15;
+        #[rustfmt::skip]
+        let comps_std_10 = &[
+            [1.0, 4.0, 6.0],
+            [4.0+eps, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ];
+        #[rustfmt::skip]
+        let comps_std_20 = &[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0+eps, 5.0, 3.0],
+        ];
+        #[rustfmt::skip]
+        let comps_std_21 = &[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0+eps, 3.0],
+        ];
+        let mut tt = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(
+            tt.set_matrix(comps_std_10).err(),
+            Some("cannot set Symmetric Tensor2 with non-symmetric data")
+        );
+        assert_eq!(
+            tt.set_matrix(comps_std_20).err(),
+            Some("cannot set Symmetric Tensor2 with non-symmetric data")
+        );
+        assert_eq!(
+            tt.set_matrix(comps_std_21).err(),
+            Some("cannot set Symmetric Tensor2 with non-symmetric data")
+        );
+
+        // symmetric 2D
+        let eps = 1e-15;
+        #[rustfmt::skip]
+        let comps_std_12 = &[
+            [1.0,     4.0, 0.0+eps],
+            [4.0,     2.0, 0.0],
+            [0.0+eps, 0.0, 3.0],
+        ];
+        #[rustfmt::skip]
+        let comps_std_02 = &[
+            [1.0, 4.0,     0.0],
+            [4.0, 2.0,     0.0+eps],
+            [0.0, 0.0+eps, 3.0],
+        ];
+        let mut tt = Tensor2::new(Mandel::Symmetric2D);
+        assert_eq!(
+            tt.set_matrix(comps_std_12).err(),
+            Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
+        );
+        assert_eq!(
+            tt.set_matrix(comps_std_02).err(),
+            Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
+        );
+    }
+
+    #[test]
+    fn set_matrix_works() {
+        // general
+        let mut tt = Tensor2::new(Mandel::General);
+        const NOISE: f64 = 1234.568;
+        tt.vec.fill(NOISE);
+        tt.set_matrix(&[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
+            .unwrap();
+        let correct = &[
+            1.0,
+            5.0,
+            9.0,
+            6.0 / SQRT_2,
+            14.0 / SQRT_2,
+            10.0 / SQRT_2,
+            -2.0 / SQRT_2,
+            -2.0 / SQRT_2,
+            -4.0 / SQRT_2,
+        ];
+        vec_approx_eq(tt.vec.as_data(), correct, 1e-15);
+
+        // symmetric 3D
+        let mut tt = Tensor2::new(Mandel::Symmetric);
+        tt.vec.fill(NOISE);
+        tt.set_matrix(&[[1.0, 4.0, 6.0], [4.0, 2.0, 5.0], [6.0, 5.0, 3.0]])
+            .unwrap();
+        let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2];
+        vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
+
+        // symmetric 2D
+        let mut tt = Tensor2::new(Mandel::Symmetric2D);
+        tt.vec.fill(NOISE);
+        tt.set_matrix(&[[1.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 3.0]])
+            .unwrap();
+        let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2];
+        vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
+    }
+
+    #[test]
+    fn from_matrix_captures_errors() {
+        // symmetric 3D
+        let eps = 1e-15;
+        #[rustfmt::skip]
+        let comps_std_10 = &[
+            [1.0, 4.0, 6.0],
+            [4.0+eps, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ];
+        #[rustfmt::skip]
+        let comps_std_20 = &[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0+eps, 5.0, 3.0],
+        ];
+        #[rustfmt::skip]
+        let comps_std_21 = &[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0+eps, 3.0],
+        ];
+        assert_eq!(
+            Tensor2::from_matrix(comps_std_10, Mandel::Symmetric).err(),
+            Some("cannot set Symmetric Tensor2 with non-symmetric data")
+        );
+        assert_eq!(
+            Tensor2::from_matrix(comps_std_20, Mandel::Symmetric).err(),
+            Some("cannot set Symmetric Tensor2 with non-symmetric data")
+        );
+        assert_eq!(
+            Tensor2::from_matrix(comps_std_21, Mandel::Symmetric).err(),
+            Some("cannot set Symmetric Tensor2 with non-symmetric data")
+        );
+
+        // symmetric 2D
+        let eps = 1e-15;
+        #[rustfmt::skip]
+        let comps_std_12 = &[
+            [1.0,     4.0, 0.0+eps],
+            [4.0,     2.0, 0.0],
+            [0.0+eps, 0.0, 3.0],
+        ];
+        #[rustfmt::skip]
+        let comps_std_02 = &[
+            [1.0, 4.0,     0.0],
+            [4.0, 2.0,     0.0+eps],
+            [0.0, 0.0+eps, 3.0],
+        ];
+        assert_eq!(
+            Tensor2::from_matrix(comps_std_12, Mandel::Symmetric2D).err(),
+            Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
+        );
+        assert_eq!(
+            Tensor2::from_matrix(comps_std_02, Mandel::Symmetric2D).err(),
+            Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
+        );
+    }
+
+    #[test]
     fn from_matrix_works() {
         // general
         #[rustfmt::skip]
@@ -1554,65 +1795,6 @@ mod tests {
         let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric2D).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2];
         vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
-    }
-
-    #[test]
-    fn from_matrix_captures_errors() {
-        // symmetric 3D
-        let eps = 1e-15;
-        #[rustfmt::skip]
-        let comps_std_10 = &[
-            [1.0, 4.0, 6.0],
-            [4.0+eps, 2.0, 5.0],
-            [6.0, 5.0, 3.0],
-        ];
-        #[rustfmt::skip]
-        let comps_std_20 = &[
-            [1.0, 4.0, 6.0],
-            [4.0, 2.0, 5.0],
-            [6.0+eps, 5.0, 3.0],
-        ];
-        #[rustfmt::skip]
-        let comps_std_21 = &[
-            [1.0, 4.0, 6.0],
-            [4.0, 2.0, 5.0],
-            [6.0, 5.0+eps, 3.0],
-        ];
-        assert_eq!(
-            Tensor2::from_matrix(comps_std_10, Mandel::Symmetric).err(),
-            Some("symmetric Tensor2 does not pass symmetry check")
-        );
-        assert_eq!(
-            Tensor2::from_matrix(comps_std_20, Mandel::Symmetric).err(),
-            Some("symmetric Tensor2 does not pass symmetry check")
-        );
-        assert_eq!(
-            Tensor2::from_matrix(comps_std_21, Mandel::Symmetric).err(),
-            Some("symmetric Tensor2 does not pass symmetry check")
-        );
-
-        // symmetric 2D
-        let eps = 1e-15;
-        #[rustfmt::skip]
-        let comps_std_12 = &[
-            [1.0,     4.0, 0.0+eps],
-            [4.0,     2.0, 0.0],
-            [0.0+eps, 0.0, 3.0],
-        ];
-        #[rustfmt::skip]
-        let comps_std_02 = &[
-            [1.0, 4.0,     0.0],
-            [4.0, 2.0,     0.0+eps],
-            [0.0, 0.0+eps, 3.0],
-        ];
-        assert_eq!(
-            Tensor2::from_matrix(comps_std_12, Mandel::Symmetric2D).err(),
-            Some("cannot define 2D Tensor2 due to non-zero off-diagonal values")
-        );
-        assert_eq!(
-            Tensor2::from_matrix(comps_std_02, Mandel::Symmetric2D).err(),
-            Some("cannot define 2D Tensor2 due to non-zero off-diagonal values")
-        );
     }
 
     #[test]

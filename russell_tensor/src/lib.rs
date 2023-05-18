@@ -5,6 +5,7 @@
 /// Defines a type alias for the error type as a static string
 pub type StrError = &'static str;
 
+mod as_matrix_3x3;
 mod constants;
 mod enums;
 mod high_order_derivatives;
@@ -16,6 +17,7 @@ mod spectral2;
 mod tensor2;
 mod tensor2_derivatives;
 mod tensor4;
+pub use crate::as_matrix_3x3::*;
 pub use crate::constants::*;
 pub use crate::enums::*;
 pub use crate::high_order_derivatives::*;

@@ -445,6 +445,66 @@ impl Tensor2 {
         (self.get(2, 2), tt)
     }
 
+    /// Returns a General Tensor2 regardless of this tensor's Mandel type
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_tensor::{Mandel, Tensor2, StrError, SQRT_2};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let tt = Tensor2::from_matrix(&[
+    ///         [1.0,        2.0/SQRT_2, 0.0],
+    ///         [2.0/SQRT_2, 3.0,        0.0],
+    ///         [0.0,        0.0,        4.0],
+    ///     ], Mandel::Symmetric2D)?;
+    ///     assert_eq!(
+    ///         format!("{:.2}", tt.vec),
+    ///         "┌      ┐\n\
+    ///          │ 1.00 │\n\
+    ///          │ 3.00 │\n\
+    ///          │ 4.00 │\n\
+    ///          │ 2.00 │\n\
+    ///          └      ┘"
+    ///     );
+    ///
+    ///     let tt_gen = tt.to_general();
+    ///     assert_eq!(
+    ///         format!("{:.2}", tt_gen.vec),
+    ///         "┌      ┐\n\
+    ///          │ 1.00 │\n\
+    ///          │ 3.00 │\n\
+    ///          │ 4.00 │\n\
+    ///          │ 2.00 │\n\
+    ///          │ 0.00 │\n\
+    ///          │ 0.00 │\n\
+    ///          │ 0.00 │\n\
+    ///          │ 0.00 │\n\
+    ///          │ 0.00 │\n\
+    ///          └      ┘"
+    ///     );
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn to_general(&self) -> Tensor2 {
+        let mut res = Tensor2::new(Mandel::General);
+        res.vec[0] = self.vec[0];
+        res.vec[1] = self.vec[1];
+        res.vec[2] = self.vec[2];
+        res.vec[3] = self.vec[3];
+        let original_dim = self.vec.dim();
+        if original_dim > 4 {
+            res.vec[4] = self.vec[4];
+            res.vec[5] = self.vec[5];
+        }
+        if original_dim > 6 {
+            res.vec[6] = self.vec[6];
+            res.vec[7] = self.vec[7];
+            res.vec[8] = self.vec[8];
+        }
+        res
+    }
+
     /// Set all values to zero
     #[inline]
     pub fn clear(&mut self) {
@@ -1938,6 +1998,66 @@ mod tests {
              │ 2.0 3.0 │\n\
              └         ┘"
         );
+    }
+
+    #[test]
+    fn to_general_works() {
+        let tt = Tensor2::from_matrix(
+            &[[1.0, 2.0 / SQRT_2, 0.0], [2.0 / SQRT_2, 3.0, 0.0], [0.0, 0.0, 4.0]],
+            Mandel::Symmetric2D,
+        )
+        .unwrap();
+        let tt_gen = tt.to_general();
+        println!("{:.2}", tt.vec);
+        println!("{:.2}", tt_gen.vec);
+
+        // general
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, Mandel::General).unwrap();
+        let res = tt.to_general();
+        assert_eq!(res.vec.dim(), 9);
+        for i in 0..3 {
+            for j in 0..3 {
+                approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
+            }
+        }
+
+        // symmetric 3D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric).unwrap();
+        let res = tt.to_general();
+        assert_eq!(res.vec.dim(), 9);
+        for i in 0..3 {
+            for j in 0..3 {
+                approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
+            }
+        }
+
+        // symmetric 2D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric2D).unwrap();
+        let res = tt.to_general();
+        assert_eq!(res.vec.dim(), 9);
+        for i in 0..3 {
+            for j in 0..3 {
+                approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
+            }
+        }
     }
 
     #[test]

@@ -1,5 +1,5 @@
 use super::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, SQRT_2};
-use crate::{Mandel, StrError, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2};
+use crate::{AsMatrix3x3, Mandel, StrError, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2};
 use russell_lab::{Matrix, Vector};
 use serde::{Deserialize, Serialize};
 
@@ -174,28 +174,28 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn set_matrix(&mut self, tt: &[[f64; 3]; 3]) -> Result<(), StrError> {
+    pub fn set_matrix(&mut self, tt: &dyn AsMatrix3x3) -> Result<(), StrError> {
         if self.symmetric() {
-            if tt[1][0] != tt[0][1] || tt[2][1] != tt[1][2] || tt[2][0] != tt[0][2] {
+            if tt.at(1, 0) != tt.at(0, 1) || tt.at(2, 1) != tt.at(1, 2) || tt.at(2, 0) != tt.at(0, 2) {
                 return Err("cannot set Symmetric Tensor2 with non-symmetric data");
             }
         }
         let dim = self.vec.dim();
         if dim == 4 {
-            if tt[1][2] != 0.0 || tt[0][2] != 0.0 {
+            if tt.at(1, 2) != 0.0 || tt.at(0, 2) != 0.0 {
                 return Err("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data");
             }
         }
         for m in 0..dim {
             let (i, j) = M_TO_IJ[m];
             if i == j {
-                self.vec[m] = tt[i][j];
+                self.vec[m] = tt.at(i, j);
             }
             if i < j {
-                self.vec[m] = (tt[i][j] + tt[j][i]) / SQRT_2;
+                self.vec[m] = (tt.at(i, j) + tt.at(j, i)) / SQRT_2;
             }
             if i > j {
-                self.vec[m] = (tt[j][i] - tt[i][j]) / SQRT_2;
+                self.vec[m] = (tt.at(j, i) - tt.at(i, j)) / SQRT_2;
             }
         }
         Ok(())
@@ -287,7 +287,7 @@ impl Tensor2 {
     /// }
     /// ```
     #[inline]
-    pub fn from_matrix(tt: &[[f64; 3]; 3], case: Mandel) -> Result<Self, StrError> {
+    pub fn from_matrix(tt: &dyn AsMatrix3x3, case: Mandel) -> Result<Self, StrError> {
         let mut res = Tensor2::new(case);
         res.set_matrix(tt)?;
         Ok(res)
@@ -1721,6 +1721,24 @@ mod tests {
         const NOISE: f64 = 1234.568;
         tt.vec.fill(NOISE);
         tt.set_matrix(&[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
+            .unwrap();
+        let correct = &[
+            1.0,
+            5.0,
+            9.0,
+            6.0 / SQRT_2,
+            14.0 / SQRT_2,
+            10.0 / SQRT_2,
+            -2.0 / SQRT_2,
+            -2.0 / SQRT_2,
+            -4.0 / SQRT_2,
+        ];
+        vec_approx_eq(tt.vec.as_data(), correct, 1e-15);
+
+        // general (using nested Vec)
+        let mut tt = Tensor2::new(Mandel::General);
+        tt.vec.fill(NOISE);
+        tt.set_matrix(&vec![vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0], vec![7.0, 8.0, 9.0]])
             .unwrap();
         let correct = &[
             1.0,

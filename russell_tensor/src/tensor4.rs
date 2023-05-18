@@ -148,6 +148,12 @@ impl Tensor4 {
         }
     }
 
+    /// Returns the Mandel case associated with this Tensor4
+    #[inline]
+    pub fn case(&self) -> Mandel {
+        Mandel::new(self.mat.nrow())
+    }
+
     /// Creates a new Tensor4 constructed from a nested array
     ///
     /// # Input
@@ -422,18 +428,6 @@ impl Tensor4 {
             }
         }
         Ok(Tensor4 { mat })
-    }
-
-    /// Tells whether this tensor is minor-symmetric or not
-    #[inline]
-    pub fn minor_symmetric(&self) -> bool {
-        self.mat.nrow() != 9
-    }
-
-    /// Tells whether this tensor is 2D or not
-    #[inline]
-    pub fn two_dim(&self) -> bool {
-        self.mat.nrow() == 4
     }
 
     /// Returns the (i,j,k,l) component (standard; not Mandel)
@@ -722,9 +716,21 @@ mod tests {
     use serde::{Deserialize, Serialize};
 
     #[test]
-    fn new_works() {
+    fn new_and_case_work() {
+        // general
         let dd = Tensor4::new(Mandel::General);
         assert_eq!(dd.mat.as_data().len(), 81);
+        assert_eq!(dd.case(), Mandel::General);
+
+        // symmetric
+        let dd = Tensor4::new(Mandel::Symmetric);
+        assert_eq!(dd.mat.as_data().len(), 36);
+        assert_eq!(dd.case(), Mandel::Symmetric);
+
+        // symmetric 2d
+        let dd = Tensor4::new(Mandel::Symmetric2D);
+        assert_eq!(dd.mat.as_data().len(), 16);
+        assert_eq!(dd.case(), Mandel::Symmetric2D);
     }
 
     #[test]
@@ -745,28 +751,22 @@ mod tests {
                 assert_eq!(dd.mat.get(m, n), SamplesTensor4::SAMPLE1_MANDEL_MATRIX[m][n]);
             }
         }
-        assert_eq!(dd.minor_symmetric(), false);
-        assert_eq!(dd.two_dim(), false);
 
-        // sym-3D
+        // symmetric 3d
         let dd = Tensor4::from_array(&SamplesTensor4::SYM_SAMPLE1, Mandel::Symmetric).unwrap();
         for m in 0..6 {
             for n in 0..6 {
                 assert_eq!(dd.mat.get(m, n), SamplesTensor4::SYM_SAMPLE1_MANDEL_MATRIX[m][n]);
             }
         }
-        assert_eq!(dd.minor_symmetric(), true);
-        assert_eq!(dd.two_dim(), false);
 
-        // sym-2D
+        // symmetric 2d
         let dd = Tensor4::from_array(&SamplesTensor4::SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
         for m in 0..4 {
             for n in 0..4 {
                 assert_eq!(dd.mat.get(m, n), SamplesTensor4::SYM_2D_SAMPLE1_MANDEL_MATRIX[m][n]);
             }
         }
-        assert_eq!(dd.minor_symmetric(), true);
-        assert_eq!(dd.two_dim(), true);
     }
 
     #[test]

@@ -1,4 +1,4 @@
-use crate::{t2_odyad_t2, t2_ssd, StrError, Tensor2, Tensor4};
+use crate::{t2_odyad_t2, t2_ssd, Mandel, StrError, Tensor2, Tensor4};
 
 /// Calculates the derivative of the inverse tensor w.r.t. the defining Tensor2
 ///
@@ -14,7 +14,6 @@ use crate::{t2_odyad_t2, t2_ssd, StrError, Tensor2, Tensor4};
 /// ∂A⁻¹ᵢⱼ
 /// ────── = - A⁻¹ᵢₖ A⁻ᵀⱼₗ
 ///  ∂Aₖₗ
-///
 /// ```
 ///
 /// ## Output
@@ -45,28 +44,75 @@ pub fn deriv_inverse_tensor(dai_da: &mut Tensor4, ai: &Tensor2) -> Result<(), St
 /// ∂A⁻¹ᵢⱼ     1
 /// ────── = - ─ (A⁻¹ᵢₖ A⁻¹ⱼₗ + A⁻¹ᵢₗ A⁻¹ⱼₖ)
 ///  ∂Aₖₗ      2
-///
 /// ```
 ///
 /// ## Output
 ///
-/// * `dai_da` -- the derivative of the inverse tensor
+/// * `dai_da` -- the derivative of the inverse tensor (must be Symmetric)
 ///
 /// ## Input
 ///
-/// * `ai` -- the pre-computed inverse tensor (symmetric)
+/// * `ai` -- the pre-computed inverse tensor (must be Symmetric or Symmetric2D)
 pub fn deriv_inverse_tensor_sym(dai_da: &mut Tensor4, ai: &Tensor2) -> Result<(), StrError> {
-    if !ai.symmetric() {
-        return Err("tensor 'ai' must be Symmetric or Symmetric2D");
+    if ai.case() == Mandel::General {
+        return Err("'ai' tensor must be Symmetric or Symmetric2D");
     }
-    if dai_da.mat.dims().1 != 6 {
-        return Err("tensor 'dai_da' must be Symmetric");
+    if dai_da.case() != Mandel::Symmetric {
+        return Err("'dai_da' tensor must be Symmetric");
     }
-    t2_ssd(dai_da, -0.5, ai)
+    t2_ssd(dai_da, -0.5, ai).unwrap();
+    Ok(())
 }
 
-pub fn deriv_square_tensor(_dd: &mut Tensor4, _aa: &Tensor2) -> Result<(), StrError> {
-    Err("TODO")
+/// Calculates the derivative of the squared tensor w.r.t. the defining Tensor2
+///
+/// ```text
+/// dA²     _       _
+/// ─── = A ⊗ I + I ⊗ Aᵀ
+/// dA
+/// ```
+///
+/// ```text
+/// With orthonormal Cartesian components:
+///
+/// ∂A²ᵢⱼ
+/// ───── = Aᵢₖ δⱼₗ + δᵢₖ Aₗⱼ
+///  ∂Aₖₗ
+/// ```
+///
+/// ## Output
+///
+/// * `da2_da` -- the derivative of the squared tensor (must be General)
+///
+/// ## Input
+///
+/// * `a` -- the given tensor
+///
+/// ## Note
+///
+/// Two temporary Tensor2 and a Tensor4 are allocated in this function.
+pub fn deriv_square_tensor(da2_da: &mut Tensor4, a: &Tensor2) -> Result<(), StrError> {
+    if da2_da.case() != Mandel::General {
+        return Err("'da2_da' tensor must be General");
+    }
+
+    // compute A odyad I
+    let ii = Tensor2::identity(a.case());
+    t2_odyad_t2(da2_da, 1.0, &a, &ii).unwrap();
+
+    // compute I odyad transpose(A)
+    let mut at = a.clone();
+    a.transpose(&mut at).unwrap();
+    let mut ii_odyad_at = Tensor4::new(Mandel::General);
+    t2_odyad_t2(&mut ii_odyad_at, 1.0, &ii, &at).unwrap();
+
+    // compute A odyad I + I odyad transpose(A)
+    for m in 0..9 {
+        for n in 0..9 {
+            da2_da.mat.set(m, n, da2_da.mat.get(m, n) + ii_odyad_at.mat.get(m, n));
+        }
+    }
+    Ok(())
 }
 
 pub fn deriv_square_tensor_sym(_dd: &mut Tensor4, _aa: &Tensor2) -> Result<(), StrError> {
@@ -271,14 +317,14 @@ mod tests {
         let mut dai_da = Tensor4::new(Mandel::Symmetric);
         assert_eq!(
             deriv_inverse_tensor_sym(&mut dai_da, &ai).err(),
-            Some("tensor 'ai' must be Symmetric or Symmetric2D")
+            Some("'ai' tensor must be Symmetric or Symmetric2D")
         );
 
         let ai = Tensor2::new(Mandel::Symmetric2D);
         let mut dai_da = Tensor4::new(Mandel::Symmetric2D);
         assert_eq!(
             deriv_inverse_tensor_sym(&mut dai_da, &ai).err(),
-            Some("tensor 'dai_da' must be Symmetric")
+            Some("'dai_da' tensor must be Symmetric")
         );
     }
 

@@ -204,7 +204,7 @@ mod tests {
         num_deriv.to_matrix()
     }
 
-    fn numerical_deriv_inverse_sym(a: &Tensor2) -> Matrix {
+    fn numerical_deriv_inverse_sym_mandel(a: &Tensor2) -> Matrix {
         let mut args = ArgsNumDerivInverseMandel {
             a: Tensor2::new(Mandel::Symmetric),
             ai: Tensor2::new(Mandel::Symmetric),
@@ -232,22 +232,51 @@ mod tests {
         num_deriv.to_matrix()
     }
 
-    fn check_deriv_inverse_components(ai: &Tensor2, dai_da: &Tensor4, tol: f64) {
-        let arr = dai_da.to_array();
+    fn check_deriv_inverse(a: &Tensor2, tol: f64, verbose: bool) {
+        // compute inverse tensor
+        let mut ai = Tensor2::new(a.case());
+        a.inverse(&mut ai, 1e-10).unwrap().unwrap();
+
+        // compute analytical derivative
+        let mut dd_ana = Tensor4::new(Mandel::General);
+        deriv_inverse_tensor(&mut dd_ana, &ai).unwrap();
+
+        // check using index expression
+        let arr = dd_ana.to_array();
         let mat = ai.to_matrix();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        approx_eq(arr[i][j][k][l], -mat.get(i, k) * mat.get(l, j), tol)
+                        approx_eq(arr[i][j][k][l], -mat.get(i, k) * mat.get(l, j), 1e-14)
                     }
                 }
             }
         }
+
+        // check using numerical derivative
+        let ana = dd_ana.to_matrix();
+        let num = numerical_deriv_inverse(&a);
+        let num_mandel = numerical_deriv_inverse_mandel(&a);
+        if verbose {
+            println!("{:.5}", ana);
+            println!("{:.5}", num);
+        }
+        mat_approx_eq(&ana, &num, tol);
+        mat_approx_eq(&ana, &num_mandel, tol);
     }
 
-    fn check_deriv_inverse_sym_components(ai: &Tensor2, dai_da: &Tensor4, tol: f64) {
-        let arr = dai_da.to_array();
+    fn check_deriv_inverse_sym(a: &Tensor2, tol: f64, verbose: bool) {
+        // compute inverse tensor
+        let mut ai = Tensor2::new(a.case());
+        a.inverse(&mut ai, 1e-10).unwrap().unwrap();
+
+        // compute analytical derivative
+        let mut dd_ana = Tensor4::new(Mandel::Symmetric);
+        deriv_inverse_tensor_sym(&mut dd_ana, &ai).unwrap();
+
+        // check using index expression
+        let arr = dd_ana.to_array();
         let mat = ai.to_matrix();
         for i in 0..3 {
             for j in 0..3 {
@@ -256,57 +285,39 @@ mod tests {
                         approx_eq(
                             arr[i][j][k][l],
                             -0.5 * (mat.get(i, k) * mat.get(j, l) + mat.get(i, l) * mat.get(j, k)),
-                            tol,
+                            1e-14,
                         )
                     }
                 }
             }
         }
+
+        // check using numerical derivative
+        let ana = dd_ana.to_matrix();
+        let num = numerical_deriv_inverse_sym_mandel(&a);
+        if verbose {
+            println!("{:.5}", ana);
+            println!("{:.5}", num);
+        }
+        mat_approx_eq(&ana, &num, tol);
     }
 
     #[test]
     fn deriv_inverse_tensor_works() {
         // general
-        let sample = &SamplesTensor2::TENSOR_T;
-        let a = Tensor2::from_matrix(&sample.matrix, Mandel::General).unwrap();
-        let mut ai = Tensor2::new(Mandel::General);
-        a.inverse(&mut ai, 1e-10).unwrap().unwrap();
-        let mut dai_da = Tensor4::new(Mandel::General);
-        deriv_inverse_tensor(&mut dai_da, &ai).unwrap();
-        check_deriv_inverse_components(&ai, &dai_da, 1e-15);
-        let dai_da_ana = dai_da.to_matrix();
-        let dai_da_num = numerical_deriv_inverse(&a);
-        let dai_da_num_mandel = numerical_deriv_inverse_mandel(&a);
-        mat_approx_eq(&dai_da_ana, &dai_da_num, 1e-11);
-        mat_approx_eq(&dai_da_num, &dai_da_num_mandel, 1e-12);
+        let s = &SamplesTensor2::TENSOR_T;
+        let a = Tensor2::from_matrix(&s.matrix, Mandel::General).unwrap();
+        check_deriv_inverse(&a, 1e-11, false);
 
-        // symmetric 3D
-        let sample = &SamplesTensor2::TENSOR_U;
-        let a = Tensor2::from_matrix(&sample.matrix, Mandel::Symmetric).unwrap();
-        let mut ai = Tensor2::new(Mandel::Symmetric);
-        a.inverse(&mut ai, 1e-10).unwrap().unwrap();
-        let mut dai_da = Tensor4::new(Mandel::General);
-        deriv_inverse_tensor(&mut dai_da, &ai).unwrap();
-        check_deriv_inverse_components(&ai, &dai_da, 1e-14);
-        let dai_da_ana = dai_da.to_matrix();
-        let dai_da_num = numerical_deriv_inverse(&a);
-        let dai_da_num_mandel = numerical_deriv_inverse_mandel(&a);
-        mat_approx_eq(&dai_da_ana, &dai_da_num, 1e-7);
-        mat_approx_eq(&dai_da_num, &dai_da_num_mandel, 1e-7);
+        // symmetric
+        let s = &SamplesTensor2::TENSOR_U;
+        let a = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric).unwrap();
+        check_deriv_inverse(&a, 1e-7, false);
 
-        // symmetric 2D
-        let sample = &SamplesTensor2::TENSOR_Y;
-        let a = Tensor2::from_matrix(&sample.matrix, Mandel::Symmetric2D).unwrap();
-        let mut ai = Tensor2::new(Mandel::Symmetric2D);
-        a.inverse(&mut ai, 1e-10).unwrap().unwrap();
-        let mut dai_da = Tensor4::new(Mandel::General);
-        deriv_inverse_tensor(&mut dai_da, &ai).unwrap();
-        check_deriv_inverse_components(&ai, &dai_da, 1e-15);
-        let dai_da_ana = dai_da.to_matrix();
-        let dai_da_num = numerical_deriv_inverse(&a);
-        let dai_da_num_mandel = numerical_deriv_inverse_mandel(&a);
-        mat_approx_eq(&dai_da_ana, &dai_da_num, 1e-12);
-        mat_approx_eq(&dai_da_num, &dai_da_num_mandel, 1e-11);
+        // symmetric 2d
+        let s = &SamplesTensor2::TENSOR_Y;
+        let a = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric2D).unwrap();
+        check_deriv_inverse(&a, 1e-12, false);
     }
 
     #[test]
@@ -329,28 +340,14 @@ mod tests {
     #[test]
     fn deriv_inverse_tensor_sym_works() {
         // symmetric 3D
-        let sample = &SamplesTensor2::TENSOR_U;
-        let a = Tensor2::from_matrix(&sample.matrix, Mandel::Symmetric).unwrap();
-        let mut ai = Tensor2::new(Mandel::Symmetric);
-        a.inverse(&mut ai, 1e-10).unwrap().unwrap();
-        let mut dai_da = Tensor4::new(Mandel::Symmetric);
-        deriv_inverse_tensor_sym(&mut dai_da, &ai).unwrap();
-        check_deriv_inverse_sym_components(&ai, &dai_da, 1e-14);
-        let dai_da_ana = dai_da.to_matrix();
-        let dai_da_num = numerical_deriv_inverse_sym(&a);
-        mat_approx_eq(&dai_da_ana, &dai_da_num, 1e-7);
+        let s = &SamplesTensor2::TENSOR_U;
+        let a = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric).unwrap();
+        check_deriv_inverse_sym(&a, 1e-7, false);
 
         // symmetric 2D
-        let sample = &SamplesTensor2::TENSOR_Y;
-        let a = Tensor2::from_matrix(&sample.matrix, Mandel::Symmetric2D).unwrap();
-        let mut ai = Tensor2::new(Mandel::Symmetric2D);
-        a.inverse(&mut ai, 1e-10).unwrap().unwrap();
-        let mut dai_da = Tensor4::new(Mandel::Symmetric);
-        deriv_inverse_tensor_sym(&mut dai_da, &ai).unwrap();
-        check_deriv_inverse_sym_components(&ai, &dai_da, 1e-15);
-        let dai_da_ana = dai_da.to_matrix();
-        let dai_da_num = numerical_deriv_inverse_sym(&a);
-        mat_approx_eq(&dai_da_ana, &dai_da_num, 1e-12);
+        let s = &SamplesTensor2::TENSOR_Y;
+        let a = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric2D).unwrap();
+        check_deriv_inverse_sym(&a, 1e-12, false);
     }
 
     // squared tensor ------------------------------------------------------------------------------
@@ -433,7 +430,7 @@ mod tests {
         num_deriv.to_matrix()
     }
 
-    fn check_deriv_squared(a: &Tensor2, tol1: f64, tol2: f64) {
+    fn check_deriv_squared(a: &Tensor2, tol: f64) {
         // compute analytical derivative
         let mut dd_ana = Tensor4::new(Mandel::General);
         deriv_squared_tensor(&mut dd_ana, &a).unwrap();
@@ -460,8 +457,8 @@ mod tests {
         let ana = dd_ana.to_matrix();
         let num = numerical_deriv_squared(&a);
         let num_mandel = numerical_deriv_squared_mandel(&a);
-        mat_approx_eq(&ana, &num, tol1);
-        mat_approx_eq(&ana, &num_mandel, tol2);
+        mat_approx_eq(&ana, &num, tol);
+        mat_approx_eq(&ana, &num_mandel, tol);
     }
 
     #[test]
@@ -479,16 +476,16 @@ mod tests {
         // general
         let s = &SamplesTensor2::TENSOR_T;
         let a = Tensor2::from_matrix(&s.matrix, Mandel::General).unwrap();
-        check_deriv_squared(&a, 1e-10, 1e-10);
+        check_deriv_squared(&a, 1e-10);
 
         // symmetric
         let s = &SamplesTensor2::TENSOR_U;
         let a = Tensor2::from_matrix(&s.matrix, Mandel::General).unwrap();
-        check_deriv_squared(&a, 1e-10, 1e-10);
+        check_deriv_squared(&a, 1e-10);
 
         // symmetric 2d
         let s = &SamplesTensor2::TENSOR_Y;
         let a = Tensor2::from_matrix(&s.matrix, Mandel::General).unwrap();
-        check_deriv_squared(&a, 1e-10, 1e-10);
+        check_deriv_squared(&a, 1e-10);
     }
 }

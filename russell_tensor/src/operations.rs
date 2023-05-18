@@ -126,7 +126,7 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 /// # Note
 ///
 /// Even if `A` and `B` are symmetric, the result `C` may not be symmetric.
-/// Thus, `C` must be a [Mandel::General] tensor.
+/// Thus, `C` must be a General tensor.
 ///
 /// # Example
 ///
@@ -753,7 +753,7 @@ pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Resu
 /// Dᵢⱼₖₗ = s Aᵢₗ Bⱼₖ
 /// ```
 ///
-/// **Important:** The result is **not** necessarily minor-symmetric; therefore `dd` must be [Mandel::General].
+/// **Important:** The result is **not** necessarily minor-symmetric; therefore `dd` must be General.
 #[inline]
 #[rustfmt::skip]
 pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Result<(), StrError> {
@@ -1057,7 +1057,7 @@ pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Resu
 ///
 /// # Output
 ///
-/// * `dd` -- The result is minor-symmetric; therefore `dd` must be [Mandel::Symmetric] (but not 2D).
+/// * `dd` -- The result is minor-symmetric; therefore `dd` must be Symmetric (but not 2D).
 ///
 /// # Input
 ///
@@ -1220,7 +1220,7 @@ pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) -> Result<(), StrError> {
 ///
 /// # Output
 ///
-/// * `dd` -- The result is minor-symmetric; therefore `dd` must be [Mandel::Symmetric] (but not 2D).
+/// * `dd` -- The result is minor-symmetric; therefore `dd` must be Symmetric (but not 2D).
 ///
 /// # Input
 ///

@@ -1,4 +1,4 @@
-use crate::{t2_odyad_t2, t2_ssd, Mandel, StrError, Tensor2, Tensor4};
+use crate::{t2_odyad_t2, t2_qsd_t2, t2_ssd, Mandel, StrError, Tensor2, Tensor4};
 
 /// Calculates the derivative of the inverse tensor w.r.t. the defining Tensor2
 ///
@@ -33,9 +33,11 @@ pub fn deriv_inverse_tensor(dai_da: &mut Tensor4, ai: &Tensor2) -> Result<(), St
 /// Calculates the derivative of the inverse tensor w.r.t. the defining Tensor2 (symmetric)
 ///
 /// ```text
-/// dA⁻¹     1      _                      1
-/// ──── = - ─ (A⁻¹ ⊗ A⁻¹ + A⁻¹ ⊗ A⁻¹) = - ─ ssd(A⁻¹, A⁻¹)
-///  dA      2                  ‾          2
+/// dA⁻¹     1      _                 
+/// ──── = - ─ (A⁻¹ ⊗ A⁻¹ + A⁻¹ ⊗ A⁻¹)
+///  dA      2                  ‾     
+///
+///      = - 0.5 ssd(A⁻¹, A⁻¹)
 /// ```
 ///
 /// ```text
@@ -115,13 +117,51 @@ pub fn deriv_squared_tensor(da2_da: &mut Tensor4, a: &Tensor2) -> Result<(), Str
     Ok(())
 }
 
+/// Calculates the derivative of the squared tensor w.r.t. the defining Tensor2 (symmetric)
+///
+/// ```text
+/// dA²   1    _               _
+/// ─── = ─ (A ⊗ I + A ⊗ I + I ⊗ A + I ⊗ A)
+/// dA    2            ‾               ‾
+///
+///     = 0.5 qsd(A, I)
+/// ```
+///
+/// ```text
+/// With orthonormal Cartesian components:
+///
+/// ∂A²ᵢⱼ   1
+/// ───── = ─ (Aᵢₖ δⱼₗ + Aᵢₗ δⱼₖ + δᵢₖ Aⱼₗ + δᵢₗ Aⱼₖ)
+///  ∂Aₖₗ   2
+/// ```
+///
+/// ## Output
+///
+/// * `da2_da` -- the derivative of the squared tensor (must be Symmetric)
+///
+/// ## Input
+///
+/// * `a` -- the given tensor (must be Symmetric or Symmetric2D)
+pub fn deriv_squared_tensor_sym(da2_da: &mut Tensor4, a: &Tensor2) -> Result<(), StrError> {
+    if a.case() == Mandel::General {
+        return Err("'a' tensor must be Symmetric or Symmetric2D");
+    }
+    if da2_da.case() != Mandel::Symmetric {
+        return Err("'da2_da' tensor must be Symmetric");
+    }
+    let ii = Tensor2::identity(a.case());
+    t2_qsd_t2(da2_da, 0.5, a, &ii).unwrap();
+    Ok(())
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
     use super::{Tensor2, Tensor4};
     use crate::{
-        deriv_inverse_tensor, deriv_inverse_tensor_sym, deriv_squared_tensor, Mandel, SamplesTensor2, MN_TO_IJKL,
+        deriv_inverse_tensor, deriv_inverse_tensor_sym, deriv_squared_tensor, deriv_squared_tensor_sym, Mandel,
+        SamplesTensor2, MN_TO_IJKL,
     };
     use russell_chk::{approx_eq, deriv_central5};
     use russell_lab::{mat_approx_eq, Matrix};
@@ -232,7 +272,7 @@ mod tests {
         num_deriv.to_matrix()
     }
 
-    fn check_deriv_inverse(a: &Tensor2, tol: f64, verbose: bool) {
+    fn check_deriv_inverse(a: &Tensor2, tol: f64) {
         // compute inverse tensor
         let mut ai = Tensor2::new(a.case());
         a.inverse(&mut ai, 1e-10).unwrap().unwrap();
@@ -258,15 +298,11 @@ mod tests {
         let ana = dd_ana.to_matrix();
         let num = numerical_deriv_inverse(&a);
         let num_mandel = numerical_deriv_inverse_mandel(&a);
-        if verbose {
-            println!("{:.5}", ana);
-            println!("{:.5}", num);
-        }
         mat_approx_eq(&ana, &num, tol);
         mat_approx_eq(&ana, &num_mandel, tol);
     }
 
-    fn check_deriv_inverse_sym(a: &Tensor2, tol: f64, verbose: bool) {
+    fn check_deriv_inverse_sym(a: &Tensor2, tol: f64) {
         // compute inverse tensor
         let mut ai = Tensor2::new(a.case());
         a.inverse(&mut ai, 1e-10).unwrap().unwrap();
@@ -295,10 +331,6 @@ mod tests {
         // check using numerical derivative
         let ana = dd_ana.to_matrix();
         let num = numerical_deriv_inverse_sym_mandel(&a);
-        if verbose {
-            println!("{:.5}", ana);
-            println!("{:.5}", num);
-        }
         mat_approx_eq(&ana, &num, tol);
     }
 
@@ -307,17 +339,17 @@ mod tests {
         // general
         let s = &SamplesTensor2::TENSOR_T;
         let a = Tensor2::from_matrix(&s.matrix, Mandel::General).unwrap();
-        check_deriv_inverse(&a, 1e-11, false);
+        check_deriv_inverse(&a, 1e-11);
 
         // symmetric
         let s = &SamplesTensor2::TENSOR_U;
         let a = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric).unwrap();
-        check_deriv_inverse(&a, 1e-7, false);
+        check_deriv_inverse(&a, 1e-7);
 
         // symmetric 2d
         let s = &SamplesTensor2::TENSOR_Y;
         let a = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric2D).unwrap();
-        check_deriv_inverse(&a, 1e-12, false);
+        check_deriv_inverse(&a, 1e-12);
     }
 
     #[test]
@@ -328,7 +360,6 @@ mod tests {
             deriv_inverse_tensor_sym(&mut dai_da, &ai).err(),
             Some("'ai' tensor must be Symmetric or Symmetric2D")
         );
-
         let ai = Tensor2::new(Mandel::Symmetric2D);
         let mut dai_da = Tensor4::new(Mandel::Symmetric2D);
         assert_eq!(
@@ -339,15 +370,15 @@ mod tests {
 
     #[test]
     fn deriv_inverse_tensor_sym_works() {
-        // symmetric 3D
+        // symmetric
         let s = &SamplesTensor2::TENSOR_U;
         let a = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric).unwrap();
-        check_deriv_inverse_sym(&a, 1e-7, false);
+        check_deriv_inverse_sym(&a, 1e-7);
 
-        // symmetric 2D
+        // symmetric 2d
         let s = &SamplesTensor2::TENSOR_Y;
         let a = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric2D).unwrap();
-        check_deriv_inverse_sym(&a, 1e-12, false);
+        check_deriv_inverse_sym(&a, 1e-12);
     }
 
     // squared tensor ------------------------------------------------------------------------------
@@ -430,6 +461,34 @@ mod tests {
         num_deriv.to_matrix()
     }
 
+    fn numerical_deriv_squared_sym_mandel(a: &Tensor2) -> Matrix {
+        let mut args = ArgsNumDerivSquaredMandel {
+            a: Tensor2::new(Mandel::Symmetric),
+            a2: Tensor2::new(Mandel::Symmetric),
+            m: 0,
+            n: 0,
+        };
+        args.a.vec[0] = a.vec[0];
+        args.a.vec[1] = a.vec[1];
+        args.a.vec[2] = a.vec[2];
+        args.a.vec[3] = a.vec[3];
+        if a.vec.dim() > 4 {
+            args.a.vec[4] = a.vec[4];
+            args.a.vec[5] = a.vec[5];
+        }
+        let mut num_deriv = Tensor4::new(Mandel::Symmetric);
+        for m in 0..6 {
+            args.m = m;
+            for n in 0..6 {
+                args.n = n;
+                let x = args.a.vec[args.n];
+                let res = deriv_central5(x, &mut args, component_of_squared_mandel);
+                num_deriv.mat.set(m, n, res);
+            }
+        }
+        num_deriv.to_matrix()
+    }
+
     fn check_deriv_squared(a: &Tensor2, tol: f64) {
         // compute analytical derivative
         let mut dd_ana = Tensor4::new(Mandel::General);
@@ -461,6 +520,38 @@ mod tests {
         mat_approx_eq(&ana, &num_mandel, tol);
     }
 
+    fn check_deriv_squared_sym(a: &Tensor2, tol: f64) {
+        // compute analytical derivative
+        let mut dd_ana = Tensor4::new(Mandel::Symmetric);
+        deriv_squared_tensor_sym(&mut dd_ana, &a).unwrap();
+
+        // check using index expression
+        let arr = dd_ana.to_array();
+        let mat = a.to_matrix();
+        let del = Matrix::diagonal(&[1.0, 1.0, 1.0]);
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    for l in 0..3 {
+                        approx_eq(
+                            arr[i][j][k][l],
+                            0.5 * (mat.get(i, k) * del.get(j, l)
+                                + mat.get(i, l) * del.get(j, k)
+                                + del.get(i, k) * mat.get(j, l)
+                                + del.get(i, l) * mat.get(j, k)),
+                            1e-15,
+                        )
+                    }
+                }
+            }
+        }
+
+        // check using numerical derivative
+        let ana = dd_ana.to_matrix();
+        let num = numerical_deriv_squared_sym_mandel(&a);
+        mat_approx_eq(&ana, &num, tol);
+    }
+
     #[test]
     fn deriv_squared_tensor_captures_errors() {
         let a = Tensor2::new(Mandel::General);
@@ -487,5 +578,34 @@ mod tests {
         let s = &SamplesTensor2::TENSOR_Y;
         let a = Tensor2::from_matrix(&s.matrix, Mandel::General).unwrap();
         check_deriv_squared(&a, 1e-10);
+    }
+
+    #[test]
+    fn deriv_squared_tensor_sym_captures_errors() {
+        let a = Tensor2::new(Mandel::General);
+        let mut da2_da = Tensor4::new(Mandel::Symmetric);
+        assert_eq!(
+            deriv_squared_tensor_sym(&mut da2_da, &a).err(),
+            Some("'a' tensor must be Symmetric or Symmetric2D")
+        );
+        let a = Tensor2::new(Mandel::Symmetric2D);
+        let mut da2_da = Tensor4::new(Mandel::Symmetric2D);
+        assert_eq!(
+            deriv_squared_tensor_sym(&mut da2_da, &a).err(),
+            Some("'da2_da' tensor must be Symmetric")
+        );
+    }
+
+    #[test]
+    fn deriv_squared_tensor_sym_works() {
+        // symmetric
+        let s = &SamplesTensor2::TENSOR_U;
+        let a = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric).unwrap();
+        check_deriv_squared_sym(&a, 1e-10);
+
+        // symmetric 2d
+        let s = &SamplesTensor2::TENSOR_Y;
+        let a = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric2D).unwrap();
+        check_deriv_squared_sym(&a, 1e-10);
     }
 }

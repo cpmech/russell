@@ -2,6 +2,31 @@
 
 use crate::{t2_odyad_t2, StrError, Tensor2, Tensor4};
 
+/// Calculates the derivative of the inverse tensor w.r.t. the defining Tensor2
+///
+/// ```text
+/// dA⁻¹         _
+/// ──── = - A⁻¹ ⊗ A⁻ᵀ
+///  dA
+/// ```
+///
+/// ```text
+/// With orthonormal Cartesian components:
+///
+/// ∂A⁻¹ᵢⱼ
+/// ────── = - A⁻¹ᵢₖ A⁻ᵀⱼₗ
+///  ∂Aₖₗ
+///
+/// ```
+///
+/// ## Output
+///
+/// * `dai_da` -- the derivative of the inverse tensor
+///
+/// ## Input
+///
+/// * `ai` -- the pre-computed inverse tensor
+/// * `a` -- the defining tensor
 pub fn deriv_inverse_tensor(dai_da: &mut Tensor4, ai: &Tensor2, a: &Tensor2) -> Result<(), StrError> {
     let mut ai_t = ai.clone();
     ai.transpose(&mut ai_t)?;

@@ -348,8 +348,8 @@ pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) -> Result
 /// ```
 #[inline]
 pub fn vec_dyad_vec(tt: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Result<(), StrError> {
-    if tt.two_dim() {
-        // and symmetric
+    let dim = tt.vec.dim();
+    if dim == 4 {
         if u.dim() != 2 || v.dim() != 2 {
             return Err("vectors must have dim = 2");
         }
@@ -370,7 +370,7 @@ pub fn vec_dyad_vec(tt: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Res
         tt.vec[3] = alpha * (u[0] * v[1] + u[1] * v[0]) / SQRT_2;
         tt.vec[4] = alpha * (u[1] * v[2] + u[2] * v[1]) / SQRT_2;
         tt.vec[5] = alpha * (u[0] * v[2] + u[2] * v[0]) / SQRT_2;
-        if tt.symmetric() {
+        if dim == 6 {
             if (u[0] * v[1]) != (u[1] * v[0]) || (u[1] * v[2]) != (u[2] * v[1]) || (u[0] * v[2]) != (u[2] * v[0]) {
                 return Err("dyadic product between u and v does not generate a symmetric tensor");
             }

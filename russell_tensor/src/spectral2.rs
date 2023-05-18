@@ -26,11 +26,11 @@ impl Spectral2 {
 
     /// Performs the spectral decomposition of a symmetric second-order tensor
     pub fn decompose(&mut self, tt: &Tensor2) -> Result<(), StrError> {
-        // check
-        if !tt.symmetric() {
-            return Err("tensor must be symmetric");
+        let dim = tt.vec.dim();
+        if dim == 9 {
+            return Err("tensor must be Symmetric or Symmetric2D");
         }
-        if tt.two_dim() {
+        if dim == 4 {
             // eigenvalues and eigenvectors
             let (t22, mut a) = tt.to_matrix_2d();
             let mut l = Vector::new(2);
@@ -99,7 +99,10 @@ mod tests {
     fn decompose_captures_errors() {
         let mut spec = Spectral2::new(false);
         let tt = Tensor2::new(Mandel::General);
-        assert_eq!(spec.decompose(&tt).err(), Some("tensor must be symmetric"));
+        assert_eq!(
+            spec.decompose(&tt).err(),
+            Some("tensor must be Symmetric or Symmetric2D")
+        );
     }
 
     #[test]
@@ -129,11 +132,7 @@ mod tests {
         if let Some(correct_lambda) = sample.eigenvalues {
             if let Some(correct_projectors) = sample.eigenprojectors {
                 // perform spectral decomposition of symmetric matrix
-                let case = if spec.projectors[0].two_dim() {
-                    Mandel::Symmetric2D
-                } else {
-                    Mandel::Symmetric
-                };
+                let case = spec.projectors[0].case();
                 let tt = Tensor2::from_matrix(&sample.matrix, case).unwrap();
                 spec.decompose(&tt).unwrap();
 

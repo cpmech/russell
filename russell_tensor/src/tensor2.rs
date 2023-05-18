@@ -95,6 +95,12 @@ impl Tensor2 {
         }
     }
 
+    /// Returns the Mandel case associated with this Tensor2
+    #[inline]
+    pub fn case(&self) -> Mandel {
+        Mandel::new(self.vec.dim())
+    }
+
     /// Sets the Tensor2 with standard components given in matrix form
     ///
     /// # Input
@@ -175,15 +181,15 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn set_matrix(&mut self, tt: &dyn AsMatrix3x3) -> Result<(), StrError> {
-        if self.symmetric() {
-            if tt.at(1, 0) != tt.at(0, 1) || tt.at(2, 1) != tt.at(1, 2) || tt.at(2, 0) != tt.at(0, 2) {
-                return Err("cannot set Symmetric Tensor2 with non-symmetric data");
-            }
-        }
         let dim = self.vec.dim();
-        if dim == 4 {
-            if tt.at(1, 2) != 0.0 || tt.at(0, 2) != 0.0 {
-                return Err("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data");
+        if dim == 4 || dim == 6 {
+            if tt.at(1, 0) != tt.at(0, 1) || tt.at(2, 1) != tt.at(1, 2) || tt.at(2, 0) != tt.at(0, 2) {
+                return Err("cannot set symmetric Tensor2 with non-symmetric data");
+            }
+            if dim == 4 {
+                if tt.at(1, 2) != 0.0 || tt.at(0, 2) != 0.0 {
+                    return Err("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data");
+                }
             }
         }
         for m in 0..dim {
@@ -293,16 +299,36 @@ impl Tensor2 {
         Ok(res)
     }
 
-    /// Tells whether this tensor is symmetric or not
-    #[inline]
-    pub fn symmetric(&self) -> bool {
-        self.vec.dim() != 9
-    }
-
-    /// Tells whether this tensor is 2D or not
-    #[inline]
-    pub fn two_dim(&self) -> bool {
-        self.vec.dim() == 4
+    /// Returns a new identity tensor
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_tensor::{Mandel, Tensor2};
+    ///
+    /// let ii = Tensor2::identity(Mandel::General);
+    ///
+    /// assert_eq!(
+    ///     format!("{}", ii.vec),
+    ///     "┌   ┐\n\
+    ///      │ 1 │\n\
+    ///      │ 1 │\n\
+    ///      │ 1 │\n\
+    ///      │ 0 │\n\
+    ///      │ 0 │\n\
+    ///      │ 0 │\n\
+    ///      │ 0 │\n\
+    ///      │ 0 │\n\
+    ///      │ 0 │\n\
+    ///      └   ┘"
+    /// );
+    /// ```
+    pub fn identity(case: Mandel) -> Self {
+        let mut res = Tensor2::new(case);
+        res.vec[0] = 1.0;
+        res.vec[1] = 1.0;
+        res.vec[2] = 1.0;
+        res
     }
 
     /// Returns the (i,j) component (standard; not Mandel)
@@ -410,7 +436,7 @@ impl Tensor2 {
     ///
     /// # Panics
     ///
-    /// This function works only if the Tensor is 2D
+    /// This function works only if the Tensor is Symmetric2D
     ///
     /// # Example
     ///
@@ -436,7 +462,7 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn to_matrix_2d(&self) -> (f64, Matrix) {
-        assert!(self.two_dim());
+        assert_eq!(self.case(), Mandel::Symmetric2D);
         let mut tt = Matrix::new(2, 2);
         tt.set(0, 0, self.get(0, 0));
         tt.set(0, 1, self.get(0, 1));
@@ -580,7 +606,7 @@ impl Tensor2 {
     ///
     /// # Panics
     ///
-    /// The tensor must be symmetric and (i,j) must correspond to the possible
+    /// The tensor must be Symmetric or Symmetric2D and (i,j) must correspond to the possible
     /// combination due to the space dimension, otherwise a panic may occur.
     ///
     /// This function will panic also if i > j (lower-diagonal)
@@ -611,7 +637,7 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn sym_add(&mut self, i: usize, j: usize, alpha: f64, value: f64) {
-        assert!(self.symmetric());
+        assert!(self.case() != Mandel::General);
         assert!(i <= j);
         let m = IJ_TO_M_SYM[i][j];
         if i == j {
@@ -1630,27 +1656,24 @@ mod tests {
     use serde::{Deserialize, Serialize};
 
     #[test]
-    fn new_works() {
+    fn new_and_case_work() {
         // general
         let tt = Tensor2::new(Mandel::General);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.vec.as_data(), correct);
-        assert_eq!(tt.symmetric(), false);
-        assert_eq!(tt.two_dim(), false);
+        assert_eq!(tt.case(), Mandel::General);
 
         // symmetric 3D
         let tt = Tensor2::new(Mandel::Symmetric);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.vec.as_data(), correct);
-        assert_eq!(tt.symmetric(), true);
-        assert_eq!(tt.two_dim(), false);
+        assert_eq!(tt.case(), Mandel::Symmetric);
 
         // symmetric 2D
         let tt = Tensor2::new(Mandel::Symmetric2D);
         let correct = &[0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.vec.as_data(), correct);
-        assert_eq!(tt.symmetric(), true);
-        assert_eq!(tt.two_dim(), true);
+        assert_eq!(tt.case(), Mandel::Symmetric2D);
     }
 
     #[test]
@@ -1678,15 +1701,15 @@ mod tests {
         let mut tt = Tensor2::new(Mandel::Symmetric);
         assert_eq!(
             tt.set_matrix(comps_std_10).err(),
-            Some("cannot set Symmetric Tensor2 with non-symmetric data")
+            Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
         assert_eq!(
             tt.set_matrix(comps_std_20).err(),
-            Some("cannot set Symmetric Tensor2 with non-symmetric data")
+            Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
         assert_eq!(
             tt.set_matrix(comps_std_21).err(),
-            Some("cannot set Symmetric Tensor2 with non-symmetric data")
+            Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
 
         // symmetric 2D
@@ -1794,15 +1817,15 @@ mod tests {
         ];
         assert_eq!(
             Tensor2::from_matrix(comps_std_10, Mandel::Symmetric).err(),
-            Some("cannot set Symmetric Tensor2 with non-symmetric data")
+            Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
         assert_eq!(
             Tensor2::from_matrix(comps_std_20, Mandel::Symmetric).err(),
-            Some("cannot set Symmetric Tensor2 with non-symmetric data")
+            Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
         assert_eq!(
             Tensor2::from_matrix(comps_std_21, Mandel::Symmetric).err(),
-            Some("cannot set Symmetric Tensor2 with non-symmetric data")
+            Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
 
         // symmetric 2D
@@ -1873,6 +1896,21 @@ mod tests {
         let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric2D).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2];
         vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
+    }
+
+    #[test]
+    fn identity_works() {
+        // general
+        let ii = Tensor2::identity(Mandel::General);
+        assert_eq!(ii.vec.as_data(), &[1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+
+        // symmetric
+        let ii = Tensor2::identity(Mandel::Symmetric);
+        assert_eq!(ii.vec.as_data(), &[1.0, 1.0, 1.0, 0.0, 0.0, 0.0]);
+
+        // symmetric 2d
+        let ii = Tensor2::identity(Mandel::Symmetric2D);
+        assert_eq!(ii.vec.as_data(), &[1.0, 1.0, 1.0, 0.0,]);
     }
 
     #[test]

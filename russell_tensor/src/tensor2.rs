@@ -588,6 +588,7 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn sym_set(&mut self, i: usize, j: usize, value: f64) {
+        assert!(self.case() != Mandel::General);
         let m = IJ_TO_M_SYM[i][j];
         if i == j {
             self.vec[m] = value;
@@ -1514,10 +1515,6 @@ impl Tensor2 {
     /// σd = norm(dev(σ)) × √3/√2 = ‖s‖ √3/√2
     /// ```
     ///
-    /// # Panics
-    ///
-    /// This function only makes sense for **symmetric** tensors. Otherwise, it will panic.
-    ///
     /// # Example
     ///
     /// ```
@@ -1536,7 +1533,6 @@ impl Tensor2 {
     /// ```
     #[inline]
     pub fn invariant_sigma_d(&self) -> f64 {
-        assert!(Mandel::is_symmetric(self.vec.dim()));
         self.deviator_norm() * SQRT_3_BY_2
     }
 
@@ -1573,10 +1569,6 @@ impl Tensor2 {
     /// εd = norm(dev(ε)) × √2/√3
     /// ```
     ///
-    /// # Panics
-    ///
-    /// This function only makes sense for **symmetric** tensors. Otherwise, it will panic.
-    ///
     /// # Example
     ///
     /// ```
@@ -1595,7 +1587,6 @@ impl Tensor2 {
     /// ```
     #[inline]
     pub fn invariant_eps_d(&self) -> f64 {
-        assert!(Mandel::is_symmetric(self.vec.dim()));
         self.deviator_norm() * SQRT_2_BY_3
     }
 
@@ -1606,10 +1597,6 @@ impl Tensor2 {
     /// l = cos(3θ) = ─────────────
     ///               2 pow(J2,1.5)
     /// ```
-    ///
-    /// # Panics
-    ///
-    /// This function only makes sense for **symmetric** tensors. Otherwise, it will panic.
     ///
     /// # Returns
     ///

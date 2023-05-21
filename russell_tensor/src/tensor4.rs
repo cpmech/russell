@@ -199,7 +199,7 @@ impl Tensor4 {
     pub fn from_array(inp: &[[[[f64; 3]; 3]; 3]; 3], case: Mandel) -> Result<Self, StrError> {
         let dim = case.dim();
         let mut mat = Matrix::new(dim, dim);
-        if case.symmetric() {
+        if dim == 4 || dim == 6 {
             let max = if dim == 4 { 3 } else { 6 };
             for i in 0..3 {
                 for j in 0..3 {
@@ -336,7 +336,7 @@ impl Tensor4 {
     pub fn from_matrix(inp: &[[f64; 9]; 9], case: Mandel) -> Result<Self, StrError> {
         let dim = case.dim();
         let mut mat = Matrix::new(dim, dim);
-        if case.symmetric() {
+        if dim == 4 || dim == 6 {
             let max = if dim == 4 { 3 } else { 6 };
             for i in 0..3 {
                 for j in 0..3 {

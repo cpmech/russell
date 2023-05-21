@@ -2776,7 +2776,7 @@ mod tests {
             println!("    err(I3) = {:?}", f64::abs(tt.invariant_ii3() - sample.determinant));
             println!("    err(J2) = {:?}", f64::abs(tt.invariant_jj2() - jj2));
             println!("    err(J3) = {:?}", f64::abs(tt.invariant_jj3() - jj3));
-            if case.symmetric() {
+            if case == Mandel::Symmetric || case == Mandel::Symmetric2D {
                 let norm_s = tt.deviator_norm();
                 println!("    err(J2 - ½‖s‖²) = {:?}", f64::abs(jj2 - norm_s * norm_s / 2.0));
             }
@@ -2786,7 +2786,7 @@ mod tests {
         approx_eq(tt.invariant_ii3(), sample.determinant, tol_b);
         approx_eq(tt.invariant_jj2(), jj2, tol_c);
         approx_eq(tt.invariant_jj3(), jj3, tol_c);
-        if case.symmetric() {
+        if case == Mandel::Symmetric || case == Mandel::Symmetric2D {
             let norm_s = tt.deviator_norm();
             approx_eq(jj2, norm_s * norm_s / 2.0, tol_d);
         }

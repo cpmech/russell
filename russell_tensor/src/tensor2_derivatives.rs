@@ -1,4 +1,4 @@
-use crate::{StrError, Tensor2, ONE_BY_3, SQRT_3, SQRT_3_BY_2, TWO_BY_3};
+use crate::{StrError, Tensor2, ONE_BY_3, SQRT_3, SQRT_3_BY_2, TOL_J2, TWO_BY_3};
 
 impl Tensor2 {
     /// Computes the first derivative of the norm w.r.t. the defining tensor
@@ -149,28 +149,20 @@ impl Tensor2 {
     ///
     /// # Returns
     ///
-    /// If `J2 > tol_jj2`, returns `J2` and the derivative in `d1`. Otherwise, returns None.
-    pub fn deriv1_invariant_lode(
-        &self,
-        d1: &mut Tensor2,
-        aux: &mut Tensor2,
-        tol_jj2: f64,
-    ) -> Result<Option<f64>, StrError> {
-        if d1.vec.dim() != self.vec.dim() {
-            return Err("tensors are incompatible");
-        }
-        let ndim = d1.vec.dim();
-        if d1.vec.dim() != ndim || aux.vec.dim() != ndim {
+    /// If `J2 > TOL_J2`, returns `J2` and the derivative in `d1`. Otherwise, returns None.
+    pub fn deriv1_invariant_lode(&self, d1: &mut Tensor2, aux: &mut Tensor2) -> Result<Option<f64>, StrError> {
+        let dim = self.vec.dim();
+        if d1.vec.dim() != dim || aux.vec.dim() != dim {
             return Err("tensors are incompatible");
         }
         let jj2 = self.invariant_jj2();
-        if jj2 > tol_jj2 {
-            self.deriv1_invariant_jj3(d1, aux)?; // d1 := dJ3/dσ
-            self.deriv1_invariant_jj2(aux)?; // aux := dJ2/dσ
+        if jj2 > TOL_J2 {
+            self.deriv1_invariant_jj3(d1, aux).unwrap(); // d1 := dJ3/dσ
+            self.deriv1_invariant_jj2(aux).unwrap(); // aux := dJ2/dσ
             let jj3 = self.invariant_jj3();
             let a = 1.5 * SQRT_3 / f64::powf(jj2, 1.5);
             let b = 2.25 * SQRT_3 * jj3 / f64::powf(jj2, 2.5);
-            for i in 0..ndim {
+            for i in 0..dim {
                 d1.vec[i] = a * d1.vec[i] - b * aux.vec[i];
             }
             return Ok(Some(jj2));
@@ -185,7 +177,7 @@ impl Tensor2 {
 #[cfg(test)]
 mod tests {
     use super::Tensor2;
-    use crate::{Mandel, SampleTensor2, SamplesTensor2, IJ_TO_M, ONE_BY_3, SQRT_3_BY_2, TOL_J2};
+    use crate::{Mandel, SampleTensor2, SamplesTensor2, IJ_TO_M, ONE_BY_3, SQRT_3_BY_2};
     use russell_chk::{approx_eq, deriv_central5, vec_approx_eq};
     use russell_lab::{mat_approx_eq, Matrix};
 
@@ -221,7 +213,7 @@ mod tests {
             }
             F::Lode => {
                 let mut aux = sigma.clone();
-                sigma.deriv1_invariant_lode(d1, &mut aux, 1e-10).unwrap().unwrap();
+                sigma.deriv1_invariant_lode(d1, &mut aux).unwrap().unwrap();
             }
         };
     }
@@ -413,7 +405,7 @@ mod tests {
             Some("tensors are incompatible")
         );
         assert_eq!(
-            sigma.deriv1_invariant_lode(&mut d1, &mut aux, TOL_J2).err(),
+            sigma.deriv1_invariant_lode(&mut d1, &mut aux).err(),
             Some("tensors are incompatible")
         );
     }

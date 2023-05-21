@@ -68,6 +68,10 @@ impl Tensor2 {
     /// ─── = s·s - ──── I (if σ is symmetric)
     ///  dσ           3
     /// ```
+    ///
+    /// # Returns
+    ///
+    /// Returns the derivative dJ3/dσ in `d1` and the deviator(σ) tensor in `s`.
     pub fn deriv1_invariant_jj3(&self, d1: &mut Tensor2, s: &mut Tensor2) -> Result<(), StrError> {
         if d1.vec.dim() != self.vec.dim() {
             return Err("tensors are incompatible");
@@ -149,7 +153,7 @@ impl Tensor2 {
     ///
     /// # Returns
     ///
-    /// If `J2 > TOL_J2`, returns `J2` and the derivative in `d1`. Otherwise, returns None.
+    /// If `J2 > TOL_J2`, returns `J2` and the derivative dl/dσ in `d1`. Otherwise, returns None.
     pub fn deriv1_invariant_lode(&self, d1: &mut Tensor2, aux: &mut Tensor2) -> Result<Option<f64>, StrError> {
         let dim = self.vec.dim();
         if d1.vec.dim() != dim || aux.vec.dim() != dim {
@@ -157,7 +161,7 @@ impl Tensor2 {
         }
         let jj2 = self.invariant_jj2();
         if jj2 > TOL_J2 {
-            self.deriv1_invariant_jj3(d1, aux).unwrap(); // d1 := dJ3/dσ
+            self.deriv1_invariant_jj3(d1, aux).unwrap(); // d1 := dJ3/dσ; aux := deviator(σ)
             self.deriv1_invariant_jj2(aux).unwrap(); // aux := dJ2/dσ
             let jj3 = self.invariant_jj3();
             let a = 1.5 * SQRT_3 / f64::powf(jj2, 1.5);

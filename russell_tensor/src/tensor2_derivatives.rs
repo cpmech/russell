@@ -16,11 +16,11 @@ impl Tensor2 {
     ///   because the norm is zero
     pub fn deriv1_norm(&self, d1: &mut Tensor2) -> Result<Option<f64>, StrError> {
         if d1.vec.dim() != self.vec.dim() {
-            return Err("The output tensor is not compatible with this tensor");
+            return Err("tensors are incompatible");
         }
         let n = self.norm();
         if n > 0.0 {
-            d1.mirror(self)?;
+            d1.mirror(self).unwrap();
             for i in 0..d1.vec.dim() {
                 d1.vec[i] /= n;
             }
@@ -41,9 +41,9 @@ impl Tensor2 {
     /// ```
     pub fn deriv1_invariant_jj2(&self, d1: &mut Tensor2) -> Result<(), StrError> {
         if d1.vec.dim() != self.vec.dim() {
-            return Err("The output tensor is not compatible with this tensor");
+            return Err("tensors are incompatible");
         }
-        self.deviator(d1)?;
+        self.deviator(d1).unwrap();
         if self.vec.dim() > 6 {
             // transpose
             d1.vec[6] *= -1.0;
@@ -70,10 +70,10 @@ impl Tensor2 {
     /// ```
     pub fn deriv1_invariant_jj3(&self, d1: &mut Tensor2, s: &mut Tensor2) -> Result<(), StrError> {
         if d1.vec.dim() != self.vec.dim() {
-            return Err("The output tensor is not compatible with this tensor");
+            return Err("tensors are incompatible");
         }
-        self.deviator(s)?;
-        s.squared(d1)?; // d1 := s·s
+        self.deviator(s).unwrap();
+        s.squared(d1).unwrap(); // d1 := s·s
         let jj2 = self.invariant_jj2();
         d1.vec[0] -= TWO_BY_3 * jj2;
         d1.vec[1] -= TWO_BY_3 * jj2;
@@ -95,9 +95,6 @@ impl Tensor2 {
     ///  dσ   3
     /// ```
     pub fn deriv1_invariant_sigma_m(&self, d1: &mut Tensor2) -> Result<(), StrError> {
-        if d1.vec.dim() != self.vec.dim() {
-            return Err("The output tensor is not compatible with this tensor");
-        }
         if d1.vec.dim() != self.vec.dim() {
             return Err("tensors are incompatible");
         }
@@ -123,11 +120,11 @@ impl Tensor2 {
     ///   because the deviatoric stress invariant is zero
     pub fn deriv1_invariant_sigma_d(&self, d1: &mut Tensor2) -> Result<Option<f64>, StrError> {
         if d1.vec.dim() != self.vec.dim() {
-            return Err("The output tensor is not compatible with this tensor");
+            return Err("tensors are incompatible");
         }
         let n = self.deviator_norm();
         if n > 0.0 {
-            self.deviator(d1)?;
+            self.deviator(d1).unwrap();
             for i in 0..d1.vec.dim() {
                 d1.vec[i] *= SQRT_3_BY_2 / n;
             }
@@ -160,7 +157,7 @@ impl Tensor2 {
         tol_jj2: f64,
     ) -> Result<Option<f64>, StrError> {
         if d1.vec.dim() != self.vec.dim() {
-            return Err("The output tensor is not compatible with this tensor");
+            return Err("tensors are incompatible");
         }
         let ndim = d1.vec.dim();
         if d1.vec.dim() != ndim || aux.vec.dim() != ndim {
@@ -188,7 +185,7 @@ impl Tensor2 {
 #[cfg(test)]
 mod tests {
     use super::Tensor2;
-    use crate::{Mandel, SampleTensor2, SamplesTensor2, IJ_TO_M, ONE_BY_3, SQRT_3_BY_2};
+    use crate::{Mandel, SampleTensor2, SamplesTensor2, IJ_TO_M, ONE_BY_3, SQRT_3_BY_2, TOL_J2};
     use russell_chk::{approx_eq, deriv_central5, vec_approx_eq};
     use russell_lab::{mat_approx_eq, Matrix};
 
@@ -393,10 +390,31 @@ mod tests {
     // -- check errors -------------------------------------------------------------------------------
 
     #[test]
-    #[rustfmt::skip]
     fn check_errors() {
         let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::General).unwrap();
+        let mut s = sigma.clone();
+        let mut aux = sigma.clone();
         let mut d1 = Tensor2::new(Mandel::Symmetric);
-        assert_eq!(sigma.deriv1_norm(&mut d1).err(), Some("The output tensor is not compatible with this tensor"));
+        assert_eq!(sigma.deriv1_norm(&mut d1).err(), Some("tensors are incompatible"));
+        assert_eq!(
+            sigma.deriv1_invariant_jj2(&mut d1).err(),
+            Some("tensors are incompatible")
+        );
+        assert_eq!(
+            sigma.deriv1_invariant_jj3(&mut d1, &mut s).err(),
+            Some("tensors are incompatible")
+        );
+        assert_eq!(
+            sigma.deriv1_invariant_sigma_m(&mut d1).err(),
+            Some("tensors are incompatible")
+        );
+        assert_eq!(
+            sigma.deriv1_invariant_sigma_d(&mut d1).err(),
+            Some("tensors are incompatible")
+        );
+        assert_eq!(
+            sigma.deriv1_invariant_lode(&mut d1, &mut aux, TOL_J2).err(),
+            Some("tensors are incompatible")
+        );
     }
 }

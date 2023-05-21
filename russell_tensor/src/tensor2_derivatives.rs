@@ -1,5 +1,4 @@
-use crate::{StrError, Tensor2, ONE_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6, TWO_BY_3};
-use russell_lab::vec_add;
+use crate::{StrError, Tensor2, ONE_BY_3, SQRT_3, SQRT_3_BY_2, TWO_BY_3};
 
 impl Tensor2 {
     /// Computes the first derivative of the norm w.r.t. the defining tensor
@@ -181,59 +180,6 @@ impl Tensor2 {
         }
         Ok(None)
     }
-
-    /// Computes the first derivative of the Lode invariant (alternative method)
-    ///
-    /// ```text
-    /// σ represents this tensor
-    /// l is the Lode invariant
-    ///
-    /// s = dev(σ)
-    /// ψ = dev(s⁻¹)
-    /// m = 3 l / ‖s‖²
-    ///
-    /// dl
-    /// ── = l ψ - m s
-    /// dσ
-    /// ```
-    ///
-    /// # Output
-    ///
-    /// * `d1` -- d1 = dl/dσ is the first derivative of the Lode invariant
-    /// * `s` -- s = dev(σ) is the deviator of σ (this tensor)
-    /// * `si` -- si = inverse(s) is the inverse of the deviator tensor
-    /// * `psi` -- psi = dev(inverse(s)) is the deviator of the inverse of the deviator tensor
-    /// * `tolerance` -- is a tolerance to compute the determinant of the deviator tensor
-    ///
-    /// # Returns
-    ///
-    /// If the norm and determinant of `s` (deviator) are not null, returns the derivative in `d1`
-    /// and the Lode invariant `l`. Otherwise, returns None.
-    pub fn deriv1_invariant_lode_alt(
-        &self,
-        d1: &mut Tensor2,
-        s: &mut Tensor2,
-        si: &mut Tensor2,
-        psi: &mut Tensor2,
-        tolerance: f64,
-    ) -> Result<Option<f64>, StrError> {
-        if d1.vec.dim() != self.vec.dim() {
-            return Err("The output tensor is not compatible with this tensor");
-        }
-        let n = self.deviator_norm();
-        let nnn = n * n * n;
-        if f64::abs(nnn) > 0.0 {
-            self.deviator(s)?;
-            if let Some(det) = s.inverse(si, tolerance)? {
-                si.deviator(psi)?;
-                let l = 3.0 * SQRT_6 * det / nnn;
-                let m = 3.0 * l / (n * n);
-                vec_add(&mut d1.vec, l, &psi.vec, -m, &s.vec)?;
-                return Ok(Some(l));
-            }
-        }
-        Ok(None)
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -255,7 +201,6 @@ mod tests {
         SigmaM,
         SigmaD,
         Lode,
-        LodeAlt,
     }
 
     // computes the analytical derivative df(σ)/dσ
@@ -280,14 +225,6 @@ mod tests {
             F::Lode => {
                 let mut aux = sigma.clone();
                 sigma.deriv1_invariant_lode(d1, &mut aux, 1e-10).unwrap().unwrap();
-            }
-            F::LodeAlt => {
-                let mut s = sigma.clone();
-                let mut si = sigma.clone();
-                let mut psi = sigma.clone();
-                sigma
-                    .deriv1_invariant_lode_alt(d1, &mut s, &mut si, &mut psi, 1e-10)
-                    .unwrap();
             }
         };
     }
@@ -320,7 +257,6 @@ mod tests {
             F::SigmaM => args.sigma.invariant_sigma_m(),
             F::SigmaD => args.sigma.invariant_sigma_d(),
             F::Lode => args.sigma.invariant_lode().unwrap(),
-            F::LodeAlt => args.sigma.invariant_lode().unwrap(),
         };
         args.sigma_mat.set(args.i, args.j, original);
         res
@@ -337,7 +273,6 @@ mod tests {
             F::SigmaM => args.sigma.invariant_sigma_m(),
             F::SigmaD => args.sigma.invariant_sigma_d(),
             F::Lode => args.sigma.invariant_lode().unwrap(),
-            F::LodeAlt => args.sigma.invariant_lode().unwrap(),
         };
         args.sigma.vec[args.m] = original;
         res
@@ -455,16 +390,6 @@ mod tests {
         check_deriv(F::Lode, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, v);
     }
 
-    #[test]
-    fn deriv_invariant_lode_alt_works() {
-        let v = false;
-        check_deriv(F::LodeAlt, Mandel::Symmetric, &SamplesTensor2::TENSOR_U, 1e-10, v);
-        check_deriv(F::LodeAlt, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
-        check_deriv(F::LodeAlt, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_X, 1e-10, v);
-        check_deriv(F::LodeAlt, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Y, 1e-10, v);
-        check_deriv(F::LodeAlt, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, v);
-    }
-
     // -- check errors -------------------------------------------------------------------------------
 
     #[test]
@@ -472,6 +397,6 @@ mod tests {
     fn check_errors() {
         let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::General).unwrap();
         let mut d1 = Tensor2::new(Mandel::Symmetric);
-        assert_eq!( sigma.deriv1_norm(&mut d1).err(), Some("The output tensor is not compatible with this tensor"));
+        assert_eq!(sigma.deriv1_norm(&mut d1).err(), Some("The output tensor is not compatible with this tensor"));
     }
 }

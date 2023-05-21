@@ -232,27 +232,211 @@ impl Tensor2 {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#[allow(unused)]
 #[cfg(test)]
 mod tests {
     use super::Tensor2;
-    use crate::{Mandel, SampleTensor2, SamplesTensor2, ONE_BY_3, SQRT_3_BY_2};
+    use crate::{Mandel, SampleTensor2, SamplesTensor2, IJ_TO_M, ONE_BY_3, SQRT_3_BY_2};
     use russell_chk::{approx_eq, deriv_central5, vec_approx_eq};
     use russell_lab::{mat_approx_eq, Matrix};
+
+    // Defines f(σ)
+    #[derive(Clone, Copy)]
+    enum F {
+        Norm,
+        J2,
+        J3,
+        SigmaM,
+        SigmaD,
+        Lode,
+        LodeAlt,
+    }
+
+    // computes the analytical derivative df(σ)/dσ
+    fn analytical_deriv(fn_name: F, d1: &mut Tensor2, sigma: &Tensor2) {
+        match fn_name {
+            F::Norm => {
+                sigma.deriv1_norm(d1).unwrap().unwrap();
+            }
+            F::J2 => {
+                sigma.deriv1_invariant_jj2(d1).unwrap();
+            }
+            F::J3 => {
+                let mut s = sigma.clone();
+                sigma.deriv1_invariant_jj3(d1, &mut s).unwrap();
+            }
+            F::SigmaM => {
+                sigma.deriv1_invariant_sigma_m(d1).unwrap();
+            }
+            F::SigmaD => {
+                sigma.deriv1_invariant_sigma_d(d1).unwrap().unwrap();
+            }
+            F::Lode => {
+                let mut aux = sigma.clone();
+                sigma.deriv1_invariant_lode(d1, &mut aux, 1e-10).unwrap().unwrap();
+            }
+            F::LodeAlt => {
+                let mut s = sigma.clone();
+                let mut si = sigma.clone();
+                let mut psi = sigma.clone();
+                sigma
+                    .deriv1_invariant_lode_alt(d1, &mut s, &mut si, &mut psi, 1e-10)
+                    .unwrap();
+            }
+        };
+    }
+
+    // Holds arguments for numerical differentiation of a scalar f(σ) w.r.t. σᵢⱼ (standard components)
+    struct ArgsNumDeriv {
+        fn_name: F,        // name of f(σ)
+        sigma_mat: Matrix, // @ σ (3x3 matrix form)
+        sigma: Tensor2,    // temporary tensor with varying ij-components
+        i: usize,          // index i of ∂f/∂σᵢⱼ
+        j: usize,          // index j of ∂f/∂σᵢⱼ
+    }
+
+    // Holds arguments for numerical differentiation of a scalar f(σ) w.r.t. σₘ (Mandel components)
+    struct ArgsNumDerivMandel {
+        fn_name: F,     // name of f(σ)
+        sigma: Tensor2, // @ σ, with varying m-components
+        m: usize,       // index m of ∂f/∂σₘ
+    }
+
+    // computes f(σ) for varying components x = σᵢⱼ
+    fn f_sigma(x: f64, args: &mut ArgsNumDeriv) -> f64 {
+        let original = args.sigma_mat.get(args.i, args.j);
+        args.sigma_mat.set(args.i, args.j, x);
+        args.sigma.set_matrix(&args.sigma_mat).unwrap();
+        let res = match args.fn_name {
+            F::Norm => args.sigma.norm(),
+            F::J2 => args.sigma.invariant_jj2(),
+            F::J3 => args.sigma.invariant_jj3(),
+            F::SigmaM => args.sigma.invariant_sigma_m(),
+            F::SigmaD => args.sigma.invariant_sigma_d(),
+            F::Lode => args.sigma.invariant_lode(1e-10).unwrap(),
+            F::LodeAlt => args.sigma.invariant_lode(1e-10).unwrap(),
+        };
+        args.sigma_mat.set(args.i, args.j, original);
+        res
+    }
+
+    // computes f(σ) for varying components x = σₘ
+    fn f_sigma_mandel(x: f64, args: &mut ArgsNumDerivMandel) -> f64 {
+        let original = args.sigma.vec[args.m];
+        args.sigma.vec[args.m] = x;
+        let res = match args.fn_name {
+            F::Norm => args.sigma.norm(),
+            F::J2 => args.sigma.invariant_jj2(),
+            F::J3 => args.sigma.invariant_jj3(),
+            F::SigmaM => args.sigma.invariant_sigma_m(),
+            F::SigmaD => args.sigma.invariant_sigma_d(),
+            F::Lode => args.sigma.invariant_lode(1e-10).unwrap(),
+            F::LodeAlt => args.sigma.invariant_lode(1e-10).unwrap(),
+        };
+        args.sigma.vec[args.m] = original;
+        res
+    }
+
+    // computes ∂f/∂σᵢⱼ and returns as a 3x3 matrix of (standard) components
+    fn numerical_deriv(sigma: &Tensor2, fn_name: F) -> Matrix {
+        let mut args = ArgsNumDeriv {
+            fn_name,
+            sigma_mat: sigma.to_matrix(),
+            sigma: sigma.to_general(),
+            i: 0,
+            j: 0,
+        };
+        let mut num_deriv = Matrix::new(3, 3);
+        for i in 0..3 {
+            args.i = i;
+            for j in 0..3 {
+                args.j = j;
+                let x = args.sigma_mat.get(i, j);
+                let res = deriv_central5(x, &mut args, f_sigma);
+                num_deriv.set(i, j, res);
+            }
+        }
+        num_deriv
+    }
+
+    // computes ∂f/∂σₘ and returns as a 3x3 matrix of (standard) components
+    fn numerical_deriv_mandel(sigma: &Tensor2, fn_name: F) -> Matrix {
+        let mut args = ArgsNumDerivMandel {
+            fn_name,
+            sigma: sigma.clone(),
+            m: 0,
+        };
+        let mut num_deriv = sigma.clone();
+        for m in 0..sigma.vec.dim() {
+            args.m = m;
+            let x = args.sigma.vec[m];
+            let res = deriv_central5(x, &mut args, f_sigma_mandel);
+            num_deriv.vec[m] = res;
+        }
+        num_deriv.to_matrix()
+    }
+
+    // checks ∂f/∂σᵢⱼ
+    fn check_deriv(fn_name: F, case: Mandel, sample: &SampleTensor2, tol: f64, verbose: bool) {
+        let sigma = Tensor2::from_matrix(&sample.matrix, case).unwrap();
+        let mut d1 = Tensor2::new(case);
+        analytical_deriv(fn_name, &mut d1, &sigma);
+        let ana = d1.to_matrix();
+        let num = numerical_deriv(&sigma, fn_name);
+        let num_mandel = numerical_deriv_mandel(&sigma, fn_name);
+        if verbose {
+            println!("analytical derivative:\n{}", ana);
+            println!("numerical derivative:\n{}", num);
+            println!("numerical derivative (Mandel):\n{}", num_mandel);
+        }
+        mat_approx_eq(&ana, &num, tol);
+        mat_approx_eq(&ana, &num_mandel, tol);
+    }
+
+    // -- norm ------------------------------------------------------------------------------------------
+
+    #[test]
+    fn deriv_norm_captures_errors() {
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::General).unwrap();
+        let mut d1 = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(sigma.deriv1_norm(&mut d1).err(), Some("tensors are incompatible"));
+    }
+
+    #[test]
+    fn deriv_norm_works() {
+        let v = false;
+        check_deriv(F::Norm, Mandel::General, &SamplesTensor2::TENSOR_T, 1e-10, v);
+        check_deriv(F::Norm, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
+        check_deriv(F::Norm, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-11, v);
+    }
+
+    #[test]
+    fn deriv_invariant_jj2_works() {
+        let v = false;
+        check_deriv(F::J2, Mandel::General, &SamplesTensor2::TENSOR_T, 1e-10, v);
+        check_deriv(F::J2, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
+        check_deriv(F::J2, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-11, v);
+        check_deriv(F::J2, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_O, 1e-15, v);
+        check_deriv(F::J2, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_I, 1e-12, v);
+    }
+
+    #[test]
+    fn deriv_invariant_jj3_works() {
+        let v = false;
+        check_deriv(F::J3, Mandel::General, &SamplesTensor2::TENSOR_T, 1e-8, v);
+        check_deriv(F::J3, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-9, v);
+        check_deriv(F::J3, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, v);
+        check_deriv(F::J3, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_O, 1e-15, v);
+        check_deriv(F::J3, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_I, 1e-15, v);
+    }
 
     // -- deriv1_norm ---------------------------------------------------------------------------------------
 
     // Holds arguments for numerical differentiation of a scalar f(σ) w.r.t. σₘ with m being the Mandel index
-    struct ArgsNumDeriv1 {
+    struct ArgsNumDerivOld {
         at_sigma: Tensor2,   // @ σ value
         temp_sigma: Tensor2, // temporary σ
         m: usize,            // index i of ∂f/∂σₘ
-    }
-
-    #[test]
-    fn deriv1_norm_captures_errors() {
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::General).unwrap();
-        let mut d1 = Tensor2::new(Mandel::Symmetric);
-        assert_eq!(sigma.deriv1_norm(&mut d1).err(), Some("tensors are incompatible"));
     }
 
     #[test]
@@ -263,7 +447,7 @@ mod tests {
     }
 
     // Computes ‖σ‖ for varying v_mandel := MandelComponent(σᵢⱼ)
-    fn norm_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDeriv1) -> f64 {
+    fn norm_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDerivOld) -> f64 {
         args.temp_sigma.mirror(&args.at_sigma).unwrap();
         args.temp_sigma.vec[args.m] = v_mandel;
         args.temp_sigma.norm()
@@ -289,7 +473,7 @@ mod tests {
         mat_approx_eq(&ana_deriv.to_matrix(), &correct, tol);
 
         // compare with numerical derivative
-        let mut args = ArgsNumDeriv1 {
+        let mut args = ArgsNumDerivOld {
             at_sigma: Tensor2::from_matrix(&sample.matrix, case).unwrap(),
             temp_sigma: Tensor2::new(case),
             m: 0,
@@ -326,7 +510,7 @@ mod tests {
     }
 
     // Computes J2 for varying v_mandel := MandelComponent(σᵢⱼ)
-    fn jj2_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDeriv1) -> f64 {
+    fn jj2_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDerivOld) -> f64 {
         args.temp_sigma.mirror(&args.at_sigma).unwrap();
         args.temp_sigma.vec[args.m] = v_mandel;
         args.temp_sigma.invariant_jj2()
@@ -343,7 +527,7 @@ mod tests {
         }
 
         // compare with numerical derivative
-        let mut args = ArgsNumDeriv1 {
+        let mut args = ArgsNumDerivOld {
             at_sigma: Tensor2::from_matrix(&sample.matrix, case).unwrap(),
             temp_sigma: Tensor2::new(case),
             m: 0,
@@ -389,7 +573,7 @@ mod tests {
     }
 
     // Computes J3 for varying v_mandel := MandelComponent(σᵢⱼ)
-    fn jj3_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDeriv1) -> f64 {
+    fn jj3_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDerivOld) -> f64 {
         args.temp_sigma.mirror(&args.at_sigma).unwrap();
         args.temp_sigma.vec[args.m] = v_mandel;
         args.temp_sigma.invariant_jj3()
@@ -407,7 +591,7 @@ mod tests {
         }
 
         // compare with numerical derivative
-        let mut args = ArgsNumDeriv1 {
+        let mut args = ArgsNumDerivOld {
             at_sigma: Tensor2::from_matrix(&sample.matrix, case).unwrap(),
             temp_sigma: Tensor2::new(case),
             m: 0,
@@ -446,7 +630,7 @@ mod tests {
     }
 
     // Computes σm for varying v_mandel := MandelComponent(σᵢⱼ)
-    fn sigma_m_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDeriv1) -> f64 {
+    fn sigma_m_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDerivOld) -> f64 {
         args.temp_sigma.mirror(&args.at_sigma).unwrap();
         args.temp_sigma.vec[args.m] = v_mandel;
         args.temp_sigma.invariant_sigma_m()
@@ -466,7 +650,7 @@ mod tests {
         mat_approx_eq(&ana_deriv.to_matrix(), &correct, tol);
 
         // compare with numerical derivative
-        let mut args = ArgsNumDeriv1 {
+        let mut args = ArgsNumDerivOld {
             at_sigma: Tensor2::from_matrix(&sample.matrix, case).unwrap(),
             temp_sigma: Tensor2::new(case),
             m: 0,
@@ -510,7 +694,7 @@ mod tests {
     }
 
     // Computes σd for varying v_mandel := MandelComponent(σᵢⱼ)
-    fn sigma_d_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDeriv1) -> f64 {
+    fn sigma_d_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDerivOld) -> f64 {
         args.temp_sigma.mirror(&args.at_sigma).unwrap();
         args.temp_sigma.vec[args.m] = v_mandel;
         args.temp_sigma.invariant_sigma_d()
@@ -535,7 +719,7 @@ mod tests {
         mat_approx_eq(&ana_deriv.to_matrix(), &correct, tol);
 
         // compare with numerical derivative
-        let mut args = ArgsNumDeriv1 {
+        let mut args = ArgsNumDerivOld {
             at_sigma: Tensor2::from_matrix(&sample.matrix, case).unwrap(),
             temp_sigma: Tensor2::new(case),
             m: 0,
@@ -589,7 +773,7 @@ mod tests {
     }
 
     // Computes l for varying v_mandel := MandelComponent(σᵢⱼ)
-    fn lode_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDeriv1) -> f64 {
+    fn lode_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDerivOld) -> f64 {
         args.temp_sigma.mirror(&args.at_sigma).unwrap();
         args.temp_sigma.vec[args.m] = v_mandel;
         match args.temp_sigma.invariant_lode(1e-10) {
@@ -627,7 +811,7 @@ mod tests {
         vec_approx_eq(&ana_deriv.vec.as_data(), &ana_deriv_alt.vec.as_data(), 1e-15);
 
         // compare with numerical derivative
-        let mut args = ArgsNumDeriv1 {
+        let mut args = ArgsNumDerivOld {
             at_sigma: Tensor2::from_matrix(&sample.matrix, case).unwrap(),
             temp_sigma: Tensor2::new(case),
             m: 0,

@@ -298,8 +298,8 @@ mod tests {
             F::J3 => args.sigma.invariant_jj3(),
             F::SigmaM => args.sigma.invariant_sigma_m(),
             F::SigmaD => args.sigma.invariant_sigma_d(),
-            F::Lode => args.sigma.invariant_lode(1e-10).unwrap(),
-            F::LodeAlt => args.sigma.invariant_lode(1e-10).unwrap(),
+            F::Lode => args.sigma.invariant_lode().unwrap(),
+            F::LodeAlt => args.sigma.invariant_lode().unwrap(),
         };
         args.sigma_mat.set(args.i, args.j, original);
         res
@@ -315,8 +315,8 @@ mod tests {
             F::J3 => args.sigma.invariant_jj3(),
             F::SigmaM => args.sigma.invariant_sigma_m(),
             F::SigmaD => args.sigma.invariant_sigma_d(),
-            F::Lode => args.sigma.invariant_lode(1e-10).unwrap(),
-            F::LodeAlt => args.sigma.invariant_lode(1e-10).unwrap(),
+            F::Lode => args.sigma.invariant_lode().unwrap(),
+            F::LodeAlt => args.sigma.invariant_lode().unwrap(),
         };
         args.sigma.vec[args.m] = original;
         res
@@ -779,7 +779,7 @@ mod tests {
     fn lode_given_sigma_mandel(v_mandel: f64, args: &mut ArgsNumDerivOld) -> f64 {
         args.temp_sigma.mirror(&args.at_sigma).unwrap();
         args.temp_sigma.vec[args.m] = v_mandel;
-        match args.temp_sigma.invariant_lode(1e-10) {
+        match args.temp_sigma.invariant_lode() {
             Some(l) => l,
             None => panic!("cannot compute numerical derivative for None l value"),
         }

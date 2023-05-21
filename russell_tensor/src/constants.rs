@@ -25,6 +25,19 @@ pub const ONE_BY_3: f64 =
 pub const TWO_BY_3: f64 =
     0.66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666f64;
 
+/// Tolerance to avoid zero division with the J2 invariant
+///
+/// This constant is used, for instance, in the calculation of the Lode invariant using the following expression:
+///
+/// ```text
+///        3 √3 J3
+/// l = ─────────────
+///     2 pow(J2,1.5)
+/// ```
+///
+/// Note: pow(1e-9,1.5) = 3.16-14
+pub const TOL_J2: f64 = 1e-9;
+
 // --- maps -------------------------------------------------------------------------------------------------------------
 
 /// Maps the m-th position in the vector representation to the index (i,j) of Tensor2

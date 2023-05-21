@@ -383,12 +383,21 @@ mod tests {
         check_deriv(F::Lode, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, v);
     }
 
-    // -- check errors -------------------------------------------------------------------------------
+    // -- check None and errors ----------------------------------------------------------------------
+
+    #[test]
+    fn check_for_none() {
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_O.matrix, Mandel::Symmetric).unwrap();
+        let mut d1 = Tensor2::new(Mandel::Symmetric);
+        let mut aux = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(sigma.deriv1_norm(&mut d1).unwrap(), None);
+        assert_eq!(sigma.deriv1_invariant_sigma_d(&mut d1).unwrap(), None);
+        assert_eq!(sigma.deriv1_invariant_lode(&mut d1, &mut aux).unwrap(), None);
+    }
 
     #[test]
     fn check_errors() {
         let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::General).unwrap();
-        let mut s = sigma.clone();
         let mut aux = sigma.clone();
         let mut d1 = Tensor2::new(Mandel::Symmetric);
         assert_eq!(sigma.deriv1_norm(&mut d1).err(), Some("tensors are incompatible"));
@@ -397,7 +406,7 @@ mod tests {
             Some("tensors are incompatible")
         );
         assert_eq!(
-            sigma.deriv1_invariant_jj3(&mut d1, &mut s).err(),
+            sigma.deriv1_invariant_jj3(&mut d1, &mut aux).err(),
             Some("tensors are incompatible")
         );
         assert_eq!(

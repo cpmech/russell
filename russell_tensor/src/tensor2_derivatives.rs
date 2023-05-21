@@ -1,4 +1,4 @@
-use crate::{Mandel, StrError, Tensor2, ONE_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6, TWO_BY_3};
+use crate::{StrError, Tensor2, ONE_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6, TWO_BY_3};
 use russell_lab::vec_add;
 
 impl Tensor2 {
@@ -105,17 +105,12 @@ impl Tensor2 {
     /// dσ    √2 ‖s‖
     /// ```
     ///
-    /// # Panics
-    ///
-    /// This function only makes sense for **symmetric** tensors. Otherwise, it will panic.
-    ///
     /// # Output
     ///
     /// * This function returns `Some(‖s‖)` if `‖s‖ > 0` and the computation was successful
     /// * Otherwise, this function returns `None` and the derivative cannot be computed
     ///   because the deviatoric stress invariant is zero
     pub fn deriv1_invariant_sigma_d(&self, d1: &mut Tensor2) -> Result<Option<f64>, StrError> {
-        assert!(Mandel::is_symmetric(self.vec.dim()));
         let n = self.deviator_norm();
         if n > 0.0 {
             self.deviator(d1)?;
@@ -141,10 +136,6 @@ impl Tensor2 {
     /// dσ   2 pow(J2,1.5) dσ    4 pow(J2,2.5) dσ
     /// ```
     ///
-    /// # Panics
-    ///
-    /// This function only makes sense for **symmetric** tensors. Otherwise, it will panic.
-    ///
     /// # Returns
     ///
     /// If `J2 > tol_jj2`, returns `J2` and the derivative in `d1`. Otherwise, returns None.
@@ -155,7 +146,6 @@ impl Tensor2 {
         tol_jj2: f64,
     ) -> Result<Option<f64>, StrError> {
         let ndim = d1.vec.dim();
-        assert!(Mandel::is_symmetric(ndim));
         if d1.vec.dim() != ndim || aux.vec.dim() != ndim {
             return Err("tensors are incompatible");
         }
@@ -189,10 +179,6 @@ impl Tensor2 {
     /// dσ
     /// ```
     ///
-    /// # Panics
-    ///
-    /// This function only makes sense for **symmetric** tensors. Otherwise, it will panic.
-    ///
     /// # Output
     ///
     /// * `d1` -- d1 = dl/dσ is the first derivative of the Lode invariant
@@ -213,7 +199,6 @@ impl Tensor2 {
         psi: &mut Tensor2,
         tolerance: f64,
     ) -> Result<Option<f64>, StrError> {
-        assert!(Mandel::is_symmetric(self.vec.dim()));
         let n = self.deviator_norm();
         let nnn = n * n * n;
         if f64::abs(nnn) > 0.0 {

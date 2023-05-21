@@ -49,17 +49,6 @@ pub enum Mandel {
 }
 
 impl Mandel {
-    /// Tells whether the Mandel vector corresponds to a symmetric tensor or not
-    ///
-    /// Only vectors with ndim = 4 or 6 correspond to symmetric tensors
-    pub fn is_symmetric(vector_dim: usize) -> bool {
-        match vector_dim {
-            4 => true,
-            6 => true,
-            _ => false,
-        }
-    }
-
     /// Returns a new Mandel enum given the vector size (4, 6, 9)
     pub fn new(vector_dim: usize) -> Self {
         match vector_dim {
@@ -91,14 +80,6 @@ mod tests {
         assert_eq!(case, Mandel::General);
         assert_eq!(format!("{:?}", case), "General");
         assert_eq!(case, Mandel::General);
-    }
-
-    #[test]
-    fn is_symmetric_works() {
-        assert_eq!(Mandel::is_symmetric(4), true);
-        assert_eq!(Mandel::is_symmetric(6), true);
-        assert_eq!(Mandel::is_symmetric(9), false);
-        assert_eq!(Mandel::is_symmetric(123), false);
     }
 
     #[test]

@@ -71,7 +71,7 @@ impl Tensor2 {
         d1.vec[1] -= TWO_BY_3 * jj2;
         d1.vec[2] -= TWO_BY_3 * jj2;
         if self.vec.dim() > 6 {
-            // transpose
+            // transpose d1=s·s to get (s·s)ᵀ
             d1.vec[6] *= -1.0;
             d1.vec[7] *= -1.0;
             d1.vec[8] *= -1.0;
@@ -430,6 +430,24 @@ mod tests {
         check_deriv(F::J3, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_I, 1e-15, v);
     }
 
+    #[test]
+    fn deriv_sigma_m_works() {
+        let v = false;
+        check_deriv(F::SigmaM, Mandel::General, &SamplesTensor2::TENSOR_T, 1e-12, v);
+        check_deriv(F::SigmaM, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-11, v);
+        check_deriv(F::SigmaM, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-12, v);
+    }
+
+    #[test]
+    fn deriv_sigma_d_works() {
+        let v = true;
+        check_deriv(F::SigmaD, Mandel::Symmetric, &SamplesTensor2::TENSOR_U, 1e-10, v);
+        // check_deriv(F::SigmaD, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
+        // check_deriv(F::SigmaD, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_X, 1e-11, v);
+        // check_deriv(F::SigmaD, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Y, 1e-10, v);
+        // check_deriv(F::SigmaD, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-11, v);
+    }
+
     // -- deriv1_norm ---------------------------------------------------------------------------------------
 
     // Holds arguments for numerical differentiation of a scalar f(σ) w.r.t. σₘ with m being the Mandel index
@@ -738,7 +756,7 @@ mod tests {
 
     #[test]
     fn deriv1_sigma_d_works() {
-        check_deriv1_sigma_d(Mandel::Symmetric, &SamplesTensor2::TENSOR_U, 1e-15, 1e-10, false);
+        check_deriv1_sigma_d(Mandel::Symmetric, &SamplesTensor2::TENSOR_U, 1e-15, 1e-10, true);
         check_deriv1_sigma_d(Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-15, 1e-10, false);
         check_deriv1_sigma_d(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_X, 1e-15, 1e-11, false);
         check_deriv1_sigma_d(Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Y, 1e-15, 1e-10, false);

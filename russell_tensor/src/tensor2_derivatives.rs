@@ -433,6 +433,26 @@ mod tests {
         check_deriv(F::SigmaD, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, v);
     }
 
+    #[test]
+    fn deriv_invariant_lode_works() {
+        let v = false;
+        check_deriv(F::Lode, Mandel::Symmetric, &SamplesTensor2::TENSOR_U, 1e-10, v);
+        check_deriv(F::Lode, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
+        check_deriv(F::Lode, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_X, 1e-10, v);
+        check_deriv(F::Lode, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Y, 1e-10, v);
+        check_deriv(F::Lode, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, v);
+    }
+
+    #[test]
+    fn deriv_invariant_lode_alt_works() {
+        let v = false;
+        check_deriv(F::LodeAlt, Mandel::Symmetric, &SamplesTensor2::TENSOR_U, 1e-10, v);
+        check_deriv(F::LodeAlt, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
+        check_deriv(F::LodeAlt, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_X, 1e-10, v);
+        check_deriv(F::LodeAlt, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Y, 1e-10, v);
+        check_deriv(F::LodeAlt, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, v);
+    }
+
     // -- deriv1_norm ---------------------------------------------------------------------------------------
 
     // Holds arguments for numerical differentiation of a scalar f(σ) w.r.t. σₘ with m being the Mandel index

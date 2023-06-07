@@ -521,7 +521,7 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // handle empty vector
         if self.dim() == 0 {
-            write!(f, "[]")?;
+            write!(f, "[]").unwrap();
             return Ok(());
         }
         // find largest width

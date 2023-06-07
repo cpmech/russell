@@ -196,6 +196,10 @@ where
 
     /// Returns evenly spaced numbers over a specified closed interval
     ///
+    /// # Panics
+    ///
+    /// This function may panic if `count` cannot be cast as the number type of `start` and `stop`.
+    ///
     /// # Example
     ///
     /// ```
@@ -229,16 +233,20 @@ where
         if count == 2 {
             return Ok(res);
         }
-        let den = cast::<usize, T>(count - 1).ok_or("cannot cast 'count' to the selected number type")?;
+        let den = cast::<usize, T>(count - 1).unwrap();
         let step = (stop - start) / den;
         for i in 1..count {
-            let p = cast::<usize, T>(i).ok_or("cannot cast increment to the selected number type")?;
+            let p = cast::<usize, T>(i).unwrap();
             res.data[i] = start + p * step;
         }
         Ok(res)
     }
 
     /// Returns a mapped linear-space; evenly spaced numbers modified by a function
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if `count` cannot be cast as the number type of `start` and `stop`.
     ///
     /// # Example
     ///
@@ -276,10 +284,10 @@ where
         if count == 2 {
             return Ok(res);
         }
-        let den = cast::<usize, T>(count - 1).ok_or("cannot cast 'count' to the selected number type")?;
+        let den = cast::<usize, T>(count - 1).unwrap();
         let step = (stop - start) / den;
         for i in 1..count {
-            let p = cast::<usize, T>(i).ok_or("cannot cast increment to the selected number type")?;
+            let p = cast::<usize, T>(i).unwrap();
             res.data[i] = function(start + p * step);
         }
         Ok(res)

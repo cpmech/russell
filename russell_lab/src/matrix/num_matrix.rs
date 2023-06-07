@@ -1220,18 +1220,14 @@ mod tests {
         );
 
         // serialize to json
-        let json = serde_json::to_string(&a)
-            .map_err(|_| "serde_json::to_string failed")
-            .unwrap();
+        let json = serde_json::to_string(&a).unwrap();
         assert_eq!(
             json,
             r#"{"nrow":3,"ncol":3,"data":[1.0,4.0,7.0,2.0,5.0,8.0,3.0,6.0,9.0]}"#
         );
 
         // deserialize from json
-        let from_json: NumMatrix<f64> = serde_json::from_str(&json)
-            .map_err(|_| "serde_json::from_str failed")
-            .unwrap();
+        let from_json: NumMatrix<f64> = serde_json::from_str(&json).unwrap();
         assert_eq!(
             format!("{}", from_json),
             "┌       ┐\n\

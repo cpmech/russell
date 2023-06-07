@@ -1106,15 +1106,11 @@ mod tests {
         // serialize
         let mut serialized = Vec::new();
         let mut serializer = rmp_serde::Serializer::new(&mut serialized);
-        dd.serialize(&mut serializer)
-            .map_err(|_| "tensor serialize failed")
-            .unwrap();
+        dd.serialize(&mut serializer).unwrap();
         assert!(serialized.len() > 0);
         // deserialize
         let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
-        let ee: Tensor4 = Deserialize::deserialize(&mut deserializer)
-            .map_err(|_| "cannot deserialize tensor data")
-            .unwrap();
+        let ee: Tensor4 = Deserialize::deserialize(&mut deserializer).unwrap();
         assert_eq!(
             format!("{:.0}", ee.to_matrix()),
             "┌                                              ┐\n\

@@ -1008,15 +1008,11 @@ mod tests {
         // serialize
         let mut serialized = Vec::new();
         let mut serializer = rmp_serde::Serializer::new(&mut serialized);
-        u.serialize(&mut serializer)
-            .map_err(|_| "vector serialize failed")
-            .unwrap();
+        u.serialize(&mut serializer).unwrap();
         assert!(serialized.len() > 0);
         // deserialize
         let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
-        let b: NumVector<f64> = Deserialize::deserialize(&mut deserializer)
-            .map_err(|_| "cannot deserialize vector data")
-            .unwrap();
+        let b: NumVector<f64> = Deserialize::deserialize(&mut deserializer).unwrap();
         assert_eq!(
             format!("{}", b),
             "┌   ┐\n\

@@ -37,7 +37,7 @@ pub fn deriv_inverse_tensor(dai_da: &mut Tensor4, ai: &Tensor2) -> Result<(), St
 /// ──── = - ─ (A⁻¹ ⊗ A⁻¹ + A⁻¹ ⊗ A⁻¹)
 ///  dA      2                  ‾     
 ///
-///      = - 0.5 ssd(A⁻¹, A⁻¹)
+///      = - 0.5 ssd(A⁻¹)
 /// ```
 ///
 /// ```text

@@ -1034,14 +1034,18 @@ mod tests {
     fn array_1d_test<'a, T, U>(array: &'a T) -> String
     where
         T: AsArray1D<'a, U>,
-        U: 'a + std::fmt::Debug,
+        U: 'a + std::fmt::Display,
     {
-        format!("size = {:?}", array.size()).to_string()
+        let mut buf = String::new();
+        for i in 0..array.size() {
+            write!(&mut buf, "{}", array.at(i)).unwrap();
+        }
+        buf
     }
 
     #[test]
     fn as_array_1d_works() {
-        let u = NumVector::<i32>::from(&[1, 2]);
-        assert_eq!(array_1d_test(&u), "size = 2");
+        let u = NumVector::<i32>::from(&[1, 2, 3]);
+        assert_eq!(array_1d_test(&u), "123");
     }
 }

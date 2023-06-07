@@ -196,6 +196,12 @@ mod tests {
         Lode,
     }
 
+    #[test]
+    fn f_enum_clone_works() {
+        let a = F::Norm;
+        a.clone();
+    }
+
     // computes the analytical derivative df(σ)/dσ
     fn analytical_deriv(fn_name: F, d1: &mut Tensor2, sigma: &Tensor2) {
         match fn_name {

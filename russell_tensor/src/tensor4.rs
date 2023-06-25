@@ -859,7 +859,7 @@ impl Tensor4 {
     /// ```text
     /// Definition:
     ///             _
-    /// Psym = ½ (I ⊗ I + I ⊗ I) = ½ (II + TT) = ½ ssd(II)
+    /// Psym = ½ (I ⊗ I + I ⊗ I) = ½ (II + TT) = ½ ssd(I)
     ///                     ‾
     /// ```
     ///

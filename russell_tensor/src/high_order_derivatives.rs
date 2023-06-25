@@ -1,4 +1,5 @@
-use crate::{t2_odyad_t2, t2_qsd_t2, t2_ssd, Mandel, StrError, Tensor2, Tensor4, ONE_BY_3, TWO_BY_3};
+use crate::{t2_dyad_t2, t2_odyad_t2, t2_qsd_t2, t2_ssd, Mandel, StrError, Tensor2, Tensor4, ONE_BY_3, TWO_BY_3};
+use russell_lab::{mat_mat_mul, mat_update};
 
 /// Calculates the derivative of the inverse tensor w.r.t. the defining Tensor2
 ///
@@ -219,9 +220,18 @@ pub fn deriv2_invariant_jj3(d2: &mut Tensor4, s: &mut Tensor2, sigma: &Tensor2) 
     if d2.case() != Mandel::Symmetric {
         return Err("'d2' tensor must be Symmetric");
     }
-    sigma.deviator(s)?;
+    if s.case() != case {
+        return Err("'s' tensor is not compatible with 'sigma' tensor");
+    }
+    sigma.deviator(s).unwrap();
+    let psd = Tensor4::constant_pp_symdev(true);
     let ii = Tensor2::identity(case);
-    t2_qsd_t2(d2, 0.5, s, &ii).unwrap();
+    let mut aa = Tensor4::new(Mandel::Symmetric);
+    let mut bb = Tensor4::new(Mandel::Symmetric);
+    t2_qsd_t2(&mut aa, 0.5, s, &ii).unwrap(); // aa := 0.5 qsd(s,I)
+    t2_dyad_t2(&mut bb, -TWO_BY_3, &ii, &s).unwrap(); // bb := -⅔ I ⊗ s
+    mat_mat_mul(&mut d2.mat, 1.0, &aa.mat, &psd.mat).unwrap(); // d2 := 0.5 qsd(s,I) : Psd
+    mat_update(&mut d2.mat, 1.0, &bb.mat).unwrap(); // d2 += -⅔ I ⊗ s
     Ok(())
 }
 
@@ -231,8 +241,8 @@ pub fn deriv2_invariant_jj3(d2: &mut Tensor4, s: &mut Tensor2, sigma: &Tensor2) 
 mod tests {
     use super::{Tensor2, Tensor4};
     use crate::{
-        deriv2_invariant_jj2, deriv_inverse_tensor, deriv_inverse_tensor_sym, deriv_squared_tensor,
-        deriv_squared_tensor_sym, Mandel, SamplesTensor2, MN_TO_IJKL,
+        deriv2_invariant_jj2, deriv2_invariant_jj3, deriv_inverse_tensor, deriv_inverse_tensor_sym,
+        deriv_squared_tensor, deriv_squared_tensor_sym, Mandel, SamplesTensor2, MN_TO_IJKL,
     };
     use russell_chk::{approx_eq, deriv_central5};
     use russell_lab::{mat_approx_eq, Matrix};
@@ -680,27 +690,39 @@ mod tests {
         check_deriv_squared_sym(&a, 1e-10);
     }
 
-    // J2 and J3 invariants ------------------------------------------------------------------------
+    // second derivative of invariants -------------------------------------------------------------
 
-    // Holds arguments for numerical differentiation corresponding to [∂J2²/∂σ⊗∂σ]ₘₙ (Mandel components)
-    struct ArgsNumDeriv2InvariantJ2Mandel {
-        sigma: Tensor2, // temporary tensor
-        s: Tensor2,     // deviator tensor
-        m: usize,       // index of [∂J2²/∂σ⊗∂σ]ₘₙ (Mandel components)
-        n: usize,       // index of [∂J2²/∂σ⊗∂σ]ₘₙ (Mandel components)
+    enum Invariant {
+        J2,
+        J3,
     }
 
-    fn component_of_deriv1_invariant_jj2_mandel(x: f64, args: &mut ArgsNumDeriv2InvariantJ2Mandel) -> f64 {
+    // Holds arguments for numerical differentiation corresponding to [dInvariant²/dσ⊗dσ]ₘₙ (Mandel components)
+    struct ArgsNumDeriv2InvariantMandel {
+        inv: Invariant, // option
+        sigma: Tensor2, // temporary tensor
+        d1: Tensor2,    // dInvariant/dσ (first derivative)
+        s: Tensor2,     // deviator(σ)
+        m: usize,       // index of [dInvariant²/dσ⊗dσ]ₘₙ (Mandel components)
+        n: usize,       // index of [dInvariant²/dσ⊗dσ]ₘₙ (Mandel components)
+    }
+
+    fn component_of_deriv1_inv_mandel(x: f64, args: &mut ArgsNumDeriv2InvariantMandel) -> f64 {
         let original = args.sigma.vec[args.n];
         args.sigma.vec[args.n] = x;
-        args.sigma.deviator(&mut args.s).unwrap();
+        match args.inv {
+            Invariant::J2 => args.sigma.deriv1_invariant_jj2(&mut args.d1).unwrap(),
+            Invariant::J3 => args.sigma.deriv1_invariant_jj3(&mut args.d1, &mut args.s).unwrap(),
+        }
         args.sigma.vec[args.n] = original;
-        args.s.vec[args.m] // dJ2/dσ = s
+        args.d1.vec[args.m]
     }
 
-    fn numerical_deriv2_invariant_jj2_sym_mandel(sigma: &Tensor2) -> Matrix {
-        let mut args = ArgsNumDeriv2InvariantJ2Mandel {
+    fn numerical_deriv2_inv_sym_mandel(sigma: &Tensor2, inv: Invariant) -> Matrix {
+        let mut args = ArgsNumDeriv2InvariantMandel {
+            inv,
             sigma: Tensor2::new(Mandel::Symmetric),
+            d1: Tensor2::new(Mandel::Symmetric),
             s: Tensor2::new(Mandel::Symmetric),
             m: 0,
             n: 0,
@@ -719,25 +741,127 @@ mod tests {
             for n in 0..6 {
                 args.n = n;
                 let x = args.sigma.vec[args.n];
-                let res = deriv_central5(x, &mut args, component_of_deriv1_invariant_jj2_mandel);
+                let res = deriv_central5(x, &mut args, component_of_deriv1_inv_mandel);
                 num_deriv.mat.set(m, n, res);
             }
         }
         num_deriv.to_matrix()
     }
 
-    #[test]
-    fn deriv2_invariant_jj2_works() {
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_S.matrix, Mandel::Symmetric).unwrap();
-
+    fn check_deriv2_jj2(sigma: &Tensor2, tol: f64) {
+        // compute analytical derivative
         let mut dd2_ana = Tensor4::new(Mandel::Symmetric);
         deriv2_invariant_jj2(&mut dd2_ana, &sigma).unwrap();
 
+        // compare with Psymdev
         let pp_symdev = Tensor4::constant_pp_symdev(true);
         mat_approx_eq(&dd2_ana.mat, &pp_symdev.mat, 1e-15);
 
-        let dd2_num_mat = numerical_deriv2_invariant_jj2_sym_mandel(&sigma);
-        let dd2_ana_mat = dd2_ana.to_matrix();
-        mat_approx_eq(&dd2_ana_mat, &dd2_num_mat, 1e-11);
+        // check using numerical derivative
+        let ana = dd2_ana.to_matrix();
+        let num = numerical_deriv2_inv_sym_mandel(&sigma, Invariant::J2);
+        // println!("{}", ana);
+        // println!("{}", num);
+        mat_approx_eq(&ana, &num, tol);
+    }
+
+    fn check_deriv2_jj3(sigma: &Tensor2, tol: f64) {
+        // compute analytical derivative
+        let mut dd2_ana = Tensor4::new(Mandel::Symmetric);
+        let mut s = Tensor2::new(sigma.case());
+        deriv2_invariant_jj3(&mut dd2_ana, &mut s, &sigma).unwrap();
+
+        // check using numerical derivative
+        let ana = dd2_ana.to_matrix();
+        let num = numerical_deriv2_inv_sym_mandel(&sigma, Invariant::J3);
+        // println!("{}", ana);
+        // println!("{}", num);
+        mat_approx_eq(&ana, &num, tol);
+    }
+
+    #[test]
+    fn deriv2_invariant_captures_errors() {
+        let sigma = Tensor2::new(Mandel::General);
+        let mut s = Tensor2::new(Mandel::General);
+        let mut d2 = Tensor4::new(Mandel::Symmetric);
+        assert_eq!(
+            deriv2_invariant_jj2(&mut d2, &sigma).err(),
+            Some("'sigma' tensor must be Symmetric or Symmetric2D")
+        );
+        assert_eq!(
+            deriv2_invariant_jj3(&mut d2, &mut s, &sigma).err(),
+            Some("'sigma' tensor must be Symmetric or Symmetric2D")
+        );
+        let sigma = Tensor2::new(Mandel::Symmetric2D);
+        let mut d2 = Tensor4::new(Mandel::Symmetric2D);
+        assert_eq!(
+            deriv2_invariant_jj2(&mut d2, &sigma).err(),
+            Some("'d2' tensor must be Symmetric")
+        );
+        assert_eq!(
+            deriv2_invariant_jj3(&mut d2, &mut s, &sigma).err(),
+            Some("'d2' tensor must be Symmetric")
+        );
+        let sigma = Tensor2::new(Mandel::Symmetric2D);
+        let mut s = Tensor2::new(Mandel::Symmetric);
+        let mut d2 = Tensor4::new(Mandel::Symmetric);
+        assert_eq!(
+            deriv2_invariant_jj3(&mut d2, &mut s, &sigma).err(),
+            Some("'s' tensor is not compatible with 'sigma' tensor")
+        );
+    }
+
+    #[test]
+    fn deriv2_invariant_jj2_works() {
+        // symmetric
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_U.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_jj2(&sigma, 1e-11);
+
+        // symmetric
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_S.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_jj2(&sigma, 1e-11);
+
+        // symmetric 2d
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_X.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_jj2(&sigma, 1e-11);
+
+        // symmetric 2d
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_Y.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_jj2(&sigma, 1e-11);
+
+        // zero
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_O.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_jj2(&sigma, 1e-15);
+
+        // one
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_jj2(&sigma, 1e-12);
+    }
+
+    #[test]
+    fn deriv2_invariant_jj3_works() {
+        // symmetric
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_U.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_jj3(&sigma, 1e-10);
+
+        // symmetric
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_S.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_jj3(&sigma, 1e-10);
+
+        // symmetric 2d
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_X.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_jj3(&sigma, 1e-10);
+
+        // symmetric 2d
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_Y.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_jj3(&sigma, 1e-10);
+
+        // zero
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_O.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_jj3(&sigma, 1e-15);
+
+        // one
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_jj3(&sigma, 1e-13);
     }
 }

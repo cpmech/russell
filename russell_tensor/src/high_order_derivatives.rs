@@ -1,5 +1,7 @@
-use crate::{t2_dyad_t2, t2_odyad_t2, t2_qsd_t2, t2_ssd, Mandel, StrError, Tensor2, Tensor4, ONE_BY_3, TWO_BY_3};
-use russell_lab::{mat_mat_mul, mat_update};
+use crate::{
+    t2_dyad_t2, t2_odyad_t2, t2_qsd_t2, t2_ssd, Mandel, StrError, Tensor2, Tensor4, ONE_BY_3, SQRT_3, TOL_J2, TWO_BY_3,
+};
+use russell_lab::{mat_add, mat_mat_mul, mat_update};
 
 /// Calculates the derivative of the inverse tensor w.r.t. the defining Tensor2
 ///
@@ -235,14 +237,84 @@ pub fn deriv2_invariant_jj3(d2: &mut Tensor4, s: &mut Tensor2, sigma: &Tensor2) 
     Ok(())
 }
 
+/// Computes the second derivative of the Lode invariant w.r.t. the defining tensor
+///
+/// ```text
+/// s := deviator(σ)
+///
+///  d²l      d²J3         d²J2        dJ3   dJ2   dJ2   dJ3          dJ2   dJ2
+/// ───── = a ───── - b J3 ───── - b ( ─── ⊗ ─── + ─── ⊗ ─── ) + c J3 ─── ⊗ ───
+/// dσ⊗dσ     dσ⊗dσ        dσ⊗dσ        dσ    dσ    dσ    dσ           dσ    dσ
+///
+/// (σ must be symmetric)
+/// ```
+///
+/// ```text
+///         3 √3               9 √3                45 √3
+/// a = ─────────────   b = ─────────────   c = ─────────────
+///     2 pow(J2,1.5)       4 pow(J2,2.5)       8 pow(J2,3.5)
+///
+/// ```
+///
+/// ## Output
+///
+/// * `d2` -- the second derivative of l (must be Symmetric)
+///
+/// ## Input
+///
+/// * `sigma` -- the given tensor (must be Symmetric or Symmetric2D)
+///
+/// # Returns
+///
+/// If `J2 > TOL_J2`, returns `J2` and the derivative in `d2`. Otherwise, returns None.
+pub fn deriv2_invariant_lode(d2: &mut Tensor4, aux: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
+    let case = sigma.case();
+    if case == Mandel::General {
+        return Err("'sigma' tensor must be Symmetric or Symmetric2D");
+    }
+    if d2.case() != Mandel::Symmetric {
+        return Err("'d2' tensor must be Symmetric");
+    }
+    if aux.case() != case {
+        return Err("'aux' tensor is not compatible with 'sigma' tensor");
+    }
+    let jj2 = sigma.invariant_jj2();
+    if jj2 > TOL_J2 {
+        let jj3 = sigma.invariant_jj3();
+        let a = 1.5 * SQRT_3 / f64::powf(jj2, 1.5);
+        let b = 2.25 * SQRT_3 / f64::powf(jj2, 2.5);
+        let c = 5.625 * SQRT_3 / f64::powf(jj2, 3.5);
+        let mut d1jj2 = Tensor2::new(case);
+        let mut d1jj3 = Tensor2::new(case);
+        let mut d2jj2 = Tensor4::new(Mandel::Symmetric);
+        let mut d2jj3 = Tensor4::new(Mandel::Symmetric);
+        sigma.deriv1_invariant_jj2(&mut d1jj2).unwrap();
+        sigma.deriv1_invariant_jj3(&mut d1jj3, aux).unwrap();
+        deriv2_invariant_jj2(&mut d2jj2, sigma).unwrap();
+        deriv2_invariant_jj3(&mut d2jj3, aux, sigma).unwrap();
+        let mut dd_22 = Tensor4::new(Mandel::Symmetric);
+        let mut dd_23 = Tensor4::new(Mandel::Symmetric);
+        let mut dd_32 = Tensor4::new(Mandel::Symmetric);
+        t2_dyad_t2(&mut dd_22, c * jj3, &d1jj2, &d1jj2).unwrap();
+        t2_dyad_t2(&mut dd_23, -b, &d1jj2, &d1jj3).unwrap();
+        t2_dyad_t2(&mut dd_32, -b, &d1jj3, &d1jj2).unwrap();
+        mat_add(&mut d2.mat, a, &d2jj3.mat, -b * jj3, &d2jj2.mat).unwrap();
+        mat_update(&mut d2.mat, 1.0, &dd_32.mat).unwrap();
+        mat_update(&mut d2.mat, 1.0, &dd_23.mat).unwrap();
+        mat_update(&mut d2.mat, 1.0, &dd_22.mat).unwrap();
+        return Ok(Some(jj2));
+    }
+    Ok(None)
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
     use super::{Tensor2, Tensor4};
     use crate::{
-        deriv2_invariant_jj2, deriv2_invariant_jj3, deriv_inverse_tensor, deriv_inverse_tensor_sym,
-        deriv_squared_tensor, deriv_squared_tensor_sym, Mandel, SamplesTensor2, MN_TO_IJKL,
+        deriv2_invariant_jj2, deriv2_invariant_jj3, deriv2_invariant_lode, deriv_inverse_tensor,
+        deriv_inverse_tensor_sym, deriv_squared_tensor, deriv_squared_tensor_sym, Mandel, SamplesTensor2, MN_TO_IJKL,
     };
     use russell_chk::{approx_eq, deriv_central5};
     use russell_lab::{mat_approx_eq, Matrix};
@@ -695,6 +767,7 @@ mod tests {
     enum Invariant {
         J2,
         J3,
+        Lode,
     }
 
     // Holds arguments for numerical differentiation corresponding to [dInvariant²/dσ⊗dσ]ₘₙ (Mandel components)
@@ -713,6 +786,12 @@ mod tests {
         match args.inv {
             Invariant::J2 => args.sigma.deriv1_invariant_jj2(&mut args.d1).unwrap(),
             Invariant::J3 => args.sigma.deriv1_invariant_jj3(&mut args.d1, &mut args.s).unwrap(),
+            Invariant::Lode => {
+                args.sigma
+                    .deriv1_invariant_lode(&mut args.d1, &mut args.s)
+                    .unwrap()
+                    .unwrap();
+            }
         }
         args.sigma.vec[args.n] = original;
         args.d1.vec[args.m]
@@ -776,6 +855,20 @@ mod tests {
         let num = numerical_deriv2_inv_sym_mandel(&sigma, Invariant::J3);
         // println!("{}", ana);
         // println!("{}", num);
+        mat_approx_eq(&ana, &num, tol);
+    }
+
+    fn check_deriv2_lode(sigma: &Tensor2, tol: f64) {
+        // compute analytical derivative
+        let mut dd2_ana = Tensor4::new(Mandel::Symmetric);
+        let mut s = Tensor2::new(sigma.case());
+        deriv2_invariant_lode(&mut dd2_ana, &mut s, &sigma).unwrap().unwrap();
+
+        // check using numerical derivative
+        let ana = dd2_ana.to_matrix();
+        let num = numerical_deriv2_inv_sym_mandel(&sigma, Invariant::Lode);
+        println!("{}", ana);
+        println!("{}", num);
         mat_approx_eq(&ana, &num, tol);
     }
 
@@ -863,5 +956,12 @@ mod tests {
         // one
         let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::Symmetric).unwrap();
         check_deriv2_jj3(&sigma, 1e-13);
+    }
+
+    #[test]
+    fn deriv2_invariant_lode_works() {
+        // symmetric
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_U.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_lode(&sigma, 1e-10);
     }
 }

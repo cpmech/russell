@@ -388,7 +388,7 @@ mod tests {
     use super::{Tensor2, Tensor4};
     use crate::{
         deriv2_invariant_jj2, deriv_inverse_tensor, deriv_inverse_tensor_sym, deriv_squared_tensor,
-        deriv_squared_tensor_sym, AuxSecondDerivJ3, AuxSecondDerivLode, Mandel, SamplesTensor2, MN_TO_IJKL,
+        deriv_squared_tensor_sym, AuxSecondDerivJ3, AuxSecondDerivLode, Mandel, SamplesTensor2, MN_TO_IJKL, SQRT_2,
     };
     use russell_chk::{approx_eq, deriv_central5};
     use russell_lab::{mat_approx_eq, Matrix};
@@ -1082,5 +1082,47 @@ mod tests {
             aux.compute(&mut d2, &sigma).err(),
             Some("tensor 'd2' must be Symmetric")
         );
+    }
+
+    #[test]
+    fn example_second_deriv_jj3_lode() {
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_U.matrix, Mandel::Symmetric).unwrap();
+        let mut s = Tensor2::new(Mandel::Symmetric);
+        sigma.deviator(&mut s).unwrap();
+        let mut aux = AuxSecondDerivJ3::new(sigma.case()).unwrap();
+        let mut d2 = Tensor4::new(Mandel::Symmetric);
+        aux.compute(&mut d2, &sigma).unwrap();
+
+        // println!("sigma =\n{:.1}", sigma.to_matrix());
+        // println!("sigma_mandel =\n{}", sigma.vec);
+        // println!("s = \n{}", s.vec);
+        // println!("d2 = \n{}", d2.mat);
+
+        #[rustfmt::skip]
+        let correct = [
+            [-16.0/9.0        ,  14.0/9.0      ,   2.0/9.0       ,  2.0*SQRT_2/3.0 , -10.0*SQRT_2/3.0 , SQRT_2      ], 
+            [ 14.0/9.0        ,   2.0/9.0      , -16.0/9.0       ,  2.0*SQRT_2/3.0 , 5.0*SQRT_2/3.0   , -2.0*SQRT_2 ], 
+            [  2.0/9.0        , -16.0/9.0      ,  14.0/9.0       , -4.0*SQRT_2/3.0 , 5.0*SQRT_2/3.0   , SQRT_2      ], 
+            [  2.0*SQRT_2/3.0 , 2.0*SQRT_2/3.0 , -4.0*SQRT_2/3.0 , -7.0/3.0        , 3.0              , 5.0         ], 
+            [-10.0*SQRT_2/3.0 , 5.0*SQRT_2/3.0 ,  5.0*SQRT_2/3.0 ,  3.0            , 8.0/3.0          , 2.0         ], 
+            [      SQRT_2     ,-2.0*SQRT_2     ,      SQRT_2     ,  5.0            , 2.0              , -1.0/3.0    ],
+        ];
+        mat_approx_eq(&d2.mat, &correct, 1e-15);
+
+        let mut aux = AuxSecondDerivLode::new(sigma.case()).unwrap();
+        aux.compute(&mut d2, &sigma).unwrap();
+
+        // println!("d2 = \n{}", d2.mat);
+
+        #[rustfmt::skip]
+        let correct = [
+            [-0.039528347708134,  0.0237434792780289,   0.0157848684301052,  0.0136392037983506, -0.0354377940510052,  0.0131589501434791],
+            [0.0237434792780289, -0.0200332341113984,  -0.00371024516663052, 0.00899921464051518, 0.0234105185455438, -0.0229302648906723],
+            [0.0157848684301052, -0.00371024516663052, -0.0120746232634746, -0.0226384184388658,  0.0120272755054614,  0.00977131474719321],
+            [0.0136392037983506,  0.00899921464051518, -0.0226384184388658, -0.0635034452012119,  0.0103061398245104,  0.0374455252630319],
+            [-0.0354377940510052, 0.0234105185455438,   0.0120272755054614,  0.0103061398245104, -0.0308487598599826,  0.0128121444219201],
+            [0.0131589501434791, -0.0229302648906723,   0.00977131474719321, 0.0374455252630319,  0.0128121444219201, -0.0345929640882181],
+        ];
+        mat_approx_eq(&d2.mat, &correct, 1e-16);
     }
 }

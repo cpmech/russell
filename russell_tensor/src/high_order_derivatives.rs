@@ -885,6 +885,10 @@ mod tests {
             deriv2_invariant_jj3(&mut d2, &mut s, &sigma).err(),
             Some("'sigma' tensor must be Symmetric or Symmetric2D")
         );
+        assert_eq!(
+            deriv2_invariant_lode(&mut d2, &mut s, &sigma).err(),
+            Some("'sigma' tensor must be Symmetric or Symmetric2D")
+        );
         let sigma = Tensor2::new(Mandel::Symmetric2D);
         let mut d2 = Tensor4::new(Mandel::Symmetric2D);
         assert_eq!(
@@ -895,12 +899,20 @@ mod tests {
             deriv2_invariant_jj3(&mut d2, &mut s, &sigma).err(),
             Some("'d2' tensor must be Symmetric")
         );
+        assert_eq!(
+            deriv2_invariant_lode(&mut d2, &mut s, &sigma).err(),
+            Some("'d2' tensor must be Symmetric")
+        );
         let sigma = Tensor2::new(Mandel::Symmetric2D);
         let mut s = Tensor2::new(Mandel::Symmetric);
         let mut d2 = Tensor4::new(Mandel::Symmetric);
         assert_eq!(
             deriv2_invariant_jj3(&mut d2, &mut s, &sigma).err(),
             Some("'s' tensor is not compatible with 'sigma' tensor")
+        );
+        assert_eq!(
+            deriv2_invariant_lode(&mut d2, &mut s, &sigma).err(),
+            Some("'aux' tensor is not compatible with 'sigma' tensor")
         );
     }
 
@@ -956,6 +968,15 @@ mod tests {
         // one
         let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::Symmetric).unwrap();
         check_deriv2_jj3(&sigma, 1e-13);
+    }
+
+    #[test]
+    fn deriv2_invariant_lode_returns_none() {
+        // identity
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::Symmetric).unwrap();
+        let mut d2 = Tensor4::new(Mandel::Symmetric);
+        let mut aux = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(deriv2_invariant_lode(&mut d2, &mut aux, &sigma).unwrap(), None);
     }
 
     #[test]

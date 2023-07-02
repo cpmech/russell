@@ -59,22 +59,9 @@ impl FirstDerivJ2 {
 }
 
 /// Calculates the first derivative of the J3 invariant
-pub struct FirstDerivJ3 {
-    /// Deviator tensor (Symmetric or Symmetric2D)
-    pub s: Tensor2,
-}
+pub struct FirstDerivJ3 {}
 
 impl FirstDerivJ3 {
-    /// Returns a new instance
-    ///
-    /// Note: `case` must be Symmetric or Symmetric2D
-    pub fn new(case: Mandel) -> Result<Self, StrError> {
-        if case == Mandel::General {
-            return Err("case must be Symmetric or Symmetric2D");
-        }
-        Ok(FirstDerivJ3 { s: Tensor2::new(case) })
-    }
-
     /// Calculates the first derivative of the J3 invariant
     ///
     /// ```text
@@ -88,17 +75,20 @@ impl FirstDerivJ3 {
     /// ```
     ///
     /// Note: `sigma` must be Symmetric or Symmetric2D.
-    pub fn calc(&mut self, d1: &mut Tensor2, sigma: &Tensor2) -> Result<(), StrError> {
-        let dim = self.s.vec.dim();
-        if sigma.vec.dim() != dim {
-            return Err("sigma tensor is incompatible");
+    pub fn calc(d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2) -> Result<(), StrError> {
+        if sigma.case() == Mandel::General {
+            return Err("sigma tensor must be Symmetric or Symmetric2D");
+        }
+        let dim = sigma.vec.dim();
+        if s.vec.dim() != dim {
+            return Err("s tensor is incompatible");
         }
         if d1.vec.dim() != dim {
             return Err("d1 tensor is incompatible");
         }
         let jj2 = sigma.invariant_jj2();
-        sigma.deviator(&mut self.s).unwrap();
-        self.s.squared(d1).unwrap();
+        sigma.deviator(s).unwrap();
+        s.squared(d1).unwrap();
         d1.vec[0] -= TWO_BY_3 * jj2;
         d1.vec[1] -= TWO_BY_3 * jj2;
         d1.vec[2] -= TWO_BY_3 * jj2;
@@ -182,9 +172,6 @@ pub struct FirstDerivLode {
 
     /// first derivative of J3: dJ3/dσ (Symmetric or Symmetric2D)
     pub d1_jj3: Tensor2,
-
-    /// Auxiliary structure to calculate the first derivative of J3
-    pub aux_jj3: FirstDerivJ3,
 }
 
 impl FirstDerivLode {
@@ -198,7 +185,6 @@ impl FirstDerivLode {
         Ok(FirstDerivLode {
             d1_jj2: Tensor2::new(case),
             d1_jj3: Tensor2::new(case),
-            aux_jj3: FirstDerivJ3::new(case).unwrap(),
         })
     }
 
@@ -222,7 +208,7 @@ impl FirstDerivLode {
     ///
     /// If `J2 > TOL_J2`, returns `J2` and `d1` is valid;
     /// Otherwise, returns `None` and `d1` is unchanged.
-    pub fn calc(&mut self, d1: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
+    pub fn calc(&mut self, d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
         let dim = self.d1_jj2.vec.dim();
         if sigma.vec.dim() != dim {
             return Err("sigma tensor is incompatible");
@@ -233,7 +219,7 @@ impl FirstDerivLode {
         let jj2 = sigma.invariant_jj2();
         if jj2 > TOL_J2 {
             FirstDerivJ2::calc(&mut self.d1_jj2, sigma).unwrap();
-            self.aux_jj3.calc(&mut self.d1_jj3, sigma).unwrap();
+            FirstDerivJ3::calc(&mut self.d1_jj3, s, sigma).unwrap();
             let jj3 = sigma.invariant_jj3();
             let a = 1.5 * SQRT_3 / f64::powf(jj2, 1.5);
             let b = 2.25 * SQRT_3 / f64::powf(jj2, 2.5);
@@ -283,8 +269,8 @@ mod tests {
             }
             F::J2 => FirstDerivJ2::calc(d1, sigma).unwrap(),
             F::J3 => {
-                let mut aux = FirstDerivJ3::new(sigma.case()).unwrap();
-                aux.calc(d1, sigma).unwrap();
+                let mut s = Tensor2::new(sigma.case());
+                FirstDerivJ3::calc(d1, &mut s, sigma).unwrap();
             }
             F::SigmaM => FirstDerivSigmaM::calc(d1, sigma).unwrap(),
             F::SigmaD => {
@@ -292,7 +278,8 @@ mod tests {
             }
             F::Lode => {
                 let mut aux = FirstDerivLode::new(sigma.case()).unwrap();
-                aux.calc(d1, sigma).unwrap().unwrap();
+                let mut s = Tensor2::new(sigma.case());
+                aux.calc(d1, &mut s, sigma).unwrap().unwrap();
             }
         };
     }

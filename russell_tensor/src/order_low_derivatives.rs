@@ -248,15 +248,14 @@ impl FirstDerivLode {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[allow(unused)]
 #[cfg(test)]
 mod tests {
     use super::Tensor2;
     use crate::{
         FirstDerivJ2, FirstDerivJ3, FirstDerivLode, FirstDerivNorm, FirstDerivSigmaD, FirstDerivSigmaM, Mandel,
-        SampleTensor2, SamplesTensor2, IJ_TO_M, ONE_BY_3, SQRT_3_BY_2,
+        SampleTensor2, SamplesTensor2,
     };
-    use russell_chk::{approx_eq, deriv_central5, vec_approx_eq};
+    use russell_chk::deriv_central5;
     use russell_lab::{mat_approx_eq, Matrix};
 
     // Defines f(σ)
@@ -273,7 +272,7 @@ mod tests {
     #[test]
     fn f_enum_clone_works() {
         let a = F::Norm;
-        a.clone();
+        let _ = a.clone();
     }
 
     // computes the analytical derivative df(σ)/dσ
@@ -284,7 +283,6 @@ mod tests {
             }
             F::J2 => FirstDerivJ2::calc(d1, sigma).unwrap(),
             F::J3 => {
-                let mut s = Tensor2::new(sigma.case());
                 let mut aux = FirstDerivJ3::new(sigma.case()).unwrap();
                 aux.calc(d1, sigma).unwrap();
             }

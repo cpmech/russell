@@ -263,6 +263,75 @@ impl Deriv2InvariantJ3 {
     }
 }
 
+/// Holds auxiliary data to compute the second derivative of the deviatoric invariant
+pub struct Deriv2InvariantSigmaD {
+    /// first derivative of J2: dJ2/dσ (Symmetric or Symmetric2D)
+    pub d1_jj2: Tensor2,
+
+    /// second derivative of J2: d²J2/(dσ⊗dσ) (Symmetric)
+    pub d2_jj2: Tensor4,
+}
+
+impl Deriv2InvariantSigmaD {
+    /// Returns a new instance
+    pub fn new(case: Mandel) -> Result<Self, StrError> {
+        if case == Mandel::General {
+            return Err("case must be Symmetric or Symmetric2D");
+        }
+        Ok(Deriv2InvariantSigmaD {
+            d1_jj2: Tensor2::new(case),
+            d2_jj2: Tensor4::new(Mandel::Symmetric),
+        })
+    }
+
+    /// Computes the second derivative of the deviatoric invariant w.r.t. the defining tensor
+    ///
+    /// ```text
+    ///  d²σd     d²J2      dJ2   dJ2
+    /// ───── = a ───── - b ─── ⊗ ───
+    /// dσ⊗dσ     dσ⊗dσ      dσ    dσ
+    ///
+    /// (σ must be symmetric)
+    /// ```
+    ///
+    /// ```text
+    ///          √3                  √3
+    /// a = ─────────────   b = ─────────────
+    ///     2 pow(J2,0.5)       4 pow(J2,1.5)
+    /// ```
+    ///
+    /// ## Output
+    ///
+    /// * `d2` -- the second derivative of l (must be Symmetric)
+    ///
+    /// ## Input
+    ///
+    /// * `sigma` -- the given tensor (must be Symmetric or Symmetric2D)
+    ///
+    /// # Returns
+    ///
+    /// If `J2 > TOL_J2`, returns `J2` and the derivative in `d2`. Otherwise, returns None.
+    pub fn compute(&mut self, d2: &mut Tensor4, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
+        if sigma.case() != self.d1_jj2.case() {
+            return Err("tensor 'sigma' is incompatible");
+        }
+        if d2.case() != Mandel::Symmetric {
+            return Err("tensor 'd2' must be Symmetric");
+        }
+        let jj2 = sigma.invariant_jj2();
+        if jj2 > TOL_J2 {
+            let a = 0.5 * SQRT_3 / f64::powf(jj2, 0.5);
+            let b = 0.25 * SQRT_3 / f64::powf(jj2, 1.5);
+            sigma.deriv1_invariant_jj2(&mut self.d1_jj2).unwrap();
+            deriv2_invariant_jj2(&mut self.d2_jj2, sigma).unwrap();
+            t2_dyad_t2(d2, -b, &self.d1_jj2, &self.d1_jj2).unwrap();
+            mat_update(&mut d2.mat, a, &self.d2_jj2.mat).unwrap();
+            return Ok(Some(jj2));
+        }
+        Ok(None)
+    }
+}
+
 /// Holds auxiliary data to compute the second derivative of the Lode invariant
 pub struct Deriv2InvariantLode {
     /// auxiliary data to compute the second derivative of J3
@@ -376,7 +445,8 @@ mod tests {
     use super::{Tensor2, Tensor4};
     use crate::{
         deriv2_invariant_jj2, deriv_inverse_tensor, deriv_inverse_tensor_sym, deriv_squared_tensor,
-        deriv_squared_tensor_sym, Deriv2InvariantJ3, Deriv2InvariantLode, Mandel, SamplesTensor2, MN_TO_IJKL, SQRT_2,
+        deriv_squared_tensor_sym, Deriv2InvariantJ3, Deriv2InvariantLode, Deriv2InvariantSigmaD, Mandel,
+        SamplesTensor2, MN_TO_IJKL, SQRT_2,
     };
     use russell_chk::{approx_eq, deriv_central5};
     use russell_lab::{mat_approx_eq, Matrix};
@@ -829,6 +899,7 @@ mod tests {
     enum Invariant {
         J2,
         J3,
+        SigmaD,
         Lode,
     }
 
@@ -848,6 +919,9 @@ mod tests {
         match args.inv {
             Invariant::J2 => args.sigma.deriv1_invariant_jj2(&mut args.d1).unwrap(),
             Invariant::J3 => args.sigma.deriv1_invariant_jj3(&mut args.d1, &mut args.s).unwrap(),
+            Invariant::SigmaD => {
+                args.sigma.deriv1_invariant_sigma_d(&mut args.d1).unwrap().unwrap();
+            }
             Invariant::Lode => {
                 args.sigma
                     .deriv1_invariant_lode(&mut args.d1, &mut args.s)
@@ -915,6 +989,20 @@ mod tests {
         // check using numerical derivative
         let ana = dd2_ana.to_matrix();
         let num = numerical_deriv2_inv_sym_mandel(&sigma, Invariant::J3);
+        // println!("{}", ana);
+        // println!("{}", num);
+        mat_approx_eq(&ana, &num, tol);
+    }
+
+    fn check_deriv2_sigma_d(sigma: &Tensor2, tol: f64) {
+        // compute analytical derivative
+        let mut dd2_ana = Tensor4::new(Mandel::Symmetric);
+        let mut aux = Deriv2InvariantSigmaD::new(sigma.case()).unwrap();
+        aux.compute(&mut dd2_ana, &sigma).unwrap().unwrap();
+
+        // check using numerical derivative
+        let ana = dd2_ana.to_matrix();
+        let num = numerical_deriv2_inv_sym_mandel(&sigma, Invariant::SigmaD);
         // println!("{}", ana);
         // println!("{}", num);
         mat_approx_eq(&ana, &num, tol);
@@ -989,6 +1077,22 @@ mod tests {
     }
 
     #[test]
+    fn deriv2_invariant_sigma_d_returns_none() {
+        // identity
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::Symmetric).unwrap();
+        let mut d2 = Tensor4::new(Mandel::Symmetric);
+        let mut aux = Deriv2InvariantSigmaD::new(sigma.case()).unwrap();
+        assert_eq!(aux.compute(&mut d2, &sigma).unwrap(), None);
+    }
+
+    #[test]
+    fn deriv2_invariant_sigma_d_works() {
+        // symmetric
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_U.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_sigma_d(&sigma, 1e-11);
+    }
+
+    #[test]
     fn deriv2_invariant_lode_returns_none() {
         // identity
         let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::Symmetric).unwrap();
@@ -1027,6 +1131,32 @@ mod tests {
             Some("case must be Symmetric or Symmetric2D")
         );
         let mut aux = Deriv2InvariantJ3::new(Mandel::Symmetric).unwrap();
+        let mut d2 = Tensor4::new(Mandel::Symmetric);
+        let sigma = Tensor2::new(Mandel::General);
+        assert_eq!(
+            aux.compute(&mut d2, &sigma).err(),
+            Some("tensor 'sigma' is incompatible")
+        );
+        let sigma = Tensor2::new(Mandel::Symmetric2D);
+        assert_eq!(
+            aux.compute(&mut d2, &sigma).err(),
+            Some("tensor 'sigma' is incompatible")
+        );
+        let sigma = Tensor2::new(Mandel::Symmetric);
+        let mut d2 = Tensor4::new(Mandel::Symmetric2D);
+        assert_eq!(
+            aux.compute(&mut d2, &sigma).err(),
+            Some("tensor 'd2' must be Symmetric")
+        );
+    }
+
+    #[test]
+    fn second_deriv_sigma_d_handles_errors() {
+        assert_eq!(
+            Deriv2InvariantSigmaD::new(Mandel::General).err(),
+            Some("case must be Symmetric or Symmetric2D")
+        );
+        let mut aux = Deriv2InvariantSigmaD::new(Mandel::Symmetric).unwrap();
         let mut d2 = Tensor4::new(Mandel::Symmetric);
         let sigma = Tensor2::new(Mandel::General);
         assert_eq!(

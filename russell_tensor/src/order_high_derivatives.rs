@@ -929,13 +929,7 @@ mod tests {
                 FirstDerivSigmaD::calc(&mut args.d1, &args.sigma).unwrap().unwrap();
             }
             Invariant::Lode => {
-                let mut aux = FirstDerivLode::new(args.sigma.case()).unwrap();
-                let mut s = Tensor2::new(args.sigma.case());
-                aux.calc(&mut args.d1, &mut s, &args.sigma).unwrap().unwrap();
-                // args.sigma
-                //     .deriv1_invariant_lode(&mut args.d1, &mut args.s)
-                //     .unwrap()
-                //     .unwrap();
+                FirstDerivLode::calc(&mut args.d1, &mut args.s, &args.sigma).unwrap();
             }
         };
         args.sigma.vec[args.n] = original;

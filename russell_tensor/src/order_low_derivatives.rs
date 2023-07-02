@@ -148,9 +148,9 @@ impl FirstDerivSigmaD {
         if sigma.case() == Mandel::General {
             return Err("sigma tensor must be Symmetric or Symmetric2D");
         }
-        let dim = d1.vec.dim();
-        if sigma.vec.dim() != dim {
-            return Err("sigma and d1 tensors are incompatible");
+        let dim = sigma.vec.dim();
+        if d1.vec.dim() != dim {
+            return Err("d1 tensor is incompatible");
         }
         let jj2 = sigma.invariant_jj2();
         if jj2 > TOL_J2 {
@@ -166,34 +166,21 @@ impl FirstDerivSigmaD {
 }
 
 /// Calculates the first derivative of the Lode invariant
-pub struct FirstDerivLode {
-    /// first derivative of J2: dJ2/dσ (Symmetric or Symmetric2D)
-    pub d1_jj2: Tensor2,
-
-    /// first derivative of J3: dJ3/dσ (Symmetric or Symmetric2D)
-    pub d1_jj3: Tensor2,
-}
+pub struct FirstDerivLode {}
 
 impl FirstDerivLode {
-    /// Returns a new instance
-    ///
-    /// Note: `case` must be Symmetric or Symmetric2D
-    pub fn new(case: Mandel) -> Result<Self, StrError> {
-        if case == Mandel::General {
-            return Err("case must be Symmetric or Symmetric2D");
-        }
-        Ok(FirstDerivLode {
-            d1_jj2: Tensor2::new(case),
-            d1_jj3: Tensor2::new(case),
-        })
-    }
-
     /// Calculates the first derivative of the Lode invariant
     ///
     /// ```text
     /// dl     dJ3        dJ2
     /// ── = a ─── - b J3 ───
     /// dσ     dσ         dσ
+    ///
+    /// or
+    ///
+    /// dl     dJ3
+    /// ── = a ─── - b J3 s
+    /// dσ     dσ
     /// ```
     ///
     /// ```text
@@ -208,23 +195,25 @@ impl FirstDerivLode {
     ///
     /// If `J2 > TOL_J2`, returns `J2` and `d1` is valid;
     /// Otherwise, returns `None` and `d1` is unchanged.
-    pub fn calc(&mut self, d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
-        let dim = self.d1_jj2.vec.dim();
-        if sigma.vec.dim() != dim {
-            return Err("sigma tensor is incompatible");
+    pub fn calc(d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
+        if sigma.case() == Mandel::General {
+            return Err("sigma tensor must be Symmetric or Symmetric2D");
+        }
+        let dim = sigma.vec.dim();
+        if s.vec.dim() != dim {
+            return Err("s tensor is incompatible");
         }
         if d1.vec.dim() != dim {
             return Err("d1 tensor is incompatible");
         }
         let jj2 = sigma.invariant_jj2();
         if jj2 > TOL_J2 {
-            FirstDerivJ2::calc(&mut self.d1_jj2, sigma).unwrap();
-            FirstDerivJ3::calc(&mut self.d1_jj3, s, sigma).unwrap();
+            FirstDerivJ3::calc(d1, s, sigma).unwrap(); // d1 := dJ3/dσ
             let jj3 = sigma.invariant_jj3();
             let a = 1.5 * SQRT_3 / f64::powf(jj2, 1.5);
             let b = 2.25 * SQRT_3 / f64::powf(jj2, 2.5);
             for i in 0..dim {
-                d1.vec[i] = a * self.d1_jj3.vec[i] - b * jj3 * self.d1_jj2.vec[i];
+                d1.vec[i] = a * d1.vec[i] - b * jj3 * s.vec[i];
             }
             return Ok(Some(jj2));
         }
@@ -277,9 +266,8 @@ mod tests {
                 FirstDerivSigmaD::calc(d1, sigma).unwrap().unwrap();
             }
             F::Lode => {
-                let mut aux = FirstDerivLode::new(sigma.case()).unwrap();
                 let mut s = Tensor2::new(sigma.case());
-                aux.calc(d1, &mut s, sigma).unwrap().unwrap();
+                FirstDerivLode::calc(d1, &mut s, sigma).unwrap().unwrap();
             }
         };
     }

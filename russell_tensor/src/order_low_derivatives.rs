@@ -1,10 +1,10 @@
 use crate::{Mandel, StrError, Tensor2, ONE_BY_3, SQRT_3, TOL_J2, TWO_BY_3};
 
-/// Computes the first derivative of the norm
-pub struct Deriv1Norm {}
+/// Calculates the first derivative of the norm
+pub struct FirstDerivNorm {}
 
-impl Deriv1Norm {
-    /// Computes the first derivative of the norm
+impl FirstDerivNorm {
+    /// Calculates the first derivative of the norm
     ///
     /// ```text
     /// d‖σ‖    σ
@@ -16,7 +16,7 @@ impl Deriv1Norm {
     ///
     /// If `‖σ‖ > 0`, returns `‖σ‖` and `d1` is valid;
     /// Otherwise, returns `None` and `d1` is unchanged.
-    pub fn compute(d1: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
+    pub fn calc(d1: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
         let dim = d1.vec.dim();
         if sigma.vec.dim() != dim {
             return Err("sigma and d1 tensors are incompatible");
@@ -33,11 +33,11 @@ impl Deriv1Norm {
     }
 }
 
-/// Computes the first derivative of the J2 invariant
-pub struct Deriv1InvariantJ2 {}
+/// Calculates the first derivative of the J2 invariant
+pub struct FirstDerivJ2 {}
 
-impl Deriv1InvariantJ2 {
-    /// Computes the first derivative of the J2 invariant
+impl FirstDerivJ2 {
+    /// Calculates the first derivative of the J2 invariant
     ///
     /// ```text
     /// s = deviator(σ)
@@ -50,7 +50,7 @@ impl Deriv1InvariantJ2 {
     /// ```
     ///
     /// Note: `sigma` must be Symmetric or Symmetric2D.
-    pub fn compute(d1: &mut Tensor2, sigma: &Tensor2) -> Result<(), StrError> {
+    pub fn calc(d1: &mut Tensor2, sigma: &Tensor2) -> Result<(), StrError> {
         if sigma.case() == Mandel::General {
             return Err("sigma tensor must be Symmetric or Symmetric2D");
         }
@@ -58,13 +58,13 @@ impl Deriv1InvariantJ2 {
     }
 }
 
-/// Computes the first derivative of the J3 invariant
-pub struct Deriv1InvariantJ3 {
+/// Calculates the first derivative of the J3 invariant
+pub struct FirstDerivJ3 {
     /// Deviator tensor (Symmetric or Symmetric2D)
     pub s: Tensor2,
 }
 
-impl Deriv1InvariantJ3 {
+impl FirstDerivJ3 {
     /// Returns a new instance
     ///
     /// Note: `case` must be Symmetric or Symmetric2D
@@ -72,10 +72,10 @@ impl Deriv1InvariantJ3 {
         if case == Mandel::General {
             return Err("case must be Symmetric or Symmetric2D");
         }
-        Ok(Deriv1InvariantJ3 { s: Tensor2::new(case) })
+        Ok(FirstDerivJ3 { s: Tensor2::new(case) })
     }
 
-    /// Computes the first derivative of the J3 invariant
+    /// Calculates the first derivative of the J3 invariant
     ///
     /// ```text
     /// s = deviator(σ)
@@ -88,7 +88,7 @@ impl Deriv1InvariantJ3 {
     /// ```
     ///
     /// Note: `sigma` must be Symmetric or Symmetric2D.
-    pub fn compute(&mut self, d1: &mut Tensor2, sigma: &Tensor2) -> Result<(), StrError> {
+    pub fn calc(&mut self, d1: &mut Tensor2, sigma: &Tensor2) -> Result<(), StrError> {
         let dim = self.s.vec.dim();
         if sigma.vec.dim() != dim {
             return Err("sigma tensor is incompatible");
@@ -106,18 +106,18 @@ impl Deriv1InvariantJ3 {
     }
 }
 
-/// Computes the first derivative of the mean stress
-pub struct Deriv1InvariantSigmaM {}
+/// Calculates the first derivative of the mean stress
+pub struct FirstDerivSigmaM {}
 
-impl Deriv1InvariantSigmaM {
-    /// Computes the first derivative of the deviatoric stress invariant (von Mises)
+impl FirstDerivSigmaM {
+    /// Calculates the first derivative of the deviatoric stress invariant (von Mises)
     ///
     /// ```text
     /// dσm   1
     /// ─── = ─ I
     ///  dσ   3
     /// ```
-    pub fn compute(d1: &mut Tensor2, sigma: &Tensor2) -> Result<(), StrError> {
+    pub fn calc(d1: &mut Tensor2, sigma: &Tensor2) -> Result<(), StrError> {
         let dim = d1.vec.dim();
         if sigma.vec.dim() != dim {
             return Err("sigma and d1 tensors are incompatible");
@@ -132,11 +132,11 @@ impl Deriv1InvariantSigmaM {
     }
 }
 
-/// Computes the first derivative of the deviatoric stress invariant (von Mises)
-pub struct Deriv1InvariantSigmaD {}
+/// Calculates the first derivative of the deviatoric stress invariant (von Mises)
+pub struct FirstDerivSigmaD {}
 
-impl Deriv1InvariantSigmaD {
-    /// Computes the first derivative of the deviatoric stress invariant (von Mises)
+impl FirstDerivSigmaD {
+    /// Calculates the first derivative of the deviatoric stress invariant (von Mises)
     ///
     /// ```text
     /// s = deviator(σ)
@@ -154,7 +154,7 @@ impl Deriv1InvariantSigmaD {
     ///
     /// If `J2 > TOL_J2`, returns `J2` and `result` is valid;
     /// Otherwise, returns `None` and `result` is invalid.
-    pub fn compute(d1: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
+    pub fn calc(d1: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
         if sigma.case() == Mandel::General {
             return Err("sigma tensor must be Symmetric or Symmetric2D");
         }
@@ -165,7 +165,7 @@ impl Deriv1InvariantSigmaD {
         let jj2 = sigma.invariant_jj2();
         if jj2 > TOL_J2 {
             let a = 0.5 * SQRT_3 / f64::powf(jj2, 0.5);
-            Deriv1InvariantJ2::compute(d1, sigma).unwrap();
+            FirstDerivJ2::calc(d1, sigma).unwrap();
             for i in 0..dim {
                 d1.vec[i] *= a;
             }
@@ -175,19 +175,19 @@ impl Deriv1InvariantSigmaD {
     }
 }
 
-/// Computes the first derivative of the Lode invariant
-pub struct Deriv1InvariantLode {
+/// Calculates the first derivative of the Lode invariant
+pub struct FirstDerivLode {
     /// first derivative of J2: dJ2/dσ (Symmetric or Symmetric2D)
     pub d1_jj2: Tensor2,
 
     /// first derivative of J3: dJ3/dσ (Symmetric or Symmetric2D)
     pub d1_jj3: Tensor2,
 
-    /// Auxiliary structure to compute the first derivative of J3
-    pub aux_jj3: Deriv1InvariantJ3,
+    /// Auxiliary structure to calculate the first derivative of J3
+    pub aux_jj3: FirstDerivJ3,
 }
 
-impl Deriv1InvariantLode {
+impl FirstDerivLode {
     /// Returns a new instance
     ///
     /// Note: `case` must be Symmetric or Symmetric2D
@@ -195,14 +195,14 @@ impl Deriv1InvariantLode {
         if case == Mandel::General {
             return Err("case must be Symmetric or Symmetric2D");
         }
-        Ok(Deriv1InvariantLode {
+        Ok(FirstDerivLode {
             d1_jj2: Tensor2::new(case),
             d1_jj3: Tensor2::new(case),
-            aux_jj3: Deriv1InvariantJ3::new(case).unwrap(),
+            aux_jj3: FirstDerivJ3::new(case).unwrap(),
         })
     }
 
-    /// Computes the first derivative of the Lode invariant
+    /// Calculates the first derivative of the Lode invariant
     ///
     /// ```text
     /// dl     dJ3        dJ2
@@ -222,7 +222,7 @@ impl Deriv1InvariantLode {
     ///
     /// If `J2 > TOL_J2`, returns `J2` and `d1` is valid;
     /// Otherwise, returns `None` and `d1` is unchanged.
-    pub fn compute(&mut self, d1: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
+    pub fn calc(&mut self, d1: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
         let dim = self.d1_jj2.vec.dim();
         if sigma.vec.dim() != dim {
             return Err("sigma tensor is incompatible");
@@ -232,8 +232,8 @@ impl Deriv1InvariantLode {
         }
         let jj2 = sigma.invariant_jj2();
         if jj2 > TOL_J2 {
-            Deriv1InvariantJ2::compute(&mut self.d1_jj2, sigma).unwrap();
-            self.aux_jj3.compute(&mut self.d1_jj3, sigma).unwrap();
+            FirstDerivJ2::calc(&mut self.d1_jj2, sigma).unwrap();
+            self.aux_jj3.calc(&mut self.d1_jj3, sigma).unwrap();
             let jj3 = sigma.invariant_jj3();
             let a = 1.5 * SQRT_3 / f64::powf(jj2, 1.5);
             let b = 2.25 * SQRT_3 / f64::powf(jj2, 2.5);
@@ -253,8 +253,8 @@ impl Deriv1InvariantLode {
 mod tests {
     use super::Tensor2;
     use crate::{
-        Deriv1InvariantJ2, Deriv1InvariantJ3, Deriv1InvariantLode, Deriv1InvariantSigmaD, Deriv1InvariantSigmaM,
-        Deriv1Norm, Mandel, SampleTensor2, SamplesTensor2, IJ_TO_M, ONE_BY_3, SQRT_3_BY_2,
+        FirstDerivJ2, FirstDerivJ3, FirstDerivLode, FirstDerivNorm, FirstDerivSigmaD, FirstDerivSigmaM, Mandel,
+        SampleTensor2, SamplesTensor2, IJ_TO_M, ONE_BY_3, SQRT_3_BY_2,
     };
     use russell_chk::{approx_eq, deriv_central5, vec_approx_eq};
     use russell_lab::{mat_approx_eq, Matrix};
@@ -280,21 +280,21 @@ mod tests {
     fn analytical_deriv(fn_name: F, d1: &mut Tensor2, sigma: &Tensor2) {
         match fn_name {
             F::Norm => {
-                Deriv1Norm::compute(d1, sigma).unwrap().unwrap();
+                FirstDerivNorm::calc(d1, sigma).unwrap().unwrap();
             }
-            F::J2 => Deriv1InvariantJ2::compute(d1, sigma).unwrap(),
+            F::J2 => FirstDerivJ2::calc(d1, sigma).unwrap(),
             F::J3 => {
                 let mut s = Tensor2::new(sigma.case());
-                let mut aux = Deriv1InvariantJ3::new(sigma.case()).unwrap();
-                aux.compute(d1, sigma).unwrap();
+                let mut aux = FirstDerivJ3::new(sigma.case()).unwrap();
+                aux.calc(d1, sigma).unwrap();
             }
-            F::SigmaM => Deriv1InvariantSigmaM::compute(d1, sigma).unwrap(),
+            F::SigmaM => FirstDerivSigmaM::calc(d1, sigma).unwrap(),
             F::SigmaD => {
-                Deriv1InvariantSigmaD::compute(d1, sigma).unwrap().unwrap();
+                FirstDerivSigmaD::calc(d1, sigma).unwrap().unwrap();
             }
             F::Lode => {
-                let mut aux = Deriv1InvariantLode::new(sigma.case()).unwrap();
-                aux.compute(d1, sigma).unwrap().unwrap();
+                let mut aux = FirstDerivLode::new(sigma.case()).unwrap();
+                aux.calc(d1, sigma).unwrap().unwrap();
             }
         };
     }

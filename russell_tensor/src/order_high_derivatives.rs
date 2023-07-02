@@ -322,7 +322,7 @@ impl Deriv2InvariantSigmaD {
         if jj2 > TOL_J2 {
             let a = 0.5 * SQRT_3 / f64::powf(jj2, 0.5);
             let b = 0.25 * SQRT_3 / f64::powf(jj2, 1.5);
-            sigma.deriv1_invariant_jj2(&mut self.d1_jj2).unwrap();
+            // sigma.deriv1_invariant_jj2(&mut self.d1_jj2).unwrap();
             deriv2_invariant_jj2(&mut self.d2_jj2, sigma).unwrap();
             t2_dyad_t2(d2, -b, &self.d1_jj2, &self.d1_jj2).unwrap();
             mat_update(&mut d2.mat, a, &self.d2_jj2.mat).unwrap();
@@ -421,8 +421,8 @@ impl Deriv2InvariantLode {
             let a = 1.5 * SQRT_3 / f64::powf(jj2, 1.5);
             let b = 2.25 * SQRT_3 / f64::powf(jj2, 2.5);
             let c = 5.625 * SQRT_3 / f64::powf(jj2, 3.5);
-            sigma.deriv1_invariant_jj2(&mut self.d1_jj2).unwrap();
-            sigma.deriv1_invariant_jj3(&mut self.d1_jj3, &mut self.tt).unwrap();
+            // sigma.deriv1_invariant_jj2(&mut self.d1_jj2).unwrap();
+            // sigma.deriv1_invariant_jj3(&mut self.d1_jj3, &mut self.tt).unwrap();
             deriv2_invariant_jj2(&mut self.d2_jj2, sigma).unwrap();
             self.aux_jj3.compute(&mut self.d2_jj3, sigma).unwrap();
             t2_dyad_t2(&mut self.d1_jj2_dy_d1_jj2, 1.0, &self.d1_jj2, &self.d1_jj2).unwrap();
@@ -445,8 +445,8 @@ mod tests {
     use super::{Tensor2, Tensor4};
     use crate::{
         deriv2_invariant_jj2, deriv_inverse_tensor, deriv_inverse_tensor_sym, deriv_squared_tensor,
-        deriv_squared_tensor_sym, Deriv2InvariantJ3, Deriv2InvariantLode, Deriv2InvariantSigmaD, Mandel,
-        SamplesTensor2, MN_TO_IJKL, SQRT_2,
+        deriv_squared_tensor_sym, Deriv1InvariantJ2, Deriv2InvariantJ3, Deriv2InvariantLode, Deriv2InvariantSigmaD,
+        Mandel, SamplesTensor2, MN_TO_IJKL, SQRT_2,
     };
     use russell_chk::{approx_eq, deriv_central5};
     use russell_lab::{mat_approx_eq, Matrix};
@@ -907,38 +907,46 @@ mod tests {
     struct ArgsNumDeriv2InvariantMandel {
         inv: Invariant, // option
         sigma: Tensor2, // temporary tensor
-        d1: Tensor2,    // dInvariant/dσ (first derivative)
-        s: Tensor2,     // deviator(σ)
-        m: usize,       // index of [dInvariant²/dσ⊗dσ]ₘₙ (Mandel components)
-        n: usize,       // index of [dInvariant²/dσ⊗dσ]ₘₙ (Mandel components)
+        // d1: Tensor2,    // dInvariant/dσ (first derivative)
+        // s: Tensor2,     // deviator(σ)
+        m: usize, // index of [dInvariant²/dσ⊗dσ]ₘₙ (Mandel components)
+        n: usize, // index of [dInvariant²/dσ⊗dσ]ₘₙ (Mandel components)
     }
 
     fn component_of_deriv1_inv_mandel(x: f64, args: &mut ArgsNumDeriv2InvariantMandel) -> f64 {
         let original = args.sigma.vec[args.n];
         args.sigma.vec[args.n] = x;
-        match args.inv {
-            Invariant::J2 => args.sigma.deriv1_invariant_jj2(&mut args.d1).unwrap(),
-            Invariant::J3 => args.sigma.deriv1_invariant_jj3(&mut args.d1, &mut args.s).unwrap(),
+        let res = match args.inv {
+            Invariant::J2 => {
+                let mut aux = Deriv1InvariantJ2::new(args.sigma.case()).unwrap();
+                aux.compute(&args.sigma).unwrap();
+                // args.d1.mirror(&aux.result).unwrap();
+                aux.result.vec[args.m]
+            } //args.sigma.deriv1_invariant_jj2(&mut args.d1).unwrap(),
+            Invariant::J3 => 0.0, //args.sigma.deriv1_invariant_jj3(&mut args.d1, &mut args.s).unwrap(),
             Invariant::SigmaD => {
-                args.sigma.deriv1_invariant_sigma_d(&mut args.d1).unwrap().unwrap();
+                // args.sigma.deriv1_invariant_sigma_d(&mut args.d1).unwrap().unwrap();
+                0.0
             }
             Invariant::Lode => {
-                args.sigma
-                    .deriv1_invariant_lode(&mut args.d1, &mut args.s)
-                    .unwrap()
-                    .unwrap();
+                // args.sigma
+                //     .deriv1_invariant_lode(&mut args.d1, &mut args.s)
+                //     .unwrap()
+                //     .unwrap();
+                0.0
             }
-        }
+        };
         args.sigma.vec[args.n] = original;
-        args.d1.vec[args.m]
+        // args.d1.vec[args.m]
+        res
     }
 
     fn numerical_deriv2_inv_sym_mandel(sigma: &Tensor2, inv: Invariant) -> Matrix {
         let mut args = ArgsNumDeriv2InvariantMandel {
             inv,
             sigma: Tensor2::new(Mandel::Symmetric),
-            d1: Tensor2::new(Mandel::Symmetric),
-            s: Tensor2::new(Mandel::Symmetric),
+            // d1: Tensor2::new(Mandel::Symmetric),
+            // s: Tensor2::new(Mandel::Symmetric),
             m: 0,
             n: 0,
         };

@@ -1,9 +1,9 @@
 use crate::{Mandel, StrError, Tensor2, ONE_BY_3, SQRT_3, TOL_J2, TWO_BY_3};
 
 /// Calculates the first derivative of the norm
-pub struct FirstDerivNorm {}
+pub struct Deriv1Norm {}
 
-impl FirstDerivNorm {
+impl Deriv1Norm {
     /// Calculates the first derivative of the norm
     ///
     /// ```text
@@ -34,9 +34,9 @@ impl FirstDerivNorm {
 }
 
 /// Calculates the first derivative of the J2 invariant
-pub struct FirstDerivJ2 {}
+pub struct Deriv1InvariantJ2 {}
 
-impl FirstDerivJ2 {
+impl Deriv1InvariantJ2 {
     /// Calculates the first derivative of the J2 invariant
     ///
     /// ```text
@@ -59,9 +59,9 @@ impl FirstDerivJ2 {
 }
 
 /// Calculates the first derivative of the J3 invariant
-pub struct FirstDerivJ3 {}
+pub struct Deriv1InvariantJ3 {}
 
-impl FirstDerivJ3 {
+impl Deriv1InvariantJ3 {
     /// Calculates the first derivative of the J3 invariant
     ///
     /// ```text
@@ -97,9 +97,9 @@ impl FirstDerivJ3 {
 }
 
 /// Calculates the first derivative of the mean stress
-pub struct FirstDerivSigmaM {}
+pub struct Deriv1InvariantSigmaM {}
 
-impl FirstDerivSigmaM {
+impl Deriv1InvariantSigmaM {
     /// Calculates the first derivative of the deviatoric stress invariant (von Mises)
     ///
     /// ```text
@@ -123,9 +123,9 @@ impl FirstDerivSigmaM {
 }
 
 /// Calculates the first derivative of the deviatoric stress invariant (von Mises)
-pub struct FirstDerivSigmaD {}
+pub struct Deriv1InvariantSigmaD {}
 
-impl FirstDerivSigmaD {
+impl Deriv1InvariantSigmaD {
     /// Calculates the first derivative of the deviatoric stress invariant (von Mises)
     ///
     /// ```text
@@ -155,7 +155,7 @@ impl FirstDerivSigmaD {
         let jj2 = sigma.invariant_jj2();
         if jj2 > TOL_J2 {
             let a = 0.5 * SQRT_3 / f64::powf(jj2, 0.5);
-            FirstDerivJ2::calc(d1, sigma).unwrap();
+            Deriv1InvariantJ2::calc(d1, sigma).unwrap();
             for i in 0..dim {
                 d1.vec[i] *= a;
             }
@@ -166,9 +166,9 @@ impl FirstDerivSigmaD {
 }
 
 /// Calculates the first derivative of the Lode invariant
-pub struct FirstDerivLode {}
+pub struct Deriv1InvariantLode {}
 
-impl FirstDerivLode {
+impl Deriv1InvariantLode {
     /// Calculates the first derivative of the Lode invariant
     ///
     /// ```text
@@ -208,7 +208,7 @@ impl FirstDerivLode {
         }
         let jj2 = sigma.invariant_jj2();
         if jj2 > TOL_J2 {
-            FirstDerivJ3::calc(d1, s, sigma).unwrap(); // d1 := dJ3/dσ
+            Deriv1InvariantJ3::calc(d1, s, sigma).unwrap(); // d1 := dJ3/dσ
             let jj3 = sigma.invariant_jj3();
             let a = 1.5 * SQRT_3 / f64::powf(jj2, 1.5);
             let b = 2.25 * SQRT_3 / f64::powf(jj2, 2.5);
@@ -227,8 +227,8 @@ impl FirstDerivLode {
 mod tests {
     use super::Tensor2;
     use crate::{
-        FirstDerivJ2, FirstDerivJ3, FirstDerivLode, FirstDerivNorm, FirstDerivSigmaD, FirstDerivSigmaM, Mandel,
-        SampleTensor2, SamplesTensor2,
+        Deriv1InvariantJ2, Deriv1InvariantJ3, Deriv1InvariantLode, Deriv1InvariantSigmaD, Deriv1InvariantSigmaM,
+        Deriv1Norm, Mandel, SampleTensor2, SamplesTensor2,
     };
     use russell_chk::deriv_central5;
     use russell_lab::{mat_approx_eq, Matrix};
@@ -254,20 +254,20 @@ mod tests {
     fn analytical_deriv(fn_name: F, d1: &mut Tensor2, sigma: &Tensor2) {
         match fn_name {
             F::Norm => {
-                FirstDerivNorm::calc(d1, sigma).unwrap().unwrap();
+                Deriv1Norm::calc(d1, sigma).unwrap().unwrap();
             }
-            F::J2 => FirstDerivJ2::calc(d1, sigma).unwrap(),
+            F::J2 => Deriv1InvariantJ2::calc(d1, sigma).unwrap(),
             F::J3 => {
                 let mut s = Tensor2::new(sigma.case());
-                FirstDerivJ3::calc(d1, &mut s, sigma).unwrap();
+                Deriv1InvariantJ3::calc(d1, &mut s, sigma).unwrap();
             }
-            F::SigmaM => FirstDerivSigmaM::calc(d1, sigma).unwrap(),
+            F::SigmaM => Deriv1InvariantSigmaM::calc(d1, sigma).unwrap(),
             F::SigmaD => {
-                FirstDerivSigmaD::calc(d1, sigma).unwrap().unwrap();
+                Deriv1InvariantSigmaD::calc(d1, sigma).unwrap().unwrap();
             }
             F::Lode => {
                 let mut s = Tensor2::new(sigma.case());
-                FirstDerivLode::calc(d1, &mut s, sigma).unwrap().unwrap();
+                Deriv1InvariantLode::calc(d1, &mut s, sigma).unwrap().unwrap();
             }
         };
     }

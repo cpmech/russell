@@ -1,6 +1,6 @@
 use crate::{
-    t2_dyad_t2, t2_odyad_t2, t2_qsd_t2, t2_ssd, FirstDerivJ2, FirstDerivJ3, Mandel, StrError, Tensor2, Tensor4,
-    ONE_BY_3, SQRT_3, TOL_J2, TWO_BY_3,
+    t2_dyad_t2, t2_odyad_t2, t2_qsd_t2, t2_ssd, Deriv1InvariantJ2, Deriv1InvariantJ3, Mandel, StrError, Tensor2,
+    Tensor4, ONE_BY_3, SQRT_3, TOL_J2, TWO_BY_3,
 };
 use russell_lab::{mat_add, mat_mat_mul, mat_update};
 
@@ -323,8 +323,7 @@ impl Deriv2InvariantSigmaD {
         if jj2 > TOL_J2 {
             let a = 0.5 * SQRT_3 / f64::powf(jj2, 0.5);
             let b = 0.25 * SQRT_3 / f64::powf(jj2, 1.5);
-            FirstDerivJ2::calc(&mut self.d1_jj2, sigma).unwrap();
-            // sigma.deriv1_invariant_jj2(&mut self.d1_jj2).unwrap();
+            Deriv1InvariantJ2::calc(&mut self.d1_jj2, sigma).unwrap();
             deriv2_invariant_jj2(&mut self.d2_jj2, sigma).unwrap();
             t2_dyad_t2(d2, -b, &self.d1_jj2, &self.d1_jj2).unwrap();
             mat_update(&mut d2.mat, a, &self.d2_jj2.mat).unwrap();
@@ -423,8 +422,8 @@ impl Deriv2InvariantLode {
             let a = 1.5 * SQRT_3 / f64::powf(jj2, 1.5);
             let b = 2.25 * SQRT_3 / f64::powf(jj2, 2.5);
             let c = 5.625 * SQRT_3 / f64::powf(jj2, 3.5);
-            FirstDerivJ2::calc(&mut self.d1_jj2, sigma).unwrap();
-            FirstDerivJ3::calc(&mut self.d1_jj3, &mut self.s, sigma).unwrap();
+            Deriv1InvariantJ2::calc(&mut self.d1_jj2, sigma).unwrap();
+            Deriv1InvariantJ3::calc(&mut self.d1_jj3, &mut self.s, sigma).unwrap();
             deriv2_invariant_jj2(&mut self.d2_jj2, sigma).unwrap();
             self.aux_jj3.compute(&mut self.d2_jj3, sigma).unwrap();
             t2_dyad_t2(&mut self.d1_jj2_dy_d1_jj2, 1.0, &self.d1_jj2, &self.d1_jj2).unwrap();
@@ -447,8 +446,8 @@ mod tests {
     use super::{Tensor2, Tensor4};
     use crate::{
         deriv2_invariant_jj2, deriv_inverse_tensor, deriv_inverse_tensor_sym, deriv_squared_tensor,
-        deriv_squared_tensor_sym, Deriv2InvariantJ3, Deriv2InvariantLode, Deriv2InvariantSigmaD, FirstDerivJ2,
-        FirstDerivJ3, FirstDerivLode, FirstDerivSigmaD, Mandel, SamplesTensor2, MN_TO_IJKL, SQRT_2,
+        deriv_squared_tensor_sym, Deriv1InvariantJ2, Deriv1InvariantJ3, Deriv1InvariantLode, Deriv1InvariantSigmaD,
+        Deriv2InvariantJ3, Deriv2InvariantLode, Deriv2InvariantSigmaD, Mandel, SamplesTensor2, MN_TO_IJKL, SQRT_2,
     };
     use russell_chk::{approx_eq, deriv_central5};
     use russell_lab::{mat_approx_eq, Matrix};
@@ -920,16 +919,16 @@ mod tests {
         args.sigma.vec[args.n] = x;
         match args.inv {
             Invariant::J2 => {
-                FirstDerivJ2::calc(&mut args.d1, &args.sigma).unwrap();
+                Deriv1InvariantJ2::calc(&mut args.d1, &args.sigma).unwrap();
             }
             Invariant::J3 => {
-                FirstDerivJ3::calc(&mut args.d1, &mut args.s, &args.sigma).unwrap();
+                Deriv1InvariantJ3::calc(&mut args.d1, &mut args.s, &args.sigma).unwrap();
             }
             Invariant::SigmaD => {
-                FirstDerivSigmaD::calc(&mut args.d1, &args.sigma).unwrap().unwrap();
+                Deriv1InvariantSigmaD::calc(&mut args.d1, &args.sigma).unwrap().unwrap();
             }
             Invariant::Lode => {
-                FirstDerivLode::calc(&mut args.d1, &mut args.s, &args.sigma).unwrap();
+                Deriv1InvariantLode::calc(&mut args.d1, &mut args.s, &args.sigma).unwrap();
             }
         };
         args.sigma.vec[args.n] = original;

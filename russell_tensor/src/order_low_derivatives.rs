@@ -1,38 +1,9 @@
 use crate::{Mandel, StrError, Tensor2, ONE_BY_3, SQRT_3, TOL_J2, TWO_BY_3};
-use russell_lab::vec_add;
-
-pub trait DerivFirst {
-    /// Allocates a new instance
-    fn new(case: Mandel) -> Result<Self, StrError>
-    where
-        Self: Sized;
-
-    /// Computes the derivative
-    ///
-    /// * Returns `None` when it is impossible to compute the derivative
-    /// * The returned value depends on the specific case
-    fn compute(&mut self, sigma: &Tensor2) -> Result<Option<f64>, StrError>;
-
-    /// Returns the Mandel component of the derivative
-    ///
-    /// * This function may panic if `m` is out-of-bounds
-    fn get(&self, m: usize) -> f64;
-}
 
 /// Computes the first derivative of the norm
-pub struct Deriv1Norm {
-    /// Holds the resulting derivative
-    pub result: Tensor2,
-}
+pub struct Deriv1Norm {}
 
-impl DerivFirst for Deriv1Norm {
-    /// Returns a new instance
-    fn new(case: Mandel) -> Result<Self, StrError> {
-        Ok(Deriv1Norm {
-            result: Tensor2::new(case),
-        })
-    }
-
+impl Deriv1Norm {
     /// Computes the first derivative of the norm
     ///
     /// ```text
@@ -43,51 +14,29 @@ impl DerivFirst for Deriv1Norm {
     ///
     /// # Results
     ///
-    /// If `‖σ‖ > 0`, returns `‖σ‖` and `result` is valid;
-    /// Otherwise, returns `None` and `result` is invalid.
-    fn compute(&mut self, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
-        let dim = self.result.vec.dim();
+    /// If `‖σ‖ > 0`, returns `‖σ‖` and `d1` is valid;
+    /// Otherwise, returns `None` and `d1` is unchanged.
+    pub fn compute(d1: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
+        let dim = d1.vec.dim();
         if sigma.vec.dim() != dim {
-            return Err("tensor 'sigma' is incompatible");
+            return Err("sigma and d1 tensors are incompatible");
         }
         let n = sigma.norm();
         if n > 0.0 {
-            self.result.mirror(sigma).unwrap();
+            d1.mirror(sigma).unwrap();
             for i in 0..dim {
-                self.result.vec[i] /= n;
+                d1.vec[i] /= n;
             }
             return Ok(Some(n));
         }
         Ok(None)
     }
-
-    /// Returns the Mandel component of the derivative
-    ///
-    /// * This function may panic if `m` is out-of-bounds
-    fn get(&self, m: usize) -> f64 {
-        self.result.vec[m]
-    }
 }
 
 /// Computes the first derivative of the J2 invariant
-pub struct Deriv1InvariantJ2 {
-    /// Holds the resulting derivative (Symmetric or Symmetric2D)
-    pub result: Tensor2,
-}
+pub struct Deriv1InvariantJ2 {}
 
 impl Deriv1InvariantJ2 {
-    /// Returns a new instance
-    ///
-    /// Note: `case` must be Symmetric or Symmetric2D
-    pub fn new(case: Mandel) -> Result<Self, StrError> {
-        if case == Mandel::General {
-            return Err("case must be Symmetric or Symmetric2D");
-        }
-        Ok(Deriv1InvariantJ2 {
-            result: Tensor2::new(case),
-        })
-    }
-
     /// Computes the first derivative of the J2 invariant
     ///
     /// ```text
@@ -99,11 +48,13 @@ impl Deriv1InvariantJ2 {
     ///
     /// (σ is symmetric)
     /// ```
-    pub fn compute(&mut self, sigma: &Tensor2) -> Result<(), StrError> {
-        if sigma.vec.dim() != self.result.vec.dim() {
-            return Err("tensor 'sigma' is incompatible");
+    ///
+    /// Note: `sigma` must be Symmetric or Symmetric2D.
+    pub fn compute(d1: &mut Tensor2, sigma: &Tensor2) -> Result<(), StrError> {
+        if sigma.case() == Mandel::General {
+            return Err("sigma tensor must be Symmetric or Symmetric2D");
         }
-        sigma.deviator(&mut self.result)
+        sigma.deviator(d1)
     }
 }
 
@@ -111,9 +62,6 @@ impl Deriv1InvariantJ2 {
 pub struct Deriv1InvariantJ3 {
     /// Deviator tensor (Symmetric or Symmetric2D)
     pub s: Tensor2,
-
-    /// Holds the resulting derivative (Symmetric or Symmetric2D)
-    pub result: Tensor2,
 }
 
 impl Deriv1InvariantJ3 {
@@ -124,10 +72,7 @@ impl Deriv1InvariantJ3 {
         if case == Mandel::General {
             return Err("case must be Symmetric or Symmetric2D");
         }
-        Ok(Deriv1InvariantJ3 {
-            s: Tensor2::new(case),
-            result: Tensor2::new(case),
-        })
+        Ok(Deriv1InvariantJ3 { s: Tensor2::new(case) })
     }
 
     /// Computes the first derivative of the J3 invariant
@@ -141,34 +86,30 @@ impl Deriv1InvariantJ3 {
     ///
     /// (σ is symmetric)
     /// ```
-    pub fn compute(&mut self, sigma: &Tensor2) -> Result<(), StrError> {
-        if sigma.vec.dim() != self.s.vec.dim() {
-            return Err("tensor 'sigma' is incompatible");
+    ///
+    /// Note: `sigma` must be Symmetric or Symmetric2D.
+    pub fn compute(&mut self, d1: &mut Tensor2, sigma: &Tensor2) -> Result<(), StrError> {
+        let dim = self.s.vec.dim();
+        if sigma.vec.dim() != dim {
+            return Err("sigma tensor is incompatible");
+        }
+        if d1.vec.dim() != dim {
+            return Err("d1 tensor is incompatible");
         }
         let jj2 = sigma.invariant_jj2();
         sigma.deviator(&mut self.s).unwrap();
-        self.s.squared(&mut self.result).unwrap();
-        self.result.vec[0] -= TWO_BY_3 * jj2;
-        self.result.vec[1] -= TWO_BY_3 * jj2;
-        self.result.vec[2] -= TWO_BY_3 * jj2;
+        self.s.squared(d1).unwrap();
+        d1.vec[0] -= TWO_BY_3 * jj2;
+        d1.vec[1] -= TWO_BY_3 * jj2;
+        d1.vec[2] -= TWO_BY_3 * jj2;
         Ok(())
     }
 }
 
 /// Computes the first derivative of the mean stress
-pub struct Deriv1InvariantSigmaM {
-    /// Holds the resulting derivative
-    pub result: Tensor2,
-}
+pub struct Deriv1InvariantSigmaM {}
 
 impl Deriv1InvariantSigmaM {
-    /// Returns a new instance
-    pub fn new(case: Mandel) -> Self {
-        Deriv1InvariantSigmaM {
-            result: Tensor2::new(case),
-        }
-    }
-
     /// Computes the first derivative of the deviatoric stress invariant (von Mises)
     ///
     /// ```text
@@ -176,44 +117,25 @@ impl Deriv1InvariantSigmaM {
     /// ─── = ─ I
     ///  dσ   3
     /// ```
-    pub fn compute(&mut self, sigma: &Tensor2) -> Result<(), StrError> {
-        let dim = self.result.vec.dim();
+    pub fn compute(d1: &mut Tensor2, sigma: &Tensor2) -> Result<(), StrError> {
+        let dim = d1.vec.dim();
         if sigma.vec.dim() != dim {
-            return Err("tensor 'sigma' is incompatible");
+            return Err("sigma and d1 tensors are incompatible");
         }
-        self.result.vec[0] = ONE_BY_3;
-        self.result.vec[1] = ONE_BY_3;
-        self.result.vec[2] = ONE_BY_3;
+        d1.vec[0] = ONE_BY_3;
+        d1.vec[1] = ONE_BY_3;
+        d1.vec[2] = ONE_BY_3;
         for i in 3..dim {
-            self.result.vec[i] = 0.0;
+            d1.vec[i] = 0.0;
         }
         Ok(())
     }
 }
 
 /// Computes the first derivative of the deviatoric stress invariant (von Mises)
-pub struct Deriv1InvariantSigmaD {
-    /// Auxiliary structure to compute the derivative of J2
-    pub aux: Deriv1InvariantJ2,
-
-    /// Holds the resulting derivative (Symmetric or Symmetric2D)
-    pub result: Tensor2,
-}
+pub struct Deriv1InvariantSigmaD {}
 
 impl Deriv1InvariantSigmaD {
-    /// Returns a new instance
-    ///
-    /// Note: `case` must be Symmetric or Symmetric2D
-    pub fn new(case: Mandel) -> Result<Self, StrError> {
-        if case == Mandel::General {
-            return Err("case must be Symmetric or Symmetric2D");
-        }
-        Ok(Deriv1InvariantSigmaD {
-            aux: Deriv1InvariantJ2::new(case).unwrap(),
-            result: Tensor2::new(case),
-        })
-    }
-
     /// Computes the first derivative of the deviatoric stress invariant (von Mises)
     ///
     /// ```text
@@ -226,21 +148,26 @@ impl Deriv1InvariantSigmaD {
     /// (σ is symmetric)
     /// ```
     ///
+    /// Note: `sigma` must be Symmetric or Symmetric2D.
+    ///
     /// # Results
     ///
     /// If `J2 > TOL_J2`, returns `J2` and `result` is valid;
     /// Otherwise, returns `None` and `result` is invalid.
-    pub fn compute(&mut self, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
-        let dim = self.result.vec.dim();
+    pub fn compute(d1: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
+        if sigma.case() == Mandel::General {
+            return Err("sigma tensor must be Symmetric or Symmetric2D");
+        }
+        let dim = d1.vec.dim();
         if sigma.vec.dim() != dim {
-            return Err("tensor 'sigma' is incompatible");
+            return Err("sigma and d1 tensors are incompatible");
         }
         let jj2 = sigma.invariant_jj2();
         if jj2 > TOL_J2 {
             let a = 0.5 * SQRT_3 / f64::powf(jj2, 0.5);
-            self.aux.compute(sigma).unwrap();
+            Deriv1InvariantJ2::compute(d1, sigma).unwrap();
             for i in 0..dim {
-                self.result.vec[i] = a * self.aux.result.vec[i];
+                d1.vec[i] *= a;
             }
             return Ok(Some(jj2));
         }
@@ -250,14 +177,14 @@ impl Deriv1InvariantSigmaD {
 
 /// Computes the first derivative of the Lode invariant
 pub struct Deriv1InvariantLode {
-    /// Auxiliary structure to compute the first derivative of J2
-    pub aux_jj2: Deriv1InvariantJ2,
+    /// first derivative of J2: dJ2/dσ (Symmetric or Symmetric2D)
+    pub d1_jj2: Tensor2,
+
+    /// first derivative of J3: dJ3/dσ (Symmetric or Symmetric2D)
+    pub d1_jj3: Tensor2,
 
     /// Auxiliary structure to compute the first derivative of J3
     pub aux_jj3: Deriv1InvariantJ3,
-
-    /// Holds the resulting derivative (Symmetric or Symmetric2D)
-    pub result: Tensor2,
 }
 
 impl Deriv1InvariantLode {
@@ -269,9 +196,9 @@ impl Deriv1InvariantLode {
             return Err("case must be Symmetric or Symmetric2D");
         }
         Ok(Deriv1InvariantLode {
-            aux_jj2: Deriv1InvariantJ2::new(case).unwrap(),
+            d1_jj2: Tensor2::new(case),
+            d1_jj3: Tensor2::new(case),
             aux_jj3: Deriv1InvariantJ3::new(case).unwrap(),
-            result: Tensor2::new(case),
         })
     }
 
@@ -289,29 +216,30 @@ impl Deriv1InvariantLode {
     ///     2 pow(J2,1.5)       4 pow(J2,2.5)
     /// ```
     ///
+    /// Note: `sigma` must be Symmetric or Symmetric2D.
+    ///
     /// # Results
     ///
-    /// If `J2 > TOL_J2`, returns `J2` and `result` is valid;
-    /// Otherwise, returns `None` and `result` is invalid.
-    pub fn compute(&mut self, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
-        if sigma.vec.dim() != self.result.vec.dim() {
-            return Err("tensor 'sigma' is incompatible");
+    /// If `J2 > TOL_J2`, returns `J2` and `d1` is valid;
+    /// Otherwise, returns `None` and `d1` is unchanged.
+    pub fn compute(&mut self, d1: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
+        let dim = self.d1_jj2.vec.dim();
+        if sigma.vec.dim() != dim {
+            return Err("sigma tensor is incompatible");
+        }
+        if d1.vec.dim() != dim {
+            return Err("d1 tensor is incompatible");
         }
         let jj2 = sigma.invariant_jj2();
         if jj2 > TOL_J2 {
-            self.aux_jj2.compute(sigma).unwrap();
-            self.aux_jj3.compute(sigma).unwrap();
+            Deriv1InvariantJ2::compute(&mut self.d1_jj2, sigma).unwrap();
+            self.aux_jj3.compute(&mut self.d1_jj3, sigma).unwrap();
             let jj3 = sigma.invariant_jj3();
             let a = 1.5 * SQRT_3 / f64::powf(jj2, 1.5);
             let b = 2.25 * SQRT_3 / f64::powf(jj2, 2.5);
-            vec_add(
-                &mut self.result.vec,
-                a,
-                &self.aux_jj3.result.vec,
-                -b * jj3,
-                &self.aux_jj2.result.vec,
-            )
-            .unwrap();
+            for i in 0..dim {
+                d1.vec[i] = a * self.d1_jj3.vec[i] - b * jj3 * self.d1_jj2.vec[i];
+            }
             return Ok(Some(jj2));
         }
         Ok(None)
@@ -326,7 +254,7 @@ mod tests {
     use super::Tensor2;
     use crate::{
         Deriv1InvariantJ2, Deriv1InvariantJ3, Deriv1InvariantLode, Deriv1InvariantSigmaD, Deriv1InvariantSigmaM,
-        Deriv1Norm, DerivFirst, Mandel, SampleTensor2, SamplesTensor2, IJ_TO_M, ONE_BY_3, SQRT_3_BY_2,
+        Deriv1Norm, Mandel, SampleTensor2, SamplesTensor2, IJ_TO_M, ONE_BY_3, SQRT_3_BY_2,
     };
     use russell_chk::{approx_eq, deriv_central5, vec_approx_eq};
     use russell_lab::{mat_approx_eq, Matrix};
@@ -352,34 +280,21 @@ mod tests {
     fn analytical_deriv(fn_name: F, d1: &mut Tensor2, sigma: &Tensor2) {
         match fn_name {
             F::Norm => {
-                let mut aux = Deriv1Norm::new(sigma.case()).unwrap();
-                aux.compute(sigma).unwrap().unwrap();
-                d1.mirror(&aux.result).unwrap();
+                Deriv1Norm::compute(d1, sigma).unwrap().unwrap();
             }
-            F::J2 => {
-                let mut aux = Deriv1InvariantJ2::new(sigma.case()).unwrap();
-                aux.compute(sigma).unwrap();
-                d1.mirror(&aux.result).unwrap();
-            }
+            F::J2 => Deriv1InvariantJ2::compute(d1, sigma).unwrap(),
             F::J3 => {
+                let mut s = Tensor2::new(sigma.case());
                 let mut aux = Deriv1InvariantJ3::new(sigma.case()).unwrap();
-                aux.compute(sigma).unwrap();
-                d1.mirror(&aux.result).unwrap();
+                aux.compute(d1, sigma).unwrap();
             }
-            F::SigmaM => {
-                let mut aux = Deriv1InvariantSigmaM::new(sigma.case());
-                aux.compute(sigma).unwrap();
-                d1.mirror(&aux.result).unwrap();
-            }
+            F::SigmaM => Deriv1InvariantSigmaM::compute(d1, sigma).unwrap(),
             F::SigmaD => {
-                let mut aux = Deriv1InvariantSigmaD::new(sigma.case()).unwrap();
-                aux.compute(sigma).unwrap();
-                d1.mirror(&aux.result).unwrap();
+                Deriv1InvariantSigmaD::compute(d1, sigma).unwrap().unwrap();
             }
             F::Lode => {
                 let mut aux = Deriv1InvariantLode::new(sigma.case()).unwrap();
-                aux.compute(sigma).unwrap().unwrap();
-                d1.mirror(&aux.result).unwrap();
+                aux.compute(d1, sigma).unwrap().unwrap();
             }
         };
     }

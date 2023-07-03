@@ -196,6 +196,10 @@ where
 
     /// Returns evenly spaced numbers over a specified closed interval
     ///
+    /// # Panics
+    ///
+    /// This function may panic if `count` cannot be cast as the number type of `start` and `stop`.
+    ///
     /// # Example
     ///
     /// ```
@@ -229,16 +233,20 @@ where
         if count == 2 {
             return Ok(res);
         }
-        let den = cast::<usize, T>(count - 1).ok_or("cannot cast 'count' to the selected number type")?;
+        let den = cast::<usize, T>(count - 1).unwrap();
         let step = (stop - start) / den;
         for i in 1..count {
-            let p = cast::<usize, T>(i).ok_or("cannot cast increment to the selected number type")?;
+            let p = cast::<usize, T>(i).unwrap();
             res.data[i] = start + p * step;
         }
         Ok(res)
     }
 
     /// Returns a mapped linear-space; evenly spaced numbers modified by a function
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if `count` cannot be cast as the number type of `start` and `stop`.
     ///
     /// # Example
     ///
@@ -276,10 +284,10 @@ where
         if count == 2 {
             return Ok(res);
         }
-        let den = cast::<usize, T>(count - 1).ok_or("cannot cast 'count' to the selected number type")?;
+        let den = cast::<usize, T>(count - 1).unwrap();
         let step = (stop - start) / den;
         for i in 1..count {
-            let p = cast::<usize, T>(i).ok_or("cannot cast increment to the selected number type")?;
+            let p = cast::<usize, T>(i).unwrap();
             res.data[i] = function(start + p * step);
         }
         Ok(res)
@@ -513,7 +521,7 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // handle empty vector
         if self.dim() == 0 {
-            write!(f, "[]")?;
+            write!(f, "[]").unwrap();
             return Ok(());
         }
         // find largest width
@@ -1008,15 +1016,11 @@ mod tests {
         // serialize
         let mut serialized = Vec::new();
         let mut serializer = rmp_serde::Serializer::new(&mut serialized);
-        u.serialize(&mut serializer)
-            .map_err(|_| "vector serialize failed")
-            .unwrap();
+        u.serialize(&mut serializer).unwrap();
         assert!(serialized.len() > 0);
         // deserialize
         let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
-        let b: NumVector<f64> = Deserialize::deserialize(&mut deserializer)
-            .map_err(|_| "cannot deserialize vector data")
-            .unwrap();
+        let b: NumVector<f64> = Deserialize::deserialize(&mut deserializer).unwrap();
         assert_eq!(
             format!("{}", b),
             "┌   ┐\n\
@@ -1030,14 +1034,18 @@ mod tests {
     fn array_1d_test<'a, T, U>(array: &'a T) -> String
     where
         T: AsArray1D<'a, U>,
-        U: 'a + std::fmt::Debug,
+        U: 'a + std::fmt::Display,
     {
-        format!("size = {:?}", array.size()).to_string()
+        let mut buf = String::new();
+        for i in 0..array.size() {
+            write!(&mut buf, "{}", array.at(i)).unwrap();
+        }
+        buf
     }
 
     #[test]
     fn as_array_1d_works() {
-        let u = NumVector::<i32>::from(&[1, 2]);
-        assert_eq!(array_1d_test(&u), "size = 2");
+        let u = NumVector::<i32>::from(&[1, 2, 3]);
+        assert_eq!(array_1d_test(&u), "123");
     }
 }

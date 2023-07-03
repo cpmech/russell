@@ -1,4 +1,4 @@
-use crate::{t4_ddot_t2, StrError, Tensor2, Tensor4};
+use crate::{t4_ddot_t2, Mandel, StrError, Tensor2, Tensor4};
 
 /// Implements the linear elasticity equations for small-strain problems
 pub struct LinElasticity {
@@ -86,11 +86,16 @@ impl LinElasticity {
     /// );
     /// ```
     pub fn new(young: f64, poisson: f64, two_dim: bool, plane_stress: bool) -> Self {
+        let case = if two_dim || plane_stress {
+            Mandel::Symmetric2D
+        } else {
+            Mandel::Symmetric
+        };
         let mut res = LinElasticity {
             young,
             poisson,
             plane_stress,
-            dd: Tensor4::new(true, two_dim || plane_stress),
+            dd: Tensor4::new(case),
         };
         res.calc_modulus();
         res
@@ -170,7 +175,7 @@ impl LinElasticity {
     /// # Example
     ///
     /// ```
-    /// use russell_tensor::{LinElasticity, StrError, Tensor2};
+    /// use russell_tensor::{Mandel, LinElasticity, StrError, Tensor2};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // define the strain matrix => will cause sum of rows of D
@@ -204,8 +209,8 @@ impl LinElasticity {
     ///          │    0    0    0    0    0  360    0    0  360 │\n\
     ///          └                                              ┘"
     ///     );
-    ///     let strain = Tensor2::from_matrix(strain_matrix_3d, true, false)?;
-    ///     let mut stress = Tensor2::new(true, false);
+    ///     let strain = Tensor2::from_matrix(strain_matrix_3d, Mandel::Symmetric)?;
+    ///     let mut stress = Tensor2::new(Mandel::Symmetric);
     ///     ela.calc_stress(&mut stress, &strain)?;
     ///     let out = stress.to_matrix();
     ///     assert_eq!(
@@ -237,8 +242,8 @@ impl LinElasticity {
     ///          │    0    0    0    0    0    0    0    0    0 │\n\
     ///          └                                              ┘"
     ///     );
-    ///     let strain = Tensor2::from_matrix(strain_matrix_2d, true, true)?;
-    ///     let mut stress = Tensor2::new(true, true);
+    ///     let strain = Tensor2::from_matrix(strain_matrix_2d, Mandel::Symmetric2D)?;
+    ///     let mut stress = Tensor2::new(Mandel::Symmetric2D);
     ///     ela.calc_stress(&mut stress, &strain)?;
     ///     let out = stress.to_matrix();
     ///     assert_eq!(
@@ -269,7 +274,7 @@ impl LinElasticity {
     /// # Example
     ///
     /// ```
-    /// use russell_tensor::{LinElasticity, StrError, Tensor2};
+    /// use russell_tensor::{Mandel, LinElasticity, StrError, Tensor2};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let young = 2500.0;
@@ -280,7 +285,7 @@ impl LinElasticity {
     ///             [sig_xx,     0.0, 0.0],
     ///             [   0.0,  sig_yy, 0.0],
     ///             [   0.0,     0.0, 0.0],
-    ///         ], true, true,
+    ///         ], Mandel::Symmetric2D,
     ///     )?;
     ///     let eps_zz = ela.out_of_plane_strain(&stress)?;
     ///     let eps_zz_correct = -(poisson / young) * (sig_xx + sig_yy);
@@ -330,7 +335,7 @@ impl LinElasticity {
 #[cfg(test)]
 mod tests {
     use super::LinElasticity;
-    use crate::{StrError, Tensor2};
+    use crate::{Mandel, Tensor2};
     use russell_chk::approx_eq;
 
     #[test]
@@ -389,7 +394,7 @@ mod tests {
     }
 
     #[test]
-    fn calc_stress_works() -> Result<(), StrError> {
+    fn calc_stress_works() {
         // plane-stress
         // from Bhatti page 514 (Young divided by 1000)
         let ela = LinElasticity::new(3000.0, 0.2, false, true);
@@ -400,11 +405,10 @@ mod tests {
                 [ 0.066791, 0.0164861,       0.0],
                 [      0.0,       0.0, 0.0050847],
             ],
-            true,
-            true,
-        )?;
-        let mut stress = Tensor2::new(true, true);
-        ela.calc_stress(&mut stress, &strain)?;
+            Mandel::Symmetric2D,
+        ).unwrap();
+        let mut stress = Tensor2::new(Mandel::Symmetric2D);
+        ela.calc_stress(&mut stress, &strain).unwrap();
         let out = stress.to_matrix();
         assert_eq!(
             format!("{:.3}", out),
@@ -425,11 +429,10 @@ mod tests {
                 [ -2.675290e-4,    3.6836e-6, 0.0],
                 [          0.0,          0.0, 0.0],
             ],
-            true,
-            true,
-        )?;
-        let mut stress = Tensor2::new(true, true);
-        ela.calc_stress(&mut stress, &strain)?;
+            Mandel::Symmetric2D,
+        ).unwrap();
+        let mut stress = Tensor2::new(Mandel::Symmetric2D);
+        ela.calc_stress(&mut stress, &strain).unwrap();
         let out = stress.to_matrix();
         assert_eq!(
             format!("{:.6}", out),
@@ -464,9 +467,9 @@ mod tests {
             [1.0, 1.0, 1.0],
             [1.0, 1.0, 1.0],
             [1.0, 1.0, 1.0]],
-        true, false)?;
-        let mut stress = Tensor2::new(true, false);
-        ela.calc_stress(&mut stress, &strain)?;
+        Mandel::Symmetric).unwrap();
+        let mut stress = Tensor2::new(Mandel::Symmetric);
+        ela.calc_stress(&mut stress, &strain).unwrap();
         let out = stress.to_matrix();
         assert_eq!(
             format!("{:.0}", out),
@@ -476,11 +479,10 @@ mod tests {
              │  720  720 1800 │\n\
              └                ┘"
         );
-        Ok(())
     }
 
     #[test]
-    fn out_of_plane_strain_fails_on_wrong_input() -> Result<(), StrError> {
+    fn out_of_plane_strain_fails_on_wrong_input() {
         let ela = LinElasticity::new(900.0, 0.25, true, false);
         #[rustfmt::skip]
         let stress = Tensor2::from_matrix(
@@ -489,16 +491,14 @@ mod tests {
                 [  0.0, 100.0, 0.0],
                 [  0.0,   0.0, 0.0],
             ],
-            true,
-            true,
-        )?;
+            Mandel::Symmetric2D,
+        ).unwrap();
         let res = ela.out_of_plane_strain(&stress);
         assert_eq!(res.err(), Some("out-of-plane strain works with plane-stress only"));
-        Ok(())
     }
 
     #[test]
-    fn out_of_plane_strain_works() -> Result<(), StrError> {
+    fn out_of_plane_strain_works() {
         let ela = LinElasticity::new(3000.0, 0.2, false, true);
         #[rustfmt::skip]
         let stress = Tensor2::from_matrix(
@@ -507,11 +507,9 @@ mod tests {
                 [ 166.977,  28.544, 0.0],
                 [   0.0,     0.0,   0.0],
             ],
-            true,
-            true,
-        )?;
-        let eps_zz = ela.out_of_plane_strain(&stress)?;
+            Mandel::Symmetric2D,
+        ).unwrap();
+        let eps_zz = ela.out_of_plane_strain(&stress).unwrap();
         approx_eq(eps_zz, 0.0050847, 1e-4);
-        Ok(())
     }
 }

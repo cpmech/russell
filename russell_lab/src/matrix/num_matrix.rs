@@ -1204,16 +1204,12 @@ mod tests {
         // serialize
         let mut serialized = Vec::new();
         let mut serializer = rmp_serde::Serializer::new(&mut serialized);
-        a.serialize(&mut serializer)
-            .map_err(|_| "matrix serialize failed")
-            .unwrap();
+        a.serialize(&mut serializer).unwrap();
         assert!(serialized.len() > 0);
 
         // deserialize
         let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
-        let b: NumMatrix<f64> = Deserialize::deserialize(&mut deserializer)
-            .map_err(|_| "cannot deserialize matrix data")
-            .unwrap();
+        let b: NumMatrix<f64> = Deserialize::deserialize(&mut deserializer).unwrap();
         assert_eq!(
             format!("{}", b),
             "┌       ┐\n\
@@ -1224,18 +1220,14 @@ mod tests {
         );
 
         // serialize to json
-        let json = serde_json::to_string(&a)
-            .map_err(|_| "serde_json::to_string failed")
-            .unwrap();
+        let json = serde_json::to_string(&a).unwrap();
         assert_eq!(
             json,
             r#"{"nrow":3,"ncol":3,"data":[1.0,4.0,7.0,2.0,5.0,8.0,3.0,6.0,9.0]}"#
         );
 
         // deserialize from json
-        let from_json: NumMatrix<f64> = serde_json::from_str(&json)
-            .map_err(|_| "serde_json::from_str failed")
-            .unwrap();
+        let from_json: NumMatrix<f64> = serde_json::from_str(&json).unwrap();
         assert_eq!(
             format!("{}", from_json),
             "┌       ┐\n\

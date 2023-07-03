@@ -107,7 +107,7 @@ mod tests {
         let a = Matrix::from(&[[1, 2], [3, 4]]);
         let path = "/tmp/russell_lab/test_mat_write_vismatrix.smat";
         mat_write_vismatrix(path, &a, 0.0).unwrap();
-        let contents = fs::read_to_string(path).map_err(|_| "cannot open file").unwrap();
+        let contents = fs::read_to_string(path).unwrap();
         assert_eq!(
             contents,
             "2 2 4\n\

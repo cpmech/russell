@@ -61,10 +61,10 @@ pub fn deriv_inverse_tensor(dai_da: &mut Tensor4, ai: &Tensor2) -> Result<(), St
 /// * `ai` -- the pre-computed inverse tensor (must be Symmetric or Symmetric2D)
 pub fn deriv_inverse_tensor_sym(dai_da: &mut Tensor4, ai: &Tensor2) -> Result<(), StrError> {
     if ai.case() == Mandel::General {
-        return Err("tensor 'ai' must be Symmetric or Symmetric2D");
+        return Err("ai tensor must be Symmetric or Symmetric2D");
     }
     if dai_da.case() != Mandel::Symmetric {
-        return Err("tensor 'dai_da' must be Symmetric");
+        return Err("dai_da tensor must be Symmetric");
     }
     t2_ssd(dai_da, -0.5, ai).unwrap();
     Ok(())
@@ -100,7 +100,7 @@ pub fn deriv_inverse_tensor_sym(dai_da: &mut Tensor4, ai: &Tensor2) -> Result<()
 /// Two temporary Tensor2 and a Tensor4 are allocated in this function.
 pub fn deriv_squared_tensor(da2_da: &mut Tensor4, ii: &mut Tensor2, a: &Tensor2) -> Result<(), StrError> {
     if da2_da.case() != Mandel::General {
-        return Err("tensor 'da2_da' must be General");
+        return Err("da2_da tensor must be General");
     }
     let dim = a.vec.dim();
     if ii.vec.dim() != dim {
@@ -159,10 +159,10 @@ pub fn deriv_squared_tensor(da2_da: &mut Tensor4, ii: &mut Tensor2, a: &Tensor2)
 /// * `a` -- the given tensor (must be Symmetric or Symmetric2D)
 pub fn deriv_squared_tensor_sym(da2_da: &mut Tensor4, ii: &mut Tensor2, a: &Tensor2) -> Result<(), StrError> {
     if a.case() == Mandel::General {
-        return Err("tensor 'a' must be Symmetric or Symmetric2D");
+        return Err("'a' tensor must be Symmetric or Symmetric2D");
     }
     if da2_da.case() != Mandel::Symmetric {
-        return Err("tensor 'da2_da' must be Symmetric");
+        return Err("da2_da tensor must be Symmetric");
     }
     let dim = a.vec.dim();
     if ii.vec.dim() != dim {
@@ -193,10 +193,10 @@ pub fn deriv_squared_tensor_sym(da2_da: &mut Tensor4, ii: &mut Tensor2, a: &Tens
 /// * `sigma` -- the given tensor (must be Symmetric or Symmetric2D)
 pub fn deriv2_invariant_jj2(d2: &mut Tensor4, sigma: &Tensor2) -> Result<(), StrError> {
     if sigma.case() == Mandel::General {
-        return Err("tensor 'sigma' must be Symmetric or Symmetric2D");
+        return Err("sigma tensor must be Symmetric or Symmetric2D");
     }
     if d2.case() != Mandel::Symmetric {
-        return Err("tensor 'd2' must be Symmetric");
+        return Err("d2 tensor must be Symmetric");
     }
     d2.mat.fill(0.0);
     d2.mat.set(0, 0, TWO_BY_3);
@@ -269,10 +269,10 @@ impl AuxDeriv2InvariantJ3 {
 /// * `sigma` -- the given tensor (must be Symmetric or Symmetric2D)
 pub fn deriv2_invariant_jj3(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantJ3, sigma: &Tensor2) -> Result<(), StrError> {
     if sigma.case() != aux.s.case() {
-        return Err("tensor 'sigma' is incompatible");
+        return Err("sigma tensor is incompatible");
     }
     if d2.case() != Mandel::Symmetric {
-        return Err("tensor 'd2' must be Symmetric");
+        return Err("d2 tensor must be Symmetric");
     }
     sigma.deviator(&mut aux.s).unwrap();
     t2_qsd_t2(&mut aux.aa, 0.5, &mut aux.s, &aux.ii).unwrap(); // aa := 0.5 qsd(s,I)
@@ -337,10 +337,10 @@ pub fn deriv2_invariant_sigma_d(
     sigma: &Tensor2,
 ) -> Result<Option<f64>, StrError> {
     if sigma.case() != aux.d1_jj2.case() {
-        return Err("tensor 'sigma' is incompatible");
+        return Err("sigma tensor is incompatible");
     }
     if d2.case() != Mandel::Symmetric {
-        return Err("tensor 'd2' must be Symmetric");
+        return Err("d2 tensor must be Symmetric");
     }
     let jj2 = sigma.invariant_jj2();
     if jj2 > TOL_J2 {
@@ -438,10 +438,10 @@ pub fn deriv2_invariant_lode(
     sigma: &Tensor2,
 ) -> Result<Option<f64>, StrError> {
     if sigma.case() != aux.s.case() {
-        return Err("tensor 'sigma' is incompatible");
+        return Err("sigma tensor is incompatible");
     }
     if d2.case() != Mandel::Symmetric {
-        return Err("tensor 'd2' must be Symmetric");
+        return Err("d2 tensor must be Symmetric");
     }
     let jj2 = sigma.invariant_jj2();
     if jj2 > TOL_J2 {
@@ -672,13 +672,13 @@ mod tests {
         let mut dai_da = Tensor4::new(Mandel::Symmetric);
         assert_eq!(
             deriv_inverse_tensor_sym(&mut dai_da, &ai).err(),
-            Some("tensor 'ai' must be Symmetric or Symmetric2D")
+            Some("ai tensor must be Symmetric or Symmetric2D")
         );
         let ai = Tensor2::new(Mandel::Symmetric2D);
         let mut dai_da = Tensor4::new(Mandel::Symmetric2D);
         assert_eq!(
             deriv_inverse_tensor_sym(&mut dai_da, &ai).err(),
-            Some("tensor 'dai_da' must be Symmetric")
+            Some("dai_da tensor must be Symmetric")
         );
     }
 
@@ -875,7 +875,7 @@ mod tests {
         let mut da2_da = Tensor4::new(Mandel::Symmetric);
         assert_eq!(
             deriv_squared_tensor(&mut da2_da, &mut ii, &a).err(),
-            Some("tensor 'da2_da' must be General")
+            Some("da2_da tensor must be General")
         );
     }
 
@@ -904,13 +904,13 @@ mod tests {
         let mut da2_da = Tensor4::new(Mandel::Symmetric);
         assert_eq!(
             deriv_squared_tensor_sym(&mut da2_da, &mut ii, &a).err(),
-            Some("tensor 'a' must be Symmetric or Symmetric2D")
+            Some("'a' tensor must be Symmetric or Symmetric2D")
         );
         let a = Tensor2::new(Mandel::Symmetric2D);
         let mut da2_da = Tensor4::new(Mandel::Symmetric2D);
         assert_eq!(
             deriv_squared_tensor_sym(&mut da2_da, &mut ii, &a).err(),
-            Some("tensor 'da2_da' must be Symmetric")
+            Some("da2_da tensor must be Symmetric")
         );
     }
 
@@ -1150,13 +1150,13 @@ mod tests {
         let mut d2 = Tensor4::new(Mandel::Symmetric);
         assert_eq!(
             deriv2_invariant_jj2(&mut d2, &sigma).err(),
-            Some("tensor 'sigma' must be Symmetric or Symmetric2D")
+            Some("sigma tensor must be Symmetric or Symmetric2D")
         );
         let sigma = Tensor2::new(Mandel::Symmetric2D);
         let mut d2 = Tensor4::new(Mandel::Symmetric2D);
         assert_eq!(
             deriv2_invariant_jj2(&mut d2, &sigma).err(),
-            Some("tensor 'd2' must be Symmetric")
+            Some("d2 tensor must be Symmetric")
         );
     }
 
@@ -1171,18 +1171,18 @@ mod tests {
         let sigma = Tensor2::new(Mandel::General);
         assert_eq!(
             deriv2_invariant_jj3(&mut d2, &mut aux, &sigma).err(),
-            Some("tensor 'sigma' is incompatible")
+            Some("sigma tensor is incompatible")
         );
         let sigma = Tensor2::new(Mandel::Symmetric2D);
         assert_eq!(
             deriv2_invariant_jj3(&mut d2, &mut aux, &sigma).err(),
-            Some("tensor 'sigma' is incompatible")
+            Some("sigma tensor is incompatible")
         );
         let sigma = Tensor2::new(Mandel::Symmetric);
         let mut d2 = Tensor4::new(Mandel::Symmetric2D);
         assert_eq!(
             deriv2_invariant_jj3(&mut d2, &mut aux, &sigma).err(),
-            Some("tensor 'd2' must be Symmetric")
+            Some("d2 tensor must be Symmetric")
         );
     }
 
@@ -1197,18 +1197,18 @@ mod tests {
         let sigma = Tensor2::new(Mandel::General);
         assert_eq!(
             deriv2_invariant_sigma_d(&mut d2, &mut aux, &sigma).err(),
-            Some("tensor 'sigma' is incompatible")
+            Some("sigma tensor is incompatible")
         );
         let sigma = Tensor2::new(Mandel::Symmetric2D);
         assert_eq!(
             deriv2_invariant_sigma_d(&mut d2, &mut aux, &sigma).err(),
-            Some("tensor 'sigma' is incompatible")
+            Some("sigma tensor is incompatible")
         );
         let sigma = Tensor2::new(Mandel::Symmetric);
         let mut d2 = Tensor4::new(Mandel::Symmetric2D);
         assert_eq!(
             deriv2_invariant_sigma_d(&mut d2, &mut aux, &sigma).err(),
-            Some("tensor 'd2' must be Symmetric")
+            Some("d2 tensor must be Symmetric")
         );
     }
 
@@ -1223,18 +1223,18 @@ mod tests {
         let sigma = Tensor2::new(Mandel::General);
         assert_eq!(
             deriv2_invariant_lode(&mut d2, &mut aux, &sigma).err(),
-            Some("tensor 'sigma' is incompatible")
+            Some("sigma tensor is incompatible")
         );
         let sigma = Tensor2::new(Mandel::Symmetric2D);
         assert_eq!(
             deriv2_invariant_lode(&mut d2, &mut aux, &sigma).err(),
-            Some("tensor 'sigma' is incompatible")
+            Some("sigma tensor is incompatible")
         );
         let sigma = Tensor2::new(Mandel::Symmetric);
         let mut d2 = Tensor4::new(Mandel::Symmetric2D);
         assert_eq!(
             deriv2_invariant_lode(&mut d2, &mut aux, &sigma).err(),
-            Some("tensor 'd2' must be Symmetric")
+            Some("d2 tensor must be Symmetric")
         );
     }
 

@@ -346,7 +346,6 @@ pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) -> Result
 ///     Ok(())
 /// }
 /// ```
-#[inline]
 pub fn vec_dyad_vec(tt: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Result<(), StrError> {
     let dim = tt.vec.dim();
     if dim == 4 {
@@ -754,7 +753,6 @@ pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Resu
 /// ```
 ///
 /// **Important:** The result is **not** necessarily minor-symmetric; therefore `dd` must be General.
-#[inline]
 #[rustfmt::skip]
 pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Result<(), StrError> {
     if dd.mat.dims().1 != 9 {
@@ -1066,7 +1064,6 @@ pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Resu
 /// # Note
 ///
 /// Even if `A` is Symmetric 2D, the result may not be expressed by a Symmetric 2D Tensor4.
-#[inline]
 #[rustfmt::skip]
 pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) -> Result<(), StrError> {
     if dd.mat.dims().1 != 6 {
@@ -1230,7 +1227,6 @@ pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) -> Result<(), StrError> {
 /// # Note
 ///
 /// Even if `A` and `B` are Symmetric 2D, the result may not be expressed by a Symmetric 2D Tensor4.
-#[inline]
 #[rustfmt::skip]
 pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Result<(), StrError> {
     if dd.mat.dims().1 != 6 {

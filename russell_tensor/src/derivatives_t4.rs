@@ -89,6 +89,7 @@ pub fn deriv_inverse_tensor_sym(dai_da: &mut Tensor4, ai: &Tensor2) -> Result<()
 /// ## Output
 ///
 /// * `da2_da` -- the derivative of the squared tensor (must be General)
+/// * `ii` -- second-order identity tensor
 ///
 /// ## Input
 ///
@@ -97,13 +98,22 @@ pub fn deriv_inverse_tensor_sym(dai_da: &mut Tensor4, ai: &Tensor2) -> Result<()
 /// ## Note
 ///
 /// Two temporary Tensor2 and a Tensor4 are allocated in this function.
-pub fn deriv_squared_tensor(da2_da: &mut Tensor4, a: &Tensor2) -> Result<(), StrError> {
+pub fn deriv_squared_tensor(da2_da: &mut Tensor4, ii: &mut Tensor2, a: &Tensor2) -> Result<(), StrError> {
     if da2_da.case() != Mandel::General {
         return Err("tensor 'da2_da' must be General");
     }
+    let dim = a.vec.dim();
+    if ii.vec.dim() != dim {
+        return Err("ii tensor is incompatible");
+    }
+
+    // set identity tensor
+    ii.clear();
+    ii.vec[0] = 1.0;
+    ii.vec[1] = 1.0;
+    ii.vec[2] = 1.0;
 
     // compute A odyad I
-    let ii = Tensor2::identity(a.case());
     t2_odyad_t2(da2_da, 1.0, &a, &ii).unwrap();
 
     // compute I odyad transpose(A)
@@ -142,18 +152,26 @@ pub fn deriv_squared_tensor(da2_da: &mut Tensor4, a: &Tensor2) -> Result<(), Str
 /// ## Output
 ///
 /// * `da2_da` -- the derivative of the squared tensor (must be Symmetric)
+/// * `ii` -- second-order identity tensor
 ///
 /// ## Input
 ///
 /// * `a` -- the given tensor (must be Symmetric or Symmetric2D)
-pub fn deriv_squared_tensor_sym(da2_da: &mut Tensor4, a: &Tensor2) -> Result<(), StrError> {
+pub fn deriv_squared_tensor_sym(da2_da: &mut Tensor4, ii: &mut Tensor2, a: &Tensor2) -> Result<(), StrError> {
     if a.case() == Mandel::General {
         return Err("tensor 'a' must be Symmetric or Symmetric2D");
     }
     if da2_da.case() != Mandel::Symmetric {
         return Err("tensor 'da2_da' must be Symmetric");
     }
-    let ii = Tensor2::identity(a.case());
+    let dim = a.vec.dim();
+    if ii.vec.dim() != dim {
+        return Err("ii tensor is incompatible");
+    }
+    ii.clear();
+    ii.vec[0] = 1.0;
+    ii.vec[1] = 1.0;
+    ii.vec[2] = 1.0;
     t2_qsd_t2(da2_da, 0.5, a, &ii).unwrap();
     Ok(())
 }
@@ -779,7 +797,8 @@ mod tests {
     fn check_deriv_squared(a: &Tensor2, tol: f64) {
         // compute analytical derivative
         let mut dd_ana = Tensor4::new(Mandel::General);
-        deriv_squared_tensor(&mut dd_ana, &a).unwrap();
+        let mut ii = Tensor2::new(a.case());
+        deriv_squared_tensor(&mut dd_ana, &mut ii, &a).unwrap();
 
         // check using index expression
         let arr = dd_ana.to_array();
@@ -810,7 +829,8 @@ mod tests {
     fn check_deriv_squared_sym(a: &Tensor2, tol: f64) {
         // compute analytical derivative
         let mut dd_ana = Tensor4::new(Mandel::Symmetric);
-        deriv_squared_tensor_sym(&mut dd_ana, &a).unwrap();
+        let mut ii = Tensor2::new(a.case());
+        deriv_squared_tensor_sym(&mut dd_ana, &mut ii, &a).unwrap();
 
         // check using index expression
         let arr = dd_ana.to_array();
@@ -842,9 +862,10 @@ mod tests {
     #[test]
     fn deriv_squared_tensor_captures_errors() {
         let a = Tensor2::new(Mandel::General);
+        let mut ii = Tensor2::new(a.case());
         let mut da2_da = Tensor4::new(Mandel::Symmetric);
         assert_eq!(
-            deriv_squared_tensor(&mut da2_da, &a).err(),
+            deriv_squared_tensor(&mut da2_da, &mut ii, &a).err(),
             Some("tensor 'da2_da' must be General")
         );
     }
@@ -870,15 +891,16 @@ mod tests {
     #[test]
     fn deriv_squared_tensor_sym_captures_errors() {
         let a = Tensor2::new(Mandel::General);
+        let mut ii = Tensor2::new(a.case());
         let mut da2_da = Tensor4::new(Mandel::Symmetric);
         assert_eq!(
-            deriv_squared_tensor_sym(&mut da2_da, &a).err(),
+            deriv_squared_tensor_sym(&mut da2_da, &mut ii, &a).err(),
             Some("tensor 'a' must be Symmetric or Symmetric2D")
         );
         let a = Tensor2::new(Mandel::Symmetric2D);
         let mut da2_da = Tensor4::new(Mandel::Symmetric2D);
         assert_eq!(
-            deriv_squared_tensor_sym(&mut da2_da, &a).err(),
+            deriv_squared_tensor_sym(&mut da2_da, &mut ii, &a).err(),
             Some("tensor 'da2_da' must be Symmetric")
         );
     }

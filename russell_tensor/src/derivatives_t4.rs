@@ -871,11 +871,17 @@ mod tests {
     #[test]
     fn deriv_squared_tensor_captures_errors() {
         let a = Tensor2::new(Mandel::General);
-        let mut ii = Tensor2::new(a.case());
+        let mut ii = Tensor2::new(Mandel::General);
         let mut da2_da = Tensor4::new(Mandel::Symmetric);
         assert_eq!(
             deriv_squared_tensor(&mut da2_da, &mut ii, &a).err(),
             Some("da2_da tensor must be General")
+        );
+        let mut da2_da = Tensor4::new(Mandel::General);
+        let mut ii = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(
+            deriv_squared_tensor(&mut da2_da, &mut ii, &a).err(),
+            Some("ii tensor is incompatible")
         );
     }
 
@@ -900,7 +906,7 @@ mod tests {
     #[test]
     fn deriv_squared_tensor_sym_captures_errors() {
         let a = Tensor2::new(Mandel::General);
-        let mut ii = Tensor2::new(a.case());
+        let mut ii = Tensor2::new(Mandel::General);
         let mut da2_da = Tensor4::new(Mandel::Symmetric);
         assert_eq!(
             deriv_squared_tensor_sym(&mut da2_da, &mut ii, &a).err(),
@@ -911,6 +917,12 @@ mod tests {
         assert_eq!(
             deriv_squared_tensor_sym(&mut da2_da, &mut ii, &a).err(),
             Some("da2_da tensor must be Symmetric")
+        );
+        let mut da2_da = Tensor4::new(Mandel::Symmetric);
+        let mut ii = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(
+            deriv_squared_tensor_sym(&mut da2_da, &mut ii, &a).err(),
+            Some("ii tensor is incompatible")
         );
     }
 

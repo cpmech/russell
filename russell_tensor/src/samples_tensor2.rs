@@ -1,6 +1,6 @@
 use crate::{SQRT_2_BY_3, SQRT_3};
 
-/// Collects some values related to a sample Tensor2
+/// Collects values related to a sample Tensor2
 pub struct SampleTensor2 {
     /// Sets the description
     pub desc: &'static str,
@@ -39,7 +39,7 @@ pub struct SampleTensor2 {
     pub eigenprojectors: Option<[[[f64; 3]; 3]; 3]>,
 }
 
-/// Holds some second-order tensor samples
+/// Holds second-order tensor samples
 pub struct SamplesTensor2 {}
 
 impl SamplesTensor2 {

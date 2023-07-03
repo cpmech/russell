@@ -1,6 +1,6 @@
 use crate::{Mandel, StrError, Tensor2, ONE_BY_3, SQRT_3, TOL_J2, TWO_BY_3};
 
-/// Calculates the first derivative of the norm
+/// Calculates the first derivative of the norm w.r.t. the defining Tensor2
 ///
 /// ```text
 /// d‖σ‖    σ
@@ -28,7 +28,7 @@ pub fn deriv1_norm(d1: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, Str
     Ok(None)
 }
 
-/// Calculates the first derivative of the J2 invariant
+/// Calculates the first derivative of the J2 invariant w.r.t. the stress tensor
 ///
 /// ```text
 /// s = deviator(σ)
@@ -48,7 +48,7 @@ pub fn deriv1_invariant_jj2(d1: &mut Tensor2, sigma: &Tensor2) -> Result<(), Str
     sigma.deviator(d1)
 }
 
-/// Calculates the first derivative of the J3 invariant
+/// Calculates the first derivative of the J3 invariant w.r.t. the stress tensor
 ///
 /// ```text
 /// s = deviator(σ)
@@ -81,7 +81,7 @@ pub fn deriv1_invariant_jj3(d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2) 
     Ok(())
 }
 
-/// Calculates the first derivative of the deviatoric stress invariant (von Mises)
+/// Calculates the first derivative of the mean stress invariant w.r.t. the stress tensor
 ///
 /// ```text
 /// dσm   1
@@ -102,7 +102,7 @@ pub fn deriv1_invariant_sigma_m(d1: &mut Tensor2, sigma: &Tensor2) -> Result<(),
     Ok(())
 }
 
-/// Calculates the first derivative of the deviatoric stress invariant (von Mises)
+/// Calculates the first derivative of the deviatoric stress invariant (von Mises) w.r.t. the stress tensor
 ///
 /// ```text
 /// s = deviator(σ)
@@ -140,7 +140,7 @@ pub fn deriv1_invariant_sigma_d(d1: &mut Tensor2, sigma: &Tensor2) -> Result<Opt
     Ok(None)
 }
 
-/// Calculates the first derivative of the Lode invariant
+/// Calculates the first derivative of the Lode invariant w.r.t. the stress tensor
 ///
 /// ```text
 /// dl     dJ3        dJ2

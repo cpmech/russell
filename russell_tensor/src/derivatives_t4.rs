@@ -158,7 +158,7 @@ pub fn deriv_squared_tensor_sym(da2_da: &mut Tensor4, a: &Tensor2) -> Result<(),
     Ok(())
 }
 
-/// Computes the second derivative of the J2 invariant w.r.t. the defining tensor
+/// Calculates the second derivative of the J2 invariant w.r.t. the stress tensor
 ///
 /// ```text
 ///  d²J2
@@ -229,7 +229,7 @@ impl Deriv2InvariantJ3 {
         })
     }
 
-    /// Computes the second derivative of the J3 invariant w.r.t. the defining tensor
+    /// Calculates the second derivative of the J3 invariant w.r.t. the stress tensor
     ///
     /// ```text
     /// s := deviator(σ)
@@ -285,7 +285,7 @@ impl Deriv2InvariantSigmaD {
         })
     }
 
-    /// Computes the second derivative of the deviatoric invariant w.r.t. the defining tensor
+    /// Calculates the second derivative of the deviatoric invariant (von Mises) w.r.t. the stress tensor
     ///
     /// ```text
     ///  d²σd     d²J2      dJ2   dJ2
@@ -382,7 +382,7 @@ impl Deriv2InvariantLode {
         })
     }
 
-    /// Computes the second derivative of the Lode invariant w.r.t. the defining tensor
+    /// Calculates the second derivative of the Lode invariant w.r.t. the stress tensor
     ///
     /// ```text
     ///  d²l      d²J3         d²J2        dJ3   dJ2   dJ2   dJ3          dJ2   dJ2

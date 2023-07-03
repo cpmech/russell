@@ -331,18 +331,20 @@ mod tests {
     }
 
     // checks ∂f/∂σᵢⱼ
-    fn check_deriv(fn_name: F, case: Mandel, sample: &SampleTensor2, tol: f64, verbose: bool) {
+    fn check_deriv(fn_name: F, case: Mandel, sample: &SampleTensor2, tol: f64, _verbose: bool) {
         let sigma = Tensor2::from_matrix(&sample.matrix, case).unwrap();
         let mut d1 = Tensor2::new(case);
         analytical_deriv(fn_name, &mut d1, &sigma);
         let ana = d1.to_matrix();
         let num = numerical_deriv(&sigma, fn_name);
         let num_mandel = numerical_deriv_mandel(&sigma, fn_name);
+        /*
         if verbose {
             println!("analytical derivative:\n{}", ana);
             println!("numerical derivative:\n{}", num);
             println!("numerical derivative (Mandel):\n{}", num_mandel);
         }
+        */
         mat_approx_eq(&ana, &num, tol);
         mat_approx_eq(&ana, &num_mandel, tol);
     }
@@ -405,43 +407,68 @@ mod tests {
 
     #[test]
     fn check_for_none() {
-        /*
         let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_O.matrix, Mandel::Symmetric).unwrap();
         let mut d1 = Tensor2::new(Mandel::Symmetric);
-        let mut aux = Tensor2::new(Mandel::Symmetric);
-        assert_eq!(sigma.deriv1_norm(&mut d1).unwrap(), None);
-        assert_eq!(sigma.deriv1_invariant_sigma_d(&mut d1).unwrap(), None);
-        assert_eq!(sigma.deriv1_invariant_lode(&mut d1, &mut aux).unwrap(), None);
-        */
+        let mut s = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(deriv1_norm(&mut d1, &sigma).unwrap(), None);
+        assert_eq!(deriv1_invariant_sigma_d(&mut d1, &sigma).unwrap(), None);
+        assert_eq!(deriv1_invariant_lode(&mut d1, &mut s, &sigma).unwrap(), None);
     }
 
     #[test]
     fn check_errors() {
-        /*
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Mandel::General).unwrap();
-        let mut aux = sigma.clone();
-        let mut d1 = Tensor2::new(Mandel::Symmetric);
-        assert_eq!(sigma.deriv1_norm(&mut d1).err(), Some("tensors are incompatible"));
+        let sigma_gen = Tensor2::new(Mandel::General);
+        let sigma_sym = Tensor2::new(Mandel::Symmetric);
+        let mut s_gen = Tensor2::new(Mandel::General);
+        let mut s_sym = Tensor2::new(Mandel::Symmetric);
+        let mut d1_gen = Tensor2::new(Mandel::General);
         assert_eq!(
-            sigma.deriv1_invariant_jj2(&mut d1).err(),
+            deriv1_norm(&mut d1_gen, &sigma_sym).err(),
+            Some("sigma and d1 tensors are incompatible")
+        );
+        assert_eq!(
+            deriv1_invariant_jj2(&mut d1_gen, &sigma_gen).err(),
+            Some("sigma tensor must be Symmetric or Symmetric2D")
+        );
+        assert_eq!(
+            deriv1_invariant_jj2(&mut d1_gen, &sigma_sym).err(),
             Some("tensors are incompatible")
         );
         assert_eq!(
-            sigma.deriv1_invariant_jj3(&mut d1, &mut aux).err(),
-            Some("tensors are incompatible")
+            deriv1_invariant_jj3(&mut d1_gen, &mut s_gen, &sigma_gen).err(),
+            Some("sigma tensor must be Symmetric or Symmetric2D")
         );
         assert_eq!(
-            sigma.deriv1_invariant_sigma_m(&mut d1).err(),
-            Some("tensors are incompatible")
+            deriv1_invariant_jj3(&mut d1_gen, &mut s_gen, &sigma_sym).err(),
+            Some("s tensor is incompatible")
         );
         assert_eq!(
-            sigma.deriv1_invariant_sigma_d(&mut d1).err(),
-            Some("tensors are incompatible")
+            deriv1_invariant_jj3(&mut d1_gen, &mut s_sym, &sigma_sym).err(),
+            Some("d1 tensor is incompatible")
         );
         assert_eq!(
-            sigma.deriv1_invariant_lode(&mut d1, &mut aux).err(),
-            Some("tensors are incompatible")
+            deriv1_invariant_sigma_m(&mut d1_gen, &sigma_sym).err(),
+            Some("sigma and d1 tensors are incompatible")
         );
-        */
+        assert_eq!(
+            deriv1_invariant_sigma_d(&mut d1_gen, &sigma_gen).err(),
+            Some("sigma tensor must be Symmetric or Symmetric2D")
+        );
+        assert_eq!(
+            deriv1_invariant_sigma_d(&mut d1_gen, &sigma_sym).err(),
+            Some("d1 tensor is incompatible")
+        );
+        assert_eq!(
+            deriv1_invariant_lode(&mut d1_gen, &mut s_gen, &sigma_gen).err(),
+            Some("sigma tensor must be Symmetric or Symmetric2D")
+        );
+        assert_eq!(
+            deriv1_invariant_lode(&mut d1_gen, &mut s_gen, &sigma_sym).err(),
+            Some("s tensor is incompatible")
+        );
+        assert_eq!(
+            deriv1_invariant_lode(&mut d1_gen, &mut s_sym, &sigma_sym).err(),
+            Some("d1 tensor is incompatible")
+        );
     }
 }

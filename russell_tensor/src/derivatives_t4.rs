@@ -1138,6 +1138,18 @@ mod tests {
         // symmetric
         let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_U.matrix, Mandel::Symmetric).unwrap();
         check_deriv2_sigma_d(&sigma, 1e-11);
+
+        // symmetric
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_S.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_sigma_d(&sigma, 1e-11);
+
+        // symmetric 2d
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_X.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_sigma_d(&sigma, 1e-11);
+
+        // symmetric 2d
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_Y.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_sigma_d(&sigma, 1e-11);
     }
 
     #[test]
@@ -1154,6 +1166,18 @@ mod tests {
         // symmetric
         let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_U.matrix, Mandel::Symmetric).unwrap();
         check_deriv2_lode(&sigma, 1e-10);
+
+        // symmetric
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_S.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_lode(&sigma, 1e-11);
+
+        // symmetric 2d
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_X.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_lode(&sigma, 1e-10);
+
+        // symmetric 2d
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_Y.matrix, Mandel::Symmetric).unwrap();
+        check_deriv2_lode(&sigma, 1e-9);
     }
 
     #[test]

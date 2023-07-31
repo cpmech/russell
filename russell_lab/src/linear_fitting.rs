@@ -47,7 +47,6 @@ pub fn linear_fitting(x: &Vector, y: &Vector, pass_through_zero: bool) -> Result
         m = sum_xy / sum_xx;
     } else {
         let den = sum_x * sum_x - n * sum_xx;
-        println!("den = {}", den);
         if den == 0.0 {
             return Ok((0.0, f64::INFINITY));
         }

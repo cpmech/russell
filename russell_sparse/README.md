@@ -136,7 +136,7 @@ The data directory contains an example of Matrix Market file named `bfwb62.mtx` 
 Run the command:
 
 ```bash
-cargo run --release --bin solve_mm_build -- data/matrix_market/bfwb62.mtx
+cargo run --release --bin solve_mm_build -- ~/Downloads/matrix-market/bfwb62.mtx
 ```
 
 Or

@@ -8,3 +8,5 @@ members = [
     "russell_stat",
     "russell_tensor"
 ]
+
+resolver = "2"

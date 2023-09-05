@@ -10,15 +10,31 @@ Documentation:
 
 ## Installation
 
-Install some libraries:
+Essential dependencies:
 
 ```bash
-sudo apt-get install \
-    liblapacke-dev \
-    libmumps-seq-dev \
-    libopenblas-dev \
-    libsuitesparse-dev
+sudo apt-get install liblapacke-dev libopenblas-dev libsuitesparse-dev
 ```
+
+**Important:** The Debian `libmumps-seq-dev` package does not come with Metis or OpenMP, which makes it possible slower. Therefore, it may be advantageous to use a locally compiled MUMPS library with Metis and OpenMP. Below we recommend Option 1, but Option 2 is also available.
+
+### Option 1: Locally compiled MUMPS solver
+
+Follow the steps in https://github.com/cpmech/script-install-mumps and set the environment variable:
+
+```bash
+export USE_LOCAL_MUMPS=1
+```
+
+### Option 2: Debian/Ubuntu package for the MUMPS solver
+
+Install:
+
+```shell
+sudo apt-get install libmumps-seq-dev
+```
+
+### Crates.io
 
 [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse)
 
@@ -29,27 +45,15 @@ sudo apt-get install \
 russell_sparse = "*"
 ```
 
-### Optional: Use a locally compiled MUMPS library
-
-The standard Debian `libmumps-seq-dev` does not come with Metis or OpenMP that may lead to faster calculations. Therefore, it may be advantageous to use a locally compiled MUMPS library.
-
-We just need the include files in `/usr/local/include/mumps` and a library file named `libdmumps_open_seq_omp` in `/usr/local/lib/mumps`.
-
-Follow the instructions from https://github.com/cpmech/script-install-mumps and then set the environment variable `USE_LOCAL_MUMPS=1`:
-
-```bash
-export USE_LOCAL_MUMPS=1
-```
-
 ### Number of threads
 
-By default OpenBLAS will use all available threads, including Hyper-Threads that make the performance worse. Thus, it is best to set the following environment variable:
+By default OpenBLAS will use all available threads, including Hyper-Threads which may make the performance worse. Thus, it is best to set the following environment variable:
 
 ```bash
 export OPENBLAS_NUM_THREADS=<real-core-count>
 ```
 
-Furthermore, if working on a multi-threaded application, it is recommended to set:
+Furthermore, if working on a multi-threaded application where the solver should not be multi-threaded, you may set:
 
 ```bash
 export OPENBLAS_NUM_THREADS=1

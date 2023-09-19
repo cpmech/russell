@@ -1,7 +1,9 @@
 use super::SparseTriplet;
 use crate::StrError;
+use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::path::Path;
 
 struct MatrixMarketData {
     // header
@@ -165,7 +167,7 @@ impl MatrixMarketData {
 ///
 /// # Input
 ///
-/// * `filepath` -- The full file path with filename
+/// * `full_path` -- may be a String, &str, or Path
 /// * `sym_mirror` -- Tells the reader to mirror the **off diagonal** entries,
 ///                   if the symmetric option is found in the header.
 ///
@@ -323,8 +325,12 @@ impl MatrixMarketData {
 ///     Ok(())
 /// }
 /// ```
-pub fn read_matrix_market(filepath: &String, sym_mirror: bool) -> Result<(SparseTriplet, bool), StrError> {
-    let input = File::open(filepath).map_err(|_| "cannot open file")?;
+pub fn read_matrix_market<P>(full_path: &P, sym_mirror: bool) -> Result<(SparseTriplet, bool), StrError>
+where
+    P: AsRef<OsStr> + ?Sized,
+{
+    let path = Path::new(full_path).to_path_buf();
+    let input = File::open(path).map_err(|_| "cannot open file")?;
     let buffered = BufReader::new(input);
     let mut lines_iter = buffered.lines();
 

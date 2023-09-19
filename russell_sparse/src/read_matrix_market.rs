@@ -36,7 +36,7 @@ impl MatrixMarketData {
     }
 
     #[inline]
-    fn parse_header(&mut self, line: &String) -> Result<(), StrError> {
+    fn parse_header(&mut self, line: &str) -> Result<(), StrError> {
         let mut data = line.trim_start().trim_end_matches("\n").split_whitespace();
 
         match data.next() {
@@ -88,7 +88,7 @@ impl MatrixMarketData {
     }
 
     #[inline]
-    fn parse_dimensions(&mut self, line: &String) -> Result<bool, StrError> {
+    fn parse_dimensions(&mut self, line: &str) -> Result<bool, StrError> {
         let maybe_data = line.trim_start().trim_end_matches("\n");
         if maybe_data.starts_with("%") || maybe_data == "" {
             return Ok(false); // ignore comments or empty lines; returns false == not parsed
@@ -120,7 +120,7 @@ impl MatrixMarketData {
     }
 
     #[inline]
-    fn parse_triple(&mut self, line: &String) -> Result<bool, StrError> {
+    fn parse_triple(&mut self, line: &str) -> Result<bool, StrError> {
         let maybe_data = line.trim_start().trim_end_matches("\n");
         if maybe_data.starts_with("%") || maybe_data == "" {
             return Ok(false); // ignore comments or empty lines
@@ -367,7 +367,7 @@ where
     }
 
     // allocate triplet
-    let mut coo = CooMatrix::new(layout, data.m as usize, data.n as usize, max as usize)?;
+    let mut coo = CooMatrix::new(layout, data.m as usize, data.n as usize, max as usize).unwrap();
 
     // read and parse triples
     loop {
@@ -378,20 +378,20 @@ where
                     if data.symmetric {
                         match symmetric_handling {
                             SymmetricHandling::LeaveAsLower => {
-                                coo.put(data.i as usize, data.j as usize, data.aij)?;
+                                coo.put(data.i as usize, data.j as usize, data.aij).unwrap();
                             }
                             SymmetricHandling::SwapToUpper => {
-                                coo.put(data.j as usize, data.i as usize, data.aij)?;
+                                coo.put(data.j as usize, data.i as usize, data.aij).unwrap();
                             }
                             SymmetricHandling::MakeItFull => {
-                                coo.put(data.i as usize, data.j as usize, data.aij)?;
+                                coo.put(data.i as usize, data.j as usize, data.aij).unwrap();
                                 if data.i != data.j {
-                                    coo.put(data.j as usize, data.i as usize, data.aij)?;
+                                    coo.put(data.j as usize, data.i as usize, data.aij).unwrap();
                                 }
                             }
                         }
                     } else {
-                        coo.put(data.i as usize, data.j as usize, data.aij)?;
+                        coo.put(data.i as usize, data.j as usize, data.aij).unwrap();
                     };
                 }
             }
@@ -420,47 +420,47 @@ mod tests {
         let mut data = MatrixMarketData::new();
 
         assert_eq!(
-            data.parse_header(&String::from("  \n")),
+            data.parse_header("  \n"),
             Err("cannot find the keyword %%MatrixMarket on the first line")
         );
         assert_eq!(
-            data.parse_header(&String::from("MatrixMarket  ")),
+            data.parse_header("MatrixMarket  "),
             Err("the header (first line) must start with %%MatrixMarket"),
         );
 
         assert_eq!(
-            data.parse_header(&String::from("  %%MatrixMarket")),
+            data.parse_header("  %%MatrixMarket"),
             Err("cannot find the first option in the header line"),
         );
         assert_eq!(
-            data.parse_header(&String::from("%%MatrixMarket   wrong")),
+            data.parse_header("%%MatrixMarket   wrong"),
             Err("after %%MatrixMarket, the first option must be \"matrix\""),
         );
 
         assert_eq!(
-            data.parse_header(&String::from("%%MatrixMarket matrix  ")),
+            data.parse_header("%%MatrixMarket matrix  "),
             Err("cannot find the second option in the header line"),
         );
         assert_eq!(
-            data.parse_header(&String::from("%%MatrixMarket   matrix wrong")),
+            data.parse_header("%%MatrixMarket   matrix wrong"),
             Err("after %%MatrixMarket, the second option must be \"coordinate\""),
         );
 
         assert_eq!(
-            data.parse_header(&String::from("%%MatrixMarket matrix  coordinate")),
+            data.parse_header("%%MatrixMarket matrix  coordinate"),
             Err("cannot find the third option in the header line"),
         );
         assert_eq!(
-            data.parse_header(&String::from("%%MatrixMarket matrix    coordinate  wrong")),
+            data.parse_header("%%MatrixMarket matrix    coordinate  wrong"),
             Err("after %%MatrixMarket, the third option must be \"real\""),
         );
 
         assert_eq!(
-            data.parse_header(&String::from("%%MatrixMarket  matrix coordinate real")),
+            data.parse_header("%%MatrixMarket  matrix coordinate real"),
             Err("cannot find the fourth option in the header line"),
         );
         assert_eq!(
-            data.parse_header(&String::from("  %%MatrixMarket matrix coordinate real wrong")),
+            data.parse_header("  %%MatrixMarket matrix coordinate real wrong"),
             Err("after %%MatrixMarket, the fourth option must be either \"general\" or \"symmetric\""),
         );
     }
@@ -470,38 +470,38 @@ mod tests {
         let mut data = MatrixMarketData::new();
 
         assert_eq!(
-            data.parse_dimensions(&String::from(" wrong \n")).err(),
+            data.parse_dimensions(" wrong \n").err(),
             Some("cannot parse number of rows")
         );
 
         assert_eq!(
-            data.parse_dimensions(&String::from(" 1 \n")).err(),
+            data.parse_dimensions(" 1 \n").err(),
             Some("cannot read number of columns")
         );
         assert_eq!(
-            data.parse_dimensions(&String::from(" 1 wrong")).err(),
+            data.parse_dimensions(" 1 wrong").err(),
             Some("cannot parse number of columns")
         );
 
         assert_eq!(
-            data.parse_dimensions(&String::from(" 1 1   \n")).err(),
+            data.parse_dimensions(" 1 1   \n").err(),
             Some("cannot read number of non-zeros")
         );
         assert_eq!(
-            data.parse_dimensions(&String::from(" 1 1  wrong")).err(),
+            data.parse_dimensions(" 1 1  wrong").err(),
             Some("cannot parse number of non-zeros")
         );
 
         assert_eq!(
-            data.parse_dimensions(&String::from(" 0 1  1")).err(),
+            data.parse_dimensions(" 0 1  1").err(),
             Some("found invalid (zero or negative) dimensions")
         );
         assert_eq!(
-            data.parse_dimensions(&String::from(" 1 0  1")).err(),
+            data.parse_dimensions(" 1 0  1").err(),
             Some("found invalid (zero or negative) dimensions")
         );
         assert_eq!(
-            data.parse_dimensions(&String::from(" 1 1  0")).err(),
+            data.parse_dimensions(" 1 1  0").err(),
             Some("found invalid (zero or negative) dimensions")
         );
     }
@@ -513,73 +513,47 @@ mod tests {
         data.n = 2;
         data.nnz = 1;
 
-        assert_eq!(
-            data.parse_triple(&String::from(" wrong \n")).err(),
-            Some("cannot parse index i")
-        );
+        assert_eq!(data.parse_triple(" wrong \n").err(), Some("cannot parse index i"));
 
-        assert_eq!(
-            data.parse_triple(&String::from(" 1 \n")).err(),
-            Some("cannot read index j")
-        );
-        assert_eq!(
-            data.parse_triple(&String::from(" 1 wrong")).err(),
-            Some("cannot parse index j")
-        );
+        assert_eq!(data.parse_triple(" 1 \n").err(), Some("cannot read index j"));
+        assert_eq!(data.parse_triple(" 1 wrong").err(), Some("cannot parse index j"));
 
-        assert_eq!(
-            data.parse_triple(&String::from(" 1 1   \n")).err(),
-            Some("cannot read value aij")
-        );
-        assert_eq!(
-            data.parse_triple(&String::from(" 1 1  wrong")).err(),
-            Some("cannot parse value aij")
-        );
+        assert_eq!(data.parse_triple(" 1 1   \n").err(), Some("cannot read value aij"));
+        assert_eq!(data.parse_triple(" 1 1  wrong").err(), Some("cannot parse value aij"));
 
-        assert_eq!(
-            data.parse_triple(&String::from(" 0 1  1")).err(),
-            Some("found invalid indices")
-        );
-        assert_eq!(
-            data.parse_triple(&String::from(" 3 1  1")).err(),
-            Some("found invalid indices")
-        );
-        assert_eq!(
-            data.parse_triple(&String::from(" 1 0  1")).err(),
-            Some("found invalid indices")
-        );
-        assert_eq!(
-            data.parse_triple(&String::from(" 1 3  1")).err(),
-            Some("found invalid indices")
-        );
+        assert_eq!(data.parse_triple(" 0 1  1").err(), Some("found invalid indices"));
+        assert_eq!(data.parse_triple(" 3 1  1").err(), Some("found invalid indices"));
+        assert_eq!(data.parse_triple(" 1 0  1").err(), Some("found invalid indices"));
+        assert_eq!(data.parse_triple(" 1 3  1").err(), Some("found invalid indices"));
     }
 
     #[test]
     fn read_matrix_market_handle_wrong_files() {
         let h = SymmetricHandling::LeaveAsLower;
+        assert_eq!(read_matrix_market("__wrong__", h).err(), Some("cannot open file"));
         assert_eq!(
-            read_matrix_market(&String::from("__wrong__"), h).err(),
-            Some("cannot open file")
-        );
-        assert_eq!(
-            read_matrix_market(&String::from("./data/matrix_market/bad_empty_file.mtx"), h).err(),
+            read_matrix_market("./data/matrix_market/bad_empty_file.mtx", h).err(),
             Some("file is empty")
         );
         assert_eq!(
-            read_matrix_market(&String::from("./data/matrix_market/bad_wrong_header.mtx"), h).err(),
+            read_matrix_market("./data/matrix_market/bad_wrong_header.mtx", h).err(),
             Some("after %%MatrixMarket, the first option must be \"matrix\"")
         );
         assert_eq!(
-            read_matrix_market(&String::from("./data/matrix_market/bad_wrong_dims.mtx"), h).err(),
+            read_matrix_market("./data/matrix_market/bad_wrong_dims.mtx", h).err(),
             Some("found invalid (zero or negative) dimensions")
         );
         assert_eq!(
-            read_matrix_market(&String::from("./data/matrix_market/bad_missing_data.mtx"), h).err(),
+            read_matrix_market("./data/matrix_market/bad_missing_data.mtx", h).err(),
             Some("not all triples (i,j,aij) have been found")
         );
         assert_eq!(
-            read_matrix_market(&String::from("./data/matrix_market/bad_many_lines.mtx"), h).err(),
+            read_matrix_market("./data/matrix_market/bad_many_lines.mtx", h).err(),
             Some("there are more (i,j,aij) triples than specified")
+        );
+        assert_eq!(
+            read_matrix_market("./data/matrix_market/bad_symmetric_rectangular.mtx", h).err(),
+            Some("MatrixMarket data is invalid: the number of rows must be equal the number of columns for symmetric matrices")
         );
     }
 
@@ -600,7 +574,7 @@ mod tests {
     }
 
     #[test]
-    fn read_matrix_market_symmetric_works() {
+    fn read_matrix_market_symmetric_lower_works() {
         let h = SymmetricHandling::LeaveAsLower;
         let filepath = "./data/matrix_market/ok_symmetric.mtx".to_string();
         let (coo, sym) = read_matrix_market(&filepath, h).unwrap();
@@ -609,6 +583,22 @@ mod tests {
         assert_eq!((coo.nrow, coo.ncol, coo.pos, coo.max), (5, 5, 15, 15));
         assert_eq!(coo.indices_i, &[0, 1, 2, 3, 4, 1, 2, 3, 4, 2, 3, 4, 3, 4, 4]);
         assert_eq!(coo.indices_j, &[0, 1, 2, 3, 4, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3]);
+        assert_eq!(
+            coo.values_aij,
+            &[2.0, 2.0, 9.0, 7.0, 8.0, 1.0, 1.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 5.0, 1.0],
+        );
+    }
+
+    #[test]
+    fn read_matrix_market_symmetric_upper_works() {
+        let h = SymmetricHandling::SwapToUpper;
+        let filepath = "./data/matrix_market/ok_symmetric.mtx".to_string();
+        let (coo, sym) = read_matrix_market(&filepath, h).unwrap();
+        assert!(sym);
+        assert_eq!(coo.layout, Layout::Upper);
+        assert_eq!((coo.nrow, coo.ncol, coo.pos, coo.max), (5, 5, 15, 15));
+        assert_eq!(coo.indices_i, &[0, 1, 2, 3, 4, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3]);
+        assert_eq!(coo.indices_j, &[0, 1, 2, 3, 4, 1, 2, 3, 4, 2, 3, 4, 3, 4, 4]);
         assert_eq!(
             coo.values_aij,
             &[2.0, 2.0, 9.0, 7.0, 8.0, 1.0, 1.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 5.0, 1.0],

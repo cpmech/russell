@@ -1,0 +1,6 @@
+%%MatrixMarket matrix coordinate real symmetric
+4 3  4
+ 1 1  1.0
+ 2 1  2.0
+ 2 2  3.0
+ 3 2  4.0

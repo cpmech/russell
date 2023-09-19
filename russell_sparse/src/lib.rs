@@ -65,6 +65,7 @@ pub type StrError = &'static str;
 
 mod config_solver;
 mod coo_matrix;
+mod csr_matrix;
 mod enums;
 pub mod prelude;
 mod read_matrix_market;
@@ -73,6 +74,7 @@ mod verify_lin_sys;
 mod write_matrix_market;
 pub use crate::config_solver::*;
 pub use crate::coo_matrix::*;
+pub use crate::csr_matrix::*;
 pub use crate::enums::*;
 pub use crate::read_matrix_market::*;
 pub use crate::solver::*;

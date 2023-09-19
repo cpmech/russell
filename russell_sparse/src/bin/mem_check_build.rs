@@ -1,5 +1,5 @@
 use russell_lab::Vector;
-use russell_sparse::{ConfigSolver, LinSolKind, Solver, SparseTriplet};
+use russell_sparse::{ConfigSolver, CooMatrix, LinSolKind, Solver};
 
 fn test_solver(name: LinSolKind) {
     match name {
@@ -9,7 +9,7 @@ fn test_solver(name: LinSolKind) {
 
     let (neq, nnz) = (5, 13);
 
-    let mut trip = match SparseTriplet::new(neq, nnz) {
+    let mut trip = match CooMatrix::new(neq, nnz) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new triplet): {}", e);
@@ -81,7 +81,7 @@ fn test_solver_singular(name: LinSolKind) {
 
     let (neq, nnz) = (2, 2);
 
-    let trip_singular = match SparseTriplet::new(neq, nnz) {
+    let trip_singular = match CooMatrix::new(neq, nnz) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new triplet): {}", e);

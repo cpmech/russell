@@ -1,4 +1,4 @@
-use super::SparseTriplet;
+use super::CooMatrix;
 use crate::StrError;
 use russell_lab::{format_nanoseconds, vec_norm, vec_update, Norm, Stopwatch, Vector};
 use russell_openblas::{idamax, to_i32};
@@ -24,12 +24,12 @@ impl VerifyLinSys {
     ///
     /// ```
     /// use russell_lab::{Matrix, Vector};
-    /// use russell_sparse::{SparseTriplet, VerifyLinSys, StrError};
+    /// use russell_sparse::{CooMatrix, VerifyLinSys, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // set sparse matrix (3 x 3) with 4 non-zeros
     ///     let (neq, nnz) = (3, 4);
-    ///     let mut trip = SparseTriplet::new(neq, nnz)?;
+    ///     let mut trip = CooMatrix::new(neq, nnz)?;
     ///     trip.put(0, 0, 1.0)?;
     ///     trip.put(0, 2, 4.0)?;
     ///     trip.put(1, 1, 2.0)?;
@@ -57,7 +57,7 @@ impl VerifyLinSys {
     ///     Ok(())
     /// }
     /// ```
-    pub fn new(trip: &SparseTriplet, x: &Vector, rhs: &Vector, triangular: bool) -> Result<Self, StrError> {
+    pub fn new(trip: &CooMatrix, x: &Vector, rhs: &Vector, triangular: bool) -> Result<Self, StrError> {
         if x.dim() != trip.neq || rhs.dim() != trip.neq {
             return Err("vector dimensions are incompatible");
         }
@@ -120,12 +120,12 @@ impl fmt::Display for VerifyLinSys {
 
 #[cfg(test)]
 mod tests {
-    use super::{SparseTriplet, VerifyLinSys};
+    use super::{CooMatrix, VerifyLinSys};
     use russell_lab::Vector;
 
     #[test]
     fn new_fails_on_wrong_vectors() {
-        let trip = SparseTriplet::new(1, 1).unwrap();
+        let trip = CooMatrix::new(1, 1).unwrap();
         let x = Vector::new(2);
         let rhs = Vector::new(3);
         let x_wrong = Vector::new(3);
@@ -145,7 +145,7 @@ mod tests {
         // | 1  3 -2 |
         // | 3  5  6 |
         // | 2  4  3 |
-        let mut trip = SparseTriplet::new(3, 9).unwrap();
+        let mut trip = CooMatrix::new(3, 9).unwrap();
         trip.put(0, 0, 1.0).unwrap();
         trip.put(0, 1, 3.0).unwrap();
         trip.put(0, 2, -2.0).unwrap();
@@ -167,7 +167,7 @@ mod tests {
 
     #[test]
     fn display_trait_works() {
-        let mut trip = SparseTriplet::new(2, 2).unwrap();
+        let mut trip = CooMatrix::new(2, 2).unwrap();
         trip.put(0, 0, 1.0).unwrap();
         trip.put(1, 1, 1.0).unwrap();
         let x = Vector::from(&[1.0, 1.0]);

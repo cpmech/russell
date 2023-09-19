@@ -3,7 +3,7 @@ use russell_lab::{Matrix, Vector};
 use russell_openblas::to_i32;
 use std::fmt;
 
-/// Holds triples (i,j,aij) representing a sparse matrix
+/// Holds the row index, col index, and values of a matrix (also known as Triplet)
 ///
 /// # Remarks
 ///
@@ -14,7 +14,7 @@ use std::fmt;
 /// - A maximum number of entries must be decided prior to allocating a new Triplet
 /// - The maximum number of entries includes possible entries with repeated indices
 /// - See the `to_matrix` method for an example
-pub struct SparseTriplet {
+pub struct CooMatrix {
     pub(crate) neq: usize,           // [i32] number of rows = number of columns = n_equation
     pub(crate) pos: usize,           // [i32] current index => nnz in the end
     pub(crate) max: usize,           // [i32] max allowed number of entries (may be > nnz)
@@ -23,8 +23,8 @@ pub struct SparseTriplet {
     pub(crate) values_aij: Vec<f64>, // [nnz] values aij
 }
 
-impl SparseTriplet {
-    /// Creates a new SparseTriplet representing a sparse matrix
+impl CooMatrix {
+    /// Creates a new CooMatrix representing a sparse matrix
     ///
     /// ```text
     /// trip  :=  sparse(a)
@@ -41,11 +41,11 @@ impl SparseTriplet {
     /// # Example
     ///
     /// ```
-    /// use russell_sparse::{SparseTriplet, StrError};
+    /// use russell_sparse::{CooMatrix, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let (neq, nnz) = (3, 4);
-    ///     let trip = SparseTriplet::new(neq, nnz)?;
+    ///     let trip = CooMatrix::new(neq, nnz)?;
     ///     Ok(())
     /// }
     /// ```
@@ -53,7 +53,7 @@ impl SparseTriplet {
         if neq == 0 || max == 0 {
             return Err("neq and max must be greater than zero");
         }
-        Ok(SparseTriplet {
+        Ok(CooMatrix {
             neq,
             pos: 0,
             max,
@@ -68,11 +68,11 @@ impl SparseTriplet {
     /// # Example
     ///
     /// ```
-    /// use russell_sparse::{SparseTriplet, StrError};
+    /// use russell_sparse::{CooMatrix, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let (neq, nnz) = (3, 4);
-    ///     let mut trip = SparseTriplet::new(neq, nnz)?;
+    ///     let mut trip = CooMatrix::new(neq, nnz)?;
     ///     trip.put(0, 0, 1.0)?;
     ///     trip.put(1, 1, 2.0)?;
     ///     trip.put(2, 2, 3.0)?;
@@ -104,11 +104,11 @@ impl SparseTriplet {
     /// # Example
     ///
     /// ```
-    /// use russell_sparse::{SparseTriplet, StrError};
+    /// use russell_sparse::{CooMatrix, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let (neq, nnz) = (2, 1);
-    ///     let trip = SparseTriplet::new(neq, nnz)?;
+    ///     let trip = CooMatrix::new(neq, nnz)?;
     ///     assert_eq!(trip.neq(), 2);
     ///     Ok(())
     /// }
@@ -122,11 +122,11 @@ impl SparseTriplet {
     /// # Example
     ///
     /// ```
-    /// use russell_sparse::{SparseTriplet, StrError};
+    /// use russell_sparse::{CooMatrix, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let (neq, nnz) = (2, 1);
-    ///     let mut trip = SparseTriplet::new(neq, neq)?;
+    ///     let mut trip = CooMatrix::new(neq, neq)?;
     ///     assert_eq!(trip.nnz_current(), 0);
     ///     trip.put(0, 0, 1.0);
     ///     assert_eq!(trip.nnz_current(), 1);
@@ -142,11 +142,11 @@ impl SparseTriplet {
     /// # Example
     ///
     /// ```
-    /// use russell_sparse::{SparseTriplet, StrError};
+    /// use russell_sparse::{CooMatrix, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let (neq, nnz) = (2, 1);
-    ///     let trip = SparseTriplet::new(neq, nnz)?;
+    ///     let trip = CooMatrix::new(neq, nnz)?;
     ///     assert_eq!(trip.nnz_maximum(), 1);
     ///     Ok(())
     /// }
@@ -160,11 +160,11 @@ impl SparseTriplet {
     /// # Example
     ///
     /// ```
-    /// use russell_sparse::{SparseTriplet, StrError};
+    /// use russell_sparse::{CooMatrix, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let (neq, nnz) = (3, 4);
-    ///     let mut trip = SparseTriplet::new(neq, nnz)?;
+    ///     let mut trip = CooMatrix::new(neq, nnz)?;
     ///     trip.put(0, 0, 1.0)?;
     ///     trip.put(1, 1, 2.0)?;
     ///     trip.put(2, 2, 3.0)?;
@@ -181,16 +181,16 @@ impl SparseTriplet {
 
     /// Returns the Matrix corresponding to this Triplet
     ///
-    /// Note: this function calls [SparseTriplet::to_matrix].
+    /// Note: this function calls [CooMatrix::to_matrix].
     ///
     /// ```
-    /// use russell_sparse::{SparseTriplet, StrError};
+    /// use russell_sparse::{CooMatrix, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // define (4 x 4) sparse matrix with 6+1 non-zero values
     ///     // (with an extra ij-repeated entry)
     ///     let (neq, nnz) = (4, 7);
-    ///     let mut trip = SparseTriplet::new(neq, nnz)?;
+    ///     let mut trip = CooMatrix::new(neq, nnz)?;
     ///     trip.put(0, 0, 0.5)?; // (0, 0, a00/2)
     ///     trip.put(0, 0, 0.5)?; // (0, 0, a00/2)
     ///     trip.put(0, 1, 2.0)?;
@@ -219,7 +219,7 @@ impl SparseTriplet {
 
     /// Converts the triplet data to a matrix, up to a limit
     ///
-    /// Note: see the function [SparseTriplet::as_matrix] that returns the Matrix already.
+    /// Note: see the function [CooMatrix::as_matrix] that returns the Matrix already.
     ///
     /// # Input
     ///
@@ -230,13 +230,13 @@ impl SparseTriplet {
     ///
     /// ```
     /// use russell_lab::{Matrix};
-    /// use russell_sparse::{SparseTriplet, StrError};
+    /// use russell_sparse::{CooMatrix, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // define (4 x 4) sparse matrix with 6+1 non-zero values
     ///     // (with an extra ij-repeated entry)
     ///     let (neq, nnz) = (4, 7);
-    ///     let mut trip = SparseTriplet::new(neq, nnz)?;
+    ///     let mut trip = CooMatrix::new(neq, nnz)?;
     ///     trip.put(0, 0, 0.5)?; // (0, 0, a00/2)
     ///     trip.put(0, 0, 0.5)?; // (0, 0, a00/2)
     ///     trip.put(0, 1, 2.0)?;
@@ -306,12 +306,12 @@ impl SparseTriplet {
     ///
     /// ```
     /// use russell_lab::{Matrix, Vector};
-    /// use russell_sparse::{SparseTriplet, StrError};
+    /// use russell_sparse::{CooMatrix, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // set sparse matrix (3 x 3) with 6 non-zeros
     ///     let (neq, nnz) = (3, 6);
-    ///     let mut trip = SparseTriplet::new(neq, nnz)?;
+    ///     let mut trip = CooMatrix::new(neq, nnz)?;
     ///     trip.put(0, 0, 1.0)?;
     ///     trip.put(1, 0, 2.0)?;
     ///     trip.put(1, 1, 3.0)?;
@@ -361,7 +361,7 @@ impl SparseTriplet {
     }
 }
 
-impl fmt::Display for SparseTriplet {
+impl fmt::Display for CooMatrix {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -379,25 +379,25 @@ impl fmt::Display for SparseTriplet {
 
 #[cfg(test)]
 mod tests {
-    use super::SparseTriplet;
+    use super::CooMatrix;
     use russell_chk::vec_approx_eq;
     use russell_lab::{Matrix, Vector};
 
     #[test]
     fn new_fails_on_wrong_input() {
         assert_eq!(
-            SparseTriplet::new(0, 3).err(),
+            CooMatrix::new(0, 3).err(),
             Some("neq and max must be greater than zero")
         );
         assert_eq!(
-            SparseTriplet::new(3, 0).err(),
+            CooMatrix::new(3, 0).err(),
             Some("neq and max must be greater than zero")
         );
     }
 
     #[test]
     fn new_works() {
-        let trip = SparseTriplet::new(3, 5).unwrap();
+        let trip = CooMatrix::new(3, 5).unwrap();
         assert_eq!(trip.neq, 3);
         assert_eq!(trip.pos, 0);
         assert_eq!(trip.max, 5);
@@ -405,7 +405,7 @@ mod tests {
 
     #[test]
     fn put_fails_on_wrong_values() {
-        let mut trip = SparseTriplet::new(1, 1).unwrap();
+        let mut trip = CooMatrix::new(1, 1).unwrap();
         assert_eq!(
             trip.put(1, 0, 0.0).err(),
             Some("sparse matrix row index is out of bounds")
@@ -423,7 +423,7 @@ mod tests {
 
     #[test]
     fn put_works() {
-        let mut trip = SparseTriplet::new(3, 5).unwrap();
+        let mut trip = CooMatrix::new(3, 5).unwrap();
         trip.put(0, 0, 1.0).unwrap();
         assert_eq!(trip.pos, 1);
         trip.put(0, 1, 2.0).unwrap();
@@ -438,7 +438,7 @@ mod tests {
 
     #[test]
     fn getters_and_reset_work() {
-        let mut trip = SparseTriplet::new(2, 4).unwrap();
+        let mut trip = CooMatrix::new(2, 4).unwrap();
         assert_eq!(trip.nnz_current(), 0);
         trip.put(0, 0, 1.0).unwrap();
         trip.put(0, 1, 4.0).unwrap();
@@ -453,7 +453,7 @@ mod tests {
 
     #[test]
     fn to_matrix_fails_on_wrong_dims() {
-        let trip = SparseTriplet::new(1, 1).unwrap();
+        let trip = CooMatrix::new(1, 1).unwrap();
         let mut a_2x1 = Matrix::new(2, 1);
         let mut a_1x2 = Matrix::new(1, 2);
         assert_eq!(trip.to_matrix(&mut a_2x1), Err("wrong matrix dimensions"));
@@ -462,7 +462,7 @@ mod tests {
 
     #[test]
     fn to_matrix_works() {
-        let mut trip = SparseTriplet::new(3, 5).unwrap();
+        let mut trip = CooMatrix::new(3, 5).unwrap();
         trip.put(0, 0, 1.0).unwrap();
         trip.put(0, 1, 2.0).unwrap();
         trip.put(1, 0, 3.0).unwrap();
@@ -489,7 +489,7 @@ mod tests {
     fn to_matrix_with_duplicates_works() {
         // allocate a square matrix
         let (neq, nnz) = (5, 13);
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
+        let mut trip = CooMatrix::new(neq, nnz).unwrap();
         trip.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
         trip.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
         trip.put(1, 0, 3.0).unwrap();
@@ -519,7 +519,7 @@ mod tests {
 
     #[test]
     fn mat_vec_mul_fails_on_wrong_input() {
-        let trip = SparseTriplet::new(2, 1).unwrap();
+        let trip = CooMatrix::new(2, 1).unwrap();
         let u = Vector::new(3);
         assert_eq!(trip.mat_vec_mul(&u, false).err(), Some("u.ndim must equal neq"));
     }
@@ -529,7 +529,7 @@ mod tests {
         //  1.0  2.0  3.0
         //  0.1  0.2  0.3
         // 10.0 20.0 30.0
-        let mut trip = SparseTriplet::new(3, 9).unwrap();
+        let mut trip = CooMatrix::new(3, 9).unwrap();
         trip.put(0, 0, 1.0).unwrap();
         trip.put(0, 1, 2.0).unwrap();
         trip.put(0, 2, 3.0).unwrap();
@@ -553,7 +553,7 @@ mod tests {
         // 3  1  1  7
         // 2  1  5  1  8
         let (neq, nnz) = (5, 15);
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
+        let mut trip = CooMatrix::new(neq, nnz).unwrap();
         trip.put(0, 0, 2.0).unwrap();
         trip.put(1, 1, 2.0).unwrap();
         trip.put(2, 2, 9.0).unwrap();
@@ -587,7 +587,7 @@ mod tests {
         // 3  1  1  7  1
         // 2  1  5  1  8
         let (neq, nnz) = (5, 25);
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
+        let mut trip = CooMatrix::new(neq, nnz).unwrap();
         trip.put(0, 0, 2.0).unwrap();
         trip.put(1, 1, 2.0).unwrap();
         trip.put(2, 2, 9.0).unwrap();
@@ -629,7 +629,7 @@ mod tests {
         // -1   2  -1    =>   -1   2
         //     -1   2             -1   2
         let (neq, nnz) = (3, 5);
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
+        let mut trip = CooMatrix::new(neq, nnz).unwrap();
         trip.put(0, 0, 2.0).unwrap();
         trip.put(1, 1, 2.0).unwrap();
         trip.put(2, 2, 2.0).unwrap();
@@ -643,7 +643,7 @@ mod tests {
 
     #[test]
     fn display_trait_works() {
-        let trip = SparseTriplet::new(3, 1).unwrap();
+        let trip = CooMatrix::new(3, 1).unwrap();
         let correct: &str = "\x20\x20\x20\x20\"neq\": 3,\n\
                              \x20\x20\x20\x20\"nnz_current\": 0,\n\
                              \x20\x20\x20\x20\"nnz_maximum\": 1,\n";

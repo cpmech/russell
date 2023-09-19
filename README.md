@@ -122,14 +122,14 @@ fn main() -> Result<(), StrError> {
 
 ```rust
 use russell_lab::{Matrix, Vector, StrError};
-use russell_sparse::{ConfigSolver, Solver, SparseTriplet};
+use russell_sparse::{ConfigSolver, Solver, CooMatrix};
 
 fn main() -> Result<(), StrError> {
 
     // allocate a square matrix
     let neq = 5; // number of equations
     let nnz = 13; // number of non-zeros
-    let mut trip = SparseTriplet::new(neq, nnz)?;
+    let mut trip = CooMatrix::new(neq, nnz)?;
     trip.put(0, 0,  1.0)?; // << (0, 0, a00/2)
     trip.put(0, 0,  1.0)?; // << (0, 0, a00/2)
     trip.put(1, 0,  3.0)?;

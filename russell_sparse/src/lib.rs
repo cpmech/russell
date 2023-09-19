@@ -6,13 +6,13 @@
 //!
 //! ```
 //! use russell_lab::{Matrix, Vector};
-//! use russell_sparse::{ConfigSolver, Solver, SparseTriplet, StrError};
+//! use russell_sparse::{ConfigSolver, Solver, CooMatrix, StrError};
 //!
 //! fn main() -> Result<(), StrError> {
 //!
 //!     // allocate a square matrix
 //!     let (neq, nnz) = (5, 13);
-//!     let mut trip = SparseTriplet::new(neq, nnz)?;
+//!     let mut trip = CooMatrix::new(neq, nnz)?;
 //!     trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
 //!     trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
 //!     trip.put(1, 0, 3.0)?;

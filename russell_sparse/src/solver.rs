@@ -1,6 +1,6 @@
 use super::{
     code_symmetry_mmp, code_symmetry_umf, str_enum_ordering, str_enum_scaling, str_mmp_ordering, str_mmp_scaling,
-    str_umf_ordering, str_umf_scaling, ConfigSolver, LinSolKind, SparseTriplet,
+    str_umf_ordering, str_umf_scaling, ConfigSolver, CooMatrix, LinSolKind,
 };
 use crate::{StrError, Symmetry};
 use russell_lab::{format_nanoseconds, vec_copy, Stopwatch, Vector};
@@ -148,7 +148,7 @@ impl Solver {
     }
 
     /// Performs the factorization
-    pub fn factorize(&mut self, trip: &SparseTriplet) -> Result<(), StrError> {
+    pub fn factorize(&mut self, trip: &CooMatrix) -> Result<(), StrError> {
         if trip.neq != self.neq {
             return Err("cannot factorize because the triplet has incompatible number of equations");
         }
@@ -200,12 +200,12 @@ impl Solver {
     ///
     /// ```
     /// use russell_lab::{Matrix, Vector};
-    /// use russell_sparse::{ConfigSolver, SparseTriplet, Solver, StrError};
+    /// use russell_sparse::{ConfigSolver, CooMatrix, Solver, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // allocate a square matrix
     ///     let (neq, nnz) = (5, 13);
-    ///     let mut trip = SparseTriplet::new(neq, nnz)?;
+    ///     let mut trip = CooMatrix::new(neq, nnz)?;
     ///     trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
     ///     trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
     ///     trip.put(1, 0, 3.0)?;
@@ -309,12 +309,12 @@ impl Solver {
     ///
     /// ```
     /// use russell_lab::{Matrix, Vector};
-    /// use russell_sparse::{ConfigSolver, Solver, SparseTriplet, StrError};
+    /// use russell_sparse::{ConfigSolver, Solver, CooMatrix, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // allocate a square matrix
     ///     let (neq, nnz) = (3, 5);
-    ///     let mut trip = SparseTriplet::new(neq, nnz)?;
+    ///     let mut trip = CooMatrix::new(neq, nnz)?;
     ///     trip.put(0, 0, 0.2)?;
     ///     trip.put(0, 1, 0.2)?;
     ///     trip.put(1, 0, 0.5)?;
@@ -357,7 +357,7 @@ impl Solver {
     ///     Ok(())
     /// }
     /// ```
-    pub fn compute(config: ConfigSolver, trip: &SparseTriplet, rhs: &Vector) -> Result<(Self, Vector), StrError> {
+    pub fn compute(config: ConfigSolver, trip: &CooMatrix, rhs: &Vector) -> Result<(Self, Vector), StrError> {
         let mut solver = Solver::new(config, trip.neq, trip.pos, None)?;
         let mut x = Vector::new(trip.neq());
         solver.factorize(&trip)?;
@@ -526,7 +526,7 @@ impl fmt::Display for Solver {
 
 #[cfg(test)]
 mod tests {
-    use super::{ConfigSolver, LinSolKind, Solver, SparseTriplet};
+    use super::{ConfigSolver, CooMatrix, LinSolKind, Solver};
     use russell_chk::vec_approx_eq;
     use russell_lab::Vector;
 
@@ -543,7 +543,7 @@ mod tests {
     fn factorize_fails_on_incompatible_triplet() {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config, 1, 1, None).unwrap();
-        let trip = SparseTriplet::new(2, 2).unwrap();
+        let trip = CooMatrix::new(2, 2).unwrap();
         assert_eq!(
             solver.factorize(&trip).err(),
             Some("cannot factorize because the triplet has incompatible number of equations")
@@ -555,7 +555,7 @@ mod tests {
         let config = ConfigSolver::new();
         let (neq, nnz) = (2, 2);
         let mut solver = Solver::new(config, neq, nnz, None).unwrap();
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
+        let mut trip = CooMatrix::new(neq, nnz).unwrap();
         trip.put(0, 0, 1.0).unwrap();
         trip.put(1, 1, 0.0).unwrap();
         assert_eq!(solver.factorize(&trip), Err("Error(1): Matrix is singular"));
@@ -566,7 +566,7 @@ mod tests {
         let config = ConfigSolver::new();
         let (neq, nnz) = (2, 2);
         let mut solver = Solver::new(config, neq, nnz, None).unwrap();
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
+        let mut trip = CooMatrix::new(neq, nnz).unwrap();
         trip.put(0, 0, 1.0).unwrap();
         trip.put(1, 1, 1.0).unwrap();
         solver.factorize(&trip).unwrap();
@@ -578,7 +578,7 @@ mod tests {
         let config = ConfigSolver::new();
         let (neq, nnz) = (2, 2);
         let mut solver = Solver::new(config, neq, nnz, None).unwrap();
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
+        let mut trip = CooMatrix::new(neq, nnz).unwrap();
         trip.put(0, 0, 1.0).unwrap();
         trip.put(1, 1, 1.0).unwrap();
         let mut x = Vector::new(neq);
@@ -594,7 +594,7 @@ mod tests {
         let config = ConfigSolver::new();
         let (neq, nnz) = (2, 2);
         let mut solver = Solver::new(config, neq, nnz, None).unwrap();
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
+        let mut trip = CooMatrix::new(neq, nnz).unwrap();
         trip.put(0, 0, 1.0).unwrap();
         trip.put(1, 1, 1.0).unwrap();
         solver.factorize(&trip).unwrap();
@@ -619,7 +619,7 @@ mod tests {
         let mut solver = Solver::new(config, neq, nnz, None).unwrap();
 
         // allocate a square matrix
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
+        let mut trip = CooMatrix::new(neq, nnz).unwrap();
         trip.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
         trip.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
         trip.put(1, 0, 3.0).unwrap();
@@ -659,7 +659,7 @@ mod tests {
         let mut solver = Solver::new(config, neq, nnz, None).unwrap();
 
         // factorize fails on incompatible triplet
-        let mut trip_wrong = SparseTriplet::new(1, 1).unwrap();
+        let mut trip_wrong = CooMatrix::new(1, 1).unwrap();
         trip_wrong.put(0, 0, 1.0).unwrap();
         assert_eq!(
             solver.factorize(&trip_wrong).err(),
@@ -667,7 +667,7 @@ mod tests {
         );
 
         // allocate a square matrix
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
+        let mut trip = CooMatrix::new(neq, nnz).unwrap();
         trip.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
         trip.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
         trip.put(1, 0, 3.0).unwrap();
@@ -721,7 +721,7 @@ mod tests {
         vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
 
         // factorize fails on singular matrix
-        let mut trip_singular = SparseTriplet::new(5, 2).unwrap();
+        let mut trip_singular = CooMatrix::new(5, 2).unwrap();
         trip_singular.put(0, 0, 1.0).unwrap();
         trip_singular.put(4, 4, 1.0).unwrap();
         let mut solver = Solver::new(config, 5, 2, None).unwrap();
@@ -734,7 +734,7 @@ mod tests {
     #[test]
     fn compute_works() {
         let (neq, nnz) = (3, 6);
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
+        let mut trip = CooMatrix::new(neq, nnz).unwrap();
         trip.put(0, 0, 1.0).unwrap();
         trip.put(0, 1, 1.0).unwrap();
         trip.put(1, 0, 2.0).unwrap();

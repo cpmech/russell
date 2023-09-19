@@ -5,4 +5,4 @@
 
 pub use crate::config_solver::ConfigSolver;
 pub use crate::solver::Solver;
-pub use crate::sparse_triplet::SparseTriplet;
+pub use crate::sparse_triplet::CooMatrix;

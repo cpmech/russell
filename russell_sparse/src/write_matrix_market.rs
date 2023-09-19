@@ -1,4 +1,4 @@
-use super::SparseTriplet;
+use super::CooMatrix;
 use crate::StrError;
 use std::ffi::OsStr;
 use std::fmt::Write;
@@ -6,8 +6,8 @@ use std::fs::{self, File};
 use std::io::Write as IoWrite;
 use std::path::Path;
 
-impl SparseTriplet {
-    /// Writes a MatrixMarket file from a SparseTriplet
+impl CooMatrix {
+    /// Writes a MatrixMarket file from a CooMatrix
     ///
     /// # Input
     ///

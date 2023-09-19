@@ -1,4 +1,4 @@
-use super::SparseTriplet;
+use super::CooMatrix;
 use crate::StrError;
 use std::ffi::OsStr;
 use std::fs::File;
@@ -161,7 +161,7 @@ impl MatrixMarketData {
     }
 }
 
-/// Reads a MatrixMarket file into a SparseTriplet
+/// Reads a MatrixMarket file into a CooMatrix
 ///
 /// **Note:** This function works only with square matrices.
 ///
@@ -186,12 +186,12 @@ impl MatrixMarketData {
 ///
 /// If `sym_mirror` is true, the reader will set `nnz` (number of non-zero values)
 /// with twice the specified `nnz` value because we cannot know how many entries
-/// are on the diagonal until the whole file is read. Nonetheless, the `SparseTriplet`
-/// can be used normally by the user, since this information is internal to `SparseTriplet`.
+/// are on the diagonal until the whole file is read. Nonetheless, the `CooMatrix`
+/// can be used normally by the user, since this information is internal to `CooMatrix`.
 ///
 /// # Output
 ///
-/// * A SparseTriplet or an error message
+/// * A CooMatrix or an error message
 /// * Returns true if the `symmetric` keyword is present in the header
 ///
 /// # Panics
@@ -325,7 +325,7 @@ impl MatrixMarketData {
 ///     Ok(())
 /// }
 /// ```
-pub fn read_matrix_market<P>(full_path: &P, sym_mirror: bool) -> Result<(SparseTriplet, bool), StrError>
+pub fn read_matrix_market<P>(full_path: &P, sym_mirror: bool) -> Result<(CooMatrix, bool), StrError>
 where
     P: AsRef<OsStr> + ?Sized,
 {
@@ -366,7 +366,7 @@ where
     }
 
     // allocate triplet
-    let mut trip = SparseTriplet::new(data.m as usize, max as usize)?;
+    let mut trip = CooMatrix::new(data.m as usize, max as usize)?;
 
     // read and parse triples
     loop {

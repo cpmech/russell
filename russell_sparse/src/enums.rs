@@ -1,5 +1,48 @@
 use crate::StrError;
 
+/// Defines how the CooMatrix (triplet) represents a matrix
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Layout {
+    /// Lower triangular (e.g., for MUMPS)
+    Lower,
+
+    /// Upper triangular (e.g., for Intel DSS)
+    Upper,
+
+    /// Full matrix (e.g., for UMFPACK)
+    Full,
+}
+
+/// Holds options to handle a MatrixMarket when the matrix is specified as being symmetric
+///
+/// **Note:** This is ignored if not the matrix is not specified as symmetric.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SymmetricHandling {
+    /// Leave the layout as lower triangular (if symmetric)
+    ///
+    /// **Note:** Lower triangular is the standard MatrixMarket format.
+    /// Thus, this option will do nothing.
+    ///
+    /// This option is useful for the MUMPS solver.
+    LeaveAsLower,
+
+    /// Convert the layout to upper triangular (if symmetric)
+    ///
+    /// **Note:** Since lower triangular is standard in MatrixMarket,
+    /// this option will swap the lower triangle to the upper triangle.
+    ///
+    /// This option is useful for the Intel DSS solver.
+    SwapToUpper,
+
+    /// Make the matrix full (if symmetric)
+    ///
+    /// **Note:: Mirror the lower triangle to the upper triangle (duplicate data).
+    /// The number of non-zeros will be slightly larger than just duplicating the lower triangle.
+    ///
+    /// This option is useful for the UMFPACK solver.
+    MakeItFull,
+}
+
 /// Matrix symmetry option
 #[derive(Clone, Copy, Debug)]
 pub enum Symmetry {
@@ -229,11 +272,26 @@ pub(crate) fn str_umf_scaling(umf_code: i32) -> &'static str {
 mod tests {
     use super::{
         code_symmetry_mmp, code_symmetry_umf, enum_ordering, enum_scaling, str_enum_ordering, str_enum_scaling,
-        str_mmp_ordering, str_mmp_scaling, str_umf_ordering, str_umf_scaling, LinSolKind, Ordering, Scaling, Symmetry,
+        str_mmp_ordering, str_mmp_scaling, str_umf_ordering, str_umf_scaling, Layout, LinSolKind, Ordering, Scaling,
+        SymmetricHandling, Symmetry,
     };
 
     #[test]
     fn clone_copy_and_debug_work() {
+        let layout = Layout::Full;
+        let copy = layout;
+        let clone = layout.clone();
+        assert_eq!(format!("{:?}", layout), "Full");
+        assert_eq!(copy, Layout::Full);
+        assert_eq!(clone, Layout::Full);
+
+        let handling = SymmetricHandling::LeaveAsLower;
+        let copy = handling;
+        let clone = handling.clone();
+        assert_eq!(format!("{:?}", handling), "LeaveAsLower");
+        assert_eq!(copy, SymmetricHandling::LeaveAsLower);
+        assert_eq!(clone, SymmetricHandling::LeaveAsLower);
+
         let symmetry = Symmetry::General;
         let copy = symmetry;
         let clone = symmetry.clone();

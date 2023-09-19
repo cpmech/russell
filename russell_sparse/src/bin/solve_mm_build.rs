@@ -1,8 +1,6 @@
 use russell_lab::{format_nanoseconds, Stopwatch, StrError, Vector};
 use russell_openblas::set_num_threads;
-use russell_sparse::{
-    enum_ordering, enum_scaling, read_matrix_market, ConfigSolver, LinSolKind, Solver, Symmetry, VerifyLinSys,
-};
+use russell_sparse::prelude::*;
 use std::path::Path;
 use structopt::StructOpt;
 
@@ -49,25 +47,25 @@ fn main() -> Result<(), StrError> {
     // select linear solver
     let name = if opt.mmp { LinSolKind::Mmp } else { LinSolKind::Umf };
 
-    // set the sym_mirror flag
-    let sym_mirror = match name {
+    // select the symmetric handling option
+    let handling = match name {
         LinSolKind::Mmp => {
             // MMP uses the lower-diagonal if symmetric.
-            false
+            SymmetricHandling::LeaveAsLower
         }
         LinSolKind::Umf => {
             // UMF uses the full matrix, if symmetric or not
-            true
+            SymmetricHandling::MakeItFull
         }
     };
 
     // read matrix
     let mut sw = Stopwatch::new("");
-    let (trip, symmetric) = read_matrix_market(&opt.matrix_market_file, sym_mirror)?;
+    let (coo, sym) = read_matrix_market(&opt.matrix_market_file, handling)?;
     let time_read = sw.stop();
 
     // set the symmetry option
-    let symmetry = if symmetric { Some(Symmetry::General) } else { None };
+    let symmetry = if sym { Some(Symmetry::General) } else { None };
 
     // set configuration
     let mut config = ConfigSolver::new();
@@ -83,20 +81,19 @@ fn main() -> Result<(), StrError> {
     }
 
     // initialize and factorize
-    let (neq, nnz) = (trip.neq(), trip.nnz_current());
-    let mut solver = Solver::new(config, neq, nnz, symmetry)?;
-    solver.factorize(&trip)?;
+    let (nrow, nnz) = (coo.nrow, coo.pos);
+    let mut solver = Solver::new(config, nrow, nnz, symmetry)?;
+    solver.factorize(&coo)?;
 
     // allocate vectors
-    let mut x = Vector::new(neq);
-    let rhs = Vector::filled(neq, 1.0);
+    let mut x = Vector::new(nrow);
+    let rhs = Vector::filled(nrow, 1.0);
 
     // solve linear system
     solver.solve(&mut x, &rhs)?;
 
     // verify solution
-    let triangular = symmetric && !sym_mirror;
-    let verify = VerifyLinSys::new(&trip, &x, &rhs, triangular)?;
+    let verify = VerifyLinSys::new(&coo, &x, &rhs)?;
 
     // matrix name
     let path = Path::new(&opt.matrix_market_file);
@@ -127,7 +124,7 @@ fn main() -> Result<(), StrError> {
         matrix_name,
         time_read,
         format_nanoseconds(time_read),
-        trip,
+        coo,
         symmetry,
         config,
         solver,
@@ -138,7 +135,7 @@ fn main() -> Result<(), StrError> {
     if path.ends_with("bfwb62.mtx") {
         let tolerance = if opt.mmp { 1e-10 } else { 1e-11 };
         let correct_x = get_bfwb62_correct_x();
-        for i in 0..neq {
+        for i in 0..nrow {
             let diff = f64::abs(x.get(i) - correct_x.get(i));
             if diff > tolerance {
                 println!("ERROR: diff({}) = {:.2e}", i, diff);

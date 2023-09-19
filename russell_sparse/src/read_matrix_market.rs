@@ -1,4 +1,4 @@
-use super::CooMatrix;
+use super::{CooMatrix, Layout, SymmetricHandling};
 use crate::StrError;
 use std::ffi::OsStr;
 use std::fs::File;
@@ -148,7 +148,7 @@ impl MatrixMarketData {
             None => return Err("cannot read value aij"),
         };
 
-        self.i -= 1; // MatrixMarket is one-based
+        self.i -= 1; // MatrixMarket is one-based, so make it zero-based here
         self.j -= 1;
 
         if self.i < 0 || self.i >= self.m || self.j < 0 || self.j >= self.n {
@@ -163,40 +163,29 @@ impl MatrixMarketData {
 
 /// Reads a MatrixMarket file into a CooMatrix
 ///
-/// **Note:** This function works only with square matrices.
-///
 /// # Input
 ///
 /// * `full_path` -- may be a String, &str, or Path
-/// * `sym_mirror` -- Tells the reader to mirror the **off diagonal** entries,
-///                   if the symmetric option is found in the header.
-///
-/// ## Remarks on sym_mirror
-///
-/// ```text
-/// if i != j, read line and set a(i,j) = a(j,i) = line data
-/// ```
-///
-/// If the matrix is symmetric, only entries in the **lower triangular** portion
-/// are present in the MatrixMarket file (see reference). However, some solvers
-/// (e.g., UMFPACK) require the complete sparse dataset (both off-diagonals),
-/// even if the matrix is symmetric. Other solvers (e.g. Mu-M-P-S) must **not**
-/// receive both off-diagonal sides when working with symmetric matrices.
-/// Therefore, the user has to decide when to use the `sym_mirror` flag.
-///
-/// If `sym_mirror` is true, the reader will set `nnz` (number of non-zero values)
-/// with twice the specified `nnz` value because we cannot know how many entries
-/// are on the diagonal until the whole file is read. Nonetheless, the `CooMatrix`
-/// can be used normally by the user, since this information is internal to `CooMatrix`.
+/// * `symmetric_handling` -- Options to handle symmetric matrices
 ///
 /// # Output
 ///
-/// * A CooMatrix or an error message
-/// * Returns true if the `symmetric` keyword is present in the header
+/// * `coo` -- the CooMatrix
+/// * `symmetric` -- whether MatrixMarket is flagged as symmetric or not
+///
+/// ## Remarks on symmetric matrices
+///
+/// If the matrix is symmetric, only entries in the **lower triangular** portion
+/// are present in the MatrixMarket file (see reference). Thus, the `symmetric_handling`
+/// may be used to:
+///
+/// 1. Leave the data as it is, i.e., return a Lower Triangular CooMatrix (for MUMPS solver)
+/// 2. Swap the lower triangle with the upper triangle, i.e., return an Upper Triangular CooMatrix (for Intel DSS solver)
+/// 3. Duplicate the data to make a full matrix, i.e., return a Full CooMatrix (for UMFPACK solver)
 ///
 /// # Panics
 ///
-/// This function may panic but should not panic (please contact us if it panics).
+/// This function may panic but should not panic (please contact us if it panics :-).
 ///
 /// # Example of MatrixMarket file
 ///
@@ -255,7 +244,7 @@ impl MatrixMarketData {
 ///
 /// ## Example 1 - General matrix
 ///
-/// Given the following `simple_gen.mtx` file:
+/// Given the following `ok_simple_general.mtx` file:
 ///
 /// ```text
 /// %%MatrixMarket matrix coordinate real general
@@ -271,20 +260,20 @@ impl MatrixMarketData {
 ///
 /// ```
 /// use russell_lab::Matrix;
-/// use russell_sparse::{read_matrix_market, StrError};
+/// use russell_sparse::{read_matrix_market, Layout, SymmetricHandling, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
-///     let filepath = "./data/matrix_market/simple_gen.mtx".to_string();
-///     let (trip, symmetric) = read_matrix_market(&filepath, false)?;
-///     let neq = trip.neq();
-///     let mut a = Matrix::new(neq, neq);
-///     trip.to_matrix(&mut a)?;
+///     let filepath = "./data/matrix_market/ok_simple_general.mtx".to_string();
+///     let (coo, sym) = read_matrix_market(&filepath, SymmetricHandling::LeaveAsLower)?;
+///     let mut a = Matrix::new(coo.nrow, coo.ncol);
+///     coo.to_matrix(&mut a)?;
 ///     let correct = "┌       ┐\n\
 ///                    │ 1 2 0 │\n\
 ///                    │ 3 4 0 │\n\
 ///                    │ 0 0 5 │\n\
 ///                    └       ┘";
-///     assert_eq!(symmetric, false);
+///     assert!(!sym);
+///     assert_eq!(coo.layout, Layout::Full);
 ///     assert_eq!(format!("{}", a), correct);
 ///     Ok(())
 /// }
@@ -292,7 +281,7 @@ impl MatrixMarketData {
 ///
 /// ## Example 2 - Symmetric matrix
 ///
-/// Given the following `simple_sym.mtx` file:
+/// Given the following `ok_simple_symmetric.mtx` file:
 ///
 /// ```text
 /// %%MatrixMarket matrix coordinate real symmetric
@@ -307,25 +296,28 @@ impl MatrixMarketData {
 ///
 /// ```
 /// use russell_lab::Matrix;
-/// use russell_sparse::{read_matrix_market, StrError};
+/// use russell_sparse::{read_matrix_market, Layout, SymmetricHandling, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
-///     let filepath = "./data/matrix_market/simple_sym.mtx".to_string();
-///     let (trip, symmetric) = read_matrix_market(&filepath, true)?;
-///     let neq = trip.neq();
-///     let mut a = Matrix::new(neq, neq);
-///     trip.to_matrix(&mut a)?;
+///     let filepath = "./data/matrix_market/ok_simple_symmetric.mtx".to_string();
+///     let (coo, sym) = read_matrix_market(&filepath, SymmetricHandling::LeaveAsLower)?;
+///     let mut a = Matrix::new(coo.nrow, coo.ncol);
+///     coo.to_matrix(&mut a)?;
 ///     let correct = "┌       ┐\n\
 ///                    │ 1 2 0 │\n\
 ///                    │ 2 3 4 │\n\
 ///                    │ 0 4 0 │\n\
 ///                    └       ┘";
-///     assert_eq!(symmetric, true);
+///     assert!(sym);
+///     assert_eq!(coo.layout, Layout::Lower);
 ///     assert_eq!(format!("{}", a), correct);
 ///     Ok(())
 /// }
 /// ```
-pub fn read_matrix_market<P>(full_path: &P, sym_mirror: bool) -> Result<(CooMatrix, bool), StrError>
+pub fn read_matrix_market<P>(
+    full_path: &P,
+    symmetric_handling: SymmetricHandling,
+) -> Result<(CooMatrix, bool), StrError>
 where
     P: AsRef<OsStr> + ?Sized,
 {
@@ -354,19 +346,28 @@ where
         }
     }
 
-    // check dimensions
-    if data.m != data.n {
-        return Err("cannot read non-square matrix");
-    }
+    // specify the CooMatrix layout
+    let layout = if data.symmetric {
+        if data.m != data.n {
+            return Err("MatrixMarket data is invalid: the number of rows must be equal the number of columns for symmetric matrices");
+        }
+        match symmetric_handling {
+            SymmetricHandling::LeaveAsLower => Layout::Lower,
+            SymmetricHandling::SwapToUpper => Layout::Upper,
+            SymmetricHandling::MakeItFull => Layout::Full,
+        }
+    } else {
+        Layout::Full
+    };
 
     // set max number of entries
     let mut max = data.nnz;
-    if data.symmetric && sym_mirror {
+    if data.symmetric && symmetric_handling == SymmetricHandling::MakeItFull {
         max = 2 * data.nnz;
     }
 
     // allocate triplet
-    let mut trip = CooMatrix::new(data.m as usize, max as usize)?;
+    let mut coo = CooMatrix::new(layout, data.m as usize, data.n as usize, max as usize)?;
 
     // read and parse triples
     loop {
@@ -374,10 +375,24 @@ where
             Some(v) => {
                 let line = v.unwrap(); // must panic because no error expected here
                 if data.parse_triple(&line)? {
-                    trip.put(data.i as usize, data.j as usize, data.aij)?;
-                    if data.symmetric && sym_mirror && data.i != data.j {
-                        trip.put(data.j as usize, data.i as usize, data.aij)?;
-                    }
+                    if data.symmetric {
+                        match symmetric_handling {
+                            SymmetricHandling::LeaveAsLower => {
+                                coo.put(data.i as usize, data.j as usize, data.aij)?;
+                            }
+                            SymmetricHandling::SwapToUpper => {
+                                coo.put(data.j as usize, data.i as usize, data.aij)?;
+                            }
+                            SymmetricHandling::MakeItFull => {
+                                coo.put(data.i as usize, data.j as usize, data.aij)?;
+                                if data.i != data.j {
+                                    coo.put(data.j as usize, data.i as usize, data.aij)?;
+                                }
+                            }
+                        }
+                    } else {
+                        coo.put(data.i as usize, data.j as usize, data.aij)?;
+                    };
                 }
             }
             None => break,
@@ -389,7 +404,7 @@ where
         return Err("not all triples (i,j,aij) have been found");
     }
 
-    Ok((trip, data.symmetric))
+    Ok((coo, data.symmetric))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -397,6 +412,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::{read_matrix_market, MatrixMarketData};
+    use crate::{Layout, SymmetricHandling};
     use russell_lab::Matrix;
 
     #[test]
@@ -540,78 +556,81 @@ mod tests {
 
     #[test]
     fn read_matrix_market_handle_wrong_files() {
+        let h = SymmetricHandling::LeaveAsLower;
         assert_eq!(
-            read_matrix_market(&String::from("__wrong__"), false).err(),
+            read_matrix_market(&String::from("__wrong__"), h).err(),
             Some("cannot open file")
         );
         assert_eq!(
-            read_matrix_market(&String::from("./data/matrix_market/bad_empty_file.mtx"), false).err(),
+            read_matrix_market(&String::from("./data/matrix_market/bad_empty_file.mtx"), h).err(),
             Some("file is empty")
         );
         assert_eq!(
-            read_matrix_market(&String::from("./data/matrix_market/bad_wrong_header.mtx"), false).err(),
+            read_matrix_market(&String::from("./data/matrix_market/bad_wrong_header.mtx"), h).err(),
             Some("after %%MatrixMarket, the first option must be \"matrix\"")
         );
         assert_eq!(
-            read_matrix_market(&String::from("./data/matrix_market/bad_wrong_dims.mtx"), false).err(),
+            read_matrix_market(&String::from("./data/matrix_market/bad_wrong_dims.mtx"), h).err(),
             Some("found invalid (zero or negative) dimensions")
         );
         assert_eq!(
-            read_matrix_market(&String::from("./data/matrix_market/bad_rectangular.mtx"), false).err(),
-            Some("cannot read non-square matrix")
-        );
-        assert_eq!(
-            read_matrix_market(&String::from("./data/matrix_market/bad_missing_data.mtx"), false).err(),
+            read_matrix_market(&String::from("./data/matrix_market/bad_missing_data.mtx"), h).err(),
             Some("not all triples (i,j,aij) have been found")
         );
         assert_eq!(
-            read_matrix_market(&String::from("./data/matrix_market/bad_many_lines.mtx"), false).err(),
+            read_matrix_market(&String::from("./data/matrix_market/bad_many_lines.mtx"), h).err(),
             Some("there are more (i,j,aij) triples than specified")
         );
     }
 
     #[test]
     fn read_matrix_market_works() {
-        let filepath = "./data/matrix_market/ok1.mtx".to_string();
-        let (trip, sym) = read_matrix_market(&filepath, false).unwrap();
-        assert_eq!(sym, false);
-        assert_eq!((trip.neq, trip.pos, trip.max), (5, 12, 12));
-        assert_eq!(trip.indices_i, &[0, 1, 0, 2, 4, 1, 2, 3, 4, 2, 1, 4]);
-        assert_eq!(trip.indices_j, &[0, 0, 1, 1, 1, 2, 2, 2, 2, 3, 4, 4]);
+        let h = SymmetricHandling::LeaveAsLower;
+        let filepath = "./data/matrix_market/ok_general.mtx".to_string();
+        let (coo, sym) = read_matrix_market(&filepath, h).unwrap();
+        assert!(!sym);
+        assert_eq!(coo.layout, Layout::Full);
+        assert_eq!((coo.nrow, coo.ncol, coo.pos, coo.max), (5, 5, 12, 12));
+        assert_eq!(coo.indices_i, &[0, 1, 0, 2, 4, 1, 2, 3, 4, 2, 1, 4]);
+        assert_eq!(coo.indices_j, &[0, 0, 1, 1, 1, 2, 2, 2, 2, 3, 4, 4]);
         assert_eq!(
-            trip.values_aij,
+            coo.values_aij,
             &[2.0, 3.0, 3.0, -1.0, 4.0, 4.0, -3.0, 1.0, 2.0, 2.0, 6.0, 1.0]
         );
     }
 
     #[test]
-    fn read_matrix_market_sym_triangle_works() {
-        let filepath = "./data/matrix_market/ok2.mtx".to_string();
-        let (trip, sym) = read_matrix_market(&filepath, false).unwrap();
-        assert_eq!(sym, true);
-        assert_eq!((trip.neq, trip.pos, trip.max), (5, 15, 15));
-        assert_eq!(trip.indices_i, &[0, 1, 2, 3, 4, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3]);
-        assert_eq!(trip.indices_j, &[0, 1, 2, 3, 4, 1, 2, 3, 4, 2, 3, 4, 3, 4, 4]);
+    fn read_matrix_market_symmetric_works() {
+        let h = SymmetricHandling::LeaveAsLower;
+        let filepath = "./data/matrix_market/ok_symmetric.mtx".to_string();
+        let (coo, sym) = read_matrix_market(&filepath, h).unwrap();
+        assert!(sym);
+        assert_eq!(coo.layout, Layout::Lower);
+        assert_eq!((coo.nrow, coo.ncol, coo.pos, coo.max), (5, 5, 15, 15));
+        assert_eq!(coo.indices_i, &[0, 1, 2, 3, 4, 1, 2, 3, 4, 2, 3, 4, 3, 4, 4]);
+        assert_eq!(coo.indices_j, &[0, 1, 2, 3, 4, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3]);
         assert_eq!(
-            trip.values_aij,
+            coo.values_aij,
             &[2.0, 2.0, 9.0, 7.0, 8.0, 1.0, 1.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 5.0, 1.0],
         );
     }
 
     #[test]
-    fn read_matrix_market_sym_mirror_works() {
-        let filepath = "./data/matrix_market/ok3.mtx".to_string();
-        let (trip, sym) = read_matrix_market(&filepath, true).unwrap();
-        assert_eq!(sym, true);
-        assert_eq!((trip.neq, trip.pos, trip.max), (5, 11, 14));
-        assert_eq!(trip.indices_i, &[0, 1, 0, 2, 1, 3, 2, 3, 4, 1, 4, 0, 0, 0]);
-        assert_eq!(trip.indices_j, &[0, 0, 1, 1, 2, 2, 3, 3, 1, 4, 4, 0, 0, 0]);
+    fn read_matrix_market_symmetric_to_full_works() {
+        let h = SymmetricHandling::MakeItFull;
+        let filepath = "./data/matrix_market/ok_symmetric_small.mtx".to_string();
+        let (coo, sym) = read_matrix_market(&filepath, h).unwrap();
+        assert!(sym);
+        assert_eq!(coo.layout, Layout::Full);
+        assert_eq!((coo.nrow, coo.ncol, coo.pos, coo.max), (5, 5, 11, 14));
+        assert_eq!(coo.indices_i, &[0, 1, 0, 2, 1, 3, 2, 3, 4, 1, 4, 0, 0, 0]);
+        assert_eq!(coo.indices_j, &[0, 0, 1, 1, 2, 2, 3, 3, 1, 4, 4, 0, 0, 0]);
         assert_eq!(
-            trip.values_aij,
+            coo.values_aij,
             &[2.0, 3.0, 3.0, -1.0, -1.0, 2.0, 2.0, 3.0, 6.0, 6.0, 1.0, 0.0, 0.0, 0.0]
         );
         let mut a = Matrix::new(5, 5);
-        trip.to_matrix(&mut a).unwrap();
+        coo.to_matrix(&mut a).unwrap();
         let correct = "┌                ┐\n\
                        │  2  3  0  0  0 │\n\
                        │  3  0 -1  0  6 │\n\

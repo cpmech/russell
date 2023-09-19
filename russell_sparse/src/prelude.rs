@@ -4,5 +4,5 @@
 //! access to commonly used functionality.
 
 pub use crate::config_solver::ConfigSolver;
+pub use crate::coo_matrix::CooMatrix;
 pub use crate::solver::Solver;
-pub use crate::sparse_triplet::CooMatrix;

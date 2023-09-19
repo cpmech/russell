@@ -2972,6 +2972,18 @@ mod tests {
     }
 
     #[test]
+    fn octahedral_invariants_are_correct_simple() {
+        // test from https://soilmodels.com/wp-content/uploads/2020/12/stress_space-2.wgl
+        let (l1, l2, l3) = (193.18, 88.3, 18.52);
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], Mandel::Symmetric).unwrap();
+        approx_eq(tt.invariant_sigma_m(), 100.0, 1e-15);
+        approx_eq(tt.invariant_sigma_d(), 152.28, 0.0053);
+        let lode = tt.invariant_lode().unwrap();
+        let theta = (f64::acos(lode) / 3.0) * 180.0 / PI;
+        approx_eq(30.0 - theta, 6.62, 0.0019);
+    }
+
+    #[test]
     fn lode_invariant_handles_spacial_cases() {
         let c = Mandel::Symmetric;
 

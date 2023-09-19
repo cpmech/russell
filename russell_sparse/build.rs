@@ -14,7 +14,7 @@ fn main() {
             .compile("c_code_main");
 
         println!("cargo:rustc-link-search=native=/usr/local/lib/mumps");
-        println!("cargo:rustc-link-lib=dylib=dmumps_open_seq_omp");
+        println!("cargo:rustc-link-lib=dylib=dmumps_cpmech");
         println!("cargo:rustc-link-lib=dylib=umfpack");
         println!("cargo:rustc-cfg=local_mmp");
     } else {

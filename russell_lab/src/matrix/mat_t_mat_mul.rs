@@ -2,7 +2,7 @@ use super::Matrix;
 use crate::StrError;
 use russell_openblas::{dgemm, to_i32};
 
-/// Performs the matrix(transposed)-matrix multiplication resulting in a matrix
+/// Performs the transpose(matrix)-matrix multiplication
 ///
 /// ```text
 ///   c  :=  α ⋅  aᵀ  ⋅   b

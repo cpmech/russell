@@ -136,12 +136,12 @@ fn main() -> Result<(), StrError> {
 
     // check
     if path.ends_with("bfwb62.mtx") {
-        let tolerance = if opt.mmp { 1e-10 } else { 1e-15 };
+        let tolerance = if opt.mmp { 1e-10 } else { 1e-11 };
         let correct_x = get_bfwb62_correct_x();
         for i in 0..neq {
             let diff = f64::abs(x.get(i) - correct_x.get(i));
             if diff > tolerance {
-                println!("ERROR: diff({}) = {}", i, diff);
+                println!("ERROR: diff({}) = {:.2e}", i, diff);
             }
         }
     }

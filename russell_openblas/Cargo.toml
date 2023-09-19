@@ -14,7 +14,7 @@ keywords = ["matrix", "vector", "eigenvalues", "decomposition"]
 [dependencies]
 russell_chk = { path = "../russell_chk", version = "0.5.0" }
 num-complex = "0.4"
-criterion = "0.4"
+criterion = "0.5"
 
 [[bench]]
 name = "openblas_benches"

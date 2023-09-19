@@ -3,7 +3,7 @@ use crate::vector::Vector;
 use crate::StrError;
 use russell_openblas::{dgemv, to_i32};
 
-/// Performs the matrix-vector multiplication resulting in a vector
+/// Performs the matrix-vector multiplication
 ///
 /// ```text
 ///  v  :=  α ⋅  a   ⋅  u

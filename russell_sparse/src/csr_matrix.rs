@@ -25,6 +25,41 @@ pub struct CsrMatrix {
 }
 
 impl CsrMatrix {
+    /// Allocates an empty CsrMatrix
+    ///
+    /// This function simply allocates the following arrays:
+    ///
+    /// * row_pointers: `vec![0; nrow + 1]`
+    /// * col_indices: `vec![0; nnz]`
+    /// * values: `vec![0.0; nnz]`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_sparse::prelude::*;
+    /// use russell_sparse::StrError;
+    ///
+    /// fn main() {
+    ///     let csr = CsrMatrix::new(Layout::Full, 3, 3, 4);
+    ///     assert_eq!(csr.layout, Layout::Full);
+    ///     assert_eq!(csr.nrow, 3);
+    ///     assert_eq!(csr.ncol, 3);
+    ///     assert_eq!(csr.row_pointers, &[0, 0, 0, 0]);
+    ///     assert_eq!(csr.col_indices, &[0, 0, 0, 0]);
+    ///     assert_eq!(csr.values, &[0.0, 0.0, 0.0, 0.0]);
+    /// }
+    /// ```
+    pub fn new(layout: Layout, nrow: usize, ncol: usize, nnz: usize) -> Self {
+        CsrMatrix {
+            layout,
+            nrow,
+            ncol,
+            row_pointers: vec![0; nrow + 1],
+            col_indices: vec![0; nnz],
+            values: vec![0.0; nnz],
+        }
+    }
+
     /// Creates a new CsrMatrix from a CooMatrix
     ///
     /// # Examples
@@ -353,6 +388,17 @@ mod tests {
     use russell_lab::Matrix;
 
     #[test]
+    fn new_works() {
+        let csr = CsrMatrix::new(Layout::Full, 3, 3, 4);
+        assert_eq!(csr.layout, Layout::Full);
+        assert_eq!(csr.nrow, 3);
+        assert_eq!(csr.ncol, 3);
+        assert_eq!(csr.row_pointers, &[0, 0, 0, 0]);
+        assert_eq!(csr.col_indices, &[0, 0, 0, 0]);
+        assert_eq!(csr.values, &[0.0, 0.0, 0.0, 0.0]);
+    }
+
+    #[test]
     fn csr_matrix_first_triplet_with_shuffled_entries() {
         //  1  -1   .  -3   .
         // -2   5   .   .   .
@@ -590,17 +636,9 @@ mod tests {
 
     #[test]
     fn to_matrix_fails_on_wrong_dims() {
-        let (m, n, nnz) = (2, 2, 3);
-        let csr = CsrMatrix {
-            layout: Layout::Full,
-            nrow: m,
-            ncol: n,
-            row_pointers: vec![0; m + 1],
-            col_indices: vec![0; nnz],
-            values: vec![0.0; nnz],
-        };
-        let mut a_2x1 = Matrix::new(m, 1);
-        let mut a_1x2 = Matrix::new(1, n);
+        let csr = CsrMatrix::new(Layout::Upper, 2, 2, 3);
+        let mut a_2x1 = Matrix::new(3, 1);
+        let mut a_1x2 = Matrix::new(1, 3);
         assert_eq!(csr.to_matrix(&mut a_2x1), Err("wrong matrix dimensions"));
         assert_eq!(csr.to_matrix(&mut a_1x2), Err("wrong matrix dimensions"));
     }

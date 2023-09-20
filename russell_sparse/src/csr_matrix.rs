@@ -56,14 +56,12 @@ impl CsrMatrix {
 
         // compute number of non-zero entries per row of A
         for k in 0..nnz {
-            // for (size_t k = 0; k < nnz; k++) {
             bp[ai[k] as usize] += 1;
         }
 
         // perform the cumulative sum of the nnz per row to get bp[]
         let mut cum_sum = 0;
         for i in 0..nrow {
-            // for (size_t i = 0; i < n_row; i++) {
             let temp = bp[i];
             bp[i] = cum_sum;
             cum_sum += temp;
@@ -72,7 +70,6 @@ impl CsrMatrix {
 
         // write aj and ax into bj and bx (will use bp as workspace)
         for k in 0..nnz {
-            // for (size_t k = 0; k < nnz; k++) {
             let row = ai[k];
             let dest = bp[row as usize];
             bj[dest as usize] = aj[k];
@@ -83,31 +80,26 @@ impl CsrMatrix {
         // fix bp
         let mut last = 0;
         for i in 0..nrow {
-            // for (size_t i = 0; i <= n_row; i++) {
             let temp = bp[i];
             bp[i] = last;
             last = temp;
         }
 
         // sort rows
-        // std::vector<std::pair<INT, double>> temp;
+        let mut temp: Vec<(i32, f64)> = Vec::new();
         for i in 0..nrow {
-            // for (size_t i = 0; i < n_row; i++) {
             let row_start = bp[i];
             let row_end = bp[i + 1];
-            let mut temp = vec![(0, 0.0); (row_end - row_start) as usize];
+            temp.resize((row_end - row_start) as usize, (0, 0.0));
             let mut n = 0;
             for jj in row_start..row_end {
-                // for (INT jj = row_start, n = 0; jj < row_end; jj++, n++) {
                 temp[n].0 = bj[jj as usize];
                 temp[n].1 = bx[jj as usize];
                 n += 1;
             }
             temp.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-            // std::sort(temp.begin(), temp.end(), _kv_pair_less<INT, double>);
             n = 0;
             for jj in row_start..row_end {
-                // for (INT jj = row_start, n = 0; jj < row_end; jj++, n++) {
                 bj[jj as usize] = temp[n].0;
                 bx[jj as usize] = temp[n].1;
                 n += 1;
@@ -165,10 +157,9 @@ fn csr_sum_duplicates(nrow: usize, ap: &mut [i32], aj: &mut [i32], ax: &mut [f64
 
 #[cfg(test)]
 mod tests {
-    use russell_chk::vec_approx_eq;
-
     use super::CsrMatrix;
     use crate::{CooMatrix, Layout};
+    use russell_chk::vec_approx_eq;
 
     #[test]
     fn csr_matrix_first_triplet_with_shuffled_entries() {

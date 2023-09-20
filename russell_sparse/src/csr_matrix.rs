@@ -131,26 +131,26 @@ fn csr_sum_duplicates(nrow: usize, ap: &mut [i32], aj: &mut [i32], ax: &mut [f64
     // * Explicit zeros are retained
     // * ap, aj, and ax will be modified in place
 
-    let mut nnz = 0;
+    let mut nnz: i32 = 0;
     let mut row_end = 0;
     for i in 0..nrow {
         let mut jj = row_end;
-        row_end = ap[i + 1] as usize;
+        row_end = ap[i + 1];
         while jj < row_end {
-            let j = aj[jj];
-            let mut x = ax[jj];
+            let j = aj[jj as usize];
+            let mut x = ax[jj as usize];
             jj += 1;
-            while jj < row_end && aj[jj] == j {
-                x += ax[jj];
+            while jj < row_end && aj[jj as usize] == j {
+                x += ax[jj as usize];
                 jj += 1;
             }
-            aj[nnz] = j;
-            ax[nnz] = x;
+            aj[nnz as usize] = j;
+            ax[nnz as usize] = x;
             nnz += 1;
         }
-        ap[i + 1] = to_i32(nnz);
+        ap[i + 1] = nnz;
     }
-    nnz
+    nnz as usize
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

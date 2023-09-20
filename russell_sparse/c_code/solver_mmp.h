@@ -9,27 +9,27 @@
 #include "constants.h"
 #include "dmumps_c.h"
 
-#define ICNTL(i) icntl[(i)-1]  // macro to make indices match documentation
-#define INFOG(i) infog[(i)-1]  // macro to make indices match documentation
-#define INFO(i) info[(i)-1]    // macro to make indices match documentation
+#define ICNTL(i) icntl[(i)-1] // macro to make indices match documentation
+#define INFOG(i) infog[(i)-1] // macro to make indices match documentation
+#define INFO(i) info[(i)-1]   // macro to make indices match documentation
 
 static inline void set_mmp_verbose(DMUMPS_STRUC_C *data, int32_t verbose) {
     if (verbose == C_TRUE) {
-        data->ICNTL(1) = 6;  // standard output stream
-        data->ICNTL(2) = 0;  // output stream
-        data->ICNTL(3) = 6;  // standard output stream
-        data->ICNTL(4) = 3;  // errors, warnings, and main statistics printed
+        data->ICNTL(1) = 6; // standard output stream
+        data->ICNTL(2) = 0; // output stream
+        data->ICNTL(3) = 6; // standard output stream
+        data->ICNTL(4) = 3; // errors, warnings, and main statistics printed
     } else {
-        data->ICNTL(1) = -1;  // no output messages
-        data->ICNTL(2) = -1;  // no warnings
-        data->ICNTL(3) = -1;  // no global information
-        data->ICNTL(4) = -1;  // message level
+        data->ICNTL(1) = -1; // no output messages
+        data->ICNTL(2) = -1; // no warnings
+        data->ICNTL(3) = -1; // no global information
+        data->ICNTL(4) = -1; // message level
     }
 }
 
 struct SolverMMP {
-    DMUMPS_STRUC_C data;    // data structure
-    int32_t done_job_init;  // job init successfully
+    DMUMPS_STRUC_C data;   // data structure
+    int32_t done_job_init; // job init successfully
 };
 
 struct SolverMMP *new_solver_mmp() {
@@ -141,7 +141,7 @@ int32_t solver_mmp_initialize(struct SolverMMP *solver,
     solver->data.ICNTL(28) = MUMPS_ICNTL28_SEQUENTIAL;
     solver->data.ICNTL(29) = MUMPS_IGNORED;
 
-    return 0;  // success
+    return 0; // success
 }
 
 int32_t solver_mmp_factorize(struct SolverMMP *solver,

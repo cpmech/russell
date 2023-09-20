@@ -162,7 +162,7 @@ mod tests {
             ],
         };
 
-        let full_path = "/tmp/russell_sparse/test_write_matrix_market_vismatrix.mtx";
+        let full_path = "/tmp/russell_sparse/test_write_matrix_market_vismatrix.smat";
         csr.write_matrix_market(full_path, true).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
         assert_eq!(

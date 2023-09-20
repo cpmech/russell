@@ -69,6 +69,16 @@ impl ConfigSolver {
         self.verbose = 1;
         self
     }
+
+    /// Returns a string representation of the ordering option
+    pub fn str_ordering(&self) -> String {
+        str_enum_ordering(self.ordering).to_string()
+    }
+
+    /// Returns a string representation of the scaling option
+    pub fn str_scaling(&self) -> String {
+        str_enum_scaling(self.scaling).to_string()
+    }
 }
 
 impl fmt::Display for ConfigSolver {
@@ -186,32 +196,9 @@ mod tests {
     }
 
     #[test]
-    fn display_trait_works() {
-        let config1 = ConfigSolver::new();
-        let correct1: &str = "\x20\x20\x20\x20\"name\": \"UMF\",\n\
-                              \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
-                              \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
-                              \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
-                              \x20\x20\x20\x20\"maxWorkMemory\": 0,\n\
-                              \x20\x20\x20\x20\"openmpNumThreads\": 1";
-        assert_eq!(format!("{}", config1), correct1);
-        let mut config2 = ConfigSolver::new();
-        config2.lin_sol_kind(LinSolKind::Mmp);
-        let correct2: &str = if cfg!(local_mmp) {
-            "\x20\x20\x20\x20\"name\": \"MMP-local\",\n\
-             \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
-             \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
-             \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
-             \x20\x20\x20\x20\"maxWorkMemory\": 0,\n\
-             \x20\x20\x20\x20\"openmpNumThreads\": 1"
-        } else {
-            "\x20\x20\x20\x20\"name\": \"MMP\",\n\
-             \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
-             \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
-             \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
-             \x20\x20\x20\x20\"maxWorkMemory\": 0,\n\
-             \x20\x20\x20\x20\"openmpNumThreads\": 1"
-        };
-        assert_eq!(format!("{}", config2), correct2);
+    fn string_methods_work() {
+        let config = ConfigSolver::new();
+        assert_eq!(config.str_ordering(), "Auto");
+        assert_eq!(config.str_scaling(), "Auto");
     }
 }

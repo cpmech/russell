@@ -21,6 +21,59 @@ impl CsrMatrix {
     ///
     /// * MatrixMarket: <https://math.nist.gov/MatrixMarket/formats.html>
     /// * Vismatrix: <https://github.com/cpmech/vismatrix>
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_sparse::prelude::*;
+    /// use russell_sparse::StrError;
+    ///
+    /// const SAVE_FILE: bool = false;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // allocate a square matrix and store as CSR matrix
+    ///     // ┌                ┐
+    ///     // │  2  3  0  0  0 │
+    ///     // │  3  0  4  0  6 │
+    ///     // │  0 -1 -3  2  0 │
+    ///     // │  0  0  1  0  0 │
+    ///     // │  0  4  2  0  1 │
+    ///     // └                ┘
+    ///     let csr = CsrMatrix {
+    ///         layout: Layout::Full,
+    ///         nrow: 5,
+    ///         ncol: 5,
+    ///         row_pointers: vec![0, 2, 5, 8, 9, 12],
+    ///         col_indices: vec![
+    ///             //                         p
+    ///             0, 1, //    i = 0, count = 0, 1
+    ///             0, 2, 4, // i = 1, count = 2, 3, 4
+    ///             1, 2, 3, // i = 2, count = 5, 6, 7
+    ///             2, //       i = 3, count = 8
+    ///             1, 2, 4, // i = 4, count = 9, 10, 11
+    ///                //              count = 12
+    ///         ],
+    ///         values: vec![
+    ///             //                                 p
+    ///             2.0, 3.0, //        i = 0, count = 0, 1
+    ///             3.0, 4.0, 6.0, //   i = 1, count = 2, 3, 4
+    ///             -1.0, -3.0, 2.0, // i = 2, count = 5, 6, 7
+    ///             1.0, //             i = 3, count = 8
+    ///             4.0, 2.0, 1.0, //   i = 4, count = 9, 10, 11
+    ///                  //                    count = 12
+    ///         ],
+    ///     };
+    ///     if SAVE_FILE {
+    ///         let full_path = "/tmp/russell_sparse/doc-example-vismatrix.smat";
+    ///         csr.write_matrix_market(full_path, true)?;
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// By running `vismatrix doc-example-vismatrix.smat` you get the following screen:
+    ///
+    /// ![doc-example-vismatrix](https://raw.githubusercontent.com/cpmech/russell/main/russell_sparse/data/figures/doc-example-vismatrix.svg)
     pub fn write_matrix_market<P>(&self, full_path: &P, vismatrix: bool) -> Result<(), StrError>
     where
         P: AsRef<OsStr> + ?Sized,

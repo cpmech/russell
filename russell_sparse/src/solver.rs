@@ -380,6 +380,16 @@ impl Solver {
         (self.time_fact, self.time_solve)
     }
 
+    /// Returns the ordering effectively used by the solver
+    pub fn get_effective_ordering(&self) -> String {
+        self.used_ordering.to_string()
+    }
+
+    /// Returns the scaling effectively used by the solver
+    pub fn get_effective_scaling(&self) -> String {
+        self.used_scaling.to_string()
+    }
+
     /// Handles error code
     fn handle_mmp_error_code(err: i32) -> StrError {
         match err {

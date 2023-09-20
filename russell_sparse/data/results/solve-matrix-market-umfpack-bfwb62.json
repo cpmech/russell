@@ -1,42 +1,27 @@
 {
-  "platform": "russell",
-  "blasLib": "OpenBLAS",
-  "matrixName": "bfwb62",
-  "read": {
-    "timeReadNs": 37275,
-    "timeReadStr": "37.275µs"
-  },
-  "triplet": {
-    "neq": 62,
-    "nnz_current": 342,
-    "nnz_maximum": 404,
-
-  },
-  "symmetry": "Some(General)"
-  "solver": {
-    "name": "UMF",
-    "ordering": "Auto",
-    "scaling": "Auto",
-    "pctIncWorkspace": 100,
-    "maxWorkMemory": 0,
-    "openmpNumThreads": 1
-    "usedOrdering": "Amd",
-    "usedScaling": "Sum",
-    "doneFactorize": true,
-    "nrow": 62,
-    "timeFactNs": 176349,
-    "timeSolveNs": 7712,
-    "timeTotalNs": 184061,
-    "timeFactStr": "176.349µs",
-    "timeSolveStr": "7.712µs",
-    "timeTotalStr": "184.061µs"
-  },
-  "verify": {
-    "maxAbsA": 0.0001,
-    "maxAbsAx": 1.0000000000000004,
-    "maxAbsDiff": 4.440892098500626e-16,
-    "relativeError": 4.4404480536952566e-16,
-    "timeCheckNs": 1322,
-    "timeCheckStr": "1.322µs"
-  }
+  "platform": "Russell",
+  "blas_lib": "OpenBLAS",
+  "matrix_name": "bfwb62",
+  "symmetry": "General",
+  "layout": "Full",
+  "nrow": 62,
+  "ncol": 62,
+  "nnz": 342,
+  "time_read_matrix_market_nanosecond": 40524,
+  "time_read_matrix_market_human": "40.524µs",
+  "time_factorize_nanosecond": 183818,
+  "time_factorize_human": "183.818µs",
+  "time_solve_nanosecond": 6198,
+  "time_solve_human": "6.198µs",
+  "requested_ordering": "Auto",
+  "requested_scaling": "Auto",
+  "requested_openmp_num_threads": 1,
+  "effective_ordering": "Amd",
+  "effective_scaling": "Sum",
+  "effective_openmp_num_threads": 32,
+  "verify_max_abs_a": 0.0001,
+  "verify_max_abs_a_times_x": 1.0000000000000004,
+  "verify_relative_error": 4.4404480536952566e-16,
+  "verify_time_nanosecond": 1144,
+  "verify_time_human": "1.144µs"
 }

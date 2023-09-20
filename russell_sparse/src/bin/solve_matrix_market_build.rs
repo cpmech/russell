@@ -1,6 +1,7 @@
 use russell_lab::{format_nanoseconds, Stopwatch, StrError, Vector};
-use russell_openblas::set_num_threads;
+use russell_openblas::{get_num_threads, set_num_threads};
 use russell_sparse::prelude::*;
+use serde_json;
 use std::path::Path;
 use structopt::StructOpt;
 
@@ -97,39 +98,45 @@ fn main() -> Result<(), StrError> {
 
     // matrix name
     let path = Path::new(&opt.matrix_market_file);
-    let matrix_name = path.file_stem().unwrap().to_str().unwrap();
+    let matrix_name = match path.file_stem() {
+        Some(v) => match v.to_str() {
+            Some(w) => w.to_string(),
+            None => "Unknown".to_string(),
+        },
+        None => "Unknown".to_string(),
+    };
 
     // output
-    println!(
-        "{{\n\
-            \x20\x20\"platform\": \"russell\",\n\
-            \x20\x20\"blasLib\": \"OpenBLAS\",\n\
-            \x20\x20\"matrixName\": \"{}\",\n\
-            \x20\x20\"read\": {{\n\
-                \x20\x20\x20\x20\"timeReadNs\": {},\n\
-                \x20\x20\x20\x20\"timeReadStr\": \"{}\"\n\
-            \x20\x20}},\n\
-            \x20\x20\"triplet\": {{\n\
-                {}\n\
-            \x20\x20}},\n\
-            \x20\x20\"symmetry\": \"{:?}\"\n\
-            \x20\x20\"solver\": {{\n\
-                {}\n\
-                {}\n\
-            \x20\x20}},\n\
-            \x20\x20\"verify\": {{\n\
-                {}\n\
-            \x20\x20}}\n\
-        }}",
+    let (time_fact, time_solve) = solver.get_elapsed_times();
+    let info = SolutionInfo {
+        platform: "Russell".to_string(),
+        blas_lib: "OpenBLAS".to_string(),
         matrix_name,
-        time_read,
-        format_nanoseconds(time_read),
-        coo,
-        symmetry,
-        config,
-        solver,
-        verify
-    );
+        symmetry: if sym { "General".to_string() } else { "None".to_string() },
+        layout: format!("{:?}", coo.layout),
+        nrow: coo.nrow,
+        ncol: coo.ncol,
+        nnz: coo.pos,
+        time_read_matrix_market_nanosecond: time_read,
+        time_read_matrix_market_human: format_nanoseconds(time_read),
+        time_factorize_nanosecond: time_fact,
+        time_factorize_human: format_nanoseconds(time_fact),
+        time_solve_nanosecond: time_solve,
+        time_solve_human: format_nanoseconds(time_solve),
+        requested_ordering: config.str_ordering(),
+        requested_scaling: config.str_scaling(),
+        requested_openmp_num_threads: opt.omp_nt as usize,
+        effective_ordering: solver.get_effective_ordering(),
+        effective_scaling: solver.get_effective_scaling(),
+        effective_openmp_num_threads: get_num_threads() as usize,
+        verify_max_abs_a: verify.max_abs_a,
+        verify_max_abs_a_times_x: verify.max_abs_ax,
+        verify_relative_error: verify.relative_error,
+        verify_time_nanosecond: verify.time_check,
+        verify_time_human: format_nanoseconds(verify.time_check),
+    };
+    let info_json = serde_json::to_string_pretty(&info).unwrap();
+    println!("{}", info_json);
 
     // check
     if path.ends_with("bfwb62.mtx") {

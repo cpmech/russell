@@ -642,4 +642,48 @@ mod tests {
         assert_eq!(csr.to_matrix(&mut a_2x1), Err("wrong matrix dimensions"));
         assert_eq!(csr.to_matrix(&mut a_1x2), Err("wrong matrix dimensions"));
     }
+
+    #[test]
+    fn to_matrix_and_as_matrix_work() {
+        let csr = CsrMatrix {
+            layout: Layout::Full,
+            nrow: 5,
+            ncol: 5,
+            row_pointers: vec![0, 2, 5, 8, 9, 12],
+            col_indices: vec![
+                //                         p
+                0, 1, //    i = 0, count = 0, 1
+                0, 2, 4, // i = 1, count = 2, 3, 4
+                1, 2, 3, // i = 2, count = 5, 6, 7
+                2, //       i = 3, count = 8
+                1, 2, 4, // i = 4, count = 9, 10, 11
+                   //              count = 12
+            ],
+            values: vec![
+                //                                 p
+                2.0, 3.0, //        i = 0, count = 0, 1
+                3.0, 4.0, 6.0, //   i = 1, count = 2, 3, 4
+                -1.0, -3.0, 2.0, // i = 2, count = 5, 6, 7
+                1.0, //             i = 3, count = 8
+                4.0, 2.0, 1.0, //   i = 4, count = 9, 10, 11
+                     //                    count = 12
+            ],
+        };
+
+        // covert to dense
+        let mut a = Matrix::new(5, 5);
+        csr.to_matrix(&mut a).unwrap();
+        let correct = "┌                ┐\n\
+                       │  2  3  0  0  0 │\n\
+                       │  3  0  4  0  6 │\n\
+                       │  0 -1 -3  2  0 │\n\
+                       │  0  0  1  0  0 │\n\
+                       │  0  4  2  0  1 │\n\
+                       └                ┘";
+        assert_eq!(format!("{}", a), correct);
+
+        // use as_matrix
+        let b = csr.as_matrix().unwrap();
+        assert_eq!(format!("{}", b), correct);
+    }
 }

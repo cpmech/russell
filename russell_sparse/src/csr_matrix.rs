@@ -13,7 +13,7 @@ pub struct CsrMatrix {
     /// Holds the number of columns (must fit i32)
     pub ncol: usize,
 
-    /// Defines the row pointers array with size = n_row + 1
+    /// Defines the row pointers array with size = nrow + 1
     pub row_pointers: Vec<i32>,
 
     /// Defines the column indices array with size = nnz (number of non-zeros)

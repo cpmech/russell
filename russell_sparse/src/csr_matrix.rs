@@ -686,4 +686,48 @@ mod tests {
         let b = csr.as_matrix().unwrap();
         assert_eq!(format!("{}", b), correct);
     }
+
+    #[test]
+    fn to_matrix_upper_works() {
+        // upper triangular
+        let csr = CsrMatrix {
+            layout: Layout::Upper,
+            nrow: 5,
+            ncol: 5,
+            row_pointers: vec![0, 5, 6, 7, 8, 9],
+            col_indices: vec![0, 1, 2, 3, 4, 1, 2, 3, 4],
+            values: vec![9.0, 1.5, 6.0, 0.75, 3.0, 0.5, 12.0, 0.625, 16.0],
+        };
+        let a = csr.as_matrix().unwrap();
+        let correct = "┌                               ┐\n\
+                       │     9   1.5     6  0.75     3 │\n\
+                       │   1.5   0.5     0     0     0 │\n\
+                       │     6     0    12     0     0 │\n\
+                       │  0.75     0     0 0.625     0 │\n\
+                       │     3     0     0     0    16 │\n\
+                       └                               ┘";
+        assert_eq!(format!("{}", a), correct);
+    }
+
+    #[test]
+    fn to_matrix_lower_works() {
+        // upper triangular
+        let csr = CsrMatrix {
+            layout: Layout::Lower,
+            nrow: 5,
+            ncol: 5,
+            row_pointers: vec![0, 1, 3, 5, 7, 9],
+            col_indices: vec![0, 0, 1, 0, 2, 0, 3, 0, 4],
+            values: vec![9.0, 1.5, 0.5, 6.0, 12.0, 0.75, 0.625, 3.0, 16.0],
+        };
+        let a = csr.as_matrix().unwrap();
+        let correct = "┌                               ┐\n\
+                       │     9   1.5     6  0.75     3 │\n\
+                       │   1.5   0.5     0     0     0 │\n\
+                       │     6     0    12     0     0 │\n\
+                       │  0.75     0     0 0.625     0 │\n\
+                       │     3     0     0     0    16 │\n\
+                       └                               ┘";
+        assert_eq!(format!("{}", a), correct);
+    }
 }

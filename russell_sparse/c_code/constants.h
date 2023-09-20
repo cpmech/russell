@@ -60,46 +60,6 @@ const MUMPS_INT MMP_SCALING[9] = {
     77, // 8: Sum => Auto
 };
 
-inline int32_t get_russell_ordering(MUMPS_INT mmp_ordering) {
-    if (mmp_ordering == 0) {
-        return 0; // Amd
-    } else if (mmp_ordering == 2) {
-        return 1; // Amf
-    } else if (mmp_ordering == 7) {
-        return 2; // Auto
-    } else if (mmp_ordering == 5) {
-        return 5; // Metis
-    } else if (mmp_ordering == 4) {
-        return 7; // Pord
-    } else if (mmp_ordering == 6) {
-        return 8; // Qamd
-    } else if (mmp_ordering == 3) {
-        return 9; // Scotch
-    } else {
-        return 2; // Auto
-    }
-}
-
-inline int32_t get_russell_scaling(MUMPS_INT mmp_scaling) {
-    if (mmp_scaling == 77) {
-        return 0; // Auto
-    } else if (mmp_scaling == 3) {
-        return 1; // Column
-    } else if (mmp_scaling == 1) {
-        return 2; // Diagonal
-    } else if (mmp_scaling == 0) {
-        return 4; // No
-    } else if (mmp_scaling == 4) {
-        return 5; // RowCol
-    } else if (mmp_scaling == 7) {
-        return 6; // RowColIter
-    } else if (mmp_scaling == 8) {
-        return 7; // RowColRig
-    } else {
-        return 0; // Auto
-    }
-}
-
 const double UMF_SYMMETRY[2] = {
     UMFPACK_STRATEGY_UNSYMMETRIC, // Unsymmetric
     UMFPACK_STRATEGY_SYMMETRIC,   // General symmetric

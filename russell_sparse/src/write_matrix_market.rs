@@ -73,7 +73,7 @@ impl CsrMatrix {
     ///
     /// By running `vismatrix doc-example-vismatrix.smat` you get the following screen:
     ///
-    /// ![doc-example-vismatrix](https://raw.githubusercontent.com/cpmech/russell/main/russell_sparse/data/figures/doc-example-vismatrix.svg)
+    /// ![doc-example-vismatrix](https://raw.githubusercontent.com/cpmech/russell/main/russell_sparse/data/figures/doc-example-vismatrix.png)
     pub fn write_matrix_market<P>(&self, full_path: &P, vismatrix: bool) -> Result<(), StrError>
     where
         P: AsRef<OsStr> + ?Sized,

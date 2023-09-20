@@ -350,6 +350,7 @@ mod tests {
     use super::CsrMatrix;
     use crate::{CooMatrix, Layout};
     use russell_chk::vec_approx_eq;
+    use russell_lab::Matrix;
 
     #[test]
     fn csr_matrix_first_triplet_with_shuffled_entries() {
@@ -585,5 +586,22 @@ mod tests {
         assert_eq!(&csr.row_pointers, &correct_p);
         assert_eq!(&csr.col_indices, &correct_j);
         vec_approx_eq(&csr.values, &correct_x, 1e-15);
+    }
+
+    #[test]
+    fn to_matrix_fails_on_wrong_dims() {
+        let (m, n, nnz) = (2, 2, 3);
+        let csr = CsrMatrix {
+            layout: Layout::Full,
+            nrow: m,
+            ncol: n,
+            row_pointers: vec![0; m + 1],
+            col_indices: vec![0; nnz],
+            values: vec![0.0; nnz],
+        };
+        let mut a_2x1 = Matrix::new(m, 1);
+        let mut a_1x2 = Matrix::new(1, n);
+        assert_eq!(csr.to_matrix(&mut a_2x1), Err("wrong matrix dimensions"));
+        assert_eq!(csr.to_matrix(&mut a_1x2), Err("wrong matrix dimensions"));
     }
 }

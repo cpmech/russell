@@ -1,11 +1,10 @@
 use super::{
     code_symmetry_mmp, code_symmetry_umf, str_enum_ordering, str_enum_scaling, str_mmp_ordering, str_mmp_scaling,
-    str_umf_ordering, str_umf_scaling, ConfigSolver, LinSolKind, SparseTriplet,
+    str_umf_ordering, str_umf_scaling, ConfigSolver, CooMatrix, LinSolKind,
 };
 use crate::{StrError, Symmetry};
-use russell_lab::{format_nanoseconds, vec_copy, Stopwatch, Vector};
+use russell_lab::{vec_copy, Stopwatch, Vector};
 use russell_openblas::to_i32;
-use std::fmt;
 
 #[repr(C)]
 pub(crate) struct ExtSolver {
@@ -76,7 +75,7 @@ pub struct Solver {
     kind: LinSolKind,            // solver kind
     verbose: i32,                // verbose mode
     done_factorize: bool,        // factorization completed
-    neq: usize,                  // number of equations == nrow(a) where a*x=rhs
+    nrow: usize,                 // number of equations == nrow(a) where a*x=rhs
     solver: *mut ExtSolver,      // data allocated by the c-code
     stopwatch: Stopwatch,        // stopwatch to measure elapsed time
     time_fact: u128,             // elapsed time during factorize
@@ -87,8 +86,8 @@ pub struct Solver {
 
 impl Solver {
     /// Creates a new solver
-    pub fn new(config: ConfigSolver, neq: usize, nnz: usize, symmetry: Option<Symmetry>) -> Result<Self, StrError> {
-        let n = to_i32(neq);
+    pub fn new(config: ConfigSolver, nrow: usize, nnz: usize, symmetry: Option<Symmetry>) -> Result<Self, StrError> {
+        let n = to_i32(nrow);
         let nnz = to_i32(nnz);
         unsafe {
             let solver = match config.lin_sol_kind {
@@ -136,7 +135,7 @@ impl Solver {
                 kind: config.lin_sol_kind,
                 verbose: config.verbose,
                 done_factorize: false,
-                neq,
+                nrow,
                 solver,
                 stopwatch: Stopwatch::new(""),
                 time_fact: 0,
@@ -148,9 +147,12 @@ impl Solver {
     }
 
     /// Performs the factorization
-    pub fn factorize(&mut self, trip: &SparseTriplet) -> Result<(), StrError> {
-        if trip.neq != self.neq {
-            return Err("cannot factorize because the triplet has incompatible number of equations");
+    pub fn factorize(&mut self, coo: &CooMatrix) -> Result<(), StrError> {
+        if coo.nrow != coo.ncol {
+            return Err("cannot factorize because the CooMatrix is not square");
+        }
+        if coo.nrow != self.nrow {
+            return Err("cannot factorize because the CooMatrix has incompatible number of rows");
         }
         self.stopwatch.reset();
         unsafe {
@@ -158,9 +160,9 @@ impl Solver {
                 LinSolKind::Mmp => {
                     let res = solver_mmp_factorize(
                         self.solver,
-                        trip.indices_i.as_ptr(),
-                        trip.indices_j.as_ptr(),
-                        trip.values_aij.as_ptr(),
+                        coo.indices_i.as_ptr(),
+                        coo.indices_j.as_ptr(),
+                        coo.values_aij.as_ptr(),
                         self.verbose,
                     );
                     if res != 0 {
@@ -174,9 +176,9 @@ impl Solver {
                 LinSolKind::Umf => {
                     let res = solver_umf_factorize(
                         self.solver,
-                        trip.indices_i.as_ptr(),
-                        trip.indices_j.as_ptr(),
-                        trip.values_aij.as_ptr(),
+                        coo.indices_i.as_ptr(),
+                        coo.indices_j.as_ptr(),
+                        coo.values_aij.as_ptr(),
                         self.verbose,
                     );
                     if res != 0 {
@@ -200,29 +202,29 @@ impl Solver {
     ///
     /// ```
     /// use russell_lab::{Matrix, Vector};
-    /// use russell_sparse::{ConfigSolver, SparseTriplet, Solver, StrError};
+    /// use russell_sparse::{ConfigSolver, CooMatrix, Layout, Solver, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // allocate a square matrix
-    ///     let (neq, nnz) = (5, 13);
-    ///     let mut trip = SparseTriplet::new(neq, nnz)?;
-    ///     trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
-    ///     trip.put(0, 0, 1.0)?; // << (0, 0, a00/2)
-    ///     trip.put(1, 0, 3.0)?;
-    ///     trip.put(0, 1, 3.0)?;
-    ///     trip.put(2, 1, -1.0)?;
-    ///     trip.put(4, 1, 4.0)?;
-    ///     trip.put(1, 2, 4.0)?;
-    ///     trip.put(2, 2, -3.0)?;
-    ///     trip.put(3, 2, 1.0)?;
-    ///     trip.put(4, 2, 2.0)?;
-    ///     trip.put(2, 3, 2.0)?;
-    ///     trip.put(1, 4, 6.0)?;
-    ///     trip.put(4, 4, 1.0)?;
+    ///     let (nrow, ncol, nnz) = (5, 5, 13);
+    ///     let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz)?;
+    ///     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2)
+    ///     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2)
+    ///     coo.put(1, 0, 3.0)?;
+    ///     coo.put(0, 1, 3.0)?;
+    ///     coo.put(2, 1, -1.0)?;
+    ///     coo.put(4, 1, 4.0)?;
+    ///     coo.put(1, 2, 4.0)?;
+    ///     coo.put(2, 2, -3.0)?;
+    ///     coo.put(3, 2, 1.0)?;
+    ///     coo.put(4, 2, 2.0)?;
+    ///     coo.put(2, 3, 2.0)?;
+    ///     coo.put(1, 4, 6.0)?;
+    ///     coo.put(4, 4, 1.0)?;
     ///
     ///     // print matrix
-    ///     let mut a = Matrix::new(neq, neq);
-    ///     trip.to_matrix(&mut a)?;
+    ///     let mut a = Matrix::new(nrow, nrow);
+    ///     coo.to_matrix(&mut a)?;
     ///     let correct = "┌                ┐\n\
     ///                    │  2  3  0  0  0 │\n\
     ///                    │  3  0  4  0  6 │\n\
@@ -233,13 +235,13 @@ impl Solver {
     ///     assert_eq!(format!("{}", a), correct);
     ///
     ///     // allocate x and rhs
-    ///     let mut x = Vector::new(neq);
+    ///     let mut x = Vector::new(nrow);
     ///     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
     ///
     ///     // initialize, factorize, and solve
     ///     let config = ConfigSolver::new();
-    ///     let mut solver = Solver::new(config, neq, nnz, None)?;
-    ///     solver.factorize(&trip)?;
+    ///     let mut solver = Solver::new(config, nrow, nnz, None)?;
+    ///     solver.factorize(&coo)?;
     ///     solver.solve(&mut x, &rhs)?;
     ///     let correct = "┌          ┐\n\
     ///                    │ 1.000000 │\n\
@@ -256,7 +258,7 @@ impl Solver {
         if !self.done_factorize {
             return Err("factorization must be done before calling solve");
         }
-        if x.dim() != self.neq || rhs.dim() != self.neq {
+        if x.dim() != self.nrow || rhs.dim() != self.nrow {
             return Err("x.ndim() and rhs.ndim() must equal the number of equations");
         }
         self.stopwatch.reset();
@@ -309,21 +311,21 @@ impl Solver {
     ///
     /// ```
     /// use russell_lab::{Matrix, Vector};
-    /// use russell_sparse::{ConfigSolver, Solver, SparseTriplet, StrError};
+    /// use russell_sparse::{ConfigSolver, CooMatrix, Layout, Solver, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // allocate a square matrix
-    ///     let (neq, nnz) = (3, 5);
-    ///     let mut trip = SparseTriplet::new(neq, nnz)?;
-    ///     trip.put(0, 0, 0.2)?;
-    ///     trip.put(0, 1, 0.2)?;
-    ///     trip.put(1, 0, 0.5)?;
-    ///     trip.put(1, 1, -0.25)?;
-    ///     trip.put(2, 2, 0.25)?;
+    ///     let (nrow, ncol, nnz) = (3, 3, 5);
+    ///     let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz)?;
+    ///     coo.put(0, 0, 0.2)?;
+    ///     coo.put(0, 1, 0.2)?;
+    ///     coo.put(1, 0, 0.5)?;
+    ///     coo.put(1, 1, -0.25)?;
+    ///     coo.put(2, 2, 0.25)?;
     ///
     ///     // print matrix
-    ///     let mut a = Matrix::new(neq, neq);
-    ///     trip.to_matrix(&mut a)?;
+    ///     let mut a = Matrix::new(nrow, nrow);
+    ///     coo.to_matrix(&mut a)?;
     ///     let correct = "┌                   ┐\n\
     ///                    │   0.2   0.2     0 │\n\
     ///                    │   0.5 -0.25     0 │\n\
@@ -337,7 +339,7 @@ impl Solver {
     ///
     ///     // calculate solution
     ///     let config = ConfigSolver::new();
-    ///     let (mut solver, x1) = Solver::compute(config, &trip, &rhs1)?;
+    ///     let (mut solver, x1) = Solver::compute(config, &coo, &rhs1)?;
     ///     let correct1 = "┌   ┐\n\
     ///                     │ 3 │\n\
     ///                     │ 2 │\n\
@@ -346,7 +348,7 @@ impl Solver {
     ///     assert_eq!(format!("{}", x1), correct1);
     ///
     ///     // solve again
-    ///     let mut x2 = Vector::new(neq);
+    ///     let mut x2 = Vector::new(nrow);
     ///     solver.solve(&mut x2, &rhs2)?;
     ///     let correct2 = "┌   ┐\n\
     ///                     │ 6 │\n\
@@ -357,10 +359,13 @@ impl Solver {
     ///     Ok(())
     /// }
     /// ```
-    pub fn compute(config: ConfigSolver, trip: &SparseTriplet, rhs: &Vector) -> Result<(Self, Vector), StrError> {
-        let mut solver = Solver::new(config, trip.neq, trip.pos, None)?;
-        let mut x = Vector::new(trip.neq());
-        solver.factorize(&trip)?;
+    pub fn compute(config: ConfigSolver, coo: &CooMatrix, rhs: &Vector) -> Result<(Self, Vector), StrError> {
+        if coo.nrow != coo.ncol {
+            return Err("CooMatrix must be symmetric");
+        }
+        let mut solver = Solver::new(config, coo.nrow, coo.pos, None)?;
+        let mut x = Vector::new(coo.nrow);
+        solver.factorize(&coo)?;
         solver.solve(&mut x, &rhs)?;
         Ok((solver, x))
     }
@@ -372,6 +377,16 @@ impl Solver {
     /// * `(time_fact, time_solve)` -- elapsed times during factorize and solve, respectively
     pub fn get_elapsed_times(&self) -> (u128, u128) {
         (self.time_fact, self.time_solve)
+    }
+
+    /// Returns the ordering effectively used by the solver
+    pub fn get_effective_ordering(&self) -> String {
+        self.used_ordering.to_string()
+    }
+
+    /// Returns the scaling effectively used by the solver
+    pub fn get_effective_scaling(&self) -> String {
+        self.used_scaling.to_string()
     }
 
     /// Handles error code
@@ -492,96 +507,67 @@ impl Drop for Solver {
     }
 }
 
-impl fmt::Display for Solver {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let time_total = self.time_fact + self.time_solve;
-        write!(
-            f,
-            "\x20\x20\x20\x20\"usedOrdering\": \"{}\",\n\
-             \x20\x20\x20\x20\"usedScaling\": \"{}\",\n\
-             \x20\x20\x20\x20\"doneFactorize\": {},\n\
-             \x20\x20\x20\x20\"neq\": {},\n\
-             \x20\x20\x20\x20\"timeFactNs\": {},\n\
-             \x20\x20\x20\x20\"timeSolveNs\": {},\n\
-             \x20\x20\x20\x20\"timeTotalNs\": {},\n\
-             \x20\x20\x20\x20\"timeFactStr\": \"{}\",\n\
-             \x20\x20\x20\x20\"timeSolveStr\": \"{}\",\n\
-             \x20\x20\x20\x20\"timeTotalStr\": \"{}\"",
-            self.used_ordering,
-            self.used_scaling,
-            self.done_factorize,
-            self.neq,
-            self.time_fact,
-            self.time_solve,
-            time_total,
-            format_nanoseconds(self.time_fact),
-            format_nanoseconds(self.time_solve),
-            format_nanoseconds(time_total)
-        )?;
-        Ok(())
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::{ConfigSolver, LinSolKind, Solver, SparseTriplet};
+    use super::{ConfigSolver, CooMatrix, LinSolKind, Solver};
+    use crate::Layout;
     use russell_chk::vec_approx_eq;
     use russell_lab::Vector;
 
     #[test]
     fn new_works() {
         let config = ConfigSolver::new();
-        let (neq, nnz) = (2, 2);
-        let solver = Solver::new(config, neq, nnz, None).unwrap();
+        let (nrow, nnz) = (2, 2);
+        let solver = Solver::new(config, nrow, nnz, None).unwrap();
         assert_eq!(solver.done_factorize, false);
-        assert_eq!(solver.neq, 2);
+        assert_eq!(solver.nrow, 2);
     }
 
     #[test]
     fn factorize_fails_on_incompatible_triplet() {
         let config = ConfigSolver::new();
         let mut solver = Solver::new(config, 1, 1, None).unwrap();
-        let trip = SparseTriplet::new(2, 2).unwrap();
+        let coo = CooMatrix::new(Layout::Full, 2, 2, 2).unwrap();
         assert_eq!(
-            solver.factorize(&trip).err(),
-            Some("cannot factorize because the triplet has incompatible number of equations")
+            solver.factorize(&coo).err(),
+            Some("cannot factorize because the CooMatrix has incompatible number of rows")
         );
     }
 
     #[test]
     fn factorize_fails_on_singular_matrix() {
         let config = ConfigSolver::new();
-        let (neq, nnz) = (2, 2);
-        let mut solver = Solver::new(config, neq, nnz, None).unwrap();
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
-        trip.put(0, 0, 1.0).unwrap();
-        trip.put(1, 1, 0.0).unwrap();
-        assert_eq!(solver.factorize(&trip), Err("Error(1): Matrix is singular"));
+        let (nrow, ncol, nnz) = (2, 2, 2);
+        let mut solver = Solver::new(config, nrow, nnz, None).unwrap();
+        let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 0.0).unwrap();
+        assert_eq!(solver.factorize(&coo), Err("Error(1): Matrix is singular"));
     }
 
     #[test]
     fn factorize_works() {
         let config = ConfigSolver::new();
-        let (neq, nnz) = (2, 2);
-        let mut solver = Solver::new(config, neq, nnz, None).unwrap();
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
-        trip.put(0, 0, 1.0).unwrap();
-        trip.put(1, 1, 1.0).unwrap();
-        solver.factorize(&trip).unwrap();
+        let (nrow, ncol, nnz) = (2, 2, 2);
+        let mut solver = Solver::new(config, nrow, nnz, None).unwrap();
+        let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 1.0).unwrap();
+        solver.factorize(&coo).unwrap();
         assert!(solver.done_factorize);
     }
 
     #[test]
     fn solve_fails_on_non_factorized() {
         let config = ConfigSolver::new();
-        let (neq, nnz) = (2, 2);
-        let mut solver = Solver::new(config, neq, nnz, None).unwrap();
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
-        trip.put(0, 0, 1.0).unwrap();
-        trip.put(1, 1, 1.0).unwrap();
-        let mut x = Vector::new(neq);
+        let (nrow, ncol, nnz) = (2, 2, 2);
+        let mut solver = Solver::new(config, nrow, nnz, None).unwrap();
+        let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 1.0).unwrap();
+        let mut x = Vector::new(nrow);
         let rhs = Vector::from(&[1.0, 1.0]);
         assert_eq!(
             solver.solve(&mut x, &rhs),
@@ -592,12 +578,12 @@ mod tests {
     #[test]
     fn solve_fails_on_wrong_vectors() {
         let config = ConfigSolver::new();
-        let (neq, nnz) = (2, 2);
-        let mut solver = Solver::new(config, neq, nnz, None).unwrap();
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
-        trip.put(0, 0, 1.0).unwrap();
-        trip.put(1, 1, 1.0).unwrap();
-        solver.factorize(&trip).unwrap();
+        let (nrow, ncol, nnz) = (2, 2, 2);
+        let mut solver = Solver::new(config, nrow, nnz, None).unwrap();
+        let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 1.0).unwrap();
+        solver.factorize(&coo).unwrap();
         let mut x = Vector::new(2);
         let rhs = Vector::from(&[1.0, 1.0]);
         let mut x_wrong = Vector::new(1);
@@ -615,24 +601,24 @@ mod tests {
     #[test]
     fn solve_works() {
         let config = ConfigSolver::new();
-        let (neq, nnz) = (5, 13);
-        let mut solver = Solver::new(config, neq, nnz, None).unwrap();
+        let (nrow, ncol, nnz) = (5, 5, 13);
+        let mut solver = Solver::new(config, nrow, nnz, None).unwrap();
 
         // allocate a square matrix
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
-        trip.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
-        trip.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
-        trip.put(1, 0, 3.0).unwrap();
-        trip.put(0, 1, 3.0).unwrap();
-        trip.put(2, 1, -1.0).unwrap();
-        trip.put(4, 1, 4.0).unwrap();
-        trip.put(1, 2, 4.0).unwrap();
-        trip.put(2, 2, -3.0).unwrap();
-        trip.put(3, 2, 1.0).unwrap();
-        trip.put(4, 2, 2.0).unwrap();
-        trip.put(2, 3, 2.0).unwrap();
-        trip.put(1, 4, 6.0).unwrap();
-        trip.put(4, 4, 1.0).unwrap();
+        let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz).unwrap();
+        coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
+        coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
+        coo.put(1, 0, 3.0).unwrap();
+        coo.put(0, 1, 3.0).unwrap();
+        coo.put(2, 1, -1.0).unwrap();
+        coo.put(4, 1, 4.0).unwrap();
+        coo.put(1, 2, 4.0).unwrap();
+        coo.put(2, 2, -3.0).unwrap();
+        coo.put(3, 2, 1.0).unwrap();
+        coo.put(4, 2, 2.0).unwrap();
+        coo.put(2, 3, 2.0).unwrap();
+        coo.put(1, 4, 6.0).unwrap();
+        coo.put(4, 4, 1.0).unwrap();
 
         // allocate x and rhs
         let mut x = Vector::new(5);
@@ -640,7 +626,7 @@ mod tests {
         let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
 
         // initialize, factorize, and solve
-        solver.factorize(&trip).unwrap();
+        solver.factorize(&coo).unwrap();
         solver.solve(&mut x, &rhs).unwrap();
 
         // check
@@ -654,33 +640,33 @@ mod tests {
     fn solver_mmp_behaves_as_expected() {
         // allocate a new solver
         let mut config = ConfigSolver::new();
-        let (neq, nnz) = (5, 13);
+        let (nrow, ncol, nnz) = (5, 5, 13);
         config.lin_sol_kind(LinSolKind::Mmp);
-        let mut solver = Solver::new(config, neq, nnz, None).unwrap();
+        let mut solver = Solver::new(config, nrow, nnz, None).unwrap();
 
-        // factorize fails on incompatible triplet
-        let mut trip_wrong = SparseTriplet::new(1, 1).unwrap();
-        trip_wrong.put(0, 0, 1.0).unwrap();
+        // factorize fails on incompatible CooMatrix
+        let mut coo_wrong = CooMatrix::new(Layout::Full, 1, 1, 1).unwrap();
+        coo_wrong.put(0, 0, 1.0).unwrap();
         assert_eq!(
-            solver.factorize(&trip_wrong).err(),
-            Some("cannot factorize because the triplet has incompatible number of equations")
+            solver.factorize(&coo_wrong).err(),
+            Some("cannot factorize because the CooMatrix has incompatible number of rows")
         );
 
         // allocate a square matrix
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
-        trip.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
-        trip.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
-        trip.put(1, 0, 3.0).unwrap();
-        trip.put(0, 1, 3.0).unwrap();
-        trip.put(2, 1, -1.0).unwrap();
-        trip.put(4, 1, 4.0).unwrap();
-        trip.put(1, 2, 4.0).unwrap();
-        trip.put(2, 2, -3.0).unwrap();
-        trip.put(3, 2, 1.0).unwrap();
-        trip.put(4, 2, 2.0).unwrap();
-        trip.put(2, 3, 2.0).unwrap();
-        trip.put(1, 4, 6.0).unwrap();
-        trip.put(4, 4, 1.0).unwrap();
+        let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz).unwrap();
+        coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
+        coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
+        coo.put(1, 0, 3.0).unwrap();
+        coo.put(0, 1, 3.0).unwrap();
+        coo.put(2, 1, -1.0).unwrap();
+        coo.put(4, 1, 4.0).unwrap();
+        coo.put(1, 2, 4.0).unwrap();
+        coo.put(2, 2, -3.0).unwrap();
+        coo.put(3, 2, 1.0).unwrap();
+        coo.put(4, 2, 2.0).unwrap();
+        coo.put(2, 3, 2.0).unwrap();
+        coo.put(1, 4, 6.0).unwrap();
+        coo.put(4, 4, 1.0).unwrap();
 
         // allocate x and rhs
         let mut x = Vector::new(5);
@@ -694,7 +680,7 @@ mod tests {
         );
 
         // factorize works
-        solver.factorize(&trip).unwrap();
+        solver.factorize(&coo).unwrap();
         assert!(solver.done_factorize);
 
         // solve fails on wrong x vector
@@ -721,40 +707,40 @@ mod tests {
         vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
 
         // factorize fails on singular matrix
-        let mut trip_singular = SparseTriplet::new(5, 2).unwrap();
-        trip_singular.put(0, 0, 1.0).unwrap();
-        trip_singular.put(4, 4, 1.0).unwrap();
+        let mut coo_singular = CooMatrix::new(Layout::Full, 5, 5, 2).unwrap();
+        coo_singular.put(0, 0, 1.0).unwrap();
+        coo_singular.put(4, 4, 1.0).unwrap();
         let mut solver = Solver::new(config, 5, 2, None).unwrap();
         assert_eq!(
-            solver.factorize(&trip_singular),
+            solver.factorize(&coo_singular),
             Err("Error(-10): numerically singular matrix")
         );
     }
 
     #[test]
     fn compute_works() {
-        let (neq, nnz) = (3, 6);
-        let mut trip = SparseTriplet::new(neq, nnz).unwrap();
-        trip.put(0, 0, 1.0).unwrap();
-        trip.put(0, 1, 1.0).unwrap();
-        trip.put(1, 0, 2.0).unwrap();
-        trip.put(1, 1, 1.0).unwrap();
-        trip.put(1, 2, 1.0).unwrap();
-        trip.put(2, 2, 1.0).unwrap();
+        let (nrow, ncol, nnz) = (3, 3, 6);
+        let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(0, 1, 1.0).unwrap();
+        coo.put(1, 0, 2.0).unwrap();
+        coo.put(1, 1, 1.0).unwrap();
+        coo.put(1, 2, 1.0).unwrap();
+        coo.put(2, 2, 1.0).unwrap();
         let rhs1 = Vector::from(&[1.0, 2.0, 3.0]);
         let rhs2 = Vector::from(&[2.0, 4.0, 6.0]);
         let config = ConfigSolver::new();
-        let (mut solver, x1) = Solver::compute(config, &trip, &rhs1).unwrap();
+        let (mut solver, x1) = Solver::compute(config, &coo, &rhs1).unwrap();
         vec_approx_eq(x1.as_data(), &[-2.0, 3.0, 3.0], 1e-15);
-        let mut x2 = Vector::new(neq);
+        let mut x2 = Vector::new(nrow);
         solver.solve(&mut x2, &rhs2).unwrap();
     }
 
     #[test]
     fn get_elapsed_times_works() {
         let config = ConfigSolver::new();
-        let (neq, nnz) = (2, 2);
-        let solver = Solver::new(config, neq, nnz, None).unwrap();
+        let (nrow, nnz) = (2, 2);
+        let solver = Solver::new(config, nrow, nnz, None).unwrap();
         let times = solver.get_elapsed_times();
         assert_eq!(times, (0, 0));
     }
@@ -807,23 +793,5 @@ mod tests {
             "Error: c-code failed to allocate memory (UMF)"
         );
         assert_eq!(Solver::handle_umf_error_code(123), default);
-    }
-
-    #[test]
-    fn display_trait_works() {
-        let config = ConfigSolver::new();
-        let (neq, nnz) = (2, 2);
-        let solver = Solver::new(config, neq, nnz, None).unwrap();
-        let b: &str = "\x20\x20\x20\x20\"usedOrdering\": \"Auto\",\n\
-                       \x20\x20\x20\x20\"usedScaling\": \"Auto\",\n\
-                       \x20\x20\x20\x20\"doneFactorize\": false,\n\
-                       \x20\x20\x20\x20\"neq\": 2,\n\
-                       \x20\x20\x20\x20\"timeFactNs\": 0,\n\
-                       \x20\x20\x20\x20\"timeSolveNs\": 0,\n\
-                       \x20\x20\x20\x20\"timeTotalNs\": 0,\n\
-                       \x20\x20\x20\x20\"timeFactStr\": \"0ns\",\n\
-                       \x20\x20\x20\x20\"timeSolveStr\": \"0ns\",\n\
-                       \x20\x20\x20\x20\"timeTotalStr\": \"0ns\"";
-        assert_eq!(format!("{}", solver), b);
     }
 }

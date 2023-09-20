@@ -159,15 +159,15 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug executable 'solve_mm_build'",
+      "name": "Debug executable 'solve_matrix_market_build'",
       "cargo": {
         "args": [
           "build",
-          "--bin=solve_mm_build",
+          "--bin=solve_matrix_market_build",
           "--package=russell_sparse"
         ],
         "filter": {
-          "name": "solve_mm_build",
+          "name": "solve_matrix_market_build",
           "kind": "bin"
         }
       },
@@ -177,16 +177,16 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug unit tests in executable 'solve_mm_build'",
+      "name": "Debug unit tests in executable 'solve_matrix_market_build'",
       "cargo": {
         "args": [
           "test",
           "--no-run",
-          "--bin=solve_mm_build",
+          "--bin=solve_matrix_market_build",
           "--package=russell_sparse"
         ],
         "filter": {
-          "name": "solve_mm_build",
+          "name": "solve_matrix_market_build",
           "kind": "bin"
         }
       },

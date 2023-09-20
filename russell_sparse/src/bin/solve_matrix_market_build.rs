@@ -1,10 +1,43 @@
 use russell_lab::{format_nanoseconds, Stopwatch, StrError, Vector};
-use russell_openblas::set_num_threads;
-use russell_sparse::{
-    enum_ordering, enum_scaling, read_matrix_market, ConfigSolver, LinSolKind, Solver, Symmetry, VerifyLinSys,
-};
+use russell_openblas::{get_num_threads, set_num_threads};
+use russell_sparse::prelude::*;
+use serde::{Deserialize, Serialize};
+use serde_json;
 use std::path::Path;
 use structopt::StructOpt;
+
+/// Holds information about the solution of a linear system
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SolutionInfo {
+    pub platform: String,
+    pub blas_lib: String,
+    pub solver_name: String,
+    pub matrix_name: String,
+    pub symmetry: String,
+    pub layout: String,
+    pub nrow: usize,
+    pub ncol: usize,
+    pub nnz: usize,
+    pub time_read_matrix_market_nanosecond: u128,
+    pub time_read_matrix_market_human: String,
+    pub time_factorize_nanosecond: u128,
+    pub time_factorize_human: String,
+    pub time_solve_nanosecond: u128,
+    pub time_solve_human: String,
+    pub time_factorize_and_solve_nanosecond: u128,
+    pub time_factorize_and_solve_human: String,
+    pub requested_ordering: String,
+    pub requested_scaling: String,
+    pub requested_openmp_num_threads: usize,
+    pub effective_ordering: String,
+    pub effective_scaling: String,
+    pub effective_openmp_num_threads: usize,
+    pub verify_max_abs_a: f64,
+    pub verify_max_abs_a_times_x: f64,
+    pub verify_relative_error: f64,
+    pub verify_time_nanosecond: u128,
+    pub verify_time_human: String,
+}
 
 /// Command line options
 #[derive(StructOpt, Debug)]
@@ -49,25 +82,25 @@ fn main() -> Result<(), StrError> {
     // select linear solver
     let name = if opt.mmp { LinSolKind::Mmp } else { LinSolKind::Umf };
 
-    // set the sym_mirror flag
-    let sym_mirror = match name {
+    // select the symmetric handling option
+    let handling = match name {
         LinSolKind::Mmp => {
             // MMP uses the lower-diagonal if symmetric.
-            false
+            SymmetricHandling::LeaveAsLower
         }
         LinSolKind::Umf => {
             // UMF uses the full matrix, if symmetric or not
-            true
+            SymmetricHandling::MakeItFull
         }
     };
 
     // read matrix
     let mut sw = Stopwatch::new("");
-    let (trip, symmetric) = read_matrix_market(&opt.matrix_market_file, sym_mirror)?;
+    let (coo, sym) = read_matrix_market(&opt.matrix_market_file, handling)?;
     let time_read = sw.stop();
 
     // set the symmetry option
-    let symmetry = if symmetric { Some(Symmetry::General) } else { None };
+    let symmetry = if sym { Some(Symmetry::General) } else { None };
 
     // set configuration
     let mut config = ConfigSolver::new();
@@ -83,62 +116,70 @@ fn main() -> Result<(), StrError> {
     }
 
     // initialize and factorize
-    let (neq, nnz) = (trip.neq(), trip.nnz_current());
-    let mut solver = Solver::new(config, neq, nnz, symmetry)?;
-    solver.factorize(&trip)?;
+    let (nrow, nnz) = (coo.nrow, coo.pos);
+    let mut solver = Solver::new(config, nrow, nnz, symmetry)?;
+    solver.factorize(&coo)?;
 
     // allocate vectors
-    let mut x = Vector::new(neq);
-    let rhs = Vector::filled(neq, 1.0);
+    let mut x = Vector::new(nrow);
+    let rhs = Vector::filled(nrow, 1.0);
 
     // solve linear system
     solver.solve(&mut x, &rhs)?;
 
     // verify solution
-    let triangular = symmetric && !sym_mirror;
-    let verify = VerifyLinSys::new(&trip, &x, &rhs, triangular)?;
+    let verify = VerifyLinSys::new(&coo, &x, &rhs)?;
 
     // matrix name
     let path = Path::new(&opt.matrix_market_file);
-    let matrix_name = path.file_stem().unwrap().to_str().unwrap();
+    let matrix_name = match path.file_stem() {
+        Some(v) => match v.to_str() {
+            Some(w) => w.to_string(),
+            None => "Unknown".to_string(),
+        },
+        None => "Unknown".to_string(),
+    };
 
     // output
-    println!(
-        "{{\n\
-            \x20\x20\"platform\": \"russell\",\n\
-            \x20\x20\"blasLib\": \"OpenBLAS\",\n\
-            \x20\x20\"matrixName\": \"{}\",\n\
-            \x20\x20\"read\": {{\n\
-                \x20\x20\x20\x20\"timeReadNs\": {},\n\
-                \x20\x20\x20\x20\"timeReadStr\": \"{}\"\n\
-            \x20\x20}},\n\
-            \x20\x20\"triplet\": {{\n\
-                {}\n\
-            \x20\x20}},\n\
-            \x20\x20\"symmetry\": \"{:?}\"\n\
-            \x20\x20\"solver\": {{\n\
-                {}\n\
-                {}\n\
-            \x20\x20}},\n\
-            \x20\x20\"verify\": {{\n\
-                {}\n\
-            \x20\x20}}\n\
-        }}",
+    let (time_fact, time_solve) = solver.get_elapsed_times();
+    let info = SolutionInfo {
+        platform: "Russell".to_string(),
+        blas_lib: "OpenBLAS".to_string(),
+        solver_name: config.str_solver(),
         matrix_name,
-        time_read,
-        format_nanoseconds(time_read),
-        trip,
-        symmetry,
-        config,
-        solver,
-        verify
-    );
+        symmetry: if sym { "General".to_string() } else { "None".to_string() },
+        layout: format!("{:?}", coo.layout),
+        nrow: coo.nrow,
+        ncol: coo.ncol,
+        nnz: coo.pos,
+        time_read_matrix_market_nanosecond: time_read,
+        time_read_matrix_market_human: format_nanoseconds(time_read),
+        time_factorize_nanosecond: time_fact,
+        time_factorize_human: format_nanoseconds(time_fact),
+        time_solve_nanosecond: time_solve,
+        time_solve_human: format_nanoseconds(time_solve),
+        time_factorize_and_solve_nanosecond: time_fact + time_solve,
+        time_factorize_and_solve_human: format_nanoseconds(time_fact + time_solve),
+        requested_ordering: config.str_ordering(),
+        requested_scaling: config.str_scaling(),
+        requested_openmp_num_threads: opt.omp_nt as usize,
+        effective_ordering: solver.get_effective_ordering(),
+        effective_scaling: solver.get_effective_scaling(),
+        effective_openmp_num_threads: get_num_threads() as usize,
+        verify_max_abs_a: verify.max_abs_a,
+        verify_max_abs_a_times_x: verify.max_abs_ax,
+        verify_relative_error: verify.relative_error,
+        verify_time_nanosecond: verify.time_check,
+        verify_time_human: format_nanoseconds(verify.time_check),
+    };
+    let info_json = serde_json::to_string_pretty(&info).unwrap();
+    println!("{}", info_json);
 
     // check
     if path.ends_with("bfwb62.mtx") {
         let tolerance = if opt.mmp { 1e-10 } else { 1e-11 };
         let correct_x = get_bfwb62_correct_x();
-        for i in 0..neq {
+        for i in 0..nrow {
             let diff = f64::abs(x.get(i) - correct_x.get(i));
             if diff > tolerance {
                 println!("ERROR: diff({}) = {:.2e}", i, diff);

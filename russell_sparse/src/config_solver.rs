@@ -1,6 +1,5 @@
 use super::{str_enum_ordering, str_enum_scaling, LinSolKind, Ordering, Scaling};
 use russell_openblas::to_i32;
-use std::fmt;
 
 /// Holds configuration options for the sparse Solver
 #[derive(Copy, Clone, Debug)]
@@ -69,37 +68,29 @@ impl ConfigSolver {
         self.verbose = 1;
         self
     }
-}
 
-impl fmt::Display for ConfigSolver {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = match self.lin_sol_kind {
+    /// Returns a string representation of the ordering option
+    pub fn str_ordering(&self) -> String {
+        str_enum_ordering(self.ordering).to_string()
+    }
+
+    /// Returns a string representation of the scaling option
+    pub fn str_scaling(&self) -> String {
+        str_enum_scaling(self.scaling).to_string()
+    }
+
+    /// Returns the name of the solver
+    pub fn str_solver(&self) -> String {
+        match self.lin_sol_kind {
             LinSolKind::Mmp => {
                 if cfg!(local_mmp) {
-                    "MMP-local"
+                    "MUMPS-local".to_string()
                 } else {
-                    "MMP"
+                    "MUMPS".to_string()
                 }
             }
-            LinSolKind::Umf => "UMF",
-        };
-        write!(
-            f,
-            "\x20\x20\x20\x20\"name\": \"{}\",\n\
-             \x20\x20\x20\x20\"ordering\": \"{}\",\n\
-             \x20\x20\x20\x20\"scaling\": \"{}\",\n\
-             \x20\x20\x20\x20\"pctIncWorkspace\": {},\n\
-             \x20\x20\x20\x20\"maxWorkMemory\": {},\n\
-             \x20\x20\x20\x20\"openmpNumThreads\": {}",
-            name,
-            str_enum_ordering(self.ordering),
-            str_enum_scaling(self.scaling),
-            self.pct_inc_workspace,
-            self.max_work_memory,
-            self.openmp_num_threads,
-        )
-        .unwrap();
-        Ok(())
+            LinSolKind::Umf => "UMFPACK".to_string(),
+        }
     }
 }
 
@@ -186,32 +177,9 @@ mod tests {
     }
 
     #[test]
-    fn display_trait_works() {
-        let config1 = ConfigSolver::new();
-        let correct1: &str = "\x20\x20\x20\x20\"name\": \"UMF\",\n\
-                              \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
-                              \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
-                              \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
-                              \x20\x20\x20\x20\"maxWorkMemory\": 0,\n\
-                              \x20\x20\x20\x20\"openmpNumThreads\": 1";
-        assert_eq!(format!("{}", config1), correct1);
-        let mut config2 = ConfigSolver::new();
-        config2.lin_sol_kind(LinSolKind::Mmp);
-        let correct2: &str = if cfg!(local_mmp) {
-            "\x20\x20\x20\x20\"name\": \"MMP-local\",\n\
-             \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
-             \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
-             \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
-             \x20\x20\x20\x20\"maxWorkMemory\": 0,\n\
-             \x20\x20\x20\x20\"openmpNumThreads\": 1"
-        } else {
-            "\x20\x20\x20\x20\"name\": \"MMP\",\n\
-             \x20\x20\x20\x20\"ordering\": \"Auto\",\n\
-             \x20\x20\x20\x20\"scaling\": \"Auto\",\n\
-             \x20\x20\x20\x20\"pctIncWorkspace\": 100,\n\
-             \x20\x20\x20\x20\"maxWorkMemory\": 0,\n\
-             \x20\x20\x20\x20\"openmpNumThreads\": 1"
-        };
-        assert_eq!(format!("{}", config2), correct2);
+    fn string_methods_work() {
+        let config = ConfigSolver::new();
+        assert_eq!(config.str_ordering(), "Auto");
+        assert_eq!(config.str_scaling(), "Auto");
     }
 }

@@ -1,5 +1,5 @@
 use russell_lab::Vector;
-use russell_sparse::{ConfigSolver, LinSolKind, Solver, SparseTriplet};
+use russell_sparse::prelude::*;
 
 fn test_solver(name: LinSolKind) {
     match name {
@@ -7,33 +7,33 @@ fn test_solver(name: LinSolKind) {
         LinSolKind::Umf => println!("Testing UMF solver\n"),
     }
 
-    let (neq, nnz) = (5, 13);
+    let (nrow, ncol, nnz) = (5, 5, 13);
 
-    let mut trip = match SparseTriplet::new(neq, nnz) {
+    let mut coo = match CooMatrix::new(Layout::Full, nrow, ncol, nnz) {
         Ok(v) => v,
         Err(e) => {
-            println!("FAIL(new triplet): {}", e);
+            println!("FAIL(new CooMatrix): {}", e);
             return;
         }
     };
 
-    trip.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
-    trip.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
-    trip.put(1, 0, 3.0).unwrap();
-    trip.put(0, 1, 3.0).unwrap();
-    trip.put(2, 1, -1.0).unwrap();
-    trip.put(4, 1, 4.0).unwrap();
-    trip.put(1, 2, 4.0).unwrap();
-    trip.put(2, 2, -3.0).unwrap();
-    trip.put(3, 2, 1.0).unwrap();
-    trip.put(4, 2, 2.0).unwrap();
-    trip.put(2, 3, 2.0).unwrap();
-    trip.put(1, 4, 6.0).unwrap();
-    trip.put(4, 4, 1.0).unwrap();
+    coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
+    coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
+    coo.put(1, 0, 3.0).unwrap();
+    coo.put(0, 1, 3.0).unwrap();
+    coo.put(2, 1, -1.0).unwrap();
+    coo.put(4, 1, 4.0).unwrap();
+    coo.put(1, 2, 4.0).unwrap();
+    coo.put(2, 2, -3.0).unwrap();
+    coo.put(3, 2, 1.0).unwrap();
+    coo.put(4, 2, 2.0).unwrap();
+    coo.put(2, 3, 2.0).unwrap();
+    coo.put(1, 4, 6.0).unwrap();
+    coo.put(4, 4, 1.0).unwrap();
 
     let mut config = ConfigSolver::new();
     config.lin_sol_kind(name);
-    let mut solver = match Solver::new(config, neq, nnz, None) {
+    let mut solver = match Solver::new(config, nrow, nnz, None) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new solver): {}", e);
@@ -41,7 +41,7 @@ fn test_solver(name: LinSolKind) {
         }
     };
 
-    match solver.factorize(&trip) {
+    match solver.factorize(&coo) {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
@@ -68,8 +68,6 @@ fn test_solver(name: LinSolKind) {
         _ => (),
     }
 
-    println!("{}", trip);
-    println!("{}", solver);
     println!("x =\n{}", x);
 }
 
@@ -79,19 +77,19 @@ fn test_solver_singular(name: LinSolKind) {
         LinSolKind::Umf => println!("Testing UMF solver\n"),
     }
 
-    let (neq, nnz) = (2, 2);
+    let (nrow, ncol, nnz) = (2, 2, 2);
 
-    let trip_singular = match SparseTriplet::new(neq, nnz) {
+    let coo_singular = match CooMatrix::new(Layout::Full, nrow, ncol, nnz) {
         Ok(v) => v,
         Err(e) => {
-            println!("FAIL(new triplet): {}", e);
+            println!("FAIL(new CooMatrix): {}", e);
             return;
         }
     };
 
     let mut config = ConfigSolver::new();
     config.lin_sol_kind(name);
-    let mut solver = match Solver::new(config, neq, nnz, None) {
+    let mut solver = match Solver::new(config, nrow, nnz, None) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new solver): {}", e);
@@ -99,7 +97,7 @@ fn test_solver_singular(name: LinSolKind) {
         }
     };
 
-    match solver.factorize(&trip_singular) {
+    match solver.factorize(&coo_singular) {
         Err(e) => println!("\nOk(factorize singular matrix): {}\n", e),
         _ => (),
     };

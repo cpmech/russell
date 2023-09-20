@@ -1,9 +1,43 @@
 use russell_lab::{format_nanoseconds, Stopwatch, StrError, Vector};
 use russell_openblas::{get_num_threads, set_num_threads};
 use russell_sparse::prelude::*;
+use serde::{Deserialize, Serialize};
 use serde_json;
 use std::path::Path;
 use structopt::StructOpt;
+
+/// Holds information about the solution of a linear system
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SolutionInfo {
+    pub platform: String,
+    pub blas_lib: String,
+    pub solver_name: String,
+    pub matrix_name: String,
+    pub symmetry: String,
+    pub layout: String,
+    pub nrow: usize,
+    pub ncol: usize,
+    pub nnz: usize,
+    pub time_read_matrix_market_nanosecond: u128,
+    pub time_read_matrix_market_human: String,
+    pub time_factorize_nanosecond: u128,
+    pub time_factorize_human: String,
+    pub time_solve_nanosecond: u128,
+    pub time_solve_human: String,
+    pub time_factorize_and_solve_nanosecond: u128,
+    pub time_factorize_and_solve_human: String,
+    pub requested_ordering: String,
+    pub requested_scaling: String,
+    pub requested_openmp_num_threads: usize,
+    pub effective_ordering: String,
+    pub effective_scaling: String,
+    pub effective_openmp_num_threads: usize,
+    pub verify_max_abs_a: f64,
+    pub verify_max_abs_a_times_x: f64,
+    pub verify_relative_error: f64,
+    pub verify_time_nanosecond: u128,
+    pub verify_time_human: String,
+}
 
 /// Command line options
 #[derive(StructOpt, Debug)]
@@ -124,6 +158,8 @@ fn main() -> Result<(), StrError> {
         time_factorize_human: format_nanoseconds(time_fact),
         time_solve_nanosecond: time_solve,
         time_solve_human: format_nanoseconds(time_solve),
+        time_factorize_and_solve_nanosecond: time_fact + time_solve,
+        time_factorize_and_solve_human: format_nanoseconds(time_fact + time_solve),
         requested_ordering: config.str_ordering(),
         requested_scaling: config.str_scaling(),
         requested_openmp_num_threads: opt.omp_nt as usize,

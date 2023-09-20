@@ -170,7 +170,6 @@ impl CsrMatrix {
     /// # Examples
     ///
     /// ```
-    /// use russell_lab::Matrix;
     /// use russell_sparse::prelude::*;
     /// use russell_sparse::StrError;
     ///

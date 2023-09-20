@@ -123,9 +123,9 @@ We wrap two direct sparse solvers: UMFPACK (aka **UMF**) and MUMPS (aka **MMP**)
 
 ## Tools
 
-This crate includes a tool named `solve_mm_build` to study the performance of the available sparse solvers (currently MMP and UMF). The `_build` suffix is to disable the coverage tool.
+This crate includes a tool named `solve_matrix_market_build` to study the performance of the available sparse solvers (currently MMP and UMF). The `_build` suffix is to disable the coverage tool.
 
-`solve_mm_build` reads a [Matrix Market file](https://math.nist.gov/MatrixMarket/formats.html) and solves the linear system:
+`solve_matrix_market_build` reads a [Matrix Market file](https://math.nist.gov/MatrixMarket/formats.html) and solves the linear system:
 
 ```text
 a ⋅ x = rhs
@@ -138,13 +138,13 @@ The data directory contains an example of Matrix Market file named `bfwb62.mtx` 
 Run the command:
 
 ```bash
-cargo run --release --bin solve_mm_build -- ~/Downloads/matrix-market/bfwb62.mtx
+cargo run --release --bin solve_matrix_market_build -- ~/Downloads/matrix-market/bfwb62.mtx
 ```
 
 Or
 
 ```bash
-cargo run --release --bin solve_mm_build -- --help
+cargo run --release --bin solve_matrix_market_build -- --help
 ```
 
 for more options.

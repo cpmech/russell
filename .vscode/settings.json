@@ -30,6 +30,7 @@
     "lsol",
     "nelt",
     "odyad",
+    "PERMUT",
     "Schur",
     "Teukolsky",
     "tgamma",

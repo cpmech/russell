@@ -5,6 +5,7 @@
 
 pub use crate::config_solver::ConfigSolver;
 pub use crate::coo_matrix::CooMatrix;
+pub use crate::csr_matrix::CsrMatrix;
 pub use crate::enums::*;
 pub use crate::read_matrix_market;
 pub use crate::solver::Solver;

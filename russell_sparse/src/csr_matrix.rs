@@ -31,8 +31,8 @@ impl CsrMatrix {
         //
         // Notes:
         //
-        // * The row and column indices may be unordered (NOT TRUE)
-        // * Linear complexity: O(nnz(A) + max(n_row,n_col))
+        // * The row and column indices may be unordered
+        // * Linear complexity: O(nnz(A) + max(nrow,ncol))
 
         // access triplet data
         let ai = &coo.indices_i;

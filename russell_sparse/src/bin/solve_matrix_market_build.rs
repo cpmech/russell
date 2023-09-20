@@ -111,6 +111,7 @@ fn main() -> Result<(), StrError> {
     let info = SolutionInfo {
         platform: "Russell".to_string(),
         blas_lib: "OpenBLAS".to_string(),
+        solver_name: config.str_solver(),
         matrix_name,
         symmetry: if sym { "General".to_string() } else { "None".to_string() },
         layout: format!("{:?}", coo.layout),

@@ -1,8 +1,7 @@
 use super::CooMatrix;
 use crate::StrError;
-use russell_lab::{format_nanoseconds, vec_norm, vec_update, Norm, Stopwatch, Vector};
+use russell_lab::{vec_norm, vec_update, Norm, Stopwatch, Vector};
 use russell_openblas::{idamax, to_i32};
-use std::fmt;
 
 /// Verifies the linear system a ⋅ x = rhs
 pub struct VerifyLinSys {
@@ -97,28 +96,6 @@ impl VerifyLinSys {
     }
 }
 
-impl fmt::Display for VerifyLinSys {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "\x20\x20\x20\x20\"maxAbsA\": {},\n\
-             \x20\x20\x20\x20\"maxAbsAx\": {},\n\
-             \x20\x20\x20\x20\"maxAbsDiff\": {:e},\n\
-             \x20\x20\x20\x20\"relativeError\": {:e},\n\
-             \x20\x20\x20\x20\"timeCheckNs\": {},\n\
-             \x20\x20\x20\x20\"timeCheckStr\": \"{}\"",
-            self.max_abs_a,
-            self.max_abs_ax,
-            self.max_abs_diff,
-            self.relative_error,
-            self.time_check,
-            format_nanoseconds(self.time_check),
-        )
-        .unwrap();
-        Ok(())
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
@@ -167,23 +144,5 @@ mod tests {
         assert_eq!(verify.max_abs_diff, 0.0);
         assert_eq!(verify.relative_error, 0.0);
         assert!(verify.time_check > 0);
-    }
-
-    #[test]
-    fn display_trait_works() {
-        let mut coo = CooMatrix::new(Layout::Full, 2, 2, 2).unwrap();
-        coo.put(0, 0, 1.0).unwrap();
-        coo.put(1, 1, 1.0).unwrap();
-        let x = Vector::from(&[1.0, 1.0]);
-        let rhs = Vector::from(&[1.0, 1.0]);
-        let mut verify = VerifyLinSys::new(&coo, &x, &rhs).unwrap();
-        verify.time_check = 0;
-        let correct: &str = "\x20\x20\x20\x20\"maxAbsA\": 1,\n\
-                             \x20\x20\x20\x20\"maxAbsAx\": 1,\n\
-                             \x20\x20\x20\x20\"maxAbsDiff\": 0e0,\n\
-                             \x20\x20\x20\x20\"relativeError\": 0e0,\n\
-                             \x20\x20\x20\x20\"timeCheckNs\": 0,\n\
-                             \x20\x20\x20\x20\"timeCheckStr\": \"0ns\"";
-        assert_eq!(format!("{}", verify), correct);
     }
 }

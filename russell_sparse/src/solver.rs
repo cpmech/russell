@@ -3,9 +3,8 @@ use super::{
     str_umf_ordering, str_umf_scaling, ConfigSolver, CooMatrix, LinSolKind,
 };
 use crate::{StrError, Symmetry};
-use russell_lab::{format_nanoseconds, vec_copy, Stopwatch, Vector};
+use russell_lab::{vec_copy, Stopwatch, Vector};
 use russell_openblas::to_i32;
-use std::fmt;
 
 #[repr(C)]
 pub(crate) struct ExtSolver {
@@ -508,36 +507,6 @@ impl Drop for Solver {
     }
 }
 
-impl fmt::Display for Solver {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let time_total = self.time_fact + self.time_solve;
-        write!(
-            f,
-            "\x20\x20\x20\x20\"usedOrdering\": \"{}\",\n\
-             \x20\x20\x20\x20\"usedScaling\": \"{}\",\n\
-             \x20\x20\x20\x20\"doneFactorize\": {},\n\
-             \x20\x20\x20\x20\"nrow\": {},\n\
-             \x20\x20\x20\x20\"timeFactNs\": {},\n\
-             \x20\x20\x20\x20\"timeSolveNs\": {},\n\
-             \x20\x20\x20\x20\"timeTotalNs\": {},\n\
-             \x20\x20\x20\x20\"timeFactStr\": \"{}\",\n\
-             \x20\x20\x20\x20\"timeSolveStr\": \"{}\",\n\
-             \x20\x20\x20\x20\"timeTotalStr\": \"{}\"",
-            self.used_ordering,
-            self.used_scaling,
-            self.done_factorize,
-            self.nrow,
-            self.time_fact,
-            self.time_solve,
-            time_total,
-            format_nanoseconds(self.time_fact),
-            format_nanoseconds(self.time_solve),
-            format_nanoseconds(time_total)
-        )?;
-        Ok(())
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
@@ -824,23 +793,5 @@ mod tests {
             "Error: c-code failed to allocate memory (UMF)"
         );
         assert_eq!(Solver::handle_umf_error_code(123), default);
-    }
-
-    #[test]
-    fn display_trait_works() {
-        let config = ConfigSolver::new();
-        let (nrow, nnz) = (2, 2);
-        let solver = Solver::new(config, nrow, nnz, None).unwrap();
-        let b: &str = "\x20\x20\x20\x20\"usedOrdering\": \"Auto\",\n\
-                       \x20\x20\x20\x20\"usedScaling\": \"Auto\",\n\
-                       \x20\x20\x20\x20\"doneFactorize\": false,\n\
-                       \x20\x20\x20\x20\"nrow\": 2,\n\
-                       \x20\x20\x20\x20\"timeFactNs\": 0,\n\
-                       \x20\x20\x20\x20\"timeSolveNs\": 0,\n\
-                       \x20\x20\x20\x20\"timeTotalNs\": 0,\n\
-                       \x20\x20\x20\x20\"timeFactStr\": \"0ns\",\n\
-                       \x20\x20\x20\x20\"timeSolveStr\": \"0ns\",\n\
-                       \x20\x20\x20\x20\"timeTotalStr\": \"0ns\"";
-        assert_eq!(format!("{}", solver), b);
     }
 }

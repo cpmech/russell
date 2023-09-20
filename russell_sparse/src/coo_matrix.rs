@@ -2,7 +2,6 @@ use super::Layout;
 use crate::StrError;
 use russell_lab::{Matrix, Vector};
 use russell_openblas::to_i32;
-use std::fmt;
 
 /// Holds the row index, col index, and values of a matrix (also known as Triplet)
 ///
@@ -370,20 +369,6 @@ impl CooMatrix {
             }
         }
         Ok(v)
-    }
-}
-
-impl fmt::Display for CooMatrix {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "\x20\x20\x20\x20\"neq\": {},\n\
-             \x20\x20\x20\x20\"nnz_current\": {},\n\
-             \x20\x20\x20\x20\"nnz_maximum\": {},\n",
-            self.nrow, self.pos, self.max,
-        )
-        .unwrap();
-        Ok(())
     }
 }
 

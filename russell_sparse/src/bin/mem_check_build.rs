@@ -68,8 +68,6 @@ fn test_solver(name: LinSolKind) {
         _ => (),
     }
 
-    println!("{}", coo);
-    println!("{}", solver);
     println!("x =\n{}", x);
 }
 

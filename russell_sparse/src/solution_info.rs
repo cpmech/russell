@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct SolutionInfo {
     pub platform: String,
     pub blas_lib: String,
+    pub solver_name: String,
     pub matrix_name: String,
     pub symmetry: String,
     pub layout: String,
@@ -42,6 +43,7 @@ mod tests {
         let info = SolutionInfo {
             platform: "Russell".to_string(),
             blas_lib: "OpenBLAS".to_string(),
+            solver_name: "UMFPACK".to_string(),
             matrix_name: "Unknown".to_string(),
             symmetry: "General".to_string(),
             layout: "Full".to_string(),
@@ -67,7 +69,7 @@ mod tests {
             verify_time_human: "1.322µs".to_string(),
         };
         let info_clone = info.clone();
-        let correct = "SolutionInfo { platform: \"Russell\", blas_lib: \"OpenBLAS\", matrix_name: \"Unknown\", symmetry: \"General\", layout: \"Full\", nrow: 3, ncol: 3, nnz: 6, time_read_matrix_market_nanosecond: 176349, time_read_matrix_market_human: \"176.349µs\", time_factorize_nanosecond: 176349, time_factorize_human: \"176.349µs\", time_solve_nanosecond: 176349, time_solve_human: \"176.349µs\", requested_ordering: \"Amd\", requested_scaling: \"Auto\", requested_openmp_num_threads: 0, effective_ordering: \"Amd\", effective_scaling: \"Sum\", effective_openmp_num_threads: 1, verify_max_abs_a: 0.0001, verify_max_abs_a_times_x: 1.0000000000000004, verify_relative_error: 4.440892098500626e-16, verify_time_nanosecond: 1322, verify_time_human: \"1.322µs\" }";
+        let correct = "SolutionInfo { platform: \"Russell\", blas_lib: \"OpenBLAS\", solver_name: \"UMFPACK\", matrix_name: \"Unknown\", symmetry: \"General\", layout: \"Full\", nrow: 3, ncol: 3, nnz: 6, time_read_matrix_market_nanosecond: 176349, time_read_matrix_market_human: \"176.349µs\", time_factorize_nanosecond: 176349, time_factorize_human: \"176.349µs\", time_solve_nanosecond: 176349, time_solve_human: \"176.349µs\", requested_ordering: \"Amd\", requested_scaling: \"Auto\", requested_openmp_num_threads: 0, effective_ordering: \"Amd\", effective_scaling: \"Sum\", effective_openmp_num_threads: 1, verify_max_abs_a: 0.0001, verify_max_abs_a_times_x: 1.0000000000000004, verify_relative_error: 4.440892098500626e-16, verify_time_nanosecond: 1322, verify_time_human: \"1.322µs\" }";
         assert_eq!(format!("{:?}", info), correct);
         assert_eq!(info_clone.nrow, info.nrow);
         assert_eq!(info_clone.nnz, info.nnz);

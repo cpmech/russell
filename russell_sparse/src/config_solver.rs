@@ -11,6 +11,7 @@ pub struct ConfigSolver {
     pub(crate) max_work_memory: i32,     // max size of the working memory in mega bytes (MMP-only)
     pub(crate) openmp_num_threads: i32,  // number of OpenMP threads (MMP-only)
     pub(crate) verbose: i32,             // show lower-level messages
+    pub(crate) compute_determinant: i32, // compute determinant
 }
 
 impl ConfigSolver {
@@ -24,6 +25,7 @@ impl ConfigSolver {
             max_work_memory: 0,     // (MMP-only) 0 => Auto
             openmp_num_threads: 1,  // (MMP-only)
             verbose: 0,
+            compute_determinant: 0,
         }
     }
 
@@ -69,6 +71,12 @@ impl ConfigSolver {
         self
     }
 
+    /// Sets option to compute the determinant
+    pub fn set_compute_determinant(&mut self) -> &mut Self {
+        self.compute_determinant = 1;
+        self
+    }
+
     /// Returns a string representation of the ordering option
     pub fn str_ordering(&self) -> String {
         str_enum_ordering(self.ordering).to_string()
@@ -102,7 +110,7 @@ mod tests {
 
     #[test]
     fn clone_copy_and_debug_work() {
-        let correct = "ConfigSolver { lin_sol_kind: Umf, ordering: 2, scaling: 0, pct_inc_workspace: 100, max_work_memory: 0, openmp_num_threads: 1, verbose: 0 }";
+        let correct = "ConfigSolver { lin_sol_kind: Umf, ordering: 2, scaling: 0, pct_inc_workspace: 100, max_work_memory: 0, openmp_num_threads: 1, verbose: 0, compute_determinant: 0 }";
         let config = ConfigSolver::new();
         let copy = config;
         let clone = config.clone();

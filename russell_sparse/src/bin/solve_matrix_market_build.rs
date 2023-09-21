@@ -37,6 +37,8 @@ pub struct SolutionInfo {
     pub verify_relative_error: f64,
     pub verify_time_nanosecond: u128,
     pub verify_time_human: String,
+    pub determinant_coefficient_a: f64, // det = a * 2^c
+    pub determinant_exponent_c: f64,    // det = a * 2^c
 }
 
 /// Command line options
@@ -68,6 +70,10 @@ struct Options {
     /// Activate verbose mode
     #[structopt(short = "v", long)]
     verbose: bool,
+
+    /// Computes determinant
+    #[structopt(short = "d", long)]
+    determinant: bool,
 }
 
 fn main() -> Result<(), StrError> {
@@ -114,6 +120,9 @@ fn main() -> Result<(), StrError> {
     if opt.verbose {
         config.verbose();
     }
+    if opt.determinant {
+        config.set_compute_determinant();
+    }
 
     // initialize and factorize
     let (nrow, nnz) = (coo.nrow, coo.pos);
@@ -142,6 +151,7 @@ fn main() -> Result<(), StrError> {
 
     // output
     let (time_fact, time_solve) = solver.get_elapsed_times();
+    let (det_a, det_c) = solver.get_determinant();
     let info = SolutionInfo {
         platform: "Russell".to_string(),
         blas_lib: "OpenBLAS".to_string(),
@@ -171,6 +181,8 @@ fn main() -> Result<(), StrError> {
         verify_relative_error: verify.relative_error,
         verify_time_nanosecond: verify.time_check,
         verify_time_human: format_nanoseconds(verify.time_check),
+        determinant_coefficient_a: det_a,
+        determinant_exponent_c: det_c,
     };
     let info_json = serde_json::to_string_pretty(&info).unwrap();
     println!("{}", info_json);

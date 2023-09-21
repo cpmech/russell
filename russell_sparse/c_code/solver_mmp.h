@@ -9,9 +9,10 @@
 #include "constants.h"
 #include "dmumps_c.h"
 
-#define ICNTL(i) icntl[(i)-1] // macro to make indices match documentation
-#define INFOG(i) infog[(i)-1] // macro to make indices match documentation
-#define INFO(i) info[(i)-1]   // macro to make indices match documentation
+#define ICNTL(i) icntl[(i)-1]   // macro to make indices match documentation
+#define RINFOG(i) rinfog[(i)-1] // macro to make indices match documentation
+#define INFOG(i) infog[(i)-1]   // macro to make indices match documentation
+#define INFO(i) info[(i)-1]     // macro to make indices match documentation
 
 static inline void set_mmp_verbose(DMUMPS_STRUC_C *data, int32_t verbose) {
     if (verbose == C_TRUE) {
@@ -82,7 +83,8 @@ int32_t solver_mmp_initialize(struct SolverMMP *solver,
                               int32_t scaling,
                               int32_t pct_inc_workspace,
                               int32_t max_work_memory,
-                              int32_t openmp_num_threads) {
+                              int32_t openmp_num_threads,
+                              int32_t compute_determinant) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
@@ -141,6 +143,16 @@ int32_t solver_mmp_initialize(struct SolverMMP *solver,
     solver->data.ICNTL(28) = MUMPS_ICNTL28_SEQUENTIAL;
     solver->data.ICNTL(29) = MUMPS_IGNORED;
 
+    if (compute_determinant == C_TRUE) {
+        // The determinant is obtained by computing
+        // (a + ib) * 2^c where a = RINFOG(12), b = RINFOG(13) and c = INFOG(34).
+        // In real arithmetic b = RINFOG(13) is equal to 0.
+        solver->data.ICNTL(33) = 1;
+        solver->data.ICNTL(8) = 0; // it's recommended to disable scaling when computing the determinant
+    } else {
+        solver->data.ICNTL(33) = 0;
+    }
+
     return 0; // success
 }
 
@@ -148,6 +160,8 @@ int32_t solver_mmp_factorize(struct SolverMMP *solver,
                              int32_t const *indices_i,
                              int32_t const *indices_j,
                              double const *values_aij,
+                             double *determinant_coefficient_a,
+                             double *determinant_exponent_c,
                              int32_t verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
@@ -176,6 +190,16 @@ int32_t solver_mmp_factorize(struct SolverMMP *solver,
     set_mmp_verbose(&solver->data, verbose);
     solver->data.job = MUMPS_JOB_FACTORIZE;
     dmumps_c(&solver->data);
+
+    // read determinant
+
+    if (solver->data.ICNTL(33) == 1) {
+        *determinant_coefficient_a = solver->data.RINFOG(12);
+        *determinant_exponent_c = solver->data.INFOG(34);
+    } else {
+        *determinant_coefficient_a = 0.0;
+        *determinant_exponent_c = 0.0;
+    }
 
     return solver->data.INFOG(1);
 }

@@ -26,12 +26,15 @@ extern "C" {
         pct_inc_workspace: i32,
         max_work_memory: i32,
         openmp_num_threads: i32,
+        compute_determinant: i32,
     ) -> i32;
     fn solver_mmp_factorize(
         solver: *mut ExtSolver,
         indices_i: *const i32,
         indices_j: *const i32,
         values_aij: *const f64,
+        determinant_coefficient_a: *mut f64,
+        determinant_exponent_c: *mut f64,
         verbose: i32,
     ) -> i32;
     fn solver_mmp_solve(solver: *mut ExtSolver, rhs: *mut f64, verbose: i32) -> i32;
@@ -72,16 +75,18 @@ extern "C" {
 /// (m,m)   (m)    (m)
 /// ```
 pub struct Solver {
-    kind: LinSolKind,            // solver kind
-    verbose: i32,                // verbose mode
-    done_factorize: bool,        // factorization completed
-    nrow: usize,                 // number of equations == nrow(a) where a*x=rhs
-    solver: *mut ExtSolver,      // data allocated by the c-code
-    stopwatch: Stopwatch,        // stopwatch to measure elapsed time
-    time_fact: u128,             // elapsed time during factorize
-    time_solve: u128,            // elapsed time during solve
-    used_ordering: &'static str, // used ordering strategy
-    used_scaling: &'static str,  // used scaling strategy
+    kind: LinSolKind,               // solver kind
+    verbose: i32,                   // verbose mode
+    done_factorize: bool,           // factorization completed
+    nrow: usize,                    // number of equations == nrow(a) where a*x=rhs
+    solver: *mut ExtSolver,         // data allocated by the c-code
+    stopwatch: Stopwatch,           // stopwatch to measure elapsed time
+    time_fact: u128,                // elapsed time during factorize
+    time_solve: u128,               // elapsed time during solve
+    used_ordering: &'static str,    // used ordering strategy
+    used_scaling: &'static str,     // used scaling strategy
+    determinant_coefficient_a: f64, // coefficient a of determinant = a * 2^c
+    determinant_exponent_c: f64,    // exponent c of determinant = a * 2^c
 }
 
 impl Solver {
@@ -109,6 +114,7 @@ impl Solver {
                         config.pct_inc_workspace,
                         config.max_work_memory,
                         config.openmp_num_threads,
+                        config.compute_determinant,
                     );
                     if res != 0 {
                         drop_solver_mmp(solver);
@@ -142,6 +148,8 @@ impl Solver {
                 time_solve: 0,
                 used_ordering: str_enum_ordering(config.ordering),
                 used_scaling: str_enum_scaling(config.scaling),
+                determinant_coefficient_a: 0.0,
+                determinant_exponent_c: 0.0,
             })
         }
     }
@@ -163,6 +171,8 @@ impl Solver {
                         coo.indices_i.as_ptr(),
                         coo.indices_j.as_ptr(),
                         coo.values_aij.as_ptr(),
+                        &mut self.determinant_coefficient_a,
+                        &mut self.determinant_exponent_c,
                         self.verbose,
                     );
                     if res != 0 {
@@ -389,6 +399,17 @@ impl Solver {
         self.used_scaling.to_string()
     }
 
+    /// Returns the coefficient and exponent of the determinant, if this option is requested
+    ///
+    /// Returns `(a, c)`, such that
+    ///
+    /// ```text
+    /// det(a) = a * 2^c
+    /// ```
+    pub fn get_determinant(&self) -> (f64, f64) {
+        (self.determinant_coefficient_a, self.determinant_exponent_c)
+    }
+
     /// Handles error code
     fn handle_mmp_error_code(err: i32) -> StrError {
         match err {
@@ -513,8 +534,8 @@ impl Drop for Solver {
 mod tests {
     use super::{ConfigSolver, CooMatrix, LinSolKind, Solver};
     use crate::Layout;
-    use russell_chk::vec_approx_eq;
-    use russell_lab::Vector;
+    use russell_chk::{approx_eq, vec_approx_eq};
+    use russell_lab::{mat_inverse, Matrix, Vector};
 
     #[test]
     fn new_works() {
@@ -557,6 +578,41 @@ mod tests {
         coo.put(1, 1, 1.0).unwrap();
         solver.factorize(&coo).unwrap();
         assert!(solver.done_factorize);
+    }
+
+    #[test]
+    fn factorize_computes_the_determinant() {
+        let mut config = ConfigSolver::new();
+        config.lin_sol_kind(LinSolKind::Mmp);
+        config.set_compute_determinant();
+
+        let (nrow, ncol, nnz) = (5, 5, 13);
+        let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz).unwrap();
+        coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
+        coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
+        coo.put(1, 0, 3.0).unwrap();
+        coo.put(0, 1, 3.0).unwrap();
+        coo.put(2, 1, -1.0).unwrap();
+        coo.put(4, 1, 4.0).unwrap();
+        coo.put(1, 2, 4.0).unwrap();
+        coo.put(2, 2, -3.0).unwrap();
+        coo.put(3, 2, 1.0).unwrap();
+        coo.put(4, 2, 2.0).unwrap();
+        coo.put(2, 3, 2.0).unwrap();
+        coo.put(1, 4, 6.0).unwrap();
+        coo.put(4, 4, 1.0).unwrap();
+
+        let mat = coo.as_matrix();
+        let mut inv = Matrix::new(nrow, ncol);
+        let det = mat_inverse(&mut inv, &mat).unwrap();
+        approx_eq(det, 114.0, 1e-15);
+
+        let mut solver = Solver::new(config, nrow, nnz, None).unwrap();
+        solver.factorize(&coo).unwrap();
+        let d = solver.determinant_coefficient_a * f64::powf(2.0, solver.determinant_exponent_c);
+        approx_eq(solver.determinant_coefficient_a, 57.0 / 64.0, 1e-15);
+        approx_eq(solver.determinant_exponent_c, 7.0, 1e-15);
+        approx_eq(d, 114.0, 1e-15);
     }
 
     #[test]

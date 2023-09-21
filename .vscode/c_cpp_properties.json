@@ -5,12 +5,16 @@
       "includePath": [
         "${default}",
         "/usr/include",
-        "/usr/include/suitesparse"
+        "/usr/include/suitesparse",
+        "/opt/intel/oneapi/mkl/latest/include",
+        "/usr/local/include/mumps"
       ],
-      "defines": [],
+      "defines": [
+        "USE_MKL"
+      ],
       "compilerPath": "/usr/bin/gcc",
-      "cStandard": "gnu17",
-      "cppStandard": "gnu++17",
+      "cStandard": "c17",
+      "cppStandard": "gnu++20",
       "intelliSenseMode": "gcc-x64"
     }
   ],

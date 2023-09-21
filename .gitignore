@@ -8,3 +8,7 @@ output*.txt
 output*.json
 *.profraw
 inline_1.mtx
+good.mtx
+bad.mtx
+good.smat
+bad.smat

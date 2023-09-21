@@ -5,11 +5,6 @@
 #include "constants.h"
 #include "interface_mumps.h"
 
-#define ICNTL(i) icntl[(i)-1]   // macro to make indices match documentation
-#define RINFOG(i) rinfog[(i)-1] // macro to make indices match documentation
-#define INFOG(i) infog[(i)-1]   // macro to make indices match documentation
-#define INFO(i) info[(i)-1]     // macro to make indices match documentation
-
 static inline void set_mumps_verbose(DMUMPS_STRUC_C *data, int32_t verbose) {
     if (verbose == C_TRUE) {
         data->ICNTL(1) = 6; // standard output stream
@@ -24,13 +19,8 @@ static inline void set_mumps_verbose(DMUMPS_STRUC_C *data, int32_t verbose) {
     }
 }
 
-struct SolverMUMPS {
-    DMUMPS_STRUC_C data;   // data structure
-    int32_t done_job_init; // job init successfully
-};
-
-struct SolverMUMPS *new_solver_mumps() {
-    struct SolverMUMPS *solver = (struct SolverMUMPS *)malloc(sizeof(struct SolverMUMPS));
+struct InterfaceMUMPS *solver_mumps_new() {
+    struct InterfaceMUMPS *solver = (struct InterfaceMUMPS *)malloc(sizeof(struct InterfaceMUMPS));
 
     if (solver == NULL) {
         return NULL;
@@ -44,7 +34,7 @@ struct SolverMUMPS *new_solver_mumps() {
     return solver;
 }
 
-void drop_solver_mumps(struct SolverMUMPS *solver) {
+void solver_mumps_drop(struct InterfaceMUMPS *solver) {
     if (solver == NULL) {
         return;
     }
@@ -71,23 +61,23 @@ void drop_solver_mumps(struct SolverMUMPS *solver) {
     free(solver);
 }
 
-int32_t solver_mumps_initialize(struct SolverMUMPS *solver,
-                              int32_t n,
-                              int32_t nnz,
-                              int32_t symmetry,
-                              int32_t ordering,
-                              int32_t scaling,
-                              int32_t pct_inc_workspace,
-                              int32_t max_work_memory,
-                              int32_t openmp_num_threads,
-                              int32_t compute_determinant) {
+int32_t solver_mumps_initialize(struct InterfaceMUMPS *solver,
+                                int32_t n,
+                                int32_t nnz,
+                                int32_t symmetry,
+                                int32_t ordering,
+                                int32_t scaling,
+                                int32_t pct_inc_workspace,
+                                int32_t max_work_memory,
+                                int32_t openmp_num_threads,
+                                int32_t compute_determinant) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
 
     solver->data.comm_fortran = MUMPS_IGNORED;
     solver->data.par = MUMPS_PAR_HOST_ALSO_WORKS;
-    solver->data.sym = MUMPS_SYMMETRY[symmetry];
+    solver->data.sym = symmetry;
 
     set_mumps_verbose(&solver->data, C_FALSE);
     solver->data.job = MUMPS_JOB_INITIALIZE;
@@ -130,8 +120,8 @@ int32_t solver_mumps_initialize(struct SolverMUMPS *solver,
 
     solver->data.ICNTL(5) = MUMPS_ICNTL5_ASSEMBLED_MATRIX;
     solver->data.ICNTL(6) = MUMPS_ICNTL6_PERMUT_AUTO;
-    solver->data.ICNTL(7) = MUMPS_ORDERING[ordering];
-    solver->data.ICNTL(8) = MUMPS_SCALING[scaling];
+    solver->data.ICNTL(7) = ordering;
+    solver->data.ICNTL(8) = scaling;
     solver->data.ICNTL(14) = pct_inc_workspace;
     solver->data.ICNTL(16) = openmp_num_threads;
     solver->data.ICNTL(18) = MUMPS_ICNTL18_CENTRALIZED;
@@ -152,13 +142,11 @@ int32_t solver_mumps_initialize(struct SolverMUMPS *solver,
     return 0; // success
 }
 
-int32_t solver_mumps_factorize(struct SolverMUMPS *solver,
-                             int32_t const *indices_i,
-                             int32_t const *indices_j,
-                             double const *values_aij,
-                             double *determinant_coefficient_a,
-                             double *determinant_exponent_c,
-                             int32_t verbose) {
+int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
+                               int32_t const *indices_i,
+                               int32_t const *indices_j,
+                               double const *values_aij,
+                               int32_t verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
@@ -190,17 +178,17 @@ int32_t solver_mumps_factorize(struct SolverMUMPS *solver,
     // read determinant
 
     if (solver->data.ICNTL(33) == 1) {
-        *determinant_coefficient_a = solver->data.RINFOG(12);
-        *determinant_exponent_c = solver->data.INFOG(34);
+        solver->determinant_coefficient_a = solver->data.RINFOG(12);
+        solver->determinant_exponent_c = solver->data.INFOG(34);
     } else {
-        *determinant_coefficient_a = 0.0;
-        *determinant_exponent_c = 0.0;
+        solver->determinant_coefficient_a = 0.0;
+        solver->determinant_exponent_c = 0.0;
     }
 
     return solver->data.INFOG(1);
 }
 
-int32_t solver_mumps_solve(struct SolverMUMPS *solver, double *rhs, int32_t verbose) {
+int32_t solver_mumps_solve(struct InterfaceMUMPS *solver, double *rhs, int32_t verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
@@ -214,10 +202,30 @@ int32_t solver_mumps_solve(struct SolverMUMPS *solver, double *rhs, int32_t verb
     return solver->data.INFOG(1);
 }
 
-int32_t solver_mumps_used_ordering(struct SolverMUMPS *solver) {
+int32_t solver_mumps_get_ordering(const struct InterfaceMUMPS *solver) {
+    if (solver == NULL) {
+        return 0;
+    }
     return solver->data.INFOG(7);
 }
 
-int32_t solver_mumps_used_scaling(struct SolverMUMPS *solver) {
+int32_t solver_mumps_get_scaling(const struct InterfaceMUMPS *solver) {
+    if (solver == NULL) {
+        return 0;
+    }
     return solver->data.INFOG(33);
+}
+
+double solver_mumps_get_det_coef_a(const struct InterfaceMUMPS *solver) {
+    if (solver == NULL) {
+        return 0.0;
+    }
+    return solver->determinant_coefficient_a;
+}
+
+double solver_mumps_get_det_exp_c(const struct InterfaceMUMPS *solver) {
+    if (solver == NULL) {
+        return 0.0;
+    }
+    return solver->determinant_exponent_c;
 }

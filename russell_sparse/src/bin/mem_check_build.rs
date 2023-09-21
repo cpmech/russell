@@ -3,7 +3,6 @@ use russell_sparse::prelude::*;
 
 fn test_solver(name: LinSolKind) {
     match name {
-        LinSolKind::Mumps => println!("Testing MUMPS solver\n"),
         LinSolKind::Umfpack => println!("Testing UMFPACK solver\n"),
     }
 
@@ -73,7 +72,6 @@ fn test_solver(name: LinSolKind) {
 
 fn test_solver_singular(name: LinSolKind) {
     match name {
-        LinSolKind::Mumps => println!("Testing MUMPS solver\n"),
         LinSolKind::Umfpack => println!("Testing UMFPACK solver\n"),
     }
 
@@ -105,9 +103,7 @@ fn test_solver_singular(name: LinSolKind) {
 
 fn main() {
     println!("Running Mem Check\n");
-    test_solver(LinSolKind::Mumps);
     test_solver(LinSolKind::Umfpack);
-    test_solver_singular(LinSolKind::Mumps);
     test_solver_singular(LinSolKind::Umfpack);
     println!("Done\n");
 }

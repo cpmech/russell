@@ -127,10 +127,10 @@ fn solve_nonlinear_system(kind: LinSolKind) -> Result<(), StrError> {
     }
 }
 
-#[test]
-fn test_nonlinear_system_mumps() -> Result<(), StrError> {
-    solve_nonlinear_system(LinSolKind::Mumps)
-}
+// #[test]
+// fn test_nonlinear_system_mumps() -> Result<(), StrError> {
+// solve_nonlinear_system(LinSolKind::Mumps)
+// }
 
 #[test]
 fn test_nonlinear_system_umfpack() -> Result<(), StrError> {

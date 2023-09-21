@@ -60,9 +60,6 @@ pub enum Symmetry {
 /// Linear solver kind
 #[derive(Clone, Copy, Debug)]
 pub enum LinSolKind {
-    /// The NON-THREAD-SAFE MUMPS Solver (use in single-thread apps / with huge matrices)
-    Mumps,
-
     /// Tim Davis' UMFPACK Solver (recommended, unless the matrix is huge)
     Umfpack,
 }
@@ -165,16 +162,6 @@ pub fn enum_scaling(scaling: &str) -> Scaling {
     }
 }
 
-pub(crate) fn code_symmetry_mumps(option: Option<Symmetry>) -> Result<i32, StrError> {
-    match option {
-        None => Ok(0),
-        Some(v) => match v {
-            Symmetry::General => Ok(2),
-            Symmetry::PosDef => Ok(1),
-        },
-    }
-}
-
 pub(crate) fn code_symmetry_umfpack(option: Option<Symmetry>) -> Result<i32, StrError> {
     match option {
         None => Ok(0),
@@ -216,34 +203,6 @@ pub(crate) fn str_enum_scaling(index: i32) -> &'static str {
     }
 }
 
-pub(crate) fn str_mumps_ordering(mumps_code: i32) -> &'static str {
-    match mumps_code {
-        0 => "Amd",
-        1 => "UserProvided",
-        2 => "Amf",
-        3 => "Scotch",
-        4 => "Pord",
-        5 => "Metis",
-        6 => "Qamd",
-        7 => "Auto",
-        _ => "Unknown",
-    }
-}
-
-pub(crate) fn str_mumps_scaling(mumps_code: i32) -> &'static str {
-    match mumps_code {
-        -1 => "UserProvided",
-        0 => "No",
-        1 => "Diagonal",
-        3 => "Column",
-        4 => "RowCol",
-        7 => "RowColIter",
-        8 => "RowColRig",
-        77 => "Auto",
-        _ => "Unknown",
-    }
-}
-
 pub(crate) fn str_umfpack_ordering(umfpack_code: i32) -> &'static str {
     match umfpack_code {
         0 => "Cholmod",
@@ -271,9 +230,8 @@ pub(crate) fn str_umfpack_scaling(umfpack_code: i32) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        code_symmetry_mumps, code_symmetry_umfpack, enum_ordering, enum_scaling, str_enum_ordering, str_enum_scaling,
-        str_mumps_ordering, str_mumps_scaling, str_umfpack_ordering, str_umfpack_scaling, Layout, LinSolKind, Ordering, Scaling,
-        SymmetricHandling, Symmetry,
+        code_symmetry_umfpack, enum_ordering, enum_scaling, str_enum_ordering, str_enum_scaling, str_umfpack_ordering,
+        str_umfpack_scaling, Layout, Ordering, Scaling, SymmetricHandling, Symmetry,
     };
 
     #[test]
@@ -298,13 +256,6 @@ mod tests {
         assert_eq!(format!("{:?}", symmetry), "General");
         assert_eq!(format!("{:?}", copy), "General");
         assert_eq!(format!("{:?}", clone), "General");
-
-        let lin_sol_kind = LinSolKind::Mumps;
-        let copy = lin_sol_kind;
-        let clone = lin_sol_kind.clone();
-        assert_eq!(format!("{:?}", lin_sol_kind), "Mumps");
-        assert_eq!(format!("{:?}", copy), "Mumps");
-        assert_eq!(format!("{:?}", clone), "Mumps");
 
         let ordering = Ordering::Amd;
         let copy = ordering;
@@ -352,10 +303,6 @@ mod tests {
 
     #[test]
     fn code_symmetry_works() {
-        // mumps
-        assert_eq!(code_symmetry_mumps(None), Ok(0));
-        assert_eq!(code_symmetry_mumps(Some(Symmetry::General)), Ok(2));
-        assert_eq!(code_symmetry_mumps(Some(Symmetry::PosDef)), Ok(1));
         // umfpack
         assert_eq!(code_symmetry_umfpack(None), Ok(0));
         assert_eq!(code_symmetry_umfpack(Some(Symmetry::General)), Ok(1));
@@ -399,32 +346,6 @@ mod tests {
         assert_eq!(str_enum_scaling(6), "RowColIter (MUMPS-only, otherwise Auto)");
         assert_eq!(str_enum_scaling(7), "RowColRig (MUMPS-only, otherwise Auto)");
         assert_eq!(str_enum_scaling(8), "Sum (UMFPACK-only, otherwise Auto)");
-    }
-
-    #[test]
-    fn str_mumps_ordering_works() {
-        assert_eq!(str_mumps_ordering(0), "Amd");
-        assert_eq!(str_mumps_ordering(1), "UserProvided");
-        assert_eq!(str_mumps_ordering(2), "Amf");
-        assert_eq!(str_mumps_ordering(3), "Scotch");
-        assert_eq!(str_mumps_ordering(4), "Pord");
-        assert_eq!(str_mumps_ordering(5), "Metis");
-        assert_eq!(str_mumps_ordering(6), "Qamd");
-        assert_eq!(str_mumps_ordering(7), "Auto");
-        assert_eq!(str_mumps_ordering(123), "Unknown");
-    }
-
-    #[test]
-    fn str_mumps_scaling_works() {
-        assert_eq!(str_mumps_scaling(-1), "UserProvided");
-        assert_eq!(str_mumps_scaling(0), "No");
-        assert_eq!(str_mumps_scaling(1), "Diagonal");
-        assert_eq!(str_mumps_scaling(3), "Column");
-        assert_eq!(str_mumps_scaling(4), "RowCol");
-        assert_eq!(str_mumps_scaling(7), "RowColIter");
-        assert_eq!(str_mumps_scaling(8), "RowColRig");
-        assert_eq!(str_mumps_scaling(77), "Auto");
-        assert_eq!(str_mumps_scaling(123), "Unknown");
     }
 
     #[test]

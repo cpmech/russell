@@ -86,14 +86,14 @@ fn main() -> Result<(), StrError> {
     }
 
     // select linear solver
-    let name = if opt.mumps { LinSolKind::Mumps } else { LinSolKind::Umfpack };
+    let name = LinSolKind::Umfpack;
 
     // select the symmetric handling option
     let handling = match name {
-        LinSolKind::Mumps => {
-            // MUMPS uses the lower-diagonal if symmetric.
-            SymmetricHandling::LeaveAsLower
-        }
+        // LinSolKind::Mumps => {
+        //     // MUMPS uses the lower-diagonal if symmetric.
+        //     SymmetricHandling::LeaveAsLower
+        // }
         LinSolKind::Umfpack => {
             // UMFPACK uses the full matrix, if symmetric or not
             SymmetricHandling::MakeItFull
@@ -151,7 +151,7 @@ fn main() -> Result<(), StrError> {
 
     // output
     let (time_fact, time_solve) = solver.get_elapsed_times();
-    let (det_a, det_c) = solver.get_determinant();
+    let (det_a, det_c) = (0.0, 0.0); //solver.get_determinant());
     let info = SolutionInfo {
         platform: "Russell".to_string(),
         blas_lib: "OpenBLAS".to_string(),

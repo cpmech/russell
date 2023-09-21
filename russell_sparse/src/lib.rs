@@ -63,6 +63,7 @@
 /// Defines a type alias for the error type as a static string
 pub type StrError = &'static str;
 
+mod auxiliary;
 mod config_solver;
 mod coo_matrix;
 mod csr_matrix;
@@ -70,14 +71,17 @@ mod enums;
 pub mod prelude;
 mod read_matrix_market;
 mod solver;
+mod solver_mumps;
 mod verify_lin_sys;
 mod write_matrix_market;
+use crate::auxiliary::*;
 pub use crate::config_solver::*;
 pub use crate::coo_matrix::*;
 pub use crate::csr_matrix::*;
 pub use crate::enums::*;
 pub use crate::read_matrix_market::*;
 pub use crate::solver::*;
+pub use crate::solver_mumps::*;
 pub use crate::verify_lin_sys::*;
 pub use crate::write_matrix_market::*;
 

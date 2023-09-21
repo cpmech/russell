@@ -90,13 +90,6 @@ impl ConfigSolver {
     /// Returns the name of the solver
     pub fn str_solver(&self) -> String {
         match self.lin_sol_kind {
-            LinSolKind::Mumps => {
-                if cfg!(local_mumps) {
-                    "MUMPS-local".to_string()
-                } else {
-                    "MUMPS".to_string()
-                }
-            }
             LinSolKind::Umfpack => "UMFPACK".to_string(),
         }
     }
@@ -106,7 +99,7 @@ impl ConfigSolver {
 
 #[cfg(test)]
 mod tests {
-    use super::{ConfigSolver, LinSolKind, Ordering, Scaling};
+    use super::{ConfigSolver, Ordering, Scaling};
 
     #[test]
     fn clone_copy_and_debug_work() {
@@ -128,18 +121,6 @@ mod tests {
         assert_eq!(config.max_work_memory, 0);
         assert_eq!(config.openmp_num_threads, 1);
         assert_eq!(config.verbose, 0);
-    }
-
-    #[test]
-    fn set_solver_works() {
-        let mut config = ConfigSolver::new();
-        for name in [LinSolKind::Mumps, LinSolKind::Umfpack] {
-            config.lin_sol_kind(name);
-            match config.lin_sol_kind {
-                LinSolKind::Mumps => assert!(true),
-                LinSolKind::Umfpack => assert!(true),
-            }
-        }
     }
 
     #[test]

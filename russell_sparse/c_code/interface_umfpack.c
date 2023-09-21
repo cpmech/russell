@@ -1,21 +1,10 @@
 #include <inttypes.h>
+#include <stdlib.h>
 
 #include "constants.h"
 #include "interface_umfpack.h"
 
-struct SolverUMFPACK {
-    double control[UMFPACK_CONTROL];
-    double info[UMFPACK_INFO];
-    int n;
-    int nnz;
-    int *ap;
-    int *ai;
-    double *ax;
-    void *symbolic;
-    void *numeric;
-};
-
-static inline void set_umfpack_verbose(struct SolverUMFPACK *solver, int32_t verbose) {
+static inline void set_umfpack_verbose(struct InterfaceUMFPACK *solver, int32_t verbose) {
     if (verbose == C_TRUE) {
         solver->control[UMFPACK_PRL] = UMFPACK_PRINT_LEVEL_VERBOSE;
     } else {
@@ -23,8 +12,8 @@ static inline void set_umfpack_verbose(struct SolverUMFPACK *solver, int32_t ver
     }
 }
 
-struct SolverUMFPACK *new_solver_umfpack() {
-    struct SolverUMFPACK *solver = (struct SolverUMFPACK *)malloc(sizeof(struct SolverUMFPACK));
+struct InterfaceUMFPACK *solver_umfpack_new() {
+    struct InterfaceUMFPACK *solver = (struct InterfaceUMFPACK *)malloc(sizeof(struct InterfaceUMFPACK));
 
     if (solver == NULL) {
         return NULL;
@@ -42,7 +31,7 @@ struct SolverUMFPACK *new_solver_umfpack() {
     return solver;
 }
 
-void drop_solver_umfpack(struct SolverUMFPACK *solver) {
+void solver_umfpack_drop(struct InterfaceUMFPACK *solver) {
     if (solver == NULL) {
         return;
     }
@@ -69,13 +58,13 @@ void drop_solver_umfpack(struct SolverUMFPACK *solver) {
     free(solver);
 }
 
-int32_t solver_umfpack_initialize(struct SolverUMFPACK *solver,
-                              int32_t n,
-                              int32_t nnz,
-                              int32_t symmetry,
-                              int32_t ordering,
-                              int32_t scaling,
-                              int32_t verbose) {
+int32_t solver_umfpack_initialize(struct InterfaceUMFPACK *solver,
+                                  int32_t n,
+                                  int32_t nnz,
+                                  int32_t symmetry,
+                                  int32_t ordering,
+                                  int32_t scaling,
+                                  int32_t verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
@@ -112,11 +101,11 @@ int32_t solver_umfpack_initialize(struct SolverUMFPACK *solver,
     return UMFPACK_OK;
 }
 
-int32_t solver_umfpack_factorize(struct SolverUMFPACK *solver,
-                             int32_t const *indices_i,
-                             int32_t const *indices_j,
-                             double const *values_aij,
-                             int32_t verbose) {
+int32_t solver_umfpack_factorize(struct InterfaceUMFPACK *solver,
+                                 int32_t const *indices_i,
+                                 int32_t const *indices_j,
+                                 double const *values_aij,
+                                 int32_t verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
@@ -153,7 +142,7 @@ int32_t solver_umfpack_factorize(struct SolverUMFPACK *solver,
     return code;
 }
 
-int32_t solver_umfpack_solve(struct SolverUMFPACK *solver, double *x, const double *rhs, int32_t verbose) {
+int32_t solver_umfpack_solve(struct InterfaceUMFPACK *solver, double *x, const double *rhs, int32_t verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
@@ -170,10 +159,24 @@ int32_t solver_umfpack_solve(struct SolverUMFPACK *solver, double *x, const doub
     return code;
 }
 
-int32_t solver_umfpack_used_ordering(struct SolverUMFPACK const *solver) {
+int32_t solver_umfpack_get_ordering(const struct InterfaceUMFPACK *solver) {
     return solver->info[UMFPACK_ORDERING_USED];
 }
 
-int32_t solver_umfpack_used_scaling(struct SolverUMFPACK const *solver) {
+int32_t solver_umfpack_get_scaling(const struct InterfaceUMFPACK *solver) {
     return solver->control[UMFPACK_SCALE];
+}
+
+double solver_umfpack_get_det_coef_m(const struct InterfaceUMFPACK *solver) {
+    if (solver == NULL) {
+        return 0.0;
+    }
+    return 0.0; // TODO
+}
+
+double solver_umfpack_get_det_exp_n(const struct InterfaceUMFPACK *solver) {
+    if (solver == NULL) {
+        return 0.0;
+    }
+    return 0.0; // TODO
 }

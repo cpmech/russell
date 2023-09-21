@@ -13,8 +13,8 @@ pub(crate) struct ExtSolver {
 
 extern "C" {
     // UMFPACK
-    fn new_solver_umfpack() -> *mut ExtSolver;
-    fn drop_solver_umfpack(solver: *mut ExtSolver);
+    fn solver_umfpack_new() -> *mut ExtSolver;
+    fn solver_umfpack_drop(solver: *mut ExtSolver);
     fn solver_umfpack_initialize(
         solver: *mut ExtSolver,
         n: i32,
@@ -32,8 +32,8 @@ extern "C" {
         verbose: i32,
     ) -> i32;
     fn solver_umfpack_solve(solver: *mut ExtSolver, x: *mut f64, rhs: *const f64, verbose: i32) -> i32;
-    fn solver_umfpack_used_ordering(solver: *const ExtSolver) -> i32;
-    fn solver_umfpack_used_scaling(solver: *const ExtSolver) -> i32;
+    fn solver_umfpack_get_ordering(solver: *const ExtSolver) -> i32;
+    fn solver_umfpack_get_scaling(solver: *const ExtSolver) -> i32;
 }
 
 /// Implements a sparse linear solver
@@ -65,7 +65,7 @@ impl Solver {
         let nnz = to_i32(nnz)?;
         unsafe {
             let solver = match config.lin_sol_kind {
-                LinSolKind::Umfpack => new_solver_umfpack(),
+                LinSolKind::Umfpack => solver_umfpack_new(),
             };
             if solver.is_null() {
                 return Err("c-code failed to allocate solver");
@@ -82,7 +82,7 @@ impl Solver {
                         config.verbose,
                     );
                     if res != 0 {
-                        drop_solver_umfpack(solver);
+                        solver_umfpack_drop(solver);
                         return Err(Solver::handle_umfpack_error_code(res));
                     }
                 }
@@ -124,8 +124,8 @@ impl Solver {
                     if res != 0 {
                         return Err(Solver::handle_umfpack_error_code(res));
                     }
-                    let ord = solver_umfpack_used_ordering(self.solver);
-                    let sca = solver_umfpack_used_scaling(self.solver);
+                    let ord = solver_umfpack_get_ordering(self.solver);
+                    let sca = solver_umfpack_get_scaling(self.solver);
                     self.used_ordering = str_umfpack_ordering(ord);
                     self.used_scaling = str_umfpack_scaling(sca);
                 }
@@ -352,7 +352,7 @@ impl Drop for Solver {
     fn drop(&mut self) {
         unsafe {
             match self.kind {
-                LinSolKind::Umfpack => drop_solver_umfpack(self.solver),
+                LinSolKind::Umfpack => solver_umfpack_drop(self.solver),
             }
         }
     }

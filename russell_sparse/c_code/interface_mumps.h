@@ -17,13 +17,13 @@ const MUMPS_INT MUMPS_ICNTL6_PERMUT_AUTO = 7;      // section 5.3, page 32
 const MUMPS_INT MUMPS_ICNTL28_SEQUENTIAL = 1;      // section 5.4, page 33
 
 
-const MUMPS_INT MMP_SYMMETRY[3] = {
+const MUMPS_INT MUMPS_SYMMETRY[3] = {
     0, // Unsymmetric
     1, // Positive-definite symmetric
     2, // General symmetric
 };
 
-const MUMPS_INT MMP_ORDERING[10] = {
+const MUMPS_INT MUMPS_ORDERING[10] = {
     0, // 0: Amd
     2, // 1: Amf
     7, // 2: Auto
@@ -36,7 +36,7 @@ const MUMPS_INT MMP_ORDERING[10] = {
     3, // 9: Scotch
 };
 
-const MUMPS_INT MMP_SCALING[9] = {
+const MUMPS_INT MUMPS_SCALING[9] = {
     77, // 0: Auto
     3,  // 1: Column
     1,  // 2: Diagonal

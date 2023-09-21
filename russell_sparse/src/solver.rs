@@ -1,5 +1,5 @@
 use super::{
-    code_symmetry_mmp, code_symmetry_umf, str_enum_ordering, str_enum_scaling, str_mmp_ordering, str_mmp_scaling,
+    code_symmetry_mumps, code_symmetry_umf, str_enum_ordering, str_enum_scaling, str_mumps_ordering, str_mumps_scaling,
     str_umf_ordering, str_umf_scaling, ConfigSolver, CooMatrix, LinSolKind,
 };
 use crate::{StrError, Symmetry};
@@ -13,10 +13,10 @@ pub(crate) struct ExtSolver {
 }
 
 extern "C" {
-    // MMP
-    fn new_solver_mmp() -> *mut ExtSolver;
-    fn drop_solver_mmp(solver: *mut ExtSolver);
-    fn solver_mmp_initialize(
+    // MUMPS
+    fn new_solver_mumps() -> *mut ExtSolver;
+    fn drop_solver_mumps(solver: *mut ExtSolver);
+    fn solver_mumps_initialize(
         solver: *mut ExtSolver,
         n: i32,
         nnz: i32,
@@ -28,7 +28,7 @@ extern "C" {
         openmp_num_threads: i32,
         compute_determinant: i32,
     ) -> i32;
-    fn solver_mmp_factorize(
+    fn solver_mumps_factorize(
         solver: *mut ExtSolver,
         indices_i: *const i32,
         indices_j: *const i32,
@@ -37,9 +37,9 @@ extern "C" {
         determinant_exponent_c: *mut f64,
         verbose: i32,
     ) -> i32;
-    fn solver_mmp_solve(solver: *mut ExtSolver, rhs: *mut f64, verbose: i32) -> i32;
-    fn solver_mmp_used_ordering(solver: *const ExtSolver) -> i32;
-    fn solver_mmp_used_scaling(solver: *const ExtSolver) -> i32;
+    fn solver_mumps_solve(solver: *mut ExtSolver, rhs: *mut f64, verbose: i32) -> i32;
+    fn solver_mumps_used_ordering(solver: *const ExtSolver) -> i32;
+    fn solver_mumps_used_scaling(solver: *const ExtSolver) -> i32;
 
     // UMF
     fn new_solver_umf() -> *mut ExtSolver;
@@ -96,19 +96,19 @@ impl Solver {
         let nnz = to_i32(nnz);
         unsafe {
             let solver = match config.lin_sol_kind {
-                LinSolKind::Mmp => new_solver_mmp(),
+                LinSolKind::Mumps => new_solver_mumps(),
                 LinSolKind::Umf => new_solver_umf(),
             };
             if solver.is_null() {
                 return Err("c-code failed to allocate solver");
             }
             match config.lin_sol_kind {
-                LinSolKind::Mmp => {
-                    let res = solver_mmp_initialize(
+                LinSolKind::Mumps => {
+                    let res = solver_mumps_initialize(
                         solver,
                         n,
                         nnz,
-                        code_symmetry_mmp(symmetry)?,
+                        code_symmetry_mumps(symmetry)?,
                         config.ordering,
                         config.scaling,
                         config.pct_inc_workspace,
@@ -117,8 +117,8 @@ impl Solver {
                         config.compute_determinant,
                     );
                     if res != 0 {
-                        drop_solver_mmp(solver);
-                        return Err(Solver::handle_mmp_error_code(res));
+                        drop_solver_mumps(solver);
+                        return Err(Solver::handle_mumps_error_code(res));
                     }
                 }
                 LinSolKind::Umf => {
@@ -165,8 +165,8 @@ impl Solver {
         self.stopwatch.reset();
         unsafe {
             match self.kind {
-                LinSolKind::Mmp => {
-                    let res = solver_mmp_factorize(
+                LinSolKind::Mumps => {
+                    let res = solver_mumps_factorize(
                         self.solver,
                         coo.indices_i.as_ptr(),
                         coo.indices_j.as_ptr(),
@@ -176,12 +176,12 @@ impl Solver {
                         self.verbose,
                     );
                     if res != 0 {
-                        return Err(Solver::handle_mmp_error_code(res));
+                        return Err(Solver::handle_mumps_error_code(res));
                     }
-                    let ord = solver_mmp_used_ordering(self.solver);
-                    let sca = solver_mmp_used_scaling(self.solver);
-                    self.used_ordering = str_mmp_ordering(ord);
-                    self.used_scaling = str_mmp_scaling(sca);
+                    let ord = solver_mumps_used_ordering(self.solver);
+                    let sca = solver_mumps_used_scaling(self.solver);
+                    self.used_ordering = str_mumps_ordering(ord);
+                    self.used_scaling = str_mumps_scaling(sca);
                 }
                 LinSolKind::Umf => {
                     let res = solver_umf_factorize(
@@ -274,11 +274,11 @@ impl Solver {
         self.stopwatch.reset();
         unsafe {
             match self.kind {
-                LinSolKind::Mmp => {
+                LinSolKind::Mumps => {
                     vec_copy(x, rhs)?;
-                    let res = solver_mmp_solve(self.solver, x.as_mut_data().as_mut_ptr(), self.verbose);
+                    let res = solver_mumps_solve(self.solver, x.as_mut_data().as_mut_ptr(), self.verbose);
                     if res != 0 {
-                        return Err(Solver::handle_mmp_error_code(res));
+                        return Err(Solver::handle_mumps_error_code(res));
                     }
                 }
                 LinSolKind::Umf => {
@@ -411,7 +411,7 @@ impl Solver {
     }
 
     /// Handles error code
-    fn handle_mmp_error_code(err: i32) -> StrError {
+    fn handle_mumps_error_code(err: i32) -> StrError {
         match err {
             -1 => "Error(-1): error on some processor",
             -2 => "Error(-2): nnz is out of range",
@@ -485,9 +485,9 @@ impl Solver {
             2 => "Error(+2): during error analysis the max-norm of the computed solution is close to zero",
             4 => "Error(+4): not used in current version",
             8 => "Error(+8): problem with the iterative refinement routine",
-            100000 => return "Error: c-code returned null pointer (MMP)",
-            200000 => return "Error: c-code failed to allocate memory (MMP)",
-            _ => return "Error: unknown error returned by c-code (MMP)",
+            100000 => return "Error: c-code returned null pointer (MUMPS)",
+            200000 => return "Error: c-code failed to allocate memory (MUMPS)",
+            _ => return "Error: unknown error returned by c-code (MUMPS)",
         }
     }
 
@@ -521,7 +521,7 @@ impl Drop for Solver {
     fn drop(&mut self) {
         unsafe {
             match self.kind {
-                LinSolKind::Mmp => drop_solver_mmp(self.solver),
+                LinSolKind::Mumps => drop_solver_mumps(self.solver),
                 LinSolKind::Umf => drop_solver_umf(self.solver),
             }
         }
@@ -583,7 +583,7 @@ mod tests {
     #[test]
     fn factorize_computes_the_determinant() {
         let mut config = ConfigSolver::new();
-        config.lin_sol_kind(LinSolKind::Mmp);
+        config.lin_sol_kind(LinSolKind::Mumps);
         config.set_compute_determinant();
 
         let (nrow, ncol, nnz) = (5, 5, 13);
@@ -689,15 +689,15 @@ mod tests {
         vec_approx_eq(x.as_data(), x_correct, 1e-14);
     }
 
-    // This function tests many behaviors of the MMP solver.
+    // This function tests many behaviors of the MUMPS solver.
     // All of these calls must be in a single function because the
-    // MMP solver is NOT thread-safe.
+    // MUMPS solver is NOT thread-safe.
     #[test]
-    fn solver_mmp_behaves_as_expected() {
+    fn solver_mumps_behaves_as_expected() {
         // allocate a new solver
         let mut config = ConfigSolver::new();
         let (nrow, ncol, nnz) = (5, 5, 13);
-        config.lin_sol_kind(LinSolKind::Mmp);
+        config.lin_sol_kind(LinSolKind::Mumps);
         let mut solver = Solver::new(config, nrow, nnz, None).unwrap();
 
         // factorize fails on incompatible CooMatrix
@@ -802,34 +802,34 @@ mod tests {
     }
 
     #[test]
-    fn handle_mmp_error_code_works() {
-        let default = "Error: unknown error returned by c-code (MMP)";
+    fn handle_mumps_error_code_works() {
+        let default = "Error: unknown error returned by c-code (MUMPS)";
         let mut config = ConfigSolver::new();
-        config.lin_sol_kind(LinSolKind::Mmp);
+        config.lin_sol_kind(LinSolKind::Mumps);
         for c in 1..57 {
-            let res = Solver::handle_mmp_error_code(-c);
+            let res = Solver::handle_mumps_error_code(-c);
             assert!(res.len() > 0);
             assert_ne!(res, default);
         }
         for c in 70..80 {
-            let res = Solver::handle_mmp_error_code(-c);
+            let res = Solver::handle_mumps_error_code(-c);
             assert!(res.len() > 0);
             assert_ne!(res, default);
         }
         for c in &[-90, -800, 1, 2, 4, 8] {
-            let res = Solver::handle_mmp_error_code(*c);
+            let res = Solver::handle_mumps_error_code(*c);
             assert!(res.len() > 0);
             assert_ne!(res, default);
         }
         assert_eq!(
-            Solver::handle_mmp_error_code(100000),
-            "Error: c-code returned null pointer (MMP)"
+            Solver::handle_mumps_error_code(100000),
+            "Error: c-code returned null pointer (MUMPS)"
         );
         assert_eq!(
-            Solver::handle_mmp_error_code(200000),
-            "Error: c-code failed to allocate memory (MMP)"
+            Solver::handle_mumps_error_code(200000),
+            "Error: c-code failed to allocate memory (MUMPS)"
         );
-        assert_eq!(Solver::handle_mmp_error_code(123), default);
+        assert_eq!(Solver::handle_mumps_error_code(123), default);
     }
 
     #[test]

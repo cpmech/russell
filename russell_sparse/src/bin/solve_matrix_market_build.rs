@@ -51,9 +51,9 @@ struct Options {
     /// Matrix-market file
     matrix_market_file: String,
 
-    /// Use MMP solver instead of UMF
+    /// Use MUMPS solver instead of UMF
     #[structopt(short, long)]
-    mmp: bool,
+    mumps: bool,
 
     /// Ordering strategy
     #[structopt(short = "o", long, default_value = "Auto")]
@@ -86,12 +86,12 @@ fn main() -> Result<(), StrError> {
     }
 
     // select linear solver
-    let name = if opt.mmp { LinSolKind::Mmp } else { LinSolKind::Umf };
+    let name = if opt.mumps { LinSolKind::Mumps } else { LinSolKind::Umf };
 
     // select the symmetric handling option
     let handling = match name {
-        LinSolKind::Mmp => {
-            // MMP uses the lower-diagonal if symmetric.
+        LinSolKind::Mumps => {
+            // MUMPS uses the lower-diagonal if symmetric.
             SymmetricHandling::LeaveAsLower
         }
         LinSolKind::Umf => {
@@ -189,7 +189,7 @@ fn main() -> Result<(), StrError> {
 
     // check
     if path.ends_with("bfwb62.mtx") {
-        let tolerance = if opt.mmp { 1e-10 } else { 1e-11 };
+        let tolerance = if opt.mumps { 1e-10 } else { 1e-11 };
         let correct_x = get_bfwb62_correct_x();
         for i in 0..nrow {
             let diff = f64::abs(x.get(i) - correct_x.get(i));

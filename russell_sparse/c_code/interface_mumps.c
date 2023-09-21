@@ -10,7 +10,7 @@
 #define INFOG(i) infog[(i)-1]   // macro to make indices match documentation
 #define INFO(i) info[(i)-1]     // macro to make indices match documentation
 
-static inline void set_mmp_verbose(DMUMPS_STRUC_C *data, int32_t verbose) {
+static inline void set_mumps_verbose(DMUMPS_STRUC_C *data, int32_t verbose) {
     if (verbose == C_TRUE) {
         data->ICNTL(1) = 6; // standard output stream
         data->ICNTL(2) = 0; // output stream
@@ -24,13 +24,13 @@ static inline void set_mmp_verbose(DMUMPS_STRUC_C *data, int32_t verbose) {
     }
 }
 
-struct SolverMMP {
+struct SolverMUMPS {
     DMUMPS_STRUC_C data;   // data structure
     int32_t done_job_init; // job init successfully
 };
 
-struct SolverMMP *new_solver_mmp() {
-    struct SolverMMP *solver = (struct SolverMMP *)malloc(sizeof(struct SolverMMP));
+struct SolverMUMPS *new_solver_mumps() {
+    struct SolverMUMPS *solver = (struct SolverMUMPS *)malloc(sizeof(struct SolverMUMPS));
 
     if (solver == NULL) {
         return NULL;
@@ -44,7 +44,7 @@ struct SolverMMP *new_solver_mmp() {
     return solver;
 }
 
-void drop_solver_mmp(struct SolverMMP *solver) {
+void drop_solver_mumps(struct SolverMUMPS *solver) {
     if (solver == NULL) {
         return;
     }
@@ -63,7 +63,7 @@ void drop_solver_mmp(struct SolverMMP *solver) {
     }
 
     if (solver->done_job_init == C_TRUE) {
-        set_mmp_verbose(&solver->data, C_FALSE);
+        set_mumps_verbose(&solver->data, C_FALSE);
         solver->data.job = MUMPS_JOB_TERMINATE;
         dmumps_c(&solver->data);
     }
@@ -71,7 +71,7 @@ void drop_solver_mmp(struct SolverMMP *solver) {
     free(solver);
 }
 
-int32_t solver_mmp_initialize(struct SolverMMP *solver,
+int32_t solver_mumps_initialize(struct SolverMUMPS *solver,
                               int32_t n,
                               int32_t nnz,
                               int32_t symmetry,
@@ -87,9 +87,9 @@ int32_t solver_mmp_initialize(struct SolverMMP *solver,
 
     solver->data.comm_fortran = MUMPS_IGNORED;
     solver->data.par = MUMPS_PAR_HOST_ALSO_WORKS;
-    solver->data.sym = MMP_SYMMETRY[symmetry];
+    solver->data.sym = MUMPS_SYMMETRY[symmetry];
 
-    set_mmp_verbose(&solver->data, C_FALSE);
+    set_mumps_verbose(&solver->data, C_FALSE);
     solver->data.job = MUMPS_JOB_INITIALIZE;
     dmumps_c(&solver->data);
     if (solver->data.INFOG(1) != 0) {
@@ -130,8 +130,8 @@ int32_t solver_mmp_initialize(struct SolverMMP *solver,
 
     solver->data.ICNTL(5) = MUMPS_ICNTL5_ASSEMBLED_MATRIX;
     solver->data.ICNTL(6) = MUMPS_ICNTL6_PERMUT_AUTO;
-    solver->data.ICNTL(7) = MMP_ORDERING[ordering];
-    solver->data.ICNTL(8) = MMP_SCALING[scaling];
+    solver->data.ICNTL(7) = MUMPS_ORDERING[ordering];
+    solver->data.ICNTL(8) = MUMPS_SCALING[scaling];
     solver->data.ICNTL(14) = pct_inc_workspace;
     solver->data.ICNTL(16) = openmp_num_threads;
     solver->data.ICNTL(18) = MUMPS_ICNTL18_CENTRALIZED;
@@ -152,7 +152,7 @@ int32_t solver_mmp_initialize(struct SolverMMP *solver,
     return 0; // success
 }
 
-int32_t solver_mmp_factorize(struct SolverMMP *solver,
+int32_t solver_mumps_factorize(struct SolverMUMPS *solver,
                              int32_t const *indices_i,
                              int32_t const *indices_j,
                              double const *values_aij,
@@ -172,7 +172,7 @@ int32_t solver_mmp_factorize(struct SolverMMP *solver,
         solver->data.a[p] = values_aij[p];
     }
 
-    set_mmp_verbose(&solver->data, verbose);
+    set_mumps_verbose(&solver->data, verbose);
     solver->data.job = MUMPS_JOB_ANALYZE;
     dmumps_c(&solver->data);
 
@@ -183,7 +183,7 @@ int32_t solver_mmp_factorize(struct SolverMMP *solver,
 
     // perform factorization
 
-    set_mmp_verbose(&solver->data, verbose);
+    set_mumps_verbose(&solver->data, verbose);
     solver->data.job = MUMPS_JOB_FACTORIZE;
     dmumps_c(&solver->data);
 
@@ -200,24 +200,24 @@ int32_t solver_mmp_factorize(struct SolverMMP *solver,
     return solver->data.INFOG(1);
 }
 
-int32_t solver_mmp_solve(struct SolverMMP *solver, double *rhs, int32_t verbose) {
+int32_t solver_mumps_solve(struct SolverMUMPS *solver, double *rhs, int32_t verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
 
     solver->data.rhs = rhs;
 
-    set_mmp_verbose(&solver->data, verbose);
+    set_mumps_verbose(&solver->data, verbose);
     solver->data.job = MUMPS_JOB_SOLVE;
     dmumps_c(&solver->data);
 
     return solver->data.INFOG(1);
 }
 
-int32_t solver_mmp_used_ordering(struct SolverMMP *solver) {
+int32_t solver_mumps_used_ordering(struct SolverMUMPS *solver) {
     return solver->data.INFOG(7);
 }
 
-int32_t solver_mmp_used_scaling(struct SolverMMP *solver) {
+int32_t solver_mumps_used_scaling(struct SolverMUMPS *solver) {
     return solver->data.INFOG(33);
 }

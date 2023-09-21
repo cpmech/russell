@@ -13,7 +13,7 @@ fn main() {
             .compile("c_code_interface_mumps");
         println!("cargo:rustc-link-search=native=/usr/local/lib/mumps");
         println!("cargo:rustc-link-lib=dylib=dmumps_cpmech");
-        println!("cargo:rustc-cfg=local_mmp");
+        println!("cargo:rustc-cfg=local_mumps");
     } else {
         cc::Build::new()
             .file("c_code/interface_mumps.c")

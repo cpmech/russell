@@ -7,9 +7,9 @@ pub struct ConfigSolver {
     pub(crate) lin_sol_kind: LinSolKind, // linear solver kind
     pub(crate) ordering: i32,            // symmetric permutation (ordering)
     pub(crate) scaling: i32,             // scaling strategy
-    pub(crate) pct_inc_workspace: i32,   // % increase in the estimated working space (MMP-only)
-    pub(crate) max_work_memory: i32,     // max size of the working memory in mega bytes (MMP-only)
-    pub(crate) openmp_num_threads: i32,  // number of OpenMP threads (MMP-only)
+    pub(crate) pct_inc_workspace: i32,   // % increase in the estimated working space (MUMPS-only)
+    pub(crate) max_work_memory: i32,     // max size of the working memory in mega bytes (MUMPS-only)
+    pub(crate) openmp_num_threads: i32,  // number of OpenMP threads (MUMPS-only)
     pub(crate) verbose: i32,             // show lower-level messages
     pub(crate) compute_determinant: i32, // compute determinant
 }
@@ -21,9 +21,9 @@ impl ConfigSolver {
             lin_sol_kind: LinSolKind::Umf,
             ordering: Ordering::Auto as i32,
             scaling: Scaling::Auto as i32,
-            pct_inc_workspace: 100, // (MMP-only)
-            max_work_memory: 0,     // (MMP-only) 0 => Auto
-            openmp_num_threads: 1,  // (MMP-only)
+            pct_inc_workspace: 100, // (MUMPS-only)
+            max_work_memory: 0,     // (MUMPS-only) 0 => Auto
+            openmp_num_threads: 1,  // (MUMPS-only)
             verbose: 0,
             compute_determinant: 0,
         }
@@ -47,19 +47,19 @@ impl ConfigSolver {
         self
     }
 
-    /// Sets the percentage increase in the estimated working space (MMP-only)
+    /// Sets the percentage increase in the estimated working space (MUMPS-only)
     pub fn pct_inc_workspace(&mut self, value: usize) -> &mut Self {
         self.pct_inc_workspace = to_i32(value);
         self
     }
 
-    /// Sets the maximum size of the working memory in mega bytes (MMP-only)
+    /// Sets the maximum size of the working memory in mega bytes (MUMPS-only)
     pub fn max_work_memory(&mut self, value: usize) -> &mut Self {
         self.max_work_memory = to_i32(value);
         self
     }
 
-    /// Sets the number of OpenMP threads (MMP-only)
+    /// Sets the number of OpenMP threads (MUMPS-only)
     pub fn openmp_num_threads(&mut self, value: usize) -> &mut Self {
         self.openmp_num_threads = to_i32(value);
         self
@@ -90,8 +90,8 @@ impl ConfigSolver {
     /// Returns the name of the solver
     pub fn str_solver(&self) -> String {
         match self.lin_sol_kind {
-            LinSolKind::Mmp => {
-                if cfg!(local_mmp) {
+            LinSolKind::Mumps => {
+                if cfg!(local_mumps) {
                     "MUMPS-local".to_string()
                 } else {
                     "MUMPS".to_string()
@@ -133,10 +133,10 @@ mod tests {
     #[test]
     fn set_solver_works() {
         let mut config = ConfigSolver::new();
-        for name in [LinSolKind::Mmp, LinSolKind::Umf] {
+        for name in [LinSolKind::Mumps, LinSolKind::Umf] {
             config.lin_sol_kind(name);
             match config.lin_sol_kind {
-                LinSolKind::Mmp => assert!(true),
+                LinSolKind::Mumps => assert!(true),
                 LinSolKind::Umf => assert!(true),
             }
         }

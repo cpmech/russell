@@ -128,8 +128,8 @@ fn solve_nonlinear_system(kind: LinSolKind) -> Result<(), StrError> {
 }
 
 #[test]
-fn test_nonlinear_system_mmp() -> Result<(), StrError> {
-    solve_nonlinear_system(LinSolKind::Mmp)
+fn test_nonlinear_system_mumps() -> Result<(), StrError> {
+    solve_nonlinear_system(LinSolKind::Mumps)
 }
 
 #[test]

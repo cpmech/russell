@@ -39,7 +39,7 @@ extern "C" {
 
 /// Wraps the MUMPS solver for (large) sparse linear systems
 ///
-/// **Warning:** This solver is NON-THREAD-SAFE, thus use only use in single-thread applications.
+/// **Warning:** This solver is **not** thread-safe, thus use only use in single-thread applications.
 pub struct SolverMUMPS {
     /// Holds a pointer to the C interface to MUMPS
     solver: *mut InterfaceMUMPS,

@@ -40,14 +40,14 @@ void solver_mumps_drop(struct InterfaceMUMPS *solver);
 /// @param solver Is a pointer to the solver interface
 /// @param n Is the number of rows and columns of the coefficient matrix
 /// @param nnz Is the number of non-zero values in the coefficient matrix
-/// @param symmetry Is the code for the kind of symmetry, if any
-/// @param ordering Is the russel_sparse ordering code
-/// @param scaling Is the russell_sparse scaling code
+/// @param symmetry Is the MUMPS code for the kind of symmetry, if any
+/// @param ordering Is the MUMPS ordering code
+/// @param scaling Is the MUMPS scaling code
 /// @param pct_inc_workspace Is the allowed percentage increase of the workspace
 /// @param max_work_memory Is the allowed maximum memory
 /// @param openmp_num_threads Is the number of threads allowed for OpenMP
 /// @param compute_determinant Requests that determinant be computed
-/// @return A successful or error code
+/// @return A success or fail code
 int32_t solver_mumps_initialize(struct InterfaceMUMPS *solver,
                                 int32_t n,
                                 int32_t nnz,
@@ -65,7 +65,7 @@ int32_t solver_mumps_initialize(struct InterfaceMUMPS *solver,
 /// @param indices_j Are the CooMatrix column indices
 /// @param values_aij Are the CooMatrix values
 /// @param verbose Shows messages
-/// @return A successful or error code
+/// @return A success or fail code
 int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
                                int32_t const *indices_i,
                                int32_t const *indices_j,
@@ -76,25 +76,25 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
 /// @param solver Is a pointer to the solver interface
 /// @param rhs Is the right-hand side on the input and the vector of unknow values x on the output
 /// @param verbose Shows messages
-/// @return A successful or error code
+/// @return A success or fail code
 int32_t solver_mumps_solve(struct InterfaceMUMPS *solver, double *rhs, int32_t verbose);
 
 /// @brief Returns the effective ordering using during the computations
 /// @param solver Is a pointer to the solver
-/// @return The MUMPS ordering code
+/// @return The used MUMPS ordering code
 int32_t solver_mumps_get_ordering(const struct InterfaceMUMPS *solver);
 
 /// @brief Returns the effective scaling using during the computations
 /// @param solver Is a pointer to the solver
-/// @return A success or failure code
+/// @return The used MUMPS scaling code
 int32_t solver_mumps_get_scaling(const struct InterfaceMUMPS *solver);
 
 /// @brief Returns the coefficient needed to compute the determinant, if requested
 /// @param solver Is a pointer to the solver
-/// @return Coefficient a of a * 2^c
+/// @return The coefficient a of a * 2^c
 double solver_mumps_get_det_coef_a(const struct InterfaceMUMPS *solver);
 
 /// @brief Returns the exponent needed to compute the determinant, if requested
 /// @param solver Is a pointer to the solver
-/// @return Exponent c of a * 2^c
+/// @return The exponent c of a * 2^c
 double solver_mumps_get_det_exp_c(const struct InterfaceMUMPS *solver);

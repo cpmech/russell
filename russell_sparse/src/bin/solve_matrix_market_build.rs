@@ -51,7 +51,7 @@ struct Options {
     /// Matrix-market file
     matrix_market_file: String,
 
-    /// Use MUMPS solver instead of UMF
+    /// Use MUMPS solver instead of UMFPACK
     #[structopt(short, long)]
     mumps: bool,
 
@@ -86,7 +86,7 @@ fn main() -> Result<(), StrError> {
     }
 
     // select linear solver
-    let name = if opt.mumps { LinSolKind::Mumps } else { LinSolKind::Umf };
+    let name = if opt.mumps { LinSolKind::Mumps } else { LinSolKind::Umfpack };
 
     // select the symmetric handling option
     let handling = match name {
@@ -94,8 +94,8 @@ fn main() -> Result<(), StrError> {
             // MUMPS uses the lower-diagonal if symmetric.
             SymmetricHandling::LeaveAsLower
         }
-        LinSolKind::Umf => {
-            // UMF uses the full matrix, if symmetric or not
+        LinSolKind::Umfpack => {
+            // UMFPACK uses the full matrix, if symmetric or not
             SymmetricHandling::MakeItFull
         }
     };

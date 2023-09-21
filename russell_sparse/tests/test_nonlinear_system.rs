@@ -133,6 +133,6 @@ fn test_nonlinear_system_mumps() -> Result<(), StrError> {
 }
 
 #[test]
-fn test_nonlinear_system_umf() -> Result<(), StrError> {
-    solve_nonlinear_system(LinSolKind::Umf)
+fn test_nonlinear_system_umfpack() -> Result<(), StrError> {
+    solve_nonlinear_system(LinSolKind::Umfpack)
 }

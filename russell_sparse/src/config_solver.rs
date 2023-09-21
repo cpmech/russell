@@ -18,7 +18,7 @@ impl ConfigSolver {
     /// Returns a default configuration
     pub fn new() -> Self {
         ConfigSolver {
-            lin_sol_kind: LinSolKind::Umf,
+            lin_sol_kind: LinSolKind::Umfpack,
             ordering: Ordering::Auto as i32,
             scaling: Scaling::Auto as i32,
             pct_inc_workspace: 100, // (MUMPS-only)
@@ -97,7 +97,7 @@ impl ConfigSolver {
                     "MUMPS".to_string()
                 }
             }
-            LinSolKind::Umf => "UMFPACK".to_string(),
+            LinSolKind::Umfpack => "UMFPACK".to_string(),
         }
     }
 }
@@ -110,7 +110,7 @@ mod tests {
 
     #[test]
     fn clone_copy_and_debug_work() {
-        let correct = "ConfigSolver { lin_sol_kind: Umf, ordering: 2, scaling: 0, pct_inc_workspace: 100, max_work_memory: 0, openmp_num_threads: 1, verbose: 0, compute_determinant: 0 }";
+        let correct = "ConfigSolver { lin_sol_kind: Umfpack, ordering: 2, scaling: 0, pct_inc_workspace: 100, max_work_memory: 0, openmp_num_threads: 1, verbose: 0, compute_determinant: 0 }";
         let config = ConfigSolver::new();
         let copy = config;
         let clone = config.clone();
@@ -133,11 +133,11 @@ mod tests {
     #[test]
     fn set_solver_works() {
         let mut config = ConfigSolver::new();
-        for name in [LinSolKind::Mumps, LinSolKind::Umf] {
+        for name in [LinSolKind::Mumps, LinSolKind::Umfpack] {
             config.lin_sol_kind(name);
             match config.lin_sol_kind {
                 LinSolKind::Mumps => assert!(true),
-                LinSolKind::Umf => assert!(true),
+                LinSolKind::Umfpack => assert!(true),
             }
         }
     }

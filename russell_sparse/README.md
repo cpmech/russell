@@ -119,11 +119,11 @@ fn main() -> Result<(), StrError> {
 
 ## Sparse solvers
 
-`russell_sparse` wraps two direct sparse solvers, namely, UMFPACK and MUMPS. The default solver is UMF; however UMF may run out of memory for large matrices, whereas MUMPS still may work. On the other hand, the MUMPS solver is **not** thread-safe and thus must be used in single-threaded applications.
+`russell_sparse` wraps two direct sparse solvers, namely, UMFPACK and MUMPS. The default solver is UMFPACK; however UMFPACK may run out of memory for large matrices, whereas MUMPS still may work. On the other hand, the MUMPS solver is **not** thread-safe and thus must be used in single-threaded applications.
 
 ## Tools
 
-This crate includes a tool named `solve_matrix_market_build` to study the performance of the available sparse solvers (currently MUMPS and UMF). The `_build` suffix is to disable the coverage tool.
+This crate includes a tool named `solve_matrix_market_build` to study the performance of the available sparse solvers (currently MUMPS and UMFPACK). The `_build` suffix is to disable the coverage tool.
 
 `solve_matrix_market_build` reads a [Matrix Market file](https://math.nist.gov/MatrixMarket/formats.html) and solves the linear system:
 

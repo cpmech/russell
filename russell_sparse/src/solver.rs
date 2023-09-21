@@ -1,6 +1,6 @@
 use super::{
-    code_symmetry_mumps, code_symmetry_umf, str_enum_ordering, str_enum_scaling, str_mumps_ordering, str_mumps_scaling,
-    str_umf_ordering, str_umf_scaling, ConfigSolver, CooMatrix, LinSolKind,
+    code_symmetry_mumps, code_symmetry_umfpack, str_enum_ordering, str_enum_scaling, str_mumps_ordering, str_mumps_scaling,
+    str_umfpack_ordering, str_umfpack_scaling, ConfigSolver, CooMatrix, LinSolKind,
 };
 use crate::{StrError, Symmetry};
 use russell_lab::{vec_copy, Stopwatch, Vector};
@@ -41,10 +41,10 @@ extern "C" {
     fn solver_mumps_used_ordering(solver: *const ExtSolver) -> i32;
     fn solver_mumps_used_scaling(solver: *const ExtSolver) -> i32;
 
-    // UMF
-    fn new_solver_umf() -> *mut ExtSolver;
-    fn drop_solver_umf(solver: *mut ExtSolver);
-    fn solver_umf_initialize(
+    // UMFPACK
+    fn new_solver_umfpack() -> *mut ExtSolver;
+    fn drop_solver_umfpack(solver: *mut ExtSolver);
+    fn solver_umfpack_initialize(
         solver: *mut ExtSolver,
         n: i32,
         nnz: i32,
@@ -53,16 +53,16 @@ extern "C" {
         scaling: i32,
         verbose: i32,
     ) -> i32;
-    fn solver_umf_factorize(
+    fn solver_umfpack_factorize(
         solver: *mut ExtSolver,
         indices_i: *const i32,
         indices_j: *const i32,
         values_aij: *const f64,
         verbose: i32,
     ) -> i32;
-    fn solver_umf_solve(solver: *mut ExtSolver, x: *mut f64, rhs: *const f64, verbose: i32) -> i32;
-    fn solver_umf_used_ordering(solver: *const ExtSolver) -> i32;
-    fn solver_umf_used_scaling(solver: *const ExtSolver) -> i32;
+    fn solver_umfpack_solve(solver: *mut ExtSolver, x: *mut f64, rhs: *const f64, verbose: i32) -> i32;
+    fn solver_umfpack_used_ordering(solver: *const ExtSolver) -> i32;
+    fn solver_umfpack_used_scaling(solver: *const ExtSolver) -> i32;
 }
 
 /// Implements a sparse linear solver
@@ -97,7 +97,7 @@ impl Solver {
         unsafe {
             let solver = match config.lin_sol_kind {
                 LinSolKind::Mumps => new_solver_mumps(),
-                LinSolKind::Umf => new_solver_umf(),
+                LinSolKind::Umfpack => new_solver_umfpack(),
             };
             if solver.is_null() {
                 return Err("c-code failed to allocate solver");
@@ -121,19 +121,19 @@ impl Solver {
                         return Err(Solver::handle_mumps_error_code(res));
                     }
                 }
-                LinSolKind::Umf => {
-                    let res = solver_umf_initialize(
+                LinSolKind::Umfpack => {
+                    let res = solver_umfpack_initialize(
                         solver,
                         n,
                         nnz,
-                        code_symmetry_umf(symmetry)?,
+                        code_symmetry_umfpack(symmetry)?,
                         config.ordering,
                         config.scaling,
                         config.verbose,
                     );
                     if res != 0 {
-                        drop_solver_umf(solver);
-                        return Err(Solver::handle_umf_error_code(res));
+                        drop_solver_umfpack(solver);
+                        return Err(Solver::handle_umfpack_error_code(res));
                     }
                 }
             }
@@ -183,8 +183,8 @@ impl Solver {
                     self.used_ordering = str_mumps_ordering(ord);
                     self.used_scaling = str_mumps_scaling(sca);
                 }
-                LinSolKind::Umf => {
-                    let res = solver_umf_factorize(
+                LinSolKind::Umfpack => {
+                    let res = solver_umfpack_factorize(
                         self.solver,
                         coo.indices_i.as_ptr(),
                         coo.indices_j.as_ptr(),
@@ -192,12 +192,12 @@ impl Solver {
                         self.verbose,
                     );
                     if res != 0 {
-                        return Err(Solver::handle_umf_error_code(res));
+                        return Err(Solver::handle_umfpack_error_code(res));
                     }
-                    let ord = solver_umf_used_ordering(self.solver);
-                    let sca = solver_umf_used_scaling(self.solver);
-                    self.used_ordering = str_umf_ordering(ord);
-                    self.used_scaling = str_umf_scaling(sca);
+                    let ord = solver_umfpack_used_ordering(self.solver);
+                    let sca = solver_umfpack_used_scaling(self.solver);
+                    self.used_ordering = str_umfpack_ordering(ord);
+                    self.used_scaling = str_umfpack_scaling(sca);
                 }
             }
         }
@@ -281,15 +281,15 @@ impl Solver {
                         return Err(Solver::handle_mumps_error_code(res));
                     }
                 }
-                LinSolKind::Umf => {
-                    let res = solver_umf_solve(
+                LinSolKind::Umfpack => {
+                    let res = solver_umfpack_solve(
                         self.solver,
                         x.as_mut_data().as_mut_ptr(),
                         rhs.as_data().as_ptr(),
                         self.verbose,
                     );
                     if res != 0 {
-                        return Err(Solver::handle_umf_error_code(res));
+                        return Err(Solver::handle_umfpack_error_code(res));
                     }
                 }
             }
@@ -491,8 +491,8 @@ impl Solver {
         }
     }
 
-    /// Handles UMF error code
-    fn handle_umf_error_code(err: i32) -> StrError {
+    /// Handles UMFPACK error code
+    fn handle_umfpack_error_code(err: i32) -> StrError {
         match err {
             1 => return "Error(1): Matrix is singular",
             2 => return "Error(2): The determinant is nonzero, but smaller than allowed",
@@ -509,9 +509,9 @@ impl Solver {
             -17 => return "Error(-17): Failed to save/load file",
             -18 => return "Error(-18): Ordering method failed",
             -911 => return "Error(-911): An internal error has occurred",
-            100000 => return "Error: c-code returned null pointer (UMF)",
-            200000 => return "Error: c-code failed to allocate memory (UMF)",
-            _ => return "Error: unknown error returned by c-code (UMF)",
+            100000 => return "Error: c-code returned null pointer (UMFPACK)",
+            200000 => return "Error: c-code failed to allocate memory (UMFPACK)",
+            _ => return "Error: unknown error returned by c-code (UMFPACK)",
         }
     }
 }
@@ -522,7 +522,7 @@ impl Drop for Solver {
         unsafe {
             match self.kind {
                 LinSolKind::Mumps => drop_solver_mumps(self.solver),
-                LinSolKind::Umf => drop_solver_umf(self.solver),
+                LinSolKind::Umfpack => drop_solver_umfpack(self.solver),
             }
         }
     }
@@ -833,21 +833,21 @@ mod tests {
     }
 
     #[test]
-    fn handle_umf_error_code_works() {
-        let default = "Error: unknown error returned by c-code (UMF)";
+    fn handle_umfpack_error_code_works() {
+        let default = "Error: unknown error returned by c-code (UMFPACK)";
         for c in &[1, 2, 3, -1, -3, -4, -5, -6, -8, -11, -13, -15, -17, -18, -911] {
-            let res = Solver::handle_umf_error_code(*c);
+            let res = Solver::handle_umfpack_error_code(*c);
             assert!(res.len() > 0);
             assert_ne!(res, default);
         }
         assert_eq!(
-            Solver::handle_umf_error_code(100000),
-            "Error: c-code returned null pointer (UMF)"
+            Solver::handle_umfpack_error_code(100000),
+            "Error: c-code returned null pointer (UMFPACK)"
         );
         assert_eq!(
-            Solver::handle_umf_error_code(200000),
-            "Error: c-code failed to allocate memory (UMF)"
+            Solver::handle_umfpack_error_code(200000),
+            "Error: c-code failed to allocate memory (UMFPACK)"
         );
-        assert_eq!(Solver::handle_umf_error_code(123), default);
+        assert_eq!(Solver::handle_umfpack_error_code(123), default);
     }
 }

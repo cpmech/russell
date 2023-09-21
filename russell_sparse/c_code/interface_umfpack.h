@@ -2,12 +2,12 @@
 
 #include "umfpack.h"
 
-const double UMF_SYMMETRY[2] = {
+const double UMFPACK_OPTION_SYMMETRY[2] = {
     UMFPACK_STRATEGY_UNSYMMETRIC, // Unsymmetric
     UMFPACK_STRATEGY_SYMMETRIC,   // General symmetric
 };
 
-const double UMF_ORDERING[10] = {
+const double UMFPACK_OPTION_ORDERING[10] = {
     UMFPACK_ORDERING_AMD,     // Amd
     UMFPACK_DEFAULT_ORDERING, // Amf => Auto
     UMFPACK_DEFAULT_ORDERING, // Auto
@@ -20,7 +20,7 @@ const double UMF_ORDERING[10] = {
     UMFPACK_DEFAULT_ORDERING, // Scotch => Auto
 };
 
-const double UMF_SCALING[9] = {
+const double UMFPACK_OPTION_SCALING[9] = {
     UMFPACK_DEFAULT_SCALE, // Auto
     UMFPACK_DEFAULT_SCALE, // Column => Auto
     UMFPACK_DEFAULT_SCALE, // Diagonal => Auto
@@ -32,5 +32,5 @@ const double UMF_SCALING[9] = {
     UMFPACK_SCALE_SUM,     // Sum
 };
 
-const double UMF_PRINT_LEVEL_SILENT = 0.0;  // page 116
-const double UMF_PRINT_LEVEL_VERBOSE = 2.0; // page 116
+const double UMFPACK_PRINT_LEVEL_SILENT = 0.0;  // page 116
+const double UMFPACK_PRINT_LEVEL_VERBOSE = 2.0; // page 116

@@ -3,7 +3,7 @@
 #include "constants.h"
 #include "interface_umfpack.h"
 
-struct SolverUMF {
+struct SolverUMFPACK {
     double control[UMFPACK_CONTROL];
     double info[UMFPACK_INFO];
     int n;
@@ -15,16 +15,16 @@ struct SolverUMF {
     void *numeric;
 };
 
-static inline void set_umf_verbose(struct SolverUMF *solver, int32_t verbose) {
+static inline void set_umfpack_verbose(struct SolverUMFPACK *solver, int32_t verbose) {
     if (verbose == C_TRUE) {
-        solver->control[UMFPACK_PRL] = UMF_PRINT_LEVEL_VERBOSE;
+        solver->control[UMFPACK_PRL] = UMFPACK_PRINT_LEVEL_VERBOSE;
     } else {
-        solver->control[UMFPACK_PRL] = UMF_PRINT_LEVEL_SILENT;
+        solver->control[UMFPACK_PRL] = UMFPACK_PRINT_LEVEL_SILENT;
     }
 }
 
-struct SolverUMF *new_solver_umf() {
-    struct SolverUMF *solver = (struct SolverUMF *)malloc(sizeof(struct SolverUMF));
+struct SolverUMFPACK *new_solver_umfpack() {
+    struct SolverUMFPACK *solver = (struct SolverUMFPACK *)malloc(sizeof(struct SolverUMFPACK));
 
     if (solver == NULL) {
         return NULL;
@@ -42,7 +42,7 @@ struct SolverUMF *new_solver_umf() {
     return solver;
 }
 
-void drop_solver_umf(struct SolverUMF *solver) {
+void drop_solver_umfpack(struct SolverUMFPACK *solver) {
     if (solver == NULL) {
         return;
     }
@@ -69,7 +69,7 @@ void drop_solver_umf(struct SolverUMF *solver) {
     free(solver);
 }
 
-int32_t solver_umf_initialize(struct SolverUMF *solver,
+int32_t solver_umfpack_initialize(struct SolverUMFPACK *solver,
                               int32_t n,
                               int32_t nnz,
                               int32_t symmetry,
@@ -81,7 +81,7 @@ int32_t solver_umf_initialize(struct SolverUMF *solver,
     }
 
     umfpack_di_defaults(solver->control);
-    solver->control[UMFPACK_STRATEGY] = UMF_SYMMETRY[symmetry];
+    solver->control[UMFPACK_STRATEGY] = UMFPACK_OPTION_SYMMETRY[symmetry];
 
     solver->ap = (int *)malloc((n + 1) * sizeof(int));
     if (solver->ap == NULL) {
@@ -104,15 +104,15 @@ int32_t solver_umf_initialize(struct SolverUMF *solver,
     solver->n = n;
     solver->nnz = nnz;
 
-    solver->control[UMFPACK_ORDERING] = UMF_ORDERING[ordering];
-    solver->control[UMFPACK_SCALE] = UMF_SCALING[scaling];
+    solver->control[UMFPACK_ORDERING] = UMFPACK_OPTION_ORDERING[ordering];
+    solver->control[UMFPACK_SCALE] = UMFPACK_OPTION_SCALING[scaling];
 
-    set_umf_verbose(solver, verbose);
+    set_umfpack_verbose(solver, verbose);
 
     return UMFPACK_OK;
 }
 
-int32_t solver_umf_factorize(struct SolverUMF *solver,
+int32_t solver_umfpack_factorize(struct SolverUMFPACK *solver,
                              int32_t const *indices_i,
                              int32_t const *indices_j,
                              double const *values_aij,
@@ -121,7 +121,7 @@ int32_t solver_umf_factorize(struct SolverUMF *solver,
         return NULL_POINTER_ERROR;
     }
 
-    set_umf_verbose(solver, verbose);
+    set_umfpack_verbose(solver, verbose);
 
     // convert triplet to compressed column (must be done for every factorization)
 
@@ -153,12 +153,12 @@ int32_t solver_umf_factorize(struct SolverUMF *solver,
     return code;
 }
 
-int32_t solver_umf_solve(struct SolverUMF *solver, double *x, const double *rhs, int32_t verbose) {
+int32_t solver_umfpack_solve(struct SolverUMFPACK *solver, double *x, const double *rhs, int32_t verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
 
-    set_umf_verbose(solver, verbose);
+    set_umfpack_verbose(solver, verbose);
 
     int code = umfpack_di_solve(UMFPACK_A, solver->ap, solver->ai, solver->ax,
                                 x, rhs, solver->numeric, solver->control, solver->info);
@@ -170,10 +170,10 @@ int32_t solver_umf_solve(struct SolverUMF *solver, double *x, const double *rhs,
     return code;
 }
 
-int32_t solver_umf_used_ordering(struct SolverUMF const *solver) {
+int32_t solver_umfpack_used_ordering(struct SolverUMFPACK const *solver) {
     return solver->info[UMFPACK_ORDERING_USED];
 }
 
-int32_t solver_umf_used_scaling(struct SolverUMF const *solver) {
+int32_t solver_umfpack_used_scaling(struct SolverUMFPACK const *solver) {
     return solver->control[UMFPACK_SCALE];
 }

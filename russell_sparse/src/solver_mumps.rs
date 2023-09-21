@@ -2,10 +2,12 @@ use super::{to_i32, CooMatrix, Layout, Ordering, Scaling};
 use crate::StrError;
 use russell_lab::{vec_copy, Vector};
 
+// Representing opaque struct
+// Reference: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs
 #[repr(C)]
 pub(crate) struct InterfaceMUMPS {
-    data: [u8; 0],
-    marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
 extern "C" {

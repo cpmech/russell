@@ -22,7 +22,7 @@ extern "C" {
         symmetry: i32,
         ordering: i32,
         scaling: i32,
-        verbose: i32,
+        compute_determinant: i32,
     ) -> i32;
     fn solver_umfpack_factorize(
         solver: *mut ExtSolver,
@@ -63,6 +63,7 @@ impl Solver {
     pub fn new(config: ConfigSolver, nrow: usize, nnz: usize, symmetry: Option<Symmetry>) -> Result<Self, StrError> {
         let n = to_i32(nrow)?;
         let nnz = to_i32(nnz)?;
+        let compute_determinant = 0;
         unsafe {
             let solver = match config.lin_sol_kind {
                 LinSolKind::Umfpack => solver_umfpack_new(),
@@ -79,7 +80,7 @@ impl Solver {
                         code_symmetry_umfpack(symmetry)?,
                         config.ordering,
                         config.scaling,
-                        config.verbose,
+                        compute_determinant,
                     );
                     if res != 0 {
                         solver_umfpack_drop(solver);
@@ -510,24 +511,5 @@ mod tests {
         let solver = Solver::new(config, nrow, nnz, None).unwrap();
         let times = solver.get_elapsed_times();
         assert_eq!(times, (0, 0));
-    }
-
-    #[test]
-    fn handle_umfpack_error_code_works() {
-        let default = "Error: unknown error returned by c-code (UMFPACK)";
-        for c in &[1, 2, 3, -1, -3, -4, -5, -6, -8, -11, -13, -15, -17, -18, -911] {
-            let res = Solver::handle_umfpack_error_code(*c);
-            assert!(res.len() > 0);
-            assert_ne!(res, default);
-        }
-        assert_eq!(
-            Solver::handle_umfpack_error_code(100000),
-            "Error: c-code returned null pointer (UMFPACK)"
-        );
-        assert_eq!(
-            Solver::handle_umfpack_error_code(200000),
-            "Error: c-code failed to allocate memory (UMFPACK)"
-        );
-        assert_eq!(Solver::handle_umfpack_error_code(123), default);
     }
 }

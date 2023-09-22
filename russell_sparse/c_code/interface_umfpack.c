@@ -64,7 +64,7 @@ int32_t solver_umfpack_initialize(struct InterfaceUMFPACK *solver,
                                   int32_t symmetry,
                                   int32_t ordering,
                                   int32_t scaling,
-                                  int32_t verbose) {
+                                  int32_t compute_determinant) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
@@ -96,7 +96,7 @@ int32_t solver_umfpack_initialize(struct InterfaceUMFPACK *solver,
     solver->control[UMFPACK_ORDERING] = UMFPACK_OPTION_ORDERING[ordering];
     solver->control[UMFPACK_SCALE] = UMFPACK_OPTION_SCALING[scaling];
 
-    set_umfpack_verbose(solver, verbose);
+    solver->compute_determinant = compute_determinant;
 
     return UMFPACK_OK;
 }
@@ -139,6 +139,12 @@ int32_t solver_umfpack_factorize(struct InterfaceUMFPACK *solver,
         umfpack_di_report_info(solver->control, solver->info);
     }
 
+    // compute determinant
+
+    if (solver->compute_determinant == C_TRUE) {
+        code = umfpack_di_get_determinant(solver->mx, solver->ex, solver->numeric, solver->info);
+    }
+
     return code;
 }
 
@@ -167,16 +173,16 @@ int32_t solver_umfpack_get_scaling(const struct InterfaceUMFPACK *solver) {
     return solver->control[UMFPACK_SCALE];
 }
 
-double solver_umfpack_get_det_coef_m(const struct InterfaceUMFPACK *solver) {
+double solver_umfpack_get_det_mx(const struct InterfaceUMFPACK *solver) {
     if (solver == NULL) {
         return 0.0;
     }
-    return 0.0; // TODO
+    return solver->mx[0];
 }
 
-double solver_umfpack_get_det_exp_n(const struct InterfaceUMFPACK *solver) {
+double solver_umfpack_get_det_ex(const struct InterfaceUMFPACK *solver) {
     if (solver == NULL) {
         return 0.0;
     }
-    return 0.0; // TODO
+    return solver->ex[0];
 }

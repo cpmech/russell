@@ -72,6 +72,7 @@ pub mod prelude;
 mod read_matrix_market;
 mod solver;
 mod solver_mumps;
+mod solver_umfpack;
 mod verify_lin_sys;
 mod write_matrix_market;
 use crate::auxiliary::*;
@@ -82,6 +83,7 @@ pub use crate::enums::*;
 pub use crate::read_matrix_market::*;
 pub use crate::solver::*;
 pub use crate::solver_mumps::*;
+pub use crate::solver_umfpack::*;
 pub use crate::verify_lin_sys::*;
 pub use crate::write_matrix_market::*;
 

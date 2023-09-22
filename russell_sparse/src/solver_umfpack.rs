@@ -93,6 +93,10 @@ impl Drop for SolverUMFPACK {
 
 impl SolverUMFPACK {
     /// Allocates a new instance
+    ///
+    /// # Examples
+    ///
+    /// See [SolverUMFPACK::solve]
     pub fn new() -> Result<Self, StrError> {
         unsafe {
             let solver = solver_umfpack_new();
@@ -120,6 +124,10 @@ impl SolverUMFPACK {
     /// * `coo` -- the CooMatrix representing the sparse coefficient matrix
     ///   Note that only coo.Layout equal to Full is allowed by UMFPACK.
     /// * `symmetric` -- indicates that the CooMatrix (yet in Full layout) is a general symmetric matrix
+    ///
+    /// # Examples
+    ///
+    /// See [SolverUMFPACK::solve]
     pub fn initialize(&mut self, coo: &CooMatrix, symmetric: bool) -> Result<(), StrError> {
         if coo.layout == Layout::Lower || coo.layout == Layout::Upper {
             return Err("for UMFPACK, if the matrix is symmetric, the layout still must be full");
@@ -184,6 +192,10 @@ impl SolverUMFPACK {
     ///
     /// * `coo` -- The **same** matrix provided to `initialize`
     /// * `verbose` -- shows messages
+    ///
+    /// # Examples
+    ///
+    /// See [SolverUMFPACK::solve]
     pub fn factorize(&mut self, coo: &CooMatrix, verbose: bool) -> Result<(), StrError> {
         self.factorized = false;
         if !self.initialized {
@@ -228,6 +240,66 @@ impl SolverUMFPACK {
     /// * `x` -- the vector of unknown values with dimension equal to coo.nrow
     /// * `rhs` -- the right-hand side vector with know values an dimension equal to coo.nrow
     /// * `verbose` -- shows messages
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::{Matrix, Vector};
+    /// use russell_sparse::prelude::*;
+    /// use russell_sparse::StrError;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // allocate a square matrix
+    ///     let (nrow, ncol, nnz) = (5, 5, 13);
+    ///     let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz)?;
+    ///     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
+    ///     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
+    ///     coo.put(1, 0, 3.0)?;
+    ///     coo.put(0, 1, 3.0)?;
+    ///     coo.put(2, 1, -1.0)?;
+    ///     coo.put(4, 1, 4.0)?;
+    ///     coo.put(1, 2, 4.0)?;
+    ///     coo.put(2, 2, -3.0)?;
+    ///     coo.put(3, 2, 1.0)?;
+    ///     coo.put(4, 2, 2.0)?;
+    ///     coo.put(2, 3, 2.0)?;
+    ///     coo.put(1, 4, 6.0)?;
+    ///     coo.put(4, 4, 1.0)?;
+    ///
+    ///     // print matrix
+    ///     let mut a = Matrix::new(nrow, ncol);
+    ///     coo.to_matrix(&mut a)?;
+    ///     let correct = "┌                ┐\n\
+    ///                    │  2  3  0  0  0 │\n\
+    ///                    │  3  0  4  0  6 │\n\
+    ///                    │  0 -1 -3  2  0 │\n\
+    ///                    │  0  0  1  0  0 │\n\
+    ///                    │  0  4  2  0  1 │\n\
+    ///                    └                ┘";
+    ///     assert_eq!(format!("{}", a), correct);
+    ///
+    ///     // allocate x and rhs
+    ///     let mut x = Vector::new(nrow);
+    ///     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
+    ///
+    ///     // initialize, factorize, and solve
+    ///     let mut solver = SolverUMFPACK::new()?;
+    ///     solver.initialize(&coo, false)?;
+    ///     solver.factorize(&coo, false)?;
+    ///     solver.solve(&mut x, &rhs, false)?;
+    ///
+    ///     // check
+    ///     let correct = "┌          ┐\n\
+    ///                    │ 1.000000 │\n\
+    ///                    │ 2.000000 │\n\
+    ///                    │ 3.000000 │\n\
+    ///                    │ 4.000000 │\n\
+    ///                    │ 5.000000 │\n\
+    ///                    └          ┘";
+    ///     assert_eq!(format!("{:.6}", x), correct);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool) -> Result<(), StrError> {
         if !self.factorized {
             return Err("the function factorize must be called before solve");

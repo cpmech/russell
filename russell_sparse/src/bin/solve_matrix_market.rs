@@ -6,44 +6,6 @@ use serde_json;
 use std::path::Path;
 use structopt::StructOpt;
 
-/// Holds information about the solution of a linear system
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct SolutionInfo {
-    pub platform: String,
-    pub blas_lib: String,
-    pub solver_name: String,
-    pub matrix_name: String,
-    pub symmetry: String,
-    pub nrow: usize,
-    pub ncol: usize,
-    pub nnz: usize,
-    pub time_read_matrix_market_nanosecond: u128,
-    pub time_read_matrix_market_human: String,
-    pub time_initialize_nanosecond: u128,
-    pub time_initialize_human: String,
-    pub time_factorize_nanosecond: u128,
-    pub time_factorize_human: String,
-    pub time_solve_nanosecond: u128,
-    pub time_solve_human: String,
-    pub time_total_nanosecond: u128, // initialize + factorize + solve (not including read matrix)
-    pub time_total_human: String,
-    pub requested_ordering: String,
-    pub requested_scaling: String,
-    pub requested_openmp_num_threads: usize,
-    pub effective_ordering: String,
-    pub effective_scaling: String,
-    pub effective_openmp_num_threads: usize,
-    pub verify_max_abs_a: f64,
-    pub verify_max_abs_a_times_x: f64,
-    pub verify_relative_error: f64,
-    pub verify_time_nanosecond: u128,
-    pub verify_time_human: String,
-    pub compute_determinant: bool,
-    pub determinant_mantissa: f64, // det = mantissa * pow(base, exponent)
-    pub determinant_base: f64,
-    pub determinant_exponent: f64,
-}
-
 /// Command line options
 #[derive(StructOpt, Debug)]
 #[structopt(
@@ -210,6 +172,44 @@ fn main() -> Result<(), StrError> {
 
     // done
     Ok(())
+}
+
+/// Holds information about the solution of a linear system
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SolutionInfo {
+    pub platform: String,
+    pub blas_lib: String,
+    pub solver_name: String,
+    pub matrix_name: String,
+    pub symmetry: String,
+    pub nrow: usize,
+    pub ncol: usize,
+    pub nnz: usize,
+    pub time_read_matrix_market_nanosecond: u128,
+    pub time_read_matrix_market_human: String,
+    pub time_initialize_nanosecond: u128,
+    pub time_initialize_human: String,
+    pub time_factorize_nanosecond: u128,
+    pub time_factorize_human: String,
+    pub time_solve_nanosecond: u128,
+    pub time_solve_human: String,
+    pub time_total_nanosecond: u128, // initialize + factorize + solve (not including read matrix)
+    pub time_total_human: String,
+    pub requested_ordering: String,
+    pub requested_scaling: String,
+    pub requested_openmp_num_threads: usize,
+    pub effective_ordering: String,
+    pub effective_scaling: String,
+    pub effective_openmp_num_threads: usize,
+    pub verify_max_abs_a: f64,
+    pub verify_max_abs_a_times_x: f64,
+    pub verify_relative_error: f64,
+    pub verify_time_nanosecond: u128,
+    pub verify_time_human: String,
+    pub compute_determinant: bool,
+    pub determinant_mantissa: f64, // det = mantissa * pow(base, exponent)
+    pub determinant_base: f64,
+    pub determinant_exponent: f64,
 }
 
 fn get_bfwb62_correct_x() -> Vector {

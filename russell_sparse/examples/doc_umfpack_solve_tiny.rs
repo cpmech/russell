@@ -24,13 +24,18 @@ fn main() -> Result<(), StrError> {
                    └                   ┘";
     assert_eq!(format!("{}", a), correct);
 
+    // allocate solver, initialize, and factorize
+    let mut solver = SolverUMFPACK::new()?;
+    solver.initialize(&coo, false)?;
+    solver.factorize(&coo, false)?;
+
     // allocate rhs
     let rhs1 = Vector::from(&[1.0, 1.0, 1.0]);
     let rhs2 = Vector::from(&[2.0, 2.0, 2.0]);
 
     // calculate solution
-    let config = ConfigSolver::new();
-    let (mut solver, x1) = Solver::compute(config, &coo, &rhs1)?;
+    let mut x1 = Vector::new(nrow);
+    solver.solve(&mut x1, &rhs1, false)?;
     let correct1 = "┌   ┐\n\
                     │ 3 │\n\
                     │ 2 │\n\
@@ -40,7 +45,7 @@ fn main() -> Result<(), StrError> {
 
     // solve again
     let mut x2 = Vector::new(nrow);
-    solver.solve(&mut x2, &rhs2)?;
+    solver.solve(&mut x2, &rhs2, false)?;
     let correct2 = "┌   ┐\n\
                     │ 6 │\n\
                     │ 4 │\n\

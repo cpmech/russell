@@ -2,7 +2,7 @@
 //!
 //! **sparse**: Sparse matrix tools and solvers
 //!
-//! # Example - solving a sparse linear system
+//! # Example - solving a sparse linear system using UMFPACK
 //!
 //! ```
 //! use russell_lab::{Matrix, Vector};
@@ -13,8 +13,8 @@
 //!     // allocate a square matrix
 //!     let (nrow, ncol, nnz) = (5, 5, 13);
 //!     let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz)?;
-//!     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2)
-//!     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2)
+//!     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
+//!     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
 //!     coo.put(1, 0, 3.0)?;
 //!     coo.put(0, 1, 3.0)?;
 //!     coo.put(2, 1, -1.0)?;
@@ -44,10 +44,12 @@
 //!     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
 //!
 //!     // initialize, factorize, and solve
-//!     let config = ConfigSolver::new();
-//!     let mut solver = Solver::new(config, nrow, nnz, None)?;
-//!     solver.factorize(&coo)?;
-//!     solver.solve(&mut x, &rhs)?;
+//!     let mut solver = SolverUMFPACK::new()?;
+//!     solver.initialize(&coo, false)?;
+//!     solver.factorize(&coo, false)?;
+//!     solver.solve(&mut x, &rhs, false)?;
+//!
+//!     // check
 //!     let correct = "┌          ┐\n\
 //!                    │ 1.000000 │\n\
 //!                    │ 2.000000 │\n\

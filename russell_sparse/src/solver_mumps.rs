@@ -82,7 +82,7 @@ pub struct SolverMUMPS {
     /// **Note:** Set this value to 0 to allow an automatic detection
     pub openmp_num_threads: usize,
 
-    /// Requests that the determinant is computed
+    /// Requests that the determinant be computed
     ///
     /// **Note:** The determinant will be available after `factorize`
     pub compute_determinant: bool,

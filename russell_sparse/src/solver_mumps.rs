@@ -311,7 +311,7 @@ impl SolverMUMPS {
     /// Returns `(a, c)`, such that
     ///
     /// ```text
-    /// det(a) = a * 2^c
+    /// determinant = a * 2^c
     /// ```
     pub fn get_determinant(&self) -> (f64, f64) {
         if self.compute_determinant {

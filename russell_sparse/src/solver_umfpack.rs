@@ -14,8 +14,9 @@ const UMFPACK_SCALE_SUM: i32 = 1; // default: divide each row by sum (abs (row))
 const UMFPACK_SCALE_MAX: i32 = 2; // divide each row by max (abs (row))
 const UMFPACK_DEFAULT_SCALE: i32 = UMFPACK_SCALE_SUM;
 
-// Representing opaque struct
-// Reference: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs
+/// Opaque struct holding a C-pointer to InterfaceUMFPACK
+///
+/// Reference: <https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs>
 #[repr(C)]
 struct InterfaceUMFPACK {
     _data: [u8; 0],

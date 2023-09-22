@@ -2,8 +2,9 @@ use super::{to_i32, CooMatrix, Ordering, Scaling, SolverTrait, Storage, Symmetry
 use crate::StrError;
 use russell_lab::{vec_copy, Vector};
 
-// Representing opaque struct
-// Reference: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs
+/// Opaque struct holding a C-pointer to InterfaceMUMPS
+///
+/// Reference: <https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs>
 #[repr(C)]
 struct InterfaceMUMPS {
     _data: [u8; 0],

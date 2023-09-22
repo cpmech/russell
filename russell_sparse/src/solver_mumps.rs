@@ -333,7 +333,7 @@ impl SolverMUMPS {
     ///
     /// * `MUMPS` -- if the default system MUMPS has been used
     /// * `MUMPS-local` -- if the locally compiled MUMPS has be used
-    pub fn get_name() -> String {
+    pub fn get_name(&self) -> String {
         if cfg!(local_mumps) {
             "MUMPS-local".to_string()
         } else {

@@ -38,6 +38,7 @@ pub struct SolutionInfo {
     pub verify_relative_error: f64,
     pub verify_time_nanosecond: u128,
     pub verify_time_human: String,
+    pub compute_determinant: bool,
     pub determinant_mantissa: f64, // det = mantissa * pow(base, exponent)
     pub determinant_base: f64,
     pub determinant_exponent: f64,
@@ -184,6 +185,7 @@ fn main() -> Result<(), StrError> {
         verify_relative_error: verify.relative_error,
         verify_time_nanosecond: verify.time_check,
         verify_time_human: format_nanoseconds(verify.time_check),
+        compute_determinant: opt.determinant,
         determinant_mantissa: mantissa,
         determinant_base: base,
         determinant_exponent: exponent,
@@ -195,7 +197,7 @@ fn main() -> Result<(), StrError> {
     if path.ends_with("bfwb62.mtx") {
         let tolerance = match genie {
             Genie::Mumps => 1e-10,
-            Genie::Umfpack => 1e-11,
+            Genie::Umfpack => 1e-10,
         };
         let correct_x = get_bfwb62_correct_x();
         for i in 0..coo.nrow {

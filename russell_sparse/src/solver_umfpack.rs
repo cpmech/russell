@@ -17,7 +17,7 @@ const UMFPACK_DEFAULT_SCALE: i32 = UMFPACK_SCALE_SUM;
 // Representing opaque struct
 // Reference: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs
 #[repr(C)]
-pub struct InterfaceUMFPACK {
+struct InterfaceUMFPACK {
     _data: [u8; 0],
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }

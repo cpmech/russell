@@ -5,7 +5,7 @@ use russell_lab::{vec_copy, Vector};
 // Representing opaque struct
 // Reference: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs
 #[repr(C)]
-pub(crate) struct InterfaceMUMPS {
+struct InterfaceMUMPS {
     _data: [u8; 0],
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }

@@ -206,6 +206,7 @@ impl SolverMUMPS {
     /// # Input
     ///
     /// * `coo` -- The **same** matrix provided to `initialize`
+    /// * `verbose` -- shows messages
     pub fn factorize(&mut self, coo: &CooMatrix, verbose: bool) -> Result<(), StrError> {
         self.factorized = false;
         if !self.initialized {
@@ -249,6 +250,7 @@ impl SolverMUMPS {
     ///
     /// * `x` -- the vector of unknown values with dimension equal to coo.nrow
     /// * `rhs` -- the right-hand side vector with know values an dimension equal to coo.nrow
+    /// * `verbose` -- shows messages
     pub fn solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool) -> Result<(), StrError> {
         if !self.factorized {
             return Err("the function factorize must be called before solve");

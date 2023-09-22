@@ -5,6 +5,7 @@
 //! # Example - solving a sparse linear system using UMFPACK
 //!
 //! ```
+//! use russell_chk::vec_approx_eq;
 //! use russell_lab::{Matrix, Vector};
 //! use russell_sparse::prelude::*;
 //! use russell_sparse::StrError;
@@ -50,14 +51,8 @@
 //!     solver.solve(&mut x, &rhs, false)?;
 //!
 //!     // check
-//!     let correct = "┌          ┐\n\
-//!                    │ 1.000000 │\n\
-//!                    │ 2.000000 │\n\
-//!                    │ 3.000000 │\n\
-//!                    │ 4.000000 │\n\
-//!                    │ 5.000000 │\n\
-//!                    └          ┘";
-//!     assert_eq!(format!("{:.6}", x), correct);
+//!     let correct = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+//!     vec_approx_eq(x.as_data(), &correct, 1e-14);
 //!     Ok(())
 //! }
 //! ```
@@ -66,24 +61,20 @@
 pub type StrError = &'static str;
 
 mod auxiliary;
-mod config_solver;
 mod coo_matrix;
 mod csr_matrix;
 mod enums;
 pub mod prelude;
 mod read_matrix_market;
-mod solver;
 mod solver_mumps;
 mod solver_umfpack;
 mod verify_lin_sys;
 mod write_matrix_market;
 use crate::auxiliary::*;
-pub use crate::config_solver::*;
 pub use crate::coo_matrix::*;
 pub use crate::csr_matrix::*;
 pub use crate::enums::*;
 pub use crate::read_matrix_market::*;
-pub use crate::solver::*;
 pub use crate::solver_mumps::*;
 pub use crate::solver_umfpack::*;
 pub use crate::verify_lin_sys::*;

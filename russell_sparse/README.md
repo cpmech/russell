@@ -61,9 +61,10 @@ export OPENBLAS_NUM_THREADS=1
 
 ## Examples
 
-### Solve a sparse linear system using UMFPACK
+### Solve a tiny sparse linear system using UMFPACK
 
 ```rust
+use russell_chk::vec_approx_eq;
 use russell_lab::{Matrix, Vector};
 use russell_sparse::prelude::*;
 use russell_sparse::StrError;
@@ -102,22 +103,14 @@ fn main() -> Result<(), StrError> {
     // calculate solution
     let mut x1 = Vector::new(nrow);
     solver.solve(&mut x1, &rhs1, false)?;
-    let correct1 = "┌   ┐\n\
-                    │ 3 │\n\
-                    │ 2 │\n\
-                    │ 4 │\n\
-                    └   ┘";
-    assert_eq!(format!("{}", x1), correct1);
+    let correct = vec![3.0, 2.0, 4.0];
+    vec_approx_eq(x1.as_data(), &correct, 1e-14);
 
     // solve again
     let mut x2 = Vector::new(nrow);
     solver.solve(&mut x2, &rhs2, false)?;
-    let correct2 = "┌   ┐\n\
-                    │ 6 │\n\
-                    │ 4 │\n\
-                    │ 8 │\n\
-                    └   ┘";
-    assert_eq!(format!("{}", x2), correct2);
+    let correct = vec![6.0, 4.0, 8.0];
+    vec_approx_eq(x2.as_data(), &correct, 1e-14);
     Ok(())
 }
 ```

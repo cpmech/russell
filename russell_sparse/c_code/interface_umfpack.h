@@ -2,36 +2,6 @@
 
 #include "umfpack.h"
 
-const double UMFPACK_OPTION_SYMMETRY[2] = {
-    UMFPACK_STRATEGY_UNSYMMETRIC, // Unsymmetric
-    UMFPACK_STRATEGY_SYMMETRIC,   // General symmetric
-};
-
-const double UMFPACK_OPTION_ORDERING[10] = {
-    UMFPACK_ORDERING_AMD,     // Amd
-    UMFPACK_DEFAULT_ORDERING, // Amf => Auto
-    UMFPACK_DEFAULT_ORDERING, // Auto
-    UMFPACK_ORDERING_BEST,    // Best
-    UMFPACK_ORDERING_CHOLMOD, // Cholmod
-    UMFPACK_ORDERING_METIS,   // Metis
-    UMFPACK_ORDERING_NONE,    // No
-    UMFPACK_DEFAULT_ORDERING, // Pord => Auto
-    UMFPACK_DEFAULT_ORDERING, // Qamd => Auto
-    UMFPACK_DEFAULT_ORDERING, // Scotch => Auto
-};
-
-const double UMFPACK_OPTION_SCALING[9] = {
-    UMFPACK_DEFAULT_SCALE, // Auto
-    UMFPACK_DEFAULT_SCALE, // Column => Auto
-    UMFPACK_DEFAULT_SCALE, // Diagonal => Auto
-    UMFPACK_SCALE_MAX,     // Max
-    UMFPACK_SCALE_NONE,    // No
-    UMFPACK_DEFAULT_SCALE, // RowCol => Auto
-    UMFPACK_DEFAULT_SCALE, // RowColIter => Auto
-    UMFPACK_DEFAULT_SCALE, // RowColRig => Auto
-    UMFPACK_SCALE_SUM,     // Sum
-};
-
 const double UMFPACK_PRINT_LEVEL_SILENT = 0.0;  // page 116
 const double UMFPACK_PRINT_LEVEL_VERBOSE = 2.0; // page 116
 
@@ -47,6 +17,9 @@ struct InterfaceUMFPACK {
     void *symbolic;                  // handle to symbolic factorization results
     void *numeric;                   // handle to numeric factorization results
     int32_t compute_determinant;     // whether the determinant should be computed or not (after factorize)
+    int effective_strategy;          // used strategy regarding symmetry
+    int effective_ordering;          // used ordering
+    int effective_scaling;           // used scaling
     double mx[1];                    // mx[0] is the coefficient mx of the determinant = mx * 10 ^ ex
     double ex[1];                    // ex[0] is the exponent ex of the determinant = mx * 10 ^ ex
 };

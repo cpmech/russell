@@ -549,6 +549,16 @@ mod tests {
     }
 
     #[test]
+    fn factorize_fails_on_singular_matrix() {
+        let mut solver = SolverUMFPACK::new().unwrap();
+        let mut coo = CooMatrix::new(Layout::Full, 2, 2, 2).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 0.0).unwrap();
+        solver.initialize(&coo, false).unwrap();
+        assert_eq!(solver.factorize(&coo, false), Err("Error(1): Matrix is singular"));
+    }
+
+    #[test]
     fn solve_handles_errors_and_works() {
         // allocate a new solver
         let mut solver = SolverUMFPACK::new().unwrap();

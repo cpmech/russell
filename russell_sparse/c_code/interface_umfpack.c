@@ -70,7 +70,8 @@ int32_t solver_umfpack_initialize(struct InterfaceUMFPACK *solver,
     }
 
     umfpack_di_defaults(solver->control);
-    solver->control[UMFPACK_STRATEGY] = UMFPACK_OPTION_SYMMETRY[symmetry];
+    solver->control[UMFPACK_STRATEGY] = symmetry;
+    solver->effective_strategy = symmetry;
 
     solver->ap = (int *)malloc((n + 1) * sizeof(int));
     if (solver->ap == NULL) {
@@ -93,8 +94,10 @@ int32_t solver_umfpack_initialize(struct InterfaceUMFPACK *solver,
     solver->n = n;
     solver->nnz = nnz;
 
-    solver->control[UMFPACK_ORDERING] = UMFPACK_OPTION_ORDERING[ordering];
-    solver->control[UMFPACK_SCALE] = UMFPACK_OPTION_SCALING[scaling];
+    solver->control[UMFPACK_ORDERING] = ordering;
+    solver->control[UMFPACK_SCALE] = scaling;
+    solver->effective_ordering = ordering;
+    solver->effective_scaling = scaling;
 
     solver->compute_determinant = compute_determinant;
 
@@ -139,6 +142,12 @@ int32_t solver_umfpack_factorize(struct InterfaceUMFPACK *solver,
         umfpack_di_report_info(solver->control, solver->info);
     }
 
+    // save strategy, ordering, and scaling
+
+    solver->effective_strategy = solver->info[UMFPACK_STRATEGY_USED];
+    solver->effective_ordering = solver->info[UMFPACK_ORDERING_USED];
+    solver->effective_scaling = solver->control[UMFPACK_SCALE];
+
     // compute determinant
 
     if (solver->compute_determinant == C_TRUE) {
@@ -166,11 +175,11 @@ int32_t solver_umfpack_solve(struct InterfaceUMFPACK *solver, double *x, const d
 }
 
 int32_t solver_umfpack_get_ordering(const struct InterfaceUMFPACK *solver) {
-    return solver->info[UMFPACK_ORDERING_USED];
+    return solver->effective_ordering;
 }
 
 int32_t solver_umfpack_get_scaling(const struct InterfaceUMFPACK *solver) {
-    return solver->control[UMFPACK_SCALE];
+    return solver->effective_scaling;
 }
 
 double solver_umfpack_get_det_mx(const struct InterfaceUMFPACK *solver) {

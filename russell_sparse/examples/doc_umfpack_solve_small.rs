@@ -1,3 +1,4 @@
+use russell_chk::vec_approx_eq;
 use russell_lab::{Matrix, Vector};
 use russell_sparse::prelude::*;
 use russell_sparse::StrError;
@@ -43,13 +44,7 @@ fn main() -> Result<(), StrError> {
     solver.solve(&mut x, &rhs, false)?;
 
     // check
-    let correct = "┌          ┐\n\
-                   │ 1.000000 │\n\
-                   │ 2.000000 │\n\
-                   │ 3.000000 │\n\
-                   │ 4.000000 │\n\
-                   │ 5.000000 │\n\
-                   └          ┘";
-    assert_eq!(format!("{:.6}", x), correct);
+    let correct = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    vec_approx_eq(x.as_data(), &correct, 1e-14);
     Ok(())
 }

@@ -1,5 +1,3 @@
-use crate::StrError;
-
 /// Defines how the CooMatrix (triplet) represents a matrix
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Layout {
@@ -43,90 +41,69 @@ pub enum SymmetricHandling {
     MakeItFull,
 }
 
-/// Matrix symmetry option
-#[derive(Clone, Copy, Debug)]
-pub enum Symmetry {
-    /// General symmetric matrix
-    ///
-    /// **Note:** When using the MUMPS solver, make sure to provide a lower triangular matrix
-    General,
-
-    /// The matrix is positive-definite and symmetric
-    ///
-    /// **Note:** When using the MUMPS solver, make sure to provide a lower triangular matrix
-    PosDef,
-}
-
-/// Linear solver kind
-#[derive(Clone, Copy, Debug)]
-pub enum LinSolKind {
-    /// Tim Davis' UMFPACK Solver (recommended, unless the matrix is huge)
-    Umfpack,
-}
-
 /// Ordering option
 #[derive(Clone, Copy, Debug)]
 pub enum Ordering {
     /// Ordering using the approximate minimum degree
-    Amd = 0,
+    Amd,
 
     /// Ordering using the approximate minimum fill-in (MUMPS-only, otherwise Auto)
-    Amf = 1,
+    Amf,
 
     /// Automatic ordering method selection
-    Auto = 2,
+    Auto,
 
     /// Try three methods and take the best (UMFPACK-only, otherwise Auto)
-    Best = 3,
+    Best,
 
     /// Use Amd for symmetric, Colamd for unsymmetric, or Metis (UMFPACK-only, otherwise Auto)
-    Cholmod = 4,
+    Cholmod,
 
     /// Ordering by Karpis & Kumar from the University of Minnesota
-    Metis = 5,
+    Metis,
 
     /// The matrix is factorized as-is (UMFPACK-only, otherwise Auto)
-    No = 6,
+    No,
 
     /// Ordering by Schulze from the University of Paderborn (MUMPS-only, otherwise Auto)
-    Pord = 7,
+    Pord,
 
     /// Ordering using the automatic quasi-dense row detection (MUMPS-only, otherwise Auto)
-    Qamd = 8,
+    Qamd,
 
     /// Ordering using the Scotch package (MUMPS-only, otherwise Auto)
-    Scotch = 9,
+    Scotch,
 }
 
 /// Scaling option
 #[derive(Clone, Copy, Debug)]
 pub enum Scaling {
     /// Automatic scaling method selection
-    Auto = 0,
+    Auto,
 
     /// Column scaling (MUMPS-only, otherwise Auto)
-    Column = 1,
+    Column,
 
     /// Diagonal scaling (MUMPS-only, otherwise Auto)
-    Diagonal = 2,
+    Diagonal,
 
     /// Use the max absolute value in the row (UMFPACK-only, otherwise Auto)
-    Max = 3,
+    Max,
 
     /// No scaling applied or computed
-    No = 4,
+    No,
 
     /// Row and column scaling based on infinite row/column norms (MUMPS-only, otherwise Auto)
-    RowCol = 5,
+    RowCol,
 
     /// Simultaneous row and column iterative scaling (MUMPS-only, otherwise Auto)
-    RowColIter = 6,
+    RowColIter,
 
     /// Similar to RcIterative but more rigorous and expensive to compute (MUMPS-only, otherwise Auto)
-    RowColRig = 7,
+    RowColRig,
 
     /// Use the sum of the absolute value in the row (UMFPACK-only, otherwise Auto)
-    Sum = 8,
+    Sum,
 }
 
 /// Returns the Ordering by name
@@ -162,77 +139,11 @@ pub fn enum_scaling(scaling: &str) -> Scaling {
     }
 }
 
-pub(crate) fn code_symmetry_umfpack(option: Option<Symmetry>) -> Result<i32, StrError> {
-    match option {
-        None => Ok(0),
-        Some(v) => match v {
-            Symmetry::General => Ok(1),
-            Symmetry::PosDef => Ok(1),
-        },
-    }
-}
-
-pub(crate) fn str_enum_ordering(index: i32) -> &'static str {
-    match index {
-        0 => "Amd",
-        1 => "Amf (MUMPS-only, otherwise Auto)",
-        2 => "Auto",
-        3 => "Best (UMFPACK-only, otherwise Auto)",
-        4 => "Cholmod (UMFPACK-only, otherwise Auto)",
-        5 => "Metis",
-        6 => "No (UMFPACK-only, otherwise Auto)",
-        7 => "Pord (MUMPS-only, otherwise Auto)",
-        8 => "Qamd (MUMPS-only, otherwise Auto)",
-        9 => "Scotch (MUMPS-only, otherwise Auto)",
-        _ => panic!("<internal error: invalid index>"),
-    }
-}
-
-pub(crate) fn str_enum_scaling(index: i32) -> &'static str {
-    match index {
-        0 => "Auto",
-        1 => "Column (MUMPS-only, otherwise Auto)",
-        2 => "Diagonal (MUMPS-only, otherwise Auto)",
-        3 => "Max (UMFPACK-only, otherwise Auto)",
-        4 => "No",
-        5 => "RowCol (MUMPS-only, otherwise Auto)",
-        6 => "RowColIter (MUMPS-only, otherwise Auto)",
-        7 => "RowColRig (MUMPS-only, otherwise Auto)",
-        8 => "Sum (UMFPACK-only, otherwise Auto)",
-        _ => panic!("<internal error: invalid index>"),
-    }
-}
-
-pub(crate) fn str_umfpack_ordering(umfpack_code: i32) -> &'static str {
-    match umfpack_code {
-        0 => "Cholmod",
-        1 => "Amd",
-        2 => "UserProvided",
-        3 => "Metis",
-        4 => "Best",
-        5 => "No",
-        6 => "UserProvided",
-        _ => "Unknown",
-    }
-}
-
-pub(crate) fn str_umfpack_scaling(umfpack_code: i32) -> &'static str {
-    match umfpack_code {
-        0 => "No",
-        1 => "Sum",
-        2 => "Max",
-        _ => "Unknown",
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        code_symmetry_umfpack, enum_ordering, enum_scaling, str_enum_ordering, str_enum_scaling, str_umfpack_ordering,
-        str_umfpack_scaling, Layout, Ordering, Scaling, SymmetricHandling, Symmetry,
-    };
+    use super::{enum_ordering, enum_scaling, Layout, Ordering, Scaling, SymmetricHandling};
 
     #[test]
     fn clone_copy_and_debug_work() {
@@ -249,13 +160,6 @@ mod tests {
         assert_eq!(format!("{:?}", handling), "LeaveAsLower");
         assert_eq!(copy, SymmetricHandling::LeaveAsLower);
         assert_eq!(clone, SymmetricHandling::LeaveAsLower);
-
-        let symmetry = Symmetry::General;
-        let copy = symmetry;
-        let clone = symmetry.clone();
-        assert_eq!(format!("{:?}", symmetry), "General");
-        assert_eq!(format!("{:?}", copy), "General");
-        assert_eq!(format!("{:?}", clone), "General");
 
         let ordering = Ordering::Amd;
         let copy = ordering;
@@ -299,72 +203,5 @@ mod tests {
         assert!(matches!(enum_scaling("RowColRig"), Scaling::RowColRig));
         assert!(matches!(enum_scaling("Sum"), Scaling::Sum));
         assert!(matches!(enum_scaling("Unknown"), Scaling::Auto));
-    }
-
-    #[test]
-    fn code_symmetry_works() {
-        // umfpack
-        assert_eq!(code_symmetry_umfpack(None), Ok(0));
-        assert_eq!(code_symmetry_umfpack(Some(Symmetry::General)), Ok(1));
-        assert_eq!(code_symmetry_umfpack(Some(Symmetry::PosDef)), Ok(1));
-    }
-
-    #[test]
-    #[should_panic(expected = "<internal error: invalid index>")]
-    fn str_enum_ordering_panics_on_wrong_code() {
-        str_enum_ordering(123);
-    }
-
-    #[test]
-    #[should_panic(expected = "<internal error: invalid index>")]
-    fn str_enum_scaling_panics_on_wrong_code() {
-        str_enum_scaling(123);
-    }
-
-    #[test]
-    fn str_enum_ordering_works() {
-        assert_eq!(str_enum_ordering(0), "Amd");
-        assert_eq!(str_enum_ordering(1), "Amf (MUMPS-only, otherwise Auto)");
-        assert_eq!(str_enum_ordering(2), "Auto");
-        assert_eq!(str_enum_ordering(3), "Best (UMFPACK-only, otherwise Auto)");
-        assert_eq!(str_enum_ordering(4), "Cholmod (UMFPACK-only, otherwise Auto)");
-        assert_eq!(str_enum_ordering(5), "Metis");
-        assert_eq!(str_enum_ordering(6), "No (UMFPACK-only, otherwise Auto)");
-        assert_eq!(str_enum_ordering(7), "Pord (MUMPS-only, otherwise Auto)");
-        assert_eq!(str_enum_ordering(8), "Qamd (MUMPS-only, otherwise Auto)");
-        assert_eq!(str_enum_ordering(9), "Scotch (MUMPS-only, otherwise Auto)");
-    }
-
-    #[test]
-    fn str_enum_scaling_works() {
-        assert_eq!(str_enum_scaling(0), "Auto");
-        assert_eq!(str_enum_scaling(1), "Column (MUMPS-only, otherwise Auto)");
-        assert_eq!(str_enum_scaling(2), "Diagonal (MUMPS-only, otherwise Auto)");
-        assert_eq!(str_enum_scaling(3), "Max (UMFPACK-only, otherwise Auto)");
-        assert_eq!(str_enum_scaling(4), "No");
-        assert_eq!(str_enum_scaling(5), "RowCol (MUMPS-only, otherwise Auto)");
-        assert_eq!(str_enum_scaling(6), "RowColIter (MUMPS-only, otherwise Auto)");
-        assert_eq!(str_enum_scaling(7), "RowColRig (MUMPS-only, otherwise Auto)");
-        assert_eq!(str_enum_scaling(8), "Sum (UMFPACK-only, otherwise Auto)");
-    }
-
-    #[test]
-    fn str_umfpack_ordering_works() {
-        assert_eq!(str_umfpack_ordering(0), "Cholmod");
-        assert_eq!(str_umfpack_ordering(1), "Amd");
-        assert_eq!(str_umfpack_ordering(2), "UserProvided");
-        assert_eq!(str_umfpack_ordering(3), "Metis");
-        assert_eq!(str_umfpack_ordering(4), "Best");
-        assert_eq!(str_umfpack_ordering(5), "No");
-        assert_eq!(str_umfpack_ordering(6), "UserProvided");
-        assert_eq!(str_umfpack_ordering(123), "Unknown");
-    }
-
-    #[test]
-    fn str_umfpack_scaling_works() {
-        assert_eq!(str_umfpack_scaling(0), "No");
-        assert_eq!(str_umfpack_scaling(1), "Sum");
-        assert_eq!(str_umfpack_scaling(2), "Max");
-        assert_eq!(str_umfpack_scaling(123), "Unknown");
     }
 }

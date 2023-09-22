@@ -90,15 +90,10 @@ fn main() -> Result<(), StrError> {
     }
 
     // select linear solver
-    let name = LinSolKind::Umfpack;
+    // let name = LinSolKind::Umfpack;
 
     // select the symmetric handling option
-    let handling = match name {
-        LinSolKind::Umfpack => {
-            // UMFPACK uses the full matrix, if symmetric or not
-            SymmetricHandling::MakeItFull
-        }
-    };
+    let handling = SymmetricHandling::MakeItFull; // UMFPACK
 
     // read the matrix
     let mut sw = Stopwatch::new("");

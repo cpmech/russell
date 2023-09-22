@@ -75,8 +75,9 @@ fn main() -> Result<(), StrError> {
     let coo = read_matrix_market(&opt.matrix_market_file, handling)?;
     let time_read = sw.stop();
 
-    // allocate the solver
+    // allocate and configure the solver
     let mut solver = Solver::new(genie)?;
+    solver.actual.configure(settings);
 
     // call initialize
     sw.reset();

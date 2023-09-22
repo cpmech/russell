@@ -93,7 +93,7 @@ fn main() -> Result<(), StrError> {
     // let name = LinSolKind::Umfpack;
 
     // select the symmetric handling option
-    let handling = SymmetricHandling::MakeItFull; // UMFPACK
+    let handling = MMsymOption::MakeItFull; // UMFPACK
 
     // read the matrix
     let mut sw = Stopwatch::new("");

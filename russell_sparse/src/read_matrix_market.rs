@@ -1,4 +1,4 @@
-use super::{CooMatrix, Layout, SymmetricHandling};
+use super::{CooMatrix, Layout, MMsymOption};
 use crate::StrError;
 use std::ffi::OsStr;
 use std::fs::File;
@@ -260,11 +260,11 @@ impl MatrixMarketData {
 ///
 /// ```
 /// use russell_lab::Matrix;
-/// use russell_sparse::{read_matrix_market, Layout, SymmetricHandling, StrError};
+/// use russell_sparse::{read_matrix_market, Layout, MMsymOption, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let filepath = "./data/matrix_market/ok_simple_general.mtx".to_string();
-///     let (coo, sym) = read_matrix_market(&filepath, SymmetricHandling::LeaveAsLower)?;
+///     let (coo, sym) = read_matrix_market(&filepath, MMsymOption::LeaveAsLower)?;
 ///     let mut a = Matrix::new(coo.nrow, coo.ncol);
 ///     coo.to_matrix(&mut a)?;
 ///     let correct = "┌       ┐\n\
@@ -296,11 +296,11 @@ impl MatrixMarketData {
 ///
 /// ```
 /// use russell_lab::Matrix;
-/// use russell_sparse::{read_matrix_market, Layout, SymmetricHandling, StrError};
+/// use russell_sparse::{read_matrix_market, Layout, MMsymOption, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let filepath = "./data/matrix_market/ok_simple_symmetric.mtx".to_string();
-///     let (coo, sym) = read_matrix_market(&filepath, SymmetricHandling::LeaveAsLower)?;
+///     let (coo, sym) = read_matrix_market(&filepath, MMsymOption::LeaveAsLower)?;
 ///     let mut a = Matrix::new(coo.nrow, coo.ncol);
 ///     coo.to_matrix(&mut a)?;
 ///     let correct = "┌       ┐\n\
@@ -314,10 +314,7 @@ impl MatrixMarketData {
 ///     Ok(())
 /// }
 /// ```
-pub fn read_matrix_market<P>(
-    full_path: &P,
-    symmetric_handling: SymmetricHandling,
-) -> Result<(CooMatrix, bool), StrError>
+pub fn read_matrix_market<P>(full_path: &P, symmetric_handling: MMsymOption) -> Result<(CooMatrix, bool), StrError>
 where
     P: AsRef<OsStr> + ?Sized,
 {
@@ -352,9 +349,9 @@ where
             return Err("MatrixMarket data is invalid: the number of rows must be equal the number of columns for symmetric matrices");
         }
         match symmetric_handling {
-            SymmetricHandling::LeaveAsLower => Layout::Lower,
-            SymmetricHandling::SwapToUpper => Layout::Upper,
-            SymmetricHandling::MakeItFull => Layout::Full,
+            MMsymOption::LeaveAsLower => Layout::Lower,
+            MMsymOption::SwapToUpper => Layout::Upper,
+            MMsymOption::MakeItFull => Layout::Full,
         }
     } else {
         Layout::Full
@@ -362,7 +359,7 @@ where
 
     // set max number of entries
     let mut max = data.nnz;
-    if data.symmetric && symmetric_handling == SymmetricHandling::MakeItFull {
+    if data.symmetric && symmetric_handling == MMsymOption::MakeItFull {
         max = 2 * data.nnz;
     }
 
@@ -377,13 +374,13 @@ where
                 if data.parse_triple(&line)? {
                     if data.symmetric {
                         match symmetric_handling {
-                            SymmetricHandling::LeaveAsLower => {
+                            MMsymOption::LeaveAsLower => {
                                 coo.put(data.i as usize, data.j as usize, data.aij).unwrap();
                             }
-                            SymmetricHandling::SwapToUpper => {
+                            MMsymOption::SwapToUpper => {
                                 coo.put(data.j as usize, data.i as usize, data.aij).unwrap();
                             }
-                            SymmetricHandling::MakeItFull => {
+                            MMsymOption::MakeItFull => {
                                 coo.put(data.i as usize, data.j as usize, data.aij).unwrap();
                                 if data.i != data.j {
                                     coo.put(data.j as usize, data.i as usize, data.aij).unwrap();
@@ -412,7 +409,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::{read_matrix_market, MatrixMarketData};
-    use crate::{Layout, SymmetricHandling};
+    use crate::{Layout, MMsymOption};
     use russell_lab::Matrix;
 
     #[test]
@@ -529,7 +526,7 @@ mod tests {
 
     #[test]
     fn read_matrix_market_handle_wrong_files() {
-        let h = SymmetricHandling::LeaveAsLower;
+        let h = MMsymOption::LeaveAsLower;
         assert_eq!(read_matrix_market("__wrong__", h).err(), Some("cannot open file"));
         assert_eq!(
             read_matrix_market("./data/matrix_market/bad_empty_file.mtx", h).err(),
@@ -559,7 +556,7 @@ mod tests {
 
     #[test]
     fn read_matrix_market_works() {
-        let h = SymmetricHandling::LeaveAsLower;
+        let h = MMsymOption::LeaveAsLower;
         let filepath = "./data/matrix_market/ok_general.mtx".to_string();
         let (coo, sym) = read_matrix_market(&filepath, h).unwrap();
         assert!(!sym);
@@ -575,7 +572,7 @@ mod tests {
 
     #[test]
     fn read_matrix_market_symmetric_lower_works() {
-        let h = SymmetricHandling::LeaveAsLower;
+        let h = MMsymOption::LeaveAsLower;
         let filepath = "./data/matrix_market/ok_symmetric.mtx".to_string();
         let (coo, sym) = read_matrix_market(&filepath, h).unwrap();
         assert!(sym);
@@ -591,7 +588,7 @@ mod tests {
 
     #[test]
     fn read_matrix_market_symmetric_upper_works() {
-        let h = SymmetricHandling::SwapToUpper;
+        let h = MMsymOption::SwapToUpper;
         let filepath = "./data/matrix_market/ok_symmetric.mtx".to_string();
         let (coo, sym) = read_matrix_market(&filepath, h).unwrap();
         assert!(sym);
@@ -607,7 +604,7 @@ mod tests {
 
     #[test]
     fn read_matrix_market_symmetric_to_full_works() {
-        let h = SymmetricHandling::MakeItFull;
+        let h = MMsymOption::MakeItFull;
         let filepath = "./data/matrix_market/ok_symmetric_small.mtx".to_string();
         let (coo, sym) = read_matrix_market(&filepath, h).unwrap();
         assert!(sym);

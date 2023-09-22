@@ -15,7 +15,7 @@ pub enum Layout {
 ///
 /// **Note:** This is ignored if not the matrix is not specified as symmetric.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum SymmetricHandling {
+pub enum MMsymOption {
     /// Leave the layout as lower triangular (if symmetric)
     ///
     /// **Note:** Lower triangular is the standard MatrixMarket format.
@@ -143,7 +143,7 @@ pub fn enum_scaling(scaling: &str) -> Scaling {
 
 #[cfg(test)]
 mod tests {
-    use super::{enum_ordering, enum_scaling, Layout, Ordering, Scaling, SymmetricHandling};
+    use super::{enum_ordering, enum_scaling, Layout, MMsymOption, Ordering, Scaling};
 
     #[test]
     fn clone_copy_and_debug_work() {
@@ -154,12 +154,12 @@ mod tests {
         assert_eq!(copy, Layout::Full);
         assert_eq!(clone, Layout::Full);
 
-        let handling = SymmetricHandling::LeaveAsLower;
+        let handling = MMsymOption::LeaveAsLower;
         let copy = handling;
         let clone = handling.clone();
         assert_eq!(format!("{:?}", handling), "LeaveAsLower");
-        assert_eq!(copy, SymmetricHandling::LeaveAsLower);
-        assert_eq!(clone, SymmetricHandling::LeaveAsLower);
+        assert_eq!(copy, MMsymOption::LeaveAsLower);
+        assert_eq!(clone, MMsymOption::LeaveAsLower);
 
         let ordering = Ordering::Amd;
         let copy = ordering;

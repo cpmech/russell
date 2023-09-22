@@ -1,12 +1,15 @@
-use super::{CooMatrix, Layout};
+use super::{CooMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::Matrix;
 use russell_openblas::to_i32;
 
 /// Holds the arrays needed for a CSR (compressed sparse row) matrix
 pub struct CsrMatrix {
-    /// Defines the stored layout: lower-triangular, upper-triangular, full-matrix
-    pub layout: Layout,
+    /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
+    ///
+    /// **Note:** `None` means unsymmetric matrix or unspecified symmetry,
+    /// where the storage is automatically `Full`.
+    pub symmetry: Option<Symmetry>,
 
     /// Holds the number of rows (must fit i32)
     pub nrow: usize,
@@ -40,8 +43,8 @@ impl CsrMatrix {
     /// use russell_sparse::StrError;
     ///
     /// fn main() {
-    ///     let csr = CsrMatrix::new(Layout::Full, 3, 3, 4);
-    ///     assert_eq!(csr.layout, Layout::Full);
+    ///     let csr = CsrMatrix::new(None, 3, 3, 4);
+    ///     assert_eq!(csr.symmetry, None);
     ///     assert_eq!(csr.nrow, 3);
     ///     assert_eq!(csr.ncol, 3);
     ///     assert_eq!(csr.row_pointers, &[0, 0, 0, 0]);
@@ -49,9 +52,9 @@ impl CsrMatrix {
     ///     assert_eq!(csr.values, &[0.0, 0.0, 0.0, 0.0]);
     /// }
     /// ```
-    pub fn new(layout: Layout, nrow: usize, ncol: usize, nnz: usize) -> Self {
+    pub fn new(symmetry: Option<Symmetry>, nrow: usize, ncol: usize, nnz: usize) -> Self {
         CsrMatrix {
-            layout,
+            symmetry,
             nrow,
             ncol,
             row_pointers: vec![0; nrow + 1],
@@ -76,7 +79,7 @@ impl CsrMatrix {
     ///     // │  4  5  6 │    but should be saved for Intel DSS
     ///     // └          ┘
     ///     let (nrow, ncol, nnz) = (3, 3, 6);
-    ///     let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz)?;
+    ///     let mut coo = CooMatrix::new(None, nrow, ncol, nnz)?;
     ///     coo.put(0, 0, 1.0)?;
     ///     coo.put(0, 2, 2.0)?;
     ///     coo.put(1, 2, 3.0)?;
@@ -128,7 +131,7 @@ impl CsrMatrix {
         let nrow = coo.nrow;
         let nnz = coo.pos;
         let mut csr = CsrMatrix {
-            layout: coo.layout,
+            symmetry: coo.symmetry,
             nrow: coo.nrow,
             ncol: coo.ncol,
             row_pointers: vec![0; nrow + 1],
@@ -218,7 +221,7 @@ impl CsrMatrix {
     ///     // │  0  4  2  0  1 │
     ///     // └                ┘
     ///     let csr = CsrMatrix {
-    ///         layout: Layout::Full,
+    ///         symmetry: None,
     ///         nrow: 5,
     ///         ncol: 5,
     ///         row_pointers: vec![0, 2, 5, 8, 9, 12],
@@ -284,7 +287,7 @@ impl CsrMatrix {
     ///     // │  0  4  2  0  1 │
     ///     // └                ┘
     ///     let csr = CsrMatrix {
-    ///         layout: Layout::Full,
+    ///         symmetry: None,
     ///         nrow: 5,
     ///         ncol: 5,
     ///         row_pointers: vec![0, 2, 5, 8, 9, 12],
@@ -327,12 +330,16 @@ impl CsrMatrix {
         if m != self.nrow || n != self.ncol {
             return Err("wrong matrix dimensions");
         }
+        let mirror_required = match self.symmetry {
+            Some(sym) => sym.triangular(),
+            None => false,
+        };
         a.fill(0.0);
         for i in 0..self.nrow {
             for p in self.row_pointers[i]..self.row_pointers[i + 1] {
                 let j = self.col_indices[p as usize] as usize;
                 a.add(i, j, self.values[p as usize]);
-                if self.layout != Layout::Full && i != j {
+                if mirror_required && i != j {
                     a.add(j, i, self.values[p as usize]);
                 }
             }
@@ -383,14 +390,14 @@ fn csr_sum_duplicates(nrow: usize, ap: &mut [i32], aj: &mut [i32], ax: &mut [f64
 #[cfg(test)]
 mod tests {
     use super::CsrMatrix;
-    use crate::{CooMatrix, Layout};
+    use crate::{CooMatrix, Storage, Symmetry};
     use russell_chk::vec_approx_eq;
     use russell_lab::Matrix;
 
     #[test]
     fn new_works() {
-        let csr = CsrMatrix::new(Layout::Full, 3, 3, 4);
-        assert_eq!(csr.layout, Layout::Full);
+        let csr = CsrMatrix::new(None, 3, 3, 4);
+        assert_eq!(csr.symmetry, None);
         assert_eq!(csr.nrow, 3);
         assert_eq!(csr.ncol, 3);
         assert_eq!(csr.row_pointers, &[0, 0, 0, 0]);
@@ -406,7 +413,7 @@ mod tests {
         // -4   .   2   7   .
         //  .   8   .   .  -5
         // first triplet with shuffled entries
-        let mut coo = CooMatrix::new(Layout::Full, 5, 5, 13).unwrap();
+        let mut coo = CooMatrix::new(None, 5, 5, 13).unwrap();
         coo.put(2, 4, 4.0).unwrap();
         coo.put(4, 1, 8.0).unwrap();
         coo.put(0, 1, -1.0).unwrap();
@@ -440,7 +447,7 @@ mod tests {
         // .  .  7  8  .
         // .  .  .  .  9
         // small triplet with shuffled entries
-        let mut coo = CooMatrix::new(Layout::Full, 5, 5, 9).unwrap();
+        let mut coo = CooMatrix::new(None, 5, 5, 9).unwrap();
         coo.put(4, 4, 9.0).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 0, 3.0).unwrap();
@@ -468,7 +475,7 @@ mod tests {
         // .  .  7  8  .
         // .  .  .  .  9
         // with duplicates
-        let mut coo = CooMatrix::new(Layout::Full, 5, 5, 11).unwrap();
+        let mut coo = CooMatrix::new(None, 5, 5, 11).unwrap();
         coo.put(4, 4, 9.0).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 0, 3.0).unwrap();
@@ -498,7 +505,8 @@ mod tests {
         //  0.75  0.0   0.0  0.625   0.0
         //  3.00  0.0   0.0  0.000  16.0
         // upper triangular with ordered entries
-        let mut coo = CooMatrix::new(Layout::Upper, 5, 5, 9).unwrap();
+        let sym = Some(Symmetry::General(Storage::Upper));
+        let mut coo = CooMatrix::new(sym, 5, 5, 9).unwrap();
         coo.put(0, 0, 9.0).unwrap();
         coo.put(0, 1, 1.5).unwrap();
         coo.put(1, 1, 0.5).unwrap();
@@ -526,7 +534,8 @@ mod tests {
         //  0.75  0.0   0.0  0.625   0.0
         //  3.00  0.0   0.0  0.000  16.0
         // upper triangular with shuffled entries
-        let mut coo = CooMatrix::new(Layout::Upper, 5, 5, 9).unwrap();
+        let sym = Some(Symmetry::General(Storage::Upper));
+        let mut coo = CooMatrix::new(sym, 5, 5, 9).unwrap();
         coo.put(2, 2, 12.0).unwrap();
         coo.put(0, 0, 9.0).unwrap();
         coo.put(3, 3, 0.625).unwrap();
@@ -554,7 +563,8 @@ mod tests {
         //  0.75  0.0   0.0  0.625   0.0
         //  3.00  0.0   0.0  0.000  16.0
         // upper triangular with diagonal entries being set first
-        let mut coo = CooMatrix::new(Layout::Upper, 5, 5, 9).unwrap();
+        let sym = Some(Symmetry::General(Storage::Upper));
+        let mut coo = CooMatrix::new(sym, 5, 5, 9).unwrap();
         // diagonal
         coo.put(0, 0, 9.0).unwrap();
         coo.put(1, 1, 0.5).unwrap();
@@ -584,7 +594,8 @@ mod tests {
         //  0.75  0.0   0.0  0.625   0.0
         //  3.00  0.0   0.0  0.000  16.0
         // lower diagonal with ordered entries
-        let mut coo = CooMatrix::new(Layout::Lower, 5, 5, 9).unwrap();
+        let sym = Some(Symmetry::General(Storage::Lower));
+        let mut coo = CooMatrix::new(sym, 5, 5, 9).unwrap();
         coo.put(0, 0, 9.0).unwrap();
         coo.put(1, 0, 1.5).unwrap();
         coo.put(1, 1, 0.5).unwrap();
@@ -612,7 +623,8 @@ mod tests {
         //  0.75  0.0   0.0  0.625   0.0
         //  3.00  0.0   0.0  0.000  16.0
         // lower triangular with diagonal entries being set first
-        let mut coo = CooMatrix::new(Layout::Lower, 5, 5, 9).unwrap();
+        let sym = Some(Symmetry::General(Storage::Lower));
+        let mut coo = CooMatrix::new(sym, 5, 5, 9).unwrap();
         // diagonal
         coo.put(0, 0, 9.0).unwrap();
         coo.put(1, 1, 0.5).unwrap();
@@ -636,7 +648,8 @@ mod tests {
 
     #[test]
     fn to_matrix_fails_on_wrong_dims() {
-        let csr = CsrMatrix::new(Layout::Upper, 2, 2, 3);
+        let sym = Some(Symmetry::General(Storage::Upper));
+        let csr = CsrMatrix::new(sym, 2, 2, 3);
         let mut a_2x1 = Matrix::new(3, 1);
         let mut a_1x2 = Matrix::new(1, 3);
         assert_eq!(csr.to_matrix(&mut a_2x1), Err("wrong matrix dimensions"));
@@ -646,7 +659,7 @@ mod tests {
     #[test]
     fn to_matrix_and_as_matrix_work() {
         let csr = CsrMatrix {
-            layout: Layout::Full,
+            symmetry: None,
             nrow: 5,
             ncol: 5,
             row_pointers: vec![0, 2, 5, 8, 9, 12],
@@ -689,9 +702,8 @@ mod tests {
 
     #[test]
     fn to_matrix_upper_works() {
-        // upper triangular
         let csr = CsrMatrix {
-            layout: Layout::Upper,
+            symmetry: Some(Symmetry::General(Storage::Upper)),
             nrow: 5,
             ncol: 5,
             row_pointers: vec![0, 5, 6, 7, 8, 9],
@@ -711,9 +723,8 @@ mod tests {
 
     #[test]
     fn to_matrix_lower_works() {
-        // upper triangular
         let csr = CsrMatrix {
-            layout: Layout::Lower,
+            symmetry: Some(Symmetry::General(Storage::Lower)),
             nrow: 5,
             ncol: 5,
             row_pointers: vec![0, 1, 3, 5, 7, 9],

@@ -1,4 +1,4 @@
-use super::{to_i32, CooMatrix, Layout, Ordering, Scaling};
+use super::{to_i32, CooMatrix, Ordering, Scaling, Storage, Symmetry};
 use crate::StrError;
 use russell_lab::{vec_copy, Vector};
 
@@ -46,8 +46,8 @@ pub struct SolverMUMPS {
     /// Holds a pointer to the C interface to MUMPS
     solver: *mut InterfaceMUMPS,
 
-    /// Layout set by initialize (for consistency checking)
-    layout: Layout,
+    /// Symmetry option set by initialize (for consistency checking)
+    symmetry: Option<Symmetry>,
 
     /// Number of rows set by initialize (for consistency checking)
     nrow: i32,
@@ -107,7 +107,7 @@ impl SolverMUMPS {
             }
             Ok(SolverMUMPS {
                 solver,
-                layout: Layout::Full,
+                symmetry: None,
                 nrow: 0,
                 nnz: 0,
                 initialized: false,
@@ -126,30 +126,30 @@ impl SolverMUMPS {
     ///
     /// # Input
     ///
-    /// * `coo` -- the CooMatrix representing the sparse coefficient matrix
-    ///   Note that only coo.Layout equal to Lower or Full are allowed by MUMPS.
-    /// * `positive_definite` -- Wether the solver should treat the coefficient matrix as positive-definite or not.
-    ///   Note that this will only be considered if coo.layout is Lower
-    pub fn initialize(&mut self, coo: &CooMatrix, positive_definite: bool) -> Result<(), StrError> {
-        if coo.layout == Layout::Upper {
-            return Err("if the matrix is symmetric, the layout must be lower triangular");
-        }
-        if positive_definite && coo.layout != Layout::Lower {
-            return Err("if positive definite is true, the layout must be lower triangular");
-        }
+    /// * `coo` -- the CooMatrix representing the sparse coefficient matrix.
+    ///   Note that only symmetry/storage equal to Lower or Full are allowed by MUMPS.
+    pub fn initialize(&mut self, coo: &CooMatrix) -> Result<(), StrError> {
+        let sym_i32 = match coo.symmetry {
+            Some(sym) => match sym {
+                Symmetry::General(storage) => {
+                    if storage != Storage::Lower {
+                        return Err("if the matrix is symmetric, the storage must be lower triangular");
+                    }
+                    2 // general symmetric (page 27)
+                }
+                Symmetry::PositiveDefinite(storage) => {
+                    if storage != Storage::Lower {
+                        return Err("if the matrix is positive-definite, the storage must be lower triangular");
+                    }
+                    1 // symmetric positive-definite (page 27)
+                }
+            },
+            None => 0, // unsymmetric (page 27)
+        };
         self.nrow = to_i32(coo.nrow)?;
         self.nnz = to_i32(coo.pos)?;
         self.initialized = false;
         self.factorized = false;
-        let symmetry = if coo.layout == Layout::Lower {
-            if positive_definite {
-                1 // symmetric positive-definite (page 27)
-            } else {
-                2 // general symmetric (page 27)
-            }
-        } else {
-            0 // unsymmetric (page 27)
-        };
         let ordering = match self.ordering {
             Ordering::Amd => 0,     // Amd (page 35)
             Ordering::Amf => 2,     // Amf (page 35)
@@ -182,7 +182,7 @@ impl SolverMUMPS {
                 self.solver,
                 self.nrow,
                 self.nnz,
-                symmetry,
+                sym_i32,
                 ordering,
                 scaling,
                 pct_i32,
@@ -194,14 +194,15 @@ impl SolverMUMPS {
                 return Err(handle_mumps_error_code(status));
             }
         }
+        self.symmetry = coo.symmetry;
         self.initialized = true;
         Ok(())
     }
 
     /// Performs the factorization (and analysis)
     ///
-    /// **Note::** Initialize must be called first. Also, the dimension and layout of the
-    /// CooMatrix must be the same as the ones provided by `initialize`.
+    /// **Note::** Initialize must be called first. Also, the dimension and symmetry/storage
+    /// of the CooMatrix must be the same as the ones provided by `initialize`.
     ///
     /// # Input
     ///
@@ -218,8 +219,8 @@ impl SolverMUMPS {
         if coo.pos != self.nnz as usize {
             return Err("the number of non-zero values must be the same as the one provided to initialize");
         }
-        if coo.layout != self.layout {
-            return Err("the layout of the CooMatrix must be the same as the one used in initialize");
+        if coo.symmetry != self.symmetry {
+            return Err("the symmetry/storage of the CooMatrix must be the same as the one used in initialize");
         }
         let verb = if verbose { 1 } else { 0 };
         unsafe {
@@ -428,9 +429,9 @@ fn handle_mumps_error_code(err: i32) -> StrError {
 #[cfg(test)]
 mod tests {
     use super::{handle_mumps_error_code, SolverMUMPS};
-    use crate::{CooMatrix, Layout, Ordering, Scaling};
+    use crate::{CooMatrix, Ordering, Samples, Scaling, Storage, Symmetry};
     use russell_chk::{approx_eq, vec_approx_eq};
-    use russell_lab::{mat_inverse, Matrix, Vector};
+    use russell_lab::Vector;
 
     #[test]
     fn complete_solution_cycle_works() {
@@ -443,39 +444,10 @@ mod tests {
         let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
         let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
 
-        // allocate the CooMatrix
-        let mut coo = CooMatrix::new(Layout::Full, 5, 5, 13).unwrap();
-        coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2) duplicate
-        coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2) duplicate
-        coo.put(1, 0, 3.0).unwrap();
-        coo.put(0, 1, 3.0).unwrap();
-        coo.put(2, 1, -1.0).unwrap();
-        coo.put(4, 1, 4.0).unwrap();
-        coo.put(1, 2, 4.0).unwrap();
-        coo.put(2, 2, -3.0).unwrap();
-        coo.put(3, 2, 1.0).unwrap();
-        coo.put(4, 2, 2.0).unwrap();
-        coo.put(2, 3, 2.0).unwrap();
-        coo.put(1, 4, 6.0).unwrap();
-        coo.put(4, 4, 1.0).unwrap();
-
-        // check the determinant of the CooMatrix
-        let mat = coo.as_matrix();
-        let mut inv = Matrix::new(5, 5);
-        let det = mat_inverse(&mut inv, &mat).unwrap();
-        approx_eq(det, 114.0, 1e-15);
-
-        // upper triangular
-        let mut coo_upper = CooMatrix::new(Layout::Upper, 5, 5, 9).unwrap();
-        coo_upper.put(0, 0, 9.0).unwrap();
-        coo_upper.put(0, 1, 1.5).unwrap();
-        coo_upper.put(1, 1, 0.5).unwrap();
-        coo_upper.put(0, 2, 6.0).unwrap();
-        coo_upper.put(2, 2, 12.0).unwrap();
-        coo_upper.put(0, 3, 0.75).unwrap();
-        coo_upper.put(3, 3, 0.625).unwrap();
-        coo_upper.put(0, 4, 3.0).unwrap();
-        coo_upper.put(4, 4, 16.0).unwrap();
+        // sample matrices
+        let (coo, _) = Samples::umfpack_sample1_unsymmetric();
+        let (coo_upper, _) = Samples::mkl_sample1_symmetric_upper();
+        let (coo_pd_upper, _) = Samples::mkl_sample1_positive_definite_upper();
 
         // allocate a new solver
         let mut solver = SolverMUMPS::new().unwrap();
@@ -485,14 +457,14 @@ mod tests {
         assert!(!solver.initialized);
         assert!(!solver.factorized);
 
-        // initialize fails on incorrect layout
+        // initialize fails on incorrect symmetry/storage
         assert_eq!(
-            solver.initialize(&coo_upper, false).err(),
-            Some("if the matrix is symmetric, the layout must be lower triangular")
+            solver.initialize(&coo_upper).err(),
+            Some("if the matrix is symmetric, the storage must be lower triangular")
         );
         assert_eq!(
-            solver.initialize(&coo, true).err(),
-            Some("if positive definite is true, the layout must be lower triangular")
+            solver.initialize(&coo_pd_upper).err(),
+            Some("if the matrix is positive-definite, the storage must be lower triangular")
         );
 
         // factorize requests initialize
@@ -502,14 +474,15 @@ mod tests {
         );
 
         // initialize works
-        solver.initialize(&coo, false).unwrap();
+        solver.initialize(&coo).unwrap();
         assert!(solver.initialized);
 
         // factorize fails on incompatible coo matrix
-        let mut coo_wrong_1 = CooMatrix::new(Layout::Full, 1, 5, 13).unwrap();
-        let coo_wrong_2 = CooMatrix::new(Layout::Full, 5, 1, 13).unwrap();
-        let coo_wrong_3 = CooMatrix::new(Layout::Full, 5, 5, 12).unwrap();
-        let mut coo_wrong_4 = CooMatrix::new(Layout::Lower, 5, 5, 13).unwrap();
+        let sym = Some(Symmetry::General(Storage::Lower));
+        let mut coo_wrong_1 = CooMatrix::new(None, 1, 5, 13).unwrap();
+        let coo_wrong_2 = CooMatrix::new(None, 5, 1, 13).unwrap();
+        let coo_wrong_3 = CooMatrix::new(None, 5, 5, 12).unwrap();
+        let mut coo_wrong_4 = CooMatrix::new(sym, 5, 5, 13).unwrap();
         for _ in 0..13 {
             coo_wrong_1.put(0, 0, 1.0).unwrap();
             coo_wrong_4.put(0, 0, 1.0).unwrap();
@@ -528,7 +501,7 @@ mod tests {
         );
         assert_eq!(
             solver.factorize(&coo_wrong_4, false).err(),
-            Some("the layout of the CooMatrix must be the same as the one used in initialize")
+            Some("the symmetry/storage of the CooMatrix must be the same as the one used in initialize")
         );
 
         // solve fails on non-factorized system
@@ -576,15 +549,28 @@ mod tests {
         vec_approx_eq(x_again.as_data(), x_correct, 1e-15);
 
         // factorize fails on singular matrix
-        let mut coo_singular = CooMatrix::new(Layout::Full, 5, 5, 2).unwrap();
+        let mut coo_singular = CooMatrix::new(None, 5, 5, 2).unwrap();
         coo_singular.put(0, 0, 1.0).unwrap();
         coo_singular.put(4, 4, 1.0).unwrap();
         let mut solver = SolverMUMPS::new().unwrap();
-        solver.initialize(&coo_singular, false).unwrap();
+        solver.initialize(&coo_singular).unwrap();
         assert_eq!(
             solver.factorize(&coo_singular, false),
             Err("Error(-10): numerically singular matrix")
         );
+
+        // solve with positive-definite matrix works
+        let (coo_pd_lower, _) = Samples::mkl_sample1_positive_definite_lower();
+        let mut solver = SolverMUMPS::new().unwrap();
+        assert!(!solver.initialized);
+        assert!(!solver.factorized);
+        solver.initialize(&coo_pd_lower).unwrap();
+        solver.factorize(&coo_pd_lower, false).unwrap();
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        let x_correct = &[-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
+        vec_approx_eq(x.as_data(), x_correct, 1e-13);
     }
 
     #[test]

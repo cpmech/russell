@@ -13,7 +13,7 @@
 //! fn main() -> Result<(), StrError> {
 //!     // allocate a square matrix
 //!     let (nrow, ncol, nnz) = (5, 5, 13);
-//!     let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz)?;
+//!     let mut coo = CooMatrix::new(None, nrow, ncol, nnz)?;
 //!     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
 //!     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
 //!     coo.put(1, 0, 3.0)?;
@@ -46,7 +46,7 @@
 //!
 //!     // initialize, factorize, and solve
 //!     let mut solver = SolverUMFPACK::new()?;
-//!     solver.initialize(&coo, false)?;
+//!     solver.initialize(&coo)?;
 //!     solver.factorize(&coo, false)?;
 //!     solver.solve(&mut x, &rhs, false)?;
 //!
@@ -66,8 +66,10 @@ mod csr_matrix;
 mod enums;
 pub mod prelude;
 mod read_matrix_market;
+mod samples;
 mod solver_mumps;
 mod solver_umfpack;
+mod sparse_solver;
 mod verify_lin_sys;
 mod write_matrix_market;
 use crate::auxiliary::*;
@@ -75,8 +77,10 @@ pub use crate::coo_matrix::*;
 pub use crate::csr_matrix::*;
 pub use crate::enums::*;
 pub use crate::read_matrix_market::*;
+pub use crate::samples::*;
 pub use crate::solver_mumps::*;
 pub use crate::solver_umfpack::*;
+pub use crate::sparse_solver::*;
 pub use crate::verify_lin_sys::*;
 pub use crate::write_matrix_market::*;
 

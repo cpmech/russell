@@ -6,7 +6,7 @@ use russell_sparse::StrError;
 fn main() -> Result<(), StrError> {
     // allocate a square matrix
     let (nrow, ncol, nnz) = (5, 5, 13);
-    let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz)?;
+    let mut coo = CooMatrix::new(None, nrow, ncol, nnz)?;
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(1, 0, 3.0)?;
@@ -39,7 +39,7 @@ fn main() -> Result<(), StrError> {
 
     // initialize, factorize, and solve
     let mut solver = SolverUMFPACK::new()?;
-    solver.initialize(&coo, false)?;
+    solver.initialize(&coo)?;
     solver.factorize(&coo, false)?;
     solver.solve(&mut x, &rhs, false)?;
 

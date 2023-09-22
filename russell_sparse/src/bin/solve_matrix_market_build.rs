@@ -13,8 +13,7 @@ pub struct SolutionInfo {
     pub blas_lib: String,
     pub solver_name: String,
     pub matrix_name: String,
-    pub symmetric: bool,
-    pub layout: String,
+    pub symmetry: String,
     pub nrow: usize,
     pub ncol: usize,
     pub nnz: usize,
@@ -97,7 +96,7 @@ fn main() -> Result<(), StrError> {
 
     // read the matrix
     let mut sw = Stopwatch::new("");
-    let (coo, symmetric) = read_matrix_market(&opt.matrix_market_file, handling)?;
+    let coo = read_matrix_market(&opt.matrix_market_file, handling)?;
     let time_read = sw.stop();
 
     // allocate the solver
@@ -110,7 +109,7 @@ fn main() -> Result<(), StrError> {
 
     // call initialize
     sw.reset();
-    solver.initialize(&coo, symmetric)?;
+    solver.initialize(&coo)?;
     let time_initialize = sw.stop();
 
     // call factorize
@@ -151,8 +150,7 @@ fn main() -> Result<(), StrError> {
         blas_lib: "OpenBLAS".to_string(),
         solver_name: solver.get_name(),
         matrix_name,
-        symmetric,
-        layout: format!("{:?}", coo.layout),
+        symmetry: format!("{:?}", coo.symmetry),
         nrow: coo.nrow,
         ncol: coo.ncol,
         nnz: coo.pos,

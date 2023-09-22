@@ -1,6 +1,6 @@
 use russell_chk::{deriv_central5, vec_approx_eq};
 use russell_lab::{mat_approx_eq, vec_norm, vec_update, Matrix, Norm, Vector};
-use russell_sparse::{ConfigSolver, CooMatrix, Layout, LinSolKind, Solver, StrError};
+use russell_sparse::prelude::*;
 
 fn calc_residual(rr: &mut Vector, uu: &Vector) {
     let (d1, d2, d3, d4) = (uu[0], uu[1], uu[2], uu[3]);
@@ -67,7 +67,7 @@ fn check_jacobian() {
         }
     }
     let nnz = neq * neq;
-    let mut jj_tri = CooMatrix::new(Layout::Full, neq, neq, nnz).unwrap();
+    let mut jj_tri = CooMatrix::new(None, neq, neq, nnz).unwrap();
     calc_jacobian(&mut jj_tri, &uu).unwrap();
     let mut jj_ana = Matrix::new(neq, neq);
     jj_tri.to_matrix(&mut jj_ana).unwrap();
@@ -80,7 +80,7 @@ fn solve_nonlinear_system(kind: LinSolKind) -> Result<(), StrError> {
     // config.verbose();
     let (neq, nnz) = (4, 16);
     let mut solver = Solver::new(config, neq, nnz, None)?;
-    let mut jj = CooMatrix::new(Layout::Full, neq, neq, nnz).unwrap();
+    let mut jj = CooMatrix::new(None, neq, neq, nnz).unwrap();
     let mut rr = Vector::new(neq);
     let mut uu = Vector::from(&[0.0, 0.0, 0.0, 0.0]);
     let mut mdu = Vector::new(neq);

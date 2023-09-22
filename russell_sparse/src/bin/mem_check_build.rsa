@@ -8,7 +8,7 @@ fn test_solver(name: LinSolKind) {
 
     let (nrow, ncol, nnz) = (5, 5, 13);
 
-    let mut coo = match CooMatrix::new(Layout::Full, nrow, ncol, nnz) {
+    let mut coo = match CooMatrix::new(None, nrow, ncol, nnz) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new CooMatrix): {}", e);
@@ -77,7 +77,7 @@ fn test_solver_singular(name: LinSolKind) {
 
     let (nrow, ncol, nnz) = (2, 2, 2);
 
-    let coo_singular = match CooMatrix::new(Layout::Full, nrow, ncol, nnz) {
+    let coo_singular = match CooMatrix::new(None, nrow, ncol, nnz) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new CooMatrix): {}", e);

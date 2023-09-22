@@ -12,7 +12,7 @@ fn main() -> Result<(), StrError> {
     // │  0  4  2  0  1 │
     // └                ┘
     let csr = CsrMatrix {
-        layout: Layout::Full,
+        symmetry: None,
         nrow: 5,
         ncol: 5,
         row_pointers: vec![0, 2, 5, 8, 9, 12],

@@ -1,4 +1,4 @@
-use super::{to_i32, CooMatrix, Layout, Ordering, Scaling};
+use super::{to_i32, CooMatrix, Ordering, Scaling, Symmetry};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -55,8 +55,8 @@ pub struct SolverUMFPACK {
     /// Holds a pointer to the C interface to UMFPACK
     solver: *mut InterfaceUMFPACK,
 
-    /// Layout set by initialize (for consistency checking)
-    layout: Layout,
+    /// Symmetry option set by initialize (for consistency checking)
+    symmetry: Option<Symmetry>,
 
     /// Number of rows set by initialize (for consistency checking)
     nrow: i32,
@@ -105,7 +105,7 @@ impl SolverUMFPACK {
             }
             Ok(SolverUMFPACK {
                 solver,
-                layout: Layout::Full,
+                symmetry: None,
                 nrow: 0,
                 nnz: 0,
                 initialized: false,
@@ -121,26 +121,26 @@ impl SolverUMFPACK {
     ///
     /// # Input
     ///
-    /// * `coo` -- the CooMatrix representing the sparse coefficient matrix
-    ///   Note that only coo.Layout equal to Full is allowed by UMFPACK.
-    /// * `symmetric` -- indicates that the CooMatrix (yet in Full layout) is a general symmetric matrix
+    /// * `coo` -- the CooMatrix representing the sparse coefficient matrix.
+    ///   Note that only symmetry/storage equal to Full is allowed by UMFPACK.
     ///
     /// # Examples
     ///
     /// See [SolverUMFPACK::solve]
-    pub fn initialize(&mut self, coo: &CooMatrix, symmetric: bool) -> Result<(), StrError> {
-        if coo.layout == Layout::Lower || coo.layout == Layout::Upper {
-            return Err("for UMFPACK, if the matrix is symmetric, the layout still must be full");
-        }
+    pub fn initialize(&mut self, coo: &CooMatrix) -> Result<(), StrError> {
+        let sym_i32 = match coo.symmetry {
+            Some(sym) => {
+                if sym.triangular() {
+                    return Err("for UMFPACK, if the matrix is symmetric, the storage still must be full");
+                }
+                1 // general or positive-definite symmetric
+            }
+            None => 0, // unsymmetric
+        };
         self.nrow = to_i32(coo.nrow)?;
         self.nnz = to_i32(coo.pos)?;
         self.initialized = false;
         self.factorized = false;
-        let symmetry = if symmetric {
-            1 // general or positive-definite symmetric
-        } else {
-            0 // unsymmetric
-        };
         let ordering = match self.ordering {
             Ordering::Amd => UMFPACK_ORDERING_AMD,
             Ordering::Amf => UMFPACK_DEFAULT_ORDERING,
@@ -170,7 +170,7 @@ impl SolverUMFPACK {
                 self.solver,
                 self.nrow,
                 self.nnz,
-                symmetry,
+                sym_i32,
                 ordering,
                 scaling,
                 compute_determinant_i32,
@@ -179,14 +179,15 @@ impl SolverUMFPACK {
                 return Err(handle_umfpack_error_code(status));
             }
         }
+        self.symmetry = coo.symmetry;
         self.initialized = true;
         Ok(())
     }
 
     /// Performs the factorization (and analysis)
     ///
-    /// **Note::** Initialize must be called first. Also, the dimension and layout of the
-    /// CooMatrix must be the same as the ones provided by `initialize`.
+    /// **Note::** Initialize must be called first. Also, the dimension and symmetry/storage
+    /// of the CooMatrix must be the same as the ones provided by `initialize`.
     ///
     /// # Input
     ///
@@ -207,8 +208,8 @@ impl SolverUMFPACK {
         if coo.pos != self.nnz as usize {
             return Err("the number of non-zero values must be the same as the one provided to initialize");
         }
-        if coo.layout != self.layout {
-            return Err("the layout of the CooMatrix must be the same as the one used in initialize");
+        if coo.symmetry != self.symmetry {
+            return Err("the symmetry/storage of the CooMatrix must be the same as the one used in initialize");
         }
         let verb = if verbose { 1 } else { 0 };
         unsafe {
@@ -251,7 +252,7 @@ impl SolverUMFPACK {
     /// fn main() -> Result<(), StrError> {
     ///     // allocate a square matrix
     ///     let (nrow, ncol, nnz) = (5, 5, 13);
-    ///     let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz)?;
+    ///     let mut coo = CooMatrix::new(None, nrow, ncol, nnz)?;
     ///     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     ///     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     ///     coo.put(1, 0, 3.0)?;
@@ -284,7 +285,7 @@ impl SolverUMFPACK {
     ///
     ///     // initialize, factorize, and solve
     ///     let mut solver = SolverUMFPACK::new()?;
-    ///     solver.initialize(&coo, false)?;
+    ///     solver.initialize(&coo)?;
     ///     solver.factorize(&coo, false)?;
     ///     solver.solve(&mut x, &rhs, false)?;
     ///
@@ -413,55 +414,9 @@ fn handle_umfpack_error_code(err: i32) -> StrError {
 #[cfg(test)]
 mod tests {
     use super::{handle_umfpack_error_code, SolverUMFPACK};
-    use crate::{CooMatrix, Layout, Ordering, Scaling};
+    use crate::{CooMatrix, Ordering, Samples, Scaling, Storage, Symmetry};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
-
-    fn sample_coo_matrix() -> CooMatrix {
-        let mut coo = CooMatrix::new(Layout::Full, 5, 5, 13).unwrap();
-        coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2) duplicate
-        coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2) duplicate
-        coo.put(1, 0, 3.0).unwrap();
-        coo.put(0, 1, 3.0).unwrap();
-        coo.put(2, 1, -1.0).unwrap();
-        coo.put(4, 1, 4.0).unwrap();
-        coo.put(1, 2, 4.0).unwrap();
-        coo.put(2, 2, -3.0).unwrap();
-        coo.put(3, 2, 1.0).unwrap();
-        coo.put(4, 2, 2.0).unwrap();
-        coo.put(2, 3, 2.0).unwrap();
-        coo.put(1, 4, 6.0).unwrap();
-        coo.put(4, 4, 1.0).unwrap();
-        coo
-    }
-
-    fn sample_coo_lower_matrix() -> CooMatrix {
-        let mut coo = CooMatrix::new(Layout::Lower, 5, 5, 9).unwrap();
-        coo.put(0, 0, 9.0).unwrap();
-        coo.put(1, 1, 0.5).unwrap();
-        coo.put(2, 2, 12.0).unwrap();
-        coo.put(3, 3, 0.625).unwrap();
-        coo.put(4, 4, 16.0).unwrap();
-        coo.put(1, 0, 1.5).unwrap();
-        coo.put(2, 0, 6.0).unwrap();
-        coo.put(3, 0, 0.75).unwrap();
-        coo.put(4, 0, 3.0).unwrap();
-        coo
-    }
-
-    fn sample_coo_upper_matrix() -> CooMatrix {
-        let mut coo = CooMatrix::new(Layout::Upper, 5, 5, 9).unwrap();
-        coo.put(0, 0, 9.0).unwrap();
-        coo.put(0, 1, 1.5).unwrap();
-        coo.put(1, 1, 0.5).unwrap();
-        coo.put(0, 2, 6.0).unwrap();
-        coo.put(2, 2, 12.0).unwrap();
-        coo.put(0, 3, 0.75).unwrap();
-        coo.put(3, 3, 0.625).unwrap();
-        coo.put(0, 4, 3.0).unwrap();
-        coo.put(4, 4, 16.0).unwrap();
-        coo
-    }
 
     #[test]
     fn new_and_drop_work() {
@@ -479,22 +434,22 @@ mod tests {
         assert!(!solver.factorized);
 
         // sample matrices
-        let coo = sample_coo_matrix();
-        let coo_lower = sample_coo_lower_matrix();
-        let coo_upper = sample_coo_upper_matrix();
+        let (coo, _) = Samples::umfpack_sample1_unsymmetric();
+        let (coo_lower, _) = Samples::mkl_sample1_symmetric_lower();
+        let (coo_upper, _) = Samples::mkl_sample1_symmetric_upper();
 
-        // initialize fails on incorrect layout
+        // initialize fails on incorrect storage
         assert_eq!(
-            solver.initialize(&coo_lower, false).err(),
-            Some("for UMFPACK, if the matrix is symmetric, the layout still must be full")
+            solver.initialize(&coo_lower).err(),
+            Some("for UMFPACK, if the matrix is symmetric, the storage still must be full")
         );
         assert_eq!(
-            solver.initialize(&coo_upper, false).err(),
-            Some("for UMFPACK, if the matrix is symmetric, the layout still must be full")
+            solver.initialize(&coo_upper).err(),
+            Some("for UMFPACK, if the matrix is symmetric, the storage still must be full")
         );
 
         // initialize works
-        solver.initialize(&coo, false).unwrap();
+        solver.initialize(&coo).unwrap();
         assert!(solver.initialized);
     }
 
@@ -506,7 +461,7 @@ mod tests {
         assert!(!solver.factorized);
 
         // sample matrix
-        let coo = sample_coo_matrix();
+        let (coo, _) = Samples::umfpack_sample1_unsymmetric();
 
         // factorize requests initialize
         assert_eq!(
@@ -515,13 +470,14 @@ mod tests {
         );
 
         // call initialize
-        solver.initialize(&coo, false).unwrap();
+        solver.initialize(&coo).unwrap();
 
         // factorize fails on incompatible coo matrix
-        let mut coo_wrong_1 = CooMatrix::new(Layout::Full, 1, 5, 13).unwrap();
-        let coo_wrong_2 = CooMatrix::new(Layout::Full, 5, 1, 13).unwrap();
-        let coo_wrong_3 = CooMatrix::new(Layout::Full, 5, 5, 12).unwrap();
-        let mut coo_wrong_4 = CooMatrix::new(Layout::Lower, 5, 5, 13).unwrap();
+        let sym = Some(Symmetry::General(Storage::Lower));
+        let mut coo_wrong_1 = CooMatrix::new(None, 1, 5, 13).unwrap();
+        let coo_wrong_2 = CooMatrix::new(None, 5, 1, 13).unwrap();
+        let coo_wrong_3 = CooMatrix::new(None, 5, 5, 12).unwrap();
+        let mut coo_wrong_4 = CooMatrix::new(sym, 5, 5, 13).unwrap();
         for _ in 0..13 {
             coo_wrong_1.put(0, 0, 1.0).unwrap();
             coo_wrong_4.put(0, 0, 1.0).unwrap();
@@ -540,7 +496,7 @@ mod tests {
         );
         assert_eq!(
             solver.factorize(&coo_wrong_4, false).err(),
-            Some("the layout of the CooMatrix must be the same as the one used in initialize")
+            Some("the symmetry/storage of the CooMatrix must be the same as the one used in initialize")
         );
 
         // factorize works
@@ -551,10 +507,10 @@ mod tests {
     #[test]
     fn factorize_fails_on_singular_matrix() {
         let mut solver = SolverUMFPACK::new().unwrap();
-        let mut coo = CooMatrix::new(Layout::Full, 2, 2, 2).unwrap();
+        let mut coo = CooMatrix::new(None, 2, 2, 2).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 0.0).unwrap();
-        solver.initialize(&coo, false).unwrap();
+        solver.initialize(&coo).unwrap();
         assert_eq!(solver.factorize(&coo, false), Err("Error(1): Matrix is singular"));
     }
 
@@ -566,7 +522,7 @@ mod tests {
         assert!(!solver.factorized);
 
         // sample matrix
-        let coo = sample_coo_matrix();
+        let (coo, _) = Samples::umfpack_sample1_unsymmetric();
 
         // allocate x and rhs
         let mut x = Vector::new(5);
@@ -580,7 +536,7 @@ mod tests {
         );
 
         // call initialize and factorize
-        solver.initialize(&coo, false).unwrap();
+        solver.initialize(&coo).unwrap();
         assert!(solver.initialized);
         solver.factorize(&coo, false).unwrap();
         assert!(solver.factorized);
@@ -612,8 +568,8 @@ mod tests {
         let mut solver = SolverUMFPACK::new().unwrap();
         solver.ordering = Ordering::Amd;
         solver.scaling = Scaling::Sum;
-        let coo = sample_coo_matrix();
-        solver.initialize(&coo, false).unwrap();
+        let (coo, _) = Samples::umfpack_sample1_unsymmetric();
+        solver.initialize(&coo).unwrap();
         assert_eq!(solver.get_effective_ordering(), "Amd");
         assert_eq!(solver.get_effective_scaling(), "Sum");
     }
@@ -622,8 +578,8 @@ mod tests {
     fn get_determinant_works() {
         let mut solver = SolverUMFPACK::new().unwrap();
         solver.compute_determinant = true;
-        let coo = sample_coo_matrix();
-        solver.initialize(&coo, false).unwrap();
+        let (coo, _) = Samples::umfpack_sample1_unsymmetric();
+        solver.initialize(&coo).unwrap();
         solver.factorize(&coo, false).unwrap();
 
         let (mx, ex) = solver.get_determinant();

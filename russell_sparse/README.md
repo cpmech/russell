@@ -74,7 +74,7 @@ fn main() -> Result<(), StrError> {
     let nrow = 3; // number of equations
     let ncol = nrow; // number of equations
     let nnz = 5; // number of non-zeros
-    let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz)?;
+    let mut coo = CooMatrix::new(None, nrow, ncol, nnz)?;
     coo.put(0, 0, 0.2)?;
     coo.put(0, 1, 0.2)?;
     coo.put(1, 0, 0.5)?;
@@ -93,7 +93,7 @@ fn main() -> Result<(), StrError> {
 
     // allocate solver, initialize, and factorize
     let mut solver = SolverUMFPACK::new()?;
-    solver.initialize(&coo, false)?;
+    solver.initialize(&coo)?;
     solver.factorize(&coo, false)?;
 
     // allocate rhs

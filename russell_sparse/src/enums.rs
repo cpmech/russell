@@ -1,14 +1,50 @@
-/// Defines how the CooMatrix (triplet) represents a matrix
+/// Specifies how the matrix components are stored
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Layout {
-    /// Lower triangular (e.g., for MUMPS)
+pub enum Storage {
+    /// Lower triangular storage for symmetric matrix (e.g., for MUMPS)
     Lower,
 
-    /// Upper triangular (e.g., for Intel DSS)
+    /// Upper triangular storage for symmetric matrix (e.g., for Intel DSS)
     Upper,
 
-    /// Full matrix (e.g., for UMFPACK)
+    /// Full matrix storage for symmetric or unsymmetric matrix (e.g., for UMFPACK)
     Full,
+}
+
+/// Specifies the type of matrix symmetry
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Symmetry {
+    /// General symmetric
+    General(Storage),
+
+    /// Symmetric and positive-definite
+    PositiveDefinite(Storage),
+}
+
+impl Symmetry {
+    /// Returns true if the storage is triangular (lower or upper)
+    pub fn triangular(&self) -> bool {
+        match self {
+            Self::General(storage) => *storage != Storage::Full,
+            Self::PositiveDefinite(storage) => *storage != Storage::Full,
+        }
+    }
+
+    /// Returns true if the storage is lower triangular
+    pub fn lower(&self) -> bool {
+        match self {
+            Self::General(storage) => *storage == Storage::Lower,
+            Self::PositiveDefinite(storage) => *storage == Storage::Lower,
+        }
+    }
+
+    /// Returns true if the storage is upper triangular
+    pub fn upper(&self) -> bool {
+        match self {
+            Self::General(storage) => *storage == Storage::Upper,
+            Self::PositiveDefinite(storage) => *storage == Storage::Upper,
+        }
+    }
 }
 
 /// Holds options to handle a MatrixMarket when the matrix is specified as being symmetric
@@ -16,7 +52,7 @@ pub enum Layout {
 /// **Note:** This is ignored if not the matrix is not specified as symmetric.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MMsymOption {
-    /// Leave the layout as lower triangular (if symmetric)
+    /// Leave the storage as lower triangular (if symmetric)
     ///
     /// **Note:** Lower triangular is the standard MatrixMarket format.
     /// Thus, this option will do nothing.
@@ -24,7 +60,7 @@ pub enum MMsymOption {
     /// This option is useful for the MUMPS solver.
     LeaveAsLower,
 
-    /// Convert the layout to upper triangular (if symmetric)
+    /// Convert the storage to upper triangular (if symmetric)
     ///
     /// **Note:** Since lower triangular is standard in MatrixMarket,
     /// this option will swap the lower triangle to the upper triangle.
@@ -143,16 +179,23 @@ pub fn enum_scaling(scaling: &str) -> Scaling {
 
 #[cfg(test)]
 mod tests {
-    use super::{enum_ordering, enum_scaling, Layout, MMsymOption, Ordering, Scaling};
+    use super::{enum_ordering, enum_scaling, MMsymOption, Ordering, Scaling, Storage, Symmetry};
 
     #[test]
     fn clone_copy_and_debug_work() {
-        let layout = Layout::Full;
-        let copy = layout;
-        let clone = layout.clone();
-        assert_eq!(format!("{:?}", layout), "Full");
-        assert_eq!(copy, Layout::Full);
-        assert_eq!(clone, Layout::Full);
+        let storage = Storage::Full;
+        let copy = storage;
+        let clone = storage.clone();
+        assert_eq!(format!("{:?}", storage), "Full");
+        assert_eq!(copy, Storage::Full);
+        assert_eq!(clone, Storage::Full);
+
+        let symmetry = Symmetry::PositiveDefinite(Storage::Lower);
+        let copy = symmetry;
+        let clone = symmetry.clone();
+        assert_eq!(format!("{:?}", symmetry), "PositiveDefinite(Lower)");
+        assert_eq!(copy, Symmetry::PositiveDefinite(Storage::Lower));
+        assert_eq!(clone, Symmetry::PositiveDefinite(Storage::Lower));
 
         let handling = MMsymOption::LeaveAsLower;
         let copy = handling;

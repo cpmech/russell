@@ -55,7 +55,11 @@ pub trait SolverTrait {
     /// # Input
     ///
     /// * `coo` -- the CooMatrix representing the sparse coefficient matrix.
-    ///   Note that only symmetry/storage equal to Lower or Full are allowed by MUMPS.
+    ///
+    /// # Notes
+    ///
+    /// * For symmetric matrices, `MUMPS` requires that the symmetry/storage be Lower or Full.
+    /// * For symmetric matrices, `UMFPACK` requires that the symmetry/storage be Full.
     fn initialize(&mut self, coo: &CooMatrix) -> Result<(), StrError>;
 
     /// Performs the factorization (and analysis)
@@ -113,11 +117,75 @@ pub struct Solver<'a> {
 
 impl<'a> Solver<'a> {
     /// Allocates a new instance
-    pub fn new(selection: Genie) -> Result<Self, StrError> {
-        let actual: Box<dyn SolverTrait> = match selection {
+    ///
+    /// # Input
+    ///
+    /// * `genie` -- the actual implementation that does all the magic
+    pub fn new(genie: Genie) -> Result<Self, StrError> {
+        let actual: Box<dyn SolverTrait> = match genie {
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
         };
         Ok(Solver { actual })
+    }
+
+    /// Computes the solution of a linear system
+    ///
+    /// Solves the linear system:
+    ///
+    /// ```text
+    /// A · x = rhs
+    /// ```
+    ///
+    /// # Input
+    ///
+    /// * `genie` -- the actual implementation that does all the magic
+    /// * `coo` -- the CooMatrix representing the sparse coefficient matrix (see Notes below)
+    /// * `x` -- the vector of unknown values with dimension equal to coo.nrow
+    /// * `rhs` -- the right-hand side vector with know values an dimension equal to coo.nrow
+    /// * `verbose` -- shows messages
+    ///
+    /// # Notes
+    ///
+    /// 1. For symmetric matrices, `MUMPS` requires that the symmetry/storage be Lower or Full.
+    /// 2. For symmetric matrices, `UMFPACK` requires that the symmetry/storage be Full.
+    /// 3. This function calls the actual implementation (genie) via the functions
+    ///    `initialize`, `factorize`, and `solve`.
+    /// 4. This function is best for a **single-use** need, whereas the actual
+    ///    solver should be considered for a recurrent use (e.g., inside a loop).
+    /// 5. Also, use the actual implementation if settings such as ordering or scaling
+    ///    need to be configured.
+    pub fn compute(
+        genie: Genie,
+        coo: &CooMatrix,
+        x: &mut Vector,
+        rhs: &Vector,
+        verbose: bool,
+    ) -> Result<Self, StrError> {
+        let mut solver = Solver::new(genie)?;
+        solver.actual.initialize(coo)?;
+        solver.actual.factorize(coo, verbose)?;
+        solver.actual.solve(x, rhs, verbose)?;
+        Ok(solver)
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::Solver;
+    use crate::{Genie, Samples};
+    use russell_chk::vec_approx_eq;
+    use russell_lab::Vector;
+
+    #[test]
+    fn compute_works() {
+        let (coo, _) = Samples::mkl_sample1_symmetric_full();
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+        Solver::compute(Genie::Umfpack, &coo, &mut x, &rhs, false).unwrap();
+        let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
+        vec_approx_eq(x.as_data(), &x_correct, 1e-10);
     }
 }

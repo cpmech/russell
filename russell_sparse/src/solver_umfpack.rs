@@ -1,4 +1,4 @@
-use super::{to_i32, CooMatrix, Ordering, Scaling, SparseSolverTrait, Symmetry};
+use super::{to_i32, CooMatrix, Ordering, Scaling, SolverTrait, Symmetry};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -116,30 +116,16 @@ impl SolverUMFPACK {
             })
         }
     }
-
-    /// Returns the coefficient and exponent of the determinant
-    ///
-    /// **Note:** This is only available if compute_determinant was requested.
-    ///
-    /// Returns `(mx, ex)`, such that
-    ///
-    /// ```text
-    /// determinant = mx * 10 ^ ex
-    /// ```
-    pub fn get_determinant(&self) -> (f64, f64) {
-        if self.compute_determinant {
-            unsafe {
-                let mx = solver_umfpack_get_det_mx(self.solver);
-                let ex = solver_umfpack_get_det_ex(self.solver);
-                (mx, ex)
-            }
-        } else {
-            (0.0, 0.0)
-        }
-    }
 }
 
-impl SparseSolverTrait for SolverUMFPACK {
+impl SolverTrait for SolverUMFPACK {
+    /// Configures the solver (before initialization)
+    fn configure(&mut self, settings: crate::Settings) {
+        self.ordering = settings.ordering;
+        self.scaling = settings.scaling;
+        self.compute_determinant = settings.compute_determinant;
+    }
+
     /// Initializes the C interface to UMFPACK
     ///
     /// # Input
@@ -344,6 +330,27 @@ impl SparseSolverTrait for SolverUMFPACK {
         Ok(())
     }
 
+    /// Returns the determinant
+    ///
+    /// Returns the three values `(mantissa, 10.0, exponent)`, such that the determinant is calculated by:
+    ///
+    /// ```text
+    /// determinant = mantissa · pow(10.0, exponent)
+    /// ```
+    ///
+    /// **Note:** This is only available if compute_determinant was requested.
+    fn get_determinant(&self) -> (f64, f64, f64) {
+        if self.compute_determinant {
+            unsafe {
+                let mx = solver_umfpack_get_det_mx(self.solver);
+                let ex = solver_umfpack_get_det_ex(self.solver);
+                (mx, 10.0, ex)
+            }
+        } else {
+            (0.0, 10.0, 0.0)
+        }
+    }
+
     /// Returns the ordering effectively used by the solver
     fn get_effective_ordering(&self) -> String {
         unsafe {
@@ -416,7 +423,7 @@ fn handle_umfpack_error_code(err: i32) -> StrError {
 #[cfg(test)]
 mod tests {
     use super::{handle_umfpack_error_code, SolverUMFPACK};
-    use crate::{CooMatrix, Ordering, Samples, Scaling, SparseSolverTrait, Storage, Symmetry};
+    use crate::{CooMatrix, Ordering, Samples, Scaling, SolverTrait, Storage, Symmetry};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 
@@ -584,10 +591,10 @@ mod tests {
         solver.initialize(&coo).unwrap();
         solver.factorize(&coo, false).unwrap();
 
-        let (mx, ex) = solver.get_determinant();
-        let det = mx * f64::powf(10.0, ex);
-        approx_eq(mx, 1.14, 1e-15);
-        approx_eq(ex, 2.0, 1e-15);
+        let (a, b, c) = solver.get_determinant();
+        let det = a * f64::powf(b, c);
+        approx_eq(a, 1.14, 1e-15);
+        approx_eq(c, 2.0, 1e-15);
         approx_eq(det, 114.0, 1e-13);
     }
 

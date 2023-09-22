@@ -1,4 +1,4 @@
-use super::{to_i32, CooMatrix, Ordering, Scaling, SparseSolverTrait, Storage, Symmetry};
+use super::{to_i32, CooMatrix, Ordering, Scaling, SolverTrait, Storage, Symmetry};
 use crate::StrError;
 use russell_lab::{vec_copy, Vector};
 
@@ -121,30 +121,19 @@ impl SolverMUMPS {
             })
         }
     }
-
-    /// Returns the coefficient and exponent of the determinant
-    ///
-    /// **Note:** This is only available if compute_determinant was requested.
-    ///
-    /// Returns `(a, c)`, such that
-    ///
-    /// ```text
-    /// determinant = a * 2^c
-    /// ```
-    pub fn get_determinant(&self) -> (f64, f64) {
-        if self.compute_determinant {
-            unsafe {
-                let a = solver_mumps_get_det_coef_a(self.solver);
-                let c = solver_mumps_get_det_exp_c(self.solver);
-                (a, c)
-            }
-        } else {
-            (0.0, 0.0)
-        }
-    }
 }
 
-impl SparseSolverTrait for SolverMUMPS {
+impl SolverTrait for SolverMUMPS {
+    /// Configures the solver (before initialization)
+    fn configure(&mut self, settings: crate::Settings) {
+        self.ordering = settings.ordering;
+        self.scaling = settings.scaling;
+        self.compute_determinant = settings.compute_determinant;
+        self.pct_inc_workspace = settings.mumps_pct_inc_workspace;
+        self.max_work_memory = settings.mumps_max_work_memory;
+        self.openmp_num_threads = settings.mumps_openmp_num_threads;
+    }
+
     /// Initializes the C interface to MUMPS
     ///
     /// # Input
@@ -296,6 +285,27 @@ impl SparseSolverTrait for SolverMUMPS {
         Ok(())
     }
 
+    /// Returns the determinant
+    ///
+    /// Returns the three values `(mantissa, 2.0, exponent)`, such that the determinant is calculated by:
+    ///
+    /// ```text
+    /// determinant = mantissa · pow(2.0, exponent)
+    /// ```
+    ///
+    /// **Note:** This is only available if compute_determinant was requested.
+    fn get_determinant(&self) -> (f64, f64, f64) {
+        if self.compute_determinant {
+            unsafe {
+                let a = solver_mumps_get_det_coef_a(self.solver);
+                let c = solver_mumps_get_det_exp_c(self.solver);
+                (a, 2.0, c)
+            }
+        } else {
+            (0.0, 2.0, 0.0)
+        }
+    }
+
     /// Returns the ordering effectively used by the solver
     fn get_effective_ordering(&self) -> String {
         unsafe {
@@ -431,7 +441,7 @@ fn handle_mumps_error_code(err: i32) -> StrError {
 #[cfg(test)]
 mod tests {
     use super::{handle_mumps_error_code, SolverMUMPS};
-    use crate::{CooMatrix, Ordering, Samples, Scaling, SparseSolverTrait, Storage, Symmetry};
+    use crate::{CooMatrix, Ordering, Samples, Scaling, SolverTrait, Storage, Symmetry};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 
@@ -539,8 +549,8 @@ mod tests {
         assert_eq!(scaling, "No"); // because we requested the determinant
 
         // check the determinant
-        let (a, c) = solver.get_determinant();
-        let d = a * f64::powf(2.0, c);
+        let (a, b, c) = solver.get_determinant();
+        let d = a * f64::powf(b, c);
         approx_eq(a, 57.0 / 64.0, 1e-15);
         approx_eq(c, 7.0, 1e-15);
         approx_eq(d, 114.0, 1e-15);

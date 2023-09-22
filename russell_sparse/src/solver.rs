@@ -45,7 +45,7 @@ impl Settings {
     }
 }
 
-/// Defines a common interface for sparse solvers
+/// Defines a unified interface for sparse solvers
 pub trait SolverTrait {
     /// Configures the solver (before initialization)
     fn configure(&mut self, settings: Settings);

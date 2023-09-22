@@ -174,13 +174,22 @@ impl<'a> Solver<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::Solver;
+    use super::{Settings, Solver};
     use crate::{Genie, Samples};
     use russell_chk::vec_approx_eq;
     use russell_lab::Vector;
 
     #[test]
-    fn compute_works() {
+    fn settings_new_works() {
+        let settings = Settings::new();
+        assert_eq!(settings.compute_determinant, false);
+        assert_eq!(settings.mumps_pct_inc_workspace, 100);
+        assert_eq!(settings.mumps_max_work_memory, 0);
+        assert_eq!(settings.mumps_openmp_num_threads, 0);
+    }
+
+    #[test]
+    fn solver_compute_works() {
         let (coo, _) = Samples::mkl_sample1_symmetric_full();
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);

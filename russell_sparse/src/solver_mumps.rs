@@ -1,4 +1,4 @@
-use super::{to_i32, CooMatrix, Ordering, Scaling, Storage, Symmetry};
+use super::{to_i32, CooMatrix, Ordering, Scaling, SparseSolverTrait, Storage, Symmetry};
 use crate::StrError;
 use russell_lab::{vec_copy, Vector};
 
@@ -122,13 +122,36 @@ impl SolverMUMPS {
         }
     }
 
+    /// Returns the coefficient and exponent of the determinant
+    ///
+    /// **Note:** This is only available if compute_determinant was requested.
+    ///
+    /// Returns `(a, c)`, such that
+    ///
+    /// ```text
+    /// determinant = a * 2^c
+    /// ```
+    pub fn get_determinant(&self) -> (f64, f64) {
+        if self.compute_determinant {
+            unsafe {
+                let a = solver_mumps_get_det_coef_a(self.solver);
+                let c = solver_mumps_get_det_exp_c(self.solver);
+                (a, c)
+            }
+        } else {
+            (0.0, 0.0)
+        }
+    }
+}
+
+impl SparseSolverTrait for SolverMUMPS {
     /// Initializes the C interface to MUMPS
     ///
     /// # Input
     ///
     /// * `coo` -- the CooMatrix representing the sparse coefficient matrix.
     ///   Note that only symmetry/storage equal to Lower or Full are allowed by MUMPS.
-    pub fn initialize(&mut self, coo: &CooMatrix) -> Result<(), StrError> {
+    fn initialize(&mut self, coo: &CooMatrix) -> Result<(), StrError> {
         let sym_i32 = match coo.symmetry {
             Some(sym) => match sym {
                 Symmetry::General(storage) => {
@@ -208,7 +231,7 @@ impl SolverMUMPS {
     ///
     /// * `coo` -- The **same** matrix provided to `initialize`
     /// * `verbose` -- shows messages
-    pub fn factorize(&mut self, coo: &CooMatrix, verbose: bool) -> Result<(), StrError> {
+    fn factorize(&mut self, coo: &CooMatrix, verbose: bool) -> Result<(), StrError> {
         self.factorized = false;
         if !self.initialized {
             return Err("the function initialize must be called before factorize");
@@ -252,7 +275,7 @@ impl SolverMUMPS {
     /// * `x` -- the vector of unknown values with dimension equal to coo.nrow
     /// * `rhs` -- the right-hand side vector with know values an dimension equal to coo.nrow
     /// * `verbose` -- shows messages
-    pub fn solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool) -> Result<(), StrError> {
+    fn solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool) -> Result<(), StrError> {
         if !self.factorized {
             return Err("the function factorize must be called before solve");
         }
@@ -274,7 +297,7 @@ impl SolverMUMPS {
     }
 
     /// Returns the ordering effectively used by the solver
-    pub fn get_effective_ordering(&self) -> String {
+    fn get_effective_ordering(&self) -> String {
         unsafe {
             let ordering = solver_mumps_get_ordering(self.solver);
             match ordering {
@@ -291,7 +314,7 @@ impl SolverMUMPS {
     }
 
     /// Returns the scaling effectively used by the solver
-    pub fn get_effective_scaling(&self) -> String {
+    fn get_effective_scaling(&self) -> String {
         unsafe {
             let scaling = solver_mumps_get_scaling(self.solver);
             match scaling {
@@ -307,34 +330,13 @@ impl SolverMUMPS {
         }
     }
 
-    /// Returns the coefficient and exponent of the determinant
-    ///
-    /// **Note:** This is only available if compute_determinant was requested.
-    ///
-    /// Returns `(a, c)`, such that
-    ///
-    /// ```text
-    /// determinant = a * 2^c
-    /// ```
-    pub fn get_determinant(&self) -> (f64, f64) {
-        if self.compute_determinant {
-            unsafe {
-                let a = solver_mumps_get_det_coef_a(self.solver);
-                let c = solver_mumps_get_det_exp_c(self.solver);
-                (a, c)
-            }
-        } else {
-            (0.0, 0.0)
-        }
-    }
-
     /// Returns the name of this solver
     ///
     /// # Output
     ///
     /// * `MUMPS` -- if the default system MUMPS has been used
     /// * `MUMPS-local` -- if the locally compiled MUMPS has be used
-    pub fn get_name(&self) -> String {
+    fn get_name(&self) -> String {
         if cfg!(local_mumps) {
             "MUMPS-local".to_string()
         } else {
@@ -429,7 +431,7 @@ fn handle_mumps_error_code(err: i32) -> StrError {
 #[cfg(test)]
 mod tests {
     use super::{handle_mumps_error_code, SolverMUMPS};
-    use crate::{CooMatrix, Ordering, Samples, Scaling, Storage, Symmetry};
+    use crate::{CooMatrix, Ordering, Samples, Scaling, SparseSolverTrait, Storage, Symmetry};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 

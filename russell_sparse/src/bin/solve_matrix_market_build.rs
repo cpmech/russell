@@ -1,6 +1,6 @@
 use russell_lab::{format_nanoseconds, Stopwatch, StrError, Vector};
 use russell_openblas::{get_num_threads, set_num_threads};
-use russell_sparse::{prelude::*, SolverUMFPACK};
+use russell_sparse::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::path::Path;

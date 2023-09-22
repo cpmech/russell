@@ -1,4 +1,4 @@
-use super::{to_i32, CooMatrix, Ordering, Scaling, Symmetry};
+use super::{to_i32, CooMatrix, Ordering, Scaling, SparseSolverTrait, Symmetry};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -117,6 +117,29 @@ impl SolverUMFPACK {
         }
     }
 
+    /// Returns the coefficient and exponent of the determinant
+    ///
+    /// **Note:** This is only available if compute_determinant was requested.
+    ///
+    /// Returns `(mx, ex)`, such that
+    ///
+    /// ```text
+    /// determinant = mx * 10 ^ ex
+    /// ```
+    pub fn get_determinant(&self) -> (f64, f64) {
+        if self.compute_determinant {
+            unsafe {
+                let mx = solver_umfpack_get_det_mx(self.solver);
+                let ex = solver_umfpack_get_det_ex(self.solver);
+                (mx, ex)
+            }
+        } else {
+            (0.0, 0.0)
+        }
+    }
+}
+
+impl SparseSolverTrait for SolverUMFPACK {
     /// Initializes the C interface to UMFPACK
     ///
     /// # Input
@@ -127,7 +150,7 @@ impl SolverUMFPACK {
     /// # Examples
     ///
     /// See [SolverUMFPACK::solve]
-    pub fn initialize(&mut self, coo: &CooMatrix) -> Result<(), StrError> {
+    fn initialize(&mut self, coo: &CooMatrix) -> Result<(), StrError> {
         let sym_i32 = match coo.symmetry {
             Some(sym) => {
                 if sym.triangular() {
@@ -197,7 +220,7 @@ impl SolverUMFPACK {
     /// # Examples
     ///
     /// See [SolverUMFPACK::solve]
-    pub fn factorize(&mut self, coo: &CooMatrix, verbose: bool) -> Result<(), StrError> {
+    fn factorize(&mut self, coo: &CooMatrix, verbose: bool) -> Result<(), StrError> {
         self.factorized = false;
         if !self.initialized {
             return Err("the function initialize must be called before factorize");
@@ -301,7 +324,7 @@ impl SolverUMFPACK {
     ///     Ok(())
     /// }
     /// ```
-    pub fn solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool) -> Result<(), StrError> {
+    fn solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool) -> Result<(), StrError> {
         if !self.factorized {
             return Err("the function factorize must be called before solve");
         }
@@ -322,7 +345,7 @@ impl SolverUMFPACK {
     }
 
     /// Returns the ordering effectively used by the solver
-    pub fn get_effective_ordering(&self) -> String {
+    fn get_effective_ordering(&self) -> String {
         unsafe {
             let ordering = solver_umfpack_get_ordering(self.solver);
             match ordering {
@@ -337,7 +360,7 @@ impl SolverUMFPACK {
     }
 
     /// Returns the scaling effectively used by the solver
-    pub fn get_effective_scaling(&self) -> String {
+    fn get_effective_scaling(&self) -> String {
         unsafe {
             let scaling = solver_umfpack_get_scaling(self.solver);
             match scaling {
@@ -349,34 +372,13 @@ impl SolverUMFPACK {
         }
     }
 
-    /// Returns the coefficient and exponent of the determinant
-    ///
-    /// **Note:** This is only available if compute_determinant was requested.
-    ///
-    /// Returns `(mx, ex)`, such that
-    ///
-    /// ```text
-    /// determinant = mx * 10 ^ ex
-    /// ```
-    pub fn get_determinant(&self) -> (f64, f64) {
-        if self.compute_determinant {
-            unsafe {
-                let mx = solver_umfpack_get_det_mx(self.solver);
-                let ex = solver_umfpack_get_det_ex(self.solver);
-                (mx, ex)
-            }
-        } else {
-            (0.0, 0.0)
-        }
-    }
-
     /// Returns the name of this solver
     ///
     /// # Output
     ///
     /// * `UMFPACK` -- if the default system UMFPACK has been used
     /// * `UMFPACK-local` -- if the locally compiled UMFPACK has be used
-    pub fn get_name(&self) -> String {
+    fn get_name(&self) -> String {
         if cfg!(local_umfpack) {
             "UMFPACK-local".to_string()
         } else {
@@ -414,7 +416,7 @@ fn handle_umfpack_error_code(err: i32) -> StrError {
 #[cfg(test)]
 mod tests {
     use super::{handle_umfpack_error_code, SolverUMFPACK};
-    use crate::{CooMatrix, Ordering, Samples, Scaling, Storage, Symmetry};
+    use crate::{CooMatrix, Ordering, Samples, Scaling, SparseSolverTrait, Storage, Symmetry};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 

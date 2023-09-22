@@ -121,12 +121,12 @@ fn main() -> Result<(), StrError> {
 
 ## Tools
 
-This crate includes a tool named `solve_matrix_market_build` to study the performance of the available sparse solvers (currently MUMPS and UMFPACK). The `_build` suffix is to disable the coverage tool.
+This crate includes a tool named `solve_matrix_market` to study the performance of the available sparse solvers (currently MUMPS and UMFPACK).
 
-`solve_matrix_market_build` reads a [Matrix Market file](https://math.nist.gov/MatrixMarket/formats.html) and solves the linear system:
+`solve_matrix_market` reads a [Matrix Market file](https://math.nist.gov/MatrixMarket/formats.html) and solves the linear system:
 
 ```text
-a ⋅ x = rhs
+A ⋅ x = rhs
 ```
 
 with a right-hand-side containing only ones.
@@ -136,13 +136,13 @@ The data directory contains an example of Matrix Market file named `bfwb62.mtx` 
 Run the command:
 
 ```bash
-cargo run --release --bin solve_matrix_market_build -- ~/Downloads/matrix-market/bfwb62.mtx
+cargo run --release --bin solve_matrix_market -- ~/Downloads/matrix-market/bfwb62.mtx
 ```
 
 Or
 
 ```bash
-cargo run --release --bin solve_matrix_market_build -- --help
+cargo run --release --bin solve_matrix_market -- --help
 ```
 
 for more options.

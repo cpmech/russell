@@ -34,7 +34,7 @@ fn main() {
         println!("cargo:rustc-link-search=native=/usr/local/lib/umfpack");
         println!("cargo:rustc-link-lib=dylib=umfpack");
         println!("cargo:rustc-cfg=local_umfpack");
-    }else{
+    } else {
         cc::Build::new()
             .file("c_code/interface_umfpack.c")
             .include("/usr/include/suitesparse")

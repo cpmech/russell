@@ -21,7 +21,7 @@ impl Samples {
     /// With the right-hand side vector:
     ///
     /// ```text
-    /// let rhs = vec![8.0, 45.0, -3.0, 3.0, 19.0];
+    /// let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
     /// ```
     ///
     /// The solution of `A · x = rhs` is:
@@ -64,7 +64,7 @@ impl Samples {
     /// With the right-hand side vector:
     ///
     /// ```text
-    /// let rhs = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    /// let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
     /// ```
     ///
     /// The solution of `A · x = rhs` is:
@@ -104,7 +104,7 @@ impl Samples {
     /// With the right-hand side vector:
     ///
     /// ```text
-    /// let rhs = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    /// let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
     /// ```
     ///
     /// The solution of `A · x = rhs` is:
@@ -144,7 +144,7 @@ impl Samples {
     /// With the right-hand side vector:
     ///
     /// ```text
-    /// let rhs = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    /// let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
     /// ```
     ///
     /// The solution of `A · x = rhs` is:
@@ -184,7 +184,7 @@ impl Samples {
     /// With the right-hand side vector:
     ///
     /// ```text
-    /// let rhs = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    /// let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
     /// ```
     ///
     /// The solution of `A · x = rhs` is:
@@ -224,7 +224,7 @@ impl Samples {
     /// With the right-hand side vector:
     ///
     /// ```text
-    /// let rhs = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    /// let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
     /// ```
     ///
     /// The solution of `A · x = rhs` is:

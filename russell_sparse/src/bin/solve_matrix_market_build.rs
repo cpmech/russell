@@ -1,6 +1,6 @@
 use russell_lab::{format_nanoseconds, Stopwatch, StrError, Vector};
 use russell_openblas::{get_num_threads, set_num_threads};
-use russell_sparse::prelude::*;
+use russell_sparse::{prelude::*, SolverUMFPACK};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::path::Path;
@@ -13,19 +13,21 @@ pub struct SolutionInfo {
     pub blas_lib: String,
     pub solver_name: String,
     pub matrix_name: String,
-    pub symmetry: String,
+    pub symmetric: bool,
     pub layout: String,
     pub nrow: usize,
     pub ncol: usize,
     pub nnz: usize,
     pub time_read_matrix_market_nanosecond: u128,
     pub time_read_matrix_market_human: String,
+    pub time_initialize_nanosecond: u128,
+    pub time_initialize_human: String,
     pub time_factorize_nanosecond: u128,
     pub time_factorize_human: String,
     pub time_solve_nanosecond: u128,
     pub time_solve_human: String,
-    pub time_factorize_and_solve_nanosecond: u128,
-    pub time_factorize_and_solve_human: String,
+    pub time_total_nanosecond: u128, // initialize + factorize + solve (not including read matrix)
+    pub time_total_human: String,
     pub requested_ordering: String,
     pub requested_scaling: String,
     pub requested_openmp_num_threads: usize,
@@ -37,8 +39,10 @@ pub struct SolutionInfo {
     pub verify_relative_error: f64,
     pub verify_time_nanosecond: u128,
     pub verify_time_human: String,
-    pub determinant_coefficient_a: f64, // det = a * 2^c
-    pub determinant_exponent_c: f64,    // det = a * 2^c
+    pub determinant_coefficient_a: f64,  // det = a * 2 ^ c (MUMPS)
+    pub determinant_exponent_c: f64,     // det = a * 2 ^ c (MUMPS)
+    pub determinant_coefficient_mx: f64, // det = mx * 10 ^ ex (UMFPACK)
+    pub determinant_exponent_ex: f64,    // det = mx * 10 ^ ex (UMFPACK)
 }
 
 /// Command line options
@@ -90,53 +94,48 @@ fn main() -> Result<(), StrError> {
 
     // select the symmetric handling option
     let handling = match name {
-        // LinSolKind::Mumps => {
-        //     // MUMPS uses the lower-diagonal if symmetric.
-        //     SymmetricHandling::LeaveAsLower
-        // }
         LinSolKind::Umfpack => {
             // UMFPACK uses the full matrix, if symmetric or not
             SymmetricHandling::MakeItFull
         }
     };
 
-    // read matrix
+    // read the matrix
     let mut sw = Stopwatch::new("");
-    let (coo, sym) = read_matrix_market(&opt.matrix_market_file, handling)?;
+    let (coo, symmetric) = read_matrix_market(&opt.matrix_market_file, handling)?;
     let time_read = sw.stop();
 
-    // set the symmetry option
-    let symmetry = if sym { Some(Symmetry::General) } else { None };
+    // allocate the solver
+    let mut solver = SolverUMFPACK::new()?;
 
-    // set configuration
-    let mut config = ConfigSolver::new();
-    config
-        .lin_sol_kind(name)
-        .ordering(enum_ordering(opt.ordering.as_str()))
-        .scaling(enum_scaling(opt.scaling.as_str()));
-    if opt.omp_nt > 1 {
-        config.openmp_num_threads(opt.omp_nt as usize);
-    }
-    if opt.verbose {
-        config.verbose();
-    }
-    if opt.determinant {
-        config.set_compute_determinant();
-    }
+    // set options
+    solver.ordering = enum_ordering(&opt.ordering);
+    solver.scaling = enum_scaling(&opt.scaling);
+    solver.compute_determinant = opt.determinant;
 
-    // initialize and factorize
-    let (nrow, nnz) = (coo.nrow, coo.pos);
-    let mut solver = Solver::new(config, nrow, nnz, symmetry)?;
-    solver.factorize(&coo)?;
+    // call initialize
+    sw.reset();
+    solver.initialize(&coo, symmetric)?;
+    let time_initialize = sw.stop();
+
+    // call factorize
+    sw.reset();
+    solver.factorize(&coo, opt.verbose)?;
+    let time_factorize = sw.stop();
 
     // allocate vectors
-    let mut x = Vector::new(nrow);
-    let rhs = Vector::filled(nrow, 1.0);
+    let mut x = Vector::new(coo.nrow);
+    let rhs = Vector::filled(coo.nrow, 1.0);
 
     // solve linear system
-    solver.solve(&mut x, &rhs)?;
+    sw.reset();
+    solver.solve(&mut x, &rhs, opt.verbose)?;
+    let time_solve = sw.stop();
 
-    // verify solution
+    // total time, excluding reading the matrix
+    let time_total = time_initialize + time_factorize + time_solve;
+
+    // verify the solution
     let verify = VerifyLinSys::new(&coo, &x, &rhs)?;
 
     // matrix name
@@ -150,28 +149,30 @@ fn main() -> Result<(), StrError> {
     };
 
     // output
-    let (time_fact, time_solve) = solver.get_elapsed_times();
-    let (det_a, det_c) = (0.0, 0.0); //solver.get_determinant());
+    let (det_a, det_c) = (0.0, 0.0);
+    let (det_mx, det_ex) = (0.0, 0.0);
     let info = SolutionInfo {
         platform: "Russell".to_string(),
         blas_lib: "OpenBLAS".to_string(),
-        solver_name: config.str_solver(),
+        solver_name: solver.get_name(),
         matrix_name,
-        symmetry: if sym { "General".to_string() } else { "None".to_string() },
+        symmetric,
         layout: format!("{:?}", coo.layout),
         nrow: coo.nrow,
         ncol: coo.ncol,
         nnz: coo.pos,
         time_read_matrix_market_nanosecond: time_read,
         time_read_matrix_market_human: format_nanoseconds(time_read),
-        time_factorize_nanosecond: time_fact,
-        time_factorize_human: format_nanoseconds(time_fact),
+        time_initialize_nanosecond: time_initialize,
+        time_initialize_human: format_nanoseconds(time_initialize),
+        time_factorize_nanosecond: time_factorize,
+        time_factorize_human: format_nanoseconds(time_factorize),
         time_solve_nanosecond: time_solve,
         time_solve_human: format_nanoseconds(time_solve),
-        time_factorize_and_solve_nanosecond: time_fact + time_solve,
-        time_factorize_and_solve_human: format_nanoseconds(time_fact + time_solve),
-        requested_ordering: config.str_ordering(),
-        requested_scaling: config.str_scaling(),
+        time_total_nanosecond: time_total,
+        time_total_human: format_nanoseconds(time_total),
+        requested_ordering: opt.ordering,
+        requested_scaling: opt.scaling,
         requested_openmp_num_threads: opt.omp_nt as usize,
         effective_ordering: solver.get_effective_ordering(),
         effective_scaling: solver.get_effective_scaling(),
@@ -183,6 +184,8 @@ fn main() -> Result<(), StrError> {
         verify_time_human: format_nanoseconds(verify.time_check),
         determinant_coefficient_a: det_a,
         determinant_exponent_c: det_c,
+        determinant_coefficient_mx: det_mx,
+        determinant_exponent_ex: det_ex,
     };
     let info_json = serde_json::to_string_pretty(&info).unwrap();
     println!("{}", info_json);
@@ -191,7 +194,7 @@ fn main() -> Result<(), StrError> {
     if path.ends_with("bfwb62.mtx") {
         let tolerance = if opt.mumps { 1e-10 } else { 1e-11 };
         let correct_x = get_bfwb62_correct_x();
-        for i in 0..nrow {
+        for i in 0..coo.nrow {
             let diff = f64::abs(x.get(i) - correct_x.get(i));
             if diff > tolerance {
                 println!("ERROR: diff({}) = {:.2e}", i, diff);

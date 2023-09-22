@@ -303,7 +303,7 @@ impl SolverUMFPACK {
     ///
     /// * `UMFPACK` -- if the default system UMFPACK has been used
     /// * `UMFPACK-local` -- if the locally compiled UMFPACK has be used
-    pub fn get_name() -> String {
+    pub fn get_name(&self) -> String {
         if cfg!(local_umfpack) {
             "UMFPACK-local".to_string()
         } else {
@@ -341,7 +341,7 @@ fn handle_umfpack_error_code(err: i32) -> StrError {
 #[cfg(test)]
 mod tests {
     use super::{handle_umfpack_error_code, SolverUMFPACK};
-    use crate::{CooMatrix, Layout};
+    use crate::{CooMatrix, Layout, Ordering, Scaling};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 
@@ -528,9 +528,11 @@ mod tests {
     #[test]
     fn get_ordering_and_scaling_work() {
         let mut solver = SolverUMFPACK::new().unwrap();
+        solver.ordering = Ordering::Amd;
+        solver.scaling = Scaling::Sum;
         let coo = sample_coo_matrix();
         solver.initialize(&coo, false).unwrap();
-        assert_eq!(solver.get_effective_ordering(), "Cholmod");
+        assert_eq!(solver.get_effective_ordering(), "Amd");
         assert_eq!(solver.get_effective_scaling(), "Sum");
     }
 

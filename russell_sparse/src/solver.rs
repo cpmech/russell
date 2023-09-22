@@ -1,19 +1,6 @@
-use super::{CooMatrix, Ordering, Scaling, SolverMUMPS, SolverUMFPACK};
+use super::{CooMatrix, Genie, Ordering, Scaling, SolverMUMPS, SolverUMFPACK};
 use crate::StrError;
 use russell_lab::Vector;
-
-/// Specifies the underlying library that does all the magic
-pub enum Genie {
-    /// Selects MUMPS (multi-frontal massively parallel sparse direct) solver
-    ///
-    /// Reference: <https://mumps-solver.org/index.php>
-    Mumps,
-
-    /// Selects UMFPACK (unsymmetric multi-frontal) solver
-    ///
-    /// Reference: <https://github.com/DrTimothyAldenDavis/SuiteSparse>
-    Umfpack,
-}
 
 /// Holds optional settings for the sparse solver
 pub struct Settings {
@@ -121,16 +108,16 @@ pub trait SolverTrait {
 /// Unifies the access to sparse solvers
 pub struct Solver<'a> {
     /// Holds the actual implementation
-    pub genie: Box<dyn SolverTrait + 'a>,
+    pub actual: Box<dyn SolverTrait + 'a>,
 }
 
 impl<'a> Solver<'a> {
     /// Allocates a new instance
     pub fn new(selection: Genie) -> Result<Self, StrError> {
-        let genie: Box<dyn SolverTrait> = match selection {
+        let actual: Box<dyn SolverTrait> = match selection {
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
         };
-        Ok(Solver { genie })
+        Ok(Solver { actual })
     }
 }

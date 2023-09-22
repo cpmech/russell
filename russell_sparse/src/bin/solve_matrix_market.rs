@@ -38,10 +38,9 @@ pub struct SolutionInfo {
     pub verify_relative_error: f64,
     pub verify_time_nanosecond: u128,
     pub verify_time_human: String,
-    pub determinant_coefficient_a: f64,  // det = a * 2 ^ c (MUMPS)
-    pub determinant_exponent_c: f64,     // det = a * 2 ^ c (MUMPS)
-    pub determinant_coefficient_mx: f64, // det = mx * 10 ^ ex (UMFPACK)
-    pub determinant_exponent_ex: f64,    // det = mx * 10 ^ ex (UMFPACK)
+    pub determinant_mantissa: f64, // det = mantissa * pow(base, exponent)
+    pub determinant_base: f64,
+    pub determinant_exponent: f64,
 }
 
 /// Command line options
@@ -55,8 +54,8 @@ struct Options {
     matrix_market_file: String,
 
     /// Use MUMPS solver instead of UMFPACK
-    #[structopt(short, long)]
-    mumps: bool,
+    #[structopt(short = "g", long, default_value = "Umfpack")]
+    genie: String,
 
     /// Ordering strategy
     #[structopt(short = "o", long, default_value = "Auto")]
@@ -66,7 +65,7 @@ struct Options {
     #[structopt(short = "s", long, default_value = "Auto")]
     scaling: String,
 
-    /// Number of threads for OpenMP
+    /// Number of threads for OpenMP (MUMPS only)
     #[structopt(short = "n", long, default_value = "1")]
     omp_nt: u32,
 
@@ -89,10 +88,24 @@ fn main() -> Result<(), StrError> {
     }
 
     // select linear solver
-    // let name = LinSolKind::Umfpack;
+    let genie = match opt.genie.to_lowercase().as_str() {
+        "mumps" => Genie::Mumps,
+        "umfpack" => Genie::Umfpack,
+        _ => Genie::Umfpack,
+    };
 
     // select the symmetric handling option
-    let handling = MMsymOption::MakeItFull; // UMFPACK
+    let handling = match genie {
+        Genie::Mumps => MMsymOption::LeaveAsLower,
+        Genie::Umfpack => MMsymOption::MakeItFull,
+    };
+
+    // settings
+    let mut settings = Settings::new();
+    settings.ordering = enum_ordering(&opt.ordering);
+    settings.scaling = enum_scaling(&opt.scaling);
+    settings.compute_determinant = opt.determinant;
+    settings.mumps_openmp_num_threads = opt.omp_nt as usize;
 
     // read the matrix
     let mut sw = Stopwatch::new("");
@@ -100,21 +113,16 @@ fn main() -> Result<(), StrError> {
     let time_read = sw.stop();
 
     // allocate the solver
-    let mut solver = SolverUMFPACK::new()?;
-
-    // set options
-    solver.ordering = enum_ordering(&opt.ordering);
-    solver.scaling = enum_scaling(&opt.scaling);
-    solver.compute_determinant = opt.determinant;
+    let mut solver = Solver::new(genie)?;
 
     // call initialize
     sw.reset();
-    solver.initialize(&coo)?;
+    solver.actual.initialize(&coo)?;
     let time_initialize = sw.stop();
 
     // call factorize
     sw.reset();
-    solver.factorize(&coo, opt.verbose)?;
+    solver.actual.factorize(&coo, opt.verbose)?;
     let time_factorize = sw.stop();
 
     // allocate vectors
@@ -123,7 +131,7 @@ fn main() -> Result<(), StrError> {
 
     // solve linear system
     sw.reset();
-    solver.solve(&mut x, &rhs, opt.verbose)?;
+    solver.actual.solve(&mut x, &rhs, opt.verbose)?;
     let time_solve = sw.stop();
 
     // total time, excluding reading the matrix
@@ -142,13 +150,14 @@ fn main() -> Result<(), StrError> {
         None => "Unknown".to_string(),
     };
 
+    // determinant
+    let (mantissa, base, exponent) = solver.actual.get_determinant();
+
     // output
-    let (det_a, det_c) = (0.0, 0.0);
-    let (det_mx, det_ex) = (0.0, 0.0);
     let info = SolutionInfo {
         platform: "Russell".to_string(),
         blas_lib: "OpenBLAS".to_string(),
-        solver_name: solver.get_name(),
+        solver_name: solver.actual.get_name(),
         matrix_name,
         symmetry: format!("{:?}", coo.symmetry),
         nrow: coo.nrow,
@@ -167,25 +176,27 @@ fn main() -> Result<(), StrError> {
         requested_ordering: opt.ordering,
         requested_scaling: opt.scaling,
         requested_openmp_num_threads: opt.omp_nt as usize,
-        effective_ordering: solver.get_effective_ordering(),
-        effective_scaling: solver.get_effective_scaling(),
+        effective_ordering: solver.actual.get_effective_ordering(),
+        effective_scaling: solver.actual.get_effective_scaling(),
         effective_openmp_num_threads: get_num_threads() as usize,
         verify_max_abs_a: verify.max_abs_a,
         verify_max_abs_a_times_x: verify.max_abs_ax,
         verify_relative_error: verify.relative_error,
         verify_time_nanosecond: verify.time_check,
         verify_time_human: format_nanoseconds(verify.time_check),
-        determinant_coefficient_a: det_a,
-        determinant_exponent_c: det_c,
-        determinant_coefficient_mx: det_mx,
-        determinant_exponent_ex: det_ex,
+        determinant_mantissa: mantissa,
+        determinant_base: base,
+        determinant_exponent: exponent,
     };
     let info_json = serde_json::to_string_pretty(&info).unwrap();
     println!("{}", info_json);
 
     // check
     if path.ends_with("bfwb62.mtx") {
-        let tolerance = if opt.mumps { 1e-10 } else { 1e-11 };
+        let tolerance = match genie {
+            Genie::Mumps => 1e-10,
+            Genie::Umfpack => 1e-11,
+        };
         let correct_x = get_bfwb62_correct_x();
         for i in 0..coo.nrow {
             let diff = f64::abs(x.get(i) - correct_x.get(i));

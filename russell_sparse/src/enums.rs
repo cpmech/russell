@@ -1,3 +1,17 @@
+/// Specifies the underlying library that does all the magic
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Genie {
+    /// Selects MUMPS (multi-frontal massively parallel sparse direct) solver
+    ///
+    /// Reference: <https://mumps-solver.org/index.php>
+    Mumps,
+
+    /// Selects UMFPACK (unsymmetric multi-frontal) solver
+    ///
+    /// Reference: <https://github.com/DrTimothyAldenDavis/SuiteSparse>
+    Umfpack,
+}
+
 /// Specifies how the matrix components are stored
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Storage {
@@ -179,10 +193,17 @@ pub fn enum_scaling(scaling: &str) -> Scaling {
 
 #[cfg(test)]
 mod tests {
-    use super::{enum_ordering, enum_scaling, MMsymOption, Ordering, Scaling, Storage, Symmetry};
+    use super::{enum_ordering, enum_scaling, Genie, MMsymOption, Ordering, Scaling, Storage, Symmetry};
 
     #[test]
     fn clone_copy_and_debug_work() {
+        let genie = Genie::Mumps;
+        let copy = genie;
+        let clone = genie.clone();
+        assert_eq!(format!("{:?}", genie), "Mumps");
+        assert_eq!(copy, Genie::Mumps);
+        assert_eq!(clone, Genie::Mumps);
+
         let storage = Storage::Full;
         let copy = storage;
         let clone = storage.clone();

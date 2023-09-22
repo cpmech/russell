@@ -1,9 +1,10 @@
 use russell_lab::Vector;
 use russell_sparse::prelude::*;
 
-fn test_solver(name: LinSolKind) {
-    match name {
-        LinSolKind::Umfpack => println!("Testing UMFPACK solver\n"),
+fn test_solver(genie: Genie) {
+    match genie {
+        Genie::Mumps => println!("Testing MUMPS solver\n"),
+        Genie::Umfpack => println!("Testing UMFPACK solver\n"),
     }
 
     let (nrow, ncol, nnz) = (5, 5, 13);
@@ -30,9 +31,7 @@ fn test_solver(name: LinSolKind) {
     coo.put(1, 4, 6.0).unwrap();
     coo.put(4, 4, 1.0).unwrap();
 
-    let mut config = ConfigSolver::new();
-    config.lin_sol_kind(name);
-    let mut solver = match Solver::new(config, nrow, nnz, None) {
+    let mut solver = match Solver::new(genie) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new solver): {}", e);
@@ -40,7 +39,18 @@ fn test_solver(name: LinSolKind) {
         }
     };
 
-    match solver.factorize(&coo) {
+    let settings = Settings::new();
+    solver.actual.configure(settings);
+
+    match solver.actual.initialize(&coo) {
+        Err(e) => {
+            println!("FAIL(factorize): {}", e);
+            return;
+        }
+        _ => (),
+    };
+
+    match solver.actual.factorize(&coo, false) {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
@@ -51,7 +61,7 @@ fn test_solver(name: LinSolKind) {
     let mut x = Vector::new(5);
     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
 
-    match solver.solve(&mut x, &rhs) {
+    match solver.actual.solve(&mut x, &rhs, false) {
         Err(e) => {
             println!("FAIL(solve): {}", e);
             return;
@@ -59,7 +69,7 @@ fn test_solver(name: LinSolKind) {
         _ => (),
     }
 
-    match solver.solve(&mut x, &rhs) {
+    match solver.actual.solve(&mut x, &rhs, false) {
         Err(e) => {
             println!("FAIL(solve again): {}", e);
             return;
@@ -70,9 +80,10 @@ fn test_solver(name: LinSolKind) {
     println!("x =\n{}", x);
 }
 
-fn test_solver_singular(name: LinSolKind) {
-    match name {
-        LinSolKind::Umfpack => println!("Testing UMFPACK solver\n"),
+fn test_solver_singular(genie: Genie) {
+    match genie {
+        Genie::Mumps => println!("Testing MUMPS solver\n"),
+        Genie::Umfpack => println!("Testing UMFPACK solver\n"),
     }
 
     let (nrow, ncol, nnz) = (2, 2, 2);
@@ -85,9 +96,7 @@ fn test_solver_singular(name: LinSolKind) {
         }
     };
 
-    let mut config = ConfigSolver::new();
-    config.lin_sol_kind(name);
-    let mut solver = match Solver::new(config, nrow, nnz, None) {
+    let mut solver = match Solver::new(genie) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new solver): {}", e);
@@ -95,7 +104,15 @@ fn test_solver_singular(name: LinSolKind) {
         }
     };
 
-    match solver.factorize(&coo_singular) {
+    match solver.actual.initialize(&coo_singular) {
+        Err(e) => {
+            println!("FAIL(factorize): {}", e);
+            return;
+        }
+        _ => (),
+    };
+
+    match solver.actual.factorize(&coo_singular, false) {
         Err(e) => println!("\nOk(factorize singular matrix): {}\n", e),
         _ => (),
     };
@@ -103,7 +120,7 @@ fn test_solver_singular(name: LinSolKind) {
 
 fn main() {
     println!("Running Mem Check\n");
-    test_solver(LinSolKind::Umfpack);
-    test_solver_singular(LinSolKind::Umfpack);
+    test_solver(Genie::Umfpack);
+    test_solver_singular(Genie::Umfpack);
     println!("Done\n");
 }

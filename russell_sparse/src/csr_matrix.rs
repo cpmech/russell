@@ -128,7 +128,7 @@ impl CsrMatrix {
     ///     coo.put(2, 2, 6.0)?;
     ///
     ///     // convert to CSR matrix
-    ///     let csr = CsrMatrix::from(&coo);
+    ///     let csr = CsrMatrix::from(&coo)?;
     ///     let correct_v = &[
     ///         //                               p
     ///         1.0, 2.0, //      i = 0, count = 0, 1
@@ -152,7 +152,7 @@ impl CsrMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from(coo: &CooMatrix) -> Self {
+    pub fn from(coo: &CooMatrix) -> Result<Self, StrError> {
         // Based on the SciPy code from here:
         //
         // https://github.com/scipy/scipy/blob/main/scipy/sparse/sparsetools/coo.h
@@ -240,7 +240,7 @@ impl CsrMatrix {
         bx.resize(final_nnz, 0.0);
 
         // results
-        csr
+        Ok(csr)
     }
 
     /// Converts this CsrMatrix to a dense matrix
@@ -467,7 +467,7 @@ mod tests {
         coo.put(3, 2, 2.0).unwrap();
         coo.put(1, 0, -2.0).unwrap();
         coo.put(3, 3, 7.0).unwrap();
-        let csr = CsrMatrix::from(&coo);
+        let csr = CsrMatrix::from(&coo).unwrap();
         // solution
         let correct_p = vec![0, 3, 5, 8, 11, 13];
         let correct_j = vec![
@@ -497,7 +497,7 @@ mod tests {
         coo.put(3, 2, 7.0).unwrap();
         coo.put(1, 1, 4.0).unwrap();
         coo.put(3, 3, 8.0).unwrap();
-        let csr = CsrMatrix::from(&coo);
+        let csr = CsrMatrix::from(&coo).unwrap();
         // solution
         let correct_p = vec![0, 2, 4, 6, 8, 9];
         let correct_j = vec![0, 1, 0, 1, 2, 3, 2, 3, 4];
@@ -527,7 +527,7 @@ mod tests {
         coo.put(3, 3, 8.0).unwrap();
         coo.put(2, 3, 3.0).unwrap(); // << duplicate
         coo.put(1, 1, 2.0).unwrap(); // << duplicate
-        let csr = CsrMatrix::from(&coo);
+        let csr = CsrMatrix::from(&coo).unwrap();
         // solution
         let correct_p = vec![0, 2, 4, 6, 8, 9];
         let correct_j = vec![0, 1, 0, 1, 2, 3, 2, 3, 4];
@@ -556,7 +556,7 @@ mod tests {
         coo.put(3, 3, 0.625).unwrap();
         coo.put(0, 4, 3.0).unwrap();
         coo.put(4, 4, 16.0).unwrap();
-        let csr = CsrMatrix::from(&coo);
+        let csr = CsrMatrix::from(&coo).unwrap();
         // solution
         let correct_p = vec![0, 5, 6, 7, 8, 9];
         let correct_j = vec![0, 1, 2, 3, 4, 1, 2, 3, 4];
@@ -585,7 +585,7 @@ mod tests {
         coo.put(0, 3, 0.75).unwrap();
         coo.put(1, 1, 0.5).unwrap();
         coo.put(0, 4, 3.0).unwrap();
-        let csr = CsrMatrix::from(&coo);
+        let csr = CsrMatrix::from(&coo).unwrap();
         // solution
         let correct_p = vec![0, 5, 6, 7, 8, 9];
         let correct_j = vec![0, 1, 2, 3, 4, 1, 2, 3, 4];
@@ -616,7 +616,7 @@ mod tests {
         coo.put(0, 2, 6.0).unwrap();
         coo.put(0, 3, 0.75).unwrap();
         coo.put(0, 4, 3.0).unwrap();
-        let csr = CsrMatrix::from(&coo);
+        let csr = CsrMatrix::from(&coo).unwrap();
         // solution
         let correct_p = vec![0, 5, 6, 7, 8, 9];
         let correct_j = vec![0, 1, 2, 3, 4, 1, 2, 3, 4];
@@ -645,7 +645,7 @@ mod tests {
         coo.put(3, 3, 0.625).unwrap();
         coo.put(4, 0, 3.0).unwrap();
         coo.put(4, 4, 16.0).unwrap();
-        let csr = CsrMatrix::from(&coo);
+        let csr = CsrMatrix::from(&coo).unwrap();
         // solution
         let correct_p = vec![0, 1, 3, 5, 7, 9];
         let correct_j = vec![0, 0, 1, 0, 2, 0, 3, 0, 4];
@@ -676,7 +676,7 @@ mod tests {
         coo.put(2, 0, 6.0).unwrap();
         coo.put(3, 0, 0.75).unwrap();
         coo.put(4, 0, 3.0).unwrap();
-        let csr = CsrMatrix::from(&coo);
+        let csr = CsrMatrix::from(&coo).unwrap();
         // solution
         let correct_p = vec![0, 1, 3, 5, 7, 9];
         let correct_j = vec![0, 0, 1, 0, 2, 0, 3, 0, 4];

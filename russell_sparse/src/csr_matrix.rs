@@ -4,6 +4,46 @@ use russell_lab::Matrix;
 use russell_openblas::to_i32;
 
 /// Holds the arrays needed for a CSR (compressed sparse row) matrix
+///
+/// # Example
+///
+/// The sparse matrix is (dots indicate zero values);
+///
+/// ```text
+///  1  -1   .  -3   .
+/// -2   5   .   .   .
+///  .   .   4   6   4
+/// -4   .   2   7   .
+///  .   8   .   .  -5
+/// ```
+///
+/// The values in compressed row order are (note the row indices `i` and pointers `p`):
+///
+/// ```text
+///                                   p
+///  1.0, -1.0, -3.0   i = 0, count = 0,  1,  2
+/// -2.0,  5.0,        i = 1, count = 3,  4
+///  4.0,  6.0,  4.0   i = 2, count = 5,  6,  7
+/// -4.0,  2.0,  7.0   i = 3, count = 8,  9,  10
+///  8.0, -5.0,        i = 4, count= 11, 12
+///                                  13
+/// ```
+///
+/// The column indices are:
+///
+/// ```text
+/// 0, 1, 3
+/// 0, 1,
+/// 2, 3, 4
+/// 0, 2, 3
+/// 1, 4
+/// ```
+///
+/// And the row pointers are (see the column indicated by `p` above):
+///
+/// ```text
+/// 0, 3, 5, 8, 11, 13
+/// ```
 pub struct CsrMatrix {
     /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
     ///

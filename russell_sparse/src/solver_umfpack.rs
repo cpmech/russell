@@ -47,6 +47,7 @@ extern "C" {
         verbose: i32,
     ) -> i32;
     fn solver_umfpack_solve(solver: *mut InterfaceUMFPACK, x: *mut f64, rhs: *const f64, verbose: i32) -> i32;
+    fn solver_umfpack_get_strategy(solver: *const InterfaceUMFPACK) -> i32;
     fn solver_umfpack_get_ordering(solver: *const InterfaceUMFPACK) -> i32;
     fn solver_umfpack_get_scaling(solver: *const InterfaceUMFPACK) -> i32;
     fn solver_umfpack_get_det_mx(solver: *const InterfaceUMFPACK) -> f64;
@@ -387,6 +388,18 @@ impl SolverTrait for SolverUMFPACK {
                 UMFPACK_SCALE_SUM => "Sum".to_string(),
                 UMFPACK_SCALE_MAX => "Max".to_string(),
                 _ => "Unknown".to_string(),
+            }
+        }
+    }
+
+    fn get_effective_strategy(&self) -> String {
+        unsafe {
+            let strategy = solver_umfpack_get_strategy(self.solver);
+            match strategy {
+                UMFPACK_STRATEGY_AUTO => "auto".to_string(),
+                UMFPACK_STRATEGY_UNSYMMETRIC => "unsymmetric".to_string(),
+                UMFPACK_STRATEGY_SYMMETRIC => "symmetric".to_string(),
+                _ => "unknown".to_string(),
             }
         }
     }

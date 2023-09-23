@@ -341,6 +341,11 @@ impl SolverTrait for SolverMUMPS {
         }
     }
 
+    /// Returns the strategy effectively used by the solver
+    fn get_effective_strategy(&self) -> String {
+        "unknown".to_string()
+    }
+
     /// Returns the name of this solver
     ///
     /// # Output

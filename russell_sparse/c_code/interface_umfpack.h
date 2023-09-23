@@ -78,6 +78,11 @@ int32_t solver_umfpack_get_ordering(const struct InterfaceUMFPACK *solver);
 /// @return The used UMFPACK scaling code
 int32_t solver_umfpack_get_scaling(const struct InterfaceUMFPACK *solver);
 
+/// @brief Returns the effective symmetry/non-symmetry strategy using during the computations
+/// @param solver Is a pointer to the solver
+/// @return The strategy (concerning symmetry or the lack of it) taken by UMFPACK
+int32_t solver_umfpack_get_strategy(const struct InterfaceUMFPACK *solver);
+
 /// @brief Returns the coefficient needed to compute the determinant, if requested
 /// @param solver Is a pointer to the solver
 /// @return The coefficient mx of the determinant = mx * 10 ^ ex

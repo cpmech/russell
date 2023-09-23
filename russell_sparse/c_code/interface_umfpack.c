@@ -182,6 +182,10 @@ int32_t solver_umfpack_get_scaling(const struct InterfaceUMFPACK *solver) {
     return solver->effective_scaling;
 }
 
+int32_t solver_umfpack_get_strategy(const struct InterfaceUMFPACK *solver) {
+    return solver->effective_strategy;
+}
+
 double solver_umfpack_get_det_mx(const struct InterfaceUMFPACK *solver) {
     if (solver == NULL) {
         return 0.0;

@@ -139,7 +139,7 @@ impl CooMatrix {
             return Err("index of column is outside range");
         }
         if self.pos >= self.max {
-            return Err("max number of items has been exceeded");
+            return Err("max number of items has been reached");
         }
         if let Some(sym) = self.symmetry {
             if sym.lower() {
@@ -414,7 +414,7 @@ mod tests {
         assert_eq!(coo.put(1, 0, 0.0).err(), Some("index of row is outside range"));
         assert_eq!(coo.put(0, 1, 0.0).err(), Some("index of column is outside range"));
         assert_eq!(coo.put(0, 0, 0.0).err(), None); // << will take all spots
-        assert_eq!(coo.put(0, 0, 0.0).err(), Some("max number of items has been exceeded"));
+        assert_eq!(coo.put(0, 0, 0.0).err(), Some("max number of items has been reached"));
         let sym = Some(Symmetry::General(Storage::Lower));
         let mut coo = CooMatrix::new(sym, 2, 2, 4).unwrap();
         assert_eq!(

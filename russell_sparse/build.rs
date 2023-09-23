@@ -2,7 +2,7 @@ use std::env;
 
 fn main() {
     // compile MUMPS interface
-    let use_local_mumps = match env::var("USE_LOCAL_MUMPS") {
+    let use_local_mumps = match env::var("RUSSELL_SPARSE_USE_LOCAL_MUMPS") {
         Ok(v) => v == "1" || v.to_lowercase() == "true",
         Err(_) => false,
     };
@@ -22,7 +22,7 @@ fn main() {
     }
 
     // compile UMFPACK interface
-    let use_local_umfpack = match env::var("USE_LOCAL_UMFPACK") {
+    let use_local_umfpack = match env::var("RUSSELL_SPARSE_USE_LOCAL_UMFPACK") {
         Ok(v) => v == "1" || v.to_lowercase() == "true",
         Err(_) => false,
     };

@@ -2,6 +2,10 @@ use super::{to_i32, CooMatrix, Ordering, Scaling, SolverTrait, Symmetry};
 use crate::StrError;
 use russell_lab::Vector;
 
+const UMFPACK_STRATEGY_AUTO: i32 = 0; // use symmetric or unsymmetric strategy
+const UMFPACK_STRATEGY_UNSYMMETRIC: i32 = 1; // COLAMD(A), col-tree post-order, do not prefer diag
+const UMFPACK_STRATEGY_SYMMETRIC: i32 = 3; // AMD(A+A'), no col-tree post-order, prefer diagonal
+
 const UMFPACK_ORDERING_CHOLMOD: i32 = 0; // use CHOLMOD (AMD/COLAMD then METIS)
 const UMFPACK_ORDERING_AMD: i32 = 1; // use AMD/COLAMD
 const UMFPACK_ORDERING_METIS: i32 = 3; // use METIS
@@ -81,6 +85,9 @@ pub struct SolverUMFPACK {
     ///
     /// **Note:** The determinant will be available after `factorize`
     pub compute_determinant: bool,
+
+    /// Enforces the unsymmetric strategy, even for symmetric matrices (not recommended)
+    pub enforce_unsymmetric_strategy: bool,
 }
 
 impl Drop for SolverUMFPACK {
@@ -114,6 +121,7 @@ impl SolverUMFPACK {
                 ordering: Ordering::Auto,
                 scaling: Scaling::Auto,
                 compute_determinant: false,
+                enforce_unsymmetric_strategy: false,
             })
         }
     }
@@ -138,15 +146,18 @@ impl SolverTrait for SolverUMFPACK {
     ///
     /// See [SolverUMFPACK::solve]
     fn initialize(&mut self, coo: &CooMatrix) -> Result<(), StrError> {
-        let sym_i32 = match coo.symmetry {
+        let mut sym_i32 = match coo.symmetry {
             Some(sym) => {
                 if sym.triangular() {
                     return Err("for UMFPACK, if the matrix is symmetric, the storage still must be full");
                 }
-                1 // general or positive-definite symmetric
+                UMFPACK_STRATEGY_SYMMETRIC
             }
-            None => 0, // unsymmetric
+            None => UMFPACK_STRATEGY_AUTO,
         };
+        if self.enforce_unsymmetric_strategy {
+            sym_i32 = UMFPACK_STRATEGY_UNSYMMETRIC
+        }
         self.nrow = to_i32(coo.nrow)?;
         self.nnz = to_i32(coo.pos)?;
         self.initialized = false;

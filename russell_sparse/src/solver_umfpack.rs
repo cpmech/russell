@@ -420,7 +420,7 @@ impl SolverTrait for SolverUMFPACK {
 }
 
 /// Handles UMFPACK error code
-fn handle_umfpack_error_code(err: i32) -> StrError {
+pub(crate) fn handle_umfpack_error_code(err: i32) -> StrError {
     match err {
         1 => return "Error(1): Matrix is singular",
         2 => return "Error(2): The determinant is nonzero, but smaller than allowed",

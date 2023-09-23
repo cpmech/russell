@@ -160,6 +160,7 @@ pub type StrError = &'static str;
 
 mod auxiliary;
 mod coo_matrix;
+mod csc_matrix;
 mod csr_matrix;
 mod enums;
 pub mod prelude;
@@ -172,6 +173,7 @@ mod verify_lin_sys;
 mod write_matrix_market;
 use crate::auxiliary::*;
 pub use crate::coo_matrix::*;
+pub use crate::csc_matrix::*;
 pub use crate::csr_matrix::*;
 pub use crate::enums::*;
 pub use crate::read_matrix_market::*;

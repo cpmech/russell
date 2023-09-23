@@ -199,3 +199,18 @@ double solver_umfpack_get_det_ex(const struct InterfaceUMFPACK *solver) {
     }
     return solver->ex[0];
 }
+
+int32_t umfpack_coo_to_csc(int32_t *col_pointers,
+                           int32_t *row_indices,
+                           double *values,
+                           int32_t nrow,
+                           int32_t ncol,
+                           int32_t nnz,
+                           int32_t const *indices_i,
+                           int32_t const *indices_j,
+                           double const *values_aij) {
+    int code = umfpack_di_triplet_to_col(nrow, ncol, nnz,
+                                         indices_i, indices_j, values_aij,
+                                         col_pointers, row_indices, values, NULL);
+    return code;
+}

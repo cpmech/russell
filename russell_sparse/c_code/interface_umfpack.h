@@ -51,7 +51,7 @@ int32_t solver_umfpack_initialize(struct InterfaceUMFPACK *solver,
 /// @param solver Is a pointer to the solver interface
 /// @param indices_i Are the CooMatrix row indices
 /// @param indices_j Are the CooMatrix column indices
-/// @param values_aij Are the CooMatrix values
+/// @param values_aij Are the CooMatrix values, including duplicates
 /// @param verbose Shows messages
 /// @return A success or fail code
 int32_t solver_umfpack_factorize(struct InterfaceUMFPACK *solver,
@@ -92,3 +92,21 @@ double solver_umfpack_get_det_mx(const struct InterfaceUMFPACK *solver);
 /// @param solver Is a pointer to the solver
 /// @return The exponent ex of the determinant = mx * 10 ^ ex
 double solver_umfpack_get_det_ex(const struct InterfaceUMFPACK *solver);
+
+/// @brief Converts COO matrix (with possible duplicates) to CSC matrix
+/// @param nrow Is the number of rows
+/// @param ncol Is the number of columns
+/// @param nnz Is the number of non-zero values, including duplicates
+/// @param indices_i Are the CooMatrix row indices
+/// @param indices_j Are the CooMatrix column indices
+/// @param values_aij Are the CooMatrix values, including duplicates
+/// @return A success or fail code
+int32_t umfpack_coo_to_csc(int32_t *col_pointers,
+                           int32_t *row_indices,
+                           double *values,
+                           int32_t nrow,
+                           int32_t ncol,
+                           int32_t nnz,
+                           int32_t const *indices_i,
+                           int32_t const *indices_j,
+                           double const *values_aij);

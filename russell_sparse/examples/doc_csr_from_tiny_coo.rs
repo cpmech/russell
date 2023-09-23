@@ -18,7 +18,7 @@ fn main() -> Result<(), StrError> {
     coo.put(2, 2, 6.0)?;
 
     // convert to CSR matrix
-    let csr = CsrMatrix::from(&coo);
+    let csr = CsrMatrix::from(&coo)?;
     let correct_v = &[
         //                               p
         1.0, 2.0, //      i = 0, count = 0, 1

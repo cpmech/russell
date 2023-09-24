@@ -30,7 +30,7 @@ impl Samples {
     /// let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
     /// ```
     pub fn umfpack_sample1_unsymmetric() -> (CooMatrix, f64) {
-        let mut coo = CooMatrix::new(None, 5, 5, 13).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 13, None).unwrap();
         coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2) duplicate
         coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2) duplicate
         coo.put(1, 0, 3.0).unwrap();
@@ -74,7 +74,7 @@ impl Samples {
     /// ```
     pub fn mkl_sample1_symmetric_lower() -> (CooMatrix, f64) {
         let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo = CooMatrix::new(sym, 5, 5, 9).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 9, sym).unwrap();
         coo.put(0, 0, 9.0).unwrap();
         coo.put(1, 1, 0.5).unwrap();
         coo.put(2, 2, 12.0).unwrap();
@@ -114,7 +114,7 @@ impl Samples {
     /// ```
     pub fn mkl_sample1_positive_definite_lower() -> (CooMatrix, f64) {
         let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
-        let mut coo = CooMatrix::new(sym, 5, 5, 9).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 9, sym).unwrap();
         coo.put(0, 0, 9.0).unwrap();
         coo.put(1, 1, 0.5).unwrap();
         coo.put(2, 2, 12.0).unwrap();
@@ -154,7 +154,7 @@ impl Samples {
     /// ```
     pub fn mkl_sample1_symmetric_upper() -> (CooMatrix, f64) {
         let sym = Some(Symmetry::General(Storage::Upper));
-        let mut coo = CooMatrix::new(sym, 5, 5, 9).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 9, sym).unwrap();
         coo.put(0, 0, 9.0).unwrap();
         coo.put(0, 1, 1.5).unwrap();
         coo.put(1, 1, 0.5).unwrap();
@@ -194,7 +194,7 @@ impl Samples {
     /// ```
     pub fn mkl_sample1_positive_definite_upper() -> (CooMatrix, f64) {
         let sym = Some(Symmetry::PositiveDefinite(Storage::Upper));
-        let mut coo = CooMatrix::new(sym, 5, 5, 9).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 9, sym).unwrap();
         coo.put(0, 0, 9.0).unwrap();
         coo.put(0, 1, 1.5).unwrap();
         coo.put(1, 1, 0.5).unwrap();
@@ -234,7 +234,7 @@ impl Samples {
     /// ```
     pub fn mkl_sample1_symmetric_full() -> (CooMatrix, f64) {
         let sym = Some(Symmetry::General(Storage::Full));
-        let mut coo = CooMatrix::new(sym, 5, 5, 13).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 13, sym).unwrap();
         coo.put(0, 0, 9.0).unwrap(); // 0
         coo.put(0, 1, 1.5).unwrap(); // 1
         coo.put(0, 2, 6.0).unwrap(); // 2

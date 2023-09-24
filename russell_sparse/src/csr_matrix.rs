@@ -119,7 +119,7 @@ impl CsrMatrix {
     ///     // │  4  5  6 │    but should be saved for Intel DSS
     ///     // └          ┘
     ///     let (nrow, ncol, nnz) = (3, 3, 6);
-    ///     let mut coo = CooMatrix::new(None, nrow, ncol, nnz)?;
+    ///     let mut coo = CooMatrix::new(nrow, ncol, nnz, None)?;
     ///     coo.put(0, 0, 1.0)?;
     ///     coo.put(0, 2, 2.0)?;
     ///     coo.put(1, 2, 3.0)?;
@@ -483,7 +483,7 @@ mod tests {
         // -4   .   2   7   .
         //  .   8   .   .  -5
         // first triplet with shuffled entries
-        let mut coo = CooMatrix::new(None, 5, 5, 13).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 13, None).unwrap();
         coo.put(2, 4, 4.0).unwrap();
         coo.put(4, 1, 8.0).unwrap();
         coo.put(0, 1, -1.0).unwrap();
@@ -517,7 +517,7 @@ mod tests {
         // .  .  7  8  .
         // .  .  .  .  9
         // small triplet with shuffled entries
-        let mut coo = CooMatrix::new(None, 5, 5, 9).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 9, None).unwrap();
         coo.put(4, 4, 9.0).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 0, 3.0).unwrap();
@@ -545,7 +545,7 @@ mod tests {
         // .  .  7  8  .
         // .  .  .  .  9
         // with duplicates
-        let mut coo = CooMatrix::new(None, 5, 5, 11).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 11, None).unwrap();
         coo.put(4, 4, 9.0).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 0, 3.0).unwrap();
@@ -576,7 +576,7 @@ mod tests {
         //  3.00  0.0   0.0  0.000  16.0
         // upper triangular with ordered entries
         let sym = Some(Symmetry::General(Storage::Upper));
-        let mut coo = CooMatrix::new(sym, 5, 5, 9).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 9, sym).unwrap();
         coo.put(0, 0, 9.0).unwrap();
         coo.put(0, 1, 1.5).unwrap();
         coo.put(1, 1, 0.5).unwrap();
@@ -605,7 +605,7 @@ mod tests {
         //  3.00  0.0   0.0  0.000  16.0
         // upper triangular with shuffled entries
         let sym = Some(Symmetry::General(Storage::Upper));
-        let mut coo = CooMatrix::new(sym, 5, 5, 9).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 9, sym).unwrap();
         coo.put(2, 2, 12.0).unwrap();
         coo.put(0, 0, 9.0).unwrap();
         coo.put(3, 3, 0.625).unwrap();
@@ -634,7 +634,7 @@ mod tests {
         //  3.00  0.0   0.0  0.000  16.0
         // upper triangular with diagonal entries being set first
         let sym = Some(Symmetry::General(Storage::Upper));
-        let mut coo = CooMatrix::new(sym, 5, 5, 9).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 9, sym).unwrap();
         // diagonal
         coo.put(0, 0, 9.0).unwrap();
         coo.put(1, 1, 0.5).unwrap();
@@ -665,7 +665,7 @@ mod tests {
         //  3.00  0.0   0.0  0.000  16.0
         // lower diagonal with ordered entries
         let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo = CooMatrix::new(sym, 5, 5, 9).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 9, sym).unwrap();
         coo.put(0, 0, 9.0).unwrap();
         coo.put(1, 0, 1.5).unwrap();
         coo.put(1, 1, 0.5).unwrap();
@@ -694,7 +694,7 @@ mod tests {
         //  3.00  0.0   0.0  0.000  16.0
         // lower triangular with diagonal entries being set first
         let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo = CooMatrix::new(sym, 5, 5, 9).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 9, sym).unwrap();
         // diagonal
         coo.put(0, 0, 9.0).unwrap();
         coo.put(1, 1, 0.5).unwrap();

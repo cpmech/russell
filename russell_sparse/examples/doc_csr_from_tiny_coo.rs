@@ -9,7 +9,7 @@ fn main() -> Result<(), StrError> {
     // │  4  5  6 │    but should be saved for Intel DSS
     // └          ┘
     let (nrow, ncol, nnz) = (3, 3, 6);
-    let mut coo = CooMatrix::new(None, nrow, ncol, nnz)?;
+    let mut coo = CooMatrix::new(nrow, ncol, nnz, None)?;
     coo.put(0, 0, 1.0)?;
     coo.put(0, 2, 2.0)?;
     coo.put(1, 2, 3.0)?;

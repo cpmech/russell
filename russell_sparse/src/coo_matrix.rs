@@ -67,7 +67,7 @@ impl CooMatrix {
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let (nrow, ncol, nnz) = (3, 3, 4);
-    ///     let coo = CooMatrix::new(None, nrow, ncol, nnz)?;
+    ///     let coo = CooMatrix::new(nrow, ncol, nnz, None)?;
     ///     assert_eq!(coo.symmetry, None);
     ///     assert_eq!(coo.pos, 0);
     ///     assert_eq!(coo.max, 4);
@@ -77,7 +77,7 @@ impl CooMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn new(symmetry: Option<Symmetry>, nrow: usize, ncol: usize, max: usize) -> Result<Self, StrError> {
+    pub fn new(nrow: usize, ncol: usize, max: usize, symmetry: Option<Symmetry>) -> Result<Self, StrError> {
         if nrow < 1 {
             return Err("nrow must be ≥ 1");
         }
@@ -116,7 +116,7 @@ impl CooMatrix {
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let (nrow, ncol, nnz) = (3, 3, 4);
-    ///     let mut coo = CooMatrix::new(None, nrow, ncol, nnz)?;
+    ///     let mut coo = CooMatrix::new(nrow, ncol, nnz, None)?;
     ///     coo.put(0, 0, 1.0)?;
     ///     coo.put(1, 1, 2.0)?;
     ///     coo.put(2, 2, 3.0)?;
@@ -175,7 +175,7 @@ impl CooMatrix {
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let (nrow, ncol, nnz) = (3, 3, 4);
-    ///     let mut coo = CooMatrix::new(None, nrow, ncol, nnz)?;
+    ///     let mut coo = CooMatrix::new(nrow, ncol, nnz, None)?;
     ///     coo.put(0, 0, 1.0)?;
     ///     coo.put(1, 1, 2.0)?;
     ///     coo.put(2, 2, 3.0)?;
@@ -200,9 +200,9 @@ impl CooMatrix {
     ///     // define (4 x 4) sparse matrix with 6+1 non-zero values
     ///     // (with an extra ij-repeated entry)
     ///     let (nrow, ncol, nnz) = (4, 4, 7);
-    ///     let mut coo = CooMatrix::new(None, nrow, ncol, nnz)?;
-    ///     coo.put(0, 0, 0.5)?; // (0, 0, a00/2)
-    ///     coo.put(0, 0, 0.5)?; // (0, 0, a00/2)
+    ///     let mut coo = CooMatrix::new(nrow, ncol, nnz, None)?;
+    ///     coo.put(0, 0, 0.5)?; // (0, 0, a00/2)  << duplicate
+    ///     coo.put(0, 0, 0.5)?; // (0, 0, a00/2)  << duplicate
     ///     coo.put(0, 1, 2.0)?;
     ///     coo.put(1, 0, 3.0)?;
     ///     coo.put(1, 1, 4.0)?;
@@ -244,7 +244,7 @@ impl CooMatrix {
     ///     // define (4 x 4) sparse matrix with 6+1 non-zero values
     ///     // (with an extra ij-repeated entry)
     ///     let (nrow, ncol, nnz) = (4, 4, 7);
-    ///     let mut coo = CooMatrix::new(None, nrow, ncol, nnz)?;
+    ///     let mut coo = CooMatrix::new(nrow, ncol, nnz, None)?;
     ///     coo.put(0, 0, 0.5)?; // (0, 0, a00/2)
     ///     coo.put(0, 0, 0.5)?; // (0, 0, a00/2)
     ///     coo.put(0, 1, 2.0)?;
@@ -316,7 +316,7 @@ impl CooMatrix {
     /// fn main() -> Result<(), StrError> {
     ///     // set sparse matrix (3 x 3) with 6 non-zeros
     ///     let (nrow, ncol, nnz) = (3, 3, 6);
-    ///     let mut coo = CooMatrix::new(None, nrow, ncol, nnz)?;
+    ///     let mut coo = CooMatrix::new(nrow, ncol, nnz, None)?;
     ///     coo.put(0, 0, 1.0)?;
     ///     coo.put(1, 0, 2.0)?;
     ///     coo.put(1, 1, 3.0)?;
@@ -381,14 +381,14 @@ mod tests {
 
     #[test]
     fn new_fails_on_wrong_input() {
-        assert_eq!(CooMatrix::new(None, 0, 1, 3).err(), Some("nrow must be ≥ 1"));
-        assert_eq!(CooMatrix::new(None, 1, 0, 3).err(), Some("ncol must be ≥ 1"));
-        assert_eq!(CooMatrix::new(None, 1, 1, 0).err(), Some("max (nnz) must be ≥ 1"));
+        assert_eq!(CooMatrix::new(0, 1, 3, None).err(), Some("nrow must be ≥ 1"));
+        assert_eq!(CooMatrix::new(1, 0, 3, None).err(), Some("ncol must be ≥ 1"));
+        assert_eq!(CooMatrix::new(1, 1, 0, None).err(), Some("max (nnz) must be ≥ 1"));
     }
 
     #[test]
     fn new_works() {
-        let coo = CooMatrix::new(None, 1, 1, 3).unwrap();
+        let coo = CooMatrix::new(1, 1, 3, None).unwrap();
         assert_eq!(coo.symmetry, None);
         assert_eq!(coo.nrow, 1);
         assert_eq!(coo.ncol, 1);
@@ -401,19 +401,19 @@ mod tests {
 
     #[test]
     fn put_fails_on_wrong_values() {
-        let mut coo = CooMatrix::new(None, 1, 1, 1).unwrap();
+        let mut coo = CooMatrix::new(1, 1, 1, None).unwrap();
         assert_eq!(coo.put(1, 0, 0.0).err(), Some("index of row is outside range"));
         assert_eq!(coo.put(0, 1, 0.0).err(), Some("index of column is outside range"));
         assert_eq!(coo.put(0, 0, 0.0).err(), None); // << will take all spots
         assert_eq!(coo.put(0, 0, 0.0).err(), Some("max number of items has been reached"));
         let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo = CooMatrix::new(sym, 2, 2, 4).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 4, sym).unwrap();
         assert_eq!(
             coo.put(0, 1, 0.0).err(),
             Some("j > i is incorrect for lower triangular storage")
         );
         let sym = Some(Symmetry::General(Storage::Upper));
-        let mut coo = CooMatrix::new(sym, 2, 2, 4).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 4, sym).unwrap();
         assert_eq!(
             coo.put(1, 0, 0.0).err(),
             Some("j < i is incorrect for upper triangular storage")
@@ -422,7 +422,7 @@ mod tests {
 
     #[test]
     fn put_works() {
-        let mut coo = CooMatrix::new(None, 3, 3, 5).unwrap();
+        let mut coo = CooMatrix::new(3, 3, 5, None).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         assert_eq!(coo.pos, 1);
         coo.put(0, 1, 2.0).unwrap();
@@ -437,7 +437,7 @@ mod tests {
 
     #[test]
     fn reset_works() {
-        let mut coo = CooMatrix::new(None, 2, 2, 4).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 4, None).unwrap();
         assert_eq!(coo.pos, 0);
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 1, 4.0).unwrap();
@@ -450,7 +450,7 @@ mod tests {
 
     #[test]
     fn to_matrix_fails_on_wrong_dims() {
-        let coo = CooMatrix::new(None, 1, 1, 1).unwrap();
+        let coo = CooMatrix::new(1, 1, 1, None).unwrap();
         let mut a_2x1 = Matrix::new(2, 1);
         let mut a_1x2 = Matrix::new(1, 2);
         assert_eq!(coo.to_matrix(&mut a_2x1), Err("wrong matrix dimensions"));
@@ -459,7 +459,7 @@ mod tests {
 
     #[test]
     fn to_matrix_works() {
-        let mut coo = CooMatrix::new(None, 3, 3, 5).unwrap();
+        let mut coo = CooMatrix::new(3, 3, 5, None).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 1, 2.0).unwrap();
         coo.put(1, 0, 3.0).unwrap();
@@ -482,7 +482,7 @@ mod tests {
     fn to_matrix_with_duplicates_works() {
         // allocate a square matrix
         let (nrow, ncol, nnz) = (5, 5, 13);
-        let mut coo = CooMatrix::new(None, nrow, ncol, nnz).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, nnz, None).unwrap();
         coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
         coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
         coo.put(1, 0, 3.0).unwrap();
@@ -513,7 +513,7 @@ mod tests {
     #[test]
     fn to_matrix_symmetric_lower_works() {
         let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo = CooMatrix::new(sym, 3, 3, 4).unwrap();
+        let mut coo = CooMatrix::new(3, 3, 4, sym).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 0, 2.0).unwrap();
         coo.put(1, 1, 3.0).unwrap();
@@ -531,7 +531,7 @@ mod tests {
     #[test]
     fn to_matrix_symmetric_upper_works() {
         let sym = Some(Symmetry::General(Storage::Upper));
-        let mut coo = CooMatrix::new(sym, 3, 3, 4).unwrap();
+        let mut coo = CooMatrix::new(3, 3, 4, sym).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 1, 2.0).unwrap();
         coo.put(1, 1, 3.0).unwrap();
@@ -548,7 +548,7 @@ mod tests {
 
     #[test]
     fn mat_vec_mul_fails_on_wrong_input() {
-        let coo = CooMatrix::new(None, 2, 2, 1).unwrap();
+        let coo = CooMatrix::new(2, 2, 1, None).unwrap();
         let u = Vector::new(3);
         assert_eq!(coo.mat_vec_mul(&u).err(), Some("u.ndim must equal ncol"));
     }
@@ -558,7 +558,7 @@ mod tests {
         //  1.0  2.0  3.0
         //  0.1  0.2  0.3
         // 10.0 20.0 30.0
-        let mut coo = CooMatrix::new(None, 3, 3, 9).unwrap();
+        let mut coo = CooMatrix::new(3, 3, 9, None).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 1, 2.0).unwrap();
         coo.put(0, 2, 3.0).unwrap();
@@ -583,7 +583,7 @@ mod tests {
         // 2  1  5  1  8
         let (nrow, ncol, nnz) = (5, 5, 15);
         let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo = CooMatrix::new(sym, nrow, ncol, nnz).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, nnz, sym).unwrap();
         coo.put(0, 0, 2.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
         coo.put(2, 2, 9.0).unwrap();
@@ -618,7 +618,7 @@ mod tests {
         // 2  1  5  1  8
         let (nrow, ncol, nnz) = (5, 5, 25);
         let sym = Some(Symmetry::General(Storage::Full));
-        let mut coo = CooMatrix::new(sym, nrow, ncol, nnz).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, nnz, sym).unwrap();
         coo.put(0, 0, 2.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
         coo.put(2, 2, 9.0).unwrap();
@@ -661,7 +661,7 @@ mod tests {
         //     -1   2             -1   2
         let (nrow, ncol, nnz) = (3, 3, 5);
         let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
-        let mut coo = CooMatrix::new(sym, nrow, ncol, nnz).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, nnz, sym).unwrap();
         coo.put(0, 0, 2.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
         coo.put(2, 2, 2.0).unwrap();

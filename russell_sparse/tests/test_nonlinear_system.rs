@@ -68,7 +68,7 @@ fn check_jacobian() {
         }
     }
     let nnz = neq * neq;
-    let mut jj_tri = CooMatrix::new(None, neq, neq, nnz).unwrap();
+    let mut jj_tri = CooMatrix::new(neq, neq, nnz, None).unwrap();
     calc_jacobian(&mut jj_tri, &uu).unwrap();
     let mut jj_ana = Matrix::new(neq, neq);
     jj_tri.to_matrix(&mut jj_ana).unwrap();
@@ -79,7 +79,7 @@ fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
     let (neq, nnz) = (4, 16);
     let mut solver = Solver::new(genie)?;
     solver.actual.initialize(neq, nnz, None, None)?;
-    let mut jj = CooMatrix::new(None, neq, neq, nnz).unwrap();
+    let mut jj = CooMatrix::new(neq, neq, nnz, None).unwrap();
     let mut rr = Vector::new(neq);
     let mut uu = Vector::from(&[0.0, 0.0, 0.0, 0.0]);
     let mut mdu = Vector::new(neq);

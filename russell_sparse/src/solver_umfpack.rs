@@ -432,10 +432,10 @@ mod tests {
 
         // factorize fails on incompatible coo matrix
         let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo_wrong_1 = CooMatrix::new(None, 1, 5, 13).unwrap();
-        let coo_wrong_2 = CooMatrix::new(None, 5, 1, 13).unwrap();
-        let coo_wrong_3 = CooMatrix::new(None, 5, 5, 12).unwrap();
-        let mut coo_wrong_4 = CooMatrix::new(sym, 5, 5, 13).unwrap();
+        let mut coo_wrong_1 = CooMatrix::new(1, 5, 13, None).unwrap();
+        let coo_wrong_2 = CooMatrix::new(5, 1, 13, None).unwrap();
+        let coo_wrong_3 = CooMatrix::new(5, 5, 12, None).unwrap();
+        let mut coo_wrong_4 = CooMatrix::new(5, 5, 13, sym).unwrap();
         for _ in 0..13 {
             coo_wrong_1.put(0, 0, 1.0).unwrap();
             coo_wrong_4.put(0, 0, 1.0).unwrap();
@@ -465,7 +465,7 @@ mod tests {
     #[test]
     fn factorize_fails_on_singular_matrix() {
         let mut solver = SolverUMFPACK::new().unwrap();
-        let mut coo = CooMatrix::new(None, 2, 2, 2).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 2, None).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 0.0).unwrap();
         solver.initialize(coo.nrow, coo.max, coo.symmetry, None).unwrap();

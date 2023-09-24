@@ -363,7 +363,7 @@ where
     }
 
     // allocate triplet
-    let mut coo = CooMatrix::new(symmetry, data.m as usize, data.n as usize, max as usize).unwrap();
+    let mut coo = CooMatrix::new(data.m as usize, data.n as usize, max as usize, symmetry).unwrap();
 
     // read and parse triples
     loop {

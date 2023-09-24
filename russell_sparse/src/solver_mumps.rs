@@ -468,10 +468,10 @@ mod tests {
 
         // factorize fails on incompatible coo matrix
         let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo_wrong_1 = CooMatrix::new(None, 1, 5, 13).unwrap();
-        let coo_wrong_2 = CooMatrix::new(None, 5, 1, 13).unwrap();
-        let coo_wrong_3 = CooMatrix::new(None, 5, 5, 12).unwrap();
-        let mut coo_wrong_4 = CooMatrix::new(sym, 5, 5, 13).unwrap();
+        let mut coo_wrong_1 = CooMatrix::new(1, 5, 13, None).unwrap();
+        let coo_wrong_2 = CooMatrix::new(5, 1, 13, None).unwrap();
+        let coo_wrong_3 = CooMatrix::new(5, 5, 12, None).unwrap();
+        let mut coo_wrong_4 = CooMatrix::new(5, 5, 13, sym).unwrap();
         for _ in 0..13 {
             coo_wrong_1.put(0, 0, 1.0).unwrap();
             coo_wrong_4.put(0, 0, 1.0).unwrap();
@@ -538,7 +538,7 @@ mod tests {
         vec_approx_eq(x_again.as_data(), x_correct, 1e-15);
 
         // factorize fails on singular matrix
-        let mut coo_singular = CooMatrix::new(None, 5, 5, 2).unwrap();
+        let mut coo_singular = CooMatrix::new(5, 5, 2, None).unwrap();
         coo_singular.put(0, 0, 1.0).unwrap();
         coo_singular.put(4, 4, 1.0).unwrap();
         let mut solver = SolverMUMPS::new().unwrap();

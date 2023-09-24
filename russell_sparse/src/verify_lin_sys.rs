@@ -29,7 +29,7 @@ impl VerifyLinSys {
     /// fn main() -> Result<(), StrError> {
     ///     // set sparse matrix (3 x 3) with 4 non-zeros
     ///     let (nrow, ncol, nnz) = (3, 3, 4);
-    ///     let mut coo = CooMatrix::new(None, nrow, ncol, nnz)?;
+    ///     let mut coo = CooMatrix::new(nrow, ncol, nnz, None)?;
     ///     coo.put(0, 0, 1.0)?;
     ///     coo.put(0, 2, 4.0)?;
     ///     coo.put(1, 1, 2.0)?;
@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn new_fails_on_wrong_vectors() {
-        let coo = CooMatrix::new(None, 1, 1, 1).unwrap();
+        let coo = CooMatrix::new(1, 1, 1, None).unwrap();
         let x = Vector::new(2);
         let rhs = Vector::new(3);
         let x_wrong = Vector::new(3);
@@ -126,7 +126,7 @@ mod tests {
         // | 1  3 -2 |
         // | 3  5  6 |
         // | 2  4  3 |
-        let mut coo = CooMatrix::new(None, 3, 3, 9).unwrap();
+        let mut coo = CooMatrix::new(3, 3, 9, None).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 1, 3.0).unwrap();
         coo.put(0, 2, -2.0).unwrap();

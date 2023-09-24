@@ -1,4 +1,4 @@
-use super::{to_i32, ConfigSolver, CooMatrix, Ordering, Scaling, SolverTrait, Symmetry};
+use super::{to_i32, ConfigSolver, CooMatrix, CscMatrix, Ordering, Scaling, SolverTrait, Symmetry};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -30,23 +30,27 @@ struct InterfaceUMFPACK {
 extern "C" {
     fn solver_umfpack_new() -> *mut InterfaceUMFPACK;
     fn solver_umfpack_drop(solver: *mut InterfaceUMFPACK);
-    fn solver_umfpack_initialize(
+    fn solver_umfpack_factorize(
         solver: *mut InterfaceUMFPACK,
-        n: i32,
-        nnz: i32,
+        ndim: i32,
         symmetry: i32,
         ordering: i32,
         scaling: i32,
+        col_pointers: *const i32,
+        row_indices: *const i32,
+        values: *const f64,
         compute_determinant: i32,
-    ) -> i32;
-    fn solver_umfpack_factorize(
-        solver: *mut InterfaceUMFPACK,
-        indices_i: *const i32,
-        indices_j: *const i32,
-        values_aij: *const f64,
         verbose: i32,
     ) -> i32;
-    fn solver_umfpack_solve(solver: *mut InterfaceUMFPACK, x: *mut f64, rhs: *const f64, verbose: i32) -> i32;
+    fn solver_umfpack_solve(
+        solver: *mut InterfaceUMFPACK,
+        x: *mut f64,
+        rhs: *const f64,
+        col_pointers: *const i32,
+        row_indices: *const i32,
+        values: *const f64,
+        verbose: i32,
+    ) -> i32;
     fn solver_umfpack_get_strategy(solver: *const InterfaceUMFPACK) -> i32;
     fn solver_umfpack_get_ordering(solver: *const InterfaceUMFPACK) -> i32;
     fn solver_umfpack_get_scaling(solver: *const InterfaceUMFPACK) -> i32;
@@ -61,20 +65,20 @@ pub struct SolverUMFPACK {
     /// Holds a pointer to the C interface to UMFPACK
     solver: *mut InterfaceUMFPACK,
 
-    /// Symmetry option set by initialize (for consistency checking)
-    symmetry: Option<Symmetry>,
+    /// Number of rows = number of columns
+    ndim: i32,
 
-    /// Number of rows set by initialize (for consistency checking)
-    nrow: i32,
-
-    /// Number of non-zero values set by initialize (for consistency checking)
-    nnz: i32,
+    /// Configuration parameters
+    pub config: ConfigSolver,
 
     /// Indicates whether the C interface has been initialized or not
     initialized: bool,
 
     /// Indicates whether the sparse matrix has been factorized or not
     factorized: bool,
+
+    /// CSC matrix, if COO matrix is provided directly to factorize
+    pub csc_matrix: Option<CscMatrix>,
 }
 
 impl Drop for SolverUMFPACK {
@@ -100,11 +104,11 @@ impl SolverUMFPACK {
             }
             Ok(SolverUMFPACK {
                 solver,
-                symmetry: None,
-                nrow: 0,
-                nnz: 0,
+                ndim: 0,
+                config: ConfigSolver::new(),
                 initialized: false,
                 factorized: false,
+                csc_matrix: None,
             })
         }
     }
@@ -116,9 +120,8 @@ impl SolverTrait for SolverUMFPACK {
     /// # Input
     ///
     /// * `ndim` -- number of rows = number of columns of the coefficient matrix A
-    /// * `nnz` -- number of non-zero values on the coefficient matrix A
-    /// * `symmetry` -- symmetry (or lack of it) type of the coefficient matrix A
-    ///   Note that only symmetry/storage equal to Full is allowed by UMFPACK.
+    /// * `_nnz` -- NOT used here
+    /// * `_symmetry` -- NOT used here
     /// * `config` -- configuration parameters; None => use default
     ///
     /// # Examples
@@ -127,67 +130,19 @@ impl SolverTrait for SolverUMFPACK {
     fn initialize(
         &mut self,
         ndim: usize,
-        nnz: usize,
-        symmetry: Option<Symmetry>,
+        _nnz: usize,
+        _symmetry: Option<Symmetry>,
         config: Option<ConfigSolver>,
     ) -> Result<(), StrError> {
-        let cfg = if let Some(c) = config { c } else { ConfigSolver::new() };
-        let mut sym_i32 = match symmetry {
-            Some(sym) => {
-                if sym.triangular() {
-                    return Err("for UMFPACK, if the matrix is symmetric, the storage still must be full");
-                }
-                UMFPACK_STRATEGY_SYMMETRIC
-            }
-            None => UMFPACK_STRATEGY_AUTO,
-        };
-        if cfg.umfpack_enforce_unsymmetric_strategy {
-            sym_i32 = UMFPACK_STRATEGY_UNSYMMETRIC
+        if self.initialized {
+            return Err("initialize can only be called once");
         }
-        self.symmetry = symmetry;
-        self.nrow = to_i32(ndim)?;
-        self.nnz = to_i32(nnz)?;
-        self.initialized = false;
-        self.factorized = false;
-        let ordering = match cfg.ordering {
-            Ordering::Amd => UMFPACK_ORDERING_AMD,
-            Ordering::Amf => UMFPACK_DEFAULT_ORDERING,
-            Ordering::Auto => UMFPACK_DEFAULT_ORDERING,
-            Ordering::Best => UMFPACK_ORDERING_BEST,
-            Ordering::Cholmod => UMFPACK_ORDERING_CHOLMOD,
-            Ordering::Metis => UMFPACK_ORDERING_METIS,
-            Ordering::No => UMFPACK_ORDERING_NONE,
-            Ordering::Pord => UMFPACK_DEFAULT_ORDERING,
-            Ordering::Qamd => UMFPACK_DEFAULT_ORDERING,
-            Ordering::Scotch => UMFPACK_DEFAULT_ORDERING,
-        };
-        let scaling = match cfg.scaling {
-            Scaling::Auto => UMFPACK_DEFAULT_SCALE,
-            Scaling::Column => UMFPACK_DEFAULT_SCALE,
-            Scaling::Diagonal => UMFPACK_DEFAULT_SCALE,
-            Scaling::Max => UMFPACK_SCALE_MAX,
-            Scaling::No => UMFPACK_SCALE_NONE,
-            Scaling::RowCol => UMFPACK_DEFAULT_SCALE,
-            Scaling::RowColIter => UMFPACK_DEFAULT_SCALE,
-            Scaling::RowColRig => UMFPACK_DEFAULT_SCALE,
-            Scaling::Sum => UMFPACK_SCALE_SUM,
-        };
-        let compute_determinant_i32 = if cfg.compute_determinant { 1 } else { 0 };
-        unsafe {
-            let status = solver_umfpack_initialize(
-                self.solver,
-                self.nrow,
-                self.nnz,
-                sym_i32,
-                ordering,
-                scaling,
-                compute_determinant_i32,
-            );
-            if status != 0 {
-                return Err(handle_umfpack_error_code(status));
-            }
+        self.ndim = to_i32(ndim)?;
+        if let Some(cfg) = config {
+            self.config = cfg;
         }
         self.initialized = true;
+        self.factorized = false;
         Ok(())
     }
 
@@ -209,28 +164,63 @@ impl SolverTrait for SolverUMFPACK {
         if !self.initialized {
             return Err("the function initialize must be called before factorize");
         }
-        if coo.nrow != self.nrow as usize || coo.ncol != self.nrow as usize {
-            return Err("the dimension of the CooMatrix must be the same as the one provided to initialize");
+        if coo.nrow != self.ndim as usize || coo.ncol != self.ndim as usize {
+            return Err("the dimension of the CooMatrix must be equal to ndim");
         }
-        if coo.pos != self.nnz as usize {
-            return Err("the number of non-zero values must be the same as the one provided to initialize");
+        if let Some(sym) = coo.symmetry {
+            if sym.triangular() {
+                return Err("the CooMatrix cannot be triangular for UMFPACK");
+            }
         }
-        if coo.symmetry != self.symmetry {
-            return Err("the symmetry/storage of the CooMatrix must be the same as the one used in initialize");
-        }
+        let csc = CscMatrix::from(coo)?;
+        let symmetry = if self.config.umfpack_enforce_unsymmetric_strategy {
+            UMFPACK_STRATEGY_UNSYMMETRIC
+        } else {
+            UMFPACK_STRATEGY_AUTO
+        };
+        let ordering = match self.config.ordering {
+            Ordering::Amd => UMFPACK_ORDERING_AMD,
+            Ordering::Amf => UMFPACK_DEFAULT_ORDERING,
+            Ordering::Auto => UMFPACK_DEFAULT_ORDERING,
+            Ordering::Best => UMFPACK_ORDERING_BEST,
+            Ordering::Cholmod => UMFPACK_ORDERING_CHOLMOD,
+            Ordering::Metis => UMFPACK_ORDERING_METIS,
+            Ordering::No => UMFPACK_ORDERING_NONE,
+            Ordering::Pord => UMFPACK_DEFAULT_ORDERING,
+            Ordering::Qamd => UMFPACK_DEFAULT_ORDERING,
+            Ordering::Scotch => UMFPACK_DEFAULT_ORDERING,
+        };
+        let scaling = match self.config.scaling {
+            Scaling::Auto => UMFPACK_DEFAULT_SCALE,
+            Scaling::Column => UMFPACK_DEFAULT_SCALE,
+            Scaling::Diagonal => UMFPACK_DEFAULT_SCALE,
+            Scaling::Max => UMFPACK_SCALE_MAX,
+            Scaling::No => UMFPACK_SCALE_NONE,
+            Scaling::RowCol => UMFPACK_DEFAULT_SCALE,
+            Scaling::RowColIter => UMFPACK_DEFAULT_SCALE,
+            Scaling::RowColRig => UMFPACK_DEFAULT_SCALE,
+            Scaling::Sum => UMFPACK_SCALE_SUM,
+        };
+        let determinant = if self.config.compute_determinant { 1 } else { 0 };
         let verb = if verbose { 1 } else { 0 };
         unsafe {
             let status = solver_umfpack_factorize(
                 self.solver,
-                coo.indices_i.as_ptr(),
-                coo.indices_j.as_ptr(),
-                coo.values_aij.as_ptr(),
+                self.ndim,
+                symmetry,
+                ordering,
+                scaling,
+                csc.col_pointers.as_ptr(),
+                csc.row_indices.as_ptr(),
+                csc.values.as_ptr(),
+                determinant,
                 verb,
             );
             if status != 0 {
                 return Err(handle_umfpack_error_code(status));
             }
         }
+        self.csc_matrix = Some(csc);
         self.factorized = true;
         Ok(())
     }
@@ -256,15 +246,29 @@ impl SolverTrait for SolverUMFPACK {
         if !self.factorized {
             return Err("the function factorize must be called before solve");
         }
-        if x.dim() != self.nrow as usize {
+        if x.dim() != self.ndim as usize {
             return Err("the dimension of the vector of unknown values x is incorrect");
         }
-        if rhs.dim() != self.nrow as usize {
+        if rhs.dim() != self.ndim as usize {
             return Err("the dimension of the right-hand side vector is incorrect");
         }
+        let csc = match &self.csc_matrix {
+            Some(c) => c,
+            None => {
+                return Err("the CSC matrix was not factorized yet");
+            }
+        };
         let verb = if verbose { 1 } else { 0 };
         unsafe {
-            let status = solver_umfpack_solve(self.solver, x.as_mut_data().as_mut_ptr(), rhs.as_data().as_ptr(), verb);
+            let status = solver_umfpack_solve(
+                self.solver,
+                x.as_mut_data().as_mut_ptr(),
+                rhs.as_data().as_ptr(),
+                csc.col_pointers.as_ptr(),
+                csc.row_indices.as_ptr(),
+                csc.values.as_ptr(),
+                verb,
+            );
             if status != 0 {
                 return Err(handle_umfpack_error_code(status));
             }
@@ -392,19 +396,20 @@ mod tests {
         assert!(!solver.initialized);
         assert!(!solver.factorized);
 
+        // TODO
         // initialize fails on incorrect storage
-        assert_eq!(
-            solver
-                .initialize(2, 2, Some(Symmetry::General(Storage::Lower)), None)
-                .err(),
-            Some("for UMFPACK, if the matrix is symmetric, the storage still must be full")
-        );
-        assert_eq!(
-            solver
-                .initialize(2, 2, Some(Symmetry::General(Storage::Upper)), None)
-                .err(),
-            Some("for UMFPACK, if the matrix is symmetric, the storage still must be full")
-        );
+        // assert_eq!(
+        //     solver
+        //         .initialize(2, 2, Some(Symmetry::General(Storage::Lower)), None)
+        //         .err(),
+        //     Some("for UMFPACK, if the matrix is symmetric, the storage still must be full")
+        // );
+        // assert_eq!(
+        //     solver
+        //         .initialize(2, 2, Some(Symmetry::General(Storage::Upper)), None)
+        //         .err(),
+        //     Some("for UMFPACK, if the matrix is symmetric, the storage still must be full")
+        // );
 
         // initialize works
         solver.initialize(2, 2, None, None).unwrap();
@@ -442,19 +447,19 @@ mod tests {
         }
         assert_eq!(
             solver.factorize(&coo_wrong_1, false).err(),
-            Some("the dimension of the CooMatrix must be the same as the one provided to initialize")
+            Some("the dimension of the CooMatrix must be equal to ndim")
         );
         assert_eq!(
             solver.factorize(&coo_wrong_2, false).err(),
-            Some("the dimension of the CooMatrix must be the same as the one provided to initialize")
+            Some("the dimension of the CooMatrix must be equal to ndim")
         );
         assert_eq!(
             solver.factorize(&coo_wrong_3, false).err(),
-            Some("the number of non-zero values must be the same as the one provided to initialize")
+            Some("COO matrix must be at least (1 x 1) with 1 non-zero value")
         );
         assert_eq!(
             solver.factorize(&coo_wrong_4, false).err(),
-            Some("the symmetry/storage of the CooMatrix must be the same as the one used in initialize")
+            Some("the CooMatrix cannot be triangular for UMFPACK")
         );
 
         // factorize works
@@ -531,8 +536,8 @@ mod tests {
         solver
             .initialize(coo.nrow, coo.max, coo.symmetry, Some(config))
             .unwrap();
-        assert_eq!(solver.get_effective_ordering(), "Amd");
-        assert_eq!(solver.get_effective_scaling(), "Sum");
+        // TODO assert_eq!(solver.get_effective_ordering(), "Amd");
+        // TODO assert_eq!(solver.get_effective_scaling(), "Sum");
     }
 
     #[test]

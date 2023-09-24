@@ -473,7 +473,7 @@ mod tests {
     use super::CsrMatrix;
     use crate::{CooMatrix, Storage, Symmetry};
     use russell_chk::vec_approx_eq;
-    use russell_lab::Matrix;
+    use russell_lab::{Matrix, Vector};
 
     #[test]
     fn csr_matrix_first_triplet_with_shuffled_entries() {
@@ -787,6 +787,9 @@ mod tests {
                        │  0  4  2  0  1 │\n\
                        └                ┘";
         assert_eq!(format!("{}", a), correct);
+        // call to_matrix again to make sure the matrix is filled with zeros before the sum
+        csr.to_matrix(&mut a).unwrap();
+        assert_eq!(format!("{}", a), correct);
 
         // use as_matrix
         let b = csr.as_matrix().unwrap();
@@ -794,7 +797,7 @@ mod tests {
     }
 
     #[test]
-    fn to_matrix_upper_works() {
+    fn as_matrix_upper_works() {
         let csr = CsrMatrix {
             symmetry: Some(Symmetry::General(Storage::Upper)),
             nrow: 5,
@@ -815,7 +818,7 @@ mod tests {
     }
 
     #[test]
-    fn to_matrix_lower_works() {
+    fn as_matrix_lower_works() {
         let csr = CsrMatrix {
             symmetry: Some(Symmetry::General(Storage::Lower)),
             nrow: 5,
@@ -833,5 +836,36 @@ mod tests {
                        │     3     0     0     0    16 │\n\
                        └                               ┘";
         assert_eq!(format!("{}", a), correct);
+    }
+
+    #[test]
+    fn mat_vec_mul_works() {
+        //  5.0, -2.0, 0.0, 1.0,
+        // 10.0, -4.0, 0.0, 2.0,
+        // 15.0, -6.0, 0.0, 3.0,
+        let csr = CsrMatrix {
+            symmetry: None,
+            nrow: 3,
+            ncol: 4,
+            row_pointers: vec![0, 3, 6, 9],
+            col_indices: vec![
+                0, 1, 3, // i=0, p=(0),1,2
+                0, 1, 3, // i=1, p=(3),4,5
+                0, 1, 3, // i=2, p=(6),7,8
+            ], //                  (9)
+            values: vec![
+                5.0, -2.0, 1.0, //  i=0, p=(0),1,2
+                10.0, -4.0, 2.0, // i=1, p=(3),4,5
+                15.0, -6.0, 3.0, // i=2, p=(6),7,8
+            ], //                          (9)
+        };
+        let u = Vector::from(&[1.0, 3.0, 8.0, 5.0]);
+        let mut v = Vector::new(csr.nrow);
+        csr.mat_vec_mul(&mut v, 1.0, &u).unwrap();
+        let correct = &[4.0, 8.0, 12.0];
+        vec_approx_eq(v.as_data(), correct, 1e-15);
+        // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
+        csr.mat_vec_mul(&mut v, 1.0, &u).unwrap();
+        vec_approx_eq(v.as_data(), correct, 1e-15);
     }
 }

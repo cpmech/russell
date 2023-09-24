@@ -884,6 +884,9 @@ mod tests {
                        │  0  4  2  0  1 │\n\
                        └                ┘";
         assert_eq!(format!("{}", a), correct);
+        // call to_matrix again to make sure the matrix is filled with zeros before the sum
+        csc.to_matrix(&mut a).unwrap();
+        assert_eq!(format!("{}", a), correct);
 
         // use as_matrix
         let b = csc.as_matrix().unwrap();
@@ -891,7 +894,7 @@ mod tests {
     }
 
     #[test]
-    fn to_matrix_upper_works() {
+    fn as_matrix_upper_works() {
         let csc = CscMatrix {
             symmetry: Some(Symmetry::General(Storage::Upper)),
             nrow: 5,
@@ -912,7 +915,7 @@ mod tests {
     }
 
     #[test]
-    fn to_matrix_lower_works() {
+    fn as_matrix_lower_works() {
         let csc = CscMatrix {
             symmetry: Some(Symmetry::General(Storage::Lower)),
             nrow: 5,
@@ -959,6 +962,9 @@ mod tests {
         let mut v = Vector::new(csc.nrow);
         csc.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         let correct = &[4.0, 8.0, 12.0];
+        vec_approx_eq(v.as_data(), correct, 1e-15);
+        // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
+        csc.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         vec_approx_eq(v.as_data(), correct, 1e-15);
     }
 }

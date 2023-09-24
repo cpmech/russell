@@ -496,6 +496,13 @@ mod tests {
         assert_eq!(a.get(1, 0), 3.0);
         assert_eq!(a.get(1, 1), 4.0);
         assert_eq!(a.get(2, 2), 5.0);
+        // call to_matrix again to make sure the matrix is filled with zeros before the sum
+        coo.to_matrix(&mut a).unwrap();
+        assert_eq!(a.get(0, 0), 1.0);
+        assert_eq!(a.get(0, 1), 2.0);
+        assert_eq!(a.get(1, 0), 3.0);
+        assert_eq!(a.get(1, 1), 4.0);
+        assert_eq!(a.get(2, 2), 5.0);
         // using as_matrix
         let bb = coo.as_matrix();
         assert_eq!(bb.get(0, 0), 1.0);
@@ -600,6 +607,9 @@ mod tests {
         let mut v = Vector::new(coo.nrow);
         coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         let correct_v = &[1.4, 0.14, 14.0];
+        vec_approx_eq(v.as_data(), correct_v, 1e-15);
+        // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
+        coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         vec_approx_eq(v.as_data(), correct_v, 1e-15);
     }
 

@@ -137,14 +137,23 @@ int32_t solver_umfpack_solve(struct InterfaceUMFPACK *solver,
 }
 
 int32_t solver_umfpack_get_ordering(const struct InterfaceUMFPACK *solver) {
+    if (solver == NULL) {
+        return -1;
+    }
     return solver->effective_ordering;
 }
 
 int32_t solver_umfpack_get_scaling(const struct InterfaceUMFPACK *solver) {
+    if (solver == NULL) {
+        return -1;
+    }
     return solver->effective_scaling;
 }
 
 int32_t solver_umfpack_get_strategy(const struct InterfaceUMFPACK *solver) {
+    if (solver == NULL) {
+        return -1;
+    }
     return solver->effective_strategy;
 }
 

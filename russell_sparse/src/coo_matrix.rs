@@ -79,13 +79,13 @@ impl CooMatrix {
     /// ```
     pub fn new(symmetry: Option<Symmetry>, nrow: usize, ncol: usize, max: usize) -> Result<Self, StrError> {
         if nrow < 1 {
-            return Err("nrow must be greater than zero");
+            return Err("nrow must be ≥ 1");
         }
         if ncol < 1 {
-            return Err("ncol must be greater than zero");
+            return Err("ncol must be ≥ 1");
         }
         if max < 1 {
-            return Err("max must be greater than zero");
+            return Err("max (nnz) must be ≥ 1");
         }
         Ok(CooMatrix {
             symmetry,
@@ -381,18 +381,9 @@ mod tests {
 
     #[test]
     fn new_fails_on_wrong_input() {
-        assert_eq!(
-            CooMatrix::new(None, 0, 1, 3).err(),
-            Some("nrow must be greater than zero")
-        );
-        assert_eq!(
-            CooMatrix::new(None, 1, 0, 3).err(),
-            Some("ncol must be greater than zero")
-        );
-        assert_eq!(
-            CooMatrix::new(None, 1, 1, 0).err(),
-            Some("max must be greater than zero")
-        );
+        assert_eq!(CooMatrix::new(None, 0, 1, 3).err(), Some("nrow must be ≥ 1"));
+        assert_eq!(CooMatrix::new(None, 1, 0, 3).err(), Some("ncol must be ≥ 1"));
+        assert_eq!(CooMatrix::new(None, 1, 1, 0).err(), Some("max (nnz) must be ≥ 1"));
     }
 
     #[test]

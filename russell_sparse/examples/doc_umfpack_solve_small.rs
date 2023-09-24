@@ -38,7 +38,7 @@ fn main() -> Result<(), StrError> {
     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
 
     // initialize, factorize, and solve
-    let params = Settings::new();
+    let params = ConfigSolver::new();
     let mut solver = SolverUMFPACK::new()?;
     solver.initialize(&coo, params)?;
     solver.factorize(&coo, false)?;

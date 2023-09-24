@@ -99,7 +99,7 @@ impl SolverTrait for SolverMUMPS {
     ///
     /// * `coo` -- the CooMatrix representing the sparse coefficient matrix.
     ///   Note that only symmetry/storage equal to Lower or Full are allowed by MUMPS.
-    fn initialize(&mut self, coo: &CooMatrix, config: crate::Settings) -> Result<(), StrError> {
+    fn initialize(&mut self, coo: &CooMatrix, config: crate::ConfigSolver) -> Result<(), StrError> {
         let sym_i32 = match coo.symmetry {
             Some(sym) => match sym {
                 Symmetry::General(storage) => {
@@ -401,7 +401,7 @@ fn handle_mumps_error_code(err: i32) -> StrError {
 #[cfg(test)]
 mod tests {
     use super::{handle_mumps_error_code, SolverMUMPS};
-    use crate::{CooMatrix, Ordering, Samples, Scaling, Settings, SolverTrait, Storage, Symmetry};
+    use crate::{ConfigSolver, CooMatrix, Ordering, Samples, Scaling, SolverTrait, Storage, Symmetry};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 
@@ -422,7 +422,7 @@ mod tests {
         let (coo_pd_upper, _) = Samples::mkl_sample1_positive_definite_upper();
 
         // set params
-        let mut params = Settings::new();
+        let mut params = ConfigSolver::new();
         params.ordering = Ordering::Pord;
         params.scaling = Scaling::RowCol;
 

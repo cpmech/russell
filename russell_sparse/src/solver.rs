@@ -2,9 +2,9 @@ use super::{CooMatrix, Genie, Ordering, Scaling, SolverMUMPS, SolverUMFPACK};
 use crate::StrError;
 use russell_lab::Vector;
 
-/// Holds optional settings for the sparse solver
+/// Defines the configuration parameters for the sparse solver
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Settings {
+pub struct ConfigSolver {
     /// Defines the symmetric permutation (ordering)
     pub ordering: Ordering,
 
@@ -35,10 +35,10 @@ pub struct Settings {
     pub umfpack_enforce_unsymmetric_strategy: bool,
 }
 
-impl Settings {
+impl ConfigSolver {
     /// Allocates a new instance with default values
     pub fn new() -> Self {
-        Settings {
+        ConfigSolver {
             ordering: Ordering::Auto,
             scaling: Scaling::Auto,
             compute_determinant: false,
@@ -62,7 +62,7 @@ pub trait SolverTrait {
     ///
     /// * For symmetric matrices, `MUMPS` requires that the symmetry/storage be Lower or Full.
     /// * For symmetric matrices, `UMFPACK` requires that the symmetry/storage be Full.
-    fn initialize(&mut self, coo: &CooMatrix, settings: Settings) -> Result<(), StrError>;
+    fn initialize(&mut self, coo: &CooMatrix, config: ConfigSolver) -> Result<(), StrError>;
 
     /// Performs the factorization (and analysis)
     ///
@@ -160,7 +160,7 @@ impl<'a> Solver<'a> {
     ///    `initialize`, `factorize`, and `solve`.
     /// 4. This function is best for a **single-use** need, whereas the actual
     ///    solver should be considered for a recurrent use (e.g., inside a loop).
-    /// 5. Also, use the actual implementation if settings such as ordering or scaling
+    /// 5. Also, use the individual implementations if options such as ordering or scaling
     ///    need to be configured.
     pub fn compute(
         genie: Genie,
@@ -169,7 +169,7 @@ impl<'a> Solver<'a> {
         rhs: &Vector,
         verbose: bool,
     ) -> Result<Self, StrError> {
-        let params = Settings::new();
+        let params = ConfigSolver::new();
         let mut solver = Solver::new(genie)?;
         solver.actual.initialize(coo, params)?;
         solver.actual.factorize(coo, verbose)?;
@@ -182,18 +182,21 @@ impl<'a> Solver<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Settings, Solver};
-    use crate::{Genie, Samples};
+    use super::{ConfigSolver, Solver};
+    use crate::{Genie, Ordering, Samples, Scaling};
     use russell_chk::vec_approx_eq;
     use russell_lab::Vector;
 
     #[test]
-    fn settings_new_works() {
-        let settings = Settings::new();
-        assert_eq!(settings.compute_determinant, false);
-        assert_eq!(settings.mumps_pct_inc_workspace, 100);
-        assert_eq!(settings.mumps_max_work_memory, 0);
-        assert_eq!(settings.mumps_openmp_num_threads, 0);
+    fn config_solver_new_works() {
+        let config = ConfigSolver::new();
+        assert_eq!(config.ordering, Ordering::Auto);
+        assert_eq!(config.scaling, Scaling::Auto);
+        assert_eq!(config.compute_determinant, false);
+        assert_eq!(config.mumps_pct_inc_workspace, 100);
+        assert_eq!(config.mumps_max_work_memory, 0);
+        assert_eq!(config.mumps_openmp_num_threads, 0);
+        assert!(!config.umfpack_enforce_unsymmetric_strategy);
     }
 
     #[test]

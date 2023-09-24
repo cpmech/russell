@@ -63,12 +63,12 @@ fn main() -> Result<(), StrError> {
         Genie::Umfpack => MMsymOption::MakeItFull,
     };
 
-    // settings
-    let mut settings = Settings::new();
-    settings.ordering = enum_ordering(&opt.ordering);
-    settings.scaling = enum_scaling(&opt.scaling);
-    settings.compute_determinant = opt.determinant;
-    settings.mumps_openmp_num_threads = opt.omp_nt as usize;
+    // configuration parameters
+    let mut config = ConfigSolver::new();
+    config.ordering = enum_ordering(&opt.ordering);
+    config.scaling = enum_scaling(&opt.scaling);
+    config.compute_determinant = opt.determinant;
+    config.mumps_openmp_num_threads = opt.omp_nt as usize;
 
     // read the matrix
     let mut sw = Stopwatch::new("");
@@ -80,7 +80,7 @@ fn main() -> Result<(), StrError> {
 
     // call initialize
     sw.reset();
-    solver.actual.initialize(&coo, settings)?;
+    solver.actual.initialize(&coo, config)?;
     let time_initialize = sw.stop();
 
     // call factorize

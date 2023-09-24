@@ -9,7 +9,7 @@ fn main() -> Result<(), StrError> {
     let nnz = 5; // number of non-zero values
 
     // allocate the coefficient matrix
-    let mut coo = CooMatrix::new(ndim, ndim, nnz, None)?;
+    let mut coo = CooMatrix::new(ndim, ndim, nnz, None, false)?;
     coo.put(0, 0, 0.2)?;
     coo.put(0, 1, 0.2)?;
     coo.put(1, 0, 0.5)?;

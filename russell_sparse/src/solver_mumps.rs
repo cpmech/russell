@@ -194,6 +194,9 @@ impl SolverTrait for SolverMUMPS {
         if !self.initialized {
             return Err("the function initialize must be called before factorize");
         }
+        if !coo.one_based {
+            return Err("the COO matrix must have one-based (FORTRAN) indices as required by MUMPS");
+        }
         if coo.nrow != self.nrow as usize || coo.ncol != self.nrow as usize {
             return Err("the dimension of the CooMatrix must be the same as the one provided to initialize");
         }
@@ -446,7 +449,7 @@ mod tests {
         );
 
         // sample matrix
-        let (coo, _) = Samples::umfpack_sample1_unsymmetric();
+        let (coo, _) = Samples::umfpack_sample1_unsymmetric(true);
 
         // factorize requests initialize
         assert_eq!(
@@ -468,10 +471,10 @@ mod tests {
 
         // factorize fails on incompatible coo matrix
         let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo_wrong_1 = CooMatrix::new(1, 5, 13, None).unwrap();
-        let coo_wrong_2 = CooMatrix::new(5, 1, 13, None).unwrap();
-        let coo_wrong_3 = CooMatrix::new(5, 5, 12, None).unwrap();
-        let mut coo_wrong_4 = CooMatrix::new(5, 5, 13, sym).unwrap();
+        let mut coo_wrong_1 = CooMatrix::new(1, 5, 13, None, true).unwrap();
+        let coo_wrong_2 = CooMatrix::new(5, 1, 13, None, true).unwrap();
+        let coo_wrong_3 = CooMatrix::new(5, 5, 12, None, true).unwrap();
+        let mut coo_wrong_4 = CooMatrix::new(5, 5, 13, sym, true).unwrap();
         for _ in 0..13 {
             coo_wrong_1.put(0, 0, 1.0).unwrap();
             coo_wrong_4.put(0, 0, 1.0).unwrap();
@@ -538,7 +541,7 @@ mod tests {
         vec_approx_eq(x_again.as_data(), x_correct, 1e-15);
 
         // factorize fails on singular matrix
-        let mut coo_singular = CooMatrix::new(5, 5, 2, None).unwrap();
+        let mut coo_singular = CooMatrix::new(5, 5, 2, None, true).unwrap();
         coo_singular.put(0, 0, 1.0).unwrap();
         coo_singular.put(4, 4, 1.0).unwrap();
         let mut solver = SolverMUMPS::new().unwrap();
@@ -551,7 +554,7 @@ mod tests {
         );
 
         // solve with positive-definite matrix works
-        let (coo_pd_lower, _) = Samples::mkl_sample1_positive_definite_lower();
+        let (coo_pd_lower, _) = Samples::mkl_sample1_positive_definite_lower(true);
         config.ordering = Ordering::Auto;
         config.scaling = Scaling::Auto;
         let mut solver = SolverMUMPS::new().unwrap();

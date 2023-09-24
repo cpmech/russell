@@ -29,8 +29,8 @@ impl Samples {
     /// ```text
     /// let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
     /// ```
-    pub fn umfpack_sample1_unsymmetric() -> (CooMatrix, f64) {
-        let mut coo = CooMatrix::new(5, 5, 13, None).unwrap();
+    pub fn umfpack_sample1_unsymmetric(one_based: bool) -> (CooMatrix, f64) {
+        let mut coo = CooMatrix::new(5, 5, 13, None, one_based).unwrap();
         coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2) duplicate
         coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2) duplicate
         coo.put(1, 0, 3.0).unwrap();
@@ -72,9 +72,9 @@ impl Samples {
     /// ```text
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
-    pub fn mkl_sample1_symmetric_lower() -> (CooMatrix, f64) {
+    pub fn mkl_sample1_symmetric_lower(one_based: bool) -> (CooMatrix, f64) {
         let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo = CooMatrix::new(5, 5, 9, sym).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 9, sym, one_based).unwrap();
         coo.put(0, 0, 9.0).unwrap();
         coo.put(1, 1, 0.5).unwrap();
         coo.put(2, 2, 12.0).unwrap();
@@ -112,9 +112,9 @@ impl Samples {
     /// ```text
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
-    pub fn mkl_sample1_positive_definite_lower() -> (CooMatrix, f64) {
+    pub fn mkl_sample1_positive_definite_lower(one_based: bool) -> (CooMatrix, f64) {
         let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
-        let mut coo = CooMatrix::new(5, 5, 9, sym).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 9, sym, one_based).unwrap();
         coo.put(0, 0, 9.0).unwrap();
         coo.put(1, 1, 0.5).unwrap();
         coo.put(2, 2, 12.0).unwrap();
@@ -152,9 +152,9 @@ impl Samples {
     /// ```text
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
-    pub fn mkl_sample1_symmetric_upper() -> (CooMatrix, f64) {
+    pub fn mkl_sample1_symmetric_upper(one_based: bool) -> (CooMatrix, f64) {
         let sym = Some(Symmetry::General(Storage::Upper));
-        let mut coo = CooMatrix::new(5, 5, 9, sym).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 9, sym, one_based).unwrap();
         coo.put(0, 0, 9.0).unwrap();
         coo.put(0, 1, 1.5).unwrap();
         coo.put(1, 1, 0.5).unwrap();
@@ -192,9 +192,9 @@ impl Samples {
     /// ```text
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
-    pub fn mkl_sample1_positive_definite_upper() -> (CooMatrix, f64) {
+    pub fn mkl_sample1_positive_definite_upper(one_based: bool) -> (CooMatrix, f64) {
         let sym = Some(Symmetry::PositiveDefinite(Storage::Upper));
-        let mut coo = CooMatrix::new(5, 5, 9, sym).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 9, sym, one_based).unwrap();
         coo.put(0, 0, 9.0).unwrap();
         coo.put(0, 1, 1.5).unwrap();
         coo.put(1, 1, 0.5).unwrap();
@@ -232,9 +232,9 @@ impl Samples {
     /// ```text
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
-    pub fn mkl_sample1_symmetric_full() -> (CooMatrix, f64) {
+    pub fn mkl_sample1_symmetric_full(one_based: bool) -> (CooMatrix, f64) {
         let sym = Some(Symmetry::General(Storage::Full));
-        let mut coo = CooMatrix::new(5, 5, 13, sym).unwrap();
+        let mut coo = CooMatrix::new(5, 5, 13, sym, one_based).unwrap();
         coo.put(0, 0, 9.0).unwrap(); // 0
         coo.put(0, 1, 1.5).unwrap(); // 1
         coo.put(0, 2, 6.0).unwrap(); // 2
@@ -262,7 +262,7 @@ mod tests {
 
     #[test]
     fn samples_are_correct() {
-        let (coo, correct_det) = Samples::umfpack_sample1_unsymmetric();
+        let (coo, _) = Samples::umfpack_sample1_unsymmetric(false);
         let mat = coo.as_matrix();
         let correct = "┌                ┐\n\
                        │  2  3  0  0  0 │\n\
@@ -272,6 +272,18 @@ mod tests {
                        │  0  4  2  0  1 │\n\
                        └                ┘";
         assert_eq!(format!("{}", mat), correct);
+
+        let (coo, correct_det) = Samples::umfpack_sample1_unsymmetric(true);
+        let mat = coo.as_matrix();
+        let correct = "┌                ┐\n\
+                       │  2  3  0  0  0 │\n\
+                       │  3  0  4  0  6 │\n\
+                       │  0 -1 -3  2  0 │\n\
+                       │  0  0  1  0  0 │\n\
+                       │  0  4  2  0  1 │\n\
+                       └                ┘";
+        assert_eq!(format!("{}", mat), correct);
+
         let mut inv = Matrix::new(5, 5);
         let det = mat_inverse(&mut inv, &mat).unwrap();
         approx_eq(det, correct_det, 1e-15);
@@ -284,11 +296,11 @@ mod tests {
                        │     3     0     0     0    16 │\n\
                        └                               ┘";
         for (coo, correct_det) in [
-            Samples::mkl_sample1_positive_definite_lower(),
-            Samples::mkl_sample1_positive_definite_upper(),
-            Samples::mkl_sample1_symmetric_lower(),
-            Samples::mkl_sample1_symmetric_upper(),
-            Samples::mkl_sample1_symmetric_full(),
+            Samples::mkl_sample1_positive_definite_lower(false),
+            Samples::mkl_sample1_positive_definite_upper(false),
+            Samples::mkl_sample1_symmetric_lower(false),
+            Samples::mkl_sample1_symmetric_upper(false),
+            Samples::mkl_sample1_symmetric_full(false),
         ] {
             let mat = coo.as_matrix();
             assert_eq!(format!("{}", mat), correct);

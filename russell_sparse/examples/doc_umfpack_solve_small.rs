@@ -14,7 +14,7 @@ fn main() -> Result<(), StrError> {
 
     // allocate a square matrix
     // allocate the coefficient matrix
-    let mut coo = CooMatrix::new(ndim, ndim, nnz, None)?;
+    let mut coo = CooMatrix::new(ndim, ndim, nnz, None, false)?;
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(1, 0, 3.0)?;

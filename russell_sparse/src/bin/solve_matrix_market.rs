@@ -58,9 +58,9 @@ fn main() -> Result<(), StrError> {
     };
 
     // select the symmetric handling option
-    let handling = match genie {
-        Genie::Mumps => MMsymOption::LeaveAsLower,
-        Genie::Umfpack => MMsymOption::MakeItFull,
+    let (handling, one_based) = match genie {
+        Genie::Mumps => (MMsymOption::LeaveAsLower, true),
+        Genie::Umfpack => (MMsymOption::MakeItFull, false),
     };
 
     // configuration parameters
@@ -72,7 +72,7 @@ fn main() -> Result<(), StrError> {
 
     // read the matrix
     let mut sw = Stopwatch::new("");
-    let coo = read_matrix_market(&opt.matrix_market_file, handling)?;
+    let coo = read_matrix_market(&opt.matrix_market_file, handling, one_based)?;
     let time_read = sw.stop();
 
     // allocate and configure the solver

@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn solver_compute_works() {
-        let (coo, _) = Samples::mkl_sample1_symmetric_full();
+        let (coo, _) = Samples::mkl_sample1_symmetric_full(false);
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
         Solver::compute(Genie::Umfpack, &coo, &mut x, &rhs, false).unwrap();

@@ -39,18 +39,10 @@ void solver_mumps_drop(struct InterfaceMUMPS *solver) {
         return;
     }
 
-    if (solver->data.irn != NULL) {
-        free(solver->data.irn);
-        solver->data.irn = NULL;
-    }
-    if (solver->data.jcn != NULL) {
-        free(solver->data.jcn);
-        solver->data.jcn = NULL;
-    }
-    if (solver->data.a != NULL) {
-        free(solver->data.a);
-        solver->data.a = NULL;
-    }
+    // prevent MUMPS freeing these
+    solver->data.irn = NULL;
+    solver->data.jcn = NULL;
+    solver->data.a = NULL;
 
     if (solver->done_job_init == C_TRUE) {
         set_mumps_verbose(&solver->data, C_FALSE);
@@ -97,24 +89,6 @@ int32_t solver_mumps_initialize(struct InterfaceMUMPS *solver,
         return VERSION_ERROR;
     }
 
-    solver->data.irn = (MUMPS_INT *)malloc(nnz * sizeof(MUMPS_INT));
-    if (solver->data.irn == NULL) {
-        return MALLOC_ERROR;
-    }
-
-    solver->data.jcn = (MUMPS_INT *)malloc(nnz * sizeof(MUMPS_INT));
-    if (solver->data.jcn == NULL) {
-        free(solver->data.irn);
-        return MALLOC_ERROR;
-    }
-
-    solver->data.a = (double *)malloc(nnz * sizeof(double));
-    if (solver->data.a == NULL) {
-        free(solver->data.jcn);
-        free(solver->data.irn);
-        return MALLOC_ERROR;
-    }
-
     solver->data.n = n;
     solver->data.nz = nnz;
 
@@ -153,12 +127,9 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
 
     // set matrix components and perform analysis (must be done for each factorization)
 
-    int32_t p;
-    for (p = 0; p < solver->data.nz; p++) {
-        solver->data.irn[p] = indices_i[p] + 1;
-        solver->data.jcn[p] = indices_j[p] + 1;
-        solver->data.a[p] = values_aij[p];
-    }
+    solver->data.irn = (int *)indices_i;
+    solver->data.jcn = (int *)indices_j;
+    solver->data.a = (double *)values_aij;
 
     set_mumps_verbose(&solver->data, verbose);
     solver->data.job = MUMPS_JOB_ANALYZE;

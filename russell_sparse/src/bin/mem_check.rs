@@ -25,7 +25,8 @@ fn test_solver(genie: Genie) {
         _ => (),
     };
 
-    let mut coo = match CooMatrix::new(ndim, ndim, nnz, None) {
+    let one_based = if genie == Genie::Mumps { true } else { false };
+    let mut coo = match CooMatrix::new(ndim, ndim, nnz, None, one_based) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new CooMatrix): {}", e);
@@ -101,7 +102,8 @@ fn test_solver_singular(genie: Genie) {
         _ => (),
     };
 
-    let coo_singular = match CooMatrix::new(ndim, ndim, nnz, None) {
+    let one_based = if genie == Genie::Mumps { true } else { false };
+    let coo_singular = match CooMatrix::new(ndim, ndim, nnz, None, one_based) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new CooMatrix): {}", e);

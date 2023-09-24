@@ -167,6 +167,7 @@ impl MatrixMarketData {
 ///
 /// * `full_path` -- may be a String, &str, or Path
 /// * `symmetric_handling` -- Options to handle symmetric matrices
+/// * `one_based` -- Use one-based indices; e.g., for MUMPS or other FORTRAN routines
 ///
 /// # Output
 ///
@@ -264,7 +265,7 @@ impl MatrixMarketData {
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let filepath = "./data/matrix_market/ok_simple_general.mtx".to_string();
-///     let coo = read_matrix_market(&filepath, MMsymOption::LeaveAsLower)?;
+///     let coo = read_matrix_market(&filepath, MMsymOption::LeaveAsLower, false)?;
 ///     let mut a = Matrix::new(coo.nrow, coo.ncol);
 ///     coo.to_matrix(&mut a)?;
 ///     let correct = "┌       ┐\n\
@@ -300,7 +301,7 @@ impl MatrixMarketData {
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let filepath = "./data/matrix_market/ok_simple_symmetric.mtx".to_string();
-///     let coo = read_matrix_market(&filepath, MMsymOption::LeaveAsLower)?;
+///     let coo = read_matrix_market(&filepath, MMsymOption::LeaveAsLower, false)?;
 ///     let mut a = Matrix::new(coo.nrow, coo.ncol);
 ///     coo.to_matrix(&mut a)?;
 ///     let correct = "┌       ┐\n\
@@ -313,7 +314,11 @@ impl MatrixMarketData {
 ///     Ok(())
 /// }
 /// ```
-pub fn read_matrix_market<P>(full_path: &P, symmetric_handling: MMsymOption) -> Result<CooMatrix, StrError>
+pub fn read_matrix_market<P>(
+    full_path: &P,
+    symmetric_handling: MMsymOption,
+    one_based: bool,
+) -> Result<CooMatrix, StrError>
 where
     P: AsRef<OsStr> + ?Sized,
 {
@@ -363,7 +368,7 @@ where
     }
 
     // allocate triplet
-    let mut coo = CooMatrix::new(data.m as usize, data.n as usize, max as usize, symmetry).unwrap();
+    let mut coo = CooMatrix::new(data.m as usize, data.n as usize, max as usize, symmetry, one_based).unwrap();
 
     // read and parse triples
     loop {
@@ -526,29 +531,30 @@ mod tests {
     #[test]
     fn read_matrix_market_handle_wrong_files() {
         let h = MMsymOption::LeaveAsLower;
-        assert_eq!(read_matrix_market("__wrong__", h).err(), Some("cannot open file"));
+        let o = false;
+        assert_eq!(read_matrix_market("__wrong__", h, o).err(), Some("cannot open file"));
         assert_eq!(
-            read_matrix_market("./data/matrix_market/bad_empty_file.mtx", h).err(),
+            read_matrix_market("./data/matrix_market/bad_empty_file.mtx", h, o).err(),
             Some("file is empty")
         );
         assert_eq!(
-            read_matrix_market("./data/matrix_market/bad_wrong_header.mtx", h).err(),
+            read_matrix_market("./data/matrix_market/bad_wrong_header.mtx", h, o).err(),
             Some("after %%MatrixMarket, the first option must be \"matrix\"")
         );
         assert_eq!(
-            read_matrix_market("./data/matrix_market/bad_wrong_dims.mtx", h).err(),
+            read_matrix_market("./data/matrix_market/bad_wrong_dims.mtx", h, o).err(),
             Some("found invalid (zero or negative) dimensions")
         );
         assert_eq!(
-            read_matrix_market("./data/matrix_market/bad_missing_data.mtx", h).err(),
+            read_matrix_market("./data/matrix_market/bad_missing_data.mtx", h, o).err(),
             Some("not all triples (i, j, aij) have been found")
         );
         assert_eq!(
-            read_matrix_market("./data/matrix_market/bad_many_lines.mtx", h).err(),
+            read_matrix_market("./data/matrix_market/bad_many_lines.mtx", h, o).err(),
             Some("there are more (i, j, aij) triples than specified")
         );
         assert_eq!(
-            read_matrix_market("./data/matrix_market/bad_symmetric_rectangular.mtx", h).err(),
+            read_matrix_market("./data/matrix_market/bad_symmetric_rectangular.mtx", h,o).err(),
             Some("MatrixMarket data is invalid: the number of rows must be equal the number of columns for symmetric matrices")
         );
     }
@@ -556,8 +562,9 @@ mod tests {
     #[test]
     fn read_matrix_market_works() {
         let h = MMsymOption::LeaveAsLower;
+        let o = false;
         let filepath = "./data/matrix_market/ok_general.mtx".to_string();
-        let coo = read_matrix_market(&filepath, h).unwrap();
+        let coo = read_matrix_market(&filepath, h, o).unwrap();
         assert_eq!(coo.symmetry, None);
         assert_eq!((coo.nrow, coo.ncol, coo.pos, coo.max), (5, 5, 12, 12));
         assert_eq!(coo.indices_i, &[0, 1, 0, 2, 4, 1, 2, 3, 4, 2, 1, 4]);
@@ -571,8 +578,9 @@ mod tests {
     #[test]
     fn read_matrix_market_symmetric_lower_works() {
         let h = MMsymOption::LeaveAsLower;
+        let o = false;
         let filepath = "./data/matrix_market/ok_symmetric.mtx".to_string();
-        let coo = read_matrix_market(&filepath, h).unwrap();
+        let coo = read_matrix_market(&filepath, h, o).unwrap();
         assert_eq!(coo.symmetry, Some(Symmetry::General(Storage::Lower)));
         assert_eq!((coo.nrow, coo.ncol, coo.pos, coo.max), (5, 5, 15, 15));
         assert_eq!(coo.indices_i, &[0, 1, 2, 3, 4, 1, 2, 3, 4, 2, 3, 4, 3, 4, 4]);
@@ -586,8 +594,9 @@ mod tests {
     #[test]
     fn read_matrix_market_symmetric_upper_works() {
         let h = MMsymOption::SwapToUpper;
+        let o = false;
         let filepath = "./data/matrix_market/ok_symmetric.mtx".to_string();
-        let coo = read_matrix_market(&filepath, h).unwrap();
+        let coo = read_matrix_market(&filepath, h, o).unwrap();
         assert_eq!(coo.symmetry, Some(Symmetry::General(Storage::Upper)));
         assert_eq!((coo.nrow, coo.ncol, coo.pos, coo.max), (5, 5, 15, 15));
         assert_eq!(coo.indices_i, &[0, 1, 2, 3, 4, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3]);
@@ -601,8 +610,9 @@ mod tests {
     #[test]
     fn read_matrix_market_symmetric_to_full_works() {
         let h = MMsymOption::MakeItFull;
+        let o = false;
         let filepath = "./data/matrix_market/ok_symmetric_small.mtx".to_string();
-        let coo = read_matrix_market(&filepath, h).unwrap();
+        let coo = read_matrix_market(&filepath, h, o).unwrap();
         assert_eq!(coo.symmetry, Some(Symmetry::General(Storage::Full)));
         assert_eq!((coo.nrow, coo.ncol, coo.pos, coo.max), (5, 5, 11, 14));
         assert_eq!(coo.indices_i, &[0, 1, 0, 2, 1, 3, 2, 3, 4, 1, 4, 0, 0, 0]);

@@ -11,7 +11,7 @@ fn main() -> Result<(), StrError> {
     // │  0  4  2  0  1 │
     // └                ┘
     let (nrow, ncol, nnz) = (5, 5, 13);
-    let mut coo = CooMatrix::new(nrow, ncol, nnz, None)?;
+    let mut coo = CooMatrix::new(nrow, ncol, nnz, None, false)?;
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(1, 0, 3.0)?;

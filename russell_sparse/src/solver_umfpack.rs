@@ -424,7 +424,7 @@ mod tests {
         assert!(!solver.factorized);
 
         // sample matrix
-        let (coo, _) = Samples::umfpack_sample1_unsymmetric();
+        let (coo, _) = Samples::umfpack_sample1_unsymmetric(false);
 
         // factorize requests initialize
         assert_eq!(
@@ -437,10 +437,10 @@ mod tests {
 
         // factorize fails on incompatible coo matrix
         let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo_wrong_1 = CooMatrix::new(1, 5, 13, None).unwrap();
-        let coo_wrong_2 = CooMatrix::new(5, 1, 13, None).unwrap();
-        let coo_wrong_3 = CooMatrix::new(5, 5, 12, None).unwrap();
-        let mut coo_wrong_4 = CooMatrix::new(5, 5, 13, sym).unwrap();
+        let mut coo_wrong_1 = CooMatrix::new(1, 5, 13, None, false).unwrap();
+        let coo_wrong_2 = CooMatrix::new(5, 1, 13, None, false).unwrap();
+        let coo_wrong_3 = CooMatrix::new(5, 5, 12, None, false).unwrap();
+        let mut coo_wrong_4 = CooMatrix::new(5, 5, 13, sym, false).unwrap();
         for _ in 0..13 {
             coo_wrong_1.put(0, 0, 1.0).unwrap();
             coo_wrong_4.put(0, 0, 1.0).unwrap();
@@ -470,7 +470,7 @@ mod tests {
     #[test]
     fn factorize_fails_on_singular_matrix() {
         let mut solver = SolverUMFPACK::new().unwrap();
-        let mut coo = CooMatrix::new(2, 2, 2, None).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 2, None, false).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 0.0).unwrap();
         solver.initialize(coo.nrow, coo.max, coo.symmetry, None).unwrap();
@@ -485,7 +485,7 @@ mod tests {
         assert!(!solver.factorized);
 
         // sample matrix
-        let (coo, _) = Samples::umfpack_sample1_unsymmetric();
+        let (coo, _) = Samples::umfpack_sample1_unsymmetric(false);
 
         // allocate x and rhs
         let mut x = Vector::new(5);
@@ -532,7 +532,7 @@ mod tests {
         config.ordering = Ordering::Amd;
         config.scaling = Scaling::Sum;
         let mut solver = SolverUMFPACK::new().unwrap();
-        let (coo, _) = Samples::umfpack_sample1_unsymmetric();
+        let (coo, _) = Samples::umfpack_sample1_unsymmetric(false);
         solver
             .initialize(coo.nrow, coo.max, coo.symmetry, Some(config))
             .unwrap();
@@ -545,7 +545,7 @@ mod tests {
         let mut config = ConfigSolver::new();
         config.compute_determinant = true;
         let mut solver = SolverUMFPACK::new().unwrap();
-        let (coo, _) = Samples::umfpack_sample1_unsymmetric();
+        let (coo, _) = Samples::umfpack_sample1_unsymmetric(false);
         solver
             .initialize(coo.nrow, coo.max, coo.symmetry, Some(config))
             .unwrap();

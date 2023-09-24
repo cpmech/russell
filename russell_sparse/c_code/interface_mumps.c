@@ -204,14 +204,14 @@ int32_t solver_mumps_solve(struct InterfaceMUMPS *solver, double *rhs, int32_t v
 
 int32_t solver_mumps_get_ordering(const struct InterfaceMUMPS *solver) {
     if (solver == NULL) {
-        return 0;
+        return -1;
     }
     return solver->data.INFOG(7);
 }
 
 int32_t solver_mumps_get_scaling(const struct InterfaceMUMPS *solver) {
     if (solver == NULL) {
-        return 0;
+        return -1;
     }
     return solver->data.INFOG(33);
 }

@@ -1,6 +1,6 @@
 use super::{CooMatrix, Symmetry};
 use crate::StrError;
-use russell_lab::Matrix;
+use russell_lab::{Matrix, Vector};
 use russell_openblas::to_i32;
 
 /// Holds the arrays needed for a CSR (compressed sparse row) matrix
@@ -68,39 +68,39 @@ pub struct CsrMatrix {
 }
 
 impl CsrMatrix {
-    /// Allocates an empty CsrMatrix
+    /// Validates the dimension of the arrays in the CSR matrix
     ///
-    /// This function simply allocates the following arrays:
+    /// The following conditions must be satisfied:
     ///
-    /// * row_pointers: `vec![0; nrow + 1]`
-    /// * col_indices: `vec![0; nnz]`
-    /// * values: `vec![0.0; nnz]`
-    ///
-    /// # Examples
-    ///
+    /// ```text
+    /// nrow ≥ 1
+    /// ncol ≥ 1
+    /// nnz = row_pointers[nrow] ≥ 1
+    /// row_pointers.len() == nrow + 1
+    /// col_indices.len() == nnz
+    /// values.len() == nnz
     /// ```
-    /// use russell_sparse::prelude::*;
-    /// use russell_sparse::StrError;
-    ///
-    /// fn main() {
-    ///     let csr = CsrMatrix::new(None, 3, 3, 4);
-    ///     assert_eq!(csr.symmetry, None);
-    ///     assert_eq!(csr.nrow, 3);
-    ///     assert_eq!(csr.ncol, 3);
-    ///     assert_eq!(csr.row_pointers, &[0, 0, 0, 0]);
-    ///     assert_eq!(csr.col_indices, &[0, 0, 0, 0]);
-    ///     assert_eq!(csr.values, &[0.0, 0.0, 0.0, 0.0]);
-    /// }
-    /// ```
-    pub fn new(symmetry: Option<Symmetry>, nrow: usize, ncol: usize, nnz: usize) -> Self {
-        CsrMatrix {
-            symmetry,
-            nrow,
-            ncol,
-            row_pointers: vec![0; nrow + 1],
-            col_indices: vec![0; nnz],
-            values: vec![0.0; nnz],
+    pub fn validate(&self) -> Result<(), StrError> {
+        if self.nrow < 1 {
+            return Err("nrow must be ≥ 1");
         }
+        if self.ncol < 1 {
+            return Err("ncol must be ≥ 1");
+        }
+        if self.row_pointers.len() != self.nrow + 1 {
+            return Err("row_pointers.len() must be = nrow + 1");
+        }
+        let nnz = self.row_pointers[self.nrow];
+        if nnz < 1 {
+            return Err("nnz = row_pointers[nrow] must be ≥ 1");
+        }
+        if self.col_indices.len() != nnz as usize {
+            return Err("col_indices.len() must be = nnz");
+        }
+        if self.values.len() != nnz as usize {
+            return Err("values.len() must be = nnz");
+        }
+        Ok(())
     }
 
     /// Creates a new CsrMatrix from a CooMatrix
@@ -366,6 +366,7 @@ impl CsrMatrix {
     /// }
     /// ```
     pub fn to_matrix(&self, a: &mut Matrix) -> Result<(), StrError> {
+        self.validate()?;
         let (m, n) = a.dims();
         if m != self.nrow || n != self.ncol {
             return Err("wrong matrix dimensions");
@@ -381,6 +382,46 @@ impl CsrMatrix {
                 a.add(i, j, self.values[p as usize]);
                 if mirror_required && i != j {
                     a.add(j, i, self.values[p as usize]);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Performs the matrix-vector multiplication
+    ///
+    /// ```text
+    ///  v  :=  α ⋅  a   ⋅  u
+    /// (m)        (m,n)   (n)
+    /// ```
+    ///
+    /// # Input
+    ///
+    /// * `u` -- Vector with dimension equal to the number of columns of the matrix
+    ///
+    /// # Output
+    ///
+    /// * `v` -- Vector with dimension equal to the number of rows of the matrix
+    pub fn mat_vec_mul(&self, v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
+        self.validate()?;
+        if u.dim() != self.ncol {
+            return Err("u.ndim must equal ncol");
+        }
+        if v.dim() != self.nrow {
+            return Err("v.ndim must equal nrow");
+        }
+        let mirror_required = match self.symmetry {
+            Some(sym) => sym.triangular(),
+            None => false,
+        };
+        v.fill(0.0);
+        for i in 0..self.nrow {
+            for p in self.row_pointers[i]..self.row_pointers[i + 1] {
+                let j = self.col_indices[p as usize] as usize;
+                let aij = self.values[p as usize];
+                v[i] += alpha * aij * u[j];
+                if mirror_required && i != j {
+                    v[j] += alpha * aij * u[i];
                 }
             }
         }
@@ -433,17 +474,6 @@ mod tests {
     use crate::{CooMatrix, Storage, Symmetry};
     use russell_chk::vec_approx_eq;
     use russell_lab::Matrix;
-
-    #[test]
-    fn new_works() {
-        let csr = CsrMatrix::new(None, 3, 3, 4);
-        assert_eq!(csr.symmetry, None);
-        assert_eq!(csr.nrow, 3);
-        assert_eq!(csr.ncol, 3);
-        assert_eq!(csr.row_pointers, &[0, 0, 0, 0]);
-        assert_eq!(csr.col_indices, &[0, 0, 0, 0]);
-        assert_eq!(csr.values, &[0.0, 0.0, 0.0, 0.0]);
-    }
 
     #[test]
     fn csr_matrix_first_triplet_with_shuffled_entries() {
@@ -688,16 +718,39 @@ mod tests {
 
     #[test]
     fn to_matrix_fails_on_wrong_dims() {
-        let sym = Some(Symmetry::General(Storage::Upper));
-        let csr = CsrMatrix::new(sym, 2, 2, 3);
-        let mut a_2x1 = Matrix::new(3, 1);
-        let mut a_1x2 = Matrix::new(1, 3);
-        assert_eq!(csr.to_matrix(&mut a_2x1), Err("wrong matrix dimensions"));
-        assert_eq!(csr.to_matrix(&mut a_1x2), Err("wrong matrix dimensions"));
+        // 10.0 20.0
+        let csr = CsrMatrix {
+            symmetry: None,
+            nrow: 1,
+            ncol: 2,
+            row_pointers: vec![0, 2],
+            col_indices: vec![0, 1],
+            values: vec![10.0, 20.0],
+        };
+        let mut a_3x1 = Matrix::new(3, 1);
+        let mut a_1x3 = Matrix::new(1, 3);
+        assert_eq!(csr.to_matrix(&mut a_3x1), Err("wrong matrix dimensions"));
+        assert_eq!(csr.to_matrix(&mut a_1x3), Err("wrong matrix dimensions"));
     }
 
     #[test]
     fn to_matrix_and_as_matrix_work() {
+        // 10.0 20.0       << (1 x 2) matrix
+        let csr = CsrMatrix {
+            symmetry: None,
+            nrow: 1,
+            ncol: 2,
+            row_pointers: vec![0, 2],
+            col_indices: vec![0, 1],
+            values: vec![10.0, 20.0],
+        };
+        let mut a = Matrix::new(1, 2);
+        csr.to_matrix(&mut a).unwrap();
+        let correct = "┌       ┐\n\
+                       │ 10 20 │\n\
+                       └       ┘";
+        assert_eq!(format!("{}", a), correct);
+
         let csr = CsrMatrix {
             symmetry: None,
             nrow: 5,

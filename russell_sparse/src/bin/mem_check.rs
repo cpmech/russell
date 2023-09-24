@@ -7,9 +7,25 @@ fn test_solver(genie: Genie) {
         Genie::Umfpack => println!("Testing UMFPACK solver\n"),
     }
 
-    let (nrow, ncol, nnz) = (5, 5, 13);
+    let (ndim, nnz) = (5, 13);
 
-    let mut coo = match CooMatrix::new(None, nrow, ncol, nnz) {
+    let mut solver = match Solver::new(genie) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("FAIL(new solver): {}", e);
+            return;
+        }
+    };
+
+    match solver.actual.initialize(ndim, nnz, None, None) {
+        Err(e) => {
+            println!("FAIL(factorize): {}", e);
+            return;
+        }
+        _ => (),
+    };
+
+    let mut coo = match CooMatrix::new(None, ndim, ndim, nnz) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new CooMatrix): {}", e);
@@ -30,22 +46,6 @@ fn test_solver(genie: Genie) {
     coo.put(2, 3, 2.0).unwrap();
     coo.put(1, 4, 6.0).unwrap();
     coo.put(4, 4, 1.0).unwrap();
-
-    let mut solver = match Solver::new(genie) {
-        Ok(v) => v,
-        Err(e) => {
-            println!("FAIL(new solver): {}", e);
-            return;
-        }
-    };
-
-    match solver.actual.initialize(&coo, None) {
-        Err(e) => {
-            println!("FAIL(factorize): {}", e);
-            return;
-        }
-        _ => (),
-    };
 
     match solver.actual.factorize(&coo, false) {
         Err(e) => {
@@ -83,15 +83,7 @@ fn test_solver_singular(genie: Genie) {
         Genie::Umfpack => println!("Testing UMFPACK solver\n"),
     }
 
-    let (nrow, ncol, nnz) = (2, 2, 2);
-
-    let coo_singular = match CooMatrix::new(None, nrow, ncol, nnz) {
-        Ok(v) => v,
-        Err(e) => {
-            println!("FAIL(new CooMatrix): {}", e);
-            return;
-        }
-    };
+    let (ndim, nnz) = (2, 2);
 
     let mut solver = match Solver::new(genie) {
         Ok(v) => v,
@@ -101,12 +93,20 @@ fn test_solver_singular(genie: Genie) {
         }
     };
 
-    match solver.actual.initialize(&coo_singular, None) {
+    match solver.actual.initialize(ndim, nnz, None, None) {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
         }
         _ => (),
+    };
+
+    let coo_singular = match CooMatrix::new(None, ndim, ndim, nnz) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("FAIL(new CooMatrix): {}", e);
+            return;
+        }
     };
 
     match solver.actual.factorize(&coo_singular, false) {

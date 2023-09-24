@@ -80,7 +80,9 @@ fn main() -> Result<(), StrError> {
 
     // call initialize
     sw.reset();
-    solver.actual.initialize(&coo, Some(config))?;
+    solver
+        .actual
+        .initialize(coo.nrow, coo.max, coo.symmetry, Some(config))?;
     let time_initialize = sw.stop();
 
     // call factorize

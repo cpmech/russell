@@ -115,16 +115,24 @@ impl SolverTrait for SolverUMFPACK {
     ///
     /// # Input
     ///
-    /// * `coo` -- the CooMatrix representing the sparse coefficient matrix.
+    /// * `ndim` -- number of rows = number of columns of the coefficient matrix A
+    /// * `nnz` -- number of non-zero values on the coefficient matrix A
+    /// * `symmetry` -- symmetry (or lack of it) type of the coefficient matrix A
     ///   Note that only symmetry/storage equal to Full is allowed by UMFPACK.
     /// * `config` -- configuration parameters; None => use default
     ///
     /// # Examples
     ///
     /// See [SolverUMFPACK::solve]
-    fn initialize(&mut self, coo: &CooMatrix, config: Option<ConfigSolver>) -> Result<(), StrError> {
+    fn initialize(
+        &mut self,
+        ndim: usize,
+        nnz: usize,
+        symmetry: Option<Symmetry>,
+        config: Option<ConfigSolver>,
+    ) -> Result<(), StrError> {
         let cfg = if let Some(c) = config { c } else { ConfigSolver::new() };
-        let mut sym_i32 = match coo.symmetry {
+        let mut sym_i32 = match symmetry {
             Some(sym) => {
                 if sym.triangular() {
                     return Err("for UMFPACK, if the matrix is symmetric, the storage still must be full");
@@ -136,8 +144,9 @@ impl SolverTrait for SolverUMFPACK {
         if cfg.umfpack_enforce_unsymmetric_strategy {
             sym_i32 = UMFPACK_STRATEGY_UNSYMMETRIC
         }
-        self.nrow = to_i32(coo.nrow)?;
-        self.nnz = to_i32(coo.pos)?;
+        self.symmetry = symmetry;
+        self.nrow = to_i32(ndim)?;
+        self.nnz = to_i32(nnz)?;
         self.initialized = false;
         self.factorized = false;
         let ordering = match cfg.ordering {
@@ -178,7 +187,6 @@ impl SolverTrait for SolverUMFPACK {
                 return Err(handle_umfpack_error_code(status));
             }
         }
-        self.symmetry = coo.symmetry;
         self.initialized = true;
         Ok(())
     }
@@ -243,63 +251,7 @@ impl SolverTrait for SolverUMFPACK {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use russell_lab::{Matrix, Vector};
-    /// use russell_sparse::prelude::*;
-    /// use russell_sparse::StrError;
-    ///
-    /// fn main() -> Result<(), StrError> {
-    ///     // allocate a square matrix
-    ///     let (nrow, ncol, nnz) = (5, 5, 13);
-    ///     let mut coo = CooMatrix::new(None, nrow, ncol, nnz)?;
-    ///     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
-    ///     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
-    ///     coo.put(1, 0, 3.0)?;
-    ///     coo.put(0, 1, 3.0)?;
-    ///     coo.put(2, 1, -1.0)?;
-    ///     coo.put(4, 1, 4.0)?;
-    ///     coo.put(1, 2, 4.0)?;
-    ///     coo.put(2, 2, -3.0)?;
-    ///     coo.put(3, 2, 1.0)?;
-    ///     coo.put(4, 2, 2.0)?;
-    ///     coo.put(2, 3, 2.0)?;
-    ///     coo.put(1, 4, 6.0)?;
-    ///     coo.put(4, 4, 1.0)?;
-    ///
-    ///     // print matrix
-    ///     let mut a = Matrix::new(nrow, ncol);
-    ///     coo.to_matrix(&mut a)?;
-    ///     let correct = "┌                ┐\n\
-    ///                    │  2  3  0  0  0 │\n\
-    ///                    │  3  0  4  0  6 │\n\
-    ///                    │  0 -1 -3  2  0 │\n\
-    ///                    │  0  0  1  0  0 │\n\
-    ///                    │  0  4  2  0  1 │\n\
-    ///                    └                ┘";
-    ///     assert_eq!(format!("{}", a), correct);
-    ///
-    ///     // allocate x and rhs
-    ///     let mut x = Vector::new(nrow);
-    ///     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
-    ///
-    ///     // initialize, factorize, and solve
-    ///     let mut solver = SolverUMFPACK::new()?;
-    ///     solver.initialize(&coo, None)?;
-    ///     solver.factorize(&coo, false)?;
-    ///     solver.solve(&mut x, &rhs, false)?;
-    ///
-    ///     // check
-    ///     let correct = "┌          ┐\n\
-    ///                    │ 1.000000 │\n\
-    ///                    │ 2.000000 │\n\
-    ///                    │ 3.000000 │\n\
-    ///                    │ 4.000000 │\n\
-    ///                    │ 5.000000 │\n\
-    ///                    └          ┘";
-    ///     assert_eq!(format!("{:.6}", x), correct);
-    ///     Ok(())
-    /// }
-    /// ```
+    /// TODO
     fn solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool) -> Result<(), StrError> {
         if !self.factorized {
             return Err("the function factorize must be called before solve");
@@ -440,23 +392,22 @@ mod tests {
         assert!(!solver.initialized);
         assert!(!solver.factorized);
 
-        // sample matrices
-        let (coo, _) = Samples::umfpack_sample1_unsymmetric();
-        let (coo_lower, _) = Samples::mkl_sample1_symmetric_lower();
-        let (coo_upper, _) = Samples::mkl_sample1_symmetric_upper();
-
         // initialize fails on incorrect storage
         assert_eq!(
-            solver.initialize(&coo_lower, None).err(),
+            solver
+                .initialize(2, 2, Some(Symmetry::General(Storage::Lower)), None)
+                .err(),
             Some("for UMFPACK, if the matrix is symmetric, the storage still must be full")
         );
         assert_eq!(
-            solver.initialize(&coo_upper, None).err(),
+            solver
+                .initialize(2, 2, Some(Symmetry::General(Storage::Upper)), None)
+                .err(),
             Some("for UMFPACK, if the matrix is symmetric, the storage still must be full")
         );
 
         // initialize works
-        solver.initialize(&coo, None).unwrap();
+        solver.initialize(2, 2, None, None).unwrap();
         assert!(solver.initialized);
     }
 
@@ -477,7 +428,7 @@ mod tests {
         );
 
         // call initialize
-        solver.initialize(&coo, None).unwrap();
+        solver.initialize(coo.nrow, coo.pos, coo.symmetry, None).unwrap();
 
         // factorize fails on incompatible coo matrix
         let sym = Some(Symmetry::General(Storage::Lower));
@@ -517,7 +468,7 @@ mod tests {
         let mut coo = CooMatrix::new(None, 2, 2, 2).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 0.0).unwrap();
-        solver.initialize(&coo, None).unwrap();
+        solver.initialize(coo.nrow, coo.max, coo.symmetry, None).unwrap();
         assert_eq!(solver.factorize(&coo, false), Err("Error(1): Matrix is singular"));
     }
 
@@ -543,7 +494,7 @@ mod tests {
         );
 
         // call initialize and factorize
-        solver.initialize(&coo, None).unwrap();
+        solver.initialize(coo.nrow, coo.pos, coo.symmetry, None).unwrap();
         assert!(solver.initialized);
         solver.factorize(&coo, false).unwrap();
         assert!(solver.factorized);
@@ -577,7 +528,9 @@ mod tests {
         config.scaling = Scaling::Sum;
         let mut solver = SolverUMFPACK::new().unwrap();
         let (coo, _) = Samples::umfpack_sample1_unsymmetric();
-        solver.initialize(&coo, Some(config)).unwrap();
+        solver
+            .initialize(coo.nrow, coo.max, coo.symmetry, Some(config))
+            .unwrap();
         assert_eq!(solver.get_effective_ordering(), "Amd");
         assert_eq!(solver.get_effective_scaling(), "Sum");
     }
@@ -588,7 +541,9 @@ mod tests {
         config.compute_determinant = true;
         let mut solver = SolverUMFPACK::new().unwrap();
         let (coo, _) = Samples::umfpack_sample1_unsymmetric();
-        solver.initialize(&coo, Some(config)).unwrap();
+        solver
+            .initialize(coo.nrow, coo.max, coo.symmetry, Some(config))
+            .unwrap();
         solver.factorize(&coo, false).unwrap();
 
         let (a, b, c) = solver.get_determinant();

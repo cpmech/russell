@@ -1,4 +1,4 @@
-use super::{CooMatrix, Genie, Ordering, Scaling, SolverMUMPS, SolverUMFPACK};
+use super::{CooMatrix, Genie, Ordering, Scaling, SolverMUMPS, SolverUMFPACK, Symmetry};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -54,16 +54,30 @@ impl ConfigSolver {
 pub trait SolverTrait {
     /// Initializes the C interface to the underlying solver (Genie)
     ///
+    /// Initializes the solver for the linear system:
+    ///
+    /// ```text
+    /// A · x = rhs
+    /// ```
+    ///
     /// # Input
     ///
-    /// * `coo` -- the CooMatrix representing the sparse coefficient matrix.
+    /// * `ndim` -- number of rows = number of columns of the coefficient matrix A
+    /// * `nnz` -- number of non-zero values on the coefficient matrix A
+    /// * `symmetry` -- symmetry (or lack of it) type of the coefficient matrix A
     /// * `config` -- configuration parameters; None => use default
     ///
     /// # Notes
     ///
     /// * For symmetric matrices, `MUMPS` requires that the symmetry/storage be Lower or Full.
     /// * For symmetric matrices, `UMFPACK` requires that the symmetry/storage be Full.
-    fn initialize(&mut self, coo: &CooMatrix, config: Option<ConfigSolver>) -> Result<(), StrError>;
+    fn initialize(
+        &mut self,
+        ndim: usize,
+        nnz: usize,
+        symmetry: Option<Symmetry>,
+        config: Option<ConfigSolver>,
+    ) -> Result<(), StrError>;
 
     /// Performs the factorization (and analysis)
     ///
@@ -170,8 +184,11 @@ impl<'a> Solver<'a> {
         rhs: &Vector,
         verbose: bool,
     ) -> Result<Self, StrError> {
+        if coo.ncol != coo.nrow {
+            return Err("the matrix must be square");
+        }
         let mut solver = Solver::new(genie)?;
-        solver.actual.initialize(coo, None)?;
+        solver.actual.initialize(coo.nrow, coo.max, coo.symmetry, None)?;
         solver.actual.factorize(coo, verbose)?;
         solver.actual.solve(x, rhs, verbose)?;
         Ok(solver)

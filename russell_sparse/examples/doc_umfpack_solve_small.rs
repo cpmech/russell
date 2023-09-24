@@ -4,9 +4,17 @@ use russell_sparse::prelude::*;
 use russell_sparse::StrError;
 
 fn main() -> Result<(), StrError> {
+    // constants
+    let ndim = 5; // number of rows = number of columns
+    let nnz = 13; // number of non-zero values, including duplicates
+
+    // allocate solver and call initialize
+    let mut umfpack = SolverUMFPACK::new()?;
+    umfpack.initialize(ndim, nnz, None, None)?;
+
     // allocate a square matrix
-    let (nrow, ncol, nnz) = (5, 5, 13);
-    let mut coo = CooMatrix::new(None, nrow, ncol, nnz)?;
+    // allocate the coefficient matrix
+    let mut coo = CooMatrix::new(None, ndim, ndim, nnz)?;
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(1, 0, 3.0)?;
@@ -22,7 +30,7 @@ fn main() -> Result<(), StrError> {
     coo.put(4, 4, 1.0)?;
 
     // print matrix
-    let mut a = Matrix::new(nrow, ncol);
+    let mut a = Matrix::new(ndim, ndim);
     coo.to_matrix(&mut a)?;
     let correct = "┌                ┐\n\
                    │  2  3  0  0  0 │\n\
@@ -33,17 +41,17 @@ fn main() -> Result<(), StrError> {
                    └                ┘";
     assert_eq!(format!("{}", a), correct);
 
+    // call factorize
+    umfpack.factorize(&coo, false)?;
+
     // allocate x and rhs
-    let mut x = Vector::new(nrow);
+    let mut x = Vector::new(ndim);
     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
 
-    // initialize, factorize, and solve
-    let mut solver = SolverUMFPACK::new()?;
-    solver.initialize(&coo, None)?;
-    solver.factorize(&coo, false)?;
-    solver.solve(&mut x, &rhs, false)?;
+    // calculate the solution
+    umfpack.solve(&mut x, &rhs, false)?;
 
-    // check
+    // check the results
     let correct = vec![1.0, 2.0, 3.0, 4.0, 5.0];
     vec_approx_eq(x.as_data(), &correct, 1e-14);
     Ok(())

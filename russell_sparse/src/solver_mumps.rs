@@ -97,12 +97,20 @@ impl SolverTrait for SolverMUMPS {
     ///
     /// # Input
     ///
-    /// * `coo` -- the CooMatrix representing the sparse coefficient matrix.
+    /// * `ndim` -- number of rows = number of columns of the coefficient matrix A
+    /// * `nnz` -- number of non-zero values on the coefficient matrix A
+    /// * `symmetry` -- symmetry (or lack of it) type of the coefficient matrix A
     ///   Note that only symmetry/storage equal to Lower or Full are allowed by MUMPS.
     /// * `config` -- configuration parameters; None => use default
-    fn initialize(&mut self, coo: &CooMatrix, config: Option<ConfigSolver>) -> Result<(), StrError> {
+    fn initialize(
+        &mut self,
+        ndim: usize,
+        nnz: usize,
+        symmetry: Option<Symmetry>,
+        config: Option<ConfigSolver>,
+    ) -> Result<(), StrError> {
         let cfg = if let Some(c) = config { c } else { ConfigSolver::new() };
-        let sym_i32 = match coo.symmetry {
+        let sym_i32 = match symmetry {
             Some(sym) => match sym {
                 Symmetry::General(storage) => {
                     if storage != Storage::Lower {
@@ -119,8 +127,9 @@ impl SolverTrait for SolverMUMPS {
             },
             None => 0, // unsymmetric (page 27)
         };
-        self.nrow = to_i32(coo.nrow)?;
-        self.nnz = to_i32(coo.pos)?;
+        self.symmetry = symmetry;
+        self.nrow = to_i32(ndim)?;
+        self.nnz = to_i32(nnz)?;
         self.initialized = false;
         self.factorized = false;
         let ordering = match cfg.ordering {
@@ -167,7 +176,6 @@ impl SolverTrait for SolverMUMPS {
                 return Err(handle_mumps_error_code(status));
             }
         }
-        self.symmetry = coo.symmetry;
         self.initialized = true;
         Ok(())
     }
@@ -418,11 +426,6 @@ mod tests {
         let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
         let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
 
-        // sample matrices
-        let (coo, _) = Samples::umfpack_sample1_unsymmetric();
-        let (coo_upper, _) = Samples::mkl_sample1_symmetric_upper();
-        let (coo_pd_upper, _) = Samples::mkl_sample1_positive_definite_upper();
-
         // allocate a new solver
         let mut solver = SolverMUMPS::new().unwrap();
         assert!(!solver.initialized);
@@ -430,13 +433,20 @@ mod tests {
 
         // initialize fails on incorrect symmetry/storage
         assert_eq!(
-            solver.initialize(&coo_upper, None).err(),
+            solver
+                .initialize(1, 1, Some(Symmetry::General(Storage::Upper)), None)
+                .err(),
             Some("if the matrix is symmetric, the storage must be lower triangular")
         );
         assert_eq!(
-            solver.initialize(&coo_pd_upper, None).err(),
+            solver
+                .initialize(1, 1, Some(Symmetry::PositiveDefinite(Storage::Upper)), None)
+                .err(),
             Some("if the matrix is positive-definite, the storage must be lower triangular")
         );
+
+        // sample matrix
+        let (coo, _) = Samples::umfpack_sample1_unsymmetric();
 
         // factorize requests initialize
         assert_eq!(
@@ -451,7 +461,9 @@ mod tests {
         config.compute_determinant = true;
 
         // initialize works
-        solver.initialize(&coo, Some(config)).unwrap();
+        solver
+            .initialize(coo.nrow, coo.pos, coo.symmetry, Some(config))
+            .unwrap();
         assert!(solver.initialized);
 
         // factorize fails on incompatible coo matrix
@@ -530,7 +542,9 @@ mod tests {
         coo_singular.put(0, 0, 1.0).unwrap();
         coo_singular.put(4, 4, 1.0).unwrap();
         let mut solver = SolverMUMPS::new().unwrap();
-        solver.initialize(&coo_singular, Some(config)).unwrap();
+        solver
+            .initialize(coo_singular.nrow, coo_singular.pos, coo_singular.symmetry, Some(config))
+            .unwrap();
         assert_eq!(
             solver.factorize(&coo_singular, false),
             Err("Error(-10): numerically singular matrix")
@@ -543,7 +557,9 @@ mod tests {
         let mut solver = SolverMUMPS::new().unwrap();
         assert!(!solver.initialized);
         assert!(!solver.factorized);
-        solver.initialize(&coo_pd_lower, Some(config)).unwrap();
+        solver
+            .initialize(coo_pd_lower.nrow, coo_pd_lower.pos, coo_pd_lower.symmetry, Some(config))
+            .unwrap();
         solver.factorize(&coo_pd_lower, false).unwrap();
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);

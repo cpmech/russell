@@ -27,7 +27,7 @@ struct InterfaceUMFPACK *solver_umfpack_new() {
     solver->effective_ordering = 0;
     solver->effective_scaling = 0;
     solver->mx[0] = 0.0;
-    solver->ex[1] = 0.0;
+    solver->ex[0] = 0.0;
 
     return solver;
 }

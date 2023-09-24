@@ -306,8 +306,8 @@ impl CooMatrix {
     /// Performs the matrix-vector multiplication
     ///
     /// ```text
-    ///  v  :=   a   ⋅  u
-    /// (m)    (m,n)   (n)
+    ///  v  :=  α ⋅  a   ⋅  u
+    /// (m)        (m,n)   (n)
     /// ```
     ///
     /// # Input
@@ -352,7 +352,8 @@ impl CooMatrix {
     ///
     ///     // perform mat-vec-mul
     ///     let u = Vector::from(&[1.0, 1.0, 1.0]);
-    ///     let v = coo.mat_vec_mul(&u)?;
+    ///     let mut v = Vector::new(coo.nrow);
+    ///     coo.mat_vec_mul(&mut v, 1.0, &u)?;
     ///
     ///     // check vector
     ///     let correct_v = "┌    ┐\n\
@@ -364,26 +365,29 @@ impl CooMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn mat_vec_mul(&self, u: &Vector) -> Result<Vector, StrError> {
+    pub fn mat_vec_mul(&self, v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
         if u.dim() != self.ncol {
             return Err("u.ndim must equal ncol");
+        }
+        if v.dim() != self.nrow {
+            return Err("v.ndim must equal nrow");
         }
         let mirror_required = match self.symmetry {
             Some(sym) => sym.triangular(),
             None => false,
         };
-        let mut v = Vector::new(self.nrow);
+        v.fill(0.0);
         let d = if self.one_based { 1 } else { 0 };
         for p in 0..self.pos {
             let i = (self.indices_i[p] - d) as usize;
             let j = (self.indices_j[p] - d) as usize;
             let aij = self.values_aij[p];
-            v[i] += aij * u[j];
+            v[i] += alpha * aij * u[j];
             if mirror_required && i != j {
                 v[j] += aij * u[i];
             }
         }
-        Ok(v)
+        Ok(())
     }
 }
 
@@ -570,7 +574,11 @@ mod tests {
     fn mat_vec_mul_fails_on_wrong_input() {
         let coo = CooMatrix::new(2, 2, 1, None, false).unwrap();
         let u = Vector::new(3);
-        assert_eq!(coo.mat_vec_mul(&u).err(), Some("u.ndim must equal ncol"));
+        let mut v = Vector::new(coo.nrow);
+        assert_eq!(coo.mat_vec_mul(&mut v, 1.0, &u).err(), Some("u.ndim must equal ncol"));
+        let u = Vector::new(2);
+        let mut v = Vector::new(1);
+        assert_eq!(coo.mat_vec_mul(&mut v, 1.0, &u).err(), Some("v.ndim must equal nrow"));
     }
 
     #[test]
@@ -589,8 +597,9 @@ mod tests {
         coo.put(2, 1, 20.0).unwrap();
         coo.put(2, 2, 30.0).unwrap();
         let u = Vector::from(&[0.1, 0.2, 0.3]);
+        let mut v = Vector::new(coo.nrow);
+        coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         let correct_v = &[1.4, 0.14, 14.0];
-        let v = coo.mat_vec_mul(&u).unwrap();
         vec_approx_eq(v.as_data(), correct_v, 1e-15);
     }
 
@@ -624,8 +633,9 @@ mod tests {
         coo.put(4, 2, 5.0).unwrap();
         coo.put(4, 3, 1.0).unwrap();
         let u = Vector::from(&[-629.0 / 98.0, 237.0 / 49.0, -53.0 / 49.0, 62.0 / 49.0, 23.0 / 14.0]);
+        let mut v = Vector::new(coo.nrow);
+        coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         let correct_v = &[-2.0, 4.0, 3.0, -5.0, 1.0];
-        let v = coo.mat_vec_mul(&u).unwrap();
         vec_approx_eq(v.as_data(), correct_v, 1e-14);
     }
 
@@ -669,8 +679,9 @@ mod tests {
         coo.put(4, 3, 1.0).unwrap();
         coo.put(3, 4, 1.0).unwrap();
         let u = Vector::from(&[-629.0 / 98.0, 237.0 / 49.0, -53.0 / 49.0, 62.0 / 49.0, 23.0 / 14.0]);
+        let mut v = Vector::new(coo.nrow);
+        coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         let correct_v = &[-2.0, 4.0, 3.0, -5.0, 1.0];
-        let v = coo.mat_vec_mul(&u).unwrap();
         vec_approx_eq(v.as_data(), correct_v, 1e-14);
     }
 
@@ -688,8 +699,9 @@ mod tests {
         coo.put(1, 0, -1.0).unwrap();
         coo.put(2, 1, -1.0).unwrap();
         let u = Vector::from(&[5.0, 8.0, 7.0]);
+        let mut v = Vector::new(coo.nrow);
+        coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         let correct_v = &[2.0, 4.0, 6.0];
-        let v = coo.mat_vec_mul(&u).unwrap();
         vec_approx_eq(v.as_data(), correct_v, 1e-15);
     }
 }

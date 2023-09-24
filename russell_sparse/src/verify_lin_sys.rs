@@ -73,7 +73,8 @@ impl VerifyLinSys {
         let max_abs_a = f64::abs(coo.values_aij[idx as usize]);
 
         // compute max_abs_ax
-        let mut ax = coo.mat_vec_mul(&x).unwrap(); // already checked
+        let mut ax = Vector::new(coo.nrow);
+        coo.mat_vec_mul(&mut ax, 1.0, &x).unwrap();
         let max_abs_ax = vec_norm(&ax, Norm::Max);
 
         // compute max_abs_diff

@@ -22,6 +22,8 @@ fi
 cargo clean
 cargo build --release
 
+echo "HASH = $HASH"
+
 cargo run --release --bin $BIN -- good.mtx $OPT1 > $ODIR/pres-cylin-umfpack-good-local-$HASH.json
 cargo run --release --bin $BIN -- bad.mtx  $OPT1 > $ODIR/pres-cylin-umfpack-bad-local-$HASH.json
 cargo run --release --bin $BIN -- good.mtx $OPT2 > $ODIR/pres-cylin-mumps-good-local-$HASH.json

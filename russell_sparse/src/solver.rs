@@ -30,6 +30,9 @@ pub struct Settings {
     ///
     /// **Note:** Set this value to 0 to allow an automatic detection
     pub mumps_openmp_num_threads: usize,
+
+    /// Enforces the unsymmetric strategy, even for symmetric matrices (not recommended; UMFPACK only)
+    pub umfpack_enforce_unsymmetric_strategy: bool,
 }
 
 impl Settings {
@@ -42,6 +45,7 @@ impl Settings {
             mumps_pct_inc_workspace: 100,
             mumps_max_work_memory: 0,
             mumps_openmp_num_threads: 0,
+            umfpack_enforce_unsymmetric_strategy: false,
         }
     }
 }

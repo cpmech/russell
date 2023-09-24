@@ -61,32 +61,6 @@ pub struct SolverMUMPS {
 
     /// Indicates whether the sparse matrix has been factorized or not
     factorized: bool,
-
-    /// Defines the symmetric permutation (ordering)
-    ordering: Ordering,
-
-    /// Defines the scaling strategy
-    scaling: Scaling,
-
-    /// Sets the % increase in the estimated working space
-    ///
-    /// **Note:** The default (recommended) value is 100 (%)
-    pct_inc_workspace: usize,
-
-    /// Sets the max size of the working memory in mega bytes
-    ///
-    /// **Note:** Set this value to 0 for an automatic configuration
-    max_work_memory: usize,
-
-    /// Defines the number of OpenMP threads
-    ///
-    /// **Note:** Set this value to 0 to allow an automatic detection
-    openmp_num_threads: usize,
-
-    /// Requests that the determinant be computed
-    ///
-    /// **Note:** The determinant will be available after `factorize`
-    compute_determinant: bool,
 }
 
 impl Drop for SolverMUMPS {
@@ -113,12 +87,6 @@ impl SolverMUMPS {
                 nnz: 0,
                 initialized: false,
                 factorized: false,
-                ordering: Ordering::Auto,
-                scaling: Scaling::Auto,
-                pct_inc_workspace: 100,
-                max_work_memory: 0,
-                openmp_num_threads: 0,
-                compute_determinant: false,
             })
         }
     }
@@ -131,13 +99,7 @@ impl SolverTrait for SolverMUMPS {
     ///
     /// * `coo` -- the CooMatrix representing the sparse coefficient matrix.
     ///   Note that only symmetry/storage equal to Lower or Full are allowed by MUMPS.
-    fn initialize(&mut self, coo: &CooMatrix, settings: crate::Settings) -> Result<(), StrError> {
-        self.ordering = settings.ordering;
-        self.scaling = settings.scaling;
-        self.compute_determinant = settings.compute_determinant;
-        self.pct_inc_workspace = settings.mumps_pct_inc_workspace;
-        self.max_work_memory = settings.mumps_max_work_memory;
-        self.openmp_num_threads = settings.mumps_openmp_num_threads;
+    fn initialize(&mut self, coo: &CooMatrix, config: crate::Settings) -> Result<(), StrError> {
         let sym_i32 = match coo.symmetry {
             Some(sym) => match sym {
                 Symmetry::General(storage) => {
@@ -159,7 +121,7 @@ impl SolverTrait for SolverMUMPS {
         self.nnz = to_i32(coo.pos)?;
         self.initialized = false;
         self.factorized = false;
-        let ordering = match self.ordering {
+        let ordering = match config.ordering {
             Ordering::Amd => 0,     // Amd (page 35)
             Ordering::Amf => 2,     // Amf (page 35)
             Ordering::Auto => 7,    // Auto (page 36)
@@ -171,7 +133,7 @@ impl SolverTrait for SolverMUMPS {
             Ordering::Qamd => 6,    // Qamd (page 35)
             Ordering::Scotch => 3,  // Scotch (page 35)
         };
-        let scaling = match self.scaling {
+        let scaling = match config.scaling {
             Scaling::Auto => 77,      // Auto (page 33)
             Scaling::Column => 3,     // Column (page 33)
             Scaling::Diagonal => 1,   // Diagonal (page 33)
@@ -182,10 +144,10 @@ impl SolverTrait for SolverMUMPS {
             Scaling::RowColRig => 8,  // RowColRig (page 33)
             Scaling::Sum => 77,       // Sum => Auto (page 33)
         };
-        let pct_i32 = to_i32(self.pct_inc_workspace)?;
-        let mem_i32 = to_i32(self.max_work_memory)?;
-        let nt_i32 = to_i32(self.openmp_num_threads)?;
-        let det_i32 = if self.compute_determinant { 1 } else { 0 };
+        let pct_i32 = to_i32(config.mumps_pct_inc_workspace)?;
+        let mem_i32 = to_i32(config.mumps_max_work_memory)?;
+        let nt_i32 = to_i32(config.mumps_openmp_num_threads)?;
+        let det_i32 = if config.compute_determinant { 1 } else { 0 };
         unsafe {
             let status = solver_mumps_initialize(
                 self.solver,
@@ -292,14 +254,10 @@ impl SolverTrait for SolverMUMPS {
     ///
     /// **Note:** This is only available if compute_determinant was requested.
     fn get_determinant(&self) -> (f64, f64, f64) {
-        if self.compute_determinant {
-            unsafe {
-                let a = solver_mumps_get_det_coef_a(self.solver);
-                let c = solver_mumps_get_det_exp_c(self.solver);
-                (a, 2.0, c)
-            }
-        } else {
-            (0.0, 2.0, 0.0)
+        unsafe {
+            let a = solver_mumps_get_det_coef_a(self.solver);
+            let c = solver_mumps_get_det_exp_c(self.solver);
+            (a, 2.0, c)
         }
     }
 

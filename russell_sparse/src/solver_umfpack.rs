@@ -75,20 +75,6 @@ pub struct SolverUMFPACK {
 
     /// Indicates whether the sparse matrix has been factorized or not
     factorized: bool,
-
-    /// Defines the symmetric permutation (ordering)
-    ordering: Ordering,
-
-    /// Defines the scaling strategy
-    scaling: Scaling,
-
-    /// Requests that the determinant be computed
-    ///
-    /// **Note:** The determinant will be available after `factorize`
-    compute_determinant: bool,
-
-    /// Enforces the unsymmetric strategy, even for symmetric matrices (not recommended)
-    enforce_unsymmetric_strategy: bool,
 }
 
 impl Drop for SolverUMFPACK {
@@ -119,10 +105,6 @@ impl SolverUMFPACK {
                 nnz: 0,
                 initialized: false,
                 factorized: false,
-                ordering: Ordering::Auto,
-                scaling: Scaling::Auto,
-                compute_determinant: false,
-                enforce_unsymmetric_strategy: false,
             })
         }
     }
@@ -139,10 +121,7 @@ impl SolverTrait for SolverUMFPACK {
     /// # Examples
     ///
     /// See [SolverUMFPACK::solve]
-    fn initialize(&mut self, coo: &CooMatrix, settings: crate::Settings) -> Result<(), StrError> {
-        self.ordering = settings.ordering;
-        self.scaling = settings.scaling;
-        self.compute_determinant = settings.compute_determinant;
+    fn initialize(&mut self, coo: &CooMatrix, config: crate::Settings) -> Result<(), StrError> {
         let mut sym_i32 = match coo.symmetry {
             Some(sym) => {
                 if sym.triangular() {
@@ -152,14 +131,14 @@ impl SolverTrait for SolverUMFPACK {
             }
             None => UMFPACK_STRATEGY_AUTO,
         };
-        if self.enforce_unsymmetric_strategy {
+        if config.umfpack_enforce_unsymmetric_strategy {
             sym_i32 = UMFPACK_STRATEGY_UNSYMMETRIC
         }
         self.nrow = to_i32(coo.nrow)?;
         self.nnz = to_i32(coo.pos)?;
         self.initialized = false;
         self.factorized = false;
-        let ordering = match self.ordering {
+        let ordering = match config.ordering {
             Ordering::Amd => UMFPACK_ORDERING_AMD,
             Ordering::Amf => UMFPACK_DEFAULT_ORDERING,
             Ordering::Auto => UMFPACK_DEFAULT_ORDERING,
@@ -171,7 +150,7 @@ impl SolverTrait for SolverUMFPACK {
             Ordering::Qamd => UMFPACK_DEFAULT_ORDERING,
             Ordering::Scotch => UMFPACK_DEFAULT_ORDERING,
         };
-        let scaling = match self.scaling {
+        let scaling = match config.scaling {
             Scaling::Auto => UMFPACK_DEFAULT_SCALE,
             Scaling::Column => UMFPACK_DEFAULT_SCALE,
             Scaling::Diagonal => UMFPACK_DEFAULT_SCALE,
@@ -182,7 +161,7 @@ impl SolverTrait for SolverUMFPACK {
             Scaling::RowColRig => UMFPACK_DEFAULT_SCALE,
             Scaling::Sum => UMFPACK_SCALE_SUM,
         };
-        let compute_determinant_i32 = if self.compute_determinant { 1 } else { 0 };
+        let compute_determinant_i32 = if config.compute_determinant { 1 } else { 0 };
         unsafe {
             let status = solver_umfpack_initialize(
                 self.solver,
@@ -350,14 +329,10 @@ impl SolverTrait for SolverUMFPACK {
     ///
     /// **Note:** This is only available if compute_determinant was requested.
     fn get_determinant(&self) -> (f64, f64, f64) {
-        if self.compute_determinant {
-            unsafe {
-                let mx = solver_umfpack_get_det_mx(self.solver);
-                let ex = solver_umfpack_get_det_ex(self.solver);
-                (mx, 10.0, ex)
-            }
-        } else {
-            (0.0, 10.0, 0.0)
+        unsafe {
+            let mx = solver_umfpack_get_det_mx(self.solver);
+            let ex = solver_umfpack_get_det_ex(self.solver);
+            (mx, 10.0, ex)
         }
     }
 

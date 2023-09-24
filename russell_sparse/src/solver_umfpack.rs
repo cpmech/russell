@@ -1,4 +1,4 @@
-use super::{to_i32, CooMatrix, Ordering, Scaling, SolverTrait, Symmetry};
+use super::{to_i32, ConfigSolver, CooMatrix, Ordering, Scaling, SolverTrait, Symmetry};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -117,11 +117,13 @@ impl SolverTrait for SolverUMFPACK {
     ///
     /// * `coo` -- the CooMatrix representing the sparse coefficient matrix.
     ///   Note that only symmetry/storage equal to Full is allowed by UMFPACK.
+    /// * `config` -- configuration parameters; None => use default
     ///
     /// # Examples
     ///
     /// See [SolverUMFPACK::solve]
-    fn initialize(&mut self, coo: &CooMatrix, config: crate::ConfigSolver) -> Result<(), StrError> {
+    fn initialize(&mut self, coo: &CooMatrix, config: Option<ConfigSolver>) -> Result<(), StrError> {
+        let cfg = if let Some(c) = config { c } else { ConfigSolver::new() };
         let mut sym_i32 = match coo.symmetry {
             Some(sym) => {
                 if sym.triangular() {
@@ -131,14 +133,14 @@ impl SolverTrait for SolverUMFPACK {
             }
             None => UMFPACK_STRATEGY_AUTO,
         };
-        if config.umfpack_enforce_unsymmetric_strategy {
+        if cfg.umfpack_enforce_unsymmetric_strategy {
             sym_i32 = UMFPACK_STRATEGY_UNSYMMETRIC
         }
         self.nrow = to_i32(coo.nrow)?;
         self.nnz = to_i32(coo.pos)?;
         self.initialized = false;
         self.factorized = false;
-        let ordering = match config.ordering {
+        let ordering = match cfg.ordering {
             Ordering::Amd => UMFPACK_ORDERING_AMD,
             Ordering::Amf => UMFPACK_DEFAULT_ORDERING,
             Ordering::Auto => UMFPACK_DEFAULT_ORDERING,
@@ -150,7 +152,7 @@ impl SolverTrait for SolverUMFPACK {
             Ordering::Qamd => UMFPACK_DEFAULT_ORDERING,
             Ordering::Scotch => UMFPACK_DEFAULT_ORDERING,
         };
-        let scaling = match config.scaling {
+        let scaling = match cfg.scaling {
             Scaling::Auto => UMFPACK_DEFAULT_SCALE,
             Scaling::Column => UMFPACK_DEFAULT_SCALE,
             Scaling::Diagonal => UMFPACK_DEFAULT_SCALE,
@@ -161,7 +163,7 @@ impl SolverTrait for SolverUMFPACK {
             Scaling::RowColRig => UMFPACK_DEFAULT_SCALE,
             Scaling::Sum => UMFPACK_SCALE_SUM,
         };
-        let compute_determinant_i32 = if config.compute_determinant { 1 } else { 0 };
+        let compute_determinant_i32 = if cfg.compute_determinant { 1 } else { 0 };
         unsafe {
             let status = solver_umfpack_initialize(
                 self.solver,
@@ -281,9 +283,8 @@ impl SolverTrait for SolverUMFPACK {
     ///     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
     ///
     ///     // initialize, factorize, and solve
-    ///     let params = ConfigSolver::new();
     ///     let mut solver = SolverUMFPACK::new()?;
-    ///     solver.initialize(&coo, params)?;
+    ///     solver.initialize(&coo, None)?;
     ///     solver.factorize(&coo, false)?;
     ///     solver.solve(&mut x, &rhs, false)?;
     ///
@@ -435,7 +436,6 @@ mod tests {
     #[test]
     fn initialize_handles_errors_and_works() {
         // allocate a new solver
-        let params = ConfigSolver::new();
         let mut solver = SolverUMFPACK::new().unwrap();
         assert!(!solver.initialized);
         assert!(!solver.factorized);
@@ -447,23 +447,22 @@ mod tests {
 
         // initialize fails on incorrect storage
         assert_eq!(
-            solver.initialize(&coo_lower, params).err(),
+            solver.initialize(&coo_lower, None).err(),
             Some("for UMFPACK, if the matrix is symmetric, the storage still must be full")
         );
         assert_eq!(
-            solver.initialize(&coo_upper, params).err(),
+            solver.initialize(&coo_upper, None).err(),
             Some("for UMFPACK, if the matrix is symmetric, the storage still must be full")
         );
 
         // initialize works
-        solver.initialize(&coo, params).unwrap();
+        solver.initialize(&coo, None).unwrap();
         assert!(solver.initialized);
     }
 
     #[test]
     fn factorize_handles_errors_and_works() {
         // allocate a new solver
-        let params = ConfigSolver::new();
         let mut solver = SolverUMFPACK::new().unwrap();
         assert!(!solver.initialized);
         assert!(!solver.factorized);
@@ -478,7 +477,7 @@ mod tests {
         );
 
         // call initialize
-        solver.initialize(&coo, params).unwrap();
+        solver.initialize(&coo, None).unwrap();
 
         // factorize fails on incompatible coo matrix
         let sym = Some(Symmetry::General(Storage::Lower));
@@ -514,19 +513,17 @@ mod tests {
 
     #[test]
     fn factorize_fails_on_singular_matrix() {
-        let params = ConfigSolver::new();
         let mut solver = SolverUMFPACK::new().unwrap();
         let mut coo = CooMatrix::new(None, 2, 2, 2).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 0.0).unwrap();
-        solver.initialize(&coo, params).unwrap();
+        solver.initialize(&coo, None).unwrap();
         assert_eq!(solver.factorize(&coo, false), Err("Error(1): Matrix is singular"));
     }
 
     #[test]
     fn solve_handles_errors_and_works() {
         // allocate a new solver
-        let params = ConfigSolver::new();
         let mut solver = SolverUMFPACK::new().unwrap();
         assert!(!solver.initialized);
         assert!(!solver.factorized);
@@ -546,7 +543,7 @@ mod tests {
         );
 
         // call initialize and factorize
-        solver.initialize(&coo, params).unwrap();
+        solver.initialize(&coo, None).unwrap();
         assert!(solver.initialized);
         solver.factorize(&coo, false).unwrap();
         assert!(solver.factorized);
@@ -575,23 +572,23 @@ mod tests {
 
     #[test]
     fn get_ordering_and_scaling_work() {
-        let mut params = ConfigSolver::new();
-        params.ordering = Ordering::Amd;
-        params.scaling = Scaling::Sum;
+        let mut config = ConfigSolver::new();
+        config.ordering = Ordering::Amd;
+        config.scaling = Scaling::Sum;
         let mut solver = SolverUMFPACK::new().unwrap();
         let (coo, _) = Samples::umfpack_sample1_unsymmetric();
-        solver.initialize(&coo, params).unwrap();
+        solver.initialize(&coo, Some(config)).unwrap();
         assert_eq!(solver.get_effective_ordering(), "Amd");
         assert_eq!(solver.get_effective_scaling(), "Sum");
     }
 
     #[test]
     fn get_determinant_works() {
-        let mut params = ConfigSolver::new();
-        params.compute_determinant = true;
+        let mut config = ConfigSolver::new();
+        config.compute_determinant = true;
         let mut solver = SolverUMFPACK::new().unwrap();
         let (coo, _) = Samples::umfpack_sample1_unsymmetric();
-        solver.initialize(&coo, params).unwrap();
+        solver.initialize(&coo, Some(config)).unwrap();
         solver.factorize(&coo, false).unwrap();
 
         let (a, b, c) = solver.get_determinant();

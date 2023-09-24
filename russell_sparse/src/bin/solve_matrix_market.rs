@@ -80,7 +80,7 @@ fn main() -> Result<(), StrError> {
 
     // call initialize
     sw.reset();
-    solver.actual.initialize(&coo, config)?;
+    solver.actual.initialize(&coo, Some(config))?;
     let time_initialize = sw.stop();
 
     // call factorize

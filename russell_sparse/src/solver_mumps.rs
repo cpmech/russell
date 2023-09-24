@@ -1,4 +1,4 @@
-use super::{to_i32, CooMatrix, Ordering, Scaling, SolverTrait, Storage, Symmetry};
+use super::{to_i32, ConfigSolver, CooMatrix, Ordering, Scaling, SolverTrait, Storage, Symmetry};
 use crate::StrError;
 use russell_lab::{vec_copy, Vector};
 
@@ -99,7 +99,9 @@ impl SolverTrait for SolverMUMPS {
     ///
     /// * `coo` -- the CooMatrix representing the sparse coefficient matrix.
     ///   Note that only symmetry/storage equal to Lower or Full are allowed by MUMPS.
-    fn initialize(&mut self, coo: &CooMatrix, config: crate::ConfigSolver) -> Result<(), StrError> {
+    /// * `config` -- configuration parameters; None => use default
+    fn initialize(&mut self, coo: &CooMatrix, config: Option<ConfigSolver>) -> Result<(), StrError> {
+        let cfg = if let Some(c) = config { c } else { ConfigSolver::new() };
         let sym_i32 = match coo.symmetry {
             Some(sym) => match sym {
                 Symmetry::General(storage) => {
@@ -121,7 +123,7 @@ impl SolverTrait for SolverMUMPS {
         self.nnz = to_i32(coo.pos)?;
         self.initialized = false;
         self.factorized = false;
-        let ordering = match config.ordering {
+        let ordering = match cfg.ordering {
             Ordering::Amd => 0,     // Amd (page 35)
             Ordering::Amf => 2,     // Amf (page 35)
             Ordering::Auto => 7,    // Auto (page 36)
@@ -133,7 +135,7 @@ impl SolverTrait for SolverMUMPS {
             Ordering::Qamd => 6,    // Qamd (page 35)
             Ordering::Scotch => 3,  // Scotch (page 35)
         };
-        let scaling = match config.scaling {
+        let scaling = match cfg.scaling {
             Scaling::Auto => 77,      // Auto (page 33)
             Scaling::Column => 3,     // Column (page 33)
             Scaling::Diagonal => 1,   // Diagonal (page 33)
@@ -144,10 +146,10 @@ impl SolverTrait for SolverMUMPS {
             Scaling::RowColRig => 8,  // RowColRig (page 33)
             Scaling::Sum => 77,       // Sum => Auto (page 33)
         };
-        let pct_i32 = to_i32(config.mumps_pct_inc_workspace)?;
-        let mem_i32 = to_i32(config.mumps_max_work_memory)?;
-        let nt_i32 = to_i32(config.mumps_openmp_num_threads)?;
-        let det_i32 = if config.compute_determinant { 1 } else { 0 };
+        let pct_i32 = to_i32(cfg.mumps_pct_inc_workspace)?;
+        let mem_i32 = to_i32(cfg.mumps_max_work_memory)?;
+        let nt_i32 = to_i32(cfg.mumps_openmp_num_threads)?;
+        let det_i32 = if cfg.compute_determinant { 1 } else { 0 };
         unsafe {
             let status = solver_mumps_initialize(
                 self.solver,
@@ -421,24 +423,18 @@ mod tests {
         let (coo_upper, _) = Samples::mkl_sample1_symmetric_upper();
         let (coo_pd_upper, _) = Samples::mkl_sample1_positive_definite_upper();
 
-        // set params
-        let mut params = ConfigSolver::new();
-        params.ordering = Ordering::Pord;
-        params.scaling = Scaling::RowCol;
-
         // allocate a new solver
         let mut solver = SolverMUMPS::new().unwrap();
-        params.compute_determinant = true;
         assert!(!solver.initialized);
         assert!(!solver.factorized);
 
         // initialize fails on incorrect symmetry/storage
         assert_eq!(
-            solver.initialize(&coo_upper, params).err(),
+            solver.initialize(&coo_upper, None).err(),
             Some("if the matrix is symmetric, the storage must be lower triangular")
         );
         assert_eq!(
-            solver.initialize(&coo_pd_upper, params).err(),
+            solver.initialize(&coo_pd_upper, None).err(),
             Some("if the matrix is positive-definite, the storage must be lower triangular")
         );
 
@@ -448,8 +444,14 @@ mod tests {
             Some("the function initialize must be called before factorize")
         );
 
+        // set params
+        let mut config = ConfigSolver::new();
+        config.ordering = Ordering::Pord;
+        config.scaling = Scaling::RowCol;
+        config.compute_determinant = true;
+
         // initialize works
-        solver.initialize(&coo, params).unwrap();
+        solver.initialize(&coo, Some(config)).unwrap();
         assert!(solver.initialized);
 
         // factorize fails on incompatible coo matrix
@@ -528,7 +530,7 @@ mod tests {
         coo_singular.put(0, 0, 1.0).unwrap();
         coo_singular.put(4, 4, 1.0).unwrap();
         let mut solver = SolverMUMPS::new().unwrap();
-        solver.initialize(&coo_singular, params).unwrap();
+        solver.initialize(&coo_singular, Some(config)).unwrap();
         assert_eq!(
             solver.factorize(&coo_singular, false),
             Err("Error(-10): numerically singular matrix")
@@ -536,12 +538,12 @@ mod tests {
 
         // solve with positive-definite matrix works
         let (coo_pd_lower, _) = Samples::mkl_sample1_positive_definite_lower();
-        params.ordering = Ordering::Auto;
-        params.scaling = Scaling::Auto;
+        config.ordering = Ordering::Auto;
+        config.scaling = Scaling::Auto;
         let mut solver = SolverMUMPS::new().unwrap();
         assert!(!solver.initialized);
         assert!(!solver.factorized);
-        solver.initialize(&coo_pd_lower, params).unwrap();
+        solver.initialize(&coo_pd_lower, Some(config)).unwrap();
         solver.factorize(&coo_pd_lower, false).unwrap();
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);

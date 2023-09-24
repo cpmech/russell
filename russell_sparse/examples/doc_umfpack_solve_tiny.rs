@@ -26,9 +26,8 @@ fn main() -> Result<(), StrError> {
     assert_eq!(format!("{}", a), correct);
 
     // allocate solver, initialize, and factorize
-    let params = ConfigSolver::new();
     let mut solver = SolverUMFPACK::new()?;
-    solver.initialize(&coo, params)?;
+    solver.initialize(&coo, None)?;
     solver.factorize(&coo, false)?;
 
     // allocate rhs

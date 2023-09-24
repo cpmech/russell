@@ -39,9 +39,7 @@ fn test_solver(genie: Genie) {
         }
     };
 
-    let config = ConfigSolver::new();
-
-    match solver.actual.initialize(&coo, config) {
+    match solver.actual.initialize(&coo, None) {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
@@ -95,7 +93,6 @@ fn test_solver_singular(genie: Genie) {
         }
     };
 
-    let params = ConfigSolver::new();
     let mut solver = match Solver::new(genie) {
         Ok(v) => v,
         Err(e) => {
@@ -104,7 +101,7 @@ fn test_solver_singular(genie: Genie) {
         }
     };
 
-    match solver.actual.initialize(&coo_singular, params) {
+    match solver.actual.initialize(&coo_singular, None) {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;

@@ -57,12 +57,13 @@ pub trait SolverTrait {
     /// # Input
     ///
     /// * `coo` -- the CooMatrix representing the sparse coefficient matrix.
+    /// * `config` -- configuration parameters; None => use default
     ///
     /// # Notes
     ///
     /// * For symmetric matrices, `MUMPS` requires that the symmetry/storage be Lower or Full.
     /// * For symmetric matrices, `UMFPACK` requires that the symmetry/storage be Full.
-    fn initialize(&mut self, coo: &CooMatrix, config: ConfigSolver) -> Result<(), StrError>;
+    fn initialize(&mut self, coo: &CooMatrix, config: Option<ConfigSolver>) -> Result<(), StrError>;
 
     /// Performs the factorization (and analysis)
     ///
@@ -169,9 +170,8 @@ impl<'a> Solver<'a> {
         rhs: &Vector,
         verbose: bool,
     ) -> Result<Self, StrError> {
-        let params = ConfigSolver::new();
         let mut solver = Solver::new(genie)?;
-        solver.actual.initialize(coo, params)?;
+        solver.actual.initialize(coo, None)?;
         solver.actual.factorize(coo, verbose)?;
         solver.actual.solve(x, rhs, verbose)?;
         Ok(solver)

@@ -77,7 +77,6 @@ fn check_jacobian() {
 
 fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
     let (neq, nnz) = (4, 16);
-    let params = ConfigSolver::new();
     let mut solver = Solver::new(genie)?;
     let mut jj = CooMatrix::new(None, neq, neq, nnz).unwrap();
     let mut rr = Vector::new(neq);
@@ -115,7 +114,7 @@ fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
         }
         calc_jacobian(&mut jj, &uu)?;
         if it == 0 {
-            solver.actual.initialize(&jj, params)?;
+            solver.actual.initialize(&jj, None)?;
         }
         solver.actual.factorize(&jj, false)?;
         solver.actual.solve(&mut mdu, &rr, false)?;

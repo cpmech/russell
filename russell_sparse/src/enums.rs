@@ -92,7 +92,7 @@ pub enum MMsymOption {
 }
 
 /// Ordering option
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Ordering {
     /// Ordering using the approximate minimum degree
     Amd,
@@ -126,7 +126,7 @@ pub enum Ordering {
 }
 
 /// Scaling option
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Scaling {
     /// Automatic scaling method selection
     Auto,

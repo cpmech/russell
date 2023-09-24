@@ -77,11 +77,10 @@ fn main() -> Result<(), StrError> {
 
     // allocate and configure the solver
     let mut solver = Solver::new(genie)?;
-    solver.actual.configure(settings);
 
     // call initialize
     sw.reset();
-    solver.actual.initialize(&coo)?;
+    solver.actual.initialize(&coo, settings)?;
     let time_initialize = sw.stop();
 
     // call factorize

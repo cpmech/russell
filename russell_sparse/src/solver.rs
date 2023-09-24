@@ -3,6 +3,7 @@ use crate::StrError;
 use russell_lab::Vector;
 
 /// Holds optional settings for the sparse solver
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Settings {
     /// Defines the symmetric permutation (ordering)
     pub ordering: Ordering,
@@ -47,9 +48,6 @@ impl Settings {
 
 /// Defines a unified interface for sparse solvers
 pub trait SolverTrait {
-    /// Configures the solver (before initialization)
-    fn configure(&mut self, settings: Settings);
-
     /// Initializes the C interface to the underlying solver (Genie)
     ///
     /// # Input
@@ -60,7 +58,7 @@ pub trait SolverTrait {
     ///
     /// * For symmetric matrices, `MUMPS` requires that the symmetry/storage be Lower or Full.
     /// * For symmetric matrices, `UMFPACK` requires that the symmetry/storage be Full.
-    fn initialize(&mut self, coo: &CooMatrix) -> Result<(), StrError>;
+    fn initialize(&mut self, coo: &CooMatrix, settings: Settings) -> Result<(), StrError>;
 
     /// Performs the factorization (and analysis)
     ///
@@ -167,8 +165,9 @@ impl<'a> Solver<'a> {
         rhs: &Vector,
         verbose: bool,
     ) -> Result<Self, StrError> {
+        let params = Settings::new();
         let mut solver = Solver::new(genie)?;
-        solver.actual.initialize(coo)?;
+        solver.actual.initialize(coo, params)?;
         solver.actual.factorize(coo, verbose)?;
         solver.actual.solve(x, rhs, verbose)?;
         Ok(solver)

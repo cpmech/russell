@@ -49,7 +49,7 @@ fn test_solver(genie: Genie) {
     coo.put(1, 4, 6.0).unwrap();
     coo.put(4, 4, 1.0).unwrap();
 
-    match solver.actual.factorize(&coo, false) {
+    match solver.actual.factorize_coo(&coo, false) {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
@@ -113,7 +113,7 @@ fn test_solver_singular(genie: Genie) {
         }
     };
 
-    match solver.actual.factorize(&coo_singular, false) {
+    match solver.actual.factorize_coo(&coo_singular, false) {
         Err(e) => println!("\nOk(factorize singular matrix): {}\n", e),
         _ => (),
     };

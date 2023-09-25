@@ -42,7 +42,7 @@ fn main() -> Result<(), StrError> {
     assert_eq!(format!("{}", a), correct);
 
     // call factorize
-    umfpack.factorize(&coo, false)?;
+    umfpack.factorize_coo(&coo, false)?;
 
     // allocate x and rhs
     let mut x = Vector::new(ndim);

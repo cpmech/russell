@@ -31,7 +31,7 @@ fn main() -> Result<(), StrError> {
     assert_eq!(format!("{}", a), correct);
 
     // call factorize
-    solver.actual.factorize(&coo, false)?;
+    solver.actual.factorize_coo(&coo, false)?;
 
     // allocate two right-hand side vectors
     let rhs1 = Vector::from(&[1.0, 1.0, 1.0]);

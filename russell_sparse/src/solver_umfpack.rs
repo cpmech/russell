@@ -148,7 +148,7 @@ impl SolverTrait for SolverUMFPACK {
         Ok(())
     }
 
-    /// Performs the factorization (and analysis)
+    /// Performs the factorization (and analysis) given COO matrix
     ///
     /// **Note::** Initialize must be called first. Also, the dimension and symmetry/storage
     /// of the CooMatrix must be the same as the ones provided by `initialize`.
@@ -161,7 +161,7 @@ impl SolverTrait for SolverUMFPACK {
     /// # Examples
     ///
     /// See [SolverUMFPACK::solve]
-    fn factorize(&mut self, coo: &CooMatrix, verbose: bool) -> Result<(), StrError> {
+    fn factorize_coo(&mut self, coo: &CooMatrix, verbose: bool) -> Result<(), StrError> {
         self.factorized = false;
         if !self.initialized {
             return Err("the function initialize must be called before factorize");
@@ -432,7 +432,7 @@ mod tests {
 
         // factorize requests initialize
         assert_eq!(
-            solver.factorize(&coo, false).err(),
+            solver.factorize_coo(&coo, false).err(),
             Some("the function initialize must be called before factorize")
         );
 
@@ -450,24 +450,24 @@ mod tests {
             coo_wrong_4.put(0, 0, 1.0).unwrap();
         }
         assert_eq!(
-            solver.factorize(&coo_wrong_1, false).err(),
+            solver.factorize_coo(&coo_wrong_1, false).err(),
             Some("the dimension of the CooMatrix must be equal to ndim")
         );
         assert_eq!(
-            solver.factorize(&coo_wrong_2, false).err(),
+            solver.factorize_coo(&coo_wrong_2, false).err(),
             Some("the dimension of the CooMatrix must be equal to ndim")
         );
         assert_eq!(
-            solver.factorize(&coo_wrong_3, false).err(),
+            solver.factorize_coo(&coo_wrong_3, false).err(),
             Some("COO matrix must be at least (1 x 1) with 1 non-zero value")
         );
         assert_eq!(
-            solver.factorize(&coo_wrong_4, false).err(),
+            solver.factorize_coo(&coo_wrong_4, false).err(),
             Some("the CooMatrix cannot be triangular for UMFPACK")
         );
 
         // factorize works
-        solver.factorize(&coo, false).unwrap();
+        solver.factorize_coo(&coo, false).unwrap();
         assert!(solver.factorized);
     }
 
@@ -478,7 +478,7 @@ mod tests {
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 0.0).unwrap();
         solver.initialize(coo.nrow, coo.max, coo.symmetry, None).unwrap();
-        assert_eq!(solver.factorize(&coo, false), Err("Error(1): Matrix is singular"));
+        assert_eq!(solver.factorize_coo(&coo, false), Err("Error(1): Matrix is singular"));
     }
 
     #[test]
@@ -505,7 +505,7 @@ mod tests {
         // call initialize and factorize
         solver.initialize(coo.nrow, coo.pos, coo.symmetry, None).unwrap();
         assert!(solver.initialized);
-        solver.factorize(&coo, false).unwrap();
+        solver.factorize_coo(&coo, false).unwrap();
         assert!(solver.factorized);
 
         // solve fails on wrong x and rhs vectors
@@ -553,7 +553,7 @@ mod tests {
         solver
             .initialize(coo.nrow, coo.max, coo.symmetry, Some(config))
             .unwrap();
-        solver.factorize(&coo, false).unwrap();
+        solver.factorize_coo(&coo, false).unwrap();
 
         let (a, b, c) = solver.get_determinant();
         let det = a * f64::powf(b, c);

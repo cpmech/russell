@@ -180,7 +180,7 @@ impl SolverTrait for SolverMUMPS {
         Ok(())
     }
 
-    /// Performs the factorization (and analysis)
+    /// Performs the factorization (and analysis) given COO matrix
     ///
     /// **Note::** Initialize must be called first. Also, the dimension and symmetry/storage
     /// of the CooMatrix must be the same as the ones provided by `initialize`.
@@ -189,7 +189,7 @@ impl SolverTrait for SolverMUMPS {
     ///
     /// * `coo` -- The **same** matrix provided to `initialize`
     /// * `verbose` -- shows messages
-    fn factorize(&mut self, coo: &CooMatrix, verbose: bool) -> Result<(), StrError> {
+    fn factorize_coo(&mut self, coo: &CooMatrix, verbose: bool) -> Result<(), StrError> {
         self.factorized = false;
         if !self.initialized {
             return Err("the function initialize must be called before factorize");
@@ -453,7 +453,7 @@ mod tests {
 
         // factorize requests initialize
         assert_eq!(
-            solver.factorize(&coo, false).err(),
+            solver.factorize_coo(&coo, false).err(),
             Some("the function initialize must be called before factorize")
         );
 
@@ -480,19 +480,19 @@ mod tests {
             coo_wrong_4.put(0, 0, 1.0).unwrap();
         }
         assert_eq!(
-            solver.factorize(&coo_wrong_1, false).err(),
+            solver.factorize_coo(&coo_wrong_1, false).err(),
             Some("the dimension of the CooMatrix must be the same as the one provided to initialize")
         );
         assert_eq!(
-            solver.factorize(&coo_wrong_2, false).err(),
+            solver.factorize_coo(&coo_wrong_2, false).err(),
             Some("the dimension of the CooMatrix must be the same as the one provided to initialize")
         );
         assert_eq!(
-            solver.factorize(&coo_wrong_3, false).err(),
+            solver.factorize_coo(&coo_wrong_3, false).err(),
             Some("the number of non-zero values must be the same as the one provided to initialize")
         );
         assert_eq!(
-            solver.factorize(&coo_wrong_4, false).err(),
+            solver.factorize_coo(&coo_wrong_4, false).err(),
             Some("the symmetry/storage of the CooMatrix must be the same as the one used in initialize")
         );
 
@@ -503,7 +503,7 @@ mod tests {
         );
 
         // factorize works
-        solver.factorize(&coo, false).unwrap();
+        solver.factorize_coo(&coo, false).unwrap();
         assert!(solver.factorized);
 
         // solve fails on wrong x and rhs vectors
@@ -549,7 +549,7 @@ mod tests {
             .initialize(coo_singular.nrow, coo_singular.pos, coo_singular.symmetry, Some(config))
             .unwrap();
         assert_eq!(
-            solver.factorize(&coo_singular, false),
+            solver.factorize_coo(&coo_singular, false),
             Err("Error(-10): numerically singular matrix")
         );
 
@@ -563,7 +563,7 @@ mod tests {
         solver
             .initialize(coo_pd_lower.nrow, coo_pd_lower.pos, coo_pd_lower.symmetry, Some(config))
             .unwrap();
-        solver.factorize(&coo_pd_lower, false).unwrap();
+        solver.factorize_coo(&coo_pd_lower, false).unwrap();
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
         solver.solve(&mut x, &rhs, false).unwrap();

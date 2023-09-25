@@ -81,7 +81,7 @@ pub trait SolverTrait {
         config: Option<ConfigSolver>,
     ) -> Result<(), StrError>;
 
-    /// Performs the factorization (and analysis)
+    /// Performs the factorization (and analysis) given COO matrix
     ///
     /// **Note::** Initialize must be called first. Also, the dimension and symmetry/storage
     /// of the CooMatrix must be the same as the ones provided by `initialize`.
@@ -90,7 +90,7 @@ pub trait SolverTrait {
     ///
     /// * `coo` -- The **same** matrix provided to `initialize`
     /// * `verbose` -- shows messages
-    fn factorize(&mut self, coo: &CooMatrix, verbose: bool) -> Result<(), StrError>;
+    fn factorize_coo(&mut self, coo: &CooMatrix, verbose: bool) -> Result<(), StrError>;
 
     /// Computes the solution of the linear system
     ///
@@ -192,7 +192,7 @@ impl<'a> Solver<'a> {
         }
         let mut solver = Solver::new(genie)?;
         solver.actual.initialize(coo.nrow, coo.max, coo.symmetry, None)?;
-        solver.actual.factorize(coo, verbose)?;
+        solver.actual.factorize_coo(coo, verbose)?;
         solver.actual.solve(x, rhs, verbose)?;
         Ok(solver)
     }

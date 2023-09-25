@@ -144,7 +144,7 @@ impl SolverTrait for SolverIntelDSS {
         Ok(())
     }
 
-    /// Performs the factorization (and analysis)
+    /// Performs the factorization (and analysis) given COO matrix
     ///
     /// **Note::** Initialize must be called first. Also, the dimension and symmetry/storage
     /// of the CooMatrix must be the same as the ones provided by `initialize`.
@@ -157,7 +157,7 @@ impl SolverTrait for SolverIntelDSS {
     /// # Examples
     ///
     /// See [SolverIntelDSS::solve]
-    fn factorize(&mut self, coo: &CooMatrix, _verbose: bool) -> Result<(), StrError> {
+    fn factorize_coo(&mut self, coo: &CooMatrix, _verbose: bool) -> Result<(), StrError> {
         self.factorized = false;
         if !self.initialized {
             return Err("the function initialize must be called before factorize");
@@ -337,7 +337,7 @@ mod tests {
 
         // factorize requests initialize
         assert_eq!(
-            solver.factorize(&coo, false).err(),
+            solver.factorize_coo(&coo, false).err(),
             Some("the function initialize must be called before factorize")
         );
 
@@ -355,24 +355,24 @@ mod tests {
             coo_wrong_4.put(0, 0, 1.0).unwrap();
         }
         assert_eq!(
-            solver.factorize(&coo_wrong_1, false).err(),
+            solver.factorize_coo(&coo_wrong_1, false).err(),
             Some("the dimension of the CooMatrix must be equal to ndim")
         );
         assert_eq!(
-            solver.factorize(&coo_wrong_2, false).err(),
+            solver.factorize_coo(&coo_wrong_2, false).err(),
             Some("the dimension of the CooMatrix must be equal to ndim")
         );
         assert_eq!(
-            solver.factorize(&coo_wrong_3, false).err(),
+            solver.factorize_coo(&coo_wrong_3, false).err(),
             Some("nnz = row_pointers[nrow] must be ≥ nrow")
         );
         assert_eq!(
-            solver.factorize(&coo_wrong_4, false).err(),
+            solver.factorize_coo(&coo_wrong_4, false).err(),
             Some("the CooMatrix symmetry option must be equal to the one provided to initialize")
         );
 
         // factorize works
-        solver.factorize(&coo, false).unwrap();
+        solver.factorize_coo(&coo, false).unwrap();
         assert!(solver.factorized);
     }
 
@@ -385,7 +385,7 @@ mod tests {
         solver.initialize(coo.nrow, coo.max, coo.symmetry, None).unwrap();
         // TODO: implement an external check because
         // Intel DSS does not check if the matrix is singular !!!
-        assert_eq!(solver.factorize(&coo, false).err(), None);
+        assert_eq!(solver.factorize_coo(&coo, false).err(), None);
     }
 
     #[test]
@@ -412,7 +412,7 @@ mod tests {
         // call initialize and factorize
         solver.initialize(coo.nrow, coo.pos, coo.symmetry, None).unwrap();
         assert!(solver.initialized);
-        solver.factorize(&coo, false).unwrap();
+        solver.factorize_coo(&coo, false).unwrap();
         assert!(solver.factorized);
 
         // solve fails on wrong x and rhs vectors

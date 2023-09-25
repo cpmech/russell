@@ -91,7 +91,7 @@ fn main() -> Result<(), StrError> {
 
     // call factorize
     sw.reset();
-    solver.actual.factorize(&coo, opt.verbose)?;
+    solver.actual.factorize_coo(&coo, opt.verbose)?;
     let time_factorize = sw.stop();
 
     // allocate vectors

@@ -169,6 +169,7 @@ impl SolverTrait for SolverIntelDSS {
             return Err("the CooMatrix symmetry option must be equal to the one provided to initialize");
         }
         let csr = CsrMatrix::from(coo)?;
+        csr.validate()?;
         unsafe {
             let status = solver_intel_dss_factorize(
                 self.solver,
@@ -316,5 +317,123 @@ mod tests {
         let mut solver = SolverIntelDSS::new().unwrap();
         assert!(!solver.initialized);
         assert!(!solver.factorized);
+
+        // TODO
+
+        // initialize works
+        solver.initialize(2, 2, None, None).unwrap();
+        assert!(solver.initialized);
+    }
+
+    #[test]
+    fn factorize_handles_errors_and_works() {
+        // allocate a new solver
+        let mut solver = SolverIntelDSS::new().unwrap();
+        assert!(!solver.initialized);
+        assert!(!solver.factorized);
+
+        // sample matrix
+        let (coo, _) = Samples::umfpack_sample1_unsymmetric(false);
+
+        // factorize requests initialize
+        assert_eq!(
+            solver.factorize(&coo, false).err(),
+            Some("the function initialize must be called before factorize")
+        );
+
+        // call initialize
+        solver.initialize(coo.nrow, coo.pos, coo.symmetry, None).unwrap();
+
+        // factorize fails on incompatible coo matrix
+        let mut coo_wrong_1 = CooMatrix::new(1, 5, 13, None, false).unwrap();
+        let coo_wrong_2 = CooMatrix::new(5, 1, 13, None, false).unwrap();
+        let mut coo_wrong_3 = CooMatrix::new(5, 5, 12, None, false).unwrap();
+        let sym = Some(Symmetry::General(Storage::Lower));
+        let mut coo_wrong_4 = CooMatrix::new(5, 5, 13, sym, false).unwrap();
+        for _ in 0..13 {
+            coo_wrong_1.put(0, 0, 1.0).unwrap();
+            coo_wrong_4.put(0, 0, 1.0).unwrap();
+        }
+        assert_eq!(
+            solver.factorize(&coo_wrong_1, false).err(),
+            Some("the dimension of the CooMatrix must be equal to ndim")
+        );
+        assert_eq!(
+            solver.factorize(&coo_wrong_2, false).err(),
+            Some("the dimension of the CooMatrix must be equal to ndim")
+        );
+        assert_eq!(
+            solver.factorize(&coo_wrong_3, false).err(),
+            Some("nnz = row_pointers[nrow] must be ≥ nrow")
+        );
+        assert_eq!(
+            solver.factorize(&coo_wrong_4, false).err(),
+            Some("the CooMatrix symmetry option must be equal to the one provided to initialize")
+        );
+
+        // factorize works
+        solver.factorize(&coo, false).unwrap();
+        assert!(solver.factorized);
+    }
+
+    #[test]
+    fn factorize_handles_singular_matrix() {
+        let mut solver = SolverIntelDSS::new().unwrap();
+        let mut coo = CooMatrix::new(2, 2, 2, None, false).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 0.0).unwrap();
+        solver.initialize(coo.nrow, coo.max, coo.symmetry, None).unwrap();
+        // TODO: implement an external check because
+        // Intel DSS does not check if the matrix is singular !!!
+        assert_eq!(solver.factorize(&coo, false).err(), None);
+    }
+
+    #[test]
+    fn solve_handles_errors_and_works() {
+        // allocate a new solver
+        let mut solver = SolverIntelDSS::new().unwrap();
+        assert!(!solver.initialized);
+        assert!(!solver.factorized);
+
+        // sample matrix
+        let (coo, _) = Samples::umfpack_sample1_unsymmetric(false);
+
+        // allocate x and rhs
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
+        let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+
+        // solve fails on non-factorized system
+        assert_eq!(
+            solver.solve(&mut x, &rhs, false),
+            Err("the function factorize must be called before solve")
+        );
+
+        // call initialize and factorize
+        solver.initialize(coo.nrow, coo.pos, coo.symmetry, None).unwrap();
+        assert!(solver.initialized);
+        solver.factorize(&coo, false).unwrap();
+        assert!(solver.factorized);
+
+        // solve fails on wrong x and rhs vectors
+        let mut x_wrong = Vector::new(3);
+        let rhs_wrong = Vector::new(2);
+        assert_eq!(
+            solver.solve(&mut x_wrong, &rhs, false),
+            Err("the dimension of the vector of unknown values x is incorrect")
+        );
+        assert_eq!(
+            solver.solve(&mut x, &rhs_wrong, false),
+            Err("the dimension of the right-hand side vector is incorrect")
+        );
+
+        // solve works
+        solver.solve(&mut x, &rhs, false).unwrap();
+        vec_approx_eq(x.as_data(), x_correct, 1e-14);
+
+        // calling solve again works
+        let mut x_again = Vector::new(5);
+        solver.solve(&mut x_again, &rhs, false).unwrap();
+        vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
     }
 }

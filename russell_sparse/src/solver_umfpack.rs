@@ -428,7 +428,7 @@ mod tests {
         assert!(!solver.factorized);
 
         // sample matrix
-        let (coo, _) = Samples::umfpack_sample1_unsymmetric(false);
+        let (coo, _, _, _) = Samples::umfpack_sample1_unsymmetric(false);
 
         // factorize requests initialize
         assert_eq!(
@@ -486,7 +486,7 @@ mod tests {
         assert!(!solver.factorized);
 
         // sample matrix
-        let (coo, _) = Samples::umfpack_sample1_unsymmetric(false);
+        let (coo, _, _, _) = Samples::umfpack_sample1_unsymmetric(false);
 
         // allocate x and rhs
         let mut x = Vector::new(5);
@@ -533,7 +533,7 @@ mod tests {
         config.ordering = Ordering::Amd;
         config.scaling = Scaling::Sum;
         let mut solver = SolverUMFPACK::new().unwrap();
-        let (coo, _) = Samples::umfpack_sample1_unsymmetric(false);
+        let (coo, _, _, _) = Samples::umfpack_sample1_unsymmetric(false);
         solver
             .initialize(coo.nrow, coo.max, coo.symmetry, Some(config))
             .unwrap();
@@ -546,7 +546,7 @@ mod tests {
         let mut config = ConfigSolver::new();
         config.compute_determinant = true;
         let mut solver = SolverUMFPACK::new().unwrap();
-        let (coo, _) = Samples::umfpack_sample1_unsymmetric(false);
+        let (coo, _, _, _) = Samples::umfpack_sample1_unsymmetric(false);
         solver
             .initialize(coo.nrow, coo.max, coo.symmetry, Some(config))
             .unwrap();

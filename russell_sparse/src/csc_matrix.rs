@@ -548,31 +548,11 @@ mod tests {
         //  .   .   4   6   4
         // -4   .   2   7   .
         //  .   8   .   .  -5
-        let (coo, _) = Samples::unsymmetric_5x5_with_shuffled_entries(false);
+        let (coo, csc_correct, _, _) = Samples::unsymmetric_5x5_with_shuffled_entries(false);
         let csc = CscMatrix::from_coo(&coo).unwrap();
-        // solution
-        let correct_x = vec![
-            //                                  p
-            1.0, -2.0, -4.0, // j = 0, count =  0, 1, 2,
-            -1.0, 5.0, 8.0, //  j = 1, count =  3, 4, 5,
-            4.0, 2.0, //        j = 2, count =  6, 7,
-            -3.0, 6.0, 7.0, //  j = 3, count =  8, 9, 10,
-            4.0, -5.0, //       j = 4, count = 11, 12,
-                  //                           13
-        ];
-        let correct_i = vec![
-            //                          p
-            0, 1, 3, // j = 0, count =  0, 1, 2,
-            0, 1, 4, // j = 1, count =  3, 4, 5,
-            2, 3, //    j = 2, count =  6, 7,
-            0, 2, 3, // j = 3, count =  8, 9, 10,
-            2, 4, //    j = 4, count = 11, 12,
-               //                      13
-        ];
-        let correct_p = vec![0, 3, 6, 8, 11, 13];
-        assert_eq!(&csc.col_pointers, &correct_p);
-        assert_eq!(&csc.row_indices, &correct_i);
-        vec_approx_eq(&csc.values, &correct_x, 1e-15);
+        assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
+        assert_eq!(&csc.row_indices, &csc_correct.row_indices);
+        vec_approx_eq(&csc.values, &csc_correct.values, 1e-15);
     }
 
     #[test]
@@ -582,31 +562,11 @@ mod tests {
         // .  .  5  6  .
         // .  .  7  8  .
         // .  .  .  .  9
-        let (coo, _) = Samples::block_unsym_5x5_with_shuffled_entries(false);
+        let (coo, csc_correct, _, _) = Samples::block_unsym_5x5_with_shuffled_entries(false);
         let csc = CscMatrix::from_coo(&coo).unwrap();
-        // solution
-        let correct_x = vec![
-            //                           p
-            1.0, 3.0, // j = 0, count =  0, 1,
-            2.0, 4.0, // j = 1, count =  2, 3,
-            5.0, 7.0, // j = 2, count =  4, 5,
-            6.0, 8.0, // j = 3, count =  6, 7,
-            9.0, //      j = 4, count =  8,
-                 //                      9
-        ];
-        let correct_i = vec![
-            //                       p
-            0, 1, // j = 0, count =  0, 1,
-            0, 1, // j = 1, count =  2, 3,
-            2, 3, // j = 2, count =  4, 5,
-            2, 3, // j = 3, count =  6, 7,
-            4, //    j = 4, count =  8,
-               //                    9
-        ];
-        let correct_p = vec![0, 2, 4, 6, 8, 9];
-        assert_eq!(&csc.col_pointers, &correct_p);
-        assert_eq!(&csc.row_indices, &correct_i);
-        vec_approx_eq(&csc.values, &correct_x, 1e-15);
+        assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
+        assert_eq!(&csc.row_indices, &csc_correct.row_indices);
+        vec_approx_eq(&csc.values, &csc_correct.values, 1e-15);
     }
 
     #[test]
@@ -616,32 +576,11 @@ mod tests {
         // .  .  5  6  .
         // .  .  7  8  .
         // .  .  .  .  9
-        let (coo, _) = Samples::block_unsym_5x5_with_duplicates(false);
+        let (coo, csc_correct, _, _) = Samples::block_unsym_5x5_with_duplicates(false);
         let csc = CscMatrix::from_coo(&coo).unwrap();
-        // solution
-        let correct_x = vec![
-            //                           p
-            1.0, 3.0, // j = 0, count =  0, 1,
-            2.0, 4.0, // j = 1, count =  2, 3,
-            5.0, 7.0, // j = 2, count =  4, 5,
-            6.0, 8.0, // j = 3, count =  6, 7,
-            9.0, //      j = 4, count =  8,
-                 //                      9
-        ];
-        let correct_i = vec![
-            //                       p
-            0, 1, // j = 0, count =  0, 1,
-            0, 1, // j = 1, count =  2, 3,
-            2, 3, // j = 2, count =  4, 5,
-            2, 3, // j = 3, count =  6, 7,
-            4, //    j = 4, count =  8,
-               //                    9
-        ];
-        let correct_p = vec![0, 2, 4, 6, 8, 9];
-        // solution
-        assert_eq!(&csc.col_pointers, &correct_p);
-        assert_eq!(&csc.row_indices, &correct_i);
-        vec_approx_eq(&csc.values, &correct_x, 1e-15);
+        assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
+        assert_eq!(&csc.row_indices, &csc_correct.row_indices);
+        vec_approx_eq(&csc.values, &csc_correct.values, 1e-15);
     }
 
     #[test]
@@ -651,29 +590,11 @@ mod tests {
         //  6.00  0.0  12.0  0.000   0.0
         //  0.75  0.0   0.0  0.625   0.0
         //  3.00  0.0   0.0  0.000  16.0
-        let (coo, _) = Samples::mkl_sample1_symmetric_full(false);
+        let (coo, csc_correct, _, _) = Samples::mkl_sample1_symmetric_full(false);
         let csc = CscMatrix::from_coo(&coo).unwrap();
-        // solution
-        let correct_x = vec![
-            //                                     p
-            9.0, 1.5, 6.0, 0.75, 3.0, // j=0 count=0,1,2,3,4
-            1.5, 0.5, //                 j=1 count=5,6
-            6.0, 12.0, //                j=2 count=7,8
-            0.75, 0.625, //              j=3 count=9,10
-            3.0, 16.0, //                j=4 count=11,12
-                  //                               13
-        ];
-        let correct_i = vec![
-            0, 1, 2, 3, 4, //
-            0, 1, //
-            0, 2, //
-            0, 3, //
-            0, 4,
-        ];
-        let correct_p = vec![0, 5, 7, 9, 11, 13];
-        assert_eq!(&csc.col_pointers, &correct_p);
-        assert_eq!(&csc.row_indices, &correct_i);
-        vec_approx_eq(&csc.values, &correct_x, 1e-15);
+        assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
+        assert_eq!(&csc.row_indices, &csc_correct.row_indices);
+        vec_approx_eq(&csc.values, &csc_correct.values, 1e-15);
     }
 
     #[test]

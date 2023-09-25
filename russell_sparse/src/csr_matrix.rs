@@ -623,17 +623,11 @@ mod tests {
         //  .   .   4   6   4
         // -4   .   2   7   .
         //  .   8   .   .  -5
-        let (coo, _) = Samples::unsymmetric_5x5_with_shuffled_entries(false);
+        let (coo, _, csr_correct, _) = Samples::unsymmetric_5x5_with_shuffled_entries(false);
         let csr = CsrMatrix::from_coo(&coo).unwrap();
-        // solution
-        let correct_p = vec![0, 3, 5, 8, 11, 13];
-        let correct_j = vec![
-            0, 1, 3, /**/ 0, 1, /**/ 2, 3, 4, /**/ 0, 2, 3, /**/ 1, 4,
-        ];
-        let correct_x = vec![1.0, -1.0, -3.0, -2.0, 5.0, 4.0, 6.0, 4.0, -4.0, 2.0, 7.0, 8.0, -5.0];
-        assert_eq!(&csr.row_pointers, &correct_p);
-        assert_eq!(&csr.col_indices, &correct_j);
-        vec_approx_eq(&csr.values, &correct_x, 1e-15);
+        assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
+        assert_eq!(&csr.col_indices, &csr_correct.col_indices);
+        vec_approx_eq(&csr.values, &csr_correct.values, 1e-15);
     }
 
     #[test]
@@ -643,15 +637,11 @@ mod tests {
         // .  .  5  6  .
         // .  .  7  8  .
         // .  .  .  .  9
-        let (coo, _) = Samples::block_unsym_5x5_with_shuffled_entries(false);
+        let (coo, _, csr_correct, _) = Samples::block_unsym_5x5_with_shuffled_entries(false);
         let csr = CsrMatrix::from_coo(&coo).unwrap();
-        // solution
-        let correct_p = vec![0, 2, 4, 6, 8, 9];
-        let correct_j = vec![0, 1, 0, 1, 2, 3, 2, 3, 4];
-        let correct_x = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
-        assert_eq!(&csr.row_pointers, &correct_p);
-        assert_eq!(&csr.col_indices, &correct_j);
-        vec_approx_eq(&csr.values, &correct_x, 1e-15);
+        assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
+        assert_eq!(&csr.col_indices, &csr_correct.col_indices);
+        vec_approx_eq(&csr.values, &csr_correct.values, 1e-15);
     }
 
     #[test]
@@ -661,15 +651,11 @@ mod tests {
         // .  .  5  6  .
         // .  .  7  8  .
         // .  .  .  .  9
-        let (coo, _) = Samples::block_unsym_5x5_with_duplicates(false);
+        let (coo, _, csr_correct, _) = Samples::block_unsym_5x5_with_duplicates(false);
         let csr = CsrMatrix::from_coo(&coo).unwrap();
-        // solution
-        let correct_p = vec![0, 2, 4, 6, 8, 9];
-        let correct_j = vec![0, 1, 0, 1, 2, 3, 2, 3, 4];
-        let correct_x = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
-        assert_eq!(&csr.row_pointers, &correct_p);
-        assert_eq!(&csr.col_indices, &correct_j);
-        vec_approx_eq(&csr.values, &correct_x, 1e-15);
+        assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
+        assert_eq!(&csr.col_indices, &csr_correct.col_indices);
+        vec_approx_eq(&csr.values, &csr_correct.values, 1e-15);
     }
 
     #[test]

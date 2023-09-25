@@ -449,7 +449,7 @@ mod tests {
         );
 
         // sample matrix
-        let (coo, _) = Samples::umfpack_sample1_unsymmetric(true);
+        let (coo, _, _, _) = Samples::umfpack_sample1_unsymmetric(true);
 
         // factorize requests initialize
         assert_eq!(
@@ -554,7 +554,7 @@ mod tests {
         );
 
         // solve with positive-definite matrix works
-        let (coo_pd_lower, _) = Samples::mkl_sample1_positive_definite_lower(true);
+        let (coo_pd_lower, _, _, _) = Samples::mkl_sample1_positive_definite_lower(true);
         config.ordering = Ordering::Auto;
         config.scaling = Scaling::Auto;
         let mut solver = SolverMUMPS::new().unwrap();

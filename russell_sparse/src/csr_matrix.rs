@@ -258,8 +258,78 @@ impl CsrMatrix {
     }
 
     /// Creates a new CSR matrix from a CSC matrix
-    pub fn from_csc(_csc: &CscMatrix) -> Result<Self, StrError> {
-        Err("TODO")
+    pub fn from_csc(csc: &CscMatrix) -> Result<Self, StrError> {
+        // Based on the SciPy code (csr_tocsc) from here:
+        //
+        // https://github.com/scipy/scipy/blob/main/scipy/sparse/sparsetools/csr.h
+        //
+        // Notes:
+        //
+        // * The same function csr_tocsc is used however with rows and columns swapped
+        // * Linear complexity: O(nnz(A) + max(nrow, ncol))
+        // * Upgrading i32 to usize is OK (the opposite is not OK => use to_i32)
+
+        // check and read in the dimensions
+        csc.validate()?;
+        let ncol = csc.ncol as usize;
+        let nrow = csc.nrow as usize;
+        let nnz = csc.col_pointers[ncol] as usize;
+
+        // access the CSC data
+        let ap = &csc.col_pointers;
+        let ai = &csc.row_indices;
+        let ax = &csc.values;
+
+        // allocate the CSR arrays
+        let mut csr = CsrMatrix {
+            symmetry: csc.symmetry,
+            ncol: csc.ncol,
+            nrow: csc.nrow,
+            row_pointers: vec![0; nrow + 1],
+            col_indices: vec![0; nnz],
+            values: vec![0.0; nnz],
+        };
+
+        // access the CSR data
+        let bp = &mut csr.row_pointers;
+        let bj = &mut csr.col_indices;
+        let bx = &mut csr.values;
+
+        // compute the number of non-zero entries per row of A
+        for k in 0..nnz {
+            bp[ai[k] as usize] += 1;
+        }
+
+        // perform the cumulative sum of the nnz per column to get bp
+        let mut sum = 0;
+        for i in 0..nrow {
+            let temp = bp[i];
+            bp[i] = sum;
+            sum += temp;
+        }
+        bp[nrow] = to_i32(nnz)?;
+
+        // write ai and ax into bj and bx (will use bp as workspace)
+        for j in 0..ncol {
+            for p in ap[j]..ap[j + 1] {
+                let i = ai[p as usize] as usize;
+                let dest = bp[i] as usize;
+                bj[dest] = to_i32(j)?;
+                bx[dest] = ax[p as usize];
+                bp[i] += 1;
+            }
+        }
+
+        // fix bp
+        let mut last = 0;
+        for i in 0..(nrow + 1) {
+            let temp = bp[i];
+            bp[i] = last;
+            last = temp;
+        }
+
+        // results
+        Ok(csr)
     }
 
     /// Converts this CSR matrix to a dense matrix
@@ -466,15 +536,15 @@ fn csr_sum_duplicates(nrow: usize, ap: &mut [i32], aj: &mut [i32], ax: &mut [f64
     let mut nnz: i32 = 0;
     let mut row_end = 0;
     for i in 0..nrow {
-        let mut jj = row_end;
+        let mut k = row_end;
         row_end = ap[i + 1];
-        while jj < row_end {
-            let j = aj[jj as usize];
-            let mut x = ax[jj as usize];
-            jj += 1;
-            while jj < row_end && aj[jj as usize] == j {
-                x += ax[jj as usize];
-                jj += 1;
+        while k < row_end {
+            let j = aj[k as usize];
+            let mut x = ax[k as usize];
+            k += 1;
+            while k < row_end && aj[k as usize] == j {
+                x += ax[k as usize];
+                k += 1;
             }
             aj[nnz as usize] = j;
             ax[nnz as usize] = x;
@@ -490,12 +560,69 @@ fn csr_sum_duplicates(nrow: usize, ap: &mut [i32], aj: &mut [i32], ax: &mut [f64
 #[cfg(test)]
 mod tests {
     use super::CsrMatrix;
-    use crate::{CooMatrix, Samples, Storage, Symmetry};
+    use crate::{CooMatrix, CscMatrix, Samples, Storage, Symmetry};
     use russell_chk::vec_approx_eq;
     use russell_lab::{Matrix, Vector};
 
     #[test]
+    fn from_csc_works() {
+        //  1  -1   .  -3   .
+        // -2   5   .   .   .
+        //  .   .   4   6   4
+        // -4   .   2   7   .
+        //  .   8   .   .  -5
+        let csc = CscMatrix {
+            symmetry: None,
+            nrow: 5,
+            ncol: 5,
+            values: vec![
+                //                                  p
+                1.0, -2.0, -4.0, // j = 0, count =  0, 1, 2,
+                -1.0, 5.0, 8.0, //  j = 1, count =  3, 4, 5,
+                4.0, 2.0, //        j = 2, count =  6, 7,
+                -3.0, 6.0, 7.0, //  j = 3, count =  8, 9, 10,
+                4.0, -5.0, //       j = 4, count = 11, 12,
+                      //                           13
+            ],
+            row_indices: vec![
+                //                          p
+                0, 1, 3, // j = 0, count =  0, 1, 2,
+                0, 1, 4, // j = 1, count =  3, 4, 5,
+                2, 3, //    j = 2, count =  6, 7,
+                0, 2, 3, // j = 3, count =  8, 9, 10,
+                2, 4, //    j = 4, count = 11, 12,
+                   //                      13
+            ],
+            col_pointers: vec![0, 3, 6, 8, 11, 13],
+        };
+        let csr = CsrMatrix::from_csc(&csc).unwrap();
+        let correct_p = vec![0, 3, 5, 8, 11, 13];
+        let correct_j = vec![
+            0, 1, 3, //  i=0, p=(0),1,2
+            0, 1, //     i=1, p=(3),4
+            2, 3, 4, //  i=2, p=(5),6,7
+            0, 2, 3, //  i=3, p=(8),8,10
+            1, 4, //     i=4, p=(11),12
+        ]; //                   (13)
+        let correct_x = vec![
+            1.0, -1.0, -3.0, // i=0, p=(0),1,2
+            -2.0, 5.0, //       i=1, p=(3),4
+            4.0, 6.0, 4.0, //   i=2, p=(5),6,7
+            -4.0, 2.0, 7.0, //  i=3, p=(8),8,10
+            8.0, -5.0, //       i=4, p=(11),12
+        ]; //                          (13)
+        assert_eq!(&csr.row_pointers, &correct_p);
+        assert_eq!(&csr.col_indices, &correct_j);
+        vec_approx_eq(&csr.values, &correct_x, 1e-15);
+    }
+
+    #[test]
     fn csr_matrix_first_triplet_with_shuffled_entries() {
+        //  1  -1   .  -3   .
+        // -2   5   .   .   .
+        //  .   .   4   6   4
+        // -4   .   2   7   .
+        //  .   8   .   .  -5
         let (coo, _) = Samples::unsymmetric_5x5_with_shuffled_entries(false);
         let csr = CsrMatrix::from_coo(&coo).unwrap();
         // solution
@@ -511,6 +638,11 @@ mod tests {
 
     #[test]
     fn csr_matrix_small_triplet_with_shuffled_entries() {
+        // 1  2  .  .  .
+        // 3  4  .  .  .
+        // .  .  5  6  .
+        // .  .  7  8  .
+        // .  .  .  .  9
         let (coo, _) = Samples::block_unsym_5x5_with_shuffled_entries(false);
         let csr = CsrMatrix::from_coo(&coo).unwrap();
         // solution
@@ -524,6 +656,11 @@ mod tests {
 
     #[test]
     fn csr_matrix_small_triplet_with_duplicates() {
+        // 1  2  .  .  .
+        // 3  4  .  .  .
+        // .  .  5  6  .
+        // .  .  7  8  .
+        // .  .  .  .  9
         let (coo, _) = Samples::block_unsym_5x5_with_duplicates(false);
         let csr = CsrMatrix::from_coo(&coo).unwrap();
         // solution

@@ -484,12 +484,70 @@ impl CscMatrix {
 #[cfg(test)]
 mod tests {
     use super::CscMatrix;
-    use crate::{CooMatrix, Samples, Storage, Symmetry};
+    use crate::{CooMatrix, CsrMatrix, Samples, Storage, Symmetry};
     use russell_chk::vec_approx_eq;
     use russell_lab::{Matrix, Vector};
 
     #[test]
+    fn from_csr_works() {
+        //  1  -1   .  -3   .
+        // -2   5   .   .   .
+        //  .   .   4   6   4
+        // -4   .   2   7   .
+        //  .   8   .   .  -5
+        let csr = CsrMatrix {
+            symmetry: None,
+            nrow: 5,
+            ncol: 5,
+            row_pointers: vec![0, 3, 5, 8, 11, 13],
+            col_indices: vec![
+                0, 1, 3, //  i=0, p=(0),1,2
+                0, 1, //     i=1, p=(3),4
+                2, 3, 4, //  i=2, p=(5),6,7
+                0, 2, 3, //  i=3, p=(8),8,10
+                1, 4, //     i=4, p=(11),12
+            ], //                   (13)
+            values: vec![
+                1.0, -1.0, -3.0, // i=0, p=(0),1,2
+                -2.0, 5.0, //       i=1, p=(3),4
+                4.0, 6.0, 4.0, //   i=2, p=(5),6,7
+                -4.0, 2.0, 7.0, //  i=3, p=(8),8,10
+                8.0, -5.0, //       i=4, p=(11),12
+            ], //                          (13)
+        };
+        let csc = CscMatrix::from_csr(&csr).unwrap();
+        // solution
+        let correct_x = vec![
+            //                                  p
+            1.0, -2.0, -4.0, // j = 0, count =  0, 1, 2,
+            -1.0, 5.0, 8.0, //  j = 1, count =  3, 4, 5,
+            4.0, 2.0, //        j = 2, count =  6, 7,
+            -3.0, 6.0, 7.0, //  j = 3, count =  8, 9, 10,
+            4.0, -5.0, //       j = 4, count = 11, 12,
+                  //                           13
+        ];
+        let correct_i = vec![
+            //                          p
+            0, 1, 3, // j = 0, count =  0, 1, 2,
+            0, 1, 4, // j = 1, count =  3, 4, 5,
+            2, 3, //    j = 2, count =  6, 7,
+            0, 2, 3, // j = 3, count =  8, 9, 10,
+            2, 4, //    j = 4, count = 11, 12,
+               //                      13
+        ];
+        let correct_p = vec![0, 3, 6, 8, 11, 13];
+        assert_eq!(&csc.col_pointers, &correct_p);
+        assert_eq!(&csc.row_indices, &correct_i);
+        vec_approx_eq(&csc.values, &correct_x, 1e-15);
+    }
+
+    #[test]
     fn csc_matrix_first_triplet_with_shuffled_entries() {
+        //  1  -1   .  -3   .
+        // -2   5   .   .   .
+        //  .   .   4   6   4
+        // -4   .   2   7   .
+        //  .   8   .   .  -5
         let (coo, _) = Samples::unsymmetric_5x5_with_shuffled_entries(false);
         let csc = CscMatrix::from_coo(&coo).unwrap();
         // solution
@@ -519,6 +577,11 @@ mod tests {
 
     #[test]
     fn csc_matrix_small_triplet_with_shuffled_entries() {
+        // 1  2  .  .  .
+        // 3  4  .  .  .
+        // .  .  5  6  .
+        // .  .  7  8  .
+        // .  .  .  .  9
         let (coo, _) = Samples::block_unsym_5x5_with_shuffled_entries(false);
         let csc = CscMatrix::from_coo(&coo).unwrap();
         // solution
@@ -548,6 +611,11 @@ mod tests {
 
     #[test]
     fn csc_matrix_small_triplet_with_duplicates() {
+        // 1  2  .  .  .
+        // 3  4  .  .  .
+        // .  .  5  6  .
+        // .  .  7  8  .
+        // .  .  .  .  9
         let (coo, _) = Samples::block_unsym_5x5_with_duplicates(false);
         let csc = CscMatrix::from_coo(&coo).unwrap();
         // solution
@@ -578,6 +646,11 @@ mod tests {
 
     #[test]
     fn csc_matrix_symmetric_with_all_values() {
+        //  9.00  1.5   6.0  0.750   3.0
+        //  1.50  0.5   0.0  0.000   0.0
+        //  6.00  0.0  12.0  0.000   0.0
+        //  0.75  0.0   0.0  0.625   0.0
+        //  3.00  0.0   0.0  0.000  16.0
         let (coo, _) = Samples::mkl_sample1_symmetric_full(false);
         let csc = CscMatrix::from_coo(&coo).unwrap();
         // solution

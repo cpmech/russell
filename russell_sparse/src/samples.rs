@@ -80,11 +80,13 @@ impl Samples {
     ///
     /// Small triplet with shuffled entries
     ///
+    /// ```text
     /// 1  2  .  .  .
     /// 3  4  .  .  .
     /// .  .  5  6  .
     /// .  .  7  8  .
     /// .  .  .  .  9
+    /// ```
     pub fn block_unsym_5x5_with_shuffled_entries(one_based: bool) -> (CooMatrix, f64) {
         let mut coo = CooMatrix::new(5, 5, 9, None, one_based).unwrap();
         coo.put(4, 4, 9.0).unwrap();
@@ -103,11 +105,13 @@ impl Samples {
     ///
     /// Small triplet with shuffled entries
     ///
+    /// ```text
     /// 1  2  .  .  .
     /// 3  4  .  .  .
     /// .  .  5  6  .
     /// .  .  7  8  .
     /// .  .  .  .  9
+    /// ```
     pub fn block_unsym_5x5_with_duplicates(one_based: bool) -> (CooMatrix, f64) {
         let mut coo = CooMatrix::new(5, 5, 11, None, one_based).unwrap();
         coo.put(4, 4, 9.0).unwrap();

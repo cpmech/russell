@@ -2,7 +2,7 @@
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
-This repository contains tools for handling sparse matrices and functions to solve large sparse systems using the best libraries out there, such as [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS](https://mumps-solver.org).
+This repository contains tools for handling sparse matrices and functions to solve large sparse systems using the best libraries out there, such as [(recommended) UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse), [(large systems) MUMPS](https://mumps-solver.org), and [(optional) Intel DSS](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html).
 
 Documentation:
 
@@ -10,13 +10,15 @@ Documentation:
 
 ## Installation (Ubuntu/Linux)
 
+### Required libraries
+
 First, you need to install some dependencies:
 
 ```bash
 sudo apt install liblapacke-dev libopenblas-dev
 ```
 
-Next, there are some options to compile the code with UMFPACK and MUMPS:
+Next, there are some options to compile the code with [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS](https://mumps-solver.org):
 
 **Option 1.** Using the standard Debian packages. The code works just fine with the standard Debian packages. However, they may be outdated. Furthermore, the sequential version of MUMPS in Debian may be slow because it does not include Metis and OpenMP.
 
@@ -29,7 +31,7 @@ export RUSSELL_SPARSE_USE_LOCAL_UMFPACK=1
 
 You can combine a Debian-packaged UMFPACK with a locally compiled MUMPS (or vice-versa). Just set the above variables as appropriate.
 
-### Option 1 - Standard Debian packages
+#### Option 1 - Standard Debian packages
 
 Install the following libraries:
 
@@ -37,7 +39,7 @@ Install the following libraries:
 sudo apt install libmumps-seq-dev libsuitesparse-dev
 ```
 
-### Option 2 - Locally compiled MUMPS and UMFPACK
+#### Option 2 - Locally compiled MUMPS and UMFPACK
 
 **Important:** To use the locally compiled UMFPACK, in addition to setting the above environment variable, you must **remove** `libsuitesparse-dev`.
 
@@ -47,7 +49,7 @@ First, install some dependencies:
 bash zscripts/install-deps.bash
 ```
 
-Second (optional), to download and compile MUMPS and install it in `/usr/local/include/mumps` and `/usr/local/lib/mumps`, run:
+Second, to download and compile MUMPS and install it in `/usr/local/include/mumps` and `/usr/local/lib/mumps`, run:
 
 ```bash
 bash zscripts/install-mumps.bash
@@ -55,10 +57,24 @@ bash zscripts/install-mumps.bash
 
 Note that the locally compiled MUMPS can co-exist with `libmumps-seq-dev`.
 
-Third (optional), to download and compile UMFPACK and install it in `/usr/local/include/umfpack` and `/usr/local/lib/umfpack`, run:
+Third, to download and compile UMFPACK and install it in `/usr/local/include/umfpack` and `/usr/local/lib/umfpack`, run:
 
 ```bash
 bash zscripts/install-umfpack.bash
+```
+
+### (optional) Intel DSS solver
+
+If you wish to use the [Intel DSS](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html) solver, you need the additional Debian packages: `intel-oneapi-mkl` and `intel-oneapi-mkl-devel`, that can be easily installed by running:
+
+```bash
+bash zscripts/install-intel-mkl-linux.bash
+```
+
+Furthermore, you need to define the following environment variable:
+
+```bash
+export RUSSELL_SPARSE_WITH_INTEL_DSS=1
 ```
 
 ### Crates.io

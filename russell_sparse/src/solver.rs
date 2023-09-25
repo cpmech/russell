@@ -122,7 +122,7 @@ pub trait SolverTrait {
     /// Returns the scaling effectively used by the solver
     fn get_effective_scaling(&self) -> String;
 
-    /// Returns the strategy effectively used by the solver
+    /// Returns the strategy (concerning symmetry) effectively used by the solver
     ///
     /// For example, returns whether the `symmetric strategy` was used or not (UMFPACK only)
     fn get_effective_strategy(&self) -> String;

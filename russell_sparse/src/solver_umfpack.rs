@@ -323,14 +323,15 @@ impl SolverTrait for SolverUMFPACK {
         }
     }
 
+    /// Returns the strategy (concerning symmetry) effectively used by the solver
     fn get_effective_strategy(&self) -> String {
         unsafe {
             let strategy = solver_umfpack_get_strategy(self.solver);
             match strategy {
-                UMFPACK_STRATEGY_AUTO => "auto".to_string(),
-                UMFPACK_STRATEGY_UNSYMMETRIC => "unsymmetric".to_string(),
-                UMFPACK_STRATEGY_SYMMETRIC => "symmetric".to_string(),
-                _ => "unknown".to_string(),
+                UMFPACK_STRATEGY_AUTO => "Auto".to_string(),
+                UMFPACK_STRATEGY_UNSYMMETRIC => "Unsymmetric".to_string(),
+                UMFPACK_STRATEGY_SYMMETRIC => "Symmetric".to_string(),
+                _ => "Unknown".to_string(),
             }
         }
     }

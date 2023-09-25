@@ -511,22 +511,7 @@ mod tests {
 
     #[test]
     fn csr_matrix_small_triplet_with_shuffled_entries() {
-        // 1  2  .  .  .
-        // 3  4  .  .  .
-        // .  .  5  6  .
-        // .  .  7  8  .
-        // .  .  .  .  9
-        // small triplet with shuffled entries
-        let mut coo = CooMatrix::new(5, 5, 9, None, false).unwrap();
-        coo.put(4, 4, 9.0).unwrap();
-        coo.put(0, 0, 1.0).unwrap();
-        coo.put(1, 0, 3.0).unwrap();
-        coo.put(2, 2, 5.0).unwrap();
-        coo.put(2, 3, 6.0).unwrap();
-        coo.put(0, 1, 2.0).unwrap();
-        coo.put(3, 2, 7.0).unwrap();
-        coo.put(1, 1, 4.0).unwrap();
-        coo.put(3, 3, 8.0).unwrap();
+        let (coo, _) = Samples::block_unsym_5x5_with_shuffled_entries(false);
         let csr = CsrMatrix::from_coo(&coo).unwrap();
         // solution
         let correct_p = vec![0, 2, 4, 6, 8, 9];
@@ -539,24 +524,7 @@ mod tests {
 
     #[test]
     fn csr_matrix_small_triplet_with_duplicates() {
-        // 1  2  .  .  .
-        // 3  4  .  .  .
-        // .  .  5  6  .
-        // .  .  7  8  .
-        // .  .  .  .  9
-        // with duplicates
-        let mut coo = CooMatrix::new(5, 5, 11, None, false).unwrap();
-        coo.put(4, 4, 9.0).unwrap();
-        coo.put(0, 0, 1.0).unwrap();
-        coo.put(1, 0, 3.0).unwrap();
-        coo.put(2, 2, 5.0).unwrap();
-        coo.put(2, 3, 3.0).unwrap(); // <<
-        coo.put(0, 1, 2.0).unwrap();
-        coo.put(3, 2, 7.0).unwrap();
-        coo.put(1, 1, 2.0).unwrap(); // <<
-        coo.put(3, 3, 8.0).unwrap();
-        coo.put(2, 3, 3.0).unwrap(); // << duplicate
-        coo.put(1, 1, 2.0).unwrap(); // << duplicate
+        let (coo, _) = Samples::block_unsym_5x5_with_duplicates(false);
         let csr = CsrMatrix::from_coo(&coo).unwrap();
         // solution
         let correct_p = vec![0, 2, 4, 6, 8, 9];

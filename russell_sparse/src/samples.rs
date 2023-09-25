@@ -101,6 +101,31 @@ impl Samples {
 
     /// Returns the matrix and its determinant
     ///
+    /// Small triplet with shuffled entries
+    ///
+    /// 1  2  .  .  .
+    /// 3  4  .  .  .
+    /// .  .  5  6  .
+    /// .  .  7  8  .
+    /// .  .  .  .  9
+    pub fn block_unsym_5x5_with_duplicates(one_based: bool) -> (CooMatrix, f64) {
+        let mut coo = CooMatrix::new(5, 5, 11, None, one_based).unwrap();
+        coo.put(4, 4, 9.0).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 0, 3.0).unwrap();
+        coo.put(2, 2, 5.0).unwrap();
+        coo.put(2, 3, 3.0).unwrap(); // <<
+        coo.put(0, 1, 2.0).unwrap();
+        coo.put(3, 2, 7.0).unwrap();
+        coo.put(1, 1, 2.0).unwrap(); // <<
+        coo.put(3, 3, 8.0).unwrap();
+        coo.put(2, 3, 3.0).unwrap(); // << duplicate
+        coo.put(1, 1, 2.0).unwrap(); // << duplicate
+        (coo, 36.0)
+    }
+
+    /// Returns the matrix and its determinant
+    ///
     /// Example from Intel MKL documentation
     ///
     /// ```text
@@ -359,8 +384,6 @@ mod tests {
 
         // ----------------------------------------------------------------------------
 
-        let (coo, correct_det) = Samples::block_unsym_5x5_with_shuffled_entries(false);
-        let mat = coo.as_matrix();
         let correct = "┌           ┐\n\
                        │ 1 2 0 0 0 │\n\
                        │ 3 4 0 0 0 │\n\
@@ -368,10 +391,18 @@ mod tests {
                        │ 0 0 7 8 0 │\n\
                        │ 0 0 0 0 9 │\n\
                        └           ┘";
-        assert_eq!(format!("{}", mat), correct);
-        let mut inv = Matrix::new(5, 5);
-        let det = mat_inverse(&mut inv, &mat).unwrap();
-        approx_eq(det, correct_det, 1e-13);
+        for (coo, correct_det) in [
+            Samples::block_unsym_5x5_with_shuffled_entries(false),
+            Samples::block_unsym_5x5_with_shuffled_entries(true),
+            Samples::block_unsym_5x5_with_duplicates(false),
+            Samples::block_unsym_5x5_with_duplicates(true),
+        ] {
+            let mat = coo.as_matrix();
+            assert_eq!(format!("{}", mat), correct);
+            let mut inv = Matrix::new(5, 5);
+            let det = mat_inverse(&mut inv, &mat).unwrap();
+            approx_eq(det, correct_det, 1e-13);
+        }
 
         // ----------------------------------------------------------------------------
 
@@ -384,10 +415,15 @@ mod tests {
                        └                               ┘";
         for (coo, correct_det) in [
             Samples::mkl_sample1_positive_definite_lower(false),
+            Samples::mkl_sample1_positive_definite_lower(true),
             Samples::mkl_sample1_positive_definite_upper(false),
+            Samples::mkl_sample1_positive_definite_upper(true),
             Samples::mkl_sample1_symmetric_lower(false),
+            Samples::mkl_sample1_symmetric_lower(true),
             Samples::mkl_sample1_symmetric_upper(false),
+            Samples::mkl_sample1_symmetric_upper(true),
             Samples::mkl_sample1_symmetric_full(false),
+            Samples::mkl_sample1_symmetric_full(true),
         ] {
             let mat = coo.as_matrix();
             assert_eq!(format!("{}", mat), correct);

@@ -77,7 +77,9 @@ pub struct SolverUMFPACK {
     /// Indicates whether the sparse matrix has been factorized or not
     factorized: bool,
 
-    /// CSC matrix, if COO matrix is provided directly to factorize
+    /// Compressed sparse column (CSC) matrix
+    ///
+    /// **Note:** This is created only if a COO matrix is given to factorize
     pub csc_matrix: Option<CscMatrix>,
 }
 

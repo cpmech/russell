@@ -1,4 +1,4 @@
-use super::{handle_umfpack_error_code, to_i32, CooMatrix, Symmetry};
+use super::{handle_umfpack_error_code, to_i32, CooMatrix, CsrMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::{Matrix, Vector};
 
@@ -166,12 +166,18 @@ impl CscMatrix {
     /// }
     /// ```
     pub fn from(coo: &CooMatrix) -> Result<Self, StrError> {
-        // check
+        // check dimension params
         let nrow = coo.nrow;
         let ncol = coo.ncol;
         let nnz = coo.pos;
-        if nrow < 1 || ncol < 1 || nnz < 1 {
-            return Err("COO matrix must be at least (1 x 1) with 1 non-zero value");
+        if nrow < 1 {
+            return Err("nrow must be ≥ 1");
+        }
+        if ncol < 1 {
+            return Err("ncol must be ≥ 1");
+        }
+        if nnz < ncol {
+            return Err("nnz must be ≥ ncol");
         }
 
         // allocate arrays
@@ -207,6 +213,80 @@ impl CscMatrix {
         if final_nnz < coo.pos {
             csc.row_indices.resize(final_nnz, 0);
             csc.values.resize(final_nnz, 0.0);
+        }
+
+        // results
+        Ok(csc)
+    }
+
+    /// Creates a new CscMatrix from a CsrMatrix
+    pub fn from_csr(csr: &CsrMatrix) -> Result<Self, StrError> {
+        // Based on the SciPy code (csr_tocsc) from here:
+        //
+        // https://github.com/scipy/scipy/blob/main/scipy/sparse/sparsetools/csr.h
+        //
+        // Notes:
+        //
+        // * Linear complexity: O(nnz(A) + max(nrow, ncol))
+        // * Upgrading i32 to usize is OK (the opposite is not OK => use to_i32)
+
+        // check and read in the dimensions
+        csr.validate()?;
+        let nrow = csr.nrow as usize;
+        let ncol = csr.ncol as usize;
+        let nnz = csr.row_pointers[nrow] as usize;
+
+        // access the CSR data
+        let ap = &csr.row_pointers;
+        let aj = &csr.col_indices;
+        let ax = &csr.values;
+
+        // allocate the CSC arrays
+        let mut csc = CscMatrix {
+            symmetry: csr.symmetry,
+            nrow: csr.nrow,
+            ncol: csr.ncol,
+            col_pointers: vec![0; ncol + 1],
+            row_indices: vec![0; nnz],
+            values: vec![0.0; nnz],
+        };
+
+        // access the CSC data
+        let bp = &mut csc.col_pointers;
+        let bi = &mut csc.row_indices;
+        let bx = &mut csc.values;
+
+        // compute the number of non-zero entries per column of A
+        for k in 0..nnz {
+            bp[aj[k] as usize] += 1;
+        }
+
+        // perform the cumulative sum of the nnz per row to get bp
+        let mut sum = 0;
+        for j in 0..ncol {
+            let temp = bp[j];
+            bp[j] = sum;
+            sum += temp;
+        }
+        bp[ncol] = to_i32(nnz)?;
+
+        // write aj and ax into bi and bx (will use bp as workspace)
+        for i in 0..nrow {
+            for p in ap[i]..ap[i + 1] {
+                let j = aj[p as usize] as usize;
+                let dest = bp[j] as usize;
+                bi[dest] = to_i32(i)?;
+                bx[dest] = ax[p as usize];
+                bp[j] += 1;
+            }
+        }
+
+        // fix bp
+        let mut last = 0;
+        for j in 0..(ncol + 1) {
+            let temp = bp[j];
+            bp[j] = last;
+            last = temp;
         }
 
         // results

@@ -42,6 +42,8 @@
     "Schur",
     "Teukolsky",
     "tgamma",
+    "tocsc",
+    "tocsr",
     "udyad",
     "Vetterling",
     "zcopy",

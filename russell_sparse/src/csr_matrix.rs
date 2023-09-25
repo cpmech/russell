@@ -1,7 +1,6 @@
-use super::{CooMatrix, Symmetry};
+use super::{to_i32, CooMatrix, CscMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::{Matrix, Vector};
-use russell_openblas::to_i32;
 
 /// Holds the arrays needed for a CSR (compressed sparse row) matrix
 ///
@@ -153,23 +152,36 @@ impl CsrMatrix {
     /// }
     /// ```
     pub fn from(coo: &CooMatrix) -> Result<Self, StrError> {
-        // Based on the SciPy code from here:
+        // Based on the SciPy code (coo_tocsr) from here:
         //
         // https://github.com/scipy/scipy/blob/main/scipy/sparse/sparsetools/coo.h
         //
         // Notes:
         //
         // * The row and column indices may be unordered
-        // * Linear complexity: O(nnz(A) + max(nrow,ncol))
+        // * Linear complexity: O(nnz(A) + max(nrow, ncol))
+        // * Upgrading i32 to usize is OK (the opposite is not OK => use to_i32)
 
-        // access triplet data
+        // check dimension params
+        let nrow = coo.nrow;
+        let ncol = coo.ncol;
+        let nnz = coo.pos;
+        if nrow < 1 {
+            return Err("nrow must be ≥ 1");
+        }
+        if ncol < 1 {
+            return Err("ncol must be ≥ 1");
+        }
+        if nnz < nrow {
+            return Err("nnz must be ≥ nrow");
+        }
+
+        // access the triplet data
         let ai = &coo.indices_i;
         let aj = &coo.indices_j;
         let ax = &coo.values_aij;
 
-        // allocate vectors
-        let nrow = coo.nrow;
-        let nnz = coo.pos;
+        // allocate the CSR arrays
         let mut csr = CsrMatrix {
             symmetry: coo.symmetry,
             nrow: coo.nrow,
@@ -178,6 +190,8 @@ impl CsrMatrix {
             col_indices: vec![0; nnz],
             values: vec![0.0; nnz],
         };
+
+        // access the CSR data
         let bp = &mut csr.row_pointers;
         let bj = &mut csr.col_indices;
         let bx = &mut csr.values;
@@ -187,27 +201,27 @@ impl CsrMatrix {
             bp[ai[k] as usize] += 1;
         }
 
-        // perform the cumulative sum of the nnz per row to get bp[]
-        let mut cum_sum = 0;
+        // perform the cumulative sum of the nnz per row to get bp
+        let mut sum = 0;
         for i in 0..nrow {
             let temp = bp[i];
-            bp[i] = cum_sum;
-            cum_sum += temp;
+            bp[i] = sum;
+            sum += temp;
         }
-        bp[nrow] = to_i32(nnz);
+        bp[nrow] = to_i32(nnz)?;
 
         // write aj and ax into bj and bx (will use bp as workspace)
         for k in 0..nnz {
-            let row = ai[k];
-            let dest = bp[row as usize];
-            bj[dest as usize] = aj[k];
-            bx[dest as usize] = ax[k];
-            bp[row as usize] += 1;
+            let i = ai[k] as usize;
+            let dest = bp[i] as usize;
+            bj[dest] = aj[k];
+            bx[dest] = ax[k];
+            bp[i] += 1;
         }
 
         // fix bp
         let mut last = 0;
-        for i in 0..nrow {
+        for i in 0..(nrow + 1) {
             let temp = bp[i];
             bp[i] = last;
             last = temp;
@@ -241,6 +255,11 @@ impl CsrMatrix {
 
         // results
         Ok(csr)
+    }
+
+    /// Creates a new CsrMatrix from a CscMatrix
+    pub fn from_csc(_csc: &CscMatrix) -> Result<Self, StrError> {
+        Err("TODO")
     }
 
     /// Converts this CsrMatrix to a dense matrix

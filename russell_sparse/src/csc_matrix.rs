@@ -88,7 +88,7 @@ impl CscMatrix {
     /// ```text
     /// nrow ≥ 1
     /// ncol ≥ 1
-    /// nnz = col_pointers[ncol] ≥ 1
+    /// nnz = col_pointers[ncol] ≥ ncol
     /// col_pointers.len() == ncol + 1
     /// row_indices.len() == nnz
     /// values.len() == nnz
@@ -104,8 +104,8 @@ impl CscMatrix {
             return Err("col_pointers.len() must be = ncol + 1");
         }
         let nnz = self.col_pointers[self.ncol];
-        if nnz < 1 {
-            return Err("nnz = col_pointers[ncol] must be ≥ 1");
+        if (nnz as usize) < self.ncol {
+            return Err("nnz = col_pointers[ncol] must be ≥ ncol");
         }
         if self.row_indices.len() != nnz as usize {
             return Err("row_indices.len() must be = nnz");

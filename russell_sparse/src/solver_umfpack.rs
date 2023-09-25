@@ -459,7 +459,7 @@ mod tests {
         );
         assert_eq!(
             solver.factorize_coo(&coo_wrong_3, false).err(),
-            Some("COO matrix must be at least (1 x 1) with 1 non-zero value")
+            Some("nnz must be ≥ ncol")
         );
         assert_eq!(
             solver.factorize_coo(&coo_wrong_4, false).err(),

@@ -364,7 +364,7 @@ mod tests {
         );
         assert_eq!(
             solver.factorize_coo(&coo_wrong_3, false).err(),
-            Some("nnz = row_pointers[nrow] must be ≥ nrow")
+            Some("nnz must be ≥ nrow")
         );
         assert_eq!(
             solver.factorize_coo(&coo_wrong_4, false).err(),

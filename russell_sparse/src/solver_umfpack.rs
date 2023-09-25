@@ -174,7 +174,7 @@ impl SolverTrait for SolverUMFPACK {
                 return Err("the CooMatrix cannot be triangular for UMFPACK");
             }
         }
-        let csc = CscMatrix::from(coo)?;
+        let csc = CscMatrix::from_coo(coo)?;
         csc.validate()?;
         let symmetry = if self.config.umfpack_enforce_unsymmetric_strategy {
             UMFPACK_STRATEGY_UNSYMMETRIC

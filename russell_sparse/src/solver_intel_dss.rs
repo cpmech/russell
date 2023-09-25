@@ -168,7 +168,7 @@ impl SolverTrait for SolverIntelDSS {
         if coo.symmetry != self.symmetry {
             return Err("the CooMatrix symmetry option must be equal to the one provided to initialize");
         }
-        let csr = CsrMatrix::from(coo)?;
+        let csr = CsrMatrix::from_coo(coo)?;
         csr.validate()?;
         unsafe {
             let status = solver_intel_dss_factorize(

@@ -490,32 +490,13 @@ fn csr_sum_duplicates(nrow: usize, ap: &mut [i32], aj: &mut [i32], ax: &mut [f64
 #[cfg(test)]
 mod tests {
     use super::CsrMatrix;
-    use crate::{CooMatrix, Storage, Symmetry};
+    use crate::{CooMatrix, Samples, Storage, Symmetry};
     use russell_chk::vec_approx_eq;
     use russell_lab::{Matrix, Vector};
 
     #[test]
     fn csr_matrix_first_triplet_with_shuffled_entries() {
-        //  1  -1   .  -3   .
-        // -2   5   .   .   .
-        //  .   .   4   6   4
-        // -4   .   2   7   .
-        //  .   8   .   .  -5
-        // first triplet with shuffled entries
-        let mut coo = CooMatrix::new(5, 5, 13, None, false).unwrap();
-        coo.put(2, 4, 4.0).unwrap();
-        coo.put(4, 1, 8.0).unwrap();
-        coo.put(0, 1, -1.0).unwrap();
-        coo.put(2, 2, 4.0).unwrap();
-        coo.put(4, 4, -5.0).unwrap();
-        coo.put(3, 0, -4.0).unwrap();
-        coo.put(0, 3, -3.0).unwrap();
-        coo.put(2, 3, 6.0).unwrap();
-        coo.put(0, 0, 1.0).unwrap();
-        coo.put(1, 1, 5.0).unwrap();
-        coo.put(3, 2, 2.0).unwrap();
-        coo.put(1, 0, -2.0).unwrap();
-        coo.put(3, 3, 7.0).unwrap();
+        let (coo, _) = Samples::unsymmetric_5x5_with_shuffled_entries(false);
         let csr = CsrMatrix::from_coo(&coo).unwrap();
         // solution
         let correct_p = vec![0, 3, 5, 8, 11, 13];

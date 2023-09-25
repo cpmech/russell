@@ -49,6 +49,35 @@ impl Samples {
 
     /// Returns the matrix and its determinant
     ///
+    /// Triplet with shuffled entries
+    ///
+    /// ```text
+    ///  1  -1   .  -3   .
+    /// -2   5   .   .   .
+    ///  .   .   4   6   4
+    /// -4   .   2   7   .
+    ///  .   8   .   .  -5
+    /// ```
+    pub fn unsymmetric_5x5_with_shuffled_entries(one_based: bool) -> (CooMatrix, f64) {
+        let mut coo = CooMatrix::new(5, 5, 13, None, one_based).unwrap();
+        coo.put(2, 4, 4.0).unwrap();
+        coo.put(4, 1, 8.0).unwrap();
+        coo.put(0, 1, -1.0).unwrap();
+        coo.put(2, 2, 4.0).unwrap();
+        coo.put(4, 4, -5.0).unwrap();
+        coo.put(3, 0, -4.0).unwrap();
+        coo.put(0, 3, -3.0).unwrap();
+        coo.put(2, 3, 6.0).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 5.0).unwrap();
+        coo.put(3, 2, 2.0).unwrap();
+        coo.put(1, 0, -2.0).unwrap();
+        coo.put(3, 3, 7.0).unwrap();
+        (coo, 1344.0)
+    }
+
+    /// Returns the matrix and its determinant
+    ///
     /// Example from Intel MKL documentation
     ///
     /// ```text
@@ -262,7 +291,21 @@ mod tests {
 
     #[test]
     fn samples_are_correct() {
-        let (coo, _) = Samples::umfpack_sample1_unsymmetric(false);
+        let (coo, correct_det) = Samples::umfpack_sample1_unsymmetric(false);
+        let mat = coo.as_matrix();
+        let correct = "┌                ┐\n\
+                       │  2  3  0  0  0 │\n\
+                       │  3  0  4  0  6 │\n\
+                       │  0 -1 -3  2  0 │\n\
+                       │  0  0  1  0  0 │\n\
+                       │  0  4  2  0  1 │\n\
+                       └                ┘";
+        assert_eq!(format!("{}", mat), correct);
+        let mut inv = Matrix::new(5, 5);
+        let det = mat_inverse(&mut inv, &mat).unwrap();
+        approx_eq(det, correct_det, 1e-15);
+
+        let (coo, _) = Samples::umfpack_sample1_unsymmetric(true);
         let mat = coo.as_matrix();
         let correct = "┌                ┐\n\
                        │  2  3  0  0  0 │\n\
@@ -273,17 +316,16 @@ mod tests {
                        └                ┘";
         assert_eq!(format!("{}", mat), correct);
 
-        let (coo, correct_det) = Samples::umfpack_sample1_unsymmetric(true);
+        let (coo, correct_det) = Samples::unsymmetric_5x5_with_shuffled_entries(false);
         let mat = coo.as_matrix();
         let correct = "┌                ┐\n\
-                       │  2  3  0  0  0 │\n\
-                       │  3  0  4  0  6 │\n\
-                       │  0 -1 -3  2  0 │\n\
-                       │  0  0  1  0  0 │\n\
-                       │  0  4  2  0  1 │\n\
+                       │  1 -1  0 -3  0 │\n\
+                       │ -2  5  0  0  0 │\n\
+                       │  0  0  4  6  4 │\n\
+                       │ -4  0  2  7  0 │\n\
+                       │  0  8  0  0 -5 │\n\
                        └                ┘";
         assert_eq!(format!("{}", mat), correct);
-
         let mut inv = Matrix::new(5, 5);
         let det = mat_inverse(&mut inv, &mat).unwrap();
         approx_eq(det, correct_det, 1e-15);

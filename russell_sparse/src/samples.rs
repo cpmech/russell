@@ -78,6 +78,29 @@ impl Samples {
 
     /// Returns the matrix and its determinant
     ///
+    /// Small triplet with shuffled entries
+    ///
+    /// 1  2  .  .  .
+    /// 3  4  .  .  .
+    /// .  .  5  6  .
+    /// .  .  7  8  .
+    /// .  .  .  .  9
+    pub fn block_unsym_5x5_with_shuffled_entries(one_based: bool) -> (CooMatrix, f64) {
+        let mut coo = CooMatrix::new(5, 5, 9, None, one_based).unwrap();
+        coo.put(4, 4, 9.0).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 0, 3.0).unwrap();
+        coo.put(2, 2, 5.0).unwrap();
+        coo.put(2, 3, 6.0).unwrap();
+        coo.put(0, 1, 2.0).unwrap();
+        coo.put(3, 2, 7.0).unwrap();
+        coo.put(1, 1, 4.0).unwrap();
+        coo.put(3, 3, 8.0).unwrap();
+        (coo, 36.0)
+    }
+
+    /// Returns the matrix and its determinant
+    ///
     /// Example from Intel MKL documentation
     ///
     /// ```text
@@ -291,6 +314,8 @@ mod tests {
 
     #[test]
     fn samples_are_correct() {
+        // ----------------------------------------------------------------------------
+
         let (coo, correct_det) = Samples::umfpack_sample1_unsymmetric(false);
         let mat = coo.as_matrix();
         let correct = "┌                ┐\n\
@@ -316,6 +341,8 @@ mod tests {
                        └                ┘";
         assert_eq!(format!("{}", mat), correct);
 
+        // ----------------------------------------------------------------------------
+
         let (coo, correct_det) = Samples::unsymmetric_5x5_with_shuffled_entries(false);
         let mat = coo.as_matrix();
         let correct = "┌                ┐\n\
@@ -329,6 +356,24 @@ mod tests {
         let mut inv = Matrix::new(5, 5);
         let det = mat_inverse(&mut inv, &mat).unwrap();
         approx_eq(det, correct_det, 1e-15);
+
+        // ----------------------------------------------------------------------------
+
+        let (coo, correct_det) = Samples::block_unsym_5x5_with_shuffled_entries(false);
+        let mat = coo.as_matrix();
+        let correct = "┌           ┐\n\
+                       │ 1 2 0 0 0 │\n\
+                       │ 3 4 0 0 0 │\n\
+                       │ 0 0 5 6 0 │\n\
+                       │ 0 0 7 8 0 │\n\
+                       │ 0 0 0 0 9 │\n\
+                       └           ┘";
+        assert_eq!(format!("{}", mat), correct);
+        let mut inv = Matrix::new(5, 5);
+        let det = mat_inverse(&mut inv, &mat).unwrap();
+        approx_eq(det, correct_det, 1e-13);
+
+        // ----------------------------------------------------------------------------
 
         let correct = "┌                               ┐\n\
                        │     9   1.5     6  0.75     3 │\n\

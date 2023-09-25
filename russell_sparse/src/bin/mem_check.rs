@@ -123,7 +123,9 @@ fn main() {
     println!("Running Mem Check\n");
     test_solver(Genie::Umfpack);
     test_solver_singular(Genie::Umfpack);
-    test_solver(Genie::IntelDss);
-    test_solver_singular(Genie::IntelDss);
+    if cfg!(with_intel_dss) {
+        test_solver(Genie::IntelDss);
+        test_solver_singular(Genie::IntelDss);
+    }
     println!("Done\n");
 }

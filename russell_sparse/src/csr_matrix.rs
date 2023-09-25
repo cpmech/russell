@@ -102,7 +102,7 @@ impl CsrMatrix {
         Ok(())
     }
 
-    /// Creates a new CsrMatrix from a CooMatrix
+    /// Creates a new CSR matrix from a COO matrix
     ///
     /// # Examples
     ///
@@ -257,12 +257,12 @@ impl CsrMatrix {
         Ok(csr)
     }
 
-    /// Creates a new CsrMatrix from a CscMatrix
+    /// Creates a new CSR matrix from a CSC matrix
     pub fn from_csc(_csc: &CscMatrix) -> Result<Self, StrError> {
         Err("TODO")
     }
 
-    /// Converts this CsrMatrix to a dense matrix
+    /// Converts this CSR matrix to a dense matrix
     ///
     /// # Examples
     ///
@@ -323,7 +323,7 @@ impl CsrMatrix {
         Ok(a)
     }
 
-    /// Converts this CsrMatrix to a dense matrix
+    /// Converts this CSR matrix to a dense matrix
     ///
     /// # Input
     ///

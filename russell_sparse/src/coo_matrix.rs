@@ -54,7 +54,7 @@ pub struct CooMatrix {
 }
 
 impl CooMatrix {
-    /// Creates a new CooMatrix representing a sparse matrix
+    /// Creates a new COO matrix representing a sparse matrix
     ///
     /// # Input
     ///
@@ -205,7 +205,7 @@ impl CooMatrix {
         self.pos = 0;
     }
 
-    /// Converts this CooMatrix to a dense matrix
+    /// Converts this COO matrix to a dense matrix
     ///
     /// ```
     /// use russell_sparse::prelude::*;
@@ -242,7 +242,7 @@ impl CooMatrix {
         a
     }
 
-    /// Converts this CooMatrix to a dense matrix
+    /// Converts this COO matrix to a dense matrix
     ///
     /// # Input
     ///

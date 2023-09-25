@@ -54,6 +54,9 @@ fn main() -> Result<(), StrError> {
     let genie = match opt.genie.to_lowercase().as_str() {
         "mumps" => Genie::Mumps,
         "umfpack" => Genie::Umfpack,
+        "dss" => Genie::IntelDss,
+        "intel" => Genie::IntelDss,
+        "intel-dss" => Genie::IntelDss,
         _ => Genie::Umfpack,
     };
 
@@ -61,6 +64,7 @@ fn main() -> Result<(), StrError> {
     let (handling, one_based) = match genie {
         Genie::Mumps => (MMsymOption::LeaveAsLower, true),
         Genie::Umfpack => (MMsymOption::MakeItFull, false),
+        Genie::IntelDss => (MMsymOption::SwapToUpper, false),
     };
 
     // configuration parameters
@@ -163,6 +167,7 @@ fn main() -> Result<(), StrError> {
         let tolerance = match genie {
             Genie::Mumps => 1e-10,
             Genie::Umfpack => 1e-10,
+            Genie::IntelDss => 1e-10,
         };
         let correct_x = get_bfwb62_correct_x();
         for i in 0..coo.nrow {

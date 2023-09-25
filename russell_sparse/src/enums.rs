@@ -10,6 +10,11 @@ pub enum Genie {
     ///
     /// Reference: <https://github.com/DrTimothyAldenDavis/SuiteSparse>
     Umfpack,
+
+    /// Selects Intel DSS (direct sparse solver)
+    ///
+    /// Reference: <https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html>
+    IntelDss,
 }
 
 /// Specifies how the matrix components are stored

@@ -1,4 +1,4 @@
-use super::{CooMatrix, Genie, Ordering, Scaling, SolverMUMPS, SolverUMFPACK, Symmetry};
+use super::{CooMatrix, Genie, Ordering, Scaling, SolverIntelDSS, SolverMUMPS, SolverUMFPACK, Symmetry};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -71,6 +71,8 @@ pub trait SolverTrait {
     ///
     /// * For symmetric matrices, `MUMPS` requires that the symmetry/storage be Lower or Full.
     /// * For symmetric matrices, `UMFPACK` requires that the symmetry/storage be Full.
+    /// * For symmetric matrices, `Intel DSS` requires tha the symmetry/storage be Upper triangular,
+    ///   and with all diagonal components present
     fn initialize(
         &mut self,
         ndim: usize,
@@ -147,6 +149,7 @@ impl<'a> Solver<'a> {
         let actual: Box<dyn SolverTrait> = match genie {
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
+            Genie::IntelDss => Box::new(SolverIntelDSS::new()?),
         };
         Ok(Solver { actual })
     }

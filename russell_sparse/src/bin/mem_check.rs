@@ -5,6 +5,7 @@ fn test_solver(genie: Genie) {
     match genie {
         Genie::Mumps => println!("Testing MUMPS solver\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver\n"),
+        Genie::IntelDss => println!("Testing Intel DSS solver\n"),
     }
 
     let (ndim, nnz) = (5, 13);
@@ -82,6 +83,7 @@ fn test_solver_singular(genie: Genie) {
     match genie {
         Genie::Mumps => println!("Testing MUMPS solver\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver\n"),
+        Genie::IntelDss => println!("Testing Intel DSS solver\n"),
     }
 
     let (ndim, nnz) = (2, 2);
@@ -121,5 +123,7 @@ fn main() {
     println!("Running Mem Check\n");
     test_solver(Genie::Umfpack);
     test_solver_singular(Genie::Umfpack);
+    test_solver(Genie::IntelDss);
+    test_solver_singular(Genie::IntelDss);
     println!("Done\n");
 }

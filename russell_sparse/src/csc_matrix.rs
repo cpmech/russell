@@ -578,26 +578,7 @@ mod tests {
 
     #[test]
     fn csc_matrix_symmetric_with_all_values() {
-        //  9.00  1.5   6.0  0.750   3.0
-        //  1.50  0.5   0.0  0.000   0.0
-        //  6.00  0.0  12.0  0.000   0.0
-        //  0.75  0.0   0.0  0.625   0.0
-        //  3.00  0.0   0.0  0.000  16.0
-        // symmetric matrix, but all values provided
-        let mut coo = CooMatrix::new(5, 5, 13, None, false).unwrap();
-        coo.put(0, 0, 9.0).unwrap();
-        coo.put(0, 1, 1.5).unwrap();
-        coo.put(0, 2, 6.0).unwrap();
-        coo.put(0, 3, 0.75).unwrap();
-        coo.put(0, 4, 3.0).unwrap();
-        coo.put(1, 0, 1.5).unwrap();
-        coo.put(1, 1, 0.5).unwrap();
-        coo.put(2, 0, 6.0).unwrap();
-        coo.put(2, 2, 12.0).unwrap();
-        coo.put(3, 0, 0.75).unwrap();
-        coo.put(3, 3, 0.625).unwrap();
-        coo.put(4, 0, 3.0).unwrap();
-        coo.put(4, 4, 16.0).unwrap();
+        let (coo, _) = Samples::mkl_sample1_symmetric_full(false);
         let csc = CscMatrix::from_coo(&coo).unwrap();
         // solution
         let correct_x = vec![

@@ -7,10 +7,7 @@
 #else
 #define MKL_INT int
 #define _MKL_DSS_HANDLE_t void *
-#define UNUSED(expr)  \
-    do {              \
-        (void)(expr); \
-    } while (0)
+#define UNUSED(var) (void)var
 #endif
 
 #include "constants.h"
@@ -161,16 +158,10 @@ int32_t solver_intel_dss_factorize(struct InterfaceIntelDSS *solver,
 /// @param solver Is a pointer to the solver interface
 /// @param x Is the left-hand side vector (unknowns)
 /// @param rhs Is the right-hand side vector
-/// @param row_pointers The row pointers array with size = nrow + 1
-/// @param col_indices The column indices array with size = nnz (number of non-zeros)
-/// @param values The values array with size = nnz (number of non-zeros)
 /// @return A success or fail code
 int32_t solver_intel_dss_solve(struct InterfaceIntelDSS *solver,
                                double *x,
-                               const double *rhs,
-                               const int32_t *col_pointers,
-                               const int32_t *row_indices,
-                               const double *values) {
+                               const double *rhs) {
 #ifdef WITH_INTEL_DSS
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
@@ -191,9 +182,6 @@ int32_t solver_intel_dss_solve(struct InterfaceIntelDSS *solver,
     UNUSED(solver);
     UNUSED(x);
     UNUSED(rhs);
-    UNUSED(col_pointers);
-    UNUSED(row_indices);
-    UNUSED(values);
     return NOT_AVAILABLE;
 #endif
 }

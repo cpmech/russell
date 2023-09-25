@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use super::{to_i32, ConfigSolver, CooMatrix, SolverTrait, Symmetry};
 use crate::{CsrMatrix, Storage, StrError};
 use russell_lab::Vector;
@@ -24,14 +26,7 @@ extern "C" {
         col_indices: *const i32,
         values: *const f64,
     ) -> i32;
-    fn solver_intel_dss_solve(
-        solver: *mut InterfaceIntelDSS,
-        x: *mut f64,
-        rhs: *const f64,
-        col_pointers: *const i32,
-        row_indices: *const i32,
-        values: *const f64,
-    ) -> i32;
+    fn solver_intel_dss_solve(solver: *mut InterfaceIntelDSS, x: *mut f64, rhs: *const f64) -> i32;
 }
 
 /// Wraps the IntelDSS solver for sparse linear systems
@@ -55,11 +50,6 @@ pub struct SolverIntelDSS {
 
     /// Indicates whether the sparse matrix has been factorized or not
     factorized: bool,
-
-    /// Compressed sparse row (CSR) matrix
-    ///
-    /// **Note:** This is created only if a COO matrix is given to factorize
-    pub csr_matrix: Option<CsrMatrix>,
 }
 
 impl Drop for SolverIntelDSS {
@@ -93,7 +83,6 @@ impl SolverIntelDSS {
                 config: ConfigSolver::new(),
                 initialized: false,
                 factorized: false,
-                csr_matrix: None,
             })
         }
     }
@@ -192,7 +181,6 @@ impl SolverTrait for SolverIntelDSS {
                 return Err(handle_intel_dss_error_code(status));
             }
         }
-        self.csr_matrix = Some(csr);
         self.factorized = true;
         Ok(())
     }
@@ -224,21 +212,8 @@ impl SolverTrait for SolverIntelDSS {
         if rhs.dim() != self.ndim as usize {
             return Err("the dimension of the right-hand side vector is incorrect");
         }
-        let csr = match &self.csr_matrix {
-            Some(c) => c,
-            None => {
-                return Err("the CSR matrix was not factorized yet");
-            }
-        };
         unsafe {
-            let status = solver_intel_dss_solve(
-                self.solver,
-                x.as_mut_data().as_mut_ptr(),
-                rhs.as_data().as_ptr(),
-                csr.row_pointers.as_ptr(),
-                csr.col_indices.as_ptr(),
-                csr.values.as_ptr(),
-            );
+            let status = solver_intel_dss_solve(self.solver, x.as_mut_data().as_mut_ptr(), rhs.as_data().as_ptr());
             if status != MKL_DSS_SUCCESS {
                 return Err(handle_intel_dss_error_code(status));
             }

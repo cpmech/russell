@@ -56,13 +56,14 @@ fn main() {
             .define("WITH_INTEL_DSS", None)
             .compile("c_code_interface_intel_dss");
         println!("cargo:rustc-link-search=native=/opt/intel/oneapi/mkl/latest/lib/intel64");
-        println!("cargo:rustc-link-lib=lmkl_intel_lp64");
-        println!("cargo:rustc-link-lib=lmkl_intel_thread");
-        println!("cargo:rustc-link-lib=lmkl_core");
-        println!("cargo:rustc-link-lib=lpthread");
-        println!("cargo:rustc-link-lib=lm");
-        println!("cargo:rustc-link-lib=ldl");
-        println!("cargo:rustc-link-lib=liomp5");
+        println!("cargo:rustc-link-search=native=/opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64_lin");
+        println!("cargo:rustc-link-lib=mkl_intel_lp64");
+        println!("cargo:rustc-link-lib=mkl_intel_thread");
+        println!("cargo:rustc-link-lib=mkl_core");
+        println!("cargo:rustc-link-lib=pthread");
+        println!("cargo:rustc-link-lib=m");
+        println!("cargo:rustc-link-lib=dl");
+        println!("cargo:rustc-link-lib=iomp5");
         println!("cargo:rustc-cfg=with_intel_dss");
     } else {
         cc::Build::new()

@@ -1,5 +1,7 @@
 use crate::{CooMatrix, CscMatrix, CsrMatrix, Storage, Symmetry};
 
+const PLACEHOLDER: f64 = f64::MAX;
+
 /// Holds some samples of small sparse matrices
 pub struct Samples {}
 
@@ -715,12 +717,14 @@ impl Samples {
 
     /// Returns a (1 x 7) rectangular matrix (COO, CSC, and CSR)
     ///
+    /// Note: the last return value is not the determinant, but a PLACEHOLDER
+    ///
     /// ```text
     /// ┌               ┐
     /// │ 1 . 3 . 5 . 7 │
     /// └               ┘
     /// ```
-    pub fn rectangular_1x7() -> (CooMatrix, CscMatrix, CsrMatrix) {
+    pub fn rectangular_1x7() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let mut coo = CooMatrix::new(1, 7, 4, None, false).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 2, 3.0).unwrap();
@@ -752,10 +756,12 @@ impl Samples {
             col_indices: vec![0, 2, 4, 6],
             row_pointers: vec![0, 4],
         };
-        (coo, csc, csr)
+        (coo, csc, csr, PLACEHOLDER)
     }
 
     /// Returns a (7 x 1) rectangular matrix
+    ///
+    /// Note: the last return value is not the determinant, but a PLACEHOLDER
     ///
     /// ```text
     /// ┌   ┐
@@ -768,11 +774,12 @@ impl Samples {
     /// │ . │
     /// └   ┘
     /// ```
-    pub fn rectangular_7x1() -> (CooMatrix, CscMatrix, CsrMatrix) {
+    pub fn rectangular_7x1() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let mut coo = CooMatrix::new(7, 1, 3, None, false).unwrap();
         coo.put(1, 0, 2.0).unwrap();
         coo.put(3, 0, 4.0).unwrap();
         coo.put(5, 0, 6.0).unwrap();
+        // CSC matrix
         let csc = CscMatrix {
             symmetry: None,
             nrow: 7,
@@ -783,6 +790,7 @@ impl Samples {
             row_indices: vec![0, 0, 0],
             col_pointers: vec![0, 3],
         };
+        // CSR matrix
         let csr = CsrMatrix {
             symmetry: None,
             nrow: 7,
@@ -799,7 +807,67 @@ impl Samples {
             col_indices: vec![0, 0, 0],
             row_pointers: vec![0, 0, 1, 1, 2, 2, 3, 3],
         };
-        (coo, csc, csr)
+        (coo, csc, csr, PLACEHOLDER)
+    }
+
+    /// Returns a (3 x 4) rectangular matrix
+    ///
+    /// Note: the last return value is not the determinant, but a PLACEHOLDER
+    ///
+    /// ```text
+    ///  5.0, -2.0, 0.0, 1.0,
+    /// 10.0, -4.0, 0.0, 2.0,
+    /// 15.0, -6.0, 0.0, 3.0,
+    /// ```
+    pub fn rectangular_3x4() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+        let mut coo = CooMatrix::new(3, 4, 9, None, false).unwrap();
+        coo.put(0, 0, 5.0).unwrap();
+        coo.put(1, 0, 10.0).unwrap();
+        coo.put(2, 0, 15.0).unwrap();
+        coo.put(0, 1, -2.0).unwrap();
+        coo.put(1, 1, -4.0).unwrap();
+        coo.put(2, 1, -6.0).unwrap();
+        coo.put(0, 2, 1.0).unwrap();
+        coo.put(1, 2, 2.0).unwrap();
+        coo.put(2, 2, 3.0).unwrap();
+        // CSC matrix
+        let csc = CscMatrix {
+            symmetry: None,
+            nrow: 3,
+            ncol: 4,
+            col_pointers: vec![0, 3, 6, 6, 9],
+            row_indices: vec![
+                0, 1, 2, // j=0, p=(0),1,2
+                0, 1, 2, // j=1, p=(3),4,5
+                //          j=2, p=(6)
+                0, 1, 2, // j=3, p=(6),7,8
+            ], //                  (9)
+            values: vec![
+                5.0, 10.0, 15.0, //  j=0, p=(0),1,2
+                -2.0, -4.0, -6.0, // j=1, p=(3),4,5
+                //                   j=2, p=(6)
+                1.0, 2.0, 3.0, //    j=3, p=(6),7,8
+            ], //                           (9)
+        };
+
+        // CSR matrix
+        let csr = CsrMatrix {
+            symmetry: None,
+            nrow: 3,
+            ncol: 4,
+            row_pointers: vec![0, 3, 6, 9],
+            col_indices: vec![
+                0, 1, 3, // i=0, p=(0),1,2
+                0, 1, 3, // i=1, p=(3),4,5
+                0, 1, 3, // i=2, p=(6),7,8
+            ], //                  (9)
+            values: vec![
+                5.0, -2.0, 1.0, //  i=0, p=(0),1,2
+                10.0, -4.0, 2.0, // i=1, p=(3),4,5
+                15.0, -6.0, 3.0, // i=2, p=(6),7,8
+            ], //                          (9)
+        };
+        (coo, csc, csr, PLACEHOLDER)
     }
 }
 
@@ -909,7 +977,7 @@ mod tests {
 
         // ----------------------------------------------------------------------------
 
-        let (coo, csc, csr) = Samples::rectangular_1x7();
+        let (coo, csc, csr, _) = Samples::rectangular_1x7();
         let mat = coo.as_matrix();
         let correct = "┌               ┐\n\
                        │ 1 0 3 0 5 0 7 │\n\
@@ -920,7 +988,24 @@ mod tests {
 
         // ----------------------------------------------------------------------------
 
-        let (coo, csc, csr) = Samples::rectangular_7x1();
+        let (coo, csc, csr, _) = Samples::rectangular_7x1();
+        let mat = coo.as_matrix();
+        let correct = "┌   ┐\n\
+                       │ 0 │\n\
+                       │ 2 │\n\
+                       │ 0 │\n\
+                       │ 4 │\n\
+                       │ 0 │\n\
+                       │ 6 │\n\
+                       │ 0 │\n\
+                       └   ┘";
+        assert_eq!(format!("{}", mat), correct);
+        csc.validate().unwrap();
+        csr.validate().unwrap();
+
+        // ----------------------------------------------------------------------------
+
+        let (coo, csc, csr, _) = Samples::rectangular_3x4();
         let mat = coo.as_matrix();
         let correct = "┌   ┐\n\
                        │ 0 │\n\

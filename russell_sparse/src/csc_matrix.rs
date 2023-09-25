@@ -484,62 +484,9 @@ impl CscMatrix {
 #[cfg(test)]
 mod tests {
     use super::CscMatrix;
-    use crate::{CooMatrix, CsrMatrix, Samples, Storage, Symmetry};
+    use crate::{CooMatrix, Samples, Storage, Symmetry};
     use russell_chk::vec_approx_eq;
     use russell_lab::{Matrix, Vector};
-
-    #[test]
-    fn from_csr_works() {
-        //  1  -1   .  -3   .
-        // -2   5   .   .   .
-        //  .   .   4   6   4
-        // -4   .   2   7   .
-        //  .   8   .   .  -5
-        let csr = CsrMatrix {
-            symmetry: None,
-            nrow: 5,
-            ncol: 5,
-            row_pointers: vec![0, 3, 5, 8, 11, 13],
-            col_indices: vec![
-                0, 1, 3, //  i=0, p=(0),1,2
-                0, 1, //     i=1, p=(3),4
-                2, 3, 4, //  i=2, p=(5),6,7
-                0, 2, 3, //  i=3, p=(8),8,10
-                1, 4, //     i=4, p=(11),12
-            ], //                   (13)
-            values: vec![
-                1.0, -1.0, -3.0, // i=0, p=(0),1,2
-                -2.0, 5.0, //       i=1, p=(3),4
-                4.0, 6.0, 4.0, //   i=2, p=(5),6,7
-                -4.0, 2.0, 7.0, //  i=3, p=(8),8,10
-                8.0, -5.0, //       i=4, p=(11),12
-            ], //                          (13)
-        };
-        let csc = CscMatrix::from_csr(&csr).unwrap();
-        // solution
-        let correct_x = vec![
-            //                                  p
-            1.0, -2.0, -4.0, // j = 0, count =  0, 1, 2,
-            -1.0, 5.0, 8.0, //  j = 1, count =  3, 4, 5,
-            4.0, 2.0, //        j = 2, count =  6, 7,
-            -3.0, 6.0, 7.0, //  j = 3, count =  8, 9, 10,
-            4.0, -5.0, //       j = 4, count = 11, 12,
-                  //                           13
-        ];
-        let correct_i = vec![
-            //                          p
-            0, 1, 3, // j = 0, count =  0, 1, 2,
-            0, 1, 4, // j = 1, count =  3, 4, 5,
-            2, 3, //    j = 2, count =  6, 7,
-            0, 2, 3, // j = 3, count =  8, 9, 10,
-            2, 4, //    j = 4, count = 11, 12,
-               //                      13
-        ];
-        let correct_p = vec![0, 3, 6, 8, 11, 13];
-        assert_eq!(&csc.col_pointers, &correct_p);
-        assert_eq!(&csc.row_indices, &correct_i);
-        vec_approx_eq(&csc.values, &correct_x, 1e-15);
-    }
 
     #[test]
     fn csc_matrix_first_triplet_with_shuffled_entries() {
@@ -973,44 +920,22 @@ mod tests {
     }
 
     #[test]
-    fn from_square_csr_works() {
-        //  5.0, -2.0, 0.0, 1.0,
-        // 10.0, -4.0, 0.0, 2.0,
-        // 15.0, -6.0, 0.0, 3.0,
-        let csr = CsrMatrix {
-            symmetry: None,
-            nrow: 3,
-            ncol: 4,
-            row_pointers: vec![0, 3, 6, 9],
-            col_indices: vec![
-                0, 1, 3, // i=0, p=(0),1,2
-                0, 1, 3, // i=1, p=(3),4,5
-                0, 1, 3, // i=2, p=(6),7,8
-            ], //                  (9)
-            values: vec![
-                5.0, -2.0, 1.0, //  i=0, p=(0),1,2
-                10.0, -4.0, 2.0, // i=1, p=(3),4,5
-                15.0, -6.0, 3.0, // i=2, p=(6),7,8
-            ], //                          (9)
-        };
-
-        let csc = CscMatrix::from_csr(&csr).unwrap();
-
-        let correct_p = vec![0, 3, 6, 6, 9];
-        let correct_i = vec![
-            0, 1, 2, // j=0, p=(0),1,2
-            0, 1, 2, // j=1, p=(3),4,5
-            //          j=2, p=(6)
-            0, 1, 2, // j=3, p=(6),7,8
-        ]; //                  (9)
-        let correct_x = vec![
-            5.0, 10.0, 15.0, //  j=0, p=(0),1,2
-            -2.0, -4.0, -6.0, // j=1, p=(3),4,5
-            //                   j=2, p=(6)
-            1.0, 2.0, 3.0, //    j=3, p=(6),7,8
-        ]; //                           (9)
-        assert_eq!(&csc.col_pointers, &correct_p);
-        assert_eq!(&csc.row_indices, &correct_i);
-        vec_approx_eq(&csc.values, &correct_x, 1e-15);
+    fn from_csr_works() {
+        for (_, csc_correct, csr, _) in [
+            Samples::umfpack_sample1_unsymmetric(false),
+            Samples::unsymmetric_5x5_with_shuffled_entries(false),
+            Samples::block_unsym_5x5_with_shuffled_entries(false),
+            Samples::mkl_sample1_symmetric_full(false),
+            Samples::mkl_sample1_symmetric_lower(false),
+            Samples::mkl_sample1_symmetric_upper(false),
+            // Samples::rectangular_1x7(),
+            // Samples::rectangular_7x1(),
+            Samples::rectangular_3x4(),
+        ] {
+            let csc = CscMatrix::from_csr(&csr).unwrap();
+            assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
+            assert_eq!(&csc.row_indices, &csc_correct.row_indices);
+            vec_approx_eq(&csc.values, &csc_correct.values, 1e-15);
+        }
     }
 }

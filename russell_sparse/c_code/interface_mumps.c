@@ -5,6 +5,9 @@
 #include "constants.h"
 #include "interface_mumps.h"
 
+/// @brief Sets verbose mode
+/// @param data Is the MUMPS data structure
+/// @param verbose Shows messages or not
 static inline void set_mumps_verbose(DMUMPS_STRUC_C *data, int32_t verbose) {
     if (verbose == C_TRUE) {
         data->ICNTL(1) = 6; // standard output stream

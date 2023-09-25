@@ -973,4 +973,46 @@ mod tests {
         csr.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         vec_approx_eq(v.as_data(), correct, 1e-15);
     }
+
+    #[test]
+    fn from_square_csc_works() {
+        //  5.0, -2.0, 0.0, 1.0,
+        // 10.0, -4.0, 0.0, 2.0,
+        // 15.0, -6.0, 0.0, 3.0,
+        let csc = CscMatrix {
+            symmetry: None,
+            nrow: 3,
+            ncol: 4,
+            col_pointers: vec![0, 3, 6, 6, 9],
+            row_indices: vec![
+                0, 1, 2, // j=0, p=(0),1,2
+                0, 1, 2, // j=1, p=(3),4,5
+                //          j=2, p=(6)
+                0, 1, 2, // j=3, p=(6),7,8
+            ], //                  (9)
+            values: vec![
+                5.0, 10.0, 15.0, //  j=0, p=(0),1,2
+                -2.0, -4.0, -6.0, // j=1, p=(3),4,5
+                //                   j=2, p=(6)
+                1.0, 2.0, 3.0, //    j=3, p=(6),7,8
+            ], //                           (9)
+        };
+
+        let csr = CsrMatrix::from_csc(&csc).unwrap();
+
+        let correct_p = vec![0, 3, 6, 9];
+        let correct_j = vec![
+            0, 1, 3, // i=0, p=(0),1,2
+            0, 1, 3, // i=1, p=(3),4,5
+            0, 1, 3, // i=2, p=(6),7,8
+        ]; //                  (9)
+        let correct_x = vec![
+            5.0, -2.0, 1.0, //  i=0, p=(0),1,2
+            10.0, -4.0, 2.0, // i=1, p=(3),4,5
+            15.0, -6.0, 3.0, // i=2, p=(6),7,8
+        ]; //                          (9)
+        assert_eq!(&csr.row_pointers, &correct_p);
+        assert_eq!(&csr.col_indices, &correct_j);
+        vec_approx_eq(&csr.values, &correct_x, 1e-15);
+    }
 }

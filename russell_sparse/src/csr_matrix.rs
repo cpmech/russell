@@ -74,7 +74,7 @@ impl CsrMatrix {
     /// ```text
     /// nrow ≥ 1
     /// ncol ≥ 1
-    /// nnz = row_pointers[nrow] ≥ nrow
+    /// nnz = row_pointers[nrow] ≥ 1
     /// row_pointers.len() == nrow + 1
     /// col_indices.len() == nnz
     /// values.len() == nnz
@@ -90,8 +90,8 @@ impl CsrMatrix {
             return Err("row_pointers.len() must be = nrow + 1");
         }
         let nnz = self.row_pointers[self.nrow];
-        if (nnz as usize) < self.nrow {
-            return Err("nnz = row_pointers[nrow] must be ≥ nrow");
+        if nnz < 1 {
+            return Err("nnz must be ≥ 1");
         }
         if self.col_indices.len() != nnz as usize {
             return Err("col_indices.len() must be = nnz");
@@ -172,8 +172,8 @@ impl CsrMatrix {
         if ncol < 1 {
             return Err("ncol must be ≥ 1");
         }
-        if nnz < nrow {
-            return Err("nnz must be ≥ nrow");
+        if nnz < 1 {
+            return Err("nnz must be ≥ 1");
         }
 
         // access the triplet data

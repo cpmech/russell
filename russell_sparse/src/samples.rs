@@ -1,4 +1,4 @@
-use crate::{CooMatrix, Storage, Symmetry};
+use crate::{CooMatrix, CscMatrix, CsrMatrix, Storage, Symmetry};
 
 /// Holds some samples of small sparse matrices
 pub struct Samples {}
@@ -331,6 +331,95 @@ impl Samples {
         coo.put(4, 4, 16.0).unwrap(); // 12
         (coo, 9.0 / 4.0)
     }
+
+    /// Returns a (1 x 7) rectangular matrix (COO, CSC, and CSR)
+    ///
+    /// ```text
+    /// ┌               ┐
+    /// │ 1 . 3 . 5 . 7 │
+    /// └               ┘
+    /// ```
+    pub fn rectangular_1x7() -> (CooMatrix, CscMatrix, CsrMatrix) {
+        let mut coo = CooMatrix::new(1, 7, 4, None, false).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(0, 2, 3.0).unwrap();
+        coo.put(0, 4, 5.0).unwrap();
+        coo.put(0, 6, 7.0).unwrap();
+        let csc = CscMatrix {
+            symmetry: None,
+            nrow: 1,
+            ncol: 7,
+            values: vec![
+                1.0, // j=0, p=(0)
+                //      j=1, p=(0)
+                3.0, // j=2, p=(1)
+                //      j=3, p=(1)
+                5.0, // j=4, p=(2)
+                //      j=5, p=(2)
+                7.0, // j=6, p=(3)
+            ], //            p=(4)
+            row_indices: vec![0, 0, 0, 0],
+            col_pointers: vec![0, 0, 1, 1, 2, 2, 3, 4],
+        };
+        let csr = CsrMatrix {
+            symmetry: None,
+            nrow: 1,
+            ncol: 7,
+            values: vec![
+                1.0, 3.0, 5.0, 7.0, // i=0, p=(0),1,2,3
+            ], //                           p=(4)
+            col_indices: vec![0, 2, 4, 6],
+            row_pointers: vec![0, 4],
+        };
+        (coo, csc, csr)
+    }
+
+    /// Returns a (7 x 1) rectangular matrix
+    ///
+    /// ```text
+    /// ┌   ┐
+    /// │ . │
+    /// │ 2 │
+    /// │ . │
+    /// │ 4 │
+    /// │ . │
+    /// │ 6 │
+    /// │ . │
+    /// └   ┘
+    /// ```
+    pub fn rectangular_7x1() -> (CooMatrix, CscMatrix, CsrMatrix) {
+        let mut coo = CooMatrix::new(7, 1, 3, None, false).unwrap();
+        coo.put(1, 0, 2.0).unwrap();
+        coo.put(3, 0, 4.0).unwrap();
+        coo.put(5, 0, 6.0).unwrap();
+        let csc = CscMatrix {
+            symmetry: None,
+            nrow: 7,
+            ncol: 1,
+            values: vec![
+                2.0, 4.0, 6.0, // j=0, p=(0),1,2
+            ], //                      p=(3)
+            row_indices: vec![0, 0, 0],
+            col_pointers: vec![0, 3],
+        };
+        let csr = CsrMatrix {
+            symmetry: None,
+            nrow: 7,
+            ncol: 1,
+            values: vec![
+                //      i=0, p=(0)
+                2.0, // i=1, p=(0)
+                //      i=2, p=(1)
+                4.0, // i=3, p=(1)
+                //      i=4, p=(2)
+                6.0, // i=5, p=(2)
+                     // i=6, p=(3)
+            ], //            p=(3)
+            col_indices: vec![0, 0, 0],
+            row_pointers: vec![0, 0, 1, 1, 2, 2, 3, 3],
+        };
+        (coo, csc, csr)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -435,5 +524,33 @@ mod tests {
             let det = mat_inverse(&mut inv, &mat).unwrap();
             approx_eq(det, correct_det, 1e-14);
         }
+
+        // ----------------------------------------------------------------------------
+
+        let (coo, csc, csr) = Samples::rectangular_1x7();
+        let mat = coo.as_matrix();
+        let correct = "┌               ┐\n\
+                       │ 1 0 3 0 5 0 7 │\n\
+                       └               ┘";
+        assert_eq!(format!("{}", mat), correct);
+        csc.validate().unwrap();
+        csr.validate().unwrap();
+
+        // ----------------------------------------------------------------------------
+
+        let (coo, csc, csr) = Samples::rectangular_7x1();
+        let mat = coo.as_matrix();
+        let correct = "┌   ┐\n\
+                       │ 0 │\n\
+                       │ 2 │\n\
+                       │ 0 │\n\
+                       │ 4 │\n\
+                       │ 0 │\n\
+                       │ 6 │\n\
+                       │ 0 │\n\
+                       └   ┘";
+        assert_eq!(format!("{}", mat), correct);
+        csc.validate().unwrap();
+        csr.validate().unwrap();
     }
 }

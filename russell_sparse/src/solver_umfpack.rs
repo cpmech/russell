@@ -457,10 +457,7 @@ mod tests {
             solver.factorize_coo(&coo_wrong_2, false).err(),
             Some("the dimension of the CooMatrix must be equal to ndim")
         );
-        assert_eq!(
-            solver.factorize_coo(&coo_wrong_3, false).err(),
-            Some("nnz must be ≥ ncol")
-        );
+        assert_eq!(solver.factorize_coo(&coo_wrong_3, false).err(), Some("nnz must be ≥ 1"));
         assert_eq!(
             solver.factorize_coo(&coo_wrong_4, false).err(),
             Some("the CooMatrix cannot be triangular for UMFPACK")

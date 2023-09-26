@@ -106,7 +106,7 @@ impl CooMatrix {
     pub fn new(
         nrow: usize,
         ncol: usize,
-        max: usize,
+        max_nnz: usize,
         symmetry: Option<Symmetry>,
         one_based: bool,
     ) -> Result<Self, StrError> {
@@ -116,7 +116,7 @@ impl CooMatrix {
         if ncol < 1 {
             return Err("COO matrix: ncol must be ≥ 1");
         }
-        if max < 1 {
+        if max_nnz < 1 {
             return Err("COO matrix: max (nnz) must be ≥ 1");
         }
         Ok(CooMatrix {
@@ -124,10 +124,10 @@ impl CooMatrix {
             nrow,
             ncol,
             nnz: 0,
-            max_nnz: max,
-            indices_i: vec![0; max],
-            indices_j: vec![0; max],
-            values: vec![0.0; max],
+            max_nnz,
+            indices_i: vec![0; max_nnz],
+            indices_j: vec![0; max_nnz],
+            values: vec![0.0; max_nnz],
             one_based,
         })
     }

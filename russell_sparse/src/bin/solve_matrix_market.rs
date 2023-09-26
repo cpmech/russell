@@ -82,16 +82,9 @@ fn main() -> Result<(), StrError> {
     // allocate and configure the solver
     let mut solver = Solver::new(genie)?;
 
-    // call initialize
-    sw.reset();
-    solver
-        .actual
-        .initialize(coo.nrow, coo.max, coo.symmetry, Some(config))?;
-    let time_initialize = sw.stop();
-
     // call factorize
     sw.reset();
-    solver.actual.factorize_coo(&coo, opt.verbose)?;
+    solver.actual.factorize_coo(&coo, Some(config))?;
     let time_factorize = sw.stop();
 
     // allocate vectors
@@ -104,7 +97,7 @@ fn main() -> Result<(), StrError> {
     let time_solve = sw.stop();
 
     // total time, excluding reading the matrix
-    let time_total = time_initialize + time_factorize + time_solve;
+    let time_total = time_factorize + time_solve;
 
     // verify the solution
     let verify = VerifyLinSys::new(&coo, &x, &rhs)?;
@@ -134,8 +127,6 @@ fn main() -> Result<(), StrError> {
         nnz: coo.pos,
         time_read_matrix_market_nanosecond: time_read,
         time_read_matrix_market_human: format_nanoseconds(time_read),
-        time_initialize_nanosecond: time_initialize,
-        time_initialize_human: format_nanoseconds(time_initialize),
         time_factorize_nanosecond: time_factorize,
         time_factorize_human: format_nanoseconds(time_factorize),
         time_solve_nanosecond: time_solve,
@@ -195,8 +186,6 @@ pub struct SolutionInfo {
     pub nnz: usize,
     pub time_read_matrix_market_nanosecond: u128,
     pub time_read_matrix_market_human: String,
-    pub time_initialize_nanosecond: u128,
-    pub time_initialize_human: String,
     pub time_factorize_nanosecond: u128,
     pub time_factorize_human: String,
     pub time_solve_nanosecond: u128,

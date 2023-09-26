@@ -1,8 +1,6 @@
-use super::{to_i32, ConfigSolver, CooMatrix, SolverTrait, Symmetry};
-use crate::{CsrMatrix, Storage, StrError};
+use super::{to_i32, ConfigSolver, CooMatrix, SolverTrait};
+use crate::{CsrMatrix, StrError};
 use russell_lab::Vector;
-
-const MKL_DSS_SUCCESS: i32 = 0;
 
 /// Opaque struct holding a C-pointer to InterfaceIntelDSS
 ///
@@ -16,10 +14,18 @@ struct InterfaceIntelDSS {
 extern "C" {
     fn solver_intel_dss_new() -> *mut InterfaceIntelDSS;
     fn solver_intel_dss_drop(solver: *mut InterfaceIntelDSS);
-    fn solver_intel_dss_initialize(solver: *mut InterfaceIntelDSS, symmetric: i32, positive_definite: i32) -> i32;
     fn solver_intel_dss_factorize(
         solver: *mut InterfaceIntelDSS,
+        // output
+        determinant_coefficient: *mut f64,
+        determinant_exponent: *mut f64,
+        // requests
+        compute_determinant: i32,
+        // matrix config
+        general_symmetric: i32,
+        positive_definite: i32,
         ndim: i32,
+        // matrix
         row_pointers: *const i32,
         col_indices: *const i32,
         values: *const f64,
@@ -29,25 +35,26 @@ extern "C" {
 
 /// Wraps the IntelDSS solver for sparse linear systems
 ///
-/// **Warning:** This solver may fail with large matrices (e.g., ATandT/pre2).
+/// **Warning:** This solver does not check whether the matrix is singular or not;
+/// thus it may return **incorrect results** if a singular matrix is given to factorize.
+///
+/// **Warning:** This solver may fail with large matrices (e.g., ATandT/pre2) and
+/// may return **incorrect results**.
 pub struct SolverIntelDSS {
     /// Holds a pointer to the C interface to IntelDSS
     solver: *mut InterfaceIntelDSS,
 
-    /// Number of rows = number of columns
-    ndim: i32,
-
-    /// Symmetry option
-    symmetry: Option<Symmetry>,
-
-    /// Configuration parameters
-    pub config: ConfigSolver,
-
-    /// Indicates whether the C interface has been initialized or not
-    initialized: bool,
-
     /// Indicates whether the sparse matrix has been factorized or not
     factorized: bool,
+
+    /// Matrix dimension (to validate vectors in solve)
+    ndim: usize,
+
+    /// Holds the determinant coefficient: det = coefficient * pow(10, exponent)
+    determinant_coefficient: f64,
+
+    /// Holds the determinant exponent: det = coefficient * pow(10, exponent)
+    determinant_exponent: f64,
 }
 
 impl Drop for SolverIntelDSS {
@@ -62,9 +69,11 @@ impl Drop for SolverIntelDSS {
 impl SolverIntelDSS {
     /// Allocates a new instance
     ///
-    /// # Examples
+    /// **Warning:** This solver does not check whether the matrix is singular or not;
+    /// thus it may return **incorrect results** if a singular matrix is given to factorize.
     ///
-    /// See [SolverIntelDSS::solve]
+    /// **Warning:** This solver may fail with large matrices (e.g., ATandT/pre2) and
+    /// may return **incorrect results**.
     pub fn new() -> Result<Self, StrError> {
         if !cfg!(with_intel_dss) {
             return Err("This code has not been compiled with Intel DSS");
@@ -76,106 +85,80 @@ impl SolverIntelDSS {
             }
             Ok(SolverIntelDSS {
                 solver,
-                ndim: 0,
-                symmetry: None,
-                config: ConfigSolver::new(),
-                initialized: false,
                 factorized: false,
+                ndim: 0,
+                determinant_coefficient: 0.0,
+                determinant_exponent: 0.0,
             })
         }
     }
 }
 
 impl SolverTrait for SolverIntelDSS {
-    /// Initializes the C interface to IntelDSS
+    /// Performs the factorization (and analysis) given a COO matrix
     ///
     /// # Input
     ///
-    /// * `ndim` -- number of rows = number of columns of the coefficient matrix A
-    /// * `_nnz` -- NOT used here
-    /// * `_symmetry` -- NOT used here
-    /// * `config` -- configuration parameters; None => use default
+    /// * `coo` -- The COO matrix
+    /// * `params` -- configuration parameters; None => use default
     ///
-    /// # Examples
+    /// **Warning:** This solver does not check whether the matrix is singular or not;
+    /// thus it may return **incorrect results** if a singular matrix is given to factorize.
     ///
-    /// See [SolverIntelDSS::solve]
-    fn initialize(
-        &mut self,
-        ndim: usize,
-        _nnz: usize,
-        symmetry: Option<Symmetry>,
-        config: Option<ConfigSolver>,
-    ) -> Result<(), StrError> {
-        if self.initialized {
-            return Err("initialize can only be called once");
+    /// **Warning:** This solver may fail with large matrices (e.g., ATandT/pre2) and
+    /// may return **incorrect results**.
+    fn factorize_coo(&mut self, coo: &CooMatrix, params: Option<ConfigSolver>) -> Result<(), StrError> {
+        // set flag
+        self.factorized = false;
+
+        // check the COO matrix
+        if coo.one_based {
+            return Err("the COO matrix must have zero-based indices as required by Intel DSS");
         }
-        self.ndim = to_i32(ndim)?;
-        if let Some(cfg) = config {
-            self.config = cfg;
+        if coo.nrow != coo.ncol {
+            return Err("the matrix must be square");
         }
-        let (symmetric, positive_definite) = match symmetry {
-            Some(sym) => match sym {
-                Symmetry::General(storage) => {
-                    if storage != Storage::Upper {
-                        return Err("Intel DSS requires upper-triangular storage for symmetric matrices");
-                    }
-                    (1, 0)
-                }
-                Symmetry::PositiveDefinite(storage) => {
-                    if storage != Storage::Upper {
-                        return Err("Intel DSS requires upper-triangular storage for symmetric matrices");
-                    }
-                    (1, 1)
-                }
-            },
+        coo.check_dimensions_ready()?;
+
+        // configuration parameters
+        let cfg = if let Some(p) = params { p } else { ConfigSolver::new() };
+
+        // requests
+        let determinant = if cfg.compute_determinant { 1 } else { 0 };
+
+        // extract the symmetry flags and check the storage type
+        let (general_symmetric, positive_definite) = match coo.symmetry {
+            Some(symmetry) => symmetry.status(false, true)?,
             None => (0, 0),
         };
-        unsafe {
-            let status = solver_intel_dss_initialize(self.solver, symmetric, positive_definite);
-            if status != MKL_DSS_SUCCESS {
-                return Err(handle_intel_dss_error_code(status));
-            }
-        }
-        self.symmetry = symmetry;
-        self.initialized = true;
-        self.factorized = false;
-        Ok(())
-    }
 
-    /// Performs the factorization (and analysis) given COO matrix
-    ///
-    /// **Note::** Initialize must be called first. Also, the dimension and symmetry/storage
-    /// of the CooMatrix must be the same as the ones provided by `initialize`.
-    ///
-    /// # Input
-    ///
-    /// * `coo` -- The **same** matrix provided to `initialize`
-    /// * `_verbose` -- shows messages (NOT USED)
-    ///
-    /// # Examples
-    ///
-    /// See [SolverIntelDSS::solve]
-    fn factorize_coo(&mut self, coo: &CooMatrix, _verbose: bool) -> Result<(), StrError> {
-        self.factorized = false;
-        if !self.initialized {
-            return Err("the function initialize must be called before factorize");
-        }
-        if coo.nrow != self.ndim as usize || coo.ncol != self.ndim as usize {
-            return Err("the dimension of the CooMatrix must be equal to ndim");
-        }
-        if coo.symmetry != self.symmetry {
-            return Err("the CooMatrix symmetry option must be equal to the one provided to initialize");
-        }
+        // convert COO to CSR
         let csr = CsrMatrix::from_coo(coo)?;
         csr.check_dimensions()?;
+
+        // check the number of non-zero values
         let nnz = csr.row_pointers[csr.nrow];
         if (nnz as usize) < csr.nrow {
             return Err("for Intel DSS, nnz = row_pointers[nrow] must be ≥ nrow");
         }
+
+        // matrix config
+        let ndim = to_i32(csr.nrow)?;
+
+        // call Intel DSS factorize
         unsafe {
             let status = solver_intel_dss_factorize(
                 self.solver,
-                self.ndim,
+                // output
+                &mut self.determinant_coefficient,
+                &mut self.determinant_exponent,
+                // requests
+                determinant,
+                // matrix config
+                general_symmetric,
+                positive_definite,
+                ndim,
+                // matrix
                 csr.row_pointers.as_ptr(),
                 csr.col_indices.as_ptr(),
                 csr.values.as_ptr(),
@@ -184,6 +167,7 @@ impl SolverTrait for SolverIntelDSS {
                 return Err(handle_intel_dss_error_code(status));
             }
         }
+        self.ndim = csr.nrow;
         self.factorized = true;
         Ok(())
     }
@@ -201,10 +185,6 @@ impl SolverTrait for SolverIntelDSS {
     /// * `x` -- the vector of unknown values with dimension equal to coo.nrow
     /// * `rhs` -- the right-hand side vector with know values an dimension equal to coo.nrow
     /// * `_verbose` -- shows messages (NOT USED)
-    ///
-    /// # Examples
-    ///
-    /// TODO
     fn solve(&mut self, x: &mut Vector, rhs: &Vector, _verbose: bool) -> Result<(), StrError> {
         if !self.factorized {
             return Err("the function factorize must be called before solve");
@@ -224,9 +204,17 @@ impl SolverTrait for SolverIntelDSS {
         Ok(())
     }
 
-    /// Returns the determinant (NOT AVAILABLE)
+    /// Returns the determinant
+    ///
+    /// Returns the three values `(mantissa, 10.0, exponent)`, such that the determinant is calculated by:
+    ///
+    /// ```text
+    /// determinant = mantissa · pow(10.0, exponent)
+    /// ```
+    ///
+    /// **Note:** This is only available if compute_determinant was requested.
     fn get_determinant(&self) -> (f64, f64, f64) {
-        (0.0, 10.0, 0.0)
+        (self.determinant_coefficient, 10.0, self.determinant_exponent)
     }
 
     /// Returns the ordering effectively used by the solver (NOT AVAILABLE)
@@ -295,141 +283,102 @@ pub(crate) fn handle_intel_dss_error_code(err: i32) -> StrError {
     }
 }
 
+const MKL_DSS_SUCCESS: i32 = 0;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 #[cfg(with_intel_dss)]
 mod tests {
     use super::{handle_intel_dss_error_code, SolverIntelDSS};
-    use crate::{CooMatrix, Samples, SolverTrait, Storage, Symmetry};
-    use russell_chk::vec_approx_eq;
+    use crate::{ConfigSolver, CooMatrix, Samples, SolverTrait};
+    use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 
     #[test]
     fn new_and_drop_work() {
         // you may debug into the C-code to see that drop is working
         let solver = SolverIntelDSS::new().unwrap();
-        assert!(!solver.initialized);
         assert!(!solver.factorized);
     }
 
     #[test]
-    fn initialize_handles_errors_and_works() {
-        // allocate a new solver
+    fn factorize_handles_errors() {
         let mut solver = SolverIntelDSS::new().unwrap();
-        assert!(!solver.initialized);
         assert!(!solver.factorized);
-
-        // TODO
-
-        // initialize works
-        solver.initialize(2, 2, None, None).unwrap();
-        assert!(solver.initialized);
-    }
-
-    #[test]
-    fn factorize_handles_errors_and_works() {
-        // allocate a new solver
-        let mut solver = SolverIntelDSS::new().unwrap();
-        assert!(!solver.initialized);
-        assert!(!solver.factorized);
-
-        // sample matrix
-        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
-
-        // factorize requests initialize
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(true);
         assert_eq!(
-            solver.factorize_coo(&coo, false).err(),
-            Some("the function initialize must be called before factorize")
+            solver.factorize_coo(&coo, None).err(),
+            Some("the COO matrix must have zero-based indices as required by Intel DSS")
         );
-
-        // call initialize
-        solver.initialize(coo.nrow, coo.pos, coo.symmetry, None).unwrap();
-
-        // factorize fails on incompatible coo matrix
-        let mut coo_wrong_1 = CooMatrix::new(1, 5, 13, None, false).unwrap();
-        let coo_wrong_2 = CooMatrix::new(5, 1, 13, None, false).unwrap();
-        let coo_wrong_3 = CooMatrix::new(5, 5, 12, None, false).unwrap();
-        let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo_wrong_4 = CooMatrix::new(5, 5, 13, sym, false).unwrap();
-        for _ in 0..13 {
-            coo_wrong_1.put(0, 0, 1.0).unwrap();
-            coo_wrong_4.put(0, 0, 1.0).unwrap();
-        }
+        let (coo, _, _, _) = Samples::rectangular_1x7();
         assert_eq!(
-            solver.factorize_coo(&coo_wrong_1, false).err(),
-            Some("the dimension of the CooMatrix must be equal to ndim")
+            solver.factorize_coo(&coo, None).err(),
+            Some("the matrix must be square")
         );
+        let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
         assert_eq!(
-            solver.factorize_coo(&coo_wrong_2, false).err(),
-            Some("the dimension of the CooMatrix must be equal to ndim")
-        );
-        assert_eq!(
-            solver.factorize_coo(&coo_wrong_3, false).err(),
+            solver.factorize_coo(&coo, None).err(),
             Some("COO matrix: pos = nnz must be ≥ 1")
         );
+        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(false, false, false);
         assert_eq!(
-            solver.factorize_coo(&coo_wrong_4, false).err(),
-            Some("the CooMatrix symmetry option must be equal to the one provided to initialize")
+            solver.factorize_coo(&coo, None).err(),
+            Some("if the matrix is general symmetric, the required storage is upper triangular")
         );
-
-        // factorize works
-        solver.factorize_coo(&coo, false).unwrap();
-        assert!(solver.factorized);
     }
 
     #[test]
-    fn factorize_handles_singular_matrix() {
+    fn factorize_works() {
         let mut solver = SolverIntelDSS::new().unwrap();
-        let mut coo = CooMatrix::new(2, 2, 2, None, false).unwrap();
-        coo.put(0, 0, 1.0).unwrap();
-        coo.put(1, 1, 0.0).unwrap();
-        solver.initialize(coo.nrow, coo.max, coo.symmetry, None).unwrap();
-        // TODO: implement an external check because
-        // Intel DSS does not check if the matrix is singular !!!
-        assert_eq!(solver.factorize_coo(&coo, false).err(), None);
-    }
-
-    #[test]
-    fn solve_handles_errors_and_works() {
-        // allocate a new solver
-        let mut solver = SolverIntelDSS::new().unwrap();
-        assert!(!solver.initialized);
         assert!(!solver.factorized);
-
-        // sample matrix
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let mut params = ConfigSolver::new();
 
-        // allocate x and rhs
-        let mut x = Vector::new(5);
-        let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
-        let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+        params.compute_determinant = true;
 
-        // solve fails on non-factorized system
+        solver.factorize_coo(&coo, Some(params)).unwrap();
+        assert!(solver.factorized);
+
+        assert_eq!(solver.get_effective_ordering(), "Unknown");
+        assert_eq!(solver.get_effective_scaling(), "Unknown");
+
+        let (a, b, c) = solver.get_determinant();
+        let det = a * f64::powf(b, c);
+        approx_eq(det, 114.0, 1e-13);
+    }
+
+    #[test]
+    fn solve_handles_errors() {
+        let mut solver = SolverIntelDSS::new().unwrap();
+        assert!(!solver.factorized);
+        let mut x = Vector::new(1);
+        let rhs = Vector::new(1);
         assert_eq!(
             solver.solve(&mut x, &rhs, false),
             Err("the function factorize must be called before solve")
         );
-
-        // call initialize and factorize
-        solver.initialize(coo.nrow, coo.pos, coo.symmetry, None).unwrap();
-        assert!(solver.initialized);
-        solver.factorize_coo(&coo, false).unwrap();
-        assert!(solver.factorized);
-
-        // solve fails on wrong x and rhs vectors
-        let mut x_wrong = Vector::new(3);
-        let rhs_wrong = Vector::new(2);
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
+        solver.factorize_coo(&coo, None).unwrap();
         assert_eq!(
-            solver.solve(&mut x_wrong, &rhs, false),
+            solver.solve(&mut x, &rhs, false),
             Err("the dimension of the vector of unknown values x is incorrect")
         );
+        let mut x = Vector::new(5);
         assert_eq!(
-            solver.solve(&mut x, &rhs_wrong, false),
+            solver.solve(&mut x, &rhs, false),
             Err("the dimension of the right-hand side vector is incorrect")
         );
+    }
 
-        // solve works
+    #[test]
+    fn solve_works() {
+        let mut solver = SolverIntelDSS::new().unwrap();
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
+        let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+        solver.factorize_coo(&coo, None).unwrap();
         solver.solve(&mut x, &rhs, false).unwrap();
         vec_approx_eq(x.as_data(), x_correct, 1e-14);
 

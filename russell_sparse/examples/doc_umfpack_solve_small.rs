@@ -8,9 +8,8 @@ fn main() -> Result<(), StrError> {
     let ndim = 5; // number of rows = number of columns
     let nnz = 13; // number of non-zero values, including duplicates
 
-    // allocate solver and call initialize
+    // allocate solver
     let mut umfpack = SolverUMFPACK::new()?;
-    umfpack.initialize(ndim, nnz, None, None)?;
 
     // allocate a square matrix
     // allocate the coefficient matrix
@@ -42,7 +41,7 @@ fn main() -> Result<(), StrError> {
     assert_eq!(format!("{}", a), correct);
 
     // call factorize
-    umfpack.factorize_coo(&coo, false)?;
+    umfpack.factorize_coo(&coo, None)?;
 
     // allocate x and rhs
     let mut x = Vector::new(ndim);

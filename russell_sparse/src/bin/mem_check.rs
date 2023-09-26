@@ -18,14 +18,6 @@ fn test_solver(genie: Genie) {
         }
     };
 
-    match solver.actual.initialize(ndim, nnz, None, None) {
-        Err(e) => {
-            println!("FAIL(factorize): {}", e);
-            return;
-        }
-        _ => (),
-    };
-
     let one_based = if genie == Genie::Mumps { true } else { false };
     let mut coo = match CooMatrix::new(ndim, ndim, nnz, None, one_based) {
         Ok(v) => v,
@@ -49,7 +41,7 @@ fn test_solver(genie: Genie) {
     coo.put(1, 4, 6.0).unwrap();
     coo.put(4, 4, 1.0).unwrap();
 
-    match solver.actual.factorize_coo(&coo, false) {
+    match solver.actual.factorize_coo(&coo, None) {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
@@ -96,14 +88,6 @@ fn test_solver_singular(genie: Genie) {
         }
     };
 
-    match solver.actual.initialize(ndim, nnz, None, None) {
-        Err(e) => {
-            println!("FAIL(factorize): {}", e);
-            return;
-        }
-        _ => (),
-    };
-
     let one_based = if genie == Genie::Mumps { true } else { false };
     let coo_singular = match CooMatrix::new(ndim, ndim, nnz, None, one_based) {
         Ok(v) => v,
@@ -113,7 +97,7 @@ fn test_solver_singular(genie: Genie) {
         }
     };
 
-    match solver.actual.factorize_coo(&coo_singular, false) {
+    match solver.actual.factorize_coo(&coo_singular, None) {
         Err(e) => println!("\nOk(factorize singular matrix): {}\n", e),
         _ => (),
     };

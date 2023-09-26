@@ -1,4 +1,4 @@
-use super::{to_i32, ConfigSolver, CooMatrix, Ordering, Scaling, SolverTrait, Symmetry};
+use super::{to_i32, ConfigSolver, CooMatrix, Ordering, Scaling, SolverTrait};
 use crate::StrError;
 use russell_lab::{vec_copy, Vector};
 
@@ -53,9 +53,6 @@ pub struct SolverMUMPS {
     /// Indicates whether the sparse matrix has been factorized or not
     factorized: bool,
 
-    /// TODO: remove this
-    config: Option<ConfigSolver>,
-
     /// Matrix dimension (to validate vectors in solve)
     ndim: usize,
 
@@ -92,7 +89,6 @@ impl SolverMUMPS {
             Ok(SolverMUMPS {
                 solver,
                 factorized: false,
-                config: None,
                 ndim: 0,
                 effective_ordering: -1,
                 effective_scaling: -1,
@@ -104,36 +100,13 @@ impl SolverMUMPS {
 }
 
 impl SolverTrait for SolverMUMPS {
-    /// Initializes the C interface to MUMPS
+    /// Performs the factorization (and analysis) given a COO matrix
     ///
     /// # Input
     ///
-    /// * `ndim` -- number of rows = number of columns of the coefficient matrix A
-    /// * `nnz` -- number of non-zero values on the coefficient matrix A
-    /// * `symmetry` -- symmetry (or lack of it) type of the coefficient matrix A
-    ///   Note that only symmetry/storage equal to Lower or Full are allowed by MUMPS.
-    /// * `config` -- configuration parameters; None => use default
-    fn initialize(
-        &mut self,
-        _ndim: usize,
-        _nnz: usize,
-        _symmetry: Option<Symmetry>,
-        config: Option<ConfigSolver>,
-    ) -> Result<(), StrError> {
-        self.config = config;
-        Ok(())
-    }
-
-    /// Performs the factorization (and analysis) given COO matrix
-    ///
-    /// **Note::** Initialize must be called first. Also, the dimension and symmetry/storage
-    /// of the CooMatrix must be the same as the ones provided by `initialize`.
-    ///
-    /// # Input
-    ///
-    /// * `coo` -- The **same** matrix provided to `initialize`
-    /// * `verbose` -- shows messages
-    fn factorize_coo(&mut self, coo: &CooMatrix, verbose: bool) -> Result<(), StrError> {
+    /// * `coo` -- The COO matrix
+    /// * `params` -- configuration parameters; None => use default
+    fn factorize_coo(&mut self, coo: &CooMatrix, params: Option<ConfigSolver>) -> Result<(), StrError> {
         // set flag
         self.factorized = false;
 
@@ -147,11 +120,7 @@ impl SolverTrait for SolverMUMPS {
         coo.check_dimensions_ready()?;
 
         // configuration parameters
-        let cfg = if let Some(configuration) = self.config {
-            configuration
-        } else {
-            ConfigSolver::new()
-        };
+        let cfg = if let Some(p) = params { p } else { ConfigSolver::new() };
 
         // input parameters
         let ordering = match cfg.ordering {
@@ -183,7 +152,7 @@ impl SolverTrait for SolverMUMPS {
 
         // requests
         let determinant = if cfg.compute_determinant { 1 } else { 0 };
-        let verbose_mode = if verbose { 1 } else { 0 };
+        let verbose_mode = if cfg.verbose { 1 } else { 0 };
 
         // extract the symmetry flags and check the storage type
         let (general_symmetric, positive_definite) = match coo.symmetry {
@@ -223,7 +192,7 @@ impl SolverTrait for SolverMUMPS {
                 coo.indices_j.as_ptr(),
                 coo.values_aij.as_ptr(),
             );
-            if status != 0 {
+            if status != MUMPS_SUCCESS {
                 return Err(handle_mumps_error_code(status));
             }
         }
@@ -259,7 +228,7 @@ impl SolverTrait for SolverMUMPS {
         vec_copy(x, rhs).unwrap();
         unsafe {
             let status = solver_mumps_solve(self.solver, x.as_mut_data().as_mut_ptr(), verb);
-            if status != 0 {
+            if status != MUMPS_SUCCESS {
                 return Err(handle_mumps_error_code(status));
             }
         }
@@ -408,6 +377,8 @@ fn handle_mumps_error_code(err: i32) -> StrError {
     }
 }
 
+const MUMPS_SUCCESS: i32 = 0;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
@@ -436,15 +407,10 @@ mod tests {
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(true);
 
         // set params
-        let mut config = ConfigSolver::new();
-        config.ordering = Ordering::Pord;
-        config.scaling = Scaling::RowCol;
-        config.compute_determinant = true;
-
-        // initialize works
-        solver
-            .initialize(coo.nrow, coo.pos, coo.symmetry, Some(config))
-            .unwrap();
+        let mut params = ConfigSolver::new();
+        params.ordering = Ordering::Pord;
+        params.scaling = Scaling::RowCol;
+        params.compute_determinant = true;
 
         // solve fails on non-factorized system
         assert_eq!(
@@ -453,7 +419,7 @@ mod tests {
         );
 
         // factorize works
-        solver.factorize_coo(&coo, false).unwrap();
+        solver.factorize_coo(&coo, Some(params)).unwrap();
         assert!(solver.factorized);
 
         // solve fails on wrong x and rhs vectors
@@ -495,24 +461,18 @@ mod tests {
         coo_singular.put(0, 0, 1.0).unwrap();
         coo_singular.put(4, 4, 1.0).unwrap();
         let mut solver = SolverMUMPS::new().unwrap();
-        solver
-            .initialize(coo_singular.nrow, coo_singular.pos, coo_singular.symmetry, Some(config))
-            .unwrap();
         assert_eq!(
-            solver.factorize_coo(&coo_singular, false),
+            solver.factorize_coo(&coo_singular, None),
             Err("Error(-10): numerically singular matrix")
         );
 
         // solve with positive-definite matrix works
         let (coo_pd_lower, _, _, _) = Samples::mkl_positive_definite_5x5_lower(true);
-        config.ordering = Ordering::Auto;
-        config.scaling = Scaling::Auto;
+        params.ordering = Ordering::Auto;
+        params.scaling = Scaling::Auto;
         let mut solver = SolverMUMPS::new().unwrap();
         assert!(!solver.factorized);
-        solver
-            .initialize(coo_pd_lower.nrow, coo_pd_lower.pos, coo_pd_lower.symmetry, Some(config))
-            .unwrap();
-        solver.factorize_coo(&coo_pd_lower, false).unwrap();
+        solver.factorize_coo(&coo_pd_lower, Some(params)).unwrap();
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
         solver.solve(&mut x, &rhs, false).unwrap();

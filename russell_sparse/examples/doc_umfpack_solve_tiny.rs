@@ -10,7 +10,6 @@ fn main() -> Result<(), StrError> {
 
     // allocate solver and call initialize
     let mut umfpack = SolverUMFPACK::new()?;
-    umfpack.initialize(ndim, nnz, None, None)?;
 
     // allocate the coefficient matrix
     let mut coo = CooMatrix::new(ndim, ndim, nnz, None, false)?;
@@ -31,7 +30,7 @@ fn main() -> Result<(), StrError> {
     assert_eq!(format!("{}", a), correct);
 
     // call factorize
-    umfpack.factorize_coo(&coo, false)?;
+    umfpack.factorize_coo(&coo, None)?;
 
     // allocate two right-hand side vectors
     let rhs1 = Vector::from(&[1.0, 1.0, 1.0]);

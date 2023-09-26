@@ -1,4 +1,4 @@
-use super::{CooMatrix, Genie, Ordering, Scaling, SolverIntelDSS, SolverMUMPS, SolverUMFPACK, Symmetry};
+use super::{CooMatrix, Genie, Ordering, Scaling, SolverIntelDSS, SolverMUMPS, SolverUMFPACK};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -33,6 +33,9 @@ pub struct ConfigSolver {
 
     /// Enforces the unsymmetric strategy, even for symmetric matrices (not recommended; UMFPACK only)
     pub umfpack_enforce_unsymmetric_strategy: bool,
+
+    /// Show additional messages
+    pub verbose: bool,
 }
 
 impl ConfigSolver {
@@ -46,51 +49,20 @@ impl ConfigSolver {
             mumps_max_work_memory: 0,
             mumps_openmp_num_threads: 0,
             umfpack_enforce_unsymmetric_strategy: false,
+            verbose: false,
         }
     }
 }
 
 /// Defines a unified interface for sparse solvers
 pub trait SolverTrait {
-    /// Initializes the C interface to the underlying solver (Genie)
-    ///
-    /// Initializes the solver for the linear system:
-    ///
-    /// ```text
-    /// A · x = rhs
-    /// ```
+    /// Performs the factorization (and analysis) given a COO matrix
     ///
     /// # Input
     ///
-    /// * `ndim` -- number of rows = number of columns of the coefficient matrix A
-    /// * `nnz` -- number of non-zero values on the coefficient matrix A
-    /// * `symmetry` -- symmetry (or lack of it) type of the coefficient matrix A
-    /// * `config` -- configuration parameters; None => use default
-    ///
-    /// # Notes
-    ///
-    /// * For symmetric matrices, `MUMPS` requires that the symmetry/storage be Lower or Full.
-    /// * For symmetric matrices, `UMFPACK` requires that the symmetry/storage be Full.
-    /// * For symmetric matrices, `Intel DSS` requires tha the symmetry/storage be Upper triangular,
-    ///   and with all diagonal components present
-    fn initialize(
-        &mut self,
-        ndim: usize,
-        nnz: usize,
-        symmetry: Option<Symmetry>,
-        config: Option<ConfigSolver>,
-    ) -> Result<(), StrError>;
-
-    /// Performs the factorization (and analysis) given COO matrix
-    ///
-    /// **Note::** Initialize must be called first. Also, the dimension and symmetry/storage
-    /// of the CooMatrix must be the same as the ones provided by `initialize`.
-    ///
-    /// # Input
-    ///
-    /// * `coo` -- The **same** matrix provided to `initialize`
-    /// * `verbose` -- shows messages
-    fn factorize_coo(&mut self, coo: &CooMatrix, verbose: bool) -> Result<(), StrError>;
+    /// * `coo` -- The COO matrix
+    /// * `params` -- configuration parameters; None => use default
+    fn factorize_coo(&mut self, coo: &CooMatrix, params: Option<ConfigSolver>) -> Result<(), StrError>;
 
     /// Computes the solution of the linear system
     ///
@@ -174,11 +146,11 @@ impl<'a> Solver<'a> {
     ///
     /// 1. For symmetric matrices, `MUMPS` requires that the symmetry/storage be Lower or Full.
     /// 2. For symmetric matrices, `UMFPACK` requires that the symmetry/storage be Full.
-    /// 3. This function calls the actual implementation (genie) via the functions
-    ///    `initialize`, `factorize`, and `solve`.
-    /// 4. This function is best for a **single-use** need, whereas the actual
+    /// 3. For symmetric matrices, `IntelDSS` requires that the symmetry/storage be Upper.
+    /// 4. This function calls the actual implementation (genie) via the functions `factorize`, and `solve`.
+    /// 5. This function is best for a **single-use** need, whereas the actual
     ///    solver should be considered for a recurrent use (e.g., inside a loop).
-    /// 5. Also, use the individual implementations if options such as ordering or scaling
+    /// 6. Also, use the individual implementations if options such as ordering or scaling
     ///    need to be configured.
     pub fn compute(
         genie: Genie,
@@ -191,8 +163,7 @@ impl<'a> Solver<'a> {
             return Err("the matrix must be square");
         }
         let mut solver = Solver::new(genie)?;
-        solver.actual.initialize(coo.nrow, coo.max, coo.symmetry, None)?;
-        solver.actual.factorize_coo(coo, verbose)?;
+        solver.actual.factorize_coo(coo, None)?;
         solver.actual.solve(x, rhs, verbose)?;
         Ok(solver)
     }
@@ -212,7 +183,7 @@ mod tests {
         let config = ConfigSolver::new();
         let copy = config;
         let clone = config.clone();
-        assert_eq!(format!("{:?}", config), "ConfigSolver { ordering: Auto, scaling: Auto, compute_determinant: false, mumps_pct_inc_workspace: 100, mumps_max_work_memory: 0, mumps_openmp_num_threads: 0, umfpack_enforce_unsymmetric_strategy: false }");
+        assert_eq!(format!("{:?}", config), "ConfigSolver { ordering: Auto, scaling: Auto, compute_determinant: false, mumps_pct_inc_workspace: 100, mumps_max_work_memory: 0, mumps_openmp_num_threads: 0, umfpack_enforce_unsymmetric_strategy: false, verbose: false }");
         assert_eq!(copy, config);
         assert_eq!(clone, config);
     }

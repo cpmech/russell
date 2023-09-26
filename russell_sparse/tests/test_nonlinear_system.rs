@@ -79,7 +79,6 @@ fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
     let one_based = if genie == Genie::Mumps { true } else { false };
     let (neq, nnz) = (4, 16);
     let mut solver = Solver::new(genie)?;
-    solver.actual.initialize(neq, nnz, None, None)?;
     let mut jj = CooMatrix::new(neq, neq, nnz, None, one_based).unwrap();
     let mut rr = Vector::new(neq);
     let mut uu = Vector::from(&[0.0, 0.0, 0.0, 0.0]);
@@ -115,7 +114,7 @@ fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
             break;
         }
         calc_jacobian(&mut jj, &uu)?;
-        solver.actual.factorize_coo(&jj, false)?;
+        solver.actual.factorize_coo(&jj, None)?;
         solver.actual.solve(&mut mdu, &rr, false)?;
         vec_update(&mut uu, -1.0, &mdu)?;
         it += 1;

@@ -27,6 +27,12 @@ struct InterfaceIntelDSS {
 
     /// @brief Holds the Intel DSS handle (allocated in analyze)
     _MKL_DSS_HANDLE_t handle;
+
+    /// @brief indicates that the initialization has been completed
+    int32_t initialization_completed;
+
+    /// @brief Indicates that the factorization (at least once) has been completed
+    int32_t factorization_completed;
 };
 
 /// @brief Allocates a new Intel DSS interface
@@ -40,6 +46,8 @@ struct InterfaceIntelDSS *solver_intel_dss_new() {
     }
 
     solver->handle = NULL;
+    solver->initialization_completed = C_FALSE;
+    solver->factorization_completed = C_FALSE;
 
     return solver;
 #else
@@ -65,50 +73,33 @@ void solver_intel_dss_drop(struct InterfaceIntelDSS *solver) {
 #endif
 }
 
-/// @brief Performs the initialization
-/// @param solver Is a pointer to the solver interface
-/// @param symmetric Whether the matrix is symmetric or not
-/// @param positive_definite Whether the matrix is positive-definite or not
-/// @return A success or fail code
-int32_t solver_intel_dss_initialize(struct InterfaceIntelDSS *solver,
-                                    int32_t symmetric,
-                                    int32_t positive_definite) {
-#ifdef WITH_INTEL_DSS
-    if (solver == NULL) {
-        return NULL_POINTER_ERROR;
-    }
-
-    solver->dss_opt = MKL_DSS_MSG_LVL_WARNING + MKL_DSS_TERM_LVL_ERROR + MKL_DSS_ZERO_BASED_INDEXING;
-
-    solver->dss_sym = MKL_DSS_NON_SYMMETRIC;
-    if (symmetric == C_TRUE) {
-        solver->dss_sym = MKL_DSS_SYMMETRIC;
-    }
-
-    solver->dss_type = MKL_DSS_INDEFINITE;
-    if (positive_definite == C_TRUE) {
-        solver->dss_type = MKL_DSS_POSITIVE_DEFINITE;
-    }
-
-    MKL_INT status = dss_create(solver->handle, solver->dss_opt);
-    return status;
-#else
-    UNUSED(solver);
-    UNUSED(symmetric);
-    UNUSED(positive_definite);
-    return NOT_AVAILABLE;
-#endif
-}
-
 /// @brief Performs the factorization
 /// @param solver Is a pointer to the solver interface
+/// @note Output
+/// @param determinant_coefficient determinant coefficient: det = coefficient * pow(2, exponent)
+/// @param determinant_exponent determinant exponent: det = coefficient * pow(2, exponent)
+/// @note Requests
+/// @param compute_determinant Requests that determinant be computed
+/// @note Matrix config
+/// @param general_symmetric Whether the matrix is general symmetric (not necessarily positive-definite) or not
+/// @param positive_definite Whether the matrix is symmetric and positive-definite or not
 /// @param ndim Is the number of rows and columns of the coefficient matrix
+/// @note Matrix
 /// @param row_pointers The row pointers array with size = nrow + 1
 /// @param col_indices The columns indices array with size = nnz (number of non-zeros)
 /// @param values The values array with size = nnz (number of non-zeros)
 /// @return A success or fail code
 int32_t solver_intel_dss_factorize(struct InterfaceIntelDSS *solver,
+                                   // output
+                                   double *determinant_coefficient,
+                                   double *determinant_exponent,
+                                   // requests
+                                   int32_t compute_determinant,
+                                   // matrix config
+                                   int32_t general_symmetric,
+                                   int32_t positive_definite,
                                    int32_t ndim,
+                                   // matrix
                                    const int32_t *row_pointers,
                                    const int32_t *col_indices,
                                    const double *values) {
@@ -116,8 +107,32 @@ int32_t solver_intel_dss_factorize(struct InterfaceIntelDSS *solver,
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
-    if (solver->handle == NULL) {
-        return NULL_POINTER_ERROR;
+
+    // perform initialization
+    if (solver->initialization_completed == C_FALSE) {
+        solver->dss_opt = MKL_DSS_MSG_LVL_WARNING + MKL_DSS_TERM_LVL_ERROR + MKL_DSS_ZERO_BASED_INDEXING;
+
+        solver->dss_sym = MKL_DSS_NON_SYMMETRIC;
+        if (general_symmetric == C_TRUE) {
+            solver->dss_sym = MKL_DSS_SYMMETRIC;
+        }
+
+        solver->dss_type = MKL_DSS_INDEFINITE;
+        if (positive_definite == C_TRUE) {
+            solver->dss_type = MKL_DSS_POSITIVE_DEFINITE;
+        }
+
+        MKL_INT status = dss_create(solver->handle, solver->dss_opt);
+
+        if (status != MKL_DSS_SUCCESS) {
+            return status;
+        }
+
+        if (solver->handle == NULL) {
+            return NULL_POINTER_ERROR;
+        }
+
+        solver->initialization_completed = C_TRUE;
     }
 
     // define the non-zero structure of the matrix
@@ -141,9 +156,30 @@ int32_t solver_intel_dss_factorize(struct InterfaceIntelDSS *solver,
 
     // factor the matrix
     status = dss_factor_real(solver->handle, solver->dss_type, values);
+
+    // compute determinant
+    *determinant_coefficient = 0.0;
+    *determinant_exponent = 0.0;
+    if (compute_determinant == C_TRUE) {
+        _CHARACTER_t stat_in[] = "determinant";
+        _DOUBLE_PRECISION_t stat_out[5];
+        status = dss_statistics(solver->handle, solver->dss_opt, stat_in, stat_out);
+        if (status != MKL_DSS_SUCCESS) {
+            return status;
+        }
+        *determinant_exponent = stat_out[0];
+        *determinant_coefficient = stat_out[1];
+    }
+
+    // done
     return status;
 #else
     UNUSED(solver);
+    UNUSED(determinant_coefficient);
+    UNUSED(determinant_exponent);
+    UNUSED(compute_determinant);
+    UNUSED(general_symmetric);
+    UNUSED(positive_definite);
     UNUSED(ndim);
     UNUSED(row_pointers);
     UNUSED(col_indices);

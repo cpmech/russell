@@ -166,20 +166,40 @@ impl CscMatrix {
     /// }
     /// ```
     pub fn from_coo(coo: &CooMatrix) -> Result<Self, StrError> {
-        // check dimension params
         coo.check_dimensions_ready()?;
-        let ncol = coo.ncol;
-        let nnz = coo.pos;
-
-        // allocate arrays
         let mut csc = CscMatrix {
             symmetry: coo.symmetry,
             nrow: coo.nrow,
             ncol: coo.ncol,
-            col_pointers: vec![0; ncol + 1],
-            row_indices: vec![0; nnz],
-            values: vec![0.0; nnz],
+            col_pointers: vec![0; coo.ncol + 1],
+            row_indices: vec![0; coo.pos],
+            values: vec![0.0; coo.pos],
         };
+        csc.update_from_coo(coo)?;
+        Ok(csc)
+    }
+
+    /// Updates this CSC matrix from a COO matrix with a compatible structure
+    ///
+    /// **Note:** The COO matrix must match the symmetry, nrow, and ncol values.
+    /// Also, the `pos` (nnz) value in the COO matrix must match `row_indices.len()`.
+    pub fn update_from_coo(&mut self, coo: &CooMatrix) -> Result<(), StrError> {
+        // check dimensions
+        if coo.symmetry != self.symmetry {
+            return Err("coo.symmetry must be equal to coo.symmetry");
+        }
+        if coo.nrow != self.nrow {
+            return Err("coo.nrow must be equal to csc.nrow");
+        }
+        if coo.ncol != self.ncol {
+            return Err("coo.ncol must be equal to csc.ncol");
+        }
+        if coo.pos != self.row_indices.len() {
+            return Err("coo.pos must be equal to csc.row_indices.len()");
+        }
+        if coo.pos != self.values.len() {
+            return Err("coo.pos must be equal to csc.values.len()");
+        }
 
         // call UMFPACK to convert COO to CSC
         let status = if coo.one_based {
@@ -192,9 +212,9 @@ impl CscMatrix {
             }
             unsafe {
                 umfpack_coo_to_csc(
-                    csc.col_pointers.as_mut_ptr(),
-                    csc.row_indices.as_mut_ptr(),
-                    csc.values.as_mut_ptr(),
+                    self.col_pointers.as_mut_ptr(),
+                    self.row_indices.as_mut_ptr(),
+                    self.values.as_mut_ptr(),
                     to_i32(coo.nrow)?,
                     to_i32(coo.ncol)?,
                     to_i32(coo.pos)?,
@@ -206,9 +226,9 @@ impl CscMatrix {
         } else {
             unsafe {
                 umfpack_coo_to_csc(
-                    csc.col_pointers.as_mut_ptr(),
-                    csc.row_indices.as_mut_ptr(),
-                    csc.values.as_mut_ptr(),
+                    self.col_pointers.as_mut_ptr(),
+                    self.row_indices.as_mut_ptr(),
+                    self.values.as_mut_ptr(),
                     to_i32(coo.nrow)?,
                     to_i32(coo.ncol)?,
                     to_i32(coo.pos)?,
@@ -223,14 +243,14 @@ impl CscMatrix {
         }
 
         // reduce array sizes if duplicates have been eliminated
-        let final_nnz = csc.col_pointers[csc.ncol] as usize;
+        let final_nnz = self.col_pointers[self.ncol] as usize;
         if final_nnz < coo.pos {
-            csc.row_indices.resize(final_nnz, 0);
-            csc.values.resize(final_nnz, 0.0);
+            self.row_indices.resize(final_nnz, 0);
+            self.values.resize(final_nnz, 0.0);
         }
 
         // results
-        Ok(csc)
+        Ok(())
     }
 
     /// Creates a new CSC matrix from a CSR matrix

@@ -137,7 +137,7 @@ impl SolverTrait for SolverUMFPACK {
             if coo.nrow != self.factorized_ndim {
                 return Err("when factorize is called more than once, the subsequent calls must use the same matrix (ndim differs)");
             }
-            if coo.pos != self.factorized_nnz {
+            if coo.nnz != self.factorized_nnz {
                 return Err("when factorize is called more than once, the subsequent calls must use the same matrix (nnz differs)");
             }
         }

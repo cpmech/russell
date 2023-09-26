@@ -172,8 +172,8 @@ impl CscMatrix {
             nrow: coo.nrow,
             ncol: coo.ncol,
             col_pointers: vec![0; coo.ncol + 1],
-            row_indices: vec![0; coo.pos],
-            values: vec![0.0; coo.pos],
+            row_indices: vec![0; coo.nnz],
+            values: vec![0.0; coo.nnz],
         };
         csc.update_from_coo(coo)?;
         Ok(csc)
@@ -194,11 +194,11 @@ impl CscMatrix {
         if coo.ncol != self.ncol {
             return Err("coo.ncol must be equal to csc.ncol");
         }
-        if coo.pos != self.row_indices.len() {
-            return Err("coo.pos must be equal to csc.row_indices.len()");
+        if coo.nnz != self.row_indices.len() {
+            return Err("coo.nnz must be equal to csc.row_indices.len()");
         }
-        if coo.pos != self.values.len() {
-            return Err("coo.pos must be equal to csc.values.len()");
+        if coo.nnz != self.values.len() {
+            return Err("coo.nnz must be equal to csc.values.len()");
         }
 
         // call UMFPACK to convert COO to CSC
@@ -206,7 +206,7 @@ impl CscMatrix {
             // handle one-based indexing
             let mut indices_i = coo.indices_i.clone();
             let mut indices_j = coo.indices_j.clone();
-            for k in 0..coo.pos {
+            for k in 0..coo.nnz {
                 indices_i[k] -= 1;
                 indices_j[k] -= 1;
             }
@@ -217,7 +217,7 @@ impl CscMatrix {
                     self.values.as_mut_ptr(),
                     to_i32(coo.nrow)?,
                     to_i32(coo.ncol)?,
-                    to_i32(coo.pos)?,
+                    to_i32(coo.nnz)?,
                     indices_i.as_ptr(),
                     indices_j.as_ptr(),
                     coo.values_aij.as_ptr(),
@@ -231,7 +231,7 @@ impl CscMatrix {
                     self.values.as_mut_ptr(),
                     to_i32(coo.nrow)?,
                     to_i32(coo.ncol)?,
-                    to_i32(coo.pos)?,
+                    to_i32(coo.nnz)?,
                     coo.indices_i.as_ptr(),
                     coo.indices_j.as_ptr(),
                     coo.values_aij.as_ptr(),
@@ -244,7 +244,7 @@ impl CscMatrix {
 
         // reduce array sizes if duplicates have been eliminated
         let final_nnz = self.col_pointers[self.ncol] as usize;
-        if final_nnz < coo.pos {
+        if final_nnz < coo.nnz {
             self.row_indices.resize(final_nnz, 0);
             self.values.resize(final_nnz, 0.0);
         }

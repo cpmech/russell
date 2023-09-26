@@ -165,7 +165,7 @@ impl CsrMatrix {
         // check dimension params
         coo.check_dimensions_ready()?;
         let nrow = coo.nrow;
-        let nnz = coo.pos;
+        let nnz = coo.nnz;
 
         // access the triplet data
         let ai = &coo.indices_i;

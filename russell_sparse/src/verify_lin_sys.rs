@@ -68,7 +68,7 @@ impl VerifyLinSys {
         let mut sw = Stopwatch::new("");
 
         // compute max_abs_a
-        let nnz = to_i32(coo.pos);
+        let nnz = to_i32(coo.nnz);
         let idx = idamax(nnz, &coo.values_aij, 1);
         let max_abs_a = f64::abs(coo.values_aij[idx as usize]);
 

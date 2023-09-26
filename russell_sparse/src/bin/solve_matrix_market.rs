@@ -124,7 +124,7 @@ fn main() -> Result<(), StrError> {
         symmetry: format!("{:?}", coo.symmetry),
         nrow: coo.nrow,
         ncol: coo.ncol,
-        nnz: coo.pos,
+        nnz: coo.nnz,
         time_read_matrix_market_nanosecond: time_read,
         time_read_matrix_market_human: format_nanoseconds(time_read),
         time_factorize_nanosecond: time_factorize,

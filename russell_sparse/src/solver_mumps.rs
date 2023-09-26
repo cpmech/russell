@@ -162,7 +162,7 @@ impl SolverTrait for SolverMUMPS {
 
         // matrix config
         let ndim = to_i32(coo.nrow)?;
-        let nnz = to_i32(coo.pos)?;
+        let nnz = to_i32(coo.nnz)?;
 
         // call MUMPS factorize
         unsafe {

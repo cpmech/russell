@@ -220,7 +220,7 @@ impl CscMatrix {
                     to_i32(coo.nnz)?,
                     indices_i.as_ptr(),
                     indices_j.as_ptr(),
-                    coo.values_aij.as_ptr(),
+                    coo.values.as_ptr(),
                 )
             }
         } else {
@@ -234,7 +234,7 @@ impl CscMatrix {
                     to_i32(coo.nnz)?,
                     coo.indices_i.as_ptr(),
                     coo.indices_j.as_ptr(),
-                    coo.values_aij.as_ptr(),
+                    coo.values.as_ptr(),
                 )
             }
         };

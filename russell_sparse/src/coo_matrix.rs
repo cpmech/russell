@@ -61,9 +61,9 @@ pub struct CooMatrix {
     /// Holds the values aij
     ///
     /// ```text
-    /// values_aij.len() = max_nnz
+    /// values.len() = max_nnz
     /// ```
-    pub values_aij: Vec<f64>,
+    pub values: Vec<f64>,
 
     /// Defines the use of one-based indexing instead of zero-based (default)
     ///
@@ -99,7 +99,7 @@ impl CooMatrix {
     ///     assert_eq!(coo.max_nnz, 4);
     ///     assert_eq!(coo.indices_i, &[0, 0, 0, 0]);
     ///     assert_eq!(coo.indices_j, &[0, 0, 0, 0]);
-    ///     vec_approx_eq(&coo.values_aij, &[0.0, 0.0, 0.0, 0.0], 1e-15);
+    ///     vec_approx_eq(&coo.values, &[0.0, 0.0, 0.0, 0.0], 1e-15);
     ///     Ok(())
     /// }
     /// ```
@@ -127,7 +127,7 @@ impl CooMatrix {
             max_nnz: max,
             indices_i: vec![0; max],
             indices_j: vec![0; max],
-            values_aij: vec![0.0; max],
+            values: vec![0.0; max],
             one_based,
         })
     }
@@ -159,7 +159,7 @@ impl CooMatrix {
     ///     assert_eq!(coo.max_nnz, 4);
     ///     assert_eq!(coo.indices_i, &[0, 1, 2, 0]);
     ///     assert_eq!(coo.indices_j, &[0, 1, 2, 1]);
-    ///     vec_approx_eq(&coo.values_aij, &[1.0, 2.0, 3.0, 4.0], 1e-15);
+    ///     vec_approx_eq(&coo.values, &[1.0, 2.0, 3.0, 4.0], 1e-15);
     ///     Ok(())
     /// }
     /// ```
@@ -192,7 +192,7 @@ impl CooMatrix {
         let d = if self.one_based { 1 } else { 0 };
         self.indices_i[self.nnz] = i_i32 + d;
         self.indices_j[self.nnz] = j_i32 + d;
-        self.values_aij[self.nnz] = aij;
+        self.values[self.nnz] = aij;
         self.nnz += 1;
         Ok(())
     }
@@ -256,7 +256,7 @@ impl CooMatrix {
         if self.indices_j.len() != self.max_nnz {
             return Err("COO matrix: indices_j.len() must be = max");
         }
-        if self.values_aij.len() != self.max_nnz {
+        if self.values.len() != self.max_nnz {
             return Err("COO matrix: values_aij.len() must be = max");
         }
         Ok(())
@@ -353,9 +353,9 @@ impl CooMatrix {
         for p in 0..self.nnz {
             let i = (self.indices_i[p] - d) as usize;
             let j = (self.indices_j[p] - d) as usize;
-            a.add(i, j, self.values_aij[p]);
+            a.add(i, j, self.values[p]);
             if mirror_required && i != j {
-                a.add(j, i, self.values_aij[p]);
+                a.add(j, i, self.values[p]);
             }
         }
         Ok(())
@@ -440,7 +440,7 @@ impl CooMatrix {
         for p in 0..self.nnz {
             let i = (self.indices_i[p] - d) as usize;
             let j = (self.indices_j[p] - d) as usize;
-            let aij = self.values_aij[p];
+            let aij = self.values[p];
             v[i] += alpha * aij * u[j];
             if mirror_required && i != j {
                 v[j] += aij * u[i];
@@ -485,7 +485,7 @@ mod tests {
         assert_eq!(coo.max_nnz, 3);
         assert_eq!(coo.indices_i.len(), 3);
         assert_eq!(coo.indices_j.len(), 3);
-        assert_eq!(coo.values_aij.len(), 3);
+        assert_eq!(coo.values.len(), 3);
     }
 
     #[test]
@@ -557,7 +557,7 @@ mod tests {
             max_nnz: 0,
             indices_i: Vec::new(),
             indices_j: Vec::new(),
-            values_aij: Vec::new(),
+            values: Vec::new(),
         };
         assert_eq!(coo.check_dimensions_ready().err(), Some("COO matrix: nrow must be ≥ 1"));
         coo.nrow = 1;
@@ -587,7 +587,7 @@ mod tests {
             coo.check_dimensions_ready().err(),
             Some("COO matrix: values_aij.len() must be = max")
         );
-        coo.values_aij.resize(1, 0.0);
+        coo.values.resize(1, 0.0);
         assert_eq!(coo.check_dimensions_ready().err(), None);
     }
 

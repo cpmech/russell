@@ -170,7 +170,7 @@ impl CsrMatrix {
         // access the triplet data
         let ai = &coo.indices_i;
         let aj = &coo.indices_j;
-        let ax = &coo.values_aij;
+        let ax = &coo.values;
 
         // allocate the CSR arrays
         let mut csr = CsrMatrix {

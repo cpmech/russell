@@ -69,8 +69,8 @@ impl VerifyLinSys {
 
         // compute max_abs_a
         let nnz = to_i32(coo.nnz);
-        let idx = idamax(nnz, &coo.values_aij, 1);
-        let max_abs_a = f64::abs(coo.values_aij[idx as usize]);
+        let idx = idamax(nnz, &coo.values, 1);
+        let max_abs_a = f64::abs(coo.values[idx as usize]);
 
         // compute max_abs_ax
         let mut ax = Vector::new(coo.nrow);

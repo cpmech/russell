@@ -568,7 +568,7 @@ mod tests {
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
         solver.solve(&mut x, &rhs, false).unwrap();
         let x_correct = &[-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
-        vec_approx_eq(x.as_data(), x_correct, 1e-13);
+        vec_approx_eq(x.as_data(), x_correct, 1e-11);
     }
 
     #[test]

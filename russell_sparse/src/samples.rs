@@ -177,87 +177,63 @@ impl Samples {
     /// .  .  7  8  .
     /// .  .  .  .  9
     /// ```
-    pub fn block_unsymmetric_5x5(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let mut coo = CooMatrix::new(5, 5, 9, None, one_based).unwrap();
-        coo.put(4, 4, 9.0).unwrap();
-        coo.put(0, 0, 1.0).unwrap();
-        coo.put(1, 0, 3.0).unwrap();
-        coo.put(2, 2, 5.0).unwrap();
-        coo.put(2, 3, 6.0).unwrap();
-        coo.put(0, 1, 2.0).unwrap();
-        coo.put(3, 2, 7.0).unwrap();
-        coo.put(1, 1, 4.0).unwrap();
-        coo.put(3, 3, 8.0).unwrap();
+    pub fn block_unsymmetric_5x5(
+        one_based: bool,
+        shuffle_coo_entries: bool,
+        duplicate_coo_entries: bool,
+    ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+        let max = 11; // more nnz than needed => OK
+        let mut coo = CooMatrix::new(5, 5, max, None, one_based).unwrap();
+        if shuffle_coo_entries {
+            if duplicate_coo_entries {
+                coo.put(4, 4, 9.0).unwrap();
+                coo.put(0, 0, 1.0).unwrap();
+                coo.put(1, 0, 3.0).unwrap();
+                coo.put(2, 2, 5.0).unwrap();
+                coo.put(0, 1, 2.0).unwrap();
+                coo.put(1, 1, 2.0).unwrap(); // << 1st put
+                coo.put(3, 2, 7.0).unwrap();
+                coo.put(2, 3, 3.0).unwrap(); // << 1st put
+                coo.put(3, 3, 8.0).unwrap();
+                coo.put(2, 3, 3.0).unwrap(); // << 2nd put => duplicate
+                coo.put(1, 1, 2.0).unwrap(); // << 2nd put => duplicate
+            } else {
+                coo.put(4, 4, 9.0).unwrap();
+                coo.put(0, 0, 1.0).unwrap();
+                coo.put(1, 0, 3.0).unwrap();
+                coo.put(2, 2, 5.0).unwrap();
+                coo.put(2, 3, 6.0).unwrap();
+                coo.put(0, 1, 2.0).unwrap();
+                coo.put(3, 2, 7.0).unwrap();
+                coo.put(1, 1, 4.0).unwrap();
+                coo.put(3, 3, 8.0).unwrap();
+            }
+        } else {
+            if duplicate_coo_entries {
+                coo.put(0, 0, 1.0).unwrap();
+                coo.put(0, 1, 2.0).unwrap();
+                coo.put(1, 0, 3.0).unwrap();
+                coo.put(1, 1, 2.0).unwrap(); // << 1st put
+                coo.put(1, 1, 2.0).unwrap(); // << 2nd put => duplicate
+                coo.put(2, 2, 5.0).unwrap();
+                coo.put(2, 3, 3.0).unwrap(); // << 2nd put => duplicate
+                coo.put(2, 3, 3.0).unwrap(); // << 1st put
+                coo.put(3, 2, 7.0).unwrap();
+                coo.put(3, 3, 8.0).unwrap();
+                coo.put(4, 4, 9.0).unwrap();
+            } else {
+                coo.put(0, 0, 1.0).unwrap();
+                coo.put(0, 1, 2.0).unwrap();
+                coo.put(1, 0, 3.0).unwrap();
+                coo.put(1, 1, 4.0).unwrap();
+                coo.put(2, 2, 5.0).unwrap();
+                coo.put(2, 3, 6.0).unwrap();
+                coo.put(3, 2, 7.0).unwrap();
+                coo.put(3, 3, 8.0).unwrap();
+                coo.put(4, 4, 9.0).unwrap();
+            }
+        }
         // CSC matrix
-        let csc = CscMatrix {
-            symmetry: None,
-            nrow: 5,
-            ncol: 5,
-            values: vec![
-                1.0, 3.0, // j=0, p=(0),1
-                2.0, 4.0, // j=1, p=(2),3
-                5.0, 7.0, // j=2, p=(4),5
-                6.0, 8.0, // j=3, p=(6),7
-                9.0, //      j=4, p=(8)
-            ], //                 p=(9)
-            row_indices: vec![
-                0, 1, //
-                0, 1, //
-                2, 3, //
-                2, 3, //
-                4, //
-            ],
-            col_pointers: vec![0, 2, 4, 6, 8, 9],
-        };
-        // CSR matrix
-        let csr = CsrMatrix {
-            symmetry: None,
-            nrow: 5,
-            ncol: 5,
-            values: vec![
-                1.0, 2.0, // i=0, p=(0),1
-                3.0, 4.0, // i=1, p=(2),3
-                5.0, 6.0, // i=2, p=(4),5
-                7.0, 8.0, // i=3, p=(6),7
-                9.0, //      i=4, p=(8)
-            ], //                 p=(9)
-            col_indices: vec![
-                0, 1, //
-                0, 1, //
-                2, 3, //
-                2, 3, //
-                4, //
-            ],
-            row_pointers: vec![0, 2, 4, 6, 8, 9],
-        };
-        (coo, csc, csr, 36.0)
-    }
-
-    /// Returns the matrix and its determinant
-    ///
-    /// Small triplet with shuffled entries
-    ///
-    /// ```text
-    /// 1  2  .  .  .
-    /// 3  4  .  .  .
-    /// .  .  5  6  .
-    /// .  .  7  8  .
-    /// .  .  .  .  9
-    /// ```
-    pub fn block_unsym_5x5_with_duplicates(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let mut coo = CooMatrix::new(5, 5, 11, None, one_based).unwrap();
-        coo.put(4, 4, 9.0).unwrap();
-        coo.put(0, 0, 1.0).unwrap();
-        coo.put(1, 0, 3.0).unwrap();
-        coo.put(2, 2, 5.0).unwrap();
-        coo.put(2, 3, 3.0).unwrap(); // <<
-        coo.put(0, 1, 2.0).unwrap();
-        coo.put(3, 2, 7.0).unwrap();
-        coo.put(1, 1, 2.0).unwrap(); // <<
-        coo.put(3, 3, 8.0).unwrap();
-        coo.put(2, 3, 3.0).unwrap(); // << duplicate
-        coo.put(1, 1, 2.0).unwrap(); // << duplicate
-                                     // CSC matrix
         let csc = CscMatrix {
             symmetry: None,
             nrow: 5,
@@ -934,10 +910,14 @@ mod tests {
             [0.0, 0.0, 0.0, 0.0, 9.0],
         ];
         for (coo, csc, csr, correct_det) in [
-            Samples::block_unsymmetric_5x5(false),
-            Samples::block_unsymmetric_5x5(true),
-            Samples::block_unsym_5x5_with_duplicates(false),
-            Samples::block_unsym_5x5_with_duplicates(true),
+            Samples::block_unsymmetric_5x5(false, false, false),
+            Samples::block_unsymmetric_5x5(false, true, false),
+            Samples::block_unsymmetric_5x5(false, false, true),
+            Samples::block_unsymmetric_5x5(false, true, true),
+            Samples::block_unsymmetric_5x5(true, false, false),
+            Samples::block_unsymmetric_5x5(true, true, false),
+            Samples::block_unsymmetric_5x5(true, false, true),
+            Samples::block_unsymmetric_5x5(true, true, true),
         ] {
             let mat = coo.as_matrix();
             mat_approx_eq(&mat, correct, 1e-15);

@@ -196,9 +196,12 @@ impl CsrMatrix {
         let bj = &mut csr.col_indices;
         let bx = &mut csr.values;
 
+        // handle one-based indexing
+        let d = if coo.one_based { -1 } else { 0 };
+
         // compute number of non-zero entries per row of A
         for k in 0..nnz {
-            bp[ai[k] as usize] += 1;
+            bp[(ai[k] + d) as usize] += 1;
         }
 
         // perform the cumulative sum of the nnz per row to get bp
@@ -212,9 +215,9 @@ impl CsrMatrix {
 
         // write aj and ax into bj and bx (will use bp as workspace)
         for k in 0..nnz {
-            let i = ai[k] as usize;
+            let i = (ai[k] + d) as usize;
             let dest = bp[i] as usize;
-            bj[dest] = aj[k];
+            bj[dest] = aj[k] + d;
             bx[dest] = ax[k];
             bp[i] += 1;
         }
@@ -234,16 +237,16 @@ impl CsrMatrix {
             let row_end = bp[i + 1];
             temp.resize((row_end - row_start) as usize, (0, 0.0));
             let mut n = 0;
-            for jj in row_start..row_end {
-                temp[n].0 = bj[jj as usize];
-                temp[n].1 = bx[jj as usize];
+            for p in row_start..row_end {
+                temp[n].0 = bj[p as usize];
+                temp[n].1 = bx[p as usize];
                 n += 1;
             }
             temp.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
             n = 0;
-            for jj in row_start..row_end {
-                bj[jj as usize] = temp[n].0;
-                bx[jj as usize] = temp[n].1;
+            for p in row_start..row_end {
+                bj[p as usize] = temp[n].0;
+                bx[p as usize] = temp[n].1;
                 n += 1;
             }
         }
@@ -565,7 +568,7 @@ mod tests {
     use russell_lab::{Matrix, Vector};
 
     #[test]
-    fn csr_matrix_first_triplet_with_shuffled_entries() {
+    fn from_coo_works() {
         //  1  -1   .  -3   .
         // -2   5   .   .   .
         //  .   .   4   6   4
@@ -576,34 +579,27 @@ mod tests {
         assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
         assert_eq!(&csr.col_indices, &csr_correct.col_indices);
         vec_approx_eq(&csr.values, &csr_correct.values, 1e-15);
-    }
 
-    #[test]
-    fn csr_matrix_small_triplet_with_shuffled_entries() {
         // 1  2  .  .  .
         // 3  4  .  .  .
         // .  .  5  6  .
         // .  .  7  8  .
         // .  .  .  .  9
-        let (coo, _, csr_correct, _) = Samples::block_unsymmetric_5x5(false);
-        let csr = CsrMatrix::from_coo(&coo).unwrap();
-        assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
-        assert_eq!(&csr.col_indices, &csr_correct.col_indices);
-        vec_approx_eq(&csr.values, &csr_correct.values, 1e-15);
-    }
-
-    #[test]
-    fn csr_matrix_small_triplet_with_duplicates() {
-        // 1  2  .  .  .
-        // 3  4  .  .  .
-        // .  .  5  6  .
-        // .  .  7  8  .
-        // .  .  .  .  9
-        let (coo, _, csr_correct, _) = Samples::block_unsym_5x5_with_duplicates(false);
-        let csr = CsrMatrix::from_coo(&coo).unwrap();
-        assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
-        assert_eq!(&csr.col_indices, &csr_correct.col_indices);
-        vec_approx_eq(&csr.values, &csr_correct.values, 1e-15);
+        for (coo, _, csr_correct, _) in [
+            Samples::block_unsymmetric_5x5(false, false, false),
+            Samples::block_unsymmetric_5x5(false, true, false),
+            Samples::block_unsymmetric_5x5(false, false, true),
+            Samples::block_unsymmetric_5x5(false, true, true),
+            Samples::block_unsymmetric_5x5(true, false, false),
+            Samples::block_unsymmetric_5x5(true, true, false),
+            Samples::block_unsymmetric_5x5(true, false, true),
+            Samples::block_unsymmetric_5x5(true, true, true),
+        ] {
+            let csr = CsrMatrix::from_coo(&coo).unwrap();
+            assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
+            assert_eq!(&csr.col_indices, &csr_correct.col_indices);
+            vec_approx_eq(&csr.values, &csr_correct.values, 1e-15);
+        }
     }
 
     #[test]
@@ -913,7 +909,14 @@ mod tests {
         for (_, csc, csr_correct, _) in [
             Samples::umfpack_unsymmetric_5x5(false),
             Samples::mkl_unsymmetric_5x5(false),
-            Samples::block_unsymmetric_5x5(false),
+            Samples::block_unsymmetric_5x5(false, false, false),
+            Samples::block_unsymmetric_5x5(false, true, false),
+            Samples::block_unsymmetric_5x5(false, false, true),
+            Samples::block_unsymmetric_5x5(false, true, true),
+            Samples::block_unsymmetric_5x5(true, false, false),
+            Samples::block_unsymmetric_5x5(true, true, false),
+            Samples::block_unsymmetric_5x5(true, false, true),
+            Samples::block_unsymmetric_5x5(true, true, true),
             Samples::mkl_sample1_symmetric_full(false),
             Samples::mkl_sample1_symmetric_lower(false),
             Samples::mkl_sample1_symmetric_upper(false),

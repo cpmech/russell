@@ -191,21 +191,44 @@ impl CscMatrix {
         };
 
         // call UMFPACK to convert COO to CSC
-        unsafe {
-            let status = umfpack_coo_to_csc(
-                csc.col_pointers.as_mut_ptr(),
-                csc.row_indices.as_mut_ptr(),
-                csc.values.as_mut_ptr(),
-                to_i32(coo.nrow)?,
-                to_i32(coo.ncol)?,
-                to_i32(coo.pos)?,
-                coo.indices_i.as_ptr(),
-                coo.indices_j.as_ptr(),
-                coo.values_aij.as_ptr(),
-            );
-            if status != 0 {
-                return Err(handle_umfpack_error_code(status));
+        let status = if coo.one_based {
+            // handle one-based indexing
+            let mut indices_i = coo.indices_i.clone();
+            let mut indices_j = coo.indices_j.clone();
+            for k in 0..coo.pos {
+                indices_i[k] -= 1;
+                indices_j[k] -= 1;
             }
+            unsafe {
+                umfpack_coo_to_csc(
+                    csc.col_pointers.as_mut_ptr(),
+                    csc.row_indices.as_mut_ptr(),
+                    csc.values.as_mut_ptr(),
+                    to_i32(coo.nrow)?,
+                    to_i32(coo.ncol)?,
+                    to_i32(coo.pos)?,
+                    indices_i.as_ptr(),
+                    indices_j.as_ptr(),
+                    coo.values_aij.as_ptr(),
+                )
+            }
+        } else {
+            unsafe {
+                umfpack_coo_to_csc(
+                    csc.col_pointers.as_mut_ptr(),
+                    csc.row_indices.as_mut_ptr(),
+                    csc.values.as_mut_ptr(),
+                    to_i32(coo.nrow)?,
+                    to_i32(coo.ncol)?,
+                    to_i32(coo.pos)?,
+                    coo.indices_i.as_ptr(),
+                    coo.indices_j.as_ptr(),
+                    coo.values_aij.as_ptr(),
+                )
+            }
+        };
+        if status != 0 {
+            return Err(handle_umfpack_error_code(status));
         }
 
         // reduce array sizes if duplicates have been eliminated
@@ -489,7 +512,7 @@ mod tests {
     use russell_lab::{Matrix, Vector};
 
     #[test]
-    fn csc_matrix_first_triplet_with_shuffled_entries() {
+    fn from_coo_works() {
         //  1  -1   .  -3   .
         // -2   5   .   .   .
         //  .   .   4   6   4
@@ -500,34 +523,27 @@ mod tests {
         assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
         assert_eq!(&csc.row_indices, &csc_correct.row_indices);
         vec_approx_eq(&csc.values, &csc_correct.values, 1e-15);
-    }
 
-    #[test]
-    fn csc_matrix_small_triplet_with_shuffled_entries() {
         // 1  2  .  .  .
         // 3  4  .  .  .
         // .  .  5  6  .
         // .  .  7  8  .
         // .  .  .  .  9
-        let (coo, csc_correct, _, _) = Samples::block_unsymmetric_5x5(false);
-        let csc = CscMatrix::from_coo(&coo).unwrap();
-        assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
-        assert_eq!(&csc.row_indices, &csc_correct.row_indices);
-        vec_approx_eq(&csc.values, &csc_correct.values, 1e-15);
-    }
-
-    #[test]
-    fn csc_matrix_small_triplet_with_duplicates() {
-        // 1  2  .  .  .
-        // 3  4  .  .  .
-        // .  .  5  6  .
-        // .  .  7  8  .
-        // .  .  .  .  9
-        let (coo, csc_correct, _, _) = Samples::block_unsym_5x5_with_duplicates(false);
-        let csc = CscMatrix::from_coo(&coo).unwrap();
-        assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
-        assert_eq!(&csc.row_indices, &csc_correct.row_indices);
-        vec_approx_eq(&csc.values, &csc_correct.values, 1e-15);
+        for (coo, csc_correct, _, _) in [
+            Samples::block_unsymmetric_5x5(false, false, false),
+            Samples::block_unsymmetric_5x5(false, true, false),
+            Samples::block_unsymmetric_5x5(false, false, true),
+            Samples::block_unsymmetric_5x5(false, true, true),
+            Samples::block_unsymmetric_5x5(true, false, false),
+            Samples::block_unsymmetric_5x5(true, true, false),
+            Samples::block_unsymmetric_5x5(true, false, true),
+            Samples::block_unsymmetric_5x5(true, true, true),
+        ] {
+            let csc = CscMatrix::from_coo(&coo).unwrap();
+            assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
+            assert_eq!(&csc.row_indices, &csc_correct.row_indices);
+            vec_approx_eq(&csc.values, &csc_correct.values, 1e-15);
+        }
     }
 
     #[test]
@@ -924,7 +940,14 @@ mod tests {
         for (_, csc_correct, csr, _) in [
             Samples::umfpack_unsymmetric_5x5(false),
             Samples::mkl_unsymmetric_5x5(false),
-            Samples::block_unsymmetric_5x5(false),
+            Samples::block_unsymmetric_5x5(false, false, false),
+            Samples::block_unsymmetric_5x5(false, true, false),
+            Samples::block_unsymmetric_5x5(false, false, true),
+            Samples::block_unsymmetric_5x5(false, true, true),
+            Samples::block_unsymmetric_5x5(true, false, false),
+            Samples::block_unsymmetric_5x5(true, true, false),
+            Samples::block_unsymmetric_5x5(true, false, true),
+            Samples::block_unsymmetric_5x5(true, true, true),
             Samples::mkl_sample1_symmetric_full(false),
             Samples::mkl_sample1_symmetric_lower(false),
             Samples::mkl_sample1_symmetric_upper(false),

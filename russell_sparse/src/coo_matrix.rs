@@ -32,10 +32,10 @@ pub struct CooMatrix {
     /// This will equal the number of non-zeros (nnz) after all items have been `put`.
     pub pos: usize,
 
-    /// Defines the maximum allowed number of entries (must fit i32)
+    /// Defines the maximum allowed number of entries/non-zero values (must fit i32)
     ///
     /// This may be greater than the number of non-zeros (nnz)
-    pub max: usize,
+    pub max_nnz: usize,
 
     /// Holds the row indices i
     pub indices_i: Vec<i32>,
@@ -60,8 +60,8 @@ impl CooMatrix {
     ///
     /// * `nrow` -- Is the number of rows of the sparse matrix (must be fit i32)
     /// * `ncol` -- Is the number of columns of the sparse matrix (must be fit i32)
-    /// * `max` -- Maximum number of entries ≥ nnz (number of non-zeros),
-    ///            including entries with repeated indices. (must be fit i32)
+    /// * `max_nnz` -- Maximum number of entries ≥ nnz (number of non-zeros),
+    ///   including entries with repeated indices. (must be fit i32)
     /// * `symmetry` -- Defines the symmetry/storage, if any
     /// * `one_based` -- Use one-based indices; e.g., for MUMPS or other FORTRAN routines
     ///
@@ -77,7 +77,7 @@ impl CooMatrix {
     ///     let coo = CooMatrix::new(nrow, ncol, nnz, None, false)?;
     ///     assert_eq!(coo.symmetry, None);
     ///     assert_eq!(coo.pos, 0);
-    ///     assert_eq!(coo.max, 4);
+    ///     assert_eq!(coo.max_nnz, 4);
     ///     assert_eq!(coo.indices_i, &[0, 0, 0, 0]);
     ///     assert_eq!(coo.indices_j, &[0, 0, 0, 0]);
     ///     vec_approx_eq(&coo.values_aij, &[0.0, 0.0, 0.0, 0.0], 1e-15);
@@ -105,7 +105,7 @@ impl CooMatrix {
             nrow,
             ncol,
             pos: 0,
-            max,
+            max_nnz: max,
             indices_i: vec![0; max],
             indices_j: vec![0; max],
             values_aij: vec![0.0; max],
@@ -137,7 +137,7 @@ impl CooMatrix {
     ///     coo.put(0, 1, 4.0)?;
     ///     assert_eq!(coo.symmetry, None);
     ///     assert_eq!(coo.pos, 4);
-    ///     assert_eq!(coo.max, 4);
+    ///     assert_eq!(coo.max_nnz, 4);
     ///     assert_eq!(coo.indices_i, &[0, 1, 2, 0]);
     ///     assert_eq!(coo.indices_j, &[0, 1, 2, 1]);
     ///     vec_approx_eq(&coo.values_aij, &[1.0, 2.0, 3.0, 4.0], 1e-15);
@@ -152,7 +152,7 @@ impl CooMatrix {
         if j >= self.ncol {
             return Err("COO matrix: index of column is outside range");
         }
-        if self.pos >= self.max {
+        if self.pos >= self.max_nnz {
             return Err("COO matrix: max number of items has been reached");
         }
         if let Some(sym) = self.symmetry {
@@ -214,9 +214,9 @@ impl CooMatrix {
     /// ncol ≥ 1
     /// pos ≥ 1 (i.e., nnz ≥ 1)
     /// pos ≤ max
-    /// indices_i.len() == max
-    /// indices_j.len() == max
-    /// values_aij.len() == max
+    /// indices_i.len() == max_nnz
+    /// indices_j.len() == max_nnz
+    /// values_aij.len() == max_nnz
     /// ```
     pub fn check_dimensions_ready(&self) -> Result<(), StrError> {
         if self.nrow < 1 {
@@ -228,16 +228,16 @@ impl CooMatrix {
         if self.pos < 1 {
             return Err("COO matrix: pos = nnz must be ≥ 1");
         }
-        if self.pos > self.max {
+        if self.pos > self.max_nnz {
             return Err("COO matrix: pos = nnz must be ≤ max");
         }
-        if self.indices_i.len() != self.max {
+        if self.indices_i.len() != self.max_nnz {
             return Err("COO matrix: indices_i.len() must be = max");
         }
-        if self.indices_j.len() != self.max {
+        if self.indices_j.len() != self.max_nnz {
             return Err("COO matrix: indices_j.len() must be = max");
         }
-        if self.values_aij.len() != self.max {
+        if self.values_aij.len() != self.max_nnz {
             return Err("COO matrix: values_aij.len() must be = max");
         }
         Ok(())
@@ -463,7 +463,7 @@ mod tests {
         assert_eq!(coo.nrow, 1);
         assert_eq!(coo.ncol, 1);
         assert_eq!(coo.pos, 0);
-        assert_eq!(coo.max, 3);
+        assert_eq!(coo.max_nnz, 3);
         assert_eq!(coo.indices_i.len(), 3);
         assert_eq!(coo.indices_j.len(), 3);
         assert_eq!(coo.values_aij.len(), 3);
@@ -535,7 +535,7 @@ mod tests {
             nrow: 0,
             ncol: 0,
             pos: 0,
-            max: 0,
+            max_nnz: 0,
             indices_i: Vec::new(),
             indices_j: Vec::new(),
             values_aij: Vec::new(),
@@ -553,7 +553,7 @@ mod tests {
             coo.check_dimensions_ready().err(),
             Some("COO matrix: pos = nnz must be ≤ max")
         );
-        coo.max = 1;
+        coo.max_nnz = 1;
         assert_eq!(
             coo.check_dimensions_ready().err(),
             Some("COO matrix: indices_i.len() must be = max")

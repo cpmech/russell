@@ -568,6 +568,16 @@ mod tests {
             Samples::mkl_symmetric_5x5_upper(true, true, true),
             Samples::mkl_symmetric_5x5_full(false),
             Samples::mkl_symmetric_5x5_full(true),
+            // ┌               ┐
+            // │ 1 . 3 . 5 . 7 │
+            // └               ┘
+            Samples::rectangular_1x7(),
+            Samples::rectangular_7x1(),
+            Samples::rectangular_3x4(),
+            // ┌     ┐
+            // │ 123 │
+            // └     ┘
+            Samples::tiny_1x1(),
         ] {
             let csc = CscMatrix::from_coo(&coo).unwrap();
             assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
@@ -578,43 +588,45 @@ mod tests {
 
     #[test]
     fn from_csr_works() {
+        const IGNORED: bool = false;
         for (_, csc_correct, csr, _) in [
             //  2  3  .  .  .
             //  3  .  4  .  6
             //  . -1 -3  2  .
             //  .  .  1  .  .
             //  .  4  2  .  1
-            Samples::umfpack_unsymmetric_5x5(false),
-            Samples::mkl_unsymmetric_5x5(false),
-            Samples::block_unsymmetric_5x5(false, false, false),
-            Samples::block_unsymmetric_5x5(false, true, false),
-            Samples::block_unsymmetric_5x5(false, false, true),
-            Samples::block_unsymmetric_5x5(false, true, true),
-            Samples::block_unsymmetric_5x5(true, false, false),
-            Samples::block_unsymmetric_5x5(true, true, false),
-            Samples::block_unsymmetric_5x5(true, false, true),
-            Samples::block_unsymmetric_5x5(true, true, true),
-            Samples::mkl_symmetric_5x5_full(false),
-            Samples::mkl_symmetric_5x5_full(true),
-            Samples::mkl_symmetric_5x5_lower(false, false, false),
-            Samples::mkl_symmetric_5x5_lower(false, true, false),
-            Samples::mkl_symmetric_5x5_lower(false, false, true),
-            Samples::mkl_symmetric_5x5_lower(false, true, true),
-            Samples::mkl_symmetric_5x5_lower(true, false, false),
-            Samples::mkl_symmetric_5x5_lower(true, true, false),
-            Samples::mkl_symmetric_5x5_lower(true, false, true),
-            Samples::mkl_symmetric_5x5_lower(true, true, true),
-            Samples::mkl_symmetric_5x5_upper(false, false, false),
-            Samples::mkl_symmetric_5x5_upper(false, true, false),
-            Samples::mkl_symmetric_5x5_upper(false, false, true),
-            Samples::mkl_symmetric_5x5_upper(false, true, true),
-            Samples::mkl_symmetric_5x5_upper(true, false, false),
-            Samples::mkl_symmetric_5x5_upper(true, true, false),
-            Samples::mkl_symmetric_5x5_upper(true, false, true),
-            Samples::mkl_symmetric_5x5_upper(true, true, true),
+            Samples::umfpack_unsymmetric_5x5(IGNORED),
+            //  1  -1   .  -3   .
+            // -2   5   .   .   .
+            //  .   .   4   6   4
+            // -4   .   2   7   .
+            //  .   8   .   .  -5
+            Samples::mkl_unsymmetric_5x5(IGNORED),
+            // 1  2  .  .  .
+            // 3  4  .  .  .
+            // .  .  5  6  .
+            // .  .  7  8  .
+            // .  .  .  .  9
+            Samples::block_unsymmetric_5x5(IGNORED, IGNORED, IGNORED),
+            //     9   1.5     6  0.75     3
+            //   1.5   0.5     .     .     .
+            //     6     .    12     .     .
+            //  0.75     .     . 0.625     .
+            //     3     .     .     .    16
+            Samples::mkl_positive_definite_5x5_lower(IGNORED),
+            Samples::mkl_symmetric_5x5_lower(IGNORED, IGNORED, IGNORED),
+            Samples::mkl_symmetric_5x5_upper(IGNORED, IGNORED, IGNORED),
+            Samples::mkl_symmetric_5x5_full(IGNORED),
+            // ┌               ┐
+            // │ 1 . 3 . 5 . 7 │
+            // └               ┘
             Samples::rectangular_1x7(),
             Samples::rectangular_7x1(),
             Samples::rectangular_3x4(),
+            // ┌     ┐
+            // │ 123 │
+            // └     ┘
+            Samples::tiny_1x1(),
         ] {
             let csc = CscMatrix::from_csr(&csr).unwrap();
             assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
@@ -751,24 +763,7 @@ mod tests {
         //  5.0, -2.0, 0.0, 1.0,
         // 10.0, -4.0, 0.0, 2.0,
         // 15.0, -6.0, 0.0, 3.0,
-        let csc = CscMatrix {
-            symmetry: None,
-            nrow: 3,
-            ncol: 4,
-            col_pointers: vec![0, 3, 6, 6, 9],
-            row_indices: vec![
-                0, 1, 2, // j=0, p=(0),1,2
-                0, 1, 2, // j=1, p=(3),4,5
-                //          j=2, p=(6)
-                0, 1, 2, // j=3, p=(6),7,8
-            ], //                  (9)
-            values: vec![
-                5.0, 10.0, 15.0, //  j=0, p=(0),1,2
-                -2.0, -4.0, -6.0, // j=1, p=(3),4,5
-                //                   j=2, p=(6)
-                1.0, 2.0, 3.0, //    j=3, p=(6),7,8
-            ], //                           (9)
-        };
+        let (_, csc, _, _) = Samples::rectangular_3x4();
         let u = Vector::from(&[1.0, 3.0, 8.0, 5.0]);
         let mut v = Vector::new(csc.nrow);
         csc.mat_vec_mul(&mut v, 1.0, &u).unwrap();

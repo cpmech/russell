@@ -563,29 +563,37 @@ fn csr_sum_duplicates(nrow: usize, ap: &mut [i32], aj: &mut [i32], ax: &mut [f64
 #[cfg(test)]
 mod tests {
     use super::CsrMatrix;
-    use crate::{CooMatrix, Samples, Storage, Symmetry};
+    use crate::{Samples, Storage, Symmetry};
     use russell_chk::vec_approx_eq;
     use russell_lab::{Matrix, Vector};
 
     #[test]
     fn from_coo_works() {
-        //  1  -1   .  -3   .
-        // -2   5   .   .   .
-        //  .   .   4   6   4
-        // -4   .   2   7   .
-        //  .   8   .   .  -5
-        let (coo, _, csr_correct, _) = Samples::mkl_unsymmetric_5x5(false);
-        let csr = CsrMatrix::from_coo(&coo).unwrap();
-        assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
-        assert_eq!(&csr.col_indices, &csr_correct.col_indices);
-        vec_approx_eq(&csr.values, &csr_correct.values, 1e-15);
-
         // 1  2  .  .  .
         // 3  4  .  .  .
         // .  .  5  6  .
         // .  .  7  8  .
         // .  .  .  .  9
         for (coo, _, csr_correct, _) in [
+            //  2  3  .  .  .
+            //  3  .  4  .  6
+            //  . -1 -3  2  .
+            //  .  .  1  .  .
+            //  .  4  2  .  1
+            Samples::umfpack_unsymmetric_5x5(false),
+            Samples::umfpack_unsymmetric_5x5(true),
+            //  1  -1   .  -3   .
+            // -2   5   .   .   .
+            //  .   .   4   6   4
+            // -4   .   2   7   .
+            //  .   8   .   .  -5
+            Samples::mkl_unsymmetric_5x5(false),
+            Samples::mkl_unsymmetric_5x5(true),
+            // 1  2  .  .  .
+            // 3  4  .  .  .
+            // .  .  5  6  .
+            // .  .  7  8  .
+            // .  .  .  .  9
             Samples::block_unsymmetric_5x5(false, false, false),
             Samples::block_unsymmetric_5x5(false, true, false),
             Samples::block_unsymmetric_5x5(false, false, true),
@@ -594,6 +602,43 @@ mod tests {
             Samples::block_unsymmetric_5x5(true, true, false),
             Samples::block_unsymmetric_5x5(true, false, true),
             Samples::block_unsymmetric_5x5(true, true, true),
+            //     9   1.5     6  0.75     3
+            //   1.5   0.5     .     .     .
+            //     6     .    12     .     .
+            //  0.75     .     . 0.625     .
+            //     3     .     .     .    16
+            Samples::mkl_positive_definite_5x5_lower(false),
+            Samples::mkl_positive_definite_5x5_lower(true),
+            Samples::mkl_positive_definite_5x5_upper(false),
+            Samples::mkl_positive_definite_5x5_upper(true),
+            Samples::mkl_symmetric_5x5_lower(false, false, false),
+            Samples::mkl_symmetric_5x5_lower(false, true, false),
+            Samples::mkl_symmetric_5x5_lower(false, false, true),
+            Samples::mkl_symmetric_5x5_lower(false, true, true),
+            Samples::mkl_symmetric_5x5_lower(true, false, false),
+            Samples::mkl_symmetric_5x5_lower(true, true, false),
+            Samples::mkl_symmetric_5x5_lower(true, false, true),
+            Samples::mkl_symmetric_5x5_lower(true, true, true),
+            Samples::mkl_symmetric_5x5_upper(false, false, false),
+            Samples::mkl_symmetric_5x5_upper(false, true, false),
+            Samples::mkl_symmetric_5x5_upper(false, false, true),
+            Samples::mkl_symmetric_5x5_upper(false, true, true),
+            Samples::mkl_symmetric_5x5_upper(true, false, false),
+            Samples::mkl_symmetric_5x5_upper(true, true, false),
+            Samples::mkl_symmetric_5x5_upper(true, false, true),
+            Samples::mkl_symmetric_5x5_upper(true, true, true),
+            Samples::mkl_symmetric_5x5_full(false),
+            Samples::mkl_symmetric_5x5_full(true),
+            // ┌               ┐
+            // │ 1 . 3 . 5 . 7 │
+            // └               ┘
+            Samples::rectangular_1x7(),
+            Samples::rectangular_7x1(),
+            Samples::rectangular_3x4(),
+            // ┌     ┐
+            // │ 123 │
+            // └     ┘
+            Samples::tiny_1x1(),
         ] {
             let csr = CsrMatrix::from_coo(&coo).unwrap();
             assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
@@ -603,152 +648,52 @@ mod tests {
     }
 
     #[test]
-    fn csr_matrix_upper_triangular_with_ordered_entries() {
-        //  9.00  1.5   6.0  0.750   3.0
-        //  1.50  0.5   0.0  0.000   0.0
-        //  6.00  0.0  12.0  0.000   0.0
-        //  0.75  0.0   0.0  0.625   0.0
-        //  3.00  0.0   0.0  0.000  16.0
-        // upper triangular with ordered entries
-        let sym = Some(Symmetry::General(Storage::Upper));
-        let mut coo = CooMatrix::new(5, 5, 9, sym, false).unwrap();
-        coo.put(0, 0, 9.0).unwrap();
-        coo.put(0, 1, 1.5).unwrap();
-        coo.put(1, 1, 0.5).unwrap();
-        coo.put(0, 2, 6.0).unwrap();
-        coo.put(2, 2, 12.0).unwrap();
-        coo.put(0, 3, 0.75).unwrap();
-        coo.put(3, 3, 0.625).unwrap();
-        coo.put(0, 4, 3.0).unwrap();
-        coo.put(4, 4, 16.0).unwrap();
-        let csr = CsrMatrix::from_coo(&coo).unwrap();
-        // solution
-        let correct_p = vec![0, 5, 6, 7, 8, 9];
-        let correct_j = vec![0, 1, 2, 3, 4, 1, 2, 3, 4];
-        let correct_x = vec![9.0, 1.5, 6.0, 0.75, 3.0, 0.5, 12.0, 0.625, 16.0];
-        assert_eq!(&csr.row_pointers, &correct_p);
-        assert_eq!(&csr.col_indices, &correct_j);
-        vec_approx_eq(&csr.values, &correct_x, 1e-15);
-    }
-
-    #[test]
-    fn csr_matrix_upper_triangular_with_shuffled_entries() {
-        //  9.00  1.5   6.0  0.750   3.0
-        //  1.50  0.5   0.0  0.000   0.0
-        //  6.00  0.0  12.0  0.000   0.0
-        //  0.75  0.0   0.0  0.625   0.0
-        //  3.00  0.0   0.0  0.000  16.0
-        // upper triangular with shuffled entries
-        let sym = Some(Symmetry::General(Storage::Upper));
-        let mut coo = CooMatrix::new(5, 5, 9, sym, false).unwrap();
-        coo.put(2, 2, 12.0).unwrap();
-        coo.put(0, 0, 9.0).unwrap();
-        coo.put(3, 3, 0.625).unwrap();
-        coo.put(0, 1, 1.5).unwrap();
-        coo.put(0, 2, 6.0).unwrap();
-        coo.put(4, 4, 16.0).unwrap();
-        coo.put(0, 3, 0.75).unwrap();
-        coo.put(1, 1, 0.5).unwrap();
-        coo.put(0, 4, 3.0).unwrap();
-        let csr = CsrMatrix::from_coo(&coo).unwrap();
-        // solution
-        let correct_p = vec![0, 5, 6, 7, 8, 9];
-        let correct_j = vec![0, 1, 2, 3, 4, 1, 2, 3, 4];
-        let correct_x = vec![9.0, 1.5, 6.0, 0.75, 3.0, 0.5, 12.0, 0.625, 16.0];
-        assert_eq!(&csr.row_pointers, &correct_p);
-        assert_eq!(&csr.col_indices, &correct_j);
-        vec_approx_eq(&csr.values, &correct_x, 1e-15);
-    }
-
-    #[test]
-    fn csr_matrix_upper_triangular_with_diagonal_entries_first() {
-        //  9.00  1.5   6.0  0.750   3.0
-        //  1.50  0.5   0.0  0.000   0.0
-        //  6.00  0.0  12.0  0.000   0.0
-        //  0.75  0.0   0.0  0.625   0.0
-        //  3.00  0.0   0.0  0.000  16.0
-        // upper triangular with diagonal entries being set first
-        let sym = Some(Symmetry::General(Storage::Upper));
-        let mut coo = CooMatrix::new(5, 5, 9, sym, false).unwrap();
-        // diagonal
-        coo.put(0, 0, 9.0).unwrap();
-        coo.put(1, 1, 0.5).unwrap();
-        coo.put(2, 2, 12.0).unwrap();
-        coo.put(3, 3, 0.625).unwrap();
-        coo.put(4, 4, 16.0).unwrap();
-        // upper diagonal
-        coo.put(0, 1, 1.5).unwrap();
-        coo.put(0, 2, 6.0).unwrap();
-        coo.put(0, 3, 0.75).unwrap();
-        coo.put(0, 4, 3.0).unwrap();
-        let csr = CsrMatrix::from_coo(&coo).unwrap();
-        // solution
-        let correct_p = vec![0, 5, 6, 7, 8, 9];
-        let correct_j = vec![0, 1, 2, 3, 4, 1, 2, 3, 4];
-        let correct_x = vec![9.0, 1.5, 6.0, 0.75, 3.0, 0.5, 12.0, 0.625, 16.0];
-        assert_eq!(&csr.row_pointers, &correct_p);
-        assert_eq!(&csr.col_indices, &correct_j);
-        vec_approx_eq(&csr.values, &correct_x, 1e-15);
-    }
-
-    #[test]
-    fn csr_matrix_lower_triangular_with_ordered_entries() {
-        //  9.00  1.5   6.0  0.750   3.0
-        //  1.50  0.5   0.0  0.000   0.0
-        //  6.00  0.0  12.0  0.000   0.0
-        //  0.75  0.0   0.0  0.625   0.0
-        //  3.00  0.0   0.0  0.000  16.0
-        // lower diagonal with ordered entries
-        let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo = CooMatrix::new(5, 5, 9, sym, false).unwrap();
-        coo.put(0, 0, 9.0).unwrap();
-        coo.put(1, 0, 1.5).unwrap();
-        coo.put(1, 1, 0.5).unwrap();
-        coo.put(2, 0, 6.0).unwrap();
-        coo.put(2, 2, 12.0).unwrap();
-        coo.put(3, 0, 0.75).unwrap();
-        coo.put(3, 3, 0.625).unwrap();
-        coo.put(4, 0, 3.0).unwrap();
-        coo.put(4, 4, 16.0).unwrap();
-        let csr = CsrMatrix::from_coo(&coo).unwrap();
-        // solution
-        let correct_p = vec![0, 1, 3, 5, 7, 9];
-        let correct_j = vec![0, 0, 1, 0, 2, 0, 3, 0, 4];
-        let correct_x = vec![9.0, 1.5, 0.5, 6.0, 12.0, 0.75, 0.625, 3.0, 16.0];
-        assert_eq!(&csr.row_pointers, &correct_p);
-        assert_eq!(&csr.col_indices, &correct_j);
-        vec_approx_eq(&csr.values, &correct_x, 1e-15);
-    }
-
-    #[test]
-    fn csr_matrix_lower_triangular_with_diagonal_first() {
-        //  9.00  1.5   6.0  0.750   3.0
-        //  1.50  0.5   0.0  0.000   0.0
-        //  6.00  0.0  12.0  0.000   0.0
-        //  0.75  0.0   0.0  0.625   0.0
-        //  3.00  0.0   0.0  0.000  16.0
-        // lower triangular with diagonal entries being set first
-        let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo = CooMatrix::new(5, 5, 9, sym, false).unwrap();
-        // diagonal
-        coo.put(0, 0, 9.0).unwrap();
-        coo.put(1, 1, 0.5).unwrap();
-        coo.put(2, 2, 12.0).unwrap();
-        coo.put(3, 3, 0.625).unwrap();
-        coo.put(4, 4, 16.0).unwrap();
-        // lower diagonal
-        coo.put(1, 0, 1.5).unwrap();
-        coo.put(2, 0, 6.0).unwrap();
-        coo.put(3, 0, 0.75).unwrap();
-        coo.put(4, 0, 3.0).unwrap();
-        let csr = CsrMatrix::from_coo(&coo).unwrap();
-        // solution
-        let correct_p = vec![0, 1, 3, 5, 7, 9];
-        let correct_j = vec![0, 0, 1, 0, 2, 0, 3, 0, 4];
-        let correct_x = vec![9.0, 1.5, 0.5, 6.0, 12.0, 0.75, 0.625, 3.0, 16.0];
-        assert_eq!(&csr.row_pointers, &correct_p);
-        assert_eq!(&csr.col_indices, &correct_j);
-        vec_approx_eq(&csr.values, &correct_x, 1e-15);
+    fn from_csc_works() {
+        const IGNORED: bool = false;
+        for (_, csc, csr_correct, _) in [
+            //  2  3  .  .  .
+            //  3  .  4  .  6
+            //  . -1 -3  2  .
+            //  .  .  1  .  .
+            //  .  4  2  .  1
+            Samples::umfpack_unsymmetric_5x5(IGNORED),
+            //  1  -1   .  -3   .
+            // -2   5   .   .   .
+            //  .   .   4   6   4
+            // -4   .   2   7   .
+            //  .   8   .   .  -5
+            Samples::mkl_unsymmetric_5x5(IGNORED),
+            // 1  2  .  .  .
+            // 3  4  .  .  .
+            // .  .  5  6  .
+            // .  .  7  8  .
+            // .  .  .  .  9
+            Samples::block_unsymmetric_5x5(IGNORED, IGNORED, IGNORED),
+            //     9   1.5     6  0.75     3
+            //   1.5   0.5     .     .     .
+            //     6     .    12     .     .
+            //  0.75     .     . 0.625     .
+            //     3     .     .     .    16
+            Samples::mkl_positive_definite_5x5_lower(IGNORED),
+            Samples::mkl_symmetric_5x5_lower(IGNORED, IGNORED, IGNORED),
+            Samples::mkl_symmetric_5x5_upper(IGNORED, IGNORED, IGNORED),
+            Samples::mkl_symmetric_5x5_full(IGNORED),
+            // ┌               ┐
+            // │ 1 . 3 . 5 . 7 │
+            // └               ┘
+            Samples::rectangular_1x7(),
+            Samples::rectangular_7x1(),
+            Samples::rectangular_3x4(),
+            // ┌     ┐
+            // │ 123 │
+            // └     ┘
+            Samples::tiny_1x1(),
+        ] {
+            let csr = CsrMatrix::from_csc(&csc).unwrap();
+            assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
+            assert_eq!(&csr.col_indices, &csr_correct.col_indices);
+            vec_approx_eq(&csr.values, &csr_correct.values, 1e-15);
+        }
     }
 
     #[test]
@@ -878,22 +823,7 @@ mod tests {
         //  5.0, -2.0, 0.0, 1.0,
         // 10.0, -4.0, 0.0, 2.0,
         // 15.0, -6.0, 0.0, 3.0,
-        let csr = CsrMatrix {
-            symmetry: None,
-            nrow: 3,
-            ncol: 4,
-            row_pointers: vec![0, 3, 6, 9],
-            col_indices: vec![
-                0, 1, 3, // i=0, p=(0),1,2
-                0, 1, 3, // i=1, p=(3),4,5
-                0, 1, 3, // i=2, p=(6),7,8
-            ], //                  (9)
-            values: vec![
-                5.0, -2.0, 1.0, //  i=0, p=(0),1,2
-                10.0, -4.0, 2.0, // i=1, p=(3),4,5
-                15.0, -6.0, 3.0, // i=2, p=(6),7,8
-            ], //                          (9)
-        };
+        let (_, _, csr, _) = Samples::rectangular_3x4();
         let u = Vector::from(&[1.0, 3.0, 8.0, 5.0]);
         let mut v = Vector::new(csr.nrow);
         csr.mat_vec_mul(&mut v, 1.0, &u).unwrap();
@@ -902,30 +832,5 @@ mod tests {
         // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
         csr.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         vec_approx_eq(v.as_data(), correct, 1e-15);
-    }
-
-    #[test]
-    fn from_csc_works() {
-        for (_, csc, csr_correct, _) in [
-            Samples::umfpack_unsymmetric_5x5(false),
-            Samples::mkl_unsymmetric_5x5(false),
-            Samples::block_unsymmetric_5x5(false, false, false),
-            Samples::block_unsymmetric_5x5(false, true, false),
-            Samples::block_unsymmetric_5x5(false, false, true),
-            Samples::block_unsymmetric_5x5(false, true, true),
-            Samples::block_unsymmetric_5x5(true, false, false),
-            Samples::block_unsymmetric_5x5(true, true, false),
-            Samples::block_unsymmetric_5x5(true, false, true),
-            Samples::block_unsymmetric_5x5(true, true, true),
-            Samples::mkl_symmetric_5x5_full(false),
-            Samples::rectangular_1x7(),
-            Samples::rectangular_7x1(),
-            Samples::rectangular_3x4(),
-        ] {
-            let csr = CsrMatrix::from_csc(&csc).unwrap();
-            assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
-            assert_eq!(&csr.col_indices, &csr_correct.col_indices);
-            vec_approx_eq(&csr.values, &csr_correct.values, 1e-15);
-        }
     }
 }

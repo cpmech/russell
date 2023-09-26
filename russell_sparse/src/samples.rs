@@ -909,7 +909,6 @@ impl Samples {
                 1.0, 2.0, 3.0, //    j=3, p=(6),7,8
             ], //                           (9)
         };
-
         // CSR matrix
         let csr = CsrMatrix {
             symmetry: None,
@@ -929,6 +928,39 @@ impl Samples {
         };
         (coo, csc, csr, PLACEHOLDER)
     }
+
+    /// Returns a (1 x 1) matrix
+    ///
+    /// Note: the last return value is not the determinant, but a PLACEHOLDER
+    ///
+    /// ```text
+    /// ┌     ┐
+    /// │ 123 │
+    /// └     ┘
+    /// ```
+    pub fn tiny_1x1() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+        let mut coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        coo.put(0, 0, 123.0).unwrap();
+        // CSC matrix
+        let csc = CscMatrix {
+            symmetry: None,
+            nrow: 1,
+            ncol: 1,
+            col_pointers: vec![0, 1],
+            row_indices: vec![0],
+            values: vec![123.0],
+        };
+        // CSR matrix
+        let csr = CsrMatrix {
+            symmetry: None,
+            nrow: 1,
+            ncol: 1,
+            row_pointers: vec![0, 1],
+            col_indices: vec![0],
+            values: vec![123.0],
+        };
+        (coo, csc, csr, PLACEHOLDER)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -941,8 +973,6 @@ mod tests {
 
     #[test]
     fn samples_are_correct() {
-        // ----------------------------------------------------------------------------
-
         let correct = &[
             [2.0, 3.0, 0.0, 0.0, 0.0],
             [3.0, 0.0, 4.0, 0.0, 6.0],
@@ -1078,6 +1108,15 @@ mod tests {
             [10.0, -4.0, 0.0, 2.0], //
             [15.0, -6.0, 0.0, 3.0], //
         ];
+        mat_approx_eq(&mat, correct, 1e-15);
+        csc.validate().unwrap();
+        csr.validate().unwrap();
+
+        // ----------------------------------------------------------------------------
+
+        let (coo, csc, csr, _) = Samples::tiny_1x1();
+        let mat = coo.as_matrix();
+        let correct = &[[123.0]];
         mat_approx_eq(&mat, correct, 1e-15);
         csc.validate().unwrap();
         csr.validate().unwrap();

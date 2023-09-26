@@ -918,8 +918,6 @@ mod tests {
             Samples::block_unsymmetric_5x5(true, false, true),
             Samples::block_unsymmetric_5x5(true, true, true),
             Samples::mkl_symmetric_5x5_full(false),
-            Samples::mkl_symmetric_5x5_lower(false),
-            Samples::mkl_symmetric_5x5_upper(false),
             Samples::rectangular_1x7(),
             Samples::rectangular_7x1(),
             Samples::rectangular_3x4(),

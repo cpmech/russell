@@ -11,13 +11,11 @@ impl Samples {
     /// Example from the [UMFPACK documentation](https://github.com/DrTimothyAldenDavis/SuiteSparse/blob/dev/UMFPACK/Doc/UMFPACK_QuickStart.pdf)
     ///
     /// ```text
-    /// ┌                ┐
-    /// │  2  3  0  0  0 │
-    /// │  3  0  4  0  6 │
-    /// │  0 -1 -3  2  0 │
-    /// │  0  0  1  0  0 │
-    /// │  0  4  2  0  1 │
-    /// └                ┘
+    ///  2  3  .  .  .
+    ///  3  .  4  .  6
+    ///  . -1 -3  2  .
+    ///  .  .  1  .  .
+    ///  .  4  2  .  1
     /// ```
     ///
     /// With the right-hand side vector:
@@ -283,97 +281,11 @@ impl Samples {
     /// Example from Intel MKL documentation
     ///
     /// ```text
-    /// ┌                               ┐
-    /// │     9   1.5     6  0.75     3 │
-    /// │   1.5   0.5     0     0     0 │
-    /// │     6     0    12     0     0 │
-    /// │  0.75     0     0 0.625     0 │
-    /// │     3     0     0     0    16 │
-    /// └                               ┘
-    /// ```
-    ///
-    /// With the right-hand side vector:
-    ///
-    /// ```text
-    /// let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
-    /// ```
-    ///
-    /// The solution of `A · x = rhs` is:
-    ///
-    /// ```text
-    /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
-    /// ```
-    pub fn mkl_symmetric_5x5_lower(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo = CooMatrix::new(5, 5, 9, sym, one_based).unwrap();
-        // diagonal
-        coo.put(0, 0, 9.0).unwrap();
-        coo.put(1, 1, 0.5).unwrap();
-        coo.put(2, 2, 12.0).unwrap();
-        coo.put(3, 3, 0.625).unwrap();
-        coo.put(4, 4, 16.0).unwrap();
-        // lower diagonal
-        coo.put(1, 0, 1.5).unwrap();
-        coo.put(2, 0, 6.0).unwrap();
-        coo.put(3, 0, 0.75).unwrap();
-        coo.put(4, 0, 3.0).unwrap();
-        // CSC matrix
-        let csc = CscMatrix {
-            symmetry: None,
-            nrow: 5,
-            ncol: 5,
-            values: vec![
-                9.0, 1.5, 6.0, 0.75, 3.0,   // j=0 p=(0),1,2,3,4
-                0.5,   //                      j=1 p=(5)
-                12.0,  //                      j=2 p=(6)
-                0.625, //                      j=3 p=(7)
-                16.0,  //                      j=4 p=(8)
-            ], //                                  p=(9)
-            row_indices: vec![
-                0, 1, 2, 3, 4, //
-                1, //
-                2, //
-                3, //
-                4, //
-            ],
-            col_pointers: vec![0, 5, 6, 7, 8, 9],
-        };
-        // CSR matrix
-        let csr = CsrMatrix {
-            symmetry: None,
-            nrow: 5,
-            ncol: 5,
-            values: vec![
-                9.0, //         i=0 p=(0)
-                1.5, 0.5, //    i=1 p=(1),2
-                6.0, 12.0, //   i=2 p=(3),4
-                0.75, 0.625, // i=3 p=(5),6
-                3.0, 16.0, //   i=4 p=(7),8
-            ], //                   p=(9)
-            col_indices: vec![
-                0, //
-                0, 1, //
-                0, 2, //
-                0, 3, //
-                0, 4, //
-            ],
-            row_pointers: vec![0, 1, 3, 5, 7, 9],
-        };
-        (coo, csc, csr, 9.0 / 4.0)
-    }
-
-    /// Returns the matrix and its determinant
-    ///
-    /// Example from Intel MKL documentation
-    ///
-    /// ```text
-    /// ┌                               ┐
-    /// │     9   1.5     6  0.75     3 │
-    /// │   1.5   0.5     0     0     0 │
-    /// │     6     0    12     0     0 │
-    /// │  0.75     0     0 0.625     0 │
-    /// │     3     0     0     0    16 │
-    /// └                               ┘
+    ///     9   1.5     6  0.75     3
+    ///   1.5   0.5     .     .     .
+    ///     6     .    12     .     .
+    ///  0.75     .     . 0.625     .
+    ///     3     .     .     .    16
     /// ```
     ///
     /// With the right-hand side vector:
@@ -449,95 +361,11 @@ impl Samples {
     /// Example from Intel MKL documentation
     ///
     /// ```text
-    /// ┌                               ┐
-    /// │     9   1.5     6  0.75     3 │
-    /// │   1.5   0.5     0     0     0 │
-    /// │     6     0    12     0     0 │
-    /// │  0.75     0     0 0.625     0 │
-    /// │     3     0     0     0    16 │
-    /// └                               ┘
-    /// ```
-    ///
-    /// With the right-hand side vector:
-    ///
-    /// ```text
-    /// let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
-    /// ```
-    ///
-    /// The solution of `A · x = rhs` is:
-    ///
-    /// ```text
-    /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
-    /// ```
-    pub fn mkl_symmetric_5x5_upper(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = Some(Symmetry::General(Storage::Upper));
-        let mut coo = CooMatrix::new(5, 5, 9, sym, one_based).unwrap();
-        coo.put(0, 0, 9.0).unwrap();
-        coo.put(0, 1, 1.5).unwrap();
-        coo.put(1, 1, 0.5).unwrap();
-        coo.put(0, 2, 6.0).unwrap();
-        coo.put(2, 2, 12.0).unwrap();
-        coo.put(0, 3, 0.75).unwrap();
-        coo.put(3, 3, 0.625).unwrap();
-        coo.put(0, 4, 3.0).unwrap();
-        coo.put(4, 4, 16.0).unwrap();
-        // CSC matrix
-        let csc = CscMatrix {
-            symmetry: None,
-            nrow: 5,
-            ncol: 5,
-            values: vec![
-                9.0, //         j=0 p=(0)
-                1.5, 0.5, //    j=1 p=(1),2
-                6.0, 12.0, //   j=2 p=(3),4
-                0.75, 0.625, // j=3 p=(5),6
-                3.0, 16.0, //   j=4 p=(7),8
-            ], //                   p=(9)
-            row_indices: vec![
-                0, //
-                0, 1, //
-                0, 2, //
-                0, 3, //
-                0, 4,
-            ],
-            col_pointers: vec![0, 1, 3, 5, 7, 9],
-        };
-        // CSR matrix
-        let csr = CsrMatrix {
-            symmetry: None,
-            nrow: 5,
-            ncol: 5,
-            values: vec![
-                9.0, 1.5, 6.0, 0.75, 3.0,   // i=0 p=(0),1,2,3,4
-                0.5,   //                      i=1 p=(5)
-                12.0,  //                      i=2 p=(6)
-                0.625, //                      i=3 p=(7)
-                16.0,  //                      i=4 p=(8)
-            ], //                                  p=(9)
-            col_indices: vec![
-                0, 1, 2, 3, 4, //
-                1, //
-                2, //
-                3, //
-                4, //
-            ],
-            row_pointers: vec![0, 5, 6, 7, 8, 9],
-        };
-        (coo, csc, csr, 9.0 / 4.0)
-    }
-
-    /// Returns the matrix and its determinant
-    ///
-    /// Example from Intel MKL documentation
-    ///
-    /// ```text
-    /// ┌                               ┐
-    /// │     9   1.5     6  0.75     3 │
-    /// │   1.5   0.5     0     0     0 │
-    /// │     6     0    12     0     0 │
-    /// │  0.75     0     0 0.625     0 │
-    /// │     3     0     0     0    16 │
-    /// └                               ┘
+    ///     9   1.5     6  0.75     3
+    ///   1.5   0.5     .     .     .
+    ///     6     .    12     .     .
+    ///  0.75     .     . 0.625     .
+    ///     3     .     .     .    16
     /// ```
     ///
     /// With the right-hand side vector:
@@ -613,13 +441,266 @@ impl Samples {
     /// Example from Intel MKL documentation
     ///
     /// ```text
-    /// ┌                               ┐
-    /// │     9   1.5     6  0.75     3 │
-    /// │   1.5   0.5     0     0     0 │
-    /// │     6     0    12     0     0 │
-    /// │  0.75     0     0 0.625     0 │
-    /// │     3     0     0     0    16 │
-    /// └                               ┘
+    ///     9   1.5     6  0.75     3
+    ///   1.5   0.5     .     .     .
+    ///     6     .    12     .     .
+    ///  0.75     .     . 0.625     .
+    ///     3     .     .     .    16
+    /// ```
+    ///
+    /// With the right-hand side vector:
+    ///
+    /// ```text
+    /// let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+    /// ```
+    ///
+    /// The solution of `A · x = rhs` is:
+    ///
+    /// ```text
+    /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
+    /// ```
+    pub fn mkl_symmetric_5x5_lower(
+        one_based: bool,
+        shuffle_coo_entries: bool,
+        duplicate_coo_entries: bool,
+    ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+        let sym = Some(Symmetry::General(Storage::Lower));
+        let mut coo = CooMatrix::new(5, 5, 20, sym, one_based).unwrap();
+        if shuffle_coo_entries {
+            if duplicate_coo_entries {
+                // diagonal
+                coo.put(0, 0, 5.0).unwrap(); // << duplicate
+                coo.put(0, 0, 4.0).unwrap(); // << duplicate
+                coo.put(1, 1, 0.5).unwrap();
+                coo.put(2, 2, 12.0).unwrap();
+                coo.put(3, 3, 0.625).unwrap();
+                coo.put(4, 4, 16.0).unwrap();
+                // lower diagonal
+                coo.put(1, 0, 1.5).unwrap();
+                coo.put(2, 0, 4.0).unwrap(); // << duplicate
+                coo.put(2, 0, 2.0).unwrap(); // << duplicate
+                coo.put(3, 0, 0.75).unwrap();
+                coo.put(4, 0, 3.0).unwrap();
+            } else {
+                // diagonal
+                coo.put(0, 0, 9.0).unwrap();
+                coo.put(1, 1, 0.5).unwrap();
+                coo.put(2, 2, 12.0).unwrap();
+                coo.put(3, 3, 0.625).unwrap();
+                coo.put(4, 4, 16.0).unwrap();
+                // lower diagonal
+                coo.put(1, 0, 1.5).unwrap();
+                coo.put(2, 0, 6.0).unwrap();
+                coo.put(3, 0, 0.75).unwrap();
+                coo.put(4, 0, 3.0).unwrap();
+            }
+        } else {
+            if duplicate_coo_entries {
+                coo.put(0, 0, 9.0).unwrap();
+                coo.put(1, 0, 1.5).unwrap();
+                coo.put(1, 1, 0.25).unwrap(); // << duplicate
+                coo.put(1, 1, 0.25).unwrap(); // << duplicate
+                coo.put(2, 0, 6.0).unwrap();
+                coo.put(2, 2, 12.0).unwrap();
+                coo.put(3, 0, 0.75).unwrap();
+                coo.put(3, 3, 0.625).unwrap();
+                coo.put(4, 0, 2.0).unwrap(); // << duplicate
+                coo.put(4, 0, 1.0).unwrap(); // << duplicate
+                coo.put(4, 4, 16.0).unwrap();
+            } else {
+                coo.put(0, 0, 9.0).unwrap();
+                coo.put(1, 0, 1.5).unwrap();
+                coo.put(1, 1, 0.5).unwrap();
+                coo.put(2, 0, 6.0).unwrap();
+                coo.put(2, 2, 12.0).unwrap();
+                coo.put(3, 0, 0.75).unwrap();
+                coo.put(3, 3, 0.625).unwrap();
+                coo.put(4, 0, 3.0).unwrap();
+                coo.put(4, 4, 16.0).unwrap();
+            }
+        }
+        // CSC matrix
+        let csc = CscMatrix {
+            symmetry: None,
+            nrow: 5,
+            ncol: 5,
+            values: vec![
+                9.0, 1.5, 6.0, 0.75, 3.0,   // j=0 p=(0),1,2,3,4
+                0.5,   //                      j=1 p=(5)
+                12.0,  //                      j=2 p=(6)
+                0.625, //                      j=3 p=(7)
+                16.0,  //                      j=4 p=(8)
+            ], //                                  p=(9)
+            row_indices: vec![
+                0, 1, 2, 3, 4, //
+                1, //
+                2, //
+                3, //
+                4, //
+            ],
+            col_pointers: vec![0, 5, 6, 7, 8, 9],
+        };
+        // CSR matrix
+        let csr = CsrMatrix {
+            symmetry: None,
+            nrow: 5,
+            ncol: 5,
+            values: vec![
+                9.0, //         i=0 p=(0)
+                1.5, 0.5, //    i=1 p=(1),2
+                6.0, 12.0, //   i=2 p=(3),4
+                0.75, 0.625, // i=3 p=(5),6
+                3.0, 16.0, //   i=4 p=(7),8
+            ], //                   p=(9)
+            col_indices: vec![
+                0, //
+                0, 1, //
+                0, 2, //
+                0, 3, //
+                0, 4, //
+            ],
+            row_pointers: vec![0, 1, 3, 5, 7, 9],
+        };
+        (coo, csc, csr, 9.0 / 4.0)
+    }
+
+    /// Returns the matrix and its determinant
+    ///
+    /// Example from Intel MKL documentation
+    ///
+    /// ```text
+    ///     9   1.5     6  0.75     3
+    ///   1.5   0.5     .     .     .
+    ///     6     .    12     .     .
+    ///  0.75     .     . 0.625     .
+    ///     3     .     .     .    16
+    /// ```
+    ///
+    /// With the right-hand side vector:
+    ///
+    /// ```text
+    /// let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+    /// ```
+    ///
+    /// The solution of `A · x = rhs` is:
+    ///
+    /// ```text
+    /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
+    /// ```
+    pub fn mkl_symmetric_5x5_upper(
+        one_based: bool,
+        shuffle_coo_entries: bool,
+        duplicate_coo_entries: bool,
+    ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+        let sym = Some(Symmetry::General(Storage::Upper));
+        let mut coo = CooMatrix::new(5, 5, 20, sym, one_based).unwrap();
+        if shuffle_coo_entries {
+            if duplicate_coo_entries {
+                coo.put(0, 0, 6.0).unwrap(); // << duplicate
+                coo.put(0, 0, 3.0).unwrap(); // << duplicate
+                coo.put(0, 1, 1.5).unwrap();
+                coo.put(1, 1, 0.5).unwrap();
+                coo.put(0, 2, 5.0).unwrap(); // << duplicate
+                coo.put(0, 2, 1.0).unwrap(); // << duplicate
+                coo.put(2, 2, 12.0).unwrap();
+                coo.put(0, 3, 0.75).unwrap();
+                coo.put(3, 3, 0.625).unwrap();
+                coo.put(0, 4, 3.0).unwrap();
+                coo.put(4, 4, 16.0).unwrap();
+            } else {
+                coo.put(2, 2, 12.0).unwrap();
+                coo.put(0, 0, 9.0).unwrap();
+                coo.put(3, 3, 0.625).unwrap();
+                coo.put(0, 1, 1.5).unwrap();
+                coo.put(0, 2, 6.0).unwrap();
+                coo.put(4, 4, 16.0).unwrap();
+                coo.put(0, 3, 0.75).unwrap();
+                coo.put(1, 1, 0.5).unwrap();
+                coo.put(0, 4, 3.0).unwrap();
+            }
+        } else {
+            if duplicate_coo_entries {
+                coo.put(0, 0, 9.0).unwrap();
+                coo.put(0, 1, 1.5).unwrap();
+                coo.put(0, 2, 6.0).unwrap();
+                coo.put(0, 3, 0.75).unwrap();
+                coo.put(0, 4, 3.0).unwrap();
+                coo.put(1, 1, 0.5).unwrap();
+                coo.put(2, 2, 2.0).unwrap(); // << duplicate
+                coo.put(2, 2, 2.0).unwrap(); // << duplicate
+                coo.put(2, 2, 2.0).unwrap(); // << duplicate
+                coo.put(2, 2, 2.0).unwrap(); // << duplicate
+                coo.put(2, 2, 2.0).unwrap(); // << duplicate
+                coo.put(2, 2, 2.0).unwrap(); // << duplicate
+                coo.put(3, 3, 0.625).unwrap();
+                coo.put(4, 4, 16.0).unwrap();
+            } else {
+                coo.put(0, 0, 9.0).unwrap();
+                coo.put(0, 1, 1.5).unwrap();
+                coo.put(0, 2, 6.0).unwrap();
+                coo.put(0, 3, 0.75).unwrap();
+                coo.put(0, 4, 3.0).unwrap();
+                coo.put(1, 1, 0.5).unwrap();
+                coo.put(2, 2, 12.0).unwrap();
+                coo.put(3, 3, 0.625).unwrap();
+                coo.put(4, 4, 16.0).unwrap();
+            }
+        }
+        // CSC matrix
+        let csc = CscMatrix {
+            symmetry: None,
+            nrow: 5,
+            ncol: 5,
+            values: vec![
+                9.0, //         j=0 p=(0)
+                1.5, 0.5, //    j=1 p=(1),2
+                6.0, 12.0, //   j=2 p=(3),4
+                0.75, 0.625, // j=3 p=(5),6
+                3.0, 16.0, //   j=4 p=(7),8
+            ], //                   p=(9)
+            row_indices: vec![
+                0, //
+                0, 1, //
+                0, 2, //
+                0, 3, //
+                0, 4,
+            ],
+            col_pointers: vec![0, 1, 3, 5, 7, 9],
+        };
+        // CSR matrix
+        let csr = CsrMatrix {
+            symmetry: None,
+            nrow: 5,
+            ncol: 5,
+            values: vec![
+                9.0, 1.5, 6.0, 0.75, 3.0,   // i=0 p=(0),1,2,3,4
+                0.5,   //                      i=1 p=(5)
+                12.0,  //                      i=2 p=(6)
+                0.625, //                      i=3 p=(7)
+                16.0,  //                      i=4 p=(8)
+            ], //                                  p=(9)
+            col_indices: vec![
+                0, 1, 2, 3, 4, //
+                1, //
+                2, //
+                3, //
+                4, //
+            ],
+            row_pointers: vec![0, 5, 6, 7, 8, 9],
+        };
+        (coo, csc, csr, 9.0 / 4.0)
+    }
+
+    /// Returns the matrix and its determinant
+    ///
+    /// Example from Intel MKL documentation
+    ///
+    /// ```text
+    ///     9   1.5     6  0.75     3
+    ///   1.5   0.5     .     .     .
+    ///     6     .    12     .     .
+    ///  0.75     .     . 0.625     .
+    ///     3     .     .     .    16
     /// ```
     ///
     /// With the right-hand side vector:
@@ -942,10 +1023,22 @@ mod tests {
             Samples::mkl_positive_definite_5x5_lower(true),
             Samples::mkl_positive_definite_5x5_upper(false),
             Samples::mkl_positive_definite_5x5_upper(true),
-            Samples::mkl_symmetric_5x5_lower(false),
-            Samples::mkl_symmetric_5x5_lower(true),
-            Samples::mkl_symmetric_5x5_upper(false),
-            Samples::mkl_symmetric_5x5_upper(true),
+            Samples::mkl_symmetric_5x5_lower(false, false, false),
+            Samples::mkl_symmetric_5x5_lower(false, true, false),
+            Samples::mkl_symmetric_5x5_lower(false, false, true),
+            Samples::mkl_symmetric_5x5_lower(false, true, true),
+            Samples::mkl_symmetric_5x5_lower(true, false, false),
+            Samples::mkl_symmetric_5x5_lower(true, true, false),
+            Samples::mkl_symmetric_5x5_lower(true, false, true),
+            Samples::mkl_symmetric_5x5_lower(true, true, true),
+            Samples::mkl_symmetric_5x5_upper(false, false, false),
+            Samples::mkl_symmetric_5x5_upper(false, true, false),
+            Samples::mkl_symmetric_5x5_upper(false, false, true),
+            Samples::mkl_symmetric_5x5_upper(false, true, true),
+            Samples::mkl_symmetric_5x5_upper(true, false, false),
+            Samples::mkl_symmetric_5x5_upper(true, true, false),
+            Samples::mkl_symmetric_5x5_upper(true, false, true),
+            Samples::mkl_symmetric_5x5_upper(true, true, true),
             Samples::mkl_symmetric_5x5_full(false),
             Samples::mkl_symmetric_5x5_full(true),
         ] {

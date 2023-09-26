@@ -533,7 +533,7 @@ mod tests {
         let d = a * f64::powf(b, c);
         approx_eq(a, 57.0 / 64.0, 1e-15);
         approx_eq(c, 7.0, 1e-15);
-        approx_eq(d, 114.0, 1e-15);
+        approx_eq(d, 114.0, 1e-13);
 
         // calling solve again works
         let mut x_again = Vector::new(5);

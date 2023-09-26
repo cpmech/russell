@@ -449,7 +449,7 @@ mod tests {
         );
 
         // sample matrix
-        let (coo, _, _, _) = Samples::umfpack_sample1_unsymmetric(true);
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(true);
 
         // factorize requests initialize
         assert_eq!(

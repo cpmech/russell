@@ -922,7 +922,7 @@ mod tests {
     #[test]
     fn from_csr_works() {
         for (_, csc_correct, csr, _) in [
-            Samples::umfpack_sample1_unsymmetric(false),
+            Samples::umfpack_unsymmetric_5x5(false),
             Samples::mkl_unsymmetric_5x5(false),
             Samples::block_unsym_5x5_with_shuffled_entries(false),
             Samples::mkl_sample1_symmetric_full(false),

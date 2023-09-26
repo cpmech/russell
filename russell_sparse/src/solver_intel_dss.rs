@@ -337,7 +337,7 @@ mod tests {
         assert!(!solver.factorized);
 
         // sample matrix
-        let (coo, _, _, _) = Samples::umfpack_sample1_unsymmetric(false);
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
 
         // factorize requests initialize
         assert_eq!(
@@ -397,7 +397,7 @@ mod tests {
         assert!(!solver.factorized);
 
         // sample matrix
-        let (coo, _, _, _) = Samples::umfpack_sample1_unsymmetric(false);
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
 
         // allocate x and rhs
         let mut x = Vector::new(5);

@@ -8,7 +8,7 @@ pub struct Samples {}
 impl Samples {
     /// Returns the COO, CSC, and CSR versions of the matrix and its determinant
     ///
-    /// Example from UMFPACK documentation
+    /// Example from the [UMFPACK documentation](https://github.com/DrTimothyAldenDavis/SuiteSparse/blob/dev/UMFPACK/Doc/UMFPACK_QuickStart.pdf)
     ///
     /// ```text
     /// ┌                ┐
@@ -31,7 +31,7 @@ impl Samples {
     /// ```text
     /// let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
     /// ```
-    pub fn umfpack_sample1_unsymmetric(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn umfpack_unsymmetric_5x5(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let mut coo = CooMatrix::new(5, 5, 13, None, one_based).unwrap();
         coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2) duplicate
         coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2) duplicate
@@ -894,8 +894,8 @@ mod tests {
             [0.0, 4.0, 2.0, 0.0, 1.0],
         ];
         for (coo, csc, csr, correct_det) in [
-            Samples::umfpack_sample1_unsymmetric(false),
-            Samples::umfpack_sample1_unsymmetric(true),
+            Samples::umfpack_unsymmetric_5x5(false),
+            Samples::umfpack_unsymmetric_5x5(true),
         ] {
             let mat = coo.as_matrix();
             mat_approx_eq(&mat, correct, 1e-15);

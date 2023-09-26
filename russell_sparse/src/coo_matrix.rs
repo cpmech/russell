@@ -17,7 +17,7 @@ pub struct CooMatrix {
     /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
     ///
     /// **Note:** `None` means unsymmetric matrix or unspecified symmetry,
-    /// where the storage is automatically `Full`.
+    /// where the storage is automatically considered as `Full`.
     pub symmetry: Option<Symmetry>,
 
     /// Holds the number of rows (must fit i32)

@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use super::{to_i32, ConfigSolver, CooMatrix, SolverTrait, Symmetry};
 use crate::{CsrMatrix, Storage, StrError};
 use russell_lab::Vector;
@@ -303,8 +301,8 @@ pub(crate) fn handle_intel_dss_error_code(err: i32) -> StrError {
 #[cfg(with_intel_dss)]
 mod tests {
     use super::{handle_intel_dss_error_code, SolverIntelDSS};
-    use crate::{ConfigSolver, CooMatrix, Ordering, Samples, Scaling, SolverTrait, Storage, Symmetry};
-    use russell_chk::{approx_eq, vec_approx_eq};
+    use crate::{CooMatrix, Samples, SolverTrait, Storage, Symmetry};
+    use russell_chk::vec_approx_eq;
     use russell_lab::Vector;
 
     #[test]
@@ -351,7 +349,7 @@ mod tests {
         // factorize fails on incompatible coo matrix
         let mut coo_wrong_1 = CooMatrix::new(1, 5, 13, None, false).unwrap();
         let coo_wrong_2 = CooMatrix::new(5, 1, 13, None, false).unwrap();
-        let mut coo_wrong_3 = CooMatrix::new(5, 5, 12, None, false).unwrap();
+        let coo_wrong_3 = CooMatrix::new(5, 5, 12, None, false).unwrap();
         let sym = Some(Symmetry::General(Storage::Lower));
         let mut coo_wrong_4 = CooMatrix::new(5, 5, 13, sym, false).unwrap();
         for _ in 0..13 {
@@ -439,5 +437,33 @@ mod tests {
         let mut x_again = Vector::new(5);
         solver.solve(&mut x_again, &rhs, false).unwrap();
         vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
+    }
+
+    #[test]
+    fn handle_intel_dss_error_code_works() {
+        let default = "Error: unknown error returned by c-code (IntelDSS)";
+        for i in 1..17 {
+            let res = handle_intel_dss_error_code(-i);
+            assert!(res.len() > 0);
+            assert_ne!(res, default);
+        }
+        for i in 17..27 {
+            let res = handle_intel_dss_error_code(i);
+            assert!(res.len() > 0);
+            assert_ne!(res, default);
+        }
+        assert_eq!(
+            handle_intel_dss_error_code(100000),
+            "Error: c-code returned null pointer (IntelDSS)"
+        );
+        assert_eq!(
+            handle_intel_dss_error_code(200000),
+            "Error: c-code failed to allocate memory (IntelDSS)"
+        );
+        assert_eq!(
+            handle_intel_dss_error_code(400000),
+            "This code has not been compiled with Intel DSS"
+        );
+        assert_eq!(handle_intel_dss_error_code(123), default);
     }
 }

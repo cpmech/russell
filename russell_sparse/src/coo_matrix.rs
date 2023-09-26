@@ -92,13 +92,13 @@ impl CooMatrix {
         one_based: bool,
     ) -> Result<Self, StrError> {
         if nrow < 1 {
-            return Err("nrow must be ≥ 1");
+            return Err("COO matrix: nrow must be ≥ 1");
         }
         if ncol < 1 {
-            return Err("ncol must be ≥ 1");
+            return Err("COO matrix: ncol must be ≥ 1");
         }
         if max < 1 {
-            return Err("max (nnz) must be ≥ 1");
+            return Err("COO matrix: max (nnz) must be ≥ 1");
         }
         Ok(CooMatrix {
             symmetry,
@@ -147,22 +147,22 @@ impl CooMatrix {
     pub fn put(&mut self, i: usize, j: usize, aij: f64) -> Result<(), StrError> {
         // check range
         if i >= self.nrow {
-            return Err("index of row is outside range");
+            return Err("COO matrix: index of row is outside range");
         }
         if j >= self.ncol {
-            return Err("index of column is outside range");
+            return Err("COO matrix: index of column is outside range");
         }
         if self.pos >= self.max {
-            return Err("max number of items has been reached");
+            return Err("COO matrix: max number of items has been reached");
         }
         if let Some(sym) = self.symmetry {
             if sym.lower() {
                 if j > i {
-                    return Err("j > i is incorrect for lower triangular storage");
+                    return Err("COO matrix: j > i is incorrect for lower triangular storage");
                 }
             } else if sym.upper() {
                 if j < i {
-                    return Err("j < i is incorrect for upper triangular storage");
+                    return Err("COO matrix: j < i is incorrect for upper triangular storage");
                 }
             }
         }
@@ -203,6 +203,44 @@ impl CooMatrix {
     /// ```
     pub fn reset(&mut self) {
         self.pos = 0;
+    }
+
+    /// Checks the dimension of the arrays in the COO matrix when it's ready for conversions/computations
+    ///
+    /// The following conditions must be satisfied:
+    ///
+    /// ```text
+    /// nrow ≥ 1
+    /// ncol ≥ 1
+    /// pos ≥ 1 (i.e., nnz ≥ 1)
+    /// pos ≤ max
+    /// indices_i.len() == max
+    /// indices_j.len() == max
+    /// values_aij.len() == max
+    /// ```
+    pub fn check_dimensions_ready(&self) -> Result<(), StrError> {
+        if self.nrow < 1 {
+            return Err("COO matrix: nrow must be ≥ 1");
+        }
+        if self.ncol < 1 {
+            return Err("COO matrix: ncol must be ≥ 1");
+        }
+        if self.pos < 1 {
+            return Err("COO matrix: pos = nnz must be ≥ 1");
+        }
+        if self.pos > self.max {
+            return Err("COO matrix: pos = nnz must be ≤ max");
+        }
+        if self.indices_i.len() != self.max {
+            return Err("COO matrix: indices_i.len() must be = max");
+        }
+        if self.indices_j.len() != self.max {
+            return Err("COO matrix: indices_j.len() must be = max");
+        }
+        if self.values_aij.len() != self.max {
+            return Err("COO matrix: values_aij.len() must be = max");
+        }
+        Ok(())
     }
 
     /// Converts this COO matrix to a dense matrix
@@ -282,6 +320,7 @@ impl CooMatrix {
     /// }
     /// ```
     pub fn to_matrix(&self, a: &mut Matrix) -> Result<(), StrError> {
+        self.check_dimensions_ready()?;
         let (m, n) = a.dims();
         if m != self.nrow || n != self.ncol {
             return Err("wrong matrix dimensions");
@@ -366,6 +405,7 @@ impl CooMatrix {
     /// }
     /// ```
     pub fn mat_vec_mul(&self, v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
+        self.check_dimensions_ready()?;
         if u.dim() != self.ncol {
             return Err("u.ndim must equal ncol");
         }
@@ -402,11 +442,17 @@ mod tests {
 
     #[test]
     fn new_fails_on_wrong_input() {
-        assert_eq!(CooMatrix::new(0, 1, 3, None, false).err(), Some("nrow must be ≥ 1"));
-        assert_eq!(CooMatrix::new(1, 0, 3, None, false).err(), Some("ncol must be ≥ 1"));
+        assert_eq!(
+            CooMatrix::new(0, 1, 3, None, false).err(),
+            Some("COO matrix: nrow must be ≥ 1")
+        );
+        assert_eq!(
+            CooMatrix::new(1, 0, 3, None, false).err(),
+            Some("COO matrix: ncol must be ≥ 1")
+        );
         assert_eq!(
             CooMatrix::new(1, 1, 0, None, false).err(),
-            Some("max (nnz) must be ≥ 1")
+            Some("COO matrix: max (nnz) must be ≥ 1")
         );
     }
 
@@ -426,21 +472,30 @@ mod tests {
     #[test]
     fn put_fails_on_wrong_values() {
         let mut coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
-        assert_eq!(coo.put(1, 0, 0.0).err(), Some("index of row is outside range"));
-        assert_eq!(coo.put(0, 1, 0.0).err(), Some("index of column is outside range"));
+        assert_eq!(
+            coo.put(1, 0, 0.0).err(),
+            Some("COO matrix: index of row is outside range")
+        );
+        assert_eq!(
+            coo.put(0, 1, 0.0).err(),
+            Some("COO matrix: index of column is outside range")
+        );
         assert_eq!(coo.put(0, 0, 0.0).err(), None); // << will take all spots
-        assert_eq!(coo.put(0, 0, 0.0).err(), Some("max number of items has been reached"));
+        assert_eq!(
+            coo.put(0, 0, 0.0).err(),
+            Some("COO matrix: max number of items has been reached")
+        );
         let sym = Some(Symmetry::General(Storage::Lower));
         let mut coo = CooMatrix::new(2, 2, 4, sym, false).unwrap();
         assert_eq!(
             coo.put(0, 1, 0.0).err(),
-            Some("j > i is incorrect for lower triangular storage")
+            Some("COO matrix: j > i is incorrect for lower triangular storage")
         );
         let sym = Some(Symmetry::General(Storage::Upper));
         let mut coo = CooMatrix::new(2, 2, 4, sym, false).unwrap();
         assert_eq!(
             coo.put(1, 0, 0.0).err(),
-            Some("j < i is incorrect for upper triangular storage")
+            Some("COO matrix: j < i is incorrect for upper triangular storage")
         );
     }
 
@@ -473,8 +528,56 @@ mod tests {
     }
 
     #[test]
+    fn check_dimensions_ready_works() {
+        let mut coo = CooMatrix {
+            symmetry: None,
+            one_based: false,
+            nrow: 0,
+            ncol: 0,
+            pos: 0,
+            max: 0,
+            indices_i: Vec::new(),
+            indices_j: Vec::new(),
+            values_aij: Vec::new(),
+        };
+        assert_eq!(coo.check_dimensions_ready().err(), Some("COO matrix: nrow must be ≥ 1"));
+        coo.nrow = 1;
+        assert_eq!(coo.check_dimensions_ready().err(), Some("COO matrix: ncol must be ≥ 1"));
+        coo.ncol = 1;
+        assert_eq!(
+            coo.check_dimensions_ready().err(),
+            Some("COO matrix: pos = nnz must be ≥ 1")
+        );
+        coo.pos = 1;
+        assert_eq!(
+            coo.check_dimensions_ready().err(),
+            Some("COO matrix: pos = nnz must be ≤ max")
+        );
+        coo.max = 1;
+        assert_eq!(
+            coo.check_dimensions_ready().err(),
+            Some("COO matrix: indices_i.len() must be = max")
+        );
+        coo.indices_i.resize(1, 0);
+        assert_eq!(
+            coo.check_dimensions_ready().err(),
+            Some("COO matrix: indices_j.len() must be = max")
+        );
+        coo.indices_j.resize(1, 0);
+        assert_eq!(
+            coo.check_dimensions_ready().err(),
+            Some("COO matrix: values_aij.len() must be = max")
+        );
+        coo.values_aij.resize(1, 0.0);
+        assert_eq!(coo.check_dimensions_ready().err(), None);
+    }
+
+    #[test]
     fn to_matrix_fails_on_wrong_dims() {
-        let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        let mut coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        let mut a_1x1 = Matrix::new(1, 1);
+        assert_eq!(coo.to_matrix(&mut a_1x1), Err("COO matrix: pos = nnz must be ≥ 1"));
+        coo.put(0, 0, 123.0).unwrap();
         let mut a_2x1 = Matrix::new(2, 1);
         let mut a_1x2 = Matrix::new(1, 2);
         assert_eq!(coo.to_matrix(&mut a_2x1), Err("wrong matrix dimensions"));
@@ -579,7 +682,10 @@ mod tests {
 
     #[test]
     fn mat_vec_mul_fails_on_wrong_input() {
-        let coo = CooMatrix::new(2, 2, 1, None, false).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 1, None, false).unwrap();
+        let mut a_2x2 = Matrix::new(2, 2);
+        assert_eq!(coo.to_matrix(&mut a_2x2), Err("COO matrix: pos = nnz must be ≥ 1"));
+        coo.put(0, 0, 123.0).unwrap();
         let u = Vector::new(3);
         let mut v = Vector::new(coo.nrow);
         assert_eq!(coo.mat_vec_mul(&mut v, 1.0, &u).err(), Some("u.ndim must equal ncol"));

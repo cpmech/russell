@@ -366,7 +366,10 @@ mod tests {
             solver.factorize_coo(&coo_wrong_2, false).err(),
             Some("the dimension of the CooMatrix must be equal to ndim")
         );
-        assert_eq!(solver.factorize_coo(&coo_wrong_3, false).err(), Some("nnz must be ≥ 1"));
+        assert_eq!(
+            solver.factorize_coo(&coo_wrong_3, false).err(),
+            Some("COO matrix: pos = nnz must be ≥ 1")
+        );
         assert_eq!(
             solver.factorize_coo(&coo_wrong_4, false).err(),
             Some("the CooMatrix symmetry option must be equal to the one provided to initialize")

@@ -163,18 +163,9 @@ impl CsrMatrix {
         // * Upgrading i32 to usize is OK (the opposite is not OK => use to_i32)
 
         // check dimension params
+        coo.check_dimensions_ready()?;
         let nrow = coo.nrow;
-        let ncol = coo.ncol;
         let nnz = coo.pos;
-        if nrow < 1 {
-            return Err("nrow must be ≥ 1");
-        }
-        if ncol < 1 {
-            return Err("ncol must be ≥ 1");
-        }
-        if nnz < 1 {
-            return Err("nnz must be ≥ 1");
-        }
 
         // access the triplet data
         let ai = &coo.indices_i;
@@ -563,9 +554,18 @@ fn csr_sum_duplicates(nrow: usize, ap: &mut [i32], aj: &mut [i32], ax: &mut [f64
 #[cfg(test)]
 mod tests {
     use super::CsrMatrix;
-    use crate::{Samples, Storage, Symmetry};
+    use crate::{CooMatrix, Samples, Storage, Symmetry};
     use russell_chk::vec_approx_eq;
     use russell_lab::{Matrix, Vector};
+
+    #[test]
+    fn from_coo_captures_errors() {
+        let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        assert_eq!(
+            CsrMatrix::from_coo(&coo).err(),
+            Some("COO matrix: pos = nnz must be ≥ 1")
+        );
+    }
 
     #[test]
     fn from_coo_works() {

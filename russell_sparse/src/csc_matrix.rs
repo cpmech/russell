@@ -167,18 +167,9 @@ impl CscMatrix {
     /// ```
     pub fn from_coo(coo: &CooMatrix) -> Result<Self, StrError> {
         // check dimension params
-        let nrow = coo.nrow;
+        coo.check_dimensions_ready()?;
         let ncol = coo.ncol;
         let nnz = coo.pos;
-        if nrow < 1 {
-            return Err("nrow must be ≥ 1");
-        }
-        if ncol < 1 {
-            return Err("ncol must be ≥ 1");
-        }
-        if nnz < 1 {
-            return Err("nnz must be ≥ 1");
-        }
 
         // allocate arrays
         let mut csc = CscMatrix {
@@ -507,9 +498,18 @@ impl CscMatrix {
 #[cfg(test)]
 mod tests {
     use super::CscMatrix;
-    use crate::{Samples, Storage, Symmetry};
+    use crate::{CooMatrix, Samples, Storage, Symmetry};
     use russell_chk::vec_approx_eq;
     use russell_lab::{Matrix, Vector};
+
+    #[test]
+    fn from_coo_captures_errors() {
+        let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        assert_eq!(
+            CscMatrix::from_coo(&coo).err(),
+            Some("COO matrix: pos = nnz must be ≥ 1")
+        );
+    }
 
     #[test]
     fn from_coo_works() {

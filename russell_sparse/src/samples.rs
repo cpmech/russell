@@ -883,19 +883,19 @@ mod tests {
     fn samples_are_correct() {
         // ----------------------------------------------------------------------------
 
-        let correct = "┌                ┐\n\
-                       │  2  3  0  0  0 │\n\
-                       │  3  0  4  0  6 │\n\
-                       │  0 -1 -3  2  0 │\n\
-                       │  0  0  1  0  0 │\n\
-                       │  0  4  2  0  1 │\n\
-                       └                ┘";
+        let correct = &[
+            [2.0, 3.0, 0.0, 0.0, 0.0],
+            [3.0, 0.0, 4.0, 0.0, 6.0],
+            [0.0, -1.0, -3.0, 2.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0, 0.0],
+            [0.0, 4.0, 2.0, 0.0, 1.0],
+        ];
         for (coo, csc, csr, correct_det) in [
             Samples::umfpack_sample1_unsymmetric(false),
             Samples::umfpack_sample1_unsymmetric(true),
         ] {
             let mat = coo.as_matrix();
-            assert_eq!(format!("{}", mat), correct);
+            mat_approx_eq(&mat, correct, 1e-15);
             csc.validate().unwrap();
             csr.validate().unwrap();
             let mut inv = Matrix::new(5, 5);
@@ -907,14 +907,14 @@ mod tests {
 
         let (coo, csc, csr, correct_det) = Samples::unsymmetric_5x5_with_shuffled_entries(false);
         let mat = coo.as_matrix();
-        let correct = "┌                ┐\n\
-                       │  1 -1  0 -3  0 │\n\
-                       │ -2  5  0  0  0 │\n\
-                       │  0  0  4  6  4 │\n\
-                       │ -4  0  2  7  0 │\n\
-                       │  0  8  0  0 -5 │\n\
-                       └                ┘";
-        assert_eq!(format!("{}", mat), correct);
+        let correct = &[
+            [1.0, -1.0, 0.0, -3.0, 0.0],
+            [-2.0, 5.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 4.0, 6.0, 4.0],
+            [-4.0, 0.0, 2.0, 7.0, 0.0],
+            [0.0, 8.0, 0.0, 0.0, -5.0],
+        ];
+        mat_approx_eq(&mat, correct, 1e-15);
         csc.validate().unwrap();
         csr.validate().unwrap();
         let mut inv = Matrix::new(5, 5);
@@ -923,13 +923,13 @@ mod tests {
 
         // ----------------------------------------------------------------------------
 
-        let correct = "┌           ┐\n\
-                       │ 1 2 0 0 0 │\n\
-                       │ 3 4 0 0 0 │\n\
-                       │ 0 0 5 6 0 │\n\
-                       │ 0 0 7 8 0 │\n\
-                       │ 0 0 0 0 9 │\n\
-                       └           ┘";
+        let correct = &[
+            [1.0, 2.0, 0.0, 0.0, 0.0],
+            [3.0, 4.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 5.0, 6.0, 0.0],
+            [0.0, 0.0, 7.0, 8.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 9.0],
+        ];
         for (coo, csc, csr, correct_det) in [
             Samples::block_unsym_5x5_with_shuffled_entries(false),
             Samples::block_unsym_5x5_with_shuffled_entries(true),
@@ -937,7 +937,7 @@ mod tests {
             Samples::block_unsym_5x5_with_duplicates(true),
         ] {
             let mat = coo.as_matrix();
-            assert_eq!(format!("{}", mat), correct);
+            mat_approx_eq(&mat, correct, 1e-15);
             csc.validate().unwrap();
             csr.validate().unwrap();
             let mut inv = Matrix::new(5, 5);
@@ -947,13 +947,13 @@ mod tests {
 
         // ----------------------------------------------------------------------------
 
-        let correct = "┌                               ┐\n\
-                       │     9   1.5     6  0.75     3 │\n\
-                       │   1.5   0.5     0     0     0 │\n\
-                       │     6     0    12     0     0 │\n\
-                       │  0.75     0     0 0.625     0 │\n\
-                       │     3     0     0     0    16 │\n\
-                       └                               ┘";
+        let correct = &[
+            [9.0, 1.5, 6.0, 0.75, 3.0],
+            [1.5, 0.5, 0.0, 0.0, 0.0],
+            [6.0, 0.0, 12.0, 0.0, 0.0],
+            [0.75, 0.0, 0.0, 0.625, 0.0],
+            [3.0, 0.0, 0.0, 0.0, 16.0],
+        ];
         for (coo, csc, csr, correct_det) in [
             Samples::mkl_sample1_positive_definite_lower(false),
             Samples::mkl_sample1_positive_definite_lower(true),
@@ -967,7 +967,7 @@ mod tests {
             Samples::mkl_sample1_symmetric_full(true),
         ] {
             let mat = coo.as_matrix();
-            assert_eq!(format!("{}", mat), correct);
+            mat_approx_eq(&mat, correct, 1e-15);
             csc.validate().unwrap();
             csr.validate().unwrap();
             let mut inv = Matrix::new(5, 5);
@@ -979,10 +979,8 @@ mod tests {
 
         let (coo, csc, csr, _) = Samples::rectangular_1x7();
         let mat = coo.as_matrix();
-        let correct = "┌               ┐\n\
-                       │ 1 0 3 0 5 0 7 │\n\
-                       └               ┘";
-        assert_eq!(format!("{}", mat), correct);
+        let correct = &[[1.0, 0.0, 3.0, 0.0, 5.0, 0.0, 7.0]];
+        mat_approx_eq(&mat, correct, 1e-15);
         csc.validate().unwrap();
         csr.validate().unwrap();
 
@@ -990,16 +988,8 @@ mod tests {
 
         let (coo, csc, csr, _) = Samples::rectangular_7x1();
         let mat = coo.as_matrix();
-        let correct = "┌   ┐\n\
-                       │ 0 │\n\
-                       │ 2 │\n\
-                       │ 0 │\n\
-                       │ 4 │\n\
-                       │ 0 │\n\
-                       │ 6 │\n\
-                       │ 0 │\n\
-                       └   ┘";
-        assert_eq!(format!("{}", mat), correct);
+        let correct = &[[0.0], [2.0], [0.0], [4.0], [0.0], [6.0], [0.0]];
+        mat_approx_eq(&mat, correct, 1e-15);
         csc.validate().unwrap();
         csr.validate().unwrap();
 
@@ -1013,12 +1003,6 @@ mod tests {
             [15.0, -6.0, 0.0, 3.0], //
         ];
         mat_approx_eq(&mat, correct, 1e-15);
-        let correct = "┌             ┐\n\
-                       │  5 -2  0  1 │\n\
-                       │ 10 -4  0  2 │\n\
-                       │ 15 -6  0  3 │\n\
-                       └             ┘";
-        assert_eq!(format!("{}", mat), correct);
         csc.validate().unwrap();
         csr.validate().unwrap();
     }

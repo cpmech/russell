@@ -71,27 +71,42 @@ pub struct CscMatrix {
     pub ncol: usize,
 
     /// Defines the column pointers array with size = ncol + 1
+    ///
+    /// ```text
+    /// col_pointers.len() = ncol + 1
+    /// nnz = col_pointers[ncol]
+    /// ```
     pub col_pointers: Vec<i32>,
 
-    /// Defines the row indices array with size = nnz (number of non-zeros)
+    /// Defines the row indices array with size = nnz_dup (number of non-zeros with duplicates)
+    ///
+    /// ```text
+    /// nnz_dup ≥ nnz
+    /// row_indices.len() = nnz_dup
+    /// ```
     pub row_indices: Vec<i32>,
 
-    /// Defines the values array with size = nnz (number of non-zeros)
+    /// Defines the values array with size = nnz_dup (number of non-zeros with duplicates)
+    ///
+    /// ```text
+    /// nnz_dup ≥ nnz
+    /// values.len() = nnz_dup
+    /// ```
     pub values: Vec<f64>,
 }
 
 impl CscMatrix {
     /// Checks the dimension of the arrays in the CSC matrix
     ///
-    /// The following conditions must be satisfied:
+    /// The following conditions must be satisfied (nnz is the number of non-zeros with duplicates):
     ///
     /// ```text
     /// nrow ≥ 1
     /// ncol ≥ 1
     /// nnz = col_pointers[ncol] ≥ 1
     /// col_pointers.len() == ncol + 1
-    /// row_indices.len() == nnz
-    /// values.len() == nnz
+    /// row_indices.len() == nnz_dup ≥ nnz
+    /// values.len() == nnz_dup ≥ nnz
     /// ```
     pub fn check_dimensions(&self) -> Result<(), StrError> {
         if self.nrow < 1 {
@@ -107,16 +122,19 @@ impl CscMatrix {
         if nnz < 1 {
             return Err("nnz must be ≥ 1");
         }
-        if self.row_indices.len() != nnz as usize {
-            return Err("row_indices.len() must be = nnz");
+        if self.row_indices.len() < nnz as usize {
+            return Err("row_indices.len() must be ≥ nnz");
         }
-        if self.values.len() != nnz as usize {
-            return Err("values.len() must be = nnz");
+        if self.values.len() < nnz as usize {
+            return Err("values.len() must be ≥ nnz");
         }
         Ok(())
     }
 
     /// Creates a new CSC matrix from a COO matrix
+    ///
+    /// **Note:** The final nnz may be smaller than the initial nnz because duplicates
+    /// may have been summed up. The final nnz is available as `nnz = col_pointers[ncol]`.
     ///
     /// # Examples
     ///
@@ -183,6 +201,9 @@ impl CscMatrix {
     ///
     /// **Note:** The COO matrix must match the symmetry, nrow, and ncol values.
     /// Also, the `pos` (nnz) value in the COO matrix must match `row_indices.len()`.
+    ///
+    /// **Note:** The final nnz may be smaller than the initial nnz because duplicates
+    /// may have been summed up. The final nnz is available as `nnz = col_pointers[ncol]`.
     pub fn update_from_coo(&mut self, coo: &CooMatrix) -> Result<(), StrError> {
         // check dimensions
         if coo.symmetry != self.symmetry {
@@ -241,15 +262,6 @@ impl CscMatrix {
         if status != 0 {
             return Err(handle_umfpack_error_code(status));
         }
-
-        // reduce array sizes if duplicates have been eliminated
-        let final_nnz = self.col_pointers[self.ncol] as usize;
-        if final_nnz < coo.nnz {
-            self.row_indices.resize(final_nnz, 0);
-            self.values.resize(final_nnz, 0.0);
-        }
-
-        // results
         Ok(())
     }
 
@@ -602,8 +614,9 @@ mod tests {
             let csc = CscMatrix::from_coo(&coo).unwrap();
             csc.check_dimensions().unwrap();
             assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
-            assert_eq!(&csc.row_indices, &csc_correct.row_indices);
-            vec_approx_eq(&csc.values, &csc_correct.values, 1e-15);
+            let nnz = csc.col_pointers[csc.ncol] as usize;
+            assert_eq!(&csc.row_indices[0..nnz], &csc_correct.row_indices);
+            vec_approx_eq(&csc.values[0..nnz], &csc_correct.values, 1e-15);
         }
     }
 
@@ -678,9 +691,9 @@ mod tests {
         csc.col_pointers = vec![0, 0, 0, 0, 0];
         assert_eq!(csc.check_dimensions().err(), Some("nnz must be ≥ 1"));
         csc.col_pointers = vec![0, 0, 0, 0, 1];
-        assert_eq!(csc.check_dimensions().err(), Some("row_indices.len() must be = nnz"));
+        assert_eq!(csc.check_dimensions().err(), Some("row_indices.len() must be ≥ nnz"));
         csc.row_indices = vec![0];
-        assert_eq!(csc.check_dimensions().err(), Some("values.len() must be = nnz"));
+        assert_eq!(csc.check_dimensions().err(), Some("values.len() must be ≥ nnz"));
         csc.values = vec![0.0];
         assert_eq!(csc.check_dimensions().err(), None);
     }

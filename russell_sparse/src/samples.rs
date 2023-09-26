@@ -103,7 +103,10 @@ impl Samples {
     /// -4   .   2   7   .
     ///  .   8   .   .  -5
     /// ```
-    pub fn unsymmetric_5x5_with_shuffled_entries(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    ///
+    /// Reference:
+    /// <https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/sparse-blas-csr-matrix-storage-format.html>
+    pub fn mkl_unsymmetric_5x5(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let mut coo = CooMatrix::new(5, 5, 13, None, one_based).unwrap();
         coo.put(2, 4, 4.0).unwrap();
         coo.put(4, 1, 8.0).unwrap();
@@ -905,7 +908,7 @@ mod tests {
 
         // ----------------------------------------------------------------------------
 
-        let (coo, csc, csr, correct_det) = Samples::unsymmetric_5x5_with_shuffled_entries(false);
+        let (coo, csc, csr, correct_det) = Samples::mkl_unsymmetric_5x5(false);
         let mat = coo.as_matrix();
         let correct = &[
             [1.0, -1.0, 0.0, -3.0, 0.0],

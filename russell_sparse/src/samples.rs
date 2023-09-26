@@ -736,15 +736,15 @@ impl Samples {
             ncol: 7,
             values: vec![
                 1.0, // j=0, p=(0)
-                //      j=1, p=(0)
+                //      j=1, p=(1)
                 3.0, // j=2, p=(1)
-                //      j=3, p=(1)
+                //      j=3, p=(2)
                 5.0, // j=4, p=(2)
-                //      j=5, p=(2)
+                //      j=5, p=(3)
                 7.0, // j=6, p=(3)
             ], //            p=(4)
             row_indices: vec![0, 0, 0, 0],
-            col_pointers: vec![0, 0, 1, 1, 2, 2, 3, 4],
+            col_pointers: vec![0, 1, 1, 2, 2, 3, 3, 4],
         };
         let csr = CsrMatrix {
             symmetry: None,
@@ -787,7 +787,7 @@ impl Samples {
             values: vec![
                 2.0, 4.0, 6.0, // j=0, p=(0),1,2
             ], //                      p=(3)
-            row_indices: vec![0, 0, 0],
+            row_indices: vec![1, 3, 5],
             col_pointers: vec![0, 3],
         };
         // CSR matrix
@@ -827,9 +827,9 @@ impl Samples {
         coo.put(0, 1, -2.0).unwrap();
         coo.put(1, 1, -4.0).unwrap();
         coo.put(2, 1, -6.0).unwrap();
-        coo.put(0, 2, 1.0).unwrap();
-        coo.put(1, 2, 2.0).unwrap();
-        coo.put(2, 2, 3.0).unwrap();
+        coo.put(0, 3, 1.0).unwrap();
+        coo.put(1, 3, 2.0).unwrap();
+        coo.put(2, 3, 3.0).unwrap();
         // CSC matrix
         let csc = CscMatrix {
             symmetry: None,
@@ -877,7 +877,7 @@ impl Samples {
 mod tests {
     use super::Samples;
     use russell_chk::approx_eq;
-    use russell_lab::{mat_inverse, Matrix};
+    use russell_lab::{mat_approx_eq, mat_inverse, Matrix};
 
     #[test]
     fn samples_are_correct() {
@@ -1007,15 +1007,17 @@ mod tests {
 
         let (coo, csc, csr, _) = Samples::rectangular_3x4();
         let mat = coo.as_matrix();
-        let correct = "┌   ┐\n\
-                       │ 0 │\n\
-                       │ 2 │\n\
-                       │ 0 │\n\
-                       │ 4 │\n\
-                       │ 0 │\n\
-                       │ 6 │\n\
-                       │ 0 │\n\
-                       └   ┘";
+        let correct = &[
+            [5.0, -2.0, 0.0, 1.0],  //
+            [10.0, -4.0, 0.0, 2.0], //
+            [15.0, -6.0, 0.0, 3.0], //
+        ];
+        mat_approx_eq(&mat, correct, 1e-15);
+        let correct = "┌             ┐\n\
+                       │  5 -2  0  1 │\n\
+                       │ 10 -4  0  2 │\n\
+                       │ 15 -6  0  3 │\n\
+                       └             ┘";
         assert_eq!(format!("{}", mat), correct);
         csc.validate().unwrap();
         csr.validate().unwrap();

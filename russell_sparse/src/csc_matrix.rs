@@ -928,8 +928,8 @@ mod tests {
             Samples::mkl_sample1_symmetric_full(false),
             Samples::mkl_sample1_symmetric_lower(false),
             Samples::mkl_sample1_symmetric_upper(false),
-            // Samples::rectangular_1x7(),
-            // Samples::rectangular_7x1(),
+            Samples::rectangular_1x7(),
+            Samples::rectangular_7x1(),
             Samples::rectangular_3x4(),
         ] {
             let csc = CscMatrix::from_csr(&csr).unwrap();

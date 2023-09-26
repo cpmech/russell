@@ -509,7 +509,7 @@ mod tests {
         // .  .  5  6  .
         // .  .  7  8  .
         // .  .  .  .  9
-        let (coo, csc_correct, _, _) = Samples::block_unsym_5x5_with_shuffled_entries(false);
+        let (coo, csc_correct, _, _) = Samples::block_unsymmetric_5x5(false);
         let csc = CscMatrix::from_coo(&coo).unwrap();
         assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
         assert_eq!(&csc.row_indices, &csc_correct.row_indices);
@@ -924,7 +924,7 @@ mod tests {
         for (_, csc_correct, csr, _) in [
             Samples::umfpack_unsymmetric_5x5(false),
             Samples::mkl_unsymmetric_5x5(false),
-            Samples::block_unsym_5x5_with_shuffled_entries(false),
+            Samples::block_unsymmetric_5x5(false),
             Samples::mkl_sample1_symmetric_full(false),
             Samples::mkl_sample1_symmetric_lower(false),
             Samples::mkl_sample1_symmetric_upper(false),

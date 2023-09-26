@@ -177,7 +177,7 @@ impl Samples {
     /// .  .  7  8  .
     /// .  .  .  .  9
     /// ```
-    pub fn block_unsym_5x5_with_shuffled_entries(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn block_unsymmetric_5x5(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let mut coo = CooMatrix::new(5, 5, 9, None, one_based).unwrap();
         coo.put(4, 4, 9.0).unwrap();
         coo.put(0, 0, 1.0).unwrap();
@@ -934,8 +934,8 @@ mod tests {
             [0.0, 0.0, 0.0, 0.0, 9.0],
         ];
         for (coo, csc, csr, correct_det) in [
-            Samples::block_unsym_5x5_with_shuffled_entries(false),
-            Samples::block_unsym_5x5_with_shuffled_entries(true),
+            Samples::block_unsymmetric_5x5(false),
+            Samples::block_unsymmetric_5x5(true),
             Samples::block_unsym_5x5_with_duplicates(false),
             Samples::block_unsym_5x5_with_duplicates(true),
         ] {

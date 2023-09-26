@@ -1,4 +1,4 @@
-use super::{CooMatrix, Genie, Ordering, Scaling, SolverIntelDSS, SolverMUMPS, SolverUMFPACK};
+use super::{CooMatrix, CscMatrix, CsrMatrix, Genie, Ordering, Scaling, SolverIntelDSS, SolverMUMPS, SolverUMFPACK};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -63,6 +63,22 @@ pub trait SolverTrait {
     /// * `coo` -- The COO matrix
     /// * `params` -- configuration parameters; None => use default
     fn factorize_coo(&mut self, coo: &CooMatrix, params: Option<ConfigSolver>) -> Result<(), StrError>;
+
+    /// Performs the factorization (and analysis) given a CSC matrix
+    ///
+    /// # Input
+    ///
+    /// * `csc` -- The CSC matrix
+    /// * `params` -- configuration parameters; None => use default
+    fn factorize_csc(&mut self, csc: &CscMatrix, params: Option<ConfigSolver>) -> Result<(), StrError>;
+
+    /// Performs the factorization (and analysis) given a CSR matrix
+    ///
+    /// # Input
+    ///
+    /// * `csr` -- The CSR matrix
+    /// * `params` -- configuration parameters; None => use default
+    fn factorize_csr(&mut self, csr: &CsrMatrix, params: Option<ConfigSolver>) -> Result<(), StrError>;
 
     /// Computes the solution of the linear system
     ///

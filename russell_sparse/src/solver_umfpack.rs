@@ -1,5 +1,5 @@
-use super::{to_i32, ConfigSolver, CooMatrix, CscMatrix, Ordering, Scaling, SolverTrait};
-use crate::{StrError, Symmetry};
+use super::{to_i32, ConfigSolver, CooMatrix, CscMatrix, CsrMatrix, Ordering, Scaling, SolverTrait, Symmetry};
+use crate::StrError;
 use russell_lab::Vector;
 
 /// Opaque struct holding a C-pointer to InterfaceUMFPACK
@@ -239,6 +239,26 @@ impl SolverTrait for SolverUMFPACK {
         // store information
         self.factorized = true;
         Ok(())
+    }
+
+    /// Performs the factorization (and analysis) given a CSC matrix
+    ///
+    /// # Input
+    ///
+    /// * `csc` -- The CSC matrix
+    /// * `params` -- configuration parameters; None => use default
+    fn factorize_csc(&mut self, _csc: &CscMatrix, _params: Option<ConfigSolver>) -> Result<(), StrError> {
+        return Err("TODO");
+    }
+
+    /// Performs the factorization (and analysis) given a CSR matrix
+    ///
+    /// # Input
+    ///
+    /// * `csr` -- The CSR matrix
+    /// * `params` -- configuration parameters; None => use default
+    fn factorize_csr(&mut self, _csr: &CsrMatrix, _params: Option<ConfigSolver>) -> Result<(), StrError> {
+        return Err("TODO");
     }
 
     /// Computes the solution of the linear system

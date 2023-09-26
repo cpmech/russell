@@ -132,14 +132,18 @@ impl SolverTrait for SolverUMFPACK {
         // check already factorized data
         if self.factorized == true {
             if coo.symmetry != self.factorized_symmetry {
-                return Err("when factorize is called more than once, the subsequent calls must use the same matrix (symmetry differs)");
+                return Err("the subsequent factorizations must use the same matrix (symmetry differs)");
             }
             if coo.nrow != self.factorized_ndim {
-                return Err("when factorize is called more than once, the subsequent calls must use the same matrix (ndim differs)");
+                return Err("the subsequent factorizations must use the same matrix (ndim differs)");
             }
             if coo.nnz != self.factorized_nnz {
-                return Err("when factorize is called more than once, the subsequent calls must use the same matrix (nnz differs)");
+                return Err("the subsequent factorizations must use the same matrix (nnz differs)");
             }
+        } else {
+            self.factorized_symmetry = coo.symmetry;
+            self.factorized_ndim = coo.nrow;
+            self.factorized_nnz = coo.nnz;
         }
 
         // check the COO matrix
@@ -192,7 +196,12 @@ impl SolverTrait for SolverUMFPACK {
         }
 
         // convert COO to CSC
-        let csc = CscMatrix::from_coo(coo)?;
+        if self.factorized {
+            self.csc_matrix.as_mut().unwrap().update_from_coo(coo)?;
+        } else {
+            self.csc_matrix = Some(CscMatrix::from_coo(coo)?);
+        };
+        let csc = &self.csc_matrix.as_ref().unwrap();
         csc.check_dimensions()?;
 
         // matrix config
@@ -228,10 +237,6 @@ impl SolverTrait for SolverUMFPACK {
         }
 
         // store information
-        self.factorized_symmetry = csc.symmetry;
-        self.factorized_ndim = csc.nrow;
-        self.factorized_nnz = csc.col_pointers[csc.ncol] as usize;
-        self.csc_matrix = Some(csc);
         self.factorized = true;
         Ok(())
     }
@@ -444,6 +449,12 @@ mod tests {
         assert_eq!(solver.get_effective_ordering(), "Amd");
         assert_eq!(solver.get_effective_scaling(), "Sum");
 
+        let (a, b, c) = solver.get_determinant();
+        let det = a * f64::powf(b, c);
+        approx_eq(det, 114.0, 1e-13);
+
+        // calling factorize again works
+        solver.factorize_coo(&coo, Some(params)).unwrap();
         let (a, b, c) = solver.get_determinant();
         let det = a * f64::powf(b, c);
         approx_eq(det, 114.0, 1e-13);

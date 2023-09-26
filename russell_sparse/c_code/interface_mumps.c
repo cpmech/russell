@@ -99,8 +99,6 @@ void solver_mumps_drop(struct InterfaceMUMPS *solver) {
 /// @param compute_determinant Requests that determinant be computed
 /// @return A success or fail code
 int32_t solver_mumps_initialize(struct InterfaceMUMPS *solver,
-                                int32_t n,
-                                int32_t nnz,
                                 int32_t symmetry,
                                 int32_t ordering,
                                 int32_t scaling,
@@ -134,9 +132,6 @@ int32_t solver_mumps_initialize(struct InterfaceMUMPS *solver,
         return VERSION_ERROR;
     }
 
-    solver->data.n = n;
-    solver->data.nz = nnz;
-
     solver->data.ICNTL(5) = MUMPS_ICNTL5_ASSEMBLED_MATRIX;
     solver->data.ICNTL(6) = MUMPS_ICNTL6_PERMUT_AUTO;
     solver->data.ICNTL(7) = ordering;
@@ -169,6 +164,8 @@ int32_t solver_mumps_initialize(struct InterfaceMUMPS *solver,
 /// @param verbose Shows messages
 /// @return A success or fail code
 int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
+                               int32_t n,
+                               int32_t nnz,
                                int32_t const *indices_i,
                                int32_t const *indices_j,
                                double const *values_aij,
@@ -179,6 +176,8 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
 
     // set matrix components and perform analysis (must be done for each factorization)
 
+    solver->data.n = n;
+    solver->data.nz = nnz;
     solver->data.irn = (int *)indices_i;
     solver->data.jcn = (int *)indices_j;
     solver->data.a = (double *)values_aij;

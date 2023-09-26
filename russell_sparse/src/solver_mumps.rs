@@ -16,8 +16,6 @@ extern "C" {
     fn solver_mumps_drop(solver: *mut InterfaceMUMPS);
     fn solver_mumps_initialize(
         solver: *mut InterfaceMUMPS,
-        n: i32,
-        nnz: i32,
         symmetry: i32,
         ordering: i32,
         scaling: i32,
@@ -28,6 +26,8 @@ extern "C" {
     ) -> i32;
     fn solver_mumps_factorize(
         solver: *mut InterfaceMUMPS,
+        n: i32,
+        nnz: i32,
         indices_i: *const i32,
         indices_j: *const i32,
         values_aij: *const f64,
@@ -162,8 +162,6 @@ impl SolverTrait for SolverMUMPS {
         unsafe {
             let status = solver_mumps_initialize(
                 self.solver,
-                self.nrow,
-                self.nnz,
                 sym_i32,
                 ordering,
                 scaling,
@@ -206,10 +204,16 @@ impl SolverTrait for SolverMUMPS {
         if coo.symmetry != self.symmetry {
             return Err("the symmetry/storage of the CooMatrix must be the same as the one used in initialize");
         }
+        coo.check_dimensions_ready()?;
+        if coo.nrow != coo.ncol {
+            return Err("matrix must be square");
+        }
         let verb = if verbose { 1 } else { 0 };
         unsafe {
             let status = solver_mumps_factorize(
                 self.solver,
+                self.nrow,
+                self.nnz,
                 coo.indices_i.as_ptr(),
                 coo.indices_j.as_ptr(),
                 coo.values_aij.as_ptr(),

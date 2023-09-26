@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,10 +28,17 @@ const MUMPS_INT MUMPS_ICNTL28_SEQUENTIAL = 1;      // section 5.4, page 33
 
 /// @brief Holds the data for MUMPS
 struct InterfaceMUMPS {
-    DMUMPS_STRUC_C data;              // data structure
-    int32_t done_job_init;            // job init successfully
-    double determinant_coefficient_a; // if asked, stores the determinant coefficient a
-    double determinant_exponent_c;    // if asked, stores the determinant exponent c
+    /// @brief Holds the MUMPS data structure
+    DMUMPS_STRUC_C data;
+
+    /// @brief job init completed successfully
+    int32_t done_job_init;
+
+    /// @brief indicates that the initialization has been completed
+    int32_t initialization_completed;
+
+    /// @brief indicates that the factorization (at least once) has been completed
+    int32_t factorization_completed;
 };
 
 /// @brief Sets verbose mode
@@ -62,6 +70,8 @@ struct InterfaceMUMPS *solver_mumps_new() {
     solver->data.jcn = NULL;
     solver->data.a = NULL;
     solver->done_job_init = C_FALSE;
+    solver->initialization_completed = C_FALSE;
+    solver->factorization_completed = C_FALSE;
 
     return solver;
 }
@@ -86,97 +96,118 @@ void solver_mumps_drop(struct InterfaceMUMPS *solver) {
     free(solver);
 }
 
-/// @brief Performs the initialization
+/// @brief Performs the factorization
 /// @param solver Is a pointer to the solver interface
-/// @param n Is the number of rows and columns of the coefficient matrix
-/// @param nnz Is the number of non-zero values in the coefficient matrix
-/// @param symmetry Is the MUMPS code for the kind of symmetry, if any
-/// @param ordering Is the MUMPS ordering code
-/// @param scaling Is the MUMPS scaling code
+/// @note Output
+/// @param effective_ordering used ordering (after factorize)
+/// @param effective_scaling used scaling (after factorize)
+/// @param determinant_coefficient determinant coefficient: det = coefficient * pow(2, exponent)
+/// @param determinant_exponent determinant exponent: det = coefficient * pow(2, exponent)
+/// @note Input
+/// @param ordering Is the ordering code
+/// @param scaling Is the scaling code
 /// @param pct_inc_workspace Is the allowed percentage increase of the workspace
 /// @param max_work_memory Is the allowed maximum memory
 /// @param openmp_num_threads Is the number of threads allowed for OpenMP
+/// @note Requests
 /// @param compute_determinant Requests that determinant be computed
+/// @param verbose Shows messages
+/// @note Matrix config
+/// @param general_symmetric Whether the matrix is general symmetric (not necessarily positive-definite) or not
+/// @param positive_definite Whether the matrix is symmetric and positive-definite or not
+/// @param ndim Is the number of rows and columns of the coefficient matrix
+/// @param nnz Is the number of non-zero values in the coefficient matrix
+/// @note Matrix
+/// @param indices_i Are the CooMatrix row indices
+/// @param indices_j Are the CooMatrix column indices
+/// @param values_aij Are the CooMatrix values
 /// @return A success or fail code
-int32_t solver_mumps_initialize(struct InterfaceMUMPS *solver,
-                                int32_t symmetry,
-                                int32_t ordering,
-                                int32_t scaling,
-                                int32_t pct_inc_workspace,
-                                int32_t max_work_memory,
-                                int32_t openmp_num_threads,
-                                int32_t compute_determinant) {
+int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
+                               // output
+                               int32_t *effective_ordering,
+                               int32_t *effective_scaling,
+                               double *determinant_coefficient,
+                               double *determinant_exponent,
+                               // input
+                               int32_t ordering,
+                               int32_t scaling,
+                               int32_t pct_inc_workspace,
+                               int32_t max_work_memory,
+                               int32_t openmp_num_threads,
+                               // requests
+                               int32_t compute_determinant,
+                               int32_t verbose,
+                               // matrix config
+                               int32_t general_symmetric,
+                               int32_t positive_definite,
+                               int32_t ndim,
+                               int32_t nnz,
+                               // matrix
+                               int32_t const *indices_i,
+                               int32_t const *indices_j,
+                               double const *values_aij) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
 
-    solver->data.comm_fortran = MUMPS_IGNORED;
-    solver->data.par = MUMPS_PAR_HOST_ALSO_WORKS;
-    solver->data.sym = symmetry;
+    // perform initialization
 
-    set_mumps_verbose(&solver->data, C_FALSE);
-    solver->data.job = MUMPS_JOB_INITIALIZE;
-    dmumps_c(&solver->data);
-    if (solver->data.INFOG(1) != 0) {
-        return solver->data.INFOG(1);
-    }
-    solver->done_job_init = C_TRUE;
+    if (solver->initialization_completed == C_FALSE) {
 
-    if (strcmp(solver->data.version_number, MUMPS_VERSION) != 0) {
-        printf("\n\n\nERROR: MUMPS LIBRARY VERSION = ");
-        int i;
-        for (i = 0; i < MUMPS_VERSION_MAX_LEN; i++) {
-            printf("%c", solver->data.version_number[i]);
+        solver->data.comm_fortran = MUMPS_IGNORED;
+        solver->data.par = MUMPS_PAR_HOST_ALSO_WORKS;
+        solver->data.sym = 0; // unsymmetric (page 27)
+        if (general_symmetric == C_TRUE) {
+            solver->data.sym = 2; // general symmetric (page 27)
+        } else if (positive_definite == C_TRUE) {
+            solver->data.sym = 1; // symmetric positive-definite (page 27)
         }
-        printf(" != INCLUDE VERSION = %s \n\n\n", MUMPS_VERSION);
-        return VERSION_ERROR;
+
+        set_mumps_verbose(&solver->data, C_FALSE);
+        solver->data.job = MUMPS_JOB_INITIALIZE;
+        dmumps_c(&solver->data);
+        if (solver->data.INFOG(1) != 0) {
+            return solver->data.INFOG(1);
+        }
+
+        solver->done_job_init = C_TRUE;
+
+        if (strcmp(solver->data.version_number, MUMPS_VERSION) != 0) {
+            printf("\n\n\nERROR: MUMPS LIBRARY VERSION = ");
+            int i;
+            for (i = 0; i < MUMPS_VERSION_MAX_LEN; i++) {
+                printf("%c", solver->data.version_number[i]);
+            }
+            printf(" != INCLUDE VERSION = %s \n\n\n", MUMPS_VERSION);
+            return VERSION_ERROR;
+        }
+
+        solver->data.ICNTL(5) = MUMPS_ICNTL5_ASSEMBLED_MATRIX;
+        solver->data.ICNTL(6) = MUMPS_ICNTL6_PERMUT_AUTO;
+        solver->data.ICNTL(7) = ordering;
+        solver->data.ICNTL(8) = scaling;
+        solver->data.ICNTL(14) = pct_inc_workspace;
+        solver->data.ICNTL(16) = openmp_num_threads;
+        solver->data.ICNTL(18) = MUMPS_ICNTL18_CENTRALIZED;
+        solver->data.ICNTL(23) = max_work_memory;
+        solver->data.ICNTL(28) = MUMPS_ICNTL28_SEQUENTIAL;
+        solver->data.ICNTL(29) = MUMPS_IGNORED;
+
+        solver->initialization_completed = C_TRUE;
     }
 
-    solver->data.ICNTL(5) = MUMPS_ICNTL5_ASSEMBLED_MATRIX;
-    solver->data.ICNTL(6) = MUMPS_ICNTL6_PERMUT_AUTO;
-    solver->data.ICNTL(7) = ordering;
-    solver->data.ICNTL(8) = scaling;
-    solver->data.ICNTL(14) = pct_inc_workspace;
-    solver->data.ICNTL(16) = openmp_num_threads;
-    solver->data.ICNTL(18) = MUMPS_ICNTL18_CENTRALIZED;
-    solver->data.ICNTL(23) = max_work_memory;
-    solver->data.ICNTL(28) = MUMPS_ICNTL28_SEQUENTIAL;
-    solver->data.ICNTL(29) = MUMPS_IGNORED;
+    // handle requests
 
     if (compute_determinant == C_TRUE) {
-        // The determinant is obtained by computing
-        // (a + ib) * 2^c where a = RINFOG(12), b = RINFOG(13) and c = INFOG(34).
-        // In real arithmetic b = RINFOG(13) is equal to 0.
         solver->data.ICNTL(33) = 1;
         solver->data.ICNTL(8) = 0; // it's recommended to disable scaling when computing the determinant
     } else {
         solver->data.ICNTL(33) = 0;
     }
 
-    return 0; // success
-}
-
-/// @brief Performs the factorization
-/// @param solver Is a pointer to the solver interface
-/// @param indices_i Are the CooMatrix row indices
-/// @param indices_j Are the CooMatrix column indices
-/// @param values_aij Are the CooMatrix values
-/// @param verbose Shows messages
-/// @return A success or fail code
-int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
-                               int32_t n,
-                               int32_t nnz,
-                               int32_t const *indices_i,
-                               int32_t const *indices_j,
-                               double const *values_aij,
-                               int32_t verbose) {
-    if (solver == NULL) {
-        return NULL_POINTER_ERROR;
-    }
-
     // set matrix components and perform analysis (must be done for each factorization)
 
-    solver->data.n = n;
+    solver->data.n = ndim;
     solver->data.nz = nnz;
     solver->data.irn = (int *)indices_i;
     solver->data.jcn = (int *)indices_j;
@@ -187,8 +218,7 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
     dmumps_c(&solver->data);
 
     if (solver->data.INFO(1) != 0) {
-        // error
-        return solver->data.INFOG(1);
+        return solver->data.INFOG(1); // error
     }
 
     // perform factorization
@@ -197,15 +227,21 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
     solver->data.job = MUMPS_JOB_FACTORIZE;
     dmumps_c(&solver->data);
 
-    // read determinant
+    // save the output params
+    *effective_ordering = solver->data.INFOG(7);
+    *effective_scaling = solver->data.INFOG(33);
 
-    if (solver->data.ICNTL(33) == 1) {
-        solver->determinant_coefficient_a = solver->data.RINFOG(12);
-        solver->determinant_exponent_c = solver->data.INFOG(34);
+    // read the determinant
+
+    if (compute_determinant == C_TRUE && solver->data.ICNTL(33) == 1) {
+        *determinant_coefficient = solver->data.RINFOG(12);
+        *determinant_exponent = solver->data.INFOG(34);
     } else {
-        solver->determinant_coefficient_a = 0.0;
-        solver->determinant_exponent_c = 0.0;
+        *determinant_coefficient = 0.0;
+        *determinant_exponent = 0.0;
     }
+
+    solver->factorization_completed = C_TRUE;
 
     return solver->data.INFOG(1);
 }
@@ -220,6 +256,10 @@ int32_t solver_mumps_solve(struct InterfaceMUMPS *solver, double *rhs, int32_t v
         return NULL_POINTER_ERROR;
     }
 
+    if (solver->factorization_completed == C_FALSE) {
+        return NEED_FACTORIZATION;
+    }
+
     solver->data.rhs = rhs;
 
     set_mumps_verbose(&solver->data, verbose);
@@ -227,44 +267,4 @@ int32_t solver_mumps_solve(struct InterfaceMUMPS *solver, double *rhs, int32_t v
     dmumps_c(&solver->data);
 
     return solver->data.INFOG(1);
-}
-
-/// @brief Returns the effective ordering using during the computations
-/// @param solver Is a pointer to the solver
-/// @return The used MUMPS ordering code
-int32_t solver_mumps_get_ordering(const struct InterfaceMUMPS *solver) {
-    if (solver == NULL) {
-        return -1;
-    }
-    return solver->data.INFOG(7);
-}
-
-/// @brief Returns the effective scaling using during the computations
-/// @param solver Is a pointer to the solver
-/// @return The used MUMPS scaling code
-int32_t solver_mumps_get_scaling(const struct InterfaceMUMPS *solver) {
-    if (solver == NULL) {
-        return -1;
-    }
-    return solver->data.INFOG(33);
-}
-
-/// @brief Returns the coefficient needed to compute the determinant, if requested
-/// @param solver Is a pointer to the solver
-/// @return The coefficient a of a * 2^c
-double solver_mumps_get_det_coef_a(const struct InterfaceMUMPS *solver) {
-    if (solver == NULL) {
-        return 0.0;
-    }
-    return solver->determinant_coefficient_a;
-}
-
-/// @brief Returns the exponent needed to compute the determinant, if requested
-/// @param solver Is a pointer to the solver
-/// @return The exponent c of a * 2^c
-double solver_mumps_get_det_exp_c(const struct InterfaceMUMPS *solver) {
-    if (solver == NULL) {
-        return 0.0;
-    }
-    return solver->determinant_exponent_c;
 }

@@ -1,4 +1,4 @@
-use super::{to_i32, ConfigSolver, CooMatrix, Ordering, Scaling, SolverTrait, Storage, Symmetry};
+use super::{to_i32, ConfigSolver, CooMatrix, Ordering, Scaling, SolverTrait, Symmetry};
 use crate::StrError;
 use russell_lab::{vec_copy, Vector};
 
@@ -14,30 +14,33 @@ struct InterfaceMUMPS {
 extern "C" {
     fn solver_mumps_new() -> *mut InterfaceMUMPS;
     fn solver_mumps_drop(solver: *mut InterfaceMUMPS);
-    fn solver_mumps_initialize(
+    fn solver_mumps_factorize(
         solver: *mut InterfaceMUMPS,
-        symmetry: i32,
+        // output
+        effective_ordering: *mut i32,
+        effective_scaling: *mut i32,
+        determinant_coefficient: *mut f64,
+        determinant_exponent: *mut f64,
+        // input
         ordering: i32,
         scaling: i32,
         pct_inc_workspace: i32,
         max_work_memory: i32,
         openmp_num_threads: i32,
+        // requests
         compute_determinant: i32,
-    ) -> i32;
-    fn solver_mumps_factorize(
-        solver: *mut InterfaceMUMPS,
-        n: i32,
+        verbose: i32,
+        // matrix config
+        general_symmetric: i32,
+        positive_definite: i32,
+        ndim: i32,
         nnz: i32,
+        // matrix
         indices_i: *const i32,
         indices_j: *const i32,
         values_aij: *const f64,
-        verbose: i32,
     ) -> i32;
     fn solver_mumps_solve(solver: *mut InterfaceMUMPS, rhs: *mut f64, verbose: i32) -> i32;
-    fn solver_mumps_get_ordering(solver: *const InterfaceMUMPS) -> i32;
-    fn solver_mumps_get_scaling(solver: *const InterfaceMUMPS) -> i32;
-    fn solver_mumps_get_det_coef_a(solver: *const InterfaceMUMPS) -> f64;
-    fn solver_mumps_get_det_exp_c(solver: *const InterfaceMUMPS) -> f64;
 }
 
 /// Wraps the MUMPS solver for (large) sparse linear systems
@@ -47,20 +50,26 @@ pub struct SolverMUMPS {
     /// Holds a pointer to the C interface to MUMPS
     solver: *mut InterfaceMUMPS,
 
-    /// Symmetry option set by initialize (for consistency checking)
-    symmetry: Option<Symmetry>,
-
-    /// Number of rows set by initialize (for consistency checking)
-    nrow: i32,
-
-    /// Number of non-zero values set by initialize (for consistency checking)
-    nnz: i32,
-
-    /// Indicates whether the C interface has been initialized or not
-    initialized: bool,
-
     /// Indicates whether the sparse matrix has been factorized or not
     factorized: bool,
+
+    /// TODO: remove this
+    config: Option<ConfigSolver>,
+
+    /// Matrix dimension (to validate vectors in solve)
+    ndim: usize,
+
+    /// Holds the used ordering (after factorize)
+    effective_ordering: i32,
+
+    /// Holds the used scaling (after factorize)
+    effective_scaling: i32,
+
+    /// Holds the determinant coefficient: det = coefficient * pow(2, exponent)
+    determinant_coefficient: f64,
+
+    /// Holds the determinant exponent: det = coefficient * pow(2, exponent)
+    determinant_exponent: f64,
 }
 
 impl Drop for SolverMUMPS {
@@ -82,11 +91,13 @@ impl SolverMUMPS {
             }
             Ok(SolverMUMPS {
                 solver,
-                symmetry: None,
-                nrow: 0,
-                nnz: 0,
-                initialized: false,
                 factorized: false,
+                config: None,
+                ndim: 0,
+                effective_ordering: -1,
+                effective_scaling: -1,
+                determinant_coefficient: 0.0,
+                determinant_exponent: 0.0,
             })
         }
     }
@@ -104,34 +115,45 @@ impl SolverTrait for SolverMUMPS {
     /// * `config` -- configuration parameters; None => use default
     fn initialize(
         &mut self,
-        ndim: usize,
-        nnz: usize,
-        symmetry: Option<Symmetry>,
+        _ndim: usize,
+        _nnz: usize,
+        _symmetry: Option<Symmetry>,
         config: Option<ConfigSolver>,
     ) -> Result<(), StrError> {
-        let cfg = if let Some(c) = config { c } else { ConfigSolver::new() };
-        let sym_i32 = match symmetry {
-            Some(sym) => match sym {
-                Symmetry::General(storage) => {
-                    if storage != Storage::Lower {
-                        return Err("if the matrix is symmetric, the storage must be lower triangular");
-                    }
-                    2 // general symmetric (page 27)
-                }
-                Symmetry::PositiveDefinite(storage) => {
-                    if storage != Storage::Lower {
-                        return Err("if the matrix is positive-definite, the storage must be lower triangular");
-                    }
-                    1 // symmetric positive-definite (page 27)
-                }
-            },
-            None => 0, // unsymmetric (page 27)
-        };
-        self.symmetry = symmetry;
-        self.nrow = to_i32(ndim)?;
-        self.nnz = to_i32(nnz)?;
-        self.initialized = false;
+        self.config = config;
+        Ok(())
+    }
+
+    /// Performs the factorization (and analysis) given COO matrix
+    ///
+    /// **Note::** Initialize must be called first. Also, the dimension and symmetry/storage
+    /// of the CooMatrix must be the same as the ones provided by `initialize`.
+    ///
+    /// # Input
+    ///
+    /// * `coo` -- The **same** matrix provided to `initialize`
+    /// * `verbose` -- shows messages
+    fn factorize_coo(&mut self, coo: &CooMatrix, verbose: bool) -> Result<(), StrError> {
+        // set flag
         self.factorized = false;
+
+        // check the COO matrix
+        if !coo.one_based {
+            return Err("the COO matrix must have one-based (FORTRAN) indices as required by MUMPS");
+        }
+        if coo.nrow != coo.ncol {
+            return Err("the matrix must be square");
+        }
+        coo.check_dimensions_ready()?;
+
+        // configuration parameters
+        let cfg = if let Some(configuration) = self.config {
+            configuration
+        } else {
+            ConfigSolver::new()
+        };
+
+        // input parameters
         let ordering = match cfg.ordering {
             Ordering::Amd => 0,     // Amd (page 35)
             Ordering::Amf => 2,     // Amf (page 35)
@@ -155,74 +177,57 @@ impl SolverTrait for SolverMUMPS {
             Scaling::RowColRig => 8,  // RowColRig (page 33)
             Scaling::Sum => 77,       // Sum => Auto (page 33)
         };
-        let pct_i32 = to_i32(cfg.mumps_pct_inc_workspace)?;
-        let mem_i32 = to_i32(cfg.mumps_max_work_memory)?;
-        let nt_i32 = to_i32(cfg.mumps_openmp_num_threads)?;
-        let det_i32 = if cfg.compute_determinant { 1 } else { 0 };
-        unsafe {
-            let status = solver_mumps_initialize(
-                self.solver,
-                sym_i32,
-                ordering,
-                scaling,
-                pct_i32,
-                mem_i32,
-                nt_i32,
-                det_i32,
-            );
-            if status != 0 {
-                return Err(handle_mumps_error_code(status));
-            }
-        }
-        self.initialized = true;
-        Ok(())
-    }
+        let pct_inc_workspace = to_i32(cfg.mumps_pct_inc_workspace)?;
+        let max_work_memory = to_i32(cfg.mumps_max_work_memory)?;
+        let openmp_num_threads = to_i32(cfg.mumps_openmp_num_threads)?;
 
-    /// Performs the factorization (and analysis) given COO matrix
-    ///
-    /// **Note::** Initialize must be called first. Also, the dimension and symmetry/storage
-    /// of the CooMatrix must be the same as the ones provided by `initialize`.
-    ///
-    /// # Input
-    ///
-    /// * `coo` -- The **same** matrix provided to `initialize`
-    /// * `verbose` -- shows messages
-    fn factorize_coo(&mut self, coo: &CooMatrix, verbose: bool) -> Result<(), StrError> {
-        self.factorized = false;
-        if !self.initialized {
-            return Err("the function initialize must be called before factorize");
-        }
-        if !coo.one_based {
-            return Err("the COO matrix must have one-based (FORTRAN) indices as required by MUMPS");
-        }
-        if coo.nrow != self.nrow as usize || coo.ncol != self.nrow as usize {
-            return Err("the dimension of the CooMatrix must be the same as the one provided to initialize");
-        }
-        if coo.pos != self.nnz as usize {
-            return Err("the number of non-zero values must be the same as the one provided to initialize");
-        }
-        if coo.symmetry != self.symmetry {
-            return Err("the symmetry/storage of the CooMatrix must be the same as the one used in initialize");
-        }
-        coo.check_dimensions_ready()?;
-        if coo.nrow != coo.ncol {
-            return Err("matrix must be square");
-        }
-        let verb = if verbose { 1 } else { 0 };
+        // requests
+        let determinant = if cfg.compute_determinant { 1 } else { 0 };
+        let verbose_mode = if verbose { 1 } else { 0 };
+
+        // extract the symmetry flags and check the storage type
+        let (general_symmetric, positive_definite) = match coo.symmetry {
+            Some(symmetry) => symmetry.status(true, false)?,
+            None => (0, 0),
+        };
+
+        // matrix config
+        let ndim = to_i32(coo.nrow)?;
+        let nnz = to_i32(coo.pos)?;
+
+        // call MUMPS factorize
         unsafe {
             let status = solver_mumps_factorize(
                 self.solver,
-                self.nrow,
-                self.nnz,
+                // output
+                &mut self.effective_ordering,
+                &mut self.effective_scaling,
+                &mut self.determinant_coefficient,
+                &mut self.determinant_exponent,
+                // input
+                ordering,
+                scaling,
+                pct_inc_workspace,
+                max_work_memory,
+                openmp_num_threads,
+                // requests
+                determinant,
+                verbose_mode,
+                // matrix config
+                general_symmetric,
+                positive_definite,
+                ndim,
+                nnz,
+                // matrix
                 coo.indices_i.as_ptr(),
                 coo.indices_j.as_ptr(),
                 coo.values_aij.as_ptr(),
-                verb,
             );
             if status != 0 {
                 return Err(handle_mumps_error_code(status));
             }
         }
+        self.ndim = coo.nrow;
         self.factorized = true;
         Ok(())
     }
@@ -244,10 +249,10 @@ impl SolverTrait for SolverMUMPS {
         if !self.factorized {
             return Err("the function factorize must be called before solve");
         }
-        if x.dim() != self.nrow as usize {
+        if x.dim() != self.ndim as usize {
             return Err("the dimension of the vector of unknown values x is incorrect");
         }
-        if rhs.dim() != self.nrow as usize {
+        if rhs.dim() != self.ndim as usize {
             return Err("the dimension of the right-hand side vector is incorrect");
         }
         let verb = if verbose { 1 } else { 0 };
@@ -271,44 +276,34 @@ impl SolverTrait for SolverMUMPS {
     ///
     /// **Note:** This is only available if compute_determinant was requested.
     fn get_determinant(&self) -> (f64, f64, f64) {
-        unsafe {
-            let a = solver_mumps_get_det_coef_a(self.solver);
-            let c = solver_mumps_get_det_exp_c(self.solver);
-            (a, 2.0, c)
-        }
+        (self.determinant_coefficient, 2.0, self.determinant_exponent)
     }
 
     /// Returns the ordering effectively used by the solver
     fn get_effective_ordering(&self) -> String {
-        unsafe {
-            let ordering = solver_mumps_get_ordering(self.solver);
-            match ordering {
-                0 => "Amd".to_string(),
-                2 => "Amf".to_string(),
-                7 => "Auto".to_string(),
-                5 => "Metis".to_string(),
-                4 => "Pord".to_string(),
-                6 => "Qamd".to_string(),
-                3 => "Scotch".to_string(),
-                _ => "Unknown".to_string(),
-            }
+        match self.effective_ordering {
+            0 => "Amd".to_string(),
+            2 => "Amf".to_string(),
+            7 => "Auto".to_string(),
+            5 => "Metis".to_string(),
+            4 => "Pord".to_string(),
+            6 => "Qamd".to_string(),
+            3 => "Scotch".to_string(),
+            _ => "Unknown".to_string(),
         }
     }
 
     /// Returns the scaling effectively used by the solver
     fn get_effective_scaling(&self) -> String {
-        unsafe {
-            let scaling = solver_mumps_get_scaling(self.solver);
-            match scaling {
-                77 => "Auto".to_string(),
-                3 => "Column".to_string(),
-                1 => "Diagonal".to_string(),
-                0 => "No".to_string(),
-                4 => "RowCol".to_string(),
-                7 => "RowColIter".to_string(),
-                8 => "RowColRig".to_string(),
-                _ => "Unknown".to_string(),
-            }
+        match self.effective_scaling {
+            77 => "Auto".to_string(),
+            3 => "Column".to_string(),
+            1 => "Diagonal".to_string(),
+            0 => "No".to_string(),
+            4 => "RowCol".to_string(),
+            7 => "RowColIter".to_string(),
+            8 => "RowColRig".to_string(),
+            _ => "Unknown".to_string(),
         }
     }
 
@@ -418,7 +413,7 @@ fn handle_mumps_error_code(err: i32) -> StrError {
 #[cfg(test)]
 mod tests {
     use super::{handle_mumps_error_code, SolverMUMPS};
-    use crate::{ConfigSolver, CooMatrix, Ordering, Samples, Scaling, SolverTrait, Storage, Symmetry};
+    use crate::{ConfigSolver, CooMatrix, Ordering, Samples, Scaling, SolverTrait};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 
@@ -435,31 +430,10 @@ mod tests {
 
         // allocate a new solver
         let mut solver = SolverMUMPS::new().unwrap();
-        assert!(!solver.initialized);
         assert!(!solver.factorized);
-
-        // initialize fails on incorrect symmetry/storage
-        assert_eq!(
-            solver
-                .initialize(1, 1, Some(Symmetry::General(Storage::Upper)), None)
-                .err(),
-            Some("if the matrix is symmetric, the storage must be lower triangular")
-        );
-        assert_eq!(
-            solver
-                .initialize(1, 1, Some(Symmetry::PositiveDefinite(Storage::Upper)), None)
-                .err(),
-            Some("if the matrix is positive-definite, the storage must be lower triangular")
-        );
 
         // sample matrix
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(true);
-
-        // factorize requests initialize
-        assert_eq!(
-            solver.factorize_coo(&coo, false).err(),
-            Some("the function initialize must be called before factorize")
-        );
 
         // set params
         let mut config = ConfigSolver::new();
@@ -471,34 +445,6 @@ mod tests {
         solver
             .initialize(coo.nrow, coo.pos, coo.symmetry, Some(config))
             .unwrap();
-        assert!(solver.initialized);
-
-        // factorize fails on incompatible coo matrix
-        let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo_wrong_1 = CooMatrix::new(1, 5, 13, None, true).unwrap();
-        let coo_wrong_2 = CooMatrix::new(5, 1, 13, None, true).unwrap();
-        let coo_wrong_3 = CooMatrix::new(5, 5, 12, None, true).unwrap();
-        let mut coo_wrong_4 = CooMatrix::new(5, 5, 13, sym, true).unwrap();
-        for _ in 0..13 {
-            coo_wrong_1.put(0, 0, 1.0).unwrap();
-            coo_wrong_4.put(0, 0, 1.0).unwrap();
-        }
-        assert_eq!(
-            solver.factorize_coo(&coo_wrong_1, false).err(),
-            Some("the dimension of the CooMatrix must be the same as the one provided to initialize")
-        );
-        assert_eq!(
-            solver.factorize_coo(&coo_wrong_2, false).err(),
-            Some("the dimension of the CooMatrix must be the same as the one provided to initialize")
-        );
-        assert_eq!(
-            solver.factorize_coo(&coo_wrong_3, false).err(),
-            Some("the number of non-zero values must be the same as the one provided to initialize")
-        );
-        assert_eq!(
-            solver.factorize_coo(&coo_wrong_4, false).err(),
-            Some("the symmetry/storage of the CooMatrix must be the same as the one used in initialize")
-        );
 
         // solve fails on non-factorized system
         assert_eq!(
@@ -562,7 +508,6 @@ mod tests {
         config.ordering = Ordering::Auto;
         config.scaling = Scaling::Auto;
         let mut solver = SolverMUMPS::new().unwrap();
-        assert!(!solver.initialized);
         assert!(!solver.factorized);
         solver
             .initialize(coo_pd_lower.nrow, coo_pd_lower.pos, coo_pd_lower.symmetry, Some(config))

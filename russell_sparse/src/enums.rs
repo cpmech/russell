@@ -1,3 +1,5 @@
+use crate::StrError;
+
 /// Specifies the underlying library that does all the magic
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Genie {
@@ -62,6 +64,42 @@ impl Symmetry {
         match self {
             Self::General(storage) => *storage == Storage::Upper,
             Self::PositiveDefinite(storage) => *storage == Storage::Upper,
+        }
+    }
+
+    /// Returns status flags indicating the type of symmetry, if any
+    ///
+    /// Returns `(general_symmetric, positive_definite)`
+    ///
+    /// # Input
+    ///
+    /// * `must_be_lower` -- makes sure that the storage is Lower
+    /// * `must_be_upper` -- makes sure that the storage is Upper
+    ///
+    /// # Output
+    ///
+    /// * `general_symmetric` -- 1 if true, 0 otherwise
+    /// * `positive_definite` -- 1 if true, 0 otherwise
+    pub fn status(&self, must_be_lower: bool, must_be_upper: bool) -> Result<(i32, i32), StrError> {
+        match self {
+            Self::General(storage) => {
+                if must_be_lower && *storage != Storage::Lower {
+                    return Err("if the matrix is general symmetric, the required storage is lower triangular");
+                }
+                if must_be_upper && *storage != Storage::Upper {
+                    return Err("if the matrix is general symmetric, the required storage is upper triangular");
+                }
+                Ok((1, 0))
+            }
+            Self::PositiveDefinite(storage) => {
+                if must_be_lower && *storage != Storage::Lower {
+                    return Err("if the matrix is positive-definite, the required storage is lower triangular");
+                }
+                if must_be_upper && *storage != Storage::Upper {
+                    return Err("if the matrix is positive-definite, the required storage is upper triangular");
+                }
+                Ok((0, 1))
+            }
         }
     }
 }

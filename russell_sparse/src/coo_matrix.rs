@@ -9,11 +9,10 @@ use russell_openblas::to_i32;
 ///
 /// * Only the non-zero values are required
 /// * Entries with repeated (i,j) indices are allowed
-/// * Repeated (i,j) entries will have the aij values summed when solving a linear system
+/// * Repeated (i,j) entries should be summed when solving a linear system
 /// * The repeated (i,j) capability is of great convenience for Finite Element solvers
-/// * A maximum number of entries must be decided prior to allocating a new Triplet
+/// * A maximum number of entries must be decided prior to allocating a new COO matrix
 /// * The maximum number of entries includes possible entries with repeated indices
-/// * See the `to_matrix` method for an example
 pub struct CooMatrix {
     /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
     ///
@@ -27,7 +26,7 @@ pub struct CooMatrix {
     /// Holds the number of columns (must fit i32)
     pub ncol: usize,
 
-    /// Holds the current index (must fit i32)
+    /// Holds the current index/number of non-zeros (must fit i32)
     ///
     /// This will equal the number of non-zeros (nnz) after all items have been `put`.
     pub pos: usize,

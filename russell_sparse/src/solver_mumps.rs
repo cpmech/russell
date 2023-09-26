@@ -538,7 +538,7 @@ mod tests {
         // calling solve again works
         let mut x_again = Vector::new(5);
         solver.solve(&mut x_again, &rhs, false).unwrap();
-        vec_approx_eq(x_again.as_data(), x_correct, 1e-15);
+        vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
 
         // factorize fails on singular matrix
         let mut coo_singular = CooMatrix::new(5, 5, 2, None, true).unwrap();

@@ -175,7 +175,7 @@ impl SolverTrait for SolverUMFPACK {
             }
         }
         let csc = CscMatrix::from_coo(coo)?;
-        csc.validate()?;
+        csc.check_dimensions()?;
         let symmetry = if self.config.umfpack_enforce_unsymmetric_strategy {
             UMFPACK_STRATEGY_UNSYMMETRIC
         } else {

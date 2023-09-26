@@ -67,7 +67,7 @@ pub struct CsrMatrix {
 }
 
 impl CsrMatrix {
-    /// Validates the dimension of the arrays in the CSR matrix
+    /// Checks the dimension of the arrays in the CSR matrix
     ///
     /// The following conditions must be satisfied:
     ///
@@ -79,7 +79,7 @@ impl CsrMatrix {
     /// col_indices.len() == nnz
     /// values.len() == nnz
     /// ```
-    pub fn validate(&self) -> Result<(), StrError> {
+    pub fn check_dimensions(&self) -> Result<(), StrError> {
         if self.nrow < 1 {
             return Err("nrow must be ≥ 1");
         }
@@ -273,7 +273,7 @@ impl CsrMatrix {
         // * Upgrading i32 to usize is OK (the opposite is not OK => use to_i32)
 
         // check and read in the dimensions
-        csc.validate()?;
+        csc.check_dimensions()?;
         let ncol = csc.ncol as usize;
         let nrow = csc.nrow as usize;
         let nnz = csc.col_pointers[ncol] as usize;
@@ -458,7 +458,7 @@ impl CsrMatrix {
     /// }
     /// ```
     pub fn to_matrix(&self, a: &mut Matrix) -> Result<(), StrError> {
-        self.validate()?;
+        self.check_dimensions()?;
         let (m, n) = a.dims();
         if m != self.nrow || n != self.ncol {
             return Err("wrong matrix dimensions");
@@ -495,7 +495,7 @@ impl CsrMatrix {
     ///
     /// * `v` -- Vector with dimension equal to the number of rows of the matrix
     pub fn mat_vec_mul(&self, v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
-        self.validate()?;
+        self.check_dimensions()?;
         if u.dim() != self.ncol {
             return Err("u.ndim must equal ncol");
         }
@@ -641,6 +641,7 @@ mod tests {
             Samples::tiny_1x1(),
         ] {
             let csr = CsrMatrix::from_coo(&coo).unwrap();
+            csr.check_dimensions().unwrap();
             assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
             assert_eq!(&csr.col_indices, &csr_correct.col_indices);
             vec_approx_eq(&csr.values, &csr_correct.values, 1e-15);
@@ -694,6 +695,35 @@ mod tests {
             assert_eq!(&csr.col_indices, &csr_correct.col_indices);
             vec_approx_eq(&csr.values, &csr_correct.values, 1e-15);
         }
+    }
+
+    #[test]
+    fn check_dimensions_works() {
+        let mut csr = CsrMatrix {
+            symmetry: None,
+            nrow: 0,
+            ncol: 0,
+            row_pointers: Vec::new(),
+            col_indices: Vec::new(),
+            values: Vec::new(),
+        };
+        assert_eq!(csr.check_dimensions().err(), Some("nrow must be ≥ 1"));
+        csr.nrow = 2;
+        csr.ncol = 0;
+        assert_eq!(csr.check_dimensions().err(), Some("ncol must be ≥ 1"));
+        csr.ncol = 4;
+        assert_eq!(
+            csr.check_dimensions().err(),
+            Some("row_pointers.len() must be = nrow + 1")
+        );
+        csr.row_pointers = vec![0, 0, 0];
+        assert_eq!(csr.check_dimensions().err(), Some("nnz must be ≥ 1"));
+        csr.row_pointers = vec![0, 0, 1];
+        assert_eq!(csr.check_dimensions().err(), Some("col_indices.len() must be = nnz"));
+        csr.col_indices = vec![0];
+        assert_eq!(csr.check_dimensions().err(), Some("values.len() must be = nnz"));
+        csr.values = vec![0.0];
+        assert_eq!(csr.check_dimensions().err(), None);
     }
 
     #[test]

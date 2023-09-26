@@ -986,8 +986,8 @@ mod tests {
         ] {
             let mat = coo.as_matrix();
             mat_approx_eq(&mat, correct, 1e-15);
-            csc.validate().unwrap();
-            csr.validate().unwrap();
+            csc.check_dimensions().unwrap();
+            csr.check_dimensions().unwrap();
             let mut inv = Matrix::new(5, 5);
             let det = mat_inverse(&mut inv, &mat).unwrap();
             approx_eq(det, correct_det, 1e-15);
@@ -1005,8 +1005,8 @@ mod tests {
             [0.0, 8.0, 0.0, 0.0, -5.0],
         ];
         mat_approx_eq(&mat, correct, 1e-15);
-        csc.validate().unwrap();
-        csr.validate().unwrap();
+        csc.check_dimensions().unwrap();
+        csr.check_dimensions().unwrap();
         let mut inv = Matrix::new(5, 5);
         let det = mat_inverse(&mut inv, &mat).unwrap();
         approx_eq(det, correct_det, 1e-15);
@@ -1032,8 +1032,8 @@ mod tests {
         ] {
             let mat = coo.as_matrix();
             mat_approx_eq(&mat, correct, 1e-15);
-            csc.validate().unwrap();
-            csr.validate().unwrap();
+            csc.check_dimensions().unwrap();
+            csr.check_dimensions().unwrap();
             let mut inv = Matrix::new(5, 5);
             let det = mat_inverse(&mut inv, &mat).unwrap();
             approx_eq(det, correct_det, 1e-13);
@@ -1074,8 +1074,8 @@ mod tests {
         ] {
             let mat = coo.as_matrix();
             mat_approx_eq(&mat, correct, 1e-15);
-            csc.validate().unwrap();
-            csr.validate().unwrap();
+            csc.check_dimensions().unwrap();
+            csr.check_dimensions().unwrap();
             let mut inv = Matrix::new(5, 5);
             let det = mat_inverse(&mut inv, &mat).unwrap();
             approx_eq(det, correct_det, 1e-14);
@@ -1087,8 +1087,8 @@ mod tests {
         let mat = coo.as_matrix();
         let correct = &[[1.0, 0.0, 3.0, 0.0, 5.0, 0.0, 7.0]];
         mat_approx_eq(&mat, correct, 1e-15);
-        csc.validate().unwrap();
-        csr.validate().unwrap();
+        csc.check_dimensions().unwrap();
+        csr.check_dimensions().unwrap();
 
         // ----------------------------------------------------------------------------
 
@@ -1096,8 +1096,8 @@ mod tests {
         let mat = coo.as_matrix();
         let correct = &[[0.0], [2.0], [0.0], [4.0], [0.0], [6.0], [0.0]];
         mat_approx_eq(&mat, correct, 1e-15);
-        csc.validate().unwrap();
-        csr.validate().unwrap();
+        csc.check_dimensions().unwrap();
+        csr.check_dimensions().unwrap();
 
         // ----------------------------------------------------------------------------
 
@@ -1109,8 +1109,8 @@ mod tests {
             [15.0, -6.0, 0.0, 3.0], //
         ];
         mat_approx_eq(&mat, correct, 1e-15);
-        csc.validate().unwrap();
-        csr.validate().unwrap();
+        csc.check_dimensions().unwrap();
+        csr.check_dimensions().unwrap();
 
         // ----------------------------------------------------------------------------
 
@@ -1118,7 +1118,7 @@ mod tests {
         let mat = coo.as_matrix();
         let correct = &[[123.0]];
         mat_approx_eq(&mat, correct, 1e-15);
-        csc.validate().unwrap();
-        csr.validate().unwrap();
+        csc.check_dimensions().unwrap();
+        csr.check_dimensions().unwrap();
     }
 }

@@ -169,7 +169,7 @@ impl SolverTrait for SolverIntelDSS {
             return Err("the CooMatrix symmetry option must be equal to the one provided to initialize");
         }
         let csr = CsrMatrix::from_coo(coo)?;
-        csr.validate()?;
+        csr.check_dimensions()?;
         let nnz = csr.row_pointers[csr.nrow];
         if (nnz as usize) < csr.nrow {
             return Err("for Intel DSS, nnz = row_pointers[nrow] must be ≥ nrow");

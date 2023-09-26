@@ -230,6 +230,15 @@ mod tests {
     }
 
     #[test]
+    fn solver_new_works() {
+        Solver::new(Genie::Mumps).unwrap();
+        Solver::new(Genie::Umfpack).unwrap();
+        if cfg!(with_intel_dss) {
+            Solver::new(Genie::IntelDss).unwrap();
+        }
+    }
+
+    #[test]
     fn solver_compute_works() {
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_full(false);
         let mut x = Vector::new(5);

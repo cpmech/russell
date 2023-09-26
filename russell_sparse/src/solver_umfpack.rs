@@ -1,5 +1,5 @@
 use super::{to_i32, ConfigSolver, CooMatrix, CscMatrix, Ordering, Scaling, SolverTrait};
-use crate::StrError;
+use crate::{StrError, Symmetry};
 use russell_lab::Vector;
 
 /// Opaque struct holding a C-pointer to InterfaceUMFPACK
@@ -57,8 +57,14 @@ pub struct SolverUMFPACK {
     /// Indicates whether the sparse matrix has been factorized or not
     factorized: bool,
 
-    /// Matrix dimension (to validate vectors in solve)
-    ndim: usize,
+    /// Holds the symmetry type used in the first call to factorize
+    factorized_symmetry: Option<Symmetry>,
+
+    /// Holds the matrix dimension saved in the first call to factorize
+    factorized_ndim: usize,
+
+    /// Holds the number of non-zeros saved in the first call to factorize
+    factorized_nnz: usize,
 
     /// Holds the used strategy (after factorize)
     effective_strategy: i32,
@@ -101,7 +107,9 @@ impl SolverUMFPACK {
             Ok(SolverUMFPACK {
                 solver,
                 factorized: false,
-                ndim: 0,
+                factorized_symmetry: None,
+                factorized_nnz: 0,
+                factorized_ndim: 0,
                 effective_strategy: -1,
                 effective_ordering: -1,
                 effective_scaling: -1,
@@ -121,8 +129,18 @@ impl SolverTrait for SolverUMFPACK {
     /// * `coo` -- The COO matrix
     /// * `params` -- configuration parameters; None => use default
     fn factorize_coo(&mut self, coo: &CooMatrix, params: Option<ConfigSolver>) -> Result<(), StrError> {
-        // set flag
-        self.factorized = false;
+        // check already factorized data
+        if self.factorized == true {
+            if coo.symmetry != self.factorized_symmetry {
+                return Err("when factorize is called more than once, the subsequent calls must use the same matrix (symmetry differs)");
+            }
+            if coo.nrow != self.factorized_ndim {
+                return Err("when factorize is called more than once, the subsequent calls must use the same matrix (ndim differs)");
+            }
+            if coo.pos != self.factorized_nnz {
+                return Err("when factorize is called more than once, the subsequent calls must use the same matrix (nnz differs)");
+            }
+        }
 
         // check the COO matrix
         if coo.one_based {
@@ -208,7 +226,11 @@ impl SolverTrait for SolverUMFPACK {
                 return Err(handle_umfpack_error_code(status));
             }
         }
-        self.ndim = csc.nrow;
+
+        // store information
+        self.factorized_symmetry = csc.symmetry;
+        self.factorized_ndim = csc.nrow;
+        self.factorized_nnz = csc.col_pointers[csc.ncol] as usize;
         self.csc_matrix = Some(csc);
         self.factorized = true;
         Ok(())
@@ -231,10 +253,10 @@ impl SolverTrait for SolverUMFPACK {
         if !self.factorized {
             return Err("the function factorize must be called before solve");
         }
-        if x.dim() != self.ndim as usize {
+        if x.dim() != self.factorized_ndim as usize {
             return Err("the dimension of the vector of unknown values x is incorrect");
         }
-        if rhs.dim() != self.ndim as usize {
+        if rhs.dim() != self.factorized_ndim as usize {
             return Err("the dimension of the right-hand side vector is incorrect");
         }
         let csc = match &self.csc_matrix {

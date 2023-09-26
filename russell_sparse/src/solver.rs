@@ -208,6 +208,16 @@ mod tests {
     use russell_lab::Vector;
 
     #[test]
+    fn clone_copy_and_debug_work() {
+        let config = ConfigSolver::new();
+        let copy = config;
+        let clone = config.clone();
+        assert_eq!(format!("{:?}", config), "ConfigSolver { ordering: Auto, scaling: Auto, compute_determinant: false, mumps_pct_inc_workspace: 100, mumps_max_work_memory: 0, mumps_openmp_num_threads: 0, umfpack_enforce_unsymmetric_strategy: false }");
+        assert_eq!(copy, config);
+        assert_eq!(clone, config);
+    }
+
+    #[test]
     fn config_solver_new_works() {
         let config = ConfigSolver::new();
         assert_eq!(config.ordering, Ordering::Auto);

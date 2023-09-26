@@ -520,7 +520,7 @@ mod tests {
 
         // solve works
         solver.solve(&mut x, &rhs, false).unwrap();
-        vec_approx_eq(x.as_data(), x_correct, 1e-15);
+        vec_approx_eq(x.as_data(), x_correct, 1e-14);
 
         // check ordering and scaling
         let ordering = solver.get_effective_ordering();

@@ -303,7 +303,7 @@ impl Samples {
     /// ```text
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
-    pub fn mkl_sample1_symmetric_lower(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn mkl_symmetric_5x5_lower(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = Some(Symmetry::General(Storage::Lower));
         let mut coo = CooMatrix::new(5, 5, 9, sym, one_based).unwrap();
         // diagonal
@@ -387,7 +387,7 @@ impl Samples {
     /// ```text
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
-    pub fn mkl_sample1_positive_definite_lower(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn mkl_positive_definite_5x5_lower(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
         let mut coo = CooMatrix::new(5, 5, 9, sym, one_based).unwrap();
         coo.put(0, 0, 9.0).unwrap();
@@ -469,7 +469,7 @@ impl Samples {
     /// ```text
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
-    pub fn mkl_sample1_symmetric_upper(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn mkl_symmetric_5x5_upper(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = Some(Symmetry::General(Storage::Upper));
         let mut coo = CooMatrix::new(5, 5, 9, sym, one_based).unwrap();
         coo.put(0, 0, 9.0).unwrap();
@@ -551,7 +551,7 @@ impl Samples {
     /// ```text
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
-    pub fn mkl_sample1_positive_definite_upper(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn mkl_positive_definite_5x5_upper(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = Some(Symmetry::PositiveDefinite(Storage::Upper));
         let mut coo = CooMatrix::new(5, 5, 9, sym, one_based).unwrap();
         coo.put(0, 0, 9.0).unwrap();
@@ -633,7 +633,7 @@ impl Samples {
     /// ```text
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
-    pub fn mkl_sample1_symmetric_full(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn mkl_symmetric_5x5_full(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = Some(Symmetry::General(Storage::Full));
         let mut coo = CooMatrix::new(5, 5, 13, sym, one_based).unwrap();
         coo.put(0, 0, 9.0).unwrap();
@@ -938,16 +938,16 @@ mod tests {
             [3.0, 0.0, 0.0, 0.0, 16.0],
         ];
         for (coo, csc, csr, correct_det) in [
-            Samples::mkl_sample1_positive_definite_lower(false),
-            Samples::mkl_sample1_positive_definite_lower(true),
-            Samples::mkl_sample1_positive_definite_upper(false),
-            Samples::mkl_sample1_positive_definite_upper(true),
-            Samples::mkl_sample1_symmetric_lower(false),
-            Samples::mkl_sample1_symmetric_lower(true),
-            Samples::mkl_sample1_symmetric_upper(false),
-            Samples::mkl_sample1_symmetric_upper(true),
-            Samples::mkl_sample1_symmetric_full(false),
-            Samples::mkl_sample1_symmetric_full(true),
+            Samples::mkl_positive_definite_5x5_lower(false),
+            Samples::mkl_positive_definite_5x5_lower(true),
+            Samples::mkl_positive_definite_5x5_upper(false),
+            Samples::mkl_positive_definite_5x5_upper(true),
+            Samples::mkl_symmetric_5x5_lower(false),
+            Samples::mkl_symmetric_5x5_lower(true),
+            Samples::mkl_symmetric_5x5_upper(false),
+            Samples::mkl_symmetric_5x5_upper(true),
+            Samples::mkl_symmetric_5x5_full(false),
+            Samples::mkl_symmetric_5x5_full(true),
         ] {
             let mat = coo.as_matrix();
             mat_approx_eq(&mat, correct, 1e-15);

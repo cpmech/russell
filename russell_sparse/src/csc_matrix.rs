@@ -553,7 +553,7 @@ mod tests {
         //  6.00  0.0  12.0  0.000   0.0
         //  0.75  0.0   0.0  0.625   0.0
         //  3.00  0.0   0.0  0.000  16.0
-        let (coo, csc_correct, _, _) = Samples::mkl_sample1_symmetric_full(false);
+        let (coo, csc_correct, _, _) = Samples::mkl_symmetric_5x5_full(false);
         let csc = CscMatrix::from_coo(&coo).unwrap();
         assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
         assert_eq!(&csc.row_indices, &csc_correct.row_indices);
@@ -948,9 +948,9 @@ mod tests {
             Samples::block_unsymmetric_5x5(true, true, false),
             Samples::block_unsymmetric_5x5(true, false, true),
             Samples::block_unsymmetric_5x5(true, true, true),
-            Samples::mkl_sample1_symmetric_full(false),
-            Samples::mkl_sample1_symmetric_lower(false),
-            Samples::mkl_sample1_symmetric_upper(false),
+            Samples::mkl_symmetric_5x5_full(false),
+            Samples::mkl_symmetric_5x5_lower(false),
+            Samples::mkl_symmetric_5x5_upper(false),
             Samples::rectangular_1x7(),
             Samples::rectangular_7x1(),
             Samples::rectangular_3x4(),

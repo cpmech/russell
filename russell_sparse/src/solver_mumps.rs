@@ -554,7 +554,7 @@ mod tests {
         );
 
         // solve with positive-definite matrix works
-        let (coo_pd_lower, _, _, _) = Samples::mkl_sample1_positive_definite_lower(true);
+        let (coo_pd_lower, _, _, _) = Samples::mkl_positive_definite_5x5_lower(true);
         config.ordering = Ordering::Auto;
         config.scaling = Scaling::Auto;
         let mut solver = SolverMUMPS::new().unwrap();

@@ -1,0 +1,131 @@
+Running Mem Check
+
+Testing UMFPACK solver
+
+x =
+┌                    ┐
+│ 0.9999999999999998 │
+│                  2 │
+│                  3 │
+│                  4 │
+│  4.999999999999998 │
+└                    ┘
+Testing UMFPACK solver
+
+
+Ok(factorize singular matrix): Error(1): Matrix is singular
+
+Testing Intel DSS solver
+
+x =
+┌   ┐
+│ 1 │
+│ 2 │
+│ 3 │
+│ 4 │
+│ 5 │
+└   ┘
+Done
+
+{
+  "platform": "Russell",
+  "blas_lib": "OpenBLAS",
+  "solver_name": "UMFPACK-local",
+  "matrix_name": "bfwb62",
+  "symmetry": "Some(General(Full))",
+  "nrow": 62,
+  "ncol": 62,
+  "nnz": 342,
+  "time_read_matrix_market_nanosecond": 38981111,
+  "time_read_matrix_market_human": "38.981111ms",
+  "time_factorize_nanosecond": 395780032,
+  "time_factorize_human": "395.780032ms",
+  "time_solve_nanosecond": 9700702,
+  "time_solve_human": "9.700702ms",
+  "time_total_nanosecond": 405480734,
+  "time_total_human": "405.480734ms",
+  "requested_ordering": "Auto",
+  "requested_scaling": "Auto",
+  "requested_openmp_num_threads": 1,
+  "effective_ordering": "Amd",
+  "effective_scaling": "Sum",
+  "effective_strategy": "Symmetric",
+  "effective_openmp_num_threads": 32,
+  "verify_max_abs_a": 0.0001,
+  "verify_max_abs_a_times_x": 1.0000000000000004,
+  "verify_relative_error": 4.4404480536952566e-16,
+  "verify_time_nanosecond": 8015962,
+  "verify_time_human": "8.015962ms",
+  "compute_determinant": false,
+  "determinant_mantissa": 0.0,
+  "determinant_base": 10.0,
+  "determinant_exponent": 0.0
+}
+{
+  "platform": "Russell",
+  "blas_lib": "OpenBLAS",
+  "solver_name": "MUMPS-local",
+  "matrix_name": "bfwb62",
+  "symmetry": "Some(General(Lower))",
+  "nrow": 62,
+  "ncol": 62,
+  "nnz": 202,
+  "time_read_matrix_market_nanosecond": 37822480,
+  "time_read_matrix_market_human": "37.82248ms",
+  "time_factorize_nanosecond": 501789496,
+  "time_factorize_human": "501.789496ms",
+  "time_solve_nanosecond": 63315954,
+  "time_solve_human": "63.315954ms",
+  "time_total_nanosecond": 565105450,
+  "time_total_human": "565.10545ms",
+  "requested_ordering": "Auto",
+  "requested_scaling": "Auto",
+  "requested_openmp_num_threads": 1,
+  "effective_ordering": "Amf",
+  "effective_scaling": "RowColIter",
+  "effective_strategy": "Unknown",
+  "effective_openmp_num_threads": 32,
+  "verify_max_abs_a": 0.0001,
+  "verify_max_abs_a_times_x": 1.0000000000000004,
+  "verify_relative_error": 5.550560067119071e-16,
+  "verify_time_nanosecond": 8363677,
+  "verify_time_human": "8.363677ms",
+  "compute_determinant": false,
+  "determinant_mantissa": 0.0,
+  "determinant_base": 2.0,
+  "determinant_exponent": 0.0
+}
+{
+  "platform": "Russell",
+  "blas_lib": "OpenBLAS",
+  "solver_name": "IntelDSS",
+  "matrix_name": "bfwb62",
+  "symmetry": "Some(General(Upper))",
+  "nrow": 62,
+  "ncol": 62,
+  "nnz": 202,
+  "time_read_matrix_market_nanosecond": 38387990,
+  "time_read_matrix_market_human": "38.38799ms",
+  "time_factorize_nanosecond": 1112434957,
+  "time_factorize_human": "1.112434957s",
+  "time_solve_nanosecond": 28754107,
+  "time_solve_human": "28.754107ms",
+  "time_total_nanosecond": 1141189064,
+  "time_total_human": "1.141189064s",
+  "requested_ordering": "Auto",
+  "requested_scaling": "Auto",
+  "requested_openmp_num_threads": 1,
+  "effective_ordering": "Unknown",
+  "effective_scaling": "Unknown",
+  "effective_strategy": "Unknown",
+  "effective_openmp_num_threads": 32,
+  "verify_max_abs_a": 0.0001,
+  "verify_max_abs_a_times_x": 1.0000000000000004,
+  "verify_relative_error": 4.4404480536952566e-16,
+  "verify_time_nanosecond": 8038028,
+  "verify_time_human": "8.038028ms",
+  "compute_determinant": false,
+  "determinant_mantissa": 0.0,
+  "determinant_base": 10.0,
+  "determinant_exponent": 0.0
+}

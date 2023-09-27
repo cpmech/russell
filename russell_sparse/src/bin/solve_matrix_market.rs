@@ -16,7 +16,7 @@ struct Options {
     /// Matrix-market file
     matrix_market_file: String,
 
-    /// Use MUMPS solver instead of UMFPACK
+    /// Solver selection
     #[structopt(short = "g", long, default_value = "Umfpack")]
     genie: String,
 

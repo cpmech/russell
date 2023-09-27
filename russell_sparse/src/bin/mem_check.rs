@@ -100,7 +100,7 @@ fn test_solver_singular(genie: Genie) {
     coo_singular.put(1, 0, 1.0).unwrap();
 
     match solver.actual.factorize(&mut coo_singular, None) {
-        Err(e) => println!("\nOk(factorize singular matrix): {}\n", e),
+        Err(e) => println!("Ok(factorize singular matrix): {}\n", e),
         _ => (),
     };
 }
@@ -108,7 +108,13 @@ fn test_solver_singular(genie: Genie) {
 fn main() {
     println!("Running Mem Check\n");
     test_solver(Genie::Umfpack);
+    println!("");
     test_solver_singular(Genie::Umfpack);
+    println!("----------------------------------------------------------------------\n");
+    test_solver(Genie::Mumps);
+    println!("");
+    test_solver_singular(Genie::Mumps);
+    println!("----------------------------------------------------------------------\n");
     if cfg!(with_intel_dss) {
         test_solver(Genie::IntelDss);
         // Intel DSS cannot handle singular matrices

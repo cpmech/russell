@@ -10,10 +10,29 @@ x =
 │                  4 │
 │  4.999999999999998 │
 └                    ┘
+
 Testing UMFPACK solver
 
-
 Ok(factorize singular matrix): Error(1): Matrix is singular
+
+----------------------------------------------------------------------
+
+Testing MUMPS solver
+
+x =
+┌                    ┐
+│ 1.0000000000000004 │
+│ 1.9999999999999996 │
+│  2.999999999999999 │
+│  3.999999999999999 │
+│  5.000000000000001 │
+└                    ┘
+
+Testing MUMPS solver
+
+Ok(factorize singular matrix): Error(-10): numerically singular matrix
+
+----------------------------------------------------------------------
 
 Testing Intel DSS solver
 
@@ -36,14 +55,14 @@ Done
   "nrow": 62,
   "ncol": 62,
   "nnz": 342,
-  "time_read_matrix_market_nanosecond": 45614225,
-  "time_read_matrix_market_human": "45.614225ms",
-  "time_factorize_nanosecond": 397071414,
-  "time_factorize_human": "397.071414ms",
-  "time_solve_nanosecond": 9682316,
-  "time_solve_human": "9.682316ms",
-  "time_total_nanosecond": 406753730,
-  "time_total_human": "406.75373ms",
+  "time_read_matrix_market_nanosecond": 38913311,
+  "time_read_matrix_market_human": "38.913311ms",
+  "time_factorize_nanosecond": 406244656,
+  "time_factorize_human": "406.244656ms",
+  "time_solve_nanosecond": 9718071,
+  "time_solve_human": "9.718071ms",
+  "time_total_nanosecond": 415962727,
+  "time_total_human": "415.962727ms",
   "requested_ordering": "Auto",
   "requested_scaling": "Auto",
   "requested_openmp_num_threads": 1,
@@ -54,8 +73,8 @@ Done
   "verify_max_abs_a": 0.0001,
   "verify_max_abs_a_times_x": 1.0000000000000004,
   "verify_relative_error": 4.4404480536952566e-16,
-  "verify_time_nanosecond": 8207303,
-  "verify_time_human": "8.207303ms",
+  "verify_time_nanosecond": 7980811,
+  "verify_time_human": "7.980811ms",
   "compute_determinant": false,
   "determinant_mantissa": 0.0,
   "determinant_base": 10.0,
@@ -70,14 +89,14 @@ Done
   "nrow": 62,
   "ncol": 62,
   "nnz": 202,
-  "time_read_matrix_market_nanosecond": 37856469,
-  "time_read_matrix_market_human": "37.856469ms",
-  "time_factorize_nanosecond": 491013792,
-  "time_factorize_human": "491.013792ms",
-  "time_solve_nanosecond": 62989202,
-  "time_solve_human": "62.989202ms",
-  "time_total_nanosecond": 554002994,
-  "time_total_human": "554.002994ms",
+  "time_read_matrix_market_nanosecond": 37837714,
+  "time_read_matrix_market_human": "37.837714ms",
+  "time_factorize_nanosecond": 494400791,
+  "time_factorize_human": "494.400791ms",
+  "time_solve_nanosecond": 63021262,
+  "time_solve_human": "63.021262ms",
+  "time_total_nanosecond": 557422053,
+  "time_total_human": "557.422053ms",
   "requested_ordering": "Auto",
   "requested_scaling": "Auto",
   "requested_openmp_num_threads": 1,
@@ -88,8 +107,8 @@ Done
   "verify_max_abs_a": 0.0001,
   "verify_max_abs_a_times_x": 1.0000000000000004,
   "verify_relative_error": 5.550560067119071e-16,
-  "verify_time_nanosecond": 8348485,
-  "verify_time_human": "8.348485ms",
+  "verify_time_nanosecond": 8354344,
+  "verify_time_human": "8.354344ms",
   "compute_determinant": false,
   "determinant_mantissa": 0.0,
   "determinant_base": 2.0,
@@ -104,14 +123,14 @@ Done
   "nrow": 62,
   "ncol": 62,
   "nnz": 202,
-  "time_read_matrix_market_nanosecond": 38495599,
-  "time_read_matrix_market_human": "38.495599ms",
-  "time_factorize_nanosecond": 1180111190,
-  "time_factorize_human": "1.18011119s",
-  "time_solve_nanosecond": 28654241,
-  "time_solve_human": "28.654241ms",
-  "time_total_nanosecond": 1208765431,
-  "time_total_human": "1.208765431s",
+  "time_read_matrix_market_nanosecond": 38327214,
+  "time_read_matrix_market_human": "38.327214ms",
+  "time_factorize_nanosecond": 1090149359,
+  "time_factorize_human": "1.090149359s",
+  "time_solve_nanosecond": 28698930,
+  "time_solve_human": "28.69893ms",
+  "time_total_nanosecond": 1118848289,
+  "time_total_human": "1.118848289s",
   "requested_ordering": "Auto",
   "requested_scaling": "Auto",
   "requested_openmp_num_threads": 1,
@@ -122,8 +141,8 @@ Done
   "verify_max_abs_a": 0.0001,
   "verify_max_abs_a_times_x": 1.0000000000000004,
   "verify_relative_error": 4.4404480536952566e-16,
-  "verify_time_nanosecond": 8095638,
-  "verify_time_human": "8.095638ms",
+  "verify_time_nanosecond": 8011872,
+  "verify_time_human": "8.011872ms",
   "compute_determinant": false,
   "determinant_mantissa": 0.0,
   "determinant_base": 10.0,

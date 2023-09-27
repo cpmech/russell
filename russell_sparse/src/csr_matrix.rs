@@ -575,6 +575,22 @@ mod tests {
         // .  .  7  8  .
         // .  .  .  .  9
         for (coo, _, csr_correct, _) in [
+            // ┌     ┐
+            // │ 123 │
+            // └     ┘
+            Samples::tiny_1x1(false),
+            Samples::tiny_1x1(true),
+            //  1  .  2
+            //  .  0  3
+            //  4  5  6
+            Samples::unsymmetric_3x3(false, false, false),
+            Samples::unsymmetric_3x3(false, true, false),
+            Samples::unsymmetric_3x3(false, false, true),
+            Samples::unsymmetric_3x3(false, true, true),
+            Samples::unsymmetric_3x3(true, false, false),
+            Samples::unsymmetric_3x3(true, true, false),
+            Samples::unsymmetric_3x3(true, false, true),
+            Samples::unsymmetric_3x3(true, true, true),
             //  2  3  .  .  .
             //  3  .  4  .  6
             //  . -1 -3  2  .
@@ -635,10 +651,6 @@ mod tests {
             Samples::rectangular_1x7(),
             Samples::rectangular_7x1(),
             Samples::rectangular_3x4(),
-            // ┌     ┐
-            // │ 123 │
-            // └     ┘
-            Samples::tiny_1x1(),
         ] {
             let csr = CsrMatrix::from_coo(&coo).unwrap();
             csr.check_dimensions().unwrap();
@@ -652,6 +664,14 @@ mod tests {
     fn from_csc_works() {
         const IGNORED: bool = false;
         for (_, csc, csr_correct, _) in [
+            // ┌     ┐
+            // │ 123 │
+            // └     ┘
+            Samples::tiny_1x1(IGNORED),
+            //  1  .  2
+            //  .  0  3
+            //  4  5  6
+            Samples::unsymmetric_3x3(IGNORED, IGNORED, IGNORED),
             //  2  3  .  .  .
             //  3  .  4  .  6
             //  . -1 -3  2  .
@@ -685,10 +705,6 @@ mod tests {
             Samples::rectangular_1x7(),
             Samples::rectangular_7x1(),
             Samples::rectangular_3x4(),
-            // ┌     ┐
-            // │ 123 │
-            // └     ┘
-            Samples::tiny_1x1(),
         ] {
             let csr = CsrMatrix::from_csc(&csc).unwrap();
             assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);

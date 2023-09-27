@@ -22,6 +22,9 @@ struct InterfaceUMFPACK {
     /// @brief Is a handle to numeric factorization results
     void *numeric;
 
+    /// @brief indicates that the initialization has been completed
+    int32_t initialization_completed;
+
     /// @brief Indicates that the factorization (at least once) has been completed
     int32_t factorization_completed;
 };
@@ -49,6 +52,7 @@ struct InterfaceUMFPACK *solver_umfpack_new() {
 
     solver->symbolic = NULL;
     solver->numeric = NULL;
+    solver->initialization_completed = C_FALSE;
     solver->factorization_completed = C_FALSE;
 
     return solver;
@@ -118,37 +122,47 @@ int32_t solver_umfpack_factorize(struct InterfaceUMFPACK *solver,
         return NULL_POINTER_ERROR;
     }
 
-    solver->control[UMFPACK_STRATEGY] = UMFPACK_STRATEGY_AUTO;
-    if (enforce_unsymmetric_strategy == C_TRUE) {
-        solver->control[UMFPACK_STRATEGY] = UMFPACK_STRATEGY_UNSYMMETRIC;
-    }
+    if (solver->initialization_completed == C_FALSE) {
+        // perform initialization
 
-    solver->control[UMFPACK_ORDERING] = ordering;
-    solver->control[UMFPACK_SCALE] = scaling;
+        solver->control[UMFPACK_STRATEGY] = UMFPACK_STRATEGY_AUTO;
+        if (enforce_unsymmetric_strategy == C_TRUE) {
+            solver->control[UMFPACK_STRATEGY] = UMFPACK_STRATEGY_UNSYMMETRIC;
+        }
 
-    set_umfpack_verbose(solver, verbose);
+        solver->control[UMFPACK_ORDERING] = ordering;
+        solver->control[UMFPACK_SCALE] = scaling;
 
-    // perform symbolic factorization
-    int code = umfpack_di_symbolic(ndim,
-                                   ndim,
-                                   col_pointers,
-                                   row_indices,
-                                   values,
-                                   &solver->symbolic,
-                                   solver->control,
-                                   solver->info);
-    if (code != UMFPACK_OK) {
-        return code;
+        set_umfpack_verbose(solver, verbose);
+
+        // perform symbolic factorization
+        int code = umfpack_di_symbolic(ndim,
+                                       ndim,
+                                       col_pointers,
+                                       row_indices,
+                                       values,
+                                       &solver->symbolic,
+                                       solver->control,
+                                       solver->info);
+        if (code != UMFPACK_OK) {
+            return code;
+        }
+
+        solver->initialization_completed = C_TRUE;
+
+    } else {
+        // free the previous numeric to avoid memory leak
+        umfpack_di_free_numeric(&solver->numeric);
     }
 
     // perform numeric factorization
-    code = umfpack_di_numeric(col_pointers,
-                              row_indices,
-                              values,
-                              solver->symbolic,
-                              &solver->numeric,
-                              solver->control,
-                              solver->info);
+    int code = umfpack_di_numeric(col_pointers,
+                                  row_indices,
+                                  values,
+                                  solver->symbolic,
+                                  &solver->numeric,
+                                  solver->control,
+                                  solver->info);
     if (verbose == C_TRUE) {
         umfpack_di_report_info(solver->control, solver->info);
     }

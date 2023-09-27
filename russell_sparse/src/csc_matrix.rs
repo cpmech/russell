@@ -207,7 +207,7 @@ impl CscMatrix {
     pub fn update_from_coo(&mut self, coo: &CooMatrix) -> Result<(), StrError> {
         // check dimensions
         if coo.symmetry != self.symmetry {
-            return Err("coo.symmetry must be equal to coo.symmetry");
+            return Err("coo.symmetry must be equal to csc.symmetry");
         }
         if coo.nrow != self.nrow {
             return Err("coo.nrow must be equal to csc.nrow");

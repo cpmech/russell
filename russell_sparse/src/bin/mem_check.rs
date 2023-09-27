@@ -10,7 +10,7 @@ fn test_solver(genie: Genie) {
 
     let (ndim, nnz) = (5, 13);
 
-    let mut solver = match Solver::new(genie) {
+    let mut solver = match LinSolver::new(genie) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new solver): {}", e);
@@ -80,7 +80,7 @@ fn test_solver_singular(genie: Genie) {
 
     let (ndim, nnz) = (2, 2);
 
-    let mut solver = match Solver::new(genie) {
+    let mut solver = match LinSolver::new(genie) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new solver): {}", e);

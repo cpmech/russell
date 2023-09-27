@@ -193,8 +193,32 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
         solver->data.ICNTL(28) = MUMPS_ICNTL28_SEQUENTIAL;
         solver->data.ICNTL(29) = MUMPS_IGNORED;
 
+        // perform analysis just once (considering that the matrix structure remains constant)
+
+        solver->data.n = ndim;
+        solver->data.nz = nnz;
+        solver->data.irn = (int *)indices_i;
+        solver->data.jcn = (int *)indices_j;
+        solver->data.a = (double *)values_aij;
+
+        set_mumps_verbose(&solver->data, verbose);
+        solver->data.job = MUMPS_JOB_ANALYZE;
+        dmumps_c(&solver->data);
+
+        if (solver->data.INFO(1) != 0) {
+            return solver->data.INFOG(1); // error
+        }
+
         solver->initialization_completed = C_TRUE;
     }
+
+    // set data
+
+    solver->data.n = ndim;
+    solver->data.nz = nnz;
+    solver->data.irn = (int *)indices_i;
+    solver->data.jcn = (int *)indices_j;
+    solver->data.a = (double *)values_aij;
 
     // handle requests
 
@@ -203,22 +227,6 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
         solver->data.ICNTL(8) = 0; // it's recommended to disable scaling when computing the determinant
     } else {
         solver->data.ICNTL(33) = 0;
-    }
-
-    // set matrix components and perform analysis (must be done for each factorization)
-
-    solver->data.n = ndim;
-    solver->data.nz = nnz;
-    solver->data.irn = (int *)indices_i;
-    solver->data.jcn = (int *)indices_j;
-    solver->data.a = (double *)values_aij;
-
-    set_mumps_verbose(&solver->data, verbose);
-    solver->data.job = MUMPS_JOB_ANALYZE;
-    dmumps_c(&solver->data);
-
-    if (solver->data.INFO(1) != 0) {
-        return solver->data.INFOG(1); // error
     }
 
     // perform factorization

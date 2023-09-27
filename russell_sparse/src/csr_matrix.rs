@@ -236,6 +236,7 @@ impl CsrMatrix {
         let d = if coo.one_based { -1 } else { 0 };
 
         // compute number of non-zero entries per row of A
+        bp.fill(0);
         for k in 0..nnz {
             bp[(ai[k] + d) as usize] += 1;
         }
@@ -700,6 +701,22 @@ mod tests {
             assert_eq!(&csr.col_indices[0..nnz], &csr_correct.col_indices);
             vec_approx_eq(&csr.values[0..nnz], &csr_correct.values, 1e-15);
         }
+    }
+
+    #[test]
+    fn update_from_coo_again_works() {
+        let (coo, _, csr_correct, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let mut csr = CsrMatrix::from_coo(&coo).unwrap();
+        assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
+        let nnz = csr.row_pointers[csr.nrow] as usize;
+        assert_eq!(&csr.col_indices[0..nnz], &csr_correct.col_indices);
+        vec_approx_eq(&csr.values[0..nnz], &csr_correct.values, 1e-15);
+
+        csr.update_from_coo(&coo).unwrap();
+        assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
+        let nnz = csr.row_pointers[csr.nrow] as usize;
+        assert_eq!(&csr.col_indices[0..nnz], &csr_correct.col_indices);
+        vec_approx_eq(&csr.values[0..nnz], &csr_correct.values, 1e-15);
     }
 
     #[test]

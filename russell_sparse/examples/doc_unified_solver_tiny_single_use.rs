@@ -29,7 +29,7 @@ fn main() -> Result<(), StrError> {
     // solve the linear system
     let mut x = Vector::new(ndim);
     let rhs = Vector::from(&[1.0, 1.0, 1.0]);
-    Solver::compute(Genie::Umfpack, &mut x, &mut coo, &rhs, None)?;
+    LinSolver::compute(Genie::Umfpack, &mut x, &mut coo, &rhs, None)?;
 
     // check the results
     let correct = vec![3.0, 2.0, 4.0];

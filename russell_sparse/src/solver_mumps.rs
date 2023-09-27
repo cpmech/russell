@@ -1,4 +1,4 @@
-use super::{to_i32, ConfigSolver, Ordering, Scaling, SolverTrait, SparseMatrix, Symmetry};
+use super::{to_i32, LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::{vec_copy, Vector};
 
@@ -107,7 +107,7 @@ impl SolverMUMPS {
     }
 }
 
-impl SolverTrait for SolverMUMPS {
+impl LinSolTrait for SolverMUMPS {
     /// Performs the factorization (and analysis/initialization if needed)
     ///
     /// # Input
@@ -128,7 +128,7 @@ impl SolverTrait for SolverMUMPS {
     ///    be "dropped" and a new solver allocated.
     /// 4. For symmetric matrices, `MUMPS` requires that the symmetry/storage be [crate::Storage::Lower].
     /// 5. The COO matrix must be one-based.
-    fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<ConfigSolver>) -> Result<(), StrError> {
+    fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
         // get COO matrix
         let coo = mat.get_coo()?;
 
@@ -159,7 +159,7 @@ impl SolverTrait for SolverMUMPS {
         }
 
         // configuration parameters
-        let par = if let Some(p) = params { p } else { ConfigSolver::new() };
+        let par = if let Some(p) = params { p } else { LinSolParams::new() };
 
         // input parameters
         let ordering = match par.ordering {
@@ -447,7 +447,7 @@ const MUMPS_SUCCESS: i32 = 0;
 #[cfg(test)]
 mod tests {
     use super::{handle_mumps_error_code, SolverMUMPS};
-    use crate::{ConfigSolver, Ordering, Samples, Scaling, SolverTrait, SparseMatrix};
+    use crate::{LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 
@@ -471,7 +471,7 @@ mod tests {
         let mut mat = SparseMatrix::from_coo(coo);
 
         // set params
-        let mut params = ConfigSolver::new();
+        let mut params = LinSolParams::new();
         params.ordering = Ordering::Pord;
         params.scaling = Scaling::RowCol;
         params.compute_determinant = true;

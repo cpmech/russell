@@ -72,12 +72,12 @@ fn main() -> Result<(), StrError> {
     };
 
     // configuration parameters
-    let mut config = ConfigSolver::new();
-    config.ordering = enum_ordering(&opt.ordering);
-    config.scaling = enum_scaling(&opt.scaling);
-    config.compute_determinant = opt.determinant;
-    config.mumps_openmp_num_threads = opt.omp_nt as usize;
-    config.umfpack_enforce_unsymmetric_strategy = opt.enforce_unsymmetric_strategy;
+    let mut params = LinSolParams::new();
+    params.ordering = enum_ordering(&opt.ordering);
+    params.scaling = enum_scaling(&opt.scaling);
+    params.compute_determinant = opt.determinant;
+    params.mumps_openmp_num_threads = opt.omp_nt as usize;
+    params.umfpack_enforce_unsymmetric_strategy = opt.enforce_unsymmetric_strategy;
 
     // read the matrix
     let mut sw = Stopwatch::new("");
@@ -89,11 +89,11 @@ fn main() -> Result<(), StrError> {
     let (nrow, ncol, nnz, symmetry) = mat.get_info();
 
     // allocate and configure the solver
-    let mut solver = Solver::new(genie)?;
+    let mut solver = LinSolver::new(genie)?;
 
     // call factorize
     sw.reset();
-    solver.actual.factorize(&mut mat, Some(config))?;
+    solver.actual.factorize(&mut mat, Some(params))?;
     let time_factorize = sw.stop();
 
     // allocate vectors

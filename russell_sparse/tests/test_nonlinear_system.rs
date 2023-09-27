@@ -78,7 +78,7 @@ fn check_jacobian() {
 fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
     let one_based = if genie == Genie::Mumps { true } else { false };
     let (neq, nnz) = (4, 16);
-    let mut solver = Solver::new(genie)?;
+    let mut solver = LinSolver::new(genie)?;
     let mut jj = SparseMatrix::new_coo(neq, neq, nnz, None, one_based).unwrap();
     let mut rr = Vector::new(neq);
     let mut uu = Vector::from(&[0.0, 0.0, 0.0, 0.0]);

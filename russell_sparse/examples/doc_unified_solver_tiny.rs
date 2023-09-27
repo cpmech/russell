@@ -8,8 +8,8 @@ fn main() -> Result<(), StrError> {
     let ndim = 3; // number of rows = number of columns
     let nnz = 5; // number of non-zero values
 
-    // allocate solver and call initialize
-    let mut solver = Solver::new(Genie::Umfpack)?;
+    // allocate the linear solver
+    let mut solver = LinSolver::new(Genie::Umfpack)?;
 
     // allocate the coefficient matrix
     let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;

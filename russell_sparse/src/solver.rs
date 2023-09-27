@@ -2,9 +2,9 @@ use super::{Genie, Ordering, Scaling, SolverIntelDSS, SolverMUMPS, SolverUMFPACK
 use crate::StrError;
 use russell_lab::Vector;
 
-/// Defines the configuration parameters for the sparse solver
+/// Defines the configuration parameters for the linear system solver
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct ConfigSolver {
+pub struct LinSolParams {
     /// Defines the symmetric permutation (ordering)
     pub ordering: Ordering,
 
@@ -38,10 +38,10 @@ pub struct ConfigSolver {
     pub verbose: bool,
 }
 
-impl ConfigSolver {
+impl LinSolParams {
     /// Allocates a new instance with default values
     pub fn new() -> Self {
-        ConfigSolver {
+        LinSolParams {
             ordering: Ordering::Auto,
             scaling: Scaling::Auto,
             compute_determinant: false,
@@ -54,8 +54,8 @@ impl ConfigSolver {
     }
 }
 
-/// Defines a unified interface for sparse solvers
-pub trait SolverTrait {
+/// Defines a unified interface for linear system solvers
+pub trait LinSolTrait {
     /// Performs the factorization (and analysis/initialization if needed)
     ///
     /// # Input
@@ -72,7 +72,7 @@ pub trait SolverTrait {
     ///    kept the same for the next calls.
     /// 3. If the structure of the matrix needs to be changed, the solver must
     ///    be "dropped" and a new solver allocated.
-    fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<ConfigSolver>) -> Result<(), StrError>;
+    fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<LinSolParams>) -> Result<(), StrError>;
 
     /// Computes the solution of the linear system
     ///
@@ -122,25 +122,25 @@ pub trait SolverTrait {
     fn get_name(&self) -> String;
 }
 
-/// Unifies the access to sparse solvers
-pub struct Solver<'a> {
+/// Unifies the access to linear system solvers
+pub struct LinSolver<'a> {
     /// Holds the actual implementation
-    pub actual: Box<dyn SolverTrait + 'a>,
+    pub actual: Box<dyn LinSolTrait + 'a>,
 }
 
-impl<'a> Solver<'a> {
+impl<'a> LinSolver<'a> {
     /// Allocates a new instance
     ///
     /// # Input
     ///
     /// * `genie` -- the actual implementation that does all the magic
     pub fn new(genie: Genie) -> Result<Self, StrError> {
-        let actual: Box<dyn SolverTrait> = match genie {
+        let actual: Box<dyn LinSolTrait> = match genie {
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
             Genie::IntelDss => Box::new(SolverIntelDSS::new()?),
         };
-        Ok(Solver { actual })
+        Ok(LinSolver { actual })
     }
 
     /// Computes the solution of a linear system
@@ -176,9 +176,9 @@ impl<'a> Solver<'a> {
         x: &mut Vector,
         mat: &mut SparseMatrix,
         rhs: &Vector,
-        params: Option<ConfigSolver>,
+        params: Option<LinSolParams>,
     ) -> Result<Self, StrError> {
-        let mut solver = Solver::new(genie)?;
+        let mut solver = LinSolver::new(genie)?;
         solver.actual.factorize(mat, params)?;
         let verbose = if let Some(p) = params { p.verbose } else { false };
         solver.actual.solve(x, mat, rhs, verbose)?;
@@ -190,49 +190,49 @@ impl<'a> Solver<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ConfigSolver, Solver};
+    use super::{LinSolParams, LinSolver};
     use crate::{Genie, Ordering, Samples, Scaling, SparseMatrix};
     use russell_chk::vec_approx_eq;
     use russell_lab::Vector;
 
     #[test]
     fn clone_copy_and_debug_work() {
-        let config = ConfigSolver::new();
-        let copy = config;
-        let clone = config.clone();
-        assert_eq!(format!("{:?}", config), "ConfigSolver { ordering: Auto, scaling: Auto, compute_determinant: false, mumps_pct_inc_workspace: 100, mumps_max_work_memory: 0, mumps_openmp_num_threads: 0, umfpack_enforce_unsymmetric_strategy: false, verbose: false }");
-        assert_eq!(copy, config);
-        assert_eq!(clone, config);
+        let params = LinSolParams::new();
+        let copy = params;
+        let clone = params.clone();
+        assert_eq!(format!("{:?}", params), "LinSolParams { ordering: Auto, scaling: Auto, compute_determinant: false, mumps_pct_inc_workspace: 100, mumps_max_work_memory: 0, mumps_openmp_num_threads: 0, umfpack_enforce_unsymmetric_strategy: false, verbose: false }");
+        assert_eq!(copy, params);
+        assert_eq!(clone, params);
     }
 
     #[test]
-    fn config_solver_new_works() {
-        let config = ConfigSolver::new();
-        assert_eq!(config.ordering, Ordering::Auto);
-        assert_eq!(config.scaling, Scaling::Auto);
-        assert_eq!(config.compute_determinant, false);
-        assert_eq!(config.mumps_pct_inc_workspace, 100);
-        assert_eq!(config.mumps_max_work_memory, 0);
-        assert_eq!(config.mumps_openmp_num_threads, 0);
-        assert!(!config.umfpack_enforce_unsymmetric_strategy);
+    fn lin_sol_params_new_works() {
+        let params = LinSolParams::new();
+        assert_eq!(params.ordering, Ordering::Auto);
+        assert_eq!(params.scaling, Scaling::Auto);
+        assert_eq!(params.compute_determinant, false);
+        assert_eq!(params.mumps_pct_inc_workspace, 100);
+        assert_eq!(params.mumps_max_work_memory, 0);
+        assert_eq!(params.mumps_openmp_num_threads, 0);
+        assert!(!params.umfpack_enforce_unsymmetric_strategy);
     }
 
     #[test]
-    fn solver_new_works() {
-        Solver::new(Genie::Mumps).unwrap();
-        Solver::new(Genie::Umfpack).unwrap();
+    fn lin_solver_new_works() {
+        LinSolver::new(Genie::Mumps).unwrap();
+        LinSolver::new(Genie::Umfpack).unwrap();
         if cfg!(with_intel_dss) {
-            Solver::new(Genie::IntelDss).unwrap();
+            LinSolver::new(Genie::IntelDss).unwrap();
         }
     }
 
     #[test]
-    fn solver_compute_works() {
+    fn lin_solver_compute_works() {
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_full(false);
         let mut mat = SparseMatrix::from_coo(coo);
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
-        Solver::compute(Genie::Umfpack, &mut x, &mut mat, &rhs, None).unwrap();
+        LinSolver::compute(Genie::Umfpack, &mut x, &mut mat, &rhs, None).unwrap();
         let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         vec_approx_eq(x.as_data(), &x_correct, 1e-10);
     }

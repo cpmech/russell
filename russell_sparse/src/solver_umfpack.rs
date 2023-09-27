@@ -1,4 +1,4 @@
-use super::{to_i32, ConfigSolver, Ordering, Scaling, SolverTrait, SparseMatrix, Symmetry};
+use super::{to_i32, LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -115,7 +115,7 @@ impl SolverUMFPACK {
     }
 }
 
-impl SolverTrait for SolverUMFPACK {
+impl LinSolTrait for SolverUMFPACK {
     /// Performs the factorization (and analysis/initialization if needed)
     ///
     /// # Input
@@ -135,7 +135,7 @@ impl SolverTrait for SolverUMFPACK {
     /// 3. If the structure of the matrix needs to be changed, the solver must
     ///    be "dropped" and a new solver allocated.
     /// 4. For symmetric matrices, `UMFPACK` requires that the symmetry/storage be [crate::Storage::Full].
-    fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<ConfigSolver>) -> Result<(), StrError> {
+    fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
         // get CSC matrix
         let csc = mat.get_csc_or_from_coo()?;
 
@@ -168,7 +168,7 @@ impl SolverTrait for SolverUMFPACK {
         }
 
         // parameters
-        let par = if let Some(p) = params { p } else { ConfigSolver::new() };
+        let par = if let Some(p) = params { p } else { LinSolParams::new() };
 
         // input parameters
         let ordering = match par.ordering {
@@ -413,7 +413,7 @@ const UMFPACK_DEFAULT_SCALE: i32 = UMFPACK_SCALE_SUM;
 #[cfg(test)]
 mod tests {
     use super::{handle_umfpack_error_code, SolverUMFPACK};
-    use crate::{ConfigSolver, CooMatrix, Ordering, Samples, Scaling, SolverTrait, SparseMatrix};
+    use crate::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 
@@ -454,7 +454,7 @@ mod tests {
         assert!(!solver.factorized);
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
         let mut mat = SparseMatrix::from_coo(coo);
-        let mut params = ConfigSolver::new();
+        let mut params = LinSolParams::new();
 
         params.compute_determinant = true;
         params.ordering = Ordering::Amd;

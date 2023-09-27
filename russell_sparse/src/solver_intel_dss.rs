@@ -1,4 +1,4 @@
-use super::{to_i32, ConfigSolver, SolverTrait, SparseMatrix, Symmetry};
+use super::{to_i32, LinSolParams, LinSolTrait, SparseMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -102,7 +102,7 @@ impl SolverIntelDSS {
     }
 }
 
-impl SolverTrait for SolverIntelDSS {
+impl LinSolTrait for SolverIntelDSS {
     /// Performs the factorization (and analysis/initialization if needed)
     ///
     /// # Input
@@ -128,7 +128,7 @@ impl SolverTrait for SolverIntelDSS {
     ///
     /// **Warning:** This solver may fail with large matrices (e.g., ATandT/pre2) and
     /// may return **incorrect results**.
-    fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<ConfigSolver>) -> Result<(), StrError> {
+    fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
         // get CSR matrix
         let csr = mat.get_csr_or_from_coo()?;
 
@@ -159,7 +159,7 @@ impl SolverTrait for SolverIntelDSS {
         }
 
         // configuration parameters
-        let par = if let Some(p) = params { p } else { ConfigSolver::new() };
+        let par = if let Some(p) = params { p } else { LinSolParams::new() };
 
         // requests
         let calc_det = if par.compute_determinant { 1 } else { 0 };
@@ -344,7 +344,7 @@ const MKL_DSS_SUCCESS: i32 = 0;
 #[cfg(with_intel_dss)]
 mod tests {
     use super::{handle_intel_dss_error_code, SolverIntelDSS};
-    use crate::{ConfigSolver, CooMatrix, Samples, SolverTrait, SparseMatrix};
+    use crate::{CooMatrix, LinSolParams, LinSolTrait, Samples, SparseMatrix};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::{Matrix, Vector};
 
@@ -385,7 +385,7 @@ mod tests {
         assert!(!solver.factorized);
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
         let mut mat = SparseMatrix::from_coo(coo);
-        let mut params = ConfigSolver::new();
+        let mut params = LinSolParams::new();
 
         let (nrow, ncol, _, _) = mat.get_info();
         let mut a = Matrix::new(nrow, ncol);

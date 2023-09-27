@@ -303,6 +303,7 @@ impl CscMatrix {
         let bx = &mut csc.values;
 
         // compute the number of non-zero entries per column of A
+        // bp.fill(0); // <<<< not needed because the array is zeroed already
         for k in 0..nnz {
             bp[aj[k] as usize] += 1;
         }
@@ -630,6 +631,22 @@ mod tests {
             assert_eq!(&csc.row_indices[0..nnz], &csc_correct.row_indices);
             vec_approx_eq(&csc.values[0..nnz], &csc_correct.values, 1e-15);
         }
+    }
+
+    #[test]
+    fn update_from_coo_again_works() {
+        let (coo, csc_correct, _, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let mut csc = CscMatrix::from_coo(&coo).unwrap();
+        assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
+        let nnz = csc.col_pointers[csc.ncol] as usize;
+        assert_eq!(&csc.row_indices[0..nnz], &csc_correct.row_indices);
+        vec_approx_eq(&csc.values[0..nnz], &csc_correct.values, 1e-15);
+
+        csc.update_from_coo(&coo).unwrap();
+        assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
+        let nnz = csc.col_pointers[csc.ncol] as usize;
+        assert_eq!(&csc.row_indices[0..nnz], &csc_correct.row_indices);
+        vec_approx_eq(&csc.values[0..nnz], &csc_correct.values, 1e-15);
     }
 
     #[test]

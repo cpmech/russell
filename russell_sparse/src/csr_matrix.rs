@@ -57,27 +57,42 @@ pub struct CsrMatrix {
     pub ncol: usize,
 
     /// Defines the row pointers array with size = nrow + 1
+    ///
+    /// ```text
+    /// row_pointers.len() = nrow + 1
+    /// nnz = col_pointers[ncol]
+    /// ```
     pub row_pointers: Vec<i32>,
 
-    /// Defines the column indices array with size = nnz (number of non-zeros)
+    /// Defines the column indices array with size = nnz_dup (number of non-zeros with duplicates)
+    ///
+    /// ```text
+    /// nnz_dup ≥ nnz
+    /// col_indices.len() = nnz_dup
+    /// ```
     pub col_indices: Vec<i32>,
 
-    /// Defines the values array with size = nnz (number of non-zeros)
+    /// Defines the values array with size = nnz_dup (number of non-zeros with duplicates)
+    ///
+    /// ```text
+    /// nnz_dup ≥ nnz
+    /// values.len() = nnz_dup
+    /// ```
     pub values: Vec<f64>,
 }
 
 impl CsrMatrix {
     /// Checks the dimension of the arrays in the CSR matrix
     ///
-    /// The following conditions must be satisfied:
+    /// The following conditions must be satisfied (nnz is the number of non-zeros with duplicates):
     ///
     /// ```text
     /// nrow ≥ 1
     /// ncol ≥ 1
     /// nnz = row_pointers[nrow] ≥ 1
     /// row_pointers.len() == nrow + 1
-    /// col_indices.len() == nnz
-    /// values.len() == nnz
+    /// col_indices.len() == nnz_dup ≥ nnz
+    /// values.len() == nnz_dup ≥ nnz
     /// ```
     pub fn check_dimensions(&self) -> Result<(), StrError> {
         if self.nrow < 1 {
@@ -93,16 +108,19 @@ impl CsrMatrix {
         if nnz < 1 {
             return Err("nnz must be ≥ 1");
         }
-        if self.col_indices.len() != nnz as usize {
-            return Err("col_indices.len() must be = nnz");
+        if self.col_indices.len() < nnz as usize {
+            return Err("col_indices.len() must be ≥ nnz");
         }
-        if self.values.len() != nnz as usize {
-            return Err("values.len() must be = nnz");
+        if self.values.len() < nnz as usize {
+            return Err("values.len() must be ≥ nnz");
         }
         Ok(())
     }
 
     /// Creates a new CSR matrix from a COO matrix
+    ///
+    /// **Note:** The final nnz may be smaller than the initial nnz because duplicates
+    /// may have been summed up. The final nnz is available as `nnz = row_pointers[nrow]`.
     ///
     /// # Examples
     ///
@@ -152,6 +170,27 @@ impl CsrMatrix {
     /// }
     /// ```
     pub fn from_coo(coo: &CooMatrix) -> Result<Self, StrError> {
+        coo.check_dimensions_ready()?;
+        let mut csr = CsrMatrix {
+            symmetry: coo.symmetry,
+            nrow: coo.nrow,
+            ncol: coo.ncol,
+            row_pointers: vec![0; coo.nrow + 1],
+            col_indices: vec![0; coo.nnz],
+            values: vec![0.0; coo.nnz],
+        };
+        csr.update_from_coo(coo)?;
+        Ok(csr)
+    }
+
+    /// Updates this CSR matrix from a COO matrix with a compatible structure
+    ///
+    /// **Note:** The COO matrix must match the symmetry, nrow, and ncol values.
+    /// Also, the `pos` (nnz) value in the COO matrix must match `col_indices.len()`.
+    ///
+    /// **Note:** The final nnz may be smaller than the initial nnz because duplicates
+    /// may have been summed up. The final nnz is available as `nnz = row_pointers[nrow]`.
+    pub fn update_from_coo(&mut self, coo: &CooMatrix) -> Result<(), StrError> {
         // Based on the SciPy code (coo_tocsr) from here:
         //
         // https://github.com/scipy/scipy/blob/main/scipy/sparse/sparsetools/coo.h
@@ -162,8 +201,24 @@ impl CsrMatrix {
         // * Linear complexity: O(nnz(A) + max(nrow, ncol))
         // * Upgrading i32 to usize is OK (the opposite is not OK => use to_i32)
 
-        // check dimension params
-        coo.check_dimensions_ready()?;
+        // check dimensions
+        if coo.symmetry != self.symmetry {
+            return Err("coo.symmetry must be equal to csr.symmetry");
+        }
+        if coo.nrow != self.nrow {
+            return Err("coo.nrow must be equal to csr.nrow");
+        }
+        if coo.ncol != self.ncol {
+            return Err("coo.ncol must be equal to csr.ncol");
+        }
+        if coo.nnz != self.col_indices.len() {
+            return Err("coo.nnz must be equal to csr.col_indices.len()");
+        }
+        if coo.nnz != self.values.len() {
+            return Err("coo.nnz must be equal to csr.values.len()");
+        }
+
+        // constants
         let nrow = coo.nrow;
         let nnz = coo.nnz;
 
@@ -172,20 +227,10 @@ impl CsrMatrix {
         let aj = &coo.indices_j;
         let ax = &coo.values;
 
-        // allocate the CSR arrays
-        let mut csr = CsrMatrix {
-            symmetry: coo.symmetry,
-            nrow: coo.nrow,
-            ncol: coo.ncol,
-            row_pointers: vec![0; nrow + 1],
-            col_indices: vec![0; nnz],
-            values: vec![0.0; nnz],
-        };
-
         // access the CSR data
-        let bp = &mut csr.row_pointers;
-        let bj = &mut csr.col_indices;
-        let bx = &mut csr.values;
+        let bp = &mut self.row_pointers;
+        let bj = &mut self.col_indices;
+        let bx = &mut self.values;
 
         // handle one-based indexing
         let d = if coo.one_based { -1 } else { 0 };
@@ -243,12 +288,8 @@ impl CsrMatrix {
         }
 
         // sum duplicates
-        let final_nnz = csr_sum_duplicates(nrow, bp, bj, bx);
-        bj.resize(final_nnz, 0);
-        bx.resize(final_nnz, 0.0);
-
-        // results
-        Ok(csr)
+        csr_sum_duplicates(nrow, bp, bj, bx);
+        Ok(())
     }
 
     /// Creates a new CSR matrix from a CSC matrix
@@ -655,8 +696,9 @@ mod tests {
             let csr = CsrMatrix::from_coo(&coo).unwrap();
             csr.check_dimensions().unwrap();
             assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
-            assert_eq!(&csr.col_indices, &csr_correct.col_indices);
-            vec_approx_eq(&csr.values, &csr_correct.values, 1e-15);
+            let nnz = csr.row_pointers[csr.nrow] as usize;
+            assert_eq!(&csr.col_indices[0..nnz], &csr_correct.col_indices);
+            vec_approx_eq(&csr.values[0..nnz], &csr_correct.values, 1e-15);
         }
     }
 
@@ -735,9 +777,9 @@ mod tests {
         csr.row_pointers = vec![0, 0, 0];
         assert_eq!(csr.check_dimensions().err(), Some("nnz must be ≥ 1"));
         csr.row_pointers = vec![0, 0, 1];
-        assert_eq!(csr.check_dimensions().err(), Some("col_indices.len() must be = nnz"));
+        assert_eq!(csr.check_dimensions().err(), Some("col_indices.len() must be ≥ nnz"));
         csr.col_indices = vec![0];
-        assert_eq!(csr.check_dimensions().err(), Some("values.len() must be = nnz"));
+        assert_eq!(csr.check_dimensions().err(), Some("values.len() must be ≥ nnz"));
         csr.values = vec![0.0];
         assert_eq!(csr.check_dimensions().err(), None);
     }

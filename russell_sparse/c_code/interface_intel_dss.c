@@ -146,31 +146,31 @@ int32_t solver_intel_dss_factorize(struct InterfaceIntelDSS *solver,
         }
 
         solver->initialization_completed = C_TRUE;
-    }
 
-    // define the non-zero structure of the matrix
-    MKL_INT nnz = row_pointers[ndim];
-    MKL_INT status = dss_define_structure(solver->handle,
-                                          solver->dss_sym,
-                                          row_pointers,
-                                          ndim,
-                                          ndim,
-                                          col_indices,
-                                          nnz);
-    if (status != MKL_DSS_SUCCESS) {
-        return status;
-    }
+        // define the non-zero structure of the matrix
+        MKL_INT nnz = row_pointers[ndim];
+        status = dss_define_structure(solver->handle,
+                                      solver->dss_sym,
+                                      row_pointers,
+                                      ndim,
+                                      ndim,
+                                      col_indices,
+                                      nnz);
+        if (status != MKL_DSS_SUCCESS) {
+            return status;
+        }
 
-    // reorder the matrix
-    status = dss_reorder(solver->handle, solver->dss_opt, 0);
-    if (status != MKL_DSS_SUCCESS) {
-        return status;
+        // reorder the matrix (NOTE: we cannot call reorder again)
+        status = dss_reorder(solver->handle, solver->dss_opt, 0);
+        if (status != MKL_DSS_SUCCESS) {
+            return status;
+        }
     }
 
     // print_csr(ndim, row_pointers, col_indices, values);
 
     // factor the matrix
-    status = dss_factor_real(solver->handle, solver->dss_type, values);
+    MKL_INT status = dss_factor_real(solver->handle, solver->dss_type, values);
 
     // compute determinant
     *determinant_coefficient = 0.0;

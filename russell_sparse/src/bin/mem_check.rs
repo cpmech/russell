@@ -19,7 +19,7 @@ fn test_solver(genie: Genie) {
     };
 
     let one_based = if genie == Genie::Mumps { true } else { false };
-    let mut coo = match CooMatrix::new(ndim, ndim, nnz, None, one_based) {
+    let mut coo = match SparseMatrix::new_coo(ndim, ndim, nnz, None, one_based) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new CooMatrix): {}", e);
@@ -41,7 +41,7 @@ fn test_solver(genie: Genie) {
     coo.put(1, 4, 6.0).unwrap();
     coo.put(4, 4, 1.0).unwrap();
 
-    match solver.actual.factorize_coo(&coo, None) {
+    match solver.actual.factorize(&mut coo, None) {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
@@ -52,7 +52,7 @@ fn test_solver(genie: Genie) {
     let mut x = Vector::new(5);
     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
 
-    match solver.actual.solve(&mut x, &rhs, false) {
+    match solver.actual.solve(&mut x, &mut coo, &rhs, false) {
         Err(e) => {
             println!("FAIL(solve): {}", e);
             return;
@@ -60,7 +60,7 @@ fn test_solver(genie: Genie) {
         _ => (),
     }
 
-    match solver.actual.solve(&mut x, &rhs, false) {
+    match solver.actual.solve(&mut x, &coo, &rhs, false) {
         Err(e) => {
             println!("FAIL(solve again): {}", e);
             return;
@@ -89,15 +89,17 @@ fn test_solver_singular(genie: Genie) {
     };
 
     let one_based = if genie == Genie::Mumps { true } else { false };
-    let coo_singular = match CooMatrix::new(ndim, ndim, nnz, None, one_based) {
+    let mut coo_singular = match SparseMatrix::new_coo(ndim, ndim, nnz, None, one_based) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new CooMatrix): {}", e);
             return;
         }
     };
+    coo_singular.put(0, 0, 1.0).unwrap();
+    coo_singular.put(1, 0, 1.0).unwrap();
 
-    match solver.actual.factorize_coo(&coo_singular, None) {
+    match solver.actual.factorize(&mut coo_singular, None) {
         Err(e) => println!("\nOk(factorize singular matrix): {}\n", e),
         _ => (),
     };
@@ -109,7 +111,8 @@ fn main() {
     test_solver_singular(Genie::Umfpack);
     if cfg!(with_intel_dss) {
         test_solver(Genie::IntelDss);
-        test_solver_singular(Genie::IntelDss);
+        // Intel DSS cannot handle singular matrices
+        // test_solver_singular(Genie::IntelDss);
     }
     println!("Done\n");
 }

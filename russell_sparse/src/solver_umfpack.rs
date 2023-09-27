@@ -1,4 +1,4 @@
-use super::{to_i32, ConfigSolver, CooMatrix, CscMatrix, CsrMatrix, Ordering, Scaling, SolverTrait, Symmetry};
+use super::{to_i32, ConfigSolver, Ordering, Scaling, SolverTrait, SparseMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -49,7 +49,7 @@ extern "C" {
 
 /// Wraps the UMFPACK solver for sparse linear systems
 ///
-/// **Warning:** This solver may "run out of memory"
+/// **Warning:** This solver may "run out of memory" for very large matrices.
 pub struct SolverUMFPACK {
     /// Holds a pointer to the C interface to UMFPACK
     solver: *mut InterfaceUMFPACK,
@@ -80,11 +80,6 @@ pub struct SolverUMFPACK {
 
     /// Holds the determinant exponent: det = coefficient * pow(10, exponent)
     determinant_exponent: f64,
-
-    /// Compressed sparse column (CSC) matrix
-    ///
-    /// **Note:** This is created only if a COO matrix is given to factorize
-    csc_matrix: Option<CscMatrix>,
 }
 
 impl Drop for SolverUMFPACK {
@@ -108,58 +103,75 @@ impl SolverUMFPACK {
                 solver,
                 factorized: false,
                 factorized_symmetry: None,
-                factorized_nnz: 0,
                 factorized_ndim: 0,
+                factorized_nnz: 0,
                 effective_strategy: -1,
                 effective_ordering: -1,
                 effective_scaling: -1,
                 determinant_coefficient: 0.0,
                 determinant_exponent: 0.0,
-                csc_matrix: None,
             })
         }
     }
 }
 
 impl SolverTrait for SolverUMFPACK {
-    /// Performs the factorization (and analysis) given a COO matrix
+    /// Performs the factorization (and analysis/initialization if needed)
     ///
     /// # Input
     ///
-    /// * `coo` -- The COO matrix
+    /// * `mat` -- the coefficient matrix A (**COO** or **CSC**, but not CSR).
+    ///   Also, the matrix must be square (`nrow = ncol`) and, if symmetric,
+    ///   the symmetry/storage must [crate::Storage::Full].
     /// * `params` -- configuration parameters; None => use default
-    fn factorize_coo(&mut self, coo: &CooMatrix, params: Option<ConfigSolver>) -> Result<(), StrError> {
-        // check already factorized data
-        if self.factorized == true {
-            if coo.symmetry != self.factorized_symmetry {
-                return Err("the subsequent factorizations must use the same matrix (symmetry differs)");
-            }
-            if coo.nrow != self.factorized_ndim {
-                return Err("the subsequent factorizations must use the same matrix (ndim differs)");
-            }
-            if coo.nnz != self.factorized_nnz {
-                return Err("the subsequent factorizations must use the same matrix (nnz differs)");
-            }
-        } else {
-            self.factorized_symmetry = coo.symmetry;
-            self.factorized_ndim = coo.nrow;
-            self.factorized_nnz = coo.nnz;
-        }
+    ///
+    /// # Notes
+    ///
+    /// 1. The structure of the matrix (nrow, ncol, nnz, symmetry) must be
+    ///    exactly the same among multiple calls to `factorize`. The values may differ
+    ///    from call to call, nonetheless.
+    /// 2. The first call to `factorize` will define the structure which must be
+    ///    kept the same for the next calls.
+    /// 3. If the structure of the matrix needs to be changed, the solver must
+    ///    be "dropped" and a new solver allocated.
+    /// 4. For symmetric matrices, `UMFPACK` requires that the symmetry/storage be [crate::Storage::Full].
+    fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<ConfigSolver>) -> Result<(), StrError> {
+        // get CSC matrix
+        let csc = mat.get_csc_or_from_coo()?;
 
-        // check the COO matrix
-        if coo.one_based {
-            return Err("the COO matrix must have zero-based indices as required by UMFPACK");
-        }
-        if coo.nrow != coo.ncol {
+        // check CSC matrix
+        if csc.nrow != csc.ncol {
             return Err("the matrix must be square");
         }
-        coo.check_dimensions_ready()?;
+        csc.check_dimensions()?;
+        if let Some(symmetry) = csc.symmetry {
+            if symmetry.triangular() {
+                return Err("for UMFPACK, the matrix must not be triangular");
+            }
+        }
 
-        // configuration parameters
-        let cfg = if let Some(p) = params { p } else { ConfigSolver::new() };
+        // check already factorized data
+        if self.factorized == true {
+            if csc.symmetry != self.factorized_symmetry {
+                return Err("subsequent factorizations must use the same matrix (symmetry differs)");
+            }
+            if csc.nrow != self.factorized_ndim {
+                return Err("subsequent factorizations must use the same matrix (ndim differs)");
+            }
+            if (csc.col_pointers[csc.ncol] as usize) != self.factorized_nnz {
+                return Err("subsequent factorizations must use the same matrix (nnz differs)");
+            }
+        } else {
+            self.factorized_symmetry = csc.symmetry;
+            self.factorized_ndim = csc.nrow;
+            self.factorized_nnz = csc.col_pointers[csc.ncol] as usize;
+        }
+
+        // parameters
+        let par = if let Some(p) = params { p } else { ConfigSolver::new() };
 
         // input parameters
-        let ordering = match cfg.ordering {
+        let ordering = match par.ordering {
             Ordering::Amd => UMFPACK_ORDERING_AMD,
             Ordering::Amf => UMFPACK_DEFAULT_ORDERING,
             Ordering::Auto => UMFPACK_DEFAULT_ORDERING,
@@ -171,7 +183,7 @@ impl SolverTrait for SolverUMFPACK {
             Ordering::Qamd => UMFPACK_DEFAULT_ORDERING,
             Ordering::Scotch => UMFPACK_DEFAULT_ORDERING,
         };
-        let scaling = match cfg.scaling {
+        let scaling = match par.scaling {
             Scaling::Auto => UMFPACK_DEFAULT_SCALE,
             Scaling::Column => UMFPACK_DEFAULT_SCALE,
             Scaling::Diagonal => UMFPACK_DEFAULT_SCALE,
@@ -184,25 +196,9 @@ impl SolverTrait for SolverUMFPACK {
         };
 
         // requests
-        let determinant = if cfg.compute_determinant { 1 } else { 0 };
-        let verbose_mode = if cfg.verbose { 1 } else { 0 };
-        let enforce_unsymmetric = if cfg.umfpack_enforce_unsymmetric_strategy { 1 } else { 0 };
-
-        // check the storage type
-        if let Some(symmetry) = coo.symmetry {
-            if symmetry.triangular() {
-                return Err("the matrix must not be triangular for UMFPACK");
-            }
-        }
-
-        // convert COO to CSC
-        if self.factorized {
-            self.csc_matrix.as_mut().unwrap().update_from_coo(coo)?;
-        } else {
-            self.csc_matrix = Some(CscMatrix::from_coo(coo)?);
-        };
-        let csc = &self.csc_matrix.as_ref().unwrap();
-        csc.check_dimensions()?;
+        let calc_det = if par.compute_determinant { 1 } else { 0 };
+        let verbose = if par.verbose { 1 } else { 0 };
+        let enforce_unsym = if par.umfpack_enforce_unsymmetric_strategy { 1 } else { 0 };
 
         // matrix config
         let ndim = to_i32(csc.nrow)?;
@@ -221,10 +217,10 @@ impl SolverTrait for SolverUMFPACK {
                 ordering,
                 scaling,
                 // requests
-                determinant,
-                verbose_mode,
+                calc_det,
+                verbose,
                 // matrix config
-                enforce_unsymmetric,
+                enforce_unsym,
                 ndim,
                 // matrix
                 csc.col_pointers.as_ptr(),
@@ -236,29 +232,9 @@ impl SolverTrait for SolverUMFPACK {
             }
         }
 
-        // store information
+        // done
         self.factorized = true;
         Ok(())
-    }
-
-    /// Performs the factorization (and analysis) given a CSC matrix
-    ///
-    /// # Input
-    ///
-    /// * `csc` -- The CSC matrix
-    /// * `params` -- configuration parameters; None => use default
-    fn factorize_csc(&mut self, _csc: &CscMatrix, _params: Option<ConfigSolver>) -> Result<(), StrError> {
-        return Err("TODO");
-    }
-
-    /// Performs the factorization (and analysis) given a CSR matrix
-    ///
-    /// # Input
-    ///
-    /// * `csr` -- The CSR matrix
-    /// * `params` -- configuration parameters; None => use default
-    fn factorize_csr(&mut self, _csr: &CsrMatrix, _params: Option<ConfigSolver>) -> Result<(), StrError> {
-        return Err("TODO");
     }
 
     /// Computes the solution of the linear system
@@ -266,45 +242,67 @@ impl SolverTrait for SolverUMFPACK {
     /// Solves the linear system:
     ///
     /// ```text
-    /// A · x = rhs
+    ///   A   · x = rhs
+    /// (m,m)  (m)  (m)
     /// ```
+    ///
+    /// # Output
+    ///
+    /// * `x` -- the vector of unknown values with dimension equal to mat.nrow
     ///
     /// # Input
     ///
-    /// * `x` -- the vector of unknown values with dimension equal to coo.nrow
-    /// * `rhs` -- the right-hand side vector with know values an dimension equal to coo.nrow
+    /// * `mat` -- the coefficient matrix A; must be square and, if symmetric, [crate::Storage::Full].
+    /// * `rhs` -- the right-hand side vector with know values an dimension equal to mat.nrow
     /// * `verbose` -- shows messages
-    fn solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool) -> Result<(), StrError> {
-        if !self.factorized {
+    ///
+    /// **Warning:** the matrix must be same one used in `factorize`.
+    fn solve(&mut self, x: &mut Vector, mat: &SparseMatrix, rhs: &Vector, verbose: bool) -> Result<(), StrError> {
+        // check already factorized data
+        if self.factorized == true {
+            let (nrow, ncol, nnz, symmetry) = mat.get_info();
+            if symmetry != self.factorized_symmetry {
+                return Err("solve must use the same matrix (symmetry differs)");
+            }
+            if nrow != self.factorized_ndim || ncol != self.factorized_ndim {
+                return Err("solve must use the same matrix (ndim differs)");
+            }
+            if nnz != self.factorized_nnz {
+                return Err("solve must use the same matrix (nnz differs)");
+            }
+        } else {
             return Err("the function factorize must be called before solve");
         }
-        if x.dim() != self.factorized_ndim as usize {
+
+        // check vectors
+        if x.dim() != self.factorized_ndim {
             return Err("the dimension of the vector of unknown values x is incorrect");
         }
-        if rhs.dim() != self.factorized_ndim as usize {
+        if rhs.dim() != self.factorized_ndim {
             return Err("the dimension of the right-hand side vector is incorrect");
         }
-        let csc = match &self.csc_matrix {
-            Some(c) => c,
-            None => {
-                return Err("the CSC matrix was not factorized yet");
-            }
-        };
+
+        // call UMFPACK solve
+        let col_pointers = mat.csc_col_pointers()?;
+        let row_indices = mat.csc_row_indices()?;
+        let values = mat.csc_values()?;
         let verb = if verbose { 1 } else { 0 };
         unsafe {
             let status = solver_umfpack_solve(
                 self.solver,
                 x.as_mut_data().as_mut_ptr(),
                 rhs.as_data().as_ptr(),
-                csc.col_pointers.as_ptr(),
-                csc.row_indices.as_ptr(),
-                csc.values.as_ptr(),
+                col_pointers.as_ptr(),
+                row_indices.as_ptr(),
+                values.as_ptr(),
                 verb,
             );
             if status != UMFPACK_SUCCESS {
                 return Err(handle_umfpack_error_code(status));
             }
         }
+
+        // done
         Ok(())
     }
 
@@ -415,7 +413,7 @@ const UMFPACK_DEFAULT_SCALE: i32 = UMFPACK_SCALE_SUM;
 #[cfg(test)]
 mod tests {
     use super::{handle_umfpack_error_code, SolverUMFPACK};
-    use crate::{ConfigSolver, CooMatrix, Ordering, Samples, Scaling, SolverTrait};
+    use crate::{ConfigSolver, CooMatrix, Ordering, Samples, Scaling, SolverTrait, SparseMatrix};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 
@@ -430,25 +428,23 @@ mod tests {
     fn factorize_handles_errors() {
         let mut solver = SolverUMFPACK::new().unwrap();
         assert!(!solver.factorized);
-        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(true);
-        assert_eq!(
-            solver.factorize_coo(&coo, None).err(),
-            Some("the COO matrix must have zero-based indices as required by UMFPACK")
-        );
         let (coo, _, _, _) = Samples::rectangular_1x7();
+        let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
-            solver.factorize_coo(&coo, None).err(),
+            solver.factorize(&mut mat, None).err(),
             Some("the matrix must be square")
         );
         let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
-            solver.factorize_coo(&coo, None).err(),
+            solver.factorize(&mut mat, None).err(),
             Some("COO matrix: pos = nnz must be ≥ 1")
         );
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(false, false, false);
+        let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
-            solver.factorize_coo(&coo, None).err(),
-            Some("the matrix must not be triangular for UMFPACK")
+            solver.factorize(&mut mat, None).err(),
+            Some("for UMFPACK, the matrix must not be triangular")
         );
     }
 
@@ -457,13 +453,14 @@ mod tests {
         let mut solver = SolverUMFPACK::new().unwrap();
         assert!(!solver.factorized);
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let mut mat = SparseMatrix::from_coo(coo);
         let mut params = ConfigSolver::new();
 
         params.compute_determinant = true;
         params.ordering = Ordering::Amd;
         params.scaling = Scaling::Sum;
 
-        solver.factorize_coo(&coo, Some(params)).unwrap();
+        solver.factorize(&mut mat, Some(params)).unwrap();
         assert!(solver.factorized);
 
         assert_eq!(solver.get_effective_ordering(), "Amd");
@@ -474,7 +471,7 @@ mod tests {
         approx_eq(det, 114.0, 1e-13);
 
         // calling factorize again works
-        solver.factorize_coo(&coo, Some(params)).unwrap();
+        solver.factorize(&mut mat, Some(params)).unwrap();
         let (a, b, c) = solver.get_determinant();
         let det = a * f64::powf(b, c);
         approx_eq(det, 114.0, 1e-13);
@@ -486,28 +483,31 @@ mod tests {
         let mut coo = CooMatrix::new(2, 2, 2, None, false).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 0.0).unwrap();
-        assert_eq!(solver.factorize_coo(&coo, None), Err("Error(1): Matrix is singular"));
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(solver.factorize(&mut mat, None), Err("Error(1): Matrix is singular"));
     }
 
     #[test]
     fn solve_handles_errors() {
+        let (coo, _, _, _) = Samples::tiny_1x1(false);
+        let mut mat = SparseMatrix::from_coo(coo);
         let mut solver = SolverUMFPACK::new().unwrap();
         assert!(!solver.factorized);
-        let mut x = Vector::new(1);
+        let mut x = Vector::new(2);
         let rhs = Vector::new(1);
         assert_eq!(
-            solver.solve(&mut x, &rhs, false),
+            solver.solve(&mut x, &mut mat, &rhs, false),
             Err("the function factorize must be called before solve")
         );
-        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
-        solver.factorize_coo(&coo, None).unwrap();
+        solver.factorize(&mut mat, None).unwrap();
         assert_eq!(
-            solver.solve(&mut x, &rhs, false),
+            solver.solve(&mut x, &mut mat, &rhs, false),
             Err("the dimension of the vector of unknown values x is incorrect")
         );
-        let mut x = Vector::new(5);
+        let mut x = Vector::new(1);
+        let rhs = Vector::new(2);
         assert_eq!(
-            solver.solve(&mut x, &rhs, false),
+            solver.solve(&mut x, &mut mat, &rhs, false),
             Err("the dimension of the right-hand side vector is incorrect")
         );
     }
@@ -516,16 +516,17 @@ mod tests {
     fn solve_works() {
         let mut solver = SolverUMFPACK::new().unwrap();
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let mut mat = SparseMatrix::from_coo(coo);
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
         let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
-        solver.factorize_coo(&coo, None).unwrap();
-        solver.solve(&mut x, &rhs, false).unwrap();
+        solver.factorize(&mut mat, None).unwrap();
+        solver.solve(&mut x, &mut mat, &rhs, false).unwrap();
         vec_approx_eq(x.as_data(), x_correct, 1e-14);
 
         // calling solve again works
         let mut x_again = Vector::new(5);
-        solver.solve(&mut x_again, &rhs, false).unwrap();
+        solver.solve(&mut x_again, &mut mat, &rhs, false).unwrap();
         vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
     }
 

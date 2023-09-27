@@ -11,9 +11,8 @@ fn main() -> Result<(), StrError> {
     // allocate solver
     let mut umfpack = SolverUMFPACK::new()?;
 
-    // allocate a square matrix
     // allocate the coefficient matrix
-    let mut coo = CooMatrix::new(ndim, ndim, nnz, None, false)?;
+    let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(1, 0, 3.0)?;
@@ -30,7 +29,7 @@ fn main() -> Result<(), StrError> {
 
     // print matrix
     let mut a = Matrix::new(ndim, ndim);
-    coo.to_matrix(&mut a)?;
+    coo.to_dense(&mut a)?;
     let correct = "┌                ┐\n\
                    │  2  3  0  0  0 │\n\
                    │  3  0  4  0  6 │\n\
@@ -41,14 +40,14 @@ fn main() -> Result<(), StrError> {
     assert_eq!(format!("{}", a), correct);
 
     // call factorize
-    umfpack.factorize_coo(&coo, None)?;
+    umfpack.factorize(&mut coo, None)?;
 
     // allocate x and rhs
     let mut x = Vector::new(ndim);
     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
 
     // calculate the solution
-    umfpack.solve(&mut x, &rhs, false)?;
+    umfpack.solve(&mut x, &coo, &rhs, false)?;
 
     // check the results
     let correct = vec![1.0, 2.0, 3.0, 4.0, 5.0];

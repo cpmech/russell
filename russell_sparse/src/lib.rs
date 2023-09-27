@@ -31,6 +31,7 @@ mod solver;
 mod solver_intel_dss;
 mod solver_mumps;
 mod solver_umfpack;
+mod sparse_matrix;
 mod verify_lin_sys;
 mod write_matrix_market;
 use crate::auxiliary::*;
@@ -44,6 +45,7 @@ pub use crate::solver::*;
 pub use crate::solver_intel_dss::*;
 pub use crate::solver_mumps::*;
 pub use crate::solver_umfpack::*;
+pub use crate::sparse_matrix::*;
 pub use crate::verify_lin_sys::*;
 pub use crate::write_matrix_market::*;
 

@@ -12,7 +12,7 @@ fn main() -> Result<(), StrError> {
     let mut solver = Solver::new(Genie::Umfpack)?;
 
     // allocate the coefficient matrix
-    let mut coo = CooMatrix::new(ndim, ndim, nnz, None, false)?;
+    let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;
     coo.put(0, 0, 0.2)?;
     coo.put(0, 1, 0.2)?;
     coo.put(1, 0, 0.5)?;
@@ -21,7 +21,7 @@ fn main() -> Result<(), StrError> {
 
     // print matrix
     let mut a = Matrix::new(ndim, ndim);
-    coo.to_matrix(&mut a)?;
+    coo.to_dense(&mut a)?;
     let correct = "┌                   ┐\n\
                    │   0.2   0.2     0 │\n\
                    │   0.5 -0.25     0 │\n\
@@ -30,7 +30,7 @@ fn main() -> Result<(), StrError> {
     assert_eq!(format!("{}", a), correct);
 
     // call factorize
-    solver.actual.factorize_coo(&coo, None)?;
+    solver.actual.factorize(&mut coo, None)?;
 
     // allocate two right-hand side vectors
     let rhs1 = Vector::from(&[1.0, 1.0, 1.0]);
@@ -38,13 +38,13 @@ fn main() -> Result<(), StrError> {
 
     // calculate the solution
     let mut x1 = Vector::new(ndim);
-    solver.actual.solve(&mut x1, &rhs1, false)?;
+    solver.actual.solve(&mut x1, &coo, &rhs1, false)?;
     let correct = vec![3.0, 2.0, 4.0];
     vec_approx_eq(x1.as_data(), &correct, 1e-14);
 
     // calculate the solution again
     let mut x2 = Vector::new(ndim);
-    solver.actual.solve(&mut x2, &rhs2, false)?;
+    solver.actual.solve(&mut x2, &coo, &rhs2, false)?;
     let correct = vec![6.0, 4.0, 8.0];
     vec_approx_eq(x2.as_data(), &correct, 1e-14);
     Ok(())

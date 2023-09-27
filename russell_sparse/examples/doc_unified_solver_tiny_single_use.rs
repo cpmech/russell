@@ -9,7 +9,7 @@ fn main() -> Result<(), StrError> {
     let nnz = 5; // number of non-zero values
 
     // allocate the coefficient matrix
-    let mut coo = CooMatrix::new(ndim, ndim, nnz, None, false)?;
+    let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;
     coo.put(0, 0, 0.2)?;
     coo.put(0, 1, 0.2)?;
     coo.put(1, 0, 0.5)?;
@@ -18,7 +18,7 @@ fn main() -> Result<(), StrError> {
 
     // print matrix
     let mut a = Matrix::new(ndim, ndim);
-    coo.to_matrix(&mut a)?;
+    coo.to_dense(&mut a)?;
     let correct = "┌                   ┐\n\
                    │   0.2   0.2     0 │\n\
                    │   0.5 -0.25     0 │\n\
@@ -29,7 +29,7 @@ fn main() -> Result<(), StrError> {
     // solve the linear system
     let mut x = Vector::new(ndim);
     let rhs = Vector::from(&[1.0, 1.0, 1.0]);
-    Solver::compute(Genie::Umfpack, &coo, &mut x, &rhs, false)?;
+    Solver::compute(Genie::Umfpack, &mut x, &mut coo, &rhs, None)?;
 
     // check the results
     let correct = vec![3.0, 2.0, 4.0];

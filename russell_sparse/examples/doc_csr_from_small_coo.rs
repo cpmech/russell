@@ -49,8 +49,10 @@ fn main() -> Result<(), StrError> {
     let correct_p = &[0, 2, 5, 8, 9, 12];
 
     // check
+    let final_nnz = csr.row_pointers[nrow] as usize;
+    assert_eq!(final_nnz, 12);
     assert_eq!(&csr.row_pointers, correct_p);
-    assert_eq!(&csr.col_indices, correct_j);
-    assert_eq!(&csr.values, correct_v);
+    assert_eq!(&csr.col_indices[0..final_nnz], correct_j);
+    assert_eq!(&csr.values[0..final_nnz], correct_v);
     Ok(())
 }

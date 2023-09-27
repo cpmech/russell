@@ -39,6 +39,10 @@ struct Options {
     /// Computes determinant
     #[structopt(short = "d", long)]
     determinant: bool,
+
+    /// Enforce unsymmetric strategy (not recommended) (UMFPACK only)
+    #[structopt(short = "u", long)]
+    enforce_unsymmetric_strategy: bool,
 }
 
 fn main() -> Result<(), StrError> {
@@ -73,34 +77,39 @@ fn main() -> Result<(), StrError> {
     config.scaling = enum_scaling(&opt.scaling);
     config.compute_determinant = opt.determinant;
     config.mumps_openmp_num_threads = opt.omp_nt as usize;
+    config.umfpack_enforce_unsymmetric_strategy = opt.enforce_unsymmetric_strategy;
 
     // read the matrix
     let mut sw = Stopwatch::new("");
     let coo = read_matrix_market(&opt.matrix_market_file, handling, one_based)?;
     let time_read = sw.stop();
 
+    // save the COO matrix as a generic SparseMatrix
+    let mut mat = SparseMatrix::from_coo(coo);
+    let (nrow, ncol, nnz, symmetry) = mat.get_info();
+
     // allocate and configure the solver
     let mut solver = Solver::new(genie)?;
 
     // call factorize
     sw.reset();
-    solver.actual.factorize_coo(&coo, Some(config))?;
+    solver.actual.factorize(&mut mat, Some(config))?;
     let time_factorize = sw.stop();
 
     // allocate vectors
-    let mut x = Vector::new(coo.nrow);
-    let rhs = Vector::filled(coo.nrow, 1.0);
+    let mut x = Vector::new(nrow);
+    let rhs = Vector::filled(nrow, 1.0);
 
     // solve linear system
     sw.reset();
-    solver.actual.solve(&mut x, &rhs, opt.verbose)?;
+    solver.actual.solve(&mut x, &mat, &rhs, opt.verbose)?;
     let time_solve = sw.stop();
 
     // total time, excluding reading the matrix
     let time_total = time_factorize + time_solve;
 
     // verify the solution
-    let verify = VerifyLinSys::new(&coo, &x, &rhs)?;
+    let verify = VerifyLinSys::new(&mat, &x, &rhs)?;
 
     // matrix name
     let path = Path::new(&opt.matrix_market_file);
@@ -121,10 +130,10 @@ fn main() -> Result<(), StrError> {
         blas_lib: "OpenBLAS".to_string(),
         solver_name: solver.actual.get_name(),
         matrix_name,
-        symmetry: format!("{:?}", coo.symmetry),
-        nrow: coo.nrow,
-        ncol: coo.ncol,
-        nnz: coo.nnz,
+        symmetry: format!("{:?}", symmetry),
+        nrow,
+        ncol,
+        nnz,
         time_read_matrix_market_nanosecond: time_read,
         time_read_matrix_market_human: format_nanoseconds(time_read),
         time_factorize_nanosecond: time_factorize,
@@ -161,7 +170,7 @@ fn main() -> Result<(), StrError> {
             Genie::IntelDss => 1e-10,
         };
         let correct_x = get_bfwb62_correct_x();
-        for i in 0..coo.nrow {
+        for i in 0..nrow {
             let diff = f64::abs(x.get(i) - correct_x.get(i));
             if diff > tolerance {
                 println!("ERROR: diff({}) = {:.2e}", i, diff);

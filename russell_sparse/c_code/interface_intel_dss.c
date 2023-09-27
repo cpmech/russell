@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 
 #ifdef WITH_INTEL_DSS
@@ -9,6 +10,18 @@
 #endif
 
 #include "constants.h"
+
+void print_csr(int32_t ndim,
+               const int32_t *row_pointers,
+               const int32_t *col_indices,
+               const double *values) {
+    for (int32_t i = 0; i < ndim; i++) {
+        for (int32_t p = row_pointers[i]; p < row_pointers[i + 1]; p++) {
+            int32_t j = col_indices[p];
+            printf("%d %d => %g\n", i, j, values[p]);
+        }
+    }
+}
 
 /// @brief Wraps the Intel DSS solver
 /// @note The DSS uses a row-major UPPER triangular storage format.
@@ -153,6 +166,8 @@ int32_t solver_intel_dss_factorize(struct InterfaceIntelDSS *solver,
     if (status != MKL_DSS_SUCCESS) {
         return status;
     }
+
+    // print_csr(ndim, row_pointers, col_indices, values);
 
     // factor the matrix
     status = dss_factor_real(solver->handle, solver->dss_type, values);

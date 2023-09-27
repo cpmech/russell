@@ -1,4 +1,4 @@
-use super::{CooMatrix, CscMatrix, CsrMatrix, Genie, Ordering, Scaling, SolverIntelDSS, SolverMUMPS, SolverUMFPACK};
+use super::{Genie, Ordering, Scaling, SolverIntelDSS, SolverMUMPS, SolverUMFPACK, SparseMatrix};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -56,44 +56,45 @@ impl ConfigSolver {
 
 /// Defines a unified interface for sparse solvers
 pub trait SolverTrait {
-    /// Performs the factorization (and analysis) given a COO matrix
+    /// Performs the factorization (and analysis/initialization if needed)
     ///
     /// # Input
     ///
-    /// * `coo` -- The COO matrix
+    /// * `mat` -- The sparse matrix (COO, CSC, or CSR).
     /// * `params` -- configuration parameters; None => use default
-    fn factorize_coo(&mut self, coo: &CooMatrix, params: Option<ConfigSolver>) -> Result<(), StrError>;
-
-    /// Performs the factorization (and analysis) given a CSC matrix
     ///
-    /// # Input
+    /// # Notes
     ///
-    /// * `csc` -- The CSC matrix
-    /// * `params` -- configuration parameters; None => use default
-    fn factorize_csc(&mut self, csc: &CscMatrix, params: Option<ConfigSolver>) -> Result<(), StrError>;
-
-    /// Performs the factorization (and analysis) given a CSR matrix
-    ///
-    /// # Input
-    ///
-    /// * `csr` -- The CSR matrix
-    /// * `params` -- configuration parameters; None => use default
-    fn factorize_csr(&mut self, csr: &CsrMatrix, params: Option<ConfigSolver>) -> Result<(), StrError>;
+    /// 1. The structure of the matrix (nrow, ncol, nnz, symmetry) must be
+    ///    exactly the same among multiple calls to `factorize`. The values may differ
+    ///    from call to call, nonetheless.
+    /// 2. The first call to `factorize` will define the structure which must be
+    ///    kept the same for the next calls.
+    /// 3. If the structure of the matrix needs to be changed, the solver must
+    ///    be "dropped" and a new solver allocated.
+    fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<ConfigSolver>) -> Result<(), StrError>;
 
     /// Computes the solution of the linear system
     ///
     /// Solves the linear system:
     ///
     /// ```text
-    /// A · x = rhs
+    ///   A   · x = rhs
+    /// (m,n)  (n)  (m)
     /// ```
+    ///
+    /// # Output
+    ///
+    /// * `x` -- the vector of unknown values with dimension equal to mat.ncol
     ///
     /// # Input
     ///
-    /// * `x` -- the vector of unknown values with dimension equal to coo.nrow
-    /// * `rhs` -- the right-hand side vector with know values an dimension equal to coo.nrow
+    /// * `mat` -- the coefficient matrix A.
+    /// * `rhs` -- the right-hand side vector with know values an dimension equal to mat.ncol
     /// * `verbose` -- shows messages
-    fn solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool) -> Result<(), StrError>;
+    ///
+    /// **Warning:** the matrix must be same one used in `factorize`.
+    fn solve(&mut self, x: &mut Vector, mat: &SparseMatrix, rhs: &Vector, verbose: bool) -> Result<(), StrError>;
 
     /// Returns the determinant
     ///
@@ -147,14 +148,18 @@ impl<'a> Solver<'a> {
     /// Solves the linear system:
     ///
     /// ```text
-    /// A · x = rhs
+    ///   A   · x = rhs
+    /// (m,n)  (n)  (m)
     /// ```
+    ///
+    /// # Output
+    ///
+    /// * `x` -- the vector of unknown values with dimension equal to mat.ncol
     ///
     /// # Input
     ///
     /// * `genie` -- the actual implementation that does all the magic
-    /// * `coo` -- the CooMatrix representing the sparse coefficient matrix (see Notes below)
-    /// * `x` -- the vector of unknown values with dimension equal to coo.nrow
+    /// * `mat` -- the matrix representing the sparse coefficient matrix A (see Notes below)
     /// * `rhs` -- the right-hand side vector with know values an dimension equal to coo.nrow
     /// * `verbose` -- shows messages
     ///
@@ -164,23 +169,19 @@ impl<'a> Solver<'a> {
     /// 2. For symmetric matrices, `UMFPACK` requires that the symmetry/storage be Full.
     /// 3. For symmetric matrices, `IntelDSS` requires that the symmetry/storage be Upper.
     /// 4. This function calls the actual implementation (genie) via the functions `factorize`, and `solve`.
-    /// 5. This function is best for a **single-use** need, whereas the actual
+    /// 5. This function is best for a **single-use**, whereas the actual
     ///    solver should be considered for a recurrent use (e.g., inside a loop).
-    /// 6. Also, use the individual implementations if options such as ordering or scaling
-    ///    need to be configured.
     pub fn compute(
         genie: Genie,
-        coo: &CooMatrix,
         x: &mut Vector,
+        mat: &mut SparseMatrix,
         rhs: &Vector,
-        verbose: bool,
+        params: Option<ConfigSolver>,
     ) -> Result<Self, StrError> {
-        if coo.ncol != coo.nrow {
-            return Err("the matrix must be square");
-        }
         let mut solver = Solver::new(genie)?;
-        solver.actual.factorize_coo(coo, None)?;
-        solver.actual.solve(x, rhs, verbose)?;
+        solver.actual.factorize(mat, params)?;
+        let verbose = if let Some(p) = params { p.verbose } else { false };
+        solver.actual.solve(x, mat, rhs, verbose)?;
         Ok(solver)
     }
 }
@@ -190,7 +191,7 @@ impl<'a> Solver<'a> {
 #[cfg(test)]
 mod tests {
     use super::{ConfigSolver, Solver};
-    use crate::{Genie, Ordering, Samples, Scaling};
+    use crate::{Genie, Ordering, Samples, Scaling, SparseMatrix};
     use russell_chk::vec_approx_eq;
     use russell_lab::Vector;
 
@@ -228,9 +229,10 @@ mod tests {
     #[test]
     fn solver_compute_works() {
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_full(false);
+        let mut mat = SparseMatrix::from_coo(coo);
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
-        Solver::compute(Genie::Umfpack, &coo, &mut x, &rhs, false).unwrap();
+        Solver::compute(Genie::Umfpack, &mut x, &mut mat, &rhs, None).unwrap();
         let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         vec_approx_eq(x.as_data(), &x_correct, 1e-10);
     }

@@ -1,4 +1,4 @@
-use super::{to_i32, ConfigSolver, CooMatrix, CscMatrix, CsrMatrix, SolverTrait};
+use super::{to_i32, ConfigSolver, SolverTrait, SparseMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -47,8 +47,14 @@ pub struct SolverIntelDSS {
     /// Indicates whether the sparse matrix has been factorized or not
     factorized: bool,
 
-    /// Matrix dimension (to validate vectors in solve)
-    ndim: usize,
+    /// Holds the symmetry type used in the first call to factorize
+    factorized_symmetry: Option<Symmetry>,
+
+    /// Holds the matrix dimension saved in the first call to factorize
+    factorized_ndim: usize,
+
+    /// Holds the number of non-zeros saved in the first call to factorize
+    factorized_nnz: usize,
 
     /// Holds the determinant coefficient: det = coefficient * pow(10, exponent)
     determinant_coefficient: f64,
@@ -86,7 +92,9 @@ impl SolverIntelDSS {
             Ok(SolverIntelDSS {
                 solver,
                 factorized: false,
-                ndim: 0,
+                factorized_symmetry: None,
+                factorized_ndim: 0,
+                factorized_nnz: 0,
                 determinant_coefficient: 0.0,
                 determinant_exponent: 0.0,
             })
@@ -95,57 +103,78 @@ impl SolverIntelDSS {
 }
 
 impl SolverTrait for SolverIntelDSS {
-    /// Performs the factorization (and analysis) given a COO matrix
+    /// Performs the factorization (and analysis/initialization if needed)
     ///
     /// # Input
     ///
-    /// * `coo` -- The COO matrix
+    /// * `mat` -- the coefficient matrix A (**COO** or **CSR**, but not CSC).
+    ///   Also, the matrix must be square (`nrow = ncol`) and, if symmetric,
+    ///   the symmetry/storage must [crate::Storage::Upper].
     /// * `params` -- configuration parameters; None => use default
+    ///
+    /// # Notes
+    ///
+    /// 1. The structure of the matrix (nrow, ncol, nnz, symmetry) must be
+    ///    exactly the same among multiple calls to `factorize`. The values may differ
+    ///    from call to call, nonetheless.
+    /// 2. The first call to `factorize` will define the structure which must be
+    ///    kept the same for the next calls.
+    /// 3. If the structure of the matrix needs to be changed, the solver must
+    ///    be "dropped" and a new solver allocated.
+    /// 4. For symmetric matrices, `DSS` requires that the symmetry/storage be [crate::Storage::Upper].
     ///
     /// **Warning:** This solver does not check whether the matrix is singular or not;
     /// thus it may return **incorrect results** if a singular matrix is given to factorize.
     ///
     /// **Warning:** This solver may fail with large matrices (e.g., ATandT/pre2) and
     /// may return **incorrect results**.
-    fn factorize_coo(&mut self, coo: &CooMatrix, params: Option<ConfigSolver>) -> Result<(), StrError> {
-        // set flag
-        self.factorized = false;
+    fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<ConfigSolver>) -> Result<(), StrError> {
+        // get CSR matrix
+        let csr = mat.get_csr_or_from_coo()?;
 
-        // check the COO matrix
-        if coo.one_based {
-            return Err("the COO matrix must have zero-based indices as required by Intel DSS");
-        }
-        if coo.nrow != coo.ncol {
+        // check CSR matrix
+        if csr.nrow != csr.ncol {
             return Err("the matrix must be square");
         }
-        coo.check_dimensions_ready()?;
+        csr.check_dimensions()?;
+
+        // check already factorized data
+        if self.factorized == true {
+            if csr.symmetry != self.factorized_symmetry {
+                return Err("subsequent factorizations must use the same matrix (symmetry differs)");
+            }
+            if csr.nrow != self.factorized_ndim {
+                return Err("subsequent factorizations must use the same matrix (ndim differs)");
+            }
+            if (csr.row_pointers[csr.nrow] as usize) != self.factorized_nnz {
+                return Err("subsequent factorizations must use the same matrix (nnz differs)");
+            }
+        } else {
+            self.factorized_symmetry = csr.symmetry;
+            self.factorized_ndim = csr.nrow;
+            self.factorized_nnz = csr.row_pointers[csr.nrow] as usize;
+            if self.factorized_nnz < self.factorized_ndim {
+                return Err("for Intel DSS, nnz = row_pointers[nrow] must be ≥ nrow");
+            }
+        }
 
         // configuration parameters
-        let cfg = if let Some(p) = params { p } else { ConfigSolver::new() };
+        let par = if let Some(p) = params { p } else { ConfigSolver::new() };
 
         // requests
-        let determinant = if cfg.compute_determinant { 1 } else { 0 };
+        let calc_det = if par.compute_determinant { 1 } else { 0 };
 
         // extract the symmetry flags and check the storage type
-        let (general_symmetric, positive_definite) = match coo.symmetry {
+        let (general_symmetric, positive_definite) = match csr.symmetry {
             Some(symmetry) => symmetry.status(false, true)?,
             None => (0, 0),
         };
-
-        // convert COO to CSR
-        let csr = CsrMatrix::from_coo(coo)?;
-        csr.check_dimensions()?;
-
-        // check the number of non-zero values
-        let nnz = csr.row_pointers[csr.nrow];
-        if (nnz as usize) < csr.nrow {
-            return Err("for Intel DSS, nnz = row_pointers[nrow] must be ≥ nrow");
-        }
 
         // matrix config
         let ndim = to_i32(csr.nrow)?;
 
         // call Intel DSS factorize
+        let nnz = self.factorized_nnz;
         unsafe {
             let status = solver_intel_dss_factorize(
                 self.solver,
@@ -153,43 +182,24 @@ impl SolverTrait for SolverIntelDSS {
                 &mut self.determinant_coefficient,
                 &mut self.determinant_exponent,
                 // requests
-                determinant,
+                calc_det,
                 // matrix config
                 general_symmetric,
                 positive_definite,
                 ndim,
                 // matrix
                 csr.row_pointers.as_ptr(),
-                csr.col_indices.as_ptr(),
-                csr.values.as_ptr(),
+                csr.col_indices[0..nnz].as_ptr(),
+                csr.values[0..nnz].as_ptr(),
             );
             if status != MKL_DSS_SUCCESS {
                 return Err(handle_intel_dss_error_code(status));
             }
         }
-        self.ndim = csr.nrow;
+
+        // done
         self.factorized = true;
         Ok(())
-    }
-
-    /// Performs the factorization (and analysis) given a CSC matrix
-    ///
-    /// # Input
-    ///
-    /// * `csc` -- The CSC matrix
-    /// * `params` -- configuration parameters; None => use default
-    fn factorize_csc(&mut self, _csc: &CscMatrix, _params: Option<ConfigSolver>) -> Result<(), StrError> {
-        return Err("TODO");
-    }
-
-    /// Performs the factorization (and analysis) given a CSR matrix
-    ///
-    /// # Input
-    ///
-    /// * `csr` -- The CSR matrix
-    /// * `params` -- configuration parameters; None => use default
-    fn factorize_csr(&mut self, _csr: &CsrMatrix, _params: Option<ConfigSolver>) -> Result<(), StrError> {
-        return Err("TODO");
     }
 
     /// Computes the solution of the linear system
@@ -197,24 +207,47 @@ impl SolverTrait for SolverIntelDSS {
     /// Solves the linear system:
     ///
     /// ```text
-    /// A · x = rhs
+    ///   A   · x = rhs
+    /// (m,m)  (m)  (m)
     /// ```
+    ///
+    /// # Output
+    ///
+    /// * `x` -- the vector of unknown values with dimension equal to mat.nrow
     ///
     /// # Input
     ///
-    /// * `x` -- the vector of unknown values with dimension equal to coo.nrow
-    /// * `rhs` -- the right-hand side vector with know values an dimension equal to coo.nrow
-    /// * `_verbose` -- shows messages (NOT USED)
-    fn solve(&mut self, x: &mut Vector, rhs: &Vector, _verbose: bool) -> Result<(), StrError> {
-        if !self.factorized {
+    /// * `mat` -- the coefficient matrix A; must be square and, if symmetric, [crate::Storage::Upper].
+    /// * `rhs` -- the right-hand side vector with know values an dimension equal to mat.nrow
+    /// * `_verbose` -- not used
+    ///
+    /// **Warning:** the matrix must be same one used in `factorize`.
+    fn solve(&mut self, x: &mut Vector, mat: &SparseMatrix, rhs: &Vector, _verbose: bool) -> Result<(), StrError> {
+        // check already factorized data
+        if self.factorized == true {
+            let (nrow, ncol, nnz, symmetry) = mat.get_info();
+            if symmetry != self.factorized_symmetry {
+                return Err("solve must use the same matrix (symmetry differs)");
+            }
+            if nrow != self.factorized_ndim || ncol != self.factorized_ndim {
+                return Err("solve must use the same matrix (ndim differs)");
+            }
+            if nnz != self.factorized_nnz {
+                return Err("solve must use the same matrix (nnz differs)");
+            }
+        } else {
             return Err("the function factorize must be called before solve");
         }
-        if x.dim() != self.ndim as usize {
+
+        // check vectors
+        if x.dim() != self.factorized_ndim {
             return Err("the dimension of the vector of unknown values x is incorrect");
         }
-        if rhs.dim() != self.ndim as usize {
+        if rhs.dim() != self.factorized_ndim {
             return Err("the dimension of the right-hand side vector is incorrect");
         }
+
+        // call Intel DSS solve
         unsafe {
             let status = solver_intel_dss_solve(self.solver, x.as_mut_data().as_mut_ptr(), rhs.as_data().as_ptr());
             if status != MKL_DSS_SUCCESS {
@@ -311,9 +344,9 @@ const MKL_DSS_SUCCESS: i32 = 0;
 #[cfg(with_intel_dss)]
 mod tests {
     use super::{handle_intel_dss_error_code, SolverIntelDSS};
-    use crate::{ConfigSolver, CooMatrix, Samples, SolverTrait};
+    use crate::{ConfigSolver, CooMatrix, Samples, SolverTrait, SparseMatrix};
     use russell_chk::{approx_eq, vec_approx_eq};
-    use russell_lab::Vector;
+    use russell_lab::{Matrix, Vector};
 
     #[test]
     fn new_and_drop_work() {
@@ -326,24 +359,22 @@ mod tests {
     fn factorize_handles_errors() {
         let mut solver = SolverIntelDSS::new().unwrap();
         assert!(!solver.factorized);
-        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(true);
-        assert_eq!(
-            solver.factorize_coo(&coo, None).err(),
-            Some("the COO matrix must have zero-based indices as required by Intel DSS")
-        );
         let (coo, _, _, _) = Samples::rectangular_1x7();
+        let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
-            solver.factorize_coo(&coo, None).err(),
+            solver.factorize(&mut mat, None).err(),
             Some("the matrix must be square")
         );
         let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
-            solver.factorize_coo(&coo, None).err(),
+            solver.factorize(&mut mat, None).err(),
             Some("COO matrix: pos = nnz must be ≥ 1")
         );
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(false, false, false);
+        let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
-            solver.factorize_coo(&coo, None).err(),
+            solver.factorize(&mut mat, None).err(),
             Some("if the matrix is general symmetric, the required storage is upper triangular")
         );
     }
@@ -353,11 +384,17 @@ mod tests {
         let mut solver = SolverIntelDSS::new().unwrap();
         assert!(!solver.factorized);
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let mut mat = SparseMatrix::from_coo(coo);
         let mut params = ConfigSolver::new();
+
+        let (nrow, ncol, _, _) = mat.get_info();
+        let mut a = Matrix::new(nrow, ncol);
+        mat.to_dense(&mut a).unwrap();
+        println!("{}", a);
 
         params.compute_determinant = true;
 
-        solver.factorize_coo(&coo, Some(params)).unwrap();
+        solver.factorize(&mut mat, Some(params)).unwrap();
         assert!(solver.factorized);
 
         assert_eq!(solver.get_effective_ordering(), "Unknown");
@@ -366,27 +403,46 @@ mod tests {
         let (a, b, c) = solver.get_determinant();
         let det = a * f64::powf(b, c);
         approx_eq(det, 114.0, 1e-13);
+
+        // calling factorize again works
+        solver.factorize(&mut mat, Some(params)).unwrap();
+        let (a, b, c) = solver.get_determinant();
+        let det = a * f64::powf(b, c);
+        approx_eq(det, 114.0, 1e-13);
+    }
+
+    #[test]
+    fn factorize_fails_on_singular_matrix() {
+        let mut solver = SolverIntelDSS::new().unwrap();
+        let mut coo = CooMatrix::new(2, 2, 2, None, false).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 0.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        println!("Warning: Intel DSS does not detect singular matrices");
+        assert_eq!(solver.factorize(&mut mat, None).err(), None);
     }
 
     #[test]
     fn solve_handles_errors() {
+        let (coo, _, _, _) = Samples::tiny_1x1(false);
+        let mut mat = SparseMatrix::from_coo(coo);
         let mut solver = SolverIntelDSS::new().unwrap();
         assert!(!solver.factorized);
-        let mut x = Vector::new(1);
+        let mut x = Vector::new(2);
         let rhs = Vector::new(1);
         assert_eq!(
-            solver.solve(&mut x, &rhs, false),
+            solver.solve(&mut x, &mut mat, &rhs, false),
             Err("the function factorize must be called before solve")
         );
-        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
-        solver.factorize_coo(&coo, None).unwrap();
+        solver.factorize(&mut mat, None).unwrap();
         assert_eq!(
-            solver.solve(&mut x, &rhs, false),
+            solver.solve(&mut x, &mut mat, &rhs, false),
             Err("the dimension of the vector of unknown values x is incorrect")
         );
-        let mut x = Vector::new(5);
+        let mut x = Vector::new(1);
+        let rhs = Vector::new(2);
         assert_eq!(
-            solver.solve(&mut x, &rhs, false),
+            solver.solve(&mut x, &mut mat, &rhs, false),
             Err("the dimension of the right-hand side vector is incorrect")
         );
     }
@@ -395,16 +451,17 @@ mod tests {
     fn solve_works() {
         let mut solver = SolverIntelDSS::new().unwrap();
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let mut mat = SparseMatrix::from_coo(coo);
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
         let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
-        solver.factorize_coo(&coo, None).unwrap();
-        solver.solve(&mut x, &rhs, false).unwrap();
+        solver.factorize(&mut mat, None).unwrap();
+        solver.solve(&mut x, &mut mat, &rhs, false).unwrap();
         vec_approx_eq(x.as_data(), x_correct, 1e-14);
 
         // calling solve again works
         let mut x_again = Vector::new(5);
-        solver.solve(&mut x_again, &rhs, false).unwrap();
+        solver.solve(&mut x_again, &mut mat, &rhs, false).unwrap();
         vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
     }
 

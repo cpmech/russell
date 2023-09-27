@@ -1,7 +1,6 @@
-use super::CooMatrix;
+use super::SparseMatrix;
 use crate::StrError;
 use russell_lab::{vec_norm, vec_update, Norm, Stopwatch, Vector};
-use russell_openblas::{idamax, to_i32};
 
 /// Verifies the linear system a ⋅ x = rhs
 pub struct VerifyLinSys {
@@ -29,7 +28,7 @@ impl VerifyLinSys {
     /// fn main() -> Result<(), StrError> {
     ///     // set sparse matrix (3 x 3) with 4 non-zeros
     ///     let (nrow, ncol, nnz) = (3, 3, 4);
-    ///     let mut coo = CooMatrix::new(nrow, ncol, nnz, None, false)?;
+    ///     let mut coo = SparseMatrix::new_coo(nrow, ncol, nnz, None, false)?;
     ///     coo.put(0, 0, 1.0)?;
     ///     coo.put(0, 2, 4.0)?;
     ///     coo.put(1, 1, 2.0)?;
@@ -37,7 +36,7 @@ impl VerifyLinSys {
     ///
     ///     // check matrix
     ///     let mut a = Matrix::new(nrow, nrow);
-    ///     coo.to_matrix(&mut a)?;
+    ///     coo.to_dense(&mut a)?;
     ///     let correct_a = "┌       ┐\n\
     ///                      │ 1 0 4 │\n\
     ///                      │ 0 2 0 │\n\
@@ -57,24 +56,23 @@ impl VerifyLinSys {
     ///     Ok(())
     /// }
     /// ```
-    pub fn new(coo: &CooMatrix, x: &Vector, rhs: &Vector) -> Result<Self, StrError> {
-        if coo.nrow != coo.ncol {
-            return Err("CooMatrix mut be square");
+    pub fn new(mat: &SparseMatrix, x: &Vector, rhs: &Vector) -> Result<Self, StrError> {
+        let (nrow, ncol, _, _) = mat.get_info();
+        if nrow != ncol {
+            return Err("matrix must be square");
         }
-        if x.dim() != coo.nrow || rhs.dim() != coo.nrow {
+        if x.dim() != nrow || rhs.dim() != nrow {
             return Err("vector dimensions are incompatible");
         }
         // start stopwatch
         let mut sw = Stopwatch::new("");
 
         // compute max_abs_a
-        let nnz = to_i32(coo.nnz);
-        let idx = idamax(nnz, &coo.values, 1);
-        let max_abs_a = f64::abs(coo.values[idx as usize]);
+        let max_abs_a = mat.get_max_abs_value()?;
 
         // compute max_abs_ax
-        let mut ax = Vector::new(coo.nrow);
-        coo.mat_vec_mul(&mut ax, 1.0, &x).unwrap();
+        let mut ax = Vector::new(nrow);
+        mat.mat_vec_mul(&mut ax, 1.0, &x)?;
         let max_abs_ax = vec_norm(&ax, Norm::Max);
 
         // compute max_abs_diff
@@ -102,12 +100,13 @@ impl VerifyLinSys {
 
 #[cfg(test)]
 mod tests {
-    use super::{CooMatrix, VerifyLinSys};
+    use super::VerifyLinSys;
+    use crate::SparseMatrix;
     use russell_lab::Vector;
 
     #[test]
     fn new_fails_on_wrong_vectors() {
-        let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        let coo = SparseMatrix::new_coo(1, 1, 1, None, false).unwrap();
         let x = Vector::new(2);
         let rhs = Vector::new(3);
         let x_wrong = Vector::new(3);
@@ -127,7 +126,7 @@ mod tests {
         // | 1  3 -2 |
         // | 3  5  6 |
         // | 2  4  3 |
-        let mut coo = CooMatrix::new(3, 3, 9, None, false).unwrap();
+        let mut coo = SparseMatrix::new_coo(3, 3, 9, None, false).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 1, 3.0).unwrap();
         coo.put(0, 2, -2.0).unwrap();

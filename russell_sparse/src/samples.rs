@@ -6,6 +6,148 @@ const PLACEHOLDER: f64 = f64::MAX;
 pub struct Samples {}
 
 impl Samples {
+    /// Returns a (1 x 1) matrix
+    ///
+    /// Note: the last return value is not the determinant, but a PLACEHOLDER
+    ///
+    /// ```text
+    /// ┌     ┐
+    /// │ 123 │
+    /// └     ┘
+    /// ```
+    pub fn tiny_1x1(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+        let mut coo = CooMatrix::new(1, 1, 1, None, one_based).unwrap();
+        coo.put(0, 0, 123.0).unwrap();
+        // CSC matrix
+        let csc = CscMatrix {
+            symmetry: None,
+            nrow: 1,
+            ncol: 1,
+            col_pointers: vec![0, 1],
+            row_indices: vec![0],
+            values: vec![123.0],
+        };
+        // CSR matrix
+        let csr = CsrMatrix {
+            symmetry: None,
+            nrow: 1,
+            ncol: 1,
+            row_pointers: vec![0, 1],
+            col_indices: vec![0],
+            values: vec![123.0],
+        };
+        (coo, csc, csr, 123.0)
+    }
+
+    /// Returns the COO, CSC, and CSR versions of the matrix and its determinant
+    ///
+    /// ```text
+    ///  1  .  2
+    ///  .  0  3   << the zero diagonal value is required for Intel DSS
+    ///  4  5  6
+    /// ```
+    ///
+    /// ```text
+    /// det(a) = -15.0
+    /// ```
+    ///
+    /// With the right-hand side vector:
+    ///
+    /// ```text
+    /// let rhs = Vector::from(&[1.0, 1.0, 1.0]);
+    /// ```
+    ///
+    /// The solution of `A · x = rhs` is:
+    ///
+    /// ```text
+    /// let x_correct = &[3.0, 3.0, 15];
+    /// ```
+    pub fn unsymmetric_3x3(
+        one_based: bool,
+        shuffle_coo_entries: bool,
+        duplicate_coo_entries: bool,
+    ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+        let max_nnz = 15; // more nnz than needed => OK
+        let mut coo = CooMatrix::new(3, 3, max_nnz, None, one_based).unwrap();
+        if shuffle_coo_entries {
+            if duplicate_coo_entries {
+                coo.put(0, 2, 2.0).unwrap();
+                coo.put(2, 1, 5.0).unwrap();
+                coo.put(1, 2, 3.0).unwrap();
+                coo.put(2, 2, 2.0).unwrap(); // << duplicate
+                coo.put(2, 0, 4.0).unwrap();
+                coo.put(0, 0, 1.0).unwrap();
+                coo.put(2, 2, 2.0).unwrap(); // << duplicate
+                coo.put(1, 1, 0.0).unwrap(); // << needed for Intel DSS
+                coo.put(2, 2, 2.0).unwrap(); // << duplicate
+            } else {
+                coo.put(2, 0, 4.0).unwrap();
+                coo.put(0, 0, 1.0).unwrap();
+                coo.put(2, 2, 6.0).unwrap();
+                coo.put(0, 2, 2.0).unwrap();
+                coo.put(1, 1, 0.0).unwrap(); // << needed for Intel DSS
+                coo.put(2, 1, 5.0).unwrap();
+                coo.put(1, 2, 3.0).unwrap();
+            }
+        } else {
+            if duplicate_coo_entries {
+                coo.put(0, 0, 1.0).unwrap();
+                coo.put(0, 2, 2.0).unwrap();
+                coo.put(1, 1, 0.0).unwrap(); // << needed for Intel DSS
+                coo.put(1, 2, 3.0).unwrap();
+                coo.put(2, 0, 4.0).unwrap();
+                coo.put(2, 1, 5.0).unwrap();
+                coo.put(2, 2, 2.0).unwrap(); // << duplicate
+                coo.put(2, 2, 2.0).unwrap(); // << duplicate
+                coo.put(2, 2, 2.0).unwrap(); // << duplicate
+            } else {
+                coo.put(0, 0, 1.0).unwrap();
+                coo.put(0, 2, 2.0).unwrap();
+                coo.put(1, 1, 0.0).unwrap(); // << needed for Intel DSS
+                coo.put(1, 2, 3.0).unwrap();
+                coo.put(2, 0, 4.0).unwrap();
+                coo.put(2, 1, 5.0).unwrap();
+                coo.put(2, 2, 6.0).unwrap();
+            }
+        }
+        // CSC matrix
+        let csc = CscMatrix {
+            symmetry: None,
+            nrow: 3,
+            ncol: 3,
+            values: vec![
+                1.0, 4.0, //      j=0 p=(0),1
+                0.0, 5.0, //      j=1 p=(2),3
+                2.0, 3.0, 6.0, // j=2 p=(4),5,6
+            ], //                     p=(7)
+            row_indices: vec![
+                0, 2, //
+                1, 2, //
+                0, 1, 2, //
+            ],
+            col_pointers: vec![0, 2, 4, 7],
+        };
+        // CSR matrix
+        let csr = CsrMatrix {
+            symmetry: None,
+            nrow: 3,
+            ncol: 3,
+            values: vec![
+                1.0, 2.0, //      i=0 p=(0),1
+                0.0, 3.0, //      i=1 p=(2),3
+                4.0, 5.0, 6.0, // i=2 p=(4),5,6
+                     //               p=(7)
+            ],
+            col_indices: vec![
+                0, 2, //
+                1, 2, //
+                0, 1, 2, //
+            ],
+            row_pointers: vec![0, 2, 4, 7],
+        };
+        (coo, csc, csr, -15.0)
+    }
+
     /// Returns the COO, CSC, and CSR versions of the matrix and its determinant
     ///
     /// Example from the [UMFPACK documentation](https://github.com/DrTimothyAldenDavis/SuiteSparse/blob/dev/UMFPACK/Doc/UMFPACK_QuickStart.pdf)
@@ -928,39 +1070,6 @@ impl Samples {
         };
         (coo, csc, csr, PLACEHOLDER)
     }
-
-    /// Returns a (1 x 1) matrix
-    ///
-    /// Note: the last return value is not the determinant, but a PLACEHOLDER
-    ///
-    /// ```text
-    /// ┌     ┐
-    /// │ 123 │
-    /// └     ┘
-    /// ```
-    pub fn tiny_1x1() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let mut coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
-        coo.put(0, 0, 123.0).unwrap();
-        // CSC matrix
-        let csc = CscMatrix {
-            symmetry: None,
-            nrow: 1,
-            ncol: 1,
-            col_pointers: vec![0, 1],
-            row_indices: vec![0],
-            values: vec![123.0],
-        };
-        // CSR matrix
-        let csr = CsrMatrix {
-            symmetry: None,
-            nrow: 1,
-            ncol: 1,
-            row_pointers: vec![0, 1],
-            col_indices: vec![0],
-            values: vec![123.0],
-        };
-        (coo, csc, csr, PLACEHOLDER)
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -974,29 +1083,74 @@ mod tests {
     #[test]
     fn samples_are_correct() {
         let correct = &[
+            [123.0], //
+        ];
+        let a = Matrix::from(correct);
+        let mut ai = Matrix::new(1, 1);
+        let correct_det = mat_inverse(&mut ai, &a).unwrap();
+        for (coo, csc, csr, det) in [
+            Samples::tiny_1x1(false), //
+            Samples::tiny_1x1(true),  //
+        ] {
+            let mat = coo.as_matrix();
+            approx_eq(det, correct_det, 1e-13);
+            mat_approx_eq(&mat, correct, 1e-15);
+            csc.check_dimensions().unwrap();
+            csr.check_dimensions().unwrap();
+        }
+
+        // ----------------------------------------------------------------------------
+
+        let correct = &[
+            [1.0, 0.0, 2.0], //
+            [0.0, 0.0, 3.0], //
+            [4.0, 5.0, 6.0], //
+        ];
+        let a = Matrix::from(correct);
+        let mut ai = Matrix::new(3, 3);
+        let correct_det = mat_inverse(&mut ai, &a).unwrap();
+        for (coo, csc, csr, det) in [
+            Samples::unsymmetric_3x3(false, false, false),
+            Samples::unsymmetric_3x3(false, true, false),
+            Samples::unsymmetric_3x3(false, true, false),
+            Samples::unsymmetric_3x3(false, true, true),
+            Samples::unsymmetric_3x3(true, false, false),
+            Samples::unsymmetric_3x3(true, true, false),
+            Samples::unsymmetric_3x3(true, true, false),
+            Samples::unsymmetric_3x3(true, true, true),
+        ] {
+            let mat = coo.as_matrix();
+            approx_eq(det, correct_det, 1e-13);
+            mat_approx_eq(&mat, correct, 1e-15);
+            csc.check_dimensions().unwrap();
+            csr.check_dimensions().unwrap();
+        }
+
+        // ----------------------------------------------------------------------------
+
+        let correct = &[
             [2.0, 3.0, 0.0, 0.0, 0.0],
             [3.0, 0.0, 4.0, 0.0, 6.0],
             [0.0, -1.0, -3.0, 2.0, 0.0],
             [0.0, 0.0, 1.0, 0.0, 0.0],
             [0.0, 4.0, 2.0, 0.0, 1.0],
         ];
-        for (coo, csc, csr, correct_det) in [
+        let a = Matrix::from(correct);
+        let mut ai = Matrix::new(5, 5);
+        let correct_det = mat_inverse(&mut ai, &a).unwrap();
+        for (coo, csc, csr, det) in [
             Samples::umfpack_unsymmetric_5x5(false),
             Samples::umfpack_unsymmetric_5x5(true),
         ] {
             let mat = coo.as_matrix();
+            approx_eq(det, correct_det, 1e-13);
             mat_approx_eq(&mat, correct, 1e-15);
             csc.check_dimensions().unwrap();
             csr.check_dimensions().unwrap();
-            let mut inv = Matrix::new(5, 5);
-            let det = mat_inverse(&mut inv, &mat).unwrap();
-            approx_eq(det, correct_det, 1e-15);
         }
 
         // ----------------------------------------------------------------------------
 
-        let (coo, csc, csr, correct_det) = Samples::mkl_unsymmetric_5x5(false);
-        let mat = coo.as_matrix();
         let correct = &[
             [1.0, -1.0, 0.0, -3.0, 0.0],
             [-2.0, 5.0, 0.0, 0.0, 0.0],
@@ -1004,12 +1158,18 @@ mod tests {
             [-4.0, 0.0, 2.0, 7.0, 0.0],
             [0.0, 8.0, 0.0, 0.0, -5.0],
         ];
-        mat_approx_eq(&mat, correct, 1e-15);
-        csc.check_dimensions().unwrap();
-        csr.check_dimensions().unwrap();
-        let mut inv = Matrix::new(5, 5);
-        let det = mat_inverse(&mut inv, &mat).unwrap();
-        approx_eq(det, correct_det, 1e-15);
+        let a = Matrix::from(correct);
+        let mut ai = Matrix::new(5, 5);
+        let correct_det = mat_inverse(&mut ai, &a).unwrap();
+        for (coo, csc, csr, det) in [
+            Samples::mkl_unsymmetric_5x5(false), //
+        ] {
+            let mat = coo.as_matrix();
+            approx_eq(det, correct_det, 1e-13);
+            mat_approx_eq(&mat, correct, 1e-15);
+            csc.check_dimensions().unwrap();
+            csr.check_dimensions().unwrap();
+        }
 
         // ----------------------------------------------------------------------------
 
@@ -1020,7 +1180,10 @@ mod tests {
             [0.0, 0.0, 7.0, 8.0, 0.0],
             [0.0, 0.0, 0.0, 0.0, 9.0],
         ];
-        for (coo, csc, csr, correct_det) in [
+        let a = Matrix::from(correct);
+        let mut ai = Matrix::new(5, 5);
+        let correct_det = mat_inverse(&mut ai, &a).unwrap();
+        for (coo, csc, csr, det) in [
             Samples::block_unsymmetric_5x5(false, false, false),
             Samples::block_unsymmetric_5x5(false, true, false),
             Samples::block_unsymmetric_5x5(false, false, true),
@@ -1031,12 +1194,10 @@ mod tests {
             Samples::block_unsymmetric_5x5(true, true, true),
         ] {
             let mat = coo.as_matrix();
+            approx_eq(det, correct_det, 1e-13);
             mat_approx_eq(&mat, correct, 1e-15);
             csc.check_dimensions().unwrap();
             csr.check_dimensions().unwrap();
-            let mut inv = Matrix::new(5, 5);
-            let det = mat_inverse(&mut inv, &mat).unwrap();
-            approx_eq(det, correct_det, 1e-13);
         }
 
         // ----------------------------------------------------------------------------
@@ -1048,7 +1209,10 @@ mod tests {
             [0.75, 0.0, 0.0, 0.625, 0.0],
             [3.0, 0.0, 0.0, 0.0, 16.0],
         ];
-        for (coo, csc, csr, correct_det) in [
+        let a = Matrix::from(correct);
+        let mut ai = Matrix::new(5, 5);
+        let correct_det = mat_inverse(&mut ai, &a).unwrap();
+        for (coo, csc, csr, det) in [
             Samples::mkl_positive_definite_5x5_lower(false),
             Samples::mkl_positive_definite_5x5_lower(true),
             Samples::mkl_positive_definite_5x5_upper(false),
@@ -1073,50 +1237,39 @@ mod tests {
             Samples::mkl_symmetric_5x5_full(true),
         ] {
             let mat = coo.as_matrix();
+            approx_eq(det, correct_det, 1e-13);
             mat_approx_eq(&mat, correct, 1e-15);
             csc.check_dimensions().unwrap();
             csr.check_dimensions().unwrap();
-            let mut inv = Matrix::new(5, 5);
-            let det = mat_inverse(&mut inv, &mat).unwrap();
-            approx_eq(det, correct_det, 1e-14);
         }
 
         // ----------------------------------------------------------------------------
 
+        let correct = &[[1.0, 0.0, 3.0, 0.0, 5.0, 0.0, 7.0]];
         let (coo, csc, csr, _) = Samples::rectangular_1x7();
         let mat = coo.as_matrix();
-        let correct = &[[1.0, 0.0, 3.0, 0.0, 5.0, 0.0, 7.0]];
         mat_approx_eq(&mat, correct, 1e-15);
         csc.check_dimensions().unwrap();
         csr.check_dimensions().unwrap();
 
         // ----------------------------------------------------------------------------
 
+        let correct = &[[0.0], [2.0], [0.0], [4.0], [0.0], [6.0], [0.0]];
         let (coo, csc, csr, _) = Samples::rectangular_7x1();
         let mat = coo.as_matrix();
-        let correct = &[[0.0], [2.0], [0.0], [4.0], [0.0], [6.0], [0.0]];
         mat_approx_eq(&mat, correct, 1e-15);
         csc.check_dimensions().unwrap();
         csr.check_dimensions().unwrap();
 
         // ----------------------------------------------------------------------------
 
-        let (coo, csc, csr, _) = Samples::rectangular_3x4();
-        let mat = coo.as_matrix();
         let correct = &[
             [5.0, -2.0, 0.0, 1.0],  //
             [10.0, -4.0, 0.0, 2.0], //
             [15.0, -6.0, 0.0, 3.0], //
         ];
-        mat_approx_eq(&mat, correct, 1e-15);
-        csc.check_dimensions().unwrap();
-        csr.check_dimensions().unwrap();
-
-        // ----------------------------------------------------------------------------
-
-        let (coo, csc, csr, _) = Samples::tiny_1x1();
+        let (coo, csc, csr, _) = Samples::rectangular_3x4();
         let mat = coo.as_matrix();
-        let correct = &[[123.0]];
         mat_approx_eq(&mat, correct, 1e-15);
         csc.check_dimensions().unwrap();
         csr.check_dimensions().unwrap();

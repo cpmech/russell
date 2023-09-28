@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use crate::StrError;
 
 pub(crate) const SUCCESSFUL_EXIT: i32 = 0;

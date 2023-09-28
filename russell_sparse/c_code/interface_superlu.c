@@ -5,8 +5,6 @@
 
 #include "constants.h"
 
-#define UNUSED(var) (void)var
-
 /// @brief Holds the data for SuperLU
 struct InterfaceSuperLU {
     superlu_options_t options; // (input)
@@ -228,9 +226,14 @@ struct InterfaceSuperLU {
     //     > A->ncol+1: number of bytes allocated when memory allocation
     //         failure occurred, plus A->ncol.
 
+    /// @brief Defines the symmetry/storage of the matrix
+    Mtype_t symmetry_storage;
+
+    /// @brief Saves a double value to take a pointer used by the dummy super matrix
     double dummy;
+
+    /// @brief Allocates a dummy structure to enable a call to factorize-only
     SuperMatrix super_mat_dummy;
-    // SuperMatrix super_mat_dummy_x;
 
     /// @brief indicates that the initialization has been completed
     int32_t initialization_completed;
@@ -241,20 +244,6 @@ struct InterfaceSuperLU {
     /// @brief indicates that the b (rhs) and x vectors have been created
     int32_t b_and_x_vectors_created;
 };
-
-/// @brief Sets verbose mode
-/// @param solver Is a pointer to the solver interface
-/// @param verbose Shows messages or not
-static inline void set_superlu_verbose(struct InterfaceSuperLU *solver, int32_t verbose) {
-
-    UNUSED(solver);
-
-    if (verbose == C_TRUE) {
-        // todo
-    } else {
-        // todo
-    }
-}
 
 /// @brief Allocates a new SuperLU interface
 struct InterfaceSuperLU *solver_superlu_new() {
@@ -273,8 +262,12 @@ struct InterfaceSuperLU *solver_superlu_new() {
     solver->col_scale_factors = NULL;
     solver->workspace = NULL;
     solver->size_of_workspace = 0;
+    solver->recip_pivot_growth = 0.0;
+    solver->reciprocal_condition_number = 0.0;
     solver->forward_error = NULL;
     solver->backward_error = NULL;
+    solver->symmetry_storage = SLU_GE;
+    solver->dummy = 0.0;
     solver->initialization_completed = C_FALSE;
     solver->factorization_completed = C_FALSE;
     solver->b_and_x_vectors_created = C_FALSE;
@@ -327,19 +320,12 @@ void solver_superlu_drop(struct InterfaceSuperLU *solver) {
 /// @brief Performs the factorization
 /// @param solver Is a pointer to the solver interface
 /// @note Output
-/// @param effective_strategy used strategy regarding symmetry (after factorize)
-/// @param effective_ordering used ordering (after factorize)
-/// @param effective_scaling used scaling (after factorize)
-/// @param determinant_coefficient determinant coefficient: det = coefficient * pow(base, exponent)
-/// @param determinant_exponent determinant exponent: det = coefficient * pow(base, exponent)
+/// @param condition_number Is the reciprocal condition number (if requested)
 /// @note Input
-/// @param ordering Is the ordering code
-/// @param scaling Is the scaling code
-/// @note Requests
-/// @param compute_determinant Requests that determinant be computed
-/// @param verbose Shows messages
+/// @param ordering Is the russell ordering code to assign ColPerm
+/// @param scaling Is the scaling code to assign Equil
 /// @note Matrix config
-/// @param enforce_unsymmetric_strategy Indicates to enforce unsymmetric strategy (not recommended)
+/// @param symmetric General symmetric with lower triangle storage
 /// @param ndim Is the number of rows and columns of the coefficient matrix
 /// @note Matrix
 /// @param col_pointers The column pointers array with size = ncol + 1
@@ -348,40 +334,17 @@ void solver_superlu_drop(struct InterfaceSuperLU *solver) {
 /// @return A success or fail code
 int32_t solver_superlu_factorize(struct InterfaceSuperLU *solver,
                                  // output
-                                 int32_t *effective_strategy,
-                                 int32_t *effective_ordering,
-                                 int32_t *effective_scaling,
-                                 double *determinant_coefficient,
-                                 double *determinant_exponent,
+                                 double *condition_number,
                                  // input
                                  int32_t ordering,
-                                 int32_t scaling,
-                                 // requests
-                                 int32_t compute_determinant,
-                                 int32_t verbose,
+                                 C_BOOL scaling,
                                  // matrix config
-                                 int32_t enforce_unsymmetric_strategy,
+                                 C_BOOL symmetric,
                                  int32_t ndim,
                                  // matrix
                                  int32_t *col_pointers,
                                  int32_t *row_indices,
                                  double *values) {
-
-    UNUSED(solver);
-    UNUSED(effective_strategy);
-    UNUSED(effective_ordering);
-    UNUSED(effective_scaling);
-    UNUSED(determinant_coefficient);
-    UNUSED(determinant_exponent);
-    UNUSED(ordering);
-    UNUSED(scaling);
-    UNUSED(compute_determinant);
-    UNUSED(verbose);
-    UNUSED(enforce_unsymmetric_strategy);
-    UNUSED(ndim);
-    UNUSED(col_pointers);
-    UNUSED(row_indices);
-    UNUSED(values);
 
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
@@ -392,6 +355,43 @@ int32_t solver_superlu_factorize(struct InterfaceSuperLU *solver,
 
         solver->size_of_workspace = 0; // automatic
         set_default_options(&solver->options);
+        solver->options.ConditionNumber = YES;
+        solver->options.PrintStat = NO;
+
+        switch (ordering) {
+        case 100:
+            solver->options.ColPerm = COLAMD;
+            break;
+        case 200:
+            solver->options.ColPerm = METIS_ATA;
+            break;
+        case 300:
+            solver->options.ColPerm = METIS_AT_PLUS_A;
+            break;
+        case 400:
+            solver->options.ColPerm = MMD_ATA;
+            break;
+        case 500:
+            solver->options.ColPerm = MMD_AT_PLUS_A;
+            break;
+        case 600:
+            solver->options.ColPerm = NATURAL;
+            break;
+        default:
+            solver->options.ColPerm = COLAMD;
+            break;
+        }
+
+        if (scaling == C_TRUE) {
+            solver->options.Equil = YES;
+        } else {
+            solver->options.Equil = NO;
+        }
+
+        Mtype_t symmetry_storage = SLU_GE; // general
+        if (symmetric == C_TRUE) {
+            symmetry_storage = SLU_SYL; // symmetric, store lower half
+        }
 
         int nnz = col_pointers[ndim];
         dCreate_CompCol_Matrix(&solver->super_mat_a,
@@ -401,9 +401,9 @@ int32_t solver_superlu_factorize(struct InterfaceSuperLU *solver,
                                values,
                                row_indices,
                                col_pointers,
-                               SLU_NC,
-                               SLU_D,
-                               SLU_GE);
+                               SLU_NC, // column-wise, not super-nodal
+                               SLU_D,  // double
+                               symmetry_storage);
 
         solver->permutation_col = (int *)malloc(ndim * sizeof(int));
         if (solver->permutation_col == NULL) {
@@ -470,26 +470,22 @@ int32_t solver_superlu_factorize(struct InterfaceSuperLU *solver,
         return solver->info;
     }
 
-    // compute determinant
-    if (compute_determinant == C_TRUE) {
-    }
+    *condition_number = solver->reciprocal_condition_number;
 
     solver->options.Fact = FACTORED;
     solver->factorization_completed = C_TRUE;
 
-    return 0;
+    return SUCCESSFUL_EXIT;
 }
 
 /// @brief Computes the solution of the linear system
 /// @param solver Is a pointer to the solver interface
 /// @param x Is the left-hand side vector (unknowns)
 /// @param rhs Is the right-hand side vector
-/// @param verbose Shows messages
 /// @return A success or fail code
 int32_t solver_superlu_solve(struct InterfaceSuperLU *solver,
                              double *x,
-                             double *rhs,
-                             int32_t verbose) {
+                             double *rhs) {
 
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
@@ -498,8 +494,6 @@ int32_t solver_superlu_solve(struct InterfaceSuperLU *solver,
     if (solver->factorization_completed == C_FALSE) {
         return NEED_FACTORIZATION;
     }
-
-    set_superlu_verbose(solver, verbose);
 
     if (solver->b_and_x_vectors_created == C_TRUE) {
         ((DNformat *)solver->super_mat_b.Store)->nzval = rhs;
@@ -537,10 +531,7 @@ int32_t solver_superlu_solve(struct InterfaceSuperLU *solver,
         return solver->info;
     }
 
-    if (verbose == C_TRUE) {
-    }
-
     solver->b_and_x_vectors_created = C_TRUE;
 
-    return 0;
+    return SUCCESSFUL_EXIT;
 }

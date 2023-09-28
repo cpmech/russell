@@ -1,5 +1,5 @@
-use super::{to_i32, LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, Symmetry};
-use crate::StrError;
+use super::{to_i32, CcBool, LinSolParams, LinSolTrait, SparseMatrix, Symmetry};
+use crate::{auxiliary_and_constants::SUCCESSFUL_EXIT, StrError};
 use russell_lab::Vector;
 
 /// Opaque struct holding a C-pointer to InterfaceSuperLU
@@ -17,31 +17,24 @@ extern "C" {
     fn solver_superlu_factorize(
         solver: *mut InterfaceSuperLU,
         // output
-        effective_strategy: *mut i32,
-        effective_ordering: *mut i32,
-        effective_scaling: *mut i32,
-        determinant_coefficient: *mut f64,
-        determinant_exponent: *mut f64,
+        condition_number: *mut f64,
         // input
         ordering: i32,
-        scaling: i32,
-        // requests
-        compute_determinant: i32,
-        verbose: i32,
+        scaling: CcBool,
         // matrix config
-        enforce_unsymmetric_strategy: i32,
+        symmetric: CcBool,
         ndim: i32,
         // matrix
         col_pointers: *const i32,
         row_indices: *const i32,
         values: *const f64,
     ) -> i32;
-    fn solver_superlu_solve(solver: *mut InterfaceSuperLU, x: *mut f64, rhs: *const f64, verbose: i32) -> i32;
+    fn solver_superlu_solve(solver: *mut InterfaceSuperLU, x: *mut f64, rhs: *const f64) -> i32;
 }
 
 /// Wraps the SuperLU solver for sparse linear systems
 ///
-/// **Warning:** This solver may "run out of memory" for very large matrices.
+/// **Warning:** This solver has not been extensively tested here.
 pub struct SolverSuperLU {
     /// Holds a pointer to the C interface to SuperLU
     solver: *mut InterfaceSuperLU,
@@ -58,20 +51,8 @@ pub struct SolverSuperLU {
     /// Holds the number of non-zeros saved in the first call to factorize
     factorized_nnz: usize,
 
-    /// Holds the used strategy (after factorize)
-    effective_strategy: i32,
-
-    /// Holds the used ordering (after factorize)
-    effective_ordering: i32,
-
-    /// Holds the used scaling (after factorize)
-    effective_scaling: i32,
-
-    /// Holds the determinant coefficient: det = coefficient * pow(10, exponent)
-    determinant_coefficient: f64,
-
-    /// Holds the determinant exponent: det = coefficient * pow(10, exponent)
-    determinant_exponent: f64,
+    /// Holds the reciprocal condition_number
+    condition_number: f64,
 }
 
 impl Drop for SolverSuperLU {
@@ -97,11 +78,7 @@ impl SolverSuperLU {
                 factorized_symmetry: None,
                 factorized_ndim: 0,
                 factorized_nnz: 0,
-                effective_strategy: -1,
-                effective_ordering: -1,
-                effective_scaling: -1,
-                determinant_coefficient: 0.0,
-                determinant_exponent: 0.0,
+                condition_number: 0.0,
             })
         }
     }
@@ -114,7 +91,7 @@ impl LinSolTrait for SolverSuperLU {
     ///
     /// * `mat` -- the coefficient matrix A (**COO** or **CSC**, but not CSR).
     ///   Also, the matrix must be square (`nrow = ncol`) and, if symmetric,
-    ///   the symmetry/storage must [crate::Storage::Full].
+    ///   the symmetry/storage must [crate::Storage::Lower].
     /// * `params` -- configuration parameters; None => use default
     ///
     /// # Notes
@@ -126,7 +103,8 @@ impl LinSolTrait for SolverSuperLU {
     ///    kept the same for the next calls.
     /// 3. If the structure of the matrix needs to be changed, the solver must
     ///    be "dropped" and a new solver allocated.
-    /// 4. For symmetric matrices, `SuperLU` requires that the symmetry/storage be [crate::Storage::Full].
+    /// 4. For symmetric matrices, `SuperLU` (this implementation) requires that
+    ///    the symmetry/storage be [crate::Storage::Lower].
     fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
         // get CSC matrix
         let csc = mat.get_csc_or_from_coo()?;
@@ -136,11 +114,14 @@ impl LinSolTrait for SolverSuperLU {
             return Err("the matrix must be square");
         }
         csc.check_dimensions()?;
-        if let Some(symmetry) = csc.symmetry {
-            if symmetry.triangular() {
-                return Err("for SuperLU, the matrix must not be triangular");
+        let symmetric = if let Some(symmetry) = csc.symmetry {
+            if !symmetry.lower() {
+                return Err("for this implementation of SuperLU, the matrix symmetry/storage must Lower");
             }
-        }
+            1
+        } else {
+            0
+        };
 
         // check already factorized data
         if self.factorized == true {
@@ -163,34 +144,8 @@ impl LinSolTrait for SolverSuperLU {
         let par = if let Some(p) = params { p } else { LinSolParams::new() };
 
         // input parameters
-        let ordering = match par.ordering {
-            Ordering::Amd => UMFPACK_ORDERING_AMD,
-            Ordering::Amf => UMFPACK_DEFAULT_ORDERING,
-            Ordering::Auto => UMFPACK_DEFAULT_ORDERING,
-            Ordering::Best => UMFPACK_ORDERING_BEST,
-            Ordering::Cholmod => UMFPACK_ORDERING_CHOLMOD,
-            Ordering::Metis => UMFPACK_ORDERING_METIS,
-            Ordering::No => UMFPACK_ORDERING_NONE,
-            Ordering::Pord => UMFPACK_DEFAULT_ORDERING,
-            Ordering::Qamd => UMFPACK_DEFAULT_ORDERING,
-            Ordering::Scotch => UMFPACK_DEFAULT_ORDERING,
-        };
-        let scaling = match par.scaling {
-            Scaling::Auto => UMFPACK_DEFAULT_SCALE,
-            Scaling::Column => UMFPACK_DEFAULT_SCALE,
-            Scaling::Diagonal => UMFPACK_DEFAULT_SCALE,
-            Scaling::Max => UMFPACK_SCALE_MAX,
-            Scaling::No => UMFPACK_SCALE_NONE,
-            Scaling::RowCol => UMFPACK_DEFAULT_SCALE,
-            Scaling::RowColIter => UMFPACK_DEFAULT_SCALE,
-            Scaling::RowColRig => UMFPACK_DEFAULT_SCALE,
-            Scaling::Sum => UMFPACK_SCALE_SUM,
-        };
-
-        // requests
-        let calc_det = if par.compute_determinant { 1 } else { 0 };
-        let verbose = if par.verbose { 1 } else { 0 };
-        let enforce_unsym = if par.umfpack_enforce_unsymmetric_strategy { 1 } else { 0 };
+        let ordering = par.ordering as i32;
+        let scaling = if par.superlu_scaling { 1 } else { 0 };
 
         // matrix config
         let ndim = to_i32(csc.nrow)?;
@@ -200,26 +155,19 @@ impl LinSolTrait for SolverSuperLU {
             let status = solver_superlu_factorize(
                 self.solver,
                 // output
-                &mut self.effective_strategy,
-                &mut self.effective_ordering,
-                &mut self.effective_scaling,
-                &mut self.determinant_coefficient,
-                &mut self.determinant_exponent,
+                &mut self.condition_number,
                 // input
                 ordering,
                 scaling,
-                // requests
-                calc_det,
-                verbose,
                 // matrix config
-                enforce_unsym,
+                symmetric,
                 ndim,
                 // matrix
                 csc.col_pointers.as_ptr(),
                 csc.row_indices.as_ptr(),
                 csc.values.as_ptr(),
             );
-            if status != UMFPACK_SUCCESS {
+            if status != SUCCESSFUL_EXIT {
                 return Err(handle_superlu_error_code(status));
             }
         }
@@ -246,10 +194,10 @@ impl LinSolTrait for SolverSuperLU {
     ///
     /// * `mat` -- the coefficient matrix A; must be square and, if symmetric, [crate::Storage::Full].
     /// * `rhs` -- the right-hand side vector with know values an dimension equal to mat.nrow
-    /// * `verbose` -- shows messages
+    /// * `_verbose` -- not used
     ///
     /// **Warning:** the matrix must be same one used in `factorize`.
-    fn solve(&mut self, x: &mut Vector, mat: &SparseMatrix, rhs: &Vector, verbose: bool) -> Result<(), StrError> {
+    fn solve(&mut self, x: &mut Vector, mat: &SparseMatrix, rhs: &Vector, _verbose: bool) -> Result<(), StrError> {
         // check already factorized data
         if self.factorized == true {
             let (nrow, ncol, nnz, symmetry) = mat.get_info();
@@ -275,10 +223,9 @@ impl LinSolTrait for SolverSuperLU {
         }
 
         // call SuperLU solve
-        let verb = if verbose { 1 } else { 0 };
         unsafe {
-            let status = solver_superlu_solve(self.solver, x.as_mut_data().as_mut_ptr(), rhs.as_data().as_ptr(), verb);
-            if status != UMFPACK_SUCCESS {
+            let status = solver_superlu_solve(self.solver, x.as_mut_data().as_mut_ptr(), rhs.as_data().as_ptr());
+            if status != SUCCESSFUL_EXIT {
                 return Err(handle_superlu_error_code(status));
             }
         }
@@ -287,49 +234,24 @@ impl LinSolTrait for SolverSuperLU {
         Ok(())
     }
 
-    /// Returns the determinant
-    ///
-    /// Returns the three values `(mantissa, 10.0, exponent)`, such that the determinant is calculated by:
-    ///
-    /// ```text
-    /// determinant = mantissa · pow(10.0, exponent)
-    /// ```
-    ///
-    /// **Note:** This is only available if compute_determinant was requested.
+    /// Returns the determinant (NOT AVAILABLE)
     fn get_determinant(&self) -> (f64, f64, f64) {
-        (self.determinant_coefficient, 10.0, self.determinant_exponent)
+        (0.0, 0.0, 0.0)
     }
 
-    /// Returns the ordering effectively used by the solver
+    /// Returns the ordering effectively used by the solver (NOT AVAILABLE)
     fn get_effective_ordering(&self) -> String {
-        match self.effective_ordering {
-            UMFPACK_ORDERING_CHOLMOD => "Cholmod".to_string(),
-            UMFPACK_ORDERING_AMD => "Amd".to_string(),
-            UMFPACK_ORDERING_METIS => "Metis".to_string(),
-            UMFPACK_ORDERING_BEST => "Best".to_string(),
-            UMFPACK_ORDERING_NONE => "No".to_string(),
-            _ => "Unknown".to_string(),
-        }
+        "Unknown".to_string()
     }
 
-    /// Returns the scaling effectively used by the solver
+    /// Returns the scaling effectively used by the solver (NOT AVAILABLE)
     fn get_effective_scaling(&self) -> String {
-        match self.effective_scaling {
-            UMFPACK_SCALE_NONE => "No".to_string(),
-            UMFPACK_SCALE_SUM => "Sum".to_string(),
-            UMFPACK_SCALE_MAX => "Max".to_string(),
-            _ => "Unknown".to_string(),
-        }
+        "Unknown".to_string()
     }
 
-    /// Returns the strategy (concerning symmetry) effectively used by the solver
+    /// Returns the strategy (concerning symmetry) effectively used by the solver (NOT AVAILABLE)
     fn get_effective_strategy(&self) -> String {
-        match self.effective_strategy {
-            UMFPACK_STRATEGY_AUTO => "Auto".to_string(),
-            UMFPACK_STRATEGY_UNSYMMETRIC => "Unsymmetric".to_string(),
-            UMFPACK_STRATEGY_SYMMETRIC => "Symmetric".to_string(),
-            _ => "Unknown".to_string(),
-        }
+        "Unknown".to_string()
     }
 
     /// Returns the name of this solver
@@ -350,44 +272,9 @@ impl LinSolTrait for SolverSuperLU {
 /// Handles SuperLU error code
 pub(crate) fn handle_superlu_error_code(err: i32) -> StrError {
     match err {
-        1 => return "Error(1): Matrix is singular",
-        2 => return "Error(2): The determinant is nonzero, but smaller than allowed",
-        3 => return "Error(3): The determinant is larger than allowed",
-        -1 => return "Error(-1): Not enough memory",
-        -3 => return "Error(-3): Invalid numeric object",
-        -4 => return "Error(-4): Invalid symbolic object",
-        -5 => return "Error(-5): Argument missing",
-        -6 => return "Error(-6): Nrow or ncol must be greater than zero",
-        -8 => return "Error(-8): Invalid matrix",
-        -11 => return "Error(-11): Different pattern",
-        -13 => return "Error(-13): Invalid system",
-        -15 => return "Error(-15): Invalid permutation",
-        -17 => return "Error(-17): Failed to save/load file",
-        -18 => return "Error(-18): Ordering method failed",
-        -911 => return "Error(-911): An internal error has occurred",
-        100000 => return "Error: c-code returned null pointer (SuperLU)",
-        200000 => return "Error: c-code failed to allocate memory (SuperLU)",
         _ => return "Error: unknown error returned by c-code (SuperLU)",
     }
 }
-
-const UMFPACK_SUCCESS: i32 = 0;
-
-const UMFPACK_STRATEGY_AUTO: i32 = 0; // use symmetric or unsymmetric strategy
-const UMFPACK_STRATEGY_UNSYMMETRIC: i32 = 1; // COLAMD(A), col-tree post-order, do not prefer diag
-const UMFPACK_STRATEGY_SYMMETRIC: i32 = 3; // AMD(A+A'), no col-tree post-order, prefer diagonal
-
-const UMFPACK_ORDERING_CHOLMOD: i32 = 0; // use CHOLMOD (AMD/COLAMD then METIS)
-const UMFPACK_ORDERING_AMD: i32 = 1; // use AMD/COLAMD
-const UMFPACK_ORDERING_METIS: i32 = 3; // use METIS
-const UMFPACK_ORDERING_BEST: i32 = 4; // try many orderings, pick best
-const UMFPACK_ORDERING_NONE: i32 = 5; // natural ordering
-const UMFPACK_DEFAULT_ORDERING: i32 = UMFPACK_ORDERING_AMD;
-
-const UMFPACK_SCALE_NONE: i32 = 0; // no scaling
-const UMFPACK_SCALE_SUM: i32 = 1; // default: divide each row by sum (abs (row))
-const UMFPACK_SCALE_MAX: i32 = 2; // divide each row by max (abs (row))
-const UMFPACK_DEFAULT_SCALE: i32 = UMFPACK_SCALE_SUM;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

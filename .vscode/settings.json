@@ -11,6 +11,7 @@
     "dgesvd",
     "dgetrf",
     "dgetri",
+    "dgssvx",
     "Dᵢⱼₖₗ",
     "dpotrf",
     "dscal",

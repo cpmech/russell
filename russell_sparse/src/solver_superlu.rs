@@ -36,15 +36,7 @@ extern "C" {
         row_indices: *const i32,
         values: *const f64,
     ) -> i32;
-    fn solver_superlu_solve(
-        solver: *mut InterfaceSuperLU,
-        x: *mut f64,
-        rhs: *const f64,
-        col_pointers: *const i32,
-        row_indices: *const i32,
-        values: *const f64,
-        verbose: i32,
-    ) -> i32;
+    fn solver_superlu_solve(solver: *mut InterfaceSuperLU, x: *mut f64, rhs: *const f64, verbose: i32) -> i32;
 }
 
 /// Wraps the SuperLU solver for sparse linear systems
@@ -283,20 +275,9 @@ impl LinSolTrait for SolverSuperLU {
         }
 
         // call SuperLU solve
-        let col_pointers = mat.csc_col_pointers()?;
-        let row_indices = mat.csc_row_indices()?;
-        let values = mat.csc_values()?;
         let verb = if verbose { 1 } else { 0 };
         unsafe {
-            let status = solver_superlu_solve(
-                self.solver,
-                x.as_mut_data().as_mut_ptr(),
-                rhs.as_data().as_ptr(),
-                col_pointers.as_ptr(),
-                row_indices.as_ptr(),
-                values.as_ptr(),
-                verb,
-            );
+            let status = solver_superlu_solve(self.solver, x.as_mut_data().as_mut_ptr(), rhs.as_data().as_ptr(), verb);
             if status != UMFPACK_SUCCESS {
                 return Err(handle_superlu_error_code(status));
             }

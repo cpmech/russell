@@ -11,18 +11,6 @@
 
 #include "constants.h"
 
-void print_csr(int32_t ndim,
-               const int32_t *row_pointers,
-               const int32_t *col_indices,
-               const double *values) {
-    for (int32_t i = 0; i < ndim; i++) {
-        for (int32_t p = row_pointers[i]; p < row_pointers[i + 1]; p++) {
-            int32_t j = col_indices[p];
-            printf("%d %d => %g\n", i, j, values[p]);
-        }
-    }
-}
-
 /// @brief Wraps the Intel DSS solver
 /// @note The DSS uses a row-major UPPER triangular storage format.
 /// @note The matrix is compressed row-by-row.
@@ -166,8 +154,6 @@ int32_t solver_intel_dss_factorize(struct InterfaceIntelDSS *solver,
             return status;
         }
     }
-
-    // print_csr(ndim, row_pointers, col_indices, values);
 
     // factor the matrix
     MKL_INT status = dss_factor_real(solver->handle, solver->dss_type, values);

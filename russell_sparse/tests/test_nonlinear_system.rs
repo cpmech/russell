@@ -132,6 +132,11 @@ fn test_nonlinear_system_mumps() -> Result<(), StrError> {
 }
 
 #[test]
+fn test_nonlinear_system_superlu() -> Result<(), StrError> {
+    solve_nonlinear_system(Genie::SuperLu)
+}
+
+#[test]
 fn test_nonlinear_system_umfpack() -> Result<(), StrError> {
     solve_nonlinear_system(Genie::Umfpack)
 }

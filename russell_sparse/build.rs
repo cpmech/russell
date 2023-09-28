@@ -21,6 +21,27 @@ fn main() {
         println!("cargo:rustc-link-lib=dylib=dmumps_seq");
     }
 
+    // compile the SUPERLU interface
+    let use_local_superlu = match env::var("RUSSELL_SPARSE_USE_LOCAL_SUPERLU") {
+        Ok(v) => v == "1" || v.to_lowercase() == "true",
+        Err(_) => false,
+    };
+    if use_local_superlu {
+        cc::Build::new()
+            .file("c_code/interface_superlu.c")
+            .include("/usr/local/include/superlu")
+            .compile("c_code_interface_superlu");
+        println!("cargo:rustc-link-search=native=/usr/local/lib/superlu");
+        println!("cargo:rustc-link-lib=dylib=superlu");
+        println!("cargo:rustc-cfg=local_superlu");
+    } else {
+        cc::Build::new()
+            .file("c_code/interface_superlu.c")
+            .include("/usr/include/superlu")
+            .compile("c_code_interface_superlu");
+        println!("cargo:rustc-link-lib=dylib=superlu");
+    }
+
     // compile the UMFPACK interface
     let use_local_umfpack = match env::var("RUSSELL_SPARSE_USE_LOCAL_UMFPACK") {
         Ok(v) => v == "1" || v.to_lowercase() == "true",

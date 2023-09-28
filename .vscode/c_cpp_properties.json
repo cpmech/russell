@@ -5,10 +5,12 @@
       "includePath": [
         "${default}",
         "/usr/include",
+        "/usr/include/superlu",
         "/usr/include/suitesparse",
         "/opt/intel/oneapi/mkl/latest/include",
         "/usr/local/include/mumps",
-        "/usr/local/include/umfpack"
+        "/usr/local/include/umfpack",
+        "/usr/local/include/superlu"
       ],
       "defines": [
         "WITH_INTEL_DSS"

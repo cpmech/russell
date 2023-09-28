@@ -1,7 +1,7 @@
 #![allow(unused)]
 
-use super::{CooMatrix, CscMatrix, CsrMatrix, Symmetry};
-use crate::{auxiliary::to_i32, StrError};
+use super::{to_i32, CooMatrix, CscMatrix, CsrMatrix, Symmetry};
+use crate::StrError;
 use russell_lab::{Matrix, Vector};
 use russell_openblas::idamax;
 

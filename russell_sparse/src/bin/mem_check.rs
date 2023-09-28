@@ -5,6 +5,7 @@ fn test_solver(genie: Genie) {
     match genie {
         Genie::Mumps => println!("Testing MUMPS solver\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver\n"),
+        Genie::SuperLu => println!("Testing SuperLU solver\n"),
         Genie::IntelDss => println!("Testing Intel DSS solver\n"),
     }
 
@@ -75,6 +76,7 @@ fn test_solver_singular(genie: Genie) {
     match genie {
         Genie::Mumps => println!("Testing MUMPS solver\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver\n"),
+        Genie::SuperLu => println!("Testing SuperLU solver\n"),
         Genie::IntelDss => println!("Testing Intel DSS solver\n"),
     }
 
@@ -115,7 +117,11 @@ fn main() {
     println!("");
     test_solver_singular(Genie::Mumps);
     println!("----------------------------------------------------------------------\n");
+    test_solver(Genie::SuperLu);
+    println!("");
+    test_solver_singular(Genie::SuperLu);
     if cfg!(with_intel_dss) {
+        println!("----------------------------------------------------------------------\n");
         test_solver(Genie::IntelDss);
         // Intel DSS cannot handle singular matrices
         // test_solver_singular(Genie::IntelDss);

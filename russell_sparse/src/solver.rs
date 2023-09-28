@@ -1,4 +1,4 @@
-use super::{Genie, Ordering, Scaling, SolverIntelDSS, SolverMUMPS, SolverUMFPACK, SparseMatrix};
+use super::{Genie, Ordering, Scaling, SolverIntelDSS, SolverMUMPS, SolverSuperLU, SolverUMFPACK, SparseMatrix};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -137,6 +137,7 @@ impl<'a> LinSolver<'a> {
     pub fn new(genie: Genie) -> Result<Self, StrError> {
         let actual: Box<dyn LinSolTrait> = match genie {
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
+            Genie::SuperLu => Box::new(SolverSuperLU::new()?),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
             Genie::IntelDss => Box::new(SolverIntelDSS::new()?),
         };

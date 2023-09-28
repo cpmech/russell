@@ -67,6 +67,7 @@ fn main() -> Result<(), StrError> {
     // select the symmetric handling option
     let (handling, one_based) = match genie {
         Genie::Mumps => (MMsymOption::LeaveAsLower, true),
+        Genie::SuperLu => (MMsymOption::LeaveAsLower, false),
         Genie::Umfpack => (MMsymOption::MakeItFull, false),
         Genie::IntelDss => (MMsymOption::SwapToUpper, false),
     };
@@ -166,6 +167,7 @@ fn main() -> Result<(), StrError> {
     if path.ends_with("bfwb62.mtx") {
         let tolerance = match genie {
             Genie::Mumps => 1e-10,
+            Genie::SuperLu => 1e-10,
             Genie::Umfpack => 1e-10,
             Genie::IntelDss => 1e-10,
         };

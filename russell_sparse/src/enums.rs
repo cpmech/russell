@@ -8,6 +8,11 @@ pub enum Genie {
     /// Reference: <https://mumps-solver.org/index.php>
     Mumps,
 
+    /// Selects SuperLU solver
+    ///
+    /// Reference: <https://github.com/xiaoyeli/superlu>
+    SuperLu,
+
     /// Selects UMFPACK (unsymmetric multi-frontal) solver
     ///
     /// Reference: <https://github.com/DrTimothyAldenDavis/SuiteSparse>

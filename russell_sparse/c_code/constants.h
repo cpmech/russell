@@ -3,11 +3,11 @@
 #include <inttypes.h>
 
 #define SUCCESSFUL_EXIT 0
-#define NEED_FACTORIZATION 100
 #define NULL_POINTER_ERROR 100000
 #define MALLOC_ERROR 200000
 #define VERSION_ERROR 300000
 #define NOT_AVAILABLE 400000
+#define NEED_FACTORIZATION 500000
 #define C_BOOL int32_t
 #define C_TRUE 1
 #define C_FALSE 0

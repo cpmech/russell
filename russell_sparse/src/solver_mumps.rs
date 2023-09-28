@@ -1,4 +1,7 @@
-use super::{to_i32, CcBool, LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, Symmetry};
+use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, Symmetry};
+use crate::auxiliary_and_constants::{
+    to_i32, CcBool, MALLOC_ERROR, NEED_FACTORIZATION, NULL_POINTER_ERROR, SUCCESSFUL_EXIT, VERSION_ERROR,
+};
 use crate::StrError;
 use russell_lab::{vec_copy, Vector};
 
@@ -231,7 +234,7 @@ impl LinSolTrait for SolverMUMPS {
                 coo.indices_j.as_ptr(),
                 coo.values.as_ptr(),
             );
-            if status != MUMPS_SUCCESS {
+            if status != SUCCESSFUL_EXIT {
                 return Err(handle_mumps_error_code(status));
             }
         }
@@ -291,7 +294,7 @@ impl LinSolTrait for SolverMUMPS {
         let verb = if verbose { 1 } else { 0 };
         unsafe {
             let status = solver_mumps_solve(self.solver, x.as_mut_data().as_mut_ptr(), verb);
-            if status != MUMPS_SUCCESS {
+            if status != SUCCESSFUL_EXIT {
                 return Err(handle_mumps_error_code(status));
             }
         }
@@ -434,13 +437,13 @@ fn handle_mumps_error_code(err: i32) -> StrError {
         2 => "Error(+2): during error analysis the max-norm of the computed solution is close to zero",
         4 => "Error(+4): not used in current version",
         8 => "Error(+8): problem with the iterative refinement routine",
-        100000 => return "Error: c-code returned null pointer (MUMPS)",
-        200000 => return "Error: c-code failed to allocate memory (MUMPS)",
+        NULL_POINTER_ERROR => return "Error: c-code returned null pointer (MUMPS)",
+        MALLOC_ERROR => return "Error: c-code failed to allocate memory (MUMPS)",
+        VERSION_ERROR => return "Error: MUMPS library version is inconsistent among dynamic library and compiled code",
+        NEED_FACTORIZATION => return "INTERNAL ERROR: factorization must be completed before solve",
         _ => return "Error: unknown error returned by c-code (MUMPS)",
     }
 }
-
-const MUMPS_SUCCESS: i32 = 0;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

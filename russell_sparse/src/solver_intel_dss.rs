@@ -1,4 +1,7 @@
-use super::{to_i32, CcBool, LinSolParams, LinSolTrait, SparseMatrix, Symmetry};
+use super::{LinSolParams, LinSolTrait, SparseMatrix, Symmetry};
+use crate::auxiliary_and_constants::{
+    to_i32, CcBool, MALLOC_ERROR, NEED_FACTORIZATION, NOT_AVAILABLE, NULL_POINTER_ERROR, SUCCESSFUL_EXIT,
+};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -192,7 +195,7 @@ impl LinSolTrait for SolverIntelDSS {
                 csr.col_indices[0..nnz].as_ptr(),
                 csr.values[0..nnz].as_ptr(),
             );
-            if status != MKL_DSS_SUCCESS {
+            if status != SUCCESSFUL_EXIT {
                 return Err(handle_intel_dss_error_code(status));
             }
         }
@@ -250,7 +253,7 @@ impl LinSolTrait for SolverIntelDSS {
         // call Intel DSS solve
         unsafe {
             let status = solver_intel_dss_solve(self.solver, x.as_mut_data().as_mut_ptr(), rhs.as_data().as_ptr());
-            if status != MKL_DSS_SUCCESS {
+            if status != SUCCESSFUL_EXIT {
                 return Err(handle_intel_dss_error_code(status));
             }
         }
@@ -329,14 +332,13 @@ pub(crate) fn handle_intel_dss_error_code(err: i32) -> StrError {
         24 => return "MKL_DSS_OOC_MEM_ERR",
         25 => return "MKL_DSS_OOC_OC_ERR",
         26 => return "MKL_DSS_OOC_RW_ERR",
-        100000 => return "Error: c-code returned null pointer (IntelDSS)",
-        200000 => return "Error: c-code failed to allocate memory (IntelDSS)",
-        400000 => return "This code has not been compiled with Intel DSS",
+        NULL_POINTER_ERROR => return "Error: c-code returned null pointer (IntelDSS)",
+        MALLOC_ERROR => return "Error: c-code failed to allocate memory (IntelDSS)",
+        NOT_AVAILABLE => return "This code has not been compiled with Intel DSS",
+        NEED_FACTORIZATION => return "INTERNAL ERROR: factorization must be completed before solve",
         _ => return "Error: unknown error returned by c-code (IntelDSS)",
     }
 }
-
-const MKL_DSS_SUCCESS: i32 = 0;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

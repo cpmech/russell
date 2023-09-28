@@ -1,4 +1,7 @@
-use super::{to_i32, CcBool, LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, Symmetry};
+use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, Symmetry};
+use crate::auxiliary_and_constants::{
+    to_i32, CcBool, MALLOC_ERROR, NEED_FACTORIZATION, NULL_POINTER_ERROR, SUCCESSFUL_EXIT,
+};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -227,7 +230,7 @@ impl LinSolTrait for SolverUMFPACK {
                 csc.row_indices.as_ptr(),
                 csc.values.as_ptr(),
             );
-            if status != UMFPACK_SUCCESS {
+            if status != SUCCESSFUL_EXIT {
                 return Err(handle_umfpack_error_code(status));
             }
         }
@@ -297,7 +300,7 @@ impl LinSolTrait for SolverUMFPACK {
                 values.as_ptr(),
                 verb,
             );
-            if status != UMFPACK_SUCCESS {
+            if status != SUCCESSFUL_EXIT {
                 return Err(handle_umfpack_error_code(status));
             }
         }
@@ -384,13 +387,12 @@ pub(crate) fn handle_umfpack_error_code(err: i32) -> StrError {
         -17 => return "Error(-17): Failed to save/load file",
         -18 => return "Error(-18): Ordering method failed",
         -911 => return "Error(-911): An internal error has occurred",
-        100000 => return "Error: c-code returned null pointer (UMFPACK)",
-        200000 => return "Error: c-code failed to allocate memory (UMFPACK)",
+        NULL_POINTER_ERROR => return "Error: c-code returned null pointer (UMFPACK)",
+        MALLOC_ERROR => return "Error: c-code failed to allocate memory (UMFPACK)",
+        NEED_FACTORIZATION => return "INTERNAL ERROR: factorization must be completed before solve",
         _ => return "Error: unknown error returned by c-code (UMFPACK)",
     }
 }
-
-const UMFPACK_SUCCESS: i32 = 0;
 
 const UMFPACK_STRATEGY_AUTO: i32 = 0; // use symmetric or unsymmetric strategy
 const UMFPACK_STRATEGY_UNSYMMETRIC: i32 = 1; // COLAMD(A), col-tree post-order, do not prefer diag

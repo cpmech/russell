@@ -201,8 +201,13 @@ int32_t solver_intel_dss_solve(struct InterfaceIntelDSS *solver,
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
+
     if (solver->handle == NULL) {
         return NULL_POINTER_ERROR;
+    }
+
+    if (solver->factorization_completed == C_FALSE) {
+        return NEED_FACTORIZATION;
     }
 
     // get the solution vector

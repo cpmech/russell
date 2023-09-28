@@ -2,7 +2,7 @@
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
-This repository contains tools for handling sparse matrices and functions to solve large sparse systems using the best libraries out there, such as [(recommended) UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse), [(large systems) MUMPS](https://mumps-solver.org), and [SuperLU](https://github.com/xiaoyeli/superlu). Optionally, you may want to use the [Intel DSS solver](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html).
+This repository contains tools for handling sparse matrices and functions to solve large sparse systems using the best libraries out there, such as [(recommended) UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [(very large systems) MUMPS](https://mumps-solver.org). Optionally, you may want to use the [Intel DSS solver](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html).
 
 Documentation:
 
@@ -18,7 +18,7 @@ First, you need to install some dependencies:
 sudo apt install liblapacke-dev libopenblas-dev
 ```
 
-Next, there are some options to compile the code with [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse), [MUMPS](https://mumps-solver.org), and [SuperLU](https://github.com/xiaoyeli/superlu):
+Next, there are some options to compile the code with [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS](https://mumps-solver.org):
 
 **Option 1.** Using the standard Debian packages. The code works just fine with the standard Debian packages. However, they may be outdated. Furthermore, the sequential version of MUMPS in Debian may be slow because it does not include Metis and OpenMP.
 
@@ -27,7 +27,6 @@ Next, there are some options to compile the code with [UMFPACK](https://github.c
 ```bash
 export RUSSELL_SPARSE_USE_LOCAL_MUMPS=1
 export RUSSELL_SPARSE_USE_LOCAL_UMFPACK=1
-export RUSSELL_SPARSE_USE_LOCAL_SUPERLU=1
 ```
 
 You can combine a Debian packages libraries with locally compiled ones; just set the above variables as appropriate.
@@ -37,14 +36,12 @@ You can combine a Debian packages libraries with locally compiled ones; just set
 Install the following libraries:
 
 ```bash
-sudo apt install libmumps-seq-dev libsuitesparse-dev libsuperlu-dev
+sudo apt install libmumps-seq-dev libsuitesparse-dev
 ```
 
-#### Option 2 - Locally compiled MUMPS, UMFPACK, and SuperLU
+#### Option 2 - Locally compiled MUMPS and UMFPACK
 
 **Important:** To use the locally compiled UMFPACK, in addition to setting the above environment variable, you must **remove** `libsuitesparse-dev`.
-
-**Important:** To use the locally compiled SuperLU, in addition to setting the above environment variable, you must **remove** `libsuperlu-dev`.
 
 First, install some dependencies:
 
@@ -64,12 +61,6 @@ Third, to download and compile UMFPACK and install it in `/usr/local/include/umf
 
 ```bash
 bash zscripts/install-umfpack.bash
-```
-
-Fourth, to download and compile SuperLU and install it in `/usr/local/include/superlu` and `/usr/local/lib/superlu`, run:
-
-```bash
-bash zscripts/install-superlu.bash
 ```
 
 ### (optional) Intel DSS solver

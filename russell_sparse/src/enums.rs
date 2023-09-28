@@ -8,11 +8,6 @@ pub enum Genie {
     /// Reference: <https://mumps-solver.org/index.php>
     Mumps,
 
-    /// Selects SuperLU solver
-    ///
-    /// Reference: <https://github.com/xiaoyeli/superlu>
-    SuperLu,
-
     /// Selects UMFPACK (unsymmetric multi-frontal) solver
     ///
     /// Reference: <https://github.com/DrTimothyAldenDavis/SuiteSparse>
@@ -137,29 +132,6 @@ pub enum MMsymOption {
     ///
     /// This option is useful for the UMFPACK solver.
     MakeItFull,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum OrderingSuperLU {
-    /// Column approximate minimum degree
-    ///
-    /// This is the default and is designed for unsymmetric matrices
-    Colamd = 100,
-
-    /// Metis ordering on transpose(A) * A
-    Metis = 200,
-
-    /// Metis ordering on transpose(A) + A
-    MetisPlus = 300,
-
-    /// Multiple minimum degree ordering on transpose(A) * A
-    Mmd = 400,
-
-    /// Multiple minimum degree ordering on transpose(A) + A
-    MmdPlus = 500,
-
-    /// Natural ordering
-    Natural = 600,
 }
 
 /// Ordering option

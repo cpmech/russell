@@ -12,7 +12,6 @@ struct InterfaceSuperLU {
     // how the LU decomposition will be performed and how the
     // system will be solved.
 
-    SuperMatrix super_mat_a; // (input/output) (A->nrow, A->ncol)
     // Matrix A in A*X=B, of dimension (A->nrow, A->ncol). The number
     // of the linear equations is A->nrow. Currently, the type of A can be:
     // Stype = SLU_NC or SLU_NR, Dtype = SLU_D, Mtype = SLU_GE.
@@ -226,8 +225,8 @@ struct InterfaceSuperLU {
     //     > A->ncol+1: number of bytes allocated when memory allocation
     //         failure occurred, plus A->ncol.
 
-    /// @brief Defines the symmetry/storage of the matrix
-    Mtype_t symmetry_storage;
+    /// @brief nrow = ncol
+    int ndim;
 
     /// @brief Saves a double value to take a pointer used by the dummy super matrix
     double dummy;
@@ -266,7 +265,7 @@ struct InterfaceSuperLU *solver_superlu_new() {
     solver->reciprocal_condition_number = 0.0;
     solver->forward_error = NULL;
     solver->backward_error = NULL;
-    solver->symmetry_storage = SLU_GE;
+    solver->ndim = 0;
     solver->dummy = 0.0;
     solver->initialization_completed = C_FALSE;
     solver->factorization_completed = C_FALSE;
@@ -304,7 +303,6 @@ void solver_superlu_drop(struct InterfaceSuperLU *solver) {
     }
     if (solver->initialization_completed == C_TRUE) {
         StatFree(&solver->stat);
-        Destroy_SuperMatrix_Store(&solver->super_mat_a);
         Destroy_SuperNode_Matrix(&solver->super_mat_l);
         Destroy_CompCol_Matrix(&solver->super_mat_u);
         Destroy_SuperMatrix_Store(&solver->super_mat_dummy);
@@ -386,18 +384,6 @@ int32_t solver_superlu_factorize(struct InterfaceSuperLU *solver,
             solver->options.Equil = NO;
         }
 
-        int nnz = col_pointers[ndim];
-        dCreate_CompCol_Matrix(&solver->super_mat_a,
-                               ndim,
-                               ndim,
-                               nnz,
-                               values,
-                               row_indices,
-                               col_pointers,
-                               SLU_NC,
-                               SLU_D,
-                               SLU_GE);
-
         solver->permutation_col = (int *)malloc(ndim * sizeof(int));
         if (solver->permutation_col == NULL) {
             return MALLOC_ERROR;
@@ -432,6 +418,7 @@ int32_t solver_superlu_factorize(struct InterfaceSuperLU *solver,
 
         StatInit(&solver->stat);
 
+        solver->ndim = ndim;
         solver->initialization_completed = C_TRUE;
 
     } else {
@@ -440,9 +427,22 @@ int32_t solver_superlu_factorize(struct InterfaceSuperLU *solver,
         solver->options.Fact = SamePattern;
     }
 
+    int nnz = col_pointers[ndim];
+    SuperMatrix super_mat_a;
+    dCreate_CompCol_Matrix(&super_mat_a,
+                           ndim,
+                           ndim,
+                           nnz,
+                           values,
+                           row_indices,
+                           col_pointers,
+                           SLU_NC,
+                           SLU_D,
+                           SLU_GE);
+
     // only perform the lu decomposition
     dgssvx(&solver->options,
-           &solver->super_mat_a,
+           &super_mat_a,
            solver->permutation_col,
            solver->permutation_row,
            solver->elimination_tree,
@@ -464,6 +464,8 @@ int32_t solver_superlu_factorize(struct InterfaceSuperLU *solver,
            &solver->stat,
            &solver->info);
 
+    Destroy_SuperMatrix_Store(&super_mat_a);
+
     if (solver->info != SUCCESSFUL_EXIT) {
         return solver->info;
     }
@@ -480,10 +482,16 @@ int32_t solver_superlu_factorize(struct InterfaceSuperLU *solver,
 /// @param solver Is a pointer to the solver interface
 /// @param x Is the left-hand side vector (unknowns)
 /// @param rhs Is the right-hand side vector
+/// @param col_pointers The column pointers array with size = ncol + 1
+/// @param row_indices The row indices array with size = nnz (number of non-zeros)
+/// @param values The values array with size = nnz (number of non-zeros)
 /// @return A success or fail code
 int32_t solver_superlu_solve(struct InterfaceSuperLU *solver,
                              double *x,
-                             double *rhs) {
+                             double *rhs,
+                             int32_t *col_pointers,
+                             int32_t *row_indices,
+                             double *values) {
 
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
@@ -493,17 +501,31 @@ int32_t solver_superlu_solve(struct InterfaceSuperLU *solver,
         return NEED_FACTORIZATION;
     }
 
+    int ndim = solver->ndim;
+
     if (solver->b_and_x_vectors_created == C_TRUE) {
         ((DNformat *)solver->super_mat_b.Store)->nzval = rhs;
         ((DNformat *)solver->super_mat_x.Store)->nzval = x;
     } else {
-        int ndim = solver->super_mat_a.nrow;
         dCreate_Dense_Matrix(&solver->super_mat_b, ndim, 1, rhs, ndim, SLU_DN, SLU_D, SLU_GE);
         dCreate_Dense_Matrix(&solver->super_mat_x, ndim, 1, x, ndim, SLU_DN, SLU_D, SLU_GE);
     }
 
+    int nnz = col_pointers[ndim];
+    SuperMatrix super_mat_a;
+    dCreate_CompCol_Matrix(&super_mat_a,
+                           ndim,
+                           ndim,
+                           nnz,
+                           values,
+                           row_indices,
+                           col_pointers,
+                           SLU_NC,
+                           SLU_D,
+                           SLU_GE);
+
     dgssvx(&solver->options,
-           &solver->super_mat_a,
+           &super_mat_a,
            solver->permutation_col,
            solver->permutation_row,
            solver->elimination_tree,
@@ -524,6 +546,8 @@ int32_t solver_superlu_solve(struct InterfaceSuperLU *solver,
            &solver->mem_usage,
            &solver->stat,
            &solver->info);
+
+    Destroy_SuperMatrix_Store(&super_mat_a);
 
     if (solver->info != SUCCESSFUL_EXIT) {
         return solver->info;

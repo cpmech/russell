@@ -440,6 +440,11 @@ int32_t solver_superlu_factorize(struct InterfaceSuperLU *solver,
         StatInit(&solver->stat);
 
         solver->initialization_completed = C_TRUE;
+
+    } else {
+        // must reset this flag when doing multiple factorizations
+        // important: assuming same structure
+        solver->options.Fact = SamePattern;
     }
 
     // only perform the lu decomposition
@@ -472,7 +477,7 @@ int32_t solver_superlu_factorize(struct InterfaceSuperLU *solver,
 
     *condition_number = solver->reciprocal_condition_number;
 
-    solver->options.Fact = FACTORED;
+    solver->options.Fact = FACTORED; // set this for the next call to solve
     solver->factorization_completed = C_TRUE;
 
     return SUCCESSFUL_EXIT;

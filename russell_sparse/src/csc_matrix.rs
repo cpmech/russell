@@ -96,6 +96,57 @@ pub struct CscMatrix {
 }
 
 impl CscMatrix {
+    /// Creates a new CSC matrix from data arrays
+    ///
+    /// The following conditions must be satisfied (nnz is the number of non-zeros
+    /// and nnz_dup is the number of non-zeros with possible duplicates):
+    ///
+    /// ```text
+    /// nrow ≥ 1
+    /// ncol ≥ 1
+    /// col_pointers.len() = ncol + 1
+    /// row_indices.len() = nnz_dup
+    /// values.len() = nnz_dup
+    /// nnz = col_pointers[ncol] ≥ 1
+    /// nnz_dup ≥ nnz
+    /// ```
+    pub fn new(
+        nrow: usize,
+        ncol: usize,
+        col_pointers: Vec<i32>,
+        row_indices: Vec<i32>,
+        values: Vec<f64>,
+        symmetry: Option<Symmetry>,
+    ) -> Result<Self, StrError> {
+        if nrow < 1 {
+            return Err("nrow must be ≥ 1");
+        }
+        if ncol < 1 {
+            return Err("ncol must be ≥ 1");
+        }
+        if col_pointers.len() != ncol + 1 {
+            return Err("col_pointers.len() must be = ncol + 1");
+        }
+        let nnz = col_pointers[ncol];
+        if nnz < 1 {
+            return Err("nnz must be ≥ 1");
+        }
+        if row_indices.len() < nnz as usize {
+            return Err("row_indices.len() must be ≥ nnz");
+        }
+        if values.len() < nnz as usize {
+            return Err("values.len() must be ≥ nnz");
+        }
+        Ok(CscMatrix {
+            symmetry,
+            nrow,
+            ncol,
+            col_pointers,
+            row_indices,
+            values,
+        })
+    }
+
     /// Checks the dimension of the arrays in the CSC matrix
     ///
     /// The following conditions must be satisfied (nnz is the number of non-zeros with duplicates):

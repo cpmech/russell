@@ -1,32 +1,15 @@
-#![allow(unused)]
-
 use super::{to_i32, CooMatrix, CscMatrix, CsrMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::{Matrix, Vector};
 use russell_openblas::idamax;
 
-// pub enum SpType {
-//     Coo,
-//     Csc,
-//     Csr,
-// }
-
 pub struct SparseMatrix {
-    // pub sp_type: SpType,
     coo: Option<CooMatrix>,
     csc: Option<CscMatrix>,
     csr: Option<CsrMatrix>,
 }
 
 impl SparseMatrix {
-    pub fn from_coo(coo: CooMatrix) -> Self {
-        SparseMatrix {
-            coo: Some(coo),
-            csc: None,
-            csr: None,
-        }
-    }
-
     pub fn new_coo(
         nrow: usize,
         ncol: usize,
@@ -35,7 +18,6 @@ impl SparseMatrix {
         one_based: bool,
     ) -> Result<Self, StrError> {
         Ok(SparseMatrix {
-            // sp_type: SpType::Coo,
             coo: Some(CooMatrix::new(nrow, ncol, max_nnz, symmetry, one_based)?),
             csc: None,
             csr: None,
@@ -50,39 +32,34 @@ impl SparseMatrix {
         values: Vec<f64>,
         symmetry: Option<Symmetry>,
     ) -> Result<Self, StrError> {
-        if nrow < 1 {
-            return Err("TODO");
-        }
-        if ncol < 1 {
-            return Err("TODO");
-        }
-        if col_pointers.len() != ncol + 1 {
-            return Err("TODO");
-        }
-        let nnz = col_pointers[ncol];
-        if nnz < 1 {
-            return Err("TODO");
-        }
-        if row_indices.len() != nnz as usize {
-            return Err("TODO");
-        }
-        if values.len() != nnz as usize {
-            return Err("TODO");
-        }
-        let mut csc = CscMatrix {
-            symmetry: symmetry,
-            nrow: nrow,
-            ncol: ncol,
-            col_pointers,
-            row_indices,
-            values,
-        };
         Ok(SparseMatrix {
-            // sp_type: SpType::Csc,
             coo: None,
-            csc: Some(csc),
+            csc: Some(CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, symmetry)?),
             csr: None,
         })
+    }
+
+    pub fn new_csr(
+        nrow: usize,
+        ncol: usize,
+        row_pointers: Vec<i32>,
+        col_indices: Vec<i32>,
+        values: Vec<f64>,
+        symmetry: Option<Symmetry>,
+    ) -> Result<Self, StrError> {
+        Ok(SparseMatrix {
+            coo: None,
+            csc: None,
+            csr: Some(CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, symmetry)?),
+        })
+    }
+
+    pub fn from_coo(coo: CooMatrix) -> Self {
+        SparseMatrix {
+            coo: Some(coo),
+            csc: None,
+            csr: None,
+        }
     }
 
     /// Returns `(nrow, ncol, nnz, symmetry)`
@@ -152,10 +129,6 @@ impl SparseMatrix {
                 },
             },
         }
-    }
-
-    pub fn new_csr(nrow: usize, ncol: usize, nnz: usize, symmetry: Option<Symmetry>) -> Result<Self, StrError> {
-        Err("TODO")
     }
 
     pub fn get_coo(&mut self) -> Result<&CooMatrix, StrError> {

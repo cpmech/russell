@@ -82,6 +82,57 @@ pub struct CsrMatrix {
 }
 
 impl CsrMatrix {
+    /// Creates a new CSR matrix from data arrays
+    ///
+    /// The following conditions must be satisfied (nnz is the number of non-zeros
+    /// and nnz_dup is the number of non-zeros with possible duplicates):
+    ///
+    /// ```text
+    /// nrow ≥ 1
+    /// ncol ≥ 1
+    /// row_pointers.len() = nrow + 1
+    /// col_indices.len() = nnz_dup
+    /// values.len() = nnz_dup
+    /// nnz = row_pointers[nrow] ≥ 1
+    /// nnz_dup ≥ nnz
+    /// ```
+    pub fn new(
+        nrow: usize,
+        ncol: usize,
+        row_pointers: Vec<i32>,
+        col_indices: Vec<i32>,
+        values: Vec<f64>,
+        symmetry: Option<Symmetry>,
+    ) -> Result<Self, StrError> {
+        if nrow < 1 {
+            return Err("nrow must be ≥ 1");
+        }
+        if ncol < 1 {
+            return Err("ncol must be ≥ 1");
+        }
+        if row_pointers.len() != nrow + 1 {
+            return Err("row_pointers.len() must be = nrow + 1");
+        }
+        let nnz = row_pointers[nrow];
+        if nnz < 1 {
+            return Err("nnz must be ≥ 1");
+        }
+        if col_indices.len() < nnz as usize {
+            return Err("col_indices.len() must be ≥ nnz");
+        }
+        if values.len() < nnz as usize {
+            return Err("values.len() must be ≥ nnz");
+        }
+        Ok(CsrMatrix {
+            symmetry,
+            nrow,
+            ncol,
+            row_pointers,
+            col_indices,
+            values,
+        })
+    }
+
     /// Checks the dimension of the arrays in the CSR matrix
     ///
     /// The following conditions must be satisfied (nnz is the number of non-zeros with duplicates):

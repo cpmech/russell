@@ -30,7 +30,7 @@ struct Options {
 
     /// Number of threads for OpenMP (MUMPS only)
     #[structopt(short = "n", long, default_value = "1")]
-    omp_nt: u32,
+    mumps_omp_nt: u32,
 
     /// Activate verbose mode
     #[structopt(short = "v", long)]
@@ -49,8 +49,9 @@ fn main() -> Result<(), StrError> {
     // parse options
     let opt = Options::from_args();
 
-    // set openblas num of threads to 1
-    if opt.omp_nt > 1 {
+    // if the number of threads for MUMPS is greater than 1,
+    // it is best to set OpenBLAS number of threads to 1
+    if opt.mumps_omp_nt > 1 {
         set_num_threads(1);
     }
 
@@ -77,7 +78,7 @@ fn main() -> Result<(), StrError> {
     params.ordering = enum_ordering(&opt.ordering);
     params.scaling = enum_scaling(&opt.scaling);
     params.compute_determinant = opt.determinant;
-    params.mumps_openmp_num_threads = opt.omp_nt as usize;
+    params.mumps_openmp_num_threads = opt.mumps_omp_nt as usize;
     params.umfpack_enforce_unsymmetric_strategy = opt.enforce_unsymmetric_strategy;
 
     // read the matrix
@@ -145,7 +146,7 @@ fn main() -> Result<(), StrError> {
         time_total_human: format_nanoseconds(time_total),
         requested_ordering: opt.ordering,
         requested_scaling: opt.scaling,
-        requested_openmp_num_threads: opt.omp_nt as usize,
+        requested_openmp_num_threads: opt.mumps_omp_nt as usize,
         effective_ordering: solver.actual.get_effective_ordering(),
         effective_scaling: solver.actual.get_effective_scaling(),
         effective_strategy: solver.actual.get_effective_strategy(),

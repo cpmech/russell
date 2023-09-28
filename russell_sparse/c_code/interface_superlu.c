@@ -303,9 +303,11 @@ void solver_superlu_drop(struct InterfaceSuperLU *solver) {
     }
     if (solver->initialization_completed == C_TRUE) {
         StatFree(&solver->stat);
+        Destroy_SuperMatrix_Store(&solver->super_mat_dummy);
+    }
+    if (solver->factorization_completed == C_TRUE) {
         Destroy_SuperNode_Matrix(&solver->super_mat_l);
         Destroy_CompCol_Matrix(&solver->super_mat_u);
-        Destroy_SuperMatrix_Store(&solver->super_mat_dummy);
     }
     if (solver->b_and_x_vectors_created == C_TRUE) {
         Destroy_SuperMatrix_Store(&solver->super_mat_b);
@@ -509,6 +511,7 @@ int32_t solver_superlu_solve(struct InterfaceSuperLU *solver,
     } else {
         dCreate_Dense_Matrix(&solver->super_mat_b, ndim, 1, rhs, ndim, SLU_DN, SLU_D, SLU_GE);
         dCreate_Dense_Matrix(&solver->super_mat_x, ndim, 1, x, ndim, SLU_DN, SLU_D, SLU_GE);
+        solver->b_and_x_vectors_created = C_TRUE;
     }
 
     int nnz = col_pointers[ndim];
@@ -552,8 +555,6 @@ int32_t solver_superlu_solve(struct InterfaceSuperLU *solver,
     if (solver->info != SUCCESSFUL_EXIT) {
         return solver->info;
     }
-
-    solver->b_and_x_vectors_created = C_TRUE;
 
     return SUCCESSFUL_EXIT;
 }

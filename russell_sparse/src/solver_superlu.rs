@@ -22,7 +22,6 @@ extern "C" {
         ordering: i32,
         scaling: CcBool,
         // matrix config
-        symmetric: CcBool,
         ndim: i32,
         // matrix
         col_pointers: *const i32,
@@ -114,14 +113,11 @@ impl LinSolTrait for SolverSuperLU {
             return Err("the matrix must be square");
         }
         csc.check_dimensions()?;
-        let symmetric = if let Some(symmetry) = csc.symmetry {
-            if !symmetry.lower() {
-                return Err("for this implementation of SuperLU, the matrix symmetry/storage must Lower");
+        if let Some(symmetry) = csc.symmetry {
+            if symmetry.triangular() {
+                return Err("for SuperLU, the matrix must not be triangular");
             }
-            1
-        } else {
-            0
-        };
+        }
 
         // check already factorized data
         if self.factorized == true {
@@ -160,7 +156,6 @@ impl LinSolTrait for SolverSuperLU {
                 ordering,
                 scaling,
                 // matrix config
-                symmetric,
                 ndim,
                 // matrix
                 csc.col_pointers.as_ptr(),

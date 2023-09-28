@@ -47,6 +47,10 @@ fn main() -> Result<(), StrError> {
     let correct = vec![1.0, 2.0, 3.0, 4.0, 5.0];
     vec_approx_eq(x.as_data(), &correct, 1e-14);
 
+    // print matrix after
+    csc.to_dense(&mut a)?;
+    println!("{}", a);
+
     // solve again with different rhs
     let b_times_2 = b.get_mapped(|x| x * 2.0);
     superlu.solve(&mut x, &csc, &b_times_2, false)?;
@@ -55,6 +59,10 @@ fn main() -> Result<(), StrError> {
     // check the results again
     let correct = vec![2.0, 4.0, 6.0, 8.0, 10.0];
     vec_approx_eq(x.as_data(), &correct, 1e-14);
+
+    // print matrix after
+    csc.to_dense(&mut a)?;
+    println!("{}", a);
 
     println!("SuperLU: done!");
     Ok(())

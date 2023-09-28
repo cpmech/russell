@@ -325,7 +325,6 @@ void solver_superlu_drop(struct InterfaceSuperLU *solver) {
 /// @param ordering Is the russell ordering code to assign ColPerm
 /// @param scaling Is the scaling code to assign Equil
 /// @note Matrix config
-/// @param symmetric General symmetric with lower triangle storage
 /// @param ndim Is the number of rows and columns of the coefficient matrix
 /// @note Matrix
 /// @param col_pointers The column pointers array with size = ncol + 1
@@ -339,7 +338,6 @@ int32_t solver_superlu_factorize(struct InterfaceSuperLU *solver,
                                  int32_t ordering,
                                  C_BOOL scaling,
                                  // matrix config
-                                 C_BOOL symmetric,
                                  int32_t ndim,
                                  // matrix
                                  int32_t *col_pointers,
@@ -388,11 +386,6 @@ int32_t solver_superlu_factorize(struct InterfaceSuperLU *solver,
             solver->options.Equil = NO;
         }
 
-        Mtype_t symmetry_storage = SLU_GE; // general
-        if (symmetric == C_TRUE) {
-            symmetry_storage = SLU_SYL; // symmetric, store lower half
-        }
-
         int nnz = col_pointers[ndim];
         dCreate_CompCol_Matrix(&solver->super_mat_a,
                                ndim,
@@ -401,9 +394,9 @@ int32_t solver_superlu_factorize(struct InterfaceSuperLU *solver,
                                values,
                                row_indices,
                                col_pointers,
-                               SLU_NC, // column-wise, not super-nodal
-                               SLU_D,  // double
-                               symmetry_storage);
+                               SLU_NC,
+                               SLU_D,
+                               SLU_GE);
 
         solver->permutation_col = (int *)malloc(ndim * sizeof(int));
         if (solver->permutation_col == NULL) {

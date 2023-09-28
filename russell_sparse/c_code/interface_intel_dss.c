@@ -172,6 +172,8 @@ int32_t solver_intel_dss_factorize(struct InterfaceIntelDSS *solver,
         *determinant_coefficient = stat_out[1];
     }
 
+    solver->factorization_completed = C_TRUE;
+
     // done
     return status;
 #else

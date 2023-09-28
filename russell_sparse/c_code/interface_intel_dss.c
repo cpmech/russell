@@ -30,10 +30,10 @@ struct InterfaceIntelDSS {
     _MKL_DSS_HANDLE_t handle;
 
     /// @brief indicates that the initialization has been completed
-    int32_t initialization_completed;
+    C_BOOL initialization_completed;
 
     /// @brief Indicates that the factorization (at least once) has been completed
-    int32_t factorization_completed;
+    C_BOOL factorization_completed;
 };
 
 /// @brief Allocates a new Intel DSS interface
@@ -95,10 +95,10 @@ int32_t solver_intel_dss_factorize(struct InterfaceIntelDSS *solver,
                                    double *determinant_coefficient,
                                    double *determinant_exponent,
                                    // requests
-                                   int32_t compute_determinant,
+                                   C_BOOL compute_determinant,
                                    // matrix config
-                                   int32_t general_symmetric,
-                                   int32_t positive_definite,
+                                   C_BOOL general_symmetric,
+                                   C_BOOL positive_definite,
                                    int32_t ndim,
                                    // matrix
                                    const int32_t *row_pointers,

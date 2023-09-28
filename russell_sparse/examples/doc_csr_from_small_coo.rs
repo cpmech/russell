@@ -11,7 +11,7 @@ fn main() -> Result<(), StrError> {
     // │  0  4  2  0  1 │
     // └                ┘
     let (nrow, ncol, nnz) = (5, 5, 13);
-    let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz)?;
+    let mut coo = CooMatrix::new(nrow, ncol, nnz, None, false)?;
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(1, 0, 3.0)?;
@@ -27,7 +27,7 @@ fn main() -> Result<(), StrError> {
     coo.put(4, 4, 1.0)?;
 
     // convert to CSR matrix
-    let csr = CsrMatrix::from(&coo);
+    let csr = CsrMatrix::from_coo(&coo)?;
     let correct_j = &[
         //                         p
         0, 1, //    i = 0, count = 0, 1
@@ -49,8 +49,10 @@ fn main() -> Result<(), StrError> {
     let correct_p = &[0, 2, 5, 8, 9, 12];
 
     // check
+    let final_nnz = csr.row_pointers[nrow] as usize;
+    assert_eq!(final_nnz, 12);
     assert_eq!(&csr.row_pointers, correct_p);
-    assert_eq!(&csr.col_indices, correct_j);
-    assert_eq!(&csr.values, correct_v);
+    assert_eq!(&csr.col_indices[0..final_nnz], correct_j);
+    assert_eq!(&csr.values[0..final_nnz], correct_v);
     Ok(())
 }

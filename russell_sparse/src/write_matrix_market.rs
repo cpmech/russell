@@ -1,4 +1,4 @@
-use super::{CsrMatrix, Layout};
+use super::CsrMatrix;
 use crate::StrError;
 use std::ffi::OsStr;
 use std::fmt::Write;
@@ -40,7 +40,7 @@ impl CsrMatrix {
     ///     // │  0  4  2  0  1 │
     ///     // └                ┘
     ///     let csr = CsrMatrix {
-    ///         layout: Layout::Full,
+    ///         symmetry: None,
     ///         nrow: 5,
     ///         ncol: 5,
     ///         row_pointers: vec![0, 2, 5, 8, 9, 12],
@@ -85,11 +85,10 @@ impl CsrMatrix {
         let d = if vismatrix { 0 } else { 1 };
         let nnz = self.values.len();
         if !vismatrix {
-            if self.layout == Layout::Full {
-                write!(&mut buffer, "%%MatrixMarket matrix coordinate real general\n").unwrap()
-            } else {
-                write!(&mut buffer, "%%MatrixMarket matrix coordinate real symmetric\n").unwrap()
-            }
+            match self.symmetry {
+                Some(_) => write!(&mut buffer, "%%MatrixMarket matrix coordinate real symmetric\n").unwrap(),
+                None => write!(&mut buffer, "%%MatrixMarket matrix coordinate real general\n").unwrap(),
+            };
         }
         write!(&mut buffer, "{} {} {}\n", self.nrow, self.ncol, nnz).unwrap();
         for i in 0..self.nrow {
@@ -120,7 +119,7 @@ impl CsrMatrix {
 
 #[cfg(test)]
 mod tests {
-    use crate::{CsrMatrix, Layout};
+    use crate::CsrMatrix;
     use std::fs;
 
     #[test]
@@ -134,7 +133,7 @@ mod tests {
         // │  0  4  2  0  1 │
         // └                ┘
         let csr = CsrMatrix {
-            layout: Layout::Full,
+            symmetry: None,
             nrow: 5,
             ncol: 5,
             row_pointers: vec![0, 2, 5, 8, 9, 12],
@@ -191,7 +190,7 @@ mod tests {
         // │  0  4  2  0  1 │
         // └                ┘
         let csr = CsrMatrix {
-            layout: Layout::Full,
+            symmetry: None,
             nrow: 5,
             ncol: 5,
             row_pointers: vec![0, 2, 5, 8, 9, 12],

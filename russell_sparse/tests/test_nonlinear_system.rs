@@ -1,6 +1,7 @@
 use russell_chk::{deriv_central5, vec_approx_eq};
 use russell_lab::{mat_approx_eq, vec_norm, vec_update, Matrix, Norm, Vector};
-use russell_sparse::{ConfigSolver, CooMatrix, Layout, LinSolKind, Solver, StrError};
+use russell_sparse::prelude::*;
+use russell_sparse::StrError;
 
 fn calc_residual(rr: &mut Vector, uu: &Vector) {
     let (d1, d2, d3, d4) = (uu[0], uu[1], uu[2], uu[3]);
@@ -67,20 +68,18 @@ fn check_jacobian() {
         }
     }
     let nnz = neq * neq;
-    let mut jj_tri = CooMatrix::new(Layout::Full, neq, neq, nnz).unwrap();
+    let mut jj_tri = CooMatrix::new(neq, neq, nnz, None, false).unwrap();
     calc_jacobian(&mut jj_tri, &uu).unwrap();
     let mut jj_ana = Matrix::new(neq, neq);
     jj_tri.to_matrix(&mut jj_ana).unwrap();
     mat_approx_eq(&jj_ana, &jj_num, 1e-8);
 }
 
-fn solve_nonlinear_system(kind: LinSolKind) -> Result<(), StrError> {
-    let mut config = ConfigSolver::new();
-    config.lin_sol_kind(kind);
-    // config.verbose();
+fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
+    let one_based = if genie == Genie::Mumps { true } else { false };
     let (neq, nnz) = (4, 16);
-    let mut solver = Solver::new(config, neq, nnz, None)?;
-    let mut jj = CooMatrix::new(Layout::Full, neq, neq, nnz).unwrap();
+    let mut solver = LinSolver::new(genie)?;
+    let mut jj = SparseMatrix::new_coo(neq, neq, nnz, None, one_based).unwrap();
     let mut rr = Vector::new(neq);
     let mut uu = Vector::from(&[0.0, 0.0, 0.0, 0.0]);
     let mut mdu = Vector::new(neq);
@@ -114,9 +113,9 @@ fn solve_nonlinear_system(kind: LinSolKind) -> Result<(), StrError> {
         if err < 1e-13 {
             break;
         }
-        calc_jacobian(&mut jj, &uu)?;
-        solver.factorize(&jj)?;
-        solver.solve(&mut mdu, &rr)?;
+        calc_jacobian(jj.get_mut_coo()?, &uu)?;
+        solver.actual.factorize(&mut jj, None)?;
+        solver.actual.solve(&mut mdu, &jj, &rr, false)?;
         vec_update(&mut uu, -1.0, &mdu)?;
         it += 1;
     }
@@ -128,11 +127,17 @@ fn solve_nonlinear_system(kind: LinSolKind) -> Result<(), StrError> {
 }
 
 #[test]
-fn test_nonlinear_system_mmp() -> Result<(), StrError> {
-    solve_nonlinear_system(LinSolKind::Mmp)
+fn test_nonlinear_system_mumps() -> Result<(), StrError> {
+    solve_nonlinear_system(Genie::Mumps)
 }
 
 #[test]
-fn test_nonlinear_system_umf() -> Result<(), StrError> {
-    solve_nonlinear_system(LinSolKind::Umf)
+fn test_nonlinear_system_umfpack() -> Result<(), StrError> {
+    solve_nonlinear_system(Genie::Umfpack)
+}
+
+#[cfg(with_intel_dss)]
+#[test]
+fn test_nonlinear_system_intel_dss() -> Result<(), StrError> {
+    solve_nonlinear_system(Genie::IntelDss)
 }

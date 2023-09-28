@@ -9,7 +9,7 @@ fn main() -> Result<(), StrError> {
     // │  4  5  6 │    but should be saved for Intel DSS
     // └          ┘
     let (nrow, ncol, nnz) = (3, 3, 6);
-    let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz)?;
+    let mut coo = CooMatrix::new(nrow, ncol, nnz, None, false)?;
     coo.put(0, 0, 1.0)?;
     coo.put(0, 2, 2.0)?;
     coo.put(1, 2, 3.0)?;
@@ -18,7 +18,7 @@ fn main() -> Result<(), StrError> {
     coo.put(2, 2, 6.0)?;
 
     // convert to CSR matrix
-    let csr = CsrMatrix::from(&coo);
+    let csr = CsrMatrix::from_coo(&coo)?;
     let correct_v = &[
         //                               p
         1.0, 2.0, //      i = 0, count = 0, 1

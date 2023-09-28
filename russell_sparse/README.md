@@ -2,36 +2,79 @@
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
-This repository contains tools for handling sparse matrices and functions to solve large sparse systems.
+This repository contains tools for handling sparse matrices and functions to solve large sparse systems using the best libraries out there, such as [(recommended) UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse), [(large systems) MUMPS](https://mumps-solver.org), and [(optional) Intel DSS](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html).
 
 Documentation:
 
 - [API reference (docs.rs)](https://docs.rs/russell_sparse)
 
-## Installation
+## Installation (Ubuntu/Linux)
 
-Essential dependencies:
+### Required libraries
 
-```bash
-sudo apt-get install liblapacke-dev libopenblas-dev libsuitesparse-dev
-```
-
-**Important:** The Debian `libmumps-seq-dev` package does not come with Metis or OpenMP, which makes it possible slower. Therefore, it may be advantageous to use a locally compiled MUMPS library with Metis and OpenMP. Below we recommend Option 1, but Option 2 is also available.
-
-### Option 1: Locally compiled MUMPS solver
-
-Follow the steps in https://github.com/cpmech/script-install-mumps and set the environment variable:
+First, you need to install some dependencies:
 
 ```bash
-export USE_LOCAL_MUMPS=1
+sudo apt install liblapacke-dev libopenblas-dev
 ```
 
-### Option 2: Debian/Ubuntu package for the MUMPS solver
+Next, there are some options to compile the code with [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS](https://mumps-solver.org):
 
-Install:
+**Option 1.** Using the standard Debian packages. The code works just fine with the standard Debian packages. However, they may be outdated. Furthermore, the sequential version of MUMPS in Debian may be slow because it does not include Metis and OpenMP.
 
-```shell
-sudo apt-get install libmumps-seq-dev
+**Option 2.** Alternatively, the code can be linked with locally compiled MUMPS and UMFPACK. In this case, the following environment variables must be set:
+
+```bash
+export RUSSELL_SPARSE_USE_LOCAL_MUMPS=1
+export RUSSELL_SPARSE_USE_LOCAL_UMFPACK=1
+```
+
+You can combine a Debian-packaged UMFPACK with a locally compiled MUMPS (or vice-versa). Just set the above variables as appropriate.
+
+#### Option 1 - Standard Debian packages
+
+Install the following libraries:
+
+```bash
+sudo apt install libmumps-seq-dev libsuitesparse-dev
+```
+
+#### Option 2 - Locally compiled MUMPS and UMFPACK
+
+**Important:** To use the locally compiled UMFPACK, in addition to setting the above environment variable, you must **remove** `libsuitesparse-dev`.
+
+First, install some dependencies:
+
+```bash
+bash zscripts/install-deps.bash
+```
+
+Second, to download and compile MUMPS and install it in `/usr/local/include/mumps` and `/usr/local/lib/mumps`, run:
+
+```bash
+bash zscripts/install-mumps.bash
+```
+
+Note that the locally compiled MUMPS can co-exist with `libmumps-seq-dev`.
+
+Third, to download and compile UMFPACK and install it in `/usr/local/include/umfpack` and `/usr/local/lib/umfpack`, run:
+
+```bash
+bash zscripts/install-umfpack.bash
+```
+
+### (optional) Intel DSS solver
+
+If you wish to use the [Intel DSS](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html) solver, you need the additional Debian packages: `intel-oneapi-mkl` and `intel-oneapi-mkl-devel`, that can be easily installed by running:
+
+```bash
+bash zscripts/install-intel-mkl-linux.bash
+```
+
+Furthermore, you need to define the following environment variable:
+
+```bash
+export RUSSELL_SPARSE_WITH_INTEL_DSS=1
 ```
 
 ### Crates.io
@@ -47,13 +90,15 @@ russell_sparse = "*"
 
 ### Number of threads
 
-By default OpenBLAS will use all available threads, including Hyper-Threads which may make the performance worse. Thus, it is best to set the following environment variable:
+By default, OpenBLAS will use all available threads, including Hyper-Threads that may worsen the performance. Thus, it is best to set the following environment variable:
 
 ```bash
-export OPENBLAS_NUM_THREADS=<real-core-count>
+export OPENBLAS_NUM_THREADS=<real-core-number>
 ```
 
-Furthermore, if working on a multi-threaded application where the solver should not be multi-threaded, you may set:
+Substitute `<real-core-number>` with the correct value from your system.
+
+Furthermore, if working on a multi-threaded application where the solver should not be multi-threaded on its own (e.g., running parallel calculations such as in optimization via genetic algorithms or differential evolution), you may set:
 
 ```bash
 export OPENBLAS_NUM_THREADS=1
@@ -61,90 +106,38 @@ export OPENBLAS_NUM_THREADS=1
 
 ## Examples
 
-### Solve a sparse linear system
+### Solve a tiny sparse linear system using UMFPACK
 
-```rust
-use russell_lab::{Matrix, Vector};
-use russell_sparse::prelude::*;
-use russell_sparse::StrError;
-
-fn main() -> Result<(), StrError> {
-    // allocate a square matrix
-    let nrow = 3; // number of equations
-    let ncol = nrow; // number of equations
-    let nnz = 5; // number of non-zeros
-    let mut coo = CooMatrix::new(Layout::Full, nrow, ncol, nnz)?;
-    coo.put(0, 0, 0.2)?;
-    coo.put(0, 1, 0.2)?;
-    coo.put(1, 0, 0.5)?;
-    coo.put(1, 1, -0.25)?;
-    coo.put(2, 2, 0.25)?;
-
-    // print matrix
-    let mut a = Matrix::new(nrow, ncol);
-    coo.to_matrix(&mut a)?;
-    let correct = "┌                   ┐\n\
-                   │   0.2   0.2     0 │\n\
-                   │   0.5 -0.25     0 │\n\
-                   │     0     0  0.25 │\n\
-                   └                   ┘";
-    assert_eq!(format!("{}", a), correct);
-
-    // allocate rhs
-    let rhs1 = Vector::from(&[1.0, 1.0, 1.0]);
-    let rhs2 = Vector::from(&[2.0, 2.0, 2.0]);
-
-    // calculate solution
-    let config = ConfigSolver::new();
-    let (mut solver, x1) = Solver::compute(config, &coo, &rhs1)?;
-    let correct1 = "┌   ┐\n\
-                    │ 3 │\n\
-                    │ 2 │\n\
-                    │ 4 │\n\
-                    └   ┘";
-    assert_eq!(format!("{}", x1), correct1);
-
-    // solve again
-    let mut x2 = Vector::new(nrow);
-    solver.solve(&mut x2, &rhs2)?;
-    let correct2 = "┌   ┐\n\
-                    │ 6 │\n\
-                    │ 4 │\n\
-                    │ 8 │\n\
-                    └   ┘";
-    assert_eq!(format!("{}", x2), correct2);
-    Ok(())
-}
-```
+TODO
 
 ## Sparse solvers
 
-We wrap two direct sparse solvers: UMFPACK (aka **UMF**) and MUMPS (aka **MMP**). The default solver is UMF; however UMF may run out of memory for large matrices, whereas MMP still may work. The MMP solver is **not** thread-safe and thus must be used in single-threaded applications.
+`russell_sparse` wraps two direct sparse solvers: UMFPACK and MUMPS. The default solver is UMFPACK; however, UMFPACK may run out of memory for large matrices, whereas MUMPS still may work. On the other hand, MUMPS is **not** thread-safe and thus must be used in single-threaded applications.
 
 ## Tools
 
-This crate includes a tool named `solve_matrix_market_build` to study the performance of the available sparse solvers (currently MMP and UMF). The `_build` suffix is to disable the coverage tool.
+This crate includes a tool named `solve_matrix_market` to study the performance of the available sparse solvers (currently MUMPS and UMFPACK).
 
-`solve_matrix_market_build` reads a [Matrix Market file](https://math.nist.gov/MatrixMarket/formats.html) and solves the linear system:
+`solve_matrix_market` reads a [Matrix Market file](https://math.nist.gov/MatrixMarket/formats.html) and solves the linear system:
 
 ```text
-a ⋅ x = rhs
+A ⋅ x = rhs
 ```
 
-with a right-hand-side containing only ones.
+where the right-hand side is a vector containing only ones.
 
-The data directory contains an example of Matrix Market file named `bfwb62.mtx` and you may download more matrices from https://sparse.tamu.edu/
+The data directory contains an example of a Matrix Market file named `bfwb62.mtx`, and you may download more matrices from https://sparse.tamu.edu/
 
-Run the command:
+For example, run the command:
 
 ```bash
-cargo run --release --bin solve_matrix_market_build -- ~/Downloads/matrix-market/bfwb62.mtx
+cargo run --release --bin solve_matrix_market -- ~/Downloads/matrix-market/bfwb62.mtx
 ```
 
 Or
 
 ```bash
-cargo run --release --bin solve_matrix_market_build -- --help
+cargo run --release --bin solve_matrix_market -- --help
 ```
 
-for more options.
+to see the options.

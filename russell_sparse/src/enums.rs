@@ -1,24 +1,115 @@
 use crate::StrError;
 
-/// Defines how the CooMatrix (triplet) represents a matrix
+/// Specifies the underlying library that does all the magic
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Layout {
-    /// Lower triangular (e.g., for MUMPS)
+pub enum Genie {
+    /// Selects MUMPS (multi-frontal massively parallel sparse direct) solver
+    ///
+    /// Reference: <https://mumps-solver.org/index.php>
+    Mumps,
+
+    /// Selects UMFPACK (unsymmetric multi-frontal) solver
+    ///
+    /// Reference: <https://github.com/DrTimothyAldenDavis/SuiteSparse>
+    Umfpack,
+
+    /// Selects Intel DSS (direct sparse solver)
+    ///
+    /// Reference: <https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html>
+    IntelDss,
+}
+
+/// Specifies how the matrix components are stored
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Storage {
+    /// Lower triangular storage for symmetric matrix (e.g., for MUMPS)
     Lower,
 
-    /// Upper triangular (e.g., for Intel DSS)
+    /// Upper triangular storage for symmetric matrix (e.g., for Intel DSS)
     Upper,
 
-    /// Full matrix (e.g., for UMFPACK)
+    /// Full matrix storage for symmetric or unsymmetric matrix (e.g., for UMFPACK)
     Full,
+}
+
+/// Specifies the type of matrix symmetry
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Symmetry {
+    /// General symmetric
+    General(Storage),
+
+    /// Symmetric and positive-definite
+    PositiveDefinite(Storage),
+}
+
+impl Symmetry {
+    /// Returns true if the storage is triangular (lower or upper)
+    pub fn triangular(&self) -> bool {
+        match self {
+            Self::General(storage) => *storage != Storage::Full,
+            Self::PositiveDefinite(storage) => *storage != Storage::Full,
+        }
+    }
+
+    /// Returns true if the storage is lower triangular
+    pub fn lower(&self) -> bool {
+        match self {
+            Self::General(storage) => *storage == Storage::Lower,
+            Self::PositiveDefinite(storage) => *storage == Storage::Lower,
+        }
+    }
+
+    /// Returns true if the storage is upper triangular
+    pub fn upper(&self) -> bool {
+        match self {
+            Self::General(storage) => *storage == Storage::Upper,
+            Self::PositiveDefinite(storage) => *storage == Storage::Upper,
+        }
+    }
+
+    /// Returns status flags indicating the type of symmetry, if any
+    ///
+    /// Returns `(general_symmetric, positive_definite)`
+    ///
+    /// # Input
+    ///
+    /// * `must_be_lower` -- makes sure that the storage is Lower
+    /// * `must_be_upper` -- makes sure that the storage is Upper
+    ///
+    /// # Output
+    ///
+    /// * `general_symmetric` -- 1 if true, 0 otherwise
+    /// * `positive_definite` -- 1 if true, 0 otherwise
+    pub fn status(&self, must_be_lower: bool, must_be_upper: bool) -> Result<(i32, i32), StrError> {
+        match self {
+            Self::General(storage) => {
+                if must_be_lower && *storage != Storage::Lower {
+                    return Err("if the matrix is general symmetric, the required storage is lower triangular");
+                }
+                if must_be_upper && *storage != Storage::Upper {
+                    return Err("if the matrix is general symmetric, the required storage is upper triangular");
+                }
+                Ok((1, 0))
+            }
+            Self::PositiveDefinite(storage) => {
+                if must_be_lower && *storage != Storage::Lower {
+                    return Err("if the matrix is positive-definite, the required storage is lower triangular");
+                }
+                if must_be_upper && *storage != Storage::Upper {
+                    return Err("if the matrix is positive-definite, the required storage is upper triangular");
+                }
+                Ok((0, 1))
+            }
+        }
+    }
 }
 
 /// Holds options to handle a MatrixMarket when the matrix is specified as being symmetric
 ///
 /// **Note:** This is ignored if not the matrix is not specified as symmetric.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum SymmetricHandling {
-    /// Leave the layout as lower triangular (if symmetric)
+pub enum MMsymOption {
+    /// Leave the storage as lower triangular (if symmetric)
     ///
     /// **Note:** Lower triangular is the standard MatrixMarket format.
     /// Thus, this option will do nothing.
@@ -26,7 +117,7 @@ pub enum SymmetricHandling {
     /// This option is useful for the MUMPS solver.
     LeaveAsLower,
 
-    /// Convert the layout to upper triangular (if symmetric)
+    /// Convert the storage to upper triangular (if symmetric)
     ///
     /// **Note:** Since lower triangular is standard in MatrixMarket,
     /// this option will swap the lower triangle to the upper triangle.
@@ -43,93 +134,69 @@ pub enum SymmetricHandling {
     MakeItFull,
 }
 
-/// Matrix symmetry option
-#[derive(Clone, Copy, Debug)]
-pub enum Symmetry {
-    /// General symmetric matrix
-    ///
-    /// **Note:** When using the MMP solver, make sure to provide a triangular matrix
-    General,
-
-    /// The matrix is positive-definite and symmetric
-    ///
-    /// **Note:** When using the MMP solver, make sure to provide a triangular matrix
-    PosDef,
-}
-
-/// Linear solver kind
-#[derive(Clone, Copy, Debug)]
-pub enum LinSolKind {
-    /// The NON-THREAD-SAFE (Mu-M-P) Solver (use in single-thread apps / with huge matrices)
-    Mmp,
-
-    /// Tim Davis' UMFPACK Solver (recommended, unless the matrix is huge)
-    Umf,
-}
-
 /// Ordering option
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Ordering {
     /// Ordering using the approximate minimum degree
-    Amd = 0,
+    Amd,
 
-    /// Ordering using the approximate minimum fill-in (MMP-only, otherwise Auto)
-    Amf = 1,
+    /// Ordering using the approximate minimum fill-in (MUMPS-only, otherwise Auto)
+    Amf,
 
     /// Automatic ordering method selection
-    Auto = 2,
+    Auto,
 
-    /// Try three methods and take the best (UMF-only, otherwise Auto)
-    Best = 3,
+    /// Try three methods and take the best (UMFPACK-only, otherwise Auto)
+    Best,
 
-    /// Use Amd for symmetric, Colamd for unsymmetric, or Metis (UMF-only, otherwise Auto)
-    Cholmod = 4,
+    /// Use Amd for symmetric, Colamd for unsymmetric, or Metis (UMFPACK-only, otherwise Auto)
+    Cholmod,
 
     /// Ordering by Karpis & Kumar from the University of Minnesota
-    Metis = 5,
+    Metis,
 
-    /// The matrix is factorized as-is (UMF-only, otherwise Auto)
-    No = 6,
+    /// The matrix is factorized as-is (UMFPACK-only, otherwise Auto)
+    No,
 
-    /// Ordering by Schulze from the University of Paderborn (MMP-only, otherwise Auto)
-    Pord = 7,
+    /// Ordering by Schulze from the University of Paderborn (MUMPS-only, otherwise Auto)
+    Pord,
 
-    /// Ordering using the automatic quasi-dense row detection (MMP-only, otherwise Auto)
-    Qamd = 8,
+    /// Ordering using the automatic quasi-dense row detection (MUMPS-only, otherwise Auto)
+    Qamd,
 
-    /// Ordering using the Scotch package (MMP-only, otherwise Auto)
-    Scotch = 9,
+    /// Ordering using the Scotch package (MUMPS-only, otherwise Auto)
+    Scotch,
 }
 
 /// Scaling option
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Scaling {
     /// Automatic scaling method selection
-    Auto = 0,
+    Auto,
 
-    /// Column scaling (MMP-only, otherwise Auto)
-    Column = 1,
+    /// Column scaling (MUMPS-only, otherwise Auto)
+    Column,
 
-    /// Diagonal scaling (MMP-only, otherwise Auto)
-    Diagonal = 2,
+    /// Diagonal scaling (MUMPS-only, otherwise Auto)
+    Diagonal,
 
-    /// Use the max absolute value in the row (UMF-only, otherwise Auto)
-    Max = 3,
+    /// Use the max absolute value in the row (UMFPACK-only, otherwise Auto)
+    Max,
 
     /// No scaling applied or computed
-    No = 4,
+    No,
 
-    /// Row and column scaling based on infinite row/column norms (MMP-only, otherwise Auto)
-    RowCol = 5,
+    /// Row and column scaling based on infinite row/column norms (MUMPS-only, otherwise Auto)
+    RowCol,
 
-    /// Simultaneous row and column iterative scaling (MMP-only, otherwise Auto)
-    RowColIter = 6,
+    /// Simultaneous row and column iterative scaling (MUMPS-only, otherwise Auto)
+    RowColIter,
 
-    /// Similar to RcIterative but more rigorous and expensive to compute (MMP-only, otherwise Auto)
-    RowColRig = 7,
+    /// Similar to RcIterative but more rigorous and expensive to compute (MUMPS-only, otherwise Auto)
+    RowColRig,
 
-    /// Use the sum of the absolute value in the row (UMF-only, otherwise Auto)
-    Sum = 8,
+    /// Use the sum of the absolute value in the row (UMFPACK-only, otherwise Auto)
+    Sum,
 }
 
 /// Returns the Ordering by name
@@ -165,146 +232,41 @@ pub fn enum_scaling(scaling: &str) -> Scaling {
     }
 }
 
-pub(crate) fn code_symmetry_mmp(option: Option<Symmetry>) -> Result<i32, StrError> {
-    match option {
-        None => Ok(0),
-        Some(v) => match v {
-            Symmetry::General => Ok(2),
-            Symmetry::PosDef => Ok(1),
-        },
-    }
-}
-
-pub(crate) fn code_symmetry_umf(option: Option<Symmetry>) -> Result<i32, StrError> {
-    match option {
-        None => Ok(0),
-        Some(v) => match v {
-            Symmetry::General => Ok(1),
-            Symmetry::PosDef => Ok(1),
-        },
-    }
-}
-
-pub(crate) fn str_enum_ordering(index: i32) -> &'static str {
-    match index {
-        0 => "Amd",
-        1 => "Amf (MMP-only, otherwise Auto)",
-        2 => "Auto",
-        3 => "Best (UMF-only, otherwise Auto)",
-        4 => "Cholmod (UMF-only, otherwise Auto)",
-        5 => "Metis",
-        6 => "No (UMF-only, otherwise Auto)",
-        7 => "Pord (MMP-only, otherwise Auto)",
-        8 => "Qamd (MMP-only, otherwise Auto)",
-        9 => "Scotch (MMP-only, otherwise Auto)",
-        _ => panic!("<internal error: invalid index>"),
-    }
-}
-
-pub(crate) fn str_enum_scaling(index: i32) -> &'static str {
-    match index {
-        0 => "Auto",
-        1 => "Column (MMP-only, otherwise Auto)",
-        2 => "Diagonal (MMP-only, otherwise Auto)",
-        3 => "Max (UMF-only, otherwise Auto)",
-        4 => "No",
-        5 => "RowCol (MMP-only, otherwise Auto)",
-        6 => "RowColIter (MMP-only, otherwise Auto)",
-        7 => "RowColRig (MMP-only, otherwise Auto)",
-        8 => "Sum (UMF-only, otherwise Auto)",
-        _ => panic!("<internal error: invalid index>"),
-    }
-}
-
-pub(crate) fn str_mmp_ordering(mmp_code: i32) -> &'static str {
-    match mmp_code {
-        0 => "Amd",
-        1 => "UserProvided",
-        2 => "Amf",
-        3 => "Scotch",
-        4 => "Pord",
-        5 => "Metis",
-        6 => "Qamd",
-        7 => "Auto",
-        _ => "Unknown",
-    }
-}
-
-pub(crate) fn str_mmp_scaling(mmp_code: i32) -> &'static str {
-    match mmp_code {
-        -1 => "UserProvided",
-        0 => "No",
-        1 => "Diagonal",
-        3 => "Column",
-        4 => "RowCol",
-        7 => "RowColIter",
-        8 => "RowColRig",
-        77 => "Auto",
-        _ => "Unknown",
-    }
-}
-
-pub(crate) fn str_umf_ordering(umf_code: i32) -> &'static str {
-    match umf_code {
-        0 => "Cholmod",
-        1 => "Amd",
-        2 => "UserProvided",
-        3 => "Metis",
-        4 => "Best",
-        5 => "No",
-        6 => "UserProvided",
-        _ => "Unknown",
-    }
-}
-
-pub(crate) fn str_umf_scaling(umf_code: i32) -> &'static str {
-    match umf_code {
-        0 => "No",
-        1 => "Sum",
-        2 => "Max",
-        _ => "Unknown",
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        code_symmetry_mmp, code_symmetry_umf, enum_ordering, enum_scaling, str_enum_ordering, str_enum_scaling,
-        str_mmp_ordering, str_mmp_scaling, str_umf_ordering, str_umf_scaling, Layout, LinSolKind, Ordering, Scaling,
-        SymmetricHandling, Symmetry,
-    };
+    use super::{enum_ordering, enum_scaling, Genie, MMsymOption, Ordering, Scaling, Storage, Symmetry};
 
     #[test]
     fn clone_copy_and_debug_work() {
-        let layout = Layout::Full;
-        let copy = layout;
-        let clone = layout.clone();
-        assert_eq!(format!("{:?}", layout), "Full");
-        assert_eq!(copy, Layout::Full);
-        assert_eq!(clone, Layout::Full);
+        let genie = Genie::Mumps;
+        let copy = genie;
+        let clone = genie.clone();
+        assert_eq!(format!("{:?}", genie), "Mumps");
+        assert_eq!(copy, Genie::Mumps);
+        assert_eq!(clone, Genie::Mumps);
 
-        let handling = SymmetricHandling::LeaveAsLower;
+        let storage = Storage::Full;
+        let copy = storage;
+        let clone = storage.clone();
+        assert_eq!(format!("{:?}", storage), "Full");
+        assert_eq!(copy, Storage::Full);
+        assert_eq!(clone, Storage::Full);
+
+        let symmetry = Symmetry::PositiveDefinite(Storage::Lower);
+        let copy = symmetry;
+        let clone = symmetry.clone();
+        assert_eq!(format!("{:?}", symmetry), "PositiveDefinite(Lower)");
+        assert_eq!(copy, Symmetry::PositiveDefinite(Storage::Lower));
+        assert_eq!(clone, Symmetry::PositiveDefinite(Storage::Lower));
+
+        let handling = MMsymOption::LeaveAsLower;
         let copy = handling;
         let clone = handling.clone();
         assert_eq!(format!("{:?}", handling), "LeaveAsLower");
-        assert_eq!(copy, SymmetricHandling::LeaveAsLower);
-        assert_eq!(clone, SymmetricHandling::LeaveAsLower);
-
-        let symmetry = Symmetry::General;
-        let copy = symmetry;
-        let clone = symmetry.clone();
-        assert_eq!(format!("{:?}", symmetry), "General");
-        assert_eq!(format!("{:?}", copy), "General");
-        assert_eq!(format!("{:?}", clone), "General");
-
-        let lin_sol_kind = LinSolKind::Mmp;
-        let copy = lin_sol_kind;
-        let clone = lin_sol_kind.clone();
-        assert_eq!(format!("{:?}", lin_sol_kind), "Mmp");
-        assert_eq!(format!("{:?}", copy), "Mmp");
-        assert_eq!(format!("{:?}", clone), "Mmp");
+        assert_eq!(copy, MMsymOption::LeaveAsLower);
+        assert_eq!(clone, MMsymOption::LeaveAsLower);
 
         let ordering = Ordering::Amd;
         let copy = ordering;
@@ -348,102 +310,5 @@ mod tests {
         assert!(matches!(enum_scaling("RowColRig"), Scaling::RowColRig));
         assert!(matches!(enum_scaling("Sum"), Scaling::Sum));
         assert!(matches!(enum_scaling("Unknown"), Scaling::Auto));
-    }
-
-    #[test]
-    fn code_symmetry_works() {
-        // mmp
-        assert_eq!(code_symmetry_mmp(None), Ok(0));
-        assert_eq!(code_symmetry_mmp(Some(Symmetry::General)), Ok(2));
-        assert_eq!(code_symmetry_mmp(Some(Symmetry::PosDef)), Ok(1));
-        // umf
-        assert_eq!(code_symmetry_umf(None), Ok(0));
-        assert_eq!(code_symmetry_umf(Some(Symmetry::General)), Ok(1));
-        assert_eq!(code_symmetry_umf(Some(Symmetry::PosDef)), Ok(1));
-    }
-
-    #[test]
-    #[should_panic(expected = "<internal error: invalid index>")]
-    fn str_enum_ordering_panics_on_wrong_code() {
-        str_enum_ordering(123);
-    }
-
-    #[test]
-    #[should_panic(expected = "<internal error: invalid index>")]
-    fn str_enum_scaling_panics_on_wrong_code() {
-        str_enum_scaling(123);
-    }
-
-    #[test]
-    fn str_enum_ordering_works() {
-        assert_eq!(str_enum_ordering(0), "Amd");
-        assert_eq!(str_enum_ordering(1), "Amf (MMP-only, otherwise Auto)");
-        assert_eq!(str_enum_ordering(2), "Auto");
-        assert_eq!(str_enum_ordering(3), "Best (UMF-only, otherwise Auto)");
-        assert_eq!(str_enum_ordering(4), "Cholmod (UMF-only, otherwise Auto)");
-        assert_eq!(str_enum_ordering(5), "Metis");
-        assert_eq!(str_enum_ordering(6), "No (UMF-only, otherwise Auto)");
-        assert_eq!(str_enum_ordering(7), "Pord (MMP-only, otherwise Auto)");
-        assert_eq!(str_enum_ordering(8), "Qamd (MMP-only, otherwise Auto)");
-        assert_eq!(str_enum_ordering(9), "Scotch (MMP-only, otherwise Auto)");
-    }
-
-    #[test]
-    fn str_enum_scaling_works() {
-        assert_eq!(str_enum_scaling(0), "Auto");
-        assert_eq!(str_enum_scaling(1), "Column (MMP-only, otherwise Auto)");
-        assert_eq!(str_enum_scaling(2), "Diagonal (MMP-only, otherwise Auto)");
-        assert_eq!(str_enum_scaling(3), "Max (UMF-only, otherwise Auto)");
-        assert_eq!(str_enum_scaling(4), "No");
-        assert_eq!(str_enum_scaling(5), "RowCol (MMP-only, otherwise Auto)");
-        assert_eq!(str_enum_scaling(6), "RowColIter (MMP-only, otherwise Auto)");
-        assert_eq!(str_enum_scaling(7), "RowColRig (MMP-only, otherwise Auto)");
-        assert_eq!(str_enum_scaling(8), "Sum (UMF-only, otherwise Auto)");
-    }
-
-    #[test]
-    fn str_mmp_ordering_works() {
-        assert_eq!(str_mmp_ordering(0), "Amd");
-        assert_eq!(str_mmp_ordering(1), "UserProvided");
-        assert_eq!(str_mmp_ordering(2), "Amf");
-        assert_eq!(str_mmp_ordering(3), "Scotch");
-        assert_eq!(str_mmp_ordering(4), "Pord");
-        assert_eq!(str_mmp_ordering(5), "Metis");
-        assert_eq!(str_mmp_ordering(6), "Qamd");
-        assert_eq!(str_mmp_ordering(7), "Auto");
-        assert_eq!(str_mmp_ordering(123), "Unknown");
-    }
-
-    #[test]
-    fn str_mmp_scaling_works() {
-        assert_eq!(str_mmp_scaling(-1), "UserProvided");
-        assert_eq!(str_mmp_scaling(0), "No");
-        assert_eq!(str_mmp_scaling(1), "Diagonal");
-        assert_eq!(str_mmp_scaling(3), "Column");
-        assert_eq!(str_mmp_scaling(4), "RowCol");
-        assert_eq!(str_mmp_scaling(7), "RowColIter");
-        assert_eq!(str_mmp_scaling(8), "RowColRig");
-        assert_eq!(str_mmp_scaling(77), "Auto");
-        assert_eq!(str_mmp_scaling(123), "Unknown");
-    }
-
-    #[test]
-    fn str_umf_ordering_works() {
-        assert_eq!(str_umf_ordering(0), "Cholmod");
-        assert_eq!(str_umf_ordering(1), "Amd");
-        assert_eq!(str_umf_ordering(2), "UserProvided");
-        assert_eq!(str_umf_ordering(3), "Metis");
-        assert_eq!(str_umf_ordering(4), "Best");
-        assert_eq!(str_umf_ordering(5), "No");
-        assert_eq!(str_umf_ordering(6), "UserProvided");
-        assert_eq!(str_umf_ordering(123), "Unknown");
-    }
-
-    #[test]
-    fn str_umf_scaling_works() {
-        assert_eq!(str_umf_scaling(0), "No");
-        assert_eq!(str_umf_scaling(1), "Sum");
-        assert_eq!(str_umf_scaling(2), "Max");
-        assert_eq!(str_umf_scaling(123), "Unknown");
     }
 }

@@ -1,0 +1,16 @@
+Benchmark 1: ~/rust_modules/release/solve_matrix_market_build good.mtx 
+  Time (mean ± σ):      94.8 ms ±   8.0 ms    [User: 737.1 ms, System: 2177.4 ms]
+  Range (min … max):    91.2 ms … 130.1 ms    32 runs
+ 
+Benchmark 1: ~/rust_modules/release/solve_matrix_market_build bad.mtx  
+  Time (mean ± σ):      97.7 ms ±  12.2 ms    [User: 779.1 ms, System: 2232.3 ms]
+  Range (min … max):    91.1 ms … 129.4 ms    32 runs
+ 
+Benchmark 1: ~/rust_modules/release/solve_matrix_market_build good.mtx -m
+  Time (mean ± σ):      79.8 ms ±   2.9 ms    [User: 574.2 ms, System: 1860.1 ms]
+  Range (min … max):    78.2 ms …  95.2 ms    36 runs
+ 
+Benchmark 1: ~/rust_modules/release/solve_matrix_market_build bad.mtx  -m
+  Time (mean ± σ):      84.9 ms ±  10.0 ms    [User: 610.1 ms, System: 1983.7 ms]
+  Range (min … max):    80.1 ms … 115.6 ms    36 runs
+ 

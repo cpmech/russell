@@ -138,8 +138,8 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
                                C_BOOL compute_determinant,
                                C_BOOL verbose,
                                // matrix config
-                               int32_t general_symmetric,
-                               int32_t positive_definite,
+                               C_BOOL general_symmetric,
+                               C_BOOL positive_definite,
                                int32_t ndim,
                                int32_t nnz,
                                // matrix

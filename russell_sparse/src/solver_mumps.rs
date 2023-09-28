@@ -1,4 +1,4 @@
-use super::{to_i32, LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, Symmetry};
+use super::{to_i32, CcBool, LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::{vec_copy, Vector};
 
@@ -28,11 +28,11 @@ extern "C" {
         max_work_memory: i32,
         openmp_num_threads: i32,
         // requests
-        compute_determinant: i32,
-        verbose: i32,
+        compute_determinant: CcBool,
+        verbose: CcBool,
         // matrix config
-        general_symmetric: i32,
-        positive_definite: i32,
+        general_symmetric: CcBool,
+        positive_definite: CcBool,
         ndim: i32,
         nnz: i32,
         // matrix
@@ -40,7 +40,7 @@ extern "C" {
         indices_j: *const i32,
         values_aij: *const f64,
     ) -> i32;
-    fn solver_mumps_solve(solver: *mut InterfaceMUMPS, rhs: *mut f64, verbose: i32) -> i32;
+    fn solver_mumps_solve(solver: *mut InterfaceMUMPS, rhs: *mut f64, verbose: CcBool) -> i32;
 }
 
 /// Wraps the MUMPS solver for (very large) sparse linear systems

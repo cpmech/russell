@@ -1,4 +1,4 @@
-use super::{to_i32, LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, Symmetry};
+use super::{to_i32, CcBool, LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -26,10 +26,10 @@ extern "C" {
         ordering: i32,
         scaling: i32,
         // requests
-        compute_determinant: i32,
-        verbose: i32,
+        compute_determinant: CcBool,
+        verbose: CcBool,
         // matrix config
-        enforce_unsymmetric_strategy: i32,
+        enforce_unsymmetric_strategy: CcBool,
         ndim: i32,
         // matrix
         col_pointers: *const i32,
@@ -43,7 +43,7 @@ extern "C" {
         col_pointers: *const i32,
         row_indices: *const i32,
         values: *const f64,
-        verbose: i32,
+        verbose: CcBool,
     ) -> i32;
 }
 

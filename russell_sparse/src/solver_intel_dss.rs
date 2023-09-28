@@ -1,4 +1,4 @@
-use super::{to_i32, LinSolParams, LinSolTrait, SparseMatrix, Symmetry};
+use super::{to_i32, CcBool, LinSolParams, LinSolTrait, SparseMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -20,10 +20,10 @@ extern "C" {
         determinant_coefficient: *mut f64,
         determinant_exponent: *mut f64,
         // requests
-        compute_determinant: i32,
+        compute_determinant: CcBool,
         // matrix config
-        general_symmetric: i32,
-        positive_definite: i32,
+        general_symmetric: CcBool,
+        positive_definite: CcBool,
         ndim: i32,
         // matrix
         row_pointers: *const i32,

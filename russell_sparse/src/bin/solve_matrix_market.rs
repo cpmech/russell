@@ -58,10 +58,9 @@ fn main() -> Result<(), StrError> {
     // select linear solver
     let genie = match opt.genie.to_lowercase().as_str() {
         "mumps" => Genie::Mumps,
+        "superlu" => Genie::SuperLu,
         "umfpack" => Genie::Umfpack,
         "dss" => Genie::IntelDss,
-        "intel" => Genie::IntelDss,
-        "intel-dss" => Genie::IntelDss,
         _ => Genie::Umfpack,
     };
 

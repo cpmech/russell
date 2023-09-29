@@ -561,7 +561,7 @@ mod tests {
         let empty = CooMatrix::new(2, 2, 3, None, false).unwrap();
         let mat = empty.as_dense();
         assert_eq!(mat.as_data(), &[0.0, 0.0, 0.0, 0.0]);
-        // single entry matrix
+        // single component matrix
         let mut single = CooMatrix::new(1, 1, 1, None, false).unwrap();
         single.put(0, 0, 123.0).unwrap();
         let mat = single.as_dense();
@@ -671,6 +671,13 @@ mod tests {
         // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
         coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         vec_approx_eq(v.as_data(), correct_v, 1e-15);
+        // single component matrix
+        let mut single = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        single.put(0, 0, 123.0).unwrap();
+        let u = Vector::from(&[2.0]);
+        let mut v = Vector::new(1);
+        single.mat_vec_mul(&mut v, 1.0, &u).unwrap();
+        assert_eq!(v.as_data(), &[246.0]);
     }
 
     #[test]

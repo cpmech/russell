@@ -464,6 +464,17 @@ mod tests {
     }
 
     #[test]
+    fn get_info_works() {
+        let coo = CooMatrix::new(1, 2, 10, None, false).unwrap();
+        let (nrow, ncol, nnz, max_nnz, symmetry) = coo.get_info();
+        assert_eq!(nrow, 1);
+        assert_eq!(ncol, 2);
+        assert_eq!(nnz, 0);
+        assert_eq!(max_nnz, 10);
+        assert_eq!(symmetry, None);
+    }
+
+    #[test]
     fn put_fails_on_wrong_values() {
         let mut coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
         assert_eq!(

@@ -1,6 +1,6 @@
 # Russell - Rust Scientific Library
 
-[![codecov](https://codecov.io/gh/cpmech/russell/branch/main/graph/badge.svg?token=PQWSKMZQXT)](https://codecov.io/gh/cpmech/russell)
+[![codecov](https://codecov.io/gh/cpmech/russell/graph/badge.svg?token=PQWSKMZQXT)](https://codecov.io/gh/cpmech/russell)
 
 ![Bertrand Russell](zassets/Bertrand_Russell_1957.jpg)
 

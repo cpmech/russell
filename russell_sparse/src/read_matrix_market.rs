@@ -266,14 +266,18 @@ impl MatrixMarketData {
 /// fn main() -> Result<(), StrError> {
 ///     let filepath = "./data/matrix_market/ok_simple_general.mtx".to_string();
 ///     let coo = read_matrix_market(&filepath, MMsymOption::LeaveAsLower, false)?;
-///     let mut a = Matrix::new(coo.nrow, coo.ncol);
-///     coo.to_matrix(&mut a)?;
+///     let (nrow, ncol, nnz, max_nnz, symmetry) = coo.get_info();
+///     assert_eq!(nrow, 3);
+///     assert_eq!(ncol, 3);
+///     assert_eq!(nnz, 5);
+///     assert_eq!(max_nnz, 5);
+///     assert_eq!(symmetry, None);
+///     let a = coo.as_dense();
 ///     let correct = "┌       ┐\n\
 ///                    │ 1 2 0 │\n\
 ///                    │ 3 4 0 │\n\
 ///                    │ 0 0 5 │\n\
 ///                    └       ┘";
-///     assert_eq!(coo.symmetry, None);
 ///     assert_eq!(format!("{}", a), correct);
 ///     Ok(())
 /// }
@@ -302,14 +306,18 @@ impl MatrixMarketData {
 /// fn main() -> Result<(), StrError> {
 ///     let filepath = "./data/matrix_market/ok_simple_symmetric.mtx".to_string();
 ///     let coo = read_matrix_market(&filepath, MMsymOption::LeaveAsLower, false)?;
-///     let mut a = Matrix::new(coo.nrow, coo.ncol);
-///     coo.to_matrix(&mut a)?;
+///     let (nrow, ncol, nnz, max_nnz, symmetry) = coo.get_info();
+///     assert_eq!(nrow, 3);
+///     assert_eq!(ncol, 3);
+///     assert_eq!(nnz, 4);
+///     assert_eq!(max_nnz, 4);
+///     assert_eq!(symmetry, Some(Symmetry::General(Storage::Lower)));
+///     let a = coo.as_dense();
 ///     let correct = "┌       ┐\n\
 ///                    │ 1 2 0 │\n\
 ///                    │ 2 3 4 │\n\
 ///                    │ 0 4 0 │\n\
 ///                    └       ┘";
-///     assert_eq!(coo.symmetry, Some(Symmetry::General(Storage::Lower)));
 ///     assert_eq!(format!("{}", a), correct);
 ///     Ok(())
 /// }
@@ -622,7 +630,7 @@ mod tests {
             &[2.0, 3.0, 3.0, -1.0, -1.0, 2.0, 2.0, 3.0, 6.0, 6.0, 1.0, 0.0, 0.0, 0.0]
         );
         let mut a = Matrix::new(5, 5);
-        coo.to_matrix(&mut a).unwrap();
+        coo.to_dense(&mut a).unwrap();
         let correct = "┌                ┐\n\
                        │  2  3  0  0  0 │\n\
                        │  3  0 -1  0  6 │\n\

@@ -1092,7 +1092,7 @@ mod tests {
             Samples::tiny_1x1(false), //
             Samples::tiny_1x1(true),  //
         ] {
-            let mat = coo.as_matrix();
+            let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
             mat_approx_eq(&mat, correct, 1e-15);
             csc.check_dimensions().unwrap();
@@ -1119,7 +1119,7 @@ mod tests {
             Samples::unsymmetric_3x3(true, true, false),
             Samples::unsymmetric_3x3(true, true, true),
         ] {
-            let mat = coo.as_matrix();
+            let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
             mat_approx_eq(&mat, correct, 1e-15);
             csc.check_dimensions().unwrap();
@@ -1142,7 +1142,7 @@ mod tests {
             Samples::umfpack_unsymmetric_5x5(false),
             Samples::umfpack_unsymmetric_5x5(true),
         ] {
-            let mat = coo.as_matrix();
+            let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
             mat_approx_eq(&mat, correct, 1e-15);
             csc.check_dimensions().unwrap();
@@ -1164,7 +1164,7 @@ mod tests {
         for (coo, csc, csr, det) in [
             Samples::mkl_unsymmetric_5x5(false), //
         ] {
-            let mat = coo.as_matrix();
+            let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
             mat_approx_eq(&mat, correct, 1e-15);
             csc.check_dimensions().unwrap();
@@ -1193,7 +1193,7 @@ mod tests {
             Samples::block_unsymmetric_5x5(true, false, true),
             Samples::block_unsymmetric_5x5(true, true, true),
         ] {
-            let mat = coo.as_matrix();
+            let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
             mat_approx_eq(&mat, correct, 1e-15);
             csc.check_dimensions().unwrap();
@@ -1236,7 +1236,7 @@ mod tests {
             Samples::mkl_symmetric_5x5_full(false),
             Samples::mkl_symmetric_5x5_full(true),
         ] {
-            let mat = coo.as_matrix();
+            let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
             mat_approx_eq(&mat, correct, 1e-15);
             csc.check_dimensions().unwrap();
@@ -1247,7 +1247,7 @@ mod tests {
 
         let correct = &[[1.0, 0.0, 3.0, 0.0, 5.0, 0.0, 7.0]];
         let (coo, csc, csr, _) = Samples::rectangular_1x7();
-        let mat = coo.as_matrix();
+        let mat = coo.as_dense();
         mat_approx_eq(&mat, correct, 1e-15);
         csc.check_dimensions().unwrap();
         csr.check_dimensions().unwrap();
@@ -1256,7 +1256,7 @@ mod tests {
 
         let correct = &[[0.0], [2.0], [0.0], [4.0], [0.0], [6.0], [0.0]];
         let (coo, csc, csr, _) = Samples::rectangular_7x1();
-        let mat = coo.as_matrix();
+        let mat = coo.as_dense();
         mat_approx_eq(&mat, correct, 1e-15);
         csc.check_dimensions().unwrap();
         csr.check_dimensions().unwrap();
@@ -1269,7 +1269,7 @@ mod tests {
             [15.0, -6.0, 0.0, 3.0], //
         ];
         let (coo, csc, csr, _) = Samples::rectangular_3x4();
-        let mat = coo.as_matrix();
+        let mat = coo.as_dense();
         mat_approx_eq(&mat, correct, 1e-15);
         csc.check_dimensions().unwrap();
         csr.check_dimensions().unwrap();

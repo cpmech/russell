@@ -62,6 +62,8 @@ impl SparseMatrix {
         }
     }
 
+    /// Returns information about the dimensions and type
+    ///
     /// Returns `(nrow, ncol, nnz, symmetry)`
     ///
     /// Priority: CSC -> CSR -> COO
@@ -212,7 +214,7 @@ impl SparseMatrix {
             None => match &self.csr {
                 Some(csr) => csr.to_matrix(a),
                 None => match &self.coo {
-                    Some(coo) => coo.to_matrix(a),
+                    Some(coo) => coo.to_dense(a),
                     None => Err("no matrix is available"),
                 },
             },

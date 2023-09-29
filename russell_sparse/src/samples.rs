@@ -917,6 +917,72 @@ impl Samples {
         (coo, csc, csr, 9.0 / 4.0)
     }
 
+    /// Returns a (1 x 2) rectangular matrix (COO, CSC, and CSR)
+    ///
+    /// Note: the last return value is not the determinant, but a PLACEHOLDER
+    ///
+    /// ```text
+    /// ┌       ┐
+    /// │ 10 20 │
+    /// └       ┘
+    /// ```
+    pub fn rectangular_1x2(
+        one_based: bool,
+        shuffle_coo_entries: bool,
+        duplicate_coo_entries: bool,
+    ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+        let mut coo = CooMatrix::new(1, 2, 10, None, one_based).unwrap();
+        if shuffle_coo_entries {
+            if duplicate_coo_entries {
+                coo.put(0, 1, 2.0).unwrap();
+                coo.put(0, 1, 2.0).unwrap();
+                coo.put(0, 1, 10.0).unwrap();
+                coo.put(0, 1, 2.0).unwrap();
+                coo.put(0, 1, 2.0).unwrap();
+                coo.put(0, 1, 2.0).unwrap();
+                coo.put(0, 0, 10.0).unwrap();
+            } else {
+                coo.put(0, 1, 20.0).unwrap();
+                coo.put(0, 0, 10.0).unwrap();
+            }
+        } else {
+            if duplicate_coo_entries {
+                coo.put(0, 0, 10.0).unwrap();
+                coo.put(0, 1, 10.0).unwrap();
+                coo.put(0, 1, 2.0).unwrap();
+                coo.put(0, 1, 2.0).unwrap();
+                coo.put(0, 1, 2.0).unwrap();
+                coo.put(0, 1, 2.0).unwrap();
+                coo.put(0, 1, 2.0).unwrap();
+            } else {
+                coo.put(0, 0, 10.0).unwrap();
+                coo.put(0, 1, 20.0).unwrap();
+            }
+        }
+        let csc = CscMatrix {
+            symmetry: None,
+            nrow: 1,
+            ncol: 2,
+            values: vec![
+                10.0, // j=0, p=(0)
+                20.0, // j=1, p=(1)
+            ], //             p=(2)
+            row_indices: vec![0, 0],
+            col_pointers: vec![0, 1, 2],
+        };
+        let csr = CsrMatrix {
+            symmetry: None,
+            nrow: 1,
+            ncol: 2,
+            values: vec![
+                10.0, 20.0, // i=0, p=(0),1
+            ], //                   p=(2)
+            col_indices: vec![0, 1],
+            row_pointers: vec![0, 2],
+        };
+        (coo, csc, csr, PLACEHOLDER)
+    }
+
     /// Returns a (1 x 7) rectangular matrix (COO, CSC, and CSR)
     ///
     /// Note: the last return value is not the determinant, but a PLACEHOLDER

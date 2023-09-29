@@ -112,31 +112,6 @@ impl CooMatrix {
         })
     }
 
-    /// Returns information about the dimensions and type
-    ///
-    /// Returns `(nrow, ncol, nnz, max_nnz, symmetry)`
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use russell_sparse::prelude::*;
-    /// use russell_sparse::StrError;
-    ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let coo = CooMatrix::new(1, 2, 10, None, false)?;
-    ///     let (nrow, ncol, nnz, max_nnz, symmetry) = coo.get_info();
-    ///     assert_eq!(nrow, 1);
-    ///     assert_eq!(ncol, 2);
-    ///     assert_eq!(nnz, 0);
-    ///     assert_eq!(max_nnz, 10);
-    ///     assert_eq!(symmetry, None);
-    ///     Ok(())
-    /// }
-    /// ```
-    pub fn get_info(&self) -> (usize, usize, usize, usize, Option<Symmetry>) {
-        (self.nrow, self.ncol, self.nnz, self.max_nnz, self.symmetry)
-    }
-
     /// Puts a new entry and updates pos (may be duplicate)
     ///
     /// # Input
@@ -422,6 +397,56 @@ impl CooMatrix {
             }
         }
         Ok(())
+    }
+
+    /// Returns information about the dimensions and symmetry type
+    ///
+    /// Returns `(nrow, ncol, nnz, max_nnz, symmetry)`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_sparse::prelude::*;
+    /// use russell_sparse::StrError;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let coo = CooMatrix::new(1, 2, 10, None, false)?;
+    ///     let (nrow, ncol, nnz, max_nnz, symmetry) = coo.get_info();
+    ///     assert_eq!(nrow, 1);
+    ///     assert_eq!(ncol, 2);
+    ///     assert_eq!(nnz, 0);
+    ///     assert_eq!(max_nnz, 10);
+    ///     assert_eq!(symmetry, None);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn get_info(&self) -> (usize, usize, usize, usize, Option<Symmetry>) {
+        (self.nrow, self.ncol, self.nnz, self.max_nnz, self.symmetry)
+    }
+
+    /// Get the symmetry
+    pub fn get_symmetry(&self) -> Option<Symmetry> {
+        self.symmetry
+    }
+
+    /// Get an access to the row indices
+    pub fn get_row_indices(&self) -> &[i32] {
+        &self.indices_i
+    }
+
+    /// Get an access to the column indices
+    pub fn get_col_indices(&self) -> &[i32] {
+        &self.indices_j
+    }
+
+    /// Get an access to the values
+    pub fn get_values(&self) -> &[f64] {
+        &self.values
+    }
+
+    /// Get a mutable access the values
+    pub fn get_values_mut(&mut self) -> &mut [f64] {
+        &mut self.values
     }
 }
 

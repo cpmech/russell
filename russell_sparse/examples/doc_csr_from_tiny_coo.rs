@@ -36,8 +36,8 @@ fn main() -> Result<(), StrError> {
     let correct_p = &[0, 2, 3, 6];
 
     // check
-    assert_eq!(&csr.row_pointers, correct_p);
-    assert_eq!(&csr.col_indices, correct_j);
-    assert_eq!(&csr.values, correct_v);
+    assert_eq!(csr.get_row_pointers(), correct_p);
+    assert_eq!(csr.get_col_indices(), correct_j);
+    assert_eq!(csr.get_values(), correct_v);
     Ok(())
 }

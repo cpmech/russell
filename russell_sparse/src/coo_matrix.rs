@@ -533,7 +533,7 @@ mod tests {
     }
 
     #[test]
-    fn to_matrix_fails_on_wrong_dims() {
+    fn to_dense_fails_on_wrong_dims() {
         let mut coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
         coo.put(0, 0, 123.0).unwrap();
         let mut a_2x1 = Matrix::new(2, 1);
@@ -543,7 +543,7 @@ mod tests {
     }
 
     #[test]
-    fn to_matrix_works() {
+    fn to_dense_works() {
         let mut coo = CooMatrix::new(3, 3, 5, None, false).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 1, 2.0).unwrap();
@@ -557,7 +557,7 @@ mod tests {
         assert_eq!(a.get(1, 0), 3.0);
         assert_eq!(a.get(1, 1), 4.0);
         assert_eq!(a.get(2, 2), 5.0);
-        // call to_matrix again to make sure the matrix is filled with zeros before the sum
+        // call to_dense again to make sure the matrix is filled with zeros before the sum
         coo.to_dense(&mut a).unwrap();
         assert_eq!(a.get(0, 0), 1.0);
         assert_eq!(a.get(0, 1), 2.0);
@@ -580,7 +580,7 @@ mod tests {
     }
 
     #[test]
-    fn to_matrix_with_duplicates_works() {
+    fn to_dense_with_duplicates_works() {
         // allocate a square matrix
         let (nrow, ncol, nnz) = (5, 5, 13);
         let mut coo = CooMatrix::new(nrow, ncol, nnz, None, false).unwrap();
@@ -612,7 +612,7 @@ mod tests {
     }
 
     #[test]
-    fn to_matrix_symmetric_lower_works() {
+    fn to_dense_symmetric_lower_works() {
         let sym = Some(Symmetry::General(Storage::Lower));
         let mut coo = CooMatrix::new(3, 3, 4, sym, false).unwrap();
         coo.put(0, 0, 1.0).unwrap();
@@ -630,7 +630,7 @@ mod tests {
     }
 
     #[test]
-    fn to_matrix_symmetric_upper_and_one_based_works() {
+    fn to_dense_symmetric_upper_and_one_based_works() {
         let sym = Some(Symmetry::General(Storage::Upper));
         let mut coo = CooMatrix::new(3, 3, 4, sym, true).unwrap();
         coo.put(0, 0, 1.0).unwrap();

@@ -217,8 +217,8 @@ impl CscMatrix {
 
     /// Updates this CSC matrix from a COO matrix with a compatible structure
     ///
-    /// **Note:** The COO matrix must match the symmetry, nrow, and ncol values.
-    /// Also, the `pos` (nnz) value in the COO matrix must match `row_indices.len()`.
+    /// **Note:** The COO matrix must match the symmetry, nrow, and ncol values of the CSC matrix.
+    /// Also, the `nnz` (may include duplicates) of the COO matrix must match `row_indices.len() = values.len()`.
     ///
     /// **Note:** The final nnz may be smaller than the initial nnz because duplicates
     /// may have been summed up. The final nnz is available as `nnz = col_pointers[ncol]`.
@@ -233,11 +233,8 @@ impl CscMatrix {
         if coo.ncol != self.ncol {
             return Err("coo.ncol must be equal to csc.ncol");
         }
-        if coo.nnz != self.row_indices.len() {
-            return Err("coo.nnz must be equal to csc.row_indices.len()");
-        }
         if coo.nnz != self.values.len() {
-            return Err("coo.nnz must be equal to csc.values.len()");
+            return Err("coo.nnz must be equal to nnz(dup) = csc.row_indices.len() = csc.values.len()");
         }
 
         // call UMFPACK to convert COO to CSC
@@ -750,6 +747,18 @@ mod tests {
             assert_eq!(&csc.row_indices[0..nnz], &csc_correct.row_indices);
             vec_approx_eq(&csc.values[0..nnz], &csc_correct.values, 1e-15);
         }
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn update_from_coo_captures_errors() {
+        let (coo, _, _, _) = Samples::rectangular_1x2(false, false, false);
+        let mut csc = CscMatrix::from_coo(&coo).unwrap();
+        let sym = Some(Symmetry::General(Storage::Lower));
+        assert_eq!(csc.update_from_coo(&CooMatrix { symmetry: sym,  nrow: 1, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0], one_based: false }).err(), Some("coo.symmetry must be equal to csc.symmetry"));
+        assert_eq!(csc.update_from_coo(&CooMatrix { symmetry: None, nrow: 2, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0], one_based: false }).err(), Some("coo.nrow must be equal to csc.nrow"));
+        assert_eq!(csc.update_from_coo(&CooMatrix { symmetry: None, nrow: 1, ncol: 1, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0], one_based: false }).err(), Some("coo.ncol must be equal to csc.ncol"));
+        assert_eq!(csc.update_from_coo(&CooMatrix { symmetry: None, nrow: 1, ncol: 2, nnz: 3, max_nnz: 3, indices_i: vec![0,0,0], indices_j: vec![0,0,0], values: vec![0.0,0.0,0.0], one_based: false }).err(), Some("coo.nnz must be equal to nnz(dup) = csc.row_indices.len() = csc.values.len()"));
     }
 
     #[test]

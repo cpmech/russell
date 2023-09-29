@@ -77,9 +77,9 @@ impl CooMatrix {
     ///
     /// # Input
     ///
-    /// * `nrow` -- Is the number of rows of the sparse matrix (must be fit i32)
-    /// * `ncol` -- Is the number of columns of the sparse matrix (must be fit i32)
-    /// * `max_nnz` -- Maximum number of entries ≥ nnz (number of non-zeros),
+    /// * `nrow` -- (≥ 1) Is the number of rows of the sparse matrix (must be fit i32)
+    /// * `ncol` -- (≥ 1) Is the number of columns of the sparse matrix (must be fit i32)
+    /// * `max_nnz` -- (≥ 1) Maximum number of entries ≥ nnz (number of non-zeros),
     ///   including entries with repeated indices. (must be fit i32)
     /// * `symmetry` -- Defines the symmetry/storage, if any
     /// * `one_based` -- Use one-based indices; e.g., for MUMPS or other FORTRAN routines
@@ -91,13 +91,13 @@ impl CooMatrix {
         one_based: bool,
     ) -> Result<Self, StrError> {
         if nrow < 1 {
-            return Err("COO matrix: nrow must be ≥ 1");
+            return Err("nrow must be ≥ 1");
         }
         if ncol < 1 {
-            return Err("COO matrix: ncol must be ≥ 1");
+            return Err("ncol must be ≥ 1");
         }
         if max_nnz < 1 {
-            return Err("COO matrix: max (nnz) must be ≥ 1");
+            return Err("max_nnz must be ≥ 1");
         }
         Ok(CooMatrix {
             symmetry,
@@ -108,6 +108,49 @@ impl CooMatrix {
             indices_i: vec![0; max_nnz],
             indices_j: vec![0; max_nnz],
             values: vec![0.0; max_nnz],
+            one_based,
+        })
+    }
+
+    /// Creates a COO matrix from triplets: row indices, col indices, and non-zero values
+    ///
+    /// # Input
+    ///
+    /// * `nrow` -- (≥ 1) Is the number of rows of the sparse matrix (must be fit i32)
+    /// * `ncol` -- (≥ 1) Is the number of columns of the sparse matrix (must be fit i32)
+    /// * `row_indices` -- (len = nnz) Is the array of row indices
+    /// * `col_indices` -- (len = nnz) Is the array of columns indices
+    /// * `values` -- (len = nnz) Is the array of non-zero values
+    /// * `symmetry` -- Defines the symmetry/storage, if any
+    /// * `one_based` -- Use one-based indices; e.g., for MUMPS or other FORTRAN routines
+    pub fn from(
+        nrow: usize,
+        ncol: usize,
+        row_indices: Vec<i32>,
+        col_indices: Vec<i32>,
+        values: Vec<f64>,
+        symmetry: Option<Symmetry>,
+        one_based: bool,
+    ) -> Result<Self, StrError> {
+        if nrow < 1 {
+            return Err("nrow must be ≥ 1");
+        }
+        if ncol < 1 {
+            return Err("ncol must be ≥ 1");
+        }
+        let nnz = row_indices.len();
+        if nnz < 1 {
+            return Err("nnz must be ≥ 1");
+        }
+        Ok(CooMatrix {
+            symmetry,
+            nrow,
+            ncol,
+            nnz,
+            max_nnz: nnz,
+            indices_i: row_indices,
+            indices_j: col_indices,
+            values,
             one_based,
         })
     }
@@ -461,18 +504,9 @@ mod tests {
 
     #[test]
     fn new_fails_on_wrong_input() {
-        assert_eq!(
-            CooMatrix::new(0, 1, 3, None, false).err(),
-            Some("COO matrix: nrow must be ≥ 1")
-        );
-        assert_eq!(
-            CooMatrix::new(1, 0, 3, None, false).err(),
-            Some("COO matrix: ncol must be ≥ 1")
-        );
-        assert_eq!(
-            CooMatrix::new(1, 1, 0, None, false).err(),
-            Some("COO matrix: max (nnz) must be ≥ 1")
-        );
+        assert_eq!(CooMatrix::new(0, 1, 3, None, false).err(), Some("nrow must be ≥ 1"));
+        assert_eq!(CooMatrix::new(1, 0, 3, None, false).err(), Some("ncol must be ≥ 1"));
+        assert_eq!(CooMatrix::new(1, 1, 0, None, false).err(), Some("max_nnz must be ≥ 1"));
     }
 
     #[test]

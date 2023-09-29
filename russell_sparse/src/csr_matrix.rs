@@ -684,6 +684,46 @@ mod tests {
     use russell_lab::{Matrix, Vector};
 
     #[test]
+    fn new_captures_errors() {
+        assert_eq!(
+            CsrMatrix::new(0, 1, vec![0], vec![], vec![], None).err(),
+            Some("nrow must be ≥ 1")
+        );
+        assert_eq!(
+            CsrMatrix::new(1, 0, vec![0], vec![], vec![], None).err(),
+            Some("ncol must be ≥ 1")
+        );
+        assert_eq!(
+            CsrMatrix::new(1, 1, vec![0], vec![], vec![], None).err(),
+            Some("row_pointers.len() must be = nrow + 1")
+        );
+        assert_eq!(
+            CsrMatrix::new(1, 1, vec![0, 0], vec![], vec![], None).err(),
+            Some("nnz must be ≥ 1")
+        );
+        assert_eq!(
+            CsrMatrix::new(1, 1, vec![0, 1], vec![], vec![], None).err(),
+            Some("col_indices.len() must be ≥ nnz")
+        );
+        assert_eq!(
+            CsrMatrix::new(1, 1, vec![0, 1], vec![0], vec![], None).err(),
+            Some("values.len() must be ≥ nnz")
+        );
+    }
+
+    #[test]
+    fn new_works() {
+        let (_, _, csr_correct, _) = Samples::rectangular_1x2(false, false, false);
+        let csr = CsrMatrix::new(1, 2, vec![0, 2], vec![0, 1], vec![10.0, 20.0], None).unwrap();
+        assert_eq!(csr.symmetry, None);
+        assert_eq!(csr.nrow, 1);
+        assert_eq!(csr.ncol, 2);
+        assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
+        assert_eq!(&csr.col_indices, &csr_correct.col_indices);
+        assert_eq!(&csr.values, &csr_correct.values);
+    }
+
+    #[test]
     fn from_coo_captures_errors() {
         let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
         assert_eq!(CsrMatrix::from_coo(&coo).err(), Some("COO to CSR requires nnz > 0"));

@@ -619,6 +619,46 @@ mod tests {
     use russell_lab::{Matrix, Vector};
 
     #[test]
+    fn new_captures_errors() {
+        assert_eq!(
+            CscMatrix::new(0, 1, vec![0], vec![], vec![], None).err(),
+            Some("nrow must be ≥ 1")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 0, vec![0], vec![], vec![], None).err(),
+            Some("ncol must be ≥ 1")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 1, vec![0], vec![], vec![], None).err(),
+            Some("col_pointers.len() must be = ncol + 1")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 1, vec![0, 0], vec![], vec![], None).err(),
+            Some("nnz must be ≥ 1")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 1, vec![0, 1], vec![], vec![], None).err(),
+            Some("row_indices.len() must be ≥ nnz")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 1, vec![0, 1], vec![0], vec![], None).err(),
+            Some("values.len() must be ≥ nnz")
+        );
+    }
+
+    #[test]
+    fn new_works() {
+        let (_, csc_correct, _, _) = Samples::rectangular_1x2(false, false, false);
+        let csc = CscMatrix::new(1, 2, vec![0, 1, 2], vec![0, 0], vec![10.0, 20.0], None).unwrap();
+        assert_eq!(csc.symmetry, None);
+        assert_eq!(csc.nrow, 1);
+        assert_eq!(csc.ncol, 2);
+        assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
+        assert_eq!(&csc.row_indices, &csc_correct.row_indices);
+        assert_eq!(&csc.values, &csc_correct.values);
+    }
+
+    #[test]
     fn from_coo_captures_errors() {
         let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
         assert_eq!(CscMatrix::from_coo(&coo).err(), Some("COO to CSC requires nnz > 0"));

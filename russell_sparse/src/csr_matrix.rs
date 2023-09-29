@@ -988,4 +988,26 @@ mod tests {
         csr.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         vec_approx_eq(v.as_data(), correct, 1e-15);
     }
+
+    #[test]
+    fn getters_are_correct() {
+        let (_, _, csr, _) = Samples::rectangular_1x2(false, false, false);
+        assert_eq!(csr.get_info(), (1, 2, 2, 2, None));
+        assert_eq!(csr.get_symmetry(), None);
+        assert_eq!(csr.get_row_pointers(), &[0, 2]);
+        assert_eq!(csr.get_col_indices(), &[0, 1]);
+        assert_eq!(csr.get_values(), &[10.0, 20.0]);
+
+        let mut csr = CsrMatrix {
+            symmetry: None,
+            nrow: 1,
+            ncol: 2,
+            values: vec![10.0, 20.0],
+            col_indices: vec![0, 1],
+            row_pointers: vec![0, 2],
+        };
+        let x = csr.get_values_mut();
+        x.reverse();
+        assert_eq!(csr.get_values(), &[20.0, 10.0]);
+    }
 }

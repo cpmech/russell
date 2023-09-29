@@ -919,4 +919,26 @@ mod tests {
         csc.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         vec_approx_eq(v.as_data(), correct, 1e-15);
     }
+
+    #[test]
+    fn getters_are_correct() {
+        let (_, csc, _, _) = Samples::rectangular_1x2(false, false, false);
+        assert_eq!(csc.get_info(), (1, 2, 2, 2, None));
+        assert_eq!(csc.get_symmetry(), None);
+        assert_eq!(csc.get_col_pointers(), &[0, 1, 2]);
+        assert_eq!(csc.get_row_indices(), &[0, 0]);
+        assert_eq!(csc.get_values(), &[10.0, 20.0]);
+
+        let mut csc = CscMatrix {
+            symmetry: None,
+            nrow: 1,
+            ncol: 2,
+            values: vec![10.0, 20.0],
+            row_indices: vec![0, 0],
+            col_pointers: vec![0, 1, 2],
+        };
+        let x = csc.get_values_mut();
+        x.reverse();
+        assert_eq!(csc.get_values(), &[20.0, 10.0]);
+    }
 }

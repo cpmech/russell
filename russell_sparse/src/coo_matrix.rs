@@ -455,7 +455,7 @@ impl CooMatrix {
 #[cfg(test)]
 mod tests {
     use super::CooMatrix;
-    use crate::{Storage, Symmetry};
+    use crate::{Samples, Storage, Symmetry};
     use russell_chk::vec_approx_eq;
     use russell_lab::{Matrix, Vector};
 
@@ -833,5 +833,23 @@ mod tests {
         coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         let correct_v = &[2.0, 4.0, 6.0];
         vec_approx_eq(v.as_data(), correct_v, 1e-15);
+    }
+
+    #[test]
+    fn getters_are_correct() {
+        let (coo, _, _, _) = Samples::rectangular_1x2(false, false, false);
+        assert_eq!(coo.get_info(), (1, 2, 2, 10, None));
+        assert_eq!(coo.get_symmetry(), None);
+        assert_eq!(coo.get_row_indices(), &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(coo.get_col_indices(), &[0, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(coo.get_values(), &[10.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+
+        let mut coo = CooMatrix::new(2, 1, 2, None, false).unwrap();
+        coo.put(0, 0, 123.0).unwrap();
+        coo.put(1, 0, 456.0).unwrap();
+        assert_eq!(coo.get_values_mut(), &[123.0, 456.0]);
+        let x = coo.get_values_mut();
+        x.reverse();
+        assert_eq!(coo.get_values_mut(), &[456.0, 123.0]);
     }
 }

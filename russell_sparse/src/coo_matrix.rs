@@ -558,6 +558,19 @@ mod tests {
     }
 
     #[test]
+    fn from_works() {
+        let coo = CooMatrix::from(1, 1, vec![1], vec![1], vec![123.0], None, true).unwrap();
+        assert_eq!(coo.symmetry, None);
+        assert_eq!(coo.nrow, 1);
+        assert_eq!(coo.ncol, 1);
+        assert_eq!(coo.nnz, 1);
+        assert_eq!(coo.max_nnz, 1);
+        assert_eq!(coo.indices_i, &[1]);
+        assert_eq!(coo.indices_j, &[1]);
+        assert_eq!(coo.values, &[123.0]);
+    }
+
+    #[test]
     fn get_info_works() {
         let coo = CooMatrix::new(1, 2, 10, None, false).unwrap();
         let (nrow, ncol, nnz, max_nnz, symmetry) = coo.get_info();

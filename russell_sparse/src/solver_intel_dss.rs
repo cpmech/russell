@@ -227,7 +227,7 @@ impl LinSolTrait for SolverIntelDSS {
     fn solve(&mut self, x: &mut Vector, mat: &SparseMatrix, rhs: &Vector, _verbose: bool) -> Result<(), StrError> {
         // check already factorized data
         if self.factorized == true {
-            let (nrow, ncol, nnz, symmetry) = mat.get_info();
+            let (nrow, ncol, nnz, _, symmetry) = mat.get_info()?;
             if symmetry != self.factorized_symmetry {
                 return Err("solve must use the same matrix (symmetry differs)");
             }
@@ -388,7 +388,7 @@ mod tests {
         let mut mat = SparseMatrix::from_coo(coo);
         let mut params = LinSolParams::new();
 
-        let (nrow, ncol, _, _) = mat.get_info();
+        let (nrow, ncol, _, _, _) = mat.get_info().unwrap();
         let mut a = Matrix::new(nrow, ncol);
         mat.to_dense(&mut a).unwrap();
         println!("{}", a);

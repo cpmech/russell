@@ -62,33 +62,19 @@ impl SparseMatrix {
         }
     }
 
-    /// Returns information about the dimensions and type
+    /// Returns information about the dimensions and symmetry type
     ///
-    /// Returns `(nrow, ncol, nnz, symmetry)`
+    /// Returns `(nrow, ncol, nnz, max_nnz, symmetry)`
     ///
     /// Priority: CSC -> CSR -> COO
-    pub fn get_info(&self) -> (usize, usize, usize, Option<Symmetry>) {
+    pub fn get_info(&self) -> Result<(usize, usize, usize, usize, Option<Symmetry>), StrError> {
         match &self.csc {
-            Some(csc) => {
-                let nnz = if csc.col_pointers.len() == csc.ncol + 1 {
-                    csc.col_pointers[csc.ncol] as usize
-                } else {
-                    0
-                };
-                (csc.nrow, csc.ncol, nnz, csc.symmetry)
-            }
+            Some(csc) => Ok(csc.get_info()),
             None => match &self.csr {
-                Some(csr) => {
-                    let nnz = if csr.row_pointers.len() == csr.nrow + 1 {
-                        csr.row_pointers[csr.nrow] as usize
-                    } else {
-                        0
-                    };
-                    (csr.nrow, csr.ncol, nnz, csr.symmetry)
-                }
+                Some(csr) => Ok(csr.get_info()),
                 None => match &self.coo {
-                    Some(coo) => (coo.nrow, coo.ncol, coo.nnz, coo.symmetry),
-                    None => (0, 0, 0, None),
+                    Some(coo) => Ok(coo.get_info()),
+                    None => Err("no matrix is available"),
                 },
             },
         }

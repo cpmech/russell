@@ -272,7 +272,7 @@ impl LinSolTrait for SolverMUMPS {
     fn solve(&mut self, x: &mut Vector, mat: &SparseMatrix, rhs: &Vector, verbose: bool) -> Result<(), StrError> {
         // check already factorized data
         if self.factorized == true {
-            let (nrow, ncol, nnz, symmetry) = mat.get_info();
+            let (nrow, ncol, nnz, _, symmetry) = mat.get_info()?;
             if symmetry != self.factorized_symmetry {
                 return Err("solve must use the same matrix (symmetry differs)");
             }

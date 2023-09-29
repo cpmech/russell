@@ -3,6 +3,24 @@ use crate::StrError;
 use russell_lab::{Matrix, Vector};
 use russell_openblas::idamax;
 
+/// Unifies the sparse matrix representations by wrapping COO, CSC, and CSR structures
+///
+/// This structure is simply:
+///
+/// ```text
+/// pub struct SparseMatrix {
+///     coo: Option<CooMatrix>,
+///     csc: Option<CscMatrix>,
+///     csr: Option<CsrMatrix>,
+/// }
+/// ```
+///
+/// # Notes
+///
+/// 1. At least one of COO, CSC, or CSR will be `Some`
+/// 2. `(COO and CSC)` or `(COO and CSR)` pairs may be `Some` at the same time
+/// 3. When getting data/information from the SparseMatrix, the default priority is `CSC -> CSR -> COO`
+/// 4. If needed, the CSC or CSR are automatically computed from COO
 pub struct SparseMatrix {
     coo: Option<CooMatrix>,
     csc: Option<CscMatrix>,
@@ -10,6 +28,20 @@ pub struct SparseMatrix {
 }
 
 impl SparseMatrix {
+    /// Allocates a new SparseMatrix as COO to be later updated with put and reset methods
+    ///
+    /// **Note:** This is the most convenient structure for recurrent updates of the sparse
+    /// matrix data; e.g. in finite element simulation codes. See the [CooMatrix::put] and
+    /// [CooMatrix::reset] functions for more details.
+    ///
+    /// # Input
+    ///
+    /// * `nrow` -- (≥ 1) Is the number of rows of the sparse matrix (must be fit i32)
+    /// * `ncol` -- (≥ 1) Is the number of columns of the sparse matrix (must be fit i32)
+    /// * `max_nnz` -- (≥ 1) Maximum number of entries ≥ nnz (number of non-zeros),
+    ///   including entries with repeated indices. (must be fit i32)
+    /// * `symmetry` -- Defines the symmetry/storage, if any
+    /// * `one_based` -- Use one-based indices; e.g., for MUMPS or other FORTRAN routines
     pub fn new_coo(
         nrow: usize,
         ncol: usize,
@@ -24,6 +56,31 @@ impl SparseMatrix {
         })
     }
 
+    /// Allocates a new SparseMatrix as CSC from the underlying arrays
+    ///
+    /// **Note:** The column pointers and row indices must be **sorted** in ascending order.
+    ///
+    /// # Input
+    ///
+    /// * `nrow` -- (≥ 1) number of rows
+    /// * `ncol` -- (≥ 1) number of columns
+    /// * `col_pointers` -- (len = ncol + 1) columns pointers with the last entry corresponding
+    ///   to the number of non-zero values (sorted)
+    /// * `row_indices` -- (len = nnz) row indices (sorted)
+    /// * `values` -- the non-zero components of the matrix
+    ///
+    /// The following conditions must be satisfied (nnz is the number of non-zeros
+    /// and nnz_dup is the number of non-zeros with possible duplicates):
+    ///
+    /// ```text
+    /// nrow ≥ 1
+    /// ncol ≥ 1
+    /// col_pointers.len() = ncol + 1
+    /// row_indices.len() = nnz_dup
+    /// values.len() = nnz_dup
+    /// nnz = col_pointers[ncol] ≥ 1
+    /// nnz_dup ≥ nnz
+    /// ```
     pub fn new_csc(
         nrow: usize,
         ncol: usize,
@@ -39,6 +96,31 @@ impl SparseMatrix {
         })
     }
 
+    /// Allocates a new SparseMatrix as CSR from the underlying arrays
+    ///
+    /// **Note:** The row pointers and column indices must be **sorted** in ascending order.
+    ///
+    /// # Input
+    ///
+    /// * `nrow` -- (≥ 1) number of rows
+    /// * `ncol` -- (≥ 1) number of columns
+    /// * `row_pointers` -- (len = nrow + 1) row pointers with the last entry corresponding
+    ///   to the number of non-zero values (sorted)
+    /// * `col_indices` -- (len = nnz) column indices (sorted)
+    /// * `values` -- the non-zero components of the matrix
+    ///
+    /// The following conditions must be satisfied (nnz is the number of non-zeros
+    /// and nnz_dup is the number of non-zeros with possible duplicates):
+    ///
+    /// ```text
+    /// nrow ≥ 1
+    /// ncol ≥ 1
+    /// row_pointers.len() = nrow + 1
+    /// col_indices.len() = nnz_dup
+    /// values.len() = nnz_dup
+    /// nnz = row_pointers[nrow] ≥ 1
+    /// nnz_dup ≥ nnz
+    /// ```
     pub fn new_csr(
         nrow: usize,
         ncol: usize,
@@ -54,6 +136,7 @@ impl SparseMatrix {
         })
     }
 
+    /// Creates a new SparseMatrix from COO (move occurs)
     pub fn from_coo(coo: CooMatrix) -> Self {
         SparseMatrix {
             coo: Some(coo),
@@ -62,6 +145,7 @@ impl SparseMatrix {
         }
     }
 
+    /// Creates a new SparseMatrix from CSC (move occurs)
     pub fn from_csc(csc: CscMatrix) -> Self {
         SparseMatrix {
             coo: None,
@@ -70,6 +154,7 @@ impl SparseMatrix {
         }
     }
 
+    /// Creates a new SparseMatrix from CSR (move occurs)
     pub fn from_csr(csr: CsrMatrix) -> Self {
         SparseMatrix {
             coo: None,
@@ -82,7 +167,7 @@ impl SparseMatrix {
     ///
     /// Returns `(nrow, ncol, nnz, symmetry)`
     ///
-    /// Priority: CSC -> CSR -> COO
+    /// **Priority**: CSC -> CSR -> COO
     pub fn get_info(&self) -> (usize, usize, usize, Option<Symmetry>) {
         match &self.csc {
             Some(csc) => csc.get_info(),
@@ -95,7 +180,7 @@ impl SparseMatrix {
 
     /// Returns the maximum absolute value among all values
     ///
-    /// Priority: CSC -> CSR -> COO
+    /// **Priority**: CSC -> CSR -> COO
     pub fn get_max_abs_value(&self) -> f64 {
         let values = match &self.csc {
             Some(csc) => &csc.values,
@@ -111,7 +196,20 @@ impl SparseMatrix {
 
     /// Performs the matrix-vector multiplication
     ///
-    /// Priority: CSC -> CSR -> COO
+    /// ```text
+    ///  v  :=  α ⋅  a   ⋅  u
+    /// (m)        (m,n)   (n)
+    /// ```
+    ///
+    /// # Input
+    ///
+    /// * `u` -- Vector with dimension equal to the number of columns of the matrix
+    ///
+    /// # Output
+    ///
+    /// * `v` -- Vector with dimension equal to the number of rows of the matrix
+    ///
+    /// **Priority**: CSC -> CSR -> COO
     pub fn mat_vec_mul(&self, v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
         match &self.csc {
             Some(csc) => csc.mat_vec_mul(v, alpha, u),
@@ -122,6 +220,9 @@ impl SparseMatrix {
         }
     }
 
+    /// Converts the sparse matrix to dense format
+    ///
+    /// **Priority**: CSC -> CSR -> COO
     pub fn as_dense(&self) -> Matrix {
         match &self.csc {
             Some(csc) => csc.as_dense(),
@@ -132,6 +233,9 @@ impl SparseMatrix {
         }
     }
 
+    /// Converts the sparse matrix to dense format
+    ///
+    /// **Priority**: CSC -> CSR -> COO
     pub fn to_dense(&self, a: &mut Matrix) -> Result<(), StrError> {
         match &self.csc {
             Some(csc) => csc.to_dense(a),
@@ -144,6 +248,13 @@ impl SparseMatrix {
 
     // COO ------------------------------------------------------------------------
 
+    /// Puts a new entry and updates pos (may be duplicate)
+    ///
+    /// # Input
+    ///
+    /// * `i` -- row index (indices start at zero; zero-based)
+    /// * `j` -- column index (indices start at zero; zero-based)
+    /// * `aij` -- the value A(i,j)
     pub fn put(&mut self, i: usize, j: usize, aij: f64) -> Result<(), StrError> {
         match &mut self.coo {
             Some(coo) => coo.put(i, j, aij),
@@ -151,6 +262,9 @@ impl SparseMatrix {
         }
     }
 
+    /// Resets the position of the current non-zero value
+    ///
+    /// This function allows using `put` all over again.
     pub fn reset(&mut self) -> Result<(), StrError> {
         match &mut self.coo {
             Some(coo) => {
@@ -161,6 +275,7 @@ impl SparseMatrix {
         }
     }
 
+    /// Returns a read-only access to the COO matrix, if available
     pub fn get_coo(&self) -> Result<&CooMatrix, StrError> {
         match &self.coo {
             Some(coo) => Ok(coo),
@@ -168,6 +283,7 @@ impl SparseMatrix {
         }
     }
 
+    /// Returns a read-write access to the COO matrix, if available
     pub fn get_coo_mut(&mut self) -> Result<&mut CooMatrix, StrError> {
         match &mut self.coo {
             Some(coo) => Ok(coo),
@@ -177,6 +293,7 @@ impl SparseMatrix {
 
     // CSC ------------------------------------------------------------------------
 
+    /// Returns a read-only access to the CSC matrix, if available
     pub fn get_csc(&self) -> Result<&CscMatrix, StrError> {
         match &self.csc {
             Some(csc) => Ok(csc),
@@ -184,6 +301,7 @@ impl SparseMatrix {
         }
     }
 
+    /// Returns a read-write access to the CSC matrix, if available
     pub fn get_csc_mut(&mut self) -> Result<&mut CscMatrix, StrError> {
         match &mut self.csc {
             Some(csc) => Ok(csc),
@@ -193,7 +311,10 @@ impl SparseMatrix {
 
     /// Returns the CSC or creates a CSC from COO or updates the CSC from COO
     ///
-    /// Priority: COO -> CSC
+    /// This function is convenient to update the COO recurrently and later
+    /// automatically get the converted CSC matrix.
+    ///
+    /// **Priority**: COO -> CSC
     pub fn get_csc_or_from_coo(&mut self) -> Result<&CscMatrix, StrError> {
         match &self.coo {
             Some(coo) => match &mut self.csc {
@@ -215,6 +336,7 @@ impl SparseMatrix {
 
     // CSR ------------------------------------------------------------------------
 
+    /// Returns a read-only access to the CSR matrix, if available
     pub fn get_csr(&self) -> Result<&CsrMatrix, StrError> {
         match &self.csr {
             Some(csr) => Ok(csr),
@@ -222,6 +344,7 @@ impl SparseMatrix {
         }
     }
 
+    /// Returns a read-write access to the CSR matrix, if available
     pub fn get_csr_mut(&mut self) -> Result<&mut CsrMatrix, StrError> {
         match &mut self.csr {
             Some(csr) => Ok(csr),
@@ -231,7 +354,10 @@ impl SparseMatrix {
 
     /// Returns the CSR or creates a CSR from COO or updates the CSR from COO
     ///
-    /// Priority: COO -> CSR
+    /// This function is convenient to update the COO recurrently and later
+    /// automatically get the converted CSR matrix.
+    ///
+    /// **Priority**: COO -> CSR
     pub fn get_csr_or_from_coo(&mut self) -> Result<&CsrMatrix, StrError> {
         match &self.coo {
             Some(coo) => match &mut self.csr {

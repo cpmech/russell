@@ -1,4 +1,7 @@
-use super::{to_i32, LinSolParams, LinSolTrait, SparseMatrix, Symmetry};
+use super::{LinSolParams, LinSolTrait, SparseMatrix, Symmetry};
+use crate::auxiliary_and_constants::{
+    to_i32, CcBool, MALLOC_ERROR, NEED_FACTORIZATION, NOT_AVAILABLE, NULL_POINTER_ERROR, SUCCESSFUL_EXIT,
+};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -20,10 +23,10 @@ extern "C" {
         determinant_coefficient: *mut f64,
         determinant_exponent: *mut f64,
         // requests
-        compute_determinant: i32,
+        compute_determinant: CcBool,
         // matrix config
-        general_symmetric: i32,
-        positive_definite: i32,
+        general_symmetric: CcBool,
+        positive_definite: CcBool,
         ndim: i32,
         // matrix
         row_pointers: *const i32,
@@ -130,16 +133,16 @@ impl LinSolTrait for SolverIntelDSS {
     /// may return **incorrect results**.
     fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
         // get CSR matrix
+        // (or convert from COO if CSR is not available and COO is available)
         let csr = mat.get_csr_or_from_coo()?;
 
         // check CSR matrix
         if csr.nrow != csr.ncol {
             return Err("the matrix must be square");
         }
-        csr.check_dimensions()?;
 
         // check already factorized data
-        if self.factorized == true {
+        if self.factorized {
             if csr.symmetry != self.factorized_symmetry {
                 return Err("subsequent factorizations must use the same matrix (symmetry differs)");
             }
@@ -171,7 +174,7 @@ impl LinSolTrait for SolverIntelDSS {
         };
 
         // matrix config
-        let ndim = to_i32(csr.nrow)?;
+        let ndim = to_i32(csr.nrow);
 
         // call Intel DSS factorize
         let nnz = self.factorized_nnz;
@@ -192,7 +195,7 @@ impl LinSolTrait for SolverIntelDSS {
                 csr.col_indices[0..nnz].as_ptr(),
                 csr.values[0..nnz].as_ptr(),
             );
-            if status != MKL_DSS_SUCCESS {
+            if status != SUCCESSFUL_EXIT {
                 return Err(handle_intel_dss_error_code(status));
             }
         }
@@ -223,20 +226,25 @@ impl LinSolTrait for SolverIntelDSS {
     ///
     /// **Warning:** the matrix must be same one used in `factorize`.
     fn solve(&mut self, x: &mut Vector, mat: &SparseMatrix, rhs: &Vector, _verbose: bool) -> Result<(), StrError> {
-        // check already factorized data
-        if self.factorized == true {
-            let (nrow, ncol, nnz, symmetry) = mat.get_info();
-            if symmetry != self.factorized_symmetry {
-                return Err("solve must use the same matrix (symmetry differs)");
-            }
-            if nrow != self.factorized_ndim || ncol != self.factorized_ndim {
-                return Err("solve must use the same matrix (ndim differs)");
-            }
-            if nnz != self.factorized_nnz {
-                return Err("solve must use the same matrix (nnz differs)");
-            }
-        } else {
+        // check
+        if !self.factorized {
             return Err("the function factorize must be called before solve");
+        }
+
+        // access CSR matrix
+        // (possibly already converted from COO, because factorize was (should have been) called)
+        let csr = mat.get_csr()?;
+
+        // check already factorized data
+        let (nrow, ncol, nnz, symmetry) = csr.get_info();
+        if symmetry != self.factorized_symmetry {
+            return Err("solve must use the same matrix (symmetry differs)");
+        }
+        if nrow != self.factorized_ndim || ncol != self.factorized_ndim {
+            return Err("solve must use the same matrix (ndim differs)");
+        }
+        if nnz != self.factorized_nnz {
+            return Err("solve must use the same matrix (nnz differs)");
         }
 
         // check vectors
@@ -250,7 +258,7 @@ impl LinSolTrait for SolverIntelDSS {
         // call Intel DSS solve
         unsafe {
             let status = solver_intel_dss_solve(self.solver, x.as_mut_data().as_mut_ptr(), rhs.as_data().as_ptr());
-            if status != MKL_DSS_SUCCESS {
+            if status != SUCCESSFUL_EXIT {
                 return Err(handle_intel_dss_error_code(status));
             }
         }
@@ -329,14 +337,13 @@ pub(crate) fn handle_intel_dss_error_code(err: i32) -> StrError {
         24 => return "MKL_DSS_OOC_MEM_ERR",
         25 => return "MKL_DSS_OOC_OC_ERR",
         26 => return "MKL_DSS_OOC_RW_ERR",
-        100000 => return "Error: c-code returned null pointer (IntelDSS)",
-        200000 => return "Error: c-code failed to allocate memory (IntelDSS)",
-        400000 => return "This code has not been compiled with Intel DSS",
+        NULL_POINTER_ERROR => return "Error: c-code returned null pointer (IntelDSS)",
+        MALLOC_ERROR => return "Error: c-code failed to allocate memory (IntelDSS)",
+        NOT_AVAILABLE => return "This code has not been compiled with Intel DSS",
+        NEED_FACTORIZATION => return "INTERNAL ERROR: factorization must be completed before solve",
         _ => return "Error: unknown error returned by c-code (IntelDSS)",
     }
 }
-
-const MKL_DSS_SUCCESS: i32 = 0;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -346,7 +353,7 @@ mod tests {
     use super::{handle_intel_dss_error_code, SolverIntelDSS};
     use crate::{CooMatrix, LinSolParams, LinSolTrait, Samples, SparseMatrix};
     use russell_chk::{approx_eq, vec_approx_eq};
-    use russell_lab::{Matrix, Vector};
+    use russell_lab::Vector;
 
     #[test]
     fn new_and_drop_work() {
@@ -369,7 +376,7 @@ mod tests {
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
-            Some("COO matrix: pos = nnz must be ≥ 1")
+            Some("COO to CSR requires nnz > 0")
         );
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(false, false, false);
         let mut mat = SparseMatrix::from_coo(coo);
@@ -386,11 +393,6 @@ mod tests {
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
         let mut mat = SparseMatrix::from_coo(coo);
         let mut params = LinSolParams::new();
-
-        let (nrow, ncol, _, _) = mat.get_info();
-        let mut a = Matrix::new(nrow, ncol);
-        mat.to_dense(&mut a).unwrap();
-        println!("{}", a);
 
         params.compute_determinant = true;
 

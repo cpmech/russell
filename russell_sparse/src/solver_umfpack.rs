@@ -1,4 +1,7 @@
-use super::{to_i32, LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, Symmetry};
+use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, Symmetry};
+use crate::auxiliary_and_constants::{
+    to_i32, CcBool, MALLOC_ERROR, NEED_FACTORIZATION, NULL_POINTER_ERROR, SUCCESSFUL_EXIT,
+};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -26,10 +29,10 @@ extern "C" {
         ordering: i32,
         scaling: i32,
         // requests
-        compute_determinant: i32,
-        verbose: i32,
+        compute_determinant: CcBool,
+        verbose: CcBool,
         // matrix config
-        enforce_unsymmetric_strategy: i32,
+        enforce_unsymmetric_strategy: CcBool,
         ndim: i32,
         // matrix
         col_pointers: *const i32,
@@ -43,7 +46,7 @@ extern "C" {
         col_pointers: *const i32,
         row_indices: *const i32,
         values: *const f64,
-        verbose: i32,
+        verbose: CcBool,
     ) -> i32;
 }
 
@@ -137,13 +140,13 @@ impl LinSolTrait for SolverUMFPACK {
     /// 4. For symmetric matrices, `UMFPACK` requires that the symmetry/storage be [crate::Storage::Full].
     fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
         // get CSC matrix
+        // (or convert from COO if CSC is not available and COO is available)
         let csc = mat.get_csc_or_from_coo()?;
 
         // check CSC matrix
         if csc.nrow != csc.ncol {
             return Err("the matrix must be square");
         }
-        csc.check_dimensions()?;
         if let Some(symmetry) = csc.symmetry {
             if symmetry.triangular() {
                 return Err("for UMFPACK, the matrix must not be triangular");
@@ -151,7 +154,7 @@ impl LinSolTrait for SolverUMFPACK {
         }
 
         // check already factorized data
-        if self.factorized == true {
+        if self.factorized {
             if csc.symmetry != self.factorized_symmetry {
                 return Err("subsequent factorizations must use the same matrix (symmetry differs)");
             }
@@ -201,7 +204,7 @@ impl LinSolTrait for SolverUMFPACK {
         let enforce_unsym = if par.umfpack_enforce_unsymmetric_strategy { 1 } else { 0 };
 
         // matrix config
-        let ndim = to_i32(csc.nrow)?;
+        let ndim = to_i32(csc.nrow);
 
         // call UMFPACK factorize
         unsafe {
@@ -227,7 +230,7 @@ impl LinSolTrait for SolverUMFPACK {
                 csc.row_indices.as_ptr(),
                 csc.values.as_ptr(),
             );
-            if status != UMFPACK_SUCCESS {
+            if status != SUCCESSFUL_EXIT {
                 return Err(handle_umfpack_error_code(status));
             }
         }
@@ -258,20 +261,25 @@ impl LinSolTrait for SolverUMFPACK {
     ///
     /// **Warning:** the matrix must be same one used in `factorize`.
     fn solve(&mut self, x: &mut Vector, mat: &SparseMatrix, rhs: &Vector, verbose: bool) -> Result<(), StrError> {
-        // check already factorized data
-        if self.factorized == true {
-            let (nrow, ncol, nnz, symmetry) = mat.get_info();
-            if symmetry != self.factorized_symmetry {
-                return Err("solve must use the same matrix (symmetry differs)");
-            }
-            if nrow != self.factorized_ndim || ncol != self.factorized_ndim {
-                return Err("solve must use the same matrix (ndim differs)");
-            }
-            if nnz != self.factorized_nnz {
-                return Err("solve must use the same matrix (nnz differs)");
-            }
-        } else {
+        // check
+        if !self.factorized {
             return Err("the function factorize must be called before solve");
+        }
+
+        // access CSC matrix
+        // (possibly already converted from COO, because factorize was (should have been) called)
+        let csc = mat.get_csc()?;
+
+        // check already factorized data
+        let (nrow, ncol, nnz, symmetry) = csc.get_info();
+        if symmetry != self.factorized_symmetry {
+            return Err("solve must use the same matrix (symmetry differs)");
+        }
+        if nrow != self.factorized_ndim || ncol != self.factorized_ndim {
+            return Err("solve must use the same matrix (ndim differs)");
+        }
+        if nnz != self.factorized_nnz {
+            return Err("solve must use the same matrix (nnz differs)");
         }
 
         // check vectors
@@ -283,21 +291,18 @@ impl LinSolTrait for SolverUMFPACK {
         }
 
         // call UMFPACK solve
-        let col_pointers = mat.csc_col_pointers()?;
-        let row_indices = mat.csc_row_indices()?;
-        let values = mat.csc_values()?;
         let verb = if verbose { 1 } else { 0 };
         unsafe {
             let status = solver_umfpack_solve(
                 self.solver,
                 x.as_mut_data().as_mut_ptr(),
                 rhs.as_data().as_ptr(),
-                col_pointers.as_ptr(),
-                row_indices.as_ptr(),
-                values.as_ptr(),
+                csc.col_pointers.as_ptr(),
+                csc.row_indices.as_ptr(),
+                csc.values.as_ptr(),
                 verb,
             );
-            if status != UMFPACK_SUCCESS {
+            if status != SUCCESSFUL_EXIT {
                 return Err(handle_umfpack_error_code(status));
             }
         }
@@ -384,13 +389,12 @@ pub(crate) fn handle_umfpack_error_code(err: i32) -> StrError {
         -17 => return "Error(-17): Failed to save/load file",
         -18 => return "Error(-18): Ordering method failed",
         -911 => return "Error(-911): An internal error has occurred",
-        100000 => return "Error: c-code returned null pointer (UMFPACK)",
-        200000 => return "Error: c-code failed to allocate memory (UMFPACK)",
+        NULL_POINTER_ERROR => return "Error: c-code returned null pointer (UMFPACK)",
+        MALLOC_ERROR => return "Error: c-code failed to allocate memory (UMFPACK)",
+        NEED_FACTORIZATION => return "INTERNAL ERROR: factorization must be completed before solve",
         _ => return "Error: unknown error returned by c-code (UMFPACK)",
     }
 }
-
-const UMFPACK_SUCCESS: i32 = 0;
 
 const UMFPACK_STRATEGY_AUTO: i32 = 0; // use symmetric or unsymmetric strategy
 const UMFPACK_STRATEGY_UNSYMMETRIC: i32 = 1; // COLAMD(A), col-tree post-order, do not prefer diag
@@ -438,7 +442,7 @@ mod tests {
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
-            Some("COO matrix: pos = nnz must be ≥ 1")
+            Some("COO to CSC requires nnz > 0")
         );
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(false, false, false);
         let mut mat = SparseMatrix::from_coo(coo);

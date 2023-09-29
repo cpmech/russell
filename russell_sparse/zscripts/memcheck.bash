@@ -10,10 +10,10 @@ cargo build
 
 cargo valgrind run --bin mem_check
 
-cargo valgrind run --bin solve_matrix_market -- data/matrix_market/bfwb62.mtx
-cargo valgrind run --bin solve_matrix_market -- data/matrix_market/bfwb62.mtx -g mumps
+cargo valgrind run --bin solve_matrix_market -- data/matrix_market/bfwb62.mtx -d
+cargo valgrind run --bin solve_matrix_market -- data/matrix_market/bfwb62.mtx -d -g mumps
 if [[ "$WITH_DSS" == "1" ]]; then
-    cargo valgrind run --bin solve_matrix_market -- data/matrix_market/bfwb62.mtx --genie dss
+    cargo valgrind run --bin solve_matrix_market -- data/matrix_market/bfwb62.mtx -d --genie dss
 fi
 
 cargo valgrind run --example nonlinear_system_4eqs --

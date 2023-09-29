@@ -48,13 +48,13 @@ pub struct CsrMatrix {
     ///
     /// **Note:** `None` means unsymmetric matrix or unspecified symmetry,
     /// where the storage is automatically `Full`.
-    pub symmetry: Option<Symmetry>,
+    pub(crate) symmetry: Option<Symmetry>,
 
     /// Holds the number of rows (must fit i32)
-    pub nrow: usize,
+    pub(crate) nrow: usize,
 
     /// Holds the number of columns (must fit i32)
-    pub ncol: usize,
+    pub(crate) ncol: usize,
 
     /// Defines the row pointers array with size = nrow + 1
     ///
@@ -62,7 +62,7 @@ pub struct CsrMatrix {
     /// row_pointers.len() = nrow + 1
     /// nnz = col_pointers[ncol]
     /// ```
-    pub row_pointers: Vec<i32>,
+    pub(crate) row_pointers: Vec<i32>,
 
     /// Defines the column indices array with size = nnz_dup (number of non-zeros with duplicates)
     ///
@@ -70,7 +70,7 @@ pub struct CsrMatrix {
     /// nnz_dup ≥ nnz
     /// col_indices.len() = nnz_dup
     /// ```
-    pub col_indices: Vec<i32>,
+    pub(crate) col_indices: Vec<i32>,
 
     /// Defines the values array with size = nnz_dup (number of non-zeros with duplicates)
     ///
@@ -78,43 +78,95 @@ pub struct CsrMatrix {
     /// nnz_dup ≥ nnz
     /// values.len() = nnz_dup
     /// ```
-    pub values: Vec<f64>,
+    pub(crate) values: Vec<f64>,
 }
 
 impl CsrMatrix {
-    /// Checks the dimension of the arrays in the CSR matrix
+    /// Creates a new CSR matrix from (sorted) data arrays
     ///
-    /// The following conditions must be satisfied (nnz is the number of non-zeros with duplicates):
+    /// **Note:** The row pointers and column indices must be **sorted** in ascending order.
+    ///
+    /// # Input
+    ///
+    /// * `nrow` -- (≥ 1) number of rows
+    /// * `ncol` -- (≥ 1) number of columns
+    /// * `row_pointers` -- (len = nrow + 1) row pointers with the last entry corresponding
+    ///   to the number of non-zero values (sorted)
+    /// * `col_indices` -- (len = nnz) column indices (sorted)
+    /// * `values` -- the non-zero components of the matrix
+    ///
+    /// The following conditions must be satisfied (nnz is the number of non-zeros
+    /// and nnz_dup is the number of non-zeros with possible duplicates):
     ///
     /// ```text
     /// nrow ≥ 1
     /// ncol ≥ 1
+    /// row_pointers.len() = nrow + 1
+    /// col_indices.len() = nnz_dup
+    /// values.len() = nnz_dup
     /// nnz = row_pointers[nrow] ≥ 1
-    /// row_pointers.len() == nrow + 1
-    /// col_indices.len() == nnz_dup ≥ nnz
-    /// values.len() == nnz_dup ≥ nnz
+    /// nnz_dup ≥ nnz
     /// ```
-    pub fn check_dimensions(&self) -> Result<(), StrError> {
-        if self.nrow < 1 {
+    pub fn new(
+        nrow: usize,
+        ncol: usize,
+        row_pointers: Vec<i32>,
+        col_indices: Vec<i32>,
+        values: Vec<f64>,
+        symmetry: Option<Symmetry>,
+    ) -> Result<Self, StrError> {
+        if nrow < 1 {
             return Err("nrow must be ≥ 1");
         }
-        if self.ncol < 1 {
+        if ncol < 1 {
             return Err("ncol must be ≥ 1");
         }
-        if self.row_pointers.len() != self.nrow + 1 {
+        if row_pointers.len() != nrow + 1 {
             return Err("row_pointers.len() must be = nrow + 1");
         }
-        let nnz = self.row_pointers[self.nrow];
+        let nnz = row_pointers[nrow];
         if nnz < 1 {
-            return Err("nnz must be ≥ 1");
+            return Err("nnz = row_pointers[nrow] must be ≥ 1");
         }
-        if self.col_indices.len() < nnz as usize {
+        if col_indices.len() < nnz as usize {
             return Err("col_indices.len() must be ≥ nnz");
         }
-        if self.values.len() < nnz as usize {
+        if values.len() < nnz as usize {
             return Err("values.len() must be ≥ nnz");
         }
-        Ok(())
+        let n = to_i32(ncol);
+        for i in 0..nrow {
+            if row_pointers[i] < 0 {
+                return Err("row pointers must be ≥ 0");
+            }
+            if row_pointers[i] > row_pointers[i + 1] {
+                return Err("row pointers must be sorted in ascending order");
+            }
+            let start = row_pointers[i] as usize;
+            let end = row_pointers[i + 1] as usize;
+            for p in start..end {
+                let j = col_indices[p];
+                if j < 0 {
+                    return Err("column indices must be ≥ 0");
+                }
+                if j >= n {
+                    return Err("column indices must be < ncol");
+                }
+                if p > start {
+                    if col_indices[p - 1] > col_indices[p] {
+                        return Err("column indices must be sorted in ascending order (within their row)");
+                    }
+                }
+            }
+        }
+        Ok(CsrMatrix {
+            symmetry,
+            nrow,
+            ncol,
+            row_pointers,
+            col_indices,
+            values,
+        })
     }
 
     /// Creates a new CSR matrix from a COO matrix
@@ -163,14 +215,16 @@ impl CsrMatrix {
     ///     let correct_p = &[0, 2, 3, 6];
     ///
     ///     // check
-    ///     assert_eq!(&csr.row_pointers, correct_p);
-    ///     assert_eq!(&csr.col_indices, correct_j);
-    ///     assert_eq!(&csr.values, correct_v);
+    ///     assert_eq!(csr.get_row_pointers(), correct_p);
+    ///     assert_eq!(csr.get_col_indices(), correct_j);
+    ///     assert_eq!(csr.get_values(), correct_v);
     ///     Ok(())
     /// }
     /// ```
     pub fn from_coo(coo: &CooMatrix) -> Result<Self, StrError> {
-        coo.check_dimensions_ready()?;
+        if coo.nnz < 1 {
+            return Err("COO to CSR requires nnz > 0");
+        }
         let mut csr = CsrMatrix {
             symmetry: coo.symmetry,
             nrow: coo.nrow,
@@ -185,8 +239,8 @@ impl CsrMatrix {
 
     /// Updates this CSR matrix from a COO matrix with a compatible structure
     ///
-    /// **Note:** The COO matrix must match the symmetry, nrow, and ncol values.
-    /// Also, the `pos` (nnz) value in the COO matrix must match `col_indices.len()`.
+    /// **Note:** The COO matrix must match the symmetry, nrow, and ncol values of the CSR matrix.
+    /// Also, the `nnz` (may include duplicates) of the COO matrix must match `col_indices.len() = values.len()`.
     ///
     /// **Note:** The final nnz may be smaller than the initial nnz because duplicates
     /// may have been summed up. The final nnz is available as `nnz = row_pointers[nrow]`.
@@ -211,11 +265,8 @@ impl CsrMatrix {
         if coo.ncol != self.ncol {
             return Err("coo.ncol must be equal to csr.ncol");
         }
-        if coo.nnz != self.col_indices.len() {
-            return Err("coo.nnz must be equal to csr.col_indices.len()");
-        }
         if coo.nnz != self.values.len() {
-            return Err("coo.nnz must be equal to csr.values.len()");
+            return Err("coo.nnz must be equal to nnz(dup) = self.col_indices.len() = csr.values.len()");
         }
 
         // constants
@@ -248,7 +299,7 @@ impl CsrMatrix {
             bp[i] = sum;
             sum += temp;
         }
-        bp[nrow] = to_i32(nnz)?;
+        bp[nrow] = to_i32(nnz);
 
         // write aj and ax into bj and bx (will use bp as workspace)
         for k in 0..nnz {
@@ -306,7 +357,6 @@ impl CsrMatrix {
         // * Upgrading i32 to usize is OK (the opposite is not OK => use to_i32)
 
         // check and read in the dimensions
-        csc.check_dimensions()?;
         let ncol = csc.ncol as usize;
         let nrow = csc.nrow as usize;
         let nnz = csc.col_pointers[ncol] as usize;
@@ -343,14 +393,14 @@ impl CsrMatrix {
             bp[i] = sum;
             sum += temp;
         }
-        bp[nrow] = to_i32(nnz)?;
+        bp[nrow] = to_i32(nnz);
 
         // write ai and ax into bj and bx (will use bp as workspace)
         for j in 0..ncol {
             for p in ap[j]..ap[j + 1] {
                 let i = ai[p as usize] as usize;
                 let dest = bp[i] as usize;
-                bj[dest] = to_i32(j)?;
+                bj[dest] = to_i32(j);
                 bx[dest] = ax[p as usize];
                 bp[i] += 1;
             }
@@ -385,33 +435,33 @@ impl CsrMatrix {
     ///     // │  0  0  1  0  0 │
     ///     // │  0  4  2  0  1 │
     ///     // └                ┘
-    ///     let csr = CsrMatrix {
-    ///         symmetry: None,
-    ///         nrow: 5,
-    ///         ncol: 5,
-    ///         row_pointers: vec![0, 2, 5, 8, 9, 12],
-    ///         col_indices: vec![
-    ///             //                         p
-    ///             0, 1, //    i = 0, count = 0, 1
-    ///             0, 2, 4, // i = 1, count = 2, 3, 4
-    ///             1, 2, 3, // i = 2, count = 5, 6, 7
-    ///             2, //       i = 3, count = 8
-    ///             1, 2, 4, // i = 4, count = 9, 10, 11
-    ///                //              count = 12
-    ///         ],
-    ///         values: vec![
-    ///             //                                 p
-    ///             2.0, 3.0, //        i = 0, count = 0, 1
-    ///             3.0, 4.0, 6.0, //   i = 1, count = 2, 3, 4
-    ///             -1.0, -3.0, 2.0, // i = 2, count = 5, 6, 7
-    ///             1.0, //             i = 3, count = 8
-    ///             4.0, 2.0, 1.0, //   i = 4, count = 9, 10, 11
-    ///                  //                    count = 12
-    ///         ],
-    ///     };
+    ///     let nrow = 5;
+    ///     let ncol = 5;
+    ///     let row_pointers = vec![0, 2, 5, 8, 9, 12];
+    ///     let col_indices = vec![
+    ///         //                         p
+    ///         0, 1, //    i = 0, count = 0, 1
+    ///         0, 2, 4, // i = 1, count = 2, 3, 4
+    ///         1, 2, 3, // i = 2, count = 5, 6, 7
+    ///         2, //       i = 3, count = 8
+    ///         1, 2, 4, // i = 4, count = 9, 10, 11
+    ///            //              count = 12
+    ///     ];
+    ///     let values = vec![
+    ///         //                                 p
+    ///         2.0, 3.0, //        i = 0, count = 0, 1
+    ///         3.0, 4.0, 6.0, //   i = 1, count = 2, 3, 4
+    ///         -1.0, -3.0, 2.0, // i = 2, count = 5, 6, 7
+    ///         1.0, //             i = 3, count = 8
+    ///         4.0, 2.0, 1.0, //   i = 4, count = 9, 10, 11
+    ///              //                    count = 12
+    ///     ];
+    ///     let symmetry = None;
+    ///     let csr = CsrMatrix::new(nrow, ncol,
+    ///         row_pointers, col_indices, values, symmetry)?;
     ///
     ///     // covert to dense
-    ///     let a = csr.as_matrix()?;
+    ///     let a = csr.as_dense();
     ///     let correct = "┌                ┐\n\
     ///                    │  2  3  0  0  0 │\n\
     ///                    │  3  0  4  0  6 │\n\
@@ -423,10 +473,10 @@ impl CsrMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn as_matrix(&self) -> Result<Matrix, StrError> {
+    pub fn as_dense(&self) -> Matrix {
         let mut a = Matrix::new(self.nrow, self.ncol);
-        self.to_matrix(&mut a).unwrap();
-        Ok(a)
+        self.to_dense(&mut a).unwrap();
+        a
     }
 
     /// Converts this CSR matrix to a dense matrix
@@ -451,34 +501,34 @@ impl CsrMatrix {
     ///     // │  0  0  1  0  0 │
     ///     // │  0  4  2  0  1 │
     ///     // └                ┘
-    ///     let csr = CsrMatrix {
-    ///         symmetry: None,
-    ///         nrow: 5,
-    ///         ncol: 5,
-    ///         row_pointers: vec![0, 2, 5, 8, 9, 12],
-    ///         col_indices: vec![
-    ///             //                         p
-    ///             0, 1, //    i = 0, count = 0, 1
-    ///             0, 2, 4, // i = 1, count = 2, 3, 4
-    ///             1, 2, 3, // i = 2, count = 5, 6, 7
-    ///             2, //       i = 3, count = 8
-    ///             1, 2, 4, // i = 4, count = 9, 10, 11
-    ///                //              count = 12
-    ///         ],
-    ///         values: vec![
-    ///             //                                 p
-    ///             2.0, 3.0, //        i = 0, count = 0, 1
-    ///             3.0, 4.0, 6.0, //   i = 1, count = 2, 3, 4
-    ///             -1.0, -3.0, 2.0, // i = 2, count = 5, 6, 7
-    ///             1.0, //             i = 3, count = 8
-    ///             4.0, 2.0, 1.0, //   i = 4, count = 9, 10, 11
-    ///                  //                    count = 12
-    ///         ],
-    ///     };
+    ///     let nrow = 5;
+    ///     let ncol = 5;
+    ///     let row_pointers = vec![0, 2, 5, 8, 9, 12];
+    ///     let col_indices = vec![
+    ///         //                         p
+    ///         0, 1, //    i = 0, count = 0, 1
+    ///         0, 2, 4, // i = 1, count = 2, 3, 4
+    ///         1, 2, 3, // i = 2, count = 5, 6, 7
+    ///         2, //       i = 3, count = 8
+    ///         1, 2, 4, // i = 4, count = 9, 10, 11
+    ///            //              count = 12
+    ///     ];
+    ///     let values = vec![
+    ///         //                                 p
+    ///         2.0, 3.0, //        i = 0, count = 0, 1
+    ///         3.0, 4.0, 6.0, //   i = 1, count = 2, 3, 4
+    ///         -1.0, -3.0, 2.0, // i = 2, count = 5, 6, 7
+    ///         1.0, //             i = 3, count = 8
+    ///         4.0, 2.0, 1.0, //   i = 4, count = 9, 10, 11
+    ///              //                    count = 12
+    ///     ];
+    ///     let symmetry = None;
+    ///     let csr = CsrMatrix::new(nrow, ncol,
+    ///         row_pointers, col_indices, values, symmetry)?;
     ///
     ///     // covert to dense
     ///     let mut a = Matrix::new(5, 5);
-    ///     csr.to_matrix(&mut a)?;
+    ///     csr.to_dense(&mut a)?;
     ///     let correct = "┌                ┐\n\
     ///                    │  2  3  0  0  0 │\n\
     ///                    │  3  0  4  0  6 │\n\
@@ -490,8 +540,7 @@ impl CsrMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn to_matrix(&self, a: &mut Matrix) -> Result<(), StrError> {
-        self.check_dimensions()?;
+    pub fn to_dense(&self, a: &mut Matrix) -> Result<(), StrError> {
         let (m, n) = a.dims();
         if m != self.nrow || n != self.ncol {
             return Err("wrong matrix dimensions");
@@ -528,7 +577,6 @@ impl CsrMatrix {
     ///
     /// * `v` -- Vector with dimension equal to the number of rows of the matrix
     pub fn mat_vec_mul(&self, v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
-        self.check_dimensions()?;
         if u.dim() != self.ncol {
             return Err("u.ndim must equal ncol");
         }
@@ -551,6 +599,67 @@ impl CsrMatrix {
             }
         }
         Ok(())
+    }
+
+    /// Returns information about the dimensions and symmetry type
+    ///
+    /// Returns `(nrow, ncol, nnz, symmetry)`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_sparse::prelude::*;
+    /// use russell_sparse::StrError;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // ┌       ┐
+    ///     // │ 10 20 │
+    ///     // └       ┘
+    ///     let row_pointers = vec![0, 2];
+    ///     let col_indices = vec![0, 1];
+    ///     let values = vec![10.0, 20.0];
+    ///     let csr = CsrMatrix::new(1, 2,
+    ///         row_pointers, col_indices, values, None)?;
+    ///     let (nrow, ncol, nnz, symmetry) = csr.get_info();
+    ///     assert_eq!(nrow, 1);
+    ///     assert_eq!(ncol, 2);
+    ///     assert_eq!(nnz, 2);
+    ///     assert_eq!(symmetry, None);
+    ///     let a = csr.as_dense();
+    ///     let correct = "┌       ┐\n\
+    ///                    │ 10 20 │\n\
+    ///                    └       ┘";
+    ///     assert_eq!(format!("{}", a), correct);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn get_info(&self) -> (usize, usize, usize, Option<Symmetry>) {
+        (
+            self.nrow,
+            self.ncol,
+            self.row_pointers[self.nrow] as usize,
+            self.symmetry,
+        )
+    }
+
+    /// Get an access to the row pointers
+    pub fn get_row_pointers(&self) -> &[i32] {
+        &self.row_pointers
+    }
+
+    /// Get an access to the column indices
+    pub fn get_col_indices(&self) -> &[i32] {
+        &self.col_indices
+    }
+
+    /// Get an access to the values
+    pub fn get_values(&self) -> &[f64] {
+        &self.values
+    }
+
+    /// Get a mutable access to the values
+    pub fn get_values_mut(&mut self) -> &mut [f64] {
+        &mut self.values
     }
 }
 
@@ -601,12 +710,77 @@ mod tests {
     use russell_lab::{Matrix, Vector};
 
     #[test]
+    fn new_captures_errors() {
+        assert_eq!(
+            CsrMatrix::new(0, 1, vec![0], vec![], vec![], None).err(),
+            Some("nrow must be ≥ 1")
+        );
+        assert_eq!(
+            CsrMatrix::new(1, 0, vec![0], vec![], vec![], None).err(),
+            Some("ncol must be ≥ 1")
+        );
+        assert_eq!(
+            CsrMatrix::new(1, 1, vec![0], vec![], vec![], None).err(),
+            Some("row_pointers.len() must be = nrow + 1")
+        );
+        assert_eq!(
+            CsrMatrix::new(1, 1, vec![0, 0], vec![], vec![], None).err(),
+            Some("nnz = row_pointers[nrow] must be ≥ 1")
+        );
+        assert_eq!(
+            CsrMatrix::new(1, 1, vec![0, 1], vec![], vec![], None).err(),
+            Some("col_indices.len() must be ≥ nnz")
+        );
+        assert_eq!(
+            CsrMatrix::new(1, 1, vec![0, 1], vec![0], vec![], None).err(),
+            Some("values.len() must be ≥ nnz")
+        );
+        assert_eq!(
+            CsrMatrix::new(1, 1, vec![-1, 1], vec![0], vec![0.0], None).err(),
+            Some("row pointers must be ≥ 0")
+        );
+        assert_eq!(
+            CsrMatrix::new(1, 1, vec![2, 1], vec![0], vec![0.0], None).err(),
+            Some("row pointers must be sorted in ascending order")
+        );
+        assert_eq!(
+            CsrMatrix::new(1, 1, vec![0, 1], vec![-1], vec![0.0], None).err(),
+            Some("column indices must be ≥ 0")
+        );
+        assert_eq!(
+            CsrMatrix::new(1, 1, vec![0, 1], vec![2], vec![0.0], None).err(),
+            Some("column indices must be < ncol")
+        );
+        // ┌       ┐
+        // │ 10 20 │
+        // └       ┘
+        let values = vec![
+            10.0, 20.0, // i=0, p=(0),1
+        ]; //                   p=(2)
+        let col_indices = vec![1, 0]; // << incorrect, should be [0, 1]
+        let row_pointers = vec![0, 2];
+        assert_eq!(
+            CsrMatrix::new(1, 2, row_pointers, col_indices, values, None).err(),
+            Some("column indices must be sorted in ascending order (within their row)")
+        );
+    }
+
+    #[test]
+    fn new_works() {
+        let (_, _, csr_correct, _) = Samples::rectangular_1x2(false, false, false);
+        let csr = CsrMatrix::new(1, 2, vec![0, 2], vec![0, 1], vec![10.0, 20.0], None).unwrap();
+        assert_eq!(csr.symmetry, None);
+        assert_eq!(csr.nrow, 1);
+        assert_eq!(csr.ncol, 2);
+        assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
+        assert_eq!(&csr.col_indices, &csr_correct.col_indices);
+        assert_eq!(&csr.values, &csr_correct.values);
+    }
+
+    #[test]
     fn from_coo_captures_errors() {
         let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
-        assert_eq!(
-            CsrMatrix::from_coo(&coo).err(),
-            Some("COO matrix: pos = nnz must be ≥ 1")
-        );
+        assert_eq!(CsrMatrix::from_coo(&coo).err(), Some("COO to CSR requires nnz > 0"));
     }
 
     #[test]
@@ -695,12 +869,23 @@ mod tests {
             Samples::rectangular_3x4(),
         ] {
             let csr = CsrMatrix::from_coo(&coo).unwrap();
-            csr.check_dimensions().unwrap();
             assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
             let nnz = csr.row_pointers[csr.nrow] as usize;
             assert_eq!(&csr.col_indices[0..nnz], &csr_correct.col_indices);
             vec_approx_eq(&csr.values[0..nnz], &csr_correct.values, 1e-15);
         }
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn update_from_coo_captures_errors() {
+        let (coo, _, _, _) = Samples::rectangular_1x2(false, false, false);
+        let mut csr = CsrMatrix::from_coo(&coo).unwrap();
+        let sym = Some(Symmetry::General(Storage::Lower));
+        assert_eq!(csr.update_from_coo(&CooMatrix { symmetry: sym,  nrow: 1, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0], one_based: false }).err(), Some("coo.symmetry must be equal to csr.symmetry"));
+        assert_eq!(csr.update_from_coo(&CooMatrix { symmetry: None, nrow: 2, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0], one_based: false }).err(), Some("coo.nrow must be equal to csr.nrow"));
+        assert_eq!(csr.update_from_coo(&CooMatrix { symmetry: None, nrow: 1, ncol: 1, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0], one_based: false }).err(), Some("coo.ncol must be equal to csr.ncol"));
+        assert_eq!(csr.update_from_coo(&CooMatrix { symmetry: None, nrow: 1, ncol: 2, nnz: 3, max_nnz: 3, indices_i: vec![0,0,0], indices_j: vec![0,0,0], values: vec![0.0,0.0,0.0], one_based: false }).err(), Some("coo.nnz must be equal to nnz(dup) = self.col_indices.len() = csr.values.len()"));
     }
 
     #[test]
@@ -773,35 +958,6 @@ mod tests {
     }
 
     #[test]
-    fn check_dimensions_works() {
-        let mut csr = CsrMatrix {
-            symmetry: None,
-            nrow: 0,
-            ncol: 0,
-            row_pointers: Vec::new(),
-            col_indices: Vec::new(),
-            values: Vec::new(),
-        };
-        assert_eq!(csr.check_dimensions().err(), Some("nrow must be ≥ 1"));
-        csr.nrow = 2;
-        csr.ncol = 0;
-        assert_eq!(csr.check_dimensions().err(), Some("ncol must be ≥ 1"));
-        csr.ncol = 4;
-        assert_eq!(
-            csr.check_dimensions().err(),
-            Some("row_pointers.len() must be = nrow + 1")
-        );
-        csr.row_pointers = vec![0, 0, 0];
-        assert_eq!(csr.check_dimensions().err(), Some("nnz must be ≥ 1"));
-        csr.row_pointers = vec![0, 0, 1];
-        assert_eq!(csr.check_dimensions().err(), Some("col_indices.len() must be ≥ nnz"));
-        csr.col_indices = vec![0];
-        assert_eq!(csr.check_dimensions().err(), Some("values.len() must be ≥ nnz"));
-        csr.values = vec![0.0];
-        assert_eq!(csr.check_dimensions().err(), None);
-    }
-
-    #[test]
     fn to_matrix_fails_on_wrong_dims() {
         // 10.0 20.0
         let csr = CsrMatrix {
@@ -814,8 +970,8 @@ mod tests {
         };
         let mut a_3x1 = Matrix::new(3, 1);
         let mut a_1x3 = Matrix::new(1, 3);
-        assert_eq!(csr.to_matrix(&mut a_3x1), Err("wrong matrix dimensions"));
-        assert_eq!(csr.to_matrix(&mut a_1x3), Err("wrong matrix dimensions"));
+        assert_eq!(csr.to_dense(&mut a_3x1), Err("wrong matrix dimensions"));
+        assert_eq!(csr.to_dense(&mut a_1x3), Err("wrong matrix dimensions"));
     }
 
     #[test]
@@ -830,7 +986,7 @@ mod tests {
             values: vec![10.0, 20.0],
         };
         let mut a = Matrix::new(1, 2);
-        csr.to_matrix(&mut a).unwrap();
+        csr.to_dense(&mut a).unwrap();
         let correct = "┌       ┐\n\
                        │ 10 20 │\n\
                        └       ┘";
@@ -863,7 +1019,7 @@ mod tests {
 
         // covert to dense
         let mut a = Matrix::new(5, 5);
-        csr.to_matrix(&mut a).unwrap();
+        csr.to_dense(&mut a).unwrap();
         let correct = "┌                ┐\n\
                        │  2  3  0  0  0 │\n\
                        │  3  0  4  0  6 │\n\
@@ -873,11 +1029,11 @@ mod tests {
                        └                ┘";
         assert_eq!(format!("{}", a), correct);
         // call to_matrix again to make sure the matrix is filled with zeros before the sum
-        csr.to_matrix(&mut a).unwrap();
+        csr.to_dense(&mut a).unwrap();
         assert_eq!(format!("{}", a), correct);
 
         // use as_matrix
-        let b = csr.as_matrix().unwrap();
+        let b = csr.as_dense();
         assert_eq!(format!("{}", b), correct);
     }
 
@@ -891,7 +1047,7 @@ mod tests {
             col_indices: vec![0, 1, 2, 3, 4, 1, 2, 3, 4],
             values: vec![9.0, 1.5, 6.0, 0.75, 3.0, 0.5, 12.0, 0.625, 16.0],
         };
-        let a = csr.as_matrix().unwrap();
+        let a = csr.as_dense();
         let correct = "┌                               ┐\n\
                        │     9   1.5     6  0.75     3 │\n\
                        │   1.5   0.5     0     0     0 │\n\
@@ -912,7 +1068,7 @@ mod tests {
             col_indices: vec![0, 0, 1, 0, 2, 0, 3, 0, 4],
             values: vec![9.0, 1.5, 0.5, 6.0, 12.0, 0.75, 0.625, 3.0, 16.0],
         };
-        let a = csr.as_matrix().unwrap();
+        let a = csr.as_dense();
         let correct = "┌                               ┐\n\
                        │     9   1.5     6  0.75     3 │\n\
                        │   1.5   0.5     0     0     0 │\n\
@@ -925,9 +1081,9 @@ mod tests {
 
     #[test]
     fn mat_vec_mul_works() {
-        //  5.0, -2.0, 0.0, 1.0,
-        // 10.0, -4.0, 0.0, 2.0,
-        // 15.0, -6.0, 0.0, 3.0,
+        //   5  -2  .  1
+        //  10  -4  .  2
+        //  15  -6  .  3
         let (_, _, csr, _) = Samples::rectangular_3x4();
         let u = Vector::from(&[1.0, 3.0, 8.0, 5.0]);
         let mut v = Vector::new(csr.nrow);
@@ -937,5 +1093,26 @@ mod tests {
         // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
         csr.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         vec_approx_eq(v.as_data(), correct, 1e-15);
+    }
+
+    #[test]
+    fn getters_are_correct() {
+        let (_, _, csr, _) = Samples::rectangular_1x2(false, false, false);
+        assert_eq!(csr.get_info(), (1, 2, 2, None));
+        assert_eq!(csr.get_row_pointers(), &[0, 2]);
+        assert_eq!(csr.get_col_indices(), &[0, 1]);
+        assert_eq!(csr.get_values(), &[10.0, 20.0]);
+
+        let mut csr = CsrMatrix {
+            symmetry: None,
+            nrow: 1,
+            ncol: 2,
+            values: vec![10.0, 20.0],
+            col_indices: vec![0, 1],
+            row_pointers: vec![0, 2],
+        };
+        let x = csr.get_values_mut();
+        x.reverse();
+        assert_eq!(csr.get_values(), &[20.0, 10.0]);
     }
 }

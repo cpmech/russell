@@ -23,10 +23,10 @@ struct InterfaceUMFPACK {
     void *numeric;
 
     /// @brief indicates that the initialization has been completed
-    int32_t initialization_completed;
+    C_BOOL initialization_completed;
 
     /// @brief Indicates that the factorization (at least once) has been completed
-    int32_t factorization_completed;
+    C_BOOL factorization_completed;
 };
 
 /// @brief Sets verbose mode
@@ -109,10 +109,10 @@ int32_t solver_umfpack_factorize(struct InterfaceUMFPACK *solver,
                                  int32_t ordering,
                                  int32_t scaling,
                                  // requests
-                                 int32_t compute_determinant,
-                                 int32_t verbose,
+                                 C_BOOL compute_determinant,
+                                 C_BOOL verbose,
                                  // matrix config
-                                 int32_t enforce_unsymmetric_strategy,
+                                 C_BOOL enforce_unsymmetric_strategy,
                                  int32_t ndim,
                                  // matrix
                                  const int32_t *col_pointers,
@@ -200,7 +200,7 @@ int32_t solver_umfpack_solve(struct InterfaceUMFPACK *solver,
                              const int32_t *col_pointers,
                              const int32_t *row_indices,
                              const double *values,
-                             int32_t verbose) {
+                             C_BOOL verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }

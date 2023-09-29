@@ -62,13 +62,13 @@ pub struct CscMatrix {
     ///
     /// **Note:** `None` means unsymmetric matrix or unspecified symmetry,
     /// where the storage is automatically `Full`.
-    pub symmetry: Option<Symmetry>,
+    pub(crate) symmetry: Option<Symmetry>,
 
     /// Holds the number of rows (must fit i32)
-    pub nrow: usize,
+    pub(crate) nrow: usize,
 
     /// Holds the number of columns (must fit i32)
-    pub ncol: usize,
+    pub(crate) ncol: usize,
 
     /// Defines the column pointers array with size = ncol + 1
     ///
@@ -76,7 +76,7 @@ pub struct CscMatrix {
     /// col_pointers.len() = ncol + 1
     /// nnz = col_pointers[ncol]
     /// ```
-    pub col_pointers: Vec<i32>,
+    pub(crate) col_pointers: Vec<i32>,
 
     /// Defines the row indices array with size = nnz_dup (number of non-zeros with duplicates)
     ///
@@ -84,7 +84,7 @@ pub struct CscMatrix {
     /// nnz_dup ≥ nnz
     /// row_indices.len() = nnz_dup
     /// ```
-    pub row_indices: Vec<i32>,
+    pub(crate) row_indices: Vec<i32>,
 
     /// Defines the values array with size = nnz_dup (number of non-zeros with duplicates)
     ///
@@ -92,43 +92,95 @@ pub struct CscMatrix {
     /// nnz_dup ≥ nnz
     /// values.len() = nnz_dup
     /// ```
-    pub values: Vec<f64>,
+    pub(crate) values: Vec<f64>,
 }
 
 impl CscMatrix {
-    /// Checks the dimension of the arrays in the CSC matrix
+    /// Creates a new CSC matrix from data arrays
     ///
-    /// The following conditions must be satisfied (nnz is the number of non-zeros with duplicates):
+    /// **Note:** The column pointers and row indices must be **sorted** in ascending order.
+    ///
+    /// # Input
+    ///
+    /// * `nrow` -- (≥ 1) number of rows
+    /// * `ncol` -- (≥ 1) number of columns
+    /// * `col_pointers` -- (len = ncol + 1) columns pointers with the last entry corresponding
+    ///   to the number of non-zero values (sorted)
+    /// * `row_indices` -- (len = nnz) row indices (sorted)
+    /// * `values` -- the non-zero components of the matrix
+    ///
+    /// The following conditions must be satisfied (nnz is the number of non-zeros
+    /// and nnz_dup is the number of non-zeros with possible duplicates):
     ///
     /// ```text
     /// nrow ≥ 1
     /// ncol ≥ 1
+    /// col_pointers.len() = ncol + 1
+    /// row_indices.len() = nnz_dup
+    /// values.len() = nnz_dup
     /// nnz = col_pointers[ncol] ≥ 1
-    /// col_pointers.len() == ncol + 1
-    /// row_indices.len() == nnz_dup ≥ nnz
-    /// values.len() == nnz_dup ≥ nnz
+    /// nnz_dup ≥ nnz
     /// ```
-    pub fn check_dimensions(&self) -> Result<(), StrError> {
-        if self.nrow < 1 {
+    pub fn new(
+        nrow: usize,
+        ncol: usize,
+        col_pointers: Vec<i32>,
+        row_indices: Vec<i32>,
+        values: Vec<f64>,
+        symmetry: Option<Symmetry>,
+    ) -> Result<Self, StrError> {
+        if nrow < 1 {
             return Err("nrow must be ≥ 1");
         }
-        if self.ncol < 1 {
+        if ncol < 1 {
             return Err("ncol must be ≥ 1");
         }
-        if self.col_pointers.len() != self.ncol + 1 {
+        if col_pointers.len() != ncol + 1 {
             return Err("col_pointers.len() must be = ncol + 1");
         }
-        let nnz = self.col_pointers[self.ncol];
+        let nnz = col_pointers[ncol];
         if nnz < 1 {
-            return Err("nnz must be ≥ 1");
+            return Err("nnz = col_pointers[ncol] must be ≥ 1");
         }
-        if self.row_indices.len() < nnz as usize {
+        if row_indices.len() < nnz as usize {
             return Err("row_indices.len() must be ≥ nnz");
         }
-        if self.values.len() < nnz as usize {
+        if values.len() < nnz as usize {
             return Err("values.len() must be ≥ nnz");
         }
-        Ok(())
+        let m = to_i32(nrow);
+        for j in 0..ncol {
+            if col_pointers[j] < 0 {
+                return Err("col pointers must be ≥ 0");
+            }
+            if col_pointers[j] > col_pointers[j + 1] {
+                return Err("col pointers must be sorted in ascending order");
+            }
+            let start = col_pointers[j] as usize;
+            let end = col_pointers[j + 1] as usize;
+            for p in start..end {
+                let i = row_indices[p];
+                if i < 0 {
+                    return Err("row indices must be ≥ 0");
+                }
+                if i >= m {
+                    return Err("row indices must be < nrow");
+                }
+                if p > start {
+                    if row_indices[p - 1] > row_indices[p] {
+                        return Err("row indices must be sorted in ascending order (within their column)");
+                    }
+                }
+            }
+        }
+        Ok(CscMatrix {
+            symmetry,
+            nrow,
+            ncol,
+            col_pointers,
+            row_indices,
+            values,
+        })
     }
 
     /// Creates a new CSC matrix from a COO matrix
@@ -177,14 +229,16 @@ impl CscMatrix {
     ///     let correct_p = &[0, 2, 3, 6];
     ///
     ///     // check
-    ///     assert_eq!(&csc.col_pointers, correct_p);
-    ///     assert_eq!(&csc.row_indices, correct_i);
-    ///     assert_eq!(&csc.values, correct_v);
+    ///     assert_eq!(csc.get_col_pointers(), correct_p);
+    ///     assert_eq!(csc.get_row_indices(), correct_i);
+    ///     assert_eq!(csc.get_values(), correct_v);
     ///     Ok(())
     /// }
     /// ```
     pub fn from_coo(coo: &CooMatrix) -> Result<Self, StrError> {
-        coo.check_dimensions_ready()?;
+        if coo.nnz < 1 {
+            return Err("COO to CSC requires nnz > 0");
+        }
         let mut csc = CscMatrix {
             symmetry: coo.symmetry,
             nrow: coo.nrow,
@@ -199,8 +253,8 @@ impl CscMatrix {
 
     /// Updates this CSC matrix from a COO matrix with a compatible structure
     ///
-    /// **Note:** The COO matrix must match the symmetry, nrow, and ncol values.
-    /// Also, the `pos` (nnz) value in the COO matrix must match `row_indices.len()`.
+    /// **Note:** The COO matrix must match the symmetry, nrow, and ncol values of the CSC matrix.
+    /// Also, the `nnz` (may include duplicates) of the COO matrix must match `row_indices.len() = values.len()`.
     ///
     /// **Note:** The final nnz may be smaller than the initial nnz because duplicates
     /// may have been summed up. The final nnz is available as `nnz = col_pointers[ncol]`.
@@ -215,11 +269,8 @@ impl CscMatrix {
         if coo.ncol != self.ncol {
             return Err("coo.ncol must be equal to csc.ncol");
         }
-        if coo.nnz != self.row_indices.len() {
-            return Err("coo.nnz must be equal to csc.row_indices.len()");
-        }
         if coo.nnz != self.values.len() {
-            return Err("coo.nnz must be equal to csc.values.len()");
+            return Err("coo.nnz must be equal to nnz(dup) = csc.row_indices.len() = csc.values.len()");
         }
 
         // call UMFPACK to convert COO to CSC
@@ -236,9 +287,9 @@ impl CscMatrix {
                     self.col_pointers.as_mut_ptr(),
                     self.row_indices.as_mut_ptr(),
                     self.values.as_mut_ptr(),
-                    to_i32(coo.nrow)?,
-                    to_i32(coo.ncol)?,
-                    to_i32(coo.nnz)?,
+                    to_i32(coo.nrow),
+                    to_i32(coo.ncol),
+                    to_i32(coo.nnz),
                     indices_i.as_ptr(),
                     indices_j.as_ptr(),
                     coo.values.as_ptr(),
@@ -250,9 +301,9 @@ impl CscMatrix {
                     self.col_pointers.as_mut_ptr(),
                     self.row_indices.as_mut_ptr(),
                     self.values.as_mut_ptr(),
-                    to_i32(coo.nrow)?,
-                    to_i32(coo.ncol)?,
-                    to_i32(coo.nnz)?,
+                    to_i32(coo.nrow),
+                    to_i32(coo.ncol),
+                    to_i32(coo.nnz),
                     coo.indices_i.as_ptr(),
                     coo.indices_j.as_ptr(),
                     coo.values.as_ptr(),
@@ -277,7 +328,6 @@ impl CscMatrix {
         // * Upgrading i32 to usize is OK (the opposite is not OK => use to_i32)
 
         // check and read in the dimensions
-        csr.check_dimensions()?;
         let nrow = csr.nrow as usize;
         let ncol = csr.ncol as usize;
         let nnz = csr.row_pointers[nrow] as usize;
@@ -315,14 +365,14 @@ impl CscMatrix {
             bp[j] = sum;
             sum += temp;
         }
-        bp[ncol] = to_i32(nnz)?;
+        bp[ncol] = to_i32(nnz);
 
         // write aj and ax into bi and bx (will use bp as workspace)
         for i in 0..nrow {
             for p in ap[i]..ap[i + 1] {
                 let j = aj[p as usize] as usize;
                 let dest = bp[j] as usize;
-                bi[dest] = to_i32(i)?;
+                bi[dest] = to_i32(i);
                 bx[dest] = ax[p as usize];
                 bp[j] += 1;
             }
@@ -357,33 +407,33 @@ impl CscMatrix {
     ///     // │  0  0  1  0  0 │
     ///     // │  0  4  2  0  1 │
     ///     // └                ┘
-    ///     let csc = CscMatrix {
-    ///         symmetry: None,
-    ///         nrow: 5,
-    ///         ncol: 5,
-    ///         col_pointers: vec![0, 2, 5, 9, 10, 12],
-    ///         row_indices: vec![
-    ///             //                             p
-    ///             0, 1, //       j = 0, count =  0, 1,
-    ///             0, 2, 4, //    j = 1, count =  2, 3, 4,
-    ///             1, 2, 3, 4, // j = 2, count =  5, 6, 7, 8,
-    ///             2, //          j = 3, count =  9,
-    ///             1, 4, //       j = 4, count = 10, 11,
-    ///                //                         12
-    ///         ],
-    ///         values: vec![
-    ///             //                                      p
-    ///             2.0, 3.0, //            j = 0, count =  0, 1,
-    ///             3.0, -1.0, 4.0, //      j = 1, count =  2, 3, 4,
-    ///             4.0, -3.0, 1.0, 2.0, // j = 2, count =  5, 6, 7, 8,
-    ///             2.0, //                 j = 3, count =  9,
-    ///             6.0, 1.0, //            j = 4, count = 10, 11,
-    ///                  //                                12
-    ///         ],
-    ///     };
+    ///     let nrow = 5;
+    ///     let ncol = 5;
+    ///     let col_pointers = vec![0, 2, 5, 9, 10, 12];
+    ///     let row_indices = vec![
+    ///         //                             p
+    ///         0, 1, //       j = 0, count =  0, 1,
+    ///         0, 2, 4, //    j = 1, count =  2, 3, 4,
+    ///         1, 2, 3, 4, // j = 2, count =  5, 6, 7, 8,
+    ///         2, //          j = 3, count =  9,
+    ///         1, 4, //       j = 4, count = 10, 11,
+    ///            //                         12
+    ///     ];
+    ///     let values = vec![
+    ///         //                                      p
+    ///         2.0, 3.0, //            j = 0, count =  0, 1,
+    ///         3.0, -1.0, 4.0, //      j = 1, count =  2, 3, 4,
+    ///         4.0, -3.0, 1.0, 2.0, // j = 2, count =  5, 6, 7, 8,
+    ///         2.0, //                 j = 3, count =  9,
+    ///         6.0, 1.0, //            j = 4, count = 10, 11,
+    ///              //                                12
+    ///     ];
+    ///     let symmetry = None;
+    ///     let csc = CscMatrix::new(nrow, ncol,
+    ///         col_pointers, row_indices, values, symmetry)?;
     ///
     ///     // covert to dense
-    ///     let a = csc.as_matrix()?;
+    ///     let a = csc.as_dense();
     ///     let correct = "┌                ┐\n\
     ///                    │  2  3  0  0  0 │\n\
     ///                    │  3  0  4  0  6 │\n\
@@ -395,10 +445,10 @@ impl CscMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn as_matrix(&self) -> Result<Matrix, StrError> {
+    pub fn as_dense(&self) -> Matrix {
         let mut a = Matrix::new(self.nrow, self.ncol);
-        self.to_matrix(&mut a).unwrap();
-        Ok(a)
+        self.to_dense(&mut a).unwrap();
+        a
     }
 
     /// Converts this CSC matrix to a dense matrix
@@ -423,34 +473,34 @@ impl CscMatrix {
     ///     // │  0  0  1  0  0 │
     ///     // │  0  4  2  0  1 │
     ///     // └                ┘
-    ///     let csc = CscMatrix {
-    ///         symmetry: None,
-    ///         nrow: 5,
-    ///         ncol: 5,
-    ///         col_pointers: vec![0, 2, 5, 9, 10, 12],
-    ///         row_indices: vec![
-    ///             //                             p
-    ///             0, 1, //       j = 0, count =  0, 1,
-    ///             0, 2, 4, //    j = 1, count =  2, 3, 4,
-    ///             1, 2, 3, 4, // j = 2, count =  5, 6, 7, 8,
-    ///             2, //          j = 3, count =  9,
-    ///             1, 4, //       j = 4, count = 10, 11,
-    ///                //                         12
-    ///         ],
-    ///         values: vec![
-    ///             //                                      p
-    ///             2.0, 3.0, //            j = 0, count =  0, 1,
-    ///             3.0, -1.0, 4.0, //      j = 1, count =  2, 3, 4,
-    ///             4.0, -3.0, 1.0, 2.0, // j = 2, count =  5, 6, 7, 8,
-    ///             2.0, //                 j = 3, count =  9,
-    ///             6.0, 1.0, //            j = 4, count = 10, 11,
-    ///                  //                                12
-    ///         ],
-    ///     };
+    ///     let nrow = 5;
+    ///     let ncol = 5;
+    ///     let col_pointers = vec![0, 2, 5, 9, 10, 12];
+    ///     let row_indices = vec![
+    ///         //                             p
+    ///         0, 1, //       j = 0, count =  0, 1,
+    ///         0, 2, 4, //    j = 1, count =  2, 3, 4,
+    ///         1, 2, 3, 4, // j = 2, count =  5, 6, 7, 8,
+    ///         2, //          j = 3, count =  9,
+    ///         1, 4, //       j = 4, count = 10, 11,
+    ///            //                         12
+    ///     ];
+    ///     let values = vec![
+    ///         //                                      p
+    ///         2.0, 3.0, //            j = 0, count =  0, 1,
+    ///         3.0, -1.0, 4.0, //      j = 1, count =  2, 3, 4,
+    ///         4.0, -3.0, 1.0, 2.0, // j = 2, count =  5, 6, 7, 8,
+    ///         2.0, //                 j = 3, count =  9,
+    ///         6.0, 1.0, //            j = 4, count = 10, 11,
+    ///              //                                12
+    ///     ];
+    ///     let symmetry = None;
+    ///     let csc = CscMatrix::new(nrow, ncol,
+    ///         col_pointers, row_indices, values, symmetry)?;
     ///
     ///     // covert to dense
     ///     let mut a = Matrix::new(5, 5);
-    ///     csc.to_matrix(&mut a)?;
+    ///     csc.to_dense(&mut a)?;
     ///     let correct = "┌                ┐\n\
     ///                    │  2  3  0  0  0 │\n\
     ///                    │  3  0  4  0  6 │\n\
@@ -462,8 +512,7 @@ impl CscMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn to_matrix(&self, a: &mut Matrix) -> Result<(), StrError> {
-        self.check_dimensions()?;
+    pub fn to_dense(&self, a: &mut Matrix) -> Result<(), StrError> {
         let (m, n) = a.dims();
         if m != self.nrow || n != self.ncol {
             return Err("wrong matrix dimensions");
@@ -500,7 +549,6 @@ impl CscMatrix {
     ///
     /// * `v` -- Vector with dimension equal to the number of rows of the matrix
     pub fn mat_vec_mul(&self, v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
-        self.check_dimensions()?;
         if u.dim() != self.ncol {
             return Err("u.ndim must equal ncol");
         }
@@ -524,6 +572,67 @@ impl CscMatrix {
         }
         Ok(())
     }
+
+    /// Returns information about the dimensions and symmetry type
+    ///
+    /// Returns `(nrow, ncol, nnz, symmetry)`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_sparse::prelude::*;
+    /// use russell_sparse::StrError;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // ┌       ┐
+    ///     // │ 10 20 │
+    ///     // └       ┘
+    ///     let col_pointers = vec![0, 1, 2];
+    ///     let row_indices = vec![0, 0];
+    ///     let values = vec![10.0, 20.0];
+    ///     let csc = CscMatrix::new(1, 2,
+    ///         col_pointers, row_indices, values, None)?;
+    ///     let (nrow, ncol, nnz, symmetry) = csc.get_info();
+    ///     assert_eq!(nrow, 1);
+    ///     assert_eq!(ncol, 2);
+    ///     assert_eq!(nnz, 2);
+    ///     assert_eq!(symmetry, None);
+    ///     let a = csc.as_dense();
+    ///     let correct = "┌       ┐\n\
+    ///                    │ 10 20 │\n\
+    ///                    └       ┘";
+    ///     assert_eq!(format!("{}", a), correct);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn get_info(&self) -> (usize, usize, usize, Option<Symmetry>) {
+        (
+            self.nrow,
+            self.ncol,
+            self.col_pointers[self.ncol] as usize,
+            self.symmetry,
+        )
+    }
+
+    /// Get an access to the column pointers
+    pub fn get_col_pointers(&self) -> &[i32] {
+        &self.col_pointers
+    }
+
+    /// Get an access to the row indices
+    pub fn get_row_indices(&self) -> &[i32] {
+        &self.row_indices
+    }
+
+    /// Get an access to the values
+    pub fn get_values(&self) -> &[f64] {
+        &self.values
+    }
+
+    /// Get a mutable access to the values
+    pub fn get_values_mut(&mut self) -> &mut [f64] {
+        &mut self.values
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -536,12 +645,78 @@ mod tests {
     use russell_lab::{Matrix, Vector};
 
     #[test]
+    fn new_captures_errors() {
+        assert_eq!(
+            CscMatrix::new(0, 1, vec![0], vec![], vec![], None).err(),
+            Some("nrow must be ≥ 1")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 0, vec![0], vec![], vec![], None).err(),
+            Some("ncol must be ≥ 1")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 1, vec![0], vec![], vec![], None).err(),
+            Some("col_pointers.len() must be = ncol + 1")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 1, vec![0, 0], vec![], vec![], None).err(),
+            Some("nnz = col_pointers[ncol] must be ≥ 1")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 1, vec![0, 1], vec![], vec![], None).err(),
+            Some("row_indices.len() must be ≥ nnz")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 1, vec![0, 1], vec![0], vec![], None).err(),
+            Some("values.len() must be ≥ nnz")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 1, vec![-1, 1], vec![0], vec![0.0], None).err(),
+            Some("col pointers must be ≥ 0")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 1, vec![2, 1], vec![0], vec![0.0], None).err(),
+            Some("col pointers must be sorted in ascending order")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 1, vec![0, 1], vec![-1], vec![0.0], None).err(),
+            Some("row indices must be ≥ 0")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 1, vec![0, 1], vec![2], vec![0.0], None).err(),
+            Some("row indices must be < nrow")
+        );
+        // ┌    ┐
+        // │ 10 │
+        // │ 20 │
+        // └    ┘
+        let values = vec![
+            10.0, 20.0, // j=0 p=(0),1
+        ]; //                  p=(2)
+        let row_indices = vec![1, 0]; // << incorrect, should be [0, 1]
+        let col_pointers = vec![0, 2];
+        assert_eq!(
+            CscMatrix::new(2, 1, col_pointers, row_indices, values, None).err(),
+            Some("row indices must be sorted in ascending order (within their column)")
+        );
+    }
+
+    #[test]
+    fn new_works() {
+        let (_, csc_correct, _, _) = Samples::rectangular_1x2(false, false, false);
+        let csc = CscMatrix::new(1, 2, vec![0, 1, 2], vec![0, 0], vec![10.0, 20.0], None).unwrap();
+        assert_eq!(csc.symmetry, None);
+        assert_eq!(csc.nrow, 1);
+        assert_eq!(csc.ncol, 2);
+        assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
+        assert_eq!(&csc.row_indices, &csc_correct.row_indices);
+        assert_eq!(&csc.values, &csc_correct.values);
+    }
+
+    #[test]
     fn from_coo_captures_errors() {
         let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
-        assert_eq!(
-            CscMatrix::from_coo(&coo).err(),
-            Some("COO matrix: pos = nnz must be ≥ 1")
-        );
+        assert_eq!(CscMatrix::from_coo(&coo).err(), Some("COO to CSC requires nnz > 0"));
     }
 
     #[test]
@@ -625,12 +800,23 @@ mod tests {
             Samples::rectangular_3x4(),
         ] {
             let csc = CscMatrix::from_coo(&coo).unwrap();
-            csc.check_dimensions().unwrap();
             assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
             let nnz = csc.col_pointers[csc.ncol] as usize;
             assert_eq!(&csc.row_indices[0..nnz], &csc_correct.row_indices);
             vec_approx_eq(&csc.values[0..nnz], &csc_correct.values, 1e-15);
         }
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn update_from_coo_captures_errors() {
+        let (coo, _, _, _) = Samples::rectangular_1x2(false, false, false);
+        let mut csc = CscMatrix::from_coo(&coo).unwrap();
+        let sym = Some(Symmetry::General(Storage::Lower));
+        assert_eq!(csc.update_from_coo(&CooMatrix { symmetry: sym,  nrow: 1, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0], one_based: false }).err(), Some("coo.symmetry must be equal to csc.symmetry"));
+        assert_eq!(csc.update_from_coo(&CooMatrix { symmetry: None, nrow: 2, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0], one_based: false }).err(), Some("coo.nrow must be equal to csc.nrow"));
+        assert_eq!(csc.update_from_coo(&CooMatrix { symmetry: None, nrow: 1, ncol: 1, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0], one_based: false }).err(), Some("coo.ncol must be equal to csc.ncol"));
+        assert_eq!(csc.update_from_coo(&CooMatrix { symmetry: None, nrow: 1, ncol: 2, nnz: 3, max_nnz: 3, indices_i: vec![0,0,0], indices_j: vec![0,0,0], values: vec![0.0,0.0,0.0], one_based: false }).err(), Some("coo.nnz must be equal to nnz(dup) = csc.row_indices.len() = csc.values.len()"));
     }
 
     #[test]
@@ -703,35 +889,6 @@ mod tests {
     }
 
     #[test]
-    fn check_dimensions_works() {
-        let mut csc = CscMatrix {
-            symmetry: None,
-            nrow: 0,
-            ncol: 0,
-            col_pointers: Vec::new(),
-            row_indices: Vec::new(),
-            values: Vec::new(),
-        };
-        assert_eq!(csc.check_dimensions().err(), Some("nrow must be ≥ 1"));
-        csc.nrow = 2;
-        csc.ncol = 0;
-        assert_eq!(csc.check_dimensions().err(), Some("ncol must be ≥ 1"));
-        csc.ncol = 4;
-        assert_eq!(
-            csc.check_dimensions().err(),
-            Some("col_pointers.len() must be = ncol + 1")
-        );
-        csc.col_pointers = vec![0, 0, 0, 0, 0];
-        assert_eq!(csc.check_dimensions().err(), Some("nnz must be ≥ 1"));
-        csc.col_pointers = vec![0, 0, 0, 0, 1];
-        assert_eq!(csc.check_dimensions().err(), Some("row_indices.len() must be ≥ nnz"));
-        csc.row_indices = vec![0];
-        assert_eq!(csc.check_dimensions().err(), Some("values.len() must be ≥ nnz"));
-        csc.values = vec![0.0];
-        assert_eq!(csc.check_dimensions().err(), None);
-    }
-
-    #[test]
     fn to_matrix_fails_on_wrong_dims() {
         // 10.0 20.0       << (1 x 2) matrix
         let csc = CscMatrix {
@@ -744,8 +901,8 @@ mod tests {
         };
         let mut a_3x1 = Matrix::new(3, 1);
         let mut a_1x3 = Matrix::new(1, 3);
-        assert_eq!(csc.to_matrix(&mut a_3x1), Err("wrong matrix dimensions"));
-        assert_eq!(csc.to_matrix(&mut a_1x3), Err("wrong matrix dimensions"));
+        assert_eq!(csc.to_dense(&mut a_3x1), Err("wrong matrix dimensions"));
+        assert_eq!(csc.to_dense(&mut a_1x3), Err("wrong matrix dimensions"));
     }
 
     #[test]
@@ -760,7 +917,7 @@ mod tests {
             values: vec![10.0, 20.0],
         };
         let mut a = Matrix::new(1, 2);
-        csc.to_matrix(&mut a).unwrap();
+        csc.to_dense(&mut a).unwrap();
         let correct = "┌       ┐\n\
                        │ 10 20 │\n\
                        └       ┘";
@@ -794,7 +951,7 @@ mod tests {
 
         // covert to dense
         let mut a = Matrix::new(5, 5);
-        csc.to_matrix(&mut a).unwrap();
+        csc.to_dense(&mut a).unwrap();
         let correct = "┌                ┐\n\
                        │  2  3  0  0  0 │\n\
                        │  3  0  4  0  6 │\n\
@@ -804,11 +961,11 @@ mod tests {
                        └                ┘";
         assert_eq!(format!("{}", a), correct);
         // call to_matrix again to make sure the matrix is filled with zeros before the sum
-        csc.to_matrix(&mut a).unwrap();
+        csc.to_dense(&mut a).unwrap();
         assert_eq!(format!("{}", a), correct);
 
         // use as_matrix
-        let b = csc.as_matrix().unwrap();
+        let b = csc.as_dense();
         assert_eq!(format!("{}", b), correct);
     }
 
@@ -822,7 +979,7 @@ mod tests {
             row_indices: vec![0, 0, 1, 0, 2, 0, 3, 0, 4],
             values: vec![9.0, 1.5, 0.5, 6.0, 12.0, 0.75, 0.625, 3.0, 16.0],
         };
-        let a = csc.as_matrix().unwrap();
+        let a = csc.as_dense();
         let correct = "┌                               ┐\n\
                        │     9   1.5     6  0.75     3 │\n\
                        │   1.5   0.5     0     0     0 │\n\
@@ -843,7 +1000,7 @@ mod tests {
             row_indices: vec![0, 1, 2, 3, 4, 1, 2, 3, 4],
             values: vec![9.0, 1.5, 6.0, 0.75, 3.0, 0.5, 12.0, 0.625, 16.0],
         };
-        let a = csc.as_matrix().unwrap();
+        let a = csc.as_dense();
         let correct = "┌                               ┐\n\
                        │     9   1.5     6  0.75     3 │\n\
                        │   1.5   0.5     0     0     0 │\n\
@@ -856,9 +1013,9 @@ mod tests {
 
     #[test]
     fn mat_vec_mul_works() {
-        //  5.0, -2.0, 0.0, 1.0,
-        // 10.0, -4.0, 0.0, 2.0,
-        // 15.0, -6.0, 0.0, 3.0,
+        //   5  -2  .  1
+        //  10  -4  .  2
+        //  15  -6  .  3
         let (_, csc, _, _) = Samples::rectangular_3x4();
         let u = Vector::from(&[1.0, 3.0, 8.0, 5.0]);
         let mut v = Vector::new(csc.nrow);
@@ -868,5 +1025,26 @@ mod tests {
         // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
         csc.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         vec_approx_eq(v.as_data(), correct, 1e-15);
+    }
+
+    #[test]
+    fn getters_are_correct() {
+        let (_, csc, _, _) = Samples::rectangular_1x2(false, false, false);
+        assert_eq!(csc.get_info(), (1, 2, 2, None));
+        assert_eq!(csc.get_col_pointers(), &[0, 1, 2]);
+        assert_eq!(csc.get_row_indices(), &[0, 0]);
+        assert_eq!(csc.get_values(), &[10.0, 20.0]);
+
+        let mut csc = CscMatrix {
+            symmetry: None,
+            nrow: 1,
+            ncol: 2,
+            values: vec![10.0, 20.0],
+            row_indices: vec![0, 0],
+            col_pointers: vec![0, 1, 2],
+        };
+        let x = csc.get_values_mut();
+        x.reverse();
+        assert_eq!(csc.get_values(), &[20.0, 10.0]);
     }
 }

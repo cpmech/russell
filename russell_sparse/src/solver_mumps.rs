@@ -1,4 +1,7 @@
-use super::{to_i32, LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, Symmetry};
+use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, Symmetry};
+use crate::auxiliary_and_constants::{
+    to_i32, CcBool, MALLOC_ERROR, NEED_FACTORIZATION, NULL_POINTER_ERROR, SUCCESSFUL_EXIT, VERSION_ERROR,
+};
 use crate::StrError;
 use russell_lab::{vec_copy, Vector};
 
@@ -28,11 +31,11 @@ extern "C" {
         max_work_memory: i32,
         openmp_num_threads: i32,
         // requests
-        compute_determinant: i32,
-        verbose: i32,
+        compute_determinant: CcBool,
+        verbose: CcBool,
         // matrix config
-        general_symmetric: i32,
-        positive_definite: i32,
+        general_symmetric: CcBool,
+        positive_definite: CcBool,
         ndim: i32,
         nnz: i32,
         // matrix
@@ -40,7 +43,7 @@ extern "C" {
         indices_j: *const i32,
         values_aij: *const f64,
     ) -> i32;
-    fn solver_mumps_solve(solver: *mut InterfaceMUMPS, rhs: *mut f64, verbose: i32) -> i32;
+    fn solver_mumps_solve(solver: *mut InterfaceMUMPS, rhs: *mut f64, verbose: CcBool) -> i32;
 }
 
 /// Wraps the MUMPS solver for (very large) sparse linear systems
@@ -137,12 +140,17 @@ impl LinSolTrait for SolverMUMPS {
             return Err("the COO matrix must have one-based (FORTRAN) indices as required by MUMPS");
         }
         if coo.nrow != coo.ncol {
-            return Err("the matrix must be square");
+            return Err("the COO matrix must be square");
         }
-        coo.check_dimensions_ready()?;
+        if coo.nrow < 1 {
+            return Err("the COO matrix must be (1 x 1) at least");
+        }
+        if coo.nnz < 1 {
+            return Err("the COO matrix must have at least one non-zero value");
+        }
 
         // check already factorized data
-        if self.factorized == true {
+        if self.factorized {
             if coo.symmetry != self.factorized_symmetry {
                 return Err("subsequent factorizations must use the same matrix (symmetry differs)");
             }
@@ -185,9 +193,9 @@ impl LinSolTrait for SolverMUMPS {
             Scaling::RowColRig => 8,  // RowColRig (page 33)
             Scaling::Sum => 77,       // Sum => Auto (page 33)
         };
-        let pct_inc_workspace = to_i32(par.mumps_pct_inc_workspace)?;
-        let max_work_memory = to_i32(par.mumps_max_work_memory)?;
-        let openmp_num_threads = to_i32(par.mumps_openmp_num_threads)?;
+        let pct_inc_workspace = to_i32(par.mumps_pct_inc_workspace);
+        let max_work_memory = to_i32(par.mumps_max_work_memory);
+        let openmp_num_threads = to_i32(par.mumps_openmp_num_threads);
 
         // requests
         let calc_det = if par.compute_determinant { 1 } else { 0 };
@@ -200,8 +208,8 @@ impl LinSolTrait for SolverMUMPS {
         };
 
         // matrix config
-        let ndim = to_i32(coo.nrow)?;
-        let nnz = to_i32(coo.nnz)?;
+        let ndim = to_i32(coo.nrow);
+        let nnz = to_i32(coo.nnz);
 
         // call MUMPS factorize
         unsafe {
@@ -231,7 +239,7 @@ impl LinSolTrait for SolverMUMPS {
                 coo.indices_j.as_ptr(),
                 coo.values.as_ptr(),
             );
-            if status != MUMPS_SUCCESS {
+            if status != SUCCESSFUL_EXIT {
                 return Err(handle_mumps_error_code(status));
             }
         }
@@ -262,20 +270,24 @@ impl LinSolTrait for SolverMUMPS {
     ///
     /// **Warning:** the matrix must be same one used in `factorize`.
     fn solve(&mut self, x: &mut Vector, mat: &SparseMatrix, rhs: &Vector, verbose: bool) -> Result<(), StrError> {
-        // check already factorized data
-        if self.factorized == true {
-            let (nrow, ncol, nnz, symmetry) = mat.get_info();
-            if symmetry != self.factorized_symmetry {
-                return Err("solve must use the same matrix (symmetry differs)");
-            }
-            if nrow != self.factorized_ndim || ncol != self.factorized_ndim {
-                return Err("solve must use the same matrix (ndim differs)");
-            }
-            if nnz != self.factorized_nnz {
-                return Err("solve must use the same matrix (nnz differs)");
-            }
-        } else {
+        // check
+        if !self.factorized {
             return Err("the function factorize must be called before solve");
+        }
+
+        // access COO matrix
+        let coo = mat.get_coo()?;
+
+        // check already factorized data
+        let (nrow, ncol, nnz, symmetry) = coo.get_info();
+        if symmetry != self.factorized_symmetry {
+            return Err("solve must use the same matrix (symmetry differs)");
+        }
+        if nrow != self.factorized_ndim || ncol != self.factorized_ndim {
+            return Err("solve must use the same matrix (ndim differs)");
+        }
+        if nnz != self.factorized_nnz {
+            return Err("solve must use the same matrix (nnz differs)");
         }
 
         // check vectors
@@ -291,7 +303,7 @@ impl LinSolTrait for SolverMUMPS {
         let verb = if verbose { 1 } else { 0 };
         unsafe {
             let status = solver_mumps_solve(self.solver, x.as_mut_data().as_mut_ptr(), verb);
-            if status != MUMPS_SUCCESS {
+            if status != SUCCESSFUL_EXIT {
                 return Err(handle_mumps_error_code(status));
             }
         }
@@ -434,13 +446,13 @@ fn handle_mumps_error_code(err: i32) -> StrError {
         2 => "Error(+2): during error analysis the max-norm of the computed solution is close to zero",
         4 => "Error(+4): not used in current version",
         8 => "Error(+8): problem with the iterative refinement routine",
-        100000 => return "Error: c-code returned null pointer (MUMPS)",
-        200000 => return "Error: c-code failed to allocate memory (MUMPS)",
+        NULL_POINTER_ERROR => return "Error: c-code returned null pointer (MUMPS)",
+        MALLOC_ERROR => return "Error: c-code failed to allocate memory (MUMPS)",
+        VERSION_ERROR => return "Error: MUMPS library version is inconsistent among dynamic library and compiled code",
+        NEED_FACTORIZATION => return "INTERNAL ERROR: factorization must be completed before solve",
         _ => return "Error: unknown error returned by c-code (MUMPS)",
     }
 }
-
-const MUMPS_SUCCESS: i32 = 0;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

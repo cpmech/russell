@@ -35,10 +35,10 @@ struct InterfaceMUMPS {
     int32_t done_job_init;
 
     /// @brief indicates that the initialization has been completed
-    int32_t initialization_completed;
+    C_BOOL initialization_completed;
 
     /// @brief indicates that the factorization (at least once) has been completed
-    int32_t factorization_completed;
+    C_BOOL factorization_completed;
 };
 
 /// @brief Sets verbose mode
@@ -135,11 +135,11 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
                                int32_t max_work_memory,
                                int32_t openmp_num_threads,
                                // requests
-                               int32_t compute_determinant,
-                               int32_t verbose,
+                               C_BOOL compute_determinant,
+                               C_BOOL verbose,
                                // matrix config
-                               int32_t general_symmetric,
-                               int32_t positive_definite,
+                               C_BOOL general_symmetric,
+                               C_BOOL positive_definite,
                                int32_t ndim,
                                int32_t nnz,
                                // matrix
@@ -259,7 +259,7 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
 /// @param rhs Is the right-hand side on the input and the vector of unknow values x on the output
 /// @param verbose Shows messages
 /// @return A success or fail code
-int32_t solver_mumps_solve(struct InterfaceMUMPS *solver, double *rhs, int32_t verbose) {
+int32_t solver_mumps_solve(struct InterfaceMUMPS *solver, double *rhs, C_BOOL verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }

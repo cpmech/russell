@@ -71,7 +71,7 @@ fn check_jacobian() {
     let mut jj_tri = CooMatrix::new(neq, neq, nnz, None, false).unwrap();
     calc_jacobian(&mut jj_tri, &uu).unwrap();
     let mut jj_ana = Matrix::new(neq, neq);
-    jj_tri.to_matrix(&mut jj_ana).unwrap();
+    jj_tri.to_dense(&mut jj_ana).unwrap();
     mat_approx_eq(&jj_ana, &jj_num, 1e-8);
 }
 
@@ -113,7 +113,7 @@ fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
         if err < 1e-13 {
             break;
         }
-        calc_jacobian(jj.get_mut_coo()?, &uu)?;
+        calc_jacobian(jj.get_coo_mut()?, &uu)?;
         solver.actual.factorize(&mut jj, None)?;
         solver.actual.solve(&mut mdu, &jj, &rr, false)?;
         vec_update(&mut uu, -1.0, &mdu)?;

@@ -17,7 +17,7 @@ use russell_openblas::idamax;
 ///
 /// # Notes
 ///
-/// 1. At least one of COO, CSC, or CSR will be `Some`
+/// 1. At least one of [CooMatrix], [CscMatrix], or [CsrMatrix] will be `Some`
 /// 2. `(COO and CSC)` or `(COO and CSR)` pairs may be `Some` at the same time
 /// 3. When getting data/information from the SparseMatrix, the default priority is `CSC -> CSR -> COO`
 /// 4. If needed, the CSC or CSR are automatically computed from COO

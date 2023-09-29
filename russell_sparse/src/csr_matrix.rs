@@ -461,7 +461,7 @@ impl CsrMatrix {
     ///         row_pointers, col_indices, values, symmetry)?;
     ///
     ///     // covert to dense
-    ///     let a = csr.as_dense()?;
+    ///     let a = csr.as_dense();
     ///     let correct = "┌                ┐\n\
     ///                    │  2  3  0  0  0 │\n\
     ///                    │  3  0  4  0  6 │\n\
@@ -473,10 +473,10 @@ impl CsrMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn as_dense(&self) -> Result<Matrix, StrError> {
+    pub fn as_dense(&self) -> Matrix {
         let mut a = Matrix::new(self.nrow, self.ncol);
         self.to_dense(&mut a).unwrap();
-        Ok(a)
+        a
     }
 
     /// Converts this CSR matrix to a dense matrix
@@ -625,7 +625,7 @@ impl CsrMatrix {
     ///     assert_eq!(ncol, 2);
     ///     assert_eq!(nnz, 2);
     ///     assert_eq!(symmetry, None);
-    ///     let a = csr.as_dense()?;
+    ///     let a = csr.as_dense();
     ///     let correct = "┌       ┐\n\
     ///                    │ 10 20 │\n\
     ///                    └       ┘";
@@ -1033,7 +1033,7 @@ mod tests {
         assert_eq!(format!("{}", a), correct);
 
         // use as_matrix
-        let b = csr.as_dense().unwrap();
+        let b = csr.as_dense();
         assert_eq!(format!("{}", b), correct);
     }
 
@@ -1047,7 +1047,7 @@ mod tests {
             col_indices: vec![0, 1, 2, 3, 4, 1, 2, 3, 4],
             values: vec![9.0, 1.5, 6.0, 0.75, 3.0, 0.5, 12.0, 0.625, 16.0],
         };
-        let a = csr.as_dense().unwrap();
+        let a = csr.as_dense();
         let correct = "┌                               ┐\n\
                        │     9   1.5     6  0.75     3 │\n\
                        │   1.5   0.5     0     0     0 │\n\
@@ -1068,7 +1068,7 @@ mod tests {
             col_indices: vec![0, 0, 1, 0, 2, 0, 3, 0, 4],
             values: vec![9.0, 1.5, 0.5, 6.0, 12.0, 0.75, 0.625, 3.0, 16.0],
         };
-        let a = csr.as_dense().unwrap();
+        let a = csr.as_dense();
         let correct = "┌                               ┐\n\
                        │     9   1.5     6  0.75     3 │\n\
                        │   1.5   0.5     0     0     0 │\n\

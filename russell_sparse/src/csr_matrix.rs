@@ -82,7 +82,18 @@ pub struct CsrMatrix {
 }
 
 impl CsrMatrix {
-    /// Creates a new CSR matrix from data arrays
+    /// Creates a new CSR matrix from (sorted) data arrays
+    ///
+    /// **Note:** The row pointers and column indices must be **sorted** in ascending order.
+    ///
+    /// # Input
+    ///
+    /// * `nrow` -- (≥ 1) number of rows
+    /// * `ncol` -- (≥ 1) number of columns
+    /// * `row_pointers` -- (len = nrow + 1) row pointers with the last entry corresponding
+    ///   to the number of non-zero values (sorted)
+    /// * `col_indices` -- (len = nnz) column indices (sorted)
+    /// * `values` -- the non-zero components of the matrix
     ///
     /// The following conditions must be satisfied (nnz is the number of non-zeros
     /// and nnz_dup is the number of non-zeros with possible duplicates):
@@ -115,13 +126,31 @@ impl CsrMatrix {
         }
         let nnz = row_pointers[nrow];
         if nnz < 1 {
-            return Err("nnz must be ≥ 1");
+            return Err("nnz = row_pointers[nrow] must be ≥ 1");
         }
         if col_indices.len() < nnz as usize {
             return Err("col_indices.len() must be ≥ nnz");
         }
         if values.len() < nnz as usize {
             return Err("values.len() must be ≥ nnz");
+        }
+        let n = to_i32(ncol)?;
+        for i in 0..nrow {
+            if row_pointers[i] < 0 {
+                return Err("row pointers must be ≥ 0");
+            }
+            if row_pointers[i] > row_pointers[i + 1] {
+                return Err("row pointers must be in ascending order");
+            }
+            for p in row_pointers[i]..row_pointers[i + 1] {
+                let j = col_indices[p as usize];
+                if j < 0 {
+                    return Err("column index must be ≥ 0");
+                }
+                if j >= n {
+                    return Err("column index must be < ncol");
+                }
+            }
         }
         Ok(CsrMatrix {
             symmetry,
@@ -689,7 +718,7 @@ mod tests {
         );
         assert_eq!(
             CsrMatrix::new(1, 1, vec![0, 0], vec![], vec![], None).err(),
-            Some("nnz must be ≥ 1")
+            Some("nnz = row_pointers[nrow] must be ≥ 1")
         );
         assert_eq!(
             CsrMatrix::new(1, 1, vec![0, 1], vec![], vec![], None).err(),
@@ -698,6 +727,23 @@ mod tests {
         assert_eq!(
             CsrMatrix::new(1, 1, vec![0, 1], vec![0], vec![], None).err(),
             Some("values.len() must be ≥ nnz")
+        );
+
+        assert_eq!(
+            CsrMatrix::new(1, 1, vec![-1, 1], vec![0], vec![0.0], None).err(),
+            Some("row pointers must be ≥ 0")
+        );
+        assert_eq!(
+            CsrMatrix::new(1, 1, vec![2, 1], vec![0], vec![0.0], None).err(),
+            Some("row pointers must be in ascending order")
+        );
+        assert_eq!(
+            CsrMatrix::new(1, 1, vec![0, 1], vec![-1], vec![0.0], None).err(),
+            Some("column index must be ≥ 0")
+        );
+        assert_eq!(
+            CsrMatrix::new(1, 1, vec![0, 1], vec![2], vec![0.0], None).err(),
+            Some("column index must be < ncol")
         );
     }
 

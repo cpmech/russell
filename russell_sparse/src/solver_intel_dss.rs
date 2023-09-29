@@ -371,7 +371,7 @@ mod tests {
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
-            Some("converting COO matrix: pos = nnz must be ≥ 1")
+            Some("COO to CSR requires nnz > 0")
         );
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(false, false, false);
         let mut mat = SparseMatrix::from_coo(coo);

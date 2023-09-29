@@ -630,9 +630,9 @@ mod tests {
     }
 
     #[test]
-    fn to_matrix_symmetric_upper_works() {
+    fn to_matrix_symmetric_upper_and_one_based_works() {
         let sym = Some(Symmetry::General(Storage::Upper));
-        let mut coo = CooMatrix::new(3, 3, 4, sym, false).unwrap();
+        let mut coo = CooMatrix::new(3, 3, 4, sym, true).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 1, 2.0).unwrap();
         coo.put(1, 1, 3.0).unwrap();
@@ -679,9 +679,26 @@ mod tests {
         coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         let correct_v = &[1.4, 0.14, 14.0];
         vec_approx_eq(v.as_data(), correct_v, 1e-15);
+
         // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
         coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         vec_approx_eq(v.as_data(), correct_v, 1e-15);
+
+        // one-based indexing
+        let mut coo = CooMatrix::new(3, 3, 9, None, true).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(0, 1, 2.0).unwrap();
+        coo.put(0, 2, 3.0).unwrap();
+        coo.put(1, 0, 0.1).unwrap();
+        coo.put(1, 1, 0.2).unwrap();
+        coo.put(1, 2, 0.3).unwrap();
+        coo.put(2, 0, 10.0).unwrap();
+        coo.put(2, 1, 20.0).unwrap();
+        coo.put(2, 2, 30.0).unwrap();
+        coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
+        let correct_v = &[1.4, 0.14, 14.0];
+        vec_approx_eq(v.as_data(), correct_v, 1e-15);
+
         // single component matrix
         let mut single = CooMatrix::new(1, 1, 1, None, false).unwrap();
         single.put(0, 0, 123.0).unwrap();

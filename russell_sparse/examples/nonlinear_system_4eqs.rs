@@ -73,7 +73,7 @@ fn main() -> Result<(), StrError> {
         }
 
         // calculate Jacobian matrix
-        calc_jacobian(jj.get_mut_coo()?, &uu)?;
+        calc_jacobian(jj.get_coo_mut()?, &uu)?;
 
         // factorize and solve linear system: J * mdu = rr
         solver.actual.factorize(&mut jj, None)?;

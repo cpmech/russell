@@ -133,6 +133,7 @@ impl LinSolTrait for SolverIntelDSS {
     /// may return **incorrect results**.
     fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
         // get CSR matrix
+        // (or convert from COO if CSR is not available and COO is available)
         let csr = mat.get_csr_or_from_coo()?;
 
         // check CSR matrix
@@ -141,7 +142,7 @@ impl LinSolTrait for SolverIntelDSS {
         }
 
         // check already factorized data
-        if self.factorized == true {
+        if self.factorized {
             if csr.symmetry != self.factorized_symmetry {
                 return Err("subsequent factorizations must use the same matrix (symmetry differs)");
             }
@@ -225,20 +226,25 @@ impl LinSolTrait for SolverIntelDSS {
     ///
     /// **Warning:** the matrix must be same one used in `factorize`.
     fn solve(&mut self, x: &mut Vector, mat: &SparseMatrix, rhs: &Vector, _verbose: bool) -> Result<(), StrError> {
-        // check already factorized data
-        if self.factorized == true {
-            let (nrow, ncol, nnz, _, symmetry) = mat.get_info()?;
-            if symmetry != self.factorized_symmetry {
-                return Err("solve must use the same matrix (symmetry differs)");
-            }
-            if nrow != self.factorized_ndim || ncol != self.factorized_ndim {
-                return Err("solve must use the same matrix (ndim differs)");
-            }
-            if nnz != self.factorized_nnz {
-                return Err("solve must use the same matrix (nnz differs)");
-            }
-        } else {
+        // check
+        if !self.factorized {
             return Err("the function factorize must be called before solve");
+        }
+
+        // access CSR matrix
+        // (possibly already converted from COO, because factorize was (should have been) called)
+        let csr = mat.get_csr()?;
+
+        // check already factorized data
+        let (nrow, ncol, nnz, symmetry) = csr.get_info();
+        if symmetry != self.factorized_symmetry {
+            return Err("solve must use the same matrix (symmetry differs)");
+        }
+        if nrow != self.factorized_ndim || ncol != self.factorized_ndim {
+            return Err("solve must use the same matrix (ndim differs)");
+        }
+        if nnz != self.factorized_nnz {
+            return Err("solve must use the same matrix (nnz differs)");
         }
 
         // check vectors
@@ -347,7 +353,7 @@ mod tests {
     use super::{handle_intel_dss_error_code, SolverIntelDSS};
     use crate::{CooMatrix, LinSolParams, LinSolTrait, Samples, SparseMatrix};
     use russell_chk::{approx_eq, vec_approx_eq};
-    use russell_lab::{Matrix, Vector};
+    use russell_lab::Vector;
 
     #[test]
     fn new_and_drop_work() {
@@ -387,11 +393,6 @@ mod tests {
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
         let mut mat = SparseMatrix::from_coo(coo);
         let mut params = LinSolParams::new();
-
-        let (nrow, ncol, _, _, _) = mat.get_info().unwrap();
-        let mut a = Matrix::new(nrow, ncol);
-        mat.to_dense(&mut a).unwrap();
-        println!("{}", a);
 
         params.compute_determinant = true;
 

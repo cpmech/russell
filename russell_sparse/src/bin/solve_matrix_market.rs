@@ -85,7 +85,7 @@ fn main() -> Result<(), StrError> {
 
     // save the COO matrix as a generic SparseMatrix
     let mut mat = SparseMatrix::from_coo(coo);
-    let (nrow, ncol, nnz, symmetry) = mat.get_info();
+    let (nrow, ncol, nnz, symmetry) = mat.get_info()?;
 
     // allocate and configure the solver
     let mut solver = LinSolver::new(genie)?;

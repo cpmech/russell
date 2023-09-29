@@ -140,6 +140,7 @@ impl LinSolTrait for SolverUMFPACK {
     /// 4. For symmetric matrices, `UMFPACK` requires that the symmetry/storage be [crate::Storage::Full].
     fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
         // get CSC matrix
+        // (or convert from COO if CSC is not available and COO is available)
         let csc = mat.get_csc_or_from_coo()?;
 
         // check CSC matrix
@@ -153,7 +154,7 @@ impl LinSolTrait for SolverUMFPACK {
         }
 
         // check already factorized data
-        if self.factorized == true {
+        if self.factorized {
             if csc.symmetry != self.factorized_symmetry {
                 return Err("subsequent factorizations must use the same matrix (symmetry differs)");
             }
@@ -260,20 +261,25 @@ impl LinSolTrait for SolverUMFPACK {
     ///
     /// **Warning:** the matrix must be same one used in `factorize`.
     fn solve(&mut self, x: &mut Vector, mat: &SparseMatrix, rhs: &Vector, verbose: bool) -> Result<(), StrError> {
-        // check already factorized data
-        if self.factorized == true {
-            let (nrow, ncol, nnz, _, symmetry) = mat.get_info()?;
-            if symmetry != self.factorized_symmetry {
-                return Err("solve must use the same matrix (symmetry differs)");
-            }
-            if nrow != self.factorized_ndim || ncol != self.factorized_ndim {
-                return Err("solve must use the same matrix (ndim differs)");
-            }
-            if nnz != self.factorized_nnz {
-                return Err("solve must use the same matrix (nnz differs)");
-            }
-        } else {
+        // check
+        if !self.factorized {
             return Err("the function factorize must be called before solve");
+        }
+
+        // access CSC matrix
+        // (possibly already converted from COO, because factorize was (should have been) called)
+        let csc = mat.get_csc()?;
+
+        // check already factorized data
+        let (nrow, ncol, nnz, symmetry) = csc.get_info();
+        if symmetry != self.factorized_symmetry {
+            return Err("solve must use the same matrix (symmetry differs)");
+        }
+        if nrow != self.factorized_ndim || ncol != self.factorized_ndim {
+            return Err("solve must use the same matrix (ndim differs)");
+        }
+        if nnz != self.factorized_nnz {
+            return Err("solve must use the same matrix (nnz differs)");
         }
 
         // check vectors
@@ -285,18 +291,15 @@ impl LinSolTrait for SolverUMFPACK {
         }
 
         // call UMFPACK solve
-        let col_pointers = mat.csc_col_pointers()?;
-        let row_indices = mat.csc_row_indices()?;
-        let values = mat.csc_values()?;
         let verb = if verbose { 1 } else { 0 };
         unsafe {
             let status = solver_umfpack_solve(
                 self.solver,
                 x.as_mut_data().as_mut_ptr(),
                 rhs.as_data().as_ptr(),
-                col_pointers.as_ptr(),
-                row_indices.as_ptr(),
-                values.as_ptr(),
+                csc.col_pointers.as_ptr(),
+                csc.row_indices.as_ptr(),
+                csc.values.as_ptr(),
                 verb,
             );
             if status != SUCCESSFUL_EXIT {

@@ -539,7 +539,7 @@ impl CscMatrix {
 
     /// Returns information about the dimensions and symmetry type
     ///
-    /// Returns `(nrow, ncol, nnz, max_nnz, symmetry)`
+    /// Returns `(nrow, ncol, nnz, symmetry)`
     ///
     /// # Example
     ///
@@ -556,11 +556,10 @@ impl CscMatrix {
     ///     let values = vec![10.0, 20.0];
     ///     let csc = CscMatrix::new(1, 2,
     ///         col_pointers, row_indices, values, None)?;
-    ///     let (nrow, ncol, nnz, max_nnz, symmetry) = csc.get_info();
+    ///     let (nrow, ncol, nnz, symmetry) = csc.get_info();
     ///     assert_eq!(nrow, 1);
     ///     assert_eq!(ncol, 2);
     ///     assert_eq!(nnz, 2);
-    ///     assert_eq!(max_nnz, 2);
     ///     assert_eq!(symmetry, None);
     ///     let a = csc.as_dense()?;
     ///     let correct = "┌       ┐\n\
@@ -570,19 +569,13 @@ impl CscMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn get_info(&self) -> (usize, usize, usize, usize, Option<Symmetry>) {
+    pub fn get_info(&self) -> (usize, usize, usize, Option<Symmetry>) {
         (
             self.nrow,
             self.ncol,
             self.col_pointers[self.ncol] as usize,
-            self.values.len(),
             self.symmetry,
         )
-    }
-
-    /// Get the symmetry
-    pub fn get_symmetry(&self) -> Option<Symmetry> {
-        self.symmetry
     }
 
     /// Get an access to the column pointers
@@ -972,8 +965,7 @@ mod tests {
     #[test]
     fn getters_are_correct() {
         let (_, csc, _, _) = Samples::rectangular_1x2(false, false, false);
-        assert_eq!(csc.get_info(), (1, 2, 2, 2, None));
-        assert_eq!(csc.get_symmetry(), None);
+        assert_eq!(csc.get_info(), (1, 2, 2, None));
         assert_eq!(csc.get_col_pointers(), &[0, 1, 2]);
         assert_eq!(csc.get_row_indices(), &[0, 0]);
         assert_eq!(csc.get_values(), &[10.0, 20.0]);

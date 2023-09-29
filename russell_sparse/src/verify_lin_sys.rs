@@ -57,7 +57,7 @@ impl VerifyLinSys {
     /// }
     /// ```
     pub fn new(mat: &SparseMatrix, x: &Vector, rhs: &Vector) -> Result<Self, StrError> {
-        let (nrow, ncol, _, _, _) = mat.get_info()?;
+        let (nrow, ncol, _, _) = mat.get_info()?;
         if nrow != ncol {
             return Err("matrix must be square");
         }

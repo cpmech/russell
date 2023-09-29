@@ -262,11 +262,10 @@ impl CooMatrix {
     ///                    │ 0 0 3 │\n\
     ///                    └       ┘";
     ///     coo.reset();
-    ///     let (nrow, ncol, nnz, max_nnz, symmetry) = coo.get_info();
+    ///     let (nrow, ncol, nnz, symmetry) = coo.get_info();
     ///     assert_eq!(nrow, 3);
     ///     assert_eq!(ncol, 3);
     ///     assert_eq!(nnz, 0);
-    ///     assert_eq!(max_nnz, 10);
     ///     assert_eq!(symmetry, None);
     ///     Ok(())
     /// }
@@ -461,7 +460,7 @@ impl CooMatrix {
 
     /// Returns information about the dimensions and symmetry type
     ///
-    /// Returns `(nrow, ncol, nnz, max_nnz, symmetry)`
+    /// Returns `(nrow, ncol, nnz, symmetry)`
     ///
     /// # Example
     ///
@@ -470,23 +469,17 @@ impl CooMatrix {
     /// use russell_sparse::StrError;
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let coo = CooMatrix::new(1, 2, 10, None, false)?;
-    ///     let (nrow, ncol, nnz, max_nnz, symmetry) = coo.get_info();
+    ///     let coo = CooMatrix::new(1, 2, 3, None, false)?;
+    ///     let (nrow, ncol, nnz, symmetry) = coo.get_info();
     ///     assert_eq!(nrow, 1);
     ///     assert_eq!(ncol, 2);
     ///     assert_eq!(nnz, 0);
-    ///     assert_eq!(max_nnz, 10);
     ///     assert_eq!(symmetry, None);
     ///     Ok(())
     /// }
     /// ```
-    pub fn get_info(&self) -> (usize, usize, usize, usize, Option<Symmetry>) {
-        (self.nrow, self.ncol, self.nnz, self.max_nnz, self.symmetry)
-    }
-
-    /// Get the symmetry
-    pub fn get_symmetry(&self) -> Option<Symmetry> {
-        self.symmetry
+    pub fn get_info(&self) -> (usize, usize, usize, Option<Symmetry>) {
+        (self.nrow, self.ncol, self.nnz, self.symmetry)
     }
 
     /// Get an access to the row indices
@@ -573,11 +566,10 @@ mod tests {
     #[test]
     fn get_info_works() {
         let coo = CooMatrix::new(1, 2, 10, None, false).unwrap();
-        let (nrow, ncol, nnz, max_nnz, symmetry) = coo.get_info();
+        let (nrow, ncol, nnz, symmetry) = coo.get_info();
         assert_eq!(nrow, 1);
         assert_eq!(ncol, 2);
         assert_eq!(nnz, 0);
-        assert_eq!(max_nnz, 10);
         assert_eq!(symmetry, None);
     }
 
@@ -920,8 +912,7 @@ mod tests {
     #[test]
     fn getters_are_correct() {
         let (coo, _, _, _) = Samples::rectangular_1x2(false, false, false);
-        assert_eq!(coo.get_info(), (1, 2, 2, 10, None));
-        assert_eq!(coo.get_symmetry(), None);
+        assert_eq!(coo.get_info(), (1, 2, 2, None));
         assert_eq!(coo.get_row_indices(), &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(coo.get_col_indices(), &[0, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(coo.get_values(), &[10.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);

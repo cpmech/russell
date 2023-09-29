@@ -113,7 +113,7 @@ fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
         if err < 1e-13 {
             break;
         }
-        calc_jacobian(jj.get_mut_coo()?, &uu)?;
+        calc_jacobian(jj.get_coo_mut()?, &uu)?;
         solver.actual.factorize(&mut jj, None)?;
         solver.actual.solve(&mut mdu, &jj, &rr, false)?;
         vec_update(&mut uu, -1.0, &mdu)?;

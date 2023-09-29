@@ -62,12 +62,28 @@ impl SparseMatrix {
         }
     }
 
+    pub fn from_csc(csc: CscMatrix) -> Self {
+        SparseMatrix {
+            coo: None,
+            csc: Some(csc),
+            csr: None,
+        }
+    }
+
+    pub fn from_csr(csr: CsrMatrix) -> Self {
+        SparseMatrix {
+            coo: None,
+            csc: None,
+            csr: Some(csr),
+        }
+    }
+
     /// Returns information about the dimensions and symmetry type
     ///
-    /// Returns `(nrow, ncol, nnz, max_nnz, symmetry)`
+    /// Returns `(nrow, ncol, nnz, symmetry)`
     ///
     /// Priority: CSC -> CSR -> COO
-    pub fn get_info(&self) -> Result<(usize, usize, usize, usize, Option<Symmetry>), StrError> {
+    pub fn get_info(&self) -> Result<(usize, usize, usize, Option<Symmetry>), StrError> {
         match &self.csc {
             Some(csc) => Ok(csc.get_info()),
             None => match &self.csr {
@@ -119,17 +135,65 @@ impl SparseMatrix {
         }
     }
 
-    pub fn get_coo(&mut self) -> Result<&CooMatrix, StrError> {
+    pub fn to_dense(&self, a: &mut Matrix) -> Result<(), StrError> {
+        match &self.csc {
+            Some(csc) => csc.to_dense(a),
+            None => match &self.csr {
+                Some(csr) => csr.to_dense(a),
+                None => match &self.coo {
+                    Some(coo) => coo.to_dense(a),
+                    None => Err("no matrix is available"),
+                },
+            },
+        }
+    }
+
+    // COO ------------------------------------------------------------------------
+
+    pub fn put(&mut self, i: usize, j: usize, aij: f64) -> Result<(), StrError> {
+        match &mut self.coo {
+            Some(coo) => coo.put(i, j, aij),
+            None => Err("COO matrix is not available to put items"),
+        }
+    }
+
+    pub fn reset(&mut self) -> Result<(), StrError> {
+        match &mut self.coo {
+            Some(coo) => {
+                coo.reset();
+                Ok(())
+            }
+            None => Err("COO matrix is not available to reset nnz counter"),
+        }
+    }
+
+    pub fn get_coo(&self) -> Result<&CooMatrix, StrError> {
         match &self.coo {
             Some(coo) => Ok(coo),
             None => Err("COO matrix is not available"),
         }
     }
 
-    pub fn get_mut_coo(&mut self) -> Result<&mut CooMatrix, StrError> {
+    pub fn get_coo_mut(&mut self) -> Result<&mut CooMatrix, StrError> {
         match &mut self.coo {
             Some(coo) => Ok(coo),
             None => Err("COO matrix is not available"),
+        }
+    }
+
+    // CSC ------------------------------------------------------------------------
+
+    pub fn get_csc(&self) -> Result<&CscMatrix, StrError> {
+        match &self.csc {
+            Some(csc) => Ok(csc),
+            None => Err("CSC matrix is not available"),
+        }
+    }
+
+    pub fn get_csc_mut(&mut self) -> Result<&mut CscMatrix, StrError> {
+        match &mut self.csc {
+            Some(csc) => Ok(csc),
+            None => Err("CSC matrix is not available"),
         }
     }
 
@@ -155,6 +219,22 @@ impl SparseMatrix {
         }
     }
 
+    // CSR ------------------------------------------------------------------------
+
+    pub fn get_csr(&self) -> Result<&CsrMatrix, StrError> {
+        match &self.csr {
+            Some(csr) => Ok(csr),
+            None => Err("CSR matrix is not available"),
+        }
+    }
+
+    pub fn get_csr_mut(&mut self) -> Result<&mut CsrMatrix, StrError> {
+        match &mut self.csr {
+            Some(csr) => Ok(csr),
+            None => Err("CSR matrix is not available"),
+        }
+    }
+
     /// Returns the CSR or creates a CSR from COO or updates the CSR from COO
     ///
     /// Priority: COO -> CSR
@@ -174,138 +254,6 @@ impl SparseMatrix {
                 Some(csr) => Ok(csr),
                 None => Err("CSR is not available and COO matrix is not available to convert to CSR"),
             },
-        }
-    }
-
-    pub fn put(&mut self, i: usize, j: usize, aij: f64) -> Result<(), StrError> {
-        match &mut self.coo {
-            Some(coo) => coo.put(i, j, aij),
-            None => Err("COO matrix is not available to put items"),
-        }
-    }
-
-    pub fn reset(&mut self) -> Result<(), StrError> {
-        match &mut self.coo {
-            Some(coo) => {
-                coo.reset();
-                Ok(())
-            }
-            None => Err("COO matrix is not available to reset nnz counter"),
-        }
-    }
-
-    pub fn to_dense(&self, a: &mut Matrix) -> Result<(), StrError> {
-        match &self.csc {
-            Some(csc) => csc.to_dense(a),
-            None => match &self.csr {
-                Some(csr) => csr.to_dense(a),
-                None => match &self.coo {
-                    Some(coo) => coo.to_dense(a),
-                    None => Err("no matrix is available"),
-                },
-            },
-        }
-    }
-
-    // COO ------------------------------------------------------------------------
-
-    /// Get an access to the row indices of the COO matrix
-    pub fn coo_row_indices(&self) -> Result<&[i32], StrError> {
-        match &self.coo {
-            Some(coo) => Ok(&coo.indices_i),
-            None => Err("COO matrix is not available"),
-        }
-    }
-
-    /// Get an access to the column pointers of the COO matrix
-    pub fn coo_col_indices(&self) -> Result<&[i32], StrError> {
-        match &self.coo {
-            Some(coo) => Ok(&coo.indices_j),
-            None => Err("COO matrix is not available"),
-        }
-    }
-
-    /// Get an access to the values of the COO matrix
-    pub fn coo_values(&self) -> Result<&[f64], StrError> {
-        match &self.coo {
-            Some(coo) => Ok(&coo.values),
-            None => Err("COO matrix is not available"),
-        }
-    }
-
-    /// Get a mutable access to the values of the COO matrix
-    pub fn coo_values_mut(&mut self) -> Result<&mut [f64], StrError> {
-        match &mut self.coo {
-            Some(coo) => Ok(&mut coo.values),
-            None => Err("COO matrix is not available"),
-        }
-    }
-
-    // CSC ------------------------------------------------------------------------
-
-    /// Get an access to the column pointers of the CSC matrix
-    pub fn csc_col_pointers(&self) -> Result<&[i32], StrError> {
-        match &self.csc {
-            Some(csc) => Ok(&csc.col_pointers),
-            None => Err("CSC matrix is not available"),
-        }
-    }
-
-    /// Get an access to the row indices of the CSC matrix
-    pub fn csc_row_indices(&self) -> Result<&[i32], StrError> {
-        match &self.csc {
-            Some(csc) => Ok(&csc.row_indices),
-            None => Err("CSC matrix is not available"),
-        }
-    }
-
-    /// Get an access to the values of the CSC matrix
-    pub fn csc_values(&self) -> Result<&[f64], StrError> {
-        match &self.csc {
-            Some(csc) => Ok(&csc.values),
-            None => Err("CSC matrix is not available"),
-        }
-    }
-
-    /// Get a mutable access to the values of the CSC matrix
-    pub fn csc_values_mut(&mut self) -> Result<&mut [f64], StrError> {
-        match &mut self.csc {
-            Some(csc) => Ok(&mut csc.values),
-            None => Err("CSC matrix is not available"),
-        }
-    }
-
-    // CSR ------------------------------------------------------------------------
-
-    /// Get an access to the row pointers of the CSR matrix
-    pub fn csr_row_pointers(&self) -> Result<&[i32], StrError> {
-        match &self.csr {
-            Some(csr) => Ok(&csr.row_pointers),
-            None => Err("CSR matrix is not available"),
-        }
-    }
-
-    /// Get an access to the columns indices of the CSR matrix
-    pub fn csr_col_indices(&self) -> Result<&[i32], StrError> {
-        match &self.csr {
-            Some(csr) => Ok(&csr.col_indices),
-            None => Err("CSR matrix is not available"),
-        }
-    }
-
-    /// Get an access to the values of the CSR matrix
-    pub fn csr_values(&self) -> Result<&[f64], StrError> {
-        match &self.csr {
-            Some(csr) => Ok(&csr.values),
-            None => Err("CSR matrix is not available"),
-        }
-    }
-
-    /// Get a mutable access to the values of the CSR matrix
-    pub fn csr_values_mut(&mut self) -> Result<&mut [f64], StrError> {
-        match &mut self.csr {
-            Some(csr) => Ok(&mut csr.values),
-            None => Err("CSR matrix is not available"),
         }
     }
 }

@@ -1081,9 +1081,9 @@ mod tests {
 
     #[test]
     fn mat_vec_mul_works() {
-        //  5.0, -2.0, 0.0, 1.0,
-        // 10.0, -4.0, 0.0, 2.0,
-        // 15.0, -6.0, 0.0, 3.0,
+        //   5  -2  .  1
+        //  10  -4  .  2
+        //  15  -6  .  3
         let (_, _, csr, _) = Samples::rectangular_3x4();
         let u = Vector::from(&[1.0, 3.0, 8.0, 5.0]);
         let mut v = Vector::new(csr.nrow);

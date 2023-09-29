@@ -553,10 +553,19 @@ mod tests {
         assert_eq!(a.get(1, 0), 3.0);
         assert_eq!(a.get(1, 1), 4.0);
         assert_eq!(a.get(2, 2), 5.0);
-        // using as_matrix
+        // using as_dense
         let bb = coo.as_dense();
         assert_eq!(bb.get(0, 0), 1.0);
         assert_eq!(bb.get(1, 0), 3.0);
+        // empty matrix
+        let empty = CooMatrix::new(2, 2, 3, None, false).unwrap();
+        let mat = empty.as_dense();
+        assert_eq!(mat.as_data(), &[0.0, 0.0, 0.0, 0.0]);
+        // single entry matrix
+        let mut single = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        single.put(0, 0, 123.0).unwrap();
+        let mat = single.as_dense();
+        assert_eq!(mat.as_data(), &[123.0]);
     }
 
     #[test]

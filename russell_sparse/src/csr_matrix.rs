@@ -140,15 +140,22 @@ impl CsrMatrix {
                 return Err("row pointers must be ≥ 0");
             }
             if row_pointers[i] > row_pointers[i + 1] {
-                return Err("row pointers must be in ascending order");
+                return Err("row pointers must be sorted in ascending order");
             }
-            for p in row_pointers[i]..row_pointers[i + 1] {
-                let j = col_indices[p as usize];
+            let start = row_pointers[i] as usize;
+            let end = row_pointers[i + 1] as usize;
+            for p in start..end {
+                let j = col_indices[p];
                 if j < 0 {
-                    return Err("column index must be ≥ 0");
+                    return Err("column indices must be ≥ 0");
                 }
                 if j >= n {
-                    return Err("column index must be < ncol");
+                    return Err("column indices must be < ncol");
+                }
+                if p > start {
+                    if col_indices[p - 1] > col_indices[p] {
+                        return Err("column indices must be sorted in ascending order (within their row)");
+                    }
                 }
             }
         }
@@ -728,22 +735,33 @@ mod tests {
             CsrMatrix::new(1, 1, vec![0, 1], vec![0], vec![], None).err(),
             Some("values.len() must be ≥ nnz")
         );
-
         assert_eq!(
             CsrMatrix::new(1, 1, vec![-1, 1], vec![0], vec![0.0], None).err(),
             Some("row pointers must be ≥ 0")
         );
         assert_eq!(
             CsrMatrix::new(1, 1, vec![2, 1], vec![0], vec![0.0], None).err(),
-            Some("row pointers must be in ascending order")
+            Some("row pointers must be sorted in ascending order")
         );
         assert_eq!(
             CsrMatrix::new(1, 1, vec![0, 1], vec![-1], vec![0.0], None).err(),
-            Some("column index must be ≥ 0")
+            Some("column indices must be ≥ 0")
         );
         assert_eq!(
             CsrMatrix::new(1, 1, vec![0, 1], vec![2], vec![0.0], None).err(),
-            Some("column index must be < ncol")
+            Some("column indices must be < ncol")
+        );
+        // ┌       ┐
+        // │ 10 20 │
+        // └       ┘
+        let values = vec![
+            10.0, 20.0, // i=0, p=(0),1
+        ]; //                   p=(2)
+        let col_indices = vec![1, 0]; // << incorrect, should be [0, 1]
+        let row_pointers = vec![0, 2];
+        assert_eq!(
+            CsrMatrix::new(1, 2, row_pointers, col_indices, values, None).err(),
+            Some("column indices must be sorted in ascending order (within their row)")
         );
     }
 

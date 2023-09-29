@@ -98,6 +98,17 @@ pub struct CscMatrix {
 impl CscMatrix {
     /// Creates a new CSC matrix from data arrays
     ///
+    /// **Note:** The column pointers and row indices must be **sorted** in ascending order.
+    ///
+    /// # Input
+    ///
+    /// * `nrow` -- (≥ 1) number of rows
+    /// * `ncol` -- (≥ 1) number of columns
+    /// * `col_pointers` -- (len = ncol + 1) columns pointers with the last entry corresponding
+    ///   to the number of non-zero values (sorted)
+    /// * `row_indices` -- (len = nnz) row indices (sorted)
+    /// * `values` -- the non-zero components of the matrix
+    ///
     /// The following conditions must be satisfied (nnz is the number of non-zeros
     /// and nnz_dup is the number of non-zeros with possible duplicates):
     ///
@@ -129,13 +140,38 @@ impl CscMatrix {
         }
         let nnz = col_pointers[ncol];
         if nnz < 1 {
-            return Err("nnz must be ≥ 1");
+            return Err("nnz = col_pointers[ncol] must be ≥ 1");
         }
         if row_indices.len() < nnz as usize {
             return Err("row_indices.len() must be ≥ nnz");
         }
         if values.len() < nnz as usize {
             return Err("values.len() must be ≥ nnz");
+        }
+        let m = to_i32(nrow)?;
+        for j in 0..ncol {
+            if col_pointers[j] < 0 {
+                return Err("col pointers must be ≥ 0");
+            }
+            if col_pointers[j] > col_pointers[j + 1] {
+                return Err("col pointers must be sorted in ascending order");
+            }
+            let start = col_pointers[j] as usize;
+            let end = col_pointers[j + 1] as usize;
+            for p in start..end {
+                let i = row_indices[p];
+                if i < 0 {
+                    return Err("row indices must be ≥ 0");
+                }
+                if i >= m {
+                    return Err("row indices must be < nrow");
+                }
+                if p > start {
+                    if row_indices[p - 1] > row_indices[p] {
+                        return Err("row indices must be sorted in ascending order (within their column)");
+                    }
+                }
+            }
         }
         Ok(CscMatrix {
             symmetry,
@@ -624,7 +660,7 @@ mod tests {
         );
         assert_eq!(
             CscMatrix::new(1, 1, vec![0, 0], vec![], vec![], None).err(),
-            Some("nnz must be ≥ 1")
+            Some("nnz = col_pointers[ncol] must be ≥ 1")
         );
         assert_eq!(
             CscMatrix::new(1, 1, vec![0, 1], vec![], vec![], None).err(),
@@ -633,6 +669,35 @@ mod tests {
         assert_eq!(
             CscMatrix::new(1, 1, vec![0, 1], vec![0], vec![], None).err(),
             Some("values.len() must be ≥ nnz")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 1, vec![-1, 1], vec![0], vec![0.0], None).err(),
+            Some("col pointers must be ≥ 0")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 1, vec![2, 1], vec![0], vec![0.0], None).err(),
+            Some("col pointers must be sorted in ascending order")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 1, vec![0, 1], vec![-1], vec![0.0], None).err(),
+            Some("row indices must be ≥ 0")
+        );
+        assert_eq!(
+            CscMatrix::new(1, 1, vec![0, 1], vec![2], vec![0.0], None).err(),
+            Some("row indices must be < nrow")
+        );
+        // ┌    ┐
+        // │ 10 │
+        // │ 20 │
+        // └    ┘
+        let values = vec![
+            10.0, 20.0, // j=0 p=(0),1
+        ]; //                  p=(2)
+        let row_indices = vec![1, 0]; // << incorrect, should be [0, 1]
+        let col_pointers = vec![0, 2];
+        assert_eq!(
+            CscMatrix::new(2, 1, col_pointers, row_indices, values, None).err(),
+            Some("row indices must be sorted in ascending order (within their column)")
         );
     }
 

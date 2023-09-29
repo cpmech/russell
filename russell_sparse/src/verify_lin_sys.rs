@@ -15,7 +15,8 @@ impl VerifyLinSys {
     /// Creates a new verification dataset
     ///
     /// ```text
-    /// diff : = |a ⋅ x - rhs|
+    /// diff : = | a  ⋅  x - rhs|
+    ///          (m,n)  (n)  (m)
     /// ```
     ///
     /// # Example
@@ -58,21 +59,22 @@ impl VerifyLinSys {
     /// ```
     pub fn new(mat: &SparseMatrix, x: &Vector, rhs: &Vector) -> Result<Self, StrError> {
         let (nrow, ncol, _, _) = mat.get_info()?;
-        if nrow != ncol {
-            return Err("matrix must be square");
+        if x.dim() != ncol {
+            return Err("x.dim() must be equal to ncol");
         }
-        if x.dim() != nrow || rhs.dim() != nrow {
-            return Err("vector dimensions are incompatible");
+        if rhs.dim() != nrow {
+            return Err("rhs.dim() must be equal to nrow");
         }
+
         // start stopwatch
         let mut sw = Stopwatch::new("");
 
         // compute max_abs_a
-        let max_abs_a = mat.get_max_abs_value()?;
+        let max_abs_a = mat.get_max_abs_value().unwrap(); // unwrap bc get_info already checked
 
         // compute max_abs_ax
         let mut ax = Vector::new(nrow);
-        mat.mat_vec_mul(&mut ax, 1.0, &x)?;
+        mat.mat_vec_mul(&mut ax, 1.0, &x).unwrap(); // unwrap bc already checked dims
         let max_abs_ax = vec_norm(&ax, Norm::Max);
 
         // compute max_abs_diff
@@ -101,31 +103,33 @@ impl VerifyLinSys {
 #[cfg(test)]
 mod tests {
     use super::VerifyLinSys;
-    use crate::SparseMatrix;
+    use crate::{Samples, SparseMatrix};
+    use russell_chk::approx_eq;
     use russell_lab::Vector;
 
     #[test]
-    fn new_fails_on_wrong_vectors() {
-        let coo = SparseMatrix::new_coo(1, 1, 1, None, false).unwrap();
-        let x = Vector::new(2);
-        let rhs = Vector::new(3);
-        let x_wrong = Vector::new(3);
-        let rhs_wrong = Vector::new(2);
+    fn new_captures_errors() {
+        let coo = SparseMatrix::new_coo(2, 1, 1, None, false).unwrap();
+        let x = Vector::new(1);
+        let rhs = Vector::new(2);
+        assert_eq!(VerifyLinSys::new(&coo, &x, &rhs).err(), None);
+        let x_wrong = Vector::new(2);
+        let rhs_wrong = Vector::new(1);
         assert_eq!(
             VerifyLinSys::new(&coo, &x_wrong, &rhs).err(),
-            Some("vector dimensions are incompatible")
+            Some("x.dim() must be equal to ncol")
         );
         assert_eq!(
             VerifyLinSys::new(&coo, &x, &rhs_wrong).err(),
-            Some("vector dimensions are incompatible")
+            Some("rhs.dim() must be equal to nrow")
         );
     }
 
     #[test]
     fn new_works() {
-        // | 1  3 -2 |
-        // | 3  5  6 |
-        // | 2  4  3 |
+        // 1  3 -2
+        // 3  5  6
+        // 2  4  3
         let mut coo = SparseMatrix::new_coo(3, 3, 9, None, false).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 1, 3.0).unwrap();
@@ -144,5 +148,47 @@ mod tests {
         assert_eq!(verify.max_abs_diff, 0.0);
         assert_eq!(verify.relative_error, 0.0);
         assert!(verify.time_check > 0);
+    }
+
+    #[test]
+    fn new_rectangular_matrix_works() {
+        //   5  -2  .  1
+        //  10  -4  .  2
+        //  15  -6  .  3
+        let (coo, csc, csr, _) = Samples::rectangular_3x4();
+        let x = Vector::from(&[1.0, 3.0, 8.0, 5.0]);
+
+        let rhs = Vector::from(&[0.0, 0.0, 0.0]);
+        let a_times_x = &[4.0, 8.0, 12.0];
+
+        // COO
+        let mat = SparseMatrix::from_coo(coo);
+        let verify = VerifyLinSys::new(&mat, &x, &rhs).unwrap();
+        assert_eq!(verify.max_abs_a, 15.0);
+        assert_eq!(verify.max_abs_ax, 12.0);
+        assert_eq!(verify.max_abs_diff, 12.0);
+        approx_eq(verify.relative_error, 12.0 / (15.0 + 1.0), 1e-15);
+
+        let verify = VerifyLinSys::new(&mat, &x, &Vector::from(a_times_x)).unwrap();
+        assert_eq!(verify.max_abs_a, 15.0);
+        assert_eq!(verify.max_abs_ax, 12.0);
+        assert_eq!(verify.max_abs_diff, 0.0);
+        approx_eq(verify.relative_error, 0.0, 1e-15);
+
+        // CSC
+        let mat = SparseMatrix::from_csc(csc);
+        let verify = VerifyLinSys::new(&mat, &x, &rhs).unwrap();
+        assert_eq!(verify.max_abs_a, 15.0);
+        assert_eq!(verify.max_abs_ax, 12.0);
+        assert_eq!(verify.max_abs_diff, 12.0);
+        approx_eq(verify.relative_error, 12.0 / (15.0 + 1.0), 1e-15);
+
+        // CSR
+        let mat = SparseMatrix::from_csr(csr);
+        let verify = VerifyLinSys::new(&mat, &x, &rhs).unwrap();
+        assert_eq!(verify.max_abs_a, 15.0);
+        assert_eq!(verify.max_abs_ax, 12.0);
+        assert_eq!(verify.max_abs_diff, 12.0);
+        approx_eq(verify.relative_error, 12.0 / (15.0 + 1.0), 1e-15);
     }
 }

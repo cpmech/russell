@@ -174,7 +174,7 @@ impl LinSolTrait for SolverIntelDSS {
         };
 
         // matrix config
-        let ndim = to_i32(csr.nrow)?;
+        let ndim = to_i32(csr.nrow);
 
         // call Intel DSS factorize
         let nnz = self.factorized_nnz;

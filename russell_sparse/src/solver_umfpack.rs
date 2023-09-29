@@ -204,7 +204,7 @@ impl LinSolTrait for SolverUMFPACK {
         let enforce_unsym = if par.umfpack_enforce_unsymmetric_strategy { 1 } else { 0 };
 
         // matrix config
-        let ndim = to_i32(csc.nrow)?;
+        let ndim = to_i32(csc.nrow);
 
         // call UMFPACK factorize
         unsafe {

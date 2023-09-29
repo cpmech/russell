@@ -83,15 +83,12 @@ impl SparseMatrix {
     /// Returns `(nrow, ncol, nnz, symmetry)`
     ///
     /// Priority: CSC -> CSR -> COO
-    pub fn get_info(&self) -> Result<(usize, usize, usize, Option<Symmetry>), StrError> {
+    pub fn get_info(&self) -> (usize, usize, usize, Option<Symmetry>) {
         match &self.csc {
-            Some(csc) => Ok(csc.get_info()),
+            Some(csc) => csc.get_info(),
             None => match &self.csr {
-                Some(csr) => Ok(csr.get_info()),
-                None => match &self.coo {
-                    Some(coo) => Ok(coo.get_info()),
-                    None => Err("no matrix is available"),
-                },
+                Some(csr) => csr.get_info(),
+                None => self.coo.as_ref().unwrap().get_info(), // unwrap OK because at least one mat must be available
             },
         }
     }
@@ -99,24 +96,17 @@ impl SparseMatrix {
     /// Returns the maximum absolute value among all values
     ///
     /// Priority: CSC -> CSR -> COO
-    pub fn get_max_abs_value(&self) -> Result<f64, StrError> {
+    pub fn get_max_abs_value(&self) -> f64 {
         let values = match &self.csc {
             Some(csc) => &csc.values,
             None => match &self.csr {
                 Some(csr) => &csr.values,
-                None => match &self.coo {
-                    Some(coo) => &coo.values,
-                    None => return Err("no matrix is available"),
-                },
+                None => &self.coo.as_ref().unwrap().values, // unwrap OK because at least one mat must be available
             },
         };
-        let n = to_i32(values.len())?;
+        let n = to_i32(values.len());
         let idx = idamax(n, values, 1);
-        if idx >= 0 && idx < n {
-            Ok(f64::abs(values[idx as usize]))
-        } else {
-            Err("INTERNAL ERROR: cannot find max abs value")
-        }
+        f64::abs(values[idx as usize])
     }
 
     /// Performs the matrix-vector multiplication
@@ -127,10 +117,7 @@ impl SparseMatrix {
             Some(csc) => csc.mat_vec_mul(v, alpha, u),
             None => match &self.csr {
                 Some(csr) => csr.mat_vec_mul(v, alpha, u),
-                None => match &self.coo {
-                    Some(coo) => coo.mat_vec_mul(v, alpha, u),
-                    None => Err("no matrix is available"),
-                },
+                None => self.coo.as_ref().unwrap().mat_vec_mul(v, alpha, u), // unwrap OK because at least one mat must be available
             },
         }
     }
@@ -140,10 +127,7 @@ impl SparseMatrix {
             Some(csc) => csc.to_dense(a),
             None => match &self.csr {
                 Some(csr) => csr.to_dense(a),
-                None => match &self.coo {
-                    Some(coo) => coo.to_dense(a),
-                    None => Err("no matrix is available"),
-                },
+                None => self.coo.as_ref().unwrap().to_dense(a), // unwrap OK because at least one mat must be available
             },
         }
     }

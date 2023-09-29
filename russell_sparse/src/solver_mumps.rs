@@ -193,9 +193,9 @@ impl LinSolTrait for SolverMUMPS {
             Scaling::RowColRig => 8,  // RowColRig (page 33)
             Scaling::Sum => 77,       // Sum => Auto (page 33)
         };
-        let pct_inc_workspace = to_i32(par.mumps_pct_inc_workspace)?;
-        let max_work_memory = to_i32(par.mumps_max_work_memory)?;
-        let openmp_num_threads = to_i32(par.mumps_openmp_num_threads)?;
+        let pct_inc_workspace = to_i32(par.mumps_pct_inc_workspace);
+        let max_work_memory = to_i32(par.mumps_max_work_memory);
+        let openmp_num_threads = to_i32(par.mumps_openmp_num_threads);
 
         // requests
         let calc_det = if par.compute_determinant { 1 } else { 0 };
@@ -208,8 +208,8 @@ impl LinSolTrait for SolverMUMPS {
         };
 
         // matrix config
-        let ndim = to_i32(coo.nrow)?;
-        let nnz = to_i32(coo.nnz)?;
+        let ndim = to_i32(coo.nrow);
+        let nnz = to_i32(coo.nnz);
 
         // call MUMPS factorize
         unsafe {

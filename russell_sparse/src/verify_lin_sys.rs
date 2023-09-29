@@ -58,7 +58,7 @@ impl VerifyLinSys {
     /// }
     /// ```
     pub fn new(mat: &SparseMatrix, x: &Vector, rhs: &Vector) -> Result<Self, StrError> {
-        let (nrow, ncol, _, _) = mat.get_info()?;
+        let (nrow, ncol, _, _) = mat.get_info();
         if x.dim() != ncol {
             return Err("x.dim() must be equal to ncol");
         }
@@ -70,7 +70,7 @@ impl VerifyLinSys {
         let mut sw = Stopwatch::new("");
 
         // compute max_abs_a
-        let max_abs_a = mat.get_max_abs_value().unwrap(); // unwrap bc get_info already checked
+        let max_abs_a = mat.get_max_abs_value();
 
         // compute max_abs_ax
         let mut ax = Vector::new(nrow);

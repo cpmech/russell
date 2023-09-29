@@ -82,7 +82,7 @@ where
     let mut buffer = String::new();
 
     // information
-    let (nrow, ncol, nnz, symmetry) = mat.get_info()?;
+    let (nrow, ncol, nnz, symmetry) = mat.get_info();
     if nrow == 0 || ncol == 0 || nnz == 0 {
         return Err("nrow, ncol, and nnz must be greater than zero");
     }

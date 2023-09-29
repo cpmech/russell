@@ -149,8 +149,8 @@ impl CooMatrix {
             return Err("values.len() must be = nnz");
         }
         let d = if one_based { 1 } else { 0 };
-        let m = to_i32(nrow)?;
-        let n = to_i32(ncol)?;
+        let m = to_i32(nrow);
+        let n = to_i32(ncol);
         for k in 0..nnz {
             if row_indices[k] - d < 0 || row_indices[k] - d >= m {
                 return Err("row index is out-of-range");
@@ -228,8 +228,8 @@ impl CooMatrix {
         }
 
         // insert a new entry
-        let i_i32 = to_i32(i)?;
-        let j_i32 = to_i32(j)?;
+        let i_i32 = to_i32(i);
+        let j_i32 = to_i32(j);
         let d = if self.one_based { 1 } else { 0 };
         self.indices_i[self.nnz] = i_i32 + d;
         self.indices_j[self.nnz] = j_i32 + d;

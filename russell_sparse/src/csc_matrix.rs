@@ -148,7 +148,7 @@ impl CscMatrix {
         if values.len() < nnz as usize {
             return Err("values.len() must be ≥ nnz");
         }
-        let m = to_i32(nrow)?;
+        let m = to_i32(nrow);
         for j in 0..ncol {
             if col_pointers[j] < 0 {
                 return Err("col pointers must be ≥ 0");
@@ -287,9 +287,9 @@ impl CscMatrix {
                     self.col_pointers.as_mut_ptr(),
                     self.row_indices.as_mut_ptr(),
                     self.values.as_mut_ptr(),
-                    to_i32(coo.nrow)?,
-                    to_i32(coo.ncol)?,
-                    to_i32(coo.nnz)?,
+                    to_i32(coo.nrow),
+                    to_i32(coo.ncol),
+                    to_i32(coo.nnz),
                     indices_i.as_ptr(),
                     indices_j.as_ptr(),
                     coo.values.as_ptr(),
@@ -301,9 +301,9 @@ impl CscMatrix {
                     self.col_pointers.as_mut_ptr(),
                     self.row_indices.as_mut_ptr(),
                     self.values.as_mut_ptr(),
-                    to_i32(coo.nrow)?,
-                    to_i32(coo.ncol)?,
-                    to_i32(coo.nnz)?,
+                    to_i32(coo.nrow),
+                    to_i32(coo.ncol),
+                    to_i32(coo.nnz),
                     coo.indices_i.as_ptr(),
                     coo.indices_j.as_ptr(),
                     coo.values.as_ptr(),
@@ -365,14 +365,14 @@ impl CscMatrix {
             bp[j] = sum;
             sum += temp;
         }
-        bp[ncol] = to_i32(nnz)?;
+        bp[ncol] = to_i32(nnz);
 
         // write aj and ax into bi and bx (will use bp as workspace)
         for i in 0..nrow {
             for p in ap[i]..ap[i + 1] {
                 let j = aj[p as usize] as usize;
                 let dest = bp[j] as usize;
-                bi[dest] = to_i32(i)?;
+                bi[dest] = to_i32(i);
                 bx[dest] = ax[p as usize];
                 bp[j] += 1;
             }

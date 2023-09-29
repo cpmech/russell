@@ -134,7 +134,7 @@ impl CsrMatrix {
         if values.len() < nnz as usize {
             return Err("values.len() must be ≥ nnz");
         }
-        let n = to_i32(ncol)?;
+        let n = to_i32(ncol);
         for i in 0..nrow {
             if row_pointers[i] < 0 {
                 return Err("row pointers must be ≥ 0");
@@ -299,7 +299,7 @@ impl CsrMatrix {
             bp[i] = sum;
             sum += temp;
         }
-        bp[nrow] = to_i32(nnz)?;
+        bp[nrow] = to_i32(nnz);
 
         // write aj and ax into bj and bx (will use bp as workspace)
         for k in 0..nnz {
@@ -393,14 +393,14 @@ impl CsrMatrix {
             bp[i] = sum;
             sum += temp;
         }
-        bp[nrow] = to_i32(nnz)?;
+        bp[nrow] = to_i32(nnz);
 
         // write ai and ax into bj and bx (will use bp as workspace)
         for j in 0..ncol {
             for p in ap[j]..ap[j + 1] {
                 let i = ai[p as usize] as usize;
                 let dest = bp[i] as usize;
-                bj[dest] = to_i32(j)?;
+                bj[dest] = to_i32(j);
                 bx[dest] = ax[p as usize];
                 bp[i] += 1;
             }

@@ -147,41 +147,6 @@ impl CscMatrix {
         })
     }
 
-    /// Checks the dimension of the arrays in the CSC matrix
-    ///
-    /// The following conditions must be satisfied (nnz is the number of non-zeros with duplicates):
-    ///
-    /// ```text
-    /// nrow ≥ 1
-    /// ncol ≥ 1
-    /// nnz = col_pointers[ncol] ≥ 1
-    /// col_pointers.len() == ncol + 1
-    /// row_indices.len() == nnz_dup ≥ nnz
-    /// values.len() == nnz_dup ≥ nnz
-    /// ```
-    pub fn check_dimensions(&self) -> Result<(), StrError> {
-        if self.nrow < 1 {
-            return Err("nrow must be ≥ 1");
-        }
-        if self.ncol < 1 {
-            return Err("ncol must be ≥ 1");
-        }
-        if self.col_pointers.len() != self.ncol + 1 {
-            return Err("col_pointers.len() must be = ncol + 1");
-        }
-        let nnz = self.col_pointers[self.ncol];
-        if nnz < 1 {
-            return Err("nnz must be ≥ 1");
-        }
-        if self.row_indices.len() < nnz as usize {
-            return Err("row_indices.len() must be ≥ nnz");
-        }
-        if self.values.len() < nnz as usize {
-            return Err("values.len() must be ≥ nnz");
-        }
-        Ok(())
-    }
-
     /// Creates a new CSC matrix from a COO matrix
     ///
     /// **Note:** The final nnz may be smaller than the initial nnz because duplicates
@@ -330,7 +295,6 @@ impl CscMatrix {
         // * Upgrading i32 to usize is OK (the opposite is not OK => use to_i32)
 
         // check and read in the dimensions
-        csr.check_dimensions()?;
         let nrow = csr.nrow as usize;
         let ncol = csr.ncol as usize;
         let nnz = csr.row_pointers[nrow] as usize;
@@ -516,7 +480,6 @@ impl CscMatrix {
     /// }
     /// ```
     pub fn to_dense(&self, a: &mut Matrix) -> Result<(), StrError> {
-        self.check_dimensions()?;
         let (m, n) = a.dims();
         if m != self.nrow || n != self.ncol {
             return Err("wrong matrix dimensions");
@@ -553,7 +516,6 @@ impl CscMatrix {
     ///
     /// * `v` -- Vector with dimension equal to the number of rows of the matrix
     pub fn mat_vec_mul(&self, v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
-        self.check_dimensions()?;
         if u.dim() != self.ncol {
             return Err("u.ndim must equal ncol");
         }
@@ -743,7 +705,6 @@ mod tests {
             Samples::rectangular_3x4(),
         ] {
             let csc = CscMatrix::from_coo(&coo).unwrap();
-            csc.check_dimensions().unwrap();
             assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
             let nnz = csc.col_pointers[csc.ncol] as usize;
             assert_eq!(&csc.row_indices[0..nnz], &csc_correct.row_indices);
@@ -818,35 +779,6 @@ mod tests {
             assert_eq!(&csc.row_indices, &csc_correct.row_indices);
             vec_approx_eq(&csc.values, &csc_correct.values, 1e-15);
         }
-    }
-
-    #[test]
-    fn check_dimensions_works() {
-        let mut csc = CscMatrix {
-            symmetry: None,
-            nrow: 0,
-            ncol: 0,
-            col_pointers: Vec::new(),
-            row_indices: Vec::new(),
-            values: Vec::new(),
-        };
-        assert_eq!(csc.check_dimensions().err(), Some("nrow must be ≥ 1"));
-        csc.nrow = 2;
-        csc.ncol = 0;
-        assert_eq!(csc.check_dimensions().err(), Some("ncol must be ≥ 1"));
-        csc.ncol = 4;
-        assert_eq!(
-            csc.check_dimensions().err(),
-            Some("col_pointers.len() must be = ncol + 1")
-        );
-        csc.col_pointers = vec![0, 0, 0, 0, 0];
-        assert_eq!(csc.check_dimensions().err(), Some("nnz must be ≥ 1"));
-        csc.col_pointers = vec![0, 0, 0, 0, 1];
-        assert_eq!(csc.check_dimensions().err(), Some("row_indices.len() must be ≥ nnz"));
-        csc.row_indices = vec![0];
-        assert_eq!(csc.check_dimensions().err(), Some("values.len() must be ≥ nnz"));
-        csc.values = vec![0.0];
-        assert_eq!(csc.check_dimensions().err(), None);
     }
 
     #[test]

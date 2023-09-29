@@ -1143,8 +1143,53 @@ impl Samples {
 #[cfg(test)]
 mod tests {
     use super::Samples;
+    use crate::{CscMatrix, CsrMatrix};
     use russell_chk::approx_eq;
     use russell_lab::{mat_approx_eq, mat_inverse, Matrix};
+
+    /// Checks the dimension of the arrays in the CSC matrix
+    ///
+    /// The following conditions must be satisfied:
+    ///
+    /// ```text
+    /// nrow ≥ 1
+    /// ncol ≥ 1
+    /// col_pointers.len() == ncol + 1
+    /// nnz = col_pointers[ncol] ≥ 1
+    /// row_indices.len() == nnz
+    /// values.len() == nnz
+    /// ```
+    fn csc_check_dimensions(csc: &CscMatrix) {
+        assert!(csc.nrow >= 1);
+        assert!(csc.ncol >= 1);
+        assert_eq!(csc.col_pointers.len(), csc.ncol + 1);
+        assert!(csc.col_pointers[csc.ncol] >= 1);
+        let nnz = csc.col_pointers[csc.ncol] as usize;
+        assert_eq!(csc.row_indices.len(), nnz);
+        assert_eq!(csc.values.len(), nnz);
+    }
+
+    /// Checks the dimension of the arrays in the CSR matrix
+    ///
+    /// The following conditions must be satisfied:
+    ///
+    /// ```text
+    /// nrow ≥ 1
+    /// ncol ≥ 1
+    /// row_pointers.len() == nrow + 1
+    /// nnz = row_pointers[nrow] ≥ 1
+    /// col_indices.len() == nnz
+    /// values.len() == nnz
+    /// ```
+    fn csr_check_dimensions(csr: &CsrMatrix) {
+        assert!(csr.nrow >= 1);
+        assert!(csr.ncol >= 1);
+        assert_eq!(csr.row_pointers.len(), csr.nrow + 1);
+        assert!(csr.row_pointers[csr.nrow] >= 1);
+        let nnz = csr.row_pointers[csr.nrow] as usize;
+        assert_eq!(csr.col_indices.len(), nnz);
+        assert_eq!(csr.values.len(), nnz);
+    }
 
     #[test]
     fn samples_are_correct() {
@@ -1161,8 +1206,8 @@ mod tests {
             let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
             mat_approx_eq(&mat, correct, 1e-15);
-            csc.check_dimensions().unwrap();
-            csr.check_dimensions().unwrap();
+            csc_check_dimensions(&csc);
+            csr_check_dimensions(&csr);
         }
 
         // ----------------------------------------------------------------------------
@@ -1188,8 +1233,8 @@ mod tests {
             let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
             mat_approx_eq(&mat, correct, 1e-15);
-            csc.check_dimensions().unwrap();
-            csr.check_dimensions().unwrap();
+            csc_check_dimensions(&csc);
+            csr_check_dimensions(&csr);
         }
 
         // ----------------------------------------------------------------------------
@@ -1211,8 +1256,8 @@ mod tests {
             let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
             mat_approx_eq(&mat, correct, 1e-15);
-            csc.check_dimensions().unwrap();
-            csr.check_dimensions().unwrap();
+            csc_check_dimensions(&csc);
+            csr_check_dimensions(&csr);
         }
 
         // ----------------------------------------------------------------------------
@@ -1233,8 +1278,8 @@ mod tests {
             let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
             mat_approx_eq(&mat, correct, 1e-15);
-            csc.check_dimensions().unwrap();
-            csr.check_dimensions().unwrap();
+            csc_check_dimensions(&csc);
+            csr_check_dimensions(&csr);
         }
 
         // ----------------------------------------------------------------------------
@@ -1262,8 +1307,8 @@ mod tests {
             let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
             mat_approx_eq(&mat, correct, 1e-15);
-            csc.check_dimensions().unwrap();
-            csr.check_dimensions().unwrap();
+            csc_check_dimensions(&csc);
+            csr_check_dimensions(&csr);
         }
 
         // ----------------------------------------------------------------------------
@@ -1305,8 +1350,27 @@ mod tests {
             let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
             mat_approx_eq(&mat, correct, 1e-15);
-            csc.check_dimensions().unwrap();
-            csr.check_dimensions().unwrap();
+            csc_check_dimensions(&csc);
+            csr_check_dimensions(&csr);
+        }
+
+        // ----------------------------------------------------------------------------
+
+        let correct = &[[10.0, 20.0]];
+        for (coo, csc, csr, _) in [
+            Samples::rectangular_1x2(false, false, false),
+            Samples::rectangular_1x2(false, true, false),
+            Samples::rectangular_1x2(false, false, true),
+            Samples::rectangular_1x2(false, true, true),
+            Samples::rectangular_1x2(true, false, false),
+            Samples::rectangular_1x2(true, true, false),
+            Samples::rectangular_1x2(true, false, true),
+            Samples::rectangular_1x2(true, true, true),
+        ] {
+            let mat = coo.as_dense();
+            mat_approx_eq(&mat, correct, 1e-15);
+            csc_check_dimensions(&csc);
+            csr_check_dimensions(&csr);
         }
 
         // ----------------------------------------------------------------------------
@@ -1315,8 +1379,8 @@ mod tests {
         let (coo, csc, csr, _) = Samples::rectangular_1x7();
         let mat = coo.as_dense();
         mat_approx_eq(&mat, correct, 1e-15);
-        csc.check_dimensions().unwrap();
-        csr.check_dimensions().unwrap();
+        csc_check_dimensions(&csc);
+        csr_check_dimensions(&csr);
 
         // ----------------------------------------------------------------------------
 
@@ -1324,8 +1388,8 @@ mod tests {
         let (coo, csc, csr, _) = Samples::rectangular_7x1();
         let mat = coo.as_dense();
         mat_approx_eq(&mat, correct, 1e-15);
-        csc.check_dimensions().unwrap();
-        csr.check_dimensions().unwrap();
+        csc_check_dimensions(&csc);
+        csr_check_dimensions(&csr);
 
         // ----------------------------------------------------------------------------
 
@@ -1337,7 +1401,7 @@ mod tests {
         let (coo, csc, csr, _) = Samples::rectangular_3x4();
         let mat = coo.as_dense();
         mat_approx_eq(&mat, correct, 1e-15);
-        csc.check_dimensions().unwrap();
-        csr.check_dimensions().unwrap();
+        csc_check_dimensions(&csc);
+        csr_check_dimensions(&csr);
     }
 }

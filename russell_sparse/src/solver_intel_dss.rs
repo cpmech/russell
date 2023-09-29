@@ -139,7 +139,6 @@ impl LinSolTrait for SolverIntelDSS {
         if csr.nrow != csr.ncol {
             return Err("the matrix must be square");
         }
-        csr.check_dimensions()?;
 
         // check already factorized data
         if self.factorized == true {

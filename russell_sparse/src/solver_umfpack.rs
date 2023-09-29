@@ -146,7 +146,6 @@ impl LinSolTrait for SolverUMFPACK {
         if csc.nrow != csc.ncol {
             return Err("the matrix must be square");
         }
-        csc.check_dimensions()?;
         if let Some(symmetry) = csc.symmetry {
             if symmetry.triangular() {
                 return Err("for UMFPACK, the matrix must not be triangular");

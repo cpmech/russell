@@ -240,44 +240,6 @@ impl CooMatrix {
         self.nnz = 0;
     }
 
-    /// Checks the dimension of the arrays in the COO matrix when it's ready for conversions/computations
-    ///
-    /// The following conditions must be satisfied:
-    ///
-    /// ```text
-    /// nrow ≥ 1
-    /// ncol ≥ 1
-    /// pos ≥ 1 (i.e., nnz ≥ 1)
-    /// pos ≤ max
-    /// indices_i.len() == max_nnz
-    /// indices_j.len() == max_nnz
-    /// values_aij.len() == max_nnz
-    /// ```
-    pub fn check_dimensions_ready(&self) -> Result<(), StrError> {
-        if self.nrow < 1 {
-            return Err("COO matrix: nrow must be ≥ 1");
-        }
-        if self.ncol < 1 {
-            return Err("COO matrix: ncol must be ≥ 1");
-        }
-        if self.nnz < 1 {
-            return Err("COO matrix: pos = nnz must be ≥ 1");
-        }
-        if self.nnz > self.max_nnz {
-            return Err("COO matrix: pos = nnz must be ≤ max");
-        }
-        if self.indices_i.len() != self.max_nnz {
-            return Err("COO matrix: indices_i.len() must be = max");
-        }
-        if self.indices_j.len() != self.max_nnz {
-            return Err("COO matrix: indices_j.len() must be = max");
-        }
-        if self.values.len() != self.max_nnz {
-            return Err("COO matrix: values_aij.len() must be = max");
-        }
-        Ok(())
-    }
-
     /// Converts this COO matrix to a dense matrix
     ///
     /// ```
@@ -355,7 +317,6 @@ impl CooMatrix {
     /// }
     /// ```
     pub fn to_dense(&self, a: &mut Matrix) -> Result<(), StrError> {
-        self.check_dimensions_ready()?;
         let (m, n) = a.dims();
         if m != self.nrow || n != self.ncol {
             return Err("wrong matrix dimensions");
@@ -439,7 +400,6 @@ impl CooMatrix {
     /// }
     /// ```
     pub fn mat_vec_mul(&self, v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
-        self.check_dimensions_ready()?;
         if u.dim() != self.ncol {
             return Err("u.ndim must equal ncol");
         }
@@ -562,55 +522,8 @@ mod tests {
     }
 
     #[test]
-    fn check_dimensions_ready_works() {
-        let mut coo = CooMatrix {
-            symmetry: None,
-            one_based: false,
-            nrow: 0,
-            ncol: 0,
-            nnz: 0,
-            max_nnz: 0,
-            indices_i: Vec::new(),
-            indices_j: Vec::new(),
-            values: Vec::new(),
-        };
-        assert_eq!(coo.check_dimensions_ready().err(), Some("COO matrix: nrow must be ≥ 1"));
-        coo.nrow = 1;
-        assert_eq!(coo.check_dimensions_ready().err(), Some("COO matrix: ncol must be ≥ 1"));
-        coo.ncol = 1;
-        assert_eq!(
-            coo.check_dimensions_ready().err(),
-            Some("COO matrix: pos = nnz must be ≥ 1")
-        );
-        coo.nnz = 1;
-        assert_eq!(
-            coo.check_dimensions_ready().err(),
-            Some("COO matrix: pos = nnz must be ≤ max")
-        );
-        coo.max_nnz = 1;
-        assert_eq!(
-            coo.check_dimensions_ready().err(),
-            Some("COO matrix: indices_i.len() must be = max")
-        );
-        coo.indices_i.resize(1, 0);
-        assert_eq!(
-            coo.check_dimensions_ready().err(),
-            Some("COO matrix: indices_j.len() must be = max")
-        );
-        coo.indices_j.resize(1, 0);
-        assert_eq!(
-            coo.check_dimensions_ready().err(),
-            Some("COO matrix: values_aij.len() must be = max")
-        );
-        coo.values.resize(1, 0.0);
-        assert_eq!(coo.check_dimensions_ready().err(), None);
-    }
-
-    #[test]
     fn to_matrix_fails_on_wrong_dims() {
         let mut coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
-        let mut a_1x1 = Matrix::new(1, 1);
-        assert_eq!(coo.to_dense(&mut a_1x1), Err("COO matrix: pos = nnz must be ≥ 1"));
         coo.put(0, 0, 123.0).unwrap();
         let mut a_2x1 = Matrix::new(2, 1);
         let mut a_1x2 = Matrix::new(1, 2);
@@ -717,8 +630,6 @@ mod tests {
     #[test]
     fn mat_vec_mul_fails_on_wrong_input() {
         let mut coo = CooMatrix::new(2, 2, 1, None, false).unwrap();
-        let mut a_2x2 = Matrix::new(2, 2);
-        assert_eq!(coo.to_dense(&mut a_2x2), Err("COO matrix: pos = nnz must be ≥ 1"));
         coo.put(0, 0, 123.0).unwrap();
         let u = Vector::new(3);
         let mut v = Vector::new(coo.nrow);

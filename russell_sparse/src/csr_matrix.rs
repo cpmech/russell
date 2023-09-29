@@ -1,4 +1,4 @@
-use super::{to_i32, CooMatrix, CscMatrix, Symmetry};
+use super::{coo_ready_for_conversion, to_i32, CooMatrix, CscMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::{Matrix, Vector};
 
@@ -221,7 +221,7 @@ impl CsrMatrix {
     /// }
     /// ```
     pub fn from_coo(coo: &CooMatrix) -> Result<Self, StrError> {
-        coo.check_dimensions_ready()?;
+        coo_ready_for_conversion(coo)?;
         let mut csr = CsrMatrix {
             symmetry: coo.symmetry,
             nrow: coo.nrow,
@@ -656,7 +656,7 @@ mod tests {
         let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
         assert_eq!(
             CsrMatrix::from_coo(&coo).err(),
-            Some("COO matrix: pos = nnz must be ≥ 1")
+            Some("converting COO matrix: pos = nnz must be ≥ 1")
         );
     }
 

@@ -140,9 +140,14 @@ impl LinSolTrait for SolverMUMPS {
             return Err("the COO matrix must have one-based (FORTRAN) indices as required by MUMPS");
         }
         if coo.nrow != coo.ncol {
-            return Err("the matrix must be square");
+            return Err("the COO matrix must be square");
         }
-        coo.check_dimensions_ready()?;
+        if coo.nrow < 1 {
+            return Err("the COO matrix must be (1 x 1) at least");
+        }
+        if coo.nnz < 1 {
+            return Err("the COO matrix must have at least one non-zero value");
+        }
 
         // check already factorized data
         if self.factorized == true {

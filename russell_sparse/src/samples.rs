@@ -1020,9 +1020,9 @@ impl Samples {
     /// Note: the last return value is not the determinant, but a PLACEHOLDER
     ///
     /// ```text
-    ///  5.0, -2.0, 0.0, 1.0,
-    /// 10.0, -4.0, 0.0, 2.0,
-    /// 15.0, -6.0, 0.0, 3.0,
+    ///   5  -2  .  1
+    ///  10  -4  .  2
+    ///  15  -6  .  3
     /// ```
     pub fn rectangular_3x4() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = None;

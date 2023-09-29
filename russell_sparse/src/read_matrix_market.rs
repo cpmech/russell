@@ -264,8 +264,8 @@ impl MatrixMarketData {
 /// use russell_sparse::StrError;
 ///
 /// fn main() -> Result<(), StrError> {
-///     let filepath = "./data/matrix_market/ok_simple_general.mtx".to_string();
-///     let coo = read_matrix_market(&filepath, MMsymOption::LeaveAsLower, false)?;
+///     let name = "./data/matrix_market/ok_simple_general.mtx";
+///     let coo = read_matrix_market(name, MMsymOption::LeaveAsLower, false)?;
 ///     let (nrow, ncol, nnz, symmetry) = coo.get_info();
 ///     assert_eq!(nrow, 3);
 ///     assert_eq!(ncol, 3);
@@ -303,8 +303,8 @@ impl MatrixMarketData {
 /// use russell_sparse::StrError;
 ///
 /// fn main() -> Result<(), StrError> {
-///     let filepath = "./data/matrix_market/ok_simple_symmetric.mtx".to_string();
-///     let coo = read_matrix_market(&filepath, MMsymOption::LeaveAsLower, false)?;
+///     let name = "./data/matrix_market/ok_simple_symmetric.mtx";
+///     let coo = read_matrix_market(name, MMsymOption::LeaveAsLower, false)?;
 ///     let (nrow, ncol, nnz, symmetry) = coo.get_info();
 ///     assert_eq!(nrow, 3);
 ///     assert_eq!(ncol, 3);

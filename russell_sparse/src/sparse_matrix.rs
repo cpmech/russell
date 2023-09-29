@@ -122,6 +122,16 @@ impl SparseMatrix {
         }
     }
 
+    pub fn as_dense(&self) -> Matrix {
+        match &self.csc {
+            Some(csc) => csc.as_dense(),
+            None => match &self.csr {
+                Some(csr) => csr.as_dense(),
+                None => self.coo.as_ref().unwrap().as_dense(), // unwrap OK because at least one mat must be available
+            },
+        }
+    }
+
     pub fn to_dense(&self, a: &mut Matrix) -> Result<(), StrError> {
         match &self.csc {
             Some(csc) => csc.to_dense(a),
@@ -239,5 +249,149 @@ impl SparseMatrix {
                 None => Err("CSR is not available and COO matrix is not available to convert to CSR"),
             },
         }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::SparseMatrix;
+    use crate::Samples;
+    use russell_chk::vec_approx_eq;
+    use russell_lab::{Matrix, Vector};
+
+    #[test]
+    fn new_functions_work() {
+        // COO
+        SparseMatrix::new_coo(1, 1, 1, None, false).unwrap();
+        assert_eq!(
+            SparseMatrix::new_coo(0, 1, 1, None, false).err(),
+            Some("nrow must be ≥ 1")
+        );
+        // CSC
+        SparseMatrix::new_csc(1, 1, vec![0, 1], vec![0], vec![0.0], None).unwrap();
+        assert_eq!(
+            SparseMatrix::new_csc(0, 1, vec![0, 1], vec![0], vec![0.0], None).err(),
+            Some("nrow must be ≥ 1")
+        );
+        // CSR
+        SparseMatrix::new_csr(1, 1, vec![0, 1], vec![0], vec![0.0], None).unwrap();
+        assert_eq!(
+            SparseMatrix::new_csr(0, 1, vec![0, 1], vec![0], vec![0.0], None).err(),
+            Some("nrow must be ≥ 1")
+        );
+    }
+
+    #[test]
+    fn getters_work() {
+        // un-mutable
+        // ┌       ┐
+        // │ 10 20 │
+        // └       ┘
+        let (coo, csc, csr, _) = Samples::rectangular_1x2(false, false, false);
+        let mut a = Matrix::new(1, 2);
+        let x = Vector::from(&[2.0, 1.0]);
+        let mut wrong = Vector::new(2);
+        // COO
+        let coo_mat = SparseMatrix::from_coo(coo);
+        assert_eq!(coo_mat.get_info(), (1, 2, 2, None));
+        assert_eq!(coo_mat.get_max_abs_value(), 20.0);
+        assert_eq!(coo_mat.get_coo().unwrap().get_info(), (1, 2, 2, None));
+        assert_eq!(coo_mat.get_csc().err(), Some("CSC matrix is not available"));
+        assert_eq!(coo_mat.get_csr().err(), Some("CSR matrix is not available"));
+        // CSC
+        let csc_mat = SparseMatrix::from_csc(csc);
+        assert_eq!(csc_mat.get_info(), (1, 2, 2, None));
+        assert_eq!(csc_mat.get_max_abs_value(), 20.0);
+        assert_eq!(csc_mat.get_csc().unwrap().get_info(), (1, 2, 2, None));
+        assert_eq!(csc_mat.get_coo().err(), Some("COO matrix is not available"));
+        assert_eq!(csc_mat.get_csr().err(), Some("CSR matrix is not available"));
+        // CSR
+        let csr_mat = SparseMatrix::from_csr(csr);
+        assert_eq!(csr_mat.get_info(), (1, 2, 2, None));
+        assert_eq!(csr_mat.get_max_abs_value(), 20.0);
+        assert_eq!(csr_mat.get_csr().unwrap().get_info(), (1, 2, 2, None));
+        assert_eq!(csr_mat.get_csc().err(), Some("CSC matrix is not available"));
+        assert_eq!(csr_mat.get_coo().err(), Some("COO matrix is not available"));
+
+        // COO, CSC, CSR
+        let mut ax = Vector::new(1);
+        for mat in [&coo_mat, &csc_mat, &csr_mat] {
+            mat.mat_vec_mul(&mut ax, 2.0, &x).unwrap();
+            vec_approx_eq(&ax.as_data(), &[80.0], 1e-15);
+            assert_eq!(
+                mat.mat_vec_mul(&mut wrong, 1.0, &x).err(),
+                Some("v.ndim must equal nrow")
+            );
+            mat.to_dense(&mut a).unwrap();
+            assert_eq!(a.dims(), (1, 2));
+            assert_eq!(a.get(0, 0), 10.0);
+            assert_eq!(a.get(0, 1), 20.0);
+            let aa = mat.as_dense();
+            assert_eq!(aa.dims(), (1, 2));
+            assert_eq!(aa.get(0, 0), 10.0);
+            assert_eq!(aa.get(0, 1), 20.0);
+        }
+    }
+
+    #[test]
+    fn setters_work() {
+        // mutable
+        // ┌       ┐
+        // │ 10 20 │
+        // └       ┘
+        let (coo, csc, csr, _) = Samples::rectangular_1x2(false, false, false);
+        // COO
+        let mut coo_mat = SparseMatrix::from_coo(coo);
+        assert_eq!(coo_mat.get_coo_mut().unwrap().get_info(), (1, 2, 2, None));
+        assert_eq!(coo_mat.get_csc_mut().err(), Some("CSC matrix is not available"));
+        assert_eq!(coo_mat.get_csr_mut().err(), Some("CSR matrix is not available"));
+        // CSC
+        let mut csc_mat = SparseMatrix::from_csc(csc);
+        assert_eq!(csc_mat.get_csc_mut().unwrap().get_info(), (1, 2, 2, None));
+        assert_eq!(csc_mat.get_coo_mut().err(), Some("COO matrix is not available"));
+        assert_eq!(csc_mat.get_csr_mut().err(), Some("CSR matrix is not available"));
+        assert_eq!(csc_mat.get_csc_or_from_coo().unwrap().get_info(), (1, 2, 2, None));
+        assert_eq!(
+            csc_mat.get_csr_or_from_coo().err(),
+            Some("CSR is not available and COO matrix is not available to convert to CSR")
+        );
+        assert_eq!(
+            csc_mat.put(0, 0, 0.0).err(),
+            Some("COO matrix is not available to put items")
+        );
+        assert_eq!(
+            csc_mat.reset().err(),
+            Some("COO matrix is not available to reset nnz counter")
+        );
+        // CSR
+        let mut csr_mat = SparseMatrix::from_csr(csr);
+        assert_eq!(csr_mat.get_csr_mut().unwrap().get_info(), (1, 2, 2, None));
+        assert_eq!(csr_mat.get_csc_mut().err(), Some("CSC matrix is not available"));
+        assert_eq!(csr_mat.get_coo_mut().err(), Some("COO matrix is not available"));
+        assert_eq!(csr_mat.get_csr_or_from_coo().unwrap().get_info(), (1, 2, 2, None));
+        assert_eq!(
+            csr_mat.get_csc_or_from_coo().err(),
+            Some("CSC is not available and COO matrix is not available to convert to CSC")
+        );
+        assert_eq!(
+            csr_mat.put(0, 0, 0.0).err(),
+            Some("COO matrix is not available to put items")
+        );
+        assert_eq!(
+            csr_mat.reset().err(),
+            Some("COO matrix is not available to reset nnz counter")
+        );
+
+        // COO
+        let mut coo = SparseMatrix::new_coo(2, 2, 1, None, false).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        assert_eq!(
+            coo.put(1, 1, 2.0).err(),
+            Some("COO matrix: max number of items has been reached")
+        );
+        coo.reset().unwrap();
+        coo.put(1, 1, 2.0).unwrap();
     }
 }

@@ -8,7 +8,7 @@
 
 **Russell** assists in the development of scientific computations using the Rust language. We focus on numerical methods and solvers for differential equations; however, anything is possible 😉.
 
-An essential goal of this library is to bring the best (fastest) solutions while maintaining a very **clean** (and idiomatic) code, thoroughly tested (min coverage of 95%), and yet simple to use. The best solutions are brought by wrapping **powerful** libraries such as OpenBLAS, MUMPS, and SuiteSparse (UMFPACK).
+An essential goal of this library is to bring the best (fastest) solutions while maintaining a very **clean** (and idiomatic) code, thoroughly tested (min coverage of 95%; see Appendix B below), and yet simple to use. The best solutions are brought by wrapping **powerful** libraries such as OpenBLAS, MUMPS, and SuiteSparse (UMFPACK).
 
 Available crates:
 
@@ -139,13 +139,26 @@ TODO
     - [ ] Implement Chebyshev interpolation and polynomials
     - [ ] Implement Orthogonal polynomials
     - [ ] Implement Lagrange interpolation
+- [x] Improve the `russell_sparse` crate
+    - [x] Implement the Compressed Sparse Column format (CSC)
+    - [x] Implement the Compressed Sparse Row format (CSC)
+    - [x] Improve the C-interface to UMFPACK and MUMPS
+    - [x] Implement the C-interface to Intel DSS
+    - [ ] Write the conversion from COO to CSC in Rust
+    - [ ] Possibly re-write (after benchmarking) the conversion from COO to CSR
+    - [ ] Re-study the possibility to wrap SuperLU (see deleted branch)
 - [x] Add probability distribution functions to `russell_stat`
 - [x] Finalize drawing of ASCII histogram in `russell_stat`
-- [ ] Implement standard continuum mechanics tensors in `russell_tensor`
+- [ ] Improve the `russell_tensor` crate
+    - [x] Implement functions to calculate invariants
+    - [x] Implement first and second order derivatives of invariants
+    - [x] Implement some high-order derivatives
+    - [ ] Implement standard continuum mechanics tensors
 - [ ] Implement more integration tests for linear algebra
 - [ ] Implement more examples
+- [ ] Implement more benchmarks
 
-## Benchmarks
+## Appendix A -- Benchmarks
 
 ### Jacobi Rotation versus LAPACK DSYEV
 
@@ -154,3 +167,23 @@ Comparison of the performances of `mat_eigen_sym_jacobi` (Jacobi rotation) versu
 ![Jacobi Rotation versus LAPACK DSYEV (1-5)](zassets/bench_mat_eigen_sym_1-5.svg)
 
 ![Jacobi Rotation versus LAPACK DSYEV (1-32)](zassets/bench_mat_eigen_sym_1-32.svg)
+
+## Appendix B -- Code coverage
+
+### Sunburst
+
+The inner-most circle is the entire project, moving away from the center are folders then, finally, a single file. The size and color of each slice is representing the number of statements and the coverage, respectively.
+
+![Sunburst](https://codecov.io/gh/cpmech/russell/graphs/sunburst.svg?token=PQWSKMZQXT)
+
+### Grid
+
+Each block represents a single file in the project. The size and color of each block is represented by the number of statements and the coverage, respectively.
+
+![Grid](https://codecov.io/gh/cpmech/russell/graphs/tree.svg?token=PQWSKMZQXT)
+
+### Icicle
+
+The top section represents the entire project. Proceeding with folders and finally individual files. The size and color of each slice is representing the number of statements and the coverage, respectively.
+
+![Icicle](https://codecov.io/gh/cpmech/russell/graphs/icicle.svg?token=PQWSKMZQXT)

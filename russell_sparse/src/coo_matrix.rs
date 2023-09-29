@@ -1,7 +1,7 @@
 use super::Symmetry;
+use crate::to_i32;
 use crate::StrError;
 use russell_lab::{Matrix, Vector};
-use russell_openblas::to_i32;
 
 /// Holds the row index, col index, and values of a matrix (also known as Triplet)
 ///
@@ -142,6 +142,23 @@ impl CooMatrix {
         if nnz < 1 {
             return Err("nnz must be ≥ 1");
         }
+        if col_indices.len() != nnz {
+            return Err("col_indices.len() must be = nnz");
+        }
+        if values.len() != nnz {
+            return Err("values.len() must be = nnz");
+        }
+        let d = if one_based { 1 } else { 0 };
+        let m = to_i32(nrow)?;
+        let n = to_i32(ncol)?;
+        for k in 0..nnz {
+            if row_indices[k] - d < 0 || row_indices[k] - d >= m {
+                return Err("row index is out-of-range");
+            }
+            if col_indices[k] - d < 0 || col_indices[k] - d >= n {
+                return Err("col index is out-of-range");
+            }
+        }
         Ok(CooMatrix {
             symmetry,
             nrow,
@@ -211,8 +228,8 @@ impl CooMatrix {
         }
 
         // insert a new entry
-        let i_i32 = to_i32(i);
-        let j_i32 = to_i32(j);
+        let i_i32 = to_i32(i)?;
+        let j_i32 = to_i32(j)?;
         let d = if self.one_based { 1 } else { 0 };
         self.indices_i[self.nnz] = i_i32 + d;
         self.indices_j[self.nnz] = j_i32 + d;
@@ -503,7 +520,7 @@ mod tests {
     use russell_lab::{Matrix, Vector};
 
     #[test]
-    fn new_fails_on_wrong_input() {
+    fn new_captures_errors() {
         assert_eq!(CooMatrix::new(0, 1, 3, None, false).err(), Some("nrow must be ≥ 1"));
         assert_eq!(CooMatrix::new(1, 0, 3, None, false).err(), Some("ncol must be ≥ 1"));
         assert_eq!(CooMatrix::new(1, 1, 0, None, false).err(), Some("max_nnz must be ≥ 1"));
@@ -520,6 +537,24 @@ mod tests {
         assert_eq!(coo.indices_i.len(), 3);
         assert_eq!(coo.indices_j.len(), 3);
         assert_eq!(coo.values.len(), 3);
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn from_captures_errors(){
+        assert_eq!(CooMatrix::from(0, 1, vec![ 0], vec![ 0], vec![0.0], None, false).err(), Some("nrow must be ≥ 1"));
+        assert_eq!(CooMatrix::from(1, 0, vec![ 0], vec![ 0], vec![0.0], None, false).err(), Some("ncol must be ≥ 1"));
+        assert_eq!(CooMatrix::from(1, 1, vec![  ], vec![ 0], vec![0.0], None, false).err(), Some("nnz must be ≥ 1"));
+        assert_eq!(CooMatrix::from(1, 1, vec![ 0], vec![  ], vec![0.0], None, false).err(), Some("col_indices.len() must be = nnz"));
+        assert_eq!(CooMatrix::from(1, 1, vec![ 0], vec![ 0], vec![   ], None, false).err(), Some("values.len() must be = nnz"));
+        assert_eq!(CooMatrix::from(1, 1, vec![-1], vec![ 0], vec![0.0], None, false).err(), Some("row index is out-of-range"));
+        assert_eq!(CooMatrix::from(1, 1, vec![ 1], vec![ 0], vec![0.0], None, false).err(), Some("row index is out-of-range"));
+        assert_eq!(CooMatrix::from(1, 1, vec![ 0], vec![-1], vec![0.0], None, false).err(), Some("col index is out-of-range"));
+        assert_eq!(CooMatrix::from(1, 1, vec![ 0], vec![ 1], vec![0.0], None, false).err(), Some("col index is out-of-range"));
+        assert_eq!(CooMatrix::from(1, 1, vec![ 0], vec![ 1], vec![0.0], None, true).err(), Some("row index is out-of-range"));
+        assert_eq!(CooMatrix::from(1, 1, vec![ 2], vec![ 1], vec![0.0], None, true).err(), Some("row index is out-of-range"));
+        assert_eq!(CooMatrix::from(1, 1, vec![ 1], vec![ 0], vec![0.0], None, true).err(), Some("col index is out-of-range"));
+        assert_eq!(CooMatrix::from(1, 1, vec![ 1], vec![ 2], vec![0.0], None, true).err(), Some("col index is out-of-range"));
     }
 
     #[test]

@@ -18,54 +18,13 @@ pub struct LinSolParams {
 
     /// Requests that the error estimates be computed
     ///
-    /// MUMPS: computes the backward errors omega1 and omega2 (page 14):
-    ///
-    /// ```text
-    ///                                       |b - A · x_bar|ᵢ
-    /// omega1 = largest_scaled_residual_of ————————————————————
-    ///                                     (|b| + |A| |x_bar|)ᵢ
-    ///
-    ///                                            |b - A · x_bar|ᵢ
-    /// omega2 = largest_scaled_residual_of ——————————————————————————————————
-    ///                                     (|A| |x_approx|)ᵢ + ‖Aᵢ‖∞ ‖x_bar‖∞
-    ///
-    /// where x_bar is the actual (approximate) solution returned by the linear solver
-    /// ```
+    /// **Note:** Will need to use the `actual` solver to access the results.
     pub compute_error_estimates: bool,
 
-    /// Estimates the reciprocal condition number (rcond)
+    /// Requests that condition numbers be computed
     ///
-    /// * `cond` -- is the condition number
-    /// * `rcond` -- is the reciprocal condition number (estimate), `rcond ~= 1/cond`
-    ///
-    /// ```text
-    /// cond = norm(A) · norm(inverse(A))
-    /// ```
-    ///
-    /// ```text
-    ///                      1
-    /// rcond ~= ——————————————————————————
-    ///          norm(A) · norm(inverse(A))
-    ///
-    /// Reference:
-    /// Arioli M, Demmel JW, and Duff IS (1989) Solving sparse linear systems with
-    /// sparse backward error, SIAM J. Matrix Analysis Applied, 10(2):165-190
-    /// ```
-    ///
-    /// UMFPACK computes a rough estimate of the reciprocal condition number:
-    ///
-    /// ```text
-    /// rcond = min (abs (diag (U))) / max (abs (diag (U)))
-    /// ```
-    ///
-    /// Note: the reciprocal condition number will be zero if the diagonal of U is all zero (UMFPACK).
-    ///
-    /// Matlab: The reciprocal condition number is a scale-invariant measure
-    /// of how close a given matrix is to the set of singular matrices.
-    ///
-    /// * If rcond ~ 0.0, the matrix is nearly singular and badly conditioned.
-    /// * If rcond ~ 1.0, the matrix is well conditioned.
-    pub compute_condition_number_estimate: bool,
+    /// **Note:** Will need to use the `actual` solver to access the results.
+    pub compute_condition_numbers: bool,
 
     /// Sets the % increase in the estimated working space (MUMPS only)
     ///
@@ -97,7 +56,7 @@ impl LinSolParams {
             scaling: Scaling::Auto,
             compute_determinant: false,
             compute_error_estimates: false,
-            compute_condition_number_estimate: false,
+            compute_condition_numbers: false,
             mumps_pct_inc_workspace: 100,
             mumps_max_work_memory: 0,
             mumps_openmp_num_threads: 0,
@@ -148,57 +107,6 @@ pub trait LinSolTrait {
     ///
     /// **Warning:** the matrix must be same one used in `factorize`.
     fn solve(&mut self, x: &mut Vector, mat: &SparseMatrix, rhs: &Vector, verbose: bool) -> Result<(), StrError>;
-
-    /// Returns the error estimates (if requested)
-    ///
-    /// MUMPS: computes the backward errors omega1 and omega2 (page 14):
-    ///
-    /// ```text
-    ///                                       |b - A · x_bar|ᵢ
-    /// omega1 = largest_scaled_residual_of ————————————————————
-    ///                                     (|b| + |A| |x_bar|)ᵢ
-    ///
-    ///                                            |b - A · x_bar|ᵢ
-    /// omega2 = largest_scaled_residual_of ——————————————————————————————————
-    ///                                     (|A| |x_approx|)ᵢ + ‖Aᵢ‖∞ ‖x_bar‖∞
-    ///
-    /// where x_bar is the actual (approximate) solution returned by the linear solver
-    /// ```
-    fn get_error_estimates(&self) -> (f64, f64);
-
-    /// Returns the reciprocal condition number estimate (if requested)
-    ///
-    /// * `cond` -- is the condition number
-    /// * `rcond` -- is the reciprocal condition number (estimate), `rcond ~= 1/cond`
-    ///
-    /// ```text
-    /// cond = norm(A) · norm(inverse(A))
-    /// ```
-    ///
-    /// ```text
-    ///                      1
-    /// rcond ~= ——————————————————————————
-    ///          norm(A) · norm(inverse(A))
-    ///
-    /// Reference:
-    /// Arioli M, Demmel JW, and Duff IS (1989) Solving sparse linear systems with
-    /// sparse backward error, SIAM J. Matrix Analysis Applied, 10(2):165-190
-    /// ```
-    ///
-    /// UMFPACK computes a rough estimate of the reciprocal condition number:
-    ///
-    /// ```text
-    /// rcond = min (abs (diag (U))) / max (abs (diag (U)))
-    /// ```
-    ///
-    /// Note: the reciprocal condition number will be zero if the diagonal of U is all zero (UMFPACK).
-    ///
-    /// Matlab: The reciprocal condition number is a scale-invariant measure
-    /// of how close a given matrix is to the set of singular matrices.
-    ///
-    /// * If rcond ~ 0.0, the matrix is nearly singular and badly conditioned.
-    /// * If rcond ~ 1.0, the matrix is well conditioned.
-    fn get_reciprocal_condition_number_estimate(&self) -> f64;
 
     /// Returns the determinant
     ///

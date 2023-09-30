@@ -23,14 +23,13 @@ extern "C" {
         effective_strategy: *mut i32,
         effective_ordering: *mut i32,
         effective_scaling: *mut i32,
-        reciprocal_condition_number_estimate: *mut f64,
+        rcond_estimate: *mut f64,
         determinant_coefficient: *mut f64,
         determinant_exponent: *mut f64,
         // input
         ordering: i32,
         scaling: i32,
         // requests
-        compute_condition_number_estimate: CcBool,
         compute_determinant: CcBool,
         verbose: CcBool,
         // matrix config
@@ -80,8 +79,8 @@ pub struct SolverUMFPACK {
     /// Holds the used scaling (after factorize)
     effective_scaling: i32,
 
-    /// Reciprocal condition number estimate (if requested)
-    reciprocal_condition_number_estimate: f64,
+    /// Reciprocal condition number estimate (after factorize)
+    rcond_estimate: f64,
 
     /// Holds the determinant coefficient (if requested)
     ///
@@ -120,7 +119,7 @@ impl SolverUMFPACK {
                 effective_strategy: -1,
                 effective_ordering: -1,
                 effective_scaling: -1,
-                reciprocal_condition_number_estimate: 0.0,
+                rcond_estimate: 0.0,
                 determinant_coefficient: 0.0,
                 determinant_exponent: 0.0,
             })
@@ -209,8 +208,7 @@ impl LinSolTrait for SolverUMFPACK {
         };
 
         // requests
-        let rcond_number = if par.compute_condition_number_estimate { 1 } else { 0 };
-        let calc_det = if par.compute_determinant { 1 } else { 0 };
+        let compute_determinant = if par.compute_determinant { 1 } else { 0 };
         let verbose = if par.verbose { 1 } else { 0 };
 
         // matrix config
@@ -225,15 +223,14 @@ impl LinSolTrait for SolverUMFPACK {
                 &mut self.effective_strategy,
                 &mut self.effective_ordering,
                 &mut self.effective_scaling,
-                &mut self.reciprocal_condition_number_estimate,
+                &mut self.rcond_estimate,
                 &mut self.determinant_coefficient,
                 &mut self.determinant_exponent,
                 // input
                 ordering,
                 scaling,
                 // requests
-                rcond_number,
-                calc_det,
+                compute_determinant,
                 verbose,
                 // matrix config
                 enforce_unsym,
@@ -322,47 +319,6 @@ impl LinSolTrait for SolverUMFPACK {
 
         // done
         Ok(())
-    }
-
-    /// Returns the error estimates (NOT AVAILABLE)
-    fn get_error_estimates(&self) -> (f64, f64) {
-        (0.0, 0.0)
-    }
-
-    /// Returns the reciprocal condition number estimate (if requested)
-    ///
-    /// * `cond` -- is the condition number
-    /// * `rcond` -- is the reciprocal condition number (estimate), `rcond ~= 1/cond`
-    ///
-    /// ```text
-    /// cond = norm(A) · norm(inverse(A))
-    /// ```
-    ///
-    /// ```text
-    ///                      1
-    /// rcond ~= ——————————————————————————
-    ///          norm(A) · norm(inverse(A))
-    ///
-    /// Reference:
-    /// Arioli M, Demmel JW, and Duff IS (1989) Solving sparse linear systems with
-    /// sparse backward error, SIAM J. Matrix Analysis Applied, 10(2):165-190
-    /// ```
-    ///
-    /// UMFPACK computes a rough estimate of the reciprocal condition number:
-    ///
-    /// ```text
-    /// rcond = min (abs (diag (U))) / max (abs (diag (U)))
-    /// ```
-    ///
-    /// Note: the reciprocal condition number will be zero if the diagonal of U is all zero (UMFPACK).
-    ///
-    /// Matlab: The reciprocal condition number is a scale-invariant measure
-    /// of how close a given matrix is to the set of singular matrices.
-    ///
-    /// * If rcond ~ 0.0, the matrix is nearly singular and badly conditioned.
-    /// * If rcond ~ 1.0, the matrix is well conditioned.
-    fn get_reciprocal_condition_number_estimate(&self) -> f64 {
-        self.reciprocal_condition_number_estimate
     }
 
     /// Returns the determinant

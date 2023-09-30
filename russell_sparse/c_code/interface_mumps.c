@@ -101,9 +101,6 @@ void solver_mumps_drop(struct InterfaceMUMPS *solver) {
 /// @note Output
 /// @param effective_ordering used ordering (after factorize)
 /// @param effective_scaling used scaling (after factorize)
-/// @param backward_error_omega1 Holds the backward error omega1 (if requested)
-/// @param backward_error_omega2 Holds the backward error omega2 (if requested)
-/// @param reciprocal_condition_number_estimate Reciprocal condition number estimate (if requested)
 /// @param determinant_coefficient determinant coefficient: det = coefficient * pow(2, exponent)
 /// @param determinant_exponent determinant exponent: det = coefficient * pow(2, exponent)
 /// @note Input
@@ -113,8 +110,6 @@ void solver_mumps_drop(struct InterfaceMUMPS *solver) {
 /// @param max_work_memory Is the allowed maximum memory
 /// @param openmp_num_threads Is the number of threads allowed for OpenMP
 /// @note Requests
-/// @param compute_error_estimates Requests that the error estimates be computed
-/// @param compute_condition_number_estimate Estimates the reciprocal condition number (rcond)
 /// @param compute_determinant Requests that determinant be computed
 /// @param verbose Shows messages
 /// @note Matrix config
@@ -131,9 +126,6 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
                                // output
                                int32_t *effective_ordering,
                                int32_t *effective_scaling,
-                               double *backward_error_omega1,
-                               double *backward_error_omega2,
-                               double *reciprocal_condition_number_estimate,
                                double *determinant_coefficient,
                                double *determinant_exponent,
                                // input
@@ -143,8 +135,6 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
                                int32_t max_work_memory,
                                int32_t openmp_num_threads,
                                // requests
-                               C_BOOL compute_error_estimates,
-                               C_BOOL compute_condition_number_estimate,
                                C_BOOL compute_determinant,
                                C_BOOL verbose,
                                // matrix config
@@ -250,21 +240,6 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
     *effective_ordering = solver->data.INFOG(7);
     *effective_scaling = solver->data.INFOG(33);
 
-    // save the error estimates
-
-    if (compute_error_estimates == C_TRUE) {
-        // TODO
-        *backward_error_omega1 = 0.0;
-        *backward_error_omega2 = 0.0;
-    }
-
-    // save the condition number
-
-    if (compute_condition_number_estimate == C_TRUE) {
-        // TODO
-        *reciprocal_condition_number_estimate = 0.0;
-    }
-
     // read the determinant
 
     if (compute_determinant == C_TRUE && solver->data.ICNTL(33) == 1) {
@@ -283,9 +258,15 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
 /// @brief Computes the solution of the linear system
 /// @param solver Is a pointer to the solver interface
 /// @param rhs Is the right-hand side on the input and the vector of unknow values x on the output
+/// @param error_analysis_array_len_8 array of size 8 to hold the results from the error analysis
+/// @param error_analysis_option ICNTL(11): 0 (nothing), 1 (all; slow), 2 (just errors)
 /// @param verbose Shows messages
 /// @return A success or fail code
-int32_t solver_mumps_solve(struct InterfaceMUMPS *solver, double *rhs, C_BOOL verbose) {
+int32_t solver_mumps_solve(struct InterfaceMUMPS *solver,
+                           double *rhs,
+                           double *error_analysis_array_len_8,
+                           int32_t error_analysis_option,
+                           C_BOOL verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
@@ -294,11 +275,26 @@ int32_t solver_mumps_solve(struct InterfaceMUMPS *solver, double *rhs, C_BOOL ve
         return NEED_FACTORIZATION;
     }
 
+    solver->data.ICNTL(11) = error_analysis_option;
+
     solver->data.rhs = rhs;
 
     set_mumps_verbose(&solver->data, verbose);
     solver->data.job = MUMPS_JOB_SOLVE;
     dmumps_c(&solver->data);
+
+    if (error_analysis_option > 0) {
+        error_analysis_array_len_8[0] = solver->data.RINFOG(4); // norm_a
+        error_analysis_array_len_8[1] = solver->data.RINFOG(5); // norm_x
+        error_analysis_array_len_8[2] = solver->data.RINFOG(6); // resid
+        error_analysis_array_len_8[3] = solver->data.RINFOG(7); // omega1
+        error_analysis_array_len_8[4] = solver->data.RINFOG(8); // omega2
+        if (error_analysis_option == 1) {
+            error_analysis_array_len_8[5] = solver->data.RINFOG(9);  // delta
+            error_analysis_array_len_8[6] = solver->data.RINFOG(10); // cond1
+            error_analysis_array_len_8[7] = solver->data.RINFOG(11); // cond2
+        }
+    }
 
     return solver->data.INFOG(1);
 }

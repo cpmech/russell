@@ -22,9 +22,6 @@ extern "C" {
         // output
         effective_ordering: *mut i32,
         effective_scaling: *mut i32,
-        backward_error_omega1: *mut f64,
-        backward_error_omega2: *mut f64,
-        reciprocal_condition_number_estimate: *mut f64,
         determinant_coefficient: *mut f64,
         determinant_exponent: *mut f64,
         // input
@@ -34,8 +31,6 @@ extern "C" {
         max_work_memory: i32,
         openmp_num_threads: i32,
         // requests
-        compute_error_estimates: CcBool,
-        compute_condition_number_estimate: CcBool,
         compute_determinant: CcBool,
         verbose: CcBool,
         // matrix config
@@ -48,7 +43,62 @@ extern "C" {
         indices_j: *const i32,
         values_aij: *const f64,
     ) -> i32;
-    fn solver_mumps_solve(solver: *mut InterfaceMUMPS, rhs: *mut f64, verbose: CcBool) -> i32;
+    fn solver_mumps_solve(
+        solver: *mut InterfaceMUMPS,
+        rhs: *mut f64,
+        error_analysis_array_len_8: *mut f64,
+        error_analysis_option: i32,
+        verbose: CcBool,
+    ) -> i32;
+}
+
+/// Holds the results of MUMPS error analysis ("stats")
+///
+/// See page 40 of MUMPS User's guide
+///
+/// MUMPS: computes the backward errors omega1 and omega2 (page 14):
+///
+/// ```text
+///                                       |b - A · x_bar|ᵢ
+/// omega1 = largest_scaled_residual_of ————————————————————
+///                                     (|b| + |A| |x_bar|)ᵢ
+///
+///                                            |b - A · x_bar|ᵢ
+/// omega2 = largest_scaled_residual_of ——————————————————————————————————
+///                                     (|A| |x_approx|)ᵢ + ‖Aᵢ‖∞ ‖x_bar‖∞
+///
+/// where x_bar is the actual (approximate) solution returned by the linear solver
+/// ```
+pub struct StatsMUMPS {
+    /// Holds the infinite norm of the input matrix, RINFOG(4)
+    pub inf_norm_a: f64,
+
+    /// Holds the infinite norm of the computed solution, RINFOG(5)
+    pub inf_norm_x: f64,
+
+    /// Holds the scaled residual, RINFOG(6)
+    pub scaled_residual: f64,
+
+    /// Holds the backward error estimate omega1, RINFOG(7)
+    pub backward_error_omega1: f64,
+
+    /// Holds the backward error estimate omega2, RINFOG(8)
+    pub backward_error_omega2: f64,
+
+    /// Holds the normalized variation of the solution vector, RINFOG(9)
+    ///
+    /// Requires the full "stat" analysis.
+    pub normalized_delta_x: f64,
+
+    /// Holds the condition number1, RINFOG(10)
+    ///
+    /// Requires the full "stat" analysis.
+    pub condition_number1: f64,
+
+    /// Holds the condition number2, RINFOG(11)
+    ///
+    /// Requires the full "stat" analysis.
+    pub condition_number2: f64,
 }
 
 /// Wraps the MUMPS solver for (very large) sparse linear systems
@@ -76,15 +126,6 @@ pub struct SolverMUMPS {
     /// Holds the used scaling (after factorize)
     effective_scaling: i32,
 
-    /// Holds the backward error omega1 (if requested)
-    backward_error_omega1: f64,
-
-    /// Holds the backward error omega2 (if requested)
-    backward_error_omega2: f64,
-
-    /// Reciprocal condition number estimate (if requested)
-    reciprocal_condition_number_estimate: f64,
-
     /// Holds the determinant coefficient (if requested)
     ///
     /// det = coefficient * pow(2, exponent)
@@ -94,6 +135,14 @@ pub struct SolverMUMPS {
     ///
     /// det = coefficient * pow(2, exponent)
     determinant_exponent: f64,
+
+    /// MUMPS code for error analysis (after solve)
+    ///
+    /// ICNTL(11): 0 (nothing), 1 (all; slow), 2 (just errors)
+    error_analysis_option: i32,
+
+    /// Holds the error analysis "stat" results
+    error_analysis_array_len_8: Vec<f64>,
 }
 
 impl Drop for SolverMUMPS {
@@ -121,12 +170,25 @@ impl SolverMUMPS {
                 factorized_nnz: 0,
                 effective_ordering: -1,
                 effective_scaling: -1,
-                backward_error_omega1: 0.0,
-                backward_error_omega2: 0.0,
-                reciprocal_condition_number_estimate: 0.0,
                 determinant_coefficient: 0.0,
                 determinant_exponent: 0.0,
+                error_analysis_option: 0,
+                error_analysis_array_len_8: vec![0.0; 8],
             })
+        }
+    }
+
+    /// Returns the "stats" (error analysis) after a call to solve
+    pub fn get_stats_after_solve(&self) -> StatsMUMPS {
+        StatsMUMPS {
+            inf_norm_a: self.error_analysis_array_len_8[0],
+            inf_norm_x: self.error_analysis_array_len_8[1],
+            scaled_residual: self.error_analysis_array_len_8[2],
+            backward_error_omega1: self.error_analysis_array_len_8[3],
+            backward_error_omega2: self.error_analysis_array_len_8[4],
+            normalized_delta_x: self.error_analysis_array_len_8[5],
+            condition_number1: self.error_analysis_array_len_8[6],
+            condition_number2: self.error_analysis_array_len_8[7],
         }
     }
 }
@@ -190,6 +252,15 @@ impl LinSolTrait for SolverMUMPS {
         // configuration parameters
         let par = if let Some(p) = params { p } else { LinSolParams::new() };
 
+        // error analysis option
+        self.error_analysis_option = if par.compute_condition_numbers {
+            1 // all the statistics (very expensive) (page 40)
+        } else if par.compute_error_estimates {
+            2 // main statistics are computed (page 40)
+        } else {
+            0 // nothing
+        };
+
         // input parameters
         let ordering = match par.ordering {
             Ordering::Amd => 0,     // Amd (page 35)
@@ -219,9 +290,7 @@ impl LinSolTrait for SolverMUMPS {
         let openmp_num_threads = to_i32(par.mumps_openmp_num_threads);
 
         // requests
-        let error_estimates = if par.compute_error_estimates { 1 } else { 0 };
-        let rcond_number = if par.compute_condition_number_estimate { 1 } else { 0 };
-        let calc_det = if par.compute_determinant { 1 } else { 0 };
+        let compute_determinant = if par.compute_determinant { 1 } else { 0 };
         let verbose = if par.verbose { 1 } else { 0 };
 
         // extract the symmetry flags and check the storage type
@@ -241,9 +310,6 @@ impl LinSolTrait for SolverMUMPS {
                 // output
                 &mut self.effective_ordering,
                 &mut self.effective_scaling,
-                &mut self.backward_error_omega1,
-                &mut self.backward_error_omega2,
-                &mut self.reciprocal_condition_number_estimate,
                 &mut self.determinant_coefficient,
                 &mut self.determinant_exponent,
                 // input
@@ -253,9 +319,7 @@ impl LinSolTrait for SolverMUMPS {
                 max_work_memory,
                 openmp_num_threads,
                 // requests
-                error_estimates,
-                rcond_number,
-                calc_det,
+                compute_determinant,
                 verbose,
                 // matrix config
                 general_symmetric,
@@ -330,67 +394,18 @@ impl LinSolTrait for SolverMUMPS {
         vec_copy(x, rhs).unwrap();
         let verb = if verbose { 1 } else { 0 };
         unsafe {
-            let status = solver_mumps_solve(self.solver, x.as_mut_data().as_mut_ptr(), verb);
+            let status = solver_mumps_solve(
+                self.solver,
+                x.as_mut_data().as_mut_ptr(),
+                self.error_analysis_array_len_8.as_mut_ptr(),
+                self.error_analysis_option,
+                verb,
+            );
             if status != SUCCESSFUL_EXIT {
                 return Err(handle_mumps_error_code(status));
             }
         }
         Ok(())
-    }
-
-    /// Returns the error estimates (if requested)
-    ///
-    /// MUMPS: computes the backward errors omega1 and omega2 (page 14):
-    ///
-    /// ```text
-    ///                                       |b - A · x_bar|ᵢ
-    /// omega1 = largest_scaled_residual_of ————————————————————
-    ///                                     (|b| + |A| |x_bar|)ᵢ
-    ///
-    ///                                            |b - A · x_bar|ᵢ
-    /// omega2 = largest_scaled_residual_of ——————————————————————————————————
-    ///                                     (|A| |x_approx|)ᵢ + ‖Aᵢ‖∞ ‖x_bar‖∞
-    ///
-    /// where x_bar is the actual (approximate) solution returned by the linear solver
-    /// ```
-    fn get_error_estimates(&self) -> (f64, f64) {
-        (self.backward_error_omega1, self.backward_error_omega2)
-    }
-
-    /// Returns the reciprocal condition number estimate (if requested)
-    ///
-    /// * `cond` -- is the condition number
-    /// * `rcond` -- is the reciprocal condition number (estimate), `rcond ~= 1/cond`
-    ///
-    /// ```text
-    /// cond = norm(A) · norm(inverse(A))
-    /// ```
-    ///
-    /// ```text
-    ///                      1
-    /// rcond ~= ——————————————————————————
-    ///          norm(A) · norm(inverse(A))
-    ///
-    /// Reference:
-    /// Arioli M, Demmel JW, and Duff IS (1989) Solving sparse linear systems with
-    /// sparse backward error, SIAM J. Matrix Analysis Applied, 10(2):165-190
-    /// ```
-    ///
-    /// UMFPACK computes a rough estimate of the reciprocal condition number:
-    ///
-    /// ```text
-    /// rcond = min (abs (diag (U))) / max (abs (diag (U)))
-    /// ```
-    ///
-    /// Note: the reciprocal condition number will be zero if the diagonal of U is all zero (UMFPACK).
-    ///
-    /// Matlab: The reciprocal condition number is a scale-invariant measure
-    /// of how close a given matrix is to the set of singular matrices.
-    ///
-    /// * If rcond ~ 0.0, the matrix is nearly singular and badly conditioned.
-    /// * If rcond ~ 1.0, the matrix is well conditioned.
-    fn get_reciprocal_condition_number_estimate(&self) -> f64 {
-        self.reciprocal_condition_number_estimate
     }
 
     /// Returns the determinant

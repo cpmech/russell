@@ -37,6 +37,7 @@ fn main() -> Result<(), StrError> {
     let mut params = LinSolParams::new();
     params.compute_error_estimates = true;
     params.compute_condition_numbers = true;
+    params.verbose = false;
 
     // call factorize
     mumps.factorize(&mut coo, Some(params))?;

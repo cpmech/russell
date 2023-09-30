@@ -125,6 +125,11 @@ impl SolverUMFPACK {
             })
         }
     }
+
+    /// Returns the reciprocal condition number estimate (after factorize)
+    pub fn get_rcond_after_factorize(&self) -> f64 {
+        self.rcond_estimate
+    }
 }
 
 impl LinSolTrait for SolverUMFPACK {

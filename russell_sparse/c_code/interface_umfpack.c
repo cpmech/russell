@@ -82,12 +82,14 @@ void solver_umfpack_drop(struct InterfaceUMFPACK *solver) {
 /// @param effective_strategy used strategy regarding symmetry (after factorize)
 /// @param effective_ordering used ordering (after factorize)
 /// @param effective_scaling used scaling (after factorize)
+/// @param reciprocal_condition_number_estimate reciprocal condition number estimate (if requested)
 /// @param determinant_coefficient determinant coefficient: det = coefficient * pow(base, exponent)
 /// @param determinant_exponent determinant exponent: det = coefficient * pow(base, exponent)
 /// @note Input
 /// @param ordering Is the ordering code
 /// @param scaling Is the scaling code
 /// @note Requests
+/// @param compute_condition_number_estimate estimates the reciprocal condition number (rcond)
 /// @param compute_determinant Requests that determinant be computed
 /// @param verbose Shows messages
 /// @note Matrix config
@@ -103,12 +105,14 @@ int32_t solver_umfpack_factorize(struct InterfaceUMFPACK *solver,
                                  int32_t *effective_strategy,
                                  int32_t *effective_ordering,
                                  int32_t *effective_scaling,
+                                 double *reciprocal_condition_number_estimate,
                                  double *determinant_coefficient,
                                  double *determinant_exponent,
                                  // input
                                  int32_t ordering,
                                  int32_t scaling,
                                  // requests
+                                 C_BOOL compute_condition_number_estimate,
                                  C_BOOL compute_determinant,
                                  C_BOOL verbose,
                                  // matrix config
@@ -171,6 +175,11 @@ int32_t solver_umfpack_factorize(struct InterfaceUMFPACK *solver,
     *effective_strategy = solver->info[UMFPACK_STRATEGY_USED];
     *effective_ordering = solver->info[UMFPACK_ORDERING_USED];
     *effective_scaling = solver->control[UMFPACK_SCALE];
+
+    // condition number
+    if (compute_condition_number_estimate == C_TRUE) {
+        *reciprocal_condition_number_estimate = solver->info[UMFPACK_RCOND];
+    }
 
     // compute determinant
     if (compute_determinant == C_TRUE) {

@@ -265,6 +265,16 @@ impl LinSolTrait for SolverIntelDSS {
         Ok(())
     }
 
+    /// Returns the error estimates (NOT AVAILABLE)
+    fn get_error_estimates(&self) -> (f64, f64) {
+        (0.0, 0.0)
+    }
+
+    /// Returns the reciprocal condition number estimate (NOT AVAILABLE)
+    fn get_reciprocal_condition_number_estimate(&self) -> f64 {
+        0.0
+    }
+
     /// Returns the determinant
     ///
     /// Returns the three values `(mantissa, 10.0, exponent)`, such that the determinant is calculated by:

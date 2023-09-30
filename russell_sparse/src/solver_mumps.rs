@@ -22,6 +22,9 @@ extern "C" {
         // output
         effective_ordering: *mut i32,
         effective_scaling: *mut i32,
+        backward_error_omega1: *mut f64,
+        backward_error_omega2: *mut f64,
+        reciprocal_condition_number_estimate: *mut f64,
         determinant_coefficient: *mut f64,
         determinant_exponent: *mut f64,
         // input
@@ -31,6 +34,8 @@ extern "C" {
         max_work_memory: i32,
         openmp_num_threads: i32,
         // requests
+        compute_error_estimates: CcBool,
+        compute_condition_number_estimate: CcBool,
         compute_determinant: CcBool,
         verbose: CcBool,
         // matrix config
@@ -71,10 +76,23 @@ pub struct SolverMUMPS {
     /// Holds the used scaling (after factorize)
     effective_scaling: i32,
 
-    /// Holds the determinant coefficient: det = coefficient * pow(2, exponent)
+    /// Holds the backward error omega1 (if requested)
+    backward_error_omega1: f64,
+
+    /// Holds the backward error omega2 (if requested)
+    backward_error_omega2: f64,
+
+    /// Reciprocal condition number estimate (if requested)
+    reciprocal_condition_number_estimate: f64,
+
+    /// Holds the determinant coefficient (if requested)
+    ///
+    /// det = coefficient * pow(2, exponent)
     determinant_coefficient: f64,
 
-    /// Holds the determinant exponent: det = coefficient * pow(2, exponent)
+    /// Holds the determinant exponent (if requested)
+    ///
+    /// det = coefficient * pow(2, exponent)
     determinant_exponent: f64,
 }
 
@@ -103,6 +121,9 @@ impl SolverMUMPS {
                 factorized_nnz: 0,
                 effective_ordering: -1,
                 effective_scaling: -1,
+                backward_error_omega1: 0.0,
+                backward_error_omega2: 0.0,
+                reciprocal_condition_number_estimate: 0.0,
                 determinant_coefficient: 0.0,
                 determinant_exponent: 0.0,
             })
@@ -198,6 +219,8 @@ impl LinSolTrait for SolverMUMPS {
         let openmp_num_threads = to_i32(par.mumps_openmp_num_threads);
 
         // requests
+        let error_estimates = if par.compute_error_estimates { 1 } else { 0 };
+        let rcond_number = if par.compute_condition_number_estimate { 1 } else { 0 };
         let calc_det = if par.compute_determinant { 1 } else { 0 };
         let verbose = if par.verbose { 1 } else { 0 };
 
@@ -218,6 +241,9 @@ impl LinSolTrait for SolverMUMPS {
                 // output
                 &mut self.effective_ordering,
                 &mut self.effective_scaling,
+                &mut self.backward_error_omega1,
+                &mut self.backward_error_omega2,
+                &mut self.reciprocal_condition_number_estimate,
                 &mut self.determinant_coefficient,
                 &mut self.determinant_exponent,
                 // input
@@ -227,6 +253,8 @@ impl LinSolTrait for SolverMUMPS {
                 max_work_memory,
                 openmp_num_threads,
                 // requests
+                error_estimates,
+                rcond_number,
                 calc_det,
                 verbose,
                 // matrix config
@@ -308,6 +336,61 @@ impl LinSolTrait for SolverMUMPS {
             }
         }
         Ok(())
+    }
+
+    /// Returns the error estimates (if requested)
+    ///
+    /// MUMPS: computes the backward errors omega1 and omega2 (page 14):
+    ///
+    /// ```text
+    ///                                       |b - A · x_bar|ᵢ
+    /// omega1 = largest_scaled_residual_of ————————————————————
+    ///                                     (|b| + |A| |x_bar|)ᵢ
+    ///
+    ///                                            |b - A · x_bar|ᵢ
+    /// omega2 = largest_scaled_residual_of ——————————————————————————————————
+    ///                                     (|A| |x_approx|)ᵢ + ‖Aᵢ‖∞ ‖x_bar‖∞
+    ///
+    /// where x_bar is the actual (approximate) solution returned by the linear solver
+    /// ```
+    fn get_error_estimates(&self) -> (f64, f64) {
+        (self.backward_error_omega1, self.backward_error_omega2)
+    }
+
+    /// Returns the reciprocal condition number estimate (if requested)
+    ///
+    /// * `cond` -- is the condition number
+    /// * `rcond` -- is the reciprocal condition number (estimate), `rcond ~= 1/cond`
+    ///
+    /// ```text
+    /// cond = norm(A) · norm(inverse(A))
+    /// ```
+    ///
+    /// ```text
+    ///                      1
+    /// rcond ~= ——————————————————————————
+    ///          norm(A) · norm(inverse(A))
+    ///
+    /// Reference:
+    /// Arioli M, Demmel JW, and Duff IS (1989) Solving sparse linear systems with
+    /// sparse backward error, SIAM J. Matrix Analysis Applied, 10(2):165-190
+    /// ```
+    ///
+    /// UMFPACK computes a rough estimate of the reciprocal condition number:
+    ///
+    /// ```text
+    /// rcond = min (abs (diag (U))) / max (abs (diag (U)))
+    /// ```
+    ///
+    /// Note: the reciprocal condition number will be zero if the diagonal of U is all zero (UMFPACK).
+    ///
+    /// Matlab: The reciprocal condition number is a scale-invariant measure
+    /// of how close a given matrix is to the set of singular matrices.
+    ///
+    /// * If rcond ~ 0.0, the matrix is nearly singular and badly conditioned.
+    /// * If rcond ~ 1.0, the matrix is well conditioned.
+    fn get_reciprocal_condition_number_estimate(&self) -> f64 {
+        self.reciprocal_condition_number_estimate
     }
 
     /// Returns the determinant

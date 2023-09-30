@@ -101,6 +101,9 @@ void solver_mumps_drop(struct InterfaceMUMPS *solver) {
 /// @note Output
 /// @param effective_ordering used ordering (after factorize)
 /// @param effective_scaling used scaling (after factorize)
+/// @param backward_error_omega1 Holds the backward error omega1 (if requested)
+/// @param backward_error_omega2 Holds the backward error omega2 (if requested)
+/// @param reciprocal_condition_number_estimate Reciprocal condition number estimate (if requested)
 /// @param determinant_coefficient determinant coefficient: det = coefficient * pow(2, exponent)
 /// @param determinant_exponent determinant exponent: det = coefficient * pow(2, exponent)
 /// @note Input
@@ -110,6 +113,8 @@ void solver_mumps_drop(struct InterfaceMUMPS *solver) {
 /// @param max_work_memory Is the allowed maximum memory
 /// @param openmp_num_threads Is the number of threads allowed for OpenMP
 /// @note Requests
+/// @param compute_error_estimates Requests that the error estimates be computed
+/// @param compute_condition_number_estimate Estimates the reciprocal condition number (rcond)
 /// @param compute_determinant Requests that determinant be computed
 /// @param verbose Shows messages
 /// @note Matrix config
@@ -126,6 +131,9 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
                                // output
                                int32_t *effective_ordering,
                                int32_t *effective_scaling,
+                               double *backward_error_omega1,
+                               double *backward_error_omega2,
+                               double *reciprocal_condition_number_estimate,
                                double *determinant_coefficient,
                                double *determinant_exponent,
                                // input
@@ -135,6 +143,8 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
                                int32_t max_work_memory,
                                int32_t openmp_num_threads,
                                // requests
+                               C_BOOL compute_error_estimates,
+                               C_BOOL compute_condition_number_estimate,
                                C_BOOL compute_determinant,
                                C_BOOL verbose,
                                // matrix config
@@ -236,8 +246,24 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
     dmumps_c(&solver->data);
 
     // save the output params
+
     *effective_ordering = solver->data.INFOG(7);
     *effective_scaling = solver->data.INFOG(33);
+
+    // save the error estimates
+
+    if (compute_error_estimates == C_TRUE) {
+        // TODO
+        *backward_error_omega1 = 0.0;
+        *backward_error_omega2 = 0.0;
+    }
+
+    // save the condition number
+
+    if (compute_condition_number_estimate == C_TRUE) {
+        // TODO
+        *reciprocal_condition_number_estimate = 0.0;
+    }
 
     // read the determinant
 

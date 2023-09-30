@@ -27,8 +27,12 @@ fn main() -> Result<(), StrError> {
     // allocate the solver
     let mut umfpack = SolverUMFPACK::new()?;
 
+    // parameters
+    let mut params = LinSolParams::new();
+    params.verbose = true;
+
     // call factorize
-    umfpack.factorize(&mut csc, None)?;
+    umfpack.factorize(&mut csc, Some(params))?;
 
     // allocate x and b
     let mut x = Vector::new(n);

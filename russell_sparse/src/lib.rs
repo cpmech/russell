@@ -63,8 +63,6 @@
 //!
 //! ## Create CSR matrix from COO
 //!
-//! # Examples
-//!
 //! ```
 //! use russell_sparse::prelude::*;
 //! use russell_sparse::StrError;

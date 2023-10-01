@@ -55,8 +55,6 @@
 //!
 //! The linear solvers have numerous configuration parameters; however, we can use the default parameters initially. The configuration parameters are collected in the [LinSolParams] structures, which is an input to the [LinSolTrait::factorize()]. The parameters include options such as [Ordering] and [Scaling].
 //!
-//! Some solvers (e.g., MUMPS) may return error analysis variables that are not "unified" by the linear solver trait. In this case, we can simply access the `actual` implementation (which will return a SolverMUMPS) to access the statistics/error analysis via the [SolverMUMPS::get_stats_after_solve()] function. Analogously, UMFPACK provides the [SolverUMFPACK::get_rcond_after_factorize()] function to access the reciprocal condition number estimate.
-//!
 //! This library also provides functions to read and write Matrix Market files containing (huge) sparse matrices that can be used in performance benchmarking or other studies. The [read_matrix_market()] function reads a Matrix Market file and returns a [CooMatrix]. To write a Matrix Market file, we can use the function [write_matrix_market()], which takes a [SparseMatrix] and, thus, automatically convert COO to CSC or COO to CSR, also performing the sum of duplicates. The `write_matrix_market` also writes an SMAT file (almost like the Matrix Market format) without the header and with zero-based indices. The SMAT file can be given to the fantastic [Vismatrix](https://github.com/cpmech/vismatrix) tool to visualize the sparse matrix structure and values interactively; see the example below.
 //!
 //! ![doc-example-vismatrix](https://raw.githubusercontent.com/cpmech/russell/main/russell_sparse/data/figures/doc-example-vismatrix.png)

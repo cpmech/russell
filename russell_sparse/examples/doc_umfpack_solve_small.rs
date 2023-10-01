@@ -35,12 +35,10 @@ fn main() -> Result<(), StrError> {
     // parameters
     let mut params = LinSolParams::new();
     params.verbose = false;
+    params.compute_determinant = true;
 
     // call factorize
     umfpack.factorize(&mut coo, Some(params))?;
-
-    // print the reciprocal condition number
-    println!("rcond = {:?}", umfpack.get_rcond_after_factorize());
 
     // allocate x and rhs
     let mut x = Vector::new(ndim);
@@ -53,5 +51,12 @@ fn main() -> Result<(), StrError> {
     // check the results
     let correct = vec![1.0, 2.0, 3.0, 4.0, 5.0];
     vec_approx_eq(x.as_data(), &correct, 1e-14);
+
+    // analysis
+    let mut stats = StatsLinSol::new();
+    umfpack.update_stats(&mut stats);
+    let (mx, ex) = (stats.determinant.mantissa, stats.determinant.exponent);
+    println!("det(a) = {:?}", mx * f64::powf(10.0, ex));
+    println!("rcond  = {:?}", stats.output.umfpack_rcond_estimate);
     Ok(())
 }

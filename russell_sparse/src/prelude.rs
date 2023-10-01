@@ -13,5 +13,6 @@ pub use crate::solver_intel_dss::SolverIntelDSS;
 pub use crate::solver_mumps::SolverMUMPS;
 pub use crate::solver_umfpack::SolverUMFPACK;
 pub use crate::sparse_matrix::SparseMatrix;
+pub use crate::stats_lin_sol::StatsLinSol;
 pub use crate::verify_lin_sys::VerifyLinSys;
 pub use crate::write_matrix_market;

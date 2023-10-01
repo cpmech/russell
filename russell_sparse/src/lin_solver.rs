@@ -1,4 +1,4 @@
-use super::{Genie, Ordering, Scaling, SolverIntelDSS, SolverMUMPS, SolverUMFPACK, SparseMatrix};
+use super::{Genie, Ordering, Scaling, SolverIntelDSS, SolverMUMPS, SolverUMFPACK, SparseMatrix, StatsLinSol};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -108,30 +108,8 @@ pub trait LinSolTrait {
     /// **Warning:** the matrix must be same one used in `factorize`.
     fn solve(&mut self, x: &mut Vector, mat: &SparseMatrix, rhs: &Vector, verbose: bool) -> Result<(), StrError>;
 
-    /// Returns the determinant
-    ///
-    /// Returns the three values `(mantissa, base, exponent)`, such that the determinant is calculated by:
-    ///
-    /// ```text
-    /// determinant = mantissa · pow(base, exponent)
-    /// ```
-    ///
-    /// **Note:** This is only available if compute_determinant was requested.
-    fn get_determinant(&self) -> (f64, f64, f64);
-
-    /// Returns the ordering effectively used by the solver
-    fn get_effective_ordering(&self) -> String;
-
-    /// Returns the scaling effectively used by the solver
-    fn get_effective_scaling(&self) -> String;
-
-    /// Returns the strategy (concerning symmetry) effectively used by the solver
-    ///
-    /// For example, returns whether the `symmetric strategy` was used or not (UMFPACK only)
-    fn get_effective_strategy(&self) -> String;
-
-    /// Returns the name of the underlying solver (Genie)
-    fn get_name(&self) -> String;
+    /// Updates the stats structure (should be called after solve)
+    fn update_stats(&self, stats: &mut StatsLinSol);
 }
 
 /// Unifies the access to linear system solvers

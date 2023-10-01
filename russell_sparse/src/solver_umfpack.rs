@@ -1,4 +1,4 @@
-use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, Symmetry};
+use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, StatsLinSol, Symmetry};
 use crate::auxiliary_and_constants::{
     to_i32, CcBool, MALLOC_ERROR, NEED_FACTORIZATION, NULL_POINTER_ERROR, SUCCESSFUL_EXIT,
 };
@@ -124,11 +124,6 @@ impl SolverUMFPACK {
                 determinant_exponent: 0.0,
             })
         }
-    }
-
-    /// Returns the reciprocal condition number estimate (after factorize)
-    pub fn get_rcond_after_factorize(&self) -> f64 {
-        self.rcond_estimate
     }
 }
 
@@ -326,63 +321,37 @@ impl LinSolTrait for SolverUMFPACK {
         Ok(())
     }
 
-    /// Returns the determinant
-    ///
-    /// Returns the three values `(mantissa, 10.0, exponent)`, such that the determinant is calculated by:
-    ///
-    /// ```text
-    /// determinant = mantissa · pow(10.0, exponent)
-    /// ```
-    ///
-    /// **Note:** This is only available if compute_determinant was requested.
-    fn get_determinant(&self) -> (f64, f64, f64) {
-        (self.determinant_coefficient, 10.0, self.determinant_exponent)
-    }
-
-    /// Returns the ordering effectively used by the solver
-    fn get_effective_ordering(&self) -> String {
-        match self.effective_ordering {
+    /// Updates the stats structure (should be called after solve)
+    fn update_stats(&self, stats: &mut StatsLinSol) {
+        stats.solver.name = if cfg!(local_umfpack) {
+            "UMFPACK-local".to_string()
+        } else {
+            "UMFPACK".to_string()
+        };
+        stats.determinant.mantissa = self.determinant_coefficient;
+        stats.determinant.base = 10.0;
+        stats.determinant.exponent = self.determinant_exponent;
+        stats.output.umfpack_rcond_estimate = self.rcond_estimate;
+        stats.output.effective_ordering = match self.effective_ordering {
             UMFPACK_ORDERING_CHOLMOD => "Cholmod".to_string(),
             UMFPACK_ORDERING_AMD => "Amd".to_string(),
             UMFPACK_ORDERING_METIS => "Metis".to_string(),
             UMFPACK_ORDERING_BEST => "Best".to_string(),
             UMFPACK_ORDERING_NONE => "No".to_string(),
             _ => "Unknown".to_string(),
-        }
-    }
-
-    /// Returns the scaling effectively used by the solver
-    fn get_effective_scaling(&self) -> String {
-        match self.effective_scaling {
+        };
+        stats.output.effective_scaling = match self.effective_scaling {
             UMFPACK_SCALE_NONE => "No".to_string(),
             UMFPACK_SCALE_SUM => "Sum".to_string(),
             UMFPACK_SCALE_MAX => "Max".to_string(),
             _ => "Unknown".to_string(),
-        }
-    }
-
-    /// Returns the strategy (concerning symmetry) effectively used by the solver
-    fn get_effective_strategy(&self) -> String {
-        match self.effective_strategy {
+        };
+        stats.output.umfpack_strategy = match self.effective_strategy {
             UMFPACK_STRATEGY_AUTO => "Auto".to_string(),
             UMFPACK_STRATEGY_UNSYMMETRIC => "Unsymmetric".to_string(),
             UMFPACK_STRATEGY_SYMMETRIC => "Symmetric".to_string(),
             _ => "Unknown".to_string(),
-        }
-    }
-
-    /// Returns the name of this solver
-    ///
-    /// # Output
-    ///
-    /// * `UMFPACK` -- if the default system UMFPACK has been used
-    /// * `UMFPACK-local` -- if the locally compiled UMFPACK has be used
-    fn get_name(&self) -> String {
-        if cfg!(local_umfpack) {
-            "UMFPACK-local".to_string()
-        } else {
-            "UMFPACK".to_string()
-        }
+        };
     }
 }
 
@@ -431,7 +400,7 @@ const UMFPACK_DEFAULT_SCALE: i32 = UMFPACK_SCALE_SUM;
 
 #[cfg(test)]
 mod tests {
-    use super::{handle_umfpack_error_code, SolverUMFPACK};
+    use super::{handle_umfpack_error_code, SolverUMFPACK, UMFPACK_ORDERING_AMD, UMFPACK_SCALE_SUM};
     use crate::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
@@ -482,17 +451,15 @@ mod tests {
         solver.factorize(&mut mat, Some(params)).unwrap();
         assert!(solver.factorized);
 
-        assert_eq!(solver.get_effective_ordering(), "Amd");
-        assert_eq!(solver.get_effective_scaling(), "Sum");
+        assert_eq!(solver.effective_ordering, UMFPACK_ORDERING_AMD);
+        assert_eq!(solver.effective_scaling, UMFPACK_SCALE_SUM);
 
-        let (a, b, c) = solver.get_determinant();
-        let det = a * f64::powf(b, c);
+        let det = solver.determinant_coefficient * f64::powf(10.0, solver.determinant_exponent);
         approx_eq(det, 114.0, 1e-13);
 
         // calling factorize again works
         solver.factorize(&mut mat, Some(params)).unwrap();
-        let (a, b, c) = solver.get_determinant();
-        let det = a * f64::powf(b, c);
+        let det = solver.determinant_coefficient * f64::powf(10.0, solver.determinant_exponent);
         approx_eq(det, 114.0, 1e-13);
     }
 

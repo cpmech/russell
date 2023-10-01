@@ -63,7 +63,9 @@ fn main() -> Result<(), StrError> {
     let cond = norm_a * norm_ai;
     let rcond = 1.0 / cond;
     let verify = VerifyLinSys::new(&coo, &x, &rhs).unwrap();
-    let stat = mumps.get_stats_after_solve();
+    let mut stats = StatsLinSol::new();
+    mumps.update_stats(&mut stats);
+    let s = &stats.mumps_stats;
     println!("\n___ ANALYSIS ________________________");
     println!("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
     println!("a =\n{}", a);
@@ -77,13 +79,13 @@ fn main() -> Result<(), StrError> {
     println!("          max_abs_ax = {:?}", verify.max_abs_ax);
     println!("        max_abs_diff = {:?}", verify.max_abs_diff);
     println!("      relative_error = {:?}", verify.relative_error);
-    println!("              norm_a = {:?}", stat.inf_norm_a);
-    println!("              norm_x = {:?}", stat.inf_norm_x);
-    println!("            residual = {:?}", stat.scaled_residual);
-    println!("              omega1 = {:?}", stat.backward_error_omega1);
-    println!("              omega2 = {:?}", stat.backward_error_omega2);
-    println!("               delta = {:?}", stat.normalized_delta_x);
-    println!("               cond1 = {:?}", stat.condition_number1);
-    println!("               cond2 = {:?}", stat.condition_number2);
+    println!("              norm_a = {:?}", &s.inf_norm_a);
+    println!("              norm_x = {:?}", &s.inf_norm_x);
+    println!("            residual = {:?}", &s.scaled_residual);
+    println!("              omega1 = {:?}", &s.backward_error_omega1);
+    println!("              omega2 = {:?}", &s.backward_error_omega2);
+    println!("               delta = {:?}", &s.normalized_delta_x);
+    println!("               cond1 = {:?}", &s.condition_number1);
+    println!("               cond2 = {:?}", &s.condition_number2);
     Ok(())
 }

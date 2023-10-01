@@ -71,7 +71,7 @@ extern "C" {
 /// where x_bar is the actual (approximate) solution returned by the linear solver
 /// ```
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct LinSolStatsMUMPS {
+pub struct StatsLinSolMUMPS {
     /// Holds the infinite norm of the input matrix, RINFOG(4)
     pub inf_norm_a: f64,
 
@@ -181,8 +181,8 @@ impl SolverMUMPS {
     }
 
     /// Returns the "stats" (error analysis) after a call to solve
-    pub fn get_stats_after_solve(&self) -> LinSolStatsMUMPS {
-        LinSolStatsMUMPS {
+    pub fn get_stats_after_solve(&self) -> StatsLinSolMUMPS {
+        StatsLinSolMUMPS {
             inf_norm_a: self.error_analysis_array_len_8[0],
             inf_norm_x: self.error_analysis_array_len_8[1],
             scaled_residual: self.error_analysis_array_len_8[2],

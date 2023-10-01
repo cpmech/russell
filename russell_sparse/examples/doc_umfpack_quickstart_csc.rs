@@ -29,7 +29,8 @@ fn main() -> Result<(), StrError> {
 
     // parameters
     let mut params = LinSolParams::new();
-    params.verbose = true;
+    params.verbose = false;
+    params.compute_determinant = false;
 
     // call factorize
     umfpack.factorize(&mut csc, Some(params))?;

@@ -3,13 +3,11 @@ use russell_sparse::StrError;
 
 fn main() -> Result<(), StrError> {
     // allocate a square matrix and store as COO matrix
-    // ┌                ┐
-    // │  2  3  0  0  0 │
-    // │  3  0  4  0  6 │
-    // │  0 -1 -3  2  0 │
-    // │  0  0  1  0  0 │
-    // │  0  4  2  0  1 │
-    // └                ┘
+    //  2  3  .  .  .
+    //  3  .  4  .  6
+    //  . -1 -3  2  .
+    //  .  .  1  .  .
+    //  .  4  2  .  1
     let (nrow, ncol, nnz) = (5, 5, 13);
     let mut coo = CooMatrix::new(nrow, ncol, nnz, None, false)?;
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
@@ -28,7 +26,8 @@ fn main() -> Result<(), StrError> {
 
     // convert to CSR matrix
     let csr = CsrMatrix::from_coo(&coo)?;
-    let correct_j = &[
+    let correct_pp = &[0, 2, 5, 8, 9, 12];
+    let correct_jj = &[
         //                         p
         0, 1, //    i = 0, count = 0, 1
         0, 2, 4, // i = 1, count = 2, 3, 4
@@ -37,7 +36,7 @@ fn main() -> Result<(), StrError> {
         1, 2, 4, // i = 4, count = 9, 10, 11
            //              count = 12
     ];
-    let correct_v = &[
+    let correct_vv = &[
         //                                 p
         2.0, 3.0, //        i = 0, count = 0, 1
         3.0, 4.0, 6.0, //   i = 1, count = 2, 3, 4
@@ -46,7 +45,6 @@ fn main() -> Result<(), StrError> {
         4.0, 2.0, 1.0, //   i = 4, count = 9, 10, 11
              //                    count = 12
     ];
-    let correct_p = &[0, 2, 5, 8, 9, 12];
 
     // check
     let pp = csr.get_row_pointers();
@@ -54,8 +52,8 @@ fn main() -> Result<(), StrError> {
     let vv = csr.get_values();
     let final_nnz = pp[nrow] as usize;
     assert_eq!(final_nnz, 12);
-    assert_eq!(pp, correct_p);
-    assert_eq!(&jj[0..final_nnz], correct_j);
-    assert_eq!(&vv[0..final_nnz], correct_v);
+    assert_eq!(pp, correct_pp);
+    assert_eq!(&jj[0..final_nnz], correct_jj);
+    assert_eq!(&vv[0..final_nnz], correct_vv);
     Ok(())
 }

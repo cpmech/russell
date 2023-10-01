@@ -1,16 +1,13 @@
-use russell_lab::Matrix;
 use russell_sparse::prelude::*;
 use russell_sparse::StrError;
 
 fn main() -> Result<(), StrError> {
     // allocate a square matrix and store as CSR matrix
-    // ┌                ┐
-    // │  2  3  0  0  0 │
-    // │  3  0  4  0  6 │
-    // │  0 -1 -3  2  0 │
-    // │  0  0  1  0  0 │
-    // │  0  4  2  0  1 │
-    // └                ┘
+    //  2  3  .  .  .
+    //  3  .  4  .  6
+    //  . -1 -3  2  .
+    //  .  .  1  .  .
+    //  .  4  2  .  1
     let nrow = 5;
     let ncol = 5;
     let row_pointers = vec![0, 2, 5, 8, 9, 12];
@@ -36,8 +33,7 @@ fn main() -> Result<(), StrError> {
     let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, symmetry)?;
 
     // covert to dense
-    let mut a = Matrix::new(5, 5);
-    csr.to_dense(&mut a)?;
+    let a = csr.as_dense();
     let correct = "┌                ┐\n\
                    │  2  3  0  0  0 │\n\
                    │  3  0  4  0  6 │\n\

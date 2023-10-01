@@ -4,7 +4,7 @@
 //!
 //! # Introduction
 //!
-//! We have three storage formats for sparse matrices available:
+//! We have three storage formats for sparse matrices:
 //!
 //! * [CooMatrix] (COO) -- COOrdinates matrix, also known as a sparse triplet.
 //! * [CscMatrix] (CSC) -- Compressed Sparse Column matrix

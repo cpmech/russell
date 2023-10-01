@@ -267,12 +267,11 @@ impl LinSolTrait for SolverIntelDSS {
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.solver.name = if cfg!(with_intel_dss) {
+        stats.main.solver = if cfg!(with_intel_dss) {
             "IntelDSS".to_string()
         } else {
             "INTEL_DSS_IS_NOT_AVAILABLE".to_string()
         };
-        stats.solver.version = "Unknown".to_string();
         stats.determinant.mantissa = self.determinant_coefficient;
         stats.determinant.base = 10.0;
         stats.determinant.exponent = self.determinant_exponent;

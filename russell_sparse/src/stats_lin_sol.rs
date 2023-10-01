@@ -10,6 +10,7 @@ use std::path::Path;
 pub struct StatsLinSolMain {
     pub platform: String,
     pub blas_lib: String,
+    pub solver: String,
 }
 
 /// Holds information about the sparse matrix
@@ -20,13 +21,6 @@ pub struct StatsLinSolMatrix {
     pub ncol: usize,
     pub nnz: usize,
     pub symmetry: String,
-}
-
-/// Holds information about the linear solver (engine/genie)
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct StatsLinSolSolver {
-    pub name: String,
-    pub version: String,
 }
 
 /// Holds some requested parameters
@@ -83,7 +77,6 @@ pub struct StatsLinSolTimeNanoseconds {
 pub struct StatsLinSol {
     pub main: StatsLinSolMain,
     pub matrix: StatsLinSolMatrix,
-    pub solver: StatsLinSolSolver,
     pub requests: StatsLinSolRequests,
     pub output: StatsLinSolOutput,
     pub determinant: StatsLinSolDeterminant,
@@ -101,6 +94,7 @@ impl StatsLinSol {
             main: StatsLinSolMain {
                 platform: "Russell".to_string(),
                 blas_lib: "OpenBLAS".to_string(),
+                solver: unknown.clone(),
             },
             matrix: StatsLinSolMatrix {
                 name: unknown.clone(),
@@ -108,10 +102,6 @@ impl StatsLinSol {
                 ncol: 0,
                 nnz: 0,
                 symmetry: unknown.clone(),
-            },
-            solver: StatsLinSolSolver {
-                name: unknown.clone(),
-                version: unknown.clone(),
             },
             requests: StatsLinSolRequests {
                 ordering: unknown.clone(),

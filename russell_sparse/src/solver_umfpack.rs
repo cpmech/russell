@@ -323,7 +323,7 @@ impl LinSolTrait for SolverUMFPACK {
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.solver.name = if cfg!(local_umfpack) {
+        stats.main.solver = if cfg!(local_umfpack) {
             "UMFPACK-local".to_string()
         } else {
             "UMFPACK".to_string()

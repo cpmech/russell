@@ -398,12 +398,11 @@ impl LinSolTrait for SolverMUMPS {
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.solver.name = if cfg!(local_mumps) {
+        stats.main.solver = if cfg!(local_mumps) {
             "MUMPS-local".to_string()
         } else {
             "MUMPS".to_string()
         };
-        stats.solver.version = "Unknown".to_string();
         stats.determinant.mantissa = self.determinant_coefficient;
         stats.determinant.base = 2.0;
         stats.determinant.exponent = self.determinant_exponent;

@@ -4,6 +4,7 @@ use crate::auxiliary_and_constants::{
 };
 use crate::StrError;
 use russell_lab::{vec_copy, Vector};
+use serde::{Deserialize, Serialize};
 
 /// Opaque struct holding a C-pointer to InterfaceMUMPS
 ///
@@ -69,7 +70,8 @@ extern "C" {
 ///
 /// where x_bar is the actual (approximate) solution returned by the linear solver
 /// ```
-pub struct StatsMUMPS {
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct LinSolStatsMUMPS {
     /// Holds the infinite norm of the input matrix, RINFOG(4)
     pub inf_norm_a: f64,
 
@@ -179,8 +181,8 @@ impl SolverMUMPS {
     }
 
     /// Returns the "stats" (error analysis) after a call to solve
-    pub fn get_stats_after_solve(&self) -> StatsMUMPS {
-        StatsMUMPS {
+    pub fn get_stats_after_solve(&self) -> LinSolStatsMUMPS {
+        LinSolStatsMUMPS {
             inf_norm_a: self.error_analysis_array_len_8[0],
             inf_norm_x: self.error_analysis_array_len_8[1],
             scaled_residual: self.error_analysis_array_len_8[2],

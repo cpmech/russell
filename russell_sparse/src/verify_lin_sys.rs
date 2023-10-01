@@ -37,8 +37,7 @@ impl VerifyLinSys {
     ///     coo.put(2, 2, 3.0)?;
     ///
     ///     // check matrix
-    ///     let mut a = Matrix::new(nrow, nrow);
-    ///     coo.to_dense(&mut a)?;
+    ///     let mut a = coo.as_dense();
     ///     let correct_a = "┌       ┐\n\
     ///                      │ 1 0 4 │\n\
     ///                      │ 0 2 0 │\n\

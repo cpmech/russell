@@ -555,7 +555,6 @@ impl CsrMatrix {
     /// # Examples
     ///
     /// ```
-    /// use russell_lab::Matrix;
     /// use russell_sparse::prelude::*;
     /// use russell_sparse::StrError;
     ///
@@ -594,8 +593,7 @@ impl CsrMatrix {
     ///         row_pointers, col_indices, values, symmetry)?;
     ///
     ///     // covert to dense
-    ///     let mut a = Matrix::new(5, 5);
-    ///     csr.to_dense(&mut a)?;
+    ///     let a = csr.as_dense();
     ///     let correct = "┌                ┐\n\
     ///                    │  2  3  0  0  0 │\n\
     ///                    │  3  0  4  0  6 │\n\

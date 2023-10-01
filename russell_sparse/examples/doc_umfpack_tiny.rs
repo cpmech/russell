@@ -1,5 +1,5 @@
 use russell_chk::vec_approx_eq;
-use russell_lab::{Matrix, Vector};
+use russell_lab::Vector;
 use russell_sparse::prelude::*;
 use russell_sparse::StrError;
 
@@ -8,7 +8,7 @@ fn main() -> Result<(), StrError> {
     let ndim = 3; // number of rows = number of columns
     let nnz = 5; // number of non-zero values
 
-    // allocate solver and call initialize
+    // allocate solver
     let mut umfpack = SolverUMFPACK::new()?;
 
     // allocate the coefficient matrix
@@ -20,8 +20,7 @@ fn main() -> Result<(), StrError> {
     coo.put(2, 2, 0.25)?;
 
     // print matrix
-    let mut a = Matrix::new(ndim, ndim);
-    coo.to_dense(&mut a)?;
+    let a = coo.as_dense();
     let correct = "┌                   ┐\n\
                    │   0.2   0.2     0 │\n\
                    │   0.5 -0.25     0 │\n\
@@ -33,19 +32,12 @@ fn main() -> Result<(), StrError> {
     umfpack.factorize(&mut coo, None)?;
 
     // allocate two right-hand side vectors
-    let rhs1 = Vector::from(&[1.0, 1.0, 1.0]);
-    let rhs2 = Vector::from(&[2.0, 2.0, 2.0]);
+    let b = Vector::from(&[1.0, 1.0, 1.0]);
 
     // calculate the solution
-    let mut x1 = Vector::new(ndim);
-    umfpack.solve(&mut x1, &coo, &rhs1, false)?;
+    let mut x = Vector::new(ndim);
+    umfpack.solve(&mut x, &coo, &b, false)?;
     let correct = vec![3.0, 2.0, 4.0];
-    vec_approx_eq(x1.as_data(), &correct, 1e-14);
-
-    // calculate the solution again
-    let mut x2 = Vector::new(ndim);
-    umfpack.solve(&mut x2, &coo, &rhs2, false)?;
-    let correct = vec![6.0, 4.0, 8.0];
-    vec_approx_eq(x2.as_data(), &correct, 1e-14);
+    vec_approx_eq(x.as_data(), &correct, 1e-14);
     Ok(())
 }

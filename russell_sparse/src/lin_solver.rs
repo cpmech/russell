@@ -166,7 +166,7 @@ impl<'a> LinSolver<'a> {
     ///
     /// ```
     /// use russell_chk::vec_approx_eq;
-    /// use russell_lab::{Matrix, Vector};
+    /// use russell_lab::Vector;
     /// use russell_sparse::prelude::*;
     /// use russell_sparse::StrError;
     ///
@@ -184,8 +184,7 @@ impl<'a> LinSolver<'a> {
     ///     mat.put(2, 2, 0.25)?;
     ///
     ///     // print matrix
-    ///     let mut a = Matrix::new(ndim, ndim);
-    ///     mat.to_dense(&mut a)?;
+    ///     let mut a = mat.as_dense();
     ///     let correct = "┌                   ┐\n\
     ///                    │   0.2   0.2     0 │\n\
     ///                    │   0.5 -0.25     0 │\n\

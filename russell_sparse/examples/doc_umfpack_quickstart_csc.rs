@@ -1,5 +1,5 @@
 use russell_chk::vec_approx_eq;
-use russell_lab::{Matrix, Vector};
+use russell_lab::Vector;
 use russell_sparse::prelude::*;
 use russell_sparse::StrError;
 
@@ -13,8 +13,7 @@ fn main() -> Result<(), StrError> {
     let mut csc = SparseMatrix::new_csc(n, n, ap, ai, ax, None)?;
 
     // print the coefficient matrix
-    let mut a = Matrix::new(n, n);
-    csc.to_dense(&mut a)?;
+    let a = csc.as_dense();
     let correct = "┌                ┐\n\
                    │  2  3  0  0  0 │\n\
                    │  3  0  4  0  6 │\n\

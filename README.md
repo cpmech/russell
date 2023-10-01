@@ -183,7 +183,6 @@ fn main() -> Result<(), StrError> {
     println!("rcond  = {:?}", stats.output.umfpack_rcond_estimate);
     Ok(())
 }
-
 ```
 
 ## Todo list

@@ -205,9 +205,71 @@ to see the options.
 The default solver of `solve_matrix_market` is UMFPACK. To run with MUMPS, use the `--genie` (-g) flag:
 
 ```bash
-cargo run --release --bin solve_matrix_market -- -g mumps ~/Downloads/matrix-market/bfwb62.mtx
+cargo run --release --bin solve_matrix_market -- -g mumps -x -y ~/Downloads/matrix-market/bfwb62.mtx
 ```
 
 The output looks like this:
 
-
+```json
+{
+  "main": {
+    "platform": "Russell",
+    "blas_lib": "OpenBLAS",
+    "solver": "MUMPS-local"
+  },
+  "matrix": {
+    "name": "bfwb62",
+    "nrow": 62,
+    "ncol": 62,
+    "nnz": 202,
+    "symmetry": "Some(General(Lower))"
+  },
+  "requests": {
+    "ordering": "Auto",
+    "scaling": "Auto",
+    "mumps_openmp_num_threads": 1
+  },
+  "output": {
+    "effective_ordering": "Amf",
+    "effective_scaling": "RowColIter",
+    "openmp_num_threads": 32,
+    "umfpack_strategy": "Unknown",
+    "umfpack_rcond_estimate": 0.0
+  },
+  "determinant": {
+    "mantissa": 0.0,
+    "base": 2.0,
+    "exponent": 0.0
+  },
+  "verify": {
+    "max_abs_a": 0.0001,
+    "max_abs_ax": 1.0000000000000004,
+    "max_abs_diff": 5.551115123125783e-16,
+    "relative_error": 5.550560067119071e-16
+  },
+  "time_human": {
+    "read_matrix": "37.654µs",
+    "factorize": "5.117697ms",
+    "solve": "219.659µs",
+    "total_f_and_s": "5.337356ms",
+    "verify": "6.638µs"
+  },
+  "time_nanoseconds": {
+    "read_matrix": 37654,
+    "factorize": 5117697,
+    "solve": 219659,
+    "total_f_and_s": 5337356,
+    "verify": 6638
+  },
+  "mumps_stats": {
+    "inf_norm_a": 0.00021250000000000002,
+    "inf_norm_x": 116611.5333525506,
+    "scaled_residual": 2.1281557019905676e-17,
+    "backward_error_omega1": 2.1420239141348292e-16,
+    "backward_error_omega2": 0.0,
+    "normalized_delta_x": 7.516512844561073e-16,
+    "condition_number1": 3.50907046133377,
+    "condition_number2": 1.0
+  }
+}
+```

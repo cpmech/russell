@@ -37,6 +37,14 @@ struct Options {
     #[structopt(short = "d", long)]
     determinant: bool,
 
+    /// Computes error estimates (MUMPS only)
+    #[structopt(short = "x", long)]
+    error_estimates: bool,
+
+    /// Computes condition numbers (MUMPS only; slow)
+    #[structopt(short = "y", long)]
+    condition_numbers: bool,
+
     /// Enforce unsymmetric strategy (not recommended) (UMFPACK only)
     #[structopt(short = "u", long)]
     enforce_unsymmetric_strategy: bool,
@@ -74,6 +82,8 @@ fn main() -> Result<(), StrError> {
     params.compute_determinant = opt.determinant;
     params.mumps_openmp_num_threads = opt.mumps_omp_nt as usize;
     params.umfpack_enforce_unsymmetric_strategy = opt.enforce_unsymmetric_strategy;
+    params.compute_error_estimates = opt.error_estimates;
+    params.compute_condition_numbers = opt.condition_numbers;
 
     // allocate stats structure
     let mut stats = StatsLinSol::new();

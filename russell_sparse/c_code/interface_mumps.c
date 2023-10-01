@@ -236,6 +236,7 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
     dmumps_c(&solver->data);
 
     // save the output params
+
     *effective_ordering = solver->data.INFOG(7);
     *effective_scaling = solver->data.INFOG(33);
 
@@ -257,9 +258,15 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
 /// @brief Computes the solution of the linear system
 /// @param solver Is a pointer to the solver interface
 /// @param rhs Is the right-hand side on the input and the vector of unknow values x on the output
+/// @param error_analysis_array_len_8 array of size 8 to hold the results from the error analysis
+/// @param error_analysis_option ICNTL(11): 0 (nothing), 1 (all; slow), 2 (just errors)
 /// @param verbose Shows messages
 /// @return A success or fail code
-int32_t solver_mumps_solve(struct InterfaceMUMPS *solver, double *rhs, C_BOOL verbose) {
+int32_t solver_mumps_solve(struct InterfaceMUMPS *solver,
+                           double *rhs,
+                           double *error_analysis_array_len_8,
+                           int32_t error_analysis_option,
+                           C_BOOL verbose) {
     if (solver == NULL) {
         return NULL_POINTER_ERROR;
     }
@@ -268,11 +275,26 @@ int32_t solver_mumps_solve(struct InterfaceMUMPS *solver, double *rhs, C_BOOL ve
         return NEED_FACTORIZATION;
     }
 
+    solver->data.ICNTL(11) = error_analysis_option;
+
     solver->data.rhs = rhs;
 
     set_mumps_verbose(&solver->data, verbose);
     solver->data.job = MUMPS_JOB_SOLVE;
     dmumps_c(&solver->data);
+
+    if (error_analysis_option > 0) {
+        error_analysis_array_len_8[0] = solver->data.RINFOG(4); // norm_a
+        error_analysis_array_len_8[1] = solver->data.RINFOG(5); // norm_x
+        error_analysis_array_len_8[2] = solver->data.RINFOG(6); // resid
+        error_analysis_array_len_8[3] = solver->data.RINFOG(7); // omega1
+        error_analysis_array_len_8[4] = solver->data.RINFOG(8); // omega2
+        if (error_analysis_option == 1) {
+            error_analysis_array_len_8[5] = solver->data.RINFOG(9);  // delta
+            error_analysis_array_len_8[6] = solver->data.RINFOG(10); // cond1
+            error_analysis_array_len_8[7] = solver->data.RINFOG(11); // cond2
+        }
+    }
 
     return solver->data.INFOG(1);
 }

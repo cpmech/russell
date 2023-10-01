@@ -82,6 +82,7 @@ void solver_umfpack_drop(struct InterfaceUMFPACK *solver) {
 /// @param effective_strategy used strategy regarding symmetry (after factorize)
 /// @param effective_ordering used ordering (after factorize)
 /// @param effective_scaling used scaling (after factorize)
+/// @param rcond_estimate reciprocal condition number estimate (if requested)
 /// @param determinant_coefficient determinant coefficient: det = coefficient * pow(base, exponent)
 /// @param determinant_exponent determinant exponent: det = coefficient * pow(base, exponent)
 /// @note Input
@@ -103,6 +104,7 @@ int32_t solver_umfpack_factorize(struct InterfaceUMFPACK *solver,
                                  int32_t *effective_strategy,
                                  int32_t *effective_ordering,
                                  int32_t *effective_scaling,
+                                 double *rcond_estimate,
                                  double *determinant_coefficient,
                                  double *determinant_exponent,
                                  // input
@@ -171,6 +173,9 @@ int32_t solver_umfpack_factorize(struct InterfaceUMFPACK *solver,
     *effective_strategy = solver->info[UMFPACK_STRATEGY_USED];
     *effective_ordering = solver->info[UMFPACK_ORDERING_USED];
     *effective_scaling = solver->control[UMFPACK_SCALE];
+
+    // reciprocal condition number estimate
+    *rcond_estimate = solver->info[UMFPACK_RCOND];
 
     // compute determinant
     if (compute_determinant == C_TRUE) {

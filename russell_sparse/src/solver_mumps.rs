@@ -1,9 +1,10 @@
-use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, Symmetry};
+use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, StatsLinSol, Symmetry};
 use crate::auxiliary_and_constants::{
     to_i32, CcBool, MALLOC_ERROR, NEED_FACTORIZATION, NULL_POINTER_ERROR, SUCCESSFUL_EXIT, VERSION_ERROR,
 };
 use crate::StrError;
 use russell_lab::{vec_copy, Vector};
+use serde::{Deserialize, Serialize};
 
 /// Opaque struct holding a C-pointer to InterfaceMUMPS
 ///
@@ -43,7 +44,63 @@ extern "C" {
         indices_j: *const i32,
         values_aij: *const f64,
     ) -> i32;
-    fn solver_mumps_solve(solver: *mut InterfaceMUMPS, rhs: *mut f64, verbose: CcBool) -> i32;
+    fn solver_mumps_solve(
+        solver: *mut InterfaceMUMPS,
+        rhs: *mut f64,
+        error_analysis_array_len_8: *mut f64,
+        error_analysis_option: i32,
+        verbose: CcBool,
+    ) -> i32;
+}
+
+/// Holds the results of MUMPS error analysis ("stats")
+///
+/// See page 40 of MUMPS User's guide
+///
+/// MUMPS: computes the backward errors omega1 and omega2 (page 14):
+///
+/// ```text
+///                                       |b - A · x_bar|ᵢ
+/// omega1 = largest_scaled_residual_of ————————————————————
+///                                     (|b| + |A| |x_bar|)ᵢ
+///
+///                                            |b - A · x_bar|ᵢ
+/// omega2 = largest_scaled_residual_of ——————————————————————————————————
+///                                     (|A| |x_approx|)ᵢ + ‖Aᵢ‖∞ ‖x_bar‖∞
+///
+/// where x_bar is the actual (approximate) solution returned by the linear solver
+/// ```
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct StatsLinSolMUMPS {
+    /// Holds the infinite norm of the input matrix, RINFOG(4)
+    pub inf_norm_a: f64,
+
+    /// Holds the infinite norm of the computed solution, RINFOG(5)
+    pub inf_norm_x: f64,
+
+    /// Holds the scaled residual, RINFOG(6)
+    pub scaled_residual: f64,
+
+    /// Holds the backward error estimate omega1, RINFOG(7)
+    pub backward_error_omega1: f64,
+
+    /// Holds the backward error estimate omega2, RINFOG(8)
+    pub backward_error_omega2: f64,
+
+    /// Holds the normalized variation of the solution vector, RINFOG(9)
+    ///
+    /// Requires the full "stat" analysis.
+    pub normalized_delta_x: f64,
+
+    /// Holds the condition number1, RINFOG(10)
+    ///
+    /// Requires the full "stat" analysis.
+    pub condition_number1: f64,
+
+    /// Holds the condition number2, RINFOG(11)
+    ///
+    /// Requires the full "stat" analysis.
+    pub condition_number2: f64,
 }
 
 /// Wraps the MUMPS solver for (very large) sparse linear systems
@@ -71,11 +128,23 @@ pub struct SolverMUMPS {
     /// Holds the used scaling (after factorize)
     effective_scaling: i32,
 
-    /// Holds the determinant coefficient: det = coefficient * pow(2, exponent)
+    /// Holds the determinant coefficient (if requested)
+    ///
+    /// det = coefficient * pow(2, exponent)
     determinant_coefficient: f64,
 
-    /// Holds the determinant exponent: det = coefficient * pow(2, exponent)
+    /// Holds the determinant exponent (if requested)
+    ///
+    /// det = coefficient * pow(2, exponent)
     determinant_exponent: f64,
+
+    /// MUMPS code for error analysis (after solve)
+    ///
+    /// ICNTL(11): 0 (nothing), 1 (all; slow), 2 (just errors)
+    error_analysis_option: i32,
+
+    /// Holds the error analysis "stat" results
+    error_analysis_array_len_8: Vec<f64>,
 }
 
 impl Drop for SolverMUMPS {
@@ -105,6 +174,8 @@ impl SolverMUMPS {
                 effective_scaling: -1,
                 determinant_coefficient: 0.0,
                 determinant_exponent: 0.0,
+                error_analysis_option: 0,
+                error_analysis_array_len_8: vec![0.0; 8],
             })
         }
     }
@@ -169,6 +240,15 @@ impl LinSolTrait for SolverMUMPS {
         // configuration parameters
         let par = if let Some(p) = params { p } else { LinSolParams::new() };
 
+        // error analysis option
+        self.error_analysis_option = if par.compute_condition_numbers {
+            1 // all the statistics (very expensive) (page 40)
+        } else if par.compute_error_estimates {
+            2 // main statistics are computed (page 40)
+        } else {
+            0 // nothing
+        };
+
         // input parameters
         let ordering = match par.ordering {
             Ordering::Amd => 0,     // Amd (page 35)
@@ -198,7 +278,7 @@ impl LinSolTrait for SolverMUMPS {
         let openmp_num_threads = to_i32(par.mumps_openmp_num_threads);
 
         // requests
-        let calc_det = if par.compute_determinant { 1 } else { 0 };
+        let compute_determinant = if par.compute_determinant { 1 } else { 0 };
         let verbose = if par.verbose { 1 } else { 0 };
 
         // extract the symmetry flags and check the storage type
@@ -227,7 +307,7 @@ impl LinSolTrait for SolverMUMPS {
                 max_work_memory,
                 openmp_num_threads,
                 // requests
-                calc_det,
+                compute_determinant,
                 verbose,
                 // matrix config
                 general_symmetric,
@@ -302,7 +382,13 @@ impl LinSolTrait for SolverMUMPS {
         vec_copy(x, rhs).unwrap();
         let verb = if verbose { 1 } else { 0 };
         unsafe {
-            let status = solver_mumps_solve(self.solver, x.as_mut_data().as_mut_ptr(), verb);
+            let status = solver_mumps_solve(
+                self.solver,
+                x.as_mut_data().as_mut_ptr(),
+                self.error_analysis_array_len_8.as_mut_ptr(),
+                self.error_analysis_option,
+                verb,
+            );
             if status != SUCCESSFUL_EXIT {
                 return Err(handle_mumps_error_code(status));
             }
@@ -310,22 +396,17 @@ impl LinSolTrait for SolverMUMPS {
         Ok(())
     }
 
-    /// Returns the determinant
-    ///
-    /// Returns the three values `(mantissa, 2.0, exponent)`, such that the determinant is calculated by:
-    ///
-    /// ```text
-    /// determinant = mantissa · pow(2.0, exponent)
-    /// ```
-    ///
-    /// **Note:** This is only available if compute_determinant was requested.
-    fn get_determinant(&self) -> (f64, f64, f64) {
-        (self.determinant_coefficient, 2.0, self.determinant_exponent)
-    }
-
-    /// Returns the ordering effectively used by the solver
-    fn get_effective_ordering(&self) -> String {
-        match self.effective_ordering {
+    /// Updates the stats structure (should be called after solve)
+    fn update_stats(&self, stats: &mut StatsLinSol) {
+        stats.main.solver = if cfg!(local_mumps) {
+            "MUMPS-local".to_string()
+        } else {
+            "MUMPS".to_string()
+        };
+        stats.determinant.mantissa = self.determinant_coefficient;
+        stats.determinant.base = 2.0;
+        stats.determinant.exponent = self.determinant_exponent;
+        stats.output.effective_ordering = match self.effective_ordering {
             0 => "Amd".to_string(),
             2 => "Amf".to_string(),
             7 => "Auto".to_string(),
@@ -334,12 +415,8 @@ impl LinSolTrait for SolverMUMPS {
             6 => "Qamd".to_string(),
             3 => "Scotch".to_string(),
             _ => "Unknown".to_string(),
-        }
-    }
-
-    /// Returns the scaling effectively used by the solver
-    fn get_effective_scaling(&self) -> String {
-        match self.effective_scaling {
+        };
+        stats.output.effective_scaling = match self.effective_scaling {
             77 => "Auto".to_string(),
             3 => "Column".to_string(),
             1 => "Diagonal".to_string(),
@@ -348,26 +425,15 @@ impl LinSolTrait for SolverMUMPS {
             7 => "RowColIter".to_string(),
             8 => "RowColRig".to_string(),
             _ => "Unknown".to_string(),
-        }
-    }
-
-    /// Returns the strategy (concerning symmetry) effectively used by the solver
-    fn get_effective_strategy(&self) -> String {
-        "Unknown".to_string()
-    }
-
-    /// Returns the name of this solver
-    ///
-    /// # Output
-    ///
-    /// * `MUMPS` -- if the default system MUMPS has been used
-    /// * `MUMPS-local` -- if the locally compiled MUMPS has be used
-    fn get_name(&self) -> String {
-        if cfg!(local_mumps) {
-            "MUMPS-local".to_string()
-        } else {
-            "MUMPS".to_string()
-        }
+        };
+        stats.mumps_stats.inf_norm_a = self.error_analysis_array_len_8[0];
+        stats.mumps_stats.inf_norm_x = self.error_analysis_array_len_8[1];
+        stats.mumps_stats.scaled_residual = self.error_analysis_array_len_8[2];
+        stats.mumps_stats.backward_error_omega1 = self.error_analysis_array_len_8[3];
+        stats.mumps_stats.backward_error_omega2 = self.error_analysis_array_len_8[4];
+        stats.mumps_stats.normalized_delta_x = self.error_analysis_array_len_8[5];
+        stats.mumps_stats.condition_number1 = self.error_analysis_array_len_8[6];
+        stats.mumps_stats.condition_number2 = self.error_analysis_array_len_8[7];
     }
 }
 
@@ -515,16 +581,11 @@ mod tests {
         vec_approx_eq(x.as_data(), x_correct, 1e-14);
 
         // check ordering and scaling
-        let ordering = solver.get_effective_ordering();
-        let scaling = solver.get_effective_scaling();
-        assert_eq!(ordering, "Pord");
-        assert_eq!(scaling, "No"); // because we requested the determinant
+        assert_eq!(solver.effective_ordering, 4); // Pord
+        assert_eq!(solver.effective_scaling, 0); // No, because we requested the determinant
 
         // check the determinant
-        let (a, b, c) = solver.get_determinant();
-        let d = a * f64::powf(b, c);
-        approx_eq(a, 57.0 / 64.0, 1e-15);
-        approx_eq(c, 7.0, 1e-15);
+        let d = solver.determinant_coefficient * f64::powf(2.0, solver.determinant_exponent);
         approx_eq(d, 114.0, 1e-13);
 
         // calling solve again works

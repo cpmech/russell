@@ -1,4 +1,4 @@
-use super::{LinSolParams, LinSolTrait, SparseMatrix, Symmetry};
+use super::{LinSolParams, LinSolTrait, SparseMatrix, StatsLinSol, Symmetry};
 use crate::auxiliary_and_constants::{
     to_i32, CcBool, MALLOC_ERROR, NEED_FACTORIZATION, NOT_AVAILABLE, NULL_POINTER_ERROR, SUCCESSFUL_EXIT,
 };
@@ -265,46 +265,16 @@ impl LinSolTrait for SolverIntelDSS {
         Ok(())
     }
 
-    /// Returns the determinant
-    ///
-    /// Returns the three values `(mantissa, 10.0, exponent)`, such that the determinant is calculated by:
-    ///
-    /// ```text
-    /// determinant = mantissa · pow(10.0, exponent)
-    /// ```
-    ///
-    /// **Note:** This is only available if compute_determinant was requested.
-    fn get_determinant(&self) -> (f64, f64, f64) {
-        (self.determinant_coefficient, 10.0, self.determinant_exponent)
-    }
-
-    /// Returns the ordering effectively used by the solver (NOT AVAILABLE)
-    fn get_effective_ordering(&self) -> String {
-        "Unknown".to_string()
-    }
-
-    /// Returns the scaling effectively used by the solver (NOT AVAILABLE)
-    fn get_effective_scaling(&self) -> String {
-        "Unknown".to_string()
-    }
-
-    /// Returns the strategy (concerning symmetry) effectively used by the solver
-    fn get_effective_strategy(&self) -> String {
-        "Unknown".to_string()
-    }
-
-    /// Returns the name of this solver
-    ///
-    /// # Output
-    ///
-    /// * `IntelDSS` -- if the default system IntelDSS has been used
-    /// * `IntelDSS-local` -- if the locally compiled IntelDSS has be used
-    fn get_name(&self) -> String {
-        if cfg!(with_intel_dss) {
+    /// Updates the stats structure (should be called after solve)
+    fn update_stats(&self, stats: &mut StatsLinSol) {
+        stats.main.solver = if cfg!(with_intel_dss) {
             "IntelDSS".to_string()
         } else {
             "INTEL_DSS_IS_NOT_AVAILABLE".to_string()
-        }
+        };
+        stats.determinant.mantissa = self.determinant_coefficient;
+        stats.determinant.base = 10.0;
+        stats.determinant.exponent = self.determinant_exponent;
     }
 }
 
@@ -398,18 +368,12 @@ mod tests {
 
         solver.factorize(&mut mat, Some(params)).unwrap();
         assert!(solver.factorized);
-
-        assert_eq!(solver.get_effective_ordering(), "Unknown");
-        assert_eq!(solver.get_effective_scaling(), "Unknown");
-
-        let (a, b, c) = solver.get_determinant();
-        let det = a * f64::powf(b, c);
+        let det = solver.determinant_coefficient * f64::powf(10.0, solver.determinant_exponent);
         approx_eq(det, 114.0, 1e-13);
 
         // calling factorize again works
         solver.factorize(&mut mat, Some(params)).unwrap();
-        let (a, b, c) = solver.get_determinant();
-        let det = a * f64::powf(b, c);
+        let det = solver.determinant_coefficient * f64::powf(10.0, solver.determinant_exponent);
         approx_eq(det, 114.0, 1e-13);
     }
 

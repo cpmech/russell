@@ -1,5 +1,5 @@
 use russell_chk::vec_approx_eq;
-use russell_lab::{Matrix, Vector};
+use russell_lab::Vector;
 use russell_sparse::prelude::*;
 use russell_sparse::StrError;
 
@@ -12,6 +12,11 @@ fn main() -> Result<(), StrError> {
     let mut umfpack = SolverUMFPACK::new()?;
 
     // allocate the coefficient matrix
+    //  2  3  .  .  .
+    //  3  .  4  .  6
+    //  . -1 -3  2  .
+    //  .  .  1  .  .
+    //  .  4  2  .  1
     let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
@@ -27,20 +32,13 @@ fn main() -> Result<(), StrError> {
     coo.put(1, 4, 6.0)?;
     coo.put(4, 4, 1.0)?;
 
-    // print matrix
-    let mut a = Matrix::new(ndim, ndim);
-    coo.to_dense(&mut a)?;
-    let correct = "┌                ┐\n\
-                   │  2  3  0  0  0 │\n\
-                   │  3  0  4  0  6 │\n\
-                   │  0 -1 -3  2  0 │\n\
-                   │  0  0  1  0  0 │\n\
-                   │  0  4  2  0  1 │\n\
-                   └                ┘";
-    assert_eq!(format!("{}", a), correct);
+    // parameters
+    let mut params = LinSolParams::new();
+    params.verbose = false;
+    params.compute_determinant = true;
 
     // call factorize
-    umfpack.factorize(&mut coo, None)?;
+    umfpack.factorize(&mut coo, Some(params))?;
 
     // allocate x and rhs
     let mut x = Vector::new(ndim);
@@ -48,9 +46,17 @@ fn main() -> Result<(), StrError> {
 
     // calculate the solution
     umfpack.solve(&mut x, &coo, &rhs, false)?;
+    println!("x =\n{}", x);
 
     // check the results
     let correct = vec![1.0, 2.0, 3.0, 4.0, 5.0];
     vec_approx_eq(x.as_data(), &correct, 1e-14);
+
+    // analysis
+    let mut stats = StatsLinSol::new();
+    umfpack.update_stats(&mut stats);
+    let (mx, ex) = (stats.determinant.mantissa, stats.determinant.exponent);
+    println!("det(a) = {:?}", mx * f64::powf(10.0, ex));
+    println!("rcond  = {:?}", stats.output.umfpack_rcond_estimate);
     Ok(())
 }

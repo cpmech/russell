@@ -1,5 +1,5 @@
 use russell_chk::vec_approx_eq;
-use russell_lab::{Matrix, Vector};
+use russell_lab::Vector;
 use russell_sparse::prelude::*;
 use russell_sparse::StrError;
 
@@ -13,8 +13,7 @@ fn main() -> Result<(), StrError> {
     let mut csc = SparseMatrix::new_csc(n, n, ap, ai, ax, None)?;
 
     // print the coefficient matrix
-    let mut a = Matrix::new(n, n);
-    csc.to_dense(&mut a)?;
+    let a = csc.as_dense();
     let correct = "┌                ┐\n\
                    │  2  3  0  0  0 │\n\
                    │  3  0  4  0  6 │\n\
@@ -27,8 +26,13 @@ fn main() -> Result<(), StrError> {
     // allocate the solver
     let mut umfpack = SolverUMFPACK::new()?;
 
+    // parameters
+    let mut params = LinSolParams::new();
+    params.verbose = false;
+    params.compute_determinant = false;
+
     // call factorize
-    umfpack.factorize(&mut csc, None)?;
+    umfpack.factorize(&mut csc, Some(params))?;
 
     // allocate x and b
     let mut x = Vector::new(n);

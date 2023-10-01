@@ -1,5 +1,5 @@
 use russell_chk::vec_approx_eq;
-use russell_lab::{Matrix, Vector};
+use russell_lab::Vector;
 use russell_sparse::prelude::*;
 use russell_sparse::StrError;
 
@@ -9,16 +9,15 @@ fn main() -> Result<(), StrError> {
     let nnz = 5; // number of non-zero values
 
     // allocate the coefficient matrix
-    let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;
-    coo.put(0, 0, 0.2)?;
-    coo.put(0, 1, 0.2)?;
-    coo.put(1, 0, 0.5)?;
-    coo.put(1, 1, -0.25)?;
-    coo.put(2, 2, 0.25)?;
+    let mut mat = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;
+    mat.put(0, 0, 0.2)?;
+    mat.put(0, 1, 0.2)?;
+    mat.put(1, 0, 0.5)?;
+    mat.put(1, 1, -0.25)?;
+    mat.put(2, 2, 0.25)?;
 
     // print matrix
-    let mut a = Matrix::new(ndim, ndim);
-    coo.to_dense(&mut a)?;
+    let a = mat.as_dense();
     let correct = "┌                   ┐\n\
                    │   0.2   0.2     0 │\n\
                    │   0.5 -0.25     0 │\n\
@@ -26,12 +25,12 @@ fn main() -> Result<(), StrError> {
                    └                   ┘";
     assert_eq!(format!("{}", a), correct);
 
-    // solve the linear system
-    let mut x = Vector::new(ndim);
+    // allocate the right-hand side vector
     let rhs = Vector::from(&[1.0, 1.0, 1.0]);
-    LinSolver::compute(Genie::Umfpack, &mut x, &mut coo, &rhs, None)?;
 
-    // check the results
+    // calculate the solution
+    let mut x = Vector::new(ndim);
+    LinSolver::compute(Genie::Umfpack, &mut x, &mut mat, &rhs, None)?;
     let correct = vec![3.0, 2.0, 4.0];
     vec_approx_eq(x.as_data(), &correct, 1e-14);
     Ok(())

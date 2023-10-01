@@ -1,4 +1,4 @@
-use super::{Genie, Ordering, Scaling, SolverIntelDSS, SolverMUMPS, SolverUMFPACK, SparseMatrix};
+use super::{Genie, Ordering, Scaling, SolverIntelDSS, SolverMUMPS, SolverUMFPACK, SparseMatrix, StatsLinSol};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -15,6 +15,16 @@ pub struct LinSolParams {
     ///
     /// **Note:** The determinant will be available after `factorize`
     pub compute_determinant: bool,
+
+    /// Requests that the error estimates be computed
+    ///
+    /// **Note:** Will need to use the `actual` solver to access the results.
+    pub compute_error_estimates: bool,
+
+    /// Requests that condition numbers be computed
+    ///
+    /// **Note:** Will need to use the `actual` solver to access the results.
+    pub compute_condition_numbers: bool,
 
     /// Sets the % increase in the estimated working space (MUMPS only)
     ///
@@ -45,6 +55,8 @@ impl LinSolParams {
             ordering: Ordering::Auto,
             scaling: Scaling::Auto,
             compute_determinant: false,
+            compute_error_estimates: false,
+            compute_condition_numbers: false,
             mumps_pct_inc_workspace: 100,
             mumps_max_work_memory: 0,
             mumps_openmp_num_threads: 0,
@@ -96,30 +108,8 @@ pub trait LinSolTrait {
     /// **Warning:** the matrix must be same one used in `factorize`.
     fn solve(&mut self, x: &mut Vector, mat: &SparseMatrix, rhs: &Vector, verbose: bool) -> Result<(), StrError>;
 
-    /// Returns the determinant
-    ///
-    /// Returns the three values `(mantissa, base, exponent)`, such that the determinant is calculated by:
-    ///
-    /// ```text
-    /// determinant = mantissa · pow(base, exponent)
-    /// ```
-    ///
-    /// **Note:** This is only available if compute_determinant was requested.
-    fn get_determinant(&self) -> (f64, f64, f64);
-
-    /// Returns the ordering effectively used by the solver
-    fn get_effective_ordering(&self) -> String;
-
-    /// Returns the scaling effectively used by the solver
-    fn get_effective_scaling(&self) -> String;
-
-    /// Returns the strategy (concerning symmetry) effectively used by the solver
-    ///
-    /// For example, returns whether the `symmetric strategy` was used or not (UMFPACK only)
-    fn get_effective_strategy(&self) -> String;
-
-    /// Returns the name of the underlying solver (Genie)
-    fn get_name(&self) -> String;
+    /// Updates the stats structure (should be called after solve)
+    fn update_stats(&self, stats: &mut StatsLinSol);
 }
 
 /// Unifies the access to linear system solvers
@@ -171,6 +161,48 @@ impl<'a> LinSolver<'a> {
     /// 4. This function calls the actual implementation (genie) via the functions `factorize`, and `solve`.
     /// 5. This function is best for a **single-use**, whereas the actual
     ///    solver should be considered for a recurrent use (e.g., inside a loop).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_chk::vec_approx_eq;
+    /// use russell_lab::Vector;
+    /// use russell_sparse::prelude::*;
+    /// use russell_sparse::StrError;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // constants
+    ///     let ndim = 3; // number of rows = number of columns
+    ///     let nnz = 5; // number of non-zero values
+    ///
+    ///     // allocate the coefficient matrix
+    ///     let mut mat = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;
+    ///     mat.put(0, 0, 0.2)?;
+    ///     mat.put(0, 1, 0.2)?;
+    ///     mat.put(1, 0, 0.5)?;
+    ///     mat.put(1, 1, -0.25)?;
+    ///     mat.put(2, 2, 0.25)?;
+    ///
+    ///     // print matrix
+    ///     let mut a = mat.as_dense();
+    ///     let correct = "┌                   ┐\n\
+    ///                    │   0.2   0.2     0 │\n\
+    ///                    │   0.5 -0.25     0 │\n\
+    ///                    │     0     0  0.25 │\n\
+    ///                    └                   ┘";
+    ///     assert_eq!(format!("{}", a), correct);
+    ///
+    ///     // allocate the right-hand side vector
+    ///     let rhs = Vector::from(&[1.0, 1.0, 1.0]);
+    ///
+    ///     // calculate the solution
+    ///     let mut x = Vector::new(ndim);
+    ///     LinSolver::compute(Genie::Umfpack, &mut x, &mut mat, &rhs, None)?;
+    ///     let correct = vec![3.0, 2.0, 4.0];
+    ///     vec_approx_eq(x.as_data(), &correct, 1e-14);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn compute(
         genie: Genie,
         x: &mut Vector,

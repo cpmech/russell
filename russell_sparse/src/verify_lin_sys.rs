@@ -1,14 +1,15 @@
 use super::SparseMatrix;
 use crate::StrError;
-use russell_lab::{vec_norm, vec_update, Norm, Stopwatch, Vector};
+use russell_lab::{vec_norm, vec_update, Norm, Vector};
+use serde::{Deserialize, Serialize};
 
 /// Verifies the linear system a ⋅ x = rhs
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct VerifyLinSys {
     pub max_abs_a: f64,      // max abs a
     pub max_abs_ax: f64,     // max abs a ⋅ x
     pub max_abs_diff: f64,   // max abs diff = a ⋅ x - rhs
     pub relative_error: f64, // max_abs_diff / (max_abs_a + 1)
-    pub time_check: u128,    // elapsed time spent in the `new` method
 }
 
 impl VerifyLinSys {
@@ -36,8 +37,7 @@ impl VerifyLinSys {
     ///     coo.put(2, 2, 3.0)?;
     ///
     ///     // check matrix
-    ///     let mut a = Matrix::new(nrow, nrow);
-    ///     coo.to_dense(&mut a)?;
+    ///     let mut a = coo.as_dense();
     ///     let correct_a = "┌       ┐\n\
     ///                      │ 1 0 4 │\n\
     ///                      │ 0 2 0 │\n\
@@ -53,7 +53,6 @@ impl VerifyLinSys {
     ///     assert_eq!(verify.max_abs_ax, 5.0);
     ///     assert_eq!(verify.max_abs_diff, 0.0);
     ///     assert_eq!(verify.relative_error, 0.0);
-    ///     assert!(verify.time_check > 0);
     ///     Ok(())
     /// }
     /// ```
@@ -65,9 +64,6 @@ impl VerifyLinSys {
         if rhs.dim() != nrow {
             return Err("rhs.dim() must be equal to nrow");
         }
-
-        // start stopwatch
-        let mut sw = Stopwatch::new("");
 
         // compute max_abs_a
         let max_abs_a = mat.get_max_abs_value();
@@ -84,16 +80,12 @@ impl VerifyLinSys {
         // compute relative_error
         let relative_error = max_abs_diff / (max_abs_a + 1.0);
 
-        // stop stopwatch
-        let time_check = sw.stop();
-
         // results
         Ok(VerifyLinSys {
             max_abs_a,
             max_abs_ax,
             max_abs_diff,
             relative_error,
-            time_check,
         })
     }
 }
@@ -147,7 +139,6 @@ mod tests {
         assert_eq!(verify.max_abs_ax, 8.0);
         assert_eq!(verify.max_abs_diff, 0.0);
         assert_eq!(verify.relative_error, 0.0);
-        assert!(verify.time_check > 0);
     }
 
     #[test]

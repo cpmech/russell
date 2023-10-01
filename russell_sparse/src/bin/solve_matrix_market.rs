@@ -1,9 +1,6 @@
-use russell_lab::{format_nanoseconds, Stopwatch, StrError, Vector};
-use russell_openblas::{get_num_threads, set_num_threads};
+use russell_lab::{Stopwatch, StrError, Vector};
+use russell_openblas::set_num_threads;
 use russell_sparse::prelude::*;
-use serde::{Deserialize, Serialize};
-use serde_json;
-use std::path::Path;
 use structopt::StructOpt;
 
 /// Command line options
@@ -39,6 +36,14 @@ struct Options {
     /// Computes determinant
     #[structopt(short = "d", long)]
     determinant: bool,
+
+    /// Computes error estimates (MUMPS only)
+    #[structopt(short = "x", long)]
+    error_estimates: bool,
+
+    /// Computes condition numbers (MUMPS only; slow)
+    #[structopt(short = "y", long)]
+    condition_numbers: bool,
 
     /// Enforce unsymmetric strategy (not recommended) (UMFPACK only)
     #[structopt(short = "u", long)]
@@ -77,15 +82,30 @@ fn main() -> Result<(), StrError> {
     params.compute_determinant = opt.determinant;
     params.mumps_openmp_num_threads = opt.mumps_omp_nt as usize;
     params.umfpack_enforce_unsymmetric_strategy = opt.enforce_unsymmetric_strategy;
+    params.compute_error_estimates = opt.error_estimates;
+    params.compute_condition_numbers = opt.condition_numbers;
+
+    // allocate stats structure
+    let mut stats = StatsLinSol::new();
+    stats.requests.ordering = format!("{:?}", params.ordering);
+    stats.requests.scaling = format!("{:?}", params.scaling);
+    stats.requests.mumps_openmp_num_threads = params.mumps_openmp_num_threads;
 
     // read the matrix
     let mut sw = Stopwatch::new("");
     let coo = read_matrix_market(&opt.matrix_market_file, handling, one_based)?;
-    let time_read = sw.stop();
+    stats.time_nanoseconds.read_matrix = sw.stop();
 
     // save the COO matrix as a generic SparseMatrix
     let mut mat = SparseMatrix::from_coo(coo);
+
+    // save information about the matrix
     let (nrow, ncol, nnz, symmetry) = mat.get_info();
+    stats.set_matrix_name_from_path(&opt.matrix_market_file);
+    stats.matrix.nrow = nrow;
+    stats.matrix.ncol = ncol;
+    stats.matrix.nnz = nnz;
+    stats.matrix.symmetry = format!("{:?}", symmetry);
 
     // allocate and configure the solver
     let mut solver = LinSolver::new(genie)?;
@@ -93,7 +113,7 @@ fn main() -> Result<(), StrError> {
     // call factorize
     sw.reset();
     solver.actual.factorize(&mut mat, Some(params))?;
-    let time_factorize = sw.stop();
+    stats.time_nanoseconds.factorize = sw.stop();
 
     // allocate vectors
     let mut x = Vector::new(nrow);
@@ -102,67 +122,19 @@ fn main() -> Result<(), StrError> {
     // solve linear system
     sw.reset();
     solver.actual.solve(&mut x, &mat, &rhs, opt.verbose)?;
-    let time_solve = sw.stop();
-
-    // total time, excluding reading the matrix
-    let time_total = time_factorize + time_solve;
+    stats.time_nanoseconds.solve = sw.stop();
 
     // verify the solution
-    let verify = VerifyLinSys::new(&mat, &x, &rhs)?;
+    sw.reset();
+    stats.verify = VerifyLinSys::new(&mat, &x, &rhs)?;
+    stats.time_nanoseconds.verify = sw.stop();
 
-    // matrix name
-    let path = Path::new(&opt.matrix_market_file);
-    let matrix_name = match path.file_stem() {
-        Some(v) => match v.to_str() {
-            Some(w) => w.to_string(),
-            None => "Unknown".to_string(),
-        },
-        None => "Unknown".to_string(),
-    };
-
-    // determinant
-    let (mantissa, base, exponent) = solver.actual.get_determinant();
-
-    // output
-    let info = SolutionInfo {
-        platform: "Russell".to_string(),
-        blas_lib: "OpenBLAS".to_string(),
-        solver_name: solver.actual.get_name(),
-        matrix_name,
-        symmetry: format!("{:?}", symmetry),
-        nrow,
-        ncol,
-        nnz,
-        time_read_matrix_market_nanosecond: time_read,
-        time_read_matrix_market_human: format_nanoseconds(time_read),
-        time_factorize_nanosecond: time_factorize,
-        time_factorize_human: format_nanoseconds(time_factorize),
-        time_solve_nanosecond: time_solve,
-        time_solve_human: format_nanoseconds(time_solve),
-        time_total_nanosecond: time_total,
-        time_total_human: format_nanoseconds(time_total),
-        requested_ordering: opt.ordering,
-        requested_scaling: opt.scaling,
-        requested_openmp_num_threads: opt.mumps_omp_nt as usize,
-        effective_ordering: solver.actual.get_effective_ordering(),
-        effective_scaling: solver.actual.get_effective_scaling(),
-        effective_strategy: solver.actual.get_effective_strategy(),
-        effective_openmp_num_threads: get_num_threads() as usize,
-        verify_max_abs_a: verify.max_abs_a,
-        verify_max_abs_a_times_x: verify.max_abs_ax,
-        verify_relative_error: verify.relative_error,
-        verify_time_nanosecond: verify.time_check,
-        verify_time_human: format_nanoseconds(verify.time_check),
-        compute_determinant: opt.determinant,
-        determinant_mantissa: mantissa,
-        determinant_base: base,
-        determinant_exponent: exponent,
-    };
-    let info_json = serde_json::to_string_pretty(&info).unwrap();
-    println!("{}", info_json);
+    // update and print stats
+    solver.actual.update_stats(&mut stats);
+    println!("{}", stats.get_json());
 
     // check
-    if path.ends_with("bfwb62.mtx") {
+    if stats.matrix.name == "bfwb62" {
         let tolerance = match genie {
             Genie::Mumps => 1e-10,
             Genie::Umfpack => 1e-10,
@@ -172,50 +144,13 @@ fn main() -> Result<(), StrError> {
         for i in 0..nrow {
             let diff = f64::abs(x.get(i) - correct_x.get(i));
             if diff > tolerance {
-                println!("ERROR: diff({}) = {:.2e}", i, diff);
+                println!("BFWB62 FAILED WITH NUMERICAL ERROR = {:.2e} @ {} COMPONENT", diff, i);
             }
         }
     }
 
     // done
     Ok(())
-}
-
-/// Holds information about the solution of a linear system
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct SolutionInfo {
-    pub platform: String,
-    pub blas_lib: String,
-    pub solver_name: String,
-    pub matrix_name: String,
-    pub symmetry: String,
-    pub nrow: usize,
-    pub ncol: usize,
-    pub nnz: usize,
-    pub time_read_matrix_market_nanosecond: u128,
-    pub time_read_matrix_market_human: String,
-    pub time_factorize_nanosecond: u128,
-    pub time_factorize_human: String,
-    pub time_solve_nanosecond: u128,
-    pub time_solve_human: String,
-    pub time_total_nanosecond: u128, // initialize + factorize + solve (not including read matrix)
-    pub time_total_human: String,
-    pub requested_ordering: String,
-    pub requested_scaling: String,
-    pub requested_openmp_num_threads: usize,
-    pub effective_ordering: String,
-    pub effective_scaling: String,
-    pub effective_strategy: String,
-    pub effective_openmp_num_threads: usize,
-    pub verify_max_abs_a: f64,
-    pub verify_max_abs_a_times_x: f64,
-    pub verify_relative_error: f64,
-    pub verify_time_nanosecond: u128,
-    pub verify_time_human: String,
-    pub compute_determinant: bool,
-    pub determinant_mantissa: f64, // det = mantissa * pow(base, exponent)
-    pub determinant_base: f64,
-    pub determinant_exponent: f64,
 }
 
 fn get_bfwb62_correct_x() -> Vector {

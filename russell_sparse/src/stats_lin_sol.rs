@@ -176,3 +176,62 @@ impl StatsLinSol {
         serde_json::to_string_pretty(&self).unwrap()
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::StatsLinSol;
+    use serde_json;
+
+    #[test]
+    fn derive_works() {
+        let stats = StatsLinSol::new();
+        let clone = stats.clone();
+        assert!(format!("{:?}", stats).len() > 0);
+        assert_eq!(clone.main.platform, stats.main.platform);
+        // serialize
+        let json_out = serde_json::to_string(&stats).unwrap();
+        // deserialize
+        let json_in: StatsLinSol = serde_json::from_str(&json_out).unwrap();
+        assert_eq!(json_in.main.platform, stats.main.platform);
+    }
+
+    #[test]
+    fn set_matrix_name_from_path_works() {
+        let mut stats = StatsLinSol::new();
+        stats.set_matrix_name_from_path("/tmp/russell/just-testing.stats");
+        assert_eq!(stats.matrix.name, "just-testing");
+
+        stats.set_matrix_name_from_path("/tmp/russell/.stats");
+        assert_eq!(stats.matrix.name, ".stats");
+
+        stats.set_matrix_name_from_path("/tmp/russell/");
+        assert_eq!(stats.matrix.name, "russell"); // << no really what we want
+
+        stats.set_matrix_name_from_path("");
+        assert_eq!(stats.matrix.name, "Unknown");
+
+        stats.set_matrix_name_from_path("🐶🐶🐶.stats");
+        assert_eq!(stats.matrix.name, "🐶🐶🐶");
+    }
+
+    #[test]
+    fn get_json_works() {
+        let mut stats = StatsLinSol::new();
+        const ONE_SECOND: u128 = 1000000000;
+        stats.time_nanoseconds.read_matrix = ONE_SECOND;
+        stats.time_nanoseconds.factorize = ONE_SECOND * 2;
+        stats.time_nanoseconds.solve = ONE_SECOND * 3;
+        stats.time_nanoseconds.verify = ONE_SECOND * 4;
+        let json = stats.get_json();
+        assert!(stats.output.openmp_num_threads > 0);
+        assert_eq!(stats.time_nanoseconds.total_f_and_s, ONE_SECOND * 5);
+        assert_eq!(stats.time_human.read_matrix, "1s");
+        assert_eq!(stats.time_human.factorize, "2s");
+        assert_eq!(stats.time_human.solve, "3s");
+        assert_eq!(stats.time_human.total_f_and_s, "5s");
+        assert_eq!(stats.time_human.verify, "4s");
+        assert!(json.len() > 0);
+    }
+}

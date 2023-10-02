@@ -183,29 +183,8 @@ impl LinSolTrait for SolverUMFPACK {
         let par = if let Some(p) = params { p } else { LinSolParams::new() };
 
         // input parameters
-        let ordering = match par.ordering {
-            Ordering::Amd => UMFPACK_ORDERING_AMD,
-            Ordering::Amf => UMFPACK_DEFAULT_ORDERING,
-            Ordering::Auto => UMFPACK_DEFAULT_ORDERING,
-            Ordering::Best => UMFPACK_ORDERING_BEST,
-            Ordering::Cholmod => UMFPACK_ORDERING_CHOLMOD,
-            Ordering::Metis => UMFPACK_ORDERING_METIS,
-            Ordering::No => UMFPACK_ORDERING_NONE,
-            Ordering::Pord => UMFPACK_DEFAULT_ORDERING,
-            Ordering::Qamd => UMFPACK_DEFAULT_ORDERING,
-            Ordering::Scotch => UMFPACK_DEFAULT_ORDERING,
-        };
-        let scaling = match par.scaling {
-            Scaling::Auto => UMFPACK_DEFAULT_SCALE,
-            Scaling::Column => UMFPACK_DEFAULT_SCALE,
-            Scaling::Diagonal => UMFPACK_DEFAULT_SCALE,
-            Scaling::Max => UMFPACK_SCALE_MAX,
-            Scaling::No => UMFPACK_SCALE_NONE,
-            Scaling::RowCol => UMFPACK_DEFAULT_SCALE,
-            Scaling::RowColIter => UMFPACK_DEFAULT_SCALE,
-            Scaling::RowColRig => UMFPACK_DEFAULT_SCALE,
-            Scaling::Sum => UMFPACK_SCALE_SUM,
-        };
+        let ordering = umfpack_ordering(par.ordering);
+        let scaling = umfpack_scaling(par.scaling);
 
         // requests
         let compute_determinant = if par.compute_determinant { 1 } else { 0 };
@@ -355,6 +334,51 @@ impl LinSolTrait for SolverUMFPACK {
     }
 }
 
+const UMFPACK_STRATEGY_AUTO: i32 = 0; // use symmetric or unsymmetric strategy
+const UMFPACK_STRATEGY_UNSYMMETRIC: i32 = 1; // COLAMD(A), col-tree post-order, do not prefer diag
+const UMFPACK_STRATEGY_SYMMETRIC: i32 = 3; // AMD(A+A'), no col-tree post-order, prefer diagonal
+
+const UMFPACK_ORDERING_CHOLMOD: i32 = 0; // use CHOLMOD (AMD/COLAMD then METIS)
+const UMFPACK_ORDERING_AMD: i32 = 1; // use AMD/COLAMD
+const UMFPACK_ORDERING_METIS: i32 = 3; // use METIS
+const UMFPACK_ORDERING_BEST: i32 = 4; // try many orderings, pick best
+const UMFPACK_ORDERING_NONE: i32 = 5; // natural ordering
+const UMFPACK_DEFAULT_ORDERING: i32 = UMFPACK_ORDERING_AMD;
+
+const UMFPACK_SCALE_NONE: i32 = 0; // no scaling
+const UMFPACK_SCALE_SUM: i32 = 1; // default: divide each row by sum (abs (row))
+const UMFPACK_SCALE_MAX: i32 = 2; // divide each row by max (abs (row))
+const UMFPACK_DEFAULT_SCALE: i32 = UMFPACK_SCALE_SUM;
+
+fn umfpack_ordering(ordering: Ordering) -> i32 {
+    match ordering {
+        Ordering::Amd => UMFPACK_ORDERING_AMD,
+        Ordering::Amf => UMFPACK_DEFAULT_ORDERING,
+        Ordering::Auto => UMFPACK_DEFAULT_ORDERING,
+        Ordering::Best => UMFPACK_ORDERING_BEST,
+        Ordering::Cholmod => UMFPACK_ORDERING_CHOLMOD,
+        Ordering::Metis => UMFPACK_ORDERING_METIS,
+        Ordering::No => UMFPACK_ORDERING_NONE,
+        Ordering::Pord => UMFPACK_DEFAULT_ORDERING,
+        Ordering::Qamd => UMFPACK_DEFAULT_ORDERING,
+        Ordering::Scotch => UMFPACK_DEFAULT_ORDERING,
+    }
+}
+
+fn umfpack_scaling(scaling: Scaling) -> i32 {
+    match scaling {
+        Scaling::Auto => UMFPACK_DEFAULT_SCALE,
+        Scaling::Column => UMFPACK_DEFAULT_SCALE,
+        Scaling::Diagonal => UMFPACK_DEFAULT_SCALE,
+        Scaling::Max => UMFPACK_SCALE_MAX,
+        Scaling::No => UMFPACK_SCALE_NONE,
+        Scaling::RowCol => UMFPACK_DEFAULT_SCALE,
+        Scaling::RowColIter => UMFPACK_DEFAULT_SCALE,
+        Scaling::RowColRig => UMFPACK_DEFAULT_SCALE,
+        Scaling::Sum => UMFPACK_SCALE_SUM,
+    }
+}
+
 /// Handles UMFPACK error code
 pub(crate) fn handle_umfpack_error_code(err: i32) -> StrError {
     match err {
@@ -380,28 +404,12 @@ pub(crate) fn handle_umfpack_error_code(err: i32) -> StrError {
     }
 }
 
-const UMFPACK_STRATEGY_AUTO: i32 = 0; // use symmetric or unsymmetric strategy
-const UMFPACK_STRATEGY_UNSYMMETRIC: i32 = 1; // COLAMD(A), col-tree post-order, do not prefer diag
-const UMFPACK_STRATEGY_SYMMETRIC: i32 = 3; // AMD(A+A'), no col-tree post-order, prefer diagonal
-
-const UMFPACK_ORDERING_CHOLMOD: i32 = 0; // use CHOLMOD (AMD/COLAMD then METIS)
-const UMFPACK_ORDERING_AMD: i32 = 1; // use AMD/COLAMD
-const UMFPACK_ORDERING_METIS: i32 = 3; // use METIS
-const UMFPACK_ORDERING_BEST: i32 = 4; // try many orderings, pick best
-const UMFPACK_ORDERING_NONE: i32 = 5; // natural ordering
-const UMFPACK_DEFAULT_ORDERING: i32 = UMFPACK_ORDERING_AMD;
-
-const UMFPACK_SCALE_NONE: i32 = 0; // no scaling
-const UMFPACK_SCALE_SUM: i32 = 1; // default: divide each row by sum (abs (row))
-const UMFPACK_SCALE_MAX: i32 = 2; // divide each row by max (abs (row))
-const UMFPACK_DEFAULT_SCALE: i32 = UMFPACK_SCALE_SUM;
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::{handle_umfpack_error_code, SolverUMFPACK, UMFPACK_ORDERING_AMD, UMFPACK_SCALE_SUM};
-    use crate::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix};
+    use super::*;
+    use crate::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix, Storage, Symmetry};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 
@@ -416,23 +424,60 @@ mod tests {
     fn factorize_handles_errors() {
         let mut solver = SolverUMFPACK::new().unwrap();
         assert!(!solver.factorized);
-        let (coo, _, _, _) = Samples::rectangular_1x7();
-        let mut mat = SparseMatrix::from_coo(coo);
-        assert_eq!(
-            solver.factorize(&mut mat, None).err(),
-            Some("the matrix must be square")
-        );
+
+        // COO to CSC errors
         let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
             Some("COO to CSC requires nnz > 0")
         );
+
+        // check CSC matrix
+        let (coo, _, _, _) = Samples::rectangular_1x7();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("the matrix must be square")
+        );
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(false, false, false);
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
             Some("for UMFPACK, the matrix must not be triangular")
+        );
+
+        // check already factorized data
+        let mut coo = CooMatrix::new(2, 2, 2, None, false).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 2.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        // ... factorize once => OK
+        solver.factorize(&mut mat, None).unwrap();
+        // ... change matrix (symmetry)
+        let mut coo = CooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full)), false).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 2.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("subsequent factorizations must use the same matrix (symmetry differs)")
+        );
+        // ... change matrix (ndim)
+        let mut coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("subsequent factorizations must use the same matrix (ndim differs)")
+        );
+        // ... change matrix (nnz)
+        let mut coo = CooMatrix::new(2, 2, 1, None, false).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("subsequent factorizations must use the same matrix (nnz differs)")
         );
     }
 
@@ -514,6 +559,36 @@ mod tests {
         let mut x_again = Vector::new(5);
         solver.solve(&mut x_again, &mut mat, &rhs, false).unwrap();
         vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
+
+        // update stats
+        let mut stats = StatsLinSol::new();
+        solver.update_stats(&mut stats);
+        assert_eq!(stats.output.effective_ordering, "Amd");
+        assert_eq!(stats.output.effective_scaling, "Sum");
+    }
+
+    #[test]
+    fn ordering_and_scaling_works() {
+        assert_eq!(umfpack_ordering(Ordering::Amd), UMFPACK_ORDERING_AMD);
+        assert_eq!(umfpack_ordering(Ordering::Amf), UMFPACK_DEFAULT_ORDERING);
+        assert_eq!(umfpack_ordering(Ordering::Auto), UMFPACK_DEFAULT_ORDERING);
+        assert_eq!(umfpack_ordering(Ordering::Best), UMFPACK_ORDERING_BEST);
+        assert_eq!(umfpack_ordering(Ordering::Cholmod), UMFPACK_ORDERING_CHOLMOD);
+        assert_eq!(umfpack_ordering(Ordering::Metis), UMFPACK_ORDERING_METIS);
+        assert_eq!(umfpack_ordering(Ordering::No), UMFPACK_ORDERING_NONE);
+        assert_eq!(umfpack_ordering(Ordering::Pord), UMFPACK_DEFAULT_ORDERING);
+        assert_eq!(umfpack_ordering(Ordering::Qamd), UMFPACK_DEFAULT_ORDERING);
+        assert_eq!(umfpack_ordering(Ordering::Scotch), UMFPACK_DEFAULT_ORDERING);
+
+        assert_eq!(umfpack_scaling(Scaling::Auto), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_scaling(Scaling::Column), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_scaling(Scaling::Diagonal), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_scaling(Scaling::Max), UMFPACK_SCALE_MAX);
+        assert_eq!(umfpack_scaling(Scaling::No), UMFPACK_SCALE_NONE);
+        assert_eq!(umfpack_scaling(Scaling::RowCol), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_scaling(Scaling::RowColIter), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_scaling(Scaling::RowColRig), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_scaling(Scaling::Sum), UMFPACK_SCALE_SUM);
     }
 
     #[test]

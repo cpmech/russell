@@ -213,9 +213,6 @@ impl LinSolTrait for SolverMUMPS {
         if coo.nrow != coo.ncol {
             return Err("the COO matrix must be square");
         }
-        if coo.nrow < 1 {
-            return Err("the COO matrix must be (1 x 1) at least");
-        }
         if coo.nnz < 1 {
             return Err("the COO matrix must have at least one non-zero value");
         }
@@ -250,29 +247,8 @@ impl LinSolTrait for SolverMUMPS {
         };
 
         // input parameters
-        let ordering = match par.ordering {
-            Ordering::Amd => 0,     // Amd (page 35)
-            Ordering::Amf => 2,     // Amf (page 35)
-            Ordering::Auto => 7,    // Auto (page 36)
-            Ordering::Best => 7,    // Best => Auto (page 36)
-            Ordering::Cholmod => 7, // Cholmod => Auto (page 36)
-            Ordering::Metis => 5,   // Metis (page 35)
-            Ordering::No => 7,      // No => Auto (page 36)
-            Ordering::Pord => 4,    // Pord (page 35)
-            Ordering::Qamd => 6,    // Qamd (page 35)
-            Ordering::Scotch => 3,  // Scotch (page 35)
-        };
-        let scaling = match par.scaling {
-            Scaling::Auto => 77,      // Auto (page 33)
-            Scaling::Column => 3,     // Column (page 33)
-            Scaling::Diagonal => 1,   // Diagonal (page 33)
-            Scaling::Max => 77,       // Max => Auto (page 33)
-            Scaling::No => 0,         // No (page 33)
-            Scaling::RowCol => 4,     // RowCol (page 33)
-            Scaling::RowColIter => 7, // RowColIter (page 33)
-            Scaling::RowColRig => 8,  // RowColRig (page 33)
-            Scaling::Sum => 77,       // Sum => Auto (page 33)
-        };
+        let ordering = mumps_ordering(par.ordering);
+        let scaling = mumps_scaling(par.scaling);
         let pct_inc_workspace = to_i32(par.mumps_pct_inc_workspace);
         let max_work_memory = to_i32(par.mumps_max_work_memory);
         let openmp_num_threads = to_i32(par.mumps_openmp_num_threads);
@@ -407,23 +383,23 @@ impl LinSolTrait for SolverMUMPS {
         stats.determinant.base = 2.0;
         stats.determinant.exponent = self.determinant_exponent;
         stats.output.effective_ordering = match self.effective_ordering {
-            0 => "Amd".to_string(),
-            2 => "Amf".to_string(),
-            7 => "Auto".to_string(),
-            5 => "Metis".to_string(),
-            4 => "Pord".to_string(),
-            6 => "Qamd".to_string(),
-            3 => "Scotch".to_string(),
+            MUMPS_ORDERING_AMD => "Amd".to_string(),
+            MUMPS_ORDERING_AMF => "Amf".to_string(),
+            MUMPS_ORDERING_AUTO => "Auto".to_string(),
+            MUMPS_ORDERING_METIS => "Metis".to_string(),
+            MUMPS_ORDERING_PORD => "Pord".to_string(),
+            MUMPS_ORDERING_QAMD => "Qamd".to_string(),
+            MUMPS_ORDERING_SCOTCH => "Scotch".to_string(),
             _ => "Unknown".to_string(),
         };
         stats.output.effective_scaling = match self.effective_scaling {
-            77 => "Auto".to_string(),
-            3 => "Column".to_string(),
-            1 => "Diagonal".to_string(),
-            0 => "No".to_string(),
-            4 => "RowCol".to_string(),
-            7 => "RowColIter".to_string(),
-            8 => "RowColRig".to_string(),
+            MUMPS_SCALING_AUTO => "Auto".to_string(),
+            MUMPS_SCALING_COLUMN => "Column".to_string(),
+            MUMPS_SCALING_DIAGONAL => "Diagonal".to_string(),
+            MUMPS_SCALING_NO => "No".to_string(),
+            MUMPS_SCALING_ROW_COL => "RowCol".to_string(),
+            MUMPS_SCALING_ROW_COL_ITER => "RowColIter".to_string(),
+            MUMPS_SCALING_ROW_COL_RIG => "RowColRig".to_string(),
             _ => "Unknown".to_string(),
         };
         stats.mumps_stats.inf_norm_a = self.error_analysis_array_len_8[0];
@@ -434,6 +410,51 @@ impl LinSolTrait for SolverMUMPS {
         stats.mumps_stats.normalized_delta_x = self.error_analysis_array_len_8[5];
         stats.mumps_stats.condition_number1 = self.error_analysis_array_len_8[6];
         stats.mumps_stats.condition_number2 = self.error_analysis_array_len_8[7];
+    }
+}
+
+const MUMPS_ORDERING_AMD: i32 = 0; // Amd (page 35)
+const MUMPS_ORDERING_AMF: i32 = 2; // Amf (page 35)
+const MUMPS_ORDERING_AUTO: i32 = 7; // Auto (page 36)
+const MUMPS_ORDERING_METIS: i32 = 5; // Metis (page 35)
+const MUMPS_ORDERING_PORD: i32 = 4; // Pord (page 35)
+const MUMPS_ORDERING_QAMD: i32 = 6; // Qamd (page 35)
+const MUMPS_ORDERING_SCOTCH: i32 = 3; // Scotch (page 35)
+
+const MUMPS_SCALING_AUTO: i32 = 77; // Auto (page 33)
+const MUMPS_SCALING_COLUMN: i32 = 3; // Column (page 33)
+const MUMPS_SCALING_DIAGONAL: i32 = 1; // Diagonal (page 33)
+const MUMPS_SCALING_NO: i32 = 0; // No (page 33)
+const MUMPS_SCALING_ROW_COL: i32 = 4; // RowCol (page 33)
+const MUMPS_SCALING_ROW_COL_ITER: i32 = 7; // RowColIter (page 33)
+const MUMPS_SCALING_ROW_COL_RIG: i32 = 8; // RowColRig (page 33)
+
+fn mumps_ordering(ordering: Ordering) -> i32 {
+    match ordering {
+        Ordering::Amd => MUMPS_ORDERING_AMD,       // Amd (page 35)
+        Ordering::Amf => MUMPS_ORDERING_AMF,       // Amf (page 35)
+        Ordering::Auto => MUMPS_ORDERING_AUTO,     // Auto (page 36)
+        Ordering::Best => MUMPS_ORDERING_AUTO,     // Best => Auto (page 36)
+        Ordering::Cholmod => MUMPS_ORDERING_AUTO,  // Cholmod => Auto (page 36)
+        Ordering::Metis => MUMPS_ORDERING_METIS,   // Metis (page 35)
+        Ordering::No => MUMPS_ORDERING_AUTO,       // No => Auto (page 36)
+        Ordering::Pord => MUMPS_ORDERING_PORD,     // Pord (page 35)
+        Ordering::Qamd => MUMPS_ORDERING_QAMD,     // Qamd (page 35)
+        Ordering::Scotch => MUMPS_ORDERING_SCOTCH, // Scotch (page 35)
+    }
+}
+
+fn mumps_scaling(scaling: Scaling) -> i32 {
+    match scaling {
+        Scaling::Auto => MUMPS_SCALING_AUTO,               // Auto (page 33)
+        Scaling::Column => MUMPS_SCALING_COLUMN,           // Column (page 33)
+        Scaling::Diagonal => MUMPS_SCALING_DIAGONAL,       // Diagonal (page 33)
+        Scaling::Max => MUMPS_SCALING_AUTO,                // Max => Auto (page 33)
+        Scaling::No => MUMPS_SCALING_NO,                   // No (page 33)
+        Scaling::RowCol => MUMPS_SCALING_ROW_COL,          // RowCol (page 33)
+        Scaling::RowColIter => MUMPS_SCALING_ROW_COL_ITER, // RowColIter (page 33)
+        Scaling::RowColRig => MUMPS_SCALING_ROW_COL_RIG,   // RowColRig (page 33)
+        Scaling::Sum => MUMPS_SCALING_AUTO,                // Sum => Auto (page 33)
     }
 }
 
@@ -524,8 +545,8 @@ fn handle_mumps_error_code(err: i32) -> StrError {
 
 #[cfg(test)]
 mod tests {
-    use super::{handle_mumps_error_code, SolverMUMPS};
-    use crate::{LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix};
+    use super::*;
+    use crate::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix, Storage, Symmetry};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 
@@ -539,6 +560,77 @@ mod tests {
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
         let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+
+        // allocate a new solver
+        let mut solver = SolverMUMPS::new().unwrap();
+        assert!(!solver.factorized);
+
+        // get COO matrix errors
+        let (_, csc, _, _) = Samples::tiny_1x1(true);
+        let mut mat = SparseMatrix::from_csc(csc);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("COO matrix is not available")
+        );
+
+        // check COO matrix
+        let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("the COO matrix must have one-based (FORTRAN) indices as required by MUMPS")
+        );
+        let (coo, _, _, _) = Samples::rectangular_1x2(true, false, false);
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("the COO matrix must be square")
+        );
+        let coo = CooMatrix::new(1, 1, 1, None, true).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("the COO matrix must have at least one non-zero value")
+        );
+        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_upper(true, false, false);
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("if the matrix is general symmetric, the required storage is lower triangular")
+        );
+
+        // check already factorized data
+        let mut coo = CooMatrix::new(2, 2, 2, None, true).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 2.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        // ... factorize once => OK
+        solver.factorize(&mut mat, None).unwrap();
+        // ... change matrix (symmetry)
+        let mut coo = CooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full)), true).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 2.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("subsequent factorizations must use the same matrix (symmetry differs)")
+        );
+        // ... change matrix (ndim)
+        let mut coo = CooMatrix::new(1, 1, 1, None, true).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("subsequent factorizations must use the same matrix (ndim differs)")
+        );
+        // ... change matrix (nnz)
+        let mut coo = CooMatrix::new(2, 2, 1, None, true).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("subsequent factorizations must use the same matrix (nnz differs)")
+        );
 
         // allocate a new solver
         let mut solver = SolverMUMPS::new().unwrap();
@@ -588,6 +680,12 @@ mod tests {
         let d = solver.determinant_coefficient * f64::powf(2.0, solver.determinant_exponent);
         approx_eq(d, 114.0, 1e-13);
 
+        // update stats
+        let mut stats = StatsLinSol::new();
+        solver.update_stats(&mut stats);
+        assert_eq!(stats.output.effective_ordering, "Pord");
+        assert_eq!(stats.output.effective_scaling, "No");
+
         // calling solve again works
         let mut x_again = Vector::new(5);
         solver.solve(&mut x_again, &mat, &rhs, false).unwrap();
@@ -622,6 +720,30 @@ mod tests {
             solver.solve(&mut x, &mat, &rhs, false).err(),
             Some("solve must use the same matrix (symmetry differs)")
         );
+    }
+
+    #[test]
+    fn ordering_and_scaling_works() {
+        assert_eq!(mumps_ordering(Ordering::Amd), MUMPS_ORDERING_AMD);
+        assert_eq!(mumps_ordering(Ordering::Amf), MUMPS_ORDERING_AMF);
+        assert_eq!(mumps_ordering(Ordering::Auto), MUMPS_ORDERING_AUTO);
+        assert_eq!(mumps_ordering(Ordering::Best), MUMPS_ORDERING_AUTO);
+        assert_eq!(mumps_ordering(Ordering::Cholmod), MUMPS_ORDERING_AUTO);
+        assert_eq!(mumps_ordering(Ordering::Metis), MUMPS_ORDERING_METIS);
+        assert_eq!(mumps_ordering(Ordering::No), MUMPS_ORDERING_AUTO);
+        assert_eq!(mumps_ordering(Ordering::Pord), MUMPS_ORDERING_PORD);
+        assert_eq!(mumps_ordering(Ordering::Qamd), MUMPS_ORDERING_QAMD);
+        assert_eq!(mumps_ordering(Ordering::Scotch), MUMPS_ORDERING_SCOTCH);
+
+        assert_eq!(mumps_scaling(Scaling::Auto), MUMPS_SCALING_AUTO);
+        assert_eq!(mumps_scaling(Scaling::Column), MUMPS_SCALING_COLUMN);
+        assert_eq!(mumps_scaling(Scaling::Diagonal), MUMPS_SCALING_DIAGONAL);
+        assert_eq!(mumps_scaling(Scaling::Max), MUMPS_SCALING_AUTO);
+        assert_eq!(mumps_scaling(Scaling::No), MUMPS_SCALING_NO);
+        assert_eq!(mumps_scaling(Scaling::RowCol), MUMPS_SCALING_ROW_COL);
+        assert_eq!(mumps_scaling(Scaling::RowColIter), MUMPS_SCALING_ROW_COL_ITER);
+        assert_eq!(mumps_scaling(Scaling::RowColRig), MUMPS_SCALING_ROW_COL_RIG);
+        assert_eq!(mumps_scaling(Scaling::Sum), MUMPS_SCALING_AUTO);
     }
 
     #[test]

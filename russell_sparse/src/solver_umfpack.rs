@@ -183,29 +183,8 @@ impl LinSolTrait for SolverUMFPACK {
         let par = if let Some(p) = params { p } else { LinSolParams::new() };
 
         // input parameters
-        let ordering = match par.ordering {
-            Ordering::Amd => UMFPACK_ORDERING_AMD,
-            Ordering::Amf => UMFPACK_DEFAULT_ORDERING,
-            Ordering::Auto => UMFPACK_DEFAULT_ORDERING,
-            Ordering::Best => UMFPACK_ORDERING_BEST,
-            Ordering::Cholmod => UMFPACK_ORDERING_CHOLMOD,
-            Ordering::Metis => UMFPACK_ORDERING_METIS,
-            Ordering::No => UMFPACK_ORDERING_NONE,
-            Ordering::Pord => UMFPACK_DEFAULT_ORDERING,
-            Ordering::Qamd => UMFPACK_DEFAULT_ORDERING,
-            Ordering::Scotch => UMFPACK_DEFAULT_ORDERING,
-        };
-        let scaling = match par.scaling {
-            Scaling::Auto => UMFPACK_DEFAULT_SCALE,
-            Scaling::Column => UMFPACK_DEFAULT_SCALE,
-            Scaling::Diagonal => UMFPACK_DEFAULT_SCALE,
-            Scaling::Max => UMFPACK_SCALE_MAX,
-            Scaling::No => UMFPACK_SCALE_NONE,
-            Scaling::RowCol => UMFPACK_DEFAULT_SCALE,
-            Scaling::RowColIter => UMFPACK_DEFAULT_SCALE,
-            Scaling::RowColRig => UMFPACK_DEFAULT_SCALE,
-            Scaling::Sum => UMFPACK_SCALE_SUM,
-        };
+        let ordering = umfpack_get_ordering(par.ordering);
+        let scaling = umfpack_get_scaling(par.scaling);
 
         // requests
         let compute_determinant = if par.compute_determinant { 1 } else { 0 };
@@ -395,6 +374,35 @@ const UMFPACK_SCALE_NONE: i32 = 0; // no scaling
 const UMFPACK_SCALE_SUM: i32 = 1; // default: divide each row by sum (abs (row))
 const UMFPACK_SCALE_MAX: i32 = 2; // divide each row by max (abs (row))
 const UMFPACK_DEFAULT_SCALE: i32 = UMFPACK_SCALE_SUM;
+
+fn umfpack_get_ordering(ordering: Ordering) -> i32 {
+    match ordering {
+        Ordering::Amd => UMFPACK_ORDERING_AMD,
+        Ordering::Amf => UMFPACK_DEFAULT_ORDERING,
+        Ordering::Auto => UMFPACK_DEFAULT_ORDERING,
+        Ordering::Best => UMFPACK_ORDERING_BEST,
+        Ordering::Cholmod => UMFPACK_ORDERING_CHOLMOD,
+        Ordering::Metis => UMFPACK_ORDERING_METIS,
+        Ordering::No => UMFPACK_ORDERING_NONE,
+        Ordering::Pord => UMFPACK_DEFAULT_ORDERING,
+        Ordering::Qamd => UMFPACK_DEFAULT_ORDERING,
+        Ordering::Scotch => UMFPACK_DEFAULT_ORDERING,
+    }
+}
+
+fn umfpack_get_scaling(scaling: Scaling) -> i32 {
+    match scaling {
+        Scaling::Auto => UMFPACK_DEFAULT_SCALE,
+        Scaling::Column => UMFPACK_DEFAULT_SCALE,
+        Scaling::Diagonal => UMFPACK_DEFAULT_SCALE,
+        Scaling::Max => UMFPACK_SCALE_MAX,
+        Scaling::No => UMFPACK_SCALE_NONE,
+        Scaling::RowCol => UMFPACK_DEFAULT_SCALE,
+        Scaling::RowColIter => UMFPACK_DEFAULT_SCALE,
+        Scaling::RowColRig => UMFPACK_DEFAULT_SCALE,
+        Scaling::Sum => UMFPACK_SCALE_SUM,
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

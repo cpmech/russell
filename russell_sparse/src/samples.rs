@@ -19,7 +19,8 @@ impl Samples {
         let sym = None;
         let nrow = 1;
         let ncol = 1;
-        let mut coo = CooMatrix::new(1, 1, 1, sym, one_based).unwrap();
+        let max_nnz = 1;
+        let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym, one_based).unwrap();
         coo.put(0, 0, 123.0).unwrap();
         // CSC matrix
         let col_pointers = vec![0, 1];

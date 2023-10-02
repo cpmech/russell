@@ -559,6 +559,12 @@ mod tests {
         let mut x_again = Vector::new(5);
         solver.solve(&mut x_again, &mut mat, &rhs, false).unwrap();
         vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
+
+        // update stats
+        let mut stats = StatsLinSol::new();
+        solver.update_stats(&mut stats);
+        assert_eq!(stats.output.effective_ordering, "Amd");
+        assert_eq!(stats.output.effective_scaling, "Sum");
     }
 
     #[test]

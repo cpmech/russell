@@ -321,7 +321,7 @@ pub(crate) fn handle_intel_dss_error_code(err: i32) -> StrError {
 #[cfg(with_intel_dss)]
 mod tests {
     use super::{handle_intel_dss_error_code, SolverIntelDSS};
-    use crate::{CooMatrix, LinSolParams, LinSolTrait, Samples, SparseMatrix, Storage, Symmetry};
+    use crate::{CooMatrix, LinSolParams, LinSolTrait, Samples, SparseMatrix, StatsLinSol, Storage, Symmetry};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 
@@ -466,6 +466,12 @@ mod tests {
         let mut x_again = Vector::new(5);
         solver.solve(&mut x_again, &mut mat, &rhs, false).unwrap();
         vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
+
+        // update stats
+        let mut stats = StatsLinSol::new();
+        solver.update_stats(&mut stats);
+        assert_eq!(stats.output.effective_ordering, "Unknown");
+        assert_eq!(stats.output.effective_scaling, "Unknown");
     }
 
     #[test]

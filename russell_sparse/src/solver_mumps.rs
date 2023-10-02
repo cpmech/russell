@@ -680,6 +680,12 @@ mod tests {
         let d = solver.determinant_coefficient * f64::powf(2.0, solver.determinant_exponent);
         approx_eq(d, 114.0, 1e-13);
 
+        // update stats
+        let mut stats = StatsLinSol::new();
+        solver.update_stats(&mut stats);
+        assert_eq!(stats.output.effective_ordering, "Pord");
+        assert_eq!(stats.output.effective_scaling, "No");
+
         // calling solve again works
         let mut x_again = Vector::new(5);
         solver.solve(&mut x_again, &mat, &rhs, false).unwrap();

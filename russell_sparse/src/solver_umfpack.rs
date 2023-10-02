@@ -409,7 +409,7 @@ pub(crate) fn handle_umfpack_error_code(err: i32) -> StrError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix};
+    use crate::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix, Storage, Symmetry};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 
@@ -424,23 +424,60 @@ mod tests {
     fn factorize_handles_errors() {
         let mut solver = SolverUMFPACK::new().unwrap();
         assert!(!solver.factorized);
-        let (coo, _, _, _) = Samples::rectangular_1x7();
-        let mut mat = SparseMatrix::from_coo(coo);
-        assert_eq!(
-            solver.factorize(&mut mat, None).err(),
-            Some("the matrix must be square")
-        );
+
+        // COO to CSC errors
         let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
             Some("COO to CSC requires nnz > 0")
         );
+
+        // check CSC matrix
+        let (coo, _, _, _) = Samples::rectangular_1x7();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("the matrix must be square")
+        );
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(false, false, false);
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
             Some("for UMFPACK, the matrix must not be triangular")
+        );
+
+        // check already factorized data
+        let mut coo = CooMatrix::new(2, 2, 2, None, false).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 2.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        // factorize once => OK
+        solver.factorize(&mut mat, None).unwrap();
+        // change matrix (symmetry)
+        let mut coo = CooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full)), false).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 2.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("subsequent factorizations must use the same matrix (symmetry differs)")
+        );
+        // change matrix (ndim)
+        let mut coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("subsequent factorizations must use the same matrix (ndim differs)")
+        );
+        // change matrix (nnz)
+        let mut coo = CooMatrix::new(2, 2, 1, None, false).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("subsequent factorizations must use the same matrix (nnz differs)")
         );
     }
 

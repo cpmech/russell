@@ -183,8 +183,8 @@ impl LinSolTrait for SolverUMFPACK {
         let par = if let Some(p) = params { p } else { LinSolParams::new() };
 
         // input parameters
-        let ordering = umfpack_get_ordering(par.ordering);
-        let scaling = umfpack_get_scaling(par.scaling);
+        let ordering = umfpack_ordering(par.ordering);
+        let scaling = umfpack_scaling(par.scaling);
 
         // requests
         let compute_determinant = if par.compute_determinant { 1 } else { 0 };
@@ -334,6 +334,51 @@ impl LinSolTrait for SolverUMFPACK {
     }
 }
 
+const UMFPACK_STRATEGY_AUTO: i32 = 0; // use symmetric or unsymmetric strategy
+const UMFPACK_STRATEGY_UNSYMMETRIC: i32 = 1; // COLAMD(A), col-tree post-order, do not prefer diag
+const UMFPACK_STRATEGY_SYMMETRIC: i32 = 3; // AMD(A+A'), no col-tree post-order, prefer diagonal
+
+const UMFPACK_ORDERING_CHOLMOD: i32 = 0; // use CHOLMOD (AMD/COLAMD then METIS)
+const UMFPACK_ORDERING_AMD: i32 = 1; // use AMD/COLAMD
+const UMFPACK_ORDERING_METIS: i32 = 3; // use METIS
+const UMFPACK_ORDERING_BEST: i32 = 4; // try many orderings, pick best
+const UMFPACK_ORDERING_NONE: i32 = 5; // natural ordering
+const UMFPACK_DEFAULT_ORDERING: i32 = UMFPACK_ORDERING_AMD;
+
+const UMFPACK_SCALE_NONE: i32 = 0; // no scaling
+const UMFPACK_SCALE_SUM: i32 = 1; // default: divide each row by sum (abs (row))
+const UMFPACK_SCALE_MAX: i32 = 2; // divide each row by max (abs (row))
+const UMFPACK_DEFAULT_SCALE: i32 = UMFPACK_SCALE_SUM;
+
+fn umfpack_ordering(ordering: Ordering) -> i32 {
+    match ordering {
+        Ordering::Amd => UMFPACK_ORDERING_AMD,
+        Ordering::Amf => UMFPACK_DEFAULT_ORDERING,
+        Ordering::Auto => UMFPACK_DEFAULT_ORDERING,
+        Ordering::Best => UMFPACK_ORDERING_BEST,
+        Ordering::Cholmod => UMFPACK_ORDERING_CHOLMOD,
+        Ordering::Metis => UMFPACK_ORDERING_METIS,
+        Ordering::No => UMFPACK_ORDERING_NONE,
+        Ordering::Pord => UMFPACK_DEFAULT_ORDERING,
+        Ordering::Qamd => UMFPACK_DEFAULT_ORDERING,
+        Ordering::Scotch => UMFPACK_DEFAULT_ORDERING,
+    }
+}
+
+fn umfpack_scaling(scaling: Scaling) -> i32 {
+    match scaling {
+        Scaling::Auto => UMFPACK_DEFAULT_SCALE,
+        Scaling::Column => UMFPACK_DEFAULT_SCALE,
+        Scaling::Diagonal => UMFPACK_DEFAULT_SCALE,
+        Scaling::Max => UMFPACK_SCALE_MAX,
+        Scaling::No => UMFPACK_SCALE_NONE,
+        Scaling::RowCol => UMFPACK_DEFAULT_SCALE,
+        Scaling::RowColIter => UMFPACK_DEFAULT_SCALE,
+        Scaling::RowColRig => UMFPACK_DEFAULT_SCALE,
+        Scaling::Sum => UMFPACK_SCALE_SUM,
+    }
+}
+
 /// Handles UMFPACK error code
 pub(crate) fn handle_umfpack_error_code(err: i32) -> StrError {
     match err {
@@ -356,51 +401,6 @@ pub(crate) fn handle_umfpack_error_code(err: i32) -> StrError {
         MALLOC_ERROR => return "Error: c-code failed to allocate memory (UMFPACK)",
         NEED_FACTORIZATION => return "INTERNAL ERROR: factorization must be completed before solve",
         _ => return "Error: unknown error returned by c-code (UMFPACK)",
-    }
-}
-
-const UMFPACK_STRATEGY_AUTO: i32 = 0; // use symmetric or unsymmetric strategy
-const UMFPACK_STRATEGY_UNSYMMETRIC: i32 = 1; // COLAMD(A), col-tree post-order, do not prefer diag
-const UMFPACK_STRATEGY_SYMMETRIC: i32 = 3; // AMD(A+A'), no col-tree post-order, prefer diagonal
-
-const UMFPACK_ORDERING_CHOLMOD: i32 = 0; // use CHOLMOD (AMD/COLAMD then METIS)
-const UMFPACK_ORDERING_AMD: i32 = 1; // use AMD/COLAMD
-const UMFPACK_ORDERING_METIS: i32 = 3; // use METIS
-const UMFPACK_ORDERING_BEST: i32 = 4; // try many orderings, pick best
-const UMFPACK_ORDERING_NONE: i32 = 5; // natural ordering
-const UMFPACK_DEFAULT_ORDERING: i32 = UMFPACK_ORDERING_AMD;
-
-const UMFPACK_SCALE_NONE: i32 = 0; // no scaling
-const UMFPACK_SCALE_SUM: i32 = 1; // default: divide each row by sum (abs (row))
-const UMFPACK_SCALE_MAX: i32 = 2; // divide each row by max (abs (row))
-const UMFPACK_DEFAULT_SCALE: i32 = UMFPACK_SCALE_SUM;
-
-fn umfpack_get_ordering(ordering: Ordering) -> i32 {
-    match ordering {
-        Ordering::Amd => UMFPACK_ORDERING_AMD,
-        Ordering::Amf => UMFPACK_DEFAULT_ORDERING,
-        Ordering::Auto => UMFPACK_DEFAULT_ORDERING,
-        Ordering::Best => UMFPACK_ORDERING_BEST,
-        Ordering::Cholmod => UMFPACK_ORDERING_CHOLMOD,
-        Ordering::Metis => UMFPACK_ORDERING_METIS,
-        Ordering::No => UMFPACK_ORDERING_NONE,
-        Ordering::Pord => UMFPACK_DEFAULT_ORDERING,
-        Ordering::Qamd => UMFPACK_DEFAULT_ORDERING,
-        Ordering::Scotch => UMFPACK_DEFAULT_ORDERING,
-    }
-}
-
-fn umfpack_get_scaling(scaling: Scaling) -> i32 {
-    match scaling {
-        Scaling::Auto => UMFPACK_DEFAULT_SCALE,
-        Scaling::Column => UMFPACK_DEFAULT_SCALE,
-        Scaling::Diagonal => UMFPACK_DEFAULT_SCALE,
-        Scaling::Max => UMFPACK_SCALE_MAX,
-        Scaling::No => UMFPACK_SCALE_NONE,
-        Scaling::RowCol => UMFPACK_DEFAULT_SCALE,
-        Scaling::RowColIter => UMFPACK_DEFAULT_SCALE,
-        Scaling::RowColRig => UMFPACK_DEFAULT_SCALE,
-        Scaling::Sum => UMFPACK_SCALE_SUM,
     }
 }
 
@@ -526,26 +526,26 @@ mod tests {
 
     #[test]
     fn get_ordering_and_scaling_works() {
-        assert_eq!(umfpack_get_ordering(Ordering::Amd), UMFPACK_ORDERING_AMD);
-        assert_eq!(umfpack_get_ordering(Ordering::Amf), UMFPACK_DEFAULT_ORDERING);
-        assert_eq!(umfpack_get_ordering(Ordering::Auto), UMFPACK_DEFAULT_ORDERING);
-        assert_eq!(umfpack_get_ordering(Ordering::Best), UMFPACK_ORDERING_BEST);
-        assert_eq!(umfpack_get_ordering(Ordering::Cholmod), UMFPACK_ORDERING_CHOLMOD);
-        assert_eq!(umfpack_get_ordering(Ordering::Metis), UMFPACK_ORDERING_METIS);
-        assert_eq!(umfpack_get_ordering(Ordering::No), UMFPACK_ORDERING_NONE);
-        assert_eq!(umfpack_get_ordering(Ordering::Pord), UMFPACK_DEFAULT_ORDERING);
-        assert_eq!(umfpack_get_ordering(Ordering::Qamd), UMFPACK_DEFAULT_ORDERING);
-        assert_eq!(umfpack_get_ordering(Ordering::Scotch), UMFPACK_DEFAULT_ORDERING);
+        assert_eq!(umfpack_ordering(Ordering::Amd), UMFPACK_ORDERING_AMD);
+        assert_eq!(umfpack_ordering(Ordering::Amf), UMFPACK_DEFAULT_ORDERING);
+        assert_eq!(umfpack_ordering(Ordering::Auto), UMFPACK_DEFAULT_ORDERING);
+        assert_eq!(umfpack_ordering(Ordering::Best), UMFPACK_ORDERING_BEST);
+        assert_eq!(umfpack_ordering(Ordering::Cholmod), UMFPACK_ORDERING_CHOLMOD);
+        assert_eq!(umfpack_ordering(Ordering::Metis), UMFPACK_ORDERING_METIS);
+        assert_eq!(umfpack_ordering(Ordering::No), UMFPACK_ORDERING_NONE);
+        assert_eq!(umfpack_ordering(Ordering::Pord), UMFPACK_DEFAULT_ORDERING);
+        assert_eq!(umfpack_ordering(Ordering::Qamd), UMFPACK_DEFAULT_ORDERING);
+        assert_eq!(umfpack_ordering(Ordering::Scotch), UMFPACK_DEFAULT_ORDERING);
 
-        assert_eq!(umfpack_get_scaling(Scaling::Auto), UMFPACK_DEFAULT_SCALE);
-        assert_eq!(umfpack_get_scaling(Scaling::Column), UMFPACK_DEFAULT_SCALE);
-        assert_eq!(umfpack_get_scaling(Scaling::Diagonal), UMFPACK_DEFAULT_SCALE);
-        assert_eq!(umfpack_get_scaling(Scaling::Max), UMFPACK_SCALE_MAX);
-        assert_eq!(umfpack_get_scaling(Scaling::No), UMFPACK_SCALE_NONE);
-        assert_eq!(umfpack_get_scaling(Scaling::RowCol), UMFPACK_DEFAULT_SCALE);
-        assert_eq!(umfpack_get_scaling(Scaling::RowColIter), UMFPACK_DEFAULT_SCALE);
-        assert_eq!(umfpack_get_scaling(Scaling::RowColRig), UMFPACK_DEFAULT_SCALE);
-        assert_eq!(umfpack_get_scaling(Scaling::Sum), UMFPACK_SCALE_SUM);
+        assert_eq!(umfpack_scaling(Scaling::Auto), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_scaling(Scaling::Column), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_scaling(Scaling::Diagonal), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_scaling(Scaling::Max), UMFPACK_SCALE_MAX);
+        assert_eq!(umfpack_scaling(Scaling::No), UMFPACK_SCALE_NONE);
+        assert_eq!(umfpack_scaling(Scaling::RowCol), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_scaling(Scaling::RowColIter), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_scaling(Scaling::RowColRig), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_scaling(Scaling::Sum), UMFPACK_SCALE_SUM);
     }
 
     #[test]

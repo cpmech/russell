@@ -452,9 +452,9 @@ mod tests {
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
-        // factorize once => OK
+        // ... factorize once => OK
         solver.factorize(&mut mat, None).unwrap();
-        // change matrix (symmetry)
+        // ... change matrix (symmetry)
         let mut coo = CooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full)), false).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
@@ -463,7 +463,7 @@ mod tests {
             solver.factorize(&mut mat, None).err(),
             Some("subsequent factorizations must use the same matrix (symmetry differs)")
         );
-        // change matrix (ndim)
+        // ... change matrix (ndim)
         let mut coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
@@ -471,7 +471,7 @@ mod tests {
             solver.factorize(&mut mat, None).err(),
             Some("subsequent factorizations must use the same matrix (ndim differs)")
         );
-        // change matrix (nnz)
+        // ... change matrix (nnz)
         let mut coo = CooMatrix::new(2, 2, 1, None, false).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);

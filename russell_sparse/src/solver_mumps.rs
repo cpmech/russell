@@ -213,9 +213,6 @@ impl LinSolTrait for SolverMUMPS {
         if coo.nrow != coo.ncol {
             return Err("the COO matrix must be square");
         }
-        if coo.nrow < 1 {
-            return Err("the COO matrix must be (1 x 1) at least");
-        }
         if coo.nnz < 1 {
             return Err("the COO matrix must have at least one non-zero value");
         }
@@ -549,7 +546,7 @@ fn handle_mumps_error_code(err: i32) -> StrError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix};
+    use crate::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix, Storage, Symmetry};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
 
@@ -563,6 +560,77 @@ mod tests {
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
         let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+
+        // allocate a new solver
+        let mut solver = SolverMUMPS::new().unwrap();
+        assert!(!solver.factorized);
+
+        // get COO matrix errors
+        let (_, csc, _, _) = Samples::tiny_1x1(true);
+        let mut mat = SparseMatrix::from_csc(csc);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("COO matrix is not available")
+        );
+
+        // check COO matrix
+        let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("the COO matrix must have one-based (FORTRAN) indices as required by MUMPS")
+        );
+        let (coo, _, _, _) = Samples::rectangular_1x2(true, false, false);
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("the COO matrix must be square")
+        );
+        let coo = CooMatrix::new(1, 1, 1, None, true).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("the COO matrix must have at least one non-zero value")
+        );
+        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_upper(true, false, false);
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("if the matrix is general symmetric, the required storage is lower triangular")
+        );
+
+        // check already factorized data
+        let mut coo = CooMatrix::new(2, 2, 2, None, true).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 2.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        // ... factorize once => OK
+        solver.factorize(&mut mat, None).unwrap();
+        // ... change matrix (symmetry)
+        let mut coo = CooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full)), true).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 2.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("subsequent factorizations must use the same matrix (symmetry differs)")
+        );
+        // ... change matrix (ndim)
+        let mut coo = CooMatrix::new(1, 1, 1, None, true).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("subsequent factorizations must use the same matrix (ndim differs)")
+        );
+        // ... change matrix (nnz)
+        let mut coo = CooMatrix::new(2, 2, 1, None, true).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("subsequent factorizations must use the same matrix (nnz differs)")
+        );
 
         // allocate a new solver
         let mut solver = SolverMUMPS::new().unwrap();

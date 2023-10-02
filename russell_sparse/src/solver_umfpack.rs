@@ -408,7 +408,7 @@ fn umfpack_get_scaling(scaling: Scaling) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{handle_umfpack_error_code, SolverUMFPACK, UMFPACK_ORDERING_AMD, UMFPACK_SCALE_SUM};
+    use super::*;
     use crate::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix};
     use russell_chk::{approx_eq, vec_approx_eq};
     use russell_lab::Vector;
@@ -522,6 +522,30 @@ mod tests {
         let mut x_again = Vector::new(5);
         solver.solve(&mut x_again, &mut mat, &rhs, false).unwrap();
         vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
+    }
+
+    #[test]
+    fn get_ordering_and_scaling_works() {
+        assert_eq!(umfpack_get_ordering(Ordering::Amd), UMFPACK_ORDERING_AMD);
+        assert_eq!(umfpack_get_ordering(Ordering::Amf), UMFPACK_DEFAULT_ORDERING);
+        assert_eq!(umfpack_get_ordering(Ordering::Auto), UMFPACK_DEFAULT_ORDERING);
+        assert_eq!(umfpack_get_ordering(Ordering::Best), UMFPACK_ORDERING_BEST);
+        assert_eq!(umfpack_get_ordering(Ordering::Cholmod), UMFPACK_ORDERING_CHOLMOD);
+        assert_eq!(umfpack_get_ordering(Ordering::Metis), UMFPACK_ORDERING_METIS);
+        assert_eq!(umfpack_get_ordering(Ordering::No), UMFPACK_ORDERING_NONE);
+        assert_eq!(umfpack_get_ordering(Ordering::Pord), UMFPACK_DEFAULT_ORDERING);
+        assert_eq!(umfpack_get_ordering(Ordering::Qamd), UMFPACK_DEFAULT_ORDERING);
+        assert_eq!(umfpack_get_ordering(Ordering::Scotch), UMFPACK_DEFAULT_ORDERING);
+
+        assert_eq!(umfpack_get_scaling(Scaling::Auto), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_get_scaling(Scaling::Column), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_get_scaling(Scaling::Diagonal), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_get_scaling(Scaling::Max), UMFPACK_SCALE_MAX);
+        assert_eq!(umfpack_get_scaling(Scaling::No), UMFPACK_SCALE_NONE);
+        assert_eq!(umfpack_get_scaling(Scaling::RowCol), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_get_scaling(Scaling::RowColIter), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_get_scaling(Scaling::RowColRig), UMFPACK_DEFAULT_SCALE);
+        assert_eq!(umfpack_get_scaling(Scaling::Sum), UMFPACK_SCALE_SUM);
     }
 
     #[test]

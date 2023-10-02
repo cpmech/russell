@@ -525,7 +525,7 @@ mod tests {
     }
 
     #[test]
-    fn get_ordering_and_scaling_works() {
+    fn ordering_and_scaling_works() {
         assert_eq!(umfpack_ordering(Ordering::Amd), UMFPACK_ORDERING_AMD);
         assert_eq!(umfpack_ordering(Ordering::Amf), UMFPACK_DEFAULT_ORDERING);
         assert_eq!(umfpack_ordering(Ordering::Auto), UMFPACK_DEFAULT_ORDERING);

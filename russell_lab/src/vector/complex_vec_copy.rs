@@ -1,6 +1,10 @@
 use super::ComplexVector;
-use crate::StrError;
-use russell_openblas::{to_i32, zcopy};
+use crate::{to_i32, StrError};
+use num_complex::Complex64;
+
+extern "C" {
+    fn cblas_zcopy(n: i32, x: *const Complex64, incx: i32, y: *mut Complex64, incy: i32);
+}
 
 /// Copies vector (complex version)
 ///
@@ -31,8 +35,10 @@ pub fn complex_vec_copy(v: &mut ComplexVector, u: &ComplexVector) -> Result<(), 
     if u.dim() != n {
         return Err("vectors are incompatible");
     }
-    let n_i32: i32 = to_i32(n);
-    zcopy(n_i32, u.as_data(), 1, v.as_mut_data(), 1);
+    let n_i32 = to_i32(n);
+    unsafe {
+        cblas_zcopy(n_i32, u.as_data().as_ptr(), 1, v.as_mut_data().as_mut_ptr(), 1);
+    }
     Ok(())
 }
 

@@ -1,8 +1,7 @@
 use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, StatsLinSol, Symmetry};
-use crate::auxiliary_and_constants::{
-    to_i32, CcBool, MALLOC_ERROR, NEED_FACTORIZATION, NULL_POINTER_ERROR, SUCCESSFUL_EXIT, VERSION_ERROR,
+use crate::{
+    to_i32, CcBool, StrError, MALLOC_ERROR, NEED_FACTORIZATION, NULL_POINTER_ERROR, SUCCESSFUL_EXIT, VERSION_ERROR,
 };
-use crate::StrError;
 use russell_lab::{vec_copy, Vector};
 use serde::{Deserialize, Serialize};
 

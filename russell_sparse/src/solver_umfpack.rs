@@ -1,8 +1,5 @@
 use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, StatsLinSol, Symmetry};
-use crate::auxiliary_and_constants::{
-    to_i32, CcBool, MALLOC_ERROR, NEED_FACTORIZATION, NULL_POINTER_ERROR, SUCCESSFUL_EXIT,
-};
-use crate::StrError;
+use crate::{to_i32, CcBool, StrError, MALLOC_ERROR, NEED_FACTORIZATION, NULL_POINTER_ERROR, SUCCESSFUL_EXIT};
 use russell_lab::Vector;
 
 /// Opaque struct holding a C-pointer to InterfaceUMFPACK

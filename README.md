@@ -49,26 +49,12 @@ fn main() -> Result<(), StrError> {
     // perform SVD
     mat_svd(&mut s, &mut u, &mut vt, &mut a)?;
 
-    // define correct data
+    // check S
     let s_correct = "┌      ┐\n\
                      │ 5.46 │\n\
                      │ 0.37 │\n\
                      └      ┘";
-    let u_correct = "┌                         ┐\n\
-                     │ -0.82 -0.58  0.00  0.00 │\n\
-                     │ -0.58  0.82  0.00  0.00 │\n\
-                     │  0.00  0.00  1.00  0.00 │\n\
-                     │  0.00  0.00  0.00  1.00 │\n\
-                     └                         ┘";
-    let vt_correct = "┌             ┐\n\
-                      │ -0.40 -0.91 │\n\
-                      │ -0.91  0.40 │\n\
-                      └             ┘";
-
-    // check solution
     assert_eq!(format!("{:.2}", s), s_correct);
-    assert_eq!(format!("{:.2}", u), u_correct);
-    assert_eq!(format!("{:.2}", vt), vt_correct);
 
     // check SVD: a == u * s * vt
     let mut usv = Matrix::new(m, n);
@@ -79,13 +65,13 @@ fn main() -> Result<(), StrError> {
             }
         }
     }
-    let usv_correct = "┌     ┐\n\
-                       │ 2 4 │\n\
-                       │ 1 3 │\n\
-                       │ 0 0 │\n\
-                       │ 0 0 │\n\
-                       └     ┘";
-    assert_eq!(format!("{}", usv), usv_correct);
+    let usv_correct = "┌                   ┐\n\
+                       │ 2.000000 4.000000 │\n\
+                       │ 1.000000 3.000000 │\n\
+                       │ 0.000000 0.000000 │\n\
+                       │ 0.000000 0.000000 │\n\
+                       └                   ┘";
+    assert_eq!(format!("{:.6}", usv), usv_correct);
     Ok(())
 }
 ```

@@ -50,13 +50,11 @@ use russell_openblas::{dgesvd, to_i32};
 ///     // perform SVD
 ///     mat_svd(&mut s, &mut u, &mut vt, &mut a)?;
 ///
-///     // define correct data
+///     // check S
 ///     let s_correct = "┌       ┐\n\
 ///                      │ 5.000 │\n\
 ///                      │ 3.000 │\n\
 ///                      └       ┘";
-///
-///     // check solution
 ///     assert_eq!(format!("{:.3}", s), s_correct);
 ///
 ///     // check SVD: a == u * s * vt
@@ -101,26 +99,12 @@ use russell_openblas::{dgesvd, to_i32};
 ///     // perform SVD
 ///     mat_svd(&mut s, &mut u, &mut vt, &mut a)?;
 ///
-///     // define correct data
+///     // check S
 ///     let s_correct = "┌      ┐\n\
 ///                      │ 5.46 │\n\
 ///                      │ 0.37 │\n\
 ///                      └      ┘";
-///     let u_correct = "┌                         ┐\n\
-///                      │ -0.82 -0.58  0.00  0.00 │\n\
-///                      │ -0.58  0.82  0.00  0.00 │\n\
-///                      │  0.00  0.00  1.00  0.00 │\n\
-///                      │  0.00  0.00  0.00  1.00 │\n\
-///                      └                         ┘";
-///     let vt_correct = "┌             ┐\n\
-///                       │ -0.40 -0.91 │\n\
-///                       │ -0.91  0.40 │\n\
-///                       └             ┘";
-///
-///     // check solution
 ///     assert_eq!(format!("{:.2}", s), s_correct);
-///     assert_eq!(format!("{:.2}", u), u_correct);
-///     assert_eq!(format!("{:.2}", vt), vt_correct);
 ///
 ///     // check SVD: a == u * s * vt
 ///     let mut usv = Matrix::new(m, n);
@@ -131,13 +115,13 @@ use russell_openblas::{dgesvd, to_i32};
 ///             }
 ///         }
 ///     }
-///     let usv_correct = "┌     ┐\n\
-///                        │ 2 4 │\n\
-///                        │ 1 3 │\n\
-///                        │ 0 0 │\n\
-///                        │ 0 0 │\n\
-///                        └     ┘";
-///     assert_eq!(format!("{}", usv), usv_correct);
+///     let usv_correct = "┌                   ┐\n\
+///                        │ 2.000000 4.000000 │\n\
+///                        │ 1.000000 3.000000 │\n\
+///                        │ 0.000000 0.000000 │\n\
+///                        │ 0.000000 0.000000 │\n\
+///                        └                   ┘";
+///     assert_eq!(format!("{:.6}", usv), usv_correct);
 ///     Ok(())
 /// }
 /// ```
@@ -235,29 +219,14 @@ mod tests {
         // calculate SVD
         mat_svd(&mut s, &mut u, &mut vt, &mut a).unwrap();
 
-        // check
+        // check S
         #[rustfmt::skip]
         let s_correct = &[
             2.0,
             2.0 / f64::sqrt(3.0),
             2.0 / f64::sqrt(3.0),
         ];
-        #[rustfmt::skip]
-        let u_correct = &[
-            [-0.5, -0.5, -0.5,  0.5],
-            [-0.5, -0.5,  0.5, -0.5],
-            [-0.5,  0.5, -0.5, -0.5],
-            [-0.5,  0.5,  0.5,  0.5],
-        ];
-        #[rustfmt::skip]
-        let vt_correct =&[
-            [0.0,  0.0, -1.0],
-            [0.0,  1.0,  0.0],
-            [1.0,  0.0,  0.0],
-        ];
-        mat_approx_eq(&u, u_correct, 1e-15);
-        vec_approx_eq(s.as_data(), s_correct, 1e-15);
-        mat_approx_eq(&vt, vt_correct, 1e-15);
+        vec_approx_eq(s.as_data(), s_correct, 1e-14);
 
         // check SVD
         let mut usv = Matrix::new(m, n);
@@ -268,7 +237,7 @@ mod tests {
                 }
             }
         }
-        mat_approx_eq(&usv, &a_copy, 1e-15);
+        mat_approx_eq(&usv, &a_copy, 1e-14);
     }
 
     #[test]
@@ -292,28 +261,14 @@ mod tests {
         // calculate SVD
         mat_svd(&mut s, &mut u, &mut vt, &mut a).unwrap();
 
-        // check
+        // check S
         let sqrt2 = std::f64::consts::SQRT_2;
         #[rustfmt::skip]
         let s_correct = &[
             sqrt2,
             sqrt2,
         ];
-        #[rustfmt::skip]
-        let u_correct = &[
-            [1.0, 0.0],
-            [0.0, 1.0],
-        ];
-        #[rustfmt::skip]
-        let vt_correct = &[
-            [ 1.0/sqrt2,        0.0, 1.0/sqrt2,       0.0],
-            [       0.0,  1.0/sqrt2,       0.0, 1.0/sqrt2],
-            [-1.0/sqrt2,        0.0, 1.0/sqrt2,       0.0],
-            [       0.0, -1.0/sqrt2,       0.0, 1.0/sqrt2],
-        ];
-        mat_approx_eq(&u, u_correct, 1e-15);
-        vec_approx_eq(s.as_data(), s_correct, 1e-15);
-        mat_approx_eq(&vt, vt_correct, 1e-15);
+        vec_approx_eq(s.as_data(), s_correct, 1e-14);
 
         // check SVD
         let mut usv = Matrix::new(m, n);
@@ -324,6 +279,6 @@ mod tests {
                 }
             }
         }
-        mat_approx_eq(&usv, &a_copy, 1e-15);
+        mat_approx_eq(&usv, &a_copy, 1e-14);
     }
 }

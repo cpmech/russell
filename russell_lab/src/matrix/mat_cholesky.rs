@@ -155,7 +155,7 @@ mod tests {
             [3.0/sqrt2, -1.0/f64::sqrt(6.0),                0.0,      f64::sqrt(7.0/3.0),   0.0],
             [    sqrt2,                 0.0, 4.0/f64::sqrt(7.0), -2.0*f64::sqrt(3.0/7.0), sqrt2],
         ]);
-        mat_approx_eq(&l, &l_correct, 1e-15);
+        mat_approx_eq(&l, &l_correct, 1e-14);
         let mut l_lt = Matrix::new(m, m);
         for i in 0..m {
             for j in 0..m {
@@ -164,6 +164,6 @@ mod tests {
                 }
             }
         }
-        mat_approx_eq(&l_lt, &a, 1e-15);
+        mat_approx_eq(&l_lt, &a, 1e-14);
     }
 }

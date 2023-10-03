@@ -35,7 +35,7 @@
 pub type StrError = &'static str;
 
 mod as_array;
-mod constants;
+mod auxiliary_and_constants;
 mod enums;
 mod formatters;
 mod generators;
@@ -51,7 +51,7 @@ mod stopwatch;
 mod testing;
 mod vector;
 pub use crate::as_array::*;
-use crate::constants::*;
+pub use crate::auxiliary_and_constants::*;
 pub use crate::enums::*;
 pub use crate::formatters::*;
 pub use crate::generators::*;

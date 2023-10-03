@@ -1,6 +1,5 @@
 use super::ComplexMatrix;
-use crate::StrError;
-use crate::NATIVE_VERSUS_OPENBLAS_BOUNDARY;
+use crate::{StrError, MAX_DIM_FOR_NATIVE_BLAS};
 use num_complex::Complex64;
 use russell_openblas::{complex_add_vectors_native, complex_add_vectors_oblas};
 
@@ -51,7 +50,7 @@ pub fn complex_mat_add(
     if m == 0 && n == 0 {
         return Ok(());
     }
-    if m * n > NATIVE_VERSUS_OPENBLAS_BOUNDARY {
+    if m * n > MAX_DIM_FOR_NATIVE_BLAS {
         complex_add_vectors_oblas(c.as_mut_data(), alpha, a.as_data(), beta, b.as_data());
     } else {
         complex_add_vectors_native(c.as_mut_data(), alpha, a.as_data(), beta, b.as_data());

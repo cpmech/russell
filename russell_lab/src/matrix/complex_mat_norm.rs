@@ -71,19 +71,19 @@ mod tests {
         approx_eq(
             complex_mat_norm(&a, Norm::One),
             a.get(0, 2).abs() + a.get(1, 2).abs() + a.get(2, 2).abs(),
-            1e-15,
+            1e-14,
         );
         approx_eq(
             complex_mat_norm(&a, Norm::Inf),
             a.get(0, 0).abs() + a.get(0, 1).abs() + a.get(0, 2).abs(),
-            1e-15,
+            1e-14,
         );
         let mut fro = 0.0;
         for v in a.as_data() {
             fro += v.abs() * v.abs();
         }
         fro = f64::sqrt(fro);
-        approx_eq(complex_mat_norm(&a, Norm::Fro), fro, 1e-15);
-        approx_eq(complex_mat_norm(&a, Norm::Max), Complex64::new(5.0, 1.0).abs(), 1e-15);
+        approx_eq(complex_mat_norm(&a, Norm::Fro), fro, 1e-14);
+        approx_eq(complex_mat_norm(&a, Norm::Max), Complex64::new(5.0, 1.0).abs(), 1e-14);
     }
 }

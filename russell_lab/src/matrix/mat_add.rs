@@ -1,6 +1,5 @@
 use super::Matrix;
-use crate::StrError;
-use crate::NATIVE_VERSUS_OPENBLAS_BOUNDARY;
+use crate::{StrError, MAX_DIM_FOR_NATIVE_BLAS};
 use russell_openblas::{add_vectors_native, add_vectors_oblas};
 
 /// Performs the addition of two matrices
@@ -41,7 +40,7 @@ pub fn mat_add(c: &mut Matrix, alpha: f64, a: &Matrix, beta: f64, b: &Matrix) ->
     if m == 0 && n == 0 {
         return Ok(());
     }
-    if m * n > NATIVE_VERSUS_OPENBLAS_BOUNDARY {
+    if m * n > MAX_DIM_FOR_NATIVE_BLAS {
         add_vectors_oblas(c.as_mut_data(), alpha, a.as_data(), beta, b.as_data());
     } else {
         add_vectors_native(c.as_mut_data(), alpha, a.as_data(), beta, b.as_data());

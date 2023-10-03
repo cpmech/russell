@@ -7,6 +7,7 @@ use russell_openblas::{dlange, to_i32};
 /// # Example
 ///
 /// ```
+/// use russell_chk::approx_eq;
 /// use russell_lab::{mat_norm, Matrix, Norm};
 ///
 /// fn main() {
@@ -14,10 +15,10 @@ use russell_openblas::{dlange, to_i32};
 ///         [-2.0,  2.0],
 ///         [ 1.0, -4.0],
 ///     ]);
-///     assert_eq!(mat_norm(&a, Norm::One), 6.0);
-///     assert_eq!(mat_norm(&a, Norm::Inf), 5.0);
-///     assert_eq!(mat_norm(&a, Norm::Fro), 5.0);
-///     assert_eq!(mat_norm(&a, Norm::Max), 4.0);
+///     approx_eq(mat_norm(&a, Norm::One), 6.0, 1e-15);
+///     approx_eq(mat_norm(&a, Norm::Inf), 5.0, 1e-15);
+///     approx_eq(mat_norm(&a, Norm::Fro), 5.0, 1e-15);
+///     approx_eq(mat_norm(&a, Norm::Max), 4.0, 1e-15);
 /// }
 /// ```
 pub fn mat_norm(a: &Matrix, kind: Norm) -> f64 {
@@ -67,11 +68,11 @@ mod tests {
             [-1.0,  2.0, 3.0],
             [-2.0,  1.0, 0.0],
         ]);
-        assert_eq!(mat_norm(&a, Norm::One), 8.0);
-        assert_eq!(mat_norm(&a, Norm::Inf), 11.0);
-        assert_eq!(mat_norm(&a, Norm::Euc), 8.0);
-        assert_eq!(mat_norm(&a, Norm::Fro), 8.0);
-        assert_eq!(mat_norm(&a, Norm::Max), 5.0);
+        approx_eq(mat_norm(&a, Norm::One), 8.0, 1e-15);
+        approx_eq(mat_norm(&a, Norm::Inf), 11.0, 1e-15);
+        approx_eq(mat_norm(&a, Norm::Euc), 8.0, 1e-15);
+        approx_eq(mat_norm(&a, Norm::Fro), 8.0, 1e-15);
+        approx_eq(mat_norm(&a, Norm::Max), 5.0, 1e-15);
 
         // example from https://netlib.org/lapack/lug/node75.html
         #[rustfmt::skip]

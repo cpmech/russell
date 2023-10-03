@@ -42,6 +42,7 @@ pub fn vec_add(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector) ->
         return Ok(());
     }
     if n > MAX_DIM_FOR_NATIVE_BLAS {
+        // TODO: skip cblas_dscal if beta == 0.0
         let n_i32 = to_i32(n);
         unsafe {
             // w := v

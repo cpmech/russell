@@ -52,6 +52,7 @@ pub fn complex_vec_add(
         return Ok(());
     }
     if n > MAX_DIM_FOR_NATIVE_BLAS {
+        // TODO: skip cblas_dscal if beta == 0.0
         let n_i32 = to_i32(n);
         unsafe {
             // w := v

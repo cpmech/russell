@@ -1,6 +1,11 @@
 use super::Vector;
-use crate::Norm;
-use russell_openblas::{dasum, dnrm2, idamax, to_i32};
+use crate::{to_i32, Norm};
+
+extern "C" {
+    fn cblas_dasum(n: i32, x: *const f64, incx: i32) -> f64;
+    fn cblas_dnrm2(n: i32, x: *const f64, incx: i32) -> f64;
+    fn cblas_idamax(n: i32, x: *const f64, incx: i32) -> i32;
+}
 
 /// Returns the vector norm
 ///
@@ -21,13 +26,15 @@ pub fn vec_norm(v: &Vector, kind: Norm) -> f64 {
     if n == 0 {
         return 0.0;
     }
-    match kind {
-        Norm::Euc | Norm::Fro => dnrm2(n, &v.as_data(), 1),
-        Norm::Inf | Norm::Max => {
-            let idx = idamax(n, &v.as_data(), 1);
-            f64::abs(v.get(idx as usize))
+    unsafe {
+        match kind {
+            Norm::Euc | Norm::Fro => cblas_dnrm2(n, v.as_data().as_ptr(), 1),
+            Norm::Inf | Norm::Max => {
+                let idx = cblas_idamax(n, v.as_data().as_ptr(), 1);
+                f64::abs(v.get(idx as usize))
+            }
+            Norm::One => cblas_dasum(n, v.as_data().as_ptr(), 1),
         }
-        Norm::One => dasum(n, &v.as_data(), 1),
     }
 }
 

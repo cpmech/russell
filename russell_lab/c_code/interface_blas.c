@@ -83,7 +83,6 @@ int32_t c_get_num_threads() {
 // double cblas_dasum(const int N, const double *X, const int incX);
 // int cblas_idamax(const int N, const double *X, const int incX);
 //
-//
 // matrix //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // From: /usr/include/x86_64-linux-gnu/cblas.h
@@ -177,4 +176,30 @@ int32_t c_get_num_threads() {
 //                  const CBLAS_TRANSPOSE Trans, const int N, const int K,
 //                  const double alpha, const void *A, const int lda,
 //                  const double beta, void *C, const int ldc);
+//
+// matrix-vector ///////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// From: /usr/include/x86_64-linux-gnu/cblas.h
+//
+// void cblas_dgemv(OPENBLAS_CONST enum CBLAS_ORDER order,
+//                  OPENBLAS_CONST enum CBLAS_TRANSPOSE trans,  OPENBLAS_CONST blasint m, OPENBLAS_CONST blasint n,
+//                  OPENBLAS_CONST double alpha, OPENBLAS_CONST double  *a, OPENBLAS_CONST blasint lda,
+//                  OPENBLAS_CONST double  *x, OPENBLAS_CONST blasint incx,  OPENBLAS_CONST double beta,
+//                  double  *y, OPENBLAS_CONST blasint incy);
+//
+// From: /opt/intel/oneapi/mkl/latest/include/mkl_cblas.h
+//
+// void cblas_dgemv(const CBLAS_LAYOUT Layout,
+//                  const CBLAS_TRANSPOSE TransA, const MKL_INT M, const MKL_INT N,
+//                  const double alpha, const double *A, const MKL_INT lda,
+//                  const double *X, const MKL_INT incX, const double beta,
+//                  double *Y, const MKL_INT incY) NOTHROW;
+//
+// By making the SUBSTITUTIONS in both cblas.h and mkl_cblas.h, we arrive at the following common C-interface:
+//
+// void cblas_dgemv(const CBLAS_Layout Layout,
+//                  const CBLAS_TRANSPOSE TransA, const int m, const int n,
+//                  const double alpha, const double *A, const int lda,
+//                  const double *X, const int incx, const double beta,
+//                  double *y, const int incy);
 //

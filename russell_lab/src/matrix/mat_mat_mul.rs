@@ -71,6 +71,7 @@ pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) -> Result
     let k_i32: i32 = to_i32(k);
     let lda = m_i32;
     let ldb = k_i32;
+    let beta = 0.0;
     unsafe {
         cblas_dgemm(
             CBLAS_COL_MAJOR,
@@ -84,7 +85,7 @@ pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) -> Result
             lda,
             b.as_data().as_ptr(),
             ldb,
-            0.0,
+            beta,
             c.as_mut_data().as_mut_ptr(),
             m_i32,
         );

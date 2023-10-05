@@ -34,6 +34,6 @@ fn main() {
             .include("/opt/intel/oneapi/mkl/latest/include")
             .compile("c_code_interface_blas");
         println!("cargo:rustc-link-lib=dylib=openblas");
-        println!("cargo:rustc-link-lib=dylib=lapacke");
+        println!("cargo:rustc-link-lib=dylib=lapack");
     }
 }

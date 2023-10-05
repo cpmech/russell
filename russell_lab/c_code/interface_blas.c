@@ -203,3 +203,18 @@ int32_t c_get_num_threads() {
 //                  const double *X, const int incx, const double beta,
 //                  double *y, const int incy);
 //
+// LAPACK //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// From: /usr/include/lapack.h
+//
+// void LAPACK_dgesv(lapack_int const* n, lapack_int const* nrhs, double* A,
+//                   lapack_int const* lda, lapack_int* ipiv, double* B, lapack_int const* ldb,
+//                   lapack_int* info );
+//
+// From: /opt/intel/oneapi/mkl/latest/include/mkl_lapack.h
+// (note the trailing underscore!)
+//
+// void dgesv_( const MKL_INT* n, const MKL_INT* nrhs, double* a,
+//             const MKL_INT* lda, MKL_INT* ipiv, double* b, const MKL_INT* ldb,
+//             MKL_INT* info ) NOTHROW;
+//

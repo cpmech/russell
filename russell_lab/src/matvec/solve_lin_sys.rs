@@ -1,7 +1,19 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-use crate::StrError;
-use russell_openblas::{dgesv, to_i32};
+use crate::{to_i32, StrError};
+
+extern "C" {
+    fn dgesv_(
+        n: *const i32,
+        nrhs: *const i32,
+        a: *mut f64,
+        lda: *const i32,
+        ipiv: *mut i32,
+        b: *mut f64,
+        ldb: *const i32,
+        info: *mut i32,
+    );
+}
 
 /// Solves a general linear system (real numbers)
 ///
@@ -64,8 +76,31 @@ pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
     }
     let mut ipiv = vec![0; m];
     let m_i32 = to_i32(m);
-    dgesv(m_i32, 1, a.as_mut_data(), &mut ipiv, b.as_mut_data())?;
-    Ok(())
+    let nrhs = 1;
+    let lda = to_i32(m);
+    let ldb = lda;
+    let mut info = 0;
+    unsafe {
+        dgesv_(
+            &m_i32,
+            &nrhs,
+            a.as_mut_data().as_mut_ptr(),
+            &lda,
+            ipiv.as_mut_ptr(),
+            b.as_mut_data().as_mut_ptr(),
+            &ldb,
+            &mut info,
+        )
+    }
+    if info == 0 {
+        return Ok(());
+    } else if info < 0 {
+        println!("LAPACK(dgesv) ERROR: Argument #{} had an illegal value", -info);
+        return Err("LAPACK(dgesv) ERROR: An argument had an illegal value");
+    } else {
+        println!("LAPACK(dgesv) ERROR: U({},{}) is exactly zero", info - 1, info - 1);
+        return Err("LAPACK(dgesv) ERROR: The factorization has been completed, but the factor U is exactly singular");
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -153,5 +188,18 @@ mod tests {
             -5.0,
         ];
         vec_approx_eq(b.as_data(), x_correct, 1e-14);
+    }
+
+    #[test]
+    fn solve_lin_sys_singular_handles_error() {
+        let mut a = Matrix::from(&[
+            [0.0, 0.0], //
+            [0.0, 1.0], //
+        ]);
+        let mut b = Vector::from(&[1.0, 1.0]);
+        assert_eq!(
+            solve_lin_sys(&mut b, &mut a).err(),
+            Some("LAPACK(dgesv) ERROR: The factorization has been completed, but the factor U is exactly singular")
+        );
     }
 }

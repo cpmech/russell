@@ -34,8 +34,7 @@ pub(crate) fn add_arrays(w: &mut [f64], alpha: f64, u: &[f64], beta: f64, v: &[f
             cblas_daxpy(n_i32, alpha, u.as_ptr(), 1, w.as_mut_ptr(), 1);
         }
     } else {
-        if n == 0 {
-        } else if n == 1 {
+        if n == 1 {
             w[0] = alpha * u[0] + beta * v[0];
         } else if n == 2 {
             w[0] = alpha * u[0] + beta * v[0];

@@ -1,7 +1,6 @@
 use super::ComplexMatrix;
-use crate::{StrError, MAX_DIM_FOR_NATIVE_BLAS};
+use crate::{add_arrays_complex, StrError};
 use num_complex::Complex64;
-use russell_openblas::{complex_add_vectors_native, complex_add_vectors_oblas};
 
 /// Performs the addition of two matrices
 ///
@@ -47,15 +46,7 @@ pub fn complex_mat_add(
     if a.nrow() != m || a.ncol() != n || b.nrow() != m || b.ncol() != n {
         return Err("matrices are incompatible");
     }
-    if m == 0 && n == 0 {
-        return Ok(());
-    }
-    if m * n > MAX_DIM_FOR_NATIVE_BLAS {
-        complex_add_vectors_oblas(c.as_mut_data(), alpha, a.as_data(), beta, b.as_data());
-    } else {
-        complex_add_vectors_native(c.as_mut_data(), alpha, a.as_data(), beta, b.as_data());
-    }
-    Ok(())
+    add_arrays_complex(c.as_mut_data(), alpha, a.as_data(), beta, b.as_data())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

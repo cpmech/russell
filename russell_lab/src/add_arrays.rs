@@ -23,7 +23,6 @@ pub(crate) fn add_arrays(w: &mut [f64], alpha: f64, u: &[f64], beta: f64, v: &[f
         return Ok(());
     }
     if n > MAX_DIM_FOR_NATIVE_BLAS {
-        // TODO: skip cblas_dscal if beta == 0.0
         let n_i32 = to_i32(n);
         unsafe {
             // w := v

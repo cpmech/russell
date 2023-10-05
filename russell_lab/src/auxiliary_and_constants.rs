@@ -44,6 +44,30 @@ pub fn get_num_threads() -> usize {
     unsafe { c_get_num_threads() as usize }
 }
 
+// From: /usr/include/x86_64-linux-gnu/cblas.h
+// From: /opt/intel/oneapi/mkl/latest/include/mkl_cblas.h
+pub(crate) const CBLAS_COL_MAJOR: i32 = 102;
+pub(crate) const CBLAS_NO_TRANS: i32 = 111;
+pub(crate) const CBLAS_TRANS: i32 = 112;
+pub(crate) const CBLAS_UPPER: i32 = 121;
+pub(crate) const CBLAS_LOWER: i32 = 122;
+
+// #[inline]
+// pub(crate) fn cblas_transpose(transpose: bool) -> i32 {
+//     if transpose {
+//         return CBLAS_TRANS;
+//     }
+//     CBLAS_NO_TRANS
+// }
+
+// #[inline]
+// pub(crate) fn cblas_uplo(up: bool) -> i32 {
+//     if up {
+//         return CBLAS_UPPER;
+//     }
+//     CBLAS_LOWER
+// }
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]

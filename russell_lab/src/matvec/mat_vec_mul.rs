@@ -46,7 +46,11 @@ pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) -> Result
     if m != a.nrow() || n != a.ncol() {
         return Err("matrix and vectors are incompatible");
     }
-    if m == 0 || n == 0 {
+    if m == 0 {
+        return Ok(());
+    }
+    if n == 0 {
+        v.fill(0.0);
         return Ok(());
     }
     let m_i32: i32 = to_i32(m);

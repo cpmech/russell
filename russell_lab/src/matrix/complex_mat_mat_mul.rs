@@ -49,6 +49,13 @@ pub fn complex_mat_mat_mul(
     if a.nrow() != m || b.nrow() != k || b.ncol() != n {
         return Err("matrices are incompatible");
     }
+    if m == 0 || n == 0 {
+        return Ok(());
+    }
+    if k == 0 {
+        c.fill(Complex64::new(0.0, 0.0));
+        return Ok(());
+    }
     let m_i32: i32 = to_i32(m);
     let n_i32: i32 = to_i32(n);
     let k_i32: i32 = to_i32(k);
@@ -96,6 +103,24 @@ mod tests {
             complex_mat_mat_mul(&mut c_2x2, alpha, &a_2x1, &b_1x3),
             Err("matrices are incompatible")
         );
+    }
+
+    #[test]
+    fn mat_mat_mul_0x0_works() {
+        let a = ComplexMatrix::new(0, 0);
+        let b = ComplexMatrix::new(0, 0);
+        let mut c = ComplexMatrix::new(0, 0);
+        let alpha = Complex64::new(2.0, 0.0);
+        complex_mat_mat_mul(&mut c, alpha, &a, &b).unwrap();
+
+        let a = ComplexMatrix::new(1, 0);
+        let b = ComplexMatrix::new(0, 1);
+        let mut c = ComplexMatrix::new(1, 1);
+        complex_mat_mat_mul(&mut c, alpha, &a, &b).unwrap();
+        let correct = &[
+            [Complex64::new(0.0, 0.0)], //
+        ];
+        complex_mat_approx_eq(&c, correct, 1e-15);
     }
 
     #[test]

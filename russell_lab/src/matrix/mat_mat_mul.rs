@@ -44,6 +44,10 @@ pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) -> Result
     if m == 0 || n == 0 {
         return Ok(());
     }
+    if k == 0 {
+        c.fill(0.0);
+        return Ok(());
+    }
     let m_i32: i32 = to_i32(m);
     let n_i32: i32 = to_i32(n);
     let k_i32: i32 = to_i32(k);
@@ -96,6 +100,15 @@ mod tests {
         let b = Matrix::new(0, 0);
         let mut c = Matrix::new(0, 0);
         mat_mat_mul(&mut c, 2.0, &a, &b).unwrap();
+
+        let a = Matrix::new(1, 0);
+        let b = Matrix::new(0, 1);
+        let mut c = Matrix::new(1, 1);
+        mat_mat_mul(&mut c, 2.0, &a, &b).unwrap();
+        let correct = &[
+            [0.0], //
+        ];
+        mat_approx_eq(&c, correct, 1e-15);
     }
 
     #[test]

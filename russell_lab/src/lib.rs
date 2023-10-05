@@ -34,6 +34,7 @@
 /// Defines a type alias for the error type as a static string
 pub type StrError = &'static str;
 
+mod add_arrays;
 mod as_array;
 mod auxiliary_and_constants;
 mod enums;
@@ -50,6 +51,7 @@ mod sort_vec_mat;
 mod stopwatch;
 mod testing;
 mod vector;
+use crate::add_arrays::*;
 pub use crate::as_array::*;
 pub use crate::auxiliary_and_constants::*;
 pub use crate::enums::*;

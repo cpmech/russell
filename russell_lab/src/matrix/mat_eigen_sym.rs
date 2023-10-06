@@ -1,6 +1,20 @@
 use super::Matrix;
-use crate::{StrError, Vector};
-use russell_openblas::{dsyev, to_i32};
+use crate::{to_i32, CcBool, StrError, Vector, C_TRUE};
+
+extern "C" {
+    // <https://netlib.org/lapack/explore-html/dd/d4c/dsyev_8f.html>
+    fn c_dsyev(
+        calc_v: CcBool,
+        upper: CcBool,
+        n: *const i32,
+        a: *mut f64,
+        lda: *const i32,
+        w: *mut f64,
+        work: *mut f64,
+        lwork: *const i32,
+        info: *mut i32,
+    );
+}
 
 /// Calculates the eigenvalues and eigenvectors of a symmetric matrix
 ///
@@ -12,9 +26,12 @@ use russell_openblas::{dsyev, to_i32};
 ///
 /// where `lj` is the component j of `l` and `vj` is the column j of `v`.
 ///
+/// The computed eigenvectors are normalized to have Euclidean norm
+/// equal to 1 and largest component real.
+///
 /// # Input
 ///
-/// * `a` -- matrix to compute eigenvalues (SYMMETRIC and SQUARE)
+/// * `a` -- (modified on exit) matrix to compute eigenvalues (SYMMETRIC and SQUARE)
 ///
 /// # Output
 ///
@@ -32,7 +49,24 @@ pub fn mat_eigen_sym(l: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
         return Err("l vector has incompatible dimension");
     }
     let n_i32 = to_i32(n);
-    dsyev(true, true, n_i32, a.as_mut_data(), l.as_mut_data())?;
+    let lda = n_i32;
+    const EXTRA: i32 = 1;
+    let lwork = 3 * n_i32 + EXTRA; // max(1,3*N-1), thus, 2 extra spaces effectively
+    let mut work = vec![0.0; lwork as usize];
+    let mut info = 0;
+    unsafe {
+        c_dsyev(
+            C_TRUE,
+            C_TRUE,
+            &n_i32,
+            a.as_mut_data().as_mut_ptr(),
+            &lda,
+            l.as_mut_data().as_mut_ptr(),
+            work.as_mut_ptr(),
+            &lwork,
+            &mut info,
+        );
+    }
     Ok(())
 }
 
@@ -250,12 +284,12 @@ mod tests {
                 1e-14,
             ),
         ];
-        let mut test_id = 0;
+        // let mut test_id = 0;
         for (data, tol) in samples {
-            println!("test = {}", test_id);
+            // println!("test = {}", test_id);
             let (l, v) = calc_eigen(data);
             check_eigen_real(data, &v, &l, *tol);
-            test_id += 1;
+            // test_id += 1;
         }
     }
 }

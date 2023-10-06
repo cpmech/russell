@@ -1,4 +1,5 @@
-use crate::{to_i32, StrError, MAX_DIM_FOR_NATIVE_BLAS};
+use super::{to_i32, MAX_DIM_FOR_NATIVE_BLAS};
+use crate::StrError;
 use num_complex::Complex64;
 
 extern "C" {
@@ -132,8 +133,7 @@ pub fn add_arrays_complex(
             cblas_zaxpy(n_i32, &alpha, u.as_ptr(), 1, w.as_mut_ptr(), 1);
         }
     } else {
-        if n == 0 {
-        } else if n == 1 {
+        if n == 1 {
             w[0] = alpha * u[0] + beta * v[0];
         } else if n == 2 {
             w[0] = alpha * u[0] + beta * v[0];

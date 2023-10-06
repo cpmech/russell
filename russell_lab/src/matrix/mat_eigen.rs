@@ -366,7 +366,7 @@ pub fn mat_eigen_lr(
 mod tests {
     use super::{mat_eigen, mat_eigen_lr};
     use crate::mat_approx_eq;
-    use crate::testing::{check_eigen_general, check_eigen_real};
+    use crate::matrix::testing::{check_eigen_general, check_eigen_real};
     use crate::{Matrix, Vector};
     use russell_chk::vec_approx_eq;
 

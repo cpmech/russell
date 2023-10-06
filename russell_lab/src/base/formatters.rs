@@ -18,7 +18,7 @@ fn format_nanoseconds_in_seconds(buf: &mut String, value: u128) {
     }
 }
 
-/// Returns a nice string representing the value in nanoseconds
+/// Returns a pretty string representing the value in nanoseconds
 ///
 /// # Panics
 ///

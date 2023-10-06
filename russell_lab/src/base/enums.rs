@@ -1,4 +1,4 @@
-use super::{NORM_EUC, NORM_FRO, NORM_INF, NORM_MAX, NORM_ONE};
+use crate::internal::{NORM_EUC, NORM_FRO, NORM_INF, NORM_MAX, NORM_ONE};
 
 /// Options to compute vector and matrix norms
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::{
     complex_mat_add, complex_mat_mat_mul, complex_mat_norm, complex_mat_zip, complex_vec_zip, mat_add, mat_mat_mul,
     mat_norm, AsArray2D, ComplexMatrix, Matrix, Norm, Vector,
@@ -14,6 +12,7 @@ use russell_chk::approx_eq;
 /// a⋅v = v⋅λ
 /// err := a⋅v - v⋅λ
 /// ```
+#[allow(dead_code)]
 pub(crate) fn check_eigen_real<'a, T>(data: &'a T, v: &Matrix, l: &Vector, tolerance: f64)
 where
     T: AsArray2D<'a, f64>,
@@ -41,6 +40,7 @@ where
 /// a⋅v = v⋅λ
 /// err := a⋅v - v⋅λ
 /// ```
+#[allow(dead_code)]
 pub(crate) fn check_eigen_general<'a, T>(
     data: &'a T,
     v_real: &Matrix,

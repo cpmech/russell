@@ -1,4 +1,5 @@
-use crate::{to_i32, StrError, MAX_DIM_FOR_NATIVE_BLAS};
+use super::{to_i32, MAX_DIM_FOR_NATIVE_BLAS};
+use crate::StrError;
 use num_complex::Complex64;
 
 extern "C" {

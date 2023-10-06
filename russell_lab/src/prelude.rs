@@ -7,6 +7,7 @@ pub use crate::auxiliary_and_constants::*;
 pub use crate::enums::*;
 pub use crate::formatters::*;
 pub use crate::generators::*;
+pub use crate::linear_fitting::*;
 pub use crate::matrix::*;
 pub use crate::matvec::*;
 pub use crate::read_table::*;

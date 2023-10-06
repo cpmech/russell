@@ -83,7 +83,7 @@ pub fn mat_eigen_sym(l: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
 mod tests {
     use super::{mat_eigen_sym, Matrix};
     use crate::math::SQRT_2;
-    use crate::testing::check_eigen_real;
+    use crate::matrix::testing::check_eigen_real;
     use crate::{mat_approx_eq, AsArray2D, Vector};
     use russell_chk::vec_approx_eq;
 

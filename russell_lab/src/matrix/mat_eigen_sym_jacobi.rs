@@ -174,7 +174,7 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
 mod tests {
     use super::{mat_eigen_sym_jacobi, Matrix};
     use crate::math::SQRT_2;
-    use crate::testing::check_eigen_real;
+    use crate::matrix::testing::check_eigen_real;
     use crate::{mat_approx_eq, AsArray2D, Vector};
     use russell_chk::vec_approx_eq;
 

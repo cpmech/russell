@@ -3,6 +3,7 @@ use crate::{to_i32, Norm};
 use num_complex::Complex64;
 
 extern "C" {
+    // <http://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
     fn c_zlange(
         norm_code: i32,
         m: *const i32,

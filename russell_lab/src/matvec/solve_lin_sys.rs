@@ -3,7 +3,8 @@ use crate::vector::Vector;
 use crate::{to_i32, StrError};
 
 extern "C" {
-    fn dgesv_(
+    // <http://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
+    fn c_dgesv(
         n: *const i32,
         nrhs: *const i32,
         a: *mut f64,
@@ -81,7 +82,7 @@ pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
     let ldb = lda;
     let mut info = 0;
     unsafe {
-        dgesv_(
+        c_dgesv(
             &m_i32,
             &nrhs,
             a.as_mut_data().as_mut_ptr(),

@@ -4,16 +4,20 @@
 #ifdef USE_INTEL_MKL
 #include "mkl.h"
 #define COMPLEX64 MKL_Complex16
+#define FN_DGESV dgesv_
 #define FN_DLANGE dlange_
 #define FN_ZLANGE zlange_
 #define FN_DPOTRF dpotrf_
+#define FN_DSYEV dsyev_
 #else
 #include "cblas.h"
 #include "lapack.h"
 #define COMPLEX64 lapack_complex_double
+#define FN_DGESV LAPACK_dgesv
 #define FN_DLANGE LAPACK_dlange
 #define FN_ZLANGE LAPACK_zlange
 #define FN_DPOTRF LAPACK_dpotrf
+#define FN_DSYEV LAPACK_dsyev
 #endif
 
 #include "constants.h"
@@ -42,8 +46,19 @@ int32_t c_get_num_threads() {
 #endif
 }
 
-double c_dlange(int32_t norm_code, const int32_t *m, const int32_t *n,
-                const double *a, const int32_t *lda, double *work) {
+// <http://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
+void c_dgesv(const int32_t *n, const int32_t *nrhs, double *a,
+             const int32_t *lda, int32_t *ipiv, double *b, const int32_t *ldb, int32_t *info) {
+    dgesv_(n, nrhs, a, lda, ipiv, b, ldb, info);
+}
+
+// <http://www.netlib.org/lapack/explore-html/dc/d09/dlange_8f.html>
+double c_dlange(int32_t norm_code,
+                const int32_t *m,
+                const int32_t *n,
+                const double *a,
+                const int32_t *lda,
+                double *work) {
     if (norm_code == NORM_EUC || norm_code == NORM_FRO) {
         return FN_DLANGE("F", m, n, a, lda, work);
     } else if (norm_code == NORM_INF) {
@@ -55,8 +70,13 @@ double c_dlange(int32_t norm_code, const int32_t *m, const int32_t *n,
     }
 }
 
-double c_zlange(int32_t norm_code, const int32_t *m, const int32_t *n,
-                const COMPLEX64 *a, const int32_t *lda, double *work) {
+// <http://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
+double c_zlange(int32_t norm_code,
+                const int32_t *m,
+                const int32_t *n,
+                const COMPLEX64 *a,
+                const int32_t *lda,
+                double *work) {
     if (norm_code == NORM_EUC || norm_code == NORM_FRO) {
         return FN_ZLANGE("F", m, n, a, lda, work);
     } else if (norm_code == NORM_INF) {
@@ -68,12 +88,41 @@ double c_zlange(int32_t norm_code, const int32_t *m, const int32_t *n,
     }
 }
 
-void c_dpotrf(C_BOOL upper, const int32_t *n, double *a,
-              const int32_t *lda, int32_t *info) {
+// <http://www.netlib.org/lapack/explore-html/d0/d8a/dpotrf_8f.html>
+void c_dpotrf(C_BOOL upper,
+              const int32_t *n,
+              double *a,
+              const int32_t *lda,
+              int32_t *info) {
     if (upper == C_TRUE) {
         FN_DPOTRF("U", n, a, lda, info);
     } else {
         FN_DPOTRF("L", n, a, lda, info);
+    }
+}
+
+// <https://netlib.org/lapack/explore-html/dd/d4c/dsyev_8f.html>
+void c_dsyev(C_BOOL calc_v,
+             C_BOOL upper,
+             const int32_t *n,
+             double *a,
+             const int32_t *lda,
+             double *w,
+             double *work,
+             const int32_t *lwork,
+             int32_t *info) {
+    if (calc_v == C_TRUE) {
+        if (upper == C_TRUE) {
+            FN_DSYEV("V", "U", n, a, lda, w, work, lwork, info);
+        } else {
+            FN_DSYEV("V", "L", n, a, lda, w, work, lwork, info);
+        }
+    } else {
+        if (upper == C_TRUE) {
+            FN_DSYEV("N", "U", n, a, lda, w, work, lwork, info);
+        } else {
+            FN_DSYEV("N", "L", n, a, lda, w, work, lwork, info);
+        }
     }
 }
 
@@ -238,6 +287,9 @@ void c_dpotrf(C_BOOL upper, const int32_t *n, double *a,
 //                           lapack_complex_double const *A, lapack_int const *lda, double *work);
 // void LAPACK_dpotrf(char const *uplo, lapack_int const *n, double *A,
 //                    lapack_int const *lda, lapack_int *info);
+// void LAPACK_dsyev_base(char const *jobz, char const *uplo, lapack_int const *n, double *A,
+//                        lapack_int const *lda, double *W, double *work, lapack_int const *lwork,
+//                        lapack_int *info);
 //
 // --- Intel MKL -------------------------------------------------------------------------------------------------------
 //
@@ -253,4 +305,7 @@ void c_dpotrf(C_BOOL upper, const int32_t *n, double *a,
 //                 const MKL_Complex16* a, const MKL_INT* lda, double* work ) NOTHROW;
 // void dpotrf_( const char* uplo, const MKL_INT* n, double* a,
 //               const MKL_INT* lda, MKL_INT* info ) NOTHROW;
+// void dsyev_( const char* jobz, const char* uplo, const MKL_INT* n, double* a,
+//              const MKL_INT* lda, double* w, double* work, const MKL_INT* lwork,
+//              MKL_INT* info ) NOTHROW;
 //

@@ -1,5 +1,9 @@
 use super::Matrix;
-use russell_openblas::{dscal, to_i32};
+use crate::to_i32;
+
+extern "C" {
+    fn cblas_dscal(n: i32, alpha: f64, x: *const f64, incx: i32);
+}
 
 /// Scales matrix
 ///
@@ -29,9 +33,11 @@ use russell_openblas::{dscal, to_i32};
 /// }
 /// ```
 pub fn mat_scale(a: &mut Matrix, alpha: f64) {
-    let mut data = a.as_mut_data();
-    let n: i32 = to_i32(data.len());
-    dscal(n, alpha, &mut data, 1);
+    let (m, n) = a.dims();
+    let mn_i32 = to_i32(m * n);
+    unsafe {
+        cblas_dscal(mn_i32, alpha, a.as_mut_data().as_mut_ptr(), 1);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

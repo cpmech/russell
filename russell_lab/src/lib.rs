@@ -50,36 +50,17 @@
 /// Defines a type alias for the error type as a static string
 pub type StrError = &'static str;
 
-mod add_arrays;
-mod as_array;
-mod auxiliary_and_constants;
-mod enums;
-mod formatters;
-mod generators;
-mod linear_fitting;
+pub mod base;
+mod internal;
 pub mod math;
-mod matrix;
-mod matvec;
+pub mod matrix;
+pub mod matvec;
 pub mod prelude;
-mod read_table;
-mod sort;
-mod sort_vec_mat;
-mod stopwatch;
-mod testing;
-mod vector;
-use crate::add_arrays::*;
-pub use crate::as_array::*;
-pub use crate::auxiliary_and_constants::*;
-pub use crate::enums::*;
-pub use crate::formatters::*;
-pub use crate::generators::*;
-pub use crate::linear_fitting::*;
+pub mod vector;
+pub use crate::base::*;
+use crate::internal::*;
 pub use crate::matrix::*;
 pub use crate::matvec::*;
-pub use crate::read_table::*;
-pub use crate::sort::*;
-pub use crate::sort_vec_mat::*;
-pub use crate::stopwatch::*;
 pub use crate::vector::*;
 
 // run code from README file

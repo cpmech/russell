@@ -229,6 +229,7 @@ mod tests {
     use super::{dgeev_data, dgeev_data_lr, find_index_abs_max, get_num_threads, set_num_threads, using_intel_mkl};
     use crate::Matrix;
     use russell_chk::vec_approx_eq;
+    use std::env;
 
     #[test]
     fn using_intel_mkl_works() {
@@ -241,7 +242,15 @@ mod tests {
 
     #[test]
     fn set_num_threads_and_get_num_threads_work() {
-        assert!(get_num_threads() > 2);
+        let ci = match env::var("CI") {
+            Ok(v) => v.to_lowercase() == "true",
+            Err(_) => false,
+        };
+        if ci {
+            assert!(get_num_threads() > 0);
+        } else {
+            assert!(get_num_threads() > 2);
+        }
         set_num_threads(1);
         assert_eq!(get_num_threads(), 1);
     }

@@ -9,6 +9,7 @@
 #define FN_ZLANGE zlange_
 #define FN_DPOTRF dpotrf_
 #define FN_DSYEV dsyev_
+#define FN_DGEEV dgeev_
 #else
 #include "cblas.h"
 #include "lapack.h"
@@ -18,6 +19,7 @@
 #define FN_ZLANGE LAPACK_zlange
 #define FN_DPOTRF LAPACK_dpotrf
 #define FN_DSYEV LAPACK_dsyev
+#define FN_DGEEV LAPACK_dgeev
 #endif
 
 #include "constants.h"
@@ -115,11 +117,8 @@ void c_dpotrf(C_BOOL upper,
               double *a,
               const int32_t *lda,
               int32_t *info) {
-    if (upper == C_TRUE) {
-        FN_DPOTRF("U", n, a, lda, info);
-    } else {
-        FN_DPOTRF("L", n, a, lda, info);
-    }
+    const char *uplo = upper == C_TRUE ? "U" : "L";
+    FN_DPOTRF(uplo, n, a, lda, info);
 }
 
 // <https://netlib.org/lapack/explore-html/dd/d4c/dsyev_8f.html>
@@ -132,17 +131,27 @@ void c_dsyev(C_BOOL calc_v,
              double *work,
              const int32_t *lwork,
              int32_t *info) {
-    if (calc_v == C_TRUE) {
-        if (upper == C_TRUE) {
-            FN_DSYEV("V", "U", n, a, lda, w, work, lwork, info);
-        } else {
-            FN_DSYEV("V", "L", n, a, lda, w, work, lwork, info);
-        }
-    } else {
-        if (upper == C_TRUE) {
-            FN_DSYEV("N", "U", n, a, lda, w, work, lwork, info);
-        } else {
-            FN_DSYEV("N", "L", n, a, lda, w, work, lwork, info);
-        }
-    }
+    const char *jobz = calc_v == C_TRUE ? "V" : "N";
+    const char *uplo = upper == C_TRUE ? "U" : "L";
+    FN_DSYEV(jobz, uplo, n, a, lda, w, work, lwork, info);
+}
+
+// <http://www.netlib.org/lapack/explore-html/d9/d28/dgeev_8f.html>
+void c_dgeev(C_BOOL calc_vl,
+             C_BOOL calc_vr,
+             const int32_t *n,
+             double *a,
+             const int32_t *lda,
+             double *wr,
+             double *wi,
+             double *vl,
+             const int32_t *ldvl,
+             double *vr,
+             const int32_t *ldvr,
+             double *work,
+             const int32_t *lwork,
+             int32_t *info) {
+    const char *jobvl = calc_vl == C_TRUE ? "V" : "N";
+    const char *jobvr = calc_vr == C_TRUE ? "V" : "N";
+    FN_DGEEV(jobvl, jobvr, n, a, lda, wr, wi, vl, ldvl, vr, ldvr, work, lwork, info);
 }

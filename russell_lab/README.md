@@ -10,11 +10,11 @@ The linear algebra functions currently handle only `(f64, i32)` pairs, i.e., acc
 
 There are many functions for linear algebra, such as (for Real and Complex types):
 
-* Vector addition, copy, inner and outer products, and norms
-* Matrix addition, multiplication, copy, singular-value decomposition, eigenvalues, pseudo-inverse, inverse, and norms
-* Matrix-vector multiplication
-* Solution of dense linear systems with symmetric or non-symmetric coefficient matrices
-* Reading writing files, `linspace`, grid generators, linear fitting, and more
+* Vector addition, copy, inner and outer products, norms, and more
+* Matrix addition, multiplication, copy, singular-value decomposition, eigenvalues, pseudo-inverse, inverse, norms, and more
+* Matrix-vector multiplication, and more
+* Solution of dense linear systems with symmetric or non-symmetric coefficient matrices, and more
+* Reading writing files, `linspace`, grid generators, Stopwatch, linear fitting, and more
 
 See the documentation for further information:
 

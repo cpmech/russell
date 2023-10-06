@@ -1,7 +1,25 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-use crate::StrError;
-use russell_openblas::{dgesvd, to_i32};
+use crate::{to_i32, StrError, SVD_CODE_A};
+
+extern "C" {
+    fn c_dgesvd(
+        jobu_code: i32,
+        jobvt_code: i32,
+        m: *const i32,
+        n: *const i32,
+        a: *mut f64,
+        lda: *const i32,
+        s: *mut f64,
+        u: *mut f64,
+        ldu: *const i32,
+        vt: *mut f64,
+        ldvt: *const i32,
+        work: *mut f64,
+        lwork: *const i32,
+        info: *mut i32,
+    );
+}
 
 /// Computes the singular value decomposition (SVD) of a matrix
 ///
@@ -129,7 +147,7 @@ pub fn mat_svd(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) 
     let (m, n) = a.dims();
     let min_mn = if m < n { m } else { n };
     if s.dim() != min_mn {
-        return Err("[s] must be an min(m,n) vector");
+        return Err("[s] must be a min(m,n) vector");
     }
     if u.nrow() != m || u.ncol() != m {
         return Err("[u] must be an m-by-m square matrix");
@@ -139,18 +157,39 @@ pub fn mat_svd(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) 
     }
     let m_i32 = to_i32(m);
     let n_i32 = to_i32(n);
-    let mut superb = vec![0.0; min_mn];
-    dgesvd(
-        b'A',
-        b'A',
-        m_i32,
-        n_i32,
-        a.as_mut_data(),
-        s.as_mut_data(),
-        u.as_mut_data(),
-        vt.as_mut_data(),
-        &mut superb,
-    )
+    let lda = m_i32;
+    let ldu = m_i32;
+    let ldvt = n_i32;
+    const EXTRA: i32 = 1;
+    let lwork = 5 * to_i32(min_mn) + EXTRA;
+    let mut work = vec![0.0; lwork as usize];
+    let mut info = 0;
+    unsafe {
+        c_dgesvd(
+            SVD_CODE_A,
+            SVD_CODE_A,
+            &m_i32,
+            &n_i32,
+            a.as_mut_data().as_mut_ptr(),
+            &lda,
+            s.as_mut_data().as_mut_ptr(),
+            u.as_mut_data().as_mut_ptr(),
+            &ldu,
+            vt.as_mut_data().as_mut_ptr(),
+            &ldvt,
+            work.as_mut_ptr(),
+            &lwork,
+            &mut info,
+        );
+    }
+    if info < 0 {
+        println!("LAPACK ERROR (dgesvd): Argument #{} had an illegal value", -info);
+        return Err("LAPACK ERROR (dgesvd): An argument had an illegal value");
+    } else if info > 0 {
+        println!("LAPACK ERROR (dgesvd): {} is the number of super-diagonals of an intermediate bi-diagonal form B which did not converge to zero",info);
+        return Err("LAPACK ERROR (dgesvd): Algorithm did not converge");
+    }
+    Ok(())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -175,7 +214,7 @@ mod tests {
         let mut vt_2x3 = Matrix::new(2, 3);
         assert_eq!(
             mat_svd(&mut s_3, &mut u, &mut vt, &mut a),
-            Err("[s] must be an min(m,n) vector")
+            Err("[s] must be a min(m,n) vector")
         );
         assert_eq!(
             mat_svd(&mut s, &mut u_2x2, &mut vt, &mut a),

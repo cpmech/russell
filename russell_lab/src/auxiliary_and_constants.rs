@@ -26,6 +26,12 @@ pub(crate) const NORM_INF: isize = 2;
 pub(crate) const NORM_MAX: isize = 3;
 pub(crate) const NORM_ONE: isize = 4;
 
+// SVD codes
+pub(crate) const SVD_CODE_A: i32 = 0;
+//pub(crate) const SVD_CODE_S: i32 = 1;
+//pub(crate) const SVD_CODE_O: i32 = 2;
+//pub(crate) const SVD_CODE_N: i32 = 3;
+
 // From: /usr/include/x86_64-linux-gnu/cblas.h
 // From: /opt/intel/oneapi/mkl/latest/include/mkl_cblas.h
 pub(crate) const CBLAS_COL_MAJOR: i32 = 102;

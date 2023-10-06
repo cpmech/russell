@@ -15,3 +15,9 @@
 #define NORM_INF 2
 #define NORM_MAX 3
 #define NORM_ONE 4
+
+// SVD codes
+#define SVD_CODE_A 0
+#define SVD_CODE_S 1
+#define SVD_CODE_O 2
+#define SVD_CODE_N 3

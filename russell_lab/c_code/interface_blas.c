@@ -6,12 +6,14 @@
 #define COMPLEX64 MKL_Complex16
 #define FN_DLANGE dlange_
 #define FN_ZLANGE zlange_
+#define FN_DPOTRF dpotrf_
 #else
 #include "cblas.h"
 #include "lapack.h"
 #define COMPLEX64 lapack_complex_double
 #define FN_DLANGE LAPACK_dlange
 #define FN_ZLANGE LAPACK_zlange
+#define FN_DPOTRF LAPACK_dpotrf
 #endif
 
 #include "constants.h"
@@ -63,6 +65,15 @@ double c_zlange(int32_t norm_code, const int32_t *m, const int32_t *n,
         return FN_ZLANGE("M", m, n, a, lda, work);
     } else {
         return FN_ZLANGE("O", m, n, a, lda, work); // norm_code == NORM_ONE
+    }
+}
+
+void c_dpotrf(C_BOOL upper, const int32_t *n, double *a,
+              const int32_t *lda, int32_t *info) {
+    if (upper == C_TRUE) {
+        FN_DPOTRF("U", n, a, lda, info);
+    } else {
+        FN_DPOTRF("L", n, a, lda, info);
     }
 }
 
@@ -225,6 +236,8 @@ double c_zlange(int32_t norm_code, const int32_t *m, const int32_t *n,
 //                           double const *A, lapack_int const *lda, double *work);
 // double LAPACK_zlange(char const *norm, lapack_int const *m, lapack_int const *n,
 //                           lapack_complex_double const *A, lapack_int const *lda, double *work);
+// void LAPACK_dpotrf(char const *uplo, lapack_int const *n, double *A,
+//                    lapack_int const *lda, lapack_int *info);
 //
 // --- Intel MKL -------------------------------------------------------------------------------------------------------
 //
@@ -238,4 +251,6 @@ double c_zlange(int32_t norm_code, const int32_t *m, const int32_t *n,
 //                 const double* a, const MKL_INT* lda, double* work ) NOTHROW;
 // double zlange_( const char* norm, const MKL_INT* m, const MKL_INT* n,
 //                 const MKL_Complex16* a, const MKL_INT* lda, double* work ) NOTHROW;
+// void dpotrf_( const char* uplo, const MKL_INT* n, double* a,
+//               const MKL_INT* lda, MKL_INT* info ) NOTHROW;
 //

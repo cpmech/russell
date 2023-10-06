@@ -1,6 +1,10 @@
 use super::Matrix;
-use crate::StrError;
-use russell_openblas::{dpotrf, to_i32};
+use crate::{to_i32, CcBool, StrError, C_FALSE};
+
+extern "C" {
+    // <http://www.netlib.org/lapack/explore-html/d0/d8a/dpotrf_8f.html>
+    fn c_dpotrf(upper: CcBool, n: *const i32, a: *mut f64, lda: *const i32, info: *mut i32);
+}
 
 /// Performs the Cholesky factorization of a symmetric positive-definite matrix
 ///
@@ -79,10 +83,23 @@ pub fn mat_cholesky(l: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
 
     // perform factorization
     let m_i32 = to_i32(m);
-    dpotrf(false, m_i32, l.as_mut_data())?;
+    let lda = m_i32;
+    let mut info = 0;
+    unsafe { c_dpotrf(C_FALSE, &m_i32, l.as_mut_data().as_mut_ptr(), &lda, &mut info) }
 
-    // done
-    Ok(())
+    // status
+    if info == 0 {
+        return Ok(());
+    } else if info < 0 {
+        println!("LAPACK(dpotrf) ERROR: Argument #{} had an illegal value", -info);
+        return Err("LAPACK(dpotrf) ERROR: An argument had an illegal value");
+    } else {
+        println!(
+            "LAPACK(dpotrf) ERROR: the leading minor of order {} is not positive definite",
+            info
+        );
+        return Err("LAPACK(dpotrf) ERROR: positive definite check failed");
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

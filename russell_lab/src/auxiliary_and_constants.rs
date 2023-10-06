@@ -7,19 +7,23 @@ extern "C" {
 /// Defines the vector size to decide when to use the native Rust code or BLAS
 pub(crate) const MAX_DIM_FOR_NATIVE_BLAS: usize = 16;
 
-// Make sure that these constants match the c-code constants
-// pub(crate) const SUCCESSFUL_EXIT: i32 = 0;
-// pub(crate) const NULL_POINTER_ERROR: i32 = 100000;
+// -------------------------------------------------------------------------------------------
+// IMPORTANT: The constants below must match the corresponding C-code constants in constants.h
+
+// Represents the type of boolean flags interchanged with the C-code
+pub(crate) type CcBool = i32;
+
+// Boolean flags
 pub(crate) const C_TRUE: i32 = 1;
-// pub(crate) const C_FALSE: i32 = 0;
+pub(crate) const C_FALSE: i32 = 0;
+
+// Norm codes
 pub(crate) const NORM_EUC: isize = 0;
 pub(crate) const NORM_FRO: isize = 1;
 pub(crate) const NORM_INF: isize = 2;
 pub(crate) const NORM_MAX: isize = 3;
 pub(crate) const NORM_ONE: isize = 4;
-
-// Represents the type of boolean flags interchanged with the C-code
-pub(crate) type CcBool = i32;
+// -------------------------------------------------------------------------------------------
 
 /// Converts usize to i32
 ///

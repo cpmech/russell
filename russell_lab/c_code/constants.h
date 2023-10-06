@@ -2,12 +2,14 @@
 
 #include <inttypes.h>
 
-#define SUCCESSFUL_EXIT 0
-#define NULL_POINTER_ERROR 100000
-#define MALLOC_ERROR 200000
+// Represents the type of boolean flags interchanged with the C-code
 #define C_BOOL int32_t
+
+// Boolean flags
 #define C_TRUE 1
 #define C_FALSE 0
+
+// Norm codes
 #define NORM_EUC 0
 #define NORM_FRO 1
 #define NORM_INF 2

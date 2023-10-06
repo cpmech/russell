@@ -3,8 +3,15 @@
 
 #ifdef USE_INTEL_MKL
 #include "mkl.h"
+#define COMPLEX64 MKL_Complex16
+#define FN_DLANGE dlange_
+#define FN_ZLANGE zlange_
 #else
 #include "cblas.h"
+#include "lapack.h"
+#define COMPLEX64 lapack_complex_double
+#define FN_DLANGE LAPACK_dlange
+#define FN_ZLANGE LAPACK_zlange
 #endif
 
 #include "constants.h"
@@ -36,13 +43,26 @@ int32_t c_get_num_threads() {
 double c_dlange(int32_t norm_code, const int32_t *m, const int32_t *n,
                 const double *a, const int32_t *lda, double *work) {
     if (norm_code == NORM_EUC || norm_code == NORM_FRO) {
-        return dlange_("F", m, n, a, lda, work);
+        return FN_DLANGE("F", m, n, a, lda, work);
     } else if (norm_code == NORM_INF) {
-        return dlange_("I", m, n, a, lda, work);
+        return FN_DLANGE("I", m, n, a, lda, work);
     } else if (norm_code == NORM_MAX) {
-        return dlange_("M", m, n, a, lda, work);
+        return FN_DLANGE("M", m, n, a, lda, work);
     } else {
-        return dlange_("O", m, n, a, lda, work); // norm_code == NORM_ONE
+        return FN_DLANGE("O", m, n, a, lda, work); // norm_code == NORM_ONE
+    }
+}
+
+double c_zlange(int32_t norm_code, const int32_t *m, const int32_t *n,
+                const COMPLEX64 *a, const int32_t *lda, double *work) {
+    if (norm_code == NORM_EUC || norm_code == NORM_FRO) {
+        return FN_ZLANGE("F", m, n, a, lda, work);
+    } else if (norm_code == NORM_INF) {
+        return FN_ZLANGE("I", m, n, a, lda, work);
+    } else if (norm_code == NORM_MAX) {
+        return FN_ZLANGE("M", m, n, a, lda, work);
+    } else {
+        return FN_ZLANGE("O", m, n, a, lda, work); // norm_code == NORM_ONE
     }
 }
 
@@ -59,6 +79,8 @@ double c_dlange(int32_t norm_code, const int32_t *m, const int32_t *n,
 //
 // vector //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
+// --- OpenBLAS --------------------------------------------------------------------------------------------------------
+//
 // From: /usr/include/x86_64-linux-gnu/cblas.h
 //
 // double cblas_ddot(OPENBLAS_CONST blasint n, OPENBLAS_CONST double *x, OPENBLAS_CONST blasint incx, OPENBLAS_CONST double *y, OPENBLAS_CONST blasint incy);
@@ -71,6 +93,8 @@ double c_dlange(int32_t norm_code, const int32_t *m, const int32_t *n,
 // double cblas_dnrm2 (OPENBLAS_CONST blasint N, OPENBLAS_CONST double *X, OPENBLAS_CONST blasint incX);
 // double cblas_dasum (OPENBLAS_CONST blasint n, OPENBLAS_CONST double *x, OPENBLAS_CONST blasint incx);
 // CBLAS_INDEX cblas_idamax(OPENBLAS_CONST blasint n, OPENBLAS_CONST double *x, OPENBLAS_CONST blasint incx);
+//
+// --- Intel MKL -------------------------------------------------------------------------------------------------------
 //
 // From: /opt/intel/oneapi/mkl/latest/include/mkl_cblas.h
 //
@@ -85,20 +109,9 @@ double c_dlange(int32_t norm_code, const int32_t *m, const int32_t *n,
 // double cblas_dasum(const MKL_INT N, const double *X, const MKL_INT incX) NOTHROW;
 // CBLAS_INDEX cblas_idamax(const MKL_INT N, const double *X, const MKL_INT incX) NOTHROW;
 //
-// By making the SUBSTITUTIONS in both cblas.h and mkl_cblas.h, we arrive at the following common C-interface:
-//
-// double cblas_ddot(const int N, const double *X, const int incX, const double *Y, const int incY);
-// void cblas_dcopy(const int N, const double *X, const int incX, double *Y, const int incY);
-// void cblas_zcopy(const int N, const void *X, const int incX, void *Y, const int incY);
-// void cblas_dscal(const int N, const double alpha, double *X, const int incX);
-// void cblas_zscal(const int N, const void *alpha, void *X, const int incX);
-// void cblas_daxpy(const int N, const double alpha, const double *X, const int incX, double *Y, const int incY);
-// void cblas_zaxpy(const int N, const void *alpha, const void *X, const int incX, void *Y, const int incY);
-// double cblas_dnrm2(const int N, const double *X, const int incX);
-// double cblas_dasum(const int N, const double *X, const int incX);
-// int cblas_idamax(const int N, const double *X, const int incX);
-//
 // matrix //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// --- OpenBLAS --------------------------------------------------------------------------------------------------------
 //
 // From: /usr/include/x86_64-linux-gnu/cblas.h
 //
@@ -131,6 +144,8 @@ double c_dlange(int32_t norm_code, const int32_t *m, const int32_t *n,
 //                  OPENBLAS_CONST enum CBLAS_TRANSPOSE Trans, OPENBLAS_CONST blasint N, OPENBLAS_CONST blasint K,
 //                  OPENBLAS_CONST double alpha, OPENBLAS_CONST void *A, OPENBLAS_CONST blasint lda,
 //                  OPENBLAS_CONST double beta, void *C, OPENBLAS_CONST blasint ldc);
+//
+// --- Intel MKL -------------------------------------------------------------------------------------------------------
 //
 // From: /opt/intel/oneapi/mkl/latest/include/mkl_cblas.h
 //
@@ -167,32 +182,9 @@ double c_dlange(int32_t norm_code, const int32_t *m, const int32_t *n,
 //                  const double alpha, const void *A, const MKL_INT lda,
 //                  const double beta, void *C, const MKL_INT ldc) NOTHROW;
 //
-// By making the SUBSTITUTIONS in both cblas.h and mkl_cblas.h, we arrive at the following common C-interface:
-//
-// void cblas_dgemm(const CBLAS_LAYOUT Layout, const CBLAS_TRANSPOSE TransA,
-//                  const CBLAS_TRANSPOSE TransB, const int M, const int N,
-//                  const int K, const double alpha, const double *A,
-//                  const int lda, const double *B, const int ldb,
-//                  const double beta, double *C, const int ldc);
-// void cblas_zgemm(const CBLAS_LAYOUT Layout, const CBLAS_TRANSPOSE TransA,
-//                  const CBLAS_TRANSPOSE TransB, const int M, const int N,
-//                  const int K, const void *alpha, const void *A,
-//                  const int lda, const void *B, const int ldb,
-//                  const void *beta, void *C, const int ldc);
-// void cblas_dsyrk(const CBLAS_LAYOUT Layout, const CBLAS_UPLO Uplo,
-//                  const CBLAS_TRANSPOSE Trans, const int N, const int K,
-//                  const double alpha, const double *A, const int lda,
-//                  const double beta, double *C, const int ldc);
-// void cblas_zsyrk(const CBLAS_LAYOUT Layout, const CBLAS_UPLO Uplo,
-//                  const CBLAS_TRANSPOSE Trans, const int N, const int K,
-//                  const void *alpha, const void *A, const int lda,
-//                  const void *beta, void *C, const int ldc);
-// void cblas_zherk(const CBLAS_LAYOUT Layout, const CBLAS_UPLO Uplo,
-//                  const CBLAS_TRANSPOSE Trans, const int N, const int K,
-//                  const double alpha, const void *A, const int lda,
-//                  const double beta, void *C, const int ldc);
-//
 // matrix-vector ///////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// --- OpenBLAS --------------------------------------------------------------------------------------------------------
 //
 // From: /usr/include/x86_64-linux-gnu/cblas.h
 //
@@ -202,6 +194,8 @@ double c_dlange(int32_t norm_code, const int32_t *m, const int32_t *n,
 //                  OPENBLAS_CONST double  *x, OPENBLAS_CONST blasint incx,  OPENBLAS_CONST double beta,
 //                  double  *y, OPENBLAS_CONST blasint incy);
 //
+// --- Intel MKL -------------------------------------------------------------------------------------------------------
+//
 // From: /opt/intel/oneapi/mkl/latest/include/mkl_cblas.h
 //
 // void cblas_dgemv(const CBLAS_LAYOUT Layout,
@@ -210,23 +204,23 @@ double c_dlange(int32_t norm_code, const int32_t *m, const int32_t *n,
 //                  const double *X, const MKL_INT incX, const double beta,
 //                  double *Y, const MKL_INT incY) NOTHROW;
 //
-// By making the SUBSTITUTIONS in both cblas.h and mkl_cblas.h, we arrive at the following common C-interface:
-//
-// void cblas_dgemv(const CBLAS_Layout Layout,
-//                  const CBLAS_TRANSPOSE TransA, const int m, const int n,
-//                  const double alpha, const double *A, const int lda,
-//                  const double *X, const int incx, const double beta,
-//                  double *y, const int incy);
-//
 // LAPACK //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
+// --- OpenBLAS --------------------------------------------------------------------------------------------------------
+//
 // From: /usr/include/lapack.h
+//
+// NOTE: The functions with char arguments will have to be wrapped and called with the LAPACK_ prefix.
 //
 // void LAPACK_dgesv(lapack_int const* n, lapack_int const* nrhs, double* A,
 //                   lapack_int const* lda, lapack_int* ipiv, double* B, lapack_int const* ldb,
 //                   lapack_int* info );
-// double LAPACK_dlange_base(char const *norm, lapack_int const *m, lapack_int const *n,
+// double LAPACK_dlange(char const *norm, lapack_int const *m, lapack_int const *n,
 //                           double const *A, lapack_int const *lda, double *work);
+// double LAPACK_zlange(char const *norm, lapack_int const *m, lapack_int const *n,
+//                           lapack_complex_double const *A, lapack_int const *lda, double *work);
+//
+// --- Intel MKL -------------------------------------------------------------------------------------------------------
 //
 // From: /opt/intel/oneapi/mkl/latest/include/mkl_lapack.h
 // (note the trailing underscore!)
@@ -236,4 +230,6 @@ double c_dlange(int32_t norm_code, const int32_t *m, const int32_t *n,
 //             MKL_INT* info ) NOTHROW;
 // double dlange_( const char* norm, const MKL_INT* m, const MKL_INT* n,
 //                 const double* a, const MKL_INT* lda, double* work ) NOTHROW;
+// double zlange_( const char* norm, const MKL_INT* m, const MKL_INT* n,
+//                 const MKL_Complex16* a, const MKL_INT* lda, double* work ) NOTHROW;
 //

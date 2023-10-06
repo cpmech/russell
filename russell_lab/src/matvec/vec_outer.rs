@@ -1,7 +1,21 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-use crate::StrError;
-use russell_openblas::{dger, to_i32};
+use crate::{to_i32, StrError, CBLAS_COL_MAJOR};
+
+extern "C" {
+    fn cblas_dger(
+        layout: i32,
+        m: i32,
+        n: i32,
+        alpha: f64,
+        x: *const f64,
+        incx: i32,
+        y: *const f64,
+        incy: i32,
+        a: *mut f64,
+        lda: i32,
+    );
+}
 
 /// Performs the outer (tensor) product between two vectors resulting in a matrix
 ///
@@ -42,7 +56,22 @@ pub fn vec_outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) -> Result<(
     }
     let m_i32: i32 = to_i32(m);
     let n_i32: i32 = to_i32(n);
-    dger(m_i32, n_i32, alpha, u.as_data(), 1, v.as_data(), 1, a.as_mut_data());
+    let lda = m_i32;
+    a.fill(0.0);
+    unsafe {
+        cblas_dger(
+            CBLAS_COL_MAJOR,
+            m_i32,
+            n_i32,
+            alpha,
+            u.as_data().as_ptr(),
+            1,
+            v.as_data().as_ptr(),
+            1,
+            a.as_mut_data().as_mut_ptr(),
+            lda,
+        )
+    }
     Ok(())
 }
 
@@ -99,6 +128,10 @@ mod tests {
             [3.0, 3.0, -6.0],
             [4.0, 4.0, -8.0],
         ];
+        mat_approx_eq(&a, correct, 1e-15);
+
+        // call it again to make sure that fill(0.0) has been called
+        vec_outer(&mut a, 1.0, &u, &v).unwrap();
         mat_approx_eq(&a, correct, 1e-15);
     }
 }

@@ -193,6 +193,9 @@ double c_zlange(int32_t norm_code, const int32_t *m, const int32_t *n,
 //                  OPENBLAS_CONST double alpha, OPENBLAS_CONST double  *a, OPENBLAS_CONST blasint lda,
 //                  OPENBLAS_CONST double  *x, OPENBLAS_CONST blasint incx,  OPENBLAS_CONST double beta,
 //                  double  *y, OPENBLAS_CONST blasint incy);
+// void cblas_dger (OPENBLAS_CONST enum CBLAS_ORDER order, OPENBLAS_CONST blasint M, OPENBLAS_CONST blasint N,
+//                  OPENBLAS_CONST double  alpha, OPENBLAS_CONST double *X, OPENBLAS_CONST blasint incX,
+//                  OPENBLAS_CONST double *Y, OPENBLAS_CONST blasint incY, double *A, OPENBLAS_CONST blasint lda);
 //
 // --- Intel MKL -------------------------------------------------------------------------------------------------------
 //
@@ -203,6 +206,9 @@ double c_zlange(int32_t norm_code, const int32_t *m, const int32_t *n,
 //                  const double alpha, const double *A, const MKL_INT lda,
 //                  const double *X, const MKL_INT incX, const double beta,
 //                  double *Y, const MKL_INT incY) NOTHROW;
+// void cblas_dger(const CBLAS_LAYOUT Layout, const MKL_INT M, const MKL_INT N,
+//                 const double alpha, const double *X, const MKL_INT incX,
+//                 const double *Y, const MKL_INT incY, double *A, const MKL_INT lda) NOTHROW;
 //
 // LAPACK //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //

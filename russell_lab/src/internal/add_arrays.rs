@@ -133,8 +133,7 @@ pub fn add_arrays_complex(
             cblas_zaxpy(n_i32, &alpha, u.as_ptr(), 1, w.as_mut_ptr(), 1);
         }
     } else {
-        if n == 0 {
-        } else if n == 1 {
+        if n == 1 {
             w[0] = alpha * u[0] + beta * v[0];
         } else if n == 2 {
             w[0] = alpha * u[0] + beta * v[0];
@@ -192,4 +191,109 @@ pub fn add_arrays_complex(
         }
     }
     Ok(())
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::{add_arrays, add_arrays_complex};
+    use crate::internal::MAX_DIM_FOR_NATIVE_BLAS;
+    use num_complex::Complex64;
+    use russell_chk::{complex_vec_approx_eq, vec_approx_eq};
+
+    const NOISE: f64 = 1234.567;
+    const NOISE_COMPLEX: Complex64 = Complex64::new(1234.567, 3456.789);
+
+    #[test]
+    fn add_arrays_works() {
+        for size in 0..MAX_DIM_FOR_NATIVE_BLAS {
+            let mut u = vec![0.0; size];
+            let mut v = vec![0.0; size];
+            let mut w = vec![NOISE; size];
+            let mut correct = vec![0.0; size];
+            for i in 0..size {
+                u[i] = i as f64;
+                v[i] = i as f64;
+                correct[i] = i as f64;
+            }
+            add_arrays(&mut w, 0.5, &u, 0.5, &v).unwrap();
+            vec_approx_eq(&w, &correct, 1e-15);
+        }
+
+        // more tests
+        #[rustfmt::skip]
+        let u = [
+            1.0, 2.0,
+            1.0, 2.0, 3.0, 4.0,
+            1.0, 2.0, 3.0, 4.0,
+            1.0, 2.0, 3.0, 4.0,
+            1.0, 2.0, 3.0, 4.0,
+        ];
+        #[rustfmt::skip]
+        let v = [
+            0.5, 1.0,
+            0.5, 1.0, 1.5, 2.0,
+            0.5, 1.0, 1.5, 2.0,
+            0.5, 1.0, 1.5, 2.0,
+            0.5, 1.0, 1.5, 2.0,
+        ];
+        let mut w = vec![NOISE; u.len()];
+        add_arrays(&mut w, 1.0, &u, -4.0, &v).unwrap();
+        #[rustfmt::skip]
+        let correct = &[
+            -1.0, -2.0,
+            -1.0, -2.0, -3.0, -4.0,
+            -1.0, -2.0, -3.0, -4.0,
+            -1.0, -2.0, -3.0, -4.0,
+            -1.0, -2.0, -3.0, -4.0,
+        ];
+        vec_approx_eq(&w, correct, 1e-15);
+    }
+
+    #[test]
+    fn add_arrays_complex_works() {
+        for size in 0..MAX_DIM_FOR_NATIVE_BLAS {
+            let mut u = vec![Complex64::new(0.0, 0.0); size];
+            let mut v = vec![Complex64::new(0.0, 0.0); size];
+            let mut w = vec![NOISE_COMPLEX; size];
+            let mut correct = vec![Complex64::new(0.0, 0.0); size];
+            for i in 0..size {
+                u[i] = Complex64::new(i as f64, i as f64);
+                v[i] = Complex64::new(i as f64, i as f64);
+                correct[i] = Complex64::new(i as f64, i as f64);
+            }
+            add_arrays_complex(&mut w, Complex64::new(0.5, 0.0), &u, Complex64::new(0.5, 0.0), &v).unwrap();
+            complex_vec_approx_eq(&w, &correct, 1e-15);
+        }
+
+        // more tests
+        #[rustfmt::skip]
+        let u = [
+            Complex64::new(1.0,1.0), Complex64::new(2.0,2.0),
+            Complex64::new(1.0,1.0), Complex64::new(2.0,2.0), Complex64::new(3.0,3.0), Complex64::new(4.0,4.0),
+            Complex64::new(1.0,1.0), Complex64::new(2.0,2.0), Complex64::new(3.0,3.0), Complex64::new(4.0,4.0),
+            Complex64::new(1.0,1.0), Complex64::new(2.0,2.0), Complex64::new(3.0,3.0), Complex64::new(4.0,4.0),
+            Complex64::new(1.0,1.0), Complex64::new(2.0,2.0), Complex64::new(3.0,3.0), Complex64::new(4.0,4.0),
+        ];
+        #[rustfmt::skip]
+        let v = [
+            Complex64::new(0.5,0.5), Complex64::new(1.0,1.0),
+            Complex64::new(0.5,0.5), Complex64::new(1.0,1.0), Complex64::new(1.5,1.5), Complex64::new(2.0,2.0),
+            Complex64::new(0.5,0.5), Complex64::new(1.0,1.0), Complex64::new(1.5,1.5), Complex64::new(2.0,2.0),
+            Complex64::new(0.5,0.5), Complex64::new(1.0,1.0), Complex64::new(1.5,1.5), Complex64::new(2.0,2.0),
+            Complex64::new(0.5,0.5), Complex64::new(1.0,1.0), Complex64::new(1.5,1.5), Complex64::new(2.0,2.0),
+        ];
+        let mut w = vec![NOISE_COMPLEX; u.len()];
+        add_arrays_complex(&mut w, Complex64::new(1.0, 0.0), &u, Complex64::new(-4.0, 0.0), &v).unwrap();
+        #[rustfmt::skip]
+        let correct = &[
+            Complex64::new(-1.0,-1.0), Complex64::new(-2.0,-2.0),
+            Complex64::new(-1.0,-1.0), Complex64::new(-2.0,-2.0), Complex64::new(-3.0,-3.0), Complex64::new(-4.0,-4.0),
+            Complex64::new(-1.0,-1.0), Complex64::new(-2.0,-2.0), Complex64::new(-3.0,-3.0), Complex64::new(-4.0,-4.0),
+            Complex64::new(-1.0,-1.0), Complex64::new(-2.0,-2.0), Complex64::new(-3.0,-3.0), Complex64::new(-4.0,-4.0),
+            Complex64::new(-1.0,-1.0), Complex64::new(-2.0,-2.0), Complex64::new(-3.0,-3.0), Complex64::new(-4.0,-4.0),
+        ];
+        complex_vec_approx_eq(&w, correct, 1e-15);
+    }
 }

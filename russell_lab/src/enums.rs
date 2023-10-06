@@ -1,4 +1,7 @@
+use super::{NORM_EUC, NORM_FRO, NORM_INF, NORM_MAX, NORM_ONE};
+
 /// Options to compute vector and matrix norms
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Norm {
     /// Specifies the Euclidean-norm
     ///
@@ -11,7 +14,7 @@ pub enum Norm {
     /// ```text
     /// ‖u‖_2 = sqrt(Σ_i |uᵢ|⋅|uᵢ|)
     /// ```
-    Euc,
+    Euc = NORM_EUC,
 
     /// Specifies the Frobenius-norm (2-norm)
     ///
@@ -24,7 +27,7 @@ pub enum Norm {
     /// **vector**
     ///
     /// Will compute the same as [Norm::Euc]
-    Fro,
+    Fro = NORM_FRO,
 
     /// Specifies the Inf-norm
     ///
@@ -37,7 +40,7 @@ pub enum Norm {
     /// **vector**
     ///
     /// Will compute that same as [Norm::Max]
-    Inf,
+    Inf = NORM_INF,
 
     /// Specifies the Max-norm
     ///
@@ -52,7 +55,7 @@ pub enum Norm {
     /// ```text
     /// ‖u‖_max = max_i ( |uᵢ| ) == ‖u‖_∞
     /// ```
-    Max,
+    Max = NORM_MAX,
 
     /// Specifies the 1-norm
     ///
@@ -67,5 +70,22 @@ pub enum Norm {
     /// ```text
     /// ‖u‖_1 := sum_i |uᵢ|
     /// ```
-    One,
+    One = NORM_ONE,
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::Norm;
+
+    #[test]
+    fn clone_copy_and_debug_work() {
+        let norm = Norm::Inf;
+        let copy = norm;
+        let clone = norm.clone();
+        assert_eq!(format!("{:?}", norm), "Inf");
+        assert_eq!(copy, Norm::Inf);
+        assert_eq!(clone, Norm::Inf);
+    }
 }

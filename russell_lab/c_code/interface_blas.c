@@ -7,6 +7,8 @@
 #include "cblas.h"
 #endif
 
+#include "constants.h"
+
 int32_t c_using_intel_mkl() {
 #ifdef USE_INTEL_MKL
     return 1;
@@ -29,6 +31,19 @@ int32_t c_get_num_threads() {
 #else
     return openblas_get_num_threads();
 #endif
+}
+
+double c_dlange(int32_t norm_code, const int32_t *m, const int32_t *n,
+                const double *a, const int32_t *lda, double *work) {
+    if (norm_code == NORM_EUC || norm_code == NORM_FRO) {
+        return dlange_("F", m, n, a, lda, work);
+    } else if (norm_code == NORM_INF) {
+        return dlange_("I", m, n, a, lda, work);
+    } else if (norm_code == NORM_MAX) {
+        return dlange_("M", m, n, a, lda, work);
+    } else {
+        return dlange_("O", m, n, a, lda, work); // norm_code == NORM_ONE
+    }
 }
 
 // Here, we assume that (SUBSTITUTIONS):
@@ -210,6 +225,8 @@ int32_t c_get_num_threads() {
 // void LAPACK_dgesv(lapack_int const* n, lapack_int const* nrhs, double* A,
 //                   lapack_int const* lda, lapack_int* ipiv, double* B, lapack_int const* ldb,
 //                   lapack_int* info );
+// double LAPACK_dlange_base(char const *norm, lapack_int const *m, lapack_int const *n,
+//                           double const *A, lapack_int const *lda, double *work);
 //
 // From: /opt/intel/oneapi/mkl/latest/include/mkl_lapack.h
 // (note the trailing underscore!)
@@ -217,4 +234,6 @@ int32_t c_get_num_threads() {
 // void dgesv_( const MKL_INT* n, const MKL_INT* nrhs, double* a,
 //             const MKL_INT* lda, MKL_INT* ipiv, double* b, const MKL_INT* ldb,
 //             MKL_INT* info ) NOTHROW;
+// double dlange_( const char* norm, const MKL_INT* m, const MKL_INT* n,
+//                 const double* a, const MKL_INT* lda, double* work ) NOTHROW;
 //

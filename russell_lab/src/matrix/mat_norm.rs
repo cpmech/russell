@@ -1,8 +1,23 @@
 use super::Matrix;
-use crate::Norm;
-use russell_openblas::{dlange, to_i32};
+use crate::{to_i32, Norm};
+
+extern "C" {
+    fn c_dlange(norm_code: i32, m: *const i32, n: *const i32, a: *const f64, lda: *const i32, work: *mut f64) -> f64;
+}
 
 /// Computes the matrix norm
+///
+/// Computes one of:
+///
+/// ```text
+/// ‖a‖_1 = max_j ( Σ_i |aij| )
+///
+/// ‖a‖_∞ = max_i ( Σ_j |aij| )
+///
+/// ‖a‖_F = sqrt(Σ_i Σ_j |aij|²) == ‖a‖_2
+///
+/// ‖a‖_max = max_ij ( |aij| )
+/// ```
 ///
 /// # Example
 ///
@@ -26,14 +41,12 @@ pub fn mat_norm(a: &Matrix, kind: Norm) -> f64 {
     if m == 0 || n == 0 {
         return 0.0;
     }
-    let norm = match kind {
-        Norm::Euc | Norm::Fro => b'F',
-        Norm::Inf => b'I',
-        Norm::Max => b'M',
-        Norm::One => b'1',
-    };
-    let (m_i32, n_i32) = (to_i32(m), to_i32(n));
-    dlange(norm, m_i32, n_i32, &a.as_data())
+    let m_i32 = to_i32(m);
+    let n_i32 = to_i32(n);
+    let lda = m_i32;
+    let mut work = if kind == Norm::Inf { vec![0.0; m] } else { Vec::new() };
+    let norm_code = kind as i32;
+    unsafe { c_dlange(norm_code, &m_i32, &n_i32, a.as_data().as_ptr(), &lda, work.as_mut_ptr()) }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -2,39 +2,78 @@
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
-This repository is a "rust laboratory" for vectors and matrices.
+This repository implements several functions to perform linear algebra computations--it is a **mat**rix-vector **lab**oratory 😉. We implement some functions in native Rust code as much as possible but also wrap the best tools available, such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
 
-Documentation:
+The main structures are `NumVector` and `NumMatrix`, which are generic Vector and Matrix structures. The Matrix data is stored as **column-major** (see Appendix A). The `Vector` and `Matrix` are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.
 
-- [API reference (docs.rs)](https://docs.rs/russell_lab)
+The linear algebra functions currently handle only `(f64, i32)` pairs, i.e., accessing the `(double, int)` C functions. We also consider `(Complex64, i32)` pairs.
 
-## Installation
+There are many functions for linear algebra, such as (for Real and Complex types):
 
-### Dependencies: Debian/Ubuntu Linux
+* Vector addition, copy, inner and outer products, and norms
+* Matrix addition, multiplication, copy, singular-value decomposition, eigenvalues, pseudo-inverse, inverse, and norms
+* Matrix-vector multiplication
+* Solution of dense linear systems with symmetric or non-symmetric coefficient matrices
+* Reading writing files, `linspace`, grid generators, linear fitting, and more
 
-Install some libraries:
+See the documentation for further information:
+
+- [russell_lab documentation](https://docs.rs/russell_lab) - Contains the API reference and examples
+
+## Installation on Debian/Ubuntu/Linux
+
+`russell_lab` depends on an efficient BLAS library such as OpenBLAS or the Intel MKL. Thus, we have two options:
+
+1. Install LAPACK and OpenBLAS (default)
+2. **(XOR)** Install Intel MKL, which includes LAPACK
+
+### 1. Installation with OpenBLAS
+
+Run:
 
 ```bash
-sudo apt-get install \
-    liblapacke-dev \
-    libopenblas-dev
+sudo apt-get install liblapacke-dev libopenblas-dev
 ```
 
-### Dependencies: macOS
+### 2. Installation with Intel MKL
 
-In macOS, you may use [Homebrew](https://brew.sh/) to install the dependencies:
+Run:
 
 ```bash
-brew install openblas lapack
+bash ./zscripts/install-intel-mkl-linux.bash
 ```
 
-**Note** In macOS, we have to set the `LIBRARY_PATH` all the time.
+Next, we must define the following environment variable:
 
 ```bash
-export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/openblas/lib:$(brew --prefix)/opt/lapack/lib
+export RUSSELL_LAB_USE_INTEL_MKL=1
 ```
 
-### Cargo.toml
+## Installation on macOS
+
+At this time, only OpenBLAS has been tested on macOS.
+
+First, install [Homebrew](https://brew.sh/). Then, run:
+
+```bash
+brew install lapack openblas
+```
+
+Next, we must set the `LIBRARY_PATH`:
+
+```bash
+export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/lapack/lib:$(brew --prefix)/opt/openblas/lib
+```
+
+## Number of threads
+
+By default, OpenBLAS and intel MKL may use all available threads, including "hyper-threads." If desirable, you may set the allowed number of threads with the following environment variable:
+
+```bash
+export OPENBLAS_NUM_THREADS=1
+``` 
+
+## Cargo.toml
 
 [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab)
 
@@ -43,20 +82,6 @@ export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/openblas/lib:$(brew --pre
 ```toml
 [dependencies]
 russell_lab = "*"
-```
-
-### Number of threads
-
-By default OpenBLAS will use all available threads, including Hyper-Threads that make the performance worse. Thus, it is best to set the following environment variable:
-
-```bash
-export OPENBLAS_NUM_THREADS=<real-core-count>
-```
-
-Furthermore, if working on a multi-threaded application, it is recommended to set:
-
-```bash
-export OPENBLAS_NUM_THREADS=1
 ```
 
 ## Examples
@@ -165,3 +190,22 @@ fn main() -> Result<(), StrError> {
     Ok(())
 }
 ```
+
+## Appendix A - Column Major
+
+Only the COL-MAJOR representation is considered here.
+
+```text
+    ┌     ┐  row_major = {0, 3,
+    │ 0 3 │               1, 4,
+A = │ 1 4 │               2, 5};
+    │ 2 5 │
+    └     ┘  col_major = {0, 1, 2,
+    (m × n)               3, 4, 5}
+
+Aᵢⱼ = col_major[i + j·m] = row_major[i·n + j]
+        ↑
+COL-MAJOR IS ADOPTED HERE
+```
+
+The main reason to use the **col-major** representation is to make the code work better with BLAS/LAPACK written in Fortran. Although those libraries have functions to handle row-major data, they usually add an overhead due to temporary memory allocation and copies, including transposing matrices. Moreover, the row-major versions of some BLAS/LAPACK libraries produce incorrect results (notably the DSYEV).

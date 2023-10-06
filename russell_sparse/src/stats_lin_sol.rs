@@ -1,6 +1,5 @@
 use super::{StatsLinSolMUMPS, VerifyLinSys};
-use russell_lab::format_nanoseconds;
-use russell_openblas::get_num_threads;
+use russell_lab::{format_nanoseconds, get_num_threads};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::path::Path;
@@ -36,7 +35,7 @@ pub struct StatsLinSolRequests {
 pub struct StatsLinSolOutput {
     pub effective_ordering: String,
     pub effective_scaling: String,
-    pub openmp_num_threads: i32,
+    pub openmp_num_threads: usize,
     pub umfpack_strategy: String,
     pub umfpack_rcond_estimate: f64, // reciprocal condition number estimate
 }

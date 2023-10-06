@@ -1,7 +1,5 @@
 use super::Vector;
-use crate::constants;
-use crate::StrError;
-use russell_openblas::{add_vectors_native, add_vectors_oblas};
+use crate::{add_arrays, StrError};
 
 /// Performs the addition of two vectors
 ///
@@ -30,19 +28,7 @@ use russell_openblas::{add_vectors_native, add_vectors_oblas};
 /// }
 /// ```
 pub fn vec_add(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector) -> Result<(), StrError> {
-    let n = w.dim();
-    if u.dim() != n || v.dim() != n {
-        return Err("vectors are incompatible");
-    }
-    if n == 0 {
-        return Ok(());
-    }
-    if n > constants::NATIVE_VERSUS_OPENBLAS_BOUNDARY {
-        add_vectors_oblas(w.as_mut_data(), alpha, u.as_data(), beta, v.as_data());
-    } else {
-        add_vectors_native(w.as_mut_data(), alpha, u.as_data(), beta, v.as_data());
-    }
-    Ok(())
+    add_arrays(w.as_mut_data(), alpha, u.as_data(), beta, v.as_data())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -50,7 +36,7 @@ pub fn vec_add(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector) ->
 #[cfg(test)]
 mod tests {
     use super::{vec_add, Vector};
-    use crate::constants;
+    use crate::MAX_DIM_FOR_NATIVE_BLAS;
     use russell_chk::vec_approx_eq;
 
     #[test]
@@ -60,8 +46,8 @@ mod tests {
         let v_2 = Vector::new(2);
         let v_3 = Vector::new(3);
         let mut w_2 = Vector::new(2);
-        assert_eq!(vec_add(&mut w_2, 1.0, &u_3, 1.0, &v_2), Err("vectors are incompatible"));
-        assert_eq!(vec_add(&mut w_2, 1.0, &u_2, 1.0, &v_3), Err("vectors are incompatible"));
+        assert_eq!(vec_add(&mut w_2, 1.0, &u_3, 1.0, &v_2), Err("arrays are incompatible"));
+        assert_eq!(vec_add(&mut w_2, 1.0, &u_2, 1.0, &v_3), Err("arrays are incompatible"));
     }
 
     #[test]
@@ -99,7 +85,7 @@ mod tests {
     #[test]
     fn vec_add_sizes_works() {
         const NOISE: f64 = 1234.567;
-        for size in 0..(constants::NATIVE_VERSUS_OPENBLAS_BOUNDARY + 3) {
+        for size in 0..(MAX_DIM_FOR_NATIVE_BLAS + 3) {
             let mut u = Vector::new(size);
             let mut v = Vector::new(size);
             let mut w = Vector::from(&vec![NOISE; u.dim()]);

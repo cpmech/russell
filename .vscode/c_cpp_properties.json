@@ -11,7 +11,8 @@
         "/usr/local/include/umfpack",
       ],
       "defines": [
-        "WITH_INTEL_DSS"
+        "WITH_INTEL_DSS",
+        "USE_INTEL_MKL"
       ],
       "compilerPath": "/usr/bin/gcc",
       "cStandard": "c17",

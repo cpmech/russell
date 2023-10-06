@@ -1,6 +1,9 @@
 use super::Matrix;
-use crate::StrError;
-use russell_openblas::{daxpy, to_i32};
+use crate::{to_i32, StrError};
+
+extern "C" {
+    fn cblas_daxpy(n: i32, alpha: f64, x: *const f64, incx: i32, y: *mut f64, incy: i32);
+}
 
 /// Updates matrix based on another matrix
 ///
@@ -36,8 +39,10 @@ pub fn mat_update(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), StrError
     if a.nrow() != m || a.ncol() != n {
         return Err("matrices are incompatible");
     }
-    let mn_i32: i32 = to_i32(m * n);
-    daxpy(mn_i32, alpha, a.as_data(), 1, b.as_mut_data(), 1);
+    let mn_i32 = to_i32(m * n);
+    unsafe {
+        cblas_daxpy(mn_i32, alpha, a.as_data().as_ptr(), 1, b.as_mut_data().as_mut_ptr(), 1);
+    }
     Ok(())
 }
 

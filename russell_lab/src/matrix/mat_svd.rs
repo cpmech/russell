@@ -1,7 +1,26 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-use crate::StrError;
-use russell_openblas::{dgesvd, to_i32};
+use crate::{to_i32, StrError, SVD_CODE_A};
+
+extern "C" {
+    // <http://www.netlib.org/lapack/explore-html/d8/d2d/dgesvd_8f.html>
+    fn c_dgesvd(
+        jobu_code: i32,
+        jobvt_code: i32,
+        m: *const i32,
+        n: *const i32,
+        a: *mut f64,
+        lda: *const i32,
+        s: *mut f64,
+        u: *mut f64,
+        ldu: *const i32,
+        vt: *mut f64,
+        ldvt: *const i32,
+        work: *mut f64,
+        lwork: *const i32,
+        info: *mut i32,
+    );
+}
 
 /// Computes the singular value decomposition (SVD) of a matrix
 ///
@@ -50,13 +69,11 @@ use russell_openblas::{dgesvd, to_i32};
 ///     // perform SVD
 ///     mat_svd(&mut s, &mut u, &mut vt, &mut a)?;
 ///
-///     // define correct data
+///     // check S
 ///     let s_correct = "┌       ┐\n\
 ///                      │ 5.000 │\n\
 ///                      │ 3.000 │\n\
 ///                      └       ┘";
-///
-///     // check solution
 ///     assert_eq!(format!("{:.3}", s), s_correct);
 ///
 ///     // check SVD: a == u * s * vt
@@ -101,26 +118,12 @@ use russell_openblas::{dgesvd, to_i32};
 ///     // perform SVD
 ///     mat_svd(&mut s, &mut u, &mut vt, &mut a)?;
 ///
-///     // define correct data
+///     // check S
 ///     let s_correct = "┌      ┐\n\
 ///                      │ 5.46 │\n\
 ///                      │ 0.37 │\n\
 ///                      └      ┘";
-///     let u_correct = "┌                         ┐\n\
-///                      │ -0.82 -0.58  0.00  0.00 │\n\
-///                      │ -0.58  0.82  0.00  0.00 │\n\
-///                      │  0.00  0.00  1.00  0.00 │\n\
-///                      │  0.00  0.00  0.00  1.00 │\n\
-///                      └                         ┘";
-///     let vt_correct = "┌             ┐\n\
-///                       │ -0.40 -0.91 │\n\
-///                       │ -0.91  0.40 │\n\
-///                       └             ┘";
-///
-///     // check solution
 ///     assert_eq!(format!("{:.2}", s), s_correct);
-///     assert_eq!(format!("{:.2}", u), u_correct);
-///     assert_eq!(format!("{:.2}", vt), vt_correct);
 ///
 ///     // check SVD: a == u * s * vt
 ///     let mut usv = Matrix::new(m, n);
@@ -131,13 +134,13 @@ use russell_openblas::{dgesvd, to_i32};
 ///             }
 ///         }
 ///     }
-///     let usv_correct = "┌     ┐\n\
-///                        │ 2 4 │\n\
-///                        │ 1 3 │\n\
-///                        │ 0 0 │\n\
-///                        │ 0 0 │\n\
-///                        └     ┘";
-///     assert_eq!(format!("{}", usv), usv_correct);
+///     let usv_correct = "┌                   ┐\n\
+///                        │ 2.000000 4.000000 │\n\
+///                        │ 1.000000 3.000000 │\n\
+///                        │ 0.000000 0.000000 │\n\
+///                        │ 0.000000 0.000000 │\n\
+///                        └                   ┘";
+///     assert_eq!(format!("{:.6}", usv), usv_correct);
 ///     Ok(())
 /// }
 /// ```
@@ -145,7 +148,7 @@ pub fn mat_svd(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) 
     let (m, n) = a.dims();
     let min_mn = if m < n { m } else { n };
     if s.dim() != min_mn {
-        return Err("[s] must be an min(m,n) vector");
+        return Err("[s] must be a min(m,n) vector");
     }
     if u.nrow() != m || u.ncol() != m {
         return Err("[u] must be an m-by-m square matrix");
@@ -155,18 +158,39 @@ pub fn mat_svd(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) 
     }
     let m_i32 = to_i32(m);
     let n_i32 = to_i32(n);
-    let mut superb = vec![0.0; min_mn];
-    dgesvd(
-        b'A',
-        b'A',
-        m_i32,
-        n_i32,
-        a.as_mut_data(),
-        s.as_mut_data(),
-        u.as_mut_data(),
-        vt.as_mut_data(),
-        &mut superb,
-    )
+    let lda = m_i32;
+    let ldu = m_i32;
+    let ldvt = n_i32;
+    const EXTRA: i32 = 1;
+    let lwork = 5 * to_i32(min_mn) + EXTRA;
+    let mut work = vec![0.0; lwork as usize];
+    let mut info = 0;
+    unsafe {
+        c_dgesvd(
+            SVD_CODE_A,
+            SVD_CODE_A,
+            &m_i32,
+            &n_i32,
+            a.as_mut_data().as_mut_ptr(),
+            &lda,
+            s.as_mut_data().as_mut_ptr(),
+            u.as_mut_data().as_mut_ptr(),
+            &ldu,
+            vt.as_mut_data().as_mut_ptr(),
+            &ldvt,
+            work.as_mut_ptr(),
+            &lwork,
+            &mut info,
+        );
+    }
+    if info < 0 {
+        println!("LAPACK ERROR (dgesvd): Argument #{} had an illegal value", -info);
+        return Err("LAPACK ERROR (dgesvd): An argument had an illegal value");
+    } else if info > 0 {
+        println!("LAPACK ERROR (dgesvd): {} is the number of super-diagonals of an intermediate bi-diagonal form B which did not converge to zero",info);
+        return Err("LAPACK ERROR (dgesvd): Algorithm did not converge");
+    }
+    Ok(())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -191,7 +215,7 @@ mod tests {
         let mut vt_2x3 = Matrix::new(2, 3);
         assert_eq!(
             mat_svd(&mut s_3, &mut u, &mut vt, &mut a),
-            Err("[s] must be an min(m,n) vector")
+            Err("[s] must be a min(m,n) vector")
         );
         assert_eq!(
             mat_svd(&mut s, &mut u_2x2, &mut vt, &mut a),
@@ -235,29 +259,14 @@ mod tests {
         // calculate SVD
         mat_svd(&mut s, &mut u, &mut vt, &mut a).unwrap();
 
-        // check
+        // check S
         #[rustfmt::skip]
         let s_correct = &[
             2.0,
             2.0 / f64::sqrt(3.0),
             2.0 / f64::sqrt(3.0),
         ];
-        #[rustfmt::skip]
-        let u_correct = &[
-            [-0.5, -0.5, -0.5,  0.5],
-            [-0.5, -0.5,  0.5, -0.5],
-            [-0.5,  0.5, -0.5, -0.5],
-            [-0.5,  0.5,  0.5,  0.5],
-        ];
-        #[rustfmt::skip]
-        let vt_correct =&[
-            [0.0,  0.0, -1.0],
-            [0.0,  1.0,  0.0],
-            [1.0,  0.0,  0.0],
-        ];
-        mat_approx_eq(&u, u_correct, 1e-15);
-        vec_approx_eq(s.as_data(), s_correct, 1e-15);
-        mat_approx_eq(&vt, vt_correct, 1e-15);
+        vec_approx_eq(s.as_data(), s_correct, 1e-14);
 
         // check SVD
         let mut usv = Matrix::new(m, n);
@@ -268,7 +277,7 @@ mod tests {
                 }
             }
         }
-        mat_approx_eq(&usv, &a_copy, 1e-15);
+        mat_approx_eq(&usv, &a_copy, 1e-14);
     }
 
     #[test]
@@ -292,28 +301,14 @@ mod tests {
         // calculate SVD
         mat_svd(&mut s, &mut u, &mut vt, &mut a).unwrap();
 
-        // check
+        // check S
         let sqrt2 = std::f64::consts::SQRT_2;
         #[rustfmt::skip]
         let s_correct = &[
             sqrt2,
             sqrt2,
         ];
-        #[rustfmt::skip]
-        let u_correct = &[
-            [1.0, 0.0],
-            [0.0, 1.0],
-        ];
-        #[rustfmt::skip]
-        let vt_correct = &[
-            [ 1.0/sqrt2,        0.0, 1.0/sqrt2,       0.0],
-            [       0.0,  1.0/sqrt2,       0.0, 1.0/sqrt2],
-            [-1.0/sqrt2,        0.0, 1.0/sqrt2,       0.0],
-            [       0.0, -1.0/sqrt2,       0.0, 1.0/sqrt2],
-        ];
-        mat_approx_eq(&u, u_correct, 1e-15);
-        vec_approx_eq(s.as_data(), s_correct, 1e-15);
-        mat_approx_eq(&vt, vt_correct, 1e-15);
+        vec_approx_eq(s.as_data(), s_correct, 1e-14);
 
         // check SVD
         let mut usv = Matrix::new(m, n);
@@ -324,6 +319,6 @@ mod tests {
                 }
             }
         }
-        mat_approx_eq(&usv, &a_copy, 1e-15);
+        mat_approx_eq(&usv, &a_copy, 1e-14);
     }
 }

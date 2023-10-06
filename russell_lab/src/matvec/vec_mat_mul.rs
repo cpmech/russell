@@ -1,7 +1,23 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-use crate::StrError;
-use russell_openblas::{dgemv, to_i32};
+use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_TRANS};
+
+extern "C" {
+    fn cblas_dgemv(
+        layout: i32,
+        transa: i32,
+        m: i32,
+        n: i32,
+        alpha: f64,
+        a: *const f64,
+        lda: i32,
+        x: *const f64,
+        incx: i32,
+        beta: f64,
+        y: *mut f64,
+        incy: i32,
+    );
+}
 
 /// Performs the vector-matrix multiplication resulting in a vector
 ///
@@ -57,18 +73,25 @@ pub fn vec_mat_mul(v: &mut Vector, alpha: f64, u: &Vector, a: &Matrix) -> Result
     }
     let m_i32: i32 = to_i32(m);
     let n_i32: i32 = to_i32(n);
-    dgemv(
-        true,
-        m_i32,
-        n_i32,
-        alpha,
-        a.as_data(),
-        u.as_data(),
-        1,
-        0.0,
-        v.as_mut_data(),
-        1,
-    );
+    let incx = 1;
+    let incy = 1;
+    let beta = 0.0;
+    unsafe {
+        cblas_dgemv(
+            CBLAS_COL_MAJOR,
+            CBLAS_TRANS,
+            m_i32,
+            n_i32,
+            alpha,
+            a.as_data().as_ptr(),
+            m_i32,
+            u.as_data().as_ptr(),
+            incx,
+            beta,
+            v.as_mut_data().as_mut_ptr(),
+            incy,
+        );
+    }
     Ok(())
 }
 

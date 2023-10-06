@@ -1,5 +1,9 @@
 use super::Vector;
-use russell_openblas::{ddot, to_i32};
+use crate::to_i32;
+
+extern "C" {
+    fn cblas_ddot(n: i32, x: *const f64, incx: i32, y: *const f64, incy: i32) -> f64;
+}
 
 /// Performs the inner (dot) product between two vectors resulting in a scalar value
 ///
@@ -23,7 +27,7 @@ use russell_openblas::{ddot, to_i32};
 pub fn vec_inner(u: &Vector, v: &Vector) -> f64 {
     let n = if u.dim() < v.dim() { u.dim() } else { v.dim() };
     let n_i32 = to_i32(n);
-    ddot(n_i32, u.as_data(), 1, v.as_data(), 1)
+    unsafe { cblas_ddot(n_i32, u.as_data().as_ptr(), 1, v.as_data().as_ptr(), 1) }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

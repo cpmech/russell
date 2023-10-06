@@ -1,6 +1,25 @@
 use super::Matrix;
-use crate::{StrError, Vector};
-use russell_openblas::{dgeev, dgeev_data, dgeev_data_lr, to_i32};
+use crate::{dgeev_data, dgeev_data_lr, to_i32, CcBool, StrError, Vector, C_FALSE, C_TRUE};
+
+extern "C" {
+    // <http://www.netlib.org/lapack/explore-html/d9/d28/dgeev_8f.html>
+    fn c_dgeev(
+        calc_vl: CcBool,
+        calc_vr: CcBool,
+        n: *const i32,
+        a: *mut f64,
+        lda: *const i32,
+        wr: *mut f64,
+        wi: *mut f64,
+        vl: *mut f64,
+        ldvl: *const i32,
+        vr: *mut f64,
+        ldvr: *const i32,
+        work: *mut f64,
+        lwork: *const i32,
+        info: *mut i32,
+    );
+}
 
 /// Performs the eigen-decomposition of a square matrix
 ///
@@ -119,20 +138,41 @@ pub fn mat_eigen(
         return Err("matrices are incompatible");
     }
     let m_i32 = to_i32(m);
+    let lda = m_i32;
+    let ldu = 1;
+    let ldv = m_i32;
+    const EXTRA: i32 = 1;
+    let lwork = 4 * m_i32 + EXTRA;
+    let mut u = vec![0.0; ldu as usize];
     let mut v = vec![0.0; m * m];
-    let mut empty: Vec<f64> = Vec::new();
-    dgeev(
-        false,
-        true,
-        m_i32,
-        a.as_mut_data(),
-        l_real.as_mut_data(),
-        l_imag.as_mut_data(),
-        &mut empty,
-        &mut v,
-    )?;
-    dgeev_data(v_real.as_mut_data(), v_imag.as_mut_data(), l_imag.as_data(), &v)?;
-    Ok(())
+    let mut work = vec![0.0; lwork as usize];
+    let mut info = 0;
+    unsafe {
+        c_dgeev(
+            C_FALSE,
+            C_TRUE,
+            &m_i32,
+            a.as_mut_data().as_mut_ptr(),
+            &lda,
+            l_real.as_mut_data().as_mut_ptr(),
+            l_imag.as_mut_data().as_mut_ptr(),
+            u.as_mut_ptr(),
+            &ldu,
+            v.as_mut_ptr(),
+            &ldv,
+            work.as_mut_ptr(),
+            &lwork,
+            &mut info,
+        );
+    }
+    if info < 0 {
+        println!("LAPACK ERROR (dgeev): Argument #{} had an illegal value", -info);
+        return Err("LAPACK ERROR (dgeev): An argument had an illegal value");
+    } else if info > 0 {
+        println!("LAPACK ERROR (dgeev): The QR algorithm failed. Elements {}+1:N of l_real and l_imag contain eigenvalues which have converged", info-1);
+        return Err("LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed");
+    }
+    dgeev_data(v_real.as_mut_data(), v_imag.as_mut_data(), l_imag.as_data(), &v)
 }
 
 /// Performs the eigen-decomposition of a square matrix (left and right)
@@ -274,18 +314,40 @@ pub fn mat_eigen_lr(
         return Err("matrices are incompatible");
     }
     let m_i32 = to_i32(m);
+    let lda = m_i32;
+    let ldu = m_i32;
+    let ldv = m_i32;
+    const EXTRA: i32 = 1;
+    let lwork = 4 * m_i32 + EXTRA;
     let mut u = vec![0.0; m * m];
     let mut v = vec![0.0; m * m];
-    dgeev(
-        true,
-        true,
-        m_i32,
-        a.as_mut_data(),
-        l_real.as_mut_data(),
-        l_imag.as_mut_data(),
-        &mut u,
-        &mut v,
-    )?;
+    let mut work = vec![0.0; lwork as usize];
+    let mut info = 0;
+    unsafe {
+        c_dgeev(
+            C_TRUE,
+            C_TRUE,
+            &m_i32,
+            a.as_mut_data().as_mut_ptr(),
+            &lda,
+            l_real.as_mut_data().as_mut_ptr(),
+            l_imag.as_mut_data().as_mut_ptr(),
+            u.as_mut_ptr(),
+            &ldu,
+            v.as_mut_ptr(),
+            &ldv,
+            work.as_mut_ptr(),
+            &lwork,
+            &mut info,
+        );
+    }
+    if info < 0 {
+        println!("LAPACK ERROR (dgeev): Argument #{} had an illegal value", -info);
+        return Err("LAPACK ERROR (dgeev): An argument had an illegal value");
+    } else if info > 0 {
+        println!("LAPACK ERROR (dgeev): The QR algorithm failed. Elements {}+1:N of l_real and l_imag contain eigenvalues which have converged", info-1);
+        return Err("LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed");
+    }
     dgeev_data_lr(
         u_real.as_mut_data(),
         u_imag.as_mut_data(),

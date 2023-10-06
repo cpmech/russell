@@ -1,6 +1,24 @@
 use super::Matrix;
-use crate::StrError;
-use russell_openblas::{dgemm, to_i32};
+use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_NO_TRANS};
+
+extern "C" {
+    fn cblas_dgemm(
+        layout: i32,
+        transa: i32,
+        transb: i32,
+        m: i32,
+        n: i32,
+        k: i32,
+        alpha: f64,
+        a: *const f64,
+        lda: i32,
+        b: *const f64,
+        ldb: i32,
+        beta: f64,
+        c: *mut f64,
+        ldc: i32,
+    );
+}
 
 /// Performs the matrix-matrix multiplication
 ///
@@ -44,21 +62,34 @@ pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) -> Result
     if m == 0 || n == 0 {
         return Ok(());
     }
+    if k == 0 {
+        c.fill(0.0);
+        return Ok(());
+    }
     let m_i32: i32 = to_i32(m);
     let n_i32: i32 = to_i32(n);
     let k_i32: i32 = to_i32(k);
-    dgemm(
-        false,
-        false,
-        m_i32,
-        n_i32,
-        k_i32,
-        alpha,
-        a.as_data(),
-        b.as_data(),
-        0.0,
-        c.as_mut_data(),
-    );
+    let lda = m_i32;
+    let ldb = k_i32;
+    let beta = 0.0;
+    unsafe {
+        cblas_dgemm(
+            CBLAS_COL_MAJOR,
+            CBLAS_NO_TRANS,
+            CBLAS_NO_TRANS,
+            m_i32,
+            n_i32,
+            k_i32,
+            alpha,
+            a.as_data().as_ptr(),
+            lda,
+            b.as_data().as_ptr(),
+            ldb,
+            beta,
+            c.as_mut_data().as_mut_ptr(),
+            m_i32,
+        );
+    }
     Ok(())
 }
 
@@ -96,6 +127,15 @@ mod tests {
         let b = Matrix::new(0, 0);
         let mut c = Matrix::new(0, 0);
         mat_mat_mul(&mut c, 2.0, &a, &b).unwrap();
+
+        let a = Matrix::new(1, 0);
+        let b = Matrix::new(0, 1);
+        let mut c = Matrix::new(1, 1);
+        mat_mat_mul(&mut c, 2.0, &a, &b).unwrap();
+        let correct = &[
+            [0.0], //
+        ];
+        mat_approx_eq(&c, correct, 1e-15);
     }
 
     #[test]

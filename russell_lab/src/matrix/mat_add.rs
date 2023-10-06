@@ -1,7 +1,5 @@
 use super::Matrix;
-use crate::StrError;
-use crate::NATIVE_VERSUS_OPENBLAS_BOUNDARY;
-use russell_openblas::{add_vectors_native, add_vectors_oblas};
+use crate::{add_arrays, StrError};
 
 /// Performs the addition of two matrices
 ///
@@ -38,15 +36,7 @@ pub fn mat_add(c: &mut Matrix, alpha: f64, a: &Matrix, beta: f64, b: &Matrix) ->
     if a.nrow() != m || a.ncol() != n || b.nrow() != m || b.ncol() != n {
         return Err("matrices are incompatible");
     }
-    if m == 0 && n == 0 {
-        return Ok(());
-    }
-    if m * n > NATIVE_VERSUS_OPENBLAS_BOUNDARY {
-        add_vectors_oblas(c.as_mut_data(), alpha, a.as_data(), beta, b.as_data());
-    } else {
-        add_vectors_native(c.as_mut_data(), alpha, a.as_data(), beta, b.as_data());
-    }
-    Ok(())
+    add_arrays(c.as_mut_data(), alpha, a.as_data(), beta, b.as_data())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

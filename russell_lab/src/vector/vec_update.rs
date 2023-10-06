@@ -1,6 +1,9 @@
 use super::Vector;
-use crate::StrError;
-use russell_openblas::{daxpy, to_i32};
+use crate::{to_i32, StrError};
+
+extern "C" {
+    fn cblas_daxpy(n: i32, alpha: f64, x: *const f64, incx: i32, y: *mut f64, incy: i32);
+}
 
 /// Updates vector based on another vector
 ///
@@ -31,8 +34,10 @@ pub fn vec_update(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError
     if u.dim() != n {
         return Err("vectors are incompatible");
     }
-    let n_i32: i32 = to_i32(n);
-    daxpy(n_i32, alpha, u.as_data(), 1, v.as_mut_data(), 1);
+    let n_i32 = to_i32(n);
+    unsafe {
+        cblas_daxpy(n_i32, alpha, u.as_data().as_ptr(), 1, v.as_mut_data().as_mut_ptr(), 1);
+    }
     Ok(())
 }
 

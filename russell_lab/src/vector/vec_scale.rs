@@ -1,5 +1,9 @@
 use super::Vector;
-use russell_openblas::{dscal, to_i32};
+use crate::to_i32;
+
+extern "C" {
+    fn cblas_dscal(n: i32, alpha: f64, x: *const f64, incx: i32);
+}
 
 /// Scales vector
 ///
@@ -25,7 +29,9 @@ use russell_openblas::{dscal, to_i32};
 /// ```
 pub fn vec_scale(v: &mut Vector, alpha: f64) {
     let n_i32: i32 = to_i32(v.dim());
-    dscal(n_i32, alpha, v.as_mut_data(), 1);
+    unsafe {
+        cblas_dscal(n_i32, alpha, v.as_mut_data().as_mut_ptr(), 1);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

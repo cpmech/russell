@@ -1,7 +1,25 @@
 use super::ComplexMatrix;
-use crate::StrError;
+use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_NO_TRANS};
 use num_complex::Complex64;
-use russell_openblas::{to_i32, zgemm};
+
+extern "C" {
+    fn cblas_zgemm(
+        layout: i32,
+        transa: i32,
+        transb: i32,
+        m: i32,
+        n: i32,
+        k: i32,
+        alpha: *const Complex64,
+        a: *const Complex64,
+        lda: i32,
+        b: *const Complex64,
+        ldb: i32,
+        beta: *const Complex64,
+        c: *mut Complex64,
+        ldc: i32,
+    );
+}
 
 /// Performs the matrix-matrix multiplication resulting in a matrix (complex version)
 ///
@@ -49,22 +67,37 @@ pub fn complex_mat_mat_mul(
     if a.nrow() != m || b.nrow() != k || b.ncol() != n {
         return Err("matrices are incompatible");
     }
+    if m == 0 || n == 0 {
+        return Ok(());
+    }
+    if k == 0 {
+        c.fill(Complex64::new(0.0, 0.0));
+        return Ok(());
+    }
     let m_i32: i32 = to_i32(m);
     let n_i32: i32 = to_i32(n);
     let k_i32: i32 = to_i32(k);
+    let lda = m_i32;
+    let ldb = k_i32;
     let zero = Complex64::new(0.0, 0.0);
-    zgemm(
-        false,
-        false,
-        m_i32,
-        n_i32,
-        k_i32,
-        alpha,
-        a.as_data(),
-        b.as_data(),
-        zero,
-        c.as_mut_data(),
-    );
+    unsafe {
+        cblas_zgemm(
+            CBLAS_COL_MAJOR,
+            CBLAS_NO_TRANS,
+            CBLAS_NO_TRANS,
+            m_i32,
+            n_i32,
+            k_i32,
+            &alpha,
+            a.as_data().as_ptr(),
+            lda,
+            b.as_data().as_ptr(),
+            ldb,
+            &zero,
+            c.as_mut_data().as_mut_ptr(),
+            m_i32,
+        );
+    }
     Ok(())
 }
 
@@ -96,6 +129,24 @@ mod tests {
             complex_mat_mat_mul(&mut c_2x2, alpha, &a_2x1, &b_1x3),
             Err("matrices are incompatible")
         );
+    }
+
+    #[test]
+    fn mat_mat_mul_0x0_works() {
+        let a = ComplexMatrix::new(0, 0);
+        let b = ComplexMatrix::new(0, 0);
+        let mut c = ComplexMatrix::new(0, 0);
+        let alpha = Complex64::new(2.0, 0.0);
+        complex_mat_mat_mul(&mut c, alpha, &a, &b).unwrap();
+
+        let a = ComplexMatrix::new(1, 0);
+        let b = ComplexMatrix::new(0, 1);
+        let mut c = ComplexMatrix::new(1, 1);
+        complex_mat_mat_mul(&mut c, alpha, &a, &b).unwrap();
+        let correct = &[
+            [Complex64::new(0.0, 0.0)], //
+        ];
+        complex_mat_approx_eq(&c, correct, 1e-15);
     }
 
     #[test]

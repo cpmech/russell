@@ -1,6 +1,6 @@
-use crate::matrix::Matrix;
-use crate::StrError;
-use russell_openblas::{dcopy, dgesvd, idamax, to_i32};
+use super::{mat_svd, Matrix};
+use crate::vector::Vector;
+use crate::{find_index_abs_max, StrError};
 
 // constants
 const SINGLE_VALUE_RCOND: f64 = 1e-15;
@@ -25,7 +25,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 ///
 /// # Input
 ///
-/// * `a` -- (m,n) matrix, symmetric or not
+/// * `a` -- (m,n) matrix, symmetric or not (WARNING: it will be modified)
 ///
 /// # Example
 ///
@@ -81,7 +81,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 ///     Ok(())
 /// }
 /// ```
-pub fn mat_pseudo_inverse(ai: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
+pub fn mat_pseudo_inverse(ai: &mut Matrix, a: &mut Matrix) -> Result<(), StrError> {
     // check
     let (m, n) = a.dims();
     if ai.nrow() != n || ai.ncol() != m {
@@ -93,31 +93,15 @@ pub fn mat_pseudo_inverse(ai: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
         return Ok(());
     }
 
-    // copy a into ai
-    let min_mn = if m < n { m } else { n };
-    let m_i32 = to_i32(m);
-    let n_i32 = to_i32(n);
-    dcopy(m_i32 * n_i32, a.as_data(), 1, ai.as_mut_data(), 1);
-
     // singular value decomposition
-    let mut s = vec![0.0; min_mn];
-    let mut u = vec![0.0; m * m];
-    let mut vt = vec![0.0; n * n];
-    let mut superb = vec![0.0; min_mn];
-    dgesvd(
-        b'A',
-        b'A',
-        m_i32,
-        n_i32,
-        ai.as_mut_data(),
-        &mut s,
-        &mut u,
-        &mut vt,
-        &mut superb,
-    )?;
+    let min_mn = if m < n { m } else { n };
+    let mut s = Vector::new(min_mn);
+    let mut u = Matrix::new(m, m);
+    let mut vt = Matrix::new(n, n);
+    mat_svd(&mut s, &mut u, &mut vt, a)?;
 
     // singular value tolerance (note that singular values are positive or zero)
-    let idx_largest = idamax(to_i32(min_mn), &s, 1) as usize;
+    let idx_largest = find_index_abs_max(s.as_data());
     let sv_largest = s[idx_largest];
     let sv_tolerance = SINGLE_VALUE_RCOND * sv_largest;
 
@@ -127,7 +111,7 @@ pub fn mat_pseudo_inverse(ai: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
             ai.set(i, j, 0.0);
             for k in 0..min_mn {
                 if s[k] > sv_tolerance {
-                    ai.add(i, j, vt[k + i * n] * u[j + k * m] / s[k]);
+                    ai.add(i, j, vt.get(k, i) * u.get(j, k) / s[k]);
                 }
             }
         }
@@ -330,10 +314,10 @@ mod tests {
             [-5.773502691896260e-01,  5.773502691896260e-01, 1.000000000000000e+00],
             [ 5.773502691896260e-01,  5.773502691896260e-01, 1.000000000000000e+00],
         ];
-        let a = Matrix::from(&data);
+        let mut a = Matrix::from(&data);
         let (m, n) = a.dims();
         let mut ai = Matrix::new(n, m);
-        mat_pseudo_inverse(&mut ai, &a).unwrap();
+        mat_pseudo_inverse(&mut ai, &mut a).unwrap();
         #[rustfmt::skip]
         let ai_correct = &[
             [-4.330127018922192e-01,  4.330127018922192e-01, -4.330127018922192e-01, 4.330127018922192e-01],
@@ -355,10 +339,10 @@ mod tests {
             [0.0, 0.0, 0.0, 0.0, 0.0],
             [0.0, 4.0, 0.0, 0.0, 0.0],
         ];
-        let a = Matrix::from(&data);
+        let mut a = Matrix::from(&data);
         let (m, n) = a.dims();
         let mut ai = Matrix::new(n, m);
-        mat_pseudo_inverse(&mut ai, &a).unwrap();
+        mat_pseudo_inverse(&mut ai, &mut a).unwrap();
         #[rustfmt::skip]
         let ai_correct = &[
             [0.2,     0.0, 0.0,     0.0],
@@ -383,10 +367,10 @@ mod tests {
             [12.0, 29.0, 27.0, 10.0,  1.0, 1.0],
             [ 9.0,  4.0, 13.0,  8.0, 22.0, 1.0],
         ];
-        let a = Matrix::from(&data);
+        let mut a = Matrix::from(&data);
         let (m, n) = a.dims();
         let mut ai = Matrix::new(n, m);
-        mat_pseudo_inverse(&mut ai, &a).unwrap();
+        mat_pseudo_inverse(&mut ai, &mut a).unwrap();
         #[rustfmt::skip]
         let ai_correct = &[
             [ 5.6387724512344639e-01, -6.0176177188969326e-01, -7.6500652148749224e-02, -5.6389938864086908e-01,  5.8595836573334192e-01],
@@ -415,10 +399,10 @@ mod tests {
             [49.0, 15.0, 14.0, 52.0, 53.0, 11.0],
             [ 8.0, 58.0, 59.0,  5.0,  4.0, 62.0],
         ];
-        let a = Matrix::from(&data);
+        let mut a = Matrix::from(&data);
         let (m, n) = a.dims();
         let mut ai = Matrix::new(n, m);
-        mat_pseudo_inverse(&mut ai, &a).unwrap();
+        mat_pseudo_inverse(&mut ai, &mut a).unwrap();
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
         mat_approx_eq(&a_ai_a, &a_copy, 1e-13);

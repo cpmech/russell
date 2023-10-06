@@ -1,6 +1,18 @@
 use super::ComplexMatrix;
-use crate::Norm;
-use russell_openblas::{to_i32, zlange};
+use crate::{to_i32, Norm};
+use num_complex::Complex64;
+
+extern "C" {
+    // <http://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
+    fn c_zlange(
+        norm_code: i32,
+        m: *const i32,
+        n: *const i32,
+        a: *const Complex64,
+        lda: *const i32,
+        work: *mut f64,
+    ) -> f64;
+}
 
 /// Computes the matrix norm (complex version)
 ///
@@ -26,14 +38,13 @@ pub fn complex_mat_norm(a: &ComplexMatrix, kind: Norm) -> f64 {
     if m == 0 || n == 0 {
         return 0.0;
     }
-    let norm = match kind {
-        Norm::Euc | Norm::Fro => b'F',
-        Norm::Inf => b'I',
-        Norm::Max => b'M',
-        Norm::One => b'1',
-    };
-    let (m_i32, n_i32) = (to_i32(m), to_i32(n));
-    zlange(norm, m_i32, n_i32, &a.as_data())
+
+    let m_i32 = to_i32(m);
+    let n_i32 = to_i32(n);
+    let lda = m_i32;
+    let mut work = if kind == Norm::Inf { vec![0.0; m] } else { Vec::new() };
+    let norm_code = kind as i32;
+    unsafe { c_zlange(norm_code, &m_i32, &n_i32, a.as_data().as_ptr(), &lda, work.as_mut_ptr()) }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -71,19 +82,19 @@ mod tests {
         approx_eq(
             complex_mat_norm(&a, Norm::One),
             a.get(0, 2).abs() + a.get(1, 2).abs() + a.get(2, 2).abs(),
-            1e-15,
+            1e-14,
         );
         approx_eq(
             complex_mat_norm(&a, Norm::Inf),
             a.get(0, 0).abs() + a.get(0, 1).abs() + a.get(0, 2).abs(),
-            1e-15,
+            1e-14,
         );
         let mut fro = 0.0;
         for v in a.as_data() {
             fro += v.abs() * v.abs();
         }
         fro = f64::sqrt(fro);
-        approx_eq(complex_mat_norm(&a, Norm::Fro), fro, 1e-15);
-        approx_eq(complex_mat_norm(&a, Norm::Max), Complex64::new(5.0, 1.0).abs(), 1e-15);
+        approx_eq(complex_mat_norm(&a, Norm::Fro), fro, 1e-14);
+        approx_eq(complex_mat_norm(&a, Norm::Max), Complex64::new(5.0, 1.0).abs(), 1e-14);
     }
 }

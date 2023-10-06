@@ -1,6 +1,9 @@
 use super::Vector;
-use crate::StrError;
-use russell_openblas::{dcopy, to_i32};
+use crate::{to_i32, StrError};
+
+extern "C" {
+    fn cblas_dcopy(n: i32, x: *const f64, incx: i32, y: *mut f64, incy: i32);
+}
 
 /// Copies vector
 ///
@@ -31,8 +34,10 @@ pub fn vec_copy(v: &mut Vector, u: &Vector) -> Result<(), StrError> {
     if u.dim() != n {
         return Err("vectors are incompatible");
     }
-    let n_i32: i32 = to_i32(n);
-    dcopy(n_i32, u.as_data(), 1, v.as_mut_data(), 1);
+    let n_i32 = to_i32(n);
+    unsafe {
+        cblas_dcopy(n_i32, u.as_data().as_ptr(), 1, v.as_mut_data().as_mut_ptr(), 1);
+    }
     Ok(())
 }
 

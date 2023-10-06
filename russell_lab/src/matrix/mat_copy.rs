@@ -1,6 +1,9 @@
 use super::Matrix;
-use crate::StrError;
-use russell_openblas::{dcopy, to_i32};
+use crate::{to_i32, StrError};
+
+extern "C" {
+    fn cblas_dcopy(n: i32, x: *const f64, incx: i32, y: *mut f64, incy: i32);
+}
 
 /// Copies matrix
 ///
@@ -37,7 +40,9 @@ pub fn mat_copy(b: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
         return Err("matrices are incompatible");
     }
     let n_i32: i32 = to_i32(m * n);
-    dcopy(n_i32, a.as_data(), 1, b.as_mut_data(), 1);
+    unsafe {
+        cblas_dcopy(n_i32, a.as_data().as_ptr(), 1, b.as_mut_data().as_mut_ptr(), 1);
+    }
     Ok(())
 }
 

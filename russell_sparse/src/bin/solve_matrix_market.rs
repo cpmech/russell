@@ -1,5 +1,4 @@
-use russell_lab::{Stopwatch, StrError, Vector};
-use russell_openblas::set_num_threads;
+use russell_lab::{set_num_threads, Stopwatch, StrError, Vector};
 use russell_sparse::prelude::*;
 use structopt::StructOpt;
 

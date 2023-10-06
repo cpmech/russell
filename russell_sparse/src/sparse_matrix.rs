@@ -1,7 +1,6 @@
-use super::{to_i32, CooMatrix, CscMatrix, CsrMatrix, Symmetry};
+use super::{CooMatrix, CscMatrix, CsrMatrix, Symmetry};
 use crate::StrError;
-use russell_lab::{Matrix, Vector};
-use russell_openblas::idamax;
+use russell_lab::{find_index_abs_max, Matrix, Vector};
 
 /// Unifies the sparse matrix representations by wrapping COO, CSC, and CSR structures
 ///
@@ -189,8 +188,7 @@ impl SparseMatrix {
                 None => &self.coo.as_ref().unwrap().values, // unwrap OK because at least one mat must be available
             },
         };
-        let n = to_i32(values.len());
-        let idx = idamax(n, values, 1);
+        let idx = find_index_abs_max(values);
         f64::abs(values[idx as usize])
     }
 

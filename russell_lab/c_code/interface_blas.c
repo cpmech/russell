@@ -10,6 +10,7 @@
 #define FN_DPOTRF dpotrf_
 #define FN_DSYEV dsyev_
 #define FN_DGEEV dgeev_
+#define FN_DGESVD dgesvd_
 #else
 #include "cblas.h"
 #include "lapack.h"
@@ -20,6 +21,7 @@
 #define FN_DPOTRF LAPACK_dpotrf
 #define FN_DSYEV LAPACK_dsyev
 #define FN_DGEEV LAPACK_dgeev
+#define FN_DGESVD LAPACK_dgesvd
 #endif
 
 #include "constants.h"
@@ -82,15 +84,11 @@ double c_dlange(int32_t norm_code,
                 const double *a,
                 const int32_t *lda,
                 double *work) {
-    if (norm_code == NORM_EUC || norm_code == NORM_FRO) {
-        return FN_DLANGE("F", m, n, a, lda, work);
-    } else if (norm_code == NORM_INF) {
-        return FN_DLANGE("I", m, n, a, lda, work);
-    } else if (norm_code == NORM_MAX) {
-        return FN_DLANGE("M", m, n, a, lda, work);
-    } else {
-        return FN_DLANGE("O", m, n, a, lda, work); // norm_code == NORM_ONE
-    }
+    const char *norm = norm_code == NORM_EUC || norm_code == NORM_FRO ? "F"
+                       : norm_code == NORM_INF                        ? "I"
+                       : norm_code == NORM_MAX                        ? "M"
+                                                                      : "O";
+    return FN_DLANGE(norm, m, n, a, lda, work);
 }
 
 // <http://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
@@ -100,15 +98,11 @@ double c_zlange(int32_t norm_code,
                 const COMPLEX64 *a,
                 const int32_t *lda,
                 double *work) {
-    if (norm_code == NORM_EUC || norm_code == NORM_FRO) {
-        return FN_ZLANGE("F", m, n, a, lda, work);
-    } else if (norm_code == NORM_INF) {
-        return FN_ZLANGE("I", m, n, a, lda, work);
-    } else if (norm_code == NORM_MAX) {
-        return FN_ZLANGE("M", m, n, a, lda, work);
-    } else {
-        return FN_ZLANGE("O", m, n, a, lda, work); // norm_code == NORM_ONE
-    }
+    const char *norm = norm_code == NORM_EUC || norm_code == NORM_FRO ? "F"
+                       : norm_code == NORM_INF                        ? "I"
+                       : norm_code == NORM_MAX                        ? "M"
+                                                                      : "O";
+    return FN_ZLANGE(norm, m, n, a, lda, work);
 }
 
 // <http://www.netlib.org/lapack/explore-html/d0/d8a/dpotrf_8f.html>
@@ -154,4 +148,30 @@ void c_dgeev(C_BOOL calc_vl,
     const char *jobvl = calc_vl == C_TRUE ? "V" : "N";
     const char *jobvr = calc_vr == C_TRUE ? "V" : "N";
     FN_DGEEV(jobvl, jobvr, n, a, lda, wr, wi, vl, ldvl, vr, ldvr, work, lwork, info);
+}
+
+// <http://www.netlib.org/lapack/explore-html/d8/d2d/dgesvd_8f.html>
+void c_dgesvd(int32_t jobu_code,
+              int32_t jobvt_code,
+              const MKL_INT *m,
+              const MKL_INT *n,
+              double *a,
+              const MKL_INT *lda,
+              double *s,
+              double *u,
+              const MKL_INT *ldu,
+              double *vt,
+              const MKL_INT *ldvt,
+              double *work,
+              const MKL_INT *lwork,
+              MKL_INT *info) {
+    const char *jobu = jobu_code == SVD_CODE_A   ? "A"
+                       : jobu_code == SVD_CODE_S ? "S"
+                       : jobu_code == SVD_CODE_O ? "O"
+                                                 : "N";
+    const char *jobvt = jobvt_code == SVD_CODE_A   ? "A"
+                        : jobvt_code == SVD_CODE_S ? "S"
+                        : jobvt_code == SVD_CODE_O ? "O"
+                                                   : "N";
+    FN_DGESVD(jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt, work, lwork, info);
 }

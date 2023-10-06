@@ -5,7 +5,7 @@ fn main() {
     cc::Build::new().file("c_code/math_functions.c").compile("c_code");
 
     // option
-    let use_intel_mkl = match env::var("RUSSELL_OPENBLAS_USE_INTEL_MKL") {
+    let use_intel_mkl = match env::var("RUSSELL_LAB_USE_INTEL_MKL") {
         Ok(v) => v == "1" || v.to_lowercase() == "true",
         Err(_) => false,
     };

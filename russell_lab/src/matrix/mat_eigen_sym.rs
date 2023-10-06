@@ -67,6 +67,13 @@ pub fn mat_eigen_sym(l: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
             &mut info,
         );
     }
+    if info < 0 {
+        println!("LAPACK ERROR (dsyev): Argument #{} had an illegal value", -info);
+        return Err("LAPACK ERROR (dsyev): An argument had an illegal value");
+    } else if info > 0 {
+        println!("LAPACK ERROR (dsyev): {} off-diagonal elements of an intermediate tri-diagonal form did not converge to zero", info - 1);
+        return Err("LAPACK ERROR (dsyev): The algorithm failed to converge");
+    }
     Ok(())
 }
 

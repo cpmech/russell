@@ -88,18 +88,17 @@ pub fn mat_cholesky(l: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
     unsafe { c_dpotrf(C_FALSE, &m_i32, l.as_mut_data().as_mut_ptr(), &lda, &mut info) }
 
     // status
-    if info == 0 {
-        return Ok(());
-    } else if info < 0 {
-        println!("LAPACK(dpotrf) ERROR: Argument #{} had an illegal value", -info);
-        return Err("LAPACK(dpotrf) ERROR: An argument had an illegal value");
-    } else {
+    if info < 0 {
+        println!("LAPACK ERROR (dpotrf): Argument #{} had an illegal value", -info);
+        return Err("LAPACK ERROR (dpotrf): An argument had an illegal value");
+    } else if info > 0 {
         println!(
-            "LAPACK(dpotrf) ERROR: the leading minor of order {} is not positive definite",
+            "LAPACK ERROR (dpotrf): the leading minor of order {} is not positive definite",
             info
         );
-        return Err("LAPACK(dpotrf) ERROR: positive definite check failed");
+        return Err("LAPACK ERROR (dpotrf): positive definite check failed");
     }
+    Ok(())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

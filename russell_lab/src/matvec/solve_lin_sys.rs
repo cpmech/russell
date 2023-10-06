@@ -93,15 +93,14 @@ pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
             &mut info,
         )
     }
-    if info == 0 {
-        return Ok(());
-    } else if info < 0 {
-        println!("LAPACK(dgesv) ERROR: Argument #{} had an illegal value", -info);
-        return Err("LAPACK(dgesv) ERROR: An argument had an illegal value");
-    } else {
-        println!("LAPACK(dgesv) ERROR: U({},{}) is exactly zero", info - 1, info - 1);
-        return Err("LAPACK(dgesv) ERROR: The factorization has been completed, but the factor U is exactly singular");
+    if info < 0 {
+        println!("LAPACK ERROR (dgesv): Argument #{} had an illegal value", -info);
+        return Err("LAPACK ERROR (dgesv): An argument had an illegal value");
+    } else if info > 0 {
+        println!("LAPACK ERROR (dgesv): U({},{}) is exactly zero", info - 1, info - 1);
+        return Err("LAPACK ERROR (dgesv): The factorization has been completed, but the factor U is exactly singular");
     }
+    Ok(())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -200,7 +199,7 @@ mod tests {
         let mut b = Vector::from(&[1.0, 1.0]);
         assert_eq!(
             solve_lin_sys(&mut b, &mut a).err(),
-            Some("LAPACK(dgesv) ERROR: The factorization has been completed, but the factor U is exactly singular")
+            Some("LAPACK ERROR (dgesv): The factorization has been completed, but the factor U is exactly singular")
         );
     }
 }

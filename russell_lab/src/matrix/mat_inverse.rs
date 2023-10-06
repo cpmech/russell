@@ -1,6 +1,21 @@
-use crate::matrix::Matrix;
-use crate::StrError;
-use russell_openblas::{dcopy, dgetrf, dgetri, to_i32};
+use super::{mat_copy, Matrix};
+use crate::{to_i32, StrError};
+
+extern "C" {
+    /// <http://www.netlib.org/lapack/explore-html/d3/d6a/dgetrf_8f.html>
+    fn c_dgetrf(m: *const i32, n: *const i32, a: *mut f64, lda: *const i32, ipiv: *mut i32, info: *mut i32);
+
+    /// <http://www.netlib.org/lapack/explore-html/df/da4/dgetri_8f.html>
+    fn c_dgetri(
+        n: *const i32,
+        a: *mut f64,
+        lda: *const i32,
+        ipiv: *const i32,
+        work: *mut f64,
+        lwork: *const i32,
+        info: *mut i32,
+    );
+}
 
 // constants
 const ZERO_DETERMINANT: f64 = 1e-15;
@@ -174,12 +189,32 @@ pub fn mat_inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
     }
 
     // copy a into ai
-    let m_i32 = to_i32(m);
-    dcopy(m_i32 * m_i32, a.as_data(), 1, ai.as_mut_data(), 1);
+    mat_copy(ai, a).unwrap();
 
-    // handle large matrix
-    let mut ipiv = vec![0_i32; m];
-    dgetrf(m_i32, m_i32, ai.as_mut_data(), &mut ipiv)?;
+    // compute LU factorization
+    let m_i32 = to_i32(m);
+    let lda = m_i32;
+    let mut ipiv = vec![0; m];
+    let mut info = 0;
+    unsafe {
+        c_dgetrf(
+            &m_i32,
+            &m_i32,
+            ai.as_mut_data().as_mut_ptr(),
+            &lda,
+            ipiv.as_mut_ptr(),
+            &mut info,
+        );
+    }
+    if info < 0 {
+        println!("LAPACK ERROR (dgetrf): Argument #{} had an illegal value", -info);
+        return Err("LAPACK ERROR (dgetrf): An argument had an illegal value");
+    } else if info > 0 {
+        println!("LAPACK ERROR (dgetrf): U({},{}) is exactly zero", info - 1, info - 1);
+        return Err(
+            "LAPACK ERROR (dgetrf): The factorization has been completed, but the factor U is exactly singular",
+        );
+    }
 
     // first, compute the determinant ai.data from dgetrf
     let mut det = 1.0;
@@ -193,7 +228,19 @@ pub fn mat_inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
         }
     }
     // second, perform the inversion
-    dgetri(m_i32, ai.as_mut_data(), &ipiv)?;
+    let lwork = m_i32;
+    let mut work = vec![0.0; lwork as usize];
+    unsafe {
+        c_dgetri(
+            &m_i32,
+            ai.as_mut_data().as_mut_ptr(),
+            &lda,
+            ipiv.as_mut_ptr(),
+            work.as_mut_ptr(),
+            &lwork,
+            &mut info,
+        );
+    }
 
     // done
     Ok(det)

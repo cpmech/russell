@@ -11,6 +11,8 @@
 #define FN_DSYEV dsyev_
 #define FN_DGEEV dgeev_
 #define FN_DGESVD dgesvd_
+#define FN_DGETRF dgetrf_
+#define FN_DGETRI dgetri_
 #else
 #include "cblas.h"
 #include "lapack.h"
@@ -22,6 +24,8 @@
 #define FN_DSYEV LAPACK_dsyev
 #define FN_DGEEV LAPACK_dgeev
 #define FN_DGESVD LAPACK_dgesvd
+#define FN_DGETRF LAPACK_dgetrf
+#define FN_DGETRI LAPACK_dgetri
 #endif
 
 #include "constants.h"
@@ -153,18 +157,18 @@ void c_dgeev(C_BOOL calc_vl,
 // <http://www.netlib.org/lapack/explore-html/d8/d2d/dgesvd_8f.html>
 void c_dgesvd(int32_t jobu_code,
               int32_t jobvt_code,
-              const MKL_INT *m,
-              const MKL_INT *n,
+              const int32_t *m,
+              const int32_t *n,
               double *a,
-              const MKL_INT *lda,
+              const int32_t *lda,
               double *s,
               double *u,
-              const MKL_INT *ldu,
+              const int32_t *ldu,
               double *vt,
-              const MKL_INT *ldvt,
+              const int32_t *ldvt,
               double *work,
-              const MKL_INT *lwork,
-              MKL_INT *info) {
+              const int32_t *lwork,
+              int32_t *info) {
     const char *jobu = jobu_code == SVD_CODE_A   ? "A"
                        : jobu_code == SVD_CODE_S ? "S"
                        : jobu_code == SVD_CODE_O ? "O"
@@ -174,4 +178,25 @@ void c_dgesvd(int32_t jobu_code,
                         : jobvt_code == SVD_CODE_O ? "O"
                                                    : "N";
     FN_DGESVD(jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt, work, lwork, info);
+}
+
+/// <http://www.netlib.org/lapack/explore-html/d3/d6a/dgetrf_8f.html>
+void c_dgetrf(const int32_t *m,
+              const int32_t *n,
+              double *a,
+              const int32_t *lda,
+              int32_t *ipiv,
+              int32_t *info) {
+    FN_DGETRF(m, n, a, lda, ipiv, info);
+}
+
+/// <http://www.netlib.org/lapack/explore-html/df/da4/dgetri_8f.html>
+void c_dgetri(const int32_t *n,
+              double *a,
+              const int32_t *lda,
+              const int32_t *ipiv,
+              double *work,
+              const int32_t *lwork,
+              int32_t *info) {
+    FN_DGETRI(n, a, lda, ipiv, work, lwork, info);
 }

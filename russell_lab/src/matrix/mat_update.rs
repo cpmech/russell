@@ -39,7 +39,7 @@ pub fn mat_update(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), StrError
     if a.nrow() != m || a.ncol() != n {
         return Err("matrices are incompatible");
     }
-    let mn_i32: i32 = to_i32(m * n);
+    let mn_i32 = to_i32(m * n);
     unsafe {
         cblas_daxpy(mn_i32, alpha, a.as_data().as_ptr(), 1, b.as_mut_data().as_mut_ptr(), 1);
     }

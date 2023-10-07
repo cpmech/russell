@@ -209,3 +209,12 @@ COL-MAJOR IS ADOPTED HERE
 ```
 
 The main reason to use the **col-major** representation is to make the code work better with BLAS/LAPACK written in Fortran. Although those libraries have functions to handle row-major data, they usually add an overhead due to temporary memory allocation and copies, including transposing matrices. Moreover, the row-major versions of some BLAS/LAPACK libraries produce incorrect results (notably the DSYEV).
+
+## Appendix B - For developers
+
+Notes for developers:
+
+* The `c_code` directory contains a thin wrapper to the BLAS libraries (OpenBLAS or Intel MKL)
+* The `c_code` directory also contains a wrapper to the C math functions
+* The `build.rs` file uses the crate `cc` to build the C-wrappers
+* The `zscripts` directory contains Bash scripts to install the Intel MKL on Debian/Linux

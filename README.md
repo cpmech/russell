@@ -6,20 +6,26 @@
 
 ([CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en). Photo: [Bertrand Russell](https://en.wikipedia.org/wiki/Bertrand_Russell))
 
-**Russell** assists in the development of scientific computations using the Rust language. We focus on numerical methods and solvers for differential equations; however, anything is possible 😉.
+**Russell** (Rust Scientific Library) assists in developing scientific computations using the Rust language. Our initial focus is on numerical methods and solvers for sparse linear systems and differential equations; however, anything is possible 😉.
 
-An essential goal of this library is to bring the best (fastest) solutions while maintaining a very **clean** (and idiomatic) code, thoroughly tested (min coverage of 95%; see Appendix B below), and yet simple to use. The best solutions are brought by wrapping **powerful** libraries such as OpenBLAS, MUMPS, and SuiteSparse (UMFPACK).
+The "main" crate here is [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab), a **mat**rix-vector **lab**oratory, which provides the fundamental `Vector` and `Matrix` structures and several functions to perform linear algebra computations. Thus, we recommend looking at [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab) first.
+
+The next interesting crate is [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse), which implements sparse matrix structures such as COO (coordinates), CSC (compressed sparse column), and CSR (compressed sparse row) formats. `russell_sparse` also wraps powerful linear system solvers such as [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS](https://mumps-solver.org).
+
+This library aims to wrap the best solutions (e.g., UMFPACK) while maintaining a very **clean** and idiomatic Rust code. See our TODO list in [Appendix A](#todo) and some benchmarking results in [Appendix B](#benchmarks) below. The code must also be simple to use and thoroughly tested with a minimum coverage of 95%; see [Appendix C](#coverage) below.
 
 Available crates:
 
-- [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab) [lab](https://github.com/cpmech/russell/tree/main/russell_lab) Matrix-vector laboratory including linear algebra tools (with OpenBLAS or Intel MKL)
+- [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab) [lab (main)](https://github.com/cpmech/russell/tree/main/russell_lab) Matrix-vector laboratory including linear algebra tools (with OpenBLAS or Intel MKL)
 - [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) Sparse matrix tools and solvers (with MUMPS, UMFPACK, and Intel DSS)
 - [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat) [stat](https://github.com/cpmech/russell/tree/main/russell_stat) Statistics calculations, probability distributions, and pseudo random numbers
 - [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) Tensor analysis structures and functions for continuum mechanics
 
-External recommended crate:
+External recommended/associated crates:
 
-- [plotpy](https://github.com/cpmech/plotpy) Plotting tools using Python3/Matplotlib as an engine
+- [plotpy](https://github.com/cpmech/plotpy) Plotting tools using Python3/Matplotlib as an engine (for quality graphics)
+- [tritet](https://github.com/cpmech/tritet) Triangle and tetrahedron mesh generators (with Triangle and Tetgen)
+- [gemlab](https://github.com/cpmech/gemlab) Geometry, meshes, and numerical integration for finite element analyses
 
 ## Examples
 
@@ -168,23 +174,28 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-## Todo list
+## <a name="todo"></a> Appendix A - Todo list
 
-- [x] Add complex numbers functions to `russell_openblas`
-- [ ] Add more complex numbers functions to `russell_lab`
-- [ ] Add fundamental functions to `russell_lab`
-    - [ ] Implement the modified Bessel functions
-- [ ] Implement some numerical methods in `russell_lab`
-    - [ ] Implement Brent's solver
-    - [ ] Implement solver for the cubic equation
-    - [ ] Implement numerical derivation
-    - [ ] Implement numerical Jacobian function
-    - [ ] Implement Newton's method for nonlinear systems
-    - [ ] Implement numerical quadrature
-- [ ] Add interpolation and polynomials to `russell_lab`
-    - [ ] Implement Chebyshev interpolation and polynomials
-    - [ ] Implement Orthogonal polynomials
-    - [ ] Implement Lagrange interpolation
+- [ ] Improve crate `russell_lab`
+    - [x] Implement more integration tests for linear algebra
+    - [x] Implement more examples
+    - [ ] Implement more benchmarks
+    - [x] Wrap Intel MKL (option for OpenBLAS)
+    - [x] Add more complex numbers functions
+    - [ ] Add fundamental functions to `russell_lab`
+        - [ ] Implement the modified Bessel functions
+    - [ ] Implement some numerical methods in `russell_lab`
+        - [ ] Implement Brent's solver
+        - [ ] Implement solver for the cubic equation
+        - [x] Implement numerical derivation
+        - [x] Implement numerical Jacobian function
+        - [ ] Implement Newton's method for nonlinear systems
+        - [ ] Implement numerical quadrature
+    - [ ] Add interpolation and polynomials to `russell_lab`
+        - [ ] Implement Chebyshev interpolation and polynomials
+        - [ ] Implement Orthogonal polynomials
+        - [ ] Implement Lagrange interpolation
+    - [ ] Implement FFT
 - [x] Improve the `russell_sparse` crate
     - [x] Implement the Compressed Sparse Column format (CSC)
     - [x] Implement the Compressed Sparse Row format (CSC)
@@ -193,20 +204,16 @@ fn main() -> Result<(), StrError> {
     - [ ] Write the conversion from COO to CSC in Rust
     - [ ] Possibly re-write (after benchmarking) the conversion from COO to CSR
     - [ ] Re-study the possibility to wrap SuperLU (see deleted branch)
-- [x] Add probability distribution functions to `russell_stat`
-- [x] Finalize drawing of ASCII histogram in `russell_stat`
+- [ ] Improve crate `russell_stat`
+    - [x] Add probability distribution functions
+    - [x] Implement drawing of ASCII histograms
 - [ ] Improve the `russell_tensor` crate
     - [x] Implement functions to calculate invariants
     - [x] Implement first and second order derivatives of invariants
     - [x] Implement some high-order derivatives
     - [ ] Implement standard continuum mechanics tensors
-- [ ] Implement more integration tests for linear algebra
-- [ ] Implement more examples
-- [ ] Implement more benchmarks
-- [ ] Implement FFT
-- [ ] Implement Intel MKL
 
-## Appendix A -- Benchmarks
+## <a name="benchmarks"></a> Appendix B - Benchmarks
 
 ### Jacobi Rotation versus LAPACK DSYEV
 
@@ -216,7 +223,7 @@ Comparison of the performances of `mat_eigen_sym_jacobi` (Jacobi rotation) versu
 
 ![Jacobi Rotation versus LAPACK DSYEV (1-32)](zassets/bench_mat_eigen_sym_1-32.svg)
 
-## Appendix B -- Code coverage
+## <a name="coverage"></a> Appendix C - Code coverage
 
 ### Sunburst
 

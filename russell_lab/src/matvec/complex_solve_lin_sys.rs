@@ -53,17 +53,17 @@ extern "C" {
 ///
 ///     #[rustfmt::skip]
 ///     let mut a = ComplexMatrix::from(&[
-///         [Complex64::new(-1.34, 2.55), Complex64::new( 0.28, 3.17), Complex64::new(-6.39,-2.20), Complex64::new( 0.72,-0.92)],
-///         [Complex64::new(-0.17,-1.41), Complex64::new( 3.31,-0.15), Complex64::new(-0.15, 1.34), Complex64::new( 1.29, 1.38)],
-///         [Complex64::new(-3.29,-2.39), Complex64::new(-1.91, 4.42), Complex64::new(-0.14,-1.35), Complex64::new( 1.72, 1.35)],
-///         [Complex64::new( 2.41, 0.39), Complex64::new(-0.56, 1.47), Complex64::new(-0.83,-0.69), Complex64::new(-1.96, 0.67)],
+///         [cpx!(-1.34, 2.55), cpx!( 0.28, 3.17), cpx!(-6.39,-2.20), cpx!( 0.72,-0.92)],
+///         [cpx!(-0.17,-1.41), cpx!( 3.31,-0.15), cpx!(-0.15, 1.34), cpx!( 1.29, 1.38)],
+///         [cpx!(-3.29,-2.39), cpx!(-1.91, 4.42), cpx!(-0.14,-1.35), cpx!( 1.72, 1.35)],
+///         [cpx!( 2.41, 0.39), cpx!(-0.56, 1.47), cpx!(-0.83,-0.69), cpx!(-1.96, 0.67)],
 ///     ]);
 ///
 ///     let mut b = ComplexVector::from(&[
-///         Complex64::new(26.26, 51.78),
-///         Complex64::new(6.43, -8.68),
-///         Complex64::new(-5.75, 25.31),
-///         Complex64::new(1.16, 2.57),
+///         cpx!(26.26, 51.78),
+///         cpx!(6.43, -8.68),
+///         cpx!(-5.75, 25.31),
+///         cpx!(1.16, 2.57),
 ///     ]);
 ///
 ///     // solve b := x := A⁻¹ b
@@ -75,10 +75,10 @@ extern "C" {
 ///
 ///     // expected results
 ///     let correct = ComplexVector::from(&[
-///         Complex64::new(1.0, 1.0),
-///         Complex64::new(2.0, -3.0),
-///         Complex64::new(-4.0, -5.0),
-///         Complex64::new(0.0, 6.0),
+///         cpx!(1.0, 1.0),
+///         cpx!(2.0, -3.0),
+///         cpx!(-4.0, -5.0),
+///         cpx!(0.0, 6.0),
 ///     ]);
 ///     println!("expected =\n{:.3}", correct);
 ///     complex_vec_approx_eq(b.as_data(), correct.as_data(), 1e-13);
@@ -129,7 +129,7 @@ pub fn complex_solve_lin_sys(b: &mut ComplexVector, a: &mut ComplexMatrix) -> Re
 #[cfg(test)]
 mod tests {
     use super::complex_solve_lin_sys;
-    use crate::{complex_vec_approx_eq, ComplexMatrix, ComplexVector};
+    use crate::{complex_vec_approx_eq, cpx, ComplexMatrix, ComplexVector};
     use num_complex::Complex64;
 
     #[test]
@@ -175,11 +175,11 @@ mod tests {
         complex_solve_lin_sys(&mut b, &mut a).unwrap();
         #[rustfmt::skip]
         let x_correct = &[
-            Complex64::new(-629.0 / 98.0, 0.0),
-            Complex64::new( 237.0 / 49.0, 0.0),
-            Complex64::new( -53.0 / 49.0, 0.0),
-            Complex64::new(  62.0 / 49.0, 0.0),
-            Complex64::new(  23.0 / 14.0, 0.0),
+            cpx!(-629.0 / 98.0, 0.0),
+            cpx!( 237.0 / 49.0, 0.0),
+            cpx!( -53.0 / 49.0, 0.0),
+            cpx!(  62.0 / 49.0, 0.0),
+            cpx!(  23.0 / 14.0, 0.0),
         ];
         complex_vec_approx_eq(b.as_data(), x_correct, 1e-13);
     }
@@ -204,10 +204,10 @@ mod tests {
         complex_solve_lin_sys(&mut b, &mut a).unwrap();
         #[rustfmt::skip]
         let x_correct = &[
-            Complex64::new( 1.0, 0.0),
-            Complex64::new(-1.0, 0.0),
-            Complex64::new( 3.0, 0.0),
-            Complex64::new(-5.0, 0.0),
+            cpx!( 1.0, 0.0),
+            cpx!(-1.0, 0.0),
+            cpx!( 3.0, 0.0),
+            cpx!(-5.0, 0.0),
         ];
         complex_vec_approx_eq(b.as_data(), x_correct, 1e-14);
     }
@@ -233,29 +233,29 @@ mod tests {
         // matrix
         #[rustfmt::skip]
         let mut a = ComplexMatrix::from(&[
-            [Complex64::new(19.730,  0.000), Complex64::new(12.110, - 1.000), Complex64::new( 0.000, 5.000), Complex64::new( 0.000,  0.000), Complex64::new( 0.000,  0.000)],
-            [Complex64::new( 0.000, -0.510), Complex64::new(32.300,   7.000), Complex64::new(23.070, 0.000), Complex64::new( 0.000,  1.000), Complex64::new( 0.000,  0.000)],
-            [Complex64::new( 0.000,  0.000), Complex64::new( 0.000, - 0.510), Complex64::new(70.000, 7.300), Complex64::new( 3.950,  0.000), Complex64::new(19.000, 31.830)],
-            [Complex64::new( 0.000,  0.000), Complex64::new( 0.000,   0.000), Complex64::new( 1.000, 1.100), Complex64::new(50.170,  0.000), Complex64::new(45.510,  0.000)],
-            [Complex64::new( 0.000,  0.000), Complex64::new( 0.000,   0.000), Complex64::new( 0.000, 0.000), Complex64::new( 0.000, -9.351), Complex64::new(55.000,  0.000)],
+            [cpx!(19.730,  0.000), cpx!(12.110, - 1.000), cpx!( 0.000, 5.000), cpx!( 0.000,  0.000), cpx!( 0.000,  0.000)],
+            [cpx!( 0.000, -0.510), cpx!(32.300,   7.000), cpx!(23.070, 0.000), cpx!( 0.000,  1.000), cpx!( 0.000,  0.000)],
+            [cpx!( 0.000,  0.000), cpx!( 0.000, - 0.510), cpx!(70.000, 7.300), cpx!( 3.950,  0.000), cpx!(19.000, 31.830)],
+            [cpx!( 0.000,  0.000), cpx!( 0.000,   0.000), cpx!( 1.000, 1.100), cpx!(50.170,  0.000), cpx!(45.510,  0.000)],
+            [cpx!( 0.000,  0.000), cpx!( 0.000,   0.000), cpx!( 0.000, 0.000), cpx!( 0.000, -9.351), cpx!(55.000,  0.000)],
         ]);
 
         // right-hand-side
         let mut b = ComplexVector::from(&[
-            Complex64::new(77.38, 8.82),
-            Complex64::new(157.48, 19.8),
-            Complex64::new(1175.62, 20.69),
-            Complex64::new(912.12, -801.75),
-            Complex64::new(550.00, -1060.4),
+            cpx!(77.38, 8.82),
+            cpx!(157.48, 19.8),
+            cpx!(1175.62, 20.69),
+            cpx!(912.12, -801.75),
+            cpx!(550.00, -1060.4),
         ]);
 
         // solution
         let x_correct = &[
-            Complex64::new(3.3, -1.00),
-            Complex64::new(1.0, 0.17),
-            Complex64::new(5.5, 0.00),
-            Complex64::new(9.0, 0.00),
-            Complex64::new(10.0, -17.75),
+            cpx!(3.3, -1.00),
+            cpx!(1.0, 0.17),
+            cpx!(5.5, 0.00),
+            cpx!(9.0, 0.00),
+            cpx!(10.0, -17.75),
         ];
 
         // run test
@@ -265,11 +265,11 @@ mod tests {
 
         // compare with python results
         let x_python = &[
-            Complex64::new(3.299687426933794e+00, -1.000372829305209e+00),
-            Complex64::new(9.997606020636992e-01, 1.698383755401385e-01),
-            Complex64::new(5.500074759292877e+00, -4.556001293922560e-05),
-            Complex64::new(8.999787912842375e+00, -6.662818244209770e-05),
-            Complex64::new(1.000001132800243e+01, -1.774987242230929e+01),
+            cpx!(3.299687426933794e+00, -1.000372829305209e+00),
+            cpx!(9.997606020636992e-01, 1.698383755401385e-01),
+            cpx!(5.500074759292877e+00, -4.556001293922560e-05),
+            cpx!(8.999787912842375e+00, -6.662818244209770e-05),
+            cpx!(1.000001132800243e+01, -1.774987242230929e+01),
         ];
         complex_vec_approx_eq(b.as_data(), x_python, 1e-13);
     }

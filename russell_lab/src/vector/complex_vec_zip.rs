@@ -7,7 +7,7 @@ use crate::Vector;
 /// # Example
 ///
 /// ```
-/// use russell_lab::{complex_vec_zip, StrError, Vector};
+/// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let real = Vector::from(&[1.0, 2.0, 3.0]);

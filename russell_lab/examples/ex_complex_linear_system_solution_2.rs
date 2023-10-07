@@ -7,19 +7,19 @@ fn main() -> Result<(), StrError> {
     // matrix
     #[rustfmt::skip]
     let mut a = ComplexMatrix::from(&[
-	   [Complex64::new( 1.23, -5.50), Complex64::new(-2.14, -1.12), Complex64::new(-4.30, -7.10), Complex64::new( 1.27,  7.29)],
-	   [Complex64::new( 7.91, -5.38), Complex64::new(-9.92, -0.79), Complex64::new(-6.47,  2.52), Complex64::new( 8.90,  6.92)],
-	   [Complex64::new(-9.80, -4.86), Complex64::new(-9.18, -1.12), Complex64::new(-6.51, -2.67), Complex64::new(-8.82,  1.25)],
-	   [Complex64::new(-7.32,  7.57), Complex64::new( 1.37,  0.43), Complex64::new(-5.86,  7.38), Complex64::new( 5.41,  5.37)],
+	   [cpx!( 1.23, -5.50), cpx!(-2.14, -1.12), cpx!(-4.30, -7.10), cpx!( 1.27,  7.29)],
+	   [cpx!( 7.91, -5.38), cpx!(-9.92, -0.79), cpx!(-6.47,  2.52), cpx!( 8.90,  6.92)],
+	   [cpx!(-9.80, -4.86), cpx!(-9.18, -1.12), cpx!(-6.51, -2.67), cpx!(-8.82,  1.25)],
+	   [cpx!(-7.32,  7.57), cpx!( 1.37,  0.43), cpx!(-5.86,  7.38), cpx!( 5.41,  5.37)],
 	]);
 
     // right-hand-side
     #[rustfmt::skip]
     let mut b = ComplexVector::from(&[
-	   Complex64::new( 8.33, -7.32),
-       Complex64::new(-6.18, -4.80),
-       Complex64::new(-5.71, -2.80),
-       Complex64::new(-1.60,  3.08),
+	   cpx!( 8.33, -7.32),
+       cpx!(-6.18, -4.80),
+       cpx!(-5.71, -2.80),
+       cpx!(-1.60,  3.08),
 	]);
 
     // save copies
@@ -35,7 +35,7 @@ fn main() -> Result<(), StrError> {
     // compute a times x
     let m = a.nrow();
     let mut ax = ComplexVector::new(m);
-    let one = Complex64::new(1.0, 0.0);
+    let one = cpx!(1.0, 0.0);
     complex_mat_vec_mul(&mut ax, one, &a_copy, x)?;
 
     // print results

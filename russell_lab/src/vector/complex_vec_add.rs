@@ -11,15 +11,15 @@ use num_complex::Complex64;
 /// # Example
 ///
 /// ```
-/// use russell_lab::{complex_vec_add, ComplexVector, StrError};
 /// use num_complex::Complex64;
+/// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let u = ComplexVector::from(&[10.0, 20.0, 30.0, 40.0]);
 ///     let v = ComplexVector::from(&[2.0, 1.5, 1.0, 0.5]);
 ///     let mut w = ComplexVector::new(4);
-///     let alpha = Complex64::new(0.1, 0.0);
-///     let beta = Complex64::new(2.0, 0.0);
+///     let alpha = cpx!(0.1, 0.0);
+///     let beta = cpx!(2.0, 0.0);
 ///     complex_vec_add(&mut w, alpha, &u, beta, &v)?;
 ///     let correct = "┌      ┐\n\
 ///                    │ 5+0i │\n\
@@ -46,7 +46,7 @@ pub fn complex_vec_add(
 #[cfg(test)]
 mod tests {
     use super::{complex_vec_add, ComplexVector};
-    use crate::{complex_vec_approx_eq, MAX_DIM_FOR_NATIVE_BLAS};
+    use crate::{complex_vec_approx_eq, cpx, MAX_DIM_FOR_NATIVE_BLAS};
     use num_complex::Complex64;
 
     #[test]
@@ -56,8 +56,8 @@ mod tests {
         let v_2 = ComplexVector::new(2);
         let v_3 = ComplexVector::new(3);
         let mut w_2 = ComplexVector::new(2);
-        let alpha = Complex64::new(1.0, 0.0);
-        let beta = Complex64::new(1.0, 0.0);
+        let alpha = cpx!(1.0, 0.0);
+        let beta = cpx!(1.0, 0.0);
         assert_eq!(
             complex_vec_add(&mut w_2, alpha, &u_3, beta, &v_2),
             Err("arrays are incompatible")
@@ -70,7 +70,7 @@ mod tests {
 
     #[test]
     fn complex_vec_add_works() {
-        const NOISE: Complex64 = Complex64::new(1234.567, 3456.789);
+        const NOISE: Complex64 = cpx!(1234.567, 3456.789);
         #[rustfmt::skip]
         let u = ComplexVector::from(&[
             1.0, 2.0,
@@ -88,34 +88,34 @@ mod tests {
             0.5, 1.0, 1.5, 2.0,
         ]);
         let mut w = ComplexVector::from(&vec![NOISE; u.dim()]);
-        let alpha = Complex64::new(1.0, 0.0);
-        let beta = Complex64::new(-4.0, 0.0);
+        let alpha = cpx!(1.0, 0.0);
+        let beta = cpx!(-4.0, 0.0);
         complex_vec_add(&mut w, alpha, &u, beta, &v).unwrap();
         #[rustfmt::skip]
         let correct = &[
-            Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0),
-            Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0),
-            Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0),
-            Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0),
-            Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0),
+            cpx!(-1.0,0.0), cpx!(-2.0,0.0),
+            cpx!(-1.0,0.0), cpx!(-2.0,0.0), cpx!(-3.0,0.0), cpx!(-4.0,0.0),
+            cpx!(-1.0,0.0), cpx!(-2.0,0.0), cpx!(-3.0,0.0), cpx!(-4.0,0.0),
+            cpx!(-1.0,0.0), cpx!(-2.0,0.0), cpx!(-3.0,0.0), cpx!(-4.0,0.0),
+            cpx!(-1.0,0.0), cpx!(-2.0,0.0), cpx!(-3.0,0.0), cpx!(-4.0,0.0),
         ];
         complex_vec_approx_eq(w.as_data(), correct, 1e-15);
     }
 
     #[test]
     fn complex_vec_add_sizes_works() {
-        const NOISE: Complex64 = Complex64::new(1234.567, 3456.789);
-        let alpha = Complex64::new(0.5, 0.0);
-        let beta = Complex64::new(0.5, 0.0);
+        const NOISE: Complex64 = cpx!(1234.567, 3456.789);
+        let alpha = cpx!(0.5, 0.0);
+        let beta = cpx!(0.5, 0.0);
         for size in 0..(MAX_DIM_FOR_NATIVE_BLAS + 3) {
             let mut u = ComplexVector::new(size);
             let mut v = ComplexVector::new(size);
             let mut w = ComplexVector::from(&vec![NOISE; u.dim()]);
-            let mut correct = vec![Complex64::new(0.0, 0.0); size];
+            let mut correct = vec![cpx!(0.0, 0.0); size];
             for i in 0..size {
-                u[i] = Complex64::new(i as f64, i as f64);
-                v[i] = Complex64::new(i as f64, i as f64);
-                correct[i] = Complex64::new(i as f64, i as f64);
+                u[i] = cpx!(i as f64, i as f64);
+                v[i] = cpx!(i as f64, i as f64);
+                correct[i] = cpx!(i as f64, i as f64);
             }
             complex_vec_add(&mut w, alpha, &u, beta, &v).unwrap();
             complex_vec_approx_eq(w.as_data(), &correct, 1e-15);

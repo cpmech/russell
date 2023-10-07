@@ -44,8 +44,8 @@ extern "C" {
 /// # Examples
 ///
 /// ```
-/// use russell_lab::*;
 /// use num_complex::Complex64;
+/// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     #[rustfmt::skip]
@@ -56,13 +56,13 @@ extern "C" {
 ///     ]);
 ///     let u = ComplexVector::from(&[1.0, 3.0, 8.0]);
 ///     let mut v = ComplexVector::new(a.ncol());
-///     let one = Complex64::new(1.0, 0.0);
+///     let one = cpx!(1.0, 0.0);
 ///     complex_vec_mat_mul(&mut v, one, &u, &a).unwrap();
 ///     let correct = &[
-///         Complex64::new(155.0, 0.0),
-///         Complex64::new(-62.0, 0.0),
-///         Complex64::new(0.0, 0.0),
-///         Complex64::new(31.0, 0.0),
+///         cpx!(155.0, 0.0),
+///         cpx!(-62.0, 0.0),
+///         cpx!(0.0, 0.0),
+///         cpx!(31.0, 0.0),
 ///     ];
 ///     complex_vec_approx_eq(v.as_data(), correct, 1e-15);
 ///     Ok(())
@@ -82,8 +82,8 @@ pub fn complex_vec_mat_mul(
     if n == 0 {
         return Ok(());
     }
+    let zero = Complex64::new(0.0, 0.0);
     if m == 0 {
-        let zero = Complex64::new(0.0, 0.0);
         v.fill(zero);
         return Ok(());
     }
@@ -91,7 +91,6 @@ pub fn complex_vec_mat_mul(
     let n_i32: i32 = to_i32(n);
     let incx = 1;
     let incy = 1;
-    let beta = Complex64::new(0.0, 0.0);
     unsafe {
         cblas_zgemv(
             CBLAS_COL_MAJOR,
@@ -103,7 +102,7 @@ pub fn complex_vec_mat_mul(
             m_i32,
             u.as_data().as_ptr(),
             incx,
-            &beta,
+            &zero,
             v.as_mut_data().as_mut_ptr(),
             incy,
         );
@@ -116,7 +115,7 @@ pub fn complex_vec_mat_mul(
 #[cfg(test)]
 mod tests {
     use super::{complex_vec_mat_mul, ComplexMatrix, ComplexVector};
-    use crate::complex_vec_approx_eq;
+    use crate::{complex_vec_approx_eq, cpx};
     use num_complex::Complex64;
 
     #[test]
@@ -125,7 +124,7 @@ mod tests {
         let a_1x2 = ComplexMatrix::new(1, 2);
         let a_3x1 = ComplexMatrix::new(3, 1);
         let mut v = ComplexVector::new(3);
-        let one = Complex64::new(1.0, 0.0);
+        let one = cpx!(1.0, 0.0);
         assert_eq!(
             complex_vec_mat_mul(&mut v, one, &u, &a_1x2),
             Err("matrix and vectors are incompatible")
@@ -146,14 +145,9 @@ mod tests {
         ]);
         let u = ComplexVector::from(&[1.0, 3.0, 8.0]);
         let mut v = ComplexVector::new(a.ncol());
-        let one = Complex64::new(1.0, 0.0);
+        let one = cpx!(1.0, 0.0);
         complex_vec_mat_mul(&mut v, one, &u, &a).unwrap();
-        let correct = &[
-            Complex64::new(155.0, 0.0),
-            Complex64::new(-62.0, 0.0),
-            Complex64::new(0.0, 0.0),
-            Complex64::new(31.0, 0.0),
-        ];
+        let correct = &[cpx!(155.0, 0.0), cpx!(-62.0, 0.0), cpx!(0.0, 0.0), cpx!(31.0, 0.0)];
         complex_vec_approx_eq(v.as_data(), correct, 1e-15);
     }
 
@@ -166,8 +160,8 @@ mod tests {
         let u1 = ComplexVector::new(1);
         let mut v0 = ComplexVector::new(0);
         let mut v1 = ComplexVector::new(1);
-        let one = Complex64::new(1.0, 0.0);
-        let zero = Complex64::new(0.0, 0.0);
+        let one = cpx!(1.0, 0.0);
+        let zero = cpx!(0.0, 0.0);
         complex_vec_mat_mul(&mut v0, one, &u0, &a_0x0).unwrap();
         assert_eq!(v0.as_data(), &[] as &[Complex64]);
         complex_vec_mat_mul(&mut v1, one, &u0, &a_0x1).unwrap();

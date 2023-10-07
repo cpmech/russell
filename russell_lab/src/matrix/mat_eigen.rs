@@ -271,9 +271,9 @@ pub fn mat_eigen(
 ///     let lam = ComplexMatrix::diagonal(d.as_data());
 ///     let mut a_v = ComplexMatrix::new(m, m);
 ///     let mut v_l = ComplexMatrix::new(m, m);
-///     let mut err = ComplexMatrix::filled(m, m, Complex64::new(f64::MAX, f64::MAX));
-///     let one = Complex64::new(1.0, 0.0);
-///     let m_one = Complex64::new(-1.0, 0.0);
+///     let mut err = ComplexMatrix::filled(m, m, cpx!(f64::MAX, f64::MAX));
+///     let one = cpx!(1.0, 0.0);
+///     let m_one = cpx!(-1.0, 0.0);
 ///     complex_mat_mat_mul(&mut a_v, one, &a, &v)?;
 ///     complex_mat_mat_mul(&mut v_l, one, &v, &lam)?;
 ///     complex_mat_add(&mut err, one, &a_v, m_one, &v_l)?;

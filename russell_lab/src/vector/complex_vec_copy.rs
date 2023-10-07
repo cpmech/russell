@@ -17,7 +17,7 @@ extern "C" {
 /// # Example
 ///
 /// ```
-/// use russell_lab::{complex_vec_copy, ComplexVector, StrError};
+/// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let u = ComplexVector::from(&[1.0, 2.0, 3.0]);
@@ -49,7 +49,7 @@ pub fn complex_vec_copy(v: &mut ComplexVector, u: &ComplexVector) -> Result<(), 
 #[cfg(test)]
 mod tests {
     use super::{complex_vec_copy, ComplexVector};
-    use crate::complex_vec_approx_eq;
+    use crate::{complex_vec_approx_eq, cpx};
     use num_complex::Complex64;
 
     #[test]
@@ -64,11 +64,7 @@ mod tests {
         let u = ComplexVector::from(&[1.0, 2.0, 3.0]);
         let mut v = ComplexVector::from(&[100.0, 200.0, 300.0]);
         complex_vec_copy(&mut v, &u).unwrap();
-        let correct = &[
-            Complex64::new(1.0, 0.0),
-            Complex64::new(2.0, 0.0),
-            Complex64::new(3.0, 0.0),
-        ];
+        let correct = &[cpx!(1.0, 0.0), cpx!(2.0, 0.0), cpx!(3.0, 0.0)];
         complex_vec_approx_eq(v.as_data(), correct, 1e-15);
     }
 }

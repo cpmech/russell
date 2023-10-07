@@ -11,8 +11,8 @@ use num_complex::Complex64;
 /// # Example
 ///
 /// ```
-/// use russell_lab::{complex_mat_add, ComplexMatrix, StrError};
 /// use num_complex::Complex64;
+/// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let a = ComplexMatrix::from(&[
@@ -24,8 +24,8 @@ use num_complex::Complex64;
 ///         [-2.0, -1.5, -1.0, -0.5],
 ///     ]);
 ///     let mut c = ComplexMatrix::new(2, 4);
-///     let alpha = Complex64::new(0.1, 0.0);
-///     let beta = Complex64::new(2.0, 0.0);
+///     let alpha = cpx!(0.1, 0.0);
+///     let beta = cpx!(2.0, 0.0);
 ///     complex_mat_add(&mut c, alpha, &a, beta, &b)?;
 ///     let correct = "┌                         ┐\n\
 ///                    │  5+0i  5+0i  5+0i  5+0i │\n\
@@ -54,7 +54,7 @@ pub fn complex_mat_add(
 #[cfg(test)]
 mod tests {
     use super::{complex_mat_add, ComplexMatrix};
-    use crate::complex_mat_approx_eq;
+    use crate::{complex_mat_approx_eq, cpx};
     use num_complex::Complex64;
 
     #[test]
@@ -66,8 +66,8 @@ mod tests {
         let b_2x3 = ComplexMatrix::new(2, 3);
         let b_3x2 = ComplexMatrix::new(3, 2);
         let mut c_2x2 = ComplexMatrix::new(2, 2);
-        let alpha = Complex64::new(1.0, 0.0);
-        let beta = Complex64::new(1.0, 0.0);
+        let alpha = cpx!(1.0, 0.0);
+        let beta = cpx!(1.0, 0.0);
         assert_eq!(
             complex_mat_add(&mut c_2x2, alpha, &a_2x3, beta, &b_2x2),
             Err("matrices are incompatible")
@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn complex_mat_add_works() {
-        const NOISE: Complex64 = Complex64::new(1234.567, 3456.789);
+        const NOISE: Complex64 = cpx!(1234.567, 3456.789);
         #[rustfmt::skip]
         let a = ComplexMatrix::from(&[
             [1.0, 2.0, 3.0, 4.0],
@@ -106,21 +106,21 @@ mod tests {
             [NOISE, NOISE, NOISE, NOISE],
             [NOISE, NOISE, NOISE, NOISE],
         ]);
-        let alpha = Complex64::new(1.0, 0.0);
-        let beta = Complex64::new(-4.0, 0.0);
+        let alpha = cpx!(1.0, 0.0);
+        let beta = cpx!(-4.0, 0.0);
         complex_mat_add(&mut c, alpha, &a, beta, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[
-            [Complex64::new(-1.0, 0.0), Complex64::new(-2.0, 0.0), Complex64::new(-3.0, 0.0), Complex64::new(-4.0, 0.0)],
-            [Complex64::new(-1.0, 0.0), Complex64::new(-2.0, 0.0), Complex64::new(-3.0, 0.0), Complex64::new(-4.0, 0.0)],
-            [Complex64::new(-1.0, 0.0), Complex64::new(-2.0, 0.0), Complex64::new(-3.0, 0.0), Complex64::new(-4.0, 0.0)],
+            [cpx!(-1.0, 0.0), cpx!(-2.0, 0.0), cpx!(-3.0, 0.0), cpx!(-4.0, 0.0)],
+            [cpx!(-1.0, 0.0), cpx!(-2.0, 0.0), cpx!(-3.0, 0.0), cpx!(-4.0, 0.0)],
+            [cpx!(-1.0, 0.0), cpx!(-2.0, 0.0), cpx!(-3.0, 0.0), cpx!(-4.0, 0.0)],
         ];
         complex_mat_approx_eq(&c, correct, 1e-15);
     }
 
     #[test]
     fn complex_add_matrix_oblas_works() {
-        const NOISE: Complex64 = Complex64::new(1234.567, 3456.789);
+        const NOISE: Complex64 = cpx!(1234.567, 3456.789);
         let a = ComplexMatrix::from(&[
             [1.0, 2.0, 3.0, 4.0, 5.0],
             [1.0, 2.0, 3.0, 4.0, 5.0],
@@ -142,16 +142,16 @@ mod tests {
             [NOISE, NOISE, NOISE, NOISE, NOISE],
             [NOISE, NOISE, NOISE, NOISE, NOISE],
         ]);
-        let alpha = Complex64::new(1.0, 0.0);
-        let beta = Complex64::new(-4.0, 0.0);
+        let alpha = cpx!(1.0, 0.0);
+        let beta = cpx!(-4.0, 0.0);
         complex_mat_add(&mut c, alpha, &a, beta, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[
-            [Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0)],
-            [Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0)],
-            [Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0)],
-            [Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0)],
-            [Complex64::new(-1.0,0.0), Complex64::new(-2.0,0.0), Complex64::new(-3.0,0.0), Complex64::new(-4.0,0.0), Complex64::new(-5.0,0.0)],
+            [cpx!(-1.0,0.0), cpx!(-2.0,0.0), cpx!(-3.0,0.0), cpx!(-4.0,0.0), cpx!(-5.0,0.0)],
+            [cpx!(-1.0,0.0), cpx!(-2.0,0.0), cpx!(-3.0,0.0), cpx!(-4.0,0.0), cpx!(-5.0,0.0)],
+            [cpx!(-1.0,0.0), cpx!(-2.0,0.0), cpx!(-3.0,0.0), cpx!(-4.0,0.0), cpx!(-5.0,0.0)],
+            [cpx!(-1.0,0.0), cpx!(-2.0,0.0), cpx!(-3.0,0.0), cpx!(-4.0,0.0), cpx!(-5.0,0.0)],
+            [cpx!(-1.0,0.0), cpx!(-2.0,0.0), cpx!(-3.0,0.0), cpx!(-4.0,0.0), cpx!(-5.0,0.0)],
         ];
         complex_mat_approx_eq(&c, correct, 1e-15);
     }
@@ -161,8 +161,8 @@ mod tests {
         let a = ComplexMatrix::new(0, 0);
         let b = ComplexMatrix::new(0, 0);
         let mut c = ComplexMatrix::new(0, 0);
-        let alpha = Complex64::new(1.0, 0.0);
-        let beta = Complex64::new(1.0, 0.0);
+        let alpha = cpx!(1.0, 0.0);
+        let beta = cpx!(1.0, 0.0);
         complex_mat_add(&mut c, alpha, &a, beta, &b).unwrap();
         assert_eq!(c.as_data().len(), 0);
     }

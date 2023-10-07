@@ -52,7 +52,7 @@ pub fn complex_mat_norm(a: &ComplexMatrix, kind: Norm) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::{complex_mat_norm, ComplexMatrix};
-    use crate::{approx_eq, Norm};
+    use crate::{approx_eq, cpx, Norm};
     use num_complex::{Complex64, ComplexFloat};
 
     #[test]
@@ -74,9 +74,9 @@ mod tests {
         assert_eq!(complex_mat_norm(&a_1x0, Norm::Max), 0.0);
         #[rustfmt::skip]
         let a = ComplexMatrix::from(&[
-            [Complex64::new( 5.0, 1.0), Complex64::new(-4.0, 2.0), Complex64::new(2.0, 3.0)],
-            [Complex64::new(-1.0, 1.0), Complex64::new( 2.0, 2.0), Complex64::new(3.0, 3.0)],
-            [Complex64::new(-2.0, 1.0), Complex64::new( 1.0, 2.0), Complex64::new(0.0, 3.0)],
+            [cpx!( 5.0, 1.0), cpx!(-4.0, 2.0), cpx!(2.0, 3.0)],
+            [cpx!(-1.0, 1.0), cpx!( 2.0, 2.0), cpx!(3.0, 3.0)],
+            [cpx!(-2.0, 1.0), cpx!( 1.0, 2.0), cpx!(0.0, 3.0)],
         ]);
         approx_eq(
             complex_mat_norm(&a, Norm::One),
@@ -94,6 +94,6 @@ mod tests {
         }
         fro = f64::sqrt(fro);
         approx_eq(complex_mat_norm(&a, Norm::Fro), fro, 1e-14);
-        approx_eq(complex_mat_norm(&a, Norm::Max), Complex64::new(5.0, 1.0).abs(), 1e-14);
+        approx_eq(complex_mat_norm(&a, Norm::Max), cpx!(5.0, 1.0).abs(), 1e-14);
     }
 }

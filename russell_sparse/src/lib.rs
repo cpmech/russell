@@ -112,8 +112,7 @@
 //! ## Solving a tiny sparse linear system using LinSolver (Umfpack)
 //!
 //! ```
-//! use russell_chk::vec_approx_eq;
-//! use russell_lab::Vector;
+//! use russell_lab::{vec_approx_eq, Vector};
 //! use russell_sparse::prelude::*;
 //! use russell_sparse::StrError;
 //!
@@ -167,8 +166,7 @@
 //! ## Solving a tiny sparse linear system using SolverUMFPACK
 //!
 //! ```
-//! use russell_chk::vec_approx_eq;
-//! use russell_lab::Vector;
+//! use russell_lab::{vec_approx_eq, Vector};
 //! use russell_sparse::prelude::*;
 //! use russell_sparse::StrError;
 //!

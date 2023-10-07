@@ -19,8 +19,7 @@ extern "C" {
 /// # Example
 ///
 /// ```
-/// use russell_lab::{complex_mat_norm, ComplexMatrix, Norm};
-/// use russell_chk::approx_eq;
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let a = ComplexMatrix::from(&[
@@ -52,9 +51,8 @@ pub fn complex_mat_norm(a: &ComplexMatrix, kind: Norm) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::{complex_mat_norm, ComplexMatrix};
-    use crate::Norm;
+    use crate::{approx_eq, Norm};
     use num_complex::{Complex64, ComplexFloat};
-    use russell_chk::approx_eq;
 
     #[test]
     fn complex_mat_norm_works() {

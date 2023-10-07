@@ -1,9 +1,8 @@
 use crate::{
-    complex_mat_add, complex_mat_mat_mul, complex_mat_norm, complex_mat_zip, complex_vec_zip, mat_add, mat_mat_mul,
-    mat_norm, AsArray2D, ComplexMatrix, Matrix, Norm, Vector,
+    approx_eq, complex_mat_add, complex_mat_mat_mul, complex_mat_norm, complex_mat_zip, complex_vec_zip, mat_add,
+    mat_mat_mul, mat_norm, AsArray2D, ComplexMatrix, Matrix, Norm, Vector,
 };
 use num_complex::Complex64;
-use russell_chk::approx_eq;
 
 /// Checks the eigen-decomposition (similarity transformation) of a
 /// symmetric matrix with real-only eigenvalues and eigenvectors

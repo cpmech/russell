@@ -102,7 +102,7 @@ pub fn complex_add_vectors_native(
 mod tests {
     use super::complex_add_vectors_native;
     use num_complex::Complex64;
-    use russell_chk::complex_vec_approx_eq;
+    use russell_lab::complex_vec_approx_eq;
 
     #[test]
     fn complex_add_vectors_native_sizes_works() {

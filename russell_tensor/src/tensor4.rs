@@ -435,7 +435,7 @@ impl Tensor4 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, MN_TO_IJKL, Tensor4, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -558,7 +558,7 @@ impl Tensor4 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, MN_TO_IJKL, Tensor4, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -1020,8 +1020,7 @@ impl Tensor4 {
 mod tests {
     use super::{Tensor4, MN_TO_IJKL};
     use crate::{Mandel, SamplesTensor4};
-    use russell_chk::approx_eq;
-    use russell_lab::mat_approx_eq;
+    use russell_lab::{approx_eq, mat_approx_eq};
     use serde::{Deserialize, Serialize};
 
     #[test]

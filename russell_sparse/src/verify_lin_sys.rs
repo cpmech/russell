@@ -96,8 +96,7 @@ impl VerifyLinSys {
 mod tests {
     use super::VerifyLinSys;
     use crate::{Samples, SparseMatrix};
-    use russell_chk::approx_eq;
-    use russell_lab::Vector;
+    use russell_lab::{approx_eq, Vector};
 
     #[test]
     fn new_captures_errors() {

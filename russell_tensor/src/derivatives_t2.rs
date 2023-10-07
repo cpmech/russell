@@ -200,8 +200,7 @@ mod tests {
         deriv1_invariant_jj2, deriv1_invariant_jj3, deriv1_invariant_lode, deriv1_invariant_sigma_d,
         deriv1_invariant_sigma_m, deriv1_norm, Mandel, SampleTensor2, SamplesTensor2,
     };
-    use russell_chk::deriv_central5;
-    use russell_lab::{mat_approx_eq, Matrix};
+    use russell_lab::{deriv_central5, mat_approx_eq, Matrix};
 
     // Defines f(σ)
     #[derive(Clone, Copy)]

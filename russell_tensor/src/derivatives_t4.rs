@@ -477,8 +477,7 @@ mod tests {
         AuxDeriv2InvariantJ3, AuxDeriv2InvariantLode, AuxDeriv2InvariantSigmaD, Mandel, SamplesTensor2, MN_TO_IJKL,
         SQRT_2,
     };
-    use russell_chk::{approx_eq, deriv_central5};
-    use russell_lab::{mat_approx_eq, Matrix};
+    use russell_lab::{approx_eq, deriv_central5, mat_approx_eq, Matrix};
 
     // Holds arguments for numerical differentiation corresponding to ∂aiᵢⱼ/∂aₖₗ
     struct ArgsNumDerivInverse {

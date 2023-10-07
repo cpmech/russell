@@ -336,7 +336,7 @@ impl LinElasticity {
 mod tests {
     use super::LinElasticity;
     use crate::{Mandel, Tensor2};
-    use russell_chk::approx_eq;
+    use russell_lab::approx_eq;
 
     #[test]
     fn new_works() {

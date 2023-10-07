@@ -39,7 +39,7 @@ pub fn vec_scale(v: &mut Vector, alpha: f64) {
 #[cfg(test)]
 mod tests {
     use super::{vec_scale, Vector};
-    use russell_chk::vec_approx_eq;
+    use crate::vec_approx_eq;
 
     #[test]
     fn vec_scale_works() {

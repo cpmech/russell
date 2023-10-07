@@ -1,5 +1,4 @@
-use russell_chk::{deriv_central5, vec_approx_eq};
-use russell_lab::{mat_approx_eq, vec_norm, vec_update, Matrix, Norm, Vector};
+use russell_lab::*;
 use russell_sparse::prelude::*;
 use russell_sparse::StrError;
 

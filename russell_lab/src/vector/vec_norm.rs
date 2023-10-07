@@ -43,8 +43,7 @@ pub fn vec_norm(v: &Vector, kind: Norm) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::{vec_norm, Vector};
-    use crate::Norm;
-    use russell_chk::approx_eq;
+    use crate::{approx_eq, Norm};
 
     #[test]
     fn vec_norm_works() {

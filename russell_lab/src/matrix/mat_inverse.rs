@@ -251,8 +251,7 @@ pub fn mat_inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
 #[cfg(test)]
 mod tests {
     use super::{mat_inverse, Matrix, ZERO_DETERMINANT};
-    use crate::mat_approx_eq;
-    use russell_chk::approx_eq;
+    use crate::{approx_eq, mat_approx_eq};
 
     /// Computes a⋅ai that should equal I for a square matrix
     fn get_a_times_ai(a: &Matrix, ai: &Matrix) -> Matrix {

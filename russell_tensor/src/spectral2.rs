@@ -92,8 +92,7 @@ impl Spectral2 {
 mod tests {
     use super::Spectral2;
     use crate::{Mandel, SampleTensor2, SamplesTensor2, Tensor2};
-    use russell_chk::vec_approx_eq;
-    use russell_lab::{mat_approx_eq, Matrix, Vector};
+    use russell_lab::{mat_approx_eq, vec_approx_eq, Matrix, Vector};
 
     #[test]
     fn decompose_captures_errors() {

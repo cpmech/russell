@@ -197,10 +197,8 @@ pub fn mat_svd(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) 
 
 #[cfg(test)]
 mod tests {
-    use russell_chk::vec_approx_eq;
-
     use super::{mat_svd, Matrix, Vector};
-    use crate::mat_approx_eq;
+    use crate::{mat_approx_eq, vec_approx_eq};
 
     #[test]
     fn mat_svd_fails_on_wrong_dims() {

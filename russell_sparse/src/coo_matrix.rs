@@ -302,7 +302,7 @@ impl CooMatrix {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::vec_approx_eq;
+    /// use russell_lab::vec_approx_eq;
     /// use russell_sparse::prelude::*;
     /// use russell_sparse::StrError;
     ///
@@ -628,8 +628,7 @@ impl CooMatrix {
 mod tests {
     use super::CooMatrix;
     use crate::{Samples, Storage, Symmetry};
-    use russell_chk::vec_approx_eq;
-    use russell_lab::{Matrix, Vector};
+    use russell_lab::{vec_approx_eq, Matrix, Vector};
 
     #[test]
     fn new_captures_errors() {

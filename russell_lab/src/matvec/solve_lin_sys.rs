@@ -108,7 +108,7 @@ pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
 #[cfg(test)]
 mod tests {
     use super::{solve_lin_sys, Matrix, Vector};
-    use russell_chk::vec_approx_eq;
+    use crate::vec_approx_eq;
 
     #[test]
     fn solve_lin_sys_fails_on_non_square() {

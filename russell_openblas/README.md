@@ -64,7 +64,7 @@ fn main() {
 ### Matrix multiplication
 
 ```rust
-use russell_chk::vec_approx_eq;
+use russell_lab::vec_approx_eq;
 use russell_openblas::{col_major, dgemm};
 
 fn main() {
@@ -115,7 +115,7 @@ fn main() {
 ### Solution of linear system
 
 ```rust
-use russell_chk::vec_approx_eq;
+use russell_lab::vec_approx_eq;
 use russell_openblas::{col_major, dgesv, StrError};
 
 fn main() -> Result<(), StrError> {

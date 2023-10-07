@@ -57,7 +57,7 @@ mod tests {
         COS_PI_BY_8, ONE_BY_3, ONE_BY_SQRT_2, PI, SIN_PI_BY_8, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6,
         SQRT_PI, TWO_BY_3,
     };
-    use russell_chk::approx_eq;
+    use crate::approx_eq;
 
     #[test]
     fn constants_are_correct() {

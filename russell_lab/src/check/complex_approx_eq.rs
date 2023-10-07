@@ -14,7 +14,7 @@ use num_traits::{Num, NumCast};
 /// ## Accepts small error
 ///
 /// ```
-/// use russell_chk::complex_approx_eq;
+/// use russell_lab::*;
 /// use num_complex::Complex64;
 ///
 /// fn main() {
@@ -27,7 +27,7 @@ use num_traits::{Num, NumCast};
 /// ## Panics on different values
 ///
 /// ```should_panic
-/// use russell_chk::complex_approx_eq;
+/// use russell_lab::*;
 /// use num_complex::Complex64;
 ///
 /// fn main() {
@@ -38,7 +38,7 @@ use num_traits::{Num, NumCast};
 /// ```
 ///
 /// ```should_panic
-/// use russell_chk::complex_approx_eq;
+/// use russell_lab::*;
 /// use num_complex::Complex64;
 ///
 /// fn main() {

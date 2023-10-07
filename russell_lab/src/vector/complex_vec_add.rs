@@ -46,9 +46,8 @@ pub fn complex_vec_add(
 #[cfg(test)]
 mod tests {
     use super::{complex_vec_add, ComplexVector};
-    use crate::MAX_DIM_FOR_NATIVE_BLAS;
+    use crate::{complex_vec_approx_eq, MAX_DIM_FOR_NATIVE_BLAS};
     use num_complex::Complex64;
-    use russell_chk::complex_vec_approx_eq;
 
     #[test]
     fn complex_vec_add_fail_on_wrong_dims() {

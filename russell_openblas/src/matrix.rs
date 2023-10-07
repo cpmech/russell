@@ -853,7 +853,7 @@ mod tests {
     use crate::conversions::{col_major, col_major_complex, dgeev_data, dgeev_data_lr};
     use crate::{to_i32, StrError};
     use num_complex::{Complex64, ComplexFloat};
-    use russell_chk::{approx_eq, complex_approx_eq, complex_vec_approx_eq, vec_approx_eq};
+    use russell_lab::{approx_eq, complex_approx_eq, complex_vec_approx_eq, vec_approx_eq};
 
     #[test]
     fn dgemm_notrans_notrans_works() {

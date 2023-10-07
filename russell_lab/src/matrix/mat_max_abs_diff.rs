@@ -16,8 +16,7 @@ use crate::StrError;
 /// # Example
 ///
 /// ```
-/// use russell_lab::{mat_max_abs_diff, Matrix, StrError};
-/// use russell_chk::approx_eq;
+/// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let a = Matrix::from(&[

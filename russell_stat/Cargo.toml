@@ -12,7 +12,6 @@ categories = ["mathematics", "science"]
 keywords = ["statistics", "probability", "random", "numerical"]
 
 [dependencies]
-russell_chk = { path = "../russell_chk", version = "0.5.0" }
 russell_lab = { path = "../russell_lab", version = "0.5.0" }
 num-traits = "0.2"
 rand = "0.8.5"

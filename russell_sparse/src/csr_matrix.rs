@@ -771,8 +771,7 @@ fn csr_sum_duplicates(nrow: usize, ap: &mut [i32], aj: &mut [i32], ax: &mut [f64
 mod tests {
     use super::CsrMatrix;
     use crate::{CooMatrix, Samples, Storage, Symmetry};
-    use russell_chk::vec_approx_eq;
-    use russell_lab::{Matrix, Vector};
+    use russell_lab::{vec_approx_eq, Matrix, Vector};
 
     #[test]
     fn new_captures_errors() {

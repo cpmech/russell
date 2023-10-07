@@ -165,8 +165,7 @@ impl<'a> LinSolver<'a> {
     /// # Examples
     ///
     /// ```
-    /// use russell_chk::vec_approx_eq;
-    /// use russell_lab::Vector;
+    /// use russell_lab::{vec_approx_eq, Vector};
     /// use russell_sparse::prelude::*;
     /// use russell_sparse::StrError;
     ///
@@ -224,8 +223,7 @@ impl<'a> LinSolver<'a> {
 mod tests {
     use super::{LinSolParams, LinSolver};
     use crate::{Genie, Ordering, Samples, Scaling, SparseMatrix};
-    use russell_chk::vec_approx_eq;
-    use russell_lab::Vector;
+    use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
     fn clone_copy_and_debug_work() {

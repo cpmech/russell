@@ -45,7 +45,7 @@ pub fn mat_sum_rows(v: &mut Vector, a: &Matrix) -> Result<(), StrError> {
 #[cfg(test)]
 mod tests {
     use super::{mat_sum_rows, Matrix, Vector};
-    use russell_chk::vec_approx_eq;
+    use crate::vec_approx_eq;
 
     #[test]
     fn mat_sum_rows_fails_on_wrong_dims() {

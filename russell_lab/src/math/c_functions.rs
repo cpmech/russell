@@ -37,8 +37,8 @@ pub fn gamma(x: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::{erf, erfc, gamma};
+    use crate::approx_eq;
     use crate::math::PI;
-    use russell_chk::approx_eq;
 
     #[test]
     fn erf_works() {

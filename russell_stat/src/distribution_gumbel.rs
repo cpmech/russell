@@ -77,7 +77,7 @@ impl ProbabilityDistribution for DistributionGumbel {
 #[cfg(test)]
 mod tests {
     use crate::{DistributionGumbel, ProbabilityDistribution};
-    use russell_chk::approx_eq;
+    use russell_lab::approx_eq;
 
     // Data from the following R-code (run with Rscript gumbel.R):
     /*

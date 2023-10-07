@@ -1,6 +1,4 @@
-use russell_chk::approx_eq;
-use russell_lab::prelude::*;
-use russell_lab::StrError;
+use russell_lab::*;
 
 fn main() -> Result<(), StrError> {
     // set matrix

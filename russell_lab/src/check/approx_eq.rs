@@ -13,7 +13,7 @@ use num_traits::{Num, NumCast};
 /// ## Accepts small error
 ///
 /// ```
-/// use russell_chk::approx_eq;
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let a = 3.0000001;
@@ -25,7 +25,7 @@ use num_traits::{Num, NumCast};
 /// ## Panics on different value
 ///
 /// ```should_panic
-/// use russell_chk::approx_eq;
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let a = 1.0;

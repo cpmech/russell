@@ -90,7 +90,7 @@ pub fn copy_tensor4(ee: &mut Tensor4, dd: &Tensor4) -> Result<(), StrError> {
 /// # Example
 ///
 /// ```
-/// use russell_chk::approx_eq;
+/// use russell_lab::approx_eq;
 /// use russell_tensor::{t2_ddot_t2, Mandel, Tensor2, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
@@ -1481,7 +1481,7 @@ pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) -> Res
 /// # Example
 ///
 /// ```
-/// use russell_chk::approx_eq;
+/// use russell_lab::approx_eq;
 /// use russell_tensor::{Mandel, t4_ddot_t4, StrError, Tensor4};
 ///
 /// fn main() -> Result<(), StrError> {
@@ -1545,8 +1545,7 @@ mod tests {
         t2_ssd, t2_udyad_t2, t4_ddot_t2, t4_ddot_t4, vec_dot_t2, vec_dyad_vec, Tensor2, Tensor4,
     };
     use crate::{Mandel, SamplesTensor4, MN_TO_IJKL, SQRT_2};
-    use russell_chk::{approx_eq, vec_approx_eq};
-    use russell_lab::{mat_approx_eq, Matrix, Vector};
+    use russell_lab::{approx_eq, mat_approx_eq, vec_approx_eq, Matrix, Vector};
 
     #[test]
     fn copy_tensor2_fails_on_wrong_input() {

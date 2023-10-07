@@ -121,7 +121,7 @@ impl fmt::Display for Statistics {
 #[cfg(test)]
 mod tests {
     use super::statistics;
-    use russell_chk::approx_eq;
+    use russell_lab::approx_eq;
 
     #[test]
     fn statistics_handle_small_slices() {

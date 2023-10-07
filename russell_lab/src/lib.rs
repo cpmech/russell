@@ -57,7 +57,6 @@ mod internal;
 pub mod math;
 pub mod matrix;
 pub mod matvec;
-pub mod prelude;
 pub mod vector;
 pub use crate::base::*;
 pub use crate::check::*;

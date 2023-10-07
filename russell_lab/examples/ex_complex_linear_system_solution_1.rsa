@@ -1,0 +1,47 @@
+use num_complex::Complex64;
+use russell_lab::*;
+
+fn main() -> Result<(), StrError> {
+    // Example from Intel MKL
+
+    // matrix
+    #[rustfmt::skip]
+    let mut a = ComplexMatrix::from(&[
+	   [Complex64::new( 1.23, -5.50), Complex64::new(-2.14, -1.12), Complex64::new(-4.30, -7.10), Complex64::new( 1.27,  7.29)],
+	   [Complex64::new( 7.91, -5.38), Complex64::new(-9.92, -0.79), Complex64::new(-6.47,  2.52), Complex64::new( 8.90,  6.92)],
+	   [Complex64::new(-9.80, -4.86), Complex64::new(-9.18, -1.12), Complex64::new(-6.51, -2.67), Complex64::new(-8.82,  1.25)],
+	   [Complex64::new(-7.32,  7.57), Complex64::new( 1.37,  0.43), Complex64::new(-5.86,  7.38), Complex64::new( 5.41,  5.37)],
+	]);
+
+    // save copy
+    let a_copy = a.clone();
+
+    // right-hand-side
+    #[rustfmt::skip]
+    let mut b = ComplexVector::from(&[
+	   Complex64::new( 8.33, -7.32),
+       Complex64::new(-6.18, -4.80),
+       Complex64::new(-5.71, -2.80),
+       Complex64::new(-1.60,  3.08),
+	]);
+
+    // print data
+    println!("a (before) =\n{}", a);
+    println!("b (before) =\n{}", b);
+
+    // solve b := x := A⁻¹ b
+    complex_solve_lin_sys(&mut b, &mut a).unwrap();
+
+    // print results
+    println!("a (after) =\n{:.2}", a);
+    println!("b (after) =\n{:.2}", b);
+
+    // check
+    let (m, n) = a.dims();
+    let mut c = ComplexMatrix::new(m, n);
+    let one = Complex64::new(1.0, 0.0);
+    complex_mat_vec_mul(&mut c, one, &a_copy, &b)?;
+
+    println!("c = a ⋅ b =\n{:.2}", c);
+    Ok(())
+}

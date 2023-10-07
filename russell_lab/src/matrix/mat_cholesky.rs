@@ -31,7 +31,6 @@ extern "C" {
 ///
 /// # Notes
 ///
-/// * The symmetry of `A` is not checked.
 /// * Either the lower triangle or the upper triangle is considered according to the `upper` flag.
 /// * The matrix `A` may be given in **full** form with either `upper = true` or `upper = false`.
 ///
@@ -88,10 +87,10 @@ pub fn mat_cholesky(a: &mut Matrix, upper: bool) -> Result<(), StrError> {
     if m != n {
         return Err("the matrix must be square");
     }
+    let c_upper = if upper { C_TRUE } else { C_FALSE };
     let m_i32 = to_i32(m);
     let lda = m_i32;
     let mut info = 0;
-    let c_upper = if upper { C_TRUE } else { C_FALSE };
     unsafe { c_dpotrf(c_upper, &m_i32, a.as_mut_data().as_mut_ptr(), &lda, &mut info) }
     if info < 0 {
         println!("LAPACK ERROR (dpotrf): Argument #{} had an illegal value", -info);

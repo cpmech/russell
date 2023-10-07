@@ -79,7 +79,12 @@ pub fn complex_vec_mat_mul(
     if m != a.nrow() || n != a.ncol() {
         return Err("matrix and vectors are incompatible");
     }
-    if m == 0 || n == 0 {
+    if n == 0 {
+        return Ok(());
+    }
+    if m == 0 {
+        let zero = Complex64::new(0.0, 0.0);
+        v.fill(zero);
         return Ok(());
     }
     let m_i32: i32 = to_i32(m);

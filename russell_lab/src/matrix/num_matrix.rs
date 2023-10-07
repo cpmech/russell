@@ -297,12 +297,12 @@ where
     ///      └         ┘"
     /// );
     /// ```
-    pub fn from<'a, S, U>(array: &'a S) -> Self
+    pub fn from<'a, S, U>(data: &'a S) -> Self
     where
         S: AsArray2D<'a, U>,
         U: 'a + Into<T>,
     {
-        let (mut nrow, ncol) = array.size();
+        let (mut nrow, ncol) = data.size();
         if ncol == 0 {
             nrow = 0
         }
@@ -313,10 +313,122 @@ where
         };
         for i in 0..nrow {
             for j in 0..ncol {
-                matrix.data[i + j * nrow] = array.at(i, j).into();
+                matrix.data[i + j * nrow] = data.at(i, j).into();
             }
         }
         matrix
+    }
+
+    /// Creates new matrix from given data, taking the lower triangle (and diagonal) only
+    ///
+    /// # Notes
+    ///
+    /// * For variable-length rows, the number of columns is defined by the first row
+    /// * The next rows must have at least the same number of columns as the first row
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::{NumMatrix, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     const IGNORED: f64 = 123.456;
+    ///     let data = [
+    ///         [1.0, 2.0, 3.0],
+    ///         [2.0, 4.0, 5.0],
+    ///         [3.0, 5.0, 6.0],
+    ///     ];
+    ///     let a = NumMatrix::<f64>::from_lower(&data).unwrap();
+    ///     assert_eq!(
+    ///         format!("{}", &a),
+    ///         "┌       ┐\n\
+    ///          │ 1 0 0 │\n\
+    ///          │ 2 4 0 │\n\
+    ///          │ 3 5 6 │\n\
+    ///          └       ┘"
+    ///     );
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn from_lower<'a, S, U>(data: &'a S) -> Result<Self, StrError>
+    where
+        S: AsArray2D<'a, U>,
+        U: 'a + Into<T>,
+    {
+        let (mut nrow, ncol) = data.size();
+        if ncol == 0 {
+            nrow = 0
+        }
+        if nrow != ncol {
+            return Err("the matrix must be square to set lower triangle");
+        }
+        let mut matrix = NumMatrix {
+            nrow,
+            ncol,
+            data: vec![T::zero(); nrow * ncol],
+        };
+        for i in 0..nrow {
+            for j in 0..(i + 1) {
+                matrix.data[i + j * nrow] = data.at(i, j).into();
+            }
+        }
+        Ok(matrix)
+    }
+
+    /// Creates new matrix from given data, taking the upper triangle (and diagonal) only
+    ///
+    /// # Notes
+    ///
+    /// * For variable-length rows, the number of columns is defined by the first row
+    /// * The next rows must have at least the same number of columns as the first row
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::{NumMatrix, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     const IGNORED: f64 = 123.456;
+    ///     let data = [
+    ///         [1.0, 2.0, 3.0],
+    ///         [2.0, 4.0, 5.0],
+    ///         [3.0, 5.0, 6.0],
+    ///     ];
+    ///     let a = NumMatrix::<f64>::from_upper(&data).unwrap();
+    ///     assert_eq!(
+    ///         format!("{}", &a),
+    ///         "┌       ┐\n\
+    ///          │ 1 2 3 │\n\
+    ///          │ 0 4 5 │\n\
+    ///          │ 0 0 6 │\n\
+    ///          └       ┘"
+    ///     );
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn from_upper<'a, S, U>(data: &'a S) -> Result<Self, StrError>
+    where
+        S: AsArray2D<'a, U>,
+        U: 'a + Into<T>,
+    {
+        let (mut nrow, ncol) = data.size();
+        if ncol == 0 {
+            nrow = 0
+        }
+        if nrow != ncol {
+            return Err("the matrix must be square to set upper triangle");
+        }
+        let mut matrix = NumMatrix {
+            nrow,
+            ncol,
+            data: vec![T::zero(); nrow * ncol],
+        };
+        for i in 0..nrow {
+            for j in i..nrow {
+                matrix.data[i + j * nrow] = data.at(i, j).into();
+            }
+        }
+        Ok(matrix)
     }
 
     /// Creates new diagonal matrix with given diagonal data
@@ -900,6 +1012,64 @@ mod tests {
         ];
         let c = NumMatrix::<f64>::from(&c_data);
         assert_eq!(c.data, &[100.0, 300.0, 500.0, 200.0, 400.0, 600.0]);
+    }
+
+    #[test]
+    fn from_lower_works() {
+        // heap-allocated 2D array (vector of vectors)
+        const IGNORED: f64 = 123.456;
+        let a_data = vec![
+            vec![1.0, 2.0],
+            vec![3.0, 4.0, IGNORED, IGNORED, IGNORED],
+            vec![5.0, 6.0],
+        ];
+        assert_eq!(
+            NumMatrix::<f64>::from_lower(&a_data).err(),
+            Some("the matrix must be square to set lower triangle")
+        );
+        let a_data = vec![
+            vec![1.0, 2.0, 3.0],
+            vec![2.0, 4.0, 5.0, IGNORED, IGNORED, IGNORED],
+            vec![3.0, 5.0, 6.0],
+        ];
+        let a = NumMatrix::<f64>::from_lower(&a_data).unwrap();
+        assert_eq!(
+            a.data,
+            &[
+                1.0, 2.0, 3.0, // first column
+                0.0, 4.0, 5.0, // second column
+                0.0, 0.0, 6.0, // third column
+            ]
+        );
+    }
+
+    #[test]
+    fn from_upper_works() {
+        // heap-allocated 2D array (vector of vectors)
+        const IGNORED: f64 = 123.456;
+        let a_data = vec![
+            vec![1.0, 2.0],
+            vec![3.0, 4.0, IGNORED, IGNORED, IGNORED],
+            vec![5.0, 6.0],
+        ];
+        assert_eq!(
+            NumMatrix::<f64>::from_upper(&a_data).err(),
+            Some("the matrix must be square to set upper triangle")
+        );
+        let a_data = vec![
+            vec![1.0, 2.0, 3.0],
+            vec![2.0, 4.0, 5.0, IGNORED, IGNORED, IGNORED],
+            vec![3.0, 5.0, 6.0],
+        ];
+        let a = NumMatrix::<f64>::from_upper(&a_data).unwrap();
+        assert_eq!(
+            a.data,
+            &[
+                1.0, 0.0, 0.0, // first column
+                2.0, 4.0, 0.0, // second column
+                3.0, 5.0, 6.0, // third column
+            ]
+        );
     }
 
     #[test]

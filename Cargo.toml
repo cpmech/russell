@@ -2,7 +2,6 @@
 
 members = [
     "russell_lab",
-    "russell_openblas",
     "russell_sparse",
     "russell_stat",
     "russell_tensor"

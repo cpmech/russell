@@ -41,6 +41,8 @@ extern "C" {
 /// 1. The matrix `a` will be modified
 /// 2. The right-hand-side `b` will contain the solution `x`
 ///
+/// # Examples
+///
 /// ```
 /// use russell_lab::{solve_lin_sys, Matrix, Vector, StrError};
 ///

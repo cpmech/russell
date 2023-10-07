@@ -337,7 +337,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -761,7 +761,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -813,7 +813,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::vec_approx_eq;
+    /// use russell_lab::vec_approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -877,8 +877,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
-    /// use russell_lab::{mat_approx_eq, mat_mat_mul, Matrix};
+    /// use russell_lab::{approx_eq, mat_approx_eq, mat_mat_mul, Matrix};
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -977,7 +976,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::vec_approx_eq;
+    /// use russell_lab::vec_approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -1078,7 +1077,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -1106,7 +1105,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -1144,7 +1143,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -1203,7 +1202,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -1256,7 +1255,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -1318,7 +1317,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -1345,7 +1344,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -1380,7 +1379,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -1415,7 +1414,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -1460,7 +1459,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -1489,7 +1488,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -1519,7 +1518,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -1546,7 +1545,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -1573,7 +1572,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -1606,7 +1605,7 @@ impl Tensor2 {
     /// # Example
     ///
     /// ```
-    /// use russell_chk::approx_eq;
+    /// use russell_lab::approx_eq;
     /// use russell_tensor::{Mandel, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
@@ -1638,8 +1637,7 @@ impl Tensor2 {
 mod tests {
     use super::Tensor2;
     use crate::{Mandel, SampleTensor2, SamplesTensor2, SQRT_2, SQRT_3};
-    use russell_chk::{approx_eq, vec_approx_eq};
-    use russell_lab::{mat_approx_eq, mat_mat_mul, math::PI, Matrix};
+    use russell_lab::{approx_eq, mat_approx_eq, mat_mat_mul, math::PI, vec_approx_eq, Matrix};
     use serde::{Deserialize, Serialize};
 
     #[test]

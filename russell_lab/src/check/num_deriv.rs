@@ -27,7 +27,7 @@ pub const STEPSIZE_CENTRAL5: f64 = 1e-3;
 /// # Example
 ///
 /// ```
-/// use russell_chk::deriv_and_errors_central5;
+/// use russell_lab::*;
 /// struct Arguments {}
 /// let f = |x: f64, _: &mut Arguments| f64::exp(-2.0 * x);
 /// let args = &mut Arguments {};
@@ -85,7 +85,7 @@ where
 /// # Example
 ///
 /// ```
-/// use russell_chk::deriv_central5;
+/// use russell_lab::*;
 /// struct Arguments {}
 /// let f = |x: f64, _: &mut Arguments| f64::exp(-2.0 * x);
 /// let args = &mut Arguments {};

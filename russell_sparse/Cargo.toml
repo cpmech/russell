@@ -12,7 +12,6 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "sparse", "solver"]
 
 [dependencies]
-russell_chk = { path = "../russell_chk", version = "0.5.0" }
 russell_lab = { path = "../russell_lab", version = "0.5.0" }
 structopt = "0.3"
 serde = { version = "1.0", features = ["derive"] }

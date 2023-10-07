@@ -23,8 +23,7 @@ extern "C" {
 /// # Example
 ///
 /// ```
-/// use russell_chk::approx_eq;
-/// use russell_lab::{mat_norm, Matrix, Norm};
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let a = Matrix::from(&[
@@ -55,8 +54,7 @@ pub fn mat_norm(a: &Matrix, kind: Norm) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::{mat_norm, Matrix};
-    use crate::Norm;
-    use russell_chk::approx_eq;
+    use crate::{approx_eq, Norm};
 
     #[test]
     fn mat_norm_works() {

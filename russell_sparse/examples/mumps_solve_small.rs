@@ -1,6 +1,4 @@
-use russell_chk::vec_approx_eq;
-use russell_lab::{mat_inverse, mat_norm, Norm};
-use russell_lab::{Matrix, Vector};
+use russell_lab::*;
 use russell_sparse::prelude::*;
 use russell_sparse::StrError;
 

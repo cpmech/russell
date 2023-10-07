@@ -36,8 +36,7 @@ pub fn vec_add(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector) ->
 #[cfg(test)]
 mod tests {
     use super::{vec_add, Vector};
-    use crate::MAX_DIM_FOR_NATIVE_BLAS;
-    use russell_chk::vec_approx_eq;
+    use crate::{vec_approx_eq, MAX_DIM_FOR_NATIVE_BLAS};
 
     #[test]
     fn vec_add_fail_on_wrong_dims() {

@@ -75,7 +75,7 @@ mod tests {
     use crate::{DistributionUniform, ProbabilityDistribution};
     use rand::prelude::StdRng;
     use rand::SeedableRng;
-    use russell_chk::approx_eq;
+    use russell_lab::approx_eq;
 
     // Data from the following R-code (run with Rscript uniform.R):
     /*

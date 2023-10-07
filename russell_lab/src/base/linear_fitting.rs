@@ -63,8 +63,7 @@ pub fn linear_fitting(x: &Vector, y: &Vector, pass_through_zero: bool) -> Result
 #[cfg(test)]
 mod tests {
     use super::linear_fitting;
-    use crate::Vector;
-    use russell_chk::approx_eq;
+    use crate::{approx_eq, Vector};
 
     #[test]
     fn linear_fitting_handles_errors() {

@@ -16,8 +16,7 @@ use crate::StrError;
 /// # Example
 ///
 /// ```
-/// use russell_lab::{vec_max_abs_diff, Vector, StrError};
-/// use russell_chk::approx_eq;
+/// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let u = Vector::from(&[10.0, -20.0]);

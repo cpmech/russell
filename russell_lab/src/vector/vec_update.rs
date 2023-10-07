@@ -46,7 +46,7 @@ pub fn vec_update(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError
 #[cfg(test)]
 mod tests {
     use super::{vec_update, Vector};
-    use russell_chk::vec_approx_eq;
+    use crate::vec_approx_eq;
 
     #[test]
     fn vec_update_fails_on_wrong_dims() {

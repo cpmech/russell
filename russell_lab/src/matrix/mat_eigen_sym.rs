@@ -84,8 +84,7 @@ mod tests {
     use super::{mat_eigen_sym, Matrix};
     use crate::math::SQRT_2;
     use crate::matrix::testing::check_eigen_real;
-    use crate::{mat_approx_eq, AsArray2D, Vector};
-    use russell_chk::vec_approx_eq;
+    use crate::{mat_approx_eq, vec_approx_eq, AsArray2D, Vector};
 
     fn calc_eigen<'a, T>(data: &'a T) -> (Vector, Matrix)
     where

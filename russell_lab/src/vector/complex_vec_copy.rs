@@ -47,8 +47,8 @@ pub fn complex_vec_copy(v: &mut ComplexVector, u: &ComplexVector) -> Result<(), 
 #[cfg(test)]
 mod tests {
     use super::{complex_vec_copy, ComplexVector};
+    use crate::complex_vec_approx_eq;
     use num_complex::Complex64;
-    use russell_chk::complex_vec_approx_eq;
 
     #[test]
     fn complex_vec_copy_fails_on_wrong_dims() {

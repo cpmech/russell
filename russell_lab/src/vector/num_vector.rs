@@ -701,8 +701,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::NumVector;
-    use crate::AsArray1D;
-    use russell_chk::vec_approx_eq;
+    use crate::{vec_approx_eq, AsArray1D};
     use serde::{Deserialize, Serialize};
     use std::fmt::Write;
 

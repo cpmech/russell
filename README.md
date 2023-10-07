@@ -12,7 +12,6 @@ An essential goal of this library is to bring the best (fastest) solutions while
 
 Available crates:
 
-- [![Crates.io](https://img.shields.io/crates/v/russell_chk.svg)](https://crates.io/crates/russell_chk) [chk](https://github.com/cpmech/russell/tree/main/russell_chk) Functions to check vectors and other data in tests
 - [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab) [lab](https://github.com/cpmech/russell/tree/main/russell_lab) Matrix-vector laboratory including linear algebra tools
 - [![Crates.io](https://img.shields.io/crates/v/russell_openblas.svg)](https://crates.io/crates/russell_openblas) [openblas](https://github.com/cpmech/russell/tree/main/russell_openblas) Thin wrapper to some OpenBLAS routines
 - [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) Sparse matrix tools and solvers
@@ -107,8 +106,7 @@ fn main() -> Result<(), StrError> {
 ### Solve a small sparse linear system using UMFPACK
 
 ```rust
-use russell_chk::vec_approx_eq;
-use russell_lab::Vector;
+use russell_lab::*;
 use russell_sparse::prelude::*;
 use russell_sparse::StrError;
 

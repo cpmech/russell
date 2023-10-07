@@ -70,8 +70,7 @@ extern "C" {
 /// # Example
 ///
 /// ```
-/// use russell_chk::approx_eq;
-/// use russell_lab::{mat_add, mat_eigen, mat_mat_mul, mat_norm, Matrix, Norm, StrError, Vector};
+/// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // set matrix
@@ -215,12 +214,7 @@ pub fn mat_eigen(
 ///
 /// ```
 /// use num_complex::Complex64;
-/// use russell_chk::approx_eq;
-/// use russell_lab::{
-///     complex_mat_add, complex_mat_mat_mul, complex_mat_zip, complex_mat_norm, complex_vec_zip, ComplexMatrix,
-///     Norm,
-/// };
-/// use russell_lab::{mat_eigen_lr, Matrix, StrError, Vector};
+/// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // set matrix
@@ -367,8 +361,7 @@ mod tests {
     use super::{mat_eigen, mat_eigen_lr};
     use crate::mat_approx_eq;
     use crate::matrix::testing::{check_eigen_general, check_eigen_real};
-    use crate::{Matrix, Vector};
-    use russell_chk::vec_approx_eq;
+    use crate::{vec_approx_eq, Matrix, Vector};
 
     #[test]
     fn mat_eigen_fails_on_non_square() {

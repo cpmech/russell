@@ -274,7 +274,7 @@ mod tests {
     use crate::conversions::{col_major, col_major_complex};
     use crate::{to_i32, StrError};
     use num_complex::Complex64;
-    use russell_chk::{complex_vec_approx_eq, vec_approx_eq};
+    use russell_lab::{complex_vec_approx_eq, vec_approx_eq};
 
     #[test]
     fn dger_works() {

@@ -17,6 +17,7 @@
 //! * Matrix-vector multiplication ([mat_vec_mul()])
 //! * Solution of dense linear systems with symmetric ([mat_cholesky()]) or non-symmetric ([solve_lin_sys()]) coefficient matrices
 //! * Reading writing files ([read_table()]) , linspace ([NumVector::linspace()]), grid generators ([generate2d()]), [generate3d()]), [linear_fitting()], [Stopwatch] and more
+//! * Checking results, comparing float point numbers, and verifying the correctness of derivatives; see [crate::check]
 //!
 //! # Example - Cholesky factorization
 //!
@@ -51,6 +52,7 @@
 pub type StrError = &'static str;
 
 pub mod base;
+pub mod check;
 mod internal;
 pub mod math;
 pub mod matrix;
@@ -58,6 +60,7 @@ pub mod matvec;
 pub mod prelude;
 pub mod vector;
 pub use crate::base::*;
+pub use crate::check::*;
 use crate::internal::*;
 pub use crate::matrix::*;
 pub use crate::matvec::*;

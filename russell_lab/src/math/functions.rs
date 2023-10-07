@@ -183,11 +183,8 @@ pub fn suq_cos(x: f64, k: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        boxcar, heaviside, logistic, logistic_deriv, ramp, sign, smooth_ramp, smooth_ramp_deriv, smooth_ramp_deriv2,
-        suq_cos, suq_sin,
-    };
-    use russell_chk::{approx_eq, deriv_approx_eq};
+    use super::*;
+    use crate::{approx_eq, deriv_approx_eq};
     use std::f64::consts::PI;
 
     #[test]

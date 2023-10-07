@@ -79,7 +79,7 @@ impl ProbabilityDistribution for DistributionFrechet {
 #[cfg(test)]
 mod tests {
     use crate::{DistributionFrechet, ProbabilityDistribution};
-    use russell_chk::approx_eq;
+    use russell_lab::approx_eq;
 
     // Data from the following R-code (run with Rscript frechet.R):
     /*

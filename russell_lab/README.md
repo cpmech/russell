@@ -15,6 +15,7 @@ There are many functions for linear algebra, such as (for Real and Complex types
 * Matrix-vector multiplication, and more
 * Solution of dense linear systems with symmetric or non-symmetric coefficient matrices, and more
 * Reading writing files, `linspace`, grid generators, Stopwatch, linear fitting, and more
+* Checking results, comparing float point numbers, and verifying the correctness of derivatives; see `russell_lab::check`
 
 See the documentation for further information:
 
@@ -140,8 +141,7 @@ fn main() -> Result<(), StrError> {
 ### Compute eigenvalues
 
 ```rust
-use russell_chk::approx_eq;
-use russell_lab::{mat_add, mat_eigen, mat_mat_mul, mat_norm, Matrix, Norm, StrError, Vector};
+use russell_lab::*;
 
 fn main() -> Result<(), StrError> {
     // set matrix

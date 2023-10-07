@@ -46,8 +46,8 @@ pub fn vec_rms_scaled(v: &Vector, v0: &Vector, abs_tol: f64, rel_tol: f64) -> f6
 #[cfg(test)]
 mod tests {
     use super::{vec_rms_scaled, Vector};
+    use crate::approx_eq;
     use crate::math::SQRT_2_BY_3;
-    use russell_chk::approx_eq;
 
     #[test]
     fn vec_rms_error_works() {

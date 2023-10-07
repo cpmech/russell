@@ -1077,8 +1077,7 @@ impl Samples {
 mod tests {
     use super::Samples;
     use crate::{CooMatrix, CscMatrix, CsrMatrix};
-    use russell_chk::approx_eq;
-    use russell_lab::{mat_approx_eq, mat_inverse, Matrix};
+    use russell_lab::{approx_eq, mat_approx_eq, mat_inverse, Matrix};
 
     /// Checks the samples
     ///

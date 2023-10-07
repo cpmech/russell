@@ -52,8 +52,8 @@ pub fn sort_vec_mat(l: &mut Vector, v: &mut Matrix) -> Result<(), StrError> {
 #[cfg(test)]
 mod tests {
     use super::sort_vec_mat;
+    use crate::vec_approx_eq;
     use crate::{mat_approx_eq, Matrix, Vector};
-    use russell_chk::vec_approx_eq;
 
     #[test]
     fn sort_vec_mat_handles_errors() {

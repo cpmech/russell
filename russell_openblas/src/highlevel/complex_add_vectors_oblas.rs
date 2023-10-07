@@ -37,7 +37,7 @@ pub fn complex_add_vectors_oblas(
 mod tests {
     use super::complex_add_vectors_oblas;
     use num_complex::Complex64;
-    use russell_chk::complex_vec_approx_eq;
+    use russell_lab::complex_vec_approx_eq;
 
     #[test]
     fn complex_add_vectors_oblas_sizes_works() {

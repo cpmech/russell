@@ -546,8 +546,7 @@ fn handle_mumps_error_code(err: i32) -> StrError {
 mod tests {
     use super::*;
     use crate::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix, Storage, Symmetry};
-    use russell_chk::{approx_eq, vec_approx_eq};
-    use russell_lab::Vector;
+    use russell_lab::{approx_eq, vec_approx_eq, Vector};
 
     #[test]
     fn complete_solution_cycle_works() {

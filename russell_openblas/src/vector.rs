@@ -195,7 +195,7 @@ mod tests {
     use super::{dasum, daxpy, dcopy, ddot, dnrm2, dscal, idamax, zaxpy, zcopy, zscal};
     use crate::to_i32;
     use num_complex::Complex64;
-    use russell_chk::{approx_eq, complex_vec_approx_eq, vec_approx_eq};
+    use russell_lab::{approx_eq, complex_vec_approx_eq, vec_approx_eq};
 
     #[test]
     fn ddot_works() {

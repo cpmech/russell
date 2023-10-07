@@ -26,7 +26,7 @@
 //! # Example - dnrm2
 //!
 //! ```
-//! use russell_chk::approx_eq;
+//! use russell_lab::approx_eq;
 //! use russell_openblas::{dnrm2, to_i32};
 //! let x = [1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0];
 //! let (n, incx) = (to_i32(x.len()), 1_i32);

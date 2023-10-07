@@ -63,7 +63,7 @@ impl ProbabilityDistribution for DistributionNormal {
 #[cfg(test)]
 mod tests {
     use crate::{DistributionNormal, ProbabilityDistribution};
-    use russell_chk::approx_eq;
+    use russell_lab::approx_eq;
 
     // Data from the following R-code (run with Rscript normal.R):
     /*

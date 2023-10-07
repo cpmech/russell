@@ -100,7 +100,7 @@ pub fn vec_mat_mul(v: &mut Vector, alpha: f64, u: &Vector, a: &Matrix) -> Result
 #[cfg(test)]
 mod tests {
     use super::{vec_mat_mul, Matrix, Vector};
-    use russell_chk::vec_approx_eq;
+    use crate::vec_approx_eq;
 
     #[test]
     fn vec_mat_mul_fails_on_wrong_dims() {

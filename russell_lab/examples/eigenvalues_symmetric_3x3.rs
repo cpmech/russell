@@ -2,8 +2,13 @@ use russell_lab::*;
 
 fn main() -> Result<(), StrError> {
     // set matrix
-    let data = [[2.0, 0.0, 0.0], [0.0, 3.0, 4.0], [0.0, 4.0, 9.0]];
+    let data = [
+        [2.0, 0.0, 0.0], //
+        [0.0, 3.0, 4.0], //
+        [0.0, 4.0, 9.0],
+    ];
     let mut a = Matrix::from(&data);
+    println!("a = \n{}", a);
 
     // allocate output arrays
     let m = a.nrow();
@@ -14,6 +19,8 @@ fn main() -> Result<(), StrError> {
 
     // perform the eigen-decomposition
     mat_eigen(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a)?;
+    println!("eigenvalues =\n{}", l_real);
+    println!("eigenvectors =\n{}", v_real);
 
     // check results
     assert_eq!(

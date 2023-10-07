@@ -17,6 +17,18 @@ extern "C" {
 
 /// Computes the matrix norm (complex version)
 ///
+/// Computes one of:
+///
+/// ```text
+/// ‖a‖_1 = max_j ( Σ_i |aij| )
+///
+/// ‖a‖_∞ = max_i ( Σ_j |aij| )
+///
+/// ‖a‖_F = sqrt(Σ_i Σ_j |aij|²) == ‖a‖_2
+///
+/// ‖a‖_max = max_ij ( |aij| )
+/// ```
+///
 /// # Example
 ///
 /// ```

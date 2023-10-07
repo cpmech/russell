@@ -94,7 +94,11 @@ use russell_lab::{mat_pseudo_inverse, Matrix, StrError};
 
 fn main() -> Result<(), StrError> {
     // set matrix
-    let mut a = Matrix::from(&[[1.0, 0.0], [0.0, 1.0], [0.0, 1.0]]);
+    let mut a = Matrix::from(&[
+      [1.0, 0.0], //
+      [0.0, 1.0], //
+      [0.0, 1.0], //
+    ]);
     let a_copy = a.clone();
 
     // compute pseudo-inverse matrix (because it's square)
@@ -108,7 +112,7 @@ fn main() -> Result<(), StrError> {
                       └                ┘";
     assert_eq!(format!("{:.2}", ai), ai_correct);
 
-    // compute a⋅ai
+    // compute a ⋅ ai
     let (m, n) = a.dims();
     let mut a_ai = Matrix::new(m, m);
     for i in 0..m {
@@ -119,7 +123,7 @@ fn main() -> Result<(), StrError> {
         }
     }
 
-    // check if a⋅ai⋅a == a
+    // check: a ⋅ ai ⋅ a = a
     let mut a_ai_a = Matrix::new(m, n);
     for i in 0..m {
         for j in 0..n {
@@ -187,6 +191,55 @@ fn main() -> Result<(), StrError> {
     mat_mat_mul(&mut v_l, 1.0, &v_real, &lam)?;
     mat_add(&mut err, 1.0, &a_v, -1.0, &v_l)?;
     approx_eq(mat_norm(&err, Norm::Max), 0.0, 1e-15);
+    Ok(())
+}
+```
+
+### Cholesky factorization
+
+```rust
+use russell_lab::*;
+
+fn main() -> Result<(), StrError> {
+    // set matrix
+    let sym = 0.0;
+    #[rustfmt::skip]
+    let mut a = Matrix::from(&[
+        [  4.0,   sym,   sym],
+        [ 12.0,  37.0,   sym],
+        [-16.0, -43.0,  98.0],
+    ]);
+
+    // perform factorization
+    mat_cholesky(&mut a, false)?;
+
+    // define alias (for convenience)
+    let l = &a;
+
+    // compare with solution
+    let l_correct = "┌          ┐\n\
+                     │  2  0  0 │\n\
+                     │  6  1  0 │\n\
+                     │ -8  5  3 │\n\
+                     └          ┘";
+    assert_eq!(format!("{}", l), l_correct);
+
+    // check:  l ⋅ lᵀ = a
+    let m = a.nrow();
+    let mut l_lt = Matrix::new(m, m);
+    for i in 0..m {
+        for j in 0..m {
+            for k in 0..m {
+                l_lt.add(i, j, l.get(i, k) * l.get(j, k));
+            }
+        }
+    }
+    let l_lt_correct = "┌             ┐\n\
+                        │   4  12 -16 │\n\
+                        │  12  37 -43 │\n\
+                        │ -16 -43  98 │\n\
+                        └             ┘";
+    assert_eq!(format!("{}", l_lt), l_lt_correct);
     Ok(())
 }
 ```

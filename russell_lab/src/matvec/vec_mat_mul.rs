@@ -3,6 +3,8 @@ use crate::vector::Vector;
 use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_TRANS};
 
 extern "C" {
+    // Performs one of the matrix-vector multiplication
+    // <http://www.netlib.org/lapack/explore-html/dc/da8/dgemv_8f.html
     fn cblas_dgemv(
         layout: i32,
         transa: i32,

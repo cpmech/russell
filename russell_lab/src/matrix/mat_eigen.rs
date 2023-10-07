@@ -2,6 +2,7 @@ use super::Matrix;
 use crate::{dgeev_data, dgeev_data_lr, to_i32, CcBool, StrError, Vector, C_FALSE, C_TRUE};
 
 extern "C" {
+    // Computes the eigenvalues and eigenvectors of a general matrix
     // <http://www.netlib.org/lapack/explore-html/d9/d28/dgeev_8f.html>
     fn c_dgeev(
         calc_vl: CcBool,

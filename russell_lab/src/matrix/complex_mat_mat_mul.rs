@@ -3,6 +3,8 @@ use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_NO_TRANS};
 use num_complex::Complex64;
 
 extern "C" {
+    // Performs the matrix-matrix multiplication (complex version)
+    // <http://www.netlib.org/lapack/explore-html/d7/d76/zgemm_8f.html>
     fn cblas_zgemm(
         layout: i32,
         transa: i32,

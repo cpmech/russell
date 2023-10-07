@@ -2,6 +2,8 @@ use super::Vector;
 use crate::to_i32;
 
 extern "C" {
+    // Calculates the dot product of two vectors
+    // <http://www.netlib.org/lapack/explore-html/d5/df6/ddot_8f.html>
     fn cblas_ddot(n: i32, x: *const f64, incx: i32, y: *const f64, incy: i32) -> f64;
 }
 

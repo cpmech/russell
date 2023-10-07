@@ -3,13 +3,32 @@ use crate::StrError;
 use num_complex::Complex64;
 
 extern "C" {
-    // real
+    // real ------------------------------------------------------------------------------------------------------
+
+    // Computes constant times a vector plus a vector.
+    // <http://www.netlib.org/lapack/explore-html/d9/dcd/daxpy_8f.html>
     fn cblas_daxpy(n: i32, alpha: f64, x: *const f64, incx: i32, y: *mut f64, incy: i32);
+
+    // Copies a vector into another
+    // <https://www.netlib.org/lapack/explore-html/da/d6c/dcopy_8f.html>
     fn cblas_dcopy(n: i32, x: *const f64, incx: i32, y: *mut f64, incy: i32);
+
+    // Scales a vector by a constant
+    // <http://www.netlib.org/lapack/explore-html/d4/dd0/dscal_8f.html>
     fn cblas_dscal(n: i32, alpha: f64, x: *const f64, incx: i32);
-    // complex
+
+    // complex ---------------------------------------------------------------------------------------------------
+
+    // Computes constant times a vector plus a vector (Complex version)
+    // <http://www.netlib.org/lapack/explore-html/d7/db2/zaxpy_8f.html>
     fn cblas_zaxpy(n: i32, alpha: *const Complex64, x: *const Complex64, incx: i32, y: *mut Complex64, incy: i32);
+
+    // Copies a vector into another (complex version)
+    // <https://www.netlib.org/lapack/explore-html/d6/d53/zcopy_8f.html>
     fn cblas_zcopy(n: i32, x: *const Complex64, incx: i32, y: *mut Complex64, incy: i32);
+
+    // Scales a vector by a constant (complex version)
+    // <http://www.netlib.org/lapack/explore-html/d2/d74/zscal_8f.html>
     fn cblas_zscal(n: i32, alpha: *const Complex64, x: *mut Complex64, incx: i32);
 }
 

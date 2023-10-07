@@ -2,6 +2,7 @@ use super::Matrix;
 use crate::{to_i32, CcBool, StrError, Vector, C_TRUE};
 
 extern "C" {
+    // Computes the eigenvalues and eigenvectors of a symmetric matrix
     // <https://netlib.org/lapack/explore-html/dd/d4c/dsyev_8f.html>
     fn c_dsyev(
         calc_v: CcBool,

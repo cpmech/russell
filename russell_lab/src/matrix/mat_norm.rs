@@ -2,6 +2,7 @@ use super::Matrix;
 use crate::{to_i32, Norm};
 
 extern "C" {
+    // Computes the matrix norm
     // <http://www.netlib.org/lapack/explore-html/dc/d09/dlange_8f.html>
     fn c_dlange(norm_code: i32, m: *const i32, n: *const i32, a: *const f64, lda: *const i32, work: *mut f64) -> f64;
 }

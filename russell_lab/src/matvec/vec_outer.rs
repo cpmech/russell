@@ -3,6 +3,8 @@ use crate::vector::Vector;
 use crate::{to_i32, StrError, CBLAS_COL_MAJOR};
 
 extern "C" {
+    // Performs the rank 1 operation (tensor product)
+    // <http://www.netlib.org/lapack/explore-html/dc/da8/dger_8f.html>
     fn cblas_dger(
         layout: i32,
         m: i32,

@@ -23,8 +23,8 @@ extern "C" {
 ///
 /// # Input/Output
 ///
-/// * `A → L` or `A → U` -- On input, `A` is a **symmetric** matrix with either
-///   the lower or upper triangular part given, corresponding to the `upper` flag.
+/// * `A → L` or `A → U` -- On input, `A` is a **symmetric/positive definite** matrix
+///   with either the lower or upper triangular part given, according to the `upper` flag.
 ///   On output, `A = L` or `A = U` with the other side of the triangle unmodified.
 /// * `upper` -- Whether the upper triangle of `A` must be considered instead
 ///    of the lower triangle. This will cause the computation of either `L` or `U`.
@@ -60,10 +60,10 @@ pub fn mat_cholesky(a: &mut Matrix, upper: bool) -> Result<(), StrError> {
         return Err("LAPACK ERROR (dpotrf): An argument had an illegal value");
     } else if info > 0 {
         println!(
-            "LAPACK ERROR (dpotrf): the leading minor of order {} is not positive definite",
+            "LAPACK ERROR (dpotrf): The leading minor of order {} is not positive definite",
             info
         );
-        return Err("LAPACK ERROR (dpotrf): positive definite check failed");
+        return Err("LAPACK ERROR (dpotrf): Positive definite check failed");
     }
     Ok(())
 }
@@ -287,5 +287,23 @@ mod tests {
         mat_cholesky(&mut u, true).unwrap();
         let ut_u = calc_ut_times_u(&u);
         mat_approx_eq(&ut_u, &a_full, 1e-14);
+    }
+
+    #[test]
+    fn mat_cholesky_captures_non_positive_definite() {
+        // define matrix
+        let (a01, a02) = (15.0, -5.0);
+        let a12 = 0.0;
+        #[rustfmt::skip]
+        let a_full = Matrix::from(&[
+            [25.0,   a01,  a02],
+            [ a01, -18.0,  a12],
+            [ a02,   a12, 11.0],
+        ]);
+        let mut res = a_full.clone();
+        assert_eq!(
+            mat_cholesky(&mut res, true).err(),
+            Some("LAPACK ERROR (dpotrf): Positive definite check failed")
+        );
     }
 }

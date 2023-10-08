@@ -25,8 +25,12 @@ struct Options {
     scaling: String,
 
     /// Number of threads for MUMPS
-    #[structopt(short = "n", long, default_value = "0")]
+    #[structopt(short = "m", long, default_value = "0")]
     mumps_nt: u32,
+
+    /// Number of threads
+    #[structopt(short = "n", long, default_value = "0")]
+    nt: u32,
 
     /// Activate verbose mode
     #[structopt(short = "v", long)]
@@ -60,6 +64,8 @@ fn main() -> Result<(), StrError> {
         let max_nt = get_num_threads();
         let blas_nt = if max_nt > mumps_nt { max_nt - mumps_nt } else { 1 };
         set_num_threads(blas_nt);
+    } else if opt.nt > 0 {
+        set_num_threads(opt.nt as usize);
     }
 
     // select linear solver

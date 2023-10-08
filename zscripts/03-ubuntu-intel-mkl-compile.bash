@@ -11,11 +11,19 @@ sudo () {
 # install dependencies
 sudo apt-get update -y && \
 sudo apt-get install -y --no-install-recommends \
+    cmake \
     g++ \
     gdb \
     git \
     libmetis-dev \
-    make
+    make \
+    patch
 
 # install Intel MKL
-bash zscripts/install-intel-mkl-linux.bash
+bash zscripts/install-intel-mkl-and-ifort-debian.bash
+
+# compile and install MUMPS
+bash zscripts/compile-and-install-mumps mkl
+
+# compile and install UMFPACK
+bash zscripts/compile-and-install-umfpack mkl

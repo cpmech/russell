@@ -5,7 +5,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 ## Contents
 
 * [Introduction](#introduction)
-* [Installation on Debian/Ubuntu/Linux](#installation)
+* [Installation](#installation)
 * [Setting Cargo.toml](#cargo)
 * [Examples](#examples)
 
@@ -19,30 +19,9 @@ Documentation:
 
 ## <a name="installation"></a> Installation on Debian/Ubuntu/Linux
 
-This crate depends on `russell_lab`, which, in turn, depends on an efficient BLAS library such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html). Thus, we have two options:
+This crate depends on `russell_lab`, which, in turn, depends on an efficient BLAS library such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
 
-1. Use the standard Debian packages based on OpenBLAS (default)
-2. **(XOR)** Install Intel MKL, which includes LAPACK
-
-Option 2 requires the following environment variable:
-
-```bash
-export RUSSELL_LAB_USE_INTEL_MKL=1
-```
-
-For convenience, you may use the scripts in the [zscripts](https://github.com/cpmech/russell/tree/main/russell_stat/zscripts) directory.
-
-**1.** Use the standard Debian packages based on OpenBLAS:
-
-```bash
-bash zscripts/01-ubuntu-openblas.bash
-```
-
-**2.** Install Intel MKL:
-
-```bash
-bash zscripts/02-ubuntu-intel-mkl.bash
-```
+[The root README file presents the steps to install the required dependencies.](https://github.com/cpmech/russell)
 
 ## <a name="cargo"></a> Setting Cargo.toml
 

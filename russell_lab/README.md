@@ -5,8 +5,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 ## Contents
 
 * [Introduction](#introduction)
-* [Installation on Debian/Ubuntu/Linux](#debian)
-* [Installation on macOS](#macos)
+* [Installation](#debian)
 * [Setting Cargo.toml](#cargo)
 * [Examples](#examples)
 * [About the column major representation](#col-major)
@@ -36,54 +35,9 @@ See the documentation for further information:
 
 ## <a name="debian"></a> Installation on Debian/Ubuntu/Linux
 
-`russell_lab` depends on an efficient BLAS library such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html). Thus, we have two options:
+This crate depends on an efficient BLAS library such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
 
-1. Use the standard Debian packages based on OpenBLAS (default)
-2. **(XOR)** Install Intel MKL, which includes LAPACK
-
-Option 2 requires the following environment variable:
-
-```bash
-export RUSSELL_LAB_USE_INTEL_MKL=1
-```
-
-For convenience, you may use the scripts in the [zscripts](https://github.com/cpmech/russell/tree/main/russell_lab/zscripts) directory.
-
-**1.** Use the standard Debian packages based on OpenBLAS:
-
-```bash
-bash zscripts/01-ubuntu-openblas.bash
-```
-
-**2.** Install Intel MKL:
-
-```bash
-bash zscripts/02-ubuntu-intel-mkl.bash
-```
-
-### Number of threads
-
-By default, OpenBLAS and intel MKL may use all available threads, including "hyper-threads." If desirable, you may set the allowed number of threads with the following environment variable:
-
-```bash
-export OPENBLAS_NUM_THREADS=1
-``` 
-
-## <a name="macos"></a> Installation on macOS
-
-At this time, only OpenBLAS has been tested on macOS.
-
-First, install [Homebrew](https://brew.sh/). Then, run:
-
-```bash
-brew install lapack openblas
-```
-
-Next, we must set the `LIBRARY_PATH`:
-
-```bash
-export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/lapack/lib:$(brew --prefix)/opt/openblas/lib
-```
+[The root README file presents the steps to install the required dependencies.](https://github.com/cpmech/russell)
 
 ## <a name="cargo"></a> Setting Cargo.toml
 

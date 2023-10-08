@@ -5,7 +5,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 ## Contents
 
 * [Introduction](#introduction)
-* [Installation on Debian/Ubuntu/Linux](#installation)
+* [Installation](#installation)
 * [Setting Cargo.toml](#cargo)
 * [Examples](#examples)
 * [Tools](#tools)
@@ -35,69 +35,11 @@ See the documentation for further information:
 
 - [russell_sparse documentation](https://docs.rs/russell_sparse) - Contains the API reference and examples
 
-## <a name="installation"></a> Installation on Debian/Ubuntu/Linux
+## <a name="installation"></a> Installation
 
-This crate depends on `russell_lab`, which, in turn, depends on an efficient BLAS library such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html). `russell_sparse` depends also on [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse), [MUMPS](https://mumps-solver.org), and, optionally, on [Intel DSS](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html). Moreover, some default Debian packages lack new features and may lead to slower computations. Therefore, we have three options:
+This crate depends on `russell_lab`, which, in turn, depends on an efficient BLAS library such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html). This crate also depends on [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse), [MUMPS](https://mumps-solver.org), and, optionally, on [Intel DSS](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html).
 
-1. Use the standard Debian packages based on OpenBLAS (default)
-2. Compile MUMPS and UMFPACK with OpenBLAS
-3. Compile MUMPS and UMFPACK with Intel MKL and enable Intel DSS
-
-Options 2 and 3 require the following environment variables:
-
-```bash
-export RUSSELL_SPARSE_USE_LOCAL_MUMPS=1
-export RUSSELL_SPARSE_USE_LOCAL_UMFPACK=1
-```
-
-Option 3 also requires the following environment variables:
-
-```bash
-export RUSSELL_LAB_USE_INTEL_MKL=1
-export RUSSELL_SPARSE_WITH_INTEL_DSS=1
-```
-
-For convenience, you may use the scripts in the [zscripts](https://github.com/cpmech/russell/tree/main/russell_sparse/zscripts) directory.
-
-**1.** Use the standard Debian packages based on OpenBLAS:
-
-```bash
-bash zscripts/01-ubuntu-openblas-debian.bash
-```
-
-**2. (xor)** compile MUMPS and UMFPACK with OpenBLAS:
-
-```bash
-bash zscripts/02-ubuntu-openblas-compile.bash
-```
-
-**3. (xor)** compile MUMPS and UMFPACK with Intel MKL:
-
-```bash
-bash zscripts/03-ubuntu-intel-mkl-compile.bash
-```
-
-**Important:** To use the locally compiled UMFPACK you must remove `libsuitesparse-dev`.
-
-The compiled MUMPS files will be installed in `/usr/local/include/mumps` and `/usr/local/lib/mumps`.
-
-The compiled UMFPACK files will be installed in `/usr/local/include/umfpack` and `/usr/local/lib/umfpack`.
-
-### Number of threads
-
-By default, OpenBLAS will use all available threads, including Hyper-Threads that may worsen the performance. Thus, it is best to set the following environment variable:
-
-```bash
-export OPENBLAS_NUM_THREADS=<real-core-number>
-```
-
-Substitute `<real-core-number>` with the correct value from your system.
-
-Furthermore, if working on a multi-threaded application where the solver should not be multi-threaded on its own (e.g., running parallel calculations such as in optimization via genetic algorithms or differential evolution), you may set:
-
-```bash
-export OPENBLAS_NUM_THREADS=1
-```
+[The root README file presents the steps to install the required dependencies.](https://github.com/cpmech/russell)
 
 ## <a name="cargo"></a> Setting Cargo.toml
 

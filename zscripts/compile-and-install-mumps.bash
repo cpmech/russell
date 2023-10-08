@@ -2,7 +2,7 @@
 
 set -e
 
-# first argument
+# the first argument is the "mkl" option
 BLAS_LIB=${1:-""}
 
 # options
@@ -10,7 +10,7 @@ VERSION="5.6.1"
 PREFIX="/usr/local"
 INCDIR=$PREFIX/include/mumps
 LIBDIR=$PREFIX/lib/mumps
-PDIR=`pwd`/patch
+PDIR=`pwd`/zscripts/makefiles-mumps
 
 # source Intel oneAPI vars (ifort)
 if [ "${BLAS_LIB}" = "mkl" ]; then

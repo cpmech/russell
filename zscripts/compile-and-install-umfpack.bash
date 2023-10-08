@@ -2,7 +2,7 @@
 
 set -e
 
-# first argument
+# the first argument is the "mkl" option
 BLAS_LIB=${1:-""}
 
 # options

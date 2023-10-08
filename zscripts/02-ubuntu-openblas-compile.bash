@@ -11,8 +11,17 @@ sudo () {
 # install dependencies
 sudo apt-get update -y && \
 sudo apt-get install -y --no-install-recommends \
+    cmake \
     g++ \
     gdb \
     gfortran \
-    liblapacke-dev \
-    libopenblas-dev
+    git \
+    libmetis-dev \
+    make \
+    patch
+
+# compile and install MUMPS
+bash zscripts/compile-and-install-mumps.bash
+
+# compile and install UMFPACK
+bash zscripts/compile-and-install-umfpack.bash

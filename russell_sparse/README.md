@@ -6,8 +6,8 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 * [Introduction](#introduction)
 * [Installation on Debian/Ubuntu/Linux](#installation)
-* [Crates.io](#crates-io)
-* [Examples](#crates-io)
+* [Setting Cargo.toml](#cargo)
+* [Examples](#examples)
 * [Tools](#tools)
 * [For developers](#developers)
 
@@ -99,7 +99,7 @@ Furthermore, if working on a multi-threaded application where the solver should 
 export OPENBLAS_NUM_THREADS=1
 ```
 
-## <a name="crates-io"></a> Crates.io
+## <a name="cargo"></a> Setting Cargo.toml
 
 [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse)
 

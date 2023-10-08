@@ -13,8 +13,9 @@ sudo apt-get update -y && \
 sudo apt-get install -y --no-install-recommends \
     g++ \
     gdb \
-    gfortran \
-    liblapacke-dev \
-    libmumps-seq-dev \
-    libopenblas-dev \
-    libsuitesparse-dev
+    git \
+    libmetis-dev \
+    make
+
+# install Intel MKL
+bash zscripts/install-intel-mkl-linux.bash

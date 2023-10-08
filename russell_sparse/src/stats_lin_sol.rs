@@ -1,5 +1,5 @@
 use super::{StatsLinSolMUMPS, VerifyLinSys};
-use russell_lab::{format_nanoseconds, get_num_threads};
+use russell_lab::{format_nanoseconds, get_num_threads, using_intel_mkl};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::path::Path;
@@ -92,7 +92,11 @@ impl StatsLinSol {
         StatsLinSol {
             main: StatsLinSolMain {
                 platform: "Russell".to_string(),
-                blas_lib: "OpenBLAS".to_string(),
+                blas_lib: if using_intel_mkl() {
+                    "Intel MKL".to_string()
+                } else {
+                    "OpenBLAS".to_string()
+                },
                 solver: unknown.clone(),
             },
             matrix: StatsLinSolMatrix {

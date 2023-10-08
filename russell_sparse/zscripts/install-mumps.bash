@@ -2,11 +2,8 @@
 
 set -e
 
-# fake sudo function to be used by docker build
-sudo () {
-  [[ $EUID = 0 ]] || set -- command sudo "$@"
-  "$@"
-}
+# first argument
+BLAS_LIB=${1:-""}
 
 # options
 VERSION="5.6.1"
@@ -14,6 +11,17 @@ PREFIX="/usr/local"
 INCDIR=$PREFIX/include/mumps
 LIBDIR=$PREFIX/lib/mumps
 PDIR=`pwd`/patch
+
+# source Intel oneAPI vars (ifort)
+if [ "${BLAS_LIB}" = "mkl" ]; then
+    source /opt/intel/oneapi/setvars.sh
+fi
+
+# fake sudo function to be used by docker build
+sudo () {
+  [[ $EUID = 0 ]] || set -- command sudo "$@"
+  "$@"
+}
 
 # download the source code
 MUMPS_GZ=mumps_$VERSION.orig.tar.gz
@@ -35,7 +43,11 @@ cd $MUMPS_DIR
 
 # patch Makefiles
 patch -u Makefile $PDIR/Makefile.diff
-cp $PDIR/Makefile.inc Makefile.inc
+if [ "${BLAS_LIB}" = "mkl" ]; then
+    cp $PDIR/MakefileMKL.inc Makefile.inc
+else
+    cp $PDIR/Makefile.inc Makefile.inc
+fi
 
 # create output lib dir
 sudo mkdir -p $LIBDIR/

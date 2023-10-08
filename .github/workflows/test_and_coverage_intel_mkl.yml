@@ -1,10 +1,16 @@
-name: Test & Coverage
+name: Test & Coverage (with Intel MKL)
 on: [pull_request, push]
 jobs:
   test_and_coverage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Setup environment variables
+        env:
+          RUSSELL_LAB_USE_INTEL_MKL: 1
+          RUSSELL_SPARSE_USE_LOCAL_MUMPS: 1
+          RUSSELL_SPARSE_USE_LOCAL_UMFPACK: 1
+          RUSSELL_SPARSE_WITH_INTEL_DSS: 1
       - name: Install Libraries
         run: |
           bash zscripts/03-ubuntu-intel-mkl-compile.bash
@@ -15,15 +21,3 @@ jobs:
       - name: Run tests
         run: |
           RUST_BACKTRACE=1 cargo test
-      - name: Install cargo-llvm-cov
-        run: |
-          curl -LsSf https://github.com/taiki-e/cargo-llvm-cov/releases/latest/download/cargo-llvm-cov-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
-      - name: Generate code coverage
-        run: |
-          cargo llvm-cov --all-features --workspace --ignore-filename-regex 'build.rs|mem_check.rs|solve_matrix_market.rs' --lcov --output-path lcov.info
-      - name: Upload to codecov.io
-        uses: codecov/codecov-action@v1
-        with:
-          token: ${{secrets.CODECOV_TOKEN}}
-          files: lcov.info
-          fail_ci_if_error: true

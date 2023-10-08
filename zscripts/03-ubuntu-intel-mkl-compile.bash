@@ -23,7 +23,7 @@ sudo apt-get install -y --no-install-recommends \
 bash zscripts/install-intel-mkl-and-ifort-debian.bash
 
 # compile and install MUMPS
-bash zscripts/compile-and-install-mumps mkl
+bash zscripts/compile-and-install-mumps.bash mkl
 
 # compile and install UMFPACK
-bash zscripts/compile-and-install-umfpack mkl
+bash zscripts/compile-and-install-umfpack.bash mkl

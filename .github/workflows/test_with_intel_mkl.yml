@@ -4,7 +4,10 @@ jobs:
   test_and_coverage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+      - name: Install Libraries
+        run: |
+          bash zscripts/03-ubuntu-intel-mkl-compile.bash
       - name: Run tests
         env:
           RUSSELL_LAB_USE_INTEL_MKL: 1

@@ -35,7 +35,7 @@ See the documentation for further information:
 Run:
 
 ```bash
-sudo apt-get install liblapacke-dev libopenblas-dev
+sudo apt install liblapacke-dev libopenblas-dev
 ```
 
 ### 2. Installation with Intel MKL

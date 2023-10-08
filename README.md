@@ -2,7 +2,7 @@
 
 [![codecov](https://codecov.io/gh/cpmech/russell/graph/badge.svg?token=PQWSKMZQXT)](https://codecov.io/gh/cpmech/russell)
 
-![Bertrand Russell](zassets/Bertrand_Russell_1957.jpg)
+![Bertrand Russell](Bertrand_Russell_1957.jpg)
 
 ([CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en). Photo: [Bertrand Russell](https://en.wikipedia.org/wiki/Bertrand_Russell))
 

@@ -277,3 +277,5 @@ The output looks like this:
     * `memcheck.bash`: Checks for memory leaks on the C-code using Valgrind
     * `run-examples`: Runs all examples in the `examples` directory
     * `run-solve-matrix-market.bash`: Runs the solve-matrix-market tool from the `bin` directory
+* The `patch` directory contains files to path MUMPS, if locally compiled
+

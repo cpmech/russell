@@ -2,9 +2,11 @@ use super::{mat_copy, Matrix};
 use crate::{to_i32, StrError};
 
 extern "C" {
+    // Computes the LU factorization of a general (m,n) matrix
     /// <http://www.netlib.org/lapack/explore-html/d3/d6a/dgetrf_8f.html>
     fn c_dgetrf(m: *const i32, n: *const i32, a: *mut f64, lda: *const i32, ipiv: *mut i32, info: *mut i32);
 
+    // Computes the inverse of a matrix using the LU factorization computed by dgetrf
     /// <http://www.netlib.org/lapack/explore-html/df/da4/dgetri_8f.html>
     fn c_dgetri(
         n: *const i32,

@@ -3,6 +3,8 @@ use crate::vector::Vector;
 use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_TRANS};
 
 extern "C" {
+    // Performs one of the matrix-vector multiplication
+    // <http://www.netlib.org/lapack/explore-html/dc/da8/dgemv_8f.html
     fn cblas_dgemv(
         layout: i32,
         transa: i32,
@@ -68,7 +70,11 @@ pub fn vec_mat_mul(v: &mut Vector, alpha: f64, u: &Vector, a: &Matrix) -> Result
     if m != a.nrow() || n != a.ncol() {
         return Err("matrix and vectors are incompatible");
     }
-    if m == 0 || n == 0 {
+    if n == 0 {
+        return Ok(());
+    }
+    if m == 0 {
+        v.fill(0.0);
         return Ok(());
     }
     let m_i32: i32 = to_i32(m);

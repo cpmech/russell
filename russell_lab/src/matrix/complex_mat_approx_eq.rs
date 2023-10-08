@@ -42,6 +42,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::{complex_mat_approx_eq, ComplexMatrix};
+    use crate::cpx;
     use num_complex::Complex64;
 
     #[test]
@@ -65,8 +66,8 @@ mod tests {
     fn complex_mat_approx_eq_works_3() {
         let a = ComplexMatrix::from(&[[1.0, 2.0], [3.0, 4.0]]);
         let b = &[
-            [Complex64::new(2.5, 0.0), Complex64::new(1.0, 0.0)],
-            [Complex64::new(1.5, 0.0), Complex64::new(2.0, 0.0)],
+            [cpx!(2.5, 0.0), cpx!(1.0, 0.0)], //
+            [cpx!(1.5, 0.0), cpx!(2.0, 0.0)], //
         ];
         complex_mat_approx_eq(&a, b, 1e-15);
     }
@@ -75,7 +76,7 @@ mod tests {
     #[should_panic(expected = "complex matrices are not approximately equal. @ (1,0) diff_re =")]
     fn complex_mat_approx_eq_works_4() {
         let a = ComplexMatrix::new(2, 1);
-        let b = &[[Complex64::new(0.0, 0.0)], [Complex64::new(1e-14, 0.0)]];
+        let b = &[[cpx!(0.0, 0.0)], [cpx!(1e-14, 0.0)]];
         complex_mat_approx_eq(&a, b, 1e-15);
     }
 
@@ -83,12 +84,12 @@ mod tests {
     #[should_panic(expected = "complex matrices are not approximately equal. @ (0,0) diff_im = 1.5")]
     fn complex_mat_approx_eq_works_5() {
         let a = ComplexMatrix::from(&[
-            [Complex64::new(0.0, 1.0), Complex64::new(0.0, 2.0)],
-            [Complex64::new(0.0, 3.0), Complex64::new(0.0, 4.0)],
+            [cpx!(0.0, 1.0), cpx!(0.0, 2.0)], //
+            [cpx!(0.0, 3.0), cpx!(0.0, 4.0)], //
         ]);
         let b = &[
-            [Complex64::new(0.0, 2.5), Complex64::new(0.0, 1.0)],
-            [Complex64::new(0.0, 1.5), Complex64::new(0.0, 2.0)],
+            [cpx!(0.0, 2.5), cpx!(0.0, 1.0)], //
+            [cpx!(0.0, 1.5), cpx!(0.0, 2.0)], //
         ];
         complex_mat_approx_eq(&a, b, 1e-15);
     }
@@ -97,21 +98,21 @@ mod tests {
     #[should_panic(expected = "complex matrices are not approximately equal. @ (1,0) diff_im =")]
     fn complex_mat_approx_eq_works_6() {
         let a = ComplexMatrix::new(2, 1);
-        let b = &[[Complex64::new(0.0, 0.0)], [Complex64::new(0.0, 1e-14)]];
+        let b = &[[cpx!(0.0, 0.0)], [cpx!(0.0, 1e-14)]];
         complex_mat_approx_eq(&a, b, 1e-15);
     }
 
     #[test]
     fn complex_mat_approx_eq_works_7() {
         let a = ComplexMatrix::new(2, 1);
-        let b = &[[Complex64::new(0.0, 0.0)], [Complex64::new(1e-15, 0.0)]];
+        let b = &[[cpx!(0.0, 0.0)], [cpx!(1e-15, 0.0)]];
         complex_mat_approx_eq(&a, b, 1e-15);
     }
 
     #[test]
     fn complex_mat_approx_eq_works_8() {
         let a = ComplexMatrix::new(2, 1);
-        let b = &[[Complex64::new(0.0, 0.0)], [Complex64::new(0.0, 1e-15)]];
+        let b = &[[cpx!(0.0, 0.0)], [cpx!(0.0, 1e-15)]];
         complex_mat_approx_eq(&a, b, 1e-15);
     }
 }

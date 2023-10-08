@@ -5,6 +5,7 @@
 #include "mkl.h"
 #define COMPLEX64 MKL_Complex16
 #define FN_DGESV dgesv_
+#define FN_ZGESV zgesv_
 #define FN_DLANGE dlange_
 #define FN_ZLANGE zlange_
 #define FN_DPOTRF dpotrf_
@@ -18,6 +19,7 @@
 #include "lapack.h"
 #define COMPLEX64 lapack_complex_double
 #define FN_DGESV LAPACK_dgesv
+#define FN_ZGESV LAPACK_zgesv
 #define FN_DLANGE LAPACK_dlange
 #define FN_ZLANGE LAPACK_zlange
 #define FN_DPOTRF LAPACK_dpotrf
@@ -75,12 +77,33 @@ int32_t c_get_num_threads() {
 #endif
 }
 
+// Computes the solution to a system of linear equations
 // <http://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
-void c_dgesv(const int32_t *n, const int32_t *nrhs, double *a,
-             const int32_t *lda, int32_t *ipiv, double *b, const int32_t *ldb, int32_t *info) {
-    dgesv_(n, nrhs, a, lda, ipiv, b, ldb, info);
+void c_dgesv(const int32_t *n,
+             const int32_t *nrhs,
+             double *a,
+             const int32_t *lda,
+             int32_t *ipiv,
+             double *b,
+             const int32_t *ldb,
+             int32_t *info) {
+    FN_DGESV(n, nrhs, a, lda, ipiv, b, ldb, info);
 }
 
+// Computes the solution to a real system of linear equations (complex version)
+// <http://www.netlib.org/lapack/explore-html/d1/ddc/zgesv_8f.html>
+void c_zgesv(const int32_t *n,
+             const int32_t *nrhs,
+             COMPLEX64 *a,
+             const int32_t *lda,
+             int32_t *ipiv,
+             COMPLEX64 *b,
+             const int32_t *ldb,
+             int32_t *info) {
+    FN_ZGESV(n, nrhs, a, lda, ipiv, b, ldb, info);
+}
+
+// Computes the matrix norm
 // <http://www.netlib.org/lapack/explore-html/dc/d09/dlange_8f.html>
 double c_dlange(int32_t norm_code,
                 const int32_t *m,
@@ -95,6 +118,7 @@ double c_dlange(int32_t norm_code,
     return FN_DLANGE(norm, m, n, a, lda, work);
 }
 
+// Computes the matrix norm (complex version)
 // <http://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
 double c_zlange(int32_t norm_code,
                 const int32_t *m,
@@ -109,6 +133,7 @@ double c_zlange(int32_t norm_code,
     return FN_ZLANGE(norm, m, n, a, lda, work);
 }
 
+// Computes the Cholesky factorization of a real symmetric positive definite matrix
 // <http://www.netlib.org/lapack/explore-html/d0/d8a/dpotrf_8f.html>
 void c_dpotrf(C_BOOL upper,
               const int32_t *n,
@@ -119,6 +144,7 @@ void c_dpotrf(C_BOOL upper,
     FN_DPOTRF(uplo, n, a, lda, info);
 }
 
+// Computes the eigenvalues and eigenvectors of a symmetric matrix
 // <https://netlib.org/lapack/explore-html/dd/d4c/dsyev_8f.html>
 void c_dsyev(C_BOOL calc_v,
              C_BOOL upper,
@@ -134,6 +160,7 @@ void c_dsyev(C_BOOL calc_v,
     FN_DSYEV(jobz, uplo, n, a, lda, w, work, lwork, info);
 }
 
+// Computes the eigenvalues and eigenvectors of a general matrix
 // <http://www.netlib.org/lapack/explore-html/d9/d28/dgeev_8f.html>
 void c_dgeev(C_BOOL calc_vl,
              C_BOOL calc_vr,
@@ -154,6 +181,7 @@ void c_dgeev(C_BOOL calc_vl,
     FN_DGEEV(jobvl, jobvr, n, a, lda, wr, wi, vl, ldvl, vr, ldvr, work, lwork, info);
 }
 
+// Computes the singular value decomposition (SVD)
 // <http://www.netlib.org/lapack/explore-html/d8/d2d/dgesvd_8f.html>
 void c_dgesvd(int32_t jobu_code,
               int32_t jobvt_code,
@@ -180,7 +208,8 @@ void c_dgesvd(int32_t jobu_code,
     FN_DGESVD(jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt, work, lwork, info);
 }
 
-/// <http://www.netlib.org/lapack/explore-html/d3/d6a/dgetrf_8f.html>
+// Computes the LU factorization of a general (m,n) matrix
+// <http://www.netlib.org/lapack/explore-html/d3/d6a/dgetrf_8f.html>
 void c_dgetrf(const int32_t *m,
               const int32_t *n,
               double *a,
@@ -190,7 +219,8 @@ void c_dgetrf(const int32_t *m,
     FN_DGETRF(m, n, a, lda, ipiv, info);
 }
 
-/// <http://www.netlib.org/lapack/explore-html/df/da4/dgetri_8f.html>
+// Computes the inverse of a matrix using the LU factorization computed by dgetrf
+// <http://www.netlib.org/lapack/explore-html/df/da4/dgetri_8f.html>
 void c_dgetri(const int32_t *n,
               double *a,
               const int32_t *lda,

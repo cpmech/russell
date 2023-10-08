@@ -122,6 +122,10 @@ export OPENBLAS_NUM_THREADS=1
 
 ## Examples
 
+See also:
+
+* [russell_sparse/examples](https://github.com/cpmech/russell/tree/main/russell_sparse/examples)
+
 ### Solve a tiny sparse linear system using UMFPACK
 
 ```rust
@@ -272,3 +276,19 @@ The output looks like this:
   }
 }
 ```
+
+## Appendix A - For developers
+
+* The `c_code` directory contains a thin wrapper to the sparse solvers (MUMPS, UMFPACK, and Intel DSS)
+* The `build.rs` file uses the crate `cc` to build the C-wrappers
+* The `zscripts` directory contains Bash scripts to install the following:
+    * `install-deps.bash`: Installs Debian/Ubuntu/Linux dependencies
+    * `install-intel-mkl-linux.bash`: Installs Intel MKL on Debian/Ubuntu/Linux
+    * `install-mumps.bash`: Installs MUMPS solver
+    * `install-umfpack.bash`: Installs UMFPACK solver
+    * `memcheck.bash`: Checks for memory leaks on the C-code using Valgrind
+    * `pres-cylin-problem.bash`: TO BE REMOVED
+    * `run-examples`: Runs all examples in the `examples` directory
+    * `run-solve-matrix-market.bash`: Runs the solve-matrix-market tool from the `bin` directory
+
+

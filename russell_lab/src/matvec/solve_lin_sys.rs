@@ -3,6 +3,7 @@ use crate::vector::Vector;
 use crate::{to_i32, StrError};
 
 extern "C" {
+    // Computes the solution to a system of linear equations
     // <http://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
     fn c_dgesv(
         n: *const i32,
@@ -38,6 +39,8 @@ extern "C" {
 ///
 /// 1. The matrix `a` will be modified
 /// 2. The right-hand-side `b` will contain the solution `x`
+///
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{solve_lin_sys, Matrix, Vector, StrError};

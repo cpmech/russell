@@ -3,6 +3,8 @@ use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_NO_TRANS};
 use num_complex::Complex64;
 
 extern "C" {
+    // Performs the matrix-matrix multiplication (complex version)
+    // <http://www.netlib.org/lapack/explore-html/d7/d76/zgemm_8f.html>
     fn cblas_zgemm(
         layout: i32,
         transa: i32,
@@ -31,8 +33,8 @@ extern "C" {
 /// # Example
 ///
 /// ```
-/// use russell_lab::{complex_mat_mat_mul, ComplexMatrix, StrError};
 /// use num_complex::Complex64;
+/// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let a = ComplexMatrix::from(&[
@@ -44,7 +46,7 @@ extern "C" {
 ///         [-1.0, -2.0, -3.0],
 ///         [-4.0, -5.0, -6.0],
 ///     ]);
-///     let alpha = Complex64::new(1.0, 0.0);
+///     let alpha = cpx!(1.0, 0.0);
 ///     let mut c = ComplexMatrix::new(3, 3);
 ///     complex_mat_mat_mul(&mut c, alpha, &a, &b);
 ///     let correct = "┌                      ┐\n\
@@ -70,8 +72,9 @@ pub fn complex_mat_mat_mul(
     if m == 0 || n == 0 {
         return Ok(());
     }
+    let zero = Complex64::new(0.0, 0.0);
     if k == 0 {
-        c.fill(Complex64::new(0.0, 0.0));
+        c.fill(zero);
         return Ok(());
     }
     let m_i32: i32 = to_i32(m);
@@ -79,7 +82,6 @@ pub fn complex_mat_mat_mul(
     let k_i32: i32 = to_i32(k);
     let lda = m_i32;
     let ldb = k_i32;
-    let zero = Complex64::new(0.0, 0.0);
     unsafe {
         cblas_zgemm(
             CBLAS_COL_MAJOR,
@@ -107,6 +109,7 @@ pub fn complex_mat_mat_mul(
 mod tests {
     use super::{complex_mat_mat_mul, ComplexMatrix};
     use crate::complex_mat_approx_eq;
+    use crate::cpx;
     use num_complex::Complex64;
 
     #[test]
@@ -116,7 +119,7 @@ mod tests {
         let b_2x1 = ComplexMatrix::new(2, 1);
         let b_1x3 = ComplexMatrix::new(1, 3);
         let mut c_2x2 = ComplexMatrix::new(2, 2);
-        let alpha = Complex64::new(1.0, 0.0);
+        let alpha = cpx!(1.0, 0.0);
         assert_eq!(
             complex_mat_mat_mul(&mut c_2x2, alpha, &a_2x1, &b_2x1),
             Err("matrices are incompatible")
@@ -136,7 +139,7 @@ mod tests {
         let a = ComplexMatrix::new(0, 0);
         let b = ComplexMatrix::new(0, 0);
         let mut c = ComplexMatrix::new(0, 0);
-        let alpha = Complex64::new(2.0, 0.0);
+        let alpha = cpx!(2.0, 0.0);
         complex_mat_mat_mul(&mut c, alpha, &a, &b).unwrap();
 
         let a = ComplexMatrix::new(1, 0);
@@ -144,7 +147,7 @@ mod tests {
         let mut c = ComplexMatrix::new(1, 1);
         complex_mat_mat_mul(&mut c, alpha, &a, &b).unwrap();
         let correct = &[
-            [Complex64::new(0.0, 0.0)], //
+            [cpx!(0.0, 0.0)], //
         ];
         complex_mat_approx_eq(&c, correct, 1e-15);
     }
@@ -164,12 +167,12 @@ mod tests {
         ]);
         let mut c = ComplexMatrix::new(2, 4);
         // c := 2⋅a⋅b
-        let alpha = Complex64::new(2.0, 0.0);
+        let alpha = cpx!(2.0, 0.0);
         complex_mat_mat_mul(&mut c, alpha, &a, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[
-            [Complex64::new(2.80,0.0), Complex64::new(12.0,0.0), Complex64::new(12.0,0.0), Complex64::new(12.50,0.0)],
-            [Complex64::new(1.30,0.0), Complex64::new( 5.0,0.0), Complex64::new( 5.0,0.0), Complex64::new( 5.25,0.0)],
+            [cpx!(2.80,0.0), cpx!(12.0,0.0), cpx!(12.0,0.0), cpx!(12.50,0.0)],
+            [cpx!(1.30,0.0), cpx!( 5.0,0.0), cpx!( 5.0,0.0), cpx!( 5.25,0.0)],
         ];
         complex_mat_approx_eq(&c, correct, 1e-15);
     }

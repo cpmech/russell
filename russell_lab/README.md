@@ -4,7 +4,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 This repository implements several functions to perform linear algebra computations--it is a **mat**rix-vector **lab**oratory 😉. We implement some functions in native Rust code as much as possible but also wrap the best tools available, such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
 
-The main structures are `NumVector` and `NumMatrix`, which are generic Vector and Matrix structures. The Matrix data is stored as **column-major** (see Appendix A). The `Vector` and `Matrix` are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.
+The main structures are `NumVector` and `NumMatrix`, which are generic Vector and Matrix structures. The Matrix data is stored as **column-major** (see [Appendix A](#col-major)). The `Vector` and `Matrix` are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.
 
 The linear algebra functions currently handle only `(f64, i32)` pairs, i.e., accessing the `(double, int)` C functions. We also consider `(Complex64, i32)` pairs.
 
@@ -20,6 +20,8 @@ There are many functions for linear algebra, such as (for Real and Complex types
 See the documentation for further information:
 
 - [russell_lab documentation](https://docs.rs/russell_lab) - Contains the API reference and examples
+- Some benchmark results are presented in [Appendix B](#developers)
+- Some benchmark results are presented in [Appendix C](#benchmarks)
 
 ## Installation on Debian/Ubuntu/Linux
 
@@ -33,7 +35,7 @@ See the documentation for further information:
 Run:
 
 ```bash
-sudo apt-get install liblapacke-dev libopenblas-dev
+sudo apt install liblapacke-dev libopenblas-dev
 ```
 
 ### 2. Installation with Intel MKL
@@ -87,6 +89,10 @@ russell_lab = "*"
 
 ## Examples
 
+See also:
+
+* [russell_lab/examples](https://github.com/cpmech/russell/tree/main/russell_lab/examples)
+
 ### Compute the pseudo-inverse matrix
 
 ```rust
@@ -94,7 +100,11 @@ use russell_lab::{mat_pseudo_inverse, Matrix, StrError};
 
 fn main() -> Result<(), StrError> {
     // set matrix
-    let mut a = Matrix::from(&[[1.0, 0.0], [0.0, 1.0], [0.0, 1.0]]);
+    let mut a = Matrix::from(&[
+      [1.0, 0.0], //
+      [0.0, 1.0], //
+      [0.0, 1.0], //
+    ]);
     let a_copy = a.clone();
 
     // compute pseudo-inverse matrix (because it's square)
@@ -108,7 +118,7 @@ fn main() -> Result<(), StrError> {
                       └                ┘";
     assert_eq!(format!("{:.2}", ai), ai_correct);
 
-    // compute a⋅ai
+    // compute a ⋅ ai
     let (m, n) = a.dims();
     let mut a_ai = Matrix::new(m, m);
     for i in 0..m {
@@ -119,7 +129,7 @@ fn main() -> Result<(), StrError> {
         }
     }
 
-    // check if a⋅ai⋅a == a
+    // check: a ⋅ ai ⋅ a = a
     let mut a_ai_a = Matrix::new(m, n);
     for i in 0..m {
         for j in 0..n {
@@ -191,7 +201,56 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-## Appendix A - Column Major
+### Cholesky factorization
+
+```rust
+use russell_lab::*;
+
+fn main() -> Result<(), StrError> {
+    // set matrix
+    let sym = 0.0;
+    #[rustfmt::skip]
+    let mut a = Matrix::from(&[
+        [  4.0,   sym,   sym],
+        [ 12.0,  37.0,   sym],
+        [-16.0, -43.0,  98.0],
+    ]);
+
+    // perform factorization
+    mat_cholesky(&mut a, false)?;
+
+    // define alias (for convenience)
+    let l = &a;
+
+    // compare with solution
+    let l_correct = "┌          ┐\n\
+                     │  2  0  0 │\n\
+                     │  6  1  0 │\n\
+                     │ -8  5  3 │\n\
+                     └          ┘";
+    assert_eq!(format!("{}", l), l_correct);
+
+    // check:  l ⋅ lᵀ = a
+    let m = a.nrow();
+    let mut l_lt = Matrix::new(m, m);
+    for i in 0..m {
+        for j in 0..m {
+            for k in 0..m {
+                l_lt.add(i, j, l.get(i, k) * l.get(j, k));
+            }
+        }
+    }
+    let l_lt_correct = "┌             ┐\n\
+                        │   4  12 -16 │\n\
+                        │  12  37 -43 │\n\
+                        │ -16 -43  98 │\n\
+                        └             ┘";
+    assert_eq!(format!("{}", l_lt), l_lt_correct);
+    Ok(())
+}
+```
+
+## <a name="col-major"></a> Appendix A - Column Major
 
 Only the COL-MAJOR representation is considered here.
 
@@ -209,3 +268,34 @@ COL-MAJOR IS ADOPTED HERE
 ```
 
 The main reason to use the **col-major** representation is to make the code work better with BLAS/LAPACK written in Fortran. Although those libraries have functions to handle row-major data, they usually add an overhead due to temporary memory allocation and copies, including transposing matrices. Moreover, the row-major versions of some BLAS/LAPACK libraries produce incorrect results (notably the DSYEV).
+
+## <a name="developers"></a> Appendix B - For developers
+
+Notes for developers:
+
+* The `c_code` directory contains a thin wrapper to the BLAS libraries (OpenBLAS or Intel MKL)
+* The `c_code` directory also contains a wrapper to the C math functions
+* The `build.rs` file uses the crate `cc` to build the C-wrappers
+* The `zscripts` directory contains Bash scripts to install the Intel MKL on Debian/Linux
+
+## <a name="benchmarks"></a> Appendix C - Benchmarks
+
+Need to install:
+
+```bash
+cargo install cargo-criterion
+```
+
+Run the benchmarks with:
+
+```bash
+bash ./zscripts/benchmark.bash
+```
+
+### Jacobi Rotation versus LAPACK DSYEV
+
+Comparison of the performances of `mat_eigen_sym_jacobi` (Jacobi rotation) versus `mat_eigen_sym` (calling LAPACK DSYEV).
+
+![Jacobi Rotation versus LAPACK DSYEV (1-5)](data/figures/bench_mat_eigen_sym_1-5.svg)
+
+![Jacobi Rotation versus LAPACK DSYEV (1-32)](data/figures/bench_mat_eigen_sym_1-32.svg)

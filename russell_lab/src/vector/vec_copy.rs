@@ -2,6 +2,8 @@ use super::Vector;
 use crate::{to_i32, StrError};
 
 extern "C" {
+    // Copies a vector into another
+    // <https://www.netlib.org/lapack/explore-html/da/d6c/dcopy_8f.html>
     fn cblas_dcopy(n: i32, x: *const f64, incx: i32, y: *mut f64, incy: i32);
 }
 

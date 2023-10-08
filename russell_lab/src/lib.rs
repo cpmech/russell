@@ -2,7 +2,9 @@
 //!
 //! **lab**: Matrix-vector laboratory including linear algebra tools
 //!
-//! This crate depends on external libraries (not RUST; e.g., `liblapacke-dev` and `libopenblas-dev`). Thus, please check the [Installation Instructions on our GitHub Repository](https://github.com/cpmech/russell/tree/main/russell_lab).
+//! **Important:** This crate depends on external libraries (not RUST; e.g., `LAPACK` and `OpenBLAS`). Thus, please check the [Installation Instructions on our GitHub Repository](https://github.com/cpmech/russell/tree/main/russell_lab).
+//!
+//! # Introduction
 //!
 //! This crate implements several functions to perform linear algebra computations--it is a **mat**rix-vector **lab**oratory 😉. We implement some functions in native Rust code as much as possible but also wrap the best tools available, such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
 //!

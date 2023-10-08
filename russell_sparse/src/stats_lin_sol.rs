@@ -1,7 +1,11 @@
 use super::{StatsLinSolMUMPS, VerifyLinSys};
+use crate::StrError;
 use russell_lab::{format_nanoseconds, get_num_threads, using_intel_mkl};
 use serde::{Deserialize, Serialize};
 use serde_json;
+use std::ffi::OsStr;
+use std::fs::File;
+use std::io::BufReader;
 use std::path::Path;
 
 /// Holds the main information such as platform
@@ -178,6 +182,22 @@ impl StatsLinSol {
         self.time_human.verify = format_nanoseconds(self.time_nanoseconds.verify);
         serde_json::to_string_pretty(&self).unwrap()
     }
+
+    /// Reads a JSON file containing a StatsLinSol data
+    ///
+    /// # Input
+    ///
+    /// * `full_path` -- may be a String, &str, or Path
+    pub fn read_json<P>(full_path: &P) -> Result<Self, StrError>
+    where
+        P: AsRef<OsStr> + ?Sized,
+    {
+        let path = Path::new(full_path).to_path_buf();
+        let input = File::open(path).map_err(|_| "cannot open file")?;
+        let buffered = BufReader::new(input);
+        let stat = serde_json::from_reader(buffered).map_err(|_| "cannot parse JSON file")?;
+        Ok(stat)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -236,5 +256,13 @@ mod tests {
         assert_eq!(stats.time_human.total_f_and_s, "5s");
         assert_eq!(stats.time_human.verify, "4s");
         assert!(json.len() > 0);
+    }
+
+    #[test]
+    fn read_json_works() {
+        let stats = StatsLinSol::read_json("data/mumps-pre2.json").unwrap();
+        assert_eq!(stats.main.platform, "Russell");
+        assert_eq!(stats.matrix.name, "pre2");
+        assert_eq!(stats.matrix.symmetry, "None");
     }
 }

@@ -2,13 +2,49 @@
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
-This repository contains structures and functions to work with statistics and probability distributions. Internally, we wrap and use the [rand_distr](https://docs.rs/rand_distr/latest/rand_distr/) crate for generating samples.
+## Contents
+
+* [Introduction](#introduction)
+* [Installation on Debian/Ubuntu/Linux](#installation)
+* [Setting Cargo.toml](#cargo)
+* [Examples](#examples)
+
+## <a name="introduction"></a> Introduction
+
+This crate implements structures and functions to work with statistics and probability distributions. Internally, we wrap and use the [rand_distr](https://docs.rs/rand_distr/latest/rand_distr/) crate for generating samples.
 
 Documentation:
 
-- [API reference (docs.rs)](https://docs.rs/russell_stat)
+- [russell_stat documentation](https://docs.rs/russell_stat)
 
-## Installation
+## <a name="installation"></a> Installation on Debian/Ubuntu/Linux
+
+This crate depends on `russell_lab`, which, in turn, depends on an efficient BLAS library such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html). Thus, we have two options:
+
+1. Use the standard Debian packages based on OpenBLAS (default)
+2. **(XOR)** Install Intel MKL, which includes LAPACK
+
+Option 2 requires the following environment variable:
+
+```bash
+export RUSSELL_LAB_USE_INTEL_MKL=1
+```
+
+For convenience, you may use the scripts in the [zscripts](https://github.com/cpmech/russell/tree/main/russell_stat/zscripts) directory.
+
+**1.** Use the standard Debian packages based on OpenBLAS:
+
+```bash
+bash zscripts/01-ubuntu-openblas.bash
+```
+
+**2.** Install Intel MKL:
+
+```bash
+bash zscripts/02-ubuntu-intel-mkl.bash
+```
+
+## <a name="cargo"></a> Setting Cargo.toml
 
 [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat)
 
@@ -19,7 +55,9 @@ Documentation:
 russell_stat = "*"
 ```
 
-## Examples
+## <a name="examples"></a> Examples
+
+* [russell_stat/examples](https://github.com/cpmech/russell/tree/main/russell_stat/examples)
 
 ### Frechet distribution
 

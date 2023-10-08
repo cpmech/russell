@@ -267,6 +267,10 @@ The output looks like this:
 }
 ```
 
+### Performance of MUMPS with Intel MKL and Flan_1565 matrix
+
+![mm-results-mumps-Flan_1565](data/figures/mm-results-mumps-Flan_1565.svg)
+
 ## <a name="developers"></a> For developers
 
 * The `c_code` directory contains a thin wrapper to the sparse solvers (MUMPS, UMFPACK, and Intel DSS)

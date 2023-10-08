@@ -12,7 +12,7 @@ The "main" crate here is [russell_lab](https://github.com/cpmech/russell/tree/ma
 
 The next interesting crate is [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse), which implements sparse matrix structures such as COO (coordinates), CSC (compressed sparse column), and CSR (compressed sparse row) formats. `russell_sparse` also wraps powerful linear system solvers such as [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS](https://mumps-solver.org).
 
-This library aims to wrap the best solutions (e.g., UMFPACK) while maintaining a very **clean** and idiomatic Rust code. See our TODO list in [Appendix A](#todo) and some benchmarking results in [Appendix B](#benchmarks) below. The code must also be simple to use and thoroughly tested with a minimum coverage of 95%; see [Appendix C](#coverage) below.
+This library aims to wrap the best solutions (e.g., UMFPACK) while maintaining a very **clean** and idiomatic Rust code. See our TODO list in [Appendix A](#todo). The code must also be simple to use and thoroughly tested with a minimum coverage of 95%; see [Appendix B](#coverage) below.
 
 Available crates:
 
@@ -280,17 +280,7 @@ fn main() -> Result<(), StrError> {
     - [x] Implement some high-order derivatives
     - [ ] Implement standard continuum mechanics tensors
 
-## <a name="benchmarks"></a> Appendix B - Benchmarks
-
-### Jacobi Rotation versus LAPACK DSYEV
-
-Comparison of the performances of `mat_eigen_sym_jacobi` (Jacobi rotation) versus `mat_eigen_sym` (calling LAPACK DSYEV).
-
-![Jacobi Rotation versus LAPACK DSYEV (1-5)](zassets/bench_mat_eigen_sym_1-5.svg)
-
-![Jacobi Rotation versus LAPACK DSYEV (1-32)](zassets/bench_mat_eigen_sym_1-32.svg)
-
-## <a name="coverage"></a> Appendix C - Code coverage
+## <a name="coverage"></a> Appendix B - Code coverage
 
 ### Sunburst
 

@@ -4,7 +4,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 This repository implements several functions to perform linear algebra computations--it is a **mat**rix-vector **lab**oratory 😉. We implement some functions in native Rust code as much as possible but also wrap the best tools available, such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
 
-The main structures are `NumVector` and `NumMatrix`, which are generic Vector and Matrix structures. The Matrix data is stored as **column-major** (see Appendix A). The `Vector` and `Matrix` are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.
+The main structures are `NumVector` and `NumMatrix`, which are generic Vector and Matrix structures. The Matrix data is stored as **column-major** (see [Appendix A](#col-major)). The `Vector` and `Matrix` are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.
 
 The linear algebra functions currently handle only `(f64, i32)` pairs, i.e., accessing the `(double, int)` C functions. We also consider `(Complex64, i32)` pairs.
 
@@ -20,6 +20,8 @@ There are many functions for linear algebra, such as (for Real and Complex types
 See the documentation for further information:
 
 - [russell_lab documentation](https://docs.rs/russell_lab) - Contains the API reference and examples
+- Some benchmark results are presented in [Appendix B](#developers)
+- Some benchmark results are presented in [Appendix C](#benchmarks)
 
 ## Installation on Debian/Ubuntu/Linux
 
@@ -244,7 +246,7 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-## Appendix A - Column Major
+## <a name="col-major"></a> Appendix A - Column Major
 
 Only the COL-MAJOR representation is considered here.
 
@@ -263,7 +265,7 @@ COL-MAJOR IS ADOPTED HERE
 
 The main reason to use the **col-major** representation is to make the code work better with BLAS/LAPACK written in Fortran. Although those libraries have functions to handle row-major data, they usually add an overhead due to temporary memory allocation and copies, including transposing matrices. Moreover, the row-major versions of some BLAS/LAPACK libraries produce incorrect results (notably the DSYEV).
 
-## Appendix B - For developers
+## <a name="developers"></a> Appendix B - For developers
 
 Notes for developers:
 
@@ -271,3 +273,25 @@ Notes for developers:
 * The `c_code` directory also contains a wrapper to the C math functions
 * The `build.rs` file uses the crate `cc` to build the C-wrappers
 * The `zscripts` directory contains Bash scripts to install the Intel MKL on Debian/Linux
+
+## <a name="benchmarks"></a> Appendix C - Benchmarks
+
+Need to install:
+
+```bash
+cargo install cargo-criterion
+```
+
+Run the benchmarks with:
+
+```bash
+bash ./zscripts/benchmark.bash
+```
+
+### Jacobi Rotation versus LAPACK DSYEV
+
+Comparison of the performances of `mat_eigen_sym_jacobi` (Jacobi rotation) versus `mat_eigen_sym` (calling LAPACK DSYEV).
+
+![Jacobi Rotation versus LAPACK DSYEV (1-5)](data/figures/bench_mat_eigen_sym_1-5.svg)
+
+![Jacobi Rotation versus LAPACK DSYEV (1-32)](data/figures/bench_mat_eigen_sym_1-32.svg)

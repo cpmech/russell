@@ -230,7 +230,7 @@ The output looks like this:
   "requests": {
     "ordering": "Auto",
     "scaling": "Auto",
-    "mumps_openmp_num_threads": 1
+    "mumps_num_threads": 0
   },
   "output": {
     "effective_ordering": "Amf",

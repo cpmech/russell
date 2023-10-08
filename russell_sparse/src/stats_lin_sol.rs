@@ -27,7 +27,7 @@ pub struct StatsLinSolMatrix {
 pub struct StatsLinSolRequests {
     pub ordering: String,
     pub scaling: String,
-    pub mumps_openmp_num_threads: usize,
+    pub mumps_num_threads: usize,
 }
 
 /// Holds some output parameters
@@ -109,7 +109,7 @@ impl StatsLinSol {
             requests: StatsLinSolRequests {
                 ordering: unknown.clone(),
                 scaling: unknown.clone(),
-                mumps_openmp_num_threads: 0,
+                mumps_num_threads: 0,
             },
             output: StatsLinSolOutput {
                 effective_ordering: unknown.clone(),

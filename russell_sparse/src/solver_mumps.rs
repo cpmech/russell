@@ -250,7 +250,7 @@ impl LinSolTrait for SolverMUMPS {
         let scaling = mumps_scaling(par.scaling);
         let pct_inc_workspace = to_i32(par.mumps_pct_inc_workspace);
         let max_work_memory = to_i32(par.mumps_max_work_memory);
-        let openmp_num_threads = to_i32(par.mumps_openmp_num_threads);
+        let openmp_num_threads = to_i32(par.mumps_num_threads);
 
         // requests
         let compute_determinant = if par.compute_determinant { 1 } else { 0 };

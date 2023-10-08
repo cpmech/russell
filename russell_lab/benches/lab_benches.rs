@@ -33,7 +33,7 @@ fn bench_mat_eigen_sym(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("OpenBLAS", size), size, |b, &size| {
             let mut a = Matrix::filled(size, size, 2.0);
             let mut l = Vector::new(size);
-            b.iter(|| mat_eigen_sym(&mut l, &mut a).unwrap());
+            b.iter(|| mat_eigen_sym(&mut l, &mut a, false).unwrap());
         });
     }
     group.finish();

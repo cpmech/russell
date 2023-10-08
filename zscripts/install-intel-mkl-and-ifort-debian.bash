@@ -15,6 +15,7 @@ sudo echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https:
 # install packages
 sudo apt-get update -y && \
 sudo apt-get install -y --no-install-recommends \
+    intel-oneapi-compiler-fortran \
     intel-oneapi-mkl \
     intel-oneapi-mkl-devel
 

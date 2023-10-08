@@ -6,28 +6,128 @@
 
 ([CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en). Photo: [Bertrand Russell](https://en.wikipedia.org/wiki/Bertrand_Russell))
 
+## Contents
+
+* [Introduction](#introduction)
+* [Crates](#crates)
+* [Installation on Debian/Ubuntu/Linux](#installation)
+* [Installation on macOS](#macos)
+* [Examples](#examples)
+* [Todo list](#todo)
+* [Code coverage](#coverage)
+
+## <a name="introduction"></a> Introduction
+
 **Russell** (Rust Scientific Library) assists in developing scientific computations using the Rust language. Our initial focus is on numerical methods and solvers for sparse linear systems and differential equations; however, anything is possible 😉.
 
 The "main" crate here is [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab), a **mat**rix-vector **lab**oratory, which provides the fundamental `Vector` and `Matrix` structures and several functions to perform linear algebra computations. Thus, we recommend looking at [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab) first.
 
 The next interesting crate is [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse), which implements sparse matrix structures such as COO (coordinates), CSC (compressed sparse column), and CSR (compressed sparse row) formats. `russell_sparse` also wraps powerful linear system solvers such as [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS](https://mumps-solver.org).
 
-This library aims to wrap the best solutions (e.g., UMFPACK) while maintaining a very **clean** and idiomatic Rust code. See our TODO list in [Appendix A](#todo). The code must also be simple to use and thoroughly tested with a minimum coverage of 95%; see [Appendix B](#coverage) below.
+This library aims to wrap the best solutions (e.g., UMFPACK) while maintaining a very **clean** and idiomatic Rust code. See our [Todo list](#todo). The code must also be simple to use and thoroughly tested with a minimum [coverage](#coverage) of 95%.
+
+## <a name="crates"></a> Crates
 
 Available crates:
 
-- [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab) [lab (main)](https://github.com/cpmech/russell/tree/main/russell_lab) Matrix-vector laboratory including linear algebra tools (with OpenBLAS or Intel MKL)
-- [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) Sparse matrix tools and solvers (with MUMPS, UMFPACK, and Intel DSS)
-- [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat) [stat](https://github.com/cpmech/russell/tree/main/russell_stat) Statistics calculations, probability distributions, and pseudo random numbers
-- [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) Tensor analysis structures and functions for continuum mechanics
+- [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab) [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab) Matrix-vector laboratory including linear algebra tools (with OpenBLAS or Intel MKL)
+- [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) Sparse matrix tools and solvers (with MUMPS, UMFPACK, and Intel DSS)
+- [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat) [russell_stat](https://github.com/cpmech/russell/tree/main/russell_stat) Statistics calculations, probability distributions, and pseudo random numbers
+- [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) Tensor analysis structures and functions for continuum mechanics
 
-External recommended/associated crates:
+External associated and recommended crates:
 
 - [plotpy](https://github.com/cpmech/plotpy) Plotting tools using Python3/Matplotlib as an engine (for quality graphics)
 - [tritet](https://github.com/cpmech/tritet) Triangle and tetrahedron mesh generators (with Triangle and Tetgen)
 - [gemlab](https://github.com/cpmech/gemlab) Geometry, meshes, and numerical integration for finite element analyses
 
-## Examples
+## <a name="installation"></a> Installation on Debian/Ubuntu/Linux
+
+**Russell** depends on external (non-Rust) packages for linear algebra and the solution of large sparse linear systems. For instance, the following need to be installed:
+
+* [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) **xor** [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html)
+* [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS](https://mumps-solver.org)
+* (optional) [Intel DSS](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html)
+
+The above packages may be installed via `apt`; however the Debian packages may lack features that boost performance (e.g., Metis ordering for MUMPS is missing in Debian). Therefore, we may compile UMFPACK and MUMPS locally and install them in `/usr/local`.
+
+In summary, we have three options:
+
+1. Use the standard Debian packages based on OpenBLAS (default)
+2. Compile MUMPS and UMFPACK with OpenBLAS
+3. Compile MUMPS and UMFPACK with Intel MKL (and enable the Intel DSS solver)
+
+Options 2 and 3 require the following environment variables:
+
+```bash
+export RUSSELL_SPARSE_USE_LOCAL_MUMPS=1
+export RUSSELL_SPARSE_USE_LOCAL_UMFPACK=1
+```
+
+Option 3 also requires the following environment variables:
+
+```bash
+export RUSSELL_LAB_USE_INTEL_MKL=1
+export RUSSELL_SPARSE_WITH_INTEL_DSS=1
+```
+
+For convenience, you may use the scripts in the [russell/zscripts](https://github.com/cpmech/russell/tree/main/zscripts) directory.
+
+**1.** Use the standard Debian packages based on OpenBLAS:
+
+```bash
+bash zscripts/01-ubuntu-openblas-debian.bash
+```
+
+**2. (xor)** compile MUMPS and UMFPACK with OpenBLAS:
+
+```bash
+bash zscripts/02-ubuntu-openblas-compile.bash
+```
+
+**3. (xor)** compile MUMPS and UMFPACK with Intel MKL:
+
+```bash
+bash zscripts/03-ubuntu-intel-mkl-compile.bash
+```
+
+The compiled MUMPS files will be installed in `/usr/local/include/mumps` and `/usr/local/lib/mumps`.
+
+The compiled UMFPACK files will be installed in `/usr/local/include/umfpack` and `/usr/local/lib/umfpack`.
+
+### Number of threads
+
+By default, OpenBLAS will use all available threads, including Hyper-Threads that may worsen the performance. Thus, it is best to set the following environment variable:
+
+```bash
+export OPENBLAS_NUM_THREADS=<real-core-number>
+```
+
+Substitute `<real-core-number>` with the correct value from your system.
+
+Furthermore, if working on a multi-threaded application where the solver should not be multi-threaded on its own (e.g., running parallel calculations in an optimization tool), you may set:
+
+```bash
+export OPENBLAS_NUM_THREADS=1
+```
+
+## <a name="macos"></a> Installation on macOS
+
+At this time, only OpenBLAS has been tested on macOS---we still need to study how to use MUMPS and UMFPACK on macOS.
+
+First, install [Homebrew](https://brew.sh/). Then, run:
+
+```bash
+brew install lapack openblas
+```
+
+Next, we must set the `LIBRARY_PATH`:
+
+```bash
+export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/lapack/lib:$(brew --prefix)/opt/openblas/lib
+```
+
+## <a name="examples"></a> Examples
 
 See also:
 
@@ -246,7 +346,7 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-## <a name="todo"></a> Appendix A - Todo list
+## <a name="todo"></a> Todo list
 
 - [ ] Improve crate `russell_lab`
     - [x] Implement more integration tests for linear algebra
@@ -284,8 +384,11 @@ fn main() -> Result<(), StrError> {
     - [x] Implement first and second order derivatives of invariants
     - [x] Implement some high-order derivatives
     - [ ] Implement standard continuum mechanics tensors
+- [ ] Make it possible to install Russell on Windows and macOS 
+    - [ ] Use Intel MKL on Windows
+    - [ ] Install MUMPS and UMFPACK on Windows and macOS
 
-## <a name="coverage"></a> Appendix B - Code coverage
+## <a name="coverage"></a> Code coverage
 
 ### Sunburst
 

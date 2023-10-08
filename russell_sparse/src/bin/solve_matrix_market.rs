@@ -1,4 +1,4 @@
-use russell_lab::{set_num_threads, Stopwatch, StrError, Vector};
+use russell_lab::{get_num_threads, set_num_threads, Stopwatch, StrError, Vector};
 use russell_sparse::prelude::*;
 use structopt::StructOpt;
 
@@ -24,9 +24,13 @@ struct Options {
     #[structopt(short = "s", long, default_value = "Auto")]
     scaling: String,
 
-    /// Number of threads for OpenMP (MUMPS only)
-    #[structopt(short = "n", long, default_value = "1")]
-    mumps_omp_nt: u32,
+    /// Number of threads for MUMPS
+    #[structopt(short = "m", long, default_value = "0")]
+    mumps_nt: u32,
+
+    /// Number of threads
+    #[structopt(short = "n", long, default_value = "0")]
+    nt: u32,
 
     /// Activate verbose mode
     #[structopt(short = "v", long)]
@@ -53,10 +57,15 @@ fn main() -> Result<(), StrError> {
     // parse options
     let opt = Options::from_args();
 
-    // if the number of threads for MUMPS is greater than 1,
-    // it is best to set OpenBLAS number of threads to 1
-    if opt.mumps_omp_nt > 1 {
-        set_num_threads(1);
+    // if the number of threads for MUMPS is greater than 0 (automatic),
+    // then we adjust the BLAS number of threads to the available difference
+    if opt.mumps_nt > 0 {
+        let mumps_nt = opt.mumps_nt as usize;
+        let max_nt = get_num_threads();
+        let blas_nt = if max_nt > mumps_nt { max_nt - mumps_nt } else { 1 };
+        set_num_threads(blas_nt);
+    } else if opt.nt > 0 {
+        set_num_threads(opt.nt as usize);
     }
 
     // select linear solver
@@ -79,7 +88,7 @@ fn main() -> Result<(), StrError> {
     params.ordering = enum_ordering(&opt.ordering);
     params.scaling = enum_scaling(&opt.scaling);
     params.compute_determinant = opt.determinant;
-    params.mumps_openmp_num_threads = opt.mumps_omp_nt as usize;
+    params.mumps_num_threads = opt.mumps_nt as usize;
     params.umfpack_enforce_unsymmetric_strategy = opt.enforce_unsymmetric_strategy;
     params.compute_error_estimates = opt.error_estimates;
     params.compute_condition_numbers = opt.condition_numbers;
@@ -88,7 +97,7 @@ fn main() -> Result<(), StrError> {
     let mut stats = StatsLinSol::new();
     stats.requests.ordering = format!("{:?}", params.ordering);
     stats.requests.scaling = format!("{:?}", params.scaling);
-    stats.requests.mumps_openmp_num_threads = params.mumps_openmp_num_threads;
+    stats.requests.mumps_num_threads = params.mumps_num_threads;
 
     // read the matrix
     let mut sw = Stopwatch::new("");

@@ -7,7 +7,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install Libraries
         run: |
-          sudo apt-get update -y && sudo apt-get install -y liblapacke-dev libmumps-seq-dev libopenblas-dev libsuitesparse-dev
+          bash zscripts/01-ubuntu-openblas-debian.bash
       - name: Install Rust
         run: |
           rustup toolchain install nightly --component llvm-tools-preview

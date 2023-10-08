@@ -1,8 +1,10 @@
 //! Russell - Rust Scientific Library
 //!
-//! **lab**: Matrix-vector laboratory including linear algebra tools
+//! `russell_lab`: Matrix-vector laboratory including linear algebra tools
 //!
-//! This crate depends on external libraries (not RUST; e.g., `liblapacke-dev` and `libopenblas-dev`). Thus, please check the [Installation Instructions on our GitHub Repository](https://github.com/cpmech/russell/tree/main/russell_lab).
+//! **Important:** This crate depends on external libraries (non-Rust). Thus, please check the [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell).
+//!
+//! # Introduction
 //!
 //! This crate implements several functions to perform linear algebra computations--it is a **mat**rix-vector **lab**oratory 😉. We implement some functions in native Rust code as much as possible but also wrap the best tools available, such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
 //!
@@ -84,15 +86,3 @@ use crate::internal::*;
 pub use crate::matrix::*;
 pub use crate::matvec::*;
 pub use crate::vector::*;
-
-// run code from README file
-#[cfg(doctest)]
-mod test_readme {
-    macro_rules! external_doc_test {
-        ($x:expr) => {
-            #[doc = $x]
-            extern "C" {}
-        };
-    }
-    external_doc_test!(include_str!("../README.md"));
-}

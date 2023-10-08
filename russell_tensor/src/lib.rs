@@ -1,6 +1,15 @@
 //! Russell - Rust Scientific Library
 //!
-//! **tensor**: Tensor analysis structures and functions for continuum mechanics
+//! `russell_tensor`: Tensor analysis structures and functions for continuum mechanics
+//!
+//! **Important:** This crate depends on external libraries (non-Rust). Thus, please check the [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell).
+//! # Introduction
+//!
+//! TODO
+//!
+//! # Examples
+//!
+//! TODO
 
 /// Defines a type alias for the error type as a static string
 pub type StrError = &'static str;
@@ -29,3 +38,15 @@ pub use crate::samples_tensor4::*;
 pub use crate::spectral2::*;
 pub use crate::tensor2::*;
 pub use crate::tensor4::*;
+
+// run code from README file
+#[cfg(doctest)]
+mod test_readme {
+    macro_rules! external_doc_test {
+        ($x:expr) => {
+            #[doc = $x]
+            extern "C" {}
+        };
+    }
+    external_doc_test!(include_str!("../README.md"));
+}

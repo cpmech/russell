@@ -1,0 +1,23 @@
+name: Test with Intel MKL
+on: [pull_request]
+jobs:
+  test_and_coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup environment variables
+        env:
+          RUSSELL_LAB_USE_INTEL_MKL: 1
+          RUSSELL_SPARSE_USE_LOCAL_MUMPS: 1
+          RUSSELL_SPARSE_USE_LOCAL_UMFPACK: 1
+          RUSSELL_SPARSE_WITH_INTEL_DSS: 1
+      - name: Install Libraries
+        run: |
+          bash zscripts/03-ubuntu-intel-mkl-compile.bash
+      - name: Install Rust
+        run: |
+          rustup toolchain install nightly --component llvm-tools-preview
+          rustup default nightly
+      - name: Run tests
+        run: |
+          RUST_BACKTRACE=1 cargo test

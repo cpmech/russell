@@ -36,10 +36,10 @@ pub struct LinSolParams {
     /// **Note:** Set this value to 0 for an automatic configuration
     pub mumps_max_work_memory: usize,
 
-    /// Defines the number of OpenMP threads (MUMPS only)
+    /// Defines the number of threads for MUMPS
     ///
     /// **Note:** Set this value to 0 to allow an automatic detection
-    pub mumps_openmp_num_threads: usize,
+    pub mumps_num_threads: usize,
 
     /// Enforces the unsymmetric strategy, even for symmetric matrices (not recommended; UMFPACK only)
     pub umfpack_enforce_unsymmetric_strategy: bool,
@@ -59,7 +59,7 @@ impl LinSolParams {
             compute_condition_numbers: false,
             mumps_pct_inc_workspace: 100,
             mumps_max_work_memory: 0,
-            mumps_openmp_num_threads: 0,
+            mumps_num_threads: 0,
             umfpack_enforce_unsymmetric_strategy: false,
             verbose: false,
         }
@@ -243,7 +243,7 @@ mod tests {
         assert_eq!(params.compute_determinant, false);
         assert_eq!(params.mumps_pct_inc_workspace, 100);
         assert_eq!(params.mumps_max_work_memory, 0);
-        assert_eq!(params.mumps_openmp_num_threads, 0);
+        assert_eq!(params.mumps_num_threads, 0);
         assert!(!params.umfpack_enforce_unsymmetric_strategy);
     }
 

@@ -2,7 +2,18 @@
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
-This repository implements the `russell_sparse` crate which contains tools for handling sparse matrices and functions to solve large sparse systems using the best libraries out there, such as [UMFPACK (recommended)](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS (for very large systems)](https://mumps-solver.org). Optionally, you may want to use the [Intel DSS solver](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html).
+## Contents
+
+* [Introduction](#introduction)
+* [Installation](#installation)
+* [Setting Cargo.toml](#cargo)
+* [Examples](#examples)
+* [Tools](#tools)
+* [For developers](#developers)
+
+## <a name="introduction"></a> Introduction
+
+This crate implements tools for handling sparse matrices and functions to solve large sparse systems using the best libraries out there, such as [UMFPACK (recommended)](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS (for very large systems)](https://mumps-solver.org). Optionally, you may want to use the [Intel DSS solver](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html).
 
 We have three storage formats for sparse matrices:
 
@@ -24,76 +35,13 @@ See the documentation for further information:
 
 - [russell_sparse documentation](https://docs.rs/russell_sparse) - Contains the API reference and examples
 
-## Installation (Ubuntu/Linux)
+## <a name="installation"></a> Installation
 
-### Required libraries
+This crate depends on `russell_lab`, which, in turn, depends on an efficient BLAS library such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html). This crate also depends on [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse), [MUMPS](https://mumps-solver.org), and, optionally, on [Intel DSS](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html).
 
-First, you need to install some dependencies:
+[The root README file presents the steps to install the required dependencies.](https://github.com/cpmech/russell)
 
-```bash
-sudo apt install liblapacke-dev libopenblas-dev
-```
-
-Next, there are some options to compile the code with [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS](https://mumps-solver.org):
-
-**Option 1.** Using the standard Debian packages. The code works just fine with the standard Debian packages. However, they may be outdated. Furthermore, the sequential version of MUMPS in Debian may be slow because it does not include Metis and OpenMP.
-
-**Option 2.** Alternatively, the code can be linked with locally compiled MUMPS and UMFPACK. In this case, the following environment variables must be set:
-
-```bash
-export RUSSELL_SPARSE_USE_LOCAL_MUMPS=1
-export RUSSELL_SPARSE_USE_LOCAL_UMFPACK=1
-```
-
-You can combine a Debian packages libraries with locally compiled ones; just set the above variables as appropriate.
-
-#### Option 1 - Standard Debian packages
-
-Install the following libraries:
-
-```bash
-sudo apt install libmumps-seq-dev libsuitesparse-dev
-```
-
-#### Option 2 - Locally compiled MUMPS and UMFPACK
-
-**Important:** To use the locally compiled UMFPACK, in addition to setting the above environment variable, you must **remove** `libsuitesparse-dev`.
-
-First, install some dependencies:
-
-```bash
-bash zscripts/install-deps.bash
-```
-
-Second, to download and compile MUMPS and install it in `/usr/local/include/mumps` and `/usr/local/lib/mumps`, run:
-
-```bash
-bash zscripts/install-mumps.bash
-```
-
-Note that the locally compiled MUMPS can co-exist with `libmumps-seq-dev`.
-
-Third, to download and compile UMFPACK and install it in `/usr/local/include/umfpack` and `/usr/local/lib/umfpack`, run:
-
-```bash
-bash zscripts/install-umfpack.bash
-```
-
-### (optional) Intel DSS solver
-
-If you wish to use the [Intel DSS](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html) solver, you need the additional Debian packages: `intel-oneapi-mkl` and `intel-oneapi-mkl-devel`, that can be easily installed by running:
-
-```bash
-bash zscripts/install-intel-mkl-linux.bash
-```
-
-Furthermore, you need to define the following environment variable:
-
-```bash
-export RUSSELL_SPARSE_WITH_INTEL_DSS=1
-```
-
-### Crates.io
+## <a name="cargo"></a> Setting Cargo.toml
 
 [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse)
 
@@ -104,23 +52,7 @@ export RUSSELL_SPARSE_WITH_INTEL_DSS=1
 russell_sparse = "*"
 ```
 
-### Number of threads
-
-By default, OpenBLAS will use all available threads, including Hyper-Threads that may worsen the performance. Thus, it is best to set the following environment variable:
-
-```bash
-export OPENBLAS_NUM_THREADS=<real-core-number>
-```
-
-Substitute `<real-core-number>` with the correct value from your system.
-
-Furthermore, if working on a multi-threaded application where the solver should not be multi-threaded on its own (e.g., running parallel calculations such as in optimization via genetic algorithms or differential evolution), you may set:
-
-```bash
-export OPENBLAS_NUM_THREADS=1
-```
-
-## Examples
+## <a name="examples"></a> Examples
 
 See also:
 
@@ -177,7 +109,7 @@ See [russell_sparse documentation](https://docs.rs/russell_sparse) for more exam
 
 See also the folder `examples`.
 
-## Tools
+## <a name="tools"></a> Tools
 
 This crate includes a tool named `solve_matrix_market` to study the performance of the available sparse solvers (currently MUMPS and UMFPACK).
 
@@ -230,7 +162,7 @@ The output looks like this:
   "requests": {
     "ordering": "Auto",
     "scaling": "Auto",
-    "mumps_openmp_num_threads": 1
+    "mumps_num_threads": 0
   },
   "output": {
     "effective_ordering": "Amf",
@@ -277,18 +209,19 @@ The output looks like this:
 }
 ```
 
-## Appendix A - For developers
+### Performance of MUMPS with Intel MKL and Flan_1565 matrix
+
+![mm-results-mumps-Flan_1565](data/figures/mm-results-mumps-Flan_1565.svg)
+
+## <a name="developers"></a> For developers
 
 * The `c_code` directory contains a thin wrapper to the sparse solvers (MUMPS, UMFPACK, and Intel DSS)
 * The `build.rs` file uses the crate `cc` to build the C-wrappers
-* The `zscripts` directory contains Bash scripts to install the following:
-    * `install-deps.bash`: Installs Debian/Ubuntu/Linux dependencies
-    * `install-intel-mkl-linux.bash`: Installs Intel MKL on Debian/Ubuntu/Linux
+* The `zscripts` directory also contains following:
     * `install-mumps.bash`: Installs MUMPS solver
     * `install-umfpack.bash`: Installs UMFPACK solver
     * `memcheck.bash`: Checks for memory leaks on the C-code using Valgrind
-    * `pres-cylin-problem.bash`: TO BE REMOVED
     * `run-examples`: Runs all examples in the `examples` directory
     * `run-solve-matrix-market.bash`: Runs the solve-matrix-market tool from the `bin` directory
-
+* The `patch` directory contains files to patch the Makefile for MUMPS, if locally compiled
 

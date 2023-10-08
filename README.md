@@ -29,6 +29,11 @@ External recommended/associated crates:
 
 ## Examples
 
+See also:
+
+* [russell_lab/examples](https://github.com/cpmech/russell/tree/main/russell_lab/examples)
+* [russell_sparse/examples](https://github.com/cpmech/russell/tree/main/russell_sparse/examples)
+
 ### Compute a singular value decomposition
 
 ```rust

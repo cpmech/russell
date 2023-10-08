@@ -122,6 +122,10 @@ export OPENBLAS_NUM_THREADS=1
 
 ## Examples
 
+See also:
+
+* [russell_sparse/examples](https://github.com/cpmech/russell/tree/main/russell_sparse/examples)
+
 ### Solve a tiny sparse linear system using UMFPACK
 
 ```rust

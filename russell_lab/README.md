@@ -89,6 +89,10 @@ russell_lab = "*"
 
 ## Examples
 
+See also:
+
+* [russell_lab/examples](https://github.com/cpmech/russell/tree/main/russell_lab/examples)
+
 ### Compute the pseudo-inverse matrix
 
 ```rust

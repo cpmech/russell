@@ -1,5 +1,5 @@
-name: Test & Coverage (with Intel MKL)
-on: [pull_request, push]
+name: Test with Intel MKL
+on: [pull_request]
 jobs:
   test_and_coverage:
     runs-on: ubuntu-latest

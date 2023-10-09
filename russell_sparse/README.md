@@ -10,6 +10,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 * [Examples](#examples)
 * [Tools](#tools)
 * [MUMPS + OpenBLAS issue](#issues)
+* [Benchmarks](#benchmarks)
 * [For developers](#developers)
 
 ## <a name="introduction"></a> Introduction
@@ -226,6 +227,8 @@ This issue has **not** been noticed with MUMPS + Intel MKL.
 ### References
 
 1. <a name="ref1"></a> Dorozhinskii R (2019) [Configuration of a linear solver for linearly implicit time integration and efficient data transfer in parallel thermo-hydraulic computations](https://mediatum.ub.tum.de/doc/1486743/1486743.pdf). _Master's Thesis in Computational Science and Engineering._ Department of Informatics Technical University of Munich.
+
+## <a name="benchmarks"></a> Benchmarks
 
 ### Performance of MUMPS with Intel MKL and Flan_1565 matrix
 

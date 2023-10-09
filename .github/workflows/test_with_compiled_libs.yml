@@ -1,18 +1,16 @@
-name: Test with Intel MKL
+name: Test with Compiled Libs
 on: [pull_request]
 jobs:
-  test_with_intel_mkl:
+  test_with_compiled_libs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install Libraries
         run: |
-          bash zscripts/03-ubuntu-intel-mkl-compile.bash
+          bash zscripts/02-ubuntu-openblas-compile.bash
       - name: Run tests
         env:
-          RUSSELL_LAB_USE_INTEL_MKL: 1
           RUSSELL_SPARSE_USE_LOCAL_MUMPS: 1
           RUSSELL_SPARSE_USE_LOCAL_UMFPACK: 1
-          RUSSELL_SPARSE_WITH_INTEL_DSS: 1
         run: |
           RUST_BACKTRACE=1 cargo test

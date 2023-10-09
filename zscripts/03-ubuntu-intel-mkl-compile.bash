@@ -12,6 +12,7 @@ sudo () {
 sudo apt-get update -y && \
 sudo apt-get install -y --no-install-recommends \
     cmake \
+    curl \
     g++ \
     gdb \
     git \

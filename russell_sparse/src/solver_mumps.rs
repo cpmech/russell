@@ -253,7 +253,11 @@ impl LinSolTrait for SolverMUMPS {
         let openmp_num_threads = if using_intel_mkl() {
             to_i32(par.mumps_num_threads)
         } else {
-            1 // avoid bug with OpenBLAS
+            if par.mumps_num_threads == 0 {
+                1 // avoid bug with OpenBLAS
+            } else {
+                to_i32(par.mumps_num_threads)
+            }
         };
 
         // requests

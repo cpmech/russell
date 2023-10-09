@@ -261,4 +261,3 @@ Notes for developers:
 * The `c_code` directory contains a thin wrapper to the BLAS libraries (OpenBLAS or Intel MKL)
 * The `c_code` directory also contains a wrapper to the C math functions
 * The `build.rs` file uses the crate `cc` to build the C-wrappers
-* The `zscripts` directory contains Bash scripts to install the Intel MKL on Debian/Linux

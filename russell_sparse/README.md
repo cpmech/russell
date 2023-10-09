@@ -9,6 +9,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 * [Setting Cargo.toml](#cargo)
 * [Examples](#examples)
 * [Tools](#tools)
+* [MUMPS + OpenBLAS issue](#issues)
 * [For developers](#developers)
 
 ## <a name="introduction"></a> Introduction
@@ -209,6 +210,23 @@ The output looks like this:
 }
 ```
 
+## <a name="issues"></a> MUMPS + OpenBLAS issue
+
+We found that MUMPS + OpenBLAS enters an infinite loop when the number of OpenMP threads is left to be automatically set.
+
+This issue has also been discovered by [1](#ref1), who states (page 72) _"We have observed that multi-threading of OpenBLAS library in MUMPS leads to multiple thread conflicts which sometimes result in significant slow-down of the solver."_
+
+Therefore, we have to take one of the two approaches:
+
+* If fixing the number of OpenMP threads for MUMPS, set the number of OpenMP threads for OpenBLAS to 1
+* If fixing the number of OpenMP threads for OpenBLAS, set the number of OpenMP threads for MUMPS to 1 
+
+This issue has **not** been noticed with MUMPS + Intel MKL.
+
+### References
+
+1. <a name="ref1"></a> Dorozhinskii R (2019) [Configuration of a linear solver for linearly implicit time integration and efficient data transfer in parallel thermo-hydraulic computations](https://mediatum.ub.tum.de/doc/1486743/1486743.pdf). _Master's Thesis in Computational Science and Engineering._ Department of Informatics Technical University of Munich.
+
 ### Performance of MUMPS with Intel MKL and Flan_1565 matrix
 
 ![mm-results-mumps-Flan_1565](data/figures/mm-results-mumps-Flan_1565.svg)
@@ -218,10 +236,6 @@ The output looks like this:
 * The `c_code` directory contains a thin wrapper to the sparse solvers (MUMPS, UMFPACK, and Intel DSS)
 * The `build.rs` file uses the crate `cc` to build the C-wrappers
 * The `zscripts` directory also contains following:
-    * `install-mumps.bash`: Installs MUMPS solver
-    * `install-umfpack.bash`: Installs UMFPACK solver
     * `memcheck.bash`: Checks for memory leaks on the C-code using Valgrind
     * `run-examples`: Runs all examples in the `examples` directory
     * `run-solve-matrix-market.bash`: Runs the solve-matrix-market tool from the `bin` directory
-* The `patch` directory contains files to patch the Makefile for MUMPS, if locally compiled
-

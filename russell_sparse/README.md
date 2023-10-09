@@ -229,7 +229,78 @@ This issue has **not** been noticed with MUMPS + Intel MKL.
 
 ### Performance of MUMPS with Intel MKL and Flan_1565 matrix
 
-![mm-results-mumps-Flan_1565](data/figures/mm-results-mumps-Flan_1565.svg)
+We ran `solve_matrix_market` with MUMPS and the [Flan_1565 matrix](https://sparse.tamu.edu/Janna/Flan_1565). The following combinations regarding the number of OpenMP threads have been investigated:
+
+1. Fixed MUMPS number of threads given to `ICNTL(16)` with varying OpenBLAS/Intel MKL threads
+2. Fixed OpenBLAS/Intel MKL threads with varying number of threads given to `ICNTL(16)`
+
+The results are shown below and illustrated in the following figures:
+
+```text
+... intel-mkl ... varying blas threads ...
+nt = 1  time = 1m10.065037815s   error = 2.37e-8
+nt = 2  time = 50.301718466s     error = 2.06e-8
+nt = 4  time = 39.741839403s     error = 2.32e-8
+nt = 8  time = 38.189990514s     error = 2.41e-8
+... openblas-compiled ... varying blas threads ...
+nt = 1  time = 3m392.844321ms    error = 1.30e-8
+nt = 2  time = 1m49.896792253s   error = 1.13e-8
+nt = 4  time = 1m14.254609308s   error = 1.07e-8
+nt = 8  time = 56.196909085s     error = 1.08e-8
+... openblas-debian ... varying blas threads ...
+nt = 1  time = 3m31.284256374s   error = 1.07e-8
+nt = 2  time = 2m5.60354019s     error = 1.16e-8
+nt = 4  time = 1m25.4454656s     error = 1.12e-8
+nt = 8  time = 1m549.305832ms    error = 1.12e-8
+... intel-mkl ... varying mumps threads ...
+nt = 1  time = 1m10.964878104s   error = 2.37e-8
+nt = 2  time = 1m11.216798665s   error = 2.37e-8
+nt = 4  time = 1m10.026904288s   error = 2.37e-8
+nt = 8  time = 1m23.969941193s   error = 2.37e-8
+... openblas-compiled ... varying mumps threads ...
+nt = 1  time = 2m59.416660889s   error = 1.30e-8
+nt = 2  time = 2m53.496207788s   error = 1.30e-8
+nt = 4  time = 2m49.55832447s    error = 1.30e-8
+nt = 8  time = 2m46.504678404s   error = 1.30e-8
+... openblas-debian ... varying mumps threads ...
+nt = 1  time = 3m28.419395669s   error = 1.21e-8
+nt = 2  time = 3m37.610690768s   error = 1.13e-8
+nt = 4  time = 3m38.084725248s   error = 1.09e-8
+nt = 8  time = 3m22.981406305s   error = 1.03e-8
+```
+
+#### Intel MKL with varying BLAS threads
+
+![intel-mkl-mumps-Flan_1565-blas](data/figures/intel-mkl-mumps-Flan_1565-blas.svg)
+
+#### Intel MKL with varying MUMPS-ICNTL(16) threads
+
+![intel-mkl-mumps-Flan_1565-mumps](data/figures/intel-mkl-mumps-Flan_1565-mumps.svg)
+
+#### Locally compiled MUMPS with varying BLAS threads
+
+![openblas-compiled-mumps-Flan_1565-blas](data/figures/openblas-compiled-mumps-Flan_1565-blas.svg)
+
+#### Locally compiled MUMPS with varying MUMPS-ICNTL(16) threads
+
+![openblas-compiled-mumps-Flan_1565-mumps](data/figures/openblas-compiled-mumps-Flan_1565-mumps.svg)
+
+#### Debian MUMPS with varying BLAS threads
+
+![openblas-debian-mumps-Flan_1565-blas](data/figures/openblas-debian-mumps-Flan_1565-blas.svg)
+
+#### Debian MUMPS with varying MUMPS-ICNTL(16) threads
+
+![openblas-debian-mumps-Flan_1565-mumps](data/figures/openblas-debian-mumps-Flan_1565-mumps.svg)
+
+#### Conclusions
+
+1. The fastest run happened with Intel MKL and varying BLAS threads while keeping MUMPS-ICNTL(16) constant and equal to 1.
+2. There is no speedup by changing MUMPS-ICNTL(16).
+3. The locally compiled compiled library is slightly faster than the one provided by Debian.
+4. The speedup with the best run is much worse than the ideal! With 8 threads, we cannot even get a 2x speedup.
+
+The code to analyze the results and generate the figures is available here: [benchmark-russell-sparse](https://github.com/cpmech/benchmark-russell-sparse).
 
 ## <a name="developers"></a> For developers
 

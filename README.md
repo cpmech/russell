@@ -1,6 +1,9 @@
 # Russell - Rust Scientific Library
 
 [![codecov](https://codecov.io/gh/cpmech/russell/graph/badge.svg?token=PQWSKMZQXT)](https://codecov.io/gh/cpmech/russell)
+[![Test & Coverage](https://github.com/cpmech/russell/actions/workflows/test_and_coverage.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_and_coverage.yml)
+[![Test with Compiled Libs](https://github.com/cpmech/russell/actions/workflows/test_with_compiled_libs.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_with_compiled_libs.yml)
+[![Test with Intel MKL](https://github.com/cpmech/russell/actions/workflows/test_with_intel_mkl.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_with_intel_mkl.yml)
 
 ![Bertrand Russell](Bertrand_Russell_1957.jpg)
 

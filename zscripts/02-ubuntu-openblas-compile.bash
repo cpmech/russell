@@ -17,7 +17,9 @@ sudo apt-get install -y --no-install-recommends \
     gdb \
     gfortran \
     git \
+    liblapacke-dev \
     libmetis-dev \
+    libopenblas-dev \
     make \
     patch
 

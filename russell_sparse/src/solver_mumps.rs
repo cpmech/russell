@@ -2,7 +2,7 @@ use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, StatsLin
 use crate::{
     to_i32, CcBool, StrError, MALLOC_ERROR, NEED_FACTORIZATION, NULL_POINTER_ERROR, SUCCESSFUL_EXIT, VERSION_ERROR,
 };
-use russell_lab::{vec_copy, Vector};
+use russell_lab::{using_intel_mkl, vec_copy, Vector};
 use serde::{Deserialize, Serialize};
 
 /// Opaque struct holding a C-pointer to InterfaceMUMPS
@@ -250,7 +250,11 @@ impl LinSolTrait for SolverMUMPS {
         let scaling = mumps_scaling(par.scaling);
         let pct_inc_workspace = to_i32(par.mumps_pct_inc_workspace);
         let max_work_memory = to_i32(par.mumps_max_work_memory);
-        let openmp_num_threads = to_i32(par.mumps_num_threads);
+        let openmp_num_threads = if using_intel_mkl() {
+            to_i32(par.mumps_num_threads)
+        } else {
+            1 // avoid bug with OpenBLAS
+        };
 
         // requests
         let compute_determinant = if par.compute_determinant { 1 } else { 0 };

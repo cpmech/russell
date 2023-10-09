@@ -1,4 +1,4 @@
-use russell_lab::{get_num_threads, set_num_threads, Stopwatch, StrError, Vector};
+use russell_lab::{set_num_threads, Stopwatch, StrError, Vector};
 use russell_sparse::prelude::*;
 use structopt::StructOpt;
 
@@ -57,14 +57,8 @@ fn main() -> Result<(), StrError> {
     // parse options
     let opt = Options::from_args();
 
-    // if the number of threads for MUMPS is greater than 0 (automatic),
-    // then we adjust the BLAS number of threads to the available difference
-    if opt.mumps_nt > 0 {
-        let mumps_nt = opt.mumps_nt as usize;
-        let max_nt = get_num_threads();
-        let blas_nt = if max_nt > mumps_nt { max_nt - mumps_nt } else { 1 };
-        set_num_threads(blas_nt);
-    } else if opt.nt > 0 {
+    // set the number of OpenMP threads
+    if opt.nt > 0 {
         set_num_threads(opt.nt as usize);
     }
 

@@ -59,7 +59,7 @@ impl LinSolParams {
             compute_condition_numbers: false,
             mumps_pct_inc_workspace: 100,
             mumps_max_work_memory: 0,
-            mumps_num_threads: 0,
+            mumps_num_threads: 1,
             umfpack_enforce_unsymmetric_strategy: false,
             verbose: false,
         }
@@ -243,7 +243,7 @@ mod tests {
         assert_eq!(params.compute_determinant, false);
         assert_eq!(params.mumps_pct_inc_workspace, 100);
         assert_eq!(params.mumps_max_work_memory, 0);
-        assert_eq!(params.mumps_num_threads, 0);
+        assert_eq!(params.mumps_num_threads, 1);
         assert!(!params.umfpack_enforce_unsymmetric_strategy);
     }
 

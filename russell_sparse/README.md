@@ -313,7 +313,7 @@ nt = 8  time = 3m22.981406305s   error = 1.03e-8
 1. The fastest run happened with Intel MKL and varying BLAS threads while keeping MUMPS-ICNTL(16) constant and equal to 1.
 2. There is no speedup by changing MUMPS-ICNTL(16).
 3. The locally compiled compiled library is slightly faster than the one provided by Debian.
-4. The speedup with the best run is much worse than the ideal! With 8 threads, we cannot even get a 2x speedup.
+4. The speedup in the factorization step reaches 2x with 1 to 8 threads.
 
 The code to analyze the results and generate the figures is available here: [benchmark-russell-sparse](https://github.com/cpmech/benchmark-russell-sparse).
 

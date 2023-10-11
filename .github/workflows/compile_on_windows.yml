@@ -15,7 +15,7 @@ jobs:
           install: >-
             curl
             git
-            python-pip
+            python3-pip
             mingw-w64-ucrt-x86_64-gcc
       - name: Install Libraries
         run: |

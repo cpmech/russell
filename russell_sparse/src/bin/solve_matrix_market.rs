@@ -1,4 +1,4 @@
-use russell_lab::{set_num_threads, Stopwatch, StrError, Vector};
+use russell_lab::{set_num_threads, using_intel_mkl, Stopwatch, StrError, Vector};
 use russell_sparse::prelude::*;
 use structopt::StructOpt;
 
@@ -31,6 +31,10 @@ struct Options {
     /// Number of threads
     #[structopt(short = "n", long, default_value = "0")]
     nt: u32,
+
+    /// Overrides the prevention of number-of-threads issue with OpenBLAS (not recommended)
+    #[structopt(long)]
+    override_prevent_issue: bool,
 
     /// Activate verbose mode
     #[structopt(short = "v", long)]
@@ -86,6 +90,10 @@ fn main() -> Result<(), StrError> {
     params.umfpack_enforce_unsymmetric_strategy = opt.enforce_unsymmetric_strategy;
     params.compute_error_estimates = opt.error_estimates;
     params.compute_condition_numbers = opt.condition_numbers;
+    params.mumps_override_prevent_nt_issue_with_openblas = opt.override_prevent_issue;
+    if !using_intel_mkl() && opt.override_prevent_issue {
+        println!("... WARNING: overriding the prevention of issue with OpenBLAS ...");
+    }
 
     // allocate stats structure
     let mut stats = StatsLinSol::new();

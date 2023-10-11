@@ -272,15 +272,12 @@ impl LinSolTrait for SolverMUMPS {
         let scaling = mumps_scaling(par.scaling);
         let pct_inc_workspace = to_i32(par.mumps_pct_inc_workspace);
         let max_work_memory = to_i32(par.mumps_max_work_memory);
-        self.effective_num_threads = if using_intel_mkl() {
-            to_i32(par.mumps_num_threads)
-        } else {
-            if par.mumps_num_threads == 0 {
-                1 // avoid bug with OpenBLAS
-            } else {
+        self.effective_num_threads =
+            if using_intel_mkl() || par.mumps_num_threads != 0 || par.mumps_override_prevent_nt_issue_with_openblas {
                 to_i32(par.mumps_num_threads)
-            }
-        };
+            } else {
+                1 // avoid bug with OpenBLAS
+            };
 
         // requests
         let compute_determinant = if par.compute_determinant { 1 } else { 0 };

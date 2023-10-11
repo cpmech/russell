@@ -91,6 +91,7 @@ fn main() -> Result<(), StrError> {
     params.compute_error_estimates = opt.error_estimates;
     params.compute_condition_numbers = opt.condition_numbers;
     params.mumps_override_prevent_nt_issue_with_openblas = opt.override_prevent_issue;
+    params.verbose = opt.verbose;
     if !using_intel_mkl() && opt.override_prevent_issue {
         println!("... WARNING: overriding the prevention of issue with OpenBLAS ...");
     }

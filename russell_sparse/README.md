@@ -142,7 +142,7 @@ to see the options.
 The default solver of `solve_matrix_market` is UMFPACK. To run with MUMPS, use the `--genie` (-g) flag:
 
 ```bash
-cargo run --release --bin solve_matrix_market -- -g mumps -x -y ~/Downloads/matrix-market/bfwb62.mtx
+cargo run --release --bin solve_matrix_market -- -g mumps ~/Downloads/matrix-market/bfwb62.mtx
 ```
 
 The output looks like this:
@@ -169,7 +169,8 @@ The output looks like this:
   "output": {
     "effective_ordering": "Amf",
     "effective_scaling": "RowColIter",
-    "openmp_num_threads": 32,
+    "effective_mumps_num_threads": 1,
+    "openmp_num_threads": 24,
     "umfpack_strategy": "Unknown",
     "umfpack_rcond_estimate": 0.0
   },
@@ -185,28 +186,30 @@ The output looks like this:
     "relative_error": 5.550560067119071e-16
   },
   "time_human": {
-    "read_matrix": "37.654µs",
-    "factorize": "5.117697ms",
-    "solve": "219.659µs",
-    "total_f_and_s": "5.337356ms",
-    "verify": "6.638µs"
+    "read_matrix": "250.529µs",
+    "initialize": "2.514066ms",
+    "factorize": "1.231613ms",
+    "solve": "343.558µs",
+    "total_ifs": "4.089237ms",
+    "verify": "3.686µs"
   },
   "time_nanoseconds": {
-    "read_matrix": 37654,
-    "factorize": 5117697,
-    "solve": 219659,
-    "total_f_and_s": 5337356,
-    "verify": 6638
+    "read_matrix": 250529,
+    "initialize": 2514066,
+    "factorize": 1231613,
+    "solve": 343558,
+    "total_ifs": 4089237,
+    "verify": 3686
   },
   "mumps_stats": {
-    "inf_norm_a": 0.00021250000000000002,
-    "inf_norm_x": 116611.5333525506,
-    "scaled_residual": 2.1281557019905676e-17,
-    "backward_error_omega1": 2.1420239141348292e-16,
+    "inf_norm_a": 0.0,
+    "inf_norm_x": 0.0,
+    "scaled_residual": 0.0,
+    "backward_error_omega1": 0.0,
     "backward_error_omega2": 0.0,
-    "normalized_delta_x": 7.516512844561073e-16,
-    "condition_number1": 3.50907046133377,
-    "condition_number2": 1.0
+    "normalized_delta_x": 0.0,
+    "condition_number1": 0.0,
+    "condition_number2": 0.0
   }
 }
 ```

@@ -19,6 +19,7 @@
   "output": {
     "effective_ordering": "Metis",
     "effective_scaling": "Unknown",
+    "effective_mumps_num_threads": 0,
     "openmp_num_threads": 24,
     "umfpack_strategy": "Unknown",
     "umfpack_rcond_estimate": 0.0

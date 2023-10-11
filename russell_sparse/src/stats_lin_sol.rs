@@ -39,6 +39,7 @@ pub struct StatsLinSolRequests {
 pub struct StatsLinSolOutput {
     pub effective_ordering: String,
     pub effective_scaling: String,
+    pub effective_mumps_num_threads: usize,
     pub openmp_num_threads: usize,
     pub umfpack_strategy: String,
     pub umfpack_rcond_estimate: f64, // reciprocal condition number estimate
@@ -120,6 +121,7 @@ impl StatsLinSol {
             output: StatsLinSolOutput {
                 effective_ordering: unknown.clone(),
                 effective_scaling: unknown.clone(),
+                effective_mumps_num_threads: 0,
                 openmp_num_threads: 0,
                 umfpack_strategy: unknown.clone(),
                 umfpack_rcond_estimate: 0.0,

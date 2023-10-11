@@ -128,6 +128,9 @@ pub struct SolverMUMPS {
     /// Holds the used scaling (after factorize)
     effective_scaling: i32,
 
+    /// Holds the OpenMP number of threads passed down to MUMPS (ICNTL(16))
+    effective_num_threads: i32,
+
     /// Holds the determinant coefficient (if requested)
     ///
     /// det = coefficient * pow(2, exponent)
@@ -185,6 +188,7 @@ impl SolverMUMPS {
                 initialized_nnz: 0,
                 effective_ordering: -1,
                 effective_scaling: -1,
+                effective_num_threads: 0,
                 determinant_coefficient: 0.0,
                 determinant_exponent: 0.0,
                 error_analysis_option: 0,
@@ -268,7 +272,7 @@ impl LinSolTrait for SolverMUMPS {
         let scaling = mumps_scaling(par.scaling);
         let pct_inc_workspace = to_i32(par.mumps_pct_inc_workspace);
         let max_work_memory = to_i32(par.mumps_max_work_memory);
-        let openmp_num_threads = if using_intel_mkl() {
+        self.effective_num_threads = if using_intel_mkl() {
             to_i32(par.mumps_num_threads)
         } else {
             if par.mumps_num_threads == 0 {
@@ -302,7 +306,7 @@ impl LinSolTrait for SolverMUMPS {
                     scaling,
                     pct_inc_workspace,
                     max_work_memory,
-                    openmp_num_threads,
+                    self.effective_num_threads,
                     verbose,
                     general_symmetric,
                     positive_definite,
@@ -444,6 +448,7 @@ impl LinSolTrait for SolverMUMPS {
             MUMPS_SCALING_ROW_COL_RIG => "RowColRig".to_string(),
             _ => "Unknown".to_string(),
         };
+        stats.output.effective_mumps_num_threads = self.effective_num_threads as usize;
         stats.mumps_stats.inf_norm_a = self.error_analysis_array_len_8[0];
         stats.mumps_stats.inf_norm_x = self.error_analysis_array_len_8[1];
         stats.mumps_stats.scaled_residual = self.error_analysis_array_len_8[2];

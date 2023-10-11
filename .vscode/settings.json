@@ -41,6 +41,7 @@
     "lsol",
     "lwork",
     "memcheck",
+    "msys",
     "nelt",
     "odyad",
     "oneapi",

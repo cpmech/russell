@@ -213,7 +213,7 @@ The output looks like this:
 
 ## <a name="issues"></a> MUMPS + OpenBLAS issue
 
-We found that MUMPS + OpenBLAS enters an infinite loop when the number of OpenMP threads is left to be automatically set.
+We found that MUMPS + OpenBLAS becomes very, very slow when the number of OpenMP threads is left automatic, i.e., using the available number of threads. Thus, with OpenBLAS, it is recommended to set LinSolParams.mumps_num_threads = 1 (this is automatically set when using OpenBLAS).
 
 This issue has also been discovered by [1](#ref1), who states (page 72) _"We have observed that multi-threading of OpenBLAS library in MUMPS leads to multiple thread conflicts which sometimes result in significant slow-down of the solver."_
 

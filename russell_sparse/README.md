@@ -224,6 +224,18 @@ Therefore, we have to take one of the two approaches:
 
 This issue has **not** been noticed with MUMPS + Intel MKL.
 
+Command to reproduce the issue:
+
+```bash
+OMP_NUM_THREADS=20 ~/rust_modules/release/solve_matrix_market -g mumps ~/Downloads/matrix-market/inline_1.mtx -m 0 -v --override-prevent-issue
+```
+
+Also, to reproduce the issue, we need:
+
+* Git hash = e020d9c8486502bd898d93a1998a0cf23c4d5057
+* Remove Debian OpenBLAS, MUMPS, and etc.
+* Install the compiled MUMPS solver with `02-ubuntu-openblas-compile.bash`
+
 ### References
 
 1. <a name="ref1"></a> Dorozhinskii R (2019) [Configuration of a linear solver for linearly implicit time integration and efficient data transfer in parallel thermo-hydraulic computations](https://mediatum.ub.tum.de/doc/1486743/1486743.pdf). _Master's Thesis in Computational Science and Engineering._ Department of Informatics Technical University of Munich.

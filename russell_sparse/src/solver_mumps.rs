@@ -446,6 +446,7 @@ impl LinSolTrait for SolverMUMPS {
             MUMPS_SCALING_ROW_COL => "RowCol".to_string(),
             MUMPS_SCALING_ROW_COL_ITER => "RowColIter".to_string(),
             MUMPS_SCALING_ROW_COL_RIG => "RowColRig".to_string(),
+            -2 => "Scaling done during analysis".to_string(),
             _ => "Unknown".to_string(),
         };
         stats.output.effective_mumps_num_threads = self.effective_num_threads as usize;

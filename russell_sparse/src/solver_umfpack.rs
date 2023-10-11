@@ -1,5 +1,6 @@
 use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, StatsLinSol, Symmetry};
-use crate::{to_i32, CcBool, StrError, MALLOC_ERROR, NEED_FACTORIZATION, NULL_POINTER_ERROR, SUCCESSFUL_EXIT};
+use crate::auxiliary_and_constants::*;
+use crate::StrError;
 use russell_lab::Vector;
 
 /// Opaque struct holding a C-pointer to InterfaceUMFPACK
@@ -14,25 +15,27 @@ struct InterfaceUMFPACK {
 extern "C" {
     fn solver_umfpack_new() -> *mut InterfaceUMFPACK;
     fn solver_umfpack_drop(solver: *mut InterfaceUMFPACK);
+    fn solver_umfpack_initialize(
+        solver: *mut InterfaceUMFPACK,
+        ordering: i32,
+        scaling: i32,
+        verbose: CcBool,
+        enforce_unsymmetric_strategy: CcBool,
+        ndim: i32,
+        col_pointers: *const i32,
+        row_indices: *const i32,
+        values: *const f64,
+    ) -> i32;
     fn solver_umfpack_factorize(
         solver: *mut InterfaceUMFPACK,
-        // output
         effective_strategy: *mut i32,
         effective_ordering: *mut i32,
         effective_scaling: *mut i32,
         rcond_estimate: *mut f64,
         determinant_coefficient: *mut f64,
         determinant_exponent: *mut f64,
-        // input
-        ordering: i32,
-        scaling: i32,
-        // requests
         compute_determinant: CcBool,
         verbose: CcBool,
-        // matrix config
-        enforce_unsymmetric_strategy: CcBool,
-        ndim: i32,
-        // matrix
         col_pointers: *const i32,
         row_indices: *const i32,
         values: *const f64,
@@ -55,17 +58,20 @@ pub struct SolverUMFPACK {
     /// Holds a pointer to the C interface to UMFPACK
     solver: *mut InterfaceUMFPACK,
 
+    /// Indicates whether the solver has been initialized or not (just once)
+    initialized: bool,
+
     /// Indicates whether the sparse matrix has been factorized or not
     factorized: bool,
 
-    /// Holds the symmetry type used in the first call to factorize
-    factorized_symmetry: Option<Symmetry>,
+    /// Holds the symmetry type used in initialize
+    initialized_symmetry: Option<Symmetry>,
 
-    /// Holds the matrix dimension saved in the first call to factorize
-    factorized_ndim: usize,
+    /// Holds the matrix dimension saved in initialize
+    initialized_ndim: usize,
 
-    /// Holds the number of non-zeros saved in the first call to factorize
-    factorized_nnz: usize,
+    /// Holds the number of non-zeros saved in initialize
+    initialized_nnz: usize,
 
     /// Holds the used strategy (after factorize)
     effective_strategy: i32,
@@ -109,10 +115,11 @@ impl SolverUMFPACK {
             }
             Ok(SolverUMFPACK {
                 solver,
+                initialized: false,
                 factorized: false,
-                factorized_symmetry: None,
-                factorized_ndim: 0,
-                factorized_nnz: 0,
+                initialized_symmetry: None,
+                initialized_ndim: 0,
+                initialized_nnz: 0,
                 effective_strategy: -1,
                 effective_ordering: -1,
                 effective_scaling: -1,
@@ -159,21 +166,21 @@ impl LinSolTrait for SolverUMFPACK {
             }
         }
 
-        // check already factorized data
-        if self.factorized {
-            if csc.symmetry != self.factorized_symmetry {
+        // check already initialized data
+        if self.initialized {
+            if csc.symmetry != self.initialized_symmetry {
                 return Err("subsequent factorizations must use the same matrix (symmetry differs)");
             }
-            if csc.nrow != self.factorized_ndim {
+            if csc.nrow != self.initialized_ndim {
                 return Err("subsequent factorizations must use the same matrix (ndim differs)");
             }
-            if (csc.col_pointers[csc.ncol] as usize) != self.factorized_nnz {
+            if (csc.col_pointers[csc.ncol] as usize) != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
             }
         } else {
-            self.factorized_symmetry = csc.symmetry;
-            self.factorized_ndim = csc.nrow;
-            self.factorized_nnz = csc.col_pointers[csc.ncol] as usize;
+            self.initialized_symmetry = csc.symmetry;
+            self.initialized_ndim = csc.nrow;
+            self.initialized_nnz = csc.col_pointers[csc.ncol] as usize;
         }
 
         // parameters
@@ -191,27 +198,39 @@ impl LinSolTrait for SolverUMFPACK {
         let enforce_unsym = if par.umfpack_enforce_unsymmetric_strategy { 1 } else { 0 };
         let ndim = to_i32(csc.nrow);
 
-        // call UMFPACK factorize
+        // call initialize just once
+        if !self.initialized {
+            unsafe {
+                let status = solver_umfpack_initialize(
+                    self.solver,
+                    ordering,
+                    scaling,
+                    verbose,
+                    enforce_unsym,
+                    ndim,
+                    csc.col_pointers.as_ptr(),
+                    csc.row_indices.as_ptr(),
+                    csc.values.as_ptr(),
+                );
+                if status != SUCCESSFUL_EXIT {
+                    return Err(handle_umfpack_error_code(status));
+                }
+            }
+            self.initialized = true;
+        }
+
+        // call factorize
         unsafe {
             let status = solver_umfpack_factorize(
                 self.solver,
-                // output
                 &mut self.effective_strategy,
                 &mut self.effective_ordering,
                 &mut self.effective_scaling,
                 &mut self.rcond_estimate,
                 &mut self.determinant_coefficient,
                 &mut self.determinant_exponent,
-                // input
-                ordering,
-                scaling,
-                // requests
                 compute_determinant,
                 verbose,
-                // matrix config
-                enforce_unsym,
-                ndim,
-                // matrix
                 csc.col_pointers.as_ptr(),
                 csc.row_indices.as_ptr(),
                 csc.values.as_ptr(),
@@ -258,21 +277,21 @@ impl LinSolTrait for SolverUMFPACK {
 
         // check already factorized data
         let (nrow, ncol, nnz, symmetry) = csc.get_info();
-        if symmetry != self.factorized_symmetry {
+        if symmetry != self.initialized_symmetry {
             return Err("solve must use the same matrix (symmetry differs)");
         }
-        if nrow != self.factorized_ndim || ncol != self.factorized_ndim {
+        if nrow != self.initialized_ndim || ncol != self.initialized_ndim {
             return Err("solve must use the same matrix (ndim differs)");
         }
-        if nnz != self.factorized_nnz {
+        if nnz != self.initialized_nnz {
             return Err("solve must use the same matrix (nnz differs)");
         }
 
         // check vectors
-        if x.dim() != self.factorized_ndim {
+        if x.dim() != self.initialized_ndim {
             return Err("the dimension of the vector of unknown values x is incorrect");
         }
-        if rhs.dim() != self.factorized_ndim {
+        if rhs.dim() != self.initialized_ndim {
             return Err("the dimension of the right-hand side vector is incorrect");
         }
 
@@ -394,9 +413,13 @@ pub(crate) fn handle_umfpack_error_code(err: i32) -> StrError {
         -17 => return "Error(-17): Failed to save/load file",
         -18 => return "Error(-18): Ordering method failed",
         -911 => return "Error(-911): An internal error has occurred",
-        NULL_POINTER_ERROR => return "Error: c-code returned null pointer (UMFPACK)",
-        MALLOC_ERROR => return "Error: c-code failed to allocate memory (UMFPACK)",
-        NEED_FACTORIZATION => return "INTERNAL ERROR: factorization must be completed before solve",
+        ERROR_NULL_POINTER => return "UMFPACK failed due to NULL POINTER error",
+        ERROR_MALLOC => return "UMFPACK failed due to MALLOC error",
+        ERROR_VERSION => return "UMFPACK failed due to VERSION error",
+        ERROR_NOT_AVAILABLE => return "UMFPACK is not AVAILABLE",
+        ERROR_NEED_INITIALIZATION => return "UMFPACK failed because INITIALIZATION is needed",
+        ERROR_NEED_FACTORIZATION => return "UMFPACK failed because FACTORIZATION is needed",
+        ERROR_ALREADY_INITIALIZED => return "UMFPACK failed because INITIALIZATION has been completed already",
         _ => return "Error: unknown error returned by c-code (UMFPACK)",
     }
 }
@@ -596,12 +619,32 @@ mod tests {
             assert_ne!(res, default);
         }
         assert_eq!(
-            handle_umfpack_error_code(100000),
-            "Error: c-code returned null pointer (UMFPACK)"
+            handle_umfpack_error_code(ERROR_NULL_POINTER),
+            "UMFPACK failed due to NULL POINTER error"
         );
         assert_eq!(
-            handle_umfpack_error_code(200000),
-            "Error: c-code failed to allocate memory (UMFPACK)"
+            handle_umfpack_error_code(ERROR_MALLOC),
+            "UMFPACK failed due to MALLOC error"
+        );
+        assert_eq!(
+            handle_umfpack_error_code(ERROR_VERSION),
+            "UMFPACK failed due to VERSION error"
+        );
+        assert_eq!(
+            handle_umfpack_error_code(ERROR_NOT_AVAILABLE),
+            "UMFPACK is not AVAILABLE"
+        );
+        assert_eq!(
+            handle_umfpack_error_code(ERROR_NEED_INITIALIZATION),
+            "UMFPACK failed because INITIALIZATION is needed"
+        );
+        assert_eq!(
+            handle_umfpack_error_code(ERROR_NEED_FACTORIZATION),
+            "UMFPACK failed because FACTORIZATION is needed"
+        );
+        assert_eq!(
+            handle_umfpack_error_code(ERROR_ALREADY_INITIALIZED),
+            "UMFPACK failed because INITIALIZATION has been completed already"
         );
         assert_eq!(handle_umfpack_error_code(123), default);
     }

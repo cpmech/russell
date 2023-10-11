@@ -1,7 +1,6 @@
 use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, StatsLinSol, Symmetry};
-use crate::{
-    to_i32, CcBool, StrError, MALLOC_ERROR, NEED_FACTORIZATION, NULL_POINTER_ERROR, SUCCESSFUL_EXIT, VERSION_ERROR,
-};
+use crate::auxiliary_and_constants::*;
+use crate::StrError;
 use russell_lab::{using_intel_mkl, vec_copy, Vector};
 use serde::{Deserialize, Serialize};
 
@@ -17,31 +16,30 @@ struct InterfaceMUMPS {
 extern "C" {
     fn solver_mumps_new() -> *mut InterfaceMUMPS;
     fn solver_mumps_drop(solver: *mut InterfaceMUMPS);
-    fn solver_mumps_factorize(
+    fn solver_mumps_initialize(
         solver: *mut InterfaceMUMPS,
-        // output
-        effective_ordering: *mut i32,
-        effective_scaling: *mut i32,
-        determinant_coefficient: *mut f64,
-        determinant_exponent: *mut f64,
-        // input
         ordering: i32,
         scaling: i32,
         pct_inc_workspace: i32,
         max_work_memory: i32,
         openmp_num_threads: i32,
-        // requests
-        compute_determinant: CcBool,
         verbose: CcBool,
-        // matrix config
         general_symmetric: CcBool,
         positive_definite: CcBool,
         ndim: i32,
         nnz: i32,
-        // matrix
         indices_i: *const i32,
         indices_j: *const i32,
         values_aij: *const f64,
+    ) -> i32;
+    fn solver_mumps_factorize(
+        solver: *mut InterfaceMUMPS,
+        effective_ordering: *mut i32,
+        effective_scaling: *mut i32,
+        determinant_coefficient: *mut f64,
+        determinant_exponent: *mut f64,
+        compute_determinant: CcBool,
+        verbose: CcBool,
     ) -> i32;
     fn solver_mumps_solve(
         solver: *mut InterfaceMUMPS,
@@ -109,17 +107,20 @@ pub struct SolverMUMPS {
     /// Holds a pointer to the C interface to MUMPS
     solver: *mut InterfaceMUMPS,
 
+    /// Indicates whether the solver has been initialized or not (just once)
+    initialized: bool,
+
     /// Indicates whether the sparse matrix has been factorized or not
     factorized: bool,
 
-    /// Holds the symmetry type used in the first call to factorize
-    factorized_symmetry: Option<Symmetry>,
+    /// Holds the symmetry type used in the initialize
+    initialized_symmetry: Option<Symmetry>,
 
-    /// Holds the matrix dimension saved in the first call to factorize
-    factorized_ndim: usize,
+    /// Holds the matrix dimension saved in initialize
+    initialized_ndim: usize,
 
-    /// Holds the number of non-zeros saved in the first call to factorize
-    factorized_nnz: usize,
+    /// Holds the number of non-zeros saved in initialize
+    initialized_nnz: usize,
 
     /// Holds the used ordering (after factorize)
     effective_ordering: i32,
@@ -165,10 +166,11 @@ impl SolverMUMPS {
             }
             Ok(SolverMUMPS {
                 solver,
+                initialized: false,
                 factorized: false,
-                factorized_symmetry: None,
-                factorized_ndim: 0,
-                factorized_nnz: 0,
+                initialized_symmetry: None,
+                initialized_ndim: 0,
+                initialized_nnz: 0,
                 effective_ordering: -1,
                 effective_scaling: -1,
                 determinant_coefficient: 0.0,
@@ -216,21 +218,21 @@ impl LinSolTrait for SolverMUMPS {
             return Err("the COO matrix must have at least one non-zero value");
         }
 
-        // check already factorized data
-        if self.factorized {
-            if coo.symmetry != self.factorized_symmetry {
+        // check already initialized data
+        if self.initialized {
+            if coo.symmetry != self.initialized_symmetry {
                 return Err("subsequent factorizations must use the same matrix (symmetry differs)");
             }
-            if coo.nrow != self.factorized_ndim {
+            if coo.nrow != self.initialized_ndim {
                 return Err("subsequent factorizations must use the same matrix (ndim differs)");
             }
-            if coo.nnz != self.factorized_nnz {
+            if coo.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
             }
         } else {
-            self.factorized_symmetry = coo.symmetry;
-            self.factorized_ndim = coo.nrow;
-            self.factorized_nnz = coo.nnz;
+            self.initialized_symmetry = coo.symmetry;
+            self.initialized_ndim = coo.nrow;
+            self.initialized_nnz = coo.nnz;
         }
 
         // configuration parameters
@@ -274,33 +276,42 @@ impl LinSolTrait for SolverMUMPS {
         let ndim = to_i32(coo.nrow);
         let nnz = to_i32(coo.nnz);
 
-        // call MUMPS factorize
+        // call initialize just once
+        if !self.initialized {
+            unsafe {
+                let status = solver_mumps_initialize(
+                    self.solver,
+                    ordering,
+                    scaling,
+                    pct_inc_workspace,
+                    max_work_memory,
+                    openmp_num_threads,
+                    verbose,
+                    general_symmetric,
+                    positive_definite,
+                    ndim,
+                    nnz,
+                    coo.indices_i.as_ptr(),
+                    coo.indices_j.as_ptr(),
+                    coo.values.as_ptr(),
+                );
+                if status != SUCCESSFUL_EXIT {
+                    return Err(handle_mumps_error_code(status));
+                }
+            }
+            self.initialized = true;
+        }
+
+        // call factorize
         unsafe {
             let status = solver_mumps_factorize(
                 self.solver,
-                // output
                 &mut self.effective_ordering,
                 &mut self.effective_scaling,
                 &mut self.determinant_coefficient,
                 &mut self.determinant_exponent,
-                // input
-                ordering,
-                scaling,
-                pct_inc_workspace,
-                max_work_memory,
-                openmp_num_threads,
-                // requests
                 compute_determinant,
                 verbose,
-                // matrix config
-                general_symmetric,
-                positive_definite,
-                ndim,
-                nnz,
-                // matrix
-                coo.indices_i.as_ptr(),
-                coo.indices_j.as_ptr(),
-                coo.values.as_ptr(),
             );
             if status != SUCCESSFUL_EXIT {
                 return Err(handle_mumps_error_code(status));
@@ -343,21 +354,21 @@ impl LinSolTrait for SolverMUMPS {
 
         // check already factorized data
         let (nrow, ncol, nnz, symmetry) = coo.get_info();
-        if symmetry != self.factorized_symmetry {
+        if symmetry != self.initialized_symmetry {
             return Err("solve must use the same matrix (symmetry differs)");
         }
-        if nrow != self.factorized_ndim || ncol != self.factorized_ndim {
+        if nrow != self.initialized_ndim || ncol != self.initialized_ndim {
             return Err("solve must use the same matrix (ndim differs)");
         }
-        if nnz != self.factorized_nnz {
+        if nnz != self.initialized_nnz {
             return Err("solve must use the same matrix (nnz differs)");
         }
 
         // check vectors
-        if x.dim() != self.factorized_ndim {
+        if x.dim() != self.initialized_ndim {
             return Err("the dimension of the vector of unknown values x is incorrect");
         }
-        if rhs.dim() != self.factorized_ndim {
+        if rhs.dim() != self.initialized_ndim {
             return Err("the dimension of the right-hand side vector is incorrect");
         }
 
@@ -540,10 +551,13 @@ fn handle_mumps_error_code(err: i32) -> StrError {
         2 => "Error(+2): during error analysis the max-norm of the computed solution is close to zero",
         4 => "Error(+4): not used in current version",
         8 => "Error(+8): problem with the iterative refinement routine",
-        NULL_POINTER_ERROR => return "Error: c-code returned null pointer (MUMPS)",
-        MALLOC_ERROR => return "Error: c-code failed to allocate memory (MUMPS)",
-        VERSION_ERROR => return "Error: MUMPS library version is inconsistent among dynamic library and compiled code",
-        NEED_FACTORIZATION => return "INTERNAL ERROR: factorization must be completed before solve",
+        ERROR_NULL_POINTER => return "MUMPS failed due to NULL POINTER error",
+        ERROR_MALLOC => return "MUMPS failed due to MALLOC error",
+        ERROR_VERSION => return "MUMPS failed due to VERSION error",
+        ERROR_NOT_AVAILABLE => return "MUMPS is not AVAILABLE",
+        ERROR_NEED_INITIALIZATION => return "MUMPS failed because INITIALIZATION is needed",
+        ERROR_NEED_FACTORIZATION => return "MUMPS failed because FACTORIZATION is needed",
+        ERROR_ALREADY_INITIALIZED => return "MUMPS failed because INITIALIZATION has been completed already",
         _ => return "Error: unknown error returned by c-code (MUMPS)",
     }
 }
@@ -771,12 +785,29 @@ mod tests {
             assert_ne!(res, default);
         }
         assert_eq!(
-            handle_mumps_error_code(100000),
-            "Error: c-code returned null pointer (MUMPS)"
+            handle_mumps_error_code(ERROR_NULL_POINTER),
+            "MUMPS failed due to NULL POINTER error"
         );
         assert_eq!(
-            handle_mumps_error_code(200000),
-            "Error: c-code failed to allocate memory (MUMPS)"
+            handle_mumps_error_code(ERROR_MALLOC),
+            "MUMPS failed due to MALLOC error"
+        );
+        assert_eq!(
+            handle_mumps_error_code(ERROR_VERSION),
+            "MUMPS failed due to VERSION error"
+        );
+        assert_eq!(handle_mumps_error_code(ERROR_NOT_AVAILABLE), "MUMPS is not AVAILABLE");
+        assert_eq!(
+            handle_mumps_error_code(ERROR_NEED_INITIALIZATION),
+            "MUMPS failed because INITIALIZATION is needed"
+        );
+        assert_eq!(
+            handle_mumps_error_code(ERROR_NEED_FACTORIZATION),
+            "MUMPS failed because FACTORIZATION is needed"
+        );
+        assert_eq!(
+            handle_mumps_error_code(ERROR_ALREADY_INITIALIZED),
+            "MUMPS failed because INITIALIZATION has been completed already"
         );
         assert_eq!(handle_mumps_error_code(123), default);
     }

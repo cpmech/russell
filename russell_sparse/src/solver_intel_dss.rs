@@ -1,7 +1,6 @@
 use super::{LinSolParams, LinSolTrait, SparseMatrix, StatsLinSol, Symmetry};
-use crate::{
-    to_i32, CcBool, StrError, MALLOC_ERROR, NEED_FACTORIZATION, NOT_AVAILABLE, NULL_POINTER_ERROR, SUCCESSFUL_EXIT,
-};
+use crate::auxiliary_and_constants::*;
+use crate::StrError;
 use russell_lab::Vector;
 
 /// Opaque struct holding a C-pointer to InterfaceIntelDSS
@@ -16,20 +15,19 @@ struct InterfaceIntelDSS {
 extern "C" {
     fn solver_intel_dss_new() -> *mut InterfaceIntelDSS;
     fn solver_intel_dss_drop(solver: *mut InterfaceIntelDSS);
-    fn solver_intel_dss_factorize(
+    fn solver_intel_dss_initialize(
         solver: *mut InterfaceIntelDSS,
-        // output
-        determinant_coefficient: *mut f64,
-        determinant_exponent: *mut f64,
-        // requests
-        compute_determinant: CcBool,
-        // matrix config
         general_symmetric: CcBool,
         positive_definite: CcBool,
         ndim: i32,
-        // matrix
         row_pointers: *const i32,
         col_indices: *const i32,
+    ) -> i32;
+    fn solver_intel_dss_factorize(
+        solver: *mut InterfaceIntelDSS,
+        determinant_coefficient: *mut f64,
+        determinant_exponent: *mut f64,
+        compute_determinant: CcBool,
         values: *const f64,
     ) -> i32;
     fn solver_intel_dss_solve(solver: *mut InterfaceIntelDSS, x: *mut f64, rhs: *const f64) -> i32;
@@ -46,17 +44,20 @@ pub struct SolverIntelDSS {
     /// Holds a pointer to the C interface to IntelDSS
     solver: *mut InterfaceIntelDSS,
 
+    /// Indicates whether the solver has been initialized or not (just once)
+    initialized: bool,
+
     /// Indicates whether the sparse matrix has been factorized or not
     factorized: bool,
 
-    /// Holds the symmetry type used in the first call to factorize
-    factorized_symmetry: Option<Symmetry>,
+    /// Holds the symmetry type used in initialize
+    initialized_symmetry: Option<Symmetry>,
 
-    /// Holds the matrix dimension saved in the first call to factorize
-    factorized_ndim: usize,
+    /// Holds the matrix dimension saved in initialize
+    initialized_ndim: usize,
 
-    /// Holds the number of non-zeros saved in the first call to factorize
-    factorized_nnz: usize,
+    /// Holds the number of non-zeros saved in initialize
+    initialized_nnz: usize,
 
     /// Holds the determinant coefficient: det = coefficient * pow(10, exponent)
     determinant_coefficient: f64,
@@ -93,10 +94,11 @@ impl SolverIntelDSS {
             }
             Ok(SolverIntelDSS {
                 solver,
+                initialized: false,
                 factorized: false,
-                factorized_symmetry: None,
-                factorized_ndim: 0,
-                factorized_nnz: 0,
+                initialized_symmetry: None,
+                initialized_ndim: 0,
+                initialized_nnz: 0,
                 determinant_coefficient: 0.0,
                 determinant_exponent: 0.0,
             })
@@ -140,22 +142,22 @@ impl LinSolTrait for SolverIntelDSS {
             return Err("the matrix must be square");
         }
 
-        // check already factorized data
-        if self.factorized {
-            if csr.symmetry != self.factorized_symmetry {
+        // check already initialized data
+        if self.initialized {
+            if csr.symmetry != self.initialized_symmetry {
                 return Err("subsequent factorizations must use the same matrix (symmetry differs)");
             }
-            if csr.nrow != self.factorized_ndim {
+            if csr.nrow != self.initialized_ndim {
                 return Err("subsequent factorizations must use the same matrix (ndim differs)");
             }
-            if (csr.row_pointers[csr.nrow] as usize) != self.factorized_nnz {
+            if (csr.row_pointers[csr.nrow] as usize) != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
             }
         } else {
-            self.factorized_symmetry = csr.symmetry;
-            self.factorized_ndim = csr.nrow;
-            self.factorized_nnz = csr.row_pointers[csr.nrow] as usize;
-            if self.factorized_nnz < self.factorized_ndim {
+            self.initialized_symmetry = csr.symmetry;
+            self.initialized_ndim = csr.nrow;
+            self.initialized_nnz = csr.row_pointers[csr.nrow] as usize;
+            if self.initialized_nnz < self.initialized_ndim {
                 return Err("for Intel DSS, nnz = row_pointers[nrow] must be ≥ nrow");
             }
         }
@@ -174,24 +176,33 @@ impl LinSolTrait for SolverIntelDSS {
 
         // matrix config
         let ndim = to_i32(csr.nrow);
+        let nnz = self.initialized_nnz;
 
-        // call Intel DSS factorize
-        let nnz = self.factorized_nnz;
+        // call initialize just once
+        if !self.initialized {
+            unsafe {
+                let status = solver_intel_dss_initialize(
+                    self.solver,
+                    general_symmetric,
+                    positive_definite,
+                    ndim,
+                    csr.row_pointers.as_ptr(),
+                    csr.col_indices[0..nnz].as_ptr(),
+                );
+                if status != SUCCESSFUL_EXIT {
+                    return Err(handle_intel_dss_error_code(status));
+                }
+            }
+            self.initialized = true;
+        }
+
+        // call factorize
         unsafe {
             let status = solver_intel_dss_factorize(
                 self.solver,
-                // output
                 &mut self.determinant_coefficient,
                 &mut self.determinant_exponent,
-                // requests
                 calc_det,
-                // matrix config
-                general_symmetric,
-                positive_definite,
-                ndim,
-                // matrix
-                csr.row_pointers.as_ptr(),
-                csr.col_indices[0..nnz].as_ptr(),
                 csr.values[0..nnz].as_ptr(),
             );
             if status != SUCCESSFUL_EXIT {
@@ -236,21 +247,21 @@ impl LinSolTrait for SolverIntelDSS {
 
         // check already factorized data
         let (nrow, ncol, nnz, symmetry) = csr.get_info();
-        if symmetry != self.factorized_symmetry {
+        if symmetry != self.initialized_symmetry {
             return Err("solve must use the same matrix (symmetry differs)");
         }
-        if nrow != self.factorized_ndim || ncol != self.factorized_ndim {
+        if nrow != self.initialized_ndim || ncol != self.initialized_ndim {
             return Err("solve must use the same matrix (ndim differs)");
         }
-        if nnz != self.factorized_nnz {
+        if nnz != self.initialized_nnz {
             return Err("solve must use the same matrix (nnz differs)");
         }
 
         // check vectors
-        if x.dim() != self.factorized_ndim {
+        if x.dim() != self.initialized_ndim {
             return Err("the dimension of the vector of unknown values x is incorrect");
         }
-        if rhs.dim() != self.factorized_ndim {
+        if rhs.dim() != self.initialized_ndim {
             return Err("the dimension of the right-hand side vector is incorrect");
         }
 
@@ -306,10 +317,13 @@ pub(crate) fn handle_intel_dss_error_code(err: i32) -> StrError {
         24 => return "MKL_DSS_OOC_MEM_ERR",
         25 => return "MKL_DSS_OOC_OC_ERR",
         26 => return "MKL_DSS_OOC_RW_ERR",
-        NULL_POINTER_ERROR => return "Error: c-code returned null pointer (IntelDSS)",
-        MALLOC_ERROR => return "Error: c-code failed to allocate memory (IntelDSS)",
-        NOT_AVAILABLE => return "This code has not been compiled with Intel DSS",
-        NEED_FACTORIZATION => return "INTERNAL ERROR: factorization must be completed before solve",
+        ERROR_NULL_POINTER => return "Intel DSS failed due to NULL POINTER error",
+        ERROR_MALLOC => return "Intel DSS failed due to MALLOC error",
+        ERROR_VERSION => return "Intel DSS failed due to VERSION error",
+        ERROR_NOT_AVAILABLE => return "Intel DSS is not AVAILABLE",
+        ERROR_NEED_INITIALIZATION => return "Intel DSS failed because INITIALIZATION is needed",
+        ERROR_NEED_FACTORIZATION => return "Intel DSS failed because FACTORIZATION is needed",
+        ERROR_ALREADY_INITIALIZED => return "Intel DSS failed because INITIALIZATION has been completed already",
         _ => return "Error: unknown error returned by c-code (IntelDSS)",
     }
 }
@@ -319,7 +333,7 @@ pub(crate) fn handle_intel_dss_error_code(err: i32) -> StrError {
 #[cfg(test)]
 #[cfg(with_intel_dss)]
 mod tests {
-    use super::{handle_intel_dss_error_code, SolverIntelDSS};
+    use super::*;
     use crate::{CooMatrix, LinSolParams, LinSolTrait, Samples, SparseMatrix, StatsLinSol, Storage, Symmetry};
     use russell_lab::{approx_eq, vec_approx_eq, Vector};
 
@@ -486,16 +500,32 @@ mod tests {
             assert_ne!(res, default);
         }
         assert_eq!(
-            handle_intel_dss_error_code(100000),
-            "Error: c-code returned null pointer (IntelDSS)"
+            handle_intel_dss_error_code(ERROR_NULL_POINTER),
+            "Intel DSS failed due to NULL POINTER error"
         );
         assert_eq!(
-            handle_intel_dss_error_code(200000),
-            "Error: c-code failed to allocate memory (IntelDSS)"
+            handle_intel_dss_error_code(ERROR_MALLOC),
+            "Intel DSS failed due to MALLOC error"
         );
         assert_eq!(
-            handle_intel_dss_error_code(400000),
-            "This code has not been compiled with Intel DSS"
+            handle_intel_dss_error_code(ERROR_VERSION),
+            "Intel DSS failed due to VERSION error"
+        );
+        assert_eq!(
+            handle_intel_dss_error_code(ERROR_NOT_AVAILABLE),
+            "Intel DSS is not AVAILABLE"
+        );
+        assert_eq!(
+            handle_intel_dss_error_code(ERROR_NEED_INITIALIZATION),
+            "Intel DSS failed because INITIALIZATION is needed"
+        );
+        assert_eq!(
+            handle_intel_dss_error_code(ERROR_NEED_FACTORIZATION),
+            "Intel DSS failed because FACTORIZATION is needed"
+        );
+        assert_eq!(
+            handle_intel_dss_error_code(ERROR_ALREADY_INITIALIZED),
+            "Intel DSS failed because INITIALIZATION has been completed already"
         );
         assert_eq!(handle_intel_dss_error_code(123), default);
     }

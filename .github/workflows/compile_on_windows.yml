@@ -1,0 +1,19 @@
+name: Compile on Windows
+on: [pull_request]
+jobs:
+  compile_on_windows:
+    runs-on: windows-latest
+    defaults:
+        run:
+          shell: msys2 {0}
+    steps:
+    - uses: msys2/setup-msys2@v2
+      with:
+        update: true
+        install: >-
+          curl
+          git
+    - uses: actions/checkout@v3
+    - name: Install Libraries
+      run: |
+        bash zscripts/03-ubuntu-intel-mkl-compile.bash

@@ -16,4 +16,4 @@ jobs:
     - uses: actions/checkout@v3
     - name: Install Libraries
       run: |
-        bash zscripts/03-ubuntu-intel-mkl-compile.bash
+        bash zscripts/windows-with-intel-mkl.bash

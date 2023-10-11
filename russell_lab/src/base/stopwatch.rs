@@ -92,11 +92,11 @@ impl Stopwatch {
         }
     }
 
-    /// Stops the stopwatch and returns the elapsed time
+    /// Stops the stopwatch and returns the elapsed time in nanoseconds
     ///
     /// # Output
     ///
-    /// Returns the elapsed time
+    /// Returns the elapsed time in nanoseconds
     ///
     /// # Example
     ///

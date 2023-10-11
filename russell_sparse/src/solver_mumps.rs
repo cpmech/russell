@@ -1,7 +1,7 @@
 use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, StatsLinSol, Symmetry};
 use crate::auxiliary_and_constants::*;
 use crate::StrError;
-use russell_lab::{using_intel_mkl, vec_copy, Vector};
+use russell_lab::{using_intel_mkl, vec_copy, Stopwatch, Vector};
 use serde::{Deserialize, Serialize};
 
 /// Opaque struct holding a C-pointer to InterfaceMUMPS
@@ -145,6 +145,18 @@ pub struct SolverMUMPS {
 
     /// Holds the error analysis "stat" results
     error_analysis_array_len_8: Vec<f64>,
+
+    /// Stopwatch to measure computation times
+    stopwatch: Stopwatch,
+
+    /// Time spent on initialize in nanoseconds
+    time_initialize_ns: u128,
+
+    /// Time spent on factorize in nanoseconds
+    time_factorize_ns: u128,
+
+    /// Time spent on solve in nanoseconds
+    time_solve_ns: u128,
 }
 
 impl Drop for SolverMUMPS {
@@ -177,6 +189,10 @@ impl SolverMUMPS {
                 determinant_exponent: 0.0,
                 error_analysis_option: 0,
                 error_analysis_array_len_8: vec![0.0; 8],
+                stopwatch: Stopwatch::new(""),
+                time_initialize_ns: 0,
+                time_factorize_ns: 0,
+                time_solve_ns: 0,
             })
         }
     }
@@ -278,6 +294,7 @@ impl LinSolTrait for SolverMUMPS {
 
         // call initialize just once
         if !self.initialized {
+            self.stopwatch.reset();
             unsafe {
                 let status = solver_mumps_initialize(
                     self.solver,
@@ -299,10 +316,12 @@ impl LinSolTrait for SolverMUMPS {
                     return Err(handle_mumps_error_code(status));
                 }
             }
+            self.time_initialize_ns = self.stopwatch.stop();
             self.initialized = true;
         }
 
         // call factorize
+        self.stopwatch.reset();
         unsafe {
             let status = solver_mumps_factorize(
                 self.solver,
@@ -317,6 +336,7 @@ impl LinSolTrait for SolverMUMPS {
                 return Err(handle_mumps_error_code(status));
             }
         }
+        self.time_factorize_ns = self.stopwatch.stop();
 
         // done
         self.factorized = true;
@@ -375,6 +395,7 @@ impl LinSolTrait for SolverMUMPS {
         // call MUMPS solve
         vec_copy(x, rhs).unwrap();
         let verb = if verbose { 1 } else { 0 };
+        self.stopwatch.reset();
         unsafe {
             let status = solver_mumps_solve(
                 self.solver,
@@ -387,6 +408,9 @@ impl LinSolTrait for SolverMUMPS {
                 return Err(handle_mumps_error_code(status));
             }
         }
+        self.time_solve_ns = self.stopwatch.stop();
+
+        // done
         Ok(())
     }
 
@@ -428,6 +452,9 @@ impl LinSolTrait for SolverMUMPS {
         stats.mumps_stats.normalized_delta_x = self.error_analysis_array_len_8[5];
         stats.mumps_stats.condition_number1 = self.error_analysis_array_len_8[6];
         stats.mumps_stats.condition_number2 = self.error_analysis_array_len_8[7];
+        stats.time_nanoseconds.initialize = self.time_initialize_ns;
+        stats.time_nanoseconds.factorize = self.time_factorize_ns;
+        stats.time_nanoseconds.solve = self.time_solve_ns;
     }
 }
 

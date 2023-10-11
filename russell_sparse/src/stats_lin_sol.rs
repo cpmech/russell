@@ -59,9 +59,10 @@ pub struct StatsLinSolDeterminant {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StatsLinSolTimeHuman {
     pub read_matrix: String,
+    pub initialize: String,
     pub factorize: String,
     pub solve: String,
-    pub total_f_and_s: String, // solve + factorize
+    pub total_ifs: String, // initialize + factorize + solve
     pub verify: String,
 }
 
@@ -69,9 +70,10 @@ pub struct StatsLinSolTimeHuman {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StatsLinSolTimeNanoseconds {
     pub read_matrix: u128,
+    pub initialize: u128,
     pub factorize: u128,
     pub solve: u128,
-    pub total_f_and_s: u128, // solve + factorize
+    pub total_ifs: u128, // initialize + factorize + solve
     pub verify: u128,
 }
 
@@ -135,16 +137,18 @@ impl StatsLinSol {
             },
             time_human: StatsLinSolTimeHuman {
                 read_matrix: String::new(),
+                initialize: String::new(),
                 factorize: String::new(),
                 solve: String::new(),
-                total_f_and_s: String::new(),
+                total_ifs: String::new(),
                 verify: String::new(),
             },
             time_nanoseconds: StatsLinSolTimeNanoseconds {
                 read_matrix: 0,
+                initialize: 0,
                 factorize: 0,
                 solve: 0,
-                total_f_and_s: 0,
+                total_ifs: 0,
                 verify: 0,
             },
             mumps_stats: StatsLinSolMUMPS {
@@ -174,11 +178,13 @@ impl StatsLinSol {
     /// Gets a JSON representation of the stats structure
     pub fn get_json(&mut self) -> String {
         self.output.openmp_num_threads = get_num_threads();
-        self.time_nanoseconds.total_f_and_s = self.time_nanoseconds.factorize + self.time_nanoseconds.solve;
+        self.time_nanoseconds.total_ifs =
+            self.time_nanoseconds.initialize + self.time_nanoseconds.factorize + self.time_nanoseconds.solve;
         self.time_human.read_matrix = format_nanoseconds(self.time_nanoseconds.read_matrix);
+        self.time_human.initialize = format_nanoseconds(self.time_nanoseconds.initialize);
         self.time_human.factorize = format_nanoseconds(self.time_nanoseconds.factorize);
         self.time_human.solve = format_nanoseconds(self.time_nanoseconds.solve);
-        self.time_human.total_f_and_s = format_nanoseconds(self.time_nanoseconds.total_f_and_s);
+        self.time_human.total_ifs = format_nanoseconds(self.time_nanoseconds.total_ifs);
         self.time_human.verify = format_nanoseconds(self.time_nanoseconds.verify);
         serde_json::to_string_pretty(&self).unwrap()
     }
@@ -244,16 +250,18 @@ mod tests {
         let mut stats = StatsLinSol::new();
         const ONE_SECOND: u128 = 1000000000;
         stats.time_nanoseconds.read_matrix = ONE_SECOND;
+        stats.time_nanoseconds.initialize = ONE_SECOND;
         stats.time_nanoseconds.factorize = ONE_SECOND * 2;
         stats.time_nanoseconds.solve = ONE_SECOND * 3;
         stats.time_nanoseconds.verify = ONE_SECOND * 4;
         let json = stats.get_json();
         assert!(stats.output.openmp_num_threads > 0);
-        assert_eq!(stats.time_nanoseconds.total_f_and_s, ONE_SECOND * 5);
+        assert_eq!(stats.time_nanoseconds.total_ifs, ONE_SECOND * 6);
         assert_eq!(stats.time_human.read_matrix, "1s");
+        assert_eq!(stats.time_human.initialize, "1s");
         assert_eq!(stats.time_human.factorize, "2s");
         assert_eq!(stats.time_human.solve, "3s");
-        assert_eq!(stats.time_human.total_f_and_s, "5s");
+        assert_eq!(stats.time_human.total_ifs, "6s");
         assert_eq!(stats.time_human.verify, "4s");
         assert!(json.len() > 0);
     }

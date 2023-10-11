@@ -113,18 +113,14 @@ fn main() -> Result<(), StrError> {
     let mut solver = LinSolver::new(genie)?;
 
     // call factorize
-    sw.reset();
     solver.actual.factorize(&mut mat, Some(params))?;
-    stats.time_nanoseconds.factorize = sw.stop();
 
     // allocate vectors
     let mut x = Vector::new(nrow);
     let rhs = Vector::filled(nrow, 1.0);
 
     // solve linear system
-    sw.reset();
     solver.actual.solve(&mut x, &mat, &rhs, opt.verbose)?;
-    stats.time_nanoseconds.solve = sw.stop();
 
     // verify the solution
     sw.reset();

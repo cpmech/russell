@@ -1,7 +1,7 @@
 use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, StatsLinSol, Symmetry};
 use crate::auxiliary_and_constants::*;
 use crate::StrError;
-use russell_lab::Vector;
+use russell_lab::{Stopwatch, Vector};
 
 /// Opaque struct holding a C-pointer to InterfaceUMFPACK
 ///
@@ -94,6 +94,18 @@ pub struct SolverUMFPACK {
     ///
     /// det = coefficient * pow(10, exponent)
     determinant_exponent: f64,
+
+    /// Stopwatch to measure computation times
+    stopwatch: Stopwatch,
+
+    /// Time spent on initialize in nanoseconds
+    time_initialize_ns: u128,
+
+    /// Time spent on factorize in nanoseconds
+    time_factorize_ns: u128,
+
+    /// Time spent on solve in nanoseconds
+    time_solve_ns: u128,
 }
 
 impl Drop for SolverUMFPACK {
@@ -126,6 +138,10 @@ impl SolverUMFPACK {
                 rcond_estimate: 0.0,
                 determinant_coefficient: 0.0,
                 determinant_exponent: 0.0,
+                stopwatch: Stopwatch::new(""),
+                time_initialize_ns: 0,
+                time_factorize_ns: 0,
+                time_solve_ns: 0,
             })
         }
     }
@@ -200,6 +216,7 @@ impl LinSolTrait for SolverUMFPACK {
 
         // call initialize just once
         if !self.initialized {
+            self.stopwatch.reset();
             unsafe {
                 let status = solver_umfpack_initialize(
                     self.solver,
@@ -216,10 +233,12 @@ impl LinSolTrait for SolverUMFPACK {
                     return Err(handle_umfpack_error_code(status));
                 }
             }
+            self.time_initialize_ns = self.stopwatch.stop();
             self.initialized = true;
         }
 
         // call factorize
+        self.stopwatch.reset();
         unsafe {
             let status = solver_umfpack_factorize(
                 self.solver,
@@ -239,6 +258,7 @@ impl LinSolTrait for SolverUMFPACK {
                 return Err(handle_umfpack_error_code(status));
             }
         }
+        self.time_factorize_ns = self.stopwatch.stop();
 
         // done
         self.factorized = true;
@@ -297,6 +317,7 @@ impl LinSolTrait for SolverUMFPACK {
 
         // call UMFPACK solve
         let verb = if verbose { 1 } else { 0 };
+        self.stopwatch.reset();
         unsafe {
             let status = solver_umfpack_solve(
                 self.solver,
@@ -311,6 +332,7 @@ impl LinSolTrait for SolverUMFPACK {
                 return Err(handle_umfpack_error_code(status));
             }
         }
+        self.time_solve_ns = self.stopwatch.stop();
 
         // done
         Ok(())
@@ -347,6 +369,9 @@ impl LinSolTrait for SolverUMFPACK {
             UMFPACK_STRATEGY_SYMMETRIC => "Symmetric".to_string(),
             _ => "Unknown".to_string(),
         };
+        stats.time_nanoseconds.initialize = self.time_initialize_ns;
+        stats.time_nanoseconds.factorize = self.time_factorize_ns;
+        stats.time_nanoseconds.solve = self.time_solve_ns;
     }
 }
 

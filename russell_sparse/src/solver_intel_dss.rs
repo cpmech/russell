@@ -1,7 +1,7 @@
 use super::{LinSolParams, LinSolTrait, SparseMatrix, StatsLinSol, Symmetry};
 use crate::auxiliary_and_constants::*;
 use crate::StrError;
-use russell_lab::Vector;
+use russell_lab::{Stopwatch, Vector};
 
 /// Opaque struct holding a C-pointer to InterfaceIntelDSS
 ///
@@ -64,6 +64,18 @@ pub struct SolverIntelDSS {
 
     /// Holds the determinant exponent: det = coefficient * pow(10, exponent)
     determinant_exponent: f64,
+
+    /// Stopwatch to measure computation times
+    stopwatch: Stopwatch,
+
+    /// Time spent on initialize in nanoseconds
+    time_initialize_ns: u128,
+
+    /// Time spent on factorize in nanoseconds
+    time_factorize_ns: u128,
+
+    /// Time spent on solve in nanoseconds
+    time_solve_ns: u128,
 }
 
 impl Drop for SolverIntelDSS {
@@ -101,6 +113,10 @@ impl SolverIntelDSS {
                 initialized_nnz: 0,
                 determinant_coefficient: 0.0,
                 determinant_exponent: 0.0,
+                stopwatch: Stopwatch::new(""),
+                time_initialize_ns: 0,
+                time_factorize_ns: 0,
+                time_solve_ns: 0,
             })
         }
     }
@@ -180,6 +196,7 @@ impl LinSolTrait for SolverIntelDSS {
 
         // call initialize just once
         if !self.initialized {
+            self.stopwatch.reset();
             unsafe {
                 let status = solver_intel_dss_initialize(
                     self.solver,
@@ -193,10 +210,12 @@ impl LinSolTrait for SolverIntelDSS {
                     return Err(handle_intel_dss_error_code(status));
                 }
             }
+            self.time_initialize_ns = self.stopwatch.stop();
             self.initialized = true;
         }
 
         // call factorize
+        self.stopwatch.reset();
         unsafe {
             let status = solver_intel_dss_factorize(
                 self.solver,
@@ -209,6 +228,7 @@ impl LinSolTrait for SolverIntelDSS {
                 return Err(handle_intel_dss_error_code(status));
             }
         }
+        self.time_factorize_ns = self.stopwatch.stop();
 
         // done
         self.factorized = true;
@@ -266,12 +286,16 @@ impl LinSolTrait for SolverIntelDSS {
         }
 
         // call Intel DSS solve
+        self.stopwatch.reset();
         unsafe {
             let status = solver_intel_dss_solve(self.solver, x.as_mut_data().as_mut_ptr(), rhs.as_data().as_ptr());
             if status != SUCCESSFUL_EXIT {
                 return Err(handle_intel_dss_error_code(status));
             }
         }
+        self.time_solve_ns = self.stopwatch.stop();
+
+        // done
         Ok(())
     }
 
@@ -285,6 +309,9 @@ impl LinSolTrait for SolverIntelDSS {
         stats.determinant.mantissa = self.determinant_coefficient;
         stats.determinant.base = 10.0;
         stats.determinant.exponent = self.determinant_exponent;
+        stats.time_nanoseconds.initialize = self.time_initialize_ns;
+        stats.time_nanoseconds.factorize = self.time_factorize_ns;
+        stats.time_nanoseconds.solve = self.time_solve_ns;
     }
 }
 

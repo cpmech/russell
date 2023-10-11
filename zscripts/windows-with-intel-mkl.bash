@@ -2,5 +2,5 @@
 
 set -e
 
-pip3 install intel-fortran-rt
-pip3 install mkl-devel
+pip install intel-fortran-rt
+pip install mkl-devel

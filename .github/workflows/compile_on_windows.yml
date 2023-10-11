@@ -15,7 +15,7 @@ jobs:
           install: >-
             curl
             git
-            mingw-w64-x86_64-python-pip
+            mingw-w64-ucrt-x86_64-python-pip
             mingw-w64-ucrt-x86_64-gcc
       - name: Install Libraries
         run: |

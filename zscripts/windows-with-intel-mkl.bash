@@ -2,4 +2,5 @@
 
 set -e
 
-echo "HELLO WORLD"
+pip install intel-fortran-rt
+pip install mkl-devel

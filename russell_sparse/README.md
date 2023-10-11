@@ -213,7 +213,7 @@ The output looks like this:
 
 ## <a name="issues"></a> MUMPS + OpenBLAS issue
 
-We found that MUMPS + OpenBLAS enters an infinite loop when the number of OpenMP threads is left to be automatically set.
+We found that MUMPS + OpenBLAS becomes very, very slow when the number of OpenMP threads is left automatic, i.e., using the available number of threads. Thus, with OpenBLAS, it is recommended to set LinSolParams.mumps_num_threads = 1 (this is automatically set when using OpenBLAS).
 
 This issue has also been discovered by [1](#ref1), who states (page 72) _"We have observed that multi-threading of OpenBLAS library in MUMPS leads to multiple thread conflicts which sometimes result in significant slow-down of the solver."_
 
@@ -223,6 +223,18 @@ Therefore, we have to take one of the two approaches:
 * If fixing the number of OpenMP threads for OpenBLAS, set the number of OpenMP threads for MUMPS to 1 
 
 This issue has **not** been noticed with MUMPS + Intel MKL.
+
+Command to reproduce the issue:
+
+```bash
+OMP_NUM_THREADS=20 ~/rust_modules/release/solve_matrix_market -g mumps ~/Downloads/matrix-market/inline_1.mtx -m 0 -v --override-prevent-issue
+```
+
+Also, to reproduce the issue, we need:
+
+* Git hash = e020d9c8486502bd898d93a1998a0cf23c4d5057
+* Remove Debian OpenBLAS, MUMPS, and etc.
+* Install the compiled MUMPS solver with `02-ubuntu-openblas-compile.bash`
 
 ### References
 

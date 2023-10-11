@@ -76,83 +76,74 @@ void solver_umfpack_drop(struct InterfaceUMFPACK *solver) {
     free(solver);
 }
 
-/// @brief Performs the factorization
-/// @param solver Is a pointer to the solver interface
-/// @note Output
-/// @param effective_strategy used strategy regarding symmetry (after factorize)
-/// @param effective_ordering used ordering (after factorize)
-/// @param effective_scaling used scaling (after factorize)
-/// @param rcond_estimate reciprocal condition number estimate (if requested)
-/// @param determinant_coefficient determinant coefficient: det = coefficient * pow(base, exponent)
-/// @param determinant_exponent determinant exponent: det = coefficient * pow(base, exponent)
-/// @note Input
-/// @param ordering Is the ordering code
-/// @param scaling Is the scaling code
-/// @note Requests
-/// @param compute_determinant Requests that determinant be computed
-/// @param verbose Shows messages
-/// @note Matrix config
-/// @param enforce_unsymmetric_strategy Indicates to enforce unsymmetric strategy (not recommended)
-/// @param ndim Is the number of rows and columns of the coefficient matrix
-/// @note Matrix
-/// @param col_pointers The column pointers array with size = ncol + 1
-/// @param row_indices The row indices array with size = nnz (number of non-zeros)
-/// @param values The values array with size = nnz (number of non-zeros)
+/// @brief Performs the symbolic factorization
 /// @return A success or fail code
+int32_t solver_umfpack_initialize(struct InterfaceUMFPACK *solver,
+                                  int32_t ordering,
+                                  int32_t scaling,
+                                  C_BOOL verbose,
+                                  C_BOOL enforce_unsymmetric_strategy,
+                                  int32_t ndim,
+                                  const int32_t *col_pointers,
+                                  const int32_t *row_indices,
+                                  const double *values) {
+    if (solver == NULL) {
+        return ERROR_NULL_POINTER;
+    }
+
+    if (solver->initialization_completed == C_TRUE) {
+        return ERROR_ALREADY_INITIALIZED;
+    }
+
+    solver->control[UMFPACK_STRATEGY] = UMFPACK_STRATEGY_AUTO;
+    if (enforce_unsymmetric_strategy == C_TRUE) {
+        solver->control[UMFPACK_STRATEGY] = UMFPACK_STRATEGY_UNSYMMETRIC;
+    }
+
+    solver->control[UMFPACK_ORDERING] = ordering;
+    solver->control[UMFPACK_SCALE] = scaling;
+
+    set_umfpack_verbose(solver, verbose);
+
+    int code = umfpack_di_symbolic(ndim,
+                                   ndim,
+                                   col_pointers,
+                                   row_indices,
+                                   values,
+                                   &solver->symbolic,
+                                   solver->control,
+                                   solver->info);
+    if (code != UMFPACK_OK) {
+        return code;
+    }
+
+    solver->initialization_completed = C_TRUE;
+
+    return SUCCESSFUL_EXIT;
+}
+
+/// @brief Performs the numeric factorization
 int32_t solver_umfpack_factorize(struct InterfaceUMFPACK *solver,
-                                 // output
                                  int32_t *effective_strategy,
                                  int32_t *effective_ordering,
                                  int32_t *effective_scaling,
                                  double *rcond_estimate,
                                  double *determinant_coefficient,
                                  double *determinant_exponent,
-                                 // input
-                                 int32_t ordering,
-                                 int32_t scaling,
-                                 // requests
                                  C_BOOL compute_determinant,
                                  C_BOOL verbose,
-                                 // matrix config
-                                 C_BOOL enforce_unsymmetric_strategy,
-                                 int32_t ndim,
-                                 // matrix
                                  const int32_t *col_pointers,
                                  const int32_t *row_indices,
                                  const double *values) {
     if (solver == NULL) {
-        return NULL_POINTER_ERROR;
+        return ERROR_NULL_POINTER;
     }
 
     if (solver->initialization_completed == C_FALSE) {
-        // perform initialization
+        return ERROR_NEED_INITIALIZATION;
+    }
 
-        solver->control[UMFPACK_STRATEGY] = UMFPACK_STRATEGY_AUTO;
-        if (enforce_unsymmetric_strategy == C_TRUE) {
-            solver->control[UMFPACK_STRATEGY] = UMFPACK_STRATEGY_UNSYMMETRIC;
-        }
-
-        solver->control[UMFPACK_ORDERING] = ordering;
-        solver->control[UMFPACK_SCALE] = scaling;
-
-        set_umfpack_verbose(solver, verbose);
-
-        // perform symbolic factorization
-        int code = umfpack_di_symbolic(ndim,
-                                       ndim,
-                                       col_pointers,
-                                       row_indices,
-                                       values,
-                                       &solver->symbolic,
-                                       solver->control,
-                                       solver->info);
-        if (code != UMFPACK_OK) {
-            return code;
-        }
-
-        solver->initialization_completed = C_TRUE;
-
-    } else {
+    if (solver->factorization_completed == C_TRUE) {
         // free the previous numeric to avoid memory leak
         umfpack_di_free_numeric(&solver->numeric);
     }
@@ -207,11 +198,11 @@ int32_t solver_umfpack_solve(struct InterfaceUMFPACK *solver,
                              const double *values,
                              C_BOOL verbose) {
     if (solver == NULL) {
-        return NULL_POINTER_ERROR;
+        return ERROR_NULL_POINTER;
     }
 
     if (solver->factorization_completed == C_FALSE) {
-        return NEED_FACTORIZATION;
+        return ERROR_NEED_FACTORIZATION;
     }
 
     set_umfpack_verbose(solver, verbose);

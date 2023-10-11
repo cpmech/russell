@@ -19,6 +19,7 @@
   "output": {
     "effective_ordering": "Metis",
     "effective_scaling": "Unknown",
+    "effective_mumps_num_threads": 0,
     "openmp_num_threads": 24,
     "umfpack_strategy": "Unknown",
     "umfpack_rcond_estimate": 0.0
@@ -35,18 +36,20 @@
     "relative_error": 8.592686454301266e-15
   },
   "time_human": {
-    "read_matrix": "428.410583ms",
-    "factorize": "4.724891486s",
-    "solve": "102.334212ms",
-    "total_f_and_s": "4.827225698s",
-    "verify": "8.630622ms"
+    "read_matrix": "416.391837ms",
+    "initialize": "3.161448258s",
+    "factorize": "1.549359102s",
+    "solve": "100.797814ms",
+    "total_ifs": "4.811605174s",
+    "verify": "8.615142ms"
   },
   "time_nanoseconds": {
-    "read_matrix": 428410583,
-    "factorize": 4724891486,
-    "solve": 102334212,
-    "total_f_and_s": 4827225698,
-    "verify": 8630622
+    "read_matrix": 416391837,
+    "initialize": 3161448258,
+    "factorize": 1549359102,
+    "solve": 100797814,
+    "total_ifs": 4811605174,
+    "verify": 8615142
   },
   "mumps_stats": {
     "inf_norm_a": 29554340040.0,

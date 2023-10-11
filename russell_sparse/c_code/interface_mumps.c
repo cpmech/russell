@@ -96,129 +96,104 @@ void solver_mumps_drop(struct InterfaceMUMPS *solver) {
     free(solver);
 }
 
-/// @brief Performs the factorization
-/// @param solver Is a pointer to the solver interface
-/// @note Output
-/// @param effective_ordering used ordering (after factorize)
-/// @param effective_scaling used scaling (after factorize)
-/// @param determinant_coefficient determinant coefficient: det = coefficient * pow(2, exponent)
-/// @param determinant_exponent determinant exponent: det = coefficient * pow(2, exponent)
-/// @note Input
-/// @param ordering Is the ordering code
-/// @param scaling Is the scaling code
-/// @param pct_inc_workspace Is the allowed percentage increase of the workspace
-/// @param max_work_memory Is the allowed maximum memory
-/// @param openmp_num_threads Is the number of threads allowed for OpenMP
-/// @note Requests
-/// @param compute_determinant Requests that determinant be computed
-/// @param verbose Shows messages
-/// @note Matrix config
-/// @param general_symmetric Whether the matrix is general symmetric (not necessarily positive-definite) or not
-/// @param positive_definite Whether the matrix is symmetric and positive-definite or not
-/// @param ndim Is the number of rows and columns of the coefficient matrix
-/// @param nnz Is the number of non-zero values in the coefficient matrix
-/// @note Matrix
-/// @param indices_i Are the CooMatrix row indices
-/// @param indices_j Are the CooMatrix column indices
-/// @param values_aij Are the CooMatrix values
+/// @brief Perform analysis just once (considering that the matrix structure remains constant)
 /// @return A success or fail code
-int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
-                               // output
-                               int32_t *effective_ordering,
-                               int32_t *effective_scaling,
-                               double *determinant_coefficient,
-                               double *determinant_exponent,
-                               // input
-                               int32_t ordering,
-                               int32_t scaling,
-                               int32_t pct_inc_workspace,
-                               int32_t max_work_memory,
-                               int32_t openmp_num_threads,
-                               // requests
-                               C_BOOL compute_determinant,
-                               C_BOOL verbose,
-                               // matrix config
-                               C_BOOL general_symmetric,
-                               C_BOOL positive_definite,
-                               int32_t ndim,
-                               int32_t nnz,
-                               // matrix
-                               int32_t const *indices_i,
-                               int32_t const *indices_j,
-                               double const *values_aij) {
+int32_t solver_mumps_initialize(struct InterfaceMUMPS *solver,
+                                int32_t ordering,
+                                int32_t scaling,
+                                int32_t pct_inc_workspace,
+                                int32_t max_work_memory,
+                                int32_t openmp_num_threads,
+                                C_BOOL verbose,
+                                C_BOOL general_symmetric,
+                                C_BOOL positive_definite,
+                                int32_t ndim,
+                                int32_t nnz,
+                                int32_t const *indices_i,
+                                int32_t const *indices_j,
+                                double const *values_aij) {
     if (solver == NULL) {
-        return NULL_POINTER_ERROR;
+        return ERROR_NULL_POINTER;
     }
 
-    // perform initialization
-
-    if (solver->initialization_completed == C_FALSE) {
-
-        solver->data.comm_fortran = MUMPS_IGNORED;
-        solver->data.par = MUMPS_PAR_HOST_ALSO_WORKS;
-        solver->data.sym = 0; // unsymmetric (page 27)
-        if (general_symmetric == C_TRUE) {
-            solver->data.sym = 2; // general symmetric (page 27)
-        } else if (positive_definite == C_TRUE) {
-            solver->data.sym = 1; // symmetric positive-definite (page 27)
-        }
-
-        set_mumps_verbose(&solver->data, C_FALSE);
-        solver->data.job = MUMPS_JOB_INITIALIZE;
-        dmumps_c(&solver->data);
-        if (solver->data.INFOG(1) != 0) {
-            return solver->data.INFOG(1);
-        }
-
-        solver->done_job_init = C_TRUE;
-
-        if (strcmp(solver->data.version_number, MUMPS_VERSION) != 0) {
-            printf("\n\n\nERROR: MUMPS LIBRARY VERSION = ");
-            int i;
-            for (i = 0; i < MUMPS_VERSION_MAX_LEN; i++) {
-                printf("%c", solver->data.version_number[i]);
-            }
-            printf(" != INCLUDE VERSION = %s \n\n\n", MUMPS_VERSION);
-            return VERSION_ERROR;
-        }
-
-        solver->data.ICNTL(5) = MUMPS_ICNTL5_ASSEMBLED_MATRIX;
-        solver->data.ICNTL(6) = MUMPS_ICNTL6_PERMUT_AUTO;
-        solver->data.ICNTL(7) = ordering;
-        solver->data.ICNTL(8) = scaling;
-        solver->data.ICNTL(14) = pct_inc_workspace;
-        solver->data.ICNTL(16) = openmp_num_threads;
-        solver->data.ICNTL(18) = MUMPS_ICNTL18_CENTRALIZED;
-        solver->data.ICNTL(23) = max_work_memory;
-        solver->data.ICNTL(28) = MUMPS_ICNTL28_SEQUENTIAL;
-        solver->data.ICNTL(29) = MUMPS_IGNORED;
-
-        // perform analysis just once (considering that the matrix structure remains constant)
-
-        solver->data.n = ndim;
-        solver->data.nz = nnz;
-        solver->data.irn = (int *)indices_i;
-        solver->data.jcn = (int *)indices_j;
-        solver->data.a = (double *)values_aij;
-
-        set_mumps_verbose(&solver->data, verbose);
-        solver->data.job = MUMPS_JOB_ANALYZE;
-        dmumps_c(&solver->data);
-
-        if (solver->data.INFO(1) != 0) {
-            return solver->data.INFOG(1); // error
-        }
-
-        solver->initialization_completed = C_TRUE;
+    if (solver->initialization_completed == C_TRUE) {
+        return ERROR_ALREADY_INITIALIZED;
     }
 
-    // set data
+    solver->data.comm_fortran = MUMPS_IGNORED;
+    solver->data.par = MUMPS_PAR_HOST_ALSO_WORKS;
+    solver->data.sym = 0; // unsymmetric (page 27)
+    if (general_symmetric == C_TRUE) {
+        solver->data.sym = 2; // general symmetric (page 27)
+    } else if (positive_definite == C_TRUE) {
+        solver->data.sym = 1; // symmetric positive-definite (page 27)
+    }
+
+    set_mumps_verbose(&solver->data, C_FALSE);
+    solver->data.job = MUMPS_JOB_INITIALIZE;
+    dmumps_c(&solver->data);
+    if (solver->data.INFOG(1) != 0) {
+        return solver->data.INFOG(1);
+    }
+
+    solver->done_job_init = C_TRUE;
+
+    if (strcmp(solver->data.version_number, MUMPS_VERSION) != 0) {
+        printf("\n\n\nERROR: MUMPS LIBRARY VERSION = ");
+        int i;
+        for (i = 0; i < MUMPS_VERSION_MAX_LEN; i++) {
+            printf("%c", solver->data.version_number[i]);
+        }
+        printf(" != INCLUDE VERSION = %s \n\n\n", MUMPS_VERSION);
+        return ERROR_VERSION;
+    }
+
+    solver->data.ICNTL(5) = MUMPS_ICNTL5_ASSEMBLED_MATRIX;
+    solver->data.ICNTL(6) = MUMPS_ICNTL6_PERMUT_AUTO;
+    solver->data.ICNTL(7) = ordering;
+    solver->data.ICNTL(8) = scaling;
+    solver->data.ICNTL(14) = pct_inc_workspace;
+    solver->data.ICNTL(16) = openmp_num_threads;
+    solver->data.ICNTL(18) = MUMPS_ICNTL18_CENTRALIZED;
+    solver->data.ICNTL(23) = max_work_memory;
+    solver->data.ICNTL(28) = MUMPS_ICNTL28_SEQUENTIAL;
+    solver->data.ICNTL(29) = MUMPS_IGNORED;
 
     solver->data.n = ndim;
     solver->data.nz = nnz;
     solver->data.irn = (int *)indices_i;
     solver->data.jcn = (int *)indices_j;
     solver->data.a = (double *)values_aij;
+
+    set_mumps_verbose(&solver->data, verbose);
+    solver->data.job = MUMPS_JOB_ANALYZE;
+    dmumps_c(&solver->data);
+
+    if (solver->data.INFO(1) != 0) {
+        return solver->data.INFOG(1); // error
+    }
+
+    solver->initialization_completed = C_TRUE;
+
+    return SUCCESSFUL_EXIT;
+}
+
+/// @brief Performs the factorization
+/// @return A success or fail code
+int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
+                               int32_t *effective_ordering,
+                               int32_t *effective_scaling,
+                               double *determinant_coefficient,
+                               double *determinant_exponent,
+                               C_BOOL compute_determinant,
+                               C_BOOL verbose) {
+    if (solver == NULL) {
+        return ERROR_NULL_POINTER;
+    }
+
+    if (solver->initialization_completed == C_FALSE) {
+        return ERROR_NEED_INITIALIZATION;
+    }
 
     // handle requests
 
@@ -268,11 +243,11 @@ int32_t solver_mumps_solve(struct InterfaceMUMPS *solver,
                            int32_t error_analysis_option,
                            C_BOOL verbose) {
     if (solver == NULL) {
-        return NULL_POINTER_ERROR;
+        return ERROR_NULL_POINTER;
     }
 
     if (solver->factorization_completed == C_FALSE) {
-        return NEED_FACTORIZATION;
+        return ERROR_NEED_FACTORIZATION;
     }
 
     solver->data.ICNTL(11) = error_analysis_option;

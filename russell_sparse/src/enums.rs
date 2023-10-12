@@ -19,6 +19,37 @@ pub enum Genie {
     IntelDss,
 }
 
+impl Genie {
+    /// Returns which storage is required by the solver
+    ///
+    /// ```text
+    /// MUMPS     : Storage::Lower
+    /// UMFPACK   : Storage::Full
+    /// Intel DSS : Storage::Upper
+    /// ````
+    pub fn storage(&self) -> Storage {
+        match self {
+            Genie::Mumps => Storage::Lower,
+            Genie::Umfpack => Storage::Full,
+            Genie::IntelDss => Storage::Upper,
+        }
+    }
+
+    /// Returns the solver's required symmetry/storage configuration
+    pub fn symmetry(&self, symmetric: bool, positive_definite: bool) -> Option<Symmetry> {
+        let storage = self.storage();
+        if symmetric || positive_definite {
+            if positive_definite {
+                Some(Symmetry::PositiveDefinite(storage))
+            } else {
+                Some(Symmetry::General(storage))
+            }
+        } else {
+            None
+        }
+    }
+}
+
 /// Specifies how the matrix components are stored
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Storage {
@@ -310,5 +341,41 @@ mod tests {
         assert!(matches!(enum_scaling("RowColRig"), Scaling::RowColRig));
         assert!(matches!(enum_scaling("Sum"), Scaling::Sum));
         assert!(matches!(enum_scaling("Unknown"), Scaling::Auto));
+    }
+
+    #[test]
+    fn genie_functions_work() {
+        let l = Storage::Lower;
+        let u = Storage::Upper;
+        let f = Storage::Full;
+
+        let gl = Some(Symmetry::General(l));
+        let gu = Some(Symmetry::General(u));
+        let gf = Some(Symmetry::General(f));
+
+        let pl = Some(Symmetry::PositiveDefinite(l));
+        let pu = Some(Symmetry::PositiveDefinite(u));
+        let pf = Some(Symmetry::PositiveDefinite(f));
+
+        let genie = Genie::Mumps;
+        assert_eq!(genie.storage(), l);
+        assert_eq!(genie.symmetry(false, false), None);
+        assert_eq!(genie.symmetry(true, false), gl);
+        assert_eq!(genie.symmetry(false, true), pl);
+        assert_eq!(genie.symmetry(true, true), pl);
+
+        let genie = Genie::Umfpack;
+        assert_eq!(genie.storage(), f);
+        assert_eq!(genie.symmetry(false, false), None);
+        assert_eq!(genie.symmetry(true, false), gf);
+        assert_eq!(genie.symmetry(false, true), pf);
+        assert_eq!(genie.symmetry(true, true), pf);
+
+        let genie = Genie::IntelDss;
+        assert_eq!(genie.storage(), u);
+        assert_eq!(genie.symmetry(false, false), None);
+        assert_eq!(genie.symmetry(true, false), gu);
+        assert_eq!(genie.symmetry(false, true), pu);
+        assert_eq!(genie.symmetry(true, true), pu);
     }
 }

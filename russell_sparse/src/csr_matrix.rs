@@ -1,6 +1,11 @@
 use super::{to_i32, CooMatrix, CscMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::{Matrix, Vector};
+use std::ffi::OsStr;
+use std::fmt::Write;
+use std::fs::{self, File};
+use std::io::Write as IoWrite;
+use std::path::Path;
 
 /// Holds the arrays needed for a CSR (compressed sparse row) matrix
 ///
@@ -627,6 +632,66 @@ impl CsrMatrix {
         Ok(())
     }
 
+    /// Writes a MatrixMarket file from a CooMatrix
+    ///
+    /// # Input
+    ///
+    /// * `full_path` -- may be a String, &str, or Path
+    /// * `vismatrix` -- generate a SMAT file for Vismatrix instead of a MatrixMarket
+    ///
+    /// **Note:** The vismatrix format is is similar to the MatrixMarket format
+    /// without the header, and the indices start at zero.
+    ///
+    /// # References
+    ///
+    /// * MatrixMarket: <https://math.nist.gov/MatrixMarket/formats.html>
+    /// * Vismatrix: <https://github.com/cpmech/vismatrix>
+    pub fn write_matrix_market<P>(&self, full_path: &P, vismatrix: bool) -> Result<(), StrError>
+    where
+        P: AsRef<OsStr> + ?Sized,
+    {
+        // output buffer
+        let mut buffer = String::new();
+
+        // handle one-based indexing
+        let d = if vismatrix { 0 } else { 1 };
+
+        // write header
+        if !vismatrix {
+            match self.symmetry {
+                Some(_) => write!(&mut buffer, "%%MatrixMarket matrix coordinate real symmetric\n").unwrap(),
+                None => write!(&mut buffer, "%%MatrixMarket matrix coordinate real general\n").unwrap(),
+            };
+        }
+
+        // write dimensions
+        let nnz = self.row_pointers[self.nrow] as usize;
+        write!(&mut buffer, "{} {} {}\n", self.nrow, self.ncol, nnz).unwrap();
+
+        // write triplets
+        for i in 0..self.nrow {
+            for p in self.row_pointers[i]..self.row_pointers[i + 1] {
+                let j = self.col_indices[p as usize] as usize;
+                let aij = self.values[p as usize];
+                write!(&mut buffer, "{} {} {:?}\n", i + d, j + d, aij).unwrap();
+            }
+        }
+
+        // create directory
+        let path = Path::new(full_path);
+        if let Some(p) = path.parent() {
+            fs::create_dir_all(p).map_err(|_| "cannot create directory")?;
+        }
+
+        // write file
+        let mut file = File::create(path).map_err(|_| "cannot create file")?;
+        file.write_all(buffer.as_bytes()).map_err(|_| "cannot write file")?;
+
+        // force sync
+        file.sync_all().map_err(|_| "cannot sync file")?;
+        Ok(())
+    }
+
     /// Performs the matrix-vector multiplication
     ///
     /// ```text
@@ -772,6 +837,7 @@ mod tests {
     use super::CsrMatrix;
     use crate::{CooMatrix, Samples, Storage, Symmetry};
     use russell_lab::{vec_approx_eq, Matrix, Vector};
+    use std::fs;
 
     #[test]
     fn new_captures_errors() {
@@ -1178,5 +1244,35 @@ mod tests {
         let x = csr.get_values_mut();
         x.reverse();
         assert_eq!(csr.get_values(), &[20.0, 10.0]);
+    }
+
+    #[test]
+    fn write_matrix_market_works() {
+        //  2  3  .  .  .
+        //  3  .  4  .  6
+        //  . -1 -3  2  .
+        //  .  .  1  .  .
+        //  .  4  2  .  1
+        let (_, _, csr, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let full_path = "/tmp/russell_sparse/test_write_matrix_market_csr.mtx";
+        csr.write_matrix_market(full_path, false).unwrap();
+        let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
+        assert_eq!(
+            contents,
+            "%%MatrixMarket matrix coordinate real general\n\
+             5 5 12\n\
+             1 1 2.0\n\
+             1 2 3.0\n\
+             2 1 3.0\n\
+             2 3 4.0\n\
+             2 5 6.0\n\
+             3 2 -1.0\n\
+             3 3 -3.0\n\
+             3 4 2.0\n\
+             4 3 1.0\n\
+             5 2 4.0\n\
+             5 3 2.0\n\
+             5 5 1.0\n"
+        );
     }
 }

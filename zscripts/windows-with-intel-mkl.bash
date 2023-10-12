@@ -3,6 +3,7 @@
 set -e
 
 pip install --upgrade pip
-pip install mkl
+python3 -m pip debug --verbose
+# pip install mkl
 #pip install intel-fortran-rt
 #pip install mkl-devel

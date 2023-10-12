@@ -3,5 +3,6 @@
 set -e
 
 pip install --upgrade pip
-pip install intel-fortran-rt
-pip install mkl-devel
+pip search mkl
+#pip install intel-fortran-rt
+#pip install mkl-devel

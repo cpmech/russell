@@ -432,4 +432,67 @@ mod tests {
         assert_eq!(genie.symmetry(true, true), pu);
         assert_eq!(genie.one_based(), false);
     }
+
+    #[test]
+    fn symmetry_functions_work() {
+        let l = Storage::Lower;
+        let u = Storage::Upper;
+        let f = Storage::Full;
+
+        let gl = Symmetry::General(l);
+        let gu = Symmetry::General(u);
+        let gf = Symmetry::General(f);
+
+        let pl = Symmetry::PositiveDefinite(l);
+        let pu = Symmetry::PositiveDefinite(u);
+        let pf = Symmetry::PositiveDefinite(f);
+
+        assert_eq!(gl.triangular(), true);
+        assert_eq!(gu.triangular(), true);
+        assert_eq!(gf.triangular(), false);
+        assert_eq!(gl.lower(), true);
+        assert_eq!(gu.lower(), false);
+        assert_eq!(gf.lower(), false);
+        assert_eq!(gl.upper(), false);
+        assert_eq!(gu.upper(), true);
+        assert_eq!(gf.upper(), false);
+
+        assert_eq!(gl.status(true, false), Ok((1, 0)));
+        assert_eq!(gl.status(false, false), Ok((1, 0)));
+        assert_eq!(
+            gl.status(false, true),
+            Err("if the matrix is general symmetric, the required storage is upper triangular")
+        );
+
+        assert_eq!(gu.status(false, true), Ok((1, 0)));
+        assert_eq!(gu.status(false, false), Ok((1, 0)));
+        assert_eq!(
+            gu.status(true, false),
+            Err("if the matrix is general symmetric, the required storage is lower triangular")
+        );
+
+        assert_eq!(pl.triangular(), true);
+        assert_eq!(pu.triangular(), true);
+        assert_eq!(pf.triangular(), false);
+        assert_eq!(pl.lower(), true);
+        assert_eq!(pu.lower(), false);
+        assert_eq!(pf.lower(), false);
+        assert_eq!(pl.upper(), false);
+        assert_eq!(pu.upper(), true);
+        assert_eq!(pf.upper(), false);
+
+        assert_eq!(pl.status(true, false), Ok((0, 1)));
+        assert_eq!(pl.status(false, false), Ok((0, 1)));
+        assert_eq!(
+            pl.status(false, true),
+            Err("if the matrix is positive-definite, the required storage is upper triangular")
+        );
+
+        assert_eq!(pu.status(false, true), Ok((0, 1)));
+        assert_eq!(pu.status(false, false), Ok((0, 1)));
+        assert_eq!(
+            pu.status(true, false),
+            Err("if the matrix is positive-definite, the required storage is lower triangular")
+        );
+    }
 }

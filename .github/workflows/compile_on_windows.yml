@@ -7,7 +7,7 @@ jobs:
       run:
         shell: msys2 {0}
     steps:
-      - uses: actions/checkout@v3
+#      - uses: actions/checkout@v3
       - uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
@@ -16,7 +16,7 @@ jobs:
             curl
             git
             mingw-w64-ucrt-x86_64-python-pip
-            mingw-w64-ucrt-x86_64-gcc
+#            mingw-w64-ucrt-x86_64-gcc
       - name: Install Libraries
         run: |
           bash zscripts/windows-with-intel-mkl.bash

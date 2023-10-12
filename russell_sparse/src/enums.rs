@@ -20,6 +20,20 @@ pub enum Genie {
 }
 
 impl Genie {
+    /// Returns the string representation
+    /// ```text
+    /// Genie::Mumps    => "mumps"
+    /// Genie::Umfpack  => "umfpack"
+    /// Genie::IntelDss => "dss"
+    /// ```
+    pub fn to_string(&self) -> String {
+        match self {
+            Genie::Mumps => "mumps".to_string(),
+            Genie::Umfpack => "umfpack".to_string(),
+            Genie::IntelDss => "dss".to_string(),
+        }
+    }
+
     /// Returns which storage is required by the solver
     ///
     /// ```text
@@ -239,6 +253,23 @@ pub enum Scaling {
     Sum,
 }
 
+/// Returns the Genie by name (default is umfpack)
+///
+/// ```text
+/// "mumps"   => Genie::Mumps,
+/// "umfpack" => Genie::Umfpack,
+/// "dss"     => Genie::IntelDss,
+/// _         => Genie::Umfpack,
+/// ```
+pub fn enum_genie(genie: &str) -> Genie {
+    match genie {
+        "mumps" => Genie::Mumps,
+        "umfpack" => Genie::Umfpack,
+        "dss" => Genie::IntelDss,
+        _ => Genie::Umfpack,
+    }
+}
+
 /// Returns the Ordering by name
 pub fn enum_ordering(ordering: &str) -> Ordering {
     match ordering {
@@ -276,7 +307,7 @@ pub fn enum_scaling(scaling: &str) -> Scaling {
 
 #[cfg(test)]
 mod tests {
-    use super::{enum_ordering, enum_scaling, Genie, MMsymOption, Ordering, Scaling, Storage, Symmetry};
+    use super::*;
 
     #[test]
     fn clone_copy_and_debug_work() {
@@ -325,31 +356,39 @@ mod tests {
 
     #[test]
     fn enum_ordering_works() {
-        assert!(matches!(enum_ordering("Amd"), Ordering::Amd));
-        assert!(matches!(enum_ordering("Amf"), Ordering::Amf));
-        assert!(matches!(enum_ordering("Auto"), Ordering::Auto));
-        assert!(matches!(enum_ordering("Best"), Ordering::Best));
-        assert!(matches!(enum_ordering("Cholmod"), Ordering::Cholmod));
-        assert!(matches!(enum_ordering("Metis"), Ordering::Metis));
-        assert!(matches!(enum_ordering("No"), Ordering::No));
-        assert!(matches!(enum_ordering("Pord"), Ordering::Pord));
-        assert!(matches!(enum_ordering("Qamd"), Ordering::Qamd));
-        assert!(matches!(enum_ordering("Scotch"), Ordering::Scotch));
-        assert!(matches!(enum_ordering("Unknown"), Ordering::Auto));
+        assert_eq!(enum_ordering("Amd"), Ordering::Amd);
+        assert_eq!(enum_ordering("Amf"), Ordering::Amf);
+        assert_eq!(enum_ordering("Auto"), Ordering::Auto);
+        assert_eq!(enum_ordering("Best"), Ordering::Best);
+        assert_eq!(enum_ordering("Cholmod"), Ordering::Cholmod);
+        assert_eq!(enum_ordering("Metis"), Ordering::Metis);
+        assert_eq!(enum_ordering("No"), Ordering::No);
+        assert_eq!(enum_ordering("Pord"), Ordering::Pord);
+        assert_eq!(enum_ordering("Qamd"), Ordering::Qamd);
+        assert_eq!(enum_ordering("Scotch"), Ordering::Scotch);
+        assert_eq!(enum_ordering("Unknown"), Ordering::Auto);
     }
 
     #[test]
     fn enum_scaling_works() {
-        assert!(matches!(enum_scaling("Auto"), Scaling::Auto));
-        assert!(matches!(enum_scaling("Column"), Scaling::Column));
-        assert!(matches!(enum_scaling("Diagonal"), Scaling::Diagonal));
-        assert!(matches!(enum_scaling("Max"), Scaling::Max));
-        assert!(matches!(enum_scaling("No"), Scaling::No));
-        assert!(matches!(enum_scaling("RowCol"), Scaling::RowCol));
-        assert!(matches!(enum_scaling("RowColIter"), Scaling::RowColIter));
-        assert!(matches!(enum_scaling("RowColRig"), Scaling::RowColRig));
-        assert!(matches!(enum_scaling("Sum"), Scaling::Sum));
-        assert!(matches!(enum_scaling("Unknown"), Scaling::Auto));
+        assert_eq!(enum_scaling("Auto"), Scaling::Auto);
+        assert_eq!(enum_scaling("Column"), Scaling::Column);
+        assert_eq!(enum_scaling("Diagonal"), Scaling::Diagonal);
+        assert_eq!(enum_scaling("Max"), Scaling::Max);
+        assert_eq!(enum_scaling("No"), Scaling::No);
+        assert_eq!(enum_scaling("RowCol"), Scaling::RowCol);
+        assert_eq!(enum_scaling("RowColIter"), Scaling::RowColIter);
+        assert_eq!(enum_scaling("RowColRig"), Scaling::RowColRig);
+        assert_eq!(enum_scaling("Sum"), Scaling::Sum);
+        assert_eq!(enum_scaling("Unknown"), Scaling::Auto);
+    }
+
+    #[test]
+    fn enum_genie_works() {
+        assert_eq!(enum_genie("mumps"), Genie::Mumps);
+        assert_eq!(enum_genie("umfpack"), Genie::Umfpack);
+        assert_eq!(enum_genie("dss"), Genie::IntelDss);
+        assert_eq!(enum_genie("blah-blah-blah"), Genie::Umfpack);
     }
 
     #[test]
@@ -367,6 +406,7 @@ mod tests {
         let pf = Some(Symmetry::PositiveDefinite(f));
 
         let genie = Genie::Mumps;
+        assert_eq!(genie.to_string(), "mumps");
         assert_eq!(genie.storage(), l);
         assert_eq!(genie.symmetry(false, false), None);
         assert_eq!(genie.symmetry(true, false), gl);
@@ -375,6 +415,7 @@ mod tests {
         assert_eq!(genie.one_based(), true);
 
         let genie = Genie::Umfpack;
+        assert_eq!(genie.to_string(), "umfpack");
         assert_eq!(genie.storage(), f);
         assert_eq!(genie.symmetry(false, false), None);
         assert_eq!(genie.symmetry(true, false), gf);
@@ -383,6 +424,7 @@ mod tests {
         assert_eq!(genie.one_based(), false);
 
         let genie = Genie::IntelDss;
+        assert_eq!(genie.to_string(), "dss");
         assert_eq!(genie.storage(), u);
         assert_eq!(genie.symmetry(false, false), None);
         assert_eq!(genie.symmetry(true, false), gu);

@@ -19,60 +19,6 @@ pub enum Genie {
     IntelDss,
 }
 
-impl Genie {
-    /// Returns the string representation
-    /// ```text
-    /// Genie::Mumps    => "mumps"
-    /// Genie::Umfpack  => "umfpack"
-    /// Genie::IntelDss => "dss"
-    /// ```
-    pub fn to_string(&self) -> String {
-        match self {
-            Genie::Mumps => "mumps".to_string(),
-            Genie::Umfpack => "umfpack".to_string(),
-            Genie::IntelDss => "dss".to_string(),
-        }
-    }
-
-    /// Returns which storage is required by the solver
-    ///
-    /// ```text
-    /// MUMPS     : Storage::Lower
-    /// UMFPACK   : Storage::Full
-    /// Intel DSS : Storage::Upper
-    /// ````
-    pub fn storage(&self) -> Storage {
-        match self {
-            Genie::Mumps => Storage::Lower,
-            Genie::Umfpack => Storage::Full,
-            Genie::IntelDss => Storage::Upper,
-        }
-    }
-
-    /// Returns the solver's required symmetry/storage configuration
-    pub fn symmetry(&self, symmetric: bool, positive_definite: bool) -> Option<Symmetry> {
-        let storage = self.storage();
-        if symmetric || positive_definite {
-            if positive_definite {
-                Some(Symmetry::PositiveDefinite(storage))
-            } else {
-                Some(Symmetry::General(storage))
-            }
-        } else {
-            None
-        }
-    }
-
-    /// Returns whether the sparse matrix indices must be one-based or not
-    pub fn one_based(&self) -> bool {
-        match self {
-            Genie::Mumps => true,
-            Genie::Umfpack => false,
-            Genie::IntelDss => false,
-        }
-    }
-}
-
 /// Specifies how the matrix components are stored
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Storage {
@@ -94,68 +40,6 @@ pub enum Symmetry {
 
     /// Symmetric and positive-definite
     PositiveDefinite(Storage),
-}
-
-impl Symmetry {
-    /// Returns true if the storage is triangular (lower or upper)
-    pub fn triangular(&self) -> bool {
-        match self {
-            Self::General(storage) => *storage != Storage::Full,
-            Self::PositiveDefinite(storage) => *storage != Storage::Full,
-        }
-    }
-
-    /// Returns true if the storage is lower triangular
-    pub fn lower(&self) -> bool {
-        match self {
-            Self::General(storage) => *storage == Storage::Lower,
-            Self::PositiveDefinite(storage) => *storage == Storage::Lower,
-        }
-    }
-
-    /// Returns true if the storage is upper triangular
-    pub fn upper(&self) -> bool {
-        match self {
-            Self::General(storage) => *storage == Storage::Upper,
-            Self::PositiveDefinite(storage) => *storage == Storage::Upper,
-        }
-    }
-
-    /// Returns status flags indicating the type of symmetry, if any
-    ///
-    /// Returns `(general_symmetric, positive_definite)`
-    ///
-    /// # Input
-    ///
-    /// * `must_be_lower` -- makes sure that the storage is Lower
-    /// * `must_be_upper` -- makes sure that the storage is Upper
-    ///
-    /// # Output
-    ///
-    /// * `general_symmetric` -- 1 if true, 0 otherwise
-    /// * `positive_definite` -- 1 if true, 0 otherwise
-    pub fn status(&self, must_be_lower: bool, must_be_upper: bool) -> Result<(i32, i32), StrError> {
-        match self {
-            Self::General(storage) => {
-                if must_be_lower && *storage != Storage::Lower {
-                    return Err("if the matrix is general symmetric, the required storage is lower triangular");
-                }
-                if must_be_upper && *storage != Storage::Upper {
-                    return Err("if the matrix is general symmetric, the required storage is upper triangular");
-                }
-                Ok((1, 0))
-            }
-            Self::PositiveDefinite(storage) => {
-                if must_be_lower && *storage != Storage::Lower {
-                    return Err("if the matrix is positive-definite, the required storage is lower triangular");
-                }
-                if must_be_upper && *storage != Storage::Upper {
-                    return Err("if the matrix is positive-definite, the required storage is upper triangular");
-                }
-                Ok((0, 1))
-            }
-        }
-    }
 }
 
 /// Holds options to handle a MatrixMarket when the matrix is specified as being symmetric
@@ -253,53 +137,198 @@ pub enum Scaling {
     Sum,
 }
 
-/// Returns the Genie by name (default is umfpack)
-///
-/// ```text
-/// "mumps"   => Genie::Mumps,
-/// "umfpack" => Genie::Umfpack,
-/// "dss"     => Genie::IntelDss,
-/// _         => Genie::Umfpack,
-/// ```
-pub fn enum_genie(genie: &str) -> Genie {
-    match genie {
-        "mumps" => Genie::Mumps,
-        "umfpack" => Genie::Umfpack,
-        "dss" => Genie::IntelDss,
-        _ => Genie::Umfpack,
+impl Genie {
+    /// Returns the Genie by name (default is umfpack)
+    ///
+    /// ```text
+    /// "mumps"    => Genie::Mumps,
+    /// "umfpack"  => Genie::Umfpack,
+    /// "inteldss" => Genie::IntelDss,
+    /// _          => Genie::Umfpack,
+    /// ```
+    pub fn from(genie: &str) -> Self {
+        match genie.to_lowercase().as_str() {
+            "mumps" => Genie::Mumps,
+            "umfpack" => Genie::Umfpack,
+            "inteldss" => Genie::IntelDss,
+            _ => Genie::Umfpack,
+        }
+    }
+
+    /// Returns the string representation
+    /// ```text
+    /// Genie::Mumps    => "mumps"
+    /// Genie::Umfpack  => "umfpack"
+    /// Genie::IntelDss => "inteldss"
+    /// ```
+    pub fn to_string(&self) -> String {
+        match self {
+            Genie::Mumps => "mumps".to_string(),
+            Genie::Umfpack => "umfpack".to_string(),
+            Genie::IntelDss => "inteldss".to_string(),
+        }
+    }
+
+    /// Returns which storage is required by the solver
+    ///
+    /// ```text
+    /// MUMPS     : Storage::Lower
+    /// UMFPACK   : Storage::Full
+    /// Intel DSS : Storage::Upper
+    /// ````
+    pub fn storage(&self) -> Storage {
+        match self {
+            Genie::Mumps => Storage::Lower,
+            Genie::Umfpack => Storage::Full,
+            Genie::IntelDss => Storage::Upper,
+        }
+    }
+
+    /// Returns the solver's required symmetry/storage configuration
+    pub fn symmetry(&self, symmetric: bool, positive_definite: bool) -> Option<Symmetry> {
+        let storage = self.storage();
+        if symmetric || positive_definite {
+            if positive_definite {
+                Some(Symmetry::PositiveDefinite(storage))
+            } else {
+                Some(Symmetry::General(storage))
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Returns whether the sparse matrix indices must be one-based or not
+    pub fn one_based(&self) -> bool {
+        match self {
+            Genie::Mumps => true,
+            Genie::Umfpack => false,
+            Genie::IntelDss => false,
+        }
     }
 }
 
-/// Returns the Ordering by name
-pub fn enum_ordering(ordering: &str) -> Ordering {
-    match ordering {
-        "Amd" => Ordering::Amd,
-        "Amf" => Ordering::Amf,
-        "Auto" => Ordering::Auto,
-        "Best" => Ordering::Best,
-        "Cholmod" => Ordering::Cholmod,
-        "Metis" => Ordering::Metis,
-        "No" => Ordering::No,
-        "Pord" => Ordering::Pord,
-        "Qamd" => Ordering::Qamd,
-        "Scotch" => Ordering::Scotch,
-        _ => Ordering::Auto,
+impl Symmetry {
+    /// Returns true if the storage is triangular (lower or upper)
+    pub fn triangular(&self) -> bool {
+        match self {
+            Self::General(storage) => *storage != Storage::Full,
+            Self::PositiveDefinite(storage) => *storage != Storage::Full,
+        }
+    }
+
+    /// Returns true if the storage is lower triangular
+    pub fn lower(&self) -> bool {
+        match self {
+            Self::General(storage) => *storage == Storage::Lower,
+            Self::PositiveDefinite(storage) => *storage == Storage::Lower,
+        }
+    }
+
+    /// Returns true if the storage is upper triangular
+    pub fn upper(&self) -> bool {
+        match self {
+            Self::General(storage) => *storage == Storage::Upper,
+            Self::PositiveDefinite(storage) => *storage == Storage::Upper,
+        }
+    }
+
+    /// Returns status flags indicating the type of symmetry, if any
+    ///
+    /// Returns `(general_symmetric, positive_definite)`
+    ///
+    /// # Input
+    ///
+    /// * `must_be_lower` -- makes sure that the storage is Lower
+    /// * `must_be_upper` -- makes sure that the storage is Upper
+    ///
+    /// # Output
+    ///
+    /// * `general_symmetric` -- 1 if true, 0 otherwise
+    /// * `positive_definite` -- 1 if true, 0 otherwise
+    pub fn status(&self, must_be_lower: bool, must_be_upper: bool) -> Result<(i32, i32), StrError> {
+        match self {
+            Self::General(storage) => {
+                if must_be_lower && *storage != Storage::Lower {
+                    return Err("if the matrix is general symmetric, the required storage is lower triangular");
+                }
+                if must_be_upper && *storage != Storage::Upper {
+                    return Err("if the matrix is general symmetric, the required storage is upper triangular");
+                }
+                Ok((1, 0))
+            }
+            Self::PositiveDefinite(storage) => {
+                if must_be_lower && *storage != Storage::Lower {
+                    return Err("if the matrix is positive-definite, the required storage is lower triangular");
+                }
+                if must_be_upper && *storage != Storage::Upper {
+                    return Err("if the matrix is positive-definite, the required storage is upper triangular");
+                }
+                Ok((0, 1))
+            }
+        }
     }
 }
 
-/// Returns the Scaling by name
-pub fn enum_scaling(scaling: &str) -> Scaling {
-    match scaling {
-        "Auto" => Scaling::Auto,
-        "Column" => Scaling::Column,
-        "Diagonal" => Scaling::Diagonal,
-        "Max" => Scaling::Max,
-        "No" => Scaling::No,
-        "RowCol" => Scaling::RowCol,
-        "RowColIter" => Scaling::RowColIter,
-        "RowColRig" => Scaling::RowColRig,
-        "Sum" => Scaling::Sum,
-        _ => Scaling::Auto,
+impl Ordering {
+    /// Returns the Ordering by name (default is Auto)
+    /// ```text
+    /// "amd"     => Ordering::Amd,
+    /// "amf"     => Ordering::Amf,
+    /// "auto"    => Ordering::Auto,
+    /// "best"    => Ordering::Best,
+    /// "cholmod" => Ordering::Cholmod,
+    /// "metis"   => Ordering::Metis,
+    /// "no"      => Ordering::No,
+    /// "pord"    => Ordering::Pord,
+    /// "qamd"    => Ordering::Qamd,
+    /// "scotch"  => Ordering::Scotch,
+    /// _         => Ordering::Auto,
+    /// ```
+    pub fn from(ordering: &str) -> Self {
+        match ordering.to_lowercase().as_str() {
+            "amd" => Ordering::Amd,
+            "amf" => Ordering::Amf,
+            "auto" => Ordering::Auto,
+            "best" => Ordering::Best,
+            "cholmod" => Ordering::Cholmod,
+            "metis" => Ordering::Metis,
+            "no" => Ordering::No,
+            "pord" => Ordering::Pord,
+            "qamd" => Ordering::Qamd,
+            "scotch" => Ordering::Scotch,
+            _ => Ordering::Auto,
+        }
+    }
+}
+
+impl Scaling {
+    /// Returns the Scaling by name (default is Auto)
+    /// ```text
+    /// "auto"       => Scaling::Auto,
+    /// "column"     => Scaling::Column,
+    /// "diagonal"   => Scaling::Diagonal,
+    /// "max"        => Scaling::Max,
+    /// "no"         => Scaling::No,
+    /// "rowcol"     => Scaling::RowCol,
+    /// "rowcoliter" => Scaling::RowColIter,
+    /// "rowcolrig"  => Scaling::RowColRig,
+    /// "sum"        => Scaling::Sum,
+    /// _            => Scaling::Auto,
+    /// ```
+    pub fn from(scaling: &str) -> Self {
+        match scaling.to_lowercase().as_str() {
+            "auto" => Scaling::Auto,
+            "column" => Scaling::Column,
+            "diagonal" => Scaling::Diagonal,
+            "max" => Scaling::Max,
+            "no" => Scaling::No,
+            "rowcol" => Scaling::RowCol,
+            "rowcoliter" => Scaling::RowColIter,
+            "rowcolrig" => Scaling::RowColRig,
+            "sum" => Scaling::Sum,
+            _ => Scaling::Auto,
+        }
     }
 }
 
@@ -355,44 +384,68 @@ mod tests {
     }
 
     #[test]
-    fn enum_ordering_works() {
-        assert_eq!(enum_ordering("Amd"), Ordering::Amd);
-        assert_eq!(enum_ordering("Amf"), Ordering::Amf);
-        assert_eq!(enum_ordering("Auto"), Ordering::Auto);
-        assert_eq!(enum_ordering("Best"), Ordering::Best);
-        assert_eq!(enum_ordering("Cholmod"), Ordering::Cholmod);
-        assert_eq!(enum_ordering("Metis"), Ordering::Metis);
-        assert_eq!(enum_ordering("No"), Ordering::No);
-        assert_eq!(enum_ordering("Pord"), Ordering::Pord);
-        assert_eq!(enum_ordering("Qamd"), Ordering::Qamd);
-        assert_eq!(enum_ordering("Scotch"), Ordering::Scotch);
-        assert_eq!(enum_ordering("Unknown"), Ordering::Auto);
+    fn ordering_functions_work() {
+        assert_eq!(Ordering::from("Amd"), Ordering::Amd);
+        assert_eq!(Ordering::from("Amf"), Ordering::Amf);
+        assert_eq!(Ordering::from("Auto"), Ordering::Auto);
+        assert_eq!(Ordering::from("Best"), Ordering::Best);
+        assert_eq!(Ordering::from("Cholmod"), Ordering::Cholmod);
+        assert_eq!(Ordering::from("Metis"), Ordering::Metis);
+        assert_eq!(Ordering::from("No"), Ordering::No);
+        assert_eq!(Ordering::from("Pord"), Ordering::Pord);
+        assert_eq!(Ordering::from("Qamd"), Ordering::Qamd);
+        assert_eq!(Ordering::from("Scotch"), Ordering::Scotch);
+        assert_eq!(Ordering::from("Unknown"), Ordering::Auto);
+
+        assert_eq!(Ordering::from("amd"), Ordering::Amd);
+        assert_eq!(Ordering::from("amf"), Ordering::Amf);
+        assert_eq!(Ordering::from("auto"), Ordering::Auto);
+        assert_eq!(Ordering::from("best"), Ordering::Best);
+        assert_eq!(Ordering::from("cholmod"), Ordering::Cholmod);
+        assert_eq!(Ordering::from("metis"), Ordering::Metis);
+        assert_eq!(Ordering::from("no"), Ordering::No);
+        assert_eq!(Ordering::from("pord"), Ordering::Pord);
+        assert_eq!(Ordering::from("qamd"), Ordering::Qamd);
+        assert_eq!(Ordering::from("scotch"), Ordering::Scotch);
+        assert_eq!(Ordering::from("unknown"), Ordering::Auto);
     }
 
     #[test]
-    fn enum_scaling_works() {
-        assert_eq!(enum_scaling("Auto"), Scaling::Auto);
-        assert_eq!(enum_scaling("Column"), Scaling::Column);
-        assert_eq!(enum_scaling("Diagonal"), Scaling::Diagonal);
-        assert_eq!(enum_scaling("Max"), Scaling::Max);
-        assert_eq!(enum_scaling("No"), Scaling::No);
-        assert_eq!(enum_scaling("RowCol"), Scaling::RowCol);
-        assert_eq!(enum_scaling("RowColIter"), Scaling::RowColIter);
-        assert_eq!(enum_scaling("RowColRig"), Scaling::RowColRig);
-        assert_eq!(enum_scaling("Sum"), Scaling::Sum);
-        assert_eq!(enum_scaling("Unknown"), Scaling::Auto);
-    }
+    fn scaling_functions_work() {
+        assert_eq!(Scaling::from("Auto"), Scaling::Auto);
+        assert_eq!(Scaling::from("Column"), Scaling::Column);
+        assert_eq!(Scaling::from("Diagonal"), Scaling::Diagonal);
+        assert_eq!(Scaling::from("Max"), Scaling::Max);
+        assert_eq!(Scaling::from("No"), Scaling::No);
+        assert_eq!(Scaling::from("RowCol"), Scaling::RowCol);
+        assert_eq!(Scaling::from("RowColIter"), Scaling::RowColIter);
+        assert_eq!(Scaling::from("RowColRig"), Scaling::RowColRig);
+        assert_eq!(Scaling::from("Sum"), Scaling::Sum);
+        assert_eq!(Scaling::from("Unknown"), Scaling::Auto);
 
-    #[test]
-    fn enum_genie_works() {
-        assert_eq!(enum_genie("mumps"), Genie::Mumps);
-        assert_eq!(enum_genie("umfpack"), Genie::Umfpack);
-        assert_eq!(enum_genie("dss"), Genie::IntelDss);
-        assert_eq!(enum_genie("blah-blah-blah"), Genie::Umfpack);
+        assert_eq!(Scaling::from("auto"), Scaling::Auto);
+        assert_eq!(Scaling::from("column"), Scaling::Column);
+        assert_eq!(Scaling::from("diagonal"), Scaling::Diagonal);
+        assert_eq!(Scaling::from("max"), Scaling::Max);
+        assert_eq!(Scaling::from("no"), Scaling::No);
+        assert_eq!(Scaling::from("rowcol"), Scaling::RowCol);
+        assert_eq!(Scaling::from("rowcoliter"), Scaling::RowColIter);
+        assert_eq!(Scaling::from("rowcolrig"), Scaling::RowColRig);
+        assert_eq!(Scaling::from("sum"), Scaling::Sum);
+        assert_eq!(Scaling::from("unknown"), Scaling::Auto);
     }
 
     #[test]
     fn genie_functions_work() {
+        assert_eq!(Genie::from("mumps"), Genie::Mumps);
+        assert_eq!(Genie::from("umfpack"), Genie::Umfpack);
+        assert_eq!(Genie::from("inteldss"), Genie::IntelDss);
+        assert_eq!(Genie::from("blah-blah-blah"), Genie::Umfpack);
+
+        assert_eq!(Genie::from("Mumps"), Genie::Mumps);
+        assert_eq!(Genie::from("Umfpack"), Genie::Umfpack);
+        assert_eq!(Genie::from("IntelDss"), Genie::IntelDss);
+
         let l = Storage::Lower;
         let u = Storage::Upper;
         let f = Storage::Full;
@@ -424,7 +477,7 @@ mod tests {
         assert_eq!(genie.one_based(), false);
 
         let genie = Genie::IntelDss;
-        assert_eq!(genie.to_string(), "dss");
+        assert_eq!(genie.to_string(), "inteldss");
         assert_eq!(genie.storage(), u);
         assert_eq!(genie.symmetry(false, false), None);
         assert_eq!(genie.symmetry(true, false), gu);

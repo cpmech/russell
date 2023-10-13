@@ -67,12 +67,7 @@ fn main() -> Result<(), StrError> {
     }
 
     // select linear solver
-    let genie = match opt.genie.to_lowercase().as_str() {
-        "mumps" => Genie::Mumps,
-        "umfpack" => Genie::Umfpack,
-        "dss" => Genie::IntelDss,
-        _ => Genie::Umfpack,
-    };
+    let genie = Genie::from(&opt.genie);
 
     // select the symmetric handling option
     let (handling, one_based) = match genie {
@@ -83,8 +78,8 @@ fn main() -> Result<(), StrError> {
 
     // configuration parameters
     let mut params = LinSolParams::new();
-    params.ordering = enum_ordering(&opt.ordering);
-    params.scaling = enum_scaling(&opt.scaling);
+    params.ordering = Ordering::from(&opt.ordering);
+    params.scaling = Scaling::from(&opt.scaling);
     params.compute_determinant = opt.determinant;
     params.mumps_num_threads = opt.mumps_nt as usize;
     params.umfpack_enforce_unsymmetric_strategy = opt.enforce_unsymmetric_strategy;

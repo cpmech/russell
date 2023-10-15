@@ -1,10 +1,10 @@
 name: Test & Coverage
-on: [pull_request]
+on: [pull_request, push]
 jobs:
   test_and_coverage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install Libraries
         run: |
           bash zscripts/01-ubuntu-openblas-debian.bash
@@ -22,7 +22,7 @@ jobs:
         run: |
           cargo llvm-cov --all-features --workspace --ignore-filename-regex 'build.rs|mem_check.rs|solve_matrix_market.rs' --lcov --output-path lcov.info
       - name: Upload to codecov.io
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v3
         with:
           token: ${{secrets.CODECOV_TOKEN}}
           files: lcov.info

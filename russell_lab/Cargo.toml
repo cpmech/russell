@@ -1,6 +1,6 @@
 [package]
 name = "russell_lab"
-version = "0.6.2"
+version = "0.7.1"
 edition = "2021"
 license = "MIT"
 description = "Matrix-vector laboratory including linear algebra tools"

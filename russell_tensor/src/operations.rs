@@ -1,6 +1,6 @@
 use super::{Tensor2, Tensor4};
 use crate::{StrError, SQRT_2};
-use russell_lab::{mat_copy, mat_mat_mul, mat_vec_mul, vec_inner, vec_mat_mul, vec_outer, Vector};
+use russell_lab::{mat_copy, mat_mat_mul, mat_vec_mul, mat_vec_mul_update, vec_inner, vec_mat_mul, vec_outer, Vector};
 
 /// Copies Tensor2
 ///
@@ -1419,6 +1419,61 @@ pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) -> Res
     mat_vec_mul(&mut b.vec, alpha, &dd.mat, &a.vec)
 }
 
+/// Performs the double-dot (ddot) operation between a Tensor4 and a Tensor2 with update
+///
+/// ```text
+/// b = α D : a + β b
+/// ```
+///
+/// Note: this function does NOT work with mixed symmetry types.
+///
+/// # Example
+///
+/// ```
+/// use russell_tensor::{t4_ddot_t2_update, Mandel, Tensor2, Tensor4, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     let dd = Tensor4::from_matrix(&[
+///         [  1.0,  2.0,  3.0,  4.0,  5.0,  6.0,  7.0,  8.0,  9.0],
+///         [ -1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0, -8.0, -9.0],
+///         [  2.0,  4.0,  6.0,  8.0, 10.0, 12.0, 14.0, 16.0, 18.0],
+///         [ 10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0],
+///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
+///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
+///         [ -2.0, -4.0, -6.0, -8.0,-10.0,-12.0,-14.0,-16.0,-18.0],
+///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
+///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
+///     ], Mandel::General)?;
+///
+///     let a = Tensor2::from_matrix(&[
+///         [1.0, 4.0, 6.0],
+///         [7.0, 2.0, 5.0],
+///         [9.0, 8.0, 3.0],
+///     ], Mandel::General)?;
+///
+///     let mut b = Tensor2::from_matrix(&[
+///         [1.0, 0.0, 0.0],
+///         [0.0, 1.0, 0.0],
+///         [0.0, 0.0, 1.0],
+///     ], Mandel::General)?;
+///     t4_ddot_t2_update(&mut b, 1.0, &dd, &a, 1000.0)?;
+///
+///     assert_eq!(
+///         format!("{:.1}", b.to_matrix()),
+///         "┌                      ┐\n\
+///          │ 1285.0 2850.0    0.0 │\n\
+///          │ -570.0  715.0    0.0 │\n\
+///          │    0.0    0.0 1570.0 │\n\
+///          └                      ┘"
+///     );
+///     Ok(())
+/// }
+/// ```
+#[inline]
+pub fn t4_ddot_t2_update(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2, beta: f64) -> Result<(), StrError> {
+    mat_vec_mul_update(&mut b.vec, alpha, &dd.mat, &a.vec, beta)
+}
+
 /// Performs the double-dot (ddot) operation between a Tensor2 and a Tensor4
 ///
 /// ```text
@@ -1540,10 +1595,7 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) -> R
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        copy_tensor2, copy_tensor4, t2_ddot_t2, t2_ddot_t4, t2_dot_t2, t2_dot_vec, t2_dyad_t2, t2_odyad_t2, t2_qsd_t2,
-        t2_ssd, t2_udyad_t2, t4_ddot_t2, t4_ddot_t4, vec_dot_t2, vec_dyad_vec, Tensor2, Tensor4,
-    };
+    use super::*;
     use crate::{Mandel, SamplesTensor4, MN_TO_IJKL, SQRT_2};
     use russell_lab::{approx_eq, mat_approx_eq, vec_approx_eq, Matrix, Vector};
 
@@ -2681,6 +2733,33 @@ mod tests {
              │ -154.0  -64.0    0.0 │\n\
              │    0.0    0.0  -82.0 │\n\
              └                      ┘"
+        );
+    }
+
+    #[test]
+    fn t4_ddot_t2_update_works() {
+        let dd = Tensor4::from_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Mandel::Symmetric2D).unwrap();
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [-1.0, -2.0,  0.0],
+            [-2.0,  2.0,  0.0],
+            [ 0.0,  0.0, -3.0],
+        ], Mandel::Symmetric2D).unwrap();
+        #[rustfmt::skip]
+        let mut b = Tensor2::from_matrix(&[
+            [-1000.0, -1000.0,     0.0],
+            [-1000.0, -1000.0,     0.0],
+            [    0.0,     0.0, -1000.0],
+        ], Mandel::Symmetric2D).unwrap();
+        t4_ddot_t2_update(&mut b, 1.0, &dd, &a, 2.0).unwrap();
+        let out = b.to_matrix();
+        assert_eq!(
+            format!("{:.1}", out),
+            "┌                         ┐\n\
+             │ -2046.0 -2154.0     0.0 │\n\
+             │ -2154.0 -2064.0     0.0 │\n\
+             │     0.0     0.0 -2082.0 │\n\
+             └                         ┘"
         );
     }
 

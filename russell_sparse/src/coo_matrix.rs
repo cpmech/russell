@@ -606,6 +606,14 @@ impl CooMatrix {
         Symmetry::storage(self.symmetry)
     }
 
+    /// Returns whether the symmetry flag corresponds to a symmetric matrix or not
+    pub fn get_symmetric(&self) -> bool {
+        match self.symmetry {
+            Some(_) => true,
+            None => false,
+        }
+    }
+
     /// Get an access to the row indices
     pub fn get_row_indices(&self) -> &[i32] {
         &self.indices_i
@@ -1037,9 +1045,13 @@ mod tests {
         let (coo, _, _, _) = Samples::rectangular_1x2(false, false, false);
         assert_eq!(coo.get_info(), (1, 2, 2, None));
         assert_eq!(coo.get_storage(), Storage::Full);
+        assert_eq!(coo.get_symmetric(), false);
         assert_eq!(coo.get_row_indices(), &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(coo.get_col_indices(), &[0, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(coo.get_values(), &[10.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+
+        let coo = CooMatrix::new(2, 2, 2, Symmetry::new_general_full(), false).unwrap();
+        assert_eq!(coo.get_symmetric(), true);
 
         let mut coo = CooMatrix::new(2, 1, 2, None, false).unwrap();
         coo.put(0, 0, 123.0).unwrap();

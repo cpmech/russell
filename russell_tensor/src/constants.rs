@@ -25,6 +25,9 @@ pub const ONE_BY_3: f64 =
 pub const TWO_BY_3: f64 =
     0.66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666f64;
 
+/// Second-order identity tensor in Mandel basis (len = 9)
+pub const IDENTITY2: [f64; 9] = [1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+
 /// Tolerance to avoid zero division with the J2 invariant
 ///
 /// This constant is used, for instance, in the calculation of the Lode invariant using the following expression:

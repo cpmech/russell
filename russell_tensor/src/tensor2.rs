@@ -1636,7 +1636,7 @@ impl Tensor2 {
 #[cfg(test)]
 mod tests {
     use super::Tensor2;
-    use crate::{Mandel, SampleTensor2, SamplesTensor2, SQRT_2, SQRT_3};
+    use crate::{Mandel, SampleTensor2, SamplesTensor2, IDENTITY2, SQRT_2, SQRT_3};
     use russell_lab::{approx_eq, mat_approx_eq, mat_mat_mul, math::PI, vec_approx_eq, Matrix};
     use serde::{Deserialize, Serialize};
 
@@ -1887,15 +1887,15 @@ mod tests {
     fn identity_works() {
         // general
         let ii = Tensor2::identity(Mandel::General);
-        assert_eq!(ii.vec.as_data(), &[1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(ii.vec.as_data(), &IDENTITY2);
 
         // symmetric
         let ii = Tensor2::identity(Mandel::Symmetric);
-        assert_eq!(ii.vec.as_data(), &[1.0, 1.0, 1.0, 0.0, 0.0, 0.0]);
+        assert_eq!(ii.vec.as_data(), &IDENTITY2[0..6]);
 
         // symmetric 2d
         let ii = Tensor2::identity(Mandel::Symmetric2D);
-        assert_eq!(ii.vec.as_data(), &[1.0, 1.0, 1.0, 0.0,]);
+        assert_eq!(ii.vec.as_data(), &IDENTITY2[0..4]);
     }
 
     #[test]

@@ -209,6 +209,36 @@ impl Genie {
 }
 
 impl Symmetry {
+    /// Returns a new general symmetry flag with lower storage
+    pub fn new_general_lower() -> Option<Self> {
+        Some(Symmetry::General(Storage::Lower))
+    }
+
+    /// Returns a new general symmetry flag with upper storage
+    pub fn new_general_upper() -> Option<Self> {
+        Some(Symmetry::General(Storage::Upper))
+    }
+
+    /// Returns a new general symmetry flag with full storage
+    pub fn new_general_full() -> Option<Self> {
+        Some(Symmetry::General(Storage::Full))
+    }
+
+    /// Returns a new positive-definite symmetry flag with lower storage
+    pub fn new_pos_def_lower() -> Option<Self> {
+        Some(Symmetry::PositiveDefinite(Storage::Lower))
+    }
+
+    /// Returns a new positive-definite symmetry flag with upper storage
+    pub fn new_pos_def_upper() -> Option<Self> {
+        Some(Symmetry::PositiveDefinite(Storage::Upper))
+    }
+
+    /// Returns a new positive-definite symmetry flag with full storage
+    pub fn new_pos_def_full() -> Option<Self> {
+        Some(Symmetry::PositiveDefinite(Storage::Full))
+    }
+
     /// Returns which type of storage is used, if symmetric
     pub fn storage(symmetry: Option<Symmetry>) -> Storage {
         match symmetry {
@@ -516,6 +546,9 @@ mod tests {
         let pu = Symmetry::PositiveDefinite(u);
         let pf = Symmetry::PositiveDefinite(f);
 
+        assert_eq!(Some(gl), Symmetry::new_general_lower());
+        assert_eq!(Some(gu), Symmetry::new_general_upper());
+        assert_eq!(Some(gf), Symmetry::new_general_full());
         assert_eq!(Symmetry::storage(Some(gl)), Storage::Lower);
         assert_eq!(Symmetry::storage(Some(gu)), Storage::Upper);
         assert_eq!(Symmetry::storage(Some(gf)), Storage::Full);
@@ -543,6 +576,9 @@ mod tests {
             Err("if the matrix is general symmetric, the required storage is lower triangular")
         );
 
+        assert_eq!(Some(pl), Symmetry::new_pos_def_lower());
+        assert_eq!(Some(pu), Symmetry::new_pos_def_upper());
+        assert_eq!(Some(pf), Symmetry::new_pos_def_full());
         assert_eq!(Symmetry::storage(Some(pl)), Storage::Lower);
         assert_eq!(Symmetry::storage(Some(pu)), Storage::Upper);
         assert_eq!(Symmetry::storage(Some(pf)), Storage::Full);

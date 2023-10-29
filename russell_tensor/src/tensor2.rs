@@ -1512,7 +1512,7 @@ impl Tensor2 {
     /// or equivalent stress.
     ///
     /// ```text
-    /// σd = norm(dev(σ)) × √3/√2 = ‖s‖ √3/√2
+    /// σd = norm(dev(σ)) × √3/√2 = ‖s‖ √3/√2 = √3 × J2
     /// ```
     ///
     /// # Example

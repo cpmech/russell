@@ -209,6 +209,22 @@ impl Genie {
 }
 
 impl Symmetry {
+    /// Returns which type of storage is used, if symmetric
+    pub fn storage(symmetry: Option<Symmetry>) -> Storage {
+        match symmetry {
+            Some(sym) => {
+                if sym.lower() {
+                    Storage::Lower
+                } else if sym.upper() {
+                    Storage::Upper
+                } else {
+                    Storage::Full
+                }
+            }
+            None => Storage::Full,
+        }
+    }
+
     /// Returns true if the storage is triangular (lower or upper)
     pub fn triangular(&self) -> bool {
         match self {
@@ -500,6 +516,9 @@ mod tests {
         let pu = Symmetry::PositiveDefinite(u);
         let pf = Symmetry::PositiveDefinite(f);
 
+        assert_eq!(Symmetry::storage(Some(gl)), Storage::Lower);
+        assert_eq!(Symmetry::storage(Some(gu)), Storage::Upper);
+        assert_eq!(Symmetry::storage(Some(gf)), Storage::Full);
         assert_eq!(gl.triangular(), true);
         assert_eq!(gu.triangular(), true);
         assert_eq!(gf.triangular(), false);
@@ -524,6 +543,9 @@ mod tests {
             Err("if the matrix is general symmetric, the required storage is lower triangular")
         );
 
+        assert_eq!(Symmetry::storage(Some(pl)), Storage::Lower);
+        assert_eq!(Symmetry::storage(Some(pu)), Storage::Upper);
+        assert_eq!(Symmetry::storage(Some(pf)), Storage::Full);
         assert_eq!(pl.triangular(), true);
         assert_eq!(pu.triangular(), true);
         assert_eq!(pf.triangular(), false);
@@ -547,5 +569,7 @@ mod tests {
             pu.status(true, false),
             Err("if the matrix is positive-definite, the required storage is lower triangular")
         );
+
+        assert_eq!(Symmetry::storage(None), Storage::Full);
     }
 }

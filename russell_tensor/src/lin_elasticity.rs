@@ -131,7 +131,13 @@ impl LinElasticity {
         self.calc_modulus();
     }
 
-    /// Get an access to the elasticity modulus D defined in σ = D : ε
+    /// Returns an access to the elasticity modulus
+    ///
+    /// Returns D from:
+    ///
+    /// ```text
+    /// σ = D : ε
+    /// ```
     ///
     /// # Example
     ///

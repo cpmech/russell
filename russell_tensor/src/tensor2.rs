@@ -1,6 +1,6 @@
-use crate::{
-    AsMatrix3x3, Mandel, StrError, IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, TOL_J2,
-};
+use crate::{AsMatrix3x3, Mandel, StrError};
+use crate::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, TOL_J2};
+use crate::{SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
 use russell_lab::{Matrix, Vector};
 use serde::{Deserialize, Serialize};
 
@@ -114,6 +114,42 @@ impl Tensor2 {
         } else {
             Tensor2::new(Mandel::Symmetric)
         }
+    }
+
+    /// Allocates a diagonal Tensor2 from octahedral invariants
+    ///
+    /// In matrix form, the diagonal component of the tensor are the principal stresses `(σ1, σ2, σ3)`:
+    ///
+    /// ```text
+    /// ┌          ┐
+    /// │ σ1  0  0 │
+    /// │  0 σ2  0 │
+    /// │  0  0 σ3 │
+    /// └          ┘
+    /// ```
+    ///
+    /// # Input
+    ///
+    /// * `sigma_m` -- mean pressure invariant `σm = ⅓ trace(σ)`
+    /// * `sigma_d` -- deviatoric stress (von Mises) invariant `σd = ‖s‖ √3/√2 = √3 × J2`
+    /// * `lode` -- Lode invariant `l = cos(3θ) = (3 √3 J3)/(2 pow(J2,1.5))`.
+    ///   **Note:** The Lode invariant must be in `-1 ≤ lode ≤ 1`
+    /// * `two_dim` -- 2D instead of 3D?
+    pub fn new_from_oct_invariants(sigma_m: f64, sigma_d: f64, lode: f64, two_dim: bool) -> Result<Self, StrError> {
+        if lode < -1.0 || lode > 1.0 {
+            return Err("the following range must be satisfied: -1 ≤ lode ≤ 1");
+        }
+        let d = SQRT_3 * sigma_m;
+        let r = SQRT_2_BY_3 * sigma_d;
+        let theta = f64::acos(lode) / 3.0;
+        let ss1 = r * f64::cos(theta);
+        let ss2 = d;
+        let ss3 = r * f64::sin(theta);
+        let mut tt = Tensor2::new_sym(two_dim);
+        tt.vec[0] = (SQRT_2 * ss1 + ss2) / SQRT_3;
+        tt.vec[1] = -ss1 / SQRT_6 + ss2 / SQRT_3 - ss3 / SQRT_2;
+        tt.vec[2] = -ss1 / SQRT_6 + ss2 / SQRT_3 + ss3 / SQRT_2;
+        Ok(tt)
     }
 
     /// Returns the Mandel case associated with this Tensor2
@@ -1610,7 +1646,7 @@ impl Tensor2 {
         self.deviator_norm() * SQRT_2_BY_3
     }
 
-    /// Returns the lode invariant
+    /// Returns the Lode invariant
     ///
     /// ```text
     ///                  3 √3 J3
@@ -3030,5 +3066,60 @@ mod tests {
         let (l1, l2, l3) = (2.0, 2.0, 2.0 - 1e-3);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
         check_lode(tt.invariant_lode(), -1.0, 1e-7, false);
+    }
+
+    #[test]
+    fn new_from_oct_invariants_works() {
+        let (sigma_m, sigma_d) = (1.0, 3.0);
+
+        let tt = Tensor2::new_from_oct_invariants(sigma_m, sigma_d, 1.0, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 3.0, 1e-15);
+        approx_eq(tt.vec[1], 0.0, 1e-15);
+        approx_eq(tt.vec[2], 0.0, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
+
+        let tt = Tensor2::new_from_oct_invariants(sigma_m, sigma_d, 0.0, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 1.0 + SQRT_3, 1e-15);
+        approx_eq(tt.vec[1], 1.0 - SQRT_3, 1e-15);
+        approx_eq(tt.vec[2], 1.0, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
+
+        let tt = Tensor2::new_from_oct_invariants(sigma_m, sigma_d, -1.0, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 2.0, 1e-15);
+        approx_eq(tt.vec[1], -1.0, 1e-15);
+        approx_eq(tt.vec[2], 2.0, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
+
+        // the following data corresponds to sigma_m = 1 and sigma_d = 3
+        #[rustfmt::skip]
+        let principal_stresses_and_lode = [
+            ( 3.0          ,  0.0          ,  0.0          ,  1.0 ),
+            ( 0.0          ,  3.0          ,  0.0          ,  1.0 ),
+            ( 0.0          ,  0.0          ,  3.0          ,  1.0 ),
+            ( 1.0 + SQRT_3 ,  1.0 - SQRT_3 ,  1.0          ,  0.0 ),
+            ( 1.0 + SQRT_3 ,  1.0          ,  1.0 - SQRT_3 ,  0.0 ),
+            ( 1.0          ,  1.0 + SQRT_3 ,  1.0 - SQRT_3 ,  0.0 ),
+            ( 1.0 - SQRT_3 ,  1.0 + SQRT_3 ,  1.0          ,  0.0 ),
+            ( 1.0          ,  1.0 - SQRT_3 ,  1.0 + SQRT_3 ,  0.0 ),
+            ( 1.0 - SQRT_3 ,  1.0          ,  1.0 + SQRT_3 ,  0.0 ),
+            ( 2.0          , -1.0          ,  2.0          , -1.0 ),
+            ( 2.0          ,  2.0          , -1.0          , -1.0 ),
+            (-1.0          ,  2.0          ,  2.0          , -1.0 ),
+        ];
+        let mut aux = Tensor2::new_sym(true);
+        for (sigma_1, sigma_2, sigma_3, lode_correct) in &principal_stresses_and_lode {
+            aux.vec[0] = *sigma_1;
+            aux.vec[1] = *sigma_2;
+            aux.vec[2] = *sigma_3;
+            let sigma_m = aux.invariant_sigma_m();
+            let sigma_d = aux.invariant_sigma_d();
+            let lode = aux.invariant_lode().unwrap();
+            approx_eq(sigma_m, 1.0, 1e-15);
+            approx_eq(sigma_d, 3.0, 1e-15);
+            approx_eq(lode, *lode_correct, 1e-15);
+        }
     }
 }

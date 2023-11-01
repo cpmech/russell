@@ -96,6 +96,26 @@ impl Tensor2 {
         }
     }
 
+    /// Allocates a symmetric Tensor2
+    pub fn new_sym(two_dim: bool) -> Self {
+        if two_dim {
+            Tensor2::new(Mandel::Symmetric2D)
+        } else {
+            Tensor2::new(Mandel::Symmetric)
+        }
+    }
+
+    /// Allocates a symmetric Tensor2 given the space dimension
+    ///
+    /// **Note:** `space_ndim` must be 2 or 3 (only 2 is checked, otherwise 3 is assumed)
+    pub fn new_sym_ndim(space_ndim: usize) -> Self {
+        if space_ndim == 2 {
+            Tensor2::new(Mandel::Symmetric2D)
+        } else {
+            Tensor2::new(Mandel::Symmetric)
+        }
+    }
+
     /// Returns the Mandel case associated with this Tensor2
     #[inline]
     pub fn case(&self) -> Mandel {
@@ -1654,9 +1674,25 @@ mod tests {
         assert_eq!(tt.vec.as_data(), correct);
         assert_eq!(tt.case(), Mandel::Symmetric);
 
+        let tt = Tensor2::new_sym(false);
+        assert_eq!(tt.vec.as_data(), correct);
+        assert_eq!(tt.case(), Mandel::Symmetric);
+
+        let tt = Tensor2::new_sym_ndim(3);
+        assert_eq!(tt.vec.as_data(), correct);
+        assert_eq!(tt.case(), Mandel::Symmetric);
+
         // symmetric 2D
         let tt = Tensor2::new(Mandel::Symmetric2D);
         let correct = &[0.0, 0.0, 0.0, 0.0];
+        assert_eq!(tt.vec.as_data(), correct);
+        assert_eq!(tt.case(), Mandel::Symmetric2D);
+
+        let tt = Tensor2::new_sym(true);
+        assert_eq!(tt.vec.as_data(), correct);
+        assert_eq!(tt.case(), Mandel::Symmetric2D);
+
+        let tt = Tensor2::new_sym_ndim(2);
         assert_eq!(tt.vec.as_data(), correct);
         assert_eq!(tt.case(), Mandel::Symmetric2D);
     }

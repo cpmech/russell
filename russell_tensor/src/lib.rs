@@ -24,7 +24,6 @@ mod operations;
 mod samples_tensor2;
 mod samples_tensor4;
 mod spectral2;
-mod stress_strain_path;
 mod tensor2;
 mod tensor4;
 pub use crate::as_matrix_3x3::*;
@@ -37,7 +36,6 @@ pub use crate::operations::*;
 pub use crate::samples_tensor2::*;
 pub use crate::samples_tensor4::*;
 pub use crate::spectral2::*;
-pub use crate::stress_strain_path::*;
 pub use crate::tensor2::*;
 pub use crate::tensor4::*;
 

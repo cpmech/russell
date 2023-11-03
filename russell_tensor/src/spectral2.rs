@@ -13,14 +13,14 @@ pub struct Spectral2 {
 impl Spectral2 {
     /// Returns a new instance
     pub fn new(two_dim: bool) -> Self {
-        let case = if two_dim {
+        let mandel = if two_dim {
             Mandel::Symmetric2D
         } else {
             Mandel::Symmetric
         };
         Spectral2 {
             lambda: Vector::new(3),
-            projectors: vec![Tensor2::new(case), Tensor2::new(case), Tensor2::new(case)],
+            projectors: vec![Tensor2::new(mandel), Tensor2::new(mandel), Tensor2::new(mandel)],
         }
     }
 
@@ -131,8 +131,8 @@ mod tests {
         if let Some(correct_lambda) = sample.eigenvalues {
             if let Some(correct_projectors) = sample.eigenprojectors {
                 // perform spectral decomposition of symmetric matrix
-                let case = spec.projectors[0].case();
-                let tt = Tensor2::from_matrix(&sample.matrix, case).unwrap();
+                let mandel = spec.projectors[0].mandel();
+                let tt = Tensor2::from_matrix(&sample.matrix, mandel).unwrap();
                 spec.decompose(&tt).unwrap();
 
                 // print results
@@ -159,7 +159,7 @@ mod tests {
                 mat_approx_eq(&correct2, &pp2, tol_proj);
 
                 // compose
-                let mut tt_new = Tensor2::new(case);
+                let mut tt_new = Tensor2::new(mandel);
                 spec.compose(&mut tt_new, &spec.lambda).unwrap();
                 let a_new = tt_new.to_matrix();
                 let a = Matrix::from(&sample.matrix);

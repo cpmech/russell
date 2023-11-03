@@ -86,7 +86,7 @@ impl LinElasticity {
     /// );
     /// ```
     pub fn new(young: f64, poisson: f64, two_dim: bool, plane_stress: bool) -> Self {
-        let case = if two_dim || plane_stress {
+        let mandel = if two_dim || plane_stress {
             Mandel::Symmetric2D
         } else {
             Mandel::Symmetric
@@ -95,7 +95,7 @@ impl LinElasticity {
             young,
             poisson,
             plane_stress,
-            dd: Tensor4::new(case),
+            dd: Tensor4::new(mandel),
         };
         res.calc_modulus();
         res

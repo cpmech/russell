@@ -1,4 +1,4 @@
-/// Specifies the Mandel representation case
+/// Specifies the Mandel representation
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Mandel {
     /// General representation of a 3×3 Tensor2 as a 9D vector
@@ -76,10 +76,10 @@ mod tests {
 
     #[test]
     fn derive_works() {
-        let case = Mandel::General.clone();
-        assert_eq!(case, Mandel::General);
-        assert_eq!(format!("{:?}", case), "General");
-        assert_eq!(case, Mandel::General);
+        let mandel = Mandel::General.clone();
+        assert_eq!(mandel, Mandel::General);
+        assert_eq!(format!("{:?}", mandel), "General");
+        assert_eq!(mandel, Mandel::General);
     }
 
     #[test]

@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 /// i>j & k>l:  Mijkl := (Djilk − Djikl − Dijlk + Dijkl) / 2
 /// ```
 ///
-/// **General case:**
+/// **General:**
 ///
 /// Then, the 81 Mijkl components of a Tensor4 are organized as follows:
 ///
@@ -123,7 +123,7 @@ impl Tensor4 {
     ///
     /// # Input
     ///
-    /// * `case` -- the [Mandel] case
+    /// * `mandel` -- the [Mandel] representation
     ///
     /// # Example
     ///
@@ -141,16 +141,16 @@ impl Tensor4 {
     ///     assert_eq!(ee.mat.dims(), (4,4));
     /// }
     /// ```
-    pub fn new(case: Mandel) -> Self {
-        let dim = case.dim();
+    pub fn new(mandel: Mandel) -> Self {
+        let dim = mandel.dim();
         Tensor4 {
             mat: Matrix::new(dim, dim),
         }
     }
 
-    /// Returns the Mandel case associated with this Tensor4
+    /// Returns the Mandel representation associated with this Tensor4
     #[inline]
-    pub fn case(&self) -> Mandel {
+    pub fn mandel(&self) -> Mandel {
         Mandel::new(self.mat.nrow())
     }
 
@@ -160,7 +160,7 @@ impl Tensor4 {
     ///
     /// * `inp` -- the standard (not Mandel) Dijkl components given with
     ///   respect to an orthonormal Cartesian basis
-    /// * `case` -- the [Mandel] case
+    /// * `mandel` -- the [Mandel] representation
     ///
     /// # Example
     ///
@@ -196,8 +196,8 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_array(inp: &[[[[f64; 3]; 3]; 3]; 3], case: Mandel) -> Result<Self, StrError> {
-        let dim = case.dim();
+    pub fn from_array(inp: &[[[[f64; 3]; 3]; 3]; 3], mandel: Mandel) -> Result<Self, StrError> {
+        let dim = mandel.dim();
         let mut mat = Matrix::new(dim, dim);
         if dim == 4 || dim == 6 {
             let max = if dim == 4 { 3 } else { 6 };
@@ -300,7 +300,7 @@ impl Tensor4 {
     /// * `inp` -- the standard (not Mandel) matrix of components given with
     ///   respect to an orthonormal Cartesian basis. The matrix must be (9,9),
     ///   even if it corresponds to a minor-symmetric tensor.
-    /// * `case` -- the [Mandel] case
+    /// * `mandel` -- the [Mandel] representation
     ///
     /// # Example
     ///
@@ -333,8 +333,8 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_matrix(inp: &[[f64; 9]; 9], case: Mandel) -> Result<Self, StrError> {
-        let dim = case.dim();
+    pub fn from_matrix(inp: &[[f64; 9]; 9], mandel: Mandel) -> Result<Self, StrError> {
+        let dim = mandel.dim();
         let mut mat = Matrix::new(dim, dim);
         if dim == 4 || dim == 6 {
             let max = if dim == 4 { 3 } else { 6 };
@@ -1024,21 +1024,21 @@ mod tests {
     use serde::{Deserialize, Serialize};
 
     #[test]
-    fn new_and_case_work() {
+    fn new_and_mandel_work() {
         // general
         let dd = Tensor4::new(Mandel::General);
         assert_eq!(dd.mat.as_data().len(), 81);
-        assert_eq!(dd.case(), Mandel::General);
+        assert_eq!(dd.mandel(), Mandel::General);
 
         // symmetric
         let dd = Tensor4::new(Mandel::Symmetric);
         assert_eq!(dd.mat.as_data().len(), 36);
-        assert_eq!(dd.case(), Mandel::Symmetric);
+        assert_eq!(dd.mandel(), Mandel::Symmetric);
 
         // symmetric 2d
         let dd = Tensor4::new(Mandel::Symmetric2D);
         assert_eq!(dd.mat.as_data().len(), 16);
-        assert_eq!(dd.case(), Mandel::Symmetric2D);
+        assert_eq!(dd.mandel(), Mandel::Symmetric2D);
     }
 
     #[test]

@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 /// depending on the symmetry, we may store fewer components. Also, we may store
 /// only 4 components of Symmetric 2D tensors.
 ///
-/// **General case:**
+/// **General:**
 ///
 /// ```text
 ///                       ┌                ┐
@@ -72,7 +72,7 @@ impl Tensor2 {
     ///
     /// # Input
     ///
-    /// * `case` -- the [Mandel] case
+    /// * `mandel` -- the [Mandel] representation
     ///
     /// # Example
     ///
@@ -90,9 +90,9 @@ impl Tensor2 {
     ///     assert_eq!(c.vec.as_data(), &[0.0,0.0,0.0,  0.0]);
     /// }
     /// ```
-    pub fn new(case: Mandel) -> Self {
+    pub fn new(mandel: Mandel) -> Self {
         Tensor2 {
-            vec: Vector::new(case.dim()),
+            vec: Vector::new(mandel.dim()),
         }
     }
 
@@ -152,9 +152,9 @@ impl Tensor2 {
         Ok(tt)
     }
 
-    /// Returns the Mandel case associated with this Tensor2
+    /// Returns the Mandel representation associated with this Tensor2
     #[inline]
-    pub fn case(&self) -> Mandel {
+    pub fn mandel(&self) -> Mandel {
         Mandel::new(self.vec.dim())
     }
 
@@ -269,7 +269,7 @@ impl Tensor2 {
     /// # Input
     ///
     /// * `tt` -- the standard (not Mandel) Tij components given  with respect to an orthonormal Cartesian basis
-    /// * `case` -- the [Mandel] case
+    /// * `mandel` -- the [Mandel] representation
     ///
     /// # Notes
     ///
@@ -350,8 +350,8 @@ impl Tensor2 {
     /// }
     /// ```
     #[inline]
-    pub fn from_matrix(tt: &dyn AsMatrix3x3, case: Mandel) -> Result<Self, StrError> {
-        let mut res = Tensor2::new(case);
+    pub fn from_matrix(tt: &dyn AsMatrix3x3, mandel: Mandel) -> Result<Self, StrError> {
+        let mut res = Tensor2::new(mandel);
         res.set_matrix(tt)?;
         Ok(res)
     }
@@ -380,8 +380,8 @@ impl Tensor2 {
     ///      └   ┘"
     /// );
     /// ```
-    pub fn identity(case: Mandel) -> Self {
-        let mut res = Tensor2::new(case);
+    pub fn identity(mandel: Mandel) -> Self {
+        let mut res = Tensor2::new(mandel);
         res.vec[0] = 1.0;
         res.vec[1] = 1.0;
         res.vec[2] = 1.0;
@@ -519,7 +519,7 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn to_matrix_2d(&self) -> (f64, Matrix) {
-        assert_eq!(self.case(), Mandel::Symmetric2D);
+        assert_eq!(self.mandel(), Mandel::Symmetric2D);
         let mut tt = Matrix::new(2, 2);
         tt.set(0, 0, self.get(0, 0));
         tt.set(0, 1, self.get(0, 1));
@@ -645,7 +645,7 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn sym_set(&mut self, i: usize, j: usize, value: f64) {
-        assert!(self.case() != Mandel::General);
+        assert!(self.mandel() != Mandel::General);
         let m = IJ_TO_M_SYM[i][j];
         if i == j {
             self.vec[m] = value;
@@ -695,7 +695,7 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn sym_add(&mut self, i: usize, j: usize, alpha: f64, value: f64) {
-        assert!(self.case() != Mandel::General);
+        assert!(self.mandel() != Mandel::General);
         assert!(i <= j);
         let m = IJ_TO_M_SYM[i][j];
         if i == j {
@@ -1697,40 +1697,40 @@ mod tests {
     use serde::{Deserialize, Serialize};
 
     #[test]
-    fn new_and_case_work() {
+    fn new_and_mandel_work() {
         // general
         let tt = Tensor2::new(Mandel::General);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.vec.as_data(), correct);
-        assert_eq!(tt.case(), Mandel::General);
+        assert_eq!(tt.mandel(), Mandel::General);
 
         // symmetric 3D
         let tt = Tensor2::new(Mandel::Symmetric);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.vec.as_data(), correct);
-        assert_eq!(tt.case(), Mandel::Symmetric);
+        assert_eq!(tt.mandel(), Mandel::Symmetric);
 
         let tt = Tensor2::new_sym(false);
         assert_eq!(tt.vec.as_data(), correct);
-        assert_eq!(tt.case(), Mandel::Symmetric);
+        assert_eq!(tt.mandel(), Mandel::Symmetric);
 
         let tt = Tensor2::new_sym_ndim(3);
         assert_eq!(tt.vec.as_data(), correct);
-        assert_eq!(tt.case(), Mandel::Symmetric);
+        assert_eq!(tt.mandel(), Mandel::Symmetric);
 
         // symmetric 2D
         let tt = Tensor2::new(Mandel::Symmetric2D);
         let correct = &[0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.vec.as_data(), correct);
-        assert_eq!(tt.case(), Mandel::Symmetric2D);
+        assert_eq!(tt.mandel(), Mandel::Symmetric2D);
 
         let tt = Tensor2::new_sym(true);
         assert_eq!(tt.vec.as_data(), correct);
-        assert_eq!(tt.case(), Mandel::Symmetric2D);
+        assert_eq!(tt.mandel(), Mandel::Symmetric2D);
 
         let tt = Tensor2::new_sym_ndim(2);
         assert_eq!(tt.vec.as_data(), correct);
-        assert_eq!(tt.case(), Mandel::Symmetric2D);
+        assert_eq!(tt.mandel(), Mandel::Symmetric2D);
     }
 
     #[test]
@@ -2065,7 +2065,7 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn to_matrix_2d_panics_on_3d_case() {
+    fn to_matrix_2d_panics_on_3d() {
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -2762,7 +2762,7 @@ mod tests {
 
     fn check_sample(
         sample: &SampleTensor2,
-        case: Mandel,
+        mandel: Mandel,
         tol_norm: f64,
         tol_trace: f64,
         tol_det: f64,
@@ -2770,7 +2770,7 @@ mod tests {
         tol_dev_det: f64,
         verbose: bool,
     ) {
-        let tt = Tensor2::from_matrix(&sample.matrix, case).unwrap();
+        let tt = Tensor2::from_matrix(&sample.matrix, mandel).unwrap();
         if verbose {
             println!("{}", sample.desc);
             println!("    err(norm) = {:?}", tt.norm() - sample.norm);
@@ -2828,8 +2828,16 @@ mod tests {
 
     /// --- PRINCIPAL INVARIANTS -------------------------------------------------------------------------------------------
 
-    fn check_iis(sample: &SampleTensor2, case: Mandel, tol_a: f64, tol_b: f64, tol_c: f64, tol_d: f64, verbose: bool) {
-        let tt = Tensor2::from_matrix(&sample.matrix, case).unwrap();
+    fn check_iis(
+        sample: &SampleTensor2,
+        mandel: Mandel,
+        tol_a: f64,
+        tol_b: f64,
+        tol_c: f64,
+        tol_d: f64,
+        verbose: bool,
+    ) {
+        let tt = Tensor2::from_matrix(&sample.matrix, mandel).unwrap();
         let jj2 = -sample.deviator_second_invariant;
         let jj3 = sample.deviator_determinant;
         if verbose {
@@ -2842,7 +2850,7 @@ mod tests {
             println!("    err(I3) = {:?}", f64::abs(tt.invariant_ii3() - sample.determinant));
             println!("    err(J2) = {:?}", f64::abs(tt.invariant_jj2() - jj2));
             println!("    err(J3) = {:?}", f64::abs(tt.invariant_jj3() - jj3));
-            if case == Mandel::Symmetric || case == Mandel::Symmetric2D {
+            if mandel == Mandel::Symmetric || mandel == Mandel::Symmetric2D {
                 let norm_s = tt.deviator_norm();
                 println!("    err(J2 - ½‖s‖²) = {:?}", f64::abs(jj2 - norm_s * norm_s / 2.0));
             }
@@ -2852,7 +2860,7 @@ mod tests {
         approx_eq(tt.invariant_ii3(), sample.determinant, tol_b);
         approx_eq(tt.invariant_jj2(), jj2, tol_c);
         approx_eq(tt.invariant_jj3(), jj3, tol_c);
-        if case == Mandel::Symmetric || case == Mandel::Symmetric2D {
+        if mandel == Mandel::Symmetric || mandel == Mandel::Symmetric2D {
             let norm_s = tt.deviator_norm();
             approx_eq(jj2, norm_s * norm_s / 2.0, tol_d);
         }
@@ -3054,7 +3062,7 @@ mod tests {
     }
 
     #[test]
-    fn lode_invariant_handles_spacial_cases() {
+    fn lode_invariant_handles_special_cases() {
         let c = Mandel::Symmetric;
 
         // norm(deviator) = 0  with l = 0

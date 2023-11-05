@@ -116,39 +116,46 @@ impl Tensor2 {
         }
     }
 
-    /// Allocates a diagonal Tensor2 from octahedral invariants
+    /// Allocates a diagonal Tensor2 from octahedral components
     ///
-    /// In matrix form, the diagonal component of the tensor are the principal stresses `(σ1, σ2, σ3)`:
+    /// In matrix form, the diagonal components of the tensor are the principal values `(λ1, λ2, λ3)`:
     ///
     /// ```text
     /// ┌          ┐
-    /// │ σ1  0  0 │
-    /// │  0 σ2  0 │
-    /// │  0  0 σ3 │
+    /// │ λ1  0  0 │
+    /// │  0 λ2  0 │
+    /// │  0  0 λ3 │
     /// └          ┘
     /// ```
     ///
     /// # Input
     ///
-    /// * `sigma_m` -- mean pressure invariant `σm = ⅓ trace(σ)`
-    /// * `sigma_d` -- deviatoric stress (von Mises) invariant `σd = ‖s‖ √3/√2 = √3 × J2`
-    /// * `lode` -- Lode invariant `l = cos(3θ) = (3 √3 J3)/(2 pow(J2,1.5))`.
+    /// * `distance` -- distance from the octahedral plane to the origin: `d = (λ1 + λ2 + λ3) / √3`
+    /// * `radius` -- radius on the octahedral plane: `r = ‖s‖`
+    /// * `lode` -- Lode invariant: `l = cos(3θ) = (3 √3 J3)/(2 pow(J2,1.5))`
     ///   **Note:** The Lode invariant must be in `-1 ≤ lode ≤ 1`
     /// * `two_dim` -- 2D instead of 3D?
-    pub fn new_from_oct_invariants(sigma_m: f64, sigma_d: f64, lode: f64, two_dim: bool) -> Result<Self, StrError> {
+    ///
+    /// # Notes
+    ///
+    /// The octahedral components and the invariants are related as follows:
+    ///
+    /// ```text
+    /// σm = d / √3   →  d = σm √3
+    /// σd = r √3/√2  →  r = σd √2/√3 = √2 √J2
+    /// ```
+    pub fn new_from_octahedral(distance: f64, radius: f64, lode: f64, two_dim: bool) -> Result<Self, StrError> {
         if lode < -1.0 || lode > 1.0 {
             return Err("the following range must be satisfied: -1 ≤ lode ≤ 1");
         }
-        let d = SQRT_3 * sigma_m;
-        let r = SQRT_2_BY_3 * sigma_d;
         let theta = f64::acos(lode) / 3.0;
-        let ss1 = r * f64::cos(theta);
-        let ss2 = d;
-        let ss3 = r * f64::sin(theta);
+        let star1 = radius * f64::cos(theta);
+        let star2 = distance;
+        let star3 = radius * f64::sin(theta);
         let mut tt = Tensor2::new_sym(two_dim);
-        tt.vec[0] = (SQRT_2 * ss1 + ss2) / SQRT_3;
-        tt.vec[1] = -ss1 / SQRT_6 + ss2 / SQRT_3 - ss3 / SQRT_2;
-        tt.vec[2] = -ss1 / SQRT_6 + ss2 / SQRT_3 + ss3 / SQRT_2;
+        tt.vec[0] = (SQRT_2 * star1 + star2) / SQRT_3;
+        tt.vec[1] = -star1 / SQRT_6 + star2 / SQRT_3 - star3 / SQRT_2;
+        tt.vec[2] = -star1 / SQRT_6 + star2 / SQRT_3 + star3 / SQRT_2;
         Ok(tt)
     }
 
@@ -1255,6 +1262,12 @@ impl Tensor2 {
     ///       + σ₁₂² + σ₂₃² + σ₁₃² + σ₂₁² + σ₃₂² + σ₃₁²
     /// ```
     ///
+    /// Also the radius in the octahedral plane is:
+    ///
+    /// ```text
+    /// r = ‖s‖ =
+    /// ```
+    ///
     /// # Example
     ///
     /// ```
@@ -1467,6 +1480,14 @@ impl Tensor2 {
     /// J2 = ½ s : sᵀ = ½ s : s = ½ ‖s‖² (symmetric σ and s)
     /// ```
     ///
+    /// Thus:
+    ///
+    /// ```text
+    /// J2 = ½ r²
+    /// ```
+    ///
+    /// where `r = ‖s‖` is the radius on the octahedral plane.
+    ///
     /// # Example
     ///
     /// ```
@@ -1538,8 +1559,10 @@ impl Tensor2 {
     /// Returns the mean pressure invariant
     ///
     /// ```text
-    /// σm = ⅓ trace(σ)
+    /// σm = ⅓ trace(σ) = d / √3
     /// ```
+    ///
+    /// where `d = trace(σ) √3` is the distance from the octahedral plane to the origin.
     ///
     /// # Example
     ///
@@ -1568,8 +1591,10 @@ impl Tensor2 {
     /// or equivalent stress.
     ///
     /// ```text
-    /// σd = norm(dev(σ)) × √3/√2 = ‖s‖ √3/√2 = √3 × J2
+    /// σd = ‖s‖ √3/√2 = r √3/√2  = √3 √J2
     /// ```
+    ///
+    /// where `r = ‖s‖` is the radius on the octahedral plane.
     ///
     /// # Example
     ///
@@ -1685,6 +1710,35 @@ impl Tensor2 {
             None
         }
     }
+
+    /// Calculates the octahedral invariants
+    ///
+    /// # Input
+    ///
+    /// Returns `(distance, radius, lode)` where:
+    ///
+    /// * `distance` -- distance `d` from the octahedral plane to the origin
+    /// * `radius` -- radius `r` on the octahedral plane
+    /// * `lode` -- Lode invariant `l` in `-1 ≤ lode ≤ 1`
+    ///
+    /// # Returns
+    ///
+    /// If `J2 > TOL_J2`, returns `l`. Otherwise, returns None.
+    ///
+    /// # Definitions
+    ///
+    /// ```text
+    /// d = trace(T) / √3
+    /// r = ‖dev(T)‖
+    /// l = cos(3θ) = (3 √3 J3)/(2 pow(J2,1.5))
+    /// ```
+    #[inline]
+    pub fn invariants_octahedral(&self) -> (f64, f64, Option<f64>) {
+        let distance = self.invariant_ii1() / SQRT_3;
+        let radius = self.deviator_norm();
+        let lode = self.invariant_lode();
+        (distance, radius, lode)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1692,7 +1746,7 @@ impl Tensor2 {
 #[cfg(test)]
 mod tests {
     use super::Tensor2;
-    use crate::{Mandel, SampleTensor2, SamplesTensor2, IDENTITY2, SQRT_2, SQRT_3};
+    use crate::{Mandel, SampleTensor2, SamplesTensor2, IDENTITY2, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2};
     use russell_lab::{approx_eq, mat_approx_eq, mat_mat_mul, math::PI, vec_approx_eq, Matrix};
     use serde::{Deserialize, Serialize};
 
@@ -3077,30 +3131,7 @@ mod tests {
     }
 
     #[test]
-    fn new_from_oct_invariants_works() {
-        let (sigma_m, sigma_d) = (1.0, 3.0);
-
-        let tt = Tensor2::new_from_oct_invariants(sigma_m, sigma_d, 1.0, true).unwrap();
-        assert_eq!(tt.vec.dim(), 4);
-        approx_eq(tt.vec[0], 3.0, 1e-15);
-        approx_eq(tt.vec[1], 0.0, 1e-15);
-        approx_eq(tt.vec[2], 0.0, 1e-15);
-        assert_eq!(tt.vec[3], 0.0);
-
-        let tt = Tensor2::new_from_oct_invariants(sigma_m, sigma_d, 0.0, true).unwrap();
-        assert_eq!(tt.vec.dim(), 4);
-        approx_eq(tt.vec[0], 1.0 + SQRT_3, 1e-15);
-        approx_eq(tt.vec[1], 1.0 - SQRT_3, 1e-15);
-        approx_eq(tt.vec[2], 1.0, 1e-15);
-        assert_eq!(tt.vec[3], 0.0);
-
-        let tt = Tensor2::new_from_oct_invariants(sigma_m, sigma_d, -1.0, true).unwrap();
-        assert_eq!(tt.vec.dim(), 4);
-        approx_eq(tt.vec[0], 2.0, 1e-15);
-        approx_eq(tt.vec[1], -1.0, 1e-15);
-        approx_eq(tt.vec[2], 2.0, 1e-15);
-        assert_eq!(tt.vec[3], 0.0);
-
+    fn invariants_octahedral_works() {
         // the following data corresponds to sigma_m = 1 and sigma_d = 3
         #[rustfmt::skip]
         let principal_stresses_and_lode = [
@@ -3122,12 +3153,37 @@ mod tests {
             aux.vec[0] = *sigma_1;
             aux.vec[1] = *sigma_2;
             aux.vec[2] = *sigma_3;
-            let sigma_m = aux.invariant_sigma_m();
-            let sigma_d = aux.invariant_sigma_d();
-            let lode = aux.invariant_lode().unwrap();
-            approx_eq(sigma_m, 1.0, 1e-15);
-            approx_eq(sigma_d, 3.0, 1e-15);
-            approx_eq(lode, *lode_correct, 1e-15);
+            let (d, r, l) = aux.invariants_octahedral();
+            approx_eq(d / SQRT_3, 1.0, 1e-15);
+            approx_eq(r * SQRT_3_BY_2, 3.0, 1e-15);
+            approx_eq(l.unwrap(), *lode_correct, 1e-15);
         }
+    }
+
+    #[test]
+    fn new_from_oct_invariants_works() {
+        let (sigma_m, sigma_d) = (1.0, 3.0);
+        let (distance, radius) = (sigma_m * SQRT_3, sigma_d * SQRT_2_BY_3);
+
+        let tt = Tensor2::new_from_octahedral(distance, radius, 1.0, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 3.0, 1e-15);
+        approx_eq(tt.vec[1], 0.0, 1e-15);
+        approx_eq(tt.vec[2], 0.0, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
+
+        let tt = Tensor2::new_from_octahedral(distance, radius, 0.0, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 1.0 + SQRT_3, 1e-15);
+        approx_eq(tt.vec[1], 1.0 - SQRT_3, 1e-15);
+        approx_eq(tt.vec[2], 1.0, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
+
+        let tt = Tensor2::new_from_octahedral(distance, radius, -1.0, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 2.0, 1e-15);
+        approx_eq(tt.vec[1], -1.0, 1e-15);
+        approx_eq(tt.vec[2], 2.0, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
     }
 }

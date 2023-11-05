@@ -1591,7 +1591,7 @@ impl Tensor2 {
     /// or equivalent stress.
     ///
     /// ```text
-    /// σd = ‖s‖ √3/√2 = r √3/√2  = √3 √J2
+    /// σd = ‖s‖ √3/√2 = r √3/√2 = √3 √J2
     /// ```
     ///
     /// where `r = ‖s‖` is the radius on the octahedral plane.

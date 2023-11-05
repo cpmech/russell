@@ -7,10 +7,10 @@ pub struct Spectral2 {
     /// The mandel representation
     mandel: Mandel,
 
-    /// Eigenvalues; dim = 3
+    /// Holds the eigenvalues; dim = 3
     pub lambda: Vector,
 
-    /// Eigenprojectors; set of 3 symmetric Tensor2 (dim = 6 or 4)
+    /// Holds the eigenprojectors; set of 3 symmetric Tensor2 (dim = 6 or 4)
     pub projectors: Vec<Tensor2>,
 }
 
@@ -36,6 +36,8 @@ impl Spectral2 {
     /// # Results
     ///
     /// The results are available in [Spectral2::lambda] and [Spectral2::projectors].
+    ///
+    /// TODO: Rewrite this function to avoid temporary memory allocation
     pub fn decompose(&mut self, tt: &Tensor2) -> Result<(), StrError> {
         if tt.mandel() != self.mandel {
             return Err("the mandel representation is incompatible");

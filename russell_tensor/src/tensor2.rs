@@ -146,7 +146,7 @@ impl Tensor2 {
     /// ```
     pub fn new_from_octahedral(distance: f64, radius: f64, lode: f64, two_dim: bool) -> Result<Self, StrError> {
         if lode < -1.0 || lode > 1.0 {
-            return Err("the following range must be satisfied: -1 ≤ lode ≤ 1");
+            return Err("lode invariant must be in -1 ≤ lode ≤ 1");
         }
         let theta = f64::acos(lode) / 3.0;
         let star1 = radius * f64::cos(theta);
@@ -3164,6 +3164,11 @@ mod tests {
     fn new_from_oct_invariants_works() {
         let (sigma_m, sigma_d) = (1.0, 3.0);
         let (distance, radius) = (sigma_m * SQRT_3, sigma_d * SQRT_2_BY_3);
+
+        assert_eq!(
+            Tensor2::new_from_octahedral(0.0, 0.0, -2.0, true).err(),
+            Some("lode invariant must be in -1 ≤ lode ≤ 1")
+        );
 
         let tt = Tensor2::new_from_octahedral(distance, radius, 1.0, true).unwrap();
         assert_eq!(tt.vec.dim(), 4);

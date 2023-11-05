@@ -131,6 +131,8 @@ impl Tensor2 {
     /// ```text
     /// σm = d / √3   →  d = σm √3
     /// σd = r √3/√2  →  r = σd √2/√3 = √2 √J2
+    /// εv = d √3     →  d = εv / √3
+    /// εd = r √2/√3  →  r = εd √3/√2
     /// ```
     ///
     /// In matrix form, the diagonal components of the tensor are the principal values `(λ1, λ2, λ3)`:
@@ -1618,7 +1620,7 @@ impl Tensor2 {
     /// Returns the volumetric strain invariant
     ///
     /// ```text
-    /// εv = trace(ε)
+    /// εv = trace(ε) = d √3
     /// ```
     ///
     /// # Example
@@ -1645,7 +1647,7 @@ impl Tensor2 {
     /// Returns the deviatoric strain invariant
     ///
     /// ```text
-    /// εd = norm(dev(ε)) × √2/√3
+    /// εd = norm(dev(ε)) × √2/√3 = r √2/√3
     /// ```
     ///
     /// # Example

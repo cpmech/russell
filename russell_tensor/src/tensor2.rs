@@ -118,16 +118,6 @@ impl Tensor2 {
 
     /// Allocates a diagonal Tensor2 from octahedral components
     ///
-    /// In matrix form, the diagonal components of the tensor are the principal values `(λ1, λ2, λ3)`:
-    ///
-    /// ```text
-    /// ┌          ┐
-    /// │ λ1  0  0 │
-    /// │  0 λ2  0 │
-    /// │  0  0 λ3 │
-    /// └          ┘
-    /// ```
-    ///
     /// # Input
     ///
     /// * `distance` -- distance from the octahedral plane to the origin: `d = (λ1 + λ2 + λ3) / √3`
@@ -136,13 +126,21 @@ impl Tensor2 {
     ///   **Note:** The Lode invariant must be in `-1 ≤ lode ≤ 1`
     /// * `two_dim` -- 2D instead of 3D?
     ///
-    /// # Notes
-    ///
     /// The octahedral components and the invariants are related as follows:
     ///
     /// ```text
     /// σm = d / √3   →  d = σm √3
     /// σd = r √3/√2  →  r = σd √2/√3 = √2 √J2
+    /// ```
+    ///
+    /// In matrix form, the diagonal components of the tensor are the principal values `(λ1, λ2, λ3)`:
+    ///
+    /// ```text
+    /// ┌          ┐
+    /// │ λ1  0  0 │
+    /// │  0 λ2  0 │
+    /// │  0  0 λ3 │
+    /// └          ┘
     /// ```
     pub fn new_from_octahedral(distance: f64, radius: f64, lode: f64, two_dim: bool) -> Result<Self, StrError> {
         if lode < -1.0 || lode > 1.0 {

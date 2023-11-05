@@ -215,7 +215,7 @@ mod tests {
     }
 
     #[test]
-    fn invariants_octahedral_and_octahedral_basis_work() {
+    fn octahedral_basis_works() {
         // the following data corresponds to sigma_m = 1 and sigma_d = 3
         #[rustfmt::skip]
         let principal_stresses_and_lode = [

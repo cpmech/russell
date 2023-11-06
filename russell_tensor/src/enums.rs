@@ -66,6 +66,17 @@ impl Mandel {
             Mandel::Symmetric2D => 4,
         }
     }
+
+    /// Returns whether the space dimension is 2D or not
+    ///
+    /// Note: only Symmetric2D yields "true".
+    pub fn two_dim(&self) -> bool {
+        match self {
+            Mandel::General => false,
+            Mandel::Symmetric => false,
+            Mandel::Symmetric2D => true,
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -95,5 +106,8 @@ mod tests {
         assert_eq!(Mandel::General.dim(), 9);
         assert_eq!(Mandel::Symmetric.dim(), 6);
         assert_eq!(Mandel::Symmetric2D.dim(), 4);
+        assert_eq!(Mandel::General.two_dim(), false);
+        assert_eq!(Mandel::Symmetric.two_dim(), false);
+        assert_eq!(Mandel::Symmetric2D.two_dim(), true);
     }
 }

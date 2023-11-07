@@ -1044,6 +1044,49 @@ impl Tensor4 {
         pp_symdev.mat.set(5, 5, 1.0);
         pp_symdev
     }
+
+    /// Sets this tensor equal the symmetric-deviatoric making projector (Psymdev)
+    ///
+    /// ```text
+    /// Definition:
+    ///                _
+    /// Psymdev = ½ (I ⊗ I + I ⊗ I) - ⅓ I ⊗ I = Psym - Piso
+    ///                        ‾
+    /// ```
+    ///
+    /// ```text
+    /// Mandel matrix:
+    ///             ┌                        ┐
+    ///             │  ⅔ -⅓ -⅓  0 0 0  0 0 0 │
+    ///             │ -⅓  ⅔ -⅓  0 0 0  0 0 0 │
+    ///             │ -⅓ -⅓  ⅔  0 0 0  0 0 0 │
+    ///             │  0  0  0  1 0 0  0 0 0 │
+    /// [Psymdev] = │  0  0  0  0 1 0  0 0 0 │
+    ///             │  0  0  0  0 0 1  0 0 0 │
+    ///             │  0  0  0  0 0 0  0 0 0 │
+    ///             │  0  0  0  0 0 0  0 0 0 │
+    ///             │  0  0  0  0 0 0  0 0 0 │
+    ///             └                        ┘
+    /// ```
+    ///
+    /// Note: this tensor can be represented in reduced-dimension.
+    pub fn set_pp_symdev(&mut self) {
+        self.mat.fill(0.0);
+        self.mat.set(0, 0, TWO_BY_3);
+        self.mat.set(0, 1, -ONE_BY_3);
+        self.mat.set(0, 2, -ONE_BY_3);
+        self.mat.set(1, 0, -ONE_BY_3);
+        self.mat.set(1, 1, TWO_BY_3);
+        self.mat.set(1, 2, -ONE_BY_3);
+        self.mat.set(2, 0, -ONE_BY_3);
+        self.mat.set(2, 1, -ONE_BY_3);
+        self.mat.set(2, 2, TWO_BY_3);
+        self.mat.set(3, 3, 1.0);
+        if self.mandel().dim() > 4 {
+            self.mat.set(4, 4, 1.0);
+            self.mat.set(5, 5, 1.0);
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1699,6 +1742,50 @@ mod tests {
              │  0.000  0.000  0.000  0.000  1.000  0.000 │\n\
              │  0.000  0.000  0.000  0.000  0.000  1.000 │\n\
              └                                           ┘"
+        );
+    }
+
+    #[test]
+    fn set_pp_symdev_works() {
+        let mut pp_symdev = Tensor4::new(Mandel::General);
+        pp_symdev.set_pp_symdev();
+        assert_eq!(
+            format!("{:.3}", pp_symdev.mat),
+            "┌                                                                ┐\n\
+             │  0.667 -0.333 -0.333  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
+             │ -0.333  0.667 -0.333  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
+             │ -0.333 -0.333  0.667  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
+             │  0.000  0.000  0.000  1.000  0.000  0.000  0.000  0.000  0.000 │\n\
+             │  0.000  0.000  0.000  0.000  1.000  0.000  0.000  0.000  0.000 │\n\
+             │  0.000  0.000  0.000  0.000  0.000  1.000  0.000  0.000  0.000 │\n\
+             │  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
+             │  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
+             │  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
+             └                                                                ┘"
+        );
+        let mut pp_symdev = Tensor4::new(Mandel::Symmetric);
+        pp_symdev.set_pp_symdev();
+        assert_eq!(
+            format!("{:.3}", pp_symdev.mat),
+            "┌                                           ┐\n\
+             │  0.667 -0.333 -0.333  0.000  0.000  0.000 │\n\
+             │ -0.333  0.667 -0.333  0.000  0.000  0.000 │\n\
+             │ -0.333 -0.333  0.667  0.000  0.000  0.000 │\n\
+             │  0.000  0.000  0.000  1.000  0.000  0.000 │\n\
+             │  0.000  0.000  0.000  0.000  1.000  0.000 │\n\
+             │  0.000  0.000  0.000  0.000  0.000  1.000 │\n\
+             └                                           ┘"
+        );
+        let mut pp_symdev = Tensor4::new(Mandel::Symmetric2D);
+        pp_symdev.set_pp_symdev();
+        assert_eq!(
+            format!("{:.3}", pp_symdev.mat),
+            "┌                             ┐\n\
+             │  0.667 -0.333 -0.333  0.000 │\n\
+             │ -0.333  0.667 -0.333  0.000 │\n\
+             │ -0.333 -0.333  0.667  0.000 │\n\
+             │  0.000  0.000  0.000  1.000 │\n\
+             └                             ┘"
         );
     }
 }

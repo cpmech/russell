@@ -148,6 +148,26 @@ impl Tensor4 {
         }
     }
 
+    /// Allocates a minor-symmetric Tensor4
+    pub fn new_sym(two_dim: bool) -> Self {
+        if two_dim {
+            Tensor4::new(Mandel::Symmetric2D)
+        } else {
+            Tensor4::new(Mandel::Symmetric)
+        }
+    }
+
+    /// Allocates a minor-symmetric Tensor4 given the space dimension
+    ///
+    /// **Note:** `space_ndim` must be 2 or 3 (only 2 is checked, otherwise 3 is assumed)
+    pub fn new_sym_ndim(space_ndim: usize) -> Self {
+        if space_ndim == 2 {
+            Tensor4::new(Mandel::Symmetric2D)
+        } else {
+            Tensor4::new(Mandel::Symmetric)
+        }
+    }
+
     /// Returns the Mandel representation associated with this Tensor4
     #[inline]
     pub fn mandel(&self) -> Mandel {
@@ -1106,9 +1126,21 @@ mod tests {
         let dd = Tensor4::new(Mandel::Symmetric);
         assert_eq!(dd.mat.as_data().len(), 36);
         assert_eq!(dd.mandel(), Mandel::Symmetric);
+        let dd = Tensor4::new_sym(false);
+        assert_eq!(dd.mat.as_data().len(), 36);
+        assert_eq!(dd.mandel(), Mandel::Symmetric);
+        let dd = Tensor4::new_sym_ndim(3);
+        assert_eq!(dd.mat.as_data().len(), 36);
+        assert_eq!(dd.mandel(), Mandel::Symmetric);
 
         // symmetric 2d
         let dd = Tensor4::new(Mandel::Symmetric2D);
+        assert_eq!(dd.mat.as_data().len(), 16);
+        assert_eq!(dd.mandel(), Mandel::Symmetric2D);
+        let dd = Tensor4::new_sym(true);
+        assert_eq!(dd.mat.as_data().len(), 16);
+        assert_eq!(dd.mandel(), Mandel::Symmetric2D);
+        let dd = Tensor4::new_sym_ndim(2);
         assert_eq!(dd.mat.as_data().len(), 16);
         assert_eq!(dd.mandel(), Mandel::Symmetric2D);
     }

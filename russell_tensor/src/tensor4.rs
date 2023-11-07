@@ -1090,7 +1090,8 @@ impl Tensor4 {
 #[cfg(test)]
 mod tests {
     use super::{Tensor4, MN_TO_IJKL};
-    use crate::{Mandel, SamplesTensor4, P_SYMDEV};
+    use crate::{Mandel, SamplesTensor4};
+    use crate::{IDENTITY4, P_DEV, P_ISO, P_SKEW, P_SYM, P_SYMDEV, TRACE_PROJECTION, TRANSPOSITION};
     use russell_lab::{approx_eq, mat_approx_eq};
     use serde::{Deserialize, Serialize};
 
@@ -1544,170 +1545,90 @@ mod tests {
     #[test]
     fn constant_ii_works() {
         let ii = Tensor4::constant_ii();
-        assert_eq!(
-            format!("{}", ii.mat),
-            "┌                   ┐\n\
-             │ 1 0 0 0 0 0 0 0 0 │\n\
-             │ 0 1 0 0 0 0 0 0 0 │\n\
-             │ 0 0 1 0 0 0 0 0 0 │\n\
-             │ 0 0 0 1 0 0 0 0 0 │\n\
-             │ 0 0 0 0 1 0 0 0 0 │\n\
-             │ 0 0 0 0 0 1 0 0 0 │\n\
-             │ 0 0 0 0 0 0 1 0 0 │\n\
-             │ 0 0 0 0 0 0 0 1 0 │\n\
-             │ 0 0 0 0 0 0 0 0 1 │\n\
-             └                   ┘"
-        );
+        assert_eq!(ii.mat.dims(), (9, 9));
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(ii.mat.get(i, j), IDENTITY4[i][j]);
+            }
+        }
     }
 
     #[test]
     fn constant_tt_works() {
         let tt = Tensor4::constant_tt();
-        assert_eq!(
-            format!("{}", tt.mat),
-            "┌                            ┐\n\
-             │  1  0  0  0  0  0  0  0  0 │\n\
-             │  0  1  0  0  0  0  0  0  0 │\n\
-             │  0  0  1  0  0  0  0  0  0 │\n\
-             │  0  0  0  1  0  0  0  0  0 │\n\
-             │  0  0  0  0  1  0  0  0  0 │\n\
-             │  0  0  0  0  0  1  0  0  0 │\n\
-             │  0  0  0  0  0  0 -1  0  0 │\n\
-             │  0  0  0  0  0  0  0 -1  0 │\n\
-             │  0  0  0  0  0  0  0  0 -1 │\n\
-             └                            ┘"
-        );
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(tt.mat.get(i, j), TRANSPOSITION[i][j]);
+            }
+        }
     }
 
     #[test]
     fn constant_jj_works() {
         let jj = Tensor4::constant_jj(false);
-        assert_eq!(
-            format!("{}", jj.mat),
-            "┌                   ┐\n\
-             │ 1 1 1 0 0 0 0 0 0 │\n\
-             │ 1 1 1 0 0 0 0 0 0 │\n\
-             │ 1 1 1 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             └                   ┘"
-        );
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(jj.mat.get(i, j), TRACE_PROJECTION[i][j]);
+            }
+        }
         let jj = Tensor4::constant_jj(true);
-        assert_eq!(
-            format!("{}", jj.mat),
-            "┌             ┐\n\
-             │ 1 1 1 0 0 0 │\n\
-             │ 1 1 1 0 0 0 │\n\
-             │ 1 1 1 0 0 0 │\n\
-             │ 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 │\n\
-             └             ┘"
-        );
+        for i in 0..6 {
+            for j in 0..6 {
+                assert_eq!(jj.mat.get(i, j), TRACE_PROJECTION[i][j]);
+            }
+        }
     }
 
     #[test]
     fn constant_pp_iso_works() {
         let pp_iso = Tensor4::constant_pp_iso(false);
-        assert_eq!(
-            format!("{:.3}", pp_iso.mat),
-            "┌                                                       ┐\n\
-             │ 0.333 0.333 0.333 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.333 0.333 0.333 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.333 0.333 0.333 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             └                                                       ┘"
-        );
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(pp_iso.mat.get(i, j), P_ISO[i][j]);
+            }
+        }
         let pp_iso = Tensor4::constant_pp_iso(true);
-        assert_eq!(
-            format!("{:.3}", pp_iso.mat),
-            "┌                                     ┐\n\
-             │ 0.333 0.333 0.333 0.000 0.000 0.000 │\n\
-             │ 0.333 0.333 0.333 0.000 0.000 0.000 │\n\
-             │ 0.333 0.333 0.333 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             └                                     ┘"
-        );
+        for i in 0..6 {
+            for j in 0..6 {
+                assert_eq!(pp_iso.mat.get(i, j), P_ISO[i][j]);
+            }
+        }
     }
 
     #[test]
     fn constant_pp_sym_works() {
         let pp_sym = Tensor4::constant_pp_sym(false);
-        assert_eq!(
-            format!("{}", pp_sym.mat),
-            "┌                   ┐\n\
-             │ 1 0 0 0 0 0 0 0 0 │\n\
-             │ 0 1 0 0 0 0 0 0 0 │\n\
-             │ 0 0 1 0 0 0 0 0 0 │\n\
-             │ 0 0 0 1 0 0 0 0 0 │\n\
-             │ 0 0 0 0 1 0 0 0 0 │\n\
-             │ 0 0 0 0 0 1 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             └                   ┘"
-        );
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(pp_sym.mat.get(i, j), P_SYM[i][j]);
+            }
+        }
         let pp_sym = Tensor4::constant_pp_sym(true);
-        assert_eq!(
-            format!("{}", pp_sym.mat),
-            "┌             ┐\n\
-             │ 1 0 0 0 0 0 │\n\
-             │ 0 1 0 0 0 0 │\n\
-             │ 0 0 1 0 0 0 │\n\
-             │ 0 0 0 1 0 0 │\n\
-             │ 0 0 0 0 1 0 │\n\
-             │ 0 0 0 0 0 1 │\n\
-             └             ┘"
-        );
+        for i in 0..6 {
+            for j in 0..6 {
+                assert_eq!(pp_sym.mat.get(i, j), P_SYM[i][j]);
+            }
+        }
     }
 
     #[test]
     fn constant_pp_skew_works() {
         let pp_skew = Tensor4::constant_pp_skew();
-        assert_eq!(
-            format!("{}", pp_skew.mat),
-            "┌                   ┐\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 1 0 0 │\n\
-             │ 0 0 0 0 0 0 0 1 0 │\n\
-             │ 0 0 0 0 0 0 0 0 1 │\n\
-             └                   ┘"
-        );
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(pp_skew.mat.get(i, j), P_SKEW[i][j]);
+            }
+        }
     }
 
     #[test]
     fn constant_pp_dev_works() {
         let pp_dev = Tensor4::constant_pp_dev();
-        assert_eq!(
-            format!("{:.3}", pp_dev.mat),
-            "┌                                                                ┐\n\
-             │  0.667 -0.333 -0.333  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │ -0.333  0.667 -0.333  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │ -0.333 -0.333  0.667  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  1.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  1.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  1.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  0.000  1.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  0.000  0.000  1.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  1.000 │\n\
-             └                                                                ┘"
-        );
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(pp_dev.mat.get(i, j), P_DEV[i][j]);
+            }
+        }
     }
 
     #[test]

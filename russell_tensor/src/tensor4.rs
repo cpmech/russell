@@ -736,7 +736,9 @@ impl Tensor4 {
         mat_copy(&mut self.mat, &other.mat)
     }
 
-    /// Returns the fourth-order identity tensor I
+    /// Returns the fourth-order identity tensor (II)
+    ///
+    /// **Note:** this tensor cannot be represented in reduced-dimension because it is not minor-symmetric.
     ///
     /// ```text
     /// Definition:
@@ -758,9 +760,6 @@ impl Tensor4 {
     ///        │ 0 0 0  0 0 0  0 0 1 │
     ///        └                     ┘
     /// ```
-    ///
-    /// Note: this tensor cannot be represented in reduced-dimension
-    /// because it is not minor-symmetric.
     pub fn constant_ii() -> Self {
         Tensor4 {
             //                       1    2    3    4    5    6    7    8    9
@@ -768,7 +767,9 @@ impl Tensor4 {
         }
     }
 
-    /// Returns the transposition tensor T
+    /// Returns the transposition tensor (TT)
+    ///
+    /// **Note:** this tensor cannot be represented in reduced-dimension because it is not minor-symmetric.
     ///
     /// ```text
     /// Definition:
@@ -791,9 +792,6 @@ impl Tensor4 {
     ///        │ 0 0 0  0 0 0   0  0 -1 │
     ///        └                        ┘
     /// ```
-    ///
-    /// Note: this tensor cannot be represented in reduced-dimension
-    /// because it is not minor-symmetric.
     pub fn constant_tt() -> Self {
         let mut tt = Tensor4 { mat: Matrix::new(9, 9) };
         tt.mat.set(0, 0, 1.0);
@@ -808,7 +806,9 @@ impl Tensor4 {
         tt
     }
 
-    /// Returns the trace-projection tensor J
+    /// Returns the trace-projection tensor (JJ)
+    ///
+    /// Note: this tensor can be represented in reduced-dimension.
     ///
     /// ```text
     /// Definition:
@@ -830,8 +830,6 @@ impl Tensor4 {
     ///        │ 0 0 0  0 0 0  0 0 0 │
     ///        └                     ┘
     /// ```
-    ///
-    /// Note: this tensor can be represented in reduced-dimension.
     pub fn constant_jj(reduced_6x6: bool) -> Self {
         let n = if reduced_6x6 { 6 } else { 9 };
         let mut jj = Tensor4 { mat: Matrix::new(n, n) };
@@ -847,7 +845,9 @@ impl Tensor4 {
         jj
     }
 
-    /// Returns the isotropic making projector Piso
+    /// Returns the isotropic making projector (Piso)
+    ///
+    /// Note: this tensor can be represented in reduced-dimension.
     ///
     /// ```text
     /// Definition:
@@ -869,8 +869,6 @@ impl Tensor4 {
     ///          │ 0 0 0  0 0 0  0 0 0 │
     ///          └                     ┘
     /// ```
-    ///
-    /// Note: this tensor can be represented in reduced-dimension.
     pub fn constant_pp_iso(reduced_6x6: bool) -> Self {
         let n = if reduced_6x6 { 6 } else { 9 };
         let mut pp_iso = Tensor4 { mat: Matrix::new(n, n) };
@@ -886,7 +884,9 @@ impl Tensor4 {
         pp_iso
     }
 
-    /// Returns the symmetric making projector Psym
+    /// Returns the symmetric making projector (Psym)
+    ///
+    /// Note: this tensor can be represented in reduced-dimension.
     ///
     /// ```text
     /// Definition:
@@ -909,8 +909,6 @@ impl Tensor4 {
     ///          │ 0 0 0  0 0 0  0 0 0 │
     ///          └                     ┘
     /// ```
-    ///
-    /// Note: this tensor can be represented in reduced-dimension.
     pub fn constant_pp_sym(reduced_6x6: bool) -> Self {
         let n = if reduced_6x6 { 6 } else { 9 };
         let mut pp_sym = Tensor4 { mat: Matrix::new(n, n) };
@@ -924,6 +922,8 @@ impl Tensor4 {
     }
 
     /// Returns the skew making projector Pskew
+    ///
+    /// **Note:** this tensor cannot be represented in reduced-dimension because it is not minor-symmetric.
     ///
     /// ```text
     /// Definition:
@@ -946,9 +946,6 @@ impl Tensor4 {
     ///           │ 0 0 0  0 0 0  0 0 1 │
     ///           └                     ┘
     /// ```
-    ///
-    /// Note: this tensor cannot be represented in reduced-dimension
-    /// because it is not minor-symmetric.
     pub fn constant_pp_skew() -> Self {
         let mut pp_skew = Tensor4 { mat: Matrix::new(9, 9) };
         pp_skew.mat.set(6, 6, 1.0);
@@ -958,6 +955,8 @@ impl Tensor4 {
     }
 
     /// Returns the deviatoric making projector Pdev
+    ///
+    /// **Note:** this tensor cannot be represented in reduced-dimension because it is not minor-symmetric.
     ///
     /// ```text
     /// Definition:
@@ -979,9 +978,6 @@ impl Tensor4 {
     ///          │  0  0  0  0 0 0  0 0 1 │
     ///          └                        ┘
     /// ```
-    ///
-    /// Note: this tensor cannot be represented in reduced-dimension
-    /// because it is not minor-symmetric.
     pub fn constant_pp_dev() -> Self {
         let mut pp_dev = Tensor4 { mat: Matrix::new(9, 9) };
         pp_dev.mat.set(0, 0, TWO_BY_3);
@@ -1004,6 +1000,8 @@ impl Tensor4 {
 
     /// Returns the symmetric-deviatoric making projector Psymdev
     ///
+    /// Note: this tensor can be represented in reduced-dimension.
+    ///
     /// ```text
     /// Definition:
     ///                _
@@ -1025,8 +1023,6 @@ impl Tensor4 {
     ///             │  0  0  0  0 0 0  0 0 0 │
     ///             └                        ┘
     /// ```
-    ///
-    /// Note: this tensor can be represented in reduced-dimension.
     pub fn constant_pp_symdev(reduced_6x6: bool) -> Self {
         let n = if reduced_6x6 { 6 } else { 9 };
         let mut pp_symdev = Tensor4 { mat: Matrix::new(n, n) };
@@ -1047,6 +1043,8 @@ impl Tensor4 {
 
     /// Sets this tensor equal the symmetric-deviatoric making projector (Psymdev)
     ///
+    /// Note: this tensor can be represented in reduced-dimension.
+    ///
     /// ```text
     /// Definition:
     ///                _
@@ -1068,8 +1066,6 @@ impl Tensor4 {
     ///             │  0  0  0  0 0 0  0 0 0 │
     ///             └                        ┘
     /// ```
-    ///
-    /// Note: this tensor can be represented in reduced-dimension.
     pub fn set_pp_symdev(&mut self) {
         self.mat.fill(0.0);
         self.mat.set(0, 0, TWO_BY_3);

@@ -1,6 +1,6 @@
 use super::{IJKL_TO_MN, IJKL_TO_MN_SYM, MN_TO_IJKL, SQRT_2};
 use crate::{Mandel, StrError, ONE_BY_3, TWO_BY_3};
-use russell_lab::Matrix;
+use russell_lab::{mat_copy, Matrix};
 use serde::{Deserialize, Serialize};
 
 /// Implements a fourth order-tensor, minor-symmetric or not
@@ -704,6 +704,38 @@ impl Tensor4 {
         }
     }
 
+    /// Sets this tensor equal to another one
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::mat_approx_eq;
+    /// use russell_tensor::{Mandel, Tensor4, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dd = Tensor4::from_matrix(&[
+    ///         [  1.0,  2.0,  3.0,  4.0,  5.0,  6.0,  7.0,  8.0,  9.0],
+    ///         [ -1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0, -8.0, -9.0],
+    ///         [  2.0,  4.0,  6.0,  8.0, 10.0, 12.0, 14.0, 16.0, 18.0],
+    ///         [ 10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0],
+    ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
+    ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
+    ///         [ -2.0, -4.0, -6.0, -8.0,-10.0,-12.0,-14.0,-16.0,-18.0],
+    ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
+    ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
+    ///     ], Mandel::General)?;
+    ///
+    ///     let mut ee = Tensor4::new(Mandel::General);
+    ///     ee.mirror(&dd)?;
+    ///
+    ///     mat_approx_eq(&dd.mat, &ee.mat, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn mirror(&mut self, other: &Tensor4) -> Result<(), StrError> {
+        mat_copy(&mut self.mat, &other.mat)
+    }
+
     /// Returns the fourth-order identity tensor I
     ///
     /// ```text
@@ -1375,6 +1407,35 @@ mod tests {
              │ 1311 1322 1333 1312 1323 1313 1312 1323 1313 │\n\
              └                                              ┘"
         );
+    }
+
+    #[test]
+    fn mirror_captures_errors() {
+        let dd = Tensor4::new(Mandel::Symmetric);
+        let mut ee = Tensor4::new(Mandel::General);
+        assert_eq!(ee.mirror(&dd).err(), Some("matrices are incompatible"));
+    }
+
+    #[test]
+    fn mirror_works() {
+        let dd = Tensor4::from_matrix(
+            &[
+                [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0],
+                [9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0],
+                [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
+                [6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0],
+                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+                [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
+                [6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0],
+                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+            ],
+            Mandel::General,
+        )
+        .unwrap();
+        let mut ee = Tensor4::new(Mandel::General);
+        ee.mirror(&dd).unwrap();
+        mat_approx_eq(&dd.mat, &ee.mat, 1e-15);
     }
 
     #[test]

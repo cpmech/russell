@@ -28,6 +28,23 @@ pub const TWO_BY_3: f64 =
 /// Second-order identity tensor in Mandel basis (len = 9)
 pub const IDENTITY2: [f64; 9] = [1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 
+/// Fourth-order symmetric-deviator projector in Mandel basis (9 x 9)
+///
+/// ```text
+/// Psymdev = ½ (I ⊗ I + I ⊗ I) - ⅓ I ⊗ I = Psym - Piso
+/// ```
+pub const P_SYMDEV: [[f64; 9]; 9] = [
+    [TWO_BY_3, -ONE_BY_3, -ONE_BY_3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    [-ONE_BY_3, TWO_BY_3, -ONE_BY_3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    [-ONE_BY_3, -ONE_BY_3, TWO_BY_3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+];
+
 /// Tolerance to avoid zero division with the J2 invariant
 ///
 /// This constant is used, for instance, in the calculation of the Lode invariant using the following expression:

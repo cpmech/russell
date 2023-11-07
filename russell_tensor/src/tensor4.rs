@@ -1094,7 +1094,7 @@ impl Tensor4 {
 #[cfg(test)]
 mod tests {
     use super::{Tensor4, MN_TO_IJKL};
-    use crate::{Mandel, SamplesTensor4};
+    use crate::{Mandel, SamplesTensor4, P_SYMDEV};
     use russell_lab::{approx_eq, mat_approx_eq};
     use serde::{Deserialize, Serialize};
 
@@ -1717,75 +1717,46 @@ mod tests {
     #[test]
     fn constant_pp_symdev_works() {
         let pp_symdev = Tensor4::constant_pp_symdev(false);
-        assert_eq!(
-            format!("{:.3}", pp_symdev.mat),
-            "┌                                                                ┐\n\
-             │  0.667 -0.333 -0.333  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │ -0.333  0.667 -0.333  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │ -0.333 -0.333  0.667  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  1.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  1.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  1.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             └                                                                ┘"
-        );
+        assert_eq!(pp_symdev.mat.dims(), (9, 9));
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(pp_symdev.mat.get(i, j), P_SYMDEV[i][j]);
+            }
+        }
         let pp_symdev = Tensor4::constant_pp_symdev(true);
-        assert_eq!(
-            format!("{:.3}", pp_symdev.mat),
-            "┌                                           ┐\n\
-             │  0.667 -0.333 -0.333  0.000  0.000  0.000 │\n\
-             │ -0.333  0.667 -0.333  0.000  0.000  0.000 │\n\
-             │ -0.333 -0.333  0.667  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  1.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  1.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  1.000 │\n\
-             └                                           ┘"
-        );
+        assert_eq!(pp_symdev.mat.dims(), (6, 6));
+        for i in 0..6 {
+            for j in 0..6 {
+                assert_eq!(pp_symdev.mat.get(i, j), P_SYMDEV[i][j]);
+            }
+        }
     }
 
     #[test]
     fn set_pp_symdev_works() {
         let mut pp_symdev = Tensor4::new(Mandel::General);
         pp_symdev.set_pp_symdev();
-        assert_eq!(
-            format!("{:.3}", pp_symdev.mat),
-            "┌                                                                ┐\n\
-             │  0.667 -0.333 -0.333  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │ -0.333  0.667 -0.333  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │ -0.333 -0.333  0.667  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  1.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  1.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  1.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             └                                                                ┘"
-        );
+        assert_eq!(pp_symdev.mat.dims(), (9, 9));
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(pp_symdev.mat.get(i, j), P_SYMDEV[i][j]);
+            }
+        }
         let mut pp_symdev = Tensor4::new(Mandel::Symmetric);
         pp_symdev.set_pp_symdev();
-        assert_eq!(
-            format!("{:.3}", pp_symdev.mat),
-            "┌                                           ┐\n\
-             │  0.667 -0.333 -0.333  0.000  0.000  0.000 │\n\
-             │ -0.333  0.667 -0.333  0.000  0.000  0.000 │\n\
-             │ -0.333 -0.333  0.667  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  1.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  1.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  1.000 │\n\
-             └                                           ┘"
-        );
+        assert_eq!(pp_symdev.mat.dims(), (6, 6));
+        for i in 0..6 {
+            for j in 0..6 {
+                assert_eq!(pp_symdev.mat.get(i, j), P_SYMDEV[i][j]);
+            }
+        }
         let mut pp_symdev = Tensor4::new(Mandel::Symmetric2D);
         pp_symdev.set_pp_symdev();
-        assert_eq!(
-            format!("{:.3}", pp_symdev.mat),
-            "┌                             ┐\n\
-             │  0.667 -0.333 -0.333  0.000 │\n\
-             │ -0.333  0.667 -0.333  0.000 │\n\
-             │ -0.333 -0.333  0.667  0.000 │\n\
-             │  0.000  0.000  0.000  1.000 │\n\
-             └                             ┘"
-        );
+        assert_eq!(pp_symdev.mat.dims(), (4, 4));
+        for i in 0..4 {
+            for j in 0..4 {
+                assert_eq!(pp_symdev.mat.get(i, j), P_SYMDEV[i][j]);
+            }
+        }
     }
 }

@@ -16,7 +16,6 @@ pub use crate::base::enums::*;
 pub use crate::base::formatters::*;
 pub use crate::base::generators::*;
 pub use crate::base::linear_fitting::*;
-pub use crate::base::macros::*;
 pub use crate::base::read_table::*;
 pub use crate::base::sort::*;
 pub use crate::base::stopwatch::*;

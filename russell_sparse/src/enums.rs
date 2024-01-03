@@ -209,6 +209,52 @@ impl Genie {
 }
 
 impl Symmetry {
+    /// Returns a new general symmetry flag with lower storage
+    pub fn new_general_lower() -> Option<Self> {
+        Some(Symmetry::General(Storage::Lower))
+    }
+
+    /// Returns a new general symmetry flag with upper storage
+    pub fn new_general_upper() -> Option<Self> {
+        Some(Symmetry::General(Storage::Upper))
+    }
+
+    /// Returns a new general symmetry flag with full storage
+    pub fn new_general_full() -> Option<Self> {
+        Some(Symmetry::General(Storage::Full))
+    }
+
+    /// Returns a new positive-definite symmetry flag with lower storage
+    pub fn new_pos_def_lower() -> Option<Self> {
+        Some(Symmetry::PositiveDefinite(Storage::Lower))
+    }
+
+    /// Returns a new positive-definite symmetry flag with upper storage
+    pub fn new_pos_def_upper() -> Option<Self> {
+        Some(Symmetry::PositiveDefinite(Storage::Upper))
+    }
+
+    /// Returns a new positive-definite symmetry flag with full storage
+    pub fn new_pos_def_full() -> Option<Self> {
+        Some(Symmetry::PositiveDefinite(Storage::Full))
+    }
+
+    /// Returns which type of storage is used, if symmetric
+    pub fn storage(symmetry: Option<Symmetry>) -> Storage {
+        match symmetry {
+            Some(sym) => {
+                if sym.lower() {
+                    Storage::Lower
+                } else if sym.upper() {
+                    Storage::Upper
+                } else {
+                    Storage::Full
+                }
+            }
+            None => Storage::Full,
+        }
+    }
+
     /// Returns true if the storage is triangular (lower or upper)
     pub fn triangular(&self) -> bool {
         match self {
@@ -500,6 +546,12 @@ mod tests {
         let pu = Symmetry::PositiveDefinite(u);
         let pf = Symmetry::PositiveDefinite(f);
 
+        assert_eq!(Some(gl), Symmetry::new_general_lower());
+        assert_eq!(Some(gu), Symmetry::new_general_upper());
+        assert_eq!(Some(gf), Symmetry::new_general_full());
+        assert_eq!(Symmetry::storage(Some(gl)), Storage::Lower);
+        assert_eq!(Symmetry::storage(Some(gu)), Storage::Upper);
+        assert_eq!(Symmetry::storage(Some(gf)), Storage::Full);
         assert_eq!(gl.triangular(), true);
         assert_eq!(gu.triangular(), true);
         assert_eq!(gf.triangular(), false);
@@ -524,6 +576,12 @@ mod tests {
             Err("if the matrix is general symmetric, the required storage is lower triangular")
         );
 
+        assert_eq!(Some(pl), Symmetry::new_pos_def_lower());
+        assert_eq!(Some(pu), Symmetry::new_pos_def_upper());
+        assert_eq!(Some(pf), Symmetry::new_pos_def_full());
+        assert_eq!(Symmetry::storage(Some(pl)), Storage::Lower);
+        assert_eq!(Symmetry::storage(Some(pu)), Storage::Upper);
+        assert_eq!(Symmetry::storage(Some(pf)), Storage::Full);
         assert_eq!(pl.triangular(), true);
         assert_eq!(pu.triangular(), true);
         assert_eq!(pf.triangular(), false);
@@ -547,5 +605,7 @@ mod tests {
             pu.status(true, false),
             Err("if the matrix is positive-definite, the required storage is lower triangular")
         );
+
+        assert_eq!(Symmetry::storage(None), Storage::Full);
     }
 }

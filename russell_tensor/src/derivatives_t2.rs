@@ -42,7 +42,7 @@ pub fn deriv1_norm(d1: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, Str
 ///
 /// Note: `sigma` must be Symmetric or Symmetric2D.
 pub fn deriv1_invariant_jj2(d1: &mut Tensor2, sigma: &Tensor2) -> Result<(), StrError> {
-    if sigma.case() == Mandel::General {
+    if sigma.mandel() == Mandel::General {
         return Err("sigma tensor must be Symmetric or Symmetric2D");
     }
     sigma.deviator(d1)
@@ -62,7 +62,7 @@ pub fn deriv1_invariant_jj2(d1: &mut Tensor2, sigma: &Tensor2) -> Result<(), Str
 ///
 /// Note: `sigma` must be Symmetric or Symmetric2D.
 pub fn deriv1_invariant_jj3(d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2) -> Result<(), StrError> {
-    if sigma.case() == Mandel::General {
+    if sigma.mandel() == Mandel::General {
         return Err("sigma tensor must be Symmetric or Symmetric2D");
     }
     let dim = sigma.vec.dim();
@@ -121,7 +121,7 @@ pub fn deriv1_invariant_sigma_m(d1: &mut Tensor2, sigma: &Tensor2) -> Result<(),
 /// If `J2 > TOL_J2`, returns `J2` and `result` is valid;
 /// Otherwise, returns `None` and `result` is invalid.
 pub fn deriv1_invariant_sigma_d(d1: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
-    if sigma.case() == Mandel::General {
+    if sigma.mandel() == Mandel::General {
         return Err("sigma tensor must be Symmetric or Symmetric2D");
     }
     let dim = sigma.vec.dim();
@@ -167,7 +167,7 @@ pub fn deriv1_invariant_sigma_d(d1: &mut Tensor2, sigma: &Tensor2) -> Result<Opt
 /// If `J2 > TOL_J2`, returns `J2` and `d1` is valid;
 /// Otherwise, returns `None` and `d1` is unchanged.
 pub fn deriv1_invariant_lode(d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2) -> Result<Option<f64>, StrError> {
-    if sigma.case() == Mandel::General {
+    if sigma.mandel() == Mandel::General {
         return Err("sigma tensor must be Symmetric or Symmetric2D");
     }
     let dim = sigma.vec.dim();
@@ -227,7 +227,7 @@ mod tests {
             }
             F::J2 => deriv1_invariant_jj2(d1, sigma).unwrap(),
             F::J3 => {
-                let mut s = Tensor2::new(sigma.case());
+                let mut s = Tensor2::new(sigma.mandel());
                 deriv1_invariant_jj3(d1, &mut s, sigma).unwrap();
             }
             F::SigmaM => deriv1_invariant_sigma_m(d1, sigma).unwrap(),
@@ -235,7 +235,7 @@ mod tests {
                 deriv1_invariant_sigma_d(d1, sigma).unwrap().unwrap();
             }
             F::Lode => {
-                let mut s = Tensor2::new(sigma.case());
+                let mut s = Tensor2::new(sigma.mandel());
                 deriv1_invariant_lode(d1, &mut s, sigma).unwrap().unwrap();
             }
         };
@@ -330,9 +330,9 @@ mod tests {
     }
 
     // checks ∂f/∂σᵢⱼ
-    fn check_deriv(fn_name: F, case: Mandel, sample: &SampleTensor2, tol: f64, _verbose: bool) {
-        let sigma = Tensor2::from_matrix(&sample.matrix, case).unwrap();
-        let mut d1 = Tensor2::new(case);
+    fn check_deriv(fn_name: F, mandel: Mandel, sample: &SampleTensor2, tol: f64, _verbose: bool) {
+        let sigma = Tensor2::from_matrix(&sample.matrix, mandel).unwrap();
+        let mut d1 = Tensor2::new(mandel);
         analytical_deriv(fn_name, &mut d1, &sigma);
         let ana = d1.to_matrix();
         let num = numerical_deriv(&sigma, fn_name);

@@ -1,6 +1,6 @@
-use crate::{
-    AsMatrix3x3, Mandel, StrError, IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, TOL_J2,
-};
+use crate::{AsMatrix3x3, Mandel, StrError};
+use crate::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, TOL_J2};
+use crate::{SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
 use russell_lab::{Matrix, Vector};
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 /// depending on the symmetry, we may store fewer components. Also, we may store
 /// only 4 components of Symmetric 2D tensors.
 ///
-/// **General case:**
+/// **General:**
 ///
 /// ```text
 ///                       ┌                ┐
@@ -72,7 +72,7 @@ impl Tensor2 {
     ///
     /// # Input
     ///
-    /// * `case` -- the [Mandel] case
+    /// * `mandel` -- the [Mandel] representation
     ///
     /// # Example
     ///
@@ -90,15 +90,78 @@ impl Tensor2 {
     ///     assert_eq!(c.vec.as_data(), &[0.0,0.0,0.0,  0.0]);
     /// }
     /// ```
-    pub fn new(case: Mandel) -> Self {
+    pub fn new(mandel: Mandel) -> Self {
         Tensor2 {
-            vec: Vector::new(case.dim()),
+            vec: Vector::new(mandel.dim()),
         }
     }
 
-    /// Returns the Mandel case associated with this Tensor2
+    /// Allocates a symmetric Tensor2
+    pub fn new_sym(two_dim: bool) -> Self {
+        if two_dim {
+            Tensor2::new(Mandel::Symmetric2D)
+        } else {
+            Tensor2::new(Mandel::Symmetric)
+        }
+    }
+
+    /// Allocates a symmetric Tensor2 given the space dimension
+    ///
+    /// **Note:** `space_ndim` must be 2 or 3 (only 2 is checked, otherwise 3 is assumed)
+    pub fn new_sym_ndim(space_ndim: usize) -> Self {
+        if space_ndim == 2 {
+            Tensor2::new(Mandel::Symmetric2D)
+        } else {
+            Tensor2::new(Mandel::Symmetric)
+        }
+    }
+
+    /// Allocates a diagonal Tensor2 from octahedral components
+    ///
+    /// # Input
+    ///
+    /// * `distance` -- distance from the octahedral plane to the origin: `d = (λ1 + λ2 + λ3) / √3`
+    /// * `radius` -- radius on the octahedral plane: `r = ‖s‖`
+    /// * `lode` -- Lode invariant: `l = cos(3θ) = (3 √3 J3)/(2 pow(J2,1.5))`
+    ///   **Note:** The Lode invariant must be in `-1 ≤ lode ≤ 1`
+    /// * `two_dim` -- 2D instead of 3D?
+    ///
+    /// The octahedral components and the invariants are related as follows:
+    ///
+    /// ```text
+    /// σm = d / √3   →  d = σm √3
+    /// σd = r √3/√2  →  r = σd √2/√3 = √2 √J2
+    /// εv = d √3     →  d = εv / √3
+    /// εd = r √2/√3  →  r = εd √3/√2
+    /// ```
+    ///
+    /// In matrix form, the diagonal components of the tensor are the principal values `(λ1, λ2, λ3)`:
+    ///
+    /// ```text
+    /// ┌          ┐
+    /// │ λ1  0  0 │
+    /// │  0 λ2  0 │
+    /// │  0  0 λ3 │
+    /// └          ┘
+    /// ```
+    pub fn new_from_octahedral(distance: f64, radius: f64, lode: f64, two_dim: bool) -> Result<Self, StrError> {
+        if lode < -1.0 || lode > 1.0 {
+            return Err("lode invariant must be in -1 ≤ lode ≤ 1");
+        }
+        let theta = f64::acos(lode) / 3.0;
+        let star1 = radius * f64::cos(theta);
+        let star2 = distance;
+        let star3 = radius * f64::sin(theta);
+        let mut tt = Tensor2::new_sym(two_dim);
+        tt.vec[0] = (SQRT_2 * star1 + star2) / SQRT_3;
+        tt.vec[1] = -star1 / SQRT_6 + star2 / SQRT_3 - star3 / SQRT_2;
+        tt.vec[2] = -star1 / SQRT_6 + star2 / SQRT_3 + star3 / SQRT_2;
+        Ok(tt)
+    }
+
+    /// Returns the Mandel representation associated with this Tensor2
     #[inline]
-    pub fn case(&self) -> Mandel {
+    pub fn mandel(&self) -> Mandel {
         Mandel::new(self.vec.dim())
     }
 
@@ -213,7 +276,7 @@ impl Tensor2 {
     /// # Input
     ///
     /// * `tt` -- the standard (not Mandel) Tij components given  with respect to an orthonormal Cartesian basis
-    /// * `case` -- the [Mandel] case
+    /// * `mandel` -- the [Mandel] representation
     ///
     /// # Notes
     ///
@@ -294,8 +357,8 @@ impl Tensor2 {
     /// }
     /// ```
     #[inline]
-    pub fn from_matrix(tt: &dyn AsMatrix3x3, case: Mandel) -> Result<Self, StrError> {
-        let mut res = Tensor2::new(case);
+    pub fn from_matrix(tt: &dyn AsMatrix3x3, mandel: Mandel) -> Result<Self, StrError> {
+        let mut res = Tensor2::new(mandel);
         res.set_matrix(tt)?;
         Ok(res)
     }
@@ -324,8 +387,8 @@ impl Tensor2 {
     ///      └   ┘"
     /// );
     /// ```
-    pub fn identity(case: Mandel) -> Self {
-        let mut res = Tensor2::new(case);
+    pub fn identity(mandel: Mandel) -> Self {
+        let mut res = Tensor2::new(mandel);
         res.vec[0] = 1.0;
         res.vec[1] = 1.0;
         res.vec[2] = 1.0;
@@ -463,7 +526,7 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn to_matrix_2d(&self) -> (f64, Matrix) {
-        assert_eq!(self.case(), Mandel::Symmetric2D);
+        assert_eq!(self.mandel(), Mandel::Symmetric2D);
         let mut tt = Matrix::new(2, 2);
         tt.set(0, 0, self.get(0, 0));
         tt.set(0, 1, self.get(0, 1));
@@ -589,7 +652,7 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn sym_set(&mut self, i: usize, j: usize, value: f64) {
-        assert!(self.case() != Mandel::General);
+        assert!(self.mandel() != Mandel::General);
         let m = IJ_TO_M_SYM[i][j];
         if i == j {
             self.vec[m] = value;
@@ -639,7 +702,7 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn sym_add(&mut self, i: usize, j: usize, alpha: f64, value: f64) {
-        assert!(self.case() != Mandel::General);
+        assert!(self.mandel() != Mandel::General);
         assert!(i <= j);
         let m = IJ_TO_M_SYM[i][j];
         if i == j {
@@ -1199,6 +1262,12 @@ impl Tensor2 {
     ///       + σ₁₂² + σ₂₃² + σ₁₃² + σ₂₁² + σ₃₂² + σ₃₁²
     /// ```
     ///
+    /// Also the radius in the octahedral plane is:
+    ///
+    /// ```text
+    /// r = ‖s‖ =
+    /// ```
+    ///
     /// # Example
     ///
     /// ```
@@ -1411,6 +1480,14 @@ impl Tensor2 {
     /// J2 = ½ s : sᵀ = ½ s : s = ½ ‖s‖² (symmetric σ and s)
     /// ```
     ///
+    /// Thus:
+    ///
+    /// ```text
+    /// J2 = ½ r²
+    /// ```
+    ///
+    /// where `r = ‖s‖` is the radius on the octahedral plane.
+    ///
     /// # Example
     ///
     /// ```
@@ -1482,8 +1559,10 @@ impl Tensor2 {
     /// Returns the mean pressure invariant
     ///
     /// ```text
-    /// σm = ⅓ trace(σ)
+    /// σm = ⅓ trace(σ) = d / √3
     /// ```
+    ///
+    /// where `d = trace(σ) √3` is the distance from the octahedral plane to the origin.
     ///
     /// # Example
     ///
@@ -1512,8 +1591,10 @@ impl Tensor2 {
     /// or equivalent stress.
     ///
     /// ```text
-    /// σd = norm(dev(σ)) × √3/√2 = ‖s‖ √3/√2
+    /// σd = ‖s‖ √3/√2 = r √3/√2 = √3 √J2
     /// ```
+    ///
+    /// where `r = ‖s‖` is the radius on the octahedral plane.
     ///
     /// # Example
     ///
@@ -1539,7 +1620,7 @@ impl Tensor2 {
     /// Returns the volumetric strain invariant
     ///
     /// ```text
-    /// εv = trace(ε)
+    /// εv = trace(ε) = d √3
     /// ```
     ///
     /// # Example
@@ -1566,7 +1647,7 @@ impl Tensor2 {
     /// Returns the deviatoric strain invariant
     ///
     /// ```text
-    /// εd = norm(dev(ε)) × √2/√3
+    /// εd = norm(dev(ε)) × √2/√3 = r √2/√3
     /// ```
     ///
     /// # Example
@@ -1590,7 +1671,7 @@ impl Tensor2 {
         self.deviator_norm() * SQRT_2_BY_3
     }
 
-    /// Returns the lode invariant
+    /// Returns the Lode invariant
     ///
     /// ```text
     ///                  3 √3 J3
@@ -1629,6 +1710,35 @@ impl Tensor2 {
             None
         }
     }
+
+    /// Calculates the octahedral invariants
+    ///
+    /// # Input
+    ///
+    /// Returns `(distance, radius, lode)` where:
+    ///
+    /// * `distance` -- distance `d` from the octahedral plane to the origin
+    /// * `radius` -- radius `r` on the octahedral plane
+    /// * `lode` -- Lode invariant `l` in `-1 ≤ lode ≤ 1`
+    ///
+    /// # Returns
+    ///
+    /// If `J2 > TOL_J2`, returns `l`. Otherwise, returns None.
+    ///
+    /// # Definitions
+    ///
+    /// ```text
+    /// d = trace(T) / √3
+    /// r = ‖dev(T)‖
+    /// l = cos(3θ) = (3 √3 J3)/(2 pow(J2,1.5))
+    /// ```
+    #[inline]
+    pub fn invariants_octahedral(&self) -> (f64, f64, Option<f64>) {
+        let distance = self.invariant_ii1() / SQRT_3;
+        let radius = self.deviator_norm();
+        let lode = self.invariant_lode();
+        (distance, radius, lode)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1636,29 +1746,45 @@ impl Tensor2 {
 #[cfg(test)]
 mod tests {
     use super::Tensor2;
-    use crate::{Mandel, SampleTensor2, SamplesTensor2, SQRT_2, SQRT_3};
+    use crate::{Mandel, SampleTensor2, SamplesTensor2, IDENTITY2, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2};
     use russell_lab::{approx_eq, mat_approx_eq, mat_mat_mul, math::PI, vec_approx_eq, Matrix};
     use serde::{Deserialize, Serialize};
 
     #[test]
-    fn new_and_case_work() {
+    fn new_and_mandel_work() {
         // general
         let tt = Tensor2::new(Mandel::General);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.vec.as_data(), correct);
-        assert_eq!(tt.case(), Mandel::General);
+        assert_eq!(tt.mandel(), Mandel::General);
 
         // symmetric 3D
         let tt = Tensor2::new(Mandel::Symmetric);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.vec.as_data(), correct);
-        assert_eq!(tt.case(), Mandel::Symmetric);
+        assert_eq!(tt.mandel(), Mandel::Symmetric);
+
+        let tt = Tensor2::new_sym(false);
+        assert_eq!(tt.vec.as_data(), correct);
+        assert_eq!(tt.mandel(), Mandel::Symmetric);
+
+        let tt = Tensor2::new_sym_ndim(3);
+        assert_eq!(tt.vec.as_data(), correct);
+        assert_eq!(tt.mandel(), Mandel::Symmetric);
 
         // symmetric 2D
         let tt = Tensor2::new(Mandel::Symmetric2D);
         let correct = &[0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.vec.as_data(), correct);
-        assert_eq!(tt.case(), Mandel::Symmetric2D);
+        assert_eq!(tt.mandel(), Mandel::Symmetric2D);
+
+        let tt = Tensor2::new_sym(true);
+        assert_eq!(tt.vec.as_data(), correct);
+        assert_eq!(tt.mandel(), Mandel::Symmetric2D);
+
+        let tt = Tensor2::new_sym_ndim(2);
+        assert_eq!(tt.vec.as_data(), correct);
+        assert_eq!(tt.mandel(), Mandel::Symmetric2D);
     }
 
     #[test]
@@ -1887,15 +2013,15 @@ mod tests {
     fn identity_works() {
         // general
         let ii = Tensor2::identity(Mandel::General);
-        assert_eq!(ii.vec.as_data(), &[1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(ii.vec.as_data(), &IDENTITY2);
 
         // symmetric
         let ii = Tensor2::identity(Mandel::Symmetric);
-        assert_eq!(ii.vec.as_data(), &[1.0, 1.0, 1.0, 0.0, 0.0, 0.0]);
+        assert_eq!(ii.vec.as_data(), &IDENTITY2[0..6]);
 
         // symmetric 2d
         let ii = Tensor2::identity(Mandel::Symmetric2D);
-        assert_eq!(ii.vec.as_data(), &[1.0, 1.0, 1.0, 0.0,]);
+        assert_eq!(ii.vec.as_data(), &IDENTITY2[0..4]);
     }
 
     #[test]
@@ -1993,7 +2119,7 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn to_matrix_2d_panics_on_3d_case() {
+    fn to_matrix_2d_panics_on_3d() {
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -2690,7 +2816,7 @@ mod tests {
 
     fn check_sample(
         sample: &SampleTensor2,
-        case: Mandel,
+        mandel: Mandel,
         tol_norm: f64,
         tol_trace: f64,
         tol_det: f64,
@@ -2698,7 +2824,7 @@ mod tests {
         tol_dev_det: f64,
         verbose: bool,
     ) {
-        let tt = Tensor2::from_matrix(&sample.matrix, case).unwrap();
+        let tt = Tensor2::from_matrix(&sample.matrix, mandel).unwrap();
         if verbose {
             println!("{}", sample.desc);
             println!("    err(norm) = {:?}", tt.norm() - sample.norm);
@@ -2756,8 +2882,16 @@ mod tests {
 
     /// --- PRINCIPAL INVARIANTS -------------------------------------------------------------------------------------------
 
-    fn check_iis(sample: &SampleTensor2, case: Mandel, tol_a: f64, tol_b: f64, tol_c: f64, tol_d: f64, verbose: bool) {
-        let tt = Tensor2::from_matrix(&sample.matrix, case).unwrap();
+    fn check_iis(
+        sample: &SampleTensor2,
+        mandel: Mandel,
+        tol_a: f64,
+        tol_b: f64,
+        tol_c: f64,
+        tol_d: f64,
+        verbose: bool,
+    ) {
+        let tt = Tensor2::from_matrix(&sample.matrix, mandel).unwrap();
         let jj2 = -sample.deviator_second_invariant;
         let jj3 = sample.deviator_determinant;
         if verbose {
@@ -2770,7 +2904,7 @@ mod tests {
             println!("    err(I3) = {:?}", f64::abs(tt.invariant_ii3() - sample.determinant));
             println!("    err(J2) = {:?}", f64::abs(tt.invariant_jj2() - jj2));
             println!("    err(J3) = {:?}", f64::abs(tt.invariant_jj3() - jj3));
-            if case == Mandel::Symmetric || case == Mandel::Symmetric2D {
+            if mandel == Mandel::Symmetric || mandel == Mandel::Symmetric2D {
                 let norm_s = tt.deviator_norm();
                 println!("    err(J2 - ½‖s‖²) = {:?}", f64::abs(jj2 - norm_s * norm_s / 2.0));
             }
@@ -2780,7 +2914,7 @@ mod tests {
         approx_eq(tt.invariant_ii3(), sample.determinant, tol_b);
         approx_eq(tt.invariant_jj2(), jj2, tol_c);
         approx_eq(tt.invariant_jj3(), jj3, tol_c);
-        if case == Mandel::Symmetric || case == Mandel::Symmetric2D {
+        if mandel == Mandel::Symmetric || mandel == Mandel::Symmetric2D {
             let norm_s = tt.deviator_norm();
             approx_eq(jj2, norm_s * norm_s / 2.0, tol_d);
         }
@@ -2982,7 +3116,7 @@ mod tests {
     }
 
     #[test]
-    fn lode_invariant_handles_spacial_cases() {
+    fn lode_invariant_handles_special_cases() {
         let c = Mandel::Symmetric;
 
         // norm(deviator) = 0  with l = 0
@@ -2994,5 +3128,67 @@ mod tests {
         let (l1, l2, l3) = (2.0, 2.0, 2.0 - 1e-3);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
         check_lode(tt.invariant_lode(), -1.0, 1e-7, false);
+    }
+
+    #[test]
+    fn invariants_octahedral_works() {
+        // the following data corresponds to sigma_m = 1 and sigma_d = 3
+        #[rustfmt::skip]
+        let principal_stresses_and_lode = [
+            ( 3.0          ,  0.0          ,  0.0          ,  1.0 ),
+            ( 0.0          ,  3.0          ,  0.0          ,  1.0 ),
+            ( 0.0          ,  0.0          ,  3.0          ,  1.0 ),
+            ( 1.0 + SQRT_3 ,  1.0 - SQRT_3 ,  1.0          ,  0.0 ),
+            ( 1.0 + SQRT_3 ,  1.0          ,  1.0 - SQRT_3 ,  0.0 ),
+            ( 1.0          ,  1.0 + SQRT_3 ,  1.0 - SQRT_3 ,  0.0 ),
+            ( 1.0 - SQRT_3 ,  1.0 + SQRT_3 ,  1.0          ,  0.0 ),
+            ( 1.0          ,  1.0 - SQRT_3 ,  1.0 + SQRT_3 ,  0.0 ),
+            ( 1.0 - SQRT_3 ,  1.0          ,  1.0 + SQRT_3 ,  0.0 ),
+            ( 2.0          , -1.0          ,  2.0          , -1.0 ),
+            ( 2.0          ,  2.0          , -1.0          , -1.0 ),
+            (-1.0          ,  2.0          ,  2.0          , -1.0 ),
+        ];
+        let mut aux = Tensor2::new_sym(true);
+        for (sigma_1, sigma_2, sigma_3, lode_correct) in &principal_stresses_and_lode {
+            aux.vec[0] = *sigma_1;
+            aux.vec[1] = *sigma_2;
+            aux.vec[2] = *sigma_3;
+            let (d, r, l) = aux.invariants_octahedral();
+            approx_eq(d / SQRT_3, 1.0, 1e-15);
+            approx_eq(r * SQRT_3_BY_2, 3.0, 1e-15);
+            approx_eq(l.unwrap(), *lode_correct, 1e-15);
+        }
+    }
+
+    #[test]
+    fn new_from_oct_invariants_works() {
+        let (sigma_m, sigma_d) = (1.0, 3.0);
+        let (distance, radius) = (sigma_m * SQRT_3, sigma_d * SQRT_2_BY_3);
+
+        assert_eq!(
+            Tensor2::new_from_octahedral(0.0, 0.0, -2.0, true).err(),
+            Some("lode invariant must be in -1 ≤ lode ≤ 1")
+        );
+
+        let tt = Tensor2::new_from_octahedral(distance, radius, 1.0, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 3.0, 1e-15);
+        approx_eq(tt.vec[1], 0.0, 1e-15);
+        approx_eq(tt.vec[2], 0.0, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
+
+        let tt = Tensor2::new_from_octahedral(distance, radius, 0.0, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 1.0 + SQRT_3, 1e-15);
+        approx_eq(tt.vec[1], 1.0 - SQRT_3, 1e-15);
+        approx_eq(tt.vec[2], 1.0, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
+
+        let tt = Tensor2::new_from_octahedral(distance, radius, -1.0, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 2.0, 1e-15);
+        approx_eq(tt.vec[1], -1.0, 1e-15);
+        approx_eq(tt.vec[2], 2.0, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
     }
 }

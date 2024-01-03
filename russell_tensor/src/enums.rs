@@ -1,4 +1,4 @@
-/// Specifies the Mandel representation case
+/// Specifies the Mandel representation
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Mandel {
     /// General representation of a 3×3 Tensor2 as a 9D vector
@@ -66,6 +66,17 @@ impl Mandel {
             Mandel::Symmetric2D => 4,
         }
     }
+
+    /// Returns whether the space dimension is 2D or not
+    ///
+    /// Note: only Symmetric2D yields "true".
+    pub fn two_dim(&self) -> bool {
+        match self {
+            Mandel::General => false,
+            Mandel::Symmetric => false,
+            Mandel::Symmetric2D => true,
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -76,10 +87,10 @@ mod tests {
 
     #[test]
     fn derive_works() {
-        let case = Mandel::General.clone();
-        assert_eq!(case, Mandel::General);
-        assert_eq!(format!("{:?}", case), "General");
-        assert_eq!(case, Mandel::General);
+        let mandel = Mandel::General.clone();
+        assert_eq!(mandel, Mandel::General);
+        assert_eq!(format!("{:?}", mandel), "General");
+        assert_eq!(mandel, Mandel::General);
     }
 
     #[test]
@@ -95,5 +106,8 @@ mod tests {
         assert_eq!(Mandel::General.dim(), 9);
         assert_eq!(Mandel::Symmetric.dim(), 6);
         assert_eq!(Mandel::Symmetric2D.dim(), 4);
+        assert_eq!(Mandel::General.two_dim(), false);
+        assert_eq!(Mandel::Symmetric.two_dim(), false);
+        assert_eq!(Mandel::Symmetric2D.two_dim(), true);
     }
 }

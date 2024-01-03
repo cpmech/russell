@@ -1,6 +1,6 @@
 use super::{IJKL_TO_MN, IJKL_TO_MN_SYM, MN_TO_IJKL, SQRT_2};
 use crate::{Mandel, StrError, ONE_BY_3, TWO_BY_3};
-use russell_lab::Matrix;
+use russell_lab::{mat_copy, Matrix};
 use serde::{Deserialize, Serialize};
 
 /// Implements a fourth order-tensor, minor-symmetric or not
@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 /// i>j & k>l:  Mijkl := (Djilk − Djikl − Dijlk + Dijkl) / 2
 /// ```
 ///
-/// **General case:**
+/// **General:**
 ///
 /// Then, the 81 Mijkl components of a Tensor4 are organized as follows:
 ///
@@ -123,7 +123,7 @@ impl Tensor4 {
     ///
     /// # Input
     ///
-    /// * `case` -- the [Mandel] case
+    /// * `mandel` -- the [Mandel] representation
     ///
     /// # Example
     ///
@@ -141,16 +141,36 @@ impl Tensor4 {
     ///     assert_eq!(ee.mat.dims(), (4,4));
     /// }
     /// ```
-    pub fn new(case: Mandel) -> Self {
-        let dim = case.dim();
+    pub fn new(mandel: Mandel) -> Self {
+        let dim = mandel.dim();
         Tensor4 {
             mat: Matrix::new(dim, dim),
         }
     }
 
-    /// Returns the Mandel case associated with this Tensor4
+    /// Allocates a minor-symmetric Tensor4
+    pub fn new_sym(two_dim: bool) -> Self {
+        if two_dim {
+            Tensor4::new(Mandel::Symmetric2D)
+        } else {
+            Tensor4::new(Mandel::Symmetric)
+        }
+    }
+
+    /// Allocates a minor-symmetric Tensor4 given the space dimension
+    ///
+    /// **Note:** `space_ndim` must be 2 or 3 (only 2 is checked, otherwise 3 is assumed)
+    pub fn new_sym_ndim(space_ndim: usize) -> Self {
+        if space_ndim == 2 {
+            Tensor4::new(Mandel::Symmetric2D)
+        } else {
+            Tensor4::new(Mandel::Symmetric)
+        }
+    }
+
+    /// Returns the Mandel representation associated with this Tensor4
     #[inline]
-    pub fn case(&self) -> Mandel {
+    pub fn mandel(&self) -> Mandel {
         Mandel::new(self.mat.nrow())
     }
 
@@ -160,7 +180,7 @@ impl Tensor4 {
     ///
     /// * `inp` -- the standard (not Mandel) Dijkl components given with
     ///   respect to an orthonormal Cartesian basis
-    /// * `case` -- the [Mandel] case
+    /// * `mandel` -- the [Mandel] representation
     ///
     /// # Example
     ///
@@ -196,8 +216,8 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_array(inp: &[[[[f64; 3]; 3]; 3]; 3], case: Mandel) -> Result<Self, StrError> {
-        let dim = case.dim();
+    pub fn from_array(inp: &[[[[f64; 3]; 3]; 3]; 3], mandel: Mandel) -> Result<Self, StrError> {
+        let dim = mandel.dim();
         let mut mat = Matrix::new(dim, dim);
         if dim == 4 || dim == 6 {
             let max = if dim == 4 { 3 } else { 6 };
@@ -300,7 +320,7 @@ impl Tensor4 {
     /// * `inp` -- the standard (not Mandel) matrix of components given with
     ///   respect to an orthonormal Cartesian basis. The matrix must be (9,9),
     ///   even if it corresponds to a minor-symmetric tensor.
-    /// * `case` -- the [Mandel] case
+    /// * `mandel` -- the [Mandel] representation
     ///
     /// # Example
     ///
@@ -333,8 +353,8 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_matrix(inp: &[[f64; 9]; 9], case: Mandel) -> Result<Self, StrError> {
-        let dim = case.dim();
+    pub fn from_matrix(inp: &[[f64; 9]; 9], mandel: Mandel) -> Result<Self, StrError> {
+        let dim = mandel.dim();
         let mut mat = Matrix::new(dim, dim);
         if dim == 4 || dim == 6 {
             let max = if dim == 4 { 3 } else { 6 };
@@ -704,7 +724,41 @@ impl Tensor4 {
         }
     }
 
-    /// Returns the fourth-order identity tensor I
+    /// Sets this tensor equal to another one
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::mat_approx_eq;
+    /// use russell_tensor::{Mandel, Tensor4, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dd = Tensor4::from_matrix(&[
+    ///         [  1.0,  2.0,  3.0,  4.0,  5.0,  6.0,  7.0,  8.0,  9.0],
+    ///         [ -1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0, -8.0, -9.0],
+    ///         [  2.0,  4.0,  6.0,  8.0, 10.0, 12.0, 14.0, 16.0, 18.0],
+    ///         [ 10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0],
+    ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
+    ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
+    ///         [ -2.0, -4.0, -6.0, -8.0,-10.0,-12.0,-14.0,-16.0,-18.0],
+    ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
+    ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
+    ///     ], Mandel::General)?;
+    ///
+    ///     let mut ee = Tensor4::new(Mandel::General);
+    ///     ee.mirror(&dd)?;
+    ///
+    ///     mat_approx_eq(&dd.mat, &ee.mat, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn mirror(&mut self, other: &Tensor4) -> Result<(), StrError> {
+        mat_copy(&mut self.mat, &other.mat)
+    }
+
+    /// Returns the fourth-order identity tensor (II)
+    ///
+    /// **Note:** this tensor cannot be represented in reduced-dimension because it is not minor-symmetric.
     ///
     /// ```text
     /// Definition:
@@ -726,9 +780,6 @@ impl Tensor4 {
     ///        │ 0 0 0  0 0 0  0 0 1 │
     ///        └                     ┘
     /// ```
-    ///
-    /// Note: this tensor cannot be represented in reduced-dimension
-    /// because it is not minor-symmetric.
     pub fn constant_ii() -> Self {
         Tensor4 {
             //                       1    2    3    4    5    6    7    8    9
@@ -736,7 +787,9 @@ impl Tensor4 {
         }
     }
 
-    /// Returns the transposition tensor T
+    /// Returns the transposition tensor (TT)
+    ///
+    /// **Note:** this tensor cannot be represented in reduced-dimension because it is not minor-symmetric.
     ///
     /// ```text
     /// Definition:
@@ -759,9 +812,6 @@ impl Tensor4 {
     ///        │ 0 0 0  0 0 0   0  0 -1 │
     ///        └                        ┘
     /// ```
-    ///
-    /// Note: this tensor cannot be represented in reduced-dimension
-    /// because it is not minor-symmetric.
     pub fn constant_tt() -> Self {
         let mut tt = Tensor4 { mat: Matrix::new(9, 9) };
         tt.mat.set(0, 0, 1.0);
@@ -776,7 +826,9 @@ impl Tensor4 {
         tt
     }
 
-    /// Returns the trace-projection tensor J
+    /// Returns the trace-projection tensor (JJ)
+    ///
+    /// Note: this tensor can be represented in reduced-dimension.
     ///
     /// ```text
     /// Definition:
@@ -798,8 +850,6 @@ impl Tensor4 {
     ///        │ 0 0 0  0 0 0  0 0 0 │
     ///        └                     ┘
     /// ```
-    ///
-    /// Note: this tensor can be represented in reduced-dimension.
     pub fn constant_jj(reduced_6x6: bool) -> Self {
         let n = if reduced_6x6 { 6 } else { 9 };
         let mut jj = Tensor4 { mat: Matrix::new(n, n) };
@@ -815,7 +865,9 @@ impl Tensor4 {
         jj
     }
 
-    /// Returns the isotropic making projector Piso
+    /// Returns the isotropic making projector (Piso)
+    ///
+    /// Note: this tensor can be represented in reduced-dimension.
     ///
     /// ```text
     /// Definition:
@@ -837,8 +889,6 @@ impl Tensor4 {
     ///          │ 0 0 0  0 0 0  0 0 0 │
     ///          └                     ┘
     /// ```
-    ///
-    /// Note: this tensor can be represented in reduced-dimension.
     pub fn constant_pp_iso(reduced_6x6: bool) -> Self {
         let n = if reduced_6x6 { 6 } else { 9 };
         let mut pp_iso = Tensor4 { mat: Matrix::new(n, n) };
@@ -854,7 +904,9 @@ impl Tensor4 {
         pp_iso
     }
 
-    /// Returns the symmetric making projector Psym
+    /// Returns the symmetric making projector (Psym)
+    ///
+    /// Note: this tensor can be represented in reduced-dimension.
     ///
     /// ```text
     /// Definition:
@@ -877,8 +929,6 @@ impl Tensor4 {
     ///          │ 0 0 0  0 0 0  0 0 0 │
     ///          └                     ┘
     /// ```
-    ///
-    /// Note: this tensor can be represented in reduced-dimension.
     pub fn constant_pp_sym(reduced_6x6: bool) -> Self {
         let n = if reduced_6x6 { 6 } else { 9 };
         let mut pp_sym = Tensor4 { mat: Matrix::new(n, n) };
@@ -892,6 +942,8 @@ impl Tensor4 {
     }
 
     /// Returns the skew making projector Pskew
+    ///
+    /// **Note:** this tensor cannot be represented in reduced-dimension because it is not minor-symmetric.
     ///
     /// ```text
     /// Definition:
@@ -914,9 +966,6 @@ impl Tensor4 {
     ///           │ 0 0 0  0 0 0  0 0 1 │
     ///           └                     ┘
     /// ```
-    ///
-    /// Note: this tensor cannot be represented in reduced-dimension
-    /// because it is not minor-symmetric.
     pub fn constant_pp_skew() -> Self {
         let mut pp_skew = Tensor4 { mat: Matrix::new(9, 9) };
         pp_skew.mat.set(6, 6, 1.0);
@@ -926,6 +975,8 @@ impl Tensor4 {
     }
 
     /// Returns the deviatoric making projector Pdev
+    ///
+    /// **Note:** this tensor cannot be represented in reduced-dimension because it is not minor-symmetric.
     ///
     /// ```text
     /// Definition:
@@ -947,9 +998,6 @@ impl Tensor4 {
     ///          │  0  0  0  0 0 0  0 0 1 │
     ///          └                        ┘
     /// ```
-    ///
-    /// Note: this tensor cannot be represented in reduced-dimension
-    /// because it is not minor-symmetric.
     pub fn constant_pp_dev() -> Self {
         let mut pp_dev = Tensor4 { mat: Matrix::new(9, 9) };
         pp_dev.mat.set(0, 0, TWO_BY_3);
@@ -972,6 +1020,8 @@ impl Tensor4 {
 
     /// Returns the symmetric-deviatoric making projector Psymdev
     ///
+    /// Note: this tensor can be represented in reduced-dimension.
+    ///
     /// ```text
     /// Definition:
     ///                _
@@ -993,8 +1043,6 @@ impl Tensor4 {
     ///             │  0  0  0  0 0 0  0 0 0 │
     ///             └                        ┘
     /// ```
-    ///
-    /// Note: this tensor can be represented in reduced-dimension.
     pub fn constant_pp_symdev(reduced_6x6: bool) -> Self {
         let n = if reduced_6x6 { 6 } else { 9 };
         let mut pp_symdev = Tensor4 { mat: Matrix::new(n, n) };
@@ -1012,6 +1060,49 @@ impl Tensor4 {
         pp_symdev.mat.set(5, 5, 1.0);
         pp_symdev
     }
+
+    /// Sets this tensor equal the symmetric-deviatoric making projector (Psymdev)
+    ///
+    /// Note: this tensor can be represented in reduced-dimension.
+    ///
+    /// ```text
+    /// Definition:
+    ///                _
+    /// Psymdev = ½ (I ⊗ I + I ⊗ I) - ⅓ I ⊗ I = Psym - Piso
+    ///                        ‾
+    /// ```
+    ///
+    /// ```text
+    /// Mandel matrix:
+    ///             ┌                        ┐
+    ///             │  ⅔ -⅓ -⅓  0 0 0  0 0 0 │
+    ///             │ -⅓  ⅔ -⅓  0 0 0  0 0 0 │
+    ///             │ -⅓ -⅓  ⅔  0 0 0  0 0 0 │
+    ///             │  0  0  0  1 0 0  0 0 0 │
+    /// [Psymdev] = │  0  0  0  0 1 0  0 0 0 │
+    ///             │  0  0  0  0 0 1  0 0 0 │
+    ///             │  0  0  0  0 0 0  0 0 0 │
+    ///             │  0  0  0  0 0 0  0 0 0 │
+    ///             │  0  0  0  0 0 0  0 0 0 │
+    ///             └                        ┘
+    /// ```
+    pub fn set_pp_symdev(&mut self) {
+        self.mat.fill(0.0);
+        self.mat.set(0, 0, TWO_BY_3);
+        self.mat.set(0, 1, -ONE_BY_3);
+        self.mat.set(0, 2, -ONE_BY_3);
+        self.mat.set(1, 0, -ONE_BY_3);
+        self.mat.set(1, 1, TWO_BY_3);
+        self.mat.set(1, 2, -ONE_BY_3);
+        self.mat.set(2, 0, -ONE_BY_3);
+        self.mat.set(2, 1, -ONE_BY_3);
+        self.mat.set(2, 2, TWO_BY_3);
+        self.mat.set(3, 3, 1.0);
+        if self.mandel().dim() > 4 {
+            self.mat.set(4, 4, 1.0);
+            self.mat.set(5, 5, 1.0);
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1020,25 +1111,38 @@ impl Tensor4 {
 mod tests {
     use super::{Tensor4, MN_TO_IJKL};
     use crate::{Mandel, SamplesTensor4};
+    use crate::{IDENTITY4, P_DEV, P_ISO, P_SKEW, P_SYM, P_SYMDEV, TRACE_PROJECTION, TRANSPOSITION};
     use russell_lab::{approx_eq, mat_approx_eq};
     use serde::{Deserialize, Serialize};
 
     #[test]
-    fn new_and_case_work() {
+    fn new_and_mandel_work() {
         // general
         let dd = Tensor4::new(Mandel::General);
         assert_eq!(dd.mat.as_data().len(), 81);
-        assert_eq!(dd.case(), Mandel::General);
+        assert_eq!(dd.mandel(), Mandel::General);
 
         // symmetric
         let dd = Tensor4::new(Mandel::Symmetric);
         assert_eq!(dd.mat.as_data().len(), 36);
-        assert_eq!(dd.case(), Mandel::Symmetric);
+        assert_eq!(dd.mandel(), Mandel::Symmetric);
+        let dd = Tensor4::new_sym(false);
+        assert_eq!(dd.mat.as_data().len(), 36);
+        assert_eq!(dd.mandel(), Mandel::Symmetric);
+        let dd = Tensor4::new_sym_ndim(3);
+        assert_eq!(dd.mat.as_data().len(), 36);
+        assert_eq!(dd.mandel(), Mandel::Symmetric);
 
         // symmetric 2d
         let dd = Tensor4::new(Mandel::Symmetric2D);
         assert_eq!(dd.mat.as_data().len(), 16);
-        assert_eq!(dd.case(), Mandel::Symmetric2D);
+        assert_eq!(dd.mandel(), Mandel::Symmetric2D);
+        let dd = Tensor4::new_sym(true);
+        assert_eq!(dd.mat.as_data().len(), 16);
+        assert_eq!(dd.mandel(), Mandel::Symmetric2D);
+        let dd = Tensor4::new_sym_ndim(2);
+        assert_eq!(dd.mat.as_data().len(), 16);
+        assert_eq!(dd.mandel(), Mandel::Symmetric2D);
     }
 
     #[test]
@@ -1378,6 +1482,35 @@ mod tests {
     }
 
     #[test]
+    fn mirror_captures_errors() {
+        let dd = Tensor4::new(Mandel::Symmetric);
+        let mut ee = Tensor4::new(Mandel::General);
+        assert_eq!(ee.mirror(&dd).err(), Some("matrices are incompatible"));
+    }
+
+    #[test]
+    fn mirror_works() {
+        let dd = Tensor4::from_matrix(
+            &[
+                [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0],
+                [9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0],
+                [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
+                [6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0],
+                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+                [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
+                [6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0],
+                [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+            ],
+            Mandel::General,
+        )
+        .unwrap();
+        let mut ee = Tensor4::new(Mandel::General);
+        ee.mirror(&dd).unwrap();
+        mat_approx_eq(&dd.mat, &ee.mat, 1e-15);
+    }
+
+    #[test]
     fn clone_and_serialize_work() {
         let dd = generate_dd();
         // clone
@@ -1444,200 +1577,135 @@ mod tests {
     #[test]
     fn constant_ii_works() {
         let ii = Tensor4::constant_ii();
-        assert_eq!(
-            format!("{}", ii.mat),
-            "┌                   ┐\n\
-             │ 1 0 0 0 0 0 0 0 0 │\n\
-             │ 0 1 0 0 0 0 0 0 0 │\n\
-             │ 0 0 1 0 0 0 0 0 0 │\n\
-             │ 0 0 0 1 0 0 0 0 0 │\n\
-             │ 0 0 0 0 1 0 0 0 0 │\n\
-             │ 0 0 0 0 0 1 0 0 0 │\n\
-             │ 0 0 0 0 0 0 1 0 0 │\n\
-             │ 0 0 0 0 0 0 0 1 0 │\n\
-             │ 0 0 0 0 0 0 0 0 1 │\n\
-             └                   ┘"
-        );
+        assert_eq!(ii.mat.dims(), (9, 9));
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(ii.mat.get(i, j), IDENTITY4[i][j]);
+            }
+        }
     }
 
     #[test]
     fn constant_tt_works() {
         let tt = Tensor4::constant_tt();
-        assert_eq!(
-            format!("{}", tt.mat),
-            "┌                            ┐\n\
-             │  1  0  0  0  0  0  0  0  0 │\n\
-             │  0  1  0  0  0  0  0  0  0 │\n\
-             │  0  0  1  0  0  0  0  0  0 │\n\
-             │  0  0  0  1  0  0  0  0  0 │\n\
-             │  0  0  0  0  1  0  0  0  0 │\n\
-             │  0  0  0  0  0  1  0  0  0 │\n\
-             │  0  0  0  0  0  0 -1  0  0 │\n\
-             │  0  0  0  0  0  0  0 -1  0 │\n\
-             │  0  0  0  0  0  0  0  0 -1 │\n\
-             └                            ┘"
-        );
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(tt.mat.get(i, j), TRANSPOSITION[i][j]);
+            }
+        }
     }
 
     #[test]
     fn constant_jj_works() {
         let jj = Tensor4::constant_jj(false);
-        assert_eq!(
-            format!("{}", jj.mat),
-            "┌                   ┐\n\
-             │ 1 1 1 0 0 0 0 0 0 │\n\
-             │ 1 1 1 0 0 0 0 0 0 │\n\
-             │ 1 1 1 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             └                   ┘"
-        );
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(jj.mat.get(i, j), TRACE_PROJECTION[i][j]);
+            }
+        }
         let jj = Tensor4::constant_jj(true);
-        assert_eq!(
-            format!("{}", jj.mat),
-            "┌             ┐\n\
-             │ 1 1 1 0 0 0 │\n\
-             │ 1 1 1 0 0 0 │\n\
-             │ 1 1 1 0 0 0 │\n\
-             │ 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 │\n\
-             └             ┘"
-        );
+        for i in 0..6 {
+            for j in 0..6 {
+                assert_eq!(jj.mat.get(i, j), TRACE_PROJECTION[i][j]);
+            }
+        }
     }
 
     #[test]
     fn constant_pp_iso_works() {
         let pp_iso = Tensor4::constant_pp_iso(false);
-        assert_eq!(
-            format!("{:.3}", pp_iso.mat),
-            "┌                                                       ┐\n\
-             │ 0.333 0.333 0.333 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.333 0.333 0.333 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.333 0.333 0.333 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             └                                                       ┘"
-        );
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(pp_iso.mat.get(i, j), P_ISO[i][j]);
+            }
+        }
         let pp_iso = Tensor4::constant_pp_iso(true);
-        assert_eq!(
-            format!("{:.3}", pp_iso.mat),
-            "┌                                     ┐\n\
-             │ 0.333 0.333 0.333 0.000 0.000 0.000 │\n\
-             │ 0.333 0.333 0.333 0.000 0.000 0.000 │\n\
-             │ 0.333 0.333 0.333 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             │ 0.000 0.000 0.000 0.000 0.000 0.000 │\n\
-             └                                     ┘"
-        );
+        for i in 0..6 {
+            for j in 0..6 {
+                assert_eq!(pp_iso.mat.get(i, j), P_ISO[i][j]);
+            }
+        }
     }
 
     #[test]
     fn constant_pp_sym_works() {
         let pp_sym = Tensor4::constant_pp_sym(false);
-        assert_eq!(
-            format!("{}", pp_sym.mat),
-            "┌                   ┐\n\
-             │ 1 0 0 0 0 0 0 0 0 │\n\
-             │ 0 1 0 0 0 0 0 0 0 │\n\
-             │ 0 0 1 0 0 0 0 0 0 │\n\
-             │ 0 0 0 1 0 0 0 0 0 │\n\
-             │ 0 0 0 0 1 0 0 0 0 │\n\
-             │ 0 0 0 0 0 1 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             └                   ┘"
-        );
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(pp_sym.mat.get(i, j), P_SYM[i][j]);
+            }
+        }
         let pp_sym = Tensor4::constant_pp_sym(true);
-        assert_eq!(
-            format!("{}", pp_sym.mat),
-            "┌             ┐\n\
-             │ 1 0 0 0 0 0 │\n\
-             │ 0 1 0 0 0 0 │\n\
-             │ 0 0 1 0 0 0 │\n\
-             │ 0 0 0 1 0 0 │\n\
-             │ 0 0 0 0 1 0 │\n\
-             │ 0 0 0 0 0 1 │\n\
-             └             ┘"
-        );
+        for i in 0..6 {
+            for j in 0..6 {
+                assert_eq!(pp_sym.mat.get(i, j), P_SYM[i][j]);
+            }
+        }
     }
 
     #[test]
     fn constant_pp_skew_works() {
         let pp_skew = Tensor4::constant_pp_skew();
-        assert_eq!(
-            format!("{}", pp_skew.mat),
-            "┌                   ┐\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 1 0 0 │\n\
-             │ 0 0 0 0 0 0 0 1 0 │\n\
-             │ 0 0 0 0 0 0 0 0 1 │\n\
-             └                   ┘"
-        );
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(pp_skew.mat.get(i, j), P_SKEW[i][j]);
+            }
+        }
     }
 
     #[test]
     fn constant_pp_dev_works() {
         let pp_dev = Tensor4::constant_pp_dev();
-        assert_eq!(
-            format!("{:.3}", pp_dev.mat),
-            "┌                                                                ┐\n\
-             │  0.667 -0.333 -0.333  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │ -0.333  0.667 -0.333  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │ -0.333 -0.333  0.667  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  1.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  1.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  1.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  0.000  1.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  0.000  0.000  1.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  1.000 │\n\
-             └                                                                ┘"
-        );
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(pp_dev.mat.get(i, j), P_DEV[i][j]);
+            }
+        }
     }
 
     #[test]
     fn constant_pp_symdev_works() {
         let pp_symdev = Tensor4::constant_pp_symdev(false);
-        assert_eq!(
-            format!("{:.3}", pp_symdev.mat),
-            "┌                                                                ┐\n\
-             │  0.667 -0.333 -0.333  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │ -0.333  0.667 -0.333  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │ -0.333 -0.333  0.667  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  1.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  1.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  1.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000  0.000 │\n\
-             └                                                                ┘"
-        );
+        assert_eq!(pp_symdev.mat.dims(), (9, 9));
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(pp_symdev.mat.get(i, j), P_SYMDEV[i][j]);
+            }
+        }
         let pp_symdev = Tensor4::constant_pp_symdev(true);
-        assert_eq!(
-            format!("{:.3}", pp_symdev.mat),
-            "┌                                           ┐\n\
-             │  0.667 -0.333 -0.333  0.000  0.000  0.000 │\n\
-             │ -0.333  0.667 -0.333  0.000  0.000  0.000 │\n\
-             │ -0.333 -0.333  0.667  0.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  1.000  0.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  1.000  0.000 │\n\
-             │  0.000  0.000  0.000  0.000  0.000  1.000 │\n\
-             └                                           ┘"
-        );
+        assert_eq!(pp_symdev.mat.dims(), (6, 6));
+        for i in 0..6 {
+            for j in 0..6 {
+                assert_eq!(pp_symdev.mat.get(i, j), P_SYMDEV[i][j]);
+            }
+        }
+    }
+
+    #[test]
+    fn set_pp_symdev_works() {
+        let mut pp_symdev = Tensor4::new(Mandel::General);
+        pp_symdev.set_pp_symdev();
+        assert_eq!(pp_symdev.mat.dims(), (9, 9));
+        for i in 0..9 {
+            for j in 0..9 {
+                assert_eq!(pp_symdev.mat.get(i, j), P_SYMDEV[i][j]);
+            }
+        }
+        let mut pp_symdev = Tensor4::new(Mandel::Symmetric);
+        pp_symdev.set_pp_symdev();
+        assert_eq!(pp_symdev.mat.dims(), (6, 6));
+        for i in 0..6 {
+            for j in 0..6 {
+                assert_eq!(pp_symdev.mat.get(i, j), P_SYMDEV[i][j]);
+            }
+        }
+        let mut pp_symdev = Tensor4::new(Mandel::Symmetric2D);
+        pp_symdev.set_pp_symdev();
+        assert_eq!(pp_symdev.mat.dims(), (4, 4));
+        for i in 0..4 {
+            for j in 0..4 {
+                assert_eq!(pp_symdev.mat.get(i, j), P_SYMDEV[i][j]);
+            }
+        }
     }
 }

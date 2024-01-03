@@ -86,7 +86,7 @@ impl LinElasticity {
     /// );
     /// ```
     pub fn new(young: f64, poisson: f64, two_dim: bool, plane_stress: bool) -> Self {
-        let case = if two_dim || plane_stress {
+        let mandel = if two_dim || plane_stress {
             Mandel::Symmetric2D
         } else {
             Mandel::Symmetric
@@ -95,7 +95,7 @@ impl LinElasticity {
             young,
             poisson,
             plane_stress,
-            dd: Tensor4::new(case),
+            dd: Tensor4::new(mandel),
         };
         res.calc_modulus();
         res
@@ -131,7 +131,37 @@ impl LinElasticity {
         self.calc_modulus();
     }
 
-    /// Get an access to the elasticity modulus D defined in σ = D : ε
+    /// Sets the bulk (K) and shear (G) moduli
+    pub fn set_bulk_shear(&mut self, bulk: f64, shear: f64) {
+        self.young = 9.0 * bulk * shear / (3.0 * bulk + shear);
+        self.poisson = (3.0 * bulk - 2.0 * shear) / (6.0 * bulk + 2.0 * shear);
+        self.calc_modulus();
+    }
+
+    /// Returns the Young's modulus and Poisson's coefficient
+    ///
+    /// Returns `(young, poisson)`
+    pub fn get_young_poisson(&self) -> (f64, f64) {
+        (self.young, self.poisson)
+    }
+
+    /// Returns the bulk (K) and shear (G) moduli
+    ///
+    /// Returns `(bulk, shear)`
+    pub fn get_bulk_shear(&self) -> (f64, f64) {
+        (
+            self.young / (3.0 * (1.0 - 2.0 * self.poisson)),
+            self.young / (2.0 * (1.0 + self.poisson)),
+        )
+    }
+
+    /// Returns an access to the elasticity modulus
+    ///
+    /// Returns D from:
+    ///
+    /// ```text
+    /// σ = D : ε
+    /// ```
     ///
     /// # Example
     ///
@@ -380,10 +410,27 @@ mod tests {
     }
 
     #[test]
-    fn set_young_poisson_works() {
+    fn set_get_parameters_works() {
         let mut ela = LinElasticity::new(3000.0, 0.2, false, true);
         ela.set_young_poisson(6000.0, 0.2);
         assert_eq!(ela.dd.mat.get(0, 0), 6250.0);
+
+        let mut ela = LinElasticity::new(3000.0, 0.2, false, false);
+        ela.set_bulk_shear(1000.0, 600.0);
+        assert_eq!(ela.young, 1500.0);
+        assert_eq!(ela.poisson, 0.25);
+        assert_eq!(ela.dd.mat.get(0, 0), 1800.0);
+        assert_eq!(ela.dd.mat.get(0, 1), 600.0);
+        let c = ela.young / ((1.0 + ela.poisson) * (1.0 - 2.0 * ela.poisson));
+        assert_eq!(ela.dd.mat.get(0, 0), (1.0 - ela.poisson) * c);
+        assert_eq!(ela.dd.mat.get(0, 1), ela.poisson * c);
+
+        let mut ela = LinElasticity::new(3000.0, 0.2, false, false);
+        ela.set_young_poisson(1500.0, 0.25);
+        assert_eq!(ela.get_young_poisson(), (1500.0, 0.25));
+        assert_eq!(ela.get_bulk_shear(), (1000.0, 600.0));
+        assert_eq!(ela.dd.mat.get(0, 0), 1800.0);
+        assert_eq!(ela.dd.mat.get(0, 1), 600.0);
     }
 
     #[test]

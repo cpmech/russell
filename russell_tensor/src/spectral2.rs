@@ -1,35 +1,48 @@
-use crate::{vec_dyad_vec, Mandel, StrError, Tensor2};
+use super::{vec_dyad_vec, Mandel, Tensor2, SQRT_2, SQRT_3, SQRT_6};
+use crate::StrError;
 use russell_lab::{mat_eigen_sym_jacobi, Matrix, Vector};
 
 /// Holds the spectral representation of a symmetric second-order tensor
 pub struct Spectral2 {
-    /// Eigenvalues; dim = 3
+    /// The mandel representation
+    mandel: Mandel,
+
+    /// Holds the eigenvalues; dim = 3
     pub lambda: Vector,
 
-    /// Eigenprojectors; set of 3 symmetric Tensor2 (dim = 6 or 4)
+    /// Holds the eigenprojectors; set of 3 symmetric Tensor2 (dim = 6 or 4)
     pub projectors: Vec<Tensor2>,
 }
 
 impl Spectral2 {
     /// Returns a new instance
+    ///
+    /// **Note:** Must call [Spectral2::compose] to calculate `lambda` and `projectors`.
     pub fn new(two_dim: bool) -> Self {
-        let case = if two_dim {
+        let mandel = if two_dim {
             Mandel::Symmetric2D
         } else {
             Mandel::Symmetric
         };
         Spectral2 {
+            mandel,
             lambda: Vector::new(3),
-            projectors: vec![Tensor2::new(case), Tensor2::new(case), Tensor2::new(case)],
+            projectors: vec![Tensor2::new(mandel), Tensor2::new(mandel), Tensor2::new(mandel)],
         }
     }
 
     /// Performs the spectral decomposition of a symmetric second-order tensor
+    ///
+    /// # Results
+    ///
+    /// The results are available in [Spectral2::lambda] and [Spectral2::projectors].
+    ///
+    /// TODO: Rewrite this function to avoid temporary memory allocation
     pub fn decompose(&mut self, tt: &Tensor2) -> Result<(), StrError> {
-        let dim = tt.vec.dim();
-        if dim == 9 {
-            return Err("tensor must be Symmetric or Symmetric2D");
+        if tt.mandel() != self.mandel {
+            return Err("the mandel representation is incompatible");
         }
+        let dim = tt.vec.dim();
         if dim == 4 {
             // eigenvalues and eigenvectors
             let (t22, mut a) = tt.to_matrix_2d();
@@ -70,19 +83,30 @@ impl Spectral2 {
 
     /// Composes a new tensor from the eigenprojectors and diagonal values (lambda)
     pub fn compose(&self, composed: &mut Tensor2, lambda: &Vector) -> Result<(), StrError> {
-        let n = self.projectors[0].vec.dim();
-        if composed.vec.dim() != n {
-            return Err("composed tensor has incorrect dimension");
+        if composed.mandel() != self.mandel {
+            return Err("the mandel representation is incompatible");
         }
         if lambda.dim() != 3 {
             return Err("lambda.dim must be equal to 3");
         }
+        let n = self.projectors[0].vec.dim();
         for i in 0..n {
             composed.vec[i] = lambda[0] * self.projectors[0].vec[i]
                 + lambda[1] * self.projectors[1].vec[i]
                 + lambda[2] * self.projectors[2].vec[i];
         }
         Ok(())
+    }
+
+    /// Calculates the octahedral basis on the principal values space
+    ///
+    /// Returns `(λ_star_1, λ_star_2, λ_star_3)`
+    pub fn octahedral_basis(&self) -> (f64, f64, f64) {
+        let (s1, s2, s3) = (self.lambda[0], self.lambda[1], self.lambda[2]);
+        let ls1 = (2.0 * s1 - s2 - s3) / SQRT_6;
+        let ls2 = (s1 + s2 + s3) / SQRT_3;
+        let ls3 = (s3 - s2) / SQRT_2;
+        (ls1, ls2, ls3)
     }
 }
 
@@ -91,8 +115,8 @@ impl Spectral2 {
 #[cfg(test)]
 mod tests {
     use super::Spectral2;
-    use crate::{Mandel, SampleTensor2, SamplesTensor2, Tensor2};
-    use russell_lab::{mat_approx_eq, vec_approx_eq, Matrix, Vector};
+    use crate::{Mandel, SampleTensor2, SamplesTensor2, Tensor2, SQRT_3, SQRT_3_BY_2};
+    use russell_lab::{approx_eq, mat_approx_eq, vec_approx_eq, Matrix, Vector};
 
     #[test]
     fn decompose_captures_errors() {
@@ -100,7 +124,7 @@ mod tests {
         let tt = Tensor2::new(Mandel::General);
         assert_eq!(
             spec.decompose(&tt).err(),
-            Some("tensor must be Symmetric or Symmetric2D")
+            Some("the mandel representation is incompatible")
         );
     }
 
@@ -110,7 +134,7 @@ mod tests {
         let mut tt = Tensor2::new(Mandel::Symmetric2D);
         assert_eq!(
             spec.compose(&mut tt, &spec.lambda).err(),
-            Some("composed tensor has incorrect dimension")
+            Some("the mandel representation is incompatible")
         );
         let mut tt = Tensor2::new(Mandel::Symmetric);
         let lambda = Vector::new(1);
@@ -131,8 +155,8 @@ mod tests {
         if let Some(correct_lambda) = sample.eigenvalues {
             if let Some(correct_projectors) = sample.eigenprojectors {
                 // perform spectral decomposition of symmetric matrix
-                let case = spec.projectors[0].case();
-                let tt = Tensor2::from_matrix(&sample.matrix, case).unwrap();
+                let mandel = spec.projectors[0].mandel();
+                let tt = Tensor2::from_matrix(&sample.matrix, mandel).unwrap();
                 spec.decompose(&tt).unwrap();
 
                 // print results
@@ -159,7 +183,7 @@ mod tests {
                 mat_approx_eq(&correct2, &pp2, tol_proj);
 
                 // compose
-                let mut tt_new = Tensor2::new(case);
+                let mut tt_new = Tensor2::new(mandel);
                 spec.compose(&mut tt_new, &spec.lambda).unwrap();
                 let a_new = tt_new.to_matrix();
                 let a = Matrix::from(&sample.matrix);
@@ -188,5 +212,44 @@ mod tests {
         check(&mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15, false);
         check(&mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15, false);
         check(&mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15, false);
+    }
+
+    #[test]
+    fn octahedral_basis_works() {
+        // the following data corresponds to sigma_m = 1 and sigma_d = 3
+        #[rustfmt::skip]
+        let principal_stresses_and_lode = [
+            ( 3.0          ,  0.0          ,  0.0          ,  1.0 ),
+            ( 0.0          ,  3.0          ,  0.0          ,  1.0 ),
+            ( 0.0          ,  0.0          ,  3.0          ,  1.0 ),
+            ( 1.0 + SQRT_3 ,  1.0 - SQRT_3 ,  1.0          ,  0.0 ),
+            ( 1.0 + SQRT_3 ,  1.0          ,  1.0 - SQRT_3 ,  0.0 ),
+            ( 1.0          ,  1.0 + SQRT_3 ,  1.0 - SQRT_3 ,  0.0 ),
+            ( 1.0 - SQRT_3 ,  1.0 + SQRT_3 ,  1.0          ,  0.0 ),
+            ( 1.0          ,  1.0 - SQRT_3 ,  1.0 + SQRT_3 ,  0.0 ),
+            ( 1.0 - SQRT_3 ,  1.0          ,  1.0 + SQRT_3 ,  0.0 ),
+            ( 2.0          , -1.0          ,  2.0          , -1.0 ),
+            ( 2.0          ,  2.0          , -1.0          , -1.0 ),
+            (-1.0          ,  2.0          ,  2.0          , -1.0 ),
+        ];
+        let two_dim = true;
+        let mut spec = Spectral2::new(two_dim);
+        let mut tt = Tensor2::new_sym(two_dim);
+        for (sigma_1, sigma_2, sigma_3, lode_correct) in &principal_stresses_and_lode {
+            tt.vec[0] = *sigma_1;
+            tt.vec[1] = *sigma_2;
+            tt.vec[2] = *sigma_3;
+            spec.decompose(&tt).unwrap();
+            let (ls1, ls2, ls3) = spec.octahedral_basis();
+            let radius = f64::sqrt(ls3 * ls3 + ls1 * ls1);
+            let distance = ls2;
+            approx_eq(distance / SQRT_3, 1.0, 1e-15);
+            approx_eq(radius * SQRT_3_BY_2, 3.0, 1e-15);
+            if radius > 0.0 {
+                let cos_theta = ls1 / radius;
+                let lode = 4.0 * f64::powf(cos_theta, 3.0) - 3.0 * cos_theta;
+                approx_eq(lode, *lode_correct, 1e-15);
+            }
+        }
     }
 }

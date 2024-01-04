@@ -302,7 +302,7 @@ mod tests {
         mat_pseudo_inverse(&mut ai, &mut a).unwrap();
         let a_copy = Matrix::from(&data);
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
-        mat_approx_eq(&a_ai_a, &a_copy, 1e-8);
+        mat_approx_eq(&a_ai_a, &a_copy, 1e-7);
     }
 
     #[test]

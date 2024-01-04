@@ -1,5 +1,7 @@
 use std::env;
 
+const MKL_VERSION: &str = "2023.2.0";
+
 fn main() {
     // math functions
     cc::Build::new().file("c_code/math_functions.c").compile("c_code");
@@ -14,11 +16,17 @@ fn main() {
         // Intel MKL
         cc::Build::new()
             .file("c_code/interface_blas.c")
-            .include("/opt/intel/oneapi/mkl/latest/include")
+            .include(format!("/opt/intel/oneapi/mkl/{}/include", MKL_VERSION))
             .define("USE_INTEL_MKL", None)
             .compile("c_code_interface_blas");
-        println!("cargo:rustc-link-search=native=/opt/intel/oneapi/mkl/latest/lib/intel64");
-        println!("cargo:rustc-link-search=native=/opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64_lin");
+        println!(
+            "cargo:rustc-link-search=native=/opt/intel/oneapi/mkl/{}/lib/intel64",
+            MKL_VERSION
+        );
+        println!(
+            "cargo:rustc-link-search=native=/opt/intel/oneapi/compiler/{}/linux/compiler/lib/intel64_lin",
+            MKL_VERSION
+        );
         println!("cargo:rustc-link-lib=mkl_intel_lp64");
         println!("cargo:rustc-link-lib=mkl_intel_thread");
         println!("cargo:rustc-link-lib=mkl_core");
@@ -31,7 +39,6 @@ fn main() {
         // OpenBLAS
         cc::Build::new()
             .file("c_code/interface_blas.c")
-            .include("/opt/intel/oneapi/mkl/latest/include")
             .compile("c_code_interface_blas");
         println!("cargo:rustc-link-lib=dylib=openblas");
         println!("cargo:rustc-link-lib=dylib=lapack");

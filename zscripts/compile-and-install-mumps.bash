@@ -6,7 +6,7 @@ set -e
 BLAS_LIB=${1:-""}
 
 # options
-VERSION="5.6.1"
+VERSION="5.6.2"
 PREFIX="/usr/local"
 INCDIR=$PREFIX/include/mumps
 LIBDIR=$PREFIX/lib/mumps
@@ -41,8 +41,7 @@ fi
 tar xzf $MUMPS_GZ
 cd $MUMPS_DIR
 
-# patch Makefiles
-patch -u Makefile $PDIR/Makefile.diff
+# copy inc file
 if [ "${BLAS_LIB}" = "mkl" ]; then
     cp $PDIR/MakefileMKL.inc Makefile.inc
 else

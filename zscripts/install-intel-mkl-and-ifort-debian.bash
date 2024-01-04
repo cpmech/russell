@@ -2,6 +2,8 @@
 
 set -e
 
+VERSION="2023.2.0"
+
 # fake sudo function to be used by docker build
 sudo () {
   [[ $EUID = 0 ]] || set -- command sudo "$@"
@@ -15,12 +17,12 @@ sudo echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https:
 # install packages
 sudo apt-get update -y && \
 sudo apt-get install -y --no-install-recommends \
-    intel-oneapi-compiler-fortran \
-    intel-oneapi-mkl \
-    intel-oneapi-mkl-devel
+    intel-oneapi-compiler-fortran-$VERSION \
+    intel-oneapi-mkl-$VERSION \
+    intel-oneapi-mkl-devel-$VERSION
 
-LIBDIR1="/opt/intel/oneapi/mkl/latest/lib/intel64"
-LIBDIR2="/opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64_lin"
+LIBDIR1="/opt/intel/oneapi/mkl/$VERSION/lib/intel64"
+LIBDIR2="/opt/intel/oneapi/compiler/$VERSION/linux/compiler/lib/intel64_lin"
 
 # update ldconfig
 echo "${LIBDIR1}" | sudo tee /etc/ld.so.conf.d/intel-oneapi-mkl-and-compiler.conf >/dev/null

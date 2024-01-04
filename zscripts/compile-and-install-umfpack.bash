@@ -52,7 +52,7 @@ action UMFPACK
 
 # copy include files
 sudo mkdir -p $INCDIR/
-sudo cp -av include/*.h $INCDIR/
+sudo cp -av include/suitesparse/*.h $INCDIR/
 
 # copy libray files
 sudo mkdir -p $LIBDIR/

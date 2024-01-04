@@ -63,7 +63,8 @@ LIBOTHERS = -lpthread
 CDEFS   = -DAdd_
 
 #Begin Optimized options
-OPTF    = -O -nofor-main -fopenmp -DGEMMT_AVAILABLE
+# below, -diag-disable=10448 avoids Intel's warning about ifort being deprecated
+OPTF    = -O -nofor-main -fopenmp -DGEMMT_AVAILABLE  -diag-disable=10448
 OPTL    = -O -nofor-main -fopenmp
 OPTC    = -O -fopenmp
 #End Optimized options

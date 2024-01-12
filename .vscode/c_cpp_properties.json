@@ -8,7 +8,7 @@
         "/usr/include/suitesparse",
         "/opt/intel/oneapi/mkl/latest/include",
         "/usr/local/include/mumps",
-        "/usr/local/include/umfpack",
+        "/usr/local/include/umfpack"
       ],
       "defines": [
         "WITH_INTEL_DSS",

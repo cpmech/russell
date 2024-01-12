@@ -21,6 +21,7 @@ use std::ffi::OsStr;
 /// 2. `(COO and CSC)` or `(COO and CSR)` pairs may be `Some` at the same time
 /// 3. When getting data/information from the SparseMatrix, the default priority is `CSC -> CSR -> COO`
 /// 4. If needed, the CSC or CSR are automatically computed from COO
+#[derive(Clone)]
 pub struct SparseMatrix {
     coo: Option<CooMatrix>,
     csc: Option<CscMatrix>,
@@ -629,5 +630,15 @@ mod tests {
              5 3 2.0\n\
              5 5 1.0\n"
         );
+    }
+
+    #[test]
+    fn clone_works() {
+        let (coo, _, _, _) = Samples::tiny_1x1(false);
+        let mat = SparseMatrix::from_coo(coo);
+        let mut clone = mat.clone();
+        clone.get_coo_mut().unwrap().values[0] *= 2.0;
+        assert_eq!(mat.get_coo().unwrap().values[0], 123.0);
+        assert_eq!(clone.get_coo().unwrap().values[0], 246.0);
     }
 }

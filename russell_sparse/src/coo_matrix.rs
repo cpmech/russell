@@ -13,6 +13,7 @@ use russell_lab::{Matrix, Vector};
 /// * The repeated (i,j) capability is of great convenience for Finite Element solvers
 /// * A maximum number of entries must be decided prior to allocating a new COO matrix
 /// * The maximum number of entries includes possible entries with repeated indices
+#[derive(Clone)]
 pub struct CooMatrix {
     /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
     ///
@@ -1060,5 +1061,14 @@ mod tests {
         let x = coo.get_values_mut();
         x.reverse();
         assert_eq!(coo.get_values_mut(), &[456.0, 123.0]);
+    }
+
+    #[test]
+    fn clone_works() {
+        let (coo, _, _, _) = Samples::tiny_1x1(false);
+        let mut clone = coo.clone();
+        clone.values[0] *= 2.0;
+        assert_eq!(coo.values[0], 123.0);
+        assert_eq!(clone.values[0], 246.0);
     }
 }

@@ -62,6 +62,7 @@ extern "C" {
 /// ```text
 /// 0, 2, 5, 9, 10, 12
 /// ```
+#[derive(Clone)]
 pub struct CscMatrix {
     /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
     ///
@@ -1206,5 +1207,14 @@ mod tests {
              2 5 6.0\n\
              5 5 1.0\n"
         );
+    }
+
+    #[test]
+    fn clone_works() {
+        let (_, csc, _, _) = Samples::tiny_1x1(false);
+        let mut clone = csc.clone();
+        clone.values[0] *= 2.0;
+        assert_eq!(csc.values[0], 123.0);
+        assert_eq!(clone.values[0], 246.0);
     }
 }

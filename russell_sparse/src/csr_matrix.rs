@@ -48,6 +48,7 @@ use std::path::Path;
 /// ```text
 /// 0, 3, 5, 8, 11, 13
 /// ```
+#[derive(Clone)]
 pub struct CsrMatrix {
     /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
     ///
@@ -1274,5 +1275,14 @@ mod tests {
              5 3 2.0\n\
              5 5 1.0\n"
         );
+    }
+
+    #[test]
+    fn clone_works() {
+        let (_, _, csr, _) = Samples::tiny_1x1(false);
+        let mut clone = csr.clone();
+        clone.values[0] *= 2.0;
+        assert_eq!(csr.values[0], 123.0);
+        assert_eq!(clone.values[0], 246.0);
     }
 }

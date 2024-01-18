@@ -1,0 +1,14 @@
+name: Test on macOS
+on: [pull_request]
+jobs:
+  test_on_macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install libraries
+        run: |
+          brew install lapack openblas
+      - name: Run tests
+        run: |
+          export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/lapack/lib:$(brew --prefix)/opt/openblas/lib
+          bash run-tests.bash

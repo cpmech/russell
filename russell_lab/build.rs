@@ -39,6 +39,7 @@ fn main() {
         // OpenBLAS
         cc::Build::new()
             .file("c_code/interface_blas.c")
+            .include("/opt/homebrew/opt/openblas/include")
             .compile("c_code_interface_blas");
         println!("cargo:rustc-link-lib=dylib=openblas");
         println!("cargo:rustc-link-lib=dylib=lapack");

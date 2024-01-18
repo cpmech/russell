@@ -11,4 +11,4 @@ jobs:
       - name: Run tests
         run: |
           export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/lapack/lib:$(brew --prefix)/opt/openblas/lib
-          bash run-tests.bash
+          RUST_BACKTRACE=1 cargo test

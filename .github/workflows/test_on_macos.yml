@@ -9,7 +9,7 @@ jobs:
         run: |
           brew install lapack openblas
           brew tap brewsci/num
-          brew install brewsci-mumps --without-mpi
+          brew install brewsci-mumps --without-open-mpi
           brew --prefix brewsci-mumps
       - name: Run tests
         run: |

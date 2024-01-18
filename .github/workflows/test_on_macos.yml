@@ -8,7 +8,9 @@ jobs:
       - name: Install libraries
         run: |
           brew install lapack openblas
-          brew --prefix openblas
+          brew tap brewsci/num
+          brew install brewsci-mumps --without-mpi
+          brew --prefix brewsci-mumps
       - name: Run tests
         run: |
           export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/lapack/lib:$(brew --prefix)/opt/openblas/lib

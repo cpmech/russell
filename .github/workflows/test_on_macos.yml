@@ -8,6 +8,7 @@ jobs:
       - name: Install libraries
         run: |
           brew install lapack openblas
+          brew --prefix openblas
       - name: Run tests
         run: |
           export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/lapack/lib:$(brew --prefix)/opt/openblas/lib

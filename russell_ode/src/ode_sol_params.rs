@@ -1,6 +1,6 @@
 #![allow(unused, non_snake_case)]
 
-use crate::{DenseOutF, OdeMethod, StepOutF};
+use crate::{DenseOutF, Method, StepOutF};
 use russell_sparse::{Genie, LinSolParams};
 
 /// Defines the configuration parameters for the ODE solver
@@ -103,7 +103,7 @@ pub struct OdeSolParams {
     pub denseNstp: usize,
 
     /// the ODE method
-    pub method: OdeMethod,
+    pub method: Method,
 
     /// factor to multiply stabilization coefficient β
     pub stabBetaM: f64,
@@ -132,7 +132,7 @@ pub struct OdeSolParams {
 
 impl OdeSolParams {
     /// Allocates a new instance with default values
-    pub fn new(ode_method: OdeMethod, lin_sol: Option<Genie>) -> Self {
+    pub fn new(method: Method, lin_sol: Option<Genie>) -> Self {
         let genie = match lin_sol {
             Some(g) => g,
             None => Genie::Umfpack,
@@ -170,7 +170,7 @@ impl OdeSolParams {
             stepOut: false,
             denseOut: false,
             denseNstp: 0,
-            method: ode_method,
+            method,
             stabBetaM: 0.0,
             atol: 0.0,
             rtol: 0.0,

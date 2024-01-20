@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use crate::StrError;
 use russell_lab::Vector;
 use russell_sparse::SparseMatrix;

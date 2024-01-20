@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use crate::{Func, JacF, OdeMethod, OdeSolParams, Output, RkWork};
+use crate::{Func, JacF, Method, OdeSolParams, Output, RkWork};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 

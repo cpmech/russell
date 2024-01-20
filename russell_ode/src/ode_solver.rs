@@ -1,206 +1,329 @@
-use crate::{DenseOutF, OdeMethod, StepOutF, StrError};
-use russell_sparse::{Genie, LinSolParams};
+#![allow(unused)]
 
-/// Defines the configuration parameters for the ODE solver
-#[derive(Clone, Debug)]
-pub struct OdeSolParams {
-    /// minimum H allowed
-    Hmin: f64,
+use crate::{Func, JacF, OdeMethod, OdeSolParams, Output, RkWork};
+use russell_lab::Vector;
+use russell_sparse::CooMatrix;
 
-    /// initial H
-    IniH: f64,
+// Solver implements an ODE solver
+struct Solver<'a> {
+    // structures
+    conf: &'a OdeSolParams, // configuration parameters
+    out: Output<'a>,        // output handler
+    // stat: &'a Stat,         // statistics
 
-    /// max num iterations (allowed)
-    NmaxIt: usize,
+    // problem definition
+    ndim: usize, // size of y
+    fcn: Func,   // dy/dx := f(x,y)
+    jac: JacF,   // Jacobian: df/dy
 
-    /// max num substeps
-    NmaxSS: usize,
-
-    /// min step multiplier
-    Mmin: f64,
-
-    /// max step multiplier
-    Mmax: f64,
-
-    /// step multiplier factor
-    Mfac: f64,
-
-    /// coefficient to multiply stepsize if first step is rejected [0 ⇒ use dx_new]
-    MfirstRej: f64,
-
-    /// use Gustafsson's predictive controller
-    PredCtrl: bool,
-
-    /// smallest number satisfying 1.0 + ϵ > 1.0
-    Eps: f64,
-
-    /// max theta to decide whether the Jacobian should be recomputed or not
-    ThetaMax: f64,
-
-    /// c1 of HW-VII p124 => min ratio to retain previous h
-    C1h: f64,
-
-    /// c2 of HW-VII p124 => max ratio to retain previous h
-    C2h: f64,
-
-    /// strategy to select local error computation method
-    LerrStrat: usize,
-
-    /// allow use of go channels (threaded); e.g. to solve R and C systems concurrently
-    GoChan: bool,
-
-    /// use constant tangent (Jacobian) in BwEuler
-    CteTg: bool,
-
-    /// use RMS norm instead of Euclidean in BwEuler
-    UseRmsNorm: bool,
-
-    /// show messages, e.g. during iterations
-    Verbose: bool,
-
-    /// always start iterations with zero trial values (instead of collocation interpolation)
-    ZeroTrial: bool,
-
-    /// Lund stabilization coefficient β
-    StabBeta: f64,
-
-    /// number of steps to check stiff situation. 0 ⇒ no check. [default = 1]
-    StiffNstp: usize,
-
-    /// maximum value of ρs [default = 0.5]
-    StiffRsMax: f64,
-
-    /// number of "yes" stiff steps allowed [default = 15]
-    StiffNyes: usize,
-
-    /// number of "not" stiff steps to disregard stiffness [default = 6]
-    StiffNnot: usize,
-
-    /// linear solver kind
-    lsKind: Genie,
-
-    /// configurations for sparse linear solver
-    LinSolConfig: LinSolParams,
-
-    /// function to process step output (of accepted steps)
-    stepF: Option<StepOutF>,
-
-    /// function to process dense output
-    denseF: Option<DenseOutF>,
-
-    /// step size for dense output
-    denseDx: f64,
-
-    /// perform output of (variable) steps
-    stepOut: bool,
-
-    /// perform dense output is active
-    denseOut: bool,
-
-    /// number of dense steps
-    denseNstp: usize,
-
-    /// the ODE method
-    method: OdeMethod,
-
-    /// factor to multiply stabilization coefficient β
-    stabBetaM: f64,
-
-    /// absolute tolerance
-    atol: f64,
-
-    /// relative tolerance
-    rtol: f64,
-
-    /// Newton's iterations tolerance
-    fnewt: f64,
-
-    /// min value of rerrPrev
-    rerrPrevMin: f64,
-
-    /// use fixed steps
-    fixed: bool,
-
-    /// value of fixed stepsize
-    fixedH: f64,
-
-    /// number of fixed steps
-    fixedNsteps: usize,
+    // method, info and workspace
+    // rkm: OdeMethod,   // Runge-Kutta method
+    fixed_only: bool, // method can only be used with fixed steps
+    implicit: bool,   // method is implicit
+    work: RkWork,     // Runge-Kutta workspace
 }
 
-impl OdeSolParams {
-    /// Allocates a new instance with default values
-    pub fn new(ode_method: OdeMethod, lin_sol: Option<Genie>) -> Self {
-        let genie = match lin_sol {
-            Some(g) => g,
-            None => Genie::Umfpack,
+impl<'a> Solver<'a> {
+    fn new(ndim: usize, conf: &'a OdeSolParams, fcn: Func, jac: JacF, m: &'a CooMatrix) -> Self {
+        // main
+        let mut solver = Solver {
+            conf,
+            out: Output::new(ndim, conf),
+            // stat: &Stat::new(conf.ls_kind, false), // assuming ls_kind is a field in Config
+            ndim,
+            fcn,
+            jac,
+            // rkm: RkMethod::new(conf.method),
+            fixed_only: false,          // to be updated based on method info
+            implicit: false,            // to be updated based on method info
+            work: RkWork::new(0, ndim), // to be updated based on method info
         };
-        OdeSolParams {
-            Hmin: 0.0,
-            IniH: 0.0,
-            NmaxIt: 0,
-            NmaxSS: 0,
-            Mmin: 0.0,
-            Mmax: 0.0,
-            Mfac: 0.0,
-            MfirstRej: 0.0,
-            PredCtrl: false,
-            Eps: 0.0,
-            ThetaMax: 0.0,
-            C1h: 0.0,
-            C2h: 0.0,
-            LerrStrat: 0,
-            GoChan: false,
-            CteTg: false,
-            UseRmsNorm: false,
-            Verbose: false,
-            ZeroTrial: false,
-            StabBeta: 0.0,
-            StiffNstp: 0,
-            StiffRsMax: 0.0,
-            StiffNyes: 0,
-            StiffNnot: 0,
-            lsKind: genie,
-            LinSolConfig: LinSolParams::new(),
-            stepF: None,
-            denseF: None,
-            denseDx: 0.0,
-            stepOut: false,
-            denseOut: false,
-            denseNstp: 0,
-            method: ode_method,
-            stabBetaM: 0.0,
-            atol: 0.0,
-            rtol: 0.0,
-            fnewt: 0.0,
-            rerrPrevMin: 0.0,
-            fixed: false,
-            fixedH: 0.0,
-            fixedNsteps: 0,
-        }
+
+        // information
+        // let (fixed_only, implicit, nstg) = solver.rkm.info();
+        // solver.fixed_only = fixed_only;
+        // solver.implicit = implicit;
+
+        // stat
+        // solver.stat = &Stat::new(conf.ls_kind, solver.implicit);
+
+        // workspace
+        // solver.work = &RkWork::new(nstg, solver.ndim);
+
+        // initialize method
+        // solver.rkm.init(ndim, conf, solver.work, solver.stat, fcn, jac, m);
+
+        // connect dense output function
+        // if solver.out != &Output::default() {
+        //     solver.out.dout = solver.rkm.dense_out;
+        // }
+        solver
     }
 }
 
-/// Defines a unified interface for ODE solvers
-pub trait OdeSolTrait {
-    // Todo
-}
+impl<'a> Solver<'a> {
+    fn solve(&mut self, y: &Vector, x: f64, xf: f64) {
+        // benchmark
+        // let start_time = Instant::now();
+        // defer(|| self.stat.update_nanoseconds_total(start_time));
 
-/// Unifies the access to ODE solvers
-pub struct OdeSolver<'a> {
-    /// Holds the actual implementation
-    pub actual: Box<dyn OdeSolTrait + 'a>,
-}
+        // check
+        if xf < x {
+            panic!("xf={} must be greater than x={}", xf, x);
+        }
+        if self.fixed_only && !self.conf.fixed {
+            panic!(
+                "method {} can only be used with fixed steps. make sure to call conf.set_fixed_h > 0",
+                "self.conf.method"
+            );
+        }
 
-impl<'a> OdeSolver<'a> {
-    /// Allocates a new instance
-    pub fn new(params: OdeSolParams) { //-> Result<Self, StrError> {
-                                       // let actual: Box<dyn LinSolTrait> = match genie {
-                                       //     Genie::Mumps => Box::new(SolverMUMPS::new()?),
-                                       //     Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
-                                       //     Genie::IntelDss => Box::new(SolverIntelDSS::new()?),
-                                       // };
-                                       // Ok(OdeSolver { actual })
+        // initial step size
+        self.work.h = xf - x;
+        if self.conf.fixed {
+            self.work.h = self.conf.fixedH;
+        } else {
+            self.work.h = self.work.h.min(self.conf.IniH);
+        }
+
+        // stat and output
+        // self.stat.reset();
+        // self.stat.hopt = self.work.h;
+        // if let Some(out) = &self.out {
+        //     let stop = out.execute(0, false, self.work.rs, self.work.h, x, y);
+        //     if stop {
+        //         return;
+        //     }
+        // }
+
+        // set control flags
+        self.work.first = true;
+
+        // first scaling variable
+        // vec_scale_abs(&mut self.work.scal, &self.conf.atol, &self.conf.rtol, y); // scal = atol + rtol * abs(y)
+
+        // make sure that final x is equal to xf in the end
+        // defer(|| {
+        //     if (x - xf).abs() > 1e-10 {
+        //         println!("warning: |x - xf| = {} > 1e-8", (x - xf).abs());
+        //     }
+        // });
+
+        // fixed steps //////////////////////////////
+        if self.conf.fixed {
+            let mut istep = 1;
+            if self.conf.Verbose {
+                // io::pfgreen!("x = {}\n", x);
+                // io::pf!("y = {}\n", y);
+            }
+            for n in 0..self.conf.fixedNsteps {
+                // if self.implicit && self.jac.is_none() {
+                // f0 for numerical Jacobian
+                // self.stat.nfeval += 1;
+                // self.fcn(&mut self.work.f0, &self.work.h, x, y);
+                // }
+                // self.rkm.step(x, y);
+                // self.stat.nsteps += 1;
+                // self.work.first = false;
+                // x = f64::from(n + 1) * self.work.h;
+                // self.rkm.accept(y, x);
+                // if let Some(out) = &self.out {
+                //     let stop = out.execute(istep, false, &self.work.rs, &self.work.h, x, y);
+                //     if stop {
+                //         return;
+                //     }
+                // }
+                // if self.conf.verbose {
+                //     io::pfgreen!("x = {}\n", x);
+                //     io::pf!("y = {}\n", y);
+                // }
+                istep += 1;
+            }
+            return;
+        }
+
+        // variable steps //////////////////////////////
+
+        // control variables
+        self.work.reuse_jac_and_dec_once = false;
+        self.work.reuse_jac_once = false;
+        self.work.jac_is_ok = false;
+        self.work.h_prev = self.work.h;
+        self.work.nit = 0;
+        self.work.eta = 1.0;
+        self.work.theta = self.conf.ThetaMax;
+        self.work.dvfac = 0.0;
+        self.work.diverg = false;
+        self.work.reject = false;
+        self.work.rerr_prev = 1e-4;
+        self.work.stiff_yes = 0;
+        self.work.stiff_not = 0;
+
+        // first function evaluation
+        // self.stat.nfeval += 1;
+        // self.fcn(&mut self.work.f0, self.work.h, x, y); // f0 := f(x,y)
+
+        // time loop
+        let mut x = x;
+        let delta_x = xf - x;
+        let mut dxmax: f64 = 0.0;
+        let mut xstep: f64 = 0.0;
+        let mut dxnew: f64 = 0.0;
+        let mut dxratio: f64 = 0.0;
+        let mut last: bool = false;
+        let mut failed: bool = false;
+        while x < xf {
+            dxmax = delta_x;
+            xstep = x + delta_x;
+            failed = false;
+            for iss in 0..=self.conf.NmaxSS {
+                // total number of substeps
+                // self.stat.nsteps += 1;
+
+                // error: did not converge
+                // if iss == self.conf.nmax_ss {
+                //     failed = true;
+                //     break;
+                // }
+
+                // converged?
+                if x - xstep >= 0.0 {
+                    break;
+                }
+
+                // step update
+                // let start_time_step = Instant::now();
+                // self.rkm.step(x, y);
+                // self.stat.update_nanoseconds_step(start_time_step);
+
+                // iterations diverging ?
+                if self.work.diverg {
+                    self.work.diverg = false;
+                    self.work.reject = true;
+                    last = false;
+                    self.work.h *= self.work.dvfac;
+                    continue;
+                }
+
+                // accepted
+                if self.work.rerr < 1.0 {
+                    // set flags
+                    // self.stat.naccepted += 1;
+                    self.work.first = false;
+                    self.work.jac_is_ok = false;
+
+                    // stiffness detection
+                    // if self.conf.stiff_nstp > 0 {
+                    //     if self.stat.naccepted % self.conf.stiff_nstp == 0 || self.work.stiff_yes > 0 {
+                    //         if self.work.rs > self.conf.stiff_rs_max {
+                    //             self.work.stiff_not = 0;
+                    //             self.work.stiff_yes += 1;
+                    //             if self.work.stiff_yes == self.conf.stiff_nyes {
+                    //                 println!("stiff step detected @ x = {}", x);
+                    //             }
+                    //         } else {
+                    //             self.work.stiff_not += 1;
+                    //             if self.work.stiff_not == self.conf.stiff_nnot {
+                    //                 self.work.stiff_yes = 0;
+                    //             }
+                    //         }
+                    //     }
+                    // }
+
+                    // update x and y
+                    // dxnew = self.rkm.accept(y, x);
+                    x += self.work.h;
+
+                    // output
+                    // if let Some(out) = &self.out {
+                    //     let stop = out.execute(self.stat.naccepted, last, self.work.rs, self.work.h, x, y);
+                    //     if stop {
+                    //         return;
+                    //     }
+                    // }
+
+                    // converged ?
+                    // if last {
+                    //     self.stat.hopt = self.work.h; // optimal stepsize
+                    //     break;
+                    // }
+
+                    // save previous stepsize and relative error
+                    self.work.h_prev = self.work.h;
+                    // self.work.rerr_prev = self.conf.rerr_prev_min.max(self.work.rerr);
+
+                    // calc new scal and f0
+                    if self.implicit {
+                        // vec_scale_abs(&mut self.work.scal, &self.conf.atol, &self.conf.rtol, y);
+                        // self.stat.nfeval += 1;
+                        // self.fcn(&mut self.work.f0, self.work.h, x, y); // f0 := f(x,y)
+                    }
+
+                    // check new step size
+                    dxnew = f64::min(dxnew, dxmax);
+                    if self.work.reject {
+                        dxnew = self.work.h.min(dxnew);
+                    }
+                    self.work.reject = false;
+
+                    // do not reuse current Jacobian and decomposition by default
+                    self.work.reuse_jac_and_dec_once = false;
+
+                    // last step ?
+                    if x + dxnew - xstep >= 0.0 {
+                        last = true;
+                        self.work.h = xstep - x;
+                    } else {
+                        if self.implicit {
+                            // dxratio = dxnew / self.work.h;
+                            // self.work.reuse_jac_and_dec_once = self.work.theta <= self.conf.theta_max
+                            //     && dxratio >= self.conf.c1h
+                            //     && dxratio <= self.conf.c2h;
+                            // if !self.work.reuse_jac_and_dec_once {
+                            //     self.work.h = dxnew;
+                            // }
+                        } else {
+                            self.work.h = dxnew;
+                        }
+                    }
+
+                    // check θ to decide if at least the Jacobian can be reused
+                    if self.implicit {
+                        // if !self.work.reuse_jac_and_dec_once {
+                        //     self.work.reuse_jac_once = self.work.theta <= self.conf.theta_max;
+                        // }
+                    }
+                } else {
+                    // set flags
+                    // if self.stat.naccepted > 0 {
+                    //     self.stat.nrejected += 1;
+                    // }
+                    self.work.reject = true;
+                    last = false;
+
+                    // compute next stepsize
+                    // dxnew = self.rkm.reject();
+
+                    // new step size
+                    // if self.work.first && self.conf.mfirst_rej > 0 {
+                    //     self.work.h = self.conf.mfirst_rej * self.work.h;
+                    // } else {
+                    //     self.work.h = dxnew;
+                    // }
+
+                    // last step
+                    if x + self.work.h > xstep {
+                        self.work.h = xstep - x;
+                    }
+                }
+            }
+
+            // sub-stepping failed
+            if failed {
+                panic!("substepping did not converge after {} steps", self.conf.NmaxSS);
+                break;
+            }
+        }
     }
 }
 

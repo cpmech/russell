@@ -7,10 +7,16 @@ pub type StrError = &'static str;
 
 mod definitions;
 mod enums;
+mod ode_output;
+mod ode_sol_params;
 mod ode_solver;
+mod rk_work;
 use crate::definitions::*;
 use crate::enums::*;
+use crate::ode_output::*;
+use crate::ode_sol_params::*;
 use crate::ode_solver::*;
+use crate::rk_work::*;
 
 // run code from README file
 #[cfg(doctest)]

@@ -1,7 +1,7 @@
 use russell_lab::Vector;
 
-// rkwork holds the Runge-Kutta "workspace" variables
-pub struct RkWork {
+// Holds workspace variables for the Runge-Kutta method
+pub struct Workspace {
     // workspace
     pub nstg: usize,    // number of stages
     pub ndim: usize,    // dimension of y vector
@@ -37,7 +37,7 @@ pub struct RkWork {
     pub stiff_not: usize, // counter of not "stiff" steps
 }
 
-impl RkWork {
+impl Workspace {
     // new_rk_work returns a new structure
     pub fn new(nstg: usize, ndim: usize) -> Self {
         // workspace
@@ -49,7 +49,7 @@ impl RkWork {
         let f0 = Vector::new(ndim);
         let scal = Vector::new(ndim);
 
-        RkWork {
+        Workspace {
             nstg,
             ndim,
             u,

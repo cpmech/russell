@@ -1,14 +1,14 @@
 #![allow(unused)]
 
-use crate::{Func, JacF, Method, OdeSolParams, Output, RkWork};
+use crate::{Configuration, Func, JacF, Method, Output, Workspace};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 
 // Solver implements an ODE solver
 struct Solver<'a> {
     // structures
-    conf: &'a OdeSolParams, // configuration parameters
-    out: Output<'a>,        // output handler
+    conf: &'a Configuration, // configuration parameters
+    out: Output,             // output handler
     // stat: &'a Stat,         // statistics
 
     // problem definition
@@ -20,11 +20,11 @@ struct Solver<'a> {
     // rkm: OdeMethod,   // Runge-Kutta method
     fixed_only: bool, // method can only be used with fixed steps
     implicit: bool,   // method is implicit
-    work: RkWork,     // Runge-Kutta workspace
+    work: Workspace,  // Runge-Kutta workspace
 }
 
 impl<'a> Solver<'a> {
-    fn new(ndim: usize, conf: &'a OdeSolParams, fcn: Func, jac: JacF, m: &'a CooMatrix) -> Self {
+    fn new(ndim: usize, conf: &'a Configuration, fcn: Func, jac: JacF, m: &'a CooMatrix) -> Self {
         // main
         let mut solver = Solver {
             conf,
@@ -34,9 +34,9 @@ impl<'a> Solver<'a> {
             fcn,
             jac,
             // rkm: RkMethod::new(conf.method),
-            fixed_only: false,          // to be updated based on method info
-            implicit: false,            // to be updated based on method info
-            work: RkWork::new(0, ndim), // to be updated based on method info
+            fixed_only: false,             // to be updated based on method info
+            implicit: false,               // to be updated based on method info
+            work: Workspace::new(0, ndim), // to be updated based on method info
         };
 
         // information

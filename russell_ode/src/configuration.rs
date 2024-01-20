@@ -5,7 +5,16 @@ use russell_sparse::{Genie, LinSolParams};
 
 /// Defines the configuration parameters for the ODE solver
 #[derive(Clone, Debug)]
-pub struct OdeSolParams {
+pub struct Configuration {
+    /// Method
+    pub(crate) method: Method,
+
+    /// linear solver kind
+    pub(crate) genie: Genie,
+
+    /// configurations for sparse linear solver
+    pub(crate) lin_sol_params: LinSolParams,
+
     /// minimum H allowed
     pub Hmin: f64,
 
@@ -78,12 +87,6 @@ pub struct OdeSolParams {
     /// number of "not" stiff steps to disregard stiffness [default = 6]
     pub StiffNnot: usize,
 
-    /// linear solver kind
-    pub lsKind: Genie,
-
-    /// configurations for sparse linear solver
-    pub LinSolConfig: LinSolParams,
-
     /// function to process step output (of accepted steps)
     pub stepF: Option<StepOutF>,
 
@@ -101,9 +104,6 @@ pub struct OdeSolParams {
 
     /// number of dense steps
     pub denseNstp: usize,
-
-    /// the ODE method
-    pub method: Method,
 
     /// factor to multiply stabilization coefficient β
     pub stabBetaM: f64,
@@ -130,14 +130,21 @@ pub struct OdeSolParams {
     pub fixedNsteps: usize,
 }
 
-impl OdeSolParams {
+impl Configuration {
     /// Allocates a new instance with default values
-    pub fn new(method: Method, lin_sol: Option<Genie>) -> Self {
+    pub fn new(method: Method, lin_sol: Option<Genie>, lin_sol_params: Option<LinSolParams>) -> Self {
         let genie = match lin_sol {
             Some(g) => g,
             None => Genie::Umfpack,
         };
-        OdeSolParams {
+        let ls_params = match lin_sol_params {
+            Some(p) => p,
+            None => LinSolParams::new(),
+        };
+        Configuration {
+            method,
+            genie,
+            lin_sol_params: ls_params,
             Hmin: 0.0,
             IniH: 0.0,
             NmaxIt: 0,
@@ -162,15 +169,12 @@ impl OdeSolParams {
             StiffRsMax: 0.0,
             StiffNyes: 0,
             StiffNnot: 0,
-            lsKind: genie,
-            LinSolConfig: LinSolParams::new(),
             stepF: None,
             denseF: None,
             denseDx: 0.0,
             stepOut: false,
             denseOut: false,
             denseNstp: 0,
-            method,
             stabBetaM: 0.0,
             atol: 0.0,
             rtol: 0.0,

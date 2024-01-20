@@ -18,6 +18,12 @@ pub struct Information {
 ///    in Computational Mathematics ISSN 0179-3632, 528p
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Method {
+    /// Radau method (Radau IIA) (implicit, order 5, embedded)
+    Radau5,
+
+    /// Backward Euler method (implicit, order 1)
+    BwEuler,
+
     /// Forward Euler method (explicit, order 1)
     FwEuler,
 
@@ -80,18 +86,14 @@ pub enum Method {
 
     /// Dormand-Prince method (explicit, order 8(5,3), embedded)
     DoPri8,
-
-    /// Backward Euler method (implicit, order 1)
-    BwEuler,
-
-    /// Radau method (Radau IIA) (implicit, order 5, embedded)
-    Radau5,
 }
 
 impl Method {
     #[rustfmt::skip]
     pub fn information(&self) -> Information {
         match self {
+            Method::Radau5     => Information { order: 5, order_of_estimator: 4, implicit: true,  embedded: true,  multiple_stages: true,  first_step_same_as_last: false },
+            Method::BwEuler    => Information { order: 1, order_of_estimator: 0, implicit: true,  embedded: false, multiple_stages: false, first_step_same_as_last: false },
             Method::FwEuler    => Information { order: 1, order_of_estimator: 0, implicit: false, embedded: false, multiple_stages: false, first_step_same_as_last: false },
             Method::MdEuler    => Information { order: 2, order_of_estimator: 1, implicit: false, embedded: true,  multiple_stages: true,  first_step_same_as_last: false },
             Method::Rk2        => Information { order: 2, order_of_estimator: 0, implicit: false, embedded: false, multiple_stages: true,  first_step_same_as_last: false },
@@ -106,8 +108,6 @@ impl Method {
             Method::Verner6    => Information { order: 6, order_of_estimator: 5, implicit: false, embedded: true,  multiple_stages: true,  first_step_same_as_last: false },
             Method::Fehlberg7  => Information { order: 7, order_of_estimator: 8, implicit: false, embedded: true,  multiple_stages: true,  first_step_same_as_last: false },
             Method::DoPri8     => Information { order: 8, order_of_estimator: 7, implicit: false, embedded: true,  multiple_stages: true,  first_step_same_as_last: false },
-            Method::BwEuler    => Information { order: 1, order_of_estimator: 0, implicit: true,  embedded: false, multiple_stages: false, first_step_same_as_last: false },
-            Method::Radau5     => Information { order: 5, order_of_estimator: 4, implicit: true,  embedded: true,  multiple_stages: true,  first_step_same_as_last: false },
         }
     }
 }

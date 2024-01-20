@@ -1,12 +1,10 @@
 #![allow(unused, non_snake_case)]
 
+use crate::Configuration;
 use russell_lab::Vector;
 
-use crate::OdeSolParams;
-
-pub struct Output<'a> {
+pub struct Output {
     ndim: usize,
-    conf: &'a OdeSolParams,
     stepNmax: usize,
     denseNmax: usize,
     StepRS: Vec<f64>,
@@ -22,11 +20,10 @@ pub struct Output<'a> {
     xout: f64,
 }
 
-impl<'a> Output<'a> {
-    pub fn new(ndim: usize, conf: &'a OdeSolParams) -> Output {
+impl Output {
+    pub fn new(ndim: usize, conf: &Configuration) -> Output {
         let mut o = Output {
             ndim,
-            conf,
             stepNmax: 0,
             denseNmax: 0,
             StepRS: vec![],
@@ -41,24 +38,24 @@ impl<'a> Output<'a> {
             DenseIdx: 0,
             xout: 0.0,
         };
-        if o.conf.stepOut {
-            if o.conf.fixed {
-                o.stepNmax = o.conf.fixedNsteps + 1;
+        if conf.stepOut {
+            if conf.fixed {
+                o.stepNmax = conf.fixedNsteps + 1;
             } else {
-                o.stepNmax = o.conf.NmaxSS + 1;
+                o.stepNmax = conf.NmaxSS + 1;
             }
             o.StepRS = vec![0.0; o.stepNmax as usize];
             o.StepH = vec![0.0; o.stepNmax as usize];
             o.StepX = vec![0.0; o.stepNmax as usize];
             // o.StepY = vec![vec![0.0; ndim as usize]; o.stepNmax as usize];
         }
-        if o.conf.denseOut {
-            o.denseNmax = o.conf.denseNstp + 1;
+        if conf.denseOut {
+            o.denseNmax = conf.denseNstp + 1;
             o.denseS = vec![0; o.denseNmax as usize];
             o.DenseX = vec![0.0; o.denseNmax as usize];
             // o.DenseY = vec![vec![0.0; ndim as usize]; o.denseNmax as usize];
         }
-        if o.conf.denseF.is_some() {
+        if conf.denseF.is_some() {
             o.yout = vec![0.0; ndim as usize];
         }
         o
@@ -66,12 +63,12 @@ impl<'a> Output<'a> {
 
     pub fn execute(&mut self, istep: usize, last: bool, rho_s: f64, h: f64, x: f64, y: &Vector) -> bool {
         // step output using function
-        if let Some(step_f) = &self.conf.stepF {
-            let stop = step_f(istep, h, x, &y).unwrap();
-            if stop {
-                return true;
-            }
-        }
+        // if let Some(step_f) = &self.conf.stepF {
+        //     let stop = step_f(istep, h, x, &y).unwrap();
+        //     if stop {
+        //         return true;
+        //     }
+        // }
 
         // save step output
         if self.StepIdx < self.stepNmax {
@@ -84,27 +81,27 @@ impl<'a> Output<'a> {
 
         // dense output using function
         let mut xo: f64 = 0.0;
-        if let Some(dense_f) = &self.conf.denseF {
-            if istep == 0 || last {
-                xo = x;
-                // self.yout = y.clone();
-                // let stop = dense_f(istep, h, x, &y, xo, &self.yout).unwrap();
-                // if stop {
-                // return true;
-                // }
-                xo += self.conf.denseDx;
-            } else {
-                xo = self.xout;
-                while x >= xo {
-                    // self.dout(&self.yout, h, x, &y, xo);
-                    // let stop = dense_f(istep, h, x, &y, xo, &self.yout);
-                    // if stop {
-                    // return true;
-                    // }
-                    xo += self.conf.denseDx;
-                }
-            }
-        }
+        // if let Some(dense_f) = &self.conf.denseF {
+        //     if istep == 0 || last {
+        //         xo = x;
+        // self.yout = y.clone();
+        // let stop = dense_f(istep, h, x, &y, xo, &self.yout).unwrap();
+        // if stop {
+        // return true;
+        // }
+        //     xo += self.conf.denseDx;
+        // } else {
+        //     xo = self.xout;
+        //     while x >= xo {
+        // self.dout(&self.yout, h, x, &y, xo);
+        // let stop = dense_f(istep, h, x, &y, xo, &self.yout);
+        // if stop {
+        // return true;
+        // }
+        //             xo += self.conf.denseDx;
+        //         }
+        //     }
+        // }
 
         // save dense output
         if self.DenseIdx < self.denseNmax {
@@ -114,7 +111,7 @@ impl<'a> Output<'a> {
                 self.DenseX[self.DenseIdx as usize] = xo;
                 self.DenseY[self.DenseIdx as usize] = y.clone();
                 self.DenseIdx += 1;
-                xo = self.conf.denseDx;
+                // xo = self.conf.denseDx;
             } else {
                 xo = self.xout;
                 while x >= xo {
@@ -122,7 +119,7 @@ impl<'a> Output<'a> {
                     self.DenseX[self.DenseIdx as usize] = xo;
                     // self.dout(&self.DenseY[self.DenseIdx as usize], h, x, &y, xo);
                     self.DenseIdx += 1;
-                    xo += self.conf.denseDx;
+                    // xo += self.conf.denseDx;
                 }
             }
         }

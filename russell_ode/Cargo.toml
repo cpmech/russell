@@ -1,0 +1,16 @@
+[package]
+name = "russell_ode"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Solvers for Ordinary Differential Equations"
+homepage = "https://github.com/cpmech/russell"
+repository = "https://github.com/cpmech/russell"
+documentation = "https://docs.rs/russell_ode"
+readme = "README.md"
+categories = ["mathematics", "science"]
+keywords = ["differential equations", "numerical methods", "solver"]
+
+[dependencies]
+russell_lab = { path = "../russell_lab", version = "0.7" }
+russell_sparse = { path = "../russell_sparse", version = "0.7" }

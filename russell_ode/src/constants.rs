@@ -1,25 +1,5 @@
 use russell_lab::math::SQRT_6;
 
-// Modified Euler -- order 2 ------------------------------------------------------------------
-
-#[rustfmt::skip]
-pub(crate) const MODIFIED_EULER_A: [[f64; 2]; 2] = [
-    [0.0, 0.0],
-    [1.0, 0.0],
-];
-
-#[rustfmt::skip]
-pub(crate) const MODIFIED_EULER_B: [f64; 2] = [1.0 / 2.0, 1.0 / 2.0];
-
-#[rustfmt::skip]
-pub(crate) const MODIFIED_EULER_BE: [f64; 2] = [1.0, 0.0];
-
-#[rustfmt::skip]
-pub(crate) const MODIFIED_EULER_C: [f64; 2] = [0.0, 1.0];
-
-#[rustfmt::skip]
-pub(crate) const MODIFIED_EULER_E: [f64; 2] = [-1.0 / 2.0, 1.0 / 2.0];
-
 // Runge-Kutta -- order 2 ---------------------------------------------------------------------
 
 #[rustfmt::skip]
@@ -97,7 +77,27 @@ pub(crate) const RUNGE_KUTTA_ALT_4_B: [f64; 4] = [1.0 / 8.0, 3.0 / 8.0, 3.0 / 8.
 #[rustfmt::skip]
 pub(crate) const RUNGE_KUTTA_ALT_4_C: [f64; 4] = [0.0, 1.0 / 3.0, 2.0 / 3.0, 1.0];
 
-// Merson -- order 4 --------------------------------------------------------------------------
+// Modified Euler -- order 2 -- embedded ------------------------------------------------------
+
+#[rustfmt::skip]
+pub(crate) const MODIFIED_EULER_A: [[f64; 2]; 2] = [
+    [0.0, 0.0],
+    [1.0, 0.0],
+];
+
+#[rustfmt::skip]
+pub(crate) const MODIFIED_EULER_B: [f64; 2] = [1.0 / 2.0, 1.0 / 2.0];
+
+#[rustfmt::skip]
+pub(crate) const MODIFIED_EULER_BE: [f64; 2] = [1.0, 0.0];
+
+#[rustfmt::skip]
+pub(crate) const MODIFIED_EULER_C: [f64; 2] = [0.0, 1.0];
+
+#[rustfmt::skip]
+pub(crate) const MODIFIED_EULER_E: [f64; 2] = [-1.0 / 2.0, 1.0 / 2.0];
+
+// Merson -- order 4 -- embedded --------------------------------------------------------------
 
 #[rustfmt::skip]
 pub(crate) const MERSON_4_A: [[f64; 5]; 5] = [
@@ -120,7 +120,7 @@ pub(crate) const MERSON_4_C: [f64; 5] = [0.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 2.0, 1
 #[rustfmt::skip]
 pub(crate) const MERSON_4_E: [f64; 5] = [1.0 / 15.0, 0.0, -3.0 / 10.0, 4.0 / 15.0, -1.0 / 30.0];
 
-// Zonneveld -- order 4 -----------------------------------------------------------------------
+// Zonneveld -- order 4 -- embedded -----------------------------------------------------------
 
 #[rustfmt::skip]
 pub(crate) const ZONNEVELD_4_A: [[f64; 5]; 5] = [
@@ -143,7 +143,7 @@ pub(crate) const ZONNEVELD_4_C: [f64; 5] = [0.0, 1.0 / 2.0, 1.0 / 2.0, 1.0, 3.0 
 #[rustfmt::skip]
 pub(crate) const ZONNEVELD_4_E: [f64; 5] = [2.0 / 3.0, -2.0, -2.0, -2.0, 16.0 / 3.0];
 
-// Fehlberg -- order 4 ------------------------------------------------------------------------
+// Fehlberg -- order 4 -- embedded ------------------------------------------------------------
 
 #[rustfmt::skip]
 pub(crate) const FEHLBERG_4_A: [[f64; 6]; 6] = [
@@ -167,7 +167,7 @@ pub(crate) const FEHLBERG_4_C: [f64; 6] = [0.0, 1.0 / 4.0, 3.0 / 8.0, 12.0 / 13.
 #[rustfmt::skip]
 pub(crate) const FEHLBERG_4_E: [f64; 6] = [-1.0 / 360.0, 0.0, 128.0 / 4275.0, 2197.0 / 75240.0, -1.0 / 50.0, -2.0 / 55.0];
 
-// Dormand-Prince -- order 5 ------------------------------------------------------------------
+// Dormand-Prince -- order 5 -- embedded ------------------------------------------------------
 
 #[rustfmt::skip]
 pub(crate) const DORMAND_PRINCE_5_A: [[f64; 7]; 7] = [
@@ -203,7 +203,7 @@ pub(crate) const DORMAND_PRINCE_5_D: [[f64; 7]; 1] = [[
     69997945.0 / 29380423.0,         // D7
 ]];
 
-// Verner -- order 6 --------------------------------------------------------------------------
+// Verner -- order 6 -- embedded --------------------------------------------------------------
 
 #[rustfmt::skip]
 pub(crate) const VERNER_6_A: [[f64; 8]; 8] = [
@@ -229,7 +229,7 @@ pub(crate) const VERNER_6_C: [f64; 8] = [0.0, 1.0 / 6.0, 4.0 / 15.0, 2.0 / 3.0, 
 #[rustfmt::skip]
 pub(crate) const VERNER_6_E: [f64; 8] = [-1.0 / 160.0, 0.0, -125.0 / 17952.0, 1.0 / 144.0, -12.0 / 1955.0, -3.0 / 44.0, 125.0 / 11592.0, 43.0 / 616.0];
 
-// Fehlberg -- order 7 ------------------------------------------------------------------------
+// Fehlberg -- order 7 -- embedded ------------------------------------------------------------
 
 #[rustfmt::skip]
 pub(crate) const FEHLBERG_7_A: [[f64; 13]; 13] = [
@@ -260,7 +260,7 @@ pub(crate) const FEHLBERG_7_C: [f64; 13] = [0.0, 2.0 / 27.0, 1.0 / 9.0, 1.0 / 6.
 #[rustfmt::skip]
 pub(crate) const FEHLBERG_7_E: [f64; 13] = [41.0 / 840.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 41.0 / 840.0, -41.0 / 840.0, -41.0 / 840.0];
 
-// Dormand-Prince -- order 8 ------------------------------------------------------------------
+// Dormand-Prince -- order 8 -- embedded ------------------------------------------------------
 
 #[rustfmt::skip]
 pub(crate) const DORMAND_PRINCE_8_A: [[f64; 12]; 12] = [

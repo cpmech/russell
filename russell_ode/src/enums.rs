@@ -27,9 +27,6 @@ pub enum Method {
     /// Forward Euler method (explicit, order 1)
     FwEuler,
 
-    /// Modified Euler method (explicit, order 2(1), embedded)
-    MdEuler,
-
     /// Runge (Kutta) method (mid-point) (explicit, order 2)
     ///
     /// Reference: page 135 of Hairer, Nørsett, and Wanner (2008)
@@ -54,6 +51,9 @@ pub enum Method {
     ///
     /// Reference: page 138 of Hairer, Nørsett, and Wanner (2008)
     Rk4alt,
+
+    /// Modified Euler method (explicit, order 2(1), embedded)
+    MdEuler,
 
     /// Merson method (explicit, order 4("5"), embedded)
     ///
@@ -95,12 +95,12 @@ impl Method {
             Method::Radau5     => Information { order: 5, order_of_estimator: 4, implicit: true,  embedded: true,  multiple_stages: true,  first_step_same_as_last: false },
             Method::BwEuler    => Information { order: 1, order_of_estimator: 0, implicit: true,  embedded: false, multiple_stages: false, first_step_same_as_last: false },
             Method::FwEuler    => Information { order: 1, order_of_estimator: 0, implicit: false, embedded: false, multiple_stages: false, first_step_same_as_last: false },
-            Method::MdEuler    => Information { order: 2, order_of_estimator: 1, implicit: false, embedded: true,  multiple_stages: true,  first_step_same_as_last: false },
             Method::Rk2        => Information { order: 2, order_of_estimator: 0, implicit: false, embedded: false, multiple_stages: true,  first_step_same_as_last: false },
             Method::Rk3        => Information { order: 3, order_of_estimator: 0, implicit: false, embedded: false, multiple_stages: true,  first_step_same_as_last: false },
             Method::Heun3      => Information { order: 3, order_of_estimator: 0, implicit: false, embedded: false, multiple_stages: true,  first_step_same_as_last: false },
             Method::Rk4        => Information { order: 4, order_of_estimator: 0, implicit: false, embedded: false, multiple_stages: true,  first_step_same_as_last: false },
             Method::Rk4alt     => Information { order: 4, order_of_estimator: 0, implicit: false, embedded: false, multiple_stages: true,  first_step_same_as_last: false },
+            Method::MdEuler    => Information { order: 2, order_of_estimator: 1, implicit: false, embedded: true,  multiple_stages: true,  first_step_same_as_last: false },
             Method::Merson4    => Information { order: 4, order_of_estimator: 3, implicit: false, embedded: true,  multiple_stages: true,  first_step_same_as_last: false },
             Method::Zonneveld4 => Information { order: 4, order_of_estimator: 3, implicit: false, embedded: true,  multiple_stages: true,  first_step_same_as_last: false },
             Method::Fehlberg4  => Information { order: 4, order_of_estimator: 4, implicit: false, embedded: true,  multiple_stages: true,  first_step_same_as_last: false },

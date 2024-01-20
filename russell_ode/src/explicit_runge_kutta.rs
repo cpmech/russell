@@ -21,9 +21,8 @@ pub struct ExplicitRungeKutta {
     Cd: Option<Vector>, // C coefficients for dense output
     D: Option<Matrix>,  // dense output coefficients. [may be nil]
 
-    Nstg: usize, // number of stages = len(A) = len(B) = len(C)
-    P: usize,    // order of y1 (corresponding to b)
-    Q: usize,    // order of error estimator (embedded only); e.g. DoPri5(4) ⇒ q = 4 (=min(order(y1) , order(y1bar))
+    P: usize, // order of y1 (corresponding to b)
+    Q: usize, // order of error estimator (embedded only); e.g. DoPri5(4) ⇒ q = 4 (=min(order(y1) , order(y1bar))
 
     // data
     ndim: usize,      // problem dimension
@@ -35,14 +34,10 @@ pub struct ExplicitRungeKutta {
     w: Vector, // local workspace
     n: f64,    // exponent n = 1/(q+1) (or 1/(q+1)-0.75⋅β) of rerrⁿ
 
-               // dense output
-               // dout: Vec<Vector>, // dense output coefficients [nstgDense][ndim] (partially allocated by newERK method)
-               // kd: Vec<Vector>,   // k values for dense output [nextraKs] (partially allocated by newERK method)
-               // yd: Vector,        // y values for dense output (allocated here if len(kd)>0)
-
-               // functions to compute variables for dense output
-               // dfunA: fn(&mut Vector, f64),                    // in Accept function
-               // dfunB: fn(&mut Vector, f64, f64, &Vector, f64), // DenseOut function
+    // dense output
+    dout: Option<Vec<Vector>>, // dense output coefficients [nstgDense][ndim] (partially allocated by newERK method)
+    kd: Option<Vec<Vector>>,   // k values for dense output [nextraKs] (partially allocated by newERK method)
+    yd: Option<Vector>,        // y values for dense output (allocated here if len(kd)>0)
 }
 
 impl ExplicitRungeKutta {
@@ -98,21 +93,26 @@ impl ExplicitRungeKutta {
             (None, None)
         };
         let (mut Ad, mut Cd, mut D) = (None, None, None);
-        if conf.method == Method::DoPri5 {
+        let (mut dout, mut kd, mut yd) = (None, None, None);
+        if conf.denseOut && conf.method == Method::DoPri5 {
             D = Some(Matrix::from(&DORMAND_PRINCE_5_D));
+            dout = Some(vec![Vector::new(ndim); 5]);
         }
-        if conf.method == Method::DoPri8 {
+        if conf.denseOut && conf.method == Method::DoPri8 {
             Ad = Some(Matrix::from(&DORMAND_PRINCE_8_AD));
             Cd = Some(Vector::from(&DORMAND_PRINCE_8_CD));
             D = Some(Matrix::from(&DORMAND_PRINCE_8_D));
+            dout = Some(vec![Vector::new(ndim); 8]);
+            kd = Some(vec![Vector::new(ndim); 3]);
+            yd = Some(Vector::new(ndim));
         }
-        let Nstg = B.dim();
         let lund_stabilization_factor = if conf.StabBeta > 0.0 {
             1.0 / ((info.order_of_estimator + 1) as f64) - conf.StabBeta * conf.stabBetaM
         } else {
             1.0 / ((info.order_of_estimator + 1) as f64)
         };
         let stat = Statistics::new(info.implicit, conf.genie);
+        let n_stage = B.dim();
         Ok(ExplicitRungeKutta {
             conf,
             info,
@@ -124,30 +124,27 @@ impl ExplicitRungeKutta {
             Ad,
             Cd,
             D,
-            Nstg,
             P: info.order,
             Q: info.order_of_estimator,
             ndim,
-            work: Workspace::new(Nstg, ndim),
+            work: Workspace::new(n_stage, ndim),
             stat,
             fcn: function,
             w: Vector::new(ndim),
             n: lund_stabilization_factor,
-            // dout: (),
-            // kd: (),
-            // yd: (),
-            // dfunA: (),
-            // dfunB: (),
+            dout,
+            kd,
+            yd,
         })
     }
 
     /// Performs  the next step
     pub fn next_step(&mut self, xa: f64, ya: &Vector) {
         // auxiliary
+        let n_stage = self.work.nstg;
         let h = self.work.h;
         let k = &mut self.work.f;
         let v = &mut self.work.v;
-
         let dmin = 1.0 / self.conf.Mmin;
         let dmax = 1.0 / self.conf.Mmax;
 
@@ -159,7 +156,7 @@ impl ExplicitRungeKutta {
         }
 
         // compute ki
-        for i in 1..self.work.nstg {
+        for i in 1..n_stage {
             let ui = xa + h * self.C[i];
             vec_copy(&mut v[1], &ya).unwrap(); // vi := ya
             for j in 0..i {
@@ -176,7 +173,7 @@ impl ExplicitRungeKutta {
         if !self.info.embedded {
             for m in 0..self.ndim {
                 self.w[m] = ya[m];
-                for i in 0..self.work.nstg {
+                for i in 0..n_stage {
                     self.w[m] += self.B[i] * k[i][m] * h;
                 }
             }
@@ -202,7 +199,7 @@ impl ExplicitRungeKutta {
                 self.w[m] = ya[m];
                 let mut errA = 0.0;
                 let mut errB = 0.0;
-                for i in 0..self.work.nstg {
+                for i in 0..n_stage {
                     self.w[m] += self.B[i] * k[i][m] * h;
                     errA += self.B[i] * k[i][m];
                     errB += ee[i] * k[i][m];
@@ -212,8 +209,8 @@ impl ExplicitRungeKutta {
                 err3 += (errA / sk) * (errA / sk);
                 err5 += (errB / sk) * (errB / sk);
                 // stiffness estimation
-                let dk = k[self.Nstg - 1][m] - k[self.Nstg - 2][m];
-                let dv = v[self.Nstg - 1][m] - v[self.Nstg - 2][m];
+                let dk = k[n_stage - 1][m] - k[n_stage - 2][m];
+                let dv = v[n_stage - 1][m] - v[n_stage - 2][m];
                 snum += dk * dk;
                 sden += dv * dv;
             }
@@ -233,7 +230,7 @@ impl ExplicitRungeKutta {
         for m in 0..self.ndim {
             self.w[m] = ya[m];
             let mut lerrm = 0.0;
-            for i in 0..self.work.nstg {
+            for i in 0..n_stage {
                 let kh = k[i][m] * h;
                 self.w[m] += self.B[i] * kh;
                 lerrm += ee[i] * kh;
@@ -242,8 +239,8 @@ impl ExplicitRungeKutta {
             let ratio = lerrm / sk;
             sum += ratio * ratio;
             // stiffness estimation
-            let dk = k[self.Nstg - 1][m] - k[self.Nstg - 2][m];
-            let dv = v[self.Nstg - 1][m] - v[self.Nstg - 2][m];
+            let dk = k[n_stage - 1][m] - k[n_stage - 2][m];
+            let dv = v[n_stage - 1][m] - v[n_stage - 2][m];
             snum += dk * dk;
             sden += dv * dv;
         }
@@ -255,18 +252,218 @@ impl ExplicitRungeKutta {
 
     /// Accepts the update and computes the next stepsize
     ///
-    /// Returns `(stepsize_new, relative_error)`
-    pub fn accept_update(&mut self) -> (f64, f64) {
-        (0.0, 0.0)
+    /// Returns `stepsize_new`
+    pub fn accept_update(&mut self, y0: &mut Vector, x0: f64) -> f64 {
+        // store data for future dense output (Dormand-Prince 5)
+        if self.conf.denseOut && self.conf.method == Method::DoPri5 {
+            let dd = self.D.as_ref().unwrap();
+            let dout = self.dout.as_mut().unwrap();
+            let h = self.work.h;
+            let k = &self.work.f;
+            for m in 0..self.ndim {
+                let ydiff = self.w[m] - y0[m];
+                let bspl = h * k[0][m] - ydiff;
+                dout[0][m] = y0[m];
+                dout[1][m] = ydiff;
+                dout[2][m] = bspl;
+                dout[3][m] = ydiff - h * k[6][m] - bspl;
+                dout[4][m] = dd.get(0, 0) * k[0][m]
+                    + dd.get(0, 2) * k[2][m]
+                    + dd.get(0, 3) * k[3][m]
+                    + dd.get(0, 4) * k[4][m]
+                    + dd.get(0, 5) * k[5][m]
+                    + dd.get(0, 6) * k[6][m];
+                dout[4][m] *= self.work.h;
+            }
+        }
+
+        // store data for future dense output (Dormand-Prince 8)
+        if self.conf.denseOut && self.conf.method == Method::DoPri8 {
+            // auxiliary variables
+            let aad = self.Ad.as_ref().unwrap();
+            let cd = self.Cd.as_ref().unwrap();
+            let dd = self.D.as_ref().unwrap();
+            let dout = self.dout.as_mut().unwrap();
+            let kd = self.kd.as_mut().unwrap();
+            let yd = self.yd.as_mut().unwrap();
+            let h = self.work.h;
+            let k = &self.work.f;
+
+            // first function evaluation
+            for m in 0..self.ndim {
+                yd[m] = y0[m]
+                    + h * (aad.get(0, 0) * k[0][m]
+                        + aad.get(0, 6) * k[6][m]
+                        + aad.get(0, 7) * k[7][m]
+                        + aad.get(0, 8) * k[8][m]
+                        + aad.get(0, 9) * k[9][m]
+                        + aad.get(0, 10) * k[10][m]
+                        + aad.get(0, 11) * k[11][m]
+                        + aad.get(0, 12) * k[11][m]);
+            }
+            self.stat.Nfeval += 1;
+            let u = x0 + cd[0] * h;
+            (self.fcn)(&mut kd[0], h, u, yd);
+
+            // second function evaluation
+            for m in 0..self.ndim {
+                yd[m] = y0[m]
+                    + h * (aad.get(1, 0) * k[0][m]
+                        + aad.get(1, 5) * k[5][m]
+                        + aad.get(1, 6) * k[6][m]
+                        + aad.get(1, 7) * k[7][m]
+                        + aad.get(1, 10) * k[10][m]
+                        + aad.get(1, 11) * k[11][m]
+                        + aad.get(1, 12) * k[11][m]
+                        + aad.get(1, 13) * kd[0][m]);
+            }
+            self.stat.Nfeval += 1;
+            let u = x0 + cd[1] * h;
+            (self.fcn)(&mut kd[1], h, u, yd);
+
+            // next third function evaluation
+            for m in 0..self.ndim {
+                yd[m] = y0[m]
+                    + h * (aad.get(2, 0) * k[0][m]
+                        + aad.get(2, 5) * k[5][m]
+                        + aad.get(2, 6) * k[6][m]
+                        + aad.get(2, 7) * k[7][m]
+                        + aad.get(2, 8) * k[8][m]
+                        + aad.get(2, 12) * k[11][m]
+                        + aad.get(2, 13) * kd[0][m]
+                        + aad.get(2, 14) * kd[1][m]);
+            }
+            self.stat.Nfeval += 1;
+            let u = x0 + cd[2] * h;
+            (self.fcn)(&mut kd[2], h, u, yd);
+
+            // final results
+            for m in 0..self.ndim {
+                let ydiff = self.w[m] - y0[m];
+                let bspl = h * k[0][m] - ydiff;
+                dout[0][m] = y0[m];
+                dout[1][m] = ydiff;
+                dout[2][m] = bspl;
+                dout[3][m] = ydiff - h * k[11][m] - bspl;
+                dout[4][m] = h
+                    * (dd.get(0, 0) * k[0][m]
+                        + dd.get(0, 5) * k[5][m]
+                        + dd.get(0, 6) * k[6][m]
+                        + dd.get(0, 7) * k[7][m]
+                        + dd.get(0, 8) * k[8][m]
+                        + dd.get(0, 9) * k[9][m]
+                        + dd.get(0, 10) * k[10][m]
+                        + dd.get(0, 11) * k[11][m]
+                        + dd.get(0, 12) * k[11][m]
+                        + dd.get(0, 13) * kd[0][m]
+                        + dd.get(0, 14) * kd[1][m]
+                        + dd.get(0, 15) * kd[2][m]);
+                dout[5][m] = h
+                    * (dd.get(1, 0) * k[0][m]
+                        + dd.get(1, 5) * k[5][m]
+                        + dd.get(1, 6) * k[6][m]
+                        + dd.get(1, 7) * k[7][m]
+                        + dd.get(1, 8) * k[8][m]
+                        + dd.get(1, 9) * k[9][m]
+                        + dd.get(1, 10) * k[10][m]
+                        + dd.get(1, 11) * k[11][m]
+                        + dd.get(1, 12) * k[11][m]
+                        + dd.get(1, 13) * kd[0][m]
+                        + dd.get(1, 14) * kd[1][m]
+                        + dd.get(1, 15) * kd[2][m]);
+                dout[6][m] = h
+                    * (dd.get(2, 0) * k[0][m]
+                        + dd.get(2, 5) * k[5][m]
+                        + dd.get(2, 6) * k[6][m]
+                        + dd.get(2, 7) * k[7][m]
+                        + dd.get(2, 8) * k[8][m]
+                        + dd.get(2, 9) * k[9][m]
+                        + dd.get(2, 10) * k[10][m]
+                        + dd.get(2, 11) * k[11][m]
+                        + dd.get(2, 12) * k[11][m]
+                        + dd.get(2, 13) * kd[0][m]
+                        + dd.get(2, 14) * kd[1][m]
+                        + dd.get(2, 15) * kd[2][m]);
+                dout[7][m] = h
+                    * (dd.get(3, 0) * k[0][m]
+                        + dd.get(3, 5) * k[5][m]
+                        + dd.get(3, 6) * k[6][m]
+                        + dd.get(3, 7) * k[7][m]
+                        + dd.get(3, 8) * k[8][m]
+                        + dd.get(3, 9) * k[9][m]
+                        + dd.get(3, 10) * k[10][m]
+                        + dd.get(3, 11) * k[11][m]
+                        + dd.get(3, 12) * k[11][m]
+                        + dd.get(3, 13) * kd[0][m]
+                        + dd.get(3, 14) * kd[1][m]
+                        + dd.get(3, 15) * kd[2][m]);
+            }
+        }
+
+        // auxiliary
+        let n_stage = self.work.nstg;
+        let dmin = 1.0 / self.conf.Mmin;
+        let dmax = 1.0 / self.conf.Mmax;
+
+        // update y
+        vec_copy(y0, &self.w).unwrap();
+
+        // update k0
+        if self.info.first_step_same_as_last {
+            for m in 0..self.ndim {
+                self.work.f[0][m] = self.work.f[n_stage - 1][m]; // k0 := ks for next step
+            }
+        }
+
+        // return zero if not embedded
+        if !self.info.embedded {
+            return 0.0;
+        }
+
+        // estimate new stepsize
+        let mut d = f64::powf(self.work.rerr, self.n);
+        if self.conf.StabBeta > 0.0 {
+            // lund-stabilization
+            d = d / f64::powf(self.work.rerr_prev, self.conf.StabBeta);
+        }
+        d = f64::max(dmax, f64::min(dmin, d / self.conf.Mfac)); // we require  fac1 <= hnew/h <= fac2
+        let dxnew = self.work.h / d;
+        dxnew
     }
 
     /// Rejects the update
     ///
     /// Returns the `relative_error`
     pub fn reject_update(&mut self) -> f64 {
-        0.0
+        // estimate new stepsize
+        let dmin = 1.0 / self.conf.Mmin;
+        let d = f64::powf(self.work.rerr, self.n) / self.conf.Mfac;
+        let dxnew = self.work.h / f64::min(dmin, d);
+        dxnew
     }
 
     /// Computes the dense output
-    pub fn dense_output(&self) {}
+    pub fn dense_output(&self, yout: &mut Vector, h: f64, x: f64, y: &Vector, xout: f64) {
+        if self.conf.denseOut && self.conf.method == Method::DoPri5 {
+            let dout = self.dout.as_ref().unwrap();
+            let xold = x - h;
+            let theta = (xout - xold) / h;
+            let u_theta = 1.0 - theta;
+            for m in 0..self.ndim {
+                yout[m] = dout[0][m]
+                    + theta * (dout[1][m] + u_theta * (dout[2][m] + theta * (dout[3][m] + u_theta * dout[4][m])));
+            }
+        }
+        if self.conf.denseOut && self.conf.method == Method::DoPri8 {
+            let dout = self.dout.as_ref().unwrap();
+            let xold = x - h;
+            let theta = (xout - xold) / h;
+            let u_theta = 1.0 - theta;
+            for m in 0..self.ndim {
+                let par = dout[4][m] + theta * (dout[5][m] + u_theta * (dout[6][m] + theta * dout[7][m]));
+                yout[m] =
+                    dout[0][m] + theta * (dout[1][m] + u_theta * (dout[2][m] + theta * (dout[3][m] + u_theta * par)));
+            }
+        }
+    }
 }

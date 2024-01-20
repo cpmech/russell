@@ -110,6 +110,28 @@ impl Method {
             Method::DoPri8     => Information { order: 8, order_of_estimator: 7, implicit: false, embedded: true,  multiple_stages: true,  first_step_same_as_last: false },
         }
     }
+
+    pub fn explicit_methods() -> Vec<Method> {
+        vec![
+            Method::Rk2,
+            Method::Rk3,
+            Method::Heun3,
+            Method::Rk4,
+            Method::Rk4alt,
+            Method::MdEuler,
+            Method::Merson4,
+            Method::Zonneveld4,
+            Method::Fehlberg4,
+            Method::DoPri5,
+            Method::Verner6,
+            Method::Fehlberg7,
+            Method::DoPri8,
+        ]
+    }
+
+    pub fn implicit_methods() -> Vec<Method> {
+        vec![Method::Radau5, Method::BwEuler]
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -172,5 +194,31 @@ mod tests {
         let m = Method::Verner6   ; let i=m.information(); assert_eq!(i.order,6); assert_eq!(i.order_of_estimator,5); assert_eq!(i.implicit,false); assert_eq!(i.embedded,true ); assert_eq!(i.multiple_stages,true ); assert_eq!(i.first_step_same_as_last,false);
         let m = Method::Fehlberg7 ; let i=m.information(); assert_eq!(i.order,7); assert_eq!(i.order_of_estimator,8); assert_eq!(i.implicit,false); assert_eq!(i.embedded,true ); assert_eq!(i.multiple_stages,true ); assert_eq!(i.first_step_same_as_last,false);
         let m = Method::DoPri8    ; let i=m.information(); assert_eq!(i.order,8); assert_eq!(i.order_of_estimator,7); assert_eq!(i.implicit,false); assert_eq!(i.embedded,true ); assert_eq!(i.multiple_stages,true ); assert_eq!(i.first_step_same_as_last,false);
+    }
+
+    #[test]
+    fn explicit_and_implicit_methods_work() {
+        let explicit = Method::explicit_methods();
+        let implicit = Method::implicit_methods();
+        assert_eq!(explicit.len() + implicit.len(), 15);
+        assert_eq!(
+            explicit,
+            &[
+                Method::Rk2,
+                Method::Rk3,
+                Method::Heun3,
+                Method::Rk4,
+                Method::Rk4alt,
+                Method::MdEuler,
+                Method::Merson4,
+                Method::Zonneveld4,
+                Method::Fehlberg4,
+                Method::DoPri5,
+                Method::Verner6,
+                Method::Fehlberg7,
+                Method::DoPri8,
+            ]
+        );
+        assert_eq!(implicit, &[Method::Radau5, Method::BwEuler]);
     }
 }

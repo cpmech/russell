@@ -111,3 +111,66 @@ impl Method {
         }
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn information_clone_copy_and_debug_work() {
+        let info = Information {
+            order: 2,
+            order_of_estimator: 1,
+            implicit: false,
+            embedded: true,
+            multiple_stages: true,
+            first_step_same_as_last: false,
+        };
+        let copy = info;
+        let clone = info.clone();
+        assert_eq!(format!("{:?}", info), "Information { order: 2, order_of_estimator: 1, implicit: false, embedded: true, multiple_stages: true, first_step_same_as_last: false }");
+        assert_eq!(copy.order, 2);
+        assert_eq!(copy.order_of_estimator, 1);
+        assert_eq!(copy.implicit, false);
+        assert_eq!(copy.embedded, true);
+        assert_eq!(copy.first_step_same_as_last, false);
+        assert_eq!(clone.order, 2);
+        assert_eq!(clone.order_of_estimator, 1);
+        assert_eq!(clone.implicit, false);
+        assert_eq!(clone.embedded, true);
+        assert_eq!(clone.first_step_same_as_last, false);
+    }
+
+    #[test]
+    fn method_clone_copy_and_debug_work() {
+        let method = Method::BwEuler;
+        let copy = method;
+        let clone = method.clone();
+        assert_eq!(format!("{:?}", method), "BwEuler");
+        assert_eq!(copy, Method::BwEuler);
+        assert_eq!(clone, Method::BwEuler);
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn methods_information_works() {
+        let m = Method::Radau5    ; let i=m.information(); assert_eq!(i.order,5); assert_eq!(i.order_of_estimator,4); assert_eq!(i.implicit,true,); assert_eq!(i.embedded,true ); assert_eq!(i.multiple_stages,true ); assert_eq!(i.first_step_same_as_last,false);
+        let m = Method::BwEuler   ; let i=m.information(); assert_eq!(i.order,1); assert_eq!(i.order_of_estimator,0); assert_eq!(i.implicit,true,); assert_eq!(i.embedded,false); assert_eq!(i.multiple_stages,false); assert_eq!(i.first_step_same_as_last,false);
+        let m = Method::FwEuler   ; let i=m.information(); assert_eq!(i.order,1); assert_eq!(i.order_of_estimator,0); assert_eq!(i.implicit,false); assert_eq!(i.embedded,false); assert_eq!(i.multiple_stages,false); assert_eq!(i.first_step_same_as_last,false);
+        let m = Method::Rk2       ; let i=m.information(); assert_eq!(i.order,2); assert_eq!(i.order_of_estimator,0); assert_eq!(i.implicit,false); assert_eq!(i.embedded,false); assert_eq!(i.multiple_stages,true ); assert_eq!(i.first_step_same_as_last,false);
+        let m = Method::Rk3       ; let i=m.information(); assert_eq!(i.order,3); assert_eq!(i.order_of_estimator,0); assert_eq!(i.implicit,false); assert_eq!(i.embedded,false); assert_eq!(i.multiple_stages,true ); assert_eq!(i.first_step_same_as_last,false);
+        let m = Method::Heun3     ; let i=m.information(); assert_eq!(i.order,3); assert_eq!(i.order_of_estimator,0); assert_eq!(i.implicit,false); assert_eq!(i.embedded,false); assert_eq!(i.multiple_stages,true ); assert_eq!(i.first_step_same_as_last,false);
+        let m = Method::Rk4       ; let i=m.information(); assert_eq!(i.order,4); assert_eq!(i.order_of_estimator,0); assert_eq!(i.implicit,false); assert_eq!(i.embedded,false); assert_eq!(i.multiple_stages,true ); assert_eq!(i.first_step_same_as_last,false);
+        let m = Method::Rk4alt    ; let i=m.information(); assert_eq!(i.order,4); assert_eq!(i.order_of_estimator,0); assert_eq!(i.implicit,false); assert_eq!(i.embedded,false); assert_eq!(i.multiple_stages,true ); assert_eq!(i.first_step_same_as_last,false);
+        let m = Method::MdEuler   ; let i=m.information(); assert_eq!(i.order,2); assert_eq!(i.order_of_estimator,1); assert_eq!(i.implicit,false); assert_eq!(i.embedded,true ); assert_eq!(i.multiple_stages,true ); assert_eq!(i.first_step_same_as_last,false);
+        let m = Method::Merson4   ; let i=m.information(); assert_eq!(i.order,4); assert_eq!(i.order_of_estimator,3); assert_eq!(i.implicit,false); assert_eq!(i.embedded,true ); assert_eq!(i.multiple_stages,true ); assert_eq!(i.first_step_same_as_last,false);
+        let m = Method::Zonneveld4; let i=m.information(); assert_eq!(i.order,4); assert_eq!(i.order_of_estimator,3); assert_eq!(i.implicit,false); assert_eq!(i.embedded,true ); assert_eq!(i.multiple_stages,true ); assert_eq!(i.first_step_same_as_last,false);
+        let m = Method::Fehlberg4 ; let i=m.information(); assert_eq!(i.order,4); assert_eq!(i.order_of_estimator,4); assert_eq!(i.implicit,false); assert_eq!(i.embedded,true ); assert_eq!(i.multiple_stages,true ); assert_eq!(i.first_step_same_as_last,false);
+        let m = Method::DoPri5    ; let i=m.information(); assert_eq!(i.order,5); assert_eq!(i.order_of_estimator,4); assert_eq!(i.implicit,false); assert_eq!(i.embedded,true ); assert_eq!(i.multiple_stages,true ); assert_eq!(i.first_step_same_as_last,true );
+        let m = Method::Verner6   ; let i=m.information(); assert_eq!(i.order,6); assert_eq!(i.order_of_estimator,5); assert_eq!(i.implicit,false); assert_eq!(i.embedded,true ); assert_eq!(i.multiple_stages,true ); assert_eq!(i.first_step_same_as_last,false);
+        let m = Method::Fehlberg7 ; let i=m.information(); assert_eq!(i.order,7); assert_eq!(i.order_of_estimator,8); assert_eq!(i.implicit,false); assert_eq!(i.embedded,true ); assert_eq!(i.multiple_stages,true ); assert_eq!(i.first_step_same_as_last,false);
+        let m = Method::DoPri8    ; let i=m.information(); assert_eq!(i.order,8); assert_eq!(i.order_of_estimator,7); assert_eq!(i.implicit,false); assert_eq!(i.embedded,true ); assert_eq!(i.multiple_stages,true ); assert_eq!(i.first_step_same_as_last,false);
+    }
+}

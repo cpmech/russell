@@ -129,9 +129,11 @@ impl<A> ExplicitRungeKutta<A> {
             yd,
         })
     }
+}
 
+impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<A> {
     /// Performs  the next step
-    pub fn next_step(&mut self, xa: f64, ya: &Vector, args: &mut A) {
+    fn next_step(&mut self, xa: f64, ya: &Vector, args: &mut A) {
         // auxiliary
         let n_stage = self.work.nstg;
         let h = self.work.h;
@@ -244,7 +246,7 @@ impl<A> ExplicitRungeKutta<A> {
     /// Accepts the update and computes the next stepsize
     ///
     /// Returns `stepsize_new`
-    pub fn accept_update(&mut self, y0: &mut Vector, x0: f64, args: &mut A) -> f64 {
+    fn accept_update(&mut self, y0: &mut Vector, x0: f64, args: &mut A) -> f64 {
         // store data for future dense output (Dormand-Prince 5)
         if self.params.denseOut && self.params.method == Method::DoPri5 {
             let dd = self.D.as_ref().unwrap();
@@ -425,7 +427,7 @@ impl<A> ExplicitRungeKutta<A> {
     /// Rejects the update
     ///
     /// Returns the `relative_error`
-    pub fn reject_update(&mut self) -> f64 {
+    fn reject_update(&mut self) -> f64 {
         // estimate new stepsize
         let dmin = 1.0 / self.params.Mmin;
         let d = f64::powf(self.work.rerr, self.n) / self.params.Mfac;
@@ -434,7 +436,7 @@ impl<A> ExplicitRungeKutta<A> {
     }
 
     /// Computes the dense output
-    pub fn dense_output(&self, yout: &mut Vector, h: f64, x: f64, y: &Vector, xout: f64) {
+    fn dense_output(&self, yout: &mut Vector, h: f64, x: f64, y: &Vector, xout: f64) {
         if self.params.denseOut && self.params.method == Method::DoPri5 {
             let dout = self.dout.as_ref().unwrap();
             let xold = x - h;

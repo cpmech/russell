@@ -485,16 +485,107 @@ mod tests {
                 let ee = erk.E.as_ref().unwrap();
                 assert_eq!(ee.dim(), nstage);
             }
-            println!("c coefficients: ci = Σ_j aij");
+
+            println!("Σi bi = 1                                 (Eq. 1.11a, page 135)");
+            let mut sum = 0.0;
             for i in 0..nstage {
-                let mut sum = 0.0;
-                for j in 0..nstage {
-                    sum += erk.A.get(i, j);
-                }
-                approx_eq(sum, erk.C[i], 1e-14);
+                sum += erk.B[i];
             }
-            println!("\nEquations (1.11) of ref # 1 (page 135-136) and (5.20) of (page 181-182)");
-            // for order in 1..erk.P{ }
+            approx_eq(sum, 1.0, 1e-15);
+
+            println!("Σi bi ci = 1/2                            (Eq. 1.11b, page 135)");
+            sum = 0.0;
+            for i in 0..nstage {
+                sum += erk.B[i] * erk.C[i];
+            }
+            approx_eq(sum, 1.0 / 2.0, 1e-15);
+
+            if erk.info.order < 4 {
+                continue;
+            }
+
+            println!("Σi bi ci² = 1/3                           (Eq. 1.11c, page 135)");
+            sum = 0.0;
+            for i in 0..nstage {
+                sum += erk.B[i] * erk.C[i] * erk.C[i];
+            }
+            approx_eq(sum, 1.0 / 3.0, 1e-15);
+
+            println!("Σi,j bi aij cj = 1/6                      (Eq. 1.11d, page 135)");
+            sum = 0.0;
+            for i in 0..nstage {
+                for j in 0..nstage {
+                    sum += erk.B[i] * erk.A.get(i, j) * erk.C[j];
+                }
+            }
+            approx_eq(sum, 1.0 / 6.0, 1e-15);
+
+            println!("Σi bi ci³ = 1/4                           (Eq. 1.11e, page 135)");
+            sum = 0.0;
+            for i in 0..nstage {
+                sum += erk.B[i] * erk.C[i] * erk.C[i] * erk.C[i];
+            }
+            approx_eq(sum, 1.0 / 4.0, 1e-15);
+
+            println!("Σi,j bi ci aij cj = 1/8                   (Eq. 1.11f, page 135)");
+            sum = 0.0;
+            for i in 0..nstage {
+                for j in 0..nstage {
+                    sum += erk.B[i] * erk.C[i] * erk.A.get(i, j) * erk.C[j];
+                }
+            }
+            approx_eq(sum, 1.0 / 8.0, 1e-15);
+
+            println!("Σi,j bi aij cj² = 1/12                    (Eq. 1.11g, page 136)");
+            sum = 0.0;
+            for i in 0..nstage {
+                for j in 0..nstage {
+                    sum += erk.B[i] * erk.A.get(i, j) * erk.C[j] * erk.C[j];
+                }
+            }
+            approx_eq(sum, 1.0 / 12.0, 1e-15);
+
+            println!("Σi,j,k bi aij ajk ck = 1/24               (Eq. 1.11h, page 136)");
+            sum = 0.0;
+            for i in 0..nstage {
+                for j in 0..nstage {
+                    for k in 0..nstage {
+                        sum += erk.B[i] * erk.A.get(i, j) * erk.A.get(j, k) * erk.C[k];
+                    }
+                }
+            }
+            approx_eq(sum, 1.0 / 24.0, 1e-15);
+
+            println!("Σ(i=1,s) bi ciⁿ⁻¹ = 1 / n   for n = 1..8  (Eq. 5.20a, page 181)");
+            for n in 1..erk.info.order {
+                let mut sum = 0.0;
+                for i in 1..(nstage + 1) {
+                    sum += erk.B[i - 1] * f64::powf(erk.C[i - 1], (n - 1) as f64);
+                }
+                approx_eq(sum, 1.0 / (n as f64), 1e-15);
+            }
+
+            println!("Σ(j=1,i-1) aij = ci         for i = 1..s  (Eq. 5.20b, page 181)");
+            for i in 1..(nstage + 1) {
+                let mut sum = 0.0;
+                for j in 1..i {
+                    sum += erk.A.get(i - 1, j - 1);
+                }
+                approx_eq(sum, erk.C[i - 1], 1e-14);
+            }
+
+            if erk.info.order < 5 {
+                continue;
+            }
+
+            println!("Σ(j=1,i-1) aij cj = ci² / 2 for i = 3..s  (Eq. 5.20c, page 181)");
+            for i in 3..(nstage + 1) {
+                let mut sum = 0.0;
+                for j in 1..i {
+                    sum += erk.A.get(i - 1, j - 1) * erk.C[j - 1];
+                }
+                approx_eq(sum, erk.C[i - 1] * erk.C[i - 1] / 2.0, 1e-14);
+            }
         }
     }
 }

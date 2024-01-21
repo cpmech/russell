@@ -4,8 +4,8 @@ use crate::{constants::*, JacF};
 use crate::{Func, Information, Method, OdeParams, OdeSolverTrait, OdeStatistics, StrError, Workspace};
 use russell_lab::{vec_add, vec_copy, vec_update, Matrix, Vector};
 
-pub struct ExplicitRungeKutta<A> {
-    params: OdeParams, // configuration
+pub struct ExplicitRungeKutta<'a, A> {
+    params: &'a OdeParams, // configuration
     info: Information,
 
     // constants
@@ -35,9 +35,9 @@ pub struct ExplicitRungeKutta<A> {
     yd: Option<Vector>,        // y values for dense output (allocated here if len(kd)>0)
 }
 
-impl<A> ExplicitRungeKutta<A> {
+impl<'a, A> ExplicitRungeKutta<'a, A> {
     /// Allocates a new instance
-    pub fn new(params: OdeParams, ndim: usize, function: Func<A>) -> Result<Self, StrError> {
+    pub fn new(params: &'a OdeParams, ndim: usize, function: Func<A>) -> Result<Self, StrError> {
         let info = params.method.information();
         if info.implicit {
             return Err("the method must not be implicit");
@@ -131,7 +131,7 @@ impl<A> ExplicitRungeKutta<A> {
     }
 }
 
-impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<A> {
+impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
     /// Performs  the next step
     fn next_step(&mut self, xa: f64, ya: &Vector, args: &mut A) {
         // auxiliary
@@ -476,8 +476,8 @@ mod tests {
         let staged = methods.iter().filter(|&&m| m != Method::FwEuler);
         for method in staged {
             println!("\n... {:?} ...", method);
-            let conf = OdeParams::new(*method, None, None);
-            let erk = ExplicitRungeKutta::new(conf, ndim, function).unwrap();
+            let params = OdeParams::new(*method, None, None);
+            let erk = ExplicitRungeKutta::new(&params, ndim, function).unwrap();
             let nstage = erk.work.nstg;
             assert_eq!(erk.A.dims(), (nstage, nstage));
             assert_eq!(erk.B.dim(), nstage);

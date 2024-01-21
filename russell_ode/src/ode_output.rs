@@ -1,9 +1,9 @@
 #![allow(unused, non_snake_case)]
 
-use crate::Configuration;
+use crate::OdeParams;
 use russell_lab::Vector;
 
-pub struct Output {
+pub struct OdeOutput {
     ndim: usize,
     stepNmax: usize,
     denseNmax: usize,
@@ -20,9 +20,9 @@ pub struct Output {
     xout: f64,
 }
 
-impl Output {
-    pub fn new(ndim: usize, conf: &Configuration) -> Output {
-        let mut o = Output {
+impl OdeOutput {
+    pub fn new(ndim: usize, conf: &OdeParams) -> OdeOutput {
+        let mut o = OdeOutput {
             ndim,
             stepNmax: 0,
             denseNmax: 0,

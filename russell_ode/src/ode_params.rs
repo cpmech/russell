@@ -5,7 +5,7 @@ use russell_sparse::{Genie, LinSolParams};
 
 /// Defines the configuration parameters for the ODE solver
 #[derive(Clone, Debug)]
-pub struct Configuration {
+pub struct OdeParams {
     /// Method
     pub(crate) method: Method,
 
@@ -13,7 +13,7 @@ pub struct Configuration {
     pub(crate) genie: Genie,
 
     /// configurations for sparse linear solver
-    pub(crate) lin_sol_params: LinSolParams,
+    pub lin_sol_params: LinSolParams,
 
     /// minimum H allowed
     pub Hmin: f64,
@@ -130,7 +130,7 @@ pub struct Configuration {
     pub fixedNsteps: usize,
 }
 
-impl Configuration {
+impl OdeParams {
     /// Allocates a new instance with default values
     pub fn new(method: Method, lin_sol: Option<Genie>, lin_sol_params: Option<LinSolParams>) -> Self {
         let genie = match lin_sol {
@@ -141,7 +141,7 @@ impl Configuration {
             Some(p) => p,
             None => LinSolParams::new(),
         };
-        Configuration {
+        OdeParams {
             method,
             genie,
             lin_sol_params: ls_params,

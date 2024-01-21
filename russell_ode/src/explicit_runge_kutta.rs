@@ -1,11 +1,11 @@
 #![allow(non_snake_case)]
 
 use crate::{constants::*, JacF};
-use crate::{Configuration, Func, Information, Method, RungeKuttaTrait, Statistics, StrError, Workspace};
+use crate::{Func, Information, Method, OdeParams, RungeKuttaTrait, Statistics, StrError, Workspace};
 use russell_lab::{vec_add, vec_copy, vec_update, Matrix, Vector};
 
 pub struct ExplicitRungeKutta<A> {
-    conf: Configuration, // configuration
+    params: OdeParams, // configuration
     info: Information,
 
     // constants
@@ -37,16 +37,16 @@ pub struct ExplicitRungeKutta<A> {
 
 impl<A> ExplicitRungeKutta<A> {
     /// Allocates a new instance
-    pub fn new(conf: Configuration, ndim: usize, function: Func<A>) -> Result<Self, StrError> {
-        let info = conf.method.information();
+    pub fn new(params: OdeParams, ndim: usize, function: Func<A>) -> Result<Self, StrError> {
+        let info = params.method.information();
         if info.implicit {
             return Err("the method must not be implicit");
         }
-        if conf.method == Method::FwEuler {
+        if params.method == Method::FwEuler {
             return Err("the method must not be FwEuler");
         }
         #[rustfmt::skip]
-        let (A, B, C) = match conf.method {
+        let (A, B, C) = match params.method {
             Method::Radau5     => panic!("<not available>"),
             Method::BwEuler    => panic!("<not available>"),
             Method::FwEuler    => panic!("<not available>"),
@@ -66,7 +66,7 @@ impl<A> ExplicitRungeKutta<A> {
         };
         #[rustfmt::skip]
         let (Be, E) = if info.embedded {
-            match conf.method {
+            match params.method {
                 Method::Radau5     => (None, None),
                 Method::BwEuler    => (None, None),
                 Method::FwEuler    => (None, None),
@@ -89,11 +89,11 @@ impl<A> ExplicitRungeKutta<A> {
         };
         let (mut Ad, mut Cd, mut D) = (None, None, None);
         let (mut dout, mut kd, mut yd) = (None, None, None);
-        if conf.denseOut && conf.method == Method::DoPri5 {
+        if params.denseOut && params.method == Method::DoPri5 {
             D = Some(Matrix::from(&DORMAND_PRINCE_5_D));
             dout = Some(vec![Vector::new(ndim); 5]);
         }
-        if conf.denseOut && conf.method == Method::DoPri8 {
+        if params.denseOut && params.method == Method::DoPri8 {
             Ad = Some(Matrix::from(&DORMAND_PRINCE_8_AD));
             Cd = Some(Vector::from(&DORMAND_PRINCE_8_CD));
             D = Some(Matrix::from(&DORMAND_PRINCE_8_D));
@@ -101,15 +101,15 @@ impl<A> ExplicitRungeKutta<A> {
             kd = Some(vec![Vector::new(ndim); 3]);
             yd = Some(Vector::new(ndim));
         }
-        let lund_stabilization_factor = if conf.StabBeta > 0.0 {
-            1.0 / ((info.order_of_estimator + 1) as f64) - conf.StabBeta * conf.stabBetaM
+        let lund_stabilization_factor = if params.StabBeta > 0.0 {
+            1.0 / ((info.order_of_estimator + 1) as f64) - params.StabBeta * params.stabBetaM
         } else {
             1.0 / ((info.order_of_estimator + 1) as f64)
         };
-        let stat = Statistics::new(info.implicit, conf.genie);
+        let stat = Statistics::new(info.implicit, params.genie);
         let n_stage = B.dim();
         Ok(ExplicitRungeKutta {
-            conf,
+            params,
             info,
             A,
             B,
@@ -137,8 +137,8 @@ impl<A> ExplicitRungeKutta<A> {
         let h = self.work.h;
         let k = &mut self.work.f;
         let v = &mut self.work.v;
-        let dmin = 1.0 / self.conf.Mmin;
-        let dmax = 1.0 / self.conf.Mmax;
+        let dmin = 1.0 / self.params.Mmin;
+        let dmax = 1.0 / self.params.Mmax;
 
         // compute k0 (otherwise, use k0 saved in Accept)
         if (self.work.first || !self.info.first_step_same_as_last) && !self.work.reject {
@@ -179,7 +179,7 @@ impl<A> ExplicitRungeKutta<A> {
         let dim = self.ndim as f64;
 
         // error estimation for Dormand-Prince 8 with 5 and 3 orders
-        if self.conf.method == Method::DoPri8 {
+        if self.params.method == Method::DoPri8 {
             let mut errA = 0.0;
             let mut errB = 0.0;
             let mut err3 = 0.0;
@@ -193,7 +193,7 @@ impl<A> ExplicitRungeKutta<A> {
                     errA += self.B[i] * k[i][m];
                     errB += ee[i] * k[i][m];
                 }
-                let sk = self.conf.atol + self.conf.rtol * f64::max(f64::abs(ya[m]), f64::abs(self.w[m]));
+                let sk = self.params.atol + self.params.rtol * f64::max(f64::abs(ya[m]), f64::abs(self.w[m]));
                 errA -= (DORMAND_PRINCE_8_BHH1 * k[0][m]
                     + DORMAND_PRINCE_8_BHH2 * k[8][m]
                     + DORMAND_PRINCE_8_BHH3 * k[11][m]);
@@ -226,7 +226,7 @@ impl<A> ExplicitRungeKutta<A> {
                 self.w[m] += self.B[i] * kh;
                 lerrm += ee[i] * kh;
             }
-            let sk = self.conf.atol + self.conf.rtol * f64::max(f64::abs(ya[m]), f64::abs(self.w[m]));
+            let sk = self.params.atol + self.params.rtol * f64::max(f64::abs(ya[m]), f64::abs(self.w[m]));
             let ratio = lerrm / sk;
             sum += ratio * ratio;
             // stiffness estimation
@@ -246,7 +246,7 @@ impl<A> ExplicitRungeKutta<A> {
     /// Returns `stepsize_new`
     pub fn accept_update(&mut self, y0: &mut Vector, x0: f64, args: &mut A) -> f64 {
         // store data for future dense output (Dormand-Prince 5)
-        if self.conf.denseOut && self.conf.method == Method::DoPri5 {
+        if self.params.denseOut && self.params.method == Method::DoPri5 {
             let dd = self.D.as_ref().unwrap();
             let dout = self.dout.as_mut().unwrap();
             let h = self.work.h;
@@ -269,7 +269,7 @@ impl<A> ExplicitRungeKutta<A> {
         }
 
         // store data for future dense output (Dormand-Prince 8)
-        if self.conf.denseOut && self.conf.method == Method::DoPri8 {
+        if self.params.denseOut && self.params.method == Method::DoPri8 {
             // auxiliary variables
             let aad = self.Ad.as_ref().unwrap();
             let cd = self.Cd.as_ref().unwrap();
@@ -393,8 +393,8 @@ impl<A> ExplicitRungeKutta<A> {
 
         // auxiliary
         let n_stage = self.work.nstg;
-        let dmin = 1.0 / self.conf.Mmin;
-        let dmax = 1.0 / self.conf.Mmax;
+        let dmin = 1.0 / self.params.Mmin;
+        let dmax = 1.0 / self.params.Mmax;
 
         // update y
         vec_copy(y0, &self.w).unwrap();
@@ -413,11 +413,11 @@ impl<A> ExplicitRungeKutta<A> {
 
         // estimate new stepsize
         let mut d = f64::powf(self.work.rerr, self.n);
-        if self.conf.StabBeta > 0.0 {
+        if self.params.StabBeta > 0.0 {
             // lund-stabilization
-            d = d / f64::powf(self.work.rerr_prev, self.conf.StabBeta);
+            d = d / f64::powf(self.work.rerr_prev, self.params.StabBeta);
         }
-        d = f64::max(dmax, f64::min(dmin, d / self.conf.Mfac)); // we require  fac1 <= hnew/h <= fac2
+        d = f64::max(dmax, f64::min(dmin, d / self.params.Mfac)); // we require  fac1 <= hnew/h <= fac2
         let dxnew = self.work.h / d;
         dxnew
     }
@@ -427,15 +427,15 @@ impl<A> ExplicitRungeKutta<A> {
     /// Returns the `relative_error`
     pub fn reject_update(&mut self) -> f64 {
         // estimate new stepsize
-        let dmin = 1.0 / self.conf.Mmin;
-        let d = f64::powf(self.work.rerr, self.n) / self.conf.Mfac;
+        let dmin = 1.0 / self.params.Mmin;
+        let d = f64::powf(self.work.rerr, self.n) / self.params.Mfac;
         let dxnew = self.work.h / f64::min(dmin, d);
         dxnew
     }
 
     /// Computes the dense output
     pub fn dense_output(&self, yout: &mut Vector, h: f64, x: f64, y: &Vector, xout: f64) {
-        if self.conf.denseOut && self.conf.method == Method::DoPri5 {
+        if self.params.denseOut && self.params.method == Method::DoPri5 {
             let dout = self.dout.as_ref().unwrap();
             let xold = x - h;
             let theta = (xout - xold) / h;
@@ -445,7 +445,7 @@ impl<A> ExplicitRungeKutta<A> {
                     + theta * (dout[1][m] + u_theta * (dout[2][m] + theta * (dout[3][m] + u_theta * dout[4][m])));
             }
         }
-        if self.conf.denseOut && self.conf.method == Method::DoPri8 {
+        if self.params.denseOut && self.params.method == Method::DoPri8 {
             let dout = self.dout.as_ref().unwrap();
             let xold = x - h;
             let theta = (xout - xold) / h;
@@ -474,7 +474,7 @@ mod tests {
         let staged = methods.iter().filter(|&&m| m != Method::FwEuler);
         for method in staged {
             println!("\n... {:?} ...", method);
-            let conf = Configuration::new(*method, None, None);
+            let conf = OdeParams::new(*method, None, None);
             let erk = ExplicitRungeKutta::new(conf, ndim, function).unwrap();
             let nstage = erk.work.nstg;
             assert_eq!(erk.A.dims(), (nstage, nstage));

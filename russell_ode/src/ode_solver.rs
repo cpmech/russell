@@ -1,14 +1,14 @@
 #![allow(unused)]
 
-use crate::{Configuration, Func, JacF, Method, Output, Workspace};
+use crate::{Func, JacF, Method, OdeOutput, OdeParams, Workspace};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 
 // Solver implements an ODE solver
-struct Solver<'a, A> {
+struct OdeSolver<'a, A> {
     // structures
-    conf: &'a Configuration, // configuration parameters
-    out: Output,             // output handler
+    conf: &'a OdeParams, // configuration parameters
+    out: OdeOutput,      // output handler
     // stat: &'a Stat,         // statistics
 
     // problem definition
@@ -23,12 +23,12 @@ struct Solver<'a, A> {
     work: Workspace,  // Runge-Kutta workspace
 }
 
-impl<'a, A> Solver<'a, A> {
-    pub fn new(ndim: usize, conf: &'a Configuration, fcn: Func<A>, jac: JacF<A>, m: &'a CooMatrix) -> Self {
+impl<'a, A> OdeSolver<'a, A> {
+    pub fn new(ndim: usize, conf: &'a OdeParams, fcn: Func<A>, jac: JacF<A>, m: &'a CooMatrix) -> Self {
         // main
-        let mut solver = Solver {
+        let mut solver = OdeSolver {
             conf,
-            out: Output::new(ndim, conf),
+            out: OdeOutput::new(ndim, conf),
             // stat: &Stat::new(conf.ls_kind, false), // assuming ls_kind is a field in Config
             ndim,
             fcn,

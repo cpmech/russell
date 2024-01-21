@@ -1,10 +1,10 @@
-#![allow(unused, non_snake_case)]
+#![allow(non_snake_case)]
 
 use crate::{constants::*, JacF};
 use crate::{Configuration, Func, Information, Method, RungeKuttaTrait, Statistics, StrError, Workspace};
 use russell_lab::{vec_add, vec_copy, vec_update, Matrix, Vector};
 
-pub struct ExplicitRungeKutta {
+pub struct ExplicitRungeKutta<A> {
     conf: Configuration, // configuration
     info: Information,
 
@@ -15,7 +15,7 @@ pub struct ExplicitRungeKutta {
 
     Be: Option<Vector>, // B coefficients [may be nil, e.g. if FSAL = false]
 
-    E: Option<Vector>, // error coefficients. difference between B and Be: e = b - be (if be is not nil)
+    E: Option<Vector>, // (embedded) error coefficients. difference between B and Be: e = b - be (if be is not nil)
 
     Ad: Option<Matrix>, // A coefficients for dense output
     Cd: Option<Vector>, // C coefficients for dense output
@@ -28,7 +28,7 @@ pub struct ExplicitRungeKutta {
     ndim: usize,      // problem dimension
     work: Workspace,  // workspace
     stat: Statistics, // statistics
-    fcn: Func,        // dy/dx = f(x, y) function
+    fcn: Func<A>,     // dy/dx = f(x, y) function
 
     // auxiliary
     w: Vector, // local workspace
@@ -40,15 +40,15 @@ pub struct ExplicitRungeKutta {
     yd: Option<Vector>,        // y values for dense output (allocated here if len(kd)>0)
 }
 
-impl ExplicitRungeKutta {
+impl<A> ExplicitRungeKutta<A> {
     /// Allocates a new instance
-    pub fn new(conf: Configuration, ndim: usize, function: Func) -> Result<Self, StrError> {
+    pub fn new(conf: Configuration, ndim: usize, function: Func<A>) -> Result<Self, StrError> {
         let info = conf.method.information();
         if info.implicit {
-            return Err("the method must be explicit (must not be Radau5 nor BwEuler)");
+            return Err("the method must not be implicit");
         }
-        if info.multiple_stages {
-            return Err("the method must have multiple-stages (must not be FwEuler");
+        if conf.method == Method::FwEuler {
+            return Err("the method must not be FwEuler");
         }
         #[rustfmt::skip]
         let (A, B, C) = match conf.method {
@@ -139,7 +139,7 @@ impl ExplicitRungeKutta {
     }
 
     /// Performs  the next step
-    pub fn next_step(&mut self, xa: f64, ya: &Vector) {
+    pub fn next_step(&mut self, xa: f64, ya: &Vector, args: &mut A) {
         // auxiliary
         let n_stage = self.work.nstg;
         let h = self.work.h;
@@ -152,7 +152,7 @@ impl ExplicitRungeKutta {
         if (self.work.first || !self.info.first_step_same_as_last) && !self.work.reject {
             let u0 = xa + h * self.C[0];
             self.stat.Nfeval += 1;
-            (self.fcn)(&mut k[0], h, u0, ya); // k0 := f(ui,vi)
+            (self.fcn)(&mut k[0], h, u0, ya, args); // k0 := f(ui,vi)
         }
 
         // compute ki
@@ -166,7 +166,7 @@ impl ExplicitRungeKutta {
                 // vi += h ⋅ aij ⋅ kj
             }
             self.stat.Nfeval += 1;
-            (self.fcn)(&mut k[i], h, ui, &v[i]); // ki := f(ui,vi)
+            (self.fcn)(&mut k[i], h, ui, &v[i], args); // ki := f(ui,vi)
         }
 
         // update
@@ -188,9 +188,6 @@ impl ExplicitRungeKutta {
 
         // error estimation for Dormand-Prince 8 with 5 and 3 orders
         if self.conf.method == Method::DoPri8 {
-            const BHH1: f64 = 0.244094488188976377952755905512e+00;
-            const BHH2: f64 = 0.733846688281611857341361741547e+00;
-            const BHH3: f64 = 0.220588235294117647058823529412e-01;
             let mut errA = 0.0;
             let mut errB = 0.0;
             let mut err3 = 0.0;
@@ -205,7 +202,9 @@ impl ExplicitRungeKutta {
                     errB += ee[i] * k[i][m];
                 }
                 let sk = self.conf.atol + self.conf.rtol * f64::max(f64::abs(ya[m]), f64::abs(self.w[m]));
-                errA -= (BHH1 * k[0][m] + BHH2 * k[8][m] + BHH3 * k[11][m]);
+                errA -= (DORMAND_PRINCE_8_BHH1 * k[0][m]
+                    + DORMAND_PRINCE_8_BHH2 * k[8][m]
+                    + DORMAND_PRINCE_8_BHH3 * k[11][m]);
                 err3 += (errA / sk) * (errA / sk);
                 err5 += (errB / sk) * (errB / sk);
                 // stiffness estimation
@@ -253,7 +252,7 @@ impl ExplicitRungeKutta {
     /// Accepts the update and computes the next stepsize
     ///
     /// Returns `stepsize_new`
-    pub fn accept_update(&mut self, y0: &mut Vector, x0: f64) -> f64 {
+    pub fn accept_update(&mut self, y0: &mut Vector, x0: f64, args: &mut A) -> f64 {
         // store data for future dense output (Dormand-Prince 5)
         if self.conf.denseOut && self.conf.method == Method::DoPri5 {
             let dd = self.D.as_ref().unwrap();
@@ -303,7 +302,7 @@ impl ExplicitRungeKutta {
             }
             self.stat.Nfeval += 1;
             let u = x0 + cd[0] * h;
-            (self.fcn)(&mut kd[0], h, u, yd);
+            (self.fcn)(&mut kd[0], h, u, yd, args);
 
             // second function evaluation
             for m in 0..self.ndim {
@@ -319,7 +318,7 @@ impl ExplicitRungeKutta {
             }
             self.stat.Nfeval += 1;
             let u = x0 + cd[1] * h;
-            (self.fcn)(&mut kd[1], h, u, yd);
+            (self.fcn)(&mut kd[1], h, u, yd, args);
 
             // next third function evaluation
             for m in 0..self.ndim {
@@ -335,7 +334,7 @@ impl ExplicitRungeKutta {
             }
             self.stat.Nfeval += 1;
             let u = x0 + cd[2] * h;
-            (self.fcn)(&mut kd[2], h, u, yd);
+            (self.fcn)(&mut kd[2], h, u, yd, args);
 
             // final results
             for m in 0..self.ndim {
@@ -472,8 +471,39 @@ impl ExplicitRungeKutta {
 
 #[cfg(test)]
 mod tests {
+    use russell_lab::approx_eq;
+
     use super::*;
 
     #[test]
-    fn constants_are_consistent() {}
+    fn constants_are_consistent() {
+        let ndim = 1;
+        let function = |_: &mut Vector, _: f64, _: f64, _: &Vector, _: &mut i32| -> Result<(), StrError> { Ok(()) };
+        let methods = Method::explicit_methods();
+        let staged = methods.iter().filter(|&&m| m != Method::FwEuler);
+        for method in staged {
+            println!("\n... {:?} ...", method);
+            let conf = Configuration::new(*method, None, None);
+            let erk = ExplicitRungeKutta::new(conf, ndim, function).unwrap();
+            let nstage = erk.work.nstg;
+            assert_eq!(erk.A.dims(), (nstage, nstage));
+            assert_eq!(erk.B.dim(), nstage);
+            assert_eq!(erk.C.dim(), nstage);
+            let info = method.information();
+            if info.first_step_same_as_last {
+                assert_eq!(erk.Be.unwrap().dim(), nstage);
+            }
+            if info.embedded {
+                assert_eq!(erk.E.unwrap().dim(), nstage);
+            }
+            println!("c coefficients: ci = Σ_j aij");
+            for i in 0..nstage {
+                let mut sum = 0.0;
+                for j in 0..nstage {
+                    sum += erk.A.get(i, j);
+                }
+                approx_eq(sum, erk.C[i], 1e-14);
+            }
+        }
+    }
 }

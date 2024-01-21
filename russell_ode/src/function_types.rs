@@ -20,7 +20,7 @@ use russell_sparse::SparseMatrix;
 /// * `h` -- current stepsize = dx
 /// * `x` -- current x
 /// * `y` -- current {y}
-pub type Func = fn(f: &mut Vector, h: f64, x: f64, y: &Vector) -> Result<(), StrError>;
+pub type Func<A> = fn(f: &mut Vector, h: f64, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError>;
 
 /// Defines the Jacobian matrix of Func
 ///
@@ -38,7 +38,7 @@ pub type Func = fn(f: &mut Vector, h: f64, x: f64, y: &Vector) -> Result<(), Str
 /// * `h` -- current stepsize = dx
 /// * `x` -- current x
 /// * `y` -- current {y}
-pub type JacF = fn(df_dy: &mut SparseMatrix, h: f64, x: f64, y: &Vector) -> Result<(), StrError>;
+pub type JacF<A> = fn(df_dy: &mut SparseMatrix, h: f64, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError>;
 
 /// Defines a callback function to be called when a step is accepted
 ///

@@ -5,16 +5,16 @@ use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 
 // Solver implements an ODE solver
-struct Solver<'a> {
+struct Solver<'a, A> {
     // structures
     conf: &'a Configuration, // configuration parameters
     out: Output,             // output handler
     // stat: &'a Stat,         // statistics
 
     // problem definition
-    ndim: usize, // size of y
-    fcn: Func,   // dy/dx := f(x,y)
-    jac: JacF,   // Jacobian: df/dy
+    ndim: usize,  // size of y
+    fcn: Func<A>, // dy/dx := f(x,y)
+    jac: JacF<A>, // Jacobian: df/dy
 
     // method, info and workspace
     // rkm: OdeMethod,   // Runge-Kutta method
@@ -23,8 +23,8 @@ struct Solver<'a> {
     work: Workspace,  // Runge-Kutta workspace
 }
 
-impl<'a> Solver<'a> {
-    fn new(ndim: usize, conf: &'a Configuration, fcn: Func, jac: JacF, m: &'a CooMatrix) -> Self {
+impl<'a, A> Solver<'a, A> {
+    pub fn new(ndim: usize, conf: &'a Configuration, fcn: Func<A>, jac: JacF<A>, m: &'a CooMatrix) -> Self {
         // main
         let mut solver = Solver {
             conf,
@@ -59,10 +59,8 @@ impl<'a> Solver<'a> {
         // }
         solver
     }
-}
 
-impl<'a> Solver<'a> {
-    fn solve(&mut self, y: &Vector, x: f64, xf: f64) {
+    pub fn solve(&mut self, y: &Vector, x: f64, xf: f64) {
         // benchmark
         // let start_time = Instant::now();
         // defer(|| self.stat.update_nanoseconds_total(start_time));

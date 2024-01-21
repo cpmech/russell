@@ -2,7 +2,7 @@
 
 use russell_sparse::Genie;
 
-pub struct Statistics {
+pub struct OdeStatistics {
     pub Nfeval: usize,    // number of calls to fcn
     pub Njeval: usize,    // number of Jacobian matrix evaluations
     pub Nsteps: usize,    // total number of substeps
@@ -25,9 +25,9 @@ pub struct Statistics {
     pub NanosecondsTotal: u128,      // total time elapsed during solution of ODE system [nanoseconds]
 }
 
-impl Statistics {
+impl OdeStatistics {
     pub fn new(implicit: bool, genie: Genie) -> Self {
-        Statistics {
+        OdeStatistics {
             Nfeval: 0,
             Njeval: 0,
             Nsteps: 0,

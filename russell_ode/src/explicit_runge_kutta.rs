@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::{constants::*, JacF};
-use crate::{Func, Information, Method, OdeParams, RungeKuttaTrait, Statistics, StrError, Workspace};
+use crate::{Func, Information, Method, OdeParams, OdeStatistics, RungeKuttaTrait, StrError, Workspace};
 use russell_lab::{vec_add, vec_copy, vec_update, Matrix, Vector};
 
 pub struct ExplicitRungeKutta<A> {
@@ -20,10 +20,10 @@ pub struct ExplicitRungeKutta<A> {
     D: Option<Matrix>,  // dense output coefficients. [may be nil]
 
     // data
-    ndim: usize,      // problem dimension
-    work: Workspace,  // workspace
-    stat: Statistics, // statistics
-    fcn: Func<A>,     // dy/dx = f(x, y) function
+    ndim: usize,         // problem dimension
+    work: Workspace,     // workspace
+    stat: OdeStatistics, // statistics
+    fcn: Func<A>,        // dy/dx = f(x, y) function
 
     // auxiliary
     w: Vector, // local workspace
@@ -106,7 +106,7 @@ impl<A> ExplicitRungeKutta<A> {
         } else {
             1.0 / ((info.order_of_estimator + 1) as f64)
         };
-        let stat = Statistics::new(info.implicit, params.genie);
+        let stat = OdeStatistics::new(info.implicit, params.genie);
         let n_stage = B.dim();
         Ok(ExplicitRungeKutta {
             params,

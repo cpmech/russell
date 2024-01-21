@@ -14,8 +14,8 @@ mod function_types;
 mod ode_output;
 mod ode_params;
 mod ode_solver;
+mod ode_statistics;
 mod runge_kutta_trait;
-mod statistics;
 mod workspace;
 use crate::constants::*;
 use crate::enums::*;
@@ -24,8 +24,8 @@ use crate::function_types::*;
 use crate::ode_output::*;
 use crate::ode_params::*;
 use crate::ode_solver::*;
+use crate::ode_statistics::*;
 use crate::runge_kutta_trait::*;
-use crate::statistics::*;
 use crate::workspace::*;
 
 // run code from README file

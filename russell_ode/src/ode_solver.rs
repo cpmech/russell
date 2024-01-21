@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use crate::{Func, JacF, Method, OdeOutput, OdeParams, Workspace};
+use crate::{Func, JacF, Method, OdeOutput, OdeParams};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 
@@ -20,11 +20,11 @@ struct OdeSolver<'a, A> {
     // rkm: OdeMethod,   // Runge-Kutta method
     fixed_only: bool, // method can only be used with fixed steps
     implicit: bool,   // method is implicit
-    work: Workspace,  // Runge-Kutta workspace
+                      // work: Workspace,  // Runge-Kutta workspace
 }
 
 impl<'a, A> OdeSolver<'a, A> {
-    pub fn new(ndim: usize, conf: &'a OdeParams, fcn: Func<A>, jac: JacF<A>, m: &'a CooMatrix) -> Self {
+    pub fn new(conf: &'a OdeParams, ndim: usize, fcn: Func<A>, jac: JacF<A>, m: &'a CooMatrix) -> Self {
         // main
         let mut solver = OdeSolver {
             conf,
@@ -34,9 +34,9 @@ impl<'a, A> OdeSolver<'a, A> {
             fcn,
             jac,
             // rkm: RkMethod::new(conf.method),
-            fixed_only: false,             // to be updated based on method info
-            implicit: false,               // to be updated based on method info
-            work: Workspace::new(0, ndim), // to be updated based on method info
+            fixed_only: false, // to be updated based on method info
+            implicit: false,   // to be updated based on method info
+                               // work: Workspace::new(0, ndim), // to be updated based on method info
         };
 
         // information
@@ -76,6 +76,7 @@ impl<'a, A> OdeSolver<'a, A> {
             );
         }
 
+        /*
         // initial step size
         self.work.h = xf - x;
         if self.conf.fixed {
@@ -83,6 +84,7 @@ impl<'a, A> OdeSolver<'a, A> {
         } else {
             self.work.h = self.work.h.min(self.conf.IniH);
         }
+        */
 
         // stat and output
         // self.stat.reset();
@@ -95,7 +97,7 @@ impl<'a, A> OdeSolver<'a, A> {
         // }
 
         // set control flags
-        self.work.first = true;
+        // self.work.first = true;
 
         // first scaling variable
         // vec_scale_abs(&mut self.work.scal, &self.conf.atol, &self.conf.rtol, y); // scal = atol + rtol * abs(y)
@@ -142,6 +144,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
         // variable steps //////////////////////////////
 
+        /*
         // control variables
         self.work.reuse_jac_and_dec_once = false;
         self.work.reuse_jac_once = false;
@@ -156,11 +159,13 @@ impl<'a, A> OdeSolver<'a, A> {
         self.work.rerr_prev = 1e-4;
         self.work.stiff_yes = 0;
         self.work.stiff_not = 0;
+        */
 
         // first function evaluation
         // self.stat.nfeval += 1;
         // self.fcn(&mut self.work.f0, self.work.h, x, y); // f0 := f(x,y)
 
+        /*
         // time loop
         let mut x = x;
         let delta_x = xf - x;
@@ -322,6 +327,7 @@ impl<'a, A> OdeSolver<'a, A> {
                 break;
             }
         }
+        */
     }
 }
 

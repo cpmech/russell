@@ -15,8 +15,6 @@ mod ode_output;
 mod ode_params;
 mod ode_solver;
 mod ode_solver_trait;
-mod ode_statistics;
-mod workspace;
 use crate::constants::*;
 use crate::enums::*;
 use crate::explicit_runge_kutta::*;
@@ -25,8 +23,6 @@ use crate::ode_output::*;
 use crate::ode_params::*;
 use crate::ode_solver::*;
 use crate::ode_solver_trait::*;
-use crate::ode_statistics::*;
-use crate::workspace::*;
 
 // run code from README file
 #[cfg(doctest)]

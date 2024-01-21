@@ -9,19 +9,27 @@ pub(crate) trait OdeSolverTrait<A> {
     // fn initialize(&mut self);
 
     /// Performs the next step
-    fn next_step(&mut self, xa: f64, ya: &Vector, args: &mut A);
+    ///
+    /// Returns the (`relative_error`, `sitffness_ratio`)
+    fn next_step(&mut self, xa: f64, ya: &Vector, h: f64, first: bool, args: &mut A) -> (f64, f64);
 
     /// Accepts the update and computes the next stepsize
     ///
     /// Returns `stepsize_new`
-    ///
-    /// Note: thus function should compute and store the `relative_error`
-    fn accept_update(&mut self, y0: &mut Vector, x0: f64, args: &mut A) -> f64;
+    fn accept_update(
+        &mut self,
+        y0: &mut Vector,
+        x0: f64,
+        h: f64,
+        relative_error: f64,
+        previous_relative_error: f64,
+        args: &mut A,
+    ) -> f64;
 
     /// Rejects the update
     ///
-    /// Returns the `relative_error`
-    fn reject_update(&mut self) -> f64;
+    /// Returns `stepsize_new`
+    fn reject_update(&mut self, h: f64, relative_error: f64) -> f64;
 
     /// Computes the dense output
     fn dense_output(&self, yout: &mut Vector, h: f64, x: f64, y: &Vector, xout: f64);

@@ -477,7 +477,8 @@ mod tests {
 
     #[test]
     #[rustfmt::skip]
-    fn constants_are_consistent() {
+    fn ee_constants_are_correct() {
+        // E = B - Be
         for i in 0..MODIFIED_EULER_B  .len() { approx_eq(MODIFIED_EULER_E   [i], MODIFIED_EULER_B    [i] - MODIFIED_EULER_BE  [i], 1e-15); }
         for i in 0..MERSON_4_B        .len() { approx_eq(MERSON_4_E         [i], MERSON_4_B          [i] - MERSON_4_BE        [i], 1e-15); }
         for i in 0..ZONNEVELD_4_B     .len() { approx_eq(ZONNEVELD_4_E      [i], ZONNEVELD_4_B       [i] - ZONNEVELD_4_BE     [i], 1e-15); }

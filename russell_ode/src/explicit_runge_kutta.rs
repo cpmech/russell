@@ -19,9 +19,6 @@ pub struct ExplicitRungeKutta<A> {
     Cd: Option<Vector>, // C coefficients for dense output
     D: Option<Matrix>,  // dense output coefficients. [may be nil]
 
-    P: usize, // order of y1 (corresponding to b)
-    Q: usize, // order of error estimator (embedded only); e.g. DoPri5(4) ⇒ q = 4 (=min(order(y1) , order(y1bar))
-
     // data
     ndim: usize,      // problem dimension
     work: Workspace,  // workspace
@@ -121,8 +118,6 @@ impl<A> ExplicitRungeKutta<A> {
             Ad,
             Cd,
             D,
-            P: info.order,
-            Q: info.order_of_estimator,
             ndim,
             work: Workspace::new(n_stage, ndim),
             stat,
@@ -498,10 +493,8 @@ mod tests {
                 }
                 approx_eq(sum, erk.C[i], 1e-14);
             }
-            if info.first_step_same_as_last && info.embedded {
-                let ee = erk.E.as_ref().unwrap();
-                // let ee = erk.E.as_ref().unwrap();
-            }
+            println!("\nEquations (1.11) of ref # 1 (page 135-136) and (5.20) of (page 181-182)");
+            // for order in 1..erk.P{ }
         }
     }
 }

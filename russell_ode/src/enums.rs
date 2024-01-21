@@ -1,11 +1,24 @@
 /// Holds information about the numerical method to solve (approximate) ODEs
 #[derive(Clone, Copy, Debug)]
 pub struct Information {
+    /// Is the order of y1 (corresponding to B); i.e., the "p" constant
     pub order: usize,
+
+    /// Is he order of error estimator (embedded only); i.e., the "q" constant
+    ///
+    /// For DoPri5(4): q = 4 = min(order(y1), order(y1bar))
     pub order_of_estimator: usize, // 0 means no error estimator available
+
+    /// Indicates implicit method instead of explicit
     pub implicit: bool,
+
+    /// Indicates that the method has embedded error estimator
     pub embedded: bool,
+
+    /// Indicates that the method has more than one stage
     pub multiple_stages: bool,
+
+    /// Indicates that the first step's coefficient is equal to the last step's coefficient
     pub first_step_same_as_last: bool,
 }
 

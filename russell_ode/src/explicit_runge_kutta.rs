@@ -1,6 +1,6 @@
 use crate::constants::*;
 use crate::{Func, Information, Method, OdeParams, OdeSolverTrait, StrError};
-use russell_lab::{vec_add, vec_copy, vec_update, Matrix, Vector};
+use russell_lab::{vec_copy, vec_update, Matrix, Vector};
 
 pub struct ExplicitRungeKutta<'a, A> {
     /// Holds the parameters

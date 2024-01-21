@@ -1,6 +1,6 @@
 use crate::Information;
 
-pub trait RungeKuttaTrait {
+pub(crate) trait OdeSolverTrait {
     /// Gathers information about the Runge-Kutta method
     fn information(&self) -> Information;
 

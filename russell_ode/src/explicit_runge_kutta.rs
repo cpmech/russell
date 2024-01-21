@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::{constants::*, JacF};
-use crate::{Func, Information, Method, OdeParams, OdeStatistics, RungeKuttaTrait, StrError, Workspace};
+use crate::{Func, Information, Method, OdeParams, OdeSolverTrait, OdeStatistics, StrError, Workspace};
 use russell_lab::{vec_add, vec_copy, vec_update, Matrix, Vector};
 
 pub struct ExplicitRungeKutta<A> {

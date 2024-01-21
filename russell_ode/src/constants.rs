@@ -467,3 +467,23 @@ pub(crate) const DORMAND_PRINCE_8_CD: [f64; 3] = [
 pub(crate) const DORMAND_PRINCE_8_BHH1: f64 = 0.244094488188976377952755905512e+00;
 pub(crate) const DORMAND_PRINCE_8_BHH2: f64 = 0.733846688281611857341361741547e+00;
 pub(crate) const DORMAND_PRINCE_8_BHH3: f64 = 0.220588235294117647058823529412e-01;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use russell_lab::approx_eq;
+
+    #[test]
+    #[rustfmt::skip]
+    fn constants_are_consistent() {
+        for i in 0..MODIFIED_EULER_B  .len() { approx_eq(MODIFIED_EULER_E   [i], MODIFIED_EULER_B    [i] - MODIFIED_EULER_BE  [i], 1e-15); }
+        for i in 0..MERSON_4_B        .len() { approx_eq(MERSON_4_E         [i], MERSON_4_B          [i] - MERSON_4_BE        [i], 1e-15); }
+        for i in 0..ZONNEVELD_4_B     .len() { approx_eq(ZONNEVELD_4_E      [i], ZONNEVELD_4_B       [i] - ZONNEVELD_4_BE     [i], 1e-15); }
+        for i in 0..FEHLBERG_4_B      .len() { approx_eq(FEHLBERG_4_E       [i], FEHLBERG_4_B        [i] - FEHLBERG_4_BE      [i], 1e-15); }
+        for i in 0..DORMAND_PRINCE_5_B.len() { approx_eq(DORMAND_PRINCE_5_E [i], DORMAND_PRINCE_5_B  [i] - DORMAND_PRINCE_5_BE[i], 1e-15); }
+        for i in 0..VERNER_6_B        .len() { approx_eq(VERNER_6_E         [i], VERNER_6_B          [i] - VERNER_6_BE        [i], 1e-15); }
+        for i in 0..FEHLBERG_7_B      .len() { approx_eq(FEHLBERG_7_E       [i], FEHLBERG_7_B        [i] - FEHLBERG_7_BE      [i], 1e-15); }
+    }
+}

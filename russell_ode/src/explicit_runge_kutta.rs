@@ -13,8 +13,6 @@ pub struct ExplicitRungeKutta<A> {
     B: Vector, // B coefficients
     C: Vector, // C coefficients
 
-    Be: Option<Vector>, // B coefficients [may be nil, e.g. if FSAL = false]
-
     E: Option<Vector>, // (embedded) error coefficients. difference between B and Be: e = b - be (if be is not nil)
 
     Ad: Option<Matrix>, // A coefficients for dense output
@@ -119,7 +117,6 @@ impl<A> ExplicitRungeKutta<A> {
             A,
             B,
             C,
-            Be,
             E,
             Ad,
             Cd,
@@ -471,9 +468,8 @@ impl<A> ExplicitRungeKutta<A> {
 
 #[cfg(test)]
 mod tests {
-    use russell_lab::approx_eq;
-
     use super::*;
+    use russell_lab::approx_eq;
 
     #[test]
     fn constants_are_consistent() {
@@ -490,11 +486,9 @@ mod tests {
             assert_eq!(erk.B.dim(), nstage);
             assert_eq!(erk.C.dim(), nstage);
             let info = method.information();
-            if info.first_step_same_as_last {
-                assert_eq!(erk.Be.unwrap().dim(), nstage);
-            }
             if info.embedded {
-                assert_eq!(erk.E.unwrap().dim(), nstage);
+                let ee = erk.E.as_ref().unwrap();
+                assert_eq!(ee.dim(), nstage);
             }
             println!("c coefficients: ci = Σ_j aij");
             for i in 0..nstage {
@@ -503,6 +497,10 @@ mod tests {
                     sum += erk.A.get(i, j);
                 }
                 approx_eq(sum, erk.C[i], 1e-14);
+            }
+            if info.first_step_same_as_last && info.embedded {
+                let ee = erk.E.as_ref().unwrap();
+                // let ee = erk.E.as_ref().unwrap();
             }
         }
     }

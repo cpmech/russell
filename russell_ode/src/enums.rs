@@ -113,6 +113,7 @@ impl Method {
 
     pub fn explicit_methods() -> Vec<Method> {
         vec![
+            Method::FwEuler,
             Method::Rk2,
             Method::Rk3,
             Method::Heun3,
@@ -200,10 +201,11 @@ mod tests {
     fn explicit_and_implicit_methods_work() {
         let explicit = Method::explicit_methods();
         let implicit = Method::implicit_methods();
-        assert_eq!(explicit.len() + implicit.len(), 15);
+        assert_eq!(explicit.len() + implicit.len(), 16);
         assert_eq!(
             explicit,
             &[
+                Method::FwEuler,
                 Method::Rk2,
                 Method::Rk3,
                 Method::Heun3,

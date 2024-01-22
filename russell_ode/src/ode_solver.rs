@@ -13,39 +13,30 @@ use russell_sparse::CooMatrix;
 ///  dx
 /// where x is a scalar and {y} is a vector
 /// ```
-struct OdeSolver<'a> {
+struct OdeSolver<'a, A> {
     params: &'a OdeParams,
-    // actual: Box<dyn OdeSolverTrait<A> + 'a>,
+    actual: Box<dyn OdeSolverTrait<A> + 'a>,
 }
 
-impl<'a> OdeSolver<'a> {
+impl<'a, A: 'a> OdeSolver<'a, A> {
     pub fn new(
         params: &'a OdeParams,
         ndim: usize,
-        // function: Func<A>,
-        // jacobian: Option<JacF<A>>,
+        function: Func<A>,
+        jacobian: Option<JacF<A>>,
         mass: Option<&'a CooMatrix>,
     ) -> Result<Self, StrError> {
-        // #[rustfmt::skip]
-        // let actual: Box<dyn OdeSolverTrait<A>+'a> = match params.method {
-        //     Method::Radau5     => panic!("<not available>"),
-        //     Method::BwEuler    => panic!("<not available>"),
-        //     Method::FwEuler    => panic!("<not available>"),
-        //     Method::Rk2        => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
-        //     Method::Rk3        => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
-        //     Method::Heun3      => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
-        //     Method::Rk4        => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
-        //     Method::Rk4alt     => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
-        //     Method::MdEuler    => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
-        //     Method::Merson4    => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
-        //     Method::Zonneveld4 => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
-        //     Method::Fehlberg4  => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
-        //     Method::DoPri5     => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
-        //     Method::Verner6    => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
-        //     Method::Fehlberg7  => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
-        //     Method::DoPri8     => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
-        // };
-        Ok(OdeSolver { params })
+        if params.method == Method::Radau5 {
+            panic!("TODO: Radau5");
+        }
+        if params.method == Method::BwEuler {
+            panic!("TODO: BwEuler");
+        }
+        if params.method == Method::FwEuler {
+            panic!("TODO: FwEuler");
+        }
+        let actual: Box<ExplicitRungeKutta<'a, A>> = Box::new(ExplicitRungeKutta::new(params, ndim, function)?);
+        Ok(OdeSolver { params, actual })
     }
 
     /// Solves the ODE system
@@ -61,9 +52,10 @@ impl<'a> OdeSolver<'a> {
     ///
     /// * `y` -- the {y} vector (dependent variable)
     /// * `x` -- the independent variable
-    /// * `h_approx` -- the stepsize (`h = dx`; `x_new = x_old + h`). Set this value to select a fixed-steps approach.
-    ///   This function will employ an automatic sub-stepping approach is `h_approx = None` and the method is embedded.
-    ///   If `h_approx = None` and the method is not embedded, the stepsize will be computed for 10 steps.
+    /// * `h_approx` -- the approximate stepsize for solving with fixed-steps (`h = dx`; `x_new = x_old + h`);
+    ///   otherwise use the automatic sub-stepping approach, if available.
+    ///
+    /// **Note:** If the method is not embedded and `h_approx = None`, a fixed stepsize will be computed.
     pub fn solve(&mut self, y: &Vector, x: f64, xf: f64, h_approx: Option<f64>) -> Result<(), StrError> {
         // check
         if xf < x {

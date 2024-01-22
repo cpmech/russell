@@ -1,7 +1,5 @@
-#![allow(unused)]
-
 use crate::StrError;
-use crate::{ExplicitRungeKutta, Func, JacF, Method, OdeOutput, OdeParams, OdeSolverTrait};
+use crate::{ExplicitRungeKutta, Func, JacF, Method, OdeParams, OdeSolverTrait};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 

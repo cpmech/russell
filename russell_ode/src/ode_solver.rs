@@ -1,333 +1,104 @@
 #![allow(unused)]
 
-use crate::{Func, JacF, Method, OdeOutput, OdeParams};
+use crate::StrError;
+use crate::{ExplicitRungeKutta, Func, JacF, Method, OdeOutput, OdeParams, OdeSolverTrait};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 
-// Solver implements an ODE solver
-struct OdeSolver<'a, A> {
-    // structures
-    conf: &'a OdeParams, // configuration parameters
-    out: OdeOutput,      // output handler
-    // stat: &'a Stat,         // statistics
-
-    // problem definition
-    ndim: usize,  // size of y
-    fcn: Func<A>, // dy/dx := f(x,y)
-    jac: JacF<A>, // Jacobian: df/dy
-
-    // method, info and workspace
-    // rkm: OdeMethod,   // Runge-Kutta method
-    fixed_only: bool, // method can only be used with fixed steps
-    implicit: bool,   // method is implicit
-                      // work: Workspace,  // Runge-Kutta workspace
+/// Defines the solver for systems of ODEs
+///
+/// Solves:
+///
+/// ```text
+/// d{y}
+/// ———— = f(x, {y})
+///  dx
+/// where x is a scalar and {y} is a vector
+/// ```
+struct OdeSolver<'a> {
+    params: &'a OdeParams,
+    // actual: Box<dyn OdeSolverTrait<A> + 'a>,
 }
 
-impl<'a, A> OdeSolver<'a, A> {
-    pub fn new(conf: &'a OdeParams, ndim: usize, fcn: Func<A>, jac: JacF<A>, m: &'a CooMatrix) -> Self {
-        // main
-        let mut solver = OdeSolver {
-            conf,
-            out: OdeOutput::new(ndim, conf),
-            // stat: &Stat::new(conf.ls_kind, false), // assuming ls_kind is a field in Config
-            ndim,
-            fcn,
-            jac,
-            // rkm: RkMethod::new(conf.method),
-            fixed_only: false, // to be updated based on method info
-            implicit: false,   // to be updated based on method info
-                               // work: Workspace::new(0, ndim), // to be updated based on method info
-        };
-
-        // information
-        // let (fixed_only, implicit, nstg) = solver.rkm.info();
-        // solver.fixed_only = fixed_only;
-        // solver.implicit = implicit;
-
-        // stat
-        // solver.stat = &Stat::new(conf.ls_kind, solver.implicit);
-
-        // workspace
-        // solver.work = &RkWork::new(nstg, solver.ndim);
-
-        // initialize method
-        // solver.rkm.init(ndim, conf, solver.work, solver.stat, fcn, jac, m);
-
-        // connect dense output function
-        // if solver.out != &Output::default() {
-        //     solver.out.dout = solver.rkm.dense_out;
-        // }
-        solver
+impl<'a> OdeSolver<'a> {
+    pub fn new(
+        params: &'a OdeParams,
+        ndim: usize,
+        // function: Func<A>,
+        // jacobian: Option<JacF<A>>,
+        mass: Option<&'a CooMatrix>,
+    ) -> Result<Self, StrError> {
+        // #[rustfmt::skip]
+        // let actual: Box<dyn OdeSolverTrait<A>+'a> = match params.method {
+        //     Method::Radau5     => panic!("<not available>"),
+        //     Method::BwEuler    => panic!("<not available>"),
+        //     Method::FwEuler    => panic!("<not available>"),
+        //     Method::Rk2        => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
+        //     Method::Rk3        => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
+        //     Method::Heun3      => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
+        //     Method::Rk4        => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
+        //     Method::Rk4alt     => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
+        //     Method::MdEuler    => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
+        //     Method::Merson4    => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
+        //     Method::Zonneveld4 => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
+        //     Method::Fehlberg4  => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
+        //     Method::DoPri5     => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
+        //     Method::Verner6    => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
+        //     Method::Fehlberg7  => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
+        //     Method::DoPri8     => Box::new(ExplicitRungeKutta::new(params, ndim, function)?),
+        // };
+        Ok(OdeSolver { params })
     }
 
-    pub fn solve(&mut self, y: &Vector, x: f64, xf: f64) {
-        // benchmark
-        // let start_time = Instant::now();
-        // defer(|| self.stat.update_nanoseconds_total(start_time));
-
+    /// Solves the ODE system
+    ///
+    /// ```text
+    /// d{y}
+    /// ———— = f(x, {y})
+    ///  dx
+    /// where x is a scalar and {y} is a vector
+    /// ```
+    ///
+    /// # Input
+    ///
+    /// * `y` -- the {y} vector (dependent variable)
+    /// * `x` -- the independent variable
+    /// * `h_approx` -- the stepsize (`h = dx`; `x_new = x_old + h`). Set this value to select a fixed-steps approach.
+    ///   This function will employ an automatic sub-stepping approach is `h_approx = None` and the method is embedded.
+    ///   If `h_approx = None` and the method is not embedded, the stepsize will be computed for 10 steps.
+    pub fn solve(&mut self, y: &Vector, x: f64, xf: f64, h_approx: Option<f64>) -> Result<(), StrError> {
         // check
         if xf < x {
-            panic!("xf={} must be greater than x={}", xf, x);
-        }
-        if self.fixed_only && !self.conf.fixed {
-            panic!(
-                "method {} can only be used with fixed steps. make sure to call conf.set_fixed_h > 0",
-                "self.conf.method"
-            );
+            return Err("xf must be greater than x");
         }
 
-        /*
-        // initial step size
-        self.work.h = xf - x;
-        if self.conf.fixed {
-            self.work.h = self.conf.fixedH;
-        } else {
-            self.work.h = self.work.h.min(self.conf.IniH);
+        // information
+        let info = self.params.method.information();
+
+        // fixed steps?
+        let mut fixed_steps = false;
+        let mut h_approximate = 0.0;
+        let mut fixed_nstep = 0;
+        let mut fixed_h = 0.0;
+        if let Some(h) = h_approx {
+            fixed_steps = true;
+            h_approximate = h;
+        };
+        if !info.embedded && !fixed_steps {
+            const N_STEPS: usize = 10;
+            fixed_steps = true;
+            h_approximate = (xf - xf) / (N_STEPS as f64);
         }
-        */
-
-        // stat and output
-        // self.stat.reset();
-        // self.stat.hopt = self.work.h;
-        // if let Some(out) = &self.out {
-        //     let stop = out.execute(0, false, self.work.rs, self.work.h, x, y);
-        //     if stop {
-        //         return;
-        //     }
-        // }
-
-        // set control flags
-        // self.work.first = true;
-
-        // first scaling variable
-        // vec_scale_abs(&mut self.work.scal, &self.conf.atol, &self.conf.rtol, y); // scal = atol + rtol * abs(y)
-
-        // make sure that final x is equal to xf in the end
-        // defer(|| {
-        //     if (x - xf).abs() > 1e-10 {
-        //         println!("warning: |x - xf| = {} > 1e-8", (x - xf).abs());
-        //     }
-        // });
-
-        // fixed steps //////////////////////////////
-        if self.conf.fixed {
-            let mut istep = 1;
-            if self.conf.Verbose {
-                // io::pfgreen!("x = {}\n", x);
-                // io::pf!("y = {}\n", y);
-            }
-            for n in 0..self.conf.fixedNsteps {
-                // if self.implicit && self.jac.is_none() {
-                // f0 for numerical Jacobian
-                // self.stat.nfeval += 1;
-                // self.fcn(&mut self.work.f0, &self.work.h, x, y);
-                // }
-                // self.rkm.step(x, y);
-                // self.stat.nsteps += 1;
-                // self.work.first = false;
-                // x = f64::from(n + 1) * self.work.h;
-                // self.rkm.accept(y, x);
-                // if let Some(out) = &self.out {
-                //     let stop = out.execute(istep, false, &self.work.rs, &self.work.h, x, y);
-                //     if stop {
-                //         return;
-                //     }
-                // }
-                // if self.conf.verbose {
-                //     io::pfgreen!("x = {}\n", x);
-                //     io::pf!("y = {}\n", y);
-                // }
-                istep += 1;
-            }
-            return;
-        }
-
-        // variable steps //////////////////////////////
-
-        /*
-        // control variables
-        self.work.reuse_jac_and_dec_once = false;
-        self.work.reuse_jac_once = false;
-        self.work.jac_is_ok = false;
-        self.work.h_prev = self.work.h;
-        self.work.nit = 0;
-        self.work.eta = 1.0;
-        self.work.theta = self.conf.ThetaMax;
-        self.work.dvfac = 0.0;
-        self.work.diverg = false;
-        self.work.reject = false;
-        self.work.rerr_prev = 1e-4;
-        self.work.stiff_yes = 0;
-        self.work.stiff_not = 0;
-        */
-
-        // first function evaluation
-        // self.stat.nfeval += 1;
-        // self.fcn(&mut self.work.f0, self.work.h, x, y); // f0 := f(x,y)
-
-        /*
-        // time loop
-        let mut x = x;
-        let delta_x = xf - x;
-        let mut dxmax: f64 = 0.0;
-        let mut xstep: f64 = 0.0;
-        let mut dxnew: f64 = 0.0;
-        let mut dxratio: f64 = 0.0;
-        let mut last: bool = false;
-        let mut failed: bool = false;
-        while x < xf {
-            dxmax = delta_x;
-            xstep = x + delta_x;
-            failed = false;
-            for iss in 0..=self.conf.NmaxSS {
-                // total number of substeps
-                // self.stat.nsteps += 1;
-
-                // error: did not converge
-                // if iss == self.conf.nmax_ss {
-                //     failed = true;
-                //     break;
-                // }
-
-                // converged?
-                if x - xstep >= 0.0 {
-                    break;
-                }
-
-                // step update
-                // let start_time_step = Instant::now();
-                // self.rkm.step(x, y);
-                // self.stat.update_nanoseconds_step(start_time_step);
-
-                // iterations diverging ?
-                if self.work.diverg {
-                    self.work.diverg = false;
-                    self.work.reject = true;
-                    last = false;
-                    self.work.h *= self.work.dvfac;
-                    continue;
-                }
-
-                // accepted
-                if self.work.rerr < 1.0 {
-                    // set flags
-                    // self.stat.naccepted += 1;
-                    self.work.first = false;
-                    self.work.jac_is_ok = false;
-
-                    // stiffness detection
-                    // if self.conf.stiff_nstp > 0 {
-                    //     if self.stat.naccepted % self.conf.stiff_nstp == 0 || self.work.stiff_yes > 0 {
-                    //         if self.work.rs > self.conf.stiff_rs_max {
-                    //             self.work.stiff_not = 0;
-                    //             self.work.stiff_yes += 1;
-                    //             if self.work.stiff_yes == self.conf.stiff_nyes {
-                    //                 println!("stiff step detected @ x = {}", x);
-                    //             }
-                    //         } else {
-                    //             self.work.stiff_not += 1;
-                    //             if self.work.stiff_not == self.conf.stiff_nnot {
-                    //                 self.work.stiff_yes = 0;
-                    //             }
-                    //         }
-                    //     }
-                    // }
-
-                    // update x and y
-                    // dxnew = self.rkm.accept(y, x);
-                    x += self.work.h;
-
-                    // output
-                    // if let Some(out) = &self.out {
-                    //     let stop = out.execute(self.stat.naccepted, last, self.work.rs, self.work.h, x, y);
-                    //     if stop {
-                    //         return;
-                    //     }
-                    // }
-
-                    // converged ?
-                    // if last {
-                    //     self.stat.hopt = self.work.h; // optimal stepsize
-                    //     break;
-                    // }
-
-                    // save previous stepsize and relative error
-                    self.work.h_prev = self.work.h;
-                    // self.work.rerr_prev = self.conf.rerr_prev_min.max(self.work.rerr);
-
-                    // calc new scal and f0
-                    if self.implicit {
-                        // vec_scale_abs(&mut self.work.scal, &self.conf.atol, &self.conf.rtol, y);
-                        // self.stat.nfeval += 1;
-                        // self.fcn(&mut self.work.f0, self.work.h, x, y); // f0 := f(x,y)
-                    }
-
-                    // check new step size
-                    dxnew = f64::min(dxnew, dxmax);
-                    if self.work.reject {
-                        dxnew = self.work.h.min(dxnew);
-                    }
-                    self.work.reject = false;
-
-                    // do not reuse current Jacobian and decomposition by default
-                    self.work.reuse_jac_and_dec_once = false;
-
-                    // last step ?
-                    if x + dxnew - xstep >= 0.0 {
-                        last = true;
-                        self.work.h = xstep - x;
-                    } else {
-                        if self.implicit {
-                            // dxratio = dxnew / self.work.h;
-                            // self.work.reuse_jac_and_dec_once = self.work.theta <= self.conf.theta_max
-                            //     && dxratio >= self.conf.c1h
-                            //     && dxratio <= self.conf.c2h;
-                            // if !self.work.reuse_jac_and_dec_once {
-                            //     self.work.h = dxnew;
-                            // }
-                        } else {
-                            self.work.h = dxnew;
-                        }
-                    }
-
-                    // check θ to decide if at least the Jacobian can be reused
-                    if self.implicit {
-                        // if !self.work.reuse_jac_and_dec_once {
-                        //     self.work.reuse_jac_once = self.work.theta <= self.conf.theta_max;
-                        // }
-                    }
-                } else {
-                    // set flags
-                    // if self.stat.naccepted > 0 {
-                    //     self.stat.nrejected += 1;
-                    // }
-                    self.work.reject = true;
-                    last = false;
-
-                    // compute next stepsize
-                    // dxnew = self.rkm.reject();
-
-                    // new step size
-                    // if self.work.first && self.conf.mfirst_rej > 0 {
-                    //     self.work.h = self.conf.mfirst_rej * self.work.h;
-                    // } else {
-                    //     self.work.h = dxnew;
-                    // }
-
-                    // last step
-                    if x + self.work.h > xstep {
-                        self.work.h = xstep - x;
-                    }
-                }
-            }
-
-            // sub-stepping failed
-            if failed {
-                panic!("substepping did not converge after {} steps", self.conf.NmaxSS);
-                break;
+        if fixed_steps {
+            fixed_nstep = f64::ceil(xf / h_approximate) as usize;
+            fixed_h = xf / (fixed_nstep as f64);
+            let x_final = (fixed_nstep as f64) * fixed_h;
+            if f64::abs(x_final - xf) > 1e-14 {
+                println!("INTERNAL ERROR: x_final - xf = {:?} > 1e-14", x_final - xf);
+                panic!("INTERNAL ERROR: x_final should be equal to xf");
             }
         }
-        */
+        Ok(())
     }
 }
 

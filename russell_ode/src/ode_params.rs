@@ -1,5 +1,6 @@
 #![allow(unused, non_snake_case)]
 
+use crate::StrError;
 use crate::{DenseOutF, Method, StepOutF};
 use russell_sparse::{Genie, LinSolParams};
 
@@ -119,15 +120,6 @@ pub struct OdeParams {
 
     /// min value of rerrPrev
     pub rerrPrevMin: f64,
-
-    /// use fixed steps
-    pub fixed: bool,
-
-    /// value of fixed stepsize
-    pub fixedH: f64,
-
-    /// number of fixed steps
-    pub fixedNsteps: usize,
 }
 
 impl OdeParams {
@@ -141,34 +133,34 @@ impl OdeParams {
             Some(p) => p,
             None => LinSolParams::new(),
         };
-        OdeParams {
+        let mut params = OdeParams {
             method,
             genie,
             lin_sol_params: ls_params,
-            Hmin: 0.0,
-            IniH: 0.0,
-            NmaxIt: 0,
-            NmaxSS: 0,
-            Mmin: 0.0,
-            Mmax: 0.0,
-            Mfac: 0.0,
-            MfirstRej: 0.0,
-            PredCtrl: false,
-            Eps: 0.0,
-            ThetaMax: 0.0,
-            C1h: 0.0,
-            C2h: 0.0,
-            LerrStrat: 0,
-            GoChan: false,
+            Hmin: 1.0e-10,
+            IniH: 1.0e-4,
+            NmaxIt: 7,
+            NmaxSS: 1000,
+            Mmin: 0.125,
+            Mmax: 5.0,
+            Mfac: 0.9,
+            MfirstRej: 0.1,
+            PredCtrl: true,
+            Eps: 1e-16,
+            ThetaMax: 1.0e-3,
+            C1h: 1.0,
+            C2h: 1.2,
+            LerrStrat: 3,
+            GoChan: true,
             CteTg: false,
-            UseRmsNorm: false,
+            UseRmsNorm: true,
             Verbose: false,
             ZeroTrial: false,
-            StabBeta: 0.0,
+            StabBeta: 0.04,
             StiffNstp: 0,
-            StiffRsMax: 0.0,
-            StiffNyes: 0,
-            StiffNnot: 0,
+            StiffRsMax: 0.5,
+            StiffNyes: 15,
+            StiffNnot: 6,
             stepF: None,
             denseF: None,
             denseDx: 0.0,
@@ -179,10 +171,54 @@ impl OdeParams {
             atol: 0.0,
             rtol: 0.0,
             fnewt: 0.0,
-            rerrPrevMin: 0.0,
-            fixed: false,
-            fixedH: 0.0,
-            fixedNsteps: 0,
+            rerrPrevMin: 1.0e-4,
+        };
+        params.set_tolerances(1e-4, 1e-4).unwrap();
+        if method == Method::Radau5 {
+            params.rerrPrevMin = 1.0e-2;
         }
+        if method == Method::DoPri5 {
+            params.StabBeta = 0.04;
+            params.stabBetaM = 0.75;
+        }
+        if method == Method::DoPri8 {
+            params.stabBetaM = 0.2;
+        }
+        params
+    }
+
+    /// Sets the tolerances
+    ///
+    /// # Input
+    ///
+    /// * `atol` -- absolute tolerance
+    /// * `rtol` -- relative tolerance
+    pub fn set_tolerances(&mut self, atol: f64, rtol: f64) -> Result<(), StrError> {
+        // check
+        if atol <= 0.0 {
+            return Err("absolute tolerance must be greater than zero");
+        }
+        if atol <= 10.0 * self.Eps {
+            return Err("absolute tolerance must be grater than 10 * EPS");
+        }
+        if rtol <= 0.0 {
+            return Err("relative tolerance must be greater than zero");
+        }
+
+        // set
+        self.atol = atol;
+        self.rtol = rtol;
+
+        // change the tolerances (radau5 only)
+        if self.method == Method::Radau5 {
+            const BETA: f64 = 2.0 / 3.0;
+            let quot = self.atol / self.rtol;
+            self.rtol = 0.1 * f64::powf(self.rtol, BETA);
+            self.atol = self.rtol * quot;
+        }
+
+        // tolerance for iterations
+        self.fnewt = f64::max(10.0 * self.Eps / self.rtol, f64::min(0.03, f64::sqrt(self.rtol)));
+        Ok(())
     }
 }

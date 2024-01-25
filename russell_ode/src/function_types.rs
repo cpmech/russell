@@ -4,11 +4,11 @@ use crate::StrError;
 use russell_lab::Vector;
 use russell_sparse::SparseMatrix;
 
-/// Defines the main function d{y}/dx = {f}(x, {y})
+/// Defines the ODE system
 ///
 /// ```text
 /// d{y}
-/// ———— = {f}(h=dx, x, {y})
+/// ———— = {f}(x, {y})
 ///  dx
 /// ```
 ///
@@ -16,17 +16,16 @@ use russell_sparse::SparseMatrix;
 ///
 /// # Input
 ///
-/// * `f` -- (output) the function: `{f}(h, x, {y})`
-/// * `h` -- current stepsize = dx
+/// * `f` -- (output) the function: `{f}(x, {y})`
 /// * `x` -- current x
 /// * `y` -- current {y}
-pub type Func<A> = fn(f: &mut Vector, h: f64, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError>;
+pub type OdeSys<A> = fn(f: &mut Vector, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError>;
 
-/// Defines the Jacobian matrix of Func
+/// Defines the Jacobian matrix of the ODE system
 ///
 /// ```text
 /// d{f}
-/// ———— = [J](h=dx, x, {y})
+/// ———— = [J](x, {y})
 /// d{y}
 /// ```
 ///
@@ -34,11 +33,10 @@ pub type Func<A> = fn(f: &mut Vector, h: f64, x: f64, y: &Vector, args: &mut A) 
 ///
 /// # Input
 ///
-/// * `df_dy` -- (output) Jacobian matrix `d{f}/d{y} := [J](h=dx, x, {y})`
-/// * `h` -- current stepsize = dx
+/// * `jj` -- (output) Jacobian matrix `d{f}/d{y} := [J](x, {y})`
 /// * `x` -- current x
 /// * `y` -- current {y}
-pub type JacF<A> = fn(df_dy: &mut SparseMatrix, h: f64, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError>;
+pub type OdeSysJac<A> = fn(jj: &mut SparseMatrix, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError>;
 
 /// Defines a callback function to be called when a step is accepted
 ///

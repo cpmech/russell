@@ -26,5 +26,5 @@ pub(crate) trait OdeSolverTrait<A> {
     fn reject(&mut self, h: f64, relative_error: f64) -> f64;
 
     /// Computes the dense output
-    fn dense_output(&self, yout: &mut Vector, h: f64, x: f64, y: &Vector, xout: f64);
+    fn dense_output(&self, y_out: &mut Vector, h: f64, x: f64, y: &Vector, x_out: f64);
 }

@@ -1,5 +1,5 @@
 use crate::constants::*;
-use crate::{Func, Information, Method, OdeParams, OdeSolverTrait, StrError};
+use crate::{Information, Method, OdeParams, OdeSolverTrait, OdeSys, StrError};
 use russell_lab::{vec_copy, vec_update, Matrix, Vector};
 
 pub struct ExplicitRungeKutta<'a, A> {
@@ -41,7 +41,7 @@ pub struct ExplicitRungeKutta<'a, A> {
     /// Function defining the ODE problem
     ///
     /// dy/dx = f(x, y)
-    function: Func<A>,
+    function: OdeSys<A>,
 
     /// Lund stabilization factor (n)
     ///
@@ -60,12 +60,12 @@ pub struct ExplicitRungeKutta<'a, A> {
     /// number of calls to function
     n_function_eval: usize,
 
-    /// Vector holding the updates
+    /// Array of vectors holding the updates
     ///
     /// v[stg][dim] = ya[dim] + h*sum(a[stg][j]*f[j][dim], j, nstg)
     v: Vec<Vector>,
 
-    /// Vector holding the function evaluations
+    /// Array of vectors holding the function evaluations
     ///
     /// k[stg][dim] = f(u[stg], v[stg][dim])
     k: Vec<Vector>,
@@ -85,7 +85,7 @@ pub struct ExplicitRungeKutta<'a, A> {
 
 impl<'a, A> ExplicitRungeKutta<'a, A> {
     /// Allocates a new instance
-    pub fn new(params: &'a OdeParams, ndim: usize, function: Func<A>) -> Result<Self, StrError> {
+    pub fn new(params: &'a OdeParams, ndim: usize, function: OdeSys<A>) -> Result<Self, StrError> {
         // information
         let info = params.method.information();
         if info.implicit {
@@ -209,7 +209,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
         if (first_step || !self.info.first_step_same_as_last) && !self.reject {
             let u0 = x0 + h * self.cc[0];
             self.n_function_eval += 1;
-            (self.function)(&mut k[0], h, u0, y0, args); // k0 := f(ui,vi)
+            (self.function)(&mut k[0], u0, y0, args); // k0 := f(ui,vi)
         }
 
         // compute ki
@@ -220,7 +220,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
                 vec_update(&mut v[i], h * self.aa.get(i, j), &k[j]).unwrap(); // vi += h ⋅ aij ⋅ kj
             }
             self.n_function_eval += 1;
-            (self.function)(&mut k[i], h, ui, &v[i], args); // ki := f(ui,vi)
+            (self.function)(&mut k[i], ui, &v[i], args); // ki := f(ui,vi)
         }
 
         // update
@@ -366,7 +366,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
             }
             self.n_function_eval += 1;
             let u = x0 + cd[0] * h;
-            (self.function)(&mut kd[0], h, u, yd, args);
+            (self.function)(&mut kd[0], u, yd, args);
 
             // second function evaluation
             for m in 0..self.ndim {
@@ -382,7 +382,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
             }
             self.n_function_eval += 1;
             let u = x0 + cd[1] * h;
-            (self.function)(&mut kd[1], h, u, yd, args);
+            (self.function)(&mut kd[1], u, yd, args);
 
             // next third function evaluation
             for m in 0..self.ndim {
@@ -398,7 +398,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
             }
             self.n_function_eval += 1;
             let u = x0 + cd[2] * h;
-            (self.function)(&mut kd[2], h, u, yd, args);
+            (self.function)(&mut kd[2], u, yd, args);
 
             // final results
             for m in 0..self.ndim {
@@ -500,25 +500,25 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
     }
 
     /// Computes the dense output
-    fn dense_output(&self, yout: &mut Vector, h: f64, x: f64, y: &Vector, xout: f64) {
+    fn dense_output(&self, y_out: &mut Vector, h: f64, x: f64, y: &Vector, x_out: f64) {
         if self.params.denseOut && self.params.method == Method::DoPri5 {
             let dout = self.dout.as_ref().unwrap();
             let xold = x - h;
-            let theta = (xout - xold) / h;
+            let theta = (x_out - xold) / h;
             let u_theta = 1.0 - theta;
             for m in 0..self.ndim {
-                yout[m] = dout[0][m]
+                y_out[m] = dout[0][m]
                     + theta * (dout[1][m] + u_theta * (dout[2][m] + theta * (dout[3][m] + u_theta * dout[4][m])));
             }
         }
         if self.params.denseOut && self.params.method == Method::DoPri8 {
             let dout = self.dout.as_ref().unwrap();
             let xold = x - h;
-            let theta = (xout - xold) / h;
+            let theta = (x_out - xold) / h;
             let u_theta = 1.0 - theta;
             for m in 0..self.ndim {
                 let par = dout[4][m] + theta * (dout[5][m] + u_theta * (dout[6][m] + theta * dout[7][m]));
-                yout[m] =
+                y_out[m] =
                     dout[0][m] + theta * (dout[1][m] + u_theta * (dout[2][m] + theta * (dout[3][m] + u_theta * par)));
             }
         }
@@ -535,7 +535,7 @@ mod tests {
     #[test]
     fn constants_are_consistent() {
         let ndim = 1;
-        let function = |_: &mut Vector, _: f64, _: f64, _: &Vector, _: &mut i32| -> Result<(), StrError> { Ok(()) };
+        let function = |_: &mut Vector, _: f64, _: &Vector, _: &mut i32| -> Result<(), StrError> { Ok(()) };
         let methods = Method::explicit_methods();
         let staged = methods.iter().filter(|&&m| m != Method::FwEuler);
         for method in staged {

@@ -1,5 +1,6 @@
-use crate::{EulerForward, StrError};
-use crate::{ExplicitRungeKutta, Method, OdeParams, OdeSolverTrait, OdeSys, OdeSysJac};
+use crate::constants::N_EQUAL_STEPS;
+use crate::StrError;
+use crate::{EulerForward, ExplicitRungeKutta, Method, OdeParams, OdeSolverTrait, OdeSys, OdeSysJac};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 
@@ -13,7 +14,7 @@ use russell_sparse::CooMatrix;
 ///  dx
 /// where x is a scalar and {y} is a vector
 /// ```
-struct OdeSolver<'a, A> {
+pub struct OdeSolver<'a, A> {
     params: &'a OdeParams,
     actual: Box<dyn OdeSolverTrait<A> + 'a>,
 
@@ -32,9 +33,10 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
         params: &'a OdeParams,
         ndim: usize,
         function: OdeSys<A>,
-        jacobian: Option<OdeSysJac<A>>,
-        mass: Option<&'a CooMatrix>,
+        _jacobian: Option<OdeSysJac<A>>,
+        _mass: Option<&'a CooMatrix>,
     ) -> Result<Self, StrError> {
+        params.validate()?;
         let actual: Box<dyn OdeSolverTrait<A>> = if params.method == Method::Radau5 {
             panic!("TODO: Radau5");
         } else if params.method == Method::BwEuler {
@@ -66,16 +68,16 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
     /// * `y0` -- the initial vector of dependent variables; it will be updated to `y1`
     /// * `x0` -- the initial independent variable
     /// * `x1` -- the final independent variable
-    /// * `h_approx` -- the approximate stepsize for solving with fixed-steps (`h = dx`);
-    ///   otherwise use the automatic sub-stepping approach, if available.
-    ///
-    /// **Note:** If the method is not embedded and `h_approx = None`, a fixed stepsize will be computed.
+    /// * `h_equal` -- a constant stepsize for solving with equal-steps; otherwise,
+    ///   if possible, variable step sizes are automatically calculated. If automatic
+    ///   sub-stepping is not possible (e.g., the RK method is not embedded),
+    ///   a constant (and equal) stepsize will be calculated for [N_EQUAL_STEPS] steps.
     pub fn solve(
         &mut self,
         y0: &mut Vector,
         x0: f64,
         x1: f64,
-        h_approx: Option<f64>,
+        h_equal: Option<f64>,
         args: &mut A,
     ) -> Result<(), StrError> {
         // check
@@ -91,7 +93,7 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
         let mut h_approximate = 0.0;
         let mut fixed_nstep = 0;
         let mut fixed_h = 0.0;
-        if let Some(h) = h_approx {
+        if let Some(h) = h_equal {
             if h < 0.0 {
                 return Err("h_approx must be greater than zero");
             }
@@ -99,9 +101,8 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
             h_approximate = h;
         };
         if !info.embedded && !fixed_steps {
-            const N_STEPS: usize = 10;
             fixed_steps = true;
-            h_approximate = (x1 - x0) / (N_STEPS as f64);
+            h_approximate = (x1 - x0) / (N_EQUAL_STEPS as f64);
         }
         if fixed_steps {
             fixed_nstep = f64::ceil(x1 / h_approximate) as usize;
@@ -132,14 +133,14 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
 
                 // perform step
                 let first_step = n == 0;
-                self.actual.step(x0, &y0, h, first_step, args);
+                self.actual.step(x0, &y0, h, first_step, args)?;
                 self.n_performed_steps += 1;
 
                 // update x0
                 x0 = ((n + 1) as f64) * h;
 
                 // accept step
-                self.actual.accept(y0, x0, h, IGNORED, IGNORED, args);
+                self.actual.accept(y0, x0, h, IGNORED, IGNORED, args)?;
             }
             return Ok(());
         }
@@ -159,16 +160,22 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::OdeSolver;
+    use crate::StrError;
+    use crate::{Method, OdeParams};
+    use russell_lab::Vector;
 
     #[test]
     fn solve_works_1() {
-        struct Args {};
+        struct Args {}
         let params = OdeParams::new(Method::FwEuler, None, None);
         let function = |f: &mut Vector, _: f64, _: &Vector, _: &mut Args| -> Result<(), StrError> {
             f[0] = 1.0;
             Ok(())
         };
-        let solver = OdeSolver::new(&params, 1, function, None, None).unwrap();
+        let mut solver = OdeSolver::new(&params, 1, function, None, None).unwrap();
+        let mut y0 = Vector::new(1);
+        let mut args = Args {};
+        solver.solve(&mut y0, 0.0, 1.0, None, &mut args).unwrap();
     }
 }

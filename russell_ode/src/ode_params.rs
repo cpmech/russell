@@ -221,4 +221,9 @@ impl OdeParams {
         self.fnewt = f64::max(10.0 * self.Eps / self.rel_tol, f64::min(0.03, f64::sqrt(self.rel_tol)));
         Ok(())
     }
+
+    /// TODO
+    pub(crate) fn validate(&self) -> Result<(), StrError> {
+        Ok(())
+    }
 }

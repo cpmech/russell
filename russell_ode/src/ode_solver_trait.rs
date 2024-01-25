@@ -1,11 +1,11 @@
-// use crate::Information;
+use crate::StrError;
 use russell_lab::Vector;
 
 pub(crate) trait OdeSolverTrait<A> {
     /// Calculates the quantities required to update x0 and y0
     ///
     /// Returns the (`relative_error`, `stiffness_ratio`)
-    fn step(&mut self, x0: f64, y0: &Vector, h: f64, first_step: bool, args: &mut A) -> (f64, f64);
+    fn step(&mut self, x0: f64, y0: &Vector, h: f64, first_step: bool, args: &mut A) -> Result<(f64, f64), StrError>;
 
     /// Accepts the update and computes the next stepsize
     ///
@@ -18,7 +18,7 @@ pub(crate) trait OdeSolverTrait<A> {
         relative_error: f64,
         previous_relative_error: f64,
         args: &mut A,
-    ) -> f64;
+    ) -> Result<f64, StrError>;
 
     /// Rejects the update
     ///
@@ -26,5 +26,5 @@ pub(crate) trait OdeSolverTrait<A> {
     fn reject(&mut self, h: f64, relative_error: f64) -> f64;
 
     /// Computes the dense output
-    fn dense_output(&self, y_out: &mut Vector, h: f64, x: f64, y: &Vector, x_out: f64);
+    fn dense_output(&self, y_out: &mut Vector, h: f64, x: f64, x_out: f64);
 }

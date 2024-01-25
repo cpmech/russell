@@ -45,14 +45,14 @@ pub struct ExplicitRungeKutta<'a, A> {
 
     /// Lund stabilization factor (n)
     ///
-    /// exponent `n = 1/(q+1)` or `1/(q+1)-0.75⋅β` of `rerrⁿ`
+    /// exponent `n = 1/(q+1)` or `1/(q+1)-0.75⋅β` of `rerr ⁿ`
     lund_factor: f64,
 
     /// Auxiliary variable: 1 / m_min
-    dmin: f64,
+    d_min: f64,
 
     /// Auxiliary variable: 1 / m_max
-    dmax: f64,
+    d_max: f64,
 
     /// Indicates that the step follow a reject
     reject: bool,
@@ -62,7 +62,7 @@ pub struct ExplicitRungeKutta<'a, A> {
 
     /// Array of vectors holding the updates
     ///
-    /// v[stg][dim] = ya[dim] + h*sum(a[stg][j]*f[j][dim], j, nstg)
+    /// v[stg][dim] = ya[dim] + h*sum(a[stg][j]*f[j][dim], j, nstage)
     v: Vec<Vector>,
 
     /// Array of vectors holding the function evaluations
@@ -74,9 +74,9 @@ pub struct ExplicitRungeKutta<'a, A> {
     w: Vector,
 
     /// Dense output coefficients (nstage_dense * ndim)
-    dout: Option<Vec<Vector>>,
+    dense_out: Option<Vec<Vector>>,
 
-    /// k values for dense output (nextra_ks)
+    /// k values for dense output
     kd: Option<Vec<Vector>>,
 
     /// y values for dense output (len(kd)>0)
@@ -128,7 +128,7 @@ impl<'a, A> ExplicitRungeKutta<'a, A> {
                 Method::Rk4 => None,
                 Method::Rk4alt => None,
                 Method::MdEuler => Some(Vector::from(&MODIFIED_EULER_E)),
-                Method::Merson4 => Some(Vector::from(&ZONNEVELD_4_E)),
+                Method::Merson4 => Some(Vector::from(&MERSON_4_E)),
                 Method::Zonneveld4 => Some(Vector::from(&ZONNEVELD_4_E)),
                 Method::Fehlberg4 => Some(Vector::from(&FEHLBERG_4_E)),
                 Method::DoPri5 => Some(Vector::from(&DORMAND_PRINCE_5_E)),
@@ -142,16 +142,16 @@ impl<'a, A> ExplicitRungeKutta<'a, A> {
 
         // coefficients for dense output
         let (mut aad, mut ccd, mut dd) = (None, None, None);
-        let (mut dout, mut kd, mut yd) = (None, None, None);
+        let (mut dense_out, mut kd, mut yd) = (None, None, None);
         if params.denseOut && params.method == Method::DoPri5 {
             dd = Some(Matrix::from(&DORMAND_PRINCE_5_D));
-            dout = Some(vec![Vector::new(ndim); 5]);
+            dense_out = Some(vec![Vector::new(ndim); 5]);
         }
         if params.denseOut && params.method == Method::DoPri8 {
             aad = Some(Matrix::from(&DORMAND_PRINCE_8_AD));
             ccd = Some(Vector::from(&DORMAND_PRINCE_8_CD));
             dd = Some(Matrix::from(&DORMAND_PRINCE_8_D));
-            dout = Some(vec![Vector::new(ndim); 8]);
+            dense_out = Some(vec![Vector::new(ndim); 8]);
             kd = Some(vec![Vector::new(ndim); 3]);
             yd = Some(Vector::new(ndim));
         }
@@ -181,14 +181,14 @@ impl<'a, A> ExplicitRungeKutta<'a, A> {
             ndim,
             function,
             lund_factor,
-            dmin: 1.0 / params.Mmin,
-            dmax: 1.0 / params.Mmax,
+            d_min: 1.0 / params.Mmin,
+            d_max: 1.0 / params.Mmax,
             reject: false,
             n_function_eval: 0,
             v: vec![Vector::new(ndim); nstage],
             k: vec![Vector::new(ndim); nstage],
             w: Vector::new(ndim),
-            dout,
+            dense_out,
             kd,
             yd,
         })
@@ -196,7 +196,7 @@ impl<'a, A> ExplicitRungeKutta<'a, A> {
 }
 
 impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
-    fn step(&mut self, x0: f64, y0: &Vector, h: f64, first_step: bool, args: &mut A) -> (f64, f64) {
+    fn step(&mut self, x0: f64, y0: &Vector, h: f64, first_step: bool, args: &mut A) -> Result<(f64, f64), StrError> {
         // output
         let mut relative_error = 0.0;
         let mut stiffness_ratio = 0.0;
@@ -209,7 +209,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
         if (first_step || !self.info.first_step_same_as_last) && !self.reject {
             let u0 = x0 + h * self.cc[0];
             self.n_function_eval += 1;
-            (self.function)(&mut k[0], u0, y0, args); // k0 := f(ui,vi)
+            (self.function)(&mut k[0], u0, y0, args)?; // k0 := f(ui,vi)
         }
 
         // compute ki
@@ -220,7 +220,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
                 vec_update(&mut v[i], h * self.aa.get(i, j), &k[j]).unwrap(); // vi += h ⋅ aij ⋅ kj
             }
             self.n_function_eval += 1;
-            (self.function)(&mut k[i], ui, &v[i], args); // ki := f(ui,vi)
+            (self.function)(&mut k[i], ui, &v[i], args)?; // ki := f(ui,vi)
         }
 
         // update
@@ -231,33 +231,31 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
                     self.w[m] += self.bb[i] * k[i][m] * h;
                 }
             }
-            return (relative_error, stiffness_ratio);
+            return Ok((relative_error, stiffness_ratio));
         }
 
         // auxiliary
         let ee = self.ee.as_ref().unwrap();
-        let mut snum = 0.0;
-        let mut sden = 0.0;
+        let mut s_num = 0.0;
+        let mut s_den = 0.0;
         let dim = self.ndim as f64;
 
         // error estimation for Dormand-Prince 8 with 5 and 3 orders
         if self.params.method == Method::DoPri8 {
             let (bhh1, bhh2, bhh3) = (DORMAND_PRINCE_8_BHH1, DORMAND_PRINCE_8_BHH2, DORMAND_PRINCE_8_BHH3);
-            let mut err_a = 0.0;
-            let mut err_b = 0.0;
             let mut err_3 = 0.0;
             let mut err_5 = 0.0;
             for m in 0..self.ndim {
                 self.w[m] = y0[m];
-                err_a = 0.0;
-                err_b = 0.0;
+                let mut err_a = 0.0;
+                let mut err_b = 0.0;
                 for i in 0..self.nstage {
                     self.w[m] += self.bb[i] * k[i][m] * h;
                     err_a += self.bb[i] * k[i][m];
                     err_b += ee[i] * k[i][m];
                 }
                 let sk = self.params.abs_tol + self.params.rel_tol * f64::max(f64::abs(y0[m]), f64::abs(self.w[m]));
-                err_a -= (bhh1 * k[0][m] + bhh2 * k[8][m] + bhh3 * k[11][m]);
+                err_a -= bhh1 * k[0][m] + bhh2 * k[8][m] + bhh3 * k[11][m];
                 err_3 += (err_a / sk) * (err_a / sk);
                 err_5 += (err_b / sk) * (err_b / sk);
                 // stiffness estimation
@@ -265,46 +263,46 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
                 let b = self.nstage - 2;
                 let dk = k[a][m] - k[b][m];
                 let dv = v[a][m] - v[b][m];
-                snum += dk * dk;
-                sden += dv * dv;
+                s_num += dk * dk;
+                s_den += dv * dv;
             }
             let mut den = err_5 + 0.01 * err_3; // similar to Eq. (10.17) of [1, page 255]
             if den <= 0.0 {
                 den = 1.0;
             }
             relative_error = f64::abs(h) * err_5 * f64::sqrt(1.0 / (dim * den));
-            if sden > 0.0 {
-                stiffness_ratio = h * f64::sqrt(snum / sden);
+            if s_den > 0.0 {
+                stiffness_ratio = h * f64::sqrt(s_num / s_den);
             }
-            return (relative_error, stiffness_ratio);
+            return Ok((relative_error, stiffness_ratio));
         }
 
         // update, error and stiffness estimation
         let mut sum = 0.0;
         for m in 0..self.ndim {
             self.w[m] = y0[m];
-            let mut lerrm = 0.0;
+            let mut l_err_m = 0.0;
             for i in 0..self.nstage {
                 let kh = k[i][m] * h;
                 self.w[m] += self.bb[i] * kh;
-                lerrm += ee[i] * kh;
+                l_err_m += ee[i] * kh;
             }
             let sk = self.params.abs_tol + self.params.rel_tol * f64::max(f64::abs(y0[m]), f64::abs(self.w[m]));
-            let ratio = lerrm / sk;
+            let ratio = l_err_m / sk;
             sum += ratio * ratio;
             // stiffness estimation
             let a = self.nstage - 1;
             let b = self.nstage - 2;
             let dk = k[a][m] - k[b][m];
             let dv = v[a][m] - v[b][m];
-            snum += dk * dk;
-            sden += dv * dv;
+            s_num += dk * dk;
+            s_den += dv * dv;
         }
         relative_error = f64::max(f64::sqrt(sum / dim), 1.0e-10);
-        if sden > 0.0 {
-            stiffness_ratio = h * f64::sqrt(snum / sden);
+        if s_den > 0.0 {
+            stiffness_ratio = h * f64::sqrt(s_num / s_den);
         }
-        (relative_error, stiffness_ratio)
+        Ok((relative_error, stiffness_ratio))
     }
 
     /// Accepts the update and computes the next stepsize
@@ -318,26 +316,26 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
         relative_error: f64,
         previous_relative_error: f64,
         args: &mut A,
-    ) -> f64 {
+    ) -> Result<f64, StrError> {
         // store data for future dense output (Dormand-Prince 5)
         if self.params.denseOut && self.params.method == Method::DoPri5 {
             let dd = self.dd.as_ref().unwrap();
-            let dout = self.dout.as_mut().unwrap();
+            let d = self.dense_out.as_mut().unwrap();
             let k = &self.k;
             for m in 0..self.ndim {
-                let ydiff = self.w[m] - y0[m];
-                let bspl = h * k[0][m] - ydiff;
-                dout[0][m] = y0[m];
-                dout[1][m] = ydiff;
-                dout[2][m] = bspl;
-                dout[3][m] = ydiff - h * k[6][m] - bspl;
-                dout[4][m] = dd.get(0, 0) * k[0][m]
+                let y_diff = self.w[m] - y0[m];
+                let b_spl = h * k[0][m] - y_diff;
+                d[0][m] = y0[m];
+                d[1][m] = y_diff;
+                d[2][m] = b_spl;
+                d[3][m] = y_diff - h * k[6][m] - b_spl;
+                d[4][m] = dd.get(0, 0) * k[0][m]
                     + dd.get(0, 2) * k[2][m]
                     + dd.get(0, 3) * k[3][m]
                     + dd.get(0, 4) * k[4][m]
                     + dd.get(0, 5) * k[5][m]
                     + dd.get(0, 6) * k[6][m];
-                dout[4][m] *= h;
+                d[4][m] *= h;
             }
         }
 
@@ -347,7 +345,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
             let aad = self.aad.as_ref().unwrap();
             let cd = self.ccd.as_ref().unwrap();
             let dd = self.dd.as_ref().unwrap();
-            let dout = self.dout.as_mut().unwrap();
+            let d = self.dense_out.as_mut().unwrap();
             let kd = self.kd.as_mut().unwrap();
             let yd = self.yd.as_mut().unwrap();
             let k = &self.k;
@@ -366,7 +364,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
             }
             self.n_function_eval += 1;
             let u = x0 + cd[0] * h;
-            (self.function)(&mut kd[0], u, yd, args);
+            (self.function)(&mut kd[0], u, yd, args)?;
 
             // second function evaluation
             for m in 0..self.ndim {
@@ -382,7 +380,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
             }
             self.n_function_eval += 1;
             let u = x0 + cd[1] * h;
-            (self.function)(&mut kd[1], u, yd, args);
+            (self.function)(&mut kd[1], u, yd, args)?;
 
             // next third function evaluation
             for m in 0..self.ndim {
@@ -398,17 +396,17 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
             }
             self.n_function_eval += 1;
             let u = x0 + cd[2] * h;
-            (self.function)(&mut kd[2], u, yd, args);
+            (self.function)(&mut kd[2], u, yd, args)?;
 
             // final results
             for m in 0..self.ndim {
-                let ydiff = self.w[m] - y0[m];
-                let bspl = h * k[0][m] - ydiff;
-                dout[0][m] = y0[m];
-                dout[1][m] = ydiff;
-                dout[2][m] = bspl;
-                dout[3][m] = ydiff - h * k[11][m] - bspl;
-                dout[4][m] = h
+                let y_diff = self.w[m] - y0[m];
+                let b_spl = h * k[0][m] - y_diff;
+                d[0][m] = y0[m];
+                d[1][m] = y_diff;
+                d[2][m] = b_spl;
+                d[3][m] = y_diff - h * k[11][m] - b_spl;
+                d[4][m] = h
                     * (dd.get(0, 0) * k[0][m]
                         + dd.get(0, 5) * k[5][m]
                         + dd.get(0, 6) * k[6][m]
@@ -421,7 +419,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
                         + dd.get(0, 13) * kd[0][m]
                         + dd.get(0, 14) * kd[1][m]
                         + dd.get(0, 15) * kd[2][m]);
-                dout[5][m] = h
+                d[5][m] = h
                     * (dd.get(1, 0) * k[0][m]
                         + dd.get(1, 5) * k[5][m]
                         + dd.get(1, 6) * k[6][m]
@@ -434,7 +432,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
                         + dd.get(1, 13) * kd[0][m]
                         + dd.get(1, 14) * kd[1][m]
                         + dd.get(1, 15) * kd[2][m]);
-                dout[6][m] = h
+                d[6][m] = h
                     * (dd.get(2, 0) * k[0][m]
                         + dd.get(2, 5) * k[5][m]
                         + dd.get(2, 6) * k[6][m]
@@ -447,7 +445,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
                         + dd.get(2, 13) * kd[0][m]
                         + dd.get(2, 14) * kd[1][m]
                         + dd.get(2, 15) * kd[2][m]);
-                dout[7][m] = h
+                d[7][m] = h
                     * (dd.get(3, 0) * k[0][m]
                         + dd.get(3, 5) * k[5][m]
                         + dd.get(3, 6) * k[6][m]
@@ -475,7 +473,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
 
         // return zero if not embedded
         if !self.info.embedded {
-            return 0.0;
+            return Ok(0.0);
         }
 
         // estimate new stepsize
@@ -484,9 +482,9 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
             // lund-stabilization
             d = d / f64::powf(previous_relative_error, self.params.StabBeta);
         }
-        d = f64::max(self.dmax, f64::min(self.dmin, d / self.params.Mfac)); // we require  fac1 <= hnew/h <= fac2
+        d = f64::max(self.d_max, f64::min(self.d_min, d / self.params.Mfac)); // we require fac1 <= h_new/h <= fac2
         let stepsize_new = h / d;
-        stepsize_new
+        Ok(stepsize_new)
     }
 
     /// Rejects the update
@@ -495,31 +493,29 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
     fn reject(&mut self, h: f64, relative_error: f64) -> f64 {
         // estimate new stepsize
         let d = f64::powf(relative_error, self.lund_factor) / self.params.Mfac;
-        let stepsize_new = h / f64::min(self.dmin, d);
+        let stepsize_new = h / f64::min(self.d_min, d);
         stepsize_new
     }
 
     /// Computes the dense output
-    fn dense_output(&self, y_out: &mut Vector, h: f64, x: f64, y: &Vector, x_out: f64) {
+    fn dense_output(&self, y_out: &mut Vector, h: f64, x: f64, x_out: f64) {
         if self.params.denseOut && self.params.method == Method::DoPri5 {
-            let dout = self.dout.as_ref().unwrap();
-            let xold = x - h;
-            let theta = (x_out - xold) / h;
+            let d = self.dense_out.as_ref().unwrap();
+            let x_prev = x - h;
+            let theta = (x_out - x_prev) / h;
             let u_theta = 1.0 - theta;
             for m in 0..self.ndim {
-                y_out[m] = dout[0][m]
-                    + theta * (dout[1][m] + u_theta * (dout[2][m] + theta * (dout[3][m] + u_theta * dout[4][m])));
+                y_out[m] = d[0][m] + theta * (d[1][m] + u_theta * (d[2][m] + theta * (d[3][m] + u_theta * d[4][m])));
             }
         }
         if self.params.denseOut && self.params.method == Method::DoPri8 {
-            let dout = self.dout.as_ref().unwrap();
-            let xold = x - h;
-            let theta = (x_out - xold) / h;
+            let d = self.dense_out.as_ref().unwrap();
+            let x_prev = x - h;
+            let theta = (x_out - x_prev) / h;
             let u_theta = 1.0 - theta;
             for m in 0..self.ndim {
-                let par = dout[4][m] + theta * (dout[5][m] + u_theta * (dout[6][m] + theta * dout[7][m]));
-                y_out[m] =
-                    dout[0][m] + theta * (dout[1][m] + u_theta * (dout[2][m] + theta * (dout[3][m] + u_theta * par)));
+                let par = d[4][m] + theta * (d[5][m] + u_theta * (d[6][m] + theta * d[7][m]));
+                y_out[m] = d[0][m] + theta * (d[1][m] + u_theta * (d[2][m] + theta * (d[3][m] + u_theta * par)));
             }
         }
     }

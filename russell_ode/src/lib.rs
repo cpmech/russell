@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 //! Russell - Rust Scientific Library
 //!
 //! `russell_ode`: Solvers for Ordinary Differential Equations
@@ -15,13 +13,13 @@ mod function_types;
 mod ode_params;
 mod ode_solver;
 mod ode_solver_trait;
-use crate::constants::*;
+pub use crate::constants::*;
 use crate::enums::*;
-use crate::euler_forward::*;
-use crate::explicit_runge_kutta::*;
+pub use crate::euler_forward::*;
+pub use crate::explicit_runge_kutta::*;
 use crate::function_types::*;
 use crate::ode_params::*;
-use crate::ode_solver::*;
+pub use crate::ode_solver::*;
 use crate::ode_solver_trait::*;
 
 // run code from README file

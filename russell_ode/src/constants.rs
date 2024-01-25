@@ -1,5 +1,8 @@
 use russell_lab::math::SQRT_6;
 
+/// Default number of steps to use when the automatic sub-stepping is not available
+pub const N_EQUAL_STEPS: usize = 10;
+
 // Runge-Kutta -- order 2 ---------------------------------------------------------------------
 
 #[rustfmt::skip]
@@ -88,6 +91,7 @@ pub(crate) const MODIFIED_EULER_A: [[f64; 2]; 2] = [
 #[rustfmt::skip]
 pub(crate) const MODIFIED_EULER_B: [f64; 2] = [1.0 / 2.0, 1.0 / 2.0];
 
+#[allow(unused)]
 #[rustfmt::skip]
 pub(crate) const MODIFIED_EULER_BE: [f64; 2] = [1.0, 0.0];
 
@@ -111,6 +115,7 @@ pub(crate) const MERSON_4_A: [[f64; 5]; 5] = [
 #[rustfmt::skip]
 pub(crate) const MERSON_4_B: [f64; 5] = [1.0 / 6.0, 0.0, 0.0, 2.0 / 3.0, 1.0 / 6.0];
 
+#[allow(unused)]
 #[rustfmt::skip]
 pub(crate) const MERSON_4_BE: [f64; 5] = [1.0 / 10.0, 0.0, 3.0 / 10.0, 2.0 / 5.0, 1.0 / 5.0];
 
@@ -134,6 +139,7 @@ pub(crate) const ZONNEVELD_4_A: [[f64; 5]; 5] = [
 #[rustfmt::skip]
 pub(crate) const ZONNEVELD_4_B: [f64; 5] = [1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0, 0.0];
 
+#[allow(unused)]
 #[rustfmt::skip]
 pub(crate) const ZONNEVELD_4_BE: [f64; 5] = [-1.0 / 2.0, 7.0 / 3.0, 7.0 / 3.0, 13.0 / 6.0, -16.0 / 3.0];
 
@@ -158,6 +164,7 @@ pub(crate) const FEHLBERG_4_A: [[f64; 6]; 6] = [
 #[rustfmt::skip]
 pub(crate) const FEHLBERG_4_B: [f64; 6] = [25.0 / 216.0, 0.0, 1408.0 / 2565.0, 2197.0 / 4104.0, -1.0 / 5.0, 0.0];
 
+#[allow(unused)]
 #[rustfmt::skip]
 pub(crate) const FEHLBERG_4_BE: [f64; 6] = [16.0 / 135.0, 0.0, 6656.0 / 12825.0, 28561.0 / 56430.0, -9.0 / 50.0, 2.0 / 55.0];
 
@@ -183,6 +190,7 @@ pub(crate) const DORMAND_PRINCE_5_A: [[f64; 7]; 7] = [
 #[rustfmt::skip]
 pub(crate) const DORMAND_PRINCE_5_B: [f64; 7] = [35.0 / 384.0, 0.0, 500.0 / 1113.0, 125.0 / 192.0, -2187.0 / 6784.0, 11.0 / 84.0, 0.0];
 
+#[allow(unused)]
 #[rustfmt::skip]
 pub(crate) const DORMAND_PRINCE_5_BE: [f64; 7] = [5179.0 / 57600.0, 0.0, 7571.0 / 16695.0, 393.0 / 640.0, -92097.0 / 339200.0, 187.0 / 2100.0, 1.0 / 40.0];
 
@@ -220,6 +228,7 @@ pub(crate) const VERNER_6_A: [[f64; 8]; 8] = [
 #[rustfmt::skip]
 pub(crate) const VERNER_6_B: [f64; 8] = [3.0 / 40.0, 0.0, 875.0 / 2244.0, 23.0 / 72.0, 264.0 / 1955.0, 0.0, 125.0 / 11592.0, 43.0 / 616.0];
 
+#[allow(unused)]
 #[rustfmt::skip]
 pub(crate) const VERNER_6_BE: [f64; 8] = [13.0 / 160.0, 0.0, 2375.0 / 5984.0, 5.0 / 16.0, 12.0 / 85.0, 3.0 / 44.0, 0.0, 0.0];
 
@@ -251,6 +260,7 @@ pub(crate) const FEHLBERG_7_A: [[f64; 13]; 13] = [
 #[rustfmt::skip]
 pub(crate) const FEHLBERG_7_B: [f64; 13] = [41.0 / 840.0, 0.0, 0.0, 0.0, 0.0, 34.0 / 105.0, 9.0 / 35.0, 9.0 / 35.0, 9.0 / 280.0, 9.0 / 280.0, 41.0 / 840.0, 0.0, 0.0];
 
+#[allow(unused)]
 #[rustfmt::skip]
 pub(crate) const FEHLBERG_7_BE: [f64; 13] = [0.0, 0.0, 0.0, 0.0, 0.0, 34.0 / 105.0, 9.0 / 35.0, 9.0 / 35.0, 9.0 / 280.0, 9.0 / 280.0, 0.0, 41.0 / 840.0, 41.0 / 840.0];
 

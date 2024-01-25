@@ -15,7 +15,13 @@ use russell_sparse::CooMatrix;
 /// where x is a scalar and {y} is a vector
 /// ```
 pub struct OdeSolver<'a, A> {
+    /// Holds the parameters
     params: &'a OdeParams,
+
+    /// Dimension of the ODE system
+    ndim: usize,
+
+    /// Holds a pointer to the actual ODE system solver
     actual: Box<dyn OdeSolverTrait<A> + 'a>,
 
     /// Scaling vector
@@ -25,7 +31,11 @@ pub struct OdeSolver<'a, A> {
     /// ```
     scaling: Vector,
 
+    /// Collects the number of steps, successful or not
     n_performed_steps: usize,
+
+    /// Collects the number of rejected steps
+    n_rejected_steps: usize,
 }
 
 impl<'a, A: 'a> OdeSolver<'a, A> {
@@ -48,9 +58,11 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
         };
         Ok(OdeSolver {
             params,
+            ndim,
             actual,
             scaling: Vector::new(ndim),
             n_performed_steps: 0,
+            n_rejected_steps: 0,
         })
     }
 
@@ -80,7 +92,10 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
         h_equal: Option<f64>,
         args: &mut A,
     ) -> Result<(), StrError> {
-        // check
+        // check data
+        if y0.dim() != self.ndim {
+            return Err("y0.dim() must be equal to ndim");
+        }
         if x1 < x0 {
             return Err("x1 must be greater than x0");
         }
@@ -88,66 +103,53 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
         // information
         let info = self.params.method.information();
 
-        // configure fixed steps if not embedded or if h_approx is given
-        let mut fixed_steps = false;
-        let mut h_approximate = 0.0;
-        let mut fixed_nstep = 0;
-        let mut fixed_h = 0.0;
-        if let Some(h) = h_equal {
-            if h < 0.0 {
-                return Err("h_approx must be greater than zero");
-            }
-            fixed_steps = true;
-            h_approximate = h;
-        };
-        if !info.embedded && !fixed_steps {
-            fixed_steps = true;
-            h_approximate = (x1 - x0) / (N_EQUAL_STEPS as f64);
-        }
-        if fixed_steps {
-            fixed_nstep = f64::ceil(x1 / h_approximate) as usize;
-            fixed_h = x1 / (fixed_nstep as f64);
-            let x_final = (fixed_nstep as f64) * fixed_h;
-            if f64::abs(x_final - x1) > 1e-14 {
-                println!("INTERNAL ERROR: x_final - x1 = {:?} > 1e-14", x_final - x1);
-                panic!("INTERNAL ERROR: x_final should be equal to x1");
-            }
-        }
-
         // initial stepsize
-        let mut h = x1 - x0;
-        if fixed_steps {
-            h = fixed_h;
-        } else {
-            h = f64::min(h, self.params.initial_stepsize);
-        }
+        let (equal_stepping, h) = match h_equal {
+            Some(h_eq) => {
+                if h_eq < 0.0 {
+                    return Err("h_equal must be greater than zero");
+                }
+                let n = f64::ceil((x1 - x0) / h_eq) as usize;
+                let h = (x1 - x0) / (n as f64);
+                (true, h)
+            }
+            None => {
+                if info.embedded {
+                    let h = f64::min(self.params.initial_stepsize, x1 - x0);
+                    (false, h)
+                } else {
+                    let h = (x1 - x0) / (N_EQUAL_STEPS as f64);
+                    (true, h)
+                }
+            }
+        };
 
-        // x0 for sub-stepping (will become x1 at the end)
+        // mutable x0 (will become x1 at the end)
         let mut x0 = x0;
 
-        // fixed steps loop
-        if fixed_steps {
-            const IGNORED: f64 = 0.0;
-            for n in 0..fixed_nstep {
-                // TODO: compute f0 for numerical Jacobian
+        // restart variables
+        self.n_performed_steps = 0;
+        self.n_rejected_steps = 0;
 
-                // perform step
-                let first_step = n == 0;
-                self.actual.step(x0, &y0, h, first_step, args)?;
+        // equal-stepping loop
+        if equal_stepping {
+            const IGNORED: f64 = 0.0;
+            while x0 < x1 {
+                // step
+                self.actual.step(x0, &y0, h, args)?;
                 self.n_performed_steps += 1;
 
                 // update x0
-                x0 = ((n + 1) as f64) * h;
+                x0 += h;
 
-                // accept step
+                // update y0
                 self.actual.accept(y0, x0, h, IGNORED, IGNORED, args)?;
             }
             return Ok(());
         }
 
         // first scaling variables
-        let ndim = self.scaling.dim();
-        for i in 0..ndim {
+        for i in 0..self.ndim {
             self.scaling[i] = self.params.abs_tol + self.params.rel_tol * f64::abs(y0[i]);
         }
 

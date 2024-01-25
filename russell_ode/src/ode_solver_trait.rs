@@ -5,7 +5,7 @@ pub(crate) trait OdeSolverTrait<A> {
     /// Calculates the quantities required to update x0 and y0
     ///
     /// Returns the (`relative_error`, `stiffness_ratio`)
-    fn step(&mut self, x0: f64, y0: &Vector, h: f64, first_step: bool, args: &mut A) -> Result<(f64, f64), StrError>;
+    fn step(&mut self, x0: f64, y0: &Vector, h: f64, args: &mut A) -> Result<(f64, f64), StrError>;
 
     /// Accepts the update and computes the next stepsize
     ///

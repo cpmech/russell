@@ -35,7 +35,7 @@ pub struct ExplicitRungeKutta<'a, A> {
     /// Number of stages
     nstage: usize,
 
-    /// Problem dimension
+    /// Dimension of the ODE system
     ndim: usize,
 
     /// Function defining the ODE problem
@@ -54,8 +54,11 @@ pub struct ExplicitRungeKutta<'a, A> {
     /// Auxiliary variable: 1 / m_max
     d_max: f64,
 
-    /// Indicates that the step follow a reject
+    /// Indicates that the step follows a reject
     reject: bool,
+
+    /// Indicates that the first step is being computed
+    first_step: bool,
 
     /// number of calls to function
     n_function_eval: usize,
@@ -184,6 +187,7 @@ impl<'a, A> ExplicitRungeKutta<'a, A> {
             d_min: 1.0 / params.Mmin,
             d_max: 1.0 / params.Mmax,
             reject: false,
+            first_step: true,
             n_function_eval: 0,
             v: vec![Vector::new(ndim); nstage],
             k: vec![Vector::new(ndim); nstage],
@@ -196,7 +200,7 @@ impl<'a, A> ExplicitRungeKutta<'a, A> {
 }
 
 impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
-    fn step(&mut self, x0: f64, y0: &Vector, h: f64, first_step: bool, args: &mut A) -> Result<(f64, f64), StrError> {
+    fn step(&mut self, x0: f64, y0: &Vector, h: f64, args: &mut A) -> Result<(f64, f64), StrError> {
         // output
         let mut relative_error = 0.0;
         let mut stiffness_ratio = 0.0;
@@ -206,11 +210,12 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
         let v = &mut self.v;
 
         // compute k0 (otherwise, use k0 saved in accept_update)
-        if (first_step || !self.info.first_step_same_as_last) && !self.reject {
+        if (self.first_step || !self.info.first_step_same_as_last) && !self.reject {
             let u0 = x0 + h * self.cc[0];
             self.n_function_eval += 1;
             (self.function)(&mut k[0], u0, y0, args)?; // k0 := f(ui,vi)
         }
+        self.first_step = false;
 
         // compute ki
         for i in 1..self.nstage {

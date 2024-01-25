@@ -32,7 +32,7 @@ impl<A> EulerForward<A> {
 }
 
 impl<A> OdeSolverTrait<A> for EulerForward<A> {
-    fn step(&mut self, x0: f64, y0: &Vector, h: f64, _: bool, args: &mut A) -> Result<(f64, f64), StrError> {
+    fn step(&mut self, x0: f64, y0: &Vector, h: f64, args: &mut A) -> Result<(f64, f64), StrError> {
         (self.function)(&mut self.k0, x0, y0, args)?; // k0 := f(x0, y0)
         self.n_function_eval += 1;
         vec_add(&mut self.w, 1.0, &y0, h, &self.k0).unwrap(); // w := y0 + h * f(u0, y0)

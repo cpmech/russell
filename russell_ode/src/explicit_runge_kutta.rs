@@ -200,6 +200,12 @@ impl<'a, A> ExplicitRungeKutta<'a, A> {
 }
 
 impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
+    fn initialize(&mut self) {
+        self.reject = false;
+        self.first_step = true;
+        self.n_function_eval = 0;
+    }
+
     fn step(&mut self, x0: f64, y0: &Vector, h: f64, args: &mut A) -> Result<(f64, f64), StrError> {
         // output
         let mut relative_error = 0.0;

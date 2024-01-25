@@ -128,6 +128,7 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
         let mut x0 = x0;
 
         // restart variables
+        self.actual.initialize();
         self.n_performed_steps = 0;
         self.n_rejected_steps = 0;
 

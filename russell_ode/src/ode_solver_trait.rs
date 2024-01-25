@@ -2,6 +2,9 @@ use crate::StrError;
 use russell_lab::Vector;
 
 pub(crate) trait OdeSolverTrait<A> {
+    /// Initialize internal variables
+    fn initialize(&mut self);
+
     /// Calculates the quantities required to update x0 and y0
     ///
     /// Returns the (`relative_error`, `stiffness_ratio`)

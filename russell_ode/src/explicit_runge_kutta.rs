@@ -196,8 +196,7 @@ impl<'a, A> ExplicitRungeKutta<'a, A> {
 }
 
 impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
-    /// Performs  the next step
-    fn next_step(&mut self, xa: f64, ya: &Vector, h: f64, first: bool, args: &mut A) -> (f64, f64) {
+    fn step(&mut self, x0: f64, y0: &Vector, h: f64, first_step: bool, args: &mut A) -> (f64, f64) {
         // output
         let mut relative_error = 0.0;
         let mut stiffness_ratio = 0.0;
@@ -207,16 +206,16 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
         let v = &mut self.v;
 
         // compute k0 (otherwise, use k0 saved in accept_update)
-        if (first || !self.info.first_step_same_as_last) && !self.reject {
-            let u0 = xa + h * self.cc[0];
+        if (first_step || !self.info.first_step_same_as_last) && !self.reject {
+            let u0 = x0 + h * self.cc[0];
             self.n_function_eval += 1;
-            (self.function)(&mut k[0], h, u0, ya, args); // k0 := f(ui,vi)
+            (self.function)(&mut k[0], h, u0, y0, args); // k0 := f(ui,vi)
         }
 
         // compute ki
         for i in 1..self.nstage {
-            let ui = xa + h * self.cc[i];
-            vec_copy(&mut v[1], &ya).unwrap(); // vi := ya
+            let ui = x0 + h * self.cc[i];
+            vec_copy(&mut v[1], &y0).unwrap(); // vi := ya
             for j in 0..i {
                 vec_update(&mut v[i], h * self.aa.get(i, j), &k[j]).unwrap(); // vi += h ⋅ aij ⋅ kj
             }
@@ -227,7 +226,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
         // update
         if !self.info.embedded {
             for m in 0..self.ndim {
-                self.w[m] = ya[m];
+                self.w[m] = y0[m];
                 for i in 0..self.nstage {
                     self.w[m] += self.bb[i] * k[i][m] * h;
                 }
@@ -249,7 +248,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
             let mut err_3 = 0.0;
             let mut err_5 = 0.0;
             for m in 0..self.ndim {
-                self.w[m] = ya[m];
+                self.w[m] = y0[m];
                 err_a = 0.0;
                 err_b = 0.0;
                 for i in 0..self.nstage {
@@ -257,7 +256,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
                     err_a += self.bb[i] * k[i][m];
                     err_b += ee[i] * k[i][m];
                 }
-                let sk = self.params.atol + self.params.rtol * f64::max(f64::abs(ya[m]), f64::abs(self.w[m]));
+                let sk = self.params.abs_tol + self.params.rel_tol * f64::max(f64::abs(y0[m]), f64::abs(self.w[m]));
                 err_a -= (bhh1 * k[0][m] + bhh2 * k[8][m] + bhh3 * k[11][m]);
                 err_3 += (err_a / sk) * (err_a / sk);
                 err_5 += (err_b / sk) * (err_b / sk);
@@ -283,14 +282,14 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
         // update, error and stiffness estimation
         let mut sum = 0.0;
         for m in 0..self.ndim {
-            self.w[m] = ya[m];
+            self.w[m] = y0[m];
             let mut lerrm = 0.0;
             for i in 0..self.nstage {
                 let kh = k[i][m] * h;
                 self.w[m] += self.bb[i] * kh;
                 lerrm += ee[i] * kh;
             }
-            let sk = self.params.atol + self.params.rtol * f64::max(f64::abs(ya[m]), f64::abs(self.w[m]));
+            let sk = self.params.abs_tol + self.params.rel_tol * f64::max(f64::abs(y0[m]), f64::abs(self.w[m]));
             let ratio = lerrm / sk;
             sum += ratio * ratio;
             // stiffness estimation
@@ -311,7 +310,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
     /// Accepts the update and computes the next stepsize
     ///
     /// Returns `stepsize_new`
-    fn accept_update(
+    fn accept(
         &mut self,
         y0: &mut Vector,
         x0: f64,
@@ -493,7 +492,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
     /// Rejects the update
     ///
     /// Returns `stepsize_new`
-    fn reject_update(&mut self, h: f64, relative_error: f64) -> f64 {
+    fn reject(&mut self, h: f64, relative_error: f64) -> f64 {
         // estimate new stepsize
         let d = f64::powf(relative_error, self.lund_factor) / self.params.Mfac;
         let stepsize_new = h / f64::min(self.dmin, d);

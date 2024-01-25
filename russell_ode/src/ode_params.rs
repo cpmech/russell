@@ -20,7 +20,7 @@ pub struct OdeParams {
     pub Hmin: f64,
 
     /// initial H
-    pub IniH: f64,
+    pub initial_stepsize: f64,
 
     /// max num iterations (allowed)
     pub NmaxIt: usize,
@@ -110,10 +110,10 @@ pub struct OdeParams {
     pub stabBetaM: f64,
 
     /// absolute tolerance
-    pub atol: f64,
+    pub abs_tol: f64,
 
     /// relative tolerance
-    pub rtol: f64,
+    pub rel_tol: f64,
 
     /// Newton's iterations tolerance
     pub fnewt: f64,
@@ -138,7 +138,7 @@ impl OdeParams {
             genie,
             lin_sol_params: ls_params,
             Hmin: 1.0e-10,
-            IniH: 1.0e-4,
+            initial_stepsize: 1.0e-4,
             NmaxIt: 7,
             NmaxSS: 1000,
             Mmin: 0.125,
@@ -168,8 +168,8 @@ impl OdeParams {
             denseOut: false,
             denseNstp: 0,
             stabBetaM: 0.0,
-            atol: 0.0,
-            rtol: 0.0,
+            abs_tol: 0.0,
+            rel_tol: 0.0,
             fnewt: 0.0,
             rerrPrevMin: 1.0e-4,
         };
@@ -191,34 +191,34 @@ impl OdeParams {
     ///
     /// # Input
     ///
-    /// * `atol` -- absolute tolerance
-    /// * `rtol` -- relative tolerance
-    pub fn set_tolerances(&mut self, atol: f64, rtol: f64) -> Result<(), StrError> {
+    /// * `abs_tol` -- absolute tolerance
+    /// * `rel_tol` -- relative tolerance
+    pub fn set_tolerances(&mut self, abs_tol: f64, rel_tol: f64) -> Result<(), StrError> {
         // check
-        if atol <= 0.0 {
+        if abs_tol <= 0.0 {
             return Err("absolute tolerance must be greater than zero");
         }
-        if atol <= 10.0 * self.Eps {
+        if abs_tol <= 10.0 * self.Eps {
             return Err("absolute tolerance must be grater than 10 * EPS");
         }
-        if rtol <= 0.0 {
+        if rel_tol <= 0.0 {
             return Err("relative tolerance must be greater than zero");
         }
 
         // set
-        self.atol = atol;
-        self.rtol = rtol;
+        self.abs_tol = abs_tol;
+        self.rel_tol = rel_tol;
 
         // change the tolerances (radau5 only)
         if self.method == Method::Radau5 {
             const BETA: f64 = 2.0 / 3.0;
-            let quot = self.atol / self.rtol;
-            self.rtol = 0.1 * f64::powf(self.rtol, BETA);
-            self.atol = self.rtol * quot;
+            let quot = self.abs_tol / self.rel_tol;
+            self.rel_tol = 0.1 * f64::powf(self.rel_tol, BETA);
+            self.abs_tol = self.rel_tol * quot;
         }
 
         // tolerance for iterations
-        self.fnewt = f64::max(10.0 * self.Eps / self.rtol, f64::min(0.03, f64::sqrt(self.rtol)));
+        self.fnewt = f64::max(10.0 * self.Eps / self.rel_tol, f64::min(0.03, f64::sqrt(self.rel_tol)));
         Ok(())
     }
 }

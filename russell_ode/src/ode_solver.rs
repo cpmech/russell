@@ -123,6 +123,7 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
                 }
             }
         };
+        assert!(h > 0.0);
 
         // mutable x0 (will become x1 at the end)
         let mut x0 = x0;

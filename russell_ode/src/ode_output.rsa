@@ -1,62 +1,68 @@
-#![allow(unused, non_snake_case)]
-
 use crate::OdeParams;
 use russell_lab::Vector;
 
+/// Holds the output of the ODE system solution
 pub struct OdeOutput {
+    /// Dimension of the ODE system
     ndim: usize,
-    stepNmax: usize,
-    denseNmax: usize,
-    StepRS: Vec<f64>,
-    StepH: Vec<f64>,
-    StepX: Vec<f64>,
-    StepY: Vec<Vector>,
-    denseS: Vec<usize>,
-    DenseX: Vec<f64>,
-    DenseY: Vec<Vector>,
-    yout: Vec<f64>,
-    StepIdx: usize,
-    DenseIdx: usize,
-    xout: f64,
+
+    step_n_max: usize,
+    dense_n_max: usize,
+    step_stiffness_ratio: Vec<f64>,
+    step_h: Vec<f64>,
+    step_x: Vec<f64>,
+    step_y: Vec<Vector>,
+
+    dense_index_of_step: Vec<usize>,
+    dense_x: Vec<f64>,
+    dense_y: Vec<Vector>,
+
+    x_out: f64,
+    y_out: Vec<f64>,
+
+    step_index: usize,
+    dense_index: usize,
 }
 
 impl OdeOutput {
-    pub fn new(ndim: usize, conf: &OdeParams) -> OdeOutput {
+    pub fn new(ndim: usize, params: &OdeParams) -> OdeOutput {
         let mut o = OdeOutput {
             ndim,
-            stepNmax: 0,
-            denseNmax: 0,
-            StepRS: vec![],
-            StepH: vec![],
-            StepX: vec![],
-            StepY: vec![],
-            denseS: vec![],
-            DenseX: vec![],
-            DenseY: vec![],
-            yout: vec![],
-            StepIdx: 0,
-            DenseIdx: 0,
-            xout: 0.0,
+            step_n_max: 0,
+            dense_n_max: 0,
+            step_stiffness_ratio: vec![],
+            step_h: vec![],
+            step_x: vec![],
+            step_y: vec![],
+            dense_index_of_step: vec![],
+            dense_x: vec![],
+            dense_y: vec![],
+            y_out: vec![],
+            step_index: 0,
+            dense_index: 0,
+            x_out: 0.0,
         };
-        if conf.stepOut {
-            if conf.fixed {
-                o.stepNmax = conf.fixedNsteps + 1;
+        if params.stepOut {
+            /*
+            if params.fixed {
+                o.step_n_max = params.fixedNsteps + 1;
             } else {
-                o.stepNmax = conf.NmaxSS + 1;
+                o.step_n_max = params.NmaxSS + 1;
             }
-            o.StepRS = vec![0.0; o.stepNmax as usize];
-            o.StepH = vec![0.0; o.stepNmax as usize];
-            o.StepX = vec![0.0; o.stepNmax as usize];
+            */
+            o.step_stiffness_ratio = vec![0.0; o.step_n_max as usize];
+            o.step_h = vec![0.0; o.step_n_max as usize];
+            o.step_x = vec![0.0; o.step_n_max as usize];
             // o.StepY = vec![vec![0.0; ndim as usize]; o.stepNmax as usize];
         }
-        if conf.denseOut {
-            o.denseNmax = conf.denseNstp + 1;
-            o.denseS = vec![0; o.denseNmax as usize];
-            o.DenseX = vec![0.0; o.denseNmax as usize];
+        if params.denseOut {
+            o.dense_n_max = params.denseNstp + 1;
+            o.dense_index_of_step = vec![0; o.dense_n_max as usize];
+            o.dense_x = vec![0.0; o.dense_n_max as usize];
             // o.DenseY = vec![vec![0.0; ndim as usize]; o.denseNmax as usize];
         }
-        if conf.denseF.is_some() {
-            o.yout = vec![0.0; ndim as usize];
+        if params.denseF.is_some() {
+            o.y_out = vec![0.0; ndim as usize];
         }
         o
     }
@@ -71,12 +77,12 @@ impl OdeOutput {
         // }
 
         // save step output
-        if self.StepIdx < self.stepNmax {
-            self.StepRS[self.StepIdx as usize] = rho_s;
-            self.StepH[self.StepIdx as usize] = h;
-            self.StepX[self.StepIdx as usize] = x;
-            self.StepY[self.StepIdx as usize] = y.clone();
-            self.StepIdx += 1;
+        if self.step_index < self.step_n_max {
+            self.step_stiffness_ratio[self.step_index as usize] = rho_s;
+            self.step_h[self.step_index as usize] = h;
+            self.step_x[self.step_index as usize] = x;
+            self.step_y[self.step_index as usize] = y.clone();
+            self.step_index += 1;
         }
 
         // dense output using function
@@ -104,46 +110,46 @@ impl OdeOutput {
         // }
 
         // save dense output
-        if self.DenseIdx < self.denseNmax {
+        if self.dense_index < self.dense_n_max {
             if istep == 0 || last {
                 xo = x;
                 // self.DenseS[self.DenseIdx as usize] = istep;
-                self.DenseX[self.DenseIdx as usize] = xo;
-                self.DenseY[self.DenseIdx as usize] = y.clone();
-                self.DenseIdx += 1;
+                self.dense_x[self.dense_index as usize] = xo;
+                self.dense_y[self.dense_index as usize] = y.clone();
+                self.dense_index += 1;
                 // xo = self.conf.denseDx;
             } else {
-                xo = self.xout;
+                xo = self.x_out;
                 while x >= xo {
                     // self.DenseS[self.DenseIdx as usize] = istep;
-                    self.DenseX[self.DenseIdx as usize] = xo;
+                    self.dense_x[self.dense_index as usize] = xo;
                     // self.dout(&self.DenseY[self.DenseIdx as usize], h, x, &y, xo);
-                    self.DenseIdx += 1;
+                    self.dense_index += 1;
                     // xo += self.conf.denseDx;
                 }
             }
         }
 
         // set xout
-        self.xout = xo;
+        self.x_out = xo;
         false
     }
 
     pub fn get_step_rs(&self) -> &[f64] {
-        &self.StepRS[..self.StepIdx as usize]
+        &self.step_stiffness_ratio[..self.step_index as usize]
     }
 
     pub fn get_step_h(&self) -> &[f64] {
-        &self.StepH[..self.StepIdx as usize]
+        &self.step_h[..self.step_index as usize]
     }
 
     pub fn get_step_x(&self) -> &[f64] {
-        &self.StepX[..self.StepIdx as usize]
+        &self.step_x[..self.step_index as usize]
     }
 
     pub fn get_step_y(&self, i: usize) -> Vec<f64> {
-        if self.StepIdx > 0 {
-            self.StepY.iter().map(|y| y[i]).collect()
+        if self.step_index > 0 {
+            self.step_y.iter().map(|y| y[i]).collect()
         } else {
             vec![]
         }
@@ -170,16 +176,16 @@ impl OdeOutput {
     */
 
     pub fn get_dense_s(&self) -> &[usize] {
-        &self.denseS[..self.DenseIdx as usize]
+        &self.dense_index_of_step[..self.dense_index as usize]
     }
 
     pub fn get_dense_x(&self) -> &[f64] {
-        &self.DenseX[..self.DenseIdx as usize]
+        &self.dense_x[..self.dense_index as usize]
     }
 
     pub fn get_dense_y(&self, i: usize) -> Vec<f64> {
-        if self.DenseIdx > 0 {
-            self.DenseY.iter().map(|y| y[i]).collect()
+        if self.dense_index > 0 {
+            self.dense_y.iter().map(|y| y[i]).collect()
         } else {
             vec![]
         }

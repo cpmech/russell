@@ -188,10 +188,12 @@ impl<'a> OdeSolver<'a> {
     }
 }
 
+/// Disables the output of accepted steps
 pub fn output_step_none(_step: usize, _h: f64, _x: f64, _y: &Vector) -> Result<bool, StrError> {
     Ok(false)
 }
 
+/// Disables the dense output
 pub fn output_dense_none(
     _y_out: &mut Vector,
     _x_out: f64,

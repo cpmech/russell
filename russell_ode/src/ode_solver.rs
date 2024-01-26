@@ -153,7 +153,7 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
                 self.n_performed_steps += 1;
 
                 // update x0
-                x0 += h;
+                x0 = ((step + 1) as f64) * h;
 
                 // update y0
                 self.actual.accept(y0, x0, h, IGNORED, IGNORED, args)?;
@@ -182,12 +182,18 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::OdeSolver;
-    use crate::StrError;
     use crate::{Method, OdeParams};
-    use russell_lab::Vector;
+    use crate::{StrError, N_EQUAL_STEPS};
+    use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
     fn solve_works_1() {
+        // solving
+        //
+        // dy
+        // —— = 1   with   y(x=0)=0    thus   y(x) = x
+        // dx
+
         struct Args {}
         let params = OdeParams::new(Method::FwEuler, None, None);
         let function = |f: &mut Vector, _: f64, _: &Vector, _: &mut Args| -> Result<(), StrError> {
@@ -195,44 +201,77 @@ mod tests {
             Ok(())
         };
 
-        let mut h_values: Vec<f64> = Vec::new();
-        let mut x_values: Vec<f64> = Vec::new();
-        let mut y_values: Vec<f64> = Vec::new();
-        let mut global_errors: Vec<f64> = Vec::new();
+        // consistent initial conditions
         let y_ana = |x| x;
+        let mut x0 = 0.0;
+        let mut y0 = Vector::from(&[y_ana(x0)]);
 
+        // output arrays
+        let mut h_values = Vec::new();
+        let mut x_values = vec![x0];
+        let mut y_values = vec![y0[0]];
+        let mut e_values = vec![0.0]; // global errors
+
+        // solve the ODE system
         let mut solver = OdeSolver::new(&params, 1, function, None, None).unwrap();
-        let mut y0 = Vector::new(1);
         let mut args = Args {};
+        let xf = 1.0;
         solver
-            .solve(&mut y0, 0.0, 1.0, None, &mut args, |step, h, x, y| {
-                println!("{}", step);
+            .solve(&mut y0, x0, xf, None, &mut args, |_, h, x, y| {
                 h_values.push(h);
                 x_values.push(x);
                 y_values.push(y[0]);
-                global_errors.push(y_ana(x) - y[0]);
+                e_values.push(y_ana(x) - y[0]);
                 Ok(false)
             })
             .unwrap();
 
-        println!("h = {:?}", h_values);
-        println!("x = {:?}", x_values);
+        // check
+        assert_eq!(h_values.len(), N_EQUAL_STEPS);
+        assert_eq!(x_values.len(), N_EQUAL_STEPS + 1);
+        assert_eq!(y_values.len(), N_EQUAL_STEPS + 1);
+        assert_eq!(e_values.len(), N_EQUAL_STEPS + 1);
+        let h_equal_correct = (xf - x0) / (N_EQUAL_STEPS as f64);
+        let h_values_correct = Vector::filled(N_EQUAL_STEPS, h_equal_correct);
+        let x_values_correct = Vector::linspace(x0, xf, N_EQUAL_STEPS + 1).unwrap();
+        let e_values_correct = Vector::new(N_EQUAL_STEPS + 1); // all 0.0
+        vec_approx_eq(&h_values, h_values_correct.as_data(), 1e-17);
+        vec_approx_eq(&x_values, x_values_correct.as_data(), 1e-17);
+        vec_approx_eq(&y_values, x_values_correct.as_data(), 1e-15);
+        vec_approx_eq(&e_values, e_values_correct.as_data(), 1e-15);
 
+        // reset problem
+        x0 = 0.0;
+        y0[0] = y_ana(x0);
         h_values.clear();
         x_values.clear();
+        y_values.clear();
+        e_values.clear();
+        x_values.push(x0);
+        y_values.push(y0[0]);
+        e_values.push(0.0);
 
+        // solve the ODE system again with prescribed h_equal
+        let h_equal = Some(0.3);
+        let xf = 1.2; // => will generate 4 steps
         solver
-            .solve(&mut y0, 0.0, 1.0, Some(0.3), &mut args, |step, h, x, y| {
-                println!("{}", step);
+            .solve(&mut y0, x0, xf, h_equal, &mut args, |_, h, x, y| {
                 h_values.push(h);
                 x_values.push(x);
                 y_values.push(y[0]);
-                global_errors.push(y_ana(x) - y[0]);
+                e_values.push(y_ana(x) - y[0]);
                 Ok(false)
             })
             .unwrap();
 
-        println!("h = {:?}", h_values);
-        println!("x = {:?}", x_values);
+        // check again
+        let nstep = 4;
+        let h_values_correct = Vector::filled(nstep, 0.3);
+        let x_values_correct = Vector::linspace(x0, xf, nstep + 1).unwrap();
+        let e_values_correct = Vector::new(nstep + 1); // all 0.0
+        vec_approx_eq(&h_values, h_values_correct.as_data(), 1e-17);
+        vec_approx_eq(&x_values, x_values_correct.as_data(), 1e-17);
+        vec_approx_eq(&y_values, x_values_correct.as_data(), 1e-15);
+        vec_approx_eq(&e_values, e_values_correct.as_data(), 1e-15);
     }
 }

@@ -12,7 +12,7 @@ pub struct OdeSample {
     pub h_equal: Option<f64>,
     pub x0: f64,
     pub y0: Vector,
-    pub xf: f64,
+    pub x1: f64,
 }
 
 pub type OdeSampleArg = &'static mut u8;
@@ -35,7 +35,7 @@ impl Samples {
             h_equal: Some(1.875 / 50.0),
             x0: 0.0,
             y0: Vector::from(&[0.0]),
-            xf: 1.5,
+            x1: 1.5,
         }
     }
 
@@ -46,14 +46,14 @@ impl Samples {
         };
         let x0 = 0.0;
         let mut y0 = Vector::from(&[2.0, -0.6]);
-        let mut xf = 2.0;
+        let mut x1 = 2.0;
         if stationary {
             eps = 1.0;
             const A: f64 = 2.00861986087484313650940188;
             const T: f64 = 6.6632868593231301896996820305;
             y0[0] = A;
             y0[1] = 0.0;
-            xf = T;
+            x1 = T;
         }
         let system = move |f: &mut Vector, _x: f64, y: &Vector| {
             f[0] = y[1];
@@ -77,7 +77,7 @@ impl Samples {
             h_equal: None,
             x0,
             y0,
-            xf,
+            x1,
         }
     }
 }

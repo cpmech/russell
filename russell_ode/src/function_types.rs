@@ -38,7 +38,7 @@ pub type OdeSys<A> = fn(f: &mut Vector, x: f64, y: &Vector, args: &mut A) -> Res
 /// * `y` -- current {y}
 pub type OdeSysJac<A> = fn(jj: &mut SparseMatrix, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError>;
 
-/// Defines a callback function to be called when a step is accepted
+/// Defines a function to be called when a step is accepted
 ///
 /// # Input
 ///
@@ -50,16 +50,16 @@ pub type OdeSysJac<A> = fn(jj: &mut SparseMatrix, x: f64, y: &Vector, args: &mut
 /// # Output
 ///
 /// * `stop` -- flag to stop the simulation (nicely)
-pub type StepOutF = fn(step: usize, h: f64, x: f64, y: &Vector) -> Result<bool, StrError>;
+pub type OutputStep = fn(step: usize, h: f64, x: f64, y: &Vector) -> Result<bool, StrError>;
 
-/// Defines a function to produce a dense output
+/// Defines a function to generate the dense output
 ///
-/// The dense output is produced for (many) equally spaced points, regardless of the actual stepsize.
+/// The dense output is generated for (many) equally spaced points, regardless of the actual stepsize.
 ///
 /// # Input
 ///
 /// * `step` -- index of step (0 is the very first output whereas 1 is the first accepted step)
-/// * `h` -- best (current) h
+/// * `h` -- current (optimal) step size
 /// * `x` -- current (just updated) x
 /// * `y` -- current (just updated) y
 /// * `x_out` -- selected x to produce an output
@@ -68,10 +68,5 @@ pub type StepOutF = fn(step: usize, h: f64, x: f64, y: &Vector) -> Result<bool, 
 /// # Output
 ///
 /// * `stop` -- flag to stop the simulation (nicely)
-pub type DenseOutF = fn(step: usize, h: f64, x: f64, y: &Vector, x_out: f64, y_out: &Vector) -> Result<bool, StrError>;
-
-/// YanaF defines a function to be used when computing analytical solutions
-///
-/// # Input
-///
-pub type YanaF = fn(res: &[f64], x: f64) -> Result<(), StrError>;
+pub type OutputDense =
+    fn(step: usize, h: f64, x: f64, y: &Vector, x_out: f64, y_out: &Vector) -> Result<bool, StrError>;

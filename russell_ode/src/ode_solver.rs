@@ -172,7 +172,25 @@ mod tests {
     #[test]
     fn solve_works_1() {
         struct Args {}
-        let params = OdeParams::new(Method::FwEuler, None, None);
+        // struct OutArgs {
+        //     ss: Vec<usize>,
+        //     hh: Vec<f64>,
+        //     xx: Vec<f64>,
+        //     yy: Vec<f64>,
+        // }
+        let mut params = OdeParams::new(Method::FwEuler, None, None);
+        let mut ss = Vec::new();
+        let mut hh = Vec::new();
+        let mut xx = Vec::new();
+        let mut yy = Vec::new();
+        params.output_step = Some(|step, h, x, y| {
+            ss.push(step);
+            hh.push(h);
+            xx.push(x);
+            assert_eq!(y.dim(), 1);
+            yy.push(y[0]);
+            Ok(false)
+        });
         let function = |f: &mut Vector, _: f64, _: &Vector, _: &mut Args| -> Result<(), StrError> {
             f[0] = 1.0;
             Ok(())

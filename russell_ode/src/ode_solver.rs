@@ -1,20 +1,28 @@
 use crate::constants::N_EQUAL_STEPS;
 use crate::StrError;
-use crate::{EulerForward, ExplicitRungeKutta, Method, OdeParams, OdeSolverTrait, OdeSys, OdeSysJac};
+use crate::{EulerForward, ExplicitRungeKutta, Method, OdeParams, OdeSolverTrait};
 use russell_lab::Vector;
-use russell_sparse::CooMatrix;
 
 /// Defines the solver for systems of ODEs
 ///
-/// Solves:
+/// The system is defined by:
 ///
 /// ```text
 /// d{y}
-/// ———— = f(x, {y})
+/// ———— = {f}(x, {y})
 ///  dx
-/// where x is a scalar and {y} is a vector
+/// where x is a scalar and {y} and {f} are vectors
 /// ```
-pub struct OdeSolver<'a, A> {
+///
+/// For some solution methods, the Jacobian is defined by:
+///
+/// ```text
+/// d{f}
+/// ———— = [J](x, {y})
+/// d{y}
+/// where [J] is the Jacobian matrix
+/// ```
+pub struct OdeSolver<'a> {
     /// Holds the parameters
     params: &'a OdeParams,
 
@@ -22,7 +30,7 @@ pub struct OdeSolver<'a, A> {
     ndim: usize,
 
     /// Holds a pointer to the actual ODE system solver
-    actual: Box<dyn OdeSolverTrait<A> + 'a>,
+    actual: Box<dyn OdeSolverTrait + 'a>,
 
     /// Scaling vector
     ///
@@ -38,23 +46,20 @@ pub struct OdeSolver<'a, A> {
     n_rejected_steps: usize,
 }
 
-impl<'a, A: 'a> OdeSolver<'a, A> {
-    pub fn new(
-        params: &'a OdeParams,
-        ndim: usize,
-        function: OdeSys<A>,
-        _jacobian: Option<OdeSysJac<A>>,
-        _mass: Option<&'a CooMatrix>,
-    ) -> Result<Self, StrError> {
+impl<'a> OdeSolver<'a> {
+    pub fn new<F>(params: &'a OdeParams, ndim: usize, system: F) -> Result<Self, StrError>
+    where
+        F: 'a + FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
+    {
         params.validate()?;
-        let actual: Box<dyn OdeSolverTrait<A>> = if params.method == Method::Radau5 {
+        let actual: Box<dyn OdeSolverTrait> = if params.method == Method::Radau5 {
             panic!("TODO: Radau5");
         } else if params.method == Method::BwEuler {
             panic!("TODO: BwEuler");
         } else if params.method == Method::FwEuler {
-            Box::new(EulerForward::new(ndim, function))
+            Box::new(EulerForward::new(ndim, system))
         } else {
-            Box::new(ExplicitRungeKutta::new(params, ndim, function)?)
+            Box::new(ExplicitRungeKutta::new(params, ndim, system)?)
         };
         Ok(OdeSolver {
             params,
@@ -66,19 +71,24 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
         })
     }
 
-    // Function to handle the output during accepted steps
-    // pub output_step: Option<OutputStep<B>>,
-
-    // Function to handle the dense output
-    // pub output_dense: Option<OutputDense<C>>,
-
     /// Solves the ODE system
+    ///
+    /// The system is defined by:
     ///
     /// ```text
     /// d{y}
-    /// ———— = f(x, {y})
+    /// ———— = {f}(x, {y})
     ///  dx
-    /// where x is a scalar and {y} is a vector
+    /// where x is a scalar and {y} and {f} are vectors
+    /// ```
+    ///
+    /// For some solution methods, the Jacobian is defined by:
+    ///
+    /// ```text
+    /// d{f}
+    /// ———— = [J](x, {y})
+    /// d{y}
+    /// where [J] is the Jacobian matrix
     /// ```
     ///
     /// # Input
@@ -90,17 +100,18 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
     ///   if possible, variable step sizes are automatically calculated. If automatic
     ///   sub-stepping is not possible (e.g., the RK method is not embedded),
     ///   a constant (and equal) stepsize will be calculated for [N_EQUAL_STEPS] steps.
-    pub fn solve<F>(
+    pub fn solve<S, D>(
         &mut self,
         y0: &mut Vector,
         x0: f64,
         x1: f64,
         h_equal: Option<f64>,
-        args: &mut A,
-        mut output_step: F,
+        mut output_step: S,
+        mut _output_dense: D,
     ) -> Result<(), StrError>
     where
-        F: FnMut(usize, f64, f64, &Vector) -> Result<bool, StrError>,
+        S: FnMut(usize, f64, f64, &Vector) -> Result<bool, StrError>,
+        D: FnMut(&mut Vector, f64, usize, f64, f64, &Vector) -> Result<bool, StrError>,
     {
         // check data
         if y0.dim() != self.ndim {
@@ -149,17 +160,17 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
             let nstep = f64::ceil((x1 - x0) / h) as usize;
             for step in 0..nstep {
                 // step
-                self.actual.step(x0, &y0, h, args)?;
+                self.actual.step(x0, &y0, h)?;
                 self.n_performed_steps += 1;
 
                 // update x0
                 x0 = ((step + 1) as f64) * h;
 
                 // update y0
-                self.actual.accept(y0, x0, h, IGNORED, IGNORED, args)?;
+                self.actual.accept(y0, x0, h, IGNORED, IGNORED)?;
 
                 // output
-                let stop = output_step(step, h, x0, &y0)?;
+                let stop = (output_step)(step, h, x0, y0)?;
                 if stop {
                     return Ok(());
                 }
@@ -177,11 +188,26 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
     }
 }
 
+pub fn output_step_none(_step: usize, _h: f64, _x: f64, _y: &Vector) -> Result<bool, StrError> {
+    Ok(false)
+}
+
+pub fn output_dense_none(
+    _y_out: &mut Vector,
+    _x_out: f64,
+    _step: usize,
+    _h: f64,
+    _x: f64,
+    _y: &Vector,
+) -> Result<bool, StrError> {
+    Ok(false)
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::OdeSolver;
+    use super::{output_dense_none, OdeSolver};
     use crate::{Method, OdeParams};
     use crate::{StrError, N_EQUAL_STEPS};
     use russell_lab::{vec_approx_eq, Vector};
@@ -194,9 +220,8 @@ mod tests {
         // —— = 1   with   y(x=0)=0    thus   y(x) = x
         // dx
 
-        struct Args {}
         let params = OdeParams::new(Method::FwEuler, None, None);
-        let function = |f: &mut Vector, _: f64, _: &Vector, _: &mut Args| -> Result<(), StrError> {
+        let system = |f: &mut Vector, _: f64, _: &Vector| -> Result<(), StrError> {
             f[0] = 1.0;
             Ok(())
         };
@@ -211,19 +236,19 @@ mod tests {
         let mut x_values = vec![x0];
         let mut y_values = vec![y0[0]];
         let mut e_values = vec![0.0]; // global errors
+        let output_step = |_, h, x, y: &Vector| {
+            h_values.push(h);
+            x_values.push(x);
+            y_values.push(y[0]);
+            e_values.push(y_ana(x) - y[0]);
+            Ok(false)
+        };
 
         // solve the ODE system
-        let mut solver = OdeSolver::new(&params, 1, function, None, None).unwrap();
-        let mut args = Args {};
+        let mut solver = OdeSolver::new(&params, 1, system).unwrap();
         let xf = 1.0;
         solver
-            .solve(&mut y0, x0, xf, None, &mut args, |_, h, x, y| {
-                h_values.push(h);
-                x_values.push(x);
-                y_values.push(y[0]);
-                e_values.push(y_ana(x) - y[0]);
-                Ok(false)
-            })
+            .solve(&mut y0, x0, xf, None, output_step, output_dense_none)
             .unwrap();
 
         // check
@@ -250,18 +275,19 @@ mod tests {
         x_values.push(x0);
         y_values.push(y0[0]);
         e_values.push(0.0);
+        let output_step = |_, h, x, y: &Vector| {
+            h_values.push(h);
+            x_values.push(x);
+            y_values.push(y[0]);
+            e_values.push(y_ana(x) - y[0]);
+            Ok(false)
+        };
 
         // solve the ODE system again with prescribed h_equal
         let h_equal = Some(0.3);
         let xf = 1.2; // => will generate 4 steps
         solver
-            .solve(&mut y0, x0, xf, h_equal, &mut args, |_, h, x, y| {
-                h_values.push(h);
-                x_values.push(x);
-                y_values.push(y[0]);
-                e_values.push(y_ana(x) - y[0]);
-                Ok(false)
-            })
+            .solve(&mut y0, x0, xf, h_equal, output_step, output_dense_none)
             .unwrap();
 
         // check again

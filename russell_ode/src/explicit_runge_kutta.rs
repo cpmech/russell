@@ -1,8 +1,11 @@
 use crate::constants::*;
-use crate::{Information, Method, OdeParams, OdeSolverTrait, OdeSys, StrError};
+use crate::{Information, Method, OdeParams, OdeSolverTrait, StrError};
 use russell_lab::{vec_copy, vec_update, Matrix, Vector};
 
-pub struct ExplicitRungeKutta<'a, A> {
+pub(crate) struct ExplicitRungeKutta<'a, F>
+where
+    F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
+{
     /// Holds the parameters
     params: &'a OdeParams,
 
@@ -38,10 +41,8 @@ pub struct ExplicitRungeKutta<'a, A> {
     /// Dimension of the ODE system
     ndim: usize,
 
-    /// Function defining the ODE problem
-    ///
-    /// dy/dx = f(x, y)
-    function: OdeSys<A>,
+    /// ODE system
+    system: F,
 
     /// Lund stabilization factor (n)
     ///
@@ -86,9 +87,12 @@ pub struct ExplicitRungeKutta<'a, A> {
     yd: Option<Vector>,
 }
 
-impl<'a, A> ExplicitRungeKutta<'a, A> {
+impl<'a, F> ExplicitRungeKutta<'a, F>
+where
+    F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
+{
     /// Allocates a new instance
-    pub fn new(params: &'a OdeParams, ndim: usize, function: OdeSys<A>) -> Result<Self, StrError> {
+    pub fn new(params: &'a OdeParams, ndim: usize, system: F) -> Result<Self, StrError> {
         // information
         let info = params.method.information();
         if info.implicit {
@@ -182,7 +186,7 @@ impl<'a, A> ExplicitRungeKutta<'a, A> {
             dd,
             nstage,
             ndim,
-            function,
+            system,
             lund_factor,
             d_min: 1.0 / params.Mmin,
             d_max: 1.0 / params.Mmax,
@@ -199,14 +203,17 @@ impl<'a, A> ExplicitRungeKutta<'a, A> {
     }
 }
 
-impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
+impl<F> OdeSolverTrait for ExplicitRungeKutta<'_, F>
+where
+    F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
+{
     fn initialize(&mut self) {
         self.reject = false;
         self.first_step = true;
         self.n_function_eval = 0;
     }
 
-    fn step(&mut self, x0: f64, y0: &Vector, h: f64, args: &mut A) -> Result<(f64, f64), StrError> {
+    fn step(&mut self, x0: f64, y0: &Vector, h: f64) -> Result<(f64, f64), StrError> {
         // output
         let mut relative_error = 0.0;
         let mut stiffness_ratio = 0.0;
@@ -219,7 +226,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
         if (self.first_step || !self.info.first_step_same_as_last) && !self.reject {
             let u0 = x0 + h * self.cc[0];
             self.n_function_eval += 1;
-            (self.function)(&mut k[0], u0, y0, args)?; // k0 := f(ui,vi)
+            (self.system)(&mut k[0], u0, y0)?; // k0 := f(ui,vi)
         }
         self.first_step = false;
 
@@ -231,7 +238,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
                 vec_update(&mut v[i], h * self.aa.get(i, j), &k[j]).unwrap(); // vi += h ⋅ aij ⋅ kj
             }
             self.n_function_eval += 1;
-            (self.function)(&mut k[i], ui, &v[i], args)?; // ki := f(ui,vi)
+            (self.system)(&mut k[i], ui, &v[i])?; // ki := f(ui,vi)
         }
 
         // update
@@ -326,7 +333,6 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
         h: f64,
         relative_error: f64,
         previous_relative_error: f64,
-        args: &mut A,
     ) -> Result<f64, StrError> {
         // store data for future dense output (Dormand-Prince 5)
         if self.params.denseOut && self.params.method == Method::DoPri5 {
@@ -375,7 +381,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
             }
             self.n_function_eval += 1;
             let u = x0 + cd[0] * h;
-            (self.function)(&mut kd[0], u, yd, args)?;
+            (self.system)(&mut kd[0], u, yd)?;
 
             // second function evaluation
             for m in 0..self.ndim {
@@ -391,7 +397,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
             }
             self.n_function_eval += 1;
             let u = x0 + cd[1] * h;
-            (self.function)(&mut kd[1], u, yd, args)?;
+            (self.system)(&mut kd[1], u, yd)?;
 
             // next third function evaluation
             for m in 0..self.ndim {
@@ -407,7 +413,7 @@ impl<A> OdeSolverTrait<A> for ExplicitRungeKutta<'_, A> {
             }
             self.n_function_eval += 1;
             let u = x0 + cd[2] * h;
-            (self.function)(&mut kd[2], u, yd, args)?;
+            (self.system)(&mut kd[2], u, yd)?;
 
             // final results
             for m in 0..self.ndim {
@@ -542,13 +548,13 @@ mod tests {
     #[test]
     fn constants_are_consistent() {
         let ndim = 1;
-        let function = |_: &mut Vector, _: f64, _: &Vector, _: &mut i32| -> Result<(), StrError> { Ok(()) };
+        let system = |_: &mut Vector, _: f64, _: &Vector| -> Result<(), StrError> { Ok(()) };
         let methods = Method::explicit_methods();
         let staged = methods.iter().filter(|&&m| m != Method::FwEuler);
         for method in staged {
             println!("\n... {:?} ...", method);
             let params = OdeParams::new(*method, None, None);
-            let erk = ExplicitRungeKutta::new(&params, ndim, function).unwrap();
+            let erk = ExplicitRungeKutta::new(&params, ndim, system).unwrap();
             let nstage = erk.nstage;
             assert_eq!(erk.aa.dims(), (nstage, nstage));
             assert_eq!(erk.bb.dim(), nstage);

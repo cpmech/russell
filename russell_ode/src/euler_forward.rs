@@ -1,12 +1,13 @@
+use crate::OdeSolverTrait;
 use crate::StrError;
-use crate::{OdeSolverTrait, OdeSys};
 use russell_lab::{vec_add, vec_copy, Vector};
 
-pub struct EulerForward<A> {
-    /// Function defining the ODE problem
-    ///
-    /// dy/dx = f(x, y)
-    function: OdeSys<A>,
+pub(crate) struct EulerForward<F>
+where
+    F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
+{
+    /// ODE system
+    system: F,
 
     /// Vector holding the function evaluation
     ///
@@ -20,10 +21,13 @@ pub struct EulerForward<A> {
     n_function_eval: usize,
 }
 
-impl<A> EulerForward<A> {
-    pub fn new(ndim: usize, function: OdeSys<A>) -> Self {
+impl<F> EulerForward<F>
+where
+    F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
+{
+    pub fn new(ndim: usize, system: F) -> Self {
         EulerForward {
-            function,
+            system,
             k0: Vector::new(ndim),
             w: Vector::new(ndim),
             n_function_eval: 0,
@@ -31,19 +35,22 @@ impl<A> EulerForward<A> {
     }
 }
 
-impl<A> OdeSolverTrait<A> for EulerForward<A> {
+impl<F> OdeSolverTrait for EulerForward<F>
+where
+    F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
+{
     fn initialize(&mut self) {
         self.n_function_eval = 0;
     }
 
-    fn step(&mut self, x0: f64, y0: &Vector, h: f64, args: &mut A) -> Result<(f64, f64), StrError> {
-        (self.function)(&mut self.k0, x0, y0, args)?; // k0 := f(x0, y0)
+    fn step(&mut self, x0: f64, y0: &Vector, h: f64) -> Result<(f64, f64), StrError> {
+        (self.system)(&mut self.k0, x0, y0)?; // k0 := f(x0, y0)
         self.n_function_eval += 1;
         vec_add(&mut self.w, 1.0, &y0, h, &self.k0).unwrap(); // w := y0 + h * f(u0, y0)
         Ok((0.0, 0.0))
     }
 
-    fn accept(&mut self, y0: &mut Vector, _: f64, _: f64, _: f64, _: f64, _: &mut A) -> Result<f64, StrError> {
+    fn accept(&mut self, y0: &mut Vector, _: f64, _: f64, _: f64, _: f64) -> Result<f64, StrError> {
         vec_copy(y0, &self.w).unwrap();
         Ok(0.0)
     }

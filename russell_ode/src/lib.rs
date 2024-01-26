@@ -13,6 +13,7 @@ mod function_types;
 mod num_solver;
 mod ode_params;
 mod ode_solver;
+mod samples;
 pub use crate::constants::*;
 use crate::enums::*;
 use crate::euler_forward::*;
@@ -21,6 +22,7 @@ pub use crate::function_types::*;
 use crate::num_solver::*;
 pub use crate::ode_params::*;
 pub use crate::ode_solver::*;
+pub use crate::samples::*;
 
 // run code from README file
 #[cfg(doctest)]

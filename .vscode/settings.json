@@ -16,6 +16,7 @@
     "dgetri",
     "dgssvx",
     "Dᵢⱼₖₗ",
+    "dopri",
     "Dormand",
     "Dorozhinskii",
     "dpotrf",

@@ -1,7 +1,7 @@
 #![allow(unused, non_snake_case)]
 
+use crate::Method;
 use crate::StrError;
-use crate::{Method, OutputDense, OutputStep};
 use russell_sparse::{Genie, LinSolParams};
 
 /// Defines the configuration parameters for the ODE solver
@@ -88,12 +88,6 @@ pub struct OdeParams {
     /// number of "not" stiff steps to disregard stiffness [default = 6]
     pub StiffNnot: usize,
 
-    /// Function to handle the output during accepted steps
-    pub output_step: Option<OutputStep>,
-
-    /// Function to handle the dense output
-    pub output_dense: Option<OutputDense>,
-
     /// step size for dense output
     pub denseDx: f64,
 
@@ -158,8 +152,6 @@ impl OdeParams {
             StiffRsMax: 0.5,
             StiffNyes: 15,
             StiffNnot: 6,
-            output_step: None,
-            output_dense: None,
             denseDx: 0.0,
             denseOut: false,
             denseNstp: 0,

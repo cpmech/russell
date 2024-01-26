@@ -17,7 +17,7 @@ pub use crate::constants::*;
 use crate::enums::*;
 pub use crate::euler_forward::*;
 pub use crate::explicit_runge_kutta::*;
-use crate::function_types::*;
+pub use crate::function_types::*;
 use crate::ode_params::*;
 pub use crate::ode_solver::*;
 use crate::ode_solver_trait::*;

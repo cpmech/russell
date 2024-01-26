@@ -66,6 +66,12 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
         })
     }
 
+    // Function to handle the output during accepted steps
+    // pub output_step: Option<OutputStep<B>>,
+
+    // Function to handle the dense output
+    // pub output_dense: Option<OutputDense<C>>,
+
     /// Solves the ODE system
     ///
     /// ```text
@@ -84,14 +90,18 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
     ///   if possible, variable step sizes are automatically calculated. If automatic
     ///   sub-stepping is not possible (e.g., the RK method is not embedded),
     ///   a constant (and equal) stepsize will be calculated for [N_EQUAL_STEPS] steps.
-    pub fn solve(
+    pub fn solve<F>(
         &mut self,
         y0: &mut Vector,
         x0: f64,
         x1: f64,
         h_equal: Option<f64>,
         args: &mut A,
-    ) -> Result<(), StrError> {
+        mut output_step: F,
+    ) -> Result<(), StrError>
+    where
+        F: FnMut(usize, f64, f64, &Vector) -> Result<bool, StrError>,
+    {
         // check data
         if y0.dim() != self.ndim {
             return Err("y0.dim() must be equal to ndim");
@@ -136,7 +146,8 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
         // equal-stepping loop
         if equal_stepping {
             const IGNORED: f64 = 0.0;
-            while x0 < x1 {
+            let nstep = f64::ceil((x1 - x0) / h) as usize;
+            for step in 0..nstep {
                 // step
                 self.actual.step(x0, &y0, h, args)?;
                 self.n_performed_steps += 1;
@@ -146,6 +157,12 @@ impl<'a, A: 'a> OdeSolver<'a, A> {
 
                 // update y0
                 self.actual.accept(y0, x0, h, IGNORED, IGNORED, args)?;
+
+                // output
+                let stop = output_step(step, h, x0, &y0)?;
+                if stop {
+                    return Ok(());
+                }
             }
             return Ok(());
         }
@@ -177,9 +194,45 @@ mod tests {
             f[0] = 1.0;
             Ok(())
         };
+
+        let mut h_values: Vec<f64> = Vec::new();
+        let mut x_values: Vec<f64> = Vec::new();
+        let mut y_values: Vec<f64> = Vec::new();
+        let mut global_errors: Vec<f64> = Vec::new();
+        let y_ana = |x| x;
+
         let mut solver = OdeSolver::new(&params, 1, function, None, None).unwrap();
         let mut y0 = Vector::new(1);
         let mut args = Args {};
-        solver.solve(&mut y0, 0.0, 1.0, None, &mut args).unwrap();
+        solver
+            .solve(&mut y0, 0.0, 1.0, None, &mut args, |step, h, x, y| {
+                println!("{}", step);
+                h_values.push(h);
+                x_values.push(x);
+                y_values.push(y[0]);
+                global_errors.push(y_ana(x) - y[0]);
+                Ok(false)
+            })
+            .unwrap();
+
+        println!("h = {:?}", h_values);
+        println!("x = {:?}", x_values);
+
+        h_values.clear();
+        x_values.clear();
+
+        solver
+            .solve(&mut y0, 0.0, 1.0, Some(0.3), &mut args, |step, h, x, y| {
+                println!("{}", step);
+                h_values.push(h);
+                x_values.push(x);
+                y_values.push(y[0]);
+                global_errors.push(y_ana(x) - y[0]);
+                Ok(false)
+            })
+            .unwrap();
+
+        println!("h = {:?}", h_values);
+        println!("x = {:?}", x_values);
     }
 }

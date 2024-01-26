@@ -15,7 +15,7 @@ mod ode_params;
 mod ode_solver;
 mod samples;
 pub use crate::constants::*;
-use crate::enums::*;
+pub use crate::enums::*;
 use crate::euler_forward::*;
 use crate::explicit_runge_kutta::*;
 pub use crate::function_types::*;

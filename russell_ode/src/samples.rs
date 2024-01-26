@@ -6,6 +6,7 @@ pub struct OdeSample {
     pub ndim: usize,
     pub system: Box<dyn FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>>,
     pub jacobian: Option<Box<dyn FnMut(&mut CooMatrix, f64, &Vector) -> Result<(), StrError>>>,
+    pub analytical: Option<Box<dyn FnMut(&mut Vector, f64)>>,
     pub mass: Option<CooMatrix>,
     pub h_equal: Option<f64>,
     pub x0: f64,
@@ -22,11 +23,14 @@ impl Samples {
         const L: f64 = -50.0; // lambda
         OdeSample {
             ndim: 1,
-            system: Box::new(|f, x, _| {
-                f[0] = -L * (f64::sin(x) - L * f64::cos(x) + L * f64::exp(L * x)) / (L * L + 1.0);
+            system: Box::new(|f, x, y| {
+                f[0] = L * y[0] - L * f64::cos(x);
                 Ok(())
             }),
             jacobian: None,
+            analytical: Some(Box::new(|y, x| {
+                y[0] = -L * (f64::sin(x) - L * f64::cos(x) + L * f64::exp(L * x)) / (L * L + 1.0);
+            })),
             mass: None,
             h_equal: Some(1.875 / 50.0),
             x0: 0.0,
@@ -67,6 +71,7 @@ impl Samples {
             ndim: 2,
             system: Box::new(system),
             jacobian: Some(Box::new(jacobian)),
+            analytical: None,
             mass: None,
             h_equal: None,
             x0,

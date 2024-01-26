@@ -1,4 +1,4 @@
-use russell_lab::approx_eq;
+use russell_lab::{approx_eq, Vector};
 use russell_ode::{output_dense_none, output_step_none, Method, OdeParams, OdeSolver, Samples};
 
 #[test]
@@ -16,7 +16,9 @@ fn test_fweuler_hairer_wanner_eq1() {
             output_dense_none,
         )
         .unwrap();
-
-    println!("y1 = {:?}", sample.y0);
-    // approx_eq(sample.y0[0], 0.08589790706616637, 1e-17);
+    let mut analytical = sample.analytical.unwrap();
+    let mut y1_correct = Vector::new(sample.ndim);
+    analytical(&mut y1_correct, sample.x1);
+    approx_eq(sample.y0[0], 0.08589790706616637, 1e-16);
+    approx_eq(sample.y0[0], y1_correct[0], 0.004753);
 }

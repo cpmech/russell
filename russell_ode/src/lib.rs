@@ -10,17 +10,17 @@ mod enums;
 mod euler_forward;
 mod explicit_runge_kutta;
 mod function_types;
+mod num_solver;
 mod ode_params;
 mod ode_solver;
-mod ode_solver_trait;
 pub use crate::constants::*;
 use crate::enums::*;
 use crate::euler_forward::*;
 use crate::explicit_runge_kutta::*;
 pub use crate::function_types::*;
+use crate::num_solver::*;
 pub use crate::ode_params::*;
 pub use crate::ode_solver::*;
-use crate::ode_solver_trait::*;
 
 // run code from README file
 #[cfg(doctest)]

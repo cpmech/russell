@@ -1,5 +1,5 @@
 use crate::constants::*;
-use crate::{Information, Method, OdeParams, OdeSolverTrait, StrError};
+use crate::{Information, Method, NumSolver, OdeParams, StrError};
 use russell_lab::{vec_copy, vec_update, Matrix, Vector};
 
 pub(crate) struct ExplicitRungeKutta<'a, F>
@@ -203,7 +203,7 @@ where
     }
 }
 
-impl<F> OdeSolverTrait for ExplicitRungeKutta<'_, F>
+impl<F> NumSolver for ExplicitRungeKutta<'_, F>
 where
     F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
 {

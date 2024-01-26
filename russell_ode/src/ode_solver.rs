@@ -1,6 +1,6 @@
 use crate::constants::N_EQUAL_STEPS;
 use crate::StrError;
-use crate::{EulerForward, ExplicitRungeKutta, Method, OdeParams, OdeSolverTrait};
+use crate::{EulerForward, ExplicitRungeKutta, Method, NumSolver, OdeParams};
 use russell_lab::Vector;
 
 /// Defines the solver for systems of ODEs
@@ -30,7 +30,7 @@ pub struct OdeSolver<'a> {
     ndim: usize,
 
     /// Holds a pointer to the actual ODE system solver
-    actual: Box<dyn OdeSolverTrait + 'a>,
+    actual: Box<dyn NumSolver + 'a>,
 
     /// Scaling vector
     ///
@@ -52,7 +52,7 @@ impl<'a> OdeSolver<'a> {
         F: 'a + FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
     {
         params.validate()?;
-        let actual: Box<dyn OdeSolverTrait> = if params.method == Method::Radau5 {
+        let actual: Box<dyn NumSolver> = if params.method == Method::Radau5 {
             panic!("TODO: Radau5");
         } else if params.method == Method::BwEuler {
             panic!("TODO: BwEuler");

@@ -1,7 +1,8 @@
 use crate::StrError;
 use russell_lab::Vector;
 
-pub(crate) trait OdeSolverTrait {
+/// Defines the numerical solver
+pub(crate) trait NumSolver {
     /// Initialize internal variables
     fn initialize(&mut self);
 

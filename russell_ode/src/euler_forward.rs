@@ -1,4 +1,4 @@
-use crate::OdeSolverTrait;
+use crate::NumSolver;
 use crate::StrError;
 use russell_lab::{vec_add, vec_copy, Vector};
 
@@ -35,7 +35,7 @@ where
     }
 }
 
-impl<F> OdeSolverTrait for EulerForward<F>
+impl<F> NumSolver for EulerForward<F>
 where
     F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
 {

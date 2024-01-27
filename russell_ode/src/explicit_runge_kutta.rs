@@ -9,6 +9,12 @@ where
     /// Holds the parameters
     params: &'a OdeParams,
 
+    /// Dimension of the ODE system
+    ndim: usize,
+
+    /// ODE system
+    system: F,
+
     /// Information such as implicit, embedded, etc.
     info: Information,
 
@@ -37,12 +43,6 @@ where
 
     /// Number of stages
     nstage: usize,
-
-    /// Dimension of the ODE system
-    ndim: usize,
-
-    /// ODE system
-    system: F,
 
     /// Lund stabilization factor (n)
     ///
@@ -207,13 +207,17 @@ impl<F> NumSolver for ExplicitRungeKutta<'_, F>
 where
     F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
 {
-    fn initialize(&mut self) {
+    /// Initializes the internal variables
+    fn initialize(&mut self, _x: f64, _y: &Vector) {
         self.reject = false;
         self.first_step = true;
         self.n_function_eval = 0;
     }
 
-    fn step(&mut self, x0: f64, y0: &Vector, h: f64) -> Result<(f64, f64), StrError> {
+    /// Calculates the quantities required to update x and y
+    ///
+    /// Returns the (`relative_error`, `stiffness_ratio`)
+    fn step(&mut self, x: f64, y: &Vector, h: f64) -> Result<(f64, f64), StrError> {
         // output
         let mut relative_error = 0.0;
         let mut stiffness_ratio = 0.0;
@@ -224,16 +228,16 @@ where
 
         // compute k0 (otherwise, use k0 saved in accept_update)
         if (self.first_step || !self.info.first_step_same_as_last) && !self.reject {
-            let u0 = x0 + h * self.cc[0];
+            let u0 = x + h * self.cc[0];
             self.n_function_eval += 1;
-            (self.system)(&mut k[0], u0, y0)?; // k0 := f(ui,vi)
+            (self.system)(&mut k[0], u0, y)?; // k0 := f(ui,vi)
         }
         self.first_step = false;
 
         // compute ki
         for i in 1..self.nstage {
-            let ui = x0 + h * self.cc[i];
-            vec_copy(&mut v[1], &y0).unwrap(); // vi := ya
+            let ui = x + h * self.cc[i];
+            vec_copy(&mut v[1], &y).unwrap(); // vi := ya
             for j in 0..i {
                 vec_update(&mut v[i], h * self.aa.get(i, j), &k[j]).unwrap(); // vi += h ⋅ aij ⋅ kj
             }
@@ -244,7 +248,7 @@ where
         // update
         if !self.info.embedded {
             for m in 0..self.ndim {
-                self.w[m] = y0[m];
+                self.w[m] = y[m];
                 for i in 0..self.nstage {
                     self.w[m] += self.bb[i] * k[i][m] * h;
                 }
@@ -264,7 +268,7 @@ where
             let mut err_3 = 0.0;
             let mut err_5 = 0.0;
             for m in 0..self.ndim {
-                self.w[m] = y0[m];
+                self.w[m] = y[m];
                 let mut err_a = 0.0;
                 let mut err_b = 0.0;
                 for i in 0..self.nstage {
@@ -272,7 +276,7 @@ where
                     err_a += self.bb[i] * k[i][m];
                     err_b += ee[i] * k[i][m];
                 }
-                let sk = self.params.abs_tol + self.params.rel_tol * f64::max(f64::abs(y0[m]), f64::abs(self.w[m]));
+                let sk = self.params.abs_tol + self.params.rel_tol * f64::max(f64::abs(y[m]), f64::abs(self.w[m]));
                 err_a -= bhh1 * k[0][m] + bhh2 * k[8][m] + bhh3 * k[11][m];
                 err_3 += (err_a / sk) * (err_a / sk);
                 err_5 += (err_b / sk) * (err_b / sk);
@@ -298,14 +302,14 @@ where
         // update, error and stiffness estimation
         let mut sum = 0.0;
         for m in 0..self.ndim {
-            self.w[m] = y0[m];
+            self.w[m] = y[m];
             let mut l_err_m = 0.0;
             for i in 0..self.nstage {
                 let kh = k[i][m] * h;
                 self.w[m] += self.bb[i] * kh;
                 l_err_m += ee[i] * kh;
             }
-            let sk = self.params.abs_tol + self.params.rel_tol * f64::max(f64::abs(y0[m]), f64::abs(self.w[m]));
+            let sk = self.params.abs_tol + self.params.rel_tol * f64::max(f64::abs(y[m]), f64::abs(self.w[m]));
             let ratio = l_err_m / sk;
             sum += ratio * ratio;
             // stiffness estimation
@@ -328,8 +332,8 @@ where
     /// Returns `stepsize_new`
     fn accept(
         &mut self,
-        y0: &mut Vector,
-        x0: f64,
+        y: &mut Vector,
+        x: f64,
         h: f64,
         relative_error: f64,
         previous_relative_error: f64,
@@ -340,9 +344,9 @@ where
             let d = self.dense_out.as_mut().unwrap();
             let k = &self.k;
             for m in 0..self.ndim {
-                let y_diff = self.w[m] - y0[m];
+                let y_diff = self.w[m] - y[m];
                 let b_spl = h * k[0][m] - y_diff;
-                d[0][m] = y0[m];
+                d[0][m] = y[m];
                 d[1][m] = y_diff;
                 d[2][m] = b_spl;
                 d[3][m] = y_diff - h * k[6][m] - b_spl;
@@ -369,7 +373,7 @@ where
 
             // first function evaluation
             for m in 0..self.ndim {
-                yd[m] = y0[m]
+                yd[m] = y[m]
                     + h * (aad.get(0, 0) * k[0][m]
                         + aad.get(0, 6) * k[6][m]
                         + aad.get(0, 7) * k[7][m]
@@ -379,13 +383,13 @@ where
                         + aad.get(0, 11) * k[11][m]
                         + aad.get(0, 12) * k[11][m]);
             }
+            let u = x + cd[0] * h;
             self.n_function_eval += 1;
-            let u = x0 + cd[0] * h;
             (self.system)(&mut kd[0], u, yd)?;
 
             // second function evaluation
             for m in 0..self.ndim {
-                yd[m] = y0[m]
+                yd[m] = y[m]
                     + h * (aad.get(1, 0) * k[0][m]
                         + aad.get(1, 5) * k[5][m]
                         + aad.get(1, 6) * k[6][m]
@@ -395,13 +399,13 @@ where
                         + aad.get(1, 12) * k[11][m]
                         + aad.get(1, 13) * kd[0][m]);
             }
+            let u = x + cd[1] * h;
             self.n_function_eval += 1;
-            let u = x0 + cd[1] * h;
             (self.system)(&mut kd[1], u, yd)?;
 
             // next third function evaluation
             for m in 0..self.ndim {
-                yd[m] = y0[m]
+                yd[m] = y[m]
                     + h * (aad.get(2, 0) * k[0][m]
                         + aad.get(2, 5) * k[5][m]
                         + aad.get(2, 6) * k[6][m]
@@ -411,15 +415,15 @@ where
                         + aad.get(2, 13) * kd[0][m]
                         + aad.get(2, 14) * kd[1][m]);
             }
+            let u = x + cd[2] * h;
             self.n_function_eval += 1;
-            let u = x0 + cd[2] * h;
             (self.system)(&mut kd[2], u, yd)?;
 
             // final results
             for m in 0..self.ndim {
-                let y_diff = self.w[m] - y0[m];
+                let y_diff = self.w[m] - y[m];
                 let b_spl = h * k[0][m] - y_diff;
-                d[0][m] = y0[m];
+                d[0][m] = y[m];
                 d[1][m] = y_diff;
                 d[2][m] = b_spl;
                 d[3][m] = y_diff - h * k[11][m] - b_spl;
@@ -479,7 +483,7 @@ where
         }
 
         // update y
-        vec_copy(y0, &self.w).unwrap();
+        vec_copy(y, &self.w).unwrap();
 
         // update k0
         if self.info.first_step_same_as_last {

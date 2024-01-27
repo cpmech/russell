@@ -1,6 +1,6 @@
 use crate::constants::N_EQUAL_STEPS;
 use crate::StrError;
-use crate::{EulerForward, ExplicitRungeKutta, Method, NumSolver, OdeParams};
+use crate::{EulerBackward, EulerForward, ExplicitRungeKutta, Method, NumSolver, OdeParams};
 use russell_lab::Vector;
 
 /// Defines the solver for systems of ODEs
@@ -32,13 +32,6 @@ pub struct OdeSolver<'a> {
     /// Holds a pointer to the actual ODE system solver
     actual: Box<dyn NumSolver + 'a>,
 
-    /// Scaling vector
-    ///
-    /// ```text
-    /// scaling[i] = abs_tol + rel_tol ⋅ |x[i]|
-    /// ```
-    scaling: Vector,
-
     /// Collects the number of steps, successful or not
     n_performed_steps: usize,
 
@@ -55,7 +48,7 @@ impl<'a> OdeSolver<'a> {
         let actual: Box<dyn NumSolver> = if params.method == Method::Radau5 {
             panic!("TODO: Radau5");
         } else if params.method == Method::BwEuler {
-            panic!("TODO: BwEuler");
+            Box::new(EulerBackward::new(params, ndim, system))
         } else if params.method == Method::FwEuler {
             Box::new(EulerForward::new(ndim, system))
         } else {
@@ -65,7 +58,6 @@ impl<'a> OdeSolver<'a> {
             params,
             ndim,
             actual,
-            scaling: Vector::new(ndim),
             n_performed_steps: 0,
             n_rejected_steps: 0,
         })
@@ -146,41 +138,37 @@ impl<'a> OdeSolver<'a> {
         };
         assert!(h > 0.0);
 
-        // mutable x0 (will become x1 at the end)
-        let mut x0 = x0;
-
         // restart variables
-        self.actual.initialize();
+        self.actual.initialize(x0, y0);
         self.n_performed_steps = 0;
         self.n_rejected_steps = 0;
+
+        // current values
+        let mut x = x0; // will become x1 at the end
+        let y = y0; // will become y1 at the end
 
         // equal-stepping loop
         if equal_stepping {
             const IGNORED: f64 = 0.0;
-            let nstep = f64::ceil((x1 - x0) / h) as usize;
+            let nstep = f64::ceil((x1 - x) / h) as usize;
             for step in 0..nstep {
                 // step
-                self.actual.step(x0, &y0, h)?;
+                self.actual.step(x, &y, h)?;
                 self.n_performed_steps += 1;
 
-                // update x0
-                x0 = ((step + 1) as f64) * h;
+                // update x
+                x = ((step + 1) as f64) * h;
 
-                // update y0
-                self.actual.accept(y0, x0, h, IGNORED, IGNORED)?;
+                // update y
+                self.actual.accept(y, x, h, IGNORED, IGNORED)?;
 
                 // output
-                let stop = (output_step)(step, h, x0, y0)?;
+                let stop = (output_step)(step, h, x, y)?;
                 if stop {
                     return Ok(());
                 }
             }
             return Ok(());
-        }
-
-        // first scaling variables
-        for i in 0..self.ndim {
-            self.scaling[i] = self.params.abs_tol + self.params.rel_tol * f64::abs(y0[i]);
         }
 
         // variable steps

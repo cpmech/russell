@@ -3,21 +3,21 @@ use russell_lab::Vector;
 
 /// Defines the numerical solver
 pub(crate) trait NumSolver {
-    /// Initialize internal variables
-    fn initialize(&mut self);
+    /// Initializes the internal variables
+    fn initialize(&mut self, x: f64, y: &Vector);
 
-    /// Calculates the quantities required to update x0 and y0
+    /// Calculates the quantities required to update x and y
     ///
     /// Returns the (`relative_error`, `stiffness_ratio`)
-    fn step(&mut self, x0: f64, y0: &Vector, h: f64) -> Result<(f64, f64), StrError>;
+    fn step(&mut self, x: f64, y: &Vector, h: f64) -> Result<(f64, f64), StrError>;
 
     /// Accepts the update and computes the next stepsize
     ///
     /// Returns `stepsize_new`
     fn accept(
         &mut self,
-        y0: &mut Vector,
-        x0: f64,
+        y: &mut Vector,
+        x: f64,
         h: f64,
         relative_error: f64,
         previous_relative_error: f64,

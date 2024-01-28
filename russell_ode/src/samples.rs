@@ -14,8 +14,6 @@ pub struct OdeSample {
     pub x1: f64,
 }
 
-pub type OdeSampleArg = &'static mut u8;
-
 pub struct Samples {}
 
 impl Samples {

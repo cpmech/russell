@@ -1,8 +1,9 @@
 use crate::StrError;
-use crate::{LinearSystem, NumSolver, OdeParams, OdeSystem};
-use russell_lab::{vec_copy, Vector};
-use russell_sparse::CooMatrix;
+use crate::{NumSolver, OdeParams, OdeSystem};
+use russell_lab::{vec_copy, vec_update, Vector};
+use russell_sparse::{CooMatrix, Genie, LinSolver, SparseMatrix};
 
+/// Implements the backward Euler (implicit) solver
 pub(crate) struct EulerBackward<'a, F, J>
 where
     F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
@@ -14,17 +15,6 @@ where
     /// ODE system
     system: OdeSystem<'a, F, J>,
 
-    /// Vector holding the function evaluation
-    ///
-    /// k := f(x_new, y_new)
-    k: Vector,
-
-    /// Residual vector
-    r: Vector,
-
-    /// Auxiliary workspace (will contain y to be used in accept_update)
-    w: Vector,
-
     /// Scaling vector
     ///
     /// ```text
@@ -32,20 +22,40 @@ where
     /// ```
     scaling: Vector,
 
+    /// Vector holding the function evaluation
+    ///
+    /// k := f(x_new, y_new)
+    k: Vector,
+
+    /// Auxiliary workspace (will contain y to be used in accept_update)
+    w: Vector,
+
+    /// Residual vector (right-hand side vector)
+    r: Vector,
+
+    /// Unknowns vector (the solution of the linear system)
+    dy: Vector,
+
+    /// Coefficient matrix K = h J - I
+    kk: SparseMatrix,
+
+    /// Linear solver
+    solver: LinSolver<'a>,
+
     /// Indicates that the first step is being computed
     first_step: bool,
 
-    /// Number of calls to function
+    /// Number of calls to system function
     n_function_eval: usize,
+
+    /// Number of calls to Jacobian function
+    n_jacobian_eval: usize,
 
     /// Last number of iterations
     n_iterations_last: usize,
 
     /// Max number of iterations among all steps
     n_iterations_max: usize,
-
-    /// Linear system
-    _lin_sys: LinearSystem<'a>,
 }
 
 impl<'a, F, J> EulerBackward<'a, F, J>
@@ -53,21 +63,27 @@ where
     F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
     J: FnMut(&mut CooMatrix, f64, &Vector, f64) -> Result<(), StrError>,
 {
+    /// Allocates a new instance
     pub fn new(params: &'a OdeParams, system: OdeSystem<'a, F, J>) -> Self {
         let ndim = system.ndim;
-        let nnz = system.jac_nnz;
+        let nnz = system.jac_nnz + ndim; // +ndim corresponds to the diagonal I matrix
+        let symmetry = system.jac_symmetry;
+        let one_based = if params.genie == Genie::Mumps { true } else { false };
         EulerBackward {
             params,
             system,
-            k: Vector::new(ndim),
-            r: Vector::new(ndim),
-            w: Vector::new(ndim),
             scaling: Vector::new(ndim),
+            k: Vector::new(ndim),
+            w: Vector::new(ndim),
+            r: Vector::new(ndim),
+            dy: Vector::new(ndim),
+            kk: SparseMatrix::new_coo(ndim, ndim, nnz, symmetry, one_based).unwrap(),
+            solver: LinSolver::new(params.genie).unwrap(),
             first_step: true,
             n_function_eval: 0,
+            n_jacobian_eval: 0,
             n_iterations_last: 0,
             n_iterations_max: 0,
-            _lin_sys: LinearSystem::new(params, ndim, nnz),
         }
     }
 }
@@ -82,6 +98,7 @@ where
         // reset variables
         self.first_step = true;
         self.n_function_eval = 0;
+        self.n_jacobian_eval = 0;
 
         // first scaling vector
         for i in 0..self.system.ndim {
@@ -95,9 +112,9 @@ where
     fn step(&mut self, x: f64, y: &Vector, h: f64) -> Result<(f64, f64), StrError> {
         // reset stat variables
         self.n_iterations_last = 0;
-        let traditional_newton = !self.params.CteTg;
 
         // auxiliary
+        let traditional_newton = !self.params.CteTg;
         let ndim = self.system.ndim;
         let dim = ndim as f64;
 
@@ -139,18 +156,33 @@ where
 
         // compute K matrix (augmented Jacobian)
         if traditional_newton || self.first_step {
-            // TODO
+            // calculate J_new := h J
+            let kk = self.kk.get_coo_mut()?;
+            if self.system.jac_numerical {
+                self.system.numerical_jacobian(kk, x_new, y_new, &self.k, h)?;
+            } else {
+                (self.system.jacobian)(kk, x_new, y_new, h)?;
+            }
+            // add diagonal entries => calculate K = h J_new - I
+            for i in 0..self.system.ndim {
+                kk.put(i, i, -1.0).unwrap();
+            }
+            self.n_jacobian_eval += 1;
+            self.solver.actual.factorize(&mut self.kk, self.params.lin_sol_params)?;
         }
 
         // solve the linear system
-        // TODO
+        self.solver.actual.solve(&mut self.dy, &self.kk, &self.r, false)?;
+
+        // update y
+        vec_update(y_new, 1.0, &self.dy).unwrap(); // y := y + δy
 
         // compute stat variables
         if self.n_iterations_last > self.n_iterations_max {
             self.n_iterations_max = self.n_iterations_last;
         }
 
-        // update variables
+        // done
         self.first_step = false;
         Ok((0.0, 0.0))
     }

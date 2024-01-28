@@ -1,7 +1,8 @@
 use crate::constants::N_EQUAL_STEPS;
 use crate::StrError;
-use crate::{no_jacobian, EulerBackward, EulerForward, ExplicitRungeKutta, Method, NumSolver, OdeParams, OdeSystem};
+use crate::{EulerBackward, EulerForward, ExplicitRungeKutta, Method, NumSolver, OdeParams, OdeSystem};
 use russell_lab::Vector;
+use russell_sparse::CooMatrix;
 
 /// Defines the solver for systems of ODEs
 ///
@@ -40,20 +41,21 @@ pub struct OdeSolver<'a> {
 }
 
 impl<'a> OdeSolver<'a> {
-    pub fn new<F>(params: &'a OdeParams, ndim: usize, system: F) -> Result<Self, StrError>
+    pub fn new<F, J>(params: &'a OdeParams, system: OdeSystem<'a, F, J>) -> Result<Self, StrError>
     where
         F: 'a + FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
+        J: 'a + FnMut(&mut CooMatrix, f64, &Vector, f64) -> Result<(), StrError>,
     {
         params.validate()?;
+        let ndim = system.ndim;
         let actual: Box<dyn NumSolver> = if params.method == Method::Radau5 {
             panic!("TODO: Radau5");
         } else if params.method == Method::BwEuler {
-            let system = OdeSystem::new(ndim, system, no_jacobian, true, None, None);
             Box::new(EulerBackward::new(params, system))
         } else if params.method == Method::FwEuler {
-            Box::new(EulerForward::new(ndim, system))
+            Box::new(EulerForward::new(system))
         } else {
-            Box::new(ExplicitRungeKutta::new(params, ndim, system)?)
+            Box::new(ExplicitRungeKutta::new(params, system)?)
         };
         Ok(OdeSolver {
             params,
@@ -199,8 +201,8 @@ pub fn output_dense_none(
 #[cfg(test)]
 mod tests {
     use super::{output_dense_none, OdeSolver};
-    use crate::{Method, OdeParams};
-    use crate::{StrError, N_EQUAL_STEPS};
+    use crate::N_EQUAL_STEPS;
+    use crate::{no_jacobian, Method, OdeParams, OdeSystem};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
@@ -212,10 +214,17 @@ mod tests {
         // dx
 
         let params = OdeParams::new(Method::FwEuler, None, None);
-        let system = |f: &mut Vector, _: f64, _: &Vector| -> Result<(), StrError> {
-            f[0] = 1.0;
-            Ok(())
-        };
+        let system = OdeSystem::new(
+            1,
+            |f, _, _| {
+                f[0] = 1.0;
+                Ok(())
+            },
+            no_jacobian,
+            true,
+            None,
+            None,
+        );
 
         // consistent initial conditions
         let y_ana = |x| x;
@@ -236,7 +245,7 @@ mod tests {
         };
 
         // solve the ODE system
-        let mut solver = OdeSolver::new(&params, 1, system).unwrap();
+        let mut solver = OdeSolver::new(&params, system).unwrap();
         let xf = 1.0;
         solver
             .solve(&mut y0, x0, xf, None, output_step, output_dense_none)

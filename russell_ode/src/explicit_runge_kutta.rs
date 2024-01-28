@@ -1,19 +1,19 @@
 use crate::constants::*;
-use crate::{Information, Method, NumSolver, OdeParams, StrError};
+use crate::StrError;
+use crate::{Information, Method, NumSolver, OdeParams, OdeSystem};
 use russell_lab::{vec_copy, vec_update, Matrix, Vector};
+use russell_sparse::CooMatrix;
 
-pub(crate) struct ExplicitRungeKutta<'a, F>
+pub(crate) struct ExplicitRungeKutta<'a, F, J>
 where
     F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
+    J: FnMut(&mut CooMatrix, f64, &Vector, f64) -> Result<(), StrError>,
 {
     /// Holds the parameters
     params: &'a OdeParams,
 
-    /// Dimension of the ODE system
-    ndim: usize,
-
     /// ODE system
-    system: F,
+    system: OdeSystem<'a, F, J>,
 
     /// Information such as implicit, embedded, etc.
     info: Information,
@@ -87,12 +87,13 @@ where
     yd: Option<Vector>,
 }
 
-impl<'a, F> ExplicitRungeKutta<'a, F>
+impl<'a, F, J> ExplicitRungeKutta<'a, F, J>
 where
     F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
+    J: FnMut(&mut CooMatrix, f64, &Vector, f64) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(params: &'a OdeParams, ndim: usize, system: F) -> Result<Self, StrError> {
+    pub fn new(params: &'a OdeParams, system: OdeSystem<'a, F, J>) -> Result<Self, StrError> {
         // information
         let info = params.method.information();
         if info.implicit {
@@ -148,6 +149,7 @@ where
         };
 
         // coefficients for dense output
+        let ndim = system.ndim;
         let (mut aad, mut ccd, mut dd) = (None, None, None);
         let (mut dense_out, mut kd, mut yd) = (None, None, None);
         if params.denseOut && params.method == Method::DoPri5 {
@@ -176,6 +178,7 @@ where
         // return structure
         Ok(ExplicitRungeKutta {
             params,
+            system,
             info,
             aa,
             bb,
@@ -185,8 +188,6 @@ where
             ccd,
             dd,
             nstage,
-            ndim,
-            system,
             lund_factor,
             d_min: 1.0 / params.Mmin,
             d_max: 1.0 / params.Mmax,
@@ -203,9 +204,10 @@ where
     }
 }
 
-impl<F> NumSolver for ExplicitRungeKutta<'_, F>
+impl<'a, F, J> NumSolver for ExplicitRungeKutta<'a, F, J>
 where
     F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
+    J: FnMut(&mut CooMatrix, f64, &Vector, f64) -> Result<(), StrError>,
 {
     /// Initializes the internal variables
     fn initialize(&mut self, _x: f64, _y: &Vector) {
@@ -230,7 +232,7 @@ where
         if (self.first_step || !self.info.first_step_same_as_last) && !self.reject {
             let u0 = x + h * self.cc[0];
             self.n_function_eval += 1;
-            (self.system)(&mut k[0], u0, y)?; // k0 := f(ui,vi)
+            (self.system.function)(&mut k[0], u0, y)?; // k0 := f(ui,vi)
         }
         self.first_step = false;
 
@@ -242,12 +244,12 @@ where
                 vec_update(&mut v[i], h * self.aa.get(i, j), &k[j]).unwrap(); // vi += h ⋅ aij ⋅ kj
             }
             self.n_function_eval += 1;
-            (self.system)(&mut k[i], ui, &v[i])?; // ki := f(ui,vi)
+            (self.system.function)(&mut k[i], ui, &v[i])?; // ki := f(ui,vi)
         }
 
         // update
         if !self.info.embedded {
-            for m in 0..self.ndim {
+            for m in 0..self.system.ndim {
                 self.w[m] = y[m];
                 for i in 0..self.nstage {
                     self.w[m] += self.bb[i] * k[i][m] * h;
@@ -260,14 +262,14 @@ where
         let ee = self.ee.as_ref().unwrap();
         let mut s_num = 0.0;
         let mut s_den = 0.0;
-        let dim = self.ndim as f64;
+        let dim = self.system.ndim as f64;
 
         // error estimation for Dormand-Prince 8 with 5 and 3 orders
         if self.params.method == Method::DoPri8 {
             let (bhh1, bhh2, bhh3) = (DORMAND_PRINCE_8_BHH1, DORMAND_PRINCE_8_BHH2, DORMAND_PRINCE_8_BHH3);
             let mut err_3 = 0.0;
             let mut err_5 = 0.0;
-            for m in 0..self.ndim {
+            for m in 0..self.system.ndim {
                 self.w[m] = y[m];
                 let mut err_a = 0.0;
                 let mut err_b = 0.0;
@@ -301,7 +303,7 @@ where
 
         // update, error and stiffness estimation
         let mut sum = 0.0;
-        for m in 0..self.ndim {
+        for m in 0..self.system.ndim {
             self.w[m] = y[m];
             let mut l_err_m = 0.0;
             for i in 0..self.nstage {
@@ -343,7 +345,7 @@ where
             let dd = self.dd.as_ref().unwrap();
             let d = self.dense_out.as_mut().unwrap();
             let k = &self.k;
-            for m in 0..self.ndim {
+            for m in 0..self.system.ndim {
                 let y_diff = self.w[m] - y[m];
                 let b_spl = h * k[0][m] - y_diff;
                 d[0][m] = y[m];
@@ -372,7 +374,7 @@ where
             let k = &self.k;
 
             // first function evaluation
-            for m in 0..self.ndim {
+            for m in 0..self.system.ndim {
                 yd[m] = y[m]
                     + h * (aad.get(0, 0) * k[0][m]
                         + aad.get(0, 6) * k[6][m]
@@ -385,10 +387,10 @@ where
             }
             let u = x + cd[0] * h;
             self.n_function_eval += 1;
-            (self.system)(&mut kd[0], u, yd)?;
+            (self.system.function)(&mut kd[0], u, yd)?;
 
             // second function evaluation
-            for m in 0..self.ndim {
+            for m in 0..self.system.ndim {
                 yd[m] = y[m]
                     + h * (aad.get(1, 0) * k[0][m]
                         + aad.get(1, 5) * k[5][m]
@@ -401,10 +403,10 @@ where
             }
             let u = x + cd[1] * h;
             self.n_function_eval += 1;
-            (self.system)(&mut kd[1], u, yd)?;
+            (self.system.function)(&mut kd[1], u, yd)?;
 
             // next third function evaluation
-            for m in 0..self.ndim {
+            for m in 0..self.system.ndim {
                 yd[m] = y[m]
                     + h * (aad.get(2, 0) * k[0][m]
                         + aad.get(2, 5) * k[5][m]
@@ -417,10 +419,10 @@ where
             }
             let u = x + cd[2] * h;
             self.n_function_eval += 1;
-            (self.system)(&mut kd[2], u, yd)?;
+            (self.system.function)(&mut kd[2], u, yd)?;
 
             // final results
-            for m in 0..self.ndim {
+            for m in 0..self.system.ndim {
                 let y_diff = self.w[m] - y[m];
                 let b_spl = h * k[0][m] - y_diff;
                 d[0][m] = y[m];
@@ -487,7 +489,7 @@ where
 
         // update k0
         if self.info.first_step_same_as_last {
-            for m in 0..self.ndim {
+            for m in 0..self.system.ndim {
                 self.k[0][m] = self.k[self.nstage - 1][m]; // k0 := ks for next step
             }
         }
@@ -525,7 +527,7 @@ where
             let x_prev = x - h;
             let theta = (x_out - x_prev) / h;
             let u_theta = 1.0 - theta;
-            for m in 0..self.ndim {
+            for m in 0..self.system.ndim {
                 y_out[m] = d[0][m] + theta * (d[1][m] + u_theta * (d[2][m] + theta * (d[3][m] + u_theta * d[4][m])));
             }
         }
@@ -534,7 +536,7 @@ where
             let x_prev = x - h;
             let theta = (x_out - x_prev) / h;
             let u_theta = 1.0 - theta;
-            for m in 0..self.ndim {
+            for m in 0..self.system.ndim {
                 let par = d[4][m] + theta * (d[5][m] + u_theta * (d[6][m] + theta * d[7][m]));
                 y_out[m] = d[0][m] + theta * (d[1][m] + u_theta * (d[2][m] + theta * (d[3][m] + u_theta * par)));
             }
@@ -547,18 +549,18 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::no_jacobian;
     use russell_lab::approx_eq;
 
     #[test]
     fn constants_are_consistent() {
-        let ndim = 1;
-        let system = |_: &mut Vector, _: f64, _: &Vector| -> Result<(), StrError> { Ok(()) };
         let methods = Method::explicit_methods();
         let staged = methods.iter().filter(|&&m| m != Method::FwEuler);
         for method in staged {
             println!("\n... {:?} ...", method);
             let params = OdeParams::new(*method, None, None);
-            let erk = ExplicitRungeKutta::new(&params, ndim, system).unwrap();
+            let system = OdeSystem::new(1, |_, _, _| Ok(()), no_jacobian, true, None, None);
+            let erk = ExplicitRungeKutta::new(&params, system).unwrap();
             let nstage = erk.nstage;
             assert_eq!(erk.aa.dims(), (nstage, nstage));
             assert_eq!(erk.bb.dim(), nstage);

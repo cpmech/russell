@@ -115,6 +115,7 @@ where
         x: f64,
         y: &mut Vector,
         fxy: &Vector,
+        multiplier: f64,
     ) -> Result<(), StrError> {
         const THRESHOLD: f64 = 1e-5;
         jj.reset();
@@ -125,7 +126,7 @@ where
             (self.function)(&mut self.work, x, y)?; // work := f(x, y + Δy)
             for i in 0..self.ndim {
                 let delta_fi = self.work[i] - fxy[i]; // compute Δf[..]
-                jj.put(i, j, delta_fi / delta_yj).unwrap(); // Δfi/Δfj
+                jj.put(i, j, multiplier * delta_fi / delta_yj).unwrap(); // Δfi/Δfj
             }
             y[j] = yj_original; // restore value
         }

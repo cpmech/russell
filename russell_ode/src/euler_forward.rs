@@ -1,13 +1,15 @@
-use crate::NumSolver;
 use crate::StrError;
+use crate::{NumSolver, OdeSystem};
 use russell_lab::{vec_add, vec_copy, Vector};
+use russell_sparse::CooMatrix;
 
-pub(crate) struct EulerForward<F>
+pub(crate) struct EulerForward<'a, F, J>
 where
     F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
+    J: FnMut(&mut CooMatrix, f64, &Vector, f64) -> Result<(), StrError>,
 {
     /// ODE system
-    system: F,
+    system: OdeSystem<'a, F, J>,
 
     /// Vector holding the function evaluation
     ///
@@ -21,12 +23,14 @@ where
     n_function_eval: usize,
 }
 
-impl<F> EulerForward<F>
+impl<'a, F, J> EulerForward<'a, F, J>
 where
     F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
+    J: FnMut(&mut CooMatrix, f64, &Vector, f64) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(ndim: usize, system: F) -> Self {
+    pub fn new(system: OdeSystem<'a, F, J>) -> Self {
+        let ndim = system.ndim;
         EulerForward {
             system,
             k: Vector::new(ndim),
@@ -36,9 +40,10 @@ where
     }
 }
 
-impl<F> NumSolver for EulerForward<F>
+impl<'a, F, J> NumSolver for EulerForward<'a, F, J>
 where
     F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
+    J: FnMut(&mut CooMatrix, f64, &Vector, f64) -> Result<(), StrError>,
 {
     /// Initializes the internal variables
     fn initialize(&mut self, _x: f64, _y: &Vector) {
@@ -50,7 +55,7 @@ where
     /// Returns the (`relative_error`, `stiffness_ratio`)
     fn step(&mut self, x: f64, y: &Vector, h: f64) -> Result<(f64, f64), StrError> {
         self.n_function_eval += 1;
-        (self.system)(&mut self.k, x, y)?; // k := f(x, y)
+        (self.system.function)(&mut self.k, x, y)?; // k := f(x, y)
         vec_add(&mut self.w, 1.0, &y, h, &self.k).unwrap(); // w := y + h * f(x, y)
         Ok((0.0, 0.0))
     }

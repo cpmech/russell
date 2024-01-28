@@ -14,7 +14,7 @@ pub struct OdeParams {
     pub(crate) genie: Genie,
 
     /// configurations for sparse linear solver
-    pub lin_sol_params: LinSolParams,
+    pub lin_sol_params: Option<LinSolParams>,
 
     /// minimum H allowed
     pub Hmin: f64,
@@ -120,14 +120,10 @@ impl OdeParams {
             Some(g) => g,
             None => Genie::Umfpack,
         };
-        let ls_params = match lin_sol_params {
-            Some(p) => p,
-            None => LinSolParams::new(),
-        };
         let mut params = OdeParams {
             method,
             genie,
-            lin_sol_params: ls_params,
+            lin_sol_params,
             Hmin: 1.0e-10,
             initial_stepsize: 1.0e-4,
             NmaxIt: 7,

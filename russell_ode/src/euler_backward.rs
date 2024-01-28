@@ -1,19 +1,18 @@
 use crate::StrError;
-use crate::{LinearSystem, NumSolver, OdeParams};
+use crate::{LinearSystem, NumSolver, OdeParams, OdeSystem};
 use russell_lab::{vec_copy, Vector};
+use russell_sparse::CooMatrix;
 
-pub(crate) struct EulerBackward<'a, F>
+pub(crate) struct EulerBackward<'a, F, J>
 where
     F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
+    J: FnMut(&mut CooMatrix, f64, &Vector, f64) -> Result<(), StrError>,
 {
     /// Holds the parameters
     params: &'a OdeParams,
 
-    /// Dimension of the ODE system
-    ndim: usize,
-
     /// ODE system
-    system: F,
+    system: OdeSystem<'a, F, J>,
 
     /// Vector holding the function evaluation
     ///
@@ -46,17 +45,19 @@ where
     n_iterations_max: usize,
 
     /// Linear system
-    lin_sys: LinearSystem<'a>,
+    _lin_sys: LinearSystem<'a>,
 }
 
-impl<'a, F> EulerBackward<'a, F>
+impl<'a, F, J> EulerBackward<'a, F, J>
 where
     F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
+    J: FnMut(&mut CooMatrix, f64, &Vector, f64) -> Result<(), StrError>,
 {
-    pub fn new(params: &'a OdeParams, ndim: usize, system: F) -> Self {
+    pub fn new(params: &'a OdeParams, system: OdeSystem<'a, F, J>) -> Self {
+        let ndim = system.ndim;
+        let nnz = system.jac_nnz;
         EulerBackward {
             params,
-            ndim,
             system,
             k: Vector::new(ndim),
             r: Vector::new(ndim),
@@ -66,14 +67,15 @@ where
             n_function_eval: 0,
             n_iterations_last: 0,
             n_iterations_max: 0,
-            lin_sys: LinearSystem::new(params, ndim),
+            _lin_sys: LinearSystem::new(params, ndim, nnz),
         }
     }
 }
 
-impl<'a, F> NumSolver for EulerBackward<'a, F>
+impl<'a, F, J> NumSolver for EulerBackward<'a, F, J>
 where
     F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
+    J: FnMut(&mut CooMatrix, f64, &Vector, f64) -> Result<(), StrError>,
 {
     /// Initializes the internal variables
     fn initialize(&mut self, _x: f64, y: &Vector) {
@@ -82,7 +84,7 @@ where
         self.n_function_eval = 0;
 
         // first scaling vector
-        for i in 0..self.ndim {
+        for i in 0..self.system.ndim {
             self.scaling[i] = self.params.abs_tol + self.params.rel_tol * f64::abs(y[i]);
         }
     }
@@ -94,6 +96,10 @@ where
         // reset stat variables
         self.n_iterations_last = 0;
         let traditional_newton = !self.params.CteTg;
+
+        // auxiliary
+        let ndim = self.system.ndim;
+        let dim = ndim as f64;
 
         // trial update
         let x_new = x + h;
@@ -107,11 +113,11 @@ where
 
             // calculate k_new
             self.n_function_eval += 1;
-            (self.system)(&mut self.k, x_new, y_new)?; // k := f(x_new, y_new)
+            (self.system.function)(&mut self.k, x_new, y_new)?; // k := f(x_new, y_new)
 
             // calculate the residual and its norm
             let mut r_norm = 0.0;
-            for i in 0..self.ndim {
+            for i in 0..ndim {
                 self.r[i] = y_new[i] - y[i] - h * self.k[i];
                 if self.params.UseRmsNorm {
                     r_norm += f64::powf(self.r[i] / self.scaling[i], 2.0);
@@ -120,7 +126,7 @@ where
                 }
             }
             if self.params.UseRmsNorm {
-                r_norm = f64::sqrt(r_norm / (self.ndim as f64));
+                r_norm = f64::sqrt(r_norm / dim);
             } else {
                 r_norm = f64::sqrt(r_norm);
             }

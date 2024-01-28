@@ -14,6 +14,7 @@ mod linear_system;
 mod num_solver;
 mod ode_params;
 mod ode_solver;
+mod ode_system;
 mod samples;
 pub use crate::constants::*;
 pub use crate::enums::*;
@@ -24,6 +25,7 @@ use crate::linear_system::*;
 use crate::num_solver::*;
 pub use crate::ode_params::*;
 pub use crate::ode_solver::*;
+pub use crate::ode_system::*;
 pub use crate::samples::*;
 
 // run code from README file

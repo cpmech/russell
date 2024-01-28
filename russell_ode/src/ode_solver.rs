@@ -1,6 +1,6 @@
 use crate::constants::N_EQUAL_STEPS;
 use crate::StrError;
-use crate::{EulerBackward, EulerForward, ExplicitRungeKutta, Method, NumSolver, OdeParams};
+use crate::{no_jacobian, EulerBackward, EulerForward, ExplicitRungeKutta, Method, NumSolver, OdeParams, OdeSystem};
 use russell_lab::Vector;
 
 /// Defines the solver for systems of ODEs
@@ -14,12 +14,12 @@ use russell_lab::Vector;
 /// where x is a scalar and {y} and {f} are vectors
 /// ```
 ///
-/// For some solution methods, the Jacobian is defined by:
+/// The Jacobian is defined by:
 ///
 /// ```text
-/// d{f}
+/// ∂{f}
 /// ———— = [J](x, {y})
-/// d{y}
+/// ∂{y}
 /// where [J] is the Jacobian matrix
 /// ```
 pub struct OdeSolver<'a> {
@@ -48,7 +48,8 @@ impl<'a> OdeSolver<'a> {
         let actual: Box<dyn NumSolver> = if params.method == Method::Radau5 {
             panic!("TODO: Radau5");
         } else if params.method == Method::BwEuler {
-            Box::new(EulerBackward::new(params, ndim, system))
+            let system = OdeSystem::new(ndim, system, no_jacobian, true, None, None);
+            Box::new(EulerBackward::new(params, system))
         } else if params.method == Method::FwEuler {
             Box::new(EulerForward::new(ndim, system))
         } else {
@@ -74,12 +75,12 @@ impl<'a> OdeSolver<'a> {
     /// where x is a scalar and {y} and {f} are vectors
     /// ```
     ///
-    /// For some solution methods, the Jacobian is defined by:
+    /// The Jacobian is defined by:
     ///
     /// ```text
-    /// d{f}
+    /// ∂{f}
     /// ———— = [J](x, {y})
-    /// d{y}
+    /// ∂{y}
     /// where [J] is the Jacobian matrix
     /// ```
     ///

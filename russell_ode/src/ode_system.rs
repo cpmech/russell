@@ -37,7 +37,6 @@ where
     pub(crate) jac_nnz: usize,
     pub(crate) jac_symmetry: Option<Symmetry>,
     pub(crate) mass_matrix: Option<&'a CooMatrix>,
-    pub(crate) y_analytical: Option<Box<dyn 'a + FnMut(&mut Vector, f64)>>,
 
     work: Vector, // workspace for numerical Jacobian
 }
@@ -66,17 +65,12 @@ where
             jac_nnz: if let Some(n) = jac_nnz { n } else { ndim * ndim },
             jac_symmetry,
             mass_matrix: None,
-            y_analytical: None,
             work: if jac_numerical {
                 Vector::new(ndim)
             } else {
                 Vector::new(0)
             },
         }
-    }
-
-    pub fn set_analytical_solution(&mut self, y_analytical: Box<dyn 'a + FnMut(&mut Vector, f64)>) {
-        self.y_analytical = Some(y_analytical);
     }
 
     pub fn set_mass_matrix(&mut self, mass: &'a CooMatrix) {
@@ -196,10 +190,10 @@ mod tests {
             Some(2),
             None,
         );
-        ode.set_analytical_solution(Box::new(|y, x| {
-            y[0] = f64::cos(x * x / 2.0) - 2.0 * f64::sin(x * x / 2.0);
-            y[1] = 2.0 * f64::cos(x * x / 2.0) + f64::sin(x * x / 2.0);
-        }));
+        // ode.set_analytical_solution(Box::new(|y, x| {
+        //     y[0] = f64::cos(x * x / 2.0) - 2.0 * f64::sin(x * x / 2.0);
+        //     y[1] = 2.0 * f64::cos(x * x / 2.0) + f64::sin(x * x / 2.0);
+        // }));
         ode.set_mass_matrix(&mass);
         // call system function
         let x = 0.0;

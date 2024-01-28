@@ -21,13 +21,19 @@ pub struct Samples {}
 impl Samples {
     pub fn hairer_wanner_eq1() -> OdeSample {
         const L: f64 = -50.0; // lambda
+        let system = |f: &mut Vector, x: f64, y: &Vector| {
+            f[0] = L * y[0] - L * f64::cos(x);
+            Ok(())
+        };
+        let jacobian = |jac: &mut CooMatrix, _x: f64, _y: &Vector| {
+            jac.reset();
+            jac.put(0, 0, L)?;
+            Ok(())
+        };
         OdeSample {
             ndim: 1,
-            system: Box::new(|f, x, y| {
-                f[0] = L * y[0] - L * f64::cos(x);
-                Ok(())
-            }),
-            jacobian: None,
+            system: Box::new(system),
+            jacobian: Some(Box::new(jacobian)),
             analytical: Some(Box::new(|y, x| {
                 y[0] = -L * (f64::sin(x) - L * f64::cos(x) + L * f64::exp(L * x)) / (L * L + 1.0);
             })),

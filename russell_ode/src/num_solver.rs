@@ -2,14 +2,14 @@ use crate::StrError;
 use russell_lab::Vector;
 
 /// Defines the numerical solver
-pub(crate) trait NumSolver {
+pub(crate) trait NumSolver<A> {
     /// Initializes the internal variables
     fn initialize(&mut self, x: f64, y: &Vector);
 
     /// Calculates the quantities required to update x and y
     ///
     /// Returns the (`relative_error`, `stiffness_ratio`)
-    fn step(&mut self, x: f64, y: &Vector, h: f64) -> Result<(f64, f64), StrError>;
+    fn step(&mut self, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(f64, f64), StrError>;
 
     /// Accepts the update and computes the next stepsize
     ///
@@ -21,6 +21,7 @@ pub(crate) trait NumSolver {
         h: f64,
         relative_error: f64,
         previous_relative_error: f64,
+        args: &mut A,
     ) -> Result<f64, StrError>;
 
     /// Rejects the update

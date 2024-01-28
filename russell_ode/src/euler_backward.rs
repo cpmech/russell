@@ -2,18 +2,19 @@ use crate::StrError;
 use crate::{NumSolver, OdeParams, OdeSystem};
 use russell_lab::{vec_copy, vec_update, Vector};
 use russell_sparse::{CooMatrix, Genie, LinSolver, SparseMatrix};
+use std::marker::PhantomData;
 
 /// Implements the backward Euler (implicit) solver
-pub(crate) struct EulerBackward<'a, F, J>
+pub(crate) struct EulerBackward<'a, F, J, A>
 where
-    F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
-    J: FnMut(&mut CooMatrix, f64, &Vector, f64) -> Result<(), StrError>,
+    F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Holds the parameters
     params: &'a OdeParams,
 
     /// ODE system
-    system: OdeSystem<'a, F, J>,
+    system: OdeSystem<'a, F, J, A>,
 
     /// Scaling vector
     ///
@@ -56,15 +57,18 @@ where
 
     /// Max number of iterations among all steps
     n_iterations_max: usize,
+
+    /// Handle generic argument
+    phantom: PhantomData<A>,
 }
 
-impl<'a, F, J> EulerBackward<'a, F, J>
+impl<'a, F, J, A> EulerBackward<'a, F, J, A>
 where
-    F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
-    J: FnMut(&mut CooMatrix, f64, &Vector, f64) -> Result<(), StrError>,
+    F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(params: &'a OdeParams, system: OdeSystem<'a, F, J>) -> Self {
+    pub fn new(params: &'a OdeParams, system: OdeSystem<'a, F, J, A>) -> Self {
         let ndim = system.ndim;
         let nnz = system.jac_nnz + ndim; // +ndim corresponds to the diagonal I matrix
         let symmetry = system.jac_symmetry;
@@ -84,14 +88,15 @@ where
             n_jacobian_eval: 0,
             n_iterations_last: 0,
             n_iterations_max: 0,
+            phantom: PhantomData,
         }
     }
 }
 
-impl<'a, F, J> NumSolver for EulerBackward<'a, F, J>
+impl<'a, F, J, A> NumSolver<A> for EulerBackward<'a, F, J, A>
 where
-    F: FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
-    J: FnMut(&mut CooMatrix, f64, &Vector, f64) -> Result<(), StrError>,
+    F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Initializes the internal variables
     fn initialize(&mut self, _x: f64, y: &Vector) {
@@ -109,7 +114,7 @@ where
     /// Calculates the quantities required to update x and y
     ///
     /// Returns the (`relative_error`, `stiffness_ratio`)
-    fn step(&mut self, x: f64, y: &Vector, h: f64) -> Result<(f64, f64), StrError> {
+    fn step(&mut self, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(f64, f64), StrError> {
         // reset stat variables
         self.n_iterations_last = 0;
 
@@ -130,7 +135,7 @@ where
 
             // calculate k_new
             self.n_function_eval += 1;
-            (self.system.function)(&mut self.k, x_new, y_new)?; // k := f(x_new, y_new)
+            (self.system.function)(&mut self.k, x_new, y_new, args)?; // k := f(x_new, y_new)
 
             // calculate the residual and its norm
             let mut r_norm = 0.0;
@@ -159,9 +164,9 @@ where
             // calculate J_new := h J
             let kk = self.kk.get_coo_mut()?;
             if self.system.jac_numerical {
-                self.system.numerical_jacobian(kk, x_new, y_new, &self.k, h)?;
+                self.system.numerical_jacobian(kk, x_new, y_new, &self.k, h, args)?;
             } else {
-                (self.system.jacobian)(kk, x_new, y_new, h)?;
+                (self.system.jacobian)(kk, x_new, y_new, h, args)?;
             }
             // add diagonal entries => calculate K = h J_new - I
             for i in 0..self.system.ndim {
@@ -187,14 +192,29 @@ where
         Ok((0.0, 0.0))
     }
 
-    fn accept(&mut self, y0: &mut Vector, _: f64, _: f64, _: f64, _: f64) -> Result<f64, StrError> {
-        vec_copy(y0, &self.w).unwrap();
+    /// Accepts the update and computes the next stepsize
+    ///
+    /// Returns `stepsize_new`
+    fn accept(
+        &mut self,
+        y: &mut Vector,
+        _x: f64,
+        _h: f64,
+        _relative_error: f64,
+        _previous_relative_error: f64,
+        _args: &mut A,
+    ) -> Result<f64, StrError> {
+        vec_copy(y, &self.w).unwrap();
         Ok(0.0)
     }
 
-    fn reject(&mut self, _: f64, _: f64) -> f64 {
+    /// Rejects the update
+    ///
+    /// Returns `stepsize_new`
+    fn reject(&mut self, _h: f64, _relative_error: f64) -> f64 {
         0.0
     }
 
-    fn dense_output(&self, _: &mut Vector, _: f64, _: f64, _: f64) {}
+    /// Computes the dense output
+    fn dense_output(&self, _y_out: &mut Vector, _h: f64, _x: f64, _x_out: f64) {}
 }

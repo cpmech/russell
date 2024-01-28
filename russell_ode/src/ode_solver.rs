@@ -23,7 +23,7 @@ use russell_sparse::CooMatrix;
 /// ∂{y}
 /// where [J] is the Jacobian matrix
 /// ```
-pub struct OdeSolver<'a> {
+pub struct OdeSolver<'a, A> {
     /// Holds the parameters
     params: &'a OdeParams,
 
@@ -31,7 +31,7 @@ pub struct OdeSolver<'a> {
     ndim: usize,
 
     /// Holds a pointer to the actual ODE system solver
-    actual: Box<dyn NumSolver + 'a>,
+    actual: Box<dyn NumSolver<A> + 'a>,
 
     /// Collects the number of steps, successful or not
     n_performed_steps: usize,
@@ -40,15 +40,16 @@ pub struct OdeSolver<'a> {
     n_rejected_steps: usize,
 }
 
-impl<'a> OdeSolver<'a> {
-    pub fn new<F, J>(params: &'a OdeParams, system: OdeSystem<'a, F, J>) -> Result<Self, StrError>
+impl<'a, A> OdeSolver<'a, A> {
+    pub fn new<F, J>(params: &'a OdeParams, system: OdeSystem<'a, F, J, A>) -> Result<Self, StrError>
     where
-        F: 'a + FnMut(&mut Vector, f64, &Vector) -> Result<(), StrError>,
-        J: 'a + FnMut(&mut CooMatrix, f64, &Vector, f64) -> Result<(), StrError>,
+        F: 'a + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+        J: 'a + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+        A: 'a,
     {
         params.validate()?;
         let ndim = system.ndim;
-        let actual: Box<dyn NumSolver> = if params.method == Method::Radau5 {
+        let actual: Box<dyn NumSolver<A>> = if params.method == Method::Radau5 {
             panic!("TODO: Radau5");
         } else if params.method == Method::BwEuler {
             Box::new(EulerBackward::new(params, system))
@@ -100,6 +101,7 @@ impl<'a> OdeSolver<'a> {
         y0: &mut Vector,
         x0: f64,
         x1: f64,
+        args: &mut A,
         h_equal: Option<f64>,
         mut output_step: S,
         mut _output_dense: D,
@@ -156,14 +158,14 @@ impl<'a> OdeSolver<'a> {
             let nstep = f64::ceil((x1 - x) / h) as usize;
             for step in 0..nstep {
                 // step
-                self.actual.step(x, &y, h)?;
+                self.actual.step(x, &y, h, args)?;
                 self.n_performed_steps += 1;
 
                 // update x
                 x = ((step + 1) as f64) * h;
 
                 // update y
-                self.actual.accept(y, x, h, IGNORED, IGNORED)?;
+                self.actual.accept(y, x, h, IGNORED, IGNORED, args)?;
 
                 // output
                 let stop = (output_step)(step, h, x, y)?;
@@ -216,7 +218,7 @@ mod tests {
         let params = OdeParams::new(Method::FwEuler, None, None);
         let system = OdeSystem::new(
             1,
-            |f, _, _| {
+            |f, _, _, _| {
                 f[0] = 1.0;
                 Ok(())
             },
@@ -244,11 +246,15 @@ mod tests {
             Ok(false)
         };
 
+        // arguments
+        struct Args {}
+        let mut args = Args {};
+
         // solve the ODE system
         let mut solver = OdeSolver::new(&params, system).unwrap();
         let xf = 1.0;
         solver
-            .solve(&mut y0, x0, xf, None, output_step, output_dense_none)
+            .solve(&mut y0, x0, xf, &mut args, None, output_step, output_dense_none)
             .unwrap();
 
         // check
@@ -287,7 +293,7 @@ mod tests {
         let h_equal = Some(0.3);
         let xf = 1.2; // => will generate 4 steps
         solver
-            .solve(&mut y0, x0, xf, h_equal, output_step, output_dense_none)
+            .solve(&mut y0, x0, xf, &mut args, h_equal, output_step, output_dense_none)
             .unwrap();
 
         // check again

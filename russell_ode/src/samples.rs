@@ -3,12 +3,18 @@ use crate::StrError;
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 
-pub struct OdeSample<'a> {
-    pub system: OdeSystem<
-        'a,
-        fn(&mut Vector, f64, &Vector) -> Result<(), StrError>,
-        fn(&mut CooMatrix, f64, &Vector, f64) -> Result<(), StrError>,
-    >,
+pub struct OdeSample<'a, F, J, A>
+where
+    F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+{
+    pub system: OdeSystem<'a, F, J, A>,
+    // pub system: OdeSystem<
+    //     'a,
+    //     fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    //     fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    //     A,
+    // >,
     pub h_equal: Option<f64>,
     pub x0: f64,
     pub y0: Vector,
@@ -19,16 +25,18 @@ pub struct OdeSample<'a> {
 pub struct Samples {}
 
 impl Samples {
-    pub fn hairer_wanner_eq1<'a>() -> OdeSample<'a> {
+    /*
+    pub fn hairer_wanner_eq1<'a, F, J, A>() -> OdeSample<'a, F, J, A> {
+        struct Args {}
         const L: f64 = -50.0; // lambda
         OdeSample {
             system: OdeSystem::new(
                 1,
-                |f: &mut Vector, x: f64, y: &Vector| {
+                |f: &mut Vector, x: f64, y: &Vector, args: &mut Args| {
                     f[0] = L * y[0] - L * f64::cos(x);
                     Ok(())
                 },
-                |jac: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64| {
+                |jac: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, args: &mut Args| {
                     jac.reset();
                     jac.put(0, 0, multiplier * L)?;
                     Ok(())
@@ -47,7 +55,8 @@ impl Samples {
         }
     }
 
-    pub fn van_der_pol<'a>(epsilon: Option<f64>, stationary: bool) -> OdeSample<'a> {
+    pub fn van_der_pol<'a, F, J, A>(epsilon: Option<f64>, stationary: bool) -> OdeSample<'a, F, J, A> {
+        struct Args {}
         /*
         let mut eps = match epsilon {
             Some(e) => e,
@@ -68,13 +77,13 @@ impl Samples {
         OdeSample {
             system: OdeSystem::new(
                 2,
-                |f: &mut Vector, _x: f64, y: &Vector| {
+                |f: &mut Vector, _x: f64, y: &Vector, args: &mut Args| {
                     let eps = 1.0e-6;
                     f[0] = y[1];
                     f[1] = ((1.0 - y[0] * y[0]) * y[1] - y[0]) / eps;
                     Ok(())
                 },
-                |jac: &mut CooMatrix, _x: f64, y: &Vector, multiplier: f64| {
+                |jac: &mut CooMatrix, _x: f64, y: &Vector, multiplier: f64, args: &mut Args| {
                     let eps = 1.0e-6;
                     jac.reset();
                     jac.put(0, 1, 1.0 * multiplier)?;
@@ -93,4 +102,5 @@ impl Samples {
             y_analytical: None,
         }
     }
+    */
 }

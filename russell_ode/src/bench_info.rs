@@ -144,8 +144,8 @@ impl fmt::Display for BenchInfo {
             "Number of function evaluations   = {}\n\
              Number of Jacobian evaluations   = {}\n\
              Number of performed steps        = {}\n\
-             Number of accepted_steps         = {}\n\
-             Number of rejected_steps         = {}\n\
+             Number of accepted steps         = {}\n\
+             Number of rejected steps         = {}\n\
              Number of matrix factorizations  = {}\n\
              Number of iterations (last step) = {}\n\
              Number of iterations (maximum)   = {}\n\
@@ -200,8 +200,8 @@ mod tests {
             "Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of performed steps        = 0\n\
-             Number of accepted_steps         = 0\n\
-             Number of rejected_steps         = 0\n\
+             Number of accepted steps         = 0\n\
+             Number of rejected steps         = 0\n\
              Number of matrix factorizations  = 0\n\
              Number of iterations (last step) = 0\n\
              Number of iterations (maximum)   = 0\n\

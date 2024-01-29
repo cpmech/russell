@@ -35,6 +35,24 @@ pub fn no_jacobian<A>(
 ///               ∂{y}
 /// where [J] is the Jacobian matrix
 /// ```
+///
+/// # Generics
+///
+/// * `F` -- is a function to compute the `f` vector; e.g., `fn(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+/// * `J` -- is a function to compute the Jacobian; e.g., `fn(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+/// * `A` -- is a generic argument to assist in the `F` and `J` functions
+///
+/// # Important
+///
+/// The `multiplier` parameter in the Jacobian function `J` must be used to scale the Jacobian matrix; e.g.,
+///
+/// ```text
+/// |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut Args| {
+///     jj.reset();
+///     jj.put(0, 0, multiplier * LAMBDA)?;
+///     Ok(())
+/// },
+/// ```
 pub struct OdeSystem<'a, F, J, A>
 where
     F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,

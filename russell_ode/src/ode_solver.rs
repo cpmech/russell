@@ -18,9 +18,9 @@ use russell_sparse::CooMatrix;
 /// The Jacobian is defined by:
 ///
 /// ```text
-/// ∂{f}
-/// ———— = [J](x, {y})
-/// ∂{y}
+///               ∂{f}
+/// [J](x, {y}) = ————
+///               ∂{y}
 /// where [J] is the Jacobian matrix
 /// ```
 pub struct OdeSolver<'a, A> {
@@ -41,6 +41,16 @@ pub struct OdeSolver<'a, A> {
 }
 
 impl<'a, A> OdeSolver<'a, A> {
+    /// Allocates a new instance
+    ///
+    /// # Input
+    ///
+    /// * `params` -- holds all parameters, including the selection of the numerical [Method]
+    /// * `system` -- defines the ODE system
+    ///
+    /// # Generics
+    ///
+    /// See [OdeSystem] for an explanation of the generic parameters.
     pub fn new<F, J>(params: &'a OdeParams, system: OdeSystem<'a, F, J, A>) -> Result<Self, StrError>
     where
         F: 'a + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
@@ -69,33 +79,23 @@ impl<'a, A> OdeSolver<'a, A> {
 
     /// Solves the ODE system
     ///
-    /// The system is defined by:
-    ///
-    /// ```text
-    /// d{y}
-    /// ———— = {f}(x, {y})
-    ///  dx
-    /// where x is a scalar and {y} and {f} are vectors
-    /// ```
-    ///
-    /// The Jacobian is defined by:
-    ///
-    /// ```text
-    /// ∂{f}
-    /// ———— = [J](x, {y})
-    /// ∂{y}
-    /// where [J] is the Jacobian matrix
-    /// ```
-    ///
     /// # Input
     ///
-    /// * `y0` -- the initial vector of dependent variables; it will be updated to `y1`
-    /// * `x0` -- the initial independent variable
-    /// * `x1` -- the final independent variable
+    /// * `y0` -- the initial value of the vector of dependent variables; it will be updated to `y1` at the end
+    /// * `x0` -- the initial value of the independent variable
+    /// * `x1` -- the final value of the independent variable
+    /// * `args` -- holds some extra arguments for the function `F` and jacobian `J`
     /// * `h_equal` -- a constant stepsize for solving with equal-steps; otherwise,
     ///   if possible, variable step sizes are automatically calculated. If automatic
     ///   sub-stepping is not possible (e.g., the RK method is not embedded),
     ///   a constant (and equal) stepsize will be calculated for [N_EQUAL_STEPS] steps.
+    /// * `output_step` -- handles the output of results during accepted steps
+    /// * `output_dense` -- handles the dense output
+    ///
+    /// # Generics
+    ///
+    /// * `S` -- step output function such as `fn(step: usize, h: f64, x: f64, y: &Vector)`
+    /// * `D` -- dense output function such as `fn(y_out: &mut Vector, x_out: f64, step: usize, h: f64, x: f64, y: &Vector)`
     pub fn solve<S, D>(
         &mut self,
         y0: &mut Vector,

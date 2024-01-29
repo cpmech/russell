@@ -1,5 +1,5 @@
 use crate::constants::N_EQUAL_STEPS;
-use crate::StrError;
+use crate::{BenchInfo, StrError};
 use crate::{EulerBackward, EulerForward, ExplicitRungeKutta, Method, NumSolver, OdeParams, OdeSystem};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
@@ -63,6 +63,11 @@ impl<'a, A> OdeSolver<'a, A> {
             Box::new(ExplicitRungeKutta::new(params, system)?)
         };
         Ok(OdeSolver { params, ndim, actual })
+    }
+
+    /// Returns some benchmarking data
+    pub fn bench(&self) -> &BenchInfo {
+        self.actual.bench()
     }
 
     /// Solves the ODE system
@@ -132,7 +137,7 @@ impl<'a, A> OdeSolver<'a, A> {
         assert!(h > 0.0);
 
         // reset variables
-        self.actual.bench().reset();
+        self.actual.bench_mut().reset();
         self.actual.initialize(x0, y0);
 
         // current values
@@ -145,8 +150,8 @@ impl<'a, A> OdeSolver<'a, A> {
             let nstep = f64::ceil((x1 - x) / h) as usize;
             for step in 0..nstep {
                 // benchmark
-                self.actual.bench().sw_step.reset();
-                self.actual.bench().n_performed_steps += 1;
+                self.actual.bench_mut().sw_step.reset();
+                self.actual.bench_mut().n_performed_steps += 1;
 
                 // step
                 self.actual.step(x, &y, h, args)?;
@@ -158,8 +163,8 @@ impl<'a, A> OdeSolver<'a, A> {
                 self.actual.accept(y, x, h, IGNORED, IGNORED, args)?;
 
                 // benchmark
-                self.actual.bench().n_accepted_steps += 1;
-                self.actual.bench().stop_sw_step();
+                self.actual.bench_mut().n_accepted_steps += 1;
+                self.actual.bench_mut().stop_sw_step();
 
                 // output
                 let stop = (output_step)(step, h, x, y)?;
@@ -167,7 +172,7 @@ impl<'a, A> OdeSolver<'a, A> {
                     break;
                 }
             }
-            self.actual.bench().stop_sw_total();
+            self.actual.bench_mut().stop_sw_total();
             return Ok(());
         }
 

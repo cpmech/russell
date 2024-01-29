@@ -4,7 +4,10 @@ use russell_lab::Vector;
 /// Defines the numerical solver
 pub(crate) trait NumSolver<A> {
     /// Returns an access to the benchmark object
-    fn bench(&mut self) -> &mut BenchInfo;
+    fn bench(&self) -> &BenchInfo;
+
+    /// Returns a mutable access to the benchmark object
+    fn bench_mut(&mut self) -> &mut BenchInfo;
 
     /// Initializes the internal variables
     fn initialize(&mut self, x: f64, y: &Vector);

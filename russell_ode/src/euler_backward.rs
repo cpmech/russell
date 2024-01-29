@@ -86,8 +86,13 @@ where
     F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
-    /// Returns an access to the benchmark structure
-    fn bench(&mut self) -> &mut BenchInfo {
+    /// Returns an access to the benchmark object
+    fn bench(&self) -> &BenchInfo {
+        &self.bench
+    }
+
+    /// Returns a mutable access to the benchmark structure
+    fn bench_mut(&mut self) -> &mut BenchInfo {
         &mut self.bench
     }
 

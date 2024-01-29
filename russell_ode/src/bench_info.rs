@@ -20,7 +20,7 @@ pub struct BenchInfo {
     pub n_rejected_steps: usize,
 
     /// Number of matrix assemblage/factorization
-    pub n_matrix_factorization: usize,
+    pub n_factorization: usize,
 
     /// Last number of iterations
     pub n_iterations_last: usize,
@@ -62,7 +62,7 @@ impl BenchInfo {
             n_performed_steps: 0,
             n_accepted_steps: 0,
             n_rejected_steps: 0,
-            n_matrix_factorization: 0,
+            n_factorization: 0,
             n_iterations_last: 0,
             n_iterations_max: 0,
             h_optimal: 0.0,
@@ -86,7 +86,7 @@ impl BenchInfo {
         self.n_performed_steps = 0;
         self.n_accepted_steps = 0;
         self.n_rejected_steps = 0;
-        self.n_matrix_factorization = 0;
+        self.n_factorization = 0;
         self.n_iterations_last = 0;
         self.n_iterations_max = 0;
         self.h_optimal = 0.0;
@@ -160,7 +160,7 @@ impl fmt::Display for BenchInfo {
             self.n_performed_steps,
             self.n_accepted_steps,
             self.n_rejected_steps,
-            self.n_matrix_factorization,
+            self.n_factorization,
             self.n_iterations_last,
             self.n_iterations_max,
             self.h_optimal,

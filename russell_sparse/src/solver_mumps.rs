@@ -193,7 +193,7 @@ impl SolverMUMPS {
                 determinant_exponent: 0.0,
                 error_analysis_option: 0,
                 error_analysis_array_len_8: vec![0.0; 8],
-                stopwatch: Stopwatch::new(""),
+                stopwatch: Stopwatch::new(),
                 time_initialize_ns: 0,
                 time_factorize_ns: 0,
                 time_solve_ns: 0,

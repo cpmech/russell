@@ -69,11 +69,11 @@ impl BenchInfo {
             nanos_factor_max: 0,
             nanos_lin_sol_max: 0,
             nanos_total: 0,
-            sw_step: Stopwatch::new(""),
-            sw_jacobian: Stopwatch::new(""),
-            sw_factor: Stopwatch::new(""),
-            sw_lin_sol: Stopwatch::new(""),
-            sw_total: Stopwatch::new(""),
+            sw_step: Stopwatch::new(),
+            sw_jacobian: Stopwatch::new(),
+            sw_factor: Stopwatch::new(),
+            sw_lin_sol: Stopwatch::new(),
+            sw_total: Stopwatch::new(),
         }
     }
 

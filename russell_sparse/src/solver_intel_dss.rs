@@ -113,7 +113,7 @@ impl SolverIntelDSS {
                 initialized_nnz: 0,
                 determinant_coefficient: 0.0,
                 determinant_exponent: 0.0,
-                stopwatch: Stopwatch::new(""),
+                stopwatch: Stopwatch::new(),
                 time_initialize_ns: 0,
                 time_factorize_ns: 0,
                 time_solve_ns: 0,

@@ -98,7 +98,7 @@ fn main() -> Result<(), StrError> {
     stats.requests.mumps_num_threads = params.mumps_num_threads;
 
     // read the matrix
-    let mut sw = Stopwatch::new("");
+    let mut sw = Stopwatch::new();
     let coo = read_matrix_market(&opt.matrix_market_file, handling, one_based)?;
     stats.time_nanoseconds.read_matrix = sw.stop();
 

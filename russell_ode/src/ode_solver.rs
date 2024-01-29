@@ -32,12 +32,6 @@ pub struct OdeSolver<'a, A> {
 
     /// Holds a pointer to the actual ODE system solver
     actual: Box<dyn NumSolver<A> + 'a>,
-
-    /// Collects the number of steps, successful or not
-    n_performed_steps: usize,
-
-    /// Collects the number of rejected steps
-    n_rejected_steps: usize,
 }
 
 impl<'a, A> OdeSolver<'a, A> {
@@ -68,13 +62,7 @@ impl<'a, A> OdeSolver<'a, A> {
         } else {
             Box::new(ExplicitRungeKutta::new(params, system)?)
         };
-        Ok(OdeSolver {
-            params,
-            ndim,
-            actual,
-            n_performed_steps: 0,
-            n_rejected_steps: 0,
-        })
+        Ok(OdeSolver { params, ndim, actual })
     }
 
     /// Solves the ODE system
@@ -143,10 +131,9 @@ impl<'a, A> OdeSolver<'a, A> {
         };
         assert!(h > 0.0);
 
-        // restart variables
+        // reset variables
+        self.actual.bench().reset();
         self.actual.initialize(x0, y0);
-        self.n_performed_steps = 0;
-        self.n_rejected_steps = 0;
 
         // current values
         let mut x = x0; // will become x1 at the end
@@ -157,9 +144,12 @@ impl<'a, A> OdeSolver<'a, A> {
             const IGNORED: f64 = 0.0;
             let nstep = f64::ceil((x1 - x) / h) as usize;
             for step in 0..nstep {
+                // benchmark
+                self.actual.bench().sw_step.reset();
+                self.actual.bench().n_performed_steps += 1;
+
                 // step
                 self.actual.step(x, &y, h, args)?;
-                self.n_performed_steps += 1;
 
                 // update x
                 x = ((step + 1) as f64) * h;
@@ -167,12 +157,17 @@ impl<'a, A> OdeSolver<'a, A> {
                 // update y
                 self.actual.accept(y, x, h, IGNORED, IGNORED, args)?;
 
+                // benchmark
+                self.actual.bench().n_accepted_steps += 1;
+                self.actual.bench().stop_sw_step();
+
                 // output
                 let stop = (output_step)(step, h, x, y)?;
                 if stop {
-                    return Ok(());
+                    break;
                 }
             }
+            self.actual.bench().stop_sw_total();
             return Ok(());
         }
 

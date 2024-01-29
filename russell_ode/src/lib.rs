@@ -6,6 +6,7 @@
 pub type StrError = &'static str;
 
 mod auxiliary;
+mod bench_info;
 mod constants;
 mod enums;
 mod euler_backward;
@@ -17,6 +18,7 @@ mod ode_solver;
 mod ode_system;
 mod samples;
 pub use crate::auxiliary::*;
+pub use crate::bench_info::*;
 pub use crate::constants::*;
 pub use crate::enums::*;
 use crate::euler_backward::*;

@@ -1,8 +1,11 @@
-use crate::StrError;
+use crate::{BenchInfo, StrError};
 use russell_lab::Vector;
 
 /// Defines the numerical solver
 pub(crate) trait NumSolver<A> {
+    /// Returns an access to the benchmark object
+    fn bench(&mut self) -> &mut BenchInfo;
+
     /// Initializes the internal variables
     fn initialize(&mut self, x: f64, y: &Vector);
 

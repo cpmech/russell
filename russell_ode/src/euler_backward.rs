@@ -151,43 +151,43 @@ where
             if r_norm < self.params.fnewt {
                 break;
             }
-        }
 
-        // compute K matrix (augmented Jacobian)
-        if traditional_newton || self.first_step {
-            // benchmark
-            self.bench.sw_jacobian.reset();
-            self.bench.n_jacobian_eval += 1;
+            // compute K matrix (augmented Jacobian)
+            if traditional_newton || self.first_step {
+                // benchmark
+                self.bench.sw_jacobian.reset();
+                self.bench.n_jacobian_eval += 1;
 
-            // calculate J_new := h J
-            let kk = self.kk.get_coo_mut()?;
-            if self.system.jac_numerical {
-                self.system.numerical_jacobian(kk, x_new, y_new, &self.k, h, args)?;
-            } else {
-                (self.system.jacobian)(kk, x_new, y_new, h, args)?;
+                // calculate J_new := h J
+                let kk = self.kk.get_coo_mut()?;
+                if self.system.jac_numerical {
+                    self.system.numerical_jacobian(kk, x_new, y_new, &self.k, h, args)?;
+                } else {
+                    (self.system.jacobian)(kk, x_new, y_new, h, args)?;
+                }
+
+                // add diagonal entries => calculate K = h J_new - I
+                for i in 0..self.system.ndim {
+                    kk.put(i, i, -1.0).unwrap();
+                }
+
+                // benchmark
+                self.bench.stop_sw_jacobian();
+
+                // perform factorization
+                self.bench.sw_factor.reset();
+                self.solver.actual.factorize(&mut self.kk, self.params.lin_sol_params)?;
+                self.bench.stop_sw_factor();
             }
 
-            // add diagonal entries => calculate K = h J_new - I
-            for i in 0..self.system.ndim {
-                kk.put(i, i, -1.0).unwrap();
-            }
+            // solve the linear system
+            self.bench.sw_lin_sol.reset();
+            self.solver.actual.solve(&mut self.dy, &self.kk, &self.r, false)?;
+            self.bench.stop_sw_lin_sol();
 
-            // benchmark
-            self.bench.stop_sw_jacobian();
-
-            // perform factorization
-            self.bench.sw_factor.reset();
-            self.solver.actual.factorize(&mut self.kk, self.params.lin_sol_params)?;
-            self.bench.stop_sw_factor();
+            // update y
+            vec_update(y_new, 1.0, &self.dy).unwrap(); // y := y + δy
         }
-
-        // solve the linear system
-        self.bench.sw_lin_sol.reset();
-        self.solver.actual.solve(&mut self.dy, &self.kk, &self.r, false)?;
-        self.bench.stop_sw_lin_sol();
-
-        // update y
-        vec_update(y_new, 1.0, &self.dy).unwrap(); // y := y + δy
 
         // done
         self.bench.update_n_iterations_max();

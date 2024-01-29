@@ -11,7 +11,7 @@ pub fn no_jacobian<A>(
     _multiplier: f64,
     _args: &mut A,
 ) -> Result<(), StrError> {
-    Err("not available")
+    Err("Jacobian function is not available")
 }
 
 /// Defines the system of ordinary differential equations (ODEs)
@@ -194,7 +194,10 @@ mod tests {
         // call jacobian function
         let mut jj = CooMatrix::new(2, 2, 2, None, false).unwrap();
         let m = 1.0;
-        assert_eq!((ode.jacobian)(&mut jj, x, &y, m, &mut args), Err("not available"));
+        assert_eq!(
+            (ode.jacobian)(&mut jj, x, &y, m, &mut args),
+            Err("Jacobian function is not available")
+        );
         // check
         println!("n_function_eval = {}", n_function_eval);
         assert_eq!(n_function_eval, 1);

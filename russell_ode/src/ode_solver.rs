@@ -138,6 +138,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
         // reset variables
         self.actual.bench_mut().reset();
+        self.actual.bench_mut().h_optimal = h;
         self.actual.initialize(x0, y0);
 
         // current values

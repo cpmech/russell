@@ -203,8 +203,7 @@ pub fn output_dense_none(
 #[cfg(test)]
 mod tests {
     use super::{output_dense_none, OdeSolver};
-    use crate::N_EQUAL_STEPS;
-    use crate::{no_jacobian, Method, OdeParams, OdeSystem};
+    use crate::{no_jacobian, HasJacobian, Method, OdeParams, OdeSystem, N_EQUAL_STEPS};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
@@ -223,6 +222,7 @@ mod tests {
                 Ok(())
             },
             no_jacobian,
+            HasJacobian::No,
             true,
             None,
             None,

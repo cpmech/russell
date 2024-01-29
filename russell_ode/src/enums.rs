@@ -1,3 +1,9 @@
+/// Indicates whether the analytical Jacobian is available or not
+pub enum HasJacobian {
+    Yes,
+    No,
+}
+
 /// Holds information about the numerical method to solve (approximate) ODEs
 #[derive(Clone, Copy, Debug)]
 pub struct Information {

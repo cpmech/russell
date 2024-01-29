@@ -1,9 +1,11 @@
-use crate::StrError;
+use crate::{HasJacobian, StrError};
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, Symmetry};
 use std::marker::PhantomData;
 
 /// Returns an error to indicate that the Jacobian function is not available
+///
+/// **Note:** Use this function with [HasJacobian::No]
 pub fn no_jacobian<A>(
     _jj: &mut CooMatrix,
     _x: f64,
@@ -11,7 +13,7 @@ pub fn no_jacobian<A>(
     _multiplier: f64,
     _args: &mut A,
 ) -> Result<(), StrError> {
-    Err("Jacobian function is not available")
+    Err("analytical Jacobian is not available")
 }
 
 /// Defines the system of ordinary differential equations (ODEs)
@@ -28,9 +30,9 @@ pub fn no_jacobian<A>(
 /// The Jacobian is defined by:
 ///
 /// ```text
-/// ∂{f}
-/// ———— = [J](x, {y})
-/// ∂{y}
+///               ∂{f}
+/// [J](x, {y}) = ————
+///               ∂{y}
 /// where [J] is the Jacobian matrix
 /// ```
 pub struct OdeSystem<'a, F, J, A>
@@ -47,7 +49,10 @@ where
     /// Jacobian function
     pub(crate) jacobian: J,
 
-    /// Use numerical Jacobian
+    /// Indicates whether the analytical Jacobian is available or not
+    pub(crate) jac_available: bool,
+
+    /// Indicates to use the numerical Jacobian, even if the analytical Jacobian is available
     pub(crate) jac_numerical: bool,
 
     /// Number of non-zeros in the Jacobian matrix
@@ -71,34 +76,59 @@ where
     F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
+    /// Allocates a new instance
+    ///
+    /// # Input
+    ///
+    /// * `ndim` -- dimension of the ODE system (number of equations)
+    /// * `function` -- implements the function: `dy/dx = f(x, y)`
+    /// * `jacobian` -- implements the Jacobian: `J = df/dy`
+    /// * `has_jacobian` -- indicates that the analytical Jacobian is available (input by `jacobian`)
+    /// * `use_num_jacobian` -- tells the solver to use the numerical Jacobian, even if the analytical one is available
+    /// * `jac_nnz` -- the number of non-zeros in the Jacobian; use None to indicate a full matrix (i.e., nnz = ndim * ndim)
+    /// * `jac_symmetry` -- specifies the type of symmetry representation for the Jacobian matrix
     pub fn new(
         ndim: usize,
         function: F,
         jacobian: J,
-        jac_numerical: bool,
+        has_ana_jacobian: HasJacobian,
+        use_num_jacobian: bool,
         jac_nnz: Option<usize>,
         jac_symmetry: Option<Symmetry>,
     ) -> Self
     where
         F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     {
+        let (jac_available, jac_numerical) = match has_ana_jacobian {
+            HasJacobian::No => (false, true),
+            HasJacobian::Yes => (true, use_num_jacobian),
+        };
         OdeSystem {
             ndim,
             function,
             jacobian,
+            jac_available,
             jac_numerical,
             jac_nnz: if let Some(n) = jac_nnz { n } else { ndim * ndim },
             jac_symmetry,
             mass_matrix: None,
-            work: if jac_numerical {
-                Vector::new(ndim)
-            } else {
-                Vector::new(0)
-            },
+            work: Vector::new(ndim),
             phantom: PhantomData,
         }
     }
 
+    /// Sets whether the solver should use the numerical Jacobian or not
+    ///
+    /// **Note:** The use of numerical Jacobian cannot be disabled if the analytical Jacobian is not available
+    pub fn set_use_num_jacobian(&mut self, use_num_jacobian: bool) -> Result<(), StrError> {
+        if !use_num_jacobian && !self.jac_available {
+            return Err("cannot disable numerical Jacobian because analytical Jacobian is not available");
+        }
+        self.jac_numerical = use_num_jacobian;
+        Ok(())
+    }
+
+    /// Specifies the mass matrix
     pub fn set_mass_matrix(&mut self, mass: &'a CooMatrix) {
         self.mass_matrix = Some(mass);
     }
@@ -160,6 +190,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::{no_jacobian, OdeSystem};
+    use crate::HasJacobian;
     use russell_lab::Vector;
     use russell_sparse::CooMatrix;
 
@@ -182,6 +213,7 @@ mod tests {
                 Ok(())
             },
             no_jacobian,
+            HasJacobian::No,
             true,
             None,
             None,
@@ -196,7 +228,7 @@ mod tests {
         let m = 1.0;
         assert_eq!(
             (ode.jacobian)(&mut jj, x, &y, m, &mut args),
-            Err("Jacobian function is not available")
+            Err("analytical Jacobian is not available")
         );
         // check
         println!("n_function_eval = {}", n_function_eval);
@@ -234,6 +266,7 @@ mod tests {
                 args.more_data_goes_here_jj = true;
                 Ok(())
             },
+            HasJacobian::Yes,
             false,
             Some(2),
             None,

@@ -1,5 +1,5 @@
-use crate::OdeSystem;
 use crate::StrError;
+use crate::{HasJacobian, OdeSystem};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 
@@ -38,6 +38,7 @@ impl Samples {
                 jj.put(0, 0, multiplier * L)?;
                 Ok(())
             },
+            HasJacobian::Yes,
             false,
             None,
             None,
@@ -102,6 +103,7 @@ impl Samples {
                 jj.put(1, 1, multiplier * (1.0 - y[0] * y[0]) / eps)?;
                 Ok(())
             },
+            HasJacobian::Yes,
             false,
             Some(3),
             None,

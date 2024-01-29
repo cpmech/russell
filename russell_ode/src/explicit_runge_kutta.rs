@@ -554,8 +554,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::no_jacobian;
+    use super::ExplicitRungeKutta;
+    use crate::{no_jacobian, HasJacobian, Method, OdeParams, OdeSystem};
     use russell_lab::approx_eq;
 
     #[test]
@@ -566,7 +566,15 @@ mod tests {
         for method in staged {
             println!("\n... {:?} ...", method);
             let params = OdeParams::new(*method, None, None);
-            let system = OdeSystem::new(1, |_, _, _, _args: &mut Args| Ok(()), no_jacobian, true, None, None);
+            let system = OdeSystem::new(
+                1,
+                |_, _, _, _args: &mut Args| Ok(()),
+                no_jacobian,
+                HasJacobian::No,
+                true,
+                None,
+                None,
+            );
             let erk = ExplicitRungeKutta::new(&params, system).unwrap();
             let nstage = erk.nstage;
             assert_eq!(erk.aa.dims(), (nstage, nstage));

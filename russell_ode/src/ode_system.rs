@@ -45,14 +45,14 @@ where
     F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
-    /// System dimension (read-only)
-    pub ndim: usize,
+    /// System dimension
+    pub(crate) ndim: usize,
 
-    /// ODE system function (read-only)
-    pub function: F,
+    /// ODE system function
+    pub(crate) function: F,
 
-    /// Jacobian function (read-only)
-    pub jacobian: J,
+    /// Jacobian function
+    pub(crate) jacobian: J,
 
     /// Indicates whether the analytical Jacobian is available or not
     pub(crate) jac_available: bool,
@@ -138,31 +138,17 @@ where
         self.mass_matrix = Some(mass);
     }
 
+    /// Returns the dimension of the ODE system
+    pub fn get_ndim(&self) -> usize {
+        self.ndim
+    }
+
     /// Computes the numerical Jacobian
     ///
     /// ```text
     /// ∂{f}                          Δfᵢ
     /// ———— = [J](x, {y})      Jᵢⱼ ≈ ———
     /// ∂{y}                          Δyⱼ
-    /// ```
-    ///
-    /// N = ndim - 1
-    ///
-    /// ```text
-    /// Δf0     Δf0     Δf0           Δf0
-    /// ———     ———     ———    ···    ———
-    /// Δy0     Δy1     Δy2           ΔyN
-    ///
-    /// Δf1     Δf1     fΔ1           Δf1
-    /// ———     ———     ———    ···    ———
-    /// Δy0     Δy1     Δy2           ΔyN
-    ///
-    ///                ···
-    ///
-    /// ΔfN     ∂fN     ΔfN           ΔfN
-    /// ———     ———     ———    ···    ———
-    /// Δy0     Δy1     Δy2           ΔyN
-    ///
     /// ```
     pub(crate) fn numerical_jacobian(
         &mut self,

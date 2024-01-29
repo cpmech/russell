@@ -4,7 +4,7 @@ use russell_sparse::CooMatrix;
 
 /// Returns an error to indicate that the Jacobian function is not available
 ///
-/// **Note:** Use this function with [HasJacobian::No]
+/// **Note:** Use this function with [crate::HasJacobian::No]
 pub fn no_jacobian<A>(
     _jj: &mut CooMatrix,
     _x: f64,

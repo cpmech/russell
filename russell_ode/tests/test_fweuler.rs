@@ -4,7 +4,7 @@ use russell_ode::{no_dense_output, no_step_output, Method, OdeParams, OdeSolver,
 #[test]
 fn test_fweuler_hairer_wanner_eq1() {
     let (system, mut control, mut args) = Samples::hairer_wanner_eq1();
-    let ndim = system.ndim;
+    let ndim = system.get_ndim();
     let params = OdeParams::new(Method::FwEuler, None, None);
     let mut solver = OdeSolver::new(&params, system).unwrap();
     solver

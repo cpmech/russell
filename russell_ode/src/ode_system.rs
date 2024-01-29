@@ -92,6 +92,10 @@ where
     /// * `use_num_jacobian` -- tells the solver to use the numerical Jacobian, even if the analytical one is available
     /// * `jac_nnz` -- the number of non-zeros in the Jacobian; use None to indicate a full matrix (i.e., nnz = ndim * ndim)
     /// * `jac_symmetry` -- specifies the type of symmetry representation for the Jacobian matrix
+    ///
+    /// # Generics
+    ///
+    /// See [OdeSystem] for an explanation of the generic parameters.
     pub fn new(
         ndim: usize,
         function: F,

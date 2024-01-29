@@ -154,6 +154,8 @@ where
     /// ———— = [J](x, {y})      Jᵢⱼ ≈ ———
     /// ∂{y}                          Δyⱼ
     /// ```
+    ///
+    /// **Note:** Will call `function` ndim times.
     pub(crate) fn numerical_jacobian(
         &mut self,
         jj: &mut CooMatrix,

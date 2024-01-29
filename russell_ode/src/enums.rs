@@ -34,7 +34,10 @@ pub struct Information {
 ///
 /// 1. E. Hairer, S. P. Nørsett, G. Wanner (2008) Solving Ordinary Differential Equations I.
 ///    Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
-///    in Computational Mathematics ISSN 0179-3632, 528p
+///    in Computational Mathematics, 528p
+/// 2. E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
+///    Stiff and Differential-Algebraic Problems. Second Revised Edition.
+///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Method {
     /// Radau method (Radau IIA) (implicit, order 5, embedded)

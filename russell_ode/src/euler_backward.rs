@@ -122,6 +122,7 @@ where
         vec_copy(y_new, &y).unwrap();
 
         // perform iterations
+        let mut converged = false;
         self.bench.n_iterations_last = 0;
         for _ in 0..self.params.NmaxIt {
             // benchmark
@@ -149,6 +150,7 @@ where
 
             // check convergence
             if r_norm < self.params.fnewt {
+                converged = true;
                 break;
             }
 
@@ -187,6 +189,11 @@ where
 
             // update y
             vec_update(y_new, 1.0, &self.dy).unwrap(); // y := y + δy
+        }
+
+        // check
+        if !converged {
+            return Err("Newton-Raphson method did not converge");
         }
 
         // done

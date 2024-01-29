@@ -178,7 +178,6 @@ where
 
                 // perform factorization
                 self.bench.sw_factor.reset();
-                self.bench.n_factorization += 1;
                 self.solver.actual.factorize(&mut self.kk, self.params.lin_sol_params)?;
                 self.bench.stop_sw_factor();
             }

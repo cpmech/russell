@@ -31,7 +31,6 @@ fn test_bweuler_hairer_wanner_eq1() {
     assert_eq!(b.n_performed_steps, 40);
     assert_eq!(b.n_accepted_steps, 40);
     assert_eq!(b.n_rejected_steps, 0);
-    assert_eq!(b.n_factorization, 40);
     assert_eq!(b.n_iterations_last, 2);
     assert_eq!(b.n_iterations_max, 2);
     assert_eq!(b.h_optimal, control.h_equal.unwrap());

@@ -5,10 +5,19 @@ use russell_sparse::CooMatrix;
 
 /// Holds the simulation data corresponding to a sample ODE problem
 pub struct SampleSimData<'a> {
+    /// Holds the initial x
     pub x0: f64,
+
+    /// Holds the initial y
     pub y0: Vector,
+
+    /// Holds the final x
     pub x1: f64,
+
+    /// Holds the stepsize for simulations with equal-steps
     pub h_equal: Option<f64>,
+
+    /// Holds the analytical solution `y(x)`
     pub y_analytical: Option<Box<dyn 'a + FnMut(&mut Vector, f64)>>,
 }
 

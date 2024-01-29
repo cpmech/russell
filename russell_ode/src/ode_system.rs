@@ -3,19 +3,6 @@ use russell_lab::Vector;
 use russell_sparse::{CooMatrix, Symmetry};
 use std::marker::PhantomData;
 
-/// Returns an error to indicate that the Jacobian function is not available
-///
-/// **Note:** Use this function with [HasJacobian::No]
-pub fn no_jacobian<A>(
-    _jj: &mut CooMatrix,
-    _x: f64,
-    _y: &Vector,
-    _multiplier: f64,
-    _args: &mut A,
-) -> Result<(), StrError> {
-    Err("analytical Jacobian is not available")
-}
-
 /// Defines the system of ordinary differential equations (ODEs)
 ///
 /// The system is defined by:
@@ -58,14 +45,14 @@ where
     F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
-    /// System dimension
-    pub(crate) ndim: usize,
+    /// System dimension (read-only)
+    pub ndim: usize,
 
-    /// ODE system function
-    pub(crate) function: F,
+    /// ODE system function (read-only)
+    pub function: F,
 
-    /// Jacobian function
-    pub(crate) jacobian: J,
+    /// Jacobian function (read-only)
+    pub jacobian: J,
 
     /// Indicates whether the analytical Jacobian is available or not
     pub(crate) jac_available: bool,
@@ -207,8 +194,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{no_jacobian, OdeSystem};
-    use crate::HasJacobian;
+    use super::OdeSystem;
+    use crate::{no_jacobian, HasJacobian};
     use russell_lab::Vector;
     use russell_sparse::CooMatrix;
 

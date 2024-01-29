@@ -5,6 +5,7 @@
 /// Defines a type alias for the error type as a static string
 pub type StrError = &'static str;
 
+mod auxiliary;
 mod constants;
 mod enums;
 mod euler_backward;
@@ -15,6 +16,7 @@ mod ode_params;
 mod ode_solver;
 mod ode_system;
 mod samples;
+pub use crate::auxiliary::*;
 pub use crate::constants::*;
 pub use crate::enums::*;
 use crate::euler_backward::*;

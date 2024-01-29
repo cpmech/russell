@@ -101,8 +101,8 @@ impl<'a, A> OdeSolver<'a, A> {
         y0: &mut Vector,
         x0: f64,
         x1: f64,
-        args: &mut A,
         h_equal: Option<f64>,
+        args: &mut A,
         mut output_step: S,
         mut _output_dense: D,
     ) -> Result<(), StrError>
@@ -181,29 +181,12 @@ impl<'a, A> OdeSolver<'a, A> {
     }
 }
 
-/// Disables the output of accepted steps
-pub fn no_step_output(_step: usize, _h: f64, _x: f64, _y: &Vector) -> Result<bool, StrError> {
-    Ok(false)
-}
-
-/// Disables the dense output
-pub fn np_dense_output(
-    _y_out: &mut Vector,
-    _x_out: f64,
-    _step: usize,
-    _h: f64,
-    _x: f64,
-    _y: &Vector,
-) -> Result<bool, StrError> {
-    Ok(false)
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::{np_dense_output, OdeSolver};
-    use crate::{no_jacobian, HasJacobian, Method, OdeParams, OdeSystem, N_EQUAL_STEPS};
+    use super::OdeSolver;
+    use crate::{no_dense_output, no_jacobian, HasJacobian, Method, OdeParams, OdeSystem, N_EQUAL_STEPS};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
@@ -254,7 +237,7 @@ mod tests {
         let mut solver = OdeSolver::new(&params, system).unwrap();
         let xf = 1.0;
         solver
-            .solve(&mut y0, x0, xf, &mut args, None, output_step, np_dense_output)
+            .solve(&mut y0, x0, xf, None, &mut args, output_step, no_dense_output)
             .unwrap();
 
         // check
@@ -293,7 +276,7 @@ mod tests {
         let h_equal = Some(0.3);
         let xf = 1.2; // => will generate 4 steps
         solver
-            .solve(&mut y0, x0, xf, &mut args, h_equal, output_step, np_dense_output)
+            .solve(&mut y0, x0, xf, h_equal, &mut args, output_step, no_dense_output)
             .unwrap();
 
         // check again

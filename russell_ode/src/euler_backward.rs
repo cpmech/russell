@@ -162,7 +162,7 @@ where
 
                 // calculate J_new := h J
                 let kk = self.kk.get_coo_mut()?;
-                if self.system.jac_numerical {
+                if self.params.use_numerical_jacobian || !self.system.jac_available {
                     self.bench.n_function_eval += ndim;
                     self.system.numerical_jacobian(kk, x_new, y_new, &self.k, h, args)?;
                 } else {

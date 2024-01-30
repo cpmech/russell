@@ -580,7 +580,6 @@ mod tests {
                 |_, _, _, _args: &mut Args| Ok(()),
                 no_jacobian,
                 HasJacobian::No,
-                true,
                 None,
                 None,
             );

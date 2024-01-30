@@ -64,6 +64,9 @@ pub struct OdeParams {
     /// use constant tangent (Jacobian) in BwEuler
     pub CteTg: bool,
 
+    /// Use numerical Jacobian, even if analytical Jacobian is available
+    pub use_numerical_jacobian: bool,
+
     /// use RMS norm instead of Euclidean in BwEuler
     pub UseRmsNorm: bool,
 
@@ -140,6 +143,7 @@ impl OdeParams {
             LerrStrat: 3,
             GoChan: true,
             CteTg: false,
+            use_numerical_jacobian: false,
             UseRmsNorm: true,
             Verbose: false,
             ZeroTrial: false,

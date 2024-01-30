@@ -57,9 +57,6 @@ where
     /// Indicates whether the analytical Jacobian is available or not
     pub(crate) jac_available: bool,
 
-    /// Indicates to use the numerical Jacobian, even if the analytical Jacobian is available
-    pub(crate) jac_numerical: bool,
-
     /// Number of non-zeros in the Jacobian matrix
     pub(crate) jac_nnz: usize,
 
@@ -89,7 +86,6 @@ where
     /// * `function` -- implements the function: `dy/dx = f(x, y)`
     /// * `jacobian` -- implements the Jacobian: `J = df/dy`
     /// * `has_jacobian` -- indicates that the analytical Jacobian is available (input by `jacobian`)
-    /// * `use_num_jacobian` -- tells the solver to use the numerical Jacobian, even if the analytical one is available
     /// * `jac_nnz` -- the number of non-zeros in the Jacobian; use None to indicate a full matrix (i.e., nnz = ndim * ndim)
     /// * `jac_symmetry` -- specifies the type of symmetry representation for the Jacobian matrix
     ///
@@ -101,40 +97,27 @@ where
         function: F,
         jacobian: J,
         has_ana_jacobian: HasJacobian,
-        use_num_jacobian: bool,
         jac_nnz: Option<usize>,
         jac_symmetry: Option<Symmetry>,
     ) -> Self
     where
         F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     {
-        let (jac_available, jac_numerical) = match has_ana_jacobian {
-            HasJacobian::No => (false, true),
-            HasJacobian::Yes => (true, use_num_jacobian),
+        let jac_available = match has_ana_jacobian {
+            HasJacobian::Yes => true,
+            HasJacobian::No => false,
         };
         OdeSystem {
             ndim,
             function,
             jacobian,
             jac_available,
-            jac_numerical,
             jac_nnz: if let Some(n) = jac_nnz { n } else { ndim * ndim },
             jac_symmetry,
             mass_matrix: None,
             work: Vector::new(ndim),
             phantom: PhantomData,
         }
-    }
-
-    /// Sets whether the solver should use the numerical Jacobian or not
-    ///
-    /// **Note:** The use of numerical Jacobian cannot be disabled if the analytical Jacobian is not available
-    pub fn set_use_num_jacobian(&mut self, use_num_jacobian: bool) -> Result<(), StrError> {
-        if !use_num_jacobian && !self.jac_available {
-            return Err("cannot disable numerical Jacobian because analytical Jacobian is not available");
-        }
-        self.jac_numerical = use_num_jacobian;
-        Ok(())
     }
 
     /// Specifies the mass matrix
@@ -211,7 +194,6 @@ mod tests {
             },
             no_jacobian,
             HasJacobian::No,
-            true,
             None,
             None,
         );
@@ -264,7 +246,6 @@ mod tests {
                 Ok(())
             },
             HasJacobian::Yes,
-            false,
             Some(2),
             None,
         );

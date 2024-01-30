@@ -207,7 +207,6 @@ mod tests {
             },
             no_jacobian,
             HasJacobian::No,
-            true,
             None,
             None,
         );

@@ -195,7 +195,6 @@ mod tests {
              Number of performed steps        = 0\n\
              Number of accepted steps         = 0\n\
              Number of rejected steps         = 0\n\
-             Number of matrix factorizations  = 0\n\
              Number of iterations (last step) = 0\n\
              Number of iterations (maximum)   = 0\n\
              Optimal stepsize (h)             = 0\n\

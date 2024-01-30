@@ -67,7 +67,6 @@ impl Samples {
                 Ok(())
             },
             HasJacobian::Yes,
-            false,
             None,
             None,
         );
@@ -141,7 +140,6 @@ impl Samples {
                 Ok(())
             },
             HasJacobian::Yes,
-            false,
             Some(3),
             None,
         );

@@ -38,10 +38,10 @@ fn test_bweuler_hairer_wanner_eq1() {
 
 #[test]
 fn test_bweuler_hairer_wanner_eq1_num_jac() {
-    let (mut system, mut control, mut args) = Samples::hairer_wanner_eq1();
-    system.set_use_num_jacobian(true).unwrap();
+    let (system, mut control, mut args) = Samples::hairer_wanner_eq1();
     let ndim = system.get_ndim();
-    let params = OdeParams::new(Method::BwEuler, None, None);
+    let mut params = OdeParams::new(Method::BwEuler, None, None);
+    params.use_numerical_jacobian = true;
     let mut solver = OdeSolver::new(&params, system).unwrap();
     solver
         .solve(

@@ -143,7 +143,7 @@ impl OdeParams {
             UseRmsNorm: true,
             Verbose: false,
             ZeroTrial: false,
-            StabBeta: 0.04,
+            StabBeta: 0.0,
             StiffNstp: 0,
             StiffRsMax: 0.5,
             StiffNyes: 15,

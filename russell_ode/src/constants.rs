@@ -1,6 +1,6 @@
 use russell_lab::math::SQRT_6;
 
-/// Default number of steps to use when the automatic sub-stepping is not available
+/// Default number of steps to use when the automatic stepping is not available
 pub const N_EQUAL_STEPS: usize = 10;
 
 // Runge-Kutta -- order 2 ---------------------------------------------------------------------

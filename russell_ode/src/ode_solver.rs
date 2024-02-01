@@ -89,7 +89,7 @@ impl<'a, A> OdeSolver<'a, A> {
     /// * `args` -- holds some extra arguments for the function `F` and jacobian `J`
     /// * `h_equal` -- a constant stepsize for solving with equal-steps; otherwise,
     ///   if possible, variable step sizes are automatically calculated. If automatic
-    ///   sub-stepping is not possible (e.g., the RK method is not embedded),
+    ///   stepping is not possible (e.g., the RK method is not embedded),
     ///   a constant (and equal) stepsize will be calculated for [N_EQUAL_STEPS] steps.
     /// * `output_step` -- handles the output of results during accepted steps
     /// * `output_dense` -- handles the dense output
@@ -188,7 +188,7 @@ impl<'a, A> OdeSolver<'a, A> {
         let mut success = false;
         let mut last_step = false;
 
-        // sub-stepping loop
+        // variable stepping loop
         for _ in 0..self.params.n_step_max {
             // benchmark
             self.work.bench.sw_step.reset();
@@ -278,7 +278,7 @@ impl<'a, A> OdeSolver<'a, A> {
         if success {
             Ok(())
         } else {
-            Err("sub-stepping did not converge")
+            Err("variable stepping did not converge")
         }
     }
 }

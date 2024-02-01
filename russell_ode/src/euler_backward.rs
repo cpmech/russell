@@ -1,5 +1,5 @@
 use crate::StrError;
-use crate::{BenchInfo, NumSolver, OdeParams, OdeSystem};
+use crate::{NumSolver, OdeParams, OdeSystem, Workspace};
 use russell_lab::{vec_copy, vec_update, Vector};
 use russell_sparse::{CooMatrix, Genie, LinSolver, SparseMatrix};
 use std::marker::PhantomData;
@@ -43,12 +43,6 @@ where
     /// Linear solver
     solver: LinSolver<'a>,
 
-    /// Indicates that the first step is being computed
-    first_step: bool,
-
-    /// Holds benchmark information
-    bench: BenchInfo,
-
     /// Handle generic argument
     phantom: PhantomData<A>,
 }
@@ -74,8 +68,6 @@ where
             dy: Vector::new(ndim),
             kk: SparseMatrix::new_coo(ndim, ndim, nnz, symmetry, one_based).unwrap(),
             solver: LinSolver::new(params.genie).unwrap(),
-            first_step: true,
-            bench: BenchInfo::new(),
             phantom: PhantomData,
         }
     }
@@ -86,21 +78,8 @@ where
     F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
-    /// Returns an access to the benchmark object
-    fn bench(&self) -> &BenchInfo {
-        &self.bench
-    }
-
-    /// Returns a mutable access to the benchmark structure
-    fn bench_mut(&mut self) -> &mut BenchInfo {
-        &mut self.bench
-    }
-
     /// Initializes the internal variables
     fn initialize(&mut self, _x: f64, y: &Vector) {
-        // reset variables
-        self.first_step = true;
-
         // first scaling vector
         for i in 0..self.system.ndim {
             self.scaling[i] = self.params.abs_tol + self.params.rel_tol * f64::abs(y[i]);
@@ -108,9 +87,7 @@ where
     }
 
     /// Calculates the quantities required to update x and y
-    ///
-    /// Returns the (`relative_error`, `stiffness_ratio`)
-    fn step(&mut self, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(f64, f64), StrError> {
+    fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {
         // auxiliary
         let traditional_newton = !self.params.CteTg;
         let ndim = self.system.ndim;
@@ -123,13 +100,13 @@ where
 
         // perform iterations
         let mut converged = false;
-        self.bench.n_iterations_last = 0;
+        work.bench.n_iterations_last = 0;
         for _ in 0..self.params.NmaxIt {
             // benchmark
-            self.bench.n_iterations_last += 1;
+            work.bench.n_iterations_last += 1;
 
             // calculate k_new
-            self.bench.n_function_eval += 1;
+            work.bench.n_function_eval += 1;
             (self.system.function)(&mut self.k, x_new, y_new, args)?; // k := f(x_new, y_new)
 
             // calculate the residual and its norm
@@ -155,15 +132,15 @@ where
             }
 
             // compute K matrix (augmented Jacobian)
-            if traditional_newton || self.first_step {
+            if traditional_newton || work.first_step {
                 // benchmark
-                self.bench.sw_jacobian.reset();
-                self.bench.n_jacobian_eval += 1;
+                work.bench.sw_jacobian.reset();
+                work.bench.n_jacobian_eval += 1;
 
                 // calculate J_new := h J
                 let kk = self.kk.get_coo_mut()?;
                 if self.params.use_numerical_jacobian || !self.system.jac_available {
-                    self.bench.n_function_eval += ndim;
+                    work.bench.n_function_eval += ndim;
                     self.system.numerical_jacobian(kk, x_new, y_new, &self.k, h, args)?;
                 } else {
                     (self.system.jacobian)(kk, x_new, y_new, h, args)?;
@@ -175,18 +152,18 @@ where
                 }
 
                 // benchmark
-                self.bench.stop_sw_jacobian();
+                work.bench.stop_sw_jacobian();
 
                 // perform factorization
-                self.bench.sw_factor.reset();
+                work.bench.sw_factor.reset();
                 self.solver.actual.factorize(&mut self.kk, self.params.lin_sol_params)?;
-                self.bench.stop_sw_factor();
+                work.bench.stop_sw_factor();
             }
 
             // solve the linear system
-            self.bench.sw_lin_sol.reset();
+            work.bench.sw_lin_sol.reset();
             self.solver.actual.solve(&mut self.dy, &self.kk, &self.r, false)?;
-            self.bench.stop_sw_lin_sol();
+            work.bench.stop_sw_lin_sol();
 
             // update y
             vec_update(y_new, 1.0, &self.dy).unwrap(); // y := y + δy
@@ -198,33 +175,25 @@ where
         }
 
         // done
-        self.bench.update_n_iterations_max();
-        self.first_step = false;
-        Ok((0.0, 0.0))
+        work.bench.update_n_iterations_max();
+        Ok(())
     }
 
     /// Accepts the update and computes the next stepsize
-    ///
-    /// Returns `stepsize_new`
     fn accept(
         &mut self,
+        _work: &mut Workspace,
         y: &mut Vector,
         _x: f64,
         _h: f64,
-        _relative_error: f64,
-        _previous_relative_error: f64,
         _args: &mut A,
-    ) -> Result<f64, StrError> {
+    ) -> Result<(), StrError> {
         vec_copy(y, &self.w).unwrap();
-        Ok(0.0)
+        Ok(())
     }
 
     /// Rejects the update
-    ///
-    /// Returns `stepsize_new`
-    fn reject(&mut self, _h: f64, _relative_error: f64) -> f64 {
-        0.0
-    }
+    fn reject(&mut self, _work: &mut Workspace, _h: f64) {}
 
     /// Computes the dense output
     fn dense_output(&self, _y_out: &mut Vector, _h: f64, _x: f64, _x_out: f64) {}

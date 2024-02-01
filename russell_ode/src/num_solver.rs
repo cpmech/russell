@@ -1,39 +1,20 @@
-use crate::{BenchInfo, StrError};
+use crate::StrError;
+use crate::Workspace;
 use russell_lab::Vector;
 
 /// Defines the numerical solver
 pub(crate) trait NumSolver<A> {
-    /// Returns an access to the benchmark object
-    fn bench(&self) -> &BenchInfo;
-
-    /// Returns a mutable access to the benchmark object
-    fn bench_mut(&mut self) -> &mut BenchInfo;
-
     /// Initializes the internal variables
     fn initialize(&mut self, x: f64, y: &Vector);
 
     /// Calculates the quantities required to update x and y
-    ///
-    /// Returns the (`relative_error`, `stiffness_ratio`)
-    fn step(&mut self, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(f64, f64), StrError>;
+    fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError>;
 
     /// Accepts the update and computes the next stepsize
-    ///
-    /// Returns `stepsize_new`
-    fn accept(
-        &mut self,
-        y: &mut Vector,
-        x: f64,
-        h: f64,
-        relative_error: f64,
-        previous_relative_error: f64,
-        args: &mut A,
-    ) -> Result<f64, StrError>;
+    fn accept(&mut self, work: &mut Workspace, y: &mut Vector, x: f64, h: f64, args: &mut A) -> Result<(), StrError>;
 
     /// Rejects the update
-    ///
-    /// Returns `stepsize_new`
-    fn reject(&mut self, h: f64, relative_error: f64) -> f64;
+    fn reject(&mut self, work: &mut Workspace, h: f64);
 
     /// Computes the dense output
     fn dense_output(&self, y_out: &mut Vector, h: f64, x: f64, x_out: f64);

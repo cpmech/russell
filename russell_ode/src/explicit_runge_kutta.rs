@@ -1,6 +1,6 @@
 use crate::constants::*;
 use crate::StrError;
-use crate::{BenchInfo, Information, Method, NumSolver, OdeParams, OdeSystem};
+use crate::{Information, Method, NumSolver, OdeParams, OdeSystem, Workspace};
 use russell_lab::{vec_copy, vec_update, Matrix, Vector};
 use russell_sparse::CooMatrix;
 use std::marker::PhantomData;
@@ -56,11 +56,8 @@ where
     /// Auxiliary variable: 1 / m_max
     d_max: f64,
 
-    /// Indicates that the step follows a reject
-    reject: bool,
-
-    /// Indicates that the first step is being computed
-    first_step: bool,
+    /// Stiffness ratio
+    stiffness_ratio: f64,
 
     /// Array of vectors holding the updates
     ///
@@ -83,9 +80,6 @@ where
 
     /// y values for dense output (len(kd)>0)
     yd: Option<Vector>,
-
-    /// Holds benchmark information
-    bench: BenchInfo,
 
     /// Handle generic argument
     phantom: PhantomData<A>,
@@ -195,15 +189,13 @@ where
             lund_factor,
             d_min: 1.0 / params.Mmin,
             d_max: 1.0 / params.Mmax,
-            reject: false,
-            first_step: true,
+            stiffness_ratio: 0.0,
             v: vec![Vector::new(ndim); nstage],
             k: vec![Vector::new(ndim); nstage],
             w: Vector::new(ndim),
             dense_out,
             kd,
             yd,
-            bench: BenchInfo::new(),
             phantom: PhantomData,
         })
     }
@@ -214,41 +206,21 @@ where
     F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
-    /// Returns an access to the benchmark object
-    fn bench(&self) -> &BenchInfo {
-        &self.bench
-    }
-
-    /// Returns a mutable access to the benchmark structure
-    fn bench_mut(&mut self) -> &mut BenchInfo {
-        &mut self.bench
-    }
-
     /// Initializes the internal variables
-    fn initialize(&mut self, _x: f64, _y: &Vector) {
-        self.reject = false;
-        self.first_step = true;
-    }
+    fn initialize(&mut self, _x: f64, _y: &Vector) {}
 
     /// Calculates the quantities required to update x and y
-    ///
-    /// Returns the (`relative_error`, `stiffness_ratio`)
-    fn step(&mut self, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(f64, f64), StrError> {
-        // output
-        let mut relative_error = 0.0;
-        let mut stiffness_ratio = 0.0;
-
+    fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {
         // auxiliary
         let k = &mut self.k;
         let v = &mut self.v;
 
         // compute k0 (otherwise, use k0 saved in accept_update)
-        if (self.first_step || !self.info.first_step_same_as_last) && !self.reject {
+        if (work.first_step || !self.info.first_step_same_as_last) && !work.reject_step {
             let u0 = x + h * self.cc[0];
-            self.bench.n_function_eval += 1;
+            work.bench.n_function_eval += 1;
             (self.system.function)(&mut k[0], u0, y, args)?; // k0 := f(ui,vi)
         }
-        self.first_step = false;
 
         // compute ki
         for i in 1..self.nstage {
@@ -257,7 +229,7 @@ where
             for j in 0..i {
                 vec_update(&mut v[i], h * self.aa.get(i, j), &k[j]).unwrap(); // vi += h ⋅ aij ⋅ kj
             }
-            self.bench.n_function_eval += 1;
+            work.bench.n_function_eval += 1;
             (self.system.function)(&mut k[i], ui, &v[i], args)?; // ki := f(ui,vi)
         }
 
@@ -269,7 +241,7 @@ where
                     self.w[m] += self.bb[i] * k[i][m] * h;
                 }
             }
-            return Ok((relative_error, stiffness_ratio));
+            return Ok(());
         }
 
         // auxiliary
@@ -308,11 +280,11 @@ where
             if den <= 0.0 {
                 den = 1.0;
             }
-            relative_error = f64::abs(h) * err_5 * f64::sqrt(1.0 / (dim * den));
+            work.relative_error = f64::abs(h) * err_5 * f64::sqrt(1.0 / (dim * den));
             if s_den > 0.0 {
-                stiffness_ratio = h * f64::sqrt(s_num / s_den);
+                self.stiffness_ratio = h * f64::sqrt(s_num / s_den);
             }
-            return Ok((relative_error, stiffness_ratio));
+            return Ok(());
         }
 
         // update, error and stiffness estimation
@@ -336,25 +308,15 @@ where
             s_num += dk * dk;
             s_den += dv * dv;
         }
-        relative_error = f64::max(f64::sqrt(sum / dim), 1.0e-10);
+        work.relative_error = f64::max(f64::sqrt(sum / dim), 1.0e-10);
         if s_den > 0.0 {
-            stiffness_ratio = h * f64::sqrt(s_num / s_den);
+            self.stiffness_ratio = h * f64::sqrt(s_num / s_den);
         }
-        Ok((relative_error, stiffness_ratio))
+        return Ok(());
     }
 
     /// Accepts the update and computes the next stepsize
-    ///
-    /// Returns `stepsize_new`
-    fn accept(
-        &mut self,
-        y: &mut Vector,
-        x: f64,
-        h: f64,
-        relative_error: f64,
-        previous_relative_error: f64,
-        args: &mut A,
-    ) -> Result<f64, StrError> {
+    fn accept(&mut self, work: &mut Workspace, y: &mut Vector, x: f64, h: f64, args: &mut A) -> Result<(), StrError> {
         // store data for future dense output (Dormand-Prince 5)
         if self.params.denseOut && self.params.method == Method::DoPri5 {
             let dd = self.dd.as_ref().unwrap();
@@ -401,7 +363,7 @@ where
                         + aad.get(0, 12) * k[11][m]);
             }
             let u = x + cd[0] * h;
-            self.bench.n_function_eval += 1;
+            work.bench.n_function_eval += 1;
             (self.system.function)(&mut kd[0], u, yd, args)?;
 
             // second function evaluation
@@ -417,7 +379,7 @@ where
                         + aad.get(1, 13) * kd[0][m]);
             }
             let u = x + cd[1] * h;
-            self.bench.n_function_eval += 1;
+            work.bench.n_function_eval += 1;
             (self.system.function)(&mut kd[1], u, yd, args)?;
 
             // next third function evaluation
@@ -433,7 +395,7 @@ where
                         + aad.get(2, 14) * kd[1][m]);
             }
             let u = x + cd[2] * h;
-            self.bench.n_function_eval += 1;
+            work.bench.n_function_eval += 1;
             (self.system.function)(&mut kd[2], u, yd, args)?;
 
             // final results
@@ -509,30 +471,27 @@ where
             }
         }
 
-        // return zero if not embedded
+        // handle not embedded methods
         if !self.info.embedded {
-            return Ok(0.0);
+            return Ok(());
         }
 
-        // estimate new stepsize
-        let mut d = f64::powf(relative_error, self.lund_factor);
+        // estimate the new stepsize
+        let mut d = f64::powf(work.relative_error, self.lund_factor);
         if self.params.StabBeta > 0.0 {
             // lund-stabilization
-            d = d / f64::powf(previous_relative_error, self.params.StabBeta);
+            d = d / f64::powf(work.previous_relative_error, self.params.StabBeta);
         }
         d = f64::max(self.d_max, f64::min(self.d_min, d / self.params.Mfac)); // we require fac1 <= h_new/h <= fac2
-        let stepsize_new = h / d;
-        Ok(stepsize_new)
+        work.stepsize_new = h / d;
+        Ok(())
     }
 
     /// Rejects the update
-    ///
-    /// Returns `stepsize_new`
-    fn reject(&mut self, h: f64, relative_error: f64) -> f64 {
+    fn reject(&mut self, work: &mut Workspace, h: f64) {
         // estimate new stepsize
-        let d = f64::powf(relative_error, self.lund_factor) / self.params.Mfac;
-        let stepsize_new = h / f64::min(self.d_min, d);
-        stepsize_new
+        let d = f64::powf(work.relative_error, self.lund_factor) / self.params.Mfac;
+        work.stepsize_new = h / f64::min(self.d_min, d);
     }
 
     /// Computes the dense output

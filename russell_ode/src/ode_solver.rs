@@ -1,6 +1,7 @@
 use crate::constants::N_EQUAL_STEPS;
-use crate::{BenchInfo, StrError};
-use crate::{EulerBackward, EulerForward, ExplicitRungeKutta, Method, NumSolver, OdeParams, OdeSystem};
+use crate::StrError;
+use crate::{Benchmark, EulerBackward, EulerForward, ExplicitRungeKutta, Workspace};
+use crate::{Method, NumSolver, OdeParams, OdeSystem};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 
@@ -32,6 +33,9 @@ pub struct OdeSolver<'a, A> {
 
     /// Holds a pointer to the actual ODE system solver
     actual: Box<dyn NumSolver<A> + 'a>,
+
+    /// Holds benchmark and work variables
+    work: Workspace,
 }
 
 impl<'a, A> OdeSolver<'a, A> {
@@ -62,12 +66,17 @@ impl<'a, A> OdeSolver<'a, A> {
         } else {
             Box::new(ExplicitRungeKutta::new(params, system)?)
         };
-        Ok(OdeSolver { params, ndim, actual })
+        Ok(OdeSolver {
+            params,
+            ndim,
+            actual,
+            work: Workspace::new(),
+        })
     }
 
     /// Returns some benchmarking data
-    pub fn bench(&self) -> &BenchInfo {
-        self.actual.bench()
+    pub fn bench(&self) -> &Benchmark {
+        &self.work.bench
     }
 
     /// Solves the ODE system
@@ -115,7 +124,7 @@ impl<'a, A> OdeSolver<'a, A> {
         let info = self.params.method.information();
 
         // initial stepsize
-        let (equal_stepping, h) = match h_equal {
+        let (equal_stepping, mut h) = match h_equal {
             Some(h_eq) => {
                 if h_eq < 0.0 {
                     return Err("h_equal must be greater than zero");
@@ -137,8 +146,8 @@ impl<'a, A> OdeSolver<'a, A> {
         assert!(h > 0.0);
 
         // reset variables
-        self.actual.bench_mut().reset();
-        self.actual.bench_mut().h_optimal = h;
+        self.work.reset();
+        self.work.bench.h_optimal = h;
         self.actual.initialize(x0, y0);
 
         // current values
@@ -147,25 +156,25 @@ impl<'a, A> OdeSolver<'a, A> {
 
         // equal-stepping loop
         if equal_stepping {
-            const IGNORED: f64 = 0.0;
             let nstep = f64::ceil((x1 - x) / h) as usize;
             for step in 0..nstep {
                 // benchmark
-                self.actual.bench_mut().sw_step.reset();
-                self.actual.bench_mut().n_performed_steps += 1;
+                self.work.bench.sw_step.reset();
+                self.work.bench.n_performed_steps += 1;
 
                 // step
-                self.actual.step(x, &y, h, args)?;
+                self.actual.step(&mut self.work, x, &y, h, args)?;
+                self.work.first_step = false;
 
                 // update x
                 x = ((step + 1) as f64) * h;
 
                 // update y
-                self.actual.accept(y, x, h, IGNORED, IGNORED, args)?;
+                self.actual.accept(&mut self.work, y, x, h, args)?;
 
                 // benchmark
-                self.actual.bench_mut().n_accepted_steps += 1;
-                self.actual.bench_mut().stop_sw_step();
+                self.work.bench.n_accepted_steps += 1;
+                self.work.bench.stop_sw_step();
 
                 // output
                 let stop = (output_step)(step, h, x, y)?;
@@ -173,11 +182,47 @@ impl<'a, A> OdeSolver<'a, A> {
                     break;
                 }
             }
-            self.actual.bench_mut().stop_sw_total();
+            self.work.bench.stop_sw_total();
             return Ok(());
         }
 
-        // variable steps
+        // variable steps: control variables
+        let h_total = x1 - x0;
+        let mut success = false;
+        let mut last_step = false;
+
+        // sub-stepping loop
+        for _ in 0..self.params.NmaxSS {
+            // benchmark
+            self.work.bench.sw_step.reset();
+            self.work.bench.n_performed_steps += 1;
+
+            // check successful completion
+            if x >= x1 {
+                success = true;
+                break;
+            }
+
+            // step
+            self.actual.step(&mut self.work, x, &y, h, args)?;
+
+            // handle diverging iterations
+            if self.work.iterations_diverging {
+                self.work.iterations_diverging = false;
+                self.work.reject_step = true;
+                last_step = false;
+                h *= self.work.h_multiplier_diverging;
+                continue;
+            }
+
+            // accept step
+            if self.work.relative_error < 1.0 {
+            } else { // reject step
+                 // reject step
+            }
+        }
+
+        // done
         Ok(())
     }
 }

@@ -6,7 +6,7 @@
 pub type StrError = &'static str;
 
 mod auxiliary;
-mod bench_info;
+mod benchmark;
 mod constants;
 mod enums;
 mod euler_backward;
@@ -17,8 +17,9 @@ mod ode_params;
 mod ode_solver;
 mod ode_system;
 mod samples;
+mod workspace;
 pub use crate::auxiliary::*;
-pub use crate::bench_info::*;
+pub use crate::benchmark::*;
 pub use crate::constants::*;
 pub use crate::enums::*;
 use crate::euler_backward::*;
@@ -29,6 +30,7 @@ pub use crate::ode_params::*;
 pub use crate::ode_solver::*;
 pub use crate::ode_system::*;
 pub use crate::samples::*;
+use crate::workspace::*;
 
 // run code from README file
 #[cfg(doctest)]

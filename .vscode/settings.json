@@ -48,6 +48,7 @@
     "lrhs",
     "lsol",
     "lwork",
+    "mdeuler",
     "memcheck",
     "Merson",
     "nelt",

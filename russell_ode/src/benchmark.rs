@@ -3,7 +3,7 @@ use std::fmt;
 
 /// Holds benchmark information
 #[derive(Clone, Copy, Debug)]
-pub struct BenchInfo {
+pub struct Benchmark {
     /// Number of calls to ODE system function
     pub n_function_eval: usize,
 
@@ -43,17 +43,26 @@ pub struct BenchInfo {
     /// Total nanoseconds spent on the solution
     pub nanos_total: u128,
 
+    /// Holds a stopwatch for measuring the elapsed time during a step
     pub(crate) sw_step: Stopwatch,
+
+    /// Holds a stopwatch for measuring the elapsed time during the Jacobian computation
     pub(crate) sw_jacobian: Stopwatch,
+
+    /// Holds a stopwatch for measuring the elapsed time during the coefficient matrix factorization
     pub(crate) sw_factor: Stopwatch,
+
+    /// Holds a stopwatch for measuring the elapsed time during the solution of the linear system
     pub(crate) sw_lin_sol: Stopwatch,
+
+    /// Holds a stopwatch for measuring the total elapsed time
     pub(crate) sw_total: Stopwatch,
 }
 
-impl BenchInfo {
+impl Benchmark {
     /// Allocates a new instance
     pub fn new() -> Self {
-        BenchInfo {
+        Benchmark {
             n_function_eval: 0,
             n_jacobian_eval: 0,
             n_performed_steps: 0,
@@ -75,7 +84,7 @@ impl BenchInfo {
         }
     }
 
-    /// Resets the values
+    /// Resets all values
     pub(crate) fn reset(&mut self) {
         self.n_function_eval = 0;
         self.n_jacobian_eval = 0;
@@ -132,7 +141,7 @@ impl BenchInfo {
     }
 }
 
-impl fmt::Display for BenchInfo {
+impl fmt::Display for Benchmark {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -172,11 +181,11 @@ impl fmt::Display for BenchInfo {
 
 #[cfg(test)]
 mod tests {
-    use super::BenchInfo;
+    use super::Benchmark;
 
     #[test]
     fn clone_copy_and_debug_work() {
-        let mut bench = BenchInfo::new();
+        let mut bench = Benchmark::new();
         bench.n_accepted_steps += 1;
         let copy = bench;
         let clone = bench.clone();
@@ -187,7 +196,7 @@ mod tests {
 
     #[test]
     fn display_works() {
-        let bench = BenchInfo::new();
+        let bench = Benchmark::new();
         assert_eq!(
             format!("{}", bench),
             "Number of function evaluations   = 0\n\

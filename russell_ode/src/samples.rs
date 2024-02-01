@@ -3,8 +3,8 @@ use crate::{HasJacobian, OdeSystem};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 
-/// Holds the control data corresponding to a sample ODE problem
-pub struct SampleControl<'a> {
+/// Holds data corresponding to a sample ODE problem
+pub struct SampleData<'a> {
     /// Holds the initial x
     pub x0: f64,
 
@@ -51,7 +51,7 @@ impl Samples {
             impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
             SampleNoArgs,
         >,
-        SampleControl<'a>,
+        SampleData<'a>,
         SampleNoArgs,
     ) {
         const L: f64 = -50.0; // lambda
@@ -70,7 +70,7 @@ impl Samples {
             None,
             None,
         );
-        let control = SampleControl {
+        let data = SampleData {
             x0: 0.0,
             y0: Vector::from(&[0.0]),
             x1: 1.5,
@@ -79,7 +79,7 @@ impl Samples {
                 y[0] = -L * (f64::sin(x) - L * f64::cos(x) + L * f64::exp(L * x)) / (L * L + 1.0);
             })),
         };
-        (system, control, 0)
+        (system, data, 0)
     }
 
     /// Returns the Van der Pol's equation as given in Hairer-Wanner, Eq(1.5'), page 5
@@ -107,7 +107,7 @@ impl Samples {
             impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
             SampleNoArgs,
         >,
-        SampleControl<'a>,
+        SampleData<'a>,
         SampleNoArgs,
     ) {
         let mut eps = match epsilon {
@@ -143,13 +143,13 @@ impl Samples {
             Some(3),
             None,
         );
-        let control = SampleControl {
+        let data = SampleData {
             x0,
             y0,
             x1,
             h_equal: None,
             y_analytical: None,
         };
-        (system, control, 0)
+        (system, data, 0)
     }
 }

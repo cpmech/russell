@@ -10,41 +10,38 @@ pub struct OdeParams {
     /// Method
     pub(crate) method: Method,
 
-    /// linear solver kind
+    /// Linear solver kind
     pub(crate) genie: Genie,
 
-    /// configurations for sparse linear solver
+    /// Configurations for sparse linear solver
     pub lin_sol_params: Option<LinSolParams>,
 
-    /// minimum H allowed
-    pub Hmin: f64,
+    /// Minimum stepsize allowed
+    pub h_min: f64,
 
-    /// initial H
-    pub initial_stepsize: f64,
+    /// Initial stepsize
+    pub h_ini: f64,
 
-    /// max num iterations (allowed)
-    pub NmaxIt: usize,
+    /// Max number of iterations
+    pub n_iteration_max: usize,
 
-    /// max num substeps
-    pub NmaxSS: usize,
+    /// Max number of steps
+    pub n_step_max: usize,
 
-    /// min step multiplier
-    pub Mmin: f64,
+    /// Min step multiplier
+    pub m_min: f64,
 
-    /// max step multiplier
-    pub Mmax: f64,
+    /// Max step multiplier
+    pub m_max: f64,
 
-    /// step multiplier factor
-    pub Mfac: f64,
+    /// Step multiplier factor
+    pub m_factor: f64,
 
     /// coefficient to multiply stepsize if first step is rejected [0 ⇒ use dx_new]
-    pub MfirstRej: f64,
+    pub m_first_rejection: f64,
 
     /// use Gustafsson's predictive controller
     pub PredCtrl: bool,
-
-    /// smallest number satisfying 1.0 + ϵ > 1.0
-    pub Eps: f64,
 
     /// max theta to decide whether the Jacobian should be recomputed or not
     pub ThetaMax: f64,
@@ -110,7 +107,7 @@ pub struct OdeParams {
     pub rel_tol: f64,
 
     /// Newton's iterations tolerance
-    pub fnewt: f64,
+    pub tol_newton: f64,
 
     /// min value of rerrPrev
     pub rerrPrevMin: f64,
@@ -127,16 +124,15 @@ impl OdeParams {
             method,
             genie,
             lin_sol_params,
-            Hmin: 1.0e-10,
-            initial_stepsize: 1.0e-4,
-            NmaxIt: 7,
-            NmaxSS: 1000,
-            Mmin: 0.125,
-            Mmax: 5.0,
-            Mfac: 0.9,
-            MfirstRej: 0.1,
+            h_min: 1.0e-10,
+            h_ini: 1.0e-4,
+            n_iteration_max: 7,
+            n_step_max: 1000,
+            m_min: 0.125,
+            m_max: 5.0,
+            m_factor: 0.9,
+            m_first_rejection: 0.1,
             PredCtrl: true,
-            Eps: 1e-16,
             ThetaMax: 1.0e-3,
             C1h: 1.0,
             C2h: 1.2,
@@ -158,7 +154,7 @@ impl OdeParams {
             stabBetaM: 0.0,
             abs_tol: 0.0,
             rel_tol: 0.0,
-            fnewt: 0.0,
+            tol_newton: 0.0,
             rerrPrevMin: 1.0e-4,
         };
         params.set_tolerances(1e-4, 1e-4).unwrap();
@@ -186,8 +182,8 @@ impl OdeParams {
         if abs_tol <= 0.0 {
             return Err("absolute tolerance must be greater than zero");
         }
-        if abs_tol <= 10.0 * self.Eps {
-            return Err("absolute tolerance must be grater than 10 * EPS");
+        if abs_tol <= 10.0 * f64::EPSILON {
+            return Err("absolute tolerance must be grater than 10 * EPSILON");
         }
         if rel_tol <= 0.0 {
             return Err("relative tolerance must be greater than zero");
@@ -206,7 +202,10 @@ impl OdeParams {
         }
 
         // tolerance for iterations
-        self.fnewt = f64::max(10.0 * self.Eps / self.rel_tol, f64::min(0.03, f64::sqrt(self.rel_tol)));
+        self.tol_newton = f64::max(
+            10.0 * f64::EPSILON / self.rel_tol,
+            f64::min(0.03, f64::sqrt(self.rel_tol)),
+        );
         Ok(())
     }
 

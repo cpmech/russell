@@ -187,8 +187,8 @@ where
             dd,
             nstage,
             lund_factor,
-            d_min: 1.0 / params.Mmin,
-            d_max: 1.0 / params.Mmax,
+            d_min: 1.0 / params.m_min,
+            d_max: 1.0 / params.m_max,
             stiffness_ratio: 0.0,
             v: vec![Vector::new(ndim); nstage],
             k: vec![Vector::new(ndim); nstage],
@@ -216,7 +216,7 @@ where
         let v = &mut self.v;
 
         // compute k0 (otherwise, use k0 saved in accept_update)
-        if (work.first_step || !self.info.first_step_same_as_last) && !work.reject_step {
+        if (work.first_step || !self.info.first_step_same_as_last) && !work.follows_reject_step {
             let u0 = x + h * self.cc[0];
             work.bench.n_function_eval += 1;
             (self.system.function)(&mut k[0], u0, y, args)?; // k0 := f(ui,vi)
@@ -280,7 +280,7 @@ where
             if den <= 0.0 {
                 den = 1.0;
             }
-            work.relative_error = f64::abs(h) * err_5 * f64::sqrt(1.0 / (dim * den));
+            work.rel_error = f64::abs(h) * err_5 * f64::sqrt(1.0 / (dim * den));
             if s_den > 0.0 {
                 self.stiffness_ratio = h * f64::sqrt(s_num / s_den);
             }
@@ -308,7 +308,7 @@ where
             s_num += dk * dk;
             s_den += dv * dv;
         }
-        work.relative_error = f64::max(f64::sqrt(sum / dim), 1.0e-10);
+        work.rel_error = f64::max(f64::sqrt(sum / dim), 1.0e-10);
         if s_den > 0.0 {
             self.stiffness_ratio = h * f64::sqrt(s_num / s_den);
         }
@@ -485,21 +485,21 @@ where
         }
 
         // estimate the new stepsize
-        let mut d = f64::powf(work.relative_error, self.lund_factor);
+        let mut d = f64::powf(work.rel_error, self.lund_factor);
         if self.params.StabBeta > 0.0 {
             // lund-stabilization
-            d = d / f64::powf(work.previous_relative_error, self.params.StabBeta);
+            d = d / f64::powf(work.prev_rel_error, self.params.StabBeta);
         }
-        d = f64::max(self.d_max, f64::min(self.d_min, d / self.params.Mfac)); // we require fac1 <= h_new/h <= fac2
-        work.stepsize_new = h / d;
+        d = f64::max(self.d_max, f64::min(self.d_min, d / self.params.m_factor)); // we require fac1 <= h_new/h <= fac2
+        work.h_new = h / d;
         Ok(())
     }
 
     /// Rejects the update
     fn reject(&mut self, work: &mut Workspace, h: f64) {
         // estimate new stepsize
-        let d = f64::powf(work.relative_error, self.lund_factor) / self.params.Mfac;
-        work.stepsize_new = h / f64::min(self.d_min, d);
+        let d = f64::powf(work.rel_error, self.lund_factor) / self.params.m_factor;
+        work.h_new = h / f64::min(self.d_min, d);
     }
 
     /// Computes the dense output

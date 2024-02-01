@@ -135,7 +135,7 @@ impl<'a, A> OdeSolver<'a, A> {
             }
             None => {
                 if info.embedded {
-                    let h = f64::min(self.params.initial_stepsize, x1 - x0);
+                    let h = f64::min(self.params.h_ini, x1 - x0);
                     (false, h)
                 } else {
                     let h = (x1 - x0) / (N_EQUAL_STEPS as f64);
@@ -189,7 +189,7 @@ impl<'a, A> OdeSolver<'a, A> {
         let mut last_step = false;
 
         // sub-stepping loop
-        for _ in 0..self.params.NmaxSS {
+        for _ in 0..self.params.n_step_max {
             // benchmark
             self.work.bench.sw_step.reset();
             self.work.bench.n_performed_steps += 1;
@@ -207,28 +207,79 @@ impl<'a, A> OdeSolver<'a, A> {
             // handle diverging iterations
             if self.work.iterations_diverging {
                 self.work.iterations_diverging = false;
-                self.work.reject_step = true;
+                self.work.follows_reject_step = true;
                 last_step = false;
                 h *= self.work.h_multiplier_diverging;
                 continue;
             }
 
             // accept step
-            if self.work.relative_error < 1.0 {
+            if self.work.rel_error < 1.0 {
                 // set flabs
                 self.work.bench.n_accepted_steps += 1;
                 self.work.first_step = false;
 
                 // update x and y
                 self.actual.accept(&mut self.work, &mut x, y, h, args)?;
-            } else { // reject step
-                 // reject step
+
+                // converged?
+                if last_step {
+                    success = true;
+                    self.work.bench.h_optimal = h;
+                    break;
+                }
+
+                // save previous relative error
+                self.work.prev_rel_error = f64::max(self.work.prev_rel_error, self.work.rel_error);
+
+                // check new stepsize
+                self.work.h_new = f64::min(self.work.h_new, h_total);
+
+                // do not allow h to grow if previous step was a reject
+                if self.work.follows_reject_step {
+                    self.work.h_new = f64::min(self.work.h_new, h);
+                }
+                self.work.follows_reject_step = false;
+
+                // check if the last step is approaching
+                if x + self.work.h_new >= x1 {
+                    last_step = true;
+                    h = x1 - x;
+                } else {
+                    h = self.work.h_new;
+                }
+            } else {
+                // set flags
+                if self.work.bench.n_accepted_steps > 0 {
+                    self.work.bench.n_rejected_steps += 1;
+                }
+                self.work.follows_reject_step = true;
+                last_step = false;
+
+                // reject step
+                self.actual.reject(&mut self.work, h);
+
+                // new stepsize
+                if self.work.first_step && self.params.m_first_rejection > 0.0 {
+                    h *= self.params.m_first_rejection;
+                } else {
+                    h = self.work.h_new;
+                }
+                if x + h > x1 {
+                    h = x1 - x;
+                }
             }
         }
 
-        // done
+        // benchmark
         self.work.bench.stop_sw_total();
-        Ok(())
+
+        // done
+        if success {
+            Ok(())
+        } else {
+            Err("sub-stepping did not converge")
+        }
     }
 }
 

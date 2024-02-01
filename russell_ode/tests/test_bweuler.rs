@@ -25,7 +25,7 @@ fn test_bweuler_hairer_wanner_eq1() {
     approx_eq(control.y0[0], y1_correct[0], 1e-4);
 
     let b = solver.bench();
-    println!("{}", solver.bench());
+    println!("{}", b);
     assert_eq!(b.n_function_eval, 80);
     assert_eq!(b.n_jacobian_eval, 40);
     assert_eq!(b.n_performed_steps, 40);
@@ -62,7 +62,7 @@ fn test_bweuler_hairer_wanner_eq1_num_jac() {
     approx_eq(control.y0[0], y1_correct[0], 1e-4);
 
     let b = solver.bench();
-    println!("{}", solver.bench());
+    println!("{}", b);
     assert_eq!(b.n_function_eval, 120);
     assert_eq!(b.n_jacobian_eval, 40);
     assert_eq!(b.n_performed_steps, 40);
@@ -99,7 +99,7 @@ fn test_bweuler_hairer_wanner_eq1_modified_newton() {
     approx_eq(control.y0[0], y1_correct[0], 1e-4);
 
     let b = solver.bench();
-    println!("{}", solver.bench());
+    println!("{}", b);
     assert_eq!(b.n_function_eval, 80);
     assert_eq!(b.n_jacobian_eval, 1);
     assert_eq!(b.n_performed_steps, 40);

@@ -101,7 +101,7 @@ where
         // perform iterations
         let mut converged = false;
         work.bench.n_iterations_last = 0;
-        for _ in 0..self.params.NmaxIt {
+        for _ in 0..self.params.n_iteration_max {
             // benchmark
             work.bench.n_iterations_last += 1;
 
@@ -126,7 +126,7 @@ where
             }
 
             // check convergence
-            if r_norm < self.params.fnewt {
+            if r_norm < self.params.tol_newton {
                 converged = true;
                 break;
             }

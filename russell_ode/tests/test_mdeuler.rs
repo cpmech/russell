@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use russell_lab::{approx_eq, Vector};
 use russell_ode::{no_dense_output, no_step_output, Method, OdeParams, OdeSolver, Samples};
 
@@ -21,5 +19,15 @@ fn test_mdeuler_hairer_wanner_eq1() {
         )
         .unwrap();
 
+    let b = solver.bench();
+    let mut analytical = control.y_analytical.unwrap();
+    let mut y1_correct = Vector::new(ndim);
+    analytical(&mut y1_correct, control.x1);
     println!("y =\n{}", control.y0);
+    println!("y_ana =\n{}", y1_correct);
+    println!("{}", b);
+    if false {
+        approx_eq(control.y0[0], 0.09062475637905158, 1e-17);
+        approx_eq(control.y0[0], y1_correct[0], 1e-4);
+    }
 }

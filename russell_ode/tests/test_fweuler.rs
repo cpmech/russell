@@ -23,4 +23,6 @@ fn test_fweuler_hairer_wanner_eq1() {
     analytical(&mut y1_correct, control.x1);
     approx_eq(control.y0[0], 0.08589790706616637, 1e-15);
     approx_eq(control.y0[0], y1_correct[0], 0.004753);
+    let b = solver.bench();
+    println!("{}", b);
 }

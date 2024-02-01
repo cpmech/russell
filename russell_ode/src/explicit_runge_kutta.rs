@@ -315,8 +315,15 @@ where
         return Ok(());
     }
 
-    /// Accepts the update and computes the next stepsize
-    fn accept(&mut self, work: &mut Workspace, y: &mut Vector, x: f64, h: f64, args: &mut A) -> Result<(), StrError> {
+    /// Updates x and y and computes the next stepsize
+    fn accept(
+        &mut self,
+        work: &mut Workspace,
+        x: &mut f64,
+        y: &mut Vector,
+        h: f64,
+        args: &mut A,
+    ) -> Result<(), StrError> {
         // store data for future dense output (Dormand-Prince 5)
         if self.params.denseOut && self.params.method == Method::DoPri5 {
             let dd = self.dd.as_ref().unwrap();
@@ -362,7 +369,7 @@ where
                         + aad.get(0, 11) * k[11][m]
                         + aad.get(0, 12) * k[11][m]);
             }
-            let u = x + cd[0] * h;
+            let u = *x + cd[0] * h;
             work.bench.n_function_eval += 1;
             (self.system.function)(&mut kd[0], u, yd, args)?;
 
@@ -378,7 +385,7 @@ where
                         + aad.get(1, 12) * k[11][m]
                         + aad.get(1, 13) * kd[0][m]);
             }
-            let u = x + cd[1] * h;
+            let u = *x + cd[1] * h;
             work.bench.n_function_eval += 1;
             (self.system.function)(&mut kd[1], u, yd, args)?;
 
@@ -394,7 +401,7 @@ where
                         + aad.get(2, 13) * kd[0][m]
                         + aad.get(2, 14) * kd[1][m]);
             }
-            let u = x + cd[2] * h;
+            let u = *x + cd[2] * h;
             work.bench.n_function_eval += 1;
             (self.system.function)(&mut kd[2], u, yd, args)?;
 
@@ -461,7 +468,8 @@ where
             }
         }
 
-        // update y
+        // update x and y
+        *x += h;
         vec_copy(y, &self.w).unwrap();
 
         // update k0

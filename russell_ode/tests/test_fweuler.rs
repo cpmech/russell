@@ -21,6 +21,6 @@ fn test_fweuler_hairer_wanner_eq1() {
     let mut analytical = control.y_analytical.unwrap();
     let mut y1_correct = Vector::new(ndim);
     analytical(&mut y1_correct, control.x1);
-    approx_eq(control.y0[0], 0.08589790706616637, 1e-16);
+    approx_eq(control.y0[0], 0.08589790706616637, 1e-15);
     approx_eq(control.y0[0], y1_correct[0], 0.004753);
 }

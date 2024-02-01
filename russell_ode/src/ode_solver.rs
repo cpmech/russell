@@ -166,11 +166,8 @@ impl<'a, A> OdeSolver<'a, A> {
                 self.actual.step(&mut self.work, x, &y, h, args)?;
                 self.work.first_step = false;
 
-                // update x
-                x = ((step + 1) as f64) * h;
-
-                // update y
-                self.actual.accept(&mut self.work, y, x, h, args)?;
+                // update x and y
+                self.actual.accept(&mut self.work, &mut x, y, h, args)?;
 
                 // benchmark
                 self.work.bench.n_accepted_steps += 1;
@@ -200,6 +197,7 @@ impl<'a, A> OdeSolver<'a, A> {
             // check successful completion
             if x >= x1 {
                 success = true;
+                self.work.bench.stop_sw_step();
                 break;
             }
 
@@ -217,12 +215,19 @@ impl<'a, A> OdeSolver<'a, A> {
 
             // accept step
             if self.work.relative_error < 1.0 {
+                // set flabs
+                self.work.bench.n_accepted_steps += 1;
+                self.work.first_step = false;
+
+                // update x and y
+                self.actual.accept(&mut self.work, &mut x, y, h, args)?;
             } else { // reject step
                  // reject step
             }
         }
 
         // done
+        self.work.bench.stop_sw_total();
         Ok(())
     }
 }
@@ -295,7 +300,7 @@ mod tests {
         let x_values_correct = Vector::linspace(x0, xf, N_EQUAL_STEPS + 1).unwrap();
         let e_values_correct = Vector::new(N_EQUAL_STEPS + 1); // all 0.0
         vec_approx_eq(&h_values, h_values_correct.as_data(), 1e-17);
-        vec_approx_eq(&x_values, x_values_correct.as_data(), 1e-17);
+        vec_approx_eq(&x_values, x_values_correct.as_data(), 1e-15);
         vec_approx_eq(&y_values, x_values_correct.as_data(), 1e-15);
         vec_approx_eq(&e_values, e_values_correct.as_data(), 1e-15);
 

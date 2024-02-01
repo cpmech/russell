@@ -179,15 +179,16 @@ where
         Ok(())
     }
 
-    /// Accepts the update and computes the next stepsize
+    /// Updates x and y and computes the next stepsize
     fn accept(
         &mut self,
         _work: &mut Workspace,
+        x: &mut f64,
         y: &mut Vector,
-        _x: f64,
-        _h: f64,
+        h: f64,
         _args: &mut A,
     ) -> Result<(), StrError> {
+        *x += h;
         vec_copy(y, &self.w).unwrap();
         Ok(())
     }

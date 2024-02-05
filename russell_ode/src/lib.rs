@@ -13,10 +13,10 @@ mod euler_backward;
 mod euler_forward;
 mod explicit_runge_kutta;
 mod num_solver;
-mod ode_solver;
-mod ode_system;
 mod params;
 mod samples;
+mod solver;
+mod system;
 mod workspace;
 pub use crate::auxiliary::*;
 pub use crate::benchmark::*;
@@ -26,10 +26,10 @@ use crate::euler_backward::*;
 use crate::euler_forward::*;
 use crate::explicit_runge_kutta::*;
 use crate::num_solver::*;
-pub use crate::ode_solver::*;
-pub use crate::ode_system::*;
 pub use crate::params::*;
 pub use crate::samples::*;
+pub use crate::solver::*;
+pub use crate::system::*;
 use crate::workspace::*;
 
 // run code from README file

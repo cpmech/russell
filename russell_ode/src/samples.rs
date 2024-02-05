@@ -246,6 +246,7 @@ impl Samples {
                 let dd1 = d1 * d1;
                 let a = y[0] + MU;
                 let b = y[0] - MD;
+                let c = -MD / d0 - MU / d1;
                 let dj00 = 3.0 * a * s0;
                 let dj01 = 3.0 * y[1] * s0;
                 let dj10 = 3.0 * b * s1;
@@ -253,22 +254,14 @@ impl Samples {
                 jj.reset();
                 jj.put(0, 2, 1.0 * m).unwrap();
                 jj.put(1, 3, 1.0 * m).unwrap();
-                jj.put(
-                    2,
-                    0,
-                    (1.0 - MD / d0 + a * dj00 * MD / dd0 - MU / d1 + b * dj10 * MU / dd1) * m,
-                )
-                .unwrap();
+                jj.put(2, 0, (1.0 + a * dj00 * MD / dd0 + b * dj10 * MU / dd1 + c) * m)
+                    .unwrap();
                 jj.put(2, 1, (a * dj01 * MD / dd0 + b * dj11 * MU / dd1) * m).unwrap();
                 jj.put(2, 3, 2.0 * m).unwrap();
                 jj.put(3, 0, (dj00 * y[1] * MD / dd0 + dj10 * y[1] * MU / dd1) * m)
                     .unwrap();
-                jj.put(
-                    3,
-                    1,
-                    (1.0 - MD / dd0 + dj01 * y[1] * MD / dd0 - MU / d1 + dj11 * y[1] * MU / dd1) * m,
-                )
-                .unwrap();
+                jj.put(3, 1, (1.0 + dj01 * y[1] * MD / dd0 + dj11 * y[1] * MU / dd1 + c) * m)
+                    .unwrap();
                 jj.put(3, 2, -2.0 * m).unwrap();
                 Ok(())
             },
@@ -385,6 +378,6 @@ mod tests {
         let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
         println!("{}", ana);
         println!("{}", num);
-        mat_approx_eq(&ana, &num, 1e-1);
+        mat_approx_eq(&ana, &num, 1e-3);
     }
 }

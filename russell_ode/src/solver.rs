@@ -24,7 +24,7 @@ use russell_sparse::CooMatrix;
 ///               ∂{y}
 /// where [J] is the Jacobian matrix
 /// ```
-pub struct OdeSolver<'a, A> {
+pub struct Solver<'a, A> {
     /// Holds the parameters
     params: Params,
 
@@ -38,7 +38,7 @@ pub struct OdeSolver<'a, A> {
     work: Workspace,
 }
 
-impl<'a, A> OdeSolver<'a, A> {
+impl<'a, A> Solver<'a, A> {
     /// Allocates a new instance
     ///
     /// # Input
@@ -66,7 +66,7 @@ impl<'a, A> OdeSolver<'a, A> {
         } else {
             Box::new(ExplicitRungeKutta::new(params.method, params.erk, system)?)
         };
-        Ok(OdeSolver {
+        Ok(Solver {
             params,
             ndim,
             actual,
@@ -287,7 +287,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
 #[cfg(test)]
 mod tests {
-    use super::OdeSolver;
+    use super::Solver;
     use crate::{no_dense_output, no_jacobian, HasJacobian, Method, OdeSystem, Params, N_EQUAL_STEPS};
     use russell_lab::{vec_approx_eq, Vector};
 
@@ -335,7 +335,7 @@ mod tests {
         let mut args = Args {};
 
         // solve the ODE system
-        let mut solver = OdeSolver::new(params, system).unwrap();
+        let mut solver = Solver::new(params, system).unwrap();
         let xf = 1.0;
         solver
             .solve(&mut y0, x0, xf, None, &mut args, output_step, no_dense_output)

@@ -5,7 +5,7 @@ use crate::{EulerBackward, EulerForward, ExplicitRungeKutta};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 
-/// Defines the solver for systems of ODEs
+/// Implements a numerical solver for systems of ODEs
 ///
 /// The system is defined by:
 ///

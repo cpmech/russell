@@ -3,7 +3,7 @@ use russell_lab::Vector;
 use russell_sparse::{CooMatrix, Symmetry};
 use std::marker::PhantomData;
 
-/// Defines the system of ordinary differential equations (ODEs)
+/// Defines the system of ODEs
 ///
 /// The system is defined by:
 ///

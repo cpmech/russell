@@ -225,7 +225,7 @@ where
         // compute ki
         for i in 1..self.nstage {
             let ui = x + h * self.cc[i];
-            vec_copy(&mut v[1], &y).unwrap(); // vi := ya
+            vec_copy(&mut v[i], &y).unwrap(); // vi := ya
             for j in 0..i {
                 vec_update(&mut v[i], h * self.aa.get(i, j), &k[j]).unwrap(); // vi += h ⋅ aij ⋅ kj
             }

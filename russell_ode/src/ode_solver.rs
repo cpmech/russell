@@ -230,7 +230,7 @@ impl<'a, A> OdeSolver<'a, A> {
                 }
 
                 // save previous relative error
-                self.work.prev_rel_error = f64::max(self.work.prev_rel_error, self.work.rel_error);
+                self.work.prev_rel_error = f64::max(self.params.rerrPrevMin, self.work.rel_error);
 
                 // check new stepsize
                 self.work.h_new = f64::min(self.work.h_new, h_total);

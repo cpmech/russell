@@ -66,7 +66,7 @@ pub struct ParamsERK {
 
 /// Holds parameters for the ODE Solver
 #[derive(Clone, Copy, Debug)]
-pub struct ParamsODE {
+pub struct Params {
     /// ODE solver method
     pub(crate) method: Method,
 
@@ -137,9 +137,9 @@ impl ParamsERK {
     }
 }
 
-impl ParamsODE {
+impl Params {
     pub fn new(method: Method) -> Self {
-        ParamsODE {
+        Params {
             method,
             bweuler: ParamsBwEuler::new(),
             radau5: ParamsRadau5::new(),

@@ -1,11 +1,11 @@
 use russell_lab::{approx_eq, vec_approx_eq, Vector};
-use russell_ode::{no_dense_output, no_step_output, Method, OdeSolver, ParamsODE, Samples};
+use russell_ode::{no_dense_output, no_step_output, Method, OdeSolver, Params, Samples};
 
 #[test]
 fn test_dopri5_hairer_wanner_eq1() {
     let (system, mut data, mut args) = Samples::hairer_wanner_eq1();
     let ndim = system.get_ndim();
-    let params = ParamsODE::new(Method::DoPri5);
+    let params = Params::new(Method::DoPri5);
     let mut solver = OdeSolver::new(params, system).unwrap();
     solver
         .solve(
@@ -39,7 +39,7 @@ fn test_dopri5_hairer_wanner_eq1() {
 #[test]
 fn test_dopri5_arenstorf() {
     let (system, mut data, mut args) = Samples::arenstorf();
-    let mut params = ParamsODE::new(Method::DoPri5);
+    let mut params = Params::new(Method::DoPri5);
     params.set_tolerances(1e-7, 1e-7).unwrap();
     let mut solver = OdeSolver::new(params, system).unwrap();
     solver

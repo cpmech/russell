@@ -1,5 +1,5 @@
 use crate::StrError;
-use crate::{NumSolver, OdeSystem, Workspace};
+use crate::{NumSolver, System, Workspace};
 use russell_lab::{vec_add, vec_copy, Vector};
 use russell_sparse::CooMatrix;
 use std::marker::PhantomData;
@@ -10,7 +10,7 @@ where
     J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// ODE system
-    system: OdeSystem<'a, F, J, A>,
+    system: System<'a, F, J, A>,
 
     /// Vector holding the function evaluation
     ///
@@ -30,7 +30,7 @@ where
     J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(system: OdeSystem<'a, F, J, A>) -> Self {
+    pub fn new(system: System<'a, F, J, A>) -> Self {
         let ndim = system.ndim;
         EulerForward {
             system,

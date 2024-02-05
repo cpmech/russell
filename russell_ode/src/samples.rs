@@ -1,5 +1,5 @@
 use crate::StrError;
-use crate::{HasJacobian, OdeSystem};
+use crate::{HasJacobian, System};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 
@@ -53,7 +53,7 @@ impl Samples {
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
     pub fn hairer_wanner_eq1<'a>() -> (
-        OdeSystem<
+        System<
             'a,
             impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
             impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
@@ -63,7 +63,7 @@ impl Samples {
         SampleNoArgs,
     ) {
         const L: f64 = -50.0; // lambda
-        let system = OdeSystem::new(
+        let system = System::new(
             1,
             |f: &mut Vector, x: f64, y: &Vector, _args: &mut SampleNoArgs| {
                 f[0] = L * y[0] - L * f64::cos(x);
@@ -117,7 +117,7 @@ impl Samples {
         epsilon: Option<f64>,
         stationary: bool,
     ) -> (
-        OdeSystem<
+        System<
             'a,
             impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
             impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
@@ -141,7 +141,7 @@ impl Samples {
             y0[1] = 0.0;
             x1 = T;
         }
-        let system = OdeSystem::new(
+        let system = System::new(
             2,
             move |f: &mut Vector, _x: f64, y: &Vector, _args: &mut SampleNoArgs| {
                 f[0] = y[1];
@@ -208,7 +208,7 @@ impl Samples {
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
     pub fn arenstorf<'a>() -> (
-        OdeSystem<
+        System<
             'a,
             impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
             impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
@@ -222,7 +222,7 @@ impl Samples {
         let x0 = 0.0;
         let y0 = Vector::from(&[0.994, 0.0, 0.0, -2.00158510637908252240537862224]);
         let x1 = 17.0652165601579625588917206249;
-        let system = OdeSystem::new(
+        let system = System::new(
             4,
             |f: &mut Vector, _x: f64, y: &Vector, _args: &mut SampleNoArgs| {
                 let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];

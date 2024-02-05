@@ -1,6 +1,6 @@
 use crate::constants::*;
 use crate::StrError;
-use crate::{Information, Method, NumSolver, OdeSystem, ParamsERK, Workspace};
+use crate::{Information, Method, NumSolver, ParamsERK, System, Workspace};
 use russell_lab::{vec_copy, vec_update, Matrix, Vector};
 use russell_sparse::CooMatrix;
 use std::marker::PhantomData;
@@ -17,7 +17,7 @@ where
     params: ParamsERK,
 
     /// ODE system
-    system: OdeSystem<'a, F, J, A>,
+    system: System<'a, F, J, A>,
 
     /// Information such as implicit, embedded, etc.
     info: Information,
@@ -94,7 +94,7 @@ where
     J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(method: Method, params: ParamsERK, system: OdeSystem<'a, F, J, A>) -> Result<Self, StrError> {
+    pub fn new(method: Method, params: ParamsERK, system: System<'a, F, J, A>) -> Result<Self, StrError> {
         // information
         let info = method.information();
         if info.implicit {
@@ -535,7 +535,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::ExplicitRungeKutta;
-    use crate::{no_jacobian, HasJacobian, Method, OdeSystem, ParamsERK};
+    use crate::{no_jacobian, HasJacobian, Method, ParamsERK, System};
     use russell_lab::approx_eq;
 
     #[test]
@@ -546,7 +546,7 @@ mod tests {
         for method in staged {
             println!("\n... {:?} ...", method);
             let params = ParamsERK::new(*method);
-            let system = OdeSystem::new(
+            let system = System::new(
                 1,
                 |_, _, _, _args: &mut Args| Ok(()),
                 no_jacobian,

@@ -40,7 +40,7 @@ use std::marker::PhantomData;
 ///     Ok(())
 /// },
 /// ```
-pub struct OdeSystem<'a, F, J, A>
+pub struct System<'a, F, J, A>
 where
     F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
@@ -73,7 +73,7 @@ where
     phantom: PhantomData<A>,
 }
 
-impl<'a, F, J, A> OdeSystem<'a, F, J, A>
+impl<'a, F, J, A> System<'a, F, J, A>
 where
     F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
@@ -107,7 +107,7 @@ where
             HasJacobian::Yes => true,
             HasJacobian::No => false,
         };
-        OdeSystem {
+        System {
             ndim,
             function,
             jacobian,
@@ -169,7 +169,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::OdeSystem;
+    use super::System;
     use crate::{no_jacobian, HasJacobian};
     use russell_lab::Vector;
     use russell_sparse::CooMatrix;
@@ -183,7 +183,7 @@ mod tests {
         let mut args = Args {
             more_data_goes_here: false,
         };
-        let mut ode = OdeSystem::new(
+        let mut ode = System::new(
             2,
             |f, x, y, args: &mut Args| {
                 n_function_eval += 1;
@@ -228,7 +228,7 @@ mod tests {
             more_data_goes_here_fn: false,
             more_data_goes_here_jj: false,
         };
-        let mut ode = OdeSystem::new(
+        let mut ode = System::new(
             2,
             |f, x, y, args: &mut Args| {
                 n_function_eval += 1;

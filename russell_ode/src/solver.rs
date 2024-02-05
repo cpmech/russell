@@ -1,6 +1,6 @@
 use crate::constants::N_EQUAL_STEPS;
 use crate::StrError;
-use crate::{Benchmark, Method, NumSolver, OdeSystem, Params, Workspace};
+use crate::{Benchmark, Method, NumSolver, Params, System, Workspace};
 use crate::{EulerBackward, EulerForward, ExplicitRungeKutta};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
@@ -49,7 +49,7 @@ impl<'a, A> Solver<'a, A> {
     /// # Generics
     ///
     /// See [OdeSystem] for an explanation of the generic parameters.
-    pub fn new<F, J>(params: Params, system: OdeSystem<'a, F, J, A>) -> Result<Self, StrError>
+    pub fn new<F, J>(params: Params, system: System<'a, F, J, A>) -> Result<Self, StrError>
     where
         F: 'a + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
         J: 'a + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
@@ -288,7 +288,7 @@ impl<'a, A> Solver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::Solver;
-    use crate::{no_dense_output, no_jacobian, HasJacobian, Method, OdeSystem, Params, N_EQUAL_STEPS};
+    use crate::{no_dense_output, no_jacobian, HasJacobian, Method, Params, System, N_EQUAL_STEPS};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
@@ -300,7 +300,7 @@ mod tests {
         // dx
 
         let params = Params::new(Method::FwEuler);
-        let system = OdeSystem::new(
+        let system = System::new(
             1,
             |f, _, _, _| {
                 f[0] = 1.0;

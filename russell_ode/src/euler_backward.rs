@@ -1,5 +1,5 @@
 use crate::StrError;
-use crate::{NumSolver, OdeSystem, ParamsBwEuler, Workspace};
+use crate::{NumSolver, ParamsBwEuler, System, Workspace};
 use russell_lab::{vec_copy, vec_update, Vector};
 use russell_sparse::{CooMatrix, Genie, LinSolver, SparseMatrix};
 use std::marker::PhantomData;
@@ -14,7 +14,7 @@ where
     params: ParamsBwEuler,
 
     /// ODE system
-    system: OdeSystem<'a, F, J, A>,
+    system: System<'a, F, J, A>,
 
     /// Scaling vector
     ///
@@ -53,7 +53,7 @@ where
     J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(params: ParamsBwEuler, system: OdeSystem<'a, F, J, A>) -> Self {
+    pub fn new(params: ParamsBwEuler, system: System<'a, F, J, A>) -> Self {
         let ndim = system.ndim;
         let nnz = system.jac_nnz + ndim; // +ndim corresponds to the diagonal I matrix
         let symmetry = system.jac_symmetry;

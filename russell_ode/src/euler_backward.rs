@@ -1,5 +1,5 @@
 use crate::StrError;
-use crate::{NumSolver, OdeParams, OdeSystem, Workspace};
+use crate::{NumSolver, OdeSystem, ParamsBwEuler, Workspace};
 use russell_lab::{vec_copy, vec_update, Vector};
 use russell_sparse::{CooMatrix, Genie, LinSolver, SparseMatrix};
 use std::marker::PhantomData;
@@ -11,7 +11,7 @@ where
     J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Holds the parameters
-    params: &'a OdeParams,
+    params: ParamsBwEuler,
 
     /// ODE system
     system: OdeSystem<'a, F, J, A>,
@@ -53,11 +53,11 @@ where
     J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(params: &'a OdeParams, system: OdeSystem<'a, F, J, A>) -> Self {
+    pub fn new(params: ParamsBwEuler, system: OdeSystem<'a, F, J, A>) -> Self {
         let ndim = system.ndim;
         let nnz = system.jac_nnz + ndim; // +ndim corresponds to the diagonal I matrix
         let symmetry = system.jac_symmetry;
-        let one_based = if params.genie == Genie::Mumps { true } else { false };
+        let one_based = if params.lin_sol == Genie::Mumps { true } else { false };
         EulerBackward {
             params,
             system,
@@ -67,7 +67,7 @@ where
             r: Vector::new(ndim),
             dy: Vector::new(ndim),
             kk: SparseMatrix::new_coo(ndim, ndim, nnz, symmetry, one_based).unwrap(),
-            solver: LinSolver::new(params.genie).unwrap(),
+            solver: LinSolver::new(params.lin_sol).unwrap(),
             phantom: PhantomData,
         }
     }

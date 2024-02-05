@@ -1,6 +1,6 @@
 use crate::constants::*;
 use crate::StrError;
-use crate::{Information, Method, NumSolver, OdeParams, OdeSystem, Workspace};
+use crate::{Information, Method, NumSolver, OdeSystem, ParamsERK, Workspace};
 use russell_lab::{vec_copy, vec_update, Matrix, Vector};
 use russell_sparse::CooMatrix;
 use std::marker::PhantomData;
@@ -10,8 +10,11 @@ where
     F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
+    /// Holds the ERK method
+    method: Method,
+
     /// Holds the parameters
-    params: &'a OdeParams,
+    params: ParamsERK,
 
     /// ODE system
     system: OdeSystem<'a, F, J, A>,
@@ -91,19 +94,19 @@ where
     J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(params: &'a OdeParams, system: OdeSystem<'a, F, J, A>) -> Result<Self, StrError> {
+    pub fn new(method: Method, params: ParamsERK, system: OdeSystem<'a, F, J, A>) -> Result<Self, StrError> {
         // information
-        let info = params.method.information();
+        let info = method.information();
         if info.implicit {
             return Err("the method must not be implicit");
         }
-        if params.method == Method::FwEuler {
+        if method == Method::FwEuler {
             return Err("the method must not be FwEuler");
         }
 
         // Runge-Kutta coefficients
         #[rustfmt::skip]
-        let (aa, bb, cc) = match params.method {
+        let (aa, bb, cc) = match method {
             Method::Radau5     => panic!("<not available>"),
             Method::BwEuler    => panic!("<not available>"),
             Method::FwEuler    => panic!("<not available>"),
@@ -124,7 +127,7 @@ where
 
         // coefficients for error estimate
         let ee = if info.embedded {
-            match params.method {
+            match method {
                 Method::Radau5 => None,
                 Method::BwEuler => None,
                 Method::FwEuler => None,
@@ -150,11 +153,11 @@ where
         let ndim = system.ndim;
         let (mut aad, mut ccd, mut dd) = (None, None, None);
         let (mut dense_out, mut kd, mut yd) = (None, None, None);
-        if params.use_dense_output && params.method == Method::DoPri5 {
+        if params.use_dense_output && method == Method::DoPri5 {
             dd = Some(Matrix::from(&DORMAND_PRINCE_5_D));
             dense_out = Some(vec![Vector::new(ndim); 5]);
         }
-        if params.use_dense_output && params.method == Method::DoPri8 {
+        if params.use_dense_output && method == Method::DoPri8 {
             aad = Some(Matrix::from(&DORMAND_PRINCE_8_AD));
             ccd = Some(Vector::from(&DORMAND_PRINCE_8_CD));
             dd = Some(Matrix::from(&DORMAND_PRINCE_8_D));
@@ -175,6 +178,7 @@ where
 
         // return structure
         Ok(ExplicitRungeKutta {
+            method,
             params,
             system,
             info,
@@ -251,7 +255,7 @@ where
         let dim = self.system.ndim as f64;
 
         // error estimation for Dormand-Prince 8 with 5 and 3 orders
-        if self.params.method == Method::DoPri8 {
+        if self.method == Method::DoPri8 {
             let (bhh1, bhh2, bhh3) = (DORMAND_PRINCE_8_BHH1, DORMAND_PRINCE_8_BHH2, DORMAND_PRINCE_8_BHH3);
             let mut err_3 = 0.0;
             let mut err_5 = 0.0;
@@ -325,7 +329,7 @@ where
         args: &mut A,
     ) -> Result<(), StrError> {
         // store data for future dense output (Dormand-Prince 5)
-        if self.params.use_dense_output && self.params.method == Method::DoPri5 {
+        if self.params.use_dense_output && self.method == Method::DoPri5 {
             let dd = self.dd.as_ref().unwrap();
             let d = self.dense_out.as_mut().unwrap();
             let k = &self.k;
@@ -347,7 +351,7 @@ where
         }
 
         // store data for future dense output (Dormand-Prince 8)
-        if self.params.use_dense_output && self.params.method == Method::DoPri8 {
+        if self.params.use_dense_output && self.method == Method::DoPri8 {
             // auxiliary variables
             let aad = self.aad.as_ref().unwrap();
             let cd = self.ccd.as_ref().unwrap();
@@ -504,7 +508,7 @@ where
 
     /// Computes the dense output
     fn dense_output(&self, y_out: &mut Vector, h: f64, x: f64, x_out: f64) {
-        if self.params.use_dense_output && self.params.method == Method::DoPri5 {
+        if self.params.use_dense_output && self.method == Method::DoPri5 {
             let d = self.dense_out.as_ref().unwrap();
             let x_prev = x - h;
             let theta = (x_out - x_prev) / h;
@@ -513,7 +517,7 @@ where
                 y_out[m] = d[0][m] + theta * (d[1][m] + u_theta * (d[2][m] + theta * (d[3][m] + u_theta * d[4][m])));
             }
         }
-        if self.params.use_dense_output && self.params.method == Method::DoPri8 {
+        if self.params.use_dense_output && self.method == Method::DoPri8 {
             let d = self.dense_out.as_ref().unwrap();
             let x_prev = x - h;
             let theta = (x_out - x_prev) / h;
@@ -531,7 +535,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::ExplicitRungeKutta;
-    use crate::{no_jacobian, HasJacobian, Method, OdeParams, OdeSystem};
+    use crate::{no_jacobian, HasJacobian, Method, OdeSystem, ParamsERK};
     use russell_lab::approx_eq;
 
     #[test]
@@ -541,7 +545,7 @@ mod tests {
         struct Args {}
         for method in staged {
             println!("\n... {:?} ...", method);
-            let params = OdeParams::new(*method, None, None);
+            let params = ParamsERK::new(*method);
             let system = OdeSystem::new(
                 1,
                 |_, _, _, _args: &mut Args| Ok(()),
@@ -550,7 +554,7 @@ mod tests {
                 None,
                 None,
             );
-            let erk = ExplicitRungeKutta::new(&params, system).unwrap();
+            let erk = ExplicitRungeKutta::new(*method, params, system).unwrap();
             let nstage = erk.nstage;
             assert_eq!(erk.aa.dims(), (nstage, nstage));
             assert_eq!(erk.bb.dim(), nstage);

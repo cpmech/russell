@@ -1,7 +1,7 @@
 use crate::constants::N_EQUAL_STEPS;
 use crate::StrError;
-use crate::{Benchmark, EulerBackward, EulerForward, ExplicitRungeKutta, Workspace};
-use crate::{Method, NumSolver, OdeParams, OdeSystem};
+use crate::{Benchmark, Method, NumSolver, OdeSystem, ParamsODE, Workspace};
+use crate::{EulerBackward, EulerForward, ExplicitRungeKutta};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 
@@ -26,7 +26,7 @@ use russell_sparse::CooMatrix;
 /// ```
 pub struct OdeSolver<'a, A> {
     /// Holds the parameters
-    params: &'a OdeParams,
+    params: ParamsODE,
 
     /// Dimension of the ODE system
     ndim: usize,
@@ -49,7 +49,7 @@ impl<'a, A> OdeSolver<'a, A> {
     /// # Generics
     ///
     /// See [OdeSystem] for an explanation of the generic parameters.
-    pub fn new<F, J>(params: &'a OdeParams, system: OdeSystem<'a, F, J, A>) -> Result<Self, StrError>
+    pub fn new<F, J>(params: ParamsODE, system: OdeSystem<'a, F, J, A>) -> Result<Self, StrError>
     where
         F: 'a + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
         J: 'a + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
@@ -60,11 +60,11 @@ impl<'a, A> OdeSolver<'a, A> {
         let actual: Box<dyn NumSolver<A>> = if params.method == Method::Radau5 {
             panic!("TODO: Radau5");
         } else if params.method == Method::BwEuler {
-            Box::new(EulerBackward::new(params, system))
+            Box::new(EulerBackward::new(params.bweuler, system))
         } else if params.method == Method::FwEuler {
             Box::new(EulerForward::new(system))
         } else {
-            Box::new(ExplicitRungeKutta::new(params, system)?)
+            Box::new(ExplicitRungeKutta::new(params.method, params.erk, system)?)
         };
         Ok(OdeSolver {
             params,
@@ -146,7 +146,7 @@ impl<'a, A> OdeSolver<'a, A> {
         assert!(h > 0.0);
 
         // reset variables
-        self.work.reset(&self.params);
+        self.work.reset(self.params.rel_error_prev_min);
         self.work.bench.h_optimal = h;
         self.actual.initialize(x0, y0);
 
@@ -288,7 +288,7 @@ impl<'a, A> OdeSolver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::OdeSolver;
-    use crate::{no_dense_output, no_jacobian, HasJacobian, Method, OdeParams, OdeSystem, N_EQUAL_STEPS};
+    use crate::{no_dense_output, no_jacobian, HasJacobian, Method, OdeSystem, ParamsODE, N_EQUAL_STEPS};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
@@ -299,7 +299,7 @@ mod tests {
         // —— = 1   with   y(x=0)=0    thus   y(x) = x
         // dx
 
-        let params = OdeParams::new(Method::FwEuler, None, None);
+        let params = ParamsODE::new(Method::FwEuler);
         let system = OdeSystem::new(
             1,
             |f, _, _, _| {
@@ -335,7 +335,7 @@ mod tests {
         let mut args = Args {};
 
         // solve the ODE system
-        let mut solver = OdeSolver::new(&params, system).unwrap();
+        let mut solver = OdeSolver::new(params, system).unwrap();
         let xf = 1.0;
         solver
             .solve(&mut y0, x0, xf, None, &mut args, output_step, no_dense_output)

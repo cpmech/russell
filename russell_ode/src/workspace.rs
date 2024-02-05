@@ -1,4 +1,4 @@
-use crate::{Benchmark, OdeParams};
+use crate::Benchmark;
 
 pub(crate) struct Workspace {
     /// Holds benchmark data
@@ -42,14 +42,14 @@ impl Workspace {
     }
 
     /// Resets all values
-    pub(crate) fn reset(&mut self, params: &OdeParams) {
+    pub(crate) fn reset(&mut self, rel_error_prev_min: f64) {
         self.bench.reset();
         self.first_step = true;
         self.follows_reject_step = false;
         self.iterations_diverging = false;
         self.h_multiplier_diverging = 1.0;
         self.rel_error = 0.0;
-        self.rel_error_prev = params.rel_error_prev_min;
+        self.rel_error_prev = rel_error_prev_min;
         self.h_new = 0.0;
     }
 }

@@ -89,7 +89,7 @@ where
     /// Calculates the quantities required to update x and y
     fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {
         // auxiliary
-        let traditional_newton = !self.params.CteTg;
+        let traditional_newton = !self.params.use_modified_newton;
         let ndim = self.system.ndim;
         let dim = ndim as f64;
 
@@ -113,13 +113,13 @@ where
             let mut r_norm = 0.0;
             for i in 0..ndim {
                 self.r[i] = y_new[i] - y[i] - h * self.k[i];
-                if self.params.UseRmsNorm {
+                if self.params.use_rms_norm {
                     r_norm += f64::powf(self.r[i] / self.scaling[i], 2.0);
                 } else {
                     r_norm += self.r[i] * self.r[i];
                 }
             }
-            if self.params.UseRmsNorm {
+            if self.params.use_rms_norm {
                 r_norm = f64::sqrt(r_norm / dim);
             } else {
                 r_norm = f64::sqrt(r_norm);

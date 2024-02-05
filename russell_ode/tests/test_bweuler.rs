@@ -78,7 +78,7 @@ fn test_bweuler_hairer_wanner_eq1_modified_newton() {
     let (system, mut data, mut args) = Samples::hairer_wanner_eq1();
     let ndim = system.get_ndim();
     let mut params = OdeParams::new(Method::BwEuler, None, None);
-    params.CteTg = true;
+    params.use_modified_newton = true;
     let mut solver = OdeSolver::new(&params, system).unwrap();
     solver
         .solve(

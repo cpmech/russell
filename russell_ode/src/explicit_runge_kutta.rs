@@ -150,11 +150,11 @@ where
         let ndim = system.ndim;
         let (mut aad, mut ccd, mut dd) = (None, None, None);
         let (mut dense_out, mut kd, mut yd) = (None, None, None);
-        if params.denseOut && params.method == Method::DoPri5 {
+        if params.use_dense_output && params.method == Method::DoPri5 {
             dd = Some(Matrix::from(&DORMAND_PRINCE_5_D));
             dense_out = Some(vec![Vector::new(ndim); 5]);
         }
-        if params.denseOut && params.method == Method::DoPri8 {
+        if params.use_dense_output && params.method == Method::DoPri8 {
             aad = Some(Matrix::from(&DORMAND_PRINCE_8_AD));
             ccd = Some(Vector::from(&DORMAND_PRINCE_8_CD));
             dd = Some(Matrix::from(&DORMAND_PRINCE_8_D));
@@ -167,8 +167,8 @@ where
         let nstage = bb.dim();
 
         // Lund stabilization factor (n)
-        let lund_factor = if params.StabBeta > 0.0 {
-            1.0 / ((info.order_of_estimator + 1) as f64) - params.StabBeta * params.stabBetaM
+        let lund_factor = if params.lund_beta > 0.0 {
+            1.0 / ((info.order_of_estimator + 1) as f64) - params.lund_beta * params.lund_beta_m
         } else {
             1.0 / ((info.order_of_estimator + 1) as f64)
         };
@@ -325,7 +325,7 @@ where
         args: &mut A,
     ) -> Result<(), StrError> {
         // store data for future dense output (Dormand-Prince 5)
-        if self.params.denseOut && self.params.method == Method::DoPri5 {
+        if self.params.use_dense_output && self.params.method == Method::DoPri5 {
             let dd = self.dd.as_ref().unwrap();
             let d = self.dense_out.as_mut().unwrap();
             let k = &self.k;
@@ -347,7 +347,7 @@ where
         }
 
         // store data for future dense output (Dormand-Prince 8)
-        if self.params.denseOut && self.params.method == Method::DoPri8 {
+        if self.params.use_dense_output && self.params.method == Method::DoPri8 {
             // auxiliary variables
             let aad = self.aad.as_ref().unwrap();
             let cd = self.ccd.as_ref().unwrap();
@@ -486,9 +486,9 @@ where
 
         // estimate the new stepsize
         let mut d = f64::powf(work.rel_error, self.lund_factor);
-        if self.params.StabBeta > 0.0 && work.rel_error_prev > 0.0 {
+        if self.params.lund_beta > 0.0 && work.rel_error_prev > 0.0 {
             // lund-stabilization
-            d = d / f64::powf(work.rel_error_prev, self.params.StabBeta);
+            d = d / f64::powf(work.rel_error_prev, self.params.lund_beta);
         }
         d = f64::max(self.d_max, f64::min(self.d_min, d / self.params.m_factor)); // we require fac1 <= h_new/h <= fac2
         work.h_new = h / d;
@@ -504,7 +504,7 @@ where
 
     /// Computes the dense output
     fn dense_output(&self, y_out: &mut Vector, h: f64, x: f64, x_out: f64) {
-        if self.params.denseOut && self.params.method == Method::DoPri5 {
+        if self.params.use_dense_output && self.params.method == Method::DoPri5 {
             let d = self.dense_out.as_ref().unwrap();
             let x_prev = x - h;
             let theta = (x_out - x_prev) / h;
@@ -513,7 +513,7 @@ where
                 y_out[m] = d[0][m] + theta * (d[1][m] + u_theta * (d[2][m] + theta * (d[3][m] + u_theta * d[4][m])));
             }
         }
-        if self.params.denseOut && self.params.method == Method::DoPri8 {
+        if self.params.use_dense_output && self.params.method == Method::DoPri8 {
             let d = self.dense_out.as_ref().unwrap();
             let x_prev = x - h;
             let theta = (x_out - x_prev) / h;

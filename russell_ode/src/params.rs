@@ -250,14 +250,11 @@ impl Params {
 /// * `tol_newton` -- tolerance for Newton's method
 fn calc_tolerances(method: Method, abs_tol: f64, rel_tol: f64) -> Result<(f64, f64, f64), StrError> {
     // check
-    if abs_tol <= 0.0 {
-        return Err("absolute tolerance must be greater than zero");
-    }
     if abs_tol <= 10.0 * f64::EPSILON {
-        return Err("absolute tolerance must be grater than 10 * EPSILON");
+        return Err("the absolute tolerance must be > 10 · EPSILON");
     }
-    if rel_tol <= 0.0 {
-        return Err("relative tolerance must be greater than zero");
+    if rel_tol <= 10.0 * f64::EPSILON {
+        return Err("the relative tolerance must be > 10 · EPSILON");
     }
 
     // set

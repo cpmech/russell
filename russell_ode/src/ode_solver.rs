@@ -146,7 +146,7 @@ impl<'a, A> OdeSolver<'a, A> {
         assert!(h > 0.0);
 
         // reset variables
-        self.work.reset();
+        self.work.reset(&self.params);
         self.work.bench.h_optimal = h;
         self.actual.initialize(x0, y0);
 
@@ -230,7 +230,7 @@ impl<'a, A> OdeSolver<'a, A> {
                 }
 
                 // save previous relative error
-                self.work.prev_rel_error = f64::max(self.params.rerrPrevMin, self.work.rel_error);
+                self.work.rel_error_prev = f64::max(self.params.rel_error_prev_min, self.work.rel_error);
 
                 // check new stepsize
                 self.work.h_new = f64::min(self.work.h_new, h_total);

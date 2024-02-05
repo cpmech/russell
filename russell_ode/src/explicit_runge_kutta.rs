@@ -486,9 +486,9 @@ where
 
         // estimate the new stepsize
         let mut d = f64::powf(work.rel_error, self.lund_factor);
-        if self.params.StabBeta > 0.0 && work.prev_rel_error > 0.0 {
+        if self.params.StabBeta > 0.0 && work.rel_error_prev > 0.0 {
             // lund-stabilization
-            d = d / f64::powf(work.prev_rel_error, self.params.StabBeta);
+            d = d / f64::powf(work.rel_error_prev, self.params.StabBeta);
         }
         d = f64::max(self.d_max, f64::min(self.d_min, d / self.params.m_factor)); // we require fac1 <= h_new/h <= fac2
         work.h_new = h / d;

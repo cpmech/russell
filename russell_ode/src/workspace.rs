@@ -1,4 +1,4 @@
-use crate::Benchmark;
+use crate::{Benchmark, OdeParams};
 
 pub(crate) struct Workspace {
     /// Holds benchmark data
@@ -20,7 +20,7 @@ pub(crate) struct Workspace {
     pub(crate) rel_error: f64,
 
     /// Holds the previous relative error
-    pub(crate) prev_rel_error: f64,
+    pub(crate) rel_error_prev: f64,
 
     /// Holds the next stepsize estimate
     pub(crate) h_new: f64,
@@ -36,20 +36,20 @@ impl Workspace {
             iterations_diverging: false,
             h_multiplier_diverging: 1.0,
             rel_error: 0.0,
-            prev_rel_error: 0.0,
+            rel_error_prev: 0.0,
             h_new: 0.0,
         }
     }
 
     /// Resets all values
-    pub(crate) fn reset(&mut self) {
+    pub(crate) fn reset(&mut self, params: &OdeParams) {
         self.bench.reset();
         self.first_step = true;
         self.follows_reject_step = false;
         self.iterations_diverging = false;
         self.h_multiplier_diverging = 1.0;
         self.rel_error = 0.0;
-        self.prev_rel_error = 0.0;
+        self.rel_error_prev = params.rel_error_prev_min;
         self.h_new = 0.0;
     }
 }

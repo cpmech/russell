@@ -109,8 +109,8 @@ pub struct OdeParams {
     /// Newton's iterations tolerance
     pub tol_newton: f64,
 
-    /// min value of rerrPrev
-    pub rerrPrevMin: f64,
+    /// Min value of previous relative error
+    pub rel_error_prev_min: f64,
 }
 
 impl OdeParams {
@@ -155,11 +155,11 @@ impl OdeParams {
             abs_tol: 0.0,
             rel_tol: 0.0,
             tol_newton: 0.0,
-            rerrPrevMin: 1.0e-4,
+            rel_error_prev_min: 1.0e-4,
         };
         params.set_tolerances(1e-4, 1e-4).unwrap();
         if method == Method::Radau5 {
-            params.rerrPrevMin = 1.0e-2;
+            params.rel_error_prev_min = 1.0e-2;
         }
         if method == Method::DoPri5 {
             params.StabBeta = 0.04;

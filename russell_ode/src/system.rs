@@ -91,7 +91,7 @@ where
     ///
     /// # Generics
     ///
-    /// See [OdeSystem] for an explanation of the generic parameters.
+    /// See [System] for an explanation of the generic parameters.
     pub fn new(
         ndim: usize,
         function: F,

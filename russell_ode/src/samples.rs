@@ -41,7 +41,7 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// Returns `(OdeSystem<F, J, A>, SampleData, A)` where:
+    /// Returns `(System<F, J, A>, SampleData, A)` where:
     ///
     /// * `F` -- is a function to compute the `f` vector; e.g., `fn(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     /// * `J` -- is a function to compute the Jacobian; e.g., `fn(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
@@ -102,7 +102,7 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// Returns `(OdeSystem<F, J, A>, SampleData, A)` where:
+    /// Returns `(System<F, J, A>, SampleData, A)` where:
     ///
     /// * `F` -- is a function to compute the `f` vector; e.g., `fn(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     /// * `J` -- is a function to compute the Jacobian; e.g., `fn(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
@@ -196,7 +196,7 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// Returns `(OdeSystem<F, J, A>, SampleData, A)` where:
+    /// Returns `(System<F, J, A>, SampleData, A)` where:
     ///
     /// * `F` -- is a function to compute the `f` vector; e.g., `fn(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     /// * `J` -- is a function to compute the Jacobian; e.g., `fn(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`

@@ -48,7 +48,7 @@ impl<'a, A> Solver<'a, A> {
     ///
     /// # Generics
     ///
-    /// See [OdeSystem] for an explanation of the generic parameters.
+    /// See [System] for an explanation of the generic parameters.
     pub fn new<F, J>(params: Params, system: System<'a, F, J, A>) -> Result<Self, StrError>
     where
         F: 'a + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,

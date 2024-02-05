@@ -39,6 +39,14 @@ pub struct Samples {}
 impl Samples {
     /// Returns the Hairer-Wanner problem from the reference, Eq(1.1), page 2
     ///
+    /// # Output
+    ///
+    /// Returns `(OdeSystem<F, J, A>, SampleData, A)` where:
+    ///
+    /// * `F` -- is a function to compute the `f` vector; e.g., `fn(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    /// * `J` -- is a function to compute the Jacobian; e.g., `fn(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    /// * `A` -- is `SampleNoArgs`
+    ///
     /// # Reference
     ///
     /// * E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
@@ -91,6 +99,14 @@ impl Samples {
     /// * `epsilon` -- ε coefficient; use None for the default value (= 1.0e-6)
     /// * `stationary` -- use `ε = 1` and compute the period and amplitude such that
     ///   `y = [A, 0]` is a stationary point.
+    ///
+    /// # Output
+    ///
+    /// Returns `(OdeSystem<F, J, A>, SampleData, A)` where:
+    ///
+    /// * `F` -- is a function to compute the `f` vector; e.g., `fn(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    /// * `J` -- is a function to compute the Jacobian; e.g., `fn(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    /// * `A` -- is `SampleNoArgs`
     ///
     /// # Reference
     ///
@@ -151,5 +167,224 @@ impl Samples {
             y_analytical: None,
         };
         (system, data, 0)
+    }
+
+    /// Returns the Arenstorf orbit problem, Hairer-Wanner, Eq(0.1), page 129
+    ///
+    /// From Hairer-Wanner:
+    ///
+    /// "(...) an example from Astronomy, the restricted three body problem. (...)
+    /// two bodies of masses μ' = 1 − μ and μ in circular rotation in a plane and
+    /// a third body of negligible mass moving around in the same plane. (...)"
+    ///
+    /// ```text
+    /// y0'' = y0 + 2 y1' - μ' (y0 + μ) / d0 - μ (y0 - μ') / d1
+    /// y1'' = y1 - 2 y0' - μ' y1 / d0 - μ y1 / d1
+    /// ```
+    ///
+    /// ```text
+    /// y2 := y0'  ⇒  y2' = y0''
+    /// y3 := y1'  ⇒  y3' = y1''
+    /// ```
+    ///
+    /// ```text
+    /// f0 := y0' = y2
+    /// f1 := y1' = y3
+    /// f2 := y2' = y0 + 2 y3 - μ' (y0 + μ) / d0 - μ (y0 - μ') / d1
+    /// f3 := y3' = y1 - 2 y2 - μ' y1 / d0 - μ y1 / d1
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// Returns `(OdeSystem<F, J, A>, SampleData, A)` where:
+    ///
+    /// * `F` -- is a function to compute the `f` vector; e.g., `fn(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    /// * `J` -- is a function to compute the Jacobian; e.g., `fn(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    /// * `A` -- is `SampleNoArgs`
+    ///
+    /// # Reference
+    ///
+    /// * E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
+    ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
+    ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
+    pub fn arenstorf<'a>() -> (
+        OdeSystem<
+            'a,
+            impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
+            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
+            SampleNoArgs,
+        >,
+        SampleData<'a>,
+        SampleNoArgs,
+    ) {
+        const MU: f64 = 0.012277471;
+        const MD: f64 = 1.0 - MU;
+        let x0 = 0.0;
+        let y0 = Vector::from(&[0.994, 0.0, 0.0, -2.00158510637908252240537862224]);
+        let x1 = 17.0652165601579625588917206249;
+        let system = OdeSystem::new(
+            4,
+            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut SampleNoArgs| {
+                let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
+                let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
+                let d0 = t0 * f64::sqrt(t0);
+                let d1 = t1 * f64::sqrt(t1);
+                f[0] = y[2];
+                f[1] = y[3];
+                f[2] = y[0] + 2.0 * y[3] - MD * (y[0] + MU) / d0 - MU * (y[0] - MD) / d1;
+                f[3] = y[1] - 2.0 * y[2] - MD * y[1] / d0 - MU * y[1] / d1;
+                Ok(())
+            },
+            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut SampleNoArgs| {
+                let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
+                let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
+                let s0 = f64::sqrt(t0);
+                let s1 = f64::sqrt(t1);
+                let d0 = t0 * s0;
+                let d1 = t1 * s1;
+                let dd0 = d0 * d0;
+                let dd1 = d1 * d1;
+                let a = y[0] + MU;
+                let b = y[0] - MD;
+                let dj00 = 3.0 * a * s0;
+                let dj01 = 3.0 * y[1] * s0;
+                let dj10 = 3.0 * b * s1;
+                let dj11 = 3.0 * y[1] * s1;
+                jj.reset();
+                jj.put(0, 2, 1.0 * m).unwrap();
+                jj.put(1, 3, 1.0 * m).unwrap();
+                jj.put(
+                    2,
+                    0,
+                    (1.0 - MD / d0 + a * dj00 * MD / dd0 - MU / d1 + b * dj10 * MU / dd1) * m,
+                )
+                .unwrap();
+                jj.put(2, 1, (a * dj01 * MD / dd0 + b * dj11 * MU / dd1) * m).unwrap();
+                jj.put(2, 3, 2.0 * m).unwrap();
+                jj.put(3, 0, (dj00 * y[1] * MD / dd0 + dj10 * y[1] * MU / dd1) * m)
+                    .unwrap();
+                jj.put(
+                    3,
+                    1,
+                    (1.0 - MD / dd0 + dj01 * y[1] * MD / dd0 - MU / d1 + dj11 * y[1] * MU / dd1) * m,
+                )
+                .unwrap();
+                jj.put(3, 2, -2.0 * m).unwrap();
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(8),
+            None,
+        );
+        let data = SampleData {
+            x0,
+            y0,
+            x1,
+            h_equal: None,
+            y_analytical: None,
+        };
+        (system, data, 0)
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::{SampleNoArgs, Samples};
+    use crate::StrError;
+    use russell_lab::{deriv_central5, mat_approx_eq, Matrix, Vector};
+    use russell_sparse::CooMatrix;
+
+    fn numerical_jacobian<F>(ndim: usize, x0: f64, y0: Vector, mut function: F) -> Matrix
+    where
+        F: FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
+    {
+        struct Extra {
+            x: f64,
+            f: Vector,
+            y: Vector,
+            i: usize, // index i of ∂fᵢ/∂yⱼ
+            j: usize, // index j of ∂fᵢ/∂yⱼ
+        }
+        let mut extra = Extra {
+            x: x0,
+            f: Vector::new(ndim),
+            y: y0.clone(),
+            i: 0,
+            j: 0,
+        };
+        let mut jac = Matrix::new(ndim, ndim);
+        for i in 0..ndim {
+            extra.i = i;
+            for j in 0..ndim {
+                extra.j = j;
+                let at_yj = y0[j];
+                let res = deriv_central5(at_yj, &mut extra, |yj: f64, extra: &mut Extra| {
+                    let mut args: u8 = 0;
+                    let original = extra.y[extra.j];
+                    extra.y[extra.j] = yj;
+                    function(&mut extra.f, extra.x, &extra.y, &mut args).unwrap();
+                    extra.y[extra.j] = original;
+                    extra.f[extra.i]
+                });
+                jac.set(i, j, res);
+            }
+        }
+        jac
+    }
+
+    #[test]
+    fn sample_hairer_wanner_eq1_jacobian_works() {
+        let mut args: u8 = 0;
+        let multiplier = 1.0;
+        let (mut system, data, _) = Samples::hairer_wanner_eq1();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_symmetry, false).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        let ana = jj.as_dense();
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-11);
+    }
+
+    #[test]
+    fn sample_van_der_pol_jacobian_works() {
+        let mut args: u8 = 0;
+        let multiplier = 1.0;
+
+        // non-stationary
+        let (mut system, data, _) = Samples::van_der_pol(None, false);
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_symmetry, false).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        let ana = jj.as_dense();
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-6);
+
+        // stationary
+        let (mut system, data, _) = Samples::van_der_pol(None, true);
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_symmetry, false).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        let ana = jj.as_dense();
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-12);
+    }
+
+    #[test]
+    fn sample_arenstorf_jacobian_works() {
+        let mut args: u8 = 0;
+        let multiplier = 1.0;
+        let (mut system, data, _) = Samples::arenstorf();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_symmetry, false).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        let ana = jj.as_dense();
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-1);
     }
 }

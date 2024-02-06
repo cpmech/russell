@@ -43,6 +43,18 @@ pub struct ParamsRadau5 {
 
     /// Tolerance for Newton-Raphson method
     pub(crate) tol_newton: f64,
+
+    /// Use numerical Jacobian, even if the analytical Jacobian is available
+    pub(crate) use_numerical_jacobian: bool,
+
+    /// Max number of iterations (must be ≥ 1)
+    pub(crate) n_iteration_max: usize,
+
+    /// Linear solver kind
+    pub(crate) lin_sol: Genie,
+
+    /// Configurations for sparse linear solver
+    pub(crate) lin_sol_params: Option<LinSolParams>,
 }
 
 /// Holds parameters for explicit Runge-Kutta methods
@@ -137,12 +149,19 @@ impl ParamsRadau5 {
             abs_tol,
             rel_tol,
             tol_newton,
+            use_numerical_jacobian: false,
+            n_iteration_max: 7, // line 436 of Hairer-Wanner' radau5.f
+            lin_sol: Genie::Umfpack,
+            lin_sol_params: None,
         }
     }
 
     /// Validates all parameters
     pub(crate) fn validate(&self) -> Result<(), StrError> {
-        Err("TODO: Radau5 parameters")
+        if self.n_iteration_max < 1 {
+            return Err("n_iteration_max must be ≥ 1");
+        }
+        Ok(())
     }
 }
 
@@ -400,7 +419,9 @@ mod tests {
         params.m_first_rejection = -1.0;
         assert_eq!(params.validate().err(), Some("m_first_rejection must be ≥ 0.0"));
 
-        let params = Params::new(Method::Radau5);
-        assert_eq!(params.validate().err(), Some("TODO: Radau5 parameters"));
+        let mut params = Params::new(Method::Radau5);
+        params.validate().unwrap();
+        params.radau5.n_iteration_max = 0;
+        assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 1"));
     }
 }

@@ -142,8 +142,7 @@ impl ParamsRadau5 {
 
     /// Validates all parameters
     pub(crate) fn validate(&self) -> Result<(), StrError> {
-        // TODO
-        Ok(())
+        Err("TODO: Radau5 parameters")
     }
 }
 
@@ -241,9 +240,11 @@ impl Params {
 
     /// Validates all parameters
     pub(crate) fn validate(&self) -> Result<(), StrError> {
-        self.bweuler.validate()?;
-        self.radau5.validate()?;
-        self.erk.validate()?;
+        match self.method {
+            Method::BwEuler => self.bweuler.validate()?,
+            Method::Radau5 => self.radau5.validate()?,
+            _ => self.erk.validate()?,
+        }
         if self.h_ini < 1e-8 {
             return Err("h_ini must be ≥ 1e-8");
         }
@@ -398,5 +399,8 @@ mod tests {
         params.n_step_max = 1;
         params.m_first_rejection = -1.0;
         assert_eq!(params.validate().err(), Some("m_first_rejection must be ≥ 0.0"));
+
+        let params = Params::new(Method::Radau5);
+        assert_eq!(params.validate().err(), Some("TODO: Radau5 parameters"));
     }
 }

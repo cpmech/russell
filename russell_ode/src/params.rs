@@ -34,7 +34,16 @@ pub struct ParamsBwEuler {
 
 /// Holds parameters for the Radau5 method
 #[derive(Clone, Copy, Debug)]
-pub struct ParamsRadau5 {}
+pub struct ParamsRadau5 {
+    /// Absolute tolerance
+    pub(crate) abs_tol: f64,
+
+    /// Relative tolerance
+    pub(crate) rel_tol: f64,
+
+    /// Tolerance for Newton-Raphson method
+    pub(crate) tol_newton: f64,
+}
 
 /// Holds parameters for explicit Runge-Kutta methods
 #[derive(Clone, Copy, Debug)]
@@ -97,7 +106,7 @@ pub struct Params {
 impl ParamsBwEuler {
     /// Allocates a new instance
     pub(crate) fn new() -> Self {
-        let (abs_tol, rel_tol, tol_newton) = calc_tolerances(Method::BwEuler, 1e-4, 1e-4).unwrap();
+        let (abs_tol, rel_tol, tol_newton) = calc_tolerances(false, 1e-4, 1e-4).unwrap();
         ParamsBwEuler {
             abs_tol,
             rel_tol,
@@ -105,7 +114,7 @@ impl ParamsBwEuler {
             use_modified_newton: false,
             use_numerical_jacobian: false,
             use_rms_norm: true,
-            n_iteration_max: 7,
+            n_iteration_max: 7, // line 436 of Hairer-Wanner' radau5.f
             lin_sol: Genie::Umfpack,
             lin_sol_params: None,
         }
@@ -123,8 +132,12 @@ impl ParamsBwEuler {
 impl ParamsRadau5 {
     /// Allocates a new instance
     pub(crate) fn new() -> Self {
-        // TODO
-        ParamsRadau5 {}
+        let (abs_tol, rel_tol, tol_newton) = calc_tolerances(true, 1e-4, 1e-4).unwrap();
+        ParamsRadau5 {
+            abs_tol,
+            rel_tol,
+            tol_newton,
+        }
     }
 
     /// Validates all parameters
@@ -142,13 +155,13 @@ impl ParamsERK {
             Method::DoPri8 => (0.0, 0.2),
             _ => (0.0, 0.0),
         };
-        let (abs_tol, rel_tol, _) = calc_tolerances(Method::BwEuler, 1e-4, 1e-4).unwrap();
+        let (abs_tol, rel_tol, _) = calc_tolerances(false, 1e-4, 1e-4).unwrap();
         ParamsERK {
             abs_tol,
             rel_tol,
-            m_min: 0.125,
-            m_max: 5.0,
-            m_factor: 0.9,
+            m_min: 0.125,  // line 534 of Hairer-Wanner' radau5.f
+            m_max: 5.0,    // line 529 of Hairer-Wanner' radau5.f
+            m_factor: 0.9, // line 477 of Hairer-Wanner' radau5.f
             lund_beta,
             lund_beta_m,
             use_dense_output: false,
@@ -161,16 +174,16 @@ impl ParamsERK {
             return Err("m_min must be ≥ 0.001");
         }
         if self.m_min >= self.m_max {
-            return Err("m_min must be < than m_max");
+            return Err("m_min must be < m_max");
         }
         if self.m_max < 0.01 {
             return Err("m_max must be ≥ 0.01");
         }
-        if self.m_max <= self.m_min {
-            return Err("m_max must be > m_min");
-        }
         if self.m_factor < 0.1 {
             return Err("m_factor must be ≥ 0.1");
+        }
+        if self.m_factor > 1.0 {
+            return Err("m_factor must be ≤ 1.0");
         }
         if self.lund_beta < 0.0 {
             return Err("lund_beta must be ≥ 0.0");
@@ -192,7 +205,7 @@ impl Params {
             erk: ParamsERK::new(method),
             h_ini: 1e-4,
             rel_error_prev_min: 1e-4,
-            n_step_max: 1000,
+            n_step_max: 100000, // line 426 of Hairer-Wanner' radau5.f
             m_first_rejection: 0.1,
         }
     }
@@ -204,12 +217,25 @@ impl Params {
     /// * `abs_tol` -- absolute tolerance
     /// * `rel_tol` -- relative tolerance
     pub fn set_tolerances(&mut self, abs_tol: f64, rel_tol: f64) -> Result<(), StrError> {
-        let (abs_tol, rel_tol, tol_newton) = calc_tolerances(self.method, abs_tol, rel_tol)?;
-        self.bweuler.abs_tol = abs_tol;
-        self.bweuler.rel_tol = rel_tol;
-        self.bweuler.tol_newton = tol_newton;
-        self.erk.abs_tol = abs_tol;
-        self.erk.rel_tol = rel_tol;
+        match self.method {
+            Method::BwEuler => {
+                let (abs_tol, rel_tol, tol_newton) = calc_tolerances(false, abs_tol, rel_tol)?;
+                self.bweuler.abs_tol = abs_tol;
+                self.bweuler.rel_tol = rel_tol;
+                self.bweuler.tol_newton = tol_newton;
+            }
+            Method::Radau5 => {
+                let (abs_tol, rel_tol, tol_newton) = calc_tolerances(true, abs_tol, rel_tol)?;
+                self.radau5.abs_tol = abs_tol;
+                self.radau5.rel_tol = rel_tol;
+                self.radau5.tol_newton = tol_newton;
+            }
+            _ => {
+                let (abs_tol, rel_tol, _) = calc_tolerances(false, abs_tol, rel_tol)?;
+                self.erk.abs_tol = abs_tol;
+                self.erk.rel_tol = rel_tol;
+            }
+        }
         Ok(())
     }
 
@@ -238,6 +264,7 @@ impl Params {
 ///
 /// # Input
 ///
+/// * `radau5` -- indicates that the tolerances must be altered for Radau5
 /// * `abs_tol` -- absolute tolerance
 /// * `rel_tol` -- relative tolerance
 ///
@@ -248,7 +275,7 @@ impl Params {
 /// * `abs_tol` -- absolute tolerance
 /// * `rel_tol` -- relative tolerance
 /// * `tol_newton` -- tolerance for Newton's method
-fn calc_tolerances(method: Method, abs_tol: f64, rel_tol: f64) -> Result<(f64, f64, f64), StrError> {
+fn calc_tolerances(radau5: bool, abs_tol: f64, rel_tol: f64) -> Result<(f64, f64, f64), StrError> {
     // check
     if abs_tol <= 10.0 * f64::EPSILON {
         return Err("the absolute tolerance must be > 10 · EPSILON");
@@ -261,15 +288,115 @@ fn calc_tolerances(method: Method, abs_tol: f64, rel_tol: f64) -> Result<(f64, f
     let mut abs_tol = abs_tol;
     let mut rel_tol = rel_tol;
 
-    // change the tolerances (radau5 only)
-    if method == Method::Radau5 {
-        const BETA: f64 = 2.0 / 3.0;
-        let quot = abs_tol / rel_tol;
-        rel_tol = 0.1 * f64::powf(rel_tol, BETA);
-        abs_tol = rel_tol * quot;
+    // change the tolerances (according to Hairer-Wanner' radau5.f)
+    if radau5 {
+        const BETA: f64 = 2.0 / 3.0; // line 402 of radau5.f
+        let quot = abs_tol / rel_tol; // line 408 of radau5.f
+        rel_tol = 0.1 * f64::powf(rel_tol, BETA); // line 409 of radau5.f
+        abs_tol = rel_tol * quot; // line 410 of radau5.f
     }
 
-    // tolerance for iterations
+    // tolerance for iterations (line 500 of Hairer-Wanner' radau5.f)
     let tol_newton = f64::max(10.0 * f64::EPSILON / rel_tol, f64::min(0.03, f64::sqrt(rel_tol)));
     Ok((abs_tol, rel_tol, tol_newton))
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::Params;
+    use crate::Method;
+    use russell_lab::approx_eq;
+
+    #[test]
+    fn information_clone_copy_and_debug_work() {
+        let params = Params::new(Method::BwEuler);
+        let copy = params;
+        let clone = params.clone();
+        assert!(format!("{:?}", params).len() > 0);
+        assert_eq!(copy.h_ini, params.h_ini);
+        assert_eq!(clone.h_ini, params.h_ini);
+        let c = params.bweuler.clone();
+        assert_eq!(c.abs_tol, params.bweuler.abs_tol);
+
+        let params = Params::new(Method::Radau5);
+        let c = params.radau5.clone();
+        assert!(format!("{:?}", c).len() > 0);
+
+        let params = Params::new(Method::DoPri5);
+        let c = params.erk.clone();
+        assert_eq!(c.m_min, params.erk.m_min);
+    }
+
+    #[test]
+    fn set_tolerances_works() {
+        let mut params = Params::new(Method::BwEuler);
+        assert_eq!(
+            params.set_tolerances(0.0, 1e-4).err(),
+            Some("the absolute tolerance must be > 10 · EPSILON")
+        );
+        assert_eq!(
+            params.set_tolerances(1e-4, 0.0).err(),
+            Some("the relative tolerance must be > 10 · EPSILON")
+        );
+        params.set_tolerances(0.01, 0.02).unwrap();
+        assert_eq!(params.bweuler.abs_tol, 0.01);
+        assert_eq!(params.bweuler.rel_tol, 0.02);
+        assert_eq!(params.bweuler.tol_newton, 0.03);
+
+        let mut params = Params::new(Method::DoPri5);
+        params.set_tolerances(0.2, 0.3).unwrap();
+        assert_eq!(params.erk.abs_tol, 0.2);
+        assert_eq!(params.erk.rel_tol, 0.3);
+
+        let mut params = Params::new(Method::Radau5);
+        params.set_tolerances(0.1, 0.1).unwrap();
+        approx_eq(params.radau5.abs_tol, 2.154434690031884E-02, 1e-17);
+        approx_eq(params.radau5.rel_tol, 2.154434690031884E-02, 1e-17);
+        assert_eq!(params.radau5.tol_newton, 0.03);
+    }
+
+    #[test]
+    fn validate_works() {
+        let mut params = Params::new(Method::BwEuler);
+        params.validate().unwrap();
+        params.bweuler.n_iteration_max = 0;
+        assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 1"));
+
+        let mut params = Params::new(Method::DoPri5);
+        params.erk.m_min = 0.0;
+        assert_eq!(params.validate().err(), Some("m_min must be ≥ 0.001"));
+        params.erk.m_min = 1.0;
+        params.erk.m_max = 0.1;
+        assert_eq!(params.validate().err(), Some("m_min must be < m_max"));
+        params.erk.m_min = 0.002;
+        params.erk.m_max = 0.005;
+        assert_eq!(params.validate().err(), Some("m_max must be ≥ 0.01"));
+        params.erk.m_min = 0.1;
+        params.erk.m_max = 1.0;
+        params.erk.m_factor = 0.0;
+        assert_eq!(params.validate().err(), Some("m_factor must be ≥ 0.1"));
+        params.erk.m_factor = 3.0;
+        assert_eq!(params.validate().err(), Some("m_factor must be ≤ 1.0"));
+        params.erk.m_factor = 0.9;
+        params.erk.lund_beta = -1.0;
+        assert_eq!(params.validate().err(), Some("lund_beta must be ≥ 0.0"));
+        params.erk.lund_beta = 0.0;
+        params.erk.lund_beta_m = -1.0;
+        assert_eq!(params.validate().err(), Some("lund_beta_m must be ≥ 0.0"));
+
+        params.erk.lund_beta_m = 0.0;
+        params.h_ini = 0.0;
+        assert_eq!(params.validate().err(), Some("h_ini must be ≥ 1e-8"));
+        params.h_ini = 1e-8;
+        params.rel_error_prev_min = 0.0;
+        assert_eq!(params.validate().err(), Some("rel_error_prev_min must be ≥ 1e-8"));
+        params.rel_error_prev_min = 1e-8;
+        params.n_step_max = 0;
+        assert_eq!(params.validate().err(), Some("n_step_max must be ≥ 1"));
+        params.n_step_max = 1;
+        params.m_first_rejection = -1.0;
+        assert_eq!(params.validate().err(), Some("m_first_rejection must be ≥ 0.0"));
+    }
 }

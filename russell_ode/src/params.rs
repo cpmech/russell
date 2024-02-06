@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use crate::{Method, StrError};
 use russell_sparse::{Genie, LinSolParams};
 

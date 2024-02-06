@@ -28,7 +28,7 @@ use crate::euler_forward::*;
 use crate::explicit_runge_kutta::*;
 use crate::num_solver::*;
 pub use crate::params::*;
-pub use crate::radau5::*;
+use crate::radau5::*;
 pub use crate::samples::*;
 pub use crate::solver::*;
 pub use crate::system::*;

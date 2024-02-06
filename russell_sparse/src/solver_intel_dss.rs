@@ -51,7 +51,7 @@ pub struct SolverIntelDSS {
     factorized: bool,
 
     /// Holds the symmetry type used in initialize
-    initialized_symmetry: Option<Symmetry>,
+    initialized_symmetry: Symmetry,
 
     /// Holds the matrix dimension saved in initialize
     initialized_ndim: usize,
@@ -108,7 +108,7 @@ impl SolverIntelDSS {
                 solver,
                 initialized: false,
                 factorized: false,
-                initialized_symmetry: None,
+                initialized_symmetry: Symmetry::No,
                 initialized_ndim: 0,
                 initialized_nnz: 0,
                 determinant_coefficient: 0.0,
@@ -185,10 +185,7 @@ impl LinSolTrait for SolverIntelDSS {
         let calc_det = if par.compute_determinant { 1 } else { 0 };
 
         // extract the symmetry flags and check the storage type
-        let (general_symmetric, positive_definite) = match csr.symmetry {
-            Some(symmetry) => symmetry.status(false, true)?,
-            None => (0, 0),
-        };
+        let (general_symmetric, positive_definite) = csr.symmetry.status(false, true)?;
 
         // matrix config
         let ndim = to_i32(csr.nrow);

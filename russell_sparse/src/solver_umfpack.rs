@@ -65,7 +65,7 @@ pub struct SolverUMFPACK {
     factorized: bool,
 
     /// Holds the symmetry type used in initialize
-    initialized_symmetry: Option<Symmetry>,
+    initialized_symmetry: Symmetry,
 
     /// Holds the matrix dimension saved in initialize
     initialized_ndim: usize,
@@ -129,7 +129,7 @@ impl SolverUMFPACK {
                 solver,
                 initialized: false,
                 factorized: false,
-                initialized_symmetry: None,
+                initialized_symmetry: Symmetry::No,
                 initialized_ndim: 0,
                 initialized_nnz: 0,
                 effective_strategy: -1,
@@ -176,10 +176,8 @@ impl LinSolTrait for SolverUMFPACK {
         if csc.nrow != csc.ncol {
             return Err("the matrix must be square");
         }
-        if let Some(symmetry) = csc.symmetry {
-            if symmetry.triangular() {
-                return Err("for UMFPACK, the matrix must not be triangular");
-            }
+        if csc.symmetry.triangular() {
+            return Err("for UMFPACK, the matrix must not be triangular");
         }
 
         // check already initialized data

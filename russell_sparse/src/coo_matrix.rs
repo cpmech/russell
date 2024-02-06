@@ -16,10 +16,7 @@ use russell_lab::{Matrix, Vector};
 #[derive(Clone)]
 pub struct CooMatrix {
     /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
-    ///
-    /// **Note:** `None` means unsymmetric matrix or unspecified symmetry,
-    /// where the storage is automatically considered as `Full`.
-    pub(crate) symmetry: Option<Symmetry>,
+    pub(crate) symmetry: Symmetry,
 
     /// Holds the number of rows (must fit i32)
     pub(crate) nrow: usize,
@@ -183,7 +180,7 @@ impl CooMatrix {
             return Err("max_nnz must be ≥ 1");
         }
         Ok(CooMatrix {
-            symmetry,
+            symmetry: if let Some(v) = symmetry { v } else { Symmetry::No },
             nrow,
             ncol,
             nnz: 0,
@@ -280,7 +277,7 @@ impl CooMatrix {
             }
         }
         Ok(CooMatrix {
-            symmetry,
+            symmetry: if let Some(v) = symmetry { v } else { Symmetry::No },
             nrow,
             ncol,
             nnz,
@@ -335,12 +332,12 @@ impl CooMatrix {
         if self.nnz >= self.max_nnz {
             return Err("COO matrix: max number of items has been reached");
         }
-        if let Some(sym) = self.symmetry {
-            if sym.lower() {
+        if self.symmetry != Symmetry::No {
+            if self.symmetry.lower() {
                 if j > i {
                     return Err("COO matrix: j > i is incorrect for lower triangular storage");
                 }
-            } else if sym.upper() {
+            } else if self.symmetry.upper() {
                 if j < i {
                     return Err("COO matrix: j < i is incorrect for upper triangular storage");
                 }
@@ -386,7 +383,7 @@ impl CooMatrix {
     ///     assert_eq!(nrow, 3);
     ///     assert_eq!(ncol, 3);
     ///     assert_eq!(nnz, 0);
-    ///     assert_eq!(symmetry, None);
+    ///     assert_eq!(symmetry, Symmetry::No);
     ///     Ok(())
     /// }
     /// ```
@@ -475,10 +472,7 @@ impl CooMatrix {
         if m != self.nrow || n != self.ncol {
             return Err("wrong matrix dimensions");
         }
-        let mirror_required = match self.symmetry {
-            Some(sym) => sym.triangular(),
-            None => false,
-        };
+        let mirror_required = self.symmetry.triangular();
         a.fill(0.0);
         let d = if self.one_based { 1 } else { 0 };
         for p in 0..self.nnz {
@@ -560,10 +554,7 @@ impl CooMatrix {
         if v.dim() != self.nrow {
             return Err("v.ndim must equal nrow");
         }
-        let mirror_required = match self.symmetry {
-            Some(sym) => sym.triangular(),
-            None => false,
-        };
+        let mirror_required = self.symmetry.triangular();
         v.fill(0.0);
         let d = if self.one_based { 1 } else { 0 };
         for p in 0..self.nnz {
@@ -594,11 +585,11 @@ impl CooMatrix {
     ///     assert_eq!(nrow, 1);
     ///     assert_eq!(ncol, 2);
     ///     assert_eq!(nnz, 0);
-    ///     assert_eq!(symmetry, None);
+    ///     assert_eq!(symmetry, Symmetry::No);
     ///     Ok(())
     /// }
     /// ```
-    pub fn get_info(&self) -> (usize, usize, usize, Option<Symmetry>) {
+    pub fn get_info(&self) -> (usize, usize, usize, Symmetry) {
         (self.nrow, self.ncol, self.nnz, self.symmetry)
     }
 
@@ -609,10 +600,7 @@ impl CooMatrix {
 
     /// Returns whether the symmetry flag corresponds to a symmetric matrix or not
     pub fn get_symmetric(&self) -> bool {
-        match self.symmetry {
-            Some(_) => true,
-            None => false,
-        }
+        self.symmetry != Symmetry::No
     }
 
     /// Get an access to the row indices
@@ -654,7 +642,7 @@ mod tests {
     #[test]
     fn new_works() {
         let coo = CooMatrix::new(1, 1, 3, None, false).unwrap();
-        assert_eq!(coo.symmetry, None);
+        assert_eq!(coo.symmetry, Symmetry::No);
         assert_eq!(coo.nrow, 1);
         assert_eq!(coo.ncol, 1);
         assert_eq!(coo.nnz, 0);
@@ -685,7 +673,7 @@ mod tests {
     #[test]
     fn from_works() {
         let coo = CooMatrix::from(1, 1, vec![1], vec![1], vec![123.0], None, true).unwrap();
-        assert_eq!(coo.symmetry, None);
+        assert_eq!(coo.symmetry, Symmetry::No);
         assert_eq!(coo.nrow, 1);
         assert_eq!(coo.ncol, 1);
         assert_eq!(coo.nnz, 1);
@@ -702,7 +690,7 @@ mod tests {
         assert_eq!(nrow, 1);
         assert_eq!(ncol, 2);
         assert_eq!(nnz, 0);
-        assert_eq!(symmetry, None);
+        assert_eq!(symmetry, Symmetry::No);
     }
 
     #[test]
@@ -1044,14 +1032,15 @@ mod tests {
     #[test]
     fn getters_are_correct() {
         let (coo, _, _, _) = Samples::rectangular_1x2(false, false, false);
-        assert_eq!(coo.get_info(), (1, 2, 2, None));
+        assert_eq!(coo.get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(coo.get_storage(), Storage::Full);
         assert_eq!(coo.get_symmetric(), false);
         assert_eq!(coo.get_row_indices(), &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(coo.get_col_indices(), &[0, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(coo.get_values(), &[10.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
 
-        let coo = CooMatrix::new(2, 2, 2, Symmetry::new_general_full(), false).unwrap();
+        let sym = Some(Symmetry::new_general_full());
+        let coo = CooMatrix::new(2, 2, 2, sym, false).unwrap();
         assert_eq!(coo.get_symmetric(), true);
 
         let mut coo = CooMatrix::new(2, 1, 2, None, false).unwrap();

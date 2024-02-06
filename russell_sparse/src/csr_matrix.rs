@@ -51,10 +51,7 @@ use std::path::Path;
 #[derive(Clone)]
 pub struct CsrMatrix {
     /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
-    ///
-    /// **Note:** `None` means unsymmetric matrix or unspecified symmetry,
-    /// where the storage is automatically `Full`.
-    pub(crate) symmetry: Option<Symmetry>,
+    pub(crate) symmetry: Symmetry,
 
     /// Holds the number of rows (must fit i32)
     pub(crate) nrow: usize,
@@ -217,7 +214,7 @@ impl CsrMatrix {
             }
         }
         Ok(CsrMatrix {
-            symmetry,
+            symmetry: if let Some(v) = symmetry { v } else { Symmetry::No },
             nrow,
             ncol,
             row_pointers,
@@ -616,10 +613,7 @@ impl CsrMatrix {
         if m != self.nrow || n != self.ncol {
             return Err("wrong matrix dimensions");
         }
-        let mirror_required = match self.symmetry {
-            Some(sym) => sym.triangular(),
-            None => false,
-        };
+        let mirror_required = self.symmetry.triangular();
         a.fill(0.0);
         for i in 0..self.nrow {
             for p in self.row_pointers[i]..self.row_pointers[i + 1] {
@@ -659,10 +653,11 @@ impl CsrMatrix {
 
         // write header
         if !vismatrix {
-            match self.symmetry {
-                Some(_) => write!(&mut buffer, "%%MatrixMarket matrix coordinate real symmetric\n").unwrap(),
-                None => write!(&mut buffer, "%%MatrixMarket matrix coordinate real general\n").unwrap(),
-            };
+            if self.symmetry == Symmetry::No {
+                write!(&mut buffer, "%%MatrixMarket matrix coordinate real general\n").unwrap();
+            } else {
+                write!(&mut buffer, "%%MatrixMarket matrix coordinate real symmetric\n").unwrap();
+            }
         }
 
         // write dimensions
@@ -714,10 +709,7 @@ impl CsrMatrix {
         if v.dim() != self.nrow {
             return Err("v.ndim must equal nrow");
         }
-        let mirror_required = match self.symmetry {
-            Some(sym) => sym.triangular(),
-            None => false,
-        };
+        let mirror_required = self.symmetry.triangular();
         v.fill(0.0);
         for i in 0..self.nrow {
             for p in self.row_pointers[i]..self.row_pointers[i + 1] {
@@ -755,7 +747,7 @@ impl CsrMatrix {
     ///     assert_eq!(nrow, 1);
     ///     assert_eq!(ncol, 2);
     ///     assert_eq!(nnz, 2);
-    ///     assert_eq!(symmetry, None);
+    ///     assert_eq!(symmetry, Symmetry::No);
     ///     let a = csr.as_dense();
     ///     let correct = "┌       ┐\n\
     ///                    │ 10 20 │\n\
@@ -764,7 +756,7 @@ impl CsrMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn get_info(&self) -> (usize, usize, usize, Option<Symmetry>) {
+    pub fn get_info(&self) -> (usize, usize, usize, Symmetry) {
         (
             self.nrow,
             self.ncol,
@@ -900,7 +892,7 @@ mod tests {
     fn new_works() {
         let (_, _, csr_correct, _) = Samples::rectangular_1x2(false, false, false);
         let csr = CsrMatrix::new(1, 2, vec![0, 2], vec![0, 1], vec![10.0, 20.0], None).unwrap();
-        assert_eq!(csr.symmetry, None);
+        assert_eq!(csr.symmetry, Symmetry::No);
         assert_eq!(csr.nrow, 1);
         assert_eq!(csr.ncol, 2);
         assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
@@ -1012,11 +1004,12 @@ mod tests {
     fn update_from_coo_captures_errors() {
         let (coo, _, _, _) = Samples::rectangular_1x2(false, false, false);
         let mut csr = CsrMatrix::from_coo(&coo).unwrap();
-        let sym = Some(Symmetry::General(Storage::Lower));
-        assert_eq!(csr.update_from_coo(&CooMatrix { symmetry: sym,  nrow: 1, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0], one_based: false }).err(), Some("coo.symmetry must be equal to csr.symmetry"));
-        assert_eq!(csr.update_from_coo(&CooMatrix { symmetry: None, nrow: 2, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0], one_based: false }).err(), Some("coo.nrow must be equal to csr.nrow"));
-        assert_eq!(csr.update_from_coo(&CooMatrix { symmetry: None, nrow: 1, ncol: 1, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0], one_based: false }).err(), Some("coo.ncol must be equal to csr.ncol"));
-        assert_eq!(csr.update_from_coo(&CooMatrix { symmetry: None, nrow: 1, ncol: 2, nnz: 3, max_nnz: 3, indices_i: vec![0,0,0], indices_j: vec![0,0,0], values: vec![0.0,0.0,0.0], one_based: false }).err(), Some("coo.nnz must be equal to nnz(dup) = self.col_indices.len() = csr.values.len()"));
+        let yes = Symmetry::General(Storage::Lower);
+        let no = Symmetry::No;
+        assert_eq!(csr.update_from_coo(&CooMatrix { symmetry: yes,  nrow: 1, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0], one_based: false }).err(), Some("coo.symmetry must be equal to csr.symmetry"));
+        assert_eq!(csr.update_from_coo(&CooMatrix { symmetry: no, nrow: 2, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0], one_based: false }).err(), Some("coo.nrow must be equal to csr.nrow"));
+        assert_eq!(csr.update_from_coo(&CooMatrix { symmetry: no, nrow: 1, ncol: 1, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0], one_based: false }).err(), Some("coo.ncol must be equal to csr.ncol"));
+        assert_eq!(csr.update_from_coo(&CooMatrix { symmetry: no, nrow: 1, ncol: 2, nnz: 3, max_nnz: 3, indices_i: vec![0,0,0], indices_j: vec![0,0,0], values: vec![0.0,0.0,0.0], one_based: false }).err(), Some("coo.nnz must be equal to nnz(dup) = self.col_indices.len() = csr.values.len()"));
     }
 
     #[test]
@@ -1092,7 +1085,7 @@ mod tests {
     fn to_matrix_fails_on_wrong_dims() {
         // 10.0 20.0
         let csr = CsrMatrix {
-            symmetry: None,
+            symmetry: Symmetry::No,
             nrow: 1,
             ncol: 2,
             row_pointers: vec![0, 2],
@@ -1109,7 +1102,7 @@ mod tests {
     fn to_matrix_and_as_matrix_work() {
         // 10.0 20.0       << (1 x 2) matrix
         let csr = CsrMatrix {
-            symmetry: None,
+            symmetry: Symmetry::No,
             nrow: 1,
             ncol: 2,
             row_pointers: vec![0, 2],
@@ -1124,7 +1117,7 @@ mod tests {
         assert_eq!(format!("{}", a), correct);
 
         let csr = CsrMatrix {
-            symmetry: None,
+            symmetry: Symmetry::No,
             nrow: 5,
             ncol: 5,
             row_pointers: vec![0, 2, 5, 8, 9, 12],
@@ -1171,7 +1164,7 @@ mod tests {
     #[test]
     fn as_matrix_upper_works() {
         let csr = CsrMatrix {
-            symmetry: Some(Symmetry::General(Storage::Upper)),
+            symmetry: Symmetry::General(Storage::Upper),
             nrow: 5,
             ncol: 5,
             row_pointers: vec![0, 5, 6, 7, 8, 9],
@@ -1192,7 +1185,7 @@ mod tests {
     #[test]
     fn as_matrix_lower_works() {
         let csr = CsrMatrix {
-            symmetry: Some(Symmetry::General(Storage::Lower)),
+            symmetry: Symmetry::General(Storage::Lower),
             nrow: 5,
             ncol: 5,
             row_pointers: vec![0, 1, 3, 5, 7, 9],
@@ -1229,13 +1222,13 @@ mod tests {
     #[test]
     fn getters_are_correct() {
         let (_, _, csr, _) = Samples::rectangular_1x2(false, false, false);
-        assert_eq!(csr.get_info(), (1, 2, 2, None));
+        assert_eq!(csr.get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(csr.get_row_pointers(), &[0, 2]);
         assert_eq!(csr.get_col_indices(), &[0, 1]);
         assert_eq!(csr.get_values(), &[10.0, 20.0]);
 
         let mut csr = CsrMatrix {
-            symmetry: None,
+            symmetry: Symmetry::No,
             nrow: 1,
             ncol: 2,
             values: vec![10.0, 20.0],

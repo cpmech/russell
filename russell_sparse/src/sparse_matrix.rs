@@ -169,7 +169,7 @@ impl SparseMatrix {
     /// Returns `(nrow, ncol, nnz, symmetry)`
     ///
     /// **Priority**: CSC -> CSR -> COO
-    pub fn get_info(&self) -> (usize, usize, usize, Option<Symmetry>) {
+    pub fn get_info(&self) -> (usize, usize, usize, Symmetry) {
         match &self.csc {
             Some(csc) => csc.get_info(),
             None => match &self.csr {
@@ -415,7 +415,7 @@ impl SparseMatrix {
 #[cfg(test)]
 mod tests {
     use super::SparseMatrix;
-    use crate::Samples;
+    use crate::{Samples, Symmetry};
     use russell_lab::{vec_approx_eq, Matrix, Vector};
     use std::fs;
 
@@ -453,23 +453,23 @@ mod tests {
         let mut wrong = Vector::new(2);
         // COO
         let coo_mat = SparseMatrix::from_coo(coo);
-        assert_eq!(coo_mat.get_info(), (1, 2, 2, None));
+        assert_eq!(coo_mat.get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(coo_mat.get_max_abs_value(), 20.0);
-        assert_eq!(coo_mat.get_coo().unwrap().get_info(), (1, 2, 2, None));
+        assert_eq!(coo_mat.get_coo().unwrap().get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(coo_mat.get_csc().err(), Some("CSC matrix is not available"));
         assert_eq!(coo_mat.get_csr().err(), Some("CSR matrix is not available"));
         // CSC
         let csc_mat = SparseMatrix::from_csc(csc);
-        assert_eq!(csc_mat.get_info(), (1, 2, 2, None));
+        assert_eq!(csc_mat.get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(csc_mat.get_max_abs_value(), 20.0);
-        assert_eq!(csc_mat.get_csc().unwrap().get_info(), (1, 2, 2, None));
+        assert_eq!(csc_mat.get_csc().unwrap().get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(csc_mat.get_coo().err(), Some("COO matrix is not available"));
         assert_eq!(csc_mat.get_csr().err(), Some("CSR matrix is not available"));
         // CSR
         let csr_mat = SparseMatrix::from_csr(csr);
-        assert_eq!(csr_mat.get_info(), (1, 2, 2, None));
+        assert_eq!(csr_mat.get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(csr_mat.get_max_abs_value(), 20.0);
-        assert_eq!(csr_mat.get_csr().unwrap().get_info(), (1, 2, 2, None));
+        assert_eq!(csr_mat.get_csr().unwrap().get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(csr_mat.get_csc().err(), Some("CSC matrix is not available"));
         assert_eq!(csr_mat.get_coo().err(), Some("COO matrix is not available"));
 
@@ -502,15 +502,18 @@ mod tests {
         let (coo, csc, csr, _) = Samples::rectangular_1x2(false, false, false);
         // COO
         let mut coo_mat = SparseMatrix::from_coo(coo);
-        assert_eq!(coo_mat.get_coo_mut().unwrap().get_info(), (1, 2, 2, None));
+        assert_eq!(coo_mat.get_coo_mut().unwrap().get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(coo_mat.get_csc_mut().err(), Some("CSC matrix is not available"));
         assert_eq!(coo_mat.get_csr_mut().err(), Some("CSR matrix is not available"));
         // CSC
         let mut csc_mat = SparseMatrix::from_csc(csc);
-        assert_eq!(csc_mat.get_csc_mut().unwrap().get_info(), (1, 2, 2, None));
+        assert_eq!(csc_mat.get_csc_mut().unwrap().get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(csc_mat.get_coo_mut().err(), Some("COO matrix is not available"));
         assert_eq!(csc_mat.get_csr_mut().err(), Some("CSR matrix is not available"));
-        assert_eq!(csc_mat.get_csc_or_from_coo().unwrap().get_info(), (1, 2, 2, None));
+        assert_eq!(
+            csc_mat.get_csc_or_from_coo().unwrap().get_info(),
+            (1, 2, 2, Symmetry::No)
+        );
         assert_eq!(
             csc_mat.get_csr_or_from_coo().err(),
             Some("CSR is not available and COO matrix is not available to convert to CSR")
@@ -525,10 +528,13 @@ mod tests {
         );
         // CSR
         let mut csr_mat = SparseMatrix::from_csr(csr);
-        assert_eq!(csr_mat.get_csr_mut().unwrap().get_info(), (1, 2, 2, None));
+        assert_eq!(csr_mat.get_csr_mut().unwrap().get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(csr_mat.get_csc_mut().err(), Some("CSC matrix is not available"));
         assert_eq!(csr_mat.get_coo_mut().err(), Some("COO matrix is not available"));
-        assert_eq!(csr_mat.get_csr_or_from_coo().unwrap().get_info(), (1, 2, 2, None));
+        assert_eq!(
+            csr_mat.get_csr_or_from_coo().unwrap().get_info(),
+            (1, 2, 2, Symmetry::No)
+        );
         assert_eq!(
             csr_mat.get_csc_or_from_coo().err(),
             Some("CSC is not available and COO matrix is not available to convert to CSC")

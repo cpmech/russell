@@ -114,7 +114,7 @@ pub struct SolverMUMPS {
     factorized: bool,
 
     /// Holds the symmetry type used in the initialize
-    initialized_symmetry: Option<Symmetry>,
+    initialized_symmetry: Symmetry,
 
     /// Holds the matrix dimension saved in initialize
     initialized_ndim: usize,
@@ -183,7 +183,7 @@ impl SolverMUMPS {
                 solver,
                 initialized: false,
                 factorized: false,
-                initialized_symmetry: None,
+                initialized_symmetry: Symmetry::No,
                 initialized_ndim: 0,
                 initialized_nnz: 0,
                 effective_ordering: -1,
@@ -284,10 +284,7 @@ impl LinSolTrait for SolverMUMPS {
         let verbose = if par.verbose { 1 } else { 0 };
 
         // extract the symmetry flags and check the storage type
-        let (general_symmetric, positive_definite) = match coo.symmetry {
-            Some(symmetry) => symmetry.status(true, false)?,
-            None => (0, 0),
-        };
+        let (general_symmetric, positive_definite) = coo.symmetry.status(true, false)?;
 
         // matrix config
         let ndim = to_i32(coo.nrow);

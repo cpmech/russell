@@ -3,7 +3,6 @@ use crate::StrError;
 use crate::{Information, Method, NumSolver, ParamsERK, System, Workspace};
 use russell_lab::{vec_copy, vec_update, Matrix, Vector};
 use russell_sparse::CooMatrix;
-use std::marker::PhantomData;
 
 pub(crate) struct ExplicitRungeKutta<'a, F, J, A>
 where
@@ -83,9 +82,6 @@ where
 
     /// y values for dense output (len(kd)>0)
     yd: Option<Vector>,
-
-    /// Handle generic argument
-    phantom: PhantomData<A>,
 }
 
 impl<'a, F, J, A> ExplicitRungeKutta<'a, F, J, A>
@@ -200,7 +196,6 @@ where
             dense_out,
             kd,
             yd,
-            phantom: PhantomData,
         })
     }
 }

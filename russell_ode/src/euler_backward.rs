@@ -2,7 +2,6 @@ use crate::StrError;
 use crate::{NumSolver, ParamsBwEuler, System, Workspace};
 use russell_lab::{vec_copy, vec_update, Vector};
 use russell_sparse::{CooMatrix, Genie, LinSolver, SparseMatrix};
-use std::marker::PhantomData;
 
 /// Implements the backward Euler (implicit) solver
 pub(crate) struct EulerBackward<'a, F, J, A>
@@ -42,9 +41,6 @@ where
 
     /// Linear solver
     solver: LinSolver<'a>,
-
-    /// Handle generic argument
-    phantom: PhantomData<A>,
 }
 
 impl<'a, F, J, A> EulerBackward<'a, F, J, A>
@@ -68,7 +64,6 @@ where
             dy: Vector::new(ndim),
             kk: SparseMatrix::new_coo(ndim, ndim, nnz, symmetry, one_based).unwrap(),
             solver: LinSolver::new(params.lin_sol).unwrap(),
-            phantom: PhantomData,
         }
     }
 }

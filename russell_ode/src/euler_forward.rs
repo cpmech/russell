@@ -2,7 +2,6 @@ use crate::StrError;
 use crate::{NumSolver, System, Workspace};
 use russell_lab::{vec_add, vec_copy, Vector};
 use russell_sparse::CooMatrix;
-use std::marker::PhantomData;
 
 pub(crate) struct EulerForward<'a, F, J, A>
 where
@@ -19,9 +18,6 @@ where
 
     /// Auxiliary workspace (will contain y to be used in accept_update)
     w: Vector,
-
-    /// Handle generic argument
-    phantom: PhantomData<A>,
 }
 
 impl<'a, F, J, A> EulerForward<'a, F, J, A>
@@ -36,7 +32,6 @@ where
             system,
             k: Vector::new(ndim),
             w: Vector::new(ndim),
-            phantom: PhantomData,
         }
     }
 }

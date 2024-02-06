@@ -4,7 +4,6 @@ use crate::StrError;
 use crate::{Information, Method, NumSolver, ParamsERK, System, Workspace};
 use russell_lab::{vec_copy, vec_update, Matrix, Vector};
 use russell_sparse::{CooMatrix, Genie, LinSolver};
-use std::marker::PhantomData;
 
 pub(crate) struct Radau5<'a, F, J, A>
 where
@@ -19,9 +18,6 @@ where
 
     /// Linear solver
     solver: LinSolver<'a>,
-
-    /// Handle generic argument
-    phantom: PhantomData<A>,
 }
 
 impl<'a, F, J, A> Radau5<'a, F, J, A>
@@ -39,7 +35,6 @@ where
             params,
             system,
             solver: LinSolver::new(params.lin_sol).unwrap(),
-            phantom: PhantomData,
         }
     }
 }

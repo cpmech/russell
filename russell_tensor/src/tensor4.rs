@@ -1113,7 +1113,6 @@ mod tests {
     use crate::{Mandel, SamplesTensor4};
     use crate::{IDENTITY4, P_DEV, P_ISO, P_SKEW, P_SYM, P_SYMDEV, TRACE_PROJECTION, TRANSPOSITION};
     use russell_lab::{approx_eq, mat_approx_eq};
-    use serde::{Deserialize, Serialize};
 
     #[test]
     fn new_and_mandel_work() {
@@ -1545,15 +1544,12 @@ mod tests {
              └                                              ┘"
         );
         // serialize
-        let mut serialized = Vec::new();
-        let mut serializer = rmp_serde::Serializer::new(&mut serialized);
-        dd.serialize(&mut serializer).unwrap();
-        assert!(serialized.len() > 0);
+        let json = serde_json::to_string(&dd).unwrap();
+        assert!(json.len() > 0);
         // deserialize
-        let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
-        let ee: Tensor4 = Deserialize::deserialize(&mut deserializer).unwrap();
+        let from_json: Tensor4 = serde_json::from_str(&json).unwrap();
         assert_eq!(
-            format!("{:.0}", ee.to_matrix()),
+            format!("{:.0}", from_json.to_matrix()),
             "┌                                              ┐\n\
              │ 1111 1122 1133 1112 1123 1113 1112 1123 1113 │\n\
              │ 2211 2222 2233 2212 2223 2213 2212 2223 2213 │\n\

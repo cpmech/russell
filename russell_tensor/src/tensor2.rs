@@ -1748,7 +1748,6 @@ mod tests {
     use super::Tensor2;
     use crate::{Mandel, SampleTensor2, SamplesTensor2, IDENTITY2, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2};
     use russell_lab::{approx_eq, mat_approx_eq, mat_mat_mul, math::PI, vec_approx_eq, Matrix};
-    use serde::{Deserialize, Serialize};
 
     #[test]
     fn new_and_mandel_work() {
@@ -2462,15 +2461,12 @@ mod tests {
              └                ┘"
         );
         // serialize
-        let mut serialized = Vec::new();
-        let mut serializer = rmp_serde::Serializer::new(&mut serialized);
-        tt.serialize(&mut serializer).unwrap();
-        assert!(serialized.len() > 0);
+        let json = serde_json::to_string(&tt).unwrap();
+        assert!(json.len() > 0);
         // deserialize
-        let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
-        let ss: Tensor2 = Deserialize::deserialize(&mut deserializer).unwrap();
+        let from_json: Tensor2 = serde_json::from_str(&json).unwrap();
         assert_eq!(
-            format!("{:.1}", ss.to_matrix()),
+            format!("{:.1}", from_json.to_matrix()),
             "┌             ┐\n\
              │ 1.0 2.0 3.0 │\n\
              │ 4.0 5.0 6.0 │\n\

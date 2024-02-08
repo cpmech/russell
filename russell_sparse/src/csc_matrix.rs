@@ -1,4 +1,4 @@
-use super::{handle_umfpack_error_code, to_i32, CooMatrix, CsrMatrix, Symmetry};
+use super::{to_i32, CooMatrix, CsrMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::{Matrix, Vector};
 use std::ffi::OsStr;
@@ -6,20 +6,6 @@ use std::fmt::Write;
 use std::fs::{self, File};
 use std::io::Write as IoWrite;
 use std::path::Path;
-
-extern "C" {
-    fn umfpack_coo_to_csc(
-        col_pointers: *mut i32,
-        row_indices: *mut i32,
-        values: *mut f64,
-        nrow: i32,
-        ncol: i32,
-        nnz: i32,
-        indices_i: *const i32,
-        indices_j: *const i32,
-        values_aij: *const f64,
-    ) -> i32;
-}
 
 /// Holds the arrays needed for a CSC (compressed sparse column) matrix
 ///
@@ -343,45 +329,123 @@ impl CscMatrix {
             return Err("coo.nnz must be equal to nnz(dup) = csc.row_indices.len() = csc.values.len()");
         }
 
-        // call UMFPACK to convert COO to CSC
-        let status = if coo.one_based {
-            // handle one-based indexing
-            let mut indices_i = coo.indices_i.clone();
-            let mut indices_j = coo.indices_j.clone();
-            for k in 0..coo.nnz {
-                indices_i[k] -= 1;
-                indices_j[k] -= 1;
+        // Based on Prof Tim Davis' UMFPACK::UMF_triplet_map_x (umf_triplet.c)
+
+        // constants
+        let nrow = coo.nrow;
+        let ncol = coo.ncol;
+        let nnz = coo.nnz;
+        let ndim = usize::max(nrow, ncol);
+        let d = if coo.one_based { -1 } else { 0 };
+
+        // access the triplet data
+        let ai = &coo.indices_i;
+        let aj = &coo.indices_j;
+        let ax = &coo.values;
+
+        // access the CSC data
+        let bp = &mut self.col_pointers;
+        let bi = &mut self.row_indices;
+        let bx = &mut self.values;
+
+        // allocate workspaces
+        let mut rp = vec![0_i32; nrow + 1]; // temporary row form
+        let mut rj = vec![0_i32; nnz]; // temporary row form
+        let mut rx = vec![0_f64; nnz]; // temporary row form
+        let mut rc = vec![0_usize; nrow]; // temporary row count
+        let mut w = vec![0_i64; ndim]; // temporary workspace
+
+        // count the entries in each row (also counting duplicates)
+        // use w as workspace for row counts (including duplicates)
+        for i in 0..nrow {
+            rc[i] = 0;
+            w[i] = 0;
+        }
+        for k in 0..nnz {
+            let i = (ai[k] + d) as usize;
+            w[i] += 1;
+        }
+
+        // compute the row pointers (save them in workspace)
+        rp[0] = 0;
+        for i in 0..nrow {
+            rp[i + 1] = rp[i] + w[i] as i32;
+            w[i] = rp[i] as i64;
+        }
+
+        // construct the row form
+        for k in 0..nnz {
+            let i = (ai[k] + d) as usize;
+            assert!(w[i] >= 0);
+            let p = w[i] as usize;
+            rj[p] = aj[k] + d;
+            rx[p] = ax[k];
+            w[i] += 1; // w[i] is advanced to the start of row i+1
+        }
+
+        // sum duplicates. workspace[j] will hold the position in rj and rx of aij
+        const EMPTY: i64 = -1;
+        for j in 0..ncol {
+            w[j] = EMPTY;
+        }
+        for i in 0..nrow {
+            let p1 = rp[i] as usize;
+            let p2 = rp[i + 1] as usize;
+            let mut dest = p1;
+            // workspace[j] < p1 for all columns j (note that rj and rx are stored in row oriented order)
+            for p in p1..p2 {
+                let j = rj[p] as usize;
+                if w[j] >= p1 as i64 {
+                    let pj = w[j] as usize;
+                    // j is already in row i, position pj
+                    rx[pj] += rx[p]; // sum the entry
+                } else {
+                    // keep the entry
+                    w[j] = dest as i64;
+                    if dest != p {
+                        // move is not need
+                        rj[dest] = j as i32;
+                        rx[dest] = rx[p];
+                    }
+                    dest += 1;
+                }
             }
-            unsafe {
-                umfpack_coo_to_csc(
-                    self.col_pointers.as_mut_ptr(),
-                    self.row_indices.as_mut_ptr(),
-                    self.values.as_mut_ptr(),
-                    to_i32(coo.nrow),
-                    to_i32(coo.ncol),
-                    to_i32(coo.nnz),
-                    indices_i.as_ptr(),
-                    indices_j.as_ptr(),
-                    coo.values.as_ptr(),
-                )
+            rc[i] = dest - p1;
+        }
+
+        // count the entries in each column
+        for j in 0..ncol {
+            w[j] = 0; // use the workspace for column counts
+        }
+        for i in 0..nrow {
+            let p1 = rp[i] as usize;
+            let p2 = p1 + rc[i];
+            for p in p1..p2 {
+                let j = rj[p] as usize;
+                w[j] += 1;
             }
-        } else {
-            unsafe {
-                umfpack_coo_to_csc(
-                    self.col_pointers.as_mut_ptr(),
-                    self.row_indices.as_mut_ptr(),
-                    self.values.as_mut_ptr(),
-                    to_i32(coo.nrow),
-                    to_i32(coo.ncol),
-                    to_i32(coo.nnz),
-                    coo.indices_i.as_ptr(),
-                    coo.indices_j.as_ptr(),
-                    coo.values.as_ptr(),
-                )
+        }
+
+        // create the column pointers
+        bp[0] = 0;
+        for j in 0..ncol {
+            bp[j + 1] = bp[j] + w[j] as i32;
+        }
+        for j in 0..ncol {
+            w[j] = bp[j] as i64;
+        }
+
+        // construct the column form
+        for i in 0..nrow {
+            let p1 = rp[i] as usize;
+            let p2 = p1 + rc[i];
+            for p in p1..p2 {
+                let j = rj[p] as usize;
+                let cp = w[j] as usize;
+                bi[cp] = i as i32;
+                bx[cp] = rx[p];
+                w[j] += 1;
             }
-        };
-        if status != 0 {
-            return Err(handle_umfpack_error_code(status));
         }
         Ok(())
     }

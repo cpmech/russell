@@ -222,26 +222,3 @@ int32_t solver_umfpack_solve(struct InterfaceUMFPACK *solver,
 
     return code;
 }
-
-/// @brief Converts COO matrix (with possible duplicates) to CSC matrix
-/// @param nrow Is the number of rows
-/// @param ncol Is the number of columns
-/// @param nnz Is the number of non-zero values, including duplicates
-/// @param indices_i Are the CooMatrix row indices
-/// @param indices_j Are the CooMatrix column indices
-/// @param values_aij Are the CooMatrix values, including duplicates
-/// @return A success or fail code
-int32_t umfpack_coo_to_csc(int32_t *col_pointers,
-                           int32_t *row_indices,
-                           double *values,
-                           int32_t nrow,
-                           int32_t ncol,
-                           int32_t nnz,
-                           int32_t const *indices_i,
-                           int32_t const *indices_j,
-                           double const *values_aij) {
-    int code = umfpack_di_triplet_to_col(nrow, ncol, nnz,
-                                         indices_i, indices_j, values_aij,
-                                         col_pointers, row_indices, values, NULL);
-    return code;
-}

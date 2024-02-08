@@ -353,12 +353,11 @@ impl CscMatrix {
         let mut rj = vec![0_i32; nnz]; // temporary row form
         let mut rx = vec![0_f64; nnz]; // temporary row form
         let mut rc = vec![0_usize; nrow]; // temporary row count
-        let mut w = vec![0_i64; ndim]; // temporary workspace
+        let mut w = vec![0_i32; ndim]; // temporary workspace
 
         // count the entries in each row (also counting duplicates)
         // use w as workspace for row counts (including duplicates)
         for i in 0..nrow {
-            rc[i] = 0;
             w[i] = 0;
         }
         for k in 0..nnz {
@@ -370,13 +369,12 @@ impl CscMatrix {
         rp[0] = 0;
         for i in 0..nrow {
             rp[i + 1] = rp[i] + w[i] as i32;
-            w[i] = rp[i] as i64;
+            w[i] = rp[i];
         }
 
         // construct the row form
         for k in 0..nnz {
             let i = (ai[k] + d) as usize;
-            assert!(w[i] >= 0);
             let p = w[i] as usize;
             rj[p] = aj[k] + d;
             rx[p] = ax[k];
@@ -384,7 +382,7 @@ impl CscMatrix {
         }
 
         // sum duplicates. workspace[j] will hold the position in rj and rx of aij
-        const EMPTY: i64 = -1;
+        const EMPTY: i32 = -1;
         for j in 0..ncol {
             w[j] = EMPTY;
         }
@@ -395,13 +393,13 @@ impl CscMatrix {
             // workspace[j] < p1 for all columns j (note that rj and rx are stored in row oriented order)
             for p in p1..p2 {
                 let j = rj[p] as usize;
-                if w[j] >= p1 as i64 {
-                    let pj = w[j] as usize;
+                if w[j] >= p1 as i32 {
                     // j is already in row i, position pj
+                    let pj = w[j] as usize;
                     rx[pj] += rx[p]; // sum the entry
                 } else {
                     // keep the entry
-                    w[j] = dest as i64;
+                    w[j] = dest as i32;
                     if dest != p {
                         // move is not need
                         rj[dest] = j as i32;
@@ -432,7 +430,7 @@ impl CscMatrix {
             bp[j + 1] = bp[j] + w[j] as i32;
         }
         for j in 0..ncol {
-            w[j] = bp[j] as i64;
+            w[j] = bp[j];
         }
 
         // construct the column form

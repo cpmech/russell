@@ -1,7 +1,18 @@
 use super::{Storage, Symmetry};
 use crate::to_i32;
 use crate::StrError;
-use russell_lab::{Matrix, Vector};
+use num_complex::Complex64;
+use num_traits::{Num, NumCast};
+use russell_lab::{NumMatrix, NumVector};
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
+use std::ops::{AddAssign, MulAssign};
+
+/// CooMatrix is an alias to NumCooMatrix&lt;f64&gt; and is used in most functions that call OpenBLAS
+pub type CooMatrix = NumCooMatrix<f64>;
+
+/// ComplexCooMatrix is an alias to NumCooMatrix&lt;Complex64&gt; and is used in most functions that call OpenBLAS
+pub type ComplexCooMatrix = NumCooMatrix<Complex64>;
 
 /// Holds the row index, col index, and values of a matrix (also known as Triplet)
 ///
@@ -13,8 +24,11 @@ use russell_lab::{Matrix, Vector};
 /// * The repeated (i,j) capability is of great convenience for Finite Element solvers
 /// * A maximum number of entries must be decided prior to allocating a new COO matrix
 /// * The maximum number of entries includes possible entries with repeated indices
-#[derive(Clone)]
-pub struct CooMatrix {
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct NumCooMatrix<T>
+where
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
+{
     /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
     pub(crate) symmetry: Symmetry,
 
@@ -61,7 +75,8 @@ pub struct CooMatrix {
     /// ```text
     /// values.len() = max_nnz
     /// ```
-    pub(crate) values: Vec<f64>,
+    #[serde(bound(deserialize = "Vec<T>: Deserialize<'de>"))]
+    pub(crate) values: Vec<T>,
 
     /// Defines the use of one-based indexing instead of zero-based (default)
     ///
@@ -70,7 +85,10 @@ pub struct CooMatrix {
     pub(crate) one_based: bool,
 }
 
-impl CooMatrix {
+impl<T> NumCooMatrix<T>
+where
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
+{
     /// Creates a new COO matrix representing a sparse matrix
     ///
     /// # Input
@@ -179,7 +197,7 @@ impl CooMatrix {
         if max_nnz < 1 {
             return Err("max_nnz must be ≥ 1");
         }
-        Ok(CooMatrix {
+        Ok(NumCooMatrix {
             symmetry: if let Some(v) = symmetry { v } else { Symmetry::No },
             nrow,
             ncol,
@@ -187,7 +205,7 @@ impl CooMatrix {
             max_nnz,
             indices_i: vec![0; max_nnz],
             indices_j: vec![0; max_nnz],
-            values: vec![0.0; max_nnz],
+            values: vec![T::zero(); max_nnz],
             one_based,
         })
     }
@@ -245,7 +263,7 @@ impl CooMatrix {
         ncol: usize,
         row_indices: Vec<i32>,
         col_indices: Vec<i32>,
-        values: Vec<f64>,
+        values: Vec<T>,
         symmetry: Option<Symmetry>,
         one_based: bool,
     ) -> Result<Self, StrError> {
@@ -276,7 +294,7 @@ impl CooMatrix {
                 return Err("col index is out-of-range");
             }
         }
-        Ok(CooMatrix {
+        Ok(NumCooMatrix {
             symmetry: if let Some(v) = symmetry { v } else { Symmetry::No },
             nrow,
             ncol,
@@ -321,7 +339,7 @@ impl CooMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn put(&mut self, i: usize, j: usize, aij: f64) -> Result<(), StrError> {
+    pub fn put(&mut self, i: usize, j: usize, aij: T) -> Result<(), StrError> {
         // check range
         if i >= self.nrow {
             return Err("COO matrix: index of row is outside range");
@@ -422,8 +440,8 @@ impl CooMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn as_dense(&self) -> Matrix {
-        let mut a = Matrix::new(self.nrow, self.ncol);
+    pub fn as_dense(&self) -> NumMatrix<T> {
+        let mut a = NumMatrix::new(self.nrow, self.ncol);
         self.to_dense(&mut a).unwrap();
         a
     }
@@ -467,13 +485,13 @@ impl CooMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn to_dense(&self, a: &mut Matrix) -> Result<(), StrError> {
+    pub fn to_dense(&self, a: &mut NumMatrix<T>) -> Result<(), StrError> {
         let (m, n) = a.dims();
         if m != self.nrow || n != self.ncol {
             return Err("wrong matrix dimensions");
         }
         let mirror_required = self.symmetry.triangular();
-        a.fill(0.0);
+        a.fill(T::zero());
         let d = if self.one_based { 1 } else { 0 };
         for p in 0..self.nnz {
             let i = (self.indices_i[p] - d) as usize;
@@ -547,7 +565,7 @@ impl CooMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn mat_vec_mul(&self, v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
+    pub fn mat_vec_mul(&self, v: &mut NumVector<T>, alpha: T, u: &NumVector<T>) -> Result<(), StrError> {
         if u.dim() != self.ncol {
             return Err("u.ndim must equal ncol");
         }
@@ -555,7 +573,7 @@ impl CooMatrix {
             return Err("v.ndim must equal nrow");
         }
         let mirror_required = self.symmetry.triangular();
-        v.fill(0.0);
+        v.fill(T::zero());
         let d = if self.one_based { 1 } else { 0 };
         for p in 0..self.nnz {
             let i = (self.indices_i[p] - d) as usize;
@@ -614,12 +632,12 @@ impl CooMatrix {
     }
 
     /// Get an access to the values
-    pub fn get_values(&self) -> &[f64] {
+    pub fn get_values(&self) -> &[T] {
         &self.values
     }
 
     /// Get a mutable access the values
-    pub fn get_values_mut(&mut self) -> &mut [f64] {
+    pub fn get_values_mut(&mut self) -> &mut [T] {
         &mut self.values
     }
 }
@@ -628,20 +646,29 @@ impl CooMatrix {
 
 #[cfg(test)]
 mod tests {
-    use super::CooMatrix;
+    use super::NumCooMatrix;
     use crate::{Samples, Storage, Symmetry};
-    use russell_lab::{vec_approx_eq, Matrix, Vector};
+    use russell_lab::{vec_approx_eq, NumMatrix, NumVector};
 
     #[test]
     fn new_captures_errors() {
-        assert_eq!(CooMatrix::new(0, 1, 3, None, false).err(), Some("nrow must be ≥ 1"));
-        assert_eq!(CooMatrix::new(1, 0, 3, None, false).err(), Some("ncol must be ≥ 1"));
-        assert_eq!(CooMatrix::new(1, 1, 0, None, false).err(), Some("max_nnz must be ≥ 1"));
+        assert_eq!(
+            NumCooMatrix::<f32>::new(0, 1, 3, None, false).err(),
+            Some("nrow must be ≥ 1")
+        );
+        assert_eq!(
+            NumCooMatrix::<f32>::new(1, 0, 3, None, false).err(),
+            Some("ncol must be ≥ 1")
+        );
+        assert_eq!(
+            NumCooMatrix::<f32>::new(1, 1, 0, None, false).err(),
+            Some("max_nnz must be ≥ 1")
+        );
     }
 
     #[test]
     fn new_works() {
-        let coo = CooMatrix::new(1, 1, 3, None, false).unwrap();
+        let coo = NumCooMatrix::<f32>::new(1, 1, 3, None, false).unwrap();
         assert_eq!(coo.symmetry, Symmetry::No);
         assert_eq!(coo.nrow, 1);
         assert_eq!(coo.ncol, 1);
@@ -655,24 +682,24 @@ mod tests {
     #[test]
     #[rustfmt::skip]
     fn from_captures_errors(){
-        assert_eq!(CooMatrix::from(0, 1, vec![ 0], vec![ 0], vec![0.0], None, false).err(), Some("nrow must be ≥ 1"));
-        assert_eq!(CooMatrix::from(1, 0, vec![ 0], vec![ 0], vec![0.0], None, false).err(), Some("ncol must be ≥ 1"));
-        assert_eq!(CooMatrix::from(1, 1, vec![  ], vec![ 0], vec![0.0], None, false).err(), Some("nnz must be ≥ 1"));
-        assert_eq!(CooMatrix::from(1, 1, vec![ 0], vec![  ], vec![0.0], None, false).err(), Some("col_indices.len() must be = nnz"));
-        assert_eq!(CooMatrix::from(1, 1, vec![ 0], vec![ 0], vec![   ], None, false).err(), Some("values.len() must be = nnz"));
-        assert_eq!(CooMatrix::from(1, 1, vec![-1], vec![ 0], vec![0.0], None, false).err(), Some("row index is out-of-range"));
-        assert_eq!(CooMatrix::from(1, 1, vec![ 1], vec![ 0], vec![0.0], None, false).err(), Some("row index is out-of-range"));
-        assert_eq!(CooMatrix::from(1, 1, vec![ 0], vec![-1], vec![0.0], None, false).err(), Some("col index is out-of-range"));
-        assert_eq!(CooMatrix::from(1, 1, vec![ 0], vec![ 1], vec![0.0], None, false).err(), Some("col index is out-of-range"));
-        assert_eq!(CooMatrix::from(1, 1, vec![ 0], vec![ 1], vec![0.0], None, true).err(), Some("row index is out-of-range"));
-        assert_eq!(CooMatrix::from(1, 1, vec![ 2], vec![ 1], vec![0.0], None, true).err(), Some("row index is out-of-range"));
-        assert_eq!(CooMatrix::from(1, 1, vec![ 1], vec![ 0], vec![0.0], None, true).err(), Some("col index is out-of-range"));
-        assert_eq!(CooMatrix::from(1, 1, vec![ 1], vec![ 2], vec![0.0], None, true).err(), Some("col index is out-of-range"));
+        assert_eq!(NumCooMatrix::<f32>::from(0, 1, vec![ 0], vec![ 0], vec![0.0], None, false).err(), Some("nrow must be ≥ 1"));
+        assert_eq!(NumCooMatrix::<f32>::from(1, 0, vec![ 0], vec![ 0], vec![0.0], None, false).err(), Some("ncol must be ≥ 1"));
+        assert_eq!(NumCooMatrix::<f32>::from(1, 1, vec![  ], vec![ 0], vec![0.0], None, false).err(), Some("nnz must be ≥ 1"));
+        assert_eq!(NumCooMatrix::<f32>::from(1, 1, vec![ 0], vec![  ], vec![0.0], None, false).err(), Some("col_indices.len() must be = nnz"));
+        assert_eq!(NumCooMatrix::<f32>::from(1, 1, vec![ 0], vec![ 0], vec![   ], None, false).err(), Some("values.len() must be = nnz"));
+        assert_eq!(NumCooMatrix::<f32>::from(1, 1, vec![-1], vec![ 0], vec![0.0], None, false).err(), Some("row index is out-of-range"));
+        assert_eq!(NumCooMatrix::<f32>::from(1, 1, vec![ 1], vec![ 0], vec![0.0], None, false).err(), Some("row index is out-of-range"));
+        assert_eq!(NumCooMatrix::<f32>::from(1, 1, vec![ 0], vec![-1], vec![0.0], None, false).err(), Some("col index is out-of-range"));
+        assert_eq!(NumCooMatrix::<f32>::from(1, 1, vec![ 0], vec![ 1], vec![0.0], None, false).err(), Some("col index is out-of-range"));
+        assert_eq!(NumCooMatrix::<f32>::from(1, 1, vec![ 0], vec![ 1], vec![0.0], None, true).err(), Some("row index is out-of-range"));
+        assert_eq!(NumCooMatrix::<f32>::from(1, 1, vec![ 2], vec![ 1], vec![0.0], None, true).err(), Some("row index is out-of-range"));
+        assert_eq!(NumCooMatrix::<f32>::from(1, 1, vec![ 1], vec![ 0], vec![0.0], None, true).err(), Some("col index is out-of-range"));
+        assert_eq!(NumCooMatrix::<f32>::from(1, 1, vec![ 1], vec![ 2], vec![0.0], None, true).err(), Some("col index is out-of-range"));
     }
 
     #[test]
     fn from_works() {
-        let coo = CooMatrix::from(1, 1, vec![1], vec![1], vec![123.0], None, true).unwrap();
+        let coo = NumCooMatrix::<f32>::from(1, 1, vec![1], vec![1], vec![123.0], None, true).unwrap();
         assert_eq!(coo.symmetry, Symmetry::No);
         assert_eq!(coo.nrow, 1);
         assert_eq!(coo.ncol, 1);
@@ -681,11 +708,14 @@ mod tests {
         assert_eq!(coo.indices_i, &[1]);
         assert_eq!(coo.indices_j, &[1]);
         assert_eq!(coo.values, &[123.0]);
+        let sym = Some(Symmetry::new_general_full());
+        let coo = NumCooMatrix::<f32>::from(1, 1, vec![1], vec![1], vec![123.0], sym, true).unwrap();
+        assert_eq!(coo.symmetry, Symmetry::General(Storage::Full));
     }
 
     #[test]
     fn get_info_works() {
-        let coo = CooMatrix::new(1, 2, 10, None, false).unwrap();
+        let coo = NumCooMatrix::<f32>::new(1, 2, 10, None, false).unwrap();
         let (nrow, ncol, nnz, symmetry) = coo.get_info();
         assert_eq!(nrow, 1);
         assert_eq!(ncol, 2);
@@ -695,37 +725,37 @@ mod tests {
 
     #[test]
     fn put_fails_on_wrong_values() {
-        let mut coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        let mut coo = NumCooMatrix::<i32>::new(1, 1, 1, None, false).unwrap();
         assert_eq!(
-            coo.put(1, 0, 0.0).err(),
+            coo.put(1, 0, 0).err(),
             Some("COO matrix: index of row is outside range")
         );
         assert_eq!(
-            coo.put(0, 1, 0.0).err(),
+            coo.put(0, 1, 0).err(),
             Some("COO matrix: index of column is outside range")
         );
-        assert_eq!(coo.put(0, 0, 0.0).err(), None); // << will take all spots
+        assert_eq!(coo.put(0, 0, 0).err(), None); // << will take all spots
         assert_eq!(
-            coo.put(0, 0, 0.0).err(),
+            coo.put(0, 0, 0).err(),
             Some("COO matrix: max number of items has been reached")
         );
         let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo = CooMatrix::new(2, 2, 4, sym, false).unwrap();
+        let mut coo = NumCooMatrix::<u8>::new(2, 2, 4, sym, false).unwrap();
         assert_eq!(
-            coo.put(0, 1, 0.0).err(),
+            coo.put(0, 1, 0).err(),
             Some("COO matrix: j > i is incorrect for lower triangular storage")
         );
         let sym = Some(Symmetry::General(Storage::Upper));
-        let mut coo = CooMatrix::new(2, 2, 4, sym, false).unwrap();
+        let mut coo = NumCooMatrix::<u8>::new(2, 2, 4, sym, false).unwrap();
         assert_eq!(
-            coo.put(1, 0, 0.0).err(),
+            coo.put(1, 0, 0).err(),
             Some("COO matrix: j < i is incorrect for upper triangular storage")
         );
     }
 
     #[test]
     fn put_works() {
-        let mut coo = CooMatrix::new(3, 3, 5, None, false).unwrap();
+        let mut coo = NumCooMatrix::<f32>::new(3, 3, 5, None, false).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         assert_eq!(coo.nnz, 1);
         coo.put(0, 1, 2.0).unwrap();
@@ -740,7 +770,7 @@ mod tests {
 
     #[test]
     fn reset_works() {
-        let mut coo = CooMatrix::new(2, 2, 4, None, false).unwrap();
+        let mut coo = NumCooMatrix::<f64>::new(2, 2, 4, None, false).unwrap();
         assert_eq!(coo.nnz, 0);
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 1, 4.0).unwrap();
@@ -753,23 +783,23 @@ mod tests {
 
     #[test]
     fn to_dense_fails_on_wrong_dims() {
-        let mut coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        let mut coo = NumCooMatrix::<f64>::new(1, 1, 1, None, false).unwrap();
         coo.put(0, 0, 123.0).unwrap();
-        let mut a_2x1 = Matrix::new(2, 1);
-        let mut a_1x2 = Matrix::new(1, 2);
+        let mut a_2x1 = NumMatrix::<f64>::new(2, 1);
+        let mut a_1x2 = NumMatrix::<f64>::new(1, 2);
         assert_eq!(coo.to_dense(&mut a_2x1), Err("wrong matrix dimensions"));
         assert_eq!(coo.to_dense(&mut a_1x2), Err("wrong matrix dimensions"));
     }
 
     #[test]
     fn to_dense_works() {
-        let mut coo = CooMatrix::new(3, 3, 5, None, false).unwrap();
+        let mut coo = NumCooMatrix::<f32>::new(3, 3, 5, None, false).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 1, 2.0).unwrap();
         coo.put(1, 0, 3.0).unwrap();
         coo.put(1, 1, 4.0).unwrap();
         coo.put(2, 2, 5.0).unwrap();
-        let mut a = Matrix::new(3, 3);
+        let mut a = NumMatrix::<f32>::new(3, 3);
         coo.to_dense(&mut a).unwrap();
         assert_eq!(a.get(0, 0), 1.0);
         assert_eq!(a.get(0, 1), 2.0);
@@ -788,11 +818,11 @@ mod tests {
         assert_eq!(bb.get(0, 0), 1.0);
         assert_eq!(bb.get(1, 0), 3.0);
         // empty matrix
-        let empty = CooMatrix::new(2, 2, 3, None, false).unwrap();
+        let empty = NumCooMatrix::<f64>::new(2, 2, 3, None, false).unwrap();
         let mat = empty.as_dense();
         assert_eq!(mat.as_data(), &[0.0, 0.0, 0.0, 0.0]);
         // single component matrix
-        let mut single = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        let mut single = NumCooMatrix::<f64>::new(1, 1, 1, None, false).unwrap();
         single.put(0, 0, 123.0).unwrap();
         let mat = single.as_dense();
         assert_eq!(mat.as_data(), &[123.0]);
@@ -802,7 +832,7 @@ mod tests {
     fn to_dense_with_duplicates_works() {
         // allocate a square matrix
         let (nrow, ncol, nnz) = (5, 5, 13);
-        let mut coo = CooMatrix::new(nrow, ncol, nnz, None, false).unwrap();
+        let mut coo = NumCooMatrix::<f32>::new(nrow, ncol, nnz, None, false).unwrap();
         coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
         coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2)
         coo.put(1, 0, 3.0).unwrap();
@@ -818,7 +848,7 @@ mod tests {
         coo.put(4, 4, 1.0).unwrap();
 
         // print matrix
-        let mut a = Matrix::new(nrow as usize, ncol as usize);
+        let mut a = NumMatrix::<f32>::new(nrow as usize, ncol as usize);
         coo.to_dense(&mut a).unwrap();
         let correct = "┌                ┐\n\
                        │  2  3  0  0  0 │\n\
@@ -833,12 +863,12 @@ mod tests {
     #[test]
     fn to_dense_symmetric_lower_works() {
         let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo = CooMatrix::new(3, 3, 4, sym, false).unwrap();
+        let mut coo = NumCooMatrix::<f64>::new(3, 3, 4, sym, false).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 0, 2.0).unwrap();
         coo.put(1, 1, 3.0).unwrap();
         coo.put(2, 1, 4.0).unwrap();
-        let mut a = Matrix::new(3, 3);
+        let mut a = NumMatrix::<f64>::new(3, 3);
         coo.to_dense(&mut a).unwrap();
         let correct = "┌       ┐\n\
                        │ 1 2 0 │\n\
@@ -851,12 +881,12 @@ mod tests {
     #[test]
     fn to_dense_symmetric_upper_and_one_based_works() {
         let sym = Some(Symmetry::General(Storage::Upper));
-        let mut coo = CooMatrix::new(3, 3, 4, sym, true).unwrap();
+        let mut coo = NumCooMatrix::<f64>::new(3, 3, 4, sym, true).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 1, 2.0).unwrap();
         coo.put(1, 1, 3.0).unwrap();
         coo.put(1, 2, 4.0).unwrap();
-        let mut a = Matrix::new(3, 3);
+        let mut a = NumMatrix::<f64>::new(3, 3);
         coo.to_dense(&mut a).unwrap();
         let correct = "┌       ┐\n\
                        │ 1 2 0 │\n\
@@ -868,14 +898,14 @@ mod tests {
 
     #[test]
     fn mat_vec_mul_fails_on_wrong_input() {
-        let mut coo = CooMatrix::new(2, 2, 1, None, false).unwrap();
-        coo.put(0, 0, 123.0).unwrap();
-        let u = Vector::new(3);
-        let mut v = Vector::new(coo.nrow);
-        assert_eq!(coo.mat_vec_mul(&mut v, 1.0, &u).err(), Some("u.ndim must equal ncol"));
-        let u = Vector::new(2);
-        let mut v = Vector::new(1);
-        assert_eq!(coo.mat_vec_mul(&mut v, 1.0, &u).err(), Some("v.ndim must equal nrow"));
+        let mut coo = NumCooMatrix::<u8>::new(2, 2, 1, None, false).unwrap();
+        coo.put(0, 0, 123).unwrap();
+        let u = NumVector::<u8>::new(3);
+        let mut v = NumVector::<u8>::new(coo.nrow);
+        assert_eq!(coo.mat_vec_mul(&mut v, 1, &u).err(), Some("u.ndim must equal ncol"));
+        let u = NumVector::<u8>::new(2);
+        let mut v = NumVector::<u8>::new(1);
+        assert_eq!(coo.mat_vec_mul(&mut v, 1, &u).err(), Some("v.ndim must equal nrow"));
     }
 
     #[test]
@@ -883,7 +913,7 @@ mod tests {
         //  1.0  2.0  3.0
         //  0.1  0.2  0.3
         // 10.0 20.0 30.0
-        let mut coo = CooMatrix::new(3, 3, 9, None, false).unwrap();
+        let mut coo = NumCooMatrix::<f64>::new(3, 3, 9, None, false).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 1, 2.0).unwrap();
         coo.put(0, 2, 3.0).unwrap();
@@ -893,8 +923,8 @@ mod tests {
         coo.put(2, 0, 10.0).unwrap();
         coo.put(2, 1, 20.0).unwrap();
         coo.put(2, 2, 30.0).unwrap();
-        let u = Vector::from(&[0.1, 0.2, 0.3]);
-        let mut v = Vector::new(coo.nrow);
+        let u = NumVector::<f64>::from(&[0.1, 0.2, 0.3]);
+        let mut v = NumVector::<f64>::new(coo.nrow);
         coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         let correct_v = &[1.4, 0.14, 14.0];
         vec_approx_eq(v.as_data(), correct_v, 1e-15);
@@ -904,7 +934,7 @@ mod tests {
         vec_approx_eq(v.as_data(), correct_v, 1e-15);
 
         // one-based indexing
-        let mut coo = CooMatrix::new(3, 3, 9, None, true).unwrap();
+        let mut coo = NumCooMatrix::<f64>::new(3, 3, 9, None, true).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 1, 2.0).unwrap();
         coo.put(0, 2, 3.0).unwrap();
@@ -919,10 +949,10 @@ mod tests {
         vec_approx_eq(v.as_data(), correct_v, 1e-15);
 
         // single component matrix
-        let mut single = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        let mut single = NumCooMatrix::<f64>::new(1, 1, 1, None, false).unwrap();
         single.put(0, 0, 123.0).unwrap();
-        let u = Vector::from(&[2.0]);
-        let mut v = Vector::new(1);
+        let u = NumVector::from(&[2.0]);
+        let mut v = NumVector::<f64>::new(1);
         single.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         assert_eq!(v.as_data(), &[246.0]);
     }
@@ -936,7 +966,7 @@ mod tests {
         // 2  1  5  1  8
         let (nrow, ncol, nnz) = (5, 5, 15);
         let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo = CooMatrix::new(nrow, ncol, nnz, sym, false).unwrap();
+        let mut coo = NumCooMatrix::<f64>::new(nrow, ncol, nnz, sym, false).unwrap();
         coo.put(0, 0, 2.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
         coo.put(2, 2, 9.0).unwrap();
@@ -956,8 +986,8 @@ mod tests {
         coo.put(4, 1, 1.0).unwrap();
         coo.put(4, 2, 5.0).unwrap();
         coo.put(4, 3, 1.0).unwrap();
-        let u = Vector::from(&[-629.0 / 98.0, 237.0 / 49.0, -53.0 / 49.0, 62.0 / 49.0, 23.0 / 14.0]);
-        let mut v = Vector::new(coo.nrow);
+        let u = NumVector::<f64>::from(&[-629.0 / 98.0, 237.0 / 49.0, -53.0 / 49.0, 62.0 / 49.0, 23.0 / 14.0]);
+        let mut v = NumVector::<f64>::new(coo.nrow);
         coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         let correct_v = &[-2.0, 4.0, 3.0, -5.0, 1.0];
         vec_approx_eq(v.as_data(), correct_v, 1e-14);
@@ -972,7 +1002,7 @@ mod tests {
         // 2  1  5  1  8
         let (nrow, ncol, nnz) = (5, 5, 25);
         let sym = Some(Symmetry::General(Storage::Full));
-        let mut coo = CooMatrix::new(nrow, ncol, nnz, sym, false).unwrap();
+        let mut coo = NumCooMatrix::<f64>::new(nrow, ncol, nnz, sym, false).unwrap();
         coo.put(0, 0, 2.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
         coo.put(2, 2, 9.0).unwrap();
@@ -1002,8 +1032,8 @@ mod tests {
         coo.put(2, 4, 5.0).unwrap();
         coo.put(4, 3, 1.0).unwrap();
         coo.put(3, 4, 1.0).unwrap();
-        let u = Vector::from(&[-629.0 / 98.0, 237.0 / 49.0, -53.0 / 49.0, 62.0 / 49.0, 23.0 / 14.0]);
-        let mut v = Vector::new(coo.nrow);
+        let u = NumVector::<f64>::from(&[-629.0 / 98.0, 237.0 / 49.0, -53.0 / 49.0, 62.0 / 49.0, 23.0 / 14.0]);
+        let mut v = NumVector::<f64>::new(coo.nrow);
         coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         let correct_v = &[-2.0, 4.0, 3.0, -5.0, 1.0];
         vec_approx_eq(v.as_data(), correct_v, 1e-14);
@@ -1016,14 +1046,14 @@ mod tests {
         //     -1   2             -1   2
         let (nrow, ncol, nnz) = (3, 3, 5);
         let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
-        let mut coo = CooMatrix::new(nrow, ncol, nnz, sym, false).unwrap();
+        let mut coo = NumCooMatrix::<f64>::new(nrow, ncol, nnz, sym, false).unwrap();
         coo.put(0, 0, 2.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
         coo.put(2, 2, 2.0).unwrap();
         coo.put(1, 0, -1.0).unwrap();
         coo.put(2, 1, -1.0).unwrap();
-        let u = Vector::from(&[5.0, 8.0, 7.0]);
-        let mut v = Vector::new(coo.nrow);
+        let u = NumVector::<f64>::from(&[5.0, 8.0, 7.0]);
+        let mut v = NumVector::<f64>::new(coo.nrow);
         coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
         let correct_v = &[2.0, 4.0, 6.0];
         vec_approx_eq(v.as_data(), correct_v, 1e-15);
@@ -1040,10 +1070,10 @@ mod tests {
         assert_eq!(coo.get_values(), &[10.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
 
         let sym = Some(Symmetry::new_general_full());
-        let coo = CooMatrix::new(2, 2, 2, sym, false).unwrap();
+        let coo = NumCooMatrix::<f64>::new(2, 2, 2, sym, false).unwrap();
         assert_eq!(coo.get_symmetric(), true);
 
-        let mut coo = CooMatrix::new(2, 1, 2, None, false).unwrap();
+        let mut coo = NumCooMatrix::<f64>::new(2, 1, 2, None, false).unwrap();
         coo.put(0, 0, 123.0).unwrap();
         coo.put(1, 0, 456.0).unwrap();
         assert_eq!(coo.get_values_mut(), &[123.0, 456.0]);
@@ -1053,11 +1083,27 @@ mod tests {
     }
 
     #[test]
-    fn clone_works() {
+    fn derive_methods_works() {
         let (coo, _, _, _) = Samples::tiny_1x1(false);
         let mut clone = coo.clone();
         clone.values[0] *= 2.0;
         assert_eq!(coo.values[0], 123.0);
         assert_eq!(clone.values[0], 246.0);
+        assert!(format!("{:?}", coo).len() > 0);
+        let json = serde_json::to_string(&coo).unwrap();
+        assert_eq!(
+            json,
+            r#"{"symmetry":"No","nrow":1,"ncol":1,"nnz":1,"max_nnz":1,"indices_i":[0],"indices_j":[0],"values":[123.0],"one_based":false}"#
+        );
+        let from_json: NumCooMatrix<f64> = serde_json::from_str(&json).unwrap();
+        assert_eq!(from_json.symmetry, coo.symmetry);
+        assert_eq!(from_json.nrow, coo.nrow);
+        assert_eq!(from_json.ncol, coo.ncol);
+        assert_eq!(from_json.nnz, coo.nnz);
+        assert_eq!(from_json.max_nnz, coo.max_nnz);
+        assert_eq!(from_json.indices_i, coo.indices_i);
+        assert_eq!(from_json.indices_j, coo.indices_j);
+        assert_eq!(from_json.values, coo.values);
+        assert_eq!(from_json.one_based, coo.one_based);
     }
 }

@@ -1,7 +1,8 @@
 use crate::StrError;
+use serde::{Deserialize, Serialize};
 
 /// Specifies the underlying library that does all the magic
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Genie {
     /// Selects MUMPS (multi-frontal massively parallel sparse direct) solver
     ///
@@ -20,7 +21,7 @@ pub enum Genie {
 }
 
 /// Specifies how the matrix components are stored
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Storage {
     /// Lower triangular storage for symmetric matrix (e.g., for MUMPS)
     Lower,
@@ -33,7 +34,7 @@ pub enum Storage {
 }
 
 /// Specifies the type of matrix symmetry
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Symmetry {
     /// Unknown symmetry (possibly unsymmetric)
     No,
@@ -48,7 +49,7 @@ pub enum Symmetry {
 /// Holds options to handle a MatrixMarket when the matrix is specified as being symmetric
 ///
 /// **Note:** This is ignored if not the matrix is not specified as symmetric.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum MMsymOption {
     /// Leave the storage as lower triangular (if symmetric)
     ///
@@ -76,7 +77,7 @@ pub enum MMsymOption {
 }
 
 /// Ordering option
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Ordering {
     /// Ordering using the approximate minimum degree
     Amd,
@@ -110,7 +111,7 @@ pub enum Ordering {
 }
 
 /// Scaling option
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Scaling {
     /// Automatic scaling method selection
     Auto,
@@ -387,13 +388,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn clone_copy_and_debug_work() {
+    fn derive_methods_work() {
         let genie = Genie::Mumps;
         let copy = genie;
         let clone = genie.clone();
         assert_eq!(format!("{:?}", genie), "Mumps");
         assert_eq!(copy, Genie::Mumps);
         assert_eq!(clone, Genie::Mumps);
+        let json = serde_json::to_string(&genie).unwrap();
+        let from_json: Genie = serde_json::from_str(&json).unwrap();
+        assert_eq!(from_json, genie);
 
         let storage = Storage::Full;
         let copy = storage;
@@ -401,6 +405,9 @@ mod tests {
         assert_eq!(format!("{:?}", storage), "Full");
         assert_eq!(copy, Storage::Full);
         assert_eq!(clone, Storage::Full);
+        let json = serde_json::to_string(&storage).unwrap();
+        let from_json: Storage = serde_json::from_str(&json).unwrap();
+        assert_eq!(from_json, storage);
 
         let symmetry = Symmetry::PositiveDefinite(Storage::Lower);
         let copy = symmetry;
@@ -408,6 +415,9 @@ mod tests {
         assert_eq!(format!("{:?}", symmetry), "PositiveDefinite(Lower)");
         assert_eq!(copy, Symmetry::PositiveDefinite(Storage::Lower));
         assert_eq!(clone, Symmetry::PositiveDefinite(Storage::Lower));
+        let json = serde_json::to_string(&symmetry).unwrap();
+        let from_json: Symmetry = serde_json::from_str(&json).unwrap();
+        assert_eq!(from_json, symmetry);
 
         let handling = MMsymOption::LeaveAsLower;
         let copy = handling;
@@ -415,6 +425,9 @@ mod tests {
         assert_eq!(format!("{:?}", handling), "LeaveAsLower");
         assert_eq!(copy, MMsymOption::LeaveAsLower);
         assert_eq!(clone, MMsymOption::LeaveAsLower);
+        let json = serde_json::to_string(&handling).unwrap();
+        let from_json: MMsymOption = serde_json::from_str(&json).unwrap();
+        assert_eq!(from_json, handling);
 
         let ordering = Ordering::Amd;
         let copy = ordering;
@@ -422,6 +435,9 @@ mod tests {
         assert_eq!(format!("{:?}", ordering), "Amd");
         assert_eq!(format!("{:?}", copy), "Amd");
         assert_eq!(format!("{:?}", clone), "Amd");
+        let json = serde_json::to_string(&ordering).unwrap();
+        let from_json: Ordering = serde_json::from_str(&json).unwrap();
+        assert_eq!(from_json, ordering);
 
         let scaling = Scaling::Column;
         let copy = scaling;
@@ -429,6 +445,9 @@ mod tests {
         assert_eq!(format!("{:?}", scaling), "Column");
         assert_eq!(format!("{:?}", copy), "Column");
         assert_eq!(format!("{:?}", clone), "Column");
+        let json = serde_json::to_string(&scaling).unwrap();
+        let from_json: Scaling = serde_json::from_str(&json).unwrap();
+        assert_eq!(from_json, scaling);
     }
 
     #[test]

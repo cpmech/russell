@@ -581,7 +581,7 @@ where
             let aij = self.values[p];
             v[i] += alpha * aij * u[j];
             if mirror_required && i != j {
-                v[j] += aij * u[i];
+                v[j] += alpha * aij * u[i];
             }
         }
         Ok(())
@@ -925,12 +925,12 @@ mod tests {
         coo.put(2, 2, 30.0).unwrap();
         let u = NumVector::<f64>::from(&[0.1, 0.2, 0.3]);
         let mut v = NumVector::<f64>::new(coo.nrow);
-        coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
-        let correct_v = &[1.4, 0.14, 14.0];
+        coo.mat_vec_mul(&mut v, 2.0, &u).unwrap();
+        let correct_v = &[2.8, 0.28, 28.0];
         vec_approx_eq(v.as_data(), correct_v, 1e-15);
 
         // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
-        coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
+        coo.mat_vec_mul(&mut v, 2.0, &u).unwrap();
         vec_approx_eq(v.as_data(), correct_v, 1e-15);
 
         // one-based indexing
@@ -944,8 +944,8 @@ mod tests {
         coo.put(2, 0, 10.0).unwrap();
         coo.put(2, 1, 20.0).unwrap();
         coo.put(2, 2, 30.0).unwrap();
-        coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
-        let correct_v = &[1.4, 0.14, 14.0];
+        coo.mat_vec_mul(&mut v, 2.0, &u).unwrap();
+        let correct_v = &[2.8, 0.28, 28.0];
         vec_approx_eq(v.as_data(), correct_v, 1e-15);
 
         // single component matrix
@@ -953,8 +953,8 @@ mod tests {
         single.put(0, 0, 123.0).unwrap();
         let u = NumVector::from(&[2.0]);
         let mut v = NumVector::<f64>::new(1);
-        single.mat_vec_mul(&mut v, 1.0, &u).unwrap();
-        assert_eq!(v.as_data(), &[246.0]);
+        single.mat_vec_mul(&mut v, 2.0, &u).unwrap();
+        assert_eq!(v.as_data(), &[492.0]);
     }
 
     #[test]
@@ -988,8 +988,8 @@ mod tests {
         coo.put(4, 3, 1.0).unwrap();
         let u = NumVector::<f64>::from(&[-629.0 / 98.0, 237.0 / 49.0, -53.0 / 49.0, 62.0 / 49.0, 23.0 / 14.0]);
         let mut v = NumVector::<f64>::new(coo.nrow);
-        coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
-        let correct_v = &[-2.0, 4.0, 3.0, -5.0, 1.0];
+        coo.mat_vec_mul(&mut v, 2.0, &u).unwrap();
+        let correct_v = &[-4.0, 8.0, 6.0, -10.0, 2.0];
         vec_approx_eq(v.as_data(), correct_v, 1e-14);
     }
 
@@ -1034,8 +1034,8 @@ mod tests {
         coo.put(3, 4, 1.0).unwrap();
         let u = NumVector::<f64>::from(&[-629.0 / 98.0, 237.0 / 49.0, -53.0 / 49.0, 62.0 / 49.0, 23.0 / 14.0]);
         let mut v = NumVector::<f64>::new(coo.nrow);
-        coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
-        let correct_v = &[-2.0, 4.0, 3.0, -5.0, 1.0];
+        coo.mat_vec_mul(&mut v, 2.0, &u).unwrap();
+        let correct_v = &[-4.0, 8.0, 6.0, -10.0, 2.0];
         vec_approx_eq(v.as_data(), correct_v, 1e-14);
     }
 
@@ -1054,8 +1054,8 @@ mod tests {
         coo.put(2, 1, -1.0).unwrap();
         let u = NumVector::<f64>::from(&[5.0, 8.0, 7.0]);
         let mut v = NumVector::<f64>::new(coo.nrow);
-        coo.mat_vec_mul(&mut v, 1.0, &u).unwrap();
-        let correct_v = &[2.0, 4.0, 6.0];
+        coo.mat_vec_mul(&mut v, 2.0, &u).unwrap();
+        let correct_v = &[4.0, 8.0, 12.0];
         vec_approx_eq(v.as_data(), correct_v, 1e-15);
     }
 

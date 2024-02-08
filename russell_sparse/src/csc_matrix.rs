@@ -1143,12 +1143,21 @@ mod tests {
         let (_, csc, _, _) = Samples::rectangular_3x4();
         let u = Vector::from(&[1.0, 3.0, 8.0, 5.0]);
         let mut v = Vector::new(csc.nrow);
-        csc.mat_vec_mul(&mut v, 1.0, &u).unwrap();
-        let correct = &[4.0, 8.0, 12.0];
+        csc.mat_vec_mul(&mut v, 2.0, &u).unwrap();
+        let correct = &[8.0, 16.0, 24.0];
         vec_approx_eq(v.as_data(), correct, 1e-15);
         // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
-        csc.mat_vec_mul(&mut v, 1.0, &u).unwrap();
+        csc.mat_vec_mul(&mut v, 2.0, &u).unwrap();
         vec_approx_eq(v.as_data(), correct, 1e-15);
+    }
+
+    #[test]
+    fn mat_vec_mul_symmetric_lower_works() {
+        let (_, csc, _, _) = Samples::mkl_symmetric_5x5_lower(false, false, false);
+        let u = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+        let mut v = Vector::new(5);
+        csc.mat_vec_mul(&mut v, 2.0, &u).unwrap();
+        vec_approx_eq(v.as_data(), &[96.0, 5.0, 84.0, 6.5, 166.0], 1e-15);
     }
 
     #[test]

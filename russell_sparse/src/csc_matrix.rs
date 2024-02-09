@@ -405,7 +405,7 @@ impl CscMatrix {
             w[i] = rp[i];
         }
 
-        // construct the row form
+        // construct the row form (with unsorted columns)
         for k in 0..nnz {
             let i = (ai[k] + d) as usize;
             let p = w[i] as usize;

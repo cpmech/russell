@@ -1083,15 +1083,7 @@ mod tests {
 
     #[test]
     fn to_matrix_fails_on_wrong_dims() {
-        // 10.0 20.0
-        let csr = CsrMatrix {
-            symmetry: Symmetry::No,
-            nrow: 1,
-            ncol: 2,
-            row_pointers: vec![0, 2],
-            col_indices: vec![0, 1],
-            values: vec![10.0, 20.0],
-        };
+        let (_, _, csr, _) = Samples::rectangular_1x2(false, false, false);
         let mut a_3x1 = Matrix::new(3, 1);
         let mut a_1x3 = Matrix::new(1, 3);
         assert_eq!(csr.to_dense(&mut a_3x1), Err("wrong matrix dimensions"));
@@ -1100,15 +1092,8 @@ mod tests {
 
     #[test]
     fn to_matrix_and_as_matrix_work() {
-        // 10.0 20.0       << (1 x 2) matrix
-        let csr = CsrMatrix {
-            symmetry: Symmetry::No,
-            nrow: 1,
-            ncol: 2,
-            row_pointers: vec![0, 2],
-            col_indices: vec![0, 1],
-            values: vec![10.0, 20.0],
-        };
+        // 1 x 2 matrix
+        let (_, _, csr, _) = Samples::rectangular_1x2(false, false, false);
         let mut a = Matrix::new(1, 2);
         csr.to_dense(&mut a).unwrap();
         let correct = "┌       ┐\n\
@@ -1116,32 +1101,8 @@ mod tests {
                        └       ┘";
         assert_eq!(format!("{}", a), correct);
 
-        let csr = CsrMatrix {
-            symmetry: Symmetry::No,
-            nrow: 5,
-            ncol: 5,
-            row_pointers: vec![0, 2, 5, 8, 9, 12],
-            col_indices: vec![
-                //                         p
-                0, 1, //    i = 0, count = 0, 1
-                0, 2, 4, // i = 1, count = 2, 3, 4
-                1, 2, 3, // i = 2, count = 5, 6, 7
-                2, //       i = 3, count = 8
-                1, 2, 4, // i = 4, count = 9, 10, 11
-                   //              count = 12
-            ],
-            values: vec![
-                //                                 p
-                2.0, 3.0, //        i = 0, count = 0, 1
-                3.0, 4.0, 6.0, //   i = 1, count = 2, 3, 4
-                -1.0, -3.0, 2.0, // i = 2, count = 5, 6, 7
-                1.0, //             i = 3, count = 8
-                4.0, 2.0, 1.0, //   i = 4, count = 9, 10, 11
-                     //                    count = 12
-            ],
-        };
-
-        // covert to dense
+        // 5 x 5 matrix
+        let (_, _, csr, _) = Samples::umfpack_unsymmetric_5x5(false);
         let mut a = Matrix::new(5, 5);
         csr.to_dense(&mut a).unwrap();
         let correct = "┌                ┐\n\
@@ -1163,14 +1124,7 @@ mod tests {
 
     #[test]
     fn as_matrix_upper_works() {
-        let csr = CsrMatrix {
-            symmetry: Symmetry::General(Storage::Upper),
-            nrow: 5,
-            ncol: 5,
-            row_pointers: vec![0, 5, 6, 7, 8, 9],
-            col_indices: vec![0, 1, 2, 3, 4, 1, 2, 3, 4],
-            values: vec![9.0, 1.5, 6.0, 0.75, 3.0, 0.5, 12.0, 0.625, 16.0],
-        };
+        let (_, _, csr, _) = Samples::mkl_symmetric_5x5_upper(false, false, false);
         let a = csr.as_dense();
         let correct = "┌                               ┐\n\
                        │     9   1.5     6  0.75     3 │\n\
@@ -1184,14 +1138,7 @@ mod tests {
 
     #[test]
     fn as_matrix_lower_works() {
-        let csr = CsrMatrix {
-            symmetry: Symmetry::General(Storage::Lower),
-            nrow: 5,
-            ncol: 5,
-            row_pointers: vec![0, 1, 3, 5, 7, 9],
-            col_indices: vec![0, 0, 1, 0, 2, 0, 3, 0, 4],
-            values: vec![9.0, 1.5, 0.5, 6.0, 12.0, 0.75, 0.625, 3.0, 16.0],
-        };
+        let (_, _, csr, _) = Samples::mkl_symmetric_5x5_lower(false, false, false);
         let a = csr.as_dense();
         let correct = "┌                               ┐\n\
                        │     9   1.5     6  0.75     3 │\n\

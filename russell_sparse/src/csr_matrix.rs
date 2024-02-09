@@ -1,6 +1,7 @@
 use super::{to_i32, CooMatrix, CscMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::{Matrix, Vector};
+use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
 use std::fmt::Write;
 use std::fs::{self, File};
@@ -48,7 +49,7 @@ use std::path::Path;
 /// ```text
 /// 0, 3, 5, 8, 11, 13
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CsrMatrix {
     /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
     pub(crate) symmetry: Symmetry,
@@ -84,18 +85,23 @@ pub struct CsrMatrix {
     pub(crate) values: Vec<f64>,
 
     /// Temporary row form (for COO to CSR conversion)
+    #[serde(skip)]
     temp_rp: Vec<i32>,
 
     /// Temporary row form (for COO to CSR conversion)
+    #[serde(skip)]
     temp_rj: Vec<i32>,
 
     /// Temporary row form (for COO to CSR conversion)
+    #[serde(skip)]
     temp_rx: Vec<f64>,
 
     /// Temporary row count (for COO to CSR conversion)
+    #[serde(skip)]
     temp_rc: Vec<usize>,
 
     /// Temporary workspace (for COO to CSR conversion)
+    #[serde(skip)]
     temp_w: Vec<i32>,
 }
 
@@ -328,7 +334,7 @@ impl CsrMatrix {
             temp_rc: Vec::new(),
             temp_w: Vec::new(),
         };
-        csr.update_from_coo(coo)?;
+        csr.update_from_coo(coo).unwrap();
         Ok(csr)
     }
 
@@ -1043,6 +1049,16 @@ mod tests {
     }
 
     #[test]
+    fn debug_conversion() {
+        let (coo, _, csr_correct, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let csr = CsrMatrix::from_coo(&coo).unwrap();
+        assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
+        let nnz = csr.row_pointers[csr.nrow] as usize;
+        assert_eq!(&csr.col_indices[0..nnz], &csr_correct.col_indices);
+        vec_approx_eq(&csr.values[0..nnz], &csr_correct.values, 1e-15);
+    }
+
+    #[test]
     #[rustfmt::skip]
     fn update_from_coo_captures_errors() {
         let (coo, _, _, _) = Samples::rectangular_1x2(false, false, false);
@@ -1291,11 +1307,37 @@ mod tests {
     }
 
     #[test]
-    fn clone_works() {
-        let (_, _, csr, _) = Samples::tiny_1x1(false);
+    fn derive_methods_works() {
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let csr = CsrMatrix::from_coo(&coo).unwrap();
+        let nrow = coo.nrow;
+        let nnz = coo.nnz; // it must be COO nnz because of (removed) duplicates
+        assert_eq!(csr.temp_rp.len(), nrow + 1);
+        assert_eq!(csr.temp_rj.len(), nnz);
+        assert_eq!(csr.temp_rx.len(), nnz);
+        assert_eq!(csr.temp_rc.len(), nrow);
+        assert_eq!(csr.temp_w.len(), nrow);
         let mut clone = csr.clone();
         clone.values[0] *= 2.0;
-        assert_eq!(csr.values[0], 123.0);
-        assert_eq!(clone.values[0], 246.0);
+        assert_eq!(csr.values[0], 2.0);
+        assert_eq!(clone.values[0], 4.0);
+        assert!(format!("{:?}", csr).len() > 0);
+        let json = serde_json::to_string(&csr).unwrap();
+        assert_eq!(
+            json,
+            r#"{"symmetry":"No","nrow":5,"ncol":5,"row_pointers":[0,2,5,8,9,12],"col_indices":[0,1,0,2,4,1,2,3,2,1,2,4,0],"values":[2.0,3.0,3.0,4.0,6.0,-1.0,-3.0,2.0,1.0,4.0,2.0,1.0,0.0]}"#
+        );
+        let from_json: CsrMatrix = serde_json::from_str(&json).unwrap();
+        assert_eq!(from_json.symmetry, csr.symmetry);
+        assert_eq!(from_json.nrow, csr.nrow);
+        assert_eq!(from_json.ncol, csr.ncol);
+        assert_eq!(from_json.row_pointers, csr.row_pointers);
+        assert_eq!(from_json.col_indices, csr.col_indices);
+        assert_eq!(from_json.values, csr.values);
+        assert_eq!(from_json.temp_rp.len(), 0);
+        assert_eq!(from_json.temp_rj.len(), 0);
+        assert_eq!(from_json.temp_rx.len(), 0);
+        assert_eq!(from_json.temp_rc.len(), 0);
+        assert_eq!(from_json.temp_w.len(), 0);
     }
 }

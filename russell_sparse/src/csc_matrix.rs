@@ -1,6 +1,7 @@
 use super::{to_i32, CooMatrix, CsrMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::{Matrix, Vector};
+use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
 use std::fmt::Write;
 use std::fs::{self, File};
@@ -48,7 +49,7 @@ use std::path::Path;
 /// ```text
 /// 0, 2, 5, 9, 10, 12
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CscMatrix {
     /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
     pub(crate) symmetry: Symmetry,
@@ -84,18 +85,23 @@ pub struct CscMatrix {
     pub(crate) values: Vec<f64>,
 
     /// Temporary row form (for COO to CSC conversion)
+    #[serde(skip)]
     temp_rp: Vec<i32>,
 
     /// Temporary row form (for COO to CSC conversion)
+    #[serde(skip)]
     temp_rj: Vec<i32>,
 
     /// Temporary row form (for COO to CSC conversion)
+    #[serde(skip)]
     temp_rx: Vec<f64>,
 
     /// Temporary row count (for COO to CSC conversion)
+    #[serde(skip)]
     temp_rc: Vec<usize>,
 
     /// Temporary workspace (for COO to CSC conversion)
+    #[serde(skip)]
     temp_w: Vec<i32>,
 }
 
@@ -328,7 +334,7 @@ impl CscMatrix {
             temp_rc: Vec::new(),
             temp_w: Vec::new(),
         };
-        csc.update_from_coo(coo)?;
+        csc.update_from_coo(coo).unwrap();
         Ok(csc)
     }
 
@@ -1302,11 +1308,37 @@ mod tests {
     }
 
     #[test]
-    fn clone_works() {
-        let (_, csc, _, _) = Samples::tiny_1x1(false);
+    fn derive_methods_works() {
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let csc = CscMatrix::from_coo(&coo).unwrap();
+        let nrow = coo.nrow;
+        let nnz = coo.nnz; // it must be COO nnz because of (removed) duplicates
+        assert_eq!(csc.temp_rp.len(), nrow + 1);
+        assert_eq!(csc.temp_rj.len(), nnz);
+        assert_eq!(csc.temp_rx.len(), nnz);
+        assert_eq!(csc.temp_rc.len(), nrow);
+        assert_eq!(csc.temp_w.len(), nrow);
         let mut clone = csc.clone();
         clone.values[0] *= 2.0;
-        assert_eq!(csc.values[0], 123.0);
-        assert_eq!(clone.values[0], 246.0);
+        assert_eq!(csc.values[0], 2.0);
+        assert_eq!(clone.values[0], 4.0);
+        assert!(format!("{:?}", csc).len() > 0);
+        let json = serde_json::to_string(&csc).unwrap();
+        assert_eq!(
+            json,
+            r#"{"symmetry":"No","nrow":5,"ncol":5,"col_pointers":[0,2,5,9,10,12],"row_indices":[0,1,0,2,4,1,2,3,4,2,1,4,0],"values":[2.0,3.0,3.0,-1.0,4.0,4.0,-3.0,1.0,2.0,2.0,6.0,1.0,0.0]}"#
+        );
+        let from_json: CscMatrix = serde_json::from_str(&json).unwrap();
+        assert_eq!(from_json.symmetry, csc.symmetry);
+        assert_eq!(from_json.nrow, csc.nrow);
+        assert_eq!(from_json.ncol, csc.ncol);
+        assert_eq!(from_json.col_pointers, csc.col_pointers);
+        assert_eq!(from_json.row_indices, csc.row_indices);
+        assert_eq!(from_json.values, csc.values);
+        assert_eq!(from_json.temp_rp.len(), 0);
+        assert_eq!(from_json.temp_rj.len(), 0);
+        assert_eq!(from_json.temp_rx.len(), 0);
+        assert_eq!(from_json.temp_rc.len(), 0);
+        assert_eq!(from_json.temp_w.len(), 0);
     }
 }

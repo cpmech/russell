@@ -90,11 +90,7 @@ pub struct CsrMatrix {
 
     /// Temporary row form (for COO to CSR conversion)
     #[serde(skip)]
-    temp_rj: Vec<i32>,
-
-    /// Temporary row form (for COO to CSR conversion)
-    #[serde(skip)]
-    temp_rx: Vec<f64>,
+    temp_rjx: Vec<(i32, f64)>,
 
     /// Temporary row count (for COO to CSR conversion)
     #[serde(skip)]
@@ -242,8 +238,7 @@ impl CsrMatrix {
             col_indices,
             values,
             temp_rp: Vec::new(),
-            temp_rj: Vec::new(),
-            temp_rx: Vec::new(),
+            temp_rjx: Vec::new(),
             temp_rc: Vec::new(),
             temp_w: Vec::new(),
         })
@@ -329,8 +324,7 @@ impl CsrMatrix {
             col_indices: vec![0; coo.nnz],
             values: vec![0.0; coo.nnz],
             temp_rp: Vec::new(),
-            temp_rj: Vec::new(),
-            temp_rx: Vec::new(),
+            temp_rjx: Vec::new(),
             temp_rc: Vec::new(),
             temp_w: Vec::new(),
         };
@@ -382,8 +376,7 @@ impl CsrMatrix {
         // allocate workspaces and get an access to them
         if self.temp_w.len() == 0 {
             self.temp_rp = vec![0_i32; nrow + 1]; // temporary row form
-            self.temp_rj = vec![0_i32; nnz]; // temporary row form
-            self.temp_rx = vec![0_f64; nnz]; // temporary row form
+            self.temp_rjx = vec![(0_i32, 0_f64); nnz]; // temporary row form
             self.temp_rc = vec![0_usize; nrow]; // temporary row count
             self.temp_w = vec![0_i32; ndim]; // temporary workspace
         } else {
@@ -392,8 +385,7 @@ impl CsrMatrix {
             }
         }
         let rp = &mut self.temp_rp;
-        let rj = &mut self.temp_rj;
-        let rx = &mut self.temp_rx;
+        let rjx = &mut self.temp_rjx;
         let rc = &mut self.temp_rc;
         let w = &mut self.temp_w;
 
@@ -415,8 +407,8 @@ impl CsrMatrix {
         for k in 0..nnz {
             let i = (ai[k] + d) as usize;
             let p = w[i] as usize;
-            rj[p] = aj[k] + d;
-            rx[p] = ax[k];
+            rjx[p].0 = aj[k] + d;
+            rjx[p].1 = ax[k];
             w[i] += 1; // w[i] is advanced to the start of row i+1
         }
 
@@ -431,17 +423,17 @@ impl CsrMatrix {
             let mut dest = p1;
             // w[j] < p1 for all columns j (note that rj and rx are stored in row oriented order)
             for p in p1..p2 {
-                let j = rj[p] as usize;
+                let j = rjx[p].0 as usize;
                 if w[j] >= p1 as i32 {
                     // j is already in row i, position pj
                     let pj = w[j] as usize;
-                    rx[pj] += rx[p]; // sum the entry
+                    rjx[pj].1 += rjx[p].1; // sum the entry
                 } else {
                     // keep the entry
                     w[j] = dest as i32;
                     if dest != p {
-                        rj[dest] = j as i32;
-                        rx[dest] = rx[p];
+                        rjx[dest].0 = j as i32;
+                        rjx[dest].1 = rjx[p].1;
                     }
                     dest += 1;
                 }
@@ -460,12 +452,10 @@ impl CsrMatrix {
         for i in 0..nrow {
             let p1 = rp[i] as usize;
             let p2 = p1 + rc[i];
-            // TODO: find a way to improve this sorting step
-            let mut columns: Vec<_> = (p1..p2).into_iter().map(|p| (rj[p], p)).collect();
-            columns.sort();
-            for (j, p) in columns {
-                bj[k] = j;
-                bx[k] = rx[p];
+            rjx[p1..p2].sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+            for (j, x) in &rjx[p1..p2] {
+                bj[k] = *j;
+                bx[k] = *x;
                 k += 1;
             }
         }
@@ -503,8 +493,7 @@ impl CsrMatrix {
             col_indices: vec![0; nnz],
             values: vec![0.0; nnz],
             temp_rp: Vec::new(),
-            temp_rj: Vec::new(),
-            temp_rx: Vec::new(),
+            temp_rjx: Vec::new(),
             temp_rc: Vec::new(),
             temp_w: Vec::new(),
         };
@@ -1266,8 +1255,7 @@ mod tests {
             col_indices: vec![0, 1],
             row_pointers: vec![0, 2],
             temp_rp: Vec::new(),
-            temp_rj: Vec::new(),
-            temp_rx: Vec::new(),
+            temp_rjx: Vec::new(),
             temp_rc: Vec::new(),
             temp_w: Vec::new(),
         };
@@ -1313,8 +1301,7 @@ mod tests {
         let nrow = coo.nrow;
         let nnz = coo.nnz; // it must be COO nnz because of (removed) duplicates
         assert_eq!(csr.temp_rp.len(), nrow + 1);
-        assert_eq!(csr.temp_rj.len(), nnz);
-        assert_eq!(csr.temp_rx.len(), nnz);
+        assert_eq!(csr.temp_rjx.len(), nnz);
         assert_eq!(csr.temp_rc.len(), nrow);
         assert_eq!(csr.temp_w.len(), nrow);
         let mut clone = csr.clone();
@@ -1335,8 +1322,7 @@ mod tests {
         assert_eq!(from_json.col_indices, csr.col_indices);
         assert_eq!(from_json.values, csr.values);
         assert_eq!(from_json.temp_rp.len(), 0);
-        assert_eq!(from_json.temp_rj.len(), 0);
-        assert_eq!(from_json.temp_rx.len(), 0);
+        assert_eq!(from_json.temp_rjx.len(), 0);
         assert_eq!(from_json.temp_rc.len(), 0);
         assert_eq!(from_json.temp_w.len(), 0);
     }

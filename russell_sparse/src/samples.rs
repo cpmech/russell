@@ -168,18 +168,18 @@ impl Samples {
         let max_nnz = 13;
         let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym, one_based).unwrap();
         coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2) duplicate
-        coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2) duplicate
-        coo.put(1, 0, 3.0).unwrap();
-        coo.put(0, 1, 3.0).unwrap();
         coo.put(2, 1, -1.0).unwrap();
+        coo.put(1, 0, 3.0).unwrap();
         coo.put(4, 1, 4.0).unwrap();
-        coo.put(1, 2, 4.0).unwrap();
-        coo.put(2, 2, -3.0).unwrap();
+        coo.put(4, 4, 1.0).unwrap();
+        coo.put(0, 1, 3.0).unwrap();
         coo.put(3, 2, 1.0).unwrap();
+        coo.put(2, 2, -3.0).unwrap();
+        coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2) duplicate
         coo.put(4, 2, 2.0).unwrap();
         coo.put(2, 3, 2.0).unwrap();
         coo.put(1, 4, 6.0).unwrap();
-        coo.put(4, 4, 1.0).unwrap();
+        coo.put(1, 2, 4.0).unwrap();
         // CSC matrix
         let values = vec![
             2.0, 3.0, //            j=0, p=( 0),1
@@ -204,7 +204,7 @@ impl Samples {
             -1.0, -3.0, 2.0, // i=2, p=(5),6,7
             1.0, //             i=3, p=(8)
             4.0, 2.0, 1.0, //   i=4, p=(9),10,11
-        ]; //                  p=(12)
+        ]; //                        p=(12)
         let col_indices = vec![
             0, 1, //
             0, 2, 4, //

@@ -434,7 +434,7 @@ impl CscMatrix {
                     // keep the entry
                     w[j] = dest as i32;
                     if dest != p {
-                        // move is not need
+                        // move is not needed
                         rj[dest] = j as i32;
                         rx[dest] = rx[p];
                     }

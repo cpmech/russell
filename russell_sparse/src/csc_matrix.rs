@@ -82,6 +82,21 @@ pub struct CscMatrix {
     /// values.len() = nnz_dup
     /// ```
     pub(crate) values: Vec<f64>,
+
+    /// Temporary row form (for COO to CSC conversion)
+    temp_rp: Vec<i32>,
+
+    /// Temporary row form (for COO to CSC conversion)
+    temp_rj: Vec<i32>,
+
+    /// Temporary row form (for COO to CSC conversion)
+    temp_rx: Vec<f64>,
+
+    /// Temporary row count (for COO to CSC conversion)
+    temp_rc: Vec<usize>,
+
+    /// Temporary workspace (for COO to CSC conversion)
+    temp_w: Vec<i32>,
 }
 
 impl CscMatrix {
@@ -220,6 +235,11 @@ impl CscMatrix {
             col_pointers,
             row_indices,
             values,
+            temp_rp: Vec::new(),
+            temp_rj: Vec::new(),
+            temp_rx: Vec::new(),
+            temp_rc: Vec::new(),
+            temp_w: Vec::new(),
         })
     }
 
@@ -302,6 +322,11 @@ impl CscMatrix {
             col_pointers: vec![0; coo.ncol + 1],
             row_indices: vec![0; coo.nnz],
             values: vec![0.0; coo.nnz],
+            temp_rp: Vec::new(),
+            temp_rj: Vec::new(),
+            temp_rx: Vec::new(),
+            temp_rc: Vec::new(),
+            temp_w: Vec::new(),
         };
         csc.update_from_coo(coo)?;
         Ok(csc)
@@ -348,18 +373,26 @@ impl CscMatrix {
         let bi = &mut self.row_indices;
         let bx = &mut self.values;
 
-        // allocate workspaces
-        let mut rp = vec![0_i32; nrow + 1]; // temporary row form
-        let mut rj = vec![0_i32; nnz]; // temporary row form
-        let mut rx = vec![0_f64; nnz]; // temporary row form
-        let mut rc = vec![0_usize; nrow]; // temporary row count
-        let mut w = vec![0_i32; ndim]; // temporary workspace
+        // allocate workspaces and get an access to them
+        if self.temp_w.len() == 0 {
+            self.temp_rp = vec![0_i32; nrow + 1]; // temporary row form
+            self.temp_rj = vec![0_i32; nnz]; // temporary row form
+            self.temp_rx = vec![0_f64; nnz]; // temporary row form
+            self.temp_rc = vec![0_usize; nrow]; // temporary row count
+            self.temp_w = vec![0_i32; ndim]; // temporary workspace
+        } else {
+            for i in 0..nrow {
+                self.temp_w[i] = 0;
+            }
+        }
+        let rp = &mut self.temp_rp;
+        let rj = &mut self.temp_rj;
+        let rx = &mut self.temp_rx;
+        let rc = &mut self.temp_rc;
+        let w = &mut self.temp_w;
 
         // count the entries in each row (also counting duplicates)
         // use w as workspace for row counts (including duplicates)
-        for i in 0..nrow {
-            w[i] = 0;
-        }
         for k in 0..nnz {
             let i = (ai[k] + d) as usize;
             w[i] += 1;
@@ -477,6 +510,11 @@ impl CscMatrix {
             col_pointers: vec![0; ncol + 1],
             row_indices: vec![0; nnz],
             values: vec![0.0; nnz],
+            temp_rp: Vec::new(),
+            temp_rj: Vec::new(),
+            temp_rx: Vec::new(),
+            temp_rc: Vec::new(),
+            temp_w: Vec::new(),
         };
 
         // access the CSC data
@@ -1084,6 +1122,11 @@ mod tests {
             col_pointers: vec![0, 1, 2],
             row_indices: vec![0, 0],
             values: vec![10.0, 20.0],
+            temp_rp: Vec::new(),
+            temp_rj: Vec::new(),
+            temp_rx: Vec::new(),
+            temp_rc: Vec::new(),
+            temp_w: Vec::new(),
         };
         let mut a_3x1 = Matrix::new(3, 1);
         let mut a_1x3 = Matrix::new(1, 3);
@@ -1101,6 +1144,11 @@ mod tests {
             col_pointers: vec![0, 1, 2],
             row_indices: vec![0, 0],
             values: vec![10.0, 20.0],
+            temp_rp: Vec::new(),
+            temp_rj: Vec::new(),
+            temp_rx: Vec::new(),
+            temp_rc: Vec::new(),
+            temp_w: Vec::new(),
         };
         let mut a = Matrix::new(1, 2);
         csc.to_dense(&mut a).unwrap();
@@ -1133,6 +1181,11 @@ mod tests {
                 1.0, //            j = 4, count = 10, 11,
                      //                                12
             ],
+            temp_rp: Vec::new(),
+            temp_rj: Vec::new(),
+            temp_rx: Vec::new(),
+            temp_rc: Vec::new(),
+            temp_w: Vec::new(),
         };
 
         // covert to dense
@@ -1164,6 +1217,11 @@ mod tests {
             col_pointers: vec![0, 1, 3, 5, 7, 9],
             row_indices: vec![0, 0, 1, 0, 2, 0, 3, 0, 4],
             values: vec![9.0, 1.5, 0.5, 6.0, 12.0, 0.75, 0.625, 3.0, 16.0],
+            temp_rp: Vec::new(),
+            temp_rj: Vec::new(),
+            temp_rx: Vec::new(),
+            temp_rc: Vec::new(),
+            temp_w: Vec::new(),
         };
         let a = csc.as_dense();
         let correct = "┌                               ┐\n\
@@ -1185,6 +1243,11 @@ mod tests {
             col_pointers: vec![0, 5, 6, 7, 8, 9],
             row_indices: vec![0, 1, 2, 3, 4, 1, 2, 3, 4],
             values: vec![9.0, 1.5, 6.0, 0.75, 3.0, 0.5, 12.0, 0.625, 16.0],
+            temp_rp: Vec::new(),
+            temp_rj: Vec::new(),
+            temp_rx: Vec::new(),
+            temp_rc: Vec::new(),
+            temp_w: Vec::new(),
         };
         let a = csc.as_dense();
         let correct = "┌                               ┐\n\
@@ -1237,6 +1300,11 @@ mod tests {
             values: vec![10.0, 20.0],
             row_indices: vec![0, 0],
             col_pointers: vec![0, 1, 2],
+            temp_rp: Vec::new(),
+            temp_rj: Vec::new(),
+            temp_rx: Vec::new(),
+            temp_rc: Vec::new(),
+            temp_w: Vec::new(),
         };
         let x = csc.get_values_mut();
         x.reverse();

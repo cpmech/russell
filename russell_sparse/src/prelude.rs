@@ -3,6 +3,7 @@
 //! You may write `use russell_sparse::prelude::*` in your code and obtain
 //! access to commonly used functionality.
 
+pub use crate::aliases::*;
 pub use crate::coo_matrix::*;
 pub use crate::csc_matrix::*;
 pub use crate::csr_matrix::*;

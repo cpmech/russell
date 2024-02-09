@@ -1,12 +1,10 @@
-use super::{to_i32, CooMatrix, CsrMatrix, Symmetry};
+use super::{to_i32, NumCooMatrix, NumCsrMatrix, Symmetry};
 use crate::StrError;
-use russell_lab::{Matrix, Vector};
+use num_traits::{Num, NumCast};
+use russell_lab::{NumMatrix, NumVector};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use std::ffi::OsStr;
-use std::fmt::Write;
-use std::fs::{self, File};
-use std::io::Write as IoWrite;
-use std::path::Path;
+use std::ops::{AddAssign, MulAssign};
 
 /// Holds the arrays needed for a CSC (compressed sparse column) matrix
 ///
@@ -50,7 +48,10 @@ use std::path::Path;
 /// 0, 2, 5, 9, 10, 12
 /// ```
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CscMatrix {
+pub struct NumCscMatrix<T>
+where
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
+{
     /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
     pub(crate) symmetry: Symmetry,
 
@@ -82,7 +83,8 @@ pub struct CscMatrix {
     /// nnz_dup ≥ nnz
     /// values.len() = nnz_dup
     /// ```
-    pub(crate) values: Vec<f64>,
+    #[serde(bound(deserialize = "Vec<T>: Deserialize<'de>"))]
+    pub(crate) values: Vec<T>,
 
     /// Temporary row form (for COO to CSC conversion)
     #[serde(skip)]
@@ -94,7 +96,7 @@ pub struct CscMatrix {
 
     /// Temporary row form (for COO to CSC conversion)
     #[serde(skip)]
-    temp_rx: Vec<f64>,
+    temp_rx: Vec<T>,
 
     /// Temporary row count (for COO to CSC conversion)
     #[serde(skip)]
@@ -105,7 +107,10 @@ pub struct CscMatrix {
     temp_w: Vec<i32>,
 }
 
-impl CscMatrix {
+impl<T> NumCscMatrix<T>
+where
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
+{
     /// Creates a new CSC matrix from data arrays
     ///
     /// **Note:** The column pointers and row indices must be **sorted** in ascending order.
@@ -187,7 +192,7 @@ impl CscMatrix {
         ncol: usize,
         col_pointers: Vec<i32>,
         row_indices: Vec<i32>,
-        values: Vec<f64>,
+        values: Vec<T>,
         symmetry: Option<Symmetry>,
     ) -> Result<Self, StrError> {
         if nrow < 1 {
@@ -234,7 +239,7 @@ impl CscMatrix {
                 }
             }
         }
-        Ok(CscMatrix {
+        Ok(NumCscMatrix {
             symmetry: if let Some(v) = symmetry { v } else { Symmetry::No },
             nrow,
             ncol,
@@ -317,17 +322,17 @@ impl CscMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_coo(coo: &CooMatrix) -> Result<Self, StrError> {
+    pub fn from_coo(coo: &NumCooMatrix<T>) -> Result<Self, StrError> {
         if coo.nnz < 1 {
             return Err("COO to CSC requires nnz > 0");
         }
-        let mut csc = CscMatrix {
+        let mut csc = NumCscMatrix {
             symmetry: coo.symmetry,
             nrow: coo.nrow,
             ncol: coo.ncol,
             col_pointers: vec![0; coo.ncol + 1],
             row_indices: vec![0; coo.nnz],
-            values: vec![0.0; coo.nnz],
+            values: vec![T::zero(); coo.nnz],
             temp_rp: Vec::new(),
             temp_rj: Vec::new(),
             temp_rx: Vec::new(),
@@ -345,7 +350,7 @@ impl CscMatrix {
     ///
     /// **Note:** The final nnz may be smaller than the initial nnz because duplicates
     /// may have been summed up. The final nnz is available as `nnz = col_pointers[ncol]`.
-    pub fn update_from_coo(&mut self, coo: &CooMatrix) -> Result<(), StrError> {
+    pub fn update_from_coo(&mut self, coo: &NumCooMatrix<T>) -> Result<(), StrError> {
         // check dimensions
         if coo.symmetry != self.symmetry {
             return Err("coo.symmetry must be equal to csc.symmetry");
@@ -383,7 +388,7 @@ impl CscMatrix {
         if self.temp_w.len() == 0 {
             self.temp_rp = vec![0_i32; nrow + 1]; // temporary row form
             self.temp_rj = vec![0_i32; nnz]; // temporary row form
-            self.temp_rx = vec![0_f64; nnz]; // temporary row form
+            self.temp_rx = vec![T::zero(); nnz]; // temporary row form
             self.temp_rc = vec![0_usize; nrow]; // temporary row count
             self.temp_w = vec![0_i32; ndim]; // temporary workspace
         } else {
@@ -435,7 +440,8 @@ impl CscMatrix {
                 if w[j] >= p1 as i32 {
                     // j is already in row i, position pj
                     let pj = w[j] as usize;
-                    rx[pj] += rx[p]; // sum the entry
+                    let x = rx[p];
+                    rx[pj] += x; // sum the entry
                 } else {
                     // keep the entry
                     w[j] = dest as i32;
@@ -488,7 +494,7 @@ impl CscMatrix {
     }
 
     /// Creates a new CSC matrix from a CSR matrix
-    pub fn from_csr(csr: &CsrMatrix) -> Result<Self, StrError> {
+    pub fn from_csr(csr: &NumCsrMatrix<T>) -> Result<Self, StrError> {
         // Based on the SciPy code (csr_tocsc) from here:
         //
         // https://github.com/scipy/scipy/blob/main/scipy/sparse/sparsetools/csr.h
@@ -509,13 +515,13 @@ impl CscMatrix {
         let ax = &csr.values;
 
         // allocate the CSC arrays
-        let mut csc = CscMatrix {
+        let mut csc = NumCscMatrix {
             symmetry: csr.symmetry,
             nrow: csr.nrow,
             ncol: csr.ncol,
             col_pointers: vec![0; ncol + 1],
             row_indices: vec![0; nnz],
-            values: vec![0.0; nnz],
+            values: vec![T::zero(); nnz],
             temp_rp: Vec::new(),
             temp_rj: Vec::new(),
             temp_rx: Vec::new(),
@@ -621,8 +627,8 @@ impl CscMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn as_dense(&self) -> Matrix {
-        let mut a = Matrix::new(self.nrow, self.ncol);
+    pub fn as_dense(&self) -> NumMatrix<T> {
+        let mut a = NumMatrix::new(self.nrow, self.ncol);
         self.to_dense(&mut a).unwrap();
         a
     }
@@ -686,13 +692,13 @@ impl CscMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn to_dense(&self, a: &mut Matrix) -> Result<(), StrError> {
+    pub fn to_dense(&self, a: &mut NumMatrix<T>) -> Result<(), StrError> {
         let (m, n) = a.dims();
         if m != self.nrow || n != self.ncol {
             return Err("wrong matrix dimensions");
         }
         let mirror_required = self.symmetry.triangular();
-        a.fill(0.0);
+        a.fill(T::zero());
         for j in 0..self.ncol {
             for p in self.col_pointers[j]..self.col_pointers[j + 1] {
                 let i = self.row_indices[p as usize] as usize;
@@ -702,67 +708,6 @@ impl CscMatrix {
                 }
             }
         }
-        Ok(())
-    }
-
-    /// Writes a MatrixMarket file from a CooMatrix
-    ///
-    /// # Input
-    ///
-    /// * `full_path` -- may be a String, &str, or Path
-    /// * `vismatrix` -- generate a SMAT file for Vismatrix instead of a MatrixMarket
-    ///
-    /// **Note:** The vismatrix format is is similar to the MatrixMarket format
-    /// without the header, and the indices start at zero.
-    ///
-    /// # References
-    ///
-    /// * MatrixMarket: <https://math.nist.gov/MatrixMarket/formats.html>
-    /// * Vismatrix: <https://github.com/cpmech/vismatrix>
-    pub fn write_matrix_market<P>(&self, full_path: &P, vismatrix: bool) -> Result<(), StrError>
-    where
-        P: AsRef<OsStr> + ?Sized,
-    {
-        // output buffer
-        let mut buffer = String::new();
-
-        // handle one-based indexing
-        let d = if vismatrix { 0 } else { 1 };
-
-        // write header
-        if !vismatrix {
-            if self.symmetry == Symmetry::No {
-                write!(&mut buffer, "%%MatrixMarket matrix coordinate real general\n").unwrap();
-            } else {
-                write!(&mut buffer, "%%MatrixMarket matrix coordinate real symmetric\n").unwrap();
-            }
-        }
-
-        // write dimensions
-        let nnz = self.col_pointers[self.ncol] as usize;
-        write!(&mut buffer, "{} {} {}\n", self.nrow, self.ncol, nnz).unwrap();
-
-        // write triplets
-        for j in 0..self.ncol {
-            for p in self.col_pointers[j]..self.col_pointers[j + 1] {
-                let i = self.row_indices[p as usize] as usize;
-                let aij = self.values[p as usize];
-                write!(&mut buffer, "{} {} {:?}\n", i + d, j + d, aij).unwrap();
-            }
-        }
-
-        // create directory
-        let path = Path::new(full_path);
-        if let Some(p) = path.parent() {
-            fs::create_dir_all(p).map_err(|_| "cannot create directory")?;
-        }
-
-        // write file
-        let mut file = File::create(path).map_err(|_| "cannot create file")?;
-        file.write_all(buffer.as_bytes()).map_err(|_| "cannot write file")?;
-
-        // force sync
-        file.sync_all().map_err(|_| "cannot sync file")?;
         Ok(())
     }
 
@@ -780,7 +725,7 @@ impl CscMatrix {
     /// # Output
     ///
     /// * `v` -- Vector with dimension equal to the number of rows of the matrix
-    pub fn mat_vec_mul(&self, v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
+    pub fn mat_vec_mul(&self, v: &mut NumVector<T>, alpha: T, u: &NumVector<T>) -> Result<(), StrError> {
         if u.dim() != self.ncol {
             return Err("u.ndim must equal ncol");
         }
@@ -788,7 +733,7 @@ impl CscMatrix {
             return Err("v.ndim must equal nrow");
         }
         let mirror_required = self.symmetry.triangular();
-        v.fill(0.0);
+        v.fill(T::zero());
         for j in 0..self.ncol {
             for p in self.col_pointers[j]..self.col_pointers[j + 1] {
                 let i = self.row_indices[p as usize] as usize;
@@ -854,12 +799,12 @@ impl CscMatrix {
     }
 
     /// Get an access to the values
-    pub fn get_values(&self) -> &[f64] {
+    pub fn get_values(&self) -> &[T] {
         &self.values
     }
 
     /// Get a mutable access to the values
-    pub fn get_values_mut(&mut self) -> &mut [f64] {
+    pub fn get_values_mut(&mut self) -> &mut [T] {
         &mut self.values
     }
 }
@@ -868,51 +813,50 @@ impl CscMatrix {
 
 #[cfg(test)]
 mod tests {
-    use super::CscMatrix;
+    use super::NumCscMatrix;
     use crate::{CooMatrix, Samples, Storage, Symmetry};
     use russell_lab::{vec_approx_eq, Matrix, Vector};
-    use std::fs;
 
     #[test]
     fn new_captures_errors() {
         assert_eq!(
-            CscMatrix::new(0, 1, vec![0], vec![], vec![], None).err(),
+            NumCscMatrix::<f64>::new(0, 1, vec![0], vec![], vec![], None).err(),
             Some("nrow must be ≥ 1")
         );
         assert_eq!(
-            CscMatrix::new(1, 0, vec![0], vec![], vec![], None).err(),
+            NumCscMatrix::<f64>::new(1, 0, vec![0], vec![], vec![], None).err(),
             Some("ncol must be ≥ 1")
         );
         assert_eq!(
-            CscMatrix::new(1, 1, vec![0], vec![], vec![], None).err(),
+            NumCscMatrix::<f64>::new(1, 1, vec![0], vec![], vec![], None).err(),
             Some("col_pointers.len() must be = ncol + 1")
         );
         assert_eq!(
-            CscMatrix::new(1, 1, vec![0, 0], vec![], vec![], None).err(),
+            NumCscMatrix::<f64>::new(1, 1, vec![0, 0], vec![], vec![], None).err(),
             Some("nnz = col_pointers[ncol] must be ≥ 1")
         );
         assert_eq!(
-            CscMatrix::new(1, 1, vec![0, 1], vec![], vec![], None).err(),
+            NumCscMatrix::<f64>::new(1, 1, vec![0, 1], vec![], vec![], None).err(),
             Some("row_indices.len() must be ≥ nnz")
         );
         assert_eq!(
-            CscMatrix::new(1, 1, vec![0, 1], vec![0], vec![], None).err(),
+            NumCscMatrix::<f64>::new(1, 1, vec![0, 1], vec![0], vec![], None).err(),
             Some("values.len() must be ≥ nnz")
         );
         assert_eq!(
-            CscMatrix::new(1, 1, vec![-1, 1], vec![0], vec![0.0], None).err(),
+            NumCscMatrix::<f64>::new(1, 1, vec![-1, 1], vec![0], vec![0.0], None).err(),
             Some("col pointers must be ≥ 0")
         );
         assert_eq!(
-            CscMatrix::new(1, 1, vec![2, 1], vec![0], vec![0.0], None).err(),
+            NumCscMatrix::<f64>::new(1, 1, vec![2, 1], vec![0], vec![0.0], None).err(),
             Some("col pointers must be sorted in ascending order")
         );
         assert_eq!(
-            CscMatrix::new(1, 1, vec![0, 1], vec![-1], vec![0.0], None).err(),
+            NumCscMatrix::<f64>::new(1, 1, vec![0, 1], vec![-1], vec![0.0], None).err(),
             Some("row indices must be ≥ 0")
         );
         assert_eq!(
-            CscMatrix::new(1, 1, vec![0, 1], vec![2], vec![0.0], None).err(),
+            NumCscMatrix::<f64>::new(1, 1, vec![0, 1], vec![2], vec![0.0], None).err(),
             Some("row indices must be < nrow")
         );
         // ┌    ┐
@@ -925,7 +869,7 @@ mod tests {
         let row_indices = vec![1, 0]; // << incorrect, should be [0, 1]
         let col_pointers = vec![0, 2];
         assert_eq!(
-            CscMatrix::new(2, 1, col_pointers, row_indices, values, None).err(),
+            NumCscMatrix::<f64>::new(2, 1, col_pointers, row_indices, values, None).err(),
             Some("row indices must be sorted in ascending order (within their column)")
         );
     }
@@ -933,7 +877,7 @@ mod tests {
     #[test]
     fn new_works() {
         let (_, csc_correct, _, _) = Samples::rectangular_1x2(false, false, false);
-        let csc = CscMatrix::new(1, 2, vec![0, 1, 2], vec![0, 0], vec![10.0, 20.0], None).unwrap();
+        let csc = NumCscMatrix::<f64>::new(1, 2, vec![0, 1, 2], vec![0, 0], vec![10.0, 20.0], None).unwrap();
         assert_eq!(csc.symmetry, Symmetry::No);
         assert_eq!(csc.nrow, 1);
         assert_eq!(csc.ncol, 2);
@@ -945,7 +889,10 @@ mod tests {
     #[test]
     fn from_coo_captures_errors() {
         let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
-        assert_eq!(CscMatrix::from_coo(&coo).err(), Some("COO to CSC requires nnz > 0"));
+        assert_eq!(
+            NumCscMatrix::<f64>::from_coo(&coo).err(),
+            Some("COO to CSC requires nnz > 0")
+        );
     }
 
     #[test]
@@ -1051,7 +998,7 @@ mod tests {
             //  15  -6  .  3
             Samples::rectangular_3x4(),
         ] {
-            let csc = CscMatrix::from_coo(&coo).unwrap();
+            let csc = NumCscMatrix::<f64>::from_coo(&coo).unwrap();
             assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
             let nnz = csc.col_pointers[csc.ncol] as usize;
             assert_eq!(&csc.row_indices[0..nnz], &csc_correct.row_indices);
@@ -1063,7 +1010,7 @@ mod tests {
     #[rustfmt::skip]
     fn update_from_coo_captures_errors() {
         let (coo, _, _, _) = Samples::rectangular_1x2(false, false, false);
-        let mut csc = CscMatrix::from_coo(&coo).unwrap();
+        let mut csc = NumCscMatrix::<f64>::from_coo(&coo).unwrap();
         let yes = Symmetry::General(Storage::Lower);
         let no = Symmetry::No;
         assert_eq!(csc.update_from_coo(&CooMatrix { symmetry: yes,  nrow: 1, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0], one_based: false }).err(), Some("coo.symmetry must be equal to csc.symmetry"));
@@ -1075,7 +1022,7 @@ mod tests {
     #[test]
     fn update_from_coo_again_works() {
         let (coo, csc_correct, _, _) = Samples::umfpack_unsymmetric_5x5(false);
-        let mut csc = CscMatrix::from_coo(&coo).unwrap();
+        let mut csc = NumCscMatrix::<f64>::from_coo(&coo).unwrap();
         assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
         let nnz = csc.col_pointers[csc.ncol] as usize;
         assert_eq!(&csc.row_indices[0..nnz], &csc_correct.row_indices);
@@ -1150,7 +1097,7 @@ mod tests {
             //  15  -6  .  3
             Samples::rectangular_3x4(),
         ] {
-            let csc = CscMatrix::from_csr(&csr).unwrap();
+            let csc = NumCscMatrix::<f64>::from_csr(&csr).unwrap();
             assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
             assert_eq!(&csc.row_indices, &csc_correct.row_indices);
             vec_approx_eq(&csc.values, &csc_correct.values, 1e-15);
@@ -1259,7 +1206,7 @@ mod tests {
         assert_eq!(csc.get_row_indices(), &[0, 0]);
         assert_eq!(csc.get_values(), &[10.0, 20.0]);
 
-        let mut csc = CscMatrix {
+        let mut csc = NumCscMatrix::<f64> {
             symmetry: Symmetry::No,
             nrow: 1,
             ncol: 2,
@@ -1278,39 +1225,9 @@ mod tests {
     }
 
     #[test]
-    fn write_matrix_market_works() {
-        //  2  3  .  .  .
-        //  3  .  4  .  6
-        //  . -1 -3  2  .
-        //  .  .  1  .  .
-        //  .  4  2  .  1
-        let (_, csc, _, _) = Samples::umfpack_unsymmetric_5x5(false);
-        let full_path = "/tmp/russell_sparse/test_write_matrix_market_csc.mtx";
-        csc.write_matrix_market(full_path, false).unwrap();
-        let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
-        assert_eq!(
-            contents,
-            "%%MatrixMarket matrix coordinate real general\n\
-             5 5 12\n\
-             1 1 2.0\n\
-             2 1 3.0\n\
-             1 2 3.0\n\
-             3 2 -1.0\n\
-             5 2 4.0\n\
-             2 3 4.0\n\
-             3 3 -3.0\n\
-             4 3 1.0\n\
-             5 3 2.0\n\
-             3 4 2.0\n\
-             2 5 6.0\n\
-             5 5 1.0\n"
-        );
-    }
-
-    #[test]
     fn derive_methods_works() {
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
-        let csc = CscMatrix::from_coo(&coo).unwrap();
+        let csc = NumCscMatrix::<f64>::from_coo(&coo).unwrap();
         let nrow = coo.nrow;
         let nnz = coo.nnz; // it must be COO nnz because of (removed) duplicates
         assert_eq!(csc.temp_rp.len(), nrow + 1);
@@ -1328,7 +1245,7 @@ mod tests {
             json,
             r#"{"symmetry":"No","nrow":5,"ncol":5,"col_pointers":[0,2,5,9,10,12],"row_indices":[0,1,0,2,4,1,2,3,4,2,1,4,0],"values":[2.0,3.0,3.0,-1.0,4.0,4.0,-3.0,1.0,2.0,2.0,6.0,1.0,0.0]}"#
         );
-        let from_json: CscMatrix = serde_json::from_str(&json).unwrap();
+        let from_json: NumCscMatrix<f64> = serde_json::from_str(&json).unwrap();
         assert_eq!(from_json.symmetry, csc.symmetry);
         assert_eq!(from_json.nrow, csc.nrow);
         assert_eq!(from_json.ncol, csc.ncol);

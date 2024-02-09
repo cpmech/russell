@@ -1,18 +1,11 @@
 use super::{Storage, Symmetry};
 use crate::to_i32;
 use crate::StrError;
-use num_complex::Complex64;
 use num_traits::{Num, NumCast};
 use russell_lab::{NumMatrix, NumVector};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::ops::{AddAssign, MulAssign};
-
-/// Defines and alias for Real sparse matrices (double precision)
-pub type CooMatrix = NumCooMatrix<f64>;
-
-/// Defines and alias for Complex sparse matrices (double precision)
-pub type ComplexCooMatrix = NumCooMatrix<Complex64>;
 
 /// Holds the row index, col index, and values of a matrix (also known as Triplet)
 ///

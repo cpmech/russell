@@ -231,9 +231,10 @@
 //! }
 //! ```
 
-/// Defines a type alias for the error type as a static string
+/// Defines the error output as a static string
 pub type StrError = &'static str;
 
+mod aliases;
 mod auxiliary_and_constants;
 mod coo_matrix;
 mod csc_matrix;
@@ -249,6 +250,8 @@ mod solver_umfpack;
 mod sparse_matrix;
 mod stats_lin_sol;
 mod verify_lin_sys;
+mod write_matrix_market;
+pub use crate::aliases::*;
 use crate::auxiliary_and_constants::*;
 pub use crate::coo_matrix::*;
 pub use crate::csc_matrix::*;
@@ -263,6 +266,7 @@ pub use crate::solver_umfpack::*;
 pub use crate::sparse_matrix::*;
 pub use crate::stats_lin_sol::*;
 pub use crate::verify_lin_sys::*;
+pub use crate::write_matrix_market::*;
 
 // run code from README file
 #[cfg(doctest)]

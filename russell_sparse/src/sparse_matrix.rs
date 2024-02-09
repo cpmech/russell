@@ -1,7 +1,6 @@
 use super::{CooMatrix, CscMatrix, CsrMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::{find_index_abs_max, Matrix, Vector};
-use std::ffi::OsStr;
 
 /// Unifies the sparse matrix representations by wrapping COO, CSC, and CSR structures
 ///
@@ -246,38 +245,6 @@ impl SparseMatrix {
         }
     }
 
-    /// Writes a MatrixMarket file from a CooMatrix
-    ///
-    /// # Input
-    ///
-    /// * `full_path` -- may be a String, &str, or Path
-    /// * `vismatrix` -- generate a SMAT file for Vismatrix instead of a MatrixMarket
-    ///
-    /// **Note:** The vismatrix format is is similar to the MatrixMarket format
-    /// without the header, and the indices start at zero.
-    ///
-    /// # References
-    ///
-    /// * MatrixMarket: <https://math.nist.gov/MatrixMarket/formats.html>
-    /// * Vismatrix: <https://github.com/cpmech/vismatrix>
-    ///
-    /// **Priority**: CSC -> CSR -> (CSC from COO)
-    pub fn write_matrix_market<P>(&mut self, full_path: &P, vismatrix: bool) -> Result<(), StrError>
-    where
-        P: AsRef<OsStr> + ?Sized,
-    {
-        match &self.csc {
-            Some(csc) => csc.write_matrix_market(full_path, vismatrix),
-            None => match &self.csr {
-                Some(csr) => csr.write_matrix_market(full_path, vismatrix),
-                None => {
-                    let csc = self.get_csc_or_from_coo()?;
-                    csc.write_matrix_market(full_path, vismatrix)
-                }
-            },
-        }
-    }
-
     // COO ------------------------------------------------------------------------
 
     /// Puts a new entry and updates pos (may be duplicate)
@@ -417,7 +384,6 @@ mod tests {
     use super::SparseMatrix;
     use crate::{Samples, Symmetry};
     use russell_lab::{vec_approx_eq, Matrix, Vector};
-    use std::fs;
 
     #[test]
     fn new_functions_work() {
@@ -557,85 +523,6 @@ mod tests {
         );
         coo.reset().unwrap();
         coo.put(1, 1, 2.0).unwrap();
-    }
-
-    #[test]
-    fn write_matrix_market_works() {
-        //  2  3  .  .  .
-        //  3  .  4  .  6
-        //  . -1 -3  2  .
-        //  .  .  1  .  .
-        //  .  4  2  .  1
-        let (coo, csc, csr, _) = Samples::umfpack_unsymmetric_5x5(false);
-
-        // COO
-        let mut mat = SparseMatrix::from_coo(coo);
-        let full_path = "/tmp/russell_sparse/test_write_matrix_market_coo.mtx";
-        mat.write_matrix_market(full_path, false).unwrap();
-        let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
-        assert_eq!(
-            contents,
-            "%%MatrixMarket matrix coordinate real general\n\
-             5 5 12\n\
-             1 1 2.0\n\
-             2 1 3.0\n\
-             1 2 3.0\n\
-             3 2 -1.0\n\
-             5 2 4.0\n\
-             2 3 4.0\n\
-             3 3 -3.0\n\
-             4 3 1.0\n\
-             5 3 2.0\n\
-             3 4 2.0\n\
-             2 5 6.0\n\
-             5 5 1.0\n"
-        );
-
-        // CSC
-        let mut mat = SparseMatrix::from_csc(csc);
-        let full_path = "/tmp/russell_sparse/test_write_matrix_market_csc.mtx";
-        mat.write_matrix_market(full_path, false).unwrap();
-        let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
-        assert_eq!(
-            contents,
-            "%%MatrixMarket matrix coordinate real general\n\
-             5 5 12\n\
-             1 1 2.0\n\
-             2 1 3.0\n\
-             1 2 3.0\n\
-             3 2 -1.0\n\
-             5 2 4.0\n\
-             2 3 4.0\n\
-             3 3 -3.0\n\
-             4 3 1.0\n\
-             5 3 2.0\n\
-             3 4 2.0\n\
-             2 5 6.0\n\
-             5 5 1.0\n"
-        );
-
-        // CSR
-        let mut mat = SparseMatrix::from_csr(csr);
-        let full_path = "/tmp/russell_sparse/test_write_matrix_market_csr.mtx";
-        mat.write_matrix_market(full_path, false).unwrap();
-        let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
-        assert_eq!(
-            contents,
-            "%%MatrixMarket matrix coordinate real general\n\
-             5 5 12\n\
-             1 1 2.0\n\
-             1 2 3.0\n\
-             2 1 3.0\n\
-             2 3 4.0\n\
-             2 5 6.0\n\
-             3 2 -1.0\n\
-             3 3 -3.0\n\
-             3 4 2.0\n\
-             4 3 1.0\n\
-             5 2 4.0\n\
-             5 3 2.0\n\
-             5 5 1.0\n"
-        );
     }
 
     #[test]

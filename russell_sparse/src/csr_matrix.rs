@@ -1,12 +1,10 @@
-use super::{to_i32, CooMatrix, CscMatrix, Symmetry};
+use super::{to_i32, NumCooMatrix, NumCscMatrix, Symmetry};
 use crate::StrError;
-use russell_lab::{Matrix, Vector};
+use num_traits::{Num, NumCast};
+use russell_lab::{NumMatrix, NumVector};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use std::ffi::OsStr;
-use std::fmt::Write;
-use std::fs::{self, File};
-use std::io::Write as IoWrite;
-use std::path::Path;
+use std::ops::{AddAssign, MulAssign};
 
 /// Holds the arrays needed for a CSR (compressed sparse row) matrix
 ///
@@ -50,7 +48,10 @@ use std::path::Path;
 /// 0, 3, 5, 8, 11, 13
 /// ```
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct CsrMatrix {
+pub struct NumCsrMatrix<T>
+where
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
+{
     /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
     pub(crate) symmetry: Symmetry,
 
@@ -82,7 +83,8 @@ pub struct CsrMatrix {
     /// nnz_dup ≥ nnz
     /// values.len() = nnz_dup
     /// ```
-    pub(crate) values: Vec<f64>,
+    #[serde(bound(deserialize = "Vec<T>: Deserialize<'de>"))]
+    pub(crate) values: Vec<T>,
 
     /// Temporary row form (for COO to CSR conversion)
     #[serde(skip)]
@@ -90,7 +92,7 @@ pub struct CsrMatrix {
 
     /// Temporary row form (for COO to CSR conversion)
     #[serde(skip)]
-    temp_rjx: Vec<(i32, f64)>,
+    temp_rjx: Vec<(i32, T)>,
 
     /// Temporary row count (for COO to CSR conversion)
     #[serde(skip)]
@@ -101,7 +103,10 @@ pub struct CsrMatrix {
     temp_w: Vec<i32>,
 }
 
-impl CsrMatrix {
+impl<T> NumCsrMatrix<T>
+where
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
+{
     /// Creates a new CSR matrix from (sorted) data arrays
     ///
     /// **Note:** The row pointers and column indices must be **sorted** in ascending order.
@@ -183,7 +188,7 @@ impl CsrMatrix {
         ncol: usize,
         row_pointers: Vec<i32>,
         col_indices: Vec<i32>,
-        values: Vec<f64>,
+        values: Vec<T>,
         symmetry: Option<Symmetry>,
     ) -> Result<Self, StrError> {
         if nrow < 1 {
@@ -230,7 +235,7 @@ impl CsrMatrix {
                 }
             }
         }
-        Ok(CsrMatrix {
+        Ok(NumCsrMatrix {
             symmetry: if let Some(v) = symmetry { v } else { Symmetry::No },
             nrow,
             ncol,
@@ -312,17 +317,17 @@ impl CsrMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_coo(coo: &CooMatrix) -> Result<Self, StrError> {
+    pub fn from_coo(coo: &NumCooMatrix<T>) -> Result<Self, StrError> {
         if coo.nnz < 1 {
             return Err("COO to CSR requires nnz > 0");
         }
-        let mut csr = CsrMatrix {
+        let mut csr = NumCsrMatrix {
             symmetry: coo.symmetry,
             nrow: coo.nrow,
             ncol: coo.ncol,
             row_pointers: vec![0; coo.nrow + 1],
             col_indices: vec![0; coo.nnz],
-            values: vec![0.0; coo.nnz],
+            values: vec![T::zero(); coo.nnz],
             temp_rp: Vec::new(),
             temp_rjx: Vec::new(),
             temp_rc: Vec::new(),
@@ -339,7 +344,7 @@ impl CsrMatrix {
     ///
     /// **Note:** The final nnz may be smaller than the initial nnz because duplicates
     /// may have been summed up. The final nnz is available as `nnz = row_pointers[nrow]`.
-    pub fn update_from_coo(&mut self, coo: &CooMatrix) -> Result<(), StrError> {
+    pub fn update_from_coo(&mut self, coo: &NumCooMatrix<T>) -> Result<(), StrError> {
         // check dimensions
         if coo.symmetry != self.symmetry {
             return Err("coo.symmetry must be equal to csr.symmetry");
@@ -376,7 +381,7 @@ impl CsrMatrix {
         // allocate workspaces and get an access to them
         if self.temp_w.len() == 0 {
             self.temp_rp = vec![0_i32; nrow + 1]; // temporary row form
-            self.temp_rjx = vec![(0_i32, 0_f64); nnz]; // temporary row form
+            self.temp_rjx = vec![(0_i32, T::zero()); nnz]; // temporary row form
             self.temp_rc = vec![0_usize; nrow]; // temporary row count
             self.temp_w = vec![0_i32; ndim]; // temporary workspace
         } else {
@@ -427,7 +432,8 @@ impl CsrMatrix {
                 if w[j] >= p1 as i32 {
                     // j is already in row i, position pj
                     let pj = w[j] as usize;
-                    rjx[pj].1 += rjx[p].1; // sum the entry
+                    let x = rjx[p].1;
+                    rjx[pj].1 += x; // sum the entry
                 } else {
                     // keep the entry
                     w[j] = dest as i32;
@@ -463,7 +469,7 @@ impl CsrMatrix {
     }
 
     /// Creates a new CSR matrix from a CSC matrix
-    pub fn from_csc(csc: &CscMatrix) -> Result<Self, StrError> {
+    pub fn from_csc(csc: &NumCscMatrix<T>) -> Result<Self, StrError> {
         // Based on the SciPy code (csr_tocsc) from here:
         //
         // https://github.com/scipy/scipy/blob/main/scipy/sparse/sparsetools/csr.h
@@ -485,13 +491,13 @@ impl CsrMatrix {
         let ax = &csc.values;
 
         // allocate the CSR arrays
-        let mut csr = CsrMatrix {
+        let mut csr = NumCsrMatrix {
             symmetry: csc.symmetry,
             ncol: csc.ncol,
             nrow: csc.nrow,
             row_pointers: vec![0; nrow + 1],
             col_indices: vec![0; nnz],
-            values: vec![0.0; nnz],
+            values: vec![T::zero(); nnz],
             temp_rp: Vec::new(),
             temp_rjx: Vec::new(),
             temp_rc: Vec::new(),
@@ -595,8 +601,8 @@ impl CsrMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn as_dense(&self) -> Matrix {
-        let mut a = Matrix::new(self.nrow, self.ncol);
+    pub fn as_dense(&self) -> NumMatrix<T> {
+        let mut a = NumMatrix::new(self.nrow, self.ncol);
         self.to_dense(&mut a).unwrap();
         a
     }
@@ -660,13 +666,13 @@ impl CsrMatrix {
     ///     Ok(())
     /// }
     /// ```
-    pub fn to_dense(&self, a: &mut Matrix) -> Result<(), StrError> {
+    pub fn to_dense(&self, a: &mut NumMatrix<T>) -> Result<(), StrError> {
         let (m, n) = a.dims();
         if m != self.nrow || n != self.ncol {
             return Err("wrong matrix dimensions");
         }
         let mirror_required = self.symmetry.triangular();
-        a.fill(0.0);
+        a.fill(T::zero());
         for i in 0..self.nrow {
             for p in self.row_pointers[i]..self.row_pointers[i + 1] {
                 let j = self.col_indices[p as usize] as usize;
@@ -676,67 +682,6 @@ impl CsrMatrix {
                 }
             }
         }
-        Ok(())
-    }
-
-    /// Writes a MatrixMarket file from a CooMatrix
-    ///
-    /// # Input
-    ///
-    /// * `full_path` -- may be a String, &str, or Path
-    /// * `vismatrix` -- generate a SMAT file for Vismatrix instead of a MatrixMarket
-    ///
-    /// **Note:** The vismatrix format is is similar to the MatrixMarket format
-    /// without the header, and the indices start at zero.
-    ///
-    /// # References
-    ///
-    /// * MatrixMarket: <https://math.nist.gov/MatrixMarket/formats.html>
-    /// * Vismatrix: <https://github.com/cpmech/vismatrix>
-    pub fn write_matrix_market<P>(&self, full_path: &P, vismatrix: bool) -> Result<(), StrError>
-    where
-        P: AsRef<OsStr> + ?Sized,
-    {
-        // output buffer
-        let mut buffer = String::new();
-
-        // handle one-based indexing
-        let d = if vismatrix { 0 } else { 1 };
-
-        // write header
-        if !vismatrix {
-            if self.symmetry == Symmetry::No {
-                write!(&mut buffer, "%%MatrixMarket matrix coordinate real general\n").unwrap();
-            } else {
-                write!(&mut buffer, "%%MatrixMarket matrix coordinate real symmetric\n").unwrap();
-            }
-        }
-
-        // write dimensions
-        let nnz = self.row_pointers[self.nrow] as usize;
-        write!(&mut buffer, "{} {} {}\n", self.nrow, self.ncol, nnz).unwrap();
-
-        // write triplets
-        for i in 0..self.nrow {
-            for p in self.row_pointers[i]..self.row_pointers[i + 1] {
-                let j = self.col_indices[p as usize] as usize;
-                let aij = self.values[p as usize];
-                write!(&mut buffer, "{} {} {:?}\n", i + d, j + d, aij).unwrap();
-            }
-        }
-
-        // create directory
-        let path = Path::new(full_path);
-        if let Some(p) = path.parent() {
-            fs::create_dir_all(p).map_err(|_| "cannot create directory")?;
-        }
-
-        // write file
-        let mut file = File::create(path).map_err(|_| "cannot create file")?;
-        file.write_all(buffer.as_bytes()).map_err(|_| "cannot write file")?;
-
-        // force sync
-        file.sync_all().map_err(|_| "cannot sync file")?;
         Ok(())
     }
 
@@ -754,7 +699,7 @@ impl CsrMatrix {
     /// # Output
     ///
     /// * `v` -- Vector with dimension equal to the number of rows of the matrix
-    pub fn mat_vec_mul(&self, v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
+    pub fn mat_vec_mul(&self, v: &mut NumVector<T>, alpha: T, u: &NumVector<T>) -> Result<(), StrError> {
         if u.dim() != self.ncol {
             return Err("u.ndim must equal ncol");
         }
@@ -762,7 +707,7 @@ impl CsrMatrix {
             return Err("v.ndim must equal nrow");
         }
         let mirror_required = self.symmetry.triangular();
-        v.fill(0.0);
+        v.fill(T::zero());
         for i in 0..self.nrow {
             for p in self.row_pointers[i]..self.row_pointers[i + 1] {
                 let j = self.col_indices[p as usize] as usize;
@@ -828,12 +773,12 @@ impl CsrMatrix {
     }
 
     /// Get an access to the values
-    pub fn get_values(&self) -> &[f64] {
+    pub fn get_values(&self) -> &[T] {
         &self.values
     }
 
     /// Get a mutable access to the values
-    pub fn get_values_mut(&mut self) -> &mut [f64] {
+    pub fn get_values_mut(&mut self) -> &mut [T] {
         &mut self.values
     }
 }
@@ -842,51 +787,50 @@ impl CsrMatrix {
 
 #[cfg(test)]
 mod tests {
-    use super::CsrMatrix;
+    use super::NumCsrMatrix;
     use crate::{CooMatrix, Samples, Storage, Symmetry};
     use russell_lab::{vec_approx_eq, Matrix, Vector};
-    use std::fs;
 
     #[test]
     fn new_captures_errors() {
         assert_eq!(
-            CsrMatrix::new(0, 1, vec![0], vec![], vec![], None).err(),
+            NumCsrMatrix::<f64>::new(0, 1, vec![0], vec![], vec![], None).err(),
             Some("nrow must be ≥ 1")
         );
         assert_eq!(
-            CsrMatrix::new(1, 0, vec![0], vec![], vec![], None).err(),
+            NumCsrMatrix::<f64>::new(1, 0, vec![0], vec![], vec![], None).err(),
             Some("ncol must be ≥ 1")
         );
         assert_eq!(
-            CsrMatrix::new(1, 1, vec![0], vec![], vec![], None).err(),
+            NumCsrMatrix::<f64>::new(1, 1, vec![0], vec![], vec![], None).err(),
             Some("row_pointers.len() must be = nrow + 1")
         );
         assert_eq!(
-            CsrMatrix::new(1, 1, vec![0, 0], vec![], vec![], None).err(),
+            NumCsrMatrix::<f64>::new(1, 1, vec![0, 0], vec![], vec![], None).err(),
             Some("nnz = row_pointers[nrow] must be ≥ 1")
         );
         assert_eq!(
-            CsrMatrix::new(1, 1, vec![0, 1], vec![], vec![], None).err(),
+            NumCsrMatrix::<f64>::new(1, 1, vec![0, 1], vec![], vec![], None).err(),
             Some("col_indices.len() must be ≥ nnz")
         );
         assert_eq!(
-            CsrMatrix::new(1, 1, vec![0, 1], vec![0], vec![], None).err(),
+            NumCsrMatrix::<f64>::new(1, 1, vec![0, 1], vec![0], vec![], None).err(),
             Some("values.len() must be ≥ nnz")
         );
         assert_eq!(
-            CsrMatrix::new(1, 1, vec![-1, 1], vec![0], vec![0.0], None).err(),
+            NumCsrMatrix::<f64>::new(1, 1, vec![-1, 1], vec![0], vec![0.0], None).err(),
             Some("row pointers must be ≥ 0")
         );
         assert_eq!(
-            CsrMatrix::new(1, 1, vec![2, 1], vec![0], vec![0.0], None).err(),
+            NumCsrMatrix::<f64>::new(1, 1, vec![2, 1], vec![0], vec![0.0], None).err(),
             Some("row pointers must be sorted in ascending order")
         );
         assert_eq!(
-            CsrMatrix::new(1, 1, vec![0, 1], vec![-1], vec![0.0], None).err(),
+            NumCsrMatrix::<f64>::new(1, 1, vec![0, 1], vec![-1], vec![0.0], None).err(),
             Some("column indices must be ≥ 0")
         );
         assert_eq!(
-            CsrMatrix::new(1, 1, vec![0, 1], vec![2], vec![0.0], None).err(),
+            NumCsrMatrix::<f64>::new(1, 1, vec![0, 1], vec![2], vec![0.0], None).err(),
             Some("column indices must be < ncol")
         );
         // ┌       ┐
@@ -898,7 +842,7 @@ mod tests {
         let col_indices = vec![1, 0]; // << incorrect, should be [0, 1]
         let row_pointers = vec![0, 2];
         assert_eq!(
-            CsrMatrix::new(1, 2, row_pointers, col_indices, values, None).err(),
+            NumCsrMatrix::<f64>::new(1, 2, row_pointers, col_indices, values, None).err(),
             Some("column indices must be sorted in ascending order (within their row)")
         );
     }
@@ -906,7 +850,7 @@ mod tests {
     #[test]
     fn new_works() {
         let (_, _, csr_correct, _) = Samples::rectangular_1x2(false, false, false);
-        let csr = CsrMatrix::new(1, 2, vec![0, 2], vec![0, 1], vec![10.0, 20.0], None).unwrap();
+        let csr = NumCsrMatrix::<f64>::new(1, 2, vec![0, 2], vec![0, 1], vec![10.0, 20.0], None).unwrap();
         assert_eq!(csr.symmetry, Symmetry::No);
         assert_eq!(csr.nrow, 1);
         assert_eq!(csr.ncol, 2);
@@ -918,7 +862,10 @@ mod tests {
     #[test]
     fn from_coo_captures_errors() {
         let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
-        assert_eq!(CsrMatrix::from_coo(&coo).err(), Some("COO to CSR requires nnz > 0"));
+        assert_eq!(
+            NumCsrMatrix::<f64>::from_coo(&coo).err(),
+            Some("COO to CSR requires nnz > 0")
+        );
     }
 
     #[test]
@@ -1029,7 +976,7 @@ mod tests {
             //  15  -6  .  3
             Samples::rectangular_3x4(),
         ] {
-            let csr = CsrMatrix::from_coo(&coo).unwrap();
+            let csr = NumCsrMatrix::<f64>::from_coo(&coo).unwrap();
             assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
             let nnz = csr.row_pointers[csr.nrow] as usize;
             assert_eq!(&csr.col_indices[0..nnz], &csr_correct.col_indices);
@@ -1040,7 +987,7 @@ mod tests {
     #[test]
     fn debug_conversion() {
         let (coo, _, csr_correct, _) = Samples::umfpack_unsymmetric_5x5(false);
-        let csr = CsrMatrix::from_coo(&coo).unwrap();
+        let csr = NumCsrMatrix::<f64>::from_coo(&coo).unwrap();
         assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
         let nnz = csr.row_pointers[csr.nrow] as usize;
         assert_eq!(&csr.col_indices[0..nnz], &csr_correct.col_indices);
@@ -1051,7 +998,7 @@ mod tests {
     #[rustfmt::skip]
     fn update_from_coo_captures_errors() {
         let (coo, _, _, _) = Samples::rectangular_1x2(false, false, false);
-        let mut csr = CsrMatrix::from_coo(&coo).unwrap();
+        let mut csr = NumCsrMatrix::<f64>::from_coo(&coo).unwrap();
         let yes = Symmetry::General(Storage::Lower);
         let no = Symmetry::No;
         assert_eq!(csr.update_from_coo(&CooMatrix { symmetry: yes,  nrow: 1, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0], one_based: false }).err(), Some("coo.symmetry must be equal to csr.symmetry"));
@@ -1063,7 +1010,7 @@ mod tests {
     #[test]
     fn update_from_coo_again_works() {
         let (coo, _, csr_correct, _) = Samples::umfpack_unsymmetric_5x5(false);
-        let mut csr = CsrMatrix::from_coo(&coo).unwrap();
+        let mut csr = NumCsrMatrix::<f64>::from_coo(&coo).unwrap();
         assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
         let nnz = csr.row_pointers[csr.nrow] as usize;
         assert_eq!(&csr.col_indices[0..nnz], &csr_correct.col_indices);
@@ -1138,7 +1085,7 @@ mod tests {
             //  15  -6  .  3
             Samples::rectangular_3x4(),
         ] {
-            let csr = CsrMatrix::from_csc(&csc).unwrap();
+            let csr = NumCsrMatrix::<f64>::from_csc(&csc).unwrap();
             assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
             assert_eq!(&csr.col_indices, &csr_correct.col_indices);
             vec_approx_eq(&csr.values, &csr_correct.values, 1e-15);
@@ -1247,7 +1194,7 @@ mod tests {
         assert_eq!(csr.get_col_indices(), &[0, 1]);
         assert_eq!(csr.get_values(), &[10.0, 20.0]);
 
-        let mut csr = CsrMatrix {
+        let mut csr = NumCsrMatrix::<f64> {
             symmetry: Symmetry::No,
             nrow: 1,
             ncol: 2,
@@ -1265,39 +1212,9 @@ mod tests {
     }
 
     #[test]
-    fn write_matrix_market_works() {
-        //  2  3  .  .  .
-        //  3  .  4  .  6
-        //  . -1 -3  2  .
-        //  .  .  1  .  .
-        //  .  4  2  .  1
-        let (_, _, csr, _) = Samples::umfpack_unsymmetric_5x5(false);
-        let full_path = "/tmp/russell_sparse/test_write_matrix_market_csr.mtx";
-        csr.write_matrix_market(full_path, false).unwrap();
-        let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
-        assert_eq!(
-            contents,
-            "%%MatrixMarket matrix coordinate real general\n\
-             5 5 12\n\
-             1 1 2.0\n\
-             1 2 3.0\n\
-             2 1 3.0\n\
-             2 3 4.0\n\
-             2 5 6.0\n\
-             3 2 -1.0\n\
-             3 3 -3.0\n\
-             3 4 2.0\n\
-             4 3 1.0\n\
-             5 2 4.0\n\
-             5 3 2.0\n\
-             5 5 1.0\n"
-        );
-    }
-
-    #[test]
     fn derive_methods_works() {
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
-        let csr = CsrMatrix::from_coo(&coo).unwrap();
+        let csr = NumCsrMatrix::<f64>::from_coo(&coo).unwrap();
         let nrow = coo.nrow;
         let nnz = coo.nnz; // it must be COO nnz because of (removed) duplicates
         assert_eq!(csr.temp_rp.len(), nrow + 1);
@@ -1314,7 +1231,7 @@ mod tests {
             json,
             r#"{"symmetry":"No","nrow":5,"ncol":5,"row_pointers":[0,2,5,8,9,12],"col_indices":[0,1,0,2,4,1,2,3,2,1,2,4,0],"values":[2.0,3.0,3.0,4.0,6.0,-1.0,-3.0,2.0,1.0,4.0,2.0,1.0,0.0]}"#
         );
-        let from_json: CsrMatrix = serde_json::from_str(&json).unwrap();
+        let from_json: NumCsrMatrix<f64> = serde_json::from_str(&json).unwrap();
         assert_eq!(from_json.symmetry, csr.symmetry);
         assert_eq!(from_json.nrow, csr.nrow);
         assert_eq!(from_json.ncol, csr.ncol);

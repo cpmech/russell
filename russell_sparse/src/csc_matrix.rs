@@ -401,7 +401,7 @@ impl CscMatrix {
         // compute the row pointers (save them in workspace)
         rp[0] = 0;
         for i in 0..nrow {
-            rp[i + 1] = rp[i] + w[i] as i32;
+            rp[i + 1] = rp[i] + w[i];
             w[i] = rp[i];
         }
 
@@ -460,7 +460,7 @@ impl CscMatrix {
         // create the column pointers
         bp[0] = 0;
         for j in 0..ncol {
-            bp[j + 1] = bp[j] + w[j] as i32;
+            bp[j + 1] = bp[j] + w[j];
         }
         for j in 0..ncol {
             w[j] = bp[j];

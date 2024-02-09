@@ -8,10 +8,10 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::ops::{AddAssign, MulAssign};
 
-/// CooMatrix is an alias to NumCooMatrix&lt;f64&gt; and is used in most functions that call OpenBLAS
+/// Defines and alias for Real sparse matrices (double precision)
 pub type CooMatrix = NumCooMatrix<f64>;
 
-/// ComplexCooMatrix is an alias to NumCooMatrix&lt;Complex64&gt; and is used in most functions that call OpenBLAS
+/// Defines and alias for Complex sparse matrices (double precision)
 pub type ComplexCooMatrix = NumCooMatrix<Complex64>;
 
 /// Holds the row index, col index, and values of a matrix (also known as Triplet)

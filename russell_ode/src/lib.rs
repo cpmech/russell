@@ -2,7 +2,7 @@
 //!
 //! `russell_ode`: Solvers for Ordinary Differential Equations
 
-/// Defines a type alias for the error type as a static string
+/// Defines the error output as a static string
 pub type StrError = &'static str;
 
 mod auxiliary;

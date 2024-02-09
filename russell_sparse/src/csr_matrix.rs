@@ -405,7 +405,7 @@ impl CsrMatrix {
             w[i] = rp[i];
         }
 
-        // construct the row form (with unsorted columns)
+        // construct the row form (with unsorted values)
         for k in 0..nnz {
             let i = (ai[k] + d) as usize;
             let p = w[i] as usize;
@@ -449,7 +449,7 @@ impl CsrMatrix {
             bp[i + 1] = bp[i] + (rc[i] as i32);
         }
 
-        // construct the row form (with sorted columns)
+        // construct the row form (with sorted values)
         let mut k = 0;
         for i in 0..nrow {
             let p1 = rp[i] as usize;

@@ -1090,11 +1090,27 @@ mod tests {
             Samples::mkl_symmetric_5x5_lower(IGNORED, IGNORED, IGNORED),
             Samples::mkl_symmetric_5x5_upper(IGNORED, IGNORED, IGNORED),
             Samples::mkl_symmetric_5x5_full(IGNORED),
+            // ┌       ┐
+            // │ 10 20 │
+            // └       ┘
+            Samples::rectangular_1x2(IGNORED, IGNORED, IGNORED),
             // ┌               ┐
             // │ 1 . 3 . 5 . 7 │
             // └               ┘
             Samples::rectangular_1x7(),
+            // ┌   ┐
+            // │ . │
+            // │ 2 │
+            // │ . │
+            // │ 4 │
+            // │ . │
+            // │ 6 │
+            // │ . │
+            // └   ┘
             Samples::rectangular_7x1(),
+            //   5  -2  .  1
+            //  10  -4  .  2
+            //  15  -6  .  3
             Samples::rectangular_3x4(),
         ] {
             let csr = CsrMatrix::from_csc(&csc).unwrap();

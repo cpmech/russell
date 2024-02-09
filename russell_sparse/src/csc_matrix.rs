@@ -414,7 +414,7 @@ impl CscMatrix {
             w[i] += 1; // w[i] is advanced to the start of row i+1
         }
 
-        // sum duplicates. workspace[j] will hold the position in rj and rx of aij
+        // sum duplicates. w[j] will hold the position in rj and rx of aij
         const EMPTY: i32 = -1;
         for j in 0..ncol {
             w[j] = EMPTY;
@@ -423,7 +423,7 @@ impl CscMatrix {
             let p1 = rp[i] as usize;
             let p2 = rp[i + 1] as usize;
             let mut dest = p1;
-            // workspace[j] < p1 for all columns j (note that rj and rx are stored in row oriented order)
+            // w[j] < p1 for all columns j (note that rj and rx are stored in row oriented order)
             for p in p1..p2 {
                 let j = rj[p] as usize;
                 if w[j] >= p1 as i32 {

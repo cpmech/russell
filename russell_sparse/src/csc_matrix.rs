@@ -1053,6 +1053,19 @@ mod tests {
         }
     }
 
+    // #[test]
+    // fn debug_conversion() {
+    //     // ┌       ┐
+    //     // │ 10 20 │
+    //     // └       ┘
+    //     let (coo, csc_correct, _, _) = Samples::rectangular_1x2(false, false, false);
+    //     let csc = CscMatrix::from_coo(&coo).unwrap();
+    //     assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
+    //     let nnz = csc.col_pointers[csc.ncol] as usize;
+    //     assert_eq!(&csc.row_indices[0..nnz], &csc_correct.row_indices);
+    //     vec_approx_eq(&csc.values[0..nnz], &csc_correct.values, 1e-15);
+    // }
+
     #[test]
     #[rustfmt::skip]
     fn update_from_coo_captures_errors() {

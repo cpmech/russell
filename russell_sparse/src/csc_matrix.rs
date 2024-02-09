@@ -1015,11 +1015,34 @@ mod tests {
             Samples::mkl_symmetric_5x5_upper(true, true, true),
             Samples::mkl_symmetric_5x5_full(false),
             Samples::mkl_symmetric_5x5_full(true),
+            // ┌       ┐
+            // │ 10 20 │
+            // └       ┘
+            Samples::rectangular_1x2(false, false, false),
+            Samples::rectangular_1x2(false, true, false),
+            Samples::rectangular_1x2(false, false, true),
+            Samples::rectangular_1x2(false, true, true),
+            Samples::rectangular_1x2(true, false, false),
+            Samples::rectangular_1x2(true, true, false),
+            Samples::rectangular_1x2(true, false, true),
+            Samples::rectangular_1x2(true, true, true),
             // ┌               ┐
             // │ 1 . 3 . 5 . 7 │
             // └               ┘
             Samples::rectangular_1x7(),
+            // ┌   ┐
+            // │ . │
+            // │ 2 │
+            // │ . │
+            // │ 4 │
+            // │ . │
+            // │ 6 │
+            // │ . │
+            // └   ┘
             Samples::rectangular_7x1(),
+            //   5  -2  .  1
+            //  10  -4  .  2
+            //  15  -6  .  3
             Samples::rectangular_3x4(),
         ] {
             let csc = CscMatrix::from_coo(&coo).unwrap();

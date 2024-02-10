@@ -1,4 +1,7 @@
+use crate::{ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix};
 use crate::{CooMatrix, CscMatrix, CsrMatrix, Storage, Symmetry};
+use num_complex::Complex64;
+use russell_lab::cpx;
 
 const PLACEHOLDER: f64 = f64::MAX;
 
@@ -1069,6 +1072,61 @@ impl Samples {
         let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
         (coo, csc, csr, PLACEHOLDER)
     }
+
+    /// Returns a (4 x 3) complex rectangular matrix
+    ///
+    /// Note: the last return value is not the determinant, but a PLACEHOLDER
+    ///
+    /// ```text
+    /// 4+4i    .     2+2i
+    ///  .      1     3+3i
+    ///  .     5+5i   1+1i
+    ///  1      .      .  
+    /// ```
+    pub fn complex_rectangular_4x3() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, f64) {
+        let sym = None;
+        let nrow = 4;
+        let ncol = 3;
+        let mut coo = ComplexCooMatrix::new(nrow, ncol, 7, sym, false).unwrap();
+        coo.put(0, 0, cpx!(4.0, 4.0)).unwrap();
+        coo.put(0, 2, cpx!(2.0, 2.0)).unwrap();
+        coo.put(1, 1, cpx!(1.0, 0.0)).unwrap();
+        coo.put(1, 2, cpx!(3.0, 3.0)).unwrap();
+        coo.put(2, 1, cpx!(5.0, 5.0)).unwrap();
+        coo.put(2, 2, cpx!(1.0, 1.0)).unwrap();
+        coo.put(3, 0, cpx!(1.0, 0.0)).unwrap();
+        // CSC matrix
+        let col_pointers = vec![0, 2, 4, 7];
+        let row_indices = vec![
+            0, 3, //    j=0, p=(0),1
+            1, 2, //    j=1, p=(2),3
+            0, 1, 2, // j=2, p=(4),5,6
+        ]; //                  (7)
+        #[rustfmt::skip]
+        let values = vec![
+            cpx!(4.0,4.0), cpx!(1.0,0.0),                // j=0, p=(0),1
+            cpx!(1.0,0.0), cpx!(5.0,5.0),                // j=1, p=(2),3
+            cpx!(2.0,2.0), cpx!(3.0,3.0), cpx!(1.0,1.0), // j=2, p=(4),5,6
+        ]; //                                                      (7)
+        let csc = ComplexCscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
+        // CSR matrix
+        let row_pointers = vec![0, 2, 4, 6, 7];
+        let col_indices = vec![
+            0, 2, // i=0, p=(0),1
+            1, 2, // i=1, p=(2),3
+            1, 2, // i=2, p=(4),5
+            0, //    i=3, p=(6)
+        ]; //               (7)
+        #[rustfmt::skip]
+        let values = vec![
+            cpx!(4.0,4.0), cpx!(2.0,2.0), // i=0, p=(0),1
+            cpx!(1.0,0.0), cpx!(3.0,3.0), // i=1, p=(2),3
+            cpx!(5.0,5.0), cpx!(1.0,1.0), // i=2, p=(4),5
+            cpx!(1.0,0.0),                // i=3, p=(6)
+        ]; //                                       (7)
+        let csr = ComplexCsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
+        (coo, csc, csr, PLACEHOLDER)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1076,8 +1134,13 @@ impl Samples {
 #[cfg(test)]
 mod tests {
     use super::Samples;
-    use crate::{CooMatrix, CscMatrix, CsrMatrix};
-    use russell_lab::{approx_eq, mat_approx_eq, mat_inverse, Matrix};
+    use crate::{NumCooMatrix, NumCscMatrix, NumCsrMatrix};
+    use num_complex::Complex64;
+    use num_traits::{Num, NumCast};
+    use russell_lab::{approx_eq, complex_mat_approx_eq, cpx, mat_approx_eq, mat_inverse, Matrix};
+    use serde::de::DeserializeOwned;
+    use serde::Serialize;
+    use std::ops::{AddAssign, MulAssign};
 
     /// Checks the samples
     ///
@@ -1100,7 +1163,10 @@ mod tests {
     /// col_indices.len() == nnz
     /// values.len() == nnz
     /// ```
-    fn check(coo: &CooMatrix, csc: &CscMatrix, csr: &CsrMatrix) {
+    fn check<T>(coo: &NumCooMatrix<T>, csc: &NumCscMatrix<T>, csr: &NumCsrMatrix<T>)
+    where
+        T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
+    {
         // COO
         let max_nnz = coo.max_nnz;
         assert!(coo.nrow >= 1);
@@ -1337,6 +1403,19 @@ mod tests {
         let (coo, csc, csr, _) = Samples::rectangular_3x4();
         let mat = coo.as_dense();
         mat_approx_eq(&mat, correct, 1e-15);
+        check(&coo, &csc, &csr);
+
+        // ----------------------------------------------------------------------------
+
+        let correct = &[
+            [cpx!(4.0, 4.0), cpx!(0.0, 0.0), cpx!(2.0, 2.0)], //
+            [cpx!(0.0, 0.0), cpx!(1.0, 0.0), cpx!(3.0, 3.0)], //
+            [cpx!(0.0, 0.0), cpx!(5.0, 5.0), cpx!(1.0, 1.0)], //
+            [cpx!(1.0, 0.0), cpx!(0.0, 0.0), cpx!(0.0, 0.0)], //
+        ];
+        let (coo, csc, csr, _) = Samples::complex_rectangular_4x3();
+        let mat = coo.as_dense();
+        complex_mat_approx_eq(&mat, correct, 1e-15);
         check(&coo, &csc, &csr);
     }
 }

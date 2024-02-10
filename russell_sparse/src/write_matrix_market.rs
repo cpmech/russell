@@ -123,6 +123,7 @@ where
         for p in row_pointers[i]..row_pointers[i + 1] {
             let j = col_indices[p as usize] as usize;
             let aij = values[p as usize];
+            println!("{} {} {:?}", i, j, aij);
             write!(&mut buffer, "{} {} {:?}\n", i + d, j + d, aij).unwrap();
         }
     }
@@ -178,6 +179,23 @@ mod tests {
              2 5 6.0\n\
              5 5 1.0\n"
         );
+        //  2  -1              2     sym
+        // -1   2  -1    =>   -1   2
+        //     -1   2             -1   2
+        let (_, csc, _, _) = Samples::positive_definite_3x3();
+        let full_path = "/tmp/russell_sparse/test_write_matrix_market_csc.mtx";
+        csc_write_matrix_market(&csc, full_path, false).unwrap();
+        let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
+        assert_eq!(
+            contents,
+            "%%MatrixMarket matrix coordinate real symmetric\n\
+             3 3 5\n\
+             1 1 2.0\n\
+             2 1 -1.0\n\
+             2 2 2.0\n\
+             3 2 -1.0\n\
+             3 3 2.0\n"
+        );
     }
 
     #[test]
@@ -207,6 +225,23 @@ mod tests {
              5 2 4.0\n\
              5 3 2.0\n\
              5 5 1.0\n"
+        );
+        //  2  -1              2     sym
+        // -1   2  -1    =>   -1   2
+        //     -1   2             -1   2
+        let (_, _, csr, _) = Samples::positive_definite_3x3();
+        let full_path = "/tmp/russell_sparse/test_write_matrix_market_csr.mtx";
+        csr_write_matrix_market(&csr, full_path, false).unwrap();
+        let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
+        assert_eq!(
+            contents,
+            "%%MatrixMarket matrix coordinate real symmetric\n\
+             3 3 5\n\
+             1 1 2.0\n\
+             2 1 -1.0\n\
+             2 2 2.0\n\
+             3 2 -1.0\n\
+             3 3 2.0\n"
         );
     }
 }

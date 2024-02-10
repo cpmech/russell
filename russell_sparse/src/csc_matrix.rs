@@ -815,7 +815,8 @@ where
 mod tests {
     use super::NumCscMatrix;
     use crate::{CooMatrix, Samples, Storage, Symmetry};
-    use russell_lab::{vec_approx_eq, Matrix, Vector};
+    use num_complex::Complex64;
+    use russell_lab::{complex_vec_approx_eq, cpx, vec_approx_eq, ComplexVector, Matrix, Vector};
 
     #[test]
     fn new_captures_errors() {
@@ -1207,6 +1208,28 @@ mod tests {
         let mut v = Vector::new(5);
         csc.mat_vec_mul(&mut v, 2.0, &u).unwrap();
         vec_approx_eq(v.as_data(), &[96.0, 5.0, 84.0, 6.5, 166.0], 1e-15);
+    }
+
+    #[test]
+    fn mat_vec_mul_complex_works() {
+        // 4+4i    .     2+2i
+        //  .      1     3+3i
+        //  .     5+5i   1+1i
+        //  1      .      .
+        let (_, csc, _, _) = Samples::complex_rectangular_4x3();
+        let u = ComplexVector::from(&[cpx!(1.0, 1.0), cpx!(3.0, 1.0), cpx!(5.0, -1.0)]);
+        let mut v = ComplexVector::new(csc.nrow);
+        csc.mat_vec_mul(&mut v, cpx!(2.0, 4.0), &u).unwrap();
+        let correct = &[
+            cpx!(-40.0, 80.0),
+            cpx!(-10.0, 110.0),
+            cpx!(-64.0, 112.0),
+            cpx!(-2.0, 6.0),
+        ];
+        complex_vec_approx_eq(v.as_data(), correct, 1e-15);
+        // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
+        csc.mat_vec_mul(&mut v, cpx!(2.0, 4.0), &u).unwrap();
+        complex_vec_approx_eq(v.as_data(), correct, 1e-15);
     }
 
     #[test]

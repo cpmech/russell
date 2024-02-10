@@ -1208,6 +1208,12 @@ mod tests {
         let mut v = Vector::new(5);
         csc.mat_vec_mul(&mut v, 2.0, &u).unwrap();
         vec_approx_eq(v.as_data(), &[96.0, 5.0, 84.0, 6.5, 166.0], 1e-15);
+        // another test
+        let (_, csc, _, _) = Samples::lower_symmetric_5x5();
+        let u = Vector::from(&[-629.0 / 98.0, 237.0 / 49.0, -53.0 / 49.0, 62.0 / 49.0, 23.0 / 14.0]);
+        let mut v = Vector::new(5);
+        csc.mat_vec_mul(&mut v, 2.0, &u).unwrap();
+        vec_approx_eq(v.as_data(), &[-4.0, 8.0, 6.0, -10.0, 2.0], 1e-14);
     }
 
     #[test]

@@ -46,13 +46,14 @@ impl Samples {
     ///     -1   2             -1   2
     /// ```
     pub fn positive_definite_3x3() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let (nrow, ncol, nnz) = (3, 3, 5);
+        let (nrow, ncol, nnz) = (3, 3, 6);
         let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
         let mut coo = CooMatrix::new(nrow, ncol, nnz, sym, false).unwrap();
+        coo.put(1, 0, -0.5).unwrap(); // duplicate
         coo.put(0, 0, 2.0).unwrap();
-        coo.put(1, 1, 2.0).unwrap();
         coo.put(2, 2, 2.0).unwrap();
-        coo.put(1, 0, -1.0).unwrap();
+        coo.put(1, 0, -0.5).unwrap(); // duplicate
+        coo.put(1, 1, 2.0).unwrap();
         coo.put(2, 1, -1.0).unwrap();
         // CSC matrix
         let col_pointers = vec![0, 2, 4, 5];
@@ -93,23 +94,26 @@ impl Samples {
     /// 2  1  5  1  8        2  1  5  1  8
     /// ```
     pub fn lower_symmetric_5x5() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let (nrow, ncol, nnz) = (5, 5, 15);
+        let (nrow, ncol, nnz) = (5, 5, 18);
         let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
         let mut coo = CooMatrix::new(nrow, ncol, nnz, sym, false).unwrap();
-        coo.put(0, 0, 2.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
+        coo.put(4, 2, 2.5).unwrap(); // duplicate
         coo.put(2, 2, 9.0).unwrap();
         coo.put(3, 3, 7.0).unwrap();
-        coo.put(4, 4, 8.0).unwrap();
-        coo.put(1, 0, 1.0).unwrap();
+        coo.put(0, 0, 2.0).unwrap();
+        coo.put(4, 4, 5.0).unwrap(); // duplicate
         coo.put(2, 0, 1.0).unwrap();
+        coo.put(4, 4, 3.0).unwrap(); // duplicate
         coo.put(2, 1, 2.0).unwrap();
+        coo.put(1, 0, 1.0).unwrap();
         coo.put(3, 0, 3.0).unwrap();
-        coo.put(3, 1, 1.0).unwrap();
         coo.put(3, 2, 1.0).unwrap();
         coo.put(4, 0, 2.0).unwrap();
+        coo.put(3, 1, 0.5).unwrap(); // duplicate
+        coo.put(3, 1, 0.5).unwrap(); // duplicate
         coo.put(4, 1, 1.0).unwrap();
-        coo.put(4, 2, 5.0).unwrap();
+        coo.put(4, 2, 2.5).unwrap(); // duplicate
         coo.put(4, 3, 1.0).unwrap();
         // CSC matrix
         let col_pointers = vec![0, 5, 9, 12, 14, 15];

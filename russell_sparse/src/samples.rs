@@ -38,6 +38,51 @@ impl Samples {
         (coo, csc, csr, 123.0)
     }
 
+    /// Returns a (3 x 3) positive definite matrix
+    ///
+    /// ```text
+    ///  2  -1              2     sym
+    /// -1   2  -1    =>   -1   2
+    ///     -1   2             -1   2
+    /// ```
+    pub fn positive_definite_3x3() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+        let (nrow, ncol, nnz) = (3, 3, 5);
+        let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
+        let mut coo = CooMatrix::new(nrow, ncol, nnz, sym, false).unwrap();
+        coo.put(0, 0, 2.0).unwrap();
+        coo.put(1, 1, 2.0).unwrap();
+        coo.put(2, 2, 2.0).unwrap();
+        coo.put(1, 0, -1.0).unwrap();
+        coo.put(2, 1, -1.0).unwrap();
+        // CSC matrix
+        let col_pointers = vec![0, 2, 4, 5];
+        let row_indices = vec![
+            0, 1, // j=0, p=(0),1
+            1, 2, // j=1, p=(2),3
+            2, //    j=2, p=(4)
+        ]; //               (5)
+        let values = vec![
+            2.0, -1.0, // j=0, p=(0),1
+            2.0, -1.0, // j=1, p=(2),3
+            2.0,  //      j=2, p=(4)
+        ]; //                    (5)
+        let csc = CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
+        // CSR matrix
+        let row_pointers = vec![0, 1, 3, 5];
+        let col_indices = vec![
+            0, //    i=0, p=(0)
+            0, 1, // i=1, p=(1),2
+            1, 2, // i=2, p=(3),4
+        ]; //               (5)
+        let values = vec![
+            2.0, //       i=0, p=(0)
+            -1.0, 2.0, // i=1, p=(1),2
+            -1.0, 2.0, // i=2, p=(3),4
+        ]; //                    (5)
+        let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
+        (coo, csc, csr, 4.0)
+    }
+
     /// Returns the COO, CSC, and CSR versions of the matrix and its determinant
     ///
     /// ```text
@@ -1163,7 +1208,7 @@ mod tests {
     /// col_indices.len() == nnz
     /// values.len() == nnz
     /// ```
-    fn check<T>(coo: &NumCooMatrix<T>, csc: &NumCscMatrix<T>, csr: &NumCsrMatrix<T>)
+    fn check<T>(coo: &NumCooMatrix<T>, csc: &NumCscMatrix<T>, csr: &NumCsrMatrix<T> /*, mat: &NumMatrix<T>*/)
     where
         T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
     {
@@ -1214,11 +1259,29 @@ mod tests {
             Samples::tiny_1x1(false), //
             Samples::tiny_1x1(true),  //
         ] {
-            let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
-            mat_approx_eq(&mat, correct, 1e-15);
+            mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csr.as_dense(), correct, 1e-15);
             check(&coo, &csc, &csr);
         }
+
+        // ----------------------------------------------------------------------------
+
+        let correct = &[
+            [2.0, -1.0, 0.0],  //
+            [-1.0, 2.0, -1.0], //
+            [0.0, -1.0, 2.0],  //
+        ];
+        let a = Matrix::from(correct);
+        let mut ai = Matrix::new(3, 3);
+        let correct_det = mat_inverse(&mut ai, &a).unwrap();
+        let (coo, csc, csr, det) = Samples::positive_definite_3x3();
+        approx_eq(det, correct_det, 1e-15);
+        mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csr.as_dense(), correct, 1e-15);
+        check(&coo, &csc, &csr);
 
         // ----------------------------------------------------------------------------
 
@@ -1240,9 +1303,10 @@ mod tests {
             Samples::unsymmetric_3x3(true, true, false),
             Samples::unsymmetric_3x3(true, true, true),
         ] {
-            let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
-            mat_approx_eq(&mat, correct, 1e-15);
+            mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csr.as_dense(), correct, 1e-15);
             check(&coo, &csc, &csr);
         }
 
@@ -1262,9 +1326,10 @@ mod tests {
             Samples::umfpack_unsymmetric_5x5(false),
             Samples::umfpack_unsymmetric_5x5(true),
         ] {
-            let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
-            mat_approx_eq(&mat, correct, 1e-15);
+            mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csr.as_dense(), correct, 1e-15);
             check(&coo, &csc, &csr);
         }
 
@@ -1283,9 +1348,10 @@ mod tests {
         for (coo, csc, csr, det) in [
             Samples::mkl_unsymmetric_5x5(false), //
         ] {
-            let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
-            mat_approx_eq(&mat, correct, 1e-15);
+            mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csr.as_dense(), correct, 1e-15);
             check(&coo, &csc, &csr);
         }
 
@@ -1311,9 +1377,10 @@ mod tests {
             Samples::block_unsymmetric_5x5(true, false, true),
             Samples::block_unsymmetric_5x5(true, true, true),
         ] {
-            let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
-            mat_approx_eq(&mat, correct, 1e-15);
+            mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csr.as_dense(), correct, 1e-15);
             check(&coo, &csc, &csr);
         }
 
@@ -1353,9 +1420,10 @@ mod tests {
             Samples::mkl_symmetric_5x5_full(false),
             Samples::mkl_symmetric_5x5_full(true),
         ] {
-            let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
-            mat_approx_eq(&mat, correct, 1e-15);
+            mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csr.as_dense(), correct, 1e-15);
             check(&coo, &csc, &csr);
         }
 
@@ -1372,8 +1440,9 @@ mod tests {
             Samples::rectangular_1x2(true, false, true),
             Samples::rectangular_1x2(true, true, true),
         ] {
-            let mat = coo.as_dense();
-            mat_approx_eq(&mat, correct, 1e-15);
+            mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csr.as_dense(), correct, 1e-15);
             check(&coo, &csc, &csr);
         }
 
@@ -1381,16 +1450,18 @@ mod tests {
 
         let correct = &[[1.0, 0.0, 3.0, 0.0, 5.0, 0.0, 7.0]];
         let (coo, csc, csr, _) = Samples::rectangular_1x7();
-        let mat = coo.as_dense();
-        mat_approx_eq(&mat, correct, 1e-15);
+        mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csr.as_dense(), correct, 1e-15);
         check(&coo, &csc, &csr);
 
         // ----------------------------------------------------------------------------
 
         let correct = &[[0.0], [2.0], [0.0], [4.0], [0.0], [6.0], [0.0]];
         let (coo, csc, csr, _) = Samples::rectangular_7x1();
-        let mat = coo.as_dense();
-        mat_approx_eq(&mat, correct, 1e-15);
+        mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csr.as_dense(), correct, 1e-15);
         check(&coo, &csc, &csr);
 
         // ----------------------------------------------------------------------------
@@ -1401,8 +1472,9 @@ mod tests {
             [15.0, -6.0, 0.0, 3.0], //
         ];
         let (coo, csc, csr, _) = Samples::rectangular_3x4();
-        let mat = coo.as_dense();
-        mat_approx_eq(&mat, correct, 1e-15);
+        mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csr.as_dense(), correct, 1e-15);
         check(&coo, &csc, &csr);
 
         // ----------------------------------------------------------------------------
@@ -1414,8 +1486,9 @@ mod tests {
             [cpx!(1.0, 0.0), cpx!(0.0, 0.0), cpx!(0.0, 0.0)], //
         ];
         let (coo, csc, csr, _) = Samples::complex_rectangular_4x3();
-        let mat = coo.as_dense();
-        complex_mat_approx_eq(&mat, correct, 1e-15);
+        complex_mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        complex_mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        complex_mat_approx_eq(&csr.as_dense(), correct, 1e-15);
         check(&coo, &csc, &csr);
     }
 }

@@ -701,10 +701,10 @@ where
     /// * `v` -- Vector with dimension equal to the number of rows of the matrix
     pub fn mat_vec_mul(&self, v: &mut NumVector<T>, alpha: T, u: &NumVector<T>) -> Result<(), StrError> {
         if u.dim() != self.ncol {
-            return Err("u.ndim must equal ncol");
+            return Err("u vector is incompatible");
         }
         if v.dim() != self.nrow {
-            return Err("v.ndim must equal nrow");
+            return Err("v vector is incompatible");
         }
         let mirror_required = self.symmetry.triangular();
         v.fill(T::zero());
@@ -1159,6 +1159,17 @@ mod tests {
                        │     3     0     0     0    16 │\n\
                        └                               ┘";
         assert_eq!(format!("{}", a), correct);
+    }
+
+    #[test]
+    fn mat_vec_mul_captures_errors() {
+        let (_, _, csr, _) = Samples::rectangular_3x4();
+        let u = Vector::new(3);
+        let mut v = Vector::new(csr.nrow);
+        assert_eq!(csr.mat_vec_mul(&mut v, 2.0, &u).err(), Some("u vector is incompatible"));
+        let u = Vector::new(4);
+        let mut v = Vector::new(2);
+        assert_eq!(csr.mat_vec_mul(&mut v, 2.0, &u).err(), Some("v vector is incompatible"));
     }
 
     #[test]

@@ -446,7 +446,7 @@ mod tests {
             vec_approx_eq(&ax.as_data(), &[80.0], 1e-15);
             assert_eq!(
                 mat.mat_vec_mul(&mut wrong, 1.0, &x).err(),
-                Some("v.ndim must equal nrow")
+                Some("v vector is incompatible")
             );
             mat.to_dense(&mut a).unwrap();
             assert_eq!(a.dims(), (1, 2));

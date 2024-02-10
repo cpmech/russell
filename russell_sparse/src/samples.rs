@@ -83,6 +83,71 @@ impl Samples {
         (coo, csc, csr, 4.0)
     }
 
+    /// Returns a lower symmetric 5 x 5 matrix
+    ///
+    /// ```text
+    /// 2  1  1  3  2        2
+    /// 1  2  2  1  1        1  2     sym
+    /// 1  2  9  1  5   =>   1  2  9
+    /// 3  1  1  7  1        3  1  1  7
+    /// 2  1  5  1  8        2  1  5  1  8
+    /// ```
+    pub fn lower_symmetric_5x5() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+        let (nrow, ncol, nnz) = (5, 5, 15);
+        let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
+        let mut coo = CooMatrix::new(nrow, ncol, nnz, sym, false).unwrap();
+        coo.put(0, 0, 2.0).unwrap();
+        coo.put(1, 1, 2.0).unwrap();
+        coo.put(2, 2, 9.0).unwrap();
+        coo.put(3, 3, 7.0).unwrap();
+        coo.put(4, 4, 8.0).unwrap();
+        coo.put(1, 0, 1.0).unwrap();
+        coo.put(2, 0, 1.0).unwrap();
+        coo.put(2, 1, 2.0).unwrap();
+        coo.put(3, 0, 3.0).unwrap();
+        coo.put(3, 1, 1.0).unwrap();
+        coo.put(3, 2, 1.0).unwrap();
+        coo.put(4, 0, 2.0).unwrap();
+        coo.put(4, 1, 1.0).unwrap();
+        coo.put(4, 2, 5.0).unwrap();
+        coo.put(4, 3, 1.0).unwrap();
+        // CSC matrix
+        let col_pointers = vec![0, 5, 9, 12, 14, 15];
+        let row_indices = vec![
+            0, 1, 2, 3, 4, // j=0, p=(0),1,2,3,4
+            1, 2, 3, 4, //    j=1, p=(5),6,7,8
+            2, 3, 4, //       j=2, p=(9),10,11
+            3, 4, //          j=3, p=(12),13
+            4, //             j=4, p=(14)
+        ]; //                        (15)
+        let values = vec![
+            2.0, 1.0, 1.0, 3.0, 2.0, // j=0, p=(0),1,2,3,4
+            2.0, 2.0, 1.0, 1.0, //      j=1, p=(5),6,7,8
+            9.0, 1.0, 5.0, //           j=2, p=(9),10,11
+            7.0, 1.0, //                j=3, p=(12),13
+            8.0, //                     j=4, p=(14)
+        ]; //                                  (15)
+        let csc = CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
+        // CSR matrix
+        let row_pointers = vec![0, 1, 3, 6, 10, 15];
+        let col_indices = vec![
+            0, //              i=0, p=(0)
+            0, 1, //           i=1, p=(1),2
+            0, 1, 2, //        i=2, p=(3),4,5
+            0, 1, 2, 3, //     i=3, p=(6),7,8,9
+            0, 1, 2, 3, 4, //  i=4, p=(10),11,12,13,14
+        ]; //                         (15)
+        let values = vec![
+            2.0, //                      i=0, p=(0)
+            1.0, 2.0, //                 i=1, p=(1),2
+            1.0, 2.0, 9.0, //            i=2, p=(3),4,5
+            3.0, 1.0, 1.0, 7.0, //       i=3, p=(6),7,8,9
+            2.0, 1.0, 5.0, 1.0, 8.0, //  i=4, p=(10),11,12,13,14
+        ]; //                                   (15)
+        let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
+        (coo, csc, csr, 98.0)
+    }
+
     /// Returns the COO, CSC, and CSR versions of the matrix and its determinant
     ///
     /// ```text
@@ -1278,6 +1343,25 @@ mod tests {
         let correct_det = mat_inverse(&mut ai, &a).unwrap();
         let (coo, csc, csr, det) = Samples::positive_definite_3x3();
         approx_eq(det, correct_det, 1e-15);
+        mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csr.as_dense(), correct, 1e-15);
+        check(&coo, &csc, &csr);
+
+        // ----------------------------------------------------------------------------
+
+        let correct = &[
+            [2.0, 1.0, 1.0, 3.0, 2.0],
+            [1.0, 2.0, 2.0, 1.0, 1.0],
+            [1.0, 2.0, 9.0, 1.0, 5.0],
+            [3.0, 1.0, 1.0, 7.0, 1.0],
+            [2.0, 1.0, 5.0, 1.0, 8.0],
+        ];
+        let a = Matrix::from(correct);
+        let mut ai = Matrix::new(5, 5);
+        let correct_det = mat_inverse(&mut ai, &a).unwrap();
+        let (coo, csc, csr, det) = Samples::lower_symmetric_5x5();
+        approx_eq(det, correct_det, 1e-13);
         mat_approx_eq(&coo.as_dense(), correct, 1e-15);
         mat_approx_eq(&csc.as_dense(), correct, 1e-15);
         mat_approx_eq(&csr.as_dense(), correct, 1e-15);

@@ -1,6 +1,7 @@
 use super::{CooMatrix, CscMatrix, CsrMatrix, Symmetry};
 use crate::StrError;
 use russell_lab::{find_index_abs_max, Matrix, Vector};
+use serde::{Deserialize, Serialize};
 
 /// Unifies the sparse matrix representations by wrapping COO, CSC, and CSR structures
 ///
@@ -20,7 +21,7 @@ use russell_lab::{find_index_abs_max, Matrix, Vector};
 /// 2. `(COO and CSC)` or `(COO and CSR)` pairs may be `Some` at the same time
 /// 3. When getting data/information from the SparseMatrix, the default priority is `CSC -> CSR -> COO`
 /// 4. If needed, the CSC or CSR are automatically computed from COO
-#[derive(Clone)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct SparseMatrix {
     coo: Option<CooMatrix>,
     csc: Option<CscMatrix>,
@@ -526,12 +527,27 @@ mod tests {
     }
 
     #[test]
-    fn clone_works() {
+    fn derive_methods_work() {
         let (coo, _, _, _) = Samples::tiny_1x1(false);
+        let (nrow, ncol, nnz, symmetry) = coo.get_info();
         let mat = SparseMatrix::from_coo(coo);
         let mut clone = mat.clone();
         clone.get_coo_mut().unwrap().values[0] *= 2.0;
         assert_eq!(mat.get_coo().unwrap().values[0], 123.0);
         assert_eq!(clone.get_coo().unwrap().values[0], 246.0);
+        assert!(format!("{:?}", mat).len() > 0);
+        let json = serde_json::to_string(&mat).unwrap();
+        assert_eq!(
+            json,
+            r#"{"coo":{"symmetry":"No","nrow":1,"ncol":1,"nnz":1,"max_nnz":1,"indices_i":[0],"indices_j":[0],"values":[123.0],"one_based":false},"csc":null,"csr":null}"#
+        );
+        let from_json: SparseMatrix = serde_json::from_str(&json).unwrap();
+        let (json_nrow, json_ncol, json_nnz, json_symmetry) = from_json.get_coo().unwrap().get_info();
+        assert_eq!(json_symmetry, symmetry);
+        assert_eq!(json_nrow, nrow);
+        assert_eq!(json_ncol, ncol);
+        assert_eq!(json_nnz, nnz);
+        assert!(from_json.csc.is_none());
+        assert!(from_json.csr.is_none());
     }
 }

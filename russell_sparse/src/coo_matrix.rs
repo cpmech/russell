@@ -1099,7 +1099,7 @@ mod tests {
     }
 
     #[test]
-    fn derive_methods_works() {
+    fn derive_methods_work() {
         let (coo, _, _, _) = Samples::tiny_1x1(false);
         let mut clone = coo.clone();
         clone.values[0] *= 2.0;

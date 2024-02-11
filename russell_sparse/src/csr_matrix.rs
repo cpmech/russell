@@ -1252,7 +1252,7 @@ mod tests {
     }
 
     #[test]
-    fn derive_methods_works() {
+    fn derive_methods_work() {
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
         let csr = NumCsrMatrix::<f64>::from_coo(&coo).unwrap();
         let nrow = coo.nrow;

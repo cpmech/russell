@@ -514,7 +514,6 @@ mod tests {
             csr_mat.reset().err(),
             Some("COO matrix is not available to reset nnz counter")
         );
-
         // COO
         let mut coo = SparseMatrix::new_coo(2, 2, 1, None, false).unwrap();
         coo.put(0, 0, 1.0).unwrap();
@@ -524,6 +523,38 @@ mod tests {
         );
         coo.reset().unwrap();
         coo.put(1, 1, 2.0).unwrap();
+    }
+
+    #[test]
+    fn get_csc_or_from_coo_works() {
+        // ┌       ┐
+        // │ 10 20 │
+        // └       ┘
+        let (coo, _, _, _) = Samples::rectangular_1x2(false, false, false);
+        let mut mat = SparseMatrix::from_coo(coo);
+        let csc = mat.get_csc_or_from_coo().unwrap(); // will create a new csc
+        assert_eq!(csc.get_values(), &[10.0, 20.0]);
+        let coo_internal = mat.get_coo_mut().unwrap();
+        let source = coo_internal.get_values_mut();
+        source[0] = 30.0; // change a value
+        let csc = mat.get_csc_or_from_coo().unwrap(); // will update existent csc
+        assert_eq!(csc.get_values(), &[30.0, 20.0]);
+    }
+
+    #[test]
+    fn get_csr_or_from_coo_works() {
+        // ┌       ┐
+        // │ 10 20 │
+        // └       ┘
+        let (coo, _, _, _) = Samples::rectangular_1x2(false, false, false);
+        let mut mat = SparseMatrix::from_coo(coo);
+        let csr = mat.get_csr_or_from_coo().unwrap(); // will create a new csr
+        assert_eq!(csr.get_values(), &[10.0, 20.0]);
+        let coo_internal = mat.get_coo_mut().unwrap();
+        let source = coo_internal.get_values_mut();
+        source[0] = 30.0; // change a value
+        let csr = mat.get_csr_or_from_coo().unwrap(); // will update existent csr
+        assert_eq!(csr.get_values(), &[30.0, 20.0]);
     }
 
     #[test]

@@ -615,23 +615,41 @@ where
     }
 
     /// Get an access to the row indices
+    ///
+    /// ```text
+    /// row_indices.len() == nnz
+    /// ```
     pub fn get_row_indices(&self) -> &[i32] {
-        &self.indices_i
+        &self.indices_i[..self.nnz]
     }
 
     /// Get an access to the column indices
+    ///
+    /// ```text
+    /// col_indices.len() == nnz
+    /// ```
     pub fn get_col_indices(&self) -> &[i32] {
-        &self.indices_j
+        &self.indices_j[..self.nnz]
     }
 
     /// Get an access to the values
+    ///
+    /// ```text
+    /// values.len() == nnz
+    /// ```
     pub fn get_values(&self) -> &[T] {
-        &self.values
+        &self.values[..self.nnz]
     }
 
     /// Get a mutable access the values
+    ///
+    /// ```text
+    /// values.len() == nnz
+    /// ```
+    ///
+    /// Note: the values may be modified externally, but not the indices.
     pub fn get_values_mut(&mut self) -> &mut [T] {
-        &mut self.values
+        &mut self.values[..self.nnz]
     }
 }
 
@@ -1081,9 +1099,9 @@ mod tests {
         assert_eq!(coo.get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(coo.get_storage(), Storage::Full);
         assert_eq!(coo.get_symmetric(), false);
-        assert_eq!(coo.get_row_indices(), &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-        assert_eq!(coo.get_col_indices(), &[0, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
-        assert_eq!(coo.get_values(), &[10.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(coo.get_row_indices(), &[0, 0]);
+        assert_eq!(coo.get_col_indices(), &[0, 1]);
+        assert_eq!(coo.get_values(), &[10.0, 20.0]);
 
         let sym = Some(Symmetry::new_general_full());
         let coo = NumCooMatrix::<f64>::new(2, 2, 2, sym, false).unwrap();

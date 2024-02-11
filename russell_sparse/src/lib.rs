@@ -6,15 +6,20 @@
 //!
 //! # Introduction
 //!
-//! We have three storage formats for sparse matrices:
+//! This crate implements three storage formats for sparse matrices:
 //!
-//! * [CooMatrix] (COO) -- COOrdinates matrix, also known as a sparse triplet.
-//! * [CscMatrix] (CSC) -- Compressed Sparse Column matrix
-//! * [CsrMatrix] (CSR) -- Compressed Sparse Row matrix
+//! * [NumCooMatrix] (COO) -- COOrdinates matrix, also known as a sparse triplet.
+//! * [NumCscMatrix] (CSC) -- Compressed Sparse Column matrix
+//! * [NumCsrMatrix] (CSR) -- Compressed Sparse Row matrix
 //!
-//! Additionally, to unify the handling of the above sparse matrix data structures, we have:
+//! Additionally, to unify the handling of the above data structures, this implements:
 //!
-//! * [SparseMatrix] -- Either a COO, CSC, or CSR matrix
+//! * [NumSparseMatrix] -- Either a COO, CSC, or CSR matrix. We recommend using `NumSparseMatrix` solely, if possible.
+//!
+//! For convenience, this crate defines the following type aliases for Real and Complex matrices (with double precision):
+//!
+//! * [CooMatrix], [CscMatrix], [CsrMatrix], [SparseMatrix] -- For real numbers represented by `f64`
+//! * [ComplexCooMatrix], [ComplexCscMatrix], [ComplexCsrMatrix], [ComplexSparseMatrix] -- For complex numbers represented by [num_complex::Complex64]
 //!
 //! The COO matrix is the best when we need to update the values of the matrix because it has easy access to the triples (i, j, aij). For instance, the repetitive access is the primary use case for codes based on the finite element method (FEM) for approximating partial differential equations. Moreover, the COO matrix allows storing duplicate entries; for example, the triple `(0, 0, 123.0)` can be stored as two triples `(0, 0, 100.0)` and `(0, 0, 23.0)`. Again, this is the primary need for FEM codes because of the so-called assembly process where elements add to the same positions in the "global stiffness" matrix. Nonetheless, the duplicate entries must be summed up at some stage for the linear solver (e.g., MUMPS, UMFPACK, and Intel DSS). These linear solvers also use the more memory-efficient storage formats CSC and CSR. The following is the default input for these solvers:
 //!

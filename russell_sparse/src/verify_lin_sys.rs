@@ -1,6 +1,6 @@
 use super::SparseMatrix;
 use crate::StrError;
-use russell_lab::{vec_norm, vec_update, Norm, Vector};
+use russell_lab::{find_index_abs_max, vec_norm, vec_update, Norm, Vector};
 use serde::{Deserialize, Serialize};
 
 /// Verifies the linear system a ⋅ x = rhs
@@ -66,7 +66,12 @@ impl VerifyLinSys {
         }
 
         // compute max_abs_a
-        let max_abs_a = mat.get_max_abs_value();
+        let values = mat.get_values();
+        if values.len() < 1 {
+            return Err("matrix is empty");
+        }
+        let idx = find_index_abs_max(values);
+        let max_abs_a = f64::abs(values[idx as usize]);
 
         // compute max_abs_ax
         let mut ax = Vector::new(nrow);
@@ -103,7 +108,7 @@ mod tests {
         let coo = SparseMatrix::new_coo(2, 1, 1, None, false).unwrap();
         let x = Vector::new(1);
         let rhs = Vector::new(2);
-        assert_eq!(VerifyLinSys::new(&coo, &x, &rhs).err(), None);
+        assert_eq!(VerifyLinSys::new(&coo, &x, &rhs).err(), Some("matrix is empty"));
         let x_wrong = Vector::new(2);
         let rhs_wrong = Vector::new(1);
         assert_eq!(

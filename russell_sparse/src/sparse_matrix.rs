@@ -1,39 +1,56 @@
-use super::{CooMatrix, CscMatrix, CsrMatrix, Symmetry};
+use super::{NumCooMatrix, NumCscMatrix, NumCsrMatrix, Symmetry};
 use crate::StrError;
-use russell_lab::{find_index_abs_max, Matrix, Vector};
+use num_traits::{Num, NumCast};
+use russell_lab::{NumMatrix, NumVector};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use std::ops::{AddAssign, MulAssign};
 
 /// Unifies the sparse matrix representations by wrapping COO, CSC, and CSR structures
 ///
-/// This structure is simply:
+/// This structure is a wrapper around COO, CSC, or CSR matrices. For instance:
 ///
 /// ```text
-/// pub struct SparseMatrix {
-///     coo: Option<CooMatrix>,
-///     csc: Option<CscMatrix>,
-///     csr: Option<CsrMatrix>,
+/// pub struct NumSparseMatrix<T> {
+///     coo: Option<NumCooMatrix<T>>,
+///     csc: Option<NumCscMatrix<T>>,
+///     csr: Option<NumCsrMatrix<T>>,
 /// }
 /// ```
 ///
 /// # Notes
 ///
-/// 1. At least one of [CooMatrix], [CscMatrix], or [CsrMatrix] will be `Some`
+/// 1. At least one of [NumCooMatrix], [NumCscMatrix], or [NumCsrMatrix] will be `Some`
 /// 2. `(COO and CSC)` or `(COO and CSR)` pairs may be `Some` at the same time
-/// 3. When getting data/information from the SparseMatrix, the default priority is `CSC -> CSR -> COO`
+/// 3. When getting data/information from the sparse matrix, the default priority is `CSC -> CSR -> COO`
 /// 4. If needed, the CSC or CSR are automatically computed from COO
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct SparseMatrix {
-    coo: Option<CooMatrix>,
-    csc: Option<CscMatrix>,
-    csr: Option<CsrMatrix>,
+pub struct NumSparseMatrix<T>
+where
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
+{
+    // Holds the COO version
+    #[serde(bound(deserialize = "NumCooMatrix<T>: Deserialize<'de>"))]
+    coo: Option<NumCooMatrix<T>>,
+
+    // Holds the CSC version (will not co-exist with CSR)
+    #[serde(bound(deserialize = "NumCscMatrix<T>: Deserialize<'de>"))]
+    csc: Option<NumCscMatrix<T>>,
+
+    // Holds the CSR version (will not co-exist with CSC)
+    #[serde(bound(deserialize = "NumCsrMatrix<T>: Deserialize<'de>"))]
+    csr: Option<NumCsrMatrix<T>>,
 }
 
-impl SparseMatrix {
-    /// Allocates a new SparseMatrix as COO to be later updated with put and reset methods
+impl<T> NumSparseMatrix<T>
+where
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
+{
+    /// Allocates a new sparse matrix as COO to be later updated with put and reset methods
     ///
     /// **Note:** This is the most convenient structure for recurrent updates of the sparse
-    /// matrix data; e.g. in finite element simulation codes. See the [CooMatrix::put] and
-    /// [CooMatrix::reset] functions for more details.
+    /// matrix data; e.g. in finite element simulation codes. See the [NumCooMatrix::put] and
+    /// [NumCooMatrix::reset] functions for more details.
     ///
     /// # Input
     ///
@@ -50,14 +67,14 @@ impl SparseMatrix {
         symmetry: Option<Symmetry>,
         one_based: bool,
     ) -> Result<Self, StrError> {
-        Ok(SparseMatrix {
-            coo: Some(CooMatrix::new(nrow, ncol, max_nnz, symmetry, one_based)?),
+        Ok(NumSparseMatrix {
+            coo: Some(NumCooMatrix::new(nrow, ncol, max_nnz, symmetry, one_based)?),
             csc: None,
             csr: None,
         })
     }
 
-    /// Allocates a new SparseMatrix as CSC from the underlying arrays
+    /// Allocates a new sparse matrix as CSC from the underlying arrays
     ///
     /// **Note:** The column pointers and row indices must be **sorted** in ascending order.
     ///
@@ -87,17 +104,24 @@ impl SparseMatrix {
         ncol: usize,
         col_pointers: Vec<i32>,
         row_indices: Vec<i32>,
-        values: Vec<f64>,
+        values: Vec<T>,
         symmetry: Option<Symmetry>,
     ) -> Result<Self, StrError> {
-        Ok(SparseMatrix {
+        Ok(NumSparseMatrix {
             coo: None,
-            csc: Some(CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, symmetry)?),
+            csc: Some(NumCscMatrix::new(
+                nrow,
+                ncol,
+                col_pointers,
+                row_indices,
+                values,
+                symmetry,
+            )?),
             csr: None,
         })
     }
 
-    /// Allocates a new SparseMatrix as CSR from the underlying arrays
+    /// Allocates a new sparse matrix as CSR from the underlying arrays
     ///
     /// **Note:** The row pointers and column indices must be **sorted** in ascending order.
     ///
@@ -127,37 +151,44 @@ impl SparseMatrix {
         ncol: usize,
         row_pointers: Vec<i32>,
         col_indices: Vec<i32>,
-        values: Vec<f64>,
+        values: Vec<T>,
         symmetry: Option<Symmetry>,
     ) -> Result<Self, StrError> {
-        Ok(SparseMatrix {
+        Ok(NumSparseMatrix {
             coo: None,
             csc: None,
-            csr: Some(CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, symmetry)?),
+            csr: Some(NumCsrMatrix::new(
+                nrow,
+                ncol,
+                row_pointers,
+                col_indices,
+                values,
+                symmetry,
+            )?),
         })
     }
 
-    /// Creates a new SparseMatrix from COO (move occurs)
-    pub fn from_coo(coo: CooMatrix) -> Self {
-        SparseMatrix {
+    /// Creates a new sparse matrix from COO (move occurs)
+    pub fn from_coo(coo: NumCooMatrix<T>) -> Self {
+        NumSparseMatrix {
             coo: Some(coo),
             csc: None,
             csr: None,
         }
     }
 
-    /// Creates a new SparseMatrix from CSC (move occurs)
-    pub fn from_csc(csc: CscMatrix) -> Self {
-        SparseMatrix {
+    /// Creates a new sparse matrix from CSC (move occurs)
+    pub fn from_csc(csc: NumCscMatrix<T>) -> Self {
+        NumSparseMatrix {
             coo: None,
             csc: Some(csc),
             csr: None,
         }
     }
 
-    /// Creates a new SparseMatrix from CSR (move occurs)
-    pub fn from_csr(csr: CsrMatrix) -> Self {
-        SparseMatrix {
+    /// Creates a new sparse matrix from CSR (move occurs)
+    pub fn from_csr(csr: NumCsrMatrix<T>) -> Self {
+        NumSparseMatrix {
             coo: None,
             csc: None,
             csr: Some(csr),
@@ -179,19 +210,17 @@ impl SparseMatrix {
         }
     }
 
-    /// Returns the maximum absolute value among all values
+    /// Get an access to the values
     ///
     /// **Priority**: CSC -> CSR -> COO
-    pub fn get_max_abs_value(&self) -> f64 {
-        let values = match &self.csc {
-            Some(csc) => &csc.values,
+    pub fn get_values(&self) -> &[T] {
+        match &self.csc {
+            Some(csc) => csc.get_values(),
             None => match &self.csr {
-                Some(csr) => &csr.values,
-                None => &self.coo.as_ref().unwrap().values, // unwrap OK because at least one mat must be available
+                Some(csr) => csr.get_values(),
+                None => self.coo.as_ref().unwrap().get_values(), // unwrap OK because at least one mat must be available
             },
-        };
-        let idx = find_index_abs_max(values);
-        f64::abs(values[idx as usize])
+        }
     }
 
     /// Performs the matrix-vector multiplication
@@ -210,7 +239,7 @@ impl SparseMatrix {
     /// * `v` -- Vector with dimension equal to the number of rows of the matrix
     ///
     /// **Priority**: CSC -> CSR -> COO
-    pub fn mat_vec_mul(&self, v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
+    pub fn mat_vec_mul(&self, v: &mut NumVector<T>, alpha: T, u: &NumVector<T>) -> Result<(), StrError> {
         match &self.csc {
             Some(csc) => csc.mat_vec_mul(v, alpha, u),
             None => match &self.csr {
@@ -223,7 +252,7 @@ impl SparseMatrix {
     /// Converts the sparse matrix to dense format
     ///
     /// **Priority**: CSC -> CSR -> COO
-    pub fn as_dense(&self) -> Matrix {
+    pub fn as_dense(&self) -> NumMatrix<T> {
         match &self.csc {
             Some(csc) => csc.as_dense(),
             None => match &self.csr {
@@ -236,7 +265,7 @@ impl SparseMatrix {
     /// Converts the sparse matrix to dense format
     ///
     /// **Priority**: CSC -> CSR -> COO
-    pub fn to_dense(&self, a: &mut Matrix) -> Result<(), StrError> {
+    pub fn to_dense(&self, a: &mut NumMatrix<T>) -> Result<(), StrError> {
         match &self.csc {
             Some(csc) => csc.to_dense(a),
             None => match &self.csr {
@@ -255,7 +284,7 @@ impl SparseMatrix {
     /// * `i` -- row index (indices start at zero; zero-based)
     /// * `j` -- column index (indices start at zero; zero-based)
     /// * `aij` -- the value A(i,j)
-    pub fn put(&mut self, i: usize, j: usize, aij: f64) -> Result<(), StrError> {
+    pub fn put(&mut self, i: usize, j: usize, aij: T) -> Result<(), StrError> {
         match &mut self.coo {
             Some(coo) => coo.put(i, j, aij),
             None => Err("COO matrix is not available to put items"),
@@ -276,7 +305,7 @@ impl SparseMatrix {
     }
 
     /// Returns a read-only access to the COO matrix, if available
-    pub fn get_coo(&self) -> Result<&CooMatrix, StrError> {
+    pub fn get_coo(&self) -> Result<&NumCooMatrix<T>, StrError> {
         match &self.coo {
             Some(coo) => Ok(coo),
             None => Err("COO matrix is not available"),
@@ -284,7 +313,7 @@ impl SparseMatrix {
     }
 
     /// Returns a read-write access to the COO matrix, if available
-    pub fn get_coo_mut(&mut self) -> Result<&mut CooMatrix, StrError> {
+    pub fn get_coo_mut(&mut self) -> Result<&mut NumCooMatrix<T>, StrError> {
         match &mut self.coo {
             Some(coo) => Ok(coo),
             None => Err("COO matrix is not available"),
@@ -294,7 +323,7 @@ impl SparseMatrix {
     // CSC ------------------------------------------------------------------------
 
     /// Returns a read-only access to the CSC matrix, if available
-    pub fn get_csc(&self) -> Result<&CscMatrix, StrError> {
+    pub fn get_csc(&self) -> Result<&NumCscMatrix<T>, StrError> {
         match &self.csc {
             Some(csc) => Ok(csc),
             None => Err("CSC matrix is not available"),
@@ -302,7 +331,7 @@ impl SparseMatrix {
     }
 
     /// Returns a read-write access to the CSC matrix, if available
-    pub fn get_csc_mut(&mut self) -> Result<&mut CscMatrix, StrError> {
+    pub fn get_csc_mut(&mut self) -> Result<&mut NumCscMatrix<T>, StrError> {
         match &mut self.csc {
             Some(csc) => Ok(csc),
             None => Err("CSC matrix is not available"),
@@ -315,7 +344,7 @@ impl SparseMatrix {
     /// automatically get the converted CSC matrix.
     ///
     /// **Priority**: COO -> CSC
-    pub fn get_csc_or_from_coo(&mut self) -> Result<&CscMatrix, StrError> {
+    pub fn get_csc_or_from_coo(&mut self) -> Result<&NumCscMatrix<T>, StrError> {
         match &self.coo {
             Some(coo) => match &mut self.csc {
                 Some(csc) => {
@@ -323,7 +352,7 @@ impl SparseMatrix {
                     Ok(self.csc.as_ref().unwrap())
                 }
                 None => {
-                    self.csc = Some(CscMatrix::from_coo(coo)?);
+                    self.csc = Some(NumCscMatrix::from_coo(coo)?);
                     Ok(self.csc.as_ref().unwrap())
                 }
             },
@@ -337,7 +366,7 @@ impl SparseMatrix {
     // CSR ------------------------------------------------------------------------
 
     /// Returns a read-only access to the CSR matrix, if available
-    pub fn get_csr(&self) -> Result<&CsrMatrix, StrError> {
+    pub fn get_csr(&self) -> Result<&NumCsrMatrix<T>, StrError> {
         match &self.csr {
             Some(csr) => Ok(csr),
             None => Err("CSR matrix is not available"),
@@ -345,7 +374,7 @@ impl SparseMatrix {
     }
 
     /// Returns a read-write access to the CSR matrix, if available
-    pub fn get_csr_mut(&mut self) -> Result<&mut CsrMatrix, StrError> {
+    pub fn get_csr_mut(&mut self) -> Result<&mut NumCsrMatrix<T>, StrError> {
         match &mut self.csr {
             Some(csr) => Ok(csr),
             None => Err("CSR matrix is not available"),
@@ -358,7 +387,7 @@ impl SparseMatrix {
     /// automatically get the converted CSR matrix.
     ///
     /// **Priority**: COO -> CSR
-    pub fn get_csr_or_from_coo(&mut self) -> Result<&CsrMatrix, StrError> {
+    pub fn get_csr_or_from_coo(&mut self) -> Result<&NumCsrMatrix<T>, StrError> {
         match &self.coo {
             Some(coo) => match &mut self.csr {
                 Some(csr) => {
@@ -366,7 +395,7 @@ impl SparseMatrix {
                     Ok(self.csr.as_ref().unwrap())
                 }
                 None => {
-                    self.csr = Some(CsrMatrix::from_coo(coo)?);
+                    self.csr = Some(NumCsrMatrix::from_coo(coo)?);
                     Ok(self.csr.as_ref().unwrap())
                 }
             },
@@ -382,28 +411,28 @@ impl SparseMatrix {
 
 #[cfg(test)]
 mod tests {
-    use super::SparseMatrix;
+    use super::NumSparseMatrix;
     use crate::{Samples, Symmetry};
     use russell_lab::{vec_approx_eq, Matrix, Vector};
 
     #[test]
     fn new_functions_work() {
         // COO
-        SparseMatrix::new_coo(1, 1, 1, None, false).unwrap();
+        NumSparseMatrix::<f64>::new_coo(1, 1, 1, None, false).unwrap();
         assert_eq!(
-            SparseMatrix::new_coo(0, 1, 1, None, false).err(),
+            NumSparseMatrix::<f64>::new_coo(0, 1, 1, None, false).err(),
             Some("nrow must be ≥ 1")
         );
         // CSC
-        SparseMatrix::new_csc(1, 1, vec![0, 1], vec![0], vec![0.0], None).unwrap();
+        NumSparseMatrix::<f64>::new_csc(1, 1, vec![0, 1], vec![0], vec![0.0], None).unwrap();
         assert_eq!(
-            SparseMatrix::new_csc(0, 1, vec![0, 1], vec![0], vec![0.0], None).err(),
+            NumSparseMatrix::<f64>::new_csc(0, 1, vec![0, 1], vec![0], vec![0.0], None).err(),
             Some("nrow must be ≥ 1")
         );
         // CSR
-        SparseMatrix::new_csr(1, 1, vec![0, 1], vec![0], vec![0.0], None).unwrap();
+        NumSparseMatrix::<f64>::new_csr(1, 1, vec![0, 1], vec![0], vec![0.0], None).unwrap();
         assert_eq!(
-            SparseMatrix::new_csr(0, 1, vec![0, 1], vec![0], vec![0.0], None).err(),
+            NumSparseMatrix::<f64>::new_csr(0, 1, vec![0, 1], vec![0], vec![0.0], None).err(),
             Some("nrow must be ≥ 1")
         );
     }
@@ -419,26 +448,26 @@ mod tests {
         let x = Vector::from(&[2.0, 1.0]);
         let mut wrong = Vector::new(2);
         // COO
-        let coo_mat = SparseMatrix::from_coo(coo);
+        let coo_mat = NumSparseMatrix::<f64>::from_coo(coo);
         assert_eq!(coo_mat.get_info(), (1, 2, 2, Symmetry::No));
-        assert_eq!(coo_mat.get_max_abs_value(), 20.0);
         assert_eq!(coo_mat.get_coo().unwrap().get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(coo_mat.get_csc().err(), Some("CSC matrix is not available"));
         assert_eq!(coo_mat.get_csr().err(), Some("CSR matrix is not available"));
+        assert_eq!(coo_mat.get_values(), &[10.0, 20.0]);
         // CSC
-        let csc_mat = SparseMatrix::from_csc(csc);
+        let csc_mat = NumSparseMatrix::<f64>::from_csc(csc);
         assert_eq!(csc_mat.get_info(), (1, 2, 2, Symmetry::No));
-        assert_eq!(csc_mat.get_max_abs_value(), 20.0);
         assert_eq!(csc_mat.get_csc().unwrap().get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(csc_mat.get_coo().err(), Some("COO matrix is not available"));
         assert_eq!(csc_mat.get_csr().err(), Some("CSR matrix is not available"));
+        assert_eq!(csc_mat.get_values(), &[10.0, 20.0]);
         // CSR
-        let csr_mat = SparseMatrix::from_csr(csr);
+        let csr_mat = NumSparseMatrix::<f64>::from_csr(csr);
         assert_eq!(csr_mat.get_info(), (1, 2, 2, Symmetry::No));
-        assert_eq!(csr_mat.get_max_abs_value(), 20.0);
         assert_eq!(csr_mat.get_csr().unwrap().get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(csr_mat.get_csc().err(), Some("CSC matrix is not available"));
         assert_eq!(csr_mat.get_coo().err(), Some("COO matrix is not available"));
+        assert_eq!(csr_mat.get_values(), &[10.0, 20.0]);
 
         // COO, CSC, CSR
         let mut ax = Vector::new(1);
@@ -468,12 +497,12 @@ mod tests {
         // └       ┘
         let (coo, csc, csr, _) = Samples::rectangular_1x2(false, false, false);
         // COO
-        let mut coo_mat = SparseMatrix::from_coo(coo);
+        let mut coo_mat = NumSparseMatrix::<f64>::from_coo(coo);
         assert_eq!(coo_mat.get_coo_mut().unwrap().get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(coo_mat.get_csc_mut().err(), Some("CSC matrix is not available"));
         assert_eq!(coo_mat.get_csr_mut().err(), Some("CSR matrix is not available"));
         // CSC
-        let mut csc_mat = SparseMatrix::from_csc(csc);
+        let mut csc_mat = NumSparseMatrix::<f64>::from_csc(csc);
         assert_eq!(csc_mat.get_csc_mut().unwrap().get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(csc_mat.get_coo_mut().err(), Some("COO matrix is not available"));
         assert_eq!(csc_mat.get_csr_mut().err(), Some("CSR matrix is not available"));
@@ -494,7 +523,7 @@ mod tests {
             Some("COO matrix is not available to reset nnz counter")
         );
         // CSR
-        let mut csr_mat = SparseMatrix::from_csr(csr);
+        let mut csr_mat = NumSparseMatrix::<f64>::from_csr(csr);
         assert_eq!(csr_mat.get_csr_mut().unwrap().get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(csr_mat.get_csc_mut().err(), Some("CSC matrix is not available"));
         assert_eq!(csr_mat.get_coo_mut().err(), Some("COO matrix is not available"));
@@ -515,7 +544,7 @@ mod tests {
             Some("COO matrix is not available to reset nnz counter")
         );
         // COO
-        let mut coo = SparseMatrix::new_coo(2, 2, 1, None, false).unwrap();
+        let mut coo = NumSparseMatrix::<f64>::new_coo(2, 2, 1, None, false).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         assert_eq!(
             coo.put(1, 1, 2.0).err(),
@@ -531,7 +560,7 @@ mod tests {
         // │ 10 20 │
         // └       ┘
         let (coo, _, _, _) = Samples::rectangular_1x2(false, false, false);
-        let mut mat = SparseMatrix::from_coo(coo);
+        let mut mat = NumSparseMatrix::<f64>::from_coo(coo);
         let csc = mat.get_csc_or_from_coo().unwrap(); // will create a new csc
         assert_eq!(csc.get_values(), &[10.0, 20.0]);
         let coo_internal = mat.get_coo_mut().unwrap();
@@ -547,7 +576,7 @@ mod tests {
         // │ 10 20 │
         // └       ┘
         let (coo, _, _, _) = Samples::rectangular_1x2(false, false, false);
-        let mut mat = SparseMatrix::from_coo(coo);
+        let mut mat = NumSparseMatrix::<f64>::from_coo(coo);
         let csr = mat.get_csr_or_from_coo().unwrap(); // will create a new csr
         assert_eq!(csr.get_values(), &[10.0, 20.0]);
         let coo_internal = mat.get_coo_mut().unwrap();
@@ -561,7 +590,7 @@ mod tests {
     fn derive_methods_work() {
         let (coo, _, _, _) = Samples::tiny_1x1(false);
         let (nrow, ncol, nnz, symmetry) = coo.get_info();
-        let mat = SparseMatrix::from_coo(coo);
+        let mat = NumSparseMatrix::<f64>::from_coo(coo);
         let mut clone = mat.clone();
         clone.get_coo_mut().unwrap().values[0] *= 2.0;
         assert_eq!(mat.get_coo().unwrap().values[0], 123.0);
@@ -572,7 +601,7 @@ mod tests {
             json,
             r#"{"coo":{"symmetry":"No","nrow":1,"ncol":1,"nnz":1,"max_nnz":1,"indices_i":[0],"indices_j":[0],"values":[123.0],"one_based":false},"csc":null,"csr":null}"#
         );
-        let from_json: SparseMatrix = serde_json::from_str(&json).unwrap();
+        let from_json: NumSparseMatrix<f64> = serde_json::from_str(&json).unwrap();
         let (json_nrow, json_ncol, json_nnz, json_symmetry) = from_json.get_coo().unwrap().get_info();
         assert_eq!(json_symmetry, symmetry);
         assert_eq!(json_nrow, nrow);

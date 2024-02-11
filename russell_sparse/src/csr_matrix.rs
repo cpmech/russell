@@ -47,6 +47,8 @@ use std::ops::{AddAssign, MulAssign};
 /// ```text
 /// 0, 3, 5, 8, 11, 13
 /// ```
+///
+/// **Note:** The number of non-zero values is `nnz = row_pointers[nrow]`
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct NumCsrMatrix<T>
 where
@@ -65,7 +67,7 @@ where
     ///
     /// ```text
     /// row_pointers.len() = nrow + 1
-    /// nnz = col_pointers[ncol]
+    /// nnz = row_pointers[nrow]
     /// ```
     pub(crate) row_pointers: Vec<i32>,
 
@@ -763,23 +765,47 @@ where
     }
 
     /// Get an access to the row pointers
+    ///
+    /// ```text
+    /// row_pointers.len() = nrow + 1
+    /// ```
     pub fn get_row_pointers(&self) -> &[i32] {
         &self.row_pointers
     }
 
     /// Get an access to the column indices
+    ///
+    /// ```text
+    /// nnz = row_pointers[nrow]
+    /// col_indices.len() == nnz
+    /// ```
     pub fn get_col_indices(&self) -> &[i32] {
-        &self.col_indices
+        let nnz = self.row_pointers[self.nrow] as usize;
+        &self.col_indices[..nnz]
     }
 
     /// Get an access to the values
+    ///
+    /// ```text
+    /// nnz = row_pointers[nrow]
+    /// values.len() == nnz
+    /// ```
     pub fn get_values(&self) -> &[T] {
-        &self.values
+        let nnz = self.row_pointers[self.nrow] as usize;
+        &self.values[..nnz]
     }
 
     /// Get a mutable access to the values
+    ///
+    /// ```text
+    /// nnz = row_pointers[nrow]
+    /// values.len() == nnz
+    /// ```
+    ///
+    /// Note: the values may be modified externally, but not the pointers or indices.
     pub fn get_values_mut(&mut self) -> &mut [T] {
-        &mut self.values
+        let nnz = self.row_pointers[self.nrow] as usize;
+        &mut self.values[..nnz]
     }
 }
 
@@ -1233,7 +1259,14 @@ mod tests {
         assert_eq!(csr.get_row_pointers(), &[0, 2]);
         assert_eq!(csr.get_col_indices(), &[0, 1]);
         assert_eq!(csr.get_values(), &[10.0, 20.0]);
-
+        // with duplicates
+        let (coo, _, _, _) = Samples::rectangular_1x2(false, false, true);
+        let csr = NumCsrMatrix::<f64>::from_coo(&coo).unwrap();
+        assert_eq!(csr.get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(csr.get_row_pointers(), &[0, 2]);
+        assert_eq!(csr.get_col_indices(), &[0, 1]);
+        assert_eq!(csr.get_values(), &[10.0, 20.0]);
+        // mutable
         let mut csr = NumCsrMatrix::<f64> {
             symmetry: Symmetry::No,
             nrow: 1,

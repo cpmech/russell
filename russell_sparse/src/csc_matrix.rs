@@ -47,6 +47,8 @@ use std::ops::{AddAssign, MulAssign};
 /// ```text
 /// 0, 2, 5, 9, 10, 12
 /// ```
+///
+/// **Note:** The number of non-zero values is `nnz = col_pointers[ncol]`
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct NumCscMatrix<T>
 where
@@ -789,23 +791,47 @@ where
     }
 
     /// Get an access to the column pointers
+    ///
+    /// ```text
+    /// col_pointers.len() = ncol + 1
+    /// ```
     pub fn get_col_pointers(&self) -> &[i32] {
         &self.col_pointers
     }
 
     /// Get an access to the row indices
+    ///
+    /// ```text
+    /// nnz = col_pointers[ncol]
+    /// row_indices.len() == nnz
+    /// ```
     pub fn get_row_indices(&self) -> &[i32] {
-        &self.row_indices
+        let nnz = self.col_pointers[self.ncol] as usize;
+        &self.row_indices[..nnz]
     }
 
     /// Get an access to the values
+    ///
+    /// ```text
+    /// nnz = col_pointers[ncol]
+    /// values.len() == nnz
+    /// ```
     pub fn get_values(&self) -> &[T] {
-        &self.values
+        let nnz = self.col_pointers[self.ncol] as usize;
+        &self.values[..nnz]
     }
 
     /// Get a mutable access to the values
+    ///
+    /// ```text
+    /// nnz = col_pointers[ncol]
+    /// values.len() == nnz
+    /// ```
+    ///
+    /// Note: the values may be modified externally, but not the pointers or indices.
     pub fn get_values_mut(&mut self) -> &mut [T] {
-        &mut self.values
+        let nnz = self.col_pointers[self.ncol] as usize;
+        &mut self.values[..nnz]
     }
 }
 
@@ -1245,7 +1271,14 @@ mod tests {
         assert_eq!(csc.get_col_pointers(), &[0, 1, 2]);
         assert_eq!(csc.get_row_indices(), &[0, 0]);
         assert_eq!(csc.get_values(), &[10.0, 20.0]);
-
+        // with duplicates
+        let (coo, _, _, _) = Samples::rectangular_1x2(false, false, true);
+        let csc = NumCscMatrix::<f64>::from_coo(&coo).unwrap();
+        assert_eq!(csc.get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(csc.get_col_pointers(), &[0, 1, 2]);
+        assert_eq!(csc.get_row_indices(), &[0, 0]);
+        assert_eq!(csc.get_values(), &[10.0, 20.0]);
+        // mutable
         let mut csc = NumCscMatrix::<f64> {
             symmetry: Symmetry::No,
             nrow: 1,

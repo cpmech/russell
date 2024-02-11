@@ -319,7 +319,7 @@ impl SparseMatrix {
         match &self.coo {
             Some(coo) => match &mut self.csc {
                 Some(csc) => {
-                    csc.update_from_coo(coo)?;
+                    csc.update_from_coo(coo).unwrap(); // unwrap because csc cannot be wrong (created here)
                     Ok(self.csc.as_ref().unwrap())
                 }
                 None => {
@@ -362,7 +362,7 @@ impl SparseMatrix {
         match &self.coo {
             Some(coo) => match &mut self.csr {
                 Some(csr) => {
-                    csr.update_from_coo(coo)?;
+                    csr.update_from_coo(coo).unwrap(); // unwrap because csr cannot be wrong (created here)
                     Ok(self.csr.as_ref().unwrap())
                 }
                 None => {

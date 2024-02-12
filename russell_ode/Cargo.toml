@@ -12,5 +12,5 @@ categories = ["mathematics", "science"]
 keywords = ["differential equations", "numerical methods", "solver"]
 
 [dependencies]
-russell_lab = { path = "../russell_lab", version = "0.7" }
-russell_sparse = { path = "../russell_sparse", version = "0.7" }
+russell_lab = { path = "../russell_lab", version = "0.8" }
+russell_sparse = { path = "../russell_sparse", version = "0.8" }

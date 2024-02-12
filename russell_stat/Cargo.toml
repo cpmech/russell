@@ -1,6 +1,6 @@
 [package]
 name = "russell_stat"
-version = "0.7.1"
+version = "0.8.0"
 edition = "2021"
 license = "MIT"
 description = "Statistics calculations, probability distributions, and pseudo random numbers"
@@ -12,7 +12,7 @@ categories = ["mathematics", "science"]
 keywords = ["statistics", "probability", "random", "numerical"]
 
 [dependencies]
-russell_lab = { path = "../russell_lab", version = "0.7" }
+russell_lab = { path = "../russell_lab", version = "0.8.0" }
 num-traits = "0.2"
 rand = "0.8.5"
 rand_distr = "0.4.3"

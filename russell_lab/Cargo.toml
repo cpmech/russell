@@ -11,6 +11,9 @@ readme = "README.md"
 categories = ["mathematics", "science"]
 keywords = ["matrix", "vector", "linspace"]
 
+[features]
+intel_mkl = []
+
 [dependencies]
 criterion = "0.5"
 num-complex = { version = "0.4", features = ["serde"] }

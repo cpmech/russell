@@ -1,14 +1,13 @@
-name: Test with Intel MKL
+name: Test with local libs
 on: [pull_request]
 jobs:
-  test_with_intel_mkl:
+  test_with_local_libs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install Libraries
         run: |
-          bash case-b-intel-mkl-local-libs.bash
+          bash case-a-openblas-local-libs.bash
       - name: Run tests
         run: |
-          RUST_BACKTRACE=1 cargo test --features intel_mkl
-
+          RUST_BACKTRACE=1 cargo test --features local_libs

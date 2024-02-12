@@ -41,7 +41,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 ///     ]);
 ///     let a_copy = a.clone();
 ///
-///     // compute pseudo-inverse matrix (because it's square)
+///     // compute pseudo-inverse matrix
 ///     let mut ai = Matrix::new(2, 3);
 ///     mat_pseudo_inverse(&mut ai, &mut a)?;
 ///

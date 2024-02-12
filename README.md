@@ -2,7 +2,7 @@
 
 [![codecov](https://codecov.io/gh/cpmech/russell/graph/badge.svg?token=PQWSKMZQXT)](https://codecov.io/gh/cpmech/russell)
 [![Test & Coverage](https://github.com/cpmech/russell/actions/workflows/test_and_coverage.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_and_coverage.yml)
-[![Test with Compiled Libs](https://github.com/cpmech/russell/actions/workflows/test_with_compiled_libs.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_with_compiled_libs.yml)
+[![Test with local libs](https://github.com/cpmech/russell/actions/workflows/test_with_local_libs.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_with_local_libs.yml)
 [![Test with Intel MKL](https://github.com/cpmech/russell/actions/workflows/test_with_intel_mkl.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_with_intel_mkl.yml)
 
 ![Bertrand Russell](Bertrand_Russell_1957.jpg)
@@ -15,19 +15,18 @@
 * [Crates](#crates)
 * [Installation on Debian/Ubuntu/Linux](#installation)
 * [Installation on macOS](#macos)
+* [Number of threads](#threads)
 * [Examples](#examples)
 * [Todo list](#todo)
 * [Code coverage](#coverage)
 
 ## <a name="introduction"></a> Introduction
 
-**Russell** (Rust Scientific Library) assists in developing scientific computations using the Rust language. Our initial focus is on numerical methods and solvers for sparse linear systems and differential equations; however, anything is possible 😉.
+**Russell** (Rust Scientific Library) assists in developing scientific computations using the Rust language.
 
 The "main" crate here is [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab), a **mat**rix-vector **lab**oratory, which provides the fundamental `Vector` and `Matrix` structures and several functions to perform linear algebra computations. Thus, we recommend looking at [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab) first.
 
-The next interesting crate is [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse), which implements sparse matrix structures such as COO (coordinates), CSC (compressed sparse column), and CSR (compressed sparse row) formats. `russell_sparse` also wraps powerful linear system solvers such as [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS](https://mumps-solver.org).
-
-This library aims to wrap the best solutions (e.g., UMFPACK) while maintaining a very **clean** and idiomatic Rust code. See our [Todo list](#todo). The code must also be simple to use and thoroughly tested with a minimum [coverage](#coverage) of 95%.
+Next, we recommend looking at the [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) crate, which implements sparse matrix structures such as COO (coordinates), CSC (compressed sparse column), and CSR (compressed sparse row) formats. `russell_sparse` also wraps powerful linear system solvers such as [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS](https://mumps-solver.org).
 
 ## <a name="crates"></a> Crates
 
@@ -46,59 +45,70 @@ External associated and recommended crates:
 
 ## <a name="installation"></a> Installation on Debian/Ubuntu/Linux
 
-**Russell** depends on external (non-Rust) packages for linear algebra and the solution of large sparse linear systems. For instance, the following need to be installed:
+**Russell** depends on external (non-Rust) packages for linear algebra and the solution of large sparse linear systems. The following libraries are required:
 
-* [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) **xor** [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html)
-* [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS](https://mumps-solver.org)
-* (optional) [Intel DSS](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html)
+* [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) or [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html)
+* [MUMPS](https://mumps-solver.org) and [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse)
 
-The above packages may be installed via `apt`; however the Debian packages may lack features that boost performance (e.g., Metis ordering for MUMPS is missing in Debian). Therefore, we may compile UMFPACK and MUMPS locally and install them in `/usr/local`.
+Note that MUMPS in Debian lacks some features (e.g., Metis). Also, MUMPS in Debian is linked with OpenMPI, which may cause issues when using other MPI libraries (see, e.g., [msgpass](https://github.com/cpmech/msgpass)). Thus, an option is available to use **locally compiled** MUMPS (and UMFPACK). Furthermore, when using Intel MKL, MUMPS and UMFPACK must be locally compiled because they need to be linked with the MKL libraries.
 
-In summary, we have three options:
+In summary, the following options are available:
 
-1. Use the standard Debian packages based on OpenBLAS (default)
-2. Compile MUMPS and UMFPACK with OpenBLAS
-3. Compile MUMPS and UMFPACK with Intel MKL (and enable the Intel DSS solver)
+* **Case A:** OpenBLAS with the default Debian libraries
+* **Case A:** OpenBLAS with locally compiled libraries
+* **Case B:** Intel MKL with locally compiled libraries
 
-Options 2 and 3 require the following environment variables:
+### Case A: OpenBLAS
 
-```bash
-export RUSSELL_SPARSE_USE_LOCAL_MUMPS=1
-export RUSSELL_SPARSE_USE_LOCAL_UMFPACK=1
-```
+#### Default Debian packages
 
-Option 3 also requires the following environment variables:
+Run:
 
 ```bash
-export RUSSELL_LAB_USE_INTEL_MKL=1
-export RUSSELL_SPARSE_WITH_INTEL_DSS=1
+bash case-a-openblas-debian.bash
 ```
 
-For convenience, you may use the scripts in the [russell/zscripts](https://github.com/cpmech/russell/tree/main/zscripts) directory.
+#### Locally compiled libraries (feature = local_libs)
 
-**1.** Use the standard Debian packages based on OpenBLAS:
+Run:
 
 ```bash
-bash zscripts/01-ubuntu-openblas-debian.bash
+bash case-a-openblas-local-libs.bash
 ```
 
-**2. (xor)** compile MUMPS and UMFPACK with OpenBLAS:
+Then, add `local_libs` to your Cargo.toml or use `cargo build --features local_libs`
+
+### Case B: Intel MKL (feature = intel_mkl)
+
+Run:
 
 ```bash
-bash zscripts/02-ubuntu-openblas-compile.bash
+bash case-b-intel-mkl-local-libs.bash
 ```
 
-**3. (xor)** compile MUMPS and UMFPACK with Intel MKL:
+Then, add `intel_mkl` to your Cargo.toml or use `cargo build --features intel_mkl` (note that the `local_libs` feature will be automatically enabled).
+
+### Resulting files
+
+If locally compiled, the above scripts will save the resulting files in `/usr/local/lib/{mumps,umfpack}` and `/usr/local/include/{mumps,umfpack}`.
+
+## <a name="macos"></a> Installation on macOS
+
+Currently, only OpenBLAS has been tested on macOS.
+
+First, install [Homebrew](https://brew.sh/). Then, run:
 
 ```bash
-bash zscripts/03-ubuntu-intel-mkl-compile.bash
+brew install lapack openblas
 ```
 
-The compiled MUMPS files will be installed in `/usr/local/include/mumps` and `/usr/local/lib/mumps`.
+Next, we must set the `LIBRARY_PATH`:
 
-The compiled UMFPACK files will be installed in `/usr/local/include/umfpack` and `/usr/local/lib/umfpack`.
+```bash
+export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/lapack/lib:$(brew --prefix)/opt/openblas/lib
+```
 
-### Number of threads
+## <a name="threads"></a> Number of threads
 
 By default, OpenBLAS will use all available threads, including Hyper-Threads that may worsen the performance. Thus, it is best to set the following environment variable:
 
@@ -112,22 +122,6 @@ Furthermore, if working on a multi-threaded application where the solver should 
 
 ```bash
 export OPENBLAS_NUM_THREADS=1
-```
-
-## <a name="macos"></a> Installation on macOS
-
-At this time, only OpenBLAS has been tested on macOS---we still need to study how to use MUMPS and UMFPACK on macOS.
-
-First, install [Homebrew](https://brew.sh/). Then, run:
-
-```bash
-brew install lapack openblas
-```
-
-Next, we must set the `LIBRARY_PATH`:
-
-```bash
-export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/lapack/lib:$(brew --prefix)/opt/openblas/lib
 ```
 
 ## <a name="examples"></a> Examples
@@ -303,7 +297,7 @@ fn main() -> Result<(), StrError> {
     //  3  .  4  .  6
     //  . -1 -3  2  .
     //  .  .  1  .  .
-    //  .  4  2  .  1
+    //  . 4  2  .  1
     let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
@@ -356,12 +350,12 @@ fn main() -> Result<(), StrError> {
     - [x] Implement more examples
     - [ ] Implement more benchmarks
     - [x] Wrap Intel MKL (option for OpenBLAS)
-    - [x] Add more complex numbers functions
+    - [x] Add more complex number functions
     - [ ] Add fundamental functions to `russell_lab`
         - [ ] Implement the modified Bessel functions
     - [ ] Implement some numerical methods in `russell_lab`
         - [ ] Implement Brent's solver
-        - [ ] Implement solver for the cubic equation
+        - [ ] Implement a solver for the cubic equation
         - [x] Implement numerical derivation
         - [x] Implement numerical Jacobian function
         - [ ] Implement Newton's method for nonlinear systems
@@ -378,13 +372,13 @@ fn main() -> Result<(), StrError> {
     - [x] Implement the C-interface to Intel DSS
     - [ ] Write the conversion from COO to CSC in Rust
     - [ ] Possibly re-write (after benchmarking) the conversion from COO to CSR
-    - [ ] Re-study the possibility to wrap SuperLU (see deleted branch)
+    - [ ] Re-study the possibility of wrapping SuperLU (see deleted branch)
 - [ ] Improve crate `russell_stat`
     - [x] Add probability distribution functions
     - [x] Implement drawing of ASCII histograms
 - [ ] Improve the `russell_tensor` crate
     - [x] Implement functions to calculate invariants
-    - [x] Implement first and second order derivatives of invariants
+    - [x] Implement first and second-order derivatives of invariants
     - [x] Implement some high-order derivatives
     - [ ] Implement standard continuum mechanics tensors
 - [ ] Make it possible to install Russell on Windows and macOS 
@@ -395,18 +389,18 @@ fn main() -> Result<(), StrError> {
 
 ### Sunburst
 
-The inner-most circle is the entire project, moving away from the center are folders then, finally, a single file. The size and color of each slice is representing the number of statements and the coverage, respectively.
+The innermost circle is the entire project; folders are moving away from the center, then a single file. Each slice's size and color represent the number of statements and the coverage, respectively.
 
 ![Sunburst](https://codecov.io/gh/cpmech/russell/graphs/sunburst.svg?token=PQWSKMZQXT)
 
 ### Grid
 
-Each block represents a single file in the project. The size and color of each block is represented by the number of statements and the coverage, respectively.
+Each block represents a single file in the project. The size and color of each block are described by the number of statements and the coverage, respectively.
 
 ![Grid](https://codecov.io/gh/cpmech/russell/graphs/tree.svg?token=PQWSKMZQXT)
 
 ### Icicle
 
-The top section represents the entire project. Proceeding with folders and finally individual files. The size and color of each slice is representing the number of statements and the coverage, respectively.
+The top section represents the entire project. Proceeding with folders and, finally, individual files. Each slice's size and color define the number of statements and the coverage, respectively.
 
 ![Icicle](https://codecov.io/gh/cpmech/russell/graphs/icicle.svg?token=PQWSKMZQXT)

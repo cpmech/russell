@@ -25,6 +25,7 @@ fn handle_intel_mkl() {
     println!("cargo:rustc-link-lib=dl");
     println!("cargo:rustc-link-lib=iomp5");
     println!("cargo:rustc-cfg=use_intel_mkl");
+    panic!("STOP");
 }
 
 #[cfg(not(feature = "intel_mkl"))]

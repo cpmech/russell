@@ -11,6 +11,10 @@ readme = "README.md"
 categories = ["mathematics", "science"]
 keywords = ["matrix", "sparse", "solver"]
 
+[features]
+local_libs = []
+intel_mkl = ["local_libs"]
+
 [dependencies]
 russell_lab = { path = "../russell_lab", version = "0.7.1" }
 structopt = "0.3"

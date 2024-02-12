@@ -7,10 +7,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Libraries
         run: |
-          bash zscripts/02-ubuntu-openblas-compile.bash
+          bash case-a-openblas-local-libs.bash
       - name: Run tests
-        env:
-          RUSSELL_SPARSE_USE_LOCAL_MUMPS: 1
-          RUSSELL_SPARSE_USE_LOCAL_UMFPACK: 1
         run: |
-          RUST_BACKTRACE=1 cargo test
+          RUST_BACKTRACE=1 cargo test --features local_libs

@@ -343,7 +343,8 @@ impl LinSolTrait for SolverUMFPACK {
         } else {
             "UMFPACK".to_string()
         };
-        stats.determinant.mantissa = self.determinant_coefficient;
+        stats.determinant.mantissa_real = self.determinant_coefficient;
+        stats.determinant.mantissa_imag = 0.0;
         stats.determinant.base = 10.0;
         stats.determinant.exponent = self.determinant_exponent;
         stats.output.umfpack_rcond_estimate = self.rcond_estimate;
@@ -389,7 +390,8 @@ const UMFPACK_SCALE_SUM: i32 = 1; // default: divide each row by sum (abs (row))
 const UMFPACK_SCALE_MAX: i32 = 2; // divide each row by max (abs (row))
 const UMFPACK_DEFAULT_SCALE: i32 = UMFPACK_SCALE_SUM;
 
-fn umfpack_ordering(ordering: Ordering) -> i32 {
+/// Returns the UMFPACK ordering constant
+pub(crate) fn umfpack_ordering(ordering: Ordering) -> i32 {
     match ordering {
         Ordering::Amd => UMFPACK_ORDERING_AMD,
         Ordering::Amf => UMFPACK_DEFAULT_ORDERING,
@@ -404,7 +406,8 @@ fn umfpack_ordering(ordering: Ordering) -> i32 {
     }
 }
 
-fn umfpack_scaling(scaling: Scaling) -> i32 {
+/// Returns the UMFPACK scaling constant
+pub(crate) fn umfpack_scaling(scaling: Scaling) -> i32 {
     match scaling {
         Scaling::Auto => UMFPACK_DEFAULT_SCALE,
         Scaling::Column => UMFPACK_DEFAULT_SCALE,

@@ -174,7 +174,8 @@ The output looks like this:
     "umfpack_rcond_estimate": 0.0
   },
   "determinant": {
-    "mantissa": 0.0,
+    "mantissa_real": 0.0,
+    "mantissa_imag": 0.0,
     "base": 2.0,
     "exponent": 0.0
   },

@@ -419,7 +419,8 @@ impl LinSolTrait for SolverMUMPS {
         } else {
             "MUMPS".to_string()
         };
-        stats.determinant.mantissa = self.determinant_coefficient;
+        stats.determinant.mantissa_real = self.determinant_coefficient;
+        stats.determinant.mantissa_imag = 0.0;
         stats.determinant.base = 2.0;
         stats.determinant.exponent = self.determinant_exponent;
         stats.output.effective_ordering = match self.effective_ordering {

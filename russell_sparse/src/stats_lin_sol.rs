@@ -49,7 +49,8 @@ pub struct StatsLinSolOutput {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StatsLinSolDeterminant {
     // det = mantissa * pow(base, exponent)
-    pub mantissa: f64,
+    pub mantissa_real: f64, // the real part of the mantissa
+    pub mantissa_imag: f64, // the imaginary part of the mantissa (if complex)
     pub base: f64,
     pub exponent: f64,
 }
@@ -127,7 +128,8 @@ impl StatsLinSol {
                 umfpack_rcond_estimate: 0.0,
             },
             determinant: StatsLinSolDeterminant {
-                mantissa: 0.0,
+                mantissa_real: 0.0,
+                mantissa_imag: 0.0,
                 base: 0.0,
                 exponent: 0.0,
             },

@@ -54,7 +54,7 @@ fn main() -> Result<(), StrError> {
     // analysis
     let mut stats = StatsLinSol::new();
     umfpack.update_stats(&mut stats);
-    let (mx, ex) = (stats.determinant.mantissa, stats.determinant.exponent);
+    let (mx, ex) = (stats.determinant.mantissa_real, stats.determinant.exponent);
     println!("det(a) = {:?}", mx * f64::powf(10.0, ex));
     println!("rcond  = {:?}", stats.output.umfpack_rcond_estimate);
     Ok(())

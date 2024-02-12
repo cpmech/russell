@@ -303,7 +303,8 @@ impl LinSolTrait for SolverIntelDSS {
         } else {
             "INTEL_DSS_IS_NOT_AVAILABLE".to_string()
         };
-        stats.determinant.mantissa = self.determinant_coefficient;
+        stats.determinant.mantissa_real = self.determinant_coefficient;
+        stats.determinant.mantissa_imag = 0.0;
         stats.determinant.base = 10.0;
         stats.determinant.exponent = self.determinant_exponent;
         stats.time_nanoseconds.initialize = self.time_initialize_ns;

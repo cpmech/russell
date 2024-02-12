@@ -1,6 +1,6 @@
 [package]
 name = "russell_sparse"
-version = "0.7.2"
+version = "0.8.0"
 edition = "2021"
 license = "MIT"
 description = "Sparse matrix tools and solvers"
@@ -16,7 +16,7 @@ local_libs = []
 intel_mkl = ["local_libs"]
 
 [dependencies]
-russell_lab = { path = "../russell_lab", version = "0.7.1" }
+russell_lab = { path = "../russell_lab", version = "0.8.0" }
 structopt = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

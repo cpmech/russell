@@ -1,7 +1,7 @@
-name: Test with Compiled Libs
+name: Test with local libs
 on: [pull_request]
 jobs:
-  test_with_compiled_libs:
+  test_with_local_libs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

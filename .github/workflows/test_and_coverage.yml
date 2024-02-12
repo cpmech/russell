@@ -22,7 +22,7 @@ jobs:
         run: |
           cargo llvm-cov --workspace --ignore-filename-regex 'build.rs|mem_check.rs|solve_matrix_market.rs' --lcov --output-path lcov.info
       - name: Upload to codecov.io
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           token: ${{secrets.CODECOV_TOKEN}}
           files: lcov.info

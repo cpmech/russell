@@ -18,17 +18,18 @@ extern "C" {
 /// # Example
 ///
 /// ```
-/// use russell_lab::{complex_vec_update, Vector, StrError};
+/// use russell_lab::{cpx, complex_vec_update, ComplexVector, StrError};
+/// use num_complex::Complex64;
 ///
 /// fn main() -> Result<(), StrError> {
-///     let u = Vector::from(&[10.0, 20.0, 30.0]);
-///     let mut v = Vector::from(&[10.0, 20.0, 30.0]);
-///     complex_vec_update(&mut v, 0.1, &u)?;
-///     let correct = "┌    ┐\n\
-///                    │ 11 │\n\
-///                    │ 22 │\n\
-///                    │ 33 │\n\
-///                    └    ┘";
+///     let u = ComplexVector::from(&[10.0, 20.0, 30.0]);
+///     let mut v = ComplexVector::from(&[10.0, 20.0, 30.0]);
+///     complex_vec_update(&mut v, cpx!(0.1, 0.0), &u)?;
+///     let correct = "┌       ┐\n\
+///                    │ 11+0i │\n\
+///                    │ 22+0i │\n\
+///                    │ 33+0i │\n\
+///                    └       ┘";
 ///     assert_eq!(format!("{}", v), correct);
 ///     Ok(())
 /// }

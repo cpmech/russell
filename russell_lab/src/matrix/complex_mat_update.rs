@@ -17,7 +17,8 @@ extern "C" {
 /// # Example
 ///
 /// ```
-/// use russell_lab::{mat_update, ComplexMatrix, StrError};
+/// use russell_lab::{cpx, complex_mat_update, ComplexMatrix, StrError};
+/// use num_complex::Complex64;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let a = ComplexMatrix::from(&[
@@ -28,11 +29,11 @@ extern "C" {
 ///         [10.0, 20.0, 30.0],
 ///         [40.0, 50.0, 60.0],
 ///     ]);
-///     mat_update(&mut b, 0.1, &a)?;
-///     let correct = "┌          ┐\n\
-///                    │ 11 22 33 │\n\
-///                    │ 44 55 66 │\n\
-///                    └          ┘";
+///     complex_mat_update(&mut b, cpx!(0.1, 0.0), &a)?;
+///     let correct = "┌                   ┐\n\
+///                    │ 11+0i 22+0i 33+0i │\n\
+///                    │ 44+0i 55+0i 66+0i │\n\
+///                    └                   ┘";
 ///     assert_eq!(format!("{}", b), correct);
 ///     Ok(())
 /// }

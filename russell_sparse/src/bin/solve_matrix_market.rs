@@ -128,7 +128,7 @@ fn main() -> Result<(), StrError> {
 
     // verify the solution
     sw.reset();
-    stats.verify = VerifyLinSys::new(&mat, &x, &rhs)?;
+    stats.verify = VerifyLinSys::from(&mat, &x, &rhs)?;
     stats.time_nanoseconds.verify = sw.stop();
 
     // update and print stats

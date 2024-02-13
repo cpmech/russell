@@ -1,5 +1,7 @@
-use super::SparseMatrix;
+use super::{ComplexSparseMatrix, SparseMatrix};
 use crate::StrError;
+use num_complex::Complex64;
+use russell_lab::{complex_vec_norm, complex_vec_update, cpx, ComplexVector};
 use russell_lab::{find_index_abs_max, vec_norm, vec_update, Norm, Vector};
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +15,7 @@ pub struct VerifyLinSys {
 }
 
 impl VerifyLinSys {
-    /// Creates a new verification dataset
+    /// Computes verification data for a sparse system
     ///
     /// ```text
     /// diff : = | a  ⋅  x - rhs|
@@ -93,6 +95,56 @@ impl VerifyLinSys {
             relative_error,
         })
     }
+
+    /// Computes verification data for a complex sparse system
+    ///
+    /// ```text
+    /// diff : = | a  ⋅  x - rhs|
+    ///          (m,n)  (n)  (m)
+    /// ```
+    pub fn from_complex(mat: &ComplexSparseMatrix, x: &ComplexVector, rhs: &ComplexVector) -> Result<Self, StrError> {
+        let (nrow, ncol, _, _) = mat.get_info();
+        if x.dim() != ncol {
+            return Err("x.dim() must be equal to ncol");
+        }
+        if rhs.dim() != nrow {
+            return Err("rhs.dim() must be equal to nrow");
+        }
+
+        // compute max_abs_a
+        let values = mat.get_values();
+        if values.len() < 1 {
+            return Err("matrix is empty");
+        }
+        let nnz = values.len();
+        let mut max_abs_a = 0.0;
+        for k in 0..nnz {
+            let abs = values[k].norm();
+            if abs > max_abs_a {
+                max_abs_a = abs;
+            }
+        }
+
+        // compute max_abs_ax
+        let mut ax = ComplexVector::new(nrow);
+        mat.mat_vec_mul(&mut ax, cpx!(1.0, 0.0), &x).unwrap(); // unwrap bc already checked dims
+        let max_abs_ax = complex_vec_norm(&ax, Norm::Max);
+
+        // compute max_abs_diff
+        complex_vec_update(&mut ax, cpx!(-1.0, 0.0), &rhs).unwrap(); // ax := ax - rhs
+        let max_abs_diff = complex_vec_norm(&ax, Norm::Max);
+
+        // compute relative_error
+        let relative_error = max_abs_diff / (max_abs_a + 1.0);
+
+        // results
+        Ok(VerifyLinSys {
+            max_abs_a,
+            max_abs_ax,
+            max_abs_diff,
+            relative_error,
+        })
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -100,11 +152,13 @@ impl VerifyLinSys {
 #[cfg(test)]
 mod tests {
     use super::VerifyLinSys;
-    use crate::{Samples, SparseMatrix};
-    use russell_lab::{approx_eq, Vector};
+    use crate::{ComplexSparseMatrix, Samples, SparseMatrix};
+    use num_complex::Complex64;
+    use russell_lab::{approx_eq, cpx, ComplexVector, Vector};
 
     #[test]
-    fn new_captures_errors() {
+    fn from_captures_errors() {
+        // real
         let coo = SparseMatrix::new_coo(2, 1, 1, None, false).unwrap();
         let x = Vector::new(1);
         let rhs = Vector::new(2);
@@ -117,6 +171,24 @@ mod tests {
         );
         assert_eq!(
             VerifyLinSys::new(&coo, &x, &rhs_wrong).err(),
+            Some("rhs.dim() must be equal to nrow")
+        );
+        // complex
+        let coo = ComplexSparseMatrix::new_coo(2, 1, 1, None, false).unwrap();
+        let x = ComplexVector::new(1);
+        let rhs = ComplexVector::new(2);
+        assert_eq!(
+            VerifyLinSys::from_complex(&coo, &x, &rhs).err(),
+            Some("matrix is empty")
+        );
+        let x_wrong = ComplexVector::new(2);
+        let rhs_wrong = ComplexVector::new(1);
+        assert_eq!(
+            VerifyLinSys::from_complex(&coo, &x_wrong, &rhs).err(),
+            Some("x.dim() must be equal to ncol")
+        );
+        assert_eq!(
+            VerifyLinSys::from_complex(&coo, &x, &rhs_wrong).err(),
             Some("rhs.dim() must be equal to nrow")
         );
     }
@@ -185,5 +257,32 @@ mod tests {
         assert_eq!(verify.max_abs_ax, 12.0);
         assert_eq!(verify.max_abs_diff, 12.0);
         approx_eq(verify.relative_error, 12.0 / (15.0 + 1.0), 1e-15);
+    }
+
+    #[test]
+    fn new_complex_matrix_works() {
+        // 4+4i    .     2+2i
+        //  .      1     3+3i
+        //  .     5+5i   1+1i
+        //  1      .      .
+        let (coo, _, _, _) = Samples::complex_rectangular_4x3();
+        let mat = ComplexSparseMatrix::from_coo(coo);
+        let x = ComplexVector::from(&[cpx!(1.0, 2.0), cpx!(2.0, -1.0), cpx!(0.0, 1.0)]);
+
+        // zero error
+        let rhs = ComplexVector::from(&[cpx!(-6.0, 14.0), cpx!(-1.0, 2.0), cpx!(14.0, 6.0), cpx!(1.0, 2.0)]);
+        let verify = VerifyLinSys::from_complex(&mat, &x, &rhs).unwrap();
+        approx_eq(verify.max_abs_a, 7.0710678118654755, 1e-15);
+        approx_eq(verify.max_abs_ax, 15.231546211727817, 1e-15);
+        approx_eq(verify.max_abs_diff, 0.0, 1e-15);
+        approx_eq(verify.relative_error, 0.0, 1e-15);
+
+        // with error
+        let rhs = ComplexVector::from(&[cpx!(-6.0, 14.0), cpx!(-1.0, 2.0), cpx!(14.0, 6.0), cpx!(1.0, 0.0)]);
+        let verify = VerifyLinSys::from_complex(&mat, &x, &rhs).unwrap();
+        approx_eq(verify.max_abs_a, 7.0710678118654755, 1e-15);
+        approx_eq(verify.max_abs_ax, 15.231546211727817, 1e-15);
+        approx_eq(verify.max_abs_diff, 2.0, 1e-15);
+        approx_eq(verify.relative_error, 2.0 / (7.0710678118654755 + 1.0), 1e-15);
     }
 }

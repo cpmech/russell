@@ -3,7 +3,7 @@ use crate::{to_i32, StrError};
 
 extern "C" {
     // Computes constant times a vector plus a vector.
-    // <http://www.netlib.org/lapack/explore-html/d9/dcd/daxpy_8f.html>
+    // <https://www.netlib.org/lapack/explore-html/d9/dcd/daxpy_8f.html>
     fn cblas_daxpy(n: i32, alpha: f64, x: *const f64, incx: i32, y: *mut f64, incy: i32);
 }
 

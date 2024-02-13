@@ -5,7 +5,7 @@ use num_complex::Complex64;
 
 extern "C" {
     // Computes the solution to a system of linear equations (complex version)
-    // <http://www.netlib.org/lapack/explore-html/d1/ddc/zgesv_8f.html>
+    // <https://www.netlib.org/lapack/explore-html/d1/ddc/zgesv_8f.html>
     fn c_zgesv(
         n: *const i32,
         nrhs: *const i32,

@@ -4,7 +4,7 @@ use num_complex::Complex64;
 
 extern "C" {
     // Computes the matrix norm (complex version)
-    // <http://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
+    // <https://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
     fn c_zlange(
         norm_code: i32,
         m: *const i32,

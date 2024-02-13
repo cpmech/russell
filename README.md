@@ -7,7 +7,7 @@
 
 ![Bertrand Russell](Bertrand_Russell_1957.jpg)
 
-([CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en). Photo: [Bertrand Russell](https://en.wikipedia.org/wiki/Bertrand_Russell))
+([CC0](https://creativecommons.org/publicdomain/zero/1.0/deed.en). Photo: [Bertrand Russell](https://en.wikipedia.org/wiki/Bertrand_Russell))
 
 ## Contents
 

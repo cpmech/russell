@@ -341,6 +341,31 @@ mod tests {
     }
 
     #[test]
+    fn complex_inverse_3x3_works_imag() {
+        #[rustfmt::skip]
+        let data = [
+            [cpx!( 2.0,  1.0), cpx!(-1.0, -1.0), cpx!( 0.0,  0.0)],
+            [cpx!(-1.0, -1.0), cpx!( 2.0,  2.0), cpx!(-1.0,  1.0)],
+            [cpx!( 0.0,  0.0), cpx!(-1.0,  1.0), cpx!( 2.0, -1.0)],
+        ];
+        let mut a = ComplexMatrix::from(&data);
+        let mut ai = ComplexMatrix::new(3, 3);
+        let det = complex_mat_inverse(&mut ai, &mut a).unwrap();
+        assert_eq!(det, cpx!(6.0, 10.0));
+        #[rustfmt::skip]
+        let ai_correct = &[
+            [cpx!(19.0/34.0, -9.0/34.0), cpx!( 7.0/34.0,  -6.0/34.0), cpx!( 3.0/34.0, -5.0/34.0)],
+            [cpx!( 7.0/34.0, -6.0/34.0), cpx!(15.0/68.0, -25.0/68.0), cpx!( 2.0/34.0, -9.0/34.0)],
+            [cpx!( 3.0/34.0, -5.0/34.0), cpx!( 2.0/34.0,  -9.0/34.0), cpx!(13.0/34.0,  1.0/34.0)],
+        ];
+        complex_mat_approx_eq(&ai, ai_correct, 1e-15);
+        let identity = ComplexMatrix::identity(3);
+        let a_copy = ComplexMatrix::from(&data);
+        let a_ai = get_a_times_ai(&a_copy, &ai);
+        complex_mat_approx_eq(&a_ai, &identity, 1e-15);
+    }
+
+    #[test]
     fn complex_inverse_3x3_fails_on_zero_det() {
         #[rustfmt::skip]
         let mut a = ComplexMatrix::from(&[

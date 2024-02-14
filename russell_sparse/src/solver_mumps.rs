@@ -459,23 +459,23 @@ impl LinSolTrait for SolverMUMPS {
     }
 }
 
-const MUMPS_ORDERING_AMD: i32 = 0; // Amd (page 35)
-const MUMPS_ORDERING_AMF: i32 = 2; // Amf (page 35)
-const MUMPS_ORDERING_AUTO: i32 = 7; // Auto (page 36)
-const MUMPS_ORDERING_METIS: i32 = 5; // Metis (page 35)
-const MUMPS_ORDERING_PORD: i32 = 4; // Pord (page 35)
-const MUMPS_ORDERING_QAMD: i32 = 6; // Qamd (page 35)
-const MUMPS_ORDERING_SCOTCH: i32 = 3; // Scotch (page 35)
+pub(crate) const MUMPS_ORDERING_AMD: i32 = 0; // Amd (page 35)
+pub(crate) const MUMPS_ORDERING_AMF: i32 = 2; // Amf (page 35)
+pub(crate) const MUMPS_ORDERING_AUTO: i32 = 7; // Auto (page 36)
+pub(crate) const MUMPS_ORDERING_METIS: i32 = 5; // Metis (page 35)
+pub(crate) const MUMPS_ORDERING_PORD: i32 = 4; // Pord (page 35)
+pub(crate) const MUMPS_ORDERING_QAMD: i32 = 6; // Qamd (page 35)
+pub(crate) const MUMPS_ORDERING_SCOTCH: i32 = 3; // Scotch (page 35)
 
-const MUMPS_SCALING_AUTO: i32 = 77; // Auto (page 33)
-const MUMPS_SCALING_COLUMN: i32 = 3; // Column (page 33)
-const MUMPS_SCALING_DIAGONAL: i32 = 1; // Diagonal (page 33)
-const MUMPS_SCALING_NO: i32 = 0; // No (page 33)
-const MUMPS_SCALING_ROW_COL: i32 = 4; // RowCol (page 33)
-const MUMPS_SCALING_ROW_COL_ITER: i32 = 7; // RowColIter (page 33)
-const MUMPS_SCALING_ROW_COL_RIG: i32 = 8; // RowColRig (page 33)
+pub(crate) const MUMPS_SCALING_AUTO: i32 = 77; // Auto (page 33)
+pub(crate) const MUMPS_SCALING_COLUMN: i32 = 3; // Column (page 33)
+pub(crate) const MUMPS_SCALING_DIAGONAL: i32 = 1; // Diagonal (page 33)
+pub(crate) const MUMPS_SCALING_NO: i32 = 0; // No (page 33)
+pub(crate) const MUMPS_SCALING_ROW_COL: i32 = 4; // RowCol (page 33)
+pub(crate) const MUMPS_SCALING_ROW_COL_ITER: i32 = 7; // RowColIter (page 33)
+pub(crate) const MUMPS_SCALING_ROW_COL_RIG: i32 = 8; // RowColRig (page 33)
 
-fn mumps_ordering(ordering: Ordering) -> i32 {
+pub(crate) fn mumps_ordering(ordering: Ordering) -> i32 {
     match ordering {
         Ordering::Amd => MUMPS_ORDERING_AMD,       // Amd (page 35)
         Ordering::Amf => MUMPS_ORDERING_AMF,       // Amf (page 35)
@@ -490,7 +490,7 @@ fn mumps_ordering(ordering: Ordering) -> i32 {
     }
 }
 
-fn mumps_scaling(scaling: Scaling) -> i32 {
+pub(crate) fn mumps_scaling(scaling: Scaling) -> i32 {
     match scaling {
         Scaling::Auto => MUMPS_SCALING_AUTO,               // Auto (page 33)
         Scaling::Column => MUMPS_SCALING_COLUMN,           // Column (page 33)
@@ -505,7 +505,7 @@ fn mumps_scaling(scaling: Scaling) -> i32 {
 }
 
 /// Handles error code
-fn handle_mumps_error_code(err: i32) -> StrError {
+pub(crate) fn handle_mumps_error_code(err: i32) -> StrError {
     match err {
         -1 => "Error(-1): error on some processor",
         -2 => "Error(-2): nnz is out of range",

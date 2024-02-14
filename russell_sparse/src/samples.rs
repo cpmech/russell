@@ -70,10 +70,10 @@ impl Samples {
     /// -1   2  -1    =>   -1   2
     ///     -1   2             -1   2
     /// ```
-    pub fn positive_definite_3x3() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn positive_definite_3x3(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let (nrow, ncol, nnz) = (3, 3, 6);
         let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
-        let mut coo = CooMatrix::new(nrow, ncol, nnz, sym, false).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, nnz, sym, one_based).unwrap();
         coo.put(1, 0, -0.5).unwrap(); // duplicate
         coo.put(0, 0, 2.0).unwrap();
         coo.put(2, 2, 2.0).unwrap();
@@ -116,10 +116,12 @@ impl Samples {
     /// -1-1i   2+2i  -1+1i     =>   -1-1i   2+2i       
     ///        -1+1i   2-1i                 -1+1i   2-1i
     /// ```
-    pub fn complex_symmetric_3x3_lower() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
+    pub fn complex_symmetric_3x3_lower(
+        one_based: bool,
+    ) -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
         let (nrow, ncol, nnz) = (3, 3, 6);
         let sym = Some(Symmetry::General(Storage::Lower));
-        let mut coo = ComplexCooMatrix::new(nrow, ncol, nnz, sym, false).unwrap();
+        let mut coo = ComplexCooMatrix::new(nrow, ncol, nnz, sym, one_based).unwrap();
         coo.put(1, 0, cpx!(-0.5, -0.5)).unwrap(); // duplicate
         coo.put(0, 0, cpx!(2.0, 1.0)).unwrap();
         coo.put(2, 2, cpx!(2.0, -1.0)).unwrap();
@@ -1488,7 +1490,7 @@ mod tests {
         let a = Matrix::from(correct);
         let mut ai = Matrix::new(3, 3);
         let correct_det = mat_inverse(&mut ai, &a).unwrap();
-        let (coo, csc, csr, det) = Samples::positive_definite_3x3();
+        let (coo, csc, csr, det) = Samples::positive_definite_3x3(false);
         approx_eq(det, correct_det, 1e-15);
         mat_approx_eq(&coo.as_dense(), correct, 1e-15);
         mat_approx_eq(&csc.as_dense(), correct, 1e-15);
@@ -1507,7 +1509,7 @@ mod tests {
         let mut ai = ComplexMatrix::new(3, 3);
         let correct_det = complex_mat_inverse(&mut ai, &a).unwrap();
         // lower
-        let (coo, csc, csr, det) = Samples::complex_symmetric_3x3_lower();
+        let (coo, csc, csr, det) = Samples::complex_symmetric_3x3_lower(false);
         complex_approx_eq(det, correct_det, 1e-15);
         complex_mat_approx_eq(&coo.as_dense(), correct, 1e-15);
         complex_mat_approx_eq(&csc.as_dense(), correct, 1e-15);

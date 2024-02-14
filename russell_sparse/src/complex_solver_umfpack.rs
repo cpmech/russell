@@ -431,7 +431,7 @@ mod tests {
             solver.factorize(&mut mat, None).err(),
             Some("the matrix must be square")
         );
-        let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower(false);
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),

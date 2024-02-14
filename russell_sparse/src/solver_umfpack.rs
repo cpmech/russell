@@ -565,26 +565,60 @@ mod tests {
 
     #[test]
     fn solve_handles_errors() {
-        let (coo, _, _, _) = Samples::tiny_1x1(false);
+        let mut coo = CooMatrix::new(2, 2, 2, None, false).unwrap();
+        coo.put(0, 0, 123.0).unwrap();
+        coo.put(1, 1, 456.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
         let mut solver = SolverUMFPACK::new().unwrap();
         assert!(!solver.factorized);
         let mut x = Vector::new(2);
-        let rhs = Vector::new(1);
+        let rhs = Vector::new(2);
         assert_eq!(
             solver.solve(&mut x, &mut mat, &rhs, false),
             Err("the function factorize must be called before solve")
         );
+        let mut x = Vector::new(1);
         solver.factorize(&mut mat, None).unwrap();
         assert_eq!(
             solver.solve(&mut x, &mut mat, &rhs, false),
             Err("the dimension of the vector of unknown values x is incorrect")
         );
-        let mut x = Vector::new(1);
-        let rhs = Vector::new(2);
+        let mut x = Vector::new(2);
+        let rhs = Vector::new(1);
         assert_eq!(
             solver.solve(&mut x, &mut mat, &rhs, false),
             Err("the dimension of the right-hand side vector is incorrect")
+        );
+        // wrong symmetry
+        let rhs = Vector::new(2);
+        let mut coo_wrong = CooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full)), false).unwrap();
+        coo_wrong.put(0, 0, 123.0).unwrap();
+        coo_wrong.put(1, 1, 456.0).unwrap();
+        let mut mat_wrong = SparseMatrix::from_coo(coo_wrong);
+        mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
+        assert_eq!(
+            solver.solve(&mut x, &mut mat_wrong, &rhs, false),
+            Err("solve must use the same matrix (symmetry differs)")
+        );
+        // wrong ndim
+        let mut coo_wrong = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        coo_wrong.put(0, 0, 123.0).unwrap();
+        let mut mat_wrong = SparseMatrix::from_coo(coo_wrong);
+        mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
+        assert_eq!(
+            solver.solve(&mut x, &mut mat_wrong, &rhs, false),
+            Err("solve must use the same matrix (ndim differs)")
+        );
+        // wrong nnz
+        let mut coo_wrong = CooMatrix::new(2, 2, 3, None, false).unwrap();
+        coo_wrong.put(0, 0, 123.0).unwrap();
+        coo_wrong.put(1, 1, 123.0).unwrap();
+        coo_wrong.put(0, 1, 100.0).unwrap();
+        let mut mat_wrong = SparseMatrix::from_coo(coo_wrong);
+        mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
+        assert_eq!(
+            solver.solve(&mut x, &mut mat_wrong, &rhs, false),
+            Err("solve must use the same matrix (nnz differs)")
         );
     }
 

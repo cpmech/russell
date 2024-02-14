@@ -11,8 +11,6 @@ pub struct Samples {}
 impl Samples {
     /// Returns a (1 x 1) matrix
     ///
-    /// Note: the last return value is not the determinant, but a PLACEHOLDER
-    ///
     /// ```text
     /// ┌     ┐
     /// │ 123 │
@@ -36,6 +34,33 @@ impl Samples {
         let values = vec![123.0];
         let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
         (coo, csc, csr, 123.0)
+    }
+
+    /// Returns a (1 x 1) matrix (complex version)
+    ///
+    /// ```text
+    /// ┌       ┐
+    /// │ 12+3i │
+    /// └       ┘
+    /// ```
+    pub fn complex_tiny_1x1(one_based: bool) -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
+        let sym = None;
+        let nrow = 1;
+        let ncol = 1;
+        let max_nnz = 1;
+        let mut coo = ComplexCooMatrix::new(nrow, ncol, max_nnz, sym, one_based).unwrap();
+        coo.put(0, 0, cpx!(12.0, 3.0)).unwrap();
+        // CSC matrix
+        let col_pointers = vec![0, 1];
+        let row_indices = vec![0];
+        let values = vec![cpx!(12.0, 3.0)];
+        let csc = ComplexCscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
+        // CSR matrix
+        let row_pointers = vec![0, 1];
+        let col_indices = vec![0];
+        let values = vec![cpx!(12.0, 3.0)];
+        let csr = ComplexCsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
+        (coo, csc, csr, cpx!(12.0, 3.0))
     }
 
     /// Returns a (3 x 3) positive definite matrix
@@ -1427,10 +1452,29 @@ mod tests {
             Samples::tiny_1x1(false), //
             Samples::tiny_1x1(true),  //
         ] {
-            approx_eq(det, correct_det, 1e-13);
+            approx_eq(det, correct_det, 1e-15);
             mat_approx_eq(&coo.as_dense(), correct, 1e-15);
             mat_approx_eq(&csc.as_dense(), correct, 1e-15);
             mat_approx_eq(&csr.as_dense(), correct, 1e-15);
+            check(&coo, &csc, &csr);
+        }
+
+        // ----------------------------------------------------------------------------
+
+        let correct = &[
+            [cpx!(12.0, 3.0)], //
+        ];
+        let a = ComplexMatrix::from(correct);
+        let mut ai = ComplexMatrix::new(1, 1);
+        let correct_det = complex_mat_inverse(&mut ai, &a).unwrap();
+        for (coo, csc, csr, det) in [
+            Samples::complex_tiny_1x1(false), //
+            Samples::complex_tiny_1x1(true),  //
+        ] {
+            complex_approx_eq(det, correct_det, 1e-15);
+            complex_mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+            complex_mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+            complex_mat_approx_eq(&csr.as_dense(), correct, 1e-15);
             check(&coo, &csc, &csr);
         }
 

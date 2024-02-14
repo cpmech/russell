@@ -374,21 +374,21 @@ impl LinSolTrait for SolverUMFPACK {
     }
 }
 
-const UMFPACK_STRATEGY_AUTO: i32 = 0; // use symmetric or unsymmetric strategy
-const UMFPACK_STRATEGY_UNSYMMETRIC: i32 = 1; // COLAMD(A), col-tree post-order, do not prefer diag
-const UMFPACK_STRATEGY_SYMMETRIC: i32 = 3; // AMD(A+A'), no col-tree post-order, prefer diagonal
+pub(crate) const UMFPACK_STRATEGY_AUTO: i32 = 0; // use symmetric or unsymmetric strategy
+pub(crate) const UMFPACK_STRATEGY_UNSYMMETRIC: i32 = 1; // COLAMD(A), col-tree post-order, do not prefer diag
+pub(crate) const UMFPACK_STRATEGY_SYMMETRIC: i32 = 3; // AMD(A+A'), no col-tree post-order, prefer diagonal
 
-const UMFPACK_ORDERING_CHOLMOD: i32 = 0; // use CHOLMOD (AMD/COLAMD then METIS)
-const UMFPACK_ORDERING_AMD: i32 = 1; // use AMD/COLAMD
-const UMFPACK_ORDERING_METIS: i32 = 3; // use METIS
-const UMFPACK_ORDERING_BEST: i32 = 4; // try many orderings, pick best
-const UMFPACK_ORDERING_NONE: i32 = 5; // natural ordering
-const UMFPACK_DEFAULT_ORDERING: i32 = UMFPACK_ORDERING_AMD;
+pub(crate) const UMFPACK_ORDERING_CHOLMOD: i32 = 0; // use CHOLMOD (AMD/COLAMD then METIS)
+pub(crate) const UMFPACK_ORDERING_AMD: i32 = 1; // use AMD/COLAMD
+pub(crate) const UMFPACK_ORDERING_METIS: i32 = 3; // use METIS
+pub(crate) const UMFPACK_ORDERING_BEST: i32 = 4; // try many orderings, pick best
+pub(crate) const UMFPACK_ORDERING_NONE: i32 = 5; // natural ordering
+pub(crate) const UMFPACK_DEFAULT_ORDERING: i32 = UMFPACK_ORDERING_AMD;
 
-const UMFPACK_SCALE_NONE: i32 = 0; // no scaling
-const UMFPACK_SCALE_SUM: i32 = 1; // default: divide each row by sum (abs (row))
-const UMFPACK_SCALE_MAX: i32 = 2; // divide each row by max (abs (row))
-const UMFPACK_DEFAULT_SCALE: i32 = UMFPACK_SCALE_SUM;
+pub(crate) const UMFPACK_SCALE_NONE: i32 = 0; // no scaling
+pub(crate) const UMFPACK_SCALE_SUM: i32 = 1; // default: divide each row by sum (abs (row))
+pub(crate) const UMFPACK_SCALE_MAX: i32 = 2; // divide each row by max (abs (row))
+pub(crate) const UMFPACK_DEFAULT_SCALE: i32 = UMFPACK_SCALE_SUM;
 
 /// Returns the UMFPACK ordering constant
 pub(crate) fn umfpack_ordering(ordering: Ordering) -> i32 {

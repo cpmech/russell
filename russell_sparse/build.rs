@@ -13,6 +13,7 @@ fn handle_local_libs() {
     println!("cargo:rustc-cfg=local_mumps");
     // local UMFPACK
     cc::Build::new()
+        .file("c_code/interface_complex_umfpack.c")
         .file("c_code/interface_umfpack.c")
         .include("/usr/local/include/umfpack")
         .compile("c_code_interface_umfpack");
@@ -30,6 +31,7 @@ fn handle_local_libs() {
     println!("cargo:rustc-link-lib=dylib=dmumps_seq");
     // UMFPACK
     cc::Build::new()
+        .file("c_code/interface_complex_umfpack.c")
         .file("c_code/interface_umfpack.c")
         .include("/usr/include/suitesparse")
         .compile("c_code_interface_umfpack");

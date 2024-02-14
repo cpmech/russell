@@ -14,3 +14,8 @@
 #define C_FALSE 0
 
 #define C_BOOL int32_t
+
+#define COMPLEX64 double
+
+#define UMFPACK_PRINT_LEVEL_SILENT 0.0  // page 116
+#define UMFPACK_PRINT_LEVEL_VERBOSE 2.0 // page 116

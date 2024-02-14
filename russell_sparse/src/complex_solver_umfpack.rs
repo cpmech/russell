@@ -400,11 +400,103 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{ComplexCooMatrix, ComplexSparseMatrix, Ordering, Samples, Scaling, Storage};
+    use russell_lab::{complex_approx_eq, complex_vec_approx_eq, cpx, ComplexVector};
 
     #[test]
     fn new_and_drop_work() {
         // you may debug into the C-code to see that drop is working
         let solver = ComplexSolverUMFPACK::new().unwrap();
         assert!(!solver.factorized);
+    }
+
+    #[test]
+    fn factorize_handles_errors() {
+        let mut solver = ComplexSolverUMFPACK::new().unwrap();
+        assert!(!solver.factorized);
+
+        // COO to CSC errors
+        let coo = ComplexCooMatrix::new(1, 1, 1, None, false).unwrap();
+        let mut mat = ComplexSparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("COO to CSC requires nnz > 0")
+        );
+
+        // check CSC matrix
+        let (coo, _, _, _) = Samples::complex_rectangular_4x3();
+        let mut mat = ComplexSparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("the matrix must be square")
+        );
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
+        let mut mat = ComplexSparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("for UMFPACK, the matrix must not be triangular")
+        );
+
+        // check already factorized data
+        let mut coo = ComplexCooMatrix::new(2, 2, 2, None, false).unwrap();
+        coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
+        coo.put(1, 1, cpx!(2.0, 0.0)).unwrap();
+        let mut mat = ComplexSparseMatrix::from_coo(coo);
+        // ... factorize once => OK
+        solver.factorize(&mut mat, None).unwrap();
+        // ... change matrix (symmetry)
+        let mut coo = ComplexCooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full)), false).unwrap();
+        coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
+        coo.put(1, 1, cpx!(2.0, 0.0)).unwrap();
+        let mut mat = ComplexSparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("subsequent factorizations must use the same matrix (symmetry differs)")
+        );
+        // ... change matrix (ndim)
+        let mut coo = ComplexCooMatrix::new(1, 1, 1, None, false).unwrap();
+        coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
+        let mut mat = ComplexSparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("subsequent factorizations must use the same matrix (ndim differs)")
+        );
+        // ... change matrix (nnz)
+        let mut coo = ComplexCooMatrix::new(2, 2, 1, None, false).unwrap();
+        coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
+        let mut mat = ComplexSparseMatrix::from_coo(coo);
+        assert_eq!(
+            solver.factorize(&mut mat, None).err(),
+            Some("subsequent factorizations must use the same matrix (nnz differs)")
+        );
+    }
+
+    #[test]
+    fn factorize_works() {
+        let mut solver = ComplexSolverUMFPACK::new().unwrap();
+        assert!(!solver.factorized);
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
+        let mut mat = ComplexSparseMatrix::from_coo(coo);
+        let mut params = LinSolParams::new();
+
+        params.compute_determinant = true;
+        params.ordering = Ordering::Amd;
+        params.scaling = Scaling::Sum;
+
+        solver.factorize(&mut mat, Some(params)).unwrap();
+        assert!(solver.factorized);
+
+        assert_eq!(solver.effective_ordering, UMFPACK_ORDERING_AMD);
+        assert_eq!(solver.effective_scaling, UMFPACK_SCALE_SUM);
+
+        let m = cpx!(solver.determinant_coefficient_real, solver.determinant_coefficient_imag);
+        let det = m * f64::powf(10.0, solver.determinant_exponent);
+        complex_approx_eq(det, cpx!(6.0, 0.0), 1e-15);
+
+        // calling factorize again works
+        solver.factorize(&mut mat, Some(params)).unwrap();
+        let m = cpx!(solver.determinant_coefficient_real, solver.determinant_coefficient_imag);
+        let det = m * f64::powf(10.0, solver.determinant_exponent);
+        complex_approx_eq(det, cpx!(6.0, 0.0), 1e-13);
     }
 }

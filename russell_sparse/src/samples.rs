@@ -84,14 +84,14 @@ impl Samples {
         (coo, csc, csr, 4.0)
     }
 
-    /// Returns a (3 x 3) positive definite matrix (complex version)
+    /// Returns a complex symmetric (3 x 3) matrix (lower storage)
     ///
     /// ```text
     ///  2+i  -1-i              2+i       sym
     /// -1-i    2   -1+i   =>  -1-i   2
     ///       -1+i   2-i            -1+i  2-i
     /// ```
-    pub fn complex_symmetric_3x3() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
+    pub fn complex_symmetric_3x3_lower() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
         let (nrow, ncol, nnz) = (3, 3, 6);
         let sym = Some(Symmetry::General(Storage::Lower));
         let mut coo = ComplexCooMatrix::new(nrow, ncol, nnz, sym, false).unwrap();
@@ -128,6 +128,56 @@ impl Samples {
             cpx!(-1.0, -1.0), cpx!(2.0, 0.0),  // i=1, p=(1),2
             cpx!(-1.0,  1.0), cpx!(2.0, -1.0), // i=2, p=(3),4
         ]; //                                            (5)
+        let csr = ComplexCsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
+        (coo, csc, csr, cpx!(6.0, 0.0))
+    }
+
+    /// Returns a complex symmetric (3 x 3) matrix (full storage)
+    ///
+    /// ```text
+    ///  2+i  -1-i      
+    /// -1-i    2   -1+i
+    ///       -1+i   2-i
+    /// ```
+    pub fn complex_symmetric_3x3_full() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
+        let (nrow, ncol, nnz) = (3, 3, 8);
+        let sym = Some(Symmetry::General(Storage::Full));
+        let mut coo = ComplexCooMatrix::new(nrow, ncol, nnz, sym, false).unwrap();
+        coo.put(1, 0, cpx!(-0.5, -0.5)).unwrap(); // duplicate
+        coo.put(0, 0, cpx!(2.0, 1.0)).unwrap();
+        coo.put(2, 2, cpx!(2.0, -1.0)).unwrap();
+        coo.put(1, 0, cpx!(-0.5, -0.5)).unwrap(); // duplicate
+        coo.put(1, 1, cpx!(2.0, 0.0)).unwrap();
+        coo.put(2, 1, cpx!(-1.0, 1.0)).unwrap();
+        coo.put(0, 1, cpx!(-1.0, -1.0)).unwrap();
+        coo.put(1, 2, cpx!(-1.0, 1.0)).unwrap();
+        // CSC matrix
+        let col_pointers = vec![0, 2, 5, 7];
+        let row_indices = vec![
+            0, 1, //    j=0, p=(0),1
+            0, 1, 2, // j=1, p=(2),3,4
+            1, 2, //    j=2, p=(5),6
+        ]; //                  (7)
+        #[rustfmt::skip]
+        let values = vec![
+            cpx!( 2.0,  1.0), cpx!(-1.0, -1.0), //                  j=0, p=(0),1
+            cpx!(-1.0, -1.0), cpx!( 2.0,  0.0), cpx!(-1.0, 1.0), // j=1, p=(2),3,4
+            cpx!(-1.0,  1.0), cpx!( 2.0, -1.0), //                  j=2, p=(5),6
+        ]; //                                                              (7)
+        let csc = ComplexCscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
+        // CSR matrix
+        let row_pointers = vec![0, 2, 5, 7];
+        let col_indices = vec![
+            0, 1, //    i=0, p=(0),1
+            0, 1, 2, // i=1, p=(2),3,4
+            1, 2, //    i=2, p=(5),6
+        ]; //                  (7)
+        #[rustfmt::skip]
+        let values = vec![
+            cpx!( 2.0,  1.0), cpx!(-1.0, -1.0), //                  i=0, p=(0),1
+            cpx!(-1.0, -1.0), cpx!( 2.0,  0.0), cpx!(-1.0, 1.0), // i=1, p=(2),3,4
+            cpx!(-1.0,  1.0), cpx!( 2.0, -1.0), //                  i=2, p=(5),6
+        ]; //                                                              (7)
         let csr = ComplexCsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
         (coo, csc, csr, cpx!(6.0, 0.0))
     }
@@ -1412,7 +1462,15 @@ mod tests {
         let a = ComplexMatrix::from(correct);
         let mut ai = ComplexMatrix::new(3, 3);
         let correct_det = complex_mat_inverse(&mut ai, &a).unwrap();
-        let (coo, csc, csr, det) = Samples::complex_symmetric_3x3();
+        // lower
+        let (coo, csc, csr, det) = Samples::complex_symmetric_3x3_lower();
+        complex_approx_eq(det, correct_det, 1e-15);
+        complex_mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        complex_mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        complex_mat_approx_eq(&csr.as_dense(), correct, 1e-15);
+        check(&coo, &csc, &csr);
+        // full
+        let (coo, csc, csr, det) = Samples::complex_symmetric_3x3_full();
         complex_approx_eq(det, correct_det, 1e-15);
         complex_mat_approx_eq(&coo.as_dense(), correct, 1e-15);
         complex_mat_approx_eq(&csc.as_dense(), correct, 1e-15);

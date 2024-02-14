@@ -597,8 +597,10 @@ mod tests {
     use super::*;
     use crate::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix, Storage, Symmetry};
     use russell_lab::{approx_eq, vec_approx_eq, Vector};
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn complete_solution_cycle_works() {
         // IMPORTANT:
         // Since MUMPS is not thread-safe, we need to call all MUMPS functions

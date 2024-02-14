@@ -91,6 +91,7 @@
     "zgetri",
     "zherk",
     "zlange",
+    "ZMUMPS",
     "Zonneveld",
     "zpotrf",
     "zscal",

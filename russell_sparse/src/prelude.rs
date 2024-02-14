@@ -5,6 +5,7 @@
 
 pub use crate::aliases::*;
 pub use crate::complex_lin_solver::*;
+pub use crate::complex_solver_mumps::ComplexSolverMUMPS;
 pub use crate::complex_solver_umfpack::ComplexSolverUMFPACK;
 pub use crate::coo_matrix::NumCooMatrix;
 pub use crate::csc_matrix::NumCscMatrix;

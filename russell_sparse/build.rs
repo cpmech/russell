@@ -5,11 +5,13 @@ const MKL_VERSION: &str = "2023.2.0";
 fn handle_local_libs() {
     // local MUMPS
     cc::Build::new()
+        .file("c_code/interface_complex_mumps.c")
         .file("c_code/interface_mumps.c")
         .include("/usr/local/include/mumps")
         .compile("c_code_interface_mumps");
     println!("cargo:rustc-link-search=native=/usr/local/lib/mumps");
     println!("cargo:rustc-link-lib=dylib=dmumps_cpmech");
+    println!("cargo:rustc-link-lib=dylib=zmumps_cpmech");
     println!("cargo:rustc-cfg=local_mumps");
     // local UMFPACK
     cc::Build::new()
@@ -26,9 +28,11 @@ fn handle_local_libs() {
 fn handle_local_libs() {
     // MUMPS
     cc::Build::new()
+        .file("c_code/interface_complex_mumps.c")
         .file("c_code/interface_mumps.c")
         .compile("c_code_interface_mumps");
     println!("cargo:rustc-link-lib=dylib=dmumps_seq");
+    println!("cargo:rustc-link-lib=dylib=zmumps_seq");
     // UMFPACK
     cc::Build::new()
         .file("c_code/interface_complex_umfpack.c")

@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "dmumps_c.h"
+#include "zmumps_c.h"
 
 #include "constants.h"
 
@@ -13,9 +13,9 @@
 #define INFO(i) info[(i)-1]     // macro to make indices match documentation
 
 /// @brief Holds the data for MUMPS
-struct InterfaceMUMPS {
+struct InterfaceComplexMUMPS {
     /// @brief Holds the MUMPS data structure
-    DMUMPS_STRUC_C data;
+    ZMUMPS_STRUC_C data;
 
     /// @brief job init completed successfully
     int32_t done_job_init;
@@ -30,7 +30,7 @@ struct InterfaceMUMPS {
 /// @brief Sets verbose mode
 /// @param data Is the MUMPS data structure
 /// @param verbose Shows messages or not
-static inline void set_mumps_verbose(DMUMPS_STRUC_C *data, int32_t verbose) {
+static inline void set_mumps_verbose(ZMUMPS_STRUC_C *data, int32_t verbose) {
     if (verbose == C_TRUE) {
         data->ICNTL(1) = 6; // standard output stream
         data->ICNTL(2) = 0; // output stream
@@ -45,8 +45,8 @@ static inline void set_mumps_verbose(DMUMPS_STRUC_C *data, int32_t verbose) {
 }
 
 /// @brief Allocates a new MUMPS interface
-struct InterfaceMUMPS *solver_mumps_new() {
-    struct InterfaceMUMPS *solver = (struct InterfaceMUMPS *)malloc(sizeof(struct InterfaceMUMPS));
+struct InterfaceComplexMUMPS *complex_solver_mumps_new() {
+    struct InterfaceComplexMUMPS *solver = (struct InterfaceComplexMUMPS *)malloc(sizeof(struct InterfaceComplexMUMPS));
 
     if (solver == NULL) {
         return NULL;
@@ -63,7 +63,7 @@ struct InterfaceMUMPS *solver_mumps_new() {
 }
 
 /// @brief Deallocates the MUMPS interface
-void solver_mumps_drop(struct InterfaceMUMPS *solver) {
+void complex_solver_mumps_drop(struct InterfaceComplexMUMPS *solver) {
     if (solver == NULL) {
         return;
     }
@@ -76,7 +76,7 @@ void solver_mumps_drop(struct InterfaceMUMPS *solver) {
     if (solver->done_job_init == C_TRUE) {
         set_mumps_verbose(&solver->data, C_FALSE);
         solver->data.job = MUMPS_JOB_TERMINATE;
-        dmumps_c(&solver->data);
+        zmumps_c(&solver->data);
     }
 
     free(solver);
@@ -84,20 +84,20 @@ void solver_mumps_drop(struct InterfaceMUMPS *solver) {
 
 /// @brief Perform analysis just once (considering that the matrix structure remains constant)
 /// @return A success or fail code
-int32_t solver_mumps_initialize(struct InterfaceMUMPS *solver,
-                                int32_t ordering,
-                                int32_t scaling,
-                                int32_t pct_inc_workspace,
-                                int32_t max_work_memory,
-                                int32_t openmp_num_threads,
-                                C_BOOL verbose,
-                                C_BOOL general_symmetric,
-                                C_BOOL positive_definite,
-                                int32_t ndim,
-                                int32_t nnz,
-                                int32_t const *indices_i,
-                                int32_t const *indices_j,
-                                double const *values_aij) {
+int32_t complex_solver_mumps_initialize(struct InterfaceComplexMUMPS *solver,
+                                        int32_t ordering,
+                                        int32_t scaling,
+                                        int32_t pct_inc_workspace,
+                                        int32_t max_work_memory,
+                                        int32_t openmp_num_threads,
+                                        C_BOOL verbose,
+                                        C_BOOL general_symmetric,
+                                        C_BOOL positive_definite,
+                                        int32_t ndim,
+                                        int32_t nnz,
+                                        int32_t const *indices_i,
+                                        int32_t const *indices_j,
+                                        ZMUMPS_COMPLEX const *values_aij) {
     if (solver == NULL) {
         return ERROR_NULL_POINTER;
     }
@@ -117,7 +117,7 @@ int32_t solver_mumps_initialize(struct InterfaceMUMPS *solver,
 
     set_mumps_verbose(&solver->data, C_FALSE);
     solver->data.job = MUMPS_JOB_INITIALIZE;
-    dmumps_c(&solver->data);
+    zmumps_c(&solver->data);
     if (solver->data.INFOG(1) != 0) {
         return solver->data.INFOG(1);
     }
@@ -149,11 +149,11 @@ int32_t solver_mumps_initialize(struct InterfaceMUMPS *solver,
     solver->data.nz = nnz;
     solver->data.irn = (int *)indices_i;
     solver->data.jcn = (int *)indices_j;
-    solver->data.a = (double *)values_aij;
+    solver->data.a = (ZMUMPS_COMPLEX *)values_aij;
 
     set_mumps_verbose(&solver->data, verbose);
     solver->data.job = MUMPS_JOB_ANALYZE;
-    dmumps_c(&solver->data);
+    zmumps_c(&solver->data);
 
     if (solver->data.INFO(1) != 0) {
         return solver->data.INFOG(1); // error
@@ -166,13 +166,14 @@ int32_t solver_mumps_initialize(struct InterfaceMUMPS *solver,
 
 /// @brief Performs the factorization
 /// @return A success or fail code
-int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
-                               int32_t *effective_ordering,
-                               int32_t *effective_scaling,
-                               double *determinant_coefficient,
-                               double *determinant_exponent,
-                               C_BOOL compute_determinant,
-                               C_BOOL verbose) {
+int32_t complex_solver_mumps_factorize(struct InterfaceComplexMUMPS *solver,
+                                       int32_t *effective_ordering,
+                                       int32_t *effective_scaling,
+                                       double *determinant_coefficient_real,
+                                       double *determinant_coefficient_imag,
+                                       double *determinant_exponent,
+                                       C_BOOL compute_determinant,
+                                       C_BOOL verbose) {
     if (solver == NULL) {
         return ERROR_NULL_POINTER;
     }
@@ -194,7 +195,7 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
 
     set_mumps_verbose(&solver->data, verbose);
     solver->data.job = MUMPS_JOB_FACTORIZE;
-    dmumps_c(&solver->data);
+    zmumps_c(&solver->data);
 
     // save the output params
 
@@ -204,10 +205,12 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
     // read the determinant
 
     if (compute_determinant == C_TRUE && solver->data.ICNTL(33) == 1) {
-        *determinant_coefficient = solver->data.RINFOG(12);
+        *determinant_coefficient_real = solver->data.RINFOG(12);
+        *determinant_coefficient_imag = solver->data.RINFOG(13);
         *determinant_exponent = solver->data.INFOG(34);
     } else {
-        *determinant_coefficient = 0.0;
+        *determinant_coefficient_real = 0.0;
+        *determinant_coefficient_imag = 0.0;
         *determinant_exponent = 0.0;
     }
 
@@ -223,11 +226,11 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
 /// @param error_analysis_option ICNTL(11): 0 (nothing), 1 (all; slow), 2 (just errors)
 /// @param verbose Shows messages
 /// @return A success or fail code
-int32_t solver_mumps_solve(struct InterfaceMUMPS *solver,
-                           double *rhs,
-                           double *error_analysis_array_len_8,
-                           int32_t error_analysis_option,
-                           C_BOOL verbose) {
+int32_t complex_solver_mumps_solve(struct InterfaceComplexMUMPS *solver,
+                                   ZMUMPS_COMPLEX *rhs,
+                                   double *error_analysis_array_len_8,
+                                   int32_t error_analysis_option,
+                                   C_BOOL verbose) {
     if (solver == NULL) {
         return ERROR_NULL_POINTER;
     }
@@ -242,7 +245,7 @@ int32_t solver_mumps_solve(struct InterfaceMUMPS *solver,
 
     set_mumps_verbose(&solver->data, verbose);
     solver->data.job = MUMPS_JOB_SOLVE;
-    dmumps_c(&solver->data);
+    zmumps_c(&solver->data);
 
     if (error_analysis_option > 0) {
         error_analysis_array_len_8[0] = solver->data.RINFOG(4); // norm_a

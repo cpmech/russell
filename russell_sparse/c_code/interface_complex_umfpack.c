@@ -175,6 +175,10 @@ int32_t complex_solver_umfpack_factorize(struct InterfaceComplexUMFPACK *solver,
                                           determinant_exponent,
                                           solver->numeric,
                                           solver->info);
+    } else {
+        *determinant_coefficient_real = 0.0;
+        *determinant_coefficient_imag = 0.0;
+        *determinant_exponent = 0.0;
     }
 
     solver->factorization_completed = C_TRUE;

@@ -401,6 +401,7 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
 mod tests {
     use super::*;
     use crate::{ComplexCooMatrix, ComplexSparseMatrix, Ordering, Samples, Scaling, Storage};
+    use num_complex::Complex64;
     use russell_lab::{complex_approx_eq, complex_vec_approx_eq, cpx, ComplexVector};
 
     #[test]

@@ -87,9 +87,9 @@ impl Samples {
     /// Returns a complex symmetric (3 x 3) matrix (lower storage)
     ///
     /// ```text
-    ///  2+i  -1-i              2+i       sym
-    /// -1-i    2   -1+i   =>  -1-i   2
-    ///       -1+i   2-i            -1+i  2-i
+    ///  2+1i  -1-1i                  2+1i          sym
+    /// -1-1i   2+2i  -1+1i     =>   -1-1i   2+2i       
+    ///        -1+1i   2-1i                 -1+1i   2-1i
     /// ```
     pub fn complex_symmetric_3x3_lower() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
         let (nrow, ncol, nnz) = (3, 3, 6);
@@ -99,7 +99,7 @@ impl Samples {
         coo.put(0, 0, cpx!(2.0, 1.0)).unwrap();
         coo.put(2, 2, cpx!(2.0, -1.0)).unwrap();
         coo.put(1, 0, cpx!(-0.5, -0.5)).unwrap(); // duplicate
-        coo.put(1, 1, cpx!(2.0, 0.0)).unwrap();
+        coo.put(1, 1, cpx!(2.0, 2.0)).unwrap();
         coo.put(2, 1, cpx!(-1.0, 1.0)).unwrap();
         // CSC matrix
         let col_pointers = vec![0, 2, 4, 5];
@@ -111,7 +111,7 @@ impl Samples {
         #[rustfmt::skip]
         let values = vec![
             cpx!(2.0,  1.0), cpx!(-1.0, -1.0), // j=0, p=(0),1
-            cpx!(2.0,  0.0), cpx!(-1.0,  1.0), // j=1, p=(2),3
+            cpx!(2.0,  2.0), cpx!(-1.0,  1.0), // j=1, p=(2),3
             cpx!(2.0, -1.0), //                   j=2, p=(4)
         ]; //                                            (5)
         let csc = ComplexCscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
@@ -125,19 +125,19 @@ impl Samples {
         #[rustfmt::skip]
         let values = vec![
             cpx!( 2.0,  1.0), //                  i=0, p=(0)
-            cpx!(-1.0, -1.0), cpx!(2.0, 0.0),  // i=1, p=(1),2
+            cpx!(-1.0, -1.0), cpx!(2.0,  2.0), // i=1, p=(1),2
             cpx!(-1.0,  1.0), cpx!(2.0, -1.0), // i=2, p=(3),4
         ]; //                                            (5)
         let csr = ComplexCsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
-        (coo, csc, csr, cpx!(6.0, 0.0))
+        (coo, csc, csr, cpx!(6.0, 10.0))
     }
 
     /// Returns a complex symmetric (3 x 3) matrix (full storage)
     ///
     /// ```text
-    ///  2+i  -1-i      
-    /// -1-i    2   -1+i
-    ///       -1+i   2-i
+    ///  2+1i  -1-1i      
+    /// -1-1i   2+2i  -1+1i
+    ///        -1+1i   2-1i
     /// ```
     pub fn complex_symmetric_3x3_full() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
         let (nrow, ncol, nnz) = (3, 3, 8);
@@ -147,7 +147,7 @@ impl Samples {
         coo.put(0, 0, cpx!(2.0, 1.0)).unwrap();
         coo.put(2, 2, cpx!(2.0, -1.0)).unwrap();
         coo.put(1, 0, cpx!(-0.5, -0.5)).unwrap(); // duplicate
-        coo.put(1, 1, cpx!(2.0, 0.0)).unwrap();
+        coo.put(1, 1, cpx!(2.0, 2.0)).unwrap();
         coo.put(2, 1, cpx!(-1.0, 1.0)).unwrap();
         coo.put(0, 1, cpx!(-1.0, -1.0)).unwrap();
         coo.put(1, 2, cpx!(-1.0, 1.0)).unwrap();
@@ -161,7 +161,7 @@ impl Samples {
         #[rustfmt::skip]
         let values = vec![
             cpx!( 2.0,  1.0), cpx!(-1.0, -1.0), //                  j=0, p=(0),1
-            cpx!(-1.0, -1.0), cpx!( 2.0,  0.0), cpx!(-1.0, 1.0), // j=1, p=(2),3,4
+            cpx!(-1.0, -1.0), cpx!( 2.0,  2.0), cpx!(-1.0, 1.0), // j=1, p=(2),3,4
             cpx!(-1.0,  1.0), cpx!( 2.0, -1.0), //                  j=2, p=(5),6
         ]; //                                                              (7)
         let csc = ComplexCscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
@@ -175,11 +175,11 @@ impl Samples {
         #[rustfmt::skip]
         let values = vec![
             cpx!( 2.0,  1.0), cpx!(-1.0, -1.0), //                  i=0, p=(0),1
-            cpx!(-1.0, -1.0), cpx!( 2.0,  0.0), cpx!(-1.0, 1.0), // i=1, p=(2),3,4
+            cpx!(-1.0, -1.0), cpx!( 2.0,  2.0), cpx!(-1.0, 1.0), // i=1, p=(2),3,4
             cpx!(-1.0,  1.0), cpx!( 2.0, -1.0), //                  i=2, p=(5),6
         ]; //                                                              (7)
         let csr = ComplexCsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
-        (coo, csc, csr, cpx!(6.0, 0.0))
+        (coo, csc, csr, cpx!(6.0, 10.0))
     }
 
     /// Returns a lower symmetric 5 x 5 matrix
@@ -1455,9 +1455,9 @@ mod tests {
 
         #[rustfmt::skip]
         let correct = &[
-            [cpx!( 2.0,  1.0), cpx!(-1.0, -1.0), cpx!( 0.0,  0.0)],  //
-            [cpx!(-1.0, -1.0), cpx!( 2.0,  0.0), cpx!(-1.0,  1.0)], //
-            [cpx!( 0.0,  0.0), cpx!(-1.0,  1.0), cpx!( 2.0, -1.0)],  //
+            [cpx!( 2.0,  1.0), cpx!(-1.0, -1.0), cpx!( 0.0,  0.0)],
+            [cpx!(-1.0, -1.0), cpx!( 2.0,  2.0), cpx!(-1.0,  1.0)],
+            [cpx!( 0.0,  0.0), cpx!(-1.0,  1.0), cpx!( 2.0, -1.0)],
         ];
         let a = ComplexMatrix::from(correct);
         let mut ai = ComplexMatrix::new(3, 3);

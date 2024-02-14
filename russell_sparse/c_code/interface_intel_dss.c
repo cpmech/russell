@@ -180,6 +180,9 @@ int32_t solver_intel_dss_factorize(struct InterfaceIntelDSS *solver,
         }
         *determinant_exponent = stat_out[0];
         *determinant_coefficient = stat_out[1];
+    } else {
+        *determinant_coefficient = 0.0;
+        *determinant_exponent = 0.0;
     }
 
     solver->factorization_completed = C_TRUE;

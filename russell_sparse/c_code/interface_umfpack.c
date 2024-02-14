@@ -171,6 +171,9 @@ int32_t solver_umfpack_factorize(struct InterfaceUMFPACK *solver,
                                           determinant_exponent,
                                           solver->numeric,
                                           solver->info);
+    } else {
+        *determinant_coefficient = 0.0;
+        *determinant_exponent = 0.0;
     }
 
     solver->factorization_completed = C_TRUE;

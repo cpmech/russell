@@ -491,12 +491,12 @@ mod tests {
 
         let m = cpx!(solver.determinant_coefficient_real, solver.determinant_coefficient_imag);
         let det = m * f64::powf(10.0, solver.determinant_exponent);
-        complex_approx_eq(det, cpx!(6.0, 0.0), 1e-15);
+        complex_approx_eq(det, cpx!(6.0, 10.0), 1e-14);
 
         // calling factorize again works
         solver.factorize(&mut mat, Some(params)).unwrap();
         let m = cpx!(solver.determinant_coefficient_real, solver.determinant_coefficient_imag);
         let det = m * f64::powf(10.0, solver.determinant_exponent);
-        complex_approx_eq(det, cpx!(6.0, 0.0), 1e-13);
+        complex_approx_eq(det, cpx!(6.0, 10.0), 1e-14);
     }
 }

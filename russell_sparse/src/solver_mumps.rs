@@ -725,8 +725,8 @@ mod tests {
         assert_eq!(solver.effective_scaling, 0); // No, because we requested the determinant
 
         // check the determinant
-        let d = solver.determinant_coefficient * f64::powf(2.0, solver.determinant_exponent);
-        approx_eq(d, 114.0, 1e-13);
+        let det = solver.determinant_coefficient * f64::powf(2.0, solver.determinant_exponent);
+        approx_eq(det, 114.0, 1e-13);
 
         // update stats
         let mut stats = StatsLinSol::new();

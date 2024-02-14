@@ -499,4 +499,63 @@ mod tests {
         let det = m * f64::powf(10.0, solver.determinant_exponent);
         complex_approx_eq(det, cpx!(6.0, 10.0), 1e-14);
     }
+
+    #[test]
+    fn factorize_fails_on_singular_matrix() {
+        let mut solver = ComplexSolverUMFPACK::new().unwrap();
+        let mut coo = ComplexCooMatrix::new(2, 2, 2, None, false).unwrap();
+        coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
+        coo.put(1, 1, cpx!(0.0, 0.0)).unwrap();
+        let mut mat = ComplexSparseMatrix::from_coo(coo);
+        assert_eq!(solver.factorize(&mut mat, None), Err("Error(1): Matrix is singular"));
+    }
+
+    #[test]
+    fn solve_handles_errors() {
+        let (coo, _, _, _) = Samples::complex_tiny_1x1(false);
+        let mut mat = ComplexSparseMatrix::from_coo(coo);
+        let mut solver = ComplexSolverUMFPACK::new().unwrap();
+        assert!(!solver.factorized);
+        let mut x = ComplexVector::new(2);
+        let rhs = ComplexVector::new(1);
+        assert_eq!(
+            solver.solve(&mut x, &mut mat, &rhs, false),
+            Err("the function factorize must be called before solve")
+        );
+        solver.factorize(&mut mat, None).unwrap();
+        assert_eq!(
+            solver.solve(&mut x, &mut mat, &rhs, false),
+            Err("the dimension of the vector of unknown values x is incorrect")
+        );
+        let mut x = ComplexVector::new(1);
+        let rhs = ComplexVector::new(2);
+        assert_eq!(
+            solver.solve(&mut x, &mut mat, &rhs, false),
+            Err("the dimension of the right-hand side vector is incorrect")
+        );
+    }
+
+    #[test]
+    fn solve_works() {
+        let mut solver = ComplexSolverUMFPACK::new().unwrap();
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
+        let mut mat = ComplexSparseMatrix::from_coo(coo);
+        let mut x = ComplexVector::new(3);
+        let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
+        let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
+        solver.factorize(&mut mat, None).unwrap();
+        solver.solve(&mut x, &mut mat, &rhs, false).unwrap();
+        complex_vec_approx_eq(x.as_data(), x_correct, 1e-14);
+
+        // calling solve again works
+        let mut x_again = ComplexVector::new(3);
+        solver.solve(&mut x_again, &mut mat, &rhs, false).unwrap();
+        complex_vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
+
+        // update stats
+        let mut stats = StatsLinSol::new();
+        solver.update_stats(&mut stats);
+        assert_eq!(stats.output.effective_ordering, "Amd");
+        assert_eq!(stats.output.effective_scaling, "Sum");
+    }
 }

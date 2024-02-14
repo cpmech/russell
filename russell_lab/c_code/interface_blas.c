@@ -14,6 +14,8 @@
 #define FN_DGESVD dgesvd_
 #define FN_DGETRF dgetrf_
 #define FN_DGETRI dgetri_
+#define FN_ZGETRF zgetrf_
+#define FN_ZGETRI zgetri_
 #else
 #include "cblas.h"
 #include "lapack.h"
@@ -28,6 +30,8 @@
 #define FN_DGESVD LAPACK_dgesvd
 #define FN_DGETRF LAPACK_dgetrf
 #define FN_DGETRI LAPACK_dgetri
+#define FN_ZGETRF LAPACK_zgetrf
+#define FN_ZGETRI LAPACK_zgetri
 #endif
 
 #include "constants.h"
@@ -229,4 +233,27 @@ void c_dgetri(const int32_t *n,
               const int32_t *lwork,
               int32_t *info) {
     FN_DGETRI(n, a, lda, ipiv, work, lwork, info);
+}
+
+// Computes the LU factorization of a general (m,n) matrix
+// <https://www.netlib.org/lapack/explore-html/dd/dd1/zgetrf_8f.html>
+void c_zgetrf(const int32_t *m,
+              const int32_t *n,
+              COMPLEX64 *a,
+              const int32_t *lda,
+              int32_t *ipiv,
+              int32_t *info) {
+    FN_ZGETRF(m, n, a, lda, ipiv, info);
+}
+
+// Computes the inverse of a matrix using the LU factorization computed by zgetrf
+// <https://www.netlib.org/lapack/explore-html/d0/db3/zgetri_8f.html>
+void c_zgetri(const int32_t *n,
+              COMPLEX64 *a,
+              const int32_t *lda,
+              const int32_t *ipiv,
+              COMPLEX64 *work,
+              const int32_t *lwork,
+              int32_t *info) {
+    FN_ZGETRI(n, a, lda, ipiv, work, lwork, info);
 }

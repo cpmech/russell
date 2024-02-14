@@ -3,6 +3,8 @@
 mod aliases;
 mod complex_mat_add;
 mod complex_mat_approx_eq;
+mod complex_mat_copy;
+mod complex_mat_inverse;
 mod complex_mat_mat_mul;
 mod complex_mat_norm;
 mod complex_mat_update;
@@ -29,6 +31,8 @@ mod testing;
 pub use crate::matrix::aliases::*;
 pub use crate::matrix::complex_mat_add::*;
 pub use crate::matrix::complex_mat_approx_eq::*;
+pub use crate::matrix::complex_mat_copy::*;
+pub use crate::matrix::complex_mat_inverse::*;
 pub use crate::matrix::complex_mat_mat_mul::*;
 pub use crate::matrix::complex_mat_norm::*;
 pub use crate::matrix::complex_mat_update::*;

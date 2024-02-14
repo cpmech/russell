@@ -160,6 +160,7 @@ mod tests {
     use super::LinSolver;
     use crate::{Genie, Samples, SparseMatrix};
     use russell_lab::{vec_approx_eq, Vector};
+    use serial_test::serial;
 
     #[test]
     fn lin_solver_new_works() {
@@ -171,7 +172,19 @@ mod tests {
     }
 
     #[test]
-    fn lin_solver_compute_works() {
+    #[serial]
+    fn lin_solver_compute_works_mumps() {
+        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(true, false, false);
+        let mut mat = SparseMatrix::from_coo(coo);
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+        LinSolver::compute(Genie::Mumps, &mut x, &mut mat, &rhs, None).unwrap();
+        let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
+        vec_approx_eq(x.as_data(), &x_correct, 1e-10);
+    }
+
+    #[test]
+    fn lin_solver_compute_works_umfpack() {
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_full(false);
         let mut mat = SparseMatrix::from_coo(coo);
         let mut x = Vector::new(5);

@@ -599,18 +599,12 @@ mod tests {
     use russell_lab::{approx_eq, vec_approx_eq, Vector};
     use serial_test::serial;
 
+    // IMPORTANT:
+    // Since MUMPS is not thread-safe, we need to use serial_test::serial
+
     #[test]
     #[serial]
-    fn complete_solution_cycle_works() {
-        // IMPORTANT:
-        // Since MUMPS is not thread-safe, we need to call all MUMPS functions
-        // in a single test unit because the tests are run in parallel by default
-
-        // allocate x and rhs
-        let mut x = Vector::new(5);
-        let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
-        let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
-
+    fn factorize_handles_errors() {
         // allocate a new solver
         let mut solver = SolverMUMPS::new().unwrap();
         assert!(!solver.factorized);
@@ -681,6 +675,88 @@ mod tests {
             solver.factorize(&mut mat, None).err(),
             Some("subsequent factorizations must use the same matrix (nnz differs)")
         );
+    }
+
+    #[test]
+    #[serial]
+    fn factorize_fails_on_singular_matrix() {
+        let mut mat_singular = SparseMatrix::new_coo(5, 5, 2, None, true).unwrap();
+        mat_singular.put(0, 0, 1.0).unwrap();
+        mat_singular.put(4, 4, 1.0).unwrap();
+        let mut solver = SolverMUMPS::new().unwrap();
+        assert_eq!(
+            solver.factorize(&mut mat_singular, None),
+            Err("Error(-10): numerically singular matrix")
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn solve_handles_errors() {
+        let mut coo = CooMatrix::new(2, 2, 2, None, true).unwrap();
+        coo.put(0, 0, 123.0).unwrap();
+        coo.put(1, 1, 456.0).unwrap();
+        let mut mat = SparseMatrix::from_coo(coo);
+        let mut solver = SolverMUMPS::new().unwrap();
+        assert!(!solver.factorized);
+        let mut x = Vector::new(2);
+        let rhs = Vector::new(2);
+        assert_eq!(
+            solver.solve(&mut x, &mut mat, &rhs, false),
+            Err("the function factorize must be called before solve")
+        );
+        let mut x = Vector::new(1);
+        solver.factorize(&mut mat, None).unwrap();
+        assert_eq!(
+            solver.solve(&mut x, &mut mat, &rhs, false),
+            Err("the dimension of the vector of unknown values x is incorrect")
+        );
+        let mut x = Vector::new(2);
+        let rhs = Vector::new(1);
+        assert_eq!(
+            solver.solve(&mut x, &mut mat, &rhs, false),
+            Err("the dimension of the right-hand side vector is incorrect")
+        );
+        // wrong symmetry
+        let rhs = Vector::new(2);
+        let mut coo_wrong = CooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full)), true).unwrap();
+        coo_wrong.put(0, 0, 123.0).unwrap();
+        coo_wrong.put(1, 1, 456.0).unwrap();
+        let mut mat_wrong = SparseMatrix::from_coo(coo_wrong);
+        mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
+        assert_eq!(
+            solver.solve(&mut x, &mut mat_wrong, &rhs, false),
+            Err("solve must use the same matrix (symmetry differs)")
+        );
+        // wrong ndim
+        let mut coo_wrong = CooMatrix::new(1, 1, 1, None, true).unwrap();
+        coo_wrong.put(0, 0, 123.0).unwrap();
+        let mut mat_wrong = SparseMatrix::from_coo(coo_wrong);
+        mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
+        assert_eq!(
+            solver.solve(&mut x, &mut mat_wrong, &rhs, false),
+            Err("solve must use the same matrix (ndim differs)")
+        );
+        // wrong nnz
+        let mut coo_wrong = CooMatrix::new(2, 2, 3, None, true).unwrap();
+        coo_wrong.put(0, 0, 123.0).unwrap();
+        coo_wrong.put(1, 1, 123.0).unwrap();
+        coo_wrong.put(0, 1, 100.0).unwrap();
+        let mut mat_wrong = SparseMatrix::from_coo(coo_wrong);
+        mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
+        assert_eq!(
+            solver.solve(&mut x, &mut mat_wrong, &rhs, false),
+            Err("solve must use the same matrix (nnz differs)")
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn factorize_and_solve_work() {
+        // allocate x and rhs
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
+        let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
 
         // allocate a new solver
         let mut solver = SolverMUMPS::new().unwrap();
@@ -696,27 +772,9 @@ mod tests {
         params.scaling = Scaling::RowCol;
         params.compute_determinant = true;
 
-        // solve fails on non-factorized system
-        assert_eq!(
-            solver.solve(&mut x, &mat, &rhs, false),
-            Err("the function factorize must be called before solve")
-        );
-
         // factorize works
         solver.factorize(&mut mat, Some(params)).unwrap();
         assert!(solver.factorized);
-
-        // solve fails on wrong x and rhs vectors
-        let mut x_wrong = Vector::new(3);
-        let rhs_wrong = Vector::new(2);
-        assert_eq!(
-            solver.solve(&mut x_wrong, &mat, &rhs, false),
-            Err("the dimension of the vector of unknown values x is incorrect")
-        );
-        assert_eq!(
-            solver.solve(&mut x, &mat, &rhs_wrong, false),
-            Err("the dimension of the right-hand side vector is incorrect")
-        );
 
         // solve works
         solver.solve(&mut x, &mat, &rhs, false).unwrap();
@@ -741,16 +799,6 @@ mod tests {
         solver.solve(&mut x_again, &mat, &rhs, false).unwrap();
         vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
 
-        // factorize fails on singular matrix
-        let mut mat_singular = SparseMatrix::new_coo(5, 5, 2, None, true).unwrap();
-        mat_singular.put(0, 0, 1.0).unwrap();
-        mat_singular.put(4, 4, 1.0).unwrap();
-        let mut solver = SolverMUMPS::new().unwrap();
-        assert_eq!(
-            solver.factorize(&mut mat_singular, None),
-            Err("Error(-10): numerically singular matrix")
-        );
-
         // solve with positive-definite matrix works
         let (coo_pd_lower, _, _, _) = Samples::mkl_positive_definite_5x5_lower(true);
         let mut mat_pd_lower = SparseMatrix::from_coo(coo_pd_lower);
@@ -764,12 +812,6 @@ mod tests {
         solver.solve(&mut x, &mat_pd_lower, &rhs, false).unwrap();
         let x_correct = &[-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         vec_approx_eq(x.as_data(), x_correct, 1e-10);
-
-        // solve with different matrix fails
-        assert_eq!(
-            solver.solve(&mut x, &mat, &rhs, false).err(),
-            Some("solve must use the same matrix (symmetry differs)")
-        );
     }
 
     #[test]

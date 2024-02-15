@@ -439,18 +439,12 @@ mod tests {
     use russell_lab::{complex_approx_eq, complex_vec_approx_eq, cpx, ComplexVector};
     use serial_test::serial;
 
+    // IMPORTANT:
+    // Since MUMPS is not thread-safe, we need to use serial_test::serial
+
     #[test]
     #[serial]
-    fn complete_solution_cycle_works() {
-        // IMPORTANT:
-        // Since MUMPS is not thread-safe, we need to call all MUMPS functions
-        // in a single test unit because the tests are run in parallel by default
-
-        // allocate x and rhs
-        let mut x = ComplexVector::new(3);
-        let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
-        let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
-
+    fn factorize_handles_errors() {
         // allocate a new solver
         let mut solver = ComplexSolverMUMPS::new().unwrap();
         assert!(!solver.factorized);
@@ -523,6 +517,88 @@ mod tests {
             solver.factorize(&mut mat, None).err(),
             Some("subsequent factorizations must use the same matrix (nnz differs)")
         );
+    }
+
+    #[test]
+    #[serial]
+    fn factorize_fails_on_singular_matrix() {
+        let mut mat_singular = ComplexSparseMatrix::new_coo(3, 3, 2, None, true).unwrap();
+        mat_singular.put(0, 0, cpx!(1.0, 0.0)).unwrap();
+        mat_singular.put(1, 1, cpx!(1.0, 0.0)).unwrap();
+        let mut solver = ComplexSolverMUMPS::new().unwrap();
+        assert_eq!(
+            solver.factorize(&mut mat_singular, None),
+            Err("Error(-10): numerically singular matrix")
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn solve_handles_errors() {
+        let mut coo = ComplexCooMatrix::new(2, 2, 2, None, true).unwrap();
+        coo.put(0, 0, cpx!(123.0, 1.0)).unwrap();
+        coo.put(1, 1, cpx!(456.0, 2.0)).unwrap();
+        let mut mat = ComplexSparseMatrix::from_coo(coo);
+        let mut solver = ComplexSolverMUMPS::new().unwrap();
+        assert!(!solver.factorized);
+        let mut x = ComplexVector::new(2);
+        let rhs = ComplexVector::new(2);
+        assert_eq!(
+            solver.solve(&mut x, &mut mat, &rhs, false),
+            Err("the function factorize must be called before solve")
+        );
+        let mut x = ComplexVector::new(1);
+        solver.factorize(&mut mat, None).unwrap();
+        assert_eq!(
+            solver.solve(&mut x, &mut mat, &rhs, false),
+            Err("the dimension of the vector of unknown values x is incorrect")
+        );
+        let mut x = ComplexVector::new(2);
+        let rhs = ComplexVector::new(1);
+        assert_eq!(
+            solver.solve(&mut x, &mut mat, &rhs, false),
+            Err("the dimension of the right-hand side vector is incorrect")
+        );
+        // wrong symmetry
+        let rhs = ComplexVector::new(2);
+        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full)), true).unwrap();
+        coo_wrong.put(0, 0, cpx!(123.0, 1.0)).unwrap();
+        coo_wrong.put(1, 1, cpx!(456.0, 2.0)).unwrap();
+        let mut mat_wrong = ComplexSparseMatrix::from_coo(coo_wrong);
+        mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
+        assert_eq!(
+            solver.solve(&mut x, &mut mat_wrong, &rhs, false),
+            Err("solve must use the same matrix (symmetry differs)")
+        );
+        // wrong ndim
+        let mut coo_wrong = ComplexCooMatrix::new(1, 1, 1, None, true).unwrap();
+        coo_wrong.put(0, 0, cpx!(123.0, 1.0)).unwrap();
+        let mut mat_wrong = ComplexSparseMatrix::from_coo(coo_wrong);
+        mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
+        assert_eq!(
+            solver.solve(&mut x, &mut mat_wrong, &rhs, false),
+            Err("solve must use the same matrix (ndim differs)")
+        );
+        // wrong nnz
+        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 3, None, true).unwrap();
+        coo_wrong.put(0, 0, cpx!(123.0, 1.0)).unwrap();
+        coo_wrong.put(1, 1, cpx!(456.0, 2.0)).unwrap();
+        coo_wrong.put(0, 1, cpx!(100.0, 1.0)).unwrap();
+        let mut mat_wrong = ComplexSparseMatrix::from_coo(coo_wrong);
+        mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
+        assert_eq!(
+            solver.solve(&mut x, &mut mat_wrong, &rhs, false),
+            Err("solve must use the same matrix (nnz differs)")
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn factorize_and_solve_work() {
+        // allocate x and rhs
+        let mut x = ComplexVector::new(3);
+        let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
+        let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
 
         // allocate a new solver
         let mut solver = ComplexSolverMUMPS::new().unwrap();
@@ -538,27 +614,9 @@ mod tests {
         params.scaling = Scaling::RowCol;
         params.compute_determinant = true;
 
-        // solve fails on non-factorized system
-        assert_eq!(
-            solver.solve(&mut x, &mat, &rhs, false),
-            Err("the function factorize must be called before solve")
-        );
-
         // factorize works
         solver.factorize(&mut mat, Some(params)).unwrap();
         assert!(solver.factorized);
-
-        // solve fails on wrong x and rhs vectors
-        let mut x_wrong = ComplexVector::new(5);
-        let rhs_wrong = ComplexVector::new(2);
-        assert_eq!(
-            solver.solve(&mut x_wrong, &mat, &rhs, false),
-            Err("the dimension of the vector of unknown values x is incorrect")
-        );
-        assert_eq!(
-            solver.solve(&mut x, &mat, &rhs_wrong, false),
-            Err("the dimension of the right-hand side vector is incorrect")
-        );
 
         // solve works
         solver.solve(&mut x, &mat, &rhs, false).unwrap();
@@ -583,16 +641,6 @@ mod tests {
         let mut x_again = ComplexVector::new(3);
         solver.solve(&mut x_again, &mat, &rhs, false).unwrap();
         complex_vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
-
-        // factorize fails on singular matrix
-        let mut mat_singular = ComplexSparseMatrix::new_coo(3, 3, 2, None, true).unwrap();
-        mat_singular.put(0, 0, cpx!(1.0, 0.0)).unwrap();
-        mat_singular.put(1, 1, cpx!(1.0, 0.0)).unwrap();
-        let mut solver = ComplexSolverMUMPS::new().unwrap();
-        assert_eq!(
-            solver.factorize(&mut mat_singular, None),
-            Err("Error(-10): numerically singular matrix")
-        );
 
         // solve with positive-definite matrix works
         let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
@@ -625,11 +673,5 @@ mod tests {
             cpx!(123.0 / 2.0, 0.0),
         ];
         complex_vec_approx_eq(x.as_data(), x_correct, 1e-13);
-
-        // solve with different matrix fails
-        assert_eq!(
-            solver.solve(&mut x, &mat, &rhs, false).err(),
-            Some("solve must use the same matrix (symmetry differs)")
-        );
     }
 }

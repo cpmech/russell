@@ -1,6 +1,6 @@
 use crate::constants::*;
 use crate::StrError;
-use crate::{Information, Method, NumSolver, ParamsERK, System, Workspace};
+use crate::{Information, Method, OdeSolverTrait, ParamsERK, System, Workspace};
 use russell_lab::{vec_copy, vec_update, Matrix, Vector};
 use russell_sparse::CooMatrix;
 
@@ -200,7 +200,7 @@ where
     }
 }
 
-impl<'a, F, J, A> NumSolver<A> for ExplicitRungeKutta<'a, F, J, A>
+impl<'a, F, J, A> OdeSolverTrait<A> for ExplicitRungeKutta<'a, F, J, A>
 where
     F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,

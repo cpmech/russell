@@ -1,6 +1,6 @@
 use crate::constants::N_EQUAL_STEPS;
 use crate::StrError;
-use crate::{Benchmark, Method, NumSolver, Params, System, Workspace};
+use crate::{Benchmark, Method, OdeSolverTrait, Params, System, Workspace};
 use crate::{EulerBackward, EulerForward, ExplicitRungeKutta, Radau5};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
@@ -32,7 +32,7 @@ pub struct Solver<'a, A> {
     ndim: usize,
 
     /// Holds a pointer to the actual ODE system solver
-    actual: Box<dyn NumSolver<A> + 'a>,
+    actual: Box<dyn OdeSolverTrait<A> + 'a>,
 
     /// Holds benchmark and work variables
     work: Workspace,
@@ -57,7 +57,7 @@ impl<'a, A> Solver<'a, A> {
     {
         params.validate()?;
         let ndim = system.ndim;
-        let actual: Box<dyn NumSolver<A>> = if params.method == Method::Radau5 {
+        let actual: Box<dyn OdeSolverTrait<A>> = if params.method == Method::Radau5 {
             Box::new(Radau5::new(params.radau5, system))
         } else if params.method == Method::BwEuler {
             Box::new(EulerBackward::new(params.bweuler, system))

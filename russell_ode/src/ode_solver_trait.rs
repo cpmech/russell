@@ -3,7 +3,7 @@ use crate::Workspace;
 use russell_lab::Vector;
 
 /// Defines the numerical solver
-pub(crate) trait NumSolver<A> {
+pub(crate) trait OdeSolverTrait<A> {
     /// Initializes the internal variables
     fn initialize(&mut self, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError>;
 

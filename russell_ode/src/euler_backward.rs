@@ -1,5 +1,5 @@
 use crate::StrError;
-use crate::{NumSolver, ParamsBwEuler, System, Workspace};
+use crate::{OdeSolverTrait, ParamsBwEuler, System, Workspace};
 use russell_lab::{vec_copy, vec_update, Vector};
 use russell_sparse::{CooMatrix, Genie, LinSolver, SparseMatrix};
 
@@ -68,7 +68,7 @@ where
     }
 }
 
-impl<'a, F, J, A> NumSolver<A> for EulerBackward<'a, F, J, A>
+impl<'a, F, J, A> OdeSolverTrait<A> for EulerBackward<'a, F, J, A>
 where
     F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,

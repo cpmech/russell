@@ -1,7 +1,7 @@
 #![allow(unused)]
 
 use crate::StrError;
-use crate::{Method, NumSolver, ParamsRadau5, System, Workspace};
+use crate::{Method, OdeSolverTrait, ParamsRadau5, System, Workspace};
 use num_complex::Complex64;
 use russell_lab::math::{SQRT_3, SQRT_6};
 use russell_lab::{complex_vec_unzip, complex_vec_zip, cpx, vec_copy, ComplexVector, Matrix, Vector};
@@ -313,7 +313,7 @@ where
     }
 }
 
-impl<'a, F, J, A> NumSolver<A> for Radau5<'a, F, J, A>
+impl<'a, F, J, A> OdeSolverTrait<A> for Radau5<'a, F, J, A>
 where
     F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,

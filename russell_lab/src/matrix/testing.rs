@@ -1,6 +1,6 @@
 use crate::{
     approx_eq, complex_mat_add, complex_mat_mat_mul, complex_mat_norm, complex_mat_zip, complex_vec_zip, mat_add,
-    mat_mat_mul, mat_norm, AsArray2D, ComplexMatrix, Matrix, Norm, Vector,
+    mat_mat_mul, mat_norm, AsArray2D, ComplexMatrix, ComplexVector, Matrix, Norm, Vector,
 };
 use num_complex::Complex64;
 
@@ -52,8 +52,10 @@ pub(crate) fn check_eigen_general<'a, T>(
 {
     let a = ComplexMatrix::from(data);
     let m = a.nrow();
-    let v = complex_mat_zip(v_real, v_imag).unwrap();
-    let d = complex_vec_zip(l_real, l_imag).unwrap();
+    let mut v = ComplexMatrix::new(m, m);
+    let mut d = ComplexVector::new(m);
+    complex_mat_zip(&mut v, v_real, v_imag).unwrap();
+    complex_vec_zip(&mut d, l_real, l_imag).unwrap();
     let lam = ComplexMatrix::diagonal(d.as_data());
     let mut a_v = ComplexMatrix::new(m, m);
     let mut v_l = ComplexMatrix::new(m, m);

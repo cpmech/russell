@@ -580,6 +580,36 @@ where
         Ok(())
     }
 
+    /// Augments this matrix with the entries of another matrix (scaled)
+    ///
+    /// Effectively, performs:
+    ///
+    /// ```text
+    /// this += α · other
+    /// ```
+    ///
+    /// **Warning:** make sure to allocate `max_nnz = nnz(this) + nnz(other)`.
+    pub fn augment(&mut self, alpha: T, other: &NumCooMatrix<T>) -> Result<(), StrError> {
+        if other.nrow != self.nrow {
+            return Err("matrices must have the same nrow");
+        }
+        if other.ncol != self.ncol {
+            return Err("matrices must have the same ncol");
+        }
+        if other.symmetry != self.symmetry {
+            return Err("matrices must have the same symmetry");
+        }
+        if other.one_based != self.one_based {
+            return Err("matrices must have the same one_based");
+        }
+        for p in 0..other.nnz {
+            let i = other.indices_i[p] as usize;
+            let j = other.indices_j[p] as usize;
+            self.put(i, j, alpha * other.values[p])?;
+        }
+        Ok(())
+    }
+
     /// Returns information about the dimensions and symmetry type
     ///
     /// Returns `(nrow, ncol, nnz, symmetry)`
@@ -1091,6 +1121,63 @@ mod tests {
         // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
         coo.mat_vec_mul(&mut v, cpx!(2.0, 4.0), &u).unwrap();
         complex_vec_approx_eq(v.as_data(), correct, 1e-15);
+    }
+
+    #[test]
+    fn augment_capture_errors() {
+        let sym = Some(Symmetry::General(Storage::Full));
+        let nnz_a = 1;
+        let nnz_b = 1;
+        let mut a_1x2 = NumCooMatrix::<u32>::new(1, 2, nnz_a /* + nnz_b */, None, false).unwrap();
+        let b_2x1 = NumCooMatrix::<u32>::new(2, 1, nnz_b, None, false).unwrap();
+        let b_1x3 = NumCooMatrix::<u32>::new(1, 3, nnz_b, None, false).unwrap();
+        let b_1x2_sym = NumCooMatrix::<u32>::new(1, 2, nnz_b, sym, false).unwrap();
+        let b_1x2_one = NumCooMatrix::<u32>::new(1, 2, nnz_b, None, true).unwrap();
+        let mut b_1x2 = NumCooMatrix::<u32>::new(1, 2, nnz_b, None, false).unwrap();
+        a_1x2.put(0, 0, 123).unwrap();
+        b_1x2.put(0, 0, 456).unwrap();
+        assert_eq!(a_1x2.augment(2, &b_2x1).err(), Some("matrices must have the same nrow"));
+        assert_eq!(a_1x2.augment(2, &b_1x3).err(), Some("matrices must have the same ncol"));
+        assert_eq!(
+            a_1x2.augment(2, &b_1x2_sym).err(),
+            Some("matrices must have the same symmetry")
+        );
+        assert_eq!(
+            a_1x2.augment(2, &b_1x2_one).err(),
+            Some("matrices must have the same one_based")
+        );
+        assert_eq!(
+            a_1x2.augment(2, &b_1x2).err(),
+            Some("COO matrix: max number of items has been reached")
+        );
+    }
+
+    #[test]
+    fn augment_works() {
+        let nnz_a = 1;
+        let nnz_b = 2;
+        let mut a = NumCooMatrix::<f64>::new(3, 2, nnz_a + nnz_b, None, false).unwrap();
+        let mut b = NumCooMatrix::<f64>::new(3, 2, nnz_b, None, false).unwrap();
+        a.put(2, 1, 1000.0).unwrap();
+        b.put(0, 0, 10.0).unwrap();
+        b.put(2, 1, 20.0).unwrap();
+        assert_eq!(
+            format!("{}", a.as_dense()),
+            "┌           ┐\n\
+             │    0    0 │\n\
+             │    0    0 │\n\
+             │    0 1000 │\n\
+             └           ┘"
+        );
+        a.augment(5.0, &b).unwrap();
+        assert_eq!(
+            format!("{}", a.as_dense()),
+            "┌           ┐\n\
+             │   50    0 │\n\
+             │    0    0 │\n\
+             │    0 1100 │\n\
+             └           ┘"
+        );
     }
 
     #[test]

@@ -588,7 +588,7 @@ where
     /// this += α · other
     /// ```
     ///
-    /// **Warning:** make sure to allocate `max_nnz = nnz(this) + nnz(other)`.
+    /// **Warning:** make sure to allocate `max_nnz ≥ nnz(this) + nnz(other)`.
     pub fn augment(&mut self, alpha: T, other: &NumCooMatrix<T>) -> Result<(), StrError> {
         if other.nrow != self.nrow {
             return Err("matrices must have the same nrow");

@@ -328,7 +328,7 @@ where
     /// this += α · other
     /// ```
     ///
-    /// **Warning:** make sure to allocate `max_nnz = nnz(this) + nnz(other)`.
+    /// **Warning:** make sure to allocate `max_nnz ≥ nnz(this) + nnz(other)`.
     pub fn augment(&mut self, alpha: T, other: &NumSparseMatrix<T>) -> Result<(), StrError> {
         match &mut self.coo {
             Some(coo) => coo.augment(alpha, other.get_coo()?),

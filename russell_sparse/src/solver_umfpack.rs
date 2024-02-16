@@ -12,6 +12,16 @@ struct InterfaceUMFPACK {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
+/// Enforce Send on the C structure
+///
+/// <https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe>
+unsafe impl Send for InterfaceUMFPACK {}
+
+/// Enforce Send on the Rust structure
+///
+/// <https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe>
+unsafe impl Send for SolverUMFPACK {}
+
 extern "C" {
     fn solver_umfpack_new() -> *mut InterfaceUMFPACK;
     fn solver_umfpack_drop(solver: *mut InterfaceUMFPACK);

@@ -57,7 +57,7 @@ pub trait ComplexLinSolTrait {
 /// Unifies the access to linear system solvers
 pub struct ComplexLinSolver<'a> {
     /// Holds the actual implementation
-    pub actual: Box<dyn ComplexLinSolTrait + 'a>,
+    pub actual: Box<dyn Send + ComplexLinSolTrait + 'a>,
 }
 
 impl<'a> ComplexLinSolver<'a> {
@@ -67,7 +67,7 @@ impl<'a> ComplexLinSolver<'a> {
     ///
     /// * `genie` -- the actual implementation that does all the magic
     pub fn new(genie: Genie) -> Result<Self, StrError> {
-        let actual: Box<dyn ComplexLinSolTrait> = match genie {
+        let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
             Genie::Mumps => Box::new(ComplexSolverMUMPS::new()?),
             Genie::Umfpack => Box::new(ComplexSolverUMFPACK::new()?),
             Genie::IntelDss => panic!("TODO"),

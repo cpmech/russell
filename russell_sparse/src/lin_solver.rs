@@ -51,7 +51,7 @@ pub trait LinSolTrait {
 /// Unifies the access to linear system solvers
 pub struct LinSolver<'a> {
     /// Holds the actual implementation
-    pub actual: Box<dyn LinSolTrait + 'a>,
+    pub actual: Box<dyn Send + LinSolTrait + 'a>,
 }
 
 impl<'a> LinSolver<'a> {
@@ -61,7 +61,7 @@ impl<'a> LinSolver<'a> {
     ///
     /// * `genie` -- the actual implementation that does all the magic
     pub fn new(genie: Genie) -> Result<Self, StrError> {
-        let actual: Box<dyn LinSolTrait> = match genie {
+        let actual: Box<dyn Send + LinSolTrait> = match genie {
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
             Genie::IntelDss => Box::new(SolverIntelDSS::new()?),

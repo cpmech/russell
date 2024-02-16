@@ -19,6 +19,16 @@ struct InterfaceComplexMUMPS {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
+/// Enforce Send on the C structure
+///
+/// <https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe>
+unsafe impl Send for InterfaceComplexMUMPS {}
+
+/// Enforce Send on the Rust structure
+///
+/// <https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe>
+unsafe impl Send for ComplexSolverMUMPS {}
+
 extern "C" {
     fn complex_solver_mumps_new() -> *mut InterfaceComplexMUMPS;
     fn complex_solver_mumps_drop(solver: *mut InterfaceComplexMUMPS);

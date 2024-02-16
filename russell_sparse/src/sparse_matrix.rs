@@ -320,6 +320,22 @@ where
         }
     }
 
+    /// Augments this matrix with the entries of another matrix (scaled)
+    ///
+    /// Effectively, performs:
+    ///
+    /// ```text
+    /// this += α · other
+    /// ```
+    ///
+    /// **Warning:** make sure to allocate `max_nnz = nnz(this) + nnz(other)`.
+    pub fn augment(&mut self, alpha: T, other: &NumSparseMatrix<T>) -> Result<(), StrError> {
+        match &mut self.coo {
+            Some(coo) => coo.augment(alpha, other.get_coo()?),
+            None => Err("COO matrix is not available to augment"),
+        }
+    }
+
     // CSC ------------------------------------------------------------------------
 
     /// Returns a read-only access to the CSC matrix, if available
@@ -552,6 +568,19 @@ mod tests {
         );
         coo.reset().unwrap();
         coo.put(1, 1, 2.0).unwrap();
+        // COO (augment)
+        let mut this = NumSparseMatrix::<f64>::new_coo(1, 1, 1 + 1, None, false).unwrap();
+        let mut other = NumSparseMatrix::<f64>::new_coo(1, 1, 1, None, false).unwrap();
+        this.put(0, 0, 110.0).unwrap();
+        other.put(0, 0, 200.0).unwrap();
+        this.augment(4.0, &other).unwrap();
+        println!("{}", this.as_dense());
+        assert_eq!(
+            format!("{}", this.as_dense()),
+            "┌     ┐\n\
+             │ 910 │\n\
+             └     ┘"
+        );
     }
 
     #[test]

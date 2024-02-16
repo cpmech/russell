@@ -8,19 +8,28 @@ use crate::Vector;
 ///
 /// ```
 /// use russell_lab::*;
+/// use num_complex::Complex64;
 ///
 /// fn main() -> Result<(), StrError> {
-///     let mut v = ComplexVector::new(3);
-///     let real = Vector::from(&[1.0, 2.0, 3.0]);
-///     let imag = Vector::from(&[0.1, 0.2, 0.3]);
-///     complex_vec_zip(&mut v, &real, &imag)?;
+///     let v = ComplexVector::from(&[cpx!(1.0, 0.1), cpx!(2.0, 0.2), cpx!(3.0, 0.3)]);
+///     let mut real = Vector::new(3);
+///     let mut imag = Vector::new(3);
+///     complex_vec_unzip(&mut real, &mut imag, &v)?;
 ///     assert_eq!(
-///         format!("{}", v),
-///         "┌        ┐\n\
-///          │ 1+0.1i │\n\
-///          │ 2+0.2i │\n\
-///          │ 3+0.3i │\n\
-///          └        ┘"
+///         format!("{}", real),
+///         "┌   ┐\n\
+///          │ 1 │\n\
+///          │ 2 │\n\
+///          │ 3 │\n\
+///          └   ┘"
+///     );
+///     assert_eq!(
+///         format!("{}", imag),
+///         "┌     ┐\n\
+///          │ 0.1 │\n\
+///          │ 0.2 │\n\
+///          │ 0.3 │\n\
+///          └     ┘"
 ///     );
 ///     Ok(())
 /// }

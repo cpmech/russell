@@ -1,12 +1,12 @@
 use russell_lab::{approx_eq, Vector};
-use russell_ode::{no_dense_output, no_step_output, Method, Params, Samples, Solver};
+use russell_ode::{no_dense_output, no_step_output, Method, OdeSolver, Params, Samples};
 
 #[test]
 fn test_bweuler_hairer_wanner_eq1() {
     let (system, mut data, mut args) = Samples::hairer_wanner_eq1();
     let ndim = system.get_ndim();
     let params = Params::new(Method::BwEuler);
-    let mut solver = Solver::new(params, system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
     solver
         .solve(
             &mut data.y0,
@@ -42,7 +42,7 @@ fn test_bweuler_hairer_wanner_eq1_num_jac() {
     let ndim = system.get_ndim();
     let mut params = Params::new(Method::BwEuler);
     params.bweuler.use_numerical_jacobian = true;
-    let mut solver = Solver::new(params, system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
     solver
         .solve(
             &mut data.y0,
@@ -79,7 +79,7 @@ fn test_bweuler_hairer_wanner_eq1_modified_newton() {
     let ndim = system.get_ndim();
     let mut params = Params::new(Method::BwEuler);
     params.bweuler.use_modified_newton = true;
-    let mut solver = Solver::new(params, system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
     solver
         .solve(
             &mut data.y0,

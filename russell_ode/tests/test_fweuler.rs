@@ -1,12 +1,12 @@
 use russell_lab::{approx_eq, Vector};
-use russell_ode::{no_dense_output, no_step_output, Method, Params, Samples, Solver};
+use russell_ode::{no_dense_output, no_step_output, Method, OdeSolver, Params, Samples};
 
 #[test]
 fn test_fweuler_hairer_wanner_eq1() {
     let (system, mut data, mut args) = Samples::hairer_wanner_eq1();
     let ndim = system.get_ndim();
     let params = Params::new(Method::FwEuler);
-    let mut solver = Solver::new(params, system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
     solver
         .solve(
             &mut data.y0,

@@ -28,7 +28,7 @@ pub struct ParamsBwEuler {
     pub n_iteration_max: usize,
 
     /// Linear solver kind
-    pub lin_sol: Genie,
+    pub genie: Genie,
 
     /// Configurations for sparse linear solver
     pub lin_sol_params: Option<LinSolParams>,
@@ -47,16 +47,40 @@ pub struct ParamsRadau5 {
     pub(crate) tol_newton: f64,
 
     /// Use numerical Jacobian, even if the analytical Jacobian is available
-    pub(crate) use_numerical_jacobian: bool,
+    pub use_numerical_jacobian: bool,
+
+    /// Always start iterations with zero trial values (instead of collocation interpolation)
+    pub zero_trial: bool,
 
     /// Max number of iterations (must be ≥ 1)
-    pub(crate) n_iteration_max: usize,
+    pub n_iteration_max: usize,
 
     /// Linear solver kind
-    pub(crate) lin_sol: Genie,
+    pub genie: Genie,
 
     /// Configurations for sparse linear solver
-    pub(crate) lin_sol_params: Option<LinSolParams>,
+    pub lin_sol_params: Option<LinSolParams>,
+
+    // Max value to decide whether the Jacobian should be recomputed or not
+    pub theta_max: f64,
+
+    /// c1 of Hairer-Wanner (VII p124): min ratio to retain previous h
+    pub c1h: f64,
+
+    /// c2 of Hairer-Wanner (VII p124): max ratio to retain previous h
+    pub c2h: f64,
+
+    /// Min step multiplier (must be ≥ 0.001 and < m_max)
+    pub m_min: f64,
+
+    /// Max step multiplier (must be ≥ 0.01 and > m_min)
+    pub m_max: f64,
+
+    /// Step multiplier factor (must be ≥ 0.1)
+    pub m_factor: f64,
+
+    /// Enable concurrent factorization and solution of the two linear systems
+    pub concurrent: bool,
 }
 
 /// Holds parameters for explicit Runge-Kutta methods
@@ -129,7 +153,7 @@ impl ParamsBwEuler {
             use_numerical_jacobian: false,
             use_rms_norm: true,
             n_iteration_max: 7, // line 436 of Hairer-Wanner' radau5.f
-            lin_sol: Genie::Umfpack,
+            genie: Genie::Umfpack,
             lin_sol_params: None,
         }
     }
@@ -152,9 +176,17 @@ impl ParamsRadau5 {
             rel_tol,
             tol_newton,
             use_numerical_jacobian: false,
+            zero_trial: false,
             n_iteration_max: 7, // line 436 of Hairer-Wanner' radau5.f
-            lin_sol: Genie::Umfpack,
+            genie: Genie::Umfpack,
             lin_sol_params: None,
+            theta_max: 1e-3, // line 487 of Hairer-Wanner' radau5.f
+            c1h: 1.0,
+            c2h: 1.2,
+            m_min: 0.125,  // line 534 of Hairer-Wanner' radau5.f
+            m_max: 5.0,    // line 529 of Hairer-Wanner' radau5.f
+            m_factor: 0.9, // line 477 of Hairer-Wanner' radau5.f
+            concurrent: true,
         }
     }
 

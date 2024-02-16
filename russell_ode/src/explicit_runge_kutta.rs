@@ -6,8 +6,8 @@ use russell_sparse::CooMatrix;
 
 pub(crate) struct ExplicitRungeKutta<'a, F, J, A>
 where
-    F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Holds the ERK method
     method: Method,
@@ -86,8 +86,8 @@ where
 
 impl<'a, F, J, A> ExplicitRungeKutta<'a, F, J, A>
 where
-    F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
     pub fn new(method: Method, params: ParamsERK, system: System<'a, F, J, A>) -> Result<Self, StrError> {
@@ -202,8 +202,8 @@ where
 
 impl<'a, F, J, A> NumSolver<A> for ExplicitRungeKutta<'a, F, J, A>
 where
-    F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Initializes the internal variables
     fn initialize(&mut self, _x: f64, _y: &Vector) {}
@@ -217,7 +217,7 @@ where
         // compute k0 (otherwise, use k0 saved in accept_update)
         if (work.first_step || !self.info.first_step_same_as_last) && !work.follows_reject_step {
             let u0 = x + h * self.cc[0];
-            work.bench.n_function_eval += 1;
+            work.bench.n_function += 1;
             (self.system.function)(&mut k[0], u0, y, args)?; // k0 := f(ui,vi)
         }
 
@@ -228,7 +228,7 @@ where
             for j in 0..i {
                 vec_update(&mut v[i], h * self.aa.get(i, j), &k[j]).unwrap(); // vi += h ⋅ aij ⋅ kj
             }
-            work.bench.n_function_eval += 1;
+            work.bench.n_function += 1;
             (self.system.function)(&mut k[i], ui, &v[i], args)?; // ki := f(ui,vi)
         }
 
@@ -369,7 +369,7 @@ where
                         + aad.get(0, 12) * k[11][m]);
             }
             let u = *x + cd[0] * h;
-            work.bench.n_function_eval += 1;
+            work.bench.n_function += 1;
             (self.system.function)(&mut kd[0], u, yd, args)?;
 
             // second function evaluation
@@ -385,7 +385,7 @@ where
                         + aad.get(1, 13) * kd[0][m]);
             }
             let u = *x + cd[1] * h;
-            work.bench.n_function_eval += 1;
+            work.bench.n_function += 1;
             (self.system.function)(&mut kd[1], u, yd, args)?;
 
             // next third function evaluation
@@ -401,7 +401,7 @@ where
                         + aad.get(2, 14) * kd[1][m]);
             }
             let u = *x + cd[2] * h;
-            work.bench.n_function_eval += 1;
+            work.bench.n_function += 1;
             (self.system.function)(&mut kd[2], u, yd, args)?;
 
             // final results

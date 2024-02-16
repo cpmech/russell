@@ -26,12 +26,12 @@ fn test_bweuler_hairer_wanner_eq1() {
 
     let b = solver.bench();
     println!("{}", b);
-    assert_eq!(b.n_function_eval, 80);
-    assert_eq!(b.n_jacobian_eval, 40);
-    assert_eq!(b.n_performed_steps, 40);
-    assert_eq!(b.n_accepted_steps, 40);
-    assert_eq!(b.n_rejected_steps, 0);
-    assert_eq!(b.n_iterations_last, 2);
+    assert_eq!(b.n_function, 80);
+    assert_eq!(b.n_jacobian, 40);
+    assert_eq!(b.n_steps, 40);
+    assert_eq!(b.n_accepted, 40);
+    assert_eq!(b.n_rejected, 0);
+    assert_eq!(b.n_iterations, 2);
     assert_eq!(b.n_iterations_max, 2);
     assert_eq!(b.h_optimal, data.h_equal.unwrap());
 }
@@ -63,12 +63,12 @@ fn test_bweuler_hairer_wanner_eq1_num_jac() {
 
     let b = solver.bench();
     println!("{}", b);
-    assert_eq!(b.n_function_eval, 120);
-    assert_eq!(b.n_jacobian_eval, 40);
-    assert_eq!(b.n_performed_steps, 40);
-    assert_eq!(b.n_accepted_steps, 40);
-    assert_eq!(b.n_rejected_steps, 0);
-    assert_eq!(b.n_iterations_last, 2);
+    assert_eq!(b.n_function, 120);
+    assert_eq!(b.n_jacobian, 40);
+    assert_eq!(b.n_steps, 40);
+    assert_eq!(b.n_accepted, 40);
+    assert_eq!(b.n_rejected, 0);
+    assert_eq!(b.n_iterations, 2);
     assert_eq!(b.n_iterations_max, 2);
     assert_eq!(b.h_optimal, data.h_equal.unwrap());
 }
@@ -100,12 +100,12 @@ fn test_bweuler_hairer_wanner_eq1_modified_newton() {
 
     let b = solver.bench();
     println!("{}", b);
-    assert_eq!(b.n_function_eval, 80);
-    assert_eq!(b.n_jacobian_eval, 1);
-    assert_eq!(b.n_performed_steps, 40);
-    assert_eq!(b.n_accepted_steps, 40);
-    assert_eq!(b.n_rejected_steps, 0);
-    assert_eq!(b.n_iterations_last, 2);
+    assert_eq!(b.n_function, 80);
+    assert_eq!(b.n_jacobian, 1);
+    assert_eq!(b.n_steps, 40);
+    assert_eq!(b.n_accepted, 40);
+    assert_eq!(b.n_rejected, 0);
+    assert_eq!(b.n_iterations, 2);
     assert_eq!(b.n_iterations_max, 2);
     assert_eq!(b.h_optimal, data.h_equal.unwrap());
 }

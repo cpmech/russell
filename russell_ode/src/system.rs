@@ -42,8 +42,8 @@ use std::marker::PhantomData;
 /// ```
 pub struct System<'a, F, J, A>
 where
-    F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// System dimension
     pub(crate) ndim: usize,
@@ -61,7 +61,7 @@ where
     pub(crate) jac_nnz: usize,
 
     /// Symmetry properties of the Jacobian matrix
-    pub(crate) jac_symmetry: Option<Symmetry>,
+    pub(crate) jac_symmetry: Symmetry,
 
     /// Holds the mass matrix
     pub(crate) mass_matrix: Option<&'a CooMatrix>,
@@ -70,13 +70,13 @@ where
     work: Vector,
 
     /// Handle generic argument
-    phantom: PhantomData<A>,
+    phantom: PhantomData<fn() -> A>,
 }
 
 impl<'a, F, J, A> System<'a, F, J, A>
 where
-    F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
     ///
@@ -113,7 +113,7 @@ where
             jacobian,
             jac_available,
             jac_nnz: if let Some(n) = jac_nnz { n } else { ndim * ndim },
-            jac_symmetry,
+            jac_symmetry: if let Some(s) = jac_symmetry { s } else { Symmetry::No },
             mass_matrix: None,
             work: Vector::new(ndim),
             phantom: PhantomData,
@@ -121,8 +121,22 @@ where
     }
 
     /// Specifies the mass matrix
-    pub fn set_mass_matrix(&mut self, mass: &'a CooMatrix) {
+    pub fn set_mass_matrix(&mut self, mass: &'a CooMatrix) -> Result<(), StrError> {
+        let (nrow, ncol, nnz, symmetry) = mass.get_info();
+        if nrow != ncol {
+            return Err("the mass matrix must be square");
+        }
+        if nnz < nrow {
+            return Err("the number of non-zero values in the mass matrix must be ≥ ndim");
+        }
+        if nrow != self.ndim {
+            return Err("the dimension of the mass matrix must be = ndim");
+        }
+        if symmetry != self.jac_symmetry {
+            return Err("the symmetry of the mass matrix must be = Jacobian symmetry");
+        }
         self.mass_matrix = Some(mass);
+        Ok(())
     }
 
     /// Returns the dimension of the ODE system
@@ -217,7 +231,9 @@ mod tests {
 
     #[test]
     fn ode_system_some_none_works() {
-        let mass = CooMatrix::new(2, 2, 2, None, false).unwrap();
+        let mut mass = CooMatrix::new(2, 2, 2, None, false).unwrap();
+        mass.put(0, 0, 1.0).unwrap();
+        mass.put(1, 1, 1.0).unwrap();
         let mut n_function_eval = 0;
         let mut n_jacobian_eval = 0;
         struct Args {
@@ -253,7 +269,7 @@ mod tests {
         //     y[0] = f64::cos(x * x / 2.0) - 2.0 * f64::sin(x * x / 2.0);
         //     y[1] = 2.0 * f64::cos(x * x / 2.0) + f64::sin(x * x / 2.0);
         // }));
-        ode.set_mass_matrix(&mass);
+        ode.set_mass_matrix(&mass).unwrap();
         // call system function
         let x = 0.0;
         let y = Vector::new(2);

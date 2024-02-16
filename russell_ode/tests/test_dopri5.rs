@@ -26,12 +26,12 @@ fn test_dopri5_hairer_wanner_eq1() {
     println!("{}", b);
     approx_eq(data.y0[0], 0.09061967747782482, 1e-15);
     approx_eq(data.y0[0], y1_correct[0], 1e-4);
-    assert_eq!(b.n_function_eval, 241);
-    assert_eq!(b.n_jacobian_eval, 0);
-    assert_eq!(b.n_performed_steps, 40);
-    assert_eq!(b.n_accepted_steps, 40);
-    assert_eq!(b.n_rejected_steps, 0);
-    assert_eq!(b.n_iterations_last, 0);
+    assert_eq!(b.n_function, 241);
+    assert_eq!(b.n_jacobian, 0);
+    assert_eq!(b.n_steps, 40);
+    assert_eq!(b.n_accepted, 40);
+    assert_eq!(b.n_rejected, 0);
+    assert_eq!(b.n_iterations, 0);
     assert_eq!(b.n_iterations_max, 0);
     approx_eq(b.h_optimal, 0.006336413253392292, 1e-12);
 }
@@ -56,12 +56,12 @@ fn test_dopri5_arenstorf() {
 
     let b = solver.bench();
     println!("{}", b);
-    assert_eq!(b.n_function_eval, 1429);
-    assert_eq!(b.n_jacobian_eval, 0);
-    assert_eq!(b.n_performed_steps, 238);
-    assert_eq!(b.n_accepted_steps, 217);
-    assert_eq!(b.n_rejected_steps, 21);
-    assert_eq!(b.n_iterations_last, 0);
+    assert_eq!(b.n_function, 1429);
+    assert_eq!(b.n_jacobian, 0);
+    assert_eq!(b.n_steps, 238);
+    assert_eq!(b.n_accepted, 217);
+    assert_eq!(b.n_rejected, 21);
+    assert_eq!(b.n_iterations, 0);
     assert_eq!(b.n_iterations_max, 0);
     let y_ref = [
         0.9940021704037415,

@@ -6,8 +6,8 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, SparseMatrix};
 /// Implements the backward Euler (implicit) solver
 pub(crate) struct EulerBackward<'a, F, J, A>
 where
-    F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Holds the parameters
     params: ParamsBwEuler,
@@ -45,15 +45,15 @@ where
 
 impl<'a, F, J, A> EulerBackward<'a, F, J, A>
 where
-    F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
     pub fn new(params: ParamsBwEuler, system: System<'a, F, J, A>) -> Self {
         let ndim = system.ndim;
         let nnz = system.jac_nnz + ndim; // +ndim corresponds to the diagonal I matrix
-        let symmetry = system.jac_symmetry;
-        let one_based = if params.lin_sol == Genie::Mumps { true } else { false };
+        let symmetry = Some(system.jac_symmetry);
+        let one_based = if params.genie == Genie::Mumps { true } else { false };
         EulerBackward {
             params,
             system,
@@ -63,15 +63,15 @@ where
             r: Vector::new(ndim),
             dy: Vector::new(ndim),
             kk: SparseMatrix::new_coo(ndim, ndim, nnz, symmetry, one_based).unwrap(),
-            solver: LinSolver::new(params.lin_sol).unwrap(),
+            solver: LinSolver::new(params.genie).unwrap(),
         }
     }
 }
 
 impl<'a, F, J, A> NumSolver<A> for EulerBackward<'a, F, J, A>
 where
-    F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Initializes the internal variables
     fn initialize(&mut self, _x: f64, y: &Vector) {
@@ -95,13 +95,13 @@ where
 
         // perform iterations
         let mut converged = false;
-        work.bench.n_iterations_last = 0;
+        work.bench.n_iterations = 0;
         for _ in 0..self.params.n_iteration_max {
             // benchmark
-            work.bench.n_iterations_last += 1;
+            work.bench.n_iterations += 1;
 
             // calculate k_new
-            work.bench.n_function_eval += 1;
+            work.bench.n_function += 1;
             (self.system.function)(&mut self.k, x_new, y_new, args)?; // k := f(x_new, y_new)
 
             // calculate the residual and its norm
@@ -130,12 +130,12 @@ where
             if traditional_newton || work.first_step {
                 // benchmark
                 work.bench.sw_jacobian.reset();
-                work.bench.n_jacobian_eval += 1;
+                work.bench.n_jacobian += 1;
 
                 // calculate J_new := h J
                 let kk = self.kk.get_coo_mut()?;
                 if self.params.use_numerical_jacobian || !self.system.jac_available {
-                    work.bench.n_function_eval += ndim;
+                    work.bench.n_function += ndim;
                     self.system.numerical_jacobian(kk, x_new, y_new, &self.k, h, args)?;
                 } else {
                     (self.system.jacobian)(kk, x_new, y_new, h, args)?;

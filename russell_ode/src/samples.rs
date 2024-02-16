@@ -332,7 +332,8 @@ mod tests {
         let mut args: u8 = 0;
         let multiplier = 1.0;
         let (mut system, data, _) = Samples::hairer_wanner_eq1();
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_symmetry, false).unwrap();
+        let symmetry = Some(system.jac_symmetry);
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
         let ana = jj.as_dense();
         let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
@@ -348,7 +349,8 @@ mod tests {
 
         // non-stationary
         let (mut system, data, _) = Samples::van_der_pol(None, false);
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_symmetry, false).unwrap();
+        let symmetry = Some(system.jac_symmetry);
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
         let ana = jj.as_dense();
         let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
@@ -358,7 +360,8 @@ mod tests {
 
         // stationary
         let (mut system, data, _) = Samples::van_der_pol(None, true);
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_symmetry, false).unwrap();
+        let symmetry = Some(system.jac_symmetry);
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
         let ana = jj.as_dense();
         let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
@@ -372,7 +375,8 @@ mod tests {
         let mut args: u8 = 0;
         let multiplier = 1.0;
         let (mut system, data, _) = Samples::arenstorf();
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_symmetry, false).unwrap();
+        let symmetry = Some(system.jac_symmetry);
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
         let ana = jj.as_dense();
         let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);

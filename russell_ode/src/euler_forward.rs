@@ -5,8 +5,8 @@ use russell_sparse::CooMatrix;
 
 pub(crate) struct EulerForward<'a, F, J, A>
 where
-    F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// ODE system
     system: System<'a, F, J, A>,
@@ -22,8 +22,8 @@ where
 
 impl<'a, F, J, A> EulerForward<'a, F, J, A>
 where
-    F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
     pub fn new(system: System<'a, F, J, A>) -> Self {
@@ -38,15 +38,15 @@ where
 
 impl<'a, F, J, A> NumSolver<A> for EulerForward<'a, F, J, A>
 where
-    F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Initializes the internal variables
     fn initialize(&mut self, _x: f64, _y: &Vector) {}
 
     /// Calculates the quantities required to update x and y
     fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {
-        work.bench.n_function_eval += 1;
+        work.bench.n_function += 1;
         (self.system.function)(&mut self.k, x, y, args)?; // k := f(x, y)
         vec_add(&mut self.w, 1.0, &y, h, &self.k).unwrap(); // w := y + h * f(x, y)
         Ok(())

@@ -5,22 +5,28 @@ use std::fmt;
 #[derive(Clone, Copy, Debug)]
 pub struct Benchmark {
     /// Number of calls to ODE system function
-    pub n_function_eval: usize,
+    pub n_function: usize,
 
     /// Number of Jacobian matrix evaluations
-    pub n_jacobian_eval: usize,
+    pub n_jacobian: usize,
+
+    /// Number of factorizations
+    pub n_factor: usize,
+
+    /// Number of linear system solutions
+    pub n_lin_sol: usize,
 
     /// Collects the number of steps, successful or not
-    pub n_performed_steps: usize,
+    pub n_steps: usize,
 
     /// Collects the number of accepted steps
-    pub n_accepted_steps: usize,
+    pub n_accepted: usize,
 
     /// Collects the number of rejected steps
-    pub n_rejected_steps: usize,
+    pub n_rejected: usize,
 
     /// Last number of iterations
-    pub n_iterations_last: usize,
+    pub n_iterations: usize,
 
     /// Max number of iterations among all steps
     pub n_iterations_max: usize,
@@ -63,12 +69,14 @@ impl Benchmark {
     /// Allocates a new instance
     pub fn new() -> Self {
         Benchmark {
-            n_function_eval: 0,
-            n_jacobian_eval: 0,
-            n_performed_steps: 0,
-            n_accepted_steps: 0,
-            n_rejected_steps: 0,
-            n_iterations_last: 0,
+            n_function: 0,
+            n_jacobian: 0,
+            n_factor: 0,
+            n_lin_sol: 0,
+            n_steps: 0,
+            n_accepted: 0,
+            n_rejected: 0,
+            n_iterations: 0,
             n_iterations_max: 0,
             h_optimal: 0.0,
             nanos_step_max: 0,
@@ -86,12 +94,14 @@ impl Benchmark {
 
     /// Resets all values
     pub(crate) fn reset(&mut self) {
-        self.n_function_eval = 0;
-        self.n_jacobian_eval = 0;
-        self.n_performed_steps = 0;
-        self.n_accepted_steps = 0;
-        self.n_rejected_steps = 0;
-        self.n_iterations_last = 0;
+        self.n_function = 0;
+        self.n_jacobian = 0;
+        self.n_factor = 0;
+        self.n_lin_sol = 0;
+        self.n_steps = 0;
+        self.n_accepted = 0;
+        self.n_rejected = 0;
+        self.n_iterations = 0;
         self.n_iterations_max = 0;
         self.h_optimal = 0.0;
         self.nanos_step_max = 0;
@@ -135,8 +145,8 @@ impl Benchmark {
     }
 
     pub(crate) fn update_n_iterations_max(&mut self) {
-        if self.n_iterations_last > self.n_iterations_max {
-            self.n_iterations_max = self.n_iterations_last;
+        if self.n_iterations > self.n_iterations_max {
+            self.n_iterations_max = self.n_iterations;
         }
     }
 }
@@ -147,6 +157,8 @@ impl fmt::Display for Benchmark {
             f,
             "Number of function evaluations   = {}\n\
              Number of Jacobian evaluations   = {}\n\
+             Number of factorizations         = {}\n\
+             Number of lin sys solutions      = {}\n\
              Number of performed steps        = {}\n\
              Number of accepted steps         = {}\n\
              Number of rejected steps         = {}\n\
@@ -158,12 +170,14 @@ impl fmt::Display for Benchmark {
              Max time spent on factorization  = {}\n\
              Max time spent on lin solution   = {}\n\
              Total time                       = {}\n",
-            self.n_function_eval,
-            self.n_jacobian_eval,
-            self.n_performed_steps,
-            self.n_accepted_steps,
-            self.n_rejected_steps,
-            self.n_iterations_last,
+            self.n_function,
+            self.n_jacobian,
+            self.n_factor,
+            self.n_lin_sol,
+            self.n_steps,
+            self.n_accepted,
+            self.n_rejected,
+            self.n_iterations,
             self.n_iterations_max,
             self.h_optimal,
             format_nanoseconds(self.nanos_step_max),
@@ -186,11 +200,11 @@ mod tests {
     #[test]
     fn clone_copy_and_debug_work() {
         let mut bench = Benchmark::new();
-        bench.n_accepted_steps += 1;
+        bench.n_accepted += 1;
         let copy = bench;
         let clone = bench.clone();
-        assert_eq!(copy.n_accepted_steps, bench.n_accepted_steps);
-        assert_eq!(clone.n_accepted_steps, bench.n_accepted_steps);
+        assert_eq!(copy.n_accepted, bench.n_accepted);
+        assert_eq!(clone.n_accepted, bench.n_accepted);
         assert!(format!("{:?}", bench).len() > 0);
     }
 
@@ -201,6 +215,8 @@ mod tests {
             format!("{}", bench),
             "Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
+             Number of factorizations         = 0\n\
+             Number of lin sys solutions      = 0\n\
              Number of performed steps        = 0\n\
              Number of accepted steps         = 0\n\
              Number of rejected steps         = 0\n\

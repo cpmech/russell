@@ -28,6 +28,7 @@
     "dsyrk",
     "dtype",
     "dznrm2",
+    "FACCON",
     "Fehlberg",
     "Flannery",
     "fweuler",

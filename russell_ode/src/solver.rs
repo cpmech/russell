@@ -51,8 +51,8 @@ impl<'a, A> Solver<'a, A> {
     /// See [System] for an explanation of the generic parameters.
     pub fn new<F, J>(params: Params, system: System<'a, F, J, A>) -> Result<Self, StrError>
     where
-        F: 'a + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-        J: 'a + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+        F: 'a + Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+        J: 'a + Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
         A: 'a,
     {
         params.validate()?;
@@ -109,8 +109,8 @@ impl<'a, A> Solver<'a, A> {
         mut _output_dense: D,
     ) -> Result<(), StrError>
     where
-        S: FnMut(usize, f64, f64, &Vector) -> Result<bool, StrError>,
-        D: FnMut(&mut Vector, f64, usize, f64, f64, &Vector) -> Result<bool, StrError>,
+        S: Send + FnMut(usize, f64, f64, &Vector) -> Result<bool, StrError>,
+        D: Send + FnMut(&mut Vector, f64, usize, f64, f64, &Vector) -> Result<bool, StrError>,
     {
         // check data
         if y0.dim() != self.ndim {
@@ -146,7 +146,7 @@ impl<'a, A> Solver<'a, A> {
         assert!(h > 0.0);
 
         // reset variables
-        self.work.reset(self.params.rel_error_prev_min);
+        self.work.reset(h, self.params.rel_error_prev_min);
         self.work.bench.h_optimal = h;
         self.actual.initialize(x0, y0);
 
@@ -160,7 +160,7 @@ impl<'a, A> Solver<'a, A> {
             for step in 0..nstep {
                 // benchmark
                 self.work.bench.sw_step.reset();
-                self.work.bench.n_performed_steps += 1;
+                self.work.bench.n_steps += 1;
 
                 // step
                 self.actual.step(&mut self.work, x, &y, h, args)?;
@@ -170,7 +170,7 @@ impl<'a, A> Solver<'a, A> {
                 self.actual.accept(&mut self.work, &mut x, y, h, args)?;
 
                 // benchmark
-                self.work.bench.n_accepted_steps += 1;
+                self.work.bench.n_accepted += 1;
                 self.work.bench.stop_sw_step();
 
                 // output
@@ -192,7 +192,7 @@ impl<'a, A> Solver<'a, A> {
         for _ in 0..self.params.n_step_max {
             // benchmark
             self.work.bench.sw_step.reset();
-            self.work.bench.n_performed_steps += 1;
+            self.work.bench.n_steps += 1;
 
             // check successful completion
             if x >= x1 {
@@ -216,7 +216,7 @@ impl<'a, A> Solver<'a, A> {
             // accept step
             if self.work.rel_error < 1.0 {
                 // set flabs
-                self.work.bench.n_accepted_steps += 1;
+                self.work.bench.n_accepted += 1;
                 self.work.first_step = false;
 
                 // update x and y
@@ -229,7 +229,8 @@ impl<'a, A> Solver<'a, A> {
                     break;
                 }
 
-                // save previous relative error
+                // save previous stepsize and relative error
+                self.work.h_prev = h;
                 self.work.rel_error_prev = f64::max(self.params.rel_error_prev_min, self.work.rel_error);
 
                 // check new stepsize
@@ -250,8 +251,8 @@ impl<'a, A> Solver<'a, A> {
                 }
             } else {
                 // set flags
-                if self.work.bench.n_accepted_steps > 0 {
-                    self.work.bench.n_rejected_steps += 1;
+                if self.work.bench.n_accepted > 0 {
+                    self.work.bench.n_rejected += 1;
                 }
                 self.work.follows_reject_step = true;
                 last_step = false;

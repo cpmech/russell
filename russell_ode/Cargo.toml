@@ -14,3 +14,4 @@ keywords = ["differential equations", "numerical methods", "solver"]
 [dependencies]
 russell_lab = { path = "../russell_lab", version = "0.8" }
 russell_sparse = { path = "../russell_sparse", version = "0.8" }
+num-complex = { version = "0.4", features = ["serde"] }

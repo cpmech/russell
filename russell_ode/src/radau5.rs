@@ -319,11 +319,11 @@ where
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Initializes the internal variables
-    fn initialize(&mut self, x: f64, y: &Vector) {
+    fn initialize(&mut self, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError> {
         for i in 0..self.system.ndim {
             self.scaling[i] = self.params.abs_tol + self.params.rel_tol * f64::abs(y[i]);
         }
-        // (self.system.function)(&mut self.k_accepted, x, y, args)?; // TODO
+        (self.system.function)(&mut self.k_accepted, x, y, args)
     }
 
     /// Calculates the quantities required to update x and y

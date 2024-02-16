@@ -74,11 +74,11 @@ where
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Initializes the internal variables
-    fn initialize(&mut self, _x: f64, y: &Vector) {
-        // first scaling vector
+    fn initialize(&mut self, _x: f64, y: &Vector, _args: &mut A) -> Result<(), StrError> {
         for i in 0..self.system.ndim {
             self.scaling[i] = self.params.abs_tol + self.params.rel_tol * f64::abs(y[i]);
         }
+        Ok(())
     }
 
     /// Calculates the quantities required to update x and y
@@ -181,11 +181,11 @@ where
         x: &mut f64,
         y: &mut Vector,
         h: f64,
-        _args: &mut A,
+        args: &mut A,
     ) -> Result<(), StrError> {
         *x += h;
         vec_copy(y, &self.w).unwrap();
-        Ok(())
+        self.initialize(*x, y, args)
     }
 
     /// Rejects the update

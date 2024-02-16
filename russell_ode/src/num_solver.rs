@@ -5,7 +5,7 @@ use russell_lab::Vector;
 /// Defines the numerical solver
 pub(crate) trait NumSolver<A> {
     /// Initializes the internal variables
-    fn initialize(&mut self, x: f64, y: &Vector);
+    fn initialize(&mut self, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError>;
 
     /// Calculates the quantities required to update x and y
     fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError>;

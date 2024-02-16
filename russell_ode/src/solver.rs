@@ -148,7 +148,7 @@ impl<'a, A> Solver<'a, A> {
         // reset variables
         self.work.reset(h, self.params.rel_error_prev_min);
         self.work.bench.h_optimal = h;
-        self.actual.initialize(x0, y0);
+        self.actual.initialize(x0, y0, args)?;
 
         // current values
         let mut x = x0; // will become x1 at the end

@@ -42,7 +42,9 @@ where
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Initializes the internal variables
-    fn initialize(&mut self, _x: f64, _y: &Vector) {}
+    fn initialize(&mut self, _x: f64, _y: &Vector, _args: &mut A) -> Result<(), StrError> {
+        Ok(())
+    }
 
     /// Calculates the quantities required to update x and y
     fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {

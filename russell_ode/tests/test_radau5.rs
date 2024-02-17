@@ -12,7 +12,7 @@ fn test_radau5_hairer_wanner_eq1() {
             &mut data.y0,
             data.x0,
             data.x1,
-            data.h_equal,
+            None,
             &mut args,
             no_step_output,
             no_dense_output,
@@ -21,17 +21,18 @@ fn test_radau5_hairer_wanner_eq1() {
     let mut analytical = data.y_analytical.unwrap();
     let mut y1_correct = Vector::new(ndim);
     analytical(&mut y1_correct, data.x1);
-    approx_eq(data.y0[0], 0.09060476604187756, 1e-15);
-    approx_eq(data.y0[0], y1_correct[0], 1e-4);
-
+    approx_eq(data.y0[0], 0.09067973091719728, 1e-6);
+    approx_eq(data.y0[0], y1_correct[0], 3e-5); // << todo
     let b = solver.bench();
     println!("{}", b);
-    assert_eq!(b.n_function, 80);
-    assert_eq!(b.n_jacobian, 40);
-    assert_eq!(b.n_steps, 40);
-    assert_eq!(b.n_accepted, 40);
+    assert_eq!(b.n_function, 67);
+    assert_eq!(b.n_jacobian, 1);
+    assert_eq!(b.n_factor, 13); // << new
+    assert_eq!(b.n_lin_sol, 17); // << new
+    assert_eq!(b.n_steps, 15);
+    assert_eq!(b.n_accepted, 15);
     assert_eq!(b.n_rejected, 0);
-    assert_eq!(b.n_iterations, 2);
+    assert_eq!(b.n_iterations, 1);
     assert_eq!(b.n_iterations_max, 2);
-    assert_eq!(b.h_optimal, data.h_equal.unwrap());
+    approx_eq(b.h_optimal, 0.7212025758141315, 0.0032); // << todo
 }

@@ -74,7 +74,7 @@ where
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Initializes the internal variables
-    fn initialize(&mut self, _x: f64, y: &Vector, _args: &mut A) -> Result<(), StrError> {
+    fn initialize(&mut self, _work: &mut Workspace, _x: f64, y: &Vector, _args: &mut A) -> Result<(), StrError> {
         for i in 0..self.system.ndim {
             self.scaling[i] = self.params.abs_tol + self.params.rel_tol * f64::abs(y[i]);
         }
@@ -175,7 +175,7 @@ where
     /// Updates x and y and computes the next stepsize
     fn accept(
         &mut self,
-        _work: &mut Workspace,
+        work: &mut Workspace,
         x: &mut f64,
         y: &mut Vector,
         h: f64,
@@ -183,7 +183,7 @@ where
     ) -> Result<(), StrError> {
         *x += h;
         vec_copy(y, &self.w).unwrap();
-        self.initialize(*x, y, args)
+        self.initialize(work, *x, y, args)
     }
 
     /// Rejects the update

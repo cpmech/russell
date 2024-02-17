@@ -42,7 +42,7 @@ where
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Initializes the internal variables
-    fn initialize(&mut self, _x: f64, _y: &Vector, _args: &mut A) -> Result<(), StrError> {
+    fn initialize(&mut self, _work: &mut Workspace, _x: f64, _y: &Vector, _args: &mut A) -> Result<(), StrError> {
         Ok(())
     }
 

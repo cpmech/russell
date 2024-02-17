@@ -1,7 +1,8 @@
 use crate::StrError;
 use crate::{OdeSolverTrait, ParamsRadau5, System, Workspace};
+use num_complex::Complex64;
 use russell_lab::math::SQRT_6;
-use russell_lab::{complex_vec_unzip, complex_vec_zip, vec_copy, ComplexVector, Vector};
+use russell_lab::{complex_vec_unzip, complex_vec_zip, cpx, vec_copy, ComplexVector, Vector};
 use russell_sparse::{ComplexLinSolver, ComplexSparseMatrix, CooMatrix, Genie, LinSolver, SparseMatrix};
 use std::thread;
 
@@ -17,16 +18,13 @@ where
     /// ODE system
     system: System<'a, F, J, A>,
 
-    /// Mass matrix (or diagonal)
-    mass: CooMatrix,
+    /// Holds the Jacobian matrix. J = df/dy
+    jj: SparseMatrix,
 
-    /// Indicates whether the mass matrix is provided or not
-    with_mass: bool,
-
-    /// Coefficient matrix (for real system)
+    /// Coefficient matrix (for real system). K_real = γ M - J
     kk_real: SparseMatrix,
 
-    /// Coefficient matrix (for real system)
+    /// Coefficient matrix (for real system). K_comp = (α + βi) M - J
     kk_comp: ComplexSparseMatrix,
 
     /// Linear solver (for real system)
@@ -36,13 +34,16 @@ where
     solver_comp: ComplexLinSolver<'a>,
 
     /// Indicates that the Jacobian can be reused (once)
-    reuse_jacobian_once: bool,
+    reuse_jacobian: bool,
 
-    /// Indicates that the Jacobian and corresponding factorizations can be reused (once)
-    reuse_jacobian_and_factors_once: bool,
+    /// Indicates that the J, K_real, and K_comp matrices (and their factorizations) can be reused (once)
+    reuse_jacobian_kk_and_fact: bool,
 
-    /// Indicates that the Jacobian is OK
-    jacobian_is_ok: bool,
+    /// Indicates that the Jacobian has been computed
+    ///
+    /// This flag assists in reusing the Jacobian if the step has been rejected.
+    /// Make sure to set this flag to false in `accept`.
+    jacobian_computed: bool,
 
     /// eta tolerance for stepsize control
     eta: f64,
@@ -111,25 +112,24 @@ where
         let ndim = system.ndim;
         let symmetry = Some(system.jac_symmetry);
         let one_based = params.genie == Genie::Mumps;
-        let (mass, with_mass) = match system.mass_matrix {
-            Some(mm) => (mm.clone(), true),
-            None => (CooMatrix::new(ndim, ndim, ndim, symmetry, one_based).unwrap(), false),
+        let mass_nnz = match system.mass_matrix {
+            Some(mass) => mass.get_info().2,
+            None => ndim,
         };
-        let (_, _, mass_nnz, _) = mass.get_info();
-        let nnz = mass_nnz + system.jac_nnz;
+        let jac_nnz = system.jac_nnz;
+        let nnz = mass_nnz + jac_nnz;
         let theta = params.theta_max;
         Radau5 {
             params,
             system,
-            mass,
-            with_mass,
+            jj: SparseMatrix::new_coo(ndim, ndim, jac_nnz, symmetry, one_based).unwrap(),
             kk_real: SparseMatrix::new_coo(ndim, ndim, nnz, symmetry, one_based).unwrap(),
             kk_comp: ComplexSparseMatrix::new_coo(ndim, ndim, nnz, symmetry, one_based).unwrap(),
             solver_real: LinSolver::new(params.genie).unwrap(),
             solver_comp: ComplexLinSolver::new(params.genie).unwrap(),
-            reuse_jacobian_once: false,
-            reuse_jacobian_and_factors_once: false,
-            jacobian_is_ok: false,
+            reuse_jacobian: false,
+            reuse_jacobian_kk_and_fact: false,
+            jacobian_computed: false,
             eta: 1.0,
             theta,
             k_accepted: Vector::new(ndim),
@@ -160,41 +160,47 @@ where
     /// Assembles the K_real and K_comp matrices
     fn assemble(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {
         // auxiliary
-        let kk_real = self.kk_real.get_coo_mut()?;
-        let kk_comp = self.kk_comp.get_coo_mut()?;
+        let jj = self.jj.get_coo_mut()?; // J = df/dy
+        let kk_real = self.kk_real.get_coo_mut()?; // K_real = γ M - J
+        let kk_comp = self.kk_comp.get_coo_mut()?; // K_comp = (α + βi) M - J
 
-        // stat
-        work.bench.sw_jacobian.reset();
-        work.bench.n_jacobian += 1;
-
-        // K_real := -J
-        if self.params.use_numerical_jacobian || !self.system.jac_available {
-            work.bench.n_function += self.system.ndim;
-            let y_mut = &mut self.w0; // using w[0] as a workspace
-            vec_copy(y_mut, y).unwrap();
-            self.system
-                .numerical_jacobian(kk_real, x, y_mut, &self.k_accepted, -1.0, args)?;
-        } else {
-            (self.system.jacobian)(kk_real, x, y, -1.0, args)?;
+        // Jacobian matrix
+        if self.reuse_jacobian {
+            self.reuse_jacobian = false; // just once
+        } else if !self.jacobian_computed {
+            work.bench.sw_jacobian.reset();
+            work.bench.n_jacobian += 1;
+            if self.params.use_numerical_jacobian || !self.system.jac_available {
+                work.bench.n_function += self.system.ndim;
+                let y_mut = &mut self.w0; // using w[0] as a workspace
+                vec_copy(y_mut, y).unwrap();
+                self.system
+                    .numerical_jacobian(jj, x, y_mut, &self.k_accepted, 1.0, args)?;
+            } else {
+                (self.system.jacobian)(jj, x, y, 1.0, args)?;
+            }
+            self.jacobian_computed = true;
+            work.bench.stop_sw_jacobian();
         }
 
-        // factors
+        // coefficient matrices
         let alpha = ALPHA / h;
         let beta = BETA / h;
         let gamma = GAMMA / h;
-
-        // K_comp := -J   (must do this before augmenting K_real)
-        kk_comp.assign_real(1.0, 0.0, kk_real).unwrap();
-
-        // K_comp += (α + βi) M   thus   K_comp = (α + βi) M - J
-        kk_comp.augment_real(alpha, beta, &self.mass).unwrap();
-
-        // K_real += γ M   thus   K_real = γ M - J
-        kk_real.augment(gamma, &self.mass).unwrap();
-
-        // done
-        self.jacobian_is_ok = true;
-        work.bench.stop_sw_jacobian();
+        kk_real.assign(-1.0, jj).unwrap(); // K_real = -J
+        kk_comp.assign_real(-1.0, 0.0, jj).unwrap(); // K_comp = -J
+        match self.system.mass_matrix {
+            Some(mass) => {
+                kk_real.augment(gamma, mass).unwrap(); // K_real += γ M
+                kk_comp.augment_real(alpha, beta, mass).unwrap(); // K_comp += (α + βi) M
+            }
+            None => {
+                for m in 0..self.system.ndim {
+                    kk_real.put(m, m, gamma).unwrap(); // K_real += γ I
+                    kk_comp.put(m, m, cpx!(alpha, beta)).unwrap(); // K_comp += (α + βi) I
+                }
+            }
+        }
         Ok(())
     }
 
@@ -284,10 +290,11 @@ where
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Initializes the internal variables
-    fn initialize(&mut self, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError> {
+    fn initialize(&mut self, work: &mut Workspace, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError> {
         for i in 0..self.system.ndim {
             self.scaling[i] = self.params.abs_tol + self.params.rel_tol * f64::abs(y[i]);
         }
+        work.bench.n_function += 1;
         (self.system.function)(&mut self.k_accepted, x, y, args)
     }
 
@@ -297,23 +304,11 @@ where
         let concurrent = self.params.concurrent && self.params.genie != Genie::Mumps;
         let ndim = self.system.ndim;
 
-        // Jacobian and factorizations (modified/simple Newton's method)
-        if self.reuse_jacobian_and_factors_once {
-            // if we can reuse the Jacobian and the factorizations, skip their calculations,
-            // but set the flag to false to make the next call to compute them
-            self.reuse_jacobian_and_factors_once = false;
+        // Jacobian, K_real, K_comp, and factorizations (for all iterations: simple Newton's method)
+        if self.reuse_jacobian_kk_and_fact {
+            self.reuse_jacobian_kk_and_fact = false; // just once
         } else {
-            // otherwise, perform the factorizations
-            if self.reuse_jacobian_once {
-                // if we can reuse the Jacobian, skip its calculation,
-                // but set the flag to false to make the next call to compute it
-                self.reuse_jacobian_once = false;
-            } else if !self.jacobian_is_ok {
-                // otherwise, if the Jacobian is not OK, calculate the Jacobian before the
-                // iterations and use it in all iterations (modified/simple Newton's method)
-                self.assemble(work, x, y, h, args)?;
-            }
-            // perform the factorizations
+            self.assemble(work, x, y, h, args)?;
             work.bench.sw_factor.reset();
             work.bench.n_factor += 1;
             if concurrent {
@@ -385,13 +380,14 @@ where
             (self.system.function)(&mut self.k2, u2, &self.v2, args)?;
 
             // compute the right-hand side vectors
-            let (l0, l1, l2) = if self.with_mass {
-                self.mass.mat_vec_mul(&mut self.dw0, 1.0, &self.w0).unwrap(); // dw0 := M ⋅ w0
-                self.mass.mat_vec_mul(&mut self.dw1, 1.0, &self.w1).unwrap(); // dw1 := M ⋅ w1
-                self.mass.mat_vec_mul(&mut self.dw2, 1.0, &self.w2).unwrap(); // dw2 := M ⋅ w2
-                (&self.dw0, &self.dw1, &self.dw2)
-            } else {
-                (&self.w0, &self.w1, &self.w2)
+            let (l0, l1, l2) = match self.system.mass_matrix {
+                Some(mass) => {
+                    mass.mat_vec_mul(&mut self.dw0, 1.0, &self.w0).unwrap(); // dw0 := M ⋅ w0
+                    mass.mat_vec_mul(&mut self.dw1, 1.0, &self.w1).unwrap(); // dw1 := M ⋅ w1
+                    mass.mat_vec_mul(&mut self.dw2, 1.0, &self.w2).unwrap(); // dw2 := M ⋅ w2
+                    (&self.dw0, &self.dw1, &self.dw2)
+                }
+                None => (&self.w0, &self.w1, &self.w2),
             };
             {
                 // TODO: use rustfmt::skip
@@ -452,7 +448,10 @@ where
                 thq_old = thq;
                 if self.theta < 0.99 {
                     self.eta = self.theta / (1.0 - self.theta); // FACCON on line 964 of radau5.f
-                    let exp = (nit - 1 - newt) as f64;
+
+                    // let exp = (nit - 1 - newt) as f64; // TODO: check this
+
+                    let exp = (nit - newt) as f64; // TODO: check this
                     let rel_err = self.eta * ldw * f64::powf(self.theta, exp) / self.params.tol_newton;
                     if rel_err >= 1.0 {
                         // diverging
@@ -486,7 +485,7 @@ where
             return Err("Newton-Raphson method did not converge");
         }
 
-        // error estimate ------------------------------------------------------
+        // error estimate //////////////////////////////////////////////////////
 
         // auxiliary
         let ez = &mut self.w0; // e times z
@@ -495,19 +494,22 @@ where
         let err = &mut self.dw0; // error variable
 
         // compute ez, mez and rhs
-        if self.with_mass {
-            for m in 0..ndim {
-                ez[m] = E0 * self.z0[m] + E1 * self.z1[m] + E2 * self.z2[m];
+        match self.system.mass_matrix {
+            Some(mass) => {
+                for m in 0..ndim {
+                    ez[m] = E0 * self.z0[m] + E1 * self.z1[m] + E2 * self.z2[m];
+                }
+                mass.mat_vec_mul(mez, gamma, ez).unwrap();
+                for m in 0..ndim {
+                    rhs[m] = mez[m] + self.k_accepted[m]; // rhs = γ M ez + f0
+                }
             }
-            self.mass.mat_vec_mul(mez, gamma, ez).unwrap();
-            for m in 0..ndim {
-                rhs[m] = mez[m] + self.k_accepted[m]; // rhs = γ M ez + f0
-            }
-        } else {
-            for m in 0..ndim {
-                ez[m] = E0 * self.z0[m] + E1 * self.z1[m] + E2 * self.z2[m];
-                mez[m] = gamma * ez[m];
-                rhs[m] = mez[m] + self.k_accepted[m]; // rhs = γ ez + f0
+            None => {
+                for m in 0..ndim {
+                    ez[m] = E0 * self.z0[m] + E1 * self.z1[m] + E2 * self.z2[m];
+                    mez[m] = gamma * ez[m];
+                    rhs[m] = mez[m] + self.k_accepted[m]; // rhs = γ ez + f0
+                }
             }
         }
 
@@ -547,6 +549,11 @@ where
         h: f64,
         args: &mut A,
     ) -> Result<(), StrError> {
+        // do not reuse current Jacobian and decomposition by default
+        self.reuse_jacobian_kk_and_fact = false;
+        self.reuse_jacobian = false;
+        self.jacobian_computed = false;
+
         // update y and collocation points
         for m in 0..self.system.ndim {
             y[m] += self.z2[m];
@@ -578,25 +585,24 @@ where
             }
         }
 
-        // do not reuse current Jacobian and decomposition by default
-        self.reuse_jacobian_and_factors_once = false;
-        self.reuse_jacobian_once = false;
-
         // update h_new if not reusing factorizations
         let h_ratio = h_new / h;
-        self.reuse_jacobian_and_factors_once =
+        self.reuse_jacobian_kk_and_fact =
             self.theta <= self.params.theta_max && h_ratio >= self.params.c1h && h_ratio <= self.params.c2h;
-        if !self.reuse_jacobian_and_factors_once {
+        if !self.reuse_jacobian_kk_and_fact {
             work.h_new = h_new;
         }
 
         // check θ to decide if at least the Jacobian can be reused
-        if !self.reuse_jacobian_and_factors_once {
-            self.reuse_jacobian_once = self.theta <= self.params.theta_max;
+        if !self.reuse_jacobian_kk_and_fact {
+            self.reuse_jacobian = self.theta <= self.params.theta_max;
         }
 
+        // update x
+        *x += h;
+
         // re-initialize
-        self.initialize(*x, y, args)
+        self.initialize(work, *x, y, args)
     }
 
     /// Rejects the update

@@ -320,6 +320,22 @@ where
         }
     }
 
+    /// Assigns this matrix to the values of another matrix (scaled)
+    ///
+    /// Performs:
+    ///
+    /// ```text
+    /// this = α · other
+    /// ```
+    ///
+    /// **Warning:** make sure to allocate `max_nnz ≥ nnz(other)`.
+    pub fn assign(&mut self, alpha: T, other: &NumSparseMatrix<T>) -> Result<(), StrError> {
+        match &mut self.coo {
+            Some(coo) => coo.assign(alpha, other.get_coo()?),
+            None => Err("COO matrix is not available to perform assignment"),
+        }
+    }
+
     /// Augments this matrix with the entries of another matrix (scaled)
     ///
     /// Effectively, performs:
@@ -455,10 +471,7 @@ mod tests {
 
     #[test]
     fn getters_work() {
-        // un-mutable
-        // ┌       ┐
-        // │ 10 20 │
-        // └       ┘
+        // test matrices
         let (coo, csc, csr, _) = Samples::rectangular_1x2(false, false, false);
         let mut a = Matrix::new(1, 2);
         let x = Vector::from(&[2.0, 1.0]);
@@ -484,7 +497,6 @@ mod tests {
         assert_eq!(csr_mat.get_csc().err(), Some("CSC matrix is not available"));
         assert_eq!(csr_mat.get_coo().err(), Some("COO matrix is not available"));
         assert_eq!(csr_mat.get_values(), &[10.0, 20.0]);
-
         // COO, CSC, CSR
         let mut ax = Vector::new(1);
         for mat in [&coo_mat, &csc_mat, &csr_mat] {
@@ -507,16 +519,22 @@ mod tests {
 
     #[test]
     fn setters_work() {
-        // mutable
-        // ┌       ┐
-        // │ 10 20 │
-        // └       ┘
+        // test matrices
         let (coo, csc, csr, _) = Samples::rectangular_1x2(false, false, false);
+        let mut other = NumSparseMatrix::<f64>::new_coo(1, 1, 1, None, false).unwrap();
+        let mut wrong = NumSparseMatrix::<f64>::new_coo(1, 1, 3, None, false).unwrap();
+        other.put(0, 0, 2.0).unwrap();
+        wrong.put(0, 0, 1.0).unwrap();
+        wrong.put(0, 0, 2.0).unwrap();
+        wrong.put(0, 0, 3.0).unwrap();
         // COO
         let mut coo_mat = NumSparseMatrix::<f64>::from_coo(coo);
         assert_eq!(coo_mat.get_coo_mut().unwrap().get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(coo_mat.get_csc_mut().err(), Some("CSC matrix is not available"));
         assert_eq!(coo_mat.get_csr_mut().err(), Some("CSR matrix is not available"));
+        let mut empty = NumSparseMatrix::<f64>::new_coo(1, 1, 1, None, false).unwrap();
+        assert_eq!(empty.get_csc_or_from_coo().err(), Some("COO to CSC requires nnz > 0"));
+        assert_eq!(empty.get_csr_or_from_coo().err(), Some("COO to CSR requires nnz > 0"));
         // CSC
         let mut csc_mat = NumSparseMatrix::<f64>::from_csc(csc);
         assert_eq!(csc_mat.get_csc_mut().unwrap().get_info(), (1, 2, 2, Symmetry::No));
@@ -537,6 +555,14 @@ mod tests {
         assert_eq!(
             csc_mat.reset().err(),
             Some("COO matrix is not available to reset nnz counter")
+        );
+        assert_eq!(
+            csc_mat.assign(4.0, &other).err(),
+            Some("COO matrix is not available to perform assignment")
+        );
+        assert_eq!(
+            csc_mat.augment(4.0, &other).err(),
+            Some("COO matrix is not available to augment")
         );
         // CSR
         let mut csr_mat = NumSparseMatrix::<f64>::from_csr(csr);
@@ -559,6 +585,14 @@ mod tests {
             csr_mat.reset().err(),
             Some("COO matrix is not available to reset nnz counter")
         );
+        assert_eq!(
+            csr_mat.assign(4.0, &other).err(),
+            Some("COO matrix is not available to perform assignment")
+        );
+        assert_eq!(
+            csr_mat.augment(4.0, &other).err(),
+            Some("COO matrix is not available to augment")
+        );
         // COO
         let mut coo = NumSparseMatrix::<f64>::new_coo(2, 2, 1, None, false).unwrap();
         coo.put(0, 0, 1.0).unwrap();
@@ -568,19 +602,32 @@ mod tests {
         );
         coo.reset().unwrap();
         coo.put(1, 1, 2.0).unwrap();
+        // COO (assign)
+        let mut this = NumSparseMatrix::<f64>::new_coo(1, 1, 1, None, false).unwrap();
+        this.put(0, 0, 8000.0).unwrap();
+        this.assign(4.0, &other).unwrap();
+        assert_eq!(
+            format!("{}", this.as_dense()),
+            "┌   ┐\n\
+             │ 8 │\n\
+             └   ┘"
+        );
+        assert_eq!(
+            this.assign(2.0, &wrong).err(),
+            Some("COO matrix: max number of items has been reached")
+        );
+        assert_eq!(this.assign(2.0, &csc_mat).err(), Some("COO matrix is not available"));
         // COO (augment)
         let mut this = NumSparseMatrix::<f64>::new_coo(1, 1, 1 + 1, None, false).unwrap();
-        let mut other = NumSparseMatrix::<f64>::new_coo(1, 1, 1, None, false).unwrap();
-        this.put(0, 0, 110.0).unwrap();
-        other.put(0, 0, 200.0).unwrap();
+        this.put(0, 0, 100.0).unwrap();
         this.augment(4.0, &other).unwrap();
-        println!("{}", this.as_dense());
         assert_eq!(
             format!("{}", this.as_dense()),
             "┌     ┐\n\
-             │ 910 │\n\
+             │ 108 │\n\
              └     ┘"
         );
+        assert_eq!(this.augment(2.0, &csc_mat).err(), Some("COO matrix is not available"));
     }
 
     #[test]

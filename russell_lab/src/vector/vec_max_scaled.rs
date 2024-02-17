@@ -31,7 +31,7 @@ mod tests {
     use super::{vec_max_scaled, Vector};
 
     #[test]
-    fn vec_rms_error_works() {
+    fn vec_max_scaled_works() {
         let empty = Vector::new(0);
         assert_eq!(vec_max_scaled(&empty, &empty), 0.0);
 

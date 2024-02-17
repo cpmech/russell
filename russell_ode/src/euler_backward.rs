@@ -165,12 +165,10 @@ where
         }
 
         // check
+        work.bench.update_n_iterations_max();
         if !converged {
             return Err("Newton-Raphson method did not converge");
         }
-
-        // done
-        work.bench.update_n_iterations_max();
         Ok(())
     }
 

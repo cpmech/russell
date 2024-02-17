@@ -1,12 +1,8 @@
-#![allow(unused)]
-
 use crate::StrError;
-use crate::{Method, OdeSolverTrait, ParamsRadau5, System, Workspace};
-use num_complex::Complex64;
-use russell_lab::math::{SQRT_3, SQRT_6};
-use russell_lab::{complex_vec_unzip, complex_vec_zip, cpx, vec_copy, ComplexVector, Matrix, Vector};
-use russell_sparse::LinSolTrait;
-use russell_sparse::{ComplexLinSolver, ComplexSparseMatrix, CooMatrix, Genie, LinSolver, SolverUMFPACK, SparseMatrix};
+use crate::{OdeSolverTrait, ParamsRadau5, System, Workspace};
+use russell_lab::math::SQRT_6;
+use russell_lab::{complex_vec_unzip, complex_vec_zip, vec_copy, ComplexVector, Vector};
+use russell_sparse::{ComplexLinSolver, ComplexSparseMatrix, CooMatrix, Genie, LinSolver, SparseMatrix};
 use std::thread;
 
 /// Implements the Radau5 method
@@ -39,66 +35,6 @@ where
     /// Linear solver (for complex system)
     solver_comp: ComplexLinSolver<'a>,
 
-    /// Scaling vector
-    ///
-    /// ```text
-    /// scaling[i] = abs_tol + rel_tol ⋅ |y[i]|
-    /// ```
-    scaling: Vector,
-
-    /// First function evaluation (for each accepted step)
-    k_accepted: Vector,
-
-    /// Vectors holding the updates
-    ///
-    /// ```text
-    /// v[stg][dim] = ya[dim] + h*sum(a[stg][j]*f[j][dim], j, nstage)
-    /// ```
-    v0: Vector,
-    v1: Vector,
-    v2: Vector,
-    v12: ComplexVector, // packed (v1, v2)
-
-    /// Vectors holding the function evaluations
-    ///
-    /// ```text
-    /// k[stg][dim] = f(u[stg], v[stg][dim])
-    /// ```
-    k0: Vector,
-    k1: Vector,
-    k2: Vector,
-
-    /// Normalized vectors, one for each of the 3 stages
-    z0: Vector,
-    z1: Vector,
-    z2: Vector,
-
-    /// Collocation values, one for each of the 3 stages
-    yc0: Vector,
-    yc1: Vector,
-    yc2: Vector,
-
-    /// Workspace, one for each of the 3 stages
-    w0: Vector,
-    w1: Vector,
-    w2: Vector,
-    w12: ComplexVector, // packed (w1, w2)
-
-    /// Incremental workspace, one for each of the 3 stages
-    dw0: Vector,
-    dw1: Vector,
-    dw2: Vector,
-    dw12: ComplexVector, // packed (dw1, dw2)
-
-    /// Error estimate workspace
-    ez: Vector,
-
-    /// Error estimate workspace
-    err: Vector,
-
-    /// Error estimate workspace
-    rhs: Vector,
-
     /// Indicates that the Jacobian can be reused (once)
     reuse_jacobian_once: bool,
 
@@ -108,11 +44,61 @@ where
     /// Indicates that the Jacobian is OK
     jacobian_is_ok: bool,
 
-    // eta tolerance for stepsize control
+    /// eta tolerance for stepsize control
     eta: f64,
 
-    // theta variable for stepsize control
+    /// theta variable for stepsize control
     theta: f64,
+
+    /// First function evaluation (for each accepted step)
+    k_accepted: Vector,
+
+    /// Scaling vector
+    ///
+    /// ```text
+    /// scaling[i] = abs_tol + rel_tol ⋅ |y[i]|
+    /// ```
+    scaling: Vector,
+
+    /// Vectors holding the updates. CONT1 of radau5.f
+    ///
+    /// ```text
+    /// v[stg][dim] = ya[dim] + h*sum(a[stg][j]*f[j][dim], j, nstage)
+    /// ```
+    v0: Vector,
+    v1: Vector,
+    v2: Vector,
+    v12: ComplexVector, // packed (v1, v2)
+
+    /// Vectors holding the function evaluations. F{1,2,3} of radau5.f
+    ///
+    /// ```text
+    /// k[stg][dim] = f(u[stg], v[stg][dim])
+    /// ```
+    k0: Vector,
+    k1: Vector,
+    k2: Vector,
+
+    /// Normalized vectors, one for each of the 3 stages. Z{1,2,3} of radau5.f
+    z0: Vector,
+    z1: Vector,
+    z2: Vector,
+
+    /// Collocation values, one for each of the 3 stages. CONT{2,3,4} of radau5.f
+    yc0: Vector,
+    yc1: Vector,
+    yc2: Vector,
+
+    /// Workspace, one for each of the 3 stages
+    w0: Vector,
+    w1: Vector,
+    w2: Vector,
+
+    /// Incremental workspace, one for each of the 3 stages
+    dw0: Vector,
+    dw1: Vector,
+    dw2: Vector,
+    dw12: ComplexVector, // packed (dw1, dw2)
 }
 
 impl<'a, F, J, A> Radau5<'a, F, J, A>
@@ -141,8 +127,13 @@ where
             kk_comp: ComplexSparseMatrix::new_coo(ndim, ndim, nnz, symmetry, one_based).unwrap(),
             solver_real: LinSolver::new(params.genie).unwrap(),
             solver_comp: ComplexLinSolver::new(params.genie).unwrap(),
-            scaling: Vector::new(ndim),
+            reuse_jacobian_once: false,
+            reuse_jacobian_and_factors_once: false,
+            jacobian_is_ok: false,
+            eta: 1.0,
+            theta,
             k_accepted: Vector::new(ndim),
+            scaling: Vector::new(ndim),
             v0: Vector::new(ndim),
             v1: Vector::new(ndim),
             v2: Vector::new(ndim),
@@ -159,19 +150,10 @@ where
             w0: Vector::new(ndim),
             w1: Vector::new(ndim),
             w2: Vector::new(ndim),
-            w12: ComplexVector::new(ndim),
             dw0: Vector::new(ndim),
             dw1: Vector::new(ndim),
             dw2: Vector::new(ndim),
             dw12: ComplexVector::new(ndim),
-            ez: Vector::new(ndim),
-            err: Vector::new(ndim),
-            rhs: Vector::new(ndim),
-            reuse_jacobian_once: false,
-            reuse_jacobian_and_factors_once: false,
-            jacobian_is_ok: false,
-            eta: 1.0,
-            theta,
         }
     }
 
@@ -187,14 +169,12 @@ where
 
         // K_real := -J
         if self.params.use_numerical_jacobian || !self.system.jac_available {
-            // numerical Jacobian
             work.bench.n_function += self.system.ndim;
             let y_mut = &mut self.w0; // using w[0] as a workspace
             vec_copy(y_mut, y).unwrap();
             self.system
                 .numerical_jacobian(kk_real, x, y_mut, &self.k_accepted, -1.0, args)?;
         } else {
-            // analytical Jacobian
             (self.system.jacobian)(kk_real, x, y, -1.0, args)?;
         }
 
@@ -203,13 +183,13 @@ where
         let beta = BETA / h;
         let gamma = GAMMA / h;
 
-        // K_comp := -J  (must do this before augmenting K_real)
+        // K_comp := -J   (must do this before augmenting K_real)
         kk_comp.assign_real(1.0, 0.0, kk_real).unwrap();
 
-        // K_comp += (α + βi) M  thus  K_comp = (α + βi) M - J
+        // K_comp += (α + βi) M   thus   K_comp = (α + βi) M - J
         kk_comp.augment_real(alpha, beta, &self.mass).unwrap();
 
-        // K_real += γ M  thus  K_real = γ M - J
+        // K_real += γ M   thus   K_real = γ M - J
         kk_real.augment(gamma, &self.mass).unwrap();
 
         // done
@@ -296,21 +276,6 @@ where
             }
         })
     }
-
-    /// Computes the right-hand side of the linear systems
-    // #[rustfmt::skip]
-    fn right_hand_sides(&mut self, h: f64) {
-        let alpha = ALPHA / h;
-        let beta = BETA / h;
-        let gamma = GAMMA / h;
-        if self.with_mass {
-            self.mass.mat_vec_mul(&mut self.dw0, 1.0, &self.w0).unwrap();
-            self.mass.mat_vec_mul(&mut self.dw1, 1.0, &self.w1).unwrap();
-            self.mass.mat_vec_mul(&mut self.dw2, 1.0, &self.w2).unwrap();
-        } else {
-            for m in 0..self.system.ndim {}
-        }
-    }
 }
 
 impl<'a, F, J, A> OdeSolverTrait<A> for Radau5<'a, F, J, A>
@@ -331,13 +296,6 @@ where
         // constants
         let concurrent = self.params.concurrent && self.params.genie != Genie::Mumps;
         let ndim = self.system.ndim;
-        let dim = ndim as f64;
-        let mni = self.params.m_factor * ((1 + 2 * self.params.n_iteration_max) as f64);
-
-        // access matrices
-        let mass_values = self.mass.get_values();
-        let kk_real = &mut self.kk_real;
-        let kk_comp = &mut self.kk_comp;
 
         // Jacobian and factorizations (modified/simple Newton's method)
         if self.reuse_jacobian_and_factors_once {
@@ -359,9 +317,9 @@ where
             work.bench.sw_factor.reset();
             work.bench.n_factor += 1;
             if concurrent {
-                self.factorize_concurrently();
+                self.factorize_concurrently()?;
             } else {
-                self.factorize();
+                self.factorize()?;
             }
             work.bench.stop_sw_factor();
         }
@@ -371,7 +329,7 @@ where
         let u1 = x + C[1] * h;
         let u2 = x + C[2] * h;
 
-        // compute first z and w
+        // starting values for newton iterations (first z and w)
         if work.first_step || self.params.zero_trial {
             // zero trial
             for m in 0..ndim {
@@ -398,6 +356,7 @@ where
         }
 
         // auxiliary
+        let dim = ndim as f64;
         let alpha = ALPHA / h;
         let beta = BETA / h;
         let gamma = GAMMA / h;
@@ -409,8 +368,8 @@ where
         // iterations
         let mut converged = false;
         work.iterations_diverging = false;
-        work.bench.n_iterations = 0;
-        for iteration in 0..self.params.n_iteration_max {
+        work.bench.n_iterations = 0; // line 931 of radau5.f
+        for _ in 0..self.params.n_iteration_max {
             // benchmark
             work.bench.n_iterations += 1;
 
@@ -451,9 +410,9 @@ where
             work.bench.sw_lin_sol.reset();
             work.bench.n_lin_sol += 1;
             if concurrent {
-                self.solve_lin_sys_concurrently();
+                self.solve_lin_sys_concurrently()?;
             } else {
-                self.solve_lin_sys();
+                self.solve_lin_sys()?;
             }
             work.bench.stop_sw_lin_sol();
 
@@ -481,9 +440,11 @@ where
             ldw = f64::sqrt(ldw / (3.0 * dim));
 
             // check convergence
-            if iteration > 0 {
+            let newt = work.bench.n_iterations;
+            let nit = self.params.n_iteration_max;
+            if newt > 1 && newt < nit {
                 let thq = ldw / ldw_old;
-                if iteration == 1 {
+                if newt == 2 {
                     self.theta = thq;
                 } else {
                     self.theta = f64::sqrt(thq * thq_old);
@@ -491,14 +452,13 @@ where
                 thq_old = thq;
                 if self.theta < 0.99 {
                     self.eta = self.theta / (1.0 - self.theta); // FACCON on line 964 of radau5.f
-                    let newt = (iteration + 1) as f64;
-                    let nit = self.params.n_iteration_max as f64;
-                    let it_err = ldw * f64::powf(self.theta, nit - newt) / (1.0 - self.theta);
-                    let it_rel_err = it_err / self.params.tol_newton;
-                    if it_rel_err >= 1.0 {
+                    let exp = (nit - 1 - newt) as f64;
+                    let rel_err = self.eta * ldw * f64::powf(self.theta, exp) / self.params.tol_newton;
+                    if rel_err >= 1.0 {
                         // diverging
-                        let q_newt = f64::max(1.0e-4, f64::min(20.0, it_rel_err));
-                        work.h_multiplier_diverging = 0.8 * f64::powf(q_newt, -1.0 / (4.0 + nit - 1.0 - newt));
+                        let q_newt = f64::max(1.0e-4, f64::min(20.0, rel_err));
+                        let den = (4 + nit - 1 - newt) as f64;
+                        work.h_multiplier_diverging = 0.8 * f64::powf(q_newt, -1.0 / den);
                         work.iterations_diverging = true;
                         break;
                     }
@@ -520,49 +480,163 @@ where
             }
         }
 
-        // did not converge
+        // check
+        work.bench.update_n_iterations_max();
         if !converged {
             return Err("Newton-Raphson method did not converge");
         }
 
-        // error estimate
-        // TODO
+        // error estimate ------------------------------------------------------
 
+        // auxiliary
+        let ez = &mut self.w0; // e times z
+        let mez = &mut self.w1; // γ M ez   or   γ ez
+        let rhs = &mut self.w2; // right-hand side vector
+        let err = &mut self.dw0; // error variable
+
+        // compute ez, mez and rhs
+        if self.with_mass {
+            for m in 0..ndim {
+                ez[m] = E0 * self.z0[m] + E1 * self.z1[m] + E2 * self.z2[m];
+            }
+            self.mass.mat_vec_mul(mez, gamma, ez).unwrap();
+            for m in 0..ndim {
+                rhs[m] = mez[m] + self.k_accepted[m]; // rhs = γ M ez + f0
+            }
+        } else {
+            for m in 0..ndim {
+                ez[m] = E0 * self.z0[m] + E1 * self.z1[m] + E2 * self.z2[m];
+                mez[m] = gamma * ez[m];
+                rhs[m] = mez[m] + self.k_accepted[m]; // rhs = γ ez + f0
+            }
+        }
+
+        // err := K_real⁻¹ rhs = (γ M - J)⁻¹ rhs   (HW-VII p123 Eq.(8.20))
+        self.solver_real.actual.solve(err, &self.kk_real, rhs, false)?;
+        work.rel_error = rms_norm(err, &self.scaling);
+
+        // done with the error estimate
+        if work.rel_error < 1.0 {
+            return Ok(());
+        }
+
+        // handle particular case
+        if work.first_step || work.follows_reject_step {
+            let ype = &mut self.dw1; // y plus err
+            let fpe = &mut self.dw2; // f(x, y + err)
+            for m in 0..ndim {
+                ype[m] = y[m] + err[m];
+            }
+            work.bench.n_function += 1;
+            (self.system.function)(fpe, x, &ype, args)?;
+            for m in 0..ndim {
+                rhs[m] = mez[m] + fpe[m];
+            }
+            self.solver_real.actual.solve(err, &self.kk_real, rhs, false)?;
+            work.rel_error = rms_norm(err, &self.scaling);
+        }
         Ok(())
     }
 
     /// Updates x and y and computes the next stepsize
     fn accept(
         &mut self,
-        _work: &mut Workspace,
+        work: &mut Workspace,
         x: &mut f64,
         y: &mut Vector,
         h: f64,
-        _args: &mut A,
+        args: &mut A,
     ) -> Result<(), StrError> {
-        panic!("TODO");
-        Ok(())
+        // update y and collocation points
+        for m in 0..self.system.ndim {
+            y[m] += self.z2[m];
+            self.yc0[m] = (self.z1[m] - self.z2[m]) / MU4;
+            self.yc1[m] = ((self.z0[m] - self.z1[m]) / MU5 - self.yc0[m]) / MU3;
+            self.yc2[m] = self.yc1[m] - ((self.z0[m] - self.z1[m]) / MU5 - self.z0[m] / MU1) / MU2;
+        }
+
+        // estimate the new stepsize
+        let newt = work.bench.n_iterations;
+        let num = self.params.m_factor * ((1 + 2 * self.params.n_iteration_max) as f64);
+        let den = (newt + 2 * self.params.n_iteration_max) as f64;
+        let fac = f64::min(self.params.m_factor, num / den);
+        let div = f64::max(
+            self.params.m_min,
+            f64::min(self.params.m_max, f64::powf(work.rel_error, 0.25) / fac),
+        );
+        let mut h_new = h / div;
+
+        // predictive controller of Gustafsson
+        if self.params.use_pred_control {
+            if work.bench.n_accepted > 1 {
+                let r2 = work.rel_error * work.rel_error;
+                let rp = work.rel_error_prev;
+                let fac = (work.h_prev / h) * f64::powf(r2 / rp, 0.25) / self.params.m_factor;
+                let fac = f64::max(self.params.m_min, f64::min(self.params.m_max, fac));
+                let div = f64::max(div, fac);
+                h_new = h / div;
+            }
+        }
+
+        // do not reuse current Jacobian and decomposition by default
+        self.reuse_jacobian_and_factors_once = false;
+        self.reuse_jacobian_once = false;
+
+        // update h_new if not reusing factorizations
+        let h_ratio = h_new / h;
+        self.reuse_jacobian_and_factors_once =
+            self.theta <= self.params.theta_max && h_ratio >= self.params.c1h && h_ratio <= self.params.c2h;
+        if !self.reuse_jacobian_and_factors_once {
+            work.h_new = h_new;
+        }
+
+        // check θ to decide if at least the Jacobian can be reused
+        if !self.reuse_jacobian_and_factors_once {
+            self.reuse_jacobian_once = self.theta <= self.params.theta_max;
+        }
+
+        // re-initialize
+        self.initialize(*x, y, args)
     }
 
     /// Rejects the update
-    fn reject(&mut self, _work: &mut Workspace, _h: f64) {
-        panic!("TODO");
+    fn reject(&mut self, work: &mut Workspace, h: f64) {
+        // estimate new stepsize
+        let newt = work.bench.n_iterations;
+        let num = self.params.m_factor * ((1 + 2 * self.params.n_iteration_max) as f64);
+        let den = (newt + 2 * self.params.n_iteration_max) as f64;
+        let fac = f64::min(self.params.m_factor, num / den);
+        let div = f64::max(
+            self.params.m_min,
+            f64::min(self.params.m_max, f64::powf(work.rel_error, 0.25) / fac),
+        );
+        work.h_new = h / div;
     }
 
     /// Computes the dense output
     fn dense_output(&self, _y_out: &mut Vector, _h: f64, _x: f64, _x_out: f64) {}
 }
 
-// Radau5 constants ------------------------------------------------------------
+/// Computes the scaled RMS norm
+fn rms_norm(err: &Vector, scaling: &Vector) -> f64 {
+    let ndim = err.dim();
+    assert_eq!(scaling.dim(), ndim);
+    let mut sum = 0.0;
+    for m in 0..ndim {
+        let ratio = err[m] / scaling[m];
+        sum += ratio * ratio;
+    }
+    f64::max(1e-10, f64::sqrt(sum / (ndim as f64)))
+}
 
-const NSTAGE: usize = 3;
+// Radau5 constants ------------------------------------------------------------
 
 const ALPHA: f64 = 2.6810828736277521338957907432111121010270319565630;
 const BETA: f64 = 3.0504301992474105694263776247875679044407041991795;
 const GAMMA: f64 = 3.6378342527444957322084185135777757979459360868739;
-const GAMMA0: f64 = 0.27488882959567736774782860359941477929459341400416;
-const EE0: f64 = -2.7623054547485993983499285952820549558040707846130;
-const EE1: f64 = 0.37993559825272887786874736408712686858426119657697;
+const E0: f64 = -2.7623054547485993983499285952820549558040707846130;
+const E1: f64 = 0.37993559825272887786874736408712686858426119657697;
+const E2: f64 = -0.091629609865225789249276201199804926431531138001387;
 const MU1: f64 = 0.15505102572168219018027159252941086080340525193433;
 const MU2: f64 = 0.64494897427831780981972840747058913919659474806567;
 const MU3: f64 = -0.84494897427831780981972840747058913919659474806567;
@@ -586,19 +660,3 @@ const TI: [[f64; 3]; 3] = [
     [-4.1787185915519047273, -0.32768282076106238708, 0.47662355450055045196],
     [-0.50287263494578687595, 2.5719269498556054292, -0.59603920482822492497],
 ];
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#[cfg(test)]
-mod tests {
-    use super::Radau5;
-    use crate::{Method, Params, Samples};
-
-    #[test]
-    fn new_works() {
-        let (system, mut data, mut args) = Samples::hairer_wanner_eq1();
-        let ndim = system.get_ndim();
-        let params = Params::new(Method::Radau5);
-        let mut solver = Radau5::new(params.radau5, system);
-    }
-}

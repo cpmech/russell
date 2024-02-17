@@ -63,27 +63,22 @@ pub struct ParamsRadau5 {
     pub theta_max: f64,
 
     /// c1 of Hairer-Wanner (VII p124): min ratio to retain previous h
-    pub(crate) c1h: f64,
+    pub c1h: f64,
 
     /// c2 of Hairer-Wanner (VII p124): max ratio to retain previous h
-    pub(crate) c2h: f64,
+    pub c2h: f64,
 
     /// Min step multiplier (must be ≥ 0.001 and < m_max)
-    pub(crate) m_min: f64,
+    pub m_min: f64,
 
     /// Max step multiplier (must be ≥ 0.01 and > m_min)
-    pub(crate) m_max: f64,
+    pub m_max: f64,
 
     /// Step multiplier factor (must be ≥ 0.1)
-    pub(crate) m_factor: f64,
+    pub m_factor: f64,
 
     /// Enable concurrent factorization and solution of the two linear systems
     pub concurrent: bool,
-
-    /// Simple strategy for error estimate
-    ///
-    /// HW-VII p123 Eq.(8.17) (not good for stiff problems)
-    pub simple_error_estimate: bool,
 
     /// Gustafsson's predictive controller
     pub use_pred_control: bool,
@@ -193,7 +188,6 @@ impl ParamsRadau5 {
             m_max: 5.0,    // line 529 of Hairer-Wanner' radau5.f
             m_factor: 0.9, // line 477 of Hairer-Wanner' radau5.f
             concurrent: true,
-            simple_error_estimate: false,
             use_pred_control: true,
         }
     }

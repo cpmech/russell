@@ -25,7 +25,7 @@ fn test_dopri5_hairer_wanner_eq1() {
     analytical(&mut y1_correct, data.x1);
     println!("{}", b);
     approx_eq(data.y0[0], 0.09061967747782482, 1e-15);
-    approx_eq(data.y0[0], y1_correct[0], 1e-4);
+    approx_eq(data.y0[0], y1_correct[0], 4e-5);
     assert_eq!(b.n_function, 241);
     assert_eq!(b.n_jacobian, 0);
     assert_eq!(b.n_steps, 40);

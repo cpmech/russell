@@ -22,7 +22,7 @@ fn test_bweuler_hairer_wanner_eq1() {
     let mut y1_correct = Vector::new(ndim);
     analytical(&mut y1_correct, data.x1);
     approx_eq(data.y0[0], 0.09060476604187756, 1e-15);
-    approx_eq(data.y0[0], y1_correct[0], 1e-4);
+    approx_eq(data.y0[0], y1_correct[0], 5e-5);
 
     let b = solver.bench();
     println!("{}", b);
@@ -58,8 +58,8 @@ fn test_bweuler_hairer_wanner_eq1_num_jac() {
     let mut y1_correct = Vector::new(ndim);
     analytical(&mut y1_correct, data.x1);
 
-    approx_eq(data.y0[0], 0.09060476587452296, 1e-10);
-    approx_eq(data.y0[0], y1_correct[0], 1e-4);
+    approx_eq(data.y0[0], 0.09060476598021044, 1e-11);
+    approx_eq(data.y0[0], y1_correct[0], 5e-5);
 
     let b = solver.bench();
     println!("{}", b);
@@ -96,7 +96,7 @@ fn test_bweuler_hairer_wanner_eq1_modified_newton() {
     analytical(&mut y1_correct, data.x1);
 
     approx_eq(data.y0[0], 0.09060476604187756, 1e-15);
-    approx_eq(data.y0[0], y1_correct[0], 1e-4);
+    approx_eq(data.y0[0], y1_correct[0], 5e-5);
 
     let b = solver.bench();
     println!("{}", b);

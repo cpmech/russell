@@ -66,7 +66,7 @@ impl Samples {
         let system = System::new(
             1,
             |f: &mut Vector, x: f64, y: &Vector, _args: &mut SampleNoArgs| {
-                f[0] = L * y[0] - L * f64::cos(x);
+                f[0] = L * (y[0] - f64::cos(x));
                 Ok(())
             },
             |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut SampleNoArgs| {

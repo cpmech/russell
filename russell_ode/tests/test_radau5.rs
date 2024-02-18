@@ -21,8 +21,8 @@ fn test_radau5_hairer_wanner_eq1() {
     let mut analytical = data.y_analytical.unwrap();
     let mut y1_correct = Vector::new(ndim);
     analytical(&mut y1_correct, data.x1);
-    approx_eq(data.y0[0], 0.09067973091719728, 1e-6);
-    approx_eq(data.y0[0], y1_correct[0], 3e-5); // << todo
+    approx_eq(data.y0[0], 0.09067973091719717, 5e-7);
+    approx_eq(data.y0[0], y1_correct[0], 3e-5);
     let b = solver.bench();
     println!("{}", b);
     assert_eq!(b.n_function, 67);
@@ -34,5 +34,5 @@ fn test_radau5_hairer_wanner_eq1() {
     assert_eq!(b.n_rejected, 0);
     assert_eq!(b.n_iterations, 1);
     assert_eq!(b.n_iterations_max, 2);
-    approx_eq(b.h_optimal, 0.7212025758141315, 0.0032); // << todo
+    approx_eq(b.h_optimal, 0.721202575813698, 0.0032);
 }

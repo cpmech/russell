@@ -279,6 +279,9 @@ impl<'a, A> OdeSolver<'a, A> {
 
         // done
         if success {
+            if f64::abs(x - x1) > 10.0 * f64::EPSILON {
+                return Err("x is not equal to x1 at the end");
+            }
             Ok(())
         } else {
             Err("variable stepping did not converge")

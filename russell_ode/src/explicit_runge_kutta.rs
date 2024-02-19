@@ -217,7 +217,7 @@ where
         let v = &mut self.v;
 
         // compute k0 (otherwise, use k0 saved in accept_update)
-        if (work.first_step || !self.info.first_step_same_as_last) && !work.follows_reject_step {
+        if (work.bench.n_accepted == 0 || !self.info.first_step_same_as_last) && !work.follows_reject_step {
             let u0 = x + h * self.cc[0];
             work.bench.n_function += 1;
             (self.system.function)(&mut k[0], u0, y, args)?; // k0 := f(ui,vi)

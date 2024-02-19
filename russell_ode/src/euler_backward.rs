@@ -127,7 +127,7 @@ where
             }
 
             // compute K matrix (augmented Jacobian)
-            if traditional_newton || work.first_step {
+            if traditional_newton || work.bench.n_accepted == 0 {
                 // benchmark
                 work.bench.sw_jacobian.reset();
                 work.bench.n_jacobian += 1;

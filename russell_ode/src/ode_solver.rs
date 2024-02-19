@@ -159,12 +159,12 @@ impl<'a, A> OdeSolver<'a, A> {
             let nstep = f64::ceil((x1 - x) / h) as usize;
             for step in 0..nstep {
                 // benchmark
+                self.work.step = step;
                 self.work.bench.sw_step.reset();
                 self.work.bench.n_steps += 1;
 
                 // step
                 self.actual.step(&mut self.work, x, &y, h, args)?;
-                self.work.first_step = false;
 
                 // update x and y
                 self.actual.accept(&mut self.work, &mut x, y, h, args)?;
@@ -191,6 +191,7 @@ impl<'a, A> OdeSolver<'a, A> {
         // variable stepping loop
         for _ in 0..self.params.n_step_max {
             // benchmark
+            self.work.step += 1;
             self.work.bench.sw_step.reset();
             self.work.bench.n_steps += 1;
 
@@ -217,7 +218,6 @@ impl<'a, A> OdeSolver<'a, A> {
             if self.work.rel_error < 1.0 {
                 // set flabs
                 self.work.bench.n_accepted += 1;
-                self.work.first_step = false;
 
                 // update x and y
                 self.actual.accept(&mut self.work, &mut x, y, h, args)?;
@@ -249,6 +249,8 @@ impl<'a, A> OdeSolver<'a, A> {
                 } else {
                     h = self.work.h_new;
                 }
+
+            // reject step
             } else {
                 // set flags
                 if self.work.bench.n_accepted > 0 {
@@ -257,11 +259,11 @@ impl<'a, A> OdeSolver<'a, A> {
                 self.work.follows_reject_step = true;
                 last_step = false;
 
-                // reject step
+                // recompute stepsize
                 self.actual.reject(&mut self.work, h);
 
                 // new stepsize
-                if self.work.first_step && self.params.m_first_rejection > 0.0 {
+                if self.work.bench.n_accepted == 0 && self.params.m_first_rejection > 0.0 {
                     h *= self.params.m_first_rejection;
                 } else {
                     h = self.work.h_new;

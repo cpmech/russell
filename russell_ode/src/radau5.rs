@@ -325,7 +325,7 @@ where
         let u2 = x + C[2] * h;
 
         // starting values for newton iterations (first z and w)
-        if work.first_step || self.params.zero_trial {
+        if work.bench.n_accepted == 0 || self.params.zero_trial {
             // zero trial
             for m in 0..ndim {
                 self.z0[m] = 0.0;
@@ -523,7 +523,7 @@ where
         }
 
         // handle particular case
-        if work.first_step || work.follows_reject_step {
+        if work.bench.n_accepted == 0 || work.follows_reject_step {
             let ype = &mut self.dw1; // y plus err
             let fpe = &mut self.dw2; // f(x, y + err)
             for m in 0..ndim {

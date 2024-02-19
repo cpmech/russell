@@ -153,7 +153,7 @@ impl ParamsBwEuler {
             use_modified_newton: false,
             use_numerical_jacobian: false,
             use_rms_norm: true,
-            n_iteration_max: 7, // line 436 of Hairer-Wanner' radau5.f
+            n_iteration_max: 7, // line 436 of radau5.f
             genie: Genie::Umfpack,
             lin_sol_params: None,
         }
@@ -178,15 +178,15 @@ impl ParamsRadau5 {
             tol_newton,
             use_numerical_jacobian: false,
             zero_trial: false,
-            n_iteration_max: 7, // line 436 of Hairer-Wanner' radau5.f
+            n_iteration_max: 7, // line 436 of radau5.f
             genie: Genie::Umfpack,
             lin_sol_params: None,
-            theta_max: 1e-3, // line 487 of Hairer-Wanner' radau5.f
-            c1h: 1.0,
-            c2h: 1.2,
-            m_min: 0.125,  // line 534 of Hairer-Wanner' radau5.f
-            m_max: 5.0,    // line 529 of Hairer-Wanner' radau5.f
-            m_factor: 0.9, // line 477 of Hairer-Wanner' radau5.f
+            theta_max: 1e-3, // line 487 of radau5.f
+            c1h: 1.0,        // line 508 of radau5.f
+            c2h: 1.2,        // line 513 of radau5.f
+            m_min: 0.125,    // line 534 of radau5.f
+            m_max: 5.0,      // line 529 of radau5.f
+            m_factor: 0.9,   // line 477 of radau5.f
             concurrent: true,
             use_pred_control: true,
         }
@@ -204,18 +204,18 @@ impl ParamsRadau5 {
 impl ParamsERK {
     /// Allocates a new instance
     pub(crate) fn new(method: Method) -> Self {
-        let (lund_beta, lund_beta_m) = match method {
-            Method::DoPri5 => (0.04, 0.75),
-            Method::DoPri8 => (0.0, 0.2),
-            _ => (0.0, 0.0),
+        let (m_min, m_max, lund_beta, lund_beta_m) = match method {
+            Method::DoPri5 => (0.2, 10.0, 0.04, 0.75), // lines (276, 281, 287, 381) of dopri5.f
+            Method::DoPri8 => (0.333, 6.0, 0.0, 0.2),  // lines (276, 281, 287, 548) of dopri853.f
+            _ => (0.2, 10.0, 0.0, 0.0),
         };
         let (abs_tol, rel_tol, _) = calc_tolerances(false, 1e-4, 1e-4).unwrap();
         ParamsERK {
             abs_tol,
             rel_tol,
-            m_min: 0.125,  // line 534 of Hairer-Wanner' radau5.f
-            m_max: 5.0,    // line 529 of Hairer-Wanner' radau5.f
-            m_factor: 0.9, // line 477 of Hairer-Wanner' radau5.f
+            m_min,
+            m_max,
+            m_factor: 0.9, // line 265 of dopri5.f and dopri853.f
             lund_beta,
             lund_beta_m,
             use_dense_output: false,
@@ -252,14 +252,18 @@ impl ParamsERK {
 impl Params {
     /// Allocates a new instance
     pub fn new(method: Method) -> Self {
+        let (h_ini, rel_error_prev_min) = match method {
+            Method::Radau5 => (1e-6, 1e-2), // lines (746, 1018) of radau5.f
+            _ => (1e-6, 1e-4),              // lines (no default value, 471 of dopri5.f and 661 of dopri853.f)
+        };
         Params {
             method,
             bweuler: ParamsBwEuler::new(),
             radau5: ParamsRadau5::new(),
             erk: ParamsERK::new(method),
-            h_ini: 1e-4,
-            rel_error_prev_min: 1e-4,
-            n_step_max: 100000, // line 426 of Hairer-Wanner' radau5.f
+            h_ini,
+            rel_error_prev_min,
+            n_step_max: 100000, // lines 426 of radau5.f, 212 of dopri5.f, and 211 of dopri853.f
             m_first_rejection: 0.1,
         }
     }
@@ -344,7 +348,7 @@ fn calc_tolerances(radau5: bool, abs_tol: f64, rel_tol: f64) -> Result<(f64, f64
     let mut abs_tol = abs_tol;
     let mut rel_tol = rel_tol;
 
-    // change the tolerances (according to Hairer-Wanner' radau5.f)
+    // change the tolerances (according to radau5.f)
     if radau5 {
         const BETA: f64 = 2.0 / 3.0; // line 402 of radau5.f
         let quot = abs_tol / rel_tol; // line 408 of radau5.f
@@ -352,7 +356,7 @@ fn calc_tolerances(radau5: bool, abs_tol: f64, rel_tol: f64) -> Result<(f64, f64
         abs_tol = rel_tol * quot; // line 410 of radau5.f
     }
 
-    // tolerance for iterations (line 500 of Hairer-Wanner' radau5.f)
+    // tolerance for iterations (line 500 of radau5.f)
     let tol_newton = f64::max(10.0 * f64::EPSILON / rel_tol, f64::min(0.03, f64::sqrt(rel_tol)));
     Ok((abs_tol, rel_tol, tol_newton))
 }

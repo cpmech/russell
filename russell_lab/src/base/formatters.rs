@@ -66,11 +66,28 @@ pub fn format_nanoseconds(nanoseconds: u128) -> String {
     buf
 }
 
+/// Converts a number to string following Fortran's ES23.15 format
+pub fn format_fortran(num: f64) -> String {
+    // based on <https://stackoverflow.com/questions/65264069/alignment-of-floating-point-numbers-printed-in-scientific-notation>
+    const WIDTH: usize = 23;
+    const PRECISION: usize = 15;
+    const EXP_PAD: usize = 2;
+    let mut result = format!("{:.precision$e}", num, precision = PRECISION);
+    let exp = result.split_off(result.find('e').unwrap());
+    let (sign, exp) = if exp.starts_with("e-") {
+        ('-', &exp[2..])
+    } else {
+        ('+', &exp[1..])
+    };
+    result.push_str(&format!("E{}{:0>pad$}", sign, exp, pad = EXP_PAD));
+    format!("{:>width$}", result, width = WIDTH)
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::format_nanoseconds;
+    use super::{format_fortran, format_nanoseconds};
 
     #[test]
     fn format_nanoseconds_works() {
@@ -169,5 +186,19 @@ mod tests {
         // 3,601,100,000,001 (3.6e12 + 1.1s) = 1h1.1s
         res = format_nanoseconds(3_601_100_000_000);
         assert_eq!(res, "1h1.1s");
+    }
+
+    #[test]
+    fn fortran_works() {
+        assert_eq!(format_fortran(0.1111), "  1.111000000000000E-01");
+        assert_eq!(format_fortran(0.02222), "  2.222000000000000E-02");
+        assert_eq!(format_fortran(3333.0), "  3.333000000000000E+03");
+        assert_eq!(format_fortran(-44444.0), " -4.444400000000000E+04");
+        assert_eq!(format_fortran(0.0), "  0.000000000000000E+00");
+        assert_eq!(format_fortran(1.0), "  1.000000000000000E+00");
+        assert_eq!(format_fortran(42.0), "  4.200000000000000E+01");
+        assert_eq!(format_fortran(9999999999.00), "  9.999999999000000E+09");
+        assert_eq!(format_fortran(999999999999.00), "  9.999999999990000E+11");
+        assert_eq!(format_fortran(123456789.1011), "  1.234567891011000E+08");
     }
 }

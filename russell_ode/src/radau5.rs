@@ -625,7 +625,12 @@ where
     }
 
     /// Computes the dense output
-    fn dense_output(&self, _y_out: &mut Vector, _h: f64, _x: f64, _x_out: f64) {}
+    fn dense_output(&self, y_out: &mut Vector, x_out: f64, x: f64, y: &Vector, h: f64) {
+        let s = (x_out - x) / h;
+        for m in 0..self.system.ndim {
+            y_out[m] = y[m] + s * (self.yc0[m] + (s - MU4) * (self.yc1[m] + (s - MU3) * self.yc2[m]));
+        }
+    }
 }
 
 /// Computes the scaled RMS norm

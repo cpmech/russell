@@ -190,5 +190,5 @@ where
     fn reject(&mut self, _work: &mut Workspace, _h: f64) {}
 
     /// Computes the dense output
-    fn dense_output(&self, _y_out: &mut Vector, _h: f64, _x: f64, _x_out: f64) {}
+    fn dense_output(&self, _y_out: &mut Vector, _x_out: f64, _x: f64, _y: &Vector, _h: f64) {}
 }

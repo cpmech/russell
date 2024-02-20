@@ -504,7 +504,7 @@ where
     }
 
     /// Computes the dense output
-    fn dense_output(&self, y_out: &mut Vector, h: f64, x: f64, x_out: f64) {
+    fn dense_output(&self, y_out: &mut Vector, x_out: f64, x: f64, _y: &Vector, h: f64) {
         if self.params.use_dense_output && self.method == Method::DoPri5 {
             let d = self.dense_out.as_ref().unwrap();
             let x_prev = x - h;

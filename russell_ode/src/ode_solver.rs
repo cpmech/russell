@@ -145,7 +145,7 @@ impl<'a, A> OdeSolver<'a, A> {
         // first output
         if let Some(out) = output.as_mut() {
             out.reset();
-            out.execute_step(x, y, h);
+            out.push_step(x, y, h);
         }
 
         // equal-stepping loop
@@ -169,7 +169,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
                 // output
                 if let Some(out) = output.as_mut() {
-                    out.execute_step(x, y, h);
+                    out.push_step(x, y, h);
                 }
             }
             self.work.bench.stop_sw_total();
@@ -217,7 +217,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
                 // output
                 if let Some(out) = output.as_mut() {
-                    out.execute_step(x, y, h);
+                    out.push_step(x, y, h);
                 }
 
                 // converged?

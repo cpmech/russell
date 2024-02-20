@@ -36,7 +36,7 @@ impl Output {
         self.step_global_error.clear();
     }
 
-    pub(crate) fn execute_step(&mut self, x: f64, y: &Vector, h: f64) {
+    pub(crate) fn push_step(&mut self, x: f64, y: &Vector, h: f64) {
         self.step_h.push(h);
         self.step_x.push(x);
         for (m, ym) in self.step_y.iter_mut() {

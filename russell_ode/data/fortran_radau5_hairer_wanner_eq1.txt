@@ -1,0 +1,31 @@
+
+running radau5.f test
+step =     1, newt =     1, ldw =  2.380787522481423E+01
+step =     1, newt =     2, ldw =  4.606206953146665E-15
+step =     2, newt =     1, ldw =  2.678969114879030E-04
+step =     3, newt =     1, ldw =  9.620335400378768E-01
+step =     4, newt =     1, ldw =  4.960011319658260E+00
+step =     5, newt =     1, ldw =  3.715067327320828E+00
+step =     6, newt =     1, ldw =  5.743754221374331E+00
+step =     7, newt =     1, ldw =  3.977586037047183E+00
+step =     8, newt =     1, ldw =  5.900855962632141E+00
+step =     9, newt =     1, ldw =  6.700127424360153E+00
+step =     9, newt =     2, ldw =  3.087212900082653E-14
+step =    10, newt =     1, ldw =  5.276818106903934E+00
+step =    11, newt =     1, ldw =  5.605282816310496E+00
+step =    12, newt =     1, ldw =  5.065318111735999E+00
+step =    13, newt =     1, ldw =  3.636739773459916E+00
+step =    14, newt =     1, ldw =  5.652222379590626E-01
+step =    15, newt =     1, ldw =  2.691177218158024E+01
+Number of function evaluations   = 67
+Number of Jacobian evaluations   = 1
+Number of factorizations         = 13
+Number of lin sys solutions      = 17
+Number of performed steps        = 15
+Number of accepted steps         = 15
+Number of rejected steps         = 0
+Number of iterations (maximum)   = 2
+y =  9.068021382386648E-02
+.
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

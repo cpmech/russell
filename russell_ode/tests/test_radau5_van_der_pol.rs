@@ -21,9 +21,10 @@ fn test_radau5_van_der_pol() {
         )
         .unwrap();
     approx_eq(data.y0[0], 1.706163410178079E+00, 1e-14);
+    approx_eq(data.y0[1], -8.927971289301175E-01, 1e-12);
     let b = solver.bench();
     println!("{}", b.summary());
-    println!("y ={}", format_fortran(data.y0[0]));
+    println!("y ={},{}", format_fortran(data.y0[0]), format_fortran(data.y0[1]));
     assert_eq!(b.n_function, 2248);
     assert_eq!(b.n_jacobian, 162);
     assert_eq!(b.n_factor, 253);

@@ -94,7 +94,7 @@ where
         vec_copy(y_new, &y).unwrap();
 
         // perform iterations
-        let mut converged = false;
+        let mut success = false;
         work.bench.n_iterations = 0;
         for _ in 0..self.params.n_iteration_max {
             // benchmark
@@ -122,7 +122,7 @@ where
 
             // check convergence
             if r_norm < self.params.tol_newton {
-                converged = true;
+                success = true;
                 break;
             }
 
@@ -166,8 +166,8 @@ where
 
         // check
         work.bench.update_n_iterations_max();
-        if !converged {
-            return Err("Newton-Raphson method did not converge");
+        if !success {
+            return Err("Newton-Raphson method did not complete successfully");
         }
         Ok(())
     }

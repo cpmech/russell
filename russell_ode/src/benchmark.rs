@@ -169,7 +169,7 @@ impl fmt::Display for Benchmark {
              Max time spent on the Jacobian   = {}\n\
              Max time spent on factorization  = {}\n\
              Max time spent on lin solution   = {}\n\
-             Total time                       = {}\n",
+             Total time                       = {}",
             self.n_function,
             self.n_jacobian,
             self.n_factor,
@@ -227,7 +227,7 @@ mod tests {
              Max time spent on the Jacobian   = 0ns\n\
              Max time spent on factorization  = 0ns\n\
              Max time spent on lin solution   = 0ns\n\
-             Total time                       = 0ns\n"
+             Total time                       = 0ns"
         );
     }
 }

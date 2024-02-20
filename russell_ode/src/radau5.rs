@@ -2,7 +2,7 @@ use crate::StrError;
 use crate::{OdeSolverTrait, ParamsRadau5, System, Workspace};
 use num_complex::Complex64;
 use russell_lab::math::SQRT_6;
-use russell_lab::{complex_vec_unzip, complex_vec_zip, cpx, vec_copy, ComplexVector, Vector};
+use russell_lab::{complex_vec_unzip, complex_vec_zip, cpx, format_fortran, vec_copy, ComplexVector, Vector};
 use russell_sparse::{ComplexLinSolver, ComplexSparseMatrix, CooMatrix, Genie, LinSolver, SparseMatrix};
 use std::thread;
 
@@ -361,7 +361,7 @@ where
         let mut thq_old = 0.0;
 
         // iterations
-        let mut converged = false;
+        let mut success = false;
         work.iterations_diverging = false;
         work.bench.n_iterations = 0; // line 931 of radau5.f
         for _ in 0..self.params.n_iteration_max {
@@ -438,6 +438,14 @@ where
             // check convergence
             let newt = work.bench.n_iterations;
             let nit = self.params.n_iteration_max;
+            if self.params.logging {
+                println!(
+                    "step = {:>5}, newt = {:>5}, ldw ={}",
+                    work.step,
+                    newt,
+                    format_fortran(ldw)
+                );
+            }
             if newt > 1 && newt < nit {
                 let thq = ldw / ldw_old;
                 if newt == 2 {
@@ -448,10 +456,7 @@ where
                 thq_old = thq;
                 if self.theta < 0.99 {
                     self.eta = self.theta / (1.0 - self.theta); // FACCON on line 964 of radau5.f
-
-                    // let exp = (nit - 1 - newt) as f64; // TODO: check this
-
-                    let exp = (nit - newt) as f64; // TODO: check this
+                    let exp = (nit - 1 - newt) as f64; // line 967 of radau5.f
                     let rel_err = self.eta * ldw * f64::powf(self.theta, exp) / self.params.tol_newton;
                     if rel_err >= 1.0 {
                         // diverging
@@ -459,30 +464,30 @@ where
                         let den = (4 + nit - 1 - newt) as f64;
                         work.h_multiplier_diverging = 0.8 * f64::powf(q_newt, -1.0 / den);
                         work.iterations_diverging = true;
-                        break;
+                        return Ok(()); // will try again
                     }
                 } else {
                     // diverging badly (unexpected step-rejection)
                     work.h_multiplier_diverging = 0.5;
                     work.iterations_diverging = true;
-                    return Ok(());
+                    return Ok(()); // will try again
                 }
             }
 
             // save old norm
             ldw_old = ldw;
 
-            // converged
+            // success
             if self.eta * ldw < self.params.tol_newton {
-                converged = true;
+                success = true;
                 break;
             }
         }
 
         // check
         work.bench.update_n_iterations_max();
-        if !converged {
-            return Err("Newton-Raphson method did not converge");
+        if !success {
+            return Err("Newton-Raphson method did not complete successfully");
         }
 
         // error estimate //////////////////////////////////////////////////////

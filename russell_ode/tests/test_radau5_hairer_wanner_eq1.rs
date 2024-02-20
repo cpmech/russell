@@ -1,4 +1,4 @@
-use russell_lab::{approx_eq, Vector};
+use russell_lab::{approx_eq, format_fortran, Vector};
 use russell_ode::{no_dense_output, no_step_output, Method, OdeSolver, Params, Samples};
 
 #[test]
@@ -7,6 +7,7 @@ fn test_radau5_hairer_wanner_eq1() {
     let ndim = system.get_ndim();
     let mut params = Params::new(Method::Radau5);
     params.h_ini = 1e-4;
+    params.radau5.logging = true;
     let mut solver = OdeSolver::new(params, system).unwrap();
     solver
         .solve(
@@ -22,10 +23,11 @@ fn test_radau5_hairer_wanner_eq1() {
     let mut analytical = data.y_analytical.unwrap();
     let mut y1_correct = Vector::new(ndim);
     analytical(&mut y1_correct, data.x1);
-    approx_eq(data.y0[0], 0.09067973091719717, 5e-7);
+    approx_eq(data.y0[0], 9.068021382386648E-02, 1e-15);
     approx_eq(data.y0[0], y1_correct[0], 3e-5);
     let b = solver.bench();
-    println!("{}", b);
+    println!("{}", b.summary());
+    println!("y ={}", format_fortran(data.y0[0]));
     assert_eq!(b.n_function, 67);
     assert_eq!(b.n_jacobian, 1);
     assert_eq!(b.n_factor, 13); // << new

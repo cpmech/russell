@@ -82,6 +82,9 @@ pub struct ParamsRadau5 {
 
     /// Gustafsson's predictive controller
     pub use_pred_control: bool,
+
+    /// Enable logging (for debugging)
+    pub logging: bool,
 }
 
 /// Holds parameters for explicit Runge-Kutta methods
@@ -189,6 +192,7 @@ impl ParamsRadau5 {
             m_factor: 0.9,   // line 477 of radau5.f
             concurrent: true,
             use_pred_control: true,
+            logging: false,
         }
     }
 

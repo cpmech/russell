@@ -1,5 +1,5 @@
 use russell_lab::{format_nanoseconds, Stopwatch};
-use std::fmt;
+use std::fmt::{self, Write};
 
 /// Holds benchmark information
 #[derive(Clone, Copy, Debug)]
@@ -149,6 +149,31 @@ impl Benchmark {
             self.n_iterations_max = self.n_iterations;
         }
     }
+
+    pub fn summary(&self) -> String {
+        let mut buffer = String::new();
+        write!(
+            &mut buffer,
+            "Number of function evaluations   = {}\n\
+             Number of Jacobian evaluations   = {}\n\
+             Number of factorizations         = {}\n\
+             Number of lin sys solutions      = {}\n\
+             Number of performed steps        = {}\n\
+             Number of accepted steps         = {}\n\
+             Number of rejected steps         = {}\n\
+             Number of iterations (maximum)   = {}",
+            self.n_function,
+            self.n_jacobian,
+            self.n_factor,
+            self.n_lin_sol,
+            self.n_steps,
+            self.n_accepted,
+            self.n_rejected,
+            self.n_iterations_max,
+        )
+        .unwrap();
+        buffer
+    }
 }
 
 impl fmt::Display for Benchmark {
@@ -206,6 +231,22 @@ mod tests {
         assert_eq!(copy.n_accepted, bench.n_accepted);
         assert_eq!(clone.n_accepted, bench.n_accepted);
         assert!(format!("{:?}", bench).len() > 0);
+    }
+
+    #[test]
+    fn summary_works() {
+        let bench = Benchmark::new();
+        assert_eq!(
+            format!("{}", bench.summary()),
+            "Number of function evaluations   = 0\n\
+             Number of Jacobian evaluations   = 0\n\
+             Number of factorizations         = 0\n\
+             Number of lin sys solutions      = 0\n\
+             Number of performed steps        = 0\n\
+             Number of accepted steps         = 0\n\
+             Number of rejected steps         = 0\n\
+             Number of iterations (maximum)   = 0"
+        );
     }
 
     #[test]

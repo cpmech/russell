@@ -1,7 +1,7 @@
 use crate::constants::N_EQUAL_STEPS;
-use crate::StrError;
 use crate::{Benchmark, Method, OdeSolverTrait, Params, System, Workspace};
 use crate::{EulerBackward, EulerForward, ExplicitRungeKutta, Radau5};
+use crate::{Output, StrError};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 
@@ -86,32 +86,20 @@ impl<'a, A> OdeSolver<'a, A> {
     /// * `y0` -- the initial value of the vector of dependent variables; it will be updated to `y1` at the end
     /// * `x0` -- the initial value of the independent variable
     /// * `x1` -- the final value of the independent variable
-    /// * `args` -- holds some extra arguments for the function `F` and jacobian `J`
     /// * `h_equal` -- a constant stepsize for solving with equal-steps; otherwise,
     ///   if possible, variable step sizes are automatically calculated. If automatic
     ///   stepping is not possible (e.g., the RK method is not embedded),
     ///   a constant (and equal) stepsize will be calculated for [N_EQUAL_STEPS] steps.
-    /// * `output_step` -- handles the output of results during accepted steps
-    /// * `output_dense` -- handles the dense output
-    ///
-    /// # Generics
-    ///
-    /// * `S` -- step output function such as `fn(step: usize, h: f64, x: f64, y: &Vector)`
-    /// * `D` -- dense output function such as `fn(y_out: &mut Vector, x_out: f64, step: usize, h: f64, x: f64, y: &Vector)`
-    pub fn solve<S, D>(
+    /// * `output` -- structure to hold the results at accepted steps or at specified stations (continuous/dense output)
+    pub fn solve(
         &mut self,
         y0: &mut Vector,
         x0: f64,
         x1: f64,
         h_equal: Option<f64>,
+        mut output: Option<&mut Output>,
         args: &mut A,
-        mut output_step: S,
-        mut _output_dense: D,
-    ) -> Result<(), StrError>
-    where
-        S: Send + FnMut(usize, f64, f64, &Vector) -> Result<bool, StrError>,
-        D: Send + FnMut(&mut Vector, f64, usize, f64, f64, &Vector) -> Result<bool, StrError>,
-    {
+    ) -> Result<(), StrError> {
         // check data
         if y0.dim() != self.ndim {
             return Err("y0.dim() must be equal to ndim");
@@ -154,6 +142,12 @@ impl<'a, A> OdeSolver<'a, A> {
         let mut x = x0; // will become x1 at the end
         let y = y0; // will become y1 at the end
 
+        // first output
+        if let Some(out) = output.as_mut() {
+            out.reset();
+            out.execute_step(x, y, h);
+        }
+
         // equal-stepping loop
         if equal_stepping {
             let nstep = f64::ceil((x1 - x) / h) as usize;
@@ -174,9 +168,8 @@ impl<'a, A> OdeSolver<'a, A> {
                 self.work.bench.stop_sw_step();
 
                 // output
-                let stop = (output_step)(step, h, x, y)?;
-                if stop {
-                    break;
+                if let Some(out) = output.as_mut() {
+                    out.execute_step(x, y, h);
                 }
             }
             self.work.bench.stop_sw_total();
@@ -221,6 +214,11 @@ impl<'a, A> OdeSolver<'a, A> {
 
                 // update x and y
                 self.actual.accept(&mut self.work, &mut x, y, h, args)?;
+
+                // output
+                if let Some(out) = output.as_mut() {
+                    out.execute_step(x, y, h);
+                }
 
                 // converged?
                 if last_step {
@@ -294,7 +292,7 @@ impl<'a, A> OdeSolver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::OdeSolver;
-    use crate::{no_dense_output, no_jacobian, HasJacobian, Method, Params, System, N_EQUAL_STEPS};
+    use crate::{no_jacobian, HasJacobian, Method, Output, Params, System, N_EQUAL_STEPS};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
@@ -319,22 +317,13 @@ mod tests {
         );
 
         // consistent initial conditions
-        let y_ana = |x| x;
+        let y_ana = |y: &mut Vector, x: f64| y[0] = x;
         let mut x0 = 0.0;
-        let mut y0 = Vector::from(&[y_ana(x0)]);
+        let mut y0 = Vector::new(1);
+        y_ana(&mut y0, x0);
 
-        // output arrays
-        let mut h_values = Vec::new();
-        let mut x_values = vec![x0];
-        let mut y_values = vec![y0[0]];
-        let mut e_values = vec![0.0]; // global errors
-        let output_step = |_, h, x, y: &Vector| {
-            h_values.push(h);
-            x_values.push(x);
-            y_values.push(y[0]);
-            e_values.push(y_ana(x) - y[0]);
-            Ok(false)
-        };
+        // output
+        let mut out = Output::new(&[0], Some(y_ana));
 
         // arguments
         struct Args {}
@@ -343,57 +332,37 @@ mod tests {
         // solve the ODE system
         let mut solver = OdeSolver::new(params, system).unwrap();
         let xf = 1.0;
-        solver
-            .solve(&mut y0, x0, xf, None, &mut args, output_step, no_dense_output)
-            .unwrap();
+        solver.solve(&mut y0, x0, xf, None, Some(&mut out), &mut args).unwrap();
 
         // check
-        assert_eq!(h_values.len(), N_EQUAL_STEPS);
-        assert_eq!(x_values.len(), N_EQUAL_STEPS + 1);
-        assert_eq!(y_values.len(), N_EQUAL_STEPS + 1);
-        assert_eq!(e_values.len(), N_EQUAL_STEPS + 1);
         let h_equal_correct = (xf - x0) / (N_EQUAL_STEPS as f64);
-        let h_values_correct = Vector::filled(N_EQUAL_STEPS, h_equal_correct);
+        let h_values_correct = Vector::filled(N_EQUAL_STEPS + 1, h_equal_correct);
         let x_values_correct = Vector::linspace(x0, xf, N_EQUAL_STEPS + 1).unwrap();
         let e_values_correct = Vector::new(N_EQUAL_STEPS + 1); // all 0.0
-        vec_approx_eq(&h_values, h_values_correct.as_data(), 1e-17);
-        vec_approx_eq(&x_values, x_values_correct.as_data(), 1e-15);
-        vec_approx_eq(&y_values, x_values_correct.as_data(), 1e-15);
-        vec_approx_eq(&e_values, e_values_correct.as_data(), 1e-15);
+        vec_approx_eq(&out.step_h, h_values_correct.as_data(), 1e-17);
+        vec_approx_eq(&out.step_x, x_values_correct.as_data(), 1e-15);
+        vec_approx_eq(&out.step_y.get(&0).unwrap(), x_values_correct.as_data(), 1e-15);
+        vec_approx_eq(&out.step_global_error, e_values_correct.as_data(), 1e-15);
 
         // reset problem
         x0 = 0.0;
-        y0[0] = y_ana(x0);
-        h_values.clear();
-        x_values.clear();
-        y_values.clear();
-        e_values.clear();
-        x_values.push(x0);
-        y_values.push(y0[0]);
-        e_values.push(0.0);
-        let output_step = |_, h, x, y: &Vector| {
-            h_values.push(h);
-            x_values.push(x);
-            y_values.push(y[0]);
-            e_values.push(y_ana(x) - y[0]);
-            Ok(false)
-        };
+        y_ana(&mut y0, x0);
 
         // solve the ODE system again with prescribed h_equal
         let h_equal = Some(0.3);
         let xf = 1.2; // => will generate 4 steps
         solver
-            .solve(&mut y0, x0, xf, h_equal, &mut args, output_step, no_dense_output)
+            .solve(&mut y0, x0, xf, h_equal, Some(&mut out), &mut args)
             .unwrap();
 
         // check again
         let nstep = 4;
-        let h_values_correct = Vector::filled(nstep, 0.3);
+        let h_values_correct = Vector::filled(nstep + 1, 0.3);
         let x_values_correct = Vector::linspace(x0, xf, nstep + 1).unwrap();
         let e_values_correct = Vector::new(nstep + 1); // all 0.0
-        vec_approx_eq(&h_values, h_values_correct.as_data(), 1e-17);
-        vec_approx_eq(&x_values, x_values_correct.as_data(), 1e-17);
-        vec_approx_eq(&y_values, x_values_correct.as_data(), 1e-15);
-        vec_approx_eq(&e_values, e_values_correct.as_data(), 1e-15);
+        vec_approx_eq(&out.step_h, h_values_correct.as_data(), 1e-17);
+        vec_approx_eq(&out.step_x, x_values_correct.as_data(), 1e-17);
+        vec_approx_eq(&out.step_y.get(&0).unwrap(), x_values_correct.as_data(), 1e-15);
+        vec_approx_eq(&out.step_global_error, e_values_correct.as_data(), 1e-15);
     }
 }

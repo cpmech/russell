@@ -1,5 +1,5 @@
 use russell_lab::{approx_eq, format_fortran};
-use russell_ode::{no_dense_output, no_step_output, Method, OdeSolver, Params, Samples};
+use russell_ode::{Method, OdeSolver, Params, Samples};
 
 #[test]
 fn test_radau5_van_der_pol() {
@@ -10,15 +10,7 @@ fn test_radau5_van_der_pol() {
     params.radau5.logging = true;
     let mut solver = OdeSolver::new(params, system).unwrap();
     solver
-        .solve(
-            &mut data.y0,
-            data.x0,
-            data.x1,
-            None,
-            &mut args,
-            no_step_output,
-            no_dense_output,
-        )
+        .solve(&mut data.y0, data.x0, data.x1, None, None, &mut args)
         .unwrap();
     approx_eq(data.y0[0], 1.706163410178079E+00, 1e-14);
     approx_eq(data.y0[1], -8.927971289301175E-01, 1e-12);

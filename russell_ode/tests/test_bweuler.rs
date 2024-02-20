@@ -1,5 +1,5 @@
 use russell_lab::{approx_eq, Vector};
-use russell_ode::{no_dense_output, no_step_output, Method, OdeSolver, Params, Samples};
+use russell_ode::{Method, OdeSolver, Params, Samples};
 
 #[test]
 fn test_bweuler_hairer_wanner_eq1() {
@@ -8,15 +8,7 @@ fn test_bweuler_hairer_wanner_eq1() {
     let params = Params::new(Method::BwEuler);
     let mut solver = OdeSolver::new(params, system).unwrap();
     solver
-        .solve(
-            &mut data.y0,
-            data.x0,
-            data.x1,
-            data.h_equal,
-            &mut args,
-            no_step_output,
-            no_dense_output,
-        )
+        .solve(&mut data.y0, data.x0, data.x1, data.h_equal, None, &mut args)
         .unwrap();
     let mut analytical = data.y_analytical.unwrap();
     let mut y1_correct = Vector::new(ndim);
@@ -44,15 +36,7 @@ fn test_bweuler_hairer_wanner_eq1_num_jac() {
     params.bweuler.use_numerical_jacobian = true;
     let mut solver = OdeSolver::new(params, system).unwrap();
     solver
-        .solve(
-            &mut data.y0,
-            data.x0,
-            data.x1,
-            data.h_equal,
-            &mut args,
-            no_step_output,
-            no_dense_output,
-        )
+        .solve(&mut data.y0, data.x0, data.x1, data.h_equal, None, &mut args)
         .unwrap();
     let mut analytical = data.y_analytical.unwrap();
     let mut y1_correct = Vector::new(ndim);
@@ -81,15 +65,7 @@ fn test_bweuler_hairer_wanner_eq1_modified_newton() {
     params.bweuler.use_modified_newton = true;
     let mut solver = OdeSolver::new(params, system).unwrap();
     solver
-        .solve(
-            &mut data.y0,
-            data.x0,
-            data.x1,
-            data.h_equal,
-            &mut args,
-            no_step_output,
-            no_dense_output,
-        )
+        .solve(&mut data.y0, data.x0, data.x1, data.h_equal, None, &mut args)
         .unwrap();
     let mut analytical = data.y_analytical.unwrap();
     let mut y1_correct = Vector::new(ndim);

@@ -1,5 +1,5 @@
 use russell_lab::{approx_eq, vec_approx_eq, Vector};
-use russell_ode::{no_dense_output, no_step_output, Method, OdeSolver, Params, Samples};
+use russell_ode::{Method, OdeSolver, Params, Samples};
 
 #[test]
 fn test_dopri5_hairer_wanner_eq1() {
@@ -10,15 +10,7 @@ fn test_dopri5_hairer_wanner_eq1() {
     params.erk.m_max = 5.0;
     let mut solver = OdeSolver::new(params, system).unwrap();
     solver
-        .solve(
-            &mut data.y0,
-            data.x0,
-            data.x1,
-            None,
-            &mut args,
-            no_step_output,
-            no_dense_output,
-        )
+        .solve(&mut data.y0, data.x0, data.x1, None, None, &mut args)
         .unwrap();
 
     let b = solver.bench();
@@ -46,15 +38,7 @@ fn test_dopri5_arenstorf() {
     params.set_tolerances(1e-7, 1e-7).unwrap();
     let mut solver = OdeSolver::new(params, system).unwrap();
     solver
-        .solve(
-            &mut data.y0,
-            data.x0,
-            data.x1,
-            None,
-            &mut args,
-            no_step_output,
-            no_dense_output,
-        )
+        .solve(&mut data.y0, data.x0, data.x1, None, None, &mut args)
         .unwrap();
 
     let b = solver.bench();

@@ -4,6 +4,9 @@ use russell_lab::Vector;
 
 /// Defines the numerical solver
 pub(crate) trait OdeSolverTrait<A> {
+    /// Enables dense output
+    fn enable_dense_output(&mut self);
+
     /// Initializes the internal variables
     fn initialize(&mut self, work: &mut Workspace, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError>;
 

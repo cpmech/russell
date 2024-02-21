@@ -111,6 +111,11 @@ impl<'a> Output<'a> {
         self
     }
 
+    /// Indicates whether dense output is enabled or not
+    pub(crate) fn with_dense_output(&self) -> bool {
+        !self.dense_h.is_none()
+    }
+
     /// Sets the analytical solution to compute the global error
     ///
     /// The results will be saved in the `step_global_error`

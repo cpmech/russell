@@ -143,6 +143,9 @@ impl<'a, A> OdeSolver<'a, A> {
 
         // first output
         if let Some(out) = output.as_mut() {
+            if out.with_dense_output() {
+                self.actual.enable_dense_output();
+            }
             out.push(self.work.bench.n_accepted, x, y, h, &self.actual)?;
         }
 

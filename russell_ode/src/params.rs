@@ -110,9 +110,6 @@ pub struct ParamsERK {
 
     /// Factor to multiply Lund stabilization coefficient β (must be ≥ 0.0)
     pub lund_beta_m: f64,
-
-    /// Activates dense output
-    pub use_dense_output: bool,
 }
 
 /// Holds parameters for the ODE Solver
@@ -222,7 +219,6 @@ impl ParamsERK {
             m_factor: 0.9, // line 265 of dopri5.f and dop853.f
             lund_beta,
             lund_beta_m,
-            use_dense_output: false,
         }
     }
 

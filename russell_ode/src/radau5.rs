@@ -289,6 +289,9 @@ where
     F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
+    /// Enables dense output
+    fn enable_dense_output(&mut self) {}
+
     /// Initializes the internal variables
     fn initialize(&mut self, work: &mut Workspace, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError> {
         for i in 0..self.system.ndim {

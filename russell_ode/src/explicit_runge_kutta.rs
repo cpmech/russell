@@ -1,6 +1,6 @@
 use crate::constants::*;
 use crate::StrError;
-use crate::{Information, Method, OdeSolverTrait, ParamsERK, System, Workspace};
+use crate::{ErkDenseOut, Information, Method, OdeSolverTrait, ParamsERK, System, Workspace};
 use russell_lab::{vec_copy, vec_update, Matrix, Vector};
 use russell_sparse::CooMatrix;
 
@@ -35,15 +35,6 @@ where
     /// difference between B and Be: e = b - be
     ee: Option<Vector>,
 
-    /// A coefficients for dense output
-    aad: Option<Matrix>,
-
-    /// C coefficients for dense output
-    ccd: Option<Vector>,
-
-    /// D coefficients for dense output
-    dd: Option<Matrix>,
-
     /// Number of stages
     nstage: usize,
 
@@ -74,14 +65,8 @@ where
     /// Auxiliary workspace (will contain y0 to be used in accept_update)
     w: Vector,
 
-    /// Dense output coefficients (nstage_dense * ndim)
-    dense_out: Option<Vec<Vector>>,
-
-    /// k values for dense output
-    kd: Option<Vec<Vector>>,
-
-    /// y values for dense output (len(kd)>0)
-    yd: Option<Vector>,
+    /// Handles the dense output
+    dense_out: Option<ErkDenseOut>,
 }
 
 impl<'a, F, J, A> ExplicitRungeKutta<'a, F, J, A>
@@ -145,23 +130,6 @@ where
             None
         };
 
-        // coefficients for dense output
-        let ndim = system.ndim;
-        let (mut aad, mut ccd, mut dd) = (None, None, None);
-        let (mut dense_out, mut kd, mut yd) = (None, None, None);
-        if params.use_dense_output && method == Method::DoPri5 {
-            dd = Some(Matrix::from(&DORMAND_PRINCE_5_D));
-            dense_out = Some(vec![Vector::new(ndim); 5]);
-        }
-        if params.use_dense_output && method == Method::DoPri8 {
-            aad = Some(Matrix::from(&DORMAND_PRINCE_8_AD));
-            ccd = Some(Vector::from(&DORMAND_PRINCE_8_CD));
-            dd = Some(Matrix::from(&DORMAND_PRINCE_8_D));
-            dense_out = Some(vec![Vector::new(ndim); 8]);
-            kd = Some(vec![Vector::new(ndim); 3]);
-            yd = Some(Vector::new(ndim));
-        }
-
         // number of stages
         let nstage = bb.dim();
 
@@ -173,6 +141,7 @@ where
         };
 
         // return structure
+        let ndim = system.ndim;
         Ok(ExplicitRungeKutta {
             method,
             params,
@@ -182,9 +151,6 @@ where
             bb,
             cc,
             ee,
-            aad,
-            ccd,
-            dd,
             nstage,
             lund_factor,
             d_min: 1.0 / params.m_min,
@@ -193,9 +159,7 @@ where
             v: vec![Vector::new(ndim); nstage],
             k: vec![Vector::new(ndim); nstage],
             w: Vector::new(ndim),
-            dense_out,
-            kd,
-            yd,
+            dense_out: None,
         })
     }
 }
@@ -205,6 +169,11 @@ where
     F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
+    /// Enables dense output
+    fn enable_dense_output(&mut self) {
+        self.dense_out = Some(ErkDenseOut::new(self.method, self.system.ndim));
+    }
+
     /// Initializes the internal variables
     fn initialize(&mut self, _work: &mut Workspace, _x: f64, _y: &Vector, _args: &mut A) -> Result<(), StrError> {
         Ok(())
@@ -325,148 +294,9 @@ where
         h: f64,
         args: &mut A,
     ) -> Result<(), StrError> {
-        // store data for future dense output (Dormand-Prince 5)
-        if self.params.use_dense_output && self.method == Method::DoPri5 {
-            let dd = self.dd.as_ref().unwrap();
-            let d = self.dense_out.as_mut().unwrap();
-            let k = &self.k;
-            for m in 0..self.system.ndim {
-                let y_diff = self.w[m] - y[m];
-                let b_spl = h * k[0][m] - y_diff;
-                d[0][m] = y[m];
-                d[1][m] = y_diff;
-                d[2][m] = b_spl;
-                d[3][m] = y_diff - h * k[6][m] - b_spl;
-                d[4][m] = dd.get(0, 0) * k[0][m]
-                    + dd.get(0, 2) * k[2][m]
-                    + dd.get(0, 3) * k[3][m]
-                    + dd.get(0, 4) * k[4][m]
-                    + dd.get(0, 5) * k[5][m]
-                    + dd.get(0, 6) * k[6][m];
-                d[4][m] *= h;
-            }
-        }
-
-        // store data for future dense output (Dormand-Prince 8)
-        if self.params.use_dense_output && self.method == Method::DoPri8 {
-            // auxiliary variables
-            let aad = self.aad.as_ref().unwrap();
-            let cd = self.ccd.as_ref().unwrap();
-            let dd = self.dd.as_ref().unwrap();
-            let d = self.dense_out.as_mut().unwrap();
-            let kd = self.kd.as_mut().unwrap();
-            let yd = self.yd.as_mut().unwrap();
-            let k = &self.k;
-
-            // first function evaluation
-            for m in 0..self.system.ndim {
-                yd[m] = y[m]
-                    + h * (aad.get(0, 0) * k[0][m]
-                        + aad.get(0, 6) * k[6][m]
-                        + aad.get(0, 7) * k[7][m]
-                        + aad.get(0, 8) * k[8][m]
-                        + aad.get(0, 9) * k[9][m]
-                        + aad.get(0, 10) * k[10][m]
-                        + aad.get(0, 11) * k[11][m]
-                        + aad.get(0, 12) * k[11][m]);
-            }
-            let u = *x + cd[0] * h;
-            work.bench.n_function += 1;
-            (self.system.function)(&mut kd[0], u, yd, args)?;
-
-            // second function evaluation
-            for m in 0..self.system.ndim {
-                yd[m] = y[m]
-                    + h * (aad.get(1, 0) * k[0][m]
-                        + aad.get(1, 5) * k[5][m]
-                        + aad.get(1, 6) * k[6][m]
-                        + aad.get(1, 7) * k[7][m]
-                        + aad.get(1, 10) * k[10][m]
-                        + aad.get(1, 11) * k[11][m]
-                        + aad.get(1, 12) * k[11][m]
-                        + aad.get(1, 13) * kd[0][m]);
-            }
-            let u = *x + cd[1] * h;
-            work.bench.n_function += 1;
-            (self.system.function)(&mut kd[1], u, yd, args)?;
-
-            // next third function evaluation
-            for m in 0..self.system.ndim {
-                yd[m] = y[m]
-                    + h * (aad.get(2, 0) * k[0][m]
-                        + aad.get(2, 5) * k[5][m]
-                        + aad.get(2, 6) * k[6][m]
-                        + aad.get(2, 7) * k[7][m]
-                        + aad.get(2, 8) * k[8][m]
-                        + aad.get(2, 12) * k[11][m]
-                        + aad.get(2, 13) * kd[0][m]
-                        + aad.get(2, 14) * kd[1][m]);
-            }
-            let u = *x + cd[2] * h;
-            work.bench.n_function += 1;
-            (self.system.function)(&mut kd[2], u, yd, args)?;
-
-            // final results
-            for m in 0..self.system.ndim {
-                let y_diff = self.w[m] - y[m];
-                let b_spl = h * k[0][m] - y_diff;
-                d[0][m] = y[m];
-                d[1][m] = y_diff;
-                d[2][m] = b_spl;
-                d[3][m] = y_diff - h * k[11][m] - b_spl;
-                d[4][m] = h
-                    * (dd.get(0, 0) * k[0][m]
-                        + dd.get(0, 5) * k[5][m]
-                        + dd.get(0, 6) * k[6][m]
-                        + dd.get(0, 7) * k[7][m]
-                        + dd.get(0, 8) * k[8][m]
-                        + dd.get(0, 9) * k[9][m]
-                        + dd.get(0, 10) * k[10][m]
-                        + dd.get(0, 11) * k[11][m]
-                        + dd.get(0, 12) * k[11][m]
-                        + dd.get(0, 13) * kd[0][m]
-                        + dd.get(0, 14) * kd[1][m]
-                        + dd.get(0, 15) * kd[2][m]);
-                d[5][m] = h
-                    * (dd.get(1, 0) * k[0][m]
-                        + dd.get(1, 5) * k[5][m]
-                        + dd.get(1, 6) * k[6][m]
-                        + dd.get(1, 7) * k[7][m]
-                        + dd.get(1, 8) * k[8][m]
-                        + dd.get(1, 9) * k[9][m]
-                        + dd.get(1, 10) * k[10][m]
-                        + dd.get(1, 11) * k[11][m]
-                        + dd.get(1, 12) * k[11][m]
-                        + dd.get(1, 13) * kd[0][m]
-                        + dd.get(1, 14) * kd[1][m]
-                        + dd.get(1, 15) * kd[2][m]);
-                d[6][m] = h
-                    * (dd.get(2, 0) * k[0][m]
-                        + dd.get(2, 5) * k[5][m]
-                        + dd.get(2, 6) * k[6][m]
-                        + dd.get(2, 7) * k[7][m]
-                        + dd.get(2, 8) * k[8][m]
-                        + dd.get(2, 9) * k[9][m]
-                        + dd.get(2, 10) * k[10][m]
-                        + dd.get(2, 11) * k[11][m]
-                        + dd.get(2, 12) * k[11][m]
-                        + dd.get(2, 13) * kd[0][m]
-                        + dd.get(2, 14) * kd[1][m]
-                        + dd.get(2, 15) * kd[2][m]);
-                d[7][m] = h
-                    * (dd.get(3, 0) * k[0][m]
-                        + dd.get(3, 5) * k[5][m]
-                        + dd.get(3, 6) * k[6][m]
-                        + dd.get(3, 7) * k[7][m]
-                        + dd.get(3, 8) * k[8][m]
-                        + dd.get(3, 9) * k[9][m]
-                        + dd.get(3, 10) * k[10][m]
-                        + dd.get(3, 11) * k[11][m]
-                        + dd.get(3, 12) * k[11][m]
-                        + dd.get(3, 13) * kd[0][m]
-                        + dd.get(3, 14) * kd[1][m]
-                        + dd.get(3, 15) * kd[2][m]);
-            }
+        // save data for dense output
+        if let Some(out) = self.dense_out.as_mut() {
+            work.bench.n_function += out.update(&mut self.system, *x, y, h, &self.w, &self.k, args)?;
         }
 
         // update x and y
@@ -505,28 +335,12 @@ where
 
     /// Computes the dense output with x-h ≤ x_out ≤ x
     fn dense_output(&self, y_out: &mut Vector, x_out: f64, x: f64, _y: &Vector, h: f64) -> Result<(), StrError> {
-        if self.params.use_dense_output && self.method == Method::DoPri5 {
-            let d = self.dense_out.as_ref().unwrap();
-            let x_prev = x - h;
-            let theta = (x_out - x_prev) / h;
-            let u_theta = 1.0 - theta;
-            for m in 0..self.system.ndim {
-                y_out[m] = d[0][m] + theta * (d[1][m] + u_theta * (d[2][m] + theta * (d[3][m] + u_theta * d[4][m])));
-            }
-            return Ok(());
+        if let Some(out) = self.dense_out.as_ref() {
+            out.calculate(y_out, x_out, x, h);
+            Ok(())
+        } else {
+            Err("dense output is not available for this explicit Runge-Kutta method")
         }
-        if self.params.use_dense_output && self.method == Method::DoPri8 {
-            let d = self.dense_out.as_ref().unwrap();
-            let x_prev = x - h;
-            let theta = (x_out - x_prev) / h;
-            let u_theta = 1.0 - theta;
-            for m in 0..self.system.ndim {
-                let par = d[4][m] + theta * (d[5][m] + u_theta * (d[6][m] + theta * d[7][m]));
-                y_out[m] = d[0][m] + theta * (d[1][m] + u_theta * (d[2][m] + theta * (d[3][m] + u_theta * par)));
-            }
-            return Ok(());
-        }
-        Err("dense output is not available for this explicit Runge-Kutta method")
     }
 }
 

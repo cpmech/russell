@@ -625,12 +625,13 @@ where
     }
 
     /// Computes the dense output with x-h ≤ x_out ≤ x
-    fn dense_output(&self, y_out: &mut Vector, x_out: f64, x: f64, y: &Vector, h: f64) {
+    fn dense_output(&self, y_out: &mut Vector, x_out: f64, x: f64, y: &Vector, h: f64) -> Result<(), StrError> {
         assert!(x_out >= x - h && x_out <= x);
         let s = (x_out - x) / h;
         for m in 0..self.system.ndim {
             y_out[m] = y[m] + s * (self.yc0[m] + (s - MU4) * (self.yc1[m] + (s - MU3) * self.yc2[m]));
         }
+        Ok(())
     }
 }
 

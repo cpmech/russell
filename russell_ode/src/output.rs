@@ -147,7 +147,7 @@ impl<'a> Output<'a> {
         y: &Vector,
         h: f64,
         solver: &Box<dyn OdeSolverTrait<A> + 'a>,
-    ) {
+    ) -> Result<(), StrError> {
         // step output
         if self.save_step {
             self.step_h.push(h);
@@ -185,7 +185,7 @@ impl<'a> Output<'a> {
                 while x_out < x {
                     self.dense_step_index.push(step_index);
                     self.dense_x.push(x_out);
-                    solver.dense_output(&mut self.y_aux, x_out, x, y, h);
+                    solver.dense_output(&mut self.y_aux, x_out, x, y, h)?;
                     for (m, ym) in self.dense_y.iter_mut() {
                         ym.push(self.y_aux[*m]);
                     }
@@ -193,5 +193,6 @@ impl<'a> Output<'a> {
                 }
             }
         }
+        Ok(())
     }
 }

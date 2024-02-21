@@ -504,7 +504,7 @@ where
     }
 
     /// Computes the dense output with x-h ≤ x_out ≤ x
-    fn dense_output(&self, y_out: &mut Vector, x_out: f64, x: f64, _y: &Vector, h: f64) {
+    fn dense_output(&self, y_out: &mut Vector, x_out: f64, x: f64, _y: &Vector, h: f64) -> Result<(), StrError> {
         if self.params.use_dense_output && self.method == Method::DoPri5 {
             let d = self.dense_out.as_ref().unwrap();
             let x_prev = x - h;
@@ -513,6 +513,7 @@ where
             for m in 0..self.system.ndim {
                 y_out[m] = d[0][m] + theta * (d[1][m] + u_theta * (d[2][m] + theta * (d[3][m] + u_theta * d[4][m])));
             }
+            return Ok(());
         }
         if self.params.use_dense_output && self.method == Method::DoPri8 {
             let d = self.dense_out.as_ref().unwrap();
@@ -523,7 +524,9 @@ where
                 let par = d[4][m] + theta * (d[5][m] + u_theta * (d[6][m] + theta * d[7][m]));
                 y_out[m] = d[0][m] + theta * (d[1][m] + u_theta * (d[2][m] + theta * (d[3][m] + u_theta * par)));
             }
+            return Ok(());
         }
+        Err("dense output is not available for this explicit Runge-Kutta method")
     }
 }
 

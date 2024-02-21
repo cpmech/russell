@@ -210,7 +210,7 @@ impl ParamsERK {
     pub(crate) fn new(method: Method) -> Self {
         let (m_min, m_max, lund_beta, lund_beta_m) = match method {
             Method::DoPri5 => (0.2, 10.0, 0.04, 0.75), // lines (276, 281, 287, 381) of dopri5.f
-            Method::DoPri8 => (0.333, 6.0, 0.0, 0.2),  // lines (276, 281, 287, 548) of dopri853.f
+            Method::DoPri8 => (0.333, 6.0, 0.0, 0.2),  // lines (276, 281, 287, 548) of dop853.f
             _ => (0.2, 10.0, 0.0, 0.0),
         };
         let (abs_tol, rel_tol, _) = calc_tolerances(false, 1e-4, 1e-4).unwrap();
@@ -219,7 +219,7 @@ impl ParamsERK {
             rel_tol,
             m_min,
             m_max,
-            m_factor: 0.9, // line 265 of dopri5.f and dopri853.f
+            m_factor: 0.9, // line 265 of dopri5.f and dop853.f
             lund_beta,
             lund_beta_m,
             use_dense_output: false,
@@ -258,7 +258,7 @@ impl Params {
     pub fn new(method: Method) -> Self {
         let (h_ini, rel_error_prev_min) = match method {
             Method::Radau5 => (1e-6, 1e-2), // lines (746, 1018) of radau5.f
-            _ => (1e-6, 1e-4),              // lines (no default value, 471 of dopri5.f and 661 of dopri853.f)
+            _ => (1e-6, 1e-4),              // lines (no default value, 471 of dopri5.f and 661 of dop853.f)
         };
         Params {
             method,
@@ -267,7 +267,7 @@ impl Params {
             erk: ParamsERK::new(method),
             h_ini,
             rel_error_prev_min,
-            n_step_max: 100000, // lines 426 of radau5.f, 212 of dopri5.f, and 211 of dopri853.f
+            n_step_max: 100000, // lines 426 of radau5.f, 212 of dopri5.f, and 211 of dop853.f
             m_first_rejection: 0.1,
         }
     }

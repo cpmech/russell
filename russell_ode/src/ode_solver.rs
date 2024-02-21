@@ -144,8 +144,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
         // first output
         if let Some(out) = output.as_mut() {
-            out.reset();
-            out.push_step(x, y, h);
+            out.push(self.work.bench.n_steps, x, y, h);
         }
 
         // equal-stepping loop
@@ -169,7 +168,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
                 // output
                 if let Some(out) = output.as_mut() {
-                    out.push_step(x, y, h);
+                    out.push(self.work.bench.n_steps, x, y, h);
                 }
             }
             self.work.bench.stop_sw_total();
@@ -217,7 +216,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
                 // output
                 if let Some(out) = output.as_mut() {
-                    out.push_step(x, y, h);
+                    out.push(self.work.bench.n_steps, x, y, h);
                 }
 
                 // converged?
@@ -323,7 +322,8 @@ mod tests {
         y_ana(&mut y0, x0);
 
         // output
-        let mut out = Output::new(&[0], Some(y_ana));
+        let mut out = Output::new();
+        out.enable_step(&[0]).set_analytical(y_ana);
 
         // arguments
         struct Args {}
@@ -345,6 +345,7 @@ mod tests {
         vec_approx_eq(&out.step_global_error, e_values_correct.as_data(), 1e-15);
 
         // reset problem
+        out.clear();
         x0 = 0.0;
         y_ana(&mut y0, x0);
 

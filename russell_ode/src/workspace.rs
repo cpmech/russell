@@ -4,9 +4,6 @@ pub(crate) struct Workspace {
     /// Holds benchmark data
     pub(crate) bench: Benchmark,
 
-    /// Holds the current step number (one-based)
-    pub(crate) step: usize,
-
     /// Indicates that the step follows a reject
     pub(crate) follows_reject_step: bool,
 
@@ -34,7 +31,6 @@ impl Workspace {
     pub(crate) fn new() -> Self {
         Workspace {
             bench: Benchmark::new(),
-            step: 0,
             follows_reject_step: false,
             iterations_diverging: false,
             h_multiplier_diverging: 1.0,
@@ -48,7 +44,6 @@ impl Workspace {
     /// Resets all values
     pub(crate) fn reset(&mut self, h: f64, rel_error_prev_min: f64) {
         self.bench.reset(h);
-        self.step = 0;
         self.follows_reject_step = false;
         self.iterations_diverging = false;
         self.h_multiplier_diverging = 1.0;

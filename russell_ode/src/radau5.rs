@@ -441,7 +441,7 @@ where
             if self.params.logging {
                 println!(
                     "step = {:>5}, newt = {:>5}, ldw ={}, h ={}",
-                    work.step,
+                    work.bench.n_steps,
                     newt,
                     format_fortran(ldw),
                     format_fortran(h),

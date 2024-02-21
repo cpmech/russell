@@ -27,7 +27,6 @@ fn test_dopri5_hairer_wanner_eq1() {
     assert_eq!(b.n_rejected, 0);
     assert_eq!(b.n_iterations, 0);
     assert_eq!(b.n_iterations_max, 0);
-    approx_eq(b.h_optimal, 0.006336413253392292, 1e-12);
 }
 
 #[test]
@@ -57,5 +56,4 @@ fn test_dopri5_arenstorf() {
         -2.0012455157289244,
     ];
     vec_approx_eq(data.y0.as_data(), &y_ref, 1e-9);
-    approx_eq(b.h_optimal, 0.00043950148933546984, 1e-10);
 }

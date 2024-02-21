@@ -149,27 +149,22 @@ impl<'a, A> OdeSolver<'a, A> {
         // equal-stepping loop
         if equal_stepping {
             let nstep = f64::ceil((x1 - x) / h) as usize;
-            for step in 0..nstep {
-                // benchmark
-                self.work.step = step;
+            for _ in 0..nstep {
                 self.work.bench.sw_step.reset();
-                self.work.bench.n_steps += 1;
-                self.work.bench.n_accepted += 1;
 
                 // step
+                self.work.bench.n_steps += 1;
                 self.actual.step(&mut self.work, x, &y, h, args)?;
 
                 // update x and y
+                self.work.bench.n_accepted += 1; // this must be after `self.actual.step`
                 self.actual.accept(&mut self.work, &mut x, y, h, args)?;
-
-                // benchmark
-                self.work.bench.n_accepted += 1;
-                self.work.bench.stop_sw_step();
 
                 // output
                 if let Some(out) = output.as_mut() {
                     out.push(self.work.bench.n_accepted, x, y, h, &self.actual)?;
                 }
+                self.work.bench.stop_sw_step();
             }
             self.work.bench.stop_sw_total();
             return Ok(());
@@ -182,10 +177,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
         // variable stepping loop
         for _ in 0..self.params.n_step_max {
-            // benchmark
-            self.work.step += 1;
             self.work.bench.sw_step.reset();
-            self.work.bench.n_steps += 1;
 
             // check successful completion
             if x >= x1 {
@@ -195,6 +187,7 @@ impl<'a, A> OdeSolver<'a, A> {
             }
 
             // step
+            self.work.bench.n_steps += 1;
             self.actual.step(&mut self.work, x, &y, h, args)?;
 
             // handle diverging iterations
@@ -208,10 +201,8 @@ impl<'a, A> OdeSolver<'a, A> {
 
             // accept step
             if self.work.rel_error < 1.0 {
-                // set flabs
-                self.work.bench.n_accepted += 1;
-
                 // update x and y
+                self.work.bench.n_accepted += 1;
                 self.actual.accept(&mut self.work, &mut x, y, h, args)?;
 
                 // output
@@ -273,10 +264,8 @@ impl<'a, A> OdeSolver<'a, A> {
             }
         }
 
-        // benchmark
-        self.work.bench.stop_sw_total();
-
         // done
+        self.work.bench.stop_sw_total();
         if success {
             if f64::abs(x - x1) > 10.0 * f64::EPSILON {
                 return Err("x is not equal to x1 at the end");

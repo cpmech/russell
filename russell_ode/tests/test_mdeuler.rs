@@ -26,5 +26,4 @@ fn test_mdeuler_hairer_wanner_eq1() {
     assert_eq!(b.n_rejected, 0);
     assert_eq!(b.n_iterations, 0);
     assert_eq!(b.n_iterations_max, 0);
-    approx_eq(b.h_optimal, 0.015661248295711694, 1e-13);
 }

@@ -3,7 +3,7 @@ use russell_lab::{vec_max_abs_diff, Vector};
 use std::collections::HashMap;
 
 pub struct Output<'a> {
-    /// Indicates whether the (accepted) step output is to be performed or not
+    /// Indicates whether the accepted step output is to be performed or not
     save_step: bool,
 
     /// Holds the stepsize output during accepted steps
@@ -23,7 +23,7 @@ pub struct Output<'a> {
     /// Holds the stepsize to perform the dense output (None means disabled)
     dense_h: Option<f64>,
 
-    /// Holds the indices of the corresponding step associated with the dense output
+    /// Holds the indices of the accepted steps that were used to compute the dense output
     pub dense_step_index: Vec<usize>,
 
     /// Holds the x values requested by the dense output
@@ -142,7 +142,7 @@ impl<'a> Output<'a> {
     /// Appends the results after an accepted step is computed
     pub(crate) fn push<A>(
         &mut self,
-        step_index: usize,
+        accepted_step_index: usize,
         x: f64,
         y: &Vector,
         h: f64,
@@ -168,9 +168,9 @@ impl<'a> Output<'a> {
         }
         // dense output
         if let Some(h_out) = self.dense_h {
-            if step_index == 0 {
+            if accepted_step_index == 0 {
                 // first output
-                self.dense_step_index.push(step_index);
+                self.dense_step_index.push(accepted_step_index);
                 self.dense_x.push(x);
                 for (m, ym) in self.dense_y.iter_mut() {
                     ym.push(y[*m]);
@@ -183,7 +183,7 @@ impl<'a> Output<'a> {
                 }
                 let mut x_out = self.dense_x.last().unwrap() + h_out;
                 while x_out < x {
-                    self.dense_step_index.push(step_index);
+                    self.dense_step_index.push(accepted_step_index);
                     self.dense_x.push(x_out);
                     solver.dense_output(&mut self.y_aux, x_out, x, y, h)?;
                     for (m, ym) in self.dense_y.iter_mut() {

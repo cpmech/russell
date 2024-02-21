@@ -5,7 +5,6 @@
 /// Defines the error output as a static string
 pub type StrError = &'static str;
 
-mod auxiliary;
 mod benchmark;
 mod constants;
 mod enums;
@@ -16,11 +15,11 @@ mod ode_solver;
 mod ode_solver_trait;
 mod output;
 mod params;
+pub mod prelude;
 mod radau5;
 mod samples;
 mod system;
 mod workspace;
-pub use crate::auxiliary::*;
 pub use crate::benchmark::*;
 pub use crate::constants::*;
 pub use crate::enums::*;

@@ -1,6 +1,11 @@
 /// Indicates whether the analytical Jacobian is available or not
 pub enum HasJacobian {
+    /// Indicates that the analytical Jacobian is available
     Yes,
+
+    /// Indicates that the analytical Jacobian is not available
+    ///
+    /// **Note:** The [crate::no_jacobian] function can be conveniently used with the `No` option.
     No,
 }
 

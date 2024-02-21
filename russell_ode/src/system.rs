@@ -179,12 +179,25 @@ where
     }
 }
 
+/// Implements a placeholder function for when the analytical Jacobian is unavailable
+///
+/// **Note:** Use this function with the [crate::HasJacobian::No] option.
+pub fn no_jacobian<A>(
+    _jj: &mut CooMatrix,
+    _x: f64,
+    _y: &Vector,
+    _multiplier: f64,
+    _args: &mut A,
+) -> Result<(), StrError> {
+    Err("analytical Jacobian is not available")
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::System;
-    use crate::{no_jacobian, HasJacobian};
+    use super::{no_jacobian, System};
+    use crate::HasJacobian;
     use russell_lab::Vector;
     use russell_sparse::CooMatrix;
 

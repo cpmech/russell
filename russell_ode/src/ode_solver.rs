@@ -97,7 +97,7 @@ impl<'a, A> OdeSolver<'a, A> {
         x0: f64,
         x1: f64,
         h_equal: Option<f64>,
-        mut output: Option<&mut Output>,
+        mut output: Option<&mut Output<'a>>,
         args: &mut A,
     ) -> Result<(), StrError> {
         // check data
@@ -144,7 +144,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
         // first output
         if let Some(out) = output.as_mut() {
-            out.push(self.work.bench.n_steps, x, y, h);
+            out.push(self.work.bench.n_steps, x, y, h, &self.actual);
         }
 
         // equal-stepping loop
@@ -168,7 +168,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
                 // output
                 if let Some(out) = output.as_mut() {
-                    out.push(self.work.bench.n_steps, x, y, h);
+                    out.push(self.work.bench.n_steps, x, y, h, &self.actual);
                 }
             }
             self.work.bench.stop_sw_total();
@@ -216,7 +216,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
                 // output
                 if let Some(out) = output.as_mut() {
-                    out.push(self.work.bench.n_steps, x, y, h);
+                    out.push(self.work.bench.n_steps, x, y, h, &self.actual);
                 }
 
                 // converged?

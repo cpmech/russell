@@ -1,9 +1,6 @@
-use crate::StrError;
+use crate::{OdeSolverTrait, StrError};
 use russell_lab::{vec_max_abs_diff, Vector};
 use std::collections::HashMap;
-
-/// Implements a placeholder (internal) function for the case when no dense output is requested
-fn no_dense_output(_y_out: &mut Vector, _x_out: f64, _x: f64, _y: &Vector, _h: f64) {}
 
 pub struct Output<'a> {
     /// Indicates whether the (accepted) step output is to be performed or not
@@ -40,11 +37,6 @@ pub struct Output<'a> {
 
     /// Implements the analytical solution `y(x)` function
     y_analytical: Option<Box<dyn 'a + FnMut(&mut Vector, f64)>>,
-
-    /// Holds the internal dense_output function
-    ///
-    /// The parameters are (y_out, x_out, x, y, h)
-    pub(crate) dense_output: fn(&mut Vector, f64, f64, &Vector, f64),
 }
 
 impl<'a> Output<'a> {
@@ -63,7 +55,6 @@ impl<'a> Output<'a> {
             dense_y: HashMap::new(),
             y_aux: Vector::new(EMPTY),
             y_analytical: None,
-            dense_output: no_dense_output,
         }
     }
 
@@ -107,6 +98,7 @@ impl<'a> Output<'a> {
         if h_out < 0.0 {
             return Err("h_out must be positive");
         }
+        self.dense_h = Some(h_out);
         for m in selected_y_components {
             self.dense_y.insert(*m, Vec::new());
         }
@@ -148,13 +140,22 @@ impl<'a> Output<'a> {
     }
 
     /// Appends the results after an accepted step is computed
-    pub(crate) fn push(&mut self, step_index: usize, x: f64, y: &Vector, h: f64) {
+    pub(crate) fn push<A>(
+        &mut self,
+        step_index: usize,
+        x: f64,
+        y: &Vector,
+        h: f64,
+        solver: &Box<dyn OdeSolverTrait<A> + 'a>,
+    ) {
+        // step output
         if self.save_step {
             self.step_h.push(h);
             self.step_x.push(x);
             for (m, ym) in self.step_y.iter_mut() {
                 ym.push(y[*m]);
             }
+            // global error
             if let Some(ana) = self.y_analytical.as_mut() {
                 let ndim = y.dim();
                 if self.y_aux.dim() != ndim {
@@ -165,26 +166,30 @@ impl<'a> Output<'a> {
                 self.step_global_error.push(err);
             }
         }
+        // dense output
         if let Some(h_out) = self.dense_h {
             if step_index == 0 {
+                // first output
                 self.dense_step_index.push(step_index);
                 self.dense_x.push(x);
                 for (m, ym) in self.dense_y.iter_mut() {
                     ym.push(y[*m]);
                 }
             } else {
-                let x_out = self.dense_x.last().unwrap() + h_out;
-                if x_out <= x {
-                    let ndim = y.dim();
-                    if self.y_aux.dim() != ndim {
-                        self.y_aux = Vector::new(ndim); // first allocation
-                    }
-                    (self.dense_output)(&mut self.y_aux, x_out, x, y, h);
+                // subsequent output
+                let ndim = y.dim();
+                if self.y_aux.dim() != ndim {
+                    self.y_aux = Vector::new(ndim); // first allocation
+                }
+                let mut x_out = self.dense_x.last().unwrap() + h_out;
+                while x_out < x {
                     self.dense_step_index.push(step_index);
                     self.dense_x.push(x_out);
+                    solver.dense_output(&mut self.y_aux, x_out, x, y, h);
                     for (m, ym) in self.dense_y.iter_mut() {
                         ym.push(self.y_aux[*m]);
                     }
+                    x_out += h_out;
                 }
             }
         }

@@ -151,12 +151,14 @@ where
 
                 // perform factorization
                 work.bench.sw_factor.reset();
+                work.bench.n_factor += 1;
                 self.solver.actual.factorize(&mut self.kk, self.params.lin_sol_params)?;
                 work.bench.stop_sw_factor();
             }
 
             // solve the linear system
             work.bench.sw_lin_sol.reset();
+            work.bench.n_lin_sol += 1;
             self.solver.actual.solve(&mut self.dy, &self.kk, &self.r, false)?;
             work.bench.stop_sw_lin_sol();
 

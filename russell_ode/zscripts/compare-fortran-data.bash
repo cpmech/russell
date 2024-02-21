@@ -10,23 +10,19 @@ test_radau5_van_der_pol \
 sum=""
 
 for test in $TESTS; do
-    correct="data/${test/test_/diff_}.txt"
-    fortran="data/${test/test_/fortran_}.txt"
-    russell="data/${test/test_/russell_}.txt"
+    temporary="/tmp/${test/test_/russell_}.txt"
+    correct="data/${test/test_/russell_}.txt"
 
     # run the test
-    cargo test --test $test -- --nocapture --quiet > $russell 
+    cargo test --test $test -- --nocapture --quiet > $temporary
 
     # delete the last two lines (blank line, the cargo output, and a dot)
-    sed -i '$d' $russell
-    sed -i '$d' $russell
-    sed -i '$d' $russell
+    sed -i '$d' $temporary
+    sed -i '$d' $temporary
+    sed -i '$d' $temporary
 
-    # temporary diff (run this just once)
-    # pipe to tail to ignore the first two lines because of the date/time
-    # diff -u $fortran $russell | tail -n +3 > $correct
-
-    res=`diff -u $fortran $russell | tail -n +3 | diff - $correct`
+    # check the difference
+    res=`diff -u $temporary $correct`
     sum="${sum}${res}"
 done
 

@@ -503,7 +503,7 @@ where
         work.h_new = h / f64::min(self.d_min, d);
     }
 
-    /// Computes the dense output
+    /// Computes the dense output with x-h ≤ x_out ≤ x
     fn dense_output(&self, y_out: &mut Vector, x_out: f64, x: f64, _y: &Vector, h: f64) {
         if self.params.use_dense_output && self.method == Method::DoPri5 {
             let d = self.dense_out.as_ref().unwrap();

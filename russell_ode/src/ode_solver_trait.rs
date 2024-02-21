@@ -23,6 +23,6 @@ pub(crate) trait OdeSolverTrait<A> {
     /// Rejects the update
     fn reject(&mut self, work: &mut Workspace, h: f64);
 
-    /// Computes the dense output
+    /// Computes the dense output with x-h ≤ x_out ≤ x
     fn dense_output(&self, y_out: &mut Vector, x_out: f64, x: f64, y: &Vector, h: f64);
 }

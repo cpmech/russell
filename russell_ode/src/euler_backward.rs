@@ -189,6 +189,6 @@ where
     /// Rejects the update
     fn reject(&mut self, _work: &mut Workspace, _h: f64) {}
 
-    /// Computes the dense output
+    /// Computes the dense output with x-h ≤ x_out ≤ x
     fn dense_output(&self, _y_out: &mut Vector, _x_out: f64, _x: f64, _y: &Vector, _h: f64) {}
 }

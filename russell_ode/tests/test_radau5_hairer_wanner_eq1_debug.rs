@@ -2,7 +2,7 @@ use russell_lab::{approx_eq, format_fortran, Vector};
 use russell_ode::{Method, OdeSolver, Params, Samples};
 
 #[test]
-fn test_radau5_hairer_wanner_eq1() {
+fn test_radau5_hairer_wanner_eq1_debug() {
     // get ODE system
     let (system, mut data, mut args) = Samples::hairer_wanner_eq1();
     let ndim = system.get_ndim();

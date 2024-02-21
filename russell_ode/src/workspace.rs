@@ -47,7 +47,7 @@ impl Workspace {
 
     /// Resets all values
     pub(crate) fn reset(&mut self, h: f64, rel_error_prev_min: f64) {
-        self.bench.reset();
+        self.bench.reset(h);
         self.step = 0;
         self.follows_reject_step = false;
         self.iterations_diverging = false;

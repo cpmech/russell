@@ -93,7 +93,7 @@ impl Benchmark {
     }
 
     /// Resets all values
-    pub(crate) fn reset(&mut self) {
+    pub(crate) fn reset(&mut self, h: f64) {
         self.n_function = 0;
         self.n_jacobian = 0;
         self.n_factor = 0;
@@ -103,7 +103,7 @@ impl Benchmark {
         self.n_rejected = 0;
         self.n_iterations = 0;
         self.n_iterations_max = 0;
-        self.h_optimal = 0.0;
+        self.h_optimal = h;
         self.nanos_step_max = 0;
         self.nanos_jacobian_max = 0;
         self.nanos_factor_max = 0;

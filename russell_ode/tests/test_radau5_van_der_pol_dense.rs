@@ -1,8 +1,8 @@
 use russell_lab::{approx_eq, format_fortran};
-use russell_ode::{Method, OdeSolver, Params, Samples};
+use russell_ode::{Method, OdeSolver, Output, Params, Samples};
 
 #[test]
-fn test_radau5_van_der_pol() {
+fn test_radau5_van_der_pol_dense() {
     // get get ODE system
     const EPS: f64 = 1e-6;
     let (system, mut data, mut args) = Samples::van_der_pol(Some(EPS), false);
@@ -10,12 +10,15 @@ fn test_radau5_van_der_pol() {
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);
     params.h_ini = 1e-6;
-    params.radau5.logging = true;
+
+    // enable dense output with 0.2 spacing
+    let mut out = Output::new();
+    out.enable_dense(0.2, &[0, 1]).unwrap();
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, system).unwrap();
     solver
-        .solve(&mut data.y0, data.x0, data.x1, None, None, &mut args)
+        .solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)
         .unwrap();
 
     // get statistics
@@ -25,6 +28,18 @@ fn test_radau5_van_der_pol() {
     approx_eq(data.y0[0], 1.706163410178079E+00, 1e-14);
     approx_eq(data.y0[1], -8.927971289301175E-01, 1e-12);
     approx_eq(stat.h_optimal, 2.132444924152443E-01, 1e-9);
+
+    // print dense output
+    let n_dense = out.dense_step_index.len();
+    for i in 0..n_dense {
+        println!(
+            "step ={:>4}, x ={:5.2}, y ={}{}",
+            out.dense_step_index[i],
+            out.dense_x[i],
+            format_fortran(out.dense_y.get(&0).unwrap()[i]),
+            format_fortran(out.dense_y.get(&1).unwrap()[i]),
+        )
+    }
 
     // print and check statistics
     println!("{}", stat.summary());

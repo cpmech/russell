@@ -135,7 +135,6 @@ impl<'a, A> OdeSolver<'a, A> {
 
         // reset variables
         self.work.reset(h, self.params.rel_error_prev_min);
-        self.work.bench.h_optimal = h;
         self.actual.initialize(&mut self.work, x0, y0, args)?;
 
         // current values
@@ -222,7 +221,6 @@ impl<'a, A> OdeSolver<'a, A> {
                 // converged?
                 if last_step {
                     success = true;
-                    self.work.bench.h_optimal = h;
                     break;
                 }
 
@@ -238,6 +236,9 @@ impl<'a, A> OdeSolver<'a, A> {
                     self.work.h_new = f64::min(self.work.h_new, h);
                 }
                 self.work.follows_reject_step = false;
+
+                // save optimal stepsize
+                self.work.bench.h_optimal = f64::min(h, self.work.h_new);
 
                 // check if the last step is approaching
                 if x + self.work.h_new >= x1 {

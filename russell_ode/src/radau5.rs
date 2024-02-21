@@ -440,10 +440,11 @@ where
             let nit = self.params.n_iteration_max;
             if self.params.logging {
                 println!(
-                    "step = {:>5}, newt = {:>5}, ldw ={}",
+                    "step = {:>5}, newt = {:>5}, ldw ={}, h ={}",
                     work.step,
                     newt,
-                    format_fortran(ldw)
+                    format_fortran(ldw),
+                    format_fortran(h),
                 );
             }
             if newt > 1 && newt < nit {

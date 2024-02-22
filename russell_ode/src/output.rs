@@ -2,6 +2,7 @@ use crate::{OdeSolverTrait, StrError};
 use russell_lab::{vec_max_abs_diff, Vector};
 use std::collections::HashMap;
 
+/// Holds the (x,y) results at accepted steps or interpolated within a "dense" sequence
 pub struct Output<'a> {
     /// Indicates whether the accepted step output is to be performed or not
     save_step: bool,

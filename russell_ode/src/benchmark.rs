@@ -1,7 +1,7 @@
 use russell_lab::{format_nanoseconds, Stopwatch};
 use std::fmt::{self, Write};
 
-/// Holds benchmark information
+/// Holds some statistics and benchmarking data
 #[derive(Clone, Copy, Debug)]
 pub struct Benchmark {
     /// Number of calls to ODE system function

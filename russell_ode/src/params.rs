@@ -1,7 +1,7 @@
 use crate::{Method, StrError};
 use russell_sparse::{Genie, LinSolParams};
 
-/// Holds parameters for the BwEuler method
+/// Holds the parameters for the BwEuler method
 #[derive(Clone, Copy, Debug)]
 pub struct ParamsBwEuler {
     /// Absolute tolerance
@@ -36,7 +36,7 @@ pub struct ParamsBwEuler {
     pub lin_sol_params: Option<LinSolParams>,
 }
 
-/// Holds parameters for the Radau5 method
+/// Holds the parameters for the Radau5 method
 #[derive(Clone, Copy, Debug)]
 pub struct ParamsRadau5 {
     /// Absolute tolerance
@@ -119,7 +119,7 @@ pub struct ParamsRadau5 {
     pub logging: bool,
 }
 
-/// Holds parameters for explicit Runge-Kutta methods
+/// Holds the parameters for explicit Runge-Kutta methods
 #[derive(Clone, Copy, Debug)]
 pub struct ParamsERK {
     /// Absolute tolerance
@@ -164,7 +164,7 @@ pub struct ParamsERK {
     pub lund_m: f64,
 }
 
-/// Holds parameters for the ODE Solver
+/// Holds all parameters for the ODE Solver
 #[derive(Clone, Copy, Debug)]
 pub struct Params {
     /// ODE solver method

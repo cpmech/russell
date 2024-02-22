@@ -22,7 +22,11 @@ pub struct ParamsBwEuler {
     /// Use RMS norm instead of Euclidean norm to compare residuals
     pub use_rms_norm: bool,
 
-    /// Max number of iterations (must be ≥ 1)
+    /// Max number of iterations
+    ///
+    /// ```text
+    /// n_iteration_max ≥ 1
+    /// ```
     pub n_iteration_max: usize,
 
     /// Linear solver kind
@@ -50,7 +54,11 @@ pub struct ParamsRadau5 {
     /// Always start iterations with zero trial values (instead of collocation interpolation)
     pub zero_trial: bool,
 
-    /// Max number of iterations (must be ≥ 1)
+    /// Max number of iterations
+    ///
+    /// ```text
+    /// n_iteration_max ≥ 1
+    /// ```
     pub n_iteration_max: usize,
 
     /// Linear solver kind
@@ -59,23 +67,47 @@ pub struct ParamsRadau5 {
     /// Configurations for sparse linear solver
     pub lin_sol_params: Option<LinSolParams>,
 
-    // Max value to decide whether the Jacobian should be recomputed or not
+    /// Max θ value to decide whether the Jacobian should be recomputed or not
+    ///
+    /// ```text
+    /// theta_max ≥ 1e-7
+    /// ```
     pub theta_max: f64,
 
     /// c1 of Hairer-Wanner (VII p124): min ratio to retain previous h
+    ///
+    /// ```text
+    /// 0.5 ≤ c1h ≤ 1.5   and   c1h < c2h
+    /// ````
     pub c1h: f64,
 
     /// c2 of Hairer-Wanner (VII p124): max ratio to retain previous h
+    ///
+    /// ```text
+    /// 1 ≤ c2h ≤ 2   and   c2h > c1h
+    /// ```
     pub c2h: f64,
 
-    /// Min step multiplier (must be ≥ 0.001 and < m_max)
+    /// Min step multiplier
+    ///
+    /// ```text
+    /// 0.001 ≤ m_min < 0.5   and   m_min < m_max
+    /// ```
     pub m_min: f64,
 
-    /// Max step multiplier (must be ≥ 0.01 and > m_min)
+    /// Max step multiplier
+    ///
+    /// ```text
+    /// 0.01 ≤ m_max ≤ 20   and   m_max > m_min
+    /// ```
     pub m_max: f64,
 
-    /// Step multiplier factor (must be ≥ 0.1)
-    pub m_factor: f64,
+    /// Step multiplier safety factor
+    ///
+    /// ```text
+    /// 0.1 ≤ m ≤ 1
+    /// ```
+    pub m_safety: f64,
 
     /// Enable concurrent factorization and solution of the two linear systems
     pub concurrent: bool,
@@ -96,20 +128,40 @@ pub struct ParamsERK {
     /// Relative tolerance
     pub(crate) rel_tol: f64,
 
-    /// Min step multiplier (must be ≥ 0.001 and < m_max)
+    /// Min step multiplier
+    ///
+    /// ```text
+    /// 0.001 ≤ m_min < 0.5   and   m_min < m_max
+    /// ```
     pub m_min: f64,
 
-    /// Max step multiplier (must be ≥ 0.01 and > m_min)
+    /// Max step multiplier
+    ///
+    /// ```text
+    /// 0.01 ≤ m_max ≤ 20   and   m_max > m_min
+    /// ```
     pub m_max: f64,
 
-    /// Step multiplier factor (must be ≥ 0.1)
-    pub m_factor: f64,
+    /// Step multiplier safety factor
+    ///
+    /// ```text
+    /// 0.1 ≤ m_safety ≤ 1
+    /// ```
+    pub m_safety: f64,
 
-    /// Lund stabilization coefficient β (must be ≥ 0.0)
+    /// Lund stabilization coefficient β
+    ///
+    /// ```text
+    /// 0 ≤ lund_beta ≤ 0.1
+    /// ```
     pub lund_beta: f64,
 
-    /// Factor to multiply Lund stabilization coefficient β (must be ≥ 0.0)
-    pub lund_beta_m: f64,
+    /// Factor to multiply the Lund stabilization coefficient β
+    ///
+    /// ```text
+    /// 0 ≤ lund_m ≤ 1
+    /// ```
+    pub lund_m: f64,
 }
 
 /// Holds parameters for the ODE Solver
@@ -127,19 +179,35 @@ pub struct Params {
     /// Parameters for explicit Runge-Kutta methods
     pub erk: ParamsERK,
 
-    /// Initial stepsize (must be ≥ 1e-8)
+    /// Initial stepsize
+    ///
+    /// ```text
+    /// h_ini ≥ 1e-8
+    /// ```
     pub h_ini: f64,
 
-    /// Min value of previous relative error (must be ≥ 1e-8)
+    /// Min value of previous relative error
+    ///
+    /// ```text
+    /// rel_error_prev_min ≥ 1e-8
+    /// ```
     pub rel_error_prev_min: f64,
 
-    /// Max number of steps (must be ≥ 1)
+    /// Max number of steps
+    ///
+    /// ```text
+    /// n_step_max ≥ 1
+    /// ```
     pub n_step_max: usize,
 
-    /// Coefficient to multiply stepsize if first step is rejected (must be ≥ 0.0)
+    /// Coefficient to multiply the stepsize if the first step is rejected
     ///
-    /// If `m_first_rejection == 0.0`, the solver will use `h_new` on an rejected step.
-    pub m_first_rejection: f64,
+    /// ```text
+    /// m_first_reject ≥ 0.0
+    /// ```
+    ///
+    /// If `m_first_reject = 0`, the solver will use `h_new` on a rejected step.
+    pub m_first_reject: f64,
 }
 
 impl ParamsBwEuler {
@@ -162,7 +230,7 @@ impl ParamsBwEuler {
     /// Validates all parameters
     pub(crate) fn validate(&self) -> Result<(), StrError> {
         if self.n_iteration_max < 1 {
-            return Err("n_iteration_max must be ≥ 1");
+            return Err("unmatched requirement: n_iteration_max ≥ 1");
         }
         Ok(())
     }
@@ -186,7 +254,7 @@ impl ParamsRadau5 {
             c2h: 1.2,        // line 513 of radau5.f
             m_min: 0.125,    // line 534 of radau5.f
             m_max: 5.0,      // line 529 of radau5.f
-            m_factor: 0.9,   // line 477 of radau5.f
+            m_safety: 0.9,   // line 477 of radau5.f
             concurrent: true,
             use_pred_control: true,
             logging: false,
@@ -196,7 +264,25 @@ impl ParamsRadau5 {
     /// Validates all parameters
     pub(crate) fn validate(&self) -> Result<(), StrError> {
         if self.n_iteration_max < 1 {
-            return Err("n_iteration_max must be ≥ 1");
+            return Err("unmatched requirement: n_iteration_max ≥ 1");
+        }
+        if self.theta_max < 1e-7 {
+            return Err("unmatched requirement: theta_max ≥ 1e-7");
+        }
+        if self.c1h < 0.5 || self.c1h > 1.5 || self.c1h >= self.c2h {
+            return Err("unmatched requirement: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h");
+        }
+        if self.c2h < 1.0 || self.c2h > 2.0 {
+            return Err("unmatched requirement: 1 ≤ c2h ≤ 2 and c2h > c1h");
+        }
+        if self.m_min < 0.001 || self.m_min > 0.5 || self.m_min >= self.m_max {
+            return Err("unmatched requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max");
+        }
+        if self.m_max < 0.01 || self.m_max > 20.0 {
+            return Err("unmatched requirement: 0.01 ≤ m_max ≤ 20 and m_max > m_min");
+        }
+        if self.m_safety < 0.1 || self.m_safety > 1.0 {
+            return Err("unmatched requirement: 0.1 ≤ m_safety ≤ 1");
         }
         Ok(())
     }
@@ -205,7 +291,7 @@ impl ParamsRadau5 {
 impl ParamsERK {
     /// Allocates a new instance
     pub(crate) fn new(method: Method) -> Self {
-        let (m_min, m_max, lund_beta, lund_beta_m) = match method {
+        let (m_min, m_max, lund_beta, lund_m) = match method {
             Method::DoPri5 => (0.2, 10.0, 0.04, 0.75), // lines (276, 281, 287, 381) of dopri5.f
             Method::DoPri8 => (0.333, 6.0, 0.0, 0.2),  // lines (276, 281, 287, 548) of dop853.f
             _ => (0.2, 10.0, 0.0, 0.0),
@@ -216,34 +302,28 @@ impl ParamsERK {
             rel_tol,
             m_min,
             m_max,
-            m_factor: 0.9, // line 265 of dopri5.f and dop853.f
+            m_safety: 0.9, // line 265 of dopri5.f and dop853.f
             lund_beta,
-            lund_beta_m,
+            lund_m,
         }
     }
 
     /// Validates all parameters
     pub(crate) fn validate(&self) -> Result<(), StrError> {
-        if self.m_min < 0.001 {
-            return Err("m_min must be ≥ 0.001");
+        if self.m_min < 0.001 || self.m_min > 0.5 || self.m_min >= self.m_max {
+            return Err("unmatched requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max");
         }
-        if self.m_min >= self.m_max {
-            return Err("m_min must be < m_max");
+        if self.m_max < 0.01 || self.m_max > 20.0 {
+            return Err("unmatched requirement: 0.01 ≤ m_max ≤ 20 and m_max > m_min");
         }
-        if self.m_max < 0.01 {
-            return Err("m_max must be ≥ 0.01");
+        if self.m_safety < 0.1 || self.m_safety > 1.0 {
+            return Err("unmatched requirement: 0.1 ≤ m_safety ≤ 1");
         }
-        if self.m_factor < 0.1 {
-            return Err("m_factor must be ≥ 0.1");
+        if self.lund_beta < 0.0 || self.lund_beta > 0.1 {
+            return Err("unmatched requirement: 0 ≤ lund_beta ≤ 0.1");
         }
-        if self.m_factor > 1.0 {
-            return Err("m_factor must be ≤ 1.0");
-        }
-        if self.lund_beta < 0.0 {
-            return Err("lund_beta must be ≥ 0.0");
-        }
-        if self.lund_beta_m < 0.0 {
-            return Err("lund_beta_m must be ≥ 0.0");
+        if self.lund_m < 0.0 || self.lund_m > 1.0 {
+            return Err("unmatched requirement: 0 ≤ lund_m ≤ 1");
         }
         Ok(())
     }
@@ -264,7 +344,7 @@ impl Params {
             h_ini,
             rel_error_prev_min,
             n_step_max: 100000, // lines 426 of radau5.f, 212 of dopri5.f, and 211 of dop853.f
-            m_first_rejection: 0.1,
+            m_first_reject: 0.1,
         }
     }
 
@@ -305,16 +385,16 @@ impl Params {
             _ => self.erk.validate()?,
         }
         if self.h_ini < 1e-8 {
-            return Err("h_ini must be ≥ 1e-8");
+            return Err("unmatched requirement: h_ini ≥ 1e-8");
         }
         if self.rel_error_prev_min < 1e-8 {
-            return Err("rel_error_prev_min must be ≥ 1e-8");
+            return Err("unmatched requirement: rel_error_prev_min ≥ 1e-8");
         }
         if self.n_step_max < 1 {
-            return Err("n_step_max must be ≥ 1");
+            return Err("unmatched requirement: n_step_max ≥ 1");
         }
-        if self.m_first_rejection < 0.0 {
-            return Err("m_first_rejection must be ≥ 0.0");
+        if self.m_first_reject < 0.0 {
+            return Err("unmatched requirement: m_first_rejection ≥ 0");
         }
         Ok(())
     }
@@ -390,16 +470,23 @@ mod tests {
     }
 
     #[test]
+    fn set_tolerances_captures_errors() {
+        for method in [Method::BwEuler, Method::Radau5, Method::DoPri5] {
+            let mut params = Params::new(method);
+            assert_eq!(
+                params.set_tolerances(0.0, 1e-4).err(),
+                Some("the absolute tolerance must be > 10 · EPSILON")
+            );
+            assert_eq!(
+                params.set_tolerances(1e-4, 0.0).err(),
+                Some("the relative tolerance must be > 10 · EPSILON")
+            );
+        }
+    }
+
+    #[test]
     fn set_tolerances_works() {
         let mut params = Params::new(Method::BwEuler);
-        assert_eq!(
-            params.set_tolerances(0.0, 1e-4).err(),
-            Some("the absolute tolerance must be > 10 · EPSILON")
-        );
-        assert_eq!(
-            params.set_tolerances(1e-4, 0.0).err(),
-            Some("the relative tolerance must be > 10 · EPSILON")
-        );
         params.set_tolerances(0.01, 0.02).unwrap();
         assert_eq!(params.bweuler.abs_tol, 0.01);
         assert_eq!(params.bweuler.rel_tol, 0.02);
@@ -418,50 +505,176 @@ mod tests {
     }
 
     #[test]
-    fn validate_works() {
+    fn validate_bweuler_works() {
         let mut params = Params::new(Method::BwEuler);
-        params.validate().unwrap();
         params.bweuler.n_iteration_max = 0;
-        assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 1"));
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: n_iteration_max ≥ 1")
+        );
+        params.bweuler.n_iteration_max = 10;
+        assert_eq!(params.validate().is_err(), false);
+    }
 
+    #[test]
+    fn validate_radau5_works() {
+        let mut params = Params::new(Method::Radau5);
+        params.radau5.n_iteration_max = 0;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: n_iteration_max ≥ 1")
+        );
+        params.radau5.n_iteration_max = 1;
+        params.radau5.theta_max = 0.0;
+        assert_eq!(params.validate().err(), Some("unmatched requirement: theta_max ≥ 1e-7"));
+        params.radau5.theta_max = 1e-7;
+        params.radau5.c1h = 0.0;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h")
+        );
+        params.radau5.c1h = 2.0;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h")
+        );
+        params.radau5.c1h = 1.3;
+        params.radau5.c2h = 1.2;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h")
+        );
+        params.radau5.c1h = 1.0;
+        params.radau5.c2h = 3.0;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 1 ≤ c2h ≤ 2 and c2h > c1h")
+        );
+        params.radau5.c2h = 1.2;
+        params.radau5.m_min = 0.0;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
+        );
+        params.radau5.m_min = 0.6;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
+        );
+        params.radau5.m_min = 0.02;
+        params.radau5.m_max = 0.01;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
+        );
+        params.radau5.m_min = 0.001;
+        params.radau5.m_max = 0.005;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.01 ≤ m_max ≤ 20 and m_max > m_min")
+        );
+        params.radau5.m_max = 30.0;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.01 ≤ m_max ≤ 20 and m_max > m_min")
+        );
+        params.radau5.m_max = 10.0;
+        params.radau5.m_safety = 0.0;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.1 ≤ m_safety ≤ 1")
+        );
+        params.radau5.m_safety = 1.2;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.1 ≤ m_safety ≤ 1")
+        );
+        params.radau5.m_safety = 0.9;
+        assert_eq!(params.validate().is_err(), false);
+    }
+
+    #[test]
+    fn validate_erk_works() {
         let mut params = Params::new(Method::DoPri5);
         params.erk.m_min = 0.0;
-        assert_eq!(params.validate().err(), Some("m_min must be ≥ 0.001"));
-        params.erk.m_min = 1.0;
-        params.erk.m_max = 0.1;
-        assert_eq!(params.validate().err(), Some("m_min must be < m_max"));
-        params.erk.m_min = 0.002;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
+        );
+        params.erk.m_min = 0.6;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
+        );
+        params.erk.m_min = 0.02;
+        params.erk.m_max = 0.01;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
+        );
+        params.erk.m_min = 0.001;
         params.erk.m_max = 0.005;
-        assert_eq!(params.validate().err(), Some("m_max must be ≥ 0.01"));
-        params.erk.m_min = 0.1;
-        params.erk.m_max = 1.0;
-        params.erk.m_factor = 0.0;
-        assert_eq!(params.validate().err(), Some("m_factor must be ≥ 0.1"));
-        params.erk.m_factor = 3.0;
-        assert_eq!(params.validate().err(), Some("m_factor must be ≤ 1.0"));
-        params.erk.m_factor = 0.9;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.01 ≤ m_max ≤ 20 and m_max > m_min")
+        );
+        params.erk.m_max = 30.0;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.01 ≤ m_max ≤ 20 and m_max > m_min")
+        );
+        params.erk.m_max = 10.0;
+        params.erk.m_safety = 0.0;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.1 ≤ m_safety ≤ 1")
+        );
+        params.erk.m_safety = 1.2;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.1 ≤ m_safety ≤ 1")
+        );
+        params.erk.m_safety = 0.9;
         params.erk.lund_beta = -1.0;
-        assert_eq!(params.validate().err(), Some("lund_beta must be ≥ 0.0"));
-        params.erk.lund_beta = 0.0;
-        params.erk.lund_beta_m = -1.0;
-        assert_eq!(params.validate().err(), Some("lund_beta_m must be ≥ 0.0"));
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0 ≤ lund_beta ≤ 0.1")
+        );
+        params.erk.lund_beta = 0.2;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0 ≤ lund_beta ≤ 0.1")
+        );
+        params.erk.lund_beta = 0.1;
+        params.erk.lund_m = -1.0;
+        assert_eq!(params.validate().err(), Some("unmatched requirement: 0 ≤ lund_m ≤ 1"));
+        params.erk.lund_m = 1.1;
+        assert_eq!(params.validate().err(), Some("unmatched requirement: 0 ≤ lund_m ≤ 1"));
+        params.erk.lund_m = 0.75;
+        assert_eq!(params.validate().is_err(), false);
+    }
 
-        params.erk.lund_beta_m = 0.0;
+    #[test]
+    fn validate_works() {
+        let mut params = Params::new(Method::DoPri5);
         params.h_ini = 0.0;
-        assert_eq!(params.validate().err(), Some("h_ini must be ≥ 1e-8"));
-        params.h_ini = 1e-8;
+        assert_eq!(params.validate().err(), Some("unmatched requirement: h_ini ≥ 1e-8"));
+        params.h_ini = 1e-4;
         params.rel_error_prev_min = 0.0;
-        assert_eq!(params.validate().err(), Some("rel_error_prev_min must be ≥ 1e-8"));
-        params.rel_error_prev_min = 1e-8;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: rel_error_prev_min ≥ 1e-8")
+        );
+        params.rel_error_prev_min = 1e-6;
         params.n_step_max = 0;
-        assert_eq!(params.validate().err(), Some("n_step_max must be ≥ 1"));
-        params.n_step_max = 1;
-        params.m_first_rejection = -1.0;
-        assert_eq!(params.validate().err(), Some("m_first_rejection must be ≥ 0.0"));
-
-        let mut params = Params::new(Method::Radau5);
-        params.validate().unwrap();
-        params.radau5.n_iteration_max = 0;
-        assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 1"));
+        assert_eq!(params.validate().err(), Some("unmatched requirement: n_step_max ≥ 1"));
+        params.n_step_max = 10;
+        params.m_first_reject = -1.0;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: m_first_rejection ≥ 0")
+        );
+        params.m_first_reject = 0.0;
+        assert_eq!(params.validate().is_err(), false);
     }
 }

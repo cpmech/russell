@@ -256,8 +256,8 @@ impl<'a, A> OdeSolver<'a, A> {
                 self.actual.reject(&mut self.work, h);
 
                 // new stepsize
-                if self.work.bench.n_accepted == 0 && self.params.m_first_rejection > 0.0 {
-                    h *= self.params.m_first_rejection;
+                if self.work.bench.n_accepted == 0 && self.params.m_first_reject > 0.0 {
+                    h *= self.params.m_first_reject;
                 } else {
                     h = self.work.h_new;
                 }

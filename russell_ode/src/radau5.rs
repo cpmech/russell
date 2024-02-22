@@ -573,9 +573,9 @@ where
 
         // estimate the new stepsize
         let newt = work.bench.n_iterations;
-        let num = self.params.m_factor * ((1 + 2 * self.params.n_iteration_max) as f64);
+        let num = self.params.m_safety * ((1 + 2 * self.params.n_iteration_max) as f64);
         let den = (newt + 2 * self.params.n_iteration_max) as f64;
-        let fac = f64::min(self.params.m_factor, num / den);
+        let fac = f64::min(self.params.m_safety, num / den);
         let div = f64::max(
             self.params.m_min,
             f64::min(self.params.m_max, f64::powf(work.rel_error, 0.25) / fac),
@@ -587,7 +587,7 @@ where
             if work.bench.n_accepted > 1 {
                 let r2 = work.rel_error * work.rel_error;
                 let rp = work.rel_error_prev;
-                let fac = (work.h_prev / h) * f64::powf(r2 / rp, 0.25) / self.params.m_factor;
+                let fac = (work.h_prev / h) * f64::powf(r2 / rp, 0.25) / self.params.m_safety;
                 let fac = f64::max(self.params.m_min, f64::min(self.params.m_max, fac));
                 let div = f64::max(div, fac);
                 h_new = h / div;
@@ -618,9 +618,9 @@ where
     fn reject(&mut self, work: &mut Workspace, h: f64) {
         // estimate new stepsize
         let newt = work.bench.n_iterations;
-        let num = self.params.m_factor * ((1 + 2 * self.params.n_iteration_max) as f64);
+        let num = self.params.m_safety * ((1 + 2 * self.params.n_iteration_max) as f64);
         let den = (newt + 2 * self.params.n_iteration_max) as f64;
-        let fac = f64::min(self.params.m_factor, num / den);
+        let fac = f64::min(self.params.m_safety, num / den);
         let div = f64::max(
             self.params.m_min,
             f64::min(self.params.m_max, f64::powf(work.rel_error, 0.25) / fac),

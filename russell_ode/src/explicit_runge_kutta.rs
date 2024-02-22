@@ -40,7 +40,7 @@ where
 
     /// Lund stabilization factor (n)
     ///
-    /// exponent `n = 1/(q+1)` or `1/(q+1)-0.75⋅β` of `rerr ⁿ`
+    /// `n = 1/(q+1)-0.75⋅β` of `rel_err ⁿ`
     lund_factor: f64,
 
     /// Auxiliary variable: 1 / m_min
@@ -134,11 +134,7 @@ where
         let nstage = bb.dim();
 
         // Lund stabilization factor (n)
-        let lund_factor = if params.lund_beta > 0.0 {
-            1.0 / ((info.order_of_estimator + 1) as f64) - params.lund_beta * params.lund_beta_m
-        } else {
-            1.0 / ((info.order_of_estimator + 1) as f64)
-        };
+        let lund_factor = 1.0 / ((info.order_of_estimator + 1) as f64) - params.lund_beta * params.lund_m;
 
         // return structure
         let ndim = system.ndim;
@@ -321,7 +317,7 @@ where
             // lund-stabilization
             d = d / f64::powf(work.rel_error_prev, self.params.lund_beta);
         }
-        d = f64::max(self.d_max, f64::min(self.d_min, d / self.params.m_factor)); // we require fac1 <= h_new/h <= fac2
+        d = f64::max(self.d_max, f64::min(self.d_min, d / self.params.m_safety)); // we require fac1 <= h_new/h <= fac2
         work.h_new = h / d;
         Ok(())
     }
@@ -329,7 +325,7 @@ where
     /// Rejects the update
     fn reject(&mut self, work: &mut Workspace, h: f64) {
         // estimate new stepsize
-        let d = f64::powf(work.rel_error, self.lund_factor) / self.params.m_factor;
+        let d = f64::powf(work.rel_error, self.lund_factor) / self.params.m_safety;
         work.h_new = h / f64::min(self.d_min, d);
     }
 

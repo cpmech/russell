@@ -438,9 +438,11 @@ where
             }
             ldw = f64::sqrt(ldw / (3.0 * dim));
 
-            // check convergence
+            // auxiliary
             let newt = work.bench.n_iterations;
             let nit = self.params.n_iteration_max;
+
+            // logging
             if self.params.logging {
                 println!(
                     "step = {:>5}, newt = {:>5}, ldw ={}, h ={}",
@@ -450,6 +452,8 @@ where
                     format_fortran(h),
                 );
             }
+
+            // check convergence
             if newt > 1 && newt < nit {
                 let thq = ldw / ldw_old;
                 if newt == 2 {

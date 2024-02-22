@@ -257,14 +257,14 @@ where
         let mut sum = 0.0;
         for m in 0..self.system.ndim {
             self.w[m] = y[m];
-            let mut l_err_m = 0.0;
+            let mut err_m = 0.0;
             for i in 0..self.nstage {
                 let kh = k[i][m] * h;
                 self.w[m] += self.bb[i] * kh;
-                l_err_m += ee[i] * kh;
+                err_m += ee[i] * kh;
             }
             let sk = self.params.abs_tol + self.params.rel_tol * f64::max(f64::abs(y[m]), f64::abs(self.w[m]));
-            let ratio = l_err_m / sk;
+            let ratio = err_m / sk;
             sum += ratio * ratio;
             // stiffness estimation
             let a = self.nstage - 1;

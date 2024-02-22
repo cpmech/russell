@@ -337,6 +337,16 @@ where
         // estimate new stepsize
         let d = f64::powf(work.rel_error, self.lund_factor) / self.params.m_safety;
         work.h_new = h / f64::min(self.d_min, d);
+
+        // logging
+        if self.params.logging {
+            println!(
+                "reject: step = {:>5}, err ={}, h_new ={}",
+                work.bench.n_steps,
+                format_fortran(work.rel_error),
+                format_fortran(work.h_new),
+            );
+        }
     }
 
     /// Computes the dense output with x-h ≤ x_out ≤ x

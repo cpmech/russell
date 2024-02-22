@@ -162,6 +162,9 @@ pub struct ParamsERK {
     /// 0 ≤ lund_m ≤ 1
     /// ```
     pub lund_m: f64,
+
+    /// Enable logging (for debugging)
+    pub logging: bool,
 }
 
 /// Holds all parameters for the ODE Solver
@@ -305,6 +308,7 @@ impl ParamsERK {
             m_safety: 0.9, // line 265 of dopri5.f and dop853.f
             lund_beta,
             lund_m,
+            logging: false,
         }
     }
 

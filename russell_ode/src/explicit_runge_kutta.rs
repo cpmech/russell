@@ -1,7 +1,7 @@
 use crate::constants::*;
 use crate::StrError;
 use crate::{ErkDenseOut, Information, Method, OdeSolverTrait, ParamsERK, System, Workspace};
-use russell_lab::{vec_copy, vec_update, Matrix, Vector};
+use russell_lab::{format_fortran, vec_copy, vec_update, Matrix, Vector};
 use russell_sparse::CooMatrix;
 
 pub(crate) struct ExplicitRungeKutta<'a, F, J, A>
@@ -312,13 +312,23 @@ where
         }
 
         // estimate the new stepsize
-        let mut d = f64::powf(work.rel_error, self.lund_factor);
+        let mut fac = f64::powf(work.rel_error, self.lund_factor); // line 463 of dopri5.f
         if self.params.lund_beta > 0.0 && work.rel_error_prev > 0.0 {
             // lund-stabilization
-            d = d / f64::powf(work.rel_error_prev, self.params.lund_beta);
+            fac = fac / f64::powf(work.rel_error_prev, self.params.lund_beta); // line 465 of dopri5.f
         }
-        d = f64::max(self.d_max, f64::min(self.d_min, d / self.params.m_safety)); // we require fac1 <= h_new/h <= fac2
-        work.h_new = h / d;
+        fac = f64::max(self.d_max, f64::min(self.d_min, fac / self.params.m_safety)); // line 467 of dopri5.f
+        work.h_new = h / fac;
+
+        // logging
+        if self.params.logging {
+            println!(
+                "accept: step = {:>5}, err ={}, h_new ={}",
+                work.bench.n_steps,
+                format_fortran(work.rel_error),
+                format_fortran(work.h_new),
+            );
+        }
         Ok(())
     }
 

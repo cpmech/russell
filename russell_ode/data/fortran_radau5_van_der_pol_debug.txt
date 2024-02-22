@@ -668,6 +668,7 @@ step =   279, newt =     3, ldw =  8.537535248461732E-02, h =  2.132444924152443
 step =   279, newt =     4, ldw =  2.024952321809702E-02, h =  2.132444924152443E-01
 step =   280, newt =     1, ldw =  1.375185240629274E+00, h =  7.582774924658886E-02
 step =   280, newt =     2, ldw =  1.133910796759050E-01, h =  7.582774924658886E-02
+Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)
 Number of function evaluations   = 2248
 Number of Jacobian evaluations   = 162
 Number of factorizations         = 252

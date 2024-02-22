@@ -138,6 +138,27 @@ impl Method {
         }
     }
 
+    pub fn description(&self) -> &'static str {
+        match self {
+            Method::Radau5 => "Radau method (Radau IIA) (implicit, order 5, embedded)",
+            Method::BwEuler => "Backward Euler method (implicit, order 1)",
+            Method::FwEuler => "Forward Euler method (explicit, order 1)",
+            Method::Rk2 => "Runge (Kutta) method (mid-point) (explicit, order 2)",
+            Method::Rk3 => "Runge (Kutta) method (explicit, order 3)",
+            Method::Heun3 => "Heun method (explicit, order 3)",
+            Method::Rk4 => "(The) Runge-Kutta method (explicit, order 4)",
+            Method::Rk4alt => "Runge-Kutta method (alternative) (explicit, order 4, 3/8-Rule)",
+            Method::MdEuler => "Modified Euler method (explicit, order 2(1), embedded)",
+            Method::Merson4 => "Merson method (explicit, order 4('5'), embedded)",
+            Method::Zonneveld4 => "Zonneveld method (explicit, order 4(3), embedded)",
+            Method::Fehlberg4 => "Fehlberg method (explicit, order 4(5), embedded)",
+            Method::DoPri5 => "Dormand-Prince method (explicit, order 5(4), embedded)",
+            Method::Verner6 => "Verner method (explicit, order 6(5), embedded)",
+            Method::Fehlberg7 => "Fehlberg method (explicit, order 7(8), embedded)",
+            Method::DoPri8 => "Dormand-Prince method (explicit, order 8(5,3), embedded)",
+        }
+    }
+
     pub fn explicit_methods() -> Vec<Method> {
         vec![
             Method::FwEuler,

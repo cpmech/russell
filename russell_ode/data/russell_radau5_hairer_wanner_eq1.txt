@@ -8,6 +8,7 @@ step =  15, x = 0.80, y =  7.107954474739065E-01
 step =  15, x = 1.00, y =  5.568498958591173E-01
 step =  15, x = 1.20, y =  3.807997101828214E-01
 step =  15, x = 1.40, y =  1.896857914831053E-01
+Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)
 Number of function evaluations   = 67
 Number of Jacobian evaluations   = 1
 Number of factorizations         = 13

@@ -70,7 +70,7 @@ impl<'a, A> OdeSolver<'a, A> {
             params,
             ndim,
             actual,
-            work: Workspace::new(),
+            work: Workspace::new(params.method),
         })
     }
 

@@ -1,4 +1,4 @@
-use crate::Benchmark;
+use crate::{Benchmark, Method};
 
 pub(crate) struct Workspace {
     /// Holds benchmark data
@@ -28,9 +28,9 @@ pub(crate) struct Workspace {
 
 impl Workspace {
     /// Allocates a new instance
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(method: Method) -> Self {
         Workspace {
-            bench: Benchmark::new(),
+            bench: Benchmark::new(method),
             follows_reject_step: false,
             iterations_diverging: false,
             h_multiplier_diverging: 1.0,

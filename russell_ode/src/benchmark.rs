@@ -1,9 +1,13 @@
+use crate::Method;
 use russell_lab::{format_nanoseconds, Stopwatch};
 use std::fmt::{self, Write};
 
 /// Holds some statistics and benchmarking data
 #[derive(Clone, Copy, Debug)]
 pub struct Benchmark {
+    /// Holds the method
+    method: Method,
+
     /// Number of calls to ODE system function
     pub n_function: usize,
 
@@ -67,8 +71,9 @@ pub struct Benchmark {
 
 impl Benchmark {
     /// Allocates a new instance
-    pub fn new() -> Self {
+    pub fn new(method: Method) -> Self {
         Benchmark {
+            method,
             n_function: 0,
             n_jacobian: 0,
             n_factor: 0,
@@ -152,66 +157,88 @@ impl Benchmark {
 
     pub fn summary(&self) -> String {
         let mut buffer = String::new();
-        write!(
-            &mut buffer,
-            "Number of function evaluations   = {}\n\
-             Number of Jacobian evaluations   = {}\n\
-             Number of factorizations         = {}\n\
-             Number of lin sys solutions      = {}\n\
-             Number of performed steps        = {}\n\
-             Number of accepted steps         = {}\n\
-             Number of rejected steps         = {}\n\
-             Number of iterations (maximum)   = {}",
-            self.n_function,
-            self.n_jacobian,
-            self.n_factor,
-            self.n_lin_sol,
-            self.n_steps,
-            self.n_accepted,
-            self.n_rejected,
-            self.n_iterations_max,
-        )
-        .unwrap();
+        if self.method.information().implicit {
+            write!(
+                &mut buffer,
+                "{:?}: {}\n\
+                 Number of function evaluations   = {}\n\
+                 Number of Jacobian evaluations   = {}\n\
+                 Number of factorizations         = {}\n\
+                 Number of lin sys solutions      = {}\n\
+                 Number of performed steps        = {}\n\
+                 Number of accepted steps         = {}\n\
+                 Number of rejected steps         = {}\n\
+                 Number of iterations (maximum)   = {}",
+                self.method,
+                self.method.description(),
+                self.n_function,
+                self.n_jacobian,
+                self.n_factor,
+                self.n_lin_sol,
+                self.n_steps,
+                self.n_accepted,
+                self.n_rejected,
+                self.n_iterations_max,
+            )
+            .unwrap();
+        } else {
+            write!(
+                &mut buffer,
+                "{:?}: {}\n\
+                 Number of function evaluations   = {}\n\
+                 Number of performed steps        = {}\n\
+                 Number of accepted steps         = {}\n\
+                 Number of rejected steps         = {}",
+                self.method,
+                self.method.description(),
+                self.n_function,
+                self.n_steps,
+                self.n_accepted,
+                self.n_rejected,
+            )
+            .unwrap();
+        }
         buffer
     }
 }
 
 impl fmt::Display for Benchmark {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Number of function evaluations   = {}\n\
-             Number of Jacobian evaluations   = {}\n\
-             Number of factorizations         = {}\n\
-             Number of lin sys solutions      = {}\n\
-             Number of performed steps        = {}\n\
-             Number of accepted steps         = {}\n\
-             Number of rejected steps         = {}\n\
-             Number of iterations (last step) = {}\n\
-             Number of iterations (maximum)   = {}\n\
-             Optimal stepsize (h)             = {}\n\
-             Max time spent on a step         = {}\n\
-             Max time spent on the Jacobian   = {}\n\
-             Max time spent on factorization  = {}\n\
-             Max time spent on lin solution   = {}\n\
-             Total time                       = {}",
-            self.n_function,
-            self.n_jacobian,
-            self.n_factor,
-            self.n_lin_sol,
-            self.n_steps,
-            self.n_accepted,
-            self.n_rejected,
-            self.n_iterations,
-            self.n_iterations_max,
-            self.h_optimal,
-            format_nanoseconds(self.nanos_step_max),
-            format_nanoseconds(self.nanos_jacobian_max),
-            format_nanoseconds(self.nanos_factor_max),
-            format_nanoseconds(self.nanos_lin_sol_max),
-            format_nanoseconds(self.nanos_total),
-        )
-        .unwrap();
+        if self.method.information().implicit {
+            write!(
+                f,
+                "{}\n\
+                 Number of iterations (last step) = {}\n\
+                 Optimal stepsize (h)             = {}\n\
+                 Max time spent on a step         = {}\n\
+                 Max time spent on the Jacobian   = {}\n\
+                 Max time spent on factorization  = {}\n\
+                 Max time spent on lin solution   = {}\n\
+                 Total time                       = {}",
+                self.summary(),
+                self.n_iterations,
+                self.h_optimal,
+                format_nanoseconds(self.nanos_step_max),
+                format_nanoseconds(self.nanos_jacobian_max),
+                format_nanoseconds(self.nanos_factor_max),
+                format_nanoseconds(self.nanos_lin_sol_max),
+                format_nanoseconds(self.nanos_total),
+            )
+            .unwrap();
+        } else {
+            write!(
+                f,
+                "{}\n\
+                 Optimal stepsize (h)             = {}\n\
+                 Max time spent on a step         = {}\n\
+                 Total time                       = {}",
+                self.summary(),
+                self.h_optimal,
+                format_nanoseconds(self.nanos_step_max),
+                format_nanoseconds(self.nanos_total),
+            )
+            .unwrap();
+        }
         Ok(())
     }
 }
@@ -221,10 +248,11 @@ impl fmt::Display for Benchmark {
 #[cfg(test)]
 mod tests {
     use super::Benchmark;
+    use crate::Method;
 
     #[test]
     fn clone_copy_and_debug_work() {
-        let mut bench = Benchmark::new();
+        let mut bench = Benchmark::new(Method::Radau5);
         bench.n_accepted += 1;
         let copy = bench;
         let clone = bench.clone();
@@ -235,10 +263,11 @@ mod tests {
 
     #[test]
     fn summary_works() {
-        let bench = Benchmark::new();
+        let bench = Benchmark::new(Method::Radau5);
         assert_eq!(
             format!("{}", bench.summary()),
-            "Number of function evaluations   = 0\n\
+            "Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)\n\
+             Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
              Number of lin sys solutions      = 0\n\
@@ -247,27 +276,49 @@ mod tests {
              Number of rejected steps         = 0\n\
              Number of iterations (maximum)   = 0"
         );
+        let bench = Benchmark::new(Method::FwEuler);
+        assert_eq!(
+            format!("{}", bench.summary()),
+            "FwEuler: Forward Euler method (explicit, order 1)\n\
+             Number of function evaluations   = 0\n\
+             Number of performed steps        = 0\n\
+             Number of accepted steps         = 0\n\
+             Number of rejected steps         = 0"
+        );
     }
 
     #[test]
     fn display_works() {
-        let bench = Benchmark::new();
+        let bench = Benchmark::new(Method::Radau5);
         assert_eq!(
             format!("{}", bench),
-            "Number of function evaluations   = 0\n\
+            "Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)\n\
+             Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
              Number of lin sys solutions      = 0\n\
              Number of performed steps        = 0\n\
              Number of accepted steps         = 0\n\
              Number of rejected steps         = 0\n\
-             Number of iterations (last step) = 0\n\
              Number of iterations (maximum)   = 0\n\
+             Number of iterations (last step) = 0\n\
              Optimal stepsize (h)             = 0\n\
              Max time spent on a step         = 0ns\n\
              Max time spent on the Jacobian   = 0ns\n\
              Max time spent on factorization  = 0ns\n\
              Max time spent on lin solution   = 0ns\n\
+             Total time                       = 0ns"
+        );
+        let bench = Benchmark::new(Method::MdEuler);
+        assert_eq!(
+            format!("{}", bench),
+            "MdEuler: Modified Euler method (explicit, order 2(1), embedded)\n\
+             Number of function evaluations   = 0\n\
+             Number of performed steps        = 0\n\
+             Number of accepted steps         = 0\n\
+             Number of rejected steps         = 0\n\
+             Optimal stepsize (h)             = 0\n\
+             Max time spent on a step         = 0ns\n\
              Total time                       = 0ns"
         );
     }

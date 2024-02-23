@@ -29,7 +29,9 @@ pub struct Information {
     /// Indicates that the method has more than one stage
     pub multiple_stages: bool,
 
-    /// Indicates that the first step's coefficient is equal to the last step's coefficient
+    /// Indicates that the first step's coefficient is equal to the last step's coefficient (FSAL)
+    ///
+    /// See explanation about `FSAL` in Hairer-Nørsett-Wanner Part I, pages 167 and 178
     pub first_step_same_as_last: bool,
 }
 

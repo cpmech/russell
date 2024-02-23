@@ -244,4 +244,4 @@ Number of performed steps        = 238
 Number of accepted steps         = 217
 Number of rejected steps         = 21
 y =  9.940021704035319E-01  9.040892630699887E-06  1.459758564420648E-03 -2.001245515761783E+00
-h =  5.879529926628184E-04
+h =  5.258587321247462E-04

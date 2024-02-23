@@ -35,8 +35,8 @@ pub struct Benchmark {
     /// Max number of iterations among all steps
     pub n_iterations_max: usize,
 
-    /// Optimal step size at the end
-    pub h_optimal: f64,
+    /// Last accepted/suggested step size h_new
+    pub h_accepted: f64,
 
     /// Max nanoseconds spent on steps
     pub nanos_step_max: u128,
@@ -83,7 +83,7 @@ impl Benchmark {
             n_rejected: 0,
             n_iterations: 0,
             n_iterations_max: 0,
-            h_optimal: 0.0,
+            h_accepted: 0.0,
             nanos_step_max: 0,
             nanos_jacobian_max: 0,
             nanos_factor_max: 0,
@@ -108,7 +108,7 @@ impl Benchmark {
         self.n_rejected = 0;
         self.n_iterations = 0;
         self.n_iterations_max = 0;
-        self.h_optimal = h;
+        self.h_accepted = h;
         self.nanos_step_max = 0;
         self.nanos_jacobian_max = 0;
         self.nanos_factor_max = 0;
@@ -209,7 +209,7 @@ impl fmt::Display for Benchmark {
                 f,
                 "{}\n\
                  Number of iterations (last step) = {}\n\
-                 Optimal stepsize (h)             = {}\n\
+                 Last accepted/suggested stepsize = {}\n\
                  Max time spent on a step         = {}\n\
                  Max time spent on the Jacobian   = {}\n\
                  Max time spent on factorization  = {}\n\
@@ -217,7 +217,7 @@ impl fmt::Display for Benchmark {
                  Total time                       = {}",
                 self.summary(),
                 self.n_iterations,
-                self.h_optimal,
+                self.h_accepted,
                 format_nanoseconds(self.nanos_step_max),
                 format_nanoseconds(self.nanos_jacobian_max),
                 format_nanoseconds(self.nanos_factor_max),
@@ -229,11 +229,11 @@ impl fmt::Display for Benchmark {
             write!(
                 f,
                 "{}\n\
-                 Optimal stepsize (h)             = {}\n\
+                 Last accepted/suggested stepsize = {}\n\
                  Max time spent on a step         = {}\n\
                  Total time                       = {}",
                 self.summary(),
-                self.h_optimal,
+                self.h_accepted,
                 format_nanoseconds(self.nanos_step_max),
                 format_nanoseconds(self.nanos_total),
             )
@@ -302,7 +302,7 @@ mod tests {
              Number of rejected steps         = 0\n\
              Number of iterations (maximum)   = 0\n\
              Number of iterations (last step) = 0\n\
-             Optimal stepsize (h)             = 0\n\
+             Last accepted/suggested stepsize = 0\n\
              Max time spent on a step         = 0ns\n\
              Max time spent on the Jacobian   = 0ns\n\
              Max time spent on factorization  = 0ns\n\
@@ -317,7 +317,7 @@ mod tests {
              Number of performed steps        = 0\n\
              Number of accepted steps         = 0\n\
              Number of rejected steps         = 0\n\
-             Optimal stepsize (h)             = 0\n\
+             Last accepted/suggested stepsize = 0\n\
              Max time spent on a step         = 0ns\n\
              Total time                       = 0ns"
         );

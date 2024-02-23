@@ -174,7 +174,6 @@ impl<'a, A> OdeSolver<'a, A> {
         }
 
         // variable steps: control variables
-        let h_total = x1 - x0;
         let mut success = false;
         let mut last_step = false;
 
@@ -182,12 +181,8 @@ impl<'a, A> OdeSolver<'a, A> {
         for _ in 0..self.params.n_step_max {
             self.work.bench.sw_step.reset();
 
-            // check successful completion
-            if x >= x1 {
-                success = true;
-                self.work.bench.stop_sw_step();
-                break;
-            }
+            // update the stepsize
+            h = f64::min(self.work.h_new, x1 - x);
 
             // step
             self.work.bench.n_steps += 1;
@@ -198,7 +193,7 @@ impl<'a, A> OdeSolver<'a, A> {
                 self.work.iterations_diverging = false;
                 self.work.follows_reject_step = true;
                 last_step = false;
-                h *= self.work.h_multiplier_diverging;
+                self.work.h_new = h * self.work.h_multiplier_diverging;
                 continue;
             }
 
@@ -208,6 +203,17 @@ impl<'a, A> OdeSolver<'a, A> {
                 self.work.bench.n_accepted += 1;
                 self.actual.accept(&mut self.work, &mut x, y, h, args)?;
 
+                // do not allow h to grow if previous step was a reject
+                if self.work.follows_reject_step {
+                    self.work.h_new = f64::min(self.work.h_new, h);
+                }
+                self.work.follows_reject_step = false;
+
+                // save previous stepsize, relative error, and accepted/suggested stepsize
+                self.work.h_prev = h;
+                self.work.rel_error_prev = f64::max(self.params.rel_error_prev_min, self.work.rel_error);
+                self.work.bench.h_accepted = self.work.h_new;
+
                 // output
                 if let Some(out) = output.as_mut() {
                     out.push(self.work.bench.n_accepted, x, y, h, &self.actual)?;
@@ -216,31 +222,13 @@ impl<'a, A> OdeSolver<'a, A> {
                 // converged?
                 if last_step {
                     success = true;
+                    self.work.bench.stop_sw_step();
                     break;
                 }
-
-                // save previous stepsize and relative error
-                self.work.h_prev = h;
-                self.work.rel_error_prev = f64::max(self.params.rel_error_prev_min, self.work.rel_error);
-
-                // check new stepsize
-                self.work.h_new = f64::min(self.work.h_new, h_total);
-
-                // do not allow h to grow if previous step was a reject
-                if self.work.follows_reject_step {
-                    self.work.h_new = f64::min(self.work.h_new, h);
-                }
-                self.work.follows_reject_step = false;
-
-                // save optimal stepsize
-                self.work.bench.h_optimal = f64::min(h, self.work.h_new);
 
                 // check if the last step is approaching
                 if x + self.work.h_new >= x1 {
                     last_step = true;
-                    h = x1 - x;
-                } else {
-                    h = self.work.h_new;
                 }
 
             // reject step
@@ -253,16 +241,10 @@ impl<'a, A> OdeSolver<'a, A> {
                 last_step = false;
 
                 // recompute stepsize
-                self.actual.reject(&mut self.work, h);
-
-                // new stepsize
                 if self.work.bench.n_accepted == 0 && self.params.m_first_reject > 0.0 {
-                    h *= self.params.m_first_reject;
+                    self.work.h_new = h * self.params.m_first_reject;
                 } else {
-                    h = self.work.h_new;
-                }
-                if x + h > x1 {
-                    h = x1 - x;
+                    self.actual.reject(&mut self.work, h);
                 }
             }
         }

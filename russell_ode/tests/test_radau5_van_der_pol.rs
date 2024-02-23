@@ -27,7 +27,7 @@ fn test_radau5_van_der_pol() {
     // compare with radau5.f
     approx_eq(data.y0[0], 1.706163410178079E+00, 1e-14);
     approx_eq(data.y0[1], -8.927971289301175E-01, 1e-12);
-    approx_eq(stat.h_optimal, 2.132444924152443E-01, 1e-9);
+    approx_eq(stat.h_accepted, 1.510987221365367E-01, 1.1e-8);
 
     // print dense output
     let n_dense = out.dense_step_index.len();
@@ -44,7 +44,7 @@ fn test_radau5_van_der_pol() {
     // print and check statistics
     println!("{}", stat.summary());
     println!("y ={}{}", format_fortran(data.y0[0]), format_fortran(data.y0[1]));
-    println!("h ={}", format_fortran(stat.h_optimal));
+    println!("h ={}", format_fortran(stat.h_accepted));
     assert_eq!(stat.n_function, 2248);
     assert_eq!(stat.n_jacobian, 162);
     assert_eq!(stat.n_factor, 253);

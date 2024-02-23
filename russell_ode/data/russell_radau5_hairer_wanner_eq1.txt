@@ -18,4 +18,4 @@ Number of accepted steps         = 15
 Number of rejected steps         = 0
 Number of iterations (maximum)   = 2
 y =  9.068021382386660E-02
-h =  4.206510426485264E-01
+h =  1.272673814375498E+00

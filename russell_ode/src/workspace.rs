@@ -48,7 +48,7 @@ impl Workspace {
         self.iterations_diverging = false;
         self.h_multiplier_diverging = 1.0;
         self.h_prev = h;
-        self.h_new = 0.0;
+        self.h_new = h;
         self.rel_error_prev = rel_error_prev_min;
         self.rel_error = 0.0;
     }

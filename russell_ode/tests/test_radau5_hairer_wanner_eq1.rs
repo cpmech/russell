@@ -26,7 +26,7 @@ fn test_radau5_hairer_wanner_eq1() {
 
     // compare with radau5.f
     approx_eq(data.y0[0], 9.068021382386648E-02, 1e-15);
-    approx_eq(stat.h_optimal, 4.206510426488529E-01, 1e-12);
+    approx_eq(stat.h_accepted, 1.272673814374611E+00, 1e-12);
 
     // compare with the analytical solution
     let mut analytical = data.y_analytical.unwrap();
@@ -48,7 +48,7 @@ fn test_radau5_hairer_wanner_eq1() {
     // print and check statistics
     println!("{}", stat.summary());
     println!("y ={}", format_fortran(data.y0[0]));
-    println!("h ={}", format_fortran(stat.h_optimal));
+    println!("h ={}", format_fortran(stat.h_accepted));
     assert_eq!(stat.n_function, 67);
     assert_eq!(stat.n_jacobian, 1);
     assert_eq!(stat.n_factor, 13);

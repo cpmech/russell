@@ -21,7 +21,7 @@ fn test_fweuler_hairer_wanner_eq1() {
 
     // compare with a previous implementation
     approx_eq(data.y0[0], 0.08589790706616637, 1e-15);
-    assert_eq!(stat.h_optimal, data.h_equal.unwrap());
+    assert_eq!(stat.h_accepted, data.h_equal.unwrap());
 
     // compare with the analytical solution
     let mut analytical = data.y_analytical.unwrap();

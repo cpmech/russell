@@ -21,7 +21,7 @@ fn test_bweuler_hairer_wanner_eq1() {
 
     // compare with a previous implementation
     approx_eq(data.y0[0], 0.09060476604187756, 1e-15);
-    assert_eq!(stat.h_optimal, data.h_equal.unwrap());
+    assert_eq!(stat.h_accepted, data.h_equal.unwrap());
 
     // compare with the analytical solution
     let mut analytical = data.y_analytical.unwrap();
@@ -63,7 +63,7 @@ fn test_bweuler_hairer_wanner_eq1_num_jac() {
 
     // compare with a previous implementation
     approx_eq(data.y0[0], 0.09060476598021044, 1e-11);
-    assert_eq!(stat.h_optimal, data.h_equal.unwrap());
+    assert_eq!(stat.h_accepted, data.h_equal.unwrap());
 
     // compare with the analytical solution
     let mut analytical = data.y_analytical.unwrap();
@@ -105,7 +105,7 @@ fn test_bweuler_hairer_wanner_eq1_modified_newton() {
 
     // compare with a previous implementation
     approx_eq(data.y0[0], 0.09060476604187756, 1e-15);
-    assert_eq!(stat.h_optimal, data.h_equal.unwrap());
+    assert_eq!(stat.h_accepted, data.h_equal.unwrap());
 
     // compare with the analytical solution
     let mut analytical = data.y_analytical.unwrap();

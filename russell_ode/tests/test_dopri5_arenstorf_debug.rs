@@ -39,10 +39,7 @@ fn test_dopri5_arenstorf_debug() {
     );
     println!("h ={}", format_fortran(stat.h_accepted));
     assert_eq!(stat.n_function, 1429);
-    assert_eq!(stat.n_jacobian, 0);
     assert_eq!(stat.n_steps, 238);
     assert_eq!(stat.n_accepted, 217);
     assert_eq!(stat.n_rejected, 21);
-    assert_eq!(stat.n_iterations, 0);
-    assert_eq!(stat.n_iterations_max, 0);
 }

@@ -3,6 +3,7 @@
 TESTS="
 test_dopri5_arenstorf_debug \
 test_dopri5_arenstorf \
+test_dopri5_hairer_wanner_eq1 \
 "
 
 sum=""

@@ -1,0 +1,24 @@
+
+running dopri5.f test
+step =   0, x =  0.00, y =  0.000000000000000E+00
+step =  10, x =  0.10, y =  9.898623749945069E-01
+step =  14, x =  0.20, y =  9.835855727509085E-01
+step =  16, x =  0.30, y =  9.608730705306801E-01
+step =  18, x =  0.40, y =  9.284913897784541E-01
+step =  20, x =  0.50, y =  8.868301683933252E-01
+step =  22, x =  0.60, y =  8.363069895336177E-01
+step =  24, x =  0.70, y =  7.774254044396482E-01
+step =  26, x =  0.80, y =  7.107729344781961E-01
+step =  28, x =  0.90, y =  6.370146442172697E-01
+step =  30, x =  1.00, y =  5.568866965219718E-01
+step =  32, x =  1.10, y =  4.711902738442056E-01
+step =  33, x =  1.20, y =  3.807874366083619E-01
+step =  35, x =  1.30, y =  2.866070362993788E-01
+step =  37, x =  1.40, y =  1.895941168684984E-01
+DoPri5: Dormand-Prince method (explicit, order 5(4), embedded)
+Number of function evaluations   = 236
+Number of performed steps        = 39
+Number of accepted steps         = 39
+Number of rejected steps         = 0
+y =  9.063921649310544E-02
+h =  5.809633059575138E-02

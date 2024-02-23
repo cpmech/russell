@@ -2,7 +2,7 @@ use crate::StrError;
 use crate::{OdeSolverTrait, ParamsRadau5, System, Workspace};
 use num_complex::Complex64;
 use russell_lab::math::SQRT_6;
-use russell_lab::{complex_vec_unzip, complex_vec_zip, cpx, format_fortran, vec_copy, ComplexVector, Vector};
+use russell_lab::{complex_vec_zip, cpx, format_fortran, vec_copy, ComplexVector, Vector};
 use russell_sparse::{ComplexLinSolver, ComplexSparseMatrix, CooMatrix, Genie, LinSolver, SparseMatrix};
 use std::thread;
 
@@ -415,14 +415,11 @@ where
             }
             work.bench.stop_sw_lin_sol();
 
-            // unzip vectors
-            complex_vec_unzip(&mut self.dw1, &mut self.dw2, &self.dw12).unwrap();
-
             // update w and z
             for m in 0..ndim {
                 self.w0[m] += self.dw0[m];
-                self.w1[m] += self.dw1[m];
-                self.w2[m] += self.dw2[m];
+                self.w1[m] += self.dw12[m].re;
+                self.w2[m] += self.dw12[m].im;
                 self.z0[m] = T[0][0] * self.w0[m] + T[0][1] * self.w1[m] + T[0][2] * self.w2[m];
                 self.z1[m] = T[1][0] * self.w0[m] + T[1][1] * self.w1[m] + T[1][2] * self.w2[m];
                 self.z2[m] = T[2][0] * self.w0[m] + T[2][1] * self.w1[m] + T[2][2] * self.w2[m];

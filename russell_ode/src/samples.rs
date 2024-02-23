@@ -90,6 +90,66 @@ impl Samples {
         (system, data, 0)
     }
 
+    /// Returns the Robertson's equation, Hairer-Wanner, Eq(1.4), page 3
+    ///
+    /// # Output
+    ///
+    /// Returns `(System<F, J, A>, SampleData, A)` where:
+    ///
+    /// * `F` -- is a function to compute the `f` vector; e.g., `fn(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    /// * `J` -- is a function to compute the Jacobian; e.g., `fn(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    /// * `A` -- is `SampleNoArgs`
+    ///
+    /// # Reference
+    ///
+    /// * E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
+    ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
+    ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
+    pub fn robertson<'a>() -> (
+        System<
+            'a,
+            impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
+            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
+            SampleNoArgs,
+        >,
+        SampleData<'a>,
+        SampleNoArgs,
+    ) {
+        let ndim = 3;
+        let jac_nnz = 7;
+        let system = System::new(
+            ndim,
+            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut SampleNoArgs| {
+                f[0] = -0.04 * y[0] + 1.0e4 * y[1] * y[2];
+                f[1] = 0.04 * y[0] - 1.0e4 * y[1] * y[2] - 3.0e7 * y[1] * y[1];
+                f[2] = 3.0e7 * y[1] * y[1];
+                Ok(())
+            },
+            |jj: &mut CooMatrix, _x: f64, y: &Vector, multiplier: f64, _args: &mut SampleNoArgs| {
+                jj.reset();
+                jj.put(0, 0, -0.04 * multiplier)?;
+                jj.put(0, 1, 1.0e4 * y[2] * multiplier)?;
+                jj.put(0, 2, 1.0e4 * y[1] * multiplier)?;
+                jj.put(1, 0, 0.04 * multiplier)?;
+                jj.put(1, 1, (-1.0e4 * y[2] - 6.0e7 * y[1]) * multiplier)?;
+                jj.put(1, 2, (-1.0e4 * y[1]) * multiplier)?;
+                jj.put(2, 1, 6.0e7 * y[1] * multiplier)?;
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+        let data = SampleData {
+            x0: 0.0,
+            y0: Vector::from(&[1.0, 0.0, 0.0]),
+            x1: 0.03,
+            h_equal: None,
+            y_analytical: None,
+        };
+        (system, data, 0)
+    }
+
     /// Returns the Van der Pol's equation as given in Hairer-Wanner, Eq(1.5'), page 5
     ///
     /// Using data from Eq(7.29), page 113
@@ -141,8 +201,10 @@ impl Samples {
             y0[1] = 0.0;
             x1 = T;
         }
+        let ndim = 2;
+        let jac_nnz = 3;
         let system = System::new(
-            2,
+            ndim,
             move |f: &mut Vector, _x: f64, y: &Vector, _args: &mut SampleNoArgs| {
                 f[0] = y[1];
                 f[1] = ((1.0 - y[0] * y[0]) * y[1] - y[0]) / eps;
@@ -156,7 +218,7 @@ impl Samples {
                 Ok(())
             },
             HasJacobian::Yes,
-            Some(3),
+            Some(jac_nnz),
             None,
         );
         let data = SampleData {
@@ -222,8 +284,10 @@ impl Samples {
         let x0 = 0.0;
         let y0 = Vector::from(&[0.994, 0.0, 0.0, -2.00158510637908252240537862224]);
         let x1 = 17.0652165601579625588917206249;
+        let ndim = 4;
+        let jac_nnz = 8;
         let system = System::new(
-            4,
+            ndim,
             |f: &mut Vector, _x: f64, y: &Vector, _args: &mut SampleNoArgs| {
                 let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
                 let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
@@ -252,21 +316,18 @@ impl Samples {
                 let dj10 = 3.0 * b * s1;
                 let dj11 = 3.0 * y[1] * s1;
                 jj.reset();
-                jj.put(0, 2, 1.0 * m).unwrap();
-                jj.put(1, 3, 1.0 * m).unwrap();
-                jj.put(2, 0, (1.0 + a * dj00 * MD / dd0 + b * dj10 * MU / dd1 + c) * m)
-                    .unwrap();
-                jj.put(2, 1, (a * dj01 * MD / dd0 + b * dj11 * MU / dd1) * m).unwrap();
-                jj.put(2, 3, 2.0 * m).unwrap();
-                jj.put(3, 0, (dj00 * y[1] * MD / dd0 + dj10 * y[1] * MU / dd1) * m)
-                    .unwrap();
-                jj.put(3, 1, (1.0 + dj01 * y[1] * MD / dd0 + dj11 * y[1] * MU / dd1 + c) * m)
-                    .unwrap();
-                jj.put(3, 2, -2.0 * m).unwrap();
+                jj.put(0, 2, 1.0 * m)?;
+                jj.put(1, 3, 1.0 * m)?;
+                jj.put(2, 0, (1.0 + a * dj00 * MD / dd0 + b * dj10 * MU / dd1 + c) * m)?;
+                jj.put(2, 1, (a * dj01 * MD / dd0 + b * dj11 * MU / dd1) * m)?;
+                jj.put(2, 3, 2.0 * m)?;
+                jj.put(3, 0, (dj00 * y[1] * MD / dd0 + dj10 * y[1] * MU / dd1) * m)?;
+                jj.put(3, 1, (1.0 + dj01 * y[1] * MD / dd0 + dj11 * y[1] * MU / dd1 + c) * m)?;
+                jj.put(3, 2, -2.0 * m)?;
                 Ok(())
             },
             HasJacobian::Yes,
-            Some(8),
+            Some(jac_nnz),
             None,
         );
         let data = SampleData {

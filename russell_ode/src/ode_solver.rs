@@ -181,8 +181,11 @@ impl<'a, A> OdeSolver<'a, A> {
         for _ in 0..self.params.n_step_max {
             self.work.bench.sw_step.reset();
 
-            // update the stepsize
+            // update and check the stepsize
             h = f64::min(self.work.h_new, x1 - x);
+            if 0.1 * h <= f64::abs(x) * f64::EPSILON {
+                return Err("the stepsize becomes too small");
+            }
 
             // step
             self.work.bench.n_steps += 1;

@@ -7,7 +7,9 @@ test_dopri5_hairer_wanner_eq1 \
 test_dopri8_van_der_pol \
 test_radau5_hairer_wanner_eq1_debug \
 test_radau5_hairer_wanner_eq1 \
+test_radau5_robertson_debug \
 test_radau5_robertson_small_h \
+test_radau5_robertson \
 test_radau5_van_der_pol_debug \
 test_radau5_van_der_pol \
 "

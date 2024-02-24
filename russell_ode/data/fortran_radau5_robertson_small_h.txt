@@ -182,15 +182,20 @@ step =    88, newt =     2, ldw =  2.532410757959806E-01, h =  2.501765381321297
 step =    89, newt =     1, ldw =  3.129071392982461E+00, h =  1.726129757235750E-17
 step =    89, newt =     2, ldw =  2.532410758103962E-01, h =  1.726129757235750E-17
 step =    90, newt =     1, ldw =  3.129071393526413E+00, h =  1.190968570131684E-17
+step =    90, newt =     2, ldw =  2.532410758203371E-01, h =  1.190968570131684E-17
+step =    91, newt =     1, ldw =  3.129071393901749E+00, h =  8.217262515495213E-18
+step =    91, newt =     2, ldw =  2.532410758271968E-01, h =  8.217262515495213E-18
+step =    92, newt =     1, ldw =  3.129071394160905E+00, h =  5.669620924006890E-18
+step =    92, newt =     2, ldw =  2.532410758319540E-01, h =  5.669620924006890E-18
 ERROR: THE STEPSIZE BECOMES TOO SMALL
 Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)
-Number of function evaluations   = 622
-Number of Jacobian evaluations   = 72
-Number of factorizations         = 88
-Number of lin sys solutions      = 182
-Number of performed steps        = 90
-Number of accepted steps         = 74
+Number of function evaluations   = 640
+Number of Jacobian evaluations   = 75
+Number of factorizations         = 91
+Number of lin sys solutions      = 187
+Number of performed steps        = 93
+Number of accepted steps         = 77
 Number of rejected steps         = 4
 Number of iterations (maximum)   = 4
-y = -2.895613774049442E+05 -8.681079103947458E+08  8.683974727721506E+08
-h =  1.190968570131684E-17
+y = -8.815786375827154E+05 -2.642975458936770E+09  2.643857038574352E+09
+h =  3.911838201830276E-18

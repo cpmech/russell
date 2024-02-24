@@ -143,7 +143,7 @@ impl Samples {
         let data = SampleData {
             x0: 0.0,
             y0: Vector::from(&[1.0, 0.0, 0.0]),
-            x1: 0.03,
+            x1: 0.3,
             h_equal: None,
             y_analytical: None,
         };

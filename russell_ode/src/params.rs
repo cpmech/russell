@@ -74,14 +74,14 @@ pub struct ParamsRadau5 {
     /// ```
     pub theta_max: f64,
 
-    /// c1 of Hairer-Wanner (VII p124): min ratio to retain previous h
+    /// c1 of Hairer-Wanner (VII p124): min ratio to retain previous h (and thus the Jacobian)
     ///
     /// ```text
     /// 0.5 ≤ c1h ≤ 1.5   and   c1h < c2h
     /// ````
     pub c1h: f64,
 
-    /// c2 of Hairer-Wanner (VII p124): max ratio to retain previous h
+    /// c2 of Hairer-Wanner (VII p124): max ratio to retain previous h (and thus the Jacobian)
     ///
     /// ```text
     /// 1 ≤ c2h ≤ 2   and   c2h > c1h

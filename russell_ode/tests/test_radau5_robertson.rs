@@ -10,7 +10,6 @@ fn test_radau5_robertson() {
     let mut params = Params::new(Method::Radau5);
     params.h_ini = 1e-6;
     params.set_tolerances(1e-8, 1e-2).unwrap();
-    params.radau5.logging = true;
 
     // enable output of accepted steps
     let mut out = Output::new();
@@ -32,18 +31,16 @@ fn test_radau5_robertson() {
     approx_eq(stat.h_accepted, 8.160578540333708E-01, 1e-10);
 
     // print the results at accepted steps
-    if false {
-        let n_step = out.step_x.len();
-        for i in 0..n_step {
-            println!(
-                "step ={:>4}, x ={:5.2}, y ={}{}{}",
-                i,
-                out.step_x[i],
-                format_fortran(out.step_y.get(&0).unwrap()[i]),
-                format_fortran(out.step_y.get(&1).unwrap()[i]),
-                format_fortran(out.step_y.get(&2).unwrap()[i]),
-            )
-        }
+    let n_step = out.step_x.len();
+    for i in 0..n_step {
+        println!(
+            "step ={:>4}, x ={:5.2}, y ={}{}{}",
+            i,
+            out.step_x[i],
+            format_fortran(out.step_y.get(&0).unwrap()[i]),
+            format_fortran(out.step_y.get(&1).unwrap()[i]),
+            format_fortran(out.step_y.get(&2).unwrap()[i]),
+        )
     }
 
     // print and check statistics

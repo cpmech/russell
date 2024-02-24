@@ -37,7 +37,7 @@ pub type SampleNoArgs = u8;
 pub struct Samples {}
 
 impl Samples {
-    /// Returns the Hairer-Wanner problem from the reference, Eq(1.1), page 2
+    /// Returns the Hairer-Wanner problem from the reference, Part II, Eq(1.1), page 2
     ///
     /// # Output
     ///
@@ -90,7 +90,7 @@ impl Samples {
         (system, data, 0)
     }
 
-    /// Returns the Robertson's equation, Hairer-Wanner, Eq(1.4), page 3
+    /// Returns the Robertson's equation, Hairer-Wanner, Part II, Eq(1.4), page 3
     ///
     /// # Output
     ///
@@ -150,7 +150,7 @@ impl Samples {
         (system, data, 0)
     }
 
-    /// Returns the Van der Pol's equation as given in Hairer-Wanner, Eq(1.5'), page 5
+    /// Returns the Van der Pol's equation as given in Hairer-Wanner, Part II, Eq(1.5'), page 5
     ///
     /// Using data from Eq(7.29), page 113
     ///
@@ -231,7 +231,7 @@ impl Samples {
         (system, data, 0)
     }
 
-    /// Returns the Arenstorf orbit problem, Hairer-Wanner, Eq(0.1), page 129
+    /// Returns the Arenstorf orbit problem, Hairer-Wanner, Part I, Eq(0.1), page 129
     ///
     /// From Hairer-Wanner:
     ///
@@ -338,6 +338,135 @@ impl Samples {
             y_analytical: None,
         };
         (system, data, 0)
+    }
+
+    /// Returns the transistor amplifier problem described by Hairer-Wanner, Part II, page 376
+    ///
+    /// **Note:** The equations hare are taken from Hairer's website, not the book.
+    ///
+    /// # Output
+    ///
+    /// Returns `(System<F, J, A>, SampleData, A)` where:
+    ///
+    /// * `F` -- is a function to compute the `f` vector; e.g., `fn(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    /// * `J` -- is a function to compute the Jacobian; e.g., `fn(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    /// * `A` -- is `SampleNoArgs`
+    /// * `gen_mass_matrix` -- is a `function(one_based: bool) -> CooMatrix` that generates the mass matrix
+    ///
+    /// # Reference
+    ///
+    /// * E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
+    ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
+    ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
+    pub fn amplifier<'a>() -> (
+        System<
+            'a,
+            impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
+            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
+            SampleNoArgs,
+        >,
+        SampleData<'a>,
+        SampleNoArgs,
+        fn(bool) -> CooMatrix,
+    ) {
+        // constants
+        let (ue, ub, uf, alpha, beta) = (0.1, 6.0, 0.026, 0.99, 1.0e-6);
+        let (r0, r1, r2, r3, r4, r5) = (1000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0);
+        let (r6, r7, r8, r9) = (9000.0, 9000.0, 9000.0, 9000.0);
+        let w = 2.0 * 3.141592654 * 100.0;
+
+        // initial values
+        let x0 = 0.0;
+        let y0 = Vector::from(&[
+            0.0,
+            ub,
+            ub / (r6 / r5 + 1.0),
+            ub / (r6 / r5 + 1.0),
+            ub,
+            ub / (r2 / r1 + 1.0),
+            ub / (r2 / r1 + 1.0),
+            0.0,
+        ]);
+
+        // ODE system
+        let x1 = 0.05;
+        let ndim = 8;
+        let jac_nnz = 16;
+        let system = System::new(
+            ndim,
+            move |f: &mut Vector, x: f64, y: &Vector, _args: &mut SampleNoArgs| {
+                let uet = ue * f64::sin(w * x);
+                let fac1 = beta * (f64::exp((y[3] - y[2]) / uf) - 1.0);
+                let fac2 = beta * (f64::exp((y[6] - y[5]) / uf) - 1.0);
+                f[0] = y[0] / r9;
+                f[1] = (y[1] - ub) / r8 + alpha * fac1;
+                f[2] = y[2] / r7 - fac1;
+                f[3] = y[3] / r5 + (y[3] - ub) / r6 + (1.0 - alpha) * fac1;
+                f[4] = (y[4] - ub) / r4 + alpha * fac2;
+                f[5] = y[5] / r3 - fac2;
+                f[6] = y[6] / r1 + (y[6] - ub) / r2 + (1.0 - alpha) * fac2;
+                f[7] = (y[7] - uet) / r0;
+                Ok(())
+            },
+            move |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut SampleNoArgs| {
+                let fac14 = beta * f64::exp((y[3] - y[2]) / uf) / uf;
+                let fac27 = beta * f64::exp((y[6] - y[5]) / uf) / uf;
+                jj.reset();
+                jj.put(0, 0, (1.0 / r9) * m)?;
+                jj.put(1, 1, (1.0 / r8) * m)?;
+                jj.put(1, 2, (-alpha * fac14) * m)?;
+                jj.put(1, 3, (alpha * fac14) * m)?;
+                jj.put(2, 2, (1.0 / r7 + fac14) * m)?;
+                jj.put(2, 3, (-fac14) * m)?;
+                jj.put(3, 3, (1.0 / r5 + 1.0 / r6 + (1.0 - alpha) * fac14) * m)?;
+                jj.put(3, 2, (-(1.0 - alpha) * fac14) * m)?;
+                jj.put(4, 4, (1.0 / r4) * m)?;
+                jj.put(4, 5, (-alpha * fac27) * m)?;
+                jj.put(4, 6, (alpha * fac27) * m)?;
+                jj.put(5, 5, (1.0 / r3 + fac27) * m)?;
+                jj.put(5, 6, (-fac27) * m)?;
+                jj.put(6, 6, (1.0 / r1 + 1.0 / r2 + (1.0 - alpha) * fac27) * m)?;
+                jj.put(6, 5, (-(1.0 - alpha) * fac27) * m)?;
+                jj.put(7, 7, (1.0 / r0) * m)?;
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+
+        // function that generates the mass matrix
+        let gen_mass_matrix = |one_based: bool| -> CooMatrix {
+            let (c1, c2, c3, c4, c5) = (1.0e-6, 2.0e-6, 3.0e-6, 4.0e-6, 5.0e-6);
+            let ndim = 8;
+            let nnz = 14;
+            let mut mass = CooMatrix::new(ndim, ndim, nnz, None, one_based).unwrap();
+            mass.put(0, 0, -c5).unwrap();
+            mass.put(0, 1, c5).unwrap();
+            mass.put(1, 0, c5).unwrap();
+            mass.put(1, 1, -c5).unwrap();
+            mass.put(2, 2, -c4).unwrap();
+            mass.put(3, 3, -c3).unwrap();
+            mass.put(3, 4, c3).unwrap();
+            mass.put(4, 3, c3).unwrap();
+            mass.put(4, 4, -c3).unwrap();
+            mass.put(5, 5, -c2).unwrap();
+            mass.put(6, 6, -c1).unwrap();
+            mass.put(6, 7, c1).unwrap();
+            mass.put(7, 6, c1).unwrap();
+            mass.put(7, 7, -c1).unwrap();
+            mass
+        };
+
+        // results
+        let data = SampleData {
+            x0,
+            y0,
+            x1,
+            h_equal: None,
+            y_analytical: None,
+        };
+        (system, data, 0, gen_mass_matrix)
     }
 }
 

@@ -1,5 +1,5 @@
 use russell_lab::{approx_eq, format_fortran};
-use russell_ode::{Method, OdeSolver, Output, Params, Samples};
+use russell_ode::{Method, OdeSolver, Params, Samples};
 
 #[test]
 fn test_radau5_robertson_debug() {
@@ -12,14 +12,10 @@ fn test_radau5_robertson_debug() {
     params.set_tolerances(1e-8, 1e-2).unwrap();
     params.radau5.logging = true;
 
-    // enable output of accepted steps
-    let mut out = Output::new();
-    out.enable_step(&[0, 1, 2]);
-
     // solve the ODE system
     let mut solver = OdeSolver::new(params, system).unwrap();
     solver
-        .solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)
+        .solve(&mut data.y0, data.x0, data.x1, None, None, &mut args)
         .unwrap();
 
     // get statistics

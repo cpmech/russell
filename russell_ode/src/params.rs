@@ -1,6 +1,28 @@
 use crate::{Method, StrError};
 use russell_sparse::{Genie, LinSolParams};
 
+/// Holds parameters to control the stiffness detection algorithm
+#[derive(Clone, Copy, Debug)]
+pub struct ParamsDetectStiffness {
+    /// Enables stiffness detection (for some methods such as DoPri5 and DoPri8)
+    pub(crate) enabled: bool,
+
+    /// Return an error if stiffness is detected
+    pub(crate) stop_with_error: bool,
+
+    /// Save the results at the stations where stiffness has been detected
+    pub(crate) save_results: bool,
+
+    /// Number of steps to ratify the stiffness, i.e., to make sure that stiffness is repeatedly been detected
+    pub(crate) ratified_after_nstep: usize,
+
+    /// Number of steps to ignore already detected stiffness stations
+    pub(crate) ignored_after_nstep: usize,
+
+    /// Number of initial steps to skip before enabling the stiffness detection algorithm
+    pub(crate) skip_first_nstep: usize,
+}
+
 /// Holds the parameters for the BwEuler method
 #[derive(Clone, Copy, Debug)]
 pub struct ParamsBwEuler {
@@ -165,6 +187,9 @@ pub struct ParamsERK {
 
     /// Enable logging (for debugging)
     pub logging: bool,
+
+    /// Holds the parameters to control the stiffness detection algorithm
+    pub stiffness: ParamsDetectStiffness,
 }
 
 /// Holds all parameters for the ODE Solver
@@ -211,6 +236,20 @@ pub struct Params {
     ///
     /// If `m_first_reject = 0`, the solver will use `h_new` on a rejected step.
     pub m_first_reject: f64,
+}
+
+impl ParamsDetectStiffness {
+    /// Allocate a new instance
+    pub(crate) fn new() -> Self {
+        ParamsDetectStiffness {
+            enabled: false,
+            stop_with_error: true,
+            save_results: false,
+            ratified_after_nstep: 15, // lines 485 of dopri5.f and 677 of dop853.f
+            ignored_after_nstep: 6,   // lines 492 of dopri5.f and 684 of dop853.f
+            skip_first_nstep: 3,
+        }
+    }
 }
 
 impl ParamsBwEuler {
@@ -309,6 +348,7 @@ impl ParamsERK {
             lund_beta,
             lund_m,
             logging: false,
+            stiffness: ParamsDetectStiffness::new(),
         }
     }
 

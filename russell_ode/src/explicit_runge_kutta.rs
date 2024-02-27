@@ -253,6 +253,16 @@ where
             work.rel_error = f64::max(f64::sqrt(sum / dim), 1.0e-10);
         }
 
+        // stiffness detection
+        if self.params.stiffness.enabled {
+            if self.method == Method::DoPri5 {
+                // todo
+            }
+            if self.method == Method::DoPri8 {
+                // todo
+            }
+        }
+
         // done
         Ok(())
     }

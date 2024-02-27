@@ -195,7 +195,7 @@ where
             (self.system.function)(&mut k[i], ui, &v[i], args)?; // ki := f(ui,vi)
         }
 
-        // update
+        // update (methods without error estimation)
         if !self.info.embedded {
             for m in 0..self.system.ndim {
                 self.w[m] = y[m];
@@ -210,8 +210,9 @@ where
         let ee = self.ee.as_ref().unwrap();
         let dim = self.system.ndim as f64;
 
-        // update and error estimation for Dormand-Prince 8 with 5 and 3 orders
+        // update and error estimation
         if self.method == Method::DoPri8 {
+            //  Dormand-Prince 8 with 5 and 3 orders
             let (bhh1, bhh2, bhh3) = (DORMAND_PRINCE_8_BHH1, DORMAND_PRINCE_8_BHH2, DORMAND_PRINCE_8_BHH3);
             let mut err_3 = 0.0;
             let mut err_5 = 0.0;
@@ -234,25 +235,26 @@ where
                 den = 1.0;
             }
             work.rel_error = f64::abs(h) * err_5 * f64::sqrt(1.0 / (dim * den));
-            return Ok(());
+        } else {
+            // all other ERK methods
+            let mut sum = 0.0;
+            for m in 0..self.system.ndim {
+                self.w[m] = y[m];
+                let mut err_m = 0.0;
+                for i in 0..self.nstage {
+                    let kh = k[i][m] * h;
+                    self.w[m] += self.bb[i] * kh;
+                    err_m += ee[i] * kh;
+                }
+                let sk = self.params.abs_tol + self.params.rel_tol * f64::max(f64::abs(y[m]), f64::abs(self.w[m]));
+                let ratio = err_m / sk;
+                sum += ratio * ratio;
+            }
+            work.rel_error = f64::max(f64::sqrt(sum / dim), 1.0e-10);
         }
 
-        // update and error estimation
-        let mut sum = 0.0;
-        for m in 0..self.system.ndim {
-            self.w[m] = y[m];
-            let mut err_m = 0.0;
-            for i in 0..self.nstage {
-                let kh = k[i][m] * h;
-                self.w[m] += self.bb[i] * kh;
-                err_m += ee[i] * kh;
-            }
-            let sk = self.params.abs_tol + self.params.rel_tol * f64::max(f64::abs(y[m]), f64::abs(self.w[m]));
-            let ratio = err_m / sk;
-            sum += ratio * ratio;
-        }
-        work.rel_error = f64::max(f64::sqrt(sum / dim), 1.0e-10);
-        return Ok(());
+        // done
+        Ok(())
     }
 
     /// Updates x and y and computes the next stepsize

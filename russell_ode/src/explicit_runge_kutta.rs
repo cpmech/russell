@@ -276,7 +276,7 @@ where
             }
         }
 
-        // handle not embedded methods
+        // exit if not embedded method
         if !self.info.embedded {
             return Ok(());
         }

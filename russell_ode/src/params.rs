@@ -93,22 +93,29 @@ pub struct ParamsStep {
 #[derive(Clone, Copy, Debug)]
 pub struct ParamsStiffness {
     /// Enables stiffness detection (for some methods such as DoPri5 and DoPri8)
-    pub(crate) enabled: bool,
+    pub enabled: bool,
 
     /// Return an error if stiffness is detected
-    pub(crate) stop_with_error: bool,
+    ///
+    /// **Note:** The default is `true`, i.e., the program will stop if stiffness is detected
+    pub stop_with_error: bool,
 
     /// Save the results at the stations where stiffness has been detected
-    pub(crate) save_results: bool,
+    ///
+    /// **Note:** [crate::Output] must be provided to save the results.
+    pub save_results: bool,
 
     /// Number of steps to ratify the stiffness, i.e., to make sure that stiffness is repeatedly been detected
-    pub(crate) ratified_after_nstep: usize,
+    pub ratified_after_nstep: usize,
 
     /// Number of steps to ignore already detected stiffness stations
-    pub(crate) ignored_after_nstep: usize,
+    pub ignored_after_nstep: usize,
 
-    /// Number of initial steps to skip before enabling the stiffness detection algorithm
-    pub(crate) skip_first_nstep: usize,
+    /// Number of initial accepted steps to skip before enabling the stiffness detection
+    pub skip_first_n_accepted_step: usize,
+
+    /// Holds the max h times lambda coefficient indicating stiffness
+    pub(crate) h_times_lambda_max: f64,
 }
 
 /// Holds the parameters for the BwEuler method
@@ -284,14 +291,20 @@ impl ParamsStep {
 
 impl ParamsStiffness {
     /// Allocates a new instance
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(method: Method) -> Self {
+        let h_times_lambda_max = match method {
+            Method::DoPri5 => 3.25, // line 482 of dopri5.f
+            Method::DoPri8 => 6.1,  // line 674 of dopri8.f
+            _ => f64::MAX,          // undetermined
+        };
         ParamsStiffness {
             enabled: false,
             stop_with_error: true,
             save_results: false,
             ratified_after_nstep: 15, // lines (485, 677) of (dopri5.f, dop853.f)
             ignored_after_nstep: 6,   // lines (492, 684) of (dopri5.f, dop853.f)
-            skip_first_nstep: 10,
+            skip_first_n_accepted_step: 10,
+            h_times_lambda_max,
         }
     }
 }
@@ -365,7 +378,7 @@ impl Params {
             tol: ParamsTol::new(method),
             newton: ParamsNewton::new(),
             step: ParamsStep::new(method),
-            stiffness: ParamsStiffness::new(),
+            stiffness: ParamsStiffness::new(method),
             bweuler: ParamsBwEuler::new(),
             radau5: ParamsRadau5::new(),
             erk: ParamsERK::new(method),
@@ -447,7 +460,7 @@ mod tests {
         let tol = ParamsTol::new(Method::Radau5);
         let newton = ParamsNewton::new();
         let step = ParamsStep::new(Method::Radau5);
-        let stiffness = ParamsStiffness::new();
+        let stiffness = ParamsStiffness::new(Method::Radau5);
         let bweuler = ParamsBwEuler::new();
         let radau5 = ParamsRadau5::new();
         let erk = ParamsERK::new(Method::DoPri5);

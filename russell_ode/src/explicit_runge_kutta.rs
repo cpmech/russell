@@ -290,6 +290,39 @@ where
         fac = f64::max(self.d_max, f64::min(self.d_min, fac / self.params.step.m_safety)); // line 467 of dopri5.f
         work.h_new = h / fac;
 
+        // stiffness detection
+        if self.params.stiffness.enabled {
+            if self.params.method == Method::DoPri5 {
+                let mut num = 0.0;
+                let mut den = 0.0;
+                for m in 0..self.system.ndim {
+                    let delta_k = self.k[6][m] - self.k[5][m]; // k7 - k6  (Eq 2.26, HW-PartII, page 22)
+                    let delta_v = self.v[6][m] - self.v[5][m]; // v7 - v6  (Eq 2.26, HW-PartII, page 22)
+                    num += delta_k * delta_k;
+                    den += delta_v * delta_v;
+                }
+                if den > f64::EPSILON {
+                    work.stiff_h_times_lambda = h * f64::sqrt(num / den);
+                }
+            }
+            if self.params.method == Method::DoPri8 {
+                const NEW: usize = 10; // to use k[NEW] as a temporary workspace
+                work.bench.n_function += 1;
+                (self.system.function)(&mut self.k[NEW], *x, y, args)?; // line 663 of dop853.f
+                let mut num = 0.0;
+                let mut den = 0.0;
+                for m in 0..self.system.ndim {
+                    let delta_k = self.k[NEW][m] - self.k[11][m]; // line 670 of dop843.f
+                    let delta_v = y[m] - self.v[11][m];
+                    num += delta_k * delta_k;
+                    den += delta_v * delta_v;
+                }
+                if den > f64::EPSILON {
+                    work.stiff_h_times_lambda = h * f64::sqrt(num / den);
+                }
+            }
+        }
+
         // print debug messages
         if self.params.debug {
             println!(

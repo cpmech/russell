@@ -33,6 +33,12 @@ pub struct Output<'a> {
     /// Holds the selected y components requested by the dense output
     pub dense_y: HashMap<usize, Vec<f64>>,
 
+    /// Holds the indices of the accepted steps where stiffness has been detected
+    pub stiff_step_index: Vec<usize>,
+
+    /// Holds the x stations where stiffness has been detected
+    pub stiff_x: Vec<f64>,
+
     /// Holds an auxiliary y vector (e.g., to compute the analytical solution or the dense output)
     y_aux: Vector,
 
@@ -54,6 +60,8 @@ impl<'a> Output<'a> {
             dense_step_index: Vec::new(),
             dense_x: Vec::new(),
             dense_y: HashMap::new(),
+            stiff_step_index: Vec::new(),
+            stiff_x: Vec::new(),
             y_aux: Vector::new(EMPTY),
             y_analytical: None,
         }

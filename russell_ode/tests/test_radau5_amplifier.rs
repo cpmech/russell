@@ -12,8 +12,8 @@ fn test_radau5_amplifier() {
 
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);
-    params.h_ini = 1e-6;
-    params.set_tolerances(1e-11, 1e-5).unwrap();
+    params.step.h_ini = 1e-6;
+    params.set_tolerances(1e-11, 1e-5, None).unwrap();
 
     // mass matrix
     let one_based = false; // change to true if using MUMPS

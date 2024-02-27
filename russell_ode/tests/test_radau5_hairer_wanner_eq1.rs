@@ -9,7 +9,7 @@ fn test_radau5_hairer_wanner_eq1() {
 
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);
-    params.h_ini = 1e-4;
+    params.step.h_ini = 1e-4;
 
     // enable dense output with 0.2 spacing
     let mut out = Output::new();

@@ -1,5 +1,5 @@
 use crate::StrError;
-use crate::{OdeSolverTrait, ParamsRadau5, System, Workspace};
+use crate::{OdeSolverTrait, Params, System, Workspace};
 use num_complex::Complex64;
 use russell_lab::math::SQRT_6;
 use russell_lab::{complex_vec_zip, cpx, format_fortran, vec_copy, ComplexVector, Vector};
@@ -13,7 +13,7 @@ where
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Holds the parameters
-    params: ParamsRadau5,
+    params: Params,
 
     /// ODE system
     system: System<'a, F, J, A>,
@@ -108,25 +108,25 @@ where
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(params: ParamsRadau5, system: System<'a, F, J, A>) -> Self {
+    pub fn new(params: Params, system: System<'a, F, J, A>) -> Self {
         let ndim = system.ndim;
         let symmetry = Some(system.jac_symmetry);
-        let one_based = params.genie == Genie::Mumps;
+        let one_based = params.newton.genie == Genie::Mumps;
         let mass_nnz = match system.mass_matrix {
             Some(mass) => mass.get_info().2,
             None => ndim,
         };
         let jac_nnz = system.jac_nnz;
         let nnz = mass_nnz + jac_nnz;
-        let theta = params.theta_max;
+        let theta = params.radau5.theta_max;
         Radau5 {
             params,
             system,
             jj: SparseMatrix::new_coo(ndim, ndim, jac_nnz, symmetry, one_based).unwrap(),
             kk_real: SparseMatrix::new_coo(ndim, ndim, nnz, symmetry, one_based).unwrap(),
             kk_comp: ComplexSparseMatrix::new_coo(ndim, ndim, nnz, symmetry, one_based).unwrap(),
-            solver_real: LinSolver::new(params.genie).unwrap(),
-            solver_comp: ComplexLinSolver::new(params.genie).unwrap(),
+            solver_real: LinSolver::new(params.newton.genie).unwrap(),
+            solver_comp: ComplexLinSolver::new(params.newton.genie).unwrap(),
             reuse_jacobian: false,
             reuse_jacobian_kk_and_fact: false,
             jacobian_computed: false,
@@ -170,7 +170,7 @@ where
         } else if !self.jacobian_computed {
             work.bench.sw_jacobian.reset();
             work.bench.n_jacobian += 1;
-            if self.params.use_numerical_jacobian || !self.system.jac_available {
+            if self.params.newton.use_numerical_jacobian || !self.system.jac_available {
                 work.bench.n_function += self.system.ndim;
                 let y_mut = &mut self.w0; // using w[0] as a workspace
                 vec_copy(y_mut, y).unwrap();
@@ -208,10 +208,10 @@ where
     fn factorize(&mut self) -> Result<(), StrError> {
         self.solver_real
             .actual
-            .factorize(&mut self.kk_real, self.params.lin_sol_params)?;
+            .factorize(&mut self.kk_real, self.params.newton.lin_sol_params)?;
         self.solver_comp
             .actual
-            .factorize(&mut self.kk_comp, self.params.lin_sol_params)
+            .factorize(&mut self.kk_comp, self.params.newton.lin_sol_params)
     }
 
     /// Factorizes the real and complex systems concurrently
@@ -220,13 +220,13 @@ where
             let handle_real = scope.spawn(|| {
                 self.solver_real
                     .actual
-                    .factorize(&mut self.kk_real, self.params.lin_sol_params)
+                    .factorize(&mut self.kk_real, self.params.newton.lin_sol_params)
                     .unwrap();
             });
             let handle_comp = scope.spawn(|| {
                 self.solver_comp
                     .actual
-                    .factorize(&mut self.kk_comp, self.params.lin_sol_params)
+                    .factorize(&mut self.kk_comp, self.params.newton.lin_sol_params)
                     .unwrap();
             });
             let err_real = handle_real.join();
@@ -295,7 +295,7 @@ where
     /// Initializes the internal variables
     fn initialize(&mut self, work: &mut Workspace, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError> {
         for i in 0..self.system.ndim {
-            self.scaling[i] = self.params.abs_tol + self.params.rel_tol * f64::abs(y[i]);
+            self.scaling[i] = self.params.tol.abs + self.params.tol.rel * f64::abs(y[i]);
         }
         work.bench.n_function += 1;
         (self.system.function)(&mut self.k_accepted, x, y, args)
@@ -304,7 +304,7 @@ where
     /// Calculates the quantities required to update x and y
     fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {
         // constants
-        let concurrent = self.params.concurrent && self.params.genie != Genie::Mumps;
+        let concurrent = self.params.radau5.concurrent && self.params.newton.genie != Genie::Mumps;
         let ndim = self.system.ndim;
 
         // Jacobian, K_real, K_comp, and factorizations (for all iterations: simple Newton's method)
@@ -328,7 +328,7 @@ where
         let u2 = x + C[2] * h;
 
         // starting values for newton iterations (first z and w)
-        if work.bench.n_accepted == 0 || self.params.zero_trial {
+        if work.bench.n_accepted == 0 || self.params.radau5.zero_trial {
             // zero trial
             for m in 0..ndim {
                 self.z0[m] = 0.0;
@@ -359,7 +359,7 @@ where
         let beta = BETA / h;
         let gamma = GAMMA / h;
         self.eta = f64::powf(f64::max(self.eta, f64::EPSILON), 0.8); // FACCON on line 914 of radau5.f
-        self.theta = self.params.theta_max;
+        self.theta = self.params.radau5.theta_max;
         let mut ldw_old = 0.0;
         let mut thq_old = 0.0;
 
@@ -367,7 +367,7 @@ where
         let mut success = false;
         work.iterations_diverging = false;
         work.bench.n_iterations = 0; // line 931 of radau5.f
-        for _ in 0..self.params.n_iteration_max {
+        for _ in 0..self.params.newton.n_iteration_max {
             // benchmark
             work.bench.n_iterations += 1;
 
@@ -437,7 +437,7 @@ where
 
             // auxiliary
             let newt = work.bench.n_iterations;
-            let nit = self.params.n_iteration_max;
+            let nit = self.params.newton.n_iteration_max;
 
             // logging
             if self.params.logging {
@@ -462,7 +462,7 @@ where
                 if self.theta < 0.99 {
                     self.eta = self.theta / (1.0 - self.theta); // FACCON on line 964 of radau5.f
                     let exp = (nit - 1 - newt) as f64; // line 967 of radau5.f
-                    let rel_err = self.eta * ldw * f64::powf(self.theta, exp) / self.params.tol_newton;
+                    let rel_err = self.eta * ldw * f64::powf(self.theta, exp) / self.params.tol.newton;
                     if rel_err >= 1.0 {
                         // diverging
                         let q_newt = f64::max(1.0e-4, f64::min(20.0, rel_err));
@@ -483,7 +483,7 @@ where
             ldw_old = ldw;
 
             // success
-            if self.eta * ldw < self.params.tol_newton {
+            if self.eta * ldw < self.params.tol.newton {
                 success = true;
                 break;
             }
@@ -574,22 +574,22 @@ where
 
         // estimate the new stepsize
         let newt = work.bench.n_iterations;
-        let num = self.params.m_safety * ((1 + 2 * self.params.n_iteration_max) as f64);
-        let den = (newt + 2 * self.params.n_iteration_max) as f64;
-        let fac = f64::min(self.params.m_safety, num / den);
+        let num = self.params.step.m_safety * ((1 + 2 * self.params.newton.n_iteration_max) as f64);
+        let den = (newt + 2 * self.params.newton.n_iteration_max) as f64;
+        let fac = f64::min(self.params.step.m_safety, num / den);
         let div = f64::max(
-            self.params.m_min,
-            f64::min(self.params.m_max, f64::powf(work.rel_error, 0.25) / fac),
+            self.params.step.m_min,
+            f64::min(self.params.step.m_max, f64::powf(work.rel_error, 0.25) / fac),
         );
         let mut h_new = h / div;
 
         // predictive controller of Gustafsson
-        if self.params.use_pred_control {
+        if self.params.radau5.use_pred_control {
             if work.bench.n_accepted > 1 {
                 let r2 = work.rel_error * work.rel_error;
                 let rp = work.rel_error_prev;
-                let fac = (work.h_prev / h) * f64::powf(r2 / rp, 0.25) / self.params.m_safety;
-                let fac = f64::max(self.params.m_min, f64::min(self.params.m_max, fac));
+                let fac = (work.h_prev / h) * f64::powf(r2 / rp, 0.25) / self.params.step.m_safety;
+                let fac = f64::max(self.params.step.m_min, f64::min(self.params.step.m_max, fac));
                 let div = f64::max(div, fac);
                 h_new = h / div;
             }
@@ -597,15 +597,16 @@ where
 
         // update h_new if not reusing factorizations
         let h_ratio = h_new / h;
-        self.reuse_jacobian_kk_and_fact =
-            self.theta <= self.params.theta_max && h_ratio >= self.params.c1h && h_ratio <= self.params.c2h;
+        self.reuse_jacobian_kk_and_fact = self.theta <= self.params.radau5.theta_max
+            && h_ratio >= self.params.radau5.c1h
+            && h_ratio <= self.params.radau5.c2h;
         if !self.reuse_jacobian_kk_and_fact {
             work.h_new = h_new;
         }
 
         // check θ to decide if at least the Jacobian can be reused
         if !self.reuse_jacobian_kk_and_fact {
-            self.reuse_jacobian = self.theta <= self.params.theta_max;
+            self.reuse_jacobian = self.theta <= self.params.radau5.theta_max;
         }
 
         // update x
@@ -619,12 +620,12 @@ where
     fn reject(&mut self, work: &mut Workspace, h: f64) {
         // estimate new stepsize
         let newt = work.bench.n_iterations;
-        let num = self.params.m_safety * ((1 + 2 * self.params.n_iteration_max) as f64);
-        let den = (newt + 2 * self.params.n_iteration_max) as f64;
-        let fac = f64::min(self.params.m_safety, num / den);
+        let num = self.params.step.m_safety * ((1 + 2 * self.params.newton.n_iteration_max) as f64);
+        let den = (newt + 2 * self.params.newton.n_iteration_max) as f64;
+        let fac = f64::min(self.params.step.m_safety, num / den);
         let div = f64::max(
-            self.params.m_min,
-            f64::min(self.params.m_max, f64::powf(work.rel_error, 0.25) / fac),
+            self.params.step.m_min,
+            f64::min(self.params.step.m_max, f64::powf(work.rel_error, 0.25) / fac),
         );
         work.h_new = h / div;
     }

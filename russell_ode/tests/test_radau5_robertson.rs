@@ -8,8 +8,8 @@ fn test_radau5_robertson() {
 
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);
-    params.h_ini = 1e-6;
-    params.set_tolerances(1e-8, 1e-2).unwrap();
+    params.step.h_ini = 1e-6;
+    params.set_tolerances(1e-8, 1e-2, None).unwrap();
 
     // enable output of accepted steps
     let mut out = Output::new();

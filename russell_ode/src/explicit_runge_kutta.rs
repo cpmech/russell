@@ -1,6 +1,6 @@
 use crate::constants::*;
 use crate::StrError;
-use crate::{ErkDenseOut, Information, Method, OdeSolverTrait, ParamsERK, System, Workspace};
+use crate::{ErkDenseOut, Information, Method, OdeSolverTrait, Params, System, Workspace};
 use russell_lab::{format_fortran, vec_copy, vec_update, Matrix, Vector};
 use russell_sparse::CooMatrix;
 
@@ -9,11 +9,8 @@ where
     F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
-    /// Holds the ERK method
-    method: Method,
-
     /// Holds the parameters
-    params: ParamsERK,
+    params: Params,
 
     /// ODE system
     system: System<'a, F, J, A>,
@@ -72,19 +69,19 @@ where
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(method: Method, params: ParamsERK, system: System<'a, F, J, A>) -> Result<Self, StrError> {
+    pub fn new(params: Params, system: System<'a, F, J, A>) -> Result<Self, StrError> {
         // information
-        let info = method.information();
+        let info = params.method.information();
         if info.implicit {
             return Err("the method must not be implicit");
         }
-        if method == Method::FwEuler {
+        if params.method == Method::FwEuler {
             return Err("the method must not be FwEuler");
         }
 
         // Runge-Kutta coefficients
         #[rustfmt::skip]
-        let (aa, bb, cc) = match method {
+        let (aa, bb, cc) = match params.method {
             Method::Radau5     => panic!("<not available>"),
             Method::BwEuler    => panic!("<not available>"),
             Method::FwEuler    => panic!("<not available>"),
@@ -105,7 +102,7 @@ where
 
         // coefficients for error estimate
         let ee = if info.embedded {
-            match method {
+            match params.method {
                 Method::Radau5 => None,
                 Method::BwEuler => None,
                 Method::FwEuler => None,
@@ -131,12 +128,11 @@ where
         let nstage = bb.dim();
 
         // Lund stabilization factor (n)
-        let lund_factor = 1.0 / ((info.order_of_estimator + 1) as f64) - params.lund_beta * params.lund_m;
+        let lund_factor = 1.0 / ((info.order_of_estimator + 1) as f64) - params.erk.lund_beta * params.erk.lund_m;
 
         // return structure
         let ndim = system.ndim;
         Ok(ExplicitRungeKutta {
-            method,
             params,
             system,
             info,
@@ -146,8 +142,8 @@ where
             ee,
             nstage,
             lund_factor,
-            d_min: 1.0 / params.m_min,
-            d_max: 1.0 / params.m_max,
+            d_min: 1.0 / params.step.m_min,
+            d_max: 1.0 / params.step.m_max,
             v: vec![Vector::new(ndim); nstage],
             k: vec![Vector::new(ndim); nstage],
             w: Vector::new(ndim),
@@ -163,7 +159,7 @@ where
 {
     /// Enables dense output
     fn enable_dense_output(&mut self) {
-        self.dense_out = Some(ErkDenseOut::new(self.method, self.system.ndim));
+        self.dense_out = Some(ErkDenseOut::new(self.params.method, self.system.ndim));
     }
 
     /// Initializes the internal variables
@@ -211,7 +207,7 @@ where
         let dim = self.system.ndim as f64;
 
         // update and error estimation
-        if self.method == Method::DoPri8 {
+        if self.params.method == Method::DoPri8 {
             //  Dormand-Prince 8 with 5 and 3 orders
             let (bhh1, bhh2, bhh3) = (DORMAND_PRINCE_8_BHH1, DORMAND_PRINCE_8_BHH2, DORMAND_PRINCE_8_BHH3);
             let mut err_3 = 0.0;
@@ -225,7 +221,7 @@ where
                     err_a += self.bb[i] * k[i][m];
                     err_b += ee[i] * k[i][m];
                 }
-                let sk = self.params.abs_tol + self.params.rel_tol * f64::max(f64::abs(y[m]), f64::abs(self.w[m]));
+                let sk = self.params.tol.abs + self.params.tol.rel * f64::max(f64::abs(y[m]), f64::abs(self.w[m]));
                 err_a -= bhh1 * k[0][m] + bhh2 * k[8][m] + bhh3 * k[11][m];
                 err_3 += (err_a / sk) * (err_a / sk);
                 err_5 += (err_b / sk) * (err_b / sk);
@@ -246,7 +242,7 @@ where
                     self.w[m] += self.bb[i] * kh;
                     err_m += ee[i] * kh;
                 }
-                let sk = self.params.abs_tol + self.params.rel_tol * f64::max(f64::abs(y[m]), f64::abs(self.w[m]));
+                let sk = self.params.tol.abs + self.params.tol.rel * f64::max(f64::abs(y[m]), f64::abs(self.w[m]));
                 let ratio = err_m / sk;
                 sum += ratio * ratio;
             }
@@ -255,10 +251,10 @@ where
 
         // stiffness detection
         if self.params.stiffness.enabled {
-            if self.method == Method::DoPri5 {
+            if self.params.method == Method::DoPri5 {
                 // todo
             }
-            if self.method == Method::DoPri8 {
+            if self.params.method == Method::DoPri8 {
                 // todo
             }
         }
@@ -299,11 +295,11 @@ where
 
         // estimate the new stepsize
         let mut fac = f64::powf(work.rel_error, self.lund_factor); // line 463 of dopri5.f
-        if self.params.lund_beta > 0.0 && work.rel_error_prev > 0.0 {
-            // lund-stabilization
-            fac = fac / f64::powf(work.rel_error_prev, self.params.lund_beta); // line 465 of dopri5.f
+        if self.params.erk.lund_beta > 0.0 && work.rel_error_prev > 0.0 {
+            // lund-stabilization (line 465 of dopri5.f)
+            fac = fac / f64::powf(work.rel_error_prev, self.params.erk.lund_beta);
         }
-        fac = f64::max(self.d_max, f64::min(self.d_min, fac / self.params.m_safety)); // line 467 of dopri5.f
+        fac = f64::max(self.d_max, f64::min(self.d_min, fac / self.params.step.m_safety)); // line 467 of dopri5.f
         work.h_new = h / fac;
 
         // logging
@@ -321,7 +317,7 @@ where
     /// Rejects the update
     fn reject(&mut self, work: &mut Workspace, h: f64) {
         // estimate new stepsize
-        let d = f64::powf(work.rel_error, self.lund_factor) / self.params.m_safety;
+        let d = f64::powf(work.rel_error, self.lund_factor) / self.params.step.m_safety;
         work.h_new = h / f64::min(self.d_min, d);
 
         // logging
@@ -351,7 +347,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::ExplicitRungeKutta;
-    use crate::{no_jacobian, HasJacobian, Method, ParamsERK, System};
+    use crate::{no_jacobian, HasJacobian, Method, Params, System};
     use russell_lab::approx_eq;
 
     #[test]
@@ -361,7 +357,7 @@ mod tests {
         struct Args {}
         for method in staged {
             println!("\n... {:?} ...", method);
-            let params = ParamsERK::new(*method);
+            let params = Params::new(*method);
             let system = System::new(
                 1,
                 |_, _, _, _args: &mut Args| Ok(()),
@@ -370,7 +366,7 @@ mod tests {
                 None,
                 None,
             );
-            let erk = ExplicitRungeKutta::new(*method, params, system).unwrap();
+            let erk = ExplicitRungeKutta::new(params, system).unwrap();
             let nstage = erk.nstage;
             assert_eq!(erk.aa.dims(), (nstage, nstage));
             assert_eq!(erk.bb.dim(), nstage);

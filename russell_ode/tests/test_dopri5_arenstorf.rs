@@ -8,8 +8,8 @@ fn test_dopri5_arenstorf() {
 
     // set configuration parameters
     let mut params = Params::new(Method::DoPri5);
-    params.h_ini = 1e-4;
-    params.set_tolerances(1e-7, 1e-7).unwrap();
+    params.step.h_ini = 1e-4;
+    params.set_tolerances(1e-7, 1e-7, None).unwrap();
 
     // enable dense output with 1.0 spacing
     let mut out = Output::new();

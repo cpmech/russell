@@ -1,5 +1,5 @@
 use crate::StrError;
-use crate::{OdeSolverTrait, ParamsBwEuler, System, Workspace};
+use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::{vec_copy, vec_update, Vector};
 use russell_sparse::{CooMatrix, Genie, LinSolver, SparseMatrix};
 
@@ -10,7 +10,7 @@ where
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Holds the parameters
-    params: ParamsBwEuler,
+    params: Params,
 
     /// ODE system
     system: System<'a, F, J, A>,
@@ -49,11 +49,11 @@ where
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(params: ParamsBwEuler, system: System<'a, F, J, A>) -> Self {
+    pub fn new(params: Params, system: System<'a, F, J, A>) -> Self {
         let ndim = system.ndim;
         let nnz = system.jac_nnz + ndim; // +ndim corresponds to the diagonal I matrix
         let symmetry = Some(system.jac_symmetry);
-        let one_based = if params.genie == Genie::Mumps { true } else { false };
+        let one_based = params.newton.genie == Genie::Mumps;
         EulerBackward {
             params,
             system,
@@ -63,7 +63,7 @@ where
             r: Vector::new(ndim),
             dy: Vector::new(ndim),
             kk: SparseMatrix::new_coo(ndim, ndim, nnz, symmetry, one_based).unwrap(),
-            solver: LinSolver::new(params.genie).unwrap(),
+            solver: LinSolver::new(params.newton.genie).unwrap(),
         }
     }
 }
@@ -79,7 +79,7 @@ where
     /// Initializes the internal variables
     fn initialize(&mut self, _work: &mut Workspace, _x: f64, y: &Vector, _args: &mut A) -> Result<(), StrError> {
         for i in 0..self.system.ndim {
-            self.scaling[i] = self.params.abs_tol + self.params.rel_tol * f64::abs(y[i]);
+            self.scaling[i] = self.params.tol.abs + self.params.tol.rel * f64::abs(y[i]);
         }
         Ok(())
     }
@@ -87,7 +87,7 @@ where
     /// Calculates the quantities required to update x and y
     fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {
         // auxiliary
-        let traditional_newton = !self.params.use_modified_newton;
+        let traditional_newton = !self.params.bweuler.use_modified_newton;
         let ndim = self.system.ndim;
         let dim = ndim as f64;
 
@@ -99,7 +99,7 @@ where
         // perform iterations
         let mut success = false;
         work.bench.n_iterations = 0;
-        for _ in 0..self.params.n_iteration_max {
+        for _ in 0..self.params.newton.n_iteration_max {
             // benchmark
             work.bench.n_iterations += 1;
 
@@ -111,20 +111,20 @@ where
             let mut r_norm = 0.0;
             for i in 0..ndim {
                 self.r[i] = y_new[i] - y[i] - h * self.k[i];
-                if self.params.use_rms_norm {
+                if self.params.bweuler.use_rms_norm {
                     r_norm += f64::powf(self.r[i] / self.scaling[i], 2.0);
                 } else {
                     r_norm += self.r[i] * self.r[i];
                 }
             }
-            if self.params.use_rms_norm {
+            if self.params.bweuler.use_rms_norm {
                 r_norm = f64::sqrt(r_norm / dim);
             } else {
                 r_norm = f64::sqrt(r_norm);
             }
 
             // check convergence
-            if r_norm < self.params.tol_newton {
+            if r_norm < self.params.tol.newton {
                 success = true;
                 break;
             }
@@ -137,7 +137,7 @@ where
 
                 // calculate J_new := h J
                 let kk = self.kk.get_coo_mut()?;
-                if self.params.use_numerical_jacobian || !self.system.jac_available {
+                if self.params.newton.use_numerical_jacobian || !self.system.jac_available {
                     work.bench.n_function += ndim;
                     self.system.numerical_jacobian(kk, x_new, y_new, &self.k, h, args)?;
                 } else {
@@ -155,7 +155,9 @@ where
                 // perform factorization
                 work.bench.sw_factor.reset();
                 work.bench.n_factor += 1;
-                self.solver.actual.factorize(&mut self.kk, self.params.lin_sol_params)?;
+                self.solver
+                    .actual
+                    .factorize(&mut self.kk, self.params.newton.lin_sol_params)?;
                 work.bench.stop_sw_factor();
             }
 

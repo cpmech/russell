@@ -9,7 +9,7 @@ fn test_mdeuler_hairer_wanner_eq1() {
 
     // set configuration parameters
     let mut params = Params::new(Method::MdEuler);
-    params.h_ini = 1e-4;
+    params.step.h_ini = 1e-4;
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, system).unwrap();

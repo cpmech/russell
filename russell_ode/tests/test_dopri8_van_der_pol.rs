@@ -9,8 +9,8 @@ fn test_dopri8_van_der_pol() {
 
     // set configuration parameters
     let mut params = Params::new(Method::DoPri8);
-    params.h_ini = 1e-6;
-    params.set_tolerances(1e-9, 1e-9).unwrap();
+    params.step.h_ini = 1e-6;
+    params.set_tolerances(1e-9, 1e-9, None).unwrap();
 
     // enable dense output with 0.2 spacing
     let mut out = Output::new();

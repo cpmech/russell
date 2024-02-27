@@ -58,13 +58,13 @@ impl<'a, A> OdeSolver<'a, A> {
         params.validate()?;
         let ndim = system.ndim;
         let actual: Box<dyn OdeSolverTrait<A>> = if params.method == Method::Radau5 {
-            Box::new(Radau5::new(params.radau5, system))
+            Box::new(Radau5::new(params, system))
         } else if params.method == Method::BwEuler {
-            Box::new(EulerBackward::new(params.bweuler, system))
+            Box::new(EulerBackward::new(params, system))
         } else if params.method == Method::FwEuler {
             Box::new(EulerForward::new(system))
         } else {
-            Box::new(ExplicitRungeKutta::new(params.method, params.erk, system)?)
+            Box::new(ExplicitRungeKutta::new(params, system)?)
         };
         Ok(OdeSolver {
             params,
@@ -123,7 +123,7 @@ impl<'a, A> OdeSolver<'a, A> {
             }
             None => {
                 if info.embedded {
-                    let h = f64::min(self.params.h_ini, x1 - x0);
+                    let h = f64::min(self.params.step.h_ini, x1 - x0);
                     (false, h)
                 } else {
                     let h = (x1 - x0) / (N_EQUAL_STEPS as f64);
@@ -134,7 +134,7 @@ impl<'a, A> OdeSolver<'a, A> {
         assert!(h > 0.0);
 
         // reset variables
-        self.work.reset(h, self.params.rel_error_prev_min);
+        self.work.reset(h, self.params.step.rel_error_prev_min);
         self.actual.initialize(&mut self.work, x0, y0, args)?;
 
         // current values
@@ -178,7 +178,7 @@ impl<'a, A> OdeSolver<'a, A> {
         let mut last_step = false;
 
         // variable stepping loop
-        for _ in 0..self.params.n_step_max {
+        for _ in 0..self.params.step.n_step_max {
             self.work.bench.sw_step.reset();
 
             // update and check the stepsize
@@ -214,7 +214,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
                 // save previous stepsize, relative error, and accepted/suggested stepsize
                 self.work.h_prev = h;
-                self.work.rel_error_prev = f64::max(self.params.rel_error_prev_min, self.work.rel_error);
+                self.work.rel_error_prev = f64::max(self.params.step.rel_error_prev_min, self.work.rel_error);
                 self.work.bench.h_accepted = self.work.h_new;
 
                 // output
@@ -244,8 +244,8 @@ impl<'a, A> OdeSolver<'a, A> {
                 last_step = false;
 
                 // recompute stepsize
-                if self.work.bench.n_accepted == 0 && self.params.m_first_reject > 0.0 {
-                    self.work.h_new = h * self.params.m_first_reject;
+                if self.work.bench.n_accepted == 0 && self.params.step.m_first_reject > 0.0 {
+                    self.work.h_new = h * self.params.step.m_first_reject;
                 } else {
                     self.actual.reject(&mut self.work, h);
                 }

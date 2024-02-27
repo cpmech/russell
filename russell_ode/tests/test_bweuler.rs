@@ -50,7 +50,7 @@ fn test_bweuler_hairer_wanner_eq1_num_jac() {
 
     // set configuration parameters
     let mut params = Params::new(Method::BwEuler);
-    params.bweuler.use_numerical_jacobian = true;
+    params.newton.use_numerical_jacobian = true;
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, system).unwrap();

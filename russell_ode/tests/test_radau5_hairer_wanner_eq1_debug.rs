@@ -9,8 +9,8 @@ fn test_radau5_hairer_wanner_eq1_debug() {
 
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);
-    params.h_ini = 1e-4;
-    params.radau5.logging = true;
+    params.step.h_ini = 1e-4;
+    params.logging = true;
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, system).unwrap();

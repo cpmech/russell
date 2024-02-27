@@ -8,9 +8,9 @@ fn test_dopri5_arenstorf_debug() {
 
     // set configuration parameters
     let mut params = Params::new(Method::DoPri5);
-    params.h_ini = 1e-4;
-    params.set_tolerances(1e-7, 1e-7).unwrap();
-    params.erk.logging = true;
+    params.step.h_ini = 1e-4;
+    params.set_tolerances(1e-7, 1e-7, None).unwrap();
+    params.logging = true;
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, system).unwrap();

@@ -8,11 +8,11 @@ fn test_radau5_robertson_small_h() {
 
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);
-    params.h_ini = 1e-6;
-    params.radau5.logging = true;
+    params.step.h_ini = 1e-6;
+    params.logging = true;
 
     // this will cause h to become too small
-    params.set_tolerances(1e-2, 1e-2).unwrap();
+    params.set_tolerances(1e-2, 1e-2, None).unwrap();
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, system).unwrap();

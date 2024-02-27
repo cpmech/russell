@@ -444,13 +444,30 @@ mod tests {
 
     #[test]
     fn derive_methods_work() {
-        let mut params = Params::new(Method::Radau5);
-        params.logging = true;
-        let copy = params;
-        let clone = params.clone();
-        assert!(format!("{:?}", params).len() > 0);
-        assert_eq!(copy.logging, params.logging);
-        assert_eq!(clone.logging, params.logging);
+        let tol = ParamsTol::new(Method::Radau5);
+        let newton = ParamsNewton::new();
+        let step = ParamsStep::new(Method::Radau5);
+        let stiffness = ParamsStiffness::new();
+        let bweuler = ParamsBwEuler::new();
+        let radau5 = ParamsRadau5::new();
+        let erk = ParamsERK::new(Method::DoPri5);
+        let params = Params::new(Method::Radau5);
+        let clone_tol = tol.clone();
+        let clone_newton = newton.clone();
+        let clone_step = step.clone();
+        let clone_stiffness = stiffness.clone();
+        let clone_bweuler = bweuler.clone();
+        let clone_radau5 = radau5.clone();
+        let clone_erk = erk.clone();
+        let clone_params = params.clone();
+        assert_eq!(format!("{:?}", tol), format!("{:?}", clone_tol));
+        assert_eq!(format!("{:?}", newton), format!("{:?}", clone_newton));
+        assert_eq!(format!("{:?}", step), format!("{:?}", clone_step));
+        assert_eq!(format!("{:?}", stiffness), format!("{:?}", clone_stiffness));
+        assert_eq!(format!("{:?}", bweuler), format!("{:?}", clone_bweuler));
+        assert_eq!(format!("{:?}", radau5), format!("{:?}", clone_radau5));
+        assert_eq!(format!("{:?}", erk), format!("{:?}", clone_erk));
+        assert_eq!(format!("{:?}", params), format!("{:?}", clone_params));
     }
 
     #[test]
@@ -618,9 +635,28 @@ mod tests {
 
     #[test]
     fn params_validate_works() {
-        for method in [Method::FwEuler, Method::BwEuler, Method::Radau5, Method::DoPri5] {
-            let params = Params::new(method);
-            assert_eq!(params.validate().is_err(), false);
-        }
+        let mut params = Params::new(Method::Radau5);
+        params.newton.n_iteration_max = 0;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: n_iteration_max ≥ 1")
+        );
+        params.newton.n_iteration_max = 10;
+        params.step.m_min = 0.0;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
+        );
+        params.step.m_min = 0.001;
+        params.radau5.theta_max = 0.0;
+        assert_eq!(params.validate().err(), Some("unmatched requirement: theta_max ≥ 1e-7"));
+        params.radau5.theta_max = 1e-7;
+        params.erk.lund_beta = -0.1;
+        assert_eq!(
+            params.validate().err(),
+            Some("unmatched requirement: 0 ≤ lund_beta ≤ 0.1")
+        );
+        params.erk.lund_beta = 0.1;
+        assert_eq!(params.validate().is_err(), false);
     }
 }

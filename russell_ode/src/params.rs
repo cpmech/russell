@@ -200,8 +200,8 @@ pub struct Params {
     /// Parameters for explicit Runge-Kutta methods
     pub erk: ParamsERK,
 
-    /// Enable logging (for debugging)
-    pub logging: bool,
+    /// Enable debugging (print log messages)
+    pub debug: bool,
 }
 
 // --- Implementations ------------------------------------------------------------------------------------
@@ -369,7 +369,7 @@ impl Params {
             bweuler: ParamsBwEuler::new(),
             radau5: ParamsRadau5::new(),
             erk: ParamsERK::new(method),
-            logging: false,
+            debug: false,
         }
     }
 

@@ -10,7 +10,7 @@ fn test_radau5_van_der_pol_debug() {
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);
     params.step.h_ini = 1e-6;
-    params.logging = true;
+    params.debug = true;
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, system).unwrap();

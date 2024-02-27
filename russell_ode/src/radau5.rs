@@ -439,8 +439,8 @@ where
             let newt = work.bench.n_iterations;
             let nit = self.params.newton.n_iteration_max;
 
-            // logging
-            if self.params.logging {
+            // print debug messages
+            if self.params.debug {
                 println!(
                     "step = {:>5}, newt = {:>5}, ldw ={}, h ={}",
                     work.bench.n_steps,

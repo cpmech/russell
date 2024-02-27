@@ -10,7 +10,7 @@ fn test_radau5_robertson_debug() {
     let mut params = Params::new(Method::Radau5);
     params.step.h_ini = 1e-6;
     params.set_tolerances(1e-8, 1e-2, None).unwrap();
-    params.logging = true;
+    params.debug = true;
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, system).unwrap();

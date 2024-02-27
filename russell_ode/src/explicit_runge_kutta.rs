@@ -302,8 +302,8 @@ where
         fac = f64::max(self.d_max, f64::min(self.d_min, fac / self.params.step.m_safety)); // line 467 of dopri5.f
         work.h_new = h / fac;
 
-        // logging
-        if self.params.logging {
+        // print debug messages
+        if self.params.debug {
             println!(
                 "accept: step = {:>5}, err ={}, h_new ={}",
                 work.bench.n_steps,
@@ -320,8 +320,8 @@ where
         let d = f64::powf(work.rel_error, self.lund_factor) / self.params.step.m_safety;
         work.h_new = h / f64::min(self.d_min, d);
 
-        // logging
-        if self.params.logging {
+        // print debug messages
+        if self.params.debug {
             println!(
                 "reject: step = {:>5}, err ={}, h_new ={}",
                 work.bench.n_steps,

@@ -49,9 +49,6 @@ where
     /// Auxiliary variable: 1 / m_max
     d_max: f64,
 
-    /// Stiffness ratio
-    stiffness_ratio: f64,
-
     /// Array of vectors holding the updates
     ///
     /// v[stg][dim] = ya[dim] + h*sum(a[stg][j]*f[j][dim], j, nstage)
@@ -151,7 +148,6 @@ where
             lund_factor,
             d_min: 1.0 / params.m_min,
             d_max: 1.0 / params.m_max,
-            stiffness_ratio: 0.0,
             v: vec![Vector::new(ndim); nstage],
             k: vec![Vector::new(ndim); nstage],
             w: Vector::new(ndim),
@@ -212,11 +208,9 @@ where
 
         // auxiliary
         let ee = self.ee.as_ref().unwrap();
-        let mut s_num = 0.0;
-        let mut s_den = 0.0;
         let dim = self.system.ndim as f64;
 
-        // error estimation for Dormand-Prince 8 with 5 and 3 orders
+        // update and error estimation for Dormand-Prince 8 with 5 and 3 orders
         if self.method == Method::DoPri8 {
             let (bhh1, bhh2, bhh3) = (DORMAND_PRINCE_8_BHH1, DORMAND_PRINCE_8_BHH2, DORMAND_PRINCE_8_BHH3);
             let mut err_3 = 0.0;
@@ -234,26 +228,16 @@ where
                 err_a -= bhh1 * k[0][m] + bhh2 * k[8][m] + bhh3 * k[11][m];
                 err_3 += (err_a / sk) * (err_a / sk);
                 err_5 += (err_b / sk) * (err_b / sk);
-                // stiffness estimation
-                let a = self.nstage - 1;
-                let b = self.nstage - 2;
-                let dk = k[a][m] - k[b][m];
-                let dv = v[a][m] - v[b][m];
-                s_num += dk * dk;
-                s_den += dv * dv;
             }
             let mut den = err_5 + 0.01 * err_3; // similar to Eq. (10.17) of [1, page 255]
             if den <= 0.0 {
                 den = 1.0;
             }
             work.rel_error = f64::abs(h) * err_5 * f64::sqrt(1.0 / (dim * den));
-            if s_den > 0.0 {
-                self.stiffness_ratio = h * f64::sqrt(s_num / s_den);
-            }
             return Ok(());
         }
 
-        // update, error and stiffness estimation
+        // update and error estimation
         let mut sum = 0.0;
         for m in 0..self.system.ndim {
             self.w[m] = y[m];
@@ -266,18 +250,8 @@ where
             let sk = self.params.abs_tol + self.params.rel_tol * f64::max(f64::abs(y[m]), f64::abs(self.w[m]));
             let ratio = err_m / sk;
             sum += ratio * ratio;
-            // stiffness estimation
-            let a = self.nstage - 1;
-            let b = self.nstage - 2;
-            let dk = k[a][m] - k[b][m];
-            let dv = v[a][m] - v[b][m];
-            s_num += dk * dk;
-            s_den += dv * dv;
         }
         work.rel_error = f64::max(f64::sqrt(sum / dim), 1.0e-10);
-        if s_den > 0.0 {
-            self.stiffness_ratio = h * f64::sqrt(s_num / s_den);
-        }
         return Ok(());
     }
 

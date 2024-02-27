@@ -173,7 +173,7 @@ where
         let k = &mut self.k;
         let v = &mut self.v;
 
-        // compute k0 (otherwise, use k0 saved in accept_update)
+        // compute k0 (otherwise, use k0 saved in accept)
         if (work.bench.n_accepted == 0 || !self.info.first_step_same_as_last) && !work.follows_reject_step {
             let u0 = x + h * self.cc[0];
             work.bench.n_function += 1;
@@ -248,18 +248,6 @@ where
             }
             work.rel_error = f64::max(f64::sqrt(sum / dim), 1.0e-10);
         }
-
-        // stiffness detection
-        if self.params.stiffness.enabled {
-            if self.params.method == Method::DoPri5 {
-                // todo
-            }
-            if self.params.method == Method::DoPri8 {
-                // todo
-            }
-        }
-
-        // done
         Ok(())
     }
 

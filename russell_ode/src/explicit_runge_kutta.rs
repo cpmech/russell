@@ -291,7 +291,7 @@ where
         work.h_new = h / fac;
 
         // stiffness detection
-        work.stiff_detected = if self.params.stiffness.enabled {
+        if self.params.stiffness.enabled {
             if self.params.method == Method::DoPri5 {
                 let mut num = 0.0;
                 let mut den = 0.0;
@@ -304,7 +304,7 @@ where
                 if den > f64::EPSILON {
                     work.stiff_h_times_lambda = h * f64::sqrt(num / den);
                 }
-                detect_stiffness(work, &self.params)?
+                detect_stiffness(work, &self.params)?;
             } else if self.params.method == Method::DoPri8 {
                 const NEW: usize = 10; // to use k[NEW] as a temporary workspace
                 work.bench.n_function += 1;
@@ -320,12 +320,8 @@ where
                 if den > f64::EPSILON {
                     work.stiff_h_times_lambda = h * f64::sqrt(num / den);
                 }
-                detect_stiffness(work, &self.params)?
-            } else {
-                false
+                detect_stiffness(work, &self.params)?;
             }
-        } else {
-            false
         };
 
         // print debug messages

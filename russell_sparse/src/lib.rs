@@ -263,7 +263,6 @@ mod verify_lin_sys;
 mod write_matrix_market;
 pub use crate::aliases::*;
 use crate::auxiliary_and_constants::*;
-pub use crate::complex_coo_matrix::*;
 pub use crate::complex_lin_solver::*;
 pub use crate::complex_solver_mumps::*;
 pub use crate::complex_solver_umfpack::*;

@@ -1,6 +1,6 @@
 use crate::constants::*;
 use crate::StrError;
-use crate::{ErkDenseOut, Information, Method, OdeSolverTrait, Params, System, Workspace};
+use crate::{detect_stiffness, ErkDenseOut, Information, Method, OdeSolverTrait, Params, System, Workspace};
 use russell_lab::{format_fortran, vec_copy, vec_update, Matrix, Vector};
 use russell_sparse::CooMatrix;
 
@@ -291,7 +291,7 @@ where
         work.h_new = h / fac;
 
         // stiffness detection
-        if self.params.stiffness.enabled {
+        work.stiff_detected = if self.params.stiffness.enabled {
             if self.params.method == Method::DoPri5 {
                 let mut num = 0.0;
                 let mut den = 0.0;
@@ -304,8 +304,8 @@ where
                 if den > f64::EPSILON {
                     work.stiff_h_times_lambda = h * f64::sqrt(num / den);
                 }
-            }
-            if self.params.method == Method::DoPri8 {
+                detect_stiffness(work, &self.params)?
+            } else if self.params.method == Method::DoPri8 {
                 const NEW: usize = 10; // to use k[NEW] as a temporary workspace
                 work.bench.n_function += 1;
                 (self.system.function)(&mut self.k[NEW], *x, y, args)?; // line 663 of dop853.f
@@ -320,16 +320,31 @@ where
                 if den > f64::EPSILON {
                     work.stiff_h_times_lambda = h * f64::sqrt(num / den);
                 }
+                detect_stiffness(work, &self.params)?
+            } else {
+                false
             }
-        }
+        } else {
+            false
+        };
 
         // print debug messages
         if self.params.debug {
+            if work.stiff_detected {
+                println!(
+                    "THE PROBLEM SEEMS TO BECOME STIFF AT X ={}, ACCEPTED STEP ={:>5}",
+                    format_fortran(*x - h),
+                    work.bench.n_accepted
+                );
+            }
             println!(
-                "accept: step = {:>5}, err ={}, h_new ={}",
+                "step(A) ={:>5}, err ={}, h_new ={}, n_yes ={:>4}, n_no ={:>4}, h*lambda ={}",
                 work.bench.n_steps,
                 format_fortran(work.rel_error),
                 format_fortran(work.h_new),
+                work.stiff_n_detection_yes,
+                work.stiff_n_detection_no,
+                format_fortran(work.stiff_h_times_lambda),
             );
         }
         Ok(())
@@ -344,7 +359,7 @@ where
         // print debug messages
         if self.params.debug {
             println!(
-                "reject: step = {:>5}, err ={}, h_new ={}",
+                "step(R) ={:>5}, err ={}, h_new ={}",
                 work.bench.n_steps,
                 format_fortran(work.rel_error),
                 format_fortran(work.h_new),

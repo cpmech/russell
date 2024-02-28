@@ -7,6 +7,7 @@ pub type StrError = &'static str;
 
 mod benchmark;
 mod constants;
+mod detect_stiffness;
 mod enums;
 mod erk_dense_out;
 mod euler_backward;
@@ -23,6 +24,7 @@ mod system;
 mod workspace;
 pub use crate::benchmark::*;
 pub use crate::constants::*;
+use crate::detect_stiffness::*;
 pub use crate::enums::*;
 use crate::erk_dense_out::*;
 use crate::euler_backward::*;

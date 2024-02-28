@@ -2,7 +2,7 @@ use russell_lab::{approx_eq, format_fortran, vec_approx_eq, Vector};
 use russell_ode::{Method, OdeSolver, Output, Params, Samples};
 
 #[test]
-fn test_dopri5_van_der_pol_stiff_detect() {
+fn test_dopri5_van_der_pol_debug() {
     // get get ODE system
     const EPS: f64 = 0.003;
     let (system, _, mut args) = Samples::van_der_pol(Some(EPS), false);
@@ -11,6 +11,8 @@ fn test_dopri5_van_der_pol_stiff_detect() {
     let mut params = Params::new(Method::DoPri5);
     params.step.h_ini = 1e-4;
     params.set_tolerances(1e-3, 1e-3, None).unwrap();
+    params.debug = true;
+    params.stiffness.skip_first_n_accepted_step = 0;
     params.stiffness.enabled = true;
     params.stiffness.stop_with_error = false;
     params.stiffness.save_results = true;
@@ -44,11 +46,10 @@ fn test_dopri5_van_der_pol_stiff_detect() {
     assert_eq!(stat.n_rejected, 20);
 
     // check stiffness results
-    println!("{:?}", out.stiff_step_index);
-    assert_eq!(out.stiff_step_index, &[33, 189, 357]);
+    assert_eq!(out.stiff_step_index, &[32, 189, 357]);
     vec_approx_eq(
         &out.stiff_x,
         &[8.973510130811428E-02, 9.306509118845370E-01, 1.809882994363079E+00],
-        4e-3,
+        1e-12,
     );
 }

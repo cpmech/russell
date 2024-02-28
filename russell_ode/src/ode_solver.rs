@@ -146,7 +146,8 @@ impl<'a, A> OdeSolver<'a, A> {
             if out.with_dense_output() {
                 self.actual.enable_dense_output();
             }
-            out.push(self.work.bench.n_accepted, x, y, h, &self.actual)?;
+            out.save_stiff = self.params.stiffness.save_results;
+            out.push(&self.work, x, y, h, &self.actual)?;
         }
 
         // equal-stepping loop
@@ -165,7 +166,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
                 // output
                 if let Some(out) = output.as_mut() {
-                    out.push(self.work.bench.n_accepted, x, y, h, &self.actual)?;
+                    out.push(&self.work, x, y, h, &self.actual)?;
                 }
                 self.work.bench.stop_sw_step();
             }
@@ -219,31 +220,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
                 // output
                 if let Some(out) = output.as_mut() {
-                    out.push(self.work.bench.n_accepted, x, y, h, &self.actual)?;
-                }
-
-                // stiffness detection
-                if self.work.bench.n_accepted > self.params.stiffness.skip_first_n_accepted_step {
-                    if self.work.stiff_h_times_lambda > self.params.stiffness.h_times_lambda_max {
-                        self.work.stiff_n_detection_no = 0;
-                        self.work.stiff_n_detection_yes += 1;
-                        if self.work.stiff_n_detection_yes == self.params.stiffness.ratified_after_nstep {
-                            if self.params.stiffness.save_results {
-                                if let Some(out) = output.as_mut() {
-                                    out.stiff_step_index.push(self.work.bench.n_accepted);
-                                    out.stiff_x.push(x - h);
-                                }
-                            }
-                            if self.params.stiffness.stop_with_error {
-                                return Err("stiffness detected");
-                            }
-                        }
-                    } else {
-                        self.work.stiff_n_detection_no += 1;
-                        if self.work.stiff_n_detection_no == self.params.stiffness.ignored_after_nstep {
-                            self.work.stiff_n_detection_yes = 0;
-                        }
-                    }
+                    out.push(&self.work, x, y, h, &self.actual)?;
                 }
 
                 // converged?

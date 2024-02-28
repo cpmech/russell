@@ -1,5 +1,6 @@
 use crate::{Benchmark, Method};
 
+/// Holds workspace data shared among the ODE solver and actual implementations
 pub(crate) struct Workspace {
     /// Holds benchmark data
     pub(crate) bench: Benchmark,
@@ -33,6 +34,9 @@ pub(crate) struct Workspace {
 
     /// Holds the number of positive stiffness detections
     pub(crate) stiff_n_detection_yes: usize,
+
+    /// Indicates whether stiffness has been detected or not (after some "yes" steps have been found)
+    pub(crate) stiff_detected: bool,
 }
 
 impl Workspace {
@@ -50,6 +54,7 @@ impl Workspace {
             stiff_h_times_lambda: 0.0,
             stiff_n_detection_no: 0,
             stiff_n_detection_yes: 0,
+            stiff_detected: false,
         }
     }
 
@@ -66,5 +71,6 @@ impl Workspace {
         self.stiff_h_times_lambda = 0.0;
         self.stiff_n_detection_no = 0;
         self.stiff_n_detection_yes = 0;
+        self.stiff_detected = false;
     }
 }

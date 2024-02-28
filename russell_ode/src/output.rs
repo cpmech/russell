@@ -1,4 +1,5 @@
-use crate::{OdeSolverTrait, StrError};
+use crate::StrError;
+use crate::{OdeSolverTrait, Workspace};
 use russell_lab::{vec_max_abs_diff, Vector};
 use std::collections::HashMap;
 
@@ -33,6 +34,9 @@ pub struct Output<'a> {
     /// Holds the selected y components requested by the dense output
     pub dense_y: HashMap<usize, Vec<f64>>,
 
+    /// Saves the stations where stiffness has been detected
+    pub(crate) save_stiff: bool,
+
     /// Holds the indices of the accepted steps where stiffness has been detected
     pub stiff_step_index: Vec<usize>,
 
@@ -60,6 +64,7 @@ impl<'a> Output<'a> {
             dense_step_index: Vec::new(),
             dense_x: Vec::new(),
             dense_y: HashMap::new(),
+            save_stiff: false,
             stiff_step_index: Vec::new(),
             stiff_x: Vec::new(),
             y_aux: Vector::new(EMPTY),
@@ -156,7 +161,7 @@ impl<'a> Output<'a> {
     /// Appends the results after an accepted step is computed
     pub(crate) fn push<A>(
         &mut self,
-        accepted_step_index: usize,
+        work: &Workspace,
         x: f64,
         y: &Vector,
         h: f64,
@@ -182,9 +187,9 @@ impl<'a> Output<'a> {
         }
         // dense output
         if let Some(h_out) = self.dense_h {
-            if accepted_step_index == 0 {
+            if work.bench.n_accepted == 0 {
                 // first output
-                self.dense_step_index.push(accepted_step_index);
+                self.dense_step_index.push(work.bench.n_accepted);
                 self.dense_x.push(x);
                 for (m, ym) in self.dense_y.iter_mut() {
                     ym.push(y[*m]);
@@ -197,7 +202,7 @@ impl<'a> Output<'a> {
                 }
                 let mut x_out = self.dense_x.last().unwrap() + h_out;
                 while x_out < x {
-                    self.dense_step_index.push(accepted_step_index);
+                    self.dense_step_index.push(work.bench.n_accepted);
                     self.dense_x.push(x_out);
                     solver.dense_output(&mut self.y_aux, x_out, x, y, h)?;
                     for (m, ym) in self.dense_y.iter_mut() {
@@ -205,6 +210,13 @@ impl<'a> Output<'a> {
                     }
                     x_out += h_out;
                 }
+            }
+        }
+        // stiff stations
+        if self.save_stiff {
+            if work.stiff_detected {
+                self.stiff_step_index.push(work.bench.n_accepted);
+                self.stiff_x.push(x - h); // the detection is always one stepsize earlier
             }
         }
         Ok(())

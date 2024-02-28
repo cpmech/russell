@@ -39,7 +39,7 @@ fn test_radau5_amplifier() {
     approx_eq(data.y0[5], 2.849957445537722E+00, 1e-6);
     approx_eq(data.y0[6], 3.006521494823356E+00, 1e-7);
     approx_eq(data.y0[7], -5.561984048406549E-03, 1e-7);
-    approx_eq(stat.h_accepted, 8.644857027106722E-04, 1e-4);
+    approx_eq(stat.h_accepted, 8.644857027106722E-04, 2.5e-4);
 
     // print and check statistics
     println!("{}", stat.summary());

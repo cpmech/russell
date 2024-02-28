@@ -17,9 +17,8 @@ fn test_dopri5_van_der_pol_debug() {
     params.stiffness.stop_with_error = false;
     params.stiffness.save_results = true;
 
-    // enable dense output
+    // output (to save stiff stations)
     let mut out = Output::new();
-    out.enable_dense(0.1, &[0, 1]).unwrap();
 
     // solve the ODE system
     let mut y0 = Vector::from(&[2.0, 0.0]);

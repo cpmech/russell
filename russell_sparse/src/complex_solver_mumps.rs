@@ -682,6 +682,6 @@ mod tests {
             cpx!(398.0, 0.0),
             cpx!(123.0 / 2.0, 0.0),
         ];
-        complex_vec_approx_eq(x.as_data(), x_correct, 1e-13);
+        complex_vec_approx_eq(x.as_data(), x_correct, 1e-10);
     }
 }

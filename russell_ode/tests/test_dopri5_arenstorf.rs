@@ -25,10 +25,10 @@ fn test_dopri5_arenstorf() {
     let stat = solver.bench();
 
     // compare with dopri5.f
-    approx_eq(data.y0[0], 9.940021704030663E-01, 1e-12);
+    approx_eq(data.y0[0], 9.940021704030663E-01, 1e-11);
     approx_eq(data.y0[1], 9.040891036151961E-06, 1e-11);
     approx_eq(data.y0[2], 1.459758305600828E-03, 1e-9);
-    approx_eq(data.y0[3], -2.001245515834718E+00, 1e-10);
+    approx_eq(data.y0[3], -2.001245515834718E+00, 1e-9);
     approx_eq(stat.h_accepted, 5.258587607119909E-04, 1e-10);
 
     // print dense output

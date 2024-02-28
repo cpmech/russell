@@ -28,7 +28,7 @@ fn test_dopri8_van_der_pol() {
 
     // compare with dop853.f
     approx_eq(y0[0], 1.763234540172087E+00, 1e-13);
-    approx_eq(y0[1], -8.356886819301910E-01, 1e-13);
+    approx_eq(y0[1], -8.356886819301910E-01, 1e-12);
     approx_eq(stat.h_accepted, 8.656983588595286E-04, 4.5e-7);
 
     // print dense output

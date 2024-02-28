@@ -273,4 +273,14 @@ mod tests {
         );
         assert_eq!(implicit, &[Method::Radau5, Method::BwEuler]);
     }
+
+    #[test]
+    fn description_works() {
+        for m in Method::explicit_methods() {
+            assert!(m.description().len() > 0);
+        }
+        for m in Method::implicit_methods() {
+            assert!(m.description().len() > 0);
+        }
+    }
 }

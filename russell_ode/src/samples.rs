@@ -50,12 +50,14 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// Returns `(system, data, 0)` where:
+    /// Returns `(system, data, args)` where:
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
     ///     * `A` -- is `SampleNoArgs`
+    /// * `data: SampleData` -- holds the initial values and the analytical solution
+    /// * `args: SampleNoArgs` -- is a placeholder variable with the arguments to F and J
     ///
     /// # Reference
     ///
@@ -111,12 +113,14 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// Returns `(system, data, 0)` where:
+    /// Returns `(system, data, args)` where:
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
     ///     * `A` -- is `SampleNoArgs`
+    /// * `data: SampleData` -- holds the initial values and the analytical solution
+    /// * `args: SampleNoArgs` -- is a placeholder variable with the arguments to F and J
     pub fn problem2_simple_system<'a>() -> (
         System<
             'a,
@@ -168,12 +172,14 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// Returns `(system, data, 0)` where:
+    /// Returns `(system, data, args)` where:
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
     ///     * `A` -- is `SampleNoArgs`
+    /// * `data: SampleData` -- holds the initial values and the analytical solution
+    /// * `args: SampleNoArgs` -- is a placeholder variable with the arguments to F and J
     ///
     /// # Reference
     ///
@@ -224,12 +230,14 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// Returns `(system, data, 0)` where:
+    /// Returns `(system, data, args)` where:
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
     ///     * `A` -- is `SampleNoArgs`
+    /// * `data: SampleData` -- holds the initial values
+    /// * `args: SampleNoArgs` -- is a placeholder variable with the arguments to F and J
     ///
     /// # Reference
     ///
@@ -287,12 +295,14 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// Returns `(system, data, 0)` where:
+    /// Returns `(system, data, args)` where:
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
     ///     * `A` -- is `SampleNoArgs`
+    /// * `data: SampleData` -- holds the initial values
+    /// * `args: SampleNoArgs` -- is a placeholder variable with the arguments to F and J
     ///
     /// # Input
     ///
@@ -390,12 +400,14 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// Returns `(system, data, 0)` where:
+    /// Returns `(system, data, args)` where:
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
     ///     * `A` -- is `SampleNoArgs`
+    /// * `data: SampleData` -- holds the initial values
+    /// * `args: SampleNoArgs` -- is a placeholder variable with the arguments to F and J
     ///
     /// # Reference
     ///
@@ -479,12 +491,16 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// Returns `(system, data, 0)` where:
+    /// Returns `(system, data, args, gen_mass_matrix)` where:
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
     ///     * `A` -- is `SampleNoArgs`
+    /// * `data: SampleData` -- holds the initial values
+    /// * `args: SampleNoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `gen_mass_matrix: fn(one_based: bool) -> CooMatrix` -- is a function to generate the mass matrix.
+    ///    Note: the mass matrix needs to be allocated externally because a reference to it is required by System.
     ///
     /// # Reference
     ///

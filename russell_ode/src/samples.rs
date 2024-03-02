@@ -39,7 +39,7 @@ pub type SampleNoArgs = u8;
 pub struct Samples {}
 
 impl Samples {
-    /// Implements Problem #1: A single equation (with analytical solution)
+    /// Implements a single equation problem (with analytical solution)
     ///
     /// See, e.g., Equation (6) in Kreyszig's book, page 902
     ///
@@ -63,7 +63,7 @@ impl Samples {
     ///
     /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
     ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
-    pub fn problem1_single_equation<'a>() -> (
+    pub fn single_equation<'a>() -> (
         System<
             'a,
             impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
@@ -102,7 +102,7 @@ impl Samples {
         (system, data, 0)
     }
 
-    /// Implements Problem #2: A simple system with two equations (with analytical solution)
+    /// Implements a simple system with two equations (with analytical solution)
     ///
     /// ```text
     /// dy0/dx = -x y1
@@ -121,7 +121,7 @@ impl Samples {
     ///     * `A` -- is `SampleNoArgs`
     /// * `data: SampleData` -- holds the initial values and the analytical solution
     /// * `args: SampleNoArgs` -- is a placeholder variable with the arguments to F and J
-    pub fn problem2_simple_system<'a>() -> (
+    pub fn simple_system<'a>() -> (
         System<
             'a,
             impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
@@ -667,62 +667,128 @@ mod tests {
     }
 
     #[test]
-    fn sample_hairer_wanner_eq1_jacobian_works() {
+    fn single_equation_works() {
         let mut args: u8 = 0;
         let multiplier = 1.0;
-        let (mut system, data, _) = Samples::hairer_wanner_eq1();
+        let (mut system, data, _) = Samples::single_equation();
+
+        // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
-        let ana = jj.as_dense();
+
+        // compute the numerical Jacobian matrix
         let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
         println!("{}", ana);
         println!("{}", num);
         mat_approx_eq(&ana, &num, 1e-11);
     }
 
     #[test]
-    fn sample_van_der_pol_jacobian_works() {
+    fn simple_system_works() {
         let mut args: u8 = 0;
         let multiplier = 1.0;
+        let (mut system, data, _) = Samples::simple_system();
 
-        // non-stationary
-        let (mut system, data, _) = Samples::van_der_pol(None, false);
+        // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
-        let ana = jj.as_dense();
+
+        // compute the numerical Jacobian matrix
         let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-11);
+    }
+
+    #[test]
+    fn hairer_wanner_eq1_works() {
+        let mut args: u8 = 0;
+        let multiplier = 1.0;
+        let (mut system, data, _) = Samples::hairer_wanner_eq1();
+
+        // compute the analytical Jacobian matrix
+        let symmetry = Some(system.jac_symmetry);
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+
+        // compute the numerical Jacobian matrix
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-11);
+    }
+
+    #[test]
+    fn van_der_pol_works() {
+        let mut args: u8 = 0;
+        let multiplier = 1.0;
+        let (mut system, data, _) = Samples::van_der_pol(None, false);
+
+        // compute the analytical Jacobian matrix
+        let symmetry = Some(system.jac_symmetry);
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+
+        // compute the numerical Jacobian matrix
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
         println!("{}", ana);
         println!("{}", num);
         mat_approx_eq(&ana, &num, 1e-6);
+    }
 
-        // stationary
+    #[test]
+    fn van_der_pol_works_stationary() {
+        let mut args: u8 = 0;
+        let multiplier = 1.0;
         let (mut system, data, _) = Samples::van_der_pol(None, true);
+
+        // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
-        let ana = jj.as_dense();
+
+        // compute the numerical Jacobian matrix
         let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
         println!("{}", ana);
         println!("{}", num);
         mat_approx_eq(&ana, &num, 1e-12);
     }
 
     #[test]
-    fn sample_arenstorf_jacobian_works() {
+    fn arenstorf_works() {
         let mut args: u8 = 0;
         let multiplier = 1.0;
         let (mut system, data, _) = Samples::arenstorf();
+
+        // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
-        let ana = jj.as_dense();
+
+        // compute the numerical Jacobian matrix
         let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
         println!("{}", ana);
         println!("{}", num);
         mat_approx_eq(&ana, &num, 1e-3);
     }
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

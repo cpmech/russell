@@ -625,7 +625,7 @@ impl Samples {
 mod tests {
     use super::{SampleNoArgs, Samples};
     use crate::StrError;
-    use russell_lab::{deriv_central5, mat_approx_eq, Matrix, Vector};
+    use russell_lab::{deriv_central5, mat_approx_eq, vec_approx_eq, Matrix, Vector};
     use russell_sparse::CooMatrix;
 
     fn numerical_jacobian<F>(ndim: usize, x0: f64, y0: Vector, mut function: F, multiplier: f64) -> Matrix
@@ -670,7 +670,15 @@ mod tests {
     fn single_equation_works() {
         let mut args: u8 = 0;
         let multiplier = 2.0;
-        let (mut system, data, _) = Samples::single_equation();
+        let (mut system, mut data, _) = Samples::single_equation();
+
+        // check initial values
+        if let Some(y_ana) = data.y_analytical.as_mut() {
+            let mut y = Vector::new(data.y0.dim());
+            y_ana(&mut y, data.x0);
+            println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
+            vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
+        }
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
@@ -691,7 +699,15 @@ mod tests {
     fn simple_system_works() {
         let mut args: u8 = 0;
         let multiplier = 2.0;
-        let (mut system, data, _) = Samples::simple_system();
+        let (mut system, mut data, _) = Samples::simple_system();
+
+        // check initial values
+        if let Some(y_ana) = data.y_analytical.as_mut() {
+            let mut y = Vector::new(data.y0.dim());
+            y_ana(&mut y, data.x0);
+            println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
+            vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
+        }
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
@@ -712,7 +728,15 @@ mod tests {
     fn hairer_wanner_eq1_works() {
         let mut args: u8 = 0;
         let multiplier = 2.0;
-        let (mut system, data, _) = Samples::hairer_wanner_eq1();
+        let (mut system, mut data, _) = Samples::hairer_wanner_eq1();
+
+        // check initial values
+        if let Some(y_ana) = data.y_analytical.as_mut() {
+            let mut y = Vector::new(data.y0.dim());
+            y_ana(&mut y, data.x0);
+            println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
+            vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
+        }
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);

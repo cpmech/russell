@@ -573,4 +573,73 @@ mod tests {
             Some("dense output is not available for this explicit Runge-Kutta method")
         );
     }
+
+    #[test]
+    fn rk4_works() {
+        // This test relates to Table 21.4 of Kreyszig's book, page 904
+
+        // problem
+        let (system, data, mut args) = Samples::single_equation();
+        let mut yfx = data.y_analytical.unwrap();
+        let ndim = system.ndim;
+
+        // allocate structs
+        let params = Params::new(Method::Rk4); // aka the Classical RK in Kreyszig's book
+        let mut solver = ExplicitRungeKutta::new(params, system).unwrap();
+        let mut work = Workspace::new(Method::FwEuler);
+
+        // numerical approximation
+        let h = 0.2;
+        let mut x = data.x0;
+        let mut y = data.y0.clone();
+        let mut y_ana = Vector::new(ndim);
+        yfx(&mut y_ana, x);
+        let mut xx = vec![x];
+        let mut yy_num = vec![y[0]];
+        let mut yy_ana = vec![y_ana[0]];
+        let mut errors = vec![f64::abs(yy_num[0] - yy_ana[0])];
+        for n in 0..5 {
+            solver.step(&mut work, x, &y, h, &mut args).unwrap();
+            assert_eq!(work.bench.n_function, (n + 1) * 4);
+
+            solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
+            xx.push(x);
+            yy_num.push(y[0]);
+
+            yfx(&mut y_ana, x);
+            yy_ana.push(y_ana[0]);
+            errors.push(f64::abs(yy_num.last().unwrap() - yy_ana.last().unwrap()));
+        }
+
+        println!("{:?}", yy_num);
+
+        // compare with Mathematica results
+        let xx_correct = &[0.0, 0.2, 0.4, 0.6, 0.8, 1.0];
+        let yy_correct = &[
+            0.0,
+            0.0214,
+            0.09181796,
+            0.222106456344,
+            0.4255208257785617,
+            0.7182511366059352,
+        ];
+        let errors_correct = &[
+            0.0,
+            2.758160169841206e-6,
+            6.737641270307404e-6,
+            0.00001234404650901633,
+            0.00002010271390617824,
+            0.00003069185310988765,
+        ];
+        vec_approx_eq(&xx, xx_correct, 1e-15);
+        vec_approx_eq(&yy_num, yy_correct, 1e-15);
+        vec_approx_eq(&errors, errors_correct, 1e-15);
+
+        // check dense_output
+        let mut y_out = Vector::new(ndim);
+        assert_eq!(
+            solver.dense_output(&mut y_out, 0.0, x, &y, h).err(),
+            Some("dense output is not available for this explicit Runge-Kutta method")
+        );
+    }
 }

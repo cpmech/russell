@@ -647,13 +647,13 @@ mod tests {
             j: 0,
         };
         let mut jac = Matrix::new(ndim, ndim);
+        let mut args: u8 = 0;
         for i in 0..ndim {
             extra.i = i;
             for j in 0..ndim {
                 extra.j = j;
                 let at_yj = y0[j];
                 let res = deriv_central5(at_yj, &mut extra, |yj: f64, extra: &mut Extra| {
-                    let mut args: u8 = 0;
                     let original = extra.y[extra.j];
                     extra.y[extra.j] = yj;
                     function(&mut extra.f, extra.x, &extra.y, &mut args).unwrap();
@@ -668,9 +668,8 @@ mod tests {
 
     #[test]
     fn single_equation_works() {
-        let mut args: u8 = 0;
         let multiplier = 2.0;
-        let (mut system, mut data, _) = Samples::single_equation();
+        let (mut system, mut data, mut args) = Samples::single_equation();
 
         // check initial values
         if let Some(y_ana) = data.y_analytical.as_mut() {
@@ -697,9 +696,8 @@ mod tests {
 
     #[test]
     fn simple_system_works() {
-        let mut args: u8 = 0;
         let multiplier = 2.0;
-        let (mut system, mut data, _) = Samples::simple_system();
+        let (mut system, mut data, mut args) = Samples::simple_system();
 
         // check initial values
         if let Some(y_ana) = data.y_analytical.as_mut() {
@@ -726,9 +724,8 @@ mod tests {
 
     #[test]
     fn hairer_wanner_eq1_works() {
-        let mut args: u8 = 0;
         let multiplier = 2.0;
-        let (mut system, mut data, _) = Samples::hairer_wanner_eq1();
+        let (mut system, mut data, mut args) = Samples::hairer_wanner_eq1();
 
         // check initial values
         if let Some(y_ana) = data.y_analytical.as_mut() {
@@ -755,9 +752,8 @@ mod tests {
 
     #[test]
     fn robertson_works() {
-        let mut args: u8 = 0;
         let multiplier = 2.0;
-        let (mut system, data, _) = Samples::robertson();
+        let (mut system, data, mut args) = Samples::robertson();
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
@@ -776,9 +772,8 @@ mod tests {
 
     #[test]
     fn van_der_pol_works() {
-        let mut args: u8 = 0;
         let multiplier = 2.0;
-        let (mut system, data, _) = Samples::van_der_pol(None, false);
+        let (mut system, data, mut args) = Samples::van_der_pol(None, false);
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
@@ -797,9 +792,8 @@ mod tests {
 
     #[test]
     fn van_der_pol_works_stationary() {
-        let mut args: u8 = 0;
         let multiplier = 3.0;
-        let (mut system, data, _) = Samples::van_der_pol(None, true);
+        let (mut system, data, mut args) = Samples::van_der_pol(None, true);
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
@@ -818,9 +812,8 @@ mod tests {
 
     #[test]
     fn arenstorf_works() {
-        let mut args: u8 = 0;
         let multiplier = 1.5;
-        let (mut system, data, _) = Samples::arenstorf();
+        let (mut system, data, mut args) = Samples::arenstorf();
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
@@ -839,9 +832,8 @@ mod tests {
 
     #[test]
     fn amplifier_works() {
-        let mut args: u8 = 0;
         let multiplier = 2.0;
-        let (mut system, data, _, gen_mass_matrix) = Samples::amplifier();
+        let (mut system, data, mut args, gen_mass_matrix) = Samples::amplifier();
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);

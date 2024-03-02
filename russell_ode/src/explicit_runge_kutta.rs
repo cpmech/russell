@@ -642,4 +642,53 @@ mod tests {
             Some("dense output is not available for this explicit Runge-Kutta method")
         );
     }
+
+    #[test]
+    fn fehlberg4_step_works() {
+        // Solving Equation (11) from Kreyszig's page 908 - Example 3
+        //
+        // ```text
+        // dy
+        // —— = (y - x - 1)² + 2   with   y(x=0)=1
+        // dx
+        //
+        // y(x) = tan(x) + x + 1
+        // ```
+        let system = System::new(
+            1,
+            |f, x, y, _: &mut u8| {
+                let d = y[0] - x - 1.0;
+                f[0] = d * d + 2.0;
+                Ok(())
+            },
+            no_jacobian,
+            HasJacobian::No,
+            None,
+            None,
+        );
+
+        // allocate solver
+        let params = Params::new(Method::Fehlberg4);
+        let mut solver = ExplicitRungeKutta::new(params, system).unwrap();
+        let mut work = Workspace::new(Method::FwEuler);
+
+        // perform one step (compute k)
+        let x = 0.0;
+        let y = Vector::from(&[1.0]);
+        let h = 0.1;
+        let mut args = 0;
+        solver.step(&mut work, x, &y, h, &mut args).unwrap();
+
+        // compare with Kreyszig's results (Example 3, page 908)
+        let kh: Vec<_> = solver.k.iter().map(|k| k[0] * h).collect();
+        let kh_correct = &[
+            0.200000000000,
+            0.200062500000,
+            0.200140756867,
+            0.200856926154,
+            0.201006676700,
+            0.200250418651,
+        ];
+        vec_approx_eq(&kh, kh_correct, 1e-12);
+    }
 }

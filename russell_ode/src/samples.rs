@@ -28,28 +28,156 @@ pub type SampleNoArgs = u8;
 ///
 /// # References
 ///
-/// 1. E. Hairer, S. P. Nørsett, G. Wanner (2008) Solving Ordinary Differential Equations I.
+/// 1. Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
 ///    Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
 ///    in Computational Mathematics, 528p
-/// 2. E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
+/// 2. Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
 ///    Stiff and Differential-Algebraic Problems. Second Revised Edition.
 ///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
+/// 3. Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
+///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
 pub struct Samples {}
 
 impl Samples {
-    /// Returns the Hairer-Wanner problem from the reference, Part II, Eq(1.1), page 2
+    /// Implements Problem #1: A single equation (with analytical solution)
+    ///
+    /// See, e.g., Equation (6) in Kreyszig's book, page 902
+    ///
+    /// ```text
+    /// dy/dx = x + y
+    /// y(0) = 0
+    /// ```
     ///
     /// # Output
     ///
-    /// Returns `(System<F, J, A>, SampleData, A)` where:
+    /// Returns `(system, data, 0)` where:
     ///
-    /// * `F` -- is a function to compute the `f` vector; e.g., `fn(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    /// * `J` -- is a function to compute the Jacobian; e.g., `fn(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    /// * `A` -- is `SampleNoArgs`
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `SampleNoArgs`
     ///
     /// # Reference
     ///
-    /// * E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
+    /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
+    ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
+    pub fn problem1_single_equation<'a>() -> (
+        System<
+            'a,
+            impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
+            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
+            SampleNoArgs,
+        >,
+        SampleData<'a>,
+        SampleNoArgs,
+    ) {
+        let ndim = 1;
+        let jac_nnz = 1;
+        let system = System::new(
+            ndim,
+            |f: &mut Vector, x: f64, y: &Vector, _args: &mut SampleNoArgs| {
+                f[0] = x + y[0];
+                Ok(())
+            },
+            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut SampleNoArgs| {
+                jj.reset();
+                jj.put(0, 0, 1.0 * multiplier)?;
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+        let data = SampleData {
+            x0: 0.0,
+            y0: Vector::from(&[0.0]),
+            x1: 1.0,
+            h_equal: Some(0.2),
+            y_analytical: Some(Box::new(|y, x| {
+                y[0] = f64::exp(x) - x - 1.0;
+            })),
+        };
+        (system, data, 0)
+    }
+
+    /// Implements Problem #2: A simple system with two equations (with analytical solution)
+    ///
+    /// ```text
+    /// dy0/dx = -x y1
+    /// dy1/dx =  x y0
+    /// y0(0) = P
+    /// y1(0) = Q
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, 0)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `SampleNoArgs`
+    pub fn problem2_simple_system<'a>() -> (
+        System<
+            'a,
+            impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
+            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
+            SampleNoArgs,
+        >,
+        SampleData<'a>,
+        SampleNoArgs,
+    ) {
+        const P: f64 = -1.0;
+        const Q: f64 = 1.0;
+        let ndim = 2;
+        let jac_nnz = 2;
+        let system = System::new(
+            ndim,
+            |f: &mut Vector, x: f64, y: &Vector, _args: &mut SampleNoArgs| {
+                f[0] = -x * y[1];
+                f[1] = x * y[0];
+                Ok(())
+            },
+            |jj: &mut CooMatrix, x: f64, _y: &Vector, multiplier: f64, _args: &mut SampleNoArgs| {
+                jj.reset();
+                jj.put(0, 1, -x * multiplier)?;
+                jj.put(1, 0, x * multiplier)?;
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+        let data = SampleData {
+            x0: 0.0,
+            y0: Vector::from(&[P, Q]),
+            x1: 5.0,
+            h_equal: None,
+            y_analytical: Some(Box::new(|y, x| {
+                let v = x * x / 2.0;
+                let c = f64::cos(v);
+                let s = f64::sin(v);
+                y[0] = P * c - Q * s;
+                y[1] = Q * c + P * s;
+            })),
+        };
+        (system, data, 0)
+    }
+
+    /// Returns the Hairer-Wanner problem from the reference, Part II, Eq(1.1), page 2 (with analytical solution)
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, 0)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `SampleNoArgs`
+    ///
+    /// # Reference
+    ///
+    /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
     pub fn hairer_wanner_eq1<'a>() -> (
@@ -63,8 +191,10 @@ impl Samples {
         SampleNoArgs,
     ) {
         const L: f64 = -50.0; // lambda
+        let ndim = 1;
+        let jac_nnz = 1;
         let system = System::new(
-            1,
+            ndim,
             |f: &mut Vector, x: f64, y: &Vector, _args: &mut SampleNoArgs| {
                 f[0] = L * (y[0] - f64::cos(x));
                 Ok(())
@@ -75,7 +205,7 @@ impl Samples {
                 Ok(())
             },
             HasJacobian::Yes,
-            None,
+            Some(jac_nnz),
             None,
         );
         let data = SampleData {
@@ -94,15 +224,16 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// Returns `(System<F, J, A>, SampleData, A)` where:
+    /// Returns `(system, data, 0)` where:
     ///
-    /// * `F` -- is a function to compute the `f` vector; e.g., `fn(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    /// * `J` -- is a function to compute the Jacobian; e.g., `fn(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    /// * `A` -- is `SampleNoArgs`
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `SampleNoArgs`
     ///
     /// # Reference
     ///
-    /// * E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
+    /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
     pub fn robertson<'a>() -> (
@@ -152,7 +283,16 @@ impl Samples {
 
     /// Returns the Van der Pol's equation as given in Hairer-Wanner, Part II, Eq(1.5'), page 5
     ///
-    /// Using data from Eq(7.29), page 113
+    /// **Note:** Using the data from Eq(7.29), page 113.
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, 0)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `SampleNoArgs`
     ///
     /// # Input
     ///
@@ -160,17 +300,9 @@ impl Samples {
     /// * `stationary` -- use `ε = 1` and compute the period and amplitude such that
     ///   `y = [A, 0]` is a stationary point.
     ///
-    /// # Output
-    ///
-    /// Returns `(System<F, J, A>, SampleData, A)` where:
-    ///
-    /// * `F` -- is a function to compute the `f` vector; e.g., `fn(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    /// * `J` -- is a function to compute the Jacobian; e.g., `fn(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    /// * `A` -- is `SampleNoArgs`
-    ///
     /// # Reference
     ///
-    /// * E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
+    /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
     pub fn van_der_pol<'a>(
@@ -258,15 +390,16 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// Returns `(System<F, J, A>, SampleData, A)` where:
+    /// Returns `(system, data, 0)` where:
     ///
-    /// * `F` -- is a function to compute the `f` vector; e.g., `fn(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    /// * `J` -- is a function to compute the Jacobian; e.g., `fn(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    /// * `A` -- is `SampleNoArgs`
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `SampleNoArgs`
     ///
     /// # Reference
     ///
-    /// * E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
+    /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
     pub fn arenstorf<'a>() -> (
@@ -346,16 +479,16 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// Returns `(System<F, J, A>, SampleData, A)` where:
+    /// Returns `(system, data, 0)` where:
     ///
-    /// * `F` -- is a function to compute the `f` vector; e.g., `fn(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    /// * `J` -- is a function to compute the Jacobian; e.g., `fn(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    /// * `A` -- is `SampleNoArgs`
-    /// * `gen_mass_matrix` -- is a `function(one_based: bool) -> CooMatrix` that generates the mass matrix
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `SampleNoArgs`
     ///
     /// # Reference
     ///
-    /// * E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
+    /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
     pub fn amplifier<'a>() -> (
@@ -575,3 +708,5 @@ mod tests {
         mat_approx_eq(&ana, &num, 1e-3);
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

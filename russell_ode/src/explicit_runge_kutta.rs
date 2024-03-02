@@ -379,8 +379,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::ExplicitRungeKutta;
-    use crate::{no_jacobian, HasJacobian, Method, Params, System};
-    use russell_lab::approx_eq;
+    use crate::{no_jacobian, HasJacobian, Method, OdeSolverTrait, Params, Samples, System, Workspace};
+    use russell_lab::{approx_eq, vec_approx_eq, Vector};
 
     #[test]
     fn constants_are_consistent() {
@@ -510,5 +510,67 @@ mod tests {
                 approx_eq(sum, erk.cc[i - 1] * erk.cc[i - 1] / 2.0, 1e-14);
             }
         }
+    }
+
+    #[test]
+    fn modified_euler_works() {
+        // This test relates to Table 21.2 of Kreyszig's book, page 904
+
+        // problem
+        let (system, data, mut args) = Samples::single_equation();
+        let mut yfx = data.y_analytical.unwrap();
+        let ndim = system.ndim;
+
+        // allocate structs
+        let params = Params::new(Method::MdEuler); // aka the Improved Euler in Kreyszig's book
+        let mut solver = ExplicitRungeKutta::new(params, system).unwrap();
+        let mut work = Workspace::new(Method::FwEuler);
+
+        // numerical approximation
+        let h = 0.2;
+        let mut x = data.x0;
+        let mut y = data.y0.clone();
+        let mut y_ana = Vector::new(ndim);
+        yfx(&mut y_ana, x);
+        let mut xx = vec![x];
+        let mut yy_num = vec![y[0]];
+        let mut yy_ana = vec![y_ana[0]];
+        let mut errors = vec![f64::abs(yy_num[0] - yy_ana[0])];
+        for n in 0..5 {
+            solver.step(&mut work, x, &y, h, &mut args).unwrap();
+            assert_eq!(work.bench.n_function, (n + 1) * 2);
+
+            solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
+            xx.push(x);
+            yy_num.push(y[0]);
+
+            yfx(&mut y_ana, x);
+            yy_ana.push(y_ana[0]);
+            errors.push(f64::abs(yy_num.last().unwrap() - yy_ana.last().unwrap()));
+        }
+
+        println!("{:?}", yy_num);
+
+        // compare with Mathematica results
+        let xx_correct = &[0.0, 0.2, 0.4, 0.6, 0.8, 1.0];
+        let yy_correct = &[0.0, 0.02, 0.0884, 0.215848, 0.4153345600000001, 0.7027081632000001];
+        let errors_correct = &[
+            0.0,
+            0.00140275816016984,
+            0.003424697641270305,
+            0.006270800390508979,
+            0.01020636849246775,
+            0.01557366525904502,
+        ];
+        vec_approx_eq(&xx, xx_correct, 1e-15);
+        vec_approx_eq(&yy_num, yy_correct, 1e-15);
+        vec_approx_eq(&errors, errors_correct, 1e-15);
+
+        // check dense_output
+        let mut y_out = Vector::new(ndim);
+        assert_eq!(
+            solver.dense_output(&mut y_out, 0.0, x, &y, h).err(),
+            Some("dense output is not available for this explicit Runge-Kutta method")
+        );
     }
 }

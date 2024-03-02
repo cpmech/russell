@@ -628,7 +628,7 @@ mod tests {
     use russell_lab::{deriv_central5, mat_approx_eq, Matrix, Vector};
     use russell_sparse::CooMatrix;
 
-    fn numerical_jacobian<F>(ndim: usize, x0: f64, y0: Vector, mut function: F) -> Matrix
+    fn numerical_jacobian<F>(ndim: usize, x0: f64, y0: Vector, mut function: F, multiplier: f64) -> Matrix
     where
         F: FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
     {
@@ -660,7 +660,7 @@ mod tests {
                     extra.y[extra.j] = original;
                     extra.f[extra.i]
                 });
-                jac.set(i, j, res);
+                jac.set(i, j, res * multiplier);
             }
         }
         jac
@@ -669,7 +669,7 @@ mod tests {
     #[test]
     fn single_equation_works() {
         let mut args: u8 = 0;
-        let multiplier = 1.0;
+        let multiplier = 2.0;
         let (mut system, data, _) = Samples::single_equation();
 
         // compute the analytical Jacobian matrix
@@ -678,7 +678,7 @@ mod tests {
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -690,7 +690,7 @@ mod tests {
     #[test]
     fn simple_system_works() {
         let mut args: u8 = 0;
-        let multiplier = 1.0;
+        let multiplier = 2.0;
         let (mut system, data, _) = Samples::simple_system();
 
         // compute the analytical Jacobian matrix
@@ -699,7 +699,7 @@ mod tests {
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -711,7 +711,7 @@ mod tests {
     #[test]
     fn hairer_wanner_eq1_works() {
         let mut args: u8 = 0;
-        let multiplier = 1.0;
+        let multiplier = 2.0;
         let (mut system, data, _) = Samples::hairer_wanner_eq1();
 
         // compute the analytical Jacobian matrix
@@ -720,7 +720,7 @@ mod tests {
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -732,7 +732,7 @@ mod tests {
     #[test]
     fn van_der_pol_works() {
         let mut args: u8 = 0;
-        let multiplier = 1.0;
+        let multiplier = 2.0;
         let (mut system, data, _) = Samples::van_der_pol(None, false);
 
         // compute the analytical Jacobian matrix
@@ -741,19 +741,19 @@ mod tests {
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
         println!("{}", ana);
         println!("{}", num);
-        mat_approx_eq(&ana, &num, 1e-6);
+        mat_approx_eq(&ana, &num, 1.5e-6);
     }
 
     #[test]
     fn van_der_pol_works_stationary() {
         let mut args: u8 = 0;
-        let multiplier = 1.0;
+        let multiplier = 3.0;
         let (mut system, data, _) = Samples::van_der_pol(None, true);
 
         // compute the analytical Jacobian matrix
@@ -762,19 +762,19 @@ mod tests {
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
         println!("{}", ana);
         println!("{}", num);
-        mat_approx_eq(&ana, &num, 1e-12);
+        mat_approx_eq(&ana, &num, 1e-11);
     }
 
     #[test]
     fn arenstorf_works() {
         let mut args: u8 = 0;
-        let multiplier = 1.0;
+        let multiplier = 1.5;
         let (mut system, data, _) = Samples::arenstorf();
 
         // compute the analytical Jacobian matrix
@@ -783,12 +783,12 @@ mod tests {
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function);
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
         println!("{}", ana);
         println!("{}", num);
-        mat_approx_eq(&ana, &num, 1e-3);
+        mat_approx_eq(&ana, &num, 1.6e-4);
     }
 }

@@ -626,7 +626,7 @@ mod tests {
     use super::{SampleNoArgs, Samples};
     use crate::StrError;
     use russell_lab::{deriv_central5, mat_approx_eq, vec_approx_eq, Matrix, Vector};
-    use russell_sparse::CooMatrix;
+    use russell_sparse::{CooMatrix, Symmetry};
 
     fn numerical_jacobian<F>(ndim: usize, x0: f64, y0: Vector, mut function: F, multiplier: f64) -> Matrix
     where
@@ -754,6 +754,27 @@ mod tests {
     }
 
     #[test]
+    fn robertson_works() {
+        let mut args: u8 = 0;
+        let multiplier = 2.0;
+        let (mut system, data, _) = Samples::robertson();
+
+        // compute the analytical Jacobian matrix
+        let symmetry = Some(system.jac_symmetry);
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+
+        // compute the numerical Jacobian matrix
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-14);
+    }
+
+    #[test]
     fn van_der_pol_works() {
         let mut args: u8 = 0;
         let multiplier = 2.0;
@@ -814,5 +835,33 @@ mod tests {
         println!("{}", ana);
         println!("{}", num);
         mat_approx_eq(&ana, &num, 1.6e-4);
+    }
+
+    #[test]
+    fn amplifier_works() {
+        let mut args: u8 = 0;
+        let multiplier = 2.0;
+        let (mut system, data, _, gen_mass_matrix) = Samples::amplifier();
+
+        // compute the analytical Jacobian matrix
+        let symmetry = Some(system.jac_symmetry);
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+
+        // compute the numerical Jacobian matrix
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
+        // println!("{}", ana);
+        // println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-13);
+
+        // generate the mass matrix
+        let mass = gen_mass_matrix(false);
+        println!("{}", mass.as_dense());
+        let ndim = system.ndim;
+        let nnz_mass = ndim + 6;
+        assert_eq!(mass.get_info(), (ndim, ndim, nnz_mass, Symmetry::No));
     }
 }

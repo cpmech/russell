@@ -633,7 +633,31 @@ mod tests {
             errors.push(f64::abs(yy_num.last().unwrap() - yy_ana.last().unwrap()));
         }
 
-        println!("{:?}", yy_num);
+        // Mathematica code:
+        //
+        // RK4SingleEq[f_, x0_, y0_, x1_, h_] := Module[{x, y, nstep, k1, k2, k3, k4},
+        //    x[1] = x0;
+        //    y[1] = y0;
+        //    nstep = IntegerPart[(x1 - x0)/h] + 1;
+        //    Do[
+        //     k1 = f[x[i], y[i]];
+        //     k2 = f[x[i] + 1/2 h, y[i] + h/2 k1];
+        //     k3 = f[x[i] + 1/2 h, y[i] + h/2 k2];
+        //     k4 = f[x[i] + h, y[i] + h k3];
+        //     x[i + 1] = x[i] + h;
+        //     y[i + 1] = y[i] + h/6 (k1 + 2 k2 + 2 k3 + k4);
+        //     , {i, 1, nstep}];
+        //    Table[{x[i], y[i]}, {i, 1, nstep}]
+        // ];
+        //
+        // f[x_, y_] := x + y;
+        // x0 = 0;  y0 = 0;  x1 = 1;  h = 0.2;
+        // xy = RK4SingleEq[f, x0, y0, x1, h];
+        // err = Abs[#[[2]] - (Exp[#[[1]]] - #[[1]] - 1)] & /@ xy;
+        //
+        // Print["x = ", NumberForm[xy[[All, 1]], 20]]
+        // Print["y = ", NumberForm[xy[[All, 2]], 20]]
+        // Print["err = ", NumberForm[err, 20]]
 
         // compare with Mathematica results
         let xx_correct = &[0.0, 0.2, 0.4, 0.6, 0.8, 1.0];
@@ -647,8 +671,8 @@ mod tests {
         ];
         let errors_correct = &[
             0.0,
-            2.758160169841206e-6,
-            6.737641270307404e-6,
+            2.758160169896717e-6,
+            6.737641270432304e-6,
             0.00001234404650901633,
             0.00002010271390617824,
             0.00003069185310988765,

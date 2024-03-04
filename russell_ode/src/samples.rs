@@ -63,7 +63,7 @@ impl Samples {
     ///
     /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
     ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
-    pub fn single_equation<'a>() -> (
+    pub fn single_equation_1<'a>() -> (
         System<
             'a,
             impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
@@ -669,7 +669,7 @@ mod tests {
     #[test]
     fn single_equation_works() {
         let multiplier = 2.0;
-        let (mut system, mut data, mut args) = Samples::single_equation();
+        let (mut system, mut data, mut args) = Samples::single_equation_1();
 
         // check initial values
         if let Some(y_ana) = data.y_analytical.as_mut() {

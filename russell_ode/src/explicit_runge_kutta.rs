@@ -517,7 +517,7 @@ mod tests {
         // This test relates to Table 21.2 of Kreyszig's book, page 904
 
         // problem
-        let (system, data, mut args) = Samples::single_equation();
+        let (system, data, mut args) = Samples::single_equation_1();
         let mut yfx = data.y_analytical.unwrap();
         let ndim = system.ndim;
 
@@ -579,7 +579,7 @@ mod tests {
         // This test relates to Table 21.4 of Kreyszig's book, page 904
 
         // problem
-        let (system, data, mut args) = Samples::single_equation();
+        let (system, data, mut args) = Samples::single_equation_1();
         let mut yfx = data.y_analytical.unwrap();
         let ndim = system.ndim;
 

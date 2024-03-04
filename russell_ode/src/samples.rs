@@ -100,6 +100,82 @@ impl Samples {
         (system, data, 0)
     }
 
+    /// Implements Example 4 from Kreyszig's book on page 920
+    ///
+    /// With proper initial conditions, this problem becomes "stiff".
+    ///
+    /// ```text
+    /// y'' + 11 y' + 10 y = 10 x + 11
+    /// y(0) = 2
+    /// y'(0) = -10
+    /// ```
+    ///
+    /// Converting into a system:
+    ///
+    /// ```text
+    /// y = y1 and y' = y2
+    /// y0' = y1
+    /// y1' = -10 y0 - 11 y1 + 10 x + 11
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, args)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `SampleNoArgs`
+    /// * `data: SampleData` -- holds the initial values and the analytical solution
+    /// * `args: SampleNoArgs` -- is a placeholder variable with the arguments to F and J
+    ///
+    /// # Reference
+    ///
+    /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
+    ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
+    pub fn kreyszig_ex4_page920<'a>() -> (
+        System<
+            'a,
+            impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
+            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
+            SampleNoArgs,
+        >,
+        SampleData<'a>,
+        SampleNoArgs,
+    ) {
+        let ndim = 2;
+        let jac_nnz = 3;
+        let system = System::new(
+            ndim,
+            |f: &mut Vector, x: f64, y: &Vector, _args: &mut SampleNoArgs| {
+                f[0] = y[1];
+                f[1] = -10.0 * y[0] - 11.0 * y[1] + 10.0 * x + 11.0;
+                Ok(())
+            },
+            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut SampleNoArgs| {
+                jj.reset();
+                jj.put(0, 1, 1.0 * multiplier)?;
+                jj.put(1, 0, -10.0 * multiplier)?;
+                jj.put(1, 1, -11.0 * multiplier)?;
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+        let data = SampleData {
+            x0: 0.0,
+            y0: Vector::from(&[2.0, -10.0]),
+            x1: 1.0,
+            h_equal: Some(0.2),
+            y_analytical: Some(Box::new(|y, x| {
+                y[0] = f64::exp(-x) + f64::exp(-10.0 * x) + x;
+                y[1] = -f64::exp(-x) - 10.0 * f64::exp(-10.0 * x) + 1.0;
+            })),
+        };
+        (system, data, 0)
+    }
+
     /// Returns the Hairer-Wanner problem from the reference, Part II, Eq(1.1), page 2 (with analytical solution)
     ///
     /// # Output
@@ -624,6 +700,34 @@ mod tests {
         println!("{}", ana);
         println!("{}", num);
         mat_approx_eq(&ana, &num, 1e-11);
+    }
+
+    #[test]
+    fn kreyszig_ex4_page920() {
+        let multiplier = 2.0;
+        let (mut system, mut data, mut args) = Samples::kreyszig_ex4_page920();
+
+        // check initial values
+        if let Some(y_ana) = data.y_analytical.as_mut() {
+            let mut y = Vector::new(data.y0.dim());
+            y_ana(&mut y, data.x0);
+            println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
+            vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
+        }
+
+        // compute the analytical Jacobian matrix
+        let symmetry = Some(system.jac_symmetry);
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+
+        // compute the numerical Jacobian matrix
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-10);
     }
 
     #[test]

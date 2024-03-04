@@ -93,7 +93,7 @@ mod tests {
         // This test relates to Table 21.2 of Kreyszig's book, page 904
 
         // problem
-        let (system, data, mut args) = Samples::single_equation_1();
+        let (system, data, mut args) = Samples::kreyszig_eq6_page902();
         let mut yfx = data.y_analytical.unwrap();
         let ndim = system.ndim;
 

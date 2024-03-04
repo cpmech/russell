@@ -39,9 +39,7 @@ pub type SampleNoArgs = u8;
 pub struct Samples {}
 
 impl Samples {
-    /// Implements a single equation problem (with analytical solution)
-    ///
-    /// See, e.g., Equation (6) in Kreyszig's book, page 902
+    /// Implements Equation (6) from Kreyszig's book on page 902
     ///
     /// ```text
     /// dy/dx = x + y
@@ -63,7 +61,7 @@ impl Samples {
     ///
     /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
     ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
-    pub fn single_equation_1<'a>() -> (
+    pub fn kreyszig_eq6_page902<'a>() -> (
         System<
             'a,
             impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
@@ -669,7 +667,7 @@ mod tests {
     #[test]
     fn single_equation_works() {
         let multiplier = 2.0;
-        let (mut system, mut data, mut args) = Samples::single_equation_1();
+        let (mut system, mut data, mut args) = Samples::kreyszig_eq6_page902();
 
         // check initial values
         if let Some(y_ana) = data.y_analytical.as_mut() {

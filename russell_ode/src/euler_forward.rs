@@ -124,13 +124,35 @@ mod tests {
             errors.push(f64::abs(yy_num.last().unwrap() - yy_ana.last().unwrap()));
         }
 
+        // Mathematica code:
+        //
+        // FwEulerSingleEq[f_, x0_, y0_, x1_, h_] := Module[{x, y, nstep},
+        //    x[1] = x0;
+        //    y[1] = y0;
+        //    nstep = IntegerPart[(x1 - x0)/h] + 1;
+        //    Do[
+        //     x[i + 1] = x[i] + h;
+        //     y[i + 1] = y[i] + h f[x[i], y[i]];
+        //     , {i, 1, nstep}];
+        //    Table[{x[i], y[i]}, {i, 1, nstep}]
+        //  ];
+        //
+        // f[x_, y_] := x + y;
+        // x0 = 0;  y0 = 0;  x1 = 1;  h = 0.2;
+        // xy = FwEulerSingleEq[f, x0, y0, x1, h];
+        // err = Abs[#[[2]] - (Exp[#[[1]]] - #[[1]] - 1)] & /@ xy;
+        //
+        // Print["x = ", NumberForm[xy[[All, 1]], 20]]
+        // Print["y = ", NumberForm[xy[[All, 2]], 20]]
+        // Print["err = ", NumberForm[err, 20]]
+
         // compare with Mathematica results
         let xx_correct = &[0.0, 0.2, 0.4, 0.6, 0.8, 1.0];
-        let yy_correct = &[0.0, 0.0, 0.04, 0.128, 0.2736, 0.48832];
+        let yy_correct = &[0.0, 0.0, 0.04000000000000001, 0.128, 0.2736000000000001, 0.48832];
         let errors_correct = &[
             0.0,
-            0.02140275816016985,
-            0.05182469764127031,
+            0.0214027581601699,
+            0.05182469764127042,
             0.094118800390509,
             0.1519409284924678,
             0.229961828459045,

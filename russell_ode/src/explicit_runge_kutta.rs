@@ -549,13 +549,37 @@ mod tests {
             errors.push(f64::abs(yy_num.last().unwrap() - yy_ana.last().unwrap()));
         }
 
+        // Mathematica code:
+        //
+        // MdEulerSingleEq[f_, x0_, y0_, x1_, h_] := Module[{x, y, nstep, k1, k2},
+        //    x[1] = x0;
+        //    y[1] = y0;
+        //    nstep = IntegerPart[(x1 - x0)/h] + 1;
+        //    Do[
+        //     k1 = f[x[i], y[i]];
+        //     k2 = f[x[i] + h, y[i] + h k1];
+        //     x[i + 1] = x[i] + h;
+        //     y[i + 1] = y[i] + h/2 (k1 + k2);
+        //     , {i, 1, nstep}];
+        //    Table[{x[i], y[i]}, {i, 1, nstep}]
+        // ];
+        //
+        // f[x_, y_] := x + y;
+        // x0 = 0;  y0 = 0;  x1 = 1;  h = 0.2;
+        // xy = MdEulerSingleEq[f, x0, y0, x1, h];
+        // err = Abs[#[[2]] - (Exp[#[[1]]] - #[[1]] - 1)] & /@ xy;
+        //
+        // Print["x = ", NumberForm[xy[[All, 1]], 20]]
+        // Print["y = ", NumberForm[xy[[All, 2]], 20]]
+        // Print["err = ", NumberForm[err, 20]]
+
         // compare with Mathematica results
         let xx_correct = &[0.0, 0.2, 0.4, 0.6, 0.8, 1.0];
         let yy_correct = &[0.0, 0.02, 0.0884, 0.215848, 0.41533456, 0.7027081632000001];
         let errors_correct = &[
             0.0,
-            0.00140275816016984,
-            0.003424697641270319,
+            0.001402758160169895,
+            0.00342469764127043,
             0.006270800390509007,
             0.01020636849246781,
             0.01557366525904502,

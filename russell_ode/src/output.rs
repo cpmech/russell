@@ -155,7 +155,9 @@ impl<'a> Output<'a> {
         self.step_global_error.clear();
         self.dense_step_index.clear();
         self.dense_x.clear();
-        self.dense_y.clear();
+        for ym in self.dense_y.values_mut() {
+            ym.clear();
+        }
     }
 
     /// Appends the results after an accepted step is computed

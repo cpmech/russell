@@ -114,8 +114,8 @@ impl<'a, A> OdeSolver<'a, A> {
         // initial stepsize
         let (equal_stepping, mut h) = match h_equal {
             Some(h_eq) => {
-                if h_eq < 0.0 {
-                    return Err("h_equal must be greater than zero");
+                if h_eq < 10.0 * f64::EPSILON {
+                    return Err("h_equal must be ≥ 10.0 * f64::EPSILON");
                 }
                 let n = f64::ceil((x1 - x0) / h_eq) as usize;
                 let h = (x1 - x0) / (n as f64);
@@ -182,7 +182,13 @@ impl<'a, A> OdeSolver<'a, A> {
             self.work.bench.sw_step.reset();
 
             // update and check the stepsize
-            h = f64::min(self.work.h_new, x1 - x);
+            let dx = x1 - x;
+            if dx <= 10.0 * f64::EPSILON {
+                success = true;
+                self.work.bench.stop_sw_step();
+                break;
+            }
+            h = f64::min(self.work.h_new, dx);
             if 0.1 * h <= f64::abs(x) * f64::EPSILON {
                 return Err("the stepsize becomes too small");
             }
@@ -270,98 +276,198 @@ impl<'a, A> OdeSolver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::OdeSolver;
-    use crate::{no_jacobian, HasJacobian, Method, Output, Params, System, N_EQUAL_STEPS};
-    use russell_lab::{vec_approx_eq, Vector};
+    use crate::{Method, Output, Params, Samples, N_EQUAL_STEPS};
+    use russell_lab::{vec_approx_eq, vec_copy, Vector};
 
     #[test]
-    fn solve_and_output_works() {
-        // system:
-        // dy
-        // —— = 1   with   y(x=0)=0    thus   y(x) = x
-        // dx
-        let system = System::new(
-            1,
-            |f, _, _, _| {
-                f[0] = 1.0;
-                Ok(())
-            },
-            no_jacobian,
-            HasJacobian::No,
-            None,
-            None,
-        );
-
-        // consistent initial conditions
-        let y_ana = |y: &mut Vector, x: f64| y[0] = x;
-        let mut x0 = 0.0;
-        let mut y0 = Vector::new(1);
-        y_ana(&mut y0, x0);
+    fn solve_with_step_output_works() {
+        // ODE system
+        let (system, data, mut args) = Samples::simple_constant();
 
         // output
         let mut out = Output::new();
-        out.enable_step(&[0]).set_analytical(y_ana);
+        out.enable_step(&[0]).set_analytical(data.y_analytical.unwrap());
 
-        // arguments
-        struct Args {}
-        let mut args = Args {};
-
-        // solve the ODE system
+        // params and solver
         let params = Params::new(Method::FwEuler);
         let mut solver = OdeSolver::new(params, system).unwrap();
-        let xf = 1.0;
-        solver.solve(&mut y0, x0, xf, None, Some(&mut out), &mut args).unwrap();
+
+        // solve the ODE system (will run with N_EQUAL_STEPS)
+        let mut y = data.y0.clone();
+        solver
+            .solve(&mut y, data.x0, data.x1, None, Some(&mut out), &mut args)
+            .unwrap();
 
         // check
-        let h_equal_correct = (xf - x0) / (N_EQUAL_STEPS as f64);
+        let h_equal_correct = (data.x1 - data.x0) / (N_EQUAL_STEPS as f64);
         let h_values_correct = Vector::filled(N_EQUAL_STEPS + 1, h_equal_correct);
-        let x_values_correct = Vector::linspace(x0, xf, N_EQUAL_STEPS + 1).unwrap();
+        let x_values_correct = Vector::linspace(data.x0, data.x1, N_EQUAL_STEPS + 1).unwrap();
         let e_values_correct = Vector::new(N_EQUAL_STEPS + 1); // all 0.0
-        vec_approx_eq(&out.step_h, h_values_correct.as_data(), 1e-17);
+        vec_approx_eq(y.as_data(), &[1.0], 1e-15);
+        vec_approx_eq(&out.step_h, h_values_correct.as_data(), 1e-15);
         vec_approx_eq(&out.step_x, x_values_correct.as_data(), 1e-15);
         vec_approx_eq(&out.step_y.get(&0).unwrap(), x_values_correct.as_data(), 1e-15);
         vec_approx_eq(&out.step_global_error, e_values_correct.as_data(), 1e-15);
 
-        // ----------------------------------------------------------------------------------
-
-        // reset
+        // run again without step output
         out.clear();
-        x0 = 0.0;
-        y_ana(&mut y0, x0);
-
-        // solve the ODE system again with prescribed h_equal
-        let h_equal = Some(0.3);
-        let xf = 1.2; // => will generate 4 steps
-        solver
-            .solve(&mut y0, x0, xf, h_equal, Some(&mut out), &mut args)
-            .unwrap();
-
-        // check again
-        let nstep = 4;
-        let h_values_correct = Vector::filled(nstep + 1, 0.3);
-        let x_values_correct = Vector::linspace(x0, xf, nstep + 1).unwrap();
-        let e_values_correct = Vector::new(nstep + 1); // all 0.0
-        vec_approx_eq(&out.step_h, h_values_correct.as_data(), 1e-17);
-        vec_approx_eq(&out.step_x, x_values_correct.as_data(), 1e-17);
-        vec_approx_eq(&out.step_y.get(&0).unwrap(), x_values_correct.as_data(), 1e-15);
-        vec_approx_eq(&out.step_global_error, e_values_correct.as_data(), 1e-15);
-
-        // ----------------------------------------------------------------------------------
-
-        // reset
-        out.clear();
-        x0 = 0.0;
-        y_ana(&mut y0, x0);
-
-        // disable step output
         out.disable_step();
-
-        // solve the ODE system again with prescribed h_equal
+        vec_copy(&mut y, &data.y0).unwrap();
         solver
-            .solve(&mut y0, x0, xf, h_equal, Some(&mut out), &mut args)
+            .solve(&mut y, data.x0, data.x1, None, Some(&mut out), &mut args)
             .unwrap();
+        vec_approx_eq(y.as_data(), &[1.0], 1e-15);
         assert_eq!(out.step_h.len(), 0);
         assert_eq!(out.step_x.len(), 0);
         assert_eq!(out.step_y.get(&0).unwrap().len(), 0);
         assert_eq!(out.step_global_error.len(), 0);
+    }
+
+    #[test]
+    fn solve_with_h_equal_works() {
+        // ODE system
+        let (system, mut data, mut args) = Samples::simple_constant();
+
+        // output
+        let mut out = Output::new();
+        out.enable_step(&[0]);
+
+        // params and solver
+        let params = Params::new(Method::FwEuler);
+        let mut solver = OdeSolver::new(params, system).unwrap();
+        let x1 = 1.2; // => will generate 4 steps
+
+        // capture error
+        let h_equal = Some(f64::EPSILON); // will cause error
+        assert_eq!(
+            solver
+                .solve(&mut data.y0, data.x0, x1, h_equal, Some(&mut out), &mut args)
+                .err(),
+            Some("h_equal must be ≥ 10.0 * f64::EPSILON")
+        );
+
+        // solve the ODE system
+        let h_equal = Some(0.3);
+        solver
+            .solve(&mut data.y0, data.x0, x1, h_equal, Some(&mut out), &mut args)
+            .unwrap();
+
+        // check
+        let nstep = 4;
+        let h_values_correct = Vector::filled(nstep + 1, 0.3);
+        let x_values_correct = Vector::linspace(data.x0, x1, nstep + 1).unwrap();
+        vec_approx_eq(data.y0.as_data(), &[x1], 1e-15);
+        vec_approx_eq(&out.step_h, h_values_correct.as_data(), 1e-15);
+        vec_approx_eq(&out.step_x, x_values_correct.as_data(), 1e-15);
+        vec_approx_eq(&out.step_y.get(&0).unwrap(), x_values_correct.as_data(), 1e-15);
+        assert_eq!(out.step_global_error.len(), 0); // not available when y_analytical is not provided
+    }
+
+    #[test]
+    fn solve_with_variable_steps_works() {
+        // ODE system
+        let (system, mut data, mut args) = Samples::simple_constant();
+
+        // output
+        let mut out = Output::new();
+        out.enable_step(&[0]).set_analytical(data.y_analytical.unwrap());
+
+        // params and solver
+        let mut params = Params::new(Method::MdEuler);
+        params.step.h_ini = 0.1;
+        let mut solver = OdeSolver::new(params, system).unwrap();
+
+        // solve the ODE system
+        solver
+            .solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)
+            .unwrap();
+
+        // check
+        vec_approx_eq(data.y0.as_data(), &[1.0], 1e-15);
+        vec_approx_eq(&out.step_h, &[0.1, 0.1, 0.9], 1e-15);
+        vec_approx_eq(&out.step_x, &[0.0, 0.1, 1.0], 1e-15);
+        vec_approx_eq(&out.step_y.get(&0).unwrap(), &[0.0, 0.1, 1.0], 1e-15);
+        vec_approx_eq(&&out.step_global_error, &[0.0, 0.0, 0.0], 1e-15);
+    }
+
+    #[test]
+    fn solve_with_dense_output_works() {
+        // ODE system
+        let (system, data, mut args) = Samples::simple_constant();
+
+        // output
+        let mut out = Output::new();
+        out.enable_dense(0.25, &[0]).unwrap();
+
+        // params and solver
+        let mut params = Params::new(Method::DoPri5);
+        params.step.h_ini = 0.1;
+        let mut solver = OdeSolver::new(params, system).unwrap();
+
+        // solve the ODE system
+        let mut y = data.y0.clone();
+        solver
+            .solve(&mut y, data.x0, data.x1, None, Some(&mut out), &mut args)
+            .unwrap();
+
+        // check
+        vec_approx_eq(y.as_data(), &[1.0], 1e-15);
+        vec_approx_eq(&out.dense_x, &[0.0, 0.25, 0.5, 0.75], 1e-15); // will not store the last x here
+        vec_approx_eq(&out.dense_y.get(&0).unwrap(), &[0.0, 0.25, 0.5, 0.75], 1e-15);
+        assert_eq!(&out.dense_step_index, &[0, 2, 2, 2]);
+
+        // run again without dense output
+        out.clear();
+        out.disable_dense();
+        vec_copy(&mut y, &data.y0).unwrap();
+        solver
+            .solve(&mut y, data.x0, data.x1, None, Some(&mut out), &mut args)
+            .unwrap();
+        vec_approx_eq(y.as_data(), &[1.0], 1e-15);
+        assert_eq!(out.dense_x.len(), 0);
+        assert_eq!(out.dense_y.get(&0).unwrap().len(), 0);
+        assert_eq!(out.dense_step_index.len(), 0);
+    }
+
+    #[test]
+    fn solve_handles_zero_stepsize() {
+        // ODE system
+        let (system, mut data, mut args) = Samples::simple_constant();
+
+        // output
+        let mut out = Output::new();
+        out.enable_step(&[0]);
+
+        // params and solver
+        let mut params = Params::new(Method::DoPri5);
+        params.step.h_ini = 20.0; // since the problem is linear, this stepsize will lead to a jump from x=0.0 to 1.0
+        let mut solver = OdeSolver::new(params, system).unwrap();
+
+        // solve the ODE system
+        solver
+            .solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)
+            .unwrap();
+
+        // check
+        vec_approx_eq(data.y0.as_data(), &[1.0], 1e-15);
+        vec_approx_eq(&out.step_h, &[1.0, 1.0], 1e-15);
+        vec_approx_eq(&out.step_x, &[0.0, 1.0], 1e-15);
+        vec_approx_eq(&out.step_y.get(&0).unwrap(), &[0.0, 1.0], 1e-15);
+    }
+
+    #[test]
+    fn solve_and_output_handle_errors() {
+        let (system, mut data, mut args) = Samples::simple_constant();
+        let params = Params::new(Method::FwEuler);
+        let mut solver = OdeSolver::new(params, system).unwrap();
+        let mut out = Output::new();
+        assert_eq!(out.enable_dense(-0.1, &[0]).err(), Some("h_out must be positive"));
+        out.enable_dense(0.1, &[0]).unwrap();
+        assert_eq!(
+            solver
+                .solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)
+                .err(),
+            Some("dense output is not available for the FwEuler method")
+        );
     }
 }

@@ -173,9 +173,9 @@ where
     /// Assembles the K_real and K_comp matrices
     fn assemble(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {
         // auxiliary
-        let jj = self.jj.get_coo_mut()?; // J = df/dy
-        let kk_real = self.kk_real.get_coo_mut()?; // K_real = γ M - J
-        let kk_comp = self.kk_comp.get_coo_mut()?; // K_comp = (α + βi) M - J
+        let jj = self.jj.get_coo_mut().unwrap(); // J = df/dy
+        let kk_real = self.kk_real.get_coo_mut().unwrap(); // K_real = γ M - J
+        let kk_comp = self.kk_comp.get_coo_mut().unwrap(); // K_comp = (α + βi) M - J
 
         // Jacobian matrix
         if self.reuse_jacobian {

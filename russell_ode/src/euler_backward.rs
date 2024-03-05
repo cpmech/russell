@@ -256,6 +256,8 @@ mod tests {
         // Print["y1 = ", NumberForm[xyBE[[All, 2]][[All, 1]], 20]]
         // Print["y2 = ", NumberForm[xyBE[[All, 2]][[All, 2]], 20]]
         //
+        // ana = {y1 -> Function[{x}, Exp[-x] + Exp[-10 x] + x], y2 -> Function[{x}, -Exp[-x] - 10 Exp[-10 x] + 1]};
+        //
         // yBE = xyBE[[All, 2]];
         // yAna = {(y1 /. ana)[#[[1]]], (y2 /. ana)[#[[1]]]} & /@ xyBE;
         // errY1 = Abs[yBE - yAna][[All, 1]];

@@ -274,7 +274,7 @@ mod tests {
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
-    fn solve_works_1() {
+    fn solve_and_output_works() {
         // system:
         // dy
         // —— = 1   with   y(x=0)=0    thus   y(x) = x
@@ -321,7 +321,9 @@ mod tests {
         vec_approx_eq(&out.step_y.get(&0).unwrap(), x_values_correct.as_data(), 1e-15);
         vec_approx_eq(&out.step_global_error, e_values_correct.as_data(), 1e-15);
 
-        // reset problem
+        // ----------------------------------------------------------------------------------
+
+        // reset
         out.clear();
         x0 = 0.0;
         y_ana(&mut y0, x0);
@@ -342,5 +344,24 @@ mod tests {
         vec_approx_eq(&out.step_x, x_values_correct.as_data(), 1e-17);
         vec_approx_eq(&out.step_y.get(&0).unwrap(), x_values_correct.as_data(), 1e-15);
         vec_approx_eq(&out.step_global_error, e_values_correct.as_data(), 1e-15);
+
+        // ----------------------------------------------------------------------------------
+
+        // reset
+        out.clear();
+        x0 = 0.0;
+        y_ana(&mut y0, x0);
+
+        // disable step output
+        out.disable_step();
+
+        // solve the ODE system again with prescribed h_equal
+        solver
+            .solve(&mut y0, x0, xf, h_equal, Some(&mut out), &mut args)
+            .unwrap();
+        assert_eq!(out.step_h.len(), 0);
+        assert_eq!(out.step_x.len(), 0);
+        assert_eq!(out.step_y.get(&0).unwrap().len(), 0);
+        assert_eq!(out.step_global_error.len(), 0);
     }
 }

@@ -1,5 +1,5 @@
 use crate::StrError;
-use crate::{HasJacobian, System};
+use crate::{HasJacobian, NoArgs, System};
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 
@@ -20,9 +20,6 @@ pub struct SampleData<'a> {
     /// Holds the analytical solution `y(x)`
     pub y_analytical: Option<Box<dyn 'a + FnMut(&mut Vector, f64)>>,
 }
-
-/// Indicates that the sample ODE problem does not have extra arguments
-pub type SampleNoArgs = u8;
 
 /// Holds a collection of sample ODE problems
 ///
@@ -53,9 +50,9 @@ impl Samples {
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    ///     * `A` -- is `SampleNoArgs`
+    ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values and the analytical solution
-    /// * `args: SampleNoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
     ///
     /// # Reference
     ///
@@ -64,22 +61,22 @@ impl Samples {
     pub fn kreyszig_eq6_page902<'a>() -> (
         System<
             'a,
-            impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
-            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
-            SampleNoArgs,
+            impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
         >,
         SampleData<'a>,
-        SampleNoArgs,
+        NoArgs,
     ) {
         let ndim = 1;
         let jac_nnz = 1;
         let system = System::new(
             ndim,
-            |f: &mut Vector, x: f64, y: &Vector, _args: &mut SampleNoArgs| {
+            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
                 f[0] = x + y[0];
                 Ok(())
             },
-            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut SampleNoArgs| {
+            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut NoArgs| {
                 jj.reset();
                 jj.put(0, 0, 1.0 * multiplier).unwrap();
                 Ok(())
@@ -125,9 +122,9 @@ impl Samples {
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    ///     * `A` -- is `SampleNoArgs`
+    ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values and the analytical solution
-    /// * `args: SampleNoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
     ///
     /// # Reference
     ///
@@ -136,23 +133,23 @@ impl Samples {
     pub fn kreyszig_ex4_page920<'a>() -> (
         System<
             'a,
-            impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
-            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
-            SampleNoArgs,
+            impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
         >,
         SampleData<'a>,
-        SampleNoArgs,
+        NoArgs,
     ) {
         let ndim = 2;
         let jac_nnz = 3;
         let system = System::new(
             ndim,
-            |f: &mut Vector, x: f64, y: &Vector, _args: &mut SampleNoArgs| {
+            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
                 f[0] = y[1];
                 f[1] = -10.0 * y[0] - 11.0 * y[1] + 10.0 * x + 11.0;
                 Ok(())
             },
-            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut SampleNoArgs| {
+            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut NoArgs| {
                 jj.reset();
                 jj.put(0, 1, 1.0 * multiplier).unwrap();
                 jj.put(1, 0, -10.0 * multiplier).unwrap();
@@ -185,9 +182,9 @@ impl Samples {
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    ///     * `A` -- is `SampleNoArgs`
+    ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values and the analytical solution
-    /// * `args: SampleNoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
     ///
     /// # Reference
     ///
@@ -197,23 +194,23 @@ impl Samples {
     pub fn hairer_wanner_eq1<'a>() -> (
         System<
             'a,
-            impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
-            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
-            SampleNoArgs,
+            impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
         >,
         SampleData<'a>,
-        SampleNoArgs,
+        NoArgs,
     ) {
         const L: f64 = -50.0; // lambda
         let ndim = 1;
         let jac_nnz = 1;
         let system = System::new(
             ndim,
-            |f: &mut Vector, x: f64, y: &Vector, _args: &mut SampleNoArgs| {
+            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
                 f[0] = L * (y[0] - f64::cos(x));
                 Ok(())
             },
-            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut SampleNoArgs| {
+            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut NoArgs| {
                 jj.reset();
                 jj.put(0, 0, multiplier * L).unwrap();
                 Ok(())
@@ -243,9 +240,9 @@ impl Samples {
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    ///     * `A` -- is `SampleNoArgs`
+    ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values
-    /// * `args: SampleNoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
     ///
     /// # Reference
     ///
@@ -255,24 +252,24 @@ impl Samples {
     pub fn robertson<'a>() -> (
         System<
             'a,
-            impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
-            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
-            SampleNoArgs,
+            impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
         >,
         SampleData<'a>,
-        SampleNoArgs,
+        NoArgs,
     ) {
         let ndim = 3;
         let jac_nnz = 7;
         let system = System::new(
             ndim,
-            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut SampleNoArgs| {
+            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
                 f[0] = -0.04 * y[0] + 1.0e4 * y[1] * y[2];
                 f[1] = 0.04 * y[0] - 1.0e4 * y[1] * y[2] - 3.0e7 * y[1] * y[1];
                 f[2] = 3.0e7 * y[1] * y[1];
                 Ok(())
             },
-            |jj: &mut CooMatrix, _x: f64, y: &Vector, multiplier: f64, _args: &mut SampleNoArgs| {
+            |jj: &mut CooMatrix, _x: f64, y: &Vector, multiplier: f64, _args: &mut NoArgs| {
                 jj.reset();
                 jj.put(0, 0, -0.04 * multiplier).unwrap();
                 jj.put(0, 1, 1.0e4 * y[2] * multiplier).unwrap();
@@ -308,9 +305,9 @@ impl Samples {
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    ///     * `A` -- is `SampleNoArgs`
+    ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values
-    /// * `args: SampleNoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
     ///
     /// # Input
     ///
@@ -329,12 +326,12 @@ impl Samples {
     ) -> (
         System<
             'a,
-            impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
-            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
-            SampleNoArgs,
+            impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
         >,
         SampleData<'a>,
-        SampleNoArgs,
+        NoArgs,
     ) {
         let mut eps = match epsilon {
             Some(e) => e,
@@ -355,12 +352,12 @@ impl Samples {
         let jac_nnz = 3;
         let system = System::new(
             ndim,
-            move |f: &mut Vector, _x: f64, y: &Vector, _args: &mut SampleNoArgs| {
+            move |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
                 f[0] = y[1];
                 f[1] = ((1.0 - y[0] * y[0]) * y[1] - y[0]) / eps;
                 Ok(())
             },
-            move |jj: &mut CooMatrix, _x: f64, y: &Vector, multiplier: f64, _args: &mut SampleNoArgs| {
+            move |jj: &mut CooMatrix, _x: f64, y: &Vector, multiplier: f64, _args: &mut NoArgs| {
                 jj.reset();
                 jj.put(0, 1, 1.0 * multiplier).unwrap();
                 jj.put(1, 0, multiplier * (-2.0 * y[0] * y[1] - 1.0) / eps).unwrap();
@@ -413,9 +410,9 @@ impl Samples {
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    ///     * `A` -- is `SampleNoArgs`
+    ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values
-    /// * `args: SampleNoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
     ///
     /// # Reference
     ///
@@ -425,12 +422,12 @@ impl Samples {
     pub fn arenstorf<'a>() -> (
         System<
             'a,
-            impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
-            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
-            SampleNoArgs,
+            impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
         >,
         SampleData<'a>,
-        SampleNoArgs,
+        NoArgs,
     ) {
         const MU: f64 = 0.012277471;
         const MD: f64 = 1.0 - MU;
@@ -441,7 +438,7 @@ impl Samples {
         let jac_nnz = 8;
         let system = System::new(
             ndim,
-            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut SampleNoArgs| {
+            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
                 let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
                 let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
                 let d0 = t0 * f64::sqrt(t0);
@@ -452,7 +449,7 @@ impl Samples {
                 f[3] = y[1] - 2.0 * y[2] - MD * y[1] / d0 - MU * y[1] / d1;
                 Ok(())
             },
-            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut SampleNoArgs| {
+            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
                 let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
                 let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
                 let s0 = f64::sqrt(t0);
@@ -507,9 +504,9 @@ impl Samples {
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    ///     * `A` -- is `SampleNoArgs`
+    ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values
-    /// * `args: SampleNoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
     /// * `gen_mass_matrix: fn(one_based: bool) -> CooMatrix` -- is a function to generate the mass matrix.
     ///    Note: the mass matrix needs to be allocated externally because a reference to it is required by System.
     ///
@@ -521,12 +518,12 @@ impl Samples {
     pub fn amplifier<'a>() -> (
         System<
             'a,
-            impl FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
-            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut SampleNoArgs) -> Result<(), StrError>,
-            SampleNoArgs,
+            impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
         >,
         SampleData<'a>,
-        SampleNoArgs,
+        NoArgs,
         fn(bool) -> CooMatrix,
     ) {
         // constants
@@ -554,7 +551,7 @@ impl Samples {
         let jac_nnz = 16;
         let system = System::new(
             ndim,
-            move |f: &mut Vector, x: f64, y: &Vector, _args: &mut SampleNoArgs| {
+            move |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
                 let uet = ue * f64::sin(w * x);
                 let fac1 = beta * (f64::exp((y[3] - y[2]) / uf) - 1.0);
                 let fac2 = beta * (f64::exp((y[6] - y[5]) / uf) - 1.0);
@@ -568,7 +565,7 @@ impl Samples {
                 f[7] = (y[7] - uet) / r0;
                 Ok(())
             },
-            move |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut SampleNoArgs| {
+            move |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
                 let fac14 = beta * f64::exp((y[3] - y[2]) / uf) / uf;
                 let fac27 = beta * f64::exp((y[6] - y[5]) / uf) / uf;
                 jj.reset();
@@ -634,14 +631,14 @@ impl Samples {
 
 #[cfg(test)]
 mod tests {
-    use super::{SampleNoArgs, Samples};
+    use super::{NoArgs, Samples};
     use crate::StrError;
     use russell_lab::{deriv_central5, mat_approx_eq, vec_approx_eq, Matrix, Vector};
     use russell_sparse::{CooMatrix, Symmetry};
 
     fn numerical_jacobian<F>(ndim: usize, x0: f64, y0: Vector, mut function: F, multiplier: f64) -> Matrix
     where
-        F: FnMut(&mut Vector, f64, &Vector, &mut SampleNoArgs) -> Result<(), StrError>,
+        F: FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
     {
         struct Extra {
             x: f64,

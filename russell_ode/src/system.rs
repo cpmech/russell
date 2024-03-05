@@ -3,6 +3,9 @@ use russell_lab::Vector;
 use russell_sparse::{CooMatrix, Symmetry};
 use std::marker::PhantomData;
 
+/// Indicates that the system functions do not require extra arguments
+pub type NoArgs = u8;
+
 /// Defines the system of ODEs
 ///
 /// The system is defined by:

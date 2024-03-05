@@ -283,9 +283,27 @@ mod tests {
             0.723691795085381,
             0.810865567918129,
         ];
+        let err_y0_math = &[
+            0.0,
+            0.2256500293613408,
+            0.100539654887529,
+            0.07123113075591125,
+            0.06001157438478888,
+            0.05091914678410436,
+        ];
+        let err_y1_math = &[
+            0.0,
+            1.860809279362733,
+            0.4575204912364065,
+            0.1431758328447311,
+            0.07441056156821646,
+            0.05379912823372179,
+        ];
         vec_approx_eq(&xx, xx_math, 1e-15);
         vec_approx_eq(&yy0_num, yy0_math, 1e-15);
         vec_approx_eq(&yy1_num, yy1_math, 1e-14);
+        vec_approx_eq(&err_y0, err_y0_math, 1e-15);
+        vec_approx_eq(&err_y1, err_y1_math, 1e-14);
 
         // check dense_output
         let mut y_out = Vector::new(ndim);

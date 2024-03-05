@@ -691,3 +691,78 @@ const TI: [[f64; 3]; 3] = [
     [-4.1787185915519047273, -0.32768282076106238708, 0.47662355450055045196],
     [-0.50287263494578687595, 2.5719269498556054292, -0.59603920482822492497],
 ];
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::Radau5;
+    use crate::{Method, OdeSolverTrait, Params, Samples, Workspace};
+    use russell_lab::{format_fortran, Vector};
+
+    #[test]
+    fn radau5_works() {
+        // This test relates to Table 21.13 of Kreyszig's book, page 921
+
+        // problem
+        let (system, data, mut args) = Samples::kreyszig_ex4_page920();
+        let mut yfx = data.y_analytical.unwrap();
+        let ndim = system.ndim;
+
+        // allocate structs
+        let params = Params::new(Method::Radau5);
+        let mut solver = Radau5::new(params, system);
+        let mut work = Workspace::new(Method::FwEuler);
+
+        // message
+        println!("{:>4}{:>23}{:>23}", "step", "err_y0", "err_y1");
+
+        // numerical approximation
+        let h = 0.4;
+        let mut x = data.x0;
+        let mut y = data.y0.clone();
+        let mut y_ana = Vector::new(ndim);
+        let mut n_fcn_correct = 0;
+        for n in 0..2 {
+            // call step
+            solver.step(&mut work, x, &y, h, &mut args).unwrap();
+
+            // update number of function evaluations
+            let nit = work.bench.n_iterations;
+            if n == 0 {
+                n_fcn_correct += 1 + 3 * nit + 1; // initialize + iterations + error-estimate
+            } else {
+                n_fcn_correct += 3 * nit; // iterations
+            }
+
+            // important: update n_accepted (must precede `accept`)
+            work.bench.n_accepted += 1;
+
+            // call accept
+            solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
+
+            // important: save previous stepsize and relative error (must succeed `accept`)
+            work.h_prev = h;
+            work.rel_error_prev = f64::max(params.step.rel_error_prev_min, work.rel_error);
+
+            // update number of function evaluations
+            n_fcn_correct += 1; // re-initialize
+
+            // check the results
+            yfx(&mut y_ana, x);
+            let err_y0 = f64::abs(y[0] - y_ana[0]);
+            let err_y1 = f64::abs(y[1] - y_ana[1]);
+            println!("{:>4}{}{}", n, format_fortran(err_y0), format_fortran(err_y1));
+            if n == 0 {
+                assert!(err_y0 < 1.1e-2);
+                assert!(err_y1 < 1.1e-1);
+            } else {
+                assert!(err_y0 < 5.15e-4);
+                assert!(err_y1 < 5.15e-3);
+            }
+        }
+
+        // check number of function evaluations
+        assert_eq!(work.bench.n_function, n_fcn_correct);
+    }
+}

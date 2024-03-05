@@ -72,141 +72,142 @@ impl ErkDenseOut {
         F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
         J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
     {
-        match self.method {
-            Method::DoPri5 => {
-                let dd = &DORMAND_PRINCE_5_D;
-                for m in 0..self.ndim {
-                    let y_diff = w[m] - y[m];
-                    let b_spl = h * k[0][m] - y_diff;
-                    self.d[0][m] = y[m];
-                    self.d[1][m] = y_diff;
-                    self.d[2][m] = b_spl;
-                    self.d[3][m] = y_diff - h * k[6][m] - b_spl;
-                    self.d[4][m] = dd[0][0] * k[0][m]
-                        + dd[0][2] * k[2][m]
-                        + dd[0][3] * k[3][m]
-                        + dd[0][4] * k[4][m]
-                        + dd[0][5] * k[5][m]
-                        + dd[0][6] * k[6][m];
-                    self.d[4][m] *= h;
-                }
-                Ok(0)
+        let mut n_function_eval = 0;
+
+        if self.method == Method::DoPri5 {
+            let dd = &DORMAND_PRINCE_5_D;
+            for m in 0..self.ndim {
+                let y_diff = w[m] - y[m];
+                let b_spl = h * k[0][m] - y_diff;
+                self.d[0][m] = y[m];
+                self.d[1][m] = y_diff;
+                self.d[2][m] = b_spl;
+                self.d[3][m] = y_diff - h * k[6][m] - b_spl;
+                self.d[4][m] = dd[0][0] * k[0][m]
+                    + dd[0][2] * k[2][m]
+                    + dd[0][3] * k[3][m]
+                    + dd[0][4] * k[4][m]
+                    + dd[0][5] * k[5][m]
+                    + dd[0][6] * k[6][m];
+                self.d[4][m] *= h;
             }
-            Method::DoPri8 => {
-                let aad = &DORMAND_PRINCE_8_AD;
-                let ccd = &DORMAND_PRINCE_8_CD;
-                let dd = &DORMAND_PRINCE_8_D;
-
-                // first function evaluation
-                for m in 0..self.ndim {
-                    self.yd[m] = y[m]
-                        + h * (aad[0][0] * k[0][m]
-                            + aad[0][6] * k[6][m]
-                            + aad[0][7] * k[7][m]
-                            + aad[0][8] * k[8][m]
-                            + aad[0][9] * k[9][m]
-                            + aad[0][10] * k[10][m]
-                            + aad[0][11] * k[11][m]
-                            + aad[0][12] * k[11][m]);
-                }
-                let u = x + ccd[0] * h;
-                (system.function)(&mut self.kd[0], u, &self.yd, args)?;
-
-                // second function evaluation
-                for m in 0..self.ndim {
-                    self.yd[m] = y[m]
-                        + h * (aad[1][0] * k[0][m]
-                            + aad[1][5] * k[5][m]
-                            + aad[1][6] * k[6][m]
-                            + aad[1][7] * k[7][m]
-                            + aad[1][10] * k[10][m]
-                            + aad[1][11] * k[11][m]
-                            + aad[1][12] * k[11][m]
-                            + aad[1][13] * self.kd[0][m]);
-                }
-                let u = x + ccd[1] * h;
-                (system.function)(&mut self.kd[1], u, &self.yd, args)?;
-
-                // next third function evaluation
-                for m in 0..self.ndim {
-                    self.yd[m] = y[m]
-                        + h * (aad[2][0] * k[0][m]
-                            + aad[2][5] * k[5][m]
-                            + aad[2][6] * k[6][m]
-                            + aad[2][7] * k[7][m]
-                            + aad[2][8] * k[8][m]
-                            + aad[2][12] * k[11][m]
-                            + aad[2][13] * self.kd[0][m]
-                            + aad[2][14] * self.kd[1][m]);
-                }
-                let u = x + ccd[2] * h;
-                (system.function)(&mut self.kd[2], u, &self.yd, args)?;
-
-                // final results
-                for m in 0..self.ndim {
-                    let y_diff = w[m] - y[m];
-                    let b_spl = h * k[0][m] - y_diff;
-                    self.d[0][m] = y[m];
-                    self.d[1][m] = y_diff;
-                    self.d[2][m] = b_spl;
-                    self.d[3][m] = y_diff - h * k[11][m] - b_spl;
-                    self.d[4][m] = h
-                        * (dd[0][0] * k[0][m]
-                            + dd[0][5] * k[5][m]
-                            + dd[0][6] * k[6][m]
-                            + dd[0][7] * k[7][m]
-                            + dd[0][8] * k[8][m]
-                            + dd[0][9] * k[9][m]
-                            + dd[0][10] * k[10][m]
-                            + dd[0][11] * k[11][m]
-                            + dd[0][12] * k[11][m]
-                            + dd[0][13] * self.kd[0][m]
-                            + dd[0][14] * self.kd[1][m]
-                            + dd[0][15] * self.kd[2][m]);
-                    self.d[5][m] = h
-                        * (dd[1][0] * k[0][m]
-                            + dd[1][5] * k[5][m]
-                            + dd[1][6] * k[6][m]
-                            + dd[1][7] * k[7][m]
-                            + dd[1][8] * k[8][m]
-                            + dd[1][9] * k[9][m]
-                            + dd[1][10] * k[10][m]
-                            + dd[1][11] * k[11][m]
-                            + dd[1][12] * k[11][m]
-                            + dd[1][13] * self.kd[0][m]
-                            + dd[1][14] * self.kd[1][m]
-                            + dd[1][15] * self.kd[2][m]);
-                    self.d[6][m] = h
-                        * (dd[2][0] * k[0][m]
-                            + dd[2][5] * k[5][m]
-                            + dd[2][6] * k[6][m]
-                            + dd[2][7] * k[7][m]
-                            + dd[2][8] * k[8][m]
-                            + dd[2][9] * k[9][m]
-                            + dd[2][10] * k[10][m]
-                            + dd[2][11] * k[11][m]
-                            + dd[2][12] * k[11][m]
-                            + dd[2][13] * self.kd[0][m]
-                            + dd[2][14] * self.kd[1][m]
-                            + dd[2][15] * self.kd[2][m]);
-                    self.d[7][m] = h
-                        * (dd[3][0] * k[0][m]
-                            + dd[3][5] * k[5][m]
-                            + dd[3][6] * k[6][m]
-                            + dd[3][7] * k[7][m]
-                            + dd[3][8] * k[8][m]
-                            + dd[3][9] * k[9][m]
-                            + dd[3][10] * k[10][m]
-                            + dd[3][11] * k[11][m]
-                            + dd[3][12] * k[11][m]
-                            + dd[3][13] * self.kd[0][m]
-                            + dd[3][14] * self.kd[1][m]
-                            + dd[3][15] * self.kd[2][m]);
-                }
-                Ok(3)
-            }
-            _ => Err("INTERNAL ERROR: dense output is not available for this method"),
         }
+
+        if self.method == Method::DoPri8 {
+            let aad = &DORMAND_PRINCE_8_AD;
+            let ccd = &DORMAND_PRINCE_8_CD;
+            let dd = &DORMAND_PRINCE_8_D;
+
+            // first function evaluation
+            for m in 0..self.ndim {
+                self.yd[m] = y[m]
+                    + h * (aad[0][0] * k[0][m]
+                        + aad[0][6] * k[6][m]
+                        + aad[0][7] * k[7][m]
+                        + aad[0][8] * k[8][m]
+                        + aad[0][9] * k[9][m]
+                        + aad[0][10] * k[10][m]
+                        + aad[0][11] * k[11][m]
+                        + aad[0][12] * k[11][m]);
+            }
+            let u = x + ccd[0] * h;
+            (system.function)(&mut self.kd[0], u, &self.yd, args)?;
+
+            // second function evaluation
+            for m in 0..self.ndim {
+                self.yd[m] = y[m]
+                    + h * (aad[1][0] * k[0][m]
+                        + aad[1][5] * k[5][m]
+                        + aad[1][6] * k[6][m]
+                        + aad[1][7] * k[7][m]
+                        + aad[1][10] * k[10][m]
+                        + aad[1][11] * k[11][m]
+                        + aad[1][12] * k[11][m]
+                        + aad[1][13] * self.kd[0][m]);
+            }
+            let u = x + ccd[1] * h;
+            (system.function)(&mut self.kd[1], u, &self.yd, args)?;
+
+            // next third function evaluation
+            for m in 0..self.ndim {
+                self.yd[m] = y[m]
+                    + h * (aad[2][0] * k[0][m]
+                        + aad[2][5] * k[5][m]
+                        + aad[2][6] * k[6][m]
+                        + aad[2][7] * k[7][m]
+                        + aad[2][8] * k[8][m]
+                        + aad[2][12] * k[11][m]
+                        + aad[2][13] * self.kd[0][m]
+                        + aad[2][14] * self.kd[1][m]);
+            }
+            let u = x + ccd[2] * h;
+            (system.function)(&mut self.kd[2], u, &self.yd, args)?;
+
+            // final results
+            for m in 0..self.ndim {
+                let y_diff = w[m] - y[m];
+                let b_spl = h * k[0][m] - y_diff;
+                self.d[0][m] = y[m];
+                self.d[1][m] = y_diff;
+                self.d[2][m] = b_spl;
+                self.d[3][m] = y_diff - h * k[11][m] - b_spl;
+                self.d[4][m] = h
+                    * (dd[0][0] * k[0][m]
+                        + dd[0][5] * k[5][m]
+                        + dd[0][6] * k[6][m]
+                        + dd[0][7] * k[7][m]
+                        + dd[0][8] * k[8][m]
+                        + dd[0][9] * k[9][m]
+                        + dd[0][10] * k[10][m]
+                        + dd[0][11] * k[11][m]
+                        + dd[0][12] * k[11][m]
+                        + dd[0][13] * self.kd[0][m]
+                        + dd[0][14] * self.kd[1][m]
+                        + dd[0][15] * self.kd[2][m]);
+                self.d[5][m] = h
+                    * (dd[1][0] * k[0][m]
+                        + dd[1][5] * k[5][m]
+                        + dd[1][6] * k[6][m]
+                        + dd[1][7] * k[7][m]
+                        + dd[1][8] * k[8][m]
+                        + dd[1][9] * k[9][m]
+                        + dd[1][10] * k[10][m]
+                        + dd[1][11] * k[11][m]
+                        + dd[1][12] * k[11][m]
+                        + dd[1][13] * self.kd[0][m]
+                        + dd[1][14] * self.kd[1][m]
+                        + dd[1][15] * self.kd[2][m]);
+                self.d[6][m] = h
+                    * (dd[2][0] * k[0][m]
+                        + dd[2][5] * k[5][m]
+                        + dd[2][6] * k[6][m]
+                        + dd[2][7] * k[7][m]
+                        + dd[2][8] * k[8][m]
+                        + dd[2][9] * k[9][m]
+                        + dd[2][10] * k[10][m]
+                        + dd[2][11] * k[11][m]
+                        + dd[2][12] * k[11][m]
+                        + dd[2][13] * self.kd[0][m]
+                        + dd[2][14] * self.kd[1][m]
+                        + dd[2][15] * self.kd[2][m]);
+                self.d[7][m] = h
+                    * (dd[3][0] * k[0][m]
+                        + dd[3][5] * k[5][m]
+                        + dd[3][6] * k[6][m]
+                        + dd[3][7] * k[7][m]
+                        + dd[3][8] * k[8][m]
+                        + dd[3][9] * k[9][m]
+                        + dd[3][10] * k[10][m]
+                        + dd[3][11] * k[11][m]
+                        + dd[3][12] * k[11][m]
+                        + dd[3][13] * self.kd[0][m]
+                        + dd[3][14] * self.kd[1][m]
+                        + dd[3][15] * self.kd[2][m]);
+            }
+            n_function_eval = 3;
+        }
+
+        Ok(n_function_eval)
     }
 
     /// Calculates the dense output
@@ -239,7 +240,7 @@ impl ErkDenseOut {
 #[cfg(test)]
 mod tests {
     use super::ErkDenseOut;
-    use crate::{Method, Samples};
+    use crate::{no_jacobian, HasJacobian, Method, System};
     use russell_lab::Vector;
 
     #[test]
@@ -304,20 +305,47 @@ mod tests {
 
     #[test]
     fn update_captures_errors() {
-        let mut out = ErkDenseOut {
-            method: Method::MdEuler,
-            ndim: 1,
-            d: Vec::new(),
-            kd: Vec::new(),
-            yd: Vector::new(0),
-        };
-        let (mut system, data, mut args) = Samples::kreyszig_eq6_page902();
+        struct Args {
+            count: usize,
+            fail: usize,
+        }
+        let mut system = System::new(
+            1,
+            |_f: &mut Vector, _x: f64, _y: &Vector, args: &mut Args| {
+                args.count += 1;
+                if args.count == args.fail {
+                    Err("STOP")
+                } else {
+                    Ok(())
+                }
+            },
+            no_jacobian,
+            HasJacobian::No,
+            None,
+            None,
+        );
+        let mut out = ErkDenseOut::new(Method::DoPri8, system.ndim).unwrap();
+        let mut args = Args { count: 0, fail: 1 };
         let h = 0.1;
+        let y = Vector::new(system.ndim);
         let w = Vector::new(system.ndim);
-        let k = vec![Vector::new(system.ndim)];
+        let nstage = 12;
+        let k = vec![Vector::new(system.ndim); nstage];
         assert_eq!(
-            out.update(&mut system, data.x0, &data.y0, h, &w, &k, &mut args).err(),
-            Some("INTERNAL ERROR: dense output is not available for this method")
+            out.update(&mut system, 0.0, &y, h, &w, &k, &mut args).err(),
+            Some("STOP")
+        );
+        args.count = 0;
+        args.fail = 2;
+        assert_eq!(
+            out.update(&mut system, 0.0, &y, h, &w, &k, &mut args).err(),
+            Some("STOP")
+        );
+        args.count = 0;
+        args.fail = 3;
+        assert_eq!(
+            out.update(&mut system, 0.0, &y, h, &w, &k, &mut args).err(),
+            Some("STOP")
         );
     }
 }

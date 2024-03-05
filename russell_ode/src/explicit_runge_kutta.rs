@@ -70,21 +70,12 @@ where
 {
     /// Allocates a new instance
     pub fn new(params: Params, system: System<'a, F, J, A>) -> Result<Self, StrError> {
-        // information
-        let info = params.method.information();
-        if info.implicit {
-            return Err("the method must not be implicit");
-        }
-        if params.method == Method::FwEuler {
-            return Err("the method must not be FwEuler");
-        }
-
         // Runge-Kutta coefficients
         #[rustfmt::skip]
         let (aa, bb, cc) = match params.method {
-            Method::Radau5     => panic!("<not available>"),
-            Method::BwEuler    => panic!("<not available>"),
-            Method::FwEuler    => panic!("<not available>"),
+            Method::Radau5     => return Err("cannot use Radau5 with ExplicitRungeKutta"),
+            Method::BwEuler    => return Err("cannot use BwEuler with ExplicitRungeKutta"),
+            Method::FwEuler    => return Err("cannot use FwEuler with ExplicitRungeKutta"),
             Method::Rk2        => (Matrix::from(&RUNGE_KUTTA_2_A)     , Vector::from(&RUNGE_KUTTA_2_B)     , Vector::from(&RUNGE_KUTTA_2_C)    ),
             Method::Rk3        => (Matrix::from(&RUNGE_KUTTA_3_A)     , Vector::from(&RUNGE_KUTTA_3_B)     , Vector::from(&RUNGE_KUTTA_3_C)    ),
             Method::Heun3      => (Matrix::from(&HEUN_3_A)            , Vector::from(&HEUN_3_B)            , Vector::from(&HEUN_3_C)           ),
@@ -99,6 +90,10 @@ where
             Method::Fehlberg7  => (Matrix::from(&FEHLBERG_7_A)        , Vector::from(&FEHLBERG_7_B)        , Vector::from(&FEHLBERG_7_C)       ),
             Method::DoPri8     => (Matrix::from(&DORMAND_PRINCE_8_A)  , Vector::from(&DORMAND_PRINCE_8_B)  , Vector::from(&DORMAND_PRINCE_8_C) ),
         };
+
+        // information
+        let info = params.method.information();
+        assert!(!info.implicit);
 
         // coefficients for error estimate
         let ee = if info.embedded {
@@ -158,8 +153,9 @@ where
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
-    fn enable_dense_output(&mut self) {
-        self.dense_out = ErkDenseOut::new(self.params.method, self.system.ndim);
+    fn enable_dense_output(&mut self) -> Result<(), StrError> {
+        self.dense_out = Some(ErkDenseOut::new(self.params.method, self.system.ndim)?);
+        Ok(())
     }
 
     /// Calculates the quantities required to update x and y
@@ -361,10 +357,9 @@ where
     /// Computes the dense output with x-h ≤ x_out ≤ x
     fn dense_output(&self, y_out: &mut Vector, x_out: f64, x: f64, _y: &Vector, h: f64) -> Result<(), StrError> {
         if let Some(out) = self.dense_out.as_ref() {
-            out.calculate(y_out, x_out, x, h);
-            Ok(())
+            out.calculate(y_out, x_out, x, h)
         } else {
-            Err("dense output is not available for this explicit Runge-Kutta method")
+            Err("dense output is not enabled")
         }
     }
 }
@@ -520,7 +515,12 @@ mod tests {
         let params = Params::new(Method::MdEuler); // aka the Improved Euler in Kreyszig's book
         let mut solver = ExplicitRungeKutta::new(params, system).unwrap();
         let mut work = Workspace::new(Method::FwEuler);
-        solver.enable_dense_output(); // to make sure that the error message is generated
+
+        // check dense output availability
+        assert_eq!(
+            solver.enable_dense_output().err(),
+            Some("dense output is not available for the MdEuler method")
+        );
 
         // numerical approximation
         let h = 0.2;
@@ -588,7 +588,7 @@ mod tests {
         let mut y_out = Vector::new(ndim);
         assert_eq!(
             solver.dense_output(&mut y_out, 0.0, x, &y, h).err(),
-            Some("dense output is not available for this explicit Runge-Kutta method")
+            Some("dense output is not enabled")
         );
     }
 
@@ -605,6 +605,12 @@ mod tests {
         let params = Params::new(Method::Rk4); // aka the Classical RK in Kreyszig's book
         let mut solver = ExplicitRungeKutta::new(params, system).unwrap();
         let mut work = Workspace::new(Method::FwEuler);
+
+        // check dense output availability
+        assert_eq!(
+            solver.enable_dense_output().err(),
+            Some("dense output is not available for the Rk4 method")
+        );
 
         // numerical approximation
         let h = 0.2;
@@ -681,7 +687,7 @@ mod tests {
         let mut y_out = Vector::new(ndim);
         assert_eq!(
             solver.dense_output(&mut y_out, 0.0, x, &y, h).err(),
-            Some("dense output is not available for this explicit Runge-Kutta method")
+            Some("dense output is not enabled")
         );
     }
 

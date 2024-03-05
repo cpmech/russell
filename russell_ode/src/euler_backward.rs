@@ -66,7 +66,9 @@ where
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
-    fn enable_dense_output(&mut self) {}
+    fn enable_dense_output(&mut self) -> Result<(), StrError> {
+        Err("dense output is not available for the BwEuler method")
+    }
 
     /// Calculates the quantities required to update x and y
     fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {
@@ -196,6 +198,12 @@ mod tests {
         let params = Params::new(Method::BwEuler);
         let mut solver = EulerBackward::new(params, system);
         let mut work = Workspace::new(Method::FwEuler);
+
+        // check dense output availability
+        assert_eq!(
+            solver.enable_dense_output().err(),
+            Some("dense output is not available for the BwEuler method")
+        );
 
         // numerical approximation
         let h = 0.4;

@@ -24,23 +24,36 @@ pub(crate) struct ErkDenseOut {
 
 impl ErkDenseOut {
     /// Allocates a new instance
-    pub(crate) fn new(method: Method, ndim: usize) -> Option<Self> {
+    pub(crate) fn new(method: Method, ndim: usize) -> Result<Self, StrError> {
         match method {
-            Method::DoPri5 => Some(ErkDenseOut {
+            Method::Radau5 => Err("INTERNAL ERROR: cannot use Radau5 with ErkDenseOut"),
+            Method::BwEuler => Err("INTERNAL ERROR: cannot use BwEuler with ErkDenseOut"),
+            Method::FwEuler => Err("INTERNAL ERROR: cannot use FwEuler with ErkDenseOut"),
+            Method::Rk2 => Err("dense output is not available for the Rk2 method"),
+            Method::Rk3 => Err("dense output is not available for the Rk3 method"),
+            Method::Heun3 => Err("dense output is not available for the Heun3 method"),
+            Method::Rk4 => Err("dense output is not available for the Rk4 method"),
+            Method::Rk4alt => Err("dense output is not available for the Rk4alt method"),
+            Method::MdEuler => Err("dense output is not available for the MdEuler method"),
+            Method::Merson4 => Err("dense output is not available for the Merson4 method"),
+            Method::Zonneveld4 => Err("dense output is not available for the Zonneveld4 method"),
+            Method::Fehlberg4 => Err("dense output is not available for the Fehlberg4 method"),
+            Method::DoPri5 => Ok(ErkDenseOut {
                 method,
                 ndim,
                 d: vec![Vector::new(ndim); 5],
                 kd: Vec::new(),
                 yd: Vector::new(0),
             }),
-            Method::DoPri8 => Some(ErkDenseOut {
+            Method::Verner6 => Err("dense output is not available for the Verner6 method"),
+            Method::Fehlberg7 => Err("dense output is not available for the Fehlberg7 method"),
+            Method::DoPri8 => Ok(ErkDenseOut {
                 method,
                 ndim,
                 d: vec![Vector::new(ndim); 8],
                 kd: vec![Vector::new(ndim); 3],
                 yd: Vector::new(ndim),
             }),
-            _ => None,
         }
     }
 
@@ -192,12 +205,12 @@ impl ErkDenseOut {
                 }
                 Ok(3)
             }
-            _ => Ok(0),
+            _ => Err("INTERNAL ERROR: dense output is not available for this method"),
         }
     }
 
     /// Calculates the dense output
-    pub(crate) fn calculate(&self, y_out: &mut Vector, x_out: f64, x: f64, h: f64) {
+    pub(crate) fn calculate(&self, y_out: &mut Vector, x_out: f64, x: f64, h: f64) -> Result<(), StrError> {
         match self.method {
             Method::DoPri5 => {
                 let x_prev = x - h;
@@ -209,6 +222,7 @@ impl ErkDenseOut {
                             * (self.d[1][m]
                                 + u_theta * (self.d[2][m] + theta * (self.d[3][m] + u_theta * self.d[4][m])));
                 }
+                Ok(())
             }
             Method::DoPri8 => {
                 let x_prev = x - h;
@@ -219,8 +233,9 @@ impl ErkDenseOut {
                     y_out[m] = self.d[0][m]
                         + theta * (self.d[1][m] + u_theta * (self.d[2][m] + theta * (self.d[3][m] + u_theta * par)));
                 }
+                Ok(())
             }
-            _ => (),
+            _ => Err("INTERNAL ERROR: dense output is not available for this method"),
         }
     }
 }

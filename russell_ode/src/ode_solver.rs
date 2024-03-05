@@ -143,7 +143,7 @@ impl<'a, A> OdeSolver<'a, A> {
         // first output
         if let Some(out) = output.as_mut() {
             if out.with_dense_output() {
-                self.actual.enable_dense_output();
+                self.actual.enable_dense_output()?;
             }
             out.save_stiff = self.params.stiffness.save_results;
             out.push(&self.work, x, y, h, &self.actual)?;

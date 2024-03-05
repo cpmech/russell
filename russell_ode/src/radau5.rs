@@ -299,7 +299,9 @@ where
     J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
-    fn enable_dense_output(&mut self) {}
+    fn enable_dense_output(&mut self) -> Result<(), StrError> {
+        Ok(())
+    }
 
     /// Calculates the quantities required to update x and y
     fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {

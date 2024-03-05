@@ -1,6 +1,6 @@
 use crate::StrError;
 use crate::{OdeSolverTrait, Params, System, Workspace};
-use russell_lab::{vec_copy, vec_update, Vector};
+use russell_lab::{vec_copy, vec_rms_scaled, vec_update, Vector};
 use russell_sparse::{CooMatrix, Genie, LinSolver, SparseMatrix};
 
 /// Implements the backward Euler (implicit) solver
@@ -14,13 +14,6 @@ where
 
     /// ODE system
     system: System<'a, F, J, A>,
-
-    /// Scaling vector
-    ///
-    /// ```text
-    /// scaling[i] = abs_tol + rel_tol ⋅ |y[i]|
-    /// ```
-    scaling: Vector,
 
     /// Vector holding the function evaluation
     ///
@@ -57,7 +50,6 @@ where
         EulerBackward {
             params,
             system,
-            scaling: Vector::new(ndim),
             k: Vector::new(ndim),
             w: Vector::new(ndim),
             r: Vector::new(ndim),
@@ -76,20 +68,11 @@ where
     /// Enables dense output
     fn enable_dense_output(&mut self) {}
 
-    /// Initializes the internal variables
-    fn initialize(&mut self, _work: &mut Workspace, _x: f64, y: &Vector, _args: &mut A) -> Result<(), StrError> {
-        for i in 0..self.system.ndim {
-            self.scaling[i] = self.params.tol.abs + self.params.tol.rel * f64::abs(y[i]);
-        }
-        Ok(())
-    }
-
     /// Calculates the quantities required to update x and y
     fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {
         // auxiliary
         let traditional_newton = !self.params.bweuler.use_modified_newton;
         let ndim = self.system.ndim;
-        let dim = ndim as f64;
 
         // trial update
         let x_new = x + h;
@@ -108,20 +91,10 @@ where
             (self.system.function)(&mut self.k, x_new, y_new, args)?; // k := f(x_new, y_new)
 
             // calculate the residual and its norm
-            let mut r_norm = 0.0;
             for i in 0..ndim {
                 self.r[i] = y_new[i] - y[i] - h * self.k[i];
-                if self.params.bweuler.use_rms_norm {
-                    r_norm += f64::powf(self.r[i] / self.scaling[i], 2.0);
-                } else {
-                    r_norm += self.r[i] * self.r[i];
-                }
             }
-            if self.params.bweuler.use_rms_norm {
-                r_norm = f64::sqrt(r_norm / dim);
-            } else {
-                r_norm = f64::sqrt(r_norm);
-            }
+            let r_norm = vec_rms_scaled(&self.r, y, self.params.tol.abs, self.params.tol.rel);
 
             // check convergence
             if r_norm < self.params.tol.newton {
@@ -182,15 +155,15 @@ where
     /// Updates x and y and computes the next stepsize
     fn accept(
         &mut self,
-        work: &mut Workspace,
+        _work: &mut Workspace,
         x: &mut f64,
         y: &mut Vector,
         h: f64,
-        args: &mut A,
+        _args: &mut A,
     ) -> Result<(), StrError> {
         *x += h;
         vec_copy(y, &self.w).unwrap();
-        self.initialize(work, *x, y, args)
+        Ok(())
     }
 
     /// Rejects the update
@@ -199,5 +172,116 @@ where
     /// Computes the dense output with x-h ≤ x_out ≤ x
     fn dense_output(&self, _y_out: &mut Vector, _x_out: f64, _x: f64, _y: &Vector, _h: f64) -> Result<(), StrError> {
         Err("dense output is not available for the BwEuler method")
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::EulerBackward;
+    use crate::{Method, OdeSolverTrait, Params, Samples, Workspace};
+    use russell_lab::{vec_approx_eq, Vector};
+
+    #[test]
+    fn euler_backward_works() {
+        // This test relates to Table 21.13 of Kreyszig's book, page 921
+
+        // problem
+        let (system, data, mut args) = Samples::kreyszig_ex4_page920();
+        let mut yfx = data.y_analytical.unwrap();
+        let ndim = system.ndim;
+
+        // allocate structs
+        let params = Params::new(Method::BwEuler);
+        let mut solver = EulerBackward::new(params, system);
+        let mut work = Workspace::new(Method::FwEuler);
+
+        // numerical approximation
+        let h = 0.4;
+        let mut x = data.x0;
+        let mut y = data.y0.clone();
+        let mut xx = vec![x];
+        let mut yy0_num = vec![y[0]];
+        let mut yy1_num = vec![y[1]];
+        let mut y_ana = Vector::new(ndim);
+        yfx(&mut y_ana, x);
+        let mut err_y0 = vec![f64::abs(yy0_num[0] - y_ana[0])];
+        let mut err_y1 = vec![f64::abs(yy1_num[0] - y_ana[1])];
+        for n in 0..5 {
+            solver.step(&mut work, x, &y, h, &mut args).unwrap();
+            assert_eq!(work.bench.n_iterations, 2);
+            assert_eq!(work.bench.n_function, (n + 1) * work.bench.n_iterations);
+
+            solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
+            xx.push(x);
+            yy0_num.push(y[0]);
+            yy1_num.push(y[1]);
+
+            yfx(&mut y_ana, x);
+            err_y0.push(f64::abs(yy0_num.last().unwrap() - y_ana[0]));
+            err_y1.push(f64::abs(yy1_num.last().unwrap() - y_ana[1]));
+        }
+
+        // Mathematica code:
+        //
+        // (* The code below works with 2 equations only *)
+        // BwEulerTwoEqs[f_, x0_, y0_, x1_, h_] := Module[{x, y, nstep, sol},
+        //    x[1] = x0;
+        //    y[1] = y0;
+        //    nstep = IntegerPart[(x1 - x0)/h] + 1;
+        //    Do[
+        //     x[i + 1] = x[i] + h;
+        //     sol = NSolve[{Y1, Y2} - y[i] - h f[x[i + 1], {Y1, Y2}] == 0, {Y1, Y2}][[1]];
+        //     y[i + 1] = {Y1, Y2} /. sol;
+        //     , {i, 1, nstep}];
+        //    Table[{x[i], y[i]}, {i, 1, nstep}]
+        // ];
+        //
+        // f[x_, y_] := {y[[2]], -10 y[[1]] - 11 y[[2]] + 10 x + 11};
+        // x0 = 0; x1 = 2.0;
+        // y0 = {2, -10};
+        // h = 0.4;
+        //
+        // xyBE = BwEulerTwoEqs[f, x0, y0, x1, h];
+        // Print["x = ", NumberForm[xyBE[[All, 1]], 20]]
+        // Print["y1 = ", NumberForm[xyBE[[All, 2]][[All, 1]], 20]]
+        // Print["y2 = ", NumberForm[xyBE[[All, 2]][[All, 2]], 20]]
+        //
+        // yBE = xyBE[[All, 2]];
+        // yAna = {(y1 /. ana)[#[[1]]], (y2 /. ana)[#[[1]]]} & /@ xyBE;
+        // errY1 = Abs[yBE - yAna][[All, 1]];
+        // errY2 = Abs[yBE - yAna][[All, 2]];
+        // Print["errY1 = ", NumberForm[errY1, 20]]
+        // Print["errY2 = ", NumberForm[errY2, 20]]
+
+        // compare with Mathematica results
+        let xx_math = &[0.0, 0.4, 0.8, 1.2, 1.6, 2.0];
+        let yy0_math = &[
+            2.0,
+            1.314285714285715,
+            1.350204081632653,
+            1.572431486880467,
+            1.861908204914619,
+            2.186254432081871,
+        ];
+        let yy1_math = &[
+            -10.0,
+            -1.714285714285714,
+            0.0897959183673469,
+            0.5555685131195336,
+            0.723691795085381,
+            0.810865567918129,
+        ];
+        vec_approx_eq(&xx, xx_math, 1e-15);
+        vec_approx_eq(&yy0_num, yy0_math, 1e-15);
+        vec_approx_eq(&yy1_num, yy1_math, 1e-14);
+
+        // check dense_output
+        let mut y_out = Vector::new(ndim);
+        assert_eq!(
+            solver.dense_output(&mut y_out, 0.0, x, &y, h).err(),
+            Some("dense output is not available for the BwEuler method")
+        );
     }
 }

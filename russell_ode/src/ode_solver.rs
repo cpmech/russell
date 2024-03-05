@@ -135,7 +135,6 @@ impl<'a, A> OdeSolver<'a, A> {
 
         // reset variables
         self.work.reset(h, self.params.step.rel_error_prev_min);
-        self.actual.initialize(&mut self.work, x0, y0, args)?;
 
         // current values
         let mut x = x0; // will become x1 at the end

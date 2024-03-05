@@ -45,7 +45,7 @@ fn test_radau5_van_der_pol() {
     println!("{}", stat.summary());
     println!("y ={}{}", format_fortran(data.y0[0]), format_fortran(data.y0[1]));
     println!("h ={}", format_fortran(stat.h_accepted));
-    assert_eq!(stat.n_function, 2248);
+    assert_eq!(stat.n_function, 2248 + 1); // +1 because the fist step is a reject, thus initialize is called again
     assert_eq!(stat.n_jacobian, 162);
     assert_eq!(stat.n_factor, 253);
     assert_eq!(stat.n_lin_sol, 668);

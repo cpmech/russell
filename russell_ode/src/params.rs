@@ -123,9 +123,6 @@ pub struct ParamsStiffness {
 pub struct ParamsBwEuler {
     /// Use modified Newton's method (constant Jacobian)
     pub use_modified_newton: bool,
-
-    /// Use RMS norm instead of Euclidean norm to compare residuals
-    pub use_rms_norm: bool,
 }
 
 /// Holds the parameters for the Radau5 method
@@ -314,7 +311,6 @@ impl ParamsBwEuler {
     pub(crate) fn new() -> Self {
         ParamsBwEuler {
             use_modified_newton: false,
-            use_rms_norm: true,
         }
     }
 }

@@ -157,6 +157,15 @@ where
         }
     }
 
+    /// Initializes the scaling and k_accepted vectors
+    fn initialize(&mut self, work: &mut Workspace, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError> {
+        for i in 0..self.system.ndim {
+            self.scaling[i] = self.params.tol.abs + self.params.tol.rel * f64::abs(y[i]);
+        }
+        work.bench.n_function += 1;
+        (self.system.function)(&mut self.k_accepted, x, y, args)
+    }
+
     /// Assembles the K_real and K_comp matrices
     fn assemble(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {
         // auxiliary
@@ -292,17 +301,13 @@ where
     /// Enables dense output
     fn enable_dense_output(&mut self) {}
 
-    /// Initializes the internal variables
-    fn initialize(&mut self, work: &mut Workspace, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError> {
-        for i in 0..self.system.ndim {
-            self.scaling[i] = self.params.tol.abs + self.params.tol.rel * f64::abs(y[i]);
-        }
-        work.bench.n_function += 1;
-        (self.system.function)(&mut self.k_accepted, x, y, args)
-    }
-
     /// Calculates the quantities required to update x and y
     fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {
+        // Perform the initialization for the first time
+        if work.bench.n_accepted == 0 {
+            self.initialize(work, x, y, args)?;
+        }
+
         // constants
         let concurrent = self.params.radau5.concurrent && self.params.newton.genie != Genie::Mumps;
         let ndim = self.system.ndim;

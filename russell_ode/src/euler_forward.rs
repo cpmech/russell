@@ -44,11 +44,6 @@ where
     /// Enables dense output
     fn enable_dense_output(&mut self) {}
 
-    /// Initializes the internal variables
-    fn initialize(&mut self, _work: &mut Workspace, _x: f64, _y: &Vector, _args: &mut A) -> Result<(), StrError> {
-        Ok(())
-    }
-
     /// Calculates the quantities required to update x and y
     fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {
         work.bench.n_function += 1;

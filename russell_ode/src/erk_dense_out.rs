@@ -239,3 +239,71 @@ impl ErkDenseOut {
         }
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::ErkDenseOut;
+    use crate::Method;
+
+    #[test]
+    fn new_captures_errors() {
+        assert_eq!(
+            ErkDenseOut::new(Method::Radau5, 1).err(),
+            Some("INTERNAL ERROR: cannot use Radau5 with ErkDenseOut")
+        );
+        assert_eq!(
+            ErkDenseOut::new(Method::BwEuler, 1).err(),
+            Some("INTERNAL ERROR: cannot use BwEuler with ErkDenseOut")
+        );
+        assert_eq!(
+            ErkDenseOut::new(Method::FwEuler, 1).err(),
+            Some("INTERNAL ERROR: cannot use FwEuler with ErkDenseOut")
+        );
+        assert_eq!(
+            ErkDenseOut::new(Method::Rk2, 1).err(),
+            Some("dense output is not available for the Rk2 method")
+        );
+        assert_eq!(
+            ErkDenseOut::new(Method::Rk3, 1).err(),
+            Some("dense output is not available for the Rk3 method")
+        );
+        assert_eq!(
+            ErkDenseOut::new(Method::Heun3, 1).err(),
+            Some("dense output is not available for the Heun3 method")
+        );
+        assert_eq!(
+            ErkDenseOut::new(Method::Rk4, 1).err(),
+            Some("dense output is not available for the Rk4 method")
+        );
+        assert_eq!(
+            ErkDenseOut::new(Method::Rk4alt, 1).err(),
+            Some("dense output is not available for the Rk4alt method")
+        );
+        assert_eq!(
+            ErkDenseOut::new(Method::MdEuler, 1).err(),
+            Some("dense output is not available for the MdEuler method")
+        );
+        assert_eq!(
+            ErkDenseOut::new(Method::Merson4, 1).err(),
+            Some("dense output is not available for the Merson4 method")
+        );
+        assert_eq!(
+            ErkDenseOut::new(Method::Zonneveld4, 1).err(),
+            Some("dense output is not available for the Zonneveld4 method")
+        );
+        assert_eq!(
+            ErkDenseOut::new(Method::Fehlberg4, 1).err(),
+            Some("dense output is not available for the Fehlberg4 method")
+        );
+        assert_eq!(
+            ErkDenseOut::new(Method::Verner6, 1).err(),
+            Some("dense output is not available for the Verner6 method")
+        );
+        assert_eq!(
+            ErkDenseOut::new(Method::Fehlberg7, 1).err(),
+            Some("dense output is not available for the Fehlberg7 method")
+        );
+    }
+}

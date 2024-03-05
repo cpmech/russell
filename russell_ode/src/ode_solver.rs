@@ -275,13 +275,10 @@ mod tests {
 
     #[test]
     fn solve_works_1() {
-        // solving
-        //
+        // system:
         // dy
         // —— = 1   with   y(x=0)=0    thus   y(x) = x
         // dx
-
-        let params = Params::new(Method::FwEuler);
         let system = System::new(
             1,
             |f, _, _, _| {
@@ -309,6 +306,7 @@ mod tests {
         let mut args = Args {};
 
         // solve the ODE system
+        let params = Params::new(Method::FwEuler);
         let mut solver = OdeSolver::new(params, system).unwrap();
         let xf = 1.0;
         solver.solve(&mut y0, x0, xf, None, Some(&mut out), &mut args).unwrap();

@@ -245,7 +245,8 @@ impl ErkDenseOut {
 #[cfg(test)]
 mod tests {
     use super::ErkDenseOut;
-    use crate::Method;
+    use crate::{Method, Samples};
+    use russell_lab::Vector;
 
     #[test]
     fn new_captures_errors() {
@@ -304,6 +305,32 @@ mod tests {
         assert_eq!(
             ErkDenseOut::new(Method::Fehlberg7, 1).err(),
             Some("dense output is not available for the Fehlberg7 method")
+        );
+    }
+
+    #[test]
+    fn internal_errors_works() {
+        let mut out = ErkDenseOut {
+            method: Method::MdEuler,
+            ndim: 1,
+            d: Vec::new(),
+            kd: Vec::new(),
+            yd: Vector::new(0),
+        };
+        let (mut system, data, mut args) = Samples::kreyszig_eq6_page902();
+        let h = 0.1;
+        let w = Vector::new(system.ndim);
+        let k = vec![Vector::new(system.ndim)];
+        assert_eq!(
+            out.update(&mut system, data.x0, &data.y0, h, &w, &k, &mut args).err(),
+            Some("INTERNAL ERROR: dense output is not available for this method")
+        );
+        let mut y_out = Vector::new(system.ndim);
+        let x_out = 0.0;
+        let x = 0.0;
+        assert_eq!(
+            out.calculate(&mut y_out, x_out, x, h).err(),
+            Some("INTERNAL ERROR: dense output is not available for this method")
         );
     }
 }

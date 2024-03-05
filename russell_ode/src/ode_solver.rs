@@ -181,15 +181,17 @@ impl<'a, A> OdeSolver<'a, A> {
         for _ in 0..self.params.step.n_step_max {
             self.work.bench.sw_step.reset();
 
-            // update and check the stepsize
+            // converged?
             let dx = x1 - x;
             if dx <= 10.0 * f64::EPSILON {
                 success = true;
                 self.work.bench.stop_sw_step();
                 break;
             }
+
+            // update and check the stepsize
             h = f64::min(self.work.h_new, dx);
-            if 0.1 * h <= f64::abs(x) * f64::EPSILON {
+            if h <= 10.0 * f64::EPSILON {
                 return Err("the stepsize becomes too small");
             }
 

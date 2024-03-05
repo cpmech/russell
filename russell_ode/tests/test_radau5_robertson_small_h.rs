@@ -27,12 +27,12 @@ fn test_radau5_robertson_small_h() {
     println!("{}", stat.summary());
     println!("y ={}{}", format_fortran(data.y0[0]), format_fortran(data.y0[1]));
     println!("h ={}", format_fortran(stat.h_accepted));
-    assert_eq!(stat.n_function, 625);
-    assert_eq!(stat.n_jacobian, 72);
-    assert_eq!(stat.n_factor, 90);
-    assert_eq!(stat.n_lin_sol, 183);
-    assert_eq!(stat.n_steps, 90);
-    assert_eq!(stat.n_accepted, 75);
+    assert_eq!(stat.n_function, 520);
+    assert_eq!(stat.n_jacobian, 57);
+    assert_eq!(stat.n_factor, 75);
+    assert_eq!(stat.n_lin_sol, 153);
+    assert_eq!(stat.n_steps, 75);
+    assert_eq!(stat.n_accepted, 60);
     assert_eq!(stat.n_rejected, 4);
     assert_eq!(stat.n_iterations_max, 4);
 }

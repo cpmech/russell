@@ -159,43 +159,15 @@ step =    77, newt =     1, ldw =  3.129071244302047E+00, h =  1.483034052913010
 step =    77, newt =     2, ldw =  2.532410731231322E-01, h =  1.483034052913010E-15
 step =    78, newt =     1, ldw =  3.129071290775475E+00, h =  1.023241107773565E-15
 step =    78, newt =     2, ldw =  2.532410739377414E-01, h =  1.023241107773565E-15
-step =    79, newt =     1, ldw =  3.129071322955308E+00, h =  7.060002205795461E-16
-step =    79, newt =     2, ldw =  2.532410745252676E-01, h =  7.060002205795461E-16
-step =    80, newt =     1, ldw =  3.129071345235695E+00, h =  4.871152154847529E-16
-step =    80, newt =     2, ldw =  2.532410749374883E-01, h =  4.871152154847529E-16
-step =    81, newt =     1, ldw =  3.129071360584610E+00, h =  3.360922938104105E-16
-step =    81, newt =     2, ldw =  2.532410752179123E-01, h =  3.360922938104105E-16
-step =    82, newt =     1, ldw =  3.129071371168924E+00, h =  2.318918122502473E-16
-step =    82, newt =     2, ldw =  2.532410754110850E-01, h =  2.318918122502473E-16
-step =    83, newt =     1, ldw =  3.129071378475826E+00, h =  1.599971603731013E-16
-step =    83, newt =     2, ldw =  2.532410755449374E-01, h =  1.599971603731013E-16
-step =    84, newt =     1, ldw =  3.129071383517496E+00, h =  1.103923898544035E-16
-step =    84, newt =     2, ldw =  2.532410756372190E-01, h =  1.103923898544035E-16
-step =    85, newt =     1, ldw =  3.129071386995605E+00, h =  7.616685017482944E-17
-step =    85, newt =     2, ldw =  2.532410757008305E-01, h =  7.616685017482944E-17
-step =    86, newt =     1, ldw =  3.129071389395771E+00, h =  5.255243658347731E-17
-step =    86, newt =     2, ldw =  2.532410757447754E-01, h =  5.255243658347731E-17
-step =    87, newt =     1, ldw =  3.129071391051646E+00, h =  3.625932521872401E-17
-step =    87, newt =     2, ldw =  2.532410757750496E-01, h =  3.625932521872401E-17
-step =    88, newt =     1, ldw =  3.129071392194275E+00, h =  2.501765381321297E-17
-step =    88, newt =     2, ldw =  2.532410757959806E-01, h =  2.501765381321297E-17
-step =    89, newt =     1, ldw =  3.129071392982461E+00, h =  1.726129757235750E-17
-step =    89, newt =     2, ldw =  2.532410758103962E-01, h =  1.726129757235750E-17
-step =    90, newt =     1, ldw =  3.129071393526413E+00, h =  1.190968570131684E-17
-step =    90, newt =     2, ldw =  2.532410758203371E-01, h =  1.190968570131684E-17
-step =    91, newt =     1, ldw =  3.129071393901749E+00, h =  8.217262515495213E-18
-step =    91, newt =     2, ldw =  2.532410758271968E-01, h =  8.217262515495213E-18
-step =    92, newt =     1, ldw =  3.129071394160905E+00, h =  5.669620924006890E-18
-step =    92, newt =     2, ldw =  2.532410758319540E-01, h =  5.669620924006890E-18
 ERROR: THE STEPSIZE BECOMES TOO SMALL
 Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)
-Number of function evaluations   = 640
-Number of Jacobian evaluations   = 75
-Number of factorizations         = 91
-Number of lin sys solutions      = 187
-Number of performed steps        = 93
-Number of accepted steps         = 77
+Number of function evaluations   = 542
+Number of Jacobian evaluations   = 61
+Number of factorizations         = 77
+Number of lin sys solutions      = 159
+Number of performed steps        = 79
+Number of accepted steps         = 63
 Number of rejected steps         = 4
 Number of iterations (maximum)   = 4
-y = -8.815786375827154E+05 -2.642975458936770E+09  2.643857038574352E+09
-h =  3.911838201830276E-18
+y = -4.883696833176666E+03 -1.464431899711471E+07  1.464920369394789E+07
+h =  7.060002205795461E-16

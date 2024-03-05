@@ -36,6 +36,63 @@ pub struct SampleData<'a> {
 pub struct Samples {}
 
 impl Samples {
+    /// Implements a simple ODE with a constant derivative
+    ///
+    /// ```text
+    /// dy
+    /// —— = 1   with   y(x=0)=0    thus   y(x) = x
+    /// dx
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, args)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `NoArgs`
+    /// * `data: SampleData` -- holds the initial values and the analytical solution
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    pub fn simple_constant<'a>() -> (
+        System<
+            'a,
+            impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
+        >,
+        SampleData<'a>,
+        NoArgs,
+    ) {
+        let ndim = 1;
+        let jac_nnz = 1; // CooMatrix requires at least one value (thus the 0.0 must be stored)
+        let system = System::new(
+            ndim,
+            |f: &mut Vector, _x: f64, _y: &Vector, _args: &mut NoArgs| {
+                f[0] = 1.0;
+                Ok(())
+            },
+            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut NoArgs| {
+                jj.reset();
+                jj.put(0, 0, 0.0 * multiplier).unwrap();
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+        let data = SampleData {
+            x0: 0.0,
+            y0: Vector::from(&[0.0]),
+            x1: 1.0,
+            h_equal: Some(0.2),
+            y_analytical: Some(Box::new(|y, x| {
+                y[0] = x;
+            })),
+        };
+        (system, data, 0)
+    }
+
     /// Implements Equation (6) from Kreyszig's book on page 902
     ///
     /// ```text
@@ -672,6 +729,34 @@ mod tests {
             }
         }
         jac
+    }
+
+    #[test]
+    fn simple_constant_works() {
+        let multiplier = 2.0;
+        let (mut system, mut data, mut args) = Samples::simple_constant();
+
+        // check initial values
+        if let Some(y_ana) = data.y_analytical.as_mut() {
+            let mut y = Vector::new(data.y0.dim());
+            y_ana(&mut y, data.x0);
+            println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
+            vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
+        }
+
+        // compute the analytical Jacobian matrix
+        let symmetry = Some(system.jac_symmetry);
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+
+        // compute the numerical Jacobian matrix
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-11);
     }
 
     #[test]

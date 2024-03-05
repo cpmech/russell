@@ -355,11 +355,9 @@ where
     }
 
     /// Computes the dense output with x-h ≤ x_out ≤ x
-    fn dense_output(&self, y_out: &mut Vector, x_out: f64, x: f64, _y: &Vector, h: f64) -> Result<(), StrError> {
+    fn dense_output(&self, y_out: &mut Vector, x_out: f64, x: f64, _y: &Vector, h: f64) {
         if let Some(out) = self.dense_out.as_ref() {
-            out.calculate(y_out, x_out, x, h)
-        } else {
-            Err("dense output is not enabled")
+            out.calculate(y_out, x_out, x, h);
         }
     }
 }
@@ -583,13 +581,6 @@ mod tests {
         vec_approx_eq(&xx, xx_correct, 1e-15);
         vec_approx_eq(&yy_num, yy_correct, 1e-15);
         vec_approx_eq(&errors, errors_correct, 1e-15);
-
-        // check dense_output
-        let mut y_out = Vector::new(ndim);
-        assert_eq!(
-            solver.dense_output(&mut y_out, 0.0, x, &y, h).err(),
-            Some("dense output is not enabled")
-        );
     }
 
     #[test]
@@ -682,13 +673,6 @@ mod tests {
         vec_approx_eq(&xx, xx_correct, 1e-15);
         vec_approx_eq(&yy_num, yy_correct, 1e-15);
         vec_approx_eq(&errors, errors_correct, 1e-15);
-
-        // check dense_output
-        let mut y_out = Vector::new(ndim);
-        assert_eq!(
-            solver.dense_output(&mut y_out, 0.0, x, &y, h).err(),
-            Some("dense output is not enabled")
-        );
     }
 
     #[test]

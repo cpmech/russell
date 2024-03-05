@@ -72,9 +72,7 @@ where
     fn reject(&mut self, _work: &mut Workspace, _h: f64) {}
 
     /// Computes the dense output with x-h ≤ x_out ≤ x
-    fn dense_output(&self, _y_out: &mut Vector, _x_out: f64, _x: f64, _y: &Vector, _h: f64) -> Result<(), StrError> {
-        Err("dense output is not available for the FwEuler method")
-    }
+    fn dense_output(&self, _y_out: &mut Vector, _x_out: f64, _x: f64, _y: &Vector, _h: f64) {}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -163,12 +161,5 @@ mod tests {
         vec_approx_eq(&xx, xx_correct, 1e-15);
         vec_approx_eq(&yy_num, yy_correct, 1e-15);
         vec_approx_eq(&errors, errors_correct, 1e-15);
-
-        // check dense_output
-        let mut y_out = Vector::new(ndim);
-        assert_eq!(
-            solver.dense_output(&mut y_out, 0.0, x, &y, h).err(),
-            Some("dense output is not available for the FwEuler method")
-        );
     }
 }

@@ -210,32 +210,26 @@ impl ErkDenseOut {
     }
 
     /// Calculates the dense output
-    pub(crate) fn calculate(&self, y_out: &mut Vector, x_out: f64, x: f64, h: f64) -> Result<(), StrError> {
-        match self.method {
-            Method::DoPri5 => {
-                let x_prev = x - h;
-                let theta = (x_out - x_prev) / h;
-                let u_theta = 1.0 - theta;
-                for m in 0..self.ndim {
-                    y_out[m] = self.d[0][m]
-                        + theta
-                            * (self.d[1][m]
-                                + u_theta * (self.d[2][m] + theta * (self.d[3][m] + u_theta * self.d[4][m])));
-                }
-                Ok(())
+    pub(crate) fn calculate(&self, y_out: &mut Vector, x_out: f64, x: f64, h: f64) {
+        if self.method == Method::DoPri5 {
+            let x_prev = x - h;
+            let theta = (x_out - x_prev) / h;
+            let u_theta = 1.0 - theta;
+            for m in 0..self.ndim {
+                y_out[m] = self.d[0][m]
+                    + theta
+                        * (self.d[1][m] + u_theta * (self.d[2][m] + theta * (self.d[3][m] + u_theta * self.d[4][m])));
             }
-            Method::DoPri8 => {
-                let x_prev = x - h;
-                let theta = (x_out - x_prev) / h;
-                let u_theta = 1.0 - theta;
-                for m in 0..self.ndim {
-                    let par = self.d[4][m] + theta * (self.d[5][m] + u_theta * (self.d[6][m] + theta * self.d[7][m]));
-                    y_out[m] = self.d[0][m]
-                        + theta * (self.d[1][m] + u_theta * (self.d[2][m] + theta * (self.d[3][m] + u_theta * par)));
-                }
-                Ok(())
+        }
+        if self.method == Method::DoPri8 {
+            let x_prev = x - h;
+            let theta = (x_out - x_prev) / h;
+            let u_theta = 1.0 - theta;
+            for m in 0..self.ndim {
+                let par = self.d[4][m] + theta * (self.d[5][m] + u_theta * (self.d[6][m] + theta * self.d[7][m]));
+                y_out[m] = self.d[0][m]
+                    + theta * (self.d[1][m] + u_theta * (self.d[2][m] + theta * (self.d[3][m] + u_theta * par)));
             }
-            _ => Err("INTERNAL ERROR: dense output is not available for this method"),
         }
     }
 }
@@ -309,7 +303,7 @@ mod tests {
     }
 
     #[test]
-    fn internal_errors_works() {
+    fn update_captures_errors() {
         let mut out = ErkDenseOut {
             method: Method::MdEuler,
             ndim: 1,
@@ -323,13 +317,6 @@ mod tests {
         let k = vec![Vector::new(system.ndim)];
         assert_eq!(
             out.update(&mut system, data.x0, &data.y0, h, &w, &k, &mut args).err(),
-            Some("INTERNAL ERROR: dense output is not available for this method")
-        );
-        let mut y_out = Vector::new(system.ndim);
-        let x_out = 0.0;
-        let x = 0.0;
-        assert_eq!(
-            out.calculate(&mut y_out, x_out, x, h).err(),
             Some("INTERNAL ERROR: dense output is not available for this method")
         );
     }

@@ -81,7 +81,7 @@ impl Samples {
             },
             |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut SampleNoArgs| {
                 jj.reset();
-                jj.put(0, 0, 1.0 * multiplier)?;
+                jj.put(0, 0, 1.0 * multiplier).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,
@@ -154,9 +154,9 @@ impl Samples {
             },
             |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut SampleNoArgs| {
                 jj.reset();
-                jj.put(0, 1, 1.0 * multiplier)?;
-                jj.put(1, 0, -10.0 * multiplier)?;
-                jj.put(1, 1, -11.0 * multiplier)?;
+                jj.put(0, 1, 1.0 * multiplier).unwrap();
+                jj.put(1, 0, -10.0 * multiplier).unwrap();
+                jj.put(1, 1, -11.0 * multiplier).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,
@@ -215,7 +215,7 @@ impl Samples {
             },
             |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut SampleNoArgs| {
                 jj.reset();
-                jj.put(0, 0, multiplier * L)?;
+                jj.put(0, 0, multiplier * L).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,
@@ -274,13 +274,13 @@ impl Samples {
             },
             |jj: &mut CooMatrix, _x: f64, y: &Vector, multiplier: f64, _args: &mut SampleNoArgs| {
                 jj.reset();
-                jj.put(0, 0, -0.04 * multiplier)?;
-                jj.put(0, 1, 1.0e4 * y[2] * multiplier)?;
-                jj.put(0, 2, 1.0e4 * y[1] * multiplier)?;
-                jj.put(1, 0, 0.04 * multiplier)?;
-                jj.put(1, 1, (-1.0e4 * y[2] - 6.0e7 * y[1]) * multiplier)?;
-                jj.put(1, 2, (-1.0e4 * y[1]) * multiplier)?;
-                jj.put(2, 1, 6.0e7 * y[1] * multiplier)?;
+                jj.put(0, 0, -0.04 * multiplier).unwrap();
+                jj.put(0, 1, 1.0e4 * y[2] * multiplier).unwrap();
+                jj.put(0, 2, 1.0e4 * y[1] * multiplier).unwrap();
+                jj.put(1, 0, 0.04 * multiplier).unwrap();
+                jj.put(1, 1, (-1.0e4 * y[2] - 6.0e7 * y[1]) * multiplier).unwrap();
+                jj.put(1, 2, (-1.0e4 * y[1]) * multiplier).unwrap();
+                jj.put(2, 1, 6.0e7 * y[1] * multiplier).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,
@@ -362,9 +362,9 @@ impl Samples {
             },
             move |jj: &mut CooMatrix, _x: f64, y: &Vector, multiplier: f64, _args: &mut SampleNoArgs| {
                 jj.reset();
-                jj.put(0, 1, 1.0 * multiplier)?;
-                jj.put(1, 0, multiplier * (-2.0 * y[0] * y[1] - 1.0) / eps)?;
-                jj.put(1, 1, multiplier * (1.0 - y[0] * y[0]) / eps)?;
+                jj.put(0, 1, 1.0 * multiplier).unwrap();
+                jj.put(1, 0, multiplier * (-2.0 * y[0] * y[1] - 1.0) / eps).unwrap();
+                jj.put(1, 1, multiplier * (1.0 - y[0] * y[0]) / eps).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,
@@ -469,14 +469,17 @@ impl Samples {
                 let dj10 = 3.0 * b * s1;
                 let dj11 = 3.0 * y[1] * s1;
                 jj.reset();
-                jj.put(0, 2, 1.0 * m)?;
-                jj.put(1, 3, 1.0 * m)?;
-                jj.put(2, 0, (1.0 + a * dj00 * MD / dd0 + b * dj10 * MU / dd1 + c) * m)?;
-                jj.put(2, 1, (a * dj01 * MD / dd0 + b * dj11 * MU / dd1) * m)?;
-                jj.put(2, 3, 2.0 * m)?;
-                jj.put(3, 0, (dj00 * y[1] * MD / dd0 + dj10 * y[1] * MU / dd1) * m)?;
-                jj.put(3, 1, (1.0 + dj01 * y[1] * MD / dd0 + dj11 * y[1] * MU / dd1 + c) * m)?;
-                jj.put(3, 2, -2.0 * m)?;
+                jj.put(0, 2, 1.0 * m).unwrap();
+                jj.put(1, 3, 1.0 * m).unwrap();
+                jj.put(2, 0, (1.0 + a * dj00 * MD / dd0 + b * dj10 * MU / dd1 + c) * m)
+                    .unwrap();
+                jj.put(2, 1, (a * dj01 * MD / dd0 + b * dj11 * MU / dd1) * m).unwrap();
+                jj.put(2, 3, 2.0 * m).unwrap();
+                jj.put(3, 0, (dj00 * y[1] * MD / dd0 + dj10 * y[1] * MU / dd1) * m)
+                    .unwrap();
+                jj.put(3, 1, (1.0 + dj01 * y[1] * MD / dd0 + dj11 * y[1] * MU / dd1 + c) * m)
+                    .unwrap();
+                jj.put(3, 2, -2.0 * m).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,
@@ -569,22 +572,22 @@ impl Samples {
                 let fac14 = beta * f64::exp((y[3] - y[2]) / uf) / uf;
                 let fac27 = beta * f64::exp((y[6] - y[5]) / uf) / uf;
                 jj.reset();
-                jj.put(0, 0, (1.0 / r9) * m)?;
-                jj.put(1, 1, (1.0 / r8) * m)?;
-                jj.put(1, 2, (-alpha * fac14) * m)?;
-                jj.put(1, 3, (alpha * fac14) * m)?;
-                jj.put(2, 2, (1.0 / r7 + fac14) * m)?;
-                jj.put(2, 3, (-fac14) * m)?;
-                jj.put(3, 3, (1.0 / r5 + 1.0 / r6 + (1.0 - alpha) * fac14) * m)?;
-                jj.put(3, 2, (-(1.0 - alpha) * fac14) * m)?;
-                jj.put(4, 4, (1.0 / r4) * m)?;
-                jj.put(4, 5, (-alpha * fac27) * m)?;
-                jj.put(4, 6, (alpha * fac27) * m)?;
-                jj.put(5, 5, (1.0 / r3 + fac27) * m)?;
-                jj.put(5, 6, (-fac27) * m)?;
-                jj.put(6, 6, (1.0 / r1 + 1.0 / r2 + (1.0 - alpha) * fac27) * m)?;
-                jj.put(6, 5, (-(1.0 - alpha) * fac27) * m)?;
-                jj.put(7, 7, (1.0 / r0) * m)?;
+                jj.put(0, 0, (1.0 / r9) * m).unwrap();
+                jj.put(1, 1, (1.0 / r8) * m).unwrap();
+                jj.put(1, 2, (-alpha * fac14) * m).unwrap();
+                jj.put(1, 3, (alpha * fac14) * m).unwrap();
+                jj.put(2, 2, (1.0 / r7 + fac14) * m).unwrap();
+                jj.put(2, 3, (-fac14) * m).unwrap();
+                jj.put(3, 3, (1.0 / r5 + 1.0 / r6 + (1.0 - alpha) * fac14) * m).unwrap();
+                jj.put(3, 2, (-(1.0 - alpha) * fac14) * m).unwrap();
+                jj.put(4, 4, (1.0 / r4) * m).unwrap();
+                jj.put(4, 5, (-alpha * fac27) * m).unwrap();
+                jj.put(4, 6, (alpha * fac27) * m).unwrap();
+                jj.put(5, 5, (1.0 / r3 + fac27) * m).unwrap();
+                jj.put(5, 6, (-fac27) * m).unwrap();
+                jj.put(6, 6, (1.0 / r1 + 1.0 / r2 + (1.0 - alpha) * fac27) * m).unwrap();
+                jj.put(6, 5, (-(1.0 - alpha) * fac27) * m).unwrap();
+                jj.put(7, 7, (1.0 / r0) * m).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,

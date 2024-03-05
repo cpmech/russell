@@ -111,7 +111,7 @@ where
                 work.bench.n_jacobian += 1;
 
                 // calculate J_new := h J
-                let kk = self.kk.get_coo_mut()?;
+                let kk = self.kk.get_coo_mut().unwrap();
                 if self.params.newton.use_numerical_jacobian || !self.system.jac_available {
                     work.bench.n_function += ndim;
                     self.system.numerical_jacobian(kk, x_new, y_new, &self.k, h, args)?;
@@ -197,7 +197,7 @@ mod tests {
         // allocate structs
         let params = Params::new(Method::BwEuler);
         let mut solver = EulerBackward::new(params, system);
-        let mut work = Workspace::new(Method::FwEuler);
+        let mut work = Workspace::new(Method::BwEuler);
 
         // check dense output availability
         assert_eq!(
@@ -310,6 +310,19 @@ mod tests {
         assert_eq!(
             solver.dense_output(&mut y_out, 0.0, x, &y, h).err(),
             Some("dense output is not available for the BwEuler method")
+        );
+    }
+
+    #[test]
+    fn euler_backward_captures_failed_iterations() {
+        let mut params = Params::new(Method::BwEuler);
+        let (system, data, mut args) = Samples::kreyszig_ex4_page920();
+        params.newton.n_iteration_max = 0;
+        let mut solver = EulerBackward::new(params, system);
+        let mut work = Workspace::new(Method::BwEuler);
+        assert_eq!(
+            solver.step(&mut work, data.x0, &data.y0, 0.1, &mut args).err(),
+            Some("Newton-Raphson method did not complete successfully")
         );
     }
 }

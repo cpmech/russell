@@ -159,7 +159,7 @@ where
 {
     /// Enables dense output
     fn enable_dense_output(&mut self) {
-        self.dense_out = Some(ErkDenseOut::new(self.params.method, self.system.ndim));
+        self.dense_out = ErkDenseOut::new(self.params.method, self.system.ndim);
     }
 
     /// Calculates the quantities required to update x and y
@@ -520,6 +520,7 @@ mod tests {
         let params = Params::new(Method::MdEuler); // aka the Improved Euler in Kreyszig's book
         let mut solver = ExplicitRungeKutta::new(params, system).unwrap();
         let mut work = Workspace::new(Method::FwEuler);
+        solver.enable_dense_output(); // to make sure that the error message is generated
 
         // numerical approximation
         let h = 0.2;

@@ -24,29 +24,23 @@ pub(crate) struct ErkDenseOut {
 
 impl ErkDenseOut {
     /// Allocates a new instance
-    pub(crate) fn new(method: Method, ndim: usize) -> Self {
+    pub(crate) fn new(method: Method, ndim: usize) -> Option<Self> {
         match method {
-            Method::DoPri5 => ErkDenseOut {
+            Method::DoPri5 => Some(ErkDenseOut {
                 method,
                 ndim,
                 d: vec![Vector::new(ndim); 5],
                 kd: Vec::new(),
                 yd: Vector::new(0),
-            },
-            Method::DoPri8 => ErkDenseOut {
+            }),
+            Method::DoPri8 => Some(ErkDenseOut {
                 method,
                 ndim,
                 d: vec![Vector::new(ndim); 8],
                 kd: vec![Vector::new(ndim); 3],
                 yd: Vector::new(ndim),
-            },
-            _ => ErkDenseOut {
-                method,
-                ndim,
-                d: Vec::new(),
-                kd: Vec::new(),
-                yd: Vector::new(0),
-            },
+            }),
+            _ => None,
         }
     }
 

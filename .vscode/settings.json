@@ -54,6 +54,7 @@
     "lredrhs",
     "lrhs",
     "lsol",
+    "Lubich",
     "lwork",
     "mdeuler",
     "memcheck",

@@ -550,9 +550,9 @@ impl Samples {
         (system, data, 0)
     }
 
-    /// Returns the transistor amplifier problem described by Hairer-Wanner, Part II, page 376
+    /// Returns the two-transistor amplifier problem described by Hairer-Lubich-Roche, page 108
     ///
-    /// **Note:** The equations hare are taken from Hairer's website, not the book.
+    /// **Note:** The equations here are converted from the Fortran code published on Hairer's website.
     ///
     /// # Output
     ///
@@ -569,10 +569,9 @@ impl Samples {
     ///
     /// # Reference
     ///
-    /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
-    ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
-    ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn amplifier<'a>() -> (
+    /// * Hairer E, Lubich C, Roche M (1989) The Numerical Solution of Differential-Algebraic Systems
+    ///   by Runge-Kutta Methods. Lecture Notes in Mathematics. Springer-Verlag, 146p
+    pub fn amplifier2t<'a>() -> (
         System<
             'a,
             impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
@@ -924,9 +923,9 @@ mod tests {
     }
 
     #[test]
-    fn amplifier_works() {
+    fn amplifier2t_works() {
         let multiplier = 2.0;
-        let (mut system, data, mut args, gen_mass_matrix) = Samples::amplifier();
+        let (mut system, data, mut args, gen_mass_matrix) = Samples::amplifier2t();
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);

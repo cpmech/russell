@@ -6,9 +6,9 @@ use russell_ode::{Method, OdeSolver, Params, Samples};
 // kind of sparse solvers and handling of banded matrices.
 
 #[test]
-fn test_radau5_amplifier() {
+fn test_radau5_amplifier2t_debug() {
     // get get ODE system
-    let (mut system, mut data, mut args, gen_mass) = Samples::amplifier();
+    let (mut system, mut data, mut args, gen_mass) = Samples::amplifier2t();
 
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);

@@ -1,5 +1,6 @@
 use crate::StrError;
 use crate::{HasJacobian, NoArgs, System};
+use russell_lab::math::PI;
 use russell_lab::Vector;
 use russell_sparse::CooMatrix;
 
@@ -550,6 +551,119 @@ impl Samples {
         (system, data, 0)
     }
 
+    /// Returns the one-transistor amplifier problem described by Hairer-Wanner, Part II, page 376
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, args, gen_mass_matrix)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `NoArgs`
+    /// * `data: SampleData` -- holds the initial values
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `gen_mass_matrix: fn(one_based: bool) -> CooMatrix` -- is a function to generate the mass matrix.
+    ///    Note: the mass matrix needs to be allocated externally because a reference to it is required by System.
+    ///
+    /// # Reference
+    ///
+    /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
+    ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
+    ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
+
+    pub fn amplifier1t<'a>() -> (
+        System<
+            'a,
+            impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
+        >,
+        SampleData<'a>,
+        NoArgs,
+        fn(bool) -> CooMatrix,
+    ) {
+        // constants
+        const A: f64 = 0.01;
+        const B: f64 = 0.99;
+        const C: f64 = 0.4;
+        const D: f64 = 200.0 * PI;
+        const BETA: f64 = 1e-6;
+        const UB: f64 = 6.0;
+        const UF: f64 = 0.026;
+        const R: f64 = 1000.0;
+        const S: f64 = 9000.0;
+
+        // initial values
+        let x0 = 0.0;
+        let y0 = Vector::from(&[0.0, UB / 2.0, UB / 2.0, UB, 0.0]);
+        let x1 = 0.05;
+
+        // ODE system
+        let ndim = 5;
+        let jac_nnz = 9;
+        let system = System::new(
+            ndim,
+            move |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+                let ue = C * f64::sin(D * x);
+                let f12 = BETA * (f64::exp((y[1] - y[2]) / UF) - 1.0);
+                f[0] = y[0] / R - ue / R;
+                f[1] = 2.0 * y[1] / S - UB / S + A * f12;
+                f[2] = y[2] / S - f12;
+                f[3] = y[3] / S - UB / S + B * f12;
+                f[4] = y[4] / S;
+                Ok(())
+            },
+            move |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
+                let g12 = BETA * f64::exp((y[1] - y[2]) / UF) / UF;
+                jj.reset();
+                jj.put(0, 0, m * (1.0 / R)).unwrap();
+                jj.put(1, 1, m * (A * g12 + 2.0 / S)).unwrap();
+                jj.put(1, 2, m * (-A * g12)).unwrap();
+                jj.put(2, 1, m * (-g12)).unwrap();
+                jj.put(2, 2, m * (g12 + 1.0 / S)).unwrap();
+                jj.put(3, 1, m * (B * g12)).unwrap();
+                jj.put(3, 2, m * (-B * g12)).unwrap();
+                jj.put(3, 3, m * (1.0 / S)).unwrap();
+                jj.put(4, 4, m * (1.0 / S)).unwrap();
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+
+        // function that generates the mass matrix
+        let gen_mass_matrix = |one_based: bool| -> CooMatrix {
+            const C1: f64 = 1e-6;
+            const C2: f64 = 2e-6;
+            const C3: f64 = 3e-6;
+            let ndim = 5;
+            let nnz = 9;
+            let mut mass = CooMatrix::new(ndim, ndim, nnz, None, one_based).unwrap();
+            mass.put(0, 0, -C1).unwrap();
+            mass.put(0, 1, C1).unwrap();
+            mass.put(1, 0, C1).unwrap();
+            mass.put(1, 1, -C1).unwrap();
+            mass.put(2, 2, -C2).unwrap();
+            mass.put(3, 3, -C3).unwrap();
+            mass.put(3, 4, C3).unwrap();
+            mass.put(4, 3, C3).unwrap();
+            mass.put(4, 4, -C3).unwrap();
+            mass
+        };
+
+        // results
+        let data = SampleData {
+            x0,
+            y0,
+            x1,
+            h_equal: None,
+            y_analytical: None,
+        };
+        (system, data, 0, gen_mass_matrix)
+    }
+
     /// Returns the two-transistor amplifier problem described by Hairer-Lubich-Roche, page 108
     ///
     /// **Note:** The equations here are converted from the Fortran code published on Hairer's website.
@@ -920,6 +1034,33 @@ mod tests {
         println!("{}", ana);
         println!("{}", num);
         mat_approx_eq(&ana, &num, 1.6e-4);
+    }
+
+    #[test]
+    fn amplifier1t_works() {
+        let multiplier = 2.0;
+        let (mut system, data, mut args, gen_mass_matrix) = Samples::amplifier1t();
+
+        // compute the analytical Jacobian matrix
+        let symmetry = Some(system.jac_symmetry);
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+
+        // compute the numerical Jacobian matrix
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-13);
+
+        // generate the mass matrix
+        let mass = gen_mass_matrix(false);
+        println!("{}", mass.as_dense());
+        let ndim = system.ndim;
+        let nnz_mass = 5 + 4;
+        assert_eq!(mass.get_info(), (ndim, ndim, nnz_mass, Symmetry::No));
     }
 
     #[test]

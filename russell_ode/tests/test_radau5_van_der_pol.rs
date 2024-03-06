@@ -38,7 +38,7 @@ fn test_radau5_van_der_pol() {
             out.dense_x[i],
             format_fortran(out.dense_y.get(&0).unwrap()[i]),
             format_fortran(out.dense_y.get(&1).unwrap()[i]),
-        )
+        );
     }
 
     // print and check statistics

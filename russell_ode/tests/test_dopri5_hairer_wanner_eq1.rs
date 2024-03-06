@@ -41,7 +41,7 @@ fn test_dopri5_hairer_wanner_eq1() {
             out.dense_step_index[i],
             out.dense_x[i],
             format_fortran(out.dense_y.get(&0).unwrap()[i]),
-        )
+        );
     }
 
     // print and check statistics

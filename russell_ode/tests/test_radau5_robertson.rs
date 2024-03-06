@@ -40,7 +40,7 @@ fn test_radau5_robertson() {
             format_fortran(out.step_y.get(&0).unwrap()[i]),
             format_fortran(out.step_y.get(&1).unwrap()[i]),
             format_fortran(out.step_y.get(&2).unwrap()[i]),
-        )
+        );
     }
 
     // print and check statistics

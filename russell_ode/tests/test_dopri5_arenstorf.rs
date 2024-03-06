@@ -42,7 +42,7 @@ fn test_dopri5_arenstorf() {
             format_fortran(out.dense_y.get(&1).unwrap()[i]),
             format_fortran(out.dense_y.get(&2).unwrap()[i]),
             format_fortran(out.dense_y.get(&3).unwrap()[i]),
-        )
+        );
     }
 
     // print and check statistics

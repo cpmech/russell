@@ -584,8 +584,8 @@ impl Samples {
         fn(bool) -> CooMatrix,
     ) {
         // constants
-        const A: f64 = 0.01;
-        const B: f64 = 0.99;
+        const ALPHA: f64 = 0.99;
+        const GAMMA: f64 = 1.0 - ALPHA;
         const C: f64 = 0.4;
         const D: f64 = 200.0 * PI;
         const BETA: f64 = 1e-6;
@@ -607,10 +607,10 @@ impl Samples {
             move |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
                 let ue = C * f64::sin(D * x);
                 let f12 = BETA * (f64::exp((y[1] - y[2]) / UF) - 1.0);
-                f[0] = y[0] / R - ue / R;
-                f[1] = 2.0 * y[1] / S - UB / S + A * f12;
+                f[0] = (y[0] - ue) / R;
+                f[1] = (2.0 * y[1] - UB) / S + GAMMA * f12;
                 f[2] = y[2] / S - f12;
-                f[3] = y[3] / S - UB / S + B * f12;
+                f[3] = (y[3] - UB) / S + ALPHA * f12;
                 f[4] = y[4] / S;
                 Ok(())
             },
@@ -618,12 +618,12 @@ impl Samples {
                 let g12 = BETA * f64::exp((y[1] - y[2]) / UF) / UF;
                 jj.reset();
                 jj.put(0, 0, m * (1.0 / R)).unwrap();
-                jj.put(1, 1, m * (A * g12 + 2.0 / S)).unwrap();
-                jj.put(1, 2, m * (-A * g12)).unwrap();
+                jj.put(1, 1, m * (2.0 / S + GAMMA * g12)).unwrap();
+                jj.put(1, 2, m * (-GAMMA * g12)).unwrap();
                 jj.put(2, 1, m * (-g12)).unwrap();
-                jj.put(2, 2, m * (g12 + 1.0 / S)).unwrap();
-                jj.put(3, 1, m * (B * g12)).unwrap();
-                jj.put(3, 2, m * (-B * g12)).unwrap();
+                jj.put(2, 2, m * (1.0 / S + g12)).unwrap();
+                jj.put(3, 1, m * (ALPHA * g12)).unwrap();
+                jj.put(3, 2, m * (-ALPHA * g12)).unwrap();
                 jj.put(3, 3, m * (1.0 / S)).unwrap();
                 jj.put(4, 4, m * (1.0 / S)).unwrap();
                 Ok(())
@@ -1051,8 +1051,8 @@ mod tests {
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
-        println!("{}", ana);
-        println!("{}", num);
+        println!("{:.15}", ana);
+        println!("{:.15}", num);
         mat_approx_eq(&ana, &num, 1e-13);
 
         // generate the mass matrix
@@ -1078,8 +1078,8 @@ mod tests {
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
-        // println!("{}", ana);
-        // println!("{}", num);
+        println!("{:.8}", ana);
+        println!("{:.8}", num);
         mat_approx_eq(&ana, &num, 1e-13);
 
         // generate the mass matrix

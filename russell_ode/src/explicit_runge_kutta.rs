@@ -166,9 +166,8 @@ where
 
         // compute k0 (otherwise, use k0 saved in accept)
         if (work.bench.n_accepted == 0 || !self.info.first_step_same_as_last) && !work.follows_reject_step {
-            let u0 = x + h * self.cc[0];
             work.bench.n_function += 1;
-            (self.system.function)(&mut k[0], u0, y, args)?; // k0 := f(ui,vi)
+            (self.system.function)(&mut k[0], x, y, args)?; // k0 := f(x0, y0)
         }
 
         // compute ki
@@ -396,6 +395,7 @@ mod tests {
                 let ee = erk.ee.as_ref().unwrap();
                 assert_eq!(ee.dim(), nstage);
             }
+            assert_eq!(erk.cc[0], 0.0); // all C[0] are zero
 
             println!("Σi bi = 1                                 (Eq. 1.11a, page 135)");
             let mut sum = 0.0;

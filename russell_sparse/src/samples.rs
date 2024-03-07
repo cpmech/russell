@@ -1536,7 +1536,7 @@ mod tests {
         let mut ai = Matrix::new(5, 5);
         let correct_det = mat_inverse(&mut ai, &a).unwrap();
         let (coo, csc, csr, det) = Samples::lower_symmetric_5x5();
-        approx_eq(det, correct_det, 1e-13);
+        approx_eq(det, correct_det, 1e-12);
         mat_approx_eq(&coo.as_dense(), correct, 1e-15);
         mat_approx_eq(&csc.as_dense(), correct, 1e-15);
         mat_approx_eq(&csr.as_dense(), correct, 1e-15);

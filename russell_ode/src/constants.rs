@@ -3,7 +3,20 @@ use russell_lab::math::SQRT_6;
 /// Default number of steps to use when the automatic stepping is not available
 pub const N_EQUAL_STEPS: usize = 10;
 
+// References:
+//
+// 1. Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
+//    Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
+//    in Computational Mathematics, 528p
+// 2. Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
+//    Stiff and Differential-Algebraic Problems. Second Revised Edition.
+//    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
+// 3. Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
+//    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
+
 // Runge-Kutta -- order 2 ---------------------------------------------------------------------
+
+// Table 1.1 on page 135 of Ref#1 (also known as mid-point)
 
 #[rustfmt::skip]
 pub(crate) const RUNGE_KUTTA_2_A: [[f64; 2]; 2] = [
@@ -18,6 +31,8 @@ pub(crate) const RUNGE_KUTTA_2_B: [f64; 2] = [0.0, 1.0];
 pub(crate) const RUNGE_KUTTA_2_C: [f64; 2] = [0.0, 1.0 / 2.0];
 
 // Runge-Kutta -- order 3 ---------------------------------------------------------------------
+
+// Table 1.1 on page 135 of Ref#1 (Note: this method has 4 stages)
 
 #[rustfmt::skip]
 pub(crate) const RUNGE_KUTTA_3_A: [[f64; 4]; 4] = [
@@ -35,6 +50,8 @@ pub(crate) const RUNGE_KUTTA_3_C: [f64; 4] = [0.0, 1.0 / 2.0, 1.0, 1.0];
 
 // Heun -- order 3 ----------------------------------------------------------------------------
 
+// Table 1.1 on page 135 of Ref#1
+
 #[rustfmt::skip]
 pub(crate) const HEUN_3_A: [[f64; 3]; 3] = [
     [0.0, 0.0, 0.0],
@@ -49,6 +66,8 @@ pub(crate) const HEUN_3_B: [f64; 3] = [1.0 / 4.0, 0.0, 3.0 / 4.0];
 pub(crate) const HEUN_3_C: [f64; 3] = [0.0, 1.0 / 3.0, 2.0 / 3.0];
 
 // Runge-Kutta -- order 4 ---------------------------------------------------------------------
+
+// Table 1.2 on page 138 of Ref#1 ("The" Runge-Kutta method)
 
 #[rustfmt::skip]
 pub(crate) const RUNGE_KUTTA_4_A: [[f64; 4]; 4] = [
@@ -66,6 +85,8 @@ pub(crate) const RUNGE_KUTTA_4_C: [f64; 4] = [0.0, 1.0 / 2.0, 1.0 / 2.0, 1.0];
 
 // Runge-Kutta -- alternative 3/8 rule -- order 4 ---------------------------------------------
 
+// Table 1.2 on page 128 of Ref#1
+
 #[rustfmt::skip]
 pub(crate) const RUNGE_KUTTA_ALT_4_A: [[f64; 4]; 4] = [
     [0.0, 0.0, 0.0, 0.0],
@@ -80,7 +101,9 @@ pub(crate) const RUNGE_KUTTA_ALT_4_B: [f64; 4] = [1.0 / 8.0, 3.0 / 8.0, 3.0 / 8.
 #[rustfmt::skip]
 pub(crate) const RUNGE_KUTTA_ALT_4_C: [f64; 4] = [0.0, 1.0 / 3.0, 2.0 / 3.0, 1.0];
 
-// Modified Euler -- order 2 -- embedded ------------------------------------------------------
+// Modified Euler -- order 2 -- embedded 2(1) -------------------------------------------------
+
+// Table 21.1 on page 903 of Ref#3 (also known as Improved Euler method)
 
 #[rustfmt::skip]
 pub(crate) const MODIFIED_EULER_A: [[f64; 2]; 2] = [
@@ -101,7 +124,11 @@ pub(crate) const MODIFIED_EULER_C: [f64; 2] = [0.0, 1.0];
 #[rustfmt::skip]
 pub(crate) const MODIFIED_EULER_E: [f64; 2] = [-1.0 / 2.0, 1.0 / 2.0];
 
-// Merson -- order 4 -- embedded --------------------------------------------------------------
+// Merson -- order 4 -- embedded 4("5") or 4(3) -----------------------------------------------
+
+// Table 4.1 on page 167 of Ref#1
+// Note: This is the Merson 4("5") method where "5" means that the order 5 is for linear equations
+// with constant coefficients; otherwise the method is of order 3.
 
 #[rustfmt::skip]
 pub(crate) const MERSON_4_A: [[f64; 5]; 5] = [
@@ -125,7 +152,9 @@ pub(crate) const MERSON_4_C: [f64; 5] = [0.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 2.0, 1
 #[rustfmt::skip]
 pub(crate) const MERSON_4_E: [f64; 5] = [1.0 / 15.0, 0.0, -3.0 / 10.0, 4.0 / 15.0, -1.0 / 30.0];
 
-// Zonneveld -- order 4 -- embedded -----------------------------------------------------------
+// Zonneveld -- order 4 -- embedded 4(3) ------------------------------------------------------
+
+// Table 4.2 on page 167 of Ref#1
 
 #[rustfmt::skip]
 pub(crate) const ZONNEVELD_4_A: [[f64; 5]; 5] = [
@@ -149,7 +178,9 @@ pub(crate) const ZONNEVELD_4_C: [f64; 5] = [0.0, 1.0 / 2.0, 1.0 / 2.0, 1.0, 3.0 
 #[rustfmt::skip]
 pub(crate) const ZONNEVELD_4_E: [f64; 5] = [2.0 / 3.0, -2.0, -2.0, -2.0, 16.0 / 3.0];
 
-// Fehlberg -- order 4 -- embedded ------------------------------------------------------------
+// Fehlberg -- order 4 -- embedded 4(5) -------------------------------------------------------
+
+// Table 5.1 on page 177 of Ref#1
 
 #[rustfmt::skip]
 pub(crate) const FEHLBERG_4_A: [[f64; 6]; 6] = [
@@ -174,7 +205,9 @@ pub(crate) const FEHLBERG_4_C: [f64; 6] = [0.0, 1.0 / 4.0, 3.0 / 8.0, 12.0 / 13.
 #[rustfmt::skip]
 pub(crate) const FEHLBERG_4_E: [f64; 6] = [-1.0 / 360.0, 0.0, 128.0 / 4275.0, 2197.0 / 75240.0, -1.0 / 50.0, -2.0 / 55.0];
 
-// Dormand-Prince -- order 5 -- embedded ------------------------------------------------------
+// Dormand-Prince -- order 5 -- embedded 5(4) FSAL --------------------------------------------
+
+// Table 5.2 on page 178 of Ref#1
 
 #[rustfmt::skip]
 pub(crate) const DORMAND_PRINCE_5_A: [[f64; 7]; 7] = [
@@ -211,7 +244,12 @@ pub(crate) const DORMAND_PRINCE_5_D: [[f64; 7]; 1] = [[
     69997945.0 / 29380423.0,         // D7
 ]];
 
-// Verner -- order 6 -- embedded --------------------------------------------------------------
+// Verner -- order 6 -- embedded -- 6(5) ------------------------------------------------------
+
+// Table 5.4 on page 181 of Ref#1
+// Hairer-Wanner: "[...] Fehlberg's methods suffer from the fact that they give identically zero
+// error estimates for quadrature problems y' = f(x). The first high order embedded formulas
+// which avoid this drawback were constructed by Verner (1978). [...]"
 
 #[rustfmt::skip]
 pub(crate) const VERNER_6_A: [[f64; 8]; 8] = [
@@ -238,7 +276,9 @@ pub(crate) const VERNER_6_C: [f64; 8] = [0.0, 1.0 / 6.0, 4.0 / 15.0, 2.0 / 3.0, 
 #[rustfmt::skip]
 pub(crate) const VERNER_6_E: [f64; 8] = [-1.0 / 160.0, 0.0, -125.0 / 17952.0, 1.0 / 144.0, -12.0 / 1955.0, -3.0 / 44.0, 125.0 / 11592.0, 43.0 / 616.0];
 
-// Fehlberg -- order 7 -- embedded ------------------------------------------------------------
+// Fehlberg -- order 7 -- embedded -- 7(8) ----------------------------------------------------
+
+// Table 5.3 on page 180 of Ref#1
 
 #[rustfmt::skip]
 pub(crate) const FEHLBERG_7_A: [[f64; 13]; 13] = [
@@ -270,7 +310,9 @@ pub(crate) const FEHLBERG_7_C: [f64; 13] = [0.0, 2.0 / 27.0, 1.0 / 9.0, 1.0 / 6.
 #[rustfmt::skip]
 pub(crate) const FEHLBERG_7_E: [f64; 13] = [41.0 / 840.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 41.0 / 840.0, -41.0 / 840.0, -41.0 / 840.0];
 
-// Dormand-Prince -- order 8 -- embedded ------------------------------------------------------
+// Dormand-Prince -- order 8 -- embedded -- 8(5,3) --------------------------------------------
+
+// The coefficients here are taken from dop853.f, available on Hairer's website
 
 #[rustfmt::skip]
 pub(crate) const DORMAND_PRINCE_8_A: [[f64; 12]; 12] = [

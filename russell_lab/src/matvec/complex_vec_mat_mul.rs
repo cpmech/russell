@@ -5,7 +5,7 @@ use num_complex::Complex64;
 
 extern "C" {
     // Performs one of the matrix-vector multiplication (complex version)
-    // <http://www.netlib.org/lapack/explore-html/db/d40/zgemv_8f.html>
+    // <https://www.netlib.org/lapack/explore-html/db/d40/zgemv_8f.html>
     fn cblas_zgemv(
         layout: i32,
         transa: i32,

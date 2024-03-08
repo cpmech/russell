@@ -4,7 +4,7 @@ use crate::{to_i32, StrError};
 
 extern "C" {
     // Computes the solution to a system of linear equations
-    // <http://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
+    // <https://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
     fn c_dgesv(
         n: *const i32,
         nrhs: *const i32,

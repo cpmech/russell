@@ -50,7 +50,7 @@ mod tests {
     use crate::math::SQRT_2_BY_3;
 
     #[test]
-    fn vec_rms_error_works() {
+    fn vec_rms_scaled_works() {
         let empty = Vector::new(0);
         assert_eq!(vec_rms_scaled(&empty, &empty, 1.0, 1.0), 0.0);
 

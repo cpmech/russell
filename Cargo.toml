@@ -1,10 +1,11 @@
 [workspace]
 
 members = [
-    "russell_lab",
-    "russell_sparse",
-    "russell_stat",
-    "russell_tensor"
+  "russell_lab",
+  "russell_ode",
+  "russell_sparse",
+  "russell_stat",
+  "russell_tensor",
 ]
 
 resolver = "2"

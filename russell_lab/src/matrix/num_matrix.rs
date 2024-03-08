@@ -960,7 +960,6 @@ where
 mod tests {
     use super::NumMatrix;
     use crate::AsArray2D;
-    use serde::{Deserialize, Serialize};
 
     #[test]
     fn new_works() {
@@ -1369,24 +1368,6 @@ mod tests {
              │  4  5  6 │\n\
              │  7  8  9 │\n\
              └          ┘"
-        );
-
-        // serialize
-        let mut serialized = Vec::new();
-        let mut serializer = rmp_serde::Serializer::new(&mut serialized);
-        a.serialize(&mut serializer).unwrap();
-        assert!(serialized.len() > 0);
-
-        // deserialize
-        let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
-        let b: NumMatrix<f64> = Deserialize::deserialize(&mut deserializer).unwrap();
-        assert_eq!(
-            format!("{}", b),
-            "┌       ┐\n\
-             │ 1 2 3 │\n\
-             │ 4 5 6 │\n\
-             │ 7 8 9 │\n\
-             └       ┘"
         );
 
         // serialize to json

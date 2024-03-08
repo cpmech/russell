@@ -8,7 +8,7 @@ fn main() -> Result<(), StrError> {
     let nnz = 5; // number of non-zero values
 
     // allocate the coefficient matrix
-    let mut mat = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;
+    let mut mat = SparseMatrix::new_coo(ndim, ndim, nnz, None)?;
     mat.put(0, 0, 0.2)?;
     mat.put(0, 1, 0.2)?;
     mat.put(1, 0, 0.5)?;

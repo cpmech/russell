@@ -12,6 +12,16 @@ struct InterfaceIntelDSS {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
+/// Enforce Send on the C structure
+///
+/// <https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe>
+unsafe impl Send for InterfaceIntelDSS {}
+
+/// Enforce Send on the Rust structure
+///
+/// <https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe>
+unsafe impl Send for SolverIntelDSS {}
+
 extern "C" {
     fn solver_intel_dss_new() -> *mut InterfaceIntelDSS;
     fn solver_intel_dss_drop(solver: *mut InterfaceIntelDSS);
@@ -51,7 +61,7 @@ pub struct SolverIntelDSS {
     factorized: bool,
 
     /// Holds the symmetry type used in initialize
-    initialized_symmetry: Option<Symmetry>,
+    initialized_symmetry: Symmetry,
 
     /// Holds the matrix dimension saved in initialize
     initialized_ndim: usize,
@@ -108,12 +118,12 @@ impl SolverIntelDSS {
                 solver,
                 initialized: false,
                 factorized: false,
-                initialized_symmetry: None,
+                initialized_symmetry: Symmetry::No,
                 initialized_ndim: 0,
                 initialized_nnz: 0,
                 determinant_coefficient: 0.0,
                 determinant_exponent: 0.0,
-                stopwatch: Stopwatch::new(""),
+                stopwatch: Stopwatch::new(),
                 time_initialize_ns: 0,
                 time_factorize_ns: 0,
                 time_solve_ns: 0,
@@ -185,10 +195,7 @@ impl LinSolTrait for SolverIntelDSS {
         let calc_det = if par.compute_determinant { 1 } else { 0 };
 
         // extract the symmetry flags and check the storage type
-        let (general_symmetric, positive_definite) = match csr.symmetry {
-            Some(symmetry) => symmetry.status(false, true)?,
-            None => (0, 0),
-        };
+        let (general_symmetric, positive_definite) = csr.symmetry.status(false, true)?;
 
         // matrix config
         let ndim = to_i32(csr.nrow);
@@ -306,7 +313,8 @@ impl LinSolTrait for SolverIntelDSS {
         } else {
             "INTEL_DSS_IS_NOT_AVAILABLE".to_string()
         };
-        stats.determinant.mantissa = self.determinant_coefficient;
+        stats.determinant.mantissa_real = self.determinant_coefficient;
+        stats.determinant.mantissa_imag = 0.0;
         stats.determinant.base = 10.0;
         stats.determinant.exponent = self.determinant_exponent;
         stats.time_nanoseconds.initialize = self.time_initialize_ns;
@@ -377,7 +385,7 @@ mod tests {
         assert!(!solver.factorized);
 
         // COO to CSR errors
-        let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        let coo = CooMatrix::new(1, 1, 1, None).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
@@ -391,7 +399,7 @@ mod tests {
             solver.factorize(&mut mat, None).err(),
             Some("the matrix must be square")
         );
-        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(false, false, false);
+        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(false, false);
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
@@ -399,14 +407,14 @@ mod tests {
         );
 
         // check already factorized data
-        let mut coo = CooMatrix::new(2, 2, 2, None, false).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 2, None).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
         // ... factorize once => OK
         solver.factorize(&mut mat, None).unwrap();
         // ... change matrix (symmetry)
-        let mut coo = CooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full)), false).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full))).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
@@ -415,7 +423,7 @@ mod tests {
             Some("subsequent factorizations must use the same matrix (symmetry differs)")
         );
         // ... change matrix (ndim)
-        let mut coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        let mut coo = CooMatrix::new(1, 1, 1, None).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
@@ -423,7 +431,7 @@ mod tests {
             Some("subsequent factorizations must use the same matrix (ndim differs)")
         );
         // ... change matrix (nnz)
-        let mut coo = CooMatrix::new(2, 2, 1, None, false).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 1, None).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
@@ -436,7 +444,7 @@ mod tests {
     fn factorize_works() {
         let mut solver = SolverIntelDSS::new().unwrap();
         assert!(!solver.factorized);
-        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
         let mut mat = SparseMatrix::from_coo(coo);
         let mut params = LinSolParams::new();
 
@@ -456,7 +464,7 @@ mod tests {
     #[test]
     fn factorize_fails_on_singular_matrix() {
         let mut solver = SolverIntelDSS::new().unwrap();
-        let mut coo = CooMatrix::new(2, 2, 2, None, false).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 2, None).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 0.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
@@ -466,33 +474,67 @@ mod tests {
 
     #[test]
     fn solve_handles_errors() {
-        let (coo, _, _, _) = Samples::tiny_1x1(false);
+        let mut coo = CooMatrix::new(2, 2, 2, None).unwrap();
+        coo.put(0, 0, 123.0).unwrap();
+        coo.put(1, 1, 456.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
         let mut solver = SolverIntelDSS::new().unwrap();
         assert!(!solver.factorized);
         let mut x = Vector::new(2);
-        let rhs = Vector::new(1);
+        let rhs = Vector::new(2);
         assert_eq!(
             solver.solve(&mut x, &mut mat, &rhs, false),
             Err("the function factorize must be called before solve")
         );
+        let mut x = Vector::new(1);
         solver.factorize(&mut mat, None).unwrap();
         assert_eq!(
             solver.solve(&mut x, &mut mat, &rhs, false),
             Err("the dimension of the vector of unknown values x is incorrect")
         );
-        let mut x = Vector::new(1);
-        let rhs = Vector::new(2);
+        let mut x = Vector::new(2);
+        let rhs = Vector::new(1);
         assert_eq!(
             solver.solve(&mut x, &mut mat, &rhs, false),
             Err("the dimension of the right-hand side vector is incorrect")
+        );
+        // wrong symmetry
+        let rhs = Vector::new(2);
+        let mut coo_wrong = CooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full))).unwrap();
+        coo_wrong.put(0, 0, 123.0).unwrap();
+        coo_wrong.put(1, 1, 456.0).unwrap();
+        let mut mat_wrong = SparseMatrix::from_coo(coo_wrong);
+        mat_wrong.get_csr_or_from_coo().unwrap(); // make sure to convert to CSR (because we're not calling factorize on this wrong matrix)
+        assert_eq!(
+            solver.solve(&mut x, &mut mat_wrong, &rhs, false),
+            Err("solve must use the same matrix (symmetry differs)")
+        );
+        // wrong ndim
+        let mut coo_wrong = CooMatrix::new(1, 1, 1, None).unwrap();
+        coo_wrong.put(0, 0, 123.0).unwrap();
+        let mut mat_wrong = SparseMatrix::from_coo(coo_wrong);
+        mat_wrong.get_csr_or_from_coo().unwrap(); // make sure to convert to CSR (because we're not calling factorize on this wrong matrix)
+        assert_eq!(
+            solver.solve(&mut x, &mut mat_wrong, &rhs, false),
+            Err("solve must use the same matrix (ndim differs)")
+        );
+        // wrong nnz
+        let mut coo_wrong = CooMatrix::new(2, 2, 3, None).unwrap();
+        coo_wrong.put(0, 0, 123.0).unwrap();
+        coo_wrong.put(1, 1, 123.0).unwrap();
+        coo_wrong.put(0, 1, 100.0).unwrap();
+        let mut mat_wrong = SparseMatrix::from_coo(coo_wrong);
+        mat_wrong.get_csr_or_from_coo().unwrap(); // make sure to convert to CSR (because we're not calling factorize on this wrong matrix)
+        assert_eq!(
+            solver.solve(&mut x, &mut mat_wrong, &rhs, false),
+            Err("solve must use the same matrix (nnz differs)")
         );
     }
 
     #[test]
     fn solve_works() {
         let mut solver = SolverIntelDSS::new().unwrap();
-        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
         let mut mat = SparseMatrix::from_coo(coo);
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);

@@ -14,6 +14,8 @@
 #define FN_DGESVD dgesvd_
 #define FN_DGETRF dgetrf_
 #define FN_DGETRI dgetri_
+#define FN_ZGETRF zgetrf_
+#define FN_ZGETRI zgetri_
 #else
 #include "cblas.h"
 #include "lapack.h"
@@ -28,6 +30,8 @@
 #define FN_DGESVD LAPACK_dgesvd
 #define FN_DGETRF LAPACK_dgetrf
 #define FN_DGETRI LAPACK_dgetri
+#define FN_ZGETRF LAPACK_zgetrf
+#define FN_ZGETRI LAPACK_zgetri
 #endif
 
 #include "constants.h"
@@ -78,7 +82,7 @@ int32_t c_get_num_threads() {
 }
 
 // Computes the solution to a system of linear equations
-// <http://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
+// <https://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
 void c_dgesv(const int32_t *n,
              const int32_t *nrhs,
              double *a,
@@ -91,7 +95,7 @@ void c_dgesv(const int32_t *n,
 }
 
 // Computes the solution to a real system of linear equations (complex version)
-// <http://www.netlib.org/lapack/explore-html/d1/ddc/zgesv_8f.html>
+// <https://www.netlib.org/lapack/explore-html/d1/ddc/zgesv_8f.html>
 void c_zgesv(const int32_t *n,
              const int32_t *nrhs,
              COMPLEX64 *a,
@@ -104,7 +108,7 @@ void c_zgesv(const int32_t *n,
 }
 
 // Computes the matrix norm
-// <http://www.netlib.org/lapack/explore-html/dc/d09/dlange_8f.html>
+// <https://www.netlib.org/lapack/explore-html/dc/d09/dlange_8f.html>
 double c_dlange(int32_t norm_code,
                 const int32_t *m,
                 const int32_t *n,
@@ -119,7 +123,7 @@ double c_dlange(int32_t norm_code,
 }
 
 // Computes the matrix norm (complex version)
-// <http://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
+// <https://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
 double c_zlange(int32_t norm_code,
                 const int32_t *m,
                 const int32_t *n,
@@ -134,7 +138,7 @@ double c_zlange(int32_t norm_code,
 }
 
 // Computes the Cholesky factorization of a real symmetric positive definite matrix
-// <http://www.netlib.org/lapack/explore-html/d0/d8a/dpotrf_8f.html>
+// <https://www.netlib.org/lapack/explore-html/d0/d8a/dpotrf_8f.html>
 void c_dpotrf(C_BOOL upper,
               const int32_t *n,
               double *a,
@@ -161,7 +165,7 @@ void c_dsyev(C_BOOL calc_v,
 }
 
 // Computes the eigenvalues and eigenvectors of a general matrix
-// <http://www.netlib.org/lapack/explore-html/d9/d28/dgeev_8f.html>
+// <https://www.netlib.org/lapack/explore-html/d9/d28/dgeev_8f.html>
 void c_dgeev(C_BOOL calc_vl,
              C_BOOL calc_vr,
              const int32_t *n,
@@ -182,7 +186,7 @@ void c_dgeev(C_BOOL calc_vl,
 }
 
 // Computes the singular value decomposition (SVD)
-// <http://www.netlib.org/lapack/explore-html/d8/d2d/dgesvd_8f.html>
+// <https://www.netlib.org/lapack/explore-html/d8/d2d/dgesvd_8f.html>
 void c_dgesvd(int32_t jobu_code,
               int32_t jobvt_code,
               const int32_t *m,
@@ -209,7 +213,7 @@ void c_dgesvd(int32_t jobu_code,
 }
 
 // Computes the LU factorization of a general (m,n) matrix
-// <http://www.netlib.org/lapack/explore-html/d3/d6a/dgetrf_8f.html>
+// <https://www.netlib.org/lapack/explore-html/d3/d6a/dgetrf_8f.html>
 void c_dgetrf(const int32_t *m,
               const int32_t *n,
               double *a,
@@ -220,7 +224,7 @@ void c_dgetrf(const int32_t *m,
 }
 
 // Computes the inverse of a matrix using the LU factorization computed by dgetrf
-// <http://www.netlib.org/lapack/explore-html/df/da4/dgetri_8f.html>
+// <https://www.netlib.org/lapack/explore-html/df/da4/dgetri_8f.html>
 void c_dgetri(const int32_t *n,
               double *a,
               const int32_t *lda,
@@ -229,4 +233,27 @@ void c_dgetri(const int32_t *n,
               const int32_t *lwork,
               int32_t *info) {
     FN_DGETRI(n, a, lda, ipiv, work, lwork, info);
+}
+
+// Computes the LU factorization of a general (m,n) matrix
+// <https://www.netlib.org/lapack/explore-html/dd/dd1/zgetrf_8f.html>
+void c_zgetrf(const int32_t *m,
+              const int32_t *n,
+              COMPLEX64 *a,
+              const int32_t *lda,
+              int32_t *ipiv,
+              int32_t *info) {
+    FN_ZGETRF(m, n, a, lda, ipiv, info);
+}
+
+// Computes the inverse of a matrix using the LU factorization computed by zgetrf
+// <https://www.netlib.org/lapack/explore-html/d0/db3/zgetri_8f.html>
+void c_zgetri(const int32_t *n,
+              COMPLEX64 *a,
+              const int32_t *lda,
+              const int32_t *ipiv,
+              COMPLEX64 *work,
+              const int32_t *lwork,
+              int32_t *info) {
+    FN_ZGETRI(n, a, lda, ipiv, work, lwork, info);
 }

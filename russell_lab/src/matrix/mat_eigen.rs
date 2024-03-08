@@ -3,7 +3,7 @@ use crate::{dgeev_data, dgeev_data_lr, to_i32, CcBool, StrError, Vector, C_FALSE
 
 extern "C" {
     // Computes the eigenvalues and eigenvectors of a general matrix
-    // <http://www.netlib.org/lapack/explore-html/d9/d28/dgeev_8f.html>
+    // <https://www.netlib.org/lapack/explore-html/d9/d28/dgeev_8f.html>
     fn c_dgeev(
         calc_vl: CcBool,
         calc_vr: CcBool,
@@ -266,8 +266,10 @@ pub fn mat_eigen(
 ///     // err := a⋅v - v⋅λ
 ///     // ```
 ///     let a = ComplexMatrix::from(&data);
-///     let v = complex_mat_zip(&v_real, &v_imag)?;
-///     let d = complex_vec_zip(&l_real, &l_imag)?;
+///     let mut v = ComplexMatrix::new(m, m);
+///     let mut d = ComplexVector::new(m);
+///     complex_mat_zip(&mut v, &v_real, &v_imag)?;
+///     complex_vec_zip(&mut d, &l_real, &l_imag)?;
 ///     let lam = ComplexMatrix::diagonal(d.as_data());
 ///     let mut a_v = ComplexMatrix::new(m, m);
 ///     let mut v_l = ComplexMatrix::new(m, m);

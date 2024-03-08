@@ -1,0 +1,30 @@
+
+running radau5.f test
+step =     1, newt =     1, ldw =  2.380787522481423E+01, h =  1.000000000000000E-04
+step =     1, newt =     2, ldw =  4.606206953146665E-15, h =  1.000000000000000E-04
+step =     2, newt =     1, ldw =  2.678969114879030E-04, h =  8.000000000000000E-04
+step =     3, newt =     1, ldw =  9.620335400378768E-01, h =  6.400000000000000E-03
+step =     4, newt =     1, ldw =  4.960011319658260E+00, h =  9.175315123155635E-03
+step =     5, newt =     1, ldw =  3.715067327320828E+00, h =  9.175315123155635E-03
+step =     6, newt =     1, ldw =  5.743754221374331E+00, h =  1.268482689579094E-02
+step =     7, newt =     1, ldw =  3.977586037047183E+00, h =  1.268482689579094E-02
+step =     8, newt =     1, ldw =  5.900855962632141E+00, h =  1.802519034151037E-02
+step =     9, newt =     1, ldw =  6.700127424360153E+00, h =  2.245393279005079E-02
+step =     9, newt =     2, ldw =  3.087212900082653E-14, h =  2.245393279005079E-02
+step =    10, newt =     1, ldw =  5.276818106903934E+00, h =  2.765273524751517E-02
+step =    11, newt =     1, ldw =  5.605282816310496E+00, h =  4.104314881966715E-02
+step =    12, newt =     1, ldw =  5.065318111735999E+00, h =  6.502285859141516E-02
+step =    13, newt =     1, ldw =  3.636739773459916E+00, h =  1.297895101231466E-01
+step =    14, newt =     1, ldw =  5.652222379590626E-01, h =  4.206510426488529E-01
+step =    15, newt =     1, ldw =  2.691177218158024E+01, h =  7.243412973999487E-01
+Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)
+Number of function evaluations   = 67
+Number of Jacobian evaluations   = 1
+Number of factorizations         = 13
+Number of lin sys solutions      = 17
+Number of performed steps        = 15
+Number of accepted steps         = 15
+Number of rejected steps         = 0
+Number of iterations (maximum)   = 2
+y =  9.068021382386648E-02
+h =  1.272673814374611E+00

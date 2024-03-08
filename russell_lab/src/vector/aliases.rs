@@ -1,8 +1,8 @@
 use crate::NumVector;
 use num_complex::Complex64;
 
-/// Vector is an alias to NumVector&lt;f64&gt; and is used in most functions that call OpenBLAS
+/// Defines an alias to NumVector with f64
 pub type Vector = NumVector<f64>;
 
-/// ComplexVector is an alias to NumVector&lt;Complex64&gt; and is used in most functions that call OpenBLAS
+/// Defines an alias to NumVector with Complex64
 pub type ComplexVector = NumVector<Complex64>;

@@ -10,9 +10,10 @@ use crate::Vector;
 /// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
+///     let mut v = ComplexVector::new(3);
 ///     let real = Vector::from(&[1.0, 2.0, 3.0]);
 ///     let imag = Vector::from(&[0.1, 0.2, 0.3]);
-///     let v = complex_vec_zip(&real, &imag)?;
+///     complex_vec_zip(&mut v, &real, &imag)?;
 ///     assert_eq!(
 ///         format!("{}", v),
 ///         "┌        ┐\n\
@@ -24,17 +25,16 @@ use crate::Vector;
 ///     Ok(())
 /// }
 /// ```
-pub fn complex_vec_zip(real: &Vector, imag: &Vector) -> Result<ComplexVector, StrError> {
-    let n = real.dim();
-    if imag.dim() != n {
-        return Err("arrays are incompatible");
+pub fn complex_vec_zip(v: &mut ComplexVector, real: &Vector, imag: &Vector) -> Result<(), StrError> {
+    let dim = v.dim();
+    if real.dim() != dim || imag.dim() != dim {
+        return Err("vectors are incompatible");
     }
-    let mut v = ComplexVector::new(n);
-    for i in 0..n {
+    for i in 0..dim {
         v[i].re = real[i];
         v[i].im = imag[i];
     }
-    Ok(v)
+    Ok(())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -42,13 +42,20 @@ pub fn complex_vec_zip(real: &Vector, imag: &Vector) -> Result<ComplexVector, St
 #[cfg(test)]
 mod tests {
     use super::complex_vec_zip;
-    use crate::Vector;
+    use crate::{ComplexVector, Vector};
 
     #[test]
     fn complex_vec_zip_handles_errors() {
+        let mut v = ComplexVector::new(2);
+        let wrong = Vector::new(1);
+        let ok = Vector::new(2);
         assert_eq!(
-            complex_vec_zip(&Vector::from(&[1.0]), &Vector::new(0)).err(),
-            Some("arrays are incompatible")
+            complex_vec_zip(&mut v, &wrong, &ok).err(),
+            Some("vectors are incompatible")
+        );
+        assert_eq!(
+            complex_vec_zip(&mut v, &ok, &wrong).err(),
+            Some("vectors are incompatible")
         );
     }
 
@@ -56,7 +63,8 @@ mod tests {
     fn complex_vec_zip_works() {
         let real = Vector::from(&[1.0, 2.0, 3.0]);
         let imag = Vector::from(&[4.0, 5.0, 6.0]);
-        let v = complex_vec_zip(&real, &imag).unwrap();
+        let mut v = ComplexVector::new(3);
+        complex_vec_zip(&mut v, &real, &imag).unwrap();
         assert_eq!(
             format!("{}", v),
             "┌      ┐\n\

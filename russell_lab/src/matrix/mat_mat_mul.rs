@@ -3,7 +3,7 @@ use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_NO_TRANS};
 
 extern "C" {
     // Performs the matrix-matrix multiplication
-    // <http://www.netlib.org/lapack/explore-html/d7/d2b/dgemm_8f.html>
+    // <https://www.netlib.org/lapack/explore-html/d7/d2b/dgemm_8f.html>
     fn cblas_dgemm(
         layout: i32,
         transa: i32,

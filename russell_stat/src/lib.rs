@@ -12,7 +12,7 @@
 //!
 //! TODO
 
-/// Defines a type alias for the error type as a static string
+/// Defines the error output as a static string
 pub type StrError = &'static str;
 
 mod distribution_frechet;

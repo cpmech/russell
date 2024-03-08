@@ -12,20 +12,6 @@
 #define INFOG(i) infog[(i)-1]   // macro to make indices match documentation
 #define INFO(i) info[(i)-1]     // macro to make indices match documentation
 
-const MUMPS_INT MUMPS_IGNORED = 0; // to ignore the Fortran communicator since we're not using MPI
-
-const MUMPS_INT MUMPS_JOB_INITIALIZE = -1; // section 5.1.1, page 24
-const MUMPS_INT MUMPS_JOB_TERMINATE = -2;  // section 5.1.1, page 24
-const MUMPS_INT MUMPS_JOB_ANALYZE = 1;     // section 5.1.1, page 24
-const MUMPS_INT MUMPS_JOB_FACTORIZE = 2;   // section 5.1.1, page 25
-const MUMPS_INT MUMPS_JOB_SOLVE = 3;       // section 5.1.1, page 25
-
-const MUMPS_INT MUMPS_PAR_HOST_ALSO_WORKS = 1;     // section 5.1.4, page 26
-const MUMPS_INT MUMPS_ICNTL5_ASSEMBLED_MATRIX = 0; // section 5.2.2, page 27
-const MUMPS_INT MUMPS_ICNTL18_CENTRALIZED = 0;     // section 5.2.2, page 27
-const MUMPS_INT MUMPS_ICNTL6_PERMUT_AUTO = 7;      // section 5.3, page 32
-const MUMPS_INT MUMPS_ICNTL28_SEQUENTIAL = 1;      // section 5.4, page 33
-
 /// @brief Holds the data for MUMPS
 struct InterfaceMUMPS {
     /// @brief Holds the MUMPS data structure

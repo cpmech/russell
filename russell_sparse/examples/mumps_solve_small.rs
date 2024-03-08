@@ -16,7 +16,7 @@ fn main() -> Result<(), StrError> {
     //  . -1 -3  2  .
     //  .  .  1  .  .
     //  .  4  2  .  1
-    let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None, true)?;
+    let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None)?;
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(1, 0, 3.0)?;
@@ -60,7 +60,7 @@ fn main() -> Result<(), StrError> {
     let norm_ai = mat_norm(&ai, Norm::Inf);
     let cond = norm_a * norm_ai;
     let rcond = 1.0 / cond;
-    let verify = VerifyLinSys::new(&coo, &x, &rhs).unwrap();
+    let verify = VerifyLinSys::from(&coo, &x, &rhs).unwrap();
     let mut stats = StatsLinSol::new();
     mumps.update_stats(&mut stats);
     let s = &stats.mumps_stats;

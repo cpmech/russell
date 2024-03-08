@@ -5,9 +5,6 @@
 
 #include "constants.h"
 
-const double UMFPACK_PRINT_LEVEL_SILENT = 0.0;  // page 116
-const double UMFPACK_PRINT_LEVEL_VERBOSE = 2.0; // page 116
-
 /// @brief Holds the data for UMFPACK
 struct InterfaceUMFPACK {
     /// @brief Holds control flags
@@ -174,6 +171,9 @@ int32_t solver_umfpack_factorize(struct InterfaceUMFPACK *solver,
                                           determinant_exponent,
                                           solver->numeric,
                                           solver->info);
+    } else {
+        *determinant_coefficient = 0.0;
+        *determinant_exponent = 0.0;
     }
 
     solver->factorization_completed = C_TRUE;
@@ -220,28 +220,5 @@ int32_t solver_umfpack_solve(struct InterfaceUMFPACK *solver,
         umfpack_di_report_info(solver->control, solver->info);
     }
 
-    return code;
-}
-
-/// @brief Converts COO matrix (with possible duplicates) to CSC matrix
-/// @param nrow Is the number of rows
-/// @param ncol Is the number of columns
-/// @param nnz Is the number of non-zero values, including duplicates
-/// @param indices_i Are the CooMatrix row indices
-/// @param indices_j Are the CooMatrix column indices
-/// @param values_aij Are the CooMatrix values, including duplicates
-/// @return A success or fail code
-int32_t umfpack_coo_to_csc(int32_t *col_pointers,
-                           int32_t *row_indices,
-                           double *values,
-                           int32_t nrow,
-                           int32_t ncol,
-                           int32_t nnz,
-                           int32_t const *indices_i,
-                           int32_t const *indices_j,
-                           double const *values_aij) {
-    int code = umfpack_di_triplet_to_col(nrow, ncol, nnz,
-                                         indices_i, indices_j, values_aij,
-                                         col_pointers, row_indices, values, NULL);
     return code;
 }

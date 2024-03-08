@@ -66,11 +66,31 @@ pub fn format_nanoseconds(nanoseconds: u128) -> String {
     buf
 }
 
+/// Formats a number using the scientific notation
+pub fn format_scientific(num: f64, width: usize, precision: usize) -> String {
+    // based on <https://stackoverflow.com/questions/65264069/alignment-of-floating-point-numbers-printed-in-scientific-notation>
+    const EXP_PAD: usize = 2;
+    let mut result = format!("{:.precision$e}", num, precision = precision);
+    let exp = result.split_off(result.find('e').unwrap());
+    let (sign, exp) = if exp.starts_with("e-") {
+        ('-', &exp[2..])
+    } else {
+        ('+', &exp[1..])
+    };
+    result.push_str(&format!("E{}{:0>pad$}", sign, exp, pad = EXP_PAD));
+    format!("{:>width$}", result, width = width)
+}
+
+/// Formats a number using the scientific notation as in Fortran with the ES23.15 format
+pub fn format_fortran(num: f64) -> String {
+    format_scientific(num, 23, 15)
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::format_nanoseconds;
+    use super::{format_fortran, format_nanoseconds, format_scientific};
 
     #[test]
     fn format_nanoseconds_works() {
@@ -169,5 +189,33 @@ mod tests {
         // 3,601,100,000,001 (3.6e12 + 1.1s) = 1h1.1s
         res = format_nanoseconds(3_601_100_000_000);
         assert_eq!(res, "1h1.1s");
+    }
+
+    #[test]
+    fn format_scientific_works() {
+        assert_eq!(format_scientific(0.1111, 9, 2), " 1.11E-01");
+        assert_eq!(format_scientific(0.02222, 11, 4), " 2.2220E-02");
+        assert_eq!(format_scientific(3333.0, 10, 3), " 3.333E+03");
+        assert_eq!(format_scientific(-44444.0, 9, 1), " -4.4E+04");
+        assert_eq!(format_scientific(0.0, 8, 1), " 0.0E+00");
+        assert_eq!(format_scientific(1.0, 23, 15), "  1.000000000000000E+00");
+        assert_eq!(format_scientific(42.0, 23, 15), "  4.200000000000000E+01");
+        assert_eq!(format_scientific(9999999999.00, 8, 1), " 1.0E+10");
+        assert_eq!(format_scientific(999999999999.00, 23, 15), "  9.999999999990000E+11");
+        assert_eq!(format_scientific(123456789.1011, 11, 4), " 1.2346E+08");
+    }
+
+    #[test]
+    fn format_fortran_works() {
+        assert_eq!(format_fortran(0.1111), "  1.111000000000000E-01");
+        assert_eq!(format_fortran(0.02222), "  2.222000000000000E-02");
+        assert_eq!(format_fortran(3333.0), "  3.333000000000000E+03");
+        assert_eq!(format_fortran(-44444.0), " -4.444400000000000E+04");
+        assert_eq!(format_fortran(0.0), "  0.000000000000000E+00");
+        assert_eq!(format_fortran(1.0), "  1.000000000000000E+00");
+        assert_eq!(format_fortran(42.0), "  4.200000000000000E+01");
+        assert_eq!(format_fortran(9999999999.00), "  9.999999999000000E+09");
+        assert_eq!(format_fortran(999999999999.00), "  9.999999999990000E+11");
+        assert_eq!(format_fortran(123456789.1011), "  1.234567891011000E+08");
     }
 }

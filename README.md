@@ -7,7 +7,7 @@
 
 ![Bertrand Russell](Bertrand_Russell_1957.jpg)
 
-([CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en). Photo: [Bertrand Russell](https://en.wikipedia.org/wiki/Bertrand_Russell))
+([CC0](https://creativecommons.org/publicdomain/zero/1.0/deed.en). Photo: [Bertrand Russell](https://en.wikipedia.org/wiki/Bertrand_Russell))
 
 ## Contents
 
@@ -298,7 +298,7 @@ fn main() -> Result<(), StrError> {
     //  . -1 -3  2  .
     //  .  .  1  .  .
     //  . 4  2  .  1
-    let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;
+    let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None)?;
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(1, 0, 3.0)?;
@@ -336,7 +336,7 @@ fn main() -> Result<(), StrError> {
     // analysis
     let mut stats = StatsLinSol::new();
     umfpack.update_stats(&mut stats);
-    let (mx, ex) = (stats.determinant.mantissa, stats.determinant.exponent);
+    let (mx, ex) = (stats.determinant.mantissa_real, stats.determinant.exponent);
     println!("det(a) = {:?}", mx * f64::powf(10.0, ex));
     println!("rcond  = {:?}", stats.output.umfpack_rcond_estimate);
     Ok(())

@@ -6,7 +6,7 @@ extern "C" {
     fn c_get_num_threads() -> i32;
 
     // Finds the index of the maximum absolute value
-    // <http://www.netlib.org/lapack/explore-html/dd/de0/idamax_8f.html>
+    // <https://www.netlib.org/lapack/explore-html/dd/de0/idamax_8f.html>
     fn cblas_idamax(n: i32, x: *const f64, incx: i32) -> i32;
 }
 

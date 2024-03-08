@@ -3,7 +3,7 @@ use crate::{to_i32, CcBool, StrError, C_FALSE, C_TRUE};
 
 extern "C" {
     // Computes the Cholesky factorization of a real symmetric positive definite matrix
-    // <http://www.netlib.org/lapack/explore-html/d0/d8a/dpotrf_8f.html>
+    // <https://www.netlib.org/lapack/explore-html/d0/d8a/dpotrf_8f.html>
     fn c_dpotrf(upper: CcBool, n: *const i32, a: *mut f64, lda: *const i32, info: *mut i32);
 }
 

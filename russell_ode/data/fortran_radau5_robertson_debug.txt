@@ -1,0 +1,37 @@
+
+running radau5.f test
+step =     1, newt =     1, ldw =  5.110074806379854E+00, h =  1.000000000000000E-06
+step =     1, newt =     2, ldw =  1.225505168722402E-06, h =  1.000000000000000E-06
+step =     2, newt =     1, ldw =  4.008140039601735E-08, h =  8.000000000000000E-06
+step =     3, newt =     1, ldw =  1.186679520173405E-03, h =  6.400000000000000E-05
+step =     4, newt =     1, ldw =  1.050182079832908E+01, h =  4.041220301432310E-04
+step =     5, newt =     1, ldw =  1.794588455309548E+00, h =  2.691302105638214E-04
+step =     6, newt =     1, ldw =  4.425316732018962E+00, h =  2.691302105638214E-04
+step =     7, newt =     1, ldw =  1.333759092929216E+00, h =  2.691302105638214E-04
+step =     8, newt =     1, ldw =  4.213092607065383E-01, h =  4.235640953755723E-04
+step =     9, newt =     1, ldw =  1.443689406814354E+01, h =  1.022273799207524E-03
+step =     9, newt =     2, ldw =  7.697798879909175E+00, h =  1.022273799207524E-03
+step =    10, newt =     1, ldw =  1.816083490438694E+00, h =  5.623781872720214E-04
+step =    10, newt =     2, ldw =  3.383615888638754E-02, h =  5.623781872720214E-04
+step =    11, newt =     1, ldw =  6.879082975344524E-01, h =  5.623781872720214E-04
+step =    12, newt =     1, ldw =  2.778605634164393E+00, h =  1.345864838744746E-03
+step =    12, newt =     2, ldw =  6.941901766125089E-02, h =  1.345864838744746E-03
+step =    13, newt =     1, ldw =  3.148269813802456E+00, h =  2.311325748596891E-03
+step =    13, newt =     2, ldw =  5.344836596772803E-02, h =  2.311325748596891E-03
+step =    14, newt =     1, ldw =  1.694875050694057E+00, h =  6.383707167707780E-03
+step =    14, newt =     2, ldw =  2.134263187226790E-02, h =  6.383707167707780E-03
+step =    15, newt =     1, ldw =  6.577883260391179E-01, h =  3.269640450706245E-02
+step =    16, newt =     1, ldw =  1.245612221344287E+00, h =  1.348771470980306E-01
+step =    16, newt =     2, ldw =  5.044276431150335E-02, h =  1.348771470980306E-01
+step =    17, newt =     1, ldw =  7.574602060940736E-02, h =  1.199568395382465E-01
+Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)
+Number of function evaluations   = 88
+Number of Jacobian evaluations   = 8
+Number of factorizations         = 15
+Number of lin sys solutions      = 24
+Number of performed steps        = 17
+Number of accepted steps         = 15
+Number of rejected steps         = 1
+Number of iterations (maximum)   = 2
+y =  9.886740138499884E-01  3.447720471782070E-05  1.129150894529390E-02
+h =  8.160578540333708E-01

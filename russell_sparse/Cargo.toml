@@ -16,10 +16,15 @@ local_libs = []
 intel_mkl = ["local_libs"]
 
 [dependencies]
+num-complex = { version = "0.4", features = ["serde"] }
+num-traits = "0.2"
 russell_lab = { path = "../russell_lab", version = "0.8.0" }
 structopt = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+
+[dev-dependencies]
+serial_test = "3.0"
 
 [build-dependencies]
 cc = "1.0"

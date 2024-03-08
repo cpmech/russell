@@ -3,7 +3,7 @@ use crate::to_i32;
 
 extern "C" {
     // Scales a vector by a constant
-    // <http://www.netlib.org/lapack/explore-html/d4/dd0/dscal_8f.html>
+    // <https://www.netlib.org/lapack/explore-html/d4/dd0/dscal_8f.html>
     fn cblas_dscal(n: i32, alpha: f64, x: *const f64, incx: i32);
 }
 

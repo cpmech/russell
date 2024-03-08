@@ -3,15 +3,15 @@ use crate::{to_i32, Norm};
 
 extern "C" {
     // Computes the sum of the absolute values (1-norm or taxicab norm)
-    // <http://www.netlib.org/lapack/explore-html/de/d05/dasum_8f.html>
+    // <https://www.netlib.org/lapack/explore-html/de/d05/dasum_8f.html>
     fn cblas_dasum(n: i32, x: *const f64, incx: i32) -> f64;
 
     // Computes the Euclidean norm
-    // <http://www.netlib.org/lapack/explore-html/d6/de0/dnrm2_8f90.html>
+    // <https://www.netlib.org/lapack/explore-html/d6/de0/dnrm2_8f90.html>
     fn cblas_dnrm2(n: i32, x: *const f64, incx: i32) -> f64;
 
     // Finds the index of the maximum absolute value
-    // <http://www.netlib.org/lapack/explore-html/dd/de0/idamax_8f.html>
+    // <https://www.netlib.org/lapack/explore-html/dd/de0/idamax_8f.html>
     fn cblas_idamax(n: i32, x: *const f64, incx: i32) -> i32;
 }
 

@@ -702,7 +702,6 @@ where
 mod tests {
     use super::NumVector;
     use crate::{vec_approx_eq, AsArray1D};
-    use serde::{Deserialize, Serialize};
     use std::fmt::Write;
 
     fn pow2(x: f64) -> f64 {
@@ -1012,16 +1011,15 @@ mod tests {
              │  3 │\n\
              └    ┘"
         );
-        // serialize
-        let mut serialized = Vec::new();
-        let mut serializer = rmp_serde::Serializer::new(&mut serialized);
-        u.serialize(&mut serializer).unwrap();
-        assert!(serialized.len() > 0);
-        // deserialize
-        let mut deserializer = rmp_serde::Deserializer::new(&serialized[..]);
-        let b: NumVector<f64> = Deserialize::deserialize(&mut deserializer).unwrap();
+
+        // serialize to json
+        let json = serde_json::to_string(&u).unwrap();
+        assert_eq!(json, r#"{"data":[1.0,2.0,3.0]}"#);
+
+        // deserialize from json
+        let from_json: NumVector<f64> = serde_json::from_str(&json).unwrap();
         assert_eq!(
-            format!("{}", b),
+            format!("{}", from_json),
             "┌   ┐\n\
              │ 1 │\n\
              │ 2 │\n\

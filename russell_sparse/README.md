@@ -75,7 +75,7 @@ fn main() -> Result<(), StrError> {
     let mut umfpack = SolverUMFPACK::new()?;
 
     // allocate the coefficient matrix
-    let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;
+    let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None)?;
     coo.put(0, 0, 0.2)?;
     coo.put(0, 1, 0.2)?;
     coo.put(1, 0, 0.5)?;
@@ -174,7 +174,8 @@ The output looks like this:
     "umfpack_rcond_estimate": 0.0
   },
   "determinant": {
-    "mantissa": 0.0,
+    "mantissa_real": 0.0,
+    "mantissa_imag": 0.0,
     "base": 2.0,
     "exponent": 0.0
   },

@@ -6,15 +6,20 @@
 //!
 //! # Introduction
 //!
-//! We have three storage formats for sparse matrices:
+//! This crate implements three storage formats for sparse matrices:
 //!
-//! * [CooMatrix] (COO) -- COOrdinates matrix, also known as a sparse triplet.
-//! * [CscMatrix] (CSC) -- Compressed Sparse Column matrix
-//! * [CsrMatrix] (CSR) -- Compressed Sparse Row matrix
+//! * [NumCooMatrix] (COO) -- COOrdinates matrix, also known as a sparse triplet.
+//! * [NumCscMatrix] (CSC) -- Compressed Sparse Column matrix
+//! * [NumCsrMatrix] (CSR) -- Compressed Sparse Row matrix
 //!
-//! Additionally, to unify the handling of the above sparse matrix data structures, we have:
+//! Additionally, to unify the handling of the above data structures, this implements:
 //!
-//! * [SparseMatrix] -- Either a COO, CSC, or CSR matrix
+//! * [NumSparseMatrix] -- Either a COO, CSC, or CSR matrix. We recommend using `NumSparseMatrix` solely, if possible.
+//!
+//! For convenience, this crate defines the following type aliases for Real and Complex matrices (with double precision):
+//!
+//! * [CooMatrix], [CscMatrix], [CsrMatrix], [SparseMatrix] -- For real numbers represented by `f64`
+//! * [ComplexCooMatrix], [ComplexCscMatrix], [ComplexCsrMatrix], [ComplexSparseMatrix] -- For complex numbers represented by [num_complex::Complex64]
 //!
 //! The COO matrix is the best when we need to update the values of the matrix because it has easy access to the triples (i, j, aij). For instance, the repetitive access is the primary use case for codes based on the finite element method (FEM) for approximating partial differential equations. Moreover, the COO matrix allows storing duplicate entries; for example, the triple `(0, 0, 123.0)` can be stored as two triples `(0, 0, 100.0)` and `(0, 0, 23.0)`. Again, this is the primary need for FEM codes because of the so-called assembly process where elements add to the same positions in the "global stiffness" matrix. Nonetheless, the duplicate entries must be summed up at some stage for the linear solver (e.g., MUMPS, UMFPACK, and Intel DSS). These linear solvers also use the more memory-efficient storage formats CSC and CSR. The following is the default input for these solvers:
 //!
@@ -57,7 +62,7 @@
 //!
 //! The linear solvers have numerous configuration parameters; however, we can use the default parameters initially. The configuration parameters are collected in the [LinSolParams] structures, which is an input to the [LinSolTrait::factorize()]. The parameters include options such as [Ordering] and [Scaling].
 //!
-//! This library also provides functions to read and write Matrix Market files containing (huge) sparse matrices that can be used in performance benchmarking or other studies. The [read_matrix_market()] function reads a Matrix Market file and returns a [CooMatrix]. To write a Matrix Market file, we can use the function [SparseMatrix::write_matrix_market()], which automatically converts COO to CSC or COO to CSR, also performing the sum of duplicates. The `write_matrix_market` can also writs an SMAT file (almost like the Matrix Market format) without the header and with zero-based indices. The SMAT file can be given to the fantastic [Vismatrix](https://github.com/cpmech/vismatrix) tool to visualize the sparse matrix structure and values interactively; see the example below.
+//! This library also provides functions to read and write Matrix Market files containing (huge) sparse matrices that can be used in performance benchmarking or other studies. The [read_matrix_market()] function reads a Matrix Market file and returns a [CooMatrix]. To write a Matrix Market file, we can use the function [csc_write_matrix_market()] (and similar), which automatically converts COO to CSC or COO to CSR, also performing the sum of duplicates. The `write_matrix_market` can also writs an SMAT file (almost like the Matrix Market format) without the header and with zero-based indices. The SMAT file can be given to the fantastic [Vismatrix](https://github.com/cpmech/vismatrix) tool to visualize the sparse matrix structure and values interactively; see the example below.
 //!
 //! ![doc-example-vismatrix](https://raw.githubusercontent.com/cpmech/russell/main/russell_sparse/data/figures/doc-example-vismatrix.png)
 //!
@@ -77,7 +82,7 @@
 //!     // │  4  5  6 │    but should be saved for Intel DSS
 //!     // └          ┘
 //!     let (nrow, ncol, nnz) = (3, 3, 6);
-//!     let mut coo = CooMatrix::new(nrow, ncol, nnz, None, false)?;
+//!     let mut coo = CooMatrix::new(nrow, ncol, nnz, None)?;
 //!     coo.put(0, 0, 1.0)?;
 //!     coo.put(0, 2, 2.0)?;
 //!     coo.put(1, 2, 3.0)?;
@@ -127,7 +132,7 @@
 //!     let mut solver = LinSolver::new(Genie::Umfpack)?;
 //!
 //!     // allocate the coefficient matrix
-//!     let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;
+//!     let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None)?;
 //!     coo.put(0, 0, 0.2)?;
 //!     coo.put(0, 1, 0.2)?;
 //!     coo.put(1, 0, 0.5)?;
@@ -186,7 +191,7 @@
 //!     //  . -1 -3  2  .
 //!     //  .  .  1  .  .
 //!     //  .  4  2  .  1
-//!     let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;
+//!     let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None)?;
 //!     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
 //!     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
 //!     coo.put(1, 0, 3.0)?;
@@ -224,21 +229,27 @@
 //!     // analysis
 //!     let mut stats = StatsLinSol::new();
 //!     umfpack.update_stats(&mut stats);
-//!     let (mx, ex) = (stats.determinant.mantissa, stats.determinant.exponent);
+//!     let (mx, ex) = (stats.determinant.mantissa_real, stats.determinant.exponent);
 //!     println!("det(a) = {:?}", mx * f64::powf(10.0, ex));
 //!     println!("rcond  = {:?}", stats.output.umfpack_rcond_estimate);
 //!     Ok(())
 //! }
 //! ```
 
-/// Defines a type alias for the error type as a static string
+/// Defines the error output as a static string
 pub type StrError = &'static str;
 
+mod aliases;
 mod auxiliary_and_constants;
+mod complex_coo_matrix;
+mod complex_lin_solver;
+mod complex_solver_mumps;
+mod complex_solver_umfpack;
 mod coo_matrix;
 mod csc_matrix;
 mod csr_matrix;
 mod enums;
+mod lin_sol_params;
 mod lin_solver;
 pub mod prelude;
 mod read_matrix_market;
@@ -249,11 +260,17 @@ mod solver_umfpack;
 mod sparse_matrix;
 mod stats_lin_sol;
 mod verify_lin_sys;
+mod write_matrix_market;
+pub use crate::aliases::*;
 use crate::auxiliary_and_constants::*;
+pub use crate::complex_lin_solver::*;
+pub use crate::complex_solver_mumps::*;
+pub use crate::complex_solver_umfpack::*;
 pub use crate::coo_matrix::*;
 pub use crate::csc_matrix::*;
 pub use crate::csr_matrix::*;
 pub use crate::enums::*;
+pub use crate::lin_sol_params::*;
 pub use crate::lin_solver::*;
 pub use crate::read_matrix_market::*;
 pub use crate::samples::*;
@@ -263,6 +280,7 @@ pub use crate::solver_umfpack::*;
 pub use crate::sparse_matrix::*;
 pub use crate::stats_lin_sol::*;
 pub use crate::verify_lin_sys::*;
+pub use crate::write_matrix_market::*;
 
 // run code from README file
 #[cfg(doctest)]

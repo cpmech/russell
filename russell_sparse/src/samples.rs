@@ -1,4 +1,7 @@
+use crate::{ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix};
 use crate::{CooMatrix, CscMatrix, CsrMatrix, Storage, Symmetry};
+use num_complex::Complex64;
+use russell_lab::cpx;
 
 const PLACEHOLDER: f64 = f64::MAX;
 
@@ -8,19 +11,17 @@ pub struct Samples {}
 impl Samples {
     /// Returns a (1 x 1) matrix
     ///
-    /// Note: the last return value is not the determinant, but a PLACEHOLDER
-    ///
     /// ```text
     /// ┌     ┐
     /// │ 123 │
     /// └     ┘
     /// ```
-    pub fn tiny_1x1(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn tiny_1x1() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = None;
         let nrow = 1;
         let ncol = 1;
         let max_nnz = 1;
-        let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym, one_based).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym).unwrap();
         coo.put(0, 0, 123.0).unwrap();
         // CSC matrix
         let col_pointers = vec![0, 1];
@@ -33,6 +34,245 @@ impl Samples {
         let values = vec![123.0];
         let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
         (coo, csc, csr, 123.0)
+    }
+
+    /// Returns a (1 x 1) matrix (complex version)
+    ///
+    /// ```text
+    /// ┌       ┐
+    /// │ 12+3i │
+    /// └       ┘
+    /// ```
+    pub fn complex_tiny_1x1() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
+        let sym = None;
+        let nrow = 1;
+        let ncol = 1;
+        let max_nnz = 1;
+        let mut coo = ComplexCooMatrix::new(nrow, ncol, max_nnz, sym).unwrap();
+        coo.put(0, 0, cpx!(12.0, 3.0)).unwrap();
+        // CSC matrix
+        let col_pointers = vec![0, 1];
+        let row_indices = vec![0];
+        let values = vec![cpx!(12.0, 3.0)];
+        let csc = ComplexCscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
+        // CSR matrix
+        let row_pointers = vec![0, 1];
+        let col_indices = vec![0];
+        let values = vec![cpx!(12.0, 3.0)];
+        let csr = ComplexCsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
+        (coo, csc, csr, cpx!(12.0, 3.0))
+    }
+
+    /// Returns a (3 x 3) positive definite matrix
+    ///
+    /// ```text
+    ///  2  -1              2     sym
+    /// -1   2  -1    =>   -1   2
+    ///     -1   2             -1   2
+    /// ```
+    pub fn positive_definite_3x3() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+        let (nrow, ncol, nnz) = (3, 3, 6);
+        let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
+        let mut coo = CooMatrix::new(nrow, ncol, nnz, sym).unwrap();
+        coo.put(1, 0, -0.5).unwrap(); // duplicate
+        coo.put(0, 0, 2.0).unwrap();
+        coo.put(2, 2, 2.0).unwrap();
+        coo.put(1, 0, -0.5).unwrap(); // duplicate
+        coo.put(1, 1, 2.0).unwrap();
+        coo.put(2, 1, -1.0).unwrap();
+        // CSC matrix
+        let col_pointers = vec![0, 2, 4, 5];
+        let row_indices = vec![
+            0, 1, // j=0, p=(0),1
+            1, 2, // j=1, p=(2),3
+            2, //    j=2, p=(4)
+        ]; //               (5)
+        let values = vec![
+            2.0, -1.0, // j=0, p=(0),1
+            2.0, -1.0, // j=1, p=(2),3
+            2.0,  //      j=2, p=(4)
+        ]; //                    (5)
+        let csc = CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
+        // CSR matrix
+        let row_pointers = vec![0, 1, 3, 5];
+        let col_indices = vec![
+            0, //    i=0, p=(0)
+            0, 1, // i=1, p=(1),2
+            1, 2, // i=2, p=(3),4
+        ]; //               (5)
+        let values = vec![
+            2.0, //       i=0, p=(0)
+            -1.0, 2.0, // i=1, p=(1),2
+            -1.0, 2.0, // i=2, p=(3),4
+        ]; //                    (5)
+        let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
+        (coo, csc, csr, 4.0)
+    }
+
+    /// Returns a complex symmetric (3 x 3) matrix (lower storage)
+    ///
+    /// ```text
+    ///  2+1i  -1-1i                  2+1i          sym
+    /// -1-1i   2+2i  -1+1i     =>   -1-1i   2+2i       
+    ///        -1+1i   2-1i                 -1+1i   2-1i
+    /// ```
+    pub fn complex_symmetric_3x3_lower() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
+        let (nrow, ncol, nnz) = (3, 3, 6);
+        let sym = Some(Symmetry::General(Storage::Lower));
+        let mut coo = ComplexCooMatrix::new(nrow, ncol, nnz, sym).unwrap();
+        coo.put(1, 0, cpx!(-0.5, -0.5)).unwrap(); // duplicate
+        coo.put(0, 0, cpx!(2.0, 1.0)).unwrap();
+        coo.put(2, 2, cpx!(2.0, -1.0)).unwrap();
+        coo.put(1, 0, cpx!(-0.5, -0.5)).unwrap(); // duplicate
+        coo.put(1, 1, cpx!(2.0, 2.0)).unwrap();
+        coo.put(2, 1, cpx!(-1.0, 1.0)).unwrap();
+        // CSC matrix
+        let col_pointers = vec![0, 2, 4, 5];
+        let row_indices = vec![
+            0, 1, // j=0, p=(0),1
+            1, 2, // j=1, p=(2),3
+            2, //    j=2, p=(4)
+        ]; //               (5)
+        #[rustfmt::skip]
+        let values = vec![
+            cpx!(2.0,  1.0), cpx!(-1.0, -1.0), // j=0, p=(0),1
+            cpx!(2.0,  2.0), cpx!(-1.0,  1.0), // j=1, p=(2),3
+            cpx!(2.0, -1.0), //                   j=2, p=(4)
+        ]; //                                            (5)
+        let csc = ComplexCscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
+        // CSR matrix
+        let row_pointers = vec![0, 1, 3, 5];
+        let col_indices = vec![
+            0, //    i=0, p=(0)
+            0, 1, // i=1, p=(1),2
+            1, 2, // i=2, p=(3),4
+        ]; //               (5)
+        #[rustfmt::skip]
+        let values = vec![
+            cpx!( 2.0,  1.0), //                  i=0, p=(0)
+            cpx!(-1.0, -1.0), cpx!(2.0,  2.0), // i=1, p=(1),2
+            cpx!(-1.0,  1.0), cpx!(2.0, -1.0), // i=2, p=(3),4
+        ]; //                                            (5)
+        let csr = ComplexCsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
+        (coo, csc, csr, cpx!(6.0, 10.0))
+    }
+
+    /// Returns a complex symmetric (3 x 3) matrix (full storage)
+    ///
+    /// ```text
+    ///  2+1i  -1-1i      
+    /// -1-1i   2+2i  -1+1i
+    ///        -1+1i   2-1i
+    /// ```
+    pub fn complex_symmetric_3x3_full() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
+        let (nrow, ncol, nnz) = (3, 3, 8);
+        let sym = Some(Symmetry::General(Storage::Full));
+        let mut coo = ComplexCooMatrix::new(nrow, ncol, nnz, sym).unwrap();
+        coo.put(1, 0, cpx!(-0.5, -0.5)).unwrap(); // duplicate
+        coo.put(0, 0, cpx!(2.0, 1.0)).unwrap();
+        coo.put(2, 2, cpx!(2.0, -1.0)).unwrap();
+        coo.put(1, 0, cpx!(-0.5, -0.5)).unwrap(); // duplicate
+        coo.put(1, 1, cpx!(2.0, 2.0)).unwrap();
+        coo.put(2, 1, cpx!(-1.0, 1.0)).unwrap();
+        coo.put(0, 1, cpx!(-1.0, -1.0)).unwrap();
+        coo.put(1, 2, cpx!(-1.0, 1.0)).unwrap();
+        // CSC matrix
+        let col_pointers = vec![0, 2, 5, 7];
+        let row_indices = vec![
+            0, 1, //    j=0, p=(0),1
+            0, 1, 2, // j=1, p=(2),3,4
+            1, 2, //    j=2, p=(5),6
+        ]; //                  (7)
+        #[rustfmt::skip]
+        let values = vec![
+            cpx!( 2.0,  1.0), cpx!(-1.0, -1.0), //                  j=0, p=(0),1
+            cpx!(-1.0, -1.0), cpx!( 2.0,  2.0), cpx!(-1.0, 1.0), // j=1, p=(2),3,4
+            cpx!(-1.0,  1.0), cpx!( 2.0, -1.0), //                  j=2, p=(5),6
+        ]; //                                                              (7)
+        let csc = ComplexCscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
+        // CSR matrix
+        let row_pointers = vec![0, 2, 5, 7];
+        let col_indices = vec![
+            0, 1, //    i=0, p=(0),1
+            0, 1, 2, // i=1, p=(2),3,4
+            1, 2, //    i=2, p=(5),6
+        ]; //                  (7)
+        #[rustfmt::skip]
+        let values = vec![
+            cpx!( 2.0,  1.0), cpx!(-1.0, -1.0), //                  i=0, p=(0),1
+            cpx!(-1.0, -1.0), cpx!( 2.0,  2.0), cpx!(-1.0, 1.0), // i=1, p=(2),3,4
+            cpx!(-1.0,  1.0), cpx!( 2.0, -1.0), //                  i=2, p=(5),6
+        ]; //                                                              (7)
+        let csr = ComplexCsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
+        (coo, csc, csr, cpx!(6.0, 10.0))
+    }
+
+    /// Returns a lower symmetric 5 x 5 matrix
+    ///
+    /// ```text
+    /// 2  1  1  3  2        2
+    /// 1  2  2  1  1        1  2     sym
+    /// 1  2  9  1  5   =>   1  2  9
+    /// 3  1  1  7  1        3  1  1  7
+    /// 2  1  5  1  8        2  1  5  1  8
+    /// ```
+    pub fn lower_symmetric_5x5() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+        let (nrow, ncol, nnz) = (5, 5, 18);
+        let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
+        let mut coo = CooMatrix::new(nrow, ncol, nnz, sym).unwrap();
+        coo.put(1, 1, 2.0).unwrap();
+        coo.put(4, 2, 2.5).unwrap(); // duplicate
+        coo.put(2, 2, 9.0).unwrap();
+        coo.put(3, 3, 7.0).unwrap();
+        coo.put(0, 0, 2.0).unwrap();
+        coo.put(4, 4, 5.0).unwrap(); // duplicate
+        coo.put(2, 0, 1.0).unwrap();
+        coo.put(4, 4, 3.0).unwrap(); // duplicate
+        coo.put(2, 1, 2.0).unwrap();
+        coo.put(1, 0, 1.0).unwrap();
+        coo.put(3, 0, 3.0).unwrap();
+        coo.put(3, 2, 1.0).unwrap();
+        coo.put(4, 0, 2.0).unwrap();
+        coo.put(3, 1, 0.5).unwrap(); // duplicate
+        coo.put(3, 1, 0.5).unwrap(); // duplicate
+        coo.put(4, 1, 1.0).unwrap();
+        coo.put(4, 2, 2.5).unwrap(); // duplicate
+        coo.put(4, 3, 1.0).unwrap();
+        // CSC matrix
+        let col_pointers = vec![0, 5, 9, 12, 14, 15];
+        let row_indices = vec![
+            0, 1, 2, 3, 4, // j=0, p=(0),1,2,3,4
+            1, 2, 3, 4, //    j=1, p=(5),6,7,8
+            2, 3, 4, //       j=2, p=(9),10,11
+            3, 4, //          j=3, p=(12),13
+            4, //             j=4, p=(14)
+        ]; //                        (15)
+        let values = vec![
+            2.0, 1.0, 1.0, 3.0, 2.0, // j=0, p=(0),1,2,3,4
+            2.0, 2.0, 1.0, 1.0, //      j=1, p=(5),6,7,8
+            9.0, 1.0, 5.0, //           j=2, p=(9),10,11
+            7.0, 1.0, //                j=3, p=(12),13
+            8.0, //                     j=4, p=(14)
+        ]; //                                  (15)
+        let csc = CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
+        // CSR matrix
+        let row_pointers = vec![0, 1, 3, 6, 10, 15];
+        let col_indices = vec![
+            0, //              i=0, p=(0)
+            0, 1, //           i=1, p=(1),2
+            0, 1, 2, //        i=2, p=(3),4,5
+            0, 1, 2, 3, //     i=3, p=(6),7,8,9
+            0, 1, 2, 3, 4, //  i=4, p=(10),11,12,13,14
+        ]; //                         (15)
+        let values = vec![
+            2.0, //                      i=0, p=(0)
+            1.0, 2.0, //                 i=1, p=(1),2
+            1.0, 2.0, 9.0, //            i=2, p=(3),4,5
+            3.0, 1.0, 1.0, 7.0, //       i=3, p=(6),7,8,9
+            2.0, 1.0, 5.0, 1.0, 8.0, //  i=4, p=(10),11,12,13,14
+        ]; //                                   (15)
+        let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
+        (coo, csc, csr, 98.0)
     }
 
     /// Returns the COO, CSC, and CSR versions of the matrix and its determinant
@@ -59,7 +299,6 @@ impl Samples {
     /// let x_correct = &[3.0, 3.0, 15];
     /// ```
     pub fn unsymmetric_3x3(
-        one_based: bool,
         shuffle_coo_entries: bool,
         duplicate_coo_entries: bool,
     ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
@@ -67,7 +306,7 @@ impl Samples {
         let nrow = 3;
         let ncol = 3;
         let max_nnz = 10; // more nnz than needed => OK
-        let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym, one_based).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym).unwrap();
         if shuffle_coo_entries {
             if duplicate_coo_entries {
                 coo.put(0, 2, 2.0).unwrap();
@@ -127,7 +366,7 @@ impl Samples {
             1.0, 2.0, //      i=0 p=(0),1
             0.0, 3.0, //      i=1 p=(2),3
             4.0, 5.0, 6.0, // i=2 p=(4),5,6
-        ]; //               p=(7)
+        ]; //                     p=(7)
         let col_indices = vec![
             0, 2, //
             1, 2, //
@@ -161,25 +400,25 @@ impl Samples {
     /// ```text
     /// let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
     /// ```
-    pub fn umfpack_unsymmetric_5x5(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn umfpack_unsymmetric_5x5() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = None;
         let nrow = 5;
         let ncol = 5;
         let max_nnz = 13;
-        let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym, one_based).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym).unwrap();
         coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2) duplicate
-        coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2) duplicate
-        coo.put(1, 0, 3.0).unwrap();
-        coo.put(0, 1, 3.0).unwrap();
         coo.put(2, 1, -1.0).unwrap();
+        coo.put(1, 0, 3.0).unwrap();
         coo.put(4, 1, 4.0).unwrap();
-        coo.put(1, 2, 4.0).unwrap();
-        coo.put(2, 2, -3.0).unwrap();
+        coo.put(4, 4, 1.0).unwrap();
+        coo.put(0, 1, 3.0).unwrap();
         coo.put(3, 2, 1.0).unwrap();
+        coo.put(2, 2, -3.0).unwrap();
+        coo.put(0, 0, 1.0).unwrap(); // << (0, 0, a00/2) duplicate
         coo.put(4, 2, 2.0).unwrap();
         coo.put(2, 3, 2.0).unwrap();
         coo.put(1, 4, 6.0).unwrap();
-        coo.put(4, 4, 1.0).unwrap();
+        coo.put(1, 2, 4.0).unwrap();
         // CSC matrix
         let values = vec![
             2.0, 3.0, //            j=0, p=( 0),1
@@ -204,7 +443,7 @@ impl Samples {
             -1.0, -3.0, 2.0, // i=2, p=(5),6,7
             1.0, //             i=3, p=(8)
             4.0, 2.0, 1.0, //   i=4, p=(9),10,11
-        ]; //                  p=(12)
+        ]; //                        p=(12)
         let col_indices = vec![
             0, 1, //
             0, 2, 4, //
@@ -231,11 +470,11 @@ impl Samples {
     ///
     /// Reference:
     /// <https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/sparse-blas-csr-matrix-storage-format.html>
-    pub fn mkl_unsymmetric_5x5(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn mkl_unsymmetric_5x5() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = None;
         let nrow = 5;
         let ncol = 5;
-        let mut coo = CooMatrix::new(nrow, ncol, 13, sym, one_based).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, 13, sym).unwrap();
         coo.put(2, 4, 4.0).unwrap();
         coo.put(4, 1, 8.0).unwrap();
         coo.put(0, 1, -1.0).unwrap();
@@ -298,7 +537,6 @@ impl Samples {
     /// .  .  .  .  9
     /// ```
     pub fn block_unsymmetric_5x5(
-        one_based: bool,
         shuffle_coo_entries: bool,
         duplicate_coo_entries: bool,
     ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
@@ -306,7 +544,7 @@ impl Samples {
         let nrow = 5;
         let ncol = 5;
         let max_nnz = 11; // more nnz than needed => OK
-        let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym, one_based).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym).unwrap();
         if shuffle_coo_entries {
             if duplicate_coo_entries {
                 coo.put(4, 4, 9.0).unwrap();
@@ -416,11 +654,11 @@ impl Samples {
     /// ```text
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
-    pub fn mkl_positive_definite_5x5_lower(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn mkl_positive_definite_5x5_lower() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
         let nrow = 5;
         let ncol = 5;
-        let mut coo = CooMatrix::new(nrow, ncol, 9, sym, one_based).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, 9, sym).unwrap();
         coo.put(0, 0, 9.0).unwrap();
         coo.put(1, 1, 0.5).unwrap();
         coo.put(2, 2, 12.0).unwrap();
@@ -490,11 +728,11 @@ impl Samples {
     /// ```text
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
-    pub fn mkl_positive_definite_5x5_upper(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn mkl_positive_definite_5x5_upper() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = Some(Symmetry::PositiveDefinite(Storage::Upper));
         let nrow = 5;
         let ncol = 5;
-        let mut coo = CooMatrix::new(nrow, ncol, 9, sym, one_based).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, 9, sym).unwrap();
         coo.put(0, 0, 9.0).unwrap();
         coo.put(0, 1, 1.5).unwrap();
         coo.put(1, 1, 0.5).unwrap();
@@ -565,7 +803,6 @@ impl Samples {
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
     pub fn mkl_symmetric_5x5_lower(
-        one_based: bool,
         shuffle_coo_entries: bool,
         duplicate_coo_entries: bool,
     ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
@@ -573,7 +810,7 @@ impl Samples {
         let nrow = 5;
         let ncol = 5;
         let max_nnz = 13;
-        let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym, one_based).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym).unwrap();
         if shuffle_coo_entries {
             if duplicate_coo_entries {
                 // diagonal
@@ -688,7 +925,6 @@ impl Samples {
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
     pub fn mkl_symmetric_5x5_upper(
-        one_based: bool,
         shuffle_coo_entries: bool,
         duplicate_coo_entries: bool,
     ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
@@ -696,7 +932,7 @@ impl Samples {
         let nrow = 5;
         let ncol = 5;
         let max_nnz = 15;
-        let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym, one_based).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym).unwrap();
         if shuffle_coo_entries {
             if duplicate_coo_entries {
                 coo.put(0, 0, 6.0).unwrap(); // << duplicate
@@ -809,12 +1045,12 @@ impl Samples {
     /// ```text
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
-    pub fn mkl_symmetric_5x5_full(one_based: bool) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn mkl_symmetric_5x5_full() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = Some(Symmetry::General(Storage::Full));
         let nrow = 5;
         let ncol = 5;
         let max_nnz = 13;
-        let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym, one_based).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym).unwrap();
         coo.put(0, 0, 9.0).unwrap();
         coo.put(0, 1, 1.5).unwrap();
         coo.put(0, 2, 6.0).unwrap();
@@ -875,7 +1111,6 @@ impl Samples {
     /// └       ┘
     /// ```
     pub fn rectangular_1x2(
-        one_based: bool,
         shuffle_coo_entries: bool,
         duplicate_coo_entries: bool,
     ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
@@ -883,7 +1118,7 @@ impl Samples {
         let nrow = 1;
         let ncol = 2;
         let max_nnz = 10;
-        let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym, one_based).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, max_nnz, sym).unwrap();
         if shuffle_coo_entries {
             if duplicate_coo_entries {
                 coo.put(0, 1, 2.0).unwrap();
@@ -942,7 +1177,7 @@ impl Samples {
         let sym = None;
         let nrow = 1;
         let ncol = 7;
-        let mut coo = CooMatrix::new(nrow, ncol, 4, sym, false).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, 4, sym).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 2, 3.0).unwrap();
         coo.put(0, 4, 5.0).unwrap();
@@ -989,7 +1224,7 @@ impl Samples {
         let sym = None;
         let nrow = 7;
         let ncol = 1;
-        let mut coo = CooMatrix::new(nrow, ncol, 3, sym, false).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, 3, sym).unwrap();
         coo.put(1, 0, 2.0).unwrap();
         coo.put(3, 0, 4.0).unwrap();
         coo.put(5, 0, 6.0).unwrap();
@@ -1029,7 +1264,7 @@ impl Samples {
         let sym = None;
         let nrow = 3;
         let ncol = 4;
-        let mut coo = CooMatrix::new(nrow, ncol, 9, sym, false).unwrap();
+        let mut coo = CooMatrix::new(nrow, ncol, 9, sym).unwrap();
         coo.put(0, 0, 5.0).unwrap();
         coo.put(1, 0, 10.0).unwrap();
         coo.put(2, 0, 15.0).unwrap();
@@ -1069,6 +1304,61 @@ impl Samples {
         let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
         (coo, csc, csr, PLACEHOLDER)
     }
+
+    /// Returns a (4 x 3) complex rectangular matrix
+    ///
+    /// Note: the last return value is not the determinant, but a PLACEHOLDER
+    ///
+    /// ```text
+    /// 4+4i    .     2+2i
+    ///  .      1     3+3i
+    ///  .     5+5i   1+1i
+    ///  1      .      .  
+    /// ```
+    pub fn complex_rectangular_4x3() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, f64) {
+        let sym = None;
+        let nrow = 4;
+        let ncol = 3;
+        let mut coo = ComplexCooMatrix::new(nrow, ncol, 7, sym).unwrap();
+        coo.put(0, 0, cpx!(4.0, 4.0)).unwrap();
+        coo.put(0, 2, cpx!(2.0, 2.0)).unwrap();
+        coo.put(1, 1, cpx!(1.0, 0.0)).unwrap();
+        coo.put(1, 2, cpx!(3.0, 3.0)).unwrap();
+        coo.put(2, 1, cpx!(5.0, 5.0)).unwrap();
+        coo.put(2, 2, cpx!(1.0, 1.0)).unwrap();
+        coo.put(3, 0, cpx!(1.0, 0.0)).unwrap();
+        // CSC matrix
+        let col_pointers = vec![0, 2, 4, 7];
+        let row_indices = vec![
+            0, 3, //    j=0, p=(0),1
+            1, 2, //    j=1, p=(2),3
+            0, 1, 2, // j=2, p=(4),5,6
+        ]; //                  (7)
+        #[rustfmt::skip]
+        let values = vec![
+            cpx!(4.0,4.0), cpx!(1.0,0.0),                // j=0, p=(0),1
+            cpx!(1.0,0.0), cpx!(5.0,5.0),                // j=1, p=(2),3
+            cpx!(2.0,2.0), cpx!(3.0,3.0), cpx!(1.0,1.0), // j=2, p=(4),5,6
+        ]; //                                                      (7)
+        let csc = ComplexCscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
+        // CSR matrix
+        let row_pointers = vec![0, 2, 4, 6, 7];
+        let col_indices = vec![
+            0, 2, // i=0, p=(0),1
+            1, 2, // i=1, p=(2),3
+            1, 2, // i=2, p=(4),5
+            0, //    i=3, p=(6)
+        ]; //               (7)
+        #[rustfmt::skip]
+        let values = vec![
+            cpx!(4.0,4.0), cpx!(2.0,2.0), // i=0, p=(0),1
+            cpx!(1.0,0.0), cpx!(3.0,3.0), // i=1, p=(2),3
+            cpx!(5.0,5.0), cpx!(1.0,1.0), // i=2, p=(4),5
+            cpx!(1.0,0.0),                // i=3, p=(6)
+        ]; //                                       (7)
+        let csr = ComplexCsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
+        (coo, csc, csr, PLACEHOLDER)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1076,8 +1366,14 @@ impl Samples {
 #[cfg(test)]
 mod tests {
     use super::Samples;
-    use crate::{CooMatrix, CscMatrix, CsrMatrix};
+    use crate::{NumCooMatrix, NumCscMatrix, NumCsrMatrix};
+    use num_complex::Complex64;
+    use num_traits::{Num, NumCast};
     use russell_lab::{approx_eq, mat_approx_eq, mat_inverse, Matrix};
+    use russell_lab::{complex_approx_eq, complex_mat_approx_eq, complex_mat_inverse, cpx, ComplexMatrix};
+    use serde::de::DeserializeOwned;
+    use serde::Serialize;
+    use std::ops::{AddAssign, MulAssign};
 
     /// Checks the samples
     ///
@@ -1100,7 +1396,10 @@ mod tests {
     /// col_indices.len() == nnz
     /// values.len() == nnz
     /// ```
-    fn check(coo: &CooMatrix, csc: &CscMatrix, csr: &CsrMatrix) {
+    fn check<T>(coo: &NumCooMatrix<T>, csc: &NumCscMatrix<T>, csr: &NumCsrMatrix<T>)
+    where
+        T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
+    {
         // COO
         let max_nnz = coo.max_nnz;
         assert!(coo.nrow >= 1);
@@ -1144,15 +1443,89 @@ mod tests {
         let a = Matrix::from(correct);
         let mut ai = Matrix::new(1, 1);
         let correct_det = mat_inverse(&mut ai, &a).unwrap();
-        for (coo, csc, csr, det) in [
-            Samples::tiny_1x1(false), //
-            Samples::tiny_1x1(true),  //
-        ] {
-            let mat = coo.as_dense();
-            approx_eq(det, correct_det, 1e-13);
-            mat_approx_eq(&mat, correct, 1e-15);
-            check(&coo, &csc, &csr);
-        }
+        let (coo, csc, csr, det) = Samples::tiny_1x1();
+        approx_eq(det, correct_det, 1e-15);
+        mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csr.as_dense(), correct, 1e-15);
+        check(&coo, &csc, &csr);
+
+        // ----------------------------------------------------------------------------
+
+        let correct = &[
+            [cpx!(12.0, 3.0)], //
+        ];
+        let a = ComplexMatrix::from(correct);
+        let mut ai = ComplexMatrix::new(1, 1);
+        let correct_det = complex_mat_inverse(&mut ai, &a).unwrap();
+        let (coo, csc, csr, det) = Samples::complex_tiny_1x1();
+        complex_approx_eq(det, correct_det, 1e-15);
+        complex_mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        complex_mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        complex_mat_approx_eq(&csr.as_dense(), correct, 1e-15);
+        check(&coo, &csc, &csr);
+
+        // ----------------------------------------------------------------------------
+
+        let correct = &[
+            [2.0, -1.0, 0.0],  //
+            [-1.0, 2.0, -1.0], //
+            [0.0, -1.0, 2.0],  //
+        ];
+        let a = Matrix::from(correct);
+        let mut ai = Matrix::new(3, 3);
+        let correct_det = mat_inverse(&mut ai, &a).unwrap();
+        let (coo, csc, csr, det) = Samples::positive_definite_3x3();
+        approx_eq(det, correct_det, 1e-15);
+        mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csr.as_dense(), correct, 1e-15);
+        check(&coo, &csc, &csr);
+
+        // ----------------------------------------------------------------------------
+
+        #[rustfmt::skip]
+        let correct = &[
+            [cpx!( 2.0,  1.0), cpx!(-1.0, -1.0), cpx!( 0.0,  0.0)],
+            [cpx!(-1.0, -1.0), cpx!( 2.0,  2.0), cpx!(-1.0,  1.0)],
+            [cpx!( 0.0,  0.0), cpx!(-1.0,  1.0), cpx!( 2.0, -1.0)],
+        ];
+        let a = ComplexMatrix::from(correct);
+        let mut ai = ComplexMatrix::new(3, 3);
+        let correct_det = complex_mat_inverse(&mut ai, &a).unwrap();
+        // lower
+        let (coo, csc, csr, det) = Samples::complex_symmetric_3x3_lower();
+        complex_approx_eq(det, correct_det, 1e-15);
+        complex_mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        complex_mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        complex_mat_approx_eq(&csr.as_dense(), correct, 1e-15);
+        check(&coo, &csc, &csr);
+        // full
+        let (coo, csc, csr, det) = Samples::complex_symmetric_3x3_full();
+        complex_approx_eq(det, correct_det, 1e-15);
+        complex_mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        complex_mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        complex_mat_approx_eq(&csr.as_dense(), correct, 1e-15);
+        check(&coo, &csc, &csr);
+
+        // ----------------------------------------------------------------------------
+
+        let correct = &[
+            [2.0, 1.0, 1.0, 3.0, 2.0],
+            [1.0, 2.0, 2.0, 1.0, 1.0],
+            [1.0, 2.0, 9.0, 1.0, 5.0],
+            [3.0, 1.0, 1.0, 7.0, 1.0],
+            [2.0, 1.0, 5.0, 1.0, 8.0],
+        ];
+        let a = Matrix::from(correct);
+        let mut ai = Matrix::new(5, 5);
+        let correct_det = mat_inverse(&mut ai, &a).unwrap();
+        let (coo, csc, csr, det) = Samples::lower_symmetric_5x5();
+        approx_eq(det, correct_det, 1e-12);
+        mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csr.as_dense(), correct, 1e-15);
+        check(&coo, &csc, &csr);
 
         // ----------------------------------------------------------------------------
 
@@ -1165,18 +1538,15 @@ mod tests {
         let mut ai = Matrix::new(3, 3);
         let correct_det = mat_inverse(&mut ai, &a).unwrap();
         for (coo, csc, csr, det) in [
-            Samples::unsymmetric_3x3(false, false, false),
-            Samples::unsymmetric_3x3(false, true, false),
-            Samples::unsymmetric_3x3(false, true, false),
-            Samples::unsymmetric_3x3(false, true, true),
-            Samples::unsymmetric_3x3(true, false, false),
-            Samples::unsymmetric_3x3(true, true, false),
-            Samples::unsymmetric_3x3(true, true, false),
-            Samples::unsymmetric_3x3(true, true, true),
+            Samples::unsymmetric_3x3(false, false),
+            Samples::unsymmetric_3x3(false, true),
+            Samples::unsymmetric_3x3(true, false),
+            Samples::unsymmetric_3x3(true, true),
         ] {
-            let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
-            mat_approx_eq(&mat, correct, 1e-15);
+            mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csr.as_dense(), correct, 1e-15);
             check(&coo, &csc, &csr);
         }
 
@@ -1192,15 +1562,12 @@ mod tests {
         let a = Matrix::from(correct);
         let mut ai = Matrix::new(5, 5);
         let correct_det = mat_inverse(&mut ai, &a).unwrap();
-        for (coo, csc, csr, det) in [
-            Samples::umfpack_unsymmetric_5x5(false),
-            Samples::umfpack_unsymmetric_5x5(true),
-        ] {
-            let mat = coo.as_dense();
-            approx_eq(det, correct_det, 1e-13);
-            mat_approx_eq(&mat, correct, 1e-15);
-            check(&coo, &csc, &csr);
-        }
+        let (coo, csc, csr, det) = Samples::umfpack_unsymmetric_5x5();
+        approx_eq(det, correct_det, 1e-13);
+        mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csr.as_dense(), correct, 1e-15);
+        check(&coo, &csc, &csr);
 
         // ----------------------------------------------------------------------------
 
@@ -1214,14 +1581,12 @@ mod tests {
         let a = Matrix::from(correct);
         let mut ai = Matrix::new(5, 5);
         let correct_det = mat_inverse(&mut ai, &a).unwrap();
-        for (coo, csc, csr, det) in [
-            Samples::mkl_unsymmetric_5x5(false), //
-        ] {
-            let mat = coo.as_dense();
-            approx_eq(det, correct_det, 1e-13);
-            mat_approx_eq(&mat, correct, 1e-15);
-            check(&coo, &csc, &csr);
-        }
+        let (coo, csc, csr, det) = Samples::mkl_unsymmetric_5x5();
+        approx_eq(det, correct_det, 1e-13);
+        mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csr.as_dense(), correct, 1e-15);
+        check(&coo, &csc, &csr);
 
         // ----------------------------------------------------------------------------
 
@@ -1236,18 +1601,15 @@ mod tests {
         let mut ai = Matrix::new(5, 5);
         let correct_det = mat_inverse(&mut ai, &a).unwrap();
         for (coo, csc, csr, det) in [
-            Samples::block_unsymmetric_5x5(false, false, false),
-            Samples::block_unsymmetric_5x5(false, true, false),
-            Samples::block_unsymmetric_5x5(false, false, true),
-            Samples::block_unsymmetric_5x5(false, true, true),
-            Samples::block_unsymmetric_5x5(true, false, false),
-            Samples::block_unsymmetric_5x5(true, true, false),
-            Samples::block_unsymmetric_5x5(true, false, true),
-            Samples::block_unsymmetric_5x5(true, true, true),
+            Samples::block_unsymmetric_5x5(false, false),
+            Samples::block_unsymmetric_5x5(false, true),
+            Samples::block_unsymmetric_5x5(true, false),
+            Samples::block_unsymmetric_5x5(true, true),
         ] {
-            let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
-            mat_approx_eq(&mat, correct, 1e-15);
+            mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csr.as_dense(), correct, 1e-15);
             check(&coo, &csc, &csr);
         }
 
@@ -1264,32 +1626,22 @@ mod tests {
         let mut ai = Matrix::new(5, 5);
         let correct_det = mat_inverse(&mut ai, &a).unwrap();
         for (coo, csc, csr, det) in [
-            Samples::mkl_positive_definite_5x5_lower(false),
-            Samples::mkl_positive_definite_5x5_lower(true),
-            Samples::mkl_positive_definite_5x5_upper(false),
-            Samples::mkl_positive_definite_5x5_upper(true),
-            Samples::mkl_symmetric_5x5_lower(false, false, false),
-            Samples::mkl_symmetric_5x5_lower(false, true, false),
-            Samples::mkl_symmetric_5x5_lower(false, false, true),
-            Samples::mkl_symmetric_5x5_lower(false, true, true),
-            Samples::mkl_symmetric_5x5_lower(true, false, false),
-            Samples::mkl_symmetric_5x5_lower(true, true, false),
-            Samples::mkl_symmetric_5x5_lower(true, false, true),
-            Samples::mkl_symmetric_5x5_lower(true, true, true),
-            Samples::mkl_symmetric_5x5_upper(false, false, false),
-            Samples::mkl_symmetric_5x5_upper(false, true, false),
-            Samples::mkl_symmetric_5x5_upper(false, false, true),
-            Samples::mkl_symmetric_5x5_upper(false, true, true),
-            Samples::mkl_symmetric_5x5_upper(true, false, false),
-            Samples::mkl_symmetric_5x5_upper(true, true, false),
-            Samples::mkl_symmetric_5x5_upper(true, false, true),
-            Samples::mkl_symmetric_5x5_upper(true, true, true),
-            Samples::mkl_symmetric_5x5_full(false),
-            Samples::mkl_symmetric_5x5_full(true),
+            Samples::mkl_positive_definite_5x5_lower(),
+            Samples::mkl_positive_definite_5x5_upper(),
+            Samples::mkl_symmetric_5x5_lower(false, false),
+            Samples::mkl_symmetric_5x5_lower(false, true),
+            Samples::mkl_symmetric_5x5_lower(true, false),
+            Samples::mkl_symmetric_5x5_lower(true, true),
+            Samples::mkl_symmetric_5x5_upper(false, false),
+            Samples::mkl_symmetric_5x5_upper(false, true),
+            Samples::mkl_symmetric_5x5_upper(true, false),
+            Samples::mkl_symmetric_5x5_upper(true, true),
+            Samples::mkl_symmetric_5x5_full(),
         ] {
-            let mat = coo.as_dense();
             approx_eq(det, correct_det, 1e-13);
-            mat_approx_eq(&mat, correct, 1e-15);
+            mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csr.as_dense(), correct, 1e-15);
             check(&coo, &csc, &csr);
         }
 
@@ -1297,17 +1649,14 @@ mod tests {
 
         let correct = &[[10.0, 20.0]];
         for (coo, csc, csr, _) in [
-            Samples::rectangular_1x2(false, false, false),
-            Samples::rectangular_1x2(false, true, false),
-            Samples::rectangular_1x2(false, false, true),
-            Samples::rectangular_1x2(false, true, true),
-            Samples::rectangular_1x2(true, false, false),
-            Samples::rectangular_1x2(true, true, false),
-            Samples::rectangular_1x2(true, false, true),
-            Samples::rectangular_1x2(true, true, true),
+            Samples::rectangular_1x2(false, false),
+            Samples::rectangular_1x2(false, true),
+            Samples::rectangular_1x2(true, false),
+            Samples::rectangular_1x2(true, true),
         ] {
-            let mat = coo.as_dense();
-            mat_approx_eq(&mat, correct, 1e-15);
+            mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csr.as_dense(), correct, 1e-15);
             check(&coo, &csc, &csr);
         }
 
@@ -1315,16 +1664,18 @@ mod tests {
 
         let correct = &[[1.0, 0.0, 3.0, 0.0, 5.0, 0.0, 7.0]];
         let (coo, csc, csr, _) = Samples::rectangular_1x7();
-        let mat = coo.as_dense();
-        mat_approx_eq(&mat, correct, 1e-15);
+        mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csr.as_dense(), correct, 1e-15);
         check(&coo, &csc, &csr);
 
         // ----------------------------------------------------------------------------
 
         let correct = &[[0.0], [2.0], [0.0], [4.0], [0.0], [6.0], [0.0]];
         let (coo, csc, csr, _) = Samples::rectangular_7x1();
-        let mat = coo.as_dense();
-        mat_approx_eq(&mat, correct, 1e-15);
+        mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csr.as_dense(), correct, 1e-15);
         check(&coo, &csc, &csr);
 
         // ----------------------------------------------------------------------------
@@ -1335,8 +1686,23 @@ mod tests {
             [15.0, -6.0, 0.0, 3.0], //
         ];
         let (coo, csc, csr, _) = Samples::rectangular_3x4();
-        let mat = coo.as_dense();
-        mat_approx_eq(&mat, correct, 1e-15);
+        mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        mat_approx_eq(&csr.as_dense(), correct, 1e-15);
+        check(&coo, &csc, &csr);
+
+        // ----------------------------------------------------------------------------
+
+        let correct = &[
+            [cpx!(4.0, 4.0), cpx!(0.0, 0.0), cpx!(2.0, 2.0)], //
+            [cpx!(0.0, 0.0), cpx!(1.0, 0.0), cpx!(3.0, 3.0)], //
+            [cpx!(0.0, 0.0), cpx!(5.0, 5.0), cpx!(1.0, 1.0)], //
+            [cpx!(1.0, 0.0), cpx!(0.0, 0.0), cpx!(0.0, 0.0)], //
+        ];
+        let (coo, csc, csr, _) = Samples::complex_rectangular_4x3();
+        complex_mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        complex_mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        complex_mat_approx_eq(&csr.as_dense(), correct, 1e-15);
         check(&coo, &csc, &csr);
     }
 }

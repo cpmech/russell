@@ -201,15 +201,6 @@ impl Genie {
             Symmetry::No
         }
     }
-
-    /// Returns whether the sparse matrix indices must be one-based or not
-    pub fn one_based(&self) -> bool {
-        match self {
-            Genie::Mumps => true,
-            Genie::Umfpack => false,
-            Genie::IntelDss => false,
-        }
-    }
 }
 
 impl Symmetry {
@@ -532,7 +523,6 @@ mod tests {
         assert_eq!(genie.symmetry(true, false), gl);
         assert_eq!(genie.symmetry(false, true), pl);
         assert_eq!(genie.symmetry(true, true), pl);
-        assert_eq!(genie.one_based(), true);
 
         let genie = Genie::Umfpack;
         assert_eq!(genie.to_string(), "umfpack");
@@ -541,7 +531,6 @@ mod tests {
         assert_eq!(genie.symmetry(true, false), gf);
         assert_eq!(genie.symmetry(false, true), pf);
         assert_eq!(genie.symmetry(true, true), pf);
-        assert_eq!(genie.one_based(), false);
 
         let genie = Genie::IntelDss;
         assert_eq!(genie.to_string(), "inteldss");
@@ -550,7 +539,6 @@ mod tests {
         assert_eq!(genie.symmetry(true, false), gu);
         assert_eq!(genie.symmetry(false, true), pu);
         assert_eq!(genie.symmetry(true, true), pu);
-        assert_eq!(genie.one_based(), false);
     }
 
     #[test]

@@ -132,6 +132,12 @@ pub struct ComplexSolverMUMPS {
 
     /// Time spent on solve in nanoseconds
     time_solve_ns: u128,
+
+    /// Holds the (one-based/Fortran) row indices i
+    fortran_indices_i: Vec<i32>,
+
+    /// Holds the (one-based/Fortran) column indices j
+    fortran_indices_j: Vec<i32>,
 }
 
 impl Drop for ComplexSolverMUMPS {
@@ -170,6 +176,8 @@ impl ComplexSolverMUMPS {
                 time_initialize_ns: 0,
                 time_factorize_ns: 0,
                 time_solve_ns: 0,
+                fortran_indices_i: Vec::new(),
+                fortran_indices_j: Vec::new(),
             })
         }
     }
@@ -201,9 +209,6 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
         let coo = mat.get_coo()?;
 
         // check the COO matrix
-        if !coo.one_based {
-            return Err("the COO matrix must have one-based (FORTRAN) indices as required by MUMPS");
-        }
         if coo.nrow != coo.ncol {
             return Err("the COO matrix must be square");
         }
@@ -226,6 +231,12 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
             self.initialized_symmetry = coo.symmetry;
             self.initialized_ndim = coo.nrow;
             self.initialized_nnz = coo.nnz;
+            self.fortran_indices_i = vec![0; coo.nnz];
+            self.fortran_indices_j = vec![0; coo.nnz];
+            for k in 0..coo.nnz {
+                self.fortran_indices_i[k] = coo.indices_i[k] + 1;
+                self.fortran_indices_j[k] = coo.indices_j[k] + 1;
+            }
         }
 
         // configuration parameters
@@ -279,8 +290,8 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
                     positive_definite,
                     ndim,
                     nnz,
-                    coo.indices_i.as_ptr(),
-                    coo.indices_j.as_ptr(),
+                    self.fortran_indices_i.as_ptr(),
+                    self.fortran_indices_j.as_ptr(),
                     coo.values.as_ptr(),
                 );
                 if status != SUCCESSFUL_EXIT {
@@ -468,26 +479,20 @@ mod tests {
         );
 
         // check COO matrix
-        let coo = ComplexCooMatrix::new(1, 1, 1, None, false).unwrap();
-        let mut mat = ComplexSparseMatrix::from_coo(coo);
-        assert_eq!(
-            solver.factorize(&mut mat, None).err(),
-            Some("the COO matrix must have one-based (FORTRAN) indices as required by MUMPS")
-        );
-        let mut coo = ComplexCooMatrix::new(2, 1, 1, None, true).unwrap();
+        let mut coo = ComplexCooMatrix::new(2, 1, 1, None).unwrap();
         coo.put(0, 0, cpx!(4.0, 4.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
             Some("the COO matrix must be square")
         );
-        let coo = ComplexCooMatrix::new(1, 1, 1, None, true).unwrap();
+        let coo = ComplexCooMatrix::new(1, 1, 1, None).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
             Some("the COO matrix must have at least one non-zero value")
         );
-        let mut coo = ComplexCooMatrix::new(1, 1, 1, Some(Symmetry::General(Storage::Full)), true).unwrap();
+        let mut coo = ComplexCooMatrix::new(1, 1, 1, Some(Symmetry::General(Storage::Full))).unwrap();
         coo.put(0, 0, cpx!(4.0, 4.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
@@ -496,14 +501,14 @@ mod tests {
         );
 
         // check already factorized data
-        let mut coo = ComplexCooMatrix::new(2, 2, 2, None, true).unwrap();
+        let mut coo = ComplexCooMatrix::new(2, 2, 2, None).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         coo.put(1, 1, cpx!(2.0, 0.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         // ... factorize once => OK
         solver.factorize(&mut mat, None).unwrap();
         // ... change matrix (symmetry)
-        let mut coo = ComplexCooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full)), true).unwrap();
+        let mut coo = ComplexCooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full))).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         coo.put(1, 1, cpx!(2.0, 0.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
@@ -512,7 +517,7 @@ mod tests {
             Some("subsequent factorizations must use the same matrix (symmetry differs)")
         );
         // ... change matrix (ndim)
-        let mut coo = ComplexCooMatrix::new(1, 1, 1, None, true).unwrap();
+        let mut coo = ComplexCooMatrix::new(1, 1, 1, None).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
@@ -520,7 +525,7 @@ mod tests {
             Some("subsequent factorizations must use the same matrix (ndim differs)")
         );
         // ... change matrix (nnz)
-        let mut coo = ComplexCooMatrix::new(2, 2, 1, None, true).unwrap();
+        let mut coo = ComplexCooMatrix::new(2, 2, 1, None).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
@@ -532,7 +537,7 @@ mod tests {
     #[test]
     #[serial]
     fn factorize_fails_on_singular_matrix() {
-        let mut mat_singular = ComplexSparseMatrix::new_coo(3, 3, 2, None, true).unwrap();
+        let mut mat_singular = ComplexSparseMatrix::new_coo(3, 3, 2, None).unwrap();
         mat_singular.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         mat_singular.put(1, 1, cpx!(1.0, 0.0)).unwrap();
         let mut solver = ComplexSolverMUMPS::new().unwrap();
@@ -545,7 +550,7 @@ mod tests {
     #[test]
     #[serial]
     fn solve_handles_errors() {
-        let mut coo = ComplexCooMatrix::new(2, 2, 2, None, true).unwrap();
+        let mut coo = ComplexCooMatrix::new(2, 2, 2, None).unwrap();
         coo.put(0, 0, cpx!(123.0, 1.0)).unwrap();
         coo.put(1, 1, cpx!(456.0, 2.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
@@ -571,7 +576,7 @@ mod tests {
         );
         // wrong symmetry
         let rhs = ComplexVector::new(2);
-        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full)), true).unwrap();
+        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full))).unwrap();
         coo_wrong.put(0, 0, cpx!(123.0, 1.0)).unwrap();
         coo_wrong.put(1, 1, cpx!(456.0, 2.0)).unwrap();
         let mut mat_wrong = ComplexSparseMatrix::from_coo(coo_wrong);
@@ -581,7 +586,7 @@ mod tests {
             Err("solve must use the same matrix (symmetry differs)")
         );
         // wrong ndim
-        let mut coo_wrong = ComplexCooMatrix::new(1, 1, 1, None, true).unwrap();
+        let mut coo_wrong = ComplexCooMatrix::new(1, 1, 1, None).unwrap();
         coo_wrong.put(0, 0, cpx!(123.0, 1.0)).unwrap();
         let mut mat_wrong = ComplexSparseMatrix::from_coo(coo_wrong);
         mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
@@ -590,7 +595,7 @@ mod tests {
             Err("solve must use the same matrix (ndim differs)")
         );
         // wrong nnz
-        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 3, None, true).unwrap();
+        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 3, None).unwrap();
         coo_wrong.put(0, 0, cpx!(123.0, 1.0)).unwrap();
         coo_wrong.put(1, 1, cpx!(456.0, 2.0)).unwrap();
         coo_wrong.put(0, 1, cpx!(100.0, 1.0)).unwrap();
@@ -615,7 +620,7 @@ mod tests {
         assert!(!solver.factorized);
 
         // sample matrix
-        let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower(true);
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
 
         // set params
@@ -656,7 +661,7 @@ mod tests {
         let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
         let nrow = 5;
         let ncol = 5;
-        let mut coo_pd_lower = ComplexCooMatrix::new(nrow, ncol, 9, sym, true).unwrap();
+        let mut coo_pd_lower = ComplexCooMatrix::new(nrow, ncol, 9, sym).unwrap();
         coo_pd_lower.put(0, 0, cpx!(9.0, 0.0)).unwrap();
         coo_pd_lower.put(1, 1, cpx!(0.5, 0.0)).unwrap();
         coo_pd_lower.put(2, 2, cpx!(12.0, 0.0)).unwrap();

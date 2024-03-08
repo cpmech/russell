@@ -131,15 +131,13 @@ where
     /// # Input
     ///
     /// * `max_nnz` -- Max number of non-zero values
-    /// * `one_based` -- Flag indicating whether the Sparse matrix can be used with Fortran code (e.g., MUMPS) or not.
-    ///   Make sure that this flag is the same used for the Jacobian matrix.
-    pub fn init_mass_matrix(&mut self, max_nnz: usize, one_based: bool) -> Result<(), StrError> {
+    pub fn init_mass_matrix(&mut self, max_nnz: usize) -> Result<(), StrError> {
         let sym = if self.jac_symmetry == Symmetry::No {
             None
         } else {
             Some(self.jac_symmetry)
         };
-        self.mass_matrix = Some(CooMatrix::new(self.ndim, self.ndim, max_nnz, sym, one_based).unwrap());
+        self.mass_matrix = Some(CooMatrix::new(self.ndim, self.ndim, max_nnz, sym).unwrap());
         Ok(())
     }
 
@@ -253,7 +251,7 @@ mod tests {
         let mut k = Vector::new(2);
         (ode.function)(&mut k, x, &y, &mut args).unwrap();
         // call jacobian function
-        let mut jj = CooMatrix::new(2, 2, 2, None, false).unwrap();
+        let mut jj = CooMatrix::new(2, 2, 2, None).unwrap();
         let m = 1.0;
         assert_eq!(
             (ode.jacobian)(&mut jj, x, &y, m, &mut args),
@@ -303,7 +301,7 @@ mod tests {
         // analytical_solution:
         // y[0] = f64::cos(x * x / 2.0) - 2.0 * f64::sin(x * x / 2.0);
         // y[1] = 2.0 * f64::cos(x * x / 2.0) + f64::sin(x * x / 2.0);
-        ode.init_mass_matrix(2, false).unwrap(); // diagonal mass matrix => OK, but not needed
+        ode.init_mass_matrix(2).unwrap(); // diagonal mass matrix => OK, but not needed
         ode.mass_put(0, 0, 1.0).unwrap();
         ode.mass_put(1, 1, 1.0).unwrap();
         // call system function
@@ -312,7 +310,7 @@ mod tests {
         let mut k = Vector::new(2);
         (ode.function)(&mut k, x, &y, &mut args).unwrap();
         // call jacobian function
-        let mut jj = CooMatrix::new(2, 2, 2, None, false).unwrap();
+        let mut jj = CooMatrix::new(2, 2, 2, None).unwrap();
         let m = 1.0;
         (ode.jacobian)(&mut jj, x, &y, m, &mut args).unwrap();
         // check

@@ -111,7 +111,7 @@ impl<'a> LinSolver<'a> {
     ///     let nnz = 5; // number of non-zero values
     ///
     ///     // allocate the coefficient matrix
-    ///     let mut mat = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;
+    ///     let mut mat = SparseMatrix::new_coo(ndim, ndim, nnz, None)?;
     ///     mat.put(0, 0, 0.2)?;
     ///     mat.put(0, 1, 0.2)?;
     ///     mat.put(1, 0, 0.5)?;
@@ -174,7 +174,7 @@ mod tests {
     #[test]
     #[serial]
     fn lin_solver_compute_works_mumps() {
-        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(true, false, false);
+        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(true, false);
         let mut mat = SparseMatrix::from_coo(coo);
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     fn lin_solver_compute_works_umfpack() {
-        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_full(false);
+        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_full();
         let mut mat = SparseMatrix::from_coo(coo);
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);

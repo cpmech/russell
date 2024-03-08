@@ -32,7 +32,7 @@ impl VerifyLinSys {
     /// fn main() -> Result<(), StrError> {
     ///     // set sparse matrix (3 x 3) with 4 non-zeros
     ///     let (nrow, ncol, nnz) = (3, 3, 4);
-    ///     let mut coo = SparseMatrix::new_coo(nrow, ncol, nnz, None, false)?;
+    ///     let mut coo = SparseMatrix::new_coo(nrow, ncol, nnz, None)?;
     ///     coo.put(0, 0, 1.0)?;
     ///     coo.put(0, 2, 4.0)?;
     ///     coo.put(1, 1, 2.0)?;
@@ -159,7 +159,7 @@ mod tests {
     #[test]
     fn from_captures_errors() {
         // real
-        let coo = SparseMatrix::new_coo(2, 1, 1, None, false).unwrap();
+        let coo = SparseMatrix::new_coo(2, 1, 1, None).unwrap();
         let x = Vector::new(1);
         let rhs = Vector::new(2);
         assert_eq!(VerifyLinSys::from(&coo, &x, &rhs).err(), Some("matrix is empty"));
@@ -174,7 +174,7 @@ mod tests {
             Some("rhs.dim() must be equal to nrow")
         );
         // complex
-        let coo = ComplexSparseMatrix::new_coo(2, 1, 1, None, false).unwrap();
+        let coo = ComplexSparseMatrix::new_coo(2, 1, 1, None).unwrap();
         let x = ComplexVector::new(1);
         let rhs = ComplexVector::new(2);
         assert_eq!(
@@ -198,7 +198,7 @@ mod tests {
         // 1  3 -2
         // 3  5  6
         // 2  4  3
-        let mut coo = SparseMatrix::new_coo(3, 3, 9, None, false).unwrap();
+        let mut coo = SparseMatrix::new_coo(3, 3, 9, None).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 1, 3.0).unwrap();
         coo.put(0, 2, -2.0).unwrap();

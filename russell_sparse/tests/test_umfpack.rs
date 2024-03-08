@@ -6,7 +6,7 @@ use russell_sparse::StrError;
 fn test_complex_umfpack() -> Result<(), StrError> {
     let n = 10;
     let d = (n as f64) / 10.0;
-    let mut coo = CooMatrix::new(n, n, n, None, false)?;
+    let mut coo = CooMatrix::new(n, n, n, None)?;
     let mut x_correct = Vector::new(n);
     let mut rhs = Vector::new(n);
     for k in 0..n {

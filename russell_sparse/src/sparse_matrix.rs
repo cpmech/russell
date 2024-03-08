@@ -59,16 +59,9 @@ where
     /// * `max_nnz` -- (≥ 1) Maximum number of entries ≥ nnz (number of non-zeros),
     ///   including entries with repeated indices. (must be fit i32)
     /// * `symmetry` -- Defines the symmetry/storage, if any
-    /// * `one_based` -- Use one-based indices; e.g., for MUMPS or other FORTRAN routines
-    pub fn new_coo(
-        nrow: usize,
-        ncol: usize,
-        max_nnz: usize,
-        symmetry: Option<Symmetry>,
-        one_based: bool,
-    ) -> Result<Self, StrError> {
+    pub fn new_coo(nrow: usize, ncol: usize, max_nnz: usize, symmetry: Option<Symmetry>) -> Result<Self, StrError> {
         Ok(NumSparseMatrix {
-            coo: Some(NumCooMatrix::new(nrow, ncol, max_nnz, symmetry, one_based)?),
+            coo: Some(NumCooMatrix::new(nrow, ncol, max_nnz, symmetry)?),
             csc: None,
             csr: None,
         })
@@ -450,9 +443,9 @@ mod tests {
     #[test]
     fn new_functions_work() {
         // COO
-        NumSparseMatrix::<f64>::new_coo(1, 1, 1, None, false).unwrap();
+        NumSparseMatrix::<f64>::new_coo(1, 1, 1, None).unwrap();
         assert_eq!(
-            NumSparseMatrix::<f64>::new_coo(0, 1, 1, None, false).err(),
+            NumSparseMatrix::<f64>::new_coo(0, 1, 1, None).err(),
             Some("nrow must be ≥ 1")
         );
         // CSC
@@ -472,7 +465,7 @@ mod tests {
     #[test]
     fn getters_work() {
         // test matrices
-        let (coo, csc, csr, _) = Samples::rectangular_1x2(false, false, false);
+        let (coo, csc, csr, _) = Samples::rectangular_1x2(false, false);
         let mut a = Matrix::new(1, 2);
         let x = Vector::from(&[2.0, 1.0]);
         let mut wrong = Vector::new(2);
@@ -520,9 +513,9 @@ mod tests {
     #[test]
     fn setters_work() {
         // test matrices
-        let (coo, csc, csr, _) = Samples::rectangular_1x2(false, false, false);
-        let mut other = NumSparseMatrix::<f64>::new_coo(1, 1, 1, None, false).unwrap();
-        let mut wrong = NumSparseMatrix::<f64>::new_coo(1, 1, 3, None, false).unwrap();
+        let (coo, csc, csr, _) = Samples::rectangular_1x2(false, false);
+        let mut other = NumSparseMatrix::<f64>::new_coo(1, 1, 1, None).unwrap();
+        let mut wrong = NumSparseMatrix::<f64>::new_coo(1, 1, 3, None).unwrap();
         other.put(0, 0, 2.0).unwrap();
         wrong.put(0, 0, 1.0).unwrap();
         wrong.put(0, 0, 2.0).unwrap();
@@ -532,7 +525,7 @@ mod tests {
         assert_eq!(coo_mat.get_coo_mut().unwrap().get_info(), (1, 2, 2, Symmetry::No));
         assert_eq!(coo_mat.get_csc_mut().err(), Some("CSC matrix is not available"));
         assert_eq!(coo_mat.get_csr_mut().err(), Some("CSR matrix is not available"));
-        let mut empty = NumSparseMatrix::<f64>::new_coo(1, 1, 1, None, false).unwrap();
+        let mut empty = NumSparseMatrix::<f64>::new_coo(1, 1, 1, None).unwrap();
         assert_eq!(empty.get_csc_or_from_coo().err(), Some("COO to CSC requires nnz > 0"));
         assert_eq!(empty.get_csr_or_from_coo().err(), Some("COO to CSR requires nnz > 0"));
         // CSC
@@ -594,7 +587,7 @@ mod tests {
             Some("COO matrix is not available to augment")
         );
         // COO
-        let mut coo = NumSparseMatrix::<f64>::new_coo(2, 2, 1, None, false).unwrap();
+        let mut coo = NumSparseMatrix::<f64>::new_coo(2, 2, 1, None).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         assert_eq!(
             coo.put(1, 1, 2.0).err(),
@@ -603,7 +596,7 @@ mod tests {
         coo.reset().unwrap();
         coo.put(1, 1, 2.0).unwrap();
         // COO (assign)
-        let mut this = NumSparseMatrix::<f64>::new_coo(1, 1, 1, None, false).unwrap();
+        let mut this = NumSparseMatrix::<f64>::new_coo(1, 1, 1, None).unwrap();
         this.put(0, 0, 8000.0).unwrap();
         this.assign(4.0, &other).unwrap();
         assert_eq!(
@@ -618,7 +611,7 @@ mod tests {
         );
         assert_eq!(this.assign(2.0, &csc_mat).err(), Some("COO matrix is not available"));
         // COO (augment)
-        let mut this = NumSparseMatrix::<f64>::new_coo(1, 1, 1 + 1, None, false).unwrap();
+        let mut this = NumSparseMatrix::<f64>::new_coo(1, 1, 1 + 1, None).unwrap();
         this.put(0, 0, 100.0).unwrap();
         this.augment(4.0, &other).unwrap();
         assert_eq!(
@@ -635,7 +628,7 @@ mod tests {
         // ┌       ┐
         // │ 10 20 │
         // └       ┘
-        let (coo, _, _, _) = Samples::rectangular_1x2(false, false, false);
+        let (coo, _, _, _) = Samples::rectangular_1x2(false, false);
         let mut mat = NumSparseMatrix::<f64>::from_coo(coo);
         let csc = mat.get_csc_or_from_coo().unwrap(); // will create a new csc
         assert_eq!(csc.get_values(), &[10.0, 20.0]);
@@ -651,7 +644,7 @@ mod tests {
         // ┌       ┐
         // │ 10 20 │
         // └       ┘
-        let (coo, _, _, _) = Samples::rectangular_1x2(false, false, false);
+        let (coo, _, _, _) = Samples::rectangular_1x2(false, false);
         let mut mat = NumSparseMatrix::<f64>::from_coo(coo);
         let csr = mat.get_csr_or_from_coo().unwrap(); // will create a new csr
         assert_eq!(csr.get_values(), &[10.0, 20.0]);
@@ -664,7 +657,7 @@ mod tests {
 
     #[test]
     fn derive_methods_work() {
-        let (coo, _, _, _) = Samples::tiny_1x1(false);
+        let (coo, _, _, _) = Samples::tiny_1x1();
         let (nrow, ncol, nnz, symmetry) = coo.get_info();
         let mat = NumSparseMatrix::<f64>::from_coo(coo);
         let mut clone = mat.clone();
@@ -675,7 +668,7 @@ mod tests {
         let json = serde_json::to_string(&mat).unwrap();
         assert_eq!(
             json,
-            r#"{"coo":{"symmetry":"No","nrow":1,"ncol":1,"nnz":1,"max_nnz":1,"indices_i":[0],"indices_j":[0],"values":[123.0],"one_based":false},"csc":null,"csr":null}"#
+            r#"{"coo":{"symmetry":"No","nrow":1,"ncol":1,"nnz":1,"max_nnz":1,"indices_i":[0],"indices_j":[0],"values":[123.0]},"csc":null,"csr":null}"#
         );
         let from_json: NumSparseMatrix<f64> = serde_json::from_str(&json).unwrap();
         let (json_nrow, json_ncol, json_nnz, json_symmetry) = from_json.get_coo().unwrap().get_info();

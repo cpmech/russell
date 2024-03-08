@@ -20,8 +20,7 @@ fn test_solver(genie: Genie) {
         }
     };
 
-    let one_based = genie == Genie::Mumps;
-    let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(one_based);
+    let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
     let mut mat = SparseMatrix::from_coo(coo);
 
     match solver.actual.factorize(&mut mat, None) {
@@ -73,7 +72,7 @@ fn test_complex_solver(genie: Genie) {
     };
 
     let coo = match genie {
-        Genie::Mumps => Samples::complex_symmetric_3x3_lower(true).0,
+        Genie::Mumps => Samples::complex_symmetric_3x3_lower().0,
         Genie::Umfpack => Samples::complex_symmetric_3x3_full().0,
         Genie::IntelDss => panic!("TODO"),
     };
@@ -129,8 +128,7 @@ fn test_solver_singular(genie: Genie) {
         }
     };
 
-    let one_based = if genie == Genie::Mumps { true } else { false };
-    let mut coo_singular = match SparseMatrix::new_coo(ndim, ndim, nnz, None, one_based) {
+    let mut coo_singular = match SparseMatrix::new_coo(ndim, ndim, nnz, None) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new CooMatrix): {}", e);

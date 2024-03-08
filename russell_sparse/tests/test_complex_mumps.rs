@@ -9,7 +9,7 @@ use serial_test::serial;
 fn test_complex_mumps() -> Result<(), StrError> {
     let n = 10;
     let d = (n as f64) / 10.0;
-    let mut coo = ComplexCooMatrix::new(n, n, n, None, true)?;
+    let mut coo = ComplexCooMatrix::new(n, n, n, None)?;
     let mut x_correct = ComplexVector::new(n);
     let mut rhs = ComplexVector::new(n);
     for k in 0..n {

@@ -43,8 +43,7 @@ fn solve(genie: Genie) -> Result<(), StrError> {
     let nnz = 16; // number of non-zero values, including duplicates
 
     // input matrix in Complex Triplet format
-    let one_based = genie == Genie::Mumps;
-    let mut coo = ComplexSparseMatrix::new_coo(ndim, ndim, nnz, None, one_based)?;
+    let mut coo = ComplexSparseMatrix::new_coo(ndim, ndim, nnz, None)?;
 
     // first column
     coo.put(0, 0, cpx!(19.73, 0.00))?;

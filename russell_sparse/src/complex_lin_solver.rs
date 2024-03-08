@@ -136,7 +136,7 @@ mod tests {
     #[test]
     #[serial]
     fn complex_lin_solver_compute_works_mumps() {
-        let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower(true);
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         let mut x = ComplexVector::new(3);
         let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);

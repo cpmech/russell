@@ -70,10 +70,10 @@ fn main() -> Result<(), StrError> {
     let genie = Genie::from(&opt.genie);
 
     // select the symmetric handling option
-    let (handling, one_based) = match genie {
-        Genie::Mumps => (MMsymOption::LeaveAsLower, true),
-        Genie::Umfpack => (MMsymOption::MakeItFull, false),
-        Genie::IntelDss => (MMsymOption::SwapToUpper, false),
+    let handling = match genie {
+        Genie::Mumps => MMsymOption::LeaveAsLower,
+        Genie::Umfpack => MMsymOption::MakeItFull,
+        Genie::IntelDss => MMsymOption::SwapToUpper,
     };
 
     // configuration parameters
@@ -99,7 +99,7 @@ fn main() -> Result<(), StrError> {
 
     // read the matrix
     let mut sw = Stopwatch::new();
-    let coo = read_matrix_market(&opt.matrix_market_file, handling, one_based)?;
+    let coo = read_matrix_market(&opt.matrix_market_file, handling)?;
     stats.time_nanoseconds.read_matrix = sw.stop();
 
     // save the COO matrix as a generic SparseMatrix

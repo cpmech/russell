@@ -11,7 +11,7 @@ fn main() -> Result<(), StrError> {
     let mut solver = LinSolver::new(Genie::Umfpack)?;
 
     // allocate the coefficient matrix
-    let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;
+    let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None)?;
     coo.put(0, 0, 0.2)?;
     coo.put(0, 1, 0.2)?;
     coo.put(1, 0, 0.5)?;

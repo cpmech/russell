@@ -82,7 +82,7 @@
 //!     // │  4  5  6 │    but should be saved for Intel DSS
 //!     // └          ┘
 //!     let (nrow, ncol, nnz) = (3, 3, 6);
-//!     let mut coo = CooMatrix::new(nrow, ncol, nnz, None, false)?;
+//!     let mut coo = CooMatrix::new(nrow, ncol, nnz, None)?;
 //!     coo.put(0, 0, 1.0)?;
 //!     coo.put(0, 2, 2.0)?;
 //!     coo.put(1, 2, 3.0)?;
@@ -132,7 +132,7 @@
 //!     let mut solver = LinSolver::new(Genie::Umfpack)?;
 //!
 //!     // allocate the coefficient matrix
-//!     let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;
+//!     let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None)?;
 //!     coo.put(0, 0, 0.2)?;
 //!     coo.put(0, 1, 0.2)?;
 //!     coo.put(1, 0, 0.5)?;
@@ -191,7 +191,7 @@
 //!     //  . -1 -3  2  .
 //!     //  .  .  1  .  .
 //!     //  .  4  2  .  1
-//!     let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None, false)?;
+//!     let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, None)?;
 //!     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
 //!     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
 //!     coo.put(1, 0, 3.0)?;

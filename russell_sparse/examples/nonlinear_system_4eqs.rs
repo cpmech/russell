@@ -29,9 +29,8 @@ fn main() -> Result<(), StrError> {
     let mut solver = LinSolver::new(genie)?;
 
     // allocate Jacobian matrix (J) as SparseMatrix
-    let one_based = if genie == Genie::Mumps { true } else { false };
     let (neq, nnz) = (4, 16);
-    let mut jj = SparseMatrix::new_coo(neq, neq, nnz, None, one_based).unwrap();
+    let mut jj = SparseMatrix::new_coo(neq, neq, nnz, None).unwrap();
 
     // allocate residual (rr), vector of unknowns (uu), and minus-uu (mdu)
     let mut rr = Vector::new(neq);

@@ -158,7 +158,7 @@ mod tests {
         //  . -1 -3  2  .
         //  .  .  1  .  .
         //  .  4  2  .  1
-        let (_, csc, _, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let (_, csc, _, _) = Samples::umfpack_unsymmetric_5x5();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_csc.mtx";
         csc_write_matrix_market(&csc, full_path, false).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
@@ -182,7 +182,7 @@ mod tests {
         //  2  -1              2     sym
         // -1   2  -1    =>   -1   2
         //     -1   2             -1   2
-        let (_, csc, _, _) = Samples::positive_definite_3x3(false);
+        let (_, csc, _, _) = Samples::positive_definite_3x3();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_csc.mtx";
         csc_write_matrix_market(&csc, full_path, false).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
@@ -205,7 +205,7 @@ mod tests {
         //  . -1 -3  2  .
         //  .  .  1  .  .
         //  .  4  2  .  1
-        let (_, _, csr, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let (_, _, csr, _) = Samples::umfpack_unsymmetric_5x5();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_csr.mtx";
         csr_write_matrix_market(&csr, full_path, false).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
@@ -229,7 +229,7 @@ mod tests {
         //  2  -1              2     sym
         // -1   2  -1    =>   -1   2
         //     -1   2             -1   2
-        let (_, _, csr, _) = Samples::positive_definite_3x3(false);
+        let (_, _, csr, _) = Samples::positive_definite_3x3();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_csr.mtx";
         csr_write_matrix_market(&csr, full_path, false).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();

@@ -1,7 +1,7 @@
 use crate::StrError;
 use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::{vec_copy, vec_rms_scaled, vec_update, Vector};
-use russell_sparse::{CooMatrix, Genie, LinSolver, SparseMatrix};
+use russell_sparse::{CooMatrix, LinSolver, SparseMatrix};
 
 /// Implements the backward Euler (implicit) solver
 pub(crate) struct EulerBackward<'a, F, J, A>
@@ -51,7 +51,6 @@ where
         };
         let nnz = jac_nnz + ndim; // +ndim corresponds to the diagonal I matrix
         let symmetry = Some(system.jac_symmetry);
-        let one_based = params.newton.genie == Genie::Mumps;
         EulerBackward {
             params,
             system,
@@ -59,7 +58,7 @@ where
             w: Vector::new(ndim),
             r: Vector::new(ndim),
             dy: Vector::new(ndim),
-            kk: SparseMatrix::new_coo(ndim, ndim, nnz, symmetry, one_based).unwrap(),
+            kk: SparseMatrix::new_coo(ndim, ndim, nnz, symmetry).unwrap(),
             solver: LinSolver::new(params.newton.genie).unwrap(),
         }
     }

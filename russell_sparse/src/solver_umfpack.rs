@@ -481,7 +481,7 @@ mod tests {
         assert!(!solver.factorized);
 
         // COO to CSC errors
-        let coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        let coo = CooMatrix::new(1, 1, 1, None).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
@@ -495,7 +495,7 @@ mod tests {
             solver.factorize(&mut mat, None).err(),
             Some("the matrix must be square")
         );
-        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(false, false, false);
+        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(false, false);
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
@@ -503,14 +503,14 @@ mod tests {
         );
 
         // check already factorized data
-        let mut coo = CooMatrix::new(2, 2, 2, None, false).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 2, None).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
         // ... factorize once => OK
         solver.factorize(&mut mat, None).unwrap();
         // ... change matrix (symmetry)
-        let mut coo = CooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full)), false).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full))).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
@@ -519,7 +519,7 @@ mod tests {
             Some("subsequent factorizations must use the same matrix (symmetry differs)")
         );
         // ... change matrix (ndim)
-        let mut coo = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        let mut coo = CooMatrix::new(1, 1, 1, None).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
@@ -527,7 +527,7 @@ mod tests {
             Some("subsequent factorizations must use the same matrix (ndim differs)")
         );
         // ... change matrix (nnz)
-        let mut coo = CooMatrix::new(2, 2, 1, None, false).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 1, None).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
@@ -540,7 +540,7 @@ mod tests {
     fn factorize_works() {
         let mut solver = SolverUMFPACK::new().unwrap();
         assert!(!solver.factorized);
-        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
         let mut mat = SparseMatrix::from_coo(coo);
         let mut params = LinSolParams::new();
 
@@ -566,7 +566,7 @@ mod tests {
     #[test]
     fn factorize_fails_on_singular_matrix() {
         let mut solver = SolverUMFPACK::new().unwrap();
-        let mut coo = CooMatrix::new(2, 2, 2, None, false).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 2, None).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 0.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
@@ -575,7 +575,7 @@ mod tests {
 
     #[test]
     fn solve_handles_errors() {
-        let mut coo = CooMatrix::new(2, 2, 2, None, false).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 2, None).unwrap();
         coo.put(0, 0, 123.0).unwrap();
         coo.put(1, 1, 456.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
@@ -601,7 +601,7 @@ mod tests {
         );
         // wrong symmetry
         let rhs = Vector::new(2);
-        let mut coo_wrong = CooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full)), false).unwrap();
+        let mut coo_wrong = CooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full))).unwrap();
         coo_wrong.put(0, 0, 123.0).unwrap();
         coo_wrong.put(1, 1, 456.0).unwrap();
         let mut mat_wrong = SparseMatrix::from_coo(coo_wrong);
@@ -611,7 +611,7 @@ mod tests {
             Err("solve must use the same matrix (symmetry differs)")
         );
         // wrong ndim
-        let mut coo_wrong = CooMatrix::new(1, 1, 1, None, false).unwrap();
+        let mut coo_wrong = CooMatrix::new(1, 1, 1, None).unwrap();
         coo_wrong.put(0, 0, 123.0).unwrap();
         let mut mat_wrong = SparseMatrix::from_coo(coo_wrong);
         mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
@@ -620,7 +620,7 @@ mod tests {
             Err("solve must use the same matrix (ndim differs)")
         );
         // wrong nnz
-        let mut coo_wrong = CooMatrix::new(2, 2, 3, None, false).unwrap();
+        let mut coo_wrong = CooMatrix::new(2, 2, 3, None).unwrap();
         coo_wrong.put(0, 0, 123.0).unwrap();
         coo_wrong.put(1, 1, 123.0).unwrap();
         coo_wrong.put(0, 1, 100.0).unwrap();
@@ -635,7 +635,7 @@ mod tests {
     #[test]
     fn solve_works() {
         let mut solver = SolverUMFPACK::new().unwrap();
-        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5(false);
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
         let mut mat = SparseMatrix::from_coo(coo);
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);

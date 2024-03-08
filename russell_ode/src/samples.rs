@@ -200,7 +200,7 @@ impl Samples {
 
         // mass matrix
         let mass_nnz = 5;
-        system.init_mass_matrix(mass_nnz, false).unwrap();
+        system.init_mass_matrix(mass_nnz).unwrap();
         system.mass_put(0, 0, 1.0).unwrap();
         system.mass_put(0, 1, 1.0).unwrap();
         system.mass_put(1, 0, 1.0).unwrap();
@@ -751,7 +751,7 @@ impl Samples {
         const C2: f64 = 2e-6;
         const C3: f64 = 3e-6;
         let mass_nnz = 9;
-        system.init_mass_matrix(mass_nnz, false).unwrap();
+        system.init_mass_matrix(mass_nnz).unwrap();
         system.mass_put(0, 0, -C1).unwrap();
         system.mass_put(0, 1, C1).unwrap();
         system.mass_put(1, 0, C1).unwrap();
@@ -836,7 +836,7 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry).unwrap();
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
@@ -864,7 +864,7 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry).unwrap();
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
@@ -892,7 +892,7 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry).unwrap();
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
@@ -920,7 +920,7 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry).unwrap();
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
@@ -940,7 +940,7 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry).unwrap();
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
@@ -960,7 +960,7 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry).unwrap();
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
@@ -980,7 +980,7 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry).unwrap();
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
@@ -1000,7 +1000,7 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry).unwrap();
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
@@ -1020,7 +1020,7 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry, false).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, symmetry).unwrap();
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix

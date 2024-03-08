@@ -427,7 +427,7 @@ mod tests {
         assert!(!solver.factorized);
 
         // COO to CSC errors
-        let coo = ComplexCooMatrix::new(1, 1, 1, None, false).unwrap();
+        let coo = ComplexCooMatrix::new(1, 1, 1, None).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
@@ -441,7 +441,7 @@ mod tests {
             solver.factorize(&mut mat, None).err(),
             Some("the matrix must be square")
         );
-        let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower(false);
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
@@ -449,14 +449,14 @@ mod tests {
         );
 
         // check already factorized data
-        let mut coo = ComplexCooMatrix::new(2, 2, 2, None, false).unwrap();
+        let mut coo = ComplexCooMatrix::new(2, 2, 2, None).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         coo.put(1, 1, cpx!(2.0, 0.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         // ... factorize once => OK
         solver.factorize(&mut mat, None).unwrap();
         // ... change matrix (symmetry)
-        let mut coo = ComplexCooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full)), false).unwrap();
+        let mut coo = ComplexCooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full))).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         coo.put(1, 1, cpx!(2.0, 0.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
@@ -465,7 +465,7 @@ mod tests {
             Some("subsequent factorizations must use the same matrix (symmetry differs)")
         );
         // ... change matrix (ndim)
-        let mut coo = ComplexCooMatrix::new(1, 1, 1, None, false).unwrap();
+        let mut coo = ComplexCooMatrix::new(1, 1, 1, None).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
@@ -473,7 +473,7 @@ mod tests {
             Some("subsequent factorizations must use the same matrix (ndim differs)")
         );
         // ... change matrix (nnz)
-        let mut coo = ComplexCooMatrix::new(2, 2, 1, None, false).unwrap();
+        let mut coo = ComplexCooMatrix::new(2, 2, 1, None).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
@@ -514,7 +514,7 @@ mod tests {
     #[test]
     fn factorize_fails_on_singular_matrix() {
         let mut solver = ComplexSolverUMFPACK::new().unwrap();
-        let mut coo = ComplexCooMatrix::new(2, 2, 2, None, false).unwrap();
+        let mut coo = ComplexCooMatrix::new(2, 2, 2, None).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         coo.put(1, 1, cpx!(0.0, 0.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
@@ -523,7 +523,7 @@ mod tests {
 
     #[test]
     fn solve_handles_errors() {
-        let mut coo = ComplexCooMatrix::new(2, 2, 2, None, false).unwrap();
+        let mut coo = ComplexCooMatrix::new(2, 2, 2, None).unwrap();
         coo.put(0, 0, cpx!(123.0, 1.0)).unwrap();
         coo.put(1, 1, cpx!(456.0, 2.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
@@ -549,7 +549,7 @@ mod tests {
         );
         // wrong symmetry
         let rhs = ComplexVector::new(2);
-        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full)), false).unwrap();
+        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full))).unwrap();
         coo_wrong.put(0, 0, cpx!(123.0, 1.0)).unwrap();
         coo_wrong.put(1, 1, cpx!(456.0, 2.0)).unwrap();
         let mut mat_wrong = ComplexSparseMatrix::from_coo(coo_wrong);
@@ -559,7 +559,7 @@ mod tests {
             Err("solve must use the same matrix (symmetry differs)")
         );
         // wrong ndim
-        let mut coo_wrong = ComplexCooMatrix::new(1, 1, 1, None, false).unwrap();
+        let mut coo_wrong = ComplexCooMatrix::new(1, 1, 1, None).unwrap();
         coo_wrong.put(0, 0, cpx!(123.0, 1.0)).unwrap();
         let mut mat_wrong = ComplexSparseMatrix::from_coo(coo_wrong);
         mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
@@ -568,7 +568,7 @@ mod tests {
             Err("solve must use the same matrix (ndim differs)")
         );
         // wrong nnz
-        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 3, None, false).unwrap();
+        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 3, None).unwrap();
         coo_wrong.put(0, 0, cpx!(123.0, 1.0)).unwrap();
         coo_wrong.put(1, 1, cpx!(456.0, 2.0)).unwrap();
         coo_wrong.put(0, 1, cpx!(100.0, 1.0)).unwrap();

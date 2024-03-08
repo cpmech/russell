@@ -111,7 +111,6 @@ where
     pub fn new(params: Params, system: &'a System<F, J, A>) -> Self {
         let ndim = system.ndim;
         let symmetry = Some(system.jac_symmetry);
-        let one_based = params.newton.genie == Genie::Mumps;
         let mass_nnz = match system.mass_matrix.as_ref() {
             Some(mass) => mass.get_info().2,
             None => ndim,
@@ -126,9 +125,9 @@ where
         Radau5 {
             params,
             system,
-            jj: SparseMatrix::new_coo(ndim, ndim, jac_nnz, symmetry, one_based).unwrap(),
-            kk_real: SparseMatrix::new_coo(ndim, ndim, nnz, symmetry, one_based).unwrap(),
-            kk_comp: ComplexSparseMatrix::new_coo(ndim, ndim, nnz, symmetry, one_based).unwrap(),
+            jj: SparseMatrix::new_coo(ndim, ndim, jac_nnz, symmetry).unwrap(),
+            kk_real: SparseMatrix::new_coo(ndim, ndim, nnz, symmetry).unwrap(),
+            kk_comp: ComplexSparseMatrix::new_coo(ndim, ndim, nnz, symmetry).unwrap(),
             solver_real: LinSolver::new(params.newton.genie).unwrap(),
             solver_comp: ComplexLinSolver::new(params.newton.genie).unwrap(),
             reuse_jacobian: false,

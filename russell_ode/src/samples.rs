@@ -176,7 +176,7 @@ impl Samples {
 
         // ODE system
         let ndim = 3;
-        let jac_nnz = 4;
+        let jac_nnz = if lower_triangle { 3 } else { 4 };
         let mut system = System::new(
             ndim,
             move |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
@@ -188,7 +188,9 @@ impl Samples {
             move |jj: &mut CooMatrix, _x: f64, _y: &Vector, m: f64, _args: &mut NoArgs| {
                 jj.reset();
                 jj.put(0, 0, m * (-1.0)).unwrap();
-                jj.put(0, 1, m * (1.0)).unwrap();
+                if !lower_triangle {
+                    jj.put(0, 1, m * (1.0)).unwrap();
+                }
                 jj.put(1, 0, m * (1.0)).unwrap();
                 jj.put(1, 1, m * (1.0)).unwrap();
                 Ok(())
@@ -199,10 +201,12 @@ impl Samples {
         );
 
         // mass matrix
-        let mass_nnz = 5;
+        let mass_nnz = if lower_triangle { 4 } else { 5 };
         system.init_mass_matrix(mass_nnz).unwrap();
         system.mass_put(0, 0, 1.0).unwrap();
-        system.mass_put(0, 1, 1.0).unwrap();
+        if !lower_triangle {
+            system.mass_put(0, 1, 1.0).unwrap();
+        }
         system.mass_put(1, 0, 1.0).unwrap();
         system.mass_put(1, 1, -1.0).unwrap();
         system.mass_put(2, 2, 1.0).unwrap();
@@ -213,7 +217,11 @@ impl Samples {
             y0,
             x1,
             h_equal: None,
-            y_analytical: None,
+            y_analytical: Some(|y, x| {
+                y[0] = f64::cos(x);
+                y[1] = -f64::sin(x);
+                y[2] = f64::ln(1.0 + x);
+            }),
         };
         (system, data, 0)
     }

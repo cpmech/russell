@@ -1,4 +1,4 @@
-# Russell ODE - Solvers for Ordinary Differential Equations
+# Russell ODE - Solvers for Ordinary Differential Equations and Differential Algebraic Systems
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 

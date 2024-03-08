@@ -3,7 +3,7 @@ name = "russell_ode"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "Solvers for Ordinary Differential Equations"
+description = "Solvers for Ordinary Differential Equations and Differential Algebraic Systems"
 homepage = "https://github.com/cpmech/russell"
 repository = "https://github.com/cpmech/russell"
 documentation = "https://docs.rs/russell_ode"
@@ -15,3 +15,6 @@ keywords = ["differential equations", "numerical methods", "solver"]
 russell_lab = { path = "../russell_lab", version = "0.8" }
 russell_sparse = { path = "../russell_sparse", version = "0.8" }
 num-complex = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+serial_test = "3.0"

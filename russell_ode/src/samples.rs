@@ -2,10 +2,10 @@ use crate::StrError;
 use crate::{HasJacobian, NoArgs, System};
 use russell_lab::math::PI;
 use russell_lab::Vector;
-use russell_sparse::CooMatrix;
+use russell_sparse::{CooMatrix, Symmetry};
 
 /// Holds data corresponding to a sample ODE problem
-pub struct SampleData<'a> {
+pub struct SampleData {
     /// Holds the initial x
     pub x0: f64,
 
@@ -18,8 +18,8 @@ pub struct SampleData<'a> {
     /// Holds the stepsize for simulations with equal-steps
     pub h_equal: Option<f64>,
 
-    /// Holds the analytical solution `y(x)`
-    pub y_analytical: Option<Box<dyn 'a + FnMut(&mut Vector, f64)>>,
+    /// Holds a function to compute the analytical solution y(x)
+    pub y_analytical: Option<fn(&mut Vector, f64)>,
 }
 
 /// Holds a collection of sample ODE problems
@@ -37,7 +37,7 @@ pub struct SampleData<'a> {
 pub struct Samples {}
 
 impl Samples {
-    /// Implements a simple ODE with a constant derivative
+    /// Implements a simple ODE with a single equation and constant derivative
     ///
     /// ```text
     /// dy
@@ -55,14 +55,13 @@ impl Samples {
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values and the analytical solution
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
-    pub fn simple_constant<'a>() -> (
+    pub fn simple_equation_constant() -> (
         System<
-            'a,
-            impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
-        SampleData<'a>,
+        SampleData,
         NoArgs,
     ) {
         let ndim = 1;
@@ -87,9 +86,134 @@ impl Samples {
             y0: Vector::from(&[0.0]),
             x1: 1.0,
             h_equal: Some(0.2),
-            y_analytical: Some(Box::new(|y, x| {
+            y_analytical: Some(|y, x| {
                 y[0] = x;
-            })),
+            }),
+        };
+        (system, data, 0)
+    }
+
+    /// Returns a simple system with a mass matrix
+    ///
+    /// The system is:
+    ///
+    /// ```text
+    /// y0' + y1'     = -y0 + y1
+    /// y0' - y1'     =  y0 + y1
+    ///           y2' = 1/(1 + x)
+    ///
+    /// y0(0) = 1,  y1(0) = 0,  y2(0) = 0
+    /// ```
+    ///
+    /// Thus:
+    ///
+    /// ```text
+    /// M y' = f(x, y)
+    ///
+    /// with:
+    ///
+    ///     ┌          ┐       ┌           ┐
+    ///     │  1  1  0 │       │ -y0 + y1  │
+    /// M = │  1 -1  0 │   f = │  y0 + y1  │
+    ///     │  0  0  1 │       │ 1/(1 + x) │
+    ///     └          ┘       └           ┘
+    /// ```
+    ///
+    /// The Jacobian matrix is:
+    ///
+    /// ```text
+    ///          ┌          ┐
+    ///     df   │ -1  1  0 │
+    /// J = —— = │  1  1  0 │
+    ///     dy   │  0  0  0 │
+    ///          └          ┘
+    /// ```
+    ///
+    /// The analytical solution is:
+    ///
+    /// ```text
+    /// y0(x) = cos(x)
+    /// y1(x) = -sin(x)
+    /// y2(x) = log(1 + x)
+    /// ```
+    ///
+    /// # Input
+    ///
+    /// * `lower_triangle` -- Considers the symmetry of the Jacobian and Mass matrices, and generates a lower triangular representation
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, args)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `NoArgs`
+    /// * `data: SampleData` -- holds the initial values
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    pub fn simple_system_with_mass_matrix(
+        lower_triangle: bool,
+    ) -> (
+        System<
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
+        >,
+        SampleData,
+        NoArgs,
+    ) {
+        // selected symmetry option (for both Mass and Jacobian matrices)
+        let symmetry = if lower_triangle {
+            Some(Symmetry::new_general_lower())
+        } else {
+            None
+        };
+
+        // initial values
+        let x0 = 0.0;
+        let y0 = Vector::from(&[1.0, 0.0, 0.0]);
+        let x1 = 20.0;
+
+        // ODE system
+        let ndim = 3;
+        let jac_nnz = 4;
+        let mut system = System::new(
+            ndim,
+            move |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+                f[0] = -y[0] + y[1];
+                f[1] = y[0] + y[1];
+                f[2] = 1.0 / (1.0 + x);
+                Ok(())
+            },
+            move |jj: &mut CooMatrix, _x: f64, _y: &Vector, m: f64, _args: &mut NoArgs| {
+                jj.reset();
+                jj.put(0, 0, m * (-1.0)).unwrap();
+                jj.put(0, 1, m * (1.0)).unwrap();
+                jj.put(1, 0, m * (1.0)).unwrap();
+                jj.put(1, 1, m * (1.0)).unwrap();
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            symmetry,
+        );
+
+        // mass matrix
+        let mass_nnz = 5;
+        system.init_mass_matrix(mass_nnz, false).unwrap();
+        system.mass_put(0, 0, 1.0).unwrap();
+        system.mass_put(0, 1, 1.0).unwrap();
+        system.mass_put(1, 0, 1.0).unwrap();
+        system.mass_put(1, 1, -1.0).unwrap();
+        system.mass_put(2, 2, 1.0).unwrap();
+
+        // control
+        let data = SampleData {
+            x0,
+            y0,
+            x1,
+            h_equal: None,
+            y_analytical: None,
         };
         (system, data, 0)
     }
@@ -116,14 +240,13 @@ impl Samples {
     ///
     /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
     ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
-    pub fn kreyszig_eq6_page902<'a>() -> (
+    pub fn kreyszig_eq6_page902() -> (
         System<
-            'a,
-            impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
-        SampleData<'a>,
+        SampleData,
         NoArgs,
     ) {
         let ndim = 1;
@@ -148,9 +271,9 @@ impl Samples {
             y0: Vector::from(&[0.0]),
             x1: 1.0,
             h_equal: Some(0.2),
-            y_analytical: Some(Box::new(|y, x| {
+            y_analytical: Some(|y, x| {
                 y[0] = f64::exp(x) - x - 1.0;
-            })),
+            }),
         };
         (system, data, 0)
     }
@@ -188,14 +311,13 @@ impl Samples {
     ///
     /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
     ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
-    pub fn kreyszig_ex4_page920<'a>() -> (
+    pub fn kreyszig_ex4_page920() -> (
         System<
-            'a,
-            impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
-        SampleData<'a>,
+        SampleData,
         NoArgs,
     ) {
         let ndim = 2;
@@ -223,10 +345,10 @@ impl Samples {
             y0: Vector::from(&[2.0, -10.0]),
             x1: 1.0,
             h_equal: Some(0.2),
-            y_analytical: Some(Box::new(|y, x| {
+            y_analytical: Some(|y, x| {
                 y[0] = f64::exp(-x) + f64::exp(-10.0 * x) + x;
                 y[1] = -f64::exp(-x) - 10.0 * f64::exp(-10.0 * x) + 1.0;
-            })),
+            }),
         };
         (system, data, 0)
     }
@@ -249,14 +371,13 @@ impl Samples {
     /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn hairer_wanner_eq1<'a>() -> (
+    pub fn hairer_wanner_eq1() -> (
         System<
-            'a,
-            impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
-        SampleData<'a>,
+        SampleData,
         NoArgs,
     ) {
         const L: f64 = -50.0; // lambda
@@ -282,9 +403,9 @@ impl Samples {
             y0: Vector::from(&[0.0]),
             x1: 1.5,
             h_equal: Some(1.875 / 50.0),
-            y_analytical: Some(Box::new(|y, x| {
+            y_analytical: Some(|y, x| {
                 y[0] = -L * (f64::sin(x) - L * f64::cos(x) + L * f64::exp(L * x)) / (L * L + 1.0);
-            })),
+            }),
         };
         (system, data, 0)
     }
@@ -307,14 +428,13 @@ impl Samples {
     /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn robertson<'a>() -> (
+    pub fn robertson() -> (
         System<
-            'a,
-            impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
-        SampleData<'a>,
+        SampleData,
         NoArgs,
     ) {
         let ndim = 3;
@@ -378,17 +498,16 @@ impl Samples {
     /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn van_der_pol<'a>(
+    pub fn van_der_pol(
         epsilon: Option<f64>,
         stationary: bool,
     ) -> (
         System<
-            'a,
-            impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
-        SampleData<'a>,
+        SampleData,
         NoArgs,
     ) {
         let mut eps = match epsilon {
@@ -477,14 +596,13 @@ impl Samples {
     /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn arenstorf<'a>() -> (
+    pub fn arenstorf() -> (
         System<
-            'a,
-            impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
-        SampleData<'a>,
+        SampleData,
         NoArgs,
     ) {
         const MU: f64 = 0.012277471;
@@ -555,7 +673,7 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// Returns `(system, data, args, gen_mass_matrix)` where:
+    /// Returns `(system, data, args)` where:
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
@@ -563,25 +681,20 @@ impl Samples {
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
-    /// * `gen_mass_matrix: fn(one_based: bool) -> CooMatrix` -- is a function to generate the mass matrix.
-    ///    Note: the mass matrix needs to be allocated externally because a reference to it is required by System.
     ///
     /// # Reference
     ///
     /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-
-    pub fn amplifier1t<'a>() -> (
+    pub fn amplifier1t() -> (
         System<
-            'a,
-            impl FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl FnMut(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
-        SampleData<'a>,
+        SampleData,
         NoArgs,
-        fn(bool) -> CooMatrix,
     ) {
         // constants
         const ALPHA: f64 = 0.99;
@@ -602,7 +715,7 @@ impl Samples {
         // ODE system
         let ndim = 5;
         let jac_nnz = 9;
-        let system = System::new(
+        let mut system = System::new(
             ndim,
             move |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
                 let ue = C * f64::sin(D * x);
@@ -634,26 +747,22 @@ impl Samples {
         );
 
         // function that generates the mass matrix
-        let gen_mass_matrix = |one_based: bool| -> CooMatrix {
-            const C1: f64 = 1e-6;
-            const C2: f64 = 2e-6;
-            const C3: f64 = 3e-6;
-            let ndim = 5;
-            let nnz = 9;
-            let mut mass = CooMatrix::new(ndim, ndim, nnz, None, one_based).unwrap();
-            mass.put(0, 0, -C1).unwrap();
-            mass.put(0, 1, C1).unwrap();
-            mass.put(1, 0, C1).unwrap();
-            mass.put(1, 1, -C1).unwrap();
-            mass.put(2, 2, -C2).unwrap();
-            mass.put(3, 3, -C3).unwrap();
-            mass.put(3, 4, C3).unwrap();
-            mass.put(4, 3, C3).unwrap();
-            mass.put(4, 4, -C3).unwrap();
-            mass
-        };
+        const C1: f64 = 1e-6;
+        const C2: f64 = 2e-6;
+        const C3: f64 = 3e-6;
+        let mass_nnz = 9;
+        system.init_mass_matrix(mass_nnz, false).unwrap();
+        system.mass_put(0, 0, -C1).unwrap();
+        system.mass_put(0, 1, C1).unwrap();
+        system.mass_put(1, 0, C1).unwrap();
+        system.mass_put(1, 1, -C1).unwrap();
+        system.mass_put(2, 2, -C2).unwrap();
+        system.mass_put(3, 3, -C3).unwrap();
+        system.mass_put(3, 4, C3).unwrap();
+        system.mass_put(4, 3, C3).unwrap();
+        system.mass_put(4, 4, -C3).unwrap();
 
-        // results
+        // control
         let data = SampleData {
             x0,
             y0,
@@ -661,7 +770,7 @@ impl Samples {
             h_equal: None,
             y_analytical: None,
         };
-        (system, data, 0, gen_mass_matrix)
+        (system, data, 0)
     }
 }
 
@@ -674,9 +783,9 @@ mod tests {
     use russell_lab::{deriv_central5, mat_approx_eq, vec_approx_eq, Matrix, Vector};
     use russell_sparse::{CooMatrix, Symmetry};
 
-    fn numerical_jacobian<F>(ndim: usize, x0: f64, y0: Vector, mut function: F, multiplier: f64) -> Matrix
+    fn numerical_jacobian<F>(ndim: usize, x0: f64, y0: Vector, function: F, multiplier: f64) -> Matrix
     where
-        F: FnMut(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+        F: Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
     {
         struct Extra {
             x: f64,
@@ -715,7 +824,7 @@ mod tests {
     #[test]
     fn simple_constant_works() {
         let multiplier = 2.0;
-        let (mut system, mut data, mut args) = Samples::simple_constant();
+        let (system, mut data, mut args) = Samples::simple_equation_constant();
 
         // check initial values
         if let Some(y_ana) = data.y_analytical.as_mut() {
@@ -743,7 +852,7 @@ mod tests {
     #[test]
     fn kreyszig_eq6_page902_works() {
         let multiplier = 2.0;
-        let (mut system, mut data, mut args) = Samples::kreyszig_eq6_page902();
+        let (system, mut data, mut args) = Samples::kreyszig_eq6_page902();
 
         // check initial values
         if let Some(y_ana) = data.y_analytical.as_mut() {
@@ -771,7 +880,7 @@ mod tests {
     #[test]
     fn kreyszig_ex4_page920() {
         let multiplier = 2.0;
-        let (mut system, mut data, mut args) = Samples::kreyszig_ex4_page920();
+        let (system, mut data, mut args) = Samples::kreyszig_ex4_page920();
 
         // check initial values
         if let Some(y_ana) = data.y_analytical.as_mut() {
@@ -799,7 +908,7 @@ mod tests {
     #[test]
     fn hairer_wanner_eq1_works() {
         let multiplier = 2.0;
-        let (mut system, mut data, mut args) = Samples::hairer_wanner_eq1();
+        let (system, mut data, mut args) = Samples::hairer_wanner_eq1();
 
         // check initial values
         if let Some(y_ana) = data.y_analytical.as_mut() {
@@ -827,7 +936,7 @@ mod tests {
     #[test]
     fn robertson_works() {
         let multiplier = 2.0;
-        let (mut system, data, mut args) = Samples::robertson();
+        let (system, data, mut args) = Samples::robertson();
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
@@ -847,7 +956,7 @@ mod tests {
     #[test]
     fn van_der_pol_works() {
         let multiplier = 2.0;
-        let (mut system, data, mut args) = Samples::van_der_pol(None, false);
+        let (system, data, mut args) = Samples::van_der_pol(None, false);
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
@@ -867,7 +976,7 @@ mod tests {
     #[test]
     fn van_der_pol_works_stationary() {
         let multiplier = 3.0;
-        let (mut system, data, mut args) = Samples::van_der_pol(None, true);
+        let (system, data, mut args) = Samples::van_der_pol(None, true);
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
@@ -887,7 +996,7 @@ mod tests {
     #[test]
     fn arenstorf_works() {
         let multiplier = 1.5;
-        let (mut system, data, mut args) = Samples::arenstorf();
+        let (system, data, mut args) = Samples::arenstorf();
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
@@ -907,7 +1016,7 @@ mod tests {
     #[test]
     fn amplifier1t_works() {
         let multiplier = 2.0;
-        let (mut system, data, mut args, gen_mass_matrix) = Samples::amplifier1t();
+        let (system, data, mut args) = Samples::amplifier1t();
 
         // compute the analytical Jacobian matrix
         let symmetry = Some(system.jac_symmetry);
@@ -923,8 +1032,8 @@ mod tests {
         println!("{:.15}", num);
         mat_approx_eq(&ana, &num, 1e-13);
 
-        // generate the mass matrix
-        let mass = gen_mass_matrix(false);
+        // check the mass matrix
+        let mass = system.mass_matrix.unwrap();
         println!("{}", mass.as_dense());
         let ndim = system.ndim;
         let nnz_mass = 5 + 4;

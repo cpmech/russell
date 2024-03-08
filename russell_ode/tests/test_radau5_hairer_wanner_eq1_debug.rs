@@ -13,7 +13,7 @@ fn test_radau5_hairer_wanner_eq1_debug() {
     params.debug = true;
 
     // solve the ODE system
-    let mut solver = OdeSolver::new(params, system).unwrap();
+    let mut solver = OdeSolver::new(params, &system).unwrap();
     solver
         .solve(&mut data.y0, data.x0, data.x1, None, None, &mut args)
         .unwrap();
@@ -26,7 +26,7 @@ fn test_radau5_hairer_wanner_eq1_debug() {
     approx_eq(stat.h_accepted, 1.272673814374611E+00, 1e-12);
 
     // compare with the analytical solution
-    let mut analytical = data.y_analytical.unwrap();
+    let analytical = data.y_analytical.unwrap();
     let mut y1_correct = Vector::new(ndim);
     analytical(&mut y1_correct, data.x1);
     approx_eq(data.y0[0], y1_correct[0], 3e-5);

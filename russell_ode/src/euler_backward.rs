@@ -6,14 +6,14 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, SparseMatrix};
 /// Implements the backward Euler (implicit) solver
 pub(crate) struct EulerBackward<'a, F, J, A>
 where
-    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Holds the parameters
     params: Params,
 
     /// ODE system
-    system: System<'a, F, J, A>,
+    system: &'a System<F, J, A>,
 
     /// Vector holding the function evaluation
     ///
@@ -38,11 +38,11 @@ where
 
 impl<'a, F, J, A> EulerBackward<'a, F, J, A>
 where
-    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(params: Params, system: System<'a, F, J, A>) -> Self {
+    pub fn new(params: Params, system: &'a System<F, J, A>) -> Self {
         let ndim = system.ndim;
         let jac_nnz = if params.newton.use_numerical_jacobian {
             ndim * ndim
@@ -67,8 +67,8 @@ where
 
 impl<'a, F, J, A> OdeSolverTrait<A> for EulerBackward<'a, F, J, A>
 where
-    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
@@ -119,7 +119,9 @@ where
                 let kk = self.kk.get_coo_mut().unwrap();
                 if self.params.newton.use_numerical_jacobian || !self.system.jac_available {
                     work.bench.n_function += ndim;
-                    self.system.numerical_jacobian(kk, x_new, y_new, &self.k, h, args)?;
+                    let aux = &mut self.dy; // using dy as a workspace
+                    self.system
+                        .numerical_jacobian(kk, x_new, y_new, &self.k, h, args, aux)?;
                 } else {
                     (self.system.jacobian)(kk, x_new, y_new, h, args)?;
                 }
@@ -262,12 +264,12 @@ mod tests {
 
         // problem
         let (system, data, mut args) = Samples::kreyszig_ex4_page920();
-        let mut yfx = data.y_analytical.unwrap();
+        let yfx = data.y_analytical.unwrap();
         let ndim = system.ndim;
 
         // allocate structs
         let params = Params::new(Method::BwEuler);
-        let mut solver = EulerBackward::new(params, system);
+        let mut solver = EulerBackward::new(params, &system);
         let mut work = Workspace::new(Method::BwEuler);
 
         // check dense output availability
@@ -317,13 +319,13 @@ mod tests {
 
         // problem
         let (system, data, mut args) = Samples::kreyszig_ex4_page920();
-        let mut yfx = data.y_analytical.unwrap();
+        let yfx = data.y_analytical.unwrap();
         let ndim = system.ndim;
 
         // allocate structs
         let mut params = Params::new(Method::BwEuler);
         params.newton.use_numerical_jacobian = true;
-        let mut solver = EulerBackward::new(params, system);
+        let mut solver = EulerBackward::new(params, &system);
         let mut work = Workspace::new(Method::BwEuler);
 
         // numerical approximation
@@ -366,7 +368,7 @@ mod tests {
         let mut params = Params::new(Method::BwEuler);
         let (system, data, mut args) = Samples::kreyszig_ex4_page920();
         params.newton.n_iteration_max = 0;
-        let mut solver = EulerBackward::new(params, system);
+        let mut solver = EulerBackward::new(params, &system);
         let mut work = Workspace::new(Method::BwEuler);
         assert_eq!(
             solver.step(&mut work, data.x0, &data.y0, 0.1, &mut args).err(),

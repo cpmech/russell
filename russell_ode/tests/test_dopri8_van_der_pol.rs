@@ -20,7 +20,7 @@ fn test_dopri8_van_der_pol() {
     let mut y0 = Vector::from(&[2.0, 0.0]);
     let x0 = 0.0;
     let x1 = 2.0;
-    let mut solver = OdeSolver::new(params, system).unwrap();
+    let mut solver = OdeSolver::new(params, &system).unwrap();
     solver.solve(&mut y0, x0, x1, None, Some(&mut out), &mut args).unwrap();
 
     // get statistics

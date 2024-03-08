@@ -49,10 +49,10 @@ impl<'a, A> OdeSolver<'a, A> {
     /// # Generics
     ///
     /// See [System] for an explanation of the generic parameters.
-    pub fn new<F, J>(params: Params, system: System<'a, F, J, A>) -> Result<Self, StrError>
+    pub fn new<F, J>(params: Params, system: &'a System<F, J, A>) -> Result<Self, StrError>
     where
-        F: 'a + Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-        J: 'a + Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+        F: 'a + Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+        J: 'a + Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
         A: 'a,
     {
         params.validate()?;
@@ -97,7 +97,7 @@ impl<'a, A> OdeSolver<'a, A> {
         x0: f64,
         x1: f64,
         h_equal: Option<f64>,
-        mut output: Option<&mut Output<'a>>,
+        mut output: Option<&mut Output>,
         args: &mut A,
     ) -> Result<(), StrError> {
         // check data
@@ -284,15 +284,16 @@ mod tests {
     #[test]
     fn solve_with_step_output_works() {
         // ODE system
-        let (system, data, mut args) = Samples::simple_constant();
+        let (system, data, mut args) = Samples::simple_equation_constant();
 
         // output
         let mut out = Output::new();
-        out.enable_step(&[0]).set_analytical(data.y_analytical.unwrap());
+        out.y_analytical = data.y_analytical;
+        out.enable_step(&[0]);
 
         // params and solver
         let params = Params::new(Method::FwEuler);
-        let mut solver = OdeSolver::new(params, system).unwrap();
+        let mut solver = OdeSolver::new(params, &system).unwrap();
 
         // solve the ODE system (will run with N_EQUAL_STEPS)
         let mut y = data.y0.clone();
@@ -328,7 +329,7 @@ mod tests {
     #[test]
     fn solve_with_h_equal_works() {
         // ODE system
-        let (system, mut data, mut args) = Samples::simple_constant();
+        let (system, mut data, mut args) = Samples::simple_equation_constant();
 
         // output
         let mut out = Output::new();
@@ -336,7 +337,7 @@ mod tests {
 
         // params and solver
         let params = Params::new(Method::FwEuler);
-        let mut solver = OdeSolver::new(params, system).unwrap();
+        let mut solver = OdeSolver::new(params, &system).unwrap();
         let x1 = 1.2; // => will generate 4 steps
 
         // capture error
@@ -368,16 +369,17 @@ mod tests {
     #[test]
     fn solve_with_variable_steps_works() {
         // ODE system
-        let (system, mut data, mut args) = Samples::simple_constant();
+        let (system, mut data, mut args) = Samples::simple_equation_constant();
 
         // output
         let mut out = Output::new();
-        out.enable_step(&[0]).set_analytical(data.y_analytical.unwrap());
+        out.y_analytical = data.y_analytical;
+        out.enable_step(&[0]);
 
         // params and solver
         let mut params = Params::new(Method::MdEuler);
         params.step.h_ini = 0.1;
-        let mut solver = OdeSolver::new(params, system).unwrap();
+        let mut solver = OdeSolver::new(params, &system).unwrap();
 
         // solve the ODE system
         solver
@@ -395,7 +397,7 @@ mod tests {
     #[test]
     fn solve_with_dense_output_works() {
         // ODE system
-        let (system, data, mut args) = Samples::simple_constant();
+        let (system, data, mut args) = Samples::simple_equation_constant();
 
         // output
         let mut out = Output::new();
@@ -404,7 +406,7 @@ mod tests {
         // params and solver
         let mut params = Params::new(Method::DoPri5);
         params.step.h_ini = 0.1;
-        let mut solver = OdeSolver::new(params, system).unwrap();
+        let mut solver = OdeSolver::new(params, &system).unwrap();
 
         // solve the ODE system
         let mut y = data.y0.clone();
@@ -434,7 +436,7 @@ mod tests {
     #[test]
     fn solve_handles_zero_stepsize() {
         // ODE system
-        let (system, mut data, mut args) = Samples::simple_constant();
+        let (system, mut data, mut args) = Samples::simple_equation_constant();
 
         // output
         let mut out = Output::new();
@@ -443,7 +445,7 @@ mod tests {
         // params and solver
         let mut params = Params::new(Method::DoPri5);
         params.step.h_ini = 20.0; // since the problem is linear, this stepsize will lead to a jump from x=0.0 to 1.0
-        let mut solver = OdeSolver::new(params, system).unwrap();
+        let mut solver = OdeSolver::new(params, &system).unwrap();
 
         // solve the ODE system
         solver
@@ -459,9 +461,9 @@ mod tests {
 
     #[test]
     fn solve_and_output_handle_errors() {
-        let (system, mut data, mut args) = Samples::simple_constant();
+        let (system, mut data, mut args) = Samples::simple_equation_constant();
         let params = Params::new(Method::FwEuler);
-        let mut solver = OdeSolver::new(params, system).unwrap();
+        let mut solver = OdeSolver::new(params, &system).unwrap();
         let mut out = Output::new();
         assert_eq!(out.enable_dense(-0.1, &[0]).err(), Some("h_out must be positive"));
         out.enable_dense(0.1, &[0]).unwrap();

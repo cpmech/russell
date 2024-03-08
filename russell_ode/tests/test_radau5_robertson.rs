@@ -16,7 +16,7 @@ fn test_radau5_robertson() {
     out.enable_step(&[0, 1, 2]);
 
     // solve the ODE system
-    let mut solver = OdeSolver::new(params, system).unwrap();
+    let mut solver = OdeSolver::new(params, &system).unwrap();
     solver
         .solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)
         .unwrap();

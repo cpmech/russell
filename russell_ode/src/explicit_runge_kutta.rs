@@ -6,14 +6,14 @@ use russell_sparse::CooMatrix;
 
 pub(crate) struct ExplicitRungeKutta<'a, F, J, A>
 where
-    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Holds the parameters
     params: Params,
 
     /// ODE system
-    system: System<'a, F, J, A>,
+    system: &'a System<F, J, A>,
 
     /// Information such as implicit, embedded, etc.
     info: Information,
@@ -65,11 +65,11 @@ where
 
 impl<'a, F, J, A> ExplicitRungeKutta<'a, F, J, A>
 where
-    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(params: Params, system: System<'a, F, J, A>) -> Result<Self, StrError> {
+    pub fn new(params: Params, system: &'a System<F, J, A>) -> Result<Self, StrError> {
         // Runge-Kutta coefficients
         #[rustfmt::skip]
         let (aa, bb, cc) = match params.method {
@@ -149,8 +149,8 @@ where
 
 impl<'a, F, J, A> OdeSolverTrait<A> for ExplicitRungeKutta<'a, F, J, A>
 where
-    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
@@ -385,7 +385,7 @@ mod tests {
                 None,
                 None,
             );
-            let erk = ExplicitRungeKutta::new(params, system).unwrap();
+            let erk = ExplicitRungeKutta::new(params, &system).unwrap();
             let nstage = erk.nstage;
             assert_eq!(erk.aa.dims(), (nstage, nstage));
             assert_eq!(erk.bb.dim(), nstage);
@@ -506,12 +506,12 @@ mod tests {
 
         // problem
         let (system, data, mut args) = Samples::kreyszig_eq6_page902();
-        let mut yfx = data.y_analytical.unwrap();
+        let yfx = data.y_analytical.unwrap();
         let ndim = system.ndim;
 
         // allocate structs
         let params = Params::new(Method::MdEuler); // aka the Improved Euler in Kreyszig's book
-        let mut solver = ExplicitRungeKutta::new(params, system).unwrap();
+        let mut solver = ExplicitRungeKutta::new(params, &system).unwrap();
         let mut work = Workspace::new(Method::FwEuler);
 
         // check dense output availability
@@ -589,12 +589,12 @@ mod tests {
 
         // problem
         let (system, data, mut args) = Samples::kreyszig_eq6_page902();
-        let mut yfx = data.y_analytical.unwrap();
+        let yfx = data.y_analytical.unwrap();
         let ndim = system.ndim;
 
         // allocate structs
         let params = Params::new(Method::Rk4); // aka the Classical RK in Kreyszig's book
-        let mut solver = ExplicitRungeKutta::new(params, system).unwrap();
+        let mut solver = ExplicitRungeKutta::new(params, &system).unwrap();
         let mut work = Workspace::new(Method::FwEuler);
 
         // check dense output availability
@@ -701,7 +701,7 @@ mod tests {
 
         // allocate solver
         let params = Params::new(Method::Fehlberg4);
-        let mut solver = ExplicitRungeKutta::new(params, system).unwrap();
+        let mut solver = ExplicitRungeKutta::new(params, &system).unwrap();
         let mut work = Workspace::new(Method::FwEuler);
 
         // perform one step (compute k)

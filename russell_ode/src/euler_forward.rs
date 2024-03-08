@@ -5,11 +5,11 @@ use russell_sparse::CooMatrix;
 
 pub(crate) struct EulerForward<'a, F, J, A>
 where
-    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// ODE system
-    system: System<'a, F, J, A>,
+    system: &'a System<F, J, A>,
 
     /// Vector holding the function evaluation
     ///
@@ -22,11 +22,11 @@ where
 
 impl<'a, F, J, A> EulerForward<'a, F, J, A>
 where
-    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(system: System<'a, F, J, A>) -> Self {
+    pub fn new(system: &'a System<F, J, A>) -> Self {
         let ndim = system.ndim;
         EulerForward {
             system,
@@ -38,8 +38,8 @@ where
 
 impl<'a, F, J, A> OdeSolverTrait<A> for EulerForward<'a, F, J, A>
 where
-    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
@@ -89,11 +89,11 @@ mod tests {
 
         // problem
         let (system, data, mut args) = Samples::kreyszig_eq6_page902();
-        let mut yfx = data.y_analytical.unwrap();
+        let yfx = data.y_analytical.unwrap();
         let ndim = system.ndim;
 
         // allocate structs
-        let mut solver = EulerForward::new(system);
+        let mut solver = EulerForward::new(&system);
         let mut work = Workspace::new(Method::FwEuler);
 
         // check dense output availability

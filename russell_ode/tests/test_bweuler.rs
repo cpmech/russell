@@ -9,7 +9,7 @@ fn test_bweuler_hairer_wanner_eq1() {
 
     // set configuration parameters
     let params = Params::new(Method::BwEuler);
-    let mut solver = OdeSolver::new(params, system).unwrap();
+    let mut solver = OdeSolver::new(params, &system).unwrap();
 
     // solve the ODE system
     solver
@@ -24,7 +24,7 @@ fn test_bweuler_hairer_wanner_eq1() {
     assert_eq!(stat.h_accepted, data.h_equal.unwrap());
 
     // compare with the analytical solution
-    let mut analytical = data.y_analytical.unwrap();
+    let analytical = data.y_analytical.unwrap();
     let mut y1_correct = Vector::new(ndim);
     analytical(&mut y1_correct, data.x1);
     approx_eq(data.y0[0], y1_correct[0], 5e-5);
@@ -53,7 +53,7 @@ fn test_bweuler_hairer_wanner_eq1_num_jac() {
     params.newton.use_numerical_jacobian = true;
 
     // solve the ODE system
-    let mut solver = OdeSolver::new(params, system).unwrap();
+    let mut solver = OdeSolver::new(params, &system).unwrap();
     solver
         .solve(&mut data.y0, data.x0, data.x1, data.h_equal, None, &mut args)
         .unwrap();
@@ -66,7 +66,7 @@ fn test_bweuler_hairer_wanner_eq1_num_jac() {
     assert_eq!(stat.h_accepted, data.h_equal.unwrap());
 
     // compare with the analytical solution
-    let mut analytical = data.y_analytical.unwrap();
+    let analytical = data.y_analytical.unwrap();
     let mut y1_correct = Vector::new(ndim);
     analytical(&mut y1_correct, data.x1);
     approx_eq(data.y0[0], y1_correct[0], 5e-5);
@@ -95,7 +95,7 @@ fn test_bweuler_hairer_wanner_eq1_modified_newton() {
     params.bweuler.use_modified_newton = true;
 
     // solve the ODE system
-    let mut solver = OdeSolver::new(params, system).unwrap();
+    let mut solver = OdeSolver::new(params, &system).unwrap();
     solver
         .solve(&mut data.y0, data.x0, data.x1, data.h_equal, None, &mut args)
         .unwrap();
@@ -108,7 +108,7 @@ fn test_bweuler_hairer_wanner_eq1_modified_newton() {
     assert_eq!(stat.h_accepted, data.h_equal.unwrap());
 
     // compare with the analytical solution
-    let mut analytical = data.y_analytical.unwrap();
+    let analytical = data.y_analytical.unwrap();
     let mut y1_correct = Vector::new(ndim);
     analytical(&mut y1_correct, data.x1);
     approx_eq(data.y0[0], y1_correct[0], 5e-5);

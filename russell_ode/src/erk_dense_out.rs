@@ -60,7 +60,7 @@ impl ErkDenseOut {
     /// Updates the data and returns the number of function evaluations
     pub(crate) fn update<'a, F, J, A>(
         &mut self,
-        system: &mut System<'a, F, J, A>,
+        system: &System<F, J, A>,
         x: f64,
         y: &Vector,
         h: f64,
@@ -69,8 +69,8 @@ impl ErkDenseOut {
         args: &mut A,
     ) -> Result<usize, StrError>
     where
-        F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-        J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+        F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+        J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
     {
         let mut n_function_eval = 0;
 

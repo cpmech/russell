@@ -4,24 +4,19 @@ use russell_ode::{Method, OdeSolver, Output, Params, Samples};
 #[test]
 fn test_radau5_amplifier1t() {
     // get get ODE system
-    let (mut system, mut data, mut args, gen_mass) = Samples::amplifier1t();
+    let (system, mut data, mut args) = Samples::amplifier1t();
 
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);
     params.step.h_ini = 1e-6;
     params.set_tolerances(1e-4, 1e-4, None).unwrap();
 
-    // mass matrix
-    let one_based = false; // change to true if using MUMPS
-    let mass = gen_mass(one_based);
-    system.set_mass_matrix(&mass).unwrap();
-
     // enable output of accepted steps
     let mut out = Output::new();
     out.enable_dense(0.001, &[0, 4]).unwrap();
 
     // solve the ODE system
-    let mut solver = OdeSolver::new(params, system).unwrap();
+    let mut solver = OdeSolver::new(params, &system).unwrap();
     solver
         .solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)
         .unwrap();

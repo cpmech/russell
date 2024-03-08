@@ -4,7 +4,7 @@ use russell_lab::{vec_max_abs_diff, Vector};
 use std::collections::HashMap;
 
 /// Holds the (x,y) results at accepted steps or interpolated within a "dense" sequence
-pub struct Output<'a> {
+pub struct Output {
     /// Indicates whether the accepted step output is to be performed or not
     save_step: bool,
 
@@ -46,11 +46,11 @@ pub struct Output<'a> {
     /// Holds an auxiliary y vector (e.g., to compute the analytical solution or the dense output)
     y_aux: Vector,
 
-    /// Implements the analytical solution `y(x)` function
-    y_analytical: Option<Box<dyn 'a + FnMut(&mut Vector, f64)>>,
+    /// Holds a function to compute the analytical solution y(x)
+    pub y_analytical: Option<fn(&mut Vector, f64)>,
 }
 
-impl<'a> Output<'a> {
+impl Output {
     /// Allocates a new instance
     pub fn new() -> Self {
         const EMPTY: usize = 0;
@@ -130,21 +130,6 @@ impl<'a> Output<'a> {
         self.dense_h.is_some()
     }
 
-    /// Sets the analytical solution to compute the global error
-    ///
-    /// The results will be saved in the `step_global_error`
-    ///
-    /// # Input
-    ///
-    /// * `analytical` -- is a function(y, x) that computes y(x)
-    pub fn set_analytical<F>(&mut self, y_analytical: F) -> &mut Self
-    where
-        F: 'a + FnMut(&mut Vector, f64),
-    {
-        self.y_analytical = Some(Box::new(y_analytical));
-        self
-    }
-
     /// Clears all resulting arrays
     pub fn clear(&mut self) {
         self.step_h.clear();
@@ -161,7 +146,7 @@ impl<'a> Output<'a> {
     }
 
     /// Appends the results after an accepted step is computed
-    pub(crate) fn push<A>(
+    pub(crate) fn push<'a, A>(
         &mut self,
         work: &Workspace,
         x: f64,

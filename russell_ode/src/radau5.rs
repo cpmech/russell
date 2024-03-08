@@ -9,14 +9,14 @@ use std::thread;
 /// Implements the Radau5 method
 pub(crate) struct Radau5<'a, F, J, A>
 where
-    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Holds the parameters
     params: Params,
 
     /// ODE system
-    system: System<'a, F, J, A>,
+    system: &'a System<F, J, A>,
 
     /// Holds the Jacobian matrix. J = df/dy
     jj: SparseMatrix,
@@ -104,15 +104,15 @@ where
 
 impl<'a, F, J, A> Radau5<'a, F, J, A>
 where
-    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(params: Params, system: System<'a, F, J, A>) -> Self {
+    pub fn new(params: Params, system: &'a System<F, J, A>) -> Self {
         let ndim = system.ndim;
         let symmetry = Some(system.jac_symmetry);
         let one_based = params.newton.genie == Genie::Mumps;
-        let mass_nnz = match system.mass_matrix {
+        let mass_nnz = match system.mass_matrix.as_ref() {
             Some(mass) => mass.get_info().2,
             None => ndim,
         };
@@ -186,9 +186,10 @@ where
             if self.params.newton.use_numerical_jacobian || !self.system.jac_available {
                 work.bench.n_function += self.system.ndim;
                 let y_mut = &mut self.w0; // using w[0] as a workspace
+                let aux = &mut self.dw0; // using dw0 as a workspace
                 vec_copy(y_mut, y).unwrap();
                 self.system
-                    .numerical_jacobian(jj, x, y_mut, &self.k_accepted, 1.0, args)?;
+                    .numerical_jacobian(jj, x, y_mut, &self.k_accepted, 1.0, args, aux)?;
             } else {
                 (self.system.jacobian)(jj, x, y, 1.0, args)?;
             }
@@ -202,7 +203,7 @@ where
         let gamma = GAMMA / h;
         kk_real.assign(-1.0, jj).unwrap(); // K_real = -J
         kk_comp.assign_real(-1.0, 0.0, jj).unwrap(); // K_comp = -J
-        match self.system.mass_matrix {
+        match self.system.mass_matrix.as_ref() {
             Some(mass) => {
                 kk_real.augment(gamma, mass).unwrap(); // K_real += γ M
                 kk_comp.augment_real(alpha, beta, mass).unwrap(); // K_comp += (α + βi) M
@@ -299,8 +300,8 @@ where
 
 impl<'a, F, J, A> OdeSolverTrait<A> for Radau5<'a, F, J, A>
 where
-    F: Send + FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + FnMut(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
@@ -394,7 +395,7 @@ where
             (self.system.function)(&mut self.k2, u2, &self.v2, args)?;
 
             // compute the right-hand side vectors
-            let (l0, l1, l2) = match self.system.mass_matrix {
+            let (l0, l1, l2) = match self.system.mass_matrix.as_ref() {
                 Some(mass) => {
                     mass.mat_vec_mul(&mut self.dw0, 1.0, &self.w0).unwrap(); // dw0 := M ⋅ w0
                     mass.mat_vec_mul(&mut self.dw1, 1.0, &self.w1).unwrap(); // dw1 := M ⋅ w1
@@ -515,7 +516,7 @@ where
         let err = &mut self.dw0; // error variable
 
         // compute ez, mez and rhs
-        match self.system.mass_matrix {
+        match self.system.mass_matrix.as_ref() {
             Some(mass) => {
                 for m in 0..ndim {
                     ez[m] = E0 * self.z0[m] + E1 * self.z1[m] + E2 * self.z2[m];
@@ -709,12 +710,12 @@ mod tests {
 
         // problem
         let (system, data, mut args) = Samples::kreyszig_ex4_page920();
-        let mut yfx = data.y_analytical.unwrap();
+        let yfx = data.y_analytical.unwrap();
         let ndim = system.ndim;
 
         // allocate structs
         let params = Params::new(Method::Radau5);
-        let mut solver = Radau5::new(params, system);
+        let mut solver = Radau5::new(params, &system);
         let mut work = Workspace::new(Method::FwEuler);
 
         // message
@@ -778,13 +779,13 @@ mod tests {
 
         // problem
         let (system, data, mut args) = Samples::kreyszig_ex4_page920();
-        let mut yfx = data.y_analytical.unwrap();
+        let yfx = data.y_analytical.unwrap();
         let ndim = system.ndim;
 
         // allocate structs
         let mut params = Params::new(Method::Radau5);
         params.newton.use_numerical_jacobian = true;
-        let mut solver = Radau5::new(params, system);
+        let mut solver = Radau5::new(params, &system);
         let mut work = Workspace::new(Method::FwEuler);
 
         // message

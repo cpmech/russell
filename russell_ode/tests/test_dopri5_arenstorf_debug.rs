@@ -13,7 +13,7 @@ fn test_dopri5_arenstorf_debug() {
     params.debug = true;
 
     // solve the ODE system
-    let mut solver = OdeSolver::new(params, system).unwrap();
+    let mut solver = OdeSolver::new(params, &system).unwrap();
     solver
         .solve(&mut data.y0, data.x0, data.x1, None, None, &mut args)
         .unwrap();

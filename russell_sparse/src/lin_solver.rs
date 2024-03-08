@@ -1,4 +1,4 @@
-use super::{Genie, LinSolParams, SolverIntelDSS, SolverMUMPS, SolverUMFPACK, SparseMatrix, StatsLinSol};
+use super::{Genie, LinSolParams, SolverMUMPS, SolverUMFPACK, SparseMatrix, StatsLinSol};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -64,7 +64,6 @@ impl<'a> LinSolver<'a> {
         let actual: Box<dyn Send + LinSolTrait> = match genie {
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
-            Genie::IntelDss => Box::new(SolverIntelDSS::new()?),
         };
         Ok(LinSolver { actual })
     }
@@ -93,7 +92,6 @@ impl<'a> LinSolver<'a> {
     ///
     /// 1. For symmetric matrices, `MUMPS` requires that the symmetry/storage be Lower or Full.
     /// 2. For symmetric matrices, `UMFPACK` requires that the symmetry/storage be Full.
-    /// 3. For symmetric matrices, `IntelDSS` requires that the symmetry/storage be Upper.
     /// 4. This function calls the actual implementation (genie) via the functions `factorize`, and `solve`.
     /// 5. This function is best for a **single-use**, whereas the actual
     ///    solver should be considered for a recurrent use (e.g., inside a loop).
@@ -166,9 +164,6 @@ mod tests {
     fn lin_solver_new_works() {
         LinSolver::new(Genie::Mumps).unwrap();
         LinSolver::new(Genie::Umfpack).unwrap();
-        if cfg!(with_intel_dss) {
-            LinSolver::new(Genie::IntelDss).unwrap();
-        }
     }
 
     #[test]

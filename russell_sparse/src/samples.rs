@@ -279,7 +279,7 @@ impl Samples {
     ///
     /// ```text
     ///  1  .  2
-    ///  .  0  3   << the zero diagonal value is required for Intel DSS
+    ///  .  0  3
     ///  4  5  6
     /// ```
     ///
@@ -316,14 +316,14 @@ impl Samples {
                 coo.put(2, 0, 4.0).unwrap();
                 coo.put(0, 0, 1.0).unwrap();
                 coo.put(2, 2, 2.0).unwrap(); // << duplicate
-                coo.put(1, 1, 0.0).unwrap(); // << needed for Intel DSS
+                coo.put(1, 1, 0.0).unwrap(); // << notice that 0.0 may be specified
                 coo.put(2, 2, 2.0).unwrap(); // << duplicate
             } else {
                 coo.put(2, 0, 4.0).unwrap();
                 coo.put(0, 0, 1.0).unwrap();
                 coo.put(2, 2, 6.0).unwrap();
                 coo.put(0, 2, 2.0).unwrap();
-                coo.put(1, 1, 0.0).unwrap(); // << needed for Intel DSS
+                coo.put(1, 1, 0.0).unwrap(); // << notice that 0.0 may be specified
                 coo.put(2, 1, 5.0).unwrap();
                 coo.put(1, 2, 3.0).unwrap();
             }
@@ -331,7 +331,7 @@ impl Samples {
             if duplicate_coo_entries {
                 coo.put(0, 0, 1.0).unwrap();
                 coo.put(0, 2, 2.0).unwrap();
-                coo.put(1, 1, 0.0).unwrap(); // << needed for Intel DSS
+                coo.put(1, 1, 0.0).unwrap(); // << notice that 0.0 may be specified
                 coo.put(1, 2, 3.0).unwrap();
                 coo.put(2, 0, 4.0).unwrap();
                 coo.put(2, 1, 5.0).unwrap();
@@ -341,7 +341,7 @@ impl Samples {
             } else {
                 coo.put(0, 0, 1.0).unwrap();
                 coo.put(0, 2, 2.0).unwrap();
-                coo.put(1, 1, 0.0).unwrap(); // << needed for Intel DSS
+                coo.put(1, 1, 0.0).unwrap(); // << notice that 0.0 may be specified
                 coo.put(1, 2, 3.0).unwrap();
                 coo.put(2, 0, 4.0).unwrap();
                 coo.put(2, 1, 5.0).unwrap();

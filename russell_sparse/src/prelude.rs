@@ -14,7 +14,6 @@ pub use crate::enums::*;
 pub use crate::lin_sol_params::LinSolParams;
 pub use crate::lin_solver::*;
 pub use crate::read_matrix_market;
-pub use crate::solver_intel_dss::SolverIntelDSS;
 pub use crate::solver_mumps::SolverMUMPS;
 pub use crate::solver_umfpack::SolverUMFPACK;
 pub use crate::sparse_matrix::NumSparseMatrix;

@@ -70,7 +70,6 @@ impl<'a> ComplexLinSolver<'a> {
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
             Genie::Mumps => Box::new(ComplexSolverMUMPS::new()?),
             Genie::Umfpack => Box::new(ComplexSolverUMFPACK::new()?),
-            Genie::IntelDss => panic!("TODO"),
         };
         Ok(ComplexLinSolver { actual })
     }
@@ -99,7 +98,6 @@ impl<'a> ComplexLinSolver<'a> {
     ///
     /// 1. For symmetric matrices, `MUMPS` requires that the symmetry/storage be Lower or Full.
     /// 2. For symmetric matrices, `UMFPACK` requires that the symmetry/storage be Full.
-    /// 3. For symmetric matrices, `IntelDSS` requires that the symmetry/storage be Upper.
     /// 4. This function calls the actual implementation (genie) via the functions `factorize`, and `solve`.
     /// 5. This function is best for a **single-use**, whereas the actual
     ///    solver should be considered for a recurrent use (e.g., inside a loop).

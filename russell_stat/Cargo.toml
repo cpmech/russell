@@ -11,6 +11,9 @@ readme = "README.md"
 categories = ["mathematics", "science"]
 keywords = ["statistics", "probability", "random", "numerical"]
 
+[features]
+intel_mkl = ["russell_lab/intel_mkl"]
+
 [dependencies]
 russell_lab = { path = "../russell_lab", version = "0.8.0" }
 num-traits = "0.2"

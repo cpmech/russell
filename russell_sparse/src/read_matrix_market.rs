@@ -179,7 +179,7 @@ impl MatrixMarketData {
 /// may be used to:
 ///
 /// 1. Leave the data as it is, i.e., return a Lower Triangular CooMatrix (e.g., for MUMPS solver)
-/// 2. Swap the lower triangle with the upper triangle, i.e., return an Upper Triangular CooMatrix (e.g., for Intel DSS solver)
+/// 2. Swap the lower triangle with the upper triangle, i.e., return an Upper Triangular CooMatrix
 /// 3. Duplicate the data to make a full matrix, i.e., return a Full CooMatrix (e.g., for UMFPACK solver)
 ///
 /// # Panics

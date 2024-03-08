@@ -11,6 +11,9 @@ readme = "README.md"
 categories = ["mathematics", "science"]
 keywords = ["tensor", "Voigt", "Mandel", "continuum", "mechanics"]
 
+[features]
+intel_mkl = ["russell_lab/intel_mkl"]
+
 [dependencies]
 russell_lab = { path = "../russell_lab", version = "0.8.0" }
 serde = { version = "1.0", features = ["derive"] }

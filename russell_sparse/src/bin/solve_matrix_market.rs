@@ -73,7 +73,6 @@ fn main() -> Result<(), StrError> {
     let handling = match genie {
         Genie::Mumps => MMsymOption::LeaveAsLower,
         Genie::Umfpack => MMsymOption::MakeItFull,
-        Genie::IntelDss => MMsymOption::SwapToUpper,
     };
 
     // configuration parameters
@@ -140,7 +139,6 @@ fn main() -> Result<(), StrError> {
         let tolerance = match genie {
             Genie::Mumps => 1e-10,
             Genie::Umfpack => 1e-10,
-            Genie::IntelDss => 1e-10,
         };
         let correct_x = get_bfwb62_correct_x();
         for i in 0..nrow {

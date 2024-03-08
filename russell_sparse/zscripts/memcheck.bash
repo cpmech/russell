@@ -16,10 +16,6 @@ $VALGRIND --bin mem_check
 
 $VALGRIND --bin solve_matrix_market -- data/matrix_market/bfwb62.mtx -d
 $VALGRIND --bin solve_matrix_market -- data/matrix_market/bfwb62.mtx -d -g mumps
-if [[ "$WITH_DSS" == "1" ]]; then
-    $VALGRIND --bin solve_matrix_market -- data/matrix_market/bfwb62.mtx -d --genie dss
-fi
 
 $VALGRIND --example nonlinear_system_4eqs --
 $VALGRIND --example nonlinear_system_4eqs -- -g mumps
-$VALGRIND --example nonlinear_system_4eqs -- -g dss

@@ -13,11 +13,6 @@ pub enum Genie {
     ///
     /// Reference: <https://github.com/DrTimothyAldenDavis/SuiteSparse>
     Umfpack,
-
-    /// Selects Intel DSS (direct sparse solver)
-    ///
-    /// Reference: <https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html>
-    IntelDss,
 }
 
 /// Specifies how the matrix components are stored
@@ -26,7 +21,7 @@ pub enum Storage {
     /// Lower triangular storage for symmetric matrix (e.g., for MUMPS)
     Lower,
 
-    /// Upper triangular storage for symmetric matrix (e.g., for Intel DSS)
+    /// Upper triangular storage for symmetric matrix
     Upper,
 
     /// Full matrix storage for symmetric or unsymmetric matrix (e.g., for UMFPACK)
@@ -63,8 +58,6 @@ pub enum MMsymOption {
     ///
     /// **Note:** Since lower triangular is standard in MatrixMarket,
     /// this option will swap the lower triangle to the upper triangle.
-    ///
-    /// This option is useful for the Intel DSS solver.
     SwapToUpper,
 
     /// Make the matrix full (if symmetric)
@@ -147,14 +140,12 @@ impl Genie {
     /// ```text
     /// "mumps"    => Genie::Mumps,
     /// "umfpack"  => Genie::Umfpack,
-    /// "inteldss" => Genie::IntelDss,
     /// _          => Genie::Umfpack,
     /// ```
     pub fn from(genie: &str) -> Self {
         match genie.to_lowercase().as_str() {
             "mumps" => Genie::Mumps,
             "umfpack" => Genie::Umfpack,
-            "inteldss" => Genie::IntelDss,
             _ => Genie::Umfpack,
         }
     }
@@ -163,13 +154,11 @@ impl Genie {
     /// ```text
     /// Genie::Mumps    => "mumps"
     /// Genie::Umfpack  => "umfpack"
-    /// Genie::IntelDss => "inteldss"
     /// ```
     pub fn to_string(&self) -> String {
         match self {
             Genie::Mumps => "mumps".to_string(),
             Genie::Umfpack => "umfpack".to_string(),
-            Genie::IntelDss => "inteldss".to_string(),
         }
     }
 
@@ -178,13 +167,11 @@ impl Genie {
     /// ```text
     /// MUMPS     : Storage::Lower
     /// UMFPACK   : Storage::Full
-    /// Intel DSS : Storage::Upper
     /// ````
     pub fn storage(&self) -> Storage {
         match self {
             Genie::Mumps => Storage::Lower,
             Genie::Umfpack => Storage::Full,
-            Genie::IntelDss => Storage::Upper,
         }
     }
 
@@ -497,23 +484,18 @@ mod tests {
     fn genie_functions_work() {
         assert_eq!(Genie::from("mumps"), Genie::Mumps);
         assert_eq!(Genie::from("umfpack"), Genie::Umfpack);
-        assert_eq!(Genie::from("inteldss"), Genie::IntelDss);
         assert_eq!(Genie::from("blah-blah-blah"), Genie::Umfpack);
 
         assert_eq!(Genie::from("Mumps"), Genie::Mumps);
         assert_eq!(Genie::from("Umfpack"), Genie::Umfpack);
-        assert_eq!(Genie::from("IntelDss"), Genie::IntelDss);
 
         let l = Storage::Lower;
-        let u = Storage::Upper;
         let f = Storage::Full;
 
         let gl = Symmetry::General(l);
-        let gu = Symmetry::General(u);
         let gf = Symmetry::General(f);
 
         let pl = Symmetry::PositiveDefinite(l);
-        let pu = Symmetry::PositiveDefinite(u);
         let pf = Symmetry::PositiveDefinite(f);
 
         let genie = Genie::Mumps;
@@ -531,14 +513,6 @@ mod tests {
         assert_eq!(genie.symmetry(true, false), gf);
         assert_eq!(genie.symmetry(false, true), pf);
         assert_eq!(genie.symmetry(true, true), pf);
-
-        let genie = Genie::IntelDss;
-        assert_eq!(genie.to_string(), "inteldss");
-        assert_eq!(genie.storage(), u);
-        assert_eq!(genie.symmetry(false, false), Symmetry::No);
-        assert_eq!(genie.symmetry(true, false), gu);
-        assert_eq!(genie.symmetry(false, true), pu);
-        assert_eq!(genie.symmetry(true, true), pu);
     }
 
     #[test]

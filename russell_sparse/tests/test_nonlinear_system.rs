@@ -133,9 +133,3 @@ fn test_nonlinear_system_mumps() -> Result<(), StrError> {
 fn test_nonlinear_system_umfpack() -> Result<(), StrError> {
     solve_nonlinear_system(Genie::Umfpack)
 }
-
-#[cfg(with_intel_dss)]
-#[test]
-fn test_nonlinear_system_intel_dss() -> Result<(), StrError> {
-    solve_nonlinear_system(Genie::IntelDss)
-}

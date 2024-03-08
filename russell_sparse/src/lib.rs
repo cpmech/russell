@@ -21,11 +21,10 @@
 //! * [CooMatrix], [CscMatrix], [CsrMatrix], [SparseMatrix] -- For real numbers represented by `f64`
 //! * [ComplexCooMatrix], [ComplexCscMatrix], [ComplexCsrMatrix], [ComplexSparseMatrix] -- For complex numbers represented by [num_complex::Complex64]
 //!
-//! The COO matrix is the best when we need to update the values of the matrix because it has easy access to the triples (i, j, aij). For instance, the repetitive access is the primary use case for codes based on the finite element method (FEM) for approximating partial differential equations. Moreover, the COO matrix allows storing duplicate entries; for example, the triple `(0, 0, 123.0)` can be stored as two triples `(0, 0, 100.0)` and `(0, 0, 23.0)`. Again, this is the primary need for FEM codes because of the so-called assembly process where elements add to the same positions in the "global stiffness" matrix. Nonetheless, the duplicate entries must be summed up at some stage for the linear solver (e.g., MUMPS, UMFPACK, and Intel DSS). These linear solvers also use the more memory-efficient storage formats CSC and CSR. The following is the default input for these solvers:
+//! The COO matrix is the best when we need to update the values of the matrix because it has easy access to the triples (i, j, aij). For instance, the repetitive access is the primary use case for codes based on the finite element method (FEM) for approximating partial differential equations. Moreover, the COO matrix allows storing duplicate entries; for example, the triple `(0, 0, 123.0)` can be stored as two triples `(0, 0, 100.0)` and `(0, 0, 23.0)`. Again, this is the primary need for FEM codes because of the so-called assembly process where elements add to the same positions in the "global stiffness" matrix. Nonetheless, the duplicate entries must be summed up at some stage for the linear solver (e.g., MUMPS, UMFPACK). These linear solvers also use the more memory-efficient storage formats CSC and CSR. The following is the default input for these solvers:
 //!
 //! * [MUMPS](https://mumps-solver.org) -- requires a COO matrix as input internally
 //! * [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) -- requires a CSC matrix as input internally
-//! * [Intel DSS](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/direct-sparse-solver-dss-interface-routines.html) -- requires a CSR matrix as input internally
 //!
 //! Nonetheless, the implemented interface to the above linear solvers takes a [SparseMatrix] as input, which will automatically be converted from COO to CSC or COO to CSR, as appropriate.
 //!
@@ -39,7 +38,6 @@
 //!
 //! * [SolverMUMPS] -- thin wrapper to the MUMPS solver
 //! * [SolverUMFPACK] -- thin wrapper to the UMFPACK solver
-//! * [SolverIntelDSS] -- thin wrapper to the Intel DSS solver
 //!
 //! This library also provides a unifying Trait called [LinSolTrait], which the above structures implement. In addition, the [LinSolver] structure holds a "pointer" to one of the above structures and is a more convenient way to use the linear solvers in generic codes when we need to switch from solver to solver (e.g., for benchmarking). After allocating a [LinSolver], if needed, we can access the actual implementations (interfaces/thin wrappers) via the [LinSolver::actual] data member.
 //!
@@ -78,8 +76,8 @@
 //!     // allocate a square matrix and store as COO matrix
 //!     // ┌          ┐
 //!     // │  1  0  2 │
-//!     // │  0  0  3 │ << the diagonal 0 entry is optional,
-//!     // │  4  5  6 │    but should be saved for Intel DSS
+//!     // │  0  0  3 │
+//!     // │  4  5  6 │
 //!     // └          ┘
 //!     let (nrow, ncol, nnz) = (3, 3, 6);
 //!     let mut coo = CooMatrix::new(nrow, ncol, nnz, None)?;
@@ -254,7 +252,6 @@ mod lin_solver;
 pub mod prelude;
 mod read_matrix_market;
 mod samples;
-mod solver_intel_dss;
 mod solver_mumps;
 mod solver_umfpack;
 mod sparse_matrix;
@@ -274,7 +271,6 @@ pub use crate::lin_sol_params::*;
 pub use crate::lin_solver::*;
 pub use crate::read_matrix_market::*;
 pub use crate::samples::*;
-pub use crate::solver_intel_dss::*;
 pub use crate::solver_mumps::*;
 pub use crate::solver_umfpack::*;
 pub use crate::sparse_matrix::*;

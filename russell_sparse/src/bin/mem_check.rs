@@ -9,7 +9,6 @@ fn test_solver(genie: Genie) {
     match genie {
         Genie::Mumps => println!("Testing MUMPS solver\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver\n"),
-        Genie::IntelDss => println!("Testing Intel DSS solver\n"),
     }
 
     let mut solver = match LinSolver::new(genie) {
@@ -60,7 +59,6 @@ fn test_complex_solver(genie: Genie) {
     match genie {
         Genie::Mumps => println!("Testing Complex MUMPS solver\n"),
         Genie::Umfpack => println!("Testing Complex UMFPACK solver\n"),
-        Genie::IntelDss => println!("Testing Complex Intel DSS solver\n"),
     }
 
     let mut solver = match ComplexLinSolver::new(genie) {
@@ -74,7 +72,6 @@ fn test_complex_solver(genie: Genie) {
     let coo = match genie {
         Genie::Mumps => Samples::complex_symmetric_3x3_lower().0,
         Genie::Umfpack => Samples::complex_symmetric_3x3_full().0,
-        Genie::IntelDss => panic!("TODO"),
     };
     let mut mat = ComplexSparseMatrix::from_coo(coo);
 
@@ -115,7 +112,6 @@ fn test_solver_singular(genie: Genie) {
     match genie {
         Genie::Mumps => println!("Testing MUMPS solver (singular matrix)\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver (singular matrix)\n"),
-        Genie::IntelDss => println!("Testing Intel DSS solver (singular matrix)\n"),
     }
 
     let (ndim, nnz) = (2, 2);
@@ -148,9 +144,6 @@ fn main() {
     // real
     test_solver(Genie::Mumps);
     test_solver(Genie::Umfpack);
-    if cfg!(with_intel_dss) {
-        test_solver(Genie::IntelDss);
-    }
 
     // complex
     test_complex_solver(Genie::Mumps);
@@ -159,7 +152,6 @@ fn main() {
     // singular real
     test_solver_singular(Genie::Mumps);
     test_solver_singular(Genie::Umfpack);
-    // Note: Intel DSS cannot handle singular matrices
 
     println!("----------------------------------------------------------------------\n");
 }

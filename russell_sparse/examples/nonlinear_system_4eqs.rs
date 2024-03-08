@@ -22,7 +22,6 @@ fn main() -> Result<(), StrError> {
     let genie = match opt.genie.to_lowercase().as_str() {
         "mumps" => Genie::Mumps,
         "umfpack" => Genie::Umfpack,
-        "dss" => Genie::IntelDss,
         _ => Genie::Umfpack,
     };
     println!("... solving problem with {:?} ...", genie);

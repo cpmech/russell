@@ -29,7 +29,7 @@ Next, we recommend looking at the [russell_sparse](https://github.com/cpmech/rus
 Available crates:
 
 - [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab) [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab) Matrix-vector laboratory for linear algebra (with OpenBLAS or Intel MKL)
-- [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) Sparse matrix tools and solvers (with MUMPS, UMFPACK, and Intel DSS)
+- [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) Sparse matrix tools and solvers (with MUMPS and UMFPACK)
 - [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat) [russell_stat](https://github.com/cpmech/russell/tree/main/russell_stat) Statistics calculations, probability distributions, and pseudo random numbers
 - [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) Tensor analysis structures and functions for continuum mechanics
 
@@ -365,7 +365,6 @@ fn main() -> Result<(), StrError> {
     - [x] Implement the Compressed Sparse Column format (CSC)
     - [x] Implement the Compressed Sparse Row format (CSC)
     - [x] Improve the C-interface to UMFPACK and MUMPS
-    - [x] Implement the C-interface to Intel DSS
     - [ ] Write the conversion from COO to CSC in Rust
     - [ ] Possibly re-write (after benchmarking) the conversion from COO to CSR
     - [ ] Re-study the possibility of wrapping SuperLU (see deleted branch)

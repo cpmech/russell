@@ -753,6 +753,20 @@ mod tests {
             None,
             None,
         );
+
+        assert_eq!(
+            ExplicitRungeKutta::new(Params::new(Method::Radau5), &system).err(),
+            Some("cannot use Radau5 with ExplicitRungeKutta")
+        );
+        assert_eq!(
+            ExplicitRungeKutta::new(Params::new(Method::BwEuler), &system).err(),
+            Some("cannot use BwEuler with ExplicitRungeKutta")
+        );
+        assert_eq!(
+            ExplicitRungeKutta::new(Params::new(Method::FwEuler), &system).err(),
+            Some("cannot use FwEuler with ExplicitRungeKutta")
+        );
+
         let params = Params::new(Method::DoPri8);
         let mut solver = ExplicitRungeKutta::new(params, &system).unwrap();
         let mut work = Workspace::new(Method::DoPri8);
@@ -760,6 +774,7 @@ mod tests {
         let mut y = Vector::from(&[0.0]);
         let h = 0.1;
         let mut args = Args { count_f: 0 };
+
         assert_eq!(solver.step(&mut work, x, &y, h, &mut args).err(), Some("f: count = 1"));
         assert_eq!(solver.step(&mut work, x, &y, h, &mut args).err(), Some("f: count = 3"));
         solver.dense_out = Some(ErkDenseOut::new(Method::DoPri8, 1).unwrap());

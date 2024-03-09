@@ -48,7 +48,11 @@ impl<'a, A> OdeSolver<'a, A> {
     ///
     /// # Generics
     ///
-    /// See [System] for an explanation of the generic parameters.
+    /// The generic arguments here are:
+    ///
+    /// * `F` -- function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    /// * `J` -- function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    /// * `A` -- generic argument to assist in the `F` and `J` functions. It may be simply the [crate::NoArgs] type indicating that no arguments are needed.
     pub fn new<F, J>(params: Params, system: &'a System<F, J, A>) -> Result<Self, StrError>
     where
         F: 'a + Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,

@@ -99,7 +99,11 @@ where
     ///
     /// # Generics
     ///
-    /// See [System] for an explanation of the generic parameters.
+    /// The generic arguments here are:
+    ///
+    /// * `F` -- function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    /// * `J` -- function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    /// * `A` -- generic argument to assist in the `F` and `J` functions. It may be simply the [NoArgs] type indicating that no arguments are needed.
     pub fn new(
         ndim: usize,
         function: F,

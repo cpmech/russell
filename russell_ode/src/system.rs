@@ -104,6 +104,52 @@ where
     /// * `F` -- function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     /// * `J` -- function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
     /// * `A` -- generic argument to assist in the `F` and `J` functions. It may be simply the [NoArgs] type indicating that no arguments are needed.
+    ///
+    /// # Examples
+    ///
+    /// ## One equation (ndim = 1) without Jacobian
+    ///
+    /// ```rust
+    /// use russell_ode::prelude::*;
+    ///
+    /// let system = System::new(
+    ///     1,
+    ///     |f, x, y, _args: &mut NoArgs| {
+    ///         f[0] = x + y[0];
+    ///         Ok(())
+    ///     },
+    ///     no_jacobian,
+    ///     HasJacobian::No,
+    ///     None,
+    ///     None,
+    /// );
+    /// ```
+    ///
+    /// ## Two equation system with Jacobian
+    ///
+    /// ```rust
+    /// use russell_ode::prelude::*;
+    ///
+    /// let system = System::new(
+    ///     1,
+    ///     |f, x, y, _args: &mut NoArgs| {
+    ///         f[0] = x + 2.0 * y[0] + 3.0 * y[1];
+    ///         f[1] = x - 4.0 * y[0] - 5.0 * y[1];
+    ///         Ok(())
+    ///     },
+    ///     |jj, _x, _y, m, _args: &mut NoArgs| {
+    ///         jj.reset();
+    ///         jj.put(0, 0, m * (2.0)).unwrap();
+    ///         jj.put(0, 1, m * (3.0)).unwrap();
+    ///         jj.put(1, 0, m * (-4.0)).unwrap();
+    ///         jj.put(1, 1, m * (-5.0)).unwrap();
+    ///         Ok(())
+    ///     },
+    ///     HasJacobian::Yes,
+    ///     None,
+    ///     None,
+    /// );
+    /// ```
     pub fn new(
         ndim: usize,
         function: F,

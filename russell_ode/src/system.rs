@@ -1,6 +1,6 @@
 use crate::{HasJacobian, StrError};
 use russell_lab::Vector;
-use russell_sparse::{CooMatrix, Symmetry};
+use russell_sparse::{CooMatrix, Sym};
 use std::marker::PhantomData;
 
 /// Indicates that the system functions do not require extra arguments
@@ -71,8 +71,8 @@ where
     /// Number of non-zeros in the Jacobian matrix
     pub(crate) jac_nnz: usize,
 
-    /// Symmetry properties of the Jacobian matrix
-    pub(crate) jac_symmetry: Symmetry,
+    /// Symmetric flag for the Jacobian and mass matrices
+    pub(crate) jac_sym: Sym,
 
     /// Holds the mass matrix
     pub(crate) mass_matrix: Option<CooMatrix>,
@@ -94,8 +94,8 @@ where
     /// * `function` -- implements the function: `dy/dx = f(x, y)`
     /// * `jacobian` -- implements the Jacobian: `J = df/dy`
     /// * `has_jacobian` -- indicates that the analytical Jacobian is available (input by `jacobian`)
-    /// * `jac_nnz` -- the number of non-zeros in the Jacobian; use None to indicate a full matrix (i.e., nnz = ndim * ndim)
-    /// * `jac_symmetry` -- specifies the type of symmetry representation for the Jacobian matrix
+    /// * `jac_nnz` -- the number of non-zeros in the Jacobian; use None to indicate a dense matrix (i.e., nnz = ndim * ndim)
+    /// * `jac_sym` -- specifies the symmetric flag for the Jacobian and mass matrices
     ///
     /// # Generics
     ///
@@ -106,7 +106,7 @@ where
         jacobian: J,
         has_ana_jacobian: HasJacobian,
         jac_nnz: Option<usize>,
-        jac_symmetry: Option<Symmetry>,
+        jac_sym: Option<Sym>,
     ) -> Self {
         let jac_available = match has_ana_jacobian {
             HasJacobian::Yes => true,
@@ -117,8 +117,8 @@ where
             function,
             jacobian,
             jac_available,
-            jac_nnz: if let Some(n) = jac_nnz { n } else { ndim * ndim },
-            jac_symmetry: if let Some(s) = jac_symmetry { s } else { Symmetry::No },
+            jac_nnz: if let Some(nnz) = jac_nnz { nnz } else { ndim * ndim },
+            jac_sym: if let Some(sym) = jac_sym { sym } else { Sym::No },
             mass_matrix: None,
             phantom: PhantomData,
         }
@@ -132,12 +132,7 @@ where
     ///
     /// * `max_nnz` -- Max number of non-zero values
     pub fn init_mass_matrix(&mut self, max_nnz: usize) -> Result<(), StrError> {
-        let sym = if self.jac_symmetry == Symmetry::No {
-            None
-        } else {
-            Some(self.jac_symmetry)
-        };
-        self.mass_matrix = Some(CooMatrix::new(self.ndim, self.ndim, max_nnz, sym).unwrap());
+        self.mass_matrix = Some(CooMatrix::new(self.ndim, self.ndim, max_nnz, self.jac_sym).unwrap());
         Ok(())
     }
 
@@ -219,7 +214,7 @@ mod tests {
     use super::{no_jacobian, System};
     use crate::HasJacobian;
     use russell_lab::Vector;
-    use russell_sparse::CooMatrix;
+    use russell_sparse::{CooMatrix, Sym};
 
     #[test]
     fn ode_system_most_none_works() {
@@ -251,7 +246,7 @@ mod tests {
         let mut k = Vector::new(2);
         (ode.function)(&mut k, x, &y, &mut args).unwrap();
         // call jacobian function
-        let mut jj = CooMatrix::new(2, 2, 2, None).unwrap();
+        let mut jj = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
         let m = 1.0;
         assert_eq!(
             (ode.jacobian)(&mut jj, x, &y, m, &mut args),
@@ -310,7 +305,7 @@ mod tests {
         let mut k = Vector::new(2);
         (ode.function)(&mut k, x, &y, &mut args).unwrap();
         // call jacobian function
-        let mut jj = CooMatrix::new(2, 2, 2, None).unwrap();
+        let mut jj = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
         let m = 1.0;
         (ode.jacobian)(&mut jj, x, &y, m, &mut args).unwrap();
         // check

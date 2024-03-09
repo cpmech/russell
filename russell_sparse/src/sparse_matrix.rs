@@ -1,4 +1,4 @@
-use super::{NumCooMatrix, NumCscMatrix, NumCsrMatrix, Symmetry};
+use super::{NumCooMatrix, NumCscMatrix, NumCsrMatrix, Sym};
 use crate::StrError;
 use num_traits::{Num, NumCast};
 use russell_lab::{NumMatrix, NumVector};
@@ -58,10 +58,11 @@ where
     /// * `ncol` -- (≥ 1) Is the number of columns of the sparse matrix (must be fit i32)
     /// * `max_nnz` -- (≥ 1) Maximum number of entries ≥ nnz (number of non-zeros),
     ///   including entries with repeated indices. (must be fit i32)
-    /// * `symmetry` -- Defines the symmetry/storage, if any
-    pub fn new_coo(nrow: usize, ncol: usize, max_nnz: usize, symmetry: Option<Symmetry>) -> Result<Self, StrError> {
+    /// * `symmetric` -- indicates whether the matrix is symmetric or not.
+    ///   If symmetric, indicates the representation too.
+    pub fn new_coo(nrow: usize, ncol: usize, max_nnz: usize, symmetric: Sym) -> Result<Self, StrError> {
         Ok(NumSparseMatrix {
-            coo: Some(NumCooMatrix::new(nrow, ncol, max_nnz, symmetry)?),
+            coo: Some(NumCooMatrix::new(nrow, ncol, max_nnz, symmetric)?),
             csc: None,
             csr: None,
         })
@@ -79,6 +80,8 @@ where
     ///   to the number of non-zero values (sorted)
     /// * `row_indices` -- (len = nnz) row indices (sorted)
     /// * `values` -- the non-zero components of the matrix
+    /// * `symmetric` -- indicates whether the matrix is symmetric or not.
+    ///   If symmetric, indicates the representation too.
     ///
     /// The following conditions must be satisfied (nnz is the number of non-zeros
     /// and nnz_dup is the number of non-zeros with possible duplicates):
@@ -98,7 +101,7 @@ where
         col_pointers: Vec<i32>,
         row_indices: Vec<i32>,
         values: Vec<T>,
-        symmetry: Option<Symmetry>,
+        symmetric: Sym,
     ) -> Result<Self, StrError> {
         Ok(NumSparseMatrix {
             coo: None,
@@ -108,7 +111,7 @@ where
                 col_pointers,
                 row_indices,
                 values,
-                symmetry,
+                symmetric,
             )?),
             csr: None,
         })
@@ -126,6 +129,8 @@ where
     ///   to the number of non-zero values (sorted)
     /// * `col_indices` -- (len = nnz) column indices (sorted)
     /// * `values` -- the non-zero components of the matrix
+    /// * `symmetric` -- indicates whether the matrix is symmetric or not.
+    ///   If symmetric, indicates the representation too.
     ///
     /// The following conditions must be satisfied (nnz is the number of non-zeros
     /// and nnz_dup is the number of non-zeros with possible duplicates):
@@ -145,7 +150,7 @@ where
         row_pointers: Vec<i32>,
         col_indices: Vec<i32>,
         values: Vec<T>,
-        symmetry: Option<Symmetry>,
+        symmetric: Sym,
     ) -> Result<Self, StrError> {
         Ok(NumSparseMatrix {
             coo: None,
@@ -156,7 +161,7 @@ where
                 row_pointers,
                 col_indices,
                 values,
-                symmetry,
+                symmetric,
             )?),
         })
     }
@@ -190,10 +195,10 @@ where
 
     /// Returns information about the dimensions and symmetry type
     ///
-    /// Returns `(nrow, ncol, nnz, symmetry)`
+    /// Returns `(nrow, ncol, nnz, sym)`
     ///
     /// **Priority**: CSC -> CSR -> COO
-    pub fn get_info(&self) -> (usize, usize, usize, Symmetry) {
+    pub fn get_info(&self) -> (usize, usize, usize, Sym) {
         match &self.csc {
             Some(csc) => csc.get_info(),
             None => match &self.csr {
@@ -437,27 +442,27 @@ where
 #[cfg(test)]
 mod tests {
     use super::NumSparseMatrix;
-    use crate::{Samples, Symmetry};
+    use crate::{Samples, Sym};
     use russell_lab::{vec_approx_eq, Matrix, Vector};
 
     #[test]
     fn new_functions_work() {
         // COO
-        NumSparseMatrix::<f64>::new_coo(1, 1, 1, None).unwrap();
+        NumSparseMatrix::<f64>::new_coo(1, 1, 1, Sym::No).unwrap();
         assert_eq!(
-            NumSparseMatrix::<f64>::new_coo(0, 1, 1, None).err(),
+            NumSparseMatrix::<f64>::new_coo(0, 1, 1, Sym::No).err(),
             Some("nrow must be ≥ 1")
         );
         // CSC
-        NumSparseMatrix::<f64>::new_csc(1, 1, vec![0, 1], vec![0], vec![0.0], None).unwrap();
+        NumSparseMatrix::<f64>::new_csc(1, 1, vec![0, 1], vec![0], vec![0.0], Sym::No).unwrap();
         assert_eq!(
-            NumSparseMatrix::<f64>::new_csc(0, 1, vec![0, 1], vec![0], vec![0.0], None).err(),
+            NumSparseMatrix::<f64>::new_csc(0, 1, vec![0, 1], vec![0], vec![0.0], Sym::No).err(),
             Some("nrow must be ≥ 1")
         );
         // CSR
-        NumSparseMatrix::<f64>::new_csr(1, 1, vec![0, 1], vec![0], vec![0.0], None).unwrap();
+        NumSparseMatrix::<f64>::new_csr(1, 1, vec![0, 1], vec![0], vec![0.0], Sym::No).unwrap();
         assert_eq!(
-            NumSparseMatrix::<f64>::new_csr(0, 1, vec![0, 1], vec![0], vec![0.0], None).err(),
+            NumSparseMatrix::<f64>::new_csr(0, 1, vec![0, 1], vec![0], vec![0.0], Sym::No).err(),
             Some("nrow must be ≥ 1")
         );
     }
@@ -471,22 +476,22 @@ mod tests {
         let mut wrong = Vector::new(2);
         // COO
         let coo_mat = NumSparseMatrix::<f64>::from_coo(coo);
-        assert_eq!(coo_mat.get_info(), (1, 2, 2, Symmetry::No));
-        assert_eq!(coo_mat.get_coo().unwrap().get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(coo_mat.get_info(), (1, 2, 2, Sym::No));
+        assert_eq!(coo_mat.get_coo().unwrap().get_info(), (1, 2, 2, Sym::No));
         assert_eq!(coo_mat.get_csc().err(), Some("CSC matrix is not available"));
         assert_eq!(coo_mat.get_csr().err(), Some("CSR matrix is not available"));
         assert_eq!(coo_mat.get_values(), &[10.0, 20.0]);
         // CSC
         let csc_mat = NumSparseMatrix::<f64>::from_csc(csc);
-        assert_eq!(csc_mat.get_info(), (1, 2, 2, Symmetry::No));
-        assert_eq!(csc_mat.get_csc().unwrap().get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(csc_mat.get_info(), (1, 2, 2, Sym::No));
+        assert_eq!(csc_mat.get_csc().unwrap().get_info(), (1, 2, 2, Sym::No));
         assert_eq!(csc_mat.get_coo().err(), Some("COO matrix is not available"));
         assert_eq!(csc_mat.get_csr().err(), Some("CSR matrix is not available"));
         assert_eq!(csc_mat.get_values(), &[10.0, 20.0]);
         // CSR
         let csr_mat = NumSparseMatrix::<f64>::from_csr(csr);
-        assert_eq!(csr_mat.get_info(), (1, 2, 2, Symmetry::No));
-        assert_eq!(csr_mat.get_csr().unwrap().get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(csr_mat.get_info(), (1, 2, 2, Sym::No));
+        assert_eq!(csr_mat.get_csr().unwrap().get_info(), (1, 2, 2, Sym::No));
         assert_eq!(csr_mat.get_csc().err(), Some("CSC matrix is not available"));
         assert_eq!(csr_mat.get_coo().err(), Some("COO matrix is not available"));
         assert_eq!(csr_mat.get_values(), &[10.0, 20.0]);
@@ -514,29 +519,26 @@ mod tests {
     fn setters_work() {
         // test matrices
         let (coo, csc, csr, _) = Samples::rectangular_1x2(false, false);
-        let mut other = NumSparseMatrix::<f64>::new_coo(1, 1, 1, None).unwrap();
-        let mut wrong = NumSparseMatrix::<f64>::new_coo(1, 1, 3, None).unwrap();
+        let mut other = NumSparseMatrix::<f64>::new_coo(1, 1, 1, Sym::No).unwrap();
+        let mut wrong = NumSparseMatrix::<f64>::new_coo(1, 1, 3, Sym::No).unwrap();
         other.put(0, 0, 2.0).unwrap();
         wrong.put(0, 0, 1.0).unwrap();
         wrong.put(0, 0, 2.0).unwrap();
         wrong.put(0, 0, 3.0).unwrap();
         // COO
         let mut coo_mat = NumSparseMatrix::<f64>::from_coo(coo);
-        assert_eq!(coo_mat.get_coo_mut().unwrap().get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(coo_mat.get_coo_mut().unwrap().get_info(), (1, 2, 2, Sym::No));
         assert_eq!(coo_mat.get_csc_mut().err(), Some("CSC matrix is not available"));
         assert_eq!(coo_mat.get_csr_mut().err(), Some("CSR matrix is not available"));
-        let mut empty = NumSparseMatrix::<f64>::new_coo(1, 1, 1, None).unwrap();
+        let mut empty = NumSparseMatrix::<f64>::new_coo(1, 1, 1, Sym::No).unwrap();
         assert_eq!(empty.get_csc_or_from_coo().err(), Some("COO to CSC requires nnz > 0"));
         assert_eq!(empty.get_csr_or_from_coo().err(), Some("COO to CSR requires nnz > 0"));
         // CSC
         let mut csc_mat = NumSparseMatrix::<f64>::from_csc(csc);
-        assert_eq!(csc_mat.get_csc_mut().unwrap().get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(csc_mat.get_csc_mut().unwrap().get_info(), (1, 2, 2, Sym::No));
         assert_eq!(csc_mat.get_coo_mut().err(), Some("COO matrix is not available"));
         assert_eq!(csc_mat.get_csr_mut().err(), Some("CSR matrix is not available"));
-        assert_eq!(
-            csc_mat.get_csc_or_from_coo().unwrap().get_info(),
-            (1, 2, 2, Symmetry::No)
-        );
+        assert_eq!(csc_mat.get_csc_or_from_coo().unwrap().get_info(), (1, 2, 2, Sym::No));
         assert_eq!(
             csc_mat.get_csr_or_from_coo().err(),
             Some("CSR is not available and COO matrix is not available to convert to CSR")
@@ -559,13 +561,10 @@ mod tests {
         );
         // CSR
         let mut csr_mat = NumSparseMatrix::<f64>::from_csr(csr);
-        assert_eq!(csr_mat.get_csr_mut().unwrap().get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(csr_mat.get_csr_mut().unwrap().get_info(), (1, 2, 2, Sym::No));
         assert_eq!(csr_mat.get_csc_mut().err(), Some("CSC matrix is not available"));
         assert_eq!(csr_mat.get_coo_mut().err(), Some("COO matrix is not available"));
-        assert_eq!(
-            csr_mat.get_csr_or_from_coo().unwrap().get_info(),
-            (1, 2, 2, Symmetry::No)
-        );
+        assert_eq!(csr_mat.get_csr_or_from_coo().unwrap().get_info(), (1, 2, 2, Sym::No));
         assert_eq!(
             csr_mat.get_csc_or_from_coo().err(),
             Some("CSC is not available and COO matrix is not available to convert to CSC")
@@ -587,7 +586,7 @@ mod tests {
             Some("COO matrix is not available to augment")
         );
         // COO
-        let mut coo = NumSparseMatrix::<f64>::new_coo(2, 2, 1, None).unwrap();
+        let mut coo = NumSparseMatrix::<f64>::new_coo(2, 2, 1, Sym::No).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         assert_eq!(
             coo.put(1, 1, 2.0).err(),
@@ -596,7 +595,7 @@ mod tests {
         coo.reset().unwrap();
         coo.put(1, 1, 2.0).unwrap();
         // COO (assign)
-        let mut this = NumSparseMatrix::<f64>::new_coo(1, 1, 1, None).unwrap();
+        let mut this = NumSparseMatrix::<f64>::new_coo(1, 1, 1, Sym::No).unwrap();
         this.put(0, 0, 8000.0).unwrap();
         this.assign(4.0, &other).unwrap();
         assert_eq!(
@@ -611,7 +610,7 @@ mod tests {
         );
         assert_eq!(this.assign(2.0, &csc_mat).err(), Some("COO matrix is not available"));
         // COO (augment)
-        let mut this = NumSparseMatrix::<f64>::new_coo(1, 1, 1 + 1, None).unwrap();
+        let mut this = NumSparseMatrix::<f64>::new_coo(1, 1, 1 + 1, Sym::No).unwrap();
         this.put(0, 0, 100.0).unwrap();
         this.augment(4.0, &other).unwrap();
         assert_eq!(
@@ -658,7 +657,7 @@ mod tests {
     #[test]
     fn derive_methods_work() {
         let (coo, _, _, _) = Samples::tiny_1x1();
-        let (nrow, ncol, nnz, symmetry) = coo.get_info();
+        let (nrow, ncol, nnz, sym) = coo.get_info();
         let mat = NumSparseMatrix::<f64>::from_coo(coo);
         let mut clone = mat.clone();
         clone.get_coo_mut().unwrap().values[0] *= 2.0;
@@ -668,11 +667,11 @@ mod tests {
         let json = serde_json::to_string(&mat).unwrap();
         assert_eq!(
             json,
-            r#"{"coo":{"symmetry":"No","nrow":1,"ncol":1,"nnz":1,"max_nnz":1,"indices_i":[0],"indices_j":[0],"values":[123.0]},"csc":null,"csr":null}"#
+            r#"{"coo":{"symmetric":"No","nrow":1,"ncol":1,"nnz":1,"max_nnz":1,"indices_i":[0],"indices_j":[0],"values":[123.0]},"csc":null,"csr":null}"#
         );
         let from_json: NumSparseMatrix<f64> = serde_json::from_str(&json).unwrap();
-        let (json_nrow, json_ncol, json_nnz, json_symmetry) = from_json.get_coo().unwrap().get_info();
-        assert_eq!(json_symmetry, symmetry);
+        let (json_nrow, json_ncol, json_nnz, json_sym) = from_json.get_coo().unwrap().get_info();
+        assert_eq!(json_sym, sym);
         assert_eq!(json_nrow, nrow);
         assert_eq!(json_ncol, ncol);
         assert_eq!(json_nnz, nnz);

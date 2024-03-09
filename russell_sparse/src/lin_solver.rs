@@ -13,7 +13,7 @@ pub trait LinSolTrait {
     ///
     /// # Notes
     ///
-    /// 1. The structure of the matrix (nrow, ncol, nnz, symmetry) must be
+    /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
     ///    exactly the same among multiple calls to `factorize`. The values may differ
     ///    from call to call, nonetheless.
     /// 2. The first call to `factorize` will define the structure which must be
@@ -109,7 +109,7 @@ impl<'a> LinSolver<'a> {
     ///     let nnz = 5; // number of non-zero values
     ///
     ///     // allocate the coefficient matrix
-    ///     let mut mat = SparseMatrix::new_coo(ndim, ndim, nnz, None)?;
+    ///     let mut mat = SparseMatrix::new_coo(ndim, ndim, nnz, Sym::No)?;
     ///     mat.put(0, 0, 0.2)?;
     ///     mat.put(0, 1, 0.2)?;
     ///     mat.put(1, 0, 0.5)?;

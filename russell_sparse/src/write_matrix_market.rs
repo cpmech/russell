@@ -1,4 +1,4 @@
-use super::{CscMatrix, CsrMatrix, Symmetry};
+use super::{CscMatrix, CsrMatrix, Sym};
 use crate::StrError;
 use std::ffi::OsStr;
 use std::fmt::Write;
@@ -31,11 +31,11 @@ where
     let d = if vismatrix { 0 } else { 1 };
 
     // info
-    let (nrow, ncol, nnz, symmetry) = mat.get_info();
+    let (nrow, ncol, nnz, sym) = mat.get_info();
 
     // write header
     if !vismatrix {
-        if symmetry == Symmetry::No {
+        if sym == Sym::No {
             write!(&mut buffer, "%%MatrixMarket matrix coordinate real general\n").unwrap();
         } else {
             write!(&mut buffer, "%%MatrixMarket matrix coordinate real symmetric\n").unwrap();
@@ -99,11 +99,11 @@ where
     let d = if vismatrix { 0 } else { 1 };
 
     // info
-    let (nrow, ncol, nnz, symmetry) = mat.get_info();
+    let (nrow, ncol, nnz, sym) = mat.get_info();
 
     // write header
     if !vismatrix {
-        if symmetry == Symmetry::No {
+        if sym == Sym::No {
             write!(&mut buffer, "%%MatrixMarket matrix coordinate real general\n").unwrap();
         } else {
             write!(&mut buffer, "%%MatrixMarket matrix coordinate real symmetric\n").unwrap();
@@ -182,7 +182,7 @@ mod tests {
         //  2  -1              2     sym
         // -1   2  -1    =>   -1   2
         //     -1   2             -1   2
-        let (_, csc, _, _) = Samples::positive_definite_3x3();
+        let (_, csc, _, _) = Samples::positive_definite_3x3_lower();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_csc.mtx";
         csc_write_matrix_market(&csc, full_path, false).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
@@ -229,7 +229,7 @@ mod tests {
         //  2  -1              2     sym
         // -1   2  -1    =>   -1   2
         //     -1   2             -1   2
-        let (_, _, csr, _) = Samples::positive_definite_3x3();
+        let (_, _, csr, _) = Samples::positive_definite_3x3_lower();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_csr.mtx";
         csr_write_matrix_market(&csr, full_path, false).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();

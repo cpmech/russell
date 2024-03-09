@@ -9,6 +9,9 @@ pub struct LinSolParams {
     /// Defines the scaling strategy
     pub scaling: Scaling,
 
+    /// Indicates that the coefficient matrix is positive-definite (only considered if the matrix is symmetric)
+    pub positive_definite: bool,
+
     /// Requests that the determinant be computed
     ///
     /// **Note:** The determinant will be available after `factorize`
@@ -55,6 +58,7 @@ impl LinSolParams {
         LinSolParams {
             ordering: Ordering::Auto,
             scaling: Scaling::Auto,
+            positive_definite: false,
             compute_determinant: false,
             compute_error_estimates: false,
             compute_condition_numbers: false,

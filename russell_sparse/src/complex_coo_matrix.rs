@@ -30,8 +30,8 @@ impl ComplexCooMatrix {
         if other.ncol != self.ncol {
             return Err("matrices must have the same ncol");
         }
-        if other.symmetry != self.symmetry {
-            return Err("matrices must have the same symmetry");
+        if other.symmetric != self.symmetric {
+            return Err("matrices must have the same symmetric flag");
         }
         self.reset();
         for p in 0..other.nnz {
@@ -68,8 +68,8 @@ impl ComplexCooMatrix {
         if other.ncol != self.ncol {
             return Err("matrices must have the same ncol");
         }
-        if other.symmetry != self.symmetry {
-            return Err("matrices must have the same symmetry");
+        if other.symmetric != self.symmetric {
+            return Err("matrices must have the same symmetric flag");
         }
         for p in 0..other.nnz {
             let i = other.indices_i[p] as usize;
@@ -84,20 +84,19 @@ impl ComplexCooMatrix {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ComplexCooMatrix, CooMatrix, Storage, Symmetry};
+    use crate::{ComplexCooMatrix, CooMatrix, Sym};
     use num_complex::Complex64;
     use russell_lab::cpx;
 
     #[test]
     fn assign_capture_errors() {
-        let sym = Some(Symmetry::General(Storage::Full));
         let nnz_a = 1;
         let nnz_b = 2; // wrong: must be ≤ nnz_a
-        let mut a_1x2 = ComplexCooMatrix::new(1, 2, nnz_a, None).unwrap();
-        let b_2x1 = CooMatrix::new(2, 1, nnz_b, None).unwrap();
-        let b_1x3 = CooMatrix::new(1, 3, nnz_b, None).unwrap();
-        let b_1x2_sym = CooMatrix::new(1, 2, nnz_b, sym).unwrap();
-        let mut b_1x2 = CooMatrix::new(1, 2, nnz_b, None).unwrap();
+        let mut a_1x2 = ComplexCooMatrix::new(1, 2, nnz_a, Sym::No).unwrap();
+        let b_2x1 = CooMatrix::new(2, 1, nnz_b, Sym::No).unwrap();
+        let b_1x3 = CooMatrix::new(1, 3, nnz_b, Sym::No).unwrap();
+        let b_1x2_sym = CooMatrix::new(1, 2, nnz_b, Sym::YesFull).unwrap();
+        let mut b_1x2 = CooMatrix::new(1, 2, nnz_b, Sym::No).unwrap();
         a_1x2.put(0, 0, cpx!(123.0, 321.0)).unwrap();
         b_1x2.put(0, 0, 456.0).unwrap();
         b_1x2.put(0, 1, 654.0).unwrap();
@@ -111,7 +110,7 @@ mod tests {
         );
         assert_eq!(
             a_1x2.assign_real(2.0, 3.0, &b_1x2_sym).err(),
-            Some("matrices must have the same symmetry")
+            Some("matrices must have the same symmetric flag")
         );
         assert_eq!(
             a_1x2.assign_real(2.0, 3.0, &b_1x2).err(),
@@ -122,8 +121,8 @@ mod tests {
     #[test]
     fn assign_works() {
         let nnz = 2;
-        let mut a = ComplexCooMatrix::new(3, 2, nnz, None).unwrap();
-        let mut b = CooMatrix::new(3, 2, nnz, None).unwrap();
+        let mut a = ComplexCooMatrix::new(3, 2, nnz, Sym::No).unwrap();
+        let mut b = CooMatrix::new(3, 2, nnz, Sym::No).unwrap();
         a.put(2, 1, cpx!(1000.0, 2000.0)).unwrap();
         b.put(0, 0, 10.0).unwrap();
         b.put(2, 1, 20.0).unwrap();
@@ -148,14 +147,13 @@ mod tests {
 
     #[test]
     fn augment_capture_errors() {
-        let sym = Some(Symmetry::General(Storage::Full));
         let nnz_a = 1;
         let nnz_b = 1;
-        let mut a_1x2 = ComplexCooMatrix::new(1, 2, nnz_a /* + nnz_b */, None).unwrap();
-        let b_2x1 = CooMatrix::new(2, 1, nnz_b, None).unwrap();
-        let b_1x3 = CooMatrix::new(1, 3, nnz_b, None).unwrap();
-        let b_1x2_sym = CooMatrix::new(1, 2, nnz_b, sym).unwrap();
-        let mut b_1x2 = CooMatrix::new(1, 2, nnz_b, None).unwrap();
+        let mut a_1x2 = ComplexCooMatrix::new(1, 2, nnz_a /* + nnz_b */, Sym::No).unwrap();
+        let b_2x1 = CooMatrix::new(2, 1, nnz_b, Sym::No).unwrap();
+        let b_1x3 = CooMatrix::new(1, 3, nnz_b, Sym::No).unwrap();
+        let b_1x2_sym = CooMatrix::new(1, 2, nnz_b, Sym::YesFull).unwrap();
+        let mut b_1x2 = CooMatrix::new(1, 2, nnz_b, Sym::No).unwrap();
         a_1x2.put(0, 0, cpx!(123.0, 321.0)).unwrap();
         b_1x2.put(0, 0, 456.0).unwrap();
         assert_eq!(
@@ -168,7 +166,7 @@ mod tests {
         );
         assert_eq!(
             a_1x2.augment_real(2.0, 3.0, &b_1x2_sym).err(),
-            Some("matrices must have the same symmetry")
+            Some("matrices must have the same symmetric flag")
         );
         assert_eq!(
             a_1x2.augment_real(2.0, 3.0, &b_1x2).err(),
@@ -180,8 +178,8 @@ mod tests {
     fn augment_works() {
         let nnz_a = 1;
         let nnz_b = 2;
-        let mut a = ComplexCooMatrix::new(3, 2, nnz_a + nnz_b, None).unwrap();
-        let mut b = CooMatrix::new(3, 2, nnz_b, None).unwrap();
+        let mut a = ComplexCooMatrix::new(3, 2, nnz_a + nnz_b, Sym::No).unwrap();
+        let mut b = CooMatrix::new(3, 2, nnz_b, Sym::No).unwrap();
         a.put(2, 1, cpx!(1000.0, 2000.0)).unwrap();
         b.put(0, 0, 10.0).unwrap();
         b.put(2, 1, 20.0).unwrap();

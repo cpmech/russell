@@ -124,7 +124,7 @@ fn test_solver_singular(genie: Genie) {
         }
     };
 
-    let mut coo_singular = match SparseMatrix::new_coo(ndim, ndim, nnz, None) {
+    let mut coo_singular = match SparseMatrix::new_coo(ndim, ndim, nnz, Sym::No) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new CooMatrix): {}", e);

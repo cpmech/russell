@@ -29,8 +29,7 @@ fn main() -> Result<(), StrError> {
         6.0, 1.0, //            j = 4, count = 10, 11,
              //                                12
     ];
-    let symmetry = None;
-    let csc = CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, symmetry)?;
+    let csc = CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, Sym::No)?;
 
     // covert to dense
     let a = csc.as_dense();

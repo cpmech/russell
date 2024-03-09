@@ -29,7 +29,7 @@ fn main() -> Result<(), StrError> {
 
     // allocate Jacobian matrix (J) as SparseMatrix
     let (neq, nnz) = (4, 16);
-    let mut jj = SparseMatrix::new_coo(neq, neq, nnz, None).unwrap();
+    let mut jj = SparseMatrix::new_coo(neq, neq, nnz, Sym::No).unwrap();
 
     // allocate residual (rr), vector of unknowns (uu), and minus-uu (mdu)
     let mut rr = Vector::new(neq);

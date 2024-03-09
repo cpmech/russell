@@ -1,5 +1,5 @@
 use crate::{ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix};
-use crate::{CooMatrix, CscMatrix, CsrMatrix, Storage, Symmetry};
+use crate::{CooMatrix, CscMatrix, CsrMatrix, Sym};
 use num_complex::Complex64;
 use russell_lab::cpx;
 
@@ -17,7 +17,7 @@ impl Samples {
     /// └     ┘
     /// ```
     pub fn tiny_1x1() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = None;
+        let sym = Sym::No;
         let nrow = 1;
         let ncol = 1;
         let max_nnz = 1;
@@ -44,7 +44,7 @@ impl Samples {
     /// └       ┘
     /// ```
     pub fn complex_tiny_1x1() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
-        let sym = None;
+        let sym = Sym::No;
         let nrow = 1;
         let ncol = 1;
         let max_nnz = 1;
@@ -70,9 +70,9 @@ impl Samples {
     /// -1   2  -1    =>   -1   2
     ///     -1   2             -1   2
     /// ```
-    pub fn positive_definite_3x3() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+    pub fn positive_definite_3x3_lower() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let (nrow, ncol, nnz) = (3, 3, 6);
-        let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
+        let sym = Sym::YesLower;
         let mut coo = CooMatrix::new(nrow, ncol, nnz, sym).unwrap();
         coo.put(1, 0, -0.5).unwrap(); // duplicate
         coo.put(0, 0, 2.0).unwrap();
@@ -118,7 +118,7 @@ impl Samples {
     /// ```
     pub fn complex_symmetric_3x3_lower() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
         let (nrow, ncol, nnz) = (3, 3, 6);
-        let sym = Some(Symmetry::General(Storage::Lower));
+        let sym = Sym::YesLower;
         let mut coo = ComplexCooMatrix::new(nrow, ncol, nnz, sym).unwrap();
         coo.put(1, 0, cpx!(-0.5, -0.5)).unwrap(); // duplicate
         coo.put(0, 0, cpx!(2.0, 1.0)).unwrap();
@@ -166,7 +166,7 @@ impl Samples {
     /// ```
     pub fn complex_symmetric_3x3_full() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
         let (nrow, ncol, nnz) = (3, 3, 8);
-        let sym = Some(Symmetry::General(Storage::Full));
+        let sym = Sym::YesFull;
         let mut coo = ComplexCooMatrix::new(nrow, ncol, nnz, sym).unwrap();
         coo.put(1, 0, cpx!(-0.5, -0.5)).unwrap(); // duplicate
         coo.put(0, 0, cpx!(2.0, 1.0)).unwrap();
@@ -218,7 +218,7 @@ impl Samples {
     /// ```
     pub fn lower_symmetric_5x5() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let (nrow, ncol, nnz) = (5, 5, 18);
-        let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
+        let sym = Sym::YesLower;
         let mut coo = CooMatrix::new(nrow, ncol, nnz, sym).unwrap();
         coo.put(1, 1, 2.0).unwrap();
         coo.put(4, 2, 2.5).unwrap(); // duplicate
@@ -302,7 +302,7 @@ impl Samples {
         shuffle_coo_entries: bool,
         duplicate_coo_entries: bool,
     ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = None;
+        let sym = Sym::No;
         let nrow = 3;
         let ncol = 3;
         let max_nnz = 10; // more nnz than needed => OK
@@ -401,7 +401,7 @@ impl Samples {
     /// let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
     /// ```
     pub fn umfpack_unsymmetric_5x5() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = None;
+        let sym = Sym::No;
         let nrow = 5;
         let ncol = 5;
         let max_nnz = 13;
@@ -471,7 +471,7 @@ impl Samples {
     /// Reference:
     /// <https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/sparse-blas-csr-matrix-storage-format.html>
     pub fn mkl_unsymmetric_5x5() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = None;
+        let sym = Sym::No;
         let nrow = 5;
         let ncol = 5;
         let mut coo = CooMatrix::new(nrow, ncol, 13, sym).unwrap();
@@ -540,7 +540,7 @@ impl Samples {
         shuffle_coo_entries: bool,
         duplicate_coo_entries: bool,
     ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = None;
+        let sym = Sym::No;
         let nrow = 5;
         let ncol = 5;
         let max_nnz = 11; // more nnz than needed => OK
@@ -655,7 +655,7 @@ impl Samples {
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
     pub fn mkl_positive_definite_5x5_lower() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
+        let sym = Sym::YesLower;
         let nrow = 5;
         let ncol = 5;
         let mut coo = CooMatrix::new(nrow, ncol, 9, sym).unwrap();
@@ -729,7 +729,7 @@ impl Samples {
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
     pub fn mkl_positive_definite_5x5_upper() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = Some(Symmetry::PositiveDefinite(Storage::Upper));
+        let sym = Sym::YesUpper;
         let nrow = 5;
         let ncol = 5;
         let mut coo = CooMatrix::new(nrow, ncol, 9, sym).unwrap();
@@ -806,7 +806,7 @@ impl Samples {
         shuffle_coo_entries: bool,
         duplicate_coo_entries: bool,
     ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = Some(Symmetry::General(Storage::Lower));
+        let sym = Sym::YesLower;
         let nrow = 5;
         let ncol = 5;
         let max_nnz = 13;
@@ -928,7 +928,7 @@ impl Samples {
         shuffle_coo_entries: bool,
         duplicate_coo_entries: bool,
     ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = Some(Symmetry::General(Storage::Upper));
+        let sym = Sym::YesUpper;
         let nrow = 5;
         let ncol = 5;
         let max_nnz = 15;
@@ -1046,7 +1046,7 @@ impl Samples {
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
     pub fn mkl_symmetric_5x5_full() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = Some(Symmetry::General(Storage::Full));
+        let sym = Sym::YesFull;
         let nrow = 5;
         let ncol = 5;
         let max_nnz = 13;
@@ -1114,7 +1114,7 @@ impl Samples {
         shuffle_coo_entries: bool,
         duplicate_coo_entries: bool,
     ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = None;
+        let sym = Sym::No;
         let nrow = 1;
         let ncol = 2;
         let max_nnz = 10;
@@ -1174,7 +1174,7 @@ impl Samples {
     /// └               ┘
     /// ```
     pub fn rectangular_1x7() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = None;
+        let sym = Sym::No;
         let nrow = 1;
         let ncol = 7;
         let mut coo = CooMatrix::new(nrow, ncol, 4, sym).unwrap();
@@ -1221,7 +1221,7 @@ impl Samples {
     /// └   ┘
     /// ```
     pub fn rectangular_7x1() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = None;
+        let sym = Sym::No;
         let nrow = 7;
         let ncol = 1;
         let mut coo = CooMatrix::new(nrow, ncol, 3, sym).unwrap();
@@ -1261,7 +1261,7 @@ impl Samples {
     ///  15  -6  .  3
     /// ```
     pub fn rectangular_3x4() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = None;
+        let sym = Sym::No;
         let nrow = 3;
         let ncol = 4;
         let mut coo = CooMatrix::new(nrow, ncol, 9, sym).unwrap();
@@ -1316,7 +1316,7 @@ impl Samples {
     ///  1      .      .  
     /// ```
     pub fn complex_rectangular_4x3() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, f64) {
-        let sym = None;
+        let sym = Sym::No;
         let nrow = 4;
         let ncol = 3;
         let mut coo = ComplexCooMatrix::new(nrow, ncol, 7, sym).unwrap();
@@ -1417,7 +1417,7 @@ mod tests {
         assert_eq!(csc.row_indices.len(), nnz);
         assert_eq!(csc.values.len(), nnz);
         // CSC vs COO
-        assert_eq!(csc.symmetry, coo.symmetry);
+        assert_eq!(csc.symmetric, coo.symmetric);
         assert_eq!(csc.nrow, coo.nrow);
         assert_eq!(csc.ncol, coo.ncol);
         // CSR
@@ -1430,7 +1430,7 @@ mod tests {
         assert_eq!(csr.col_indices.len(), nnz);
         assert_eq!(csr.values.len(), nnz);
         // CSR vs COO
-        assert_eq!(csr.symmetry, coo.symmetry);
+        assert_eq!(csr.symmetric, coo.symmetric);
         assert_eq!(csr.nrow, coo.nrow);
         assert_eq!(csr.ncol, coo.ncol);
     }
@@ -1475,7 +1475,7 @@ mod tests {
         let a = Matrix::from(correct);
         let mut ai = Matrix::new(3, 3);
         let correct_det = mat_inverse(&mut ai, &a).unwrap();
-        let (coo, csc, csr, det) = Samples::positive_definite_3x3();
+        let (coo, csc, csr, det) = Samples::positive_definite_3x3_lower();
         approx_eq(det, correct_det, 1e-15);
         mat_approx_eq(&coo.as_dense(), correct, 1e-15);
         mat_approx_eq(&csc.as_dense(), correct, 1e-15);

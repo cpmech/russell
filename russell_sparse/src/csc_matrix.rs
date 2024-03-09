@@ -1,4 +1,4 @@
-use super::{to_i32, NumCooMatrix, NumCsrMatrix, Symmetry};
+use super::{to_i32, NumCooMatrix, NumCsrMatrix, Sym};
 use crate::StrError;
 use num_traits::{Num, NumCast};
 use russell_lab::{NumMatrix, NumVector};
@@ -54,8 +54,8 @@ pub struct NumCscMatrix<T>
 where
     T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
-    /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
-    pub(crate) symmetry: Symmetry,
+    /// Indicates whether the matrix is symmetric or not. If symmetric, indicates the representation too.
+    pub(crate) symmetric: Sym,
 
     /// Holds the number of rows (must fit i32)
     pub(crate) nrow: usize,
@@ -125,6 +125,8 @@ where
     ///   to the number of non-zero values (sorted)
     /// * `row_indices` -- (len = nnz) row indices (sorted)
     /// * `values` -- the non-zero components of the matrix
+    /// * `symmetric` -- indicates whether the matrix is symmetric or not.
+    ///   If symmetric, indicates the representation too.
     ///
     /// The following conditions must be satisfied (nnz is the number of non-zeros
     /// and nnz_dup is the number of non-zeros with possible duplicates):
@@ -173,8 +175,7 @@ where
     ///         6.0, 1.0, //            j = 4, count = 10, 11,
     ///              //                                12
     ///     ];
-    ///     let symmetry = None;
-    ///     let csc = CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, symmetry)?;
+    ///     let csc = CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, Sym::No)?;
     ///
     ///     // covert to dense
     ///     let a = csc.as_dense();
@@ -195,7 +196,7 @@ where
         col_pointers: Vec<i32>,
         row_indices: Vec<i32>,
         values: Vec<T>,
-        symmetry: Option<Symmetry>,
+        symmetric: Sym,
     ) -> Result<Self, StrError> {
         if nrow < 1 {
             return Err("nrow must be ≥ 1");
@@ -242,7 +243,7 @@ where
             }
         }
         Ok(NumCscMatrix {
-            symmetry: if let Some(v) = symmetry { v } else { Symmetry::No },
+            symmetric,
             nrow,
             ncol,
             col_pointers,
@@ -275,7 +276,7 @@ where
     ///     //  .  .  1  .  .
     ///     //  .  4  2  .  1
     ///     let (nrow, ncol, nnz) = (5, 5, 13);
-    ///     let mut coo = CooMatrix::new(nrow, ncol, nnz, None)?;
+    ///     let mut coo = CooMatrix::new(nrow, ncol, nnz, Sym::No)?;
     ///     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     ///     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     ///     coo.put(1, 0, 3.0)?;
@@ -329,7 +330,7 @@ where
             return Err("COO to CSC requires nnz > 0");
         }
         let mut csc = NumCscMatrix {
-            symmetry: coo.symmetry,
+            symmetric: coo.symmetric,
             nrow: coo.nrow,
             ncol: coo.ncol,
             col_pointers: vec![0; coo.ncol + 1],
@@ -354,7 +355,7 @@ where
     /// may have been summed up. The final nnz is available as `nnz = col_pointers[ncol]`.
     pub fn update_from_coo(&mut self, coo: &NumCooMatrix<T>) -> Result<(), StrError> {
         // check dimensions
-        if coo.symmetry != self.symmetry {
+        if coo.symmetric != self.symmetric {
             return Err("coo.symmetry must be equal to csc.symmetry");
         }
         if coo.nrow != self.nrow {
@@ -517,7 +518,7 @@ where
 
         // allocate the CSC arrays
         let mut csc = NumCscMatrix {
-            symmetry: csr.symmetry,
+            symmetric: csr.symmetric,
             nrow: csr.nrow,
             ncol: csr.ncol,
             col_pointers: vec![0; ncol + 1],
@@ -611,9 +612,7 @@ where
     ///         6.0, 1.0, //            j = 4, count = 10, 11,
     ///              //                                12
     ///     ];
-    ///     let symmetry = None;
-    ///     let csc = CscMatrix::new(nrow, ncol,
-    ///         col_pointers, row_indices, values, symmetry)?;
+    ///     let csc = CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, Sym::No)?;
     ///
     ///     // covert to dense
     ///     let a = csc.as_dense();
@@ -676,9 +675,7 @@ where
     ///         6.0, 1.0, //            j = 4, count = 10, 11,
     ///              //                                12
     ///     ];
-    ///     let symmetry = None;
-    ///     let csc = CscMatrix::new(nrow, ncol,
-    ///         col_pointers, row_indices, values, symmetry)?;
+    ///     let csc = CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, Sym::No)?;
     ///
     ///     // covert to dense
     ///     let a = csc.as_dense();
@@ -698,7 +695,7 @@ where
         if m != self.nrow || n != self.ncol {
             return Err("wrong matrix dimensions");
         }
-        let mirror_required = self.symmetry.triangular();
+        let mirror_required = self.symmetric.triangular();
         a.fill(T::zero());
         for j in 0..self.ncol {
             for p in self.col_pointers[j]..self.col_pointers[j + 1] {
@@ -733,7 +730,7 @@ where
         if v.dim() != self.nrow {
             return Err("v vector is incompatible");
         }
-        let mirror_required = self.symmetry.triangular();
+        let mirror_required = self.symmetric.triangular();
         v.fill(T::zero());
         for j in 0..self.ncol {
             for p in self.col_pointers[j]..self.col_pointers[j + 1] {
@@ -766,12 +763,12 @@ where
     ///     let row_indices = vec![0, 0];
     ///     let values = vec![10.0, 20.0];
     ///     let csc = CscMatrix::new(1, 2,
-    ///         col_pointers, row_indices, values, None)?;
-    ///     let (nrow, ncol, nnz, symmetry) = csc.get_info();
+    ///         col_pointers, row_indices, values, Sym::No)?;
+    ///     let (nrow, ncol, nnz, sym) = csc.get_info();
     ///     assert_eq!(nrow, 1);
     ///     assert_eq!(ncol, 2);
     ///     assert_eq!(nnz, 2);
-    ///     assert_eq!(symmetry, Symmetry::No);
+    ///     assert_eq!(sym, Sym::No);
     ///     let a = csc.as_dense();
     ///     let correct = "┌       ┐\n\
     ///                    │ 10 20 │\n\
@@ -780,12 +777,12 @@ where
     ///     Ok(())
     /// }
     /// ```
-    pub fn get_info(&self) -> (usize, usize, usize, Symmetry) {
+    pub fn get_info(&self) -> (usize, usize, usize, Sym) {
         (
             self.nrow,
             self.ncol,
             self.col_pointers[self.ncol] as usize,
-            self.symmetry,
+            self.symmetric,
         )
     }
 
@@ -839,50 +836,50 @@ where
 #[cfg(test)]
 mod tests {
     use super::NumCscMatrix;
-    use crate::{CooMatrix, Samples, Storage, Symmetry};
+    use crate::{CooMatrix, Samples, Sym};
     use num_complex::Complex64;
     use russell_lab::{complex_vec_approx_eq, cpx, vec_approx_eq, ComplexVector, Matrix, Vector};
 
     #[test]
     fn new_captures_errors() {
         assert_eq!(
-            NumCscMatrix::<f64>::new(0, 1, vec![0], vec![], vec![], None).err(),
+            NumCscMatrix::<f64>::new(0, 1, vec![0], vec![], vec![], Sym::No).err(),
             Some("nrow must be ≥ 1")
         );
         assert_eq!(
-            NumCscMatrix::<f64>::new(1, 0, vec![0], vec![], vec![], None).err(),
+            NumCscMatrix::<f64>::new(1, 0, vec![0], vec![], vec![], Sym::No).err(),
             Some("ncol must be ≥ 1")
         );
         assert_eq!(
-            NumCscMatrix::<f64>::new(1, 1, vec![0], vec![], vec![], None).err(),
+            NumCscMatrix::<f64>::new(1, 1, vec![0], vec![], vec![], Sym::No).err(),
             Some("col_pointers.len() must be = ncol + 1")
         );
         assert_eq!(
-            NumCscMatrix::<f64>::new(1, 1, vec![0, 0], vec![], vec![], None).err(),
+            NumCscMatrix::<f64>::new(1, 1, vec![0, 0], vec![], vec![], Sym::No).err(),
             Some("nnz = col_pointers[ncol] must be ≥ 1")
         );
         assert_eq!(
-            NumCscMatrix::<f64>::new(1, 1, vec![0, 1], vec![], vec![], None).err(),
+            NumCscMatrix::<f64>::new(1, 1, vec![0, 1], vec![], vec![], Sym::No).err(),
             Some("row_indices.len() must be ≥ nnz")
         );
         assert_eq!(
-            NumCscMatrix::<f64>::new(1, 1, vec![0, 1], vec![0], vec![], None).err(),
+            NumCscMatrix::<f64>::new(1, 1, vec![0, 1], vec![0], vec![], Sym::No).err(),
             Some("values.len() must be ≥ nnz")
         );
         assert_eq!(
-            NumCscMatrix::<f64>::new(1, 1, vec![-1, 1], vec![0], vec![0.0], None).err(),
+            NumCscMatrix::<f64>::new(1, 1, vec![-1, 1], vec![0], vec![0.0], Sym::No).err(),
             Some("col pointers must be ≥ 0")
         );
         assert_eq!(
-            NumCscMatrix::<f64>::new(1, 1, vec![2, 1], vec![0], vec![0.0], None).err(),
+            NumCscMatrix::<f64>::new(1, 1, vec![2, 1], vec![0], vec![0.0], Sym::No).err(),
             Some("col pointers must be sorted in ascending order")
         );
         assert_eq!(
-            NumCscMatrix::<f64>::new(1, 1, vec![0, 1], vec![-1], vec![0.0], None).err(),
+            NumCscMatrix::<f64>::new(1, 1, vec![0, 1], vec![-1], vec![0.0], Sym::No).err(),
             Some("row indices must be ≥ 0")
         );
         assert_eq!(
-            NumCscMatrix::<f64>::new(1, 1, vec![0, 1], vec![2], vec![0.0], None).err(),
+            NumCscMatrix::<f64>::new(1, 1, vec![0, 1], vec![2], vec![0.0], Sym::No).err(),
             Some("row indices must be < nrow")
         );
         // ┌    ┐
@@ -895,7 +892,7 @@ mod tests {
         let row_indices = vec![1, 0]; // << incorrect, should be [0, 1]
         let col_pointers = vec![0, 2];
         assert_eq!(
-            NumCscMatrix::<f64>::new(2, 1, col_pointers, row_indices, values, None).err(),
+            NumCscMatrix::<f64>::new(2, 1, col_pointers, row_indices, values, Sym::No).err(),
             Some("row indices must be sorted in ascending order (within their column)")
         );
     }
@@ -903,8 +900,8 @@ mod tests {
     #[test]
     fn new_works() {
         let (_, csc_correct, _, _) = Samples::rectangular_1x2(false, false);
-        let csc = NumCscMatrix::<f64>::new(1, 2, vec![0, 1, 2], vec![0, 0], vec![10.0, 20.0], None).unwrap();
-        assert_eq!(csc.symmetry, Symmetry::No);
+        let csc = NumCscMatrix::<f64>::new(1, 2, vec![0, 1, 2], vec![0, 0], vec![10.0, 20.0], Sym::No).unwrap();
+        assert_eq!(csc.symmetric, Sym::No);
         assert_eq!(csc.nrow, 1);
         assert_eq!(csc.ncol, 2);
         assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
@@ -914,7 +911,7 @@ mod tests {
 
     #[test]
     fn from_coo_captures_errors() {
-        let coo = CooMatrix::new(1, 1, 1, None).unwrap();
+        let coo = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
         assert_eq!(
             NumCscMatrix::<f64>::from_coo(&coo).err(),
             Some("COO to CSC requires nnz > 0")
@@ -1011,12 +1008,12 @@ mod tests {
     fn update_from_coo_captures_errors() {
         let (coo, _, _, _) = Samples::rectangular_1x2(false, false, );
         let mut csc = NumCscMatrix::<f64>::from_coo(&coo).unwrap();
-        let yes = Symmetry::General(Storage::Lower);
-        let no = Symmetry::No;
-        assert_eq!(csc.update_from_coo(&CooMatrix { symmetry: yes,  nrow: 1, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.symmetry must be equal to csc.symmetry"));
-        assert_eq!(csc.update_from_coo(&CooMatrix { symmetry: no, nrow: 2, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.nrow must be equal to csc.nrow"));
-        assert_eq!(csc.update_from_coo(&CooMatrix { symmetry: no, nrow: 1, ncol: 1, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.ncol must be equal to csc.ncol"));
-        assert_eq!(csc.update_from_coo(&CooMatrix { symmetry: no, nrow: 1, ncol: 2, nnz: 3, max_nnz: 3, indices_i: vec![0,0,0], indices_j: vec![0,0,0], values: vec![0.0,0.0,0.0] }).err(), Some("coo.nnz must be equal to nnz(dup) = csc.row_indices.len() = csc.values.len()"));
+        let yes = Sym::YesLower;
+        let no = Sym::No;
+        assert_eq!(csc.update_from_coo(&CooMatrix { symmetric: yes,  nrow: 1, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.symmetry must be equal to csc.symmetry"));
+        assert_eq!(csc.update_from_coo(&CooMatrix { symmetric: no, nrow: 2, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.nrow must be equal to csc.nrow"));
+        assert_eq!(csc.update_from_coo(&CooMatrix { symmetric: no, nrow: 1, ncol: 1, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.ncol must be equal to csc.ncol"));
+        assert_eq!(csc.update_from_coo(&CooMatrix { symmetric: no, nrow: 1, ncol: 2, nnz: 3, max_nnz: 3, indices_i: vec![0,0,0], indices_j: vec![0,0,0], values: vec![0.0,0.0,0.0] }).err(), Some("coo.nnz must be equal to nnz(dup) = csc.row_indices.len() = csc.values.len()"));
     }
 
     #[test]
@@ -1240,20 +1237,20 @@ mod tests {
     #[test]
     fn getters_are_correct() {
         let (_, csc, _, _) = Samples::rectangular_1x2(false, false);
-        assert_eq!(csc.get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(csc.get_info(), (1, 2, 2, Sym::No));
         assert_eq!(csc.get_col_pointers(), &[0, 1, 2]);
         assert_eq!(csc.get_row_indices(), &[0, 0]);
         assert_eq!(csc.get_values(), &[10.0, 20.0]);
         // with duplicates
         let (coo, _, _, _) = Samples::rectangular_1x2(false, false);
         let csc = NumCscMatrix::<f64>::from_coo(&coo).unwrap();
-        assert_eq!(csc.get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(csc.get_info(), (1, 2, 2, Sym::No));
         assert_eq!(csc.get_col_pointers(), &[0, 1, 2]);
         assert_eq!(csc.get_row_indices(), &[0, 0]);
         assert_eq!(csc.get_values(), &[10.0, 20.0]);
         // mutable
         let mut csc = NumCscMatrix::<f64> {
-            symmetry: Symmetry::No,
+            symmetric: Sym::No,
             nrow: 1,
             ncol: 2,
             values: vec![10.0, 20.0],
@@ -1289,10 +1286,10 @@ mod tests {
         let json = serde_json::to_string(&csc).unwrap();
         assert_eq!(
             json,
-            r#"{"symmetry":"No","nrow":5,"ncol":5,"col_pointers":[0,2,5,9,10,12],"row_indices":[0,1,0,2,4,1,2,3,4,2,1,4,0],"values":[2.0,3.0,3.0,-1.0,4.0,4.0,-3.0,1.0,2.0,2.0,6.0,1.0,0.0]}"#
+            r#"{"symmetric":"No","nrow":5,"ncol":5,"col_pointers":[0,2,5,9,10,12],"row_indices":[0,1,0,2,4,1,2,3,4,2,1,4,0],"values":[2.0,3.0,3.0,-1.0,4.0,4.0,-3.0,1.0,2.0,2.0,6.0,1.0,0.0]}"#
         );
         let from_json: NumCscMatrix<f64> = serde_json::from_str(&json).unwrap();
-        assert_eq!(from_json.symmetry, csc.symmetry);
+        assert_eq!(from_json.symmetric, csc.symmetric);
         assert_eq!(from_json.nrow, csc.nrow);
         assert_eq!(from_json.ncol, csc.ncol);
         assert_eq!(from_json.col_pointers, csc.col_pointers);

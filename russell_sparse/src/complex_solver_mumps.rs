@@ -1,5 +1,5 @@
 use super::{handle_mumps_error_code, mumps_ordering, mumps_scaling};
-use super::{ComplexLinSolTrait, ComplexSparseMatrix, LinSolParams, StatsLinSol, Symmetry};
+use super::{ComplexLinSolTrait, ComplexSparseMatrix, LinSolParams, StatsLinSol, Sym};
 use super::{
     MUMPS_ORDERING_AMD, MUMPS_ORDERING_AMF, MUMPS_ORDERING_AUTO, MUMPS_ORDERING_METIS, MUMPS_ORDERING_PORD,
     MUMPS_ORDERING_QAMD, MUMPS_ORDERING_SCOTCH, MUMPS_SCALING_AUTO, MUMPS_SCALING_COLUMN, MUMPS_SCALING_DIAGONAL,
@@ -80,8 +80,8 @@ pub struct ComplexSolverMUMPS {
     /// Indicates whether the sparse matrix has been factorized or not
     factorized: bool,
 
-    /// Holds the symmetry type used in the initialize
-    initialized_symmetry: Symmetry,
+    /// Holds the symmetric flag saved in initialize
+    initialized_sym: Sym,
 
     /// Holds the matrix dimension saved in initialize
     initialized_ndim: usize,
@@ -161,7 +161,7 @@ impl ComplexSolverMUMPS {
                 solver,
                 initialized: false,
                 factorized: false,
-                initialized_symmetry: Symmetry::No,
+                initialized_sym: Sym::No,
                 initialized_ndim: 0,
                 initialized_nnz: 0,
                 effective_ordering: -1,
@@ -190,36 +190,28 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
     ///
     /// * `mat` -- the coefficient matrix A (one-base **COO** only, not CSC and not CSR).
     ///   Also, the matrix must be square (`nrow = ncol`) and, if symmetric,
-    ///   the symmetry/storage must [crate::Storage::Lower].
+    ///   the symmetric flag must be [Sym::YesLower]
     /// * `params` -- configuration parameters; None => use default
     ///
     /// # Notes
     ///
-    /// 1. The structure of the matrix (nrow, ncol, nnz, symmetry) must be
+    /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
     ///    exactly the same among multiple calls to `factorize`. The values may differ
     ///    from call to call, nonetheless.
     /// 2. The first call to `factorize` will define the structure which must be
     ///    kept the same for the next calls.
     /// 3. If the structure of the matrix needs to be changed, the solver must
     ///    be "dropped" and a new solver allocated.
-    /// 4. For symmetric matrices, `MUMPS` requires that the symmetry/storage be [crate::Storage::Lower].
+    /// 4. For symmetric matrices, `MUMPS` requires [Sym::YesLower].
     /// 5. The COO matrix must be one-based.
     fn factorize(&mut self, mat: &mut ComplexSparseMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
         // get COO matrix
         let coo = mat.get_coo()?;
 
-        // check the COO matrix
-        if coo.nrow != coo.ncol {
-            return Err("the COO matrix must be square");
-        }
-        if coo.nnz < 1 {
-            return Err("the COO matrix must have at least one non-zero value");
-        }
-
-        // check already initialized data
+        // check
         if self.initialized {
-            if coo.symmetry != self.initialized_symmetry {
-                return Err("subsequent factorizations must use the same matrix (symmetry differs)");
+            if coo.symmetric != self.initialized_sym {
+                return Err("subsequent factorizations must use the same matrix (symmetric differs)");
             }
             if coo.nrow != self.initialized_ndim {
                 return Err("subsequent factorizations must use the same matrix (ndim differs)");
@@ -228,7 +220,16 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
             }
         } else {
-            self.initialized_symmetry = coo.symmetry;
+            if coo.nrow != coo.ncol {
+                return Err("the COO matrix must be square");
+            }
+            if coo.nnz < 1 {
+                return Err("the COO matrix must have at least one non-zero value");
+            }
+            if coo.symmetric == Sym::YesFull || coo.symmetric == Sym::YesUpper {
+                return Err("MUMPS requires Sym::YesLower for symmetric matrices");
+            }
+            self.initialized_sym = coo.symmetric;
             self.initialized_ndim = coo.nrow;
             self.initialized_nnz = coo.nnz;
             self.fortran_indices_i = vec![0; coo.nnz];
@@ -267,10 +268,9 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
         let compute_determinant = if par.compute_determinant { 1 } else { 0 };
         let verbose = if par.verbose { 1 } else { 0 };
 
-        // extract the symmetry flags and check the storage type
-        let (general_symmetric, positive_definite) = coo.symmetry.status(true, false)?;
-
         // matrix config
+        let general_symmetric = if coo.symmetric == Sym::YesLower { 1 } else { 0 };
+        let positive_definite = if par.positive_definite { 1 } else { 0 };
         let ndim = to_i32(coo.nrow);
         let nnz = to_i32(coo.nnz);
 
@@ -341,7 +341,7 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
     ///
     /// # Input
     ///
-    /// * `mat` -- the coefficient matrix A; must be square and, if symmetric, [crate::Storage::Lower].
+    /// * `mat` -- the coefficient matrix A; must be square and, if symmetric, [Sym::YesLower].
     /// * `rhs` -- the right-hand side vector with know values an dimension equal to mat.nrow
     /// * `verbose` -- shows messages
     ///
@@ -362,9 +362,9 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
         let coo = mat.get_coo()?;
 
         // check already factorized data
-        let (nrow, ncol, nnz, symmetry) = coo.get_info();
-        if symmetry != self.initialized_symmetry {
-            return Err("solve must use the same matrix (symmetry differs)");
+        let (nrow, ncol, nnz, sym) = coo.get_info();
+        if sym != self.initialized_sym {
+            return Err("solve must use the same matrix (symmetric differs)");
         }
         if nrow != self.initialized_ndim || ncol != self.initialized_ndim {
             return Err("solve must use the same matrix (ndim differs)");
@@ -455,7 +455,7 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ComplexCooMatrix, ComplexSparseMatrix, LinSolParams, Ordering, Samples, Scaling, Storage, Symmetry};
+    use crate::{ComplexCooMatrix, ComplexSparseMatrix, LinSolParams, Ordering, Samples, Scaling, Sym};
     use num_complex::Complex64;
     use russell_lab::{complex_approx_eq, complex_vec_approx_eq, cpx, ComplexVector};
     use serial_test::serial;
@@ -479,45 +479,45 @@ mod tests {
         );
 
         // check COO matrix
-        let mut coo = ComplexCooMatrix::new(2, 1, 1, None).unwrap();
+        let mut coo = ComplexCooMatrix::new(2, 1, 1, Sym::No).unwrap();
         coo.put(0, 0, cpx!(4.0, 4.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
             Some("the COO matrix must be square")
         );
-        let coo = ComplexCooMatrix::new(1, 1, 1, None).unwrap();
+        let coo = ComplexCooMatrix::new(1, 1, 1, Sym::No).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
             Some("the COO matrix must have at least one non-zero value")
         );
-        let mut coo = ComplexCooMatrix::new(1, 1, 1, Some(Symmetry::General(Storage::Full))).unwrap();
+        let mut coo = ComplexCooMatrix::new(1, 1, 1, Sym::YesFull).unwrap();
         coo.put(0, 0, cpx!(4.0, 4.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
-            Some("if the matrix is general symmetric, the required storage is lower triangular")
+            Some("MUMPS requires Sym::YesLower for symmetric matrices")
         );
 
         // check already factorized data
-        let mut coo = ComplexCooMatrix::new(2, 2, 2, None).unwrap();
+        let mut coo = ComplexCooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         coo.put(1, 1, cpx!(2.0, 0.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         // ... factorize once => OK
         solver.factorize(&mut mat, None).unwrap();
-        // ... change matrix (symmetry)
-        let mut coo = ComplexCooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full))).unwrap();
+        // ... change matrix (symmetric)
+        let mut coo = ComplexCooMatrix::new(2, 2, 2, Sym::YesFull).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         coo.put(1, 1, cpx!(2.0, 0.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
-            Some("subsequent factorizations must use the same matrix (symmetry differs)")
+            Some("subsequent factorizations must use the same matrix (symmetric differs)")
         );
         // ... change matrix (ndim)
-        let mut coo = ComplexCooMatrix::new(1, 1, 1, None).unwrap();
+        let mut coo = ComplexCooMatrix::new(1, 1, 1, Sym::No).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
@@ -525,7 +525,7 @@ mod tests {
             Some("subsequent factorizations must use the same matrix (ndim differs)")
         );
         // ... change matrix (nnz)
-        let mut coo = ComplexCooMatrix::new(2, 2, 1, None).unwrap();
+        let mut coo = ComplexCooMatrix::new(2, 2, 1, Sym::No).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
@@ -537,7 +537,7 @@ mod tests {
     #[test]
     #[serial]
     fn factorize_fails_on_singular_matrix() {
-        let mut mat_singular = ComplexSparseMatrix::new_coo(3, 3, 2, None).unwrap();
+        let mut mat_singular = ComplexSparseMatrix::new_coo(3, 3, 2, Sym::No).unwrap();
         mat_singular.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         mat_singular.put(1, 1, cpx!(1.0, 0.0)).unwrap();
         let mut solver = ComplexSolverMUMPS::new().unwrap();
@@ -550,7 +550,7 @@ mod tests {
     #[test]
     #[serial]
     fn solve_handles_errors() {
-        let mut coo = ComplexCooMatrix::new(2, 2, 2, None).unwrap();
+        let mut coo = ComplexCooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, cpx!(123.0, 1.0)).unwrap();
         coo.put(1, 1, cpx!(456.0, 2.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
@@ -574,19 +574,19 @@ mod tests {
             solver.solve(&mut x, &mut mat, &rhs, false),
             Err("the dimension of the right-hand side vector is incorrect")
         );
-        // wrong symmetry
+        // wrong symmetric
         let rhs = ComplexVector::new(2);
-        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full))).unwrap();
+        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 2, Sym::YesFull).unwrap();
         coo_wrong.put(0, 0, cpx!(123.0, 1.0)).unwrap();
         coo_wrong.put(1, 1, cpx!(456.0, 2.0)).unwrap();
         let mut mat_wrong = ComplexSparseMatrix::from_coo(coo_wrong);
         mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
         assert_eq!(
             solver.solve(&mut x, &mut mat_wrong, &rhs, false),
-            Err("solve must use the same matrix (symmetry differs)")
+            Err("solve must use the same matrix (symmetric differs)")
         );
         // wrong ndim
-        let mut coo_wrong = ComplexCooMatrix::new(1, 1, 1, None).unwrap();
+        let mut coo_wrong = ComplexCooMatrix::new(1, 1, 1, Sym::No).unwrap();
         coo_wrong.put(0, 0, cpx!(123.0, 1.0)).unwrap();
         let mut mat_wrong = ComplexSparseMatrix::from_coo(coo_wrong);
         mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
@@ -595,7 +595,7 @@ mod tests {
             Err("solve must use the same matrix (ndim differs)")
         );
         // wrong nnz
-        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 3, None).unwrap();
+        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 3, Sym::No).unwrap();
         coo_wrong.put(0, 0, cpx!(123.0, 1.0)).unwrap();
         coo_wrong.put(1, 1, cpx!(456.0, 2.0)).unwrap();
         coo_wrong.put(0, 1, cpx!(100.0, 1.0)).unwrap();
@@ -658,10 +658,10 @@ mod tests {
         complex_vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
 
         // solve with positive-definite matrix works
-        let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
+        params.positive_definite = true;
         let nrow = 5;
         let ncol = 5;
-        let mut coo_pd_lower = ComplexCooMatrix::new(nrow, ncol, 9, sym).unwrap();
+        let mut coo_pd_lower = ComplexCooMatrix::new(nrow, ncol, 9, Sym::YesLower).unwrap();
         coo_pd_lower.put(0, 0, cpx!(9.0, 0.0)).unwrap();
         coo_pd_lower.put(1, 1, cpx!(0.5, 0.0)).unwrap();
         coo_pd_lower.put(2, 2, cpx!(12.0, 0.0)).unwrap();

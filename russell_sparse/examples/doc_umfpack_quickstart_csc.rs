@@ -9,7 +9,7 @@ fn main() -> Result<(), StrError> {
     let ap = vec![0, 2, 5, 9, 10, 12];
     let ai = vec![0, 1, 0, 2, 4, 1, 2, 3, 4, 2, 1, 4];
     let ax = vec![2.0, 3.0, 3.0, -1.0, 4.0, 4.0, -3.0, 1.0, 2.0, 2.0, 6.0, 1.0];
-    let mut csc = SparseMatrix::new_csc(n, n, ap, ai, ax, None)?;
+    let mut csc = SparseMatrix::new_csc(n, n, ap, ai, ax, Sym::No)?;
 
     // print the coefficient matrix
     let a = csc.as_dense();

@@ -71,8 +71,8 @@ fn main() -> Result<(), StrError> {
 
     // select the symmetric handling option
     let handling = match genie {
-        Genie::Mumps => MMsymOption::LeaveAsLower,
-        Genie::Umfpack => MMsymOption::MakeItFull,
+        Genie::Mumps => MMsym::LeaveAsLower,
+        Genie::Umfpack => MMsym::MakeItFull,
     };
 
     // configuration parameters

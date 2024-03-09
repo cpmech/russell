@@ -123,8 +123,8 @@ pub struct SolverMUMPS {
     /// Indicates whether the sparse matrix has been factorized or not
     factorized: bool,
 
-    /// Holds the symmetry type used in the initialize
-    initialized_symmetry: Sym,
+    /// Holds the symmetric flag saved in initialize
+    initialized_sym: Sym,
 
     /// Holds the matrix dimension saved in initialize
     initialized_ndim: usize,
@@ -199,7 +199,7 @@ impl SolverMUMPS {
                 solver,
                 initialized: false,
                 factorized: false,
-                initialized_symmetry: Sym::No,
+                initialized_sym: Sym::No,
                 initialized_ndim: 0,
                 initialized_nnz: 0,
                 effective_ordering: -1,
@@ -227,7 +227,7 @@ impl LinSolTrait for SolverMUMPS {
     ///
     /// * `mat` -- the coefficient matrix A (one-base **COO** only, not CSC and not CSR).
     ///   Also, the matrix must be square (`nrow = ncol`) and, if symmetric,
-    ///   the symmetry/storage must [crate::Storage::Lower].
+    ///   the symmetric flag must be [Sym::YesLower]
     /// * `params` -- configuration parameters; None => use default
     ///
     /// # Notes
@@ -239,24 +239,16 @@ impl LinSolTrait for SolverMUMPS {
     ///    kept the same for the next calls.
     /// 3. If the structure of the matrix needs to be changed, the solver must
     ///    be "dropped" and a new solver allocated.
-    /// 4. For symmetric matrices, `MUMPS` requires that the symmetry/storage be [crate::Storage::Lower].
+    /// 4. For symmetric matrices, `MUMPS` requires [Sym::YesLower].
     /// 5. The COO matrix must be one-based.
     fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
         // get COO matrix
         let coo = mat.get_coo()?;
 
-        // check the COO matrix
-        if coo.nrow != coo.ncol {
-            return Err("the COO matrix must be square");
-        }
-        if coo.nnz < 1 {
-            return Err("the COO matrix must have at least one non-zero value");
-        }
-
-        // check already initialized data
+        // check
         if self.initialized {
-            if coo.symmetry != self.initialized_symmetry {
-                return Err("subsequent factorizations must use the same matrix (symmetry differs)");
+            if coo.symmetric != self.initialized_sym {
+                return Err("subsequent factorizations must use the same matrix (symmetric differs)");
             }
             if coo.nrow != self.initialized_ndim {
                 return Err("subsequent factorizations must use the same matrix (ndim differs)");
@@ -265,7 +257,16 @@ impl LinSolTrait for SolverMUMPS {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
             }
         } else {
-            self.initialized_symmetry = coo.symmetry;
+            if coo.nrow != coo.ncol {
+                return Err("the COO matrix must be square");
+            }
+            if coo.nnz < 1 {
+                return Err("the COO matrix must have at least one non-zero value");
+            }
+            if coo.symmetric == Sym::YesFull || coo.symmetric == Sym::YesUpper {
+                return Err("MUMPS requires Sym::YesLower for symmetric matrices");
+            }
+            self.initialized_sym = coo.symmetric;
             self.initialized_ndim = coo.nrow;
             self.initialized_nnz = coo.nnz;
             self.fortran_indices_i = vec![0; coo.nnz];
@@ -304,10 +305,9 @@ impl LinSolTrait for SolverMUMPS {
         let compute_determinant = if par.compute_determinant { 1 } else { 0 };
         let verbose = if par.verbose { 1 } else { 0 };
 
-        // extract the symmetry flags and check the storage type
-        let (general_symmetric, positive_definite) = coo.symmetry.status(true, false)?;
-
         // matrix config
+        let general_symmetric = if coo.symmetric == Sym::YesLower { 1 } else { 0 };
+        let positive_definite = if par.positive_definite { 1 } else { 0 };
         let ndim = to_i32(coo.nrow);
         let nnz = to_i32(coo.nnz);
 
@@ -377,7 +377,7 @@ impl LinSolTrait for SolverMUMPS {
     ///
     /// # Input
     ///
-    /// * `mat` -- the coefficient matrix A; must be square and, if symmetric, [crate::Storage::Lower].
+    /// * `mat` -- the coefficient matrix A; must be square and, if symmetric, [Sym::YesLower].
     /// * `rhs` -- the right-hand side vector with know values an dimension equal to mat.nrow
     /// * `verbose` -- shows messages
     ///
@@ -393,8 +393,8 @@ impl LinSolTrait for SolverMUMPS {
 
         // check already factorized data
         let (nrow, ncol, nnz, sym) = coo.get_info();
-        if sym != self.initialized_symmetry {
-            return Err("solve must use the same matrix (symmetry differs)");
+        if sym != self.initialized_sym {
+            return Err("solve must use the same matrix (symmetric differs)");
         }
         if nrow != self.initialized_ndim || ncol != self.initialized_ndim {
             return Err("solve must use the same matrix (ndim differs)");
@@ -616,7 +616,7 @@ pub(crate) fn handle_mumps_error_code(err: i32) -> StrError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix, Storage, Sym};
+    use crate::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix, Sym};
     use russell_lab::{approx_eq, vec_approx_eq, Vector};
     use serial_test::serial;
 
@@ -645,7 +645,7 @@ mod tests {
             solver.factorize(&mut mat, None).err(),
             Some("the COO matrix must be square")
         );
-        let coo = CooMatrix::new(1, 1, 1, None).unwrap();
+        let coo = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
@@ -655,27 +655,27 @@ mod tests {
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
-            Some("if the matrix is general symmetric, the required storage is lower triangular")
+            Some("MUMPS requires Sym::YesLower for symmetric matrices")
         );
 
         // check already factorized data
-        let mut coo = CooMatrix::new(2, 2, 2, None).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
         // ... factorize once => OK
         solver.factorize(&mut mat, None).unwrap();
-        // ... change matrix (symmetry)
-        let mut coo = CooMatrix::new(2, 2, 2, Some(Sym::General(Storage::Full))).unwrap();
+        // ... change matrix (symmetric)
+        let mut coo = CooMatrix::new(2, 2, 2, Sym::YesFull).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
             solver.factorize(&mut mat, None).err(),
-            Some("subsequent factorizations must use the same matrix (symmetry differs)")
+            Some("subsequent factorizations must use the same matrix (symmetric differs)")
         );
         // ... change matrix (ndim)
-        let mut coo = CooMatrix::new(1, 1, 1, None).unwrap();
+        let mut coo = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
@@ -683,7 +683,7 @@ mod tests {
             Some("subsequent factorizations must use the same matrix (ndim differs)")
         );
         // ... change matrix (nnz)
-        let mut coo = CooMatrix::new(2, 2, 1, None).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 1, Sym::No).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
         assert_eq!(
@@ -695,7 +695,7 @@ mod tests {
     #[test]
     #[serial]
     fn factorize_fails_on_singular_matrix() {
-        let mut mat_singular = SparseMatrix::new_coo(5, 5, 2, None).unwrap();
+        let mut mat_singular = SparseMatrix::new_coo(5, 5, 2, Sym::No).unwrap();
         mat_singular.put(0, 0, 1.0).unwrap();
         mat_singular.put(4, 4, 1.0).unwrap();
         let mut solver = SolverMUMPS::new().unwrap();
@@ -708,7 +708,7 @@ mod tests {
     #[test]
     #[serial]
     fn solve_handles_errors() {
-        let mut coo = CooMatrix::new(2, 2, 2, None).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, 123.0).unwrap();
         coo.put(1, 1, 456.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
@@ -732,19 +732,19 @@ mod tests {
             solver.solve(&mut x, &mut mat, &rhs, false),
             Err("the dimension of the right-hand side vector is incorrect")
         );
-        // wrong symmetry
+        // wrong symmetric
         let rhs = Vector::new(2);
-        let mut coo_wrong = CooMatrix::new(2, 2, 2, Some(Sym::General(Storage::Full))).unwrap();
+        let mut coo_wrong = CooMatrix::new(2, 2, 2, Sym::YesFull).unwrap();
         coo_wrong.put(0, 0, 123.0).unwrap();
         coo_wrong.put(1, 1, 456.0).unwrap();
         let mut mat_wrong = SparseMatrix::from_coo(coo_wrong);
         mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
         assert_eq!(
             solver.solve(&mut x, &mut mat_wrong, &rhs, false),
-            Err("solve must use the same matrix (symmetry differs)")
+            Err("solve must use the same matrix (symmetric differs)")
         );
         // wrong ndim
-        let mut coo_wrong = CooMatrix::new(1, 1, 1, None).unwrap();
+        let mut coo_wrong = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
         coo_wrong.put(0, 0, 123.0).unwrap();
         let mut mat_wrong = SparseMatrix::from_coo(coo_wrong);
         mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
@@ -753,7 +753,7 @@ mod tests {
             Err("solve must use the same matrix (ndim differs)")
         );
         // wrong nnz
-        let mut coo_wrong = CooMatrix::new(2, 2, 3, None).unwrap();
+        let mut coo_wrong = CooMatrix::new(2, 2, 3, Sym::No).unwrap();
         coo_wrong.put(0, 0, 123.0).unwrap();
         coo_wrong.put(1, 1, 123.0).unwrap();
         coo_wrong.put(0, 1, 100.0).unwrap();
@@ -827,6 +827,36 @@ mod tests {
         solver.solve(&mut x, &mat_pd_lower, &rhs, false).unwrap();
         let x_correct = &[-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         vec_approx_eq(x.as_data(), x_correct, 1e-10);
+    }
+
+    #[test]
+    #[serial]
+    fn solve_works_symmetric() {
+        // allocate x and rhs
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+        let x_correct = &[-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
+
+        // allocate a new solver
+        let mut solver = SolverMUMPS::new().unwrap();
+        assert!(!solver.factorized);
+
+        // sample matrix
+        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(false, true);
+        let mut mat = SparseMatrix::from_coo(coo);
+
+        // factorize works
+        solver.factorize(&mut mat, None).unwrap();
+        assert!(solver.factorized);
+
+        // solve works
+        solver.solve(&mut x, &mat, &rhs, false).unwrap();
+        vec_approx_eq(x.as_data(), x_correct, 1e-11);
+
+        // calling solve again works
+        let mut x_again = Vector::new(5);
+        solver.solve(&mut x_again, &mat, &rhs, false).unwrap();
+        vec_approx_eq(x_again.as_data(), x_correct, 1e-11);
     }
 
     #[test]

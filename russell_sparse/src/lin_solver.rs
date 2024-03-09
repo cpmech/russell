@@ -109,7 +109,7 @@ impl<'a> LinSolver<'a> {
     ///     let nnz = 5; // number of non-zero values
     ///
     ///     // allocate the coefficient matrix
-    ///     let mut mat = SparseMatrix::new_coo(ndim, ndim, nnz, None)?;
+    ///     let mut mat = SparseMatrix::new_coo(ndim, ndim, nnz, Sym::No)?;
     ///     mat.put(0, 0, 0.2)?;
     ///     mat.put(0, 1, 0.2)?;
     ///     mat.put(1, 0, 0.5)?;

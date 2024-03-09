@@ -54,8 +54,8 @@ pub struct NumCsrMatrix<T>
 where
     T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
-    /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
-    pub(crate) symmetry: Sym,
+    /// Indicates whether the matrix is symmetric or not. If symmetric, indicates the representation too.
+    pub(crate) symmetric: Sym,
 
     /// Holds the number of rows (must fit i32)
     pub(crate) nrow: usize,
@@ -121,6 +121,8 @@ where
     ///   to the number of non-zero values (sorted)
     /// * `col_indices` -- (len = nnz) column indices (sorted)
     /// * `values` -- the non-zero components of the matrix
+    /// * `symmetric` -- indicates whether the matrix is symmetric or not.
+    ///   If symmetric, indicates the representation too.
     ///
     /// The following conditions must be satisfied (nnz is the number of non-zeros
     /// and nnz_dup is the number of non-zeros with possible duplicates):
@@ -169,8 +171,7 @@ where
     ///         4.0, 2.0, 1.0, //   i = 4, count = 9, 10, 11
     ///              //                    count = 12
     ///     ];
-    ///     let symmetry = None;
-    ///     let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, symmetry)?;
+    ///     let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, Sym::No)?;
     ///
     ///     // covert to dense
     ///     let a = csr.as_dense();
@@ -191,7 +192,7 @@ where
         row_pointers: Vec<i32>,
         col_indices: Vec<i32>,
         values: Vec<T>,
-        symmetry: Option<Sym>,
+        symmetric: Sym,
     ) -> Result<Self, StrError> {
         if nrow < 1 {
             return Err("nrow must be ≥ 1");
@@ -238,7 +239,7 @@ where
             }
         }
         Ok(NumCsrMatrix {
-            symmetry: if let Some(v) = symmetry { v } else { Sym::No },
+            symmetric,
             nrow,
             ncol,
             row_pointers,
@@ -270,7 +271,7 @@ where
     ///     //  .  .  1  .  .
     ///     //  .  4  2  .  1
     ///     let (nrow, ncol, nnz) = (5, 5, 13);
-    ///     let mut coo = CooMatrix::new(nrow, ncol, nnz, None)?;
+    ///     let mut coo = CooMatrix::new(nrow, ncol, nnz, Sym::No)?;
     ///     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     ///     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     ///     coo.put(1, 0, 3.0)?;
@@ -324,7 +325,7 @@ where
             return Err("COO to CSR requires nnz > 0");
         }
         let mut csr = NumCsrMatrix {
-            symmetry: coo.symmetry,
+            symmetric: coo.symmetric,
             nrow: coo.nrow,
             ncol: coo.ncol,
             row_pointers: vec![0; coo.nrow + 1],
@@ -348,7 +349,7 @@ where
     /// may have been summed up. The final nnz is available as `nnz = row_pointers[nrow]`.
     pub fn update_from_coo(&mut self, coo: &NumCooMatrix<T>) -> Result<(), StrError> {
         // check dimensions
-        if coo.symmetry != self.symmetry {
+        if coo.symmetric != self.symmetric {
             return Err("coo.symmetry must be equal to csr.symmetry");
         }
         if coo.nrow != self.nrow {
@@ -493,7 +494,7 @@ where
 
         // allocate the CSR arrays
         let mut csr = NumCsrMatrix {
-            symmetry: csc.symmetry,
+            symmetric: csc.symmetric,
             ncol: csc.ncol,
             nrow: csc.nrow,
             row_pointers: vec![0; nrow + 1],
@@ -585,9 +586,7 @@ where
     ///         4.0, 2.0, 1.0, //   i = 4, count = 9, 10, 11
     ///              //                    count = 12
     ///     ];
-    ///     let symmetry = None;
-    ///     let csr = CsrMatrix::new(nrow, ncol,
-    ///         row_pointers, col_indices, values, symmetry)?;
+    ///     let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, Sym::No)?;
     ///
     ///     // covert to dense
     ///     let a = csr.as_dense();
@@ -650,9 +649,7 @@ where
     ///         4.0, 2.0, 1.0, //   i = 4, count = 9, 10, 11
     ///              //                    count = 12
     ///     ];
-    ///     let symmetry = None;
-    ///     let csr = CsrMatrix::new(nrow, ncol,
-    ///         row_pointers, col_indices, values, symmetry)?;
+    ///     let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, Sym::No)?;
     ///
     ///     // covert to dense
     ///     let a = csr.as_dense();
@@ -672,7 +669,7 @@ where
         if m != self.nrow || n != self.ncol {
             return Err("wrong matrix dimensions");
         }
-        let mirror_required = self.symmetry.triangular();
+        let mirror_required = self.symmetric.triangular();
         a.fill(T::zero());
         for i in 0..self.nrow {
             for p in self.row_pointers[i]..self.row_pointers[i + 1] {
@@ -707,7 +704,7 @@ where
         if v.dim() != self.nrow {
             return Err("v vector is incompatible");
         }
-        let mirror_required = self.symmetry.triangular();
+        let mirror_required = self.symmetric.triangular();
         v.fill(T::zero());
         for i in 0..self.nrow {
             for p in self.row_pointers[i]..self.row_pointers[i + 1] {
@@ -740,7 +737,7 @@ where
     ///     let col_indices = vec![0, 1];
     ///     let values = vec![10.0, 20.0];
     ///     let csr = CsrMatrix::new(1, 2,
-    ///         row_pointers, col_indices, values, None)?;
+    ///         row_pointers, col_indices, values, Sym::No)?;
     ///     let (nrow, ncol, nnz, sym) = csr.get_info();
     ///     assert_eq!(nrow, 1);
     ///     assert_eq!(ncol, 2);
@@ -759,7 +756,7 @@ where
             self.nrow,
             self.ncol,
             self.row_pointers[self.nrow] as usize,
-            self.symmetry,
+            self.symmetric,
         )
     }
 
@@ -813,50 +810,50 @@ where
 #[cfg(test)]
 mod tests {
     use super::NumCsrMatrix;
-    use crate::{CooMatrix, Samples, Storage, Sym};
+    use crate::{CooMatrix, Samples, Sym};
     use num_complex::Complex64;
     use russell_lab::{complex_vec_approx_eq, cpx, vec_approx_eq, ComplexVector, Matrix, Vector};
 
     #[test]
     fn new_captures_errors() {
         assert_eq!(
-            NumCsrMatrix::<f64>::new(0, 1, vec![0], vec![], vec![], None).err(),
+            NumCsrMatrix::<f64>::new(0, 1, vec![0], vec![], vec![], Sym::No).err(),
             Some("nrow must be ≥ 1")
         );
         assert_eq!(
-            NumCsrMatrix::<f64>::new(1, 0, vec![0], vec![], vec![], None).err(),
+            NumCsrMatrix::<f64>::new(1, 0, vec![0], vec![], vec![], Sym::No).err(),
             Some("ncol must be ≥ 1")
         );
         assert_eq!(
-            NumCsrMatrix::<f64>::new(1, 1, vec![0], vec![], vec![], None).err(),
+            NumCsrMatrix::<f64>::new(1, 1, vec![0], vec![], vec![], Sym::No).err(),
             Some("row_pointers.len() must be = nrow + 1")
         );
         assert_eq!(
-            NumCsrMatrix::<f64>::new(1, 1, vec![0, 0], vec![], vec![], None).err(),
+            NumCsrMatrix::<f64>::new(1, 1, vec![0, 0], vec![], vec![], Sym::No).err(),
             Some("nnz = row_pointers[nrow] must be ≥ 1")
         );
         assert_eq!(
-            NumCsrMatrix::<f64>::new(1, 1, vec![0, 1], vec![], vec![], None).err(),
+            NumCsrMatrix::<f64>::new(1, 1, vec![0, 1], vec![], vec![], Sym::No).err(),
             Some("col_indices.len() must be ≥ nnz")
         );
         assert_eq!(
-            NumCsrMatrix::<f64>::new(1, 1, vec![0, 1], vec![0], vec![], None).err(),
+            NumCsrMatrix::<f64>::new(1, 1, vec![0, 1], vec![0], vec![], Sym::No).err(),
             Some("values.len() must be ≥ nnz")
         );
         assert_eq!(
-            NumCsrMatrix::<f64>::new(1, 1, vec![-1, 1], vec![0], vec![0.0], None).err(),
+            NumCsrMatrix::<f64>::new(1, 1, vec![-1, 1], vec![0], vec![0.0], Sym::No).err(),
             Some("row pointers must be ≥ 0")
         );
         assert_eq!(
-            NumCsrMatrix::<f64>::new(1, 1, vec![2, 1], vec![0], vec![0.0], None).err(),
+            NumCsrMatrix::<f64>::new(1, 1, vec![2, 1], vec![0], vec![0.0], Sym::No).err(),
             Some("row pointers must be sorted in ascending order")
         );
         assert_eq!(
-            NumCsrMatrix::<f64>::new(1, 1, vec![0, 1], vec![-1], vec![0.0], None).err(),
+            NumCsrMatrix::<f64>::new(1, 1, vec![0, 1], vec![-1], vec![0.0], Sym::No).err(),
             Some("column indices must be ≥ 0")
         );
         assert_eq!(
-            NumCsrMatrix::<f64>::new(1, 1, vec![0, 1], vec![2], vec![0.0], None).err(),
+            NumCsrMatrix::<f64>::new(1, 1, vec![0, 1], vec![2], vec![0.0], Sym::No).err(),
             Some("column indices must be < ncol")
         );
         // ┌       ┐
@@ -868,7 +865,7 @@ mod tests {
         let col_indices = vec![1, 0]; // << incorrect, should be [0, 1]
         let row_pointers = vec![0, 2];
         assert_eq!(
-            NumCsrMatrix::<f64>::new(1, 2, row_pointers, col_indices, values, None).err(),
+            NumCsrMatrix::<f64>::new(1, 2, row_pointers, col_indices, values, Sym::No).err(),
             Some("column indices must be sorted in ascending order (within their row)")
         );
     }
@@ -876,8 +873,8 @@ mod tests {
     #[test]
     fn new_works() {
         let (_, _, csr_correct, _) = Samples::rectangular_1x2(false, false);
-        let csr = NumCsrMatrix::<f64>::new(1, 2, vec![0, 2], vec![0, 1], vec![10.0, 20.0], None).unwrap();
-        assert_eq!(csr.symmetry, Sym::No);
+        let csr = NumCsrMatrix::<f64>::new(1, 2, vec![0, 2], vec![0, 1], vec![10.0, 20.0], Sym::No).unwrap();
+        assert_eq!(csr.symmetric, Sym::No);
         assert_eq!(csr.nrow, 1);
         assert_eq!(csr.ncol, 2);
         assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
@@ -887,7 +884,7 @@ mod tests {
 
     #[test]
     fn from_coo_captures_errors() {
-        let coo = CooMatrix::new(1, 1, 1, None).unwrap();
+        let coo = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
         assert_eq!(
             NumCsrMatrix::<f64>::from_coo(&coo).err(),
             Some("COO to CSR requires nnz > 0")
@@ -999,12 +996,12 @@ mod tests {
     fn update_from_coo_captures_errors() {
         let (coo, _, _, _) = Samples::rectangular_1x2(false, false);
         let mut csr = NumCsrMatrix::<f64>::from_coo(&coo).unwrap();
-        let yes = Sym::General(Storage::Lower);
+        let yes = Sym::YesLower;
         let no = Sym::No;
-        assert_eq!(csr.update_from_coo(&CooMatrix { symmetry: yes,  nrow: 1, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.symmetry must be equal to csr.symmetry"));
-        assert_eq!(csr.update_from_coo(&CooMatrix { symmetry: no, nrow: 2, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.nrow must be equal to csr.nrow"));
-        assert_eq!(csr.update_from_coo(&CooMatrix { symmetry: no, nrow: 1, ncol: 1, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.ncol must be equal to csr.ncol"));
-        assert_eq!(csr.update_from_coo(&CooMatrix { symmetry: no, nrow: 1, ncol: 2, nnz: 3, max_nnz: 3, indices_i: vec![0,0,0], indices_j: vec![0,0,0], values: vec![0.0,0.0,0.0] }).err(), Some("coo.nnz must be equal to nnz(dup) = self.col_indices.len() = csr.values.len()"));
+        assert_eq!(csr.update_from_coo(&CooMatrix { symmetric: yes,  nrow: 1, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.symmetry must be equal to csr.symmetry"));
+        assert_eq!(csr.update_from_coo(&CooMatrix { symmetric: no, nrow: 2, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.nrow must be equal to csr.nrow"));
+        assert_eq!(csr.update_from_coo(&CooMatrix { symmetric: no, nrow: 1, ncol: 1, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.ncol must be equal to csr.ncol"));
+        assert_eq!(csr.update_from_coo(&CooMatrix { symmetric: no, nrow: 1, ncol: 2, nnz: 3, max_nnz: 3, indices_i: vec![0,0,0], indices_j: vec![0,0,0], values: vec![0.0,0.0,0.0] }).err(), Some("coo.nnz must be equal to nnz(dup) = self.col_indices.len() = csr.values.len()"));
     }
 
     #[test]
@@ -1241,7 +1238,7 @@ mod tests {
         assert_eq!(csr.get_values(), &[10.0, 20.0]);
         // mutable
         let mut csr = NumCsrMatrix::<f64> {
-            symmetry: Sym::No,
+            symmetric: Sym::No,
             nrow: 1,
             ncol: 2,
             values: vec![10.0, 20.0],
@@ -1275,10 +1272,10 @@ mod tests {
         let json = serde_json::to_string(&csr).unwrap();
         assert_eq!(
             json,
-            r#"{"symmetry":"No","nrow":5,"ncol":5,"row_pointers":[0,2,5,8,9,12],"col_indices":[0,1,0,2,4,1,2,3,2,1,2,4,0],"values":[2.0,3.0,3.0,4.0,6.0,-1.0,-3.0,2.0,1.0,4.0,2.0,1.0,0.0]}"#
+            r#"{"symmetric":"No","nrow":5,"ncol":5,"row_pointers":[0,2,5,8,9,12],"col_indices":[0,1,0,2,4,1,2,3,2,1,2,4,0],"values":[2.0,3.0,3.0,4.0,6.0,-1.0,-3.0,2.0,1.0,4.0,2.0,1.0,0.0]}"#
         );
         let from_json: NumCsrMatrix<f64> = serde_json::from_str(&json).unwrap();
-        assert_eq!(from_json.symmetry, csr.symmetry);
+        assert_eq!(from_json.symmetric, csr.symmetric);
         assert_eq!(from_json.nrow, csr.nrow);
         assert_eq!(from_json.ncol, csr.ncol);
         assert_eq!(from_json.row_pointers, csr.row_pointers);

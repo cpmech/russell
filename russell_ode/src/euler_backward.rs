@@ -50,7 +50,6 @@ where
             system.jac_nnz
         };
         let nnz = jac_nnz + ndim; // +ndim corresponds to the diagonal I matrix
-        let symmetry = Some(system.jac_symmetry);
         EulerBackward {
             params,
             system,
@@ -58,7 +57,7 @@ where
             w: Vector::new(ndim),
             r: Vector::new(ndim),
             dy: Vector::new(ndim),
-            kk: SparseMatrix::new_coo(ndim, ndim, nnz, symmetry).unwrap(),
+            kk: SparseMatrix::new_coo(ndim, ndim, nnz, system.jac_sym).unwrap(),
             solver: LinSolver::new(params.newton.genie).unwrap(),
         }
     }

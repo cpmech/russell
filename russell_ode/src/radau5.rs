@@ -699,7 +699,7 @@ const TI: [[f64; 3]; 3] = [
 #[cfg(test)]
 mod tests {
     use super::Radau5;
-    use crate::{Method, OdeSolverTrait, Params, Samples, Workspace};
+    use crate::{HasJacobian, Method, OdeSolverTrait, Params, Samples, System, Workspace};
     use russell_lab::{format_fortran, format_scientific, Vector};
     use russell_sparse::Genie;
     use serial_test::serial;
@@ -903,5 +903,51 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn radau5_handles_errors() {
+        struct Args {
+            count_f: usize,
+        }
+        let system = System::new(
+            1,
+            |f, _, _, args: &mut Args| {
+                f[0] = 1.0;
+                args.count_f += 1;
+                if args.count_f == 1 {
+                    Err("f: stop (count = 1; initialize)")
+                } else if args.count_f == 4 {
+                    Err("f: stop (count = 4; num-jacobian)")
+                } else {
+                    Ok(())
+                }
+            },
+            |jj, _x, _y, m, _args: &mut Args| {
+                jj.reset();
+                jj.put(0, 0, m * (0.0)).unwrap();
+                Err("jj: stop")
+            },
+            HasJacobian::Yes,
+            None,
+            None,
+        );
+        let params = Params::new(Method::Radau5);
+        let mut solver = Radau5::new(params, &system);
+        let mut work = Workspace::new(Method::Radau5);
+        let x = 0.0;
+        let y = Vector::from(&[0.0]);
+        let h = 0.1;
+        let mut args = Args { count_f: 0 };
+        assert_eq!(
+            solver.step(&mut work, x, &y, h, &mut args).err(),
+            Some("f: stop (count = 1; initialize)")
+        );
+        assert_eq!(solver.step(&mut work, x, &y, h, &mut args).err(), Some("jj: stop"));
+        solver.params.newton.use_numerical_jacobian = true;
+        assert_eq!(
+            solver.step(&mut work, x, &y, h, &mut args).err(),
+            Some("f: stop (count = 4; num-jacobian)")
+        );
     }
 }

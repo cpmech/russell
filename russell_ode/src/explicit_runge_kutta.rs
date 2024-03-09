@@ -93,7 +93,6 @@ where
 
         // information
         let info = params.method.information();
-        assert!(!info.implicit);
 
         // coefficients for error estimate
         let ee = if info.embedded {

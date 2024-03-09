@@ -262,7 +262,7 @@ pub fn no_jacobian<A>(
 #[cfg(test)]
 mod tests {
     use super::{no_jacobian, System};
-    use crate::HasJacobian;
+    use crate::{HasJacobian, NoArgs};
     use russell_lab::Vector;
     use russell_sparse::{CooMatrix, Sym};
 
@@ -365,5 +365,29 @@ mod tests {
         assert_eq!(args.n_jacobian_eval, 1);
         assert_eq!(args.more_data_goes_here_fn, true);
         assert_eq!(args.more_data_goes_here_jj, true);
+    }
+
+    #[test]
+    fn ode_system_handles_errors() {
+        let mut system = System::new(
+            1,
+            |f, _, _, _: &mut NoArgs| {
+                f[0] = 1.0;
+                Ok(())
+            },
+            no_jacobian,
+            HasJacobian::No,
+            None,
+            None,
+        );
+        let mut f = Vector::new(1);
+        let x = 0.0;
+        let y = Vector::new(1);
+        let mut args = 0;
+        (system.function)(&mut f, x, &y, &mut args).unwrap();
+        assert_eq!(
+            system.mass_put(0, 0, 1.0).err(),
+            Some("mass matrix has not been initialized/enabled")
+        );
     }
 }

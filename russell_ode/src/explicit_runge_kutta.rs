@@ -366,7 +366,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::ExplicitRungeKutta;
-    use crate::{no_jacobian, HasJacobian, Method, OdeSolverTrait, Params, Samples, System, Workspace};
+    use crate::{no_jacobian, ErkDenseOut, HasJacobian, Method, OdeSolverTrait, Params, Samples, System, Workspace};
     use russell_lab::{approx_eq, vec_approx_eq, Vector};
 
     #[test]
@@ -722,5 +722,58 @@ mod tests {
             0.200250418651,
         ];
         vec_approx_eq(&kh, kh_correct, 1e-12);
+    }
+
+    #[test]
+    fn erk_handles_errors() {
+        struct Args {
+            count_f: usize,
+        }
+        let system = System::new(
+            1,
+            |f, _, _, args: &mut Args| {
+                f[0] = 1.0;
+                args.count_f += 1;
+                if args.count_f == 1 {
+                    Err("f: count = 1")
+                } else if args.count_f == 3 {
+                    Err("f: count = 3")
+                } else if args.count_f == 4 {
+                    Err("f: count = 4 (dense output)")
+                } else if args.count_f == 6 {
+                    Err("f: count = 6 (dense output)")
+                } else if args.count_f == 8 {
+                    Err("f: count = 8 (dense output)")
+                } else {
+                    Ok(())
+                }
+            },
+            no_jacobian,
+            HasJacobian::No,
+            None,
+            None,
+        );
+        let params = Params::new(Method::DoPri8);
+        let mut solver = ExplicitRungeKutta::new(params, &system).unwrap();
+        let mut work = Workspace::new(Method::DoPri8);
+        let mut x = 0.0;
+        let mut y = Vector::from(&[0.0]);
+        let h = 0.1;
+        let mut args = Args { count_f: 0 };
+        assert_eq!(solver.step(&mut work, x, &y, h, &mut args).err(), Some("f: count = 1"));
+        assert_eq!(solver.step(&mut work, x, &y, h, &mut args).err(), Some("f: count = 3"));
+        solver.dense_out = Some(ErkDenseOut::new(Method::DoPri8, 1).unwrap());
+        assert_eq!(
+            solver.accept(&mut work, &mut x, &mut y, h, &mut args).err(),
+            Some("f: count = 4 (dense output)")
+        );
+        assert_eq!(
+            solver.accept(&mut work, &mut x, &mut y, h, &mut args).err(),
+            Some("f: count = 6 (dense output)")
+        );
+        assert_eq!(
+            solver.accept(&mut work, &mut x, &mut y, h, &mut args).err(),
+            Some("f: count = 8 (dense output)")
+        );
     }
 }

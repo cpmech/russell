@@ -185,7 +185,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::EulerBackward;
-    use crate::{Method, OdeSolverTrait, Params, Samples, Workspace};
+    use crate::{HasJacobian, Method, OdeSolverTrait, Params, Samples, System, Workspace};
     use russell_lab::{vec_approx_eq, Vector};
 
     // Mathematica code:
@@ -372,5 +372,56 @@ mod tests {
             solver.step(&mut work, data.x0, &data.y0, 0.1, &mut args).err(),
             Some("Newton-Raphson method did not complete successfully")
         );
+    }
+
+    #[test]
+    fn euler_backward_handles_errors() {
+        struct Args {
+            count_f: usize,
+        }
+        let system = System::new(
+            1,
+            |f, _, _, args: &mut Args| {
+                f[0] = 1.0;
+                args.count_f += 1;
+                if args.count_f == 1 {
+                    Err("f: stop (count = 1)")
+                } else if args.count_f == 4 {
+                    Err("f: stop (count = 4; num-jacobian)")
+                } else {
+                    Ok(())
+                }
+            },
+            |jj, _x, _y, m, _args: &mut Args| {
+                jj.reset();
+                jj.put(0, 0, m * (0.0)).unwrap();
+                Err("jj: stop")
+            },
+            HasJacobian::Yes,
+            None,
+            None,
+        );
+        let params = Params::new(Method::BwEuler);
+        let mut solver = EulerBackward::new(params, &system);
+        let mut work = Workspace::new(Method::BwEuler);
+        let x = 0.0;
+        let y = Vector::from(&[0.0]);
+        let h = 0.1;
+        let mut args = Args { count_f: 0 };
+        assert_eq!(
+            solver.step(&mut work, x, &y, h, &mut args).err(),
+            Some("f: stop (count = 1)")
+        );
+        assert_eq!(solver.step(&mut work, x, &y, h, &mut args).err(), Some("jj: stop"));
+        solver.params.newton.use_numerical_jacobian = true;
+        assert_eq!(
+            solver.step(&mut work, x, &y, h, &mut args).err(),
+            Some("f: stop (count = 4; num-jacobian)")
+        );
+        // call other functions just to make sure all is well
+        let mut y_out = Vector::new(1);
+        let x_out = 0.1;
+        solver.reject(&mut work, h);
+        solver.dense_output(&mut y_out, x_out, x, &y, h);
     }
 }

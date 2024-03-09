@@ -1,5 +1,5 @@
 use crate::{ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix};
-use crate::{CooMatrix, CscMatrix, CsrMatrix, Storage, Symmetry};
+use crate::{CooMatrix, CscMatrix, CsrMatrix, Storage, Sym};
 use num_complex::Complex64;
 use russell_lab::cpx;
 
@@ -72,7 +72,7 @@ impl Samples {
     /// ```
     pub fn positive_definite_3x3() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let (nrow, ncol, nnz) = (3, 3, 6);
-        let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
+        let sym = Some(Sym::PositiveDefinite(Storage::Lower));
         let mut coo = CooMatrix::new(nrow, ncol, nnz, sym).unwrap();
         coo.put(1, 0, -0.5).unwrap(); // duplicate
         coo.put(0, 0, 2.0).unwrap();
@@ -118,7 +118,7 @@ impl Samples {
     /// ```
     pub fn complex_symmetric_3x3_lower() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
         let (nrow, ncol, nnz) = (3, 3, 6);
-        let sym = Some(Symmetry::General(Storage::Lower));
+        let sym = Some(Sym::General(Storage::Lower));
         let mut coo = ComplexCooMatrix::new(nrow, ncol, nnz, sym).unwrap();
         coo.put(1, 0, cpx!(-0.5, -0.5)).unwrap(); // duplicate
         coo.put(0, 0, cpx!(2.0, 1.0)).unwrap();
@@ -166,7 +166,7 @@ impl Samples {
     /// ```
     pub fn complex_symmetric_3x3_full() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
         let (nrow, ncol, nnz) = (3, 3, 8);
-        let sym = Some(Symmetry::General(Storage::Full));
+        let sym = Some(Sym::General(Storage::Full));
         let mut coo = ComplexCooMatrix::new(nrow, ncol, nnz, sym).unwrap();
         coo.put(1, 0, cpx!(-0.5, -0.5)).unwrap(); // duplicate
         coo.put(0, 0, cpx!(2.0, 1.0)).unwrap();
@@ -218,7 +218,7 @@ impl Samples {
     /// ```
     pub fn lower_symmetric_5x5() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let (nrow, ncol, nnz) = (5, 5, 18);
-        let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
+        let sym = Some(Sym::PositiveDefinite(Storage::Lower));
         let mut coo = CooMatrix::new(nrow, ncol, nnz, sym).unwrap();
         coo.put(1, 1, 2.0).unwrap();
         coo.put(4, 2, 2.5).unwrap(); // duplicate
@@ -655,7 +655,7 @@ impl Samples {
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
     pub fn mkl_positive_definite_5x5_lower() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
+        let sym = Some(Sym::PositiveDefinite(Storage::Lower));
         let nrow = 5;
         let ncol = 5;
         let mut coo = CooMatrix::new(nrow, ncol, 9, sym).unwrap();
@@ -729,7 +729,7 @@ impl Samples {
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
     pub fn mkl_positive_definite_5x5_upper() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = Some(Symmetry::PositiveDefinite(Storage::Upper));
+        let sym = Some(Sym::PositiveDefinite(Storage::Upper));
         let nrow = 5;
         let ncol = 5;
         let mut coo = CooMatrix::new(nrow, ncol, 9, sym).unwrap();
@@ -806,7 +806,7 @@ impl Samples {
         shuffle_coo_entries: bool,
         duplicate_coo_entries: bool,
     ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = Some(Symmetry::General(Storage::Lower));
+        let sym = Some(Sym::General(Storage::Lower));
         let nrow = 5;
         let ncol = 5;
         let max_nnz = 13;
@@ -928,7 +928,7 @@ impl Samples {
         shuffle_coo_entries: bool,
         duplicate_coo_entries: bool,
     ) -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = Some(Symmetry::General(Storage::Upper));
+        let sym = Some(Sym::General(Storage::Upper));
         let nrow = 5;
         let ncol = 5;
         let max_nnz = 15;
@@ -1046,7 +1046,7 @@ impl Samples {
     /// x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
     /// ```
     pub fn mkl_symmetric_5x5_full() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
-        let sym = Some(Symmetry::General(Storage::Full));
+        let sym = Some(Sym::General(Storage::Full));
         let nrow = 5;
         let ncol = 5;
         let max_nnz = 13;

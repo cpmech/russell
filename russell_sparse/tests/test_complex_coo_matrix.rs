@@ -5,7 +5,7 @@ use russell_sparse::StrError;
 
 #[test]
 fn test_complex_coo_matrix() -> Result<(), StrError> {
-    let sym = Some(Symmetry::new_general_lower());
+    let sym = Some(Sym::new_general_lower());
     let mut coo = ComplexCooMatrix::new(3, 3, 4, sym)?;
     coo.put(0, 0, cpx!(1.0, 0.1))?;
     coo.put(1, 0, cpx!(2.0, 0.2))?;

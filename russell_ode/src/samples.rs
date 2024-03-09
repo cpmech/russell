@@ -2,7 +2,7 @@ use crate::StrError;
 use crate::{HasJacobian, NoArgs, System};
 use russell_lab::math::PI;
 use russell_lab::Vector;
-use russell_sparse::{CooMatrix, Symmetry};
+use russell_sparse::{CooMatrix, Sym};
 
 /// Holds data corresponding to a sample ODE problem
 pub struct SampleData {
@@ -164,7 +164,7 @@ impl Samples {
     ) {
         // selected symmetry option (for both Mass and Jacobian matrices)
         let symmetry = if lower_triangle {
-            Some(Symmetry::new_general_lower())
+            Some(Sym::new_general_lower())
         } else {
             None
         };
@@ -789,7 +789,7 @@ mod tests {
     use super::{NoArgs, Samples};
     use crate::StrError;
     use russell_lab::{deriv_central5, mat_approx_eq, vec_approx_eq, Matrix, Vector};
-    use russell_sparse::{CooMatrix, Symmetry};
+    use russell_sparse::{CooMatrix, Sym};
 
     fn numerical_jacobian<F>(ndim: usize, x0: f64, y0: Vector, function: F, multiplier: f64) -> Matrix
     where
@@ -1045,6 +1045,6 @@ mod tests {
         println!("{}", mass.as_dense());
         let ndim = system.ndim;
         let nnz_mass = 5 + 4;
-        assert_eq!(mass.get_info(), (ndim, ndim, nnz_mass, Symmetry::No));
+        assert_eq!(mass.get_info(), (ndim, ndim, nnz_mass, Sym::No));
     }
 }

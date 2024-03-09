@@ -1,4 +1,4 @@
-use super::{CscMatrix, CsrMatrix, Symmetry};
+use super::{CscMatrix, CsrMatrix, Sym};
 use crate::StrError;
 use std::ffi::OsStr;
 use std::fmt::Write;
@@ -35,7 +35,7 @@ where
 
     // write header
     if !vismatrix {
-        if symmetry == Symmetry::No {
+        if symmetry == Sym::No {
             write!(&mut buffer, "%%MatrixMarket matrix coordinate real general\n").unwrap();
         } else {
             write!(&mut buffer, "%%MatrixMarket matrix coordinate real symmetric\n").unwrap();
@@ -103,7 +103,7 @@ where
 
     // write header
     if !vismatrix {
-        if symmetry == Symmetry::No {
+        if symmetry == Sym::No {
             write!(&mut buffer, "%%MatrixMarket matrix coordinate real general\n").unwrap();
         } else {
             write!(&mut buffer, "%%MatrixMarket matrix coordinate real symmetric\n").unwrap();

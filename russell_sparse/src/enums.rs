@@ -30,7 +30,7 @@ pub enum Storage {
 
 /// Specifies the type of matrix symmetry
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub enum Symmetry {
+pub enum Sym {
     /// Unknown symmetry (possibly unsymmetric)
     No,
 
@@ -176,53 +176,53 @@ impl Genie {
     }
 
     /// Returns the solver's required symmetry/storage configuration
-    pub fn symmetry(&self, symmetric: bool, positive_definite: bool) -> Symmetry {
+    pub fn symmetry(&self, symmetric: bool, positive_definite: bool) -> Sym {
         let storage = self.storage();
         if symmetric || positive_definite {
             if positive_definite {
-                Symmetry::PositiveDefinite(storage)
+                Sym::PositiveDefinite(storage)
             } else {
-                Symmetry::General(storage)
+                Sym::General(storage)
             }
         } else {
-            Symmetry::No
+            Sym::No
         }
     }
 }
 
-impl Symmetry {
+impl Sym {
     /// Returns a new general symmetry flag with lower storage
     pub fn new_general_lower() -> Self {
-        Symmetry::General(Storage::Lower)
+        Sym::General(Storage::Lower)
     }
 
     /// Returns a new general symmetry flag with upper storage
     pub fn new_general_upper() -> Self {
-        Symmetry::General(Storage::Upper)
+        Sym::General(Storage::Upper)
     }
 
     /// Returns a new general symmetry flag with full storage
     pub fn new_general_full() -> Self {
-        Symmetry::General(Storage::Full)
+        Sym::General(Storage::Full)
     }
 
     /// Returns a new positive-definite symmetry flag with lower storage
     pub fn new_pos_def_lower() -> Self {
-        Symmetry::PositiveDefinite(Storage::Lower)
+        Sym::PositiveDefinite(Storage::Lower)
     }
 
     /// Returns a new positive-definite symmetry flag with upper storage
     pub fn new_pos_def_upper() -> Self {
-        Symmetry::PositiveDefinite(Storage::Upper)
+        Sym::PositiveDefinite(Storage::Upper)
     }
 
     /// Returns a new positive-definite symmetry flag with full storage
     pub fn new_pos_def_full() -> Self {
-        Symmetry::PositiveDefinite(Storage::Full)
+        Sym::PositiveDefinite(Storage::Full)
     }
 
     /// Returns which type of storage is used, if symmetric
-    pub fn storage(symmetry: Symmetry) -> Storage {
+    pub fn storage(symmetry: Sym) -> Storage {
         if symmetry.lower() {
             Storage::Lower
         } else if symmetry.upper() {
@@ -235,27 +235,27 @@ impl Symmetry {
     /// Returns true if the storage is triangular (lower or upper)
     pub fn triangular(&self) -> bool {
         match self {
-            Symmetry::No => false,
-            Symmetry::General(storage) => *storage != Storage::Full,
-            Symmetry::PositiveDefinite(storage) => *storage != Storage::Full,
+            Sym::No => false,
+            Sym::General(storage) => *storage != Storage::Full,
+            Sym::PositiveDefinite(storage) => *storage != Storage::Full,
         }
     }
 
     /// Returns true if the storage is lower triangular
     pub fn lower(&self) -> bool {
         match self {
-            Symmetry::No => false,
-            Symmetry::General(storage) => *storage == Storage::Lower,
-            Symmetry::PositiveDefinite(storage) => *storage == Storage::Lower,
+            Sym::No => false,
+            Sym::General(storage) => *storage == Storage::Lower,
+            Sym::PositiveDefinite(storage) => *storage == Storage::Lower,
         }
     }
 
     /// Returns true if the storage is upper triangular
     pub fn upper(&self) -> bool {
         match self {
-            Symmetry::No => false,
-            Symmetry::General(storage) => *storage == Storage::Upper,
-            Symmetry::PositiveDefinite(storage) => *storage == Storage::Upper,
+            Sym::No => false,
+            Sym::General(storage) => *storage == Storage::Upper,
+            Sym::PositiveDefinite(storage) => *storage == Storage::Upper,
         }
     }
 
@@ -274,8 +274,8 @@ impl Symmetry {
     /// * `positive_definite` -- 1 if true, 0 otherwise
     pub fn status(&self, must_be_lower: bool, must_be_upper: bool) -> Result<(i32, i32), StrError> {
         match self {
-            Symmetry::No => Ok((0, 0)),
-            Symmetry::General(storage) => {
+            Sym::No => Ok((0, 0)),
+            Sym::General(storage) => {
                 if must_be_lower && *storage != Storage::Lower {
                     return Err("if the matrix is general symmetric, the required storage is lower triangular");
                 }
@@ -284,7 +284,7 @@ impl Symmetry {
                 }
                 Ok((1, 0))
             }
-            Symmetry::PositiveDefinite(storage) => {
+            Sym::PositiveDefinite(storage) => {
                 if must_be_lower && *storage != Storage::Lower {
                     return Err("if the matrix is positive-definite, the required storage is lower triangular");
                 }
@@ -387,14 +387,14 @@ mod tests {
         let from_json: Storage = serde_json::from_str(&json).unwrap();
         assert_eq!(from_json, storage);
 
-        let symmetry = Symmetry::PositiveDefinite(Storage::Lower);
+        let symmetry = Sym::PositiveDefinite(Storage::Lower);
         let copy = symmetry;
         let clone = symmetry.clone();
         assert_eq!(format!("{:?}", symmetry), "PositiveDefinite(Lower)");
-        assert_eq!(copy, Symmetry::PositiveDefinite(Storage::Lower));
-        assert_eq!(clone, Symmetry::PositiveDefinite(Storage::Lower));
+        assert_eq!(copy, Sym::PositiveDefinite(Storage::Lower));
+        assert_eq!(clone, Sym::PositiveDefinite(Storage::Lower));
         let json = serde_json::to_string(&symmetry).unwrap();
-        let from_json: Symmetry = serde_json::from_str(&json).unwrap();
+        let from_json: Sym = serde_json::from_str(&json).unwrap();
         assert_eq!(from_json, symmetry);
 
         let handling = MMsymOption::LeaveAsLower;
@@ -492,16 +492,16 @@ mod tests {
         let l = Storage::Lower;
         let f = Storage::Full;
 
-        let gl = Symmetry::General(l);
-        let gf = Symmetry::General(f);
+        let gl = Sym::General(l);
+        let gf = Sym::General(f);
 
-        let pl = Symmetry::PositiveDefinite(l);
-        let pf = Symmetry::PositiveDefinite(f);
+        let pl = Sym::PositiveDefinite(l);
+        let pf = Sym::PositiveDefinite(f);
 
         let genie = Genie::Mumps;
         assert_eq!(genie.to_string(), "mumps");
         assert_eq!(genie.storage(), l);
-        assert_eq!(genie.symmetry(false, false), Symmetry::No);
+        assert_eq!(genie.symmetry(false, false), Sym::No);
         assert_eq!(genie.symmetry(true, false), gl);
         assert_eq!(genie.symmetry(false, true), pl);
         assert_eq!(genie.symmetry(true, true), pl);
@@ -509,7 +509,7 @@ mod tests {
         let genie = Genie::Umfpack;
         assert_eq!(genie.to_string(), "umfpack");
         assert_eq!(genie.storage(), f);
-        assert_eq!(genie.symmetry(false, false), Symmetry::No);
+        assert_eq!(genie.symmetry(false, false), Sym::No);
         assert_eq!(genie.symmetry(true, false), gf);
         assert_eq!(genie.symmetry(false, true), pf);
         assert_eq!(genie.symmetry(true, true), pf);
@@ -521,20 +521,20 @@ mod tests {
         let u = Storage::Upper;
         let f = Storage::Full;
 
-        let gl = Symmetry::General(l);
-        let gu = Symmetry::General(u);
-        let gf = Symmetry::General(f);
+        let gl = Sym::General(l);
+        let gu = Sym::General(u);
+        let gf = Sym::General(f);
 
-        let pl = Symmetry::PositiveDefinite(l);
-        let pu = Symmetry::PositiveDefinite(u);
-        let pf = Symmetry::PositiveDefinite(f);
+        let pl = Sym::PositiveDefinite(l);
+        let pu = Sym::PositiveDefinite(u);
+        let pf = Sym::PositiveDefinite(f);
 
-        assert_eq!(Symmetry::new_general_lower(), gl);
-        assert_eq!(Symmetry::new_general_upper(), gu);
-        assert_eq!(Symmetry::new_general_full(), gf);
-        assert_eq!(Symmetry::storage(gl), Storage::Lower);
-        assert_eq!(Symmetry::storage(gu), Storage::Upper);
-        assert_eq!(Symmetry::storage(gf), Storage::Full);
+        assert_eq!(Sym::new_general_lower(), gl);
+        assert_eq!(Sym::new_general_upper(), gu);
+        assert_eq!(Sym::new_general_full(), gf);
+        assert_eq!(Sym::storage(gl), Storage::Lower);
+        assert_eq!(Sym::storage(gu), Storage::Upper);
+        assert_eq!(Sym::storage(gf), Storage::Full);
         assert_eq!(gl.triangular(), true);
         assert_eq!(gu.triangular(), true);
         assert_eq!(gf.triangular(), false);
@@ -559,12 +559,12 @@ mod tests {
             Err("if the matrix is general symmetric, the required storage is lower triangular")
         );
 
-        assert_eq!(Symmetry::new_pos_def_lower(), pl);
-        assert_eq!(Symmetry::new_pos_def_upper(), pu);
-        assert_eq!(Symmetry::new_pos_def_full(), pf);
-        assert_eq!(Symmetry::storage(pl), Storage::Lower);
-        assert_eq!(Symmetry::storage(pu), Storage::Upper);
-        assert_eq!(Symmetry::storage(pf), Storage::Full);
+        assert_eq!(Sym::new_pos_def_lower(), pl);
+        assert_eq!(Sym::new_pos_def_upper(), pu);
+        assert_eq!(Sym::new_pos_def_full(), pf);
+        assert_eq!(Sym::storage(pl), Storage::Lower);
+        assert_eq!(Sym::storage(pu), Storage::Upper);
+        assert_eq!(Sym::storage(pf), Storage::Full);
         assert_eq!(pl.triangular(), true);
         assert_eq!(pu.triangular(), true);
         assert_eq!(pf.triangular(), false);
@@ -589,6 +589,6 @@ mod tests {
             Err("if the matrix is positive-definite, the required storage is lower triangular")
         );
 
-        assert_eq!(Symmetry::storage(Symmetry::No), Storage::Full);
+        assert_eq!(Sym::storage(Sym::No), Storage::Full);
     }
 }

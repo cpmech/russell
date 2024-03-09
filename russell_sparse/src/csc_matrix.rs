@@ -1,4 +1,4 @@
-use super::{to_i32, NumCooMatrix, NumCsrMatrix, Symmetry};
+use super::{to_i32, NumCooMatrix, NumCsrMatrix, Sym};
 use crate::StrError;
 use num_traits::{Num, NumCast};
 use russell_lab::{NumMatrix, NumVector};
@@ -55,7 +55,7 @@ where
     T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
-    pub(crate) symmetry: Symmetry,
+    pub(crate) symmetry: Sym,
 
     /// Holds the number of rows (must fit i32)
     pub(crate) nrow: usize,
@@ -195,7 +195,7 @@ where
         col_pointers: Vec<i32>,
         row_indices: Vec<i32>,
         values: Vec<T>,
-        symmetry: Option<Symmetry>,
+        symmetry: Option<Sym>,
     ) -> Result<Self, StrError> {
         if nrow < 1 {
             return Err("nrow must be ≥ 1");
@@ -242,7 +242,7 @@ where
             }
         }
         Ok(NumCscMatrix {
-            symmetry: if let Some(v) = symmetry { v } else { Symmetry::No },
+            symmetry: if let Some(v) = symmetry { v } else { Sym::No },
             nrow,
             ncol,
             col_pointers,
@@ -780,7 +780,7 @@ where
     ///     Ok(())
     /// }
     /// ```
-    pub fn get_info(&self) -> (usize, usize, usize, Symmetry) {
+    pub fn get_info(&self) -> (usize, usize, usize, Sym) {
         (
             self.nrow,
             self.ncol,
@@ -839,7 +839,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::NumCscMatrix;
-    use crate::{CooMatrix, Samples, Storage, Symmetry};
+    use crate::{CooMatrix, Samples, Storage, Sym};
     use num_complex::Complex64;
     use russell_lab::{complex_vec_approx_eq, cpx, vec_approx_eq, ComplexVector, Matrix, Vector};
 
@@ -904,7 +904,7 @@ mod tests {
     fn new_works() {
         let (_, csc_correct, _, _) = Samples::rectangular_1x2(false, false);
         let csc = NumCscMatrix::<f64>::new(1, 2, vec![0, 1, 2], vec![0, 0], vec![10.0, 20.0], None).unwrap();
-        assert_eq!(csc.symmetry, Symmetry::No);
+        assert_eq!(csc.symmetry, Sym::No);
         assert_eq!(csc.nrow, 1);
         assert_eq!(csc.ncol, 2);
         assert_eq!(&csc.col_pointers, &csc_correct.col_pointers);
@@ -1011,8 +1011,8 @@ mod tests {
     fn update_from_coo_captures_errors() {
         let (coo, _, _, _) = Samples::rectangular_1x2(false, false, );
         let mut csc = NumCscMatrix::<f64>::from_coo(&coo).unwrap();
-        let yes = Symmetry::General(Storage::Lower);
-        let no = Symmetry::No;
+        let yes = Sym::General(Storage::Lower);
+        let no = Sym::No;
         assert_eq!(csc.update_from_coo(&CooMatrix { symmetry: yes,  nrow: 1, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.symmetry must be equal to csc.symmetry"));
         assert_eq!(csc.update_from_coo(&CooMatrix { symmetry: no, nrow: 2, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.nrow must be equal to csc.nrow"));
         assert_eq!(csc.update_from_coo(&CooMatrix { symmetry: no, nrow: 1, ncol: 1, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.ncol must be equal to csc.ncol"));
@@ -1240,20 +1240,20 @@ mod tests {
     #[test]
     fn getters_are_correct() {
         let (_, csc, _, _) = Samples::rectangular_1x2(false, false);
-        assert_eq!(csc.get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(csc.get_info(), (1, 2, 2, Sym::No));
         assert_eq!(csc.get_col_pointers(), &[0, 1, 2]);
         assert_eq!(csc.get_row_indices(), &[0, 0]);
         assert_eq!(csc.get_values(), &[10.0, 20.0]);
         // with duplicates
         let (coo, _, _, _) = Samples::rectangular_1x2(false, false);
         let csc = NumCscMatrix::<f64>::from_coo(&coo).unwrap();
-        assert_eq!(csc.get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(csc.get_info(), (1, 2, 2, Sym::No));
         assert_eq!(csc.get_col_pointers(), &[0, 1, 2]);
         assert_eq!(csc.get_row_indices(), &[0, 0]);
         assert_eq!(csc.get_values(), &[10.0, 20.0]);
         // mutable
         let mut csc = NumCscMatrix::<f64> {
-            symmetry: Symmetry::No,
+            symmetry: Sym::No,
             nrow: 1,
             ncol: 2,
             values: vec![10.0, 20.0],

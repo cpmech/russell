@@ -1,4 +1,4 @@
-use super::{Storage, Symmetry};
+use super::{Storage, Sym};
 use crate::to_i32;
 use crate::StrError;
 use num_traits::{Num, NumCast};
@@ -23,7 +23,7 @@ where
     T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     /// Defines the symmetry and storage: lower-triangular, upper-triangular, full-matrix
-    pub(crate) symmetry: Symmetry,
+    pub(crate) symmetry: Sym,
 
     /// Holds the number of rows (must fit i32)
     pub(crate) nrow: usize,
@@ -167,7 +167,7 @@ where
     ///     Ok(())
     /// }
     /// ```
-    pub fn new(nrow: usize, ncol: usize, max_nnz: usize, symmetry: Option<Symmetry>) -> Result<Self, StrError> {
+    pub fn new(nrow: usize, ncol: usize, max_nnz: usize, symmetry: Option<Sym>) -> Result<Self, StrError> {
         if nrow < 1 {
             return Err("nrow must be ≥ 1");
         }
@@ -178,7 +178,7 @@ where
             return Err("max_nnz must be ≥ 1");
         }
         Ok(NumCooMatrix {
-            symmetry: if let Some(v) = symmetry { v } else { Symmetry::No },
+            symmetry: if let Some(v) = symmetry { v } else { Sym::No },
             nrow,
             ncol,
             nnz: 0,
@@ -242,7 +242,7 @@ where
         row_indices: Vec<i32>,
         col_indices: Vec<i32>,
         values: Vec<T>,
-        symmetry: Option<Symmetry>,
+        symmetry: Option<Sym>,
     ) -> Result<Self, StrError> {
         if nrow < 1 {
             return Err("nrow must be ≥ 1");
@@ -271,7 +271,7 @@ where
             }
         }
         Ok(NumCooMatrix {
-            symmetry: if let Some(v) = symmetry { v } else { Symmetry::No },
+            symmetry: if let Some(v) = symmetry { v } else { Sym::No },
             nrow,
             ncol,
             nnz,
@@ -325,7 +325,7 @@ where
         if self.nnz >= self.max_nnz {
             return Err("COO matrix: max number of items has been reached");
         }
-        if self.symmetry != Symmetry::No {
+        if self.symmetry != Sym::No {
             if self.symmetry.lower() {
                 if j > i {
                     return Err("COO matrix: j > i is incorrect for lower triangular storage");
@@ -634,18 +634,18 @@ where
     ///     Ok(())
     /// }
     /// ```
-    pub fn get_info(&self) -> (usize, usize, usize, Symmetry) {
+    pub fn get_info(&self) -> (usize, usize, usize, Sym) {
         (self.nrow, self.ncol, self.nnz, self.symmetry)
     }
 
     /// Returns the storage corresponding to the symmetry type (if any)
     pub fn get_storage(&self) -> Storage {
-        Symmetry::storage(self.symmetry)
+        Sym::storage(self.symmetry)
     }
 
     /// Returns whether the symmetry flag corresponds to a symmetric matrix or not
     pub fn get_symmetric(&self) -> bool {
-        self.symmetry != Symmetry::No
+        self.symmetry != Sym::No
     }
 
     /// Get an access to the row indices
@@ -692,7 +692,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::NumCooMatrix;
-    use crate::{Samples, Storage, Symmetry};
+    use crate::{Samples, Storage, Sym};
     use num_complex::Complex64;
     use russell_lab::{complex_vec_approx_eq, cpx, vec_approx_eq, ComplexVector, NumMatrix, NumVector};
 
@@ -709,7 +709,7 @@ mod tests {
     #[test]
     fn new_works() {
         let coo = NumCooMatrix::<f32>::new(1, 1, 3, None).unwrap();
-        assert_eq!(coo.symmetry, Symmetry::No);
+        assert_eq!(coo.symmetry, Sym::No);
         assert_eq!(coo.nrow, 1);
         assert_eq!(coo.ncol, 1);
         assert_eq!(coo.nnz, 0);
@@ -736,7 +736,7 @@ mod tests {
     #[test]
     fn from_works() {
         let coo = NumCooMatrix::<f32>::from(1, 1, vec![0], vec![0], vec![123.0], None).unwrap();
-        assert_eq!(coo.symmetry, Symmetry::No);
+        assert_eq!(coo.symmetry, Sym::No);
         assert_eq!(coo.nrow, 1);
         assert_eq!(coo.ncol, 1);
         assert_eq!(coo.nnz, 1);
@@ -744,9 +744,9 @@ mod tests {
         assert_eq!(coo.indices_i, &[0]);
         assert_eq!(coo.indices_j, &[0]);
         assert_eq!(coo.values, &[123.0]);
-        let sym = Some(Symmetry::new_general_full());
+        let sym = Some(Sym::new_general_full());
         let coo = NumCooMatrix::<f32>::from(1, 1, vec![0], vec![0], vec![123.0], sym).unwrap();
-        assert_eq!(coo.symmetry, Symmetry::General(Storage::Full));
+        assert_eq!(coo.symmetry, Sym::General(Storage::Full));
     }
 
     #[test]
@@ -756,7 +756,7 @@ mod tests {
         assert_eq!(nrow, 1);
         assert_eq!(ncol, 2);
         assert_eq!(nnz, 0);
-        assert_eq!(symmetry, Symmetry::No);
+        assert_eq!(symmetry, Sym::No);
     }
 
     #[test]
@@ -775,13 +775,13 @@ mod tests {
             coo.put(0, 0, 0).err(),
             Some("COO matrix: max number of items has been reached")
         );
-        let sym = Some(Symmetry::General(Storage::Lower));
+        let sym = Some(Sym::General(Storage::Lower));
         let mut coo = NumCooMatrix::<u8>::new(2, 2, 4, sym).unwrap();
         assert_eq!(
             coo.put(0, 1, 0).err(),
             Some("COO matrix: j > i is incorrect for lower triangular storage")
         );
-        let sym = Some(Symmetry::General(Storage::Upper));
+        let sym = Some(Sym::General(Storage::Upper));
         let mut coo = NumCooMatrix::<u8>::new(2, 2, 4, sym).unwrap();
         assert_eq!(
             coo.put(1, 0, 0).err(),
@@ -898,7 +898,7 @@ mod tests {
 
     #[test]
     fn to_dense_symmetric_lower_works() {
-        let sym = Some(Symmetry::General(Storage::Lower));
+        let sym = Some(Sym::General(Storage::Lower));
         let mut coo = NumCooMatrix::<f64>::new(3, 3, 4, sym).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 0, 2.0).unwrap();
@@ -916,7 +916,7 @@ mod tests {
 
     #[test]
     fn to_dense_symmetric_upper_works() {
-        let sym = Some(Symmetry::General(Storage::Upper));
+        let sym = Some(Sym::General(Storage::Upper));
         let mut coo = NumCooMatrix::<f64>::new(3, 3, 4, sym).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 1, 2.0).unwrap();
@@ -986,7 +986,7 @@ mod tests {
         // 3  1  1  7
         // 2  1  5  1  8
         let (nrow, ncol, nnz) = (5, 5, 15);
-        let sym = Some(Symmetry::General(Storage::Lower));
+        let sym = Some(Sym::General(Storage::Lower));
         let mut coo = NumCooMatrix::<f64>::new(nrow, ncol, nnz, sym).unwrap();
         coo.put(0, 0, 2.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
@@ -1022,7 +1022,7 @@ mod tests {
         // 3  1  1  7  1
         // 2  1  5  1  8
         let (nrow, ncol, nnz) = (5, 5, 25);
-        let sym = Some(Symmetry::General(Storage::Full));
+        let sym = Some(Sym::General(Storage::Full));
         let mut coo = NumCooMatrix::<f64>::new(nrow, ncol, nnz, sym).unwrap();
         coo.put(0, 0, 2.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
@@ -1066,7 +1066,7 @@ mod tests {
         // -1   2  -1    =>   -1   2
         //     -1   2             -1   2
         let (nrow, ncol, nnz) = (3, 3, 5);
-        let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
+        let sym = Some(Sym::PositiveDefinite(Storage::Lower));
         let mut coo = NumCooMatrix::<f64>::new(nrow, ncol, nnz, sym).unwrap();
         coo.put(0, 0, 2.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
@@ -1104,7 +1104,7 @@ mod tests {
 
     #[test]
     fn assign_capture_errors() {
-        let sym = Some(Symmetry::General(Storage::Full));
+        let sym = Some(Sym::General(Storage::Full));
         let nnz_a = 1;
         let nnz_b = 2; // wrong: must be ≤ nnz_a
         let mut a_1x2 = NumCooMatrix::<u32>::new(1, 2, nnz_a, None).unwrap();
@@ -1156,7 +1156,7 @@ mod tests {
 
     #[test]
     fn augment_capture_errors() {
-        let sym = Some(Symmetry::General(Storage::Full));
+        let sym = Some(Sym::General(Storage::Full));
         let nnz_a = 1;
         let nnz_b = 1;
         let mut a_1x2 = NumCooMatrix::<u32>::new(1, 2, nnz_a /* + nnz_b */, None).unwrap();
@@ -1209,14 +1209,14 @@ mod tests {
     #[test]
     fn getters_are_correct() {
         let (coo, _, _, _) = Samples::rectangular_1x2(false, false);
-        assert_eq!(coo.get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(coo.get_info(), (1, 2, 2, Sym::No));
         assert_eq!(coo.get_storage(), Storage::Full);
         assert_eq!(coo.get_symmetric(), false);
         assert_eq!(coo.get_row_indices(), &[0, 0]);
         assert_eq!(coo.get_col_indices(), &[0, 1]);
         assert_eq!(coo.get_values(), &[10.0, 20.0]);
 
-        let sym = Some(Symmetry::new_general_full());
+        let sym = Some(Sym::new_general_full());
         let coo = NumCooMatrix::<f64>::new(2, 2, 2, sym).unwrap();
         assert_eq!(coo.get_symmetric(), true);
 

@@ -1,4 +1,4 @@
-use super::{NumCooMatrix, NumCscMatrix, NumCsrMatrix, Symmetry};
+use super::{NumCooMatrix, NumCscMatrix, NumCsrMatrix, Sym};
 use crate::StrError;
 use num_traits::{Num, NumCast};
 use russell_lab::{NumMatrix, NumVector};
@@ -59,7 +59,7 @@ where
     /// * `max_nnz` -- (≥ 1) Maximum number of entries ≥ nnz (number of non-zeros),
     ///   including entries with repeated indices. (must be fit i32)
     /// * `symmetry` -- Defines the symmetry/storage, if any
-    pub fn new_coo(nrow: usize, ncol: usize, max_nnz: usize, symmetry: Option<Symmetry>) -> Result<Self, StrError> {
+    pub fn new_coo(nrow: usize, ncol: usize, max_nnz: usize, symmetry: Option<Sym>) -> Result<Self, StrError> {
         Ok(NumSparseMatrix {
             coo: Some(NumCooMatrix::new(nrow, ncol, max_nnz, symmetry)?),
             csc: None,
@@ -98,7 +98,7 @@ where
         col_pointers: Vec<i32>,
         row_indices: Vec<i32>,
         values: Vec<T>,
-        symmetry: Option<Symmetry>,
+        symmetry: Option<Sym>,
     ) -> Result<Self, StrError> {
         Ok(NumSparseMatrix {
             coo: None,
@@ -145,7 +145,7 @@ where
         row_pointers: Vec<i32>,
         col_indices: Vec<i32>,
         values: Vec<T>,
-        symmetry: Option<Symmetry>,
+        symmetry: Option<Sym>,
     ) -> Result<Self, StrError> {
         Ok(NumSparseMatrix {
             coo: None,
@@ -193,7 +193,7 @@ where
     /// Returns `(nrow, ncol, nnz, symmetry)`
     ///
     /// **Priority**: CSC -> CSR -> COO
-    pub fn get_info(&self) -> (usize, usize, usize, Symmetry) {
+    pub fn get_info(&self) -> (usize, usize, usize, Sym) {
         match &self.csc {
             Some(csc) => csc.get_info(),
             None => match &self.csr {
@@ -437,7 +437,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::NumSparseMatrix;
-    use crate::{Samples, Symmetry};
+    use crate::{Samples, Sym};
     use russell_lab::{vec_approx_eq, Matrix, Vector};
 
     #[test]
@@ -471,22 +471,22 @@ mod tests {
         let mut wrong = Vector::new(2);
         // COO
         let coo_mat = NumSparseMatrix::<f64>::from_coo(coo);
-        assert_eq!(coo_mat.get_info(), (1, 2, 2, Symmetry::No));
-        assert_eq!(coo_mat.get_coo().unwrap().get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(coo_mat.get_info(), (1, 2, 2, Sym::No));
+        assert_eq!(coo_mat.get_coo().unwrap().get_info(), (1, 2, 2, Sym::No));
         assert_eq!(coo_mat.get_csc().err(), Some("CSC matrix is not available"));
         assert_eq!(coo_mat.get_csr().err(), Some("CSR matrix is not available"));
         assert_eq!(coo_mat.get_values(), &[10.0, 20.0]);
         // CSC
         let csc_mat = NumSparseMatrix::<f64>::from_csc(csc);
-        assert_eq!(csc_mat.get_info(), (1, 2, 2, Symmetry::No));
-        assert_eq!(csc_mat.get_csc().unwrap().get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(csc_mat.get_info(), (1, 2, 2, Sym::No));
+        assert_eq!(csc_mat.get_csc().unwrap().get_info(), (1, 2, 2, Sym::No));
         assert_eq!(csc_mat.get_coo().err(), Some("COO matrix is not available"));
         assert_eq!(csc_mat.get_csr().err(), Some("CSR matrix is not available"));
         assert_eq!(csc_mat.get_values(), &[10.0, 20.0]);
         // CSR
         let csr_mat = NumSparseMatrix::<f64>::from_csr(csr);
-        assert_eq!(csr_mat.get_info(), (1, 2, 2, Symmetry::No));
-        assert_eq!(csr_mat.get_csr().unwrap().get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(csr_mat.get_info(), (1, 2, 2, Sym::No));
+        assert_eq!(csr_mat.get_csr().unwrap().get_info(), (1, 2, 2, Sym::No));
         assert_eq!(csr_mat.get_csc().err(), Some("CSC matrix is not available"));
         assert_eq!(csr_mat.get_coo().err(), Some("COO matrix is not available"));
         assert_eq!(csr_mat.get_values(), &[10.0, 20.0]);
@@ -522,7 +522,7 @@ mod tests {
         wrong.put(0, 0, 3.0).unwrap();
         // COO
         let mut coo_mat = NumSparseMatrix::<f64>::from_coo(coo);
-        assert_eq!(coo_mat.get_coo_mut().unwrap().get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(coo_mat.get_coo_mut().unwrap().get_info(), (1, 2, 2, Sym::No));
         assert_eq!(coo_mat.get_csc_mut().err(), Some("CSC matrix is not available"));
         assert_eq!(coo_mat.get_csr_mut().err(), Some("CSR matrix is not available"));
         let mut empty = NumSparseMatrix::<f64>::new_coo(1, 1, 1, None).unwrap();
@@ -530,13 +530,10 @@ mod tests {
         assert_eq!(empty.get_csr_or_from_coo().err(), Some("COO to CSR requires nnz > 0"));
         // CSC
         let mut csc_mat = NumSparseMatrix::<f64>::from_csc(csc);
-        assert_eq!(csc_mat.get_csc_mut().unwrap().get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(csc_mat.get_csc_mut().unwrap().get_info(), (1, 2, 2, Sym::No));
         assert_eq!(csc_mat.get_coo_mut().err(), Some("COO matrix is not available"));
         assert_eq!(csc_mat.get_csr_mut().err(), Some("CSR matrix is not available"));
-        assert_eq!(
-            csc_mat.get_csc_or_from_coo().unwrap().get_info(),
-            (1, 2, 2, Symmetry::No)
-        );
+        assert_eq!(csc_mat.get_csc_or_from_coo().unwrap().get_info(), (1, 2, 2, Sym::No));
         assert_eq!(
             csc_mat.get_csr_or_from_coo().err(),
             Some("CSR is not available and COO matrix is not available to convert to CSR")
@@ -559,13 +556,10 @@ mod tests {
         );
         // CSR
         let mut csr_mat = NumSparseMatrix::<f64>::from_csr(csr);
-        assert_eq!(csr_mat.get_csr_mut().unwrap().get_info(), (1, 2, 2, Symmetry::No));
+        assert_eq!(csr_mat.get_csr_mut().unwrap().get_info(), (1, 2, 2, Sym::No));
         assert_eq!(csr_mat.get_csc_mut().err(), Some("CSC matrix is not available"));
         assert_eq!(csr_mat.get_coo_mut().err(), Some("COO matrix is not available"));
-        assert_eq!(
-            csr_mat.get_csr_or_from_coo().unwrap().get_info(),
-            (1, 2, 2, Symmetry::No)
-        );
+        assert_eq!(csr_mat.get_csr_or_from_coo().unwrap().get_info(), (1, 2, 2, Sym::No));
         assert_eq!(
             csr_mat.get_csc_or_from_coo().err(),
             Some("CSC is not available and COO matrix is not available to convert to CSC")

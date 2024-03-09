@@ -1,5 +1,5 @@
 use super::{handle_mumps_error_code, mumps_ordering, mumps_scaling};
-use super::{ComplexLinSolTrait, ComplexSparseMatrix, LinSolParams, StatsLinSol, Symmetry};
+use super::{ComplexLinSolTrait, ComplexSparseMatrix, LinSolParams, StatsLinSol, Sym};
 use super::{
     MUMPS_ORDERING_AMD, MUMPS_ORDERING_AMF, MUMPS_ORDERING_AUTO, MUMPS_ORDERING_METIS, MUMPS_ORDERING_PORD,
     MUMPS_ORDERING_QAMD, MUMPS_ORDERING_SCOTCH, MUMPS_SCALING_AUTO, MUMPS_SCALING_COLUMN, MUMPS_SCALING_DIAGONAL,
@@ -81,7 +81,7 @@ pub struct ComplexSolverMUMPS {
     factorized: bool,
 
     /// Holds the symmetry type used in the initialize
-    initialized_symmetry: Symmetry,
+    initialized_symmetry: Sym,
 
     /// Holds the matrix dimension saved in initialize
     initialized_ndim: usize,
@@ -161,7 +161,7 @@ impl ComplexSolverMUMPS {
                 solver,
                 initialized: false,
                 factorized: false,
-                initialized_symmetry: Symmetry::No,
+                initialized_symmetry: Sym::No,
                 initialized_ndim: 0,
                 initialized_nnz: 0,
                 effective_ordering: -1,
@@ -455,7 +455,7 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ComplexCooMatrix, ComplexSparseMatrix, LinSolParams, Ordering, Samples, Scaling, Storage, Symmetry};
+    use crate::{ComplexCooMatrix, ComplexSparseMatrix, LinSolParams, Ordering, Samples, Scaling, Storage, Sym};
     use num_complex::Complex64;
     use russell_lab::{complex_approx_eq, complex_vec_approx_eq, cpx, ComplexVector};
     use serial_test::serial;
@@ -492,7 +492,7 @@ mod tests {
             solver.factorize(&mut mat, None).err(),
             Some("the COO matrix must have at least one non-zero value")
         );
-        let mut coo = ComplexCooMatrix::new(1, 1, 1, Some(Symmetry::General(Storage::Full))).unwrap();
+        let mut coo = ComplexCooMatrix::new(1, 1, 1, Some(Sym::General(Storage::Full))).unwrap();
         coo.put(0, 0, cpx!(4.0, 4.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
@@ -508,7 +508,7 @@ mod tests {
         // ... factorize once => OK
         solver.factorize(&mut mat, None).unwrap();
         // ... change matrix (symmetry)
-        let mut coo = ComplexCooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full))).unwrap();
+        let mut coo = ComplexCooMatrix::new(2, 2, 2, Some(Sym::General(Storage::Full))).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         coo.put(1, 1, cpx!(2.0, 0.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
@@ -576,7 +576,7 @@ mod tests {
         );
         // wrong symmetry
         let rhs = ComplexVector::new(2);
-        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full))).unwrap();
+        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 2, Some(Sym::General(Storage::Full))).unwrap();
         coo_wrong.put(0, 0, cpx!(123.0, 1.0)).unwrap();
         coo_wrong.put(1, 1, cpx!(456.0, 2.0)).unwrap();
         let mut mat_wrong = ComplexSparseMatrix::from_coo(coo_wrong);
@@ -658,7 +658,7 @@ mod tests {
         complex_vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
 
         // solve with positive-definite matrix works
-        let sym = Some(Symmetry::PositiveDefinite(Storage::Lower));
+        let sym = Some(Sym::PositiveDefinite(Storage::Lower));
         let nrow = 5;
         let ncol = 5;
         let mut coo_pd_lower = ComplexCooMatrix::new(nrow, ncol, 9, sym).unwrap();

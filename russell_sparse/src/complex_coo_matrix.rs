@@ -84,13 +84,13 @@ impl ComplexCooMatrix {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ComplexCooMatrix, CooMatrix, Storage, Symmetry};
+    use crate::{ComplexCooMatrix, CooMatrix, Storage, Sym};
     use num_complex::Complex64;
     use russell_lab::cpx;
 
     #[test]
     fn assign_capture_errors() {
-        let sym = Some(Symmetry::General(Storage::Full));
+        let sym = Some(Sym::General(Storage::Full));
         let nnz_a = 1;
         let nnz_b = 2; // wrong: must be ≤ nnz_a
         let mut a_1x2 = ComplexCooMatrix::new(1, 2, nnz_a, None).unwrap();
@@ -148,7 +148,7 @@ mod tests {
 
     #[test]
     fn augment_capture_errors() {
-        let sym = Some(Symmetry::General(Storage::Full));
+        let sym = Some(Sym::General(Storage::Full));
         let nnz_a = 1;
         let nnz_b = 1;
         let mut a_1x2 = ComplexCooMatrix::new(1, 2, nnz_a /* + nnz_b */, None).unwrap();

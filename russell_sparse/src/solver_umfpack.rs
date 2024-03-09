@@ -1,4 +1,4 @@
-use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, StatsLinSol, Symmetry};
+use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, StatsLinSol, Sym};
 use crate::auxiliary_and_constants::*;
 use crate::StrError;
 use russell_lab::{Stopwatch, Vector};
@@ -75,7 +75,7 @@ pub struct SolverUMFPACK {
     factorized: bool,
 
     /// Holds the symmetry type used in initialize
-    initialized_symmetry: Symmetry,
+    initialized_symmetry: Sym,
 
     /// Holds the matrix dimension saved in initialize
     initialized_ndim: usize,
@@ -139,7 +139,7 @@ impl SolverUMFPACK {
                 solver,
                 initialized: false,
                 factorized: false,
-                initialized_symmetry: Symmetry::No,
+                initialized_symmetry: Sym::No,
                 initialized_ndim: 0,
                 initialized_nnz: 0,
                 effective_strategy: -1,
@@ -465,7 +465,7 @@ pub(crate) fn handle_umfpack_error_code(err: i32) -> StrError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix, Storage, Symmetry};
+    use crate::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix, Storage, Sym};
     use russell_lab::{approx_eq, vec_approx_eq, Vector};
 
     #[test]
@@ -510,7 +510,7 @@ mod tests {
         // ... factorize once => OK
         solver.factorize(&mut mat, None).unwrap();
         // ... change matrix (symmetry)
-        let mut coo = CooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full))).unwrap();
+        let mut coo = CooMatrix::new(2, 2, 2, Some(Sym::General(Storage::Full))).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(1, 1, 2.0).unwrap();
         let mut mat = SparseMatrix::from_coo(coo);
@@ -601,7 +601,7 @@ mod tests {
         );
         // wrong symmetry
         let rhs = Vector::new(2);
-        let mut coo_wrong = CooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full))).unwrap();
+        let mut coo_wrong = CooMatrix::new(2, 2, 2, Some(Sym::General(Storage::Full))).unwrap();
         coo_wrong.put(0, 0, 123.0).unwrap();
         coo_wrong.put(1, 1, 456.0).unwrap();
         let mut mat_wrong = SparseMatrix::from_coo(coo_wrong);

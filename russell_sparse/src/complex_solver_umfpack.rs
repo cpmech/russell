@@ -1,5 +1,5 @@
 use super::{handle_umfpack_error_code, umfpack_ordering, umfpack_scaling};
-use super::{ComplexLinSolTrait, ComplexSparseMatrix, LinSolParams, StatsLinSol, Symmetry};
+use super::{ComplexLinSolTrait, ComplexSparseMatrix, LinSolParams, StatsLinSol, Sym};
 use super::{
     UMFPACK_ORDERING_AMD, UMFPACK_ORDERING_BEST, UMFPACK_ORDERING_CHOLMOD, UMFPACK_ORDERING_METIS,
     UMFPACK_ORDERING_NONE, UMFPACK_SCALE_MAX, UMFPACK_SCALE_NONE, UMFPACK_SCALE_SUM, UMFPACK_STRATEGY_AUTO,
@@ -83,7 +83,7 @@ pub struct ComplexSolverUMFPACK {
     factorized: bool,
 
     /// Holds the symmetry type used in initialize
-    initialized_symmetry: Symmetry,
+    initialized_symmetry: Sym,
 
     /// Holds the matrix dimension saved in initialize
     initialized_ndim: usize,
@@ -152,7 +152,7 @@ impl ComplexSolverUMFPACK {
                 solver,
                 initialized: false,
                 factorized: false,
-                initialized_symmetry: Symmetry::No,
+                initialized_symmetry: Sym::No,
                 initialized_ndim: 0,
                 initialized_nnz: 0,
                 effective_strategy: -1,
@@ -456,7 +456,7 @@ mod tests {
         // ... factorize once => OK
         solver.factorize(&mut mat, None).unwrap();
         // ... change matrix (symmetry)
-        let mut coo = ComplexCooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full))).unwrap();
+        let mut coo = ComplexCooMatrix::new(2, 2, 2, Some(Sym::General(Storage::Full))).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         coo.put(1, 1, cpx!(2.0, 0.0)).unwrap();
         let mut mat = ComplexSparseMatrix::from_coo(coo);
@@ -549,7 +549,7 @@ mod tests {
         );
         // wrong symmetry
         let rhs = ComplexVector::new(2);
-        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 2, Some(Symmetry::General(Storage::Full))).unwrap();
+        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 2, Some(Sym::General(Storage::Full))).unwrap();
         coo_wrong.put(0, 0, cpx!(123.0, 1.0)).unwrap();
         coo_wrong.put(1, 1, cpx!(456.0, 2.0)).unwrap();
         let mut mat_wrong = ComplexSparseMatrix::from_coo(coo_wrong);

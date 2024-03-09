@@ -97,14 +97,6 @@ where
         // coefficients for error estimate
         let ee = if info.embedded {
             match params.method {
-                Method::Radau5 => None,
-                Method::BwEuler => None,
-                Method::FwEuler => None,
-                Method::Rk2 => None,
-                Method::Rk3 => None,
-                Method::Heun3 => None,
-                Method::Rk4 => None,
-                Method::Rk4alt => None,
                 Method::MdEuler => Some(Vector::from(&MODIFIED_EULER_E)),
                 Method::Merson4 => Some(Vector::from(&MERSON_4_E)),
                 Method::Zonneveld4 => Some(Vector::from(&ZONNEVELD_4_E)),
@@ -113,6 +105,7 @@ where
                 Method::Verner6 => Some(Vector::from(&VERNER_6_E)),
                 Method::Fehlberg7 => Some(Vector::from(&FEHLBERG_7_E)),
                 Method::DoPri8 => Some(Vector::from(&DORMAND_PRINCE_8_E)),
+                _ => return Err("INTERNAL: impossible case regarding the embedded flag"),
             }
         } else {
             None

@@ -110,8 +110,7 @@ where
     /// ## One equation (ndim = 1) without Jacobian
     ///
     /// ```rust
-    /// use russell_ode::prelude::*;
-    ///
+    /// # use russell_ode::prelude::*;
     /// let system = System::new(
     ///     1,
     ///     |f, x, y, _args: &mut NoArgs| {
@@ -125,13 +124,12 @@ where
     /// );
     /// ```
     ///
-    /// ## Two equation system with Jacobian
+    /// ## Two equation system (ndim = 2) with Jacobian
     ///
     /// ```rust
-    /// use russell_ode::prelude::*;
-    ///
+    /// # use russell_ode::prelude::*;
     /// let system = System::new(
-    ///     1,
+    ///     2,
     ///     |f, x, y, _args: &mut NoArgs| {
     ///         f[0] = x + 2.0 * y[0] + 3.0 * y[1];
     ///         f[1] = x - 4.0 * y[0] - 5.0 * y[1];

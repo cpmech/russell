@@ -80,7 +80,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::EulerForward;
-    use crate::{Method, OdeSolverTrait, Samples, Workspace};
+    use crate::{no_jacobian, HasJacobian, Method, NoArgs, OdeSolverTrait, Samples, System, Workspace};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
@@ -161,5 +161,32 @@ mod tests {
         vec_approx_eq(&xx, xx_correct, 1e-15);
         vec_approx_eq(&yy_num, yy_correct, 1e-15);
         vec_approx_eq(&errors, errors_correct, 1e-15);
+    }
+
+    #[test]
+    fn euler_forward_handles_errors() {
+        let system = System::new(
+            1,
+            |f, _, _, _: &mut NoArgs| {
+                f[0] = 1.0;
+                Err("stop")
+            },
+            no_jacobian,
+            HasJacobian::No,
+            None,
+            None,
+        );
+        let mut solver = EulerForward::new(&system);
+        let mut work = Workspace::new(Method::FwEuler);
+        let x = 0.0;
+        let y = Vector::from(&[0.0]);
+        let h = 0.1;
+        let mut args = 0;
+        assert_eq!(solver.step(&mut work, x, &y, h, &mut args).err(), Some("stop"));
+        // call other functions just to make sure all is well
+        let mut y_out = Vector::new(1);
+        let x_out = 0.1;
+        solver.reject(&mut work, h);
+        solver.dense_output(&mut y_out, x_out, x, &y, h);
     }
 }

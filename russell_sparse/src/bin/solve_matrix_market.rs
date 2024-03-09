@@ -105,12 +105,12 @@ fn main() -> Result<(), StrError> {
     let mut mat = SparseMatrix::from_coo(coo);
 
     // save information about the matrix
-    let (nrow, ncol, nnz, symmetry) = mat.get_info();
+    let (nrow, ncol, nnz, sym) = mat.get_info();
     stats.set_matrix_name_from_path(&opt.matrix_market_file);
     stats.matrix.nrow = nrow;
     stats.matrix.ncol = ncol;
     stats.matrix.nnz = nnz;
-    stats.matrix.symmetry = format!("{:?}", symmetry);
+    stats.matrix.symmetry = format!("{:?}", sym);
 
     // allocate and configure the solver
     let mut solver = LinSolver::new(genie)?;

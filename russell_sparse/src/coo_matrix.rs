@@ -220,8 +220,8 @@ where
     ///     let values = vec![
     ///         1.0, /*dup*/ 1.0, 3.0, 3.0, -1.0, 4.0, 4.0, -3.0, 1.0, 2.0, 2.0, 6.0, 1.0,
     ///     ];
-    ///     let symmetry = None;
-    ///     let coo = CooMatrix::from(nrow, ncol, row_indices, col_indices, values, symmetry)?;
+    ///     let sym = None;
+    ///     let coo = CooMatrix::from(nrow, ncol, row_indices, col_indices, values, sym)?;
     ///
     ///     // covert to dense
     ///     let a = coo.as_dense();
@@ -371,11 +371,11 @@ where
     ///                    │ 0 0 3 │\n\
     ///                    └       ┘";
     ///     coo.reset();
-    ///     let (nrow, ncol, nnz, symmetry) = coo.get_info();
+    ///     let (nrow, ncol, nnz, sym) = coo.get_info();
     ///     assert_eq!(nrow, 3);
     ///     assert_eq!(ncol, 3);
     ///     assert_eq!(nnz, 0);
-    ///     assert_eq!(symmetry, Symmetry::No);
+    ///     assert_eq!(sym, Sym::No);
     ///     Ok(())
     /// }
     /// ```
@@ -616,7 +616,7 @@ where
 
     /// Returns information about the dimensions and symmetry type
     ///
-    /// Returns `(nrow, ncol, nnz, symmetry)`
+    /// Returns `(nrow, ncol, nnz, sym)`
     ///
     /// # Example
     ///
@@ -626,11 +626,11 @@ where
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let coo = CooMatrix::new(1, 2, 3, None)?;
-    ///     let (nrow, ncol, nnz, symmetry) = coo.get_info();
+    ///     let (nrow, ncol, nnz, sym) = coo.get_info();
     ///     assert_eq!(nrow, 1);
     ///     assert_eq!(ncol, 2);
     ///     assert_eq!(nnz, 0);
-    ///     assert_eq!(symmetry, Symmetry::No);
+    ///     assert_eq!(sym, Sym::No);
     ///     Ok(())
     /// }
     /// ```
@@ -752,11 +752,11 @@ mod tests {
     #[test]
     fn get_info_works() {
         let coo = NumCooMatrix::<f32>::new(1, 2, 10, None).unwrap();
-        let (nrow, ncol, nnz, symmetry) = coo.get_info();
+        let (nrow, ncol, nnz, sym) = coo.get_info();
         assert_eq!(nrow, 1);
         assert_eq!(ncol, 2);
         assert_eq!(nnz, 0);
-        assert_eq!(symmetry, Sym::No);
+        assert_eq!(sym, Sym::No);
     }
 
     #[test]

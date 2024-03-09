@@ -15,8 +15,8 @@ fn main() -> Result<(), StrError> {
     let values = vec![
         1.0, /*dup*/ 1.0, 3.0, 3.0, -1.0, 4.0, 4.0, -3.0, 1.0, 2.0, 2.0, 6.0, 1.0,
     ];
-    let symmetry = None;
-    let coo = CooMatrix::from(nrow, ncol, row_indices, col_indices, values, symmetry)?;
+    let sym = None;
+    let coo = CooMatrix::from(nrow, ncol, row_indices, col_indices, values, sym)?;
 
     // covert to dense
     let a = coo.as_dense();

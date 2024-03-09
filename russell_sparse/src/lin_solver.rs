@@ -13,7 +13,7 @@ pub trait LinSolTrait {
     ///
     /// # Notes
     ///
-    /// 1. The structure of the matrix (nrow, ncol, nnz, symmetry) must be
+    /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
     ///    exactly the same among multiple calls to `factorize`. The values may differ
     ///    from call to call, nonetheless.
     /// 2. The first call to `factorize` will define the structure which must be

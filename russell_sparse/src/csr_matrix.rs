@@ -741,11 +741,11 @@ where
     ///     let values = vec![10.0, 20.0];
     ///     let csr = CsrMatrix::new(1, 2,
     ///         row_pointers, col_indices, values, None)?;
-    ///     let (nrow, ncol, nnz, symmetry) = csr.get_info();
+    ///     let (nrow, ncol, nnz, sym) = csr.get_info();
     ///     assert_eq!(nrow, 1);
     ///     assert_eq!(ncol, 2);
     ///     assert_eq!(nnz, 2);
-    ///     assert_eq!(symmetry, Symmetry::No);
+    ///     assert_eq!(sym, Sym::No);
     ///     let a = csr.as_dense();
     ///     let correct = "┌       ┐\n\
     ///                    │ 10 20 │\n\

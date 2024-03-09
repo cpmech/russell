@@ -173,8 +173,8 @@ where
     ///         6.0, 1.0, //            j = 4, count = 10, 11,
     ///              //                                12
     ///     ];
-    ///     let symmetry = None;
-    ///     let csc = CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, symmetry)?;
+    ///     let sym = None;
+    ///     let csc = CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym)?;
     ///
     ///     // covert to dense
     ///     let a = csc.as_dense();
@@ -611,9 +611,8 @@ where
     ///         6.0, 1.0, //            j = 4, count = 10, 11,
     ///              //                                12
     ///     ];
-    ///     let symmetry = None;
-    ///     let csc = CscMatrix::new(nrow, ncol,
-    ///         col_pointers, row_indices, values, symmetry)?;
+    ///     let sym = None;
+    ///     let csc = CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym)?;
     ///
     ///     // covert to dense
     ///     let a = csc.as_dense();
@@ -767,11 +766,11 @@ where
     ///     let values = vec![10.0, 20.0];
     ///     let csc = CscMatrix::new(1, 2,
     ///         col_pointers, row_indices, values, None)?;
-    ///     let (nrow, ncol, nnz, symmetry) = csc.get_info();
+    ///     let (nrow, ncol, nnz, sym) = csc.get_info();
     ///     assert_eq!(nrow, 1);
     ///     assert_eq!(ncol, 2);
     ///     assert_eq!(nnz, 2);
-    ///     assert_eq!(symmetry, Symmetry::No);
+    ///     assert_eq!(sym, Sym::No);
     ///     let a = csc.as_dense();
     ///     let correct = "┌       ┐\n\
     ///                    │ 10 20 │\n\

@@ -232,7 +232,7 @@ impl LinSolTrait for SolverMUMPS {
     ///
     /// # Notes
     ///
-    /// 1. The structure of the matrix (nrow, ncol, nnz, symmetry) must be
+    /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
     ///    exactly the same among multiple calls to `factorize`. The values may differ
     ///    from call to call, nonetheless.
     /// 2. The first call to `factorize` will define the structure which must be
@@ -392,8 +392,8 @@ impl LinSolTrait for SolverMUMPS {
         let coo = mat.get_coo()?;
 
         // check already factorized data
-        let (nrow, ncol, nnz, symmetry) = coo.get_info();
-        if symmetry != self.initialized_symmetry {
+        let (nrow, ncol, nnz, sym) = coo.get_info();
+        if sym != self.initialized_symmetry {
             return Err("solve must use the same matrix (symmetry differs)");
         }
         if nrow != self.initialized_ndim || ncol != self.initialized_ndim {

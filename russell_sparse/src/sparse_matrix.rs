@@ -58,10 +58,10 @@ where
     /// * `ncol` -- (≥ 1) Is the number of columns of the sparse matrix (must be fit i32)
     /// * `max_nnz` -- (≥ 1) Maximum number of entries ≥ nnz (number of non-zeros),
     ///   including entries with repeated indices. (must be fit i32)
-    /// * `symmetry` -- Defines the symmetry/storage, if any
-    pub fn new_coo(nrow: usize, ncol: usize, max_nnz: usize, symmetry: Option<Sym>) -> Result<Self, StrError> {
+    /// * `sym` -- Defines the symmetry/storage, if any
+    pub fn new_coo(nrow: usize, ncol: usize, max_nnz: usize, sym: Option<Sym>) -> Result<Self, StrError> {
         Ok(NumSparseMatrix {
-            coo: Some(NumCooMatrix::new(nrow, ncol, max_nnz, symmetry)?),
+            coo: Some(NumCooMatrix::new(nrow, ncol, max_nnz, sym)?),
             csc: None,
             csr: None,
         })
@@ -190,7 +190,7 @@ where
 
     /// Returns information about the dimensions and symmetry type
     ///
-    /// Returns `(nrow, ncol, nnz, symmetry)`
+    /// Returns `(nrow, ncol, nnz, sym)`
     ///
     /// **Priority**: CSC -> CSR -> COO
     pub fn get_info(&self) -> (usize, usize, usize, Sym) {
@@ -652,7 +652,7 @@ mod tests {
     #[test]
     fn derive_methods_work() {
         let (coo, _, _, _) = Samples::tiny_1x1();
-        let (nrow, ncol, nnz, symmetry) = coo.get_info();
+        let (nrow, ncol, nnz, sym) = coo.get_info();
         let mat = NumSparseMatrix::<f64>::from_coo(coo);
         let mut clone = mat.clone();
         clone.get_coo_mut().unwrap().values[0] *= 2.0;
@@ -665,8 +665,8 @@ mod tests {
             r#"{"coo":{"symmetry":"No","nrow":1,"ncol":1,"nnz":1,"max_nnz":1,"indices_i":[0],"indices_j":[0],"values":[123.0]},"csc":null,"csr":null}"#
         );
         let from_json: NumSparseMatrix<f64> = serde_json::from_str(&json).unwrap();
-        let (json_nrow, json_ncol, json_nnz, json_symmetry) = from_json.get_coo().unwrap().get_info();
-        assert_eq!(json_symmetry, symmetry);
+        let (json_nrow, json_ncol, json_nnz, json_sym) = from_json.get_coo().unwrap().get_info();
+        assert_eq!(json_sym, sym);
         assert_eq!(json_nrow, nrow);
         assert_eq!(json_ncol, ncol);
         assert_eq!(json_nnz, nnz);

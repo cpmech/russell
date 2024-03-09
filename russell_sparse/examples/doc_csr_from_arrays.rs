@@ -29,8 +29,8 @@ fn main() -> Result<(), StrError> {
         4.0, 2.0, 1.0, //   i = 4, count = 9, 10, 11
              //                    count = 12
     ];
-    let symmetry = None;
-    let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, symmetry)?;
+    let sym = None;
+    let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym)?;
 
     // covert to dense
     let a = csr.as_dense();

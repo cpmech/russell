@@ -265,11 +265,11 @@ impl MatrixMarketData {
 /// fn main() -> Result<(), StrError> {
 ///     let name = "./data/matrix_market/ok_simple_general.mtx";
 ///     let coo = read_matrix_market(name, MMsymOption::LeaveAsLower)?;
-///     let (nrow, ncol, nnz, symmetry) = coo.get_info();
+///     let (nrow, ncol, nnz, sym) = coo.get_info();
 ///     assert_eq!(nrow, 3);
 ///     assert_eq!(ncol, 3);
 ///     assert_eq!(nnz, 5);
-///     assert_eq!(symmetry, Symmetry::No);
+///     assert_eq!(sym, Sym::No);
 ///     let a = coo.as_dense();
 ///     let correct = "┌       ┐\n\
 ///                    │ 1 2 0 │\n\
@@ -304,11 +304,11 @@ impl MatrixMarketData {
 /// fn main() -> Result<(), StrError> {
 ///     let name = "./data/matrix_market/ok_simple_symmetric.mtx";
 ///     let coo = read_matrix_market(name, MMsymOption::LeaveAsLower)?;
-///     let (nrow, ncol, nnz, symmetry) = coo.get_info();
+///     let (nrow, ncol, nnz, sym) = coo.get_info();
 ///     assert_eq!(nrow, 3);
 ///     assert_eq!(ncol, 3);
 ///     assert_eq!(nnz, 4);
-///     assert_eq!(symmetry, Symmetry::General(Storage::Lower));
+///     assert_eq!(sym, Sym::General(Storage::Lower));
 ///     let a = coo.as_dense();
 ///     let correct = "┌       ┐\n\
 ///                    │ 1 2 0 │\n\

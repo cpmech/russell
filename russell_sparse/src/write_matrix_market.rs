@@ -31,11 +31,11 @@ where
     let d = if vismatrix { 0 } else { 1 };
 
     // info
-    let (nrow, ncol, nnz, symmetry) = mat.get_info();
+    let (nrow, ncol, nnz, sym) = mat.get_info();
 
     // write header
     if !vismatrix {
-        if symmetry == Sym::No {
+        if sym == Sym::No {
             write!(&mut buffer, "%%MatrixMarket matrix coordinate real general\n").unwrap();
         } else {
             write!(&mut buffer, "%%MatrixMarket matrix coordinate real symmetric\n").unwrap();
@@ -99,11 +99,11 @@ where
     let d = if vismatrix { 0 } else { 1 };
 
     // info
-    let (nrow, ncol, nnz, symmetry) = mat.get_info();
+    let (nrow, ncol, nnz, sym) = mat.get_info();
 
     // write header
     if !vismatrix {
-        if symmetry == Sym::No {
+        if sym == Sym::No {
             write!(&mut buffer, "%%MatrixMarket matrix coordinate real general\n").unwrap();
         } else {
             write!(&mut buffer, "%%MatrixMarket matrix coordinate real symmetric\n").unwrap();

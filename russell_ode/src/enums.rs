@@ -118,6 +118,7 @@ pub enum Method {
 }
 
 impl Method {
+    /// Returns information about the method
     #[rustfmt::skip]
     pub fn information(&self) -> Information {
         match self {
@@ -140,6 +141,7 @@ impl Method {
         }
     }
 
+    /// Returns a description of the method
     pub fn description(&self) -> &'static str {
         match self {
             Method::Radau5 => "Radau method (Radau IIA) (implicit, order 5, embedded)",
@@ -161,9 +163,12 @@ impl Method {
         }
     }
 
-    pub fn explicit_methods() -> Vec<Method> {
+    /// Returns a list of explicit Runge-Kutta methods
+    ///
+    /// **Note:** FwEuler is also an explicit RK method; however it is not included
+    /// in this list because it is implemented separately.
+    pub fn erk_methods() -> Vec<Method> {
         vec![
-            Method::FwEuler,
             Method::Rk2,
             Method::Rk3,
             Method::Heun3,
@@ -178,10 +183,6 @@ impl Method {
             Method::Fehlberg7,
             Method::DoPri8,
         ]
-    }
-
-    pub fn implicit_methods() -> Vec<Method> {
-        vec![Method::Radau5, Method::BwEuler]
     }
 }
 
@@ -249,13 +250,10 @@ mod tests {
 
     #[test]
     fn explicit_and_implicit_methods_work() {
-        let explicit = Method::explicit_methods();
-        let implicit = Method::implicit_methods();
-        assert_eq!(explicit.len() + implicit.len(), 16);
+        let erk = Method::erk_methods();
         assert_eq!(
-            explicit,
+            erk,
             &[
-                Method::FwEuler,
                 Method::Rk2,
                 Method::Rk3,
                 Method::Heun3,
@@ -271,15 +269,14 @@ mod tests {
                 Method::DoPri8,
             ]
         );
-        assert_eq!(implicit, &[Method::Radau5, Method::BwEuler]);
     }
 
     #[test]
     fn description_works() {
-        for m in Method::explicit_methods() {
+        for m in [Method::Radau5, Method::BwEuler, Method::FwEuler] {
             assert!(m.description().len() > 0);
         }
-        for m in Method::implicit_methods() {
+        for m in Method::erk_methods() {
             assert!(m.description().len() > 0);
         }
     }

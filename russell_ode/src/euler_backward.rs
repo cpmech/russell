@@ -343,6 +343,7 @@ mod tests {
             assert_eq!(work.bench.n_function, (n + 1) * 2 * ndim);
             assert_eq!(work.bench.n_jacobian, (n + 1)); // already converged before calling Jacobian again
 
+            work.bench.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             xx.push(x);
             yy0_num.push(y[0]);

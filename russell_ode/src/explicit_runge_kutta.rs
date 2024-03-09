@@ -371,12 +371,10 @@ mod tests {
 
     #[test]
     fn constants_are_consistent() {
-        let methods = Method::explicit_methods();
-        let staged = methods.iter().filter(|&&m| m != Method::FwEuler);
         struct Args {}
-        for method in staged {
+        for method in Method::erk_methods() {
             println!("\n... {:?} ...", method);
-            let params = Params::new(*method);
+            let params = Params::new(method);
             let system = System::new(
                 1,
                 |_, _, _, _args: &mut Args| Ok(()),
@@ -534,6 +532,7 @@ mod tests {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
             assert_eq!(work.bench.n_function, (n + 1) * 2);
 
+            work.bench.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             xx.push(x);
             yy_num.push(y[0]);
@@ -617,6 +616,7 @@ mod tests {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
             assert_eq!(work.bench.n_function, (n + 1) * 4);
 
+            work.bench.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             xx.push(x);
             yy_num.push(y[0]);
@@ -790,5 +790,26 @@ mod tests {
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).err(),
             Some("f: count = 8 (dense output)")
         );
+    }
+
+    #[test]
+    fn all_erk_methods_work() {
+        let (system, data, mut args) = Samples::simple_equation_constant();
+        let yfx = data.y_analytical.unwrap();
+        let mut y_ana = Vector::new(system.ndim);
+        let h = 0.2;
+        let mut x = data.x0;
+        let mut y = data.y0.clone();
+        for method in Method::erk_methods() {
+            let params = Params::new(method);
+            let mut work = Workspace::new(method);
+            let mut solver = ExplicitRungeKutta::new(params, &system).unwrap();
+            solver.step(&mut work, x, &y, h, &mut args).unwrap();
+            work.bench.n_accepted += 1; // important (must precede accept)
+            solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
+            yfx(&mut y_ana, x);
+            // println!("{:?}: solution @ {}: {} ({})", method, x, y[0], y_ana[0]);
+            approx_eq(y[0], y_ana[0], 1e-14);
+        }
     }
 }

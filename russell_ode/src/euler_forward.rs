@@ -116,6 +116,7 @@ mod tests {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
             assert_eq!(work.bench.n_function, n + 1);
 
+            work.bench.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             xx.push(x);
             yy_num.push(y[0]);

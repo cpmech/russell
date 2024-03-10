@@ -59,6 +59,9 @@ impl<'a, A> OdeSolver<'a, A> {
         J: 'a + Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
         A: 'a,
     {
+        if system.mass_matrix.is_some() && params.method != Method::Radau5 {
+            return Err("the method must be Radau5 for systems with a mass matrix");
+        }
         params.validate()?;
         let ndim = system.ndim;
         let actual: Box<dyn OdeSolverTrait<A>> = if params.method == Method::Radau5 {
@@ -298,6 +301,17 @@ mod tests {
     use super::OdeSolver;
     use crate::{Method, Output, Params, Samples, N_EQUAL_STEPS};
     use russell_lab::{vec_approx_eq, vec_copy, Vector};
+    use russell_sparse::Genie;
+
+    #[test]
+    fn new_captures_errors() {
+        let (system, _, _) = Samples::simple_system_with_mass_matrix(false, Genie::Umfpack);
+        let params = Params::new(Method::MdEuler);
+        assert_eq!(
+            OdeSolver::new(params, &system).err(),
+            Some("the method must be Radau5 for systems with a mass matrix")
+        );
+    }
 
     #[test]
     fn solve_with_step_output_works() {

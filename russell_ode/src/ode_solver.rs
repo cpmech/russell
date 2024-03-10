@@ -528,10 +528,16 @@ mod tests {
     fn update_params_works() {
         let (system, _, _) = Samples::simple_equation_constant();
         let mut params = Params::new(Method::MdEuler);
+        params.step.n_step_max = 0;
+        assert_eq!(
+            OdeSolver::new(params, &system).err(),
+            Some("parameter must satisfy: n_step_max ≥ 1")
+        );
+        params.step.n_step_max = 1000;
         let mut solver = OdeSolver::new(params, &system).unwrap();
-        assert_eq!(solver.params.step.n_step_max, 100000);
+        assert_eq!(solver.params.step.n_step_max, 1000);
         params.step.n_step_max = 2; // this will not change the solver until update_params is called
-        assert_eq!(solver.params.step.n_step_max, 100000);
+        assert_eq!(solver.params.step.n_step_max, 1000);
         solver.update_params(params).unwrap();
         assert_eq!(solver.params.step.n_step_max, 2);
         params.method = Method::FwEuler;

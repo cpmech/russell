@@ -108,7 +108,7 @@ impl<'a, A> OdeSolver<'a, A> {
         if y0.dim() != self.ndim {
             return Err("y0.dim() must be equal to ndim");
         }
-        if x1 < x0 {
+        if x1 <= x0 {
             return Err("x1 must be greater than x0");
         }
 
@@ -273,9 +273,6 @@ impl<'a, A> OdeSolver<'a, A> {
         // done
         self.work.bench.stop_sw_total();
         if success {
-            if f64::abs(x - x1) > 10.0 * f64::EPSILON {
-                return Err("x is not equal to x1 at the end");
-            }
             Ok(())
         } else {
             Err("variable stepping did not converge")
@@ -544,6 +541,23 @@ mod tests {
         assert_eq!(
             solver.update_params(params).err(),
             Some("update_params must not change the method")
+        );
+    }
+
+    #[test]
+    fn solve_capture_errors() {
+        let (system, mut data, mut args) = Samples::simple_equation_constant();
+        let params = Params::new(Method::FwEuler);
+        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut y0 = Vector::new(system.ndim + 1); // wrong dim
+        assert_eq!(
+            solver.solve(&mut y0, data.x0, data.x1, None, None, &mut args).err(),
+            Some("y0.dim() must be equal to ndim")
+        );
+        let x1 = data.x0; // wrong value
+        assert_eq!(
+            solver.solve(&mut data.y0, data.x0, x1, None, None, &mut args).err(),
+            Some("x1 must be greater than x0")
         );
     }
 }

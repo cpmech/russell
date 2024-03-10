@@ -36,6 +36,80 @@ See also:
 
 * [russell_ode/examples](https://github.com/cpmech/russell/tree/main/russell_ode/examples)
 
+### Simple example
+
+Solve the simple ODE:
+
+```text
+dy/dx = x + y    with    y(0) = 0
+```
+
+See the code [simple_ode.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/simple_ode.rs); reproduced below:
+
+```rust
+use russell_lab::{format_scientific, vec_max_abs_diff};
+use russell_lab::{StrError, Vector};
+use russell_ode::prelude::*;
+
+fn main() -> Result<(), StrError> {
+    // ODE system
+    let ndim = 1;
+    let system = System::new(
+        ndim,
+        |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+            f[0] = x + y[0];
+            Ok(())
+        },
+        no_jacobian,
+        HasJacobian::No,
+        None,
+        None,
+    );
+
+    // solver
+    let params = Params::new(Method::DoPri8);
+    let mut solver = OdeSolver::new(params, &system)?;
+
+    // initial values
+    let x = 0.0;
+    let mut y = Vector::from(&[0.0]);
+
+    // solve from x = 0 to x = 1
+    let x1 = 1.0;
+    let mut args = 0;
+    solver.solve(&mut y, x, x1, None, None, &mut args)?;
+    println!("y =\n{}", y);
+
+    // check the results
+    let y_ana = Vector::from(&[f64::exp(x1) - x1 - 1.0]);
+    let (_, error) = vec_max_abs_diff(&y, &y_ana)?;
+    println!("error = {}", format_scientific(error, 8, 2));
+    assert!(error < 1e-8);
+
+    // print stats
+    println!("{}", solver.bench());
+    Ok(())
+}
+```
+
+The output looks like:
+
+```text
+y =
+┌                    ┐
+│ 0.7182818250641057 │
+└                    ┘
+error = 3.39E-09
+DoPri8: Dormand-Prince method (explicit, order 8(5,3), embedded)
+Number of function evaluations   = 108
+Number of performed steps        = 9
+Number of accepted steps         = 9
+Number of rejected steps         = 0
+Last accepted/suggested stepsize = 1.8976857444701694
+Max time spent on a step         = 3.789µs
+Total time                       = 48.038µs
+```
+
 ### Brusselator ODE
 
 #### Variable step sizes

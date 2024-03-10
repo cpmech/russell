@@ -351,6 +351,11 @@ where
             out.calculate(y_out, x_out, x, h);
         }
     }
+
+    /// Update the parameters (e.g., for sensitive analyses)
+    fn update_params(&mut self, params: Params) {
+        self.params = params;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

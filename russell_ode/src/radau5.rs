@@ -648,6 +648,11 @@ where
             y_out[m] = y[m] + s * (self.yc0[m] + (s - MU4) * (self.yc1[m] + (s - MU3) * self.yc2[m]));
         }
     }
+
+    /// Update the parameters (e.g., for sensitive analyses)
+    fn update_params(&mut self, params: Params) {
+        self.params = params;
+    }
 }
 
 /// Computes the scaled RMS norm

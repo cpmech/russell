@@ -11,9 +11,13 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## <a name="introduction"></a> Introduction
 
-Work in progress...
+This library implements (in pure Rust) solvers to ordinary differential equations (ODEs) and differential algebraic systems (DAEs). Specifically, this library implements several explicit Runge-Kutta methods (e.g., Dormand-Prince formulae) and two implicit Runge-Kutta methods, namely the Backward Euler and the Radau IIA of fifth-order (aka Radau5). The Radau5 solver is able to solver DAEs of Index-1, by accepting the so-called *mass matrix*.
 
 ## <a name="installation"></a> Installation
+
+This crate depends on `russell_lab`, which, in turn, depends on an efficient BLAS library such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
+
+[The root README file presents the steps to install the required dependencies.](https://github.com/cpmech/russell)
 
 ## <a name="cargo"></a> Setting Cargo.toml
 
@@ -32,11 +36,39 @@ See also:
 
 * [russell_ode/examples](https://github.com/cpmech/russell/tree/main/russell_ode/examples)
 
-### Solve the Brusselator ODE with explicit Runge-Kutta methods and constant step sizes
+### Brusselator ODE
+
+#### Variable step sizes
+
+This example solves the Brusselator ODE with variable step sizes for different tolerances. In this example, `tol = abs_tol = rel_tol`.
+
+See the code [brusselator_ode_var_step.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_ode_var_step.rs)
+
+The results are:
+
+```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       tol =  1.00E-02  1.00E-04  1.00E-06  1.00E-08
+      Method     Error     Error     Error     Error
+────────────────────────────────────────────────────
+      Radau5   1.9E-03   7.9E-06   1.3E-07   3.2E-09
+     Merson4   3.8E-02   2.1E-04   9.9E-06   7.1E-08
+      DoPri5   8.0E-03   1.7E-04   1.8E-06   2.0E-08
+      DoPri8   1.4E-02   6.4E-06   2.7E-07   4.2E-09
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+And the convergence plot is:
+
+![Brusselator results: var step](data/figures/brusselator_ode_var_step.svg)
+
+#### Fixed step sizes
+
+This example solves the Brusselator ODE with fixed step sizes and explicit Runge-Kutta methods.
 
 See the code [brusselator_ode_fix_step.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_ode_fix_step.rs)
 
-The output is reproduced below:
+The results are:
 
 ```text
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -59,7 +91,6 @@ The output is reproduced below:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-And the convergence plot is shown below:
+And the convergence plot is:
 
-![Brusselator results](data/figures/brusselator_ode_erk_methods.svg)
-
+![Brusselator results: fix step](data/figures/brusselator_ode_fix_step.svg)

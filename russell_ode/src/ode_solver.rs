@@ -281,6 +281,14 @@ impl<'a, A> OdeSolver<'a, A> {
             Err("variable stepping did not converge")
         }
     }
+
+    /// Update the parameters (e.g., for sensitive analyses)
+    pub fn update_params(&mut self, params: Params) -> Result<(), StrError> {
+        params.validate()?;
+        self.actual.update_params(params);
+        self.params = params;
+        Ok(())
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

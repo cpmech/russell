@@ -785,7 +785,7 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// Returns `(system, data, args)` where:
+    /// Returns `(system, data, args, y_ref)` where:
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
@@ -793,6 +793,7 @@ impl Samples {
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `y_ref` -- is a reference solution, computed with high-accuracy by Mathematica
     ///
     /// # Reference
     ///
@@ -807,6 +808,7 @@ impl Samples {
         >,
         SampleData,
         NoArgs,
+        Vector,
     ) {
         // initial values
         let x0 = 0.0;
@@ -844,7 +846,17 @@ impl Samples {
             h_equal: Some(0.1),
             y_analytical: None,
         };
-        (system, data, 0)
+
+        // reference solution; using the following Mathematica code:
+        // ```Mathematica
+        // Needs["DifferentialEquations`NDSolveProblems`"];
+        // Needs["DifferentialEquations`NDSolveUtilities`"];
+        // sys = GetNDSolveProblem["BrusselatorODE"];
+        // sol = NDSolve[sys, Method -> "StiffnessSwitching", WorkingPrecision -> 32];
+        // ref = First[FinalSolutions[sys, sol]]
+        // ```
+        let y_ref = Vector::from(&[0.4986370712683478291402659846476, 4.596780349452011024598321237263]);
+        (system, data, 0, y_ref)
     }
 }
 
@@ -1108,7 +1120,7 @@ mod tests {
     #[test]
     fn brusselator_ode_works() {
         let multiplier = 2.0;
-        let (system, data, mut args) = Samples::brusselator_ode();
+        let (system, data, mut args, _) = Samples::brusselator_ode();
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();

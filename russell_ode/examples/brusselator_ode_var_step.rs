@@ -1,4 +1,4 @@
-use plotpy::{Curve, Plot, SlopeIcon};
+use plotpy::{Curve, Plot};
 use russell_lab::{format_scientific, vec_max_abs_diff, StrError};
 use russell_ode::prelude::*;
 
@@ -6,40 +6,46 @@ fn main() -> Result<(), StrError> {
     // ODE system
     let (system, data, mut args, y_ref) = Samples::brusselator_ode();
 
-    // stepsize
-    let hh = [0.2, 0.1, 0.05, 0.01, 0.001];
+    // tolerances
+    let tols = [1e-2, 1e-4, 1e-6, 1e-8];
 
     // print the header of the table
-    let (w1, w2) = (11, 9); // column widths
-    println!("{:━<1$}", "", w1 + w2 * hh.len());
-    print!("{:>w$}", "h =", w = w1);
-    for h in &hh {
+    let (w1, w2) = (12, 10); // column widths
+    println!("{:━<1$}", "", w1 + w2 * tols.len());
+    print!("{:>w$}", "tol =", w = w1);
+    for h in &tols {
         print!("{}", format_scientific(*h, w2, 2))
     }
     print!("\n{:>w$}", "Method", w = w1);
-    println!("{}", format!("{:>w$}", "Error", w = w2).repeat(hh.len()));
-    println!("{:─<1$}", "", w1 + w2 * hh.len());
+    println!("{}", format!("{:>w$}", "Error", w = w2).repeat(tols.len()));
+    println!("{:─<1$}", "", w1 + w2 * tols.len());
 
     // allocate the plotting area
     let mut plot = Plot::new();
 
     // run for all explicit Runge-Kutta methods
-    for method in Method::erk_methods() {
+    for method in &[Method::Radau5, Method::Merson4, Method::DoPri5, Method::DoPri8] {
         // allocate the solver
-        let params = Params::new(method);
+        let params = Params::new(*method);
         let mut solver = OdeSolver::new(params, &system)?;
 
         // arrays holding the results
-        let mut n_f_eval = vec![0.0; hh.len()];
-        let mut errors = vec![0.0; hh.len()];
+        let mut n_f_eval = vec![0.0; tols.len()];
+        let mut errors = vec![0.0; tols.len()];
 
         // solve the problem for a range of stepsizes
         let name = format!("{:?}", method);
         print!("{:>w$}", name, w = w1);
-        for i in 0..hh.len() {
+        for i in 0..tols.len() {
+            // set the tolerances
+            let mut params = Params::new(*method);
+            params.set_tolerances(tols[i], tols[i], None)?;
+            solver.update_params(params)?;
+
+            // call solve
             let x = data.x0;
             let mut y = data.y0.clone();
-            solver.solve(&mut y, x, data.x1, Some(hh[i]), None, &mut args).unwrap();
+            solver.solve(&mut y, x, data.x1, None, None, &mut args).unwrap();
 
             // compare with the reference solution
             let (_, err) = vec_max_abs_diff(&y, &y_ref)?;
@@ -61,26 +67,13 @@ fn main() -> Result<(), StrError> {
             .draw(&n_f_eval, &errors);
         plot.add(&curve);
     }
-    println!("{:━<1$}", "", w1 + w2 * hh.len());
-
-    let mut icon2 = SlopeIcon::new();
-    let mut icon3 = SlopeIcon::new();
-    let mut icon4 = SlopeIcon::new();
-    let mut icon8 = SlopeIcon::new();
-    icon2.set_above(true).draw(-2.0, 2e4, 3e-6);
-    icon3.set_above(true).draw(-3.0, 2e4, 1e-7);
-    icon4.set_above(true).draw(-4.0, 2e4, 1.5e-9);
-    icon8.draw(-8.0, 2.6e3, 1.5e-10);
+    println!("{:━<1$}", "", w1 + w2 * tols.len());
 
     // save the plot
     plot.legend()
         .set_log_x(true)
         .set_log_y(true)
-        .add(&icon2) // must add after set_log_x and set_log_y
-        .add(&icon3)
-        .add(&icon4)
-        .add(&icon8)
         .set_figure_size_points(600.0, 500.0)
         .grid_and_labels("N FUNCTION EVALUATIONS", "ERROR")
-        .save("/tmp/russell_ode/brusselator_ode_fix_step.svg")
+        .save("/tmp/russell_ode/brusselator_ode_var_step.svg")
 }

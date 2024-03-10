@@ -1,5 +1,5 @@
 use crate::StrError;
-use crate::Workspace;
+use crate::{Params, Workspace};
 use russell_lab::Vector;
 
 /// Defines the numerical solver
@@ -25,4 +25,7 @@ pub(crate) trait OdeSolverTrait<A> {
 
     /// Computes the dense output with x-h ≤ x_out ≤ x
     fn dense_output(&self, y_out: &mut Vector, x_out: f64, x: f64, y: &Vector, h: f64);
+
+    /// Update the parameters (e.g., for sensitive analyses)
+    fn update_params(&mut self, params: Params);
 }

@@ -2,7 +2,7 @@ use crate::constants::N_EQUAL_STEPS;
 use crate::{Benchmark, Method, OdeSolverTrait, Params, System, Workspace};
 use crate::{EulerBackward, EulerForward, ExplicitRungeKutta, Radau5};
 use crate::{Output, StrError};
-use russell_lab::Vector;
+use russell_lab::{vec_all_finite, Vector};
 use russell_sparse::CooMatrix;
 
 /// Implements a numerical solver for systems of ODEs
@@ -167,6 +167,9 @@ impl<'a, A> OdeSolver<'a, A> {
                 self.work.bench.n_accepted += 1; // this must be after `self.actual.step`
                 self.actual.accept(&mut self.work, &mut x, y, h, args)?;
 
+                // check for anomalies
+                vec_all_finite(&y, self.params.debug)?;
+
                 // output
                 if let Some(out) = output.as_mut() {
                     out.push(&self.work, x, y, h, &self.actual)?;
@@ -217,6 +220,9 @@ impl<'a, A> OdeSolver<'a, A> {
                 // update x and y
                 self.work.bench.n_accepted += 1;
                 self.actual.accept(&mut self.work, &mut x, y, h, args)?;
+
+                // check for anomalies
+                vec_all_finite(&y, self.params.debug)?;
 
                 // do not allow h to grow if previous step was a reject
                 if self.work.follows_reject_step {
@@ -476,6 +482,34 @@ mod tests {
                 .solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)
                 .err(),
             Some("dense output is not available for the FwEuler method")
+        );
+    }
+
+    #[test]
+    fn nan_and_infinity_are_captured() {
+        let (system, data, mut args) = Samples::brusselator_ode();
+        let params = Params::new(Method::FwEuler);
+        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut y = data.y0.clone();
+        let x = data.x0;
+        let h = 0.5;
+        assert_eq!(
+            solver.solve(&mut y, x, data.x1, Some(h), None, &mut args).err(),
+            Some("an element of the vector is either infinite or NaN")
+        );
+    }
+
+    #[test]
+    fn lack_of_convergence_is_captured() {
+        let (system, data, mut args) = Samples::simple_equation_constant();
+        let mut params = Params::new(Method::MdEuler);
+        params.step.n_step_max = 1;
+        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut y = data.y0.clone();
+        let x = data.x0;
+        assert_eq!(
+            solver.solve(&mut y, x, data.x1, None, None, &mut args).err(),
+            Some("variable stepping did not converge")
         );
     }
 }

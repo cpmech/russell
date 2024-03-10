@@ -841,7 +841,7 @@ impl Samples {
             x0,
             y0,
             x1,
-            h_equal: None,
+            h_equal: Some(0.1),
             y_analytical: None,
         };
         (system, data, 0)

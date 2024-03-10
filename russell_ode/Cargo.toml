@@ -20,4 +20,5 @@ russell_sparse = { path = "../russell_sparse", version = "0.8" }
 num-complex = { version = "0.4", features = ["serde"] }
 
 [dev-dependencies]
+plotpy = "0.5"
 serial_test = "3.0"

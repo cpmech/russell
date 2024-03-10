@@ -68,7 +68,7 @@ impl<'a, A> OdeSolver<'a, A> {
         } else if params.method == Method::FwEuler {
             Box::new(EulerForward::new(system))
         } else {
-            Box::new(ExplicitRungeKutta::new(params, system)?)
+            Box::new(ExplicitRungeKutta::new(params, system).unwrap()) // unwrap here because an error cannot occur
         };
         Ok(OdeSolver {
             params,

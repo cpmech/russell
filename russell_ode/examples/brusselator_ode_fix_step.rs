@@ -61,7 +61,6 @@ fn main() -> Result<(), StrError> {
     let mut plot = Plot::new();
 
     // run for all explicit Runge-Kutta methods
-    // for method in [Method::FwEuler] {
     for method in Method::erk_methods() {
         // allocate the solver
         let params = Params::new(method);

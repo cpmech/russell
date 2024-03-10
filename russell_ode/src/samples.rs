@@ -780,6 +780,72 @@ impl Samples {
         };
         (system, data, 0)
     }
+
+    /// Returns the Brusselator problem (ODE version) described in Hairer-Nørsett-Wanner, Part I, page 116
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, args)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `NoArgs`
+    /// * `data: SampleData` -- holds the initial values
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    ///
+    /// # Reference
+    ///
+    /// * Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
+    ///   Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
+    ///   in Computational Mathematics, 528p
+    pub fn brusselator_ode() -> (
+        System<
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
+        >,
+        SampleData,
+        NoArgs,
+    ) {
+        // initial values
+        let x0 = 0.0;
+        let y0 = Vector::from(&[3.0 / 2.0, 3.0]);
+        let x1 = 20.0;
+
+        // ODE system
+        let ndim = 2;
+        let jac_nnz = 4;
+        let system = System::new(
+            ndim,
+            move |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
+                f[0] = 1.0 - 4.0 * y[0] + y[0] * y[0] * y[1];
+                f[1] = 3.0 * y[0] - y[0] * y[0] * y[1];
+                Ok(())
+            },
+            move |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
+                jj.reset();
+                jj.put(0, 0, m * (-4.0 + 2.0 * y[0] * y[1])).unwrap();
+                jj.put(0, 1, m * (y[0] * y[0])).unwrap();
+                jj.put(1, 0, m * (3.0 - 2.0 * y[0] * y[1])).unwrap();
+                jj.put(1, 1, m * (-y[0] * y[0])).unwrap();
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+
+        // control
+        let data = SampleData {
+            x0,
+            y0,
+            x1,
+            h_equal: None,
+            y_analytical: None,
+        };
+        (system, data, 0)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1037,5 +1103,24 @@ mod tests {
         let ndim = system.ndim;
         let nnz_mass = 5 + 4;
         assert_eq!(mass.get_info(), (ndim, ndim, nnz_mass, Sym::No));
+    }
+
+    #[test]
+    fn brusselator_ode_works() {
+        let multiplier = 2.0;
+        let (system, data, mut args) = Samples::brusselator_ode();
+
+        // compute the analytical Jacobian matrix
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+
+        // compute the numerical Jacobian matrix
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
+        println!("{:.15}", ana);
+        println!("{:.15}", num);
+        mat_approx_eq(&ana, &num, 1e-11);
     }
 }

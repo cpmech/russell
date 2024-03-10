@@ -32,9 +32,9 @@ See also:
 
 * [russell_ode/examples](https://github.com/cpmech/russell/tree/main/russell_ode/examples)
 
-### Solve the Brusselator ODE with explicit Runge-Kutta methods
+### Solve the Brusselator ODE with explicit Runge-Kutta methods and constant step sizes
 
-See the code [brusselator_ode_erk_methods.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_ode_erk_methods.rs)
+See the code [brusselator_ode_fix_step.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_ode_fix_step.rs)
 
 The output is reproduced below:
 

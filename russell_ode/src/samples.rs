@@ -109,9 +109,11 @@ impl Samples {
     ///
     /// ```text
     /// M y' = f(x, y)
+    /// ```
     ///
     /// with:
     ///
+    /// ```text
     ///     ┌          ┐       ┌           ┐
     ///     │  1  1  0 │       │ -y0 + y1  │
     /// M = │  1 -1  0 │   f = │  y0 + y1  │
@@ -153,6 +155,11 @@ impl Samples {
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    ///
+    /// # Reference
+    ///
+    /// * Mathematica, Numerical Solution of Differential-Algebraic Equations: Solving Systems with a Mass Matrix
+    /// <https://reference.wolfram.com/language/tutorial/NDSolveDAE.html>
     pub fn simple_system_with_mass_matrix(
         symmetric: bool,
         genie: Genie,

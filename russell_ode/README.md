@@ -1,4 +1,4 @@
-# Russell ODE - Solvers for Ordinary Differential Equations and Differential Algebraic Systems
+# Russell ODE - Solvers for Ordinary Differential Equations and Differential Algebraic Equations
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
@@ -11,7 +11,22 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## <a name="introduction"></a> Introduction
 
-This library implements (in pure Rust) solvers to ordinary differential equations (ODEs) and differential algebraic systems (DAEs). Specifically, this library implements several explicit Runge-Kutta methods (e.g., Dormand-Prince formulae) and two implicit Runge-Kutta methods, namely the Backward Euler and the Radau IIA of fifth-order (aka Radau5). The Radau5 solver is able to solver DAEs of Index-1, by accepting the so-called *mass matrix*.
+This library implements (in pure Rust) solvers to ordinary differential equations (ODEs) and differential algebraic equations (DAEs). Specifically, this library implements several explicit Runge-Kutta methods (e.g., Dormand-Prince formulae) and two implicit Runge-Kutta methods, namely the Backward Euler and the Radau IIA of fifth-order (aka Radau5). The Radau5 solver is able to solver DAEs of Index-1, by accepting the so-called *mass matrix*.
+
+The code in this library is based on Hairer-Nørsett-Wanner books and respective Fortran codes (see references [1] and [2]). The code for Dormand-Prince 5(4) and Dormand-Prince 8(5,3) are fairly different than the Fortran counterparts. The code for Radau5 follows closely reference [2]; however some small differences are considered. Despite the coding differences, the numeric results match the Fortran results quite well.
+
+The ODE/DAE system can be easily defined using the System data structure; [see the examples below](#examples).
+
+### References
+
+1. Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
+   Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
+   in Computational Mathematics, 528p
+2. Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
+   Stiff and Differential-Algebraic Problems. Second Revised Edition.
+   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
+3. Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
+   Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
 
 ## <a name="installation"></a> Installation
 
@@ -32,19 +47,21 @@ russell_ode = "*"
 
 ## <a name="examples"></a> Examples
 
+See [the examples on how to define the ODE/DAE system](https://github.com/cpmech/russell/tree/main/russell_ode/src/samples.rs).
+
 See also:
 
 * [russell_ode/examples](https://github.com/cpmech/russell/tree/main/russell_ode/examples)
 
-### Simple example
+### Simple ODE with a single equation
 
-Solve the simple ODE:
+Solve the simple ODE with Dormand-Prince 8(5,3):
 
 ```text
 dy/dx = x + y    with    y(0) = 0
 ```
 
-See the code [simple_ode.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/simple_ode.rs); reproduced below:
+See the code [simple_ode_single_equation.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/simple_ode_single_equation.rs); reproduced below:
 
 ```rust
 use russell_lab::{vec_max_abs_diff, StrError, Vector};
@@ -107,6 +124,149 @@ Number of rejected steps         = 0
 Last accepted/suggested stepsize = 1.8976857444701694
 Max time spent on a step         = 3.789µs
 Total time                       = 48.038µs
+```
+
+### Simple system with mass matrix
+
+Solve with Radau5:
+
+```text
+y0' + y1'     = -y0 + y1
+y0' - y1'     =  y0 + y1
+          y2' = 1/(1 + x)
+
+y0(0) = 1,  y1(0) = 0,  y2(0) = 0
+```
+
+Thus:
+
+```text
+M y' = f(x, y)
+```
+
+with:
+
+```text
+    ┌          ┐       ┌           ┐
+    │  1  1  0 │       │ -y0 + y1  │
+M = │  1 -1  0 │   f = │  y0 + y1  │
+    │  0  0  1 │       │ 1/(1 + x) │
+    └          ┘       └           ┘
+```
+
+The Jacobian matrix is:
+
+```text
+         ┌          ┐
+    df   │ -1  1  0 │
+J = —— = │  1  1  0 │
+    dy   │  0  0  0 │
+         └          ┘
+```
+
+The analytical solution is:
+
+```text
+y0(x) = cos(x)
+y1(x) = -sin(x)
+y2(x) = log(1 + x)
+```
+
+Reference: [Numerical Solution of Differential-Algebraic Equations: Solving Systems with a Mass Matrix](https://reference.wolfram.com/language/tutorial/NDSolveDAE.html).
+
+See the code [simple_system_with_mass.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/simple_system_with_mass.rs); reproduced below:
+
+```rust
+use russell_lab::{vec_max_abs_diff, StrError, Vector};
+use russell_ode::prelude::*;
+use russell_sparse::CooMatrix;
+
+fn main() -> Result<(), StrError> {
+    // DAE system
+    let ndim = 3;
+    let jac_nnz = 4;
+    let mut system = System::new(
+        ndim,
+        |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+            f[0] = -y[0] + y[1];
+            f[1] = y[0] + y[1];
+            f[2] = 1.0 / (1.0 + x);
+            Ok(())
+        },
+        move |jj: &mut CooMatrix, _x: f64, _y: &Vector, m: f64, _args: &mut NoArgs| {
+            jj.reset();
+            jj.put(0, 0, m * (-1.0)).unwrap();
+            jj.put(0, 1, m * (1.0)).unwrap();
+            jj.put(1, 0, m * (1.0)).unwrap();
+            jj.put(1, 1, m * (1.0)).unwrap();
+            Ok(())
+        },
+        HasJacobian::Yes,
+        Some(jac_nnz),
+        None,
+    );
+
+    // mass matrix
+    let mass_nnz = 5;
+    system.init_mass_matrix(mass_nnz).unwrap();
+    system.mass_put(0, 0, 1.0).unwrap();
+    system.mass_put(0, 1, 1.0).unwrap();
+    system.mass_put(1, 0, 1.0).unwrap();
+    system.mass_put(1, 1, -1.0).unwrap();
+    system.mass_put(2, 2, 1.0).unwrap();
+
+    // solver
+    let params = Params::new(Method::Radau5);
+    let mut solver = OdeSolver::new(params, &system)?;
+
+    // initial values
+    let x = 0.0;
+    let mut y = Vector::from(&[1.0, 0.0, 0.0]);
+
+    // solve from x = 0 to x = 20
+    let x1 = 20.0;
+    let mut args = 0;
+    solver.solve(&mut y, x, x1, None, None, &mut args)?;
+    println!("y =\n{}", y);
+
+    // check the results
+    let y_ana = Vector::from(&[f64::cos(x1), -f64::sin(x1), f64::ln(1.0 + x1)]);
+    let (_, error) = vec_max_abs_diff(&y, &y_ana)?;
+    println!("error = {:e}", error);
+    assert!(error < 1e-4);
+
+    // print stats
+    println!("{}", solver.bench());
+    Ok(())
+}
+```
+
+The output looks like:
+
+```text
+y =
+┌                     ┐
+│  0.4081258859665056 │
+│ -0.9129961945737365 │
+│  3.0445213906613513 │
+└                     ┘
+error = 5.0943846108819635e-5
+Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)
+Number of function evaluations   = 204
+Number of Jacobian evaluations   = 1
+Number of factorizations         = 14
+Number of lin sys solutions      = 52
+Number of performed steps        = 47
+Number of accepted steps         = 47
+Number of rejected steps         = 0
+Number of iterations (maximum)   = 2
+Number of iterations (last step) = 1
+Last accepted/suggested stepsize = 0.02811710719458652
+Max time spent on a step         = 36.78µs
+Max time spent on the Jacobian   = 343ns
+Max time spent on factorization  = 8.085901ms
+Max time spent on lin solution   = 3.89526ms
+Total time                       = 27.107919ms
 ```
 
 ### Brusselator ODE

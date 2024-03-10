@@ -6,7 +6,24 @@ use russell_lab::{complex_vec_zip, cpx, format_fortran, vec_copy, ComplexVector,
 use russell_sparse::{ComplexLinSolver, ComplexSparseMatrix, CooMatrix, Genie, LinSolver, SparseMatrix};
 use std::thread;
 
-/// Implements the Radau5 method
+/// Implements the Radau5 method (Radau IIA) (implicit, order 5, embedded) for ODEs and DAEs
+///
+/// **Note:** The implementation here follows closely the Fortran code named `radau5.f` explained
+/// in the reference #2 with some differences. For instance, here, more memory is required than in
+/// radau5.f because the variables here are slightly more clearly defined. Also, the coefficient
+/// matrices used in the simplified Newton's method are stored in the sparse format (see `russell_sparse`)
+/// and their respective linear systems may be solved concurrently. Despite the differences,
+/// the Rust and Fortran codes yield similar results (check out the `tests` and `data` directories).
+/// Note also that the Fortran code is *faster*.
+///
+/// # References
+///
+/// 1. E. Hairer, S. P. Nørsett, G. Wanner (2008) Solving Ordinary Differential Equations I.
+///    Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
+///    in Computational Mathematics, 528p
+/// 2. E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
+///    Stiff and Differential-Algebraic Problems. Second Revised Edition.
+///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
 pub(crate) struct Radau5<'a, F, J, A>
 where
     F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,

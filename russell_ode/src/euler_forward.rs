@@ -3,6 +3,10 @@ use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::{vec_add, vec_copy, Vector};
 use russell_sparse::CooMatrix;
 
+/// Implements the forward Euler method (explicit, order 1, conditionally stable)
+///
+/// **Warning:** This method is interesting for didactic purposes only
+/// and should not be used in production codes.
 pub(crate) struct EulerForward<'a, F, J, A>
 where
     F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,

@@ -37,6 +37,20 @@ pub struct Information {
 
 /// Specifies the numerical method to solve (approximate) ODEs
 ///
+/// # Recommended methods
+///
+/// * [Method::DoPri5] for ODE systems and non-stiff problems using moderate tolerances
+/// * [Method::DoPri8] for ODE systems and non-stiff problems using strict tolerances
+/// * [Method::Radau5] for ODE and DAE systems, possibly stiff, with moderate to strict tolerances
+///
+/// **Note:** A *Stiff problem* arises due to a combination of conditions, such as
+/// the ODE system equations, the initial values, the stepsize, and the numerical method.
+///
+/// # Limitations
+///
+/// * Currently, the only method that can solve DAE systems is [Method::Radau5]
+/// * Currently, *dense output* is only available for [Method::DoPri5], [Method::DoPri8], and [Method::Radau5]
+///
 /// # References
 ///
 /// 1. E. Hairer, S. P. Nørsett, G. Wanner (2008) Solving Ordinary Differential Equations I.
@@ -47,13 +61,16 @@ pub struct Information {
 ///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Method {
-    /// Radau method (Radau IIA) (implicit, order 5, embedded)
+    /// Radau method (Radau IIA) (implicit, order 5, embedded) for ODEs and DAEs
     Radau5,
 
-    /// Backward Euler method (implicit, order 1)
+    /// Backward Euler method (implicit, order 1, unconditionally stable)
     BwEuler,
 
-    /// Forward Euler method (explicit, order 1)
+    /// Forward Euler method (explicit, order 1, conditionally stable)
+    ///
+    /// **Note:** This method is interesting for didactic purposes only
+    /// and should not be used in production codes.
     FwEuler,
 
     /// Runge (Kutta) method (mid-point) (explicit, order 2)

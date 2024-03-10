@@ -4,6 +4,23 @@ use crate::{detect_stiffness, ErkDenseOut, Information, Method, OdeSolverTrait, 
 use russell_lab::{format_fortran, vec_copy, vec_update, Matrix, Vector};
 use russell_sparse::CooMatrix;
 
+/// Implements several explicit Runge-Kutta methods
+///
+/// **Note:** The [Method::DoPri5] and [Method::DoPri8] are based on the Fortran codes `dopri5.f` and
+/// `dop853.f` explained in references #1 and #2. However, the implementation is fairly different
+/// because a more general format is considered to allow the implementation of any explicit RK method.
+/// Because of the differences, more memory is required in the Rust code than in the specialized
+/// Fortran codes. Also, the Fortran codes are *faster*. Despite the differences, the Rust and Fortran
+/// codes yield similar results (check out the `tests` and `data` directories).
+///
+/// # References
+///
+/// 1. E. Hairer, S. P. Nørsett, G. Wanner (2008) Solving Ordinary Differential Equations I.
+///    Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
+///    in Computational Mathematics, 528p
+/// 2. E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
+///    Stiff and Differential-Algebraic Problems. Second Revised Edition.
+///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
 pub(crate) struct ExplicitRungeKutta<'a, F, J, A>
 where
     F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,

@@ -3,7 +3,7 @@ use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::{vec_copy, vec_rms_scaled, vec_update, Vector};
 use russell_sparse::{CooMatrix, LinSolver, SparseMatrix};
 
-/// Implements the backward Euler (implicit) solver
+/// Implements the backward Euler (implicit) solver (implicit, order 1, unconditionally stable)
 pub(crate) struct EulerBackward<'a, F, J, A>
 where
     F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,

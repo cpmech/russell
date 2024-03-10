@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 /// Indicates that the system functions do not require extra arguments
 pub type NoArgs = u8;
 
-/// Defines a system of first order ordinary differential equations (ODE) or a differential-algebraic system (DAE) of Index-1
+/// Defines a system of first order ordinary differential equations (ODE) or a differential-algebraic equations (DAE) of Index-1
 ///
 /// The system is defined by:
 ///
@@ -51,6 +51,15 @@ pub type NoArgs = u8;
 ///     Ok(())
 /// },
 /// ```
+///
+/// # References
+///
+/// 1. E. Hairer, S. P. Nørsett, G. Wanner (2008) Solving Ordinary Differential Equations I.
+///    Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
+///    in Computational Mathematics, 528p
+/// 2. E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
+///    Stiff and Differential-Algebraic Problems. Second Revised Edition.
+///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
 pub struct System<F, J, A>
 where
     F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,

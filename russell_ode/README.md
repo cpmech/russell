@@ -47,8 +47,7 @@ dy/dx = x + y    with    y(0) = 0
 See the code [simple_ode.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/simple_ode.rs); reproduced below:
 
 ```rust
-use russell_lab::{format_scientific, vec_max_abs_diff};
-use russell_lab::{StrError, Vector};
+use russell_lab::{vec_max_abs_diff, StrError, Vector};
 use russell_ode::prelude::*;
 
 fn main() -> Result<(), StrError> {
@@ -56,7 +55,7 @@ fn main() -> Result<(), StrError> {
     let ndim = 1;
     let system = System::new(
         ndim,
-        |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+        |f, x, y, _args: &mut NoArgs| {
             f[0] = x + y[0];
             Ok(())
         },
@@ -83,7 +82,7 @@ fn main() -> Result<(), StrError> {
     // check the results
     let y_ana = Vector::from(&[f64::exp(x1) - x1 - 1.0]);
     let (_, error) = vec_max_abs_diff(&y, &y_ana)?;
-    println!("error = {}", format_scientific(error, 8, 2));
+    println!("error = {:e}", error);
     assert!(error < 1e-8);
 
     // print stats

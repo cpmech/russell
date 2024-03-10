@@ -284,6 +284,9 @@ impl<'a, A> OdeSolver<'a, A> {
 
     /// Update the parameters (e.g., for sensitive analyses)
     pub fn update_params(&mut self, params: Params) -> Result<(), StrError> {
+        if params.method != self.params.method {
+            return Err("update_params must not change the method");
+        }
         params.validate()?;
         self.actual.update_params(params);
         self.params = params;
@@ -495,7 +498,7 @@ mod tests {
 
     #[test]
     fn nan_and_infinity_are_captured() {
-        let (system, data, mut args) = Samples::brusselator_ode();
+        let (system, data, mut args, _) = Samples::brusselator_ode();
         let params = Params::new(Method::FwEuler);
         let mut solver = OdeSolver::new(params, &system).unwrap();
         let mut y = data.y0.clone();
@@ -518,6 +521,23 @@ mod tests {
         assert_eq!(
             solver.solve(&mut y, x, data.x1, None, None, &mut args).err(),
             Some("variable stepping did not converge")
+        );
+    }
+
+    #[test]
+    fn update_params_works() {
+        let (system, _, _) = Samples::simple_equation_constant();
+        let mut params = Params::new(Method::MdEuler);
+        let mut solver = OdeSolver::new(params, &system).unwrap();
+        assert_eq!(solver.params.step.n_step_max, 100000);
+        params.step.n_step_max = 2; // this will not change the solver until update_params is called
+        assert_eq!(solver.params.step.n_step_max, 100000);
+        solver.update_params(params).unwrap();
+        assert_eq!(solver.params.step.n_step_max, 2);
+        params.method = Method::FwEuler;
+        assert_eq!(
+            solver.update_params(params).err(),
+            Some("update_params must not change the method")
         );
     }
 }

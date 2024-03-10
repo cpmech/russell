@@ -24,6 +24,9 @@ pub struct SampleData {
 
 /// Holds a collection of sample ODE problems
 ///
+/// **Note:** Click on the *source* link in the documentation to access the
+/// source code illustrating the allocation of System.
+///
 /// # References
 ///
 /// 1. Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.

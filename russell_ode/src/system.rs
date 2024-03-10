@@ -31,6 +31,9 @@ pub type NoArgs = u8;
 ///
 /// where `[J]` is the Jacobian matrix.
 ///
+/// See [crate::Samples] for many examples on how to define the system (in [crate::Samples], click on the *source*
+/// link in the documentation to access the source code illustrating the allocation of System).
+///
 /// # Generics
 ///
 /// The generic arguments here are:

@@ -179,7 +179,7 @@ impl Samples {
         let jac_nnz = if triangular { 3 } else { 4 };
         let mut system = System::new(
             ndim,
-            move |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
                 f[0] = -y[0] + y[1];
                 f[1] = y[0] + y[1];
                 f[2] = 1.0 / (1.0 + x);
@@ -725,7 +725,7 @@ impl Samples {
         let jac_nnz = 9;
         let mut system = System::new(
             ndim,
-            move |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
                 let ue = C * f64::sin(D * x);
                 let f12 = BETA * (f64::exp((y[1] - y[2]) / UF) - 1.0);
                 f[0] = (y[0] - ue) / R;
@@ -735,7 +735,7 @@ impl Samples {
                 f[4] = y[4] / S;
                 Ok(())
             },
-            move |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
+            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
                 let g12 = BETA * f64::exp((y[1] - y[2]) / UF) / UF;
                 jj.reset();
                 jj.put(0, 0, m * (1.0 / R)).unwrap();
@@ -818,12 +818,12 @@ impl Samples {
         let jac_nnz = 4;
         let system = System::new(
             ndim,
-            move |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
+            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
                 f[0] = 1.0 - 4.0 * y[0] + y[0] * y[0] * y[1];
                 f[1] = 3.0 * y[0] - y[0] * y[0] * y[1];
                 Ok(())
             },
-            move |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
+            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
                 jj.reset();
                 jj.put(0, 0, m * (-4.0 + 2.0 * y[0] * y[1])).unwrap();
                 jj.put(0, 1, m * (y[0] * y[0])).unwrap();

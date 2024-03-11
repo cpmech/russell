@@ -10,6 +10,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 * [Examples](#examples)
     * [Simple ODE with a single equation](#simple-single)
     * [Simple system with mass matrix](#simple-mass)
+    * [Hairer-Wanner Equation (1.1)](#hairer-wanner-eq1)
     * [Brusselator ODE](#brusselator-ode)
     * [Van der Pol's Equation](#van-der-pol)
 
@@ -271,6 +272,20 @@ Max time spent on factorization  = 8.085901ms
 Max time spent on lin solution   = 3.89526ms
 Total time                       = 27.107919ms
 ```
+
+### <a name="hairer-wanner-eq1"></a> Hairer-Wanner Equation (1.1) on page 2 of Part II
+
+This example illustrates the instability of the forward Euler method with step sizes above the stability limit. The equation is:
+
+```text
+dy/dx = -50 (y - cos(x))          (1.1)
+```
+
+See the code [hairer_wanner_eq1.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/hairer_wanner_eq1.rs)
+
+The results are show below:
+
+![Hairer-Wanner Eq(1.1)](data/figures/hairer_wanner_eq1.svg)
 
 ### <a name="brusselator-ode"></a> Brusselator ODE
 

@@ -5,7 +5,7 @@ use russell_ode::{Method, OdeSolver, Output, Params, Samples};
 fn test_dopri5_van_der_pol_debug() {
     // get get ODE system
     const EPS: f64 = 0.003;
-    let (system, _, mut args) = Samples::van_der_pol(Some(EPS), false);
+    let (system, _, mut args) = Samples::van_der_pol(EPS, false);
 
     // set configuration parameters
     let mut params = Params::new(Method::DoPri5);

@@ -517,7 +517,7 @@ impl Samples {
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
     pub fn van_der_pol(
-        epsilon: Option<f64>,
+        epsilon: f64,
         stationary: bool,
     ) -> (
         System<
@@ -528,21 +528,19 @@ impl Samples {
         SampleData,
         NoArgs,
     ) {
-        let mut eps = match epsilon {
-            Some(e) => e,
-            None => 1.0e-6,
-        };
         let x0 = 0.0;
         let mut y0 = Vector::from(&[2.0, -0.6]);
         let mut x1 = 2.0;
-        if stationary {
-            eps = 1.0;
+        let eps = if stationary {
             const A: f64 = 2.00861986087484313650940188;
             const T: f64 = 6.6632868593231301896996820305;
             y0[0] = A;
             y0[1] = 0.0;
             x1 = T;
-        }
+            1.0
+        } else {
+            epsilon
+        };
         let ndim = 2;
         let jac_nnz = 3;
         let system = System::new(
@@ -1047,7 +1045,7 @@ mod tests {
     #[test]
     fn van_der_pol_works() {
         let multiplier = 2.0;
-        let (system, data, mut args) = Samples::van_der_pol(None, false);
+        let (system, data, mut args) = Samples::van_der_pol(0.03, false);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
@@ -1066,7 +1064,7 @@ mod tests {
     #[test]
     fn van_der_pol_works_stationary() {
         let multiplier = 3.0;
-        let (system, data, mut args) = Samples::van_der_pol(None, true);
+        let (system, data, mut args) = Samples::van_der_pol(1.0, true);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();

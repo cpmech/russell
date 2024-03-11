@@ -74,6 +74,6 @@ fn main() -> Result<(), StrError> {
         .set_log_x(true)
         .set_log_y(true)
         .set_figure_size_points(600.0, 500.0)
-        .grid_and_labels("N FUNCTION EVALUATIONS", "ERROR")
+        .grid_and_labels("N FUNCTION EVALUATIONS", "GLOBAL ERROR")
         .save("/tmp/russell_ode/brusselator_ode_var_step.svg")
 }

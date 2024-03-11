@@ -8,6 +8,10 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 * [Installation](#installation)
 * [Setting Cargo.toml](#cargo)
 * [Examples](#examples)
+    * [Simple ODE with a single equation](#simple-single)
+    * [Simple system with mass matrix](#simple-mass)
+    * [Brusselator ODE](#brusselator-ode)
+    * [Van der Pol's Equation](#van-der-pol)
 
 ## <a name="introduction"></a> Introduction
 
@@ -52,7 +56,7 @@ This section illustrates how to use `russell_ode`. More examples:
 * [Examples on how to define the ODE/DAE system](https://github.com/cpmech/russell/tree/main/russell_ode/src/samples.rs)
 * [Examples directory](https://github.com/cpmech/russell/tree/main/russell_ode/examples)
 
-### Simple ODE with a single equation
+### <a name="simple-single"></a> Simple ODE with a single equation
 
 Solve the simple ODE with Dormand-Prince 8(5,3):
 
@@ -125,7 +129,7 @@ Max time spent on a step         = 3.789µs
 Total time                       = 48.038µs
 ```
 
-### Simple system with mass matrix
+### <a name="simple-mass"></a> Simple system with mass matrix
 
 Solve with Radau5:
 
@@ -268,9 +272,9 @@ Max time spent on lin solution   = 3.89526ms
 Total time                       = 27.107919ms
 ```
 
-### Brusselator ODE
+### <a name="brusselator-ode"></a> Brusselator ODE
 
-#### Solving with DoPri8 -- 8(5,3)
+#### Solving with DoPri8 -- 8(5,3) -- dense output
 
 This is a system of two ODEs, well explained in Reference # 1. This problem is solved with the DoPri8 method (it has a hybrid error estimator of 5th and 3rd order; see Reference # 1).
 
@@ -380,3 +384,7 @@ The results are:
 And the convergence plot is:
 
 ![Brusselator results: fix step](data/figures/brusselator_ode_fix_step.svg)
+
+### <a name="van-der-pol"></a> Van der Pol's Equation
+
+TODO

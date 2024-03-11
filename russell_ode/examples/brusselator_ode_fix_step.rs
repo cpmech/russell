@@ -81,6 +81,6 @@ fn main() -> Result<(), StrError> {
         .add(&icon4)
         .add(&icon8)
         .set_figure_size_points(600.0, 500.0)
-        .grid_and_labels("N FUNCTION EVALUATIONS", "ERROR")
+        .grid_and_labels("N FUNCTION EVALUATIONS", "GLOBAL ERROR")
         .save("/tmp/russell_ode/brusselator_ode_fix_step.svg")
 }

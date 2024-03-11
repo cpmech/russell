@@ -22,8 +22,8 @@ fn main() -> Result<(), StrError> {
     solver.solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)?;
 
     // print the results and stats
-    println!("y_russell     ={:?}", data.y0.as_data());
-    println!("y_mathematica ={:?}", y_ref.as_data());
+    println!("y_russell     = {:?}", data.y0.as_data());
+    println!("y_mathematica = {:?}", y_ref.as_data());
     println!("{}", solver.bench());
 
     // load reference data (from Mathematica)

@@ -268,9 +268,9 @@ where
     ///     Ok(())
     /// }
     /// ```
-    pub fn mapped_linspace<F>(start: T, stop: T, count: usize, function: F) -> Result<Self, StrError>
+    pub fn mapped_linspace<F>(start: T, stop: T, count: usize, mut function: F) -> Result<Self, StrError>
     where
-        F: Fn(T) -> T,
+        F: FnMut(T) -> T,
     {
         let mut res = NumVector::new(count);
         if count == 0 {
@@ -484,9 +484,9 @@ where
     ///      └   ┘",
     /// );
     /// ```
-    pub fn get_mapped<F>(&self, function: F) -> Self
+    pub fn get_mapped<F>(&self, mut function: F) -> Self
     where
-        F: Fn(T) -> T,
+        F: FnMut(T) -> T,
     {
         let mut data = self.data.to_vec();
         for elem in data.iter_mut() {

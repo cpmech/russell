@@ -10,8 +10,9 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 * [Examples](#examples)
     * [Simple ODE with a single equation](#simple-single)
     * [Simple system with mass matrix](#simple-mass)
-    * [Hairer-Wanner Equation (1.1)](#hairer-wanner-eq1)
     * [Brusselator ODE](#brusselator-ode)
+    * [Hairer-Wanner Equation (1.1)](#hairer-wanner-eq1)
+    * [Robertson's Equation](#robertson)
     * [Van der Pol's Equation](#van-der-pol)
 
 ## <a name="introduction"></a> Introduction
@@ -273,20 +274,6 @@ Max time spent on lin solution   = 3.89526ms
 Total time                       = 27.107919ms
 ```
 
-### <a name="hairer-wanner-eq1"></a> Hairer-Wanner Equation (1.1) on page 2 of Part II
-
-This example illustrates the instability of the forward Euler method with step sizes above the stability limit. The equation is:
-
-```text
-dy/dx = -50 (y - cos(x))          (1.1)
-```
-
-See the code [hairer_wanner_eq1.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/hairer_wanner_eq1.rs)
-
-The results are show below:
-
-![Hairer-Wanner Eq(1.1)](data/figures/hairer_wanner_eq1.svg)
-
 ### <a name="brusselator-ode"></a> Brusselator ODE
 
 #### Solving with DoPri8 -- 8(5,3) -- dense output
@@ -400,6 +387,36 @@ And the convergence plot is:
 
 ![Brusselator results: fix step](data/figures/brusselator_ode_fix_step.svg)
 
+### <a name="hairer-wanner-eq1"></a> Hairer-Wanner Equation (1.1)
+
+This example illustrates the instability of the forward Euler method with step sizes above the stability limit. The equation is (reference # 2, page 2):
+
+```text
+dy/dx = -50 (y - cos(x))          (1.1)
+```
+
+See the code [hairer_wanner_eq1.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/hairer_wanner_eq1.rs)
+
+The results are show below:
+
+![Hairer-Wanner Eq(1.1)](data/figures/hairer_wanner_eq1.svg)
+
+### <a name="robertson"></a> Robertson's Equation
+
+See the code [robertson.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/robertson.rs)
+
+The solution obtained with Radau5 and DoPri5 using two sets of tolerances are illustrated below:
+
+![Robertson's Equation - Solution](data/figures/robertson_a.svg)
+
+The step sizes from the DoPri solution with Tol = 1e-2 are illustrated below:
+
+![Robertson's Equation - Step Sizes](data/figures/robertson_b.svg)
+
 ### <a name="van-der-pol"></a> Van der Pol's Equation
 
-TODO
+See the code [van_der_pol.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/van_der_pol.rs)
+
+The results are show below:
+
+![Van der Pol's Equation](data/figures/van_der_pol.svg)

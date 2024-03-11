@@ -47,11 +47,65 @@ russell_ode = "*"
 
 ## <a name="examples"></a> Examples
 
-See [the examples on how to define the ODE/DAE system](https://github.com/cpmech/russell/tree/main/russell_ode/src/samples.rs).
+See [some examples on how to define the ODE/DAE system](https://github.com/cpmech/russell/tree/main/russell_ode/src/samples.rs).
 
 See also:
 
 * [russell_ode/examples](https://github.com/cpmech/russell/tree/main/russell_ode/examples)
+
+### Brusselator ODE
+
+This is a system of two ODEs, well explained in Reference # 1. This problem is solved with the DoPri8 method (it has a hybrid error estimator of 5th and 3rd order; see Reference # 1).
+
+See the code [brusselator_ode_dopri8.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_ode_dopri8.rs); reproduced below (without the plotting commands):
+
+```rust
+use russell_lab::StrError;
+use russell_ode::prelude::*;
+
+fn main() -> Result<(), StrError> {
+    // get the ODE system
+    let (system, mut data, mut args, y_ref) = Samples::brusselator_ode();
+
+    // solver
+    let params = Params::new(Method::DoPri8);
+    let mut solver = OdeSolver::new(params, &system)?;
+
+    // enable dense output
+    let mut out = Output::new();
+    let h_out = 0.01;
+    let selected_y_components = &[0, 1];
+    out.enable_dense(h_out, selected_y_components)?;
+
+    // solve the problem
+    solver.solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)?;
+
+    // print the results and stats
+    println!("y_russell     ={:?}", data.y0.as_data());
+    println!("y_mathematica ={:?}", y_ref.as_data());
+    println!("{}", solver.bench());
+    Ok(())
+}
+```
+
+The output looks like this:
+
+```text
+y_russell     =[0.4986435155366857, 4.596782273713258]
+y_mathematica =[0.49863707126834783, 4.596780349452011]
+DoPri8: Dormand-Prince method (explicit, order 8(5,3), embedded)
+Number of function evaluations   = 647
+Number of performed steps        = 45
+Number of accepted steps         = 38
+Number of rejected steps         = 7
+Last accepted/suggested stepsize = 2.1617616186304227
+Max time spent on a step         = 47.643µs
+Total time                       = 898.347µs
+```
+
+A plot of the (dense) solution is shown below:
+
+![Brusselator results: DoPri8](data/figures/brusselator_dopri8.svg)
 
 ### Simple ODE with a single equation
 

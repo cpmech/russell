@@ -27,11 +27,11 @@ fn main() -> Result<(), StrError> {
     let n_dense = out.dense_step_index.len();
     for i in 0..n_dense {
         println!(
-            "step ={:>5}, x ={:5.2}, y ={}{}",
+            "step ={:>5}, x ={:7.2}, y ={}{}",
             out.dense_step_index[i],
             out.dense_x[i],
-            format_scientific(out.dense_y.get(&0).unwrap()[i], 12, 4),
-            format_scientific(out.dense_y.get(&1).unwrap()[i], 12, 4),
+            format_scientific(out.dense_y.get(&0).unwrap()[i], 13, 5),
+            format_scientific(out.dense_y.get(&1).unwrap()[i], 13, 5),
         );
     }
 
@@ -40,12 +40,13 @@ fn main() -> Result<(), StrError> {
 
     // plot the results
     let mut curve1 = Curve::new();
-    curve1.draw(&out.dense_x, &out.dense_y.get(&0).unwrap());
+    curve1.draw(&out.dense_x, out.dense_y.get(&0).unwrap());
 
     // save figure
     let mut plot = Plot::new();
     plot.add(&curve1)
+        .set_title("Van der Pol - DoPri5")
         .set_figure_size_points(600.0, 400.0)
-        .grid_and_labels("x", "y0")
+        .grid_and_labels("$x$", "$y_0$")
         .save("/tmp/russell_ode/van_der_pol_dopri5.svg")
 }

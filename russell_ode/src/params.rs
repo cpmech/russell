@@ -114,8 +114,11 @@ pub struct ParamsStiffness {
     /// Number of initial accepted steps to skip before enabling the stiffness detection
     pub skip_first_n_accepted_step: usize,
 
-    /// Holds the max h times lambda coefficient indicating stiffness
-    pub(crate) h_times_lambda_max: f64,
+    /// Holds the max h·ρ value approximating the boundary of the stability region and used to detected stiffness
+    ///
+    /// Note: ρ is the approximation of |λ|, where λ is the dominant eigenvalue of the Jacobian
+    /// (see Hairer-Wanner Part II page 22)
+    pub(crate) h_times_rho_max: f64,
 }
 
 /// Holds the parameters for the BwEuler method
@@ -301,7 +304,7 @@ impl ParamsStiffness {
             ratified_after_nstep: 15, // lines (485, 677) of (dopri5.f, dop853.f)
             ignored_after_nstep: 6,   // lines (492, 684) of (dopri5.f, dop853.f)
             skip_first_n_accepted_step: 10,
-            h_times_lambda_max,
+            h_times_rho_max: h_times_lambda_max,
         }
     }
 }

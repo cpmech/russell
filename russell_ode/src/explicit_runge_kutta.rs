@@ -301,7 +301,7 @@ where
                     den += delta_v * delta_v;
                 }
                 if den > f64::EPSILON {
-                    work.stiff_h_times_lambda = h * f64::sqrt(num / den);
+                    work.stiff_h_times_rho = h * f64::sqrt(num / den);
                 }
                 detect_stiffness(work, &self.params)?;
             } else if self.params.method == Method::DoPri8 {
@@ -317,7 +317,7 @@ where
                     den += delta_v * delta_v;
                 }
                 if den > f64::EPSILON {
-                    work.stiff_h_times_lambda = h * f64::sqrt(num / den);
+                    work.stiff_h_times_rho = h * f64::sqrt(num / den);
                 }
                 detect_stiffness(work, &self.params)?;
             }
@@ -339,7 +339,7 @@ where
                 format_fortran(work.h_new),
                 work.stiff_n_detection_yes,
                 work.stiff_n_detection_no,
-                format_fortran(work.stiff_h_times_lambda),
+                format_fortran(work.stiff_h_times_rho),
             );
         }
         Ok(())

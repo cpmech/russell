@@ -7,7 +7,7 @@ pub(crate) fn detect_stiffness(work: &mut Workspace, params: &Params) -> Result<
     if work.bench.n_accepted <= params.stiffness.skip_first_n_accepted_step {
         return Ok(());
     }
-    if work.stiff_h_times_lambda > params.stiffness.h_times_lambda_max {
+    if work.stiff_h_times_rho > params.stiffness.h_times_rho_max {
         work.stiff_n_detection_no = 0;
         work.stiff_n_detection_yes += 1;
         if work.stiff_n_detection_yes == params.stiffness.ratified_after_nstep {
@@ -42,7 +42,7 @@ mod tests {
         assert_eq!(work.stiff_detected, false);
 
         work.bench.n_accepted = params.stiffness.skip_first_n_accepted_step + 1;
-        work.stiff_h_times_lambda = 3.25 + 0.01; // DoPri5
+        work.stiff_h_times_rho = 3.25 + 0.01; // DoPri5
         work.stiff_n_detection_yes = params.stiffness.ratified_after_nstep - 1; // will add 1
         assert_eq!(detect_stiffness(&mut work, &params).err(), Some("stiffness detected"));
 
@@ -53,7 +53,7 @@ mod tests {
         assert_eq!(work.stiff_n_detection_no, 0);
         assert_eq!(work.stiff_n_detection_yes, params.stiffness.ratified_after_nstep);
 
-        work.stiff_h_times_lambda = 3.25 - 0.01; // DoPri5
+        work.stiff_h_times_rho = 3.25 - 0.01; // DoPri5
         detect_stiffness(&mut work, &params).unwrap();
         assert_eq!(work.stiff_detected, false);
         assert_eq!(work.stiff_n_detection_no, 1);

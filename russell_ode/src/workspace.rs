@@ -26,8 +26,8 @@ pub(crate) struct Workspace {
     /// Holds the current relative error
     pub(crate) rel_error: f64,
 
-    /// Holds the h times lambda coefficient to detect stiffness
-    pub(crate) stiff_h_times_lambda: f64,
+    /// Holds the h·ρ value to detect stiffness
+    pub(crate) stiff_h_times_rho: f64,
 
     /// Holds the number of negative stiffness detections
     pub(crate) stiff_n_detection_no: usize,
@@ -51,7 +51,7 @@ impl Workspace {
             h_new: 0.0,
             rel_error_prev: 0.0,
             rel_error: 0.0,
-            stiff_h_times_lambda: 0.0,
+            stiff_h_times_rho: 0.0,
             stiff_n_detection_no: 0,
             stiff_n_detection_yes: 0,
             stiff_detected: false,
@@ -68,7 +68,7 @@ impl Workspace {
         self.h_new = h;
         self.rel_error_prev = rel_error_prev_min;
         self.rel_error = 0.0;
-        self.stiff_h_times_lambda = 0.0;
+        self.stiff_h_times_rho = 0.0;
         self.stiff_n_detection_no = 0;
         self.stiff_n_detection_yes = 0;
         self.stiff_detected = false;

@@ -280,6 +280,8 @@ Total time                       = 27.107919ms
 
 This is a system of two ODEs, well explained in Reference # 1. This problem is solved with the DoPri8 method (it has a hybrid error estimator of 5th and 3rd order; see Reference # 1).
 
+This example also shows how to enable the *dense output*.
+
 See the code [brusselator_ode_dopri8.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_ode_dopri8.rs); reproduced below (without the plotting commands):
 
 ```rust
@@ -395,6 +397,8 @@ This example illustrates the instability of the forward Euler method with step s
 dy/dx = -50 (y - cos(x))          (1.1)
 ```
 
+This example also shows how to enable the output of accepted steps.
+
 See the code [hairer_wanner_eq1.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/hairer_wanner_eq1.rs)
 
 The results are show below:
@@ -402,6 +406,10 @@ The results are show below:
 ![Hairer-Wanner Eq(1.1)](data/figures/hairer_wanner_eq1.svg)
 
 ### <a name="robertson"></a> Robertson's Equation
+
+This example illustrates the Robertson's equation. In this problem DoPri5 uses many steps (about 200). On the other hand, Radau5 solves the problem with 17 accepted steps.
+
+This example also shows how to enable the output of accepted steps.
 
 See the code [robertson.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/robertson.rs)
 
@@ -415,8 +423,14 @@ The step sizes from the DoPri solution with Tol = 1e-2 are illustrated below:
 
 ### <a name="van-der-pol"></a> Van der Pol's Equation
 
-See the code [van_der_pol.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/van_der_pol.rs)
+This example illustrated the *stiffness* of the Van der Pol problem (equation + initial conditions + step size + method). In this example, DoPri5 with Tol = 1e-3 is used.
+
+This example also shows how to enable the stiffness detection.
+
+See the code [van_der_pol_dopri5.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/van_der_pol_dopri5.rs)
 
 The results are show below:
 
-![Van der Pol's Equation](data/figures/van_der_pol.svg)
+![Van der Pol's Equation - DoPri5](data/figures/van_der_pol_dopri5.svg)
+
+The figure's red dashed lines mark the moment when stiffness has been detected first. The stiffness is confirmed after 15 accepted steps with repeated stiffness thresholds being reached. The positive thresholds are counted when h·ρ becomes greater than the corresponding factor·max(h·ρ)---the value on the stability limit (3.3 for DoPri5; factor ~= 0.976). Note that ρ is the approximation of the dominant eigenvalue of the Jacobian. After 6 accepted steps, if the thresholds are not reached, the stiffness detection flag is set to false.

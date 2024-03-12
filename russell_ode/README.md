@@ -276,9 +276,11 @@ Total time                       = 27.107919ms
 
 ### <a name="brusselator-ode"></a> Brusselator ODE
 
+This example corresponds to Fig 16.4 on page 116 of Reference #1. See also Eq (16.12) on page 116 of Reference #1.
+
 #### Solving with DoPri8 -- 8(5,3) -- dense output
 
-This is a system of two ODEs, well explained in Reference # 1. This problem is solved with the DoPri8 method (it has a hybrid error estimator of 5th and 3rd order; see Reference # 1).
+This is a system of two ODEs, well explained in Reference #1. This problem is solved with the DoPri8 method (it has a hybrid error estimator of 5th and 3rd order; see Reference #1).
 
 This example also shows how to enable the *dense output*.
 
@@ -391,6 +393,8 @@ And the convergence plot is:
 
 ### <a name="hairer-wanner-eq1"></a> Hairer-Wanner Equation (1.1)
 
+This example corresponds to Fig 1.1 and Fig 1.2 on page 2 of Reference #2. See also Eq (1.1) on page 2 of Reference #2.
+
 This example illustrates the instability of the forward Euler method with step sizes above the stability limit. The equation is (reference # 2, page 2):
 
 ```text
@@ -406,6 +410,8 @@ The results are show below:
 ![Hairer-Wanner Eq(1.1)](data/figures/hairer_wanner_eq1.svg)
 
 ### <a name="robertson"></a> Robertson's Equation
+
+This example corresponds to Fig 1.3 on page 4 of Reference #2. See also Eq (1.4) on page 3 of Reference #2.
 
 This example illustrates the Robertson's equation. In this problem DoPri5 uses many steps (about 200). On the other hand, Radau5 solves the problem with 17 accepted steps.
 
@@ -425,7 +431,7 @@ The step sizes from the DoPri solution with Tol = 1e-2 are illustrated below:
 
 #### DoPri5
 
-This example corresponds to Fig 2.6 on page 23 of Reference #1. See also Eq (1.5') on page 5 of Reference #1.
+This example corresponds to Fig 2.6 on page 23 of Reference #2. See also Eq (1.5') on page 5 of Reference #2.
 
 This example illustrated the *stiffness* (equation + initial conditions + step size + method) of the Van der Pol problem with ε = 0.003. In this example, DoPri5 with Tol = 1e-3 is used.
 
@@ -459,7 +465,7 @@ The figure's red dashed lines mark the moment when stiffness has been detected f
 
 #### Radau5
 
-This example corresponds to Fig 8.1 on page 125 of Reference #1. See also Eq (1.5') on page 5 of Reference #1.
+This example corresponds to Fig 8.1 on page 125 of Reference #2. See also Eq (1.5') on page 5 of Reference #2.
 
 This example uses a smaller ε = 1e-6, making the problem + conditions much more stiff. It is solved with the Radau5 solver, which can handle stiff problems quite well. Note that DoPri5 would not solve this problem with such small ε, unless a very high number of steps (and oder configurations) were considered.
 

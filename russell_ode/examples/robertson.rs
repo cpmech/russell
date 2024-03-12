@@ -4,7 +4,8 @@ use russell_ode::prelude::*;
 
 // This example solves Robertson's equation
 //
-// See Eq (1.4) of Hairer-Wanner' book (Part II) on page 3
+// This example corresponds to Fig 1.3 on page 4 of the reference.
+// See also Eq (1.4) on page 3 of the reference.
 //
 // This example shows how to enable the output of accepted steps.
 //

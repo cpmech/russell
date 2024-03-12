@@ -2,7 +2,10 @@ use plotpy::{Curve, Plot};
 use russell_lab::{StrError, Vector};
 use russell_ode::prelude::*;
 
-// This example solves Eq(1.1) of Hairer-Wanner' book (Part II) on page 2
+// This example solves Eq (1.1) of Hairer-Wanner' book (Part II) on page 2
+//
+// This example corresponds to Fig 1.1 and Fig 1.2 on page 2 of the reference.
+// See also Eq (1.1) on page 2 of the reference.
 //
 // This example solves the problem with the BwEuler and FwEuler using
 // a range of stepsizes to illustrate the instability behavior.

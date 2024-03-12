@@ -2,6 +2,20 @@ use plotpy::{Curve, Plot};
 use russell_lab::{format_scientific, vec_max_abs_diff, StrError};
 use russell_ode::prelude::*;
 
+// This example solves the brusselator equation
+//
+// This example corresponds to Fig 16.4 on page 116 of the reference.
+// See also Eq (16.12) on page 116 of the reference.
+//
+// This example solves the problem a number of times with variable
+// (automatic) steps and a few Runge-Kutta methods.
+//
+// # Reference
+//
+// * Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
+//   Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
+//   in Computational Mathematics, 528p
+
 fn main() -> Result<(), StrError> {
     // ODE system
     let (system, data, mut args, y_ref) = Samples::brusselator_ode();

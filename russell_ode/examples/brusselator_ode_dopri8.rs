@@ -4,6 +4,17 @@ use russell_ode::prelude::*;
 use serde::Deserialize;
 use std::{env, fs::File, io::BufReader, path::Path};
 
+// This example solves the brusselator equation
+//
+// This example corresponds to Fig 16.4 on page 116 of the reference.
+// See also Eq (16.12) on page 116 of the reference.
+//
+// # Reference
+//
+// * Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
+//   Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
+//   in Computational Mathematics, 528p
+
 fn main() -> Result<(), StrError> {
     // get the ODE system
     let (system, mut data, mut args, y_ref) = Samples::brusselator_ode();

@@ -303,7 +303,7 @@ where
                 if den > f64::EPSILON {
                     work.stiff_h_times_rho = h * f64::sqrt(num / den);
                 }
-                detect_stiffness(work, &self.params)?;
+                detect_stiffness(work, *x - h, &self.params)?;
             } else if self.params.method == Method::DoPri8 {
                 const NEW: usize = 10; // to use k[NEW] as a temporary workspace
                 work.bench.n_function += 1;
@@ -319,7 +319,7 @@ where
                 if den > f64::EPSILON {
                     work.stiff_h_times_rho = h * f64::sqrt(num / den);
                 }
-                detect_stiffness(work, &self.params)?;
+                detect_stiffness(work, *x - h, &self.params)?;
             }
         };
 
@@ -328,7 +328,7 @@ where
             if work.stiff_detected {
                 println!(
                     "THE PROBLEM SEEMS TO BECOME STIFF AT X ={}, ACCEPTED STEP ={:>5}",
-                    format_fortran(*x - h),
+                    format_fortran(work.stiff_x_first_detect),
                     work.bench.n_accepted
                 );
             }

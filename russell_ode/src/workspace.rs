@@ -26,6 +26,9 @@ pub(crate) struct Workspace {
     /// Holds the current relative error
     pub(crate) rel_error: f64,
 
+    /// Holds x at the moment of the first stiffness detection (when h·ρ > max(h·ρ))
+    pub(crate) stiff_x_first_detect: f64,
+
     /// Holds the h·ρ value to detect stiffness
     pub(crate) stiff_h_times_rho: f64,
 
@@ -51,6 +54,7 @@ impl Workspace {
             h_new: 0.0,
             rel_error_prev: 0.0,
             rel_error: 0.0,
+            stiff_x_first_detect: f64::MAX,
             stiff_h_times_rho: 0.0,
             stiff_n_detection_no: 0,
             stiff_n_detection_yes: 0,
@@ -68,6 +72,7 @@ impl Workspace {
         self.h_new = h;
         self.rel_error_prev = rel_error_prev_min;
         self.rel_error = 0.0;
+        self.stiff_x_first_detect = f64::MAX;
         self.stiff_h_times_rho = 0.0;
         self.stiff_n_detection_no = 0;
         self.stiff_n_detection_yes = 0;

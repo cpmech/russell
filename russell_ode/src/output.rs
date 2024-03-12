@@ -203,7 +203,7 @@ impl Output {
         if self.save_stiff {
             if work.stiff_detected {
                 self.stiff_step_index.push(work.bench.n_accepted);
-                self.stiff_x.push(x - h); // the detection is always one stepsize earlier
+                self.stiff_x.push(work.stiff_x_first_detect);
             }
         }
         Ok(())

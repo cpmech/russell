@@ -5,7 +5,7 @@ use russell_ode::{Method, OdeSolver, Output, Params, Samples};
 fn test_dopri5_van_der_pol_debug() {
     // get get ODE system
     const EPS: f64 = 0.003;
-    let (system, _, mut args) = Samples::van_der_pol(Some(EPS), false);
+    let (system, _, mut args) = Samples::van_der_pol(EPS, false);
 
     // set configuration parameters
     let mut params = Params::new(Method::DoPri5);
@@ -48,7 +48,7 @@ fn test_dopri5_van_der_pol_debug() {
     assert_eq!(out.stiff_step_index, &[32, 189, 357]);
     vec_approx_eq(
         &out.stiff_x,
-        &[8.973510130811428E-02, 9.306509118845370E-01, 1.809882994363079E+00],
+        &[1.216973774601867E-02, 8.717646581250652E-01, 1.744401291692531E+00],
         1e-12,
     );
 }

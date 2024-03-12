@@ -43,6 +43,12 @@ pub struct Output {
     /// Holds the x stations where stiffness has been detected
     pub stiff_x: Vec<f64>,
 
+    /// Holds the h·ρ values where stiffness has been (first) detected
+    ///
+    /// Note: ρ is the approximation of |λ|, where λ is the dominant eigenvalue of the Jacobian
+    /// (see Hairer-Wanner Part II page 22)
+    pub stiff_h_times_rho: Vec<f64>,
+
     /// Holds an auxiliary y vector (e.g., to compute the analytical solution or the dense output)
     y_aux: Vector,
 
@@ -67,6 +73,7 @@ impl Output {
             save_stiff: false,
             stiff_step_index: Vec::new(),
             stiff_x: Vec::new(),
+            stiff_h_times_rho: Vec::new(),
             y_aux: Vector::new(EMPTY),
             y_analytical: None,
         }
@@ -143,6 +150,9 @@ impl Output {
         for ym in self.dense_y.values_mut() {
             ym.clear();
         }
+        self.stiff_step_index.clear();
+        self.stiff_x.clear();
+        self.stiff_h_times_rho.clear();
     }
 
     /// Appends the results after an accepted step is computed
@@ -201,9 +211,10 @@ impl Output {
         }
         // stiff stations
         if self.save_stiff {
+            self.stiff_h_times_rho.push(work.stiff_h_times_rho);
             if work.stiff_detected {
                 self.stiff_step_index.push(work.bench.n_accepted);
-                self.stiff_x.push(x - h); // the detection is always one stepsize earlier
+                self.stiff_x.push(work.stiff_x_first_detect);
             }
         }
         Ok(())

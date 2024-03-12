@@ -114,8 +114,11 @@ pub struct ParamsStiffness {
     /// Number of initial accepted steps to skip before enabling the stiffness detection
     pub skip_first_n_accepted_step: usize,
 
-    /// Holds the max h times lambda coefficient indicating stiffness
-    pub(crate) h_times_lambda_max: f64,
+    /// Holds the max h·ρ value approximating the boundary of the stability region and used to detected stiffness
+    ///
+    /// Note: ρ is the approximation of |λ|, where λ is the dominant eigenvalue of the Jacobian
+    /// (see Hairer-Wanner Part II page 22)
+    pub(crate) h_times_rho_max: f64,
 }
 
 /// Holds the parameters for the BwEuler method
@@ -233,7 +236,7 @@ impl ParamsNewton {
     /// Validates the parameters
     pub(crate) fn validate(&self) -> Result<(), StrError> {
         if self.n_iteration_max < 1 {
-            return Err("unmatched requirement: n_iteration_max ≥ 1");
+            return Err("parameter must satisfy: n_iteration_max ≥ 1");
         }
         Ok(())
     }
@@ -262,25 +265,25 @@ impl ParamsStep {
     /// Validates the parameters
     pub(crate) fn validate(&self) -> Result<(), StrError> {
         if self.m_min < 0.001 || self.m_min > 0.5 || self.m_min >= self.m_max {
-            return Err("unmatched requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max");
+            return Err("parameter must satisfy: 0.001 ≤ m_min < 0.5 and m_min < m_max");
         }
         if self.m_max < 0.01 || self.m_max > 20.0 {
-            return Err("unmatched requirement: 0.01 ≤ m_max ≤ 20 and m_max > m_min");
+            return Err("parameter must satisfy: 0.01 ≤ m_max ≤ 20 and m_max > m_min");
         }
         if self.m_safety < 0.1 || self.m_safety > 1.0 {
-            return Err("unmatched requirement: 0.1 ≤ m_safety ≤ 1");
+            return Err("parameter must satisfy: 0.1 ≤ m_safety ≤ 1");
         }
         if self.m_first_reject < 0.0 {
-            return Err("unmatched requirement: m_first_rejection ≥ 0");
+            return Err("parameter must satisfy: m_first_rejection ≥ 0");
         }
         if self.h_ini < 1e-8 {
-            return Err("unmatched requirement: h_ini ≥ 1e-8");
+            return Err("parameter must satisfy: h_ini ≥ 1e-8");
         }
         if self.n_step_max < 1 {
-            return Err("unmatched requirement: n_step_max ≥ 1");
+            return Err("parameter must satisfy: n_step_max ≥ 1");
         }
         if self.rel_error_prev_min < 1e-8 {
-            return Err("unmatched requirement: rel_error_prev_min ≥ 1e-8");
+            return Err("parameter must satisfy: rel_error_prev_min ≥ 1e-8");
         }
         Ok(())
     }
@@ -301,7 +304,7 @@ impl ParamsStiffness {
             ratified_after_nstep: 15, // lines (485, 677) of (dopri5.f, dop853.f)
             ignored_after_nstep: 6,   // lines (492, 684) of (dopri5.f, dop853.f)
             skip_first_n_accepted_step: 10,
-            h_times_lambda_max,
+            h_times_rho_max: h_times_lambda_max,
         }
     }
 }
@@ -331,13 +334,13 @@ impl ParamsRadau5 {
     /// Validates the parameters
     pub(crate) fn validate(&self) -> Result<(), StrError> {
         if self.theta_max < 1e-7 {
-            return Err("unmatched requirement: theta_max ≥ 1e-7");
+            return Err("parameter must satisfy: theta_max ≥ 1e-7");
         }
         if self.c1h < 0.5 || self.c1h > 1.5 || self.c1h >= self.c2h {
-            return Err("unmatched requirement: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h");
+            return Err("parameter must satisfy: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h");
         }
         if self.c2h < 1.0 || self.c2h > 2.0 {
-            return Err("unmatched requirement: 1 ≤ c2h ≤ 2 and c2h > c1h");
+            return Err("parameter must satisfy: 1 ≤ c2h ≤ 2 and c2h > c1h");
         }
         Ok(())
     }
@@ -357,10 +360,10 @@ impl ParamsERK {
     /// Validates the parameters
     pub(crate) fn validate(&self) -> Result<(), StrError> {
         if self.lund_beta < 0.0 || self.lund_beta > 0.1 {
-            return Err("unmatched requirement: 0 ≤ lund_beta ≤ 0.1");
+            return Err("parameter must satisfy: 0 ≤ lund_beta ≤ 0.1");
         }
         if self.lund_m < 0.0 || self.lund_m > 1.0 {
-            return Err("unmatched requirement: 0 ≤ lund_m ≤ 1");
+            return Err("parameter must satisfy: 0 ≤ lund_m ≤ 1");
         }
         Ok(())
     }
@@ -519,7 +522,7 @@ mod tests {
         params.n_iteration_max = 0;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: n_iteration_max ≥ 1")
+            Some("parameter must satisfy: n_iteration_max ≥ 1")
         );
         params.n_iteration_max = 10;
         assert_eq!(params.validate().is_err(), false);
@@ -531,58 +534,58 @@ mod tests {
         params.m_min = 0.0;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
+            Some("parameter must satisfy: 0.001 ≤ m_min < 0.5 and m_min < m_max")
         );
         params.m_min = 0.6;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
+            Some("parameter must satisfy: 0.001 ≤ m_min < 0.5 and m_min < m_max")
         );
         params.m_min = 0.02;
         params.m_max = 0.01;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
+            Some("parameter must satisfy: 0.001 ≤ m_min < 0.5 and m_min < m_max")
         );
         params.m_min = 0.001;
         params.m_max = 0.005;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: 0.01 ≤ m_max ≤ 20 and m_max > m_min")
+            Some("parameter must satisfy: 0.01 ≤ m_max ≤ 20 and m_max > m_min")
         );
         params.m_max = 30.0;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: 0.01 ≤ m_max ≤ 20 and m_max > m_min")
+            Some("parameter must satisfy: 0.01 ≤ m_max ≤ 20 and m_max > m_min")
         );
         params.m_max = 10.0;
         params.m_safety = 0.0;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: 0.1 ≤ m_safety ≤ 1")
+            Some("parameter must satisfy: 0.1 ≤ m_safety ≤ 1")
         );
         params.m_safety = 1.2;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: 0.1 ≤ m_safety ≤ 1")
+            Some("parameter must satisfy: 0.1 ≤ m_safety ≤ 1")
         );
         params.m_safety = 0.9;
         params.m_first_reject = -1.0;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: m_first_rejection ≥ 0")
+            Some("parameter must satisfy: m_first_rejection ≥ 0")
         );
         params.m_first_reject = 0.0;
         params.h_ini = 0.0;
-        assert_eq!(params.validate().err(), Some("unmatched requirement: h_ini ≥ 1e-8"));
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: h_ini ≥ 1e-8"));
         params.h_ini = 1e-4;
         params.n_step_max = 0;
-        assert_eq!(params.validate().err(), Some("unmatched requirement: n_step_max ≥ 1"));
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: n_step_max ≥ 1"));
         params.n_step_max = 10;
         params.rel_error_prev_min = 0.0;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: rel_error_prev_min ≥ 1e-8")
+            Some("parameter must satisfy: rel_error_prev_min ≥ 1e-8")
         );
         params.rel_error_prev_min = 1e-6;
         assert_eq!(params.validate().is_err(), false);
@@ -592,29 +595,32 @@ mod tests {
     fn params_radau5_validate_works() {
         let mut params = ParamsRadau5::new();
         params.theta_max = 0.0;
-        assert_eq!(params.validate().err(), Some("unmatched requirement: theta_max ≥ 1e-7"));
+        assert_eq!(
+            params.validate().err(),
+            Some("parameter must satisfy: theta_max ≥ 1e-7")
+        );
         params.theta_max = 1e-7;
         params.c1h = 0.0;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h")
+            Some("parameter must satisfy: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h")
         );
         params.c1h = 2.0;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h")
+            Some("parameter must satisfy: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h")
         );
         params.c1h = 1.3;
         params.c2h = 1.2;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h")
+            Some("parameter must satisfy: 0.5 ≤ c1h ≤ 1.5 and c1h < c2h")
         );
         params.c1h = 1.0;
         params.c2h = 3.0;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: 1 ≤ c2h ≤ 2 and c2h > c1h")
+            Some("parameter must satisfy: 1 ≤ c2h ≤ 2 and c2h > c1h")
         );
         params.c2h = 1.2;
         assert_eq!(params.validate().is_err(), false);
@@ -626,18 +632,18 @@ mod tests {
         params.lund_beta = -1.0;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: 0 ≤ lund_beta ≤ 0.1")
+            Some("parameter must satisfy: 0 ≤ lund_beta ≤ 0.1")
         );
         params.lund_beta = 0.2;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: 0 ≤ lund_beta ≤ 0.1")
+            Some("parameter must satisfy: 0 ≤ lund_beta ≤ 0.1")
         );
         params.lund_beta = 0.1;
         params.lund_m = -1.0;
-        assert_eq!(params.validate().err(), Some("unmatched requirement: 0 ≤ lund_m ≤ 1"));
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: 0 ≤ lund_m ≤ 1"));
         params.lund_m = 1.1;
-        assert_eq!(params.validate().err(), Some("unmatched requirement: 0 ≤ lund_m ≤ 1"));
+        assert_eq!(params.validate().err(), Some("parameter must satisfy: 0 ≤ lund_m ≤ 1"));
         params.lund_m = 0.75;
         assert_eq!(params.validate().is_err(), false);
     }
@@ -648,22 +654,25 @@ mod tests {
         params.newton.n_iteration_max = 0;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: n_iteration_max ≥ 1")
+            Some("parameter must satisfy: n_iteration_max ≥ 1")
         );
         params.newton.n_iteration_max = 10;
         params.step.m_min = 0.0;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
+            Some("parameter must satisfy: 0.001 ≤ m_min < 0.5 and m_min < m_max")
         );
         params.step.m_min = 0.001;
         params.radau5.theta_max = 0.0;
-        assert_eq!(params.validate().err(), Some("unmatched requirement: theta_max ≥ 1e-7"));
+        assert_eq!(
+            params.validate().err(),
+            Some("parameter must satisfy: theta_max ≥ 1e-7")
+        );
         params.radau5.theta_max = 1e-7;
         params.erk.lund_beta = -0.1;
         assert_eq!(
             params.validate().err(),
-            Some("unmatched requirement: 0 ≤ lund_beta ≤ 0.1")
+            Some("parameter must satisfy: 0 ≤ lund_beta ≤ 0.1")
         );
         params.erk.lund_beta = 0.1;
         assert_eq!(params.validate().is_err(), false);

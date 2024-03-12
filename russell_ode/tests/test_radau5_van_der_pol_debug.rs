@@ -5,7 +5,7 @@ use russell_ode::{Method, OdeSolver, Params, Samples};
 fn test_radau5_van_der_pol_debug() {
     // get get ODE system
     const EPS: f64 = 1e-6;
-    let (system, mut data, mut args) = Samples::van_der_pol(Some(EPS), false);
+    let (system, mut data, mut args) = Samples::van_der_pol(EPS, false);
 
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);

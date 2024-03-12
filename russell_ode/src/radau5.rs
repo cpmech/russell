@@ -6,7 +6,24 @@ use russell_lab::{complex_vec_zip, cpx, format_fortran, vec_copy, ComplexVector,
 use russell_sparse::{ComplexLinSolver, ComplexSparseMatrix, CooMatrix, Genie, LinSolver, SparseMatrix};
 use std::thread;
 
-/// Implements the Radau5 method
+/// Implements the Radau5 method (Radau IIA) (implicit, order 5, embedded) for ODEs and DAEs
+///
+/// **Note:** The implementation here follows closely the Fortran code named `radau5.f` explained
+/// in the reference #2 with some differences. For instance, here, more memory is required than in
+/// radau5.f because the variables here are slightly more clearly defined. Also, the coefficient
+/// matrices used in the simplified Newton's method are stored in the sparse format (see `russell_sparse`)
+/// and their respective linear systems may be solved concurrently. Despite the differences,
+/// the Rust and Fortran codes yield similar results (check out the `tests` and `data` directories).
+/// Note also that the Fortran code is *faster*.
+///
+/// # References
+///
+/// 1. E. Hairer, S. P. Nørsett, G. Wanner (2008) Solving Ordinary Differential Equations I.
+///    Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
+///    in Computational Mathematics, 528p
+/// 2. E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
+///    Stiff and Differential-Algebraic Problems. Second Revised Edition.
+///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
 pub(crate) struct Radau5<'a, F, J, A>
 where
     F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
@@ -648,6 +665,11 @@ where
             y_out[m] = y[m] + s * (self.yc0[m] + (s - MU4) * (self.yc1[m] + (s - MU3) * self.yc2[m]));
         }
     }
+
+    /// Update the parameters (e.g., for sensitive analyses)
+    fn update_params(&mut self, params: Params) {
+        self.params = params;
+    }
 }
 
 /// Computes the scaled RMS norm
@@ -699,7 +721,7 @@ const TI: [[f64; 3]; 3] = [
 #[cfg(test)]
 mod tests {
     use super::Radau5;
-    use crate::{Method, OdeSolverTrait, Params, Samples, Workspace};
+    use crate::{HasJacobian, Method, OdeSolverTrait, Params, Samples, System, Workspace};
     use russell_lab::{format_fortran, format_scientific, Vector};
     use russell_sparse::Genie;
     use serial_test::serial;
@@ -903,5 +925,51 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn radau5_handles_errors() {
+        struct Args {
+            count_f: usize,
+        }
+        let system = System::new(
+            1,
+            |f, _, _, args: &mut Args| {
+                f[0] = 1.0;
+                args.count_f += 1;
+                if args.count_f == 1 {
+                    Err("f: stop (count = 1; initialize)")
+                } else if args.count_f == 4 {
+                    Err("f: stop (count = 4; num-jacobian)")
+                } else {
+                    Ok(())
+                }
+            },
+            |jj, _x, _y, m, _args: &mut Args| {
+                jj.reset();
+                jj.put(0, 0, m * (0.0)).unwrap();
+                Err("jj: stop")
+            },
+            HasJacobian::Yes,
+            None,
+            None,
+        );
+        let params = Params::new(Method::Radau5);
+        let mut solver = Radau5::new(params, &system);
+        let mut work = Workspace::new(Method::Radau5);
+        let x = 0.0;
+        let y = Vector::from(&[0.0]);
+        let h = 0.1;
+        let mut args = Args { count_f: 0 };
+        assert_eq!(
+            solver.step(&mut work, x, &y, h, &mut args).err(),
+            Some("f: stop (count = 1; initialize)")
+        );
+        assert_eq!(solver.step(&mut work, x, &y, h, &mut args).err(), Some("jj: stop"));
+        solver.params.newton.use_numerical_jacobian = true;
+        assert_eq!(
+            solver.step(&mut work, x, &y, h, &mut args).err(),
+            Some("f: stop (count = 4; num-jacobian)")
+        );
     }
 }

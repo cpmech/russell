@@ -1,8 +1,12 @@
 use crate::StrError;
-use crate::{OdeSolverTrait, System, Workspace};
+use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::{vec_add, vec_copy, Vector};
 use russell_sparse::CooMatrix;
 
+/// Implements the forward Euler method (explicit, order 1, conditionally stable)
+///
+/// **Warning:** This method is interesting for didactic purposes only
+/// and should not be used in production codes.
 pub(crate) struct EulerForward<'a, F, J, A>
 where
     F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
@@ -73,6 +77,9 @@ where
 
     /// Computes the dense output with x-h ≤ x_out ≤ x
     fn dense_output(&self, _y_out: &mut Vector, _x_out: f64, _x: f64, _y: &Vector, _h: f64) {}
+
+    /// Update the parameters (e.g., for sensitive analyses)
+    fn update_params(&mut self, _params: Params) {}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -80,7 +87,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::EulerForward;
-    use crate::{Method, OdeSolverTrait, Samples, Workspace};
+    use crate::{no_jacobian, HasJacobian, Method, NoArgs, OdeSolverTrait, Samples, System, Workspace};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
@@ -116,6 +123,7 @@ mod tests {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
             assert_eq!(work.bench.n_function, n + 1);
 
+            work.bench.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             xx.push(x);
             yy_num.push(y[0]);
@@ -161,5 +169,32 @@ mod tests {
         vec_approx_eq(&xx, xx_correct, 1e-15);
         vec_approx_eq(&yy_num, yy_correct, 1e-15);
         vec_approx_eq(&errors, errors_correct, 1e-15);
+    }
+
+    #[test]
+    fn euler_forward_handles_errors() {
+        let system = System::new(
+            1,
+            |f, _, _, _: &mut NoArgs| {
+                f[0] = 1.0;
+                Err("stop")
+            },
+            no_jacobian,
+            HasJacobian::No,
+            None,
+            None,
+        );
+        let mut solver = EulerForward::new(&system);
+        let mut work = Workspace::new(Method::FwEuler);
+        let x = 0.0;
+        let y = Vector::from(&[0.0]);
+        let h = 0.1;
+        let mut args = 0;
+        assert_eq!(solver.step(&mut work, x, &y, h, &mut args).err(), Some("stop"));
+        // call other functions just to make sure all is well
+        let mut y_out = Vector::new(1);
+        let x_out = 0.1;
+        solver.reject(&mut work, h);
+        solver.dense_output(&mut y_out, x_out, x, &y, h);
     }
 }

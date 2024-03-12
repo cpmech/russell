@@ -4,6 +4,23 @@ use crate::{detect_stiffness, ErkDenseOut, Information, Method, OdeSolverTrait, 
 use russell_lab::{format_fortran, vec_copy, vec_update, Matrix, Vector};
 use russell_sparse::CooMatrix;
 
+/// Implements several explicit Runge-Kutta methods
+///
+/// **Note:** The [Method::DoPri5] and [Method::DoPri8] are based on the Fortran codes `dopri5.f` and
+/// `dop853.f` explained in references #1 and #2. However, the implementation is fairly different
+/// because a more general format is considered to allow the implementation of any explicit RK method.
+/// Because of the differences, more memory is required in the Rust code than in the specialized
+/// Fortran codes. Also, the Fortran codes are *faster*. Despite the differences, the Rust and Fortran
+/// codes yield similar results (check out the `tests` and `data` directories).
+///
+/// # References
+///
+/// 1. E. Hairer, S. P. Nørsett, G. Wanner (2008) Solving Ordinary Differential Equations I.
+///    Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
+///    in Computational Mathematics, 528p
+/// 2. E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
+///    Stiff and Differential-Algebraic Problems. Second Revised Edition.
+///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
 pub(crate) struct ExplicitRungeKutta<'a, F, J, A>
 where
     F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
@@ -93,19 +110,10 @@ where
 
         // information
         let info = params.method.information();
-        assert!(!info.implicit);
 
         // coefficients for error estimate
         let ee = if info.embedded {
             match params.method {
-                Method::Radau5 => None,
-                Method::BwEuler => None,
-                Method::FwEuler => None,
-                Method::Rk2 => None,
-                Method::Rk3 => None,
-                Method::Heun3 => None,
-                Method::Rk4 => None,
-                Method::Rk4alt => None,
                 Method::MdEuler => Some(Vector::from(&MODIFIED_EULER_E)),
                 Method::Merson4 => Some(Vector::from(&MERSON_4_E)),
                 Method::Zonneveld4 => Some(Vector::from(&ZONNEVELD_4_E)),
@@ -114,6 +122,7 @@ where
                 Method::Verner6 => Some(Vector::from(&VERNER_6_E)),
                 Method::Fehlberg7 => Some(Vector::from(&FEHLBERG_7_E)),
                 Method::DoPri8 => Some(Vector::from(&DORMAND_PRINCE_8_E)),
+                _ => return Err("INTERNAL: impossible case regarding the embedded flag"),
             }
         } else {
             None
@@ -292,9 +301,9 @@ where
                     den += delta_v * delta_v;
                 }
                 if den > f64::EPSILON {
-                    work.stiff_h_times_lambda = h * f64::sqrt(num / den);
+                    work.stiff_h_times_rho = h * f64::sqrt(num / den);
                 }
-                detect_stiffness(work, &self.params)?;
+                detect_stiffness(work, *x - h, &self.params)?;
             } else if self.params.method == Method::DoPri8 {
                 const NEW: usize = 10; // to use k[NEW] as a temporary workspace
                 work.bench.n_function += 1;
@@ -308,9 +317,9 @@ where
                     den += delta_v * delta_v;
                 }
                 if den > f64::EPSILON {
-                    work.stiff_h_times_lambda = h * f64::sqrt(num / den);
+                    work.stiff_h_times_rho = h * f64::sqrt(num / den);
                 }
-                detect_stiffness(work, &self.params)?;
+                detect_stiffness(work, *x - h, &self.params)?;
             }
         };
 
@@ -319,7 +328,7 @@ where
             if work.stiff_detected {
                 println!(
                     "THE PROBLEM SEEMS TO BECOME STIFF AT X ={}, ACCEPTED STEP ={:>5}",
-                    format_fortran(*x - h),
+                    format_fortran(work.stiff_x_first_detect),
                     work.bench.n_accepted
                 );
             }
@@ -330,7 +339,7 @@ where
                 format_fortran(work.h_new),
                 work.stiff_n_detection_yes,
                 work.stiff_n_detection_no,
-                format_fortran(work.stiff_h_times_lambda),
+                format_fortran(work.stiff_h_times_rho),
             );
         }
         Ok(())
@@ -359,6 +368,11 @@ where
             out.calculate(y_out, x_out, x, h);
         }
     }
+
+    /// Update the parameters (e.g., for sensitive analyses)
+    fn update_params(&mut self, params: Params) {
+        self.params = params;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -366,17 +380,15 @@ where
 #[cfg(test)]
 mod tests {
     use super::ExplicitRungeKutta;
-    use crate::{no_jacobian, HasJacobian, Method, OdeSolverTrait, Params, Samples, System, Workspace};
+    use crate::{no_jacobian, ErkDenseOut, HasJacobian, Method, OdeSolverTrait, Params, Samples, System, Workspace};
     use russell_lab::{approx_eq, vec_approx_eq, Vector};
 
     #[test]
     fn constants_are_consistent() {
-        let methods = Method::explicit_methods();
-        let staged = methods.iter().filter(|&&m| m != Method::FwEuler);
         struct Args {}
-        for method in staged {
+        for method in Method::erk_methods() {
             println!("\n... {:?} ...", method);
-            let params = Params::new(*method);
+            let params = Params::new(method);
             let system = System::new(
                 1,
                 |_, _, _, _args: &mut Args| Ok(()),
@@ -534,6 +546,7 @@ mod tests {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
             assert_eq!(work.bench.n_function, (n + 1) * 2);
 
+            work.bench.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             xx.push(x);
             yy_num.push(y[0]);
@@ -617,6 +630,7 @@ mod tests {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
             assert_eq!(work.bench.n_function, (n + 1) * 4);
 
+            work.bench.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             xx.push(x);
             yy_num.push(y[0]);
@@ -722,5 +736,94 @@ mod tests {
             0.200250418651,
         ];
         vec_approx_eq(&kh, kh_correct, 1e-12);
+    }
+
+    #[test]
+    fn erk_handles_errors() {
+        struct Args {
+            count_f: usize,
+        }
+        let system = System::new(
+            1,
+            |f, _, _, args: &mut Args| {
+                f[0] = 1.0;
+                args.count_f += 1;
+                if args.count_f == 1 {
+                    Err("f: count = 1")
+                } else if args.count_f == 3 {
+                    Err("f: count = 3")
+                } else if args.count_f == 4 {
+                    Err("f: count = 4 (dense output)")
+                } else if args.count_f == 6 {
+                    Err("f: count = 6 (dense output)")
+                } else if args.count_f == 8 {
+                    Err("f: count = 8 (dense output)")
+                } else {
+                    Ok(())
+                }
+            },
+            no_jacobian,
+            HasJacobian::No,
+            None,
+            None,
+        );
+
+        assert_eq!(
+            ExplicitRungeKutta::new(Params::new(Method::Radau5), &system).err(),
+            Some("cannot use Radau5 with ExplicitRungeKutta")
+        );
+        assert_eq!(
+            ExplicitRungeKutta::new(Params::new(Method::BwEuler), &system).err(),
+            Some("cannot use BwEuler with ExplicitRungeKutta")
+        );
+        assert_eq!(
+            ExplicitRungeKutta::new(Params::new(Method::FwEuler), &system).err(),
+            Some("cannot use FwEuler with ExplicitRungeKutta")
+        );
+
+        let params = Params::new(Method::DoPri8);
+        let mut solver = ExplicitRungeKutta::new(params, &system).unwrap();
+        let mut work = Workspace::new(Method::DoPri8);
+        let mut x = 0.0;
+        let mut y = Vector::from(&[0.0]);
+        let h = 0.1;
+        let mut args = Args { count_f: 0 };
+
+        assert_eq!(solver.step(&mut work, x, &y, h, &mut args).err(), Some("f: count = 1"));
+        assert_eq!(solver.step(&mut work, x, &y, h, &mut args).err(), Some("f: count = 3"));
+        solver.dense_out = Some(ErkDenseOut::new(Method::DoPri8, 1).unwrap());
+        assert_eq!(
+            solver.accept(&mut work, &mut x, &mut y, h, &mut args).err(),
+            Some("f: count = 4 (dense output)")
+        );
+        assert_eq!(
+            solver.accept(&mut work, &mut x, &mut y, h, &mut args).err(),
+            Some("f: count = 6 (dense output)")
+        );
+        assert_eq!(
+            solver.accept(&mut work, &mut x, &mut y, h, &mut args).err(),
+            Some("f: count = 8 (dense output)")
+        );
+    }
+
+    #[test]
+    fn all_erk_methods_work() {
+        let (system, data, mut args) = Samples::simple_equation_constant();
+        let yfx = data.y_analytical.unwrap();
+        let mut y_ana = Vector::new(system.ndim);
+        let h = 0.2;
+        let mut x = data.x0;
+        let mut y = data.y0.clone();
+        for method in Method::erk_methods() {
+            let params = Params::new(method);
+            let mut work = Workspace::new(method);
+            let mut solver = ExplicitRungeKutta::new(params, &system).unwrap();
+            solver.step(&mut work, x, &y, h, &mut args).unwrap();
+            work.bench.n_accepted += 1; // important (must precede accept)
+            solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
+            yfx(&mut y_ana, x);
+            // println!("{:?}: solution @ {}: {} ({})", method, x, y[0], y_ana[0]);
+            approx_eq(y[0], y_ana[0], 1e-14);
+        }
     }
 }

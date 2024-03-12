@@ -24,6 +24,9 @@ pub struct SampleData {
 
 /// Holds a collection of sample ODE problems
 ///
+/// **Note:** Click on the *source* link in the documentation to access the
+/// source code illustrating the allocation of System.
+///
 /// # References
 ///
 /// 1. Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
@@ -109,9 +112,11 @@ impl Samples {
     ///
     /// ```text
     /// M y' = f(x, y)
+    /// ```
     ///
     /// with:
     ///
+    /// ```text
     ///     ┌          ┐       ┌           ┐
     ///     │  1  1  0 │       │ -y0 + y1  │
     /// M = │  1 -1  0 │   f = │  y0 + y1  │
@@ -153,6 +158,11 @@ impl Samples {
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    ///
+    /// # Reference
+    ///
+    /// * Mathematica, Numerical Solution of Differential-Algebraic Equations: Solving Systems with a Mass Matrix
+    /// <https://reference.wolfram.com/language/tutorial/NDSolveDAE.html>
     pub fn simple_system_with_mass_matrix(
         symmetric: bool,
         genie: Genie,
@@ -179,7 +189,7 @@ impl Samples {
         let jac_nnz = if triangular { 3 } else { 4 };
         let mut system = System::new(
             ndim,
-            move |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
                 f[0] = -y[0] + y[1];
                 f[1] = y[0] + y[1];
                 f[2] = 1.0 / (1.0 + x);
@@ -507,7 +517,7 @@ impl Samples {
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
     pub fn van_der_pol(
-        epsilon: Option<f64>,
+        epsilon: f64,
         stationary: bool,
     ) -> (
         System<
@@ -518,21 +528,19 @@ impl Samples {
         SampleData,
         NoArgs,
     ) {
-        let mut eps = match epsilon {
-            Some(e) => e,
-            None => 1.0e-6,
-        };
         let x0 = 0.0;
         let mut y0 = Vector::from(&[2.0, -0.6]);
         let mut x1 = 2.0;
-        if stationary {
-            eps = 1.0;
+        let eps = if stationary {
             const A: f64 = 2.00861986087484313650940188;
             const T: f64 = 6.6632868593231301896996820305;
             y0[0] = A;
             y0[1] = 0.0;
             x1 = T;
-        }
+            1.0
+        } else {
+            epsilon
+        };
         let ndim = 2;
         let jac_nnz = 3;
         let system = System::new(
@@ -725,7 +733,7 @@ impl Samples {
         let jac_nnz = 9;
         let mut system = System::new(
             ndim,
-            move |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
                 let ue = C * f64::sin(D * x);
                 let f12 = BETA * (f64::exp((y[1] - y[2]) / UF) - 1.0);
                 f[0] = (y[0] - ue) / R;
@@ -735,7 +743,7 @@ impl Samples {
                 f[4] = y[4] / S;
                 Ok(())
             },
-            move |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
+            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
                 let g12 = BETA * f64::exp((y[1] - y[2]) / UF) / UF;
                 jj.reset();
                 jj.put(0, 0, m * (1.0 / R)).unwrap();
@@ -779,6 +787,84 @@ impl Samples {
             y_analytical: None,
         };
         (system, data, 0)
+    }
+
+    /// Returns the Brusselator problem (ODE version) described in Hairer-Nørsett-Wanner, Part I, page 116
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, args, y_ref)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `NoArgs`
+    /// * `data: SampleData` -- holds the initial values
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `y_ref` -- is a reference solution, computed with high-accuracy by Mathematica
+    ///
+    /// # Reference
+    ///
+    /// * Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
+    ///   Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
+    ///   in Computational Mathematics, 528p
+    pub fn brusselator_ode() -> (
+        System<
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
+        >,
+        SampleData,
+        NoArgs,
+        Vector,
+    ) {
+        // initial values
+        let x0 = 0.0;
+        let y0 = Vector::from(&[3.0 / 2.0, 3.0]);
+        let x1 = 20.0;
+
+        // ODE system
+        let ndim = 2;
+        let jac_nnz = 4;
+        let system = System::new(
+            ndim,
+            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
+                f[0] = 1.0 - 4.0 * y[0] + y[0] * y[0] * y[1];
+                f[1] = 3.0 * y[0] - y[0] * y[0] * y[1];
+                Ok(())
+            },
+            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
+                jj.reset();
+                jj.put(0, 0, m * (-4.0 + 2.0 * y[0] * y[1])).unwrap();
+                jj.put(0, 1, m * (y[0] * y[0])).unwrap();
+                jj.put(1, 0, m * (3.0 - 2.0 * y[0] * y[1])).unwrap();
+                jj.put(1, 1, m * (-y[0] * y[0])).unwrap();
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+
+        // control
+        let data = SampleData {
+            x0,
+            y0,
+            x1,
+            h_equal: Some(0.1),
+            y_analytical: None,
+        };
+
+        // reference solution; using the following Mathematica code:
+        // ```Mathematica
+        // Needs["DifferentialEquations`NDSolveProblems`"];
+        // Needs["DifferentialEquations`NDSolveUtilities`"];
+        // sys = GetNDSolveProblem["BrusselatorODE"];
+        // sol = NDSolve[sys, Method -> "StiffnessSwitching", WorkingPrecision -> 32];
+        // ref = First[FinalSolutions[sys, sol]]
+        // ```
+        let y_ref = Vector::from(&[0.4986370712683478291402659846476, 4.596780349452011024598321237263]);
+        (system, data, 0, y_ref)
     }
 }
 
@@ -959,7 +1045,7 @@ mod tests {
     #[test]
     fn van_der_pol_works() {
         let multiplier = 2.0;
-        let (system, data, mut args) = Samples::van_der_pol(None, false);
+        let (system, data, mut args) = Samples::van_der_pol(0.03, false);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
@@ -978,7 +1064,7 @@ mod tests {
     #[test]
     fn van_der_pol_works_stationary() {
         let multiplier = 3.0;
-        let (system, data, mut args) = Samples::van_der_pol(None, true);
+        let (system, data, mut args) = Samples::van_der_pol(1.0, true);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
@@ -1037,5 +1123,24 @@ mod tests {
         let ndim = system.ndim;
         let nnz_mass = 5 + 4;
         assert_eq!(mass.get_info(), (ndim, ndim, nnz_mass, Sym::No));
+    }
+
+    #[test]
+    fn brusselator_ode_works() {
+        let multiplier = 2.0;
+        let (system, data, mut args, _) = Samples::brusselator_ode();
+
+        // compute the analytical Jacobian matrix
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+
+        // compute the numerical Jacobian matrix
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
+        println!("{:.15}", ana);
+        println!("{:.15}", num);
+        mat_approx_eq(&ana, &num, 1e-11);
     }
 }

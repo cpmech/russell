@@ -423,14 +423,72 @@ The step sizes from the DoPri solution with Tol = 1e-2 are illustrated below:
 
 ### <a name="van-der-pol"></a> Van der Pol's Equation
 
-This example illustrated the *stiffness* of the Van der Pol problem (equation + initial conditions + step size + method). In this example, DoPri5 with Tol = 1e-3 is used.
+#### DoPri5
+
+This example corresponds to Fig 2.6 on page 23 of Reference #1. See also Eq (1.5') on page 5 of Reference #1.
+
+This example illustrated the *stiffness* (equation + initial conditions + step size + method) of the Van der Pol problem with ε = 0.003. In this example, DoPri5 with Tol = 1e-3 is used.
 
 This example also shows how to enable the stiffness detection.
 
 See the code [van_der_pol_dopri5.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/van_der_pol_dopri5.rs)
+
+The output is given below:
+
+```text
+y =
+┌                     ┐
+│   1.819918013289893 │
+│ -0.7863062155442466 │
+└                     ┘
+DoPri5: Dormand-Prince method (explicit, order 5(4), embedded)
+Number of function evaluations   = 3133
+Number of performed steps        = 522
+Number of accepted steps         = 498
+Number of rejected steps         = 24
+Last accepted/suggested stepsize = 0.004363549192919735
+Max time spent on a step         = 2.558µs
+Total time                       = 1.715917ms
+```
 
 The results are show below:
 
 ![Van der Pol's Equation - DoPri5](data/figures/van_der_pol_dopri5.svg)
 
 The figure's red dashed lines mark the moment when stiffness has been detected first. The stiffness is confirmed after 15 accepted steps with repeated stiffness thresholds being reached. The positive thresholds are counted when h·ρ becomes greater than the corresponding factor·max(h·ρ)---the value on the stability limit (3.3 for DoPri5; factor ~= 0.976). Note that ρ is the approximation of the dominant eigenvalue of the Jacobian. After 6 accepted steps, if the thresholds are not reached, the stiffness detection flag is set to false.
+
+#### Radau5
+
+This example corresponds to Fig 8.1 on page 125 of Reference #1. See also Eq (1.5') on page 5 of Reference #1.
+
+This example uses a smaller ε = 1e-6, making the problem + conditions much more stiff. It is solved with the Radau5 solver, which can handle stiff problems quite well. Note that DoPri5 would not solve this problem with such small ε, unless a very high number of steps (and oder configurations) were considered.
+
+The output is given below:
+
+```text
+y =
+┌                    ┐
+│ 1.7061626037853908 │
+│ -0.892799551109113 │
+└                    ┘
+Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)
+Number of function evaluations   = 2237
+Number of Jacobian evaluations   = 160
+Number of factorizations         = 252
+Number of lin sys solutions      = 663
+Number of performed steps        = 280
+Number of accepted steps         = 241
+Number of rejected steps         = 7
+Number of iterations (maximum)   = 6
+Number of iterations (last step) = 3
+Last accepted/suggested stepsize = 0.2466642610579514
+Max time spent on a step         = 136.487µs
+Max time spent on the Jacobian   = 949ns
+Max time spent on factorization  = 223.917µs
+Max time spent on lin solution   = 4.010536ms
+Total time                       = 37.8697ms
+```
+
+The results are show below:
+
+![Van der Pol's Equation - Radau5](data/figures/van_der_pol_radau5.svg)

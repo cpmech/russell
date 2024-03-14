@@ -11,9 +11,11 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
     * [Simple ODE with a single equation](#simple-single)
     * [Simple system with mass matrix](#simple-mass)
     * [Brusselator ODE](#brusselator-ode)
-    * [Hairer-Wanner Equation (1.1)](#hairer-wanner-eq1)
-    * [Robertson's Equation](#robertson)
-    * [Van der Pol's Equation](#van-der-pol)
+    * [Arenstorf orbits](#arenstorf)
+    * [Hairer-Wanner equation (1.1)](#hairer-wanner-eq1)
+    * [Robertson's equation](#robertson)
+    * [Van der Pol's equation](#van-der-pol)
+    * [One-transistor amplifier](#amplifier1t)
 
 ## <a name="introduction"></a> Introduction
 
@@ -420,15 +422,79 @@ And the convergence plot is:
 
 ![Brusselator results: fix step](data/figures/brusselator_ode_fix_step.svg)
 
+### <a name="arenstorf"></a> Arenstorf orbits
+
+This example corresponds to Fig 0.1 on page 130 of Reference #1. See also Eqs (0.1) and (0.2) on page 129 and 130 of Reference #1.
+
+From Hairer-Nørsett-Wanner:
+
+"(...) an example from Astronomy, the restricted three body problem. (...) two bodies of masses μ' = 1 − μ and μ in circular rotation in a plane and a third body of negligible mass moving around in the same plane. (...)"
+
+The system equations are:
+
+```text
+y0'' = y0 + 2 y1' - μ' (y0 + μ) / d0 - μ (y0 - μ') / d1
+y1'' = y1 - 2 y0' - μ' y1 / d0 - μ y1 / d1
+```
+
+With the assignments:
+
+```text
+y2 := y0'  ⇒  y2' = y0''
+y3 := y1'  ⇒  y3' = y1''
+```
+
+We obtain a 4-dim problem:
+
+```text
+f0 := y0' = y2
+f1 := y1' = y3
+f2 := y2' = y0 + 2 y3 - μ' (y0 + μ) / d0 - μ (y0 - μ') / d1
+f3 := y3' = y1 - 2 y2 - μ' y1 / d0 - μ y1 / d1
+```
+
+See the code [arenstorf_dopri8.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/arenstorf_dopri8.rs)
+
+The code output is:
+
+```text
+y_russell     = [0.9943002573065823, 0.000505756322923528, 0.07893182893575335, -1.9520617089599261]
+y_mathematica = [0.9939999999999928, 2.4228439406717e-14, 3.6631563591513e-12, -2.0015851063802006]
+DoPri8: Dormand-Prince method (explicit, order 8(5,3), embedded)
+Number of function evaluations   = 870
+Number of performed steps        = 62
+Number of accepted steps         = 47
+Number of rejected steps         = 15
+Last accepted/suggested stepsize = 0.005134142939114363
+Max time spent on a step         = 10.538µs
+Total time                       = 1.399021ms
+```
+
+The results are plotted below:
+
+![Arenstorf Orbit: DoPri8](data/figures/arenstorf_dopri8.svg)
+
 ### <a name="hairer-wanner-eq1"></a> Hairer-Wanner Equation (1.1)
 
 This example corresponds to Fig 1.1 and Fig 1.2 on page 2 of Reference #2. See also Eq (1.1) on page 2 of Reference #2.
 
-This example illustrates the instability of the forward Euler method with step sizes above the stability limit. The equation is (reference # 2, page 2):
+The system is:
 
 ```text
-dy/dx = -50 (y - cos(x))          (1.1)
+y0' = -50 (y0 - cos(x))
+
+with  y0(x=0) = 0
 ```
+
+The Jacobian matrix is:
+
+```text
+    df   ┌     ┐
+J = —— = │ -50 │
+    dy   └     ┘
+```
+
+This example illustrates the instability of the forward Euler method with step sizes above the stability limit. The equation is (reference # 2, page 2):
 
 This example also shows how to enable the output of accepted steps.
 
@@ -442,13 +508,66 @@ The results are show below:
 
 This example corresponds to Fig 1.3 on page 4 of Reference #2. See also Eq (1.4) on page 3 of Reference #2.
 
+The system is:
+
+```text
+y0' = -0.04 y0 + 1.0e4 y1 y2
+y1' =  0.04 y0 - 1.0e4 y1 y2 - 3.0e7 y1²
+y2' =                          3.0e7 y1²
+
+with  y0(0) = 1, y1(0) = 0, y2(0) = 0
+```
+
 This example illustrates the Robertson's equation. In this problem DoPri5 uses many steps (about 200). On the other hand, Radau5 solves the problem with 17 accepted steps.
 
 This example also shows how to enable the output of accepted steps.
 
 See the code [robertson.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/robertson.rs)
 
-The solution obtained with Radau5 and DoPri5 using two sets of tolerances are illustrated below:
+The solution is approximated with Radau5 and DoPri5 using two sets of tolerances.
+
+The output is:
+
+```text
+Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)
+Number of function evaluations   = 88
+Number of Jacobian evaluations   = 8
+Number of factorizations         = 15
+Number of lin sys solutions      = 24
+Number of performed steps        = 17
+Number of accepted steps         = 15
+Number of rejected steps         = 1
+Number of iterations (maximum)   = 2
+Number of iterations (last step) = 1
+Last accepted/suggested stepsize = 0.8160578540023586
+Max time spent on a step         = 117.916µs
+Max time spent on the Jacobian   = 1.228µs
+Max time spent on factorization  = 199.151µs
+Max time spent on lin solution   = 56.767µs
+Total time                       = 1.922108ms
+
+Tol = 1e-2
+DoPri5: Dormand-Prince method (explicit, order 5(4), embedded)
+Number of function evaluations   = 1585
+Number of performed steps        = 264
+Number of accepted steps         = 209
+Number of rejected steps         = 55
+Last accepted/suggested stepsize = 0.0017137362591141277
+Max time spent on a step         = 2.535µs
+Total time                       = 2.997516ms
+
+Tol = 1e-3
+DoPri5: Dormand-Prince method (explicit, order 5(4), embedded)
+Number of function evaluations   = 1495
+Number of performed steps        = 249
+Number of accepted steps         = 205
+Number of rejected steps         = 44
+Last accepted/suggested stepsize = 0.0018175194753331549
+Max time spent on a step         = 1.636µs
+Total time                       = 3.705391ms
+```
+
+The results are illustrated below:
 
 ![Robertson's Equation - Solution](data/figures/robertson_a.svg)
 
@@ -527,3 +646,7 @@ Total time                       = 37.8697ms
 The results are show below:
 
 ![Van der Pol's Equation - Radau5](data/figures/van_der_pol_radau5.svg)
+
+### <a name="amplifier1t"></a> One-transistor amplifier
+
+TODO

@@ -238,6 +238,9 @@ impl Samples {
 
     /// Returns the Brusselator problem (ODE version) described in Hairer-Nørsett-Wanner, Part I, page 116
     ///
+    /// This example corresponds to Fig 16.4 on page 116 of the reference.
+    /// See also Eq (16.12) on page 116 of the reference.
+    ///
     /// The system is:
     ///
     /// ```text
@@ -335,21 +338,30 @@ impl Samples {
 
     /// Returns the Arenstorf orbit problem, Hairer-Wanner, Part I, Eq(0.1), page 129
     ///
+    /// This example corresponds to Fig 0.1 on page 130 of the reference.
+    /// See also Eqs (0.1) and (0.2) on page 129 and 130 of the reference.
+    ///
     /// From Hairer-Nørsett-Wanner:
     ///
     /// "(...) an example from Astronomy, the restricted three body problem. (...)
     /// two bodies of masses μ' = 1 − μ and μ in circular rotation in a plane and
     /// a third body of negligible mass moving around in the same plane. (...)"
     ///
+    /// The system equations are:
+    ///
     /// ```text
     /// y0'' = y0 + 2 y1' - μ' (y0 + μ) / d0 - μ (y0 - μ') / d1
     /// y1'' = y1 - 2 y0' - μ' y1 / d0 - μ y1 / d1
     /// ```
     ///
+    /// With the assignments:
+    ///
     /// ```text
     /// y2 := y0'  ⇒  y2' = y0''
     /// y3 := y1'  ⇒  y3' = y1''
     /// ```
+    ///
+    /// We obtain a 4-dim problem:
     ///
     /// ```text
     /// f0 := y0' = y2
@@ -368,6 +380,7 @@ impl Samples {
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `y_ref` -- is a reference solution, computed with high-accuracy by Mathematica
     ///
     /// # Reference
     ///
@@ -382,6 +395,7 @@ impl Samples {
         >,
         SampleData,
         NoArgs,
+        Vector,
     ) {
         const MU: f64 = 0.012277471;
         const MD: f64 = 1.0 - MU;
@@ -444,10 +458,36 @@ impl Samples {
             h_equal: None,
             y_analytical: None,
         };
-        (system, data, 0)
+        // reference solution from Mathematica
+        let y_ref = Vector::from(&[
+            0.99399999999999280751004722382642,
+            2.4228439406717e-14,
+            3.6631563591513e-12,
+            -2.0015851063802005176067408813970,
+        ]);
+        (system, data, 0, y_ref)
     }
 
     /// Returns the Hairer-Wanner problem from the reference, Part II, Eq(1.1), page 2 (with analytical solution)
+    ///
+    /// This example corresponds to Fig 1.1 and Fig 1.2 on page 2 of the reference.
+    /// See also Eq (1.1) on page 2 of the reference
+    ///
+    /// The system is:
+    ///
+    /// ```text
+    /// y0' = -50 (y0 - cos(x))
+    ///
+    /// with  y0(x=0) = 0
+    /// ```
+    ///
+    /// The Jacobian matrix is:
+    ///
+    /// ```text
+    ///     df   ┌     ┐
+    /// J = —— = │ -50 │
+    ///     dy   └     ┘
+    /// ```
     ///
     /// # Output
     ///
@@ -505,6 +545,19 @@ impl Samples {
     }
 
     /// Returns the Robertson's equation, Hairer-Wanner, Part II, Eq(1.4), page 3
+    ///
+    /// This example corresponds to Fig 1.3 on page 4 of the reference.
+    /// See also Eq (1.4) on page 3 of the reference.
+    ///
+    /// The system is:
+    ///
+    /// ```text
+    /// y0' = -0.04 y0 + 1.0e4 y1 y2
+    /// y1' =  0.04 y0 - 1.0e4 y1 y2 - 3.0e7 y1²
+    /// y2' =                          3.0e7 y1²
+    ///
+    /// with  y0(0) = 1, y1(0) = 0, y2(0) = 0
+    /// ```
     ///
     /// # Output
     ///
@@ -1102,7 +1155,7 @@ mod tests {
     #[test]
     fn arenstorf_works() {
         let multiplier = 1.5;
-        let (system, data, mut args) = Samples::arenstorf();
+        let (system, data, mut args, _) = Samples::arenstorf();
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();

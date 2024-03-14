@@ -55,7 +55,7 @@ fn main() -> Result<(), StrError> {
     out2.enable_step(&[sel]);
     let mut y = data.y0.clone();
     dopri5.solve(&mut y, data.x0, data.x1, None, Some(&mut out2), &mut args)?;
-    println!("\n{}", dopri5.bench());
+    println!("\nTol = 1e-2\n{}", dopri5.bench());
     let n_accepted2 = dopri5.bench().n_accepted;
 
     // solve the problem with DoPri5 and Tol = 1e-3
@@ -64,7 +64,7 @@ fn main() -> Result<(), StrError> {
     let mut y = data.y0.clone();
     dopri5.update_params(params3)?;
     dopri5.solve(&mut y, data.x0, data.x1, None, Some(&mut out3), &mut args)?;
-    println!("\n{}", dopri5.bench());
+    println!("\nTol = 1e-3\n{}", dopri5.bench());
     let n_accepted3 = dopri5.bench().n_accepted;
 
     // Radau5 curve

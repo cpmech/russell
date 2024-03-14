@@ -333,11 +333,29 @@ impl Samples {
         (system, data, 0, y_ref)
     }
 
-    /// Implements Equation (6) from Kreyszig's book on page 902
+    /// Returns the Arenstorf orbit problem, Hairer-Wanner, Part I, Eq(0.1), page 129
+    ///
+    /// From Hairer-Nørsett-Wanner:
+    ///
+    /// "(...) an example from Astronomy, the restricted three body problem. (...)
+    /// two bodies of masses μ' = 1 − μ and μ in circular rotation in a plane and
+    /// a third body of negligible mass moving around in the same plane. (...)"
     ///
     /// ```text
-    /// dy/dx = x + y
-    /// y(0) = 0
+    /// y0'' = y0 + 2 y1' - μ' (y0 + μ) / d0 - μ (y0 - μ') / d1
+    /// y1'' = y1 - 2 y0' - μ' y1 / d0 - μ y1 / d1
+    /// ```
+    ///
+    /// ```text
+    /// y2 := y0'  ⇒  y2' = y0''
+    /// y3 := y1'  ⇒  y3' = y1''
+    /// ```
+    ///
+    /// ```text
+    /// f0 := y0' = y2
+    /// f1 := y1' = y3
+    /// f2 := y2' = y0 + 2 y3 - μ' (y0 + μ) / d0 - μ (y0 - μ') / d1
+    /// f3 := y3' = y1 - 2 y2 - μ' y1 / d0 - μ y1 / d1
     /// ```
     ///
     /// # Output
@@ -348,14 +366,15 @@ impl Samples {
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
     ///     * `A` -- is `NoArgs`
-    /// * `data: SampleData` -- holds the initial values and the analytical solution
+    /// * `data: SampleData` -- holds the initial values
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
     ///
     /// # Reference
     ///
-    /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
-    ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
-    pub fn kreyszig_eq6_page902() -> (
+    /// * Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
+    ///   Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
+    ///   in Computational Mathematics, 528p
+    pub fn arenstorf() -> (
         System<
             impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
             impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
@@ -364,17 +383,54 @@ impl Samples {
         SampleData,
         NoArgs,
     ) {
-        let ndim = 1;
-        let jac_nnz = 1;
+        const MU: f64 = 0.012277471;
+        const MD: f64 = 1.0 - MU;
+        let x0 = 0.0;
+        let y0 = Vector::from(&[0.994, 0.0, 0.0, -2.00158510637908252240537862224]);
+        let x1 = 17.0652165601579625588917206249;
+        let ndim = 4;
+        let jac_nnz = 8;
         let system = System::new(
             ndim,
-            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
-                f[0] = x + y[0];
+            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
+                let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
+                let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
+                let d0 = t0 * f64::sqrt(t0);
+                let d1 = t1 * f64::sqrt(t1);
+                f[0] = y[2];
+                f[1] = y[3];
+                f[2] = y[0] + 2.0 * y[3] - MD * (y[0] + MU) / d0 - MU * (y[0] - MD) / d1;
+                f[3] = y[1] - 2.0 * y[2] - MD * y[1] / d0 - MU * y[1] / d1;
                 Ok(())
             },
-            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut NoArgs| {
+            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
+                let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
+                let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
+                let s0 = f64::sqrt(t0);
+                let s1 = f64::sqrt(t1);
+                let d0 = t0 * s0;
+                let d1 = t1 * s1;
+                let dd0 = d0 * d0;
+                let dd1 = d1 * d1;
+                let a = y[0] + MU;
+                let b = y[0] - MD;
+                let c = -MD / d0 - MU / d1;
+                let dj00 = 3.0 * a * s0;
+                let dj01 = 3.0 * y[1] * s0;
+                let dj10 = 3.0 * b * s1;
+                let dj11 = 3.0 * y[1] * s1;
                 jj.reset();
-                jj.put(0, 0, 1.0 * multiplier).unwrap();
+                jj.put(0, 2, 1.0 * m).unwrap();
+                jj.put(1, 3, 1.0 * m).unwrap();
+                jj.put(2, 0, (1.0 + a * dj00 * MD / dd0 + b * dj10 * MU / dd1 + c) * m)
+                    .unwrap();
+                jj.put(2, 1, (a * dj01 * MD / dd0 + b * dj11 * MU / dd1) * m).unwrap();
+                jj.put(2, 3, 2.0 * m).unwrap();
+                jj.put(3, 0, (dj00 * y[1] * MD / dd0 + dj10 * y[1] * MU / dd1) * m)
+                    .unwrap();
+                jj.put(3, 1, (1.0 + dj01 * y[1] * MD / dd0 + dj11 * y[1] * MU / dd1 + c) * m)
+                    .unwrap();
+                jj.put(3, 2, -2.0 * m).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,
@@ -382,88 +438,11 @@ impl Samples {
             None,
         );
         let data = SampleData {
-            x0: 0.0,
-            y0: Vector::from(&[0.0]),
-            x1: 1.0,
-            h_equal: Some(0.2),
-            y_analytical: Some(|y, x| {
-                y[0] = f64::exp(x) - x - 1.0;
-            }),
-        };
-        (system, data, 0)
-    }
-
-    /// Implements Example 4 from Kreyszig's book on page 920
-    ///
-    /// With proper initial conditions, this problem becomes "stiff".
-    ///
-    /// ```text
-    /// y'' + 11 y' + 10 y = 10 x + 11
-    /// y(0) = 2
-    /// y'(0) = -10
-    /// ```
-    ///
-    /// Converting into a system:
-    ///
-    /// ```text
-    /// y = y1 and y' = y2
-    /// y0' = y1
-    /// y1' = -10 y0 - 11 y1 + 10 x + 11
-    /// ```
-    ///
-    /// # Output
-    ///
-    /// Returns `(system, data, args)` where:
-    ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
-    /// * `data: SampleData` -- holds the initial values and the analytical solution
-    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
-    ///
-    /// # Reference
-    ///
-    /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
-    ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
-    pub fn kreyszig_ex4_page920() -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
-        SampleData,
-        NoArgs,
-    ) {
-        let ndim = 2;
-        let jac_nnz = 3;
-        let system = System::new(
-            ndim,
-            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
-                f[0] = y[1];
-                f[1] = -10.0 * y[0] - 11.0 * y[1] + 10.0 * x + 11.0;
-                Ok(())
-            },
-            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut NoArgs| {
-                jj.reset();
-                jj.put(0, 1, 1.0 * multiplier).unwrap();
-                jj.put(1, 0, -10.0 * multiplier).unwrap();
-                jj.put(1, 1, -11.0 * multiplier).unwrap();
-                Ok(())
-            },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
-        );
-        let data = SampleData {
-            x0: 0.0,
-            y0: Vector::from(&[2.0, -10.0]),
-            x1: 1.0,
-            h_equal: Some(0.2),
-            y_analytical: Some(|y, x| {
-                y[0] = f64::exp(-x) + f64::exp(-10.0 * x) + x;
-                y[1] = -f64::exp(-x) - 10.0 * f64::exp(-10.0 * x) + 1.0;
-            }),
+            x0,
+            y0,
+            x1,
+            h_equal: None,
+            y_analytical: None,
         };
         (system, data, 0)
     }
@@ -668,120 +647,6 @@ impl Samples {
         (system, data, 0)
     }
 
-    /// Returns the Arenstorf orbit problem, Hairer-Wanner, Part I, Eq(0.1), page 129
-    ///
-    /// From Hairer-Wanner:
-    ///
-    /// "(...) an example from Astronomy, the restricted three body problem. (...)
-    /// two bodies of masses μ' = 1 − μ and μ in circular rotation in a plane and
-    /// a third body of negligible mass moving around in the same plane. (...)"
-    ///
-    /// ```text
-    /// y0'' = y0 + 2 y1' - μ' (y0 + μ) / d0 - μ (y0 - μ') / d1
-    /// y1'' = y1 - 2 y0' - μ' y1 / d0 - μ y1 / d1
-    /// ```
-    ///
-    /// ```text
-    /// y2 := y0'  ⇒  y2' = y0''
-    /// y3 := y1'  ⇒  y3' = y1''
-    /// ```
-    ///
-    /// ```text
-    /// f0 := y0' = y2
-    /// f1 := y1' = y3
-    /// f2 := y2' = y0 + 2 y3 - μ' (y0 + μ) / d0 - μ (y0 - μ') / d1
-    /// f3 := y3' = y1 - 2 y2 - μ' y1 / d0 - μ y1 / d1
-    /// ```
-    ///
-    /// # Output
-    ///
-    /// Returns `(system, data, args)` where:
-    ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
-    /// * `data: SampleData` -- holds the initial values
-    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
-    ///
-    /// # Reference
-    ///
-    /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
-    ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
-    ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn arenstorf() -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
-        SampleData,
-        NoArgs,
-    ) {
-        const MU: f64 = 0.012277471;
-        const MD: f64 = 1.0 - MU;
-        let x0 = 0.0;
-        let y0 = Vector::from(&[0.994, 0.0, 0.0, -2.00158510637908252240537862224]);
-        let x1 = 17.0652165601579625588917206249;
-        let ndim = 4;
-        let jac_nnz = 8;
-        let system = System::new(
-            ndim,
-            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
-                let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
-                let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
-                let d0 = t0 * f64::sqrt(t0);
-                let d1 = t1 * f64::sqrt(t1);
-                f[0] = y[2];
-                f[1] = y[3];
-                f[2] = y[0] + 2.0 * y[3] - MD * (y[0] + MU) / d0 - MU * (y[0] - MD) / d1;
-                f[3] = y[1] - 2.0 * y[2] - MD * y[1] / d0 - MU * y[1] / d1;
-                Ok(())
-            },
-            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
-                let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
-                let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
-                let s0 = f64::sqrt(t0);
-                let s1 = f64::sqrt(t1);
-                let d0 = t0 * s0;
-                let d1 = t1 * s1;
-                let dd0 = d0 * d0;
-                let dd1 = d1 * d1;
-                let a = y[0] + MU;
-                let b = y[0] - MD;
-                let c = -MD / d0 - MU / d1;
-                let dj00 = 3.0 * a * s0;
-                let dj01 = 3.0 * y[1] * s0;
-                let dj10 = 3.0 * b * s1;
-                let dj11 = 3.0 * y[1] * s1;
-                jj.reset();
-                jj.put(0, 2, 1.0 * m).unwrap();
-                jj.put(1, 3, 1.0 * m).unwrap();
-                jj.put(2, 0, (1.0 + a * dj00 * MD / dd0 + b * dj10 * MU / dd1 + c) * m)
-                    .unwrap();
-                jj.put(2, 1, (a * dj01 * MD / dd0 + b * dj11 * MU / dd1) * m).unwrap();
-                jj.put(2, 3, 2.0 * m).unwrap();
-                jj.put(3, 0, (dj00 * y[1] * MD / dd0 + dj10 * y[1] * MU / dd1) * m)
-                    .unwrap();
-                jj.put(3, 1, (1.0 + dj01 * y[1] * MD / dd0 + dj11 * y[1] * MU / dd1 + c) * m)
-                    .unwrap();
-                jj.put(3, 2, -2.0 * m).unwrap();
-                Ok(())
-            },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
-        );
-        let data = SampleData {
-            x0,
-            y0,
-            x1,
-            h_equal: None,
-            y_analytical: None,
-        };
-        (system, data, 0)
-    }
-
     /// Returns the one-transistor amplifier problem described by Hairer-Wanner, Part II, page 376
     ///
     /// # Output
@@ -882,6 +747,141 @@ impl Samples {
             x1,
             h_equal: None,
             y_analytical: None,
+        };
+        (system, data, 0)
+    }
+
+    /// Implements Equation (6) from Kreyszig's book on page 902
+    ///
+    /// ```text
+    /// dy/dx = x + y
+    /// y(0) = 0
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, args)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `NoArgs`
+    /// * `data: SampleData` -- holds the initial values and the analytical solution
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    ///
+    /// # Reference
+    ///
+    /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
+    ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
+    pub fn kreyszig_eq6_page902() -> (
+        System<
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
+        >,
+        SampleData,
+        NoArgs,
+    ) {
+        let ndim = 1;
+        let jac_nnz = 1;
+        let system = System::new(
+            ndim,
+            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+                f[0] = x + y[0];
+                Ok(())
+            },
+            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut NoArgs| {
+                jj.reset();
+                jj.put(0, 0, 1.0 * multiplier).unwrap();
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+        let data = SampleData {
+            x0: 0.0,
+            y0: Vector::from(&[0.0]),
+            x1: 1.0,
+            h_equal: Some(0.2),
+            y_analytical: Some(|y, x| {
+                y[0] = f64::exp(x) - x - 1.0;
+            }),
+        };
+        (system, data, 0)
+    }
+
+    /// Implements Example 4 from Kreyszig's book on page 920
+    ///
+    /// With proper initial conditions, this problem becomes "stiff".
+    ///
+    /// ```text
+    /// y'' + 11 y' + 10 y = 10 x + 11
+    /// y(0) = 2
+    /// y'(0) = -10
+    /// ```
+    ///
+    /// Converting into a system:
+    ///
+    /// ```text
+    /// y = y1 and y' = y2
+    /// y0' = y1
+    /// y1' = -10 y0 - 11 y1 + 10 x + 11
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, args)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `NoArgs`
+    /// * `data: SampleData` -- holds the initial values and the analytical solution
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    ///
+    /// # Reference
+    ///
+    /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
+    ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
+    pub fn kreyszig_ex4_page920() -> (
+        System<
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
+        >,
+        SampleData,
+        NoArgs,
+    ) {
+        let ndim = 2;
+        let jac_nnz = 3;
+        let system = System::new(
+            ndim,
+            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+                f[0] = y[1];
+                f[1] = -10.0 * y[0] - 11.0 * y[1] + 10.0 * x + 11.0;
+                Ok(())
+            },
+            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut NoArgs| {
+                jj.reset();
+                jj.put(0, 1, 1.0 * multiplier).unwrap();
+                jj.put(1, 0, -10.0 * multiplier).unwrap();
+                jj.put(1, 1, -11.0 * multiplier).unwrap();
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+        let data = SampleData {
+            x0: 0.0,
+            y0: Vector::from(&[2.0, -10.0]),
+            x1: 1.0,
+            h_equal: Some(0.2),
+            y_analytical: Some(|y, x| {
+                y[0] = f64::exp(-x) + f64::exp(-10.0 * x) + x;
+                y[1] = -f64::exp(-x) - 10.0 * f64::exp(-10.0 * x) + 1.0;
+            }),
         };
         (system, data, 0)
     }

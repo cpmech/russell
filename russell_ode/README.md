@@ -193,7 +193,7 @@ use russell_sparse::CooMatrix;
 fn main() -> Result<(), StrError> {
     // DAE system
     let ndim = 3;
-    let jac_nnz = 4;
+    let jac_nnz = 4; // number of non-zero values in the Jacobian
     let mut system = System::new(
         ndim,
         |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
@@ -216,7 +216,7 @@ fn main() -> Result<(), StrError> {
     );
 
     // mass matrix
-    let mass_nnz = 5;
+    let mass_nnz = 5; // number of non-zero values in the mass matrix
     system.init_mass_matrix(mass_nnz).unwrap();
     system.mass_put(0, 0, 1.0).unwrap();
     system.mass_put(0, 1, 1.0).unwrap();

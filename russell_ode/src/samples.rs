@@ -43,9 +43,9 @@ impl Samples {
     /// Implements a simple ODE with a single equation and constant derivative
     ///
     /// ```text
-    /// dy
-    /// —— = 1   with   y(x=0)=0    thus   y(x) = x
-    /// dx
+    ///      dy
+    /// y' = —— = 1   with   y(x=0)=0    thus   y(x) = x
+    ///      dx
     /// ```
     ///
     /// # Output
@@ -234,6 +234,103 @@ impl Samples {
             }),
         };
         (system, data, 0)
+    }
+
+    /// Returns the Brusselator problem (ODE version) described in Hairer-Nørsett-Wanner, Part I, page 116
+    ///
+    /// The system is:
+    ///
+    /// ```text
+    /// y0' = 1 - 4 y0 + y0² y1
+    /// y1' = 3 y0 - y0² y1
+    ///
+    /// with  y0(x=0) = 3/2  and  y1(x=0) = 3
+    /// ```
+    ///
+    /// The Jacobian matrix is:
+    ///
+    /// ```text
+    ///          ┌                     ┐
+    ///     df   │ -4 + 2 y0 y1    y0² │
+    /// J = —— = │                     │
+    ///     dy   │  3 - 2 y0 y1   -y0² │
+    ///          └                     ┘
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, args, y_ref)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `NoArgs`
+    /// * `data: SampleData` -- holds the initial values
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `y_ref` -- is a reference solution, computed with high-accuracy by Mathematica
+    ///
+    /// # Reference
+    ///
+    /// * Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
+    ///   Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
+    ///   in Computational Mathematics, 528p
+    pub fn brusselator_ode() -> (
+        System<
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
+        >,
+        SampleData,
+        NoArgs,
+        Vector,
+    ) {
+        // initial values
+        let x0 = 0.0;
+        let y0 = Vector::from(&[3.0 / 2.0, 3.0]);
+        let x1 = 20.0;
+
+        // ODE system
+        let ndim = 2;
+        let jac_nnz = 4;
+        let system = System::new(
+            ndim,
+            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
+                f[0] = 1.0 - 4.0 * y[0] + y[0] * y[0] * y[1];
+                f[1] = 3.0 * y[0] - y[0] * y[0] * y[1];
+                Ok(())
+            },
+            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
+                jj.reset();
+                jj.put(0, 0, m * (-4.0 + 2.0 * y[0] * y[1])).unwrap();
+                jj.put(0, 1, m * (y[0] * y[0])).unwrap();
+                jj.put(1, 0, m * (3.0 - 2.0 * y[0] * y[1])).unwrap();
+                jj.put(1, 1, m * (-y[0] * y[0])).unwrap();
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+
+        // control
+        let data = SampleData {
+            x0,
+            y0,
+            x1,
+            h_equal: Some(0.1),
+            y_analytical: None,
+        };
+
+        // reference solution; using the following Mathematica code:
+        // ```Mathematica
+        // Needs["DifferentialEquations`NDSolveProblems`"];
+        // Needs["DifferentialEquations`NDSolveUtilities`"];
+        // sys = GetNDSolveProblem["BrusselatorODE"];
+        // sol = NDSolve[sys, Method -> "StiffnessSwitching", WorkingPrecision -> 32];
+        // ref = First[FinalSolutions[sys, sol]]
+        // ```
+        let y_ref = Vector::from(&[0.4986370712683478291402659846476, 4.596780349452011024598321237263]);
+        (system, data, 0, y_ref)
     }
 
     /// Implements Equation (6) from Kreyszig's book on page 902
@@ -787,84 +884,6 @@ impl Samples {
             y_analytical: None,
         };
         (system, data, 0)
-    }
-
-    /// Returns the Brusselator problem (ODE version) described in Hairer-Nørsett-Wanner, Part I, page 116
-    ///
-    /// # Output
-    ///
-    /// Returns `(system, data, args, y_ref)` where:
-    ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
-    /// * `data: SampleData` -- holds the initial values
-    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
-    /// * `y_ref` -- is a reference solution, computed with high-accuracy by Mathematica
-    ///
-    /// # Reference
-    ///
-    /// * Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
-    ///   Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
-    ///   in Computational Mathematics, 528p
-    pub fn brusselator_ode() -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
-        SampleData,
-        NoArgs,
-        Vector,
-    ) {
-        // initial values
-        let x0 = 0.0;
-        let y0 = Vector::from(&[3.0 / 2.0, 3.0]);
-        let x1 = 20.0;
-
-        // ODE system
-        let ndim = 2;
-        let jac_nnz = 4;
-        let system = System::new(
-            ndim,
-            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
-                f[0] = 1.0 - 4.0 * y[0] + y[0] * y[0] * y[1];
-                f[1] = 3.0 * y[0] - y[0] * y[0] * y[1];
-                Ok(())
-            },
-            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
-                jj.reset();
-                jj.put(0, 0, m * (-4.0 + 2.0 * y[0] * y[1])).unwrap();
-                jj.put(0, 1, m * (y[0] * y[0])).unwrap();
-                jj.put(1, 0, m * (3.0 - 2.0 * y[0] * y[1])).unwrap();
-                jj.put(1, 1, m * (-y[0] * y[0])).unwrap();
-                Ok(())
-            },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
-        );
-
-        // control
-        let data = SampleData {
-            x0,
-            y0,
-            x1,
-            h_equal: Some(0.1),
-            y_analytical: None,
-        };
-
-        // reference solution; using the following Mathematica code:
-        // ```Mathematica
-        // Needs["DifferentialEquations`NDSolveProblems`"];
-        // Needs["DifferentialEquations`NDSolveUtilities`"];
-        // sys = GetNDSolveProblem["BrusselatorODE"];
-        // sol = NDSolve[sys, Method -> "StiffnessSwitching", WorkingPrecision -> 32];
-        // ref = First[FinalSolutions[sys, sol]]
-        // ```
-        let y_ref = Vector::from(&[0.4986370712683478291402659846476, 4.596780349452011024598321237263]);
-        (system, data, 0, y_ref)
     }
 }
 

@@ -63,7 +63,9 @@ This section illustrates how to use `russell_ode`. More examples:
 Solve the simple ODE with Dormand-Prince 8(5,3):
 
 ```text
-dy/dx = x + y    with    y(0) = 0
+      dy
+y' = —— = 1   with   y(x=0)=0    thus   y(x) = x
+      dx
 ```
 
 See the code [simple_ode_single_equation.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/simple_ode_single_equation.rs); reproduced below:
@@ -278,6 +280,25 @@ Total time                       = 27.107919ms
 
 This example corresponds to Fig 16.4 on page 116 of Reference #1. See also Eq (16.12) on page 116 of Reference #1.
 
+The system is:
+
+```text
+y0' = 1 - 4 y0 + y0² y1
+y1' = 3 y0 - y0² y1
+
+with  y0(x=0) = 3/2  and  y1(x=0) = 3
+```
+
+The Jacobian matrix is:
+
+```text
+         ┌                     ┐
+    df   │ -4 + 2 y0 y1    y0² │
+J = —— = │                     │
+    dy   │  3 - 2 y0 y1   -y0² │
+         └                     ┘
+```
+
 #### Solving with DoPri8 -- 8(5,3) -- dense output
 
 This is a system of two ODEs, well explained in Reference #1. This problem is solved with the DoPri8 method (it has a hybrid error estimator of 5th and 3rd order; see Reference #1).
@@ -336,7 +357,15 @@ A plot of the (dense) solution is shown below:
 
 #### Variable step sizes
 
-This example solves the Brusselator ODE with variable step sizes for different tolerances. In this example, `tol = abs_tol = rel_tol`.
+This example solves the Brusselator ODE with variable step sizes for different tolerances. In this example, `tol = abs_tol = rel_tol`. The global error is the difference between Russell's results and Mathematica's results obtained with high accuracy. The Mathematica code is:
+
+```Mathematica
+Needs["DifferentialEquations`NDSolveProblems`"];
+Needs["DifferentialEquations`NDSolveUtilities`"];
+sys = GetNDSolveProblem["BrusselatorODE"];
+sol = NDSolve[sys, Method -> "StiffnessSwitching", WorkingPrecision -> 32];
+ref = First[FinalSolutions[sys, sol]]
+```
 
 See the code [brusselator_ode_var_step.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_ode_var_step.rs)
 
@@ -360,7 +389,7 @@ And the convergence plot is:
 
 #### Fixed step sizes
 
-This example solves the Brusselator ODE with fixed step sizes and explicit Runge-Kutta methods.
+This example solves the Brusselator ODE with fixed step sizes and explicit Runge-Kutta methods. The global error is also the difference between Russell and Mathematica as in the previous section.
 
 See the code [brusselator_ode_fix_step.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_ode_fix_step.rs)
 

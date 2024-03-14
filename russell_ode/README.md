@@ -660,4 +660,91 @@ The results are show below:
 
 ### <a name="amplifier1t"></a> One-transistor amplifier
 
-TODO
+This example corresponds to Fig 1.3 on page 377 and Fig 1.4 on page 379 of Reference #2. See also Eq (1.14) on page 377 of Reference #2.
+
+This is a differential-algebraic problem modelling the nodal voltages of a one-transistor amplifier.
+
+The DAE is expressed in the so-called *mass-matrix* form (ndim = 5):
+
+```text
+M y' = f(x, y)
+
+with: y0(0)=0, y1(0)=Ub/2, y2(0)=Ub/2, y3(0)=Ub, y4(0)=0
+```
+
+where the elements of the right-hand side function are:
+
+```text
+f0 = (y0 - ue) / R
+f1 = (2 y1 - UB) / S + γ g12
+f2 = y2 / S - g12
+f3 = (y3 - UB) / S + α g12
+f4 = y4 / S
+
+with:
+
+ue = A sin(ω x)
+g12 = β (exp((y1 - y2) / UF) - 1)
+```
+
+Compared to Eq (1.14), we set all resistances Rᵢ to S, except the first one (R := R₀).
+
+The mass matrix is:
+
+```text
+    ┌                     ┐
+    │ -C1  C1             │
+    │  C1 -C1             │
+M = │         -C2         │
+    │             -C3  C3 │
+    │              C3 -C3 │
+    └                     ┘
+```
+
+and the Jacobian matrix is:
+
+```text
+    ┌                                           ┐
+    │ 1/R                                       │
+    │       2/S + γ h12      -γ h12             │
+J = │              -h12   1/S + h12             │
+    │             α h12      -α h12             │
+    │                                 1/S       │
+    │                                       1/S │
+    └                                           ┘
+
+with:
+
+h12 = β exp((y1 - y2) / UF) / UF
+```
+
+**Note:** In this library, only **Radau5** can solve such DAE.
+
+See the code [amplifier1t_radau5.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/amplifier1t_radau5.rs)
+
+The output is given below:
+
+```text
+y_russell     = [-0.022267, 3.068709, 2.898349, 1.499405, -1.735090]
+y_mathematica = [-0.022267, 3.068709, 2.898349, 1.499439, -1.735057]
+Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)
+Number of function evaluations   = 6007
+Number of Jacobian evaluations   = 480
+Number of factorizations         = 666
+Number of lin sys solutions      = 1840
+Number of performed steps        = 666
+Number of accepted steps         = 481
+Number of rejected steps         = 39
+Number of iterations (maximum)   = 6
+Number of iterations (last step) = 1
+Last accepted/suggested stepsize = 0.00007705697843645314
+Max time spent on a step         = 55.281µs
+Max time spent on the Jacobian   = 729ns
+Max time spent on factorization  = 249.11µs
+Max time spent on lin solution   = 241.201µs
+Total time                       = 97.951021ms
+```
+
+The results are plotted below:
+
+![One-transistor Amplifier - Radau5](data/figures/amplifier1t_radau5.svg)

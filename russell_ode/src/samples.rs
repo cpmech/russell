@@ -714,6 +714,65 @@ impl Samples {
 
     /// Returns the one-transistor amplifier problem described by Hairer-Wanner, Part II, page 376
     ///
+    /// This example corresponds to Fig 1.3 on page 377 and Fig 1.4 on page 379 of the reference.
+    /// See also Eq (1.14) on page 377 of the reference.
+    ///
+    /// This is a differential-algebraic problem modelling the nodal voltages of a one-transistor amplifier.
+    ///
+    /// The DAE is expressed in the so-called *mass-matrix* form (ndim = 5):
+    ///
+    /// ```text
+    /// M y' = f(x, y)
+    ///
+    /// with: y0(0)=0, y1(0)=Ub/2, y2(0)=Ub/2, y3(0)=Ub, y4(0)=0
+    /// ```
+    ///
+    /// where the elements of the right-hand side function are:
+    ///
+    /// ```text
+    /// f0 = (y0 - ue) / R
+    /// f1 = (2 y1 - UB) / S + γ g12
+    /// f2 = y2 / S - g12
+    /// f3 = (y3 - UB) / S + α g12
+    /// f4 = y4 / S
+    ///
+    /// with:
+    ///
+    /// ue = A sin(ω x)
+    /// g12 = β (exp((y1 - y2) / UF) - 1)
+    /// ```
+    ///
+    /// Compared to Eq (1.14), we set all resistances Rᵢ to S, except the first one (R := R₀).
+    ///
+    /// The mass matrix is:
+    ///
+    /// ```text
+    ///     ┌                     ┐
+    ///     │ -C1  C1             │
+    ///     │  C1 -C1             │
+    /// M = │         -C2         │
+    ///     │             -C3  C3 │
+    ///     │              C3 -C3 │
+    ///     └                     ┘
+    /// ```
+    ///
+    /// and the Jacobian matrix is:
+    ///
+    /// ```text
+    ///     ┌                                           ┐
+    ///     │ 1/R                                       │
+    ///     │       2/S + γ h12      -γ h12             │
+    /// J = │              -h12   1/S + h12             │
+    ///     │             α h12      -α h12             │
+    ///     │                                 1/S       │
+    ///     │                                       1/S │
+    ///     └                                           ┘
+    ///
+    /// with:
+    ///
+    /// h12 = β exp((y1 - y2) / UF) / UF
+    /// ```
+    ///
     /// # Output
     ///
     /// Returns `(system, data, args)` where:
@@ -742,9 +801,9 @@ impl Samples {
         // constants
         const ALPHA: f64 = 0.99;
         const GAMMA: f64 = 1.0 - ALPHA;
-        const C: f64 = 0.4;
-        const D: f64 = 200.0 * PI;
         const BETA: f64 = 1e-6;
+        const A: f64 = 0.4;
+        const OM: f64 = 200.0 * PI;
         const UB: f64 = 6.0;
         const UF: f64 = 0.026;
         const R: f64 = 1000.0;
@@ -761,25 +820,25 @@ impl Samples {
         let mut system = System::new(
             ndim,
             |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
-                let ue = C * f64::sin(D * x);
-                let f12 = BETA * (f64::exp((y[1] - y[2]) / UF) - 1.0);
+                let ue = A * f64::sin(OM * x);
+                let g12 = BETA * (f64::exp((y[1] - y[2]) / UF) - 1.0);
                 f[0] = (y[0] - ue) / R;
-                f[1] = (2.0 * y[1] - UB) / S + GAMMA * f12;
-                f[2] = y[2] / S - f12;
-                f[3] = (y[3] - UB) / S + ALPHA * f12;
+                f[1] = (2.0 * y[1] - UB) / S + GAMMA * g12;
+                f[2] = y[2] / S - g12;
+                f[3] = (y[3] - UB) / S + ALPHA * g12;
                 f[4] = y[4] / S;
                 Ok(())
             },
             |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
-                let g12 = BETA * f64::exp((y[1] - y[2]) / UF) / UF;
+                let h12 = BETA * f64::exp((y[1] - y[2]) / UF) / UF;
                 jj.reset();
                 jj.put(0, 0, m * (1.0 / R)).unwrap();
-                jj.put(1, 1, m * (2.0 / S + GAMMA * g12)).unwrap();
-                jj.put(1, 2, m * (-GAMMA * g12)).unwrap();
-                jj.put(2, 1, m * (-g12)).unwrap();
-                jj.put(2, 2, m * (1.0 / S + g12)).unwrap();
-                jj.put(3, 1, m * (ALPHA * g12)).unwrap();
-                jj.put(3, 2, m * (-ALPHA * g12)).unwrap();
+                jj.put(1, 1, m * (2.0 / S + GAMMA * h12)).unwrap();
+                jj.put(1, 2, m * (-GAMMA * h12)).unwrap();
+                jj.put(2, 1, m * (-h12)).unwrap();
+                jj.put(2, 2, m * (1.0 / S + h12)).unwrap();
+                jj.put(3, 1, m * (ALPHA * h12)).unwrap();
+                jj.put(3, 2, m * (-ALPHA * h12)).unwrap();
                 jj.put(3, 3, m * (1.0 / S)).unwrap();
                 jj.put(4, 4, m * (1.0 / S)).unwrap();
                 Ok(())

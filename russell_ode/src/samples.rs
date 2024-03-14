@@ -621,7 +621,19 @@ impl Samples {
 
     /// Returns the Van der Pol's equation as given in Hairer-Wanner, Part II, Eq(1.5'), page 5
     ///
-    /// **Note:** Using the data from Eq(7.29), page 113.
+    /// This example corresponds to Eq (1.5') on page 5 of the reference and is used to compare with
+    /// Fig 2.6 on page 23 and Fig 8.1 on page 125 of the reference.
+    ///
+    /// The system is:
+    ///
+    /// ```text
+    /// y0' = y1
+    /// y1' = ((1.0 - y[0] * y[0]) * y[1] - y[0]) / ε
+    /// ```
+    ///
+    /// where ε defines the *stiffness* of the problem + conditions (equation + initial conditions + step size + method).
+    ///
+    /// **Note:** Using the data from Eq (7.29), page 113.
     ///
     /// # Output
     ///

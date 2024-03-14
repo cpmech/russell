@@ -577,11 +577,22 @@ The step sizes from the DoPri solution with Tol = 1e-2 are illustrated below:
 
 ### <a name="van-der-pol"></a> Van der Pol's Equation
 
+This example corresponds Eq (1.5') on page 5 of Reference #2.
+
+The system is:
+
+```text
+y0' = y1
+y1' = ((1.0 - y[0] * y[0]) * y[1] - y[0]) / ε
+```
+
+where ε defines the *stiffness* of the problem + conditions (equation + initial conditions + step size + method).
+
 #### DoPri5
 
 This example corresponds to Fig 2.6 on page 23 of Reference #2. See also Eq (1.5') on page 5 of Reference #2.
 
-This example illustrated the *stiffness* (equation + initial conditions + step size + method) of the Van der Pol problem with ε = 0.003. In this example, DoPri5 with Tol = 1e-3 is used.
+This example illustrated the *stiffness* of the Van der Pol problem with ε = 0.003. In this example, DoPri5 with Tol = 1e-3 is used.
 
 This example also shows how to enable the stiffness detection.
 

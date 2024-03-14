@@ -4,7 +4,7 @@ use russell_ode::{Method, OdeSolver, Params, Samples};
 #[test]
 fn test_dopri5_arenstorf_debug() {
     // get ODE system
-    let (system, mut data, mut args) = Samples::arenstorf();
+    let (system, mut data, mut args, _) = Samples::arenstorf();
 
     // set configuration parameters
     let mut params = Params::new(Method::DoPri5);

@@ -40,7 +40,7 @@
 //! where `x` is the independent scalar variable (e.g., time), `{y}` is the solution vector,
 //! `{f}` is the right-hand side vector, and `[M]` is the so-called "mass matrix".
 //!
-//! **Note:** The mass matrix is optional and need not be specified.
+//! **Note:** The mass matrix is optional and need not be specified (unless the DAE under study requires it).
 //!
 //! The Jacobian is defined by:
 //!
@@ -51,6 +51,10 @@
 //! ```
 //!
 //! where `[J]` is the Jacobian matrix.
+//!
+//! **Note:** The Jacobian function is not required for explicit Runge-Kutta methods (see [Method] and [Information]). Thus, one may simply pass the [no_jacobian] function and set [HasJacobian::No] in the system.
+//!
+//! The flag [ParamsNewton::use_numerical_jacobian] may be set to true to compute the Jacobian matrix numerically. This option works with or without specifying the analytical Jacobian function.
 //!
 //! ## Recommended methods
 //!

@@ -4,8 +4,7 @@ use crate::{
 };
 use num_complex::Complex64;
 
-/// Checks the eigen-decomposition (similarity transformation) of a
-/// symmetric matrix with real-only eigenvalues and eigenvectors
+/// Checks the eigen-decomposition (similarity transformation) of a symmetric matrix with real-only eigenvalues and eigenvectors
 ///
 /// ```text
 /// a⋅v = v⋅λ
@@ -32,8 +31,7 @@ where
     approx_eq(mat_norm(&err, Norm::Max), 0.0, tolerance);
 }
 
-/// Checks the eigen-decomposition (similarity transformation) of a
-/// general matrix
+/// Checks the eigen-decomposition (similarity transformation) of a general matrix
 ///
 /// ```text
 /// a⋅v = v⋅λ
@@ -57,6 +55,35 @@ pub(crate) fn check_eigen_general<'a, T>(
     complex_mat_zip(&mut v, v_real, v_imag).unwrap();
     complex_vec_zip(&mut d, l_real, l_imag).unwrap();
     let lam = ComplexMatrix::diagonal(d.as_data());
+    let mut a_v = ComplexMatrix::new(m, m);
+    let mut v_l = ComplexMatrix::new(m, m);
+    let mut err = ComplexMatrix::filled(m, m, Complex64::new(f64::MAX, f64::MAX));
+    let one = Complex64::new(1.0, 0.0);
+    let m_one = Complex64::new(-1.0, 0.0);
+    complex_mat_mat_mul(&mut a_v, one, &a, &v).unwrap();
+    let norm_a_v = complex_mat_norm(&a_v, Norm::Max);
+    if norm_a_v <= f64::EPSILON {
+        panic!("norm(a⋅v) cannot be zero");
+    }
+    complex_mat_mat_mul(&mut v_l, one, &v, &lam).unwrap();
+    complex_mat_add(&mut err, one, &a_v, m_one, &v_l).unwrap();
+    approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, tolerance);
+}
+
+/// Checks the eigen-decomposition (similarity transformation) of a general matrix (complex version)
+///
+/// ```text
+/// a⋅v = v⋅λ
+/// err := a⋅v - v⋅λ
+/// ```
+#[allow(dead_code)]
+pub(crate) fn complex_check_eigen<'a, T>(data: &'a T, v: &ComplexMatrix, l: &ComplexVector, tolerance: f64)
+where
+    T: AsArray2D<'a, f64>,
+{
+    let a = ComplexMatrix::from(data);
+    let m = a.nrow();
+    let lam = ComplexMatrix::diagonal(l.as_data());
     let mut a_v = ComplexMatrix::new(m, m);
     let mut v_l = ComplexMatrix::new(m, m);
     let mut err = ComplexMatrix::filled(m, m, Complex64::new(f64::MAX, f64::MAX));

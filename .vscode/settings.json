@@ -1,6 +1,8 @@
 {
   "cSpell.words": [
     "aiᵢⱼ",
+    "alphai",
+    "alphar",
     "archlinux",
     "Arenstorf",
     "Arioli",
@@ -75,6 +77,7 @@
     "rowcoliter",
     "rowcolrig",
     "rustup",
+    "rwork",
     "Schur",
     "substeps",
     "Teukolsky",
@@ -86,6 +89,7 @@
     "Verner",
     "Vetterling",
     "zcopy",
+    "zgeev",
     "zgemm",
     "zgemv",
     "zgesv",

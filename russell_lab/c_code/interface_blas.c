@@ -11,6 +11,10 @@
 #define FN_DPOTRF dpotrf_
 #define FN_DSYEV dsyev_
 #define FN_DGEEV dgeev_
+#define FN_ZGEEV zgeev_
+#define FN_ZHEEV zheev_
+#define FN_DGGEV dggev_
+#define FN_ZGGEV zggev_
 #define FN_DGESVD dgesvd_
 #define FN_DGETRF dgetrf_
 #define FN_DGETRI dgetri_
@@ -27,6 +31,10 @@
 #define FN_DPOTRF LAPACK_dpotrf
 #define FN_DSYEV LAPACK_dsyev
 #define FN_DGEEV LAPACK_dgeev
+#define FN_ZGEEV LAPACK_zgeev
+#define FN_ZHEEV LAPACK_zheev
+#define FN_DGGEV LAPACK_dggev
+#define FN_ZGGEV LAPACK_zggev
 #define FN_DGESVD LAPACK_dgesvd
 #define FN_DGETRF LAPACK_dgetrf
 #define FN_DGETRI LAPACK_dgetri
@@ -183,6 +191,96 @@ void c_dgeev(C_BOOL calc_vl,
     const char *jobvl = calc_vl == C_TRUE ? "V" : "N";
     const char *jobvr = calc_vr == C_TRUE ? "V" : "N";
     FN_DGEEV(jobvl, jobvr, n, a, lda, wr, wi, vl, ldvl, vr, ldvr, work, lwork, info);
+}
+
+// Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices
+// <https://www.netlib.org/lapack/explore-html/dd/dba/zgeev_8f.html>
+void c_zgeev(
+    C_BOOL calc_vl,
+    C_BOOL calc_vr,
+    const int32_t *n,
+    COMPLEX64 *a,
+    const int32_t *lda,
+    COMPLEX64 *w,
+    COMPLEX64 *vl,
+    const int32_t *ldvl,
+    COMPLEX64 *vr,
+    const int32_t *ldvr,
+    COMPLEX64 *work,
+    const int32_t *lwork,
+    double *rwork,
+    int32_t *info) {
+    const char *jobvl = calc_vl == C_TRUE ? "V" : "N";
+    const char *jobvr = calc_vr == C_TRUE ? "V" : "N";
+    FN_ZGEEV(jobvl, jobvr, n, a, lda, w, vl, ldvl, vr, ldvr, work, lwork, rwork, info);
+}
+
+// Computes the eigenvalues and, optionally, the left and/or right eigenvectors for HE matrices
+// <https://www.netlib.org/lapack/explore-html/d6/dee/zheev_8f.html>
+void c_zheev(
+    C_BOOL calc_v,
+    C_BOOL upper,
+    lapack_int const *n,
+    COMPLEX64 *a,
+    lapack_int const *lda,
+    double *w,
+    COMPLEX64 *work,
+    lapack_int const *lwork,
+    double *rwork,
+    lapack_int *info) {
+    const char *jobz = calc_v == C_TRUE ? "V" : "N";
+    const char *uplo = upper == C_TRUE ? "U" : "L";
+    FN_ZHEEV(jobz, uplo, n, a, lda, w, work, lwork, rwork, info);
+}
+
+// Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices
+// <https://www.netlib.org/lapack/explore-html/d9/d52/dggev_8f.html>
+void c_dggev(
+    C_BOOL calc_vl,
+    C_BOOL calc_vr,
+    const int32_t *n,
+    double *A,
+    const int32_t *lda,
+    double *B,
+    const int32_t *ldb,
+    double *alphar,
+    double *alphai,
+    double *beta,
+    double *VL,
+    const int32_t *ldvl,
+    double *VR,
+    const int32_t *ldvr,
+    double *work,
+    const int32_t *lwork,
+    int32_t *info) {
+    const char *jobvl = calc_vl == C_TRUE ? "V" : "N";
+    const char *jobvr = calc_vr == C_TRUE ? "V" : "N";
+    FN_DGGEV(jobvl, jobvr, n, A, lda, B, ldb, alphar, alphai, beta, VL, ldvl, VR, ldvr, work, lwork, info);
+}
+
+// Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices
+// <https://www.netlib.org/lapack/explore-html/d3/d47/zggev_8f.html>
+void c_zggev(
+    C_BOOL calc_vl,
+    C_BOOL calc_vr,
+    const int32_t *n,
+    COMPLEX64 *a,
+    const int32_t *lda,
+    COMPLEX64 *b,
+    const int32_t *ldb,
+    COMPLEX64 *alpha,
+    COMPLEX64 *beta,
+    COMPLEX64 *vl,
+    const int32_t *ldvl,
+    COMPLEX64 *vr,
+    const int32_t *ldvr,
+    COMPLEX64 *work,
+    const int32_t *lwork,
+    double *rwork,
+    lapack_int *info) {
+    const char *jobvl = calc_vl == C_TRUE ? "V" : "N";
+    const char *jobvr = calc_vr == C_TRUE ? "V" : "N";
+    FN_ZGGEV(jobvl, jobvr, n, a, lda, b, ldb, alpha, beta, vl, ldvl, vr, ldvr, work, lwork, rwork, info);
 }
 
 // Computes the singular value decomposition (SVD)

@@ -79,7 +79,7 @@ pub(crate) fn check_eigen_general<'a, T>(
 #[allow(dead_code)]
 pub(crate) fn complex_check_eigen<'a, T>(data: &'a T, v: &ComplexMatrix, l: &ComplexVector, tolerance: f64)
 where
-    T: AsArray2D<'a, f64>,
+    T: AsArray2D<'a, Complex64>,
 {
     let a = ComplexMatrix::from(data);
     let m = a.nrow();
@@ -103,8 +103,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{check_eigen_general, check_eigen_real};
-    use crate::{Matrix, Vector};
+    use super::{check_eigen_general, check_eigen_real, complex_check_eigen};
+    use crate::{cpx, ComplexMatrix, ComplexVector, Matrix, Vector};
+    use num_complex::Complex64;
 
     #[test]
     #[should_panic]
@@ -140,7 +141,7 @@ mod tests {
         let s3 = f64::sqrt(3.0);
         let l_real = Vector::from(&[-0.5, -0.5, 1.0]);
         let l_imag = Vector::from(&[s3 / 2.0, -s3 / 2.0, 0.0]);
-        const WRONG: f64 = 123.0;
+        const WRONG: f64 = 123.0; // correct = -1.0
         let v_real = Matrix::from(&[
             [1.0 / s3, 1.0 / s3, -1.0 / s3],
             [-0.5 / s3, -0.5 / s3, -1.0 / s3],
@@ -174,5 +175,41 @@ mod tests {
         ]);
         let v_imag = Matrix::from(&[[0.0, 0.0, 0.0], [0.5, -0.5, 0.0], [-0.5, 0.5, 0.0]]);
         check_eigen_general(data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
+    }
+
+    #[test]
+    #[should_panic]
+    fn complex_check_eigen_panics_on_wrong_values() {
+        let data = &[
+            [cpx!(0.0, 0.0), cpx!(1.0, 0.0), cpx!(0.0, 0.0)],
+            [cpx!(0.0, 0.0), cpx!(0.0, 0.0), cpx!(1.0, 0.0)],
+            [cpx!(1.0, 0.0), cpx!(0.0, 0.0), cpx!(0.0, 0.0)],
+        ];
+        let s3 = f64::sqrt(3.0);
+        let l = ComplexVector::from(&[cpx!(-0.5, s3 / 2.0), cpx!(-0.5, -s3 / 2.0), cpx!(1.0, 0.0)]);
+        const WRONG: f64 = 123.0; // correct = -1.0
+        let v = ComplexMatrix::from(&[
+            [cpx!(1.0 / s3, 0.0), cpx!(1.0 / s3, 0.0), cpx!(-1.0 / s3, 0.0)],
+            [cpx!(-0.5 / s3, 0.5), cpx!(-0.5 / s3, -0.5), cpx!(-1.0 / s3, 0.0)],
+            [cpx!(-0.5 / s3, -0.5), cpx!(-0.5 / s3, 0.5), cpx!(WRONG / s3, 0.0)],
+        ]);
+        complex_check_eigen(data, &v, &l, 1e-15);
+    }
+
+    #[test]
+    fn complex_check_eigen_works() {
+        let data = &[
+            [cpx!(0.0, 0.0), cpx!(1.0, 0.0), cpx!(0.0, 0.0)],
+            [cpx!(0.0, 0.0), cpx!(0.0, 0.0), cpx!(1.0, 0.0)],
+            [cpx!(1.0, 0.0), cpx!(0.0, 0.0), cpx!(0.0, 0.0)],
+        ];
+        let s3 = f64::sqrt(3.0);
+        let l = ComplexVector::from(&[cpx!(-0.5, s3 / 2.0), cpx!(-0.5, -s3 / 2.0), cpx!(1.0, 0.0)]);
+        let v = ComplexMatrix::from(&[
+            [cpx!(1.0 / s3, 0.0), cpx!(1.0 / s3, 0.0), cpx!(-1.0 / s3, 0.0)],
+            [cpx!(-0.5 / s3, 0.5), cpx!(-0.5 / s3, -0.5), cpx!(-1.0 / s3, 0.0)],
+            [cpx!(-0.5 / s3, -0.5), cpx!(-0.5 / s3, 0.5), cpx!(-1.0 / s3, 0.0)],
+        ]);
+        complex_check_eigen(data, &v, &l, 1e-15);
     }
 }

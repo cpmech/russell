@@ -350,12 +350,12 @@ mod tests {
     }
 
     #[test]
-    fn complex_mat_eigen_works() {
+    fn complex_mat_eigen_works_real_matrix() {
         #[rustfmt::skip]
         let data = [
-            [0.0, 1.0, 0.0],
-            [0.0, 0.0, 1.0],
-            [1.0, 0.0, 0.0],
+            [cpx!(0.0, 0.0), cpx!(1.0, 0.0), cpx!(0.0, 0.0)],
+            [cpx!(0.0, 0.0), cpx!(0.0, 0.0), cpx!(1.0, 0.0)],
+            [cpx!(1.0, 0.0), cpx!(0.0, 0.0), cpx!(0.0, 0.0)],
         ];
         let mut a = ComplexMatrix::from(&data);
         let m = a.nrow();
@@ -373,10 +373,10 @@ mod tests {
         // rep: repeated eigenvalues
         #[rustfmt::skip]
         let data = [
-            [2.0, 0.0, 0.0, 0.0],
-            [1.0, 2.0, 0.0, 0.0],
-            [0.0, 1.0, 3.0, 0.0],
-            [0.0, 0.0, 1.0, 3.0],
+            [cpx!(2.0, 0.0), cpx!(0.0, 0.0), cpx!(0.0, 0.0), cpx!(0.0, 0.0)],
+            [cpx!(1.0, 0.0), cpx!(2.0, 0.0), cpx!(0.0, 0.0), cpx!(0.0, 0.0)],
+            [cpx!(0.0, 0.0), cpx!(1.0, 0.0), cpx!(3.0, 0.0), cpx!(0.0, 0.0)],
+            [cpx!(0.0, 0.0), cpx!(0.0, 0.0), cpx!(1.0, 0.0), cpx!(3.0, 0.0)],
         ];
         let mut a = ComplexMatrix::from(&data);
         let m = a.nrow();
@@ -389,12 +389,12 @@ mod tests {
     }
 
     #[test]
-    fn complex_mat_eigen_lr_works() {
+    fn complex_mat_eigen_lr_works_real_matrix() {
         #[rustfmt::skip]
         let data = [
-            [0.0, 1.0, 0.0],
-            [0.0, 0.0, 1.0],
-            [1.0, 0.0, 0.0],
+            [cpx!(0.0, 0.0), cpx!(1.0, 0.0), cpx!(0.0, 0.0)],
+            [cpx!(0.0, 0.0), cpx!(0.0, 0.0), cpx!(1.0, 0.0)],
+            [cpx!(1.0, 0.0), cpx!(0.0, 0.0), cpx!(0.0, 0.0)],
         ];
         let mut a = ComplexMatrix::from(&data);
         let m = a.nrow();
@@ -406,5 +406,29 @@ mod tests {
         let l_correct = &[cpx!(-0.5, s3 / 2.0), cpx!(-0.5, -s3 / 2.0), cpx!(1.0, 0.0)];
         complex_vec_approx_eq(l.as_data(), l_correct, 1e-15);
         complex_check_eigen(&data, &v, &l, 1e-15);
+    }
+
+    #[test]
+    fn complex_mat_eigen_works_complex_matrix() {
+        // https://www.ibm.com/docs/en/essl/6.3?topic=eas-sgeev-dgeev-cgeev-zgeev-sgeevx-dgeevx-cgeevx-zgeevx-eigenvalues-optionally-right-eigenvectors-left-eigenvectors-reciprocal-condition-numbers-eigenvalues-reciprocal-condition-numbers-right-eigenvectors-general-matrix
+        #[rustfmt::skip]
+        let data = [
+            [cpx!(5.0, 9.0), cpx!(5.0,  5.0), cpx!(-6.0, -6.0), cpx!(-7.0, -7.0)],
+            [cpx!(3.0, 3.0), cpx!(6.0, 10.0), cpx!(-5.0, -5.0), cpx!(-6.0, -6.0)],
+            [cpx!(2.0, 2.0), cpx!(3.0,  3.0), cpx!(-1.0,  3.0), cpx!(-5.0, -5.0)],
+            [cpx!(1.0, 1.0), cpx!(2.0,  2.0), cpx!(-3.0, -3.0), cpx!( 0.0,  4.0)],
+        ];
+        let mut a = ComplexMatrix::from(&data);
+        let m = a.nrow();
+        let mut l = ComplexVector::new(m);
+        let mut v = ComplexMatrix::new(m, m);
+        complex_mat_eigen(&mut l, &mut v, &mut a).unwrap();
+        let l_correct = &[
+            cpx!(2.0000, 6.0000),
+            cpx!(4.0000, 8.0000),
+            cpx!(3.0000, 7.0000),
+            cpx!(1.0000, 5.0000),
+        ];
+        complex_vec_approx_eq(l.as_data(), l_correct, 1e-14);
     }
 }

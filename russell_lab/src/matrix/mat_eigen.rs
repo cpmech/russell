@@ -43,7 +43,7 @@ extern "C" {
 ///
 /// # Input
 ///
-/// * `a` -- (m,m) general matrix [will be modified]
+/// * `a` -- (m,m) general matrix (will be modified)
 ///
 /// # Note
 ///
@@ -209,7 +209,7 @@ pub fn mat_eigen(
 ///
 /// # Input
 ///
-/// * `a` -- (m,m) general matrix [will be modified]
+/// * `a` -- (m,m) general matrix (will be modified)
 ///
 /// # Note
 ///

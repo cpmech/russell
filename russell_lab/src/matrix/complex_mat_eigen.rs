@@ -170,7 +170,7 @@ pub fn complex_mat_eigen(l: &mut ComplexVector, v: &mut ComplexMatrix, a: &mut C
 ///
 /// # Input
 ///
-/// * `a` -- (m,m) general matrix [will be modified]
+/// * `a` -- (m,m) general matrix (will be modified)
 ///
 /// # Notes
 ///

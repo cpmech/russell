@@ -32,6 +32,8 @@ extern "C" {
 ///
 /// where `lj` is the component j of `l` and `vj` is the column j of `v`.
 ///
+/// See also: <https://www.netlib.org/lapack/explore-html/d9/d28/dgeev_8f.html>
+///
 /// # Output
 ///
 /// * `l_real` -- (m) eigenvalues; real part
@@ -193,6 +195,8 @@ pub fn mat_eigen(
 /// ```
 ///
 /// where `vj` is the column j of `v`.
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/d9/d28/dgeev_8f.html>
 ///
 /// # Output
 ///

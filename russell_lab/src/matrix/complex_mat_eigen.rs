@@ -34,6 +34,8 @@ extern "C" {
 ///
 /// where `lj` is the component j of `l` and `vj` is the column j of `v`.
 ///
+/// See also: <https://www.netlib.org/lapack/explore-html/dd/dba/zgeev_8f.html>
+///
 /// # Output
 ///
 /// * `l` -- (m) eigenvalues
@@ -157,6 +159,8 @@ pub fn complex_mat_eigen(l: &mut ComplexVector, v: &mut ComplexMatrix, a: &mut C
 /// ```
 ///
 /// where `vj` is the column j of `v`.
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/dd/dba/zgeev_8f.html>
 ///
 /// # Output
 ///

@@ -30,6 +30,8 @@ extern "C" {
 /// The computed eigenvectors are normalized to have Euclidean norm
 /// equal to 1 and largest component real.
 ///
+/// See also: <https://netlib.org/lapack/explore-html/dd/d4c/dsyev_8f.html>
+///
 /// # Input
 ///
 /// * `A` -- (modified on exit) matrix to compute eigenvalues (SYMMETRIC and SQUARE)

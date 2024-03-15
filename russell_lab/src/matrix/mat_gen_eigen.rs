@@ -43,6 +43,8 @@ extern "C" {
 /// - If alpha_imag(j) = 0, then the j-th eigenvalue is real.
 /// - If alpha_imag(j) > 0, then the j-th and (j+1)-th eigenvalues are a complex conjugate pair.
 ///
+/// See also: <https://www.netlib.org/lapack/explore-html/d9/d52/dggev_8f.html>
+///
 /// # Output
 ///
 /// * `alpha_real` -- (m) real part to compose the eigenvalues
@@ -190,6 +192,8 @@ pub fn mat_gen_eigen(
 ///
 /// - If alpha_imag(j) = 0, then the j-th eigenvalue is real.
 /// - If alpha_imag(j) > 0, then the j-th and (j+1)-th eigenvalues are a complex conjugate pair.
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/d9/d52/dggev_8f.html>
 ///
 /// # Output
 ///

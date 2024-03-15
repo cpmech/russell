@@ -127,6 +127,14 @@ See also:
 * [russell_lab/examples](https://github.com/cpmech/russell/tree/main/russell_lab/examples)
 * [russell_sparse/examples](https://github.com/cpmech/russell/tree/main/russell_sparse/examples)
 
+**Note:** For the functions dealing with complex numbers, the following line must be added to all derived code:
+
+```rust
+use num_complex::Complex64;
+```
+
+This line will bring `Complex64` to the scope. For convenience the (russell_lab) macro `cpx!` may be used to allocate complex numbers.
+
 ### Compute a singular value decomposition
 
 ```rust

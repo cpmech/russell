@@ -21,6 +21,14 @@
 //! * Reading writing files ([read_table()]) , linspace ([NumVector::linspace()]), grid generators ([generate2d()]), [generate3d()]), [linear_fitting()], [Stopwatch] and more
 //! * Checking results, comparing float point numbers, and verifying the correctness of derivatives; see [crate::check]
 //!
+//! **Note:** For the functions dealing with complex numbers, the following line must be added to all derived code:
+//!
+//! ```
+//! use num_complex::Complex64;
+//! ```
+//!
+//! This line will bring [num_complex::Complex64] to the scope. For convenience the (russell_lab) macro [crate::cpx!] may be used to allocate complex numbers.
+//!
 //! # Example - Cholesky factorization
 //!
 //! ```

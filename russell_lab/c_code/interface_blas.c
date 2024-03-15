@@ -16,6 +16,7 @@
 #define FN_DGGEV dggev_
 #define FN_ZGGEV zggev_
 #define FN_DGESVD dgesvd_
+#define FN_ZGESVD zgesvd_
 #define FN_DGETRF dgetrf_
 #define FN_DGETRI dgetri_
 #define FN_ZGETRF zgetrf_
@@ -36,6 +37,7 @@
 #define FN_DGGEV LAPACK_dggev
 #define FN_ZGGEV LAPACK_zggev
 #define FN_DGESVD LAPACK_dgesvd
+#define FN_ZGESVD LAPACK_zgesvd
 #define FN_DGETRF LAPACK_dgetrf
 #define FN_DGETRI LAPACK_dgetri
 #define FN_ZGETRF LAPACK_zgetrf
@@ -308,6 +310,34 @@ void c_dgesvd(int32_t jobu_code,
                         : jobvt_code == SVD_CODE_O ? "O"
                                                    : "N";
     FN_DGESVD(jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt, work, lwork, info);
+}
+
+// Computes the singular value decomposition (SVD)
+// <https://www.netlib.org/lapack/explore-html/d6/d42/zgesvd_8f.html>
+void c_zgesvd(int32_t jobu_code,
+              int32_t jobvt_code,
+              const int32_t *m,
+              const int32_t *n,
+              COMPLEX64 *a,
+              const int32_t *lda,
+              double *s,
+              COMPLEX64 *u,
+              const int32_t *ldu,
+              COMPLEX64 *vh,
+              const int32_t *ldvt,
+              COMPLEX64 *work,
+              const int32_t *lwork,
+              double *rwork,
+              int32_t *info) {
+    const char *jobu = jobu_code == SVD_CODE_A   ? "A"
+                       : jobu_code == SVD_CODE_S ? "S"
+                       : jobu_code == SVD_CODE_O ? "O"
+                                                 : "N";
+    const char *jobvt = jobvt_code == SVD_CODE_A   ? "A"
+                        : jobvt_code == SVD_CODE_S ? "S"
+                        : jobvt_code == SVD_CODE_O ? "O"
+                                                   : "N";
+    FN_ZGESVD(jobu, jobvt, m, n, a, lda, s, u, ldu, vh, ldvt, work, lwork, rwork, info);
 }
 
 // Computes the LU factorization of a general (m,n) matrix

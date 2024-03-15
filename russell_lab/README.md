@@ -7,6 +7,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 * [Introduction](#introduction)
 * [Installation](#debian)
 * [Setting Cargo.toml](#cargo)
+* [Complex numbers](#complex-numbers)
 * [Examples](#examples)
 * [About the column major representation](#col-major)
 * [Benchmarks](#benchmarks)
@@ -49,6 +50,16 @@ This crate depends on an efficient BLAS library such as [OpenBLAS](https://githu
 [dependencies]
 russell_lab = "*"
 ```
+
+## <a name="complex-numbers"></a> Complex numbers
+
+**Note:** For the functions dealing with complex numbers, the following line must be added to all derived code:
+
+```rust
+use num_complex::Complex64;
+```
+
+This line will bring `Complex64` to the scope. For convenience the (russell_lab) macro `cpx!` may be used to allocate complex numbers.
 
 ## <a name="examples"></a> Examples
 

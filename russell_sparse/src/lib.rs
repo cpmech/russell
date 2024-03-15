@@ -64,6 +64,16 @@
 //!
 //! ![doc-example-vismatrix](https://raw.githubusercontent.com/cpmech/russell/main/russell_sparse/data/figures/doc-example-vismatrix.png)
 //!
+//! # Complex numbers
+//!
+//! **Note:** For the functions dealing with complex numbers, the following line must be added to all derived code:
+//!
+//! ```rust
+//! use num_complex::Complex64;
+//! ```
+//!
+//! This line will bring `Complex64` to the scope. For convenience the (russell_lab) macro `cpx!` may be used to allocate complex numbers.
+//!
 //! # Examples
 //!
 //! ## Create CSR matrix from COO

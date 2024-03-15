@@ -239,23 +239,23 @@ void c_dggev(
     C_BOOL calc_vl,
     C_BOOL calc_vr,
     const int32_t *n,
-    double *A,
+    double *a,
     const int32_t *lda,
-    double *B,
+    double *b,
     const int32_t *ldb,
     double *alphar,
     double *alphai,
     double *beta,
-    double *VL,
+    double *vl,
     const int32_t *ldvl,
-    double *VR,
+    double *vr,
     const int32_t *ldvr,
     double *work,
     const int32_t *lwork,
     int32_t *info) {
     const char *jobvl = calc_vl == C_TRUE ? "V" : "N";
     const char *jobvr = calc_vr == C_TRUE ? "V" : "N";
-    FN_DGGEV(jobvl, jobvr, n, A, lda, B, ldb, alphar, alphai, beta, VL, ldvl, VR, ldvr, work, lwork, info);
+    FN_DGGEV(jobvl, jobvr, n, a, lda, b, ldb, alphar, alphai, beta, vl, ldvl, vr, ldvr, work, lwork, info);
 }
 
 // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices

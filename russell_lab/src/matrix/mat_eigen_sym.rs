@@ -87,7 +87,7 @@ pub fn mat_eigen_sym(l: &mut Vector, a: &mut Matrix, upper: bool) -> Result<(), 
 mod tests {
     use super::{mat_eigen_sym, Matrix};
     use crate::math::SQRT_2;
-    use crate::matrix::testing::check_eigen_real;
+    use crate::matrix::testing::check_eigen_sym;
     use crate::{mat_approx_eq, vec_approx_eq, AsArray2D, Vector};
 
     fn calc_eigen_lower<'a, T>(data: &'a T) -> (Vector, Matrix)
@@ -203,7 +203,7 @@ mod tests {
         mat_approx_eq(&vv, correct, 1e-15);
         vec_approx_eq(l.as_data(), &[0.0, 2.0, 2.0], 1e-15);
         vec_approx_eq(ll.as_data(), &[0.0, 2.0, 2.0], 1e-15);
-        check_eigen_real(data, &v, &l, 1e-15);
+        check_eigen_sym(data, &v, &l, 1e-15);
 
         // 3-repeated / diagonal
         #[rustfmt::skip]
@@ -224,7 +224,7 @@ mod tests {
         mat_approx_eq(&vv, correct, 1e-15);
         vec_approx_eq(l.as_data(), &[2.0, 2.0, 2.0], 1e-15);
         vec_approx_eq(ll.as_data(), &[2.0, 2.0, 2.0], 1e-15);
-        check_eigen_real(data, &v, &l, 1e-15);
+        check_eigen_sym(data, &v, &l, 1e-15);
     }
 
     #[test]
@@ -245,7 +245,7 @@ mod tests {
         ];
         mat_approx_eq(&v, correct, 1e-15);
         vec_approx_eq(l.as_data(), &[1.0, 2.0, 11.0], 1e-15);
-        check_eigen_real(data, &v, &l, 1e-15);
+        check_eigen_sym(data, &v, &l, 1e-15);
     }
 
     #[test]
@@ -257,7 +257,7 @@ mod tests {
             [3.0, 2.0, 2.0],
         ];
         let (l, v) = calc_eigen_lower(data);
-        check_eigen_real(data, &v, &l, 1e-14);
+        check_eigen_sym(data, &v, &l, 1e-14);
     }
 
     #[test]
@@ -271,7 +271,7 @@ mod tests {
             [5.0, 4.0, 3.0, 2.0, 1.0],
         ];
         let (l, v) = calc_eigen_lower(data);
-        check_eigen_real(data, &v, &l, 1e-14);
+        check_eigen_sym(data, &v, &l, 1e-14);
     }
 
     #[test]
@@ -334,9 +334,9 @@ mod tests {
             let (l, v) = calc_eigen_lower(data);
             let (ll, vv) = calc_eigen_upper(data);
             let (lll, vvv) = calc_eigen_upper_with_full(data);
-            check_eigen_real(data, &v, &l, *tol);
-            check_eigen_real(data, &vv, &ll, *tol);
-            check_eigen_real(data, &vvv, &lll, *tol);
+            check_eigen_sym(data, &v, &l, *tol);
+            check_eigen_sym(data, &vv, &ll, *tol);
+            check_eigen_sym(data, &vvv, &lll, *tol);
             // test_id += 1;
         }
     }

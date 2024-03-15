@@ -20,6 +20,7 @@
     "dgesvd",
     "dgetrf",
     "dgetri",
+    "dggev",
     "dgssvx",
     "Dᵢⱼₖₗ",
     "dopri",

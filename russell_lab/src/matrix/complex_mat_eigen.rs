@@ -67,7 +67,7 @@ extern "C" {
 ///     // perform the eigen-decomposition
 ///     complex_mat_eigen(&mut l, &mut v, &mut a)?;
 ///
-///     // check results
+///     // check the eigenvalues
 ///     assert_eq!(
 ///         format!("{:.1}", l),
 ///         "┌           ┐\n\
@@ -77,8 +77,7 @@ extern "C" {
 ///          └           ┘"
 ///     );
 ///
-///     // check eigen-decomposition (similarity transformation) of a
-///     // symmetric matrix with real-only eigenvalues and eigenvectors
+///     // check the eigen-decomposition
 ///     let a_copy = ComplexMatrix::from(&data);
 ///     let lam = ComplexMatrix::diagonal(l.as_data());
 ///     let mut a_v = ComplexMatrix::new(m, m);

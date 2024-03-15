@@ -559,10 +559,10 @@ mod tests {
         let mut beta = Vector::new(m);
         let mut v = Matrix::new(m, m);
         mat_gen_eigen(&mut alpha_real, &mut alpha_imag, &mut beta, &mut v, &mut a, &mut b).unwrap();
-        println!("Re(α) =\n{}", alpha_real);
-        println!("Im(α) =\n{}", alpha_imag);
-        println!("β =\n{}", beta);
-        println!("v =\n{}", v);
+        // println!("Re(α) =\n{}", alpha_real);
+        // println!("Im(α) =\n{}", alpha_imag);
+        // println!("β =\n{}", beta);
+        // println!("v =\n{}", v);
         // compare with reference (scipy)
         let alpha_real_ref = &[-5.040877033060623, 1.9878762745291856, 4.490731195102491];
         let alpha_imag_ref = &[0.0, 0.0, 0.0];

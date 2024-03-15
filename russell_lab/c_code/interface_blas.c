@@ -220,14 +220,14 @@ void c_zgeev(
 void c_zheev(
     C_BOOL calc_v,
     C_BOOL upper,
-    lapack_int const *n,
+    int32_t const *n,
     COMPLEX64 *a,
-    lapack_int const *lda,
+    int32_t const *lda,
     double *w,
     COMPLEX64 *work,
-    lapack_int const *lwork,
+    int32_t const *lwork,
     double *rwork,
-    lapack_int *info) {
+    int32_t *info) {
     const char *jobz = calc_v == C_TRUE ? "V" : "N";
     const char *uplo = upper == C_TRUE ? "U" : "L";
     FN_ZHEEV(jobz, uplo, n, a, lda, w, work, lwork, rwork, info);
@@ -277,7 +277,7 @@ void c_zggev(
     COMPLEX64 *work,
     const int32_t *lwork,
     double *rwork,
-    lapack_int *info) {
+    int32_t *info) {
     const char *jobvl = calc_vl == C_TRUE ? "V" : "N";
     const char *jobvr = calc_vr == C_TRUE ? "V" : "N";
     FN_ZGGEV(jobvl, jobvr, n, a, lda, b, ldb, alpha, beta, vl, ldvl, vr, ldvr, work, lwork, rwork, info);

@@ -98,6 +98,7 @@
     "zgesvd",
     "zgetrf",
     "zgetri",
+    "zggev",
     "zheev",
     "zherk",
     "zlange",

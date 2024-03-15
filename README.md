@@ -341,10 +341,15 @@ fn main() -> Result<(), StrError> {
 
 ## <a name="todo"></a> Todo list
 
+- [ ] Further develop crate `russell_ode`
+    - [x] Implement explicit Runge-Kutta solvers
+    - [x] Implement Radau5 for DAEs
 - [ ] Improve crate `russell_lab`
     - [x] Implement more integration tests for linear algebra
     - [x] Implement more examples
     - [ ] Implement more benchmarks
+    - [ ] Wrap more BLAS/LAPACK functions
+        - [ ] Implement dggev, zggev, zheev, and zgeev
     - [x] Wrap Intel MKL (option for OpenBLAS)
     - [x] Add more complex number functions
     - [ ] Add fundamental functions to `russell_lab`
@@ -353,7 +358,7 @@ fn main() -> Result<(), StrError> {
         - [ ] Implement Brent's solver
         - [ ] Implement a solver for the cubic equation
         - [x] Implement numerical derivation
-        - [x] Implement numerical Jacobian function
+        - [ ] Implement numerical Jacobian function
         - [ ] Implement Newton's method for nonlinear systems
         - [ ] Implement numerical quadrature
     - [ ] Add interpolation and polynomials to `russell_lab`

@@ -43,9 +43,9 @@ impl Samples {
     /// Implements a simple ODE with a single equation and constant derivative
     ///
     /// ```text
-    /// dy
-    /// —— = 1   with   y(x=0)=0    thus   y(x) = x
-    /// dx
+    ///      dy
+    /// y' = —— = 1   with   y(x=0)=0    thus   y(x) = x
+    ///      dx
     /// ```
     ///
     /// # Output
@@ -236,6 +236,645 @@ impl Samples {
         (system, data, 0)
     }
 
+    /// Returns the Brusselator problem (ODE version) described in Hairer-Nørsett-Wanner, Part I, page 116
+    ///
+    /// This example corresponds to Fig 16.4 on page 116 of the reference.
+    /// See also Eq (16.12) on page 116 of the reference.
+    ///
+    /// The system is:
+    ///
+    /// ```text
+    /// y0' = 1 - 4 y0 + y0² y1
+    /// y1' = 3 y0 - y0² y1
+    ///
+    /// with  y0(x=0) = 3/2  and  y1(x=0) = 3
+    /// ```
+    ///
+    /// The Jacobian matrix is:
+    ///
+    /// ```text
+    ///          ┌                     ┐
+    ///     df   │ -4 + 2 y0 y1    y0² │
+    /// J = —— = │                     │
+    ///     dy   │  3 - 2 y0 y1   -y0² │
+    ///          └                     ┘
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, args, y_ref)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `NoArgs`
+    /// * `data: SampleData` -- holds the initial values
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `y_ref` -- is a reference solution, computed with high-accuracy by Mathematica
+    ///
+    /// # Reference
+    ///
+    /// * Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
+    ///   Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
+    ///   in Computational Mathematics, 528p
+    pub fn brusselator_ode() -> (
+        System<
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
+        >,
+        SampleData,
+        NoArgs,
+        Vector,
+    ) {
+        // initial values
+        let x0 = 0.0;
+        let y0 = Vector::from(&[3.0 / 2.0, 3.0]);
+        let x1 = 20.0;
+
+        // ODE system
+        let ndim = 2;
+        let jac_nnz = 4;
+        let system = System::new(
+            ndim,
+            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
+                f[0] = 1.0 - 4.0 * y[0] + y[0] * y[0] * y[1];
+                f[1] = 3.0 * y[0] - y[0] * y[0] * y[1];
+                Ok(())
+            },
+            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
+                jj.reset();
+                jj.put(0, 0, m * (-4.0 + 2.0 * y[0] * y[1])).unwrap();
+                jj.put(0, 1, m * (y[0] * y[0])).unwrap();
+                jj.put(1, 0, m * (3.0 - 2.0 * y[0] * y[1])).unwrap();
+                jj.put(1, 1, m * (-y[0] * y[0])).unwrap();
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+
+        // control
+        let data = SampleData {
+            x0,
+            y0,
+            x1,
+            h_equal: Some(0.1),
+            y_analytical: None,
+        };
+
+        // reference solution; using the following Mathematica code:
+        // ```Mathematica
+        // Needs["DifferentialEquations`NDSolveProblems`"];
+        // Needs["DifferentialEquations`NDSolveUtilities`"];
+        // sys = GetNDSolveProblem["BrusselatorODE"];
+        // sol = NDSolve[sys, Method -> "StiffnessSwitching", WorkingPrecision -> 32];
+        // ref = First[FinalSolutions[sys, sol]]
+        // ```
+        let y_ref = Vector::from(&[0.4986370712683478291402659846476, 4.596780349452011024598321237263]);
+        (system, data, 0, y_ref)
+    }
+
+    /// Returns the Arenstorf orbit problem, Hairer-Wanner, Part I, Eq(0.1), page 129
+    ///
+    /// This example corresponds to Fig 0.1 on page 130 of the reference.
+    /// See also Eqs (0.1) and (0.2) on page 129 and 130 of the reference.
+    ///
+    /// From Hairer-Nørsett-Wanner:
+    ///
+    /// "(...) an example from Astronomy, the restricted three body problem. (...)
+    /// two bodies of masses μ' = 1 − μ and μ in circular rotation in a plane and
+    /// a third body of negligible mass moving around in the same plane. (...)"
+    ///
+    /// The system equations are:
+    ///
+    /// ```text
+    /// y0'' = y0 + 2 y1' - μ' (y0 + μ) / d0 - μ (y0 - μ') / d1
+    /// y1'' = y1 - 2 y0' - μ' y1 / d0 - μ y1 / d1
+    /// ```
+    ///
+    /// With the assignments:
+    ///
+    /// ```text
+    /// y2 := y0'  ⇒  y2' = y0''
+    /// y3 := y1'  ⇒  y3' = y1''
+    /// ```
+    ///
+    /// We obtain a 4-dim problem:
+    ///
+    /// ```text
+    /// f0 := y0' = y2
+    /// f1 := y1' = y3
+    /// f2 := y2' = y0 + 2 y3 - μ' (y0 + μ) / d0 - μ (y0 - μ') / d1
+    /// f3 := y3' = y1 - 2 y2 - μ' y1 / d0 - μ y1 / d1
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, args)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `NoArgs`
+    /// * `data: SampleData` -- holds the initial values
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `y_ref` -- is a reference solution, computed with high-accuracy by Mathematica
+    ///
+    /// # Reference
+    ///
+    /// * Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
+    ///   Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
+    ///   in Computational Mathematics, 528p
+    pub fn arenstorf() -> (
+        System<
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
+        >,
+        SampleData,
+        NoArgs,
+        Vector,
+    ) {
+        const MU: f64 = 0.012277471;
+        const MD: f64 = 1.0 - MU;
+        let x0 = 0.0;
+        let y0 = Vector::from(&[0.994, 0.0, 0.0, -2.00158510637908252240537862224]);
+        let x1 = 17.0652165601579625588917206249;
+        let ndim = 4;
+        let jac_nnz = 8;
+        let system = System::new(
+            ndim,
+            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
+                let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
+                let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
+                let d0 = t0 * f64::sqrt(t0);
+                let d1 = t1 * f64::sqrt(t1);
+                f[0] = y[2];
+                f[1] = y[3];
+                f[2] = y[0] + 2.0 * y[3] - MD * (y[0] + MU) / d0 - MU * (y[0] - MD) / d1;
+                f[3] = y[1] - 2.0 * y[2] - MD * y[1] / d0 - MU * y[1] / d1;
+                Ok(())
+            },
+            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
+                let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
+                let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
+                let s0 = f64::sqrt(t0);
+                let s1 = f64::sqrt(t1);
+                let d0 = t0 * s0;
+                let d1 = t1 * s1;
+                let dd0 = d0 * d0;
+                let dd1 = d1 * d1;
+                let a = y[0] + MU;
+                let b = y[0] - MD;
+                let c = -MD / d0 - MU / d1;
+                let dj00 = 3.0 * a * s0;
+                let dj01 = 3.0 * y[1] * s0;
+                let dj10 = 3.0 * b * s1;
+                let dj11 = 3.0 * y[1] * s1;
+                jj.reset();
+                jj.put(0, 2, 1.0 * m).unwrap();
+                jj.put(1, 3, 1.0 * m).unwrap();
+                jj.put(2, 0, (1.0 + a * dj00 * MD / dd0 + b * dj10 * MU / dd1 + c) * m)
+                    .unwrap();
+                jj.put(2, 1, (a * dj01 * MD / dd0 + b * dj11 * MU / dd1) * m).unwrap();
+                jj.put(2, 3, 2.0 * m).unwrap();
+                jj.put(3, 0, (dj00 * y[1] * MD / dd0 + dj10 * y[1] * MU / dd1) * m)
+                    .unwrap();
+                jj.put(3, 1, (1.0 + dj01 * y[1] * MD / dd0 + dj11 * y[1] * MU / dd1 + c) * m)
+                    .unwrap();
+                jj.put(3, 2, -2.0 * m).unwrap();
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+        let data = SampleData {
+            x0,
+            y0,
+            x1,
+            h_equal: None,
+            y_analytical: None,
+        };
+        // reference solution from Mathematica
+        let y_ref = Vector::from(&[
+            0.99399999999999280751004722382642,
+            2.4228439406717e-14,
+            3.6631563591513e-12,
+            -2.0015851063802005176067408813970,
+        ]);
+        (system, data, 0, y_ref)
+    }
+
+    /// Returns the Hairer-Wanner problem from the reference, Part II, Eq(1.1), page 2 (with analytical solution)
+    ///
+    /// This example corresponds to Fig 1.1 and Fig 1.2 on page 2 of the reference.
+    /// See also Eq (1.1) on page 2 of the reference
+    ///
+    /// The system is:
+    ///
+    /// ```text
+    /// y0' = -50 (y0 - cos(x))
+    ///
+    /// with  y0(x=0) = 0
+    /// ```
+    ///
+    /// The Jacobian matrix is:
+    ///
+    /// ```text
+    ///     df   ┌     ┐
+    /// J = —— = │ -50 │
+    ///     dy   └     ┘
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, args)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `NoArgs`
+    /// * `data: SampleData` -- holds the initial values and the analytical solution
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    ///
+    /// # Reference
+    ///
+    /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
+    ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
+    ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
+    pub fn hairer_wanner_eq1() -> (
+        System<
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
+        >,
+        SampleData,
+        NoArgs,
+    ) {
+        const L: f64 = -50.0; // lambda
+        let ndim = 1;
+        let jac_nnz = 1;
+        let system = System::new(
+            ndim,
+            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+                f[0] = L * (y[0] - f64::cos(x));
+                Ok(())
+            },
+            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut NoArgs| {
+                jj.reset();
+                jj.put(0, 0, multiplier * L).unwrap();
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+        let data = SampleData {
+            x0: 0.0,
+            y0: Vector::from(&[0.0]),
+            x1: 1.5,
+            h_equal: Some(1.875 / 50.0),
+            y_analytical: Some(|y, x| {
+                y[0] = -L * (f64::sin(x) - L * f64::cos(x) + L * f64::exp(L * x)) / (L * L + 1.0);
+            }),
+        };
+        (system, data, 0)
+    }
+
+    /// Returns the Robertson's equation, Hairer-Wanner, Part II, Eq(1.4), page 3
+    ///
+    /// This example corresponds to Fig 1.3 on page 4 of the reference.
+    /// See also Eq (1.4) on page 3 of the reference.
+    ///
+    /// The system is:
+    ///
+    /// ```text
+    /// y0' = -0.04 y0 + 1.0e4 y1 y2
+    /// y1' =  0.04 y0 - 1.0e4 y1 y2 - 3.0e7 y1²
+    /// y2' =                          3.0e7 y1²
+    ///
+    /// with  y0(0) = 1, y1(0) = 0, y2(0) = 0
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, args)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `NoArgs`
+    /// * `data: SampleData` -- holds the initial values
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    ///
+    /// # Reference
+    ///
+    /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
+    ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
+    ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
+    pub fn robertson() -> (
+        System<
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
+        >,
+        SampleData,
+        NoArgs,
+    ) {
+        let ndim = 3;
+        let jac_nnz = 7;
+        let system = System::new(
+            ndim,
+            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
+                f[0] = -0.04 * y[0] + 1.0e4 * y[1] * y[2];
+                f[1] = 0.04 * y[0] - 1.0e4 * y[1] * y[2] - 3.0e7 * y[1] * y[1];
+                f[2] = 3.0e7 * y[1] * y[1];
+                Ok(())
+            },
+            |jj: &mut CooMatrix, _x: f64, y: &Vector, multiplier: f64, _args: &mut NoArgs| {
+                jj.reset();
+                jj.put(0, 0, -0.04 * multiplier).unwrap();
+                jj.put(0, 1, 1.0e4 * y[2] * multiplier).unwrap();
+                jj.put(0, 2, 1.0e4 * y[1] * multiplier).unwrap();
+                jj.put(1, 0, 0.04 * multiplier).unwrap();
+                jj.put(1, 1, (-1.0e4 * y[2] - 6.0e7 * y[1]) * multiplier).unwrap();
+                jj.put(1, 2, (-1.0e4 * y[1]) * multiplier).unwrap();
+                jj.put(2, 1, 6.0e7 * y[1] * multiplier).unwrap();
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+        let data = SampleData {
+            x0: 0.0,
+            y0: Vector::from(&[1.0, 0.0, 0.0]),
+            x1: 0.3,
+            h_equal: None,
+            y_analytical: None,
+        };
+        (system, data, 0)
+    }
+
+    /// Returns the Van der Pol's equation as given in Hairer-Wanner, Part II, Eq(1.5'), page 5
+    ///
+    /// This example corresponds to Eq (1.5') on page 5 of the reference and is used to compare with
+    /// Fig 2.6 on page 23 and Fig 8.1 on page 125 of the reference.
+    ///
+    /// The system is:
+    ///
+    /// ```text
+    /// y0' = y1
+    /// y1' = ((1.0 - y[0] * y[0]) * y[1] - y[0]) / ε
+    /// ```
+    ///
+    /// where ε defines the *stiffness* of the problem + conditions (equation + initial conditions + step size + method).
+    ///
+    /// **Note:** Using the data from Eq (7.29), page 113.
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, args)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `NoArgs`
+    /// * `data: SampleData` -- holds the initial values
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    ///
+    /// # Input
+    ///
+    /// * `epsilon` -- ε coefficient; use None for the default value (= 1.0e-6)
+    /// * `stationary` -- use `ε = 1` and compute the period and amplitude such that
+    ///   `y = [A, 0]` is a stationary point.
+    ///
+    /// # Reference
+    ///
+    /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
+    ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
+    ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
+    pub fn van_der_pol(
+        epsilon: f64,
+        stationary: bool,
+    ) -> (
+        System<
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
+        >,
+        SampleData,
+        NoArgs,
+    ) {
+        let x0 = 0.0;
+        let mut y0 = Vector::from(&[2.0, -0.6]);
+        let mut x1 = 2.0;
+        let eps = if stationary {
+            const A: f64 = 2.00861986087484313650940188;
+            const T: f64 = 6.6632868593231301896996820305;
+            y0[0] = A;
+            y0[1] = 0.0;
+            x1 = T;
+            1.0
+        } else {
+            epsilon
+        };
+        let ndim = 2;
+        let jac_nnz = 3;
+        let system = System::new(
+            ndim,
+            move |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
+                f[0] = y[1];
+                f[1] = ((1.0 - y[0] * y[0]) * y[1] - y[0]) / eps;
+                Ok(())
+            },
+            move |jj: &mut CooMatrix, _x: f64, y: &Vector, multiplier: f64, _args: &mut NoArgs| {
+                jj.reset();
+                jj.put(0, 1, 1.0 * multiplier).unwrap();
+                jj.put(1, 0, multiplier * (-2.0 * y[0] * y[1] - 1.0) / eps).unwrap();
+                jj.put(1, 1, multiplier * (1.0 - y[0] * y[0]) / eps).unwrap();
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+        let data = SampleData {
+            x0,
+            y0,
+            x1,
+            h_equal: None,
+            y_analytical: None,
+        };
+        (system, data, 0)
+    }
+
+    /// Returns the one-transistor amplifier problem described by Hairer-Wanner, Part II, page 376
+    ///
+    /// This example corresponds to Fig 1.3 on page 377 and Fig 1.4 on page 379 of the reference.
+    /// See also Eq (1.14) on page 377 of the reference.
+    ///
+    /// This is a differential-algebraic problem modelling the nodal voltages of a one-transistor amplifier.
+    ///
+    /// The DAE is expressed in the so-called *mass-matrix* form (ndim = 5):
+    ///
+    /// ```text
+    /// M y' = f(x, y)
+    ///
+    /// with: y0(0)=0, y1(0)=Ub/2, y2(0)=Ub/2, y3(0)=Ub, y4(0)=0
+    /// ```
+    ///
+    /// where the elements of the right-hand side function are:
+    ///
+    /// ```text
+    /// f0 = (y0 - ue) / R
+    /// f1 = (2 y1 - UB) / S + γ g12
+    /// f2 = y2 / S - g12
+    /// f3 = (y3 - UB) / S + α g12
+    /// f4 = y4 / S
+    ///
+    /// with:
+    ///
+    /// ue = A sin(ω x)
+    /// g12 = β (exp((y1 - y2) / UF) - 1)
+    /// ```
+    ///
+    /// Compared to Eq (1.14), we set all resistances Rᵢ to S, except the first one (R := R₀).
+    ///
+    /// The mass matrix is:
+    ///
+    /// ```text
+    ///     ┌                     ┐
+    ///     │ -C1  C1             │
+    ///     │  C1 -C1             │
+    /// M = │         -C2         │
+    ///     │             -C3  C3 │
+    ///     │              C3 -C3 │
+    ///     └                     ┘
+    /// ```
+    ///
+    /// and the Jacobian matrix is:
+    ///
+    /// ```text
+    ///     ┌                                           ┐
+    ///     │ 1/R                                       │
+    ///     │       2/S + γ h12      -γ h12             │
+    /// J = │              -h12   1/S + h12             │
+    ///     │             α h12      -α h12             │
+    ///     │                                 1/S       │
+    ///     │                                       1/S │
+    ///     └                                           ┘
+    ///
+    /// with:
+    ///
+    /// h12 = β exp((y1 - y2) / UF) / UF
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, args)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `NoArgs`
+    /// * `data: SampleData` -- holds the initial values
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    ///
+    /// # Reference
+    ///
+    /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
+    ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
+    ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
+    pub fn amplifier1t() -> (
+        System<
+            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            NoArgs,
+        >,
+        SampleData,
+        NoArgs,
+    ) {
+        // constants
+        const ALPHA: f64 = 0.99;
+        const GAMMA: f64 = 1.0 - ALPHA;
+        const BETA: f64 = 1e-6;
+        const A: f64 = 0.4;
+        const OM: f64 = 200.0 * PI;
+        const UB: f64 = 6.0;
+        const UF: f64 = 0.026;
+        const R: f64 = 1000.0;
+        const S: f64 = 9000.0;
+
+        // initial values
+        let x0 = 0.0;
+        let y0 = Vector::from(&[0.0, UB / 2.0, UB / 2.0, UB, 0.0]);
+        let x1 = 0.05;
+
+        // ODE system
+        let ndim = 5;
+        let jac_nnz = 9;
+        let mut system = System::new(
+            ndim,
+            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+                let ue = A * f64::sin(OM * x);
+                let g12 = BETA * (f64::exp((y[1] - y[2]) / UF) - 1.0);
+                f[0] = (y[0] - ue) / R;
+                f[1] = (2.0 * y[1] - UB) / S + GAMMA * g12;
+                f[2] = y[2] / S - g12;
+                f[3] = (y[3] - UB) / S + ALPHA * g12;
+                f[4] = y[4] / S;
+                Ok(())
+            },
+            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
+                let h12 = BETA * f64::exp((y[1] - y[2]) / UF) / UF;
+                jj.reset();
+                jj.put(0, 0, m * (1.0 / R)).unwrap();
+                jj.put(1, 1, m * (2.0 / S + GAMMA * h12)).unwrap();
+                jj.put(1, 2, m * (-GAMMA * h12)).unwrap();
+                jj.put(2, 1, m * (-h12)).unwrap();
+                jj.put(2, 2, m * (1.0 / S + h12)).unwrap();
+                jj.put(3, 1, m * (ALPHA * h12)).unwrap();
+                jj.put(3, 2, m * (-ALPHA * h12)).unwrap();
+                jj.put(3, 3, m * (1.0 / S)).unwrap();
+                jj.put(4, 4, m * (1.0 / S)).unwrap();
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+
+        // function that generates the mass matrix
+        const C1: f64 = 1e-6;
+        const C2: f64 = 2e-6;
+        const C3: f64 = 3e-6;
+        let mass_nnz = 9;
+        system.init_mass_matrix(mass_nnz).unwrap();
+        system.mass_put(0, 0, -C1).unwrap();
+        system.mass_put(0, 1, C1).unwrap();
+        system.mass_put(1, 0, C1).unwrap();
+        system.mass_put(1, 1, -C1).unwrap();
+        system.mass_put(2, 2, -C2).unwrap();
+        system.mass_put(3, 3, -C3).unwrap();
+        system.mass_put(3, 4, C3).unwrap();
+        system.mass_put(4, 3, C3).unwrap();
+        system.mass_put(4, 4, -C3).unwrap();
+
+        // control
+        let data = SampleData {
+            x0,
+            y0,
+            x1,
+            h_equal: None,
+            y_analytical: None,
+        };
+        (system, data, 0)
+    }
+
     /// Implements Equation (6) from Kreyszig's book on page 902
     ///
     /// ```text
@@ -369,502 +1008,6 @@ impl Samples {
             }),
         };
         (system, data, 0)
-    }
-
-    /// Returns the Hairer-Wanner problem from the reference, Part II, Eq(1.1), page 2 (with analytical solution)
-    ///
-    /// # Output
-    ///
-    /// Returns `(system, data, args)` where:
-    ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
-    /// * `data: SampleData` -- holds the initial values and the analytical solution
-    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
-    ///
-    /// # Reference
-    ///
-    /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
-    ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
-    ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn hairer_wanner_eq1() -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
-        SampleData,
-        NoArgs,
-    ) {
-        const L: f64 = -50.0; // lambda
-        let ndim = 1;
-        let jac_nnz = 1;
-        let system = System::new(
-            ndim,
-            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
-                f[0] = L * (y[0] - f64::cos(x));
-                Ok(())
-            },
-            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut NoArgs| {
-                jj.reset();
-                jj.put(0, 0, multiplier * L).unwrap();
-                Ok(())
-            },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
-        );
-        let data = SampleData {
-            x0: 0.0,
-            y0: Vector::from(&[0.0]),
-            x1: 1.5,
-            h_equal: Some(1.875 / 50.0),
-            y_analytical: Some(|y, x| {
-                y[0] = -L * (f64::sin(x) - L * f64::cos(x) + L * f64::exp(L * x)) / (L * L + 1.0);
-            }),
-        };
-        (system, data, 0)
-    }
-
-    /// Returns the Robertson's equation, Hairer-Wanner, Part II, Eq(1.4), page 3
-    ///
-    /// # Output
-    ///
-    /// Returns `(system, data, args)` where:
-    ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
-    /// * `data: SampleData` -- holds the initial values
-    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
-    ///
-    /// # Reference
-    ///
-    /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
-    ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
-    ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn robertson() -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
-        SampleData,
-        NoArgs,
-    ) {
-        let ndim = 3;
-        let jac_nnz = 7;
-        let system = System::new(
-            ndim,
-            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
-                f[0] = -0.04 * y[0] + 1.0e4 * y[1] * y[2];
-                f[1] = 0.04 * y[0] - 1.0e4 * y[1] * y[2] - 3.0e7 * y[1] * y[1];
-                f[2] = 3.0e7 * y[1] * y[1];
-                Ok(())
-            },
-            |jj: &mut CooMatrix, _x: f64, y: &Vector, multiplier: f64, _args: &mut NoArgs| {
-                jj.reset();
-                jj.put(0, 0, -0.04 * multiplier).unwrap();
-                jj.put(0, 1, 1.0e4 * y[2] * multiplier).unwrap();
-                jj.put(0, 2, 1.0e4 * y[1] * multiplier).unwrap();
-                jj.put(1, 0, 0.04 * multiplier).unwrap();
-                jj.put(1, 1, (-1.0e4 * y[2] - 6.0e7 * y[1]) * multiplier).unwrap();
-                jj.put(1, 2, (-1.0e4 * y[1]) * multiplier).unwrap();
-                jj.put(2, 1, 6.0e7 * y[1] * multiplier).unwrap();
-                Ok(())
-            },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
-        );
-        let data = SampleData {
-            x0: 0.0,
-            y0: Vector::from(&[1.0, 0.0, 0.0]),
-            x1: 0.3,
-            h_equal: None,
-            y_analytical: None,
-        };
-        (system, data, 0)
-    }
-
-    /// Returns the Van der Pol's equation as given in Hairer-Wanner, Part II, Eq(1.5'), page 5
-    ///
-    /// **Note:** Using the data from Eq(7.29), page 113.
-    ///
-    /// # Output
-    ///
-    /// Returns `(system, data, args)` where:
-    ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
-    /// * `data: SampleData` -- holds the initial values
-    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
-    ///
-    /// # Input
-    ///
-    /// * `epsilon` -- ε coefficient; use None for the default value (= 1.0e-6)
-    /// * `stationary` -- use `ε = 1` and compute the period and amplitude such that
-    ///   `y = [A, 0]` is a stationary point.
-    ///
-    /// # Reference
-    ///
-    /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
-    ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
-    ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn van_der_pol(
-        epsilon: f64,
-        stationary: bool,
-    ) -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
-        SampleData,
-        NoArgs,
-    ) {
-        let x0 = 0.0;
-        let mut y0 = Vector::from(&[2.0, -0.6]);
-        let mut x1 = 2.0;
-        let eps = if stationary {
-            const A: f64 = 2.00861986087484313650940188;
-            const T: f64 = 6.6632868593231301896996820305;
-            y0[0] = A;
-            y0[1] = 0.0;
-            x1 = T;
-            1.0
-        } else {
-            epsilon
-        };
-        let ndim = 2;
-        let jac_nnz = 3;
-        let system = System::new(
-            ndim,
-            move |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
-                f[0] = y[1];
-                f[1] = ((1.0 - y[0] * y[0]) * y[1] - y[0]) / eps;
-                Ok(())
-            },
-            move |jj: &mut CooMatrix, _x: f64, y: &Vector, multiplier: f64, _args: &mut NoArgs| {
-                jj.reset();
-                jj.put(0, 1, 1.0 * multiplier).unwrap();
-                jj.put(1, 0, multiplier * (-2.0 * y[0] * y[1] - 1.0) / eps).unwrap();
-                jj.put(1, 1, multiplier * (1.0 - y[0] * y[0]) / eps).unwrap();
-                Ok(())
-            },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
-        );
-        let data = SampleData {
-            x0,
-            y0,
-            x1,
-            h_equal: None,
-            y_analytical: None,
-        };
-        (system, data, 0)
-    }
-
-    /// Returns the Arenstorf orbit problem, Hairer-Wanner, Part I, Eq(0.1), page 129
-    ///
-    /// From Hairer-Wanner:
-    ///
-    /// "(...) an example from Astronomy, the restricted three body problem. (...)
-    /// two bodies of masses μ' = 1 − μ and μ in circular rotation in a plane and
-    /// a third body of negligible mass moving around in the same plane. (...)"
-    ///
-    /// ```text
-    /// y0'' = y0 + 2 y1' - μ' (y0 + μ) / d0 - μ (y0 - μ') / d1
-    /// y1'' = y1 - 2 y0' - μ' y1 / d0 - μ y1 / d1
-    /// ```
-    ///
-    /// ```text
-    /// y2 := y0'  ⇒  y2' = y0''
-    /// y3 := y1'  ⇒  y3' = y1''
-    /// ```
-    ///
-    /// ```text
-    /// f0 := y0' = y2
-    /// f1 := y1' = y3
-    /// f2 := y2' = y0 + 2 y3 - μ' (y0 + μ) / d0 - μ (y0 - μ') / d1
-    /// f3 := y3' = y1 - 2 y2 - μ' y1 / d0 - μ y1 / d1
-    /// ```
-    ///
-    /// # Output
-    ///
-    /// Returns `(system, data, args)` where:
-    ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
-    /// * `data: SampleData` -- holds the initial values
-    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
-    ///
-    /// # Reference
-    ///
-    /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
-    ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
-    ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn arenstorf() -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
-        SampleData,
-        NoArgs,
-    ) {
-        const MU: f64 = 0.012277471;
-        const MD: f64 = 1.0 - MU;
-        let x0 = 0.0;
-        let y0 = Vector::from(&[0.994, 0.0, 0.0, -2.00158510637908252240537862224]);
-        let x1 = 17.0652165601579625588917206249;
-        let ndim = 4;
-        let jac_nnz = 8;
-        let system = System::new(
-            ndim,
-            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
-                let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
-                let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
-                let d0 = t0 * f64::sqrt(t0);
-                let d1 = t1 * f64::sqrt(t1);
-                f[0] = y[2];
-                f[1] = y[3];
-                f[2] = y[0] + 2.0 * y[3] - MD * (y[0] + MU) / d0 - MU * (y[0] - MD) / d1;
-                f[3] = y[1] - 2.0 * y[2] - MD * y[1] / d0 - MU * y[1] / d1;
-                Ok(())
-            },
-            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
-                let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
-                let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
-                let s0 = f64::sqrt(t0);
-                let s1 = f64::sqrt(t1);
-                let d0 = t0 * s0;
-                let d1 = t1 * s1;
-                let dd0 = d0 * d0;
-                let dd1 = d1 * d1;
-                let a = y[0] + MU;
-                let b = y[0] - MD;
-                let c = -MD / d0 - MU / d1;
-                let dj00 = 3.0 * a * s0;
-                let dj01 = 3.0 * y[1] * s0;
-                let dj10 = 3.0 * b * s1;
-                let dj11 = 3.0 * y[1] * s1;
-                jj.reset();
-                jj.put(0, 2, 1.0 * m).unwrap();
-                jj.put(1, 3, 1.0 * m).unwrap();
-                jj.put(2, 0, (1.0 + a * dj00 * MD / dd0 + b * dj10 * MU / dd1 + c) * m)
-                    .unwrap();
-                jj.put(2, 1, (a * dj01 * MD / dd0 + b * dj11 * MU / dd1) * m).unwrap();
-                jj.put(2, 3, 2.0 * m).unwrap();
-                jj.put(3, 0, (dj00 * y[1] * MD / dd0 + dj10 * y[1] * MU / dd1) * m)
-                    .unwrap();
-                jj.put(3, 1, (1.0 + dj01 * y[1] * MD / dd0 + dj11 * y[1] * MU / dd1 + c) * m)
-                    .unwrap();
-                jj.put(3, 2, -2.0 * m).unwrap();
-                Ok(())
-            },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
-        );
-        let data = SampleData {
-            x0,
-            y0,
-            x1,
-            h_equal: None,
-            y_analytical: None,
-        };
-        (system, data, 0)
-    }
-
-    /// Returns the one-transistor amplifier problem described by Hairer-Wanner, Part II, page 376
-    ///
-    /// # Output
-    ///
-    /// Returns `(system, data, args)` where:
-    ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
-    /// * `data: SampleData` -- holds the initial values
-    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
-    ///
-    /// # Reference
-    ///
-    /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
-    ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
-    ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn amplifier1t() -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
-        SampleData,
-        NoArgs,
-    ) {
-        // constants
-        const ALPHA: f64 = 0.99;
-        const GAMMA: f64 = 1.0 - ALPHA;
-        const C: f64 = 0.4;
-        const D: f64 = 200.0 * PI;
-        const BETA: f64 = 1e-6;
-        const UB: f64 = 6.0;
-        const UF: f64 = 0.026;
-        const R: f64 = 1000.0;
-        const S: f64 = 9000.0;
-
-        // initial values
-        let x0 = 0.0;
-        let y0 = Vector::from(&[0.0, UB / 2.0, UB / 2.0, UB, 0.0]);
-        let x1 = 0.05;
-
-        // ODE system
-        let ndim = 5;
-        let jac_nnz = 9;
-        let mut system = System::new(
-            ndim,
-            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
-                let ue = C * f64::sin(D * x);
-                let f12 = BETA * (f64::exp((y[1] - y[2]) / UF) - 1.0);
-                f[0] = (y[0] - ue) / R;
-                f[1] = (2.0 * y[1] - UB) / S + GAMMA * f12;
-                f[2] = y[2] / S - f12;
-                f[3] = (y[3] - UB) / S + ALPHA * f12;
-                f[4] = y[4] / S;
-                Ok(())
-            },
-            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
-                let g12 = BETA * f64::exp((y[1] - y[2]) / UF) / UF;
-                jj.reset();
-                jj.put(0, 0, m * (1.0 / R)).unwrap();
-                jj.put(1, 1, m * (2.0 / S + GAMMA * g12)).unwrap();
-                jj.put(1, 2, m * (-GAMMA * g12)).unwrap();
-                jj.put(2, 1, m * (-g12)).unwrap();
-                jj.put(2, 2, m * (1.0 / S + g12)).unwrap();
-                jj.put(3, 1, m * (ALPHA * g12)).unwrap();
-                jj.put(3, 2, m * (-ALPHA * g12)).unwrap();
-                jj.put(3, 3, m * (1.0 / S)).unwrap();
-                jj.put(4, 4, m * (1.0 / S)).unwrap();
-                Ok(())
-            },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
-        );
-
-        // function that generates the mass matrix
-        const C1: f64 = 1e-6;
-        const C2: f64 = 2e-6;
-        const C3: f64 = 3e-6;
-        let mass_nnz = 9;
-        system.init_mass_matrix(mass_nnz).unwrap();
-        system.mass_put(0, 0, -C1).unwrap();
-        system.mass_put(0, 1, C1).unwrap();
-        system.mass_put(1, 0, C1).unwrap();
-        system.mass_put(1, 1, -C1).unwrap();
-        system.mass_put(2, 2, -C2).unwrap();
-        system.mass_put(3, 3, -C3).unwrap();
-        system.mass_put(3, 4, C3).unwrap();
-        system.mass_put(4, 3, C3).unwrap();
-        system.mass_put(4, 4, -C3).unwrap();
-
-        // control
-        let data = SampleData {
-            x0,
-            y0,
-            x1,
-            h_equal: None,
-            y_analytical: None,
-        };
-        (system, data, 0)
-    }
-
-    /// Returns the Brusselator problem (ODE version) described in Hairer-Nørsett-Wanner, Part I, page 116
-    ///
-    /// # Output
-    ///
-    /// Returns `(system, data, args, y_ref)` where:
-    ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
-    /// * `data: SampleData` -- holds the initial values
-    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
-    /// * `y_ref` -- is a reference solution, computed with high-accuracy by Mathematica
-    ///
-    /// # Reference
-    ///
-    /// * Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
-    ///   Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
-    ///   in Computational Mathematics, 528p
-    pub fn brusselator_ode() -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
-        SampleData,
-        NoArgs,
-        Vector,
-    ) {
-        // initial values
-        let x0 = 0.0;
-        let y0 = Vector::from(&[3.0 / 2.0, 3.0]);
-        let x1 = 20.0;
-
-        // ODE system
-        let ndim = 2;
-        let jac_nnz = 4;
-        let system = System::new(
-            ndim,
-            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
-                f[0] = 1.0 - 4.0 * y[0] + y[0] * y[0] * y[1];
-                f[1] = 3.0 * y[0] - y[0] * y[0] * y[1];
-                Ok(())
-            },
-            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
-                jj.reset();
-                jj.put(0, 0, m * (-4.0 + 2.0 * y[0] * y[1])).unwrap();
-                jj.put(0, 1, m * (y[0] * y[0])).unwrap();
-                jj.put(1, 0, m * (3.0 - 2.0 * y[0] * y[1])).unwrap();
-                jj.put(1, 1, m * (-y[0] * y[0])).unwrap();
-                Ok(())
-            },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
-        );
-
-        // control
-        let data = SampleData {
-            x0,
-            y0,
-            x1,
-            h_equal: Some(0.1),
-            y_analytical: None,
-        };
-
-        // reference solution; using the following Mathematica code:
-        // ```Mathematica
-        // Needs["DifferentialEquations`NDSolveProblems`"];
-        // Needs["DifferentialEquations`NDSolveUtilities`"];
-        // sys = GetNDSolveProblem["BrusselatorODE"];
-        // sol = NDSolve[sys, Method -> "StiffnessSwitching", WorkingPrecision -> 32];
-        // ref = First[FinalSolutions[sys, sol]]
-        // ```
-        let y_ref = Vector::from(&[0.4986370712683478291402659846476, 4.596780349452011024598321237263]);
-        (system, data, 0, y_ref)
     }
 }
 
@@ -1083,7 +1226,7 @@ mod tests {
     #[test]
     fn arenstorf_works() {
         let multiplier = 1.5;
-        let (system, data, mut args) = Samples::arenstorf();
+        let (system, data, mut args, _) = Samples::arenstorf();
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();

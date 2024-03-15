@@ -4,6 +4,10 @@
 //!
 //! **Important:** This crate depends on external libraries (non-Rust). Thus, please check the [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell).
 //!
+//! ![arenstorf_dopri8](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/arenstorf_dopri8.svg)
+//!
+//! The figure above is the solution of the Arenstorf Orbit obtained with [russell_ode](https://github.com/cpmech/russell/blob/main/russell_ode/examples/arenstorf_dopri8.rs).
+//!
 //! # Introduction
 //!
 //! This library implements (**natively**) numerical solver solvers for systems of ordinary equations (ODEs) and differential-algebraic equation systems (DAEs) of Index-1. One advantage of a native implementation is the "safety aspects" enforced by Rust. Moreover, we implement thread-safe code. For example, the performance is improved when the real-based linear and complex-based linear systems are factorized concurrently, as in our Radau5.

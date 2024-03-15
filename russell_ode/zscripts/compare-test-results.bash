@@ -27,7 +27,7 @@ sum=""
 
 for test in $TESTS; do
     temporary="/tmp/${test/test_/russell_}.txt"
-    correct="data/${test/test_/russell_}.txt"
+    correct="data/logs/${test/test_/russell_}.txt"
 
     if [ "${SAVE_DATA}" = "1" ]; then
         temporary=$correct

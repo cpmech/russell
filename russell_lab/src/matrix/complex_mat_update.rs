@@ -8,11 +8,13 @@ extern "C" {
     fn cblas_zaxpy(n: i32, alpha: *const Complex64, x: *const Complex64, incx: i32, y: *mut Complex64, incy: i32);
 }
 
-/// Updates matrix based on another matrix (Complex version)
+/// (zaxpy) Updates matrix based on another matrix (Complex version)
 ///
 /// ```text
 /// b += α⋅a
 /// ```
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/d7/db2/zaxpy_8f.html>
 ///
 /// # Example
 ///

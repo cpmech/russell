@@ -7,11 +7,13 @@ extern "C" {
     fn cblas_dscal(n: i32, alpha: f64, x: *const f64, incx: i32);
 }
 
-/// Scales matrix
+/// (dscal) Scales matrix
 ///
 /// ```text
 /// a := alpha * a
 /// ```
+///
+/// See also <https://www.netlib.org/lapack/explore-html/d4/dd0/dscal_8f.html>
 ///
 /// # Example
 ///

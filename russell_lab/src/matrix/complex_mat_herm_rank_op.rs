@@ -42,6 +42,8 @@ extern "C" {
 ///
 /// where `c = cᴴ`
 ///
+/// See also: <https://www.netlib.org/lapack/explore-html/d1/db1/zherk_8f.html>
+///
 /// # Input
 ///
 /// * `c` -- the (n,n) **hermitian** matrix (will be modified)

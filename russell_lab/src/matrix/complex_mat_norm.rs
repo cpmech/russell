@@ -15,7 +15,7 @@ extern "C" {
     ) -> f64;
 }
 
-/// Computes the matrix norm (complex version)
+/// (zlange) Computes the matrix norm (complex version)
 ///
 /// Computes one of:
 ///
@@ -28,6 +28,8 @@ extern "C" {
 ///
 /// ‖a‖_max = max_ij ( |aij| )
 /// ```
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
 ///
 /// # Example
 ///

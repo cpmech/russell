@@ -22,7 +22,7 @@ extern "C" {
     );
 }
 
-/// Performs the eigen-decomposition of a square matrix
+/// (dgeev) Performs the eigen-decomposition of a square matrix
 ///
 /// Computes the eigenvalues `l` and right eigenvectors `v`, such that:
 ///

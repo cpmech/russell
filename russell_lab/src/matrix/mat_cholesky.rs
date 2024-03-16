@@ -7,7 +7,7 @@ extern "C" {
     fn c_dpotrf(upper: CcBool, n: *const i32, a: *mut f64, lda: *const i32, info: *mut i32);
 }
 
-/// Performs the Cholesky factorization of a symmetric positive-definite matrix
+/// (dpotrf) Performs the Cholesky factorization of a symmetric positive-definite matrix
 ///
 /// Finds `L` or `U` such that:
 ///
@@ -20,6 +20,8 @@ extern "C" {
 /// ```
 ///
 /// where `L` is lower triangular and `U` is upper triangular.
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/d0/d8a/dpotrf_8f.html>
 ///
 /// # Input/Output
 ///

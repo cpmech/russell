@@ -4,6 +4,8 @@ use num_complex::Complex64;
 use num_traits::Zero;
 
 extern "C" {
+    // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices
+    // <https://www.netlib.org/lapack/explore-html/d3/d47/zggev_8f.html>
     fn c_zggev(
         calc_vl: CcBool,
         calc_vr: CcBool,
@@ -25,7 +27,7 @@ extern "C" {
     );
 }
 
-/// Computes the generalized eigenvalues and right eigenvectors (complex version)
+/// (zggev) Computes the generalized eigenvalues and right eigenvectors (complex version)
 ///
 /// A generalized eigenvalue for a pair of matrices (A,B) is a scalar lambda
 /// or a ratio alpha/beta = lambda, such that A - lambda*B is singular.

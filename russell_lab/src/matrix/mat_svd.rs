@@ -23,7 +23,7 @@ extern "C" {
     );
 }
 
-/// Computes the singular value decomposition (SVD) of a matrix
+/// (dgesvd) Computes the singular value decomposition (SVD) of a matrix
 ///
 /// Finds `u`, `s`, and `v`, such that:
 ///

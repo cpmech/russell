@@ -41,6 +41,8 @@ extern "C" {
 ///
 /// where `c = cᵀ`
 ///
+/// See also: <https://www.netlib.org/lapack/explore-html/dc/d05/dsyrk_8f.html>
+///
 /// # Input
 ///
 /// * `c` -- the (n,n) **symmetric** matrix (will be modified)

@@ -20,7 +20,7 @@ extern "C" {
     );
 }
 
-/// Performs the eigen-decomposition of a hermitian matrix
+/// (zheev) Performs the eigen-decomposition of a hermitian matrix
 ///
 /// Computes the eigenvalues `l` and right eigenvectors `v`, such that:
 ///
@@ -31,6 +31,8 @@ extern "C" {
 /// ```
 ///
 /// where `lj` is the component j of `l` and `vj` is the column j of `v`.
+///
+/// See also <https://www.netlib.org/lapack/explore-html/d6/dee/zheev_8f.html>
 ///
 /// # Output
 ///

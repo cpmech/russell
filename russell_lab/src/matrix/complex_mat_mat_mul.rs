@@ -23,12 +23,14 @@ extern "C" {
     );
 }
 
-/// Performs the matrix-matrix multiplication resulting in a matrix (complex version)
+/// (zgemm) Performs the matrix-matrix multiplication resulting in a matrix (complex version)
 ///
 /// ```text
 ///   c  :=  α ⋅  a   ⋅   b
 /// (m,n)       (m,k)   (k,n)
 /// ```
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/d7/d76/zgemm_8f.html>
 ///
 /// # Example
 ///

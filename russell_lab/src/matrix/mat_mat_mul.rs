@@ -22,12 +22,14 @@ extern "C" {
     );
 }
 
-/// Performs the matrix-matrix multiplication
+/// (dgemm) Performs the matrix-matrix multiplication
 ///
 /// ```text
 ///   c  :=  α ⋅  a   ⋅   b
 /// (m,n)       (m,k)   (k,n)
 /// ```
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/d7/d2b/dgemm_8f.html>
 ///
 /// # Example
 ///

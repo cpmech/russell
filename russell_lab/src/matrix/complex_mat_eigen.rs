@@ -24,7 +24,7 @@ extern "C" {
     );
 }
 
-/// Performs the eigen-decomposition of a square matrix (complex version)
+/// (zgeev) Performs the eigen-decomposition of a square matrix (complex version)
 ///
 /// Computes the eigenvalues `l` and right eigenvectors `v`, such that:
 ///

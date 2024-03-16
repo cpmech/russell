@@ -2,6 +2,8 @@ use super::Matrix;
 use crate::{to_i32, CcBool, StrError, Vector, C_FALSE, C_TRUE};
 
 extern "C" {
+    // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices
+    // <https://www.netlib.org/lapack/explore-html/d9/d52/dggev_8f.html>
     fn c_dggev(
         calc_vl: CcBool,
         calc_vr: CcBool,
@@ -23,7 +25,7 @@ extern "C" {
     );
 }
 
-/// Computes the generalized eigenvalues and right eigenvectors
+/// (dggev) Computes the generalized eigenvalues and right eigenvectors
 ///
 /// A generalized eigenvalue for a pair of matrices (A,B) is a scalar lambda
 /// or a ratio alpha/beta = lambda, such that A - lambda*B is singular.

@@ -22,11 +22,15 @@ extern "C" {
 // constants
 const ZERO_DETERMINANT: f64 = 1e-15;
 
-/// Computes the inverse of a square matrix and returns its determinant
+/// (dgetrf, dgetri) Computes the inverse of a square matrix and returns its determinant
 ///
 /// ```text
 /// ai := a⁻¹
 /// ```
+///
+/// See: <https://www.netlib.org/lapack/explore-html/d3/d6a/dgetrf_8f.html>
+///
+/// And: <https://www.netlib.org/lapack/explore-html/df/da4/dgetri_8f.html>
 ///
 /// # Output
 ///

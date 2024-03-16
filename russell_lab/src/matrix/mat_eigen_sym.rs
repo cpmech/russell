@@ -17,7 +17,7 @@ extern "C" {
     );
 }
 
-/// Calculates the eigenvalues and eigenvectors of a symmetric matrix
+/// (dsyev) Calculates the eigenvalues and eigenvectors of a symmetric matrix
 ///
 /// Computes the eigenvalues `l` and eigenvectors `v`, such that:
 ///

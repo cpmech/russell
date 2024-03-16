@@ -22,13 +22,15 @@ extern "C" {
     );
 }
 
-/// Performs the transpose(matrix)-matrix multiplication
+/// (dgemm) Performs the transpose(matrix)-matrix multiplication
 ///
 /// ```text
 ///   c  :=  α ⋅  aᵀ  ⋅   b
 /// (m,n)       (m,k)   (k,n)
 ///           a:(k,m)
 /// ```
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/d7/d2b/dgemm_8f.html>
 ///
 /// # Example
 ///

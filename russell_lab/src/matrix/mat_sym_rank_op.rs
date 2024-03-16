@@ -39,6 +39,8 @@ extern "C" {
 /// (n,n)       (n,k)  (k,n)   (n,n)
 /// ```
 ///
+/// where `c = cᵀ`
+///
 /// # Input
 ///
 /// * `c` -- the (n,n) **symmetric** matrix (will be modified)

@@ -1,18 +1,17 @@
 use crate::{
-    approx_eq, complex_mat_add, complex_mat_mat_mul, complex_mat_norm, complex_mat_zip, complex_vec_zip, mat_add,
+    approx_eq, complex_mat_add, complex_mat_mat_mul, complex_mat_norm, complex_mat_zip, complex_vec_zip, cpx, mat_add,
     mat_mat_mul, mat_norm, AsArray2D, ComplexMatrix, ComplexVector, Matrix, Norm, Vector,
 };
 use num_complex::Complex64;
 
-/// Checks the eigen-decomposition (similarity transformation) of a
-/// symmetric matrix with real-only eigenvalues and eigenvectors
+/// Checks the eigen-decomposition of a symmetric matrix
 ///
 /// ```text
 /// a⋅v = v⋅λ
 /// err := a⋅v - v⋅λ
 /// ```
 #[allow(dead_code)]
-pub(crate) fn check_eigen_real<'a, T>(data: &'a T, v: &Matrix, l: &Vector, tolerance: f64)
+pub(crate) fn check_eigen_sym<'a, T>(data: &'a T, v: &Matrix, l: &Vector, tolerance: f64)
 where
     T: AsArray2D<'a, f64>,
 {
@@ -32,15 +31,14 @@ where
     approx_eq(mat_norm(&err, Norm::Max), 0.0, tolerance);
 }
 
-/// Checks the eigen-decomposition (similarity transformation) of a
-/// general matrix
+/// Checks the eigen-decomposition of a general matrix
 ///
 /// ```text
 /// a⋅v = v⋅λ
 /// err := a⋅v - v⋅λ
 /// ```
 #[allow(dead_code)]
-pub(crate) fn check_eigen_general<'a, T>(
+pub(crate) fn check_eigen<'a, T>(
     data: &'a T,
     v_real: &Matrix,
     l_real: &Vector,
@@ -72,12 +70,127 @@ pub(crate) fn check_eigen_general<'a, T>(
     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, tolerance);
 }
 
+/// Checks the eigen-decomposition of a general matrix (complex version)
+///
+/// ```text
+/// a⋅v = v⋅λ
+/// err := a⋅v - v⋅λ
+/// ```
+#[allow(dead_code)]
+pub(crate) fn complex_check_eigen<'a, T>(data: &'a T, v: &ComplexMatrix, l: &ComplexVector, tolerance: f64)
+where
+    T: AsArray2D<'a, Complex64>,
+{
+    let a = ComplexMatrix::from(data);
+    let m = a.nrow();
+    let lam = ComplexMatrix::diagonal(l.as_data());
+    let mut a_v = ComplexMatrix::new(m, m);
+    let mut v_l = ComplexMatrix::new(m, m);
+    let mut err = ComplexMatrix::filled(m, m, Complex64::new(f64::MAX, f64::MAX));
+    let one = Complex64::new(1.0, 0.0);
+    let m_one = Complex64::new(-1.0, 0.0);
+    complex_mat_mat_mul(&mut a_v, one, &a, &v).unwrap();
+    let norm_a_v = complex_mat_norm(&a_v, Norm::Max);
+    if norm_a_v <= f64::EPSILON {
+        panic!("norm(a⋅v) cannot be zero");
+    }
+    complex_mat_mat_mul(&mut v_l, one, &v, &lam).unwrap();
+    complex_mat_add(&mut err, one, &a_v, m_one, &v_l).unwrap();
+    approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, tolerance);
+}
+
+/// Checks the generalized eigen-decomposition of a general matrix
+///
+/// ```text
+/// a ⋅ vj = lj ⋅ b ⋅ vj
+/// err := a⋅v - b⋅v⋅λ
+/// ```
+#[allow(dead_code)]
+pub(crate) fn check_gen_eigen<'a, T>(
+    a_data: &'a T,
+    b_data: &'a T,
+    v: &Matrix,
+    alpha_real: &Vector,
+    alpha_imag: &Vector,
+    beta: &Vector,
+    tolerance: f64,
+) where
+    T: AsArray2D<'a, f64>,
+{
+    let aa = ComplexMatrix::from(a_data);
+    let bb = ComplexMatrix::from(b_data);
+    let m = aa.nrow();
+    let mut vv = ComplexMatrix::new(m, m);
+    let mut dd = ComplexMatrix::new(m, m);
+    for i in 0..m {
+        assert!(f64::abs(beta[i]) > 10.0 * f64::EPSILON);
+        dd.set(i, i, cpx!(alpha_real[i] / beta[i], alpha_imag[i] / beta[i]));
+        for j in 0..m {
+            vv.set(i, j, cpx!(v.get(i, j), 0.0));
+        }
+    }
+    let mut a_v = ComplexMatrix::new(m, m);
+    let mut v_l = ComplexMatrix::new(m, m);
+    let mut b_v_l = ComplexMatrix::new(m, m);
+    let mut err = ComplexMatrix::filled(m, m, cpx!(f64::MAX, 0.0));
+    complex_mat_mat_mul(&mut a_v, cpx!(1.0, 0.0), &aa, &vv).unwrap();
+    let norm_a_v = complex_mat_norm(&a_v, Norm::Max);
+    if norm_a_v <= f64::EPSILON {
+        panic!("norm(a⋅v) cannot be zero");
+    }
+    complex_mat_mat_mul(&mut v_l, cpx!(1.0, 0.0), &vv, &dd).unwrap();
+    complex_mat_mat_mul(&mut b_v_l, cpx!(1.0, 0.0), &bb, &v_l).unwrap();
+    complex_mat_add(&mut err, cpx!(1.0, 0.0), &a_v, cpx!(-1.0, 0.0), &b_v_l).unwrap();
+    approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, tolerance);
+}
+
+/// Checks the generalized eigen-decomposition of a general matrix (complex version)
+///
+/// ```text
+/// a ⋅ vj = lj ⋅ b ⋅ vj
+/// err := a⋅v - b⋅v⋅λ
+/// ```
+#[allow(dead_code)]
+pub(crate) fn complex_check_gen_eigen<'a, T>(
+    a_data: &'a T,
+    b_data: &'a T,
+    v: &ComplexMatrix,
+    alpha: &ComplexVector,
+    beta: &ComplexVector,
+    tolerance: f64,
+) where
+    T: AsArray2D<'a, Complex64>,
+{
+    let aa = ComplexMatrix::from(a_data);
+    let bb = ComplexMatrix::from(b_data);
+    let m = aa.nrow();
+    let mut dd = ComplexMatrix::new(m, m);
+    for i in 0..m {
+        assert!(beta[i].norm() > 10.0 * f64::EPSILON);
+        dd.set(i, i, alpha[i] / beta[i]);
+    }
+    let mut a_v = ComplexMatrix::new(m, m);
+    let mut v_l = ComplexMatrix::new(m, m);
+    let mut b_v_l = ComplexMatrix::new(m, m);
+    let mut err = ComplexMatrix::filled(m, m, cpx!(f64::MAX, 0.0));
+    complex_mat_mat_mul(&mut a_v, cpx!(1.0, 0.0), &aa, &v).unwrap();
+    let norm_a_v = complex_mat_norm(&a_v, Norm::Max);
+    if norm_a_v <= f64::EPSILON {
+        panic!("norm(a⋅v) cannot be zero");
+    }
+    complex_mat_mat_mul(&mut v_l, cpx!(1.0, 0.0), &v, &dd).unwrap();
+    complex_mat_mat_mul(&mut b_v_l, cpx!(1.0, 0.0), &bb, &v_l).unwrap();
+    complex_mat_add(&mut err, cpx!(1.0, 0.0), &a_v, cpx!(-1.0, 0.0), &b_v_l).unwrap();
+    approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, tolerance);
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::{check_eigen_general, check_eigen_real};
-    use crate::{Matrix, Vector};
+    use super::{check_eigen, check_eigen_sym, complex_check_eigen};
+    use crate::{cpx, ComplexMatrix, ComplexVector, Matrix, Vector};
+    use num_complex::Complex64;
 
     #[test]
     #[should_panic]
@@ -86,7 +199,7 @@ mod tests {
         let data = &[[2.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 2.0]];
         let v = Matrix::from(&[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]);
         let l = Vector::from(&[2.0, 2.0, WRONG]);
-        check_eigen_real(data, &v, &l, 1e-15);
+        check_eigen_sym(data, &v, &l, 1e-15);
     }
 
     #[test]
@@ -95,7 +208,7 @@ mod tests {
         let data = &[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]];
         let v = Matrix::from(&[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]);
         let l = Vector::from(&[0.0, 0.0, 0.0]);
-        check_eigen_real(data, &v, &l, 1e-15);
+        check_eigen_sym(data, &v, &l, 1e-15);
     }
 
     #[test]
@@ -103,7 +216,7 @@ mod tests {
         let data = &[[2.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 2.0]];
         let v = Matrix::from(&[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]);
         let l = Vector::from(&[2.0, 2.0, 2.0]);
-        check_eigen_real(data, &v, &l, 1e-15);
+        check_eigen_sym(data, &v, &l, 1e-15);
     }
 
     #[test]
@@ -113,14 +226,14 @@ mod tests {
         let s3 = f64::sqrt(3.0);
         let l_real = Vector::from(&[-0.5, -0.5, 1.0]);
         let l_imag = Vector::from(&[s3 / 2.0, -s3 / 2.0, 0.0]);
-        const WRONG: f64 = 123.0;
+        const WRONG: f64 = 123.0; // correct = -1.0
         let v_real = Matrix::from(&[
             [1.0 / s3, 1.0 / s3, -1.0 / s3],
             [-0.5 / s3, -0.5 / s3, -1.0 / s3],
             [-0.5 / s3, -0.5 / s3, WRONG / s3],
         ]);
         let v_imag = Matrix::from(&[[0.0, 0.0, 0.0], [0.5, -0.5, 0.0], [-0.5, 0.5, 0.0]]);
-        check_eigen_general(data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
+        check_eigen(data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
     }
 
     #[test]
@@ -131,7 +244,7 @@ mod tests {
         let l_imag = Vector::from(&[0.0, 0.0, 0.0]);
         let v_real = Matrix::from(&[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]);
         let v_imag = Matrix::from(&[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]);
-        check_eigen_general(data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
+        check_eigen(data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
     }
 
     #[test]
@@ -146,6 +259,42 @@ mod tests {
             [-0.5 / s3, -0.5 / s3, -1.0 / s3],
         ]);
         let v_imag = Matrix::from(&[[0.0, 0.0, 0.0], [0.5, -0.5, 0.0], [-0.5, 0.5, 0.0]]);
-        check_eigen_general(data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
+        check_eigen(data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
+    }
+
+    #[test]
+    #[should_panic]
+    fn complex_check_eigen_panics_on_wrong_values() {
+        let data = &[
+            [cpx!(0.0, 0.0), cpx!(1.0, 0.0), cpx!(0.0, 0.0)],
+            [cpx!(0.0, 0.0), cpx!(0.0, 0.0), cpx!(1.0, 0.0)],
+            [cpx!(1.0, 0.0), cpx!(0.0, 0.0), cpx!(0.0, 0.0)],
+        ];
+        let s3 = f64::sqrt(3.0);
+        let l = ComplexVector::from(&[cpx!(-0.5, s3 / 2.0), cpx!(-0.5, -s3 / 2.0), cpx!(1.0, 0.0)]);
+        const WRONG: f64 = 123.0; // correct = -1.0
+        let v = ComplexMatrix::from(&[
+            [cpx!(1.0 / s3, 0.0), cpx!(1.0 / s3, 0.0), cpx!(-1.0 / s3, 0.0)],
+            [cpx!(-0.5 / s3, 0.5), cpx!(-0.5 / s3, -0.5), cpx!(-1.0 / s3, 0.0)],
+            [cpx!(-0.5 / s3, -0.5), cpx!(-0.5 / s3, 0.5), cpx!(WRONG / s3, 0.0)],
+        ]);
+        complex_check_eigen(data, &v, &l, 1e-15);
+    }
+
+    #[test]
+    fn complex_check_eigen_works() {
+        let data = &[
+            [cpx!(0.0, 0.0), cpx!(1.0, 0.0), cpx!(0.0, 0.0)],
+            [cpx!(0.0, 0.0), cpx!(0.0, 0.0), cpx!(1.0, 0.0)],
+            [cpx!(1.0, 0.0), cpx!(0.0, 0.0), cpx!(0.0, 0.0)],
+        ];
+        let s3 = f64::sqrt(3.0);
+        let l = ComplexVector::from(&[cpx!(-0.5, s3 / 2.0), cpx!(-0.5, -s3 / 2.0), cpx!(1.0, 0.0)]);
+        let v = ComplexMatrix::from(&[
+            [cpx!(1.0 / s3, 0.0), cpx!(1.0 / s3, 0.0), cpx!(-1.0 / s3, 0.0)],
+            [cpx!(-0.5 / s3, 0.5), cpx!(-0.5 / s3, -0.5), cpx!(-1.0 / s3, 0.0)],
+            [cpx!(-0.5 / s3, -0.5), cpx!(-0.5 / s3, 0.5), cpx!(-1.0 / s3, 0.0)],
+        ]);
+        complex_check_eigen(data, &v, &l, 1e-15);
     }
 }

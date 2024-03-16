@@ -174,7 +174,7 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
 mod tests {
     use super::{mat_eigen_sym_jacobi, Matrix};
     use crate::math::SQRT_2;
-    use crate::matrix::testing::check_eigen_real;
+    use crate::matrix::testing::check_eigen_sym;
     use crate::{mat_approx_eq, vec_approx_eq, AsArray2D, Vector};
 
     fn calc_eigen<'a, T>(data: &'a T) -> (usize, Vector, Matrix)
@@ -268,7 +268,7 @@ mod tests {
         assert_eq!(nit, 1);
         mat_approx_eq(&v, correct, 1e-15);
         vec_approx_eq(l.as_data(), &[2.0, 2.0, 0.0], 1e-15);
-        check_eigen_real(data, &v, &l, 1e-15);
+        check_eigen_sym(data, &v, &l, 1e-15);
 
         // 3-repeated / diagonal
         #[rustfmt::skip]
@@ -281,7 +281,7 @@ mod tests {
         assert_eq!(nit, 1);
         mat_approx_eq(&v, correct, 1e-15);
         vec_approx_eq(l.as_data(), &[2.0, 2.0, 2.0], 1e-15);
-        check_eigen_real(data, &v, &l, 1e-15);
+        check_eigen_sym(data, &v, &l, 1e-15);
     }
 
     #[test]
@@ -303,7 +303,7 @@ mod tests {
         ];
         mat_approx_eq(&v, correct, 1e-15);
         vec_approx_eq(l.as_data(), &[2.0, 1.0, 11.0], 1e-15);
-        check_eigen_real(data, &v, &l, 1e-15);
+        check_eigen_sym(data, &v, &l, 1e-15);
     }
 
     #[test]
@@ -332,7 +332,7 @@ mod tests {
             ],
             1e-15,
         );
-        check_eigen_real(data, &v, &l, 1e-14);
+        check_eigen_sym(data, &v, &l, 1e-14);
     }
 
     #[test]
@@ -367,7 +367,7 @@ mod tests {
             ],
             1e-12,
         );
-        check_eigen_real(data, &v, &l, 1e-14);
+        check_eigen_sym(data, &v, &l, 1e-14);
     }
 
     #[test]
@@ -439,7 +439,7 @@ mod tests {
             println!("test = {}", test_id);
             let (nit, l, v) = calc_eigen(data);
             assert_eq!(nit, *nit_correct);
-            check_eigen_real(data, &v, &l, *tol);
+            check_eigen_sym(data, &v, &l, *tol);
             test_id += 1;
         }
     }
@@ -458,7 +458,7 @@ mod tests {
         // println!("nit = {}", nit);
         // println!("l =\n{}", l);
         // println!("v =\n{}", v);
-        check_eigen_real(&a_copy, &v, &l, 1e-14);
+        check_eigen_sym(&a_copy, &v, &l, 1e-14);
 
         let mut a = Matrix::filled(size, size, (size + 1) as f64);
         for i in 0..(size - 1) {
@@ -476,6 +476,6 @@ mod tests {
         // println!("nit = {}", nit);
         // println!("l =\n{}", l);
         // println!("v =\n{}", v);
-        check_eigen_real(&a_copy, &v, &l, 1e-12);
+        check_eigen_sym(&a_copy, &v, &l, 1e-12);
     }
 }

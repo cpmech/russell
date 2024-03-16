@@ -32,6 +32,8 @@ extern "C" {
 /// (m,n)  (m,m)   (m,n)   (n,n)
 /// ```
 ///
+/// See also <https://www.netlib.org/lapack/explore-html/d8/d2d/dgesvd_8f.html>
+///
 /// # Output
 ///
 /// * `s` -- min(m,n) vector with the diagonal elements
@@ -40,7 +42,7 @@ extern "C" {
 ///
 /// # Input
 ///
-/// * `a` -- (m,n) matrix, symmetric or not [will be modified]
+/// * `a` -- (m,n) matrix, symmetric or not (will be modified)
 ///
 /// # Note
 ///

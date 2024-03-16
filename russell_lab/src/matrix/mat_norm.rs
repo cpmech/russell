@@ -21,9 +21,9 @@ extern "C" {
 /// ‖a‖_max = max_ij ( |aij| )
 /// ```
 ///
-/// See also:
+/// See also: <https://www.netlib.org/lapack/explore-html/dc/d09/dlange_8f.html>
 ///
-/// # Example <https://www.netlib.org/lapack/explore-html/dc/d09/dlange_8f.html>
+/// # Example
 ///
 /// ```
 /// use russell_lab::*;

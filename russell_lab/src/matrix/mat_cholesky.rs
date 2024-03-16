@@ -25,7 +25,7 @@ extern "C" {
 ///
 /// # Input/Output
 ///
-/// * `A → L` or `A → U` -- On input, `A` is a **symmetric/positive definite** matrix
+/// * `A → L` or `A → U` -- On input, `A` is a **symmetric/positive-definite** matrix
 ///   with either the lower or upper triangular part given, according to the `upper` flag.
 ///   On output, `A = L` or `A = U` with the other side of the triangle unmodified.
 /// * `upper` -- Whether the upper triangle of `A` must be considered instead
@@ -34,7 +34,7 @@ extern "C" {
 /// # Notes
 ///
 /// * Either the lower triangle or the upper triangle is considered according to the `upper` flag.
-/// * The matrix `A` may be given in **full** form with either `upper = true` or `upper = false`.
+/// * All elements of `A` may be provided and the unnecessary "triangle" will be ignored.
 ///
 /// # Examples
 ///

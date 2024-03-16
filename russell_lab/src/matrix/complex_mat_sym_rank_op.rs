@@ -276,7 +276,7 @@ mod tests {
         // constants
         let (alpha, beta) = (cpx!(3.0, 0.0), cpx!(1.0, 0.0));
 
-        // lower: c := 3⋅a⋅aᵀ + c
+        // lower: c := 3⋅aᵀ⋅a + c
         complex_mat_sym_rank_op(&mut c_lower, &a, alpha, beta, false, true).unwrap();
         // println!("{}", c_lower);
         #[rustfmt::skip]
@@ -290,7 +290,7 @@ mod tests {
         ]);
         complex_mat_approx_eq(&c_lower, &c_ref, 1e-15);
 
-        // upper: c := 3⋅a⋅aᵀ + c
+        // upper: c := 3⋅aᵀ⋅a + c
         complex_mat_sym_rank_op(&mut c_upper, &a, alpha, beta, true, true).unwrap();
         // println!("{}", c_upper);
         #[rustfmt::skip]

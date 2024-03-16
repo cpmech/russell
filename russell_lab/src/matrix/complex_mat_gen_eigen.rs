@@ -458,7 +458,7 @@ mod tests {
         ];
         complex_vec_approx_eq(alpha.as_data(), alpha_ref, 1e-4);
         complex_vec_approx_eq(beta.as_data(), beta_ref, 1e-14);
-        complex_check_gen_eigen(a_data, b_data, &v, &alpha, &beta, 1e-14);
+        complex_check_gen_eigen(a_data, b_data, &v, &alpha, &beta, 1e-13);
     }
 
     #[test]

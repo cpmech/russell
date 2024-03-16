@@ -29,6 +29,7 @@ pub(crate) const SVD_CODE_A: i32 = 0;
 pub(crate) const CBLAS_COL_MAJOR: i32 = 102;
 pub(crate) const CBLAS_NO_TRANS: i32 = 111;
 pub(crate) const CBLAS_TRANS: i32 = 112;
+pub(crate) const CBLAS_CONJ_TRANS: i32 = 113;
 pub(crate) const CBLAS_UPPER: i32 = 121;
 pub(crate) const CBLAS_LOWER: i32 = 122;
 

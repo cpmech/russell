@@ -2,7 +2,6 @@ use super::{StatsLinSolMUMPS, VerifyLinSys};
 use crate::StrError;
 use russell_lab::{format_nanoseconds, get_num_threads, using_intel_mkl};
 use serde::{Deserialize, Serialize};
-use serde_json;
 use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::io::BufReader;
@@ -239,7 +238,6 @@ impl StatsLinSol {
 #[cfg(test)]
 mod tests {
     use super::StatsLinSol;
-    use serde_json;
 
     #[test]
     fn derive_works() {

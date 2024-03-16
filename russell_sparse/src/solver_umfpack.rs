@@ -463,8 +463,8 @@ pub(crate) fn handle_umfpack_error_code(err: i32) -> StrError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Samples, Scaling, SparseMatrix, Sym};
-    use russell_lab::{approx_eq, vec_approx_eq, Vector};
+    use crate::{CooMatrix, Samples};
+    use russell_lab::{approx_eq, vec_approx_eq};
 
     #[test]
     fn new_and_drop_work() {

@@ -1519,8 +1519,8 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Mandel, SamplesTensor4, MN_TO_IJKL, SQRT_2};
-    use russell_lab::{approx_eq, mat_approx_eq, vec_approx_eq, Matrix, Vector};
+    use crate::{Mandel, SamplesTensor4, MN_TO_IJKL};
+    use russell_lab::{approx_eq, mat_approx_eq, vec_approx_eq, Matrix};
 
     #[test]
     fn t2_ddot_t2_works() {

@@ -455,9 +455,8 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ComplexCooMatrix, ComplexSparseMatrix, LinSolParams, Ordering, Samples, Scaling, Sym};
-    use num_complex::Complex64;
-    use russell_lab::{complex_approx_eq, complex_vec_approx_eq, cpx, ComplexVector};
+    use crate::{ComplexCooMatrix, Ordering, Samples, Scaling};
+    use russell_lab::{complex_approx_eq, complex_vec_approx_eq, cpx};
     use serial_test::serial;
 
     // IMPORTANT:

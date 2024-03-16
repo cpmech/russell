@@ -41,7 +41,7 @@ extern "C" {
 ///
 /// # Input
 ///
-/// * `c` -- the (n,n) matrix (will be modified)
+/// * `c` -- the (n,n) **symmetric** matrix (will be modified)
 /// * `a` -- the (n,k) matrix on the first case or (k,n) on the second case
 /// * `alpha` -- the α coefficient
 /// * `beta` -- the β coefficient

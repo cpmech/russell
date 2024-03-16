@@ -267,7 +267,7 @@ mod tests {
 
         // lower: c := 3⋅a⋅aᵀ + c
         mat_sym_rank_op(&mut c_lower, &a, alpha, beta, false, true).unwrap();
-        println!("{}", c_lower);
+        // println!("{}", c_lower);
         #[rustfmt::skip]
         let c_ref = Matrix::from(&[
             [48.0,  0.0,  0.0,  0.0,  0.0,  0.0],
@@ -281,7 +281,7 @@ mod tests {
 
         // upper: c := 3⋅a⋅aᵀ + c
         mat_sym_rank_op(&mut c_upper, &a, alpha, beta, true, true).unwrap();
-        println!("{}", c_upper);
+        // println!("{}", c_upper);
         #[rustfmt::skip]
         let c_ref = Matrix::from(&[
             [48.0, 27.0, 36.0,  9.0, 15.0, -9.0],

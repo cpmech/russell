@@ -21,7 +21,6 @@
     * [(stat) Generate the Frechet distribution](#frechet)
     * [(tensor) Allocate second-order tensors](#tensor)
 * [Todo list](#todo)
-* [Code coverage](#coverage)
 
 <a name="introduction"></a>
 

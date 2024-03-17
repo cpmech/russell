@@ -61,10 +61,6 @@ extern "C" {
 /// * `a` -- (m,m) general matrix (will be modified)
 /// * `b` -- (m,m) general matrix (will be modified)
 ///
-/// # Note
-///
-/// * The matrix `a` will be modified
-///
 /// # Example
 ///
 /// ```

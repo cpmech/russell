@@ -47,7 +47,7 @@ extern "C" {
 ///         [-4.0, -5.0, -6.0],
 ///     ]);
 ///     let mut c = Matrix::new(3, 3);
-///     mat_t_mat_mul(&mut c, 1.0, &a, &b);
+///     mat_t_mat_mul(&mut c, 1.0, &a, &b)?;
 ///     let correct = "┌             ┐\n\
 ///                    │  -9 -12 -15 │\n\
 ///                    │ -19 -26 -33 │\n\
@@ -64,6 +64,10 @@ pub fn mat_t_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) -> Resu
         return Err("matrices are incompatible");
     }
     if m == 0 || n == 0 {
+        return Ok(());
+    }
+    if k == 0 {
+        c.fill(0.0);
         return Ok(());
     }
     let m_i32: i32 = to_i32(m);
@@ -126,6 +130,15 @@ mod tests {
         let b = Matrix::new(0, 0);
         let mut c = Matrix::new(0, 0);
         mat_t_mat_mul(&mut c, 2.0, &a, &b).unwrap();
+
+        let a = Matrix::new(0, 1);
+        let b = Matrix::new(0, 1);
+        let mut c = Matrix::from(&[[123.0]]);
+        mat_t_mat_mul(&mut c, 2.0, &a, &b).unwrap();
+        let correct = &[
+            [0.0], //
+        ];
+        mat_approx_eq(&c, correct, 1e-15);
     }
 
     #[test]

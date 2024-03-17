@@ -47,7 +47,7 @@ extern "C" {
 ///         [-4.0, -5.0, -6.0],
 ///     ]);
 ///     let mut c = Matrix::new(3, 3);
-///     mat_mat_mul(&mut c, 1.0, &a, &b);
+///     mat_mat_mul(&mut c, 1.0, &a, &b)?;
 ///     let correct = "┌             ┐\n\
 ///                    │  -9 -12 -15 │\n\
 ///                    │ -19 -26 -33 │\n\
@@ -134,7 +134,7 @@ mod tests {
 
         let a = Matrix::new(1, 0);
         let b = Matrix::new(0, 1);
-        let mut c = Matrix::new(1, 1);
+        let mut c = Matrix::from(&[[123.0]]);
         mat_mat_mul(&mut c, 2.0, &a, &b).unwrap();
         let correct = &[
             [0.0], //

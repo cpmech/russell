@@ -25,7 +25,7 @@ pub enum Side {
 ///
 /// * The operator is built with a five-point stencil.
 /// * The boundary nodes are 'mirrored' yielding a no-flux barrier.
-pub struct DiscreteLaplacian2d {
+pub struct PdeDiscreteLaplacian2d {
     kx: f64,            // diffusion parameter x
     ky: f64,            // diffusion parameter y
     xmin: f64,          // min x coordinate
@@ -44,7 +44,7 @@ pub struct DiscreteLaplacian2d {
     essential: HashMap<usize, FnSpace>,
 }
 
-impl DiscreteLaplacian2d {
+impl PdeDiscreteLaplacian2d {
     /// Allocates a new instance
     ///
     /// # Input
@@ -74,7 +74,7 @@ impl DiscreteLaplacian2d {
             return Err("ny must be ≥ 2");
         }
         let dim = nx * ny;
-        Ok(DiscreteLaplacian2d {
+        Ok(PdeDiscreteLaplacian2d {
             kx,
             ky,
             xmin,
@@ -339,12 +339,12 @@ impl DiscreteLaplacian2d {
 
 #[cfg(test)]
 mod tests {
-    use super::{DiscreteLaplacian2d, Side};
+    use super::{PdeDiscreteLaplacian2d, Side};
     use russell_lab::{mat_approx_eq, Matrix};
 
     #[test]
     fn new_works() {
-        let lap = DiscreteLaplacian2d::new(7.0, 8.0, -1.0, 1.0, -3.0, 3.0, 2, 3).unwrap();
+        let lap = PdeDiscreteLaplacian2d::new(7.0, 8.0, -1.0, 1.0, -3.0, 3.0, 2, 3).unwrap();
         assert_eq!(lap.kx, 7.0);
         assert_eq!(lap.ky, 8.0);
         assert_eq!(lap.xmin, -1.0);
@@ -361,7 +361,7 @@ mod tests {
 
     #[test]
     fn set_essential_boundary_condition_works() {
-        let mut lap = DiscreteLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+        let mut lap = PdeDiscreteLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
         const LEF: f64 = 1.0;
         const RIG: f64 = 2.0;
         const BOT: f64 = 3.0;
@@ -402,7 +402,7 @@ mod tests {
 
     #[test]
     fn set_homogeneous_boundary_condition_works() {
-        let mut lap = DiscreteLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+        let mut lap = PdeDiscreteLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
         lap.set_homogeneous_boundary_conditions();
         assert_eq!(lap.left, &[0, 4, 8, 12]);
         assert_eq!(lap.right, &[3, 7, 11, 15]);
@@ -432,7 +432,7 @@ mod tests {
 
     #[test]
     fn coefficient_matrix_works() {
-        let mut lap = DiscreteLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
+        let mut lap = PdeDiscreteLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
         let (aa, _) = lap.coefficient_matrix().unwrap();
         assert_eq!(lap.dim(), 9);
         assert_eq!(lap.num_prescribed(), 0);
@@ -475,7 +475,7 @@ mod tests {
         // └                                                 ┘
         //    0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
         //    p  p  p  p  p        p  p        p  p  p  p  p
-        let mut lap = DiscreteLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+        let mut lap = PdeDiscreteLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
         lap.set_homogeneous_boundary_conditions();
         let (aa, cc) = lap.coefficient_matrix().unwrap();
         assert_eq!(lap.dim(), 16);
@@ -528,7 +528,7 @@ mod tests {
     #[test]
     fn get_grid_coordinates_works() {
         let (nx, ny) = (2, 3);
-        let lap = DiscreteLaplacian2d::new(7.0, 8.0, -1.0, 1.0, -3.0, 3.0, nx, ny).unwrap();
+        let lap = PdeDiscreteLaplacian2d::new(7.0, 8.0, -1.0, 1.0, -3.0, 3.0, nx, ny).unwrap();
         let mut xx = Matrix::new(ny, nx);
         let mut yy = Matrix::new(ny, nx);
         lap.loop_over_grid_points(|i, x, y| {

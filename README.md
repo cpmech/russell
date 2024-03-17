@@ -23,7 +23,9 @@
 * [Todo list](#todo)
 * [Code coverage](#coverage)
 
-## <a name="introduction"></a> Introduction
+<a name="introduction"></a>
+
+## Introduction
 
 **Russell** (Rust Scientific Library) assists in developing scientific computations using the Rust language.
 
@@ -31,7 +33,9 @@ The "main" crate here is [russell_lab](https://github.com/cpmech/russell/tree/ma
 
 Next, we recommend looking at the [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) crate, which implements sparse matrix structures such as COO (coordinates), CSC (compressed sparse column), and CSR (compressed sparse row) formats. `russell_sparse` also wraps powerful linear system solvers such as [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS](https://mumps-solver.org).
 
-## <a name="crates"></a> Crates
+<a name="crates"></a> 
+
+## Crates
 
 Available crates:
 

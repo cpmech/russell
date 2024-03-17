@@ -146,6 +146,9 @@ See also:
 
 * [russell_lab/examples](https://github.com/cpmech/russell/tree/main/russell_lab/examples)
 * [russell_sparse/examples](https://github.com/cpmech/russell/tree/main/russell_sparse/examples)
+* [russell_ode/examples](https://github.com/cpmech/russell/tree/main/russell_ode/examples)
+* [russell_stat/examples](https://github.com/cpmech/russell/tree/main/russell_stat/examples)
+* [russell_tensor/examples](https://github.com/cpmech/russell/tree/main/russell_tensor/examples)
 
 **Note:** For the functions dealing with complex numbers, the following line must be added to all derived code:
 

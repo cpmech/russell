@@ -9,7 +9,7 @@ repository = "https://github.com/cpmech/russell"
 documentation = "https://docs.rs/russell_ode"
 readme = "README.md"
 categories = ["mathematics", "science"]
-keywords = ["differential eqs", "numerical methods", "solver"]
+keywords = ["differential", "numerical methods", "solver"]
 
 [features]
 intel_mkl = ["russell_lab/intel_mkl", "russell_sparse/intel_mkl"]

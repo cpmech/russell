@@ -7,7 +7,7 @@ extern "C" {
     fn c_dlange(norm_code: i32, m: *const i32, n: *const i32, a: *const f64, lda: *const i32, work: *mut f64) -> f64;
 }
 
-/// Computes the matrix norm
+/// (dlange) Computes the matrix norm
 ///
 /// Computes one of:
 ///
@@ -20,6 +20,8 @@ extern "C" {
 ///
 /// ‖a‖_max = max_ij ( |aij| )
 /// ```
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/dc/d09/dlange_8f.html>
 ///
 /// # Example
 ///

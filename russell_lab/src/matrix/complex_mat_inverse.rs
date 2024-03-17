@@ -24,11 +24,15 @@ extern "C" {
 // constants
 const ZERO_DETERMINANT_NORM: f64 = 1e-15;
 
-/// Computes the inverse of a square matrix and returns its determinant
+/// (zgetrf, zgetri) Computes the inverse of a square matrix and returns its determinant
 ///
 /// ```text
 /// ai := a⁻¹
 /// ```
+///
+/// See: <https://www.netlib.org/lapack/explore-html/dd/dd1/zgetrf_8f.html>
+///
+/// And: <https://www.netlib.org/lapack/explore-html/d0/db3/zgetri_8f.html>
 ///
 /// # Output
 ///

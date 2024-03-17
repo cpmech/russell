@@ -451,7 +451,6 @@ fn calc_tolerances(radau5: bool, abs_tol: f64, rel_tol: f64) -> Result<(f64, f64
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Method;
     use russell_lab::approx_eq;
 
     #[test]

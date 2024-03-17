@@ -3,16 +3,18 @@ use crate::{to_i32, StrError};
 use num_complex::Complex64;
 
 extern "C" {
-    // Copies a vector into another (complex version)
+    // Copies a vector into another
     // <https://www.netlib.org/lapack/explore-html/d6/d53/zcopy_8f.html>
     fn cblas_zcopy(n: i32, x: *const Complex64, incx: i32, y: *mut Complex64, incy: i32);
 }
 
-/// Copies vector (complex version)
+/// (zcopy) Copies a vector into another
 ///
 /// ```text
 /// v := u
 /// ```
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/d6/d53/zcopy_8f.html>
 ///
 /// # Example
 ///

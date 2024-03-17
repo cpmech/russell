@@ -21,7 +21,6 @@ macro_rules! cpx {
 
 #[cfg(test)]
 mod tests {
-    use crate::cpx;
     use num_complex::Complex64;
 
     #[test]

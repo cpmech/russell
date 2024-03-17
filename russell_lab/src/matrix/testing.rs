@@ -1,8 +1,33 @@
 use crate::{
-    approx_eq, complex_mat_add, complex_mat_mat_mul, complex_mat_norm, complex_mat_zip, complex_vec_zip, cpx, mat_add,
-    mat_mat_mul, mat_norm, AsArray2D, ComplexMatrix, ComplexVector, Matrix, Norm, Vector,
+    approx_eq, complex_mat_add, complex_mat_approx_eq, complex_mat_mat_mul, complex_mat_norm, complex_mat_zip,
+    complex_vec_zip, cpx, mat_add, mat_mat_mul, mat_norm, AsArray2D, ComplexMatrix, ComplexVector, Matrix, Norm,
+    Vector,
 };
 use num_complex::Complex64;
+
+/// Checks Hermitian matrix given by the lower and upper parts
+#[allow(dead_code)]
+pub(crate) fn check_hermitian_uplo(full: &ComplexMatrix, lower: &ComplexMatrix, upper: &ComplexMatrix) {
+    let (m, n) = full.dims();
+    let (mm, nn) = lower.dims();
+    let (mmm, nnn) = upper.dims();
+    assert_eq!(m, n);
+    assert!(mm == m && mmm == m && nn == m && nnn == m);
+    let mut cc = ComplexMatrix::new(m, m);
+    for i in 0..m {
+        for j in 0..m {
+            if i == j {
+                cc.set(i, j, lower.get(i, j));
+                assert_eq!(full.get(i, j).im, 0.0); // hermitian
+            } else {
+                cc.set(i, j, lower.get(i, j) + upper.get(i, j));
+                assert_eq!(full.get(i, j).re, full.get(j, i).re); // hermitian
+                assert_eq!(full.get(i, j).im, -full.get(j, i).im); // hermitian
+            }
+        }
+    }
+    complex_mat_approx_eq(&full, &cc, 1e-15);
+}
 
 /// Checks the eigen-decomposition of a symmetric matrix
 ///
@@ -21,12 +46,12 @@ where
     let mut a_v = Matrix::new(m, m);
     let mut v_l = Matrix::new(m, m);
     let mut err = Matrix::filled(m, m, f64::MAX);
-    mat_mat_mul(&mut a_v, 1.0, &a, &v).unwrap();
+    mat_mat_mul(&mut a_v, 1.0, &a, &v, 0.0).unwrap();
     let norm_a_v = mat_norm(&a_v, Norm::Max);
     if norm_a_v <= f64::EPSILON {
         panic!("norm(a⋅v) cannot be zero");
     }
-    mat_mat_mul(&mut v_l, 1.0, &v, &lam).unwrap();
+    mat_mat_mul(&mut v_l, 1.0, &v, &lam, 0.0).unwrap();
     mat_add(&mut err, 1.0, &a_v, -1.0, &v_l).unwrap();
     approx_eq(mat_norm(&err, Norm::Max), 0.0, tolerance);
 }
@@ -60,17 +85,18 @@ pub(crate) fn check_eigen<'a, T>(
     let mut err = ComplexMatrix::filled(m, m, Complex64::new(f64::MAX, f64::MAX));
     let one = Complex64::new(1.0, 0.0);
     let m_one = Complex64::new(-1.0, 0.0);
-    complex_mat_mat_mul(&mut a_v, one, &a, &v).unwrap();
+    let zero = Complex64::new(0.0, 0.0);
+    complex_mat_mat_mul(&mut a_v, one, &a, &v, zero).unwrap();
     let norm_a_v = complex_mat_norm(&a_v, Norm::Max);
     if norm_a_v <= f64::EPSILON {
         panic!("norm(a⋅v) cannot be zero");
     }
-    complex_mat_mat_mul(&mut v_l, one, &v, &lam).unwrap();
+    complex_mat_mat_mul(&mut v_l, one, &v, &lam, zero).unwrap();
     complex_mat_add(&mut err, one, &a_v, m_one, &v_l).unwrap();
     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, tolerance);
 }
 
-/// Checks the eigen-decomposition of a general matrix (complex version)
+/// Checks the eigen-decomposition of a general matrix
 ///
 /// ```text
 /// a⋅v = v⋅λ
@@ -89,12 +115,13 @@ where
     let mut err = ComplexMatrix::filled(m, m, Complex64::new(f64::MAX, f64::MAX));
     let one = Complex64::new(1.0, 0.0);
     let m_one = Complex64::new(-1.0, 0.0);
-    complex_mat_mat_mul(&mut a_v, one, &a, &v).unwrap();
+    let zero = Complex64::new(0.0, 0.0);
+    complex_mat_mat_mul(&mut a_v, one, &a, &v, zero).unwrap();
     let norm_a_v = complex_mat_norm(&a_v, Norm::Max);
     if norm_a_v <= f64::EPSILON {
         panic!("norm(a⋅v) cannot be zero");
     }
-    complex_mat_mat_mul(&mut v_l, one, &v, &lam).unwrap();
+    complex_mat_mat_mul(&mut v_l, one, &v, &lam, zero).unwrap();
     complex_mat_add(&mut err, one, &a_v, m_one, &v_l).unwrap();
     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, tolerance);
 }
@@ -133,18 +160,19 @@ pub(crate) fn check_gen_eigen<'a, T>(
     let mut v_l = ComplexMatrix::new(m, m);
     let mut b_v_l = ComplexMatrix::new(m, m);
     let mut err = ComplexMatrix::filled(m, m, cpx!(f64::MAX, 0.0));
-    complex_mat_mat_mul(&mut a_v, cpx!(1.0, 0.0), &aa, &vv).unwrap();
+    let zero = Complex64::new(0.0, 0.0);
+    complex_mat_mat_mul(&mut a_v, cpx!(1.0, 0.0), &aa, &vv, zero).unwrap();
     let norm_a_v = complex_mat_norm(&a_v, Norm::Max);
     if norm_a_v <= f64::EPSILON {
         panic!("norm(a⋅v) cannot be zero");
     }
-    complex_mat_mat_mul(&mut v_l, cpx!(1.0, 0.0), &vv, &dd).unwrap();
-    complex_mat_mat_mul(&mut b_v_l, cpx!(1.0, 0.0), &bb, &v_l).unwrap();
+    complex_mat_mat_mul(&mut v_l, cpx!(1.0, 0.0), &vv, &dd, zero).unwrap();
+    complex_mat_mat_mul(&mut b_v_l, cpx!(1.0, 0.0), &bb, &v_l, zero).unwrap();
     complex_mat_add(&mut err, cpx!(1.0, 0.0), &a_v, cpx!(-1.0, 0.0), &b_v_l).unwrap();
     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, tolerance);
 }
 
-/// Checks the generalized eigen-decomposition of a general matrix (complex version)
+/// Checks the generalized eigen-decomposition of a general matrix
 ///
 /// ```text
 /// a ⋅ vj = lj ⋅ b ⋅ vj
@@ -173,13 +201,14 @@ pub(crate) fn complex_check_gen_eigen<'a, T>(
     let mut v_l = ComplexMatrix::new(m, m);
     let mut b_v_l = ComplexMatrix::new(m, m);
     let mut err = ComplexMatrix::filled(m, m, cpx!(f64::MAX, 0.0));
-    complex_mat_mat_mul(&mut a_v, cpx!(1.0, 0.0), &aa, &v).unwrap();
+    let zero = Complex64::new(0.0, 0.0);
+    complex_mat_mat_mul(&mut a_v, cpx!(1.0, 0.0), &aa, &v, zero).unwrap();
     let norm_a_v = complex_mat_norm(&a_v, Norm::Max);
     if norm_a_v <= f64::EPSILON {
         panic!("norm(a⋅v) cannot be zero");
     }
-    complex_mat_mat_mul(&mut v_l, cpx!(1.0, 0.0), &v, &dd).unwrap();
-    complex_mat_mat_mul(&mut b_v_l, cpx!(1.0, 0.0), &bb, &v_l).unwrap();
+    complex_mat_mat_mul(&mut v_l, cpx!(1.0, 0.0), &v, &dd, zero).unwrap();
+    complex_mat_mat_mul(&mut b_v_l, cpx!(1.0, 0.0), &bb, &v_l, zero).unwrap();
     complex_mat_add(&mut err, cpx!(1.0, 0.0), &a_v, cpx!(-1.0, 0.0), &b_v_l).unwrap();
     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, tolerance);
 }

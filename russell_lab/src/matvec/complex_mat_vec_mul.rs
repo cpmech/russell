@@ -4,7 +4,7 @@ use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_NO_TRANS};
 use num_complex::Complex64;
 
 extern "C" {
-    // Performs one of the matrix-vector multiplication (complex version)
+    // Performs one of the matrix-vector multiplication
     // <https://www.netlib.org/lapack/explore-html/db/d40/zgemv_8f.html>
     fn cblas_zgemv(
         layout: i32,
@@ -22,12 +22,14 @@ extern "C" {
     );
 }
 
-/// Performs the matrix-vector multiplication
+/// (zgemv) Performs the matrix-vector multiplication
 ///
 /// ```text
 ///  v  :=  α ⋅  a   ⋅  u
 /// (m)        (m,n)   (n)
 /// ```
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/db/d40/zgemv_8f.html>
 ///
 /// # Note
 ///

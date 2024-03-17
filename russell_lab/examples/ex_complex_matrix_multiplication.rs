@@ -30,7 +30,8 @@ fn main() -> Result<(), StrError> {
     // multiply matrices
     // c = (0.5 - 2i) ⋅ a ⋅ b
     let alpha = cpx!(0.5, -2.0);
-    complex_mat_mat_mul(&mut c, alpha, &a, &b)?;
+    let beta = cpx!(0.0, 0.0);
+    complex_mat_mat_mul(&mut c, alpha, &a, &b, beta)?;
 
     // check
     #[rustfmt::skip]

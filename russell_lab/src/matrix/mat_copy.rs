@@ -7,11 +7,13 @@ extern "C" {
     fn cblas_dcopy(n: i32, x: *const f64, incx: i32, y: *mut f64, incy: i32);
 }
 
-/// Copies matrix
+/// (dcopy) Copies matrix
 ///
 /// ```text
 /// b := a
 /// ```
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/da/d6c/dcopy_8f.html>
 ///
 /// # Example
 ///

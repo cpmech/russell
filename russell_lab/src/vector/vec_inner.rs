@@ -7,11 +7,13 @@ extern "C" {
     fn cblas_ddot(n: i32, x: *const f64, incx: i32, y: *const f64, incy: i32) -> f64;
 }
 
-/// Performs the inner (dot) product between two vectors resulting in a scalar value
+/// (ddot) Performs the inner (dot) product between two vectors resulting in a scalar value
 ///
 /// ```text
 ///  s := u dot v
 /// ```
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/d5/df6/ddot_8f.html>
 ///
 /// # Note
 ///

@@ -149,7 +149,6 @@ where
 mod tests {
     use super::*;
     use crate::Samples;
-    use std::fs;
 
     #[test]
     fn csc_write_matrix_market_works() {

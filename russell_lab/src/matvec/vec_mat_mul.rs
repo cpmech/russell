@@ -4,7 +4,7 @@ use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_TRANS};
 
 extern "C" {
     // Performs one of the matrix-vector multiplication
-    // <https://www.netlib.org/lapack/explore-html/dc/da8/dgemv_8f.html
+    // <https://www.netlib.org/lapack/explore-html/dc/da8/dgemv_8f.html>
     fn cblas_dgemv(
         layout: i32,
         transa: i32,
@@ -21,7 +21,7 @@ extern "C" {
     );
 }
 
-/// Performs the vector-matrix multiplication resulting in a vector
+/// (dgemv) Performs the vector-matrix multiplication resulting in a vector
 ///
 /// ```text
 ///  v  :=  α ⋅  u  ⋅  a  
@@ -34,6 +34,8 @@ extern "C" {
 ///  v  :=  α ⋅   aᵀ  ⋅  u
 /// (n)         (n,m)   (m)  
 /// ```
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/dc/da8/dgemv_8f.html>
 ///
 /// # Note
 ///

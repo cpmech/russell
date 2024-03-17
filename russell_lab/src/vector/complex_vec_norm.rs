@@ -8,7 +8,7 @@ extern "C" {
     fn cblas_dznrm2(n: i32, x: *const Complex64, incx: i32) -> f64;
 }
 
-/// Returns the vector norm (complex version)
+/// Returns the vector norm
 ///
 /// Here:
 ///

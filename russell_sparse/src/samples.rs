@@ -36,7 +36,7 @@ impl Samples {
         (coo, csc, csr, 123.0)
     }
 
-    /// Returns a (1 x 1) matrix (complex version)
+    /// Returns a (1 x 1) matrix
     ///
     /// ```text
     /// ┌       ┐

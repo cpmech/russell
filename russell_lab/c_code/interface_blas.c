@@ -9,6 +9,7 @@
 #define FN_DLANGE dlange_
 #define FN_ZLANGE zlange_
 #define FN_DPOTRF dpotrf_
+#define FN_ZPOTRF zpotrf_
 #define FN_DSYEV dsyev_
 #define FN_DGEEV dgeev_
 #define FN_ZGEEV zgeev_
@@ -30,6 +31,7 @@
 #define FN_DLANGE LAPACK_dlange
 #define FN_ZLANGE LAPACK_zlange
 #define FN_DPOTRF LAPACK_dpotrf
+#define FN_ZPOTRF LAPACK_zpotrf
 #define FN_DSYEV LAPACK_dsyev
 #define FN_DGEEV LAPACK_dgeev
 #define FN_ZGEEV LAPACK_zgeev
@@ -104,7 +106,7 @@ void c_dgesv(const int32_t *n,
     FN_DGESV(n, nrhs, a, lda, ipiv, b, ldb, info);
 }
 
-// Computes the solution to a real system of linear equations (complex version)
+// Computes the solution to a real system of linear equations
 // <https://www.netlib.org/lapack/explore-html/d1/ddc/zgesv_8f.html>
 void c_zgesv(const int32_t *n,
              const int32_t *nrhs,
@@ -132,7 +134,7 @@ double c_dlange(int32_t norm_code,
     return FN_DLANGE(norm, m, n, a, lda, work);
 }
 
-// Computes the matrix norm (complex version)
+// Computes the matrix norm
 // <https://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
 double c_zlange(int32_t norm_code,
                 const int32_t *m,
@@ -156,6 +158,17 @@ void c_dpotrf(C_BOOL upper,
               int32_t *info) {
     const char *uplo = upper == C_TRUE ? "U" : "L";
     FN_DPOTRF(uplo, n, a, lda, info);
+}
+
+// Computes the Cholesky factorization of a complex Hermitian positive definite matrix A.
+// <https://www.netlib.org/lapack/explore-html/d1/db9/zpotrf_8f.html>
+void c_zpotrf(C_BOOL upper,
+              const int32_t *n,
+              COMPLEX64 *a,
+              const int32_t *lda,
+              int32_t *info) {
+    const char *uplo = upper == C_TRUE ? "U" : "L";
+    FN_ZPOTRF(uplo, n, a, lda, info);
 }
 
 // Computes the eigenvalues and eigenvectors of a symmetric matrix

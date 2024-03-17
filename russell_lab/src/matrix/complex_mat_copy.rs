@@ -8,11 +8,13 @@ extern "C" {
     fn cblas_zcopy(n: i32, x: *const Complex64, incx: i32, y: *mut Complex64, incy: i32);
 }
 
-/// Copies complex matrix
+/// (zcopy) Copies complex matrix
 ///
 /// ```text
 /// b := a
 /// ```
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/d6/d53/zcopy_8f.html>
 ///
 /// # Example
 ///

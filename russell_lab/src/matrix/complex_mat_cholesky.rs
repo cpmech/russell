@@ -40,6 +40,51 @@ extern "C" {
 /// # Examples
 ///
 /// ```
+/// use num_complex::Complex64;
+/// use russell_lab::*;
+///
+/// fn main() -> Result<(), StrError> {
+///     // set matrix
+///     let _______________ = cpx!(0.0, 0.0);
+///     #[rustfmt::skip]
+///     let mut a = ComplexMatrix::from(&[
+///         [cpx!(  4.0, 0.0), _______________,  _______________],
+///         [cpx!( 12.0, 0.0), cpx!( 37.0, 0.0), _______________],
+///         [cpx!(-16.0, 0.0), cpx!(-43.0, 0.0), cpx!(98.0, 0.0)],
+///     ]);
+///
+///     // perform factorization
+///     complex_mat_cholesky(&mut a, false)?;
+///
+///     // define alias (for convenience)
+///     let l = &a;
+///
+///     // compare with solution
+///     let l_correct = "┌                   ┐\n\
+///                      │  2+0i  0+0i  0+0i │\n\
+///                      │  6+0i  1+0i  0+0i │\n\
+///                      │ -8+0i  5+0i  3+0i │\n\
+///                      └                   ┘";
+///     assert_eq!(format!("{}", l), l_correct);
+///
+///     // check:  l ⋅ lᵀ = a
+///     let m = a.nrow();
+///     let mut l_lt = ComplexMatrix::new(m, m);
+///     for i in 0..m {
+///         for j in 0..m {
+///             for k in 0..m {
+///                 l_lt.add(i, j, l.get(i, k) * l.get(j, k));
+///             }
+///         }
+///     }
+///     let l_lt_correct = "┌                      ┐\n\
+///                         │   4+0i  12+0i -16+0i │\n\
+///                         │  12+0i  37+0i -43+0i │\n\
+///                         │ -16+0i -43+0i  98+0i │\n\
+///                         └                      ┘";
+///     assert_eq!(format!("{}", l_lt), l_lt_correct);
+///     Ok(())
+/// }
 /// ```
 pub fn complex_mat_cholesky(a: &mut ComplexMatrix, upper: bool) -> Result<(), StrError> {
     let (m, n) = a.dims();

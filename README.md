@@ -51,7 +51,9 @@ External associated and recommended crates:
 - [tritet](https://github.com/cpmech/tritet) Triangle and tetrahedron mesh generators (with Triangle and Tetgen)
 - [gemlab](https://github.com/cpmech/gemlab) Geometry, meshes, and numerical integration for finite element analyses
 
-## <a name="installation"></a> Installation on Debian/Ubuntu/Linux
+<a name="installation"></a>
+
+## Installation on Debian/Ubuntu/Linux
 
 **Russell** depends on external (non-Rust) packages for linear algebra and the solution of large sparse linear systems. The following libraries are required:
 
@@ -100,7 +102,9 @@ Then, add `intel_mkl` to your Cargo.toml or use `cargo build --features intel_mk
 
 If locally compiled, the above scripts will save the resulting files in `/usr/local/lib/{mumps,umfpack}` and `/usr/local/include/{mumps,umfpack}`.
 
-## <a name="macos"></a> Installation on macOS
+<a name="macos"></a>
+
+## Installation on macOS
 
 Currently, only OpenBLAS has been tested on macOS.
 
@@ -116,7 +120,9 @@ Next, we must set the `LIBRARY_PATH`:
 export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/lapack/lib:$(brew --prefix)/opt/openblas/lib
 ```
 
-## <a name="threads"></a> Number of threads
+<a name="threads"></a>
+
+## Number of threads
 
 By default, OpenBLAS will use all available threads, including Hyper-Threads that may worsen the performance. Thus, it is best to set the following environment variable:
 
@@ -132,7 +138,9 @@ Furthermore, if working on a multi-threaded application where the solver should 
 export OPENBLAS_NUM_THREADS=1
 ```
 
-## <a name="examples"></a> Examples
+<a name="examples"></a>
+
+## Examples
 
 See also:
 
@@ -147,7 +155,9 @@ use num_complex::Complex64;
 
 This line will bring `Complex64` to the scope. For convenience the (russell_lab) macro `cpx!` may be used to allocate complex numbers.
 
-### <a name="svd"></a> (lab) Singular value decomposition
+<a name="svd"></a>
+
+### (lab) Singular value decomposition
 
 ```rust
 use russell_lab::{mat_svd, Matrix, Vector, StrError};
@@ -198,7 +208,9 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-### <a name="cholesky"></a> (lab) Cholesky factorization
+<a name="cholesky"></a>
+
+### (lab) Cholesky factorization
 
 ```rust
 use russell_lab::*;
@@ -265,7 +277,9 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-### <a name="dense-lin-sys"></a> (lab) Solve a tiny (dense) linear system
+<a name="dense-lin-sys"></a>
+
+### (lab) Solve a tiny (dense) linear system
 
 ```rust
 use russell_lab::{solve_lin_sys, Matrix, Vector, StrError};
@@ -359,7 +373,9 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-### <a name="brusselator"></a> (ode) Solve the brusselator ODE system
+<a name="brusselator"></a>
+
+### (ode) Solve the brusselator ODE system
 
 The system is:
 
@@ -405,7 +421,9 @@ A plot of the (dense) solution is shown below:
 
 ![Brusselator results: DoPri8](russell_ode/data/figures/brusselator_dopri8.svg)
 
-### <a name="frechet"></a> (stat) Generate the Frechet distribution
+<a name="frechet"></a>
+
+### (stat) Generate the Frechet distribution
 
 Code:
 
@@ -462,7 +480,9 @@ std_dev = 312.7131690782321
       sum = 9008
 ```
 
-### <a name="tensor"></a> (tensor) Allocate second-order tensors
+<a name="tensor"></a>
+
+### (tensor) Allocate second-order tensors
 
 ```rust
 use russell_tensor::*;
@@ -531,7 +551,9 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-## <a name="todo"></a> Todo list
+<a name="todo"></a>
+
+## Todo list
 
 - [ ] Further develop crate `russell_ode`
     - [x] Implement explicit Runge-Kutta solvers
@@ -576,23 +598,3 @@ fn main() -> Result<(), StrError> {
 - [ ] Make it possible to install Russell on Windows and macOS 
     - [ ] Use Intel MKL on Windows
     - [ ] Install MUMPS and UMFPACK on Windows and macOS
-
-## <a name="coverage"></a> Code coverage
-
-### Sunburst
-
-The innermost circle is the entire project; folders are moving away from the center, then a single file. Each slice's size and color represent the number of statements and the coverage, respectively.
-
-![Sunburst](https://codecov.io/gh/cpmech/russell/graphs/sunburst.svg?token=PQWSKMZQXT)
-
-### Grid
-
-Each block represents a single file in the project. The size and color of each block are described by the number of statements and the coverage, respectively.
-
-![Grid](https://codecov.io/gh/cpmech/russell/graphs/tree.svg?token=PQWSKMZQXT)
-
-### Icicle
-
-The top section represents the entire project. Proceeding with folders and, finally, individual files. Each slice's size and color define the number of statements and the coverage, respectively.
-
-![Icicle](https://codecov.io/gh/cpmech/russell/graphs/icicle.svg?token=PQWSKMZQXT)

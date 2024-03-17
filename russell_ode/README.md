@@ -16,6 +16,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
     * [Robertson's equation](#robertson)
     * [Van der Pol's equation](#van-der-pol)
     * [One-transistor amplifier](#amplifier1t)
+    * [PDE: discrete Laplacian (2D)](#laplacian)
 
 ## <a name="introduction"></a> Introduction
 
@@ -748,3 +749,32 @@ Total time                       = 97.951021ms
 The results are plotted below:
 
 ![One-transistor Amplifier - Radau5](data/figures/amplifier1t_radau5.svg)
+
+### <a name="laplacian"></a> PDE: discrete Laplacian operator in 2D
+
+For convenience (e.g., in benchmarks), `russell_ode` implements a discrete Laplacian operator (2D) based on the Finite Differences Method.
+
+This operator can be used to solve simple partial differential equation (PDE) problems.
+
+For example, we approximate (with the Finite Differences Method, FDM) the solution of
+
+```text
+∂²ϕ     ∂²ϕ
+———  +  ——— = 0
+∂x²     ∂y²
+```
+
+on a (1.0 × 1.0) rectangle with the following essential (Dirichlet) boundary conditions:
+
+```text
+left:    ϕ(0.0, y) = 50.0
+right:   ϕ(1.0, y) =  0.0
+bottom:  ϕ(x, 0.0) =  0.0
+top:     ϕ(x, 1.0) = 50.0
+```
+
+See the code [pde_laplace_equation.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/pde_laplace_equation.rs)
+
+The results are illustrated below:
+
+![Laplace equation](data/figures/pde_laplace_equation.svg)

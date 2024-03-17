@@ -25,8 +25,8 @@ extern "C" {
 /// (dgemm) Performs the matrix-matrix multiplication
 ///
 /// ```text
-///   c  :=  α ⋅  a   ⋅   b
-/// (m,n)       (m,k)   (k,n)
+///   c  :=  α  a   ⋅   b   +  β  c
+/// (m,n)     (m,k)   (k,n)     (m,n)
 /// ```
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d7/d2b/dgemm_8f.html>
@@ -47,7 +47,7 @@ extern "C" {
 ///         [-4.0, -5.0, -6.0],
 ///     ]);
 ///     let mut c = Matrix::new(3, 3);
-///     mat_mat_mul(&mut c, 1.0, &a, &b)?;
+///     mat_mat_mul(&mut c, 1.0, &a, &b, 0.0)?;
 ///     let correct = "┌             ┐\n\
 ///                    │  -9 -12 -15 │\n\
 ///                    │ -19 -26 -33 │\n\
@@ -57,7 +57,7 @@ extern "C" {
 ///     Ok(())
 /// }
 /// ```
-pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) -> Result<(), StrError> {
+pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix, beta: f64) -> Result<(), StrError> {
     let (m, n) = c.dims();
     let k = a.ncol();
     if a.nrow() != m || b.nrow() != k || b.ncol() != n {
@@ -75,7 +75,6 @@ pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) -> Result
     let k_i32: i32 = to_i32(k);
     let lda = m_i32;
     let ldb = k_i32;
-    let beta = 0.0;
     unsafe {
         cblas_dgemm(
             CBLAS_COL_MAJOR,
@@ -112,15 +111,15 @@ mod tests {
         let b_1x3 = Matrix::new(1, 3);
         let mut c_2x2 = Matrix::new(2, 2);
         assert_eq!(
-            mat_mat_mul(&mut c_2x2, 1.0, &a_2x1, &b_2x1),
+            mat_mat_mul(&mut c_2x2, 1.0, &a_2x1, &b_2x1, 0.0),
             Err("matrices are incompatible")
         );
         assert_eq!(
-            mat_mat_mul(&mut c_2x2, 1.0, &a_1x2, &b_2x1),
+            mat_mat_mul(&mut c_2x2, 1.0, &a_1x2, &b_2x1, 0.0),
             Err("matrices are incompatible")
         );
         assert_eq!(
-            mat_mat_mul(&mut c_2x2, 1.0, &a_2x1, &b_1x3),
+            mat_mat_mul(&mut c_2x2, 1.0, &a_2x1, &b_1x3, 0.0),
             Err("matrices are incompatible")
         );
     }
@@ -130,12 +129,12 @@ mod tests {
         let a = Matrix::new(0, 0);
         let b = Matrix::new(0, 0);
         let mut c = Matrix::new(0, 0);
-        mat_mat_mul(&mut c, 2.0, &a, &b).unwrap();
+        mat_mat_mul(&mut c, 2.0, &a, &b, 0.0).unwrap();
 
         let a = Matrix::new(1, 0);
         let b = Matrix::new(0, 1);
         let mut c = Matrix::from(&[[123.0]]);
-        mat_mat_mul(&mut c, 2.0, &a, &b).unwrap();
+        mat_mat_mul(&mut c, 2.0, &a, &b, 0.0).unwrap();
         let correct = &[
             [0.0], //
         ];
@@ -143,7 +142,7 @@ mod tests {
     }
 
     #[test]
-    fn mat_mat_mul_works() {
+    fn mat_mat_mul_works_1() {
         let a = Matrix::from(&[
             // 2 x 3
             [1.0, 2.00, 3.0],
@@ -157,11 +156,35 @@ mod tests {
         ]);
         let mut c = Matrix::new(2, 4);
         // c := 2⋅a⋅b
-        mat_mat_mul(&mut c, 2.0, &a, &b).unwrap();
+        mat_mat_mul(&mut c, 2.0, &a, &b, 0.0).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [2.80, 12.0, 12.0, 12.50],
             [1.30,  5.0,  5.0, 5.25],
+        ];
+        mat_approx_eq(&c, correct, 1e-15);
+    }
+
+    #[test]
+    fn mat_mat_mul_works_2() {
+        let a = Matrix::from(&[
+            // 2 x 3
+            [1.0, 2.00, 3.0],
+            [0.5, 0.75, 1.5],
+        ]);
+        let b = Matrix::from(&[
+            // 3 x 4
+            [0.1, 0.5, 0.5, 0.75],
+            [0.2, 2.0, 2.0, 2.00],
+            [0.3, 0.5, 0.5, 0.50],
+        ]);
+        let mut c = Matrix::filled(2, 4, 100.0);
+        // c := 2 a⋅b + 10 c
+        mat_mat_mul(&mut c, 2.0, &a, &b, 10.0).unwrap();
+        #[rustfmt::skip]
+        let correct = &[
+            [1002.80, 1012.0, 1012.0, 1012.50],
+            [1001.30, 1005.0, 1005.0, 1005.25],
         ];
         mat_approx_eq(&c, correct, 1e-15);
     }

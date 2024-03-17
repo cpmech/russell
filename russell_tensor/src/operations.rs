@@ -1511,7 +1511,7 @@ pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) -> Res
 /// ```
 #[inline]
 pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) -> Result<(), StrError> {
-    mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat)
+    mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, 0.0)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

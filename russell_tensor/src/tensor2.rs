@@ -961,7 +961,7 @@ impl Tensor2 {
     ///     let a_mat = a.to_matrix();
     ///     let ai_mat = ai.to_matrix();
     ///     let mut a_times_ai = Matrix::new(3, 3);
-    ///     mat_mat_mul(&mut a_times_ai, 1.0, &a_mat, &ai_mat)?;
+    ///     mat_mat_mul(&mut a_times_ai, 1.0, &a_mat, &ai_mat, 0.0)?;
     ///
     ///     let ii = Matrix::diagonal(&[1.0, 1.0, 1.0]);
     ///     mat_approx_eq(&a_times_ai, &ii, 1e-15);
@@ -2576,7 +2576,7 @@ mod tests {
         let aa = tt.to_matrix();
         let aai = tti.to_matrix();
         let mut ii = Matrix::new(3, 3);
-        mat_mat_mul(&mut ii, 1.0, &aa, &aai).unwrap();
+        mat_mat_mul(&mut ii, 1.0, &aa, &aai, 0.0).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 if i == j {
@@ -2661,7 +2661,7 @@ mod tests {
         let aa = tt.to_matrix();
         let aa2 = tt2.to_matrix();
         let mut aa2_correct = Matrix::new(3, 3);
-        mat_mat_mul(&mut aa2_correct, 1.0, &aa, &aa).unwrap();
+        mat_mat_mul(&mut aa2_correct, 1.0, &aa, &aa, 0.0).unwrap();
         mat_approx_eq(&aa2, &aa2_correct, tol);
     }
 

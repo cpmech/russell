@@ -115,8 +115,8 @@ extern "C" {
 ///     let mut a_v = Matrix::new(m, m);
 ///     let mut v_l = Matrix::new(m, m);
 ///     let mut err = Matrix::filled(m, m, f64::MAX);
-///     mat_mat_mul(&mut a_v, 1.0, &a_copy, &v_real)?;
-///     mat_mat_mul(&mut v_l, 1.0, &v_real, &lam)?;
+///     mat_mat_mul(&mut a_v, 1.0, &a_copy, &v_real, 0.0)?;
+///     mat_mat_mul(&mut v_l, 1.0, &v_real, &lam, 0.0)?;
 ///     mat_add(&mut err, 1.0, &a_v, -1.0, &v_l)?;
 ///     approx_eq(mat_norm(&err, Norm::Max), 0.0, 1e-15);
 ///     Ok(())
@@ -280,8 +280,9 @@ pub fn mat_eigen(
 ///     let mut err = ComplexMatrix::filled(m, m, cpx!(f64::MAX, f64::MAX));
 ///     let one = cpx!(1.0, 0.0);
 ///     let m_one = cpx!(-1.0, 0.0);
-///     complex_mat_mat_mul(&mut a_v, one, &a, &v)?;
-///     complex_mat_mat_mul(&mut v_l, one, &v, &lam)?;
+///     let zero = cpx!(0.0, 0.0);
+///     complex_mat_mat_mul(&mut a_v, one, &a, &v, zero)?;
+///     complex_mat_mat_mul(&mut v_l, one, &v, &lam, zero)?;
 ///     complex_mat_add(&mut err, one, &a_v, m_one, &v_l)?;
 ///     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, 1e-15);
 ///     Ok(())

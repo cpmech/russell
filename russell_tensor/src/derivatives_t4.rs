@@ -277,7 +277,7 @@ pub fn deriv2_invariant_jj3(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantJ3, si
     sigma.deviator(&mut aux.s).unwrap();
     t2_qsd_t2(&mut aux.aa, 0.5, &mut aux.s, &aux.ii).unwrap(); // aa := 0.5 qsd(s,I)
     t2_dyad_t2(&mut aux.bb, -TWO_BY_3, &aux.ii, &aux.s).unwrap(); // bb := -⅔ I ⊗ s
-    mat_mat_mul(&mut d2.mat, 1.0, &aux.aa.mat, &aux.psd.mat).unwrap(); // d2 := 0.5 qsd(s,I) : Psd
+    mat_mat_mul(&mut d2.mat, 1.0, &aux.aa.mat, &aux.psd.mat, 0.0).unwrap(); // d2 := 0.5 qsd(s,I) : Psd
     mat_update(&mut d2.mat, 1.0, &aux.bb.mat).unwrap(); // d2 += -⅔ I ⊗ s
     Ok(())
 }

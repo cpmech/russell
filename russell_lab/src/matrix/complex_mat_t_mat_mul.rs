@@ -26,9 +26,9 @@ extern "C" {
 /// (zgemm) Performs the transpose(matrix)-matrix multiplication
 ///
 /// ```text
-///   c  :=  α ⋅  aᵀ  ⋅   b
-/// (m,n)       (m,k)   (k,n)
-///           a:(k,m)
+///   c  :=  α   aᵀ  ⋅   b   +  β  c
+/// (m,n)      (m,k)   (k,n)     (m,n)
+///          a:(k,m)
 /// ```
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d7/d76/zgemm_8f.html>
@@ -57,7 +57,8 @@ extern "C" {
 ///     // (1,3)    (1,2)  (2,3)
 ///     let mut c = ComplexMatrix::new(1, 3);
 ///     let alpha = cpx!(3.0, -2.0);
-///     complex_mat_t_mat_mul(&mut c, alpha, &a, &b)?;
+///     let beta = cpx!(0.0, 0.0);
+///     complex_mat_t_mat_mul(&mut c, alpha, &a, &b, beta)?;
 ///
 ///     let correct = &[[cpx!(18.0, 1.0), cpx!(51.0, 5.0), cpx!(44.0, 14.0)]];
 ///     complex_mat_approx_eq(&c, correct, 1e-15);
@@ -69,6 +70,7 @@ pub fn complex_mat_t_mat_mul(
     alpha: Complex64,
     a: &ComplexMatrix,
     b: &ComplexMatrix,
+    beta: Complex64,
 ) -> Result<(), StrError> {
     let (m, n) = c.dims();
     let k = a.nrow();
@@ -78,8 +80,8 @@ pub fn complex_mat_t_mat_mul(
     if m == 0 || n == 0 {
         return Ok(());
     }
-    let zero = Complex64::new(0.0, 0.0);
     if k == 0 {
+        let zero = Complex64::new(0.0, 0.0);
         c.fill(zero);
         return Ok(());
     }
@@ -101,7 +103,7 @@ pub fn complex_mat_t_mat_mul(
             lda,
             b.as_data().as_ptr(),
             ldb,
-            &zero,
+            &beta,
             c.as_mut_data().as_mut_ptr(),
             m_i32,
         );
@@ -125,16 +127,17 @@ mod tests {
         let b_1x3 = ComplexMatrix::new(1, 3);
         let mut c_2x2 = ComplexMatrix::new(2, 2);
         let alpha = cpx!(1.0, 0.0);
+        let beta = cpx!(0.0, 0.0);
         assert_eq!(
-            complex_mat_t_mat_mul(&mut c_2x2, alpha, &a_2x1, &b_2x1),
+            complex_mat_t_mat_mul(&mut c_2x2, alpha, &a_2x1, &b_2x1, beta),
             Err("matrices are incompatible")
         );
         assert_eq!(
-            complex_mat_t_mat_mul(&mut c_2x2, alpha, &a_1x2, &b_2x1),
+            complex_mat_t_mat_mul(&mut c_2x2, alpha, &a_1x2, &b_2x1, beta),
             Err("matrices are incompatible")
         );
         assert_eq!(
-            complex_mat_t_mat_mul(&mut c_2x2, alpha, &a_2x1, &b_1x3),
+            complex_mat_t_mat_mul(&mut c_2x2, alpha, &a_2x1, &b_1x3, beta),
             Err("matrices are incompatible")
         );
     }
@@ -145,12 +148,13 @@ mod tests {
         let b = ComplexMatrix::new(0, 0);
         let mut c = ComplexMatrix::new(0, 0);
         let alpha = cpx!(2.0, 0.0);
-        complex_mat_t_mat_mul(&mut c, alpha, &a, &b).unwrap();
+        let beta = cpx!(0.0, 0.0);
+        complex_mat_t_mat_mul(&mut c, alpha, &a, &b, beta).unwrap();
 
         let a = ComplexMatrix::new(0, 1);
         let b = ComplexMatrix::new(0, 1);
         let mut c = ComplexMatrix::from(&[[cpx!(123.0, 456.0)]]);
-        complex_mat_t_mat_mul(&mut c, alpha, &a, &b).unwrap();
+        complex_mat_t_mat_mul(&mut c, alpha, &a, &b, beta).unwrap();
         let correct = &[
             [cpx!(0.0, 0.0)], //
         ];
@@ -158,7 +162,7 @@ mod tests {
     }
 
     #[test]
-    fn complex_mat_t_mat_mul_works() {
+    fn complex_mat_t_mat_mul_works_1() {
         let a = ComplexMatrix::from(&[
             // 3 x 2
             [1.0, 0.5],
@@ -174,11 +178,39 @@ mod tests {
         let mut c = ComplexMatrix::new(2, 4);
         // c := 2⋅aᵀ⋅b
         let alpha = cpx!(2.0, 0.0);
-        complex_mat_t_mat_mul(&mut c, alpha, &a, &b).unwrap();
+        let beta = cpx!(0.0, 0.0);
+        complex_mat_t_mat_mul(&mut c, alpha, &a, &b, beta).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [cpx!(2.80, 0.0), cpx!(12.0, 0.0), cpx!(12.0, 0.0), cpx!(12.50, 0.0)],
             [cpx!(1.30, 0.0), cpx!( 5.0, 0.0), cpx!( 5.0, 0.0), cpx!( 5.25, 0.0)],
+        ];
+        complex_mat_approx_eq(&c, correct, 1e-15);
+    }
+
+    #[test]
+    fn complex_mat_t_mat_mul_works_2() {
+        let a = ComplexMatrix::from(&[
+            // 3 x 2
+            [1.0, 0.5],
+            [2.0, 0.75],
+            [3.0, 1.5],
+        ]);
+        let b = ComplexMatrix::from(&[
+            // 3 x 4
+            [0.1, 0.5, 0.5, 0.75],
+            [0.2, 2.0, 2.0, 2.00],
+            [0.3, 0.5, 0.5, 0.50],
+        ]);
+        let mut c = ComplexMatrix::filled(2, 4, cpx!(100.0, 0.0));
+        // c := 2⋅aᵀ⋅b
+        let alpha = cpx!(2.0, 0.0);
+        let beta = cpx!(10.0, 0.0);
+        complex_mat_t_mat_mul(&mut c, alpha, &a, &b, beta).unwrap();
+        #[rustfmt::skip]
+        let correct = &[
+            [cpx!(1002.80, 0.0), cpx!(1012.0, 0.0), cpx!(1012.0, 0.0), cpx!(1012.50, 0.0)],
+            [cpx!(1001.30, 0.0), cpx!(1005.0, 0.0), cpx!(1005.0, 0.0), cpx!(1005.25, 0.0)],
         ];
         complex_mat_approx_eq(&c, correct, 1e-15);
     }

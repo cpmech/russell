@@ -85,8 +85,9 @@ extern "C" {
 ///     let mut a_v = ComplexMatrix::new(m, m);
 ///     let mut v_l = ComplexMatrix::new(m, m);
 ///     let mut err = ComplexMatrix::filled(m, m, cpx!(f64::MAX, 0.0));
-///     complex_mat_mat_mul(&mut a_v, cpx!(1.0, 0.0), &a_copy, &v)?;
-///     complex_mat_mat_mul(&mut v_l, cpx!(1.0, 0.0), &v, &lam)?;
+///     let zero = cpx!(0.0, 0.0);
+///     complex_mat_mat_mul(&mut a_v, cpx!(1.0, 0.0), &a_copy, &v, zero)?;
+///     complex_mat_mat_mul(&mut v_l, cpx!(1.0, 0.0), &v, &lam, zero)?;
 ///     complex_mat_add(&mut err, cpx!(1.0, 0.0), &a_v, cpx!(-1.0, 0.0), &v_l)?;
 ///     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, 1e-14);
 ///     Ok(())
@@ -219,8 +220,9 @@ pub fn complex_mat_eigen(l: &mut ComplexVector, v: &mut ComplexMatrix, a: &mut C
 ///     let mut err = ComplexMatrix::filled(m, m, cpx!(f64::MAX, f64::MAX));
 ///     let one = cpx!(1.0, 0.0);
 ///     let m_one = cpx!(-1.0, 0.0);
-///     complex_mat_mat_mul(&mut a_v, one, &a, &v)?;
-///     complex_mat_mat_mul(&mut v_l, one, &v, &lam)?;
+///     let zero = cpx!(0.0, 0.0);
+///     complex_mat_mat_mul(&mut a_v, one, &a, &v, zero)?;
+///     complex_mat_mat_mul(&mut v_l, one, &v, &lam, zero)?;
 ///     complex_mat_add(&mut err, one, &a_v, m_one, &v_l)?;
 ///     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, 1e-15);
 ///     Ok(())

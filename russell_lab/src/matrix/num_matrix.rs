@@ -96,7 +96,7 @@ use std::path::Path;
 ///
 ///     // multiply the matrix by its inverse
 ///     let mut aia = NumMatrix::<f64>::new(m, n);
-///     mat_mat_mul(&mut aia, 1.0, &ai, &a)?;
+///     mat_mat_mul(&mut aia, 1.0, &ai, &a, 0.0)?;
 ///
 ///     // check the results
 ///     assert_eq!(

@@ -31,7 +31,7 @@ fn main() -> Result<(), StrError> {
 
     // matrix multiplication
     // c = 0.5⋅a⋅b
-    mat_mat_mul(&mut c, 0.5, &a, &b)?;
+    mat_mat_mul(&mut c, 0.5, &a, &b, 0.0)?;
 
     // check
     #[rustfmt::skip]

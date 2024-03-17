@@ -46,12 +46,12 @@ where
     let mut a_v = Matrix::new(m, m);
     let mut v_l = Matrix::new(m, m);
     let mut err = Matrix::filled(m, m, f64::MAX);
-    mat_mat_mul(&mut a_v, 1.0, &a, &v).unwrap();
+    mat_mat_mul(&mut a_v, 1.0, &a, &v, 0.0).unwrap();
     let norm_a_v = mat_norm(&a_v, Norm::Max);
     if norm_a_v <= f64::EPSILON {
         panic!("norm(a⋅v) cannot be zero");
     }
-    mat_mat_mul(&mut v_l, 1.0, &v, &lam).unwrap();
+    mat_mat_mul(&mut v_l, 1.0, &v, &lam, 0.0).unwrap();
     mat_add(&mut err, 1.0, &a_v, -1.0, &v_l).unwrap();
     approx_eq(mat_norm(&err, Norm::Max), 0.0, tolerance);
 }
@@ -85,12 +85,13 @@ pub(crate) fn check_eigen<'a, T>(
     let mut err = ComplexMatrix::filled(m, m, Complex64::new(f64::MAX, f64::MAX));
     let one = Complex64::new(1.0, 0.0);
     let m_one = Complex64::new(-1.0, 0.0);
-    complex_mat_mat_mul(&mut a_v, one, &a, &v).unwrap();
+    let zero = Complex64::new(0.0, 0.0);
+    complex_mat_mat_mul(&mut a_v, one, &a, &v, zero).unwrap();
     let norm_a_v = complex_mat_norm(&a_v, Norm::Max);
     if norm_a_v <= f64::EPSILON {
         panic!("norm(a⋅v) cannot be zero");
     }
-    complex_mat_mat_mul(&mut v_l, one, &v, &lam).unwrap();
+    complex_mat_mat_mul(&mut v_l, one, &v, &lam, zero).unwrap();
     complex_mat_add(&mut err, one, &a_v, m_one, &v_l).unwrap();
     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, tolerance);
 }
@@ -114,12 +115,13 @@ where
     let mut err = ComplexMatrix::filled(m, m, Complex64::new(f64::MAX, f64::MAX));
     let one = Complex64::new(1.0, 0.0);
     let m_one = Complex64::new(-1.0, 0.0);
-    complex_mat_mat_mul(&mut a_v, one, &a, &v).unwrap();
+    let zero = Complex64::new(0.0, 0.0);
+    complex_mat_mat_mul(&mut a_v, one, &a, &v, zero).unwrap();
     let norm_a_v = complex_mat_norm(&a_v, Norm::Max);
     if norm_a_v <= f64::EPSILON {
         panic!("norm(a⋅v) cannot be zero");
     }
-    complex_mat_mat_mul(&mut v_l, one, &v, &lam).unwrap();
+    complex_mat_mat_mul(&mut v_l, one, &v, &lam, zero).unwrap();
     complex_mat_add(&mut err, one, &a_v, m_one, &v_l).unwrap();
     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, tolerance);
 }
@@ -158,13 +160,14 @@ pub(crate) fn check_gen_eigen<'a, T>(
     let mut v_l = ComplexMatrix::new(m, m);
     let mut b_v_l = ComplexMatrix::new(m, m);
     let mut err = ComplexMatrix::filled(m, m, cpx!(f64::MAX, 0.0));
-    complex_mat_mat_mul(&mut a_v, cpx!(1.0, 0.0), &aa, &vv).unwrap();
+    let zero = Complex64::new(0.0, 0.0);
+    complex_mat_mat_mul(&mut a_v, cpx!(1.0, 0.0), &aa, &vv, zero).unwrap();
     let norm_a_v = complex_mat_norm(&a_v, Norm::Max);
     if norm_a_v <= f64::EPSILON {
         panic!("norm(a⋅v) cannot be zero");
     }
-    complex_mat_mat_mul(&mut v_l, cpx!(1.0, 0.0), &vv, &dd).unwrap();
-    complex_mat_mat_mul(&mut b_v_l, cpx!(1.0, 0.0), &bb, &v_l).unwrap();
+    complex_mat_mat_mul(&mut v_l, cpx!(1.0, 0.0), &vv, &dd, zero).unwrap();
+    complex_mat_mat_mul(&mut b_v_l, cpx!(1.0, 0.0), &bb, &v_l, zero).unwrap();
     complex_mat_add(&mut err, cpx!(1.0, 0.0), &a_v, cpx!(-1.0, 0.0), &b_v_l).unwrap();
     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, tolerance);
 }
@@ -198,13 +201,14 @@ pub(crate) fn complex_check_gen_eigen<'a, T>(
     let mut v_l = ComplexMatrix::new(m, m);
     let mut b_v_l = ComplexMatrix::new(m, m);
     let mut err = ComplexMatrix::filled(m, m, cpx!(f64::MAX, 0.0));
-    complex_mat_mat_mul(&mut a_v, cpx!(1.0, 0.0), &aa, &v).unwrap();
+    let zero = Complex64::new(0.0, 0.0);
+    complex_mat_mat_mul(&mut a_v, cpx!(1.0, 0.0), &aa, &v, zero).unwrap();
     let norm_a_v = complex_mat_norm(&a_v, Norm::Max);
     if norm_a_v <= f64::EPSILON {
         panic!("norm(a⋅v) cannot be zero");
     }
-    complex_mat_mat_mul(&mut v_l, cpx!(1.0, 0.0), &v, &dd).unwrap();
-    complex_mat_mat_mul(&mut b_v_l, cpx!(1.0, 0.0), &bb, &v_l).unwrap();
+    complex_mat_mat_mul(&mut v_l, cpx!(1.0, 0.0), &v, &dd, zero).unwrap();
+    complex_mat_mat_mul(&mut b_v_l, cpx!(1.0, 0.0), &bb, &v_l, zero).unwrap();
     complex_mat_add(&mut err, cpx!(1.0, 0.0), &a_v, cpx!(-1.0, 0.0), &b_v_l).unwrap();
     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, tolerance);
 }

@@ -50,7 +50,7 @@ fn test_mat_mat_mul() -> Result<(), StrError> {
             for k in [0, 5, 10, 15_usize] {
                 let a = Matrix::filled(m, k, 1.0);
                 let b = Matrix::filled(k, n, 1.0);
-                mat_mat_mul(&mut c, 1.0, &a, &b)?;
+                mat_mat_mul(&mut c, 1.0, &a, &b, 0.0)?;
                 local_mat_mat_mul(&mut c_local, 1.0, &a, &b);
                 if m == 0 || n == 0 {
                     assert_eq!(mat_norm(&c, Norm::Max), 0.0);

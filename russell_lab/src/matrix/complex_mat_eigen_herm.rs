@@ -96,8 +96,9 @@ extern "C" {
 ///     let mut a_v = ComplexMatrix::new(m, m);
 ///     let mut v_l = ComplexMatrix::new(m, m);
 ///     let mut err = ComplexMatrix::filled(m, m, cpx!(f64::MAX, 0.0));
-///     complex_mat_mat_mul(&mut a_v, cpx!(1.0, 0.0), &a_herm, &v)?;
-///     complex_mat_mat_mul(&mut v_l, cpx!(1.0, 0.0), &v, &d)?;
+///     let zero = cpx!(0.0, 0.0);
+///     complex_mat_mat_mul(&mut a_v, cpx!(1.0, 0.0), &a_herm, &v, zero)?;
+///     complex_mat_mat_mul(&mut v_l, cpx!(1.0, 0.0), &v, &d, zero)?;
 ///     complex_mat_add(&mut err, cpx!(1.0, 0.0), &a_v, cpx!(-1.0, 0.0), &v_l)?;
 ///     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, 1e-15);
 ///     Ok(())

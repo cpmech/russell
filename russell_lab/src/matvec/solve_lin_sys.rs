@@ -17,7 +17,7 @@ extern "C" {
     );
 }
 
-/// Solves a general linear system (real numbers)
+/// (dgesv) Solves a general linear system (real numbers)
 ///
 /// For a general matrix `a` (square, symmetric, non-symmetric, dense,
 /// sparse), find `x` such that:
@@ -34,6 +34,8 @@ extern "C" {
 /// ```
 ///
 /// The solution is obtained via LU decomposition using Lapack dgesv routine.
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
 ///
 /// # Note
 ///

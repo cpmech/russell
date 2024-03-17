@@ -18,7 +18,7 @@ extern "C" {
     );
 }
 
-/// Solves a general linear system
+/// (zgesv) Solves a general linear system
 ///
 /// For a general matrix `a` (square, symmetric, non-symmetric, dense,
 /// sparse), find `x` such that:
@@ -35,6 +35,8 @@ extern "C" {
 /// ```
 ///
 /// The solution is obtained via LU decomposition using Lapack dgesv routine.
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/d1/ddc/zgesv_8f.html>
 ///
 /// # Note
 ///

@@ -19,12 +19,14 @@ extern "C" {
     );
 }
 
-/// Performs the outer (tensor) product between two vectors resulting in a matrix
+/// (dger) Performs the outer (tensor) product between two vectors resulting in a matrix
 ///
 /// ```text
 ///   a  :=   α ⋅ u  outer  v
 /// (m,n)        (m)       (n)
 /// ```
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/dc/da8/dger_8f.html>
 ///
 /// # Note
 ///

@@ -22,7 +22,7 @@ extern "C" {
     );
 }
 
-/// Performs the vector-matrix multiplication resulting in a vector
+/// (zgemv) Performs the vector-matrix multiplication resulting in a vector
 ///
 /// ```text
 ///  v  :=  α ⋅  u  ⋅  a  
@@ -35,6 +35,8 @@ extern "C" {
 ///  v  :=  α ⋅   aᵀ  ⋅  u
 /// (n)         (n,m)   (m)  
 /// ```
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/db/d40/zgemv_8f.html>
 ///
 /// # Note
 ///

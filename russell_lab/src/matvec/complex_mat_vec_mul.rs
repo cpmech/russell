@@ -22,12 +22,14 @@ extern "C" {
     );
 }
 
-/// Performs the matrix-vector multiplication
+/// (zgemv) Performs the matrix-vector multiplication
 ///
 /// ```text
 ///  v  :=  α ⋅  a   ⋅  u
 /// (m)        (m,n)   (n)
 /// ```
+///
+/// See also: <https://www.netlib.org/lapack/explore-html/db/d40/zgemv_8f.html>
 ///
 /// # Note
 ///

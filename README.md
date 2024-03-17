@@ -13,7 +13,7 @@
 * [Installation on macOS](#macos)
 * [Number of threads](#threads)
 * [Examples](#examples)
-    * [(lab) Compute a singular value decomposition](#svd)
+    * [(lab) Singular value decomposition](#svd)
     * [(lab) Cholesky factorization](#cholesky)
     * [(lab) Solve a tiny (dense) linear system](#dense-lin-sys)
     * [(sparse) Solve a small sparse linear system](#sparse-lin-sys)
@@ -143,7 +143,7 @@ use num_complex::Complex64;
 
 This line will bring `Complex64` to the scope. For convenience the (russell_lab) macro `cpx!` may be used to allocate complex numbers.
 
-### <a name="svd"></a> (lab) Compute a singular value decomposition
+### <a name="svd"></a> (lab) Singular value decomposition
 
 ```rust
 use russell_lab::{mat_svd, Matrix, Vector, StrError};

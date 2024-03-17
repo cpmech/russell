@@ -24,7 +24,7 @@ extern "C" {
     );
 }
 
-/// (zgeev) Performs the eigen-decomposition of a square matrix (complex version)
+/// (zgeev) Performs the eigen-decomposition of a square matrix
 ///
 /// Computes the eigenvalues `l` and right eigenvectors `v`, such that:
 ///
@@ -141,7 +141,7 @@ pub fn complex_mat_eigen(l: &mut ComplexVector, v: &mut ComplexMatrix, a: &mut C
     Ok(())
 }
 
-/// Performs the eigen-decomposition of a square matrix (left and right) (complex version)
+/// Performs the eigen-decomposition of a square matrix (left and right)
 ///
 /// Computes the eigenvalues `l` and left eigenvectors `u`, such that:
 ///

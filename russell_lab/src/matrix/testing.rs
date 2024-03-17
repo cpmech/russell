@@ -95,7 +95,7 @@ pub(crate) fn check_eigen<'a, T>(
     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, tolerance);
 }
 
-/// Checks the eigen-decomposition of a general matrix (complex version)
+/// Checks the eigen-decomposition of a general matrix
 ///
 /// ```text
 /// a⋅v = v⋅λ
@@ -169,7 +169,7 @@ pub(crate) fn check_gen_eigen<'a, T>(
     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, tolerance);
 }
 
-/// Checks the generalized eigen-decomposition of a general matrix (complex version)
+/// Checks the generalized eigen-decomposition of a general matrix
 ///
 /// ```text
 /// a ⋅ vj = lj ⋅ b ⋅ vj

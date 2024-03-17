@@ -20,7 +20,7 @@ extern "C" {
     );
 }
 
-/// (zsyrk) Performs a symmetric rank k operation (complex version)
+/// (zsyrk) Performs a symmetric rank k operation
 ///
 /// Performs one of the symmetric rank k operations:
 ///

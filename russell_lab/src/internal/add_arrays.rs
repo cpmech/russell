@@ -19,15 +19,15 @@ extern "C" {
 
     // complex ---------------------------------------------------------------------------------------------------
 
-    // Computes constant times a vector plus a vector (Complex version)
+    // Computes constant times a vector plus a vector
     // <https://www.netlib.org/lapack/explore-html/d7/db2/zaxpy_8f.html>
     fn cblas_zaxpy(n: i32, alpha: *const Complex64, x: *const Complex64, incx: i32, y: *mut Complex64, incy: i32);
 
-    // Copies a vector into another (complex version)
+    // Copies a vector into another
     // <https://www.netlib.org/lapack/explore-html/d6/d53/zcopy_8f.html>
     fn cblas_zcopy(n: i32, x: *const Complex64, incx: i32, y: *mut Complex64, incy: i32);
 
-    // Scales a vector by a constant (complex version)
+    // Scales a vector by a constant
     // <https://www.netlib.org/lapack/explore-html/d2/d74/zscal_8f.html>
     fn cblas_zscal(n: i32, alpha: *const Complex64, x: *mut Complex64, incx: i32);
 }
@@ -119,7 +119,7 @@ pub(crate) fn add_arrays(w: &mut [f64], alpha: f64, u: &[f64], beta: f64, v: &[f
     Ok(())
 }
 
-/// Adds two arrays (complex version)
+/// Adds two arrays
 ///
 /// **Note:** This is an internal function used by `vec_add` and `mat_add`.
 ///

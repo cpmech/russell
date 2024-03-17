@@ -106,7 +106,7 @@ void c_dgesv(const int32_t *n,
     FN_DGESV(n, nrhs, a, lda, ipiv, b, ldb, info);
 }
 
-// Computes the solution to a real system of linear equations (complex version)
+// Computes the solution to a real system of linear equations
 // <https://www.netlib.org/lapack/explore-html/d1/ddc/zgesv_8f.html>
 void c_zgesv(const int32_t *n,
              const int32_t *nrhs,
@@ -134,7 +134,7 @@ double c_dlange(int32_t norm_code,
     return FN_DLANGE(norm, m, n, a, lda, work);
 }
 
-// Computes the matrix norm (complex version)
+// Computes the matrix norm
 // <https://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
 double c_zlange(int32_t norm_code,
                 const int32_t *m,

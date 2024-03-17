@@ -3,7 +3,7 @@ use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_NO_TRANS, CBLAS_TRANS};
 use num_complex::Complex64;
 
 extern "C" {
-    // Performs the matrix-matrix multiplication (complex version)
+    // Performs the matrix-matrix multiplication
     // <https://www.netlib.org/lapack/explore-html/d7/d76/zgemm_8f.html>
     fn cblas_zgemm(
         layout: i32,
@@ -23,7 +23,7 @@ extern "C" {
     );
 }
 
-/// (zgemm) Performs the transpose(matrix)-matrix multiplication (complex version)
+/// (zgemm) Performs the transpose(matrix)-matrix multiplication
 ///
 /// ```text
 ///   c  :=  α ⋅  aᵀ  ⋅   b

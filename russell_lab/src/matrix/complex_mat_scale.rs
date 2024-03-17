@@ -9,7 +9,7 @@ extern "C" {
 
 }
 
-/// (zscal) Scales matrix (complex version)
+/// (zscal) Scales matrix
 ///
 /// ```text
 /// a := alpha * a

@@ -3,13 +3,13 @@ use crate::{to_i32, StrError};
 use num_complex::Complex64;
 
 extern "C" {
-    // Computes constant times a vector plus a vector (Complex version)
+    // Computes constant times a vector plus a vector
     // <https://www.netlib.org/lapack/explore-html/d7/db2/zaxpy_8f.html>
     // see also /usr/include/x86_64-linux-gnu/cblas.h
     fn cblas_zaxpy(n: i32, alpha: *const Complex64, x: *const Complex64, incx: i32, y: *mut Complex64, incy: i32);
 }
 
-/// Updates vector based on another vector (Complex version)
+/// Updates vector based on another vector
 ///
 /// ```text
 /// v += α⋅u

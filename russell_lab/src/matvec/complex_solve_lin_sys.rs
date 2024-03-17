@@ -4,7 +4,7 @@ use crate::{to_i32, StrError};
 use num_complex::Complex64;
 
 extern "C" {
-    // Computes the solution to a system of linear equations (complex version)
+    // Computes the solution to a system of linear equations
     // <https://www.netlib.org/lapack/explore-html/d1/ddc/zgesv_8f.html>
     fn c_zgesv(
         n: *const i32,
@@ -18,7 +18,7 @@ extern "C" {
     );
 }
 
-/// Solves a general linear system (complex version)
+/// Solves a general linear system
 ///
 /// For a general matrix `a` (square, symmetric, non-symmetric, dense,
 /// sparse), find `x` such that:

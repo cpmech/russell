@@ -26,7 +26,7 @@ extern "C" {
     );
 }
 
-/// (zgesvd) Computes the singular value decomposition (SVD) of a matrix (complex version)
+/// (zgesvd) Computes the singular value decomposition (SVD) of a matrix
 ///
 /// Finds `u`, `s`, and `v`, such that:
 ///

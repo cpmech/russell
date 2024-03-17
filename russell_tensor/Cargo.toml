@@ -1,6 +1,6 @@
 [package]
 name = "russell_tensor"
-version = "0.8.0"
+version = "0.9.0"
 edition = "2021"
 license = "MIT"
 description = "Tensor analysis structures and functions for continuum mechanics"
@@ -15,7 +15,7 @@ keywords = ["tensor", "Voigt", "Mandel", "continuum", "mechanics"]
 intel_mkl = ["russell_lab/intel_mkl"]
 
 [dependencies]
-russell_lab = { path = "../russell_lab", version = "0.8.0" }
+russell_lab = { path = "../russell_lab", version = "0.9.0" }
 serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]

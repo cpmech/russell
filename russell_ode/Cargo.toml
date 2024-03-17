@@ -1,6 +1,6 @@
 [package]
 name = "russell_ode"
-version = "0.1.0"
+version = "0.9.0"
 edition = "2021"
 license = "MIT"
 description = "Solvers for Ordinary Differential Equations and Differential Algebraic Equations"
@@ -15,8 +15,8 @@ keywords = ["differential equations", "numerical methods", "solver"]
 intel_mkl = ["russell_lab/intel_mkl", "russell_sparse/intel_mkl"]
 
 [dependencies]
-russell_lab = { path = "../russell_lab", version = "0.8" }
-russell_sparse = { path = "../russell_sparse", version = "0.8" }
+russell_lab = { path = "../russell_lab", version = "0.9.0" }
+russell_sparse = { path = "../russell_sparse", version = "0.9.0" }
 num-complex = { version = "0.4", features = ["serde"] }
 
 [dev-dependencies]

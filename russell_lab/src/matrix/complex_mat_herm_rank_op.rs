@@ -146,30 +146,9 @@ pub fn complex_mat_herm_rank_op(
 #[cfg(test)]
 mod tests {
     use super::{complex_mat_herm_rank_op, ComplexMatrix};
+    use crate::matrix::testing::check_hermitian_uplo;
     use crate::{complex_mat_approx_eq, cpx};
     use num_complex::Complex64;
-
-    fn check_matrices(full: &ComplexMatrix, lower: &ComplexMatrix, upper: &ComplexMatrix) {
-        let (m, n) = full.dims();
-        let (mm, nn) = lower.dims();
-        let (mmm, nnn) = upper.dims();
-        assert_eq!(m, n);
-        assert!(mm == m && mmm == m && nn == m && nnn == m);
-        let mut cc = ComplexMatrix::new(m, m);
-        for i in 0..m {
-            for j in 0..m {
-                if i == j {
-                    cc.set(i, j, lower.get(i, j));
-                    assert_eq!(full.get(i, j).im, 0.0); // hermitian
-                } else {
-                    cc.set(i, j, lower.get(i, j) + upper.get(i, j));
-                    assert_eq!(full.get(i, j).re, full.get(j, i).re); // hermitian
-                    assert_eq!(full.get(i, j).im, -full.get(j, i).im); // hermitian
-                }
-            }
-        }
-        complex_mat_approx_eq(&full, &cc, 1e-15);
-    }
 
     #[test]
     fn complex_mat_herm_rank_op_fail_on_wrong_dims() {
@@ -217,7 +196,7 @@ mod tests {
             [cpx!( 0.0, 0.0), cpx!(0.0, 0.0), cpx!( 4.0, 0.0), cpx!(1.0, -1.0)],
             [cpx!( 0.0, 0.0), cpx!(0.0, 0.0), cpx!( 0.0, 0.0), cpx!(4.0,  0.0)],
         ]);
-        check_matrices(&c, &c_lower, &c_upper);
+        check_hermitian_uplo(&c, &c_lower, &c_upper);
 
         // a matrix
         #[rustfmt::skip]
@@ -253,7 +232,7 @@ mod tests {
             [cpx!( 0.0,   0.0), cpx!( 0.0,   0.0), cpx!(70.0,   0.0), cpx!(13.0,   8.0)],
             [cpx!( 0.0,   0.0), cpx!( 0.0,   0.0), cpx!( 0.0,   0.0), cpx!( 4.0,   0.0)], 
         ]);
-        check_matrices(&c_ref_full, &c_ref_lower, &c_ref_upper);
+        check_hermitian_uplo(&c_ref_full, &c_ref_lower, &c_ref_upper);
 
         // lower: c := 3 a⋅aᴴ - 2 c
         complex_mat_herm_rank_op(&mut c_lower, &a, alpha, beta, false, false).unwrap();
@@ -290,7 +269,7 @@ mod tests {
             [cpx!( 0.0, 0.0), cpx!(0.0, 0.0), cpx!( 4.0, 0.0), cpx!(1.0, -1.0)],
             [cpx!( 0.0, 0.0), cpx!(0.0, 0.0), cpx!( 0.0, 0.0), cpx!(4.0,  0.0)],
         ]);
-        check_matrices(&c, &c_lower, &c_upper);
+        check_hermitian_uplo(&c, &c_lower, &c_upper);
 
         // a matrix
         #[rustfmt::skip]
@@ -324,7 +303,7 @@ mod tests {
             [cpx!( 0.0,   0.0), cpx!( 0.0,   0.0), cpx!(22.0,   0.0), cpx!(10.0,  20.0)],
             [cpx!( 0.0,   0.0), cpx!( 0.0,   0.0), cpx!( 0.0,   0.0), cpx!(10.0,   0.0)],
         ]);
-        check_matrices(&c_ref_full, &c_ref_lower, &c_ref_upper);
+        check_hermitian_uplo(&c_ref_full, &c_ref_lower, &c_ref_upper);
 
         // lower: c := 3 aᴴ⋅a - 2 c
         complex_mat_herm_rank_op(&mut c_lower, &a, alpha, beta, false, true).unwrap();

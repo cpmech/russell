@@ -3,6 +3,7 @@
 mod aliases;
 mod complex_mat_add;
 mod complex_mat_approx_eq;
+mod complex_mat_cholesky;
 mod complex_mat_copy;
 mod complex_mat_eigen;
 mod complex_mat_eigen_herm;
@@ -41,6 +42,7 @@ mod testing;
 pub use crate::matrix::aliases::*;
 pub use crate::matrix::complex_mat_add::*;
 pub use crate::matrix::complex_mat_approx_eq::*;
+pub use crate::matrix::complex_mat_cholesky::*;
 pub use crate::matrix::complex_mat_copy::*;
 pub use crate::matrix::complex_mat_eigen::*;
 pub use crate::matrix::complex_mat_eigen_herm::*;

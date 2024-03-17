@@ -1,8 +1,33 @@
 use crate::{
-    approx_eq, complex_mat_add, complex_mat_mat_mul, complex_mat_norm, complex_mat_zip, complex_vec_zip, cpx, mat_add,
-    mat_mat_mul, mat_norm, AsArray2D, ComplexMatrix, ComplexVector, Matrix, Norm, Vector,
+    approx_eq, complex_mat_add, complex_mat_approx_eq, complex_mat_mat_mul, complex_mat_norm, complex_mat_zip,
+    complex_vec_zip, cpx, mat_add, mat_mat_mul, mat_norm, AsArray2D, ComplexMatrix, ComplexVector, Matrix, Norm,
+    Vector,
 };
 use num_complex::Complex64;
+
+/// Checks Hermitian matrix given by the lower and upper parts
+#[allow(dead_code)]
+pub(crate) fn check_hermitian_uplo(full: &ComplexMatrix, lower: &ComplexMatrix, upper: &ComplexMatrix) {
+    let (m, n) = full.dims();
+    let (mm, nn) = lower.dims();
+    let (mmm, nnn) = upper.dims();
+    assert_eq!(m, n);
+    assert!(mm == m && mmm == m && nn == m && nnn == m);
+    let mut cc = ComplexMatrix::new(m, m);
+    for i in 0..m {
+        for j in 0..m {
+            if i == j {
+                cc.set(i, j, lower.get(i, j));
+                assert_eq!(full.get(i, j).im, 0.0); // hermitian
+            } else {
+                cc.set(i, j, lower.get(i, j) + upper.get(i, j));
+                assert_eq!(full.get(i, j).re, full.get(j, i).re); // hermitian
+                assert_eq!(full.get(i, j).im, -full.get(j, i).im); // hermitian
+            }
+        }
+    }
+    complex_mat_approx_eq(&full, &cc, 1e-15);
+}
 
 /// Checks the eigen-decomposition of a symmetric matrix
 ///

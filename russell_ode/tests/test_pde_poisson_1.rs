@@ -93,7 +93,7 @@ fn main() -> Result<(), StrError> {
         plot.add(&contour_num).add(&contour_ana);
         plot.set_equal_axes(true)
             .set_figure_size_points(600.0, 600.0)
-            .save("/tmp/solve_many_linsys/test_poisson_0.svg")?;
+            .save("/tmp/russell_ode/test_pde_poisson_1.svg")?;
     }
     Ok(())
 }

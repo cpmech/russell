@@ -3,7 +3,7 @@ use russell_lab::{vec_approx_eq, StrError, Vector};
 use russell_ode::PdeDiscreteLaplacian2d;
 use russell_sparse::{Genie, LinSolver, SparseMatrix};
 
-const SAVE_FIGURE: bool = true;
+const SAVE_FIGURE: bool = false;
 
 #[test]
 fn main() -> Result<(), StrError> {
@@ -100,7 +100,7 @@ fn main() -> Result<(), StrError> {
         plot.add(&contour_num).add(&contour_ana);
         plot.set_equal_axes(true)
             .set_figure_size_points(600.0, 600.0)
-            .save("/tmp/solve_many_linsys/test_poisson_2.svg")?;
+            .save("/tmp/russell_ode/test_pde_poisson_3.svg")?;
     }
     Ok(())
 }

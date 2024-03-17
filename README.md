@@ -13,6 +13,13 @@
 * [Installation on macOS](#macos)
 * [Number of threads](#threads)
 * [Examples](#examples)
+    * [(lab) Compute a singular value decomposition](#svd)
+    * [(lab) Cholesky factorization](#cholesky)
+    * [(lab) Solve a tiny (dense) linear system](#dense-lin-sys)
+    * [(sparse) Solve a small sparse linear system](#sparse-lin-sys)
+    * [(ode) Solve the brusselator ODE system](#brusselator)
+    * [(stat) Generate the Frechet distribution](#frechet)
+    * [(tensor) Allocate second-order tensors](#tensor)
 * [Todo list](#todo)
 * [Code coverage](#coverage)
 
@@ -30,6 +37,7 @@ Available crates:
 
 - [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab) [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab) Matrix-vector laboratory for linear algebra (with OpenBLAS or Intel MKL)
 - [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) Sparse matrix tools and solvers (with MUMPS and UMFPACK)
+- [![Crates.io](https://img.shields.io/crates/v/russell_ode.svg)](https://crates.io/crates/russell_ode) [russell_ode](https://github.com/cpmech/russell/tree/main/russell_ode) Solvers for Ordinary differential equations (ODEs) and differential algebraic equations (DAEs) 
 - [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat) [russell_stat](https://github.com/cpmech/russell/tree/main/russell_stat) Statistics calculations, probability distributions, and pseudo random numbers
 - [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) Tensor analysis structures and functions for continuum mechanics
 
@@ -135,7 +143,7 @@ use num_complex::Complex64;
 
 This line will bring `Complex64` to the scope. For convenience the (russell_lab) macro `cpx!` may be used to allocate complex numbers.
 
-### Compute a singular value decomposition
+### <a name="svd"></a> (lab) Compute a singular value decomposition
 
 ```rust
 use russell_lab::{mat_svd, Matrix, Vector, StrError};
@@ -186,7 +194,7 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-### Cholesky factorization
+### <a name="cholesky"></a> (lab) Cholesky factorization
 
 ```rust
 use russell_lab::*;
@@ -253,7 +261,7 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-### Solve a tiny (dense) linear system
+### <a name="dense-lin-sys"></a> (lab) Solve a tiny (dense) linear system
 
 ```rust
 use russell_lab::{solve_lin_sys, Matrix, Vector, StrError};
@@ -281,7 +289,7 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-### Solve a small sparse linear system using UMFPACK
+### <a name="sparse-lin-sys"></a> (sparse) Solve a small sparse linear system using UMFPACK
 
 ```rust
 use russell_lab::*;
@@ -343,6 +351,178 @@ fn main() -> Result<(), StrError> {
     let (mx, ex) = (stats.determinant.mantissa_real, stats.determinant.exponent);
     println!("det(a) = {:?}", mx * f64::powf(10.0, ex));
     println!("rcond  = {:?}", stats.output.umfpack_rcond_estimate);
+    Ok(())
+}
+```
+
+### <a name="brusselator"></a> (ode) Solve the brusselator ODE system
+
+The system is:
+
+```text
+y0' = 1 - 4 y0 + y0² y1
+y1' = 3 y0 - y0² y1
+
+with  y0(x=0) = 3/2  and  y1(x=0) = 3
+```
+
+Solving with DoPri8 -- 8(5,3):
+
+```rust
+use russell_lab::StrError;
+use russell_ode::prelude::*;
+
+fn main() -> Result<(), StrError> {
+    // get the ODE system
+    let (system, mut data, mut args, y_ref) = Samples::brusselator_ode();
+
+    // solver
+    let params = Params::new(Method::DoPri8);
+    let mut solver = OdeSolver::new(params, &system)?;
+
+    // enable dense output
+    let mut out = Output::new();
+    let h_out = 0.01;
+    let selected_y_components = &[0, 1];
+    out.enable_dense(h_out, selected_y_components)?;
+
+    // solve the problem
+    solver.solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)?;
+
+    // print the results and stats
+    println!("y_russell     = {:?}", data.y0.as_data());
+    println!("y_mathematica = {:?}", y_ref.as_data());
+    println!("{}", solver.bench());
+    Ok(())
+}
+```
+
+A plot of the (dense) solution is shown below:
+
+![Brusselator results: DoPri8](russell_ode/data/figures/brusselator_dopri8.svg)
+
+### <a name="frechet"></a> (stat) Generate the Frechet distribution
+
+Code:
+
+```rust
+use russell_stat::*;
+
+fn main() -> Result<(), StrError> {
+    // generate samples
+    let mut rng = rand::thread_rng();
+    let dist = DistributionFrechet::new(0.0, 1.0, 1.0)?;
+    let nsamples = 10_000;
+    let mut data = vec![0.0; nsamples];
+    for i in 0..nsamples {
+        data[i] = dist.sample(&mut rng);
+    }
+    println!("{}", statistics(&data));
+
+    // text-plot
+    let stations = (0..20).map(|i| (i as f64) * 0.5).collect::<Vec<f64>>();
+    let mut hist = Histogram::new(&stations)?;
+    hist.count(&data);
+    println!("{}", hist);
+    Ok(())
+}
+```
+
+Sample output:
+
+```text
+min = 0.11845731988882305
+max = 26248.036672205748
+mean = 12.268212841918867
+std_dev = 312.7131690782321
+
+[  0,0.5) | 1370 🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦
+[0.5,  1) | 2313 🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦
+[  1,1.5) | 1451 🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦
+[1.5,  2) |  971 🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦
+[  2,2.5) |  659 🟦🟦🟦🟦🟦🟦🟦🟦
+[2.5,  3) |  460 🟦🟦🟦🟦🟦
+[  3,3.5) |  345 🟦🟦🟦🟦
+[3.5,  4) |  244 🟦🟦🟦
+[  4,4.5) |  216 🟦🟦
+[4.5,  5) |  184 🟦🟦
+[  5,5.5) |  133 🟦
+[5.5,  6) |  130 🟦
+[  6,6.5) |  115 🟦
+[6.5,  7) |  108 🟦
+[  7,7.5) |   70 
+[7.5,  8) |   75 
+[  8,8.5) |   57 
+[8.5,  9) |   48 
+[  9,9.5) |   59 
+      sum = 9008
+```
+
+### <a name="tensor"></a> (tensor) Allocate second-order tensors
+
+```rust
+use russell_tensor::*;
+
+fn main() -> Result<(), StrError> {
+    // general
+    let a = Tensor2::from_matrix(
+        &[
+            [1.0, SQRT_2 * 2.0, SQRT_2 * 3.0],
+            [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
+            [SQRT_2 * 7.0, SQRT_2 * 8.0, 9.0],
+        ],
+        Mandel::General,
+    )?;
+    assert_eq!(
+        format!("{:.1}", a.vec),
+        "┌      ┐\n\
+         │  1.0 │\n\
+         │  5.0 │\n\
+         │  9.0 │\n\
+         │  6.0 │\n\
+         │ 14.0 │\n\
+         │ 10.0 │\n\
+         │ -2.0 │\n\
+         │ -2.0 │\n\
+         │ -4.0 │\n\
+         └      ┘"
+    );
+
+    // symmetric-3D
+    let b = Tensor2::from_matrix(
+        &[
+            [1.0, 4.0 / SQRT_2, 6.0 / SQRT_2],
+            [4.0 / SQRT_2, 2.0, 5.0 / SQRT_2],
+            [6.0 / SQRT_2, 5.0 / SQRT_2, 3.0],
+        ],
+        Mandel::Symmetric,
+    )?;
+    assert_eq!(
+        format!("{:.1}", b.vec),
+        "┌     ┐\n\
+         │ 1.0 │\n\
+         │ 2.0 │\n\
+         │ 3.0 │\n\
+         │ 4.0 │\n\
+         │ 5.0 │\n\
+         │ 6.0 │\n\
+         └     ┘"
+    );
+
+    // symmetric-2D
+    let c = Tensor2::from_matrix(
+        &[[1.0, 4.0 / SQRT_2, 0.0], [4.0 / SQRT_2, 2.0, 0.0], [0.0, 0.0, 3.0]],
+        Mandel::Symmetric2D,
+    )?;
+    assert_eq!(
+        format!("{:.1}", c.vec),
+        "┌     ┐\n\
+         │ 1.0 │\n\
+         │ 2.0 │\n\
+         │ 3.0 │\n\
+         │ 4.0 │\n\
+         └     ┘"
+    );
     Ok(())
 }
 ```

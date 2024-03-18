@@ -221,7 +221,7 @@ impl PdeDiscreteLaplacian2d {
     /// # Todo
     ///
     /// * Implement the symmetric version for solvers that can handle a triangular matrix storage.
-    pub fn coefficient_matrix(&mut self) -> Result<(CooMatrix, CooMatrix), StrError> {
+    pub fn coefficient_matrix(&self) -> Result<(CooMatrix, CooMatrix), StrError> {
         // count max number of non-zeros
         let dim = self.nx * self.ny;
         let np = self.essential.len();
@@ -260,7 +260,24 @@ impl PdeDiscreteLaplacian2d {
         Ok((aa, cc))
     }
 
-    /// Execute a loop over the prescribed values
+    /// Executes a loop over one row of the coefficient matrix 'A' of A ⋅ X = B
+    ///
+    /// Note that the column indices will appear repeated due to the (zero-flux) boundaries.
+    ///
+    /// # Input
+    ///
+    /// * `i` -- the row of the coefficient matrix
+    /// * `callback` -- a `function(j, Aij)` where `j` is the column index
+    pub fn loop_over_coef_mat_row<F>(&self, i: usize, mut callback: F)
+    where
+        F: FnMut(usize, f64),
+    {
+        self.loop_over_bandwidth(i, |j, b| {
+            callback(j, self.molecule[b]);
+        });
+    }
+
+    /// Executes a loop over the prescribed values
     ///
     /// # Input
     ///
@@ -279,7 +296,7 @@ impl PdeDiscreteLaplacian2d {
         });
     }
 
-    /// Execute a loop over the bandwidth of the coefficient matrix
+    /// Executes a loop over the bandwidth of the coefficient matrix
     ///
     /// # Input
     ///
@@ -308,7 +325,7 @@ impl PdeDiscreteLaplacian2d {
         }
     }
 
-    /// Execute a loop over the grid points
+    /// Executes a loop over the grid points
     ///
     /// # Input
     ///
@@ -447,7 +464,7 @@ mod tests {
 
     #[test]
     fn coefficient_matrix_works() {
-        let mut lap = PdeDiscreteLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
+        let lap = PdeDiscreteLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
         let (aa, _) = lap.coefficient_matrix().unwrap();
         assert_eq!(lap.dim(), 9);
         assert_eq!(lap.num_prescribed(), 0);
@@ -465,6 +482,32 @@ mod tests {
             [ ___,  ___,  ___,  ___,  ___,  2.0,  ___,  2.0, -4.0],
         ]);
         mat_approx_eq(&aa.as_dense(), &aa_correct, 1e-15);
+    }
+
+    #[test]
+    fn loop_over_molecule_works() {
+        // ┌                            ┐
+        // │ -4  2  .  2  .  .  .  .  . │  0
+        // │  1 -4  1  .  2  .  .  .  . │  1
+        // │  .  2 -4  .  .  2  .  .  . │  2
+        // │  1  .  . -4  2  .  1  .  . │  3
+        // │  .  1  .  1 -4  1  .  1  . │  4
+        // │  .  .  1  .  2 -4  .  .  1 │  5
+        // │  .  .  .  2  .  . -4  2  . │  6
+        // │  .  .  .  .  2  .  1 -4  1 │  7
+        // │  .  .  .  .  .  2  .  2 -4 │  8
+        // └                            ┘
+        //    0  1  2  3  4  5  6  7  8
+        let lap = PdeDiscreteLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
+        let mut row_0 = Vec::new();
+        let mut row_4 = Vec::new();
+        let mut row_8 = Vec::new();
+        lap.loop_over_coef_mat_row(0, |j, aij| row_0.push((j, aij)));
+        lap.loop_over_coef_mat_row(4, |j, aij| row_4.push((j, aij)));
+        lap.loop_over_coef_mat_row(8, |j, aij| row_8.push((j, aij)));
+        assert_eq!(row_0, &[(0, -4.0), (1, 1.0), (1, 1.0), (3, 1.0), (3, 1.0)]);
+        assert_eq!(row_4, &[(4, -4.0), (3, 1.0), (5, 1.0), (1, 1.0), (7, 1.0)]);
+        assert_eq!(row_8, &[(8, -4.0), (7, 1.0), (7, 1.0), (5, 1.0), (5, 1.0)]);
     }
 
     #[test]

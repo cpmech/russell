@@ -42,8 +42,6 @@ pub enum Side {
 /// * The operator is built with a five-point stencil.
 /// * The boundary nodes are 'mirrored' yielding a no-flux barrier.
 pub struct PdeDiscreteLaplacian2d {
-    kx: f64,            // diffusion parameter x
-    ky: f64,            // diffusion parameter y
     xmin: f64,          // min x coordinate
     ymin: f64,          // min y coordinate
     nx: usize,          // number of points along x (≥ 2)
@@ -54,6 +52,11 @@ pub struct PdeDiscreteLaplacian2d {
     right: Vec<usize>,  // indices of nodes on the right edge
     bottom: Vec<usize>, // indices of nodes on the bottom edge
     top: Vec<usize>,    // indices of nodes on the top edge
+
+    /// Holds the FDM coefficients (α, β, β, γ, γ)
+    ///
+    /// These coefficients are applied over the "bandwidth" of the coefficient matrix
+    molecule: Vec<f64>,
 
     /// Collects the essential boundary conditions
     /// Maps node => prescribed_value
@@ -90,19 +93,25 @@ impl PdeDiscreteLaplacian2d {
             return Err("ny must be ≥ 2");
         }
         let dim = nx * ny;
+        let dx = (xmax - xmin) / ((nx - 1) as f64);
+        let dy = (ymax - ymin) / ((ny - 1) as f64);
+        let dx2 = dx * dx;
+        let dy2 = dy * dy;
+        let alpha = -2.0 * (kx / dx2 + ky / dy2);
+        let beta = kx / dx2;
+        let gamma = ky / dy2;
         Ok(PdeDiscreteLaplacian2d {
-            kx,
-            ky,
             xmin,
             ymin,
             nx,
             ny,
-            dx: (xmax - xmin) / ((nx - 1) as f64),
-            dy: (ymax - ymin) / ((ny - 1) as f64),
+            dx,
+            dy,
             left: (0..dim).step_by(nx).collect(),
             right: ((nx - 1)..dim).step_by(nx).collect(),
             bottom: (0..nx).collect(),
             top: ((dim - nx)..dim).collect(),
+            molecule: vec![alpha, beta, beta, gamma, gamma],
             essential: HashMap::new(),
         })
     }
@@ -234,22 +243,14 @@ impl PdeDiscreteLaplacian2d {
         let mut aa = CooMatrix::new(dim, dim, max_nnz_aa, Sym::No)?;
         let mut cc = CooMatrix::new(dim, dim, max_nnz_cc, Sym::No)?;
 
-        // auxiliary
-        let dx2 = self.dx * self.dx;
-        let dy2 = self.dy * self.dy;
-        let alpha = -2.0 * (self.kx / dx2 + self.ky / dy2);
-        let beta = self.kx / dx2;
-        let gamma = self.ky / dy2;
-        let molecule = [alpha, beta, beta, gamma, gamma];
-
         // assemble
         for i in 0..dim {
             if !self.essential.contains_key(&i) {
                 self.loop_over_bandwidth(i, |j, b| {
                     if !self.essential.contains_key(&j) {
-                        aa.put(i, j, molecule[b]).unwrap();
+                        aa.put(i, j, self.molecule[b]).unwrap();
                     } else {
-                        cc.put(i, j, molecule[b]).unwrap();
+                        cc.put(i, j, self.molecule[b]).unwrap();
                     }
                 });
             } else {
@@ -361,8 +362,6 @@ mod tests {
     #[test]
     fn new_works() {
         let lap = PdeDiscreteLaplacian2d::new(7.0, 8.0, -1.0, 1.0, -3.0, 3.0, 2, 3).unwrap();
-        assert_eq!(lap.kx, 7.0);
-        assert_eq!(lap.ky, 8.0);
         assert_eq!(lap.xmin, -1.0);
         assert_eq!(lap.ymin, -3.0);
         assert_eq!(lap.nx, 2);

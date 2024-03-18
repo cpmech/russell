@@ -15,10 +15,26 @@ pub enum Side {
 
 /// Implements the Finite Difference (FDM) Laplacian operator in 2D
 ///
+/// Given the (continuum) scalar field ϕ(x, y) and its Laplacian
+///
 /// ```text
-///              ∂²ϕ        ∂²ϕ
-///    L{ϕ} = kx ———  +  ky ———
-///              ∂x²        ∂y²
+///           ∂²ϕ        ∂²ϕ
+/// L{ϕ} = kx ———  +  ky ———
+///           ∂x²        ∂y²
+/// ```
+///
+/// we substitute the partial derivatives using central FDM over a rectangular grid.
+/// The resulting discrete Laplacian is expressed by the coefficient matrix `A` and the vector `X`:
+///
+/// ```text
+/// D{ϕᵢⱼ} = A ⋅ X
+/// ```
+///
+/// ϕᵢⱼ are the discrete counterpart of ϕ(x, y) over the (nx, ny) grid. However, these
+/// values are "sequentially" mapped onto to the vector `X` using the following formula:
+///
+/// ```text
+/// ϕᵢⱼ → Xₘ   with   m = i + j nx
 /// ```
 ///
 /// **Notes:**
@@ -125,34 +141,34 @@ impl PdeDiscreteLaplacian2d {
         });
     }
 
-    /// Computes the coefficient matrix 'A' of A ⋅ x = b
+    /// Computes the coefficient matrix 'A' of A ⋅ X = B
     ///
     /// **Note:** Consider the following partitioning:
     ///
     /// ```text
     /// ┌          ┐ ┌    ┐   ┌    ┐
-    /// │ Auu  Aup │ │ xu │   │ bu │
+    /// │ Auu  Aup │ │ Xu │   │ Bu │
     /// │          │ │    │ = │    │
-    /// │ Apu  App │ │ xp │   │ bp │
+    /// │ Apu  App │ │ Xp │   │ Bp │
     /// └          ┘ └    ┘   └    ┘
     /// ```
     ///
-    /// where `u` means *unknown* and `p` means *prescribed*. Thus, `xu` is the sub-vector with
-    /// unknown essential values and `xp` is the sub-vector with prescribed essential values.
+    /// where `u` means *unknown* and `p` means *prescribed*. Thus, `Xu` is the sub-vector with
+    /// unknown essential values and `Xp` is the sub-vector with prescribed essential values.
     ///
     /// Thus:
     ///
     /// ```text
-    /// Auu ⋅ xu  +  Aup ⋅ xp  =  bu
+    /// Auu ⋅ Xu  +  Aup ⋅ Xp  =  Bu
     /// ```
     ///
     /// To handle the prescribed essential values, we modify the system as follows:
     ///
     /// ```text
     /// ┌          ┐ ┌    ┐   ┌             ┐
-    /// │ Auu   0  │ │ xu │   │ bu - Aup⋅xp │
+    /// │ Auu   0  │ │ Xu │   │ Bu - Aup⋅Xp │
     /// │          │ │    │ = │             │
-    /// │  0    1  │ │ xp │   │     xp      │
+    /// │  0    1  │ │ Xp │   │     Xp      │
     /// └          ┘ └    ┘   └             ┘
     /// A := augmented(Auu)
     /// ```
@@ -160,17 +176,17 @@ impl PdeDiscreteLaplacian2d {
     /// Thus:
     ///
     /// ```text
-    /// xu = Auu⁻¹ ⋅ (bu - Aup⋅xp)
-    /// xp = xp
+    /// Xu = Auu⁻¹ ⋅ (Bu - Aup⋅Xp)
+    /// Xp = Xp
     /// ```
     ///
     /// Furthermore, we return an augmented 'Aup' matrix (called 'C', correction matrix), such that:
     ///
     /// ```text
     /// ┌          ┐ ┌    ┐   ┌        ┐
-    /// │  0   Aup │ │ .. │   │ Aup⋅xp │
+    /// │  0   Aup │ │ .. │   │ Aup⋅Xp │
     /// │          │ │    │ = │        │
-    /// │  0    0  │ │ xp │   │   0    │
+    /// │  0    0  │ │ Xp │   │   0    │
     /// └          ┘ └    ┘   └        ┘
     /// C := augmented(Aup)
     /// ```

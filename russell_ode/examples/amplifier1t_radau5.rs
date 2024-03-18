@@ -7,7 +7,7 @@ use std::{env, fs::File, io::BufReader, path::Path};
 // This example solves the DAE representing a one-transistor amplifier
 //
 // This example corresponds to Fig 1.3 on page 377 and Fig 1.4 on page 379 of the reference.
-// See also Eq (1.14) on page 377 of the reference.
+// The problem is defined in Eq (1.14) on page 377 of the reference.
 //
 // # Reference
 //

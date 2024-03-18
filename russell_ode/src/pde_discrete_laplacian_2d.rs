@@ -191,7 +191,7 @@ impl PdeDiscreteLaplacian2d {
     ///
     /// # Warnings
     ///
-    /// **Warning:** This function must be called after [DiscreteLaplacian2d::set_essential_boundary_condition]
+    /// **Important:** This function must be called after [PdeDiscreteLaplacian2d::set_essential_boundary_condition]
     ///
     /// # Todo
     ///

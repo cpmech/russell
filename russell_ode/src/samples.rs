@@ -40,7 +40,7 @@ pub struct SampleData {
 pub struct Samples {}
 
 impl Samples {
-    /// Implements a simple ODE with a single equation and constant derivative
+    /// Returns a simple ODE with a constant derivative
     ///
     /// ```text
     ///      dy
@@ -236,10 +236,10 @@ impl Samples {
         (system, data, 0)
     }
 
-    /// Returns the Brusselator problem (ODE version) described in Hairer-Nørsett-Wanner, Part I, page 116
+    /// Returns the Brusselator problem (ODE version)
     ///
     /// This example corresponds to Fig 16.4 on page 116 of the reference.
-    /// See also Eq (16.12) on page 116 of the reference.
+    /// The problem is defined in Eq (16.12) on page 116 of the reference.
     ///
     /// The system is:
     ///
@@ -336,10 +336,10 @@ impl Samples {
         (system, data, 0, y_ref)
     }
 
-    /// Returns the Arenstorf orbit problem, Hairer-Wanner, Part I, Eq(0.1), page 129
+    /// Returns the Arenstorf orbit problem
     ///
     /// This example corresponds to Fig 0.1 on page 130 of the reference.
-    /// See also Eqs (0.1) and (0.2) on page 129 and 130 of the reference.
+    /// The problem is defined in Eqs (0.1) and (0.2) on page 129 and 130 of the reference.
     ///
     /// From Hairer-Nørsett-Wanner:
     ///
@@ -468,10 +468,10 @@ impl Samples {
         (system, data, 0, y_ref)
     }
 
-    /// Returns the Hairer-Wanner problem from the reference, Part II, Eq(1.1), page 2 (with analytical solution)
+    /// Returns equation 1.1 from Hairer-Wanner Part II book
     ///
     /// This example corresponds to Fig 1.1 and Fig 1.2 on page 2 of the reference.
-    /// See also Eq (1.1) on page 2 of the reference
+    /// The problem is defined in Eq (1.1) on page 2 of the reference
     ///
     /// The system is:
     ///
@@ -544,10 +544,10 @@ impl Samples {
         (system, data, 0)
     }
 
-    /// Returns the Robertson's equation, Hairer-Wanner, Part II, Eq(1.4), page 3
+    /// Returns the Robertson's problem
     ///
     /// This example corresponds to Fig 1.3 on page 4 of the reference.
-    /// See also Eq (1.4) on page 3 of the reference.
+    /// The problem is defined in Eq (1.4) on page 3 of the reference.
     ///
     /// The system is:
     ///
@@ -619,7 +619,7 @@ impl Samples {
         (system, data, 0)
     }
 
-    /// Returns the Van der Pol's equation as given in Hairer-Wanner, Part II, Eq(1.5'), page 5
+    /// Returns the Van der Pol's problem
     ///
     /// This example corresponds to Eq (1.5') on page 5 of the reference and is used to compare with
     /// Fig 2.6 on page 23 and Fig 8.1 on page 125 of the reference.
@@ -712,10 +712,10 @@ impl Samples {
         (system, data, 0)
     }
 
-    /// Returns the one-transistor amplifier problem described by Hairer-Wanner, Part II, page 376
+    /// Returns the one-transistor amplifier problem
     ///
     /// This example corresponds to Fig 1.3 on page 377 and Fig 1.4 on page 379 of the reference.
-    /// See also Eq (1.14) on page 377 of the reference.
+    /// The problem is defined in Eq (1.14) on page 377 of the reference.
     ///
     /// This is a differential-algebraic problem modelling the nodal voltages of a one-transistor amplifier.
     ///

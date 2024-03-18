@@ -281,7 +281,7 @@ Total time                       = 27.107919ms
 
 ### <a name="brusselator-ode"></a> Brusselator ODE
 
-This example corresponds to Fig 16.4 on page 116 of Reference #1. See also Eq (16.12) on page 116 of Reference #1.
+This example corresponds to Fig 16.4 on page 116 of Reference #1. The problem is defined in Eq (16.12) on page 116 of Reference #1.
 
 The system is:
 
@@ -425,7 +425,7 @@ And the convergence plot is:
 
 ### <a name="arenstorf"></a> Arenstorf orbits
 
-This example corresponds to Fig 0.1 on page 130 of Reference #1. See also Eqs (0.1) and (0.2) on page 129 and 130 of Reference #1.
+This example corresponds to Fig 0.1 on page 130 of Reference #1. The problem is defined in Eqs (0.1) and (0.2) on page 129 and 130 of Reference #1.
 
 From Hairer-Nørsett-Wanner:
 
@@ -477,7 +477,7 @@ The results are plotted below:
 
 ### <a name="hairer-wanner-eq1"></a> Hairer-Wanner Equation (1.1)
 
-This example corresponds to Fig 1.1 and Fig 1.2 on page 2 of Reference #2. See also Eq (1.1) on page 2 of Reference #2.
+This example corresponds to Fig 1.1 and Fig 1.2 on page 2 of Reference #2. The problem is defined in Eq (1.1) on page 2 of Reference #2.
 
 The system is:
 
@@ -507,7 +507,7 @@ The results are show below:
 
 ### <a name="robertson"></a> Robertson's Equation
 
-This example corresponds to Fig 1.3 on page 4 of Reference #2. See also Eq (1.4) on page 3 of Reference #2.
+This example corresponds to Fig 1.3 on page 4 of Reference #2. The problem is defined in Eq (1.4) on page 3 of Reference #2.
 
 The system is:
 
@@ -591,7 +591,7 @@ where ε defines the *stiffness* of the problem + conditions (equation + initial
 
 #### DoPri5
 
-This example corresponds to Fig 2.6 on page 23 of Reference #2. See also Eq (1.5') on page 5 of Reference #2.
+This example corresponds to Fig 2.6 on page 23 of Reference #2. The problem is defined in Eq (1.5') on page 5 of Reference #2.
 
 This example illustrated the *stiffness* of the Van der Pol problem with ε = 0.003. In this example, DoPri5 with Tol = 1e-3 is used.
 
@@ -625,7 +625,7 @@ The figure's red dashed lines mark the moment when stiffness has been detected f
 
 #### Radau5
 
-This example corresponds to Fig 8.1 on page 125 of Reference #2. See also Eq (1.5') on page 5 of Reference #2.
+This example corresponds to Fig 8.1 on page 125 of Reference #2. The problem is defined in Eq (1.5') on page 5 of Reference #2.
 
 This example uses a smaller ε = 1e-6, making the problem + conditions much more stiff. It is solved with the Radau5 solver, which can handle stiff problems quite well. Note that DoPri5 would not solve this problem with such small ε, unless a very high number of steps (and oder configurations) were considered.
 
@@ -661,7 +661,7 @@ The results are show below:
 
 ### <a name="amplifier1t"></a> One-transistor amplifier
 
-This example corresponds to Fig 1.3 on page 377 and Fig 1.4 on page 379 of Reference #2. See also Eq (1.14) on page 377 of Reference #2.
+This example corresponds to Fig 1.3 on page 377 and Fig 1.4 on page 379 of Reference #2. The problem is defined in Eq (1.14) on page 377 of Reference #2.
 
 This is a differential-algebraic problem modelling the nodal voltages of a one-transistor amplifier.
 

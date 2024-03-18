@@ -7,7 +7,7 @@ use std::{env, fs::File, io::BufReader, path::Path};
 // This example solves the brusselator equation
 //
 // This example corresponds to Fig 16.4 on page 116 of the reference.
-// See also Eq (16.12) on page 116 of the reference.
+// The problem is defined in Eq (16.12) on page 116 of the reference.
 //
 // # Reference
 //

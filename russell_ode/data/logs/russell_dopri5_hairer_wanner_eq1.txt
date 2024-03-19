@@ -15,6 +15,7 @@ step =  32, x =  1.10, y =  4.711902738440203E-01
 step =  33, x =  1.20, y =  3.807874366082720E-01
 step =  35, x =  1.30, y =  2.866070362994957E-01
 step =  37, x =  1.40, y =  1.895941168686506E-01
+step =  39, x =  1.50, y =  9.063921649308775E-02
 DoPri5: Dormand-Prince method (explicit, order 5(4), embedded)
 Number of function evaluations   = 235
 Number of performed steps        = 39

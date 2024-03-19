@@ -50,6 +50,7 @@ step = 115, x = 0.0460, y1and5 = -1.780245999100694E-01  7.466802560157104E-01, 
 step = 118, x = 0.0470, y1and5 = -3.096432354425651E-01  3.483520547215561E-01, diff1and5 = 3.3E-07 9.6E-05
 step = 123, x = 0.0480, y1and5 = -3.246172295071914E-01 -1.330381955254372E+00, diff1and5 = 3.8E-08 4.6E-05
 step = 126, x = 0.0490, y1and5 = -2.144228860345288E-01 -2.116620164596746E+00, diff1and5 = 6.7E-07 2.0E-04
+step = 127, x = 0.0500, y1and5 = -2.226517863103583E-02 -2.269179795792819E+00, diff1and5 = 3.9E-08 8.7E-06
 Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)
 Number of function evaluations   = 1511
 Number of Jacobian evaluations   = 126

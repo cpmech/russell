@@ -216,6 +216,9 @@ impl<'a, A> OdeSolver<'a, A> {
                 }
                 self.work.bench.stop_sw_step();
             }
+            if let Some(out) = output.as_mut() {
+                out.last(&self.work, x, y)?;
+            }
             self.work.bench.stop_sw_total();
             return Ok(());
         }
@@ -308,6 +311,11 @@ impl<'a, A> OdeSolver<'a, A> {
                     self.actual.reject(&mut self.work, h);
                 }
             }
+        }
+
+        // last output
+        if let Some(out) = output.as_mut() {
+            out.last(&self.work, x, y)?;
         }
 
         // done
@@ -485,9 +493,9 @@ mod tests {
 
         // check
         vec_approx_eq(y.as_data(), &[1.0], 1e-15);
-        vec_approx_eq(&out.dense_x, &[0.0, 0.25, 0.5, 0.75], 1e-15); // will not store the last x here
-        vec_approx_eq(&out.dense_y.get(&0).unwrap(), &[0.0, 0.25, 0.5, 0.75], 1e-15);
-        assert_eq!(&out.dense_step_index, &[0, 2, 2, 2]);
+        vec_approx_eq(&out.dense_x, &[0.0, 0.25, 0.5, 0.75, 1.0], 1e-15);
+        vec_approx_eq(&out.dense_y.get(&0).unwrap(), &[0.0, 0.25, 0.5, 0.75, 1.0], 1e-15);
+        assert_eq!(&out.dense_step_index, &[0, 2, 2, 2, 2]);
 
         // run again without dense output
         out.clear();
@@ -534,7 +542,7 @@ mod tests {
         let params = Params::new(Method::FwEuler);
         let mut solver = OdeSolver::new(params, &system).unwrap();
         let mut out = Output::new();
-        assert_eq!(out.enable_dense(-0.1, &[0]).err(), Some("h_out must be positive"));
+        assert_eq!(out.enable_dense(-0.1, &[0]).err(), Some("h_out must be ≥ 0.0"));
         out.enable_dense(0.1, &[0]).unwrap();
         assert_eq!(
             solver

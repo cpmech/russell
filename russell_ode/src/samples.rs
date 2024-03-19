@@ -1,5 +1,5 @@
-use crate::StrError;
 use crate::{HasJacobian, NoArgs, System};
+use crate::{PdeDiscreteLaplacian2d, StrError};
 use russell_lab::math::PI;
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, Genie, Sym};
@@ -20,6 +20,11 @@ pub struct SampleData {
 
     /// Holds a function to compute the analytical solution y(x)
     pub y_analytical: Option<fn(&mut Vector, f64)>,
+}
+
+/// Holds arguments for the Brusselator PDE sample problem
+pub struct SampleBrusselatorPdeArgs {
+    pub laplacian: PdeDiscreteLaplacian2d,
 }
 
 /// Holds a collection of sample ODE problems
@@ -334,6 +339,264 @@ impl Samples {
         // ```
         let y_ref = Vector::from(&[0.4986370712683478291402659846476, 4.596780349452011024598321237263]);
         (system, data, 0, y_ref)
+    }
+
+    /// Returns the Brusselator reaction-diffusion problem in 2D (parabolic PDE)
+    ///
+    /// This example corresponds to Fig 10.4(a,b) on pages 250 and 251 of the reference.
+    /// The problem is defined in Eqs (10.10-10.14) on pages 248 and 249 of the reference.
+    ///
+    /// The model is given by:
+    ///
+    /// ```text
+    /// ∂u                         ⎛ ∂²u   ∂²u ⎞
+    /// ——— = 1 - 4.4 u + u² v + α ⎜ ——— + ——— ⎟
+    /// ∂t                         ⎝ ∂x²   ∂y² ⎠
+    ///
+    /// ∂v                         ⎛ ∂²v   ∂²v ⎞
+    /// ——— =     3.4 u - u² v + α ⎜ ——— + ——— ⎟
+    /// ∂t                         ⎝ ∂x²   ∂y² ⎠
+    ///
+    /// with:  t ≥ 0,  0 ≤ x ≤ 1,  0 ≤ y ≤ 1
+    /// ```
+    ///
+    /// Assume the following Neumann boundary conditions:
+    ///
+    /// ```text
+    /// ∂u          ∂v     
+    /// ——— = 0     ——— = 0
+    ///  →           →
+    /// ∂n          ∂n     
+    /// ```
+    ///
+    /// And the following initial conditions:
+    ///
+    /// ```text
+    /// u(t=0,x,y) = 0.5 + y    v(t=0,x,y) = 1 + 5 x
+    /// ```
+    ///
+    /// The scalar fields u(x, y) and v(x, y) are mapped over a rectangular grid with
+    /// their discrete counterparts represented by:
+    ///
+    /// ```text
+    /// pᵢⱼ(t) := u(t, xᵢ, yⱼ)
+    /// qᵢⱼ(t) := v(t, xᵢ, yⱼ)
+    /// ```
+    ///
+    /// Thus `ndim = 2 npoint²` with npoint being the number of points along the x or y line.
+    ///
+    /// The second partial derivatives over x and y (Laplacian) are approximated using the
+    /// Finite Differences Method (FDM).
+    ///
+    /// The pᵢⱼ and qᵢⱼ values are mapped onto the vectors `U` and `V` as follows:
+    ///
+    /// ```text
+    /// pᵢⱼ → Uₘ
+    /// qᵢⱼ → Vₘ
+    ///
+    /// with m = i + j nx
+    /// ```
+    ///
+    /// Then, they are stored in a single vector `Y`:
+    ///
+    /// ```text
+    ///     ┌   ┐
+    ///     │ U │
+    /// Y = │   │
+    ///     │ V │
+    ///     └   ┘
+    /// ```
+    ///
+    /// Thus:
+    ///
+    /// ```text
+    /// Uₘ = Yₘ  and  Vₘ = Yₛ₊ₘ
+    ///
+    /// where  0 ≤ m ≤ s - 1  and (shift)  s = npoint²
+    /// ```
+    ///
+    /// In terms of components, we can write:
+    ///
+    /// ```text
+    ///       ⎧ Uₐ    if a < s
+    /// Yₐ =  ⎨
+    ///       ⎩ Vₐ₋ₛ  if a ≥ s
+    ///
+    /// where  0 ≤ a ≤ ndim - 1  and  ndim = 2 s
+    /// ```
+    ///
+    /// The components of the resulting system of equations are defined by:
+    /// (the prime indicates time-derivative; no summation over repeated indices):
+    ///
+    /// ```text
+    /// Uₘ' = 1 - 4.4 Uₘ + Uₘ² Vₘ + Σ Aₘₖ Uₖ
+    ///                            k
+    /// Vₘ' =     3.4 Uₘ - Uₘ² Vₘ + Σ Aₘₖ Uₖ
+    ///                            k
+    ///
+    /// where Aₘₖ are the elements of the discrete Laplacian matrix
+    /// ```
+    ///
+    /// The components to build the Jacobian matrix are:
+    /// (no summation over repeated indices):
+    ///
+    /// ```text
+    /// ∂Uₘ'
+    /// ———— = -4.4 δₘₙ + 2 Uₘ δₘₙ Vₘ + Aₘₙ
+    /// ∂Uₙ
+    ///
+    /// ∂Uₘ'
+    /// ———— = Uₘ² δₘₙ
+    /// ∂Vₙ
+    ///
+    /// ∂Vₘ'
+    /// ———— = 3.4 δₘₙ - 2 Uₘ δₘₙ Vₘ
+    /// ∂Uₙ
+    ///
+    /// ∂Vₘ'
+    /// ———— = -Uₘ² δₘₙ + Aₘₙ
+    /// ∂Vₙ
+    ///
+    /// where δₘₙ is the Kronecker delta
+    /// ```
+    ///
+    /// With `Fₐ := ∂Yₐ/∂t`, the components of the Jacobian matrix can be "assembled" as follows:
+    ///
+    /// ```text
+    ///       ⎧  ⎧ ∂Uₐ'/∂Uₑ      if e < s
+    ///       │  ⎨                          if a < s
+    /// ∂Fₐ   │  ⎩ ∂Uₐ'/∂Vₑ₋ₛ    if e ≥ s
+    /// ——— = ⎨
+    /// ∂Yₑ   │  ⎧ ∂Vₐ₋ₛ'/∂Uₑ    if e < s
+    ///       │  ⎨                          if a ≥ s
+    ///       ⎩  ⎩ ∂Vₐ₋ₛ'/∂Vₑ₋ₛ  if e ≥ s
+    ///
+    /// where  0 ≤ a ≤ ndim - 1  and  0 ≤ e ≤ ndim - 1
+    /// ```
+    ///
+    /// # Input
+    ///
+    /// * `alpha` -- the α coefficient
+    /// * `npoint` -- the number of points along one direction on the grid
+    /// * `ignore_diffusion` -- ignore the diffusion term (convenient for debugging)
+    ///
+    /// # Output
+    ///
+    /// Returns `(system, data, args)` where:
+    ///
+    /// * `system: System<F, J, A>` with:
+    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `A` -- is `NoArgs`
+    /// * `data: SampleData` -- holds the initial values
+    /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `y_ref` -- is a reference solution, computed with high-accuracy by Mathematica
+    ///
+    /// # Reference
+    ///
+    /// * Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
+    ///   Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
+    ///   in Computational Mathematics, 528p
+    pub fn brusselator_pde(
+        alpha: f64,
+        npoint: usize,
+        ignore_diffusion: bool,
+    ) -> (
+        System<
+            impl Fn(&mut Vector, f64, &Vector, &mut SampleBrusselatorPdeArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut SampleBrusselatorPdeArgs) -> Result<(), StrError>,
+            SampleBrusselatorPdeArgs,
+        >,
+        SampleData,
+        SampleBrusselatorPdeArgs,
+    ) {
+        // discrete laplacian
+        let (kx, ky) = (alpha, alpha);
+        let (xmin, xmax, ymin, ymax) = (0.0, 1.0, 0.0, 1.0);
+        let (nx, ny) = (npoint, npoint);
+        let laplacian = PdeDiscreteLaplacian2d::new(kx, ky, xmin, xmax, ymin, ymax, nx, ny).unwrap();
+
+        // initial values
+        let s = npoint * npoint;
+        let ndim = 2 * s;
+        let mut yy0 = Vector::new(ndim);
+        laplacian.loop_over_grid_points(|m, x, y| {
+            yy0[m] = 0.5 + y; // u0
+            yy0[s + m] = 1.0 + 5.0 * x; // v0
+        });
+        let t0 = 0.0;
+        let t1 = 11.5;
+
+        // number of non-zeros in the Jacobian
+        let band = 5;
+        let jac_nnz = if ignore_diffusion {
+            4 * s // 4 diagonal matrices + 2 banded (laplacian) matrices
+        } else {
+            4 * s + 2 * s * band // 4 diagonal matrices + 2 banded (laplacian) matrices
+        };
+        // println!("jac_nnz = {}", jac_nnz);
+
+        // ODE system
+        let system = System::new(
+            ndim,
+            move |f, _t, yy, args: &mut SampleBrusselatorPdeArgs| {
+                args.laplacian.loop_over_grid_points(|m, _, _| {
+                    let um = yy[m];
+                    let vm = yy[s + m];
+                    let um2 = um * um;
+                    f[m] = 1.0 - 4.4 * um + um2 * vm;
+                    f[s + m] = 3.4 * um - um2 * vm;
+                    if !ignore_diffusion {
+                        args.laplacian.loop_over_coef_mat_row(m, |k, amk| {
+                            let uk = yy[k];
+                            let vk = yy[s + k];
+                            f[m] += amk * uk;
+                            f[s + m] += amk * vk;
+                        });
+                    }
+                });
+                Ok(())
+            },
+            move |jj, _x, yy, cf, args: &mut SampleBrusselatorPdeArgs| {
+                jj.reset();
+                let mut nnz_count = 0;
+                for m in 0..s {
+                    let um = yy[m];
+                    let vm = yy[s + m];
+                    let um2 = um * um;
+                    jj.put(m, m, cf * (-4.4 + 2.0 * um * vm)).unwrap();
+                    jj.put(m, s + m, cf * (um2)).unwrap();
+                    jj.put(s + m, m, cf * (3.4 - 2.0 * um * vm)).unwrap();
+                    jj.put(s + m, s + m, cf * (-um2)).unwrap();
+                    nnz_count += 4;
+                    if !ignore_diffusion {
+                        args.laplacian.loop_over_coef_mat_row(m, |n, amn| {
+                            jj.put(m, n, cf * (amn)).unwrap();
+                            jj.put(s + m, s + n, cf * (amn)).unwrap();
+                            nnz_count += 2;
+                        });
+                    }
+                }
+                // println!("count = {}", nnz_count);
+                assert_eq!(nnz_count, jac_nnz);
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+
+        // control
+        let data = SampleData {
+            x0: t0,
+            y0: yy0,
+            x1: t1,
+            h_equal: None,
+            y_analytical: None,
+        };
+
+        let args = SampleBrusselatorPdeArgs { laplacian };
+        (system, data, args)
     }
 
     /// Returns the Arenstorf orbit problem
@@ -1015,14 +1278,14 @@ impl Samples {
 
 #[cfg(test)]
 mod tests {
-    use super::{NoArgs, Samples};
+    use super::Samples;
     use crate::StrError;
     use russell_lab::{deriv_central5, mat_approx_eq, vec_approx_eq, Matrix, Vector};
     use russell_sparse::{CooMatrix, Sym};
 
-    fn numerical_jacobian<F>(ndim: usize, x0: f64, y0: Vector, function: F, multiplier: f64) -> Matrix
+    fn numerical_jacobian<F, A>(ndim: usize, x0: f64, y0: Vector, function: F, multiplier: f64, args: &mut A) -> Matrix
     where
-        F: Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
+        F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     {
         struct Extra {
             x: f64,
@@ -1039,7 +1302,6 @@ mod tests {
             j: 0,
         };
         let mut jac = Matrix::new(ndim, ndim);
-        let mut args: u8 = 0;
         for i in 0..ndim {
             extra.i = i;
             for j in 0..ndim {
@@ -1048,7 +1310,7 @@ mod tests {
                 let res = deriv_central5(at_yj, &mut extra, |yj: f64, extra: &mut Extra| {
                     let original = extra.y[extra.j];
                     extra.y[extra.j] = yj;
-                    function(&mut extra.f, extra.x, &extra.y, &mut args).unwrap();
+                    function(&mut extra.f, extra.x, &extra.y, args).unwrap();
                     extra.y[extra.j] = original;
                     extra.f[extra.i]
                 });
@@ -1076,7 +1338,7 @@ mod tests {
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1103,7 +1365,7 @@ mod tests {
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1130,7 +1392,7 @@ mod tests {
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1157,7 +1419,7 @@ mod tests {
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1176,7 +1438,7 @@ mod tests {
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1195,7 +1457,7 @@ mod tests {
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1214,7 +1476,7 @@ mod tests {
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1233,7 +1495,7 @@ mod tests {
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1252,7 +1514,7 @@ mod tests {
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1278,12 +1540,50 @@ mod tests {
         (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier);
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
         println!("{:.15}", ana);
         println!("{:.15}", num);
+        mat_approx_eq(&ana, &num, 1e-11);
+    }
+
+    #[test]
+    fn brusselator_pde_works() {
+        let multiplier = 2.0;
+        let (system, data, mut args) = Samples::brusselator_pde(2e-3, 3, false);
+
+        // compute the analytical Jacobian matrix
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+
+        // compute the numerical Jacobian matrix
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
+        println!("{:.2}", ana);
+        println!("{:.2}", num);
+        mat_approx_eq(&ana, &num, 1e-11);
+    }
+
+    #[test]
+    fn brusselator_pde_no_diffusion_works() {
+        let multiplier = 2.0;
+        let (system, data, mut args) = Samples::brusselator_pde(2e-3, 3, true);
+
+        // compute the analytical Jacobian matrix
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+
+        // compute the numerical Jacobian matrix
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
+        println!("{:.2}", ana);
+        println!("{:.2}", num);
         mat_approx_eq(&ana, &num, 1e-11);
     }
 }

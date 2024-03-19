@@ -20,6 +20,7 @@ step =1085, x = 1.60, y = -1.227570508061303E+00  2.379082948047412E+00
 step =1186, x = 1.70, y =  1.986867061111602E+00 -6.739232392526573E-01
 step =1246, x = 1.80, y =  1.917429871211335E+00 -7.162099959863539E-01
 step =1298, x = 1.90, y =  1.843292936179200E+00 -7.685214897380936E-01
+step =1348, x = 2.00, y =  1.763234540172065E+00 -8.356886819302314E-01
 DoPri8: Dormand-Prince method (explicit, order 8(5,3), embedded)
 Number of function evaluations   = 21551
 Number of performed steps        = 1469

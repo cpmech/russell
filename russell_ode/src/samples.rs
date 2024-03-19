@@ -534,7 +534,6 @@ impl Samples {
         } else {
             4 * s + 2 * s * band // 4 diagonal matrices + 2 banded (laplacian) matrices
         };
-        // println!("jac_nnz = {}", jac_nnz);
 
         // ODE system
         let system = System::new(
@@ -577,7 +576,6 @@ impl Samples {
                         });
                     }
                 }
-                // println!("count = {}", nnz_count);
                 assert_eq!(nnz_count, jac_nnz);
                 Ok(())
             },

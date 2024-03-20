@@ -6,7 +6,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 
-const PATH_KEY: &str = "/tmp/russell_ode/radau5_brusselator_pde";
+const PATH_KEY: &str = "/tmp/russell_ode/brusselator_pde_radau5";
 
 fn main() -> Result<(), StrError> {
     let mut graph = Graph::new()?;

@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::fs::{self, File};
 use std::path::Path;
 
-const PATH_KEY: &str = "/tmp/russell_ode/radau5_brusselator_pde";
+const PATH_KEY: &str = "/tmp/russell_ode/brusselator_pde_radau5";
 
 #[derive(Serialize)]
 pub struct ProblemData {

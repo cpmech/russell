@@ -15,7 +15,7 @@ fn main() -> Result<(), StrError> {
         let path = format!("{}_{}.json", PATH_KEY, idx);
         println!("{}", path);
         let res = OutData::read_json(path.as_str())?;
-        graph.snapshot(&res.y)?;
+        graph.snapshot(res.x, &res.y)?;
     }
     Ok(())
 }
@@ -69,7 +69,7 @@ impl Graph {
         })
     }
 
-    pub fn snapshot(&mut self, yy: &Vector) -> Result<(), StrError> {
+    pub fn snapshot(&mut self, t: f64, yy: &Vector) -> Result<(), StrError> {
         // u
         self.laplacian.loop_over_grid_points(|m, _, _| {
             let row = m / self.npoint;
@@ -81,8 +81,12 @@ impl Graph {
             .set_with_surface(false)
             .draw(&self.grid_x, &self.grid_y, &self.grid_z);
         let mut plot = Plot::new();
+        let title = format!("u(x,y) @ t = {:?}", t);
         let path = format!("{}_u_{:0>3}.svg", PATH_KEY, self.count);
-        plot.add(&surf).set_camera(30.0, 210.0).save(path.as_str())?;
+        plot.add(&surf)
+            .set_title(title.as_str())
+            .set_camera(30.0, 210.0)
+            .save(path.as_str())?;
 
         // v
         self.laplacian.loop_over_grid_points(|m, _, _| {
@@ -96,8 +100,12 @@ impl Graph {
             .set_with_surface(false)
             .draw(&self.grid_x, &self.grid_y, &self.grid_z);
         let mut plot = Plot::new();
+        let title = format!("v(x,y) @ t = {:?}", t);
         let path = format!("{}_v_{:0>2}.svg", PATH_KEY, self.count);
-        plot.add(&surf).set_camera(30.0, 210.0).save(path.as_str())?;
+        plot.add(&surf)
+            .set_title(title.as_str())
+            .set_camera(30.0, 210.0)
+            .save(path.as_str())?;
 
         // next
         self.count += 1;

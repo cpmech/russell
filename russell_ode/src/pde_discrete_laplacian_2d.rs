@@ -341,18 +341,27 @@ impl PdeDiscreteLaplacian2d {
     where
         F: FnMut(usize, usize),
     {
-        // auxiliary
+        // constants for clarity/convenience
+        const CUR: usize = 0; // current node
+        const LEF: usize = 1; // left node
+        const RIG: usize = 2; // right node
+        const BOT: usize = 3; // bottom node
+        const TOP: usize = 4; // top node
+        const INI_X: usize = 0;
+        const INI_Y: usize = 0;
+        let fin_x = self.nx - 1;
+        let fin_y = self.ny - 1;
         let i = m % self.nx;
         let j = m / self.nx;
 
         // n indices of the non-zero values on the row m of the coefficient matrix
         // (mirror or swap the indices of boundary nodes, as appropriate)
         let mut nn = [0, 0, 0, 0, 0];
-        nn[0] = m; // current node
-        nn[1] = if i == 0 { m + 1 } else { m - 1 }; // left node
-        nn[2] = if i == self.nx - 1 { m - 1 } else { m + 1 }; // right node
-        nn[3] = if j == 0 { m + self.nx } else { m - self.nx }; // bottom node
-        nn[4] = if j == self.ny - 1 { m - self.nx } else { m + self.nx }; // top node
+        nn[CUR] = m;
+        nn[LEF] = if i == INI_X { m + 1 } else { m - 1 };
+        nn[RIG] = if i == fin_x { m - 1 } else { m + 1 };
+        nn[BOT] = if j == INI_Y { m + self.nx } else { m - self.nx };
+        nn[TOP] = if j == fin_y { m - self.nx } else { m + self.nx };
 
         // execute callback
         for (b, &n) in nn.iter().enumerate() {

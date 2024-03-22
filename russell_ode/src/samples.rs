@@ -24,7 +24,7 @@ pub struct SampleData {
 
 /// Holds arguments for the Brusselator PDE sample problem
 pub struct SampleBrusselatorPdeArgs {
-    pub laplacian: PdeDiscreteLaplacian2d,
+    pub fdm: PdeDiscreteLaplacian2d,
 }
 
 /// Holds a collection of sample ODE problems
@@ -539,14 +539,14 @@ impl Samples {
         let system = System::new(
             ndim,
             move |f, _t, yy, args: &mut SampleBrusselatorPdeArgs| {
-                args.laplacian.loop_over_grid_points(|m, _, _| {
+                args.fdm.loop_over_grid_points(|m, _, _| {
                     let um = yy[m];
                     let vm = yy[s + m];
                     let um2 = um * um;
                     f[m] = 1.0 - 4.4 * um + um2 * vm;
                     f[s + m] = 3.4 * um - um2 * vm;
                     if !ignore_diffusion {
-                        args.laplacian.loop_over_coef_mat_row(m, |k, amk| {
+                        args.fdm.loop_over_coef_mat_row(m, |k, amk| {
                             let uk = yy[k];
                             let vk = yy[s + k];
                             f[m] += amk * uk;
@@ -569,7 +569,7 @@ impl Samples {
                     jj.put(s + m, s + m, cf * (-um2)).unwrap();
                     nnz_count += 4;
                     if !ignore_diffusion {
-                        args.laplacian.loop_over_coef_mat_row(m, |n, amn| {
+                        args.fdm.loop_over_coef_mat_row(m, |n, amn| {
                             jj.put(m, n, cf * (amn)).unwrap();
                             jj.put(s + m, s + n, cf * (amn)).unwrap();
                             nnz_count += 2;
@@ -593,7 +593,7 @@ impl Samples {
             y_analytical: None,
         };
 
-        let args = SampleBrusselatorPdeArgs { laplacian: fdm };
+        let args = SampleBrusselatorPdeArgs { fdm };
         (system, data, args)
     }
 

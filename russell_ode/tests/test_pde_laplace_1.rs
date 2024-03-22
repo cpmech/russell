@@ -1,9 +1,9 @@
-use russell_lab::{vec_approx_eq, StrError, Vector};
+use russell_lab::{vec_approx_eq, Vector};
 use russell_ode::{PdeDiscreteLaplacian2d, Side};
 use russell_sparse::{Genie, LinSolver, SparseMatrix};
 
 #[test]
-fn main() -> Result<(), StrError> {
+fn main() {
     // Approximate (with the Finite Differences Method, FDM) the solution of
     //
     //  ∂²ϕ     ∂²ϕ
@@ -55,7 +55,7 @@ fn main() -> Result<(), StrError> {
     });
 
     // initialize the right-hand side vector with the correction
-    cc.mat_vec_mul(&mut b, -1.0, &x)?; // bu := -Aup⋅xp
+    cc.mat_vec_mul(&mut b, -1.0, &x).unwrap(); // bu := -Aup⋅xp
 
     // if there were natural (Neumann) boundary conditions,
     // we could set `bu := natural()` here
@@ -67,14 +67,13 @@ fn main() -> Result<(), StrError> {
 
     // solve the linear system
     let mut mat = SparseMatrix::from_coo(aa);
-    let mut solver = LinSolver::new(Genie::Umfpack)?;
-    solver.actual.factorize(&mut mat, None)?;
-    solver.actual.solve(&mut x, &mut mat, &b, false)?;
+    let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
+    solver.actual.factorize(&mut mat, None).unwrap();
+    solver.actual.solve(&mut x, &mut mat, &b, false).unwrap();
 
     // check
     let x_correct = [
         1.0, 1.0, 1.0, 1.0, 1.0, 1.25, 1.5, 2.0, 1.0, 1.5, 1.75, 2.0, 2.0, 2.0, 2.0, 2.0,
     ];
     vec_approx_eq(&x.as_data(), &x_correct, 1e-15);
-    Ok(())
 }

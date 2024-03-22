@@ -1,12 +1,12 @@
 use plotpy::{Contour, Plot};
-use russell_lab::{math::PI, vec_approx_eq, StrError, Vector};
+use russell_lab::{math::PI, vec_approx_eq, Vector};
 use russell_ode::{PdeDiscreteLaplacian2d, Side};
 use russell_sparse::{Genie, LinSolver, SparseMatrix};
 
 const SAVE_FIGURE: bool = false;
 
 #[test]
-fn main() -> Result<(), StrError> {
+fn main() {
     // Approximate (with the Finite Differences Method, FDM) the solution of
     //
     // ∂²ϕ   ∂²ϕ
@@ -64,7 +64,7 @@ fn main() -> Result<(), StrError> {
     });
 
     // initialize the right-hand side vector with the correction
-    cc.mat_vec_mul(&mut rhs, -1.0, &phi)?; // bu := -Aup⋅ϕp
+    cc.mat_vec_mul(&mut rhs, -1.0, &phi).unwrap(); // bu := -Aup⋅ϕp
 
     // set the right-hand side vector with the source term (note plus-equal)
     fdm.loop_over_grid_points(|i, x, y| {
@@ -78,9 +78,9 @@ fn main() -> Result<(), StrError> {
 
     // solve the linear system
     let mut mat = SparseMatrix::from_coo(aa);
-    let mut solver = LinSolver::new(Genie::Umfpack)?;
-    solver.actual.factorize(&mut mat, None)?;
-    solver.actual.solve(&mut phi, &mut mat, &rhs, false)?;
+    let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
+    solver.actual.factorize(&mut mat, None).unwrap();
+    solver.actual.solve(&mut phi, &mut mat, &rhs, false).unwrap();
 
     // check
     let mut phi_correct = Vector::new(dim);
@@ -119,7 +119,7 @@ fn main() -> Result<(), StrError> {
         plot.add(&contour_num).add(&contour_ana);
         plot.set_equal_axes(true)
             .set_figure_size_points(600.0, 600.0)
-            .save("/tmp/russell_ode/test_pde_poisson_2.svg")?;
+            .save("/tmp/russell_ode/test_pde_poisson_2.svg")
+            .unwrap();
     }
-    Ok(())
 }

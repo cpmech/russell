@@ -514,13 +514,13 @@ impl Samples {
         let (kx, ky) = (alpha, alpha);
         let (xmin, xmax, ymin, ymax) = (0.0, 1.0, 0.0, 1.0);
         let (nx, ny) = (npoint, npoint);
-        let laplacian = PdeDiscreteLaplacian2d::new(kx, ky, xmin, xmax, ymin, ymax, nx, ny).unwrap();
+        let fdm = PdeDiscreteLaplacian2d::new(kx, ky, xmin, xmax, ymin, ymax, nx, ny).unwrap();
 
         // initial values
         let s = npoint * npoint;
         let ndim = 2 * s;
         let mut yy0 = Vector::new(ndim);
-        laplacian.loop_over_grid_points(|m, x, y| {
+        fdm.loop_over_grid_points(|m, x, y| {
             yy0[m] = 0.5 + y; // u0
             yy0[s + m] = 1.0 + 5.0 * x; // v0
         });
@@ -593,7 +593,7 @@ impl Samples {
             y_analytical: None,
         };
 
-        let args = SampleBrusselatorPdeArgs { laplacian };
+        let args = SampleBrusselatorPdeArgs { laplacian: fdm };
         (system, data, args)
     }
 

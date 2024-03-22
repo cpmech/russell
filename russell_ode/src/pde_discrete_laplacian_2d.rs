@@ -364,8 +364,7 @@ impl PdeDiscreteLaplacian2d {
     ///
     /// # Input
     ///
-    /// * `callback` -- a function of `(i, j, m, x, y)` where `i` is the index of the vertical grid line,
-    ///   `j` is the index of the horizontal grid line, `m` is the the sequential point number,
+    /// * `callback` -- a function of `(m, x, y)` where `m` is the the sequential point number,
     ///   and `(x, y)` are the Cartesian coordinates of the grid point.
     ///
     /// Note that:

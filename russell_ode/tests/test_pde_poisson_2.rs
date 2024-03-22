@@ -6,7 +6,7 @@ use russell_sparse::{Genie, LinSolver, SparseMatrix};
 const SAVE_FIGURE: bool = false;
 
 #[test]
-fn main() {
+fn test_pde_poisson_2() {
     // Approximate (with the Finite Differences Method, FDM) the solution of
     //
     // ∂²ϕ   ∂²ϕ

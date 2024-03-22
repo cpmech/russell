@@ -3,7 +3,7 @@ use russell_ode::{PdeDiscreteLaplacian2d, Side};
 use russell_sparse::{Genie, LinSolver, SparseMatrix};
 
 #[test]
-fn main() {
+fn test_pde_laplace_1() {
     // Approximate (with the Finite Differences Method, FDM) the solution of
     //
     //  ∂²ϕ     ∂²ϕ

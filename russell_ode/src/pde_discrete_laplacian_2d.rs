@@ -37,10 +37,39 @@ pub enum Side {
 /// ϕᵢⱼ → Xₘ   with   m = i + j nx
 /// ```
 ///
-/// **Notes:**
+/// The dimension of the coefficient matrix is `dim = nrow = ncol = nx × ny`.
+///
+/// A sample grid is illustrated below:
+///
+/// ```text
+///      i=0     i=1     i=2     i=3     i=4
+/// j=2  10──────11──────12──────13──────14  j=2  ny=3
+///       │       │       │       │       │
+///       │       │       │       │       │
+/// j=1   5───────6───────7───────8───────9  j=1
+///       │       │       │       │       │
+///       │       │       │       │       │
+/// j=0   0───────1───────2───────3───────4  j=0
+///      i=0     i=1     i=2     i=3     i=4
+///                                     nx=5
+/// ```
+///
+/// Thus:
+///
+/// ```text
+/// m = i + j nx
+/// i = m % nx
+/// j = m / nx
+///
+/// "%" is the modulo operator
+/// "/" is the integer division operator
+/// ```
+///
+/// # Remarks
 ///
 /// * The operator is built with a five-point stencil.
-/// * The boundary nodes are 'mirrored' yielding a no-flux barrier.
+/// * The boundary conditions may be Neumann with zero-flux or periodic.
+/// * By default (Neumann BC), the boundary nodes are 'mirrored' yielding a no-flux barrier.
 pub struct PdeDiscreteLaplacian2d {
     xmin: f64,          // min x coordinate
     ymin: f64,          // min y coordinate
@@ -227,10 +256,10 @@ impl PdeDiscreteLaplacian2d {
         let np = self.essential.len();
         let mut max_nnz_aa = np; // start with the diagonal 'ones'
         let mut max_nnz_cc = 1; // +1 just for when there are no essential conditions
-        for i in 0..dim {
-            if !self.essential.contains_key(&i) {
-                self.loop_over_bandwidth(i, |j, _| {
-                    if !self.essential.contains_key(&j) {
+        for m in 0..dim {
+            if !self.essential.contains_key(&m) {
+                self.loop_over_bandwidth(m, |n, _| {
+                    if !self.essential.contains_key(&n) {
                         max_nnz_aa += 1;
                     } else {
                         max_nnz_cc += 1;
@@ -244,17 +273,17 @@ impl PdeDiscreteLaplacian2d {
         let mut cc = CooMatrix::new(dim, dim, max_nnz_cc, Sym::No)?;
 
         // assemble
-        for i in 0..dim {
-            if !self.essential.contains_key(&i) {
-                self.loop_over_bandwidth(i, |j, b| {
-                    if !self.essential.contains_key(&j) {
-                        aa.put(i, j, self.molecule[b]).unwrap();
+        for m in 0..dim {
+            if !self.essential.contains_key(&m) {
+                self.loop_over_bandwidth(m, |n, b| {
+                    if !self.essential.contains_key(&n) {
+                        aa.put(m, n, self.molecule[b]).unwrap();
                     } else {
-                        cc.put(i, j, self.molecule[b]).unwrap();
+                        cc.put(m, n, self.molecule[b]).unwrap();
                     }
                 });
             } else {
-                aa.put(i, i, 1.0).unwrap();
+                aa.put(m, m, 1.0).unwrap();
             }
         }
         Ok((aa, cc))
@@ -262,18 +291,19 @@ impl PdeDiscreteLaplacian2d {
 
     /// Executes a loop over one row of the coefficient matrix 'A' of A ⋅ X = B
     ///
-    /// Note that the column indices will appear repeated due to the (zero-flux) boundaries.
+    /// Note that some column indices may appear repeated; e.g. due to the zero-flux boundaries.
     ///
     /// # Input
     ///
-    /// * `i` -- the row of the coefficient matrix
-    /// * `callback` -- a `function(j, Aij)` where `j` is the column index
-    pub fn loop_over_coef_mat_row<F>(&self, i: usize, mut callback: F)
+    /// * `m` -- the row of the coefficient matrix
+    /// * `callback` -- a `function(n, Amn)` where `n` is the column index and
+    ///   `Amn` is the m-n-element of the coefficient matrix
+    pub fn loop_over_coef_mat_row<F>(&self, m: usize, mut callback: F)
     where
         F: FnMut(usize, f64),
     {
-        self.loop_over_bandwidth(i, |j, b| {
-            callback(j, self.molecule[b]);
+        self.loop_over_bandwidth(m, |n, b| {
+            callback(n, self.molecule[b]);
         });
     }
 
@@ -281,47 +311,52 @@ impl PdeDiscreteLaplacian2d {
     ///
     /// # Input
     ///
-    /// * `callback` -- a `function(i, value)` where `i` is the row index
-    ///   and `value` is the prescribed value.
+    /// * `callback` -- a `function(m, value)` where `m` is the row index and
+    ///   `value` is the prescribed value.
     pub fn loop_over_prescribed_values<F>(&self, mut callback: F)
     where
         F: FnMut(usize, f64),
     {
-        self.essential.iter().for_each(|(i, value)| {
-            let row = i / self.nx;
-            let col = i % self.nx;
-            let x = self.xmin + (col as f64) * self.dx;
-            let y = self.ymin + (row as f64) * self.dy;
-            callback(*i, value(x, y));
+        self.essential.iter().for_each(|(m, value)| {
+            let i = m % self.nx;
+            let j = m / self.nx;
+            let x = self.xmin + (i as f64) * self.dx;
+            let y = self.ymin + (j as f64) * self.dy;
+            callback(*m, value(x, y));
         });
     }
 
-    /// Executes a loop over the bandwidth of the coefficient matrix
+    /// Executes a loop over the "bandwidth" of the coefficient matrix
+    ///
+    /// Here, the "bandwidth" means the non-zero values on a row of the coefficient matrix.
+    /// This is not the actual bandwidth because the zero elements are ignored. There are
+    /// five non-zero values in the "bandwidth" and they correspond to the "molecule" array.
     ///
     /// # Input
     ///
-    /// * `i` -- the row index
-    /// * `callback` -- a `function(j, b)` where `j` is the column index and
+    /// * `m` -- the row index
+    /// * `callback` -- a function of `(n, b)` where `n` is the column index and
     ///   `b` is the bandwidth index, i.e., the index in the molecule array.
-    fn loop_over_bandwidth<F>(&self, i: usize, mut callback: F)
+    fn loop_over_bandwidth<F>(&self, m: usize, mut callback: F)
     where
         F: FnMut(usize, usize),
     {
-        // row and column
-        let row = i / self.nx;
-        let col = i % self.nx;
+        // auxiliary
+        let i = m % self.nx;
+        let j = m / self.nx;
 
-        // j-index of grid nodes (mirror if needed)
-        let mut jays = [0, 0, 0, 0, 0];
-        jays[0] = i; // current node
-        jays[1] = if col == 0 { i + 1 } else { i - 1 }; // left node
-        jays[2] = if col == self.nx - 1 { i - 1 } else { i + 1 }; // right node
-        jays[3] = if row == 0 { i + self.nx } else { i - self.nx }; // bottom node
-        jays[4] = if row == self.ny - 1 { i - self.nx } else { i + self.nx }; // top node
+        // n indices of the non-zero values on the row m of the coefficient matrix
+        // (mirror or swap the indices of boundary nodes, as appropriate)
+        let mut nn = [0, 0, 0, 0, 0];
+        nn[0] = m; // current node
+        nn[1] = if i == 0 { m + 1 } else { m - 1 }; // left node
+        nn[2] = if i == self.nx - 1 { m - 1 } else { m + 1 }; // right node
+        nn[3] = if j == 0 { m + self.nx } else { m - self.nx }; // bottom node
+        nn[4] = if j == self.ny - 1 { m - self.nx } else { m + self.nx }; // top node
 
         // execute callback
-        for (b, &j) in jays.iter().enumerate() {
-            callback(j, b);
+        for (b, &n) in nn.iter().enumerate() {
+            callback(n, b);
         }
     }
 
@@ -329,33 +364,35 @@ impl PdeDiscreteLaplacian2d {
     ///
     /// # Input
     ///
-    /// * `callback` -- a `function(i, x, y)` where `i` is the point number and
-    ///   `(x, y)` are the grid point coordinates.
+    /// * `callback` -- a function of `(i, j, m, x, y)` where `i` is the index of the vertical grid line,
+    ///   `j` is the index of the horizontal grid line, `m` is the the sequential point number,
+    ///   and `(x, y)` are the Cartesian coordinates of the grid point.
     ///
-    /// The row and column indices of the grid point can be determined with:
+    /// Note that:
     ///
     /// ```text
-    /// let row = i / nx;
-    /// let col = i % nx;
+    /// m = i + j nx
+    /// i = m % nx
+    /// j = m / nx
     /// ```
     pub fn loop_over_grid_points<F>(&self, mut callback: F)
     where
         F: FnMut(usize, f64, f64),
     {
         let dim = self.nx * self.ny;
-        for i in 0..dim {
-            let row = i / self.nx;
-            let col = i % self.nx;
-            let x = self.xmin + (col as f64) * self.dx;
-            let y = self.ymin + (row as f64) * self.dy;
-            callback(i, x, y)
+        for m in 0..dim {
+            let i = m % self.nx;
+            let j = m / self.nx;
+            let x = self.xmin + (i as f64) * self.dx;
+            let y = self.ymin + (j as f64) * self.dy;
+            callback(m, x, y)
         }
     }
 
     /// Returns the dimension of the linear system
     ///
     /// ```text
-    /// dim =  nx * ny
+    /// dim = nx × ny
     /// ```
     pub fn dim(&self) -> usize {
         self.nx * self.ny
@@ -589,11 +626,11 @@ mod tests {
         let lap = PdeDiscreteLaplacian2d::new(7.0, 8.0, -1.0, 1.0, -3.0, 3.0, nx, ny).unwrap();
         let mut xx = Matrix::new(ny, nx);
         let mut yy = Matrix::new(ny, nx);
-        lap.loop_over_grid_points(|i, x, y| {
-            let row = i / nx;
-            let col = i % nx;
-            xx.set(row, col, x);
-            yy.set(row, col, y);
+        lap.loop_over_grid_points(|m, x, y| {
+            let i = m % nx;
+            let j = m / nx;
+            xx.set(j, i, x);
+            yy.set(j, i, y);
         });
         assert_eq!(
             format!("{}", xx),

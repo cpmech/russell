@@ -22,8 +22,8 @@ pub struct SampleData {
     pub y_analytical: Option<fn(&mut Vector, f64)>,
 }
 
-/// Holds arguments for the Brusselator PDE sample problem
-pub struct SampleBrusselatorPdeArgs {
+/// Arguments for problems using the FDM approximation of the 2D Laplacian operator
+pub struct SampleFdm2dArgs {
     pub fdm: PdeDiscreteLaplacian2d,
 }
 
@@ -239,6 +239,115 @@ impl Samples {
             }),
         };
         (system, data, 0)
+    }
+
+    /// Returns a model of the heat equation in 1D with periodic boundary conditions
+    ///
+    /// NOTE: This is a 1D problem solved on a 2D FDM grid.
+    ///
+    /// Approximate (with the Finite Differences Method, FDM) the solution of
+    ///
+    /// ```text
+    /// ∂u    ∂²u
+    /// ——— = ——— + source(t, x)    with x ∈ [-1, 1)
+    /// ∂t    ∂x²
+    /// ```
+    ///
+    /// The source term is given by:
+    ///
+    /// ```text
+    /// source(t, x) = (25 π² - 1) exp(-t) cos(5 π x)
+    /// ```
+    ///
+    /// Periodic boundary condition:
+    ///
+    /// ```text
+    /// u(t, -1) = u(t, 1)
+    /// ```
+    ///
+    /// Initial condition:
+    ///
+    /// ```text
+    /// u(0, x) = cos(5 π x)
+    /// ```
+    ///
+    /// The analytical solution is:
+    ///
+    /// ```text
+    /// u(t, x) = exp(-t) cos(5 π x)
+    /// ```
+    pub fn heat_1d_periodic(
+        nx: usize,
+    ) -> (
+        System<
+            impl Fn(&mut Vector, f64, &Vector, &mut SampleFdm2dArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut SampleFdm2dArgs) -> Result<(), StrError>,
+            SampleFdm2dArgs,
+        >,
+        SampleData,
+        SampleFdm2dArgs,
+    ) {
+        // discrete laplacian
+        let (kx, ky) = (1.0, 1.0);
+        let (xmin, xmax) = (-1.0, 1.0);
+        let (ymin, ymax) = (0.0, 1.0);
+        let ny = 2;
+        let fdm = PdeDiscreteLaplacian2d::new(kx, ky, xmin, xmax, ymin, ymax, nx, ny).unwrap();
+
+        // initial values
+        let ndim = nx * ny;
+        let mut uu = Vector::new(ndim);
+        fdm.loop_over_grid_points(|m, x, _| uu[m] = f64::cos(5.0 * PI * x));
+        let t0 = 0.0;
+        let t1 = 2.0;
+
+        // source term
+        let source = |t: f64, x: f64| (25.0 * PI * PI - 1.0) * f64::exp(-t) * f64::cos(5.0 * PI * x);
+
+        // number of non-zeros in the Jacobian
+        let band = 5;
+        let jac_nnz = ndim * band;
+
+        // ODE system
+        let system = System::new(
+            ndim,
+            move |f, t, uu, args: &mut SampleFdm2dArgs| {
+                args.fdm.loop_over_grid_points(|m, x, _| {
+                    f[m] = source(t, x);
+                    args.fdm.loop_over_coef_mat_row(m, |k, amk| {
+                        f[m] += amk * uu[k];
+                    });
+                });
+                Ok(())
+            },
+            move |jj, _t, _, cf, args: &mut SampleFdm2dArgs| {
+                jj.reset();
+                let mut nnz_count = 0;
+                for m in 0..ndim {
+                    args.fdm.loop_over_coef_mat_row(m, |n, amn| {
+                        jj.put(m, n, cf * (amn)).unwrap();
+                        nnz_count += 1;
+                    });
+                }
+                assert_eq!(nnz_count, jac_nnz);
+                Ok(())
+            },
+            HasJacobian::Yes,
+            Some(jac_nnz),
+            None,
+        );
+
+        // control
+        let data = SampleData {
+            x0: t0,
+            y0: uu,
+            x1: t1,
+            h_equal: None,
+            y_analytical: None,
+        };
+
+        let args = SampleFdm2dArgs { fdm };
+        (system, data, args)
     }
 
     /// Returns the Brusselator problem (ODE version)
@@ -503,12 +612,12 @@ impl Samples {
         ignore_diffusion: bool,
     ) -> (
         System<
-            impl Fn(&mut Vector, f64, &Vector, &mut SampleBrusselatorPdeArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut SampleBrusselatorPdeArgs) -> Result<(), StrError>,
-            SampleBrusselatorPdeArgs,
+            impl Fn(&mut Vector, f64, &Vector, &mut SampleFdm2dArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut SampleFdm2dArgs) -> Result<(), StrError>,
+            SampleFdm2dArgs,
         >,
         SampleData,
-        SampleBrusselatorPdeArgs,
+        SampleFdm2dArgs,
     ) {
         // discrete laplacian
         let (kx, ky) = (alpha, alpha);
@@ -538,7 +647,7 @@ impl Samples {
         // ODE system
         let system = System::new(
             ndim,
-            move |f, _t, yy, args: &mut SampleBrusselatorPdeArgs| {
+            move |f, _t, yy, args: &mut SampleFdm2dArgs| {
                 args.fdm.loop_over_grid_points(|m, _, _| {
                     let um = yy[m];
                     let vm = yy[s + m];
@@ -556,7 +665,7 @@ impl Samples {
                 });
                 Ok(())
             },
-            move |jj, _x, yy, cf, args: &mut SampleBrusselatorPdeArgs| {
+            move |jj, _x, yy, cf, args: &mut SampleFdm2dArgs| {
                 jj.reset();
                 let mut nnz_count = 0;
                 for m in 0..s {
@@ -593,7 +702,7 @@ impl Samples {
             y_analytical: None,
         };
 
-        let args = SampleBrusselatorPdeArgs { fdm };
+        let args = SampleFdm2dArgs { fdm };
         (system, data, args)
     }
 
@@ -1279,7 +1388,7 @@ mod tests {
     use super::Samples;
     use crate::StrError;
     use russell_lab::{deriv_central5, mat_approx_eq, vec_approx_eq, Matrix, Vector};
-    use russell_sparse::{CooMatrix, Sym};
+    use russell_sparse::{CooMatrix, Genie, Sym};
 
     fn numerical_jacobian<F, A>(ndim: usize, x0: f64, y0: Vector, function: F, multiplier: f64, args: &mut A) -> Matrix
     where
@@ -1319,7 +1428,7 @@ mod tests {
     }
 
     #[test]
-    fn simple_constant_works() {
+    fn simple_equation_constant_works() {
         let multiplier = 2.0;
         let (system, mut data, mut args) = Samples::simple_equation_constant();
 
@@ -1343,6 +1452,60 @@ mod tests {
         println!("{}", ana);
         println!("{}", num);
         mat_approx_eq(&ana, &num, 1e-11);
+    }
+
+    #[test]
+    fn simple_system_with_mass_matrix_works() {
+        let multiplier = 2.0;
+        let (system, mut data, mut args) = Samples::simple_system_with_mass_matrix(true, Genie::Umfpack);
+
+        // check initial values
+        if let Some(y_ana) = data.y_analytical.as_mut() {
+            let mut y = Vector::new(data.y0.dim());
+            y_ana(&mut y, data.x0);
+            println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
+            vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
+        }
+
+        // compute the analytical Jacobian matrix
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+
+        // compute the numerical Jacobian matrix
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-11);
+    }
+
+    #[test]
+    fn heat_1d_periodic_works() {
+        let multiplier = 2.0;
+        let (system, mut data, mut args) = Samples::heat_1d_periodic(3);
+
+        // check initial values
+        if let Some(y_ana) = data.y_analytical.as_mut() {
+            let mut y = Vector::new(data.y0.dim());
+            y_ana(&mut y, data.x0);
+            println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
+            vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
+        }
+
+        // compute the analytical Jacobian matrix
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+
+        // compute the numerical Jacobian matrix
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
+        println!("{:.5}", ana);
+        println!("{:.5}", num);
+        mat_approx_eq(&ana, &num, 1e-9);
     }
 
     #[test]

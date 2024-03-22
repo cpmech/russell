@@ -82,6 +82,16 @@ pub struct PdeDiscreteLaplacian2d {
     bottom: Vec<usize>, // indices of nodes on the bottom edge
     top: Vec<usize>,    // indices of nodes on the top edge
 
+    /// Indicates that the boundary is periodic along x (left ϕ values equal right ϕ values)
+    ///
+    /// If false, the left/right boundaries are zero-flux (Neumann with ∂ϕ/dx = 0)
+    periodic_along_x: bool,
+
+    /// Indicates that the boundary is periodic along x (bottom ϕ values equal top ϕ values)
+    ///
+    /// If false, the bottom/top boundaries are zero-flux (Neumann with ∂ϕ/dx = 0)
+    periodic_along_y: bool,
+
     /// Holds the FDM coefficients (α, β, β, γ, γ)
     ///
     /// These coefficients are applied over the "bandwidth" of the coefficient matrix
@@ -140,31 +150,67 @@ impl PdeDiscreteLaplacian2d {
             right: ((nx - 1)..dim).step_by(nx).collect(),
             bottom: (0..nx).collect(),
             top: ((dim - nx)..dim).collect(),
+            periodic_along_x: false,
+            periodic_along_y: false,
             molecule: vec![alpha, beta, beta, gamma, gamma],
             essential: HashMap::new(),
         })
     }
 
+    /// Sets periodic boundary condition
+    ///
+    /// **Note:** It is only necessary to specify one of (Left, Right) or (Bottom, Top)
+    ///
+    /// **Warning:** Make sure that no essential boundary conditions are specified on the corresponding sides.
+    /// Otherwise, the results may be incorrect.
+    pub fn set_periodic_boundary_condition(&mut self, side: Side) {
+        match side {
+            Side::Left => self.periodic_along_x = true,
+            Side::Right => self.periodic_along_x = true,
+            Side::Bottom => self.periodic_along_y = true,
+            Side::Top => self.periodic_along_y = true,
+        }
+    }
+
     /// Sets essential (Dirichlet) boundary condition
+    ///
+    /// **Note:** If specified, the periodic boundary condition on the corresponding side will be set to false
     pub fn set_essential_boundary_condition(&mut self, side: Side, value: FnSpace) {
         match side {
-            Side::Left => self.left.iter().for_each(|n| {
-                self.essential.insert(*n, value);
-            }),
-            Side::Right => self.right.iter().for_each(|n| {
-                self.essential.insert(*n, value);
-            }),
-            Side::Bottom => self.bottom.iter().for_each(|n| {
-                self.essential.insert(*n, value);
-            }),
-            Side::Top => self.top.iter().for_each(|n| {
-                self.essential.insert(*n, value);
-            }),
+            Side::Left => {
+                self.periodic_along_x = false;
+                self.left.iter().for_each(|n| {
+                    self.essential.insert(*n, value);
+                });
+            }
+            Side::Right => {
+                self.periodic_along_x = false;
+                self.right.iter().for_each(|n| {
+                    self.essential.insert(*n, value);
+                });
+            }
+            Side::Bottom => {
+                self.periodic_along_y = false;
+                self.bottom.iter().for_each(|n| {
+                    self.essential.insert(*n, value);
+                });
+            }
+            Side::Top => {
+                self.periodic_along_y = false;
+                self.top.iter().for_each(|n| {
+                    self.essential.insert(*n, value);
+                });
+            }
         };
     }
 
     /// Sets homogeneous boundary conditions (i.e., zero essential values at the borders)
+    ///
+    /// **Note:** If specified, periodic boundary conditions will be set to false
     pub fn set_homogeneous_boundary_conditions(&mut self) {
+        self.periodic_along_x = false;
+        self.periodic_along_y = false;
+        self.essential.clear();
         self.left.iter().for_each(|n| {
             self.essential.insert(*n, |_, _| 0.0);
         });
@@ -358,10 +404,20 @@ impl PdeDiscreteLaplacian2d {
         // (mirror or swap the indices of boundary nodes, as appropriate)
         let mut nn = [0, 0, 0, 0, 0];
         nn[CUR] = m;
-        nn[LEF] = if i != INI_X { m - 1 } else { m + 1 };
-        nn[RIG] = if i != fin_x { m + 1 } else { m - 1 };
-        nn[BOT] = if j != INI_Y { m - self.nx } else { m + self.nx };
-        nn[TOP] = if j != fin_y { m + self.nx } else { m - self.nx };
+        if self.periodic_along_x {
+            nn[LEF] = if i != INI_X { m - 1 } else { m + fin_x };
+            nn[RIG] = if i != fin_x { m + 1 } else { m - fin_x };
+        } else {
+            nn[LEF] = if i != INI_X { m - 1 } else { m + 1 };
+            nn[RIG] = if i != fin_x { m + 1 } else { m - 1 };
+        }
+        if self.periodic_along_y {
+            nn[BOT] = if j != INI_Y { m - self.nx } else { m + fin_y * self.nx };
+            nn[TOP] = if j != fin_y { m + self.nx } else { m - fin_y * self.nx };
+        } else {
+            nn[BOT] = if j != INI_Y { m - self.nx } else { m + self.nx };
+            nn[TOP] = if j != fin_y { m + self.nx } else { m - self.nx };
+        }
 
         // execute callback
         for (b, &n) in nn.iter().enumerate() {
@@ -626,6 +682,33 @@ mod tests {
          ]); //  0    1    2    3    4    5    6    7    8    9   10   11   12   13   14   15
              //  p    p    p    p    p              p    p              p    p    p    p    p
         mat_approx_eq(&cc.as_dense(), &cc_correct, 1e-15);
+    }
+
+    #[test]
+    fn coefficient_matrix_with_periodic_bcs_works() {
+        let mut lap = PdeDiscreteLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 3.0, 3, 4).unwrap();
+        lap.set_periodic_boundary_condition(Side::Left);
+        lap.set_periodic_boundary_condition(Side::Bottom);
+        let (aa, cc) = lap.coefficient_matrix().unwrap();
+        assert_eq!(lap.dim(), 12);
+        assert_eq!(cc.get_info().2, 0); // nnz
+        const ___: f64 = 0.0;
+        #[rustfmt::skip]
+        let aa_correct = Matrix::from(&[
+             [-4.0, 1.0, 1.0, 1.0, ___, ___, ___, ___, ___, 1.0, ___, ___], //  0 left  bottom
+             [ 1.0,-4.0, 1.0, ___, 1.0, ___, ___, ___, ___, ___, 1.0, ___], //  1       bottom
+             [ 1.0, 1.0,-4.0, ___, ___, 1.0, ___, ___, ___, ___, ___, 1.0], //  2 right bottom
+             [ 1.0, ___, ___,-4.0, 1.0, 1.0, 1.0, ___, ___, ___, ___, ___], //  3 left
+             [ ___, 1.0, ___, 1.0,-4.0, 1.0, ___, 1.0, ___, ___, ___, ___], //  4
+             [ ___, ___, 1.0, 1.0, 1.0,-4.0, ___, ___, 1.0, ___, ___, ___], //  5 right
+             [ ___, ___, ___, 1.0, ___, ___,-4.0, 1.0, 1.0, 1.0, ___, ___], //  6 left
+             [ ___, ___, ___, ___, 1.0, ___, 1.0,-4.0, 1.0, ___, 1.0, ___], //  7
+             [ ___, ___, ___, ___, ___, 1.0, 1.0, 1.0,-4.0, ___, ___, 1.0], //  8 right
+             [ 1.0, ___, ___, ___, ___, ___, 1.0, ___, ___,-4.0, 1.0, 1.0], //  9 left  top
+             [ ___, 1.0, ___, ___, ___, ___, ___, 1.0, ___, 1.0,-4.0, 1.0], // 10       top
+             [ ___, ___, 1.0, ___, ___, ___, ___, ___, 1.0, 1.0, 1.0,-4.0], // 11 right top
+         ]); //  0    1    2    3    4    5    6    7    8    9   10   11
+        mat_approx_eq(&aa.as_dense(), &aa_correct, 1e-15);
     }
 
     #[test]

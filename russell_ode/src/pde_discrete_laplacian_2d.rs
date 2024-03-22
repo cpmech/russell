@@ -358,10 +358,10 @@ impl PdeDiscreteLaplacian2d {
         // (mirror or swap the indices of boundary nodes, as appropriate)
         let mut nn = [0, 0, 0, 0, 0];
         nn[CUR] = m;
-        nn[LEF] = if i == INI_X { m + 1 } else { m - 1 };
-        nn[RIG] = if i == fin_x { m - 1 } else { m + 1 };
-        nn[BOT] = if j == INI_Y { m + self.nx } else { m - self.nx };
-        nn[TOP] = if j == fin_y { m - self.nx } else { m + self.nx };
+        nn[LEF] = if i != INI_X { m - 1 } else { m + 1 };
+        nn[RIG] = if i != fin_x { m + 1 } else { m - 1 };
+        nn[BOT] = if j != INI_Y { m - self.nx } else { m + self.nx };
+        nn[TOP] = if j != fin_y { m + self.nx } else { m - self.nx };
 
         // execute callback
         for (b, &n) in nn.iter().enumerate() {

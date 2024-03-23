@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::fs::{self, File};
 use std::path::Path;
 
-const PATH_KEY: &str = "/tmp/russell_ode/brusselator_pde_radau5";
+const PATH_KEY: &str = "/tmp/russell_ode/brusselator_pde_radau5_2nd";
 
 #[derive(Serialize)]
 pub struct ProblemData {
@@ -14,9 +14,10 @@ pub struct ProblemData {
 
 fn main() -> Result<(), StrError> {
     // ODE system
-    let alpha = 2e-3;
-    let npoint = 21;
-    let (system, mut data, mut args) = Samples::brusselator_pde(alpha, npoint, false, false);
+    let alpha = 0.1;
+    let npoint = 129;
+    let second_book = true;
+    let (system, mut data, mut args) = Samples::brusselator_pde(alpha, npoint, second_book, false);
 
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);
@@ -24,12 +25,12 @@ fn main() -> Result<(), StrError> {
 
     // output
     let mut out = Output::new();
-    let h_out = 0.5;
+    let h_out = 1.0;
     out.enable_file_dense(h_out, PATH_KEY)?;
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system)?;
-    let x1 = 11.5;
+    let x1 = 11.0;
     solver.solve(&mut data.y0, data.x0, x1, None, Some(&mut out), &mut args)?;
 
     // get statistics

@@ -426,13 +426,21 @@ And the convergence plot is:
 
 ### <a name="brusselator-pde"></a> Brusselator PDE
 
-This example corresponds to Fig 10.4(a,b) on pages 250 and 251 of Reference #1. The problem is defined in Eqs (10.10-10.14) on pages 248 and 249 of Reference #1.
+This example corresponds to Fig 10.4(a,b) on pages 250 and 251 of Reference #1.
+The problem is defined in Eqs (10.10-10.14) on pages 248 and 249 of Reference #1.
+
+If `second_book` is true, this example corresponds to Fig 10.7 on page 151 of Reference #2.
+Also, in this case, the problem is defined in Eqs (10.15-10.16) on pages 151 and 152 of Reference #2.
+
+While in the first book the boundary conditions are Neumann-type, in the second book the
+boundary conditions are periodic. Also the initial values in the second book are different
+that those in the first book.
 
 The model is given by:
 
 ```text
 ∂u                         ⎛ ∂²u   ∂²u ⎞
-——— = 1 - 4.4 u + u² v + α ⎜ ——— + ——— ⎟
+——— = 1 - 4.4 u + u² v + α ⎜ ——— + ——— ⎟ + I(t,x,y)
 ∂t                         ⎝ ∂x²   ∂y² ⎠
 
 ∂v                         ⎛ ∂²v   ∂²v ⎞
@@ -442,7 +450,15 @@ The model is given by:
 with:  t ≥ 0,  0 ≤ x ≤ 1,  0 ≤ y ≤ 1
 ```
 
-Assume the following Neumann boundary conditions:
+where `I(t,x,y)` is the inhomogeneity function (second book) given by:
+
+```text
+            ⎧ 5  if (x-0.3)²+(y-0.6)² ≤ 0.1² and t ≥ 1.1
+I(t,x,y) =  ⎨
+            ⎩ 0  otherwise
+```
+
+The first book considers the following Neumann boundary conditions:
 
 ```text
 ∂u          ∂v     
@@ -451,10 +467,26 @@ Assume the following Neumann boundary conditions:
 ∂n          ∂n     
 ```
 
-And the following initial conditions:
+and the following initial conditions (first book):
 
 ```text
 u(t=0,x,y) = 0.5 + y    v(t=0,x,y) = 1 + 5 x
+```
+
+The second book considers periodic boundary conditions:
+
+```text
+u(t, 0, y) = u(t, 1, y)
+u(t, x, 0) = u(t, x, 1)
+v(t, 0, y) = v(t, 1, y)
+v(t, x, 0) = v(t, x, 1)
+```
+
+and the following initial conditions (second book):
+
+```text
+u(0, x, y) = 22 y pow(1 - y, 1.5)
+v(0, x, y) = 27 x pow(1 - x, 1.5)
 ```
 
 The scalar fields u(x, y) and v(x, y) are mapped over a rectangular grid with
@@ -556,9 +588,11 @@ With `Fₐ := ∂Yₐ/∂t`, the components of the Jacobian matrix can be "assem
 where  0 ≤ a ≤ ndim - 1  and  0 ≤ e ≤ ndim - 1
 ```
 
+#### First book
+
 We solve this problem with Radau5. The approximated solution is generated with `npoint = 21` and is implemented in [brusselator_pde_radau5.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_radau5.rs). This code will generate a series of files, one for each (dense) output time with `h_out = 0.5`.
 
-The results can then be plotted with [brusselator_pde_radau5_plot.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_radau5_plot.rs)
+The results can then be plotted with [brusselator_pde_plot.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_plot.rs)
 
 The results are shown below for the `U` field:
 
@@ -579,6 +613,18 @@ The figure below shows the `russel` (black dashed lines) and Mathematica (red so
 The figure below shows the `russel` (black dashed lines) and Mathematica (red solid lines) results for the `V` field:
 
 ![test_radau5_brusselator_pde_v.svg](data/figures/test_radau5_brusselator_pde_v.svg)
+
+#### Second book
+
+For the problem in the second book, we run [brusselator_pde_radau5_2nd.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_radau5_2nd.rs) with `npoint = 129` and `h_out = 1.0`.
+
+The results are shown below for the `U` field:
+
+![brusselator_pde_radau5_2nd_u.jpg](data/figures/brusselator_pde_radau5_2nd_u.jpg)
+
+And below for the `V` field:
+
+![brusselator_pde_radau5_2nd_v.jpg](data/figures/brusselator_pde_radau5_2nd_v.jpg)
 
 ### <a name="arenstorf"></a> Arenstorf orbits
 

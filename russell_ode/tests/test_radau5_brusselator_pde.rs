@@ -11,7 +11,7 @@ fn test_radau5_brusselator_pde() {
     // get get ODE system
     let alpha = 2e-3;
     let npoint = 9;
-    let (system, mut data, mut args) = Samples::brusselator_pde(alpha, npoint, false);
+    let (system, mut data, mut args) = Samples::brusselator_pde(alpha, npoint, false, false);
 
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);

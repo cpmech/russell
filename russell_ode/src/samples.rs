@@ -1,4 +1,4 @@
-use crate::{HasJacobian, NoArgs, System};
+use crate::{HasJacobian, NoArgs, Side, System};
 use crate::{PdeDiscreteLaplacian2d, StrError};
 use russell_lab::math::PI;
 use russell_lab::Vector;
@@ -452,14 +452,21 @@ impl Samples {
 
     /// Returns the Brusselator reaction-diffusion problem in 2D (parabolic PDE)
     ///
-    /// This example corresponds to Fig 10.4(a,b) on pages 250 and 251 of the reference.
-    /// The problem is defined in Eqs (10.10-10.14) on pages 248 and 249 of the reference.
+    /// This example corresponds to Fig 10.4(a,b) on pages 250 and 251 of Reference #1.
+    /// The problem is defined in Eqs (10.10-10.14) on pages 248 and 249 of Reference #1.
+    ///
+    /// If `second_book` is true, this example corresponds to Fig 10.7 on page 151 of Reference #2.
+    /// Also, in this case, the problem is defined in Eqs (10.15-10.16) on pages 151 and 152 of Reference #2.
+    ///
+    /// While in the first book the boundary conditions are Neumann-type, in the second book the
+    /// boundary conditions are periodic. Also the initial values in the second book are different
+    /// that those in the first book.
     ///
     /// The model is given by:
     ///
     /// ```text
     /// ∂u                         ⎛ ∂²u   ∂²u ⎞
-    /// ——— = 1 - 4.4 u + u² v + α ⎜ ——— + ——— ⎟
+    /// ——— = 1 - 4.4 u + u² v + α ⎜ ——— + ——— ⎟ + I(t,x,y)
     /// ∂t                         ⎝ ∂x²   ∂y² ⎠
     ///
     /// ∂v                         ⎛ ∂²v   ∂²v ⎞
@@ -469,7 +476,15 @@ impl Samples {
     /// with:  t ≥ 0,  0 ≤ x ≤ 1,  0 ≤ y ≤ 1
     /// ```
     ///
-    /// Assume the following Neumann boundary conditions:
+    /// where `I(t,x,y)` is the inhomogeneity function (second book) given by:
+    ///
+    /// ```text
+    ///             ⎧ 5  if (x-0.3)²+(y-0.6)² ≤ 0.1² and t ≥ 1.1
+    /// I(t,x,y) =  ⎨
+    ///             ⎩ 0  otherwise
+    /// ```
+    ///
+    /// The first book considers the following Neumann boundary conditions:
     ///
     /// ```text
     /// ∂u          ∂v     
@@ -478,10 +493,26 @@ impl Samples {
     /// ∂n          ∂n     
     /// ```
     ///
-    /// And the following initial conditions:
+    /// and the following initial conditions (first book):
     ///
     /// ```text
     /// u(t=0,x,y) = 0.5 + y    v(t=0,x,y) = 1 + 5 x
+    /// ```
+    ///
+    /// The second book considers periodic boundary conditions:
+    ///
+    /// ```text
+    /// u(t, 0, y) = u(t, 1, y)
+    /// u(t, x, 0) = u(t, x, 1)
+    /// v(t, 0, y) = v(t, 1, y)
+    /// v(t, x, 0) = v(t, x, 1)
+    /// ```
+    ///
+    /// and the following initial conditions (second book):
+    ///
+    /// ```text
+    /// u(0, x, y) = 22 y pow(1 - y, 1.5)
+    /// v(0, x, y) = 27 x pow(1 - x, 1.5)
     /// ```
     ///
     /// The scalar fields u(x, y) and v(x, y) are mapped over a rectangular grid with
@@ -587,6 +618,7 @@ impl Samples {
     ///
     /// * `alpha` -- the α coefficient
     /// * `npoint` -- the number of points along one direction on the grid
+    /// * `second_book` -- implements the model from the second book (Reference #2)
     /// * `ignore_diffusion` -- ignore the diffusion term (convenient for debugging)
     ///
     /// # Output
@@ -601,14 +633,18 @@ impl Samples {
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
     /// * `y_ref` -- is a reference solution, computed with high-accuracy by Mathematica
     ///
-    /// # Reference
+    /// # References
     ///
-    /// * Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
-    ///   Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
-    ///   in Computational Mathematics, 528p
+    /// 1. Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
+    ///    Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
+    ///    in Computational Mathematics, 528p
+    /// 2. Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
+    ///    Stiff and Differential-Algebraic Problems. Second Revised Edition.
+    ///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
     pub fn brusselator_pde(
         alpha: f64,
         npoint: usize,
+        second_book: bool,
         ignore_diffusion: bool,
     ) -> (
         System<
@@ -623,16 +659,27 @@ impl Samples {
         let (kx, ky) = (alpha, alpha);
         let (xmin, xmax, ymin, ymax) = (0.0, 1.0, 0.0, 1.0);
         let (nx, ny) = (npoint, npoint);
-        let fdm = PdeDiscreteLaplacian2d::new(kx, ky, xmin, xmax, ymin, ymax, nx, ny).unwrap();
+        let mut fdm = PdeDiscreteLaplacian2d::new(kx, ky, xmin, xmax, ymin, ymax, nx, ny).unwrap();
+        if second_book {
+            fdm.set_periodic_boundary_condition(Side::Left);
+            fdm.set_periodic_boundary_condition(Side::Bottom);
+        }
 
         // initial values
         let s = npoint * npoint;
         let ndim = 2 * s;
         let mut yy0 = Vector::new(ndim);
-        fdm.loop_over_grid_points(|m, x, y| {
-            yy0[m] = 0.5 + y; // u0
-            yy0[s + m] = 1.0 + 5.0 * x; // v0
-        });
+        if second_book {
+            fdm.loop_over_grid_points(|m, x, y| {
+                yy0[m] = 22.0 * y * f64::powf(1.0 - y, 1.5);
+                yy0[s + m] = 27.0 * x * f64::powf(1.0 - x, 1.5);
+            });
+        } else {
+            fdm.loop_over_grid_points(|m, x, y| {
+                yy0[m] = 0.5 + y; // u0
+                yy0[s + m] = 1.0 + 5.0 * x; // v0
+            });
+        }
         let t0 = 0.0;
         let t1 = 11.5;
 
@@ -647,8 +694,8 @@ impl Samples {
         // ODE system
         let system = System::new(
             ndim,
-            move |f, _t, yy, args: &mut SampleFdm2dArgs| {
-                args.fdm.loop_over_grid_points(|m, _, _| {
+            move |f, t, yy, args: &mut SampleFdm2dArgs| {
+                args.fdm.loop_over_grid_points(|m, x, y| {
                     let um = yy[m];
                     let vm = yy[s + m];
                     let um2 = um * um;
@@ -661,6 +708,14 @@ impl Samples {
                             f[m] += amk * uk;
                             f[s + m] += amk * vk;
                         });
+                    }
+                    if second_book {
+                        if t >= 1.1 {
+                            let dx = x - 0.3;
+                            let dy = y - 0.6;
+                            let inhomogeneity = if dx * dx + dy * dy <= 0.01 { 5.0 } else { 0.0 };
+                            f[m] += inhomogeneity;
+                        }
                     }
                 });
                 Ok(())
@@ -1711,9 +1766,11 @@ mod tests {
     }
 
     #[test]
-    fn brusselator_pde_works() {
+    fn brusselator_pde_no_diffusion_works() {
         let multiplier = 2.0;
-        let (system, data, mut args) = Samples::brusselator_pde(2e-3, 3, false);
+        let second_book = false;
+        let ignore_diffusion = true;
+        let (system, data, mut args) = Samples::brusselator_pde(2e-3, 3, second_book, ignore_diffusion);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
@@ -1730,9 +1787,11 @@ mod tests {
     }
 
     #[test]
-    fn brusselator_pde_no_diffusion_works() {
+    fn brusselator_pde_works() {
         let multiplier = 2.0;
-        let (system, data, mut args) = Samples::brusselator_pde(2e-3, 3, true);
+        let second_book = false;
+        let ignore_diffusion = false;
+        let (system, data, mut args) = Samples::brusselator_pde(2e-3, 3, second_book, ignore_diffusion);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
@@ -1746,5 +1805,26 @@ mod tests {
         println!("{:.2}", ana);
         println!("{:.2}", num);
         mat_approx_eq(&ana, &num, 1e-11);
+    }
+
+    #[test]
+    fn brusselator_pde_2nd_works() {
+        let multiplier = 2.0;
+        let second_book = true;
+        let ignore_diffusion = false;
+        let (system, data, mut args) = Samples::brusselator_pde(0.1, 3, second_book, ignore_diffusion);
+
+        // compute the analytical Jacobian matrix
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+
+        // compute the numerical Jacobian matrix
+        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+
+        // check the Jacobian matrix
+        let ana = jj.as_dense();
+        println!("{:.2}", ana);
+        println!("{:.2}", num);
+        mat_approx_eq(&ana, &num, 1e-10);
     }
 }

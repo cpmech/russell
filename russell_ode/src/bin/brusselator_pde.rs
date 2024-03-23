@@ -1,5 +1,6 @@
-use russell_lab::{format_scientific, StrError};
+use russell_lab::{format_scientific, get_num_threads, set_num_threads, StrError};
 use russell_ode::prelude::*;
+use russell_sparse::Genie;
 use structopt::StructOpt;
 
 /// Command line options
@@ -28,7 +29,15 @@ struct Options {
 
     /// Disable concurrency when solving the real and complex systems
     #[structopt(long)]
-    no_concurrent: bool,
+    serial: bool,
+
+    /// Number of BLAS threads
+    #[structopt(long, default_value = "4")]
+    blas_nt: usize,
+
+    /// Use MUMPS solver
+    #[structopt(long)]
+    mumps: bool,
 }
 
 fn main() -> Result<(), StrError> {
@@ -40,6 +49,12 @@ fn main() -> Result<(), StrError> {
     if opt.neg_exp_tol < 1 || opt.neg_exp_tol > 30 {
         return Err("neg_exp_tol must satisfy: 1 ≤ net ≤ 30");
     }
+    if opt.blas_nt < 1 || opt.blas_nt > 32 {
+        return Err("blas_nt must satisfy: 1 ≤ net ≤ 32");
+    }
+
+    // set the number of BLAS threads
+    set_num_threads(opt.blas_nt);
 
     // get get ODE system
     let alpha = if opt.first_book { 2e-3 } else { 0.1 };
@@ -55,19 +70,24 @@ fn main() -> Result<(), StrError> {
     };
     let tol = f64::powi(10.0, -opt.neg_exp_tol);
     params.step.h_ini = 1e-6;
-    params.radau5.concurrent = !opt.no_concurrent;
+    params.radau5.concurrent = !opt.serial;
     params.set_tolerances(tol, tol, None)?;
+    params.newton.genie = if opt.mumps { Genie::Mumps } else { Genie::Umfpack };
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system)?;
-    solver.solve(&mut data.y0, data.x0, data.x1, None, None, &mut args)?;
+    solver.solve(&mut data.y0, data.x0, 0.05, None, None, &mut args)?;
 
     // print stat
     let stat = solver.bench();
-    println!("Second book problem              = {}", !opt.first_book);
+    println!("Second-book problem              = {}", !opt.first_book);
     println!("Number of points along x and y   = {}", opt.npoint);
     println!("Tolerance (abs_tol = rel_tol)    = {}", format_scientific(tol, 8, 2));
-    println!("Concurrent real and complex sys  = {}", !opt.no_concurrent);
+    println!("Concurrent real and complex sys  = {}", !opt.serial);
+    println!("Problem dimension (ndim)         = {}", system.get_ndim());
+    println!("Number of non-zeros (jac_nnz)    = {}", system.get_jac_nnz());
+    println!("Number of BLAS threads           = {}", get_num_threads());
+    println!("Linear solver                    = {:?}", params.newton.genie);
     println!("{}", stat);
     Ok(())
 }

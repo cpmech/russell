@@ -92,8 +92,8 @@ impl<'a, A> OdeSolver<'a, A> {
     /// * `A` -- generic argument to assist in the `F` and `J` functions. It may be simply the [crate::NoArgs] type indicating that no arguments are needed.
     pub fn new<F, J>(params: Params, system: &'a System<F, J, A>) -> Result<Self, StrError>
     where
-        F: 'a + Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-        J: 'a + Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+        F: 'a + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+        J: 'a + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
         A: 'a,
     {
         if system.mass_matrix.is_some() && params.method != Method::Radau5 {

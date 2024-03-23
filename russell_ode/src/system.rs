@@ -65,8 +65,8 @@ pub type NoArgs = u8;
 ///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
 pub struct System<F, J, A>
 where
-    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// System dimension
     pub(crate) ndim: usize,
@@ -95,8 +95,8 @@ where
 
 impl<'a, F, J, A> System<F, J, A>
 where
-    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
     ///
@@ -215,6 +215,11 @@ where
     /// Returns the dimension of the ODE system
     pub fn get_ndim(&self) -> usize {
         self.ndim
+    }
+
+    /// Returns the number of non-zero values in the Jacobian matrix
+    pub fn get_jac_nnz(&self) -> usize {
+        self.jac_nnz
     }
 
     /// Computes the numerical Jacobian

@@ -5,7 +5,7 @@ use russell_ode::prelude::*;
 // This example solves Robertson's equation
 //
 // This example corresponds to Fig 1.3 on page 4 of the reference.
-// See also Eq (1.4) on page 3 of the reference.
+// The problem is defined in Eq (1.4) on page 3 of the reference.
 //
 // This example shows how to enable the output of accepted steps.
 //

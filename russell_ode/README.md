@@ -11,6 +11,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
     * [Simple ODE with a single equation](#simple-single)
     * [Simple system with mass matrix](#simple-mass)
     * [Brusselator ODE](#brusselator-ode)
+    * [Brusselator PDE](#brusselator-pde)
     * [Arenstorf orbits](#arenstorf)
     * [Hairer-Wanner equation (1.1)](#hairer-wanner-eq1)
     * [Robertson's equation](#robertson)
@@ -281,7 +282,7 @@ Total time                       = 27.107919ms
 
 ### <a name="brusselator-ode"></a> Brusselator ODE
 
-This example corresponds to Fig 16.4 on page 116 of Reference #1. See also Eq (16.12) on page 116 of Reference #1.
+This example corresponds to Fig 16.4 on page 116 of Reference #1. The problem is defined in Eq (16.12) on page 116 of Reference #1.
 
 The system is:
 
@@ -423,9 +424,165 @@ And the convergence plot is:
 
 ![Brusselator results: fix step](data/figures/brusselator_ode_fix_step.svg)
 
+### <a name="brusselator-pde"></a> Brusselator PDE
+
+This example corresponds to Fig 10.4(a,b) on pages 250 and 251 of Reference #1. The problem is defined in Eqs (10.10-10.14) on pages 248 and 249 of Reference #1.
+
+The model is given by:
+
+```text
+∂u                         ⎛ ∂²u   ∂²u ⎞
+——— = 1 - 4.4 u + u² v + α ⎜ ——— + ——— ⎟
+∂t                         ⎝ ∂x²   ∂y² ⎠
+
+∂v                         ⎛ ∂²v   ∂²v ⎞
+——— =     3.4 u - u² v + α ⎜ ——— + ——— ⎟
+∂t                         ⎝ ∂x²   ∂y² ⎠
+
+with:  t ≥ 0,  0 ≤ x ≤ 1,  0 ≤ y ≤ 1
+```
+
+Assume the following Neumann boundary conditions:
+
+```text
+∂u          ∂v     
+——— = 0     ——— = 0
+ →           →
+∂n          ∂n     
+```
+
+And the following initial conditions:
+
+```text
+u(t=0,x,y) = 0.5 + y    v(t=0,x,y) = 1 + 5 x
+```
+
+The scalar fields u(x, y) and v(x, y) are mapped over a rectangular grid with
+their discrete counterparts represented by:
+
+```text
+pᵢⱼ(t) := u(t, xᵢ, yⱼ)
+qᵢⱼ(t) := v(t, xᵢ, yⱼ)
+```
+
+Thus `ndim = 2 npoint²` with npoint being the number of points along the x or y line.
+
+The second partial derivatives over x and y (Laplacian) are approximated using the
+Finite Differences Method (FDM).
+
+The pᵢⱼ and qᵢⱼ values are mapped onto the vectors `U` and `V` as follows:
+
+```text
+pᵢⱼ → Uₘ
+qᵢⱼ → Vₘ
+
+with m = i + j nx
+```
+
+Then, they are stored in a single vector `Y`:
+
+```text
+    ┌   ┐
+    │ U │
+Y = │   │
+    │ V │
+    └   ┘
+```
+
+Thus:
+
+```text
+Uₘ = Yₘ  and  Vₘ = Yₛ₊ₘ
+
+where  0 ≤ m ≤ s - 1  and (shift)  s = npoint²
+```
+
+In terms of components, we can write:
+
+```text
+      ⎧ Uₐ    if a < s
+Yₐ =  ⎨
+      ⎩ Vₐ₋ₛ  if a ≥ s
+
+where  0 ≤ a ≤ ndim - 1  and  ndim = 2 s
+```
+
+The components of the resulting system of equations are defined by:
+(the prime indicates time-derivative; no summation over repeated indices):
+
+```text
+Uₘ' = 1 - 4.4 Uₘ + Uₘ² Vₘ + Σ Aₘₖ Uₖ
+                           k
+Vₘ' =     3.4 Uₘ - Uₘ² Vₘ + Σ Aₘₖ Uₖ
+                           k
+
+where Aₘₖ are the elements of the discrete Laplacian matrix
+```
+
+The components to build the Jacobian matrix are:
+(no summation over repeated indices):
+
+```text
+∂Uₘ'
+———— = -4.4 δₘₙ + 2 Uₘ δₘₙ Vₘ + Aₘₙ
+∂Uₙ
+
+∂Uₘ'
+———— = Uₘ² δₘₙ
+∂Vₙ
+
+∂Vₘ'
+———— = 3.4 δₘₙ - 2 Uₘ δₘₙ Vₘ
+∂Uₙ
+
+∂Vₘ'
+———— = -Uₘ² δₘₙ + Aₘₙ
+∂Vₙ
+
+where δₘₙ is the Kronecker delta
+```
+
+With `Fₐ := ∂Yₐ/∂t`, the components of the Jacobian matrix can be "assembled" as follows:
+
+```text
+      ⎧  ⎧ ∂Uₐ'/∂Uₑ      if e < s
+      │  ⎨                          if a < s
+∂Fₐ   │  ⎩ ∂Uₐ'/∂Vₑ₋ₛ    if e ≥ s
+——— = ⎨
+∂Yₑ   │  ⎧ ∂Vₐ₋ₛ'/∂Uₑ    if e < s
+      │  ⎨                          if a ≥ s
+      ⎩  ⎩ ∂Vₐ₋ₛ'/∂Vₑ₋ₛ  if e ≥ s
+
+where  0 ≤ a ≤ ndim - 1  and  0 ≤ e ≤ ndim - 1
+```
+
+We solve this problem with Radau5. The approximated solution is generated with `npoint = 21` and is implemented in [brusselator_pde_radau5.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_radau5.rs). This code will generate a series of files, one for each (dense) output time with `h_out = 0.5`.
+
+The results can then be plotted with [brusselator_pde_radau5_plot.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_radau5_plot.rs)
+
+The results are shown below for the `U` field:
+
+![brusselator_pde_radau5_u.svg](data/figures/brusselator_pde_radau5_u.svg)
+
+And below for the `V` field:
+
+![brusselator_pde_radau5_v.svg](data/figures/brusselator_pde_radau5_v.svg)
+
+These figures compare well with the corresponding ones on pages 250 and 251 of Reference #1.
+
+The computations with `russell` are also compared with values obtained with Mathematica. The verification is implemented in [test_radau5_brusselator_pde](https://github.com/cpmech/russell/tree/main/russell_ode/tests/test_radau5_brusselator_pde.rs).
+
+The figure below shows the `russel` (black dashed lines) and Mathematica (red solid lines) results for the `U` field:
+
+![test_radau5_brusselator_pde_u.svg](data/figures/test_radau5_brusselator_pde_u.svg)
+
+The figure below shows the `russel` (black dashed lines) and Mathematica (red solid lines) results for the `V` field:
+
+![test_radau5_brusselator_pde_v.svg](data/figures/test_radau5_brusselator_pde_v.svg)
+
 ### <a name="arenstorf"></a> Arenstorf orbits
 
-This example corresponds to Fig 0.1 on page 130 of Reference #1. See also Eqs (0.1) and (0.2) on page 129 and 130 of Reference #1.
+This example corresponds to Fig 0.1 on page 130 of Reference #1. The problem is defined in Eqs (0.1) and (0.2) on page 129 and 130 of Reference #1.
 
 From Hairer-Nørsett-Wanner:
 
@@ -477,7 +634,7 @@ The results are plotted below:
 
 ### <a name="hairer-wanner-eq1"></a> Hairer-Wanner Equation (1.1)
 
-This example corresponds to Fig 1.1 and Fig 1.2 on page 2 of Reference #2. See also Eq (1.1) on page 2 of Reference #2.
+This example corresponds to Fig 1.1 and Fig 1.2 on page 2 of Reference #2. The problem is defined in Eq (1.1) on page 2 of Reference #2.
 
 The system is:
 
@@ -507,7 +664,7 @@ The results are show below:
 
 ### <a name="robertson"></a> Robertson's Equation
 
-This example corresponds to Fig 1.3 on page 4 of Reference #2. See also Eq (1.4) on page 3 of Reference #2.
+This example corresponds to Fig 1.3 on page 4 of Reference #2. The problem is defined in Eq (1.4) on page 3 of Reference #2.
 
 The system is:
 
@@ -591,7 +748,7 @@ where ε defines the *stiffness* of the problem + conditions (equation + initial
 
 #### DoPri5
 
-This example corresponds to Fig 2.6 on page 23 of Reference #2. See also Eq (1.5') on page 5 of Reference #2.
+This example corresponds to Fig 2.6 on page 23 of Reference #2. The problem is defined in Eq (1.5') on page 5 of Reference #2.
 
 This example illustrated the *stiffness* of the Van der Pol problem with ε = 0.003. In this example, DoPri5 with Tol = 1e-3 is used.
 
@@ -625,7 +782,7 @@ The figure's red dashed lines mark the moment when stiffness has been detected f
 
 #### Radau5
 
-This example corresponds to Fig 8.1 on page 125 of Reference #2. See also Eq (1.5') on page 5 of Reference #2.
+This example corresponds to Fig 8.1 on page 125 of Reference #2. The problem is defined in Eq (1.5') on page 5 of Reference #2.
 
 This example uses a smaller ε = 1e-6, making the problem + conditions much more stiff. It is solved with the Radau5 solver, which can handle stiff problems quite well. Note that DoPri5 would not solve this problem with such small ε, unless a very high number of steps (and oder configurations) were considered.
 
@@ -661,7 +818,7 @@ The results are show below:
 
 ### <a name="amplifier1t"></a> One-transistor amplifier
 
-This example corresponds to Fig 1.3 on page 377 and Fig 1.4 on page 379 of Reference #2. See also Eq (1.14) on page 377 of Reference #2.
+This example corresponds to Fig 1.3 on page 377 and Fig 1.4 on page 379 of Reference #2. The problem is defined in Eq (1.14) on page 377 of Reference #2.
 
 This is a differential-algebraic problem modelling the nodal voltages of a one-transistor amplifier.
 

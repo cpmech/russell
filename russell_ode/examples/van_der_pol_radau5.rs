@@ -5,7 +5,7 @@ use russell_ode::prelude::*;
 // This example solves Van der Pol's equation
 //
 // This example corresponds to Fig 8.1 on page 125 of the reference.
-// See also Eq (1.5') on page 5 of the reference.
+// The problem is defined in Eq (1.5') on page 5 of the reference.
 //
 // This example shows how to enable the stiffness detection.
 //

@@ -15,19 +15,62 @@ pub enum Side {
 
 /// Implements the Finite Difference (FDM) Laplacian operator in 2D
 ///
+/// Given the (continuum) scalar field ϕ(x, y) and its Laplacian
+///
 /// ```text
-///              ∂²ϕ        ∂²ϕ
-///    L{ϕ} = kx ———  +  ky ———
-///              ∂x²        ∂y²
+///           ∂²ϕ        ∂²ϕ
+/// L{ϕ} = kx ———  +  ky ———
+///           ∂x²        ∂y²
 /// ```
 ///
-/// **Notes:**
+/// we substitute the partial derivatives using central FDM over a rectangular grid.
+/// The resulting discrete Laplacian is expressed by the coefficient matrix `A` and the vector `X`:
+///
+/// ```text
+/// D{ϕᵢⱼ} = A ⋅ X
+/// ```
+///
+/// ϕᵢⱼ are the discrete counterpart of ϕ(x, y) over the (nx, ny) grid. However, these
+/// values are "sequentially" mapped onto to the vector `X` using the following formula:
+///
+/// ```text
+/// ϕᵢⱼ → Xₘ   with   m = i + j nx
+/// ```
+///
+/// The dimension of the coefficient matrix is `dim = nrow = ncol = nx × ny`.
+///
+/// A sample grid is illustrated below:
+///
+/// ```text
+///      i=0     i=1     i=2     i=3     i=4
+/// j=2  10──────11──────12──────13──────14  j=2  ny=3
+///       │       │       │       │       │
+///       │       │       │       │       │
+/// j=1   5───────6───────7───────8───────9  j=1
+///       │       │       │       │       │
+///       │       │       │       │       │
+/// j=0   0───────1───────2───────3───────4  j=0
+///      i=0     i=1     i=2     i=3     i=4
+///                                     nx=5
+/// ```
+///
+/// Thus:
+///
+/// ```text
+/// m = i + j nx
+/// i = m % nx
+/// j = m / nx
+///
+/// "%" is the modulo operator
+/// "/" is the integer division operator
+/// ```
+///
+/// # Remarks
 ///
 /// * The operator is built with a five-point stencil.
-/// * The boundary nodes are 'mirrored' yielding a no-flux barrier.
+/// * The boundary conditions may be Neumann with zero-flux or periodic.
+/// * By default (Neumann BC), the boundary nodes are 'mirrored' yielding a no-flux barrier.
 pub struct PdeDiscreteLaplacian2d {
-    kx: f64,            // diffusion parameter x
-    ky: f64,            // diffusion parameter y
     xmin: f64,          // min x coordinate
     ymin: f64,          // min y coordinate
     nx: usize,          // number of points along x (≥ 2)
@@ -38,6 +81,21 @@ pub struct PdeDiscreteLaplacian2d {
     right: Vec<usize>,  // indices of nodes on the right edge
     bottom: Vec<usize>, // indices of nodes on the bottom edge
     top: Vec<usize>,    // indices of nodes on the top edge
+
+    /// Indicates that the boundary is periodic along x (left ϕ values equal right ϕ values)
+    ///
+    /// If false, the left/right boundaries are zero-flux (Neumann with ∂ϕ/dx = 0)
+    periodic_along_x: bool,
+
+    /// Indicates that the boundary is periodic along x (bottom ϕ values equal top ϕ values)
+    ///
+    /// If false, the bottom/top boundaries are zero-flux (Neumann with ∂ϕ/dx = 0)
+    periodic_along_y: bool,
+
+    /// Holds the FDM coefficients (α, β, β, γ, γ)
+    ///
+    /// These coefficients are applied over the "bandwidth" of the coefficient matrix
+    molecule: Vec<f64>,
 
     /// Collects the essential boundary conditions
     /// Maps node => prescribed_value
@@ -74,43 +132,85 @@ impl PdeDiscreteLaplacian2d {
             return Err("ny must be ≥ 2");
         }
         let dim = nx * ny;
+        let dx = (xmax - xmin) / ((nx - 1) as f64);
+        let dy = (ymax - ymin) / ((ny - 1) as f64);
+        let dx2 = dx * dx;
+        let dy2 = dy * dy;
+        let alpha = -2.0 * (kx / dx2 + ky / dy2);
+        let beta = kx / dx2;
+        let gamma = ky / dy2;
         Ok(PdeDiscreteLaplacian2d {
-            kx,
-            ky,
             xmin,
             ymin,
             nx,
             ny,
-            dx: (xmax - xmin) / ((nx - 1) as f64),
-            dy: (ymax - ymin) / ((ny - 1) as f64),
+            dx,
+            dy,
             left: (0..dim).step_by(nx).collect(),
             right: ((nx - 1)..dim).step_by(nx).collect(),
             bottom: (0..nx).collect(),
             top: ((dim - nx)..dim).collect(),
+            periodic_along_x: false,
+            periodic_along_y: false,
+            molecule: vec![alpha, beta, beta, gamma, gamma],
             essential: HashMap::new(),
         })
     }
 
+    /// Sets periodic boundary condition
+    ///
+    /// **Note:** It is only necessary to specify one of (Left, Right) or (Bottom, Top)
+    ///
+    /// **Warning:** Make sure that no essential boundary conditions are specified on the corresponding sides.
+    /// Otherwise, the results may be incorrect.
+    pub fn set_periodic_boundary_condition(&mut self, side: Side) {
+        match side {
+            Side::Left => self.periodic_along_x = true,
+            Side::Right => self.periodic_along_x = true,
+            Side::Bottom => self.periodic_along_y = true,
+            Side::Top => self.periodic_along_y = true,
+        }
+    }
+
     /// Sets essential (Dirichlet) boundary condition
+    ///
+    /// **Note:** If specified, the periodic boundary condition on the corresponding side will be set to false
     pub fn set_essential_boundary_condition(&mut self, side: Side, value: FnSpace) {
         match side {
-            Side::Left => self.left.iter().for_each(|n| {
-                self.essential.insert(*n, value);
-            }),
-            Side::Right => self.right.iter().for_each(|n| {
-                self.essential.insert(*n, value);
-            }),
-            Side::Bottom => self.bottom.iter().for_each(|n| {
-                self.essential.insert(*n, value);
-            }),
-            Side::Top => self.top.iter().for_each(|n| {
-                self.essential.insert(*n, value);
-            }),
+            Side::Left => {
+                self.periodic_along_x = false;
+                self.left.iter().for_each(|n| {
+                    self.essential.insert(*n, value);
+                });
+            }
+            Side::Right => {
+                self.periodic_along_x = false;
+                self.right.iter().for_each(|n| {
+                    self.essential.insert(*n, value);
+                });
+            }
+            Side::Bottom => {
+                self.periodic_along_y = false;
+                self.bottom.iter().for_each(|n| {
+                    self.essential.insert(*n, value);
+                });
+            }
+            Side::Top => {
+                self.periodic_along_y = false;
+                self.top.iter().for_each(|n| {
+                    self.essential.insert(*n, value);
+                });
+            }
         };
     }
 
     /// Sets homogeneous boundary conditions (i.e., zero essential values at the borders)
+    ///
+    /// **Note:** If specified, periodic boundary conditions will be set to false
     pub fn set_homogeneous_boundary_conditions(&mut self) {
+        self.periodic_along_x = false;
+        self.periodic_along_y = false;
+        self.essential.clear();
         self.left.iter().for_each(|n| {
             self.essential.insert(*n, |_, _| 0.0);
         });
@@ -125,34 +225,34 @@ impl PdeDiscreteLaplacian2d {
         });
     }
 
-    /// Computes the coefficient matrix 'A' of A ⋅ x = b
+    /// Computes the coefficient matrix 'A' of A ⋅ X = B
     ///
     /// **Note:** Consider the following partitioning:
     ///
     /// ```text
     /// ┌          ┐ ┌    ┐   ┌    ┐
-    /// │ Auu  Aup │ │ xu │   │ bu │
+    /// │ Auu  Aup │ │ Xu │   │ Bu │
     /// │          │ │    │ = │    │
-    /// │ Apu  App │ │ xp │   │ bp │
+    /// │ Apu  App │ │ Xp │   │ Bp │
     /// └          ┘ └    ┘   └    ┘
     /// ```
     ///
-    /// where `u` means *unknown* and `p` means *prescribed*. Thus, `xu` is the sub-vector with
-    /// unknown essential values and `xp` is the sub-vector with prescribed essential values.
+    /// where `u` means *unknown* and `p` means *prescribed*. Thus, `Xu` is the sub-vector with
+    /// unknown essential values and `Xp` is the sub-vector with prescribed essential values.
     ///
     /// Thus:
     ///
     /// ```text
-    /// Auu ⋅ xu  +  Aup ⋅ xp  =  bu
+    /// Auu ⋅ Xu  +  Aup ⋅ Xp  =  Bu
     /// ```
     ///
     /// To handle the prescribed essential values, we modify the system as follows:
     ///
     /// ```text
     /// ┌          ┐ ┌    ┐   ┌             ┐
-    /// │ Auu   0  │ │ xu │   │ bu - Aup⋅xp │
+    /// │ Auu   0  │ │ Xu │   │ Bu - Aup⋅Xp │
     /// │          │ │    │ = │             │
-    /// │  0    1  │ │ xp │   │     xp      │
+    /// │  0    1  │ │ Xp │   │     Xp      │
     /// └          ┘ └    ┘   └             ┘
     /// A := augmented(Auu)
     /// ```
@@ -160,17 +260,17 @@ impl PdeDiscreteLaplacian2d {
     /// Thus:
     ///
     /// ```text
-    /// xu = Auu⁻¹ ⋅ (bu - Aup⋅xp)
-    /// xp = xp
+    /// Xu = Auu⁻¹ ⋅ (Bu - Aup⋅Xp)
+    /// Xp = Xp
     /// ```
     ///
     /// Furthermore, we return an augmented 'Aup' matrix (called 'C', correction matrix), such that:
     ///
     /// ```text
     /// ┌          ┐ ┌    ┐   ┌        ┐
-    /// │  0   Aup │ │ .. │   │ Aup⋅xp │
+    /// │  0   Aup │ │ .. │   │ Aup⋅Xp │
     /// │          │ │    │ = │        │
-    /// │  0    0  │ │ xp │   │   0    │
+    /// │  0    0  │ │ Xp │   │   0    │
     /// └          ┘ └    ┘   └        ┘
     /// C := augmented(Aup)
     /// ```
@@ -191,21 +291,21 @@ impl PdeDiscreteLaplacian2d {
     ///
     /// # Warnings
     ///
-    /// **Warning:** This function must be called after [DiscreteLaplacian2d::set_essential_boundary_condition]
+    /// **Important:** This function must be called after [PdeDiscreteLaplacian2d::set_essential_boundary_condition]
     ///
     /// # Todo
     ///
     /// * Implement the symmetric version for solvers that can handle a triangular matrix storage.
-    pub fn coefficient_matrix(&mut self) -> Result<(CooMatrix, CooMatrix), StrError> {
+    pub fn coefficient_matrix(&self) -> Result<(CooMatrix, CooMatrix), StrError> {
         // count max number of non-zeros
         let dim = self.nx * self.ny;
         let np = self.essential.len();
         let mut max_nnz_aa = np; // start with the diagonal 'ones'
         let mut max_nnz_cc = 1; // +1 just for when there are no essential conditions
-        for i in 0..dim {
-            if !self.essential.contains_key(&i) {
-                self.loop_over_bandwidth(i, |j, _| {
-                    if !self.essential.contains_key(&j) {
+        for m in 0..dim {
+            if !self.essential.contains_key(&m) {
+                self.loop_over_bandwidth(m, |n, _| {
+                    if !self.essential.contains_key(&n) {
                         max_nnz_aa += 1;
                     } else {
                         max_nnz_cc += 1;
@@ -218,110 +318,145 @@ impl PdeDiscreteLaplacian2d {
         let mut aa = CooMatrix::new(dim, dim, max_nnz_aa, Sym::No)?;
         let mut cc = CooMatrix::new(dim, dim, max_nnz_cc, Sym::No)?;
 
-        // auxiliary
-        let dx2 = self.dx * self.dx;
-        let dy2 = self.dy * self.dy;
-        let alpha = -2.0 * (self.kx / dx2 + self.ky / dy2);
-        let beta = self.kx / dx2;
-        let gamma = self.ky / dy2;
-        let molecule = [alpha, beta, beta, gamma, gamma];
-
         // assemble
-        for i in 0..dim {
-            if !self.essential.contains_key(&i) {
-                self.loop_over_bandwidth(i, |j, b| {
-                    if !self.essential.contains_key(&j) {
-                        aa.put(i, j, molecule[b]).unwrap();
+        for m in 0..dim {
+            if !self.essential.contains_key(&m) {
+                self.loop_over_bandwidth(m, |n, b| {
+                    if !self.essential.contains_key(&n) {
+                        aa.put(m, n, self.molecule[b]).unwrap();
                     } else {
-                        cc.put(i, j, molecule[b]).unwrap();
+                        cc.put(m, n, self.molecule[b]).unwrap();
                     }
                 });
             } else {
-                aa.put(i, i, 1.0).unwrap();
+                aa.put(m, m, 1.0).unwrap();
             }
         }
         Ok((aa, cc))
     }
 
-    /// Execute a loop over the prescribed values
+    /// Executes a loop over one row of the coefficient matrix 'A' of A ⋅ X = B
+    ///
+    /// Note that some column indices may appear repeated; e.g. due to the zero-flux boundaries.
     ///
     /// # Input
     ///
-    /// * `callback` -- a `function(i, value)` where `i` is the row index
-    ///   and `value` is the prescribed value.
+    /// * `m` -- the row of the coefficient matrix
+    /// * `callback` -- a `function(n, Amn)` where `n` is the column index and
+    ///   `Amn` is the m-n-element of the coefficient matrix
+    pub fn loop_over_coef_mat_row<F>(&self, m: usize, mut callback: F)
+    where
+        F: FnMut(usize, f64),
+    {
+        self.loop_over_bandwidth(m, |n, b| {
+            callback(n, self.molecule[b]);
+        });
+    }
+
+    /// Executes a loop over the prescribed values
+    ///
+    /// # Input
+    ///
+    /// * `callback` -- a `function(m, value)` where `m` is the row index and
+    ///   `value` is the prescribed value.
     pub fn loop_over_prescribed_values<F>(&self, mut callback: F)
     where
         F: FnMut(usize, f64),
     {
-        self.essential.iter().for_each(|(i, value)| {
-            let row = i / self.nx;
-            let col = i % self.nx;
-            let x = self.xmin + (col as f64) * self.dx;
-            let y = self.ymin + (row as f64) * self.dy;
-            callback(*i, value(x, y));
+        self.essential.iter().for_each(|(m, value)| {
+            let i = m % self.nx;
+            let j = m / self.nx;
+            let x = self.xmin + (i as f64) * self.dx;
+            let y = self.ymin + (j as f64) * self.dy;
+            callback(*m, value(x, y));
         });
     }
 
-    /// Execute a loop over the bandwidth of the coefficient matrix
+    /// Executes a loop over the "bandwidth" of the coefficient matrix
+    ///
+    /// Here, the "bandwidth" means the non-zero values on a row of the coefficient matrix.
+    /// This is not the actual bandwidth because the zero elements are ignored. There are
+    /// five non-zero values in the "bandwidth" and they correspond to the "molecule" array.
     ///
     /// # Input
     ///
-    /// * `i` -- the row index
-    /// * `callback` -- a `function(j, b)` where `j` is the column index and
+    /// * `m` -- the row index
+    /// * `callback` -- a function of `(n, b)` where `n` is the column index and
     ///   `b` is the bandwidth index, i.e., the index in the molecule array.
-    fn loop_over_bandwidth<F>(&self, i: usize, mut callback: F)
+    fn loop_over_bandwidth<F>(&self, m: usize, mut callback: F)
     where
         F: FnMut(usize, usize),
     {
-        // row and column
-        let row = i / self.nx;
-        let col = i % self.nx;
+        // constants for clarity/convenience
+        const CUR: usize = 0; // current node
+        const LEF: usize = 1; // left node
+        const RIG: usize = 2; // right node
+        const BOT: usize = 3; // bottom node
+        const TOP: usize = 4; // top node
+        const INI_X: usize = 0;
+        const INI_Y: usize = 0;
+        let fin_x = self.nx - 1;
+        let fin_y = self.ny - 1;
+        let i = m % self.nx;
+        let j = m / self.nx;
 
-        // j-index of grid nodes (mirror if needed)
-        let mut jays = [0, 0, 0, 0, 0];
-        jays[0] = i; // current node
-        jays[1] = if col == 0 { i + 1 } else { i - 1 }; // left node
-        jays[2] = if col == self.nx - 1 { i - 1 } else { i + 1 }; // right node
-        jays[3] = if row == 0 { i + self.nx } else { i - self.nx }; // bottom node
-        jays[4] = if row == self.ny - 1 { i - self.nx } else { i + self.nx }; // top node
+        // n indices of the non-zero values on the row m of the coefficient matrix
+        // (mirror or swap the indices of boundary nodes, as appropriate)
+        let mut nn = [0, 0, 0, 0, 0];
+        nn[CUR] = m;
+        if self.periodic_along_x {
+            nn[LEF] = if i != INI_X { m - 1 } else { m + fin_x };
+            nn[RIG] = if i != fin_x { m + 1 } else { m - fin_x };
+        } else {
+            nn[LEF] = if i != INI_X { m - 1 } else { m + 1 };
+            nn[RIG] = if i != fin_x { m + 1 } else { m - 1 };
+        }
+        if self.periodic_along_y {
+            nn[BOT] = if j != INI_Y { m - self.nx } else { m + fin_y * self.nx };
+            nn[TOP] = if j != fin_y { m + self.nx } else { m - fin_y * self.nx };
+        } else {
+            nn[BOT] = if j != INI_Y { m - self.nx } else { m + self.nx };
+            nn[TOP] = if j != fin_y { m + self.nx } else { m - self.nx };
+        }
 
         // execute callback
-        for (b, &j) in jays.iter().enumerate() {
-            callback(j, b);
+        for (b, &n) in nn.iter().enumerate() {
+            callback(n, b);
         }
     }
 
-    /// Execute a loop over the grid points
+    /// Executes a loop over the grid points
     ///
     /// # Input
     ///
-    /// * `callback` -- a `function(i, x, y)` where `i` is the point number and
-    ///   `(x, y)` are the grid point coordinates.
+    /// * `callback` -- a function of `(m, x, y)` where `m` is the the sequential point number,
+    ///   and `(x, y)` are the Cartesian coordinates of the grid point.
     ///
-    /// The row and column indices of the grid point can be determined with:
+    /// Note that:
     ///
     /// ```text
-    /// let row = i / nx;
-    /// let col = i % nx;
+    /// m = i + j nx
+    /// i = m % nx
+    /// j = m / nx
     /// ```
     pub fn loop_over_grid_points<F>(&self, mut callback: F)
     where
         F: FnMut(usize, f64, f64),
     {
         let dim = self.nx * self.ny;
-        for i in 0..dim {
-            let row = i / self.nx;
-            let col = i % self.nx;
-            let x = self.xmin + (col as f64) * self.dx;
-            let y = self.ymin + (row as f64) * self.dy;
-            callback(i, x, y)
+        for m in 0..dim {
+            let i = m % self.nx;
+            let j = m / self.nx;
+            let x = self.xmin + (i as f64) * self.dx;
+            let y = self.ymin + (j as f64) * self.dy;
+            callback(m, x, y)
         }
     }
 
     /// Returns the dimension of the linear system
     ///
     /// ```text
-    /// dim =  nx * ny
+    /// dim = nx × ny
     /// ```
     pub fn dim(&self) -> usize {
         self.nx * self.ny
@@ -345,8 +480,6 @@ mod tests {
     #[test]
     fn new_works() {
         let lap = PdeDiscreteLaplacian2d::new(7.0, 8.0, -1.0, 1.0, -3.0, 3.0, 2, 3).unwrap();
-        assert_eq!(lap.kx, 7.0);
-        assert_eq!(lap.ky, 8.0);
         assert_eq!(lap.xmin, -1.0);
         assert_eq!(lap.ymin, -3.0);
         assert_eq!(lap.nx, 2);
@@ -432,7 +565,7 @@ mod tests {
 
     #[test]
     fn coefficient_matrix_works() {
-        let mut lap = PdeDiscreteLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
+        let lap = PdeDiscreteLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
         let (aa, _) = lap.coefficient_matrix().unwrap();
         assert_eq!(lap.dim(), 9);
         assert_eq!(lap.num_prescribed(), 0);
@@ -450,6 +583,32 @@ mod tests {
             [ ___,  ___,  ___,  ___,  ___,  2.0,  ___,  2.0, -4.0],
         ]);
         mat_approx_eq(&aa.as_dense(), &aa_correct, 1e-15);
+    }
+
+    #[test]
+    fn loop_over_molecule_works() {
+        // ┌                            ┐
+        // │ -4  2  .  2  .  .  .  .  . │  0
+        // │  1 -4  1  .  2  .  .  .  . │  1
+        // │  .  2 -4  .  .  2  .  .  . │  2
+        // │  1  .  . -4  2  .  1  .  . │  3
+        // │  .  1  .  1 -4  1  .  1  . │  4
+        // │  .  .  1  .  2 -4  .  .  1 │  5
+        // │  .  .  .  2  .  . -4  2  . │  6
+        // │  .  .  .  .  2  .  1 -4  1 │  7
+        // │  .  .  .  .  .  2  .  2 -4 │  8
+        // └                            ┘
+        //    0  1  2  3  4  5  6  7  8
+        let lap = PdeDiscreteLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
+        let mut row_0 = Vec::new();
+        let mut row_4 = Vec::new();
+        let mut row_8 = Vec::new();
+        lap.loop_over_coef_mat_row(0, |j, aij| row_0.push((j, aij)));
+        lap.loop_over_coef_mat_row(4, |j, aij| row_4.push((j, aij)));
+        lap.loop_over_coef_mat_row(8, |j, aij| row_8.push((j, aij)));
+        assert_eq!(row_0, &[(0, -4.0), (1, 1.0), (1, 1.0), (3, 1.0), (3, 1.0)]);
+        assert_eq!(row_4, &[(4, -4.0), (3, 1.0), (5, 1.0), (1, 1.0), (7, 1.0)]);
+        assert_eq!(row_8, &[(8, -4.0), (7, 1.0), (7, 1.0), (5, 1.0), (5, 1.0)]);
     }
 
     #[test]
@@ -526,16 +685,43 @@ mod tests {
     }
 
     #[test]
+    fn coefficient_matrix_with_periodic_bcs_works() {
+        let mut lap = PdeDiscreteLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 3.0, 3, 4).unwrap();
+        lap.set_periodic_boundary_condition(Side::Left);
+        lap.set_periodic_boundary_condition(Side::Bottom);
+        let (aa, cc) = lap.coefficient_matrix().unwrap();
+        assert_eq!(lap.dim(), 12);
+        assert_eq!(cc.get_info().2, 0); // nnz
+        const ___: f64 = 0.0;
+        #[rustfmt::skip]
+        let aa_correct = Matrix::from(&[
+             [-4.0, 1.0, 1.0, 1.0, ___, ___, ___, ___, ___, 1.0, ___, ___], //  0 left  bottom
+             [ 1.0,-4.0, 1.0, ___, 1.0, ___, ___, ___, ___, ___, 1.0, ___], //  1       bottom
+             [ 1.0, 1.0,-4.0, ___, ___, 1.0, ___, ___, ___, ___, ___, 1.0], //  2 right bottom
+             [ 1.0, ___, ___,-4.0, 1.0, 1.0, 1.0, ___, ___, ___, ___, ___], //  3 left
+             [ ___, 1.0, ___, 1.0,-4.0, 1.0, ___, 1.0, ___, ___, ___, ___], //  4
+             [ ___, ___, 1.0, 1.0, 1.0,-4.0, ___, ___, 1.0, ___, ___, ___], //  5 right
+             [ ___, ___, ___, 1.0, ___, ___,-4.0, 1.0, 1.0, 1.0, ___, ___], //  6 left
+             [ ___, ___, ___, ___, 1.0, ___, 1.0,-4.0, 1.0, ___, 1.0, ___], //  7
+             [ ___, ___, ___, ___, ___, 1.0, 1.0, 1.0,-4.0, ___, ___, 1.0], //  8 right
+             [ 1.0, ___, ___, ___, ___, ___, 1.0, ___, ___,-4.0, 1.0, 1.0], //  9 left  top
+             [ ___, 1.0, ___, ___, ___, ___, ___, 1.0, ___, 1.0,-4.0, 1.0], // 10       top
+             [ ___, ___, 1.0, ___, ___, ___, ___, ___, 1.0, 1.0, 1.0,-4.0], // 11 right top
+         ]); //  0    1    2    3    4    5    6    7    8    9   10   11
+        mat_approx_eq(&aa.as_dense(), &aa_correct, 1e-15);
+    }
+
+    #[test]
     fn get_grid_coordinates_works() {
         let (nx, ny) = (2, 3);
         let lap = PdeDiscreteLaplacian2d::new(7.0, 8.0, -1.0, 1.0, -3.0, 3.0, nx, ny).unwrap();
         let mut xx = Matrix::new(ny, nx);
         let mut yy = Matrix::new(ny, nx);
-        lap.loop_over_grid_points(|i, x, y| {
-            let row = i / nx;
-            let col = i % nx;
-            xx.set(row, col, x);
-            yy.set(row, col, y);
+        lap.loop_over_grid_points(|m, x, y| {
+            let i = m % nx;
+            let j = m / nx;
+            xx.set(j, i, x);
+            yy.set(j, i, y);
         });
         assert_eq!(
             format!("{}", xx),

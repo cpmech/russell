@@ -7,7 +7,7 @@ use std::{env, fs::File, io::BufReader, path::Path};
 // Arenstorf orbit problem, Hairer-Wanner, Part I, Eq(0.1), page 129
 //
 // This example corresponds to Fig 0.1 on page 130 of the reference.
-// See also Eqs (0.1) and (0.2) on page 129 and 130 of the reference.
+// The problem is defined in Eqs (0.1) and (0.2) on page 129 and 130 of the reference.
 //
 // # Reference
 //

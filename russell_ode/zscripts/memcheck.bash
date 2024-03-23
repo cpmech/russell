@@ -1,10 +1,9 @@
 #!/bin/bash
 
-# the first argument is the "mkl" option
-BLAS_LIB=${1:-""}
+INTEL_MKL=${1:-""} # 0 or 1 to use intel_mkl
 
 FEAT=""
-if [ "${BLAS_LIB}" = "mkl" ]; then
+if [ "${INTEL_MKL}" = "1" ]; then
     FEAT="--features intel_mkl"
 fi
 
@@ -12,4 +11,4 @@ cargo build $FEAT
 
 VALGRIND="cargo valgrind run $FEAT"
 
-$VALGRIND --bin amplifier1t_radau5
+$VALGRIND --bin amplifier1t

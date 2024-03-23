@@ -90,6 +90,8 @@
     "unsym",
     "Verner",
     "Vetterling",
+    "xticks",
+    "yticks",
     "zcopy",
     "zgeev",
     "zgemm",
@@ -106,6 +108,7 @@
     "Zonneveld",
     "zpotrf",
     "zscal",
-    "zsyrk"
+    "zsyrk",
+    "zticks"
   ]
 }

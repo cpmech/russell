@@ -11,6 +11,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
     * [Simple ODE with a single equation](#simple-single)
     * [Simple system with mass matrix](#simple-mass)
     * [Brusselator ODE](#brusselator-ode)
+    * [Brusselator PDE](#brusselator-pde)
     * [Arenstorf orbits](#arenstorf)
     * [Hairer-Wanner equation (1.1)](#hairer-wanner-eq1)
     * [Robertson's equation](#robertson)
@@ -422,6 +423,162 @@ The results are:
 And the convergence plot is:
 
 ![Brusselator results: fix step](data/figures/brusselator_ode_fix_step.svg)
+
+### <a name="brusselator-pde"></a> Brusselator PDE
+
+This example corresponds to Fig 10.4(a,b) on pages 250 and 251 of Reference #1. The problem is defined in Eqs (10.10-10.14) on pages 248 and 249 of Reference #1.
+
+The model is given by:
+
+```text
+∂u                         ⎛ ∂²u   ∂²u ⎞
+——— = 1 - 4.4 u + u² v + α ⎜ ——— + ——— ⎟
+∂t                         ⎝ ∂x²   ∂y² ⎠
+
+∂v                         ⎛ ∂²v   ∂²v ⎞
+——— =     3.4 u - u² v + α ⎜ ——— + ——— ⎟
+∂t                         ⎝ ∂x²   ∂y² ⎠
+
+with:  t ≥ 0,  0 ≤ x ≤ 1,  0 ≤ y ≤ 1
+```
+
+Assume the following Neumann boundary conditions:
+
+```text
+∂u          ∂v     
+——— = 0     ——— = 0
+ →           →
+∂n          ∂n     
+```
+
+And the following initial conditions:
+
+```text
+u(t=0,x,y) = 0.5 + y    v(t=0,x,y) = 1 + 5 x
+```
+
+The scalar fields u(x, y) and v(x, y) are mapped over a rectangular grid with
+their discrete counterparts represented by:
+
+```text
+pᵢⱼ(t) := u(t, xᵢ, yⱼ)
+qᵢⱼ(t) := v(t, xᵢ, yⱼ)
+```
+
+Thus `ndim = 2 npoint²` with npoint being the number of points along the x or y line.
+
+The second partial derivatives over x and y (Laplacian) are approximated using the
+Finite Differences Method (FDM).
+
+The pᵢⱼ and qᵢⱼ values are mapped onto the vectors `U` and `V` as follows:
+
+```text
+pᵢⱼ → Uₘ
+qᵢⱼ → Vₘ
+
+with m = i + j nx
+```
+
+Then, they are stored in a single vector `Y`:
+
+```text
+    ┌   ┐
+    │ U │
+Y = │   │
+    │ V │
+    └   ┘
+```
+
+Thus:
+
+```text
+Uₘ = Yₘ  and  Vₘ = Yₛ₊ₘ
+
+where  0 ≤ m ≤ s - 1  and (shift)  s = npoint²
+```
+
+In terms of components, we can write:
+
+```text
+      ⎧ Uₐ    if a < s
+Yₐ =  ⎨
+      ⎩ Vₐ₋ₛ  if a ≥ s
+
+where  0 ≤ a ≤ ndim - 1  and  ndim = 2 s
+```
+
+The components of the resulting system of equations are defined by:
+(the prime indicates time-derivative; no summation over repeated indices):
+
+```text
+Uₘ' = 1 - 4.4 Uₘ + Uₘ² Vₘ + Σ Aₘₖ Uₖ
+                           k
+Vₘ' =     3.4 Uₘ - Uₘ² Vₘ + Σ Aₘₖ Uₖ
+                           k
+
+where Aₘₖ are the elements of the discrete Laplacian matrix
+```
+
+The components to build the Jacobian matrix are:
+(no summation over repeated indices):
+
+```text
+∂Uₘ'
+———— = -4.4 δₘₙ + 2 Uₘ δₘₙ Vₘ + Aₘₙ
+∂Uₙ
+
+∂Uₘ'
+———— = Uₘ² δₘₙ
+∂Vₙ
+
+∂Vₘ'
+———— = 3.4 δₘₙ - 2 Uₘ δₘₙ Vₘ
+∂Uₙ
+
+∂Vₘ'
+———— = -Uₘ² δₘₙ + Aₘₙ
+∂Vₙ
+
+where δₘₙ is the Kronecker delta
+```
+
+With `Fₐ := ∂Yₐ/∂t`, the components of the Jacobian matrix can be "assembled" as follows:
+
+```text
+      ⎧  ⎧ ∂Uₐ'/∂Uₑ      if e < s
+      │  ⎨                          if a < s
+∂Fₐ   │  ⎩ ∂Uₐ'/∂Vₑ₋ₛ    if e ≥ s
+——— = ⎨
+∂Yₑ   │  ⎧ ∂Vₐ₋ₛ'/∂Uₑ    if e < s
+      │  ⎨                          if a ≥ s
+      ⎩  ⎩ ∂Vₐ₋ₛ'/∂Vₑ₋ₛ  if e ≥ s
+
+where  0 ≤ a ≤ ndim - 1  and  0 ≤ e ≤ ndim - 1
+```
+
+We solve this problem with Radau5. The approximated solution is generated with `npoint = 21` and is implemented in [brusselator_pde_radau5.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_radau5.rs). This code will generate a series of files, one for each (dense) output time with `h_out = 0.5`.
+
+The results can then be plotted with [brusselator_pde_radau5_plot.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_radau5_plot.rs)
+
+The results are shown below for the `U` field:
+
+![brusselator_pde_radau5_u.svg](data/figures/brusselator_pde_radau5_u.svg)
+
+And below for the `V` field:
+
+![brusselator_pde_radau5_v.svg](data/figures/brusselator_pde_radau5_v.svg)
+
+These figures compare well with the corresponding ones on pages 250 and 251 of Reference #1.
+
+The computations with `russell` are also compared with values obtained with Mathematica. The verification is implemented in [test_radau5_brusselator_pde](https://github.com/cpmech/russell/tree/main/russell_ode/tests/test_radau5_brusselator_pde.rs).
+
+The figure below shows the `russel` (black dashed lines) and Mathematica (red solid lines) results for the `U` field:
+
+![test_radau5_brusselator_pde_u.svg](data/figures/test_radau5_brusselator_pde_u.svg)
+
+The figure below shows the `russel` (black dashed lines) and Mathematica (red solid lines) results for the `V` field:
+
+![test_radau5_brusselator_pde_v.svg](data/figures/test_radau5_brusselator_pde_v.svg)
 
 ### <a name="arenstorf"></a> Arenstorf orbits
 

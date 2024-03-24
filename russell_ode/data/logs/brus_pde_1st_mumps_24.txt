@@ -1,0 +1,25 @@
+cargo run --release --features intel_mkl --bin brusselator_pde -- --npoint=513 --blas-nt=24 --first-book --mumps
+Second-book problem              = false
+Number of points along x and y   = 513
+Tolerance (abs_tol = rel_tol)    = 1.00E-04
+Concurrent real and complex sys  = true
+Problem dimension (ndim)         = 526338
+Number of non-zeros (jac_nnz)    = 3684366
+Number of BLAS threads           = 24
+Linear solver                    = Mumps
+Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)
+Number of function evaluations   = 281
+Number of Jacobian evaluations   = 26
+Number of factorizations         = 31
+Number of lin sys solutions      = 83
+Number of performed steps        = 32
+Number of accepted steps         = 31
+Number of rejected steps         = 0
+Number of iterations (maximum)   = 4
+Number of iterations (last step) = 2
+Last accepted/suggested stepsize = 0.1283753704408646
+Max time spent on a step         = 2.862424485s
+Max time spent on the Jacobian   = 28.386134ms
+Max time spent on factorization  = 21.912643278s
+Max time spent on lin solution   = 214.512116ms
+Total time                       = 2m2.176765611s

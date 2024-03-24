@@ -69,14 +69,15 @@ fn main() -> Result<(), StrError> {
         Params::new(Method::Radau5)
     };
     let tol = f64::powi(10.0, -opt.neg_exp_tol);
-    params.step.h_ini = 1e-6;
+    params.step.h_ini = 1e-4;
     params.radau5.concurrent = !opt.serial;
     params.set_tolerances(tol, tol, None)?;
     params.newton.genie = if opt.mumps { Genie::Mumps } else { Genie::Umfpack };
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system)?;
-    solver.solve(&mut data.y0, data.x0, 0.05, None, None, &mut args)?;
+    let t1 = 1.5;
+    solver.solve(&mut data.y0, data.x0, t1, None, None, &mut args)?;
 
     // print stat
     let stat = solver.stats();

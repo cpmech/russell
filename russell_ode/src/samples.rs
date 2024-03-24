@@ -499,16 +499,17 @@ impl Samples {
     /// u(t=0,x,y) = 0.5 + y    v(t=0,x,y) = 1 + 5 x
     /// ```
     ///
-    /// The second book considers periodic boundary conditions:
+    /// The second book considers periodic boundary conditions on `u`.
+    /// However, here we assume periodic on `u` and `v`:
     ///
     /// ```text
     /// u(t, 0, y) = u(t, 1, y)
     /// u(t, x, 0) = u(t, x, 1)
-    /// v(t, 0, y) = v(t, 1, y)
-    /// v(t, x, 0) = v(t, x, 1)
+    /// v(t, 0, y) = v(t, 1, y)   ← Not in the book
+    /// v(t, x, 0) = v(t, x, 1)   ← Not in the book
     /// ```
     ///
-    /// and the following initial conditions (second book):
+    /// The second book considers the following initial conditions:
     ///
     /// ```text
     /// u(0, x, y) = 22 y pow(1 - y, 1.5)

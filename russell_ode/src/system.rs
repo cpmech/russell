@@ -221,42 +221,6 @@ where
     pub fn get_jac_nnz(&self) -> usize {
         self.jac_nnz
     }
-
-    /// Computes the numerical Jacobian
-    ///
-    /// ```text
-    /// ∂{f}                          Δfᵢ
-    /// ———— = [J](x, {y})      Jᵢⱼ ≈ ———
-    /// ∂{y}                          Δyⱼ
-    /// ```
-    ///
-    /// **Note:** Will call `function` ndim times.
-    pub(crate) fn numerical_jacobian(
-        &self,
-        jj: &mut CooMatrix,
-        x: f64,
-        y: &mut Vector,
-        fxy: &Vector,
-        multiplier: f64,
-        args: &mut A,
-        aux: &mut Vector,
-    ) -> Result<(), StrError> {
-        assert_eq!(aux.dim(), self.ndim);
-        const THRESHOLD: f64 = 1e-5;
-        jj.reset();
-        for j in 0..self.ndim {
-            let yj_original = y[j]; // create copy
-            let delta_yj = f64::sqrt(f64::EPSILON * f64::max(THRESHOLD, f64::abs(y[j])));
-            y[j] += delta_yj; // y[j] := y[j] + Δy
-            (self.function)(aux, x, y, args)?; // work := f(x, y + Δy)
-            for i in 0..self.ndim {
-                let delta_fi = aux[i] - fxy[i]; // compute Δf[..]
-                jj.put(i, j, multiplier * delta_fi / delta_yj).unwrap(); // Δfi/Δfj
-            }
-            y[j] = yj_original; // restore value
-        }
-        Ok(())
-    }
 }
 
 /// Implements a placeholder function for when the analytical Jacobian is unavailable

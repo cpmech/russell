@@ -1,7 +1,7 @@
 use crate::StrError;
 use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::{vec_copy, vec_rms_scaled, vec_update, Vector};
-use russell_sparse::{CooMatrix, LinSolver, SparseMatrix};
+use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, SparseMatrix};
 
 /// Implements the backward Euler (implicit) solver (implicit, order 1, unconditionally stable)
 pub(crate) struct EulerBackward<'a, F, J, A>
@@ -117,9 +117,9 @@ where
                 let kk = self.kk.get_coo_mut().unwrap();
                 if self.params.newton.use_numerical_jacobian || !self.system.jac_available {
                     work.stats.n_function += ndim;
-                    let aux = &mut self.dy; // using dy as a workspace
-                    self.system
-                        .numerical_jacobian(kk, x_new, y_new, &self.k, h, args, aux)?;
+                    let w1 = &mut self.k; // workspace
+                    let w2 = &mut self.dy; // workspace
+                    numerical_jacobian(kk, h, x_new, y_new, w1, w2, args, &self.system.function)?;
                 } else {
                     (self.system.jacobian)(kk, x_new, y_new, h, args)?;
                 }

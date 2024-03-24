@@ -3,6 +3,7 @@ use crate::{OdeSolverTrait, Params, System, Workspace};
 use num_complex::Complex64;
 use russell_lab::math::SQRT_6;
 use russell_lab::{complex_vec_zip, cpx, format_fortran, vec_copy, ComplexVector, Vector};
+use russell_sparse::numerical_jacobian;
 use russell_sparse::{ComplexLinSolver, ComplexSparseMatrix, CooMatrix, Genie, LinSolver, SparseMatrix};
 use std::thread;
 
@@ -200,11 +201,11 @@ where
             work.stats.n_jacobian += 1;
             if self.params.newton.use_numerical_jacobian || !self.system.jac_available {
                 work.stats.n_function += self.system.ndim;
-                let y_mut = &mut self.w0; // using w[0] as a workspace
-                let aux = &mut self.dw0; // using dw0 as a workspace
+                let y_mut = &mut self.w0; // workspace (mutable y)
+                let w1 = &mut self.dw0; // workspace
+                let w2 = &mut self.dw1; // workspace
                 vec_copy(y_mut, y).unwrap();
-                self.system
-                    .numerical_jacobian(jj, x, y_mut, &self.k_accepted, 1.0, args, aux)?;
+                numerical_jacobian(jj, 1.0, x, y_mut, w1, w2, args, &self.system.function)?;
             } else {
                 (self.system.jacobian)(jj, x, y, 1.0, args)?;
             }

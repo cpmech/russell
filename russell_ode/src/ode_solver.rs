@@ -21,15 +21,15 @@ use russell_sparse::CooMatrix;
 /// **Note:** The mass matrix is optional and need not be specified
 /// (unless the DAE under study requires it).
 ///
-/// The Jacobian is defined by:
+/// The (scaled) Jacobian matrix is defined by:
 ///
 /// ```text
-///               ∂{f}
-/// [J](x, {y}) = ————
-///               ∂{y}
+///                 ∂{f}
+/// [J](x, {y}) = α ————
+///                 ∂{y}
 /// ```
 ///
-/// where `[J]` is the Jacobian matrix.
+/// where `[J]` is the scaled Jacobian matrix and `α` is a scaling coefficient.
 ///
 /// **Note:** The Jacobian function is not required for explicit Runge-Kutta methods
 /// (see [crate::Method] and [crate::Information]). Thus, one may simply pass the [crate::no_jacobian]
@@ -61,6 +61,55 @@ use russell_sparse::CooMatrix;
 /// 2. E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
 ///    Stiff and Differential-Algebraic Problems. Second Revised Edition.
 ///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
+///
+/// # Example
+///
+/// ```
+/// use russell_lab::{vec_approx_eq, StrError, Vector};
+/// use russell_ode::prelude::*;
+///
+/// fn main() -> Result<(), StrError> {
+///     // ODE system
+///     let ndim = 1;
+///     let jac_nnz = 1;
+///     let system = System::new(
+///         ndim,
+///         |f, x, y, _args: &mut NoArgs| {
+///             f[0] = x + y[0];
+///             Ok(())
+///         },
+///         |jj, alpha, _x, _y, _args: &mut NoArgs| {
+///             jj.reset();
+///             jj.put(0, 0, alpha * (1.0))?;
+///             Ok(())
+///         },
+///         HasJacobian::Yes,
+///         Some(jac_nnz),
+///         None,
+///     );
+///
+///     // solver
+///     let params = Params::new(Method::Radau5);
+///     let mut solver = OdeSolver::new(params, &system)?;
+///
+///     // initial values
+///     let x = 0.0;
+///     let mut y = Vector::from(&[0.0]);
+///
+///     // solve from x = 0 to x = 1
+///     let x1 = 1.0;
+///     let mut args = 0;
+///     solver.solve(&mut y, x, x1, None, None, &mut args)?;
+///
+///     // check the results
+///     let y_ana = Vector::from(&[f64::exp(x1) - x1 - 1.0]);
+///     vec_approx_eq(y.as_data(), y_ana.as_data(), 1e-5);
+///
+///     // print stats
+///     println!("{}", solver.stats());
+///     Ok(())
+/// }
+/// ```
 pub struct OdeSolver<'a, A> {
     /// Holds the parameters
     params: Params,

@@ -20,6 +20,7 @@ pub type NoArgs = u8;
 /// `{f}` is the right-hand side vector, and `[M]` is the so-called "mass matrix".
 ///
 /// **Note:** The mass matrix is optional and need not be specified.
+/// (unless the DAE under study requires it).
 ///
 /// The (scaled) Jacobian matrix is defined by:
 ///
@@ -140,8 +141,10 @@ where
     ///
     /// ```rust
     /// # use russell_ode::prelude::*;
+    /// let ndim = 2;
+    /// let jac_nnz = 4;
     /// let system = System::new(
-    ///     2,
+    ///     ndim,
     ///     |f, x, y, _args: &mut NoArgs| {
     ///         f[0] = x + 2.0 * y[0] + 3.0 * y[1];
     ///         f[1] = x - 4.0 * y[0] - 5.0 * y[1];
@@ -156,7 +159,7 @@ where
     ///         Ok(())
     ///     },
     ///     HasJacobian::Yes,
-    ///     None,
+    ///     Some(jac_nnz),
     ///     None,
     /// );
     /// ```

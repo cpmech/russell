@@ -1,11 +1,18 @@
-use crate::StrError;
+use crate::{Benchmark, StrError};
 use crate::{OdeSolverTrait, Workspace};
 use russell_lab::{vec_max_abs_diff, Vector};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::BufReader;
+use std::marker::PhantomData;
 use std::path::Path;
+
+/// Defines the callback function for accepted steps
+///
+/// The callback function is `(stats: &Stats, h: f64, x: f64, y: &Vector, args: &mut A)`
+/// and may return `true` to stop the simulation
+type OutputCallback<A> = fn(&Benchmark, f64, f64, &Vector, &mut A) -> Result<bool, StrError>;
 
 /// Holds the data generated at an accepted step or during the dense output
 #[derive(Clone, Debug, Deserialize)]
@@ -32,7 +39,16 @@ pub struct OutSummary {
 }
 
 /// Holds the (x,y) results at accepted steps or interpolated within a "dense" sequence
-pub struct Output {
+///
+/// # Generics
+///
+/// The generic arguments are:
+///
+/// * `A` -- generic argument to assist in the `F` and `J` functions. It may be simply [crate::NoArgs] indicating that no arguments are needed.
+pub struct Output<A> {
+    /// Holds the callback function for every accepted step
+    step_callback: OutputCallback<A>,
+
     /// Indicates whether the accepted step output is to be performed or not
     save_step: bool,
 
@@ -100,6 +116,9 @@ pub struct Output {
 
     /// Holds the current x at the dense output
     file_dense_x: f64,
+
+    /// Handle generic argument
+    phantom: PhantomData<fn() -> A>,
 }
 
 impl OutData {
@@ -148,11 +167,12 @@ impl OutSummary {
     }
 }
 
-impl Output {
+impl<A> Output<A> {
     /// Allocates a new instance
     pub fn new() -> Self {
         const EMPTY: usize = 0;
         Output {
+            step_callback: no_callback,
             save_step: false,
             step_h: Vec::new(),
             step_x: Vec::new(),
@@ -174,7 +194,17 @@ impl Output {
             file_dense_count: 0,
             file_dense_h_out: 0.0,
             file_dense_x: 0.0,
+            phantom: PhantomData,
         }
+    }
+
+    /// Sets the callback function for accepted steps
+    ///
+    /// The callback function is `(stats: &Stats, h: f64, x: f64, y: &Vector, args: &mut A)`
+    /// and may return `true` to stop the simulation
+    pub fn set_step_callback(&mut self, callback: OutputCallback<A>) -> &mut Self {
+        self.step_callback = callback;
+        self
     }
 
     /// Enables recording the results at accepted steps
@@ -283,15 +313,22 @@ impl Output {
         self.stiff_h_times_rho.clear();
     }
 
-    /// Appends the results after an accepted step is computed
-    pub(crate) fn push<'a, A>(
+    /// Executes the output for an accepted step
+    pub(crate) fn accept<'a>(
         &mut self,
         work: &Workspace,
+        h: f64,
         x: f64,
         y: &Vector,
-        h: f64,
         solver: &Box<dyn OdeSolverTrait<A> + 'a>,
-    ) -> Result<(), StrError> {
+        args: &mut A,
+    ) -> Result<bool, StrError> {
+        // callback
+        let stop = (self.step_callback)(&work.bench, h, x, y, args)?;
+        if stop {
+            return Ok(stop);
+        }
+
         // step output
         if self.save_step {
             self.step_h.push(h);
@@ -379,11 +416,14 @@ impl Output {
                 self.stiff_x.push(work.stiff_x_first_detect);
             }
         }
-        Ok(())
+        Ok(false) // do not stop
     }
 
     /// Saves the results at the end of the simulation (and generate summary files)
-    pub(crate) fn last(&mut self, work: &Workspace, x: f64, y: &Vector) -> Result<(), StrError> {
+    pub(crate) fn last(&mut self, work: &Workspace, h: f64, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError> {
+        // callback
+        (self.step_callback)(&work.bench, h, x, y, args)?;
+
         // file: step output
         if let Some(fp) = &self.file_step_key {
             let full_path = format!("{}_summary.json", fp).to_string();
@@ -420,4 +460,9 @@ impl Output {
         }
         Ok(())
     }
+}
+
+/// Placeholder function for no 'callbacks' during step output
+pub fn no_callback<A>(_b: &Benchmark, _h: f64, _x: f64, _y: &Vector, _args: &mut A) -> Result<bool, StrError> {
+    Ok(false) // do not stop
 }

@@ -89,7 +89,7 @@ impl<'a, A> OdeSolver<'a, A> {
     ///
     /// * `F` -- function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     /// * `J` -- function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    /// * `A` -- generic argument to assist in the `F` and `J` functions. It may be simply the [crate::NoArgs] type indicating that no arguments are needed.
+    /// * `A` -- generic argument to assist in the `F` and `J` functions. It may be simply [crate::NoArgs] indicating that no arguments are needed.
     pub fn new<F, J>(params: Params, system: &'a System<F, J, A>) -> Result<Self, StrError>
     where
         F: 'a + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
@@ -141,7 +141,7 @@ impl<'a, A> OdeSolver<'a, A> {
         x0: f64,
         x1: f64,
         h_equal: Option<f64>,
-        mut output: Option<&mut Output>,
+        mut output: Option<&mut Output<A>>,
         args: &mut A,
     ) -> Result<(), StrError> {
         // check data
@@ -190,7 +190,10 @@ impl<'a, A> OdeSolver<'a, A> {
                 self.actual.enable_dense_output()?;
             }
             out.save_stiff = self.params.stiffness.save_results;
-            out.push(&self.work, x, y, h, &self.actual)?;
+            let stop = out.accept(&self.work, h, x, y, &self.actual, args)?;
+            if stop {
+                return Ok(());
+            }
         }
 
         // equal-stepping loop
@@ -212,12 +215,15 @@ impl<'a, A> OdeSolver<'a, A> {
 
                 // output
                 if let Some(out) = output.as_mut() {
-                    out.push(&self.work, x, y, h, &self.actual)?;
+                    let stop = out.accept(&self.work, h, x, y, &self.actual, args)?;
+                    if stop {
+                        return Ok(());
+                    }
                 }
                 self.work.bench.stop_sw_step();
             }
             if let Some(out) = output.as_mut() {
-                out.last(&self.work, x, y)?;
+                out.last(&self.work, h, x, y, args)?;
             }
             self.work.bench.stop_sw_total();
             return Ok(());
@@ -280,7 +286,10 @@ impl<'a, A> OdeSolver<'a, A> {
 
                 // output
                 if let Some(out) = output.as_mut() {
-                    out.push(&self.work, x, y, h, &self.actual)?;
+                    let stop = out.accept(&self.work, h, x, y, &self.actual, args)?;
+                    if stop {
+                        return Ok(());
+                    }
                 }
 
                 // converged?
@@ -315,7 +324,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
         // last output
         if let Some(out) = output.as_mut() {
-            out.last(&self.work, x, y)?;
+            out.last(&self.work, h, x, y, args)?;
         }
 
         // done

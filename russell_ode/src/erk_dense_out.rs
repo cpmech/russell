@@ -70,7 +70,7 @@ impl ErkDenseOut {
     ) -> Result<usize, StrError>
     where
         F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-        J: Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+        J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
     {
         let mut n_function_eval = 0;
 

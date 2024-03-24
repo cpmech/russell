@@ -28,7 +28,7 @@ use std::thread;
 pub(crate) struct Radau5<'a, F, J, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Holds the parameters
     params: Params,
@@ -123,7 +123,7 @@ where
 impl<'a, F, J, A> Radau5<'a, F, J, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
     pub fn new(params: Params, system: &'a System<F, J, A>) -> Self {
@@ -207,7 +207,7 @@ where
                 vec_copy(y_mut, y).unwrap();
                 numerical_jacobian(jj, 1.0, x, y_mut, w1, w2, args, &self.system.function)?;
             } else {
-                (self.system.jacobian)(jj, x, y, 1.0, args)?;
+                (self.system.jacobian)(jj, 1.0, x, y, args)?;
             }
             self.jacobian_computed = true;
             work.stats.stop_sw_jacobian();
@@ -317,7 +317,7 @@ where
 impl<'a, F, J, A> OdeSolverTrait<A> for Radau5<'a, F, J, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
@@ -946,9 +946,9 @@ mod tests {
                     Ok(())
                 }
             },
-            |jj, _x, _y, m, _args: &mut Args| {
+            |jj, alpha, _x, _y, _args: &mut Args| {
                 jj.reset();
-                jj.put(0, 0, m * (0.0)).unwrap();
+                jj.put(0, 0, alpha * (0.0)).unwrap();
                 Err("jj: stop")
             },
             HasJacobian::Yes,

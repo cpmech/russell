@@ -24,7 +24,7 @@ use russell_sparse::CooMatrix;
 pub(crate) struct ExplicitRungeKutta<'a, F, J, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Holds the parameters
     params: Params,
@@ -83,7 +83,7 @@ where
 impl<'a, F, J, A> ExplicitRungeKutta<'a, F, J, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
     pub fn new(params: Params, system: &'a System<F, J, A>) -> Result<Self, StrError> {
@@ -159,7 +159,7 @@ where
 impl<'a, F, J, A> OdeSolverTrait<A> for ExplicitRungeKutta<'a, F, J, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {

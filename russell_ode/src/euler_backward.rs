@@ -7,7 +7,7 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, SparseMatrix};
 pub(crate) struct EulerBackward<'a, F, J, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Holds the parameters
     params: Params,
@@ -39,7 +39,7 @@ where
 impl<'a, F, J, A> EulerBackward<'a, F, J, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
     pub fn new(params: Params, system: &'a System<F, J, A>) -> Self {
@@ -66,7 +66,7 @@ where
 impl<'a, F, J, A> OdeSolverTrait<A> for EulerBackward<'a, F, J, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
@@ -121,7 +121,7 @@ where
                     let w2 = &mut self.dy; // workspace
                     numerical_jacobian(kk, h, x_new, y_new, w1, w2, args, &self.system.function)?;
                 } else {
-                    (self.system.jacobian)(kk, x_new, y_new, h, args)?;
+                    (self.system.jacobian)(kk, h, x_new, y_new, args)?;
                 }
 
                 // add diagonal entries => calculate K = h J_new - I
@@ -398,9 +398,9 @@ mod tests {
                     Ok(())
                 }
             },
-            |jj, _x, _y, m, _args: &mut Args| {
+            |jj, alpha, _x, _y, _args: &mut Args| {
                 jj.reset();
-                jj.put(0, 0, m * (0.0)).unwrap();
+                jj.put(0, 0, alpha * (0.0)).unwrap();
                 Err("jj: stop")
             },
             HasJacobian::Yes,

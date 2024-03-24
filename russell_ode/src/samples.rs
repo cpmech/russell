@@ -59,14 +59,14 @@ impl Samples {
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values and the analytical solution
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
     pub fn simple_equation_constant() -> (
         System<
             impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
         SampleData,
@@ -80,9 +80,9 @@ impl Samples {
                 f[0] = 1.0;
                 Ok(())
             },
-            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut NoArgs| {
+            |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
                 jj.reset();
-                jj.put(0, 0, 0.0 * multiplier).unwrap();
+                jj.put(0, 0, 0.0 * alpha).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,
@@ -159,7 +159,7 @@ impl Samples {
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
@@ -174,7 +174,7 @@ impl Samples {
     ) -> (
         System<
             impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
         SampleData,
@@ -200,14 +200,14 @@ impl Samples {
                 f[2] = 1.0 / (1.0 + x);
                 Ok(())
             },
-            move |jj: &mut CooMatrix, _x: f64, _y: &Vector, m: f64, _args: &mut NoArgs| {
+            move |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
                 jj.reset();
-                jj.put(0, 0, m * (-1.0)).unwrap();
+                jj.put(0, 0, alpha * (-1.0)).unwrap();
                 if !triangular {
-                    jj.put(0, 1, m * (1.0)).unwrap();
+                    jj.put(0, 1, alpha * (1.0)).unwrap();
                 }
-                jj.put(1, 0, m * (1.0)).unwrap();
-                jj.put(1, 1, m * (1.0)).unwrap();
+                jj.put(1, 0, alpha * (1.0)).unwrap();
+                jj.put(1, 1, alpha * (1.0)).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,
@@ -281,7 +281,7 @@ impl Samples {
     ) -> (
         System<
             impl Fn(&mut Vector, f64, &Vector, &mut SampleFdm2dArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut SampleFdm2dArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut SampleFdm2dArgs) -> Result<(), StrError>,
             SampleFdm2dArgs,
         >,
         SampleData,
@@ -320,12 +320,12 @@ impl Samples {
                 });
                 Ok(())
             },
-            move |jj, _t, _, cf, args: &mut SampleFdm2dArgs| {
+            move |jj, alpha, _t, _, args: &mut SampleFdm2dArgs| {
                 jj.reset();
                 let mut nnz_count = 0;
                 for m in 0..ndim {
                     args.fdm.loop_over_coef_mat_row(m, |n, amn| {
-                        jj.put(m, n, cf * (amn)).unwrap();
+                        jj.put(m, n, alpha * (amn)).unwrap();
                         nnz_count += 1;
                     });
                 }
@@ -380,7 +380,7 @@ impl Samples {
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
@@ -394,7 +394,7 @@ impl Samples {
     pub fn brusselator_ode() -> (
         System<
             impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
         SampleData,
@@ -416,12 +416,12 @@ impl Samples {
                 f[1] = 3.0 * y[0] - y[0] * y[0] * y[1];
                 Ok(())
             },
-            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
+            |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
                 jj.reset();
-                jj.put(0, 0, m * (-4.0 + 2.0 * y[0] * y[1])).unwrap();
-                jj.put(0, 1, m * (y[0] * y[0])).unwrap();
-                jj.put(1, 0, m * (3.0 - 2.0 * y[0] * y[1])).unwrap();
-                jj.put(1, 1, m * (-y[0] * y[0])).unwrap();
+                jj.put(0, 0, alpha * (-4.0 + 2.0 * y[0] * y[1])).unwrap();
+                jj.put(0, 1, alpha * (y[0] * y[0])).unwrap();
+                jj.put(1, 0, alpha * (3.0 - 2.0 * y[0] * y[1])).unwrap();
+                jj.put(1, 1, alpha * (-y[0] * y[0])).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,
@@ -627,7 +627,7 @@ impl Samples {
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
@@ -649,7 +649,7 @@ impl Samples {
     ) -> (
         System<
             impl Fn(&mut Vector, f64, &Vector, &mut SampleFdm2dArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut SampleFdm2dArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut SampleFdm2dArgs) -> Result<(), StrError>,
             SampleFdm2dArgs,
         >,
         SampleData,
@@ -720,22 +720,22 @@ impl Samples {
                 });
                 Ok(())
             },
-            move |jj, _x, yy, cf, args: &mut SampleFdm2dArgs| {
+            move |jj, aa, _x, yy, args: &mut SampleFdm2dArgs| {
                 jj.reset();
                 let mut nnz_count = 0;
                 for m in 0..s {
                     let um = yy[m];
                     let vm = yy[s + m];
                     let um2 = um * um;
-                    jj.put(m, m, cf * (-4.4 + 2.0 * um * vm)).unwrap();
-                    jj.put(m, s + m, cf * (um2)).unwrap();
-                    jj.put(s + m, m, cf * (3.4 - 2.0 * um * vm)).unwrap();
-                    jj.put(s + m, s + m, cf * (-um2)).unwrap();
+                    jj.put(m, m, aa * (-4.4 + 2.0 * um * vm)).unwrap();
+                    jj.put(m, s + m, aa * (um2)).unwrap();
+                    jj.put(s + m, m, aa * (3.4 - 2.0 * um * vm)).unwrap();
+                    jj.put(s + m, s + m, aa * (-um2)).unwrap();
                     nnz_count += 4;
                     if !ignore_diffusion {
                         args.fdm.loop_over_coef_mat_row(m, |n, amn| {
-                            jj.put(m, n, cf * (amn)).unwrap();
-                            jj.put(s + m, s + n, cf * (amn)).unwrap();
+                            jj.put(m, n, aa * (amn)).unwrap();
+                            jj.put(s + m, s + n, aa * (amn)).unwrap();
                             nnz_count += 2;
                         });
                     }
@@ -801,7 +801,7 @@ impl Samples {
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
@@ -815,7 +815,7 @@ impl Samples {
     pub fn arenstorf() -> (
         System<
             impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
         SampleData,
@@ -842,7 +842,7 @@ impl Samples {
                 f[3] = y[1] - 2.0 * y[2] - MD * y[1] / d0 - MU * y[1] / d1;
                 Ok(())
             },
-            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
+            |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
                 let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
                 let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
                 let s0 = f64::sqrt(t0);
@@ -859,17 +859,22 @@ impl Samples {
                 let dj10 = 3.0 * b * s1;
                 let dj11 = 3.0 * y[1] * s1;
                 jj.reset();
-                jj.put(0, 2, 1.0 * m).unwrap();
-                jj.put(1, 3, 1.0 * m).unwrap();
-                jj.put(2, 0, (1.0 + a * dj00 * MD / dd0 + b * dj10 * MU / dd1 + c) * m)
+                jj.put(0, 2, 1.0 * alpha).unwrap();
+                jj.put(1, 3, 1.0 * alpha).unwrap();
+                jj.put(2, 0, (1.0 + a * dj00 * MD / dd0 + b * dj10 * MU / dd1 + c) * alpha)
                     .unwrap();
-                jj.put(2, 1, (a * dj01 * MD / dd0 + b * dj11 * MU / dd1) * m).unwrap();
-                jj.put(2, 3, 2.0 * m).unwrap();
-                jj.put(3, 0, (dj00 * y[1] * MD / dd0 + dj10 * y[1] * MU / dd1) * m)
+                jj.put(2, 1, (a * dj01 * MD / dd0 + b * dj11 * MU / dd1) * alpha)
                     .unwrap();
-                jj.put(3, 1, (1.0 + dj01 * y[1] * MD / dd0 + dj11 * y[1] * MU / dd1 + c) * m)
+                jj.put(2, 3, 2.0 * alpha).unwrap();
+                jj.put(3, 0, (dj00 * y[1] * MD / dd0 + dj10 * y[1] * MU / dd1) * alpha)
                     .unwrap();
-                jj.put(3, 2, -2.0 * m).unwrap();
+                jj.put(
+                    3,
+                    1,
+                    (1.0 + dj01 * y[1] * MD / dd0 + dj11 * y[1] * MU / dd1 + c) * alpha,
+                )
+                .unwrap();
+                jj.put(3, 2, -2.0 * alpha).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,
@@ -920,7 +925,7 @@ impl Samples {
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values and the analytical solution
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
@@ -933,7 +938,7 @@ impl Samples {
     pub fn hairer_wanner_eq1() -> (
         System<
             impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
         SampleData,
@@ -948,9 +953,9 @@ impl Samples {
                 f[0] = L * (y[0] - f64::cos(x));
                 Ok(())
             },
-            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut NoArgs| {
+            |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
                 jj.reset();
-                jj.put(0, 0, multiplier * L).unwrap();
+                jj.put(0, 0, alpha * L).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,
@@ -990,7 +995,7 @@ impl Samples {
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
@@ -1003,7 +1008,7 @@ impl Samples {
     pub fn robertson() -> (
         System<
             impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
         SampleData,
@@ -1019,15 +1024,15 @@ impl Samples {
                 f[2] = 3.0e7 * y[1] * y[1];
                 Ok(())
             },
-            |jj: &mut CooMatrix, _x: f64, y: &Vector, multiplier: f64, _args: &mut NoArgs| {
+            |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
                 jj.reset();
-                jj.put(0, 0, -0.04 * multiplier).unwrap();
-                jj.put(0, 1, 1.0e4 * y[2] * multiplier).unwrap();
-                jj.put(0, 2, 1.0e4 * y[1] * multiplier).unwrap();
-                jj.put(1, 0, 0.04 * multiplier).unwrap();
-                jj.put(1, 1, (-1.0e4 * y[2] - 6.0e7 * y[1]) * multiplier).unwrap();
-                jj.put(1, 2, (-1.0e4 * y[1]) * multiplier).unwrap();
-                jj.put(2, 1, 6.0e7 * y[1] * multiplier).unwrap();
+                jj.put(0, 0, -0.04 * alpha).unwrap();
+                jj.put(0, 1, 1.0e4 * y[2] * alpha).unwrap();
+                jj.put(0, 2, 1.0e4 * y[1] * alpha).unwrap();
+                jj.put(1, 0, 0.04 * alpha).unwrap();
+                jj.put(1, 1, (-1.0e4 * y[2] - 6.0e7 * y[1]) * alpha).unwrap();
+                jj.put(1, 2, (-1.0e4 * y[1]) * alpha).unwrap();
+                jj.put(2, 1, 6.0e7 * y[1] * alpha).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,
@@ -1066,7 +1071,7 @@ impl Samples {
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
@@ -1088,7 +1093,7 @@ impl Samples {
     ) -> (
         System<
             impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
         SampleData,
@@ -1116,11 +1121,11 @@ impl Samples {
                 f[1] = ((1.0 - y[0] * y[0]) * y[1] - y[0]) / eps;
                 Ok(())
             },
-            move |jj: &mut CooMatrix, _x: f64, y: &Vector, multiplier: f64, _args: &mut NoArgs| {
+            move |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
                 jj.reset();
-                jj.put(0, 1, 1.0 * multiplier).unwrap();
-                jj.put(1, 0, multiplier * (-2.0 * y[0] * y[1] - 1.0) / eps).unwrap();
-                jj.put(1, 1, multiplier * (1.0 - y[0] * y[0]) / eps).unwrap();
+                jj.put(0, 1, 1.0 * alpha).unwrap();
+                jj.put(1, 0, alpha * (-2.0 * y[0] * y[1] - 1.0) / eps).unwrap();
+                jj.put(1, 1, alpha * (1.0 - y[0] * y[0]) / eps).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,
@@ -1204,7 +1209,7 @@ impl Samples {
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
@@ -1217,7 +1222,7 @@ impl Samples {
     pub fn amplifier1t() -> (
         System<
             impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
         SampleData,
@@ -1254,18 +1259,18 @@ impl Samples {
                 f[4] = y[4] / S;
                 Ok(())
             },
-            |jj: &mut CooMatrix, _x: f64, y: &Vector, m: f64, _args: &mut NoArgs| {
+            |jj: &mut CooMatrix, aa: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
                 let h12 = BETA * f64::exp((y[1] - y[2]) / UF) / UF;
                 jj.reset();
-                jj.put(0, 0, m * (1.0 / R)).unwrap();
-                jj.put(1, 1, m * (2.0 / S + GAMMA * h12)).unwrap();
-                jj.put(1, 2, m * (-GAMMA * h12)).unwrap();
-                jj.put(2, 1, m * (-h12)).unwrap();
-                jj.put(2, 2, m * (1.0 / S + h12)).unwrap();
-                jj.put(3, 1, m * (ALPHA * h12)).unwrap();
-                jj.put(3, 2, m * (-ALPHA * h12)).unwrap();
-                jj.put(3, 3, m * (1.0 / S)).unwrap();
-                jj.put(4, 4, m * (1.0 / S)).unwrap();
+                jj.put(0, 0, aa * (1.0 / R)).unwrap();
+                jj.put(1, 1, aa * (2.0 / S + GAMMA * h12)).unwrap();
+                jj.put(1, 2, aa * (-GAMMA * h12)).unwrap();
+                jj.put(2, 1, aa * (-h12)).unwrap();
+                jj.put(2, 2, aa * (1.0 / S + h12)).unwrap();
+                jj.put(3, 1, aa * (ALPHA * h12)).unwrap();
+                jj.put(3, 2, aa * (-ALPHA * h12)).unwrap();
+                jj.put(3, 3, aa * (1.0 / S)).unwrap();
+                jj.put(4, 4, aa * (1.0 / S)).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,
@@ -1313,7 +1318,7 @@ impl Samples {
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values and the analytical solution
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
@@ -1325,7 +1330,7 @@ impl Samples {
     pub fn kreyszig_eq6_page902() -> (
         System<
             impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
         SampleData,
@@ -1339,9 +1344,9 @@ impl Samples {
                 f[0] = x + y[0];
                 Ok(())
             },
-            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut NoArgs| {
+            |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
                 jj.reset();
-                jj.put(0, 0, 1.0 * multiplier).unwrap();
+                jj.put(0, 0, 1.0 * alpha).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,
@@ -1384,7 +1389,7 @@ impl Samples {
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values and the analytical solution
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
@@ -1396,7 +1401,7 @@ impl Samples {
     pub fn kreyszig_ex4_page920() -> (
         System<
             impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, &Vector, f64, &mut NoArgs) -> Result<(), StrError>,
+            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
         SampleData,
@@ -1411,11 +1416,11 @@ impl Samples {
                 f[1] = -10.0 * y[0] - 11.0 * y[1] + 10.0 * x + 11.0;
                 Ok(())
             },
-            |jj: &mut CooMatrix, _x: f64, _y: &Vector, multiplier: f64, _args: &mut NoArgs| {
+            |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
                 jj.reset();
-                jj.put(0, 1, 1.0 * multiplier).unwrap();
-                jj.put(1, 0, -10.0 * multiplier).unwrap();
-                jj.put(1, 1, -11.0 * multiplier).unwrap();
+                jj.put(0, 1, 1.0 * alpha).unwrap();
+                jj.put(1, 0, -10.0 * alpha).unwrap();
+                jj.put(1, 1, -11.0 * alpha).unwrap();
                 Ok(())
             },
             HasJacobian::Yes,
@@ -1445,7 +1450,7 @@ mod tests {
     use russell_lab::{deriv_central5, mat_approx_eq, vec_approx_eq, Matrix, Vector};
     use russell_sparse::{CooMatrix, Genie, Sym};
 
-    fn numerical_jacobian<F, A>(ndim: usize, x0: f64, y0: Vector, function: F, multiplier: f64, args: &mut A) -> Matrix
+    fn fdm5_jacobian<F, A>(ndim: usize, x0: f64, y0: Vector, function: F, alpha: f64, args: &mut A) -> Matrix
     where
         F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     {
@@ -1476,7 +1481,7 @@ mod tests {
                     extra.y[extra.j] = original;
                     extra.f[extra.i]
                 });
-                jac.set(i, j, res * multiplier);
+                jac.set(i, j, res * alpha);
             }
         }
         jac
@@ -1484,7 +1489,7 @@ mod tests {
 
     #[test]
     fn simple_equation_constant_works() {
-        let multiplier = 2.0;
+        let alpha = 2.0;
         let (system, mut data, mut args) = Samples::simple_equation_constant();
 
         // check initial values
@@ -1497,10 +1502,10 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1511,7 +1516,7 @@ mod tests {
 
     #[test]
     fn simple_system_with_mass_matrix_works() {
-        let multiplier = 2.0;
+        let alpha = 2.0;
         let (system, mut data, mut args) = Samples::simple_system_with_mass_matrix(true, Genie::Umfpack);
 
         // check initial values
@@ -1524,10 +1529,10 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1538,7 +1543,7 @@ mod tests {
 
     #[test]
     fn heat_1d_periodic_works() {
-        let multiplier = 2.0;
+        let alpha = 2.0;
         let (system, mut data, mut args) = Samples::heat_1d_periodic(3);
 
         // check initial values
@@ -1551,10 +1556,10 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1565,7 +1570,7 @@ mod tests {
 
     #[test]
     fn kreyszig_eq6_page902_works() {
-        let multiplier = 2.0;
+        let alpha = 2.0;
         let (system, mut data, mut args) = Samples::kreyszig_eq6_page902();
 
         // check initial values
@@ -1578,10 +1583,10 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1592,7 +1597,7 @@ mod tests {
 
     #[test]
     fn kreyszig_ex4_page920() {
-        let multiplier = 2.0;
+        let alpha = 2.0;
         let (system, mut data, mut args) = Samples::kreyszig_ex4_page920();
 
         // check initial values
@@ -1605,10 +1610,10 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1619,7 +1624,7 @@ mod tests {
 
     #[test]
     fn hairer_wanner_eq1_works() {
-        let multiplier = 2.0;
+        let alpha = 2.0;
         let (system, mut data, mut args) = Samples::hairer_wanner_eq1();
 
         // check initial values
@@ -1632,10 +1637,10 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1646,15 +1651,15 @@ mod tests {
 
     #[test]
     fn robertson_works() {
-        let multiplier = 2.0;
+        let alpha = 2.0;
         let (system, data, mut args) = Samples::robertson();
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1665,15 +1670,15 @@ mod tests {
 
     #[test]
     fn van_der_pol_works() {
-        let multiplier = 2.0;
+        let alpha = 2.0;
         let (system, data, mut args) = Samples::van_der_pol(0.03, false);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1684,15 +1689,15 @@ mod tests {
 
     #[test]
     fn van_der_pol_works_stationary() {
-        let multiplier = 3.0;
+        let alpha = 3.0;
         let (system, data, mut args) = Samples::van_der_pol(1.0, true);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1703,15 +1708,15 @@ mod tests {
 
     #[test]
     fn arenstorf_works() {
-        let multiplier = 1.5;
+        let alpha = 1.5;
         let (system, data, mut args, _) = Samples::arenstorf();
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1722,15 +1727,15 @@ mod tests {
 
     #[test]
     fn amplifier1t_works() {
-        let multiplier = 2.0;
+        let alpha = 2.0;
         let (system, data, mut args) = Samples::amplifier1t();
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1748,15 +1753,15 @@ mod tests {
 
     #[test]
     fn brusselator_ode_works() {
-        let multiplier = 2.0;
+        let alpha = 2.0;
         let (system, data, mut args, _) = Samples::brusselator_ode();
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1767,17 +1772,17 @@ mod tests {
 
     #[test]
     fn brusselator_pde_no_diffusion_works() {
-        let multiplier = 2.0;
+        let jac_alpha = 2.0;
         let second_book = false;
         let ignore_diffusion = true;
         let (system, data, mut args) = Samples::brusselator_pde(2e-3, 3, second_book, ignore_diffusion);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        (system.jacobian)(&mut jj, jac_alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, jac_alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1788,17 +1793,17 @@ mod tests {
 
     #[test]
     fn brusselator_pde_works() {
-        let multiplier = 2.0;
+        let jac_alpha = 2.0;
         let second_book = false;
         let ignore_diffusion = false;
         let (system, data, mut args) = Samples::brusselator_pde(2e-3, 3, second_book, ignore_diffusion);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        (system.jacobian)(&mut jj, jac_alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, jac_alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1809,17 +1814,17 @@ mod tests {
 
     #[test]
     fn brusselator_pde_2nd_works() {
-        let multiplier = 2.0;
+        let jac_alpha = 2.0;
         let second_book = true;
         let ignore_diffusion = false;
         let (system, data, mut args) = Samples::brusselator_pde(0.1, 3, second_book, ignore_diffusion);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, data.x0, &data.y0, multiplier, &mut args).unwrap();
+        (system.jacobian)(&mut jj, jac_alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = numerical_jacobian(system.ndim, data.x0, data.y0, system.function, multiplier, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, jac_alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();

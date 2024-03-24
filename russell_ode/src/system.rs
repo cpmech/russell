@@ -21,15 +21,15 @@ pub type NoArgs = u8;
 ///
 /// **Note:** The mass matrix is optional and need not be specified.
 ///
-/// The Jacobian is defined by:
+/// The (scaled) Jacobian matrix is defined by:
 ///
 /// ```text
-///               ∂{f}
-/// [J](x, {y}) = ————
-///               ∂{y}
+///                 ∂{f}
+/// [J](x, {y}) = α ————
+///                 ∂{y}
 /// ```
 ///
-/// where `[J]` is the Jacobian matrix.
+/// where `[J]` is the scaled Jacobian matrix and `α` is a scaling coefficient.
 ///
 /// See [crate::Samples] for many examples on how to define the system (in [crate::Samples], click on the *source*
 /// link in the documentation to access the source code illustrating the allocation of System).
@@ -39,18 +39,18 @@ pub type NoArgs = u8;
 /// The generic arguments here are:
 ///
 /// * `F` -- function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-/// * `J` -- function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+/// * `J` -- function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
 /// * `A` -- generic argument to assist in the `F` and `J` functions. It may be simply [NoArgs] indicating that no arguments are needed.
 ///
 /// # Important
 ///
-/// The internal implementation requires that the `multiplier` parameter in
-/// the Jacobian function `J` be used used to scale the Jacobian matrix. For example:
+/// The implementation requires the `alpha` parameter in the Jacobian function `J`
+/// to scale the Jacobian matrix. For example:
 ///
 /// ```text
-/// |jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut Args| {
+/// |jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut Args| {
 ///     jj.reset();
-///     jj.put(0, 0, multiplier * LAMBDA)?;
+///     jj.put(0, 0, alpha * y[0])?;
 ///     Ok(())
 /// },
 /// ```
@@ -66,7 +66,7 @@ pub type NoArgs = u8;
 pub struct System<F, J, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// System dimension
     pub(crate) ndim: usize,
@@ -96,7 +96,7 @@ where
 impl<'a, F, J, A> System<F, J, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
     ///
@@ -114,7 +114,7 @@ where
     /// The generic arguments here are:
     ///
     /// * `F` -- function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    /// * `J` -- function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
+    /// * `J` -- function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
     /// * `A` -- generic argument to assist in the `F` and `J` functions. It may be simply [NoArgs] indicating that no arguments are needed.
     ///
     /// # Examples
@@ -147,12 +147,12 @@ where
     ///         f[1] = x - 4.0 * y[0] - 5.0 * y[1];
     ///         Ok(())
     ///     },
-    ///     |jj, _x, _y, m, _args: &mut NoArgs| {
+    ///     |jj, alpha, _x, _y, _args: &mut NoArgs| {
     ///         jj.reset();
-    ///         jj.put(0, 0, m * (2.0)).unwrap();
-    ///         jj.put(0, 1, m * (3.0)).unwrap();
-    ///         jj.put(1, 0, m * (-4.0)).unwrap();
-    ///         jj.put(1, 1, m * (-5.0)).unwrap();
+    ///         jj.put(0, 0, alpha * (2.0)).unwrap();
+    ///         jj.put(0, 1, alpha * (3.0)).unwrap();
+    ///         jj.put(1, 0, alpha * (-4.0)).unwrap();
+    ///         jj.put(1, 1, alpha * (-5.0)).unwrap();
     ///         Ok(())
     ///     },
     ///     HasJacobian::Yes,
@@ -226,13 +226,7 @@ where
 /// Implements a placeholder function for when the analytical Jacobian is unavailable
 ///
 /// **Note:** Use this function with the [crate::HasJacobian::No] option.
-pub fn no_jacobian<A>(
-    _jj: &mut CooMatrix,
-    _x: f64,
-    _y: &Vector,
-    _multiplier: f64,
-    _args: &mut A,
-) -> Result<(), StrError> {
+pub fn no_jacobian<A>(_jj: &mut CooMatrix, _alpha: f64, _x: f64, _y: &Vector, _args: &mut A) -> Result<(), StrError> {
     Err("analytical Jacobian is not available")
 }
 
@@ -276,9 +270,9 @@ mod tests {
         (ode.function)(&mut k, x, &y, &mut args).unwrap();
         // call jacobian function
         let mut jj = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
-        let m = 1.0;
+        let alpha = 1.0;
         assert_eq!(
-            (ode.jacobian)(&mut jj, x, &y, m, &mut args),
+            (ode.jacobian)(&mut jj, alpha, x, &y, &mut args),
             Err("analytical Jacobian is not available")
         );
         // check
@@ -310,11 +304,11 @@ mod tests {
                 args.more_data_goes_here_fn = true;
                 Ok(())
             },
-            |jj, x, _y, _multiplier, args: &mut Args| {
+            |jj, alpha, x, _y, args: &mut Args| {
                 args.n_jacobian_eval += 1;
                 jj.reset();
-                jj.put(0, 1, -x).unwrap();
-                jj.put(1, 0, x).unwrap();
+                jj.put(0, 1, alpha * (-x)).unwrap();
+                jj.put(1, 0, alpha * (x)).unwrap();
                 args.more_data_goes_here_jj = true;
                 Ok(())
             },
@@ -335,8 +329,8 @@ mod tests {
         (ode.function)(&mut k, x, &y, &mut args).unwrap();
         // call jacobian function
         let mut jj = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
-        let m = 1.0;
-        (ode.jacobian)(&mut jj, x, &y, m, &mut args).unwrap();
+        let alpha = 1.0;
+        (ode.jacobian)(&mut jj, alpha, x, &y, &mut args).unwrap();
         // check
         println!("n_function_eval = {}", args.n_function_eval);
         println!("n_jacobian_eval = {}", args.n_jacobian_eval);

@@ -28,7 +28,7 @@ fn test_dopri8_van_der_pol_debug() {
     solver.solve(&mut y0, x0, x1, None, Some(&mut out), &mut args).unwrap();
 
     // get statistics
-    let stat = solver.bench();
+    let stat = solver.stats();
 
     // compare with dop853.f
     approx_eq(y0[0], 1.819907445729370E+00, 1e-9);

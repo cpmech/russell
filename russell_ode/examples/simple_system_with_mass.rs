@@ -57,6 +57,6 @@ fn main() -> Result<(), StrError> {
     assert!(error < 1e-4);
 
     // print stats
-    println!("{}", solver.bench());
+    println!("{}", solver.stats());
     Ok(())
 }

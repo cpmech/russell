@@ -79,7 +79,7 @@ fn main() -> Result<(), StrError> {
     solver.solve(&mut data.y0, data.x0, 0.05, None, None, &mut args)?;
 
     // print stat
-    let stat = solver.bench();
+    let stat = solver.stats();
     println!("Second-book problem              = {}", !opt.first_book);
     println!("Number of points along x and y   = {}", opt.npoint);
     println!("Tolerance (abs_tol = rel_tol)    = {}", format_scientific(tol, 8, 2));

@@ -1,5 +1,5 @@
-use crate::{Benchmark, StrError};
 use crate::{OdeSolverTrait, Workspace};
+use crate::{Stats, StrError};
 use russell_lab::{vec_max_abs_diff, Vector};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -12,7 +12,7 @@ use std::path::Path;
 ///
 /// The callback function is `(stats: &Stats, h: f64, x: f64, y: &Vector, args: &mut A)`
 /// and may return `true` to stop the simulation
-type OutputCallback<A> = fn(&Benchmark, f64, f64, &Vector, &mut A) -> Result<bool, StrError>;
+type OutputCallback<A> = fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError>;
 
 /// Holds the data generated at an accepted step or during the dense output
 #[derive(Clone, Debug, Deserialize)]
@@ -324,7 +324,7 @@ impl<A> Output<A> {
         args: &mut A,
     ) -> Result<bool, StrError> {
         // callback
-        let stop = (self.step_callback)(&work.bench, h, x, y, args)?;
+        let stop = (self.step_callback)(&work.stats, h, x, y, args)?;
         if stop {
             return Ok(stop);
         }
@@ -358,9 +358,9 @@ impl<A> Output<A> {
 
         // dense output
         if let Some(h_out) = self.dense_h_out {
-            if work.bench.n_accepted == 0 {
+            if work.stats.n_accepted == 0 {
                 // first output
-                self.dense_step_index.push(work.bench.n_accepted);
+                self.dense_step_index.push(work.stats.n_accepted);
                 self.dense_x.push(x);
                 for (m, ym) in self.dense_y.iter_mut() {
                     ym.push(y[*m]);
@@ -373,7 +373,7 @@ impl<A> Output<A> {
                 }
                 let mut x_out = self.dense_x.last().unwrap() + h_out;
                 while x_out < x {
-                    self.dense_step_index.push(work.bench.n_accepted);
+                    self.dense_step_index.push(work.stats.n_accepted);
                     self.dense_x.push(x_out);
                     solver.dense_output(&mut self.y_aux, x_out, x, y, h);
                     for (m, ym) in self.dense_y.iter_mut() {
@@ -387,7 +387,7 @@ impl<A> Output<A> {
         // file: dense output
         if let Some(fp) = &self.file_dense_key {
             let h_out = self.file_dense_h_out;
-            if work.bench.n_accepted == 0 {
+            if work.stats.n_accepted == 0 {
                 // first output
                 let results = OutDataRef { h: h_out, x, y };
                 let full_path = format!("{}_{}.json", fp, self.file_dense_count).to_string();
@@ -412,7 +412,7 @@ impl<A> Output<A> {
         if self.save_stiff {
             self.stiff_h_times_rho.push(work.stiff_h_times_rho);
             if work.stiff_detected {
-                self.stiff_step_index.push(work.bench.n_accepted);
+                self.stiff_step_index.push(work.stats.n_accepted);
                 self.stiff_x.push(work.stiff_x_first_detect);
             }
         }
@@ -422,7 +422,7 @@ impl<A> Output<A> {
     /// Saves the results at the end of the simulation (and generate summary files)
     pub(crate) fn last(&mut self, work: &Workspace, h: f64, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError> {
         // callback
-        (self.step_callback)(&work.bench, h, x, y, args)?;
+        (self.step_callback)(&work.stats, h, x, y, args)?;
 
         // file: step output
         if let Some(fp) = &self.file_step_key {
@@ -435,7 +435,7 @@ impl<A> Output<A> {
 
         // dense output
         if let Some(_) = self.dense_h_out {
-            self.dense_step_index.push(work.bench.n_accepted);
+            self.dense_step_index.push(work.stats.n_accepted);
             self.dense_x.push(x);
             for (m, ym) in self.dense_y.iter_mut() {
                 ym.push(y[*m]);
@@ -463,6 +463,6 @@ impl<A> Output<A> {
 }
 
 /// Placeholder function for no 'callbacks' during step output
-pub fn no_callback<A>(_b: &Benchmark, _h: f64, _x: f64, _y: &Vector, _args: &mut A) -> Result<bool, StrError> {
+pub fn no_callback<A>(_b: &Stats, _h: f64, _x: f64, _y: &Vector, _args: &mut A) -> Result<bool, StrError> {
     Ok(false) // do not stop
 }

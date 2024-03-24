@@ -22,7 +22,7 @@ fn test_dopri5_arenstorf() {
         .unwrap();
 
     // get statistics
-    let stat = solver.bench();
+    let stat = solver.stats();
 
     // compare with dopri5.f
     approx_eq(data.y0[0], 9.940021704030663E-01, 1e-11);

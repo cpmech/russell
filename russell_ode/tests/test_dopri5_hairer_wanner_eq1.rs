@@ -22,7 +22,7 @@ fn test_dopri5_hairer_wanner_eq1() {
         .unwrap();
 
     // get statistics
-    let stat = solver.bench();
+    let stat = solver.stats();
 
     // compare with dopri5.f
     approx_eq(data.y0[0], 9.063921649310544E-02, 1e-13);

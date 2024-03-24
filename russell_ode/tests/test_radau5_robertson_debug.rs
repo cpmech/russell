@@ -19,7 +19,7 @@ fn test_radau5_robertson_debug() {
         .unwrap();
 
     // get statistics
-    let stat = solver.bench();
+    let stat = solver.stats();
 
     // compare with radau5.f
     approx_eq(data.y0[0], 9.886740138499884E-01, 1e-15);

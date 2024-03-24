@@ -21,7 +21,7 @@ fn test_radau5_robertson_small_h() {
     println!("ERROR: THE STEPSIZE BECOMES TOO SMALL");
 
     // get statistics
-    let stat = solver.bench();
+    let stat = solver.stats();
 
     // print and check statistics
     println!("{}", stat.summary());

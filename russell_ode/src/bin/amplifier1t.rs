@@ -26,7 +26,7 @@ fn main() -> Result<(), StrError> {
     approx_eq(data.y0[4], -2.269179823457655E+00, 1e-7);
 
     // print stat
-    let stat = solver.bench();
+    let stat = solver.stats();
     println!("{}", stat);
     Ok(())
 }

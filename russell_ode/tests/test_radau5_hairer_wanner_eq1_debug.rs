@@ -19,7 +19,7 @@ fn test_radau5_hairer_wanner_eq1_debug() {
         .unwrap();
 
     // get statistics
-    let stat = solver.bench();
+    let stat = solver.stats();
 
     // compare with radau5.f
     approx_eq(data.y0[0], 9.068021382386648E-02, 1e-15);

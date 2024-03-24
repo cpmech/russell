@@ -22,7 +22,7 @@ fn test_radau5_van_der_pol() {
         .unwrap();
 
     // get statistics
-    let stat = solver.bench();
+    let stat = solver.stats();
 
     // compare with radau5.f
     approx_eq(data.y0[0], 1.706163410178079E+00, 1e-14);

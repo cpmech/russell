@@ -17,7 +17,7 @@ fn test_fweuler_hairer_wanner_eq1() {
         .unwrap();
 
     // get statistics
-    let stat = solver.bench();
+    let stat = solver.stats();
 
     // compare with a previous implementation
     approx_eq(data.y0[0], 0.08589790706616637, 1e-15);

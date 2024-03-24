@@ -1,6 +1,6 @@
 use crate::constants::N_EQUAL_STEPS;
-use crate::{Benchmark, Method, OdeSolverTrait, Params, System, Workspace};
 use crate::{EulerBackward, EulerForward, ExplicitRungeKutta, Radau5};
+use crate::{Method, OdeSolverTrait, Params, Stats, System, Workspace};
 use crate::{Output, StrError};
 use russell_lab::{vec_all_finite, Vector};
 use russell_sparse::CooMatrix;
@@ -71,7 +71,7 @@ pub struct OdeSolver<'a, A> {
     /// Holds a pointer to the actual ODE system solver
     actual: Box<dyn OdeSolverTrait<A> + 'a>,
 
-    /// Holds benchmark and work variables
+    /// Holds statistics, benchmarking and "work" variables
     work: Workspace,
 }
 
@@ -119,8 +119,8 @@ impl<'a, A> OdeSolver<'a, A> {
     }
 
     /// Returns some benchmarking data
-    pub fn bench(&self) -> &Benchmark {
-        &self.work.bench
+    pub fn stats(&self) -> &Stats {
+        &self.work.stats
     }
 
     /// Solves the ODE system
@@ -200,14 +200,14 @@ impl<'a, A> OdeSolver<'a, A> {
         if equal_stepping {
             let nstep = f64::ceil((x1 - x) / h) as usize;
             for _ in 0..nstep {
-                self.work.bench.sw_step.reset();
+                self.work.stats.sw_step.reset();
 
                 // step
-                self.work.bench.n_steps += 1;
+                self.work.stats.n_steps += 1;
                 self.actual.step(&mut self.work, x, &y, h, args)?;
 
                 // update x and y
-                self.work.bench.n_accepted += 1; // this must be after `self.actual.step`
+                self.work.stats.n_accepted += 1; // this must be after `self.actual.step`
                 self.actual.accept(&mut self.work, &mut x, y, h, args)?;
 
                 // check for anomalies
@@ -220,12 +220,12 @@ impl<'a, A> OdeSolver<'a, A> {
                         return Ok(());
                     }
                 }
-                self.work.bench.stop_sw_step();
+                self.work.stats.stop_sw_step();
             }
             if let Some(out) = output.as_mut() {
                 out.last(&self.work, h, x, y, args)?;
             }
-            self.work.bench.stop_sw_total();
+            self.work.stats.stop_sw_total();
             return Ok(());
         }
 
@@ -235,13 +235,13 @@ impl<'a, A> OdeSolver<'a, A> {
 
         // variable stepping loop
         for _ in 0..self.params.step.n_step_max {
-            self.work.bench.sw_step.reset();
+            self.work.stats.sw_step.reset();
 
             // converged?
             let dx = x1 - x;
             if dx <= 10.0 * f64::EPSILON {
                 success = true;
-                self.work.bench.stop_sw_step();
+                self.work.stats.stop_sw_step();
                 break;
             }
 
@@ -252,7 +252,7 @@ impl<'a, A> OdeSolver<'a, A> {
             }
 
             // step
-            self.work.bench.n_steps += 1;
+            self.work.stats.n_steps += 1;
             self.actual.step(&mut self.work, x, &y, h, args)?;
 
             // handle diverging iterations
@@ -267,7 +267,7 @@ impl<'a, A> OdeSolver<'a, A> {
             // accept step
             if self.work.rel_error < 1.0 {
                 // update x and y
-                self.work.bench.n_accepted += 1;
+                self.work.stats.n_accepted += 1;
                 self.actual.accept(&mut self.work, &mut x, y, h, args)?;
 
                 // check for anomalies
@@ -282,7 +282,7 @@ impl<'a, A> OdeSolver<'a, A> {
                 // save previous stepsize, relative error, and accepted/suggested stepsize
                 self.work.h_prev = h;
                 self.work.rel_error_prev = f64::max(self.params.step.rel_error_prev_min, self.work.rel_error);
-                self.work.bench.h_accepted = self.work.h_new;
+                self.work.stats.h_accepted = self.work.h_new;
 
                 // output
                 if let Some(out) = output.as_mut() {
@@ -295,7 +295,7 @@ impl<'a, A> OdeSolver<'a, A> {
                 // converged?
                 if last_step {
                     success = true;
-                    self.work.bench.stop_sw_step();
+                    self.work.stats.stop_sw_step();
                     break;
                 }
 
@@ -307,14 +307,14 @@ impl<'a, A> OdeSolver<'a, A> {
             // reject step
             } else {
                 // set flags
-                if self.work.bench.n_accepted > 0 {
-                    self.work.bench.n_rejected += 1;
+                if self.work.stats.n_accepted > 0 {
+                    self.work.stats.n_rejected += 1;
                 }
                 self.work.follows_reject_step = true;
                 last_step = false;
 
                 // recompute stepsize
-                if self.work.bench.n_accepted == 0 && self.params.step.m_first_reject > 0.0 {
+                if self.work.stats.n_accepted == 0 && self.params.step.m_first_reject > 0.0 {
                     self.work.h_new = h * self.params.step.m_first_reject;
                 } else {
                     self.actual.reject(&mut self.work, h);
@@ -328,7 +328,7 @@ impl<'a, A> OdeSolver<'a, A> {
         }
 
         // done
-        self.work.bench.stop_sw_total();
+        self.work.stats.stop_sw_total();
         if success {
             Ok(())
         } else {

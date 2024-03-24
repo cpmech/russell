@@ -174,8 +174,8 @@ where
         let v = &mut self.v;
 
         // compute k0 (otherwise, use k0 saved in accept)
-        if (work.bench.n_accepted == 0 || !self.info.first_step_same_as_last) && !work.follows_reject_step {
-            work.bench.n_function += 1;
+        if (work.stats.n_accepted == 0 || !self.info.first_step_same_as_last) && !work.follows_reject_step {
+            work.stats.n_function += 1;
             (self.system.function)(&mut k[0], x, y, args)?; // k0 := f(x0, y0)
         }
 
@@ -186,7 +186,7 @@ where
             for j in 0..i {
                 vec_update(&mut v[i], h * self.aa.get(i, j), &k[j]).unwrap(); // vi += h ⋅ aij ⋅ kj
             }
-            work.bench.n_function += 1;
+            work.stats.n_function += 1;
             (self.system.function)(&mut k[i], ui, &v[i], args)?; // ki := f(ui,vi)
         }
 
@@ -261,7 +261,7 @@ where
     ) -> Result<(), StrError> {
         // save data for dense output
         if let Some(out) = self.dense_out.as_mut() {
-            work.bench.n_function += out.update(&mut self.system, *x, y, h, &self.w, &self.k, args)?;
+            work.stats.n_function += out.update(&mut self.system, *x, y, h, &self.w, &self.k, args)?;
         }
 
         // update x and y
@@ -306,7 +306,7 @@ where
                 detect_stiffness(work, *x - h, &self.params)?;
             } else if self.params.method == Method::DoPri8 {
                 const NEW: usize = 10; // to use k[NEW] as a temporary workspace
-                work.bench.n_function += 1;
+                work.stats.n_function += 1;
                 (self.system.function)(&mut self.k[NEW], *x, y, args)?; // line 663 of dop853.f
                 let mut num = 0.0;
                 let mut den = 0.0;
@@ -329,12 +329,12 @@ where
                 println!(
                     "THE PROBLEM SEEMS TO BECOME STIFF AT X ={}, ACCEPTED STEP ={:>5}",
                     format_fortran(work.stiff_x_first_detect),
-                    work.bench.n_accepted
+                    work.stats.n_accepted
                 );
             }
             println!(
                 "step(A) ={:>5}, err ={}, h_new ={}, n_yes ={:>4}, n_no ={:>4}, h*lambda ={}",
-                work.bench.n_steps,
+                work.stats.n_steps,
                 format_fortran(work.rel_error),
                 format_fortran(work.h_new),
                 work.stiff_n_detection_yes,
@@ -355,7 +355,7 @@ where
         if self.params.debug {
             println!(
                 "step(R) ={:>5}, err ={}, h_new ={}",
-                work.bench.n_steps,
+                work.stats.n_steps,
                 format_fortran(work.rel_error),
                 format_fortran(work.h_new),
             );
@@ -544,9 +544,9 @@ mod tests {
         let mut errors = vec![f64::abs(yy_num[0] - yy_ana[0])];
         for n in 0..5 {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
-            assert_eq!(work.bench.n_function, (n + 1) * 2);
+            assert_eq!(work.stats.n_function, (n + 1) * 2);
 
-            work.bench.n_accepted += 1; // important (must precede accept)
+            work.stats.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             xx.push(x);
             yy_num.push(y[0]);
@@ -628,9 +628,9 @@ mod tests {
         let mut errors = vec![f64::abs(yy_num[0] - yy_ana[0])];
         for n in 0..5 {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
-            assert_eq!(work.bench.n_function, (n + 1) * 4);
+            assert_eq!(work.stats.n_function, (n + 1) * 4);
 
-            work.bench.n_accepted += 1; // important (must precede accept)
+            work.stats.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             xx.push(x);
             yy_num.push(y[0]);
@@ -819,7 +819,7 @@ mod tests {
             let mut work = Workspace::new(method);
             let mut solver = ExplicitRungeKutta::new(params, &system).unwrap();
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
-            work.bench.n_accepted += 1; // important (must precede accept)
+            work.stats.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             yfx(&mut y_ana, x);
             // println!("{:?}: solution @ {}: {} ({})", method, x, y[0], y_ana[0]);

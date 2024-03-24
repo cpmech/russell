@@ -60,7 +60,7 @@ fn main() -> Result<(), StrError> {
             print!("{}", format_scientific(err, w2, 1));
 
             // save the results
-            n_f_eval[i] = solver.bench().n_function as f64;
+            n_f_eval[i] = solver.stats().n_function as f64;
             errors[i] = err;
         }
         println!();

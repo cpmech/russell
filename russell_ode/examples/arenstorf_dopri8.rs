@@ -35,7 +35,7 @@ fn main() -> Result<(), StrError> {
     // print the results and stats
     println!("y_russell     = {:?}", data.y0.as_data());
     println!("y_mathematica = {:?}", y_ref.as_data());
-    println!("{}", solver.bench());
+    println!("{}", solver.stats());
 
     // load reference data (from Mathematica)
     let math = ReferenceData::read("data/reference/arenstorf_mathematica.json")?;

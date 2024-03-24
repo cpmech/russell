@@ -17,7 +17,7 @@ fn test_bweuler_hairer_wanner_eq1() {
         .unwrap();
 
     // get statistics
-    let stat = solver.bench();
+    let stat = solver.stats();
 
     // compare with a previous implementation
     approx_eq(data.y0[0], 0.09060476604187756, 1e-15);
@@ -59,7 +59,7 @@ fn test_bweuler_hairer_wanner_eq1_num_jac() {
         .unwrap();
 
     // get statistics
-    let stat = solver.bench();
+    let stat = solver.stats();
 
     // compare with a previous implementation
     approx_eq(data.y0[0], 0.09060476598021044, 1e-11);
@@ -101,7 +101,7 @@ fn test_bweuler_hairer_wanner_eq1_modified_newton() {
         .unwrap();
 
     // get statistics
-    let stat = solver.bench();
+    let stat = solver.stats();
 
     // compare with a previous implementation
     approx_eq(data.y0[0], 0.09060476604187756, 1e-15);

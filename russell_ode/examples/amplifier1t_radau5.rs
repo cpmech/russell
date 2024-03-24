@@ -43,7 +43,7 @@ fn main() -> Result<(), StrError> {
     ];
     println!("y_russell     = {:.6?}", data.y0.as_data());
     println!("y_mathematica = {:.6?}", y_ref);
-    println!("{}", solver.bench());
+    println!("{}", solver.stats());
 
     // load reference data (from Mathematica)
     let math = ReferenceData::read("data/reference/amplifier1t_mathematica.json")?;

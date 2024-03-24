@@ -22,7 +22,7 @@ fn test_radau5_amplifier1t() {
         .unwrap();
 
     // get statistics
-    let stat = solver.bench();
+    let stat = solver.stats();
 
     // compare with radau5.f
     approx_eq(data.y0[0], -2.226517868073645E-02, 1e-10);

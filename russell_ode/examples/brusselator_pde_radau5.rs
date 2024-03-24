@@ -33,7 +33,7 @@ fn main() -> Result<(), StrError> {
     solver.solve(&mut data.y0, data.x0, x1, None, Some(&mut out), &mut args)?;
 
     // get statistics
-    let stat = solver.bench();
+    let stat = solver.stats();
     println!("{}", stat);
 
     // save problem data

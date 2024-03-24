@@ -52,7 +52,7 @@ where
 
     /// Calculates the quantities required to update x and y
     fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {
-        work.bench.n_function += 1;
+        work.stats.n_function += 1;
         (self.system.function)(&mut self.k, x, y, args)?; // k := f(x, y)
         vec_add(&mut self.w, 1.0, &y, h, &self.k).unwrap(); // w := y + h * f(x, y)
         Ok(())
@@ -121,9 +121,9 @@ mod tests {
         let mut errors = vec![f64::abs(yy_num[0] - yy_ana[0])];
         for n in 0..5 {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
-            assert_eq!(work.bench.n_function, n + 1);
+            assert_eq!(work.stats.n_function, n + 1);
 
-            work.bench.n_accepted += 1; // important (must precede accept)
+            work.stats.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             xx.push(x);
             yy_num.push(y[0]);

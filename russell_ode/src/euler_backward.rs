@@ -86,13 +86,13 @@ where
 
         // perform iterations
         let mut success = false;
-        work.bench.n_iterations = 0;
+        work.stats.n_iterations = 0;
         for _ in 0..self.params.newton.n_iteration_max {
-            // benchmark
-            work.bench.n_iterations += 1;
+            // stats
+            work.stats.n_iterations += 1;
 
             // calculate k_new
-            work.bench.n_function += 1;
+            work.stats.n_function += 1;
             (self.system.function)(&mut self.k, x_new, y_new, args)?; // k := f(x_new, y_new)
 
             // calculate the residual and its norm
@@ -108,15 +108,15 @@ where
             }
 
             // compute K matrix (augmented Jacobian)
-            if traditional_newton || work.bench.n_accepted == 0 {
-                // benchmark
-                work.bench.sw_jacobian.reset();
-                work.bench.n_jacobian += 1;
+            if traditional_newton || work.stats.n_accepted == 0 {
+                // stats
+                work.stats.sw_jacobian.reset();
+                work.stats.n_jacobian += 1;
 
                 // calculate J_new := h J
                 let kk = self.kk.get_coo_mut().unwrap();
                 if self.params.newton.use_numerical_jacobian || !self.system.jac_available {
-                    work.bench.n_function += ndim;
+                    work.stats.n_function += ndim;
                     let aux = &mut self.dy; // using dy as a workspace
                     self.system
                         .numerical_jacobian(kk, x_new, y_new, &self.k, h, args, aux)?;
@@ -129,30 +129,30 @@ where
                     kk.put(i, i, -1.0).unwrap();
                 }
 
-                // benchmark
-                work.bench.stop_sw_jacobian();
+                // stats
+                work.stats.stop_sw_jacobian();
 
                 // perform factorization
-                work.bench.sw_factor.reset();
-                work.bench.n_factor += 1;
+                work.stats.sw_factor.reset();
+                work.stats.n_factor += 1;
                 self.solver
                     .actual
                     .factorize(&mut self.kk, self.params.newton.lin_sol_params)?;
-                work.bench.stop_sw_factor();
+                work.stats.stop_sw_factor();
             }
 
             // solve the linear system
-            work.bench.sw_lin_sol.reset();
-            work.bench.n_lin_sol += 1;
+            work.stats.sw_lin_sol.reset();
+            work.stats.n_lin_sol += 1;
             self.solver.actual.solve(&mut self.dy, &self.kk, &self.r, false)?;
-            work.bench.stop_sw_lin_sol();
+            work.stats.stop_sw_lin_sol();
 
             // update y
             vec_update(y_new, 1.0, &self.dy).unwrap(); // y := y + δy
         }
 
         // check
-        work.bench.update_n_iterations_max();
+        work.stats.update_n_iterations_max();
         if !success {
             return Err("Newton-Raphson method did not complete successfully");
         }
@@ -294,9 +294,9 @@ mod tests {
         let mut err_y1 = vec![f64::abs(yy1_num[0] - y_ana[1])];
         for n in 0..5 {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
-            assert_eq!(work.bench.n_iterations, 2);
-            assert_eq!(work.bench.n_function, (n + 1) * 2);
-            assert_eq!(work.bench.n_jacobian, (n + 1)); // already converged before calling Jacobian again
+            assert_eq!(work.stats.n_iterations, 2);
+            assert_eq!(work.stats.n_function, (n + 1) * 2);
+            assert_eq!(work.stats.n_jacobian, (n + 1)); // already converged before calling Jacobian again
 
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             xx.push(x);
@@ -344,11 +344,11 @@ mod tests {
         let mut err_y1 = vec![f64::abs(yy1_num[0] - y_ana[1])];
         for n in 0..5 {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
-            assert_eq!(work.bench.n_iterations, 2);
-            assert_eq!(work.bench.n_function, (n + 1) * 2 * ndim);
-            assert_eq!(work.bench.n_jacobian, (n + 1)); // already converged before calling Jacobian again
+            assert_eq!(work.stats.n_iterations, 2);
+            assert_eq!(work.stats.n_function, (n + 1) * 2 * ndim);
+            assert_eq!(work.stats.n_jacobian, (n + 1)); // already converged before calling Jacobian again
 
-            work.bench.n_accepted += 1; // important (must precede accept)
+            work.stats.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             xx.push(x);
             yy0_num.push(y[0]);

@@ -42,7 +42,7 @@ fn main() -> Result<(), StrError> {
     println!("y =\n{}", y0);
 
     // print stats
-    println!("{}", solver.bench());
+    println!("{}", solver.stats());
 
     // plot the results
     let mut curve1 = Curve::new();

@@ -2,9 +2,9 @@ use crate::Method;
 use russell_lab::{format_nanoseconds, Stopwatch};
 use std::fmt::{self, Write};
 
-/// Holds some statistics and benchmarking data
+/// Holds statistics and benchmarking data
 #[derive(Clone, Copy, Debug)]
-pub struct Benchmark {
+pub struct Stats {
     /// Holds the method
     method: Method,
 
@@ -69,10 +69,10 @@ pub struct Benchmark {
     pub(crate) sw_total: Stopwatch,
 }
 
-impl Benchmark {
+impl Stats {
     /// Allocates a new instance
     pub fn new(method: Method) -> Self {
-        Benchmark {
+        Stats {
             method,
             n_function: 0,
             n_jacobian: 0,
@@ -202,7 +202,7 @@ impl Benchmark {
     }
 }
 
-impl fmt::Display for Benchmark {
+impl fmt::Display for Stats {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.method.information().implicit {
             write!(
@@ -247,25 +247,25 @@ impl fmt::Display for Benchmark {
 
 #[cfg(test)]
 mod tests {
-    use super::Benchmark;
+    use super::Stats;
     use crate::Method;
 
     #[test]
     fn clone_copy_and_debug_work() {
-        let mut bench = Benchmark::new(Method::Radau5);
-        bench.n_accepted += 1;
-        let copy = bench;
-        let clone = bench.clone();
-        assert_eq!(copy.n_accepted, bench.n_accepted);
-        assert_eq!(clone.n_accepted, bench.n_accepted);
-        assert!(format!("{:?}", bench).len() > 0);
+        let mut stats = Stats::new(Method::Radau5);
+        stats.n_accepted += 1;
+        let copy = stats;
+        let clone = stats.clone();
+        assert_eq!(copy.n_accepted, stats.n_accepted);
+        assert_eq!(clone.n_accepted, stats.n_accepted);
+        assert!(format!("{:?}", stats).len() > 0);
     }
 
     #[test]
     fn summary_works() {
-        let bench = Benchmark::new(Method::Radau5);
+        let stats = Stats::new(Method::Radau5);
         assert_eq!(
-            format!("{}", bench.summary()),
+            format!("{}", stats.summary()),
             "Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)\n\
              Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
@@ -276,9 +276,9 @@ mod tests {
              Number of rejected steps         = 0\n\
              Number of iterations (maximum)   = 0"
         );
-        let bench = Benchmark::new(Method::FwEuler);
+        let stats = Stats::new(Method::FwEuler);
         assert_eq!(
-            format!("{}", bench.summary()),
+            format!("{}", stats.summary()),
             "FwEuler: Forward Euler method (explicit, order 1)\n\
              Number of function evaluations   = 0\n\
              Number of performed steps        = 0\n\
@@ -289,9 +289,9 @@ mod tests {
 
     #[test]
     fn display_works() {
-        let bench = Benchmark::new(Method::Radau5);
+        let stats = Stats::new(Method::Radau5);
         assert_eq!(
-            format!("{}", bench),
+            format!("{}", stats),
             "Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)\n\
              Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
@@ -309,9 +309,9 @@ mod tests {
              Max time spent on lin solution   = 0ns\n\
              Total time                       = 0ns"
         );
-        let bench = Benchmark::new(Method::MdEuler);
+        let stats = Stats::new(Method::MdEuler);
         assert_eq!(
-            format!("{}", bench),
+            format!("{}", stats),
             "MdEuler: Modified Euler method (explicit, order 2(1), embedded)\n\
              Number of function evaluations   = 0\n\
              Number of performed steps        = 0\n\

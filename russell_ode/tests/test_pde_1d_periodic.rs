@@ -47,7 +47,7 @@ fn test_heat_1d_periodic() -> Result<(), StrError> {
     solver.solve(&mut uu, t0, t1, None, None, &mut args).unwrap();
 
     // print stats
-    println!("{}", solver.bench());
+    println!("{}", solver.stats());
 
     // check the results
     let mut err_max = 0.0;

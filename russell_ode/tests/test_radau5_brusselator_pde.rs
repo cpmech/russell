@@ -25,7 +25,7 @@ fn test_radau5_brusselator_pde() {
     solver.solve(yy, t0, t1, None, None, &mut args).unwrap();
 
     // get statistics
-    let stat = solver.bench();
+    let stat = solver.stats();
     println!("{}", stat);
     assert_eq!(stat.n_function, 32);
 

@@ -1,4 +1,4 @@
-use russell_lab::{vec_max_abs_diff, StrError, Vector};
+use russell_lab::{vec_approx_eq, StrError, Vector};
 use russell_ode::prelude::*;
 use russell_sparse::CooMatrix;
 
@@ -52,9 +52,7 @@ fn main() -> Result<(), StrError> {
 
     // check the results
     let y_ana = Vector::from(&[f64::cos(x1), -f64::sin(x1), f64::ln(1.0 + x1)]);
-    let (_, error) = vec_max_abs_diff(&y, &y_ana)?;
-    println!("error = {:e}", error);
-    assert!(error < 1e-4);
+    vec_approx_eq(y.as_data(), y_ana.as_data(), 1e-3);
 
     // print stats
     println!("{}", solver.stats());

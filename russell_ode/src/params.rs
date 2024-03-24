@@ -256,7 +256,7 @@ impl ParamsStep {
             m_max,
             m_safety,
             m_first_reject: 0.1,
-            h_ini: 1e-6,
+            h_ini: 1e-4,
             n_step_max: 100000, // lines (426, 212, 211) of (radau5.f, dopri5.f, dop853.f)
             rel_error_prev_min,
         }

@@ -27,7 +27,7 @@ fn test_radau5_brusselator_pde() {
     // get statistics
     let stat = solver.stats();
     println!("{}", stat);
-    assert_eq!(stat.n_function, 32);
+    assert_eq!(stat.n_function, 24);
 
     // check results at middle node
     let ij_mid = (npoint - 1) / 2; // i or j indices of middle node

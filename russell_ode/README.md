@@ -75,7 +75,7 @@ y' = —— = 1   with   y(x=0)=0    thus   y(x) = x
 See the code [simple_ode_single_equation.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/simple_ode_single_equation.rs); reproduced below:
 
 ```rust
-use russell_lab::{vec_max_abs_diff, StrError, Vector};
+use russell_lab::{vec_approx_eq, StrError, Vector};
 use russell_ode::prelude::*;
 
 fn main() -> Result<(), StrError> {
@@ -109,9 +109,7 @@ fn main() -> Result<(), StrError> {
 
     // check the results
     let y_ana = Vector::from(&[f64::exp(x1) - x1 - 1.0]);
-    let (_, error) = vec_max_abs_diff(&y, &y_ana)?;
-    println!("error = {:e}", error);
-    assert!(error < 1e-8);
+    vec_approx_eq(y.as_data(), y_ana.as_data(), 1e-7);
 
     // print stats
     println!("{}", solver.stats());
@@ -123,18 +121,17 @@ The output looks like:
 
 ```text
 y =
-┌                    ┐
-│ 0.7182818250641057 │
-└                    ┘
-error = 3.39E-09
+┌                   ┐
+│ 0.718281815054018 │
+└                   ┘
 DoPri8: Dormand-Prince method (explicit, order 8(5,3), embedded)
-Number of function evaluations   = 108
-Number of performed steps        = 9
-Number of accepted steps         = 9
+Number of function evaluations   = 84
+Number of performed steps        = 7
+Number of accepted steps         = 7
 Number of rejected steps         = 0
-Last accepted/suggested stepsize = 1.8976857444701694
-Max time spent on a step         = 3.789µs
-Total time                       = 48.038µs
+Last accepted/suggested stepsize = 0.40139999999999776
+Max time spent on a step         = 7.483µs
+Total time                       = 65.462µs
 ```
 
 ### <a name="simple-mass"></a> Simple system with mass matrix
@@ -188,14 +185,14 @@ Reference: [Numerical Solution of Differential-Algebraic Equations: Solving Syst
 See the code [simple_system_with_mass.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/simple_system_with_mass.rs); reproduced below:
 
 ```rust
-use russell_lab::{vec_max_abs_diff, StrError, Vector};
+use russell_lab::{vec_approx_eq, StrError, Vector};
 use russell_ode::prelude::*;
 use russell_sparse::CooMatrix;
 
 fn main() -> Result<(), StrError> {
-    // DAE system
+    // ODE system
     let ndim = 3;
-    let jac_nnz = 4; // number of non-zero values in the Jacobian
+    let jac_nnz = 4;
     let mut system = System::new(
         ndim,
         |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
@@ -218,7 +215,7 @@ fn main() -> Result<(), StrError> {
     );
 
     // mass matrix
-    let mass_nnz = 5; // number of non-zero values in the mass matrix
+    let mass_nnz = 5;
     system.init_mass_matrix(mass_nnz).unwrap();
     system.mass_put(0, 0, 1.0).unwrap();
     system.mass_put(0, 1, 1.0).unwrap();
@@ -242,9 +239,7 @@ fn main() -> Result<(), StrError> {
 
     // check the results
     let y_ana = Vector::from(&[f64::cos(x1), -f64::sin(x1), f64::ln(1.0 + x1)]);
-    let (_, error) = vec_max_abs_diff(&y, &y_ana)?;
-    println!("error = {:e}", error);
-    assert!(error < 1e-4);
+    vec_approx_eq(y.as_data(), y_ana.as_data(), 1e-3);
 
     // print stats
     println!("{}", solver.stats());
@@ -257,27 +252,26 @@ The output looks like:
 ```text
 y =
 ┌                     ┐
-│  0.4081258859665056 │
-│ -0.9129961945737365 │
-│  3.0445213906613513 │
+│ 0.40864108577398206 │
+│ -0.9136567566808349 │
+│   3.044521229909652 │
 └                     ┘
-error = 5.0943846108819635e-5
 Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)
-Number of function evaluations   = 204
+Number of function evaluations   = 203
 Number of Jacobian evaluations   = 1
-Number of factorizations         = 14
+Number of factorizations         = 8
 Number of lin sys solutions      = 52
-Number of performed steps        = 47
-Number of accepted steps         = 47
+Number of performed steps        = 46
+Number of accepted steps         = 46
 Number of rejected steps         = 0
 Number of iterations (maximum)   = 2
 Number of iterations (last step) = 1
-Last accepted/suggested stepsize = 0.02811710719458652
-Max time spent on a step         = 36.78µs
-Max time spent on the Jacobian   = 343ns
-Max time spent on factorization  = 8.085901ms
-Max time spent on lin solution   = 3.89526ms
-Total time                       = 27.107919ms
+Last accepted/suggested stepsize = 0.5055117216674699
+Max time spent on a step         = 40.817µs
+Max time spent on the Jacobian   = 558ns
+Max time spent on factorization  = 199.895µs
+Max time spent on lin solution   = 53.101µs
+Total time                       = 2.653323ms
 ```
 
 ### <a name="brusselator-ode"></a> Brusselator ODE

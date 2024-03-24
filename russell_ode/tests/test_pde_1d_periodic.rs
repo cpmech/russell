@@ -55,7 +55,7 @@ fn test_heat_1d_periodic() -> Result<(), StrError> {
         err_max = f64::max(err_max, f64::abs(uu[m] - f64::exp(-t1) * f64::cos(5.0 * PI * x)));
     });
     println!("err_max = {}", err_max);
-    approx_eq(err_max, 0.01314, 1e-5);
+    approx_eq(err_max, 0.01318, 1e-5);
 
     // graph
     if SAVE_FIGURE {

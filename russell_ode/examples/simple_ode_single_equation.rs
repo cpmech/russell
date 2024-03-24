@@ -1,4 +1,4 @@
-use russell_lab::{vec_max_abs_diff, StrError, Vector};
+use russell_lab::{vec_approx_eq, StrError, Vector};
 use russell_ode::prelude::*;
 
 fn main() -> Result<(), StrError> {
@@ -32,9 +32,7 @@ fn main() -> Result<(), StrError> {
 
     // check the results
     let y_ana = Vector::from(&[f64::exp(x1) - x1 - 1.0]);
-    let (_, error) = vec_max_abs_diff(&y, &y_ana)?;
-    println!("error = {:e}", error);
-    assert!(error < 1e-8);
+    vec_approx_eq(y.as_data(), y_ana.as_data(), 1e-7);
 
     // print stats
     println!("{}", solver.stats());

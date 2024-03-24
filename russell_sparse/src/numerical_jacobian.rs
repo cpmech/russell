@@ -10,20 +10,20 @@ use russell_lab::Vector;
 /// {f}(x, {y})
 /// ```
 ///
-/// Compute the Jacobian matrix:
+/// Compute the (scaled) Jacobian matrix:
 ///
 /// ```text
-///                            ∂{f}
-/// [J](x, {y}) = multiplier · ————
-///                            ∂{y}
+///                 ∂{f}
+/// [J](x, {y}) = α ————
+///                 ∂{y}
 /// ```
 ///
 /// The elements of the Jacobian matrix are approximated by:
 ///
 /// ```text
-///                    Δfᵢ
-/// Jᵢⱼ ≈ multiplier · ———
-///                    Δyⱼ
+///         Δfᵢ
+/// Jᵢⱼ ≈ α ———
+///         Δyⱼ
 /// ```
 ///
 /// **Note:** `function` will be called `1 + ndim` times.
@@ -36,7 +36,7 @@ use russell_lab::Vector;
 ///
 /// # Input
 ///
-/// * `multiplier` -- A coefficient to multiply all elements of the Jacobian
+/// * `alpha` -- A coefficient to multiply all elements of the Jacobian
 /// * `x` -- The station (e.g., time) where the `f` function is called
 /// * `y` -- The vector `{y}` for which the `f` function is called.
 ///   **Note:** Although this variable is mutable, the original values are restored on exit
@@ -67,38 +67,28 @@ use russell_lab::Vector;
 ///         Ok(())
 ///     };
 ///
-///     let jacobian = |jj: &mut CooMatrix, m: f64, _x: f64, y: &Vector, _args: &mut Args| {
+///     let jacobian = |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut Args| {
 ///         jj.reset();
-///         jj.put(0, 0, m * (2.0)).unwrap();
-///         jj.put(0, 1, m * (3.0 * y[2])).unwrap();
-///         jj.put(0, 2, m * (3.0 * y[1])).unwrap();
-///         jj.put(1, 1, m * (-3.0)).unwrap();
-///         jj.put(2, 2, m * (2.0 * y[2])).unwrap();
+///         jj.put(0, 0, alpha * (2.0)).unwrap();
+///         jj.put(0, 1, alpha * (3.0 * y[2])).unwrap();
+///         jj.put(0, 2, alpha * (3.0 * y[1])).unwrap();
+///         jj.put(1, 1, alpha * (-3.0)).unwrap();
+///         jj.put(2, 2, alpha * (2.0 * y[2])).unwrap();
 ///     };
 ///
 ///     let ndim = 3;
 ///     let x = 1.0;
 ///     let mut y = Vector::from(&[1.0, 2.0, 3.0]);
-///     let multiplier = 0.5;
+///     let alpha = 0.5;
 ///
 ///     let mut jj_ana = CooMatrix::new(ndim, ndim, 5, Sym::No).unwrap();
-///     jacobian(&mut jj_ana, multiplier, x, &y, &mut args);
+///     jacobian(&mut jj_ana, alpha, x, &y, &mut args);
 ///     let mat_jj_ana = jj_ana.as_dense();
 ///
 ///     let mut jj_num = CooMatrix::new(ndim, ndim, ndim * ndim, Sym::No).unwrap();
 ///     let mut w1 = Vector::new(ndim);
 ///     let mut w2 = Vector::new(ndim);
-///     numerical_jacobian(
-///         &mut jj_num,
-///         multiplier,
-///         x,
-///         &mut y,
-///         &mut w1,
-///         &mut w2,
-///         &mut args,
-///         function,
-///     )
-///     .unwrap();
+///     numerical_jacobian(&mut jj_num, alpha, x, &mut y, &mut w1, &mut w2, &mut args, function)?;
 ///     assert_eq!(args.n_function_calls, 1 + ndim);
 ///
 ///     let mat_jj_num = jj_num.as_dense();
@@ -108,7 +98,7 @@ use russell_lab::Vector;
 /// ```
 pub fn numerical_jacobian<F, A>(
     jj: &mut CooMatrix,
-    multiplier: f64,
+    alpha: f64,
     x: f64,
     y: &mut Vector,
     w1: &mut Vector,
@@ -142,7 +132,7 @@ where
         function(w2, x, y, args)?; // F := f(x, y + Δy)
         for i in 0..ndim {
             let delta_fi = w2[i] - w1[i]; // Δfᵢ := Fᵢ - fᵢ
-            jj.put(i, j, multiplier * delta_fi / delta_yj).unwrap(); // Δfᵢ/Δyⱼ
+            jj.put(i, j, alpha * delta_fi / delta_yj).unwrap(); // Δfᵢ/Δyⱼ
         }
         y[j] = original_yj; // restore yⱼ
     }
@@ -209,52 +199,42 @@ mod tests {
             Ok(())
         };
 
-        let jacobian = |jj: &mut CooMatrix, m: f64, _x: f64, y: &Vector, _args: &mut Args| {
+        let jacobian = |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut Args| {
             let d = 1.0 + y[1];
             let e = f64::exp(y[3] / d);
             let dd = d * d;
 
             jj.reset();
 
-            jj.put(0, 0, m * (2.0)).unwrap();
-            jj.put(0, 1, m * (3.0 * y[2])).unwrap();
-            jj.put(0, 2, m * (3.0 * y[1])).unwrap();
-            jj.put(0, 3, m * (4.0 * f64::sin(y[3]))).unwrap();
+            jj.put(0, 0, alpha * (2.0)).unwrap();
+            jj.put(0, 1, alpha * (3.0 * y[2])).unwrap();
+            jj.put(0, 2, alpha * (3.0 * y[1])).unwrap();
+            jj.put(0, 3, alpha * (4.0 * f64::sin(y[3]))).unwrap();
 
-            jj.put(1, 1, m * (-3.0 + 4.0 * e * y[3] / dd)).unwrap();
-            jj.put(1, 3, m * (-4.0 * e / d)).unwrap();
+            jj.put(1, 1, alpha * (-3.0 + 4.0 * e * y[3] / dd)).unwrap();
+            jj.put(1, 3, alpha * (-4.0 * e / d)).unwrap();
 
-            jj.put(2, 2, m * (2.0 * y[2])).unwrap();
+            jj.put(2, 2, alpha * (2.0 * y[2])).unwrap();
 
-            jj.put(3, 0, m * (-1.0 - 10.0 * y[0] * y[1])).unwrap();
-            jj.put(3, 1, m * (5.0 * (1.0 - y[0] * y[0]))).unwrap();
-            jj.put(3, 2, m * (-6.0)).unwrap();
+            jj.put(3, 0, alpha * (-1.0 - 10.0 * y[0] * y[1])).unwrap();
+            jj.put(3, 1, alpha * (5.0 * (1.0 - y[0] * y[0]))).unwrap();
+            jj.put(3, 2, alpha * (-6.0)).unwrap();
         };
 
         let ndim = 4;
         let x = 1.0;
         let mut y = Vector::from(&[1.0, 2.0, 3.0, 4.0]);
-        let multiplier = 0.5;
+        let alpha = 0.5;
 
         let mut jj_ana = CooMatrix::new(ndim, ndim, 10, Sym::No).unwrap();
-        jacobian(&mut jj_ana, multiplier, x, &y, &mut args);
+        jacobian(&mut jj_ana, alpha, x, &y, &mut args);
         let mat_jj_ana = jj_ana.as_dense();
         // println!("analytical:\n{}", mat_jj_ana);
 
         let mut jj_num = CooMatrix::new(ndim, ndim, ndim * ndim, Sym::No).unwrap();
         let mut w1 = Vector::new(ndim);
         let mut w2 = Vector::new(ndim);
-        numerical_jacobian(
-            &mut jj_num,
-            multiplier,
-            x,
-            &mut y,
-            &mut w1,
-            &mut w2,
-            &mut args,
-            function,
-        )
-        .unwrap();
+        numerical_jacobian(&mut jj_num, alpha, x, &mut y, &mut w1, &mut w2, &mut args, function).unwrap();
         assert_eq!(args.n_function_calls, 1 + ndim);
 
         let mat_jj_num = jj_num.as_dense();

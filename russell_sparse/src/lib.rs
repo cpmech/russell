@@ -288,7 +288,6 @@ pub use crate::solver_umfpack::*;
 pub use crate::sparse_matrix::*;
 pub use crate::stats_lin_sol::*;
 pub use crate::verify_lin_sys::*;
-pub use crate::write_matrix_market::*;
 
 // run code from README file
 #[cfg(doctest)]

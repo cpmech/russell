@@ -266,6 +266,8 @@ impl<'a, A> OdeSolver<'a, A> {
                 if let Some(out) = output.as_mut() {
                     let stop = out.accept(&self.work, h, x, y, &self.actual, args)?;
                     if stop {
+                        self.work.stats.stop_sw_step();
+                        self.work.stats.stop_sw_total();
                         return Ok(());
                     }
                 }
@@ -337,6 +339,8 @@ impl<'a, A> OdeSolver<'a, A> {
                 if let Some(out) = output.as_mut() {
                     let stop = out.accept(&self.work, h, x, y, &self.actual, args)?;
                     if stop {
+                        self.work.stats.stop_sw_step();
+                        self.work.stats.stop_sw_total();
                         return Ok(());
                     }
                 }

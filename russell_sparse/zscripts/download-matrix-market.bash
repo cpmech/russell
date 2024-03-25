@@ -31,3 +31,4 @@ get_matrix() {
 # get_matrix Bai rdb5000 # reaction-diffusion brusselator model
 # get_matrix Lee fem_filter # complex
 # get_matrix Chevron Chevron1
+# get_matrix Bai qc324 # complex symmetric

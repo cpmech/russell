@@ -166,7 +166,8 @@ The output looks like this:
     "nrow": 62,
     "ncol": 62,
     "nnz": 202,
-    "symmetry": "Some(General(Lower))"
+    "complex": false,
+    "symmetric": "YesLower"
   },
   "requests": {
     "ordering": "Auto",
@@ -194,20 +195,20 @@ The output looks like this:
     "relative_error": 5.550560067119071e-16
   },
   "time_human": {
-    "read_matrix": "250.529µs",
-    "initialize": "2.514066ms",
-    "factorize": "1.231613ms",
-    "solve": "343.558µs",
-    "total_ifs": "4.089237ms",
-    "verify": "3.686µs"
+    "read_matrix": "43.107µs",
+    "initialize": "266.59µs",
+    "factorize": "196.81µs",
+    "solve": "166.87µs",
+    "total_ifs": "630.27µs",
+    "verify": "2.234µs"
   },
   "time_nanoseconds": {
-    "read_matrix": 250529,
-    "initialize": 2514066,
-    "factorize": 1231613,
-    "solve": 343558,
-    "total_ifs": 4089237,
-    "verify": 3686
+    "read_matrix": 43107,
+    "initialize": 266590,
+    "factorize": 196810,
+    "solve": 166870,
+    "total_ifs": 630270,
+    "verify": 2234
   },
   "mumps_stats": {
     "inf_norm_a": 0.0,

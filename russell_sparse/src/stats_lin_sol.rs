@@ -22,7 +22,8 @@ pub struct StatsLinSolMatrix {
     pub nrow: usize,
     pub ncol: usize,
     pub nnz: usize,
-    pub symmetry: String,
+    pub complex: bool,
+    pub symmetric: String,
 }
 
 /// Holds some requested parameters
@@ -111,7 +112,8 @@ impl StatsLinSol {
                 nrow: 0,
                 ncol: 0,
                 nnz: 0,
-                symmetry: unknown.clone(),
+                complex: false,
+                symmetric: unknown.clone(),
             },
             requests: StatsLinSolRequests {
                 ordering: unknown.clone(),
@@ -297,7 +299,8 @@ mod tests {
         let stats = StatsLinSol::read_json("data/mumps-pre2.json").unwrap();
         assert_eq!(stats.main.platform, "Russell");
         assert_eq!(stats.matrix.name, "pre2");
-        assert_eq!(stats.matrix.symmetry, "None");
+        assert_eq!(stats.matrix.complex, false);
+        assert_eq!(stats.matrix.symmetric, "No");
     }
 
     #[test]

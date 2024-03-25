@@ -25,6 +25,7 @@ impl CscMatrix {
     /// # References
     ///
     /// * MatrixMarket: <https://math.nist.gov/MatrixMarket/formats.html>
+    /// * MatrixMarket collection: <https://suitesparse-collection-website.herokuapp.com/>
     /// * Vismatrix: <https://github.com/cpmech/vismatrix>
     pub fn write_matrix_market<P>(&self, full_path: &P, vismatrix: bool) -> Result<(), StrError>
     where

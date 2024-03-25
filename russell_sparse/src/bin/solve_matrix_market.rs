@@ -98,7 +98,8 @@ fn main() -> Result<(), StrError> {
 
     // read the matrix
     let mut sw = Stopwatch::new();
-    let coo = read_matrix_market(&opt.matrix_market_file, handling)?;
+    let (coo_real, _) = read_matrix_market(&opt.matrix_market_file, handling)?;
+    let coo = coo_real.unwrap();
     stats.time_nanoseconds.read_matrix = sw.stop();
 
     // save the COO matrix as a generic SparseMatrix

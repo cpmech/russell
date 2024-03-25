@@ -63,7 +63,7 @@ impl Samples {
         (coo, csc, csr, cpx!(12.0, 3.0))
     }
 
-    /// Returns a (3 x 3) positive definite matrix
+    /// Returns a (3 x 3) positive definite matrix (lower representation)
     ///
     /// ```text
     ///  2  -1              2     sym
@@ -105,6 +105,100 @@ impl Samples {
             -1.0, 2.0, // i=1, p=(1),2
             -1.0, 2.0, // i=2, p=(3),4
         ]; //                    (5)
+        let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
+        (coo, csc, csr, 4.0)
+    }
+
+    /// Returns a (3 x 3) positive definite matrix (upper representation)
+    ///
+    /// ```text
+    ///  2  -1              2  -1
+    /// -1   2  -1    =>        2  -1
+    ///     -1   2          sym     2
+    /// ```
+    pub fn positive_definite_3x3_upper() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+        let (nrow, ncol, nnz) = (3, 3, 6);
+        let sym = Sym::YesUpper;
+        let mut coo = CooMatrix::new(nrow, ncol, nnz, sym).unwrap();
+        coo.put(0, 1, -0.5).unwrap(); // duplicate
+        coo.put(0, 0, 2.0).unwrap();
+        coo.put(2, 2, 2.0).unwrap();
+        coo.put(0, 1, -0.5).unwrap(); // duplicate
+        coo.put(1, 1, 2.0).unwrap();
+        coo.put(1, 2, -1.0).unwrap();
+        // CSC matrix
+        let col_pointers = vec![0, 1, 3, 5];
+        let row_indices = vec![
+            0, //    j=0, p=(0)
+            0, 1, // j=1, p=(1),2
+            1, 2, // j=2, p=(3),4
+        ]; //               (5)
+        let values = vec![
+            2.0, //       j=0, p=(0)
+            -1.0, 2.0, // j=1, p=(1),2
+            -1.0, 2.0, // j=2, p=(3),4
+        ]; //                    (5)
+        let csc = CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
+        // CSR matrix
+        let row_pointers = vec![0, 2, 4, 5];
+        let col_indices = vec![
+            0, 1, // i=0, p=(0),1
+            1, 2, // i=1, p=(2),3
+            2, //    i=2, p=(4)
+        ]; //               (5)
+        let values = vec![
+            2.0, -1.0, // i=0, p=(0),1
+            2.0, -1.0, // i=1, p=(2),3
+            2.0,  //      i=2, p=(4)
+        ]; //                    (5)
+        let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
+        (coo, csc, csr, 4.0)
+    }
+
+    /// Returns a (3 x 3) positive definite matrix (full representation)
+    ///
+    /// ```text
+    ///  2  -1    
+    /// -1   2  -1
+    ///     -1   2
+    /// ```
+    pub fn positive_definite_3x3_full() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
+        let (nrow, ncol, nnz) = (3, 3, 8);
+        let sym = Sym::YesFull;
+        let mut coo = CooMatrix::new(nrow, ncol, nnz, sym).unwrap();
+        coo.put(1, 0, -0.5).unwrap(); // duplicate
+        coo.put(0, 0, 2.0).unwrap();
+        coo.put(2, 2, 2.0).unwrap();
+        coo.put(1, 0, -0.5).unwrap(); // duplicate
+        coo.put(1, 1, 2.0).unwrap();
+        coo.put(2, 1, -1.0).unwrap();
+        coo.put(0, 1, -1.0).unwrap();
+        coo.put(1, 2, -1.0).unwrap();
+        // CSC matrix
+        let col_pointers = vec![0, 2, 5, 7];
+        let row_indices = vec![
+            0, 1, //    j=0, p=(0),1
+            0, 1, 2, // j=1, p=(2),3,4
+            1, 2, //    j=2, p=(5),6
+        ]; //                  (7)
+        let values = vec![
+            2.0, -1.0, //       j=0, p=(0),1
+            -1.0, 2.0, -1.0, // j=1, p=(2),3,4
+            -1.0, 2.0, //       j=2, p=(5),6
+        ]; //                          (7)
+        let csc = CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
+        // CSR matrix
+        let row_pointers = vec![0, 2, 5, 7];
+        let col_indices = vec![
+            0, 1, //    i=0, p=(0),1
+            0, 1, 2, // i=1, p=(2),3,4
+            1, 2, //    i=2, p=(5),6
+        ]; //                  (7)
+        let values = vec![
+            2.0, -1.0, //       i=0, p=(0),1
+            -1.0, 2.0, -1.0, // i=1, p=(2),3,4
+            -1.0, 2.0, //       i=2, p=(5),6
+        ]; //                          (7)
         let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
         (coo, csc, csr, 4.0)
     }
@@ -153,6 +247,54 @@ impl Samples {
             cpx!(-1.0, -1.0), cpx!(2.0,  2.0), // i=1, p=(1),2
             cpx!(-1.0,  1.0), cpx!(2.0, -1.0), // i=2, p=(3),4
         ]; //                                            (5)
+        let csr = ComplexCsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
+        (coo, csc, csr, cpx!(6.0, 10.0))
+    }
+
+    /// Returns a complex symmetric (3 x 3) matrix (upper storage)
+    ///
+    /// ```text
+    ///  2+1i  -1-1i                  2+1i  -1-1i
+    /// -1-1i   2+2i  -1+1i     =>           2+2i  -1+1i
+    ///        -1+1i   2-1i           sym           2-1i
+    /// ```
+    pub fn complex_symmetric_3x3_upper() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
+        let (nrow, ncol, nnz) = (3, 3, 6);
+        let sym = Sym::YesUpper;
+        let mut coo = ComplexCooMatrix::new(nrow, ncol, nnz, sym).unwrap();
+        coo.put(0, 1, cpx!(-0.5, -0.5)).unwrap(); // duplicate
+        coo.put(0, 0, cpx!(2.0, 1.0)).unwrap();
+        coo.put(2, 2, cpx!(2.0, -1.0)).unwrap();
+        coo.put(0, 1, cpx!(-0.5, -0.5)).unwrap(); // duplicate
+        coo.put(1, 1, cpx!(2.0, 2.0)).unwrap();
+        coo.put(1, 2, cpx!(-1.0, 1.0)).unwrap();
+        // CSC matrix
+        let col_pointers = vec![0, 1, 3, 5];
+        let row_indices = vec![
+            0, //    j=0, p=(0)
+            0, 1, // j=1, p=(1),2
+            1, 2, // j=2, p=(3),4
+        ]; //               (5)
+        #[rustfmt::skip]
+        let values = vec![
+            cpx!( 2.0,  1.0),                   // j=0, p=(0)
+            cpx!(-1.0, -1.0), cpx!( 2.0,  2.0), // j=1, p=(1),2
+            cpx!(-1.0,  1.0), cpx!( 2.0, -1.0), // j=2, p=(3),4
+        ]; //                                             (5)
+        let csc = ComplexCscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
+        // CSR matrix
+        let row_pointers = vec![0, 2, 4, 5];
+        let col_indices = vec![
+            0, 1, // i=0, p=(0),1
+            1, 2, // i=1, p=(2),3
+            2, //    i=2, p=(4)
+        ]; //               (5)
+        #[rustfmt::skip]
+        let values = vec![
+            cpx!( 2.0,  1.0), cpx!(-1.0, -1.0), // i=0, p=(0),1
+            cpx!( 2.0,  2.0), cpx!(-1.0,  1.0), // i=1, p=(2),3
+            cpx!( 2.0, -1.0),                   // i=2, p=(4)
+        ]; //                                             (5)
         let csr = ComplexCsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
         (coo, csc, csr, cpx!(6.0, 10.0))
     }
@@ -1475,12 +1617,17 @@ mod tests {
         let a = Matrix::from(correct);
         let mut ai = Matrix::new(3, 3);
         let correct_det = mat_inverse(&mut ai, &a).unwrap();
-        let (coo, csc, csr, det) = Samples::positive_definite_3x3_lower();
-        approx_eq(det, correct_det, 1e-15);
-        mat_approx_eq(&coo.as_dense(), correct, 1e-15);
-        mat_approx_eq(&csc.as_dense(), correct, 1e-15);
-        mat_approx_eq(&csr.as_dense(), correct, 1e-15);
-        check(&coo, &csc, &csr);
+        for (coo, csc, csr, det) in [
+            Samples::positive_definite_3x3_lower(),
+            Samples::positive_definite_3x3_upper(),
+            Samples::positive_definite_3x3_full(),
+        ] {
+            approx_eq(det, correct_det, 1e-15);
+            mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+            mat_approx_eq(&csr.as_dense(), correct, 1e-15);
+            check(&coo, &csc, &csr);
+        }
 
         // ----------------------------------------------------------------------------
 
@@ -1493,20 +1640,17 @@ mod tests {
         let a = ComplexMatrix::from(correct);
         let mut ai = ComplexMatrix::new(3, 3);
         let correct_det = complex_mat_inverse(&mut ai, &a).unwrap();
-        // lower
-        let (coo, csc, csr, det) = Samples::complex_symmetric_3x3_lower();
-        complex_approx_eq(det, correct_det, 1e-15);
-        complex_mat_approx_eq(&coo.as_dense(), correct, 1e-15);
-        complex_mat_approx_eq(&csc.as_dense(), correct, 1e-15);
-        complex_mat_approx_eq(&csr.as_dense(), correct, 1e-15);
-        check(&coo, &csc, &csr);
-        // full
-        let (coo, csc, csr, det) = Samples::complex_symmetric_3x3_full();
-        complex_approx_eq(det, correct_det, 1e-15);
-        complex_mat_approx_eq(&coo.as_dense(), correct, 1e-15);
-        complex_mat_approx_eq(&csc.as_dense(), correct, 1e-15);
-        complex_mat_approx_eq(&csr.as_dense(), correct, 1e-15);
-        check(&coo, &csc, &csr);
+        for (coo, csc, csr, det) in [
+            Samples::complex_symmetric_3x3_lower(),
+            Samples::complex_symmetric_3x3_upper(),
+            Samples::complex_symmetric_3x3_full(),
+        ] {
+            complex_approx_eq(det, correct_det, 1e-15);
+            complex_mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+            complex_mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+            complex_mat_approx_eq(&csr.as_dense(), correct, 1e-15);
+            check(&coo, &csc, &csr);
+        }
 
         // ----------------------------------------------------------------------------
 

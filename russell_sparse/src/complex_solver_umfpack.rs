@@ -401,6 +401,21 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
         stats.time_nanoseconds.factorize = self.time_factorize_ns;
         stats.time_nanoseconds.solve = self.time_solve_ns;
     }
+
+    /// Returns the nanoseconds spent on initialize
+    fn get_ns_init(&self) -> u128 {
+        self.time_initialize_ns
+    }
+
+    /// Returns the nanoseconds spent on factorize
+    fn get_ns_fact(&self) -> u128 {
+        self.time_factorize_ns
+    }
+
+    /// Returns the nanoseconds spent on solve
+    fn get_ns_solve(&self) -> u128 {
+        self.time_solve_ns
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

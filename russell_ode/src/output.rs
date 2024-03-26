@@ -512,4 +512,26 @@ mod tests {
         let from_json: OutSummary = serde_json::from_str(&json).unwrap();
         assert_eq!(from_json.count, summary.count);
     }
+
+    #[test]
+    fn read_write_files_work() {
+        // Write OutDataRef
+        let y = Vector::from(&[6.6]);
+        let data_out = OutDataRef { h: 4.4, x: 5.5, y: &y };
+        let path = "/tmp/russell_ode/test_out_data.json";
+        data_out.write_json(path).unwrap();
+
+        // Read OutData
+        let data_in = OutData::read_json(path).unwrap();
+        assert_eq!(data_in.h, 4.4);
+        assert_eq!(data_in.x, 5.5);
+        assert_eq!(data_in.y.as_data(), &[6.6]);
+
+        // Write OutSummary
+        let sum_out = OutSummary { count: 456 };
+        let path = "/tmp/russell_ode/test_out_summary.json";
+        sum_out.write_json(path).unwrap();
+        let sum_in = OutSummary::read_json(path).unwrap();
+        assert_eq!(sum_in.count, 456);
+    }
 }

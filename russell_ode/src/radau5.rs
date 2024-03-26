@@ -988,5 +988,7 @@ mod tests {
             solver.step(&mut work, x, &y, h, &mut args).err(),
             Some("f: stop (count = 4; num-jacobian)")
         );
+
+        solver.update_params(params);
     }
 }

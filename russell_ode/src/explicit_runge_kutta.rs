@@ -804,6 +804,8 @@ mod tests {
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).err(),
             Some("f: count = 8 (dense output)")
         );
+
+        solver.update_params(params);
     }
 
     #[test]

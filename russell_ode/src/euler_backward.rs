@@ -429,5 +429,7 @@ mod tests {
         let x_out = 0.1;
         solver.reject(&mut work, h);
         solver.dense_output(&mut y_out, x_out, x, &y, h);
+
+        solver.update_params(params);
     }
 }

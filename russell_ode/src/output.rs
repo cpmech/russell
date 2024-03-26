@@ -200,7 +200,8 @@ impl<A> Output<A> {
 
     /// Sets the callback function for accepted steps
     ///
-    /// The callback function is `(stats: &Stats, h: f64, x: f64, y: &Vector, args: &mut A)`
+    /// The callback function is `|stats, h, x, y, args|`, i.e.,
+    /// `(stats: &Stats, h: f64, x: f64, y: &Vector, args: &mut A)`
     /// and may return `true` to stop the simulation
     pub fn set_step_callback(&mut self, callback: OutputCallback<A>) -> &mut Self {
         self.step_callback = callback;

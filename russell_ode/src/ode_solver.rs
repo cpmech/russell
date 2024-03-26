@@ -406,7 +406,7 @@ impl<'a, A> OdeSolver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::OdeSolver;
-    use crate::{Method, Output, Params, Samples, N_EQUAL_STEPS};
+    use crate::{no_jacobian, HasJacobian, Method, Output, Params, Samples, System, N_EQUAL_STEPS};
     use russell_lab::{vec_approx_eq, vec_copy, Vector};
     use russell_sparse::Genie;
 
@@ -680,5 +680,50 @@ mod tests {
             solver.solve(&mut data.y0, data.x0, x1, None, None, &mut args).err(),
             Some("x1 must be greater than x0")
         );
+    }
+
+    #[test]
+    fn solves_and_output_function_works() {
+        struct Args {
+            count: usize,
+            barrier: usize,
+        }
+        let system = System::new(
+            1,
+            |f: &mut Vector, _x: f64, _y: &Vector, _args: &mut Args| {
+                f[0] = 1.0;
+                Ok(())
+            },
+            no_jacobian,
+            HasJacobian::No,
+            None,
+            None,
+        );
+        let mut args = Args { count: 0, barrier: 0 };
+        let params = Params::new(Method::MdEuler);
+        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut out = Output::new();
+        out.set_step_callback(|_, _, _, _, args: &mut Args| {
+            if args.count == args.barrier {
+                return Ok(true);
+            }
+            args.count += 1;
+            Ok(false)
+        });
+        // @ first output
+        let mut y = Vector::new(1);
+        solver
+            .solve(&mut y, 0.0, 1.0, Some(0.5), Some(&mut out), &mut args)
+            .unwrap();
+        // @ fixed step loop
+        y.fill(0.0);
+        args.barrier += 1;
+        solver
+            .solve(&mut y, 0.0, 1.0, Some(0.5), Some(&mut out), &mut args)
+            .unwrap();
+        // @ variable step loop
+        y.fill(0.0);
+        args.barrier += 1;
+        solver.solve(&mut y, 0.0, 1.0, None, Some(&mut out), &mut args).unwrap();
     }
 }

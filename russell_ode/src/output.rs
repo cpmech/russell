@@ -467,3 +467,49 @@ impl<A> Output<A> {
 pub fn no_callback<A>(_b: &Stats, _h: f64, _x: f64, _y: &Vector, _args: &mut A) -> Result<bool, StrError> {
     Ok(false) // do not stop
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn derive_methods_work() {
+        // OutData
+        let out_data = OutData {
+            h: 0.1,
+            x: 1.0,
+            y: Vector::new(1),
+        };
+        let clone = out_data.clone();
+        assert_eq!(
+            format!("{:?}", clone),
+            "OutData { h: 0.1, x: 1.0, y: NumVector { data: [0.0] } }"
+        );
+        let json = "{\"h\":0.2,\"x\":2.0,\"y\":{ \"data\":[3.0]}}";
+        let from_json: OutData = serde_json::from_str(&json).unwrap();
+        assert_eq!(from_json.h, 0.2);
+        assert_eq!(from_json.x, 2.0);
+        assert_eq!(from_json.y.as_data(), &[3.0]);
+
+        // OutDataRef
+        let y = Vector::from(&[10.0]);
+        let out_data_ref = OutDataRef { h: 0.5, x: 5.0, y: &y };
+        let clone = out_data_ref.clone();
+        assert_eq!(
+            format!("{:?}", clone),
+            "OutDataRef { h: 0.5, x: 5.0, y: NumVector { data: [10.0] } }"
+        );
+        let json = serde_json::to_string(&out_data_ref).unwrap();
+        assert_eq!(json, "{\"h\":0.5,\"x\":5.0,\"y\":{\"data\":[10.0]}}");
+
+        // OutSummary
+        let summary = OutSummary { count: 123 };
+        let clone = summary.clone();
+        assert_eq!(format!("{:?}", clone), "OutSummary { count: 123 }");
+        let json = serde_json::to_string(&summary).unwrap();
+        let from_json: OutSummary = serde_json::from_str(&json).unwrap();
+        assert_eq!(from_json.count, summary.count);
+    }
+}

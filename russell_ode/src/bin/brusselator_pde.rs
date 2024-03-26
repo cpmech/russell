@@ -1,6 +1,6 @@
 use russell_lab::{format_scientific, get_num_threads, set_num_threads, StrError};
 use russell_ode::prelude::*;
-use russell_sparse::Genie;
+use russell_sparse::{Genie, LinSolParams, Ordering, Scaling};
 use structopt::StructOpt;
 
 /// Command line options
@@ -38,6 +38,18 @@ struct Options {
     /// Use MUMPS solver
     #[structopt(long)]
     mumps: bool,
+
+    /// Writes the matrix files and stop
+    #[structopt(long)]
+    write_matrix: bool,
+
+    /// Ordering strategy
+    #[structopt(short = "o", long, default_value = "Auto")]
+    ordering: String,
+
+    /// Scaling strategy
+    #[structopt(short = "s", long, default_value = "Auto")]
+    scaling: String,
 }
 
 fn main() -> Result<(), StrError> {
@@ -56,9 +68,14 @@ fn main() -> Result<(), StrError> {
     // set the number of BLAS threads
     set_num_threads(opt.blas_nt);
 
-    // get get ODE system
+    // ODE system
     let alpha = if opt.first_book { 2e-3 } else { 0.1 };
     let (system, mut data, mut args) = Samples::brusselator_pde(alpha, opt.npoint, !opt.first_book, false);
+
+    // parameters for the linear solver
+    let mut ls_params = LinSolParams::new();
+    ls_params.ordering = Ordering::from(&opt.ordering);
+    ls_params.scaling = Scaling::from(&opt.scaling);
 
     // set configuration parameters
     let mut params = if opt.dopri8 {
@@ -73,6 +90,10 @@ fn main() -> Result<(), StrError> {
     params.radau5.concurrent = !opt.serial;
     params.set_tolerances(tol, tol, None)?;
     params.newton.genie = if opt.mumps { Genie::Mumps } else { Genie::Umfpack };
+    params.newton.lin_sol_params = Some(ls_params);
+    if opt.write_matrix {
+        params.newton.write_matrix_after_nstep_and_stop = Some(0);
+    }
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system)?;

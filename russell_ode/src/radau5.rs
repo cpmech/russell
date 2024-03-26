@@ -3,7 +3,7 @@ use crate::{OdeSolverTrait, Params, System, Workspace};
 use num_complex::Complex64;
 use russell_lab::math::SQRT_6;
 use russell_lab::{complex_vec_zip, cpx, format_fortran, vec_copy, ComplexVector, Vector};
-use russell_sparse::numerical_jacobian;
+use russell_sparse::{numerical_jacobian, ComplexCscMatrix, CscMatrix};
 use russell_sparse::{ComplexLinSolver, ComplexSparseMatrix, CooMatrix, Genie, LinSolver, SparseMatrix};
 use std::thread;
 
@@ -229,6 +229,22 @@ where
                     kk_real.put(m, m, gamma).unwrap(); // K_real += γ I
                     kk_comp.put(m, m, cpx!(alpha, beta)).unwrap(); // K_comp += (α + βi) I
                 }
+            }
+        }
+
+        // write the matrices and stop
+        if let Some(nstep) = self.params.newton.write_matrix_after_nstep_and_stop {
+            if work.stats.n_accepted > nstep {
+                let csc_jacobian = CscMatrix::from_coo(jj).unwrap();
+                let csc_kk_real = CscMatrix::from_coo(&kk_real).unwrap();
+                let csc_kk_comp = ComplexCscMatrix::from_coo(&kk_comp).unwrap();
+                csc_jacobian.write_matrix_market("/tmp/russell_ode/jacobian.smat", true)?;
+                csc_jacobian.write_matrix_market("/tmp/russell_ode/jacobian.mtx", false)?;
+                csc_kk_real.write_matrix_market("/tmp/russell_ode/kk_real.smat", true)?;
+                csc_kk_real.write_matrix_market("/tmp/russell_ode/kk_real.mtx", false)?;
+                csc_kk_comp.write_matrix_market("/tmp/russell_ode/kk_comp.smat", true)?;
+                csc_kk_comp.write_matrix_market("/tmp/russell_ode/kk_comp.mtx", false)?;
+                return Err("MATRIX FILES GENERATED in /tmp/russell_ode/");
             }
         }
         Ok(())

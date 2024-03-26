@@ -32,6 +32,25 @@ pub struct ParamsNewton {
 
     /// Configurations for sparse linear solver
     pub lin_sol_params: Option<LinSolParams>,
+
+    /// Writes the Jacobian and coefficient matrices and stop (with an error message)
+    ///
+    /// The files will be written `if n_accepted > nstep`
+    ///
+    /// Will write the following files:
+    ///
+    /// * `/tmp/russell_ode/jacobian.{mtx,smat}` -- Jacobian matrix
+    /// * `/tmp/russell_ode/kk_real.{mtx,smat}` -- Radau5 coefficient matrix of the real system
+    /// * `/tmp/russell_ode/kk_comp.{mtx,smat}` -- Radau5 coefficient matrix of the complex system
+    ///
+    /// where `mtx` is the extension for the MatrixMarket files and `smat` is the extension
+    /// for the vismatrix files (for visualization).
+    ///
+    /// # References
+    ///
+    /// * MatrixMarket: <https://math.nist.gov/MatrixMarket/formats.html>
+    /// * Vismatrix: <https://github.com/cpmech/vismatrix>
+    pub write_matrix_after_nstep_and_stop: Option<usize>,
 }
 
 /// Holds parameters to control the variable stepsize algorithm
@@ -230,6 +249,7 @@ impl ParamsNewton {
             use_numerical_jacobian: false,
             genie: Genie::Umfpack,
             lin_sol_params: None,
+            write_matrix_after_nstep_and_stop: None,
         }
     }
 

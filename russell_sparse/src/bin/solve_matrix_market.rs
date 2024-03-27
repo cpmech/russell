@@ -60,6 +60,10 @@ struct Options {
     /// Writes vismatrix file
     #[structopt(long)]
     vismatrix: bool,
+
+    /// Hide JSON output (useful to pipe MUMPS/UMFPACK logs to files)
+    #[structopt(long)]
+    hide_json: bool,
 }
 
 fn main() -> Result<(), StrError> {
@@ -206,7 +210,9 @@ fn main() -> Result<(), StrError> {
     }
 
     // print stats
-    println!("{}", stats.get_json());
+    if !opt.hide_json {
+        println!("{}", stats.get_json());
+    }
 
     // done
     Ok(())

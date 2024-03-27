@@ -12,8 +12,9 @@ fn test_fweuler_hairer_wanner_eq1() {
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system).unwrap();
+    let h_equal = Some(1.875 / 50.0);
     solver
-        .solve(&mut data.y0, data.x0, data.x1, data.h_equal, None, &mut args)
+        .solve(&mut data.y0, data.x0, data.x1, h_equal, None, &mut args)
         .unwrap();
 
     // get statistics
@@ -21,7 +22,7 @@ fn test_fweuler_hairer_wanner_eq1() {
 
     // compare with a previous implementation
     approx_eq(data.y0[0], 0.08589790706616637, 1e-15);
-    assert_eq!(stat.h_accepted, data.h_equal.unwrap());
+    assert_eq!(stat.h_accepted, h_equal.unwrap());
 
     // compare with the analytical solution
     let mut y1_correct = Vector::new(ndim);

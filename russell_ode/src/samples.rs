@@ -14,9 +14,6 @@ pub struct SampleData {
 
     /// Holds the final x
     pub x1: f64,
-
-    /// Holds the stepsize for simulations with equal-steps
-    pub h_equal: Option<f64>,
 }
 
 /// Arguments for problems using the FDM approximation of the 2D Laplacian operator
@@ -92,7 +89,6 @@ impl Samples {
             x0: 0.0,
             y0: Vector::from(&[0.0]),
             x1: 1.0,
-            h_equal: Some(0.2),
         };
         let y_fn_x = |y: &mut Vector, x: f64, _args: &mut NoArgs| {
             y[0] = x;
@@ -228,12 +224,7 @@ impl Samples {
         system.mass_put(2, 2, 1.0).unwrap();
 
         // control
-        let data = SampleData {
-            x0,
-            y0,
-            x1,
-            h_equal: None,
-        };
+        let data = SampleData { x0, y0, x1 };
         let y_fn_x = |y: &mut Vector, x: f64, _args: &mut NoArgs| {
             y[0] = f64::cos(x);
             y[1] = -f64::sin(x);
@@ -339,12 +330,7 @@ impl Samples {
         );
 
         // control
-        let data = SampleData {
-            x0: t0,
-            y0: uu,
-            x1: t1,
-            h_equal: None,
-        };
+        let data = SampleData { x0: t0, y0: uu, x1: t1 };
 
         let args = SampleFdm2dArgs { fdm };
         (system, data, args)
@@ -430,12 +416,7 @@ impl Samples {
         );
 
         // control
-        let data = SampleData {
-            x0,
-            y0,
-            x1,
-            h_equal: Some(0.1),
-        };
+        let data = SampleData { x0, y0, x1 };
 
         // reference solution; using the following Mathematica code:
         // ```Mathematica
@@ -753,7 +734,6 @@ impl Samples {
             x0: t0,
             y0: yy0,
             x1: t1,
-            h_equal: None,
         };
 
         let args = SampleFdm2dArgs { fdm };
@@ -880,12 +860,7 @@ impl Samples {
             Some(jac_nnz),
             None,
         );
-        let data = SampleData {
-            x0,
-            y0,
-            x1,
-            h_equal: None,
-        };
+        let data = SampleData { x0, y0, x1 };
         // reference solution from Mathematica
         let y_ref = Vector::from(&[
             0.99399999999999280751004722382642,
@@ -966,7 +941,6 @@ impl Samples {
             x0: 0.0,
             y0: Vector::from(&[0.0]),
             x1: 1.5,
-            h_equal: Some(1.875 / 50.0),
         };
 
         let y_fn_x = |y: &mut Vector, x: f64, _args: &mut NoArgs| {
@@ -1044,7 +1018,6 @@ impl Samples {
             x0: 0.0,
             y0: Vector::from(&[1.0, 0.0, 0.0]),
             x1: 0.3,
-            h_equal: None,
         };
         (system, data, 0)
     }
@@ -1132,12 +1105,7 @@ impl Samples {
             Some(jac_nnz),
             None,
         );
-        let data = SampleData {
-            x0,
-            y0,
-            x1,
-            h_equal: None,
-        };
+        let data = SampleData { x0, y0, x1 };
         (system, data, 0)
     }
 
@@ -1294,12 +1262,7 @@ impl Samples {
         system.mass_put(4, 4, -C3).unwrap();
 
         // control
-        let data = SampleData {
-            x0,
-            y0,
-            x1,
-            h_equal: None,
-        };
+        let data = SampleData { x0, y0, x1 };
         (system, data, 0)
     }
 
@@ -1356,7 +1319,6 @@ impl Samples {
             x0: 0.0,
             y0: Vector::from(&[0.0]),
             x1: 1.0,
-            h_equal: Some(0.2),
         };
         let y_fn_x = |y: &mut Vector, x: f64, _args: &mut NoArgs| {
             y[0] = f64::exp(x) - x - 1.0;
@@ -1432,7 +1394,6 @@ impl Samples {
             x0: 0.0,
             y0: Vector::from(&[2.0, -10.0]),
             x1: 1.0,
-            h_equal: Some(0.2),
         };
         let y_fn_x = |y: &mut Vector, x: f64, _args: &mut NoArgs| {
             y[0] = f64::exp(-x) + f64::exp(-10.0 * x) + x;

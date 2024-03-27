@@ -56,6 +56,10 @@ struct Options {
     /// Enforce unsymmetric strategy (not recommended) (UMFPACK only)
     #[structopt(short = "u", long)]
     enforce_unsymmetric_strategy: bool,
+
+    /// Writes vismatrix file
+    #[structopt(long)]
+    vismatrix: bool,
 }
 
 fn main() -> Result<(), StrError> {
@@ -104,6 +108,12 @@ fn main() -> Result<(), StrError> {
 
     // --- real ---------------------------------------------------------------------------------
     if let Some(coo) = coo_real {
+        // write vismatrix file
+        if opt.vismatrix {
+            let csc = CscMatrix::from_coo(&coo)?;
+            csc.write_matrix_market("/tmp/russell_sparse/solve_matrix_market_real.smat", true)?;
+        }
+
         // save the COO matrix as a generic SparseMatrix
         let mut mat = SparseMatrix::from_coo(coo);
 
@@ -154,8 +164,14 @@ fn main() -> Result<(), StrError> {
 
     // --- complex ------------------------------------------------------------------------------
     } else {
-        // save the COO matrix as a generic SparseMatrix
+        // write vismatrix file
         let coo = coo_complex.unwrap();
+        if opt.vismatrix {
+            let csc = ComplexCscMatrix::from_coo(&coo)?;
+            csc.write_matrix_market("/tmp/russell_sparse/solve_matrix_market_complex.smat", true)?;
+        }
+
+        // save the COO matrix as a generic SparseMatrix
         let mut mat = ComplexSparseMatrix::from_coo(coo);
 
         // save information about the matrix

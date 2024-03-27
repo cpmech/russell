@@ -728,12 +728,28 @@ mod tests {
             }
         })
         .unwrap();
+        // ... equal steps
+        let mut y = data.y0.clone();
+        solver
+            .solve(&mut y, 0.0, 0.4, Some(0.2), Some(&mut out), &mut args)
+            .unwrap();
+        assert!(y[0] > 0.0 && y[0] < 0.4);
+        // ... variable steps
         let mut y = data.y0.clone();
         solver.solve(&mut y, 0.0, 0.4, None, Some(&mut out), &mut args).unwrap();
         assert!(y[0] > 0.0 && y[0] < 0.4);
 
         // run again and stop due to error
         out.clear();
+        // ... first step
+        out.set_dense_callback(true, H_OUT, |_stats, _h, _x, _y, _args| Err("stop with error"))
+            .unwrap();
+        let mut y = data.y0.clone();
+        assert_eq!(
+            solver.solve(&mut y, 0.0, 0.4, None, Some(&mut out), &mut args).err(),
+            Some("stop with error")
+        );
+        // ... next steps
         out.set_dense_callback(true, H_OUT, |stats, _h, _x, _y, _args| {
             if stats.n_accepted > 0 {
                 Err("stop with error")

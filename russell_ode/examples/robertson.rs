@@ -20,11 +20,15 @@ fn main() -> Result<(), StrError> {
     let (system, data, mut args) = Samples::robertson();
 
     // parameters
+    let h_ini = 1e-6;
     let rel_tol = 1e-2;
     let abs_tol = 1e-6 * rel_tol;
     let mut params1 = Params::new(Method::Radau5);
     let mut params2 = Params::new(Method::DoPri5);
     let mut params3 = Params::new(Method::DoPri5);
+    params1.step.h_ini = h_ini;
+    params2.step.h_ini = h_ini;
+    params3.step.h_ini = h_ini;
     params1.set_tolerances(abs_tol, rel_tol, None)?;
     params2.set_tolerances(abs_tol, rel_tol, None)?;
     let rel_tol = 1e-3;
@@ -44,7 +48,7 @@ fn main() -> Result<(), StrError> {
 
     // solve the problem with Radau5
     let mut out1 = Output::new();
-    out1.enable_step(&[sel]);
+    out1.set_step_recording(true, &[sel]);
     let mut y = data.y0.clone();
     radau5.solve(&mut y, data.x0, data.x1, None, Some(&mut out1), &mut args)?;
     println!("{}", radau5.stats());
@@ -52,7 +56,7 @@ fn main() -> Result<(), StrError> {
 
     // solve the problem with DoPri5 and Tol = 1e-2
     let mut out2 = Output::new();
-    out2.enable_step(&[sel]);
+    out2.set_step_recording(true, &[sel]);
     let mut y = data.y0.clone();
     dopri5.solve(&mut y, data.x0, data.x1, None, Some(&mut out2), &mut args)?;
     println!("\nTol = 1e-2\n{}", dopri5.stats());
@@ -60,7 +64,7 @@ fn main() -> Result<(), StrError> {
 
     // solve the problem with DoPri5 and Tol = 1e-3
     let mut out3 = Output::new();
-    out3.enable_step(&[sel]);
+    out3.set_step_recording(true, &[sel]);
     let mut y = data.y0.clone();
     dopri5.update_params(params3)?;
     dopri5.solve(&mut y, data.x0, data.x1, None, Some(&mut out3), &mut args)?;

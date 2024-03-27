@@ -751,8 +751,7 @@ mod tests {
         // This test relates to Table 21.13 of Kreyszig's book, page 921
 
         // problem
-        let (system, data, mut args) = Samples::kreyszig_ex4_page920();
-        let yfx = data.y_analytical.unwrap();
+        let (system, data, mut args, y_fn_x) = Samples::kreyszig_ex4_page920();
         let ndim = system.ndim;
 
         // allocate structs
@@ -797,7 +796,7 @@ mod tests {
             n_fcn_correct += 1; // re-initialize
 
             // check the results
-            yfx(&mut y_ana, x);
+            y_fn_x(&mut y_ana, x, &mut args);
             let err_y0 = f64::abs(y[0] - y_ana[0]);
             let err_y1 = f64::abs(y[1] - y_ana[1]);
             println!("{:>4}{}{}", n, format_fortran(err_y0), format_fortran(err_y1));
@@ -820,8 +819,7 @@ mod tests {
         // This test relates to Table 21.13 of Kreyszig's book, page 921
 
         // problem
-        let (system, data, mut args) = Samples::kreyszig_ex4_page920();
-        let yfx = data.y_analytical.unwrap();
+        let (system, data, mut args, y_fn_x) = Samples::kreyszig_ex4_page920();
         let ndim = system.ndim;
 
         // allocate structs
@@ -868,7 +866,7 @@ mod tests {
             n_fcn_correct += 1; // re-initialize
 
             // check the results
-            yfx(&mut y_ana, x);
+            y_fn_x(&mut y_ana, x, &mut args);
             let err_y0 = f64::abs(y[0] - y_ana[0]);
             let err_y1 = f64::abs(y[1] - y_ana[1]);
             println!("{:>4}{}{}", n, format_fortran(err_y0), format_fortran(err_y1));
@@ -891,8 +889,7 @@ mod tests {
         for symmetric in [true, false] {
             for genie in [Genie::Umfpack, Genie::Mumps] {
                 // problem
-                let (system, data, mut args) = Samples::simple_system_with_mass_matrix(symmetric, genie);
-                let yfx = data.y_analytical.unwrap();
+                let (system, data, mut args, y_fn_x) = Samples::simple_system_with_mass_matrix(symmetric, genie);
                 let ndim = system.ndim;
 
                 // allocate structs
@@ -925,7 +922,7 @@ mod tests {
                     work.rel_error_prev = f64::max(params.step.rel_error_prev_min, work.rel_error);
 
                     // check the results
-                    yfx(&mut y_ana, x);
+                    y_fn_x(&mut y_ana, x, &mut args);
                     let err_y0 = f64::abs(y[0] - y_ana[0]);
                     let err_y1 = f64::abs(y[1] - y_ana[1]);
                     let err_y2 = f64::abs(y[2] - y_ana[2]);

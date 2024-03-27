@@ -4,7 +4,7 @@ use russell_ode::{Method, OdeSolver, Params, Samples};
 #[test]
 fn test_fweuler_hairer_wanner_eq1() {
     // get ODE system
-    let (system, mut data, mut args) = Samples::hairer_wanner_eq1();
+    let (system, mut data, mut args, y_fn_x) = Samples::hairer_wanner_eq1();
     let ndim = system.get_ndim();
 
     // set configuration parameters
@@ -24,9 +24,8 @@ fn test_fweuler_hairer_wanner_eq1() {
     assert_eq!(stat.h_accepted, data.h_equal.unwrap());
 
     // compare with the analytical solution
-    let analytical = data.y_analytical.unwrap();
     let mut y1_correct = Vector::new(ndim);
-    analytical(&mut y1_correct, data.x1);
+    y_fn_x(&mut y1_correct, data.x1, &mut args);
     approx_eq(data.y0[0], y1_correct[0], 0.004753);
 
     // print and check statistics

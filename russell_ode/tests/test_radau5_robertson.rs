@@ -13,7 +13,7 @@ fn test_radau5_robertson() {
 
     // enable output of accepted steps
     let mut out = Output::new();
-    out.enable_step(&[0, 1, 2]);
+    out.set_step_recording(true, &[0, 1, 2]);
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system).unwrap();

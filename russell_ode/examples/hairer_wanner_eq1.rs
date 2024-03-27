@@ -20,7 +20,7 @@ use russell_ode::prelude::*;
 
 fn main() -> Result<(), StrError> {
     // get the ODE system
-    let (system, data, mut args) = Samples::hairer_wanner_eq1();
+    let (system, data, mut args, y_fn_x) = Samples::hairer_wanner_eq1();
 
     // solvers
     let mut bweuler = OdeSolver::new(Params::new(Method::BwEuler), &system)?;
@@ -28,21 +28,21 @@ fn main() -> Result<(), StrError> {
 
     // solve the problem with BwEuler and h = 0.5
     let mut out1 = Output::new();
-    out1.enable_step(&[0]);
+    out1.set_step_recording(true, &[0]);
     let h = 0.5;
     let mut y = data.y0.clone();
     bweuler.solve(&mut y, data.x0, data.x1, Some(h), Some(&mut out1), &mut args)?;
 
     // solve the problem with FwEuler and h = 1.974/50.0
     let mut out2 = Output::new();
-    out2.enable_step(&[0]);
+    out2.set_step_recording(true, &[0]);
     let h = 1.974 / 50.0;
     let mut y = data.y0.clone();
     fweuler.solve(&mut y, data.x0, data.x1, Some(h), Some(&mut out2), &mut args)?;
 
     // solve the problem with FwEuler and h = 1.875/50.0
     let mut out3 = Output::new();
-    out3.enable_step(&[0]);
+    out3.set_step_recording(true, &[0]);
     let h = 1.875 / 50.0;
     let mut y = data.y0.clone();
     fweuler.solve(&mut y, data.x0, data.x1, Some(h), Some(&mut out3), &mut args)?;
@@ -54,7 +54,7 @@ fn main() -> Result<(), StrError> {
     x_ana1.as_mut_data().append(x_ana2.as_mut_data()); // merge the two vectors
     let x_ana = Vector::from(x_ana1.as_data());
     let y_ana = x_ana.get_mapped(|x| {
-        data.y_analytical.unwrap()(&mut y_aux, x);
+        y_fn_x(&mut y_aux, x, &mut args);
         y_aux[0]
     });
     let mut curve0 = Curve::new();

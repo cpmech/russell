@@ -517,8 +517,7 @@ mod tests {
         // This test relates to Table 21.2 of Kreyszig's book, page 904
 
         // problem
-        let (system, data, mut args) = Samples::kreyszig_eq6_page902();
-        let yfx = data.y_analytical.unwrap();
+        let (system, data, mut args, y_fn_x) = Samples::kreyszig_eq6_page902();
         let ndim = system.ndim;
 
         // allocate structs
@@ -537,7 +536,7 @@ mod tests {
         let mut x = data.x0;
         let mut y = data.y0.clone();
         let mut y_ana = Vector::new(ndim);
-        yfx(&mut y_ana, x);
+        y_fn_x(&mut y_ana, x, &mut args);
         let mut xx = vec![x];
         let mut yy_num = vec![y[0]];
         let mut yy_ana = vec![y_ana[0]];
@@ -551,7 +550,7 @@ mod tests {
             xx.push(x);
             yy_num.push(y[0]);
 
-            yfx(&mut y_ana, x);
+            y_fn_x(&mut y_ana, x, &mut args);
             yy_ana.push(y_ana[0]);
             errors.push(f64::abs(yy_num.last().unwrap() - yy_ana.last().unwrap()));
         }
@@ -601,8 +600,7 @@ mod tests {
         // This test relates to Table 21.4 of Kreyszig's book, page 904
 
         // problem
-        let (system, data, mut args) = Samples::kreyszig_eq6_page902();
-        let yfx = data.y_analytical.unwrap();
+        let (system, data, mut args, y_fn_x) = Samples::kreyszig_eq6_page902();
         let ndim = system.ndim;
 
         // allocate structs
@@ -621,7 +619,7 @@ mod tests {
         let mut x = data.x0;
         let mut y = data.y0.clone();
         let mut y_ana = Vector::new(ndim);
-        yfx(&mut y_ana, x);
+        y_fn_x(&mut y_ana, x, &mut args);
         let mut xx = vec![x];
         let mut yy_num = vec![y[0]];
         let mut yy_ana = vec![y_ana[0]];
@@ -635,7 +633,7 @@ mod tests {
             xx.push(x);
             yy_num.push(y[0]);
 
-            yfx(&mut y_ana, x);
+            y_fn_x(&mut y_ana, x, &mut args);
             yy_ana.push(y_ana[0]);
             errors.push(f64::abs(yy_num.last().unwrap() - yy_ana.last().unwrap()));
         }
@@ -810,8 +808,7 @@ mod tests {
 
     #[test]
     fn all_erk_methods_work() {
-        let (system, data, mut args) = Samples::simple_equation_constant();
-        let yfx = data.y_analytical.unwrap();
+        let (system, data, mut args, y_fn_x) = Samples::simple_equation_constant();
         let mut y_ana = Vector::new(system.ndim);
         let h = 0.2;
         let mut x = data.x0;
@@ -823,7 +820,7 @@ mod tests {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
             work.stats.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
-            yfx(&mut y_ana, x);
+            y_fn_x(&mut y_ana, x, &mut args);
             // println!("{:?}: solution @ {}: {} ({})", method, x, y[0], y_ana[0]);
             approx_eq(y[0], y_ana[0], 1e-14);
         }

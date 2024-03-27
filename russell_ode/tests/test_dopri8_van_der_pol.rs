@@ -14,7 +14,7 @@ fn test_dopri8_van_der_pol() {
 
     // enable dense output with 0.2 spacing
     let mut out = Output::new();
-    out.enable_dense(0.1, &[0, 1]).unwrap();
+    out.set_dense_recording(true, 0.1, &[0, 1]).unwrap();
 
     // solve the ODE system
     let mut y0 = Vector::from(&[2.0, 0.0]);

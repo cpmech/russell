@@ -25,7 +25,7 @@ fn main() -> Result<(), StrError> {
     // output
     let mut out = Output::new();
     let h_out = 0.5;
-    out.enable_file_dense(h_out, PATH_KEY)?;
+    out.set_dense_file_writing(true, h_out, PATH_KEY)?;
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system)?;

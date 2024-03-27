@@ -30,7 +30,7 @@ fn main() -> Result<(), StrError> {
     // enable step output
     let mut out = Output::new();
     let selected_y_components = &[0, 1];
-    out.enable_step(selected_y_components);
+    out.set_step_recording(true, selected_y_components);
 
     // solve the problem
     solver.solve(&mut y0, data.x0, data.x1, None, Some(&mut out), &mut args)?;

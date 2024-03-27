@@ -26,12 +26,12 @@ fn main() -> Result<(), StrError> {
 
     // read summary
     println!("... generating figures ...");
-    let summary = OutSummary::read_json(format!("{}_summary.json", path_key).as_str())?;
-    let mut uu_plot = Graph::new(opt.second_book, &path_key, summary.count)?;
-    let mut vv_plot = Graph::new(opt.second_book, &path_key, summary.count)?;
+    let count = OutCount::read_json(format!("{}_count.json", path_key).as_str())?;
+    let mut uu_plot = Graph::new(opt.second_book, &path_key, count.n)?;
+    let mut vv_plot = Graph::new(opt.second_book, &path_key, count.n)?;
 
     // loop over time stations
-    for idx in 0..summary.count {
+    for idx in 0..count.n {
         let path = format!("{}_{}.json", path_key, idx);
         let res = OutData::read_json(path.as_str())?;
         uu_plot.draw(res.x, &res.y, false)?;

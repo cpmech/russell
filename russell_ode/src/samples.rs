@@ -1,5 +1,5 @@
-use crate::{HasJacobian, NoArgs, Side, System};
-use crate::{PdeDiscreteLaplacian2d, StrError};
+use crate::StrError;
+use crate::{HasJacobian, NoArgs, PdeDiscreteLaplacian2d, Side, System, YxFunction};
 use russell_lab::math::PI;
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, Genie, Sym};
@@ -17,9 +17,6 @@ pub struct SampleData {
 
     /// Holds the stepsize for simulations with equal-steps
     pub h_equal: Option<f64>,
-
-    /// Holds a function to compute the analytical solution y(x)
-    pub y_analytical: Option<fn(&mut Vector, f64)>,
 }
 
 /// Arguments for problems using the FDM approximation of the 2D Laplacian operator
@@ -63,6 +60,7 @@ impl Samples {
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values and the analytical solution
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `y_fn_x` -- is a function to compute the analytical solution
     pub fn simple_equation_constant() -> (
         System<
             impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
@@ -71,6 +69,7 @@ impl Samples {
         >,
         SampleData,
         NoArgs,
+        YxFunction<NoArgs>,
     ) {
         let ndim = 1;
         let jac_nnz = 1; // CooMatrix requires at least one value (thus the 0.0 must be stored)
@@ -94,11 +93,11 @@ impl Samples {
             y0: Vector::from(&[0.0]),
             x1: 1.0,
             h_equal: Some(0.2),
-            y_analytical: Some(|y, x| {
-                y[0] = x;
-            }),
         };
-        (system, data, 0)
+        let y_fn_x = |y: &mut Vector, x: f64, _args: &mut NoArgs| {
+            y[0] = x;
+        };
+        (system, data, 0, y_fn_x)
     }
 
     /// Returns a simple system with a mass matrix
@@ -163,6 +162,7 @@ impl Samples {
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `y_fn_x` -- is a function to compute the analytical solution
     ///
     /// # Reference
     ///
@@ -179,6 +179,7 @@ impl Samples {
         >,
         SampleData,
         NoArgs,
+        YxFunction<NoArgs>,
     ) {
         // selected symmetric option (for both Mass and Jacobian matrices)
         let sym = genie.symmetry(symmetric);
@@ -232,13 +233,13 @@ impl Samples {
             y0,
             x1,
             h_equal: None,
-            y_analytical: Some(|y, x| {
-                y[0] = f64::cos(x);
-                y[1] = -f64::sin(x);
-                y[2] = f64::ln(1.0 + x);
-            }),
         };
-        (system, data, 0)
+        let y_fn_x = |y: &mut Vector, x: f64, _args: &mut NoArgs| {
+            y[0] = f64::cos(x);
+            y[1] = -f64::sin(x);
+            y[2] = f64::ln(1.0 + x);
+        };
+        (system, data, 0, y_fn_x)
     }
 
     /// Returns a model of the heat equation in 1D with periodic boundary conditions
@@ -343,7 +344,6 @@ impl Samples {
             y0: uu,
             x1: t1,
             h_equal: None,
-            y_analytical: None,
         };
 
         let args = SampleFdm2dArgs { fdm };
@@ -435,7 +435,6 @@ impl Samples {
             y0,
             x1,
             h_equal: Some(0.1),
-            y_analytical: None,
         };
 
         // reference solution; using the following Mathematica code:
@@ -755,7 +754,6 @@ impl Samples {
             y0: yy0,
             x1: t1,
             h_equal: None,
-            y_analytical: None,
         };
 
         let args = SampleFdm2dArgs { fdm };
@@ -887,7 +885,6 @@ impl Samples {
             y0,
             x1,
             h_equal: None,
-            y_analytical: None,
         };
         // reference solution from Mathematica
         let y_ref = Vector::from(&[
@@ -930,6 +927,7 @@ impl Samples {
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values and the analytical solution
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `y_fn_x` -- is a function to compute the analytical solution
     ///
     /// # Reference
     ///
@@ -944,6 +942,7 @@ impl Samples {
         >,
         SampleData,
         NoArgs,
+        YxFunction<NoArgs>,
     ) {
         const L: f64 = -50.0; // lambda
         let ndim = 1;
@@ -968,11 +967,12 @@ impl Samples {
             y0: Vector::from(&[0.0]),
             x1: 1.5,
             h_equal: Some(1.875 / 50.0),
-            y_analytical: Some(|y, x| {
-                y[0] = -L * (f64::sin(x) - L * f64::cos(x) + L * f64::exp(L * x)) / (L * L + 1.0);
-            }),
         };
-        (system, data, 0)
+
+        let y_fn_x = |y: &mut Vector, x: f64, _args: &mut NoArgs| {
+            y[0] = -L * (f64::sin(x) - L * f64::cos(x) + L * f64::exp(L * x)) / (L * L + 1.0);
+        };
+        (system, data, 0, y_fn_x)
     }
 
     /// Returns the Robertson's problem
@@ -1045,7 +1045,6 @@ impl Samples {
             y0: Vector::from(&[1.0, 0.0, 0.0]),
             x1: 0.3,
             h_equal: None,
-            y_analytical: None,
         };
         (system, data, 0)
     }
@@ -1138,7 +1137,6 @@ impl Samples {
             y0,
             x1,
             h_equal: None,
-            y_analytical: None,
         };
         (system, data, 0)
     }
@@ -1301,7 +1299,6 @@ impl Samples {
             y0,
             x1,
             h_equal: None,
-            y_analytical: None,
         };
         (system, data, 0)
     }
@@ -1336,6 +1333,7 @@ impl Samples {
         >,
         SampleData,
         NoArgs,
+        YxFunction<NoArgs>,
     ) {
         let ndim = 1;
         let jac_nnz = 1;
@@ -1359,11 +1357,11 @@ impl Samples {
             y0: Vector::from(&[0.0]),
             x1: 1.0,
             h_equal: Some(0.2),
-            y_analytical: Some(|y, x| {
-                y[0] = f64::exp(x) - x - 1.0;
-            }),
         };
-        (system, data, 0)
+        let y_fn_x = |y: &mut Vector, x: f64, _args: &mut NoArgs| {
+            y[0] = f64::exp(x) - x - 1.0;
+        };
+        (system, data, 0, y_fn_x)
     }
 
     /// Implements Example 4 from Kreyszig's book on page 920
@@ -1394,6 +1392,7 @@ impl Samples {
     ///     * `A` -- is `NoArgs`
     /// * `data: SampleData` -- holds the initial values and the analytical solution
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
+    /// * `y_fn_x` -- is a function to compute the analytical solution
     ///
     /// # Reference
     ///
@@ -1407,6 +1406,7 @@ impl Samples {
         >,
         SampleData,
         NoArgs,
+        YxFunction<NoArgs>,
     ) {
         let ndim = 2;
         let jac_nnz = 3;
@@ -1433,12 +1433,12 @@ impl Samples {
             y0: Vector::from(&[2.0, -10.0]),
             x1: 1.0,
             h_equal: Some(0.2),
-            y_analytical: Some(|y, x| {
-                y[0] = f64::exp(-x) + f64::exp(-10.0 * x) + x;
-                y[1] = -f64::exp(-x) - 10.0 * f64::exp(-10.0 * x) + 1.0;
-            }),
         };
-        (system, data, 0)
+        let y_fn_x = |y: &mut Vector, x: f64, _args: &mut NoArgs| {
+            y[0] = f64::exp(-x) + f64::exp(-10.0 * x) + x;
+            y[1] = -f64::exp(-x) - 10.0 * f64::exp(-10.0 * x) + 1.0;
+        };
+        (system, data, 0, y_fn_x)
     }
 }
 
@@ -1451,7 +1451,7 @@ mod tests {
     use russell_lab::{deriv_central5, mat_approx_eq, vec_approx_eq, Matrix, Vector};
     use russell_sparse::{CooMatrix, Genie, Sym};
 
-    fn fdm5_jacobian<F, A>(ndim: usize, x0: f64, y0: Vector, function: F, alpha: f64, args: &mut A) -> Matrix
+    fn fdm5_jacobian<F, A>(ndim: usize, x0: f64, y0: &Vector, function: F, alpha: f64, args: &mut A) -> Matrix
     where
         F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
     {
@@ -1491,22 +1491,20 @@ mod tests {
     #[test]
     fn simple_equation_constant_works() {
         let alpha = 2.0;
-        let (system, mut data, mut args) = Samples::simple_equation_constant();
+        let (system, data, mut args, y_fn_x) = Samples::simple_equation_constant();
 
         // check initial values
-        if let Some(y_ana) = data.y_analytical.as_mut() {
-            let mut y = Vector::new(data.y0.dim());
-            y_ana(&mut y, data.x0);
-            println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
-            vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
-        }
+        let mut y = Vector::new(data.y0.dim());
+        y_fn_x(&mut y, data.x0, &mut args);
+        println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
+        vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
         (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, &data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1518,22 +1516,20 @@ mod tests {
     #[test]
     fn simple_system_with_mass_matrix_works() {
         let alpha = 2.0;
-        let (system, mut data, mut args) = Samples::simple_system_with_mass_matrix(true, Genie::Umfpack);
+        let (system, data, mut args, y_fn_x) = Samples::simple_system_with_mass_matrix(true, Genie::Umfpack);
 
         // check initial values
-        if let Some(y_ana) = data.y_analytical.as_mut() {
-            let mut y = Vector::new(data.y0.dim());
-            y_ana(&mut y, data.x0);
-            println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
-            vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
-        }
+        let mut y = Vector::new(data.y0.dim());
+        y_fn_x(&mut y, data.x0, &mut args);
+        println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
+        vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
         (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, &data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1545,22 +1541,14 @@ mod tests {
     #[test]
     fn heat_1d_periodic_works() {
         let alpha = 2.0;
-        let (system, mut data, mut args) = Samples::heat_1d_periodic(3);
-
-        // check initial values
-        if let Some(y_ana) = data.y_analytical.as_mut() {
-            let mut y = Vector::new(data.y0.dim());
-            y_ana(&mut y, data.x0);
-            println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
-            vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
-        }
+        let (system, data, mut args) = Samples::heat_1d_periodic(3);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
         (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, &data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1572,22 +1560,20 @@ mod tests {
     #[test]
     fn kreyszig_eq6_page902_works() {
         let alpha = 2.0;
-        let (system, mut data, mut args) = Samples::kreyszig_eq6_page902();
+        let (system, data, mut args, y_fn_x) = Samples::kreyszig_eq6_page902();
 
         // check initial values
-        if let Some(y_ana) = data.y_analytical.as_mut() {
-            let mut y = Vector::new(data.y0.dim());
-            y_ana(&mut y, data.x0);
-            println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
-            vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
-        }
+        let mut y = Vector::new(data.y0.dim());
+        y_fn_x(&mut y, data.x0, &mut args);
+        println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
+        vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
         (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, &data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1599,22 +1585,20 @@ mod tests {
     #[test]
     fn kreyszig_ex4_page920() {
         let alpha = 2.0;
-        let (system, mut data, mut args) = Samples::kreyszig_ex4_page920();
+        let (system, data, mut args, y_fn_x) = Samples::kreyszig_ex4_page920();
 
         // check initial values
-        if let Some(y_ana) = data.y_analytical.as_mut() {
-            let mut y = Vector::new(data.y0.dim());
-            y_ana(&mut y, data.x0);
-            println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
-            vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
-        }
+        let mut y = Vector::new(data.y0.dim());
+        y_fn_x(&mut y, data.x0, &mut args);
+        println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
+        vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
         (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, &data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1626,22 +1610,20 @@ mod tests {
     #[test]
     fn hairer_wanner_eq1_works() {
         let alpha = 2.0;
-        let (system, mut data, mut args) = Samples::hairer_wanner_eq1();
+        let (system, data, mut args, y_fn_x) = Samples::hairer_wanner_eq1();
 
         // check initial values
-        if let Some(y_ana) = data.y_analytical.as_mut() {
-            let mut y = Vector::new(data.y0.dim());
-            y_ana(&mut y, data.x0);
-            println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
-            vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
-        }
+        let mut y = Vector::new(data.y0.dim());
+        y_fn_x(&mut y, data.x0, &mut args);
+        println!("y0 = {:?} = {:?}", y.as_data(), data.y0.as_data());
+        vec_approx_eq(y.as_data(), data.y0.as_data(), 1e-15);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
         (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, &data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1660,7 +1642,7 @@ mod tests {
         (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, &data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1679,7 +1661,7 @@ mod tests {
         (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, &data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1698,7 +1680,7 @@ mod tests {
         (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, &data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1717,7 +1699,7 @@ mod tests {
         (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, &data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1736,7 +1718,7 @@ mod tests {
         (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, &data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1762,7 +1744,7 @@ mod tests {
         (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, alpha, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, &data.y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1783,7 +1765,7 @@ mod tests {
         (system.jacobian)(&mut jj, jac_alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, jac_alpha, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, &data.y0, system.function, jac_alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1804,7 +1786,7 @@ mod tests {
         (system.jacobian)(&mut jj, jac_alpha, data.x0, &data.y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, jac_alpha, &mut args);
+        let num = fdm5_jacobian(system.ndim, data.x0, &data.y0, system.function, jac_alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1815,22 +1797,26 @@ mod tests {
 
     #[test]
     fn brusselator_pde_2nd_works() {
-        let jac_alpha = 2.0;
+        let alpha = 0.1;
+        let npoint = 6;
         let second_book = true;
         let ignore_diffusion = false;
-        let (system, data, mut args) = Samples::brusselator_pde(0.1, 3, second_book, ignore_diffusion);
+        let (system, data, mut args) = Samples::brusselator_pde(alpha, npoint, second_book, ignore_diffusion);
 
-        // compute the analytical Jacobian matrix
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, jac_alpha, data.x0, &data.y0, &mut args).unwrap();
+        for t in [0.9, 1.2] {
+            // compute the analytical Jacobian matrix
+            let jac_alpha = 2.0;
+            let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+            (system.jacobian)(&mut jj, jac_alpha, t, &data.y0, &mut args).unwrap();
 
-        // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, data.x0, data.y0, system.function, jac_alpha, &mut args);
+            // compute the numerical Jacobian matrix
+            let num = fdm5_jacobian(system.ndim, t, &data.y0, &system.function, jac_alpha, &mut args);
 
-        // check the Jacobian matrix
-        let ana = jj.as_dense();
-        println!("{:.2}", ana);
-        println!("{:.2}", num);
-        mat_approx_eq(&ana, &num, 1e-10);
+            // check the Jacobian matrix
+            let ana = jj.as_dense();
+            // println!("{:.2}", ana);
+            // println!("{:.2}", num);
+            mat_approx_eq(&ana, &num, 1e-9);
+        }
     }
 }

@@ -13,7 +13,7 @@ fn test_dopri5_arenstorf() {
 
     // enable dense output with 1.0 spacing
     let mut out = Output::new();
-    out.enable_dense(1.0, &[0, 1, 2, 3]).unwrap();
+    out.set_dense_recording(true, 1.0, &[0, 1, 2, 3]).unwrap();
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system).unwrap();

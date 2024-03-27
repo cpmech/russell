@@ -13,7 +13,7 @@ fn test_radau5_amplifier1t() {
 
     // enable output of accepted steps
     let mut out = Output::new();
-    out.enable_dense(0.001, &[0, 4]).unwrap();
+    out.set_dense_recording(true, 0.001, &[0, 4]).unwrap();
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system).unwrap();

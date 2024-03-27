@@ -27,7 +27,7 @@ fn main() -> Result<(), StrError> {
     let mut out = Output::new();
     let h_out = 0.0001;
     let selected_y_components = &[0, 4];
-    out.enable_dense(h_out, selected_y_components)?;
+    out.set_dense_recording(true, h_out, selected_y_components)?;
 
     // solve the problem
     let x1 = 0.2;

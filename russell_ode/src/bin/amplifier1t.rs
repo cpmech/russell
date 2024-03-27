@@ -10,9 +10,9 @@ fn main() -> Result<(), StrError> {
     params.step.h_ini = 1e-6;
     params.set_tolerances(1e-4, 1e-4, None)?;
 
-    // enable output of accepted steps
+    // enable dense output
     let mut out = Output::new();
-    out.enable_dense(0.001, &[0, 4])?;
+    out.set_dense_recording(true, 0.001, &[0, 4])?;
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system)?;

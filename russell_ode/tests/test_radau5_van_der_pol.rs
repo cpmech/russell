@@ -13,7 +13,7 @@ fn test_radau5_van_der_pol() {
 
     // enable dense output with 0.2 spacing
     let mut out = Output::new();
-    out.enable_dense(0.2, &[0, 1]).unwrap();
+    out.set_dense_recording(true, 0.2, &[0, 1]).unwrap();
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system).unwrap();

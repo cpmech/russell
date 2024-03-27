@@ -406,7 +406,7 @@ fn main() -> Result<(), StrError> {
     let mut out = Output::new();
     let h_out = 0.01;
     let selected_y_components = &[0, 1];
-    out.enable_dense(h_out, selected_y_components)?;
+    out.set_dense_recording(true, h_out, selected_y_components)?;
 
     // solve the problem
     solver.solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)?;

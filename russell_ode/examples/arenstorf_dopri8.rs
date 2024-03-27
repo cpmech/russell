@@ -17,7 +17,7 @@ use std::{env, fs::File, io::BufReader, path::Path};
 
 fn main() -> Result<(), StrError> {
     // get the ODE system
-    let (system, mut data, mut args, y_ref) = Samples::arenstorf();
+    let (system, x0, mut y0, x1, mut args, y_ref) = Samples::arenstorf();
 
     // solver
     let params = Params::new(Method::DoPri8);
@@ -30,10 +30,11 @@ fn main() -> Result<(), StrError> {
     out.set_dense_recording(true, h_out, selected_y_components)?;
 
     // solve the problem
-    solver.solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)?;
+    let y = &mut y0;
+    solver.solve(y, x0, x1, None, Some(&mut out), &mut args)?;
 
     // print the results and stats
-    println!("y_russell     = {:?}", data.y0.as_data());
+    println!("y_russell     = {:?}", y.as_data());
     println!("y_mathematica = {:?}", y_ref.as_data());
     println!("{}", solver.stats());
 

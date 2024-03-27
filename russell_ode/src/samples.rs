@@ -776,13 +776,15 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// Returns `(system, data, args)` where:
+    /// Returns `(system, x0, y0, x1, args, y_ref)` where:
     ///
     /// * `system: System<F, J, A>` with:
     ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
     ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
     ///     * `A` -- is `NoArgs`
-    /// * `data: SampleData` -- holds the initial values
+    /// * `x0` -- initial x
+    /// * `y0` -- initial y
+    /// * `x1` -- final x
     /// * `args: NoArgs` -- is a placeholder variable with the arguments to F and J
     /// * `y_ref` -- is a reference solution, computed with high-accuracy by Mathematica
     ///
@@ -797,7 +799,9 @@ impl Samples {
             impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
             NoArgs,
         >,
-        SampleData,
+        f64,
+        Vector,
+        f64,
         NoArgs,
         Vector,
     ) {
@@ -860,7 +864,6 @@ impl Samples {
             Some(jac_nnz),
             None,
         );
-        let data = SampleData { x0, y0, x1 };
         // reference solution from Mathematica
         let y_ref = Vector::from(&[
             0.99399999999999280751004722382642,
@@ -868,7 +871,8 @@ impl Samples {
             3.6631563591513e-12,
             -2.0015851063802005176067408813970,
         ]);
-        (system, data, 0, y_ref)
+        let args = 0;
+        (system, x0, y0, x1, args, y_ref)
     }
 
     /// Returns equation 1.1 from Hairer-Wanner Part II book
@@ -1653,14 +1657,14 @@ mod tests {
     #[test]
     fn arenstorf_works() {
         let alpha = 1.5;
-        let (system, data, mut args, _) = Samples::arenstorf();
+        let (system, x0, y0, _, mut args, _) = Samples::arenstorf();
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, alpha, data.x0, &data.y0, &mut args).unwrap();
+        (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, data.x0, &data.y0, system.function, alpha, &mut args);
+        let num = fdm5_jacobian(system.ndim, x0, &y0, system.function, alpha, &mut args);
 
         // check the Jacobian matrix
         let ana = jj.as_dense();

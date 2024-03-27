@@ -628,6 +628,16 @@ And below for the `V` field:
 
 ![brusselator_pde_radau5_2nd_v.jpg](data/figures/brusselator_pde_radau5_2nd_v.jpg)
 
+The code [brusselator_pde_2nd_comparison.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_2nd_comparison.rs) compares `russell` results with Mathematica results.
+
+The figure below shows the `russel` (black dashed lines) and Mathematica (red solid lines) results for the `U` field:
+
+![comparison U](data/figures/brusselator_pde_2nd_comparison_t1_u.svg)
+
+The figure below shows the `russel` (black dashed lines) and Mathematica (red solid lines) results for the `V` field:
+
+![comparison V](data/figures/brusselator_pde_2nd_comparison_t1_v.svg)
+
 ### <a name="arenstorf"></a> Arenstorf orbits
 
 This example corresponds to Fig 0.1 on page 130 of Reference #1. The problem is defined in Eqs (0.1) and (0.2) on page 129 and 130 of Reference #1.

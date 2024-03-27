@@ -252,7 +252,7 @@ mod tests {
             n_function_eval: 0,
             more_data_goes_here: false,
         };
-        let ode = System::new(
+        let system = System::new(
             2,
             |f, x, y, args: &mut Args| {
                 args.n_function_eval += 1;
@@ -266,16 +266,18 @@ mod tests {
             None,
             None,
         );
+        assert_eq!(system.get_ndim(), 2);
+        assert_eq!(system.get_jac_nnz(), 4);
         // call system function
         let x = 0.0;
         let y = Vector::new(2);
         let mut k = Vector::new(2);
-        (ode.function)(&mut k, x, &y, &mut args).unwrap();
+        (system.function)(&mut k, x, &y, &mut args).unwrap();
         // call jacobian function
         let mut jj = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
         let alpha = 1.0;
         assert_eq!(
-            (ode.jacobian)(&mut jj, alpha, x, &y, &mut args),
+            (system.jacobian)(&mut jj, alpha, x, &y, &mut args),
             Err("analytical Jacobian is not available")
         );
         // check
@@ -298,7 +300,7 @@ mod tests {
             more_data_goes_here_fn: false,
             more_data_goes_here_jj: false,
         };
-        let mut ode = System::new(
+        let mut system = System::new(
             2,
             |f, x, y, args: &mut Args| {
                 args.n_function_eval += 1;
@@ -322,18 +324,18 @@ mod tests {
         // analytical_solution:
         // y[0] = f64::cos(x * x / 2.0) - 2.0 * f64::sin(x * x / 2.0);
         // y[1] = 2.0 * f64::cos(x * x / 2.0) + f64::sin(x * x / 2.0);
-        ode.init_mass_matrix(2).unwrap(); // diagonal mass matrix => OK, but not needed
-        ode.mass_put(0, 0, 1.0).unwrap();
-        ode.mass_put(1, 1, 1.0).unwrap();
+        system.init_mass_matrix(2).unwrap(); // diagonal mass matrix => OK, but not needed
+        system.mass_put(0, 0, 1.0).unwrap();
+        system.mass_put(1, 1, 1.0).unwrap();
         // call system function
         let x = 0.0;
         let y = Vector::new(2);
         let mut k = Vector::new(2);
-        (ode.function)(&mut k, x, &y, &mut args).unwrap();
+        (system.function)(&mut k, x, &y, &mut args).unwrap();
         // call jacobian function
         let mut jj = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
         let alpha = 1.0;
-        (ode.jacobian)(&mut jj, alpha, x, &y, &mut args).unwrap();
+        (system.jacobian)(&mut jj, alpha, x, &y, &mut args).unwrap();
         // check
         println!("n_function_eval = {}", args.n_function_eval);
         println!("n_jacobian_eval = {}", args.n_jacobian_eval);

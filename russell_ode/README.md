@@ -55,6 +55,13 @@ This crate depends on `russell_lab`, which, in turn, depends on an efficient BLA
 russell_ode = "*"
 ```
 
+Or, considering the optional _features_ ([see more about these here](https://github.com/cpmech/russell)):
+
+```toml
+[dependencies]
+russell_ode = { version = "*", features = ["intel_mkl"] }
+```
+
 ## <a name="examples"></a> Examples
 
 This section illustrates how to use `russell_ode`. More examples:

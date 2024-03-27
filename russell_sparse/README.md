@@ -53,6 +53,13 @@ This crate depends on `russell_lab`, which, in turn, depends on an efficient BLA
 russell_sparse = "*"
 ```
 
+Or, considering the optional _features_ ([see more about these here](https://github.com/cpmech/russell)):
+
+```toml
+[dependencies]
+russell_sparse = { version = "*", features = ["local_libs", "intel_mkl"] }
+```
+
 ## <a name="examples"></a> Examples
 
 See also:

@@ -44,11 +44,36 @@ Available crates:
 - [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat) [russell_stat](https://github.com/cpmech/russell/tree/main/russell_stat) Statistics calculations, probability distributions, and pseudo random numbers
 - [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) Tensor analysis structures and functions for continuum mechanics
 
+
+👆 Check the crate version and update your Cargo.toml accordingly. Examples:
+
+```toml
+[dependencies]
+russell_lab = "*"
+russell_sparse = "*"
+russell_ode = "*"
+russell_stat = "*"
+russell_tensor = "*"
+```
+
+Or, considering the optional _features_ (see more about these next):
+
+```toml
+[dependencies]
+russell_lab = { version = "*", features = ["intel_mkl"] }
+russell_sparse = { version = "*", features = ["local_libs", "intel_mkl"] }
+russell_ode = { version = "*", features = ["intel_mkl"] }
+russell_stat = { version = "*", features = ["intel_mkl"] }
+russell_tensor = { version = "*", features = ["intel_mkl"] }
+```
+
 External associated and recommended crates:
 
 - [plotpy](https://github.com/cpmech/plotpy) Plotting tools using Python3/Matplotlib as an engine (for quality graphics)
 - [tritet](https://github.com/cpmech/tritet) Triangle and tetrahedron mesh generators (with Triangle and Tetgen)
 - [gemlab](https://github.com/cpmech/gemlab) Geometry, meshes, and numerical integration for finite element analyses
+
+
 
 <a name="installation"></a>
 

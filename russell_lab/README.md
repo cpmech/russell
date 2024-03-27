@@ -51,6 +51,13 @@ This crate depends on an efficient BLAS library such as [OpenBLAS](https://githu
 russell_lab = "*"
 ```
 
+Or, considering the optional _features_ ([see more about these here](https://github.com/cpmech/russell)):
+
+```toml
+[dependencies]
+russell_lab = { version = "*", features = ["intel_mkl"] }
+```
+
 ## <a name="complex-numbers"></a> Complex numbers
 
 **Note:** For the functions dealing with complex numbers, the following line must be added to all derived code:

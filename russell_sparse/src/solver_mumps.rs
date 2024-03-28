@@ -600,14 +600,14 @@ pub(crate) fn handle_mumps_error_code(err: i32) -> StrError {
         2 => "Error(+2): during error analysis the max-norm of the computed solution is close to zero",
         4 => "Error(+4): not used in current version",
         8 => "Error(+8): problem with the iterative refinement routine",
-        ERROR_NULL_POINTER => return "MUMPS failed due to NULL POINTER error",
-        ERROR_MALLOC => return "MUMPS failed due to MALLOC error",
-        ERROR_VERSION => return "MUMPS failed due to VERSION error",
-        ERROR_NOT_AVAILABLE => return "MUMPS is not AVAILABLE",
-        ERROR_NEED_INITIALIZATION => return "MUMPS failed because INITIALIZATION is needed",
-        ERROR_NEED_FACTORIZATION => return "MUMPS failed because FACTORIZATION is needed",
-        ERROR_ALREADY_INITIALIZED => return "MUMPS failed because INITIALIZATION has been completed already",
-        _ => return "Error: unknown error returned by c-code (MUMPS)",
+        ERROR_NULL_POINTER => "MUMPS failed due to NULL POINTER error",
+        ERROR_MALLOC => "MUMPS failed due to MALLOC error",
+        ERROR_VERSION => "MUMPS failed due to VERSION error",
+        ERROR_NOT_AVAILABLE => "MUMPS is not AVAILABLE",
+        ERROR_NEED_INITIALIZATION => "MUMPS failed because INITIALIZATION is needed",
+        ERROR_NEED_FACTORIZATION => "MUMPS failed because FACTORIZATION is needed",
+        ERROR_ALREADY_INITIALIZED => "MUMPS failed because INITIALIZATION has been completed already",
+        _ => "Error: unknown error returned by c-code (MUMPS)",
     }
 }
 

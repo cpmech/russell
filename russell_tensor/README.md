@@ -34,6 +34,13 @@ This crate depends on `russell_lab`, which, in turn, depends on an efficient BLA
 russell_tensor = "*"
 ```
 
+Or, considering the optional _features_ ([see more about these here](https://github.com/cpmech/russell)):
+
+```toml
+[dependencies]
+russell_tensor = { version = "*", features = ["intel_mkl"] }
+```
+
 ## <a name="examples"></a> Examples
 
 * [russell_tensor/examples](https://github.com/cpmech/russell/tree/main/russell_tensor/examples)

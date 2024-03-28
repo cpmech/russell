@@ -18,7 +18,7 @@
 //! * [OdeSolver] implements the "time-stepping" loop and calls the *actual* numerical solver
 //! * [Params] holds numeric parameters needed by all methods
 //! * (optional) [Output] holds the results from accepted steps (all methods) or the *dense output* (DoPri5, DoPri8, and Radau5 only)
-//! * (optional) [Benchmark] holds some benchmarking and statistical information
+//! * (optional) [Stats] holds statistics and benchmarking data
 //!
 //! The [System] struct holds the number of equations (system dimension), the right-hand side function `f(x, y)`, an optional function to compute the Jacobian matrix, and, also optionally, the mass matrix.
 //!
@@ -144,12 +144,12 @@
 //!             f[2] = 1.0 / (1.0 + x);
 //!             Ok(())
 //!         },
-//!         move |jj: &mut CooMatrix, _x: f64, _y: &Vector, m: f64, _args: &mut NoArgs| {
+//!         move |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
 //!             jj.reset();
-//!             jj.put(0, 0, m * (-1.0)).unwrap();
-//!             jj.put(0, 1, m * (1.0)).unwrap();
-//!             jj.put(1, 0, m * (1.0)).unwrap();
-//!             jj.put(1, 1, m * (1.0)).unwrap();
+//!             jj.put(0, 0, alpha * (-1.0)).unwrap();
+//!             jj.put(0, 1, alpha * (1.0)).unwrap();
+//!             jj.put(1, 0, alpha * (1.0)).unwrap();
+//!             jj.put(1, 1, alpha * (1.0)).unwrap();
 //!             Ok(())
 //!         },
 //!         HasJacobian::Yes,
@@ -186,7 +186,6 @@
 /// Defines the error output as a static string
 pub type StrError = &'static str;
 
-mod benchmark;
 mod constants;
 mod detect_stiffness;
 mod enums;
@@ -202,9 +201,9 @@ mod pde_discrete_laplacian_2d;
 pub mod prelude;
 mod radau5;
 mod samples;
+mod stats;
 mod system;
 mod workspace;
-pub use crate::benchmark::*;
 pub use crate::constants::*;
 use crate::detect_stiffness::*;
 pub use crate::enums::*;
@@ -219,6 +218,7 @@ pub use crate::params::*;
 pub use crate::pde_discrete_laplacian_2d::*;
 use crate::radau5::*;
 pub use crate::samples::*;
+pub use crate::stats::*;
 pub use crate::system::*;
 use crate::workspace::*;
 

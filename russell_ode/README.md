@@ -55,6 +55,13 @@ This crate depends on `russell_lab`, which, in turn, depends on an efficient BLA
 russell_ode = "*"
 ```
 
+Or, considering the optional _features_ ([see more about these here](https://github.com/cpmech/russell)):
+
+```toml
+[dependencies]
+russell_ode = { version = "*", features = ["intel_mkl"] }
+```
+
 ## <a name="examples"></a> Examples
 
 This section illustrates how to use `russell_ode`. More examples:
@@ -75,11 +82,11 @@ y' = —— = 1   with   y(x=0)=0    thus   y(x) = x
 See the code [simple_ode_single_equation.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/simple_ode_single_equation.rs); reproduced below:
 
 ```rust
-use russell_lab::{vec_max_abs_diff, StrError, Vector};
+use russell_lab::{vec_approx_eq, StrError, Vector};
 use russell_ode::prelude::*;
 
 fn main() -> Result<(), StrError> {
-    // ODE system
+    // system
     let ndim = 1;
     let system = System::new(
         ndim,
@@ -109,12 +116,10 @@ fn main() -> Result<(), StrError> {
 
     // check the results
     let y_ana = Vector::from(&[f64::exp(x1) - x1 - 1.0]);
-    let (_, error) = vec_max_abs_diff(&y, &y_ana)?;
-    println!("error = {:e}", error);
-    assert!(error < 1e-8);
+    vec_approx_eq(y.as_data(), y_ana.as_data(), 1e-7);
 
     // print stats
-    println!("{}", solver.bench());
+    println!("{}", solver.stats());
     Ok(())
 }
 ```
@@ -123,18 +128,17 @@ The output looks like:
 
 ```text
 y =
-┌                    ┐
-│ 0.7182818250641057 │
-└                    ┘
-error = 3.39E-09
+┌                   ┐
+│ 0.718281815054018 │
+└                   ┘
 DoPri8: Dormand-Prince method (explicit, order 8(5,3), embedded)
-Number of function evaluations   = 108
-Number of performed steps        = 9
-Number of accepted steps         = 9
+Number of function evaluations   = 84
+Number of performed steps        = 7
+Number of accepted steps         = 7
 Number of rejected steps         = 0
-Last accepted/suggested stepsize = 1.8976857444701694
-Max time spent on a step         = 3.789µs
-Total time                       = 48.038µs
+Last accepted/suggested stepsize = 0.40139999999999776
+Max time spent on a step         = 7.483µs
+Total time                       = 65.462µs
 ```
 
 ### <a name="simple-mass"></a> Simple system with mass matrix
@@ -188,14 +192,14 @@ Reference: [Numerical Solution of Differential-Algebraic Equations: Solving Syst
 See the code [simple_system_with_mass.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/simple_system_with_mass.rs); reproduced below:
 
 ```rust
-use russell_lab::{vec_max_abs_diff, StrError, Vector};
+use russell_lab::{vec_approx_eq, StrError, Vector};
 use russell_ode::prelude::*;
 use russell_sparse::CooMatrix;
 
 fn main() -> Result<(), StrError> {
-    // DAE system
+    // ODE system
     let ndim = 3;
-    let jac_nnz = 4; // number of non-zero values in the Jacobian
+    let jac_nnz = 4;
     let mut system = System::new(
         ndim,
         |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
@@ -204,12 +208,12 @@ fn main() -> Result<(), StrError> {
             f[2] = 1.0 / (1.0 + x);
             Ok(())
         },
-        move |jj: &mut CooMatrix, _x: f64, _y: &Vector, m: f64, _args: &mut NoArgs| {
+        move |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
             jj.reset();
-            jj.put(0, 0, m * (-1.0)).unwrap();
-            jj.put(0, 1, m * (1.0)).unwrap();
-            jj.put(1, 0, m * (1.0)).unwrap();
-            jj.put(1, 1, m * (1.0)).unwrap();
+            jj.put(0, 0, alpha * (-1.0)).unwrap();
+            jj.put(0, 1, alpha * (1.0)).unwrap();
+            jj.put(1, 0, alpha * (1.0)).unwrap();
+            jj.put(1, 1, alpha * (1.0)).unwrap();
             Ok(())
         },
         HasJacobian::Yes,
@@ -218,7 +222,7 @@ fn main() -> Result<(), StrError> {
     );
 
     // mass matrix
-    let mass_nnz = 5; // number of non-zero values in the mass matrix
+    let mass_nnz = 5;
     system.init_mass_matrix(mass_nnz).unwrap();
     system.mass_put(0, 0, 1.0).unwrap();
     system.mass_put(0, 1, 1.0).unwrap();
@@ -242,12 +246,10 @@ fn main() -> Result<(), StrError> {
 
     // check the results
     let y_ana = Vector::from(&[f64::cos(x1), -f64::sin(x1), f64::ln(1.0 + x1)]);
-    let (_, error) = vec_max_abs_diff(&y, &y_ana)?;
-    println!("error = {:e}", error);
-    assert!(error < 1e-4);
+    vec_approx_eq(y.as_data(), y_ana.as_data(), 1e-3);
 
     // print stats
-    println!("{}", solver.bench());
+    println!("{}", solver.stats());
     Ok(())
 }
 ```
@@ -257,27 +259,26 @@ The output looks like:
 ```text
 y =
 ┌                     ┐
-│  0.4081258859665056 │
-│ -0.9129961945737365 │
-│  3.0445213906613513 │
+│ 0.40864108577398206 │
+│ -0.9136567566808349 │
+│   3.044521229909652 │
 └                     ┘
-error = 5.0943846108819635e-5
 Radau5: Radau method (Radau IIA) (implicit, order 5, embedded)
-Number of function evaluations   = 204
+Number of function evaluations   = 203
 Number of Jacobian evaluations   = 1
-Number of factorizations         = 14
+Number of factorizations         = 8
 Number of lin sys solutions      = 52
-Number of performed steps        = 47
-Number of accepted steps         = 47
+Number of performed steps        = 46
+Number of accepted steps         = 46
 Number of rejected steps         = 0
 Number of iterations (maximum)   = 2
 Number of iterations (last step) = 1
-Last accepted/suggested stepsize = 0.02811710719458652
-Max time spent on a step         = 36.78µs
-Max time spent on the Jacobian   = 343ns
-Max time spent on factorization  = 8.085901ms
-Max time spent on lin solution   = 3.89526ms
-Total time                       = 27.107919ms
+Last accepted/suggested stepsize = 0.5055117216674699
+Max time spent on a step         = 40.817µs
+Max time spent on the Jacobian   = 558ns
+Max time spent on factorization  = 199.895µs
+Max time spent on lin solution   = 53.101µs
+Total time                       = 2.653323ms
 ```
 
 ### <a name="brusselator-ode"></a> Brusselator ODE
@@ -310,35 +311,6 @@ This is a system of two ODEs, well explained in Reference #1. This problem is so
 This example also shows how to enable the *dense output*.
 
 See the code [brusselator_ode_dopri8.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_ode_dopri8.rs); reproduced below (without the plotting commands):
-
-```rust
-use russell_lab::StrError;
-use russell_ode::prelude::*;
-
-fn main() -> Result<(), StrError> {
-    // get the ODE system
-    let (system, mut data, mut args, y_ref) = Samples::brusselator_ode();
-
-    // solver
-    let params = Params::new(Method::DoPri8);
-    let mut solver = OdeSolver::new(params, &system)?;
-
-    // enable dense output
-    let mut out = Output::new();
-    let h_out = 0.01;
-    let selected_y_components = &[0, 1];
-    out.enable_dense(h_out, selected_y_components)?;
-
-    // solve the problem
-    solver.solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)?;
-
-    // print the results and stats
-    println!("y_russell     = {:?}", data.y0.as_data());
-    println!("y_mathematica = {:?}", y_ref.as_data());
-    println!("{}", solver.bench());
-    Ok(())
-}
-```
 
 The output looks like this:
 
@@ -426,13 +398,21 @@ And the convergence plot is:
 
 ### <a name="brusselator-pde"></a> Brusselator PDE
 
-This example corresponds to Fig 10.4(a,b) on pages 250 and 251 of Reference #1. The problem is defined in Eqs (10.10-10.14) on pages 248 and 249 of Reference #1.
+This example corresponds to Fig 10.4(a,b) on pages 250 and 251 of Reference #1.
+The problem is defined in Eqs (10.10-10.14) on pages 248 and 249 of Reference #1.
+
+If `second_book` is true, this example corresponds to Fig 10.7 on page 151 of Reference #2.
+Also, in this case, the problem is defined in Eqs (10.15-10.16) on pages 151 and 152 of Reference #2.
+
+While in the first book the boundary conditions are Neumann-type, in the second book the
+boundary conditions are periodic. Also the initial values in the second book are different
+that those in the first book.
 
 The model is given by:
 
 ```text
 ∂u                         ⎛ ∂²u   ∂²u ⎞
-——— = 1 - 4.4 u + u² v + α ⎜ ——— + ——— ⎟
+——— = 1 - 4.4 u + u² v + α ⎜ ——— + ——— ⎟ + I(t,x,y)
 ∂t                         ⎝ ∂x²   ∂y² ⎠
 
 ∂v                         ⎛ ∂²v   ∂²v ⎞
@@ -442,7 +422,15 @@ The model is given by:
 with:  t ≥ 0,  0 ≤ x ≤ 1,  0 ≤ y ≤ 1
 ```
 
-Assume the following Neumann boundary conditions:
+where `I(t,x,y)` is the inhomogeneity function (second book) given by:
+
+```text
+            ⎧ 5  if (x-0.3)²+(y-0.6)² ≤ 0.1² and t ≥ 1.1
+I(t,x,y) =  ⎨
+            ⎩ 0  otherwise
+```
+
+The first book considers the following Neumann boundary conditions:
 
 ```text
 ∂u          ∂v     
@@ -451,10 +439,27 @@ Assume the following Neumann boundary conditions:
 ∂n          ∂n     
 ```
 
-And the following initial conditions:
+and the following initial conditions (first book):
 
 ```text
 u(t=0,x,y) = 0.5 + y    v(t=0,x,y) = 1 + 5 x
+```
+
+The second book considers periodic boundary conditions on `u`.
+However, here we assume periodic on `u` and `v`:
+
+```text
+u(t, 0, y) = u(t, 1, y)
+u(t, x, 0) = u(t, x, 1)
+v(t, 0, y) = v(t, 1, y)   ← Not in the book
+v(t, x, 0) = v(t, x, 1)   ← Not in the book
+```
+
+The second book considers the following initial conditions:
+
+```text
+u(0, x, y) = 22 y pow(1 - y, 1.5)
+v(0, x, y) = 27 x pow(1 - x, 1.5)
 ```
 
 The scalar fields u(x, y) and v(x, y) are mapped over a rectangular grid with
@@ -556,9 +561,11 @@ With `Fₐ := ∂Yₐ/∂t`, the components of the Jacobian matrix can be "assem
 where  0 ≤ a ≤ ndim - 1  and  0 ≤ e ≤ ndim - 1
 ```
 
+#### First book
+
 We solve this problem with Radau5. The approximated solution is generated with `npoint = 21` and is implemented in [brusselator_pde_radau5.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_radau5.rs). This code will generate a series of files, one for each (dense) output time with `h_out = 0.5`.
 
-The results can then be plotted with [brusselator_pde_radau5_plot.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_radau5_plot.rs)
+The results can then be plotted with [brusselator_pde_plot.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_plot.rs)
 
 The results are shown below for the `U` field:
 
@@ -572,13 +579,35 @@ These figures compare well with the corresponding ones on pages 250 and 251 of R
 
 The computations with `russell` are also compared with values obtained with Mathematica. The verification is implemented in [test_radau5_brusselator_pde](https://github.com/cpmech/russell/tree/main/russell_ode/tests/test_radau5_brusselator_pde.rs).
 
-The figure below shows the `russel` (black dashed lines) and Mathematica (red solid lines) results for the `U` field:
+The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `U` field:
 
 ![test_radau5_brusselator_pde_u.svg](data/figures/test_radau5_brusselator_pde_u.svg)
 
-The figure below shows the `russel` (black dashed lines) and Mathematica (red solid lines) results for the `V` field:
+The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `V` field:
 
 ![test_radau5_brusselator_pde_v.svg](data/figures/test_radau5_brusselator_pde_v.svg)
+
+#### Second book
+
+For the problem in the second book, we run [brusselator_pde_radau5_2nd.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_radau5_2nd.rs) with `npoint = 129` and `h_out = 1.0`.
+
+The results are shown below for the `U` field:
+
+![brusselator_pde_radau5_2nd_u.jpg](data/figures/brusselator_pde_radau5_2nd_u.jpg)
+
+And below for the `V` field:
+
+![brusselator_pde_radau5_2nd_v.jpg](data/figures/brusselator_pde_radau5_2nd_v.jpg)
+
+The code [brusselator_pde_2nd_comparison.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_2nd_comparison.rs) compares `russell` results with Mathematica results.
+
+The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `U` field:
+
+![comparison U](data/figures/brusselator_pde_2nd_comparison_t1_u.svg)
+
+The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `V` field:
+
+![comparison V](data/figures/brusselator_pde_2nd_comparison_t1_v.svg)
 
 ### <a name="arenstorf"></a> Arenstorf orbits
 

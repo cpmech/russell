@@ -18,7 +18,7 @@ use russell_ode::prelude::*;
 fn main() -> Result<(), StrError> {
     // get the ODE system
     const EPS: f64 = 1e-6;
-    let (system, data, mut args) = Samples::van_der_pol(EPS, false);
+    let (system, x0, _, x1, mut args) = Samples::van_der_pol(EPS, false);
     let mut y0 = Vector::from(&[2.0, -0.6]);
 
     // solver
@@ -30,14 +30,14 @@ fn main() -> Result<(), StrError> {
     // enable step output
     let mut out = Output::new();
     let selected_y_components = &[0, 1];
-    out.enable_step(selected_y_components);
+    out.set_step_recording(true, selected_y_components);
 
     // solve the problem
-    solver.solve(&mut y0, data.x0, data.x1, None, Some(&mut out), &mut args)?;
+    solver.solve(&mut y0, x0, x1, None, Some(&mut out), &mut args)?;
     println!("y =\n{}", y0);
 
     // print stats
-    println!("{}", solver.bench());
+    println!("{}", solver.stats());
 
     // plot the results
     let mut curve1 = Curve::new();
@@ -58,13 +58,13 @@ fn main() -> Result<(), StrError> {
     plot.set_subplot(2, 1, 1)
         .set_title("Van der Pol ($\\varepsilon = 10^{-6}$) - Radau5 - Tol = 1e-4")
         .add(&curve1)
-        .set_xrange(data.x0, data.x1)
+        .set_xrange(x0, x1)
         .grid_and_labels("$x$", "$y_0$")
         .set_subplot(2, 1, 2)
         .set_log_y(true)
         .set_yrange(3e-7, 2.0)
         .add(&curve2)
-        .set_xrange(data.x0, data.x1)
+        .set_xrange(x0, x1)
         .grid_and_labels("$x$", "$h$")
         .set_figure_size_points(800.0, 500.0)
         .save("/tmp/russell_ode/van_der_pol_radau5.svg")

@@ -1,4 +1,5 @@
-use russell_lab::{set_num_threads, using_intel_mkl, Stopwatch, StrError, Vector};
+use num_complex::Complex64;
+use russell_lab::{cpx, set_num_threads, using_intel_mkl, ComplexVector, Stopwatch, StrError, Vector};
 use russell_sparse::prelude::*;
 use structopt::StructOpt;
 
@@ -55,6 +56,14 @@ struct Options {
     /// Enforce unsymmetric strategy (not recommended) (UMFPACK only)
     #[structopt(short = "u", long)]
     enforce_unsymmetric_strategy: bool,
+
+    /// Writes vismatrix file
+    #[structopt(long)]
+    vismatrix: bool,
+
+    /// Hide JSON output (useful to pipe MUMPS/UMFPACK logs to files)
+    #[structopt(long)]
+    hide_json: bool,
 }
 
 fn main() -> Result<(), StrError> {
@@ -98,55 +107,111 @@ fn main() -> Result<(), StrError> {
 
     // read the matrix
     let mut sw = Stopwatch::new();
-    let coo = read_matrix_market(&opt.matrix_market_file, handling)?;
+    let (coo_real, coo_complex) = read_matrix_market(&opt.matrix_market_file, handling)?;
     stats.time_nanoseconds.read_matrix = sw.stop();
 
-    // save the COO matrix as a generic SparseMatrix
-    let mut mat = SparseMatrix::from_coo(coo);
+    // --- real ---------------------------------------------------------------------------------
+    if let Some(coo) = coo_real {
+        // write vismatrix file
+        if opt.vismatrix {
+            let csc = CscMatrix::from_coo(&coo)?;
+            csc.write_matrix_market("/tmp/russell_sparse/solve_matrix_market_real.smat", true)?;
+        }
 
-    // save information about the matrix
-    let (nrow, ncol, nnz, sym) = mat.get_info();
-    stats.set_matrix_name_from_path(&opt.matrix_market_file);
-    stats.matrix.nrow = nrow;
-    stats.matrix.ncol = ncol;
-    stats.matrix.nnz = nnz;
-    stats.matrix.symmetry = format!("{:?}", sym);
+        // save the COO matrix as a generic SparseMatrix
+        let mut mat = SparseMatrix::from_coo(coo);
 
-    // allocate and configure the solver
-    let mut solver = LinSolver::new(genie)?;
+        // save information about the matrix
+        let (nrow, ncol, nnz, sym) = mat.get_info();
+        stats.set_matrix_name_from_path(&opt.matrix_market_file);
+        stats.matrix.nrow = nrow;
+        stats.matrix.ncol = ncol;
+        stats.matrix.nnz = nnz;
+        stats.matrix.complex = false;
+        stats.matrix.symmetric = format!("{:?}", sym);
 
-    // call factorize
-    solver.actual.factorize(&mut mat, Some(params))?;
+        // allocate and configure the solver
+        let mut solver = LinSolver::new(genie)?;
 
-    // allocate vectors
-    let mut x = Vector::new(nrow);
-    let rhs = Vector::filled(nrow, 1.0);
+        // call factorize
+        solver.actual.factorize(&mut mat, Some(params))?;
 
-    // solve linear system
-    solver.actual.solve(&mut x, &mat, &rhs, opt.verbose)?;
+        // allocate vectors
+        let mut x = Vector::new(nrow);
+        let rhs = Vector::filled(nrow, 1.0);
 
-    // verify the solution
-    sw.reset();
-    stats.verify = VerifyLinSys::from(&mat, &x, &rhs)?;
-    stats.time_nanoseconds.verify = sw.stop();
+        // solve linear system
+        solver.actual.solve(&mut x, &mat, &rhs, opt.verbose)?;
 
-    // update and print stats
-    solver.actual.update_stats(&mut stats);
-    println!("{}", stats.get_json());
+        // verify the solution
+        sw.reset();
+        stats.verify = VerifyLinSys::from(&mat, &x, &rhs)?;
+        stats.time_nanoseconds.verify = sw.stop();
 
-    // check
-    if stats.matrix.name == "bfwb62" {
-        let tolerance = match genie {
-            Genie::Mumps => 1e-10,
-            Genie::Umfpack => 1e-10,
-        };
-        let correct_x = get_bfwb62_correct_x();
-        for i in 0..nrow {
-            let diff = f64::abs(x.get(i) - correct_x.get(i));
-            if diff > tolerance {
-                println!("BFWB62 FAILED WITH NUMERICAL ERROR = {:.2e} @ {} COMPONENT", diff, i);
+        // update stats
+        solver.actual.update_stats(&mut stats);
+
+        // check (debug)
+        if stats.matrix.name == "bfwb62" {
+            let tolerance = match genie {
+                Genie::Mumps => 1e-10,
+                Genie::Umfpack => 1e-10,
+            };
+            let correct_x = get_bfwb62_correct_x();
+            for i in 0..nrow {
+                let diff = f64::abs(x.get(i) - correct_x.get(i));
+                if diff > tolerance {
+                    println!("BFWB62 FAILED WITH NUMERICAL ERROR = {:.2e} @ {} COMPONENT", diff, i);
+                }
             }
         }
+
+    // --- complex ------------------------------------------------------------------------------
+    } else {
+        // write vismatrix file
+        let coo = coo_complex.unwrap();
+        if opt.vismatrix {
+            let csc = ComplexCscMatrix::from_coo(&coo)?;
+            csc.write_matrix_market("/tmp/russell_sparse/solve_matrix_market_complex.smat", true)?;
+        }
+
+        // save the COO matrix as a generic SparseMatrix
+        let mut mat = ComplexSparseMatrix::from_coo(coo);
+
+        // save information about the matrix
+        let (nrow, ncol, nnz, sym) = mat.get_info();
+        stats.set_matrix_name_from_path(&opt.matrix_market_file);
+        stats.matrix.nrow = nrow;
+        stats.matrix.ncol = ncol;
+        stats.matrix.nnz = nnz;
+        stats.matrix.complex = true;
+        stats.matrix.symmetric = format!("{:?}", sym);
+
+        // allocate and configure the solver
+        let mut solver = ComplexLinSolver::new(genie)?;
+
+        // call factorize
+        solver.actual.factorize(&mut mat, Some(params))?;
+
+        // allocate vectors
+        let mut x = ComplexVector::new(nrow);
+        let rhs = ComplexVector::filled(nrow, cpx!(1.0, 1.0));
+
+        // solve linear system
+        solver.actual.solve(&mut x, &mat, &rhs, opt.verbose)?;
+
+        // verify the solution
+        sw.reset();
+        stats.verify = VerifyLinSys::from_complex(&mat, &x, &rhs)?;
+        stats.time_nanoseconds.verify = sw.stop();
+
+        // update stats
+        solver.actual.update_stats(&mut stats);
+    }
+
+    // print stats
+    if !opt.hide_json {
+        println!("{}", stats.get_json());
     }
 
     // done

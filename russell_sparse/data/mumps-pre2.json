@@ -9,7 +9,8 @@
     "nrow": 659033,
     "ncol": 659033,
     "nnz": 5959282,
-    "symmetry": "None"
+    "complex": false,
+    "symmetric": "No"
   },
   "requests": {
     "ordering": "Auto",

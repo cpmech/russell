@@ -23,8 +23,8 @@ use russell_sparse::CooMatrix;
 ///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
 pub(crate) struct ExplicitRungeKutta<'a, F, J, A>
 where
-    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Holds the parameters
     params: Params,
@@ -82,8 +82,8 @@ where
 
 impl<'a, F, J, A> ExplicitRungeKutta<'a, F, J, A>
 where
-    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
     pub fn new(params: Params, system: &'a System<F, J, A>) -> Result<Self, StrError> {
@@ -158,8 +158,8 @@ where
 
 impl<'a, F, J, A> OdeSolverTrait<A> for ExplicitRungeKutta<'a, F, J, A>
 where
-    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
@@ -174,8 +174,8 @@ where
         let v = &mut self.v;
 
         // compute k0 (otherwise, use k0 saved in accept)
-        if (work.bench.n_accepted == 0 || !self.info.first_step_same_as_last) && !work.follows_reject_step {
-            work.bench.n_function += 1;
+        if (work.stats.n_accepted == 0 || !self.info.first_step_same_as_last) && !work.follows_reject_step {
+            work.stats.n_function += 1;
             (self.system.function)(&mut k[0], x, y, args)?; // k0 := f(x0, y0)
         }
 
@@ -186,7 +186,7 @@ where
             for j in 0..i {
                 vec_update(&mut v[i], h * self.aa.get(i, j), &k[j]).unwrap(); // vi += h ⋅ aij ⋅ kj
             }
-            work.bench.n_function += 1;
+            work.stats.n_function += 1;
             (self.system.function)(&mut k[i], ui, &v[i], args)?; // ki := f(ui,vi)
         }
 
@@ -261,7 +261,7 @@ where
     ) -> Result<(), StrError> {
         // save data for dense output
         if let Some(out) = self.dense_out.as_mut() {
-            work.bench.n_function += out.update(&mut self.system, *x, y, h, &self.w, &self.k, args)?;
+            work.stats.n_function += out.update(&mut self.system, *x, y, h, &self.w, &self.k, args)?;
         }
 
         // update x and y
@@ -306,7 +306,7 @@ where
                 detect_stiffness(work, *x - h, &self.params)?;
             } else if self.params.method == Method::DoPri8 {
                 const NEW: usize = 10; // to use k[NEW] as a temporary workspace
-                work.bench.n_function += 1;
+                work.stats.n_function += 1;
                 (self.system.function)(&mut self.k[NEW], *x, y, args)?; // line 663 of dop853.f
                 let mut num = 0.0;
                 let mut den = 0.0;
@@ -329,12 +329,12 @@ where
                 println!(
                     "THE PROBLEM SEEMS TO BECOME STIFF AT X ={}, ACCEPTED STEP ={:>5}",
                     format_fortran(work.stiff_x_first_detect),
-                    work.bench.n_accepted
+                    work.stats.n_accepted
                 );
             }
             println!(
                 "step(A) ={:>5}, err ={}, h_new ={}, n_yes ={:>4}, n_no ={:>4}, h*lambda ={}",
-                work.bench.n_steps,
+                work.stats.n_steps,
                 format_fortran(work.rel_error),
                 format_fortran(work.h_new),
                 work.stiff_n_detection_yes,
@@ -355,7 +355,7 @@ where
         if self.params.debug {
             println!(
                 "step(R) ={:>5}, err ={}, h_new ={}",
-                work.bench.n_steps,
+                work.stats.n_steps,
                 format_fortran(work.rel_error),
                 format_fortran(work.h_new),
             );
@@ -517,8 +517,7 @@ mod tests {
         // This test relates to Table 21.2 of Kreyszig's book, page 904
 
         // problem
-        let (system, data, mut args) = Samples::kreyszig_eq6_page902();
-        let yfx = data.y_analytical.unwrap();
+        let (system, x0, y0, mut args, y_fn_x) = Samples::kreyszig_eq6_page902();
         let ndim = system.ndim;
 
         // allocate structs
@@ -534,24 +533,24 @@ mod tests {
 
         // numerical approximation
         let h = 0.2;
-        let mut x = data.x0;
-        let mut y = data.y0.clone();
+        let mut x = x0;
+        let mut y = y0.clone();
         let mut y_ana = Vector::new(ndim);
-        yfx(&mut y_ana, x);
+        y_fn_x(&mut y_ana, x, &mut args);
         let mut xx = vec![x];
         let mut yy_num = vec![y[0]];
         let mut yy_ana = vec![y_ana[0]];
         let mut errors = vec![f64::abs(yy_num[0] - yy_ana[0])];
         for n in 0..5 {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
-            assert_eq!(work.bench.n_function, (n + 1) * 2);
+            assert_eq!(work.stats.n_function, (n + 1) * 2);
 
-            work.bench.n_accepted += 1; // important (must precede accept)
+            work.stats.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             xx.push(x);
             yy_num.push(y[0]);
 
-            yfx(&mut y_ana, x);
+            y_fn_x(&mut y_ana, x, &mut args);
             yy_ana.push(y_ana[0]);
             errors.push(f64::abs(yy_num.last().unwrap() - yy_ana.last().unwrap()));
         }
@@ -601,8 +600,7 @@ mod tests {
         // This test relates to Table 21.4 of Kreyszig's book, page 904
 
         // problem
-        let (system, data, mut args) = Samples::kreyszig_eq6_page902();
-        let yfx = data.y_analytical.unwrap();
+        let (system, x0, y0, mut args, y_fn_x) = Samples::kreyszig_eq6_page902();
         let ndim = system.ndim;
 
         // allocate structs
@@ -618,24 +616,24 @@ mod tests {
 
         // numerical approximation
         let h = 0.2;
-        let mut x = data.x0;
-        let mut y = data.y0.clone();
+        let mut x = x0;
+        let mut y = y0.clone();
         let mut y_ana = Vector::new(ndim);
-        yfx(&mut y_ana, x);
+        y_fn_x(&mut y_ana, x, &mut args);
         let mut xx = vec![x];
         let mut yy_num = vec![y[0]];
         let mut yy_ana = vec![y_ana[0]];
         let mut errors = vec![f64::abs(yy_num[0] - yy_ana[0])];
         for n in 0..5 {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
-            assert_eq!(work.bench.n_function, (n + 1) * 4);
+            assert_eq!(work.stats.n_function, (n + 1) * 4);
 
-            work.bench.n_accepted += 1; // important (must precede accept)
+            work.stats.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             xx.push(x);
             yy_num.push(y[0]);
 
-            yfx(&mut y_ana, x);
+            y_fn_x(&mut y_ana, x, &mut args);
             yy_ana.push(y_ana[0]);
             errors.push(f64::abs(yy_num.last().unwrap() - yy_ana.last().unwrap()));
         }
@@ -804,24 +802,25 @@ mod tests {
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).err(),
             Some("f: count = 8 (dense output)")
         );
+
+        solver.update_params(params);
     }
 
     #[test]
     fn all_erk_methods_work() {
-        let (system, data, mut args) = Samples::simple_equation_constant();
-        let yfx = data.y_analytical.unwrap();
+        let (system, x0, y0, mut args, y_fn_x) = Samples::simple_equation_constant();
         let mut y_ana = Vector::new(system.ndim);
         let h = 0.2;
-        let mut x = data.x0;
-        let mut y = data.y0.clone();
+        let mut x = x0;
+        let mut y = y0.clone();
         for method in Method::erk_methods() {
             let params = Params::new(method);
             let mut work = Workspace::new(method);
             let mut solver = ExplicitRungeKutta::new(params, &system).unwrap();
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
-            work.bench.n_accepted += 1; // important (must precede accept)
+            work.stats.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
-            yfx(&mut y_ana, x);
+            y_fn_x(&mut y_ana, x, &mut args);
             // println!("{:?}: solution @ {}: {} ({})", method, x, y[0], y_ana[0]);
             approx_eq(y[0], y_ana[0], 1e-14);
         }

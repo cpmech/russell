@@ -5,7 +5,7 @@ use russell_ode::prelude::*;
 const SAVE_FIGURE: bool = false;
 
 #[test]
-fn test_heat_1d_periodic() -> Result<(), StrError> {
+fn test_pde_heat_1d_periodic() -> Result<(), StrError> {
     // Approximate (with the Finite Differences Method, FDM) the solution of
     //
     //  ∂u    ∂²u
@@ -95,7 +95,7 @@ fn test_heat_1d_periodic() -> Result<(), StrError> {
             .add(&curve3)
             .grid_and_labels("x", "u")
             .set_figure_size_points(600.0, 350.0)
-            .save("/tmp/russell_ode/test_heat_1d_periodic.svg")
+            .save("/tmp/russell_ode/test_pde_heat_1d_periodic.svg")
             .unwrap();
     }
     Ok(())

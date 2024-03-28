@@ -20,16 +20,17 @@ pub type NoArgs = u8;
 /// `{f}` is the right-hand side vector, and `[M]` is the so-called "mass matrix".
 ///
 /// **Note:** The mass matrix is optional and need not be specified.
+/// (unless the DAE under study requires it).
 ///
-/// The Jacobian is defined by:
+/// The (scaled) Jacobian matrix is defined by:
 ///
 /// ```text
-///               ∂{f}
-/// [J](x, {y}) = ————
-///               ∂{y}
+///                 ∂{f}
+/// [J](x, {y}) = α ————
+///                 ∂{y}
 /// ```
 ///
-/// where `[J]` is the Jacobian matrix.
+/// where `[J]` is the scaled Jacobian matrix and `α` is a scaling coefficient.
 ///
 /// See [crate::Samples] for many examples on how to define the system (in [crate::Samples], click on the *source*
 /// link in the documentation to access the source code illustrating the allocation of System).
@@ -39,18 +40,18 @@ pub type NoArgs = u8;
 /// The generic arguments here are:
 ///
 /// * `F` -- function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-/// * `J` -- function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-/// * `A` -- generic argument to assist in the `F` and `J` functions. It may be simply the [NoArgs] type indicating that no arguments are needed.
+/// * `J` -- function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
+/// * `A` -- generic argument to assist in the `F` and `J` functions. It may be simply [NoArgs] indicating that no arguments are needed.
 ///
 /// # Important
 ///
-/// The internal implementation requires that the `multiplier` parameter in
-/// the Jacobian function `J` be used used to scale the Jacobian matrix. For example:
+/// The implementation requires the `alpha` parameter in the Jacobian function `J`
+/// to scale the Jacobian matrix. For example:
 ///
 /// ```text
-/// |jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut Args| {
+/// |jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut Args| {
 ///     jj.reset();
-///     jj.put(0, 0, multiplier * LAMBDA)?;
+///     jj.put(0, 0, alpha * y[0])?;
 ///     Ok(())
 /// },
 /// ```
@@ -65,8 +66,8 @@ pub type NoArgs = u8;
 ///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
 pub struct System<F, J, A>
 where
-    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// System dimension
     pub(crate) ndim: usize,
@@ -95,8 +96,8 @@ where
 
 impl<'a, F, J, A> System<F, J, A>
 where
-    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
     ///
@@ -114,8 +115,8 @@ where
     /// The generic arguments here are:
     ///
     /// * `F` -- function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    /// * `J` -- function to compute the Jacobian: `(jj: &mut CooMatrix, x: f64, y: &Vector, multiplier: f64, args: &mut A)`
-    /// * `A` -- generic argument to assist in the `F` and `J` functions. It may be simply the [NoArgs] type indicating that no arguments are needed.
+    /// * `J` -- function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
+    /// * `A` -- generic argument to assist in the `F` and `J` functions. It may be simply [NoArgs] indicating that no arguments are needed.
     ///
     /// # Examples
     ///
@@ -140,23 +141,25 @@ where
     ///
     /// ```rust
     /// # use russell_ode::prelude::*;
+    /// let ndim = 2;
+    /// let jac_nnz = 4;
     /// let system = System::new(
-    ///     2,
+    ///     ndim,
     ///     |f, x, y, _args: &mut NoArgs| {
     ///         f[0] = x + 2.0 * y[0] + 3.0 * y[1];
     ///         f[1] = x - 4.0 * y[0] - 5.0 * y[1];
     ///         Ok(())
     ///     },
-    ///     |jj, _x, _y, m, _args: &mut NoArgs| {
+    ///     |jj, alpha, _x, _y, _args: &mut NoArgs| {
     ///         jj.reset();
-    ///         jj.put(0, 0, m * (2.0)).unwrap();
-    ///         jj.put(0, 1, m * (3.0)).unwrap();
-    ///         jj.put(1, 0, m * (-4.0)).unwrap();
-    ///         jj.put(1, 1, m * (-5.0)).unwrap();
+    ///         jj.put(0, 0, alpha * (2.0)).unwrap();
+    ///         jj.put(0, 1, alpha * (3.0)).unwrap();
+    ///         jj.put(1, 0, alpha * (-4.0)).unwrap();
+    ///         jj.put(1, 1, alpha * (-5.0)).unwrap();
     ///         Ok(())
     ///     },
     ///     HasJacobian::Yes,
-    ///     None,
+    ///     Some(jac_nnz),
     ///     None,
     /// );
     /// ```
@@ -217,53 +220,16 @@ where
         self.ndim
     }
 
-    /// Computes the numerical Jacobian
-    ///
-    /// ```text
-    /// ∂{f}                          Δfᵢ
-    /// ———— = [J](x, {y})      Jᵢⱼ ≈ ———
-    /// ∂{y}                          Δyⱼ
-    /// ```
-    ///
-    /// **Note:** Will call `function` ndim times.
-    pub(crate) fn numerical_jacobian(
-        &self,
-        jj: &mut CooMatrix,
-        x: f64,
-        y: &mut Vector,
-        fxy: &Vector,
-        multiplier: f64,
-        args: &mut A,
-        aux: &mut Vector,
-    ) -> Result<(), StrError> {
-        assert_eq!(aux.dim(), self.ndim);
-        const THRESHOLD: f64 = 1e-5;
-        jj.reset();
-        for j in 0..self.ndim {
-            let yj_original = y[j]; // create copy
-            let delta_yj = f64::sqrt(f64::EPSILON * f64::max(THRESHOLD, f64::abs(y[j])));
-            y[j] += delta_yj; // y[j] := y[j] + Δy
-            (self.function)(aux, x, y, args)?; // work := f(x, y + Δy)
-            for i in 0..self.ndim {
-                let delta_fi = aux[i] - fxy[i]; // compute Δf[..]
-                jj.put(i, j, multiplier * delta_fi / delta_yj).unwrap(); // Δfi/Δfj
-            }
-            y[j] = yj_original; // restore value
-        }
-        Ok(())
+    /// Returns the number of non-zero values in the Jacobian matrix
+    pub fn get_jac_nnz(&self) -> usize {
+        self.jac_nnz
     }
 }
 
 /// Implements a placeholder function for when the analytical Jacobian is unavailable
 ///
 /// **Note:** Use this function with the [crate::HasJacobian::No] option.
-pub fn no_jacobian<A>(
-    _jj: &mut CooMatrix,
-    _x: f64,
-    _y: &Vector,
-    _multiplier: f64,
-    _args: &mut A,
-) -> Result<(), StrError> {
+pub fn no_jacobian<A>(_jj: &mut CooMatrix, _alpha: f64, _x: f64, _y: &Vector, _args: &mut A) -> Result<(), StrError> {
     Err("analytical Jacobian is not available")
 }
 
@@ -286,7 +252,7 @@ mod tests {
             n_function_eval: 0,
             more_data_goes_here: false,
         };
-        let ode = System::new(
+        let system = System::new(
             2,
             |f, x, y, args: &mut Args| {
                 args.n_function_eval += 1;
@@ -300,16 +266,18 @@ mod tests {
             None,
             None,
         );
+        assert_eq!(system.get_ndim(), 2);
+        assert_eq!(system.get_jac_nnz(), 4);
         // call system function
         let x = 0.0;
         let y = Vector::new(2);
         let mut k = Vector::new(2);
-        (ode.function)(&mut k, x, &y, &mut args).unwrap();
+        (system.function)(&mut k, x, &y, &mut args).unwrap();
         // call jacobian function
         let mut jj = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
-        let m = 1.0;
+        let alpha = 1.0;
         assert_eq!(
-            (ode.jacobian)(&mut jj, x, &y, m, &mut args),
+            (system.jacobian)(&mut jj, alpha, x, &y, &mut args),
             Err("analytical Jacobian is not available")
         );
         // check
@@ -332,7 +300,7 @@ mod tests {
             more_data_goes_here_fn: false,
             more_data_goes_here_jj: false,
         };
-        let mut ode = System::new(
+        let mut system = System::new(
             2,
             |f, x, y, args: &mut Args| {
                 args.n_function_eval += 1;
@@ -341,11 +309,11 @@ mod tests {
                 args.more_data_goes_here_fn = true;
                 Ok(())
             },
-            |jj, x, _y, _multiplier, args: &mut Args| {
+            |jj, alpha, x, _y, args: &mut Args| {
                 args.n_jacobian_eval += 1;
                 jj.reset();
-                jj.put(0, 1, -x).unwrap();
-                jj.put(1, 0, x).unwrap();
+                jj.put(0, 1, alpha * (-x)).unwrap();
+                jj.put(1, 0, alpha * (x)).unwrap();
                 args.more_data_goes_here_jj = true;
                 Ok(())
             },
@@ -356,18 +324,18 @@ mod tests {
         // analytical_solution:
         // y[0] = f64::cos(x * x / 2.0) - 2.0 * f64::sin(x * x / 2.0);
         // y[1] = 2.0 * f64::cos(x * x / 2.0) + f64::sin(x * x / 2.0);
-        ode.init_mass_matrix(2).unwrap(); // diagonal mass matrix => OK, but not needed
-        ode.mass_put(0, 0, 1.0).unwrap();
-        ode.mass_put(1, 1, 1.0).unwrap();
+        system.init_mass_matrix(2).unwrap(); // diagonal mass matrix => OK, but not needed
+        system.mass_put(0, 0, 1.0).unwrap();
+        system.mass_put(1, 1, 1.0).unwrap();
         // call system function
         let x = 0.0;
         let y = Vector::new(2);
         let mut k = Vector::new(2);
-        (ode.function)(&mut k, x, &y, &mut args).unwrap();
+        (system.function)(&mut k, x, &y, &mut args).unwrap();
         // call jacobian function
         let mut jj = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
-        let m = 1.0;
-        (ode.jacobian)(&mut jj, x, &y, m, &mut args).unwrap();
+        let alpha = 1.0;
+        (system.jacobian)(&mut jj, alpha, x, &y, &mut args).unwrap();
         // check
         println!("n_function_eval = {}", args.n_function_eval);
         println!("n_jacobian_eval = {}", args.n_jacobian_eval);

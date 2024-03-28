@@ -9,8 +9,8 @@ use russell_sparse::CooMatrix;
 /// and should not be used in production codes.
 pub(crate) struct EulerForward<'a, F, J, A>
 where
-    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// ODE system
     system: &'a System<F, J, A>,
@@ -26,8 +26,8 @@ where
 
 impl<'a, F, J, A> EulerForward<'a, F, J, A>
 where
-    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
     pub fn new(system: &'a System<F, J, A>) -> Self {
@@ -42,8 +42,8 @@ where
 
 impl<'a, F, J, A> OdeSolverTrait<A> for EulerForward<'a, F, J, A>
 where
-    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
@@ -52,7 +52,7 @@ where
 
     /// Calculates the quantities required to update x and y
     fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {
-        work.bench.n_function += 1;
+        work.stats.n_function += 1;
         (self.system.function)(&mut self.k, x, y, args)?; // k := f(x, y)
         vec_add(&mut self.w, 1.0, &y, h, &self.k).unwrap(); // w := y + h * f(x, y)
         Ok(())
@@ -87,7 +87,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::EulerForward;
-    use crate::{no_jacobian, HasJacobian, Method, NoArgs, OdeSolverTrait, Samples, System, Workspace};
+    use crate::{no_jacobian, HasJacobian, Method, NoArgs, OdeSolverTrait, Params, Samples, System, Workspace};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
@@ -95,8 +95,7 @@ mod tests {
         // This test relates to Table 21.2 of Kreyszig's book, page 904
 
         // problem
-        let (system, data, mut args) = Samples::kreyszig_eq6_page902();
-        let yfx = data.y_analytical.unwrap();
+        let (system, x0, y0, mut args, y_fn_x) = Samples::kreyszig_eq6_page902();
         let ndim = system.ndim;
 
         // allocate structs
@@ -111,24 +110,24 @@ mod tests {
 
         // numerical approximation
         let h = 0.2;
-        let mut x = data.x0;
-        let mut y = data.y0.clone();
+        let mut x = x0;
+        let mut y = y0.clone();
         let mut y_ana = Vector::new(ndim);
-        yfx(&mut y_ana, x);
+        y_fn_x(&mut y_ana, x, &mut args);
         let mut xx = vec![x];
         let mut yy_num = vec![y[0]];
         let mut yy_ana = vec![y_ana[0]];
         let mut errors = vec![f64::abs(yy_num[0] - yy_ana[0])];
         for n in 0..5 {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
-            assert_eq!(work.bench.n_function, n + 1);
+            assert_eq!(work.stats.n_function, n + 1);
 
-            work.bench.n_accepted += 1; // important (must precede accept)
+            work.stats.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             xx.push(x);
             yy_num.push(y[0]);
 
-            yfx(&mut y_ana, x);
+            y_fn_x(&mut y_ana, x, &mut args);
             yy_ana.push(y_ana[0]);
             errors.push(f64::abs(yy_num.last().unwrap() - yy_ana.last().unwrap()));
         }
@@ -196,5 +195,8 @@ mod tests {
         let x_out = 0.1;
         solver.reject(&mut work, h);
         solver.dense_output(&mut y_out, x_out, x, &y, h);
+
+        let params = Params::new(Method::FwEuler);
+        solver.update_params(params);
     }
 }

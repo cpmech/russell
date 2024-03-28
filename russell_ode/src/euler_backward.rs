@@ -1,13 +1,13 @@
 use crate::StrError;
 use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::{vec_copy, vec_rms_scaled, vec_update, Vector};
-use russell_sparse::{CooMatrix, LinSolver, SparseMatrix};
+use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, SparseMatrix};
 
 /// Implements the backward Euler (implicit) solver (implicit, order 1, unconditionally stable)
 pub(crate) struct EulerBackward<'a, F, J, A>
 where
-    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Holds the parameters
     params: Params,
@@ -38,8 +38,8 @@ where
 
 impl<'a, F, J, A> EulerBackward<'a, F, J, A>
 where
-    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
     pub fn new(params: Params, system: &'a System<F, J, A>) -> Self {
@@ -65,8 +65,8 @@ where
 
 impl<'a, F, J, A> OdeSolverTrait<A> for EulerBackward<'a, F, J, A>
 where
-    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
@@ -86,13 +86,13 @@ where
 
         // perform iterations
         let mut success = false;
-        work.bench.n_iterations = 0;
+        work.stats.n_iterations = 0;
         for _ in 0..self.params.newton.n_iteration_max {
-            // benchmark
-            work.bench.n_iterations += 1;
+            // stats
+            work.stats.n_iterations += 1;
 
             // calculate k_new
-            work.bench.n_function += 1;
+            work.stats.n_function += 1;
             (self.system.function)(&mut self.k, x_new, y_new, args)?; // k := f(x_new, y_new)
 
             // calculate the residual and its norm
@@ -108,20 +108,20 @@ where
             }
 
             // compute K matrix (augmented Jacobian)
-            if traditional_newton || work.bench.n_accepted == 0 {
-                // benchmark
-                work.bench.sw_jacobian.reset();
-                work.bench.n_jacobian += 1;
+            if traditional_newton || work.stats.n_accepted == 0 {
+                // stats
+                work.stats.sw_jacobian.reset();
+                work.stats.n_jacobian += 1;
 
                 // calculate J_new := h J
                 let kk = self.kk.get_coo_mut().unwrap();
                 if self.params.newton.use_numerical_jacobian || !self.system.jac_available {
-                    work.bench.n_function += ndim;
-                    let aux = &mut self.dy; // using dy as a workspace
-                    self.system
-                        .numerical_jacobian(kk, x_new, y_new, &self.k, h, args, aux)?;
+                    work.stats.n_function += ndim;
+                    let w1 = &mut self.k; // workspace
+                    let w2 = &mut self.dy; // workspace
+                    numerical_jacobian(kk, h, x_new, y_new, w1, w2, args, &self.system.function)?;
                 } else {
-                    (self.system.jacobian)(kk, x_new, y_new, h, args)?;
+                    (self.system.jacobian)(kk, h, x_new, y_new, args)?;
                 }
 
                 // add diagonal entries => calculate K = h J_new - I
@@ -129,30 +129,30 @@ where
                     kk.put(i, i, -1.0).unwrap();
                 }
 
-                // benchmark
-                work.bench.stop_sw_jacobian();
+                // stats
+                work.stats.stop_sw_jacobian();
 
                 // perform factorization
-                work.bench.sw_factor.reset();
-                work.bench.n_factor += 1;
+                work.stats.sw_factor.reset();
+                work.stats.n_factor += 1;
                 self.solver
                     .actual
                     .factorize(&mut self.kk, self.params.newton.lin_sol_params)?;
-                work.bench.stop_sw_factor();
+                work.stats.stop_sw_factor();
             }
 
             // solve the linear system
-            work.bench.sw_lin_sol.reset();
-            work.bench.n_lin_sol += 1;
+            work.stats.sw_lin_sol.reset();
+            work.stats.n_lin_sol += 1;
             self.solver.actual.solve(&mut self.dy, &self.kk, &self.r, false)?;
-            work.bench.stop_sw_lin_sol();
+            work.stats.stop_sw_lin_sol();
 
             // update y
             vec_update(y_new, 1.0, &self.dy).unwrap(); // y := y + δy
         }
 
         // check
-        work.bench.update_n_iterations_max();
+        work.stats.update_n_iterations_max();
         if !success {
             return Err("Newton-Raphson method did not complete successfully");
         }
@@ -266,8 +266,7 @@ mod tests {
         // This test relates to Table 21.13 of Kreyszig's book, page 921
 
         // problem
-        let (system, data, mut args) = Samples::kreyszig_ex4_page920();
-        let yfx = data.y_analytical.unwrap();
+        let (system, x0, y0, mut args, y_fn_x) = Samples::kreyszig_ex4_page920();
         let ndim = system.ndim;
 
         // allocate structs
@@ -283,27 +282,27 @@ mod tests {
 
         // numerical approximation
         let h = 0.4;
-        let mut x = data.x0;
-        let mut y = data.y0.clone();
+        let mut x = x0;
+        let mut y = y0.clone();
         let mut xx = vec![x];
         let mut yy0_num = vec![y[0]];
         let mut yy1_num = vec![y[1]];
         let mut y_ana = Vector::new(ndim);
-        yfx(&mut y_ana, x);
+        y_fn_x(&mut y_ana, x, &mut args);
         let mut err_y0 = vec![f64::abs(yy0_num[0] - y_ana[0])];
         let mut err_y1 = vec![f64::abs(yy1_num[0] - y_ana[1])];
         for n in 0..5 {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
-            assert_eq!(work.bench.n_iterations, 2);
-            assert_eq!(work.bench.n_function, (n + 1) * 2);
-            assert_eq!(work.bench.n_jacobian, (n + 1)); // already converged before calling Jacobian again
+            assert_eq!(work.stats.n_iterations, 2);
+            assert_eq!(work.stats.n_function, (n + 1) * 2);
+            assert_eq!(work.stats.n_jacobian, (n + 1)); // already converged before calling Jacobian again
 
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             xx.push(x);
             yy0_num.push(y[0]);
             yy1_num.push(y[1]);
 
-            yfx(&mut y_ana, x);
+            y_fn_x(&mut y_ana, x, &mut args);
             err_y0.push(f64::abs(yy0_num.last().unwrap() - y_ana[0]));
             err_y1.push(f64::abs(yy1_num.last().unwrap() - y_ana[1]));
         }
@@ -321,8 +320,7 @@ mod tests {
         // This test relates to Table 21.13 of Kreyszig's book, page 921
 
         // problem
-        let (system, data, mut args) = Samples::kreyszig_ex4_page920();
-        let yfx = data.y_analytical.unwrap();
+        let (system, x0, y0, mut args, y_fn_x) = Samples::kreyszig_ex4_page920();
         let ndim = system.ndim;
 
         // allocate structs
@@ -333,28 +331,28 @@ mod tests {
 
         // numerical approximation
         let h = 0.4;
-        let mut x = data.x0;
-        let mut y = data.y0.clone();
+        let mut x = x0;
+        let mut y = y0.clone();
         let mut xx = vec![x];
         let mut yy0_num = vec![y[0]];
         let mut yy1_num = vec![y[1]];
         let mut y_ana = Vector::new(ndim);
-        yfx(&mut y_ana, x);
+        y_fn_x(&mut y_ana, x, &mut args);
         let mut err_y0 = vec![f64::abs(yy0_num[0] - y_ana[0])];
         let mut err_y1 = vec![f64::abs(yy1_num[0] - y_ana[1])];
         for n in 0..5 {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
-            assert_eq!(work.bench.n_iterations, 2);
-            assert_eq!(work.bench.n_function, (n + 1) * 2 * ndim);
-            assert_eq!(work.bench.n_jacobian, (n + 1)); // already converged before calling Jacobian again
+            assert_eq!(work.stats.n_iterations, 2);
+            assert_eq!(work.stats.n_function, (n + 1) * 2 * ndim);
+            assert_eq!(work.stats.n_jacobian, (n + 1)); // already converged before calling Jacobian again
 
-            work.bench.n_accepted += 1; // important (must precede accept)
+            work.stats.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
             xx.push(x);
             yy0_num.push(y[0]);
             yy1_num.push(y[1]);
 
-            yfx(&mut y_ana, x);
+            y_fn_x(&mut y_ana, x, &mut args);
             err_y0.push(f64::abs(yy0_num.last().unwrap() - y_ana[0]));
             err_y1.push(f64::abs(yy1_num.last().unwrap() - y_ana[1]));
         }
@@ -370,12 +368,12 @@ mod tests {
     #[test]
     fn euler_backward_captures_failed_iterations() {
         let mut params = Params::new(Method::BwEuler);
-        let (system, data, mut args) = Samples::kreyszig_ex4_page920();
+        let (system, x0, y0, mut args, _) = Samples::kreyszig_ex4_page920();
         params.newton.n_iteration_max = 0;
         let mut solver = EulerBackward::new(params, &system);
         let mut work = Workspace::new(Method::BwEuler);
         assert_eq!(
-            solver.step(&mut work, data.x0, &data.y0, 0.1, &mut args).err(),
+            solver.step(&mut work, x0, &y0, 0.1, &mut args).err(),
             Some("Newton-Raphson method did not complete successfully")
         );
     }
@@ -398,9 +396,9 @@ mod tests {
                     Ok(())
                 }
             },
-            |jj, _x, _y, m, _args: &mut Args| {
+            |jj, alpha, _x, _y, _args: &mut Args| {
                 jj.reset();
-                jj.put(0, 0, m * (0.0)).unwrap();
+                jj.put(0, 0, alpha * (0.0)).unwrap();
                 Err("jj: stop")
             },
             HasJacobian::Yes,
@@ -429,5 +427,7 @@ mod tests {
         let x_out = 0.1;
         solver.reject(&mut work, h);
         solver.dense_output(&mut y_out, x_out, x, &y, h);
+
+        solver.update_params(params);
     }
 }

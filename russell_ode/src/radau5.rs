@@ -3,6 +3,7 @@ use crate::{OdeSolverTrait, Params, System, Workspace};
 use num_complex::Complex64;
 use russell_lab::math::SQRT_6;
 use russell_lab::{complex_vec_zip, cpx, format_fortran, vec_copy, ComplexVector, Vector};
+use russell_sparse::{numerical_jacobian, ComplexCscMatrix, CscMatrix};
 use russell_sparse::{ComplexLinSolver, ComplexSparseMatrix, CooMatrix, Genie, LinSolver, SparseMatrix};
 use std::thread;
 
@@ -26,8 +27,8 @@ use std::thread;
 ///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
 pub(crate) struct Radau5<'a, F, J, A>
 where
-    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Holds the parameters
     params: Params,
@@ -121,8 +122,8 @@ where
 
 impl<'a, F, J, A> Radau5<'a, F, J, A>
 where
-    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
     pub fn new(params: Params, system: &'a System<F, J, A>) -> Self {
@@ -181,7 +182,7 @@ where
         for i in 0..self.system.ndim {
             self.scaling[i] = self.params.tol.abs + self.params.tol.rel * f64::abs(y[i]);
         }
-        work.bench.n_function += 1;
+        work.stats.n_function += 1;
         (self.system.function)(&mut self.k_accepted, x, y, args)
     }
 
@@ -196,20 +197,20 @@ where
         if self.reuse_jacobian {
             self.reuse_jacobian = false; // just once
         } else if !self.jacobian_computed {
-            work.bench.sw_jacobian.reset();
-            work.bench.n_jacobian += 1;
+            work.stats.sw_jacobian.reset();
+            work.stats.n_jacobian += 1;
             if self.params.newton.use_numerical_jacobian || !self.system.jac_available {
-                work.bench.n_function += self.system.ndim;
-                let y_mut = &mut self.w0; // using w[0] as a workspace
-                let aux = &mut self.dw0; // using dw0 as a workspace
+                work.stats.n_function += self.system.ndim;
+                let y_mut = &mut self.w0; // workspace (mutable y)
+                let w1 = &mut self.dw0; // workspace
+                let w2 = &mut self.dw1; // workspace
                 vec_copy(y_mut, y).unwrap();
-                self.system
-                    .numerical_jacobian(jj, x, y_mut, &self.k_accepted, 1.0, args, aux)?;
+                numerical_jacobian(jj, 1.0, x, y_mut, w1, w2, args, &self.system.function)?;
             } else {
-                (self.system.jacobian)(jj, x, y, 1.0, args)?;
+                (self.system.jacobian)(jj, 1.0, x, y, args)?;
             }
             self.jacobian_computed = true;
-            work.bench.stop_sw_jacobian();
+            work.stats.stop_sw_jacobian();
         }
 
         // coefficient matrices
@@ -228,6 +229,22 @@ where
                     kk_real.put(m, m, gamma).unwrap(); // K_real += γ I
                     kk_comp.put(m, m, cpx!(alpha, beta)).unwrap(); // K_comp += (α + βi) I
                 }
+            }
+        }
+
+        // write the matrices and stop
+        if let Some(nstep) = self.params.newton.write_matrix_after_nstep_and_stop {
+            if work.stats.n_accepted > nstep {
+                let csc_jacobian = CscMatrix::from_coo(jj).unwrap();
+                let csc_kk_real = CscMatrix::from_coo(&kk_real).unwrap();
+                let csc_kk_comp = ComplexCscMatrix::from_coo(&kk_comp).unwrap();
+                csc_jacobian.write_matrix_market("/tmp/russell_ode/jacobian.smat", true)?;
+                csc_jacobian.write_matrix_market("/tmp/russell_ode/jacobian.mtx", false)?;
+                csc_kk_real.write_matrix_market("/tmp/russell_ode/kk_real.smat", true)?;
+                csc_kk_real.write_matrix_market("/tmp/russell_ode/kk_real.mtx", false)?;
+                csc_kk_comp.write_matrix_market("/tmp/russell_ode/kk_comp.smat", true)?;
+                csc_kk_comp.write_matrix_market("/tmp/russell_ode/kk_comp.mtx", false)?;
+                return Err("MATRIX FILES GENERATED in /tmp/russell_ode/");
             }
         }
         Ok(())
@@ -315,8 +332,8 @@ where
 
 impl<'a, F, J, A> OdeSolverTrait<A> for Radau5<'a, F, J, A>
 where
-    F: Send + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Send + Fn(&mut CooMatrix, f64, &Vector, f64, &mut A) -> Result<(), StrError>,
+    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
+    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
@@ -326,7 +343,7 @@ where
     /// Calculates the quantities required to update x and y
     fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {
         // Perform the initialization for the first time
-        if work.bench.n_accepted == 0 {
+        if work.stats.n_accepted == 0 {
             self.initialize(work, x, y, args)?;
         }
 
@@ -339,14 +356,14 @@ where
             self.reuse_jacobian_kk_and_fact = false; // just once
         } else {
             self.assemble(work, x, y, h, args)?;
-            work.bench.sw_factor.reset();
-            work.bench.n_factor += 1;
+            work.stats.sw_factor.reset();
+            work.stats.n_factor += 1;
             if concurrent {
                 self.factorize_concurrently()?;
             } else {
                 self.factorize()?;
             }
-            work.bench.stop_sw_factor();
+            work.stats.stop_sw_factor();
         }
 
         // update u
@@ -355,7 +372,7 @@ where
         let u2 = x + C[2] * h;
 
         // starting values for newton iterations (first z and w)
-        if work.bench.n_accepted == 0 || self.params.radau5.zero_trial {
+        if work.stats.n_accepted == 0 || self.params.radau5.zero_trial {
             // zero trial
             for m in 0..ndim {
                 self.z0[m] = 0.0;
@@ -393,10 +410,10 @@ where
         // iterations
         let mut success = false;
         work.iterations_diverging = false;
-        work.bench.n_iterations = 0; // line 931 of radau5.f
+        work.stats.n_iterations = 0; // line 931 of radau5.f
         for _ in 0..self.params.newton.n_iteration_max {
-            // benchmark
-            work.bench.n_iterations += 1;
+            // stats
+            work.stats.n_iterations += 1;
 
             // evaluate f(x,y) at (u[i], v[i] = y+z[i])
             for m in 0..ndim {
@@ -404,7 +421,7 @@ where
                 self.v1[m] = y[m] + self.z1[m];
                 self.v2[m] = y[m] + self.z2[m];
             }
-            work.bench.n_function += 3;
+            work.stats.n_function += 3;
             (self.system.function)(&mut self.k0, u0, &self.v0, args)?;
             (self.system.function)(&mut self.k1, u1, &self.v1, args)?;
             (self.system.function)(&mut self.k2, u2, &self.v2, args)?;
@@ -433,14 +450,14 @@ where
             complex_vec_zip(&mut self.v12, &self.v1, &self.v2).unwrap();
 
             // solve the linear systems
-            work.bench.sw_lin_sol.reset();
-            work.bench.n_lin_sol += 1;
+            work.stats.sw_lin_sol.reset();
+            work.stats.n_lin_sol += 1;
             if concurrent {
                 self.solve_lin_sys_concurrently()?;
             } else {
                 self.solve_lin_sys()?;
             }
-            work.bench.stop_sw_lin_sol();
+            work.stats.stop_sw_lin_sol();
 
             // update w and z
             for m in 0..ndim {
@@ -463,14 +480,14 @@ where
             ldw = f64::sqrt(ldw / (3.0 * dim));
 
             // auxiliary
-            let newt = work.bench.n_iterations;
+            let newt = work.stats.n_iterations;
             let nit = self.params.newton.n_iteration_max;
 
             // print debug messages
             if self.params.debug {
                 println!(
                     "step = {:>5}, newt = {:>5}, ldw ={}, h ={}",
-                    work.bench.n_steps,
+                    work.stats.n_steps,
                     newt,
                     format_fortran(ldw),
                     format_fortran(h),
@@ -517,7 +534,7 @@ where
         }
 
         // check
-        work.bench.update_n_iterations_max();
+        work.stats.update_n_iterations_max();
         if !success {
             return Err("Newton-Raphson method did not complete successfully");
         }
@@ -560,13 +577,13 @@ where
         }
 
         // handle particular case
-        if work.bench.n_accepted == 0 || work.follows_reject_step {
+        if work.stats.n_accepted == 0 || work.follows_reject_step {
             let ype = &mut self.dw1; // y plus err
             let fpe = &mut self.dw2; // f(x, y + err)
             for m in 0..ndim {
                 ype[m] = y[m] + err[m];
             }
-            work.bench.n_function += 1;
+            work.stats.n_function += 1;
             (self.system.function)(fpe, x, &ype, args)?;
             for m in 0..ndim {
                 rhs[m] = mez[m] + fpe[m];
@@ -600,7 +617,7 @@ where
         }
 
         // estimate the new stepsize
-        let newt = work.bench.n_iterations;
+        let newt = work.stats.n_iterations;
         let num = self.params.step.m_safety * ((1 + 2 * self.params.newton.n_iteration_max) as f64);
         let den = (newt + 2 * self.params.newton.n_iteration_max) as f64;
         let fac = f64::min(self.params.step.m_safety, num / den);
@@ -612,7 +629,7 @@ where
 
         // predictive controller of Gustafsson
         if self.params.radau5.use_pred_control {
-            if work.bench.n_accepted > 1 {
+            if work.stats.n_accepted > 1 {
                 let r2 = work.rel_error * work.rel_error;
                 let rp = work.rel_error_prev;
                 let fac = (work.h_prev / h) * f64::powf(r2 / rp, 0.25) / self.params.step.m_safety;
@@ -646,7 +663,7 @@ where
     /// Rejects the update
     fn reject(&mut self, work: &mut Workspace, h: f64) {
         // estimate new stepsize
-        let newt = work.bench.n_iterations;
+        let newt = work.stats.n_iterations;
         let num = self.params.step.m_safety * ((1 + 2 * self.params.newton.n_iteration_max) as f64);
         let den = (newt + 2 * self.params.newton.n_iteration_max) as f64;
         let fac = f64::min(self.params.step.m_safety, num / den);
@@ -734,8 +751,7 @@ mod tests {
         // This test relates to Table 21.13 of Kreyszig's book, page 921
 
         // problem
-        let (system, data, mut args) = Samples::kreyszig_ex4_page920();
-        let yfx = data.y_analytical.unwrap();
+        let (system, x0, y0, mut args, y_fn_x) = Samples::kreyszig_ex4_page920();
         let ndim = system.ndim;
 
         // allocate structs
@@ -748,8 +764,8 @@ mod tests {
 
         // numerical approximation
         let h = 0.4;
-        let mut x = data.x0;
-        let mut y = data.y0.clone();
+        let mut x = x0;
+        let mut y = y0.clone();
         let mut y_ana = Vector::new(ndim);
         let mut n_fcn_correct = 0;
         for n in 0..2 {
@@ -757,17 +773,17 @@ mod tests {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
 
             // update number of function evaluations
-            let nit = work.bench.n_iterations;
+            let nit = work.stats.n_iterations;
             if n == 0 {
-                assert_eq!(work.bench.n_iterations, 2);
+                assert_eq!(work.stats.n_iterations, 2);
                 n_fcn_correct += 1 + 3 * nit + 1; // initialize + iterations + error-estimate
             } else {
-                assert_eq!(work.bench.n_iterations, 1);
+                assert_eq!(work.stats.n_iterations, 1);
                 n_fcn_correct += 3 * nit; // iterations
             }
 
             // important: update n_accepted (must precede `accept`)
-            work.bench.n_accepted += 1;
+            work.stats.n_accepted += 1;
 
             // call accept
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
@@ -780,7 +796,7 @@ mod tests {
             n_fcn_correct += 1; // re-initialize
 
             // check the results
-            yfx(&mut y_ana, x);
+            y_fn_x(&mut y_ana, x, &mut args);
             let err_y0 = f64::abs(y[0] - y_ana[0]);
             let err_y1 = f64::abs(y[1] - y_ana[1]);
             println!("{:>4}{}{}", n, format_fortran(err_y0), format_fortran(err_y1));
@@ -794,8 +810,8 @@ mod tests {
         }
 
         // check number of function evaluations
-        assert_eq!(work.bench.n_function, n_fcn_correct);
-        assert_eq!(work.bench.n_jacobian, 1); // simple Newton's method
+        assert_eq!(work.stats.n_function, n_fcn_correct);
+        assert_eq!(work.stats.n_jacobian, 1); // simple Newton's method
     }
 
     #[test]
@@ -803,8 +819,7 @@ mod tests {
         // This test relates to Table 21.13 of Kreyszig's book, page 921
 
         // problem
-        let (system, data, mut args) = Samples::kreyszig_ex4_page920();
-        let yfx = data.y_analytical.unwrap();
+        let (system, x0, y0, mut args, y_fn_x) = Samples::kreyszig_ex4_page920();
         let ndim = system.ndim;
 
         // allocate structs
@@ -818,8 +833,8 @@ mod tests {
 
         // numerical approximation
         let h = 0.4;
-        let mut x = data.x0;
-        let mut y = data.y0.clone();
+        let mut x = x0;
+        let mut y = y0.clone();
         let mut y_ana = Vector::new(ndim);
         let mut n_fcn_correct = 0;
         for n in 0..2 {
@@ -827,18 +842,18 @@ mod tests {
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
 
             // update number of function evaluations
-            let nit = work.bench.n_iterations;
+            let nit = work.stats.n_iterations;
             if n == 0 {
-                assert_eq!(work.bench.n_iterations, 2);
+                assert_eq!(work.stats.n_iterations, 2);
                 n_fcn_correct += 1 + 3 * nit + 1; // initialize + iterations + error-estimate
                 n_fcn_correct += ndim; // to compute Jacobian (on the first step; simple Newton)
             } else {
-                assert_eq!(work.bench.n_iterations, 2); // 1 iteration more than with analytical Jacobian
+                assert_eq!(work.stats.n_iterations, 2); // 1 iteration more than with analytical Jacobian
                 n_fcn_correct += 3 * nit; // iterations
             }
 
             // important: update n_accepted (must precede `accept`)
-            work.bench.n_accepted += 1;
+            work.stats.n_accepted += 1;
 
             // call accept
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
@@ -851,7 +866,7 @@ mod tests {
             n_fcn_correct += 1; // re-initialize
 
             // check the results
-            yfx(&mut y_ana, x);
+            y_fn_x(&mut y_ana, x, &mut args);
             let err_y0 = f64::abs(y[0] - y_ana[0]);
             let err_y1 = f64::abs(y[1] - y_ana[1]);
             println!("{:>4}{}{}", n, format_fortran(err_y0), format_fortran(err_y1));
@@ -865,7 +880,7 @@ mod tests {
         }
 
         // check number of function evaluations
-        assert_eq!(work.bench.n_function, n_fcn_correct);
+        assert_eq!(work.stats.n_function, n_fcn_correct);
     }
 
     #[test]
@@ -874,8 +889,7 @@ mod tests {
         for symmetric in [true, false] {
             for genie in [Genie::Umfpack, Genie::Mumps] {
                 // problem
-                let (system, data, mut args) = Samples::simple_system_with_mass_matrix(symmetric, genie);
-                let yfx = data.y_analytical.unwrap();
+                let (system, x0, y0, mut args, y_fn_x) = Samples::simple_system_with_mass_matrix(symmetric, genie);
                 let ndim = system.ndim;
 
                 // allocate structs
@@ -890,15 +904,15 @@ mod tests {
 
                 // numerical approximation
                 let h = 0.1;
-                let mut x = data.x0;
-                let mut y = data.y0.clone();
+                let mut x = x0;
+                let mut y = y0.clone();
                 let mut y_ana = Vector::new(ndim);
                 for n in 0..4 {
                     // call step
                     solver.step(&mut work, x, &y, h, &mut args).unwrap();
 
                     // important: update n_accepted (must precede `accept`)
-                    work.bench.n_accepted += 1;
+                    work.stats.n_accepted += 1;
 
                     // call accept
                     solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
@@ -908,7 +922,7 @@ mod tests {
                     work.rel_error_prev = f64::max(params.step.rel_error_prev_min, work.rel_error);
 
                     // check the results
-                    yfx(&mut y_ana, x);
+                    y_fn_x(&mut y_ana, x, &mut args);
                     let err_y0 = f64::abs(y[0] - y_ana[0]);
                     let err_y1 = f64::abs(y[1] - y_ana[1]);
                     let err_y2 = f64::abs(y[2] - y_ana[2]);
@@ -945,9 +959,9 @@ mod tests {
                     Ok(())
                 }
             },
-            |jj, _x, _y, m, _args: &mut Args| {
+            |jj, alpha, _x, _y, _args: &mut Args| {
                 jj.reset();
-                jj.put(0, 0, m * (0.0)).unwrap();
+                jj.put(0, 0, alpha * (0.0)).unwrap();
                 Err("jj: stop")
             },
             HasJacobian::Yes,
@@ -971,5 +985,7 @@ mod tests {
             solver.step(&mut work, x, &y, h, &mut args).err(),
             Some("f: stop (count = 4; num-jacobian)")
         );
+
+        solver.update_params(params);
     }
 }

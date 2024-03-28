@@ -18,7 +18,10 @@ use russell_ode::prelude::*;
 
 fn main() -> Result<(), StrError> {
     // ODE system
-    let (system, data, mut args, y_ref) = Samples::brusselator_ode();
+    let (system, x0, y0, mut args, y_ref) = Samples::brusselator_ode();
+
+    // final x
+    let x1 = 20.0;
 
     // tolerances
     let tols = [1e-2, 1e-4, 1e-6, 1e-8];
@@ -57,16 +60,15 @@ fn main() -> Result<(), StrError> {
             solver.update_params(params)?;
 
             // call solve
-            let x = data.x0;
-            let mut y = data.y0.clone();
-            solver.solve(&mut y, x, data.x1, None, None, &mut args).unwrap();
+            let mut y = y0.clone();
+            solver.solve(&mut y, x0, x1, None, None, &mut args).unwrap();
 
             // compare with the reference solution
             let (_, err) = vec_max_abs_diff(&y, &y_ref)?;
             print!("{}", format_scientific(err, w2, 1));
 
             // save the results
-            n_f_eval[i] = solver.bench().n_function as f64;
+            n_f_eval[i] = solver.stats().n_function as f64;
             errors[i] = err;
         }
         println!();

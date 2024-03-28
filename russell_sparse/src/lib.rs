@@ -60,7 +60,7 @@
 //!
 //! The linear solvers have numerous configuration parameters; however, we can use the default parameters initially. The configuration parameters are collected in the [LinSolParams] structures, which is an input to the [LinSolTrait::factorize()]. The parameters include options such as [Ordering] and [Scaling].
 //!
-//! This library also provides functions to read and write Matrix Market files containing (huge) sparse matrices that can be used in performance benchmarking or other studies. The [read_matrix_market()] function reads a Matrix Market file and returns a [CooMatrix]. To write a Matrix Market file, we can use the function [csc_write_matrix_market()] (and similar), which automatically converts COO to CSC or COO to CSR, also performing the sum of duplicates. The `write_matrix_market` can also writs an SMAT file (almost like the Matrix Market format) without the header and with zero-based indices. The SMAT file can be given to the fantastic [Vismatrix](https://github.com/cpmech/vismatrix) tool to visualize the sparse matrix structure and values interactively; see the example below.
+//! This library also provides functions to read and write Matrix Market files containing (huge) sparse matrices that can be used in performance benchmarking or other studies. The [read_matrix_market()] function reads a Matrix Market file and returns a [CooMatrix]. To write a Matrix Market file, we can use [CscMatrix::write_matrix_market()] (and similar), which automatically converts COO to CSC or COO to CSR, also performing the sum of duplicates. The `write_matrix_market` can also writs an SMAT file (almost like the Matrix Market format) without the header and with zero-based indices. The SMAT file can be given to the fantastic [Vismatrix](https://github.com/cpmech/vismatrix) tool to visualize the sparse matrix structure and values interactively; see the example below.
 //!
 //! ![doc-example-vismatrix](https://raw.githubusercontent.com/cpmech/russell/main/russell_sparse/data/figures/doc-example-vismatrix.png)
 //!
@@ -259,6 +259,7 @@ mod csr_matrix;
 mod enums;
 mod lin_sol_params;
 mod lin_solver;
+mod numerical_jacobian;
 pub mod prelude;
 mod read_matrix_market;
 mod samples;
@@ -280,6 +281,7 @@ pub use crate::csr_matrix::*;
 pub use crate::enums::*;
 pub use crate::lin_sol_params::*;
 pub use crate::lin_solver::*;
+pub use crate::numerical_jacobian::*;
 pub use crate::read_matrix_market::*;
 pub use crate::samples::*;
 pub use crate::solver_klu::*;
@@ -288,7 +290,6 @@ pub use crate::solver_umfpack::*;
 pub use crate::sparse_matrix::*;
 pub use crate::stats_lin_sol::*;
 pub use crate::verify_lin_sys::*;
-pub use crate::write_matrix_market::*;
 
 // run code from README file
 #[cfg(doctest)]

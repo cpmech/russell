@@ -13,6 +13,7 @@ pub use crate::csr_matrix::NumCsrMatrix;
 pub use crate::enums::*;
 pub use crate::lin_sol_params::LinSolParams;
 pub use crate::lin_solver::*;
+pub use crate::numerical_jacobian::numerical_jacobian;
 pub use crate::read_matrix_market;
 pub use crate::solver_mumps::SolverMUMPS;
 pub use crate::solver_umfpack::SolverUMFPACK;

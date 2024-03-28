@@ -44,11 +44,36 @@ Available crates:
 - [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat) [russell_stat](https://github.com/cpmech/russell/tree/main/russell_stat) Statistics calculations, probability distributions, and pseudo random numbers
 - [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) Tensor analysis structures and functions for continuum mechanics
 
+
+👆 Check the crate version and update your Cargo.toml accordingly. Examples:
+
+```toml
+[dependencies]
+russell_lab = "*"
+russell_sparse = "*"
+russell_ode = "*"
+russell_stat = "*"
+russell_tensor = "*"
+```
+
+Or, considering the optional _features_ (see more about these next):
+
+```toml
+[dependencies]
+russell_lab = { version = "*", features = ["intel_mkl"] }
+russell_sparse = { version = "*", features = ["local_libs", "intel_mkl"] }
+russell_ode = { version = "*", features = ["intel_mkl"] }
+russell_stat = { version = "*", features = ["intel_mkl"] }
+russell_tensor = { version = "*", features = ["intel_mkl"] }
+```
+
 External associated and recommended crates:
 
 - [plotpy](https://github.com/cpmech/plotpy) Plotting tools using Python3/Matplotlib as an engine (for quality graphics)
 - [tritet](https://github.com/cpmech/tritet) Triangle and tetrahedron mesh generators (with Triangle and Tetgen)
 - [gemlab](https://github.com/cpmech/gemlab) Geometry, meshes, and numerical integration for finite element analyses
+
+
 
 <a name="installation"></a>
 
@@ -396,7 +421,7 @@ use russell_ode::prelude::*;
 
 fn main() -> Result<(), StrError> {
     // get the ODE system
-    let (system, mut data, mut args, y_ref) = Samples::brusselator_ode();
+    let (system, x0, y0, mut args, y_ref) = Samples::brusselator_ode();
 
     // solver
     let params = Params::new(Method::DoPri8);
@@ -406,15 +431,15 @@ fn main() -> Result<(), StrError> {
     let mut out = Output::new();
     let h_out = 0.01;
     let selected_y_components = &[0, 1];
-    out.enable_dense(h_out, selected_y_components)?;
+    out.set_dense_recording(true, h_out, selected_y_components)?;
 
     // solve the problem
-    solver.solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)?;
+    solver.solve(&mut y0, x0, data.x1, None, Some(&mut out), &mut args)?;
 
     // print the results and stats
-    println!("y_russell     = {:?}", data.y0.as_data());
+    println!("y_russell     = {:?}", y0.as_data());
     println!("y_mathematica = {:?}", y_ref.as_data());
-    println!("{}", solver.bench());
+    println!("{}", solver.stats());
     Ok(())
 }
 ```

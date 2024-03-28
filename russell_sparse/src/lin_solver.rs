@@ -47,6 +47,15 @@ pub trait LinSolTrait {
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol);
+
+    /// Returns the nanoseconds spent on initialize
+    fn get_ns_init(&self) -> u128;
+
+    /// Returns the nanoseconds spent on factorize
+    fn get_ns_fact(&self) -> u128;
+
+    /// Returns the nanoseconds spent on solve
+    fn get_ns_solve(&self) -> u128;
 }
 
 /// Unifies the access to linear system solvers

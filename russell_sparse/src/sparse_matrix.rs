@@ -634,7 +634,7 @@ mod tests {
         let coo_internal = mat.get_coo_mut().unwrap();
         let source = coo_internal.get_values_mut();
         source[0] = 30.0; // change a value
-        let csc = mat.get_csc_or_from_coo().unwrap(); // will update existent csc
+        let csc = mat.get_csc_or_from_coo().unwrap(); // will update existing csc
         assert_eq!(csc.get_values(), &[30.0, 20.0]);
     }
 
@@ -650,7 +650,7 @@ mod tests {
         let coo_internal = mat.get_coo_mut().unwrap();
         let source = coo_internal.get_values_mut();
         source[0] = 30.0; // change a value
-        let csr = mat.get_csr_or_from_coo().unwrap(); // will update existent csr
+        let csr = mat.get_csr_or_from_coo().unwrap(); // will update existing csr
         assert_eq!(csr.get_values(), &[30.0, 20.0]);
     }
 

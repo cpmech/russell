@@ -4,7 +4,10 @@ use russell_ode::{Method, OdeSolver, Output, Params, Samples};
 #[test]
 fn test_radau5_robertson() {
     // get get ODE system
-    let (system, mut data, mut args) = Samples::robertson();
+    let (system, x0, mut y0, mut args) = Samples::robertson();
+
+    // final x
+    let x1 = 0.3;
 
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);
@@ -13,21 +16,19 @@ fn test_radau5_robertson() {
 
     // enable output of accepted steps
     let mut out = Output::new();
-    out.enable_step(&[0, 1, 2]);
+    out.set_step_recording(true, &[0, 1, 2]);
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system).unwrap();
-    solver
-        .solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)
-        .unwrap();
+    solver.solve(&mut y0, x0, x1, None, Some(&mut out), &mut args).unwrap();
 
     // get statistics
-    let stat = solver.bench();
+    let stat = solver.stats();
 
     // compare with radau5.f
-    approx_eq(data.y0[0], 9.886740138499884E-01, 1e-15);
-    approx_eq(data.y0[1], 3.447720471782070E-05, 1e-15);
-    approx_eq(data.y0[2], 1.129150894529390E-02, 1e-15);
+    approx_eq(y0[0], 9.886740138499884E-01, 1e-15);
+    approx_eq(y0[1], 3.447720471782070E-05, 1e-15);
+    approx_eq(y0[2], 1.129150894529390E-02, 1e-15);
     approx_eq(stat.h_accepted, 8.160578540333708E-01, 1e-10);
 
     // print the results at accepted steps
@@ -45,7 +46,7 @@ fn test_radau5_robertson() {
 
     // print and check statistics
     println!("{}", stat.summary());
-    println!("y ={}{}", format_fortran(data.y0[0]), format_fortran(data.y0[1]));
+    println!("y ={}{}", format_fortran(y0[0]), format_fortran(y0[1]));
     println!("h ={}", format_fortran(stat.h_accepted));
     assert_eq!(stat.n_function, 88);
     assert_eq!(stat.n_jacobian, 8);

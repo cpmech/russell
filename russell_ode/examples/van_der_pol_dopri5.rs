@@ -18,7 +18,7 @@ use russell_ode::prelude::*;
 fn main() -> Result<(), StrError> {
     // get the ODE system
     const EPS: f64 = 0.003;
-    let (system, data, mut args) = Samples::van_der_pol(EPS, false);
+    let (system, x0, _, x1, mut args) = Samples::van_der_pol(EPS, false);
     let mut y0 = Vector::from(&[2.0, 0.0]);
 
     // solver
@@ -34,15 +34,15 @@ fn main() -> Result<(), StrError> {
     let mut out = Output::new();
     let h_out = 0.01;
     let selected_y_components = &[0, 1];
-    out.enable_step(selected_y_components);
-    out.enable_dense(h_out, selected_y_components)?;
+    out.set_step_recording(true, selected_y_components);
+    out.set_dense_recording(true, h_out, selected_y_components)?;
 
     // solve the problem
-    solver.solve(&mut y0, data.x0, data.x1, None, Some(&mut out), &mut args)?;
+    solver.solve(&mut y0, x0, x1, None, Some(&mut out), &mut args)?;
     println!("y =\n{}", y0);
 
     // print stats
-    println!("{}", solver.bench());
+    println!("{}", solver.stats());
 
     // plot the results
     let mut curve1 = Curve::new();
@@ -70,14 +70,14 @@ fn main() -> Result<(), StrError> {
         .add(&curve1)
         .add(&curve2)
         .add(&curve3)
-        .set_xrange(data.x0, data.x1)
+        .set_xrange(x0, x1)
         .grid_and_labels("$x$", "$y_0$")
         .set_subplot(2, 1, 2)
         .set_log_y(true)
         .set_yrange(7e-3, 2.0)
         .add(&curve4)
         .add(&curve3)
-        .set_xrange(data.x0, data.x1)
+        .set_xrange(x0, x1)
         .grid_and_labels("$x$", "$h\\,\\rho\\,/\\,3.3$")
         .set_figure_size_points(800.0, 500.0)
         .save("/tmp/russell_ode/van_der_pol_dopri5.svg")

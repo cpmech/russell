@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SECOND_BOOK=${1:-""} # 0 or 1 for the second book
-ONLY_PLOT=${2:-""} # 0 or 1 for only plot (using existent results)
+ONLY_PLOT=${2:-""} # 0 or 1 for only plot (using existing results)
 INTEL_MKL=${3:-""} # 0 or 1 to use intel_mkl
 
 FEAT=""

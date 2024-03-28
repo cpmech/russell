@@ -18,7 +18,7 @@ pub type YxFunction<A> = fn(&mut Vector, f64, &mut A);
 /// Use `|stats, h, x, y, args|` or `|stats: &Stats, h: f64, x: f64, y: &Vector, args: &mut A|`
 ///
 /// The function may return `true` to stop the computations
-type OutCallback<A> = fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError>;
+pub type OutCallback<A> = fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError>;
 
 /// Holds the data generated at an accepted step or during the dense output
 #[derive(Clone, Debug, Deserialize)]

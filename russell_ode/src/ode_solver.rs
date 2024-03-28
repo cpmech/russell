@@ -406,7 +406,8 @@ impl<'a, A> OdeSolver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::OdeSolver;
-    use crate::{no_jacobian, HasJacobian, Method, OutCount, OutData, Output, Params, Samples, System};
+    use crate::{no_jacobian, HasJacobian, NoArgs, OutCallback, OutCount, OutData, Output};
+    use crate::{Method, Params, Samples, System};
     use russell_lab::{approx_eq, vec_approx_eq, Vector};
     use russell_sparse::Genie;
 
@@ -602,11 +603,15 @@ mod tests {
             approx_eq(res.y[0], (i as f64) * 0.2, 1e-15);
         }
 
+        // define the callback function
+        let cb: OutCallback<NoArgs> = |_stats, _h, _x, _y, _args| Err("unreachable");
+        assert_eq!(cb(&solver.stats(), 0.0, 0.0, &y0, &mut args).err(), Some("unreachable"));
+
         // run again without step output
         out.clear();
         out.set_step_file_writing(false, path_key)
             .set_step_recording(false, &[])
-            .set_step_callback(false, |_, _, _, _, _| panic!("not here"));
+            .set_step_callback(false, cb);
         let mut y = y0.clone();
         solver.solve(&mut y, 0.0, 0.4, None, Some(&mut out), &mut args).unwrap();
         vec_approx_eq(y.as_data(), &[0.4], 1e-15);
@@ -695,12 +700,15 @@ mod tests {
             approx_eq(res.y[0], (i as f64) * H_OUT, 1e-15);
         }
 
+        // define the callback function
+        let cb: OutCallback<NoArgs> = |_stats, _h, _x, _y, _args| Err("unreachable");
+        assert_eq!(cb(&solver.stats(), 0.0, 0.0, &y0, &mut args).err(), Some("unreachable"));
+
         // run again without dense output
         out.clear();
         out.set_dense_file_writing(false, H_OUT, path_key).unwrap();
         out.set_dense_recording(false, H_OUT, &[]).unwrap();
-        out.set_dense_callback(false, H_OUT, |_, _, _, _, _| panic!("not here"))
-            .unwrap();
+        out.set_dense_callback(false, H_OUT, cb).unwrap();
         let mut y = y0.clone();
         solver.solve(&mut y, 0.0, 0.4, None, Some(&mut out), &mut args).unwrap();
         vec_approx_eq(y.as_data(), &[0.4], 1e-15);
@@ -767,7 +775,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(unused)]
     fn solve_captures_errors_from_f_and_out() {
         // args
         struct Args {
@@ -818,7 +825,8 @@ mod tests {
             }
             args.out_count += 1;
             Ok(false) // do not stop
-        });
+        })
+        .unwrap();
 
         // equal steps -----------------------------------------------------------
 

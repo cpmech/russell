@@ -27,8 +27,6 @@ struct InterfaceUMFPACK {
 };
 
 /// @brief Sets verbose mode
-/// @param solver Is a pointer to the solver interface
-/// @param verbose Shows messages or not
 static inline void set_umfpack_verbose(struct InterfaceUMFPACK *solver, int32_t verbose) {
     if (verbose == C_TRUE) {
         solver->control[UMFPACK_PRL] = UMFPACK_PRINT_LEVEL_VERBOSE;
@@ -74,7 +72,6 @@ void solver_umfpack_drop(struct InterfaceUMFPACK *solver) {
 }
 
 /// @brief Performs the symbolic factorization
-/// @return A success or fail code
 int32_t solver_umfpack_initialize(struct InterfaceUMFPACK *solver,
                                   int32_t ordering,
                                   int32_t scaling,
@@ -182,14 +179,6 @@ int32_t solver_umfpack_factorize(struct InterfaceUMFPACK *solver,
 }
 
 /// @brief Computes the solution of the linear system
-/// @param solver Is a pointer to the solver interface
-/// @param x Is the left-hand side vector (unknowns)
-/// @param rhs Is the right-hand side vector
-/// @param col_pointers The column pointers array with size = ncol + 1
-/// @param row_indices The row indices array with size = nnz (number of non-zeros)
-/// @param values The values array with size = nnz (number of non-zeros)
-/// @param verbose Shows messages
-/// @return A success or fail code
 int32_t solver_umfpack_solve(struct InterfaceUMFPACK *solver,
                              double *x,
                              const double *rhs,

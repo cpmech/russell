@@ -579,11 +579,11 @@ These figures compare well with the corresponding ones on pages 250 and 251 of R
 
 The computations with `russell` are also compared with values obtained with Mathematica. The verification is implemented in [test_radau5_brusselator_pde](https://github.com/cpmech/russell/tree/main/russell_ode/tests/test_radau5_brusselator_pde.rs).
 
-The figure below shows the `russel` (black dashed lines) and Mathematica (red solid lines) results for the `U` field:
+The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `U` field:
 
 ![test_radau5_brusselator_pde_u.svg](data/figures/test_radau5_brusselator_pde_u.svg)
 
-The figure below shows the `russel` (black dashed lines) and Mathematica (red solid lines) results for the `V` field:
+The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `V` field:
 
 ![test_radau5_brusselator_pde_v.svg](data/figures/test_radau5_brusselator_pde_v.svg)
 
@@ -601,11 +601,11 @@ And below for the `V` field:
 
 The code [brusselator_pde_2nd_comparison.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_2nd_comparison.rs) compares `russell` results with Mathematica results.
 
-The figure below shows the `russel` (black dashed lines) and Mathematica (red solid lines) results for the `U` field:
+The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `U` field:
 
 ![comparison U](data/figures/brusselator_pde_2nd_comparison_t1_u.svg)
 
-The figure below shows the `russel` (black dashed lines) and Mathematica (red solid lines) results for the `V` field:
+The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `V` field:
 
 ![comparison V](data/figures/brusselator_pde_2nd_comparison_t1_v.svg)
 

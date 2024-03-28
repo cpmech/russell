@@ -68,6 +68,7 @@ impl<'a> ComplexLinSolver<'a> {
     /// * `genie` -- the actual implementation that does all the magic
     pub fn new(genie: Genie) -> Result<Self, StrError> {
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
+            Genie::Klu => panic!("Complex KLU is not yet available"),
             Genie::Mumps => Box::new(ComplexSolverMUMPS::new()?),
             Genie::Umfpack => Box::new(ComplexSolverUMFPACK::new()?),
         };

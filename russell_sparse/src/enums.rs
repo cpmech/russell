@@ -3,6 +3,13 @@ use serde::{Deserialize, Serialize};
 /// Specifies the underlying library that does all the magic
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Genie {
+    /// Selects KLU (LU factorization)
+    ///
+    /// "Clark Kent" LU factorization algorithm (what SuperLU was before it became Super)
+    ///
+    /// Reference: <https://github.com/DrTimothyAldenDavis/SuiteSparse>
+    Klu,
+
     /// Selects MUMPS (multi-frontal massively parallel sparse direct) solver
     ///
     /// Reference: <https://mumps-solver.org/index.php>
@@ -133,6 +140,7 @@ impl Genie {
     /// ```
     pub fn from(genie: &str) -> Self {
         match genie.to_lowercase().as_str() {
+            "klu" => Genie::Klu,
             "mumps" => Genie::Mumps,
             "umfpack" => Genie::Umfpack,
             _ => Genie::Umfpack,
@@ -146,6 +154,7 @@ impl Genie {
     /// ```
     pub fn to_string(&self) -> String {
         match self {
+            Genie::Klu => "klu".to_string(),
             Genie::Mumps => "mumps".to_string(),
             Genie::Umfpack => "umfpack".to_string(),
         }
@@ -155,6 +164,7 @@ impl Genie {
     pub fn symmetry(&self, symmetric: bool) -> Sym {
         if symmetric {
             match self {
+                Genie::Klu => Sym::YesFull,
                 Genie::Mumps => Sym::YesLower,
                 Genie::Umfpack => Sym::YesFull,
             }

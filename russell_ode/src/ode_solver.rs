@@ -406,7 +406,7 @@ impl<'a, A> OdeSolver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::OdeSolver;
-    use crate::{Method, OutCount, OutData, Output, Params, Samples};
+    use crate::{no_jacobian, HasJacobian, Method, OutCount, OutData, Output, Params, Samples, System};
     use russell_lab::{approx_eq, vec_approx_eq, Vector};
     use russell_sparse::Genie;
 
@@ -763,6 +763,95 @@ mod tests {
         assert_eq!(
             solver.solve(&mut y, 0.0, 0.4, None, Some(&mut out), &mut args).err(),
             Some("stop with error")
+        );
+    }
+
+    #[test]
+    #[allow(unused)]
+    fn solve_captures_errors_from_f_and_out() {
+        // args
+        struct Args {
+            f_count: usize,
+            f_barrier: usize,
+            out_count: usize,
+            out_barrier: usize,
+        }
+        let mut args = Args {
+            f_count: 0,
+            f_barrier: 0,
+            out_count: 0,
+            out_barrier: 2, // skip first call, then the next call and the first output
+        };
+
+        // system
+        let ndim = 1;
+        let system = System::new(
+            ndim,
+            |f: &mut Vector, _x: f64, _y: &Vector, args: &mut Args| {
+                if args.f_count == args.f_barrier {
+                    return Err("f: artificial error");
+                }
+                f[0] = 1.0;
+                args.f_count += 1;
+                Ok(())
+            },
+            no_jacobian,
+            HasJacobian::No,
+            None,
+            None,
+        );
+
+        // initial values and final x
+        let x0 = 0.0;
+        let x1 = 0.2;
+        let mut y = Vector::from(&[0.0]);
+
+        // parameters and solver
+        let params = Params::new(Method::DoPri8);
+        let mut solver = OdeSolver::new(params, &system).unwrap();
+
+        // output
+        let mut out = Output::new();
+        out.set_dense_callback(true, 0.1, |_stats, _h, _x, _y, args: &mut Args| {
+            if args.out_count == args.out_barrier {
+                return Err("out: artificial error");
+            }
+            args.out_count += 1;
+            Ok(false) // do not stop
+        });
+
+        // equal steps -----------------------------------------------------------
+
+        // first error @ actual.step
+        assert_eq!(
+            solver.solve(&mut y, x0, x1, Some(0.2), None, &mut args).err(),
+            Some("f: artificial error")
+        );
+
+        // second error @ actual.accept
+        // There are only two places in ERK where an error in 'accept' may occur:
+        // (the other methods/solvers do not return Err in their 'accept')
+        // 1. when saving data for dense output (only DoPri8)
+        // 2. in computations related to the stiffness detection
+        args.f_barrier += 12; // nstage = 12 (need to skip the next call to 'step')
+        assert_eq!(
+            solver.solve(&mut y, x0, x1, Some(0.2), Some(&mut out), &mut args).err(),
+            Some("f: artificial error")
+        );
+
+        // third error @ the second output
+        args.f_barrier += 2 * 12; // skip next calls to 'step'
+        assert_eq!(
+            solver.solve(&mut y, x0, x1, Some(0.2), Some(&mut out), &mut args).err(),
+            Some("out: artificial error")
+        );
+
+        // fourth error @ the last output
+        args.f_barrier += 2 * 12; // skip next calls to 'step'
+        args.out_barrier += 2; // skip first and second output
+        assert_eq!(
+            solver.solve(&mut y, x0, x1, Some(0.2), Some(&mut out), &mut args).err(),
+            Some("out: artificial error")
         );
     }
 }

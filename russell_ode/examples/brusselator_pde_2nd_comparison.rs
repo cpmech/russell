@@ -4,8 +4,8 @@ use serde::Deserialize;
 use std::{env, fs::File, io::BufReader, path::Path};
 
 // This example compares Russell results with Mathematica results for
-// the Brusselator PDE in 2D with periodic BCs as in the second book
-// The Mathematica code is at the end of this file as comments
+// the Brusselator PDE in 2D with periodic BCs as in the second book.
+// The Mathematica code is given at the end of this file.
 
 fn main() {
     // get get ODE system

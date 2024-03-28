@@ -787,7 +787,7 @@ mod tests {
             f_count: 0,
             f_barrier: 0,
             out_count: 0,
-            out_barrier: 2, // skip first call, then the next call and the first output
+            out_barrier: 2, // first and second outputs
         };
 
         // system
@@ -814,7 +814,8 @@ mod tests {
         let mut y = Vector::from(&[0.0]);
 
         // parameters and solver
-        let params = Params::new(Method::DoPri8);
+        let mut params = Params::new(Method::DoPri8);
+        params.step.h_ini = 0.2;
         let mut solver = OdeSolver::new(params, &system).unwrap();
 
         // output
@@ -859,6 +860,39 @@ mod tests {
         args.out_barrier += 2; // skip first and second output
         assert_eq!(
             solver.solve(&mut y, x0, x1, Some(0.2), Some(&mut out), &mut args).err(),
+            Some("out: artificial error")
+        );
+
+        // variable steps --------------------------------------------------------
+
+        // first error @ actual.step
+        args.f_count = 0;
+        args.f_barrier = 0;
+        args.out_count = 0;
+        args.out_barrier = 2; // first and second outputs
+        assert_eq!(
+            solver.solve(&mut y, x0, x1, None, None, &mut args).err(),
+            Some("f: artificial error")
+        );
+
+        // second error @ actual.accept
+        // There are only two places in ERK where an error in 'accept' may occur:
+        // (the other methods/solvers do not return Err in their 'accept')
+        // 1. when saving data for dense output (only DoPri8)
+        // 2. in computations related to the stiffness detection
+        args.f_barrier += 12; // nstage = 12 (need to skip the next call to 'step')
+        assert_eq!(
+            solver.solve(&mut y, x0, x1, None, Some(&mut out), &mut args).err(),
+            Some("f: artificial error")
+        );
+
+        // error @ last output
+        args.f_count = 0;
+        args.f_barrier = 15 + 1; // 12 stages, 3 dense output, 1 safety
+        args.out_count = 0;
+        args.out_barrier = 2; // first and second outputs
+        assert_eq!(
+            solver.solve(&mut y, x0, x1, None, Some(&mut out), &mut args).err(),
             Some("out: artificial error")
         );
     }

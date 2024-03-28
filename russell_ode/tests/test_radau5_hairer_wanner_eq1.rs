@@ -4,8 +4,11 @@ use russell_ode::{Method, OdeSolver, Output, Params, Samples};
 #[test]
 fn test_radau5_hairer_wanner_eq1() {
     // get ODE system
-    let (system, mut data, mut args, y_fn_x) = Samples::hairer_wanner_eq1();
+    let (system, x0, mut y0, mut args, y_fn_x) = Samples::hairer_wanner_eq1();
     let ndim = system.get_ndim();
+
+    // final x
+    let x1 = 1.5;
 
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);
@@ -17,21 +20,19 @@ fn test_radau5_hairer_wanner_eq1() {
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system).unwrap();
-    solver
-        .solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)
-        .unwrap();
+    solver.solve(&mut y0, x0, x1, None, Some(&mut out), &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();
 
     // compare with radau5.f
-    approx_eq(data.y0[0], 9.068021382386648E-02, 1e-15);
+    approx_eq(y0[0], 9.068021382386648E-02, 1e-15);
     approx_eq(stat.h_accepted, 1.272673814374611E+00, 1e-12);
 
     // compare with the analytical solution
     let mut y1_correct = Vector::new(ndim);
-    y_fn_x(&mut y1_correct, data.x1, &mut args);
-    approx_eq(data.y0[0], y1_correct[0], 3e-5);
+    y_fn_x(&mut y1_correct, x1, &mut args);
+    approx_eq(y0[0], y1_correct[0], 3e-5);
 
     // print dense output
     let n_dense = out.dense_step_index.len();
@@ -46,7 +47,7 @@ fn test_radau5_hairer_wanner_eq1() {
 
     // print and check statistics
     println!("{}", stat.summary());
-    println!("y ={}", format_fortran(data.y0[0]));
+    println!("y ={}", format_fortran(y0[0]));
     println!("h ={}", format_fortran(stat.h_accepted));
     assert_eq!(stat.n_function, 67);
     assert_eq!(stat.n_jacobian, 1);

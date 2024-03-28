@@ -16,7 +16,10 @@ fn main() -> Result<(), StrError> {
     // ODE system
     let alpha = 2e-3;
     let npoint = 21;
-    let (system, mut data, mut args) = Samples::brusselator_pde(alpha, npoint, false, false);
+    let (system, t0, mut yy0, mut args) = Samples::brusselator_pde(alpha, npoint, false, false);
+
+    // final t
+    let t1 = 11.5;
 
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);
@@ -29,8 +32,7 @@ fn main() -> Result<(), StrError> {
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system)?;
-    let x1 = 11.5;
-    solver.solve(&mut data.y0, data.x0, x1, None, Some(&mut out), &mut args)?;
+    solver.solve(&mut yy0, t0, t1, None, Some(&mut out), &mut args)?;
 
     // get statistics
     let stat = solver.stats();

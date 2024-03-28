@@ -12,7 +12,10 @@ fn main() {
     let alpha = 0.1;
     let npoint = 101;
     let second_book = true;
-    let (system, data, mut args) = Samples::brusselator_pde(alpha, npoint, second_book, false);
+    let (system, t0, yy0, mut args) = Samples::brusselator_pde(alpha, npoint, second_book, false);
+
+    // final t
+    let t1 = 11.5;
 
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);
@@ -20,9 +23,7 @@ fn main() {
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system).unwrap();
-    let mut yy = data.y0.clone();
-    let t0 = data.x0;
-    let t1 = 11.5;
+    let mut yy = yy0.clone();
     solver.solve(&mut yy, t0, t1, None, None, &mut args).unwrap();
 
     // get statistics
@@ -59,12 +60,12 @@ fn main() {
                 .set_wire_line_style("-")
                 .set_wire_line_color("red");
         }
-        args.fdm.loop_over_grid_points(|m, x, y| {
+        args.loop_over_grid_points(|m, x, y| {
             let row = m / npoint;
             let col = m % npoint;
             grid_x[col][row] = x;
             grid_y[col][row] = y;
-            let sol = if t_ini { &data.y0 } else { &yy };
+            let sol = if t_ini { &yy0 } else { &yy };
             if v_field {
                 let s = npoint * npoint;
                 grid_z[col][row] = sol[s + m];

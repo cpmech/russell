@@ -17,7 +17,7 @@ use std::{env, fs::File, io::BufReader, path::Path};
 
 fn main() -> Result<(), StrError> {
     // get the ODE system
-    let (system, mut data, mut args) = Samples::amplifier1t();
+    let (system, x0, mut y0, mut args) = Samples::amplifier1t();
 
     // solver
     let params = Params::new(Method::Radau5);
@@ -31,7 +31,7 @@ fn main() -> Result<(), StrError> {
 
     // solve the problem
     let x1 = 0.2;
-    solver.solve(&mut data.y0, data.x0, x1, None, Some(&mut out), &mut args)?;
+    solver.solve(&mut y0, x0, x1, None, Some(&mut out), &mut args)?;
 
     // print the results and stats
     let y_ref = &[
@@ -41,7 +41,7 @@ fn main() -> Result<(), StrError> {
         1.4994388165471992,
         -1.735056659198201,
     ];
-    println!("y_russell     = {:.6?}", data.y0.as_data());
+    println!("y_russell     = {:.6?}", y0.as_data());
     println!("y_mathematica = {:.6?}", y_ref);
     println!("{}", solver.stats());
 

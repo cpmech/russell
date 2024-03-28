@@ -4,8 +4,11 @@ use russell_ode::{Method, OdeSolver, Params, Samples};
 #[test]
 fn test_bweuler_hairer_wanner_eq1() {
     // get ODE system
-    let (system, mut data, mut args, y_fn_x) = Samples::hairer_wanner_eq1();
+    let (system, x0, mut y0, mut args, y_fn_x) = Samples::hairer_wanner_eq1();
     let ndim = system.get_ndim();
+
+    // final x
+    let x1 = 1.5;
 
     // set configuration parameters
     let params = Params::new(Method::BwEuler);
@@ -13,21 +16,19 @@ fn test_bweuler_hairer_wanner_eq1() {
 
     // solve the ODE system
     let h_equal = Some(1.875 / 50.0);
-    solver
-        .solve(&mut data.y0, data.x0, data.x1, h_equal, None, &mut args)
-        .unwrap();
+    solver.solve(&mut y0, x0, x1, h_equal, None, &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();
 
     // compare with a previous implementation
-    approx_eq(data.y0[0], 0.09060476604187756, 1e-15);
+    approx_eq(y0[0], 0.09060476604187756, 1e-15);
     assert_eq!(stat.h_accepted, h_equal.unwrap());
 
     // compare with the analytical solution
     let mut y1_correct = Vector::new(ndim);
-    y_fn_x(&mut y1_correct, data.x1, &mut args);
-    approx_eq(data.y0[0], y1_correct[0], 5e-5);
+    y_fn_x(&mut y1_correct, x1, &mut args);
+    approx_eq(y0[0], y1_correct[0], 5e-5);
 
     // print and check statistics
     println!("{}", stat);
@@ -45,8 +46,11 @@ fn test_bweuler_hairer_wanner_eq1() {
 #[test]
 fn test_bweuler_hairer_wanner_eq1_num_jac() {
     // get ODE system
-    let (system, mut data, mut args, y_fn_x) = Samples::hairer_wanner_eq1();
+    let (system, x0, mut y0, mut args, y_fn_x) = Samples::hairer_wanner_eq1();
     let ndim = system.get_ndim();
+
+    // final x
+    let x1 = 1.5;
 
     // set configuration parameters
     let mut params = Params::new(Method::BwEuler);
@@ -55,21 +59,19 @@ fn test_bweuler_hairer_wanner_eq1_num_jac() {
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system).unwrap();
     let h_equal = Some(1.875 / 50.0);
-    solver
-        .solve(&mut data.y0, data.x0, data.x1, h_equal, None, &mut args)
-        .unwrap();
+    solver.solve(&mut y0, x0, x1, h_equal, None, &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();
 
     // compare with a previous implementation
-    approx_eq(data.y0[0], 0.09060476598021044, 1e-11);
+    approx_eq(y0[0], 0.09060476598021044, 1e-11);
     assert_eq!(stat.h_accepted, h_equal.unwrap());
 
     // compare with the analytical solution
     let mut y1_correct = Vector::new(ndim);
-    y_fn_x(&mut y1_correct, data.x1, &mut args);
-    approx_eq(data.y0[0], y1_correct[0], 5e-5);
+    y_fn_x(&mut y1_correct, x1, &mut args);
+    approx_eq(y0[0], y1_correct[0], 5e-5);
 
     // print and check statistics
     println!("{}", stat);
@@ -87,8 +89,11 @@ fn test_bweuler_hairer_wanner_eq1_num_jac() {
 #[test]
 fn test_bweuler_hairer_wanner_eq1_modified_newton() {
     // get ODE system
-    let (system, mut data, mut args, y_fn_x) = Samples::hairer_wanner_eq1();
+    let (system, x0, mut y0, mut args, y_fn_x) = Samples::hairer_wanner_eq1();
     let ndim = system.get_ndim();
+
+    // final x
+    let x1 = 1.5;
 
     // set configuration parameters
     let mut params = Params::new(Method::BwEuler);
@@ -97,21 +102,19 @@ fn test_bweuler_hairer_wanner_eq1_modified_newton() {
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system).unwrap();
     let h_equal = Some(1.875 / 50.0);
-    solver
-        .solve(&mut data.y0, data.x0, data.x1, h_equal, None, &mut args)
-        .unwrap();
+    solver.solve(&mut y0, x0, x1, h_equal, None, &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();
 
     // compare with a previous implementation
-    approx_eq(data.y0[0], 0.09060476604187756, 1e-15);
+    approx_eq(y0[0], 0.09060476604187756, 1e-15);
     assert_eq!(stat.h_accepted, h_equal.unwrap());
 
     // compare with the analytical solution
     let mut y1_correct = Vector::new(ndim);
-    y_fn_x(&mut y1_correct, data.x1, &mut args);
-    approx_eq(data.y0[0], y1_correct[0], 5e-5);
+    y_fn_x(&mut y1_correct, x1, &mut args);
+    approx_eq(y0[0], y1_correct[0], 5e-5);
 
     // print and check statistics
     println!("{}", stat);

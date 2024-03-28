@@ -32,7 +32,10 @@ fn test_heat_1d_periodic() -> Result<(), StrError> {
 
     // system
     let nx = 31;
-    let (system, data, mut args) = Samples::heat_1d_periodic(nx);
+    let (system, t0, uu0, mut args) = Samples::heat_1d_periodic(nx);
+
+    // final t
+    let t1 = 2.0;
 
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);
@@ -40,9 +43,7 @@ fn test_heat_1d_periodic() -> Result<(), StrError> {
     params.set_tolerances(1e-3, 1e-3, None).unwrap();
 
     // solve the ODE system
-    let t0 = data.x0;
-    let t1 = data.x1;
-    let mut uu = data.y0.clone();
+    let mut uu = uu0.clone();
     let mut solver = OdeSolver::new(params, &system).unwrap();
     solver.solve(&mut uu, t0, t1, None, None, &mut args).unwrap();
 
@@ -51,7 +52,7 @@ fn test_heat_1d_periodic() -> Result<(), StrError> {
 
     // check the results
     let mut err_max = 0.0;
-    args.fdm.loop_over_grid_points(|m, x, _| {
+    args.loop_over_grid_points(|m, x, _| {
         err_max = f64::max(err_max, f64::abs(uu[m] - f64::exp(-t1) * f64::cos(5.0 * PI * x)));
     });
     println!("err_max = {}", err_max);
@@ -64,7 +65,7 @@ fn test_heat_1d_periodic() -> Result<(), StrError> {
         let mut x_num = Vector::new(nx);
         let mut u_num_bot = Vector::new(nx);
         let mut u_num_top = Vector::new(nx);
-        args.fdm.loop_over_grid_points(|m, x, _| {
+        args.loop_over_grid_points(|m, x, _| {
             let i = m % nx;
             let j = m / nx;
             if j == 0 {

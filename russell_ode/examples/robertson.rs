@@ -17,7 +17,10 @@ use russell_ode::prelude::*;
 
 fn main() -> Result<(), StrError> {
     // get the ODE system
-    let (system, data, mut args) = Samples::robertson();
+    let (system, x0, y0, mut args) = Samples::robertson();
+
+    // final x
+    let x1 = 0.3;
 
     // parameters
     let h_ini = 1e-6;
@@ -49,25 +52,25 @@ fn main() -> Result<(), StrError> {
     // solve the problem with Radau5
     let mut out1 = Output::new();
     out1.set_step_recording(true, &[sel]);
-    let mut y = data.y0.clone();
-    radau5.solve(&mut y, data.x0, data.x1, None, Some(&mut out1), &mut args)?;
+    let mut y = y0.clone();
+    radau5.solve(&mut y, x0, x1, None, Some(&mut out1), &mut args)?;
     println!("{}", radau5.stats());
     let n_accepted1 = radau5.stats().n_accepted;
 
     // solve the problem with DoPri5 and Tol = 1e-2
     let mut out2 = Output::new();
     out2.set_step_recording(true, &[sel]);
-    let mut y = data.y0.clone();
-    dopri5.solve(&mut y, data.x0, data.x1, None, Some(&mut out2), &mut args)?;
+    let mut y = y0.clone();
+    dopri5.solve(&mut y, x0, x1, None, Some(&mut out2), &mut args)?;
     println!("\nTol = 1e-2\n{}", dopri5.stats());
     let n_accepted2 = dopri5.stats().n_accepted;
 
     // solve the problem with DoPri5 and Tol = 1e-3
     let mut out3 = Output::new();
     out3.set_step_recording(true, &[sel]);
-    let mut y = data.y0.clone();
+    let mut y = y0.clone();
     dopri5.update_params(params3)?;
-    dopri5.solve(&mut y, data.x0, data.x1, None, Some(&mut out3), &mut args)?;
+    dopri5.solve(&mut y, x0, x1, None, Some(&mut out3), &mut args)?;
     println!("\nTol = 1e-3\n{}", dopri5.stats());
     let n_accepted3 = dopri5.stats().n_accepted;
 

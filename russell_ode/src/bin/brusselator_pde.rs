@@ -70,7 +70,10 @@ fn main() -> Result<(), StrError> {
 
     // ODE system
     let alpha = if opt.first_book { 2e-3 } else { 0.1 };
-    let (system, mut data, mut args) = Samples::brusselator_pde(alpha, opt.npoint, !opt.first_book, false);
+    let (system, t0, mut yy0, mut args) = Samples::brusselator_pde(alpha, opt.npoint, !opt.first_book, false);
+
+    // final t
+    let t1 = 1.5;
 
     // parameters for the linear solver
     let mut ls_params = LinSolParams::new();
@@ -97,8 +100,7 @@ fn main() -> Result<(), StrError> {
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system)?;
-    let t1 = 1.5;
-    solver.solve(&mut data.y0, data.x0, t1, None, None, &mut args)?;
+    solver.solve(&mut yy0, t0, t1, None, None, &mut args)?;
 
     // print stat
     let stat = solver.stats();

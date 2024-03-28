@@ -751,7 +751,7 @@ mod tests {
         // This test relates to Table 21.13 of Kreyszig's book, page 921
 
         // problem
-        let (system, data, mut args, y_fn_x) = Samples::kreyszig_ex4_page920();
+        let (system, x0, y0, mut args, y_fn_x) = Samples::kreyszig_ex4_page920();
         let ndim = system.ndim;
 
         // allocate structs
@@ -764,8 +764,8 @@ mod tests {
 
         // numerical approximation
         let h = 0.4;
-        let mut x = data.x0;
-        let mut y = data.y0.clone();
+        let mut x = x0;
+        let mut y = y0.clone();
         let mut y_ana = Vector::new(ndim);
         let mut n_fcn_correct = 0;
         for n in 0..2 {
@@ -819,7 +819,7 @@ mod tests {
         // This test relates to Table 21.13 of Kreyszig's book, page 921
 
         // problem
-        let (system, data, mut args, y_fn_x) = Samples::kreyszig_ex4_page920();
+        let (system, x0, y0, mut args, y_fn_x) = Samples::kreyszig_ex4_page920();
         let ndim = system.ndim;
 
         // allocate structs
@@ -833,8 +833,8 @@ mod tests {
 
         // numerical approximation
         let h = 0.4;
-        let mut x = data.x0;
-        let mut y = data.y0.clone();
+        let mut x = x0;
+        let mut y = y0.clone();
         let mut y_ana = Vector::new(ndim);
         let mut n_fcn_correct = 0;
         for n in 0..2 {
@@ -889,7 +889,7 @@ mod tests {
         for symmetric in [true, false] {
             for genie in [Genie::Umfpack, Genie::Mumps] {
                 // problem
-                let (system, data, mut args, y_fn_x) = Samples::simple_system_with_mass_matrix(symmetric, genie);
+                let (system, x0, y0, mut args, y_fn_x) = Samples::simple_system_with_mass_matrix(symmetric, genie);
                 let ndim = system.ndim;
 
                 // allocate structs
@@ -904,8 +904,8 @@ mod tests {
 
                 // numerical approximation
                 let h = 0.1;
-                let mut x = data.x0;
-                let mut y = data.y0.clone();
+                let mut x = x0;
+                let mut y = y0.clone();
                 let mut y_ana = Vector::new(ndim);
                 for n in 0..4 {
                     // call step

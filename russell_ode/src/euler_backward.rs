@@ -266,7 +266,7 @@ mod tests {
         // This test relates to Table 21.13 of Kreyszig's book, page 921
 
         // problem
-        let (system, data, mut args, y_fn_x) = Samples::kreyszig_ex4_page920();
+        let (system, x0, y0, mut args, y_fn_x) = Samples::kreyszig_ex4_page920();
         let ndim = system.ndim;
 
         // allocate structs
@@ -282,8 +282,8 @@ mod tests {
 
         // numerical approximation
         let h = 0.4;
-        let mut x = data.x0;
-        let mut y = data.y0.clone();
+        let mut x = x0;
+        let mut y = y0.clone();
         let mut xx = vec![x];
         let mut yy0_num = vec![y[0]];
         let mut yy1_num = vec![y[1]];
@@ -320,7 +320,7 @@ mod tests {
         // This test relates to Table 21.13 of Kreyszig's book, page 921
 
         // problem
-        let (system, data, mut args, y_fn_x) = Samples::kreyszig_ex4_page920();
+        let (system, x0, y0, mut args, y_fn_x) = Samples::kreyszig_ex4_page920();
         let ndim = system.ndim;
 
         // allocate structs
@@ -331,8 +331,8 @@ mod tests {
 
         // numerical approximation
         let h = 0.4;
-        let mut x = data.x0;
-        let mut y = data.y0.clone();
+        let mut x = x0;
+        let mut y = y0.clone();
         let mut xx = vec![x];
         let mut yy0_num = vec![y[0]];
         let mut yy1_num = vec![y[1]];
@@ -368,12 +368,12 @@ mod tests {
     #[test]
     fn euler_backward_captures_failed_iterations() {
         let mut params = Params::new(Method::BwEuler);
-        let (system, data, mut args, _) = Samples::kreyszig_ex4_page920();
+        let (system, x0, y0, mut args, _) = Samples::kreyszig_ex4_page920();
         params.newton.n_iteration_max = 0;
         let mut solver = EulerBackward::new(params, &system);
         let mut work = Workspace::new(Method::BwEuler);
         assert_eq!(
-            solver.step(&mut work, data.x0, &data.y0, 0.1, &mut args).err(),
+            solver.step(&mut work, x0, &y0, 0.1, &mut args).err(),
             Some("Newton-Raphson method did not complete successfully")
         );
     }

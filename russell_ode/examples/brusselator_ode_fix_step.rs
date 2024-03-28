@@ -18,7 +18,10 @@ use russell_ode::prelude::*;
 
 fn main() -> Result<(), StrError> {
     // ODE system
-    let (system, data, mut args, y_ref) = Samples::brusselator_ode();
+    let (system, x0, y0, mut args, y_ref) = Samples::brusselator_ode();
+
+    // final x
+    let x1 = 20.0;
 
     // stepsize
     let hh = [0.2, 0.1, 0.05, 0.01, 0.001];
@@ -51,9 +54,8 @@ fn main() -> Result<(), StrError> {
         let name = format!("{:?}", method);
         print!("{:>w$}", name, w = w1);
         for i in 0..hh.len() {
-            let x = data.x0;
-            let mut y = data.y0.clone();
-            solver.solve(&mut y, x, data.x1, Some(hh[i]), None, &mut args).unwrap();
+            let mut y = y0.clone();
+            solver.solve(&mut y, x0, x1, Some(hh[i]), None, &mut args).unwrap();
 
             // compare with the reference solution
             let (_, err) = vec_max_abs_diff(&y, &y_ref)?;

@@ -517,7 +517,7 @@ mod tests {
         // This test relates to Table 21.2 of Kreyszig's book, page 904
 
         // problem
-        let (system, data, mut args, y_fn_x) = Samples::kreyszig_eq6_page902();
+        let (system, x0, y0, mut args, y_fn_x) = Samples::kreyszig_eq6_page902();
         let ndim = system.ndim;
 
         // allocate structs
@@ -533,8 +533,8 @@ mod tests {
 
         // numerical approximation
         let h = 0.2;
-        let mut x = data.x0;
-        let mut y = data.y0.clone();
+        let mut x = x0;
+        let mut y = y0.clone();
         let mut y_ana = Vector::new(ndim);
         y_fn_x(&mut y_ana, x, &mut args);
         let mut xx = vec![x];
@@ -600,7 +600,7 @@ mod tests {
         // This test relates to Table 21.4 of Kreyszig's book, page 904
 
         // problem
-        let (system, data, mut args, y_fn_x) = Samples::kreyszig_eq6_page902();
+        let (system, x0, y0, mut args, y_fn_x) = Samples::kreyszig_eq6_page902();
         let ndim = system.ndim;
 
         // allocate structs
@@ -616,8 +616,8 @@ mod tests {
 
         // numerical approximation
         let h = 0.2;
-        let mut x = data.x0;
-        let mut y = data.y0.clone();
+        let mut x = x0;
+        let mut y = y0.clone();
         let mut y_ana = Vector::new(ndim);
         y_fn_x(&mut y_ana, x, &mut args);
         let mut xx = vec![x];
@@ -808,11 +808,11 @@ mod tests {
 
     #[test]
     fn all_erk_methods_work() {
-        let (system, data, mut args, y_fn_x) = Samples::simple_equation_constant();
+        let (system, x0, y0, mut args, y_fn_x) = Samples::simple_equation_constant();
         let mut y_ana = Vector::new(system.ndim);
         let h = 0.2;
-        let mut x = data.x0;
-        let mut y = data.y0.clone();
+        let mut x = x0;
+        let mut y = y0.clone();
         for method in Method::erk_methods() {
             let params = Params::new(method);
             let mut work = Workspace::new(method);

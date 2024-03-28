@@ -5,7 +5,7 @@ use russell_ode::{Method, OdeSolver, Output, Params, Samples};
 fn test_dopri8_van_der_pol() {
     // get the ODE system
     const EPS: f64 = 1e-3; // this problem would need many more steps with ε < 1e-3
-    let (system, _, mut args) = Samples::van_der_pol(EPS, false);
+    let (system, _, _, _, mut args) = Samples::van_der_pol(EPS, false);
 
     // set configuration parameters
     let mut params = Params::new(Method::DoPri8);

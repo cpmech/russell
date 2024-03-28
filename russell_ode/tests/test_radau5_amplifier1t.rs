@@ -4,7 +4,10 @@ use russell_ode::{Method, OdeSolver, Output, Params, Samples};
 #[test]
 fn test_radau5_amplifier1t() {
     // get get ODE system
-    let (system, mut data, mut args) = Samples::amplifier1t();
+    let (system, x0, mut y0, mut args) = Samples::amplifier1t();
+
+    // final x
+    let x1 = 0.05;
 
     // set configuration parameters
     let mut params = Params::new(Method::Radau5);
@@ -17,19 +20,17 @@ fn test_radau5_amplifier1t() {
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system).unwrap();
-    solver
-        .solve(&mut data.y0, data.x0, data.x1, None, Some(&mut out), &mut args)
-        .unwrap();
+    solver.solve(&mut y0, x0, x1, None, Some(&mut out), &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();
 
     // compare with radau5.f
-    approx_eq(data.y0[0], -2.226517868073645E-02, 1e-10);
-    approx_eq(data.y0[1], 3.068700099735197E+00, 1e-10);
-    approx_eq(data.y0[2], 2.898340496450958E+00, 1e-9);
-    approx_eq(data.y0[3], 2.033525366489690E+00, 1e-7);
-    approx_eq(data.y0[4], -2.269179823457655E+00, 1e-7);
+    approx_eq(y0[0], -2.226517868073645E-02, 1e-10);
+    approx_eq(y0[1], 3.068700099735197E+00, 1e-10);
+    approx_eq(y0[2], 2.898340496450958E+00, 1e-9);
+    approx_eq(y0[3], 2.033525366489690E+00, 1e-7);
+    approx_eq(y0[4], -2.269179823457655E+00, 1e-7);
     approx_eq(stat.h_accepted, 7.791381954171996E-04, 1e-6);
 
     // compare dense output with Mathematica
@@ -55,11 +56,11 @@ fn test_radau5_amplifier1t() {
     println!("{}", stat.summary());
     println!(
         "y1to3 ={}{}{}",
-        format_fortran(data.y0[0]),
-        format_fortran(data.y0[1]),
-        format_fortran(data.y0[2]),
+        format_fortran(y0[0]),
+        format_fortran(y0[1]),
+        format_fortran(y0[2]),
     );
-    println!("y4to5 ={}{}", format_fortran(data.y0[3]), format_fortran(data.y0[4]));
+    println!("y4to5 ={}{}", format_fortran(y0[3]), format_fortran(y0[4]));
     println!("h ={}", format_fortran(stat.h_accepted));
     assert_eq!(stat.n_function, 1511);
     assert_eq!(stat.n_jacobian, 126);

@@ -1,9 +1,9 @@
 use num_complex::Complex64;
-use russell_lab::{cpx, ComplexVector, FourierTransform1d};
+use russell_lab::{cpx, ComplexVector, FFTw1d};
 
 fn main() {
     // check FFTW interface
-    let mut fft = match FourierTransform1d::new() {
+    let mut fft = match FFTw1d::new() {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new): {}", e);

@@ -20,7 +20,7 @@ unsafe impl Send for InterfaceFFTW {}
 // Enforce Send on the Rust structure
 //
 // <https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe>
-// unsafe impl Send for FourierTransform1D {}
+unsafe impl Send for FFTw1d {}
 
 extern "C" {
     // typedef double fftw_complex[2]; // compatible with `*mut Complex64`
@@ -36,7 +36,7 @@ extern "C" {
     fn interface_fftw_execute(interface: *mut InterfaceFFTW) -> i32;
 }
 
-/// Implements a FFTW3 plan structure to compute direct or inverse 1D Fourier transforms
+/// Wraps FFTW to compute discrete Fourier transforms in 1D
 ///
 /// Computes the forward transform:
 ///
@@ -61,7 +61,7 @@ extern "C" {
 /// Kreyszig's book, page 531:
 ///
 /// "The FFT is a computational method for the DFT that needs only `O(N)log₂(N)` operations instead of `O(N²)`.
-pub struct FourierTransform1d {
+pub struct FFTw1d {
     /// Holds a pointer to the C interface to FFTW
     interface: *mut InterfaceFFTW,
 
@@ -81,7 +81,7 @@ pub struct FourierTransform1d {
     time_execute_ns: u128,
 }
 
-impl Drop for FourierTransform1d {
+impl Drop for FFTw1d {
     /// Tells the c-code to release memory
     fn drop(&mut self) {
         unsafe {
@@ -90,7 +90,7 @@ impl Drop for FourierTransform1d {
     }
 }
 
-impl FourierTransform1d {
+impl FFTw1d {
     /// Allocates a new instance
     pub fn new() -> Result<Self, StrError> {
         unsafe {
@@ -98,7 +98,7 @@ impl FourierTransform1d {
             if interface.is_null() {
                 return Err("c-code failed to allocated the FFTW interface");
             }
-            Ok(FourierTransform1d {
+            Ok(FFTw1d {
                 interface,
                 initialized: false,
                 initialized_dim: 0,
@@ -111,7 +111,40 @@ impl FourierTransform1d {
 
     /// Performs the fast Fourier transform
     ///
-    /// **Warning:** The vector dimension must remain the same between calls to `execute`
+    /// **Warning:** The vector dimension must remain the same during subsequent calls to `execute`.
+    ///
+    /// Computes the (forward) transform:
+    ///
+    /// ```text
+    ///        N-1       -i n 2 π k / N       
+    /// U[n] =  Σ  u[k] e                     
+    ///        k=0
+    ///           __
+    /// with i = √-1    and   n = 0, ···, N-1
+    /// ```
+    ///
+    /// Or the inverse transform:
+    ///
+    /// ```text
+    ///        N-1       i n 2 π k / N
+    /// V[n] =  Σ  v[k] e                     
+    ///        k=0
+    ///
+    /// thus u[n] = V[n] / N
+    /// ```
+    ///
+    /// # Output
+    ///
+    /// `uu` -- Either the (forward) transform `U` or the inverse transform `V`
+    ///
+    /// # Input
+    ///
+    /// `u` -- The input vector with dimension `N`
+    /// `inverse` -- Requests the inverse transform; otherwise the forward transform is computed
+    /// `measure` -- (slower initialization) use the `FFTW_MEASURE` flag for better optimization analysis
+    ///
+    /// **Note:** Both transforms are non-normalized; thus the user may have to
+    /// multiply the results by `(1/N)` if computing inverse transforms.
     pub fn execute(
         &mut self,
         uu: &mut ComplexVector,
@@ -180,6 +213,7 @@ impl FourierTransform1d {
     }
 }
 
+/// Handles the status originating from the C-code
 fn handle_fftw_error(status: i32) -> StrError {
     match status {
         ERROR_NULL_POINTER => "FFTW failed due to NULL POINTER error",
@@ -193,7 +227,7 @@ fn handle_fftw_error(status: i32) -> StrError {
 
 #[cfg(test)]
 mod tests {
-    use super::FourierTransform1d;
+    use super::FFTw1d;
     use crate::{complex_vec_approx_eq, cpx, math::PI, ComplexVector};
     use num_complex::Complex64;
 
@@ -234,7 +268,7 @@ mod tests {
     #[test]
     fn execute_works() {
         // Kreyszig Example 4 on Page 530
-        let mut fft = FourierTransform1d::new().unwrap();
+        let mut fft = FFTw1d::new().unwrap();
         let u = ComplexVector::from(&[cpx!(0.0, 0.0), cpx!(1.0, 0.0), cpx!(4.0, 0.0), cpx!(9.0, 0.0)]);
         let mut uu = ComplexVector::new(u.dim());
         fft.execute(&mut uu, &u, false, false).unwrap();

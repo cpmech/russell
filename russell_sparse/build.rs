@@ -19,10 +19,8 @@ fn handle_local_libs() {
         .include("/usr/local/include/umfpack")
         .compile("c_code_interface_umfpack");
     println!("cargo:rustc-link-search=native=/usr/local/lib/umfpack");
-    println!("cargo:rustc-link-lib=dylib=cholmod");
     println!("cargo:rustc-link-lib=dylib=umfpack");
     println!("cargo:rustc-link-lib=dylib=klu");
-    println!("cargo:rustc-link-lib=dylib=klu_cholmod");
     println!("cargo:rustc-cfg=local_umfpack");
 }
 
@@ -43,10 +41,8 @@ fn handle_local_libs() {
         .file("c_code/interface_klu.c")
         .include("/usr/include/suitesparse")
         .compile("c_code_interface_umfpack");
-    println!("cargo:rustc-link-lib=dylib=cholmod");
     println!("cargo:rustc-link-lib=dylib=umfpack");
     println!("cargo:rustc-link-lib=dylib=klu");
-    println!("cargo:rustc-link-lib=dylib=klu_cholmod");
 }
 
 fn main() {

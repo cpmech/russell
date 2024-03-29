@@ -35,13 +35,13 @@ struct Options {
     #[structopt(long, default_value = "4")]
     blas_nt: usize,
 
-    /// Use MUMPS solver
-    #[structopt(long)]
-    mumps: bool,
-
     /// Writes the matrix files and stop
     #[structopt(long)]
     write_matrix: bool,
+
+    /// Solver selection
+    #[structopt(short = "g", long, default_value = "Umfpack")]
+    genie: String,
 
     /// Ordering strategy
     #[structopt(short = "o", long, default_value = "Auto")]
@@ -92,7 +92,7 @@ fn main() -> Result<(), StrError> {
     params.step.h_ini = 1e-4;
     params.radau5.concurrent = !opt.serial;
     params.set_tolerances(tol, tol, None)?;
-    params.newton.genie = if opt.mumps { Genie::Mumps } else { Genie::Umfpack };
+    params.newton.genie = Genie::from(&opt.genie);
     params.newton.lin_sol_params = Some(ls_params);
     if opt.write_matrix {
         params.newton.write_matrix_after_nstep_and_stop = Some(0);

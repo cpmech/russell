@@ -132,12 +132,6 @@ pub enum Scaling {
 
 impl Genie {
     /// Returns the Genie by name (default is umfpack)
-    ///
-    /// ```text
-    /// "mumps"    => Genie::Mumps,
-    /// "umfpack"  => Genie::Umfpack,
-    /// _          => Genie::Umfpack,
-    /// ```
     pub fn from(genie: &str) -> Self {
         match genie.to_lowercase().as_str() {
             "klu" => Genie::Klu,
@@ -148,10 +142,6 @@ impl Genie {
     }
 
     /// Returns the string representation
-    /// ```text
-    /// Genie::Mumps    => "mumps"
-    /// Genie::Umfpack  => "umfpack"
-    /// ```
     pub fn to_string(&self) -> String {
         match self {
             Genie::Klu => "klu".to_string(),

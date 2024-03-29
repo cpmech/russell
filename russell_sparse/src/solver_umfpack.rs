@@ -421,6 +421,7 @@ pub(crate) fn umfpack_ordering(ordering: Ordering) -> i32 {
         Ordering::Auto => UMFPACK_DEFAULT_ORDERING,
         Ordering::Best => UMFPACK_ORDERING_BEST,
         Ordering::Cholmod => UMFPACK_ORDERING_CHOLMOD,
+        Ordering::Colamd => UMFPACK_ORDERING_CHOLMOD,
         Ordering::Metis => UMFPACK_ORDERING_METIS,
         Ordering::No => UMFPACK_ORDERING_NONE,
         Ordering::Pord => UMFPACK_DEFAULT_ORDERING,
@@ -700,6 +701,7 @@ mod tests {
         assert_eq!(umfpack_ordering(Ordering::Auto), UMFPACK_DEFAULT_ORDERING);
         assert_eq!(umfpack_ordering(Ordering::Best), UMFPACK_ORDERING_BEST);
         assert_eq!(umfpack_ordering(Ordering::Cholmod), UMFPACK_ORDERING_CHOLMOD);
+        assert_eq!(umfpack_ordering(Ordering::Colamd), UMFPACK_ORDERING_CHOLMOD);
         assert_eq!(umfpack_ordering(Ordering::Metis), UMFPACK_ORDERING_METIS);
         assert_eq!(umfpack_ordering(Ordering::No), UMFPACK_ORDERING_NONE);
         assert_eq!(umfpack_ordering(Ordering::Pord), UMFPACK_DEFAULT_ORDERING);

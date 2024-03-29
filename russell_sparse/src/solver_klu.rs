@@ -27,7 +27,6 @@ extern "C" {
     fn solver_klu_drop(solver: *mut InterfaceKLU);
     fn solver_klu_initialize(
         solver: *mut InterfaceKLU,
-        cholmod_symmetric: i32,
         ordering: i32,
         scaling: i32,
         ndim: i32,
@@ -186,7 +185,6 @@ impl LinSolTrait for SolverKLU {
         let compute_cond = if par.compute_condition_numbers { 1 } else { 0 };
 
         // matrix config
-        let cholmod_symmetric = if csc.symmetric == Sym::No { 0 } else { 1 };
         let ndim = to_i32(csc.nrow);
 
         // call initialize just once
@@ -195,7 +193,6 @@ impl LinSolTrait for SolverKLU {
             unsafe {
                 let status = solver_klu_initialize(
                     self.solver,
-                    cholmod_symmetric,
                     ordering,
                     scaling,
                     ndim,
@@ -311,8 +308,6 @@ impl LinSolTrait for SolverKLU {
         stats.output.effective_ordering = match self.effective_ordering {
             KLU_ORDERING_AMD => "Amd".to_string(),
             KLU_ORDERING_COLAMD => "Colamd".to_string(),
-            KLU_ORDERING_CHOLMOD_AMD => "Cholmod/Amd".to_string(),
-            KLU_ORDERING_CHOLMOD_METIS => "Metis".to_string(),
             _ => "Unknown".to_string(),
         };
         stats.output.effective_scaling = match self.effective_scaling {
@@ -345,8 +340,6 @@ impl LinSolTrait for SolverKLU {
 pub(crate) const KLU_ORDERING_AUTO: i32 = -10; // (code defined here) use defaults
 pub(crate) const KLU_ORDERING_AMD: i32 = 0; // (from KLU manual) AMD
 pub(crate) const KLU_ORDERING_COLAMD: i32 = 1; // (from KLU manual) COLAMD
-pub(crate) const KLU_ORDERING_CHOLMOD_AMD: i32 = 102; // code - 100 == 2: line 650 of cholmod.h --- AMD: approximate minimum degree
-pub(crate) const KLU_ORDERING_CHOLMOD_METIS: i32 = 103; // code - 100 == 3: line 651 of cholmod.h ---  METIS: nested dissection
 
 pub(crate) const KLU_SCALE_AUTO: i32 = -10; // (code defined here) use defaults
 pub(crate) const KLU_SCALE_NONE: i32 = 0; // (from KLU manual) no scaling
@@ -360,11 +353,12 @@ pub(crate) fn klu_ordering(ordering: Ordering) -> i32 {
         Ordering::Amf => KLU_ORDERING_AUTO,
         Ordering::Auto => KLU_ORDERING_AUTO,
         Ordering::Best => KLU_ORDERING_AUTO,
-        Ordering::Cholmod => KLU_ORDERING_CHOLMOD_AMD, // << TODO: explain this in the doc
-        Ordering::Metis => KLU_ORDERING_CHOLMOD_METIS,
+        Ordering::Cholmod => KLU_ORDERING_AUTO,
+        Ordering::Colamd => KLU_ORDERING_COLAMD,
+        Ordering::Metis => KLU_ORDERING_AUTO,
         Ordering::No => KLU_ORDERING_AUTO,
         Ordering::Pord => KLU_ORDERING_AUTO,
-        Ordering::Qamd => KLU_ORDERING_COLAMD, // << TODO: explain this in the doc
+        Ordering::Qamd => KLU_ORDERING_AUTO,
         Ordering::Scotch => KLU_ORDERING_AUTO,
     }
 }
@@ -490,7 +484,7 @@ mod tests {
 
         solver.factorize(&mut mat, Some(params)).unwrap();
         assert!(solver.factorized);
-        assert_eq!(solver.effective_ordering, KLU_ORDERING_CHOLMOD_METIS);
+        assert_eq!(solver.effective_ordering, KLU_ORDERING_AMD);
         assert_eq!(solver.effective_scaling, KLU_SCALE_SUM);
 
         // calling factorize again works
@@ -591,7 +585,7 @@ mod tests {
         // update stats
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
-        assert_eq!(stats.output.effective_ordering, "Cholmod/Amd");
+        assert_eq!(stats.output.effective_ordering, "Amd");
         assert_eq!(stats.output.effective_scaling, "Max");
     }
 
@@ -605,7 +599,7 @@ mod tests {
         let x_correct = &[-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
 
         let mut params = LinSolParams::new();
-        params.ordering = Ordering::Qamd; // Colamd
+        params.ordering = Ordering::Colamd;
         params.scaling = Scaling::No;
 
         solver.factorize(&mut mat, Some(params)).unwrap();
@@ -630,11 +624,12 @@ mod tests {
         assert_eq!(klu_ordering(Ordering::Amf), KLU_ORDERING_AUTO);
         assert_eq!(klu_ordering(Ordering::Auto), KLU_ORDERING_AUTO);
         assert_eq!(klu_ordering(Ordering::Best), KLU_ORDERING_AUTO);
-        assert_eq!(klu_ordering(Ordering::Cholmod), KLU_ORDERING_CHOLMOD_AMD);
-        assert_eq!(klu_ordering(Ordering::Metis), KLU_ORDERING_CHOLMOD_METIS);
+        assert_eq!(klu_ordering(Ordering::Cholmod), KLU_ORDERING_AUTO);
+        assert_eq!(klu_ordering(Ordering::Colamd), KLU_ORDERING_COLAMD);
+        assert_eq!(klu_ordering(Ordering::Metis), KLU_ORDERING_AUTO);
         assert_eq!(klu_ordering(Ordering::No), KLU_ORDERING_AUTO);
         assert_eq!(klu_ordering(Ordering::Pord), KLU_ORDERING_AUTO);
-        assert_eq!(klu_ordering(Ordering::Qamd), KLU_ORDERING_COLAMD);
+        assert_eq!(klu_ordering(Ordering::Qamd), KLU_ORDERING_AUTO);
         assert_eq!(klu_ordering(Ordering::Scotch), KLU_ORDERING_AUTO);
 
         assert_eq!(klu_scaling(Scaling::Auto), KLU_SCALE_AUTO);

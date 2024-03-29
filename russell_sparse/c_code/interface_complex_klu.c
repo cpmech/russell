@@ -1,9 +1,7 @@
 #include <inttypes.h>
 #include <stdlib.h>
 
-#include "cholmod.h"
 #include "klu.h"
-#include "klu_cholmod.h"
 
 #include "constants.h"
 
@@ -23,9 +21,6 @@ struct InterfaceComplexKLU {
 
     /// @brief Indicates that the factorization (at least once) has been completed
     C_BOOL factorization_completed;
-
-    /// @brief Options for CHOLMOD: user_data[0] = symmetric, user_data[1] = ordering
-    int64_t user_data[2];
 };
 
 /// @brief Allocates a new KLU interface
@@ -64,7 +59,6 @@ void complex_solver_klu_drop(struct InterfaceComplexKLU *solver) {
 
 /// @brief Performs the symbolic factorization
 int32_t complex_solver_klu_initialize(struct InterfaceComplexKLU *solver,
-                                      C_BOOL cholmod_symmetric,
                                       int32_t ordering,
                                       int32_t scaling,
                                       int32_t ndim,
@@ -80,13 +74,7 @@ int32_t complex_solver_klu_initialize(struct InterfaceComplexKLU *solver,
 
     klu_defaults(&solver->common);
 
-    if (ordering > 100) {
-        solver->common.ordering = 3; // user function
-        solver->common.user_order = klu_cholmod;
-        solver->user_data[0] = cholmod_symmetric == C_TRUE ? 1 : 0;
-        solver->user_data[1] = ordering - 100; // 2 or 3 == AMD or METIS
-        solver->common.user_data = solver->user_data;
-    } else if (ordering >= 0) {
+    if (ordering >= 0) {
         solver->common.ordering = ordering;
     }
 
@@ -142,11 +130,7 @@ int32_t complex_solver_klu_factorize(struct InterfaceComplexKLU *solver,
     }
 
     // save ordering and scaling
-    if (solver->common.ordering == 3) {
-        *effective_ordering = 100 + solver->user_data[1];
-    } else {
-        *effective_ordering = solver->common.ordering;
-    }
+    *effective_ordering = solver->common.ordering;
     *effective_scaling = solver->common.scale;
 
     // reciprocal condition number estimate

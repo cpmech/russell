@@ -83,6 +83,9 @@ pub enum Ordering {
     /// Use Amd for symmetric, Colamd for unsymmetric, or Metis (UMFPACK-only, otherwise Auto)
     Cholmod,
 
+    /// Use the column approximate minimum degree ordering algorithm (KLU-only, otherwise Auto)
+    Colamd,
+
     /// Ordering by Karpis & Kumar from the University of Minnesota
     Metis,
 
@@ -177,19 +180,6 @@ impl Sym {
 
 impl Ordering {
     /// Returns the Ordering by name (default is Auto)
-    /// ```text
-    /// "amd"     => Ordering::Amd,
-    /// "amf"     => Ordering::Amf,
-    /// "auto"    => Ordering::Auto,
-    /// "best"    => Ordering::Best,
-    /// "cholmod" => Ordering::Cholmod,
-    /// "metis"   => Ordering::Metis,
-    /// "no"      => Ordering::No,
-    /// "pord"    => Ordering::Pord,
-    /// "qamd"    => Ordering::Qamd,
-    /// "scotch"  => Ordering::Scotch,
-    /// _         => Ordering::Auto,
-    /// ```
     pub fn from(ordering: &str) -> Self {
         match ordering.to_lowercase().as_str() {
             "amd" => Ordering::Amd,
@@ -197,6 +187,7 @@ impl Ordering {
             "auto" => Ordering::Auto,
             "best" => Ordering::Best,
             "cholmod" => Ordering::Cholmod,
+            "colamd" => Ordering::Colamd,
             "metis" => Ordering::Metis,
             "no" => Ordering::No,
             "pord" => Ordering::Pord,
@@ -209,18 +200,6 @@ impl Ordering {
 
 impl Scaling {
     /// Returns the Scaling by name (default is Auto)
-    /// ```text
-    /// "auto"       => Scaling::Auto,
-    /// "column"     => Scaling::Column,
-    /// "diagonal"   => Scaling::Diagonal,
-    /// "max"        => Scaling::Max,
-    /// "no"         => Scaling::No,
-    /// "rowcol"     => Scaling::RowCol,
-    /// "rowcoliter" => Scaling::RowColIter,
-    /// "rowcolrig"  => Scaling::RowColRig,
-    /// "sum"        => Scaling::Sum,
-    /// _            => Scaling::Auto,
-    /// ```
     pub fn from(scaling: &str) -> Self {
         match scaling.to_lowercase().as_str() {
             "auto" => Scaling::Auto,
@@ -303,6 +282,7 @@ mod tests {
         assert_eq!(Ordering::from("Auto"), Ordering::Auto);
         assert_eq!(Ordering::from("Best"), Ordering::Best);
         assert_eq!(Ordering::from("Cholmod"), Ordering::Cholmod);
+        assert_eq!(Ordering::from("Colamd"), Ordering::Colamd);
         assert_eq!(Ordering::from("Metis"), Ordering::Metis);
         assert_eq!(Ordering::from("No"), Ordering::No);
         assert_eq!(Ordering::from("Pord"), Ordering::Pord);
@@ -315,6 +295,7 @@ mod tests {
         assert_eq!(Ordering::from("auto"), Ordering::Auto);
         assert_eq!(Ordering::from("best"), Ordering::Best);
         assert_eq!(Ordering::from("cholmod"), Ordering::Cholmod);
+        assert_eq!(Ordering::from("colamd"), Ordering::Colamd);
         assert_eq!(Ordering::from("metis"), Ordering::Metis);
         assert_eq!(Ordering::from("no"), Ordering::No);
         assert_eq!(Ordering::from("pord"), Ordering::Pord);

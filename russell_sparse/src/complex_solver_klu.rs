@@ -1,9 +1,6 @@
 use super::{handle_klu_error_code, klu_ordering, klu_scaling};
 use super::{ComplexLinSolTrait, ComplexSparseMatrix, LinSolParams, StatsLinSol, Sym};
-use super::{
-    KLU_ORDERING_AMD, KLU_ORDERING_CHOLMOD_AMD, KLU_ORDERING_CHOLMOD_METIS, KLU_ORDERING_COLAMD, KLU_SCALE_MAX,
-    KLU_SCALE_NONE, KLU_SCALE_SUM,
-};
+use super::{KLU_ORDERING_AMD, KLU_ORDERING_COLAMD, KLU_SCALE_MAX, KLU_SCALE_NONE, KLU_SCALE_SUM};
 use crate::auxiliary_and_constants::*;
 use crate::StrError;
 use num_complex::Complex64;
@@ -33,7 +30,6 @@ extern "C" {
     fn complex_solver_klu_drop(solver: *mut InterfaceComplexKLU);
     fn complex_solver_klu_initialize(
         solver: *mut InterfaceComplexKLU,
-        cholmod_symmetric: i32,
         ordering: i32,
         scaling: i32,
         ndim: i32,
@@ -192,7 +188,6 @@ impl ComplexLinSolTrait for ComplexSolverKLU {
         let compute_cond = if par.compute_condition_numbers { 1 } else { 0 };
 
         // matrix config
-        let cholmod_symmetric = if csc.symmetric == Sym::No { 0 } else { 1 };
         let ndim = to_i32(csc.nrow);
 
         // call initialize just once
@@ -201,7 +196,6 @@ impl ComplexLinSolTrait for ComplexSolverKLU {
             unsafe {
                 let status = complex_solver_klu_initialize(
                     self.solver,
-                    cholmod_symmetric,
                     ordering,
                     scaling,
                     ndim,
@@ -323,8 +317,6 @@ impl ComplexLinSolTrait for ComplexSolverKLU {
         stats.output.effective_ordering = match self.effective_ordering {
             KLU_ORDERING_AMD => "Amd".to_string(),
             KLU_ORDERING_COLAMD => "Colamd".to_string(),
-            KLU_ORDERING_CHOLMOD_AMD => "Cholmod/Amd".to_string(),
-            KLU_ORDERING_CHOLMOD_METIS => "Metis".to_string(),
             _ => "Unknown".to_string(),
         };
         stats.output.effective_scaling = match self.effective_scaling {
@@ -443,7 +435,7 @@ mod tests {
 
         solver.factorize(&mut mat, Some(params)).unwrap();
         assert!(solver.factorized);
-        assert_eq!(solver.effective_ordering, KLU_ORDERING_CHOLMOD_METIS);
+        assert_eq!(solver.effective_ordering, KLU_ORDERING_AMD);
         assert_eq!(solver.effective_scaling, KLU_SCALE_SUM);
 
         // calling factorize again works
@@ -544,7 +536,7 @@ mod tests {
         // update stats
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
-        assert_eq!(stats.output.effective_ordering, "Cholmod/Amd");
+        assert_eq!(stats.output.effective_ordering, "Amd");
         assert_eq!(stats.output.effective_scaling, "Max");
     }
 }

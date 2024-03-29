@@ -518,6 +518,7 @@ pub(crate) fn mumps_ordering(ordering: Ordering) -> i32 {
         Ordering::Auto => MUMPS_ORDERING_AUTO,     // Auto (page 36)
         Ordering::Best => MUMPS_ORDERING_AUTO,     // Best => Auto (page 36)
         Ordering::Cholmod => MUMPS_ORDERING_AUTO,  // Cholmod => Auto (page 36)
+        Ordering::Colamd => MUMPS_ORDERING_AUTO,   // Colamd => Auto (page 36)
         Ordering::Metis => MUMPS_ORDERING_METIS,   // Metis (page 35)
         Ordering::No => MUMPS_ORDERING_AUTO,       // No => Auto (page 36)
         Ordering::Pord => MUMPS_ORDERING_PORD,     // Pord (page 35)
@@ -881,6 +882,7 @@ mod tests {
         assert_eq!(mumps_ordering(Ordering::Auto), MUMPS_ORDERING_AUTO);
         assert_eq!(mumps_ordering(Ordering::Best), MUMPS_ORDERING_AUTO);
         assert_eq!(mumps_ordering(Ordering::Cholmod), MUMPS_ORDERING_AUTO);
+        assert_eq!(mumps_ordering(Ordering::Colamd), MUMPS_ORDERING_AUTO);
         assert_eq!(mumps_ordering(Ordering::Metis), MUMPS_ORDERING_METIS);
         assert_eq!(mumps_ordering(Ordering::No), MUMPS_ORDERING_AUTO);
         assert_eq!(mumps_ordering(Ordering::Pord), MUMPS_ORDERING_PORD);

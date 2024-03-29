@@ -58,7 +58,7 @@ fn test_solver(genie: Genie) {
 fn test_complex_solver(genie: Genie) {
     println!("----------------------------------------------------------------------\n");
     match genie {
-        Genie::Klu => panic!("Complex KLU is not yet available"),
+        Genie::Klu => println!("Testing Complex KLU solver\n"),
         Genie::Mumps => println!("Testing Complex MUMPS solver\n"),
         Genie::Umfpack => println!("Testing Complex UMFPACK solver\n"),
     }
@@ -151,6 +151,7 @@ fn main() {
     test_solver(Genie::Umfpack);
 
     // complex
+    test_complex_solver(Genie::Klu);
     test_complex_solver(Genie::Mumps);
     test_complex_solver(Genie::Umfpack);
 

@@ -13,6 +13,7 @@ fn handle_local_libs() {
     // local UMFPACK and KLU
     cc::Build::new()
         .file("c_code/interface_complex_umfpack.c")
+        .file("c_code/interface_complex_klu.c")
         .file("c_code/interface_umfpack.c")
         .file("c_code/interface_klu.c")
         .include("/usr/local/include/umfpack")
@@ -37,6 +38,7 @@ fn handle_local_libs() {
     // UMFPACK and KLU
     cc::Build::new()
         .file("c_code/interface_complex_umfpack.c")
+        .file("c_code/interface_complex_klu.c")
         .file("c_code/interface_umfpack.c")
         .file("c_code/interface_klu.c")
         .include("/usr/include/suitesparse")

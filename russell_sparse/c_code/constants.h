@@ -22,6 +22,12 @@
 #define UMFPACK_PRINT_LEVEL_SILENT 0.0  // page 116
 #define UMFPACK_PRINT_LEVEL_VERBOSE 2.0 // page 116
 
+// KLU -----------------------------------------------------------------------------------------------
+
+#define KLU_ERROR_ANALYZE -9  // defined here
+#define KLU_ERROR_FACTOR -8   // defined here
+#define KLU_ERROR_COND_EST -7 // defined here
+
 // MUMPS ---------------------------------------------------------------------------------------------
 
 #define MUMPS_IGNORED 0 // to ignore the Fortran communicator since we're not using MPI

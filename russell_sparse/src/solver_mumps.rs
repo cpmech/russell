@@ -518,6 +518,7 @@ pub(crate) fn mumps_ordering(ordering: Ordering) -> i32 {
         Ordering::Auto => MUMPS_ORDERING_AUTO,     // Auto (page 36)
         Ordering::Best => MUMPS_ORDERING_AUTO,     // Best => Auto (page 36)
         Ordering::Cholmod => MUMPS_ORDERING_AUTO,  // Cholmod => Auto (page 36)
+        Ordering::Colamd => MUMPS_ORDERING_AUTO,   // Colamd => Auto (page 36)
         Ordering::Metis => MUMPS_ORDERING_METIS,   // Metis (page 35)
         Ordering::No => MUMPS_ORDERING_AUTO,       // No => Auto (page 36)
         Ordering::Pord => MUMPS_ORDERING_PORD,     // Pord (page 35)
@@ -615,14 +616,14 @@ pub(crate) fn handle_mumps_error_code(err: i32) -> StrError {
         2 => "Error(+2): during error analysis the max-norm of the computed solution is close to zero",
         4 => "Error(+4): not used in current version",
         8 => "Error(+8): problem with the iterative refinement routine",
-        ERROR_NULL_POINTER => return "MUMPS failed due to NULL POINTER error",
-        ERROR_MALLOC => return "MUMPS failed due to MALLOC error",
-        ERROR_VERSION => return "MUMPS failed due to VERSION error",
-        ERROR_NOT_AVAILABLE => return "MUMPS is not AVAILABLE",
-        ERROR_NEED_INITIALIZATION => return "MUMPS failed because INITIALIZATION is needed",
-        ERROR_NEED_FACTORIZATION => return "MUMPS failed because FACTORIZATION is needed",
-        ERROR_ALREADY_INITIALIZED => return "MUMPS failed because INITIALIZATION has been completed already",
-        _ => return "Error: unknown error returned by c-code (MUMPS)",
+        ERROR_NULL_POINTER => "MUMPS failed due to NULL POINTER error",
+        ERROR_MALLOC => "MUMPS failed due to MALLOC error",
+        ERROR_VERSION => "MUMPS failed due to VERSION error",
+        ERROR_NOT_AVAILABLE => "MUMPS is not AVAILABLE",
+        ERROR_NEED_INITIALIZATION => "MUMPS failed because INITIALIZATION is needed",
+        ERROR_NEED_FACTORIZATION => "MUMPS failed because FACTORIZATION is needed",
+        ERROR_ALREADY_INITIALIZED => "MUMPS failed because INITIALIZATION has been completed already",
+        _ => "Error: unknown error returned by c-code (MUMPS)",
     }
 }
 
@@ -881,6 +882,7 @@ mod tests {
         assert_eq!(mumps_ordering(Ordering::Auto), MUMPS_ORDERING_AUTO);
         assert_eq!(mumps_ordering(Ordering::Best), MUMPS_ORDERING_AUTO);
         assert_eq!(mumps_ordering(Ordering::Cholmod), MUMPS_ORDERING_AUTO);
+        assert_eq!(mumps_ordering(Ordering::Colamd), MUMPS_ORDERING_AUTO);
         assert_eq!(mumps_ordering(Ordering::Metis), MUMPS_ORDERING_METIS);
         assert_eq!(mumps_ordering(Ordering::No), MUMPS_ORDERING_AUTO);
         assert_eq!(mumps_ordering(Ordering::Pord), MUMPS_ORDERING_PORD);

@@ -20,9 +20,10 @@ fn main() -> Result<(), StrError> {
 
     // select linear solver
     let genie = match opt.genie.to_lowercase().as_str() {
+        "klu" => Genie::Klu,
         "mumps" => Genie::Mumps,
         "umfpack" => Genie::Umfpack,
-        _ => Genie::Umfpack,
+        _ => return Err("genie is incorrect"),
     };
     println!("... solving problem with {:?} ...", genie);
     let mut solver = LinSolver::new(genie)?;

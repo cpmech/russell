@@ -28,8 +28,6 @@ struct InterfaceMUMPS {
 };
 
 /// @brief Sets verbose mode
-/// @param data Is the MUMPS data structure
-/// @param verbose Shows messages or not
 static inline void set_mumps_verbose(DMUMPS_STRUC_C *data, int32_t verbose) {
     if (verbose == C_TRUE) {
         data->ICNTL(1) = 6; // standard output stream
@@ -83,7 +81,6 @@ void solver_mumps_drop(struct InterfaceMUMPS *solver) {
 }
 
 /// @brief Perform analysis just once (considering that the matrix structure remains constant)
-/// @return A success or fail code
 int32_t solver_mumps_initialize(struct InterfaceMUMPS *solver,
                                 int32_t ordering,
                                 int32_t scaling,
@@ -165,7 +162,6 @@ int32_t solver_mumps_initialize(struct InterfaceMUMPS *solver,
 }
 
 /// @brief Performs the factorization
-/// @return A success or fail code
 int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
                                int32_t *effective_ordering,
                                int32_t *effective_scaling,
@@ -217,12 +213,8 @@ int32_t solver_mumps_factorize(struct InterfaceMUMPS *solver,
 }
 
 /// @brief Computes the solution of the linear system
-/// @param solver Is a pointer to the solver interface
-/// @param rhs Is the right-hand side on the input and the vector of unknow values x on the output
 /// @param error_analysis_array_len_8 array of size 8 to hold the results from the error analysis
 /// @param error_analysis_option ICNTL(11): 0 (nothing), 1 (all; slow), 2 (just errors)
-/// @param verbose Shows messages
-/// @return A success or fail code
 int32_t solver_mumps_solve(struct InterfaceMUMPS *solver,
                            double *rhs,
                            double *error_analysis_array_len_8,

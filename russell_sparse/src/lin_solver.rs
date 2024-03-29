@@ -1,4 +1,5 @@
-use super::{Genie, LinSolParams, SolverMUMPS, SolverUMFPACK, SparseMatrix, StatsLinSol};
+use super::{Genie, LinSolParams, SparseMatrix, StatsLinSol};
+use super::{SolverKLU, SolverMUMPS, SolverUMFPACK};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -71,6 +72,7 @@ impl<'a> LinSolver<'a> {
     /// * `genie` -- the actual implementation that does all the magic
     pub fn new(genie: Genie) -> Result<Self, StrError> {
         let actual: Box<dyn Send + LinSolTrait> = match genie {
+            Genie::Klu => Box::new(SolverKLU::new()?),
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
         };
@@ -171,8 +173,20 @@ mod tests {
 
     #[test]
     fn lin_solver_new_works() {
+        LinSolver::new(Genie::Klu).unwrap();
         LinSolver::new(Genie::Mumps).unwrap();
         LinSolver::new(Genie::Umfpack).unwrap();
+    }
+
+    #[test]
+    fn lin_solver_compute_works_klu() {
+        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_full();
+        let mut mat = SparseMatrix::from_coo(coo);
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+        LinSolver::compute(Genie::Klu, &mut x, &mut mat, &rhs, None).unwrap();
+        let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
+        vec_approx_eq(x.as_data(), &x_correct, 1e-10);
     }
 
     #[test]

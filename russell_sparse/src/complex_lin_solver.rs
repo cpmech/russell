@@ -1,5 +1,5 @@
 use super::{ComplexSolverMUMPS, ComplexSolverUMFPACK, ComplexSparseMatrix, Genie, LinSolParams, StatsLinSol};
-use crate::StrError;
+use crate::{ComplexSolverKLU, StrError};
 use russell_lab::ComplexVector;
 
 /// Defines a unified interface for complex linear system solvers
@@ -77,6 +77,7 @@ impl<'a> ComplexLinSolver<'a> {
     /// * `genie` -- the actual implementation that does all the magic
     pub fn new(genie: Genie) -> Result<Self, StrError> {
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
+            Genie::Klu => Box::new(ComplexSolverKLU::new()?),
             Genie::Mumps => Box::new(ComplexSolverMUMPS::new()?),
             Genie::Umfpack => Box::new(ComplexSolverUMFPACK::new()?),
         };
@@ -138,6 +139,17 @@ mod tests {
     #[test]
     fn complex_lin_solver_new_works() {
         ComplexLinSolver::new(Genie::Umfpack).unwrap();
+    }
+
+    #[test]
+    fn complex_lin_solver_compute_works_klu() {
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
+        let mut mat = ComplexSparseMatrix::from_coo(coo);
+        let mut x = ComplexVector::new(3);
+        let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
+        ComplexLinSolver::compute(Genie::Klu, &mut x, &mut mat, &rhs, None).unwrap();
+        let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
+        complex_vec_approx_eq(x.as_data(), x_correct, 1e-15);
     }
 
     #[test]

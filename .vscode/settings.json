@@ -10,6 +10,7 @@
     "blasint",
     "brusselator",
     "bweuler",
+    "condest",
     "Demmel",
     "devel",
     "dgeev",

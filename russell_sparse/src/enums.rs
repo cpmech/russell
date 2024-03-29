@@ -3,6 +3,13 @@ use serde::{Deserialize, Serialize};
 /// Specifies the underlying library that does all the magic
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Genie {
+    /// Selects KLU (LU factorization)
+    ///
+    /// "Clark Kent" LU factorization algorithm (what SuperLU was before it became Super)
+    ///
+    /// Reference: <https://github.com/DrTimothyAldenDavis/SuiteSparse>
+    Klu,
+
     /// Selects MUMPS (multi-frontal massively parallel sparse direct) solver
     ///
     /// Reference: <https://mumps-solver.org/index.php>
@@ -76,6 +83,9 @@ pub enum Ordering {
     /// Use Amd for symmetric, Colamd for unsymmetric, or Metis (UMFPACK-only, otherwise Auto)
     Cholmod,
 
+    /// Use the column approximate minimum degree ordering algorithm (KLU-only, otherwise Auto)
+    Colamd,
+
     /// Ordering by Karpis & Kumar from the University of Minnesota
     Metis,
 
@@ -125,14 +135,9 @@ pub enum Scaling {
 
 impl Genie {
     /// Returns the Genie by name (default is umfpack)
-    ///
-    /// ```text
-    /// "mumps"    => Genie::Mumps,
-    /// "umfpack"  => Genie::Umfpack,
-    /// _          => Genie::Umfpack,
-    /// ```
     pub fn from(genie: &str) -> Self {
         match genie.to_lowercase().as_str() {
+            "klu" => Genie::Klu,
             "mumps" => Genie::Mumps,
             "umfpack" => Genie::Umfpack,
             _ => Genie::Umfpack,
@@ -140,12 +145,9 @@ impl Genie {
     }
 
     /// Returns the string representation
-    /// ```text
-    /// Genie::Mumps    => "mumps"
-    /// Genie::Umfpack  => "umfpack"
-    /// ```
     pub fn to_string(&self) -> String {
         match self {
+            Genie::Klu => "klu".to_string(),
             Genie::Mumps => "mumps".to_string(),
             Genie::Umfpack => "umfpack".to_string(),
         }
@@ -155,6 +157,7 @@ impl Genie {
     pub fn symmetry(&self, symmetric: bool) -> Sym {
         if symmetric {
             match self {
+                Genie::Klu => Sym::YesFull,
                 Genie::Mumps => Sym::YesLower,
                 Genie::Umfpack => Sym::YesFull,
             }
@@ -177,19 +180,6 @@ impl Sym {
 
 impl Ordering {
     /// Returns the Ordering by name (default is Auto)
-    /// ```text
-    /// "amd"     => Ordering::Amd,
-    /// "amf"     => Ordering::Amf,
-    /// "auto"    => Ordering::Auto,
-    /// "best"    => Ordering::Best,
-    /// "cholmod" => Ordering::Cholmod,
-    /// "metis"   => Ordering::Metis,
-    /// "no"      => Ordering::No,
-    /// "pord"    => Ordering::Pord,
-    /// "qamd"    => Ordering::Qamd,
-    /// "scotch"  => Ordering::Scotch,
-    /// _         => Ordering::Auto,
-    /// ```
     pub fn from(ordering: &str) -> Self {
         match ordering.to_lowercase().as_str() {
             "amd" => Ordering::Amd,
@@ -197,6 +187,7 @@ impl Ordering {
             "auto" => Ordering::Auto,
             "best" => Ordering::Best,
             "cholmod" => Ordering::Cholmod,
+            "colamd" => Ordering::Colamd,
             "metis" => Ordering::Metis,
             "no" => Ordering::No,
             "pord" => Ordering::Pord,
@@ -209,18 +200,6 @@ impl Ordering {
 
 impl Scaling {
     /// Returns the Scaling by name (default is Auto)
-    /// ```text
-    /// "auto"       => Scaling::Auto,
-    /// "column"     => Scaling::Column,
-    /// "diagonal"   => Scaling::Diagonal,
-    /// "max"        => Scaling::Max,
-    /// "no"         => Scaling::No,
-    /// "rowcol"     => Scaling::RowCol,
-    /// "rowcoliter" => Scaling::RowColIter,
-    /// "rowcolrig"  => Scaling::RowColRig,
-    /// "sum"        => Scaling::Sum,
-    /// _            => Scaling::Auto,
-    /// ```
     pub fn from(scaling: &str) -> Self {
         match scaling.to_lowercase().as_str() {
             "auto" => Scaling::Auto,
@@ -303,6 +282,7 @@ mod tests {
         assert_eq!(Ordering::from("Auto"), Ordering::Auto);
         assert_eq!(Ordering::from("Best"), Ordering::Best);
         assert_eq!(Ordering::from("Cholmod"), Ordering::Cholmod);
+        assert_eq!(Ordering::from("Colamd"), Ordering::Colamd);
         assert_eq!(Ordering::from("Metis"), Ordering::Metis);
         assert_eq!(Ordering::from("No"), Ordering::No);
         assert_eq!(Ordering::from("Pord"), Ordering::Pord);
@@ -315,6 +295,7 @@ mod tests {
         assert_eq!(Ordering::from("auto"), Ordering::Auto);
         assert_eq!(Ordering::from("best"), Ordering::Best);
         assert_eq!(Ordering::from("cholmod"), Ordering::Cholmod);
+        assert_eq!(Ordering::from("colamd"), Ordering::Colamd);
         assert_eq!(Ordering::from("metis"), Ordering::Metis);
         assert_eq!(Ordering::from("no"), Ordering::No);
         assert_eq!(Ordering::from("pord"), Ordering::Pord);

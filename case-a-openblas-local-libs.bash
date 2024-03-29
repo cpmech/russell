@@ -17,6 +17,7 @@ sudo apt-get install -y --no-install-recommends \
     gdb \
     gfortran \
     git \
+    libfftw3-dev \
     liblapacke-dev \
     libmetis-dev \
     libopenblas-dev \

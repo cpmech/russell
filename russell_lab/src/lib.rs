@@ -83,6 +83,7 @@ pub type StrError = &'static str;
 
 pub mod base;
 pub mod check;
+pub mod fft;
 mod internal;
 pub mod math;
 pub mod matrix;
@@ -90,6 +91,7 @@ pub mod matvec;
 pub mod vector;
 pub use crate::base::*;
 pub use crate::check::*;
+pub use crate::fft::*;
 use crate::internal::*;
 pub use crate::matrix::*;
 pub use crate::matvec::*;

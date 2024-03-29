@@ -33,4 +33,10 @@ pub(crate) const CBLAS_CONJ_TRANS: i32 = 113;
 pub(crate) const CBLAS_UPPER: i32 = 121;
 pub(crate) const CBLAS_LOWER: i32 = 122;
 
+// Make sure that these constants match the c-code constants
+pub(crate) const SUCCESSFUL_EXIT: i32 = 0;
+pub(crate) const ERROR_NULL_POINTER: i32 = 100000;
+pub(crate) const ERROR_NEED_INITIALIZATION: i32 = 500000;
+pub(crate) const ERROR_ALREADY_INITIALIZED: i32 = 700000;
+
 // -------------------------------------------------------------------------------------------

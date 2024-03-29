@@ -8,4 +8,20 @@ jobs:
       - name: Install Libraries
         run: |
           bash case-a-openblas-debian.bash
+          echo
+          echo
+          echo
+          echo
+          echo
+          echo
+          lsb_release -d
+          echo
+          echo
+          echo
           ls /usr/include/suitesparse
+          echo
+          echo
+          echo
+          echo
+          echo
+          echo

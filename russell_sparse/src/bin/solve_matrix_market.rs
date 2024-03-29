@@ -152,20 +152,68 @@ fn main() -> Result<(), StrError> {
         // update stats
         solver.actual.update_stats(&mut stats);
 
-    // check
-    if stats.matrix.name == "bfwb62" {
-        let tolerance = match genie {
-            Genie::Klu => 1e-10,
-            Genie::Mumps => 1e-10,
-            Genie::Umfpack => 1e-10,
-        };
-        let correct_x = get_bfwb62_correct_x();
-        for i in 0..nrow {
-            let diff = f64::abs(x.get(i) - correct_x.get(i));
-            if diff > tolerance {
-                println!("BFWB62 FAILED WITH NUMERICAL ERROR = {:.2e} @ {} COMPONENT", diff, i);
+        // check (debug)
+        if stats.matrix.name == "bfwb62" {
+            let tolerance = match genie {
+                Genie::Klu => 1e-10,
+                Genie::Mumps => 1e-10,
+                Genie::Umfpack => 1e-10,
+            };
+            let correct_x = get_bfwb62_correct_x();
+            for i in 0..nrow {
+                let diff = f64::abs(x.get(i) - correct_x.get(i));
+                if diff > tolerance {
+                    println!("BFWB62 FAILED WITH NUMERICAL ERROR = {:.2e} @ {} COMPONENT", diff, i);
+                }
             }
         }
+
+    // --- complex ------------------------------------------------------------------------------
+    } else {
+        // write vismatrix file
+        let coo = coo_complex.unwrap();
+        if opt.vismatrix {
+            let csc = ComplexCscMatrix::from_coo(&coo)?;
+            csc.write_matrix_market("/tmp/russell_sparse/solve_matrix_market_complex.smat", true)?;
+        }
+
+        // save the COO matrix as a generic SparseMatrix
+        let mut mat = ComplexSparseMatrix::from_coo(coo);
+
+        // save information about the matrix
+        let (nrow, ncol, nnz, sym) = mat.get_info();
+        stats.set_matrix_name_from_path(&opt.matrix_market_file);
+        stats.matrix.nrow = nrow;
+        stats.matrix.ncol = ncol;
+        stats.matrix.nnz = nnz;
+        stats.matrix.complex = true;
+        stats.matrix.symmetric = format!("{:?}", sym);
+
+        // allocate and configure the solver
+        let mut solver = ComplexLinSolver::new(genie)?;
+
+        // call factorize
+        solver.actual.factorize(&mut mat, Some(params))?;
+
+        // allocate vectors
+        let mut x = ComplexVector::new(nrow);
+        let rhs = ComplexVector::filled(nrow, cpx!(1.0, 1.0));
+
+        // solve linear system
+        solver.actual.solve(&mut x, &mat, &rhs, opt.verbose)?;
+
+        // verify the solution
+        sw.reset();
+        stats.verify = VerifyLinSys::from_complex(&mat, &x, &rhs)?;
+        stats.time_nanoseconds.verify = sw.stop();
+
+        // update stats
+        solver.actual.update_stats(&mut stats);
+    }
+
+    // print stats
+    if !opt.hide_json {
+        println!("{}", stats.get_json());
     }
 
     // done

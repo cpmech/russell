@@ -109,8 +109,8 @@ impl FFTw {
     ) -> Result<(), StrError> {
         // check
         let n0 = u.dim();
-        if n0 < 2 {
-            return Err("the vector length must be ≥ 2");
+        if n0 < 1 {
+            return Err("the vector length must be ≥ 1");
         }
         if uu.dim() != n0 {
             return Err("vectors must have the same lengths");
@@ -482,5 +482,76 @@ mod tests {
             println!("ss_naive[{}] =\n{:.1}", p, ss_naive[p]);
             complex_vec_approx_eq(ss[p].as_data(), ss_naive[p].as_data(), 1e-13);
         }
+    }
+
+    #[test]
+    fn dft_1d_capture_errors() {
+        let mut fft = FFTw::new();
+
+        let u = ComplexVector::new(0);
+        let mut uu = ComplexVector::new(u.dim());
+        assert_eq!(
+            fft.dft_1d(&mut uu, &u, false, false).err(),
+            Some("the vector length must be ≥ 1")
+        );
+
+        let u = ComplexVector::from(&[cpx!(1.0, 1.0)]);
+        let mut uu = ComplexVector::new(0);
+        assert_eq!(
+            fft.dft_1d(&mut uu, &u, false, false).err(),
+            Some("vectors must have the same lengths")
+        );
+    }
+
+    #[test]
+    fn dft_2d_capture_errors() {
+        let mut fft = FFTw::new();
+
+        let (m, n) = (0, 0);
+        let a = ComplexMatrix::new(m, n);
+        let mut aa = ComplexMatrix::new(m, n);
+        assert_eq!(
+            fft.dft_2d(&mut aa, &a, false, false).err(),
+            Some("the matrix dimensions be ≥ 1 along each direction, i.e., at least (1, 1)")
+        );
+
+        let a = ComplexMatrix::new(1, 1);
+        assert_eq!(
+            fft.dft_2d(&mut aa, &a, false, false).err(),
+            Some("matrices must have the same dimensions")
+        );
+    }
+
+    #[test]
+    fn dft_3d_capture_errors() {
+        let mut fft = FFTw::new();
+
+        let (m, n, ns) = (0, 0, 0);
+        let s = vec![ComplexMatrix::new(m, n); ns];
+        let mut ss = vec![ComplexMatrix::new(m, n); ns];
+        assert_eq!(
+            fft.dft_3d(&mut ss, &s, false, false).err(),
+            Some("the length of the array must be ≥ 1")
+        );
+
+        let ns = 1;
+        let s = vec![ComplexMatrix::new(m, n); ns];
+        assert_eq!(
+            fft.dft_3d(&mut ss, &s, false, false).err(),
+            Some("the arrays must have the same lengths")
+        );
+
+        let mut ss = vec![ComplexMatrix::new(m, n); ns];
+        assert_eq!(
+            fft.dft_3d(&mut ss, &s, false, false).err(),
+            Some("the matrix dimensions be ≥ 1 along each direction, i.e., at least (1, 1)")
+        );
+
+        let (m, n) = (1, 1);
+        let s = vec![ComplexMatrix::new(m, n); ns];
+        assert_eq!(
+            fft.dft_3d(&mut ss, &s, false, false).err(),
+            Some("matrices must have the same dimensions")
+        );
     }
 }

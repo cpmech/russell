@@ -288,7 +288,10 @@ impl FFTw {
 #[cfg(test)]
 mod tests {
     use super::FFTw;
-    use crate::{complex_vec_approx_eq, cpx, math::PI, ComplexMatrix, ComplexVector};
+    use crate::{
+        complex_mat_approx_eq, complex_mat_scale, complex_vec_approx_eq, complex_vec_scale, cpx, format_nanoseconds,
+        math::PI, ComplexMatrix, ComplexVector,
+    };
     use num_complex::Complex64;
     use serial_test::serial;
 
@@ -395,13 +398,24 @@ mod tests {
         let mut uu = ComplexVector::new(u.dim());
         let uu_correct = &[cpx!(14.0, 0.0), cpx!(-4.0, 8.0), cpx!(-6.0, 0.0), cpx!(-4.0, -8.0)];
 
+        // check naive solution
         let uu_naive = naive_dft_1d(&u);
         println!("uu_naive =\n{}", uu_naive);
         complex_vec_approx_eq(uu_naive.as_data(), uu_correct, 1e-14);
 
+        // direct DFT
         fft.dft_1d(&mut uu, &u, false).unwrap();
         println!("uu =\n{}", uu);
         complex_vec_approx_eq(uu.as_data(), uu_correct, 1e-15);
+        println!("time (copy) = {}", format_nanoseconds(fft.get_ns_copy()));
+        println!("time (dft)  = {}", format_nanoseconds(fft.get_ns_dft()));
+
+        // inverse DFT
+        let mut u_times_n = ComplexVector::new(u.dim());
+        fft.dft_1d(&mut u_times_n, &uu, true).unwrap();
+        println!("u_times_n =\n{}", u_times_n);
+        complex_vec_scale(&mut u_times_n, cpx!(1.0 / (u.dim() as f64), 0.0));
+        complex_vec_approx_eq(u_times_n.as_data(), u.as_data(), 1e-14);
     }
 
     #[test]
@@ -423,20 +437,29 @@ mod tests {
         let mut aa = ComplexMatrix::new(m, n);
         fft.dft_2d(&mut aa, &a, false).unwrap();
         println!("aa =\n{}", aa);
+        println!("time (copy) = {}", format_nanoseconds(fft.get_ns_copy()));
+        println!("time (dft)  = {}", format_nanoseconds(fft.get_ns_dft()));
 
         // compare with "naive" computation
         let aa_naive = naive_dft_2d(&a);
         println!("aa_naive =\n{:.1}", aa_naive);
-        complex_vec_approx_eq(aa.as_data(), aa_naive.as_data(), 1e-13);
+        complex_mat_approx_eq(&aa, &aa_naive, 1e-13);
+
+        // inverse DFT
+        let mut a_times_mn = ComplexMatrix::new(m, n);
+        fft.dft_2d(&mut a_times_mn, &aa, true).unwrap();
+        println!("a_times_mn =\n{}", a_times_mn);
+        complex_mat_scale(&mut a_times_mn, cpx!(1.0 / ((m * n) as f64), 0.0));
+        complex_mat_approx_eq(&a_times_mn, &a, 1e-13);
     }
 
     #[test]
     #[serial]
     fn dft_3d_works() {
-        let (m, n, ns) = (2, 4, 2);
-        let mut s = vec![ComplexMatrix::new(m, n); ns];
+        let (m, n, l) = (2, 4, 2);
+        let mut s = vec![ComplexMatrix::new(m, n); l];
         let mut k = 0;
-        for p in 0..ns {
+        for p in 0..l {
             for i in 0..m {
                 for j in 0..n {
                     s[p].set(i, j, cpx!(k as f64, (k + 1) as f64));
@@ -448,17 +471,28 @@ mod tests {
 
         // compute DFT
         let mut fft = FFTw::new();
-        let mut ss = vec![ComplexMatrix::new(m, n); ns];
+        let mut ss = vec![ComplexMatrix::new(m, n); l];
         fft.dft_3d(&mut ss, &s, false).unwrap();
-        for p in 0..ns {
+        for p in 0..l {
             println!("ss[{}] =\n{}", p, ss[p]);
         }
+        println!("time (copy) = {}", format_nanoseconds(fft.get_ns_copy()));
+        println!("time (dft)  = {}", format_nanoseconds(fft.get_ns_dft()));
 
         // compare with "naive" computation
         let ss_naive = naive_dft_3d(&s);
-        for p in 0..ns {
+        for p in 0..l {
             println!("ss_naive[{}] =\n{:.1}", p, ss_naive[p]);
-            complex_vec_approx_eq(ss[p].as_data(), ss_naive[p].as_data(), 1e-13);
+            complex_mat_approx_eq(&ss[p], &ss_naive[p], 1e-13);
+        }
+
+        // inverse DFT
+        let mut s_times_mnl = vec![ComplexMatrix::new(m, n); l];
+        fft.dft_3d(&mut s_times_mnl, &ss, true).unwrap();
+        for p in 0..l {
+            println!("s_times_mns[{}] =\n{}", p, s_times_mnl[p]);
+            complex_mat_scale(&mut s_times_mnl[p], cpx!(1.0 / ((m * n * l) as f64), 0.0));
+            complex_mat_approx_eq(&s_times_mnl[p], &s[p], 1e-13);
         }
     }
 

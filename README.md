@@ -604,7 +604,7 @@ fn main() -> Result<(), StrError> {
         - [ ] Implement Orthogonal polynomials
         - [ ] Implement Lagrange interpolation
     - [x] Implement FFT
-          [x] Partially wrap FFTW (with warnings about it being thread-unsafe)
+        - [x] Partially wrap FFTW (with warnings about it being thread-unsafe)
 - [x] Improve `russell_sparse`
     - [x] Wrap the KLU solver (in addition to MUMPS and UMFPACK)
     - [x] Implement the Compressed Sparse Column format (CSC)

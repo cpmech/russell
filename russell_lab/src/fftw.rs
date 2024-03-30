@@ -5,9 +5,9 @@ use num_complex::Complex64;
 use num_traits::Zero;
 
 extern "C" {
-    fn interface_fftw_dft_1d(n0: i32, data: *mut Complex64, inverse: CcBool, measure: CcBool) -> i32;
-    fn interface_fftw_dft_2d(n0: i32, n1: i32, data: *mut Complex64, inverse: CcBool, measure: CcBool) -> i32;
-    fn interface_fftw_dft_3d(n0: i32, n1: i32, n2: i32, data: *mut Complex64, inverse: CcBool, measure: CcBool) -> i32;
+    fn interface_fftw_dft_1d(n0: i32, data: *mut Complex64, inverse: CcBool) -> i32;
+    fn interface_fftw_dft_2d(n0: i32, n1: i32, data: *mut Complex64, inverse: CcBool) -> i32;
+    fn interface_fftw_dft_3d(n0: i32, n1: i32, n2: i32, data: *mut Complex64, inverse: CcBool) -> i32;
 
     // Note that FFTW defines:
     // typedef double fftw_complex[2]; // compatible with `*mut Complex64`
@@ -96,17 +96,10 @@ impl FFTw {
     ///
     /// `u` -- The input vector with dimension `N`
     /// `inverse` -- Requests the inverse transform; otherwise the forward transform is computed
-    /// `measure` -- (slower initialization) use the `FFTW_MEASURE` flag for better optimization analysis
     ///
     /// **Note:** Both transforms are non-normalized; thus the user may have to
     /// multiply the results by `(1/N)` if computing inverse transforms.
-    pub fn dft_1d(
-        &mut self,
-        uu: &mut ComplexVector,
-        u: &ComplexVector,
-        inverse: bool,
-        measure: bool,
-    ) -> Result<(), StrError> {
+    pub fn dft_1d(&mut self, uu: &mut ComplexVector, u: &ComplexVector, inverse: bool) -> Result<(), StrError> {
         // check
         let n0 = u.dim();
         if n0 < 1 {
@@ -118,7 +111,6 @@ impl FFTw {
 
         // options
         let c_inverse = if inverse { 1 } else { 0 };
-        let c_measure = if measure { 1 } else { 0 };
 
         // copy data
         self.stopwatch.reset();
@@ -128,12 +120,13 @@ impl FFTw {
         // perform the FFT
         self.stopwatch.reset();
         unsafe {
-            let status = interface_fftw_dft_1d(to_i32(n0), uu.as_mut_data().as_mut_ptr(), c_inverse, c_measure);
+            let status = interface_fftw_dft_1d(to_i32(n0), uu.as_mut_data().as_mut_ptr(), c_inverse);
             if status != SUCCESSFUL_EXIT {
                 return Err("FFTW failed to create the plan");
             }
         }
         self.time_dft_ns = self.stopwatch.stop();
+
         Ok(())
     }
 
@@ -149,17 +142,10 @@ impl FFTw {
     ///
     /// `a` -- The input matrix with dimension `(N0,N1)`
     /// `inverse` -- Requests the inverse transform; otherwise the forward transform is computed
-    /// `measure` -- (slower initialization) use the `FFTW_MEASURE` flag for better optimization analysis
     ///
     /// **Note:** Both transforms are non-normalized; thus the user may have to
     /// multiply the results by `(1/N)` if computing inverse transforms.
-    pub fn dft_2d(
-        &mut self,
-        aa: &mut ComplexMatrix,
-        a: &ComplexMatrix,
-        inverse: bool,
-        measure: bool,
-    ) -> Result<(), StrError> {
+    pub fn dft_2d(&mut self, aa: &mut ComplexMatrix, a: &ComplexMatrix, inverse: bool) -> Result<(), StrError> {
         // check
         let (n0, n1) = a.dims();
         if n0 < 1 || n1 < 1 {
@@ -171,7 +157,6 @@ impl FFTw {
 
         // options
         let c_inverse = if inverse { 1 } else { 0 };
-        let c_measure = if measure { 1 } else { 0 };
 
         // copy data
         self.stopwatch.reset();
@@ -186,13 +171,7 @@ impl FFTw {
         // perform the FFT
         self.stopwatch.reset();
         unsafe {
-            let status = interface_fftw_dft_2d(
-                to_i32(n0),
-                to_i32(n1),
-                data_row_major.as_mut_ptr(),
-                c_inverse,
-                c_measure,
-            );
+            let status = interface_fftw_dft_2d(to_i32(n0), to_i32(n1), data_row_major.as_mut_ptr(), c_inverse);
             if status != SUCCESSFUL_EXIT {
                 return Err("FFTW failed to create the plan");
             }
@@ -222,7 +201,6 @@ impl FFTw {
     ///
     /// `s` -- The input array of matrices with length `N2`; each matrix has the same dimension `(N0,N1)`
     /// `inverse` -- Requests the inverse transform; otherwise the forward transform is computed
-    /// `measure` -- (slower initialization) use the `FFTW_MEASURE` flag for better optimization analysis
     ///
     /// **Note:** Both transforms are non-normalized; thus the user may have to
     /// multiply the results by `(1/N)` if computing inverse transforms.
@@ -231,7 +209,6 @@ impl FFTw {
         ss: &mut Vec<ComplexMatrix>,
         s: &Vec<ComplexMatrix>,
         inverse: bool,
-        measure: bool,
     ) -> Result<(), StrError> {
         // check
         let n2 = s.len();
@@ -253,7 +230,6 @@ impl FFTw {
 
         // options
         let c_inverse = if inverse { 1 } else { 0 };
-        let c_measure = if measure { 1 } else { 0 };
 
         // copy data
         self.stopwatch.reset();
@@ -276,7 +252,6 @@ impl FFTw {
                 to_i32(n2),
                 data_row_major.as_mut_ptr(),
                 c_inverse,
-                c_measure,
             );
             if status != SUCCESSFUL_EXIT {
                 return Err("FFTW failed to create the plan");
@@ -415,15 +390,18 @@ mod tests {
     fn dft_1d_works() {
         // Kreyszig Example 4 on Page 530
         let mut fft = FFTw::new();
+
         let u = ComplexVector::from(&[cpx!(0.0, 0.0), cpx!(1.0, 0.0), cpx!(4.0, 0.0), cpx!(9.0, 0.0)]);
         let mut uu = ComplexVector::new(u.dim());
-        fft.dft_1d(&mut uu, &u, false, false).unwrap();
-        println!("uu =\n{}", uu);
         let uu_correct = &[cpx!(14.0, 0.0), cpx!(-4.0, 8.0), cpx!(-6.0, 0.0), cpx!(-4.0, -8.0)];
-        complex_vec_approx_eq(uu.as_data(), uu_correct, 1e-15);
+
         let uu_naive = naive_dft_1d(&u);
         println!("uu_naive =\n{}", uu_naive);
         complex_vec_approx_eq(uu_naive.as_data(), uu_correct, 1e-14);
+
+        fft.dft_1d(&mut uu, &u, false).unwrap();
+        println!("uu =\n{}", uu);
+        complex_vec_approx_eq(uu.as_data(), uu_correct, 1e-15);
     }
 
     #[test]
@@ -443,7 +421,7 @@ mod tests {
         // compute DFT
         let mut fft = FFTw::new();
         let mut aa = ComplexMatrix::new(m, n);
-        fft.dft_2d(&mut aa, &a, false, false).unwrap();
+        fft.dft_2d(&mut aa, &a, false).unwrap();
         println!("aa =\n{}", aa);
 
         // compare with "naive" computation
@@ -471,7 +449,7 @@ mod tests {
         // compute DFT
         let mut fft = FFTw::new();
         let mut ss = vec![ComplexMatrix::new(m, n); ns];
-        fft.dft_3d(&mut ss, &s, false, false).unwrap();
+        fft.dft_3d(&mut ss, &s, false).unwrap();
         for p in 0..ns {
             println!("ss[{}] =\n{}", p, ss[p]);
         }
@@ -491,14 +469,14 @@ mod tests {
         let u = ComplexVector::new(0);
         let mut uu = ComplexVector::new(u.dim());
         assert_eq!(
-            fft.dft_1d(&mut uu, &u, false, false).err(),
+            fft.dft_1d(&mut uu, &u, false).err(),
             Some("the vector length must be ≥ 1")
         );
 
         let u = ComplexVector::from(&[cpx!(1.0, 1.0)]);
         let mut uu = ComplexVector::new(0);
         assert_eq!(
-            fft.dft_1d(&mut uu, &u, false, false).err(),
+            fft.dft_1d(&mut uu, &u, false).err(),
             Some("vectors must have the same lengths")
         );
     }
@@ -511,13 +489,13 @@ mod tests {
         let a = ComplexMatrix::new(m, n);
         let mut aa = ComplexMatrix::new(m, n);
         assert_eq!(
-            fft.dft_2d(&mut aa, &a, false, false).err(),
+            fft.dft_2d(&mut aa, &a, false).err(),
             Some("the matrix dimensions be ≥ 1 along each direction, i.e., at least (1, 1)")
         );
 
         let a = ComplexMatrix::new(1, 1);
         assert_eq!(
-            fft.dft_2d(&mut aa, &a, false, false).err(),
+            fft.dft_2d(&mut aa, &a, false).err(),
             Some("matrices must have the same dimensions")
         );
     }
@@ -530,27 +508,27 @@ mod tests {
         let s = vec![ComplexMatrix::new(m, n); ns];
         let mut ss = vec![ComplexMatrix::new(m, n); ns];
         assert_eq!(
-            fft.dft_3d(&mut ss, &s, false, false).err(),
+            fft.dft_3d(&mut ss, &s, false).err(),
             Some("the length of the array must be ≥ 1")
         );
 
         let ns = 1;
         let s = vec![ComplexMatrix::new(m, n); ns];
         assert_eq!(
-            fft.dft_3d(&mut ss, &s, false, false).err(),
+            fft.dft_3d(&mut ss, &s, false).err(),
             Some("the arrays must have the same lengths")
         );
 
         let mut ss = vec![ComplexMatrix::new(m, n); ns];
         assert_eq!(
-            fft.dft_3d(&mut ss, &s, false, false).err(),
+            fft.dft_3d(&mut ss, &s, false).err(),
             Some("the matrix dimensions be ≥ 1 along each direction, i.e., at least (1, 1)")
         );
 
         let (m, n) = (1, 1);
         let s = vec![ComplexMatrix::new(m, n); ns];
         assert_eq!(
-            fft.dft_3d(&mut ss, &s, false, false).err(),
+            fft.dft_3d(&mut ss, &s, false).err(),
             Some("matrices must have the same dimensions")
         );
     }

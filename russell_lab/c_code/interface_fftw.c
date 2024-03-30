@@ -32,12 +32,16 @@
 
 int32_t interface_fftw_dft_1d(int32_t n0,
                               fftw_complex *data,
-                              C_BOOL inverse,
-                              C_BOOL measure) {
-    int sign = inverse ? FFTW_BACKWARD : FFTW_FORWARD;
-    int flag = measure ? FFTW_MEASURE : FFTW_ESTIMATE;
+                              C_BOOL inverse) {
+    int sign = inverse == C_TRUE ? FFTW_BACKWARD : FFTW_FORWARD;
+    int flag = FFTW_ESTIMATE;
 
     fftw_plan plan = fftw_plan_dft_1d(n0, data, data, sign, flag);
+
+    if (plan == NULL) {
+        return UNKNOWN_ERROR;
+    }
+
     fftw_execute(plan);
     fftw_destroy_plan(plan);
 
@@ -47,10 +51,9 @@ int32_t interface_fftw_dft_1d(int32_t n0,
 int32_t interface_fftw_dft_2d(int32_t n0,
                               int32_t n1,
                               fftw_complex *data_row_major,
-                              C_BOOL inverse,
-                              C_BOOL measure) {
-    int sign = inverse ? FFTW_BACKWARD : FFTW_FORWARD;
-    int flag = measure ? FFTW_MEASURE : FFTW_ESTIMATE;
+                              C_BOOL inverse) {
+    int sign = inverse == C_TRUE ? FFTW_BACKWARD : FFTW_FORWARD;
+    int flag = FFTW_ESTIMATE;
 
     fftw_plan plan = fftw_plan_dft_2d(n0, n1, data_row_major, data_row_major, sign, flag);
 
@@ -59,6 +62,7 @@ int32_t interface_fftw_dft_2d(int32_t n0,
     }
 
     fftw_execute(plan);
+    fftw_destroy_plan(plan);
 
     return SUCCESSFUL_EXIT;
 }
@@ -67,10 +71,9 @@ int32_t interface_fftw_dft_3d(int32_t n0,
                               int32_t n1,
                               int32_t n2,
                               fftw_complex *data_row_major,
-                              C_BOOL inverse,
-                              C_BOOL measure) {
-    int sign = inverse ? FFTW_BACKWARD : FFTW_FORWARD;
-    int flag = measure ? FFTW_MEASURE : FFTW_ESTIMATE;
+                              C_BOOL inverse) {
+    int sign = inverse == C_TRUE ? FFTW_BACKWARD : FFTW_FORWARD;
+    int flag = FFTW_ESTIMATE;
 
     fftw_plan plan = fftw_plan_dft_3d(n0, n1, n2, data_row_major, data_row_major, sign, flag);
 
@@ -79,6 +82,7 @@ int32_t interface_fftw_dft_3d(int32_t n0,
     }
 
     fftw_execute(plan);
+    fftw_destroy_plan(plan);
 
     return SUCCESSFUL_EXIT;
 }

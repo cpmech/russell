@@ -389,6 +389,25 @@ mod tests {
     }
 
     #[test]
+    fn handle_early_return_in_aux_functions() {
+        let u = ComplexVector::new(0);
+        let uu = naive_dft_1d(&u);
+        assert_eq!(uu.dim(), 0);
+
+        let a = ComplexMatrix::new(0, 0);
+        let aa = naive_dft_2d(&a);
+        assert_eq!(aa.dims(), (0, 0));
+
+        let s = Vec::new();
+        let ss = naive_dft_3d(&s);
+        assert_eq!(ss.len(), 0);
+
+        let s = vec![ComplexMatrix::new(0, 0); 1];
+        let ss = naive_dft_3d(&s);
+        assert_eq!(ss[0].dims(), (0, 0));
+    }
+
+    #[test]
     #[serial]
     fn dft_1d_works() {
         // Kreyszig Example 4 on Page 530

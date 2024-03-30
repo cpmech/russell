@@ -56,6 +56,8 @@ extern "C" {
 
 /// Wraps FFTW to compute discrete Fourier transforms in 1D, 2D and 3D
 ///
+/// WARNING: FFTW is not thread-safe
+///
 /// In 1D, computes the forward transform:
 ///
 /// ```text
@@ -176,6 +178,8 @@ impl FFTw {
 
     /// Computes the discrete Fourier transform in 1D using the FFT method
     ///
+    /// WARNING: FFTW is not thread-safe
+    ///
     /// **Warning:** The vector dimension must remain the same during subsequent calls to `execute`.
     ///
     /// # Output
@@ -251,6 +255,8 @@ impl FFTw {
     }
 
     /// Computes the discrete Fourier transform in 2D using the FFT method
+    ///
+    /// WARNING: FFTW is not thread-safe
     ///
     /// **Warning:** The matrix dimension must remain the same during subsequent calls to `execute`.
     ///
@@ -349,6 +355,8 @@ impl FFTw {
     }
 
     /// Computes the discrete Fourier transform in 3D using the FFT method
+    ///
+    /// WARNING: FFTW is not thread-safe
     ///
     /// **Warning:** The dimensions must remain the same during subsequent calls to `execute`.
     ///

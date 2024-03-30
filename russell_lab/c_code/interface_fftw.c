@@ -3,6 +3,8 @@
 
 #include "fftw3.h"
 
+// WARNING: FFTW is not thread-safe
+//
 // The default FFTW interface uses double precision for all floating-point numbers,
 // and defines a fftw_complex type to hold complex numbers as:
 //

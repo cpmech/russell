@@ -582,15 +582,12 @@ fn main() -> Result<(), StrError> {
 
 ## Todo list
 
-- [ ] Further develop crate `russell_ode`
-    - [x] Implement explicit Runge-Kutta solvers
-    - [x] Implement Radau5 for DAEs
-- [ ] Improve crate `russell_lab`
+- [ ] Improve `russell_lab`
     - [x] Implement more integration tests for linear algebra
     - [x] Implement more examples
     - [ ] Implement more benchmarks
-    - [ ] Wrap more BLAS/LAPACK functions
-        - [ ] Implement dggev, zggev, zheev, and zgeev
+    - [x] Wrap more BLAS/LAPACK functions
+        - [x] Implement dggev, zggev, zheev, and zgeev
     - [x] Wrap Intel MKL (option for OpenBLAS)
     - [x] Add more complex number functions
     - [ ] Add fundamental functions to `russell_lab`
@@ -606,22 +603,26 @@ fn main() -> Result<(), StrError> {
         - [ ] Implement Chebyshev interpolation and polynomials
         - [ ] Implement Orthogonal polynomials
         - [ ] Implement Lagrange interpolation
-    - [ ] Implement FFT
-- [x] Improve the `russell_sparse` crate
+    - [-] Implement FFT
+          [x] Partially wrap FFTW (with warnings about it being thread-unsafe)
+- [x] Improve `russell_sparse`
+    - [x] Wrap the KLU solver (in addition to MUMPS and UMFPACK)
     - [x] Implement the Compressed Sparse Column format (CSC)
     - [x] Implement the Compressed Sparse Row format (CSC)
     - [x] Improve the C-interface to UMFPACK and MUMPS
-    - [ ] Write the conversion from COO to CSC in Rust
-    - [ ] Possibly re-write (after benchmarking) the conversion from COO to CSR
-    - [ ] Re-study the possibility of wrapping SuperLU (see deleted branch)
-- [ ] Improve crate `russell_stat`
+    - [x] Write the conversion from COO to CSC in Rust
+- [x] Improve `russell_ode`
+    - [x] Implement explicit Runge-Kutta solvers
+    - [x] Implement Radau5 for DAEs
+- [ ] Improve `russell_stat`
     - [x] Add probability distribution functions
     - [x] Implement drawing of ASCII histograms
-- [ ] Improve the `russell_tensor` crate
+    - [ ] Add more examples
+- [ ] Improve `russell_tensor`
     - [x] Implement functions to calculate invariants
     - [x] Implement first and second-order derivatives of invariants
     - [x] Implement some high-order derivatives
     - [ ] Implement standard continuum mechanics tensors
-- [ ] Make it possible to install Russell on Windows and macOS 
+- [ ] Study the possibility to install Russell on Windows and macOS 
     - [ ] Use Intel MKL on Windows
     - [ ] Install MUMPS and UMFPACK on Windows and macOS

@@ -42,7 +42,7 @@ extern "C" {
         inverse: CcBool,
         measure: CcBool,
     ) -> i32;
-    fn _interface_fftw_init_3d(
+    fn interface_fftw_init_3d(
         interface: *mut InterfaceFFTW,
         n0: i32,
         n1: i32,
@@ -88,11 +88,11 @@ extern "C" {
 ///
 /// ```text
 ///                N2-1 N1-1 N0-1              -i 2 π k2 l2 / N2  -i 2 π k1 l1 / N1  -i 2 π k0 l0 / N0
-/// Z[l2][l0,l1] =   Σ    Σ    Σ  z[k2][k0,k1] e                  e                  e
+/// S[l2][l0,l1] =   Σ    Σ    Σ  s[k2][k0,k1] e                  e                  e
 ///                k2=0 k1=0 k0=0
 /// ```
 ///
-/// In 3D, note that `l2` appears first in `Z[l2][l0,l1]` because we employ an array of matrices to hold the data
+/// In 3D, note that `l2` appears first in `S[l2][l0,l1]` because we employ an array of matrices to hold the data
 ///
 /// Kreyszig's book, page 531:
 ///
@@ -137,7 +137,7 @@ pub struct FFTw {
     /// B = {  A00    A01    A02    A10    A11    A12 }
     ///       0+0⋅3  1+0⋅3  2+0⋅3  0+1⋅3  1+1⋅3  2+1⋅3
     ///
-    /// m = j + i⋅n1
+    /// m = k + n2 ⋅ (j + n1 ⋅ i)
     /// i = m / n1
     /// j = m % n1
     /// ```
@@ -303,7 +303,7 @@ impl FFTw {
             self.data_row_major.resize(n0 * n1, Complex64::zero());
             for i in 0..n0 {
                 for j in 0..n1 {
-                    self.data_row_major[j + i * n1] = a.get(i, j);
+                    self.data_row_major[j + n1 * i] = a.get(i, j);
                 }
             }
             self.time_copy_data_ns = self.stopwatch.stop();
@@ -342,7 +342,120 @@ impl FFTw {
         // convert row-major to col-major
         for i in 0..n0 {
             for j in 0..n1 {
-                aa.set(i, j, self.data_row_major[j + i * n1]);
+                aa.set(i, j, self.data_row_major[j + n1 * i]);
+            }
+        }
+        Ok(())
+    }
+
+    /// Computes the discrete Fourier transform in 3D using the FFT method
+    ///
+    /// **Warning:** The dimensions must remain the same during subsequent calls to `execute`.
+    ///
+    /// # Output
+    ///
+    /// `ss` -- Either the (forward) transform or the inverse transform
+    ///
+    /// # Input
+    ///
+    /// `s` -- The input array of matrices with length `N2`; each matrix has the same dimension `(N0,N1)`
+    /// `inverse` -- Requests the inverse transform; otherwise the forward transform is computed
+    /// `measure` -- (slower initialization) use the `FFTW_MEASURE` flag for better optimization analysis
+    ///
+    /// **Note:** Both transforms are non-normalized; thus the user may have to
+    /// multiply the results by `(1/N)` if computing inverse transforms.
+    pub fn dft_3d(
+        &mut self,
+        ss: &mut Vec<ComplexMatrix>,
+        s: &Vec<ComplexMatrix>,
+        inverse: bool,
+        measure: bool,
+    ) -> Result<(), StrError> {
+        // check
+        let n2 = s.len();
+        if n2 < 1 {
+            return Err("the length of the array must be ≥ 1");
+        }
+        if ss.len() != n2 {
+            return Err("the arrays must have the same lengths");
+        }
+        let (n0, n1) = s[0].dims();
+        if n0 < 1 || n1 < 1 {
+            return Err("the matrix dimensions be ≥ 1 along each direction, i.e., at least (1, 1)");
+        }
+        for p in 0..n2 {
+            if s[p].dims() != (n0, n1) || ss[p].dims() != (n0, n1) {
+                return Err("matrices must have the same dimensions");
+            }
+        }
+        if self.initialized {
+            if self.initialized_ranks[0] > 0 && self.initialized_ranks[1] == 0 {
+                return Err("cannot compute a 3D DFT after a 1D DFT has been computed");
+            }
+            if self.initialized_ranks[1] > 0 && self.initialized_ranks[2] == 0 {
+                return Err("cannot compute a 3D DFT after a 2D DFT has been computed");
+            }
+            if n0 != self.initialized_ranks[0] || n1 != self.initialized_ranks[1] || n2 != self.initialized_ranks[2] {
+                return Err("subsequent calls must use data with the same dimensions as in the first call");
+            }
+        } else {
+            self.initialized_ranks[0] = n0;
+            self.initialized_ranks[1] = n1;
+            self.initialized_ranks[2] = n2;
+        }
+
+        // call initialize just once
+        if !self.initialized {
+            // convert input to row-major
+            self.stopwatch.reset();
+            self.data_row_major.resize(n0 * n1 * n2, Complex64::zero());
+            for i in 0..n0 {
+                for j in 0..n1 {
+                    for k in 0..n2 {
+                        self.data_row_major[k + n2 * (j + n1 * i)] = s[k].get(i, j);
+                    }
+                }
+            }
+            self.time_copy_data_ns = self.stopwatch.stop();
+
+            // initialization
+            let c_inverse = if inverse { 1 } else { 0 };
+            let c_measure = if measure { 1 } else { 0 };
+            self.stopwatch.reset();
+            unsafe {
+                let status = interface_fftw_init_3d(
+                    self.interface,
+                    to_i32(n0),
+                    to_i32(n1),
+                    to_i32(n2),
+                    self.data_row_major.as_mut_ptr(),
+                    c_inverse,
+                    c_measure,
+                );
+                if status != SUCCESSFUL_EXIT {
+                    return Err(handle_fftw_error(status));
+                }
+            }
+            self.time_initialize_ns = self.stopwatch.stop();
+            self.initialized = true;
+        }
+
+        // call execute
+        self.stopwatch.reset();
+        unsafe {
+            let status = interface_fftw_execute(self.interface);
+            if status != SUCCESSFUL_EXIT {
+                return Err(handle_fftw_error(status));
+            }
+        }
+        self.time_execute_ns = self.stopwatch.stop();
+
+        // extract row-major data
+        for i in 0..n0 {
+            for j in 0..n1 {
+                for k in 0..n2 {
+                    ss[k].set(i, j, self.data_row_major[k + n2 * (j + n1 * i)]);
+                }
             }
         }
         Ok(())
@@ -389,7 +502,7 @@ mod tests {
         cpx!(f64::cos(x), -f64::sin(x))
     }
 
-    /// Computes (naively) the discrete Fourier transform of u (very slow / for testing only)
+    /// Computes (naively) the discrete Fourier transform in 1D (very slow / for testing only)
     ///
     /// ```text
     ///      N-1     -i n xₖ                 2 π k
@@ -416,7 +529,7 @@ mod tests {
         uu
     }
 
-    /// Computes (naively) the discrete Fourier transform of a (very slow / for testing only)
+    /// Computes (naively) the discrete Fourier transform in 2D (very slow / for testing only)
     fn naive_dft_2d(a: &ComplexMatrix) -> ComplexMatrix {
         let (n0, n1) = a.dims();
         let mut aa = ComplexMatrix::new(n0, n1);
@@ -437,6 +550,39 @@ mod tests {
             }
         }
         aa
+    }
+
+    /// Computes (naively) the discrete Fourier transform in 3D (very slow / for testing only)
+    fn naive_dft_3d(s: &Vec<ComplexMatrix>) -> Vec<ComplexMatrix> {
+        let n2 = s.len();
+        if n2 < 1 {
+            return Vec::new();
+        }
+        let (n0, n1) = s[0].dims();
+        let mut ss = vec![ComplexMatrix::new(n0, n1); n2];
+        if n0 < 1 || n1 < 1 {
+            return ss;
+        }
+        let den0 = n0 as f64;
+        let den1 = n1 as f64;
+        let den2 = n2 as f64;
+        for l0 in 0..n0 {
+            for l1 in 0..n1 {
+                for l2 in 0..n2 {
+                    for k0 in 0..n0 {
+                        for k1 in 0..n1 {
+                            for k2 in 0..n2 {
+                                let xk = 2.0 * PI * ((l0 * k0) as f64) / den0;
+                                let yk = 2.0 * PI * ((l1 * k1) as f64) / den1;
+                                let zk = 2.0 * PI * ((l2 * k2) as f64) / den2;
+                                ss[l2].add(l0, l1, s[k2].get(k0, k1) * exp_mix(xk) * exp_mix(yk) * exp_mix(zk));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ss
     }
 
     #[test]
@@ -467,6 +613,7 @@ mod tests {
         }
         println!("a =\n{}", a);
 
+        // compute DFT
         let mut fft = FFTw::new().unwrap();
         let mut aa = ComplexMatrix::new(m, n);
         fft.dft_2d(&mut aa, &a, false, false).unwrap();
@@ -476,5 +623,36 @@ mod tests {
         let aa_naive = naive_dft_2d(&a);
         println!("aa_naive =\n{:.1}", aa_naive);
         complex_vec_approx_eq(aa.as_data(), aa_naive.as_data(), 1e-13);
+    }
+
+    #[test]
+    fn dft_3d_works() {
+        let (m, n, ns) = (2, 4, 2);
+        let mut s = vec![ComplexMatrix::new(m, n); ns];
+        let mut k = 0;
+        for p in 0..ns {
+            for i in 0..m {
+                for j in 0..n {
+                    s[p].set(i, j, cpx!(k as f64, (k + 1) as f64));
+                    k += 2;
+                }
+            }
+            println!("s[{}] =\n{}", p, s[p]);
+        }
+
+        // compute DFT
+        let mut fft = FFTw::new().unwrap();
+        let mut ss = vec![ComplexMatrix::new(m, n); ns];
+        fft.dft_3d(&mut ss, &s, false, false).unwrap();
+        for p in 0..ns {
+            println!("ss[{}] =\n{}", p, ss[p]);
+        }
+
+        // compare with "naive" computation
+        let ss_naive = naive_dft_3d(&s);
+        for p in 0..ns {
+            println!("ss_naive[{}] =\n{:.1}", p, ss_naive[p]);
+            complex_vec_approx_eq(ss[p].as_data(), ss_naive[p].as_data(), 1e-13);
+        }
     }
 }

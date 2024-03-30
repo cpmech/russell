@@ -16,6 +16,7 @@ sudo apt-get install -y --no-install-recommends \
     g++ \
     gdb \
     git \
+    libfftw3-dev \
     libmetis-dev \
     make \
     patch

@@ -33,4 +33,8 @@ pub(crate) const CBLAS_CONJ_TRANS: i32 = 113;
 pub(crate) const CBLAS_UPPER: i32 = 121;
 pub(crate) const CBLAS_LOWER: i32 = 122;
 
+// Make sure that these constants match the c-code constants
+pub(crate) const SUCCESSFUL_EXIT: i32 = 0;
+// pub(crate) const UNKNOWN_ERROR: i32 = 1;
+
 // -------------------------------------------------------------------------------------------

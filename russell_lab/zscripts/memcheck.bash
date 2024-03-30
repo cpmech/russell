@@ -11,4 +11,4 @@ cargo build $FEAT
 
 VALGRIND="cargo valgrind run $FEAT"
 
-$VALGRIND --bin mem_check
+$VALGRIND --bin mem_check_lab

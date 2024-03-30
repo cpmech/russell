@@ -3,7 +3,6 @@
 mod as_array;
 mod auxiliary_blas;
 mod enums;
-mod fftw;
 mod formatters;
 mod generators;
 mod linear_fitting;
@@ -14,7 +13,6 @@ mod stopwatch;
 pub use crate::base::as_array::*;
 pub use crate::base::auxiliary_blas::*;
 pub use crate::base::enums::*;
-pub use crate::base::fftw::*;
 pub use crate::base::formatters::*;
 pub use crate::base::generators::*;
 pub use crate::base::linear_fitting::*;

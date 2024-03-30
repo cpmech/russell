@@ -102,7 +102,7 @@ pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) -> Result
 #[cfg(test)]
 mod tests {
     use super::{mat_vec_mul, Matrix, Vector};
-    use crate::vec_approx_eq;
+    use crate::{vec_approx_eq, vec_norm, Norm};
 
     #[test]
     fn mat_vec_mul_fails_on_wrong_dims() {
@@ -150,5 +150,24 @@ mod tests {
         assert_eq!(v0.as_data(), &[] as &[f64]);
         mat_vec_mul(&mut v1, 1.0, &a_1x0, &u0).unwrap();
         assert_eq!(v1.as_data(), &[0.0]);
+    }
+
+    #[test]
+    fn mat_vec_mul_works_range() {
+        // v  :=  a  ⋅ u
+        // (m)  (m,n) (n)
+        for m in [0, 7, 15_usize] {
+            for n in [0, 4, 8_usize] {
+                let a = Matrix::filled(m, n, 1.0);
+                let u = Vector::filled(n, 1.0);
+                let mut v = Vector::new(m);
+                mat_vec_mul(&mut v, 1.0, &a, &u).unwrap();
+                if m == 0 {
+                    assert_eq!(vec_norm(&v, Norm::Max), 0.0);
+                } else {
+                    assert_eq!(vec_norm(&v, Norm::Max), n as f64);
+                }
+            }
+        }
     }
 }

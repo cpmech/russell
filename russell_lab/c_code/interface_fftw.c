@@ -23,6 +23,8 @@
 // Also: "The plan can be reused as many times as needed. In typical high-performance
 // applications, many transforms of the same size are computed"
 // <http://www.fftw.org/fftw3_doc/Introduction.html>
+//
+// WARNING: "[...] transforms operate on contiguous arrays in the C-standard ROW-MAJOR order."
 
 #include "constants.h"
 
@@ -62,11 +64,11 @@ void interface_fftw_drop(struct InterfaceFFTW *interface) {
 }
 
 /// @brief Performs the initialization
-int32_t interface_fftw_initialize(struct InterfaceFFTW *interface,
-                                  int32_t num_point,
-                                  fftw_complex *data,
-                                  C_BOOL inverse,
-                                  C_BOOL measure) {
+int32_t interface_fftw_init_1d(struct InterfaceFFTW *interface,
+                               int32_t n0,
+                               fftw_complex *data,
+                               C_BOOL inverse,
+                               C_BOOL measure) {
     if (interface == NULL) {
         return ERROR_NULL_POINTER;
     }
@@ -78,7 +80,58 @@ int32_t interface_fftw_initialize(struct InterfaceFFTW *interface,
     int sign = inverse ? FFTW_BACKWARD : FFTW_FORWARD;
     int flag = measure ? FFTW_MEASURE : FFTW_ESTIMATE;
 
-    interface->plan = fftw_plan_dft_1d(num_point, data, data, sign, flag);
+    interface->plan = fftw_plan_dft_1d(n0, data, data, sign, flag);
+
+    interface->initialization_completed = C_TRUE;
+
+    return SUCCESSFUL_EXIT;
+}
+
+/// @brief Performs the initialization
+int32_t interface_fftw_init_2d(struct InterfaceFFTW *interface,
+                               int32_t n0,
+                               int32_t n1,
+                               fftw_complex *data_row_major,
+                               C_BOOL inverse,
+                               C_BOOL measure) {
+    if (interface == NULL) {
+        return ERROR_NULL_POINTER;
+    }
+
+    if (interface->initialization_completed == C_TRUE) {
+        return ERROR_ALREADY_INITIALIZED;
+    }
+
+    int sign = inverse ? FFTW_BACKWARD : FFTW_FORWARD;
+    int flag = measure ? FFTW_MEASURE : FFTW_ESTIMATE;
+
+    interface->plan = fftw_plan_dft_2d(n0, n1, data_row_major, data_row_major, sign, flag);
+
+    interface->initialization_completed = C_TRUE;
+
+    return SUCCESSFUL_EXIT;
+}
+
+/// @brief Performs the initialization
+int32_t interface_fftw_init_3d(struct InterfaceFFTW *interface,
+                               int32_t n0,
+                               int32_t n1,
+                               int32_t n2,
+                               fftw_complex *data_row_major,
+                               C_BOOL inverse,
+                               C_BOOL measure) {
+    if (interface == NULL) {
+        return ERROR_NULL_POINTER;
+    }
+
+    if (interface->initialization_completed == C_TRUE) {
+        return ERROR_ALREADY_INITIALIZED;
+    }
+
+    int sign = inverse ? FFTW_BACKWARD : FFTW_FORWARD;
+    int flag = measure ? FFTW_MEASURE : FFTW_ESTIMATE;
+
+    interface->plan = fftw_plan_dft_3d(n0, n1, n2, data_row_major, data_row_major, sign, flag);
 
     interface->initialization_completed = C_TRUE;
 

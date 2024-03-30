@@ -603,7 +603,7 @@ fn main() -> Result<(), StrError> {
         - [ ] Implement Chebyshev interpolation and polynomials
         - [ ] Implement Orthogonal polynomials
         - [ ] Implement Lagrange interpolation
-    - [-] Implement FFT
+    - [x] Implement FFT
           [x] Partially wrap FFTW (with warnings about it being thread-unsafe)
 - [x] Improve `russell_sparse`
     - [x] Wrap the KLU solver (in addition to MUMPS and UMFPACK)

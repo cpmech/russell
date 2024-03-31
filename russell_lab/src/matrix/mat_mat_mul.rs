@@ -123,6 +123,15 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "matrices are incompatible")]
+    fn naive_mat_mat_mul_capture_errors() {
+        let a = Matrix::new(1, 0);
+        let b = Matrix::new(0, 0);
+        let mut c = Matrix::new(0, 0);
+        naive_mat_mat_mul(&mut c, 1.0, &a, &b);
+    }
+
+    #[test]
     fn mat_mat_mul_fails_on_wrong_dims() {
         let a_2x1 = Matrix::new(2, 1);
         let a_1x2 = Matrix::new(1, 2);

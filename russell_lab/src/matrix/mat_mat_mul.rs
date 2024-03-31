@@ -101,7 +101,35 @@ pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix, beta: f64
 #[cfg(test)]
 mod tests {
     use super::{mat_mat_mul, Matrix};
-    use crate::mat_approx_eq;
+    use crate::{mat_approx_eq, mat_norm, Norm};
+
+    fn naive_mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) {
+        let (m, n) = c.dims();
+        let k = a.ncol();
+        if a.nrow() != m || b.nrow() != k || b.ncol() != n {
+            panic!("matrices are incompatible");
+        }
+        if m == 0 || n == 0 || k == 0 {
+            return;
+        }
+        for i in 0..m {
+            for j in 0..n {
+                c.set(i, j, 0.0);
+                for p in 0..k {
+                    c.add(i, j, alpha * a.get(i, p) * b.get(p, j));
+                }
+            }
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "matrices are incompatible")]
+    fn naive_mat_mat_mul_capture_errors() {
+        let a = Matrix::new(1, 0);
+        let b = Matrix::new(0, 0);
+        let mut c = Matrix::new(0, 0);
+        naive_mat_mat_mul(&mut c, 1.0, &a, &b);
+    }
 
     #[test]
     fn mat_mat_mul_fails_on_wrong_dims() {
@@ -187,5 +215,29 @@ mod tests {
             [1001.30, 1005.0, 1005.0, 1005.25],
         ];
         mat_approx_eq(&c, correct, 1e-15);
+    }
+
+    #[test]
+    fn mat_mat_mul_works_range() {
+        //   c  :=  a  ⋅  b
+        // (m,n)  (m,k) (k,n)
+        for m in [0, 5, 7_usize] {
+            for n in [0, 6, 12_usize] {
+                let mut c = Matrix::new(m, n);
+                let mut c_local = Matrix::new(m, n);
+                for k in [0, 5, 10, 15_usize] {
+                    let a = Matrix::filled(m, k, 1.0);
+                    let b = Matrix::filled(k, n, 1.0);
+                    mat_mat_mul(&mut c, 1.0, &a, &b, 0.0).unwrap();
+                    naive_mat_mat_mul(&mut c_local, 1.0, &a, &b);
+                    if m == 0 || n == 0 {
+                        assert_eq!(mat_norm(&c, Norm::Max), 0.0);
+                    } else {
+                        assert_eq!(mat_norm(&c, Norm::Max), k as f64);
+                    }
+                    mat_approx_eq(&c, &c_local, 1e-15);
+                }
+            }
+        }
     }
 }

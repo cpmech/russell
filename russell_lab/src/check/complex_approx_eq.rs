@@ -3,6 +3,8 @@ use num_traits::{Num, NumCast};
 
 /// Panics if two numbers are not approximately equal to each other
 ///
+/// **Note:** Will also panic if NaN or Inf is found
+///
 /// # Input
 ///
 /// `a` -- Left value
@@ -52,10 +54,22 @@ where
     T: Num + NumCast + Copy,
 {
     let diff_re = f64::abs(a.re.to_f64().unwrap() - b.re.to_f64().unwrap());
+    if diff_re.is_nan() {
+        panic!("complex_approx_eq found NaN");
+    }
+    if diff_re.is_infinite() {
+        panic!("complex_approx_eq found Inf");
+    }
     if diff_re > tol {
         panic!("complex numbers are not approximately equal. diff_re = {:?}", diff_re);
     }
     let diff_im = f64::abs(a.im.to_f64().unwrap() - b.im.to_f64().unwrap());
+    if diff_im.is_nan() {
+        panic!("complex_approx_eq found NaN");
+    }
+    if diff_im.is_infinite() {
+        panic!("complex_approx_eq found Inf");
+    }
     if diff_im > tol {
         panic!("complex numbers are not approximately equal. diff_im = {:?}", diff_im);
     }
@@ -67,6 +81,42 @@ where
 mod tests {
     use super::complex_approx_eq;
     use num_complex::{Complex32, Complex64};
+
+    #[test]
+    #[should_panic(expected = "complex_approx_eq found NaN")]
+    fn panics_on_nan_real() {
+        complex_approx_eq(Complex64::new(f64::NAN, 0.0), Complex64::new(2.5, 0.0), 1e-1);
+    }
+
+    #[test]
+    #[should_panic(expected = "complex_approx_eq found Inf")]
+    fn panics_on_inf_real() {
+        complex_approx_eq(Complex64::new(f64::INFINITY, 0.0), Complex64::new(2.5, 0.0), 1e-1);
+    }
+
+    #[test]
+    #[should_panic(expected = "complex_approx_eq found Inf")]
+    fn panics_on_neg_inf_real() {
+        complex_approx_eq(Complex64::new(f64::NEG_INFINITY, 0.0), Complex64::new(2.5, 0.0), 1e-1);
+    }
+
+    #[test]
+    #[should_panic(expected = "complex_approx_eq found NaN")]
+    fn panics_on_nan_imag() {
+        complex_approx_eq(Complex64::new(2.5, f64::NAN), Complex64::new(2.5, 0.0), 1e-1);
+    }
+
+    #[test]
+    #[should_panic(expected = "complex_approx_eq found Inf")]
+    fn panics_on_inf_imag() {
+        complex_approx_eq(Complex64::new(2.5, f64::INFINITY), Complex64::new(2.5, 0.0), 1e-1);
+    }
+
+    #[test]
+    #[should_panic(expected = "complex_approx_eq found Inf")]
+    fn panics_on_neg_inf_imag() {
+        complex_approx_eq(Complex64::new(2.5, f64::NEG_INFINITY), Complex64::new(2.5, 0.0), 1e-1);
+    }
 
     #[test]
     #[should_panic(expected = "complex numbers are not approximately equal. diff_re = 0.5")]

@@ -4,7 +4,9 @@ use num_complex::Complex64;
 
 /// Panics if two vectors are not approximately equal to each other
 ///
-/// Panics also if the vector dimensions differ
+/// **Note:** Will also panic if NaN or Inf is found.
+///
+/// **Note:** Will also panic if the dimensions are different.
 pub fn complex_mat_approx_eq<'a, T>(a: &ComplexMatrix, b: &'a T, tol: f64)
 where
     T: AsArray2D<'a, Complex64>,
@@ -20,6 +22,12 @@ where
     for i in 0..m {
         for j in 0..n {
             let diff_re = f64::abs(a.get(i, j).re - b.at(i, j).re);
+            if diff_re.is_nan() {
+                panic!("complex_mat_approx_eq found NaN (real)");
+            }
+            if diff_re.is_infinite() {
+                panic!("complex_mat_approx_eq found Inf (real)");
+            }
             if diff_re > tol {
                 panic!(
                     "complex matrices are not approximately equal. @ ({},{}) diff_re = {:?}",
@@ -27,6 +35,12 @@ where
                 );
             }
             let diff_im = f64::abs(a.get(i, j).im - b.at(i, j).im);
+            if diff_im.is_nan() {
+                panic!("complex_mat_approx_eq found NaN (imag)");
+            }
+            if diff_im.is_infinite() {
+                panic!("complex_mat_approx_eq found Inf (imag)");
+            }
             if diff_im > tol {
                 panic!(
                     "complex matrices are not approximately equal. @ ({},{}) diff_im = {:?}",
@@ -44,6 +58,66 @@ mod tests {
     use super::{complex_mat_approx_eq, ComplexMatrix};
     use crate::cpx;
     use num_complex::Complex64;
+
+    #[test]
+    #[should_panic(expected = "complex_mat_approx_eq found NaN (real)")]
+    fn panics_on_nan_real() {
+        complex_mat_approx_eq(
+            &ComplexMatrix::from(&[[Complex64::new(f64::NAN, 0.0)]]),
+            &ComplexMatrix::from(&[[Complex64::new(2.5, 0.0)]]),
+            1e-1,
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "complex_mat_approx_eq found Inf (real)")]
+    fn panics_on_inf_real() {
+        complex_mat_approx_eq(
+            &ComplexMatrix::from(&[[Complex64::new(f64::INFINITY, 0.0)]]),
+            &ComplexMatrix::from(&[[Complex64::new(2.5, 0.0)]]),
+            1e-1,
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "complex_mat_approx_eq found Inf (real)")]
+    fn panics_on_neg_inf_real() {
+        complex_mat_approx_eq(
+            &ComplexMatrix::from(&[[Complex64::new(f64::NEG_INFINITY, 0.0)]]),
+            &ComplexMatrix::from(&[[Complex64::new(2.5, 0.0)]]),
+            1e-1,
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "complex_mat_approx_eq found NaN (imag)")]
+    fn panics_on_nan_imag() {
+        complex_mat_approx_eq(
+            &ComplexMatrix::from(&[[Complex64::new(2.5, f64::NAN)]]),
+            &ComplexMatrix::from(&[[Complex64::new(2.5, 0.0)]]),
+            1e-1,
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "complex_mat_approx_eq found Inf (imag)")]
+    fn panics_on_inf_imag() {
+        complex_mat_approx_eq(
+            &ComplexMatrix::from(&[[Complex64::new(2.5, f64::INFINITY)]]),
+            &ComplexMatrix::from(&[[Complex64::new(2.5, 0.0)]]),
+            1e-1,
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "complex_mat_approx_eq found Inf (imag)")]
+    fn panics_on_neg_inf_imag() {
+        complex_mat_approx_eq(
+            &ComplexMatrix::from(&[[Complex64::new(2.5, f64::NEG_INFINITY)]]),
+            &ComplexMatrix::from(&[[Complex64::new(2.5, 0.0)]]),
+            1e-1,
+        );
+    }
 
     #[test]
     #[should_panic(expected = "complex matrix dimensions differ. rows: 2 != 1")]

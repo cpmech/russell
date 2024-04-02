@@ -3,7 +3,9 @@ use crate::AsArray2D;
 
 /// Panics if two vectors are not approximately equal to each other
 ///
-/// Panics also if the vector dimensions differ
+/// **Note:** Will also panic if NaN or Inf is found.
+///
+/// **Note:** Will also panic if the dimensions are different.
 pub fn mat_approx_eq<'a, T>(a: &Matrix, b: &'a T, tol: f64)
 where
     T: AsArray2D<'a, f64>,
@@ -19,6 +21,12 @@ where
     for i in 0..m {
         for j in 0..n {
             let diff = f64::abs(a.get(i, j) - b.at(i, j));
+            if diff.is_nan() {
+                panic!("mat_approx_eq found NaN");
+            }
+            if diff.is_infinite() {
+                panic!("mat_approx_eq found Inf");
+            }
             if diff > tol {
                 panic!(
                     "matrices are not approximately equal. @ ({},{}) diff = {:?}",
@@ -34,6 +42,24 @@ where
 #[cfg(test)]
 mod tests {
     use super::{mat_approx_eq, Matrix};
+
+    #[test]
+    #[should_panic(expected = "mat_approx_eq found NaN")]
+    fn panics_on_nan() {
+        mat_approx_eq(&Matrix::from(&[[f64::NAN]]), &Matrix::from(&[[2.5]]), 1e-1);
+    }
+
+    #[test]
+    #[should_panic(expected = "mat_approx_eq found Inf")]
+    fn panics_on_inf() {
+        mat_approx_eq(&Matrix::from(&[[f64::INFINITY]]), &Matrix::from(&[[2.5]]), 1e-1);
+    }
+
+    #[test]
+    #[should_panic(expected = "mat_approx_eq found Inf")]
+    fn panics_on_neg_inf() {
+        mat_approx_eq(&Matrix::from(&[[f64::NEG_INFINITY]]), &Matrix::from(&[[2.5]]), 1e-1);
+    }
 
     #[test]
     #[should_panic(expected = "matrix dimensions differ. rows: 2 != 3")]

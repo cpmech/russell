@@ -211,11 +211,10 @@ pub fn bessel_jn(n: i32, x: f64) -> f64 {
             // long double 1.1356523406294143949491931077970765006170e+04
             // then recurrent value may overflow and the result is likely underflow to zero
 
-            let mut tmp = nn as f64;
-            let v = 2.0 / xx;
-            tmp = tmp * f64::ln(f64::abs(v * tmp));
+            let n_f64 = nn as f64;
+            let x_critical = n_f64 * f64::ln(f64::abs(2.0 * n_f64 / xx));
             let mut i = nn - 1;
-            if tmp < LOWER_X_TO_OVERFLOW_EXP {
+            if x_critical < LOWER_X_TO_OVERFLOW_EXP {
                 while i > 0 {
                     let di = (i + i) as f64;
                     let b_copy = b;

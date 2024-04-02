@@ -320,7 +320,7 @@ pub fn bessel_yn(n: i32, x: f64) -> f64 {
         b = bessel_y1(x);
         for i in 1..nn {
             if f64::is_infinite(b) {
-                break;
+                break; // quit if b is -inf
             }
             let b_copy = b;
             b = (((i + i) as f64) / x) * b - a;
@@ -601,5 +601,10 @@ mod tests {
             // println!("n = {}", n);
             approx_eq(bessel_yn(n, TWO_302), reference, tol);
         }
+
+        //
+        // x < TWO_302, check infinite b
+        //
+        assert_eq!(bessel_yn(20, f64::EPSILON), f64::NEG_INFINITY);
     }
 }

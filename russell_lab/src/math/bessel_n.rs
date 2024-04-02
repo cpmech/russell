@@ -252,11 +252,11 @@ pub fn bessel_jn(n: i32, x: f64) -> f64 {
 ///
 /// The special cases are:
 ///
-/// * `Yn(n,  +Inf) = 0`
-/// * `Yn(n ≥ 0, 0) = -Inf`
-/// * `Yn(n < 0, 0) = +Inf if n is odd, -Inf if n is even`
-/// * `Yn(n, x < 0) = NaN`
-/// * `Yn(n,   NaN) = NaN`
+/// * `Yn(n     , x < 0.0) = NaN`
+/// * `Yn(n     , NaN    ) = NaN`
+/// * `Yn(n     , +Inf   ) = 0.0`
+/// * `Yn(n < 0 , 0.0    ) = +Inf if n is odd, -Inf if n is even`
+/// * `Yn(n ≥ 0 , 0.0    ) = -Inf`
 pub fn bessel_yn(n: i32, x: f64) -> f64 {
     if x < 0.0 || f64::is_nan(x) {
         return f64::NAN;
@@ -269,7 +269,7 @@ pub fn bessel_yn(n: i32, x: f64) -> f64 {
     }
     if x == 0.0 {
         if n < 0 && n & 1 == 1 {
-            return f64::INFINITY;
+            return f64::INFINITY; // n is odd and negative
         }
         return f64::NEG_INFINITY;
     }
@@ -344,19 +344,23 @@ mod tests {
 
     #[test]
     fn bessel_jn_handles_special_cases() {
-        assert!(bessel_jn(0, f64::NAN).is_nan());
-        assert_eq!(bessel_jn(0, f64::NEG_INFINITY), 0.0);
-        assert_eq!(bessel_jn(0, f64::INFINITY), 0.0);
-        assert_eq!(bessel_jn(0, 0.0), 1.0);
+        assert!(bessel_jn(2, f64::NAN).is_nan());
+        assert_eq!(bessel_jn(2, f64::NEG_INFINITY), 0.0);
+        assert_eq!(bessel_jn(2, f64::INFINITY), 0.0);
+        assert_eq!(bessel_jn(0, 0.0), 1.0); // J0
+        assert_eq!(bessel_jn(2, 0.0), 0.0);
     }
 
     #[test]
     fn bessel_yn_handles_special_cases() {
-        assert!(bessel_yn(0, f64::NEG_INFINITY).is_nan());
-        assert!(bessel_yn(0, -0.01).is_nan());
-        assert!(bessel_yn(0, f64::NAN).is_nan());
-        assert_eq!(bessel_yn(0, f64::INFINITY), 0.0);
-        assert_eq!(bessel_yn(0, 0.0), f64::NEG_INFINITY);
+        assert!(bessel_yn(2, f64::NEG_INFINITY).is_nan());
+        assert!(bessel_yn(2, -0.01).is_nan());
+        assert!(bessel_yn(2, f64::NAN).is_nan());
+        assert_eq!(bessel_yn(2, f64::INFINITY), 0.0);
+        assert_eq!(bessel_yn(0, 0.0), f64::NEG_INFINITY); // Y0
+        assert_eq!(bessel_yn(-3, 0.0), f64::INFINITY); // n is odd and negative
+        assert_eq!(bessel_yn(3, 0.0), f64::NEG_INFINITY); // n is positive and x is zero
+        assert_eq!(bessel_yn(-1, 1.0), -bessel_yn(1, 1.0));
     }
 
     #[test]
@@ -556,6 +560,7 @@ mod tests {
             (7, 1e-59, 2.78849211658424e-46),
         ];
         for (n, tol, reference) in mathematica {
+            // println!("n = {}", n);
             approx_eq(bessel_jn(n, TWO_302), reference, tol);
         }
 
@@ -576,5 +581,25 @@ mod tests {
         // println!("{:?}", res);
         // Mathematica: N[BesselJ[32, 10^-8], 50]
         approx_eq(res, 8.8484742558904541416898998143044891739304172987064e-302, 1e-316);
+    }
+
+    #[test]
+    fn bessel_yn_edge_cases_work() {
+        //
+        // x == TWO_302, check nn & 3
+        //
+        // Mathematica: Table[{n, N[BesselY[n, 2^302], 50]}, {n, 2, 7}]
+        let mathematica = [
+            (2, 1e-55, 2.788492117e-46),
+            (3, 1e-54, -1.9333036e-47),
+            (4, 1e-55, -2.788492117e-46),
+            (5, 1e-54, 1.9333036e-47),
+            (6, 1e-55, 2.788492117e-46),
+            (7, 1e-54, -1.9333036e-47),
+        ];
+        for (n, tol, reference) in mathematica {
+            // println!("n = {}", n);
+            approx_eq(bessel_yn(n, TWO_302), reference, tol);
+        }
     }
 }

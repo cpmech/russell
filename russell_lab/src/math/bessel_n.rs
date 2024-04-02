@@ -56,6 +56,11 @@ const TWO_M29: f64 = 1.8626451492309570312500000000000000000000000000000e-9;
 const TWO_302: f64 =
     8.148143905337944345073782753637512644205873574663745002544561797417525199053346824733589504000000000e90;
 
+// lower bound x that overflows exp(x)
+// exp(x) overflows when if x > LOWER_X_TO_OVERFLOW_EXP
+// e.g.: f64::exp(LOWER_X_TO_OVERFLOW_EXP + 1e-13)) = Inf;
+const LOWER_X_TO_OVERFLOW_EXP: f64 = 7.09782712893383973096e+02;
+
 /// Evaluates the order-n Bessel function of the first kind
 ///
 /// The special cases are:
@@ -202,7 +207,7 @@ pub fn bessel_jn(n: i32, x: f64) -> f64 {
             // estimate log((2/x)**n*n!) = n*log(2/x)+n*ln(n)
             // Hence, if n*(log(2n/x)) > ...
             // single 8.8722839355e+01
-            // double 7.09782712893383973096e+02
+            // double 7.09782712893383973096e+02 (LOWER_X_TO_OVERFLOW_EXP)
             // long double 1.1356523406294143949491931077970765006170e+04
             // then recurrent value may overflow and the result is likely underflow to zero
 
@@ -210,7 +215,7 @@ pub fn bessel_jn(n: i32, x: f64) -> f64 {
             let v = 2.0 / xx;
             tmp = tmp * f64::ln(f64::abs(v * tmp));
             let mut i = nn - 1;
-            if tmp < 7.09782712893383973096e+02 {
+            if tmp < LOWER_X_TO_OVERFLOW_EXP {
                 while i > 0 {
                     let di = (i + i) as f64;
                     let b_copy = b;
@@ -335,8 +340,8 @@ pub fn bessel_yn(n: i32, x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{bessel_jn, bessel_yn};
-    use crate::{approx_eq, math::bessel_n::TWO_302};
+    use super::{bessel_jn, bessel_yn, TWO_302};
+    use crate::approx_eq;
 
     #[test]
     fn bessel_jn_handles_special_cases() {
@@ -539,23 +544,38 @@ mod tests {
 
     #[test]
     fn bessel_jn_edge_cases_work() {
-        // Mathematica: N[BesselJ[2, 2^302], 55]
-        approx_eq(
-            bessel_jn(2, TWO_302),
-            1.933303565664127367623773247390803574928962081463125585e-47,
-            1e-61,
-        );
-
+        //
+        // x == TWO_302, check nn & 3
+        //
         // Mathematica: Table[{n, N[BesselJ[n, 2^302], 50]}, {n, 2, 7}]
         let mathematica = [
-            (3, 2.78849211658424e-46),
-            (4, -1.933303565664e-47),
-            (5, -2.78849211658424e-46),
-            (6, 1.933303565664e-47),
-            (7, 2.78849211658424e-46),
+            (2, 1e-61, 1.933303565664127367623773247390803574928962081463125585e-47),
+            (3, 1e-59, 2.78849211658424e-46),
+            (4, 1e-59, -1.933303565664e-47),
+            (5, 1e-59, -2.78849211658424e-46),
+            (6, 1e-59, 1.933303565664e-47),
+            (7, 1e-59, 2.78849211658424e-46),
         ];
-        for (n, reference) in mathematica {
-            approx_eq(bessel_jn(n, TWO_302), reference, 1e-59);
+        for (n, tol, reference) in mathematica {
+            approx_eq(bessel_jn(n, TWO_302), reference, tol);
         }
+
+        //
+        // x < TWO_M29, check 32 ≤ n ≤ 34
+        //
+        assert_eq!(bessel_jn(32, 1e-9), 0.0);
+        assert_eq!(bessel_jn(33, 1e-9), 0.0);
+        assert_eq!(bessel_jn(34, 1e-9), 0.0);
+
+        //
+        // x > TWO_M29  and  n ln(2n/x) > LOWER_X_TO_OVERFLOW_EXP
+        //
+        // From Mathematica:
+        // NSolve[n  Log[Abs[(2  n)/10^-8]] == LowerXtoOverflowExp, n]
+        // {{n -> 31.45851683056973116}}
+        let res = bessel_jn(32, 1e-8);
+        // println!("{:?}", res);
+        // Mathematica: N[BesselJ[32, 10^-8], 50]
+        approx_eq(res, 8.8484742558904541416898998143044891739304172987064e-302, 1e-316);
     }
 }

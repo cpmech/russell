@@ -1,74 +1,39 @@
 use super::{PI, SQRT_PI};
 
-//////////////////////////////////////////////////////////////////////
-// This implementation is based on j0.go file from Go (1.22.1),     //
-// which, in turn, is based on the FreeBSD code as explained below. //
-//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+//// This implementation is based on j0.go file from Go (1.22.1),     ////
+//// which, in turn, is based on the FreeBSD code as explained below. ////
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+//                                                                      //
+// Copyright 2010 The Go Authors. All rights reserved.                  //
+// Use of this source code is governed by a BSD-style                   //
+// license that can be found in the LICENSE file.                       //
+//                                                                      //
+// Bessel function of the first and second kinds of order zero.         //
+//                                                                      //
+// The original C code and the long comment below are                   //
+// from FreeBSD's /usr/src/lib/msun/src/e_j0.c and                      //
+// came with this notice. The go code is a simplified                   //
+// version of the original C.                                           //
+//                                                                      //
+// ====================================================                 //
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.    //
+//                                                                      //
+// Developed at SunPro, a Sun Microsystems, Inc. business.              //
+// Permission to use, copy, modify, and distribute this                 //
+// software is freely granted, provided that this notice                //
+// is preserved.                                                        //
+// ====================================================                 //
+//                                                                      //
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
 
-// Bessel function of the first and second kinds of order zero.
-//
-// The original C code and the long comment below are
-// from FreeBSD's /usr/src/lib/msun/src/e_j0.c and
-// came with this notice. The go code is a simplified
-// version of the original C.
-//
-// ====================================================
-// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
-//
-// Developed at SunPro, a Sun Microsystems, Inc. business.
-// Permission to use, copy, modify, and distribute this
-// software is freely granted, provided that this notice
-// is preserved.
-// ====================================================
-//
-// __ieee754_j0(x), __ieee754_y0(x)
-// Bessel function of the first and second kinds of order zero.
-// Method -- j0(x):
-//      1. For tiny x, we use j0(x) = 1 - x**2/4 + x**4/64 - ...
-//      2. Reduce x to |x| since j0(x)=j0(-x),  and
-//         for x in (0,2)
-//              j0(x) = 1-z/4+ z**2*R0/S0,  where z = x*x;
-//         (precision:  |j0-1+z/4-z**2R0/S0 |<2**-63.67 )
-//         for x in (2,inf)
-//              j0(x) = sqrt(2/(pi*x))*(p0(x)*cos(x0)-q0(x)*sin(x0))
-//         where x0 = x-pi/4. It is better to compute sin(x0),cos(x0)
-//         as follow:
-//              cos(x0) = cos(x)cos(pi/4)+sin(x)sin(pi/4)
-//                      = 1/sqrt(2) * (cos(x) + sin(x))
-//              sin(x0) = sin(x)cos(pi/4)-cos(x)sin(pi/4)
-//                      = 1/sqrt(2) * (sin(x) - cos(x))
-//         (To avoid cancellation, use
-//              sin(x) +- cos(x) = -cos(2x)/(sin(x) -+ cos(x))
-//         to compute the worse one.)
-//
-//      3 Special cases
-//              j0(nan)= nan
-//              j0(0) = 1
-//              j0(inf) = 0
-//
-// Method -- y0(x):
-//      1. For x<2.
-//         Since
-//              y0(x) = 2/pi*(j0(x)*(ln(x/2)+Euler) + x**2/4 - ...)
-//         therefore y0(x)-2/pi*j0(x)*ln(x) is an even function.
-//         We use the following function to approximate y0,
-//              y0(x) = U(z)/V(z) + (2/pi)*(j0(x)*ln(x)), z= x**2
-//         where
-//              U(z) = u00 + u01*z + ... + u06*z**6
-//              V(z) = 1  + v01*z + ... + v04*z**4
-//         with absolute approximation error bounded by 2**-72.
-//         Note: For tiny x, U/V = u0 and j0(x)~1, hence
-//              y0(tiny) = u0 + (2/pi)*ln(tiny), (choose tiny<2**-27)
-//      2. For x>=2.
-//              y0(x) = sqrt(2/(pi*x))*(p0(x)*cos(x0)+q0(x)*sin(x0))
-//         where x0 = x-pi/4. It is better to compute sin(x0),cos(x0)
-//         by the method mentioned above.
-//      3. Special cases: y0(0)=-inf, y0(x<0)=NaN, y0(inf)=0.
-//
-
-const TWO_M27: f64 = 7.4505805969238281250000000000000000000000000000000e-9; // 2**-27 0x3e40000000000000 Mathematica: N[2^-27, 50]
-const TWO_M13: f64 = 0.00012207031250000000000000000000000000000000000000000; // 2**-13 0x3f20000000000000 Mathematica: N[2^-13, 50]
-const TWO_129: f64 = 6.8056473384187692692674921486353642291200000000000e38; // 2**129 0x4800000000000000 Mathematica: N[2^129, 50]
+// constants computed with Mathematica
+pub(crate) const TWO_M27: f64 = 7.4505805969238281250000000000000000000000000000000e-9; // 2**-27 0x3e40000000000000 Mathematica: N[2^-27, 50]
+pub(crate) const TWO_M13: f64 = 0.00012207031250000000000000000000000000000000000000000; // 2**-13 0x3f20000000000000 Mathematica: N[2^-13, 50]
+pub(crate) const TWO_129: f64 = 6.8056473384187692692674921486353642291200000000000e38; // 2**129 0x4800000000000000 Mathematica: N[2^129, 50]
 
 // R0/S0 on [0, 2]
 const R02: f64 = 1.56249999999999947958e-02; // 0x3F8FFFFFFFFFFFFD
@@ -80,15 +45,42 @@ const S02: f64 = 1.16926784663337450260e-04; // 0x3F1EA6D2DD57DBF4
 const S03: f64 = 5.13546550207318111446e-07; // 0x3EA13B54CE84D5A9
 const S04: f64 = 1.16614003333790000205e-09; // 0x3E1408BCF4745D8F
 
-/// Computes the zero-order Bessel function of the first kind
+/// Evaluates the order-zero Bessel function of the first kind
 ///
 /// The special cases are:
 ///
-///	* `j0(NaN)  = NaN`
-///	* `j0(±Inf) = 0.0`
-///	* `j0(0.0)  = 1.0`
+///	* `J0(NaN)  = NaN`
+///	* `J0(±Inf) = 0.0`
+///	* `J0(0.0)  = 1.0`
 pub fn bessel_j0(x: f64) -> f64 {
-    // special cases
+    //
+    // For tiny x, use j0(x) = 1 - x**2/4 + x**4/64 - ...
+    //
+    // Reduce x to |x| since j0(x)=j0(-x), and:
+    //
+    // for x in (0,2)
+    //
+    // j0(x) = 1-z/4+ z**2*R0/S0,  where z = x*x;
+    //
+    // (precision:  |j0-1+z/4-z**2R0/S0 |<2**-63.67 )
+    //
+    // for x in (2,inf)
+    //
+    // j0(x) = sqrt(2/(pi*x))*(p0(x)*cos(x0)-q0(x)*sin(x0))
+    //
+    // where x0 = x-pi/4.
+    //
+    // Compute sin(x0),cos(x0) as follows:
+    //
+    // cos(x0) = cos(x)cos(pi/4)+sin(x)sin(pi/4)
+    //         = 1/sqrt(2) * (cos(x) + sin(x))
+    // sin(x0) = sin(x)cos(pi/4)-cos(x)sin(pi/4)
+    //         = 1/sqrt(2) * (sin(x) - cos(x))
+    //
+    // To avoid cancellation, use:
+    //
+    // sin(x) +- cos(x) = -cos(2x)/(sin(x) -+ cos(x))
+
     if f64::is_nan(x) {
         return f64::NAN;
     } else if f64::is_infinite(x) {
@@ -113,35 +105,33 @@ pub fn bessel_j0(x: f64) -> f64 {
             }
         }
 
-        // j0(x) = 1/sqrt(pi) * (P(0,x)*cc - Q(0,x)*ss) / sqrt(x)
-        // y0(x) = 1/sqrt(pi) * (P(0,x)*ss + Q(0,x)*cc) / sqrt(x)
-
         let z = if x > TWO_129 {
-            // |x| > ~6.8056e+38
             (1.0 / SQRT_PI) * cc / f64::sqrt(x)
         } else {
             let u = pzero(x);
             let v = qzero(x);
             (1.0 / SQRT_PI) * (u * cc - v * ss) / f64::sqrt(x)
         };
-        return z; // |x| >= 2.0
+
+        return z;
     }
 
     if x < TWO_M13 {
-        // |x| < ~1.2207e-4
         if x < TWO_M27 {
-            return 1.0; // |x| < ~7.4506e-9
+            return 1.0;
         }
-        return 1.0 - 0.25 * x * x; // ~7.4506e-9 < |x| < ~1.2207e-4
+        return 1.0 - 0.25 * x * x;
     }
+
     let z = x * x;
     let r = z * (R02 + z * (R03 + z * (R04 + z * R05)));
     let s = 1.0 + z * (S01 + z * (S02 + z * (S03 + z * S04)));
     if x < 1.0 {
-        return 1.0 + z * (-0.25 + (r / s)); // |x| < 1.00
+        return 1.0 + z * (-0.25 + (r / s));
     }
+
     let u = 0.5 * x;
-    (1.0 + u) * (1.0 - u) + z * (r / s) // 1.0 < |x| < 2.0
+    (1.0 + u) * (1.0 - u) + z * (r / s)
 }
 
 const U00: f64 = -7.38042951086872317523e-02; // 0xBFB2E4D699CBD01F
@@ -156,16 +146,44 @@ const V02: f64 = 7.60068627350353253702e-05; // 0x3F13ECBBF578C6C1
 const V03: f64 = 2.59150851840457805467e-07; // 0x3E91642D7FF202FD
 const V04: f64 = 4.41110311332675467403e-10; // 0x3DFE50183BD6D9EF
 
-/// Computes the zero-order Bessel function of the second kind
+/// Evaluates the order-zero Bessel function of the second kind
 ///
 /// The special cases are:
 ///
-/// * `y0(x < 0.0) = NaN`
-/// * `y0(NaN)     = NaN`
-/// * `y0(+Inf)    = 0.0`
-/// * `y0(0.0)     = -Inf`
+/// * `Y0(x < 0.0) = NaN`
+/// * `Y0(NaN)     = NaN`
+/// * `Y0(+Inf)    = 0.0`
+/// * `Y0(0.0)     = -Inf`
 pub fn bessel_y0(x: f64) -> f64 {
-    // special cases
+    //
+    // For x<2. Since
+    //
+    // y0(x) = 2/pi*(j0(x)*(ln(x/2)+Euler) + x**2/4 - ...)
+    //
+    // therefore y0(x)-2/pi*j0(x)*ln(x) is an even function.
+    //
+    // Use the following function to approximate y0,
+    //
+    // y0(x) = U(z)/V(z) + (2/pi)*(j0(x)*ln(x)), z= x**2
+    //
+    // where
+    //
+    // U(z) = u00 + u01*z + ... + u06*z**6
+    // V(z) = 1  + v01*z + ... + v04*z**4
+    //
+    // with absolute approximation error bounded by 2**-72.
+    //
+    // Note: For tiny x, U/V = u0 and j0(x)~1, hence
+    // y0(tiny) = u0 + (2/pi)*ln(tiny), (choose tiny<2**-27)
+    //
+    // For x>=2.
+    //
+    // y0(x) = sqrt(2/(pi*x))*(p0(x)*cos(x0)+q0(x)*sin(x0))
+    //
+    // where x0 = x-pi/4.
+    //
+    // Compute sin(x0),cos(x0) by the method mentioned in bessel_j0
+
     if x < 0.0 || f64::is_nan(x) {
         return f64::NAN;
     } else if f64::is_infinite(x) {
@@ -176,25 +194,9 @@ pub fn bessel_y0(x: f64) -> f64 {
     }
 
     if x >= 2.0 {
-        // |x| >= 2.0
-
-        // y0(x) = sqrt(2/(pi*x))*(p0(x)*sin(x0)+q0(x)*cos(x0))
-        //     where x0 = x-pi/4
-        // Better formula:
-        //     cos(x0) = cos(x)cos(pi/4)+sin(x)sin(pi/4)
-        //             =  1/sqrt(2) * (sin(x) + cos(x))
-        //     sin(x0) = sin(x)cos(3pi/4)-cos(x)sin(3pi/4)
-        //             =  1/sqrt(2) * (sin(x) - cos(x))
-        // To avoid cancellation, use
-        //     sin(x) +- cos(x) = -cos(2x)/(sin(x) -+ cos(x))
-        // to compute the worse one.
-
         let (s, c) = f64::sin_cos(x);
         let mut ss = s - c;
         let mut cc = s + c;
-
-        // j0(x) = 1/sqrt(pi) * (P(0,x)*cc - Q(0,x)*ss) / sqrt(x)
-        // y0(x) = 1/sqrt(pi) * (P(0,x)*ss + Q(0,x)*cc) / sqrt(x)
 
         // make sure x+x does not overflow
         if x < f64::MAX / 2.0 {
@@ -205,15 +207,16 @@ pub fn bessel_y0(x: f64) -> f64 {
                 ss = z / cc;
             }
         }
+
         let z = if x > TWO_129 {
-            // |x| > ~6.8056e+38
             (1.0 / SQRT_PI) * ss / f64::sqrt(x)
         } else {
             let u = pzero(x);
             let v = qzero(x);
             (1.0 / SQRT_PI) * (u * ss + v * cc) / f64::sqrt(x)
         };
-        return z; // |x| >= 2.0
+
+        return z;
     }
 
     if x <= TWO_M27 {
@@ -227,13 +230,20 @@ pub fn bessel_y0(x: f64) -> f64 {
 }
 
 // The asymptotic expansions of pzero is
-//      1 - 9/128 s**2 + 11025/98304 s**4 - ..., where s = 1/x.
+//
+// 1 - 9/128 s**2 + 11025/98304 s**4 - ..., where s = 1/x.
+//
 // For x >= 2, We approximate pzero by
-// 	pzero(x) = 1 + (R/S)
+//
+// pzero(x) = 1 + (R/S)
+//
 // where  R = pR0 + pR1*s**2 + pR2*s**4 + ... + pR5*s**10
-// 	  S = 1 + pS0*s**2 + ... + pS4*s**10
+//
+// S = 1 + pS0*s**2 + ... + pS4*s**10
+//
 // and
-//      | pzero(x)-1-R/S | <= 2  ** ( -60.26)
+//
+// | pzero(x)-1-R/S | <= 2  ** ( -60.26)
 
 // for x in [inf, 8]=1/[0,0.125]
 const P0R8: [f64; 6] = [
@@ -313,8 +323,6 @@ fn pzero(x: f64) -> f64 {
     } else if x >= 2.0 {
         (&P0R2, &P0S2)
     } else {
-        // NOTE: this case is not handled by Go---it's impossible if the caller
-        // make sure that x >= 2.0... Still, Go doesn't check this!
         panic!("INTERNAL ERROR: x must be ≥ 2.0 for pzero");
     };
     let z = 1.0 / (x * x);
@@ -324,13 +332,21 @@ fn pzero(x: f64) -> f64 {
 }
 
 // For x >= 8, the asymptotic expansions of qzero is
-//      -1/8 s + 75/1024 s**3 - ..., where s = 1/x.
-// We approximate pzero by
-//      qzero(x) = s*(-1.25 + (R/S))
-// where R = qR0 + qR1*s**2 + qR2*s**4 + ... + qR5*s**10
-//       S = 1 + qS0*s**2 + ... + qS5*s**12
+//
+// -1/8 s + 75/1024 s**3 - ..., where s = 1/x.
+//
+// Approximate pzero by
+//
+// qzero(x) = s*(-1.25 + (R/S))
+//
+// where
+//
+// R = qR0 + qR1*s**2 + qR2*s**4 + ... + qR5*s**10
+// S = 1 + qS0*s**2 + ... + qS5*s**12
+//
 // and
-//      | qzero(x)/s +1.25-R/S | <= 2**(-61.22)
+//
+// | qzero(x)/s +1.25-R/S | <= 2**(-61.22)
 
 // for x in [inf, 8]=1/[0,0.125]
 const Q0R8: [f64; 6] = [
@@ -414,8 +430,6 @@ fn qzero(x: f64) -> f64 {
     } else if x >= 2.0 {
         (&Q0R2, &Q0S2)
     } else {
-        // NOTE: this case is not handled by Go---it's impossible if the caller
-        // make sure that x >= 2.0... Still, Go doesn't check this!
         panic!("INTERNAL ERROR: x must be ≥ 2.0 for qzero");
     };
     let z = 1.0 / (x * x);
@@ -428,9 +442,8 @@ fn qzero(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use crate::approx_eq;
-
     use super::{bessel_j0, bessel_y0, pzero, qzero};
+    use crate::approx_eq;
 
     #[test]
     #[should_panic(expected = "INTERNAL ERROR: x must be ≥ 2.0 for pzero")]

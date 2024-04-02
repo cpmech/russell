@@ -78,6 +78,7 @@
     "PREORDER",
     "pthread",
     "pzero",
+    "qone",
     "qzero",
     "Radau",
     "RINFOG",

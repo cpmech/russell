@@ -442,7 +442,7 @@ fn qzero(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{bessel_j0, bessel_y0, pzero, qzero};
+    use super::{bessel_j0, bessel_y0, pzero, qzero, TWO_129};
     use crate::approx_eq;
 
     #[test]
@@ -564,5 +564,43 @@ mod tests {
             0.02184580674805452669889249502284870517465956644502777321367441073587120026032506563177310919183224620,
             1e-17,
         );
+    }
+
+    #[test]
+    fn bessel_j0_edge_cases_work() {
+        //
+        // x > f64::MAX / 2.0
+        //
+        // println!("x = {:?}", (f64::MAX / 2.0)); // 8.988465674311579e307
+        // println!("J0(x) = {:?}", bessel_j0(8.988465674311579e307));
+        // Reference value from Go 1.22.1
+        approx_eq(bessel_j0(f64::MAX / 2.0), 5.965640685080747e-155, 1e-310);
+
+        //
+        // x > TWO_129
+        //
+        // Mathematica: N[BesselJ[0, 2 2^129], 100]
+        approx_eq(
+            bessel_j0(2.0 * TWO_129),
+            -2.444353286102078069059175500103428864399201270217340894358804227316802405824590992570065626827792071e-21,
+            1e-36,
+        );
+
+        //
+        // x < 1.0
+        //
+        // Mathematica: N[BesselJ[0, 0.5], 100]
+        approx_eq(bessel_j0(0.5), 0.938469807240813, 1e-15);
+    }
+
+    #[test]
+    fn bessel_y0_edge_cases_work() {
+        //
+        // x > f64::MAX / 2.0
+        //
+        // println!("x = {:?}", (f64::MAX / 2.0)); // 8.988465674311579e307
+        // println!("Y0(x) = {:?}", bessel_y0(8.988465674311579e307));
+        // Reference value from Go 1.22.1
+        approx_eq(bessel_y0(f64::MAX / 2.0), 5.936112522662019e-155, 1e-310);
     }
 }

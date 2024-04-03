@@ -14,20 +14,29 @@ use crate::StrError;
 /// 0 ≤ φ ≤ π/2   and   0 ≤ k·sin(φ) ≤ 1
 /// ```
 ///
+/// **Important:** Note that `k² = m`, where `m` is used in other tools
+/// such as the Mathematica `EllipticF[ϕ, m]` function.
+///
 /// # Input
 ///
 /// * `phi`  -- `0 ≤ φ ≤ π/2`
 /// * `k` --  `0 ≤ k·sin(φ) ≤ 1`
 ///
+/// Special cases:
+///
+/// * `F(φ, k) = Inf` if `k·sin(φ) == 1`
+///	* `F(0.0, k) = 0.0`
+///	* `F(φ, 0.0) = φ`
+///
 /// # References
 ///
 /// * Press WH, Teukolsky SA, Vetterling WT, Flannery BP (2007) Numerical Recipes: The Art of
 ///   Scientific Computing. Third Edition. Cambridge University Press. 1235p.
-pub fn elliptic_1(phi: f64, k: f64) -> Result<f64, StrError> {
+pub fn elliptic_f(phi: f64, k: f64) -> Result<f64, StrError> {
     if phi < 0.0 || k < 0.0 {
         return Err("phi and k must be non-negative");
     }
-    if phi > PI / 2.0 {
+    if phi > PI / 2.0 + f64::EPSILON {
         return Err("phi must be in 0 ≤ phi ≤ π/2");
     }
     if phi < f64::MIN_POSITIVE {
@@ -37,7 +46,7 @@ pub fn elliptic_1(phi: f64, k: f64) -> Result<f64, StrError> {
         return Ok(phi);
     }
     let s = f64::sin(phi);
-    if f64::abs(k * s - 1.0) < 1e-15 {
+    if f64::abs(k * s - 1.0) < f64::EPSILON {
         return Ok(f64::INFINITY);
     }
     let ans = s * rf(f64::powf(f64::cos(phi), 2.0), (1.0 - s * k) * (1.0 + s * k), 1.0)?;
@@ -56,6 +65,9 @@ pub fn elliptic_1(phi: f64, k: f64) -> Result<f64, StrError> {
 /// 0 ≤ φ ≤ π/2   and   0 ≤ k·sin(φ) ≤ 1
 /// ```
 ///
+/// **Important:** Note that `k² = m`, where `m` is used in other tools
+/// such as the Mathematica `EllipticE[ϕ, m]` function.
+///
 /// # Input
 ///
 /// * `phi`  -- `0 ≤ φ ≤ π/2`
@@ -65,11 +77,11 @@ pub fn elliptic_1(phi: f64, k: f64) -> Result<f64, StrError> {
 ///
 /// * Press WH, Teukolsky SA, Vetterling WT, Flannery BP (2007) Numerical Recipes: The Art of
 ///   Scientific Computing. Third Edition. Cambridge University Press. 1235p.
-pub fn elliptic_2(phi: f64, k: f64) -> Result<f64, StrError> {
+pub fn elliptic_e(phi: f64, k: f64) -> Result<f64, StrError> {
     if phi < 0.0 || k < 0.0 {
         return Err("phi and k must be non-negative");
     }
-    if phi > PI / 2.0 {
+    if phi > PI / 2.0 + f64::EPSILON {
         return Err("phi must be in 0 ≤ phi ≤ π/2");
     }
     if phi < f64::MIN_POSITIVE {
@@ -98,6 +110,9 @@ pub fn elliptic_2(phi: f64, k: f64) -> Result<f64, StrError> {
 /// 0 ≤ φ ≤ π/2   and   0 ≤ k·sin(φ) ≤ 1
 /// ```
 ///
+/// **Important:** Note that `k² = m`, where `m` is used in other tools
+/// such as the Mathematica `EllipticPi[ϕ, m]` function.
+///
 /// # Input
 ///
 /// * `phi`  -- `0 ≤ φ ≤ π/2`
@@ -111,11 +126,11 @@ pub fn elliptic_2(phi: f64, k: f64) -> Result<f64, StrError> {
 ///   Scientific Computing. Third Edition. Cambridge University Press. 1235p.
 /// * Abramowitz M, Stegun IA (1972) Handbook of Mathematical Functions with Formulas, Graphs,
 ///   and Mathematical Tables. U.S. Department of Commerce, NIST
-pub fn elliptic_3(n: f64, phi: f64, k: f64) -> Result<f64, StrError> {
+pub fn elliptic_pi(n: f64, phi: f64, k: f64) -> Result<f64, StrError> {
     if phi < 0.0 || k < 0.0 {
         return Err("phi and k must be non-negative");
     }
-    if phi > PI / 2.0 {
+    if phi > PI / 2.0 + f64::EPSILON {
         return Err("phi must be in 0 ≤ phi ≤ π/2");
     }
     if phi < f64::MIN_POSITIVE {
@@ -437,24 +452,74 @@ const RC_C4: f64 = 9.0 / 22.0;
 
 #[cfg(test)]
 mod tests {
-    use super::{elliptic_1, elliptic_2, elliptic_3};
+    use super::{elliptic_e, elliptic_f, elliptic_pi};
     use crate::approx_eq;
+    use crate::math::{PI, SQRT_2};
 
     #[test]
-    fn elliptic_1_works() {
-        println!("F = {:?}", elliptic_1(0.3, 0.8).unwrap());
-        approx_eq(elliptic_1(0.3, 0.8).unwrap(), 0.303652, 1e-3);
+    fn elliptic_f_captures_errors() {
+        assert_eq!(elliptic_f(-1.0, 0.0).err(), Some("phi and k must be non-negative"));
+        assert_eq!(elliptic_f(1.0, -1.0).err(), Some("phi and k must be non-negative"));
     }
 
     #[test]
-    fn elliptic_2_works() {
-        println!("E = {:?}", elliptic_2(0.3, 0.8).unwrap());
-        approx_eq(elliptic_2(0.3, 0.8).unwrap(), 0.296426, 1e-3);
+    fn elliptic_f_edge_cases_work() {
+        assert_eq!(elliptic_f(0.99 * f64::MIN_POSITIVE, 0.0).unwrap(), 0.0);
+        assert_eq!(elliptic_f(PI / 4.0, 0.99 * f64::MIN_POSITIVE).unwrap(), PI / 4.0);
+        let k_times_sin_phi = 1.0;
+        let k = 2.0;
+        assert_eq!(elliptic_f(f64::asin(k_times_sin_phi / k), k).unwrap(), f64::INFINITY);
+        assert_eq!(elliptic_f(PI / 4.0, SQRT_2).unwrap(), f64::INFINITY);
+        assert_eq!(elliptic_f(PI / 2.0, 1.0).unwrap(), f64::INFINITY);
     }
 
     #[test]
-    fn elliptic_3_works() {
-        println!("Π = {:?}", elliptic_3(2.0, 0.3, 0.8).unwrap());
-        approx_eq(elliptic_3(2.0, 0.3, 0.8).unwrap(), 0.323907, 1e-3);
+    fn elliptic_f_works() {
+        // Mathematica:
+        // list = Table[{phi, k, NumberForm[EllipticF[phi, k*k], 50]}, {phi, 0, Pi/2, Pi/8}, {k, 0, 1, 0.25}];
+        // table = Flatten[list, {{1, 2}, {3}}];
+        #[rustfmt::skip]
+        let mathematica = [
+            (0.0        , 0.0  , 1e-50, 0.0),
+            (0.0        , 0.25 , 1e-50, 0.0),
+            (0.0        , 0.5  , 1e-50, 0.0),
+            (0.0        , 0.75 , 1e-50, 0.0),
+            (0.0        , 1.0  , 1e-50, 0.0),
+            (PI/8.0     , 0.0  , 1e-16, 0.3926990816987241),
+            (PI/8.0     , 0.25 , 1e-16, 0.3933132893089199),
+            (PI/8.0     , 0.5  , 1e-16, 0.395187276069818),
+            (PI/8.0     , 0.75 , 1e-50, 0.3984206171209894),
+            (PI/8.0     , 1.0  , 1e-50, 0.4031997191615115),
+            (PI/4.0     , 0.0  , 1e-50, 0.7853981633974483),
+            (PI/4.0     , 0.25 , 1e-15, 0.7899239996239404),
+            (PI/4.0     , 0.5  , 1e-15, 0.804366101232066),
+            (PI/4.0     , 0.75 , 1e-15, 0.831943296479276),
+            (PI/4.0     , 1.0  , 1e-15, 0.881373587019543),
+            (3.0*PI/8.0 , 0.0  , 1e-15, 1.178097245096172),
+            (3.0*PI/8.0 , 0.25 , 1e-50, 1.191335209507002),
+            (3.0*PI/8.0 , 0.5  , 1e-15, 1.235986172354044),
+            (3.0*PI/8.0 , 0.75 , 1e-15, 1.33484364486983),
+            (3.0*PI/8.0 , 1.0  , 1e-15, 1.614890916173095),
+            (PI/2.0     , 0.0  , 1e-15, 1.570796326794897),
+            (PI/2.0     , 0.25 , 1e-15, 1.596242222131783),
+            (PI/2.0     , 0.5  , 1e-15, 1.685750354812596),
+            (PI/2.0     , 0.75 , 1e-15, 1.910989780751829),
+        ];
+        for (phi, k, tol, reference) in mathematica {
+            // println!("phi = {}π/8, k = {:?}", 8.0 * phi / PI, k);
+            approx_eq(elliptic_f(phi, k).unwrap(), reference, tol);
+        }
+    }
+
+    #[test]
+    fn elliptic_e_works() {
+        println!("E = {:?}", elliptic_e(0.3, 0.8).unwrap());
+        approx_eq(elliptic_e(0.3, 0.8).unwrap(), 0.296426, 1e-3);
+    }
+
+    #[test]
+    fn elliptic_pi_works() {
+        println!("Π = {:?}", elliptic_pi(2.0, 0.3, 0.8).unwrap());
+        approx_eq(elliptic_pi(2.0, 0.3, 0.8).unwrap(), 0.323907, 1e-3);
     }
 }

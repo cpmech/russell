@@ -9,11 +9,11 @@ pub fn bessel_mod_i0(x: f64) -> f64 {
     if ax < 15.0 {
         // rational approximation
         let y = x * x;
-        return mbpoly(&I0P, 13, y) / mbpoly(&I0Q, 4, 225.0 - y);
+        return poly(&I0P, 13, y) / poly(&I0Q, 4, 225.0 - y);
     }
     // rational approximation with exp(x)/sqrt(x) factored out.
     let z = 1.0 - 15.0 / ax;
-    return f64::exp(ax) * mbpoly(&I0PP, 4, z) / (mbpoly(&I0QQ, 5, z) * f64::sqrt(ax));
+    return f64::exp(ax) * poly(&I0PP, 4, z) / (poly(&I0QQ, 5, z) * f64::sqrt(ax));
 }
 
 /// Evaluates the modified Bessel function I1(x) for any real x.
@@ -22,11 +22,11 @@ pub fn bessel_mod_i1(x: f64) -> f64 {
     if ax < 15.0 {
         // rational approximation
         let y = x * x;
-        return x * mbpoly(&I1P, 13, y) / mbpoly(&I1Q, 4, 225.0 - y);
+        return x * poly(&I1P, 13, y) / poly(&I1Q, 4, 225.0 - y);
     }
     // rational approximation with exp(x)/sqrt(x) factored out.
     let z = 1.0 - 15.0 / ax;
-    let ans = f64::exp(ax) * mbpoly(&I1PP, 4, z) / (mbpoly(&I1QQ, 5, z) * f64::sqrt(ax));
+    let ans = f64::exp(ax) * poly(&I1PP, 4, z) / (poly(&I1QQ, 5, z) * f64::sqrt(ax));
     if x > 0.0 {
         ans
     } else {
@@ -46,7 +46,7 @@ pub fn bessel_mod_in(n: i32, x: f64) -> f64 {
         return 0.0;
     }
     const ACC: f64 = 200.0; // determines accuracy
-    const IEXP: i32 = 1024 / 2; // aka numeric_limits<double>max_exponent / 2
+    const I_EXP: i32 = 1024 / 2; // aka numeric_limits<double>max_exponent / 2
     let tox = 2.0 / f64::abs(x);
     let mut bip = 0.0;
     let mut bi = 1.0;
@@ -58,11 +58,11 @@ pub fn bessel_mod_in(n: i32, x: f64) -> f64 {
         bip = bi;
         bi = bim;
         let (_, k) = frexp(bi);
-        if k > IEXP {
+        if k > I_EXP {
             // re-normalize to prevent overflows
-            ans = ldexp(ans, -IEXP);
-            bi = ldexp(bi, -IEXP);
-            bip = ldexp(bip, -IEXP);
+            ans = ldexp(ans, -I_EXP);
+            bi = ldexp(bi, -I_EXP);
+            bip = ldexp(bip, -I_EXP);
         }
         if j == n {
             ans = bip;
@@ -91,12 +91,12 @@ pub fn bessel_mod_k0(x: f64) -> f64 {
     if x <= 1.0 {
         // use two rational approximations
         let z = x * x;
-        let term = mbpoly(&K0PI, 4, z) * f64::ln(x) / mbpoly(&K0QI, 2, 1. - z);
-        return mbpoly(&K0P, 4, z) / mbpoly(&K0Q, 2, 1. - z) - term;
+        let term = poly(&K0PI, 4, z) * f64::ln(x) / poly(&K0QI, 2, 1. - z);
+        return poly(&K0P, 4, z) / poly(&K0Q, 2, 1. - z) - term;
     }
     // rational approximation with exp(-x) / sqrt(x) factored out
     let z = 1.0 / x;
-    f64::exp(-x) * mbpoly(&K0PP, 7, z) / (mbpoly(&K0QQ, 7, z) * f64::sqrt(x))
+    f64::exp(-x) * poly(&K0PP, 7, z) / (poly(&K0QQ, 7, z) * f64::sqrt(x))
 }
 
 /// Evaluates the modified Bessel function K1(x) for positive real x.
@@ -113,12 +113,12 @@ pub fn bessel_mod_k1(x: f64) -> f64 {
     if x <= 1.0 {
         // use two rational approximations
         let z = x * x;
-        let term = mbpoly(&K1PI, 4, z) * f64::ln(x) / mbpoly(&K1QI, 2, 1. - z);
-        return x * (mbpoly(&K1P, 4, z) / mbpoly(&K1Q, 2, 1. - z) + term) + 1. / x;
+        let term = poly(&K1PI, 4, z) * f64::ln(x) / poly(&K1QI, 2, 1. - z);
+        return x * (poly(&K1P, 4, z) / poly(&K1Q, 2, 1. - z) + term) + 1. / x;
     }
     // rational approximation with exp(-x)/sqrt(x) factored out
     let z = 1.0 / x;
-    f64::exp(-x) * mbpoly(&K1PP, 7, z) / (mbpoly(&K1QQ, 7, z) * f64::sqrt(x))
+    f64::exp(-x) * poly(&K1PP, 7, z) / (poly(&K1QQ, 7, z) * f64::sqrt(x))
 }
 
 /// Evaluates the modified Bessel function Kn(x) for positive x and n ≥ 0
@@ -147,7 +147,7 @@ pub fn bessel_mod_kn(n: i32, x: f64) -> f64 {
 }
 
 /// evaluates a polynomial for the modified Bessel functions
-fn mbpoly(cof: &[f64], n: i32, x: f64) -> f64 {
+fn poly(cof: &[f64], n: i32, x: f64) -> f64 {
     let mut ans = cof[n as usize];
     let mut i = n - 1;
     while i >= 0 {

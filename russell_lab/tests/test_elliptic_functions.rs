@@ -53,7 +53,7 @@ fn test_elliptic_e() {
             } else {
                 *phi
             };
-            approx_eq(elliptic_e(p, k[i]).unwrap(), ff[i], 1e-14);
+            approx_eq(elliptic_e(p, k[i] * k[i]).unwrap(), ff[i], 1e-14);
         }
     }
 }

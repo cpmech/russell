@@ -54,38 +54,37 @@ pub fn elliptic_f(phi: f64, m: f64) -> Result<f64, StrError> {
     Ok(ans)
 }
 
-/// Computes the elliptic integral of the second kind E(φ, k)
+/// Computes the elliptic integral of the second kind E(φ, m)
 ///
 /// ```text
 ///              φ
 ///             ⌠     _______________
-/// E(φ, k)  =  │   \╱ 1 - k² sin²(t)  dt
+/// E(φ, m)  =  │   \╱ 1 - m sin²(t)  dt
 ///             ⌡
 ///            0
 ///
-/// 0 ≤ φ ≤ π/2   and   0 ≤ k·sin(φ) ≤ 1
+/// 0 ≤ φ ≤ π/2   and   0 ≤ m·sin²(φ) ≤ 1
 /// ```
 ///
-/// **Important:** Note that `k² = m`, where `m` is used in other tools
-/// such as the Mathematica `EllipticE[ϕ, m]` function.
+/// **Important:** Note that `m = k²`, where `k` is sometimes used in other libraries.
 ///
 /// # Input
 ///
-/// * `phi`  -- `0 ≤ φ ≤ π/2`
-/// * `k` --  `0 ≤ k·sin(φ) ≤ 1`
+/// * `phi` -- Must satisfy: `0 ≤ φ ≤ π/2`
+/// * `m` -- Must satisfy: `0 ≤ m·sin²(φ) ≤ 1`
 ///
 /// # Special cases
 ///
-///	* `E(0.0, k) = 0.0`
+///	* `E(0.0, m) = 0.0`
 ///	* `E(φ, 0.0) = φ`
 ///
 /// # References
 ///
 /// * Press WH, Teukolsky SA, Vetterling WT, Flannery BP (2007) Numerical Recipes: The Art of
 ///   Scientific Computing. Third Edition. Cambridge University Press. 1235p.
-pub fn elliptic_e(phi: f64, k: f64) -> Result<f64, StrError> {
-    if phi < 0.0 || k < 0.0 {
-        return Err("phi and k must be non-negative");
+pub fn elliptic_e(phi: f64, m: f64) -> Result<f64, StrError> {
+    if phi < 0.0 || m < 0.0 {
+        return Err("phi and m must be non-negative");
     }
     if phi > PI / 2.0 + f64::EPSILON {
         return Err("phi must be in 0 ≤ phi ≤ π/2");
@@ -93,14 +92,15 @@ pub fn elliptic_e(phi: f64, k: f64) -> Result<f64, StrError> {
     if phi < f64::MIN_POSITIVE {
         return Ok(0.0);
     }
-    if k < f64::MIN_POSITIVE {
+    if m < f64::MIN_POSITIVE {
         return Ok(phi);
     }
     let s = f64::sin(phi);
     let c = f64::cos(phi);
+    let ss = s * s;
     let cc = c * c;
-    let p = s * s * k * k;
-    let q = (1.0 - s * k) * (1.0 + s * k);
+    let p = m * ss;
+    let q = 1.0 - p;
     let ans = s * (rf(cc, q, 1.0)? - p * rd(cc, q, 1.0)? / 3.0);
     Ok(ans)
 }
@@ -570,8 +570,8 @@ mod tests {
 
     #[test]
     fn elliptic_e_captures_errors() {
-        assert_eq!(elliptic_e(-1.0, 0.0).err(), Some("phi and k must be non-negative"));
-        assert_eq!(elliptic_e(1.0, -1.0).err(), Some("phi and k must be non-negative"));
+        assert_eq!(elliptic_e(-1.0, 0.0).err(), Some("phi and m must be non-negative"));
+        assert_eq!(elliptic_e(1.0, -1.0).err(), Some("phi and m must be non-negative"));
         assert_eq!(
             elliptic_e(PI / 2.0 + 1.0, 1.0).err(),
             Some("phi must be in 0 ≤ phi ≤ π/2")
@@ -583,7 +583,7 @@ mod tests {
         assert_eq!(elliptic_e(0.99 * f64::MIN_POSITIVE, 0.0).unwrap(), 0.0);
         assert_eq!(elliptic_e(PI / 4.0, 0.99 * f64::MIN_POSITIVE).unwrap(), PI / 4.0);
         approx_eq(
-            elliptic_e(PI / 4.0, SQRT_2).unwrap(),
+            elliptic_e(PI / 4.0, 2.0).unwrap(),
             0.59907011736779610371996124614016193911360633160783,
             1e-15,
         );
@@ -625,7 +625,7 @@ mod tests {
         ];
         for (phi, k, tol, reference) in mathematica {
             // println!("phi = {}π/8, k = {:?}", 8.0 * phi / PI, k);
-            approx_eq(elliptic_e(phi, k).unwrap(), reference, tol);
+            approx_eq(elliptic_e(phi, k * k).unwrap(), reference, tol);
         }
     }
 

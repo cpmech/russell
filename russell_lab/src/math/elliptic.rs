@@ -185,23 +185,23 @@ fn rf(x: f64, y: f64, z: f64) -> Result<f64, StrError> {
     let mut yt = y;
     let mut zt = z;
     let mut ave: f64 = 0.0;
-    let mut delx: f64 = 0.0;
-    let mut dely: f64 = 0.0;
-    let mut delz: f64 = 0.0;
+    let mut dx: f64 = 0.0;
+    let mut dy: f64 = 0.0;
+    let mut dz: f64 = 0.0;
     let mut it = 0;
     for _ in 0..N_MAX_ITERATIONS {
-        let sqrtx = f64::sqrt(xt);
-        let sqrty = f64::sqrt(yt);
-        let sqrtz = f64::sqrt(zt);
-        let alamb = sqrtx * (sqrty + sqrtz) + sqrty * sqrtz;
-        xt = 0.25 * (xt + alamb);
-        yt = 0.25 * (yt + alamb);
-        zt = 0.25 * (zt + alamb);
+        let sqx = f64::sqrt(xt);
+        let sqy = f64::sqrt(yt);
+        let sqz = f64::sqrt(zt);
+        let lam = sqx * (sqy + sqz) + sqy * sqz;
+        xt = 0.25 * (xt + lam);
+        yt = 0.25 * (yt + lam);
+        zt = 0.25 * (zt + lam);
         ave = ONE_BY_3 * (xt + yt + zt);
-        delx = (ave - xt) / ave;
-        dely = (ave - yt) / ave;
-        delz = (ave - zt) / ave;
-        if f64::max(f64::max(f64::abs(delx), f64::abs(dely)), f64::abs(delz)) < RF_ERR_TOL {
+        dx = (ave - xt) / ave;
+        dy = (ave - yt) / ave;
+        dz = (ave - zt) / ave;
+        if f64::max(f64::max(f64::abs(dx), f64::abs(dy)), f64::abs(dz)) < RF_ERR_TOL {
             break;
         }
         it += 1;
@@ -209,8 +209,8 @@ fn rf(x: f64, y: f64, z: f64) -> Result<f64, StrError> {
     if it == N_MAX_ITERATIONS {
         return Err("rf failed to converge");
     }
-    let e2 = delx * dely - delz * delz;
-    let e3 = delx * dely * delz;
+    let e2 = dx * dy - dz * dz;
+    let e3 = dx * dy * dz;
     let ans = (1.0 + (RF_C1 * e2 - RF_C2 - RF_C3 * e3) * e2 + RF_C4 * e3) / f64::sqrt(ave);
     Ok(ans)
 }
@@ -235,27 +235,27 @@ fn rd(x: f64, y: f64, z: f64) -> Result<f64, StrError> {
     let mut yt = y;
     let mut zt = z;
     let mut ave: f64 = 0.0;
-    let mut delx: f64 = 0.0;
-    let mut dely: f64 = 0.0;
-    let mut delz: f64 = 0.0;
+    let mut dx: f64 = 0.0;
+    let mut dy: f64 = 0.0;
+    let mut dz: f64 = 0.0;
     let mut sum = 0.0;
     let mut fac = 1.0;
     let mut it = 0;
     for _ in 0..N_MAX_ITERATIONS {
-        let sqrtx = f64::sqrt(xt);
-        let sqrty = f64::sqrt(yt);
-        let sqrtz = f64::sqrt(zt);
-        let alamb = sqrtx * (sqrty + sqrtz) + sqrty * sqrtz;
-        sum += fac / (sqrtz * (zt + alamb));
+        let sqx = f64::sqrt(xt);
+        let sqy = f64::sqrt(yt);
+        let sqz = f64::sqrt(zt);
+        let lam = sqx * (sqy + sqz) + sqy * sqz;
+        sum += fac / (sqz * (zt + lam));
         fac = 0.25 * fac;
-        xt = 0.25 * (xt + alamb);
-        yt = 0.25 * (yt + alamb);
-        zt = 0.25 * (zt + alamb);
+        xt = 0.25 * (xt + lam);
+        yt = 0.25 * (yt + lam);
+        zt = 0.25 * (zt + lam);
         ave = 0.2 * (xt + yt + 3.0 * zt);
-        delx = (ave - xt) / ave;
-        dely = (ave - yt) / ave;
-        delz = (ave - zt) / ave;
-        if f64::max(f64::max(f64::abs(delx), f64::abs(dely)), f64::abs(delz)) < RD_ERR_TOL {
+        dx = (ave - xt) / ave;
+        dy = (ave - yt) / ave;
+        dz = (ave - zt) / ave;
+        if f64::max(f64::max(f64::abs(dx), f64::abs(dy)), f64::abs(dz)) < RD_ERR_TOL {
             break;
         }
         it += 1;
@@ -263,16 +263,16 @@ fn rd(x: f64, y: f64, z: f64) -> Result<f64, StrError> {
     if it == N_MAX_ITERATIONS {
         return Err("rd failed to converge");
     }
-    let ea = delx * dely;
-    let eb = delz * delz;
+    let ea = dx * dy;
+    let eb = dz * dz;
     let ec = ea - eb;
     let ed = ea - 6.0 * eb;
     let ee = ed + ec + ec;
     let ans = 3.0 * sum
         + fac
             * (1.0
-                + ed * (-RD_C1 + RD_C5 * ed - RD_C6 * delz * ee)
-                + delz * (RD_C2 * ee + delz * (-RD_C3 * ec + delz * RD_C4 * ea)))
+                + ed * (-RD_C1 + RD_C5 * ed - RD_C6 * dz * ee)
+                + dz * (RD_C2 * ee + dz * (-RD_C3 * ec + dz * RD_C4 * ea)))
             / (ave * f64::sqrt(ave));
     Ok(ans)
 }
@@ -301,10 +301,10 @@ fn rj(x: f64, y: f64, z: f64, p: f64) -> Result<f64, StrError> {
     let mut yt: f64;
     let mut zt: f64;
     let mut ave: f64 = 0.0;
-    let mut delx: f64 = 0.0;
-    let mut dely: f64 = 0.0;
-    let mut delz: f64 = 0.0;
-    let mut delp: f64 = 0.0;
+    let mut dx: f64 = 0.0;
+    let mut dy: f64 = 0.0;
+    let mut dz: f64 = 0.0;
+    let mut dp: f64 = 0.0;
     let mut sum = 0.0;
     let mut fac = 1.0;
     let mut pt: f64;
@@ -329,26 +329,26 @@ fn rj(x: f64, y: f64, z: f64, p: f64) -> Result<f64, StrError> {
     }
     let mut it = 0;
     for _ in 0..N_MAX_ITERATIONS {
-        let sqrtx = f64::sqrt(xt);
-        let sqrty = f64::sqrt(yt);
-        let sqrtz = f64::sqrt(zt);
-        let alamb = sqrtx * (sqrty + sqrtz) + sqrty * sqrtz;
-        let alpha = f64::powf(pt * (sqrtx + sqrty + sqrtz) + sqrtx * sqrty * sqrtz, 2.0);
-        let beta = pt * f64::powf(pt + alamb, 2.0);
+        let sqx = f64::sqrt(xt);
+        let sqy = f64::sqrt(yt);
+        let sqz = f64::sqrt(zt);
+        let lam = sqx * (sqy + sqz) + sqy * sqz;
+        let alpha = f64::powf(pt * (sqx + sqy + sqz) + sqx * sqy * sqz, 2.0);
+        let beta = pt * f64::powf(pt + lam, 2.0);
         sum += fac * rc(alpha, beta)?;
         fac = 0.25 * fac;
-        xt = 0.25 * (xt + alamb);
-        yt = 0.25 * (yt + alamb);
-        zt = 0.25 * (zt + alamb);
-        pt = 0.25 * (pt + alamb);
+        xt = 0.25 * (xt + lam);
+        yt = 0.25 * (yt + lam);
+        zt = 0.25 * (zt + lam);
+        pt = 0.25 * (pt + lam);
         ave = 0.2 * (xt + yt + zt + pt + pt);
-        delx = (ave - xt) / ave;
-        dely = (ave - yt) / ave;
-        delz = (ave - zt) / ave;
-        delp = (ave - pt) / ave;
+        dx = (ave - xt) / ave;
+        dy = (ave - yt) / ave;
+        dz = (ave - zt) / ave;
+        dp = (ave - pt) / ave;
         if f64::max(
-            f64::max(f64::abs(delx), f64::abs(dely)),
-            f64::max(f64::abs(delz), f64::abs(delp)),
+            f64::max(f64::abs(dx), f64::abs(dy)),
+            f64::max(f64::abs(dz), f64::abs(dp)),
         ) < RJ_ERR_TOL
         {
             break;
@@ -358,18 +358,18 @@ fn rj(x: f64, y: f64, z: f64, p: f64) -> Result<f64, StrError> {
     if it == N_MAX_ITERATIONS {
         return Err("rj failed to converge");
     }
-    let ea = delx * (dely + delz) + dely * delz;
-    let eb = delx * dely * delz;
-    let ec = delp * delp;
+    let ea = dx * (dy + dz) + dy * dz;
+    let eb = dx * dy * dz;
+    let ec = dp * dp;
     let ed = ea - 3.0 * ec;
-    let ee = eb + 2.0 * delp * (ea - ec);
+    let ee = eb + 2.0 * dp * (ea - ec);
     let mut ans = 3.0 * sum
         + fac
             * (1.0
                 + ed * (-RJ_C1 + RJ_C5 * ed - RJ_C6 * ee)
-                + eb * (RJ_C7 + delp * (-RJ_C8 + delp * RJ_C4))
-                + delp * ea * (RJ_C2 - delp * RJ_C3)
-                - RJ_C2 * delp * ec)
+                + eb * (RJ_C7 + dp * (-RJ_C8 + dp * RJ_C4))
+                + dp * ea * (RJ_C2 - dp * RJ_C3)
+                - RJ_C2 * dp * ec)
             / (ave * f64::sqrt(ave));
     if p <= 0.0 {
         ans = a * (b * ans + 3.0 * (rcx - rf(xt, yt, zt)?));
@@ -408,9 +408,9 @@ pub fn rc(x: f64, y: f64) -> Result<f64, StrError> {
     let mut s: f64 = 0.0;
     let mut it = 0;
     for _ in 0..N_MAX_ITERATIONS {
-        let alamb = 2.0 * f64::sqrt(xt) * f64::sqrt(yt) + yt;
-        xt = 0.25 * (xt + alamb);
-        yt = 0.25 * (yt + alamb);
+        let lam = 2.0 * f64::sqrt(xt) * f64::sqrt(yt) + yt;
+        xt = 0.25 * (xt + lam);
+        yt = 0.25 * (yt + lam);
         ave = ONE_BY_3 * (xt + yt + yt);
         s = (yt - ave) / ave;
         if f64::abs(s) < RC_ERR_TOL {

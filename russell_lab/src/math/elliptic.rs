@@ -471,6 +471,10 @@ mod tests {
     fn elliptic_f_captures_errors() {
         assert_eq!(elliptic_f(-1.0, 0.0).err(), Some("phi and k must be non-negative"));
         assert_eq!(elliptic_f(1.0, -1.0).err(), Some("phi and k must be non-negative"));
+        assert_eq!(
+            elliptic_f(PI / 2.0 + 1.0, 1.0).err(),
+            Some("phi must be in 0 ≤ phi ≤ π/2")
+        );
     }
 
     #[test]
@@ -526,6 +530,10 @@ mod tests {
     fn elliptic_e_captures_errors() {
         assert_eq!(elliptic_e(-1.0, 0.0).err(), Some("phi and k must be non-negative"));
         assert_eq!(elliptic_e(1.0, -1.0).err(), Some("phi and k must be non-negative"));
+        assert_eq!(
+            elliptic_e(PI / 2.0 + 1.0, 1.0).err(),
+            Some("phi must be in 0 ≤ phi ≤ π/2")
+        );
     }
 
     #[test]
@@ -588,6 +596,10 @@ mod tests {
         assert_eq!(
             elliptic_pi(1.0, 1.0, -1.0).err(),
             Some("phi and k must be non-negative")
+        );
+        assert_eq!(
+            elliptic_pi(2.0, PI / 2.0 + 1.0, 1.0).err(),
+            Some("phi must be in 0 ≤ phi ≤ π/2")
         );
     }
 

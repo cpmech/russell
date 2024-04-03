@@ -167,7 +167,7 @@ pub fn suq_sin(x: f64, k: f64) -> f64 {
     sign(f64::sin(x)) * f64::powf(f64::abs(f64::sin(x)), k)
 }
 
-/// Implements the superquadric auxiliary involving cos(x)
+/// Implements the superquadric function involving cos(x)
 ///
 /// ```text
 /// suq_cos(x;k) = sign(cos(x)) · |cos(x)|ᵏ

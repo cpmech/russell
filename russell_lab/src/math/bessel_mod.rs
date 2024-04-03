@@ -38,7 +38,7 @@ pub fn bessel_mod_i1(x: f64) -> f64 {
 }
 
 /// Evaluates the modified Bessel function In(x) for any real x and n ≥ 0
-pub fn bessel_mod_in(n: i32, x: f64) -> f64 {
+pub fn bessel_mod_in(n: usize, x: f64) -> f64 {
     if n == 0 {
         return bessel_mod_i0(x);
     }
@@ -53,7 +53,7 @@ pub fn bessel_mod_in(n: i32, x: f64) -> f64 {
     let tox = 2.0 / f64::abs(x);
     let mut bip = 0.0;
     let mut bi = 1.0;
-    let mut j = 2 * (n + (f64::sqrt(ACC * (n as f64)) as i32));
+    let mut j = 2 * (n + (f64::sqrt(ACC * (n as f64)) as usize));
     let mut ans: f64 = 0.0;
     while j > 0 {
         // downward recurrence
@@ -334,7 +334,7 @@ const K1QQ: [f64; 8] = [
 
 #[cfg(test)]
 mod tests {
-    use super::{bessel_mod_i0, bessel_mod_i1};
+    use super::{bessel_mod_i0, bessel_mod_i1, bessel_mod_in};
     use crate::approx_eq;
 
     #[test]
@@ -367,8 +367,42 @@ mod tests {
             (-15.0, 1e-9, -328124.92197020639673369815024598440792655583311133),
         ];
         for (x, tol, reference) in mathematica {
-            println!("x = {:?}", x);
+            // println!("x = {:?}", x);
             approx_eq(bessel_mod_i1(x), reference, tol);
+        }
+    }
+
+    #[test]
+    fn bessel_mod_in_with_n0_n1_works() {
+        assert_eq!(bessel_mod_in(0, 0.0), 1.0);
+        assert_eq!(bessel_mod_in(1, 0.0), 0.0);
+    }
+
+    #[test]
+    fn bessel_mod_in_with_positive_n_works() {
+        // Mathematica: X = {-4, 1, 2, -5}; Table[{n, X[[i]], N[BesselI[n, X[[i]]], 50]}, {n, 2, 5}, {i, 1, 4}]
+        #[rustfmt::skip]
+        let mathematica = [
+            (2, -4.0, 1e-50, 6.4221893752841055416186738995607620473846314278089),
+            (2,  1.0, 1e-16, 0.13574766976703828118285256999499092294987106811278),
+            (2,  2.0, 1e-15, 0.68894844769873820405495001581186710533136294328992),
+            (2, -5.0, 1e-14, 17.505614966624236014887011895180415898253112084901),
+            (3, -4.0, 1e-50, -3.3372757784203443678565186677519188526713389054441),
+            (3,  1.0, 1e-17, 0.022168424924331902476285747629899615529415349169979),
+            (3,  2.0, 1e-16, 0.21273995923985265527235439337593203729175227291569),
+            (3, -5.0, 1e-50, -10.331150169151138387233440935615675741962384700378),
+            (4, -4.0, 1e-15, 1.4162757076535889898338958979328837683776230696427),
+            (4,  1.0, 1e-17, 0.0027371202210468663251380842155932297733789730929026),
+            (4,  2.0, 1e-16, 0.050728569979180238237886835684070993456106124542847),
+            (4, -5.0, 1e-50, 5.1082347636428699502068827724416050078982504444481),
+            (5, -4.0, 1e-50, -0.50472436311316638818872687188615131591609276615874),
+            (5,  1.0, 1e-50, 0.00027146315595697187518107390515377734238356442675814),
+            (5,  2.0, 1e-17, 0.0098256793231317023208070506396480634673277747443042),
+            (5, -5.0, 1e-15, -2.1579745473225464669024284997091077293251839892608),
+        ];
+        for (n, x, tol, reference) in mathematica {
+            // println!("n = {}, x = {:?}", n, x);
+            approx_eq(bessel_mod_in(n, x), reference, tol);
         }
     }
 }

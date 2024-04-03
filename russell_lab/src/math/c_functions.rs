@@ -44,7 +44,7 @@ pub fn gamma(x: f64) -> f64 {
 /// x == frac · 2^exp
 /// ```
 ///
-/// with the absolute value of frac in the interval [½, 1).
+/// with the absolute value of frac in the interval [0.5, 1)
 ///
 /// The special cases are:
 ///
@@ -54,8 +54,8 @@ pub fn gamma(x: f64) -> f64 {
 ///
 /// Reference: <https://cplusplus.com/reference/cmath/frexp/>
 pub fn frexp(x: f64) -> (f64, i32) {
-    if x == 0.0 {
-        return (x, 0); // correctly return -0
+    if x == 0.0 || f64::is_nan(x) {
+        return (x, 0); // correctly return -0 or NaN
     } else if f64::is_infinite(x) || f64::is_nan(x) {
         return (x, 0);
     }
@@ -84,8 +84,8 @@ pub fn frexp(x: f64) -> (f64, i32) {
 ///
 /// Reference: <https://cplusplus.com/reference/cmath/ldexp/>
 pub fn ldexp(frac: f64, exp: i32) -> f64 {
-    if frac == 0.0 {
-        return frac; // correctly return -0
+    if frac == 0.0 || f64::is_nan(frac) {
+        return frac; // correctly return -0 or NaN
     } else if f64::is_infinite(frac) || f64::is_nan(frac) {
         return frac;
     }
@@ -96,7 +96,7 @@ pub fn ldexp(frac: f64, exp: i32) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{erf, erfc, gamma};
+    use super::{erf, erfc, frexp, gamma, ldexp};
     use crate::approx_eq;
     use crate::math::PI;
 
@@ -196,5 +196,25 @@ mod tests {
         approx_eq(gamma(5.5), 52.34277778455352018114900849241819367949013237611424488006401, 1e-12);
         approx_eq(gamma(10.1), 454760.7514415859508673358368319076190405047458218916492282448, 1e-7);
         approx_eq(gamma(150.0 + 1.0e-12), 3.8089226376496421386707466577615064443807882167327097140e+260, 1e248);
+    }
+
+    #[test]
+    fn frexp_works() {
+        assert_eq!(frexp(-0.0), (-0.0, 0));
+        assert_eq!(frexp(0.0), (0.0, 0));
+        assert_eq!(frexp(f64::NEG_INFINITY), (f64::NEG_INFINITY, 0));
+        assert_eq!(frexp(f64::INFINITY), (f64::INFINITY, 0));
+        assert!(frexp(f64::NAN).0.is_nan());
+        assert_eq!(frexp(8.0), (0.5, 4));
+    }
+
+    #[test]
+    fn ldexp_works() {
+        assert_eq!(ldexp(-0.0, 0), -0.0);
+        assert_eq!(ldexp(0.0, 0), 0.0);
+        assert_eq!(ldexp(f64::NEG_INFINITY, 0), f64::NEG_INFINITY);
+        assert_eq!(ldexp(f64::INFINITY, 0), f64::INFINITY);
+        assert!(ldexp(f64::NAN, 0).is_nan());
+        assert_eq!(ldexp(0.5, 4), 8.0);
     }
 }

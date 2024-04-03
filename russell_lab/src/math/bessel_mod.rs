@@ -4,9 +4,12 @@ use super::{frexp, ldexp};
 ///
 /// Special cases:
 ///
+///	* `I0(NaN) = NaN`
 ///	* `I0(0.0) = 1.0`
 pub fn bessel_mod_i0(x: f64) -> f64 {
-    if x == 0.0 {
+    if f64::is_nan(x) {
+        return f64::NAN;
+    } else if x == 0.0 {
         return 1.0;
     }
     let ax = f64::abs(x);
@@ -21,8 +24,15 @@ pub fn bessel_mod_i0(x: f64) -> f64 {
 }
 
 /// Evaluates the modified Bessel function I1(x) for any real x
+///
+/// Special cases:
+///
+///	* `I1(NaN) = NaN`
+///	* `I1(0.0) = 0.0`
 pub fn bessel_mod_i1(x: f64) -> f64 {
-    if x == 0.0 {
+    if f64::is_nan(x) {
+        return f64::NAN;
+    } else if x == 0.0 {
         return 0.0;
     }
     let ax = f64::abs(x);
@@ -48,14 +58,19 @@ const ACC: f64 = 200.0;
 const HALF_MAX_EXP: i32 = f64::MAX_EXP / 2;
 
 /// Evaluates the modified Bessel function In(x) for any real x and n ≥ 0
+///
+/// Special cases:
+///
+///	* `In(NaN)       = NaN`
+/// * `In(small(x²)) = 0.0`
 pub fn bessel_mod_in(n: usize, x: f64) -> f64 {
-    if n == 0 {
+    if f64::is_nan(x) {
+        return f64::NAN;
+    } else if n == 0 {
         return bessel_mod_i0(x);
-    }
-    if n == 1 {
+    } else if n == 1 {
         return bessel_mod_i1(x);
-    }
-    if x * x <= 8.0 * f64::MIN_POSITIVE {
+    } else if x * x <= 8.0 * f64::MIN_POSITIVE {
         return 0.0;
     }
     let tox = 2.0 / f64::abs(x);
@@ -92,13 +107,13 @@ pub fn bessel_mod_in(n: usize, x: f64) -> f64 {
 ///
 /// Special cases:
 ///
+///	* `K0(NaN)     = NaN`
 /// * `K0(x < 0.0) = NaN`
 /// * `K0(0.0)     = Inf`
 pub fn bessel_mod_k0(x: f64) -> f64 {
-    if x < 0.0 {
+    if f64::is_nan(x) || x < 0.0 {
         return f64::NAN;
-    }
-    if x == 0.0 {
+    } else if x == 0.0 {
         return f64::INFINITY;
     }
     if x <= 1.0 {
@@ -116,13 +131,13 @@ pub fn bessel_mod_k0(x: f64) -> f64 {
 ///
 /// Special cases:
 ///
+///	* `K1(NaN)     = NaN`
 /// * `K1(x < 0.0) = NaN`
 /// * `K1(0.0)     = Inf`
 pub fn bessel_mod_k1(x: f64) -> f64 {
-    if x < 0.0 {
+    if f64::is_nan(x) || x < 0.0 {
         return f64::NAN;
-    }
-    if x == 0.0 {
+    } else if x == 0.0 {
         return f64::INFINITY;
     }
     if x <= 1.0 {
@@ -140,20 +155,20 @@ pub fn bessel_mod_k1(x: f64) -> f64 {
 ///
 /// Special cases:
 ///
+///	* `Kn(NaN)     = NaN`
 /// * `Kn(x < 0.0) = NaN`
 /// * `Kn(0.0)     = Inf`
 pub fn bessel_mod_kn(n: i32, x: f64) -> f64 {
+    if f64::is_nan(x) || x < 0.0 {
+        return f64::NAN;
+    } else if x == 0.0 {
+        return f64::INFINITY;
+    }
     if n == 0 {
         return bessel_mod_k0(x);
     }
     if n == 1 {
         return bessel_mod_k1(x);
-    }
-    if x < 0.0 {
-        return f64::NAN;
-    }
-    if x == 0.0 {
-        return f64::INFINITY;
     }
     let tox = 2.0 / x;
     let mut bkm = bessel_mod_k0(x); // upward recurrence for all x
@@ -356,6 +371,7 @@ mod tests {
 
     #[test]
     fn bessel_mod_i0_works() {
+        assert!(bessel_mod_i0(f64::NAN).is_nan());
         assert_eq!(bessel_mod_i0(0.0), 1.0);
 
         // Mathematica: X = {-4, 1, 16}; Table[{X[[i]], N[BesselI[0, X[[i]]], 50]}, {i, 1, 3}]
@@ -373,6 +389,7 @@ mod tests {
 
     #[test]
     fn bessel_mod_i1_works() {
+        assert!(bessel_mod_i1(f64::NAN).is_nan());
         assert_eq!(bessel_mod_i1(0.0), 0.0);
 
         // Mathematica: X = {-4, 1, 16, -15}; Table[{X[[i]], N[BesselI[1, X[[i]]], 50]}, {i, 1, 4}]
@@ -425,6 +442,8 @@ mod tests {
 
     #[test]
     fn bessel_mod_in_edge_cases_work() {
+        assert!(bessel_mod_in(2, f64::NAN).is_nan());
+
         //
         // x * x <= 8.0 MIN_POSITIVE
         //
@@ -443,6 +462,7 @@ mod tests {
 
     #[test]
     fn bessel_mod_k0_works() {
+        assert!(bessel_mod_k0(f64::NAN).is_nan());
         assert!(bessel_mod_k0(-1.0).is_nan());
         assert_eq!(bessel_mod_k0(0.0), f64::INFINITY);
 
@@ -461,6 +481,7 @@ mod tests {
 
     #[test]
     fn bessel_mod_k1_works() {
+        assert!(bessel_mod_k1(f64::NAN).is_nan());
         assert!(bessel_mod_k1(-1.0).is_nan());
         assert_eq!(bessel_mod_k1(0.0), f64::INFINITY);
 
@@ -479,12 +500,13 @@ mod tests {
 
     #[test]
     fn bessel_mod_kn_with_n0_n1_works() {
-        assert_eq!(bessel_mod_kn(0, 0.0), f64::INFINITY);
-        assert_eq!(bessel_mod_kn(1, 0.0), f64::INFINITY);
+        approx_eq(bessel_mod_kn(0, 0.5), 0.924419071227666, 1e-15);
+        approx_eq(bessel_mod_kn(1, 0.5), 1.656441120003301, 1e-15);
     }
 
     #[test]
     fn bessel_mod_kn_works() {
+        assert!(bessel_mod_kn(2, f64::NAN).is_nan());
         assert!(bessel_mod_kn(2, -1.0).is_nan());
         assert_eq!(bessel_mod_kn(2, 0.0), f64::INFINITY);
 

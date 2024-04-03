@@ -49,7 +49,8 @@ pub fn elliptic_f(phi: f64, k: f64) -> Result<f64, StrError> {
     if f64::abs(k * s - 1.0) < 10.0 * f64::EPSILON {
         return Ok(f64::INFINITY);
     }
-    let ans = s * rf(f64::powf(f64::cos(phi), 2.0), (1.0 - s * k) * (1.0 + s * k), 1.0)?;
+    let c = f64::cos(phi);
+    let ans = s * rf(c * c, (1.0 - s * k) * (1.0 + s * k), 1.0)?;
     Ok(ans)
 }
 
@@ -96,9 +97,11 @@ pub fn elliptic_e(phi: f64, k: f64) -> Result<f64, StrError> {
         return Ok(phi);
     }
     let s = f64::sin(phi);
-    let cc = f64::powf(f64::cos(phi), 2.0);
+    let c = f64::cos(phi);
+    let cc = c * c;
+    let p = s * s * k * k;
     let q = (1.0 - s * k) * (1.0 + s * k);
-    let ans = s * (rf(cc, q, 1.0)? - (f64::powf(s * k, 2.0)) * rd(cc, q, 1.0)? / 3.0);
+    let ans = s * (rf(cc, q, 1.0)? - p * rd(cc, q, 1.0)? / 3.0);
     Ok(ans)
 }
 
@@ -156,7 +159,8 @@ pub fn elliptic_pi(n: f64, phi: f64, k: f64) -> Result<f64, StrError> {
     }
     let minus_n = -n;
     let t = minus_n * s * s;
-    let cc = f64::powf(f64::cos(phi), 2.0);
+    let c = f64::cos(phi);
+    let cc = c * c;
     let q = (1.0 - s * k) * (1.0 + s * k);
     let ans = s * (rf(cc, q, 1.0)? - t * rj(cc, q, 1.0, 1.0 + t)? / 3.0);
     Ok(ans)

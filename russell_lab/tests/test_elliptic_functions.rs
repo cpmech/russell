@@ -81,11 +81,11 @@ fn test_elliptic_pi() {
             };
             let s = f64::sin(*phi);
             let cond1 = f64::abs(s * k[i] - 1.0);
-            let cond2 = f64::abs(s * s * n[i] - 1.0);
+            let cond2 = f64::abs(s * n[i] - 1.0);
             if cond1 < f64::EPSILON || cond2 < f64::EPSILON {
-                assert!(elliptic_pi(n[i], p, k[i]).unwrap().is_infinite());
+                assert!(elliptic_pi(n[i], p, k[i] * k[i]).unwrap().is_infinite());
             } else {
-                approx_eq(elliptic_pi(n[i], p, k[i]).unwrap(), ff[i], 1e-13);
+                approx_eq(elliptic_pi(n[i], p, k[i] * k[i]).unwrap(), ff[i], 1e-13);
             }
         }
     }

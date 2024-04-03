@@ -45,12 +45,12 @@ pub fn elliptic_f(phi: f64, m: f64) -> Result<f64, StrError> {
         return Ok(phi);
     }
     let s = f64::sin(phi);
-    let ss = s * s;
-    if f64::abs(m * ss - 1.0) < 10.0 * f64::EPSILON {
+    let mss = m * s * s;
+    if f64::abs(mss - 1.0) < 10.0 * f64::EPSILON {
         return Ok(f64::INFINITY);
     }
     let c = f64::cos(phi);
-    let ans = s * rf(c * c, 1.0 - m * ss, 1.0)?;
+    let ans = s * rf(c * c, 1.0 - mss, 1.0)?;
     Ok(ans)
 }
 
@@ -97,42 +97,40 @@ pub fn elliptic_e(phi: f64, m: f64) -> Result<f64, StrError> {
     }
     let s = f64::sin(phi);
     let c = f64::cos(phi);
-    let ss = s * s;
     let cc = c * c;
-    let p = m * ss;
-    let q = 1.0 - p;
-    let ans = s * (rf(cc, q, 1.0)? - p * rd(cc, q, 1.0)? / 3.0);
+    let mss = m * s * s;
+    let q = 1.0 - mss;
+    let ans = s * (rf(cc, q, 1.0)? - mss * rd(cc, q, 1.0)? / 3.0);
     Ok(ans)
 }
 
-/// Computes the elliptic integral of the third kind Π(n, φ, k)
+/// Computes the elliptic integral of the third kind Π(n, φ, m)
 ///
 /// ```text
 ///                 φ
 ///                ⌠                  dt
-/// Π(n, φ, k)  =  │  ___________________________________
+/// Π(n, φ, m)  =  │  ___________________________________
 ///                │                     _______________
-///                ⌡   (1 - n sin²(t)) \╱ 1 - k² sin²(t)
+///                ⌡   (1 - n sin²(t)) \╱ 1 - m sin²(t)
 ///               0
 ///
-/// 0 ≤ φ ≤ π/2   and   0 ≤ k·sin(φ) ≤ 1
+/// 0 ≤ φ ≤ π/2   and   0 ≤ m·sin²(φ) ≤ 1
 /// ```
 ///
-/// **Important:** Note that `k² = m`, where `m` is used in other tools
-/// such as the Mathematica `EllipticPi[ϕ, m]` function.
+/// **Important:** Note that `m = k²`, where `k` is sometimes used in other libraries.
 ///
 /// # Input
 ///
-/// * `phi` -- `0 ≤ φ ≤ π/2`
-/// * `k` -- `0 ≤ k·sin(φ) ≤ 1`
-///
-/// **Note:** The sign convention for `n` corresponds to that of Abramowitz and Stegun.
+/// * `n` -- The sign of `n` corresponds to Abramowitz and Stegun (the same as in Mathematica).
+///   Note that this sign is reversed in Press et al.
+/// * `phi` -- Must satisfy: `0 ≤ φ ≤ π/2`
+/// * `m` -- Must satisfy: `0 ≤ m·sin²(φ) ≤ 1`
 ///
 /// # Special cases
 ///
-/// * `Π(n, φ, k) = Inf` if `k·sin(φ) == 1`
-/// * `Π(n, φ, k) = Inf` if `n·sin²(φ) == 1`
-///	* `Π(n, 0.0, k) = 0.0`
+/// * `Π(n, φ, m) = Inf` if `m·sin²(φ) == 1`
+/// * `Π(n, φ, m) = Inf` if `n·sin²(φ) == 1`
+///	* `Π(n, 0.0, m) = 0.0`
 ///
 /// # References:
 ///
@@ -140,9 +138,9 @@ pub fn elliptic_e(phi: f64, m: f64) -> Result<f64, StrError> {
 ///   Scientific Computing. Third Edition. Cambridge University Press. 1235p.
 /// * Abramowitz M, Stegun IA (1972) Handbook of Mathematical Functions with Formulas, Graphs,
 ///   and Mathematical Tables. U.S. Department of Commerce, NIST
-pub fn elliptic_pi(n: f64, phi: f64, k: f64) -> Result<f64, StrError> {
-    if phi < 0.0 || k < 0.0 {
-        return Err("phi and k must be non-negative");
+pub fn elliptic_pi(n: f64, phi: f64, m: f64) -> Result<f64, StrError> {
+    if phi < 0.0 || m < 0.0 {
+        return Err("phi and m must be non-negative");
     }
     if phi > PI / 2.0 + f64::EPSILON {
         return Err("phi must be in 0 ≤ phi ≤ π/2");
@@ -151,18 +149,19 @@ pub fn elliptic_pi(n: f64, phi: f64, k: f64) -> Result<f64, StrError> {
         return Ok(0.0);
     }
     let s = f64::sin(phi);
-    if f64::abs(k * s - 1.0) < 10.0 * f64::EPSILON {
+    let mss = m * s * s;
+    if f64::abs(mss - 1.0) < 10.0 * f64::EPSILON {
         return Ok(f64::INFINITY);
     }
-    if f64::abs(n * s * s - 1.0) < 10.0 * f64::EPSILON {
+    let nss = n * s * s;
+    if f64::abs(nss - 1.0) < 10.0 * f64::EPSILON {
         return Ok(f64::INFINITY);
     }
-    let minus_n = -n;
-    let t = minus_n * s * s;
     let c = f64::cos(phi);
     let cc = c * c;
-    let q = (1.0 - s * k) * (1.0 + s * k);
-    let ans = s * (rf(cc, q, 1.0)? - t * rj(cc, q, 1.0, 1.0 + t)? / 3.0);
+    let q = 1.0 - mss;
+    let p = 1.0 - nss;
+    let ans = s * (rf(cc, q, 1.0)? + nss * rj(cc, q, 1.0, p)? / 3.0);
     Ok(ans)
 }
 
@@ -469,7 +468,7 @@ const RC_C4: f64 = 9.0 / 22.0;
 mod tests {
     use super::{elliptic_e, elliptic_f, elliptic_pi, rc, rd, rf, rj};
     use crate::approx_eq;
-    use crate::math::{PI, SQRT_2};
+    use crate::math::PI;
 
     #[test]
     fn carlson_functions_capture_errors() {
@@ -525,7 +524,8 @@ mod tests {
         assert_eq!(elliptic_f(PI / 4.0, 0.99 * f64::MIN_POSITIVE).unwrap(), PI / 4.0);
         let mss = 1.0; // m·sin²(φ)
         let s = f64::sin(PI / 8.0);
-        assert_eq!(elliptic_f(PI / 8.0, mss / (s * s)).unwrap(), f64::INFINITY);
+        let ss = s * s;
+        assert_eq!(elliptic_f(PI / 8.0, mss / ss).unwrap(), f64::INFINITY);
         assert_eq!(elliptic_f(PI / 4.0, 2.0).unwrap(), f64::INFINITY);
         assert_eq!(elliptic_f(PI / 2.0, 1.0).unwrap(), f64::INFINITY);
     }
@@ -633,11 +633,11 @@ mod tests {
     fn elliptic_pi_captures_errors() {
         assert_eq!(
             elliptic_pi(1.0, -1.0, 0.0).err(),
-            Some("phi and k must be non-negative")
+            Some("phi and m must be non-negative")
         );
         assert_eq!(
             elliptic_pi(1.0, 1.0, -1.0).err(),
-            Some("phi and k must be non-negative")
+            Some("phi and m must be non-negative")
         );
         assert_eq!(
             elliptic_pi(2.0, PI / 2.0 + 1.0, 1.0).err(),
@@ -648,13 +648,13 @@ mod tests {
     #[test]
     fn elliptic_pi_edge_cases_work() {
         assert_eq!(elliptic_pi(1.0, 0.99 * f64::MIN_POSITIVE, 0.0).unwrap(), 0.0);
-        let k_times_sin_phi = 1.0;
-        let k = 2.0;
-        assert_eq!(
-            elliptic_pi(1.0, f64::asin(k_times_sin_phi / k), k).unwrap(),
-            f64::INFINITY
-        );
-        assert_eq!(elliptic_pi(1.0, PI / 4.0, SQRT_2).unwrap(), f64::INFINITY);
+        let mss = 1.0; // m·sin²(φ)
+        let nss = 1.0; // n·sin²(φ)
+        let s = f64::sin(PI / 8.0);
+        let ss = s * s;
+        assert_eq!(elliptic_pi(1.0, PI / 8.0, mss / ss).unwrap(), f64::INFINITY);
+        assert_eq!(elliptic_pi(nss / ss, PI / 8.0, 0.5).unwrap(), f64::INFINITY);
+        assert_eq!(elliptic_pi(1.0, PI / 4.0, 2.0).unwrap(), f64::INFINITY);
         assert_eq!(elliptic_pi(1.0, PI / 2.0, 1.0).unwrap(), f64::INFINITY);
 
         #[rustfmt::skip]
@@ -675,7 +675,7 @@ mod tests {
         ];
         for (n, phi, k) in cases {
             // println!("n = {:>3}, phi = {}π/8, k = {:>4}", n, 8.0 * phi / PI, k,);
-            assert!(elliptic_pi(n, phi, k).unwrap().is_infinite());
+            assert!(elliptic_pi(n, phi, k * k).unwrap().is_infinite());
         }
     }
 
@@ -776,7 +776,7 @@ mod tests {
         ];
         for (n, phi, k, tol, reference) in mathematica {
             // println!("n = {}, phi = {}π/8, k = {:?}", n, 8.0 * phi / PI, k);
-            approx_eq(elliptic_pi(n, phi, k).unwrap(), reference, tol);
+            approx_eq(elliptic_pi(n, phi, k * k).unwrap(), reference, tol);
         }
     }
 }

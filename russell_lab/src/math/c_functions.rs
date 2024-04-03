@@ -6,7 +6,7 @@ extern "C" {
     fn c_ldexp(frac: f64, exp: i32) -> f64;
 }
 
-/// Returns the error function (wraps C-code: erf)
+/// Evaluates the error function
 ///
 /// Reference: <https://www.cplusplus.com/reference/cmath/erf/>
 ///
@@ -16,7 +16,7 @@ pub fn erf(x: f64) -> f64 {
     unsafe { c_erf(x) }
 }
 
-/// Returns the complementary error function (wraps C-code: erfc)
+/// Evaluates the complementary error function
 ///
 /// Reference: <https://www.cplusplus.com/reference/cmath/erfc/>
 ///
@@ -26,7 +26,7 @@ pub fn erfc(x: f64) -> f64 {
     unsafe { c_erfc(x) }
 }
 
-/// Returns the Gamma function Γ (wraps C-code: tgamma)
+/// Evaluates the Gamma function Γ
 ///
 /// Reference: <https://www.cplusplus.com/reference/cmath/tgamma/>
 #[inline]

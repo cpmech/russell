@@ -2,13 +2,15 @@ extern "C" {
     fn c_erf(x: f64) -> f64;
     fn c_erfc(x: f64) -> f64;
     fn c_gamma(x: f64) -> f64;
+    fn c_frexp(x: f64, exp: *mut i32) -> f64;
+    fn c_ldexp(frac: f64, exp: i32) -> f64;
 }
 
 /// Returns the error function (wraps C-code: erf)
 ///
-/// Code from: <https://www.cplusplus.com/reference/cmath/erf/>
+/// Reference: <https://www.cplusplus.com/reference/cmath/erf/>
 ///
-/// Reference: <https://en.wikipedia.org/wiki/Error_function>
+/// See also: <https://en.wikipedia.org/wiki/Error_function>
 #[inline]
 pub fn erf(x: f64) -> f64 {
     unsafe { c_erf(x) }
@@ -16,9 +18,9 @@ pub fn erf(x: f64) -> f64 {
 
 /// Returns the complementary error function (wraps C-code: erfc)
 ///
-/// Code from: <https://www.cplusplus.com/reference/cmath/erfc/>
+/// Reference: <https://www.cplusplus.com/reference/cmath/erfc/>
 ///
-/// Reference: <https://en.wikipedia.org/wiki/Error_function>
+/// See also: <https://en.wikipedia.org/wiki/Error_function>
 #[inline]
 pub fn erfc(x: f64) -> f64 {
     unsafe { c_erfc(x) }
@@ -26,10 +28,68 @@ pub fn erfc(x: f64) -> f64 {
 
 /// Returns the Gamma function Γ (wraps C-code: tgamma)
 ///
-/// Code from: <https://www.cplusplus.com/reference/cmath/tgamma/>
+/// Reference: <https://www.cplusplus.com/reference/cmath/tgamma/>
 #[inline]
 pub fn gamma(x: f64) -> f64 {
     unsafe { c_gamma(x) }
+}
+
+/// Gets the significand and exponent of a number
+///
+/// Breaks a value x into a normalized fraction and an integral power of two
+///
+/// Returns `(frac, exp)` satisfying:
+///
+/// ```text
+/// x == frac · 2^exp
+/// ```
+///
+/// with the absolute value of frac in the interval [½, 1).
+///
+/// The special cases are:
+///
+///	* `frexp(±0.0) = ±0.0, 0`
+///	* `frexp(±Inf) = ±Inf, 0`
+///	* `frexp(NaN)  = NaN,  0`
+///
+/// Reference: <https://cplusplus.com/reference/cmath/frexp/>
+pub fn frexp(x: f64) -> (f64, i32) {
+    if x == 0.0 {
+        return (x, 0); // correctly return -0
+    } else if f64::is_infinite(x) || f64::is_nan(x) {
+        return (x, 0);
+    }
+    unsafe {
+        let mut exp: i32 = 0;
+        let frac = c_frexp(x, &mut exp);
+        (frac, exp)
+    }
+}
+
+/// Generates a number from significand and exponent
+///
+/// Returns:
+///
+/// ```text
+/// x = frac · 2^exp
+/// ```
+///
+/// Returns the result of multiplying x (the significand) by 2 raised to the power of exp (the exponent).
+///
+/// The special cases are:
+///
+/// * `ldexp(±0.0, exp) = ±0.0`
+/// * `ldexp(±Inf, exp) = ±Inf`
+/// * `ldexp(NaN,  exp) = NaN`
+///
+/// Reference: <https://cplusplus.com/reference/cmath/ldexp/>
+pub fn ldexp(frac: f64, exp: i32) -> f64 {
+    if frac == 0.0 {
+        return frac; // correctly return -0
+    } else if f64::is_infinite(frac) || f64::is_nan(frac) {
+        return frac;
+    }
+    unsafe { c_ldexp(frac, exp) }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

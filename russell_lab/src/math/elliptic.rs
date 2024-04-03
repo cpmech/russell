@@ -1,40 +1,39 @@
 use super::{ONE_BY_3, PI};
 use crate::StrError;
 
-/// Computes the elliptic integral of the first kind F(φ, k)
+/// Computes the elliptic integral of the first kind F(φ, m)
 ///
 /// ```text
 ///              φ
 ///             ⌠          dt
-/// F(φ, k)  =  │  ___________________
+/// F(φ, m)  =  │  ___________________
 ///             │     _______________
-///             ⌡   \╱ 1 - k² sin²(t)
+///             ⌡   \╱ 1 - m sin²(t)
 ///            0
 ///
-/// 0 ≤ φ ≤ π/2   and   0 ≤ k·sin(φ) ≤ 1
+/// 0 ≤ φ ≤ π/2   and   0 ≤ m·sin²(φ) ≤ 1
 /// ```
 ///
-/// **Important:** Note that `k² = m`, where `m` is used in other tools
-/// such as the Mathematica `EllipticF[ϕ, m]` function.
+/// **Important:** Note that `m = k²`, where `k` is sometimes used in other libraries.
 ///
 /// # Input
 ///
-/// * `phi`  -- `0 ≤ φ ≤ π/2`
-/// * `k` --  `0 ≤ k·sin(φ) ≤ 1`
+/// * `phi` -- Must satisfy: `0 ≤ φ ≤ π/2`
+/// * `m` -- Must satisfy: `0 ≤ m·sin²(φ) ≤ 1`
 ///
 /// # Special cases
 ///
-/// * `F(φ, k) = Inf` if `k·sin(φ) == 1`
-///	* `F(0.0, k) = 0.0`
+/// * `F(φ, m) = Inf` if `m·sin²(φ) == 1`
+///	* `F(0.0, m) = 0.0`
 ///	* `F(φ, 0.0) = φ`
 ///
 /// # References
 ///
 /// * Press WH, Teukolsky SA, Vetterling WT, Flannery BP (2007) Numerical Recipes: The Art of
 ///   Scientific Computing. Third Edition. Cambridge University Press. 1235p.
-pub fn elliptic_f(phi: f64, k: f64) -> Result<f64, StrError> {
-    if phi < 0.0 || k < 0.0 {
-        return Err("phi and k must be non-negative");
+pub fn elliptic_f(phi: f64, m: f64) -> Result<f64, StrError> {
+    if phi < 0.0 || m < 0.0 {
+        return Err("phi and m must be non-negative");
     }
     if phi > PI / 2.0 + f64::EPSILON {
         return Err("phi must be in 0 ≤ phi ≤ π/2");
@@ -42,15 +41,16 @@ pub fn elliptic_f(phi: f64, k: f64) -> Result<f64, StrError> {
     if phi < f64::MIN_POSITIVE {
         return Ok(0.0);
     }
-    if k < f64::MIN_POSITIVE {
+    if m < f64::MIN_POSITIVE {
         return Ok(phi);
     }
     let s = f64::sin(phi);
-    if f64::abs(k * s - 1.0) < 10.0 * f64::EPSILON {
+    let ss = s * s;
+    if f64::abs(m * ss - 1.0) < 10.0 * f64::EPSILON {
         return Ok(f64::INFINITY);
     }
     let c = f64::cos(phi);
-    let ans = s * rf(c * c, (1.0 - s * k) * (1.0 + s * k), 1.0)?;
+    let ans = s * rf(c * c, 1.0 - m * ss, 1.0)?;
     Ok(ans)
 }
 
@@ -511,8 +511,8 @@ mod tests {
 
     #[test]
     fn elliptic_f_captures_errors() {
-        assert_eq!(elliptic_f(-1.0, 0.0).err(), Some("phi and k must be non-negative"));
-        assert_eq!(elliptic_f(1.0, -1.0).err(), Some("phi and k must be non-negative"));
+        assert_eq!(elliptic_f(-1.0, 0.0).err(), Some("phi and m must be non-negative"));
+        assert_eq!(elliptic_f(1.0, -1.0).err(), Some("phi and m must be non-negative"));
         assert_eq!(
             elliptic_f(PI / 2.0 + 1.0, 1.0).err(),
             Some("phi must be in 0 ≤ phi ≤ π/2")
@@ -523,10 +523,10 @@ mod tests {
     fn elliptic_f_edge_cases_work() {
         assert_eq!(elliptic_f(0.99 * f64::MIN_POSITIVE, 0.0).unwrap(), 0.0);
         assert_eq!(elliptic_f(PI / 4.0, 0.99 * f64::MIN_POSITIVE).unwrap(), PI / 4.0);
-        let k_times_sin_phi = 1.0;
-        let k = 2.0;
-        assert_eq!(elliptic_f(f64::asin(k_times_sin_phi / k), k).unwrap(), f64::INFINITY);
-        assert_eq!(elliptic_f(PI / 4.0, SQRT_2).unwrap(), f64::INFINITY);
+        let mss = 1.0; // m·sin²(φ)
+        let s = f64::sin(PI / 8.0);
+        assert_eq!(elliptic_f(PI / 8.0, mss / (s * s)).unwrap(), f64::INFINITY);
+        assert_eq!(elliptic_f(PI / 4.0, 2.0).unwrap(), f64::INFINITY);
         assert_eq!(elliptic_f(PI / 2.0, 1.0).unwrap(), f64::INFINITY);
     }
 
@@ -564,7 +564,7 @@ mod tests {
         ];
         for (phi, k, tol, reference) in mathematica {
             // println!("phi = {}π/8, k = {:?}", 8.0 * phi / PI, k);
-            approx_eq(elliptic_f(phi, k).unwrap(), reference, tol);
+            approx_eq(elliptic_f(phi, k * k).unwrap(), reference, tol);
         }
     }
 

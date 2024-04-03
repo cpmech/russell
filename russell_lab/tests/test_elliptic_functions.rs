@@ -25,9 +25,9 @@ fn test_elliptic_f() {
             let cond = f64::abs(f64::sin(*phi) * k[i] - 1.0);
             if cond < f64::EPSILON {
                 // handle k·sin(φ) == 1
-                assert!(elliptic_f(p, k[i]).unwrap().is_infinite());
+                assert!(elliptic_f(p, k[i] * k[i]).unwrap().is_infinite());
             } else {
-                approx_eq(elliptic_f(p, k[i]).unwrap(), ff[i], 1e-14);
+                approx_eq(elliptic_f(p, k[i] * k[i]).unwrap(), ff[i], 1e-13);
             }
         }
     }

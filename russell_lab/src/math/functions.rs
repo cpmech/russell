@@ -24,7 +24,7 @@ pub fn sign(x: f64) -> f64 {
     }
 }
 
-// Implements the ramp function (Macaulay brackets)
+/// Implements the ramp function (Macaulay brackets)
 ///
 /// ```text
 /// ramp(x) = │ 0   if x < 0

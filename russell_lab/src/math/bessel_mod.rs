@@ -1,6 +1,10 @@
 use super::{frexp, ldexp};
 
-/// Evaluates the modified Bessel function I0(x) for any real x.
+/// Evaluates the modified Bessel function I0(x) for any real x
+///
+/// Special cases:
+///
+///	* `I0(0.0) = 1.0`
 pub fn bessel_mod_i0(x: f64) -> f64 {
     if x == 0.0 {
         return 1.0;
@@ -16,7 +20,7 @@ pub fn bessel_mod_i0(x: f64) -> f64 {
     return f64::exp(ax) * poly(&I0PP, 4, z) / (poly(&I0QQ, 5, z) * f64::sqrt(ax));
 }
 
-/// Evaluates the modified Bessel function I1(x) for any real x.
+/// Evaluates the modified Bessel function I1(x) for any real x
 pub fn bessel_mod_i1(x: f64) -> f64 {
     if x == 0.0 {
         return 0.0;
@@ -27,7 +31,7 @@ pub fn bessel_mod_i1(x: f64) -> f64 {
         let y = x * x;
         return x * poly(&I1P, 13, y) / poly(&I1Q, 4, 225.0 - y);
     }
-    // rational approximation with exp(x)/sqrt(x) factored out.
+    // rational approximation with exp(x)/sqrt(x) factored out
     let z = 1.0 - 15.0 / ax;
     let ans = f64::exp(ax) * poly(&I1PP, 4, z) / (poly(&I1QQ, 5, z) * f64::sqrt(ax));
     if x > 0.0 {
@@ -84,10 +88,12 @@ pub fn bessel_mod_in(n: usize, x: f64) -> f64 {
     ans
 }
 
-/// Evaluates the modified Bessel function K0(x) for positive real x.
-//   Special cases
-//     K0(x=0) = +Inf
-//     K0(x<0) = NaN
+/// Evaluates the modified Bessel function K0(x) for positive real x
+///
+/// Special cases:
+///
+/// * `K0(x < 0.0) = NaN`
+/// * `K0(0.0)     = Inf`
 pub fn bessel_mod_k0(x: f64) -> f64 {
     if x < 0.0 {
         return f64::NAN;
@@ -106,10 +112,12 @@ pub fn bessel_mod_k0(x: f64) -> f64 {
     f64::exp(-x) * poly(&K0PP, 7, z) / (poly(&K0QQ, 7, z) * f64::sqrt(x))
 }
 
-/// Evaluates the modified Bessel function K1(x) for positive real x.
-//   Special cases
-//     K0(x=0) = +Inf
-//     K0(x<0) = NaN
+/// Evaluates the modified Bessel function K1(x) for positive real x
+///
+/// Special cases:
+///
+/// * `K1(x < 0.0) = NaN`
+/// * `K1(0.0)     = Inf`
 pub fn bessel_mod_k1(x: f64) -> f64 {
     if x < 0.0 {
         return f64::NAN;
@@ -129,6 +137,11 @@ pub fn bessel_mod_k1(x: f64) -> f64 {
 }
 
 /// Evaluates the modified Bessel function Kn(x) for positive x and n ≥ 0
+///
+/// Special cases:
+///
+/// * `Kn(x < 0.0) = NaN`
+/// * `Kn(0.0)     = Inf`
 pub fn bessel_mod_kn(n: i32, x: f64) -> f64 {
     if n == 0 {
         return bessel_mod_k0(x);
@@ -143,7 +156,7 @@ pub fn bessel_mod_kn(n: i32, x: f64) -> f64 {
         return f64::INFINITY;
     }
     let tox = 2.0 / x;
-    let mut bkm = bessel_mod_k0(x); // upward recurrence for all x...
+    let mut bkm = bessel_mod_k0(x); // upward recurrence for all x
     let mut bk = bessel_mod_k1(x);
     for j in 1..n {
         let bkp = bkm + (j as f64) * tox * bk;

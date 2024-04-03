@@ -46,7 +46,7 @@ pub fn gamma(x: f64) -> f64 {
 ///
 /// with the absolute value of frac in the interval [0.5, 1)
 ///
-/// The special cases are:
+/// Special cases:
 ///
 ///	* `frexp(±0.0) = ±0.0, 0`
 ///	* `frexp(±Inf) = ±Inf, 0`
@@ -76,7 +76,7 @@ pub fn frexp(x: f64) -> (f64, i32) {
 ///
 /// Returns the result of multiplying x (the significand) by 2 raised to the power of exp (the exponent).
 ///
-/// The special cases are:
+/// Special cases:
 ///
 /// * `ldexp(±0.0, exp) = ±0.0`
 /// * `ldexp(±Inf, exp) = ±Inf`

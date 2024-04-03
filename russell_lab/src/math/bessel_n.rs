@@ -61,9 +61,9 @@ const TWO_302: f64 =
 // e.g.: f64::exp(LOWER_X_TO_OVERFLOW_EXP + 1e-13)) = Inf;
 const LOWER_X_TO_OVERFLOW_EXP: f64 = 7.09782712893383973096e+02;
 
-/// Evaluates the order-n Bessel function of the first kind
+/// Evaluates the Bessel function Jn(x) for any real x
 ///
-/// The special cases are:
+/// Special cases:
 ///
 ///	* `Jn(n, NaN)  = NaN`
 ///	* `Jn(n, ±Inf) = 0.0`
@@ -248,9 +248,9 @@ pub fn bessel_jn(n: i32, x: f64) -> f64 {
     }
 }
 
-/// Evaluates the order-n Bessel function of the second kind
+/// Evaluates the Bessel function Yn(x) for positive real x
 ///
-/// The special cases are:
+/// Special cases:
 ///
 /// * `Yn(n     , x < 0.0) = NaN`
 /// * `Yn(n     , NaN    ) = NaN`

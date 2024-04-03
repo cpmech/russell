@@ -1,4 +1,4 @@
-//! This module implements some mathematical functions, including wrapping C-code
+//! This module implements some mathematical functions
 
 mod bessel_0;
 mod bessel_1;

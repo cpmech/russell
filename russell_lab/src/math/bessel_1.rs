@@ -41,9 +41,9 @@ const S03: f64 = 1.17718464042623683263e-06; // 0x3EB3BFF8333F8498
 const S04: f64 = 5.04636257076217042715e-09; // 0x3E35AC88C97DFF2C
 const S05: f64 = 1.23542274426137913908e-11; // 0x3DAB2ACFCFB97ED8
 
-/// Evaluates the order-one Bessel function of the first kind
+/// Evaluates the Bessel function J1(x) for any real x
 ///
-/// The special cases are:
+/// Special cases:
 ///
 /// * `J1(NaN)  = NaN`
 /// * `J1(±Inf) = 0.0`
@@ -149,14 +149,14 @@ const V02: f64 = 1.35608801097516229404e-06; // 0x3EB6C05A894E8CA6
 const V03: f64 = 6.22741452364621501295e-09; // 0x3E3ABF1D5BA69A86
 const V04: f64 = 1.66559246207992079114e-11; // 0x3DB25039DACA772A
 
-// Evaluates the order-one Bessel function of the second kind
-//
-// The special cases are:
-//
-// * `Y1(x < 0.0) = NaN`
-// * `Y1(NaN)     = NaN`
-// * `Y1(+Inf)    = 0.0`
-// * `Y1(0.0)     = -Inf`
+/// Evaluates the Bessel function Y1(x) for positive real x
+///
+/// Special cases:
+///
+/// * `Y1(x < 0.0) = NaN`
+/// * `Y1(NaN)     = NaN`
+/// * `Y1(+Inf)    = 0.0`
+/// * `Y1(0.0)     = -Inf`
 pub fn bessel_y1(x: f64) -> f64 {
     //
     // Screen out x<=0 cases: y1(0)=-inf, y1(x<0)=NaN

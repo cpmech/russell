@@ -45,9 +45,9 @@ const S02: f64 = 1.16926784663337450260e-04; // 0x3F1EA6D2DD57DBF4
 const S03: f64 = 5.13546550207318111446e-07; // 0x3EA13B54CE84D5A9
 const S04: f64 = 1.16614003333790000205e-09; // 0x3E1408BCF4745D8F
 
-/// Evaluates the order-zero Bessel function of the first kind
+/// Evaluates the Bessel function J0(x) for any real x
 ///
-/// The special cases are:
+/// Special cases:
 ///
 ///	* `J0(NaN)  = NaN`
 ///	* `J0(±Inf) = 0.0`
@@ -146,9 +146,9 @@ const V02: f64 = 7.60068627350353253702e-05; // 0x3F13ECBBF578C6C1
 const V03: f64 = 2.59150851840457805467e-07; // 0x3E91642D7FF202FD
 const V04: f64 = 4.41110311332675467403e-10; // 0x3DFE50183BD6D9EF
 
-/// Evaluates the order-zero Bessel function of the second kind
+/// Evaluates the Bessel function Y0(x) for positive real x
 ///
-/// The special cases are:
+/// Special cases:
 ///
 /// * `Y0(x < 0.0) = NaN`
 /// * `Y0(NaN)     = NaN`

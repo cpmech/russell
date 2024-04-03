@@ -37,6 +37,12 @@ pub fn bessel_mod_i1(x: f64) -> f64 {
     }
 }
 
+// controls the accuracy in bessel_mod_in
+const ACC: f64 = 200.0;
+
+// half DBL_MAX_EXP
+const HALF_MAX_EXP: i32 = f64::MAX_EXP / 2;
+
 /// Evaluates the modified Bessel function In(x) for any real x and n ≥ 0
 pub fn bessel_mod_in(n: usize, x: f64) -> f64 {
     if n == 0 {
@@ -48,8 +54,6 @@ pub fn bessel_mod_in(n: usize, x: f64) -> f64 {
     if x * x <= 8.0 * f64::MIN_POSITIVE {
         return 0.0;
     }
-    const ACC: f64 = 200.0; // determines accuracy
-    const I_EXP: i32 = 1024 / 2; // aka numeric_limits<double>max_exponent / 2
     let tox = 2.0 / f64::abs(x);
     let mut bip = 0.0;
     let mut bi = 1.0;
@@ -61,11 +65,11 @@ pub fn bessel_mod_in(n: usize, x: f64) -> f64 {
         bip = bi;
         bi = bim;
         let (_, k) = frexp(bi);
-        if k > I_EXP {
+        if k > HALF_MAX_EXP {
             // re-normalize to prevent overflows
-            ans = ldexp(ans, -I_EXP);
-            bi = ldexp(bi, -I_EXP);
-            bip = ldexp(bip, -I_EXP);
+            ans = ldexp(ans, -HALF_MAX_EXP);
+            bi = ldexp(bi, -HALF_MAX_EXP);
+            bip = ldexp(bip, -HALF_MAX_EXP);
         }
         if j == n {
             ans = bip;
@@ -404,5 +408,23 @@ mod tests {
             // println!("n = {}, x = {:?}", n, x);
             approx_eq(bessel_mod_in(n, x), reference, tol);
         }
+    }
+
+    #[test]
+    fn bessel_mod_in_edge_cases_work() {
+        //
+        // x * x <= 8.0 MIN_POSITIVE
+        //
+        assert_eq!(bessel_mod_in(2, 0.99 * f64::sqrt(8.0 * f64::MIN_POSITIVE)), 0.0);
+
+        //
+        // k > HALF_MAX_EXP
+        //
+        // Mathematica: N[BesselI[2, 10^-153], 100]
+        approx_eq(
+            bessel_mod_in(2, 1e-153),
+            1.250000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e-307,
+            1e-322,
+        );
     }
 }

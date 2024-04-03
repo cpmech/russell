@@ -620,7 +620,7 @@ mod tests {
             (PI/2.0     , 1.0  , 1e-50, 1.0),
         ];
         for (phi, k, tol, reference) in mathematica {
-            println!("phi = {}π/8, k = {:?}", 8.0 * phi / PI, k);
+            // println!("phi = {}π/8, k = {:?}", 8.0 * phi / PI, k);
             approx_eq(elliptic_e(phi, k).unwrap(), reference, tol);
         }
     }

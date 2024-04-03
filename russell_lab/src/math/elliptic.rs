@@ -379,7 +379,7 @@ fn rj(x: f64, y: f64, z: f64, p: f64) -> Result<f64, StrError> {
 
 /// Computes the degenerate elliptic integral using Carlson's formula
 ///
-/// Computes Rc(x,y) where x must be nonnegative and y must be nonzero.
+/// Computes Rc(x,y) where x must be non-negative and y must be nonzero.
 /// If y < 0, the Cauchy principal value is returned.
 ///
 /// # References:
@@ -397,7 +397,7 @@ pub fn rc(x: f64, y: f64) -> Result<f64, StrError> {
         || (x + f64::abs(y)) > big
         || (y < -comp1 && x > 0.0 && x < comp2)
     {
-        return Err("(x,y) must be non-negative");
+        return Err("x must be non-negative. y must not be zero");
     }
     let (mut xt, mut yt, w) = if y > 0.0 {
         (x, y, 1.0)
@@ -463,9 +463,47 @@ const RC_C4: f64 = 9.0 / 22.0;
 
 #[cfg(test)]
 mod tests {
-    use super::{elliptic_e, elliptic_f, elliptic_pi};
+    use super::{elliptic_e, elliptic_f, elliptic_pi, rc, rd, rf, rj};
     use crate::approx_eq;
     use crate::math::{PI, SQRT_2};
+
+    #[test]
+    fn carlson_functions_capture_errors() {
+        let cases = [
+            (-1.0, 1.0, 1.0),
+            (1.0, -1.0, 1.0),
+            (1.0, 1.0, -1.0),
+            (0.0, 0.0, 1.0),
+            (0.0, 1.0, 0.0),
+            (1.0, 0.0, 0.0),
+        ];
+        for (x, y, z) in cases {
+            assert_eq!(
+                rf(x, y, z).err(),
+                Some("(x,y,z) must be non-negative and at most one can be zero")
+            );
+            assert_eq!(
+                rd(x, y, z).err(),
+                Some("(x,y) must be non-negative and at most one can be zero. z must be positive")
+            );
+            assert_eq!(
+                rj(x, y, z, 1.0).err(),
+                Some("(x,y,z) must be non-negative and at most one can be zero. p must be nonzero")
+            );
+        }
+        assert_eq!(
+            rd(1.0, 1.0, 0.0).err(),
+            Some("(x,y) must be non-negative and at most one can be zero. z must be positive")
+        );
+        assert_eq!(
+            rj(1.0, 1.0, 1.0, 0.0).err(),
+            Some("(x,y,z) must be non-negative and at most one can be zero. p must be nonzero")
+        );
+        let cases = [(-1.0, 1.0), (1.0, 0.0)];
+        for (x, y) in cases {
+            assert_eq!(rc(x, y).err(), Some("x must be non-negative. y must not be zero"));
+        }
+    }
 
     #[test]
     fn elliptic_f_captures_errors() {

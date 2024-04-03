@@ -18,6 +18,9 @@ pub fn bessel_mod_i0(x: f64) -> f64 {
 
 /// Evaluates the modified Bessel function I1(x) for any real x.
 pub fn bessel_mod_i1(x: f64) -> f64 {
+    if x == 0.0 {
+        return 0.0;
+    }
     let ax = f64::abs(x);
     if ax < 15.0 {
         // rational approximation
@@ -331,25 +334,41 @@ const K1QQ: [f64; 8] = [
 
 #[cfg(test)]
 mod tests {
-    use super::bessel_mod_i0;
+    use super::{bessel_mod_i0, bessel_mod_i1};
     use crate::approx_eq;
 
     #[test]
     fn bessel_mod_i0_works() {
         assert_eq!(bessel_mod_i0(0.0), 1.0);
 
-        // Mathematica: N[BesselI[0, 1], 50]
-        approx_eq(
-            bessel_mod_i0(1.0),
-            1.2660658777520083355982446252147175376076703113550,
-            1e-15,
-        );
+        // Mathematica: X = {-4, 1, 16}; Table[{X[[i]], N[BesselI[0, X[[i]]], 50]}, {i, 1, 3}]
+        #[rustfmt::skip]
+        let mathematica = [
+            (-4.0, 1e-14, 11.301921952136330496356270183217102497412616594435),
+            ( 1.0, 1e-15, 1.2660658777520083355982446252147175376076703113550),
+            (16.0, 1e-9, 893446.22792010501707086403097618845427806981885885),
+        ];
+        for (x, tol, reference) in mathematica {
+            // println!("x = {:?}", x);
+            approx_eq(bessel_mod_i0(x), reference, tol);
+        }
+    }
 
-        // Mathematica: N[BesselI[0, -29], 50]
-        approx_eq(
-            bessel_mod_i0(-25.0),
-            5.7745606064663103157713397973069382664332453978739e9,
-            1e-50,
-        );
+    #[test]
+    fn bessel_mod_i1_works() {
+        assert_eq!(bessel_mod_i1(0.0), 0.0);
+
+        // Mathematica: X = {-4, 1, 16, -15}; Table[{X[[i]], N[BesselI[1, X[[i]]], 50]}, {i, 1, 4}]
+        #[rustfmt::skip]
+        let mathematica = [
+            ( -4.0, 1e-14, -9.7594651537044499094751925673126809000559703332530),
+            (  1.0, 1e-15, 0.56515910399248502720769602760986330732889962162109),
+            ( 16.0, 1e-9, 865059.43585483947141807621749529138726744748495488),
+            (-15.0, 1e-9, -328124.92197020639673369815024598440792655583311133),
+        ];
+        for (x, tol, reference) in mathematica {
+            println!("x = {:?}", x);
+            approx_eq(bessel_mod_i1(x), reference, tol);
+        }
     }
 }

@@ -386,7 +386,7 @@ fn rj(x: f64, y: f64, z: f64, p: f64) -> Result<f64, StrError> {
 ///
 /// * Press WH, Teukolsky SA, Vetterling WT, Flannery BP (2007) Numerical Recipes: The Art of
 ///   Scientific Computing. Third Edition. Cambridge University Press. 1235p.
-pub fn rc(x: f64, y: f64) -> Result<f64, StrError> {
+fn rc(x: f64, y: f64) -> Result<f64, StrError> {
     let tiny = 5.0 * f64::MIN_POSITIVE;
     let big = 0.2 * f64::MAX;
     let comp1 = 2.236 / f64::sqrt(tiny);

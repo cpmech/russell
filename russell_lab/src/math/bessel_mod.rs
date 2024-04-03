@@ -338,7 +338,7 @@ const K1QQ: [f64; 8] = [
 
 #[cfg(test)]
 mod tests {
-    use super::{bessel_mod_i0, bessel_mod_i1, bessel_mod_in, bessel_mod_k0, bessel_mod_k1};
+    use super::{bessel_mod_i0, bessel_mod_i1, bessel_mod_in, bessel_mod_k0, bessel_mod_k1, bessel_mod_kn};
     use crate::approx_eq;
 
     #[test]
@@ -461,6 +461,36 @@ mod tests {
         for (x, tol, reference) in mathematica {
             // println!("x = {:?}", x);
             approx_eq(bessel_mod_k1(x), reference, tol);
+        }
+    }
+
+    #[test]
+    fn bessel_mod_kn_with_n0_n1_works() {
+        assert_eq!(bessel_mod_kn(0, 0.0), f64::INFINITY);
+        assert_eq!(bessel_mod_kn(1, 0.0), f64::INFINITY);
+    }
+
+    #[test]
+    fn bessel_mod_kn_works() {
+        assert!(bessel_mod_kn(2, -1.0).is_nan());
+        assert_eq!(bessel_mod_kn(2, 0.0), f64::INFINITY);
+
+        // Mathematica: X = {1, 4, 10}; Table[{n, X[[i]], N[BesselK[n, X[[i]]], 50]}, {n, 2, 4}, {i, 1, 3}]
+        #[rustfmt::skip]
+        let mathematica = [
+            (2,  1.0, 1e-15, 1.6248388986351774828107073822838437146593935281629),
+            (2,  4.0, 1e-50, 0.017401425529487240004937285970236523466929816382787), 
+            (2, 10.0, 1e-20, 0.000021509817006932768730664564423967127249206846180873),
+            (3,  1.0, 1e-14, 7.1012628247379445059803695306709921978991610026196),
+            (3,  4.0, 1e-17, 0.029884924416755671475321465951042591950771401371413),
+            (3, 10.0, 1e-19, 0.000027252700256598692089082683891958525581349618574983),
+            (4,  1.0, 1e-13, 44.232415847062844518692924566309796902054359543880),
+            (4,  4.0, 1e-17, 0.062228812154620747217919484896800411393086918439907),
+            (4, 10.0, 1e-19, 0.000037861437160891983984114174759142242598016617325863),
+        ];
+        for (n, x, tol, reference) in mathematica {
+            // println!("n = {}, x = {:?}", n, x);
+            approx_eq(bessel_mod_kn(n, x), reference, tol);
         }
     }
 }

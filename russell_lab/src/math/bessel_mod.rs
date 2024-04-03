@@ -6,7 +6,7 @@ use super::{frexp, ldexp};
 ///
 ///	* `I0(NaN) = NaN`
 ///	* `I0(0.0) = 1.0`
-pub fn bessel_mod_i0(x: f64) -> f64 {
+pub fn bessel_i0(x: f64) -> f64 {
     if f64::is_nan(x) {
         return f64::NAN;
     } else if x == 0.0 {
@@ -29,7 +29,7 @@ pub fn bessel_mod_i0(x: f64) -> f64 {
 ///
 ///	* `I1(NaN) = NaN`
 ///	* `I1(0.0) = 0.0`
-pub fn bessel_mod_i1(x: f64) -> f64 {
+pub fn bessel_i1(x: f64) -> f64 {
     if f64::is_nan(x) {
         return f64::NAN;
     } else if x == 0.0 {
@@ -51,7 +51,7 @@ pub fn bessel_mod_i1(x: f64) -> f64 {
     }
 }
 
-// controls the accuracy in bessel_mod_in
+// controls the accuracy in bessel_in
 const ACC: f64 = 200.0;
 
 // half DBL_MAX_EXP
@@ -63,13 +63,13 @@ const HALF_MAX_EXP: i32 = f64::MAX_EXP / 2;
 ///
 ///	* `In(NaN)       = NaN`
 /// * `In(small(x²)) = 0.0`
-pub fn bessel_mod_in(n: usize, x: f64) -> f64 {
+pub fn bessel_in(n: usize, x: f64) -> f64 {
     if f64::is_nan(x) {
         return f64::NAN;
     } else if n == 0 {
-        return bessel_mod_i0(x);
+        return bessel_i0(x);
     } else if n == 1 {
-        return bessel_mod_i1(x);
+        return bessel_i1(x);
     } else if x * x <= 8.0 * f64::MIN_POSITIVE {
         return 0.0;
     }
@@ -95,7 +95,7 @@ pub fn bessel_mod_in(n: usize, x: f64) -> f64 {
         }
         j -= 1;
     }
-    ans *= bessel_mod_i0(x) / bi; // normalize using I0
+    ans *= bessel_i0(x) / bi; // normalize using I0
     if x < 0.0 && (n & 1) != 0 {
         // negative and odd
         return -ans;
@@ -110,7 +110,7 @@ pub fn bessel_mod_in(n: usize, x: f64) -> f64 {
 ///	* `K0(NaN)     = NaN`
 /// * `K0(x < 0.0) = NaN`
 /// * `K0(0.0)     = Inf`
-pub fn bessel_mod_k0(x: f64) -> f64 {
+pub fn bessel_k0(x: f64) -> f64 {
     if f64::is_nan(x) || x < 0.0 {
         return f64::NAN;
     } else if x == 0.0 {
@@ -134,7 +134,7 @@ pub fn bessel_mod_k0(x: f64) -> f64 {
 ///	* `K1(NaN)     = NaN`
 /// * `K1(x < 0.0) = NaN`
 /// * `K1(0.0)     = Inf`
-pub fn bessel_mod_k1(x: f64) -> f64 {
+pub fn bessel_k1(x: f64) -> f64 {
     if f64::is_nan(x) || x < 0.0 {
         return f64::NAN;
     } else if x == 0.0 {
@@ -158,21 +158,21 @@ pub fn bessel_mod_k1(x: f64) -> f64 {
 ///	* `Kn(NaN)     = NaN`
 /// * `Kn(x < 0.0) = NaN`
 /// * `Kn(0.0)     = Inf`
-pub fn bessel_mod_kn(n: i32, x: f64) -> f64 {
+pub fn bessel_kn(n: i32, x: f64) -> f64 {
     if f64::is_nan(x) || x < 0.0 {
         return f64::NAN;
     } else if x == 0.0 {
         return f64::INFINITY;
     }
     if n == 0 {
-        return bessel_mod_k0(x);
+        return bessel_k0(x);
     }
     if n == 1 {
-        return bessel_mod_k1(x);
+        return bessel_k1(x);
     }
     let tox = 2.0 / x;
-    let mut bkm = bessel_mod_k0(x); // upward recurrence for all x
-    let mut bk = bessel_mod_k1(x);
+    let mut bkm = bessel_k0(x); // upward recurrence for all x
+    let mut bk = bessel_k1(x);
     for j in 1..n {
         let bkp = bkm + (j as f64) * tox * bk;
         bkm = bk;
@@ -366,13 +366,13 @@ const K1QQ: [f64; 8] = [
 
 #[cfg(test)]
 mod tests {
-    use super::{bessel_mod_i0, bessel_mod_i1, bessel_mod_in, bessel_mod_k0, bessel_mod_k1, bessel_mod_kn};
+    use super::{bessel_i0, bessel_i1, bessel_in, bessel_k0, bessel_k1, bessel_kn};
     use crate::approx_eq;
 
     #[test]
-    fn bessel_mod_i0_works() {
-        assert!(bessel_mod_i0(f64::NAN).is_nan());
-        assert_eq!(bessel_mod_i0(0.0), 1.0);
+    fn bessel_i0_works() {
+        assert!(bessel_i0(f64::NAN).is_nan());
+        assert_eq!(bessel_i0(0.0), 1.0);
 
         // Mathematica: X = {-4, 1, 16}; Table[{X[[i]], N[BesselI[0, X[[i]]], 50]}, {i, 1, 3}]
         #[rustfmt::skip]
@@ -383,14 +383,14 @@ mod tests {
         ];
         for (x, tol, reference) in mathematica {
             // println!("x = {:?}", x);
-            approx_eq(bessel_mod_i0(x), reference, tol);
+            approx_eq(bessel_i0(x), reference, tol);
         }
     }
 
     #[test]
-    fn bessel_mod_i1_works() {
-        assert!(bessel_mod_i1(f64::NAN).is_nan());
-        assert_eq!(bessel_mod_i1(0.0), 0.0);
+    fn bessel_i1_works() {
+        assert!(bessel_i1(f64::NAN).is_nan());
+        assert_eq!(bessel_i1(0.0), 0.0);
 
         // Mathematica: X = {-4, 1, 16, -15}; Table[{X[[i]], N[BesselI[1, X[[i]]], 50]}, {i, 1, 4}]
         #[rustfmt::skip]
@@ -402,18 +402,18 @@ mod tests {
         ];
         for (x, tol, reference) in mathematica {
             // println!("x = {:?}", x);
-            approx_eq(bessel_mod_i1(x), reference, tol);
+            approx_eq(bessel_i1(x), reference, tol);
         }
     }
 
     #[test]
-    fn bessel_mod_in_with_n0_n1_works() {
-        assert_eq!(bessel_mod_in(0, 0.0), 1.0);
-        assert_eq!(bessel_mod_in(1, 0.0), 0.0);
+    fn bessel_in_with_n0_n1_works() {
+        assert_eq!(bessel_in(0, 0.0), 1.0);
+        assert_eq!(bessel_in(1, 0.0), 0.0);
     }
 
     #[test]
-    fn bessel_mod_in_with_positive_n_works() {
+    fn bessel_in_with_positive_n_works() {
         // Mathematica: X = {-4, 1, 2, -5}; Table[{n, X[[i]], N[BesselI[n, X[[i]]], 50]}, {n, 2, 5}, {i, 1, 4}]
         #[rustfmt::skip]
         let mathematica = [
@@ -436,35 +436,35 @@ mod tests {
         ];
         for (n, x, tol, reference) in mathematica {
             // println!("n = {}, x = {:?}", n, x);
-            approx_eq(bessel_mod_in(n, x), reference, tol);
+            approx_eq(bessel_in(n, x), reference, tol);
         }
     }
 
     #[test]
-    fn bessel_mod_in_edge_cases_work() {
-        assert!(bessel_mod_in(2, f64::NAN).is_nan());
+    fn bessel_in_edge_cases_work() {
+        assert!(bessel_in(2, f64::NAN).is_nan());
 
         //
         // x * x <= 8.0 MIN_POSITIVE
         //
-        assert_eq!(bessel_mod_in(2, 0.99 * f64::sqrt(8.0 * f64::MIN_POSITIVE)), 0.0);
+        assert_eq!(bessel_in(2, 0.99 * f64::sqrt(8.0 * f64::MIN_POSITIVE)), 0.0);
 
         //
         // k > HALF_MAX_EXP
         //
         // Mathematica: N[BesselI[2, 10^-153], 100]
         approx_eq(
-            bessel_mod_in(2, 1e-153),
+            bessel_in(2, 1e-153),
             1.250000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e-307,
             1e-322,
         );
     }
 
     #[test]
-    fn bessel_mod_k0_works() {
-        assert!(bessel_mod_k0(f64::NAN).is_nan());
-        assert!(bessel_mod_k0(-1.0).is_nan());
-        assert_eq!(bessel_mod_k0(0.0), f64::INFINITY);
+    fn bessel_k0_works() {
+        assert!(bessel_k0(f64::NAN).is_nan());
+        assert!(bessel_k0(-1.0).is_nan());
+        assert_eq!(bessel_k0(0.0), f64::INFINITY);
 
         // Mathematica: X = {0.5, 1, 2}; Table[{X[[i]], N[BesselK[0, X[[i]]], 50]}, {i, 1, 3}]
         #[rustfmt::skip]
@@ -475,15 +475,15 @@ mod tests {
         ];
         for (x, tol, reference) in mathematica {
             // println!("x = {:?}", x);
-            approx_eq(bessel_mod_k0(x), reference, tol);
+            approx_eq(bessel_k0(x), reference, tol);
         }
     }
 
     #[test]
-    fn bessel_mod_k1_works() {
-        assert!(bessel_mod_k1(f64::NAN).is_nan());
-        assert!(bessel_mod_k1(-1.0).is_nan());
-        assert_eq!(bessel_mod_k1(0.0), f64::INFINITY);
+    fn bessel_k1_works() {
+        assert!(bessel_k1(f64::NAN).is_nan());
+        assert!(bessel_k1(-1.0).is_nan());
+        assert_eq!(bessel_k1(0.0), f64::INFINITY);
 
         // Mathematica: X = {0.5, 1, 2}; Table[{X[[i]], N[BesselK[0, X[[i]]], 50]}, {i, 1, 3}]
         #[rustfmt::skip]
@@ -494,21 +494,21 @@ mod tests {
         ];
         for (x, tol, reference) in mathematica {
             // println!("x = {:?}", x);
-            approx_eq(bessel_mod_k1(x), reference, tol);
+            approx_eq(bessel_k1(x), reference, tol);
         }
     }
 
     #[test]
-    fn bessel_mod_kn_with_n0_n1_works() {
-        approx_eq(bessel_mod_kn(0, 0.5), 0.924419071227666, 1e-15);
-        approx_eq(bessel_mod_kn(1, 0.5), 1.656441120003301, 1e-15);
+    fn bessel_kn_with_n0_n1_works() {
+        approx_eq(bessel_kn(0, 0.5), 0.924419071227666, 1e-15);
+        approx_eq(bessel_kn(1, 0.5), 1.656441120003301, 1e-15);
     }
 
     #[test]
-    fn bessel_mod_kn_works() {
-        assert!(bessel_mod_kn(2, f64::NAN).is_nan());
-        assert!(bessel_mod_kn(2, -1.0).is_nan());
-        assert_eq!(bessel_mod_kn(2, 0.0), f64::INFINITY);
+    fn bessel_kn_works() {
+        assert!(bessel_kn(2, f64::NAN).is_nan());
+        assert!(bessel_kn(2, -1.0).is_nan());
+        assert_eq!(bessel_kn(2, 0.0), f64::INFINITY);
 
         // Mathematica: X = {1, 4, 10}; Table[{n, X[[i]], N[BesselK[n, X[[i]]], 50]}, {n, 2, 4}, {i, 1, 3}]
         #[rustfmt::skip]
@@ -525,7 +525,7 @@ mod tests {
         ];
         for (n, x, tol, reference) in mathematica {
             // println!("n = {}, x = {:?}", n, x);
-            approx_eq(bessel_mod_kn(n, x), reference, tol);
+            approx_eq(bessel_kn(n, x), reference, tol);
         }
     }
 }

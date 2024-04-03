@@ -84,20 +84,20 @@ fn test_modified_bessel_functions_sml() {
     let k3 = dat.get("K3").unwrap();
 
     for (i, x) in xx.into_iter().enumerate() {
-        approx_eq(math::bessel_mod_i0(*x), i0[i], 1e-8);
-        approx_eq(math::bessel_mod_i1(*x), i1[i], 1e-7);
-        approx_eq(math::bessel_mod_in(2, *x), i2[i], 1e-7);
-        approx_eq(math::bessel_mod_in(3, *x), i3[i], 1e-7);
+        approx_eq(math::bessel_i0(*x), i0[i], 1e-8);
+        approx_eq(math::bessel_i1(*x), i1[i], 1e-7);
+        approx_eq(math::bessel_in(2, *x), i2[i], 1e-7);
+        approx_eq(math::bessel_in(3, *x), i3[i], 1e-7);
         if i == 0 {
-            assert_eq!(math::bessel_mod_k0(*x), f64::INFINITY);
-            assert_eq!(math::bessel_mod_k1(*x), f64::INFINITY);
-            assert_eq!(math::bessel_mod_kn(2, *x), f64::INFINITY);
-            assert_eq!(math::bessel_mod_kn(3, *x), f64::INFINITY);
+            assert_eq!(math::bessel_k0(*x), f64::INFINITY);
+            assert_eq!(math::bessel_k1(*x), f64::INFINITY);
+            assert_eq!(math::bessel_kn(2, *x), f64::INFINITY);
+            assert_eq!(math::bessel_kn(3, *x), f64::INFINITY);
         } else {
-            approx_eq(math::bessel_mod_k0(*x), k0[i], 1e-15);
-            approx_eq(math::bessel_mod_k1(*x), k1[i], 1e-15);
-            approx_eq(math::bessel_mod_kn(2, *x), k2[i], 1e-15);
-            approx_eq(math::bessel_mod_kn(3, *x), k3[i], 1e-14);
+            approx_eq(math::bessel_k0(*x), k0[i], 1e-15);
+            approx_eq(math::bessel_k1(*x), k1[i], 1e-15);
+            approx_eq(math::bessel_kn(2, *x), k2[i], 1e-15);
+            approx_eq(math::bessel_kn(3, *x), k3[i], 1e-14);
         }
     }
 }
@@ -121,20 +121,20 @@ fn test_modified_bessel_functions_big() {
     let k3 = dat.get("K3").unwrap();
 
     for (i, x) in xx.into_iter().enumerate() {
-        approx_eq(math::bessel_mod_i0(*x), i0[i], 1e-6);
-        approx_eq(math::bessel_mod_i1(*x), i1[i], 1e-6);
-        approx_eq(math::bessel_mod_in(2, *x), i2[i], 1e-6);
-        approx_eq(math::bessel_mod_in(3, *x), i3[i], 1e-6);
+        approx_eq(math::bessel_i0(*x), i0[i], 1e-6);
+        approx_eq(math::bessel_i1(*x), i1[i], 1e-6);
+        approx_eq(math::bessel_in(2, *x), i2[i], 1e-6);
+        approx_eq(math::bessel_in(3, *x), i3[i], 1e-6);
         if i == 0 {
-            assert_eq!(math::bessel_mod_k0(*x), f64::INFINITY);
-            assert_eq!(math::bessel_mod_k1(*x), f64::INFINITY);
-            assert_eq!(math::bessel_mod_kn(2, *x), f64::INFINITY);
-            assert_eq!(math::bessel_mod_kn(3, *x), f64::INFINITY);
+            assert_eq!(math::bessel_k0(*x), f64::INFINITY);
+            assert_eq!(math::bessel_k1(*x), f64::INFINITY);
+            assert_eq!(math::bessel_kn(2, *x), f64::INFINITY);
+            assert_eq!(math::bessel_kn(3, *x), f64::INFINITY);
         } else {
-            approx_eq(math::bessel_mod_k0(*x), k0[i], 1e-15);
-            approx_eq(math::bessel_mod_k1(*x), k1[i], 1e-14);
-            approx_eq(math::bessel_mod_kn(2, *x), k2[i], 1e-13);
-            approx_eq(math::bessel_mod_kn(3, *x), k3[i], 1e-12);
+            approx_eq(math::bessel_k0(*x), k0[i], 1e-15);
+            approx_eq(math::bessel_k1(*x), k1[i], 1e-14);
+            approx_eq(math::bessel_kn(2, *x), k2[i], 1e-13);
+            approx_eq(math::bessel_kn(3, *x), k3[i], 1e-12);
         }
     }
 }
@@ -154,9 +154,9 @@ fn test_modified_bessel_functions_neg() {
     let i3 = dat.get("I3").unwrap();
 
     for (i, x) in xx.into_iter().enumerate() {
-        approx_eq(math::bessel_mod_i0(*x), i0[i], 1e-12);
-        approx_eq(math::bessel_mod_i1(*x), i1[i], 1e-12);
-        approx_eq(math::bessel_mod_in(2, *x), i2[i], 1e-11);
-        approx_eq(math::bessel_mod_in(3, *x), i3[i], 1e-12);
+        approx_eq(math::bessel_i0(*x), i0[i], 1e-12);
+        approx_eq(math::bessel_i1(*x), i1[i], 1e-12);
+        approx_eq(math::bessel_in(2, *x), i2[i], 1e-11);
+        approx_eq(math::bessel_in(3, *x), i3[i], 1e-12);
     }
 }

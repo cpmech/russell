@@ -12,6 +12,7 @@
     "blasint",
     "brusselator",
     "bweuler",
+    "cmath",
     "condest",
     "Demmel",
     "devel",

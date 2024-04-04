@@ -253,9 +253,14 @@ mod tests {
     #[test]
     fn chebyshev_t_and_derivatives_work() {
         let nn = 5;
-        for i in 0..(nn + 1) {
-            let x = -1.5 + (i as f64) * 3.0 / (nn as f64);
-            // println!("x = {:?}, T3(x) = {:?}", x, chebyshev_tn(3, x));
+        let mut xx: Vec<_> = (0..(nn + 1))
+            .into_iter()
+            .map(|i| -1.5 + (i as f64) * 3.0 / (nn as f64))
+            .collect();
+        xx.push(-1.0);
+        xx.push(1.0);
+        for x in xx {
+            println!("x = {:?}, T3(x) = {:?}", x, chebyshev_tn(3, x));
             // n = 0
             assert_eq!(chebyshev_tn(0, x), 1.0);
             assert_eq!(chebyshev_tn_deriv1(0, x), 0.0);

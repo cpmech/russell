@@ -1,5 +1,3 @@
-#![allow(unused, non_snake_case)]
-
 use super::PI;
 
 /// Evaluates the Chebyshev polynomial of first kind Tn(x) using the trigonometric functions
@@ -141,22 +139,22 @@ pub fn chebyshev_tn_deriv2(n: usize, x: f64) -> f64 {
 ///
 /// i = 0 ... N
 /// ```
-pub fn chebyshev_gauss_points(N: usize) -> Vec<f64> {
-    let mut X = vec![0.0; N + 1];
-    let n = N as f64;
-    let d = 2.0 * n + 2.0;
-    let l = if (N & 1) == 0 {
+pub fn chebyshev_gauss_points(nn: usize) -> Vec<f64> {
+    let mut xx = vec![0.0; nn + 1];
+    let nf = nn as f64;
+    let d = 2.0 * nf + 2.0;
+    let l = if (nn & 1) == 0 {
         // even number of segments
-        N / 2
+        nn / 2
     } else {
         // odd number of segments
-        (N + 3) / 2 - 1
+        (nn + 3) / 2 - 1
     };
     for i in 0..l {
-        X[N - i] = f64::cos(((2 * i + 1) as f64) * PI / d);
-        X[i] = -X[N - i];
+        xx[nn - i] = f64::cos(((2 * i + 1) as f64) * PI / d);
+        xx[i] = -xx[nn - i];
     }
-    X
+    xx
 }
 
 /// Computes Chebyshev-Gauss-Lobatto points with symmetry
@@ -185,27 +183,27 @@ pub fn chebyshev_gauss_points(N: usize) -> Vec<f64> {
 ///
 /// * Baltensperger R and Trummer MR (2003) Spectral differencing with a twist,
 ///   SIAM Journal Scientific Computation 24(5):1465-1487
-pub fn chebyshev_lobatto_points(N: usize) -> Vec<f64> {
-    let mut X = vec![0.0; N + 1];
-    X[0] = -1.0;
-    X[N] = 1.0;
-    if N < 3 {
-        return X;
+pub fn chebyshev_lobatto_points(nn: usize) -> Vec<f64> {
+    let mut xx = vec![0.0; nn + 1];
+    xx[0] = -1.0;
+    xx[nn] = 1.0;
+    if nn < 3 {
+        return xx;
     }
-    let n = N as f64;
-    let d = 2.0 * n;
-    let l = if (N & 1) == 0 {
+    let nf = nn as f64;
+    let d = 2.0 * nf;
+    let l = if (nn & 1) == 0 {
         // even number of segments
-        N / 2
+        nn / 2
     } else {
         // odd number of segments
-        (N + 3) / 2 - 1
+        (nn + 3) / 2 - 1
     };
     for i in 1..l {
-        X[N - i] = f64::sin(PI * (n - 2.0 * (i as f64)) / d);
-        X[i] = -X[N - i];
+        xx[nn - i] = f64::sin(PI * (nf - 2.0 * (i as f64)) / d);
+        xx[i] = -xx[nn - i];
     }
-    X
+    xx
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

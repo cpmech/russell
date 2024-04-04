@@ -38,6 +38,8 @@ pub fn gamma(x: f64) -> f64 {
 /// Evaluates the natural logarithm of Γ(x)
 ///
 /// Reference: <https://cplusplus.com/reference/cmath/lgamma/>
+///
+/// **WARNING:** This function is not thread-safe! see, e.g., <https://en.cppreference.com/w/c/numeric/math/lgamma>
 #[inline]
 pub fn ln_gamma(x: f64) -> f64 {
     unsafe { c_ln_gamma(x) }

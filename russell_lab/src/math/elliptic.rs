@@ -50,8 +50,7 @@ pub fn elliptic_f(phi: f64, m: f64) -> Result<f64, StrError> {
         return Ok(f64::INFINITY);
     }
     let c = f64::cos(phi);
-    // unwrap because y=1-mss and z=1 cannot be zero
-    let ans = s * rf(c * c, 1.0 - mss, 1.0).unwrap();
+    let ans = s * rf(c * c, 1.0 - mss, 1.0)?;
     Ok(ans)
 }
 

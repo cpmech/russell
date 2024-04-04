@@ -1,4 +1,4 @@
-//! This module implements some auxiliary functionality, not necessarily related to linear algebra
+//! This module implements the "base" functionality
 
 mod as_array;
 mod auxiliary_blas;

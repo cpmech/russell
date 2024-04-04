@@ -157,11 +157,7 @@ pub fn chebyshev_gauss_points(N: usize) -> Vec<f64> {
         let l = (N + 3) / 2 - 1;
         for i in 0..l {
             X[N - i] = f64::cos(((2 * i + 1) as f64) * PI / d);
-            if i < l {
-                X[i] = -X[N - i];
-            } else {
-                panic!("STOP");
-            }
+            X[i] = -X[N - i];
         }
     }
     X
@@ -214,11 +210,7 @@ pub fn chebyshev_lobatto_points(N: usize) -> Vec<f64> {
         let l = (N + 3) / 2 - 1;
         for i in 1..l {
             X[N - i] = f64::sin(PI * (n - 2.0 * (i as f64)) / d);
-            if i < l {
-                X[i] = -X[N - i];
-            } else {
-                panic!("STOP");
-            }
+            X[i] = -X[N - i];
         }
     }
     X

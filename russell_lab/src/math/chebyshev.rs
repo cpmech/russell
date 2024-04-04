@@ -145,20 +145,16 @@ pub fn chebyshev_gauss_points(N: usize) -> Vec<f64> {
     let mut X = vec![0.0; N + 1];
     let n = N as f64;
     let d = 2.0 * n + 2.0;
-    if (N & 1) == 0 {
+    let l = if (N & 1) == 0 {
         // even number of segments
-        let l = N / 2;
-        for i in 0..l {
-            X[N - i] = f64::cos(((2 * i + 1) as f64) * PI / d);
-            X[i] = -X[N - i];
-        }
+        N / 2
     } else {
         // odd number of segments
-        let l = (N + 3) / 2 - 1;
-        for i in 0..l {
-            X[N - i] = f64::cos(((2 * i + 1) as f64) * PI / d);
-            X[i] = -X[N - i];
-        }
+        (N + 3) / 2 - 1
+    };
+    for i in 0..l {
+        X[N - i] = f64::cos(((2 * i + 1) as f64) * PI / d);
+        X[i] = -X[N - i];
     }
     X
 }
@@ -198,20 +194,16 @@ pub fn chebyshev_lobatto_points(N: usize) -> Vec<f64> {
     }
     let n = N as f64;
     let d = 2.0 * n;
-    if (N & 1) == 0 {
+    let l = if (N & 1) == 0 {
         // even number of segments
-        let l = N / 2;
-        for i in 1..l {
-            X[N - i] = f64::sin(PI * (n - 2.0 * (i as f64)) / d);
-            X[i] = -X[N - i];
-        }
+        N / 2
     } else {
         // odd number of segments
-        let l = (N + 3) / 2 - 1;
-        for i in 1..l {
-            X[N - i] = f64::sin(PI * (n - 2.0 * (i as f64)) / d);
-            X[i] = -X[N - i];
-        }
+        (N + 3) / 2 - 1
+    };
+    for i in 1..l {
+        X[N - i] = f64::sin(PI * (n - 2.0 * (i as f64)) / d);
+        X[i] = -X[N - i];
     }
     X
 }

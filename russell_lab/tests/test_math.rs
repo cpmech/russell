@@ -1,6 +1,5 @@
-#![allow(unused, non_upper_case_globals, non_snake_case)]
+#![allow(unused, non_upper_case_globals)]
 
-use num_traits::Signed;
 use russell_lab::math;
 
 //////////////////////////////////////////////////////////////////////////
@@ -15,7 +14,13 @@ use russell_lab::math;
 //                                                                      //
 //////////////////////////////////////////////////////////////////////////
 
-const vf: [f64; 10] = [
+// Defines an auxiliary structure holding a float and an integer
+struct Pair {
+    f: f64,
+    i: i32,
+}
+
+const VALUES: [f64; 10] = [
     4.9790119248836735e+00,
     7.7388724745781045e+00,
     -2.7688005719200159e-01,
@@ -34,7 +39,7 @@ const vf: [f64; 10] = [
 // to 26 digits (by using the "Digit number" drop-down control of each
 // calculator).
 
-const erf: [f64; 10] = [
+const SOLUTION_ERF: [f64; 10] = [
     5.1865354817738701906913566e-01,
     7.2623875834137295116929844e-01,
     -3.123458688281309990629839e-02,
@@ -47,7 +52,7 @@ const erf: [f64; 10] = [
     -7.8069386968009226729944677e-01,
 ];
 
-const erfc: [f64; 10] = [
+const SOLUTION_ERFC: [f64; 10] = [
     4.8134645182261298093086434e-01,
     2.7376124165862704883070156e-01,
     1.0312345868828130999062984e+00,
@@ -60,7 +65,7 @@ const erfc: [f64; 10] = [
     1.7806938696800922672994468e+00,
 ];
 
-const erfinv: [f64; 10] = [
+const SOLUTION_ERF_INV: [f64; 10] = [
     4.746037673358033586786350696e-01,
     8.559054432692110956388764172e-01,
     -2.45427830571707336251331946e-02,
@@ -73,55 +78,50 @@ const erfinv: [f64; 10] = [
     -1.06672334642196900710000389e+00,
 ];
 
-struct Fi {
-    f: f64,
-    i: i32,
-}
-
-const frexp: [Fi; 10] = [
-    Fi {
+const SOLUTION_FREXP: [Pair; 10] = [
+    Pair {
         f: 6.2237649061045918750e-01,
         i: 3,
     },
-    Fi {
+    Pair {
         f: 9.6735905932226306250e-01,
         i: 3,
     },
-    Fi {
+    Pair {
         f: -5.5376011438400318000e-01,
         i: -1,
     },
-    Fi {
+    Pair {
         f: -6.2632545228388436250e-01,
         i: 3,
     },
-    Fi {
+    Pair {
         f: 6.02268356699901081250e-01,
         i: 4,
     },
-    Fi {
+    Pair {
         f: 7.3159430981099115000e-01,
         i: 2,
     },
-    Fi {
+    Pair {
         f: 6.5363542893241332500e-01,
         i: 3,
     },
-    Fi {
+    Pair {
         f: 6.8198497760900255000e-01,
         i: 2,
     },
-    Fi {
+    Pair {
         f: 9.1265404584042750000e-01,
         i: 1,
     },
-    Fi {
+    Pair {
         f: -5.4287029803597508250e-01,
         i: 4,
     },
 ];
 
-const gamma: [f64; 10] = [
+const SOLUTION_GAMMA: [f64; 10] = [
     2.3254348370739963835386613898e+01,
     2.991153837155317076427529816e+03,
     -4.561154336726758060575129109e+00,
@@ -134,7 +134,7 @@ const gamma: [f64; 10] = [
     -2.093995902923148389186189429e-05,
 ];
 
-const bessel_j0: [f64; 10] = [
+const SOLUTION_BESSEL_J0: [f64; 10] = [
     -1.8444682230601672018219338e-01,
     2.27353668906331975435892e-01,
     9.809259936157051116270273e-01,
@@ -147,7 +147,7 @@ const bessel_j0: [f64; 10] = [
     -8.72218484409407250005360235e-03,
 ];
 
-const bessel_j1: [f64; 10] = [
+const SOLUTION_BESSEL_J1: [f64; 10] = [
     -3.251526395295203422162967e-01,
     1.893581711430515718062564e-01,
     -1.3711761352467242914491514e-01,
@@ -160,7 +160,7 @@ const bessel_j1: [f64; 10] = [
     -2.7030574577733036112996607e-01,
 ];
 
-const bessel_j2: [f64; 10] = [
+const SOLUTION_BESSEL_J2: [f64; 10] = [
     5.3837518920137802565192769e-02,
     -1.7841678003393207281244667e-01,
     9.521746934916464142495821e-03,
@@ -173,7 +173,7 @@ const bessel_j2: [f64; 10] = [
     7.096213118930231185707277e-02,
 ];
 
-const bessel_jM3: [f64; 10] = [
+const SOLUTION_BESSEL_JM3: [f64; 10] = [
     -3.684042080996403091021151e-01,
     2.8157665936340887268092661e-01,
     4.401005480841948348343589e-04,
@@ -186,50 +186,50 @@ const bessel_jM3: [f64; 10] = [
     -2.3762660886100206491674503e-01,
 ];
 
-const lgamma: [Fi; 10] = [
-    Fi {
+const SOLUTION_LN_GAMMA: [Pair; 10] = [
+    Pair {
         f: 3.146492141244545774319734e+00,
         i: 1,
     },
-    Fi {
+    Pair {
         f: 8.003414490659126375852113e+00,
         i: 1,
     },
-    Fi {
+    Pair {
         f: 1.517575735509779707488106e+00,
         i: -1,
     },
-    Fi {
+    Pair {
         f: -2.588480028182145853558748e-01,
         i: 1,
     },
-    Fi {
+    Pair {
         f: 1.1989897050205555002007985e+01,
         i: 1,
     },
-    Fi {
+    Pair {
         f: 6.262899811091257519386906e-01,
         i: 1,
     },
-    Fi {
+    Pair {
         f: 3.5287924899091566764846037e+00,
         i: 1,
     },
-    Fi {
+    Pair {
         f: 4.5725644770161182299423372e-01,
         i: 1,
     },
-    Fi {
+    Pair {
         f: -6.363667087767961257654854e-02,
         i: 1,
     },
-    Fi {
+    Pair {
         f: -1.077385130910300066425564e+01,
         i: -1,
     },
 ];
 
-const modf: [[f64; 2]; 10] = [
+const SOLUTION_MODF: [[f64; 2]; 10] = [
     [4.0000000000000000e+00, 9.7901192488367350108546816e-01],
     [7.0000000000000000e+00, 7.3887247457810456552351752e-01],
     [-0.0, -2.7688005719200159404635997e-01],
@@ -242,7 +242,7 @@ const modf: [[f64; 2]; 10] = [
     [-8.0000000000000000e+00, -6.8592476857560136238589621e-01],
 ];
 
-const bessel_y0: [f64; 10] = [
+const SOLUTION_BESSEL_Y0: [f64; 10] = [
     -3.053399153780788357534855e-01,
     1.7437227649515231515503649e-01,
     -8.6221781263678836910392572e-01,
@@ -255,7 +255,7 @@ const bessel_y0: [f64; 10] = [
     2.7036697826604756229601611e-01,
 ];
 
-const bessel_y1: [f64; 10] = [
+const SOLUTION_BESSEL_Y1: [f64; 10] = [
     0.15494213737457922210218611,
     -0.2165955142081145245075746,
     -2.4644949631241895201032829,
@@ -268,7 +268,7 @@ const bessel_y1: [f64; 10] = [
     0.0242503179793232308250804,
 ];
 
-const bessel_y2: [f64; 10] = [
+const SOLUTION_BESSEL_Y2: [f64; 10] = [
     0.3675780219390303613394936,
     -0.23034826393250119879267257,
     -16.939677983817727205631397,
@@ -281,7 +281,7 @@ const bessel_y2: [f64; 10] = [
     -0.2647831587821263302087457,
 ];
 
-const bessel_yM3: [f64; 10] = [
+const SOLUTION_BESSEL_YM3: [f64; 10] = [
     -0.14035984421094849100895341,
     -0.097535139617792072703973,
     242.25775994555580176377379,
@@ -294,36 +294,36 @@ const bessel_yM3: [f64; 10] = [
     0.1461869756579956803341844,
 ];
 
-const vferfSC: [f64; 7] = [f64::NEG_INFINITY, -0.0, 0.0, f64::INFINITY, f64::NAN, -1000.0, 1000.0];
+const SPECIAL_CASES_ERF: [f64; 7] = [f64::NEG_INFINITY, -0.0, 0.0, f64::INFINITY, f64::NAN, -1000.0, 1000.0];
 
-const erfSC: [f64; 7] = [-1.0, -0.0, 0.0, 1.0, f64::NAN, -1.0, 1.0];
+const SPECIAL_CASES_SOLUTION_ERF: [f64; 7] = [-1.0, -0.0, 0.0, 1.0, f64::NAN, -1.0, 1.0];
 
-const vferfcSC: [f64; 5] = [f64::NEG_INFINITY, f64::INFINITY, f64::NAN, -1000.0, 1000.0];
+const SPECIAL_CASES_ERFC: [f64; 5] = [f64::NEG_INFINITY, f64::INFINITY, f64::NAN, -1000.0, 1000.0];
 
-const erfcSC: [f64; 5] = [2.0, 0.0, f64::NAN, 2.0, 0.0];
+const SPECIAL_CASES_SOLUTION_ERFC: [f64; 5] = [2.0, 0.0, f64::NAN, 2.0, 0.0];
 
-const vferfinvSC: [f64; 6] = [1.0, -1.0, 0.0, f64::NEG_INFINITY, f64::INFINITY, f64::NAN];
+const SPECIAL_CASES_ERF_INV: [f64; 6] = [1.0, -1.0, 0.0, f64::NEG_INFINITY, f64::INFINITY, f64::NAN];
 
-const erfinvSC: [f64; 6] = [f64::INFINITY, f64::NEG_INFINITY, 0.0, f64::NAN, f64::NAN, f64::NAN];
+const SPECIAL_CASES_SOLUTION_ERF_INV: [f64; 6] = [f64::INFINITY, f64::NEG_INFINITY, 0.0, f64::NAN, f64::NAN, f64::NAN];
 
-const vferfcinvSC: [f64; 6] = [0.0, 2.0, 1.0, f64::INFINITY, f64::NEG_INFINITY, f64::NAN];
+const SPECIAL_CASES_ERFC_INV: [f64; 6] = [0.0, 2.0, 1.0, f64::INFINITY, f64::NEG_INFINITY, f64::NAN];
 
-const erfcinvSC: [f64; 6] = [f64::INFINITY, f64::NEG_INFINITY, 0.0, f64::NAN, f64::NAN, f64::NAN];
+const SPECIAL_CASES_SOLUTION_ERFC_INV: [f64; 6] = [f64::INFINITY, f64::NEG_INFINITY, 0.0, f64::NAN, f64::NAN, f64::NAN];
 
-const vffrexpSC: [f64; 5] = [f64::NEG_INFINITY, -0.0, 0.0, f64::INFINITY, f64::NAN];
+const SPECIAL_CASES_FREXP: [f64; 5] = [f64::NEG_INFINITY, -0.0, 0.0, f64::INFINITY, f64::NAN];
 
-const frexpSC: [Fi; 5] = [
-    Fi {
+const SPECIAL_CASES_SOLUTION_FREXP: [Pair; 5] = [
+    Pair {
         f: f64::NEG_INFINITY,
         i: 0,
     },
-    Fi { f: -0.0, i: 0 },
-    Fi { f: 0.0, i: 0 },
-    Fi { f: f64::INFINITY, i: 0 },
-    Fi { f: f64::NAN, i: 0 },
+    Pair { f: -0.0, i: 0 },
+    Pair { f: 0.0, i: 0 },
+    Pair { f: f64::INFINITY, i: 0 },
+    Pair { f: f64::NAN, i: 0 },
 ];
 
-const vfgamma: [[f64; 2]; 71] = [
+const VALUES_FOR_GAMMA: [[f64; 2]; 71] = [
     [f64::INFINITY, f64::INFINITY],
     [f64::NEG_INFINITY, f64::NAN],
     [0.0, f64::INFINITY],
@@ -407,27 +407,27 @@ const bessel_j2SC: [f64; 4] = [0.0, 0.0, 0.0, f64::NAN];
 
 const bessel_jM3SC: [f64; 4] = [0.0, 0.0, 0.0, f64::NAN];
 
-const vfldexpSC: [Fi; 11] = [
-    Fi { f: 0.0, i: 0 },
-    Fi { f: 0.0, i: -1075 },
-    Fi { f: 0.0, i: 1024 },
-    Fi { f: -0.0, i: 0 },
-    Fi { f: -0.0, i: -1075 },
-    Fi { f: -0.0, i: 1024 },
-    Fi { f: f64::INFINITY, i: 0 },
-    Fi {
+const vfldexpSC: [Pair; 11] = [
+    Pair { f: 0.0, i: 0 },
+    Pair { f: 0.0, i: -1075 },
+    Pair { f: 0.0, i: 1024 },
+    Pair { f: -0.0, i: 0 },
+    Pair { f: -0.0, i: -1075 },
+    Pair { f: -0.0, i: 1024 },
+    Pair { f: f64::INFINITY, i: 0 },
+    Pair {
         f: f64::INFINITY,
         i: -1024,
     },
-    Fi {
+    Pair {
         f: f64::NEG_INFINITY,
         i: 0,
     },
-    Fi {
+    Pair {
         f: f64::NEG_INFINITY,
         i: -1024,
     },
-    Fi { f: f64::NAN, i: -1024 },
+    Pair { f: f64::NAN, i: -1024 },
     // Fi {
     //     f: 10.0,
     //     i: 72057594037927936,
@@ -456,43 +456,18 @@ const ldexpSC: [f64; 13] = [
 
 const vflgammaSC: [f64; 7] = [f64::NEG_INFINITY, -3.0, 0.0, 1.0, 2.0, f64::INFINITY, f64::NAN];
 
-const lgammaSC: [Fi; 7] = [
-    Fi {
+const lgammaSC: [Pair; 7] = [
+    Pair {
         f: f64::NEG_INFINITY,
         i: 1,
     },
-    Fi { f: f64::INFINITY, i: 1 },
-    Fi { f: f64::INFINITY, i: 1 },
-    Fi { f: 0.0, i: 1 },
-    Fi { f: 0.0, i: 1 },
-    Fi { f: f64::INFINITY, i: 1 },
-    Fi { f: f64::NAN, i: 1 },
+    Pair { f: f64::INFINITY, i: 1 },
+    Pair { f: f64::INFINITY, i: 1 },
+    Pair { f: 0.0, i: 1 },
+    Pair { f: 0.0, i: 1 },
+    Pair { f: f64::INFINITY, i: 1 },
+    Pair { f: f64::NAN, i: 1 },
 ];
-
-const vfmodfSC: [f64; 4] = [f64::NEG_INFINITY, -0.0, f64::INFINITY, f64::NAN];
-
-// #include <stdio.h>
-// #include <math.h>
-// int main () {
-//   double param, fractpart, intpart;
-//   param = -1.0/0.0;
-//   fractpart = modf (param , &intpart);
-//   printf ("%f = %f + %f \n", param, intpart, fractpart);
-//   return 0;
-// }
-// // Output:
-// // -inf = -inf + -0.000000
-
-const modfSC: [[f64; 2]; 4] = [
-    [f64::NEG_INFINITY, -0.0], // note that Go returns (-Inf, NaN); but the C code above returns (-Inf, -0.0)
-    [-0.0, -0.0],
-    [f64::INFINITY, 0.0], // note that Go returns (Inf, NaN); but the C code above returns (Inf, 0.0)
-    [f64::NAN, f64::NAN],
-];
-
-const vfsignbitSC: [f64; 5] = [f64::NEG_INFINITY, -0.0, 0.0, f64::INFINITY, f64::NAN];
-
-const signbitSC: [bool; 5] = [true, true, false, false, false];
 
 const vfbessel_y0SC: [f64; 5] = [f64::NEG_INFINITY, 0.0, f64::INFINITY, f64::NAN, -1.0];
 
@@ -523,55 +498,55 @@ const vffrexpBC: [f64; 8] = [
     -f64::MAX,
 ];
 
-const frexpBC: [Fi; 8] = [
-    Fi { f: 0.5, i: -1021 },
-    Fi {
+const frexpBC: [Pair; 8] = [
+    Pair { f: 0.5, i: -1021 },
+    Pair {
         f: 0.99999999999999978,
         i: -1022,
     },
-    Fi { f: 0.5, i: -1073 },
-    Fi {
+    Pair { f: 0.5, i: -1073 },
+    Pair {
         f: 0.99999999999999989,
         i: 1024,
     },
-    Fi { f: -0.5, i: -1021 },
-    Fi {
+    Pair { f: -0.5, i: -1021 },
+    Pair {
         f: -0.99999999999999978,
         i: -1022,
     },
-    Fi { f: -0.5, i: -1073 },
-    Fi {
+    Pair { f: -0.5, i: -1073 },
+    Pair {
         f: -0.99999999999999989,
         i: 1024,
     },
 ];
 
-const vfldexpBC: [Fi; 10] = [
-    Fi {
+const vfldexpBC: [Pair; 10] = [
+    Pair {
         f: SmallestNormalFloat64,
         i: -52,
     },
-    Fi {
+    Pair {
         f: LargestSubnormalFloat64,
         i: -51,
     },
-    Fi {
+    Pair {
         f: SmallestNonzeroFloat64,
         i: 1074,
     },
-    Fi {
+    Pair {
         f: f64::MAX,
         i: -(1023 + 1074),
     },
-    Fi { f: 1.0, i: -1075 },
-    Fi { f: -1.0, i: -1075 },
-    Fi { f: 1.0, i: 1024 },
-    Fi { f: -1.0, i: 1024 },
-    Fi {
+    Pair { f: 1.0, i: -1075 },
+    Pair { f: -1.0, i: -1075 },
+    Pair { f: 1.0, i: 1024 },
+    Pair { f: -1.0, i: 1024 },
+    Pair {
         f: 1.0000000000000002,
         i: -1075,
     },
-    Fi { f: 1.0, i: -1075 },
+    Pair { f: 1.0, i: -1075 },
 ];
 
 const ldexpBC: [f64; 10] = [
@@ -633,18 +608,21 @@ fn alike(a: f64, b: f64) -> bool {
 
 #[test]
 fn test_erf() {
-    for i in 0..vf.len() {
-        let a = vf[i] / 10.0;
+    for i in 0..VALUES.len() {
+        let a = VALUES[i] / 10.0;
         let f = math::erf(a);
-        if !very_close(erf[i], f) {
-            println!("erf({}) = {}, want {}", a, f, erf[i]);
+        if !very_close(SOLUTION_ERF[i], f) {
+            println!("erf({}) = {}, want {}", a, f, SOLUTION_ERF[i]);
             panic!("erf failed");
         }
     }
-    for i in 0..(vferfSC.len()) {
-        let f = math::erf(vferfSC[i]);
-        if !alike(erfSC[i], f) {
-            println!("erf({}) = {}, want {}", vferfSC[i], f, erfSC[i]);
+    for i in 0..(SPECIAL_CASES_ERF.len()) {
+        let f = math::erf(SPECIAL_CASES_ERF[i]);
+        if !alike(SPECIAL_CASES_SOLUTION_ERF[i], f) {
+            println!(
+                "erf({}) = {}, want {}",
+                SPECIAL_CASES_ERF[i], f, SPECIAL_CASES_SOLUTION_ERF[i]
+            );
             panic!("erf special cases failed");
         }
     }
@@ -652,18 +630,21 @@ fn test_erf() {
 
 #[test]
 fn test_erfc() {
-    for i in 0..vf.len() {
-        let a = vf[i] / 10.0;
+    for i in 0..VALUES.len() {
+        let a = VALUES[i] / 10.0;
         let f = math::erfc(a);
-        if !very_close(erfc[i], f) {
-            println!("erfc({}) = {}, want {}", a, f, erfc[i]);
+        if !very_close(SOLUTION_ERFC[i], f) {
+            println!("erfc({}) = {}, want {}", a, f, SOLUTION_ERFC[i]);
             panic!("erfc failed");
         }
     }
-    for i in 0..vferfcSC.len() {
-        let f = math::erfc(vferfcSC[i]);
-        if !alike(erfcSC[i], f) {
-            println!("erfc({}) = {}, want {}", vferfcSC[i], f, erfcSC[i]);
+    for i in 0..SPECIAL_CASES_ERFC.len() {
+        let f = math::erfc(SPECIAL_CASES_ERFC[i]);
+        if !alike(SPECIAL_CASES_SOLUTION_ERFC[i], f) {
+            println!(
+                "erfc({}) = {}, want {}",
+                SPECIAL_CASES_ERFC[i], f, SPECIAL_CASES_SOLUTION_ERFC[i]
+            );
             panic!("erfc special cases failed");
         }
     }
@@ -671,18 +652,21 @@ fn test_erfc() {
 
 // #[test]
 fn test_erf_inv() {
-    for i in 0..vf.len() {
-        let a = vf[i] / 10.0;
+    for i in 0..VALUES.len() {
+        let a = VALUES[i] / 10.0;
         let f = math::erf_inv(a);
-        if !very_close(erfinv[i], f) {
-            println!("erf_inv({}) = {}, want {}", a, f, erfinv[i]);
+        if !very_close(SOLUTION_ERF_INV[i], f) {
+            println!("erf_inv({}) = {}, want {}", a, f, SOLUTION_ERF_INV[i]);
             panic!("erf_inv failed");
         }
     }
-    for i in 0..vferfinvSC.len() {
-        let f = math::erf_inv(vferfinvSC[i]);
-        if !alike(erfinvSC[i], f) {
-            println!("erf_inv({}) = {}, want {}", vferfinvSC[i], f, erfinvSC[i]);
+    for i in 0..SPECIAL_CASES_ERF_INV.len() {
+        let f = math::erf_inv(SPECIAL_CASES_ERF_INV[i]);
+        if !alike(SPECIAL_CASES_SOLUTION_ERF_INV[i], f) {
+            println!(
+                "erf_inv({}) = {}, want {}",
+                SPECIAL_CASES_ERF_INV[i], f, SPECIAL_CASES_SOLUTION_ERF_INV[i]
+            );
             panic!("erf_inv special cases failed");
         }
     }
@@ -708,18 +692,21 @@ fn test_erf_inv() {
 
 // #[test]
 fn test_erfc_inv() {
-    for i in 0..vf.len() {
-        let a = 1.0 - (vf[i] / 10.0);
+    for i in 0..VALUES.len() {
+        let a = 1.0 - (VALUES[i] / 10.0);
         let f = math::erfc_inv(a);
-        if !very_close(erfinv[i], f) {
-            println!("erfc_inv({}) = {}, want {}", a, f, erfinv[i]);
+        if !very_close(SOLUTION_ERF_INV[i], f) {
+            println!("erfc_inv({}) = {}, want {}", a, f, SOLUTION_ERF_INV[i]);
             panic!("erfc_inv failed");
         }
     }
-    for i in 0..vferfcinvSC.len() {
-        let f = math::erfc_inv(vferfcinvSC[i]);
-        if !alike(erfcinvSC[i], f) {
-            println!("erfc_inv({}) = {}, want {}", vferfcinvSC[i], f, erfcinvSC[i]);
+    for i in 0..SPECIAL_CASES_ERFC_INV.len() {
+        let f = math::erfc_inv(SPECIAL_CASES_ERFC_INV[i]);
+        if !alike(SPECIAL_CASES_SOLUTION_ERFC_INV[i], f) {
+            println!(
+                "erfc_inv({}) = {}, want {}",
+                SPECIAL_CASES_ERFC_INV[i], f, SPECIAL_CASES_SOLUTION_ERFC_INV[i]
+            );
             panic!("erfc_inv special cases failed");
         }
     }
@@ -745,22 +732,22 @@ fn test_erfc_inv() {
 
 #[test]
 fn test_frexp() {
-    for i in 0..vf.len() {
-        let (f, j) = math::frexp(vf[i]);
-        if !very_close(frexp[i].f, f) || frexp[i].i != j {
+    for i in 0..VALUES.len() {
+        let (f, j) = math::frexp(VALUES[i]);
+        if !very_close(SOLUTION_FREXP[i].f, f) || SOLUTION_FREXP[i].i != j {
             println!(
                 "frexp({}) = ({}, {}); want ({}, {})",
-                vf[i], f, j, frexp[i].f, frexp[i].i
+                VALUES[i], f, j, SOLUTION_FREXP[i].f, SOLUTION_FREXP[i].i
             );
             panic!("frexp failed");
         }
     }
-    for i in 0..vffrexpSC.len() {
-        let (f, j) = math::frexp(vffrexpSC[i]);
-        if !alike(frexpSC[i].f, f) || frexpSC[i].i != j {
+    for i in 0..SPECIAL_CASES_FREXP.len() {
+        let (f, j) = math::frexp(SPECIAL_CASES_FREXP[i]);
+        if !alike(SPECIAL_CASES_SOLUTION_FREXP[i].f, f) || SPECIAL_CASES_SOLUTION_FREXP[i].i != j {
             println!(
                 "frexp({}) = ({}, {}); want ({}, {})",
-                vffrexpSC[i], f, j, frexpSC[i].f, frexpSC[i].i
+                SPECIAL_CASES_FREXP[i], f, j, SPECIAL_CASES_SOLUTION_FREXP[i].f, SPECIAL_CASES_SOLUTION_FREXP[i].i
             );
             panic!("frexp special cases failed");
         }
@@ -779,19 +766,22 @@ fn test_frexp() {
 
 #[test]
 fn test_ldexp() {
-    for i in 0..vf.len() {
-        let f = math::ldexp(frexp[i].f, frexp[i].i);
-        if !very_close(vf[i], f) {
-            println!("ldexp({}, {}) = {}, want {}", frexp[i].f, frexp[i].i, f, vf[i]);
+    for i in 0..VALUES.len() {
+        let f = math::ldexp(SOLUTION_FREXP[i].f, SOLUTION_FREXP[i].i);
+        if !very_close(VALUES[i], f) {
+            println!(
+                "ldexp({}, {}) = {}, want {}",
+                SOLUTION_FREXP[i].f, SOLUTION_FREXP[i].i, f, VALUES[i]
+            );
             panic!("ldexp failed");
         }
     }
-    for i in 0..vffrexpSC.len() {
-        let f = math::ldexp(frexpSC[i].f, frexpSC[i].i);
-        if !alike(vffrexpSC[i], f) {
+    for i in 0..SPECIAL_CASES_FREXP.len() {
+        let f = math::ldexp(SPECIAL_CASES_SOLUTION_FREXP[i].f, SPECIAL_CASES_SOLUTION_FREXP[i].i);
+        if !alike(SPECIAL_CASES_FREXP[i], f) {
             println!(
                 "ldexp({}, {}) = {}, want {}",
-                frexpSC[i].f, frexpSC[i].i, f, vffrexpSC[i]
+                SPECIAL_CASES_SOLUTION_FREXP[i].f, SPECIAL_CASES_SOLUTION_FREXP[i].i, f, SPECIAL_CASES_FREXP[i]
             );
             panic!("ldexp special cases failed");
         }
@@ -830,38 +820,28 @@ fn test_ldexp() {
 
 #[test]
 fn test_modf() {
-    for i in 0..vf.len() {
-        let (f, g) = math::split_integer_fractional(vf[i]);
-        if !very_close(modf[i][0], f) || !very_close(modf[i][1], g) {
+    for i in 0..VALUES.len() {
+        let (f, g) = math::split_integer_fractional(VALUES[i]);
+        if !very_close(SOLUTION_MODF[i][0], f) || !very_close(SOLUTION_MODF[i][1], g) {
             println!(
                 "split_integer_fractional({}) = ({}, {}); want ({}, {})",
-                vf[i], f, g, modf[i][0], modf[i][1]
+                VALUES[i], f, g, SOLUTION_MODF[i][0], SOLUTION_MODF[i][1]
             );
             panic!("split_integer_fractional failed");
-        }
-    }
-    for i in 0..vfmodfSC.len() {
-        let (f, g) = math::split_integer_fractional(vfmodfSC[i]);
-        if !alike(modfSC[i][0], f) || !alike(modfSC[i][1], g) {
-            println!(
-                "split_integer_fractional({}) = ({}, {}); want ({}, {})",
-                vfmodfSC[i], f, g, modfSC[i][0], modfSC[i][1]
-            );
-            panic!("split_integer_fractional special cases failed");
         }
     }
 }
 
 #[test]
 fn test_gamma() {
-    for i in 0..vf.len() {
-        let f = math::gamma(vf[i]);
-        if !close(gamma[i], f) {
-            println!("gamma({}) = {}, want {}", vf[i], f, gamma[i]);
+    for i in 0..VALUES.len() {
+        let f = math::gamma(VALUES[i]);
+        if !close(SOLUTION_GAMMA[i], f) {
+            println!("gamma({}) = {}, want {}", VALUES[i], f, SOLUTION_GAMMA[i]);
             panic!("gamma failed");
         }
     }
-    for g in vfgamma {
+    for g in VALUES_FOR_GAMMA {
         let f = math::gamma(g[0]);
         let ok = if f64::is_nan(g[1]) || f64::is_infinite(g[1]) || g[1] == 0.0 || f == 0.0 {
             alike(g[1], f)
@@ -879,12 +859,12 @@ fn test_gamma() {
 
 // #[test]
 fn test_ln_gamma() {
-    for i in 0..vf.len() {
-        let (f, s) = math::ln_gamma(vf[i]);
-        if !close(lgamma[i].f, f) || lgamma[i].i != s {
+    for i in 0..VALUES.len() {
+        let (f, s) = math::ln_gamma(VALUES[i]);
+        if !close(SOLUTION_LN_GAMMA[i].f, f) || SOLUTION_LN_GAMMA[i].i != s {
             println!(
                 "ln_gamma({}) = {}, {}, want {}, {}",
-                vf[i], f, s, lgamma[i].f, lgamma[i].i
+                VALUES[i], f, s, SOLUTION_LN_GAMMA[i].f, SOLUTION_LN_GAMMA[i].i
             );
             panic!("ln_gamma failed");
         }
@@ -903,10 +883,10 @@ fn test_ln_gamma() {
 
 #[test]
 fn test_bessel_j0() {
-    for i in 0..vf.len() {
-        let f = math::bessel_j0(vf[i]);
-        if !so_close(bessel_j0[i], f, 4e-14) {
-            println!("bessel_j0({}) = {}, want {}", vf[i], f, bessel_j0[i]);
+    for i in 0..VALUES.len() {
+        let f = math::bessel_j0(VALUES[i]);
+        if !so_close(SOLUTION_BESSEL_J0[i], f, 4e-14) {
+            println!("bessel_j0({}) = {}, want {}", VALUES[i], f, SOLUTION_BESSEL_J0[i]);
             panic!("bessel_j0 failed");
         }
     }
@@ -921,10 +901,10 @@ fn test_bessel_j0() {
 
 #[test]
 fn test_bessel_j1() {
-    for i in 0..vf.len() {
-        let f = math::bessel_j1(vf[i]);
-        if !close(bessel_j1[i], f) {
-            println!("bessel_j1({}) = {}, want {}", vf[i], f, bessel_j1[i]);
+    for i in 0..VALUES.len() {
+        let f = math::bessel_j1(VALUES[i]);
+        if !close(SOLUTION_BESSEL_J1[i], f) {
+            println!("bessel_j1({}) = {}, want {}", VALUES[i], f, SOLUTION_BESSEL_J1[i]);
             panic!("bessel_j1 failed");
         }
     }
@@ -939,15 +919,15 @@ fn test_bessel_j1() {
 
 #[test]
 fn test_bessel_jn() {
-    for i in 0..vf.len() {
-        let f = math::bessel_jn(2, vf[i]);
-        if !close(bessel_j2[i], f) {
-            println!("bessel_jn(2, {}) = {}, want {}", vf[i], f, bessel_j2[i]);
+    for i in 0..VALUES.len() {
+        let f = math::bessel_jn(2, VALUES[i]);
+        if !close(SOLUTION_BESSEL_J2[i], f) {
+            println!("bessel_jn(2, {}) = {}, want {}", VALUES[i], f, SOLUTION_BESSEL_J2[i]);
             panic!("bessel_jn(2, x) failed");
         }
-        let f = math::bessel_jn(-3, vf[i]);
-        if !close(bessel_jM3[i], f) {
-            println!("bessel_Jn(-3, {}) = {}, want {}", vf[i], f, bessel_jM3[i]);
+        let f = math::bessel_jn(-3, VALUES[i]);
+        if !close(SOLUTION_BESSEL_JM3[i], f) {
+            println!("bessel_Jn(-3, {}) = {}, want {}", VALUES[i], f, SOLUTION_BESSEL_JM3[i]);
             panic!("bessel_jn(-3, x) failed");
         }
     }
@@ -967,11 +947,11 @@ fn test_bessel_jn() {
 
 #[test]
 fn test_bessel_y0() {
-    for i in 0..vf.len() {
-        let a = f64::abs(vf[i]);
+    for i in 0..VALUES.len() {
+        let a = f64::abs(VALUES[i]);
         let f = math::bessel_y0(a);
-        if !close(bessel_y0[i], f) {
-            println!("bessel_y0({}) = {}, want {}", a, f, bessel_y0[i]);
+        if !close(SOLUTION_BESSEL_Y0[i], f) {
+            println!("bessel_y0({}) = {}, want {}", a, f, SOLUTION_BESSEL_Y0[i]);
             panic!("bessel_y0 failed");
         }
     }
@@ -986,11 +966,11 @@ fn test_bessel_y0() {
 
 #[test]
 fn test_bessel_y1() {
-    for i in 0..vf.len() {
-        let a = f64::abs(vf[i]);
+    for i in 0..VALUES.len() {
+        let a = f64::abs(VALUES[i]);
         let f = math::bessel_y1(a);
-        if !so_close(bessel_y1[i], f, 2e-14) {
-            println!("bessel_y1({}) = {}, want {}", a, f, bessel_y1[i]);
+        if !so_close(SOLUTION_BESSEL_Y1[i], f, 2e-14) {
+            println!("bessel_y1({}) = {}, want {}", a, f, SOLUTION_BESSEL_Y1[i]);
             panic!("bessel_y1 failed");
         }
     }
@@ -1005,16 +985,16 @@ fn test_bessel_y1() {
 
 #[test]
 fn test_bessel_yn() {
-    for i in 0..vf.len() {
-        let a = f64::abs(vf[i]);
+    for i in 0..VALUES.len() {
+        let a = f64::abs(VALUES[i]);
         let f = math::bessel_yn(2, a);
-        if !close(bessel_y2[i], f) {
-            println!("bessel_yn(2, {}) = {}, want {}", a, f, bessel_y2[i]);
+        if !close(SOLUTION_BESSEL_Y2[i], f) {
+            println!("bessel_yn(2, {}) = {}, want {}", a, f, SOLUTION_BESSEL_Y2[i]);
             panic!("bessel_yn(2, x) failed");
         }
         let f = math::bessel_yn(-3, a);
-        if !close(bessel_yM3[i], f) {
-            println!("bessel_yn(-3, {}) = {}, want {}", a, f, bessel_yM3[i]);
+        if !close(SOLUTION_BESSEL_YM3[i], f) {
+            println!("bessel_yn(-3, {}) = {}, want {}", a, f, SOLUTION_BESSEL_YM3[i]);
             panic!("bessel_yn(-3, x) failed");
         }
     }

@@ -205,79 +205,79 @@ const TT: f64 = -3.63867699703950536541e-18; // 0xBC50C7CAA48A971F
 /// * `ln(Γ(-integer)) = +Inf`
 /// * `ln(Γ(-Inf))     = -Inf`
 /// * `ln(Γ(NaN))      = NaN`
-pub fn ln_gamma(x_in: f64) -> (f64, i32) {
+pub fn ln_gamma(x: f64) -> (f64, i32) {
     // special cases
-    if f64::is_nan(x_in) {
-        return (x_in, 1);
-    } else if f64::is_infinite(x_in) {
-        return (x_in, 1);
-    } else if x_in == 0.0 {
+    if f64::is_nan(x) {
+        return (x, 1);
+    } else if f64::is_infinite(x) {
+        return (x, 1);
+    } else if x == 0.0 {
         return (f64::INFINITY, 1);
     }
 
     let mut negative = false;
-    let mut x = x_in;
-    if x < 0.0 {
-        x = -x;
+    let mut xx = x;
+    if xx < 0.0 {
+        xx = -xx;
         negative = true;
     }
 
     let mut sign = 1;
-    if x < TINY {
+    if xx < TINY {
         // if |x| < 2**-70, return -log(|x|)
         if negative {
             sign = -1;
         }
-        return (-f64::ln(x), sign);
+        return (-f64::ln(xx), sign);
     }
 
     let mut n_adj: f64 = 0.0;
     if negative {
-        if x >= TWO_52 {
+        if xx >= TWO_52 {
             // |x| >= 2**52, must be -integer
             return (f64::INFINITY, sign);
         }
-        let t = sin_pi(x);
+        let t = sin_pi(xx);
         if t == 0.0 {
             return (f64::INFINITY, sign); // -integer case
         }
-        n_adj = f64::ln(PI / f64::abs(t * x));
+        n_adj = f64::ln(PI / f64::abs(t * xx));
         if t < 0.0 {
             sign = -1;
         }
     }
 
-    if x == 1.0 || x == 2.0 {
+    if xx == 1.0 || xx == 2.0 {
         // purge off 1 and 2
         return (0.0, sign);
     }
 
     let mut lgamma: f64;
-    if x < 2.0 {
+    if xx < 2.0 {
         // use lgamma(x) = lgamma(x+1) - log(x)
-        let (y, i) = if x <= 0.9 {
-            lgamma = -f64::ln(x);
-            if x >= (Y_MIN - 1.0 + 0.27) {
+        let (y, i) = if xx <= 0.9 {
+            lgamma = -f64::ln(xx);
+            if xx >= (Y_MIN - 1.0 + 0.27) {
                 // 0.7316 <= x <=  0.9
-                (1.0 - x, 0)
-            } else if x >= (Y_MIN - 1.0 - 0.27) {
+                (1.0 - xx, 0)
+            } else if xx >= (Y_MIN - 1.0 - 0.27) {
                 // 0.2316 <= x < 0.7316
-                (x - (TC - 1.0), 1)
+                (xx - (TC - 1.0), 1)
             } else {
                 // 0 < x < 0.2316
-                (x, 2)
+                (xx, 2)
             }
         } else {
             lgamma = 0.0;
-            if x >= (Y_MIN + 0.27) {
+            if xx >= (Y_MIN + 0.27) {
                 // 1.7316 <= x < 2
-                (2.0 - x, 0)
-            } else if x >= (Y_MIN - 0.27) {
+                (2.0 - xx, 0)
+            } else if xx >= (Y_MIN - 0.27) {
                 // 1.2316 <= x < 1.7316
-                (x - TC, 1)
+                (xx - TC, 1)
             } else {
                 // 0.9 < x < 1.2316
-                (x - 1.0, 2)
+                (xx - 1.0, 2)
             }
         };
         if i == 0 {
@@ -299,10 +299,10 @@ pub fn ln_gamma(x_in: f64) -> (f64, i32) {
             let p2 = 1.0 + y * (LV[1] + y * (LV[2] + y * (LV[3] + y * (LV[4] + y * LV[5]))));
             lgamma += -0.5 * y + p1 / p2;
         }
-    } else if x < 8.0 {
+    } else if xx < 8.0 {
         // 2 <= x < 8
-        let i = x as i32;
-        let y = x - (i as f64);
+        let i = xx as i32;
+        let y = xx - (i as f64);
         let p = y * (LS[0] + y * (LS[1] + y * (LS[2] + y * (LS[3] + y * (LS[4] + y * (LS[5] + y * LS[6]))))));
         let q = 1.0 + y * (LR[1] + y * (LR[2] + y * (LR[3] + y * (LR[4] + y * (LR[5] + y * LR[6])))));
         lgamma = 0.5 * y + p / q;
@@ -323,16 +323,16 @@ pub fn ln_gamma(x_in: f64) -> (f64, i32) {
             z *= y + 2.0;
             lgamma += f64::ln(z);
         }
-    } else if x < TWO_58 {
+    } else if xx < TWO_58 {
         // 8 <= x < 2**58
-        let t = f64::ln(x);
-        let z = 1.0 / x;
+        let t = f64::ln(xx);
+        let z = 1.0 / xx;
         let y = z * z;
         let w = LW[0] + z * (LW[1] + y * (LW[2] + y * (LW[3] + y * (LW[4] + y * (LW[5] + y * LW[6])))));
-        lgamma = (x - 0.5) * (t - 1.0) + w;
+        lgamma = (xx - 0.5) * (t - 1.0) + w;
     } else {
         // 2**58 <= x <= Inf
-        lgamma = x * (f64::ln(x) - 1.0);
+        lgamma = xx * (f64::ln(xx) - 1.0);
     }
     if negative {
         lgamma = n_adj - lgamma;
@@ -341,45 +341,45 @@ pub fn ln_gamma(x_in: f64) -> (f64, i32) {
 }
 
 // helper function for negative x
-fn sin_pi(x_in: f64) -> f64 {
-    if x_in < 0.25 {
-        return -f64::sin(PI * x_in);
+fn sin_pi(x: f64) -> f64 {
+    if x < 0.25 {
+        return -f64::sin(PI * x);
     }
 
     // argument reduction
-    let mut x = x_in;
-    let mut z = f64::floor(x);
+    let mut xx = x;
+    let mut z = f64::floor(xx);
     let mut n: i32;
-    if z != x {
+    if z != xx {
         // inexact
-        x = modulo(x, 2.0);
-        n = (x * 4.0) as i32;
+        xx = modulo(xx, 2.0);
+        n = (xx * 4.0) as i32;
     } else {
-        if x >= TWO_53 {
+        if xx >= TWO_53 {
             // x must be even
-            x = 0.0;
+            xx = 0.0;
             n = 0;
         } else {
-            if x < TWO_52 {
-                z = x + TWO_52; // exact
+            if xx < TWO_52 {
+                z = xx + TWO_52; // exact
             }
             n = (1 & f64::to_bits(z)) as i32;
-            x = n as f64;
+            xx = n as f64;
             n <<= 2;
         }
     }
     if n == 0 {
-        x = f64::sin(PI * x);
+        xx = f64::sin(PI * xx);
     } else if n == 1 || n == 2 {
-        x = f64::cos(PI * (0.5 - x));
+        xx = f64::cos(PI * (0.5 - xx));
     } else if n == 3 || n == 4 {
-        x = f64::sin(PI * (1.0 - x));
+        xx = f64::sin(PI * (1.0 - xx));
     } else if n == 5 || n == 6 {
-        x = -f64::cos(PI * (x - 1.5));
+        xx = -f64::cos(PI * (xx - 1.5));
     } else {
-        x = f64::sin(PI * (x - 2.0));
+        xx = f64::sin(PI * (xx - 2.0));
     }
-    -x
+    -xx
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

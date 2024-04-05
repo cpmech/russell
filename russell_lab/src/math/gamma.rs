@@ -1,4 +1,4 @@
-use super::{EULER, PI};
+use super::{is_negative_integer, EULER, PI};
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -104,12 +104,12 @@ fn stirling(x: f64) -> (f64, f64) {
 /// * `Γ(NaN)  = NaN`
 pub fn gamma(x_in: f64) -> f64 {
     // special cases
-    if is_neg_int(x_in) || x_in == f64::NEG_INFINITY || f64::is_nan(x_in) {
+    if is_negative_integer(x_in) || x_in == f64::NEG_INFINITY || f64::is_nan(x_in) {
         return f64::NAN;
     } else if x_in == f64::INFINITY {
         return f64::INFINITY;
     } else if x_in == 0.0 {
-        if sign_bit(x_in) {
+        if f64::is_sign_negative(x_in) {
             return f64::NEG_INFINITY;
         }
         return f64::INFINITY;
@@ -195,63 +195,6 @@ pub fn gamma(x_in: f64) -> f64 {
         + GAM_Q[7];
 
     z * p / q
-}
-
-// Reports whether x is negative or negative zero
-fn sign_bit(x: f64) -> bool {
-    f64::to_bits(x) & (1 << 63) != 0
-}
-
-/// Reports wether x is negative integer or not
-fn is_neg_int(x: f64) -> bool {
-    if x < 0.0 {
-        let (_, xf) = modf(x);
-        return xf == 0.0;
-    }
-    return false;
-}
-
-/// Returns integer and fractional floating-point numbers that sum to f
-///
-/// Both values have the same sign as f.
-///
-/// Returns `(integer, fractional)`
-///
-/// # Special cases
-///
-/// * `mod_f(±Inf) = ±Inf, NaN`
-/// * `mod_f(NaN) = NaN, NaN`
-pub fn modf(x: f64) -> (f64, f64) {
-    let mut u = x.to_bits();
-    let e = ((u >> 52 & 0x7ff) as i32) - 0x3ff;
-
-    // no fractional part
-    let integer: f64;
-    if e >= 52 {
-        integer = x;
-        if e == 0x400 && (u << 12) != 0 {
-            return (integer, x); // nan
-        }
-        u &= 1 << 63;
-        return (integer, f64::from_bits(u));
-    }
-
-    // no integral part
-    if e < 0 {
-        u &= 1 << 63;
-        integer = f64::from_bits(u);
-        return (integer, x);
-    }
-
-    let mask: u64 = ((!0) >> 12) >> e;
-    if (u & mask) == 0 {
-        integer = x;
-        u &= 1 << 63;
-        return (integer, f64::from_bits(u));
-    }
-    u &= !mask;
-    integer = f64::from_bits(u);
-    (integer, x - integer)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

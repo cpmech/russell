@@ -831,23 +831,23 @@ fn test_ldexp() {
 #[test]
 fn test_modf() {
     for i in 0..vf.len() {
-        let (f, g) = math::modf(vf[i]);
+        let (f, g) = math::split_integer_fractional(vf[i]);
         if !very_close(modf[i][0], f) || !very_close(modf[i][1], g) {
             println!(
-                "modf({}) = ({}, {}); want ({}, {})",
+                "split_integer_fractional({}) = ({}, {}); want ({}, {})",
                 vf[i], f, g, modf[i][0], modf[i][1]
             );
-            panic!("modf failed");
+            panic!("split_integer_fractional failed");
         }
     }
     for i in 0..vfmodfSC.len() {
-        let (f, g) = math::modf(vfmodfSC[i]);
+        let (f, g) = math::split_integer_fractional(vfmodfSC[i]);
         if !alike(modfSC[i][0], f) || !alike(modfSC[i][1], g) {
             println!(
-                "modf({}) = ({}, {}); want ({}, {})",
+                "split_integer_fractional({}) = ({}, {}); want ({}, {})",
                 vfmodfSC[i], f, g, modfSC[i][0], modfSC[i][1]
             );
-            panic!("modf special cases failed");
+            panic!("split_integer_fractional special cases failed");
         }
     }
 }

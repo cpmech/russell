@@ -455,10 +455,10 @@ mod tests {
         Fi { f: -1.077385130910300066425564e+01, i: -1 },
     ];
 
-    const VALUES_SC: [f64; 7] = [f64::NEG_INFINITY, -3.0, 0.0, 1.0, 2.0, f64::INFINITY, f64::NAN];
+    const SC_VALUES: [f64; 7] = [f64::NEG_INFINITY, -3.0, 0.0, 1.0, 2.0, f64::INFINITY, f64::NAN];
 
     #[rustfmt::skip]
-    const SOLUTION_SC: [Fi; 7] = [
+    const SC_SOLUTION: [Fi; 7] = [
         Fi { f: f64::NEG_INFINITY, i: 1 },
         Fi { f: f64::INFINITY, i: 1 },
         Fi { f: f64::INFINITY, i: 1 },
@@ -475,10 +475,10 @@ mod tests {
             approx_eq(SOLUTION[i].f, f, 1e-14);
             assert_eq!(SOLUTION[i].i, s);
         }
-        for (i, v) in VALUES_SC.iter().enumerate() {
+        for (i, v) in SC_VALUES.iter().enumerate() {
             let (f, s) = ln_gamma(*v);
-            assert_alike(SOLUTION_SC[i].f, f);
-            assert_eq!(SOLUTION_SC[i].i, s);
+            assert_alike(SC_SOLUTION[i].f, f);
+            assert_eq!(SC_SOLUTION[i].i, s);
         }
     }
 }

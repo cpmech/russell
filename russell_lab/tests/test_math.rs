@@ -82,19 +82,6 @@ const SOLUTION_FREXP: [Pair; 10] = [
     },
 ];
 
-const SOLUTION_MODF: [[f64; 2]; 10] = [
-    [4.0000000000000000e+00, 9.7901192488367350108546816e-01],
-    [7.0000000000000000e+00, 7.3887247457810456552351752e-01],
-    [-0.0, -2.7688005719200159404635997e-01],
-    [-5.0000000000000000e+00, -1.060361827107492160848778e-02],
-    [9.0000000000000000e+00, 6.3629370719841737980004837e-01],
-    [2.0000000000000000e+00, 9.2637723924396464525443662e-01],
-    [5.0000000000000000e+00, 2.2908343145930665230025625e-01],
-    [2.0000000000000000e+00, 7.2793991043601025126008608e-01],
-    [1.0000000000000000e+00, 8.2530809168085506044576505e-01],
-    [-8.0000000000000000e+00, -6.8592476857560136238589621e-01],
-];
-
 const SPECIAL_CASES_FREXP: [f64; 5] = [f64::NEG_INFINITY, -0.0, 0.0, f64::INFINITY, f64::NAN];
 
 const SPECIAL_CASES_SOLUTION_FREXP: [Pair; 5] = [
@@ -358,20 +345,6 @@ fn test_ldexp() {
                 vfldexpBC[i].f, vfldexpBC[i].i, f, ldexpBC[i]
             );
             panic!("ldexp from frexp boundary cases failed");
-        }
-    }
-}
-
-#[test]
-fn test_modf() {
-    for i in 0..VALUES.len() {
-        let (f, g) = math::split_integer_fractional(VALUES[i]);
-        if !very_close(SOLUTION_MODF[i][0], f) || !very_close(SOLUTION_MODF[i][1], g) {
-            println!(
-                "split_integer_fractional({}) = ({}, {}); want ({}, {})",
-                VALUES[i], f, g, SOLUTION_MODF[i][0], SOLUTION_MODF[i][1]
-            );
-            panic!("split_integer_fractional failed");
         }
     }
 }

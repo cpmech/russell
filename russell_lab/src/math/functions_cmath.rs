@@ -1,24 +1,6 @@
 extern "C" {
-    fn c_ln_gamma(x: f64) -> f64;
     fn c_frexp(x: f64, exp: *mut i32) -> f64;
     fn c_ldexp(frac: f64, exp: i32) -> f64;
-}
-
-/// Evaluates the natural logarithm of Γ(x) and its sign
-///
-/// Returns `(ln(Γ(x)), sign)` where sign is -1 or 1
-///
-/// # Special cases
-///
-/// * `ln(Γ(+Inf))     = +Inf`
-/// * `ln(Γ(0))        = +Inf`
-/// * `ln(Γ(-integer)) = +Inf`
-/// * `ln(Γ(-Inf))     = -Inf`
-/// * `ln(Γ(NaN))      = NaN`
-#[inline]
-pub fn ln_gamma(x: f64) -> (f64, i32) {
-    // TODO: implement the sign
-    unsafe { (c_ln_gamma(x), 1) }
 }
 
 /// Gets the significand and exponent of a number
@@ -83,34 +65,7 @@ pub fn ldexp(frac: f64, exp: i32) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{frexp, ldexp, ln_gamma};
-    use crate::approx_eq;
-    use crate::math::ONE_BY_3;
-
-    #[test]
-    fn ln_gamma_works() {
-        assert!(ln_gamma(f64::NAN).0.is_nan());
-        assert_eq!(ln_gamma(-1.0).0, f64::INFINITY);
-        assert_eq!(ln_gamma(0.0).0, f64::INFINITY);
-        assert_eq!(ln_gamma(1.0).0, 0.0);
-        assert_eq!(ln_gamma(2.0).0, 0.0);
-
-        // Mathematica
-        // res = Table[{x, NumberForm[N[LogGamma[x], 50], 50]}, {x, {0.1, 1/3, 0.5, 3, 10, 33}}]
-        // Export["test.txt", res, "Table", "FieldSeparators" -> ", "]
-        let mathematica = [
-            (0.1, 1e-15, 2.252712651734206),
-            (ONE_BY_3, 1e-15, 0.98542064692776706918717403697796139173555649638589),
-            (0.5, 1e-50, 0.5723649429247001),
-            (3.0, 1e-50, 0.69314718055994530941723212145817656807550013436026),
-            (10.0, 1e-14, 12.801827480081469611207717874566706164281149255663),
-            (33.0, 1e-13, 81.557959456115037178502968666011206687099284403417),
-        ];
-        for (x, tol, reference) in mathematica {
-            // println!("x = {:?}", x);
-            approx_eq(ln_gamma(x).0, reference, tol)
-        }
-    }
+    use super::{frexp, ldexp};
 
     #[test]
     fn frexp_works() {

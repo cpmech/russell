@@ -60,6 +60,7 @@
     "ldvl",
     "ldvr",
     "ldvt",
+    "lgamma",
     "libmetis",
     "linalg",
     "lredrhs",

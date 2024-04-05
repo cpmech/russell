@@ -452,6 +452,9 @@ mod tests {
 
     #[test]
     fn erf_works_3() {
+        // Mathematica:
+        // res = Table[{x, N[Erf[x], 100]}, {x, -10, 10, 0.2}]
+        // Export["test.txt", res, "Table", "FieldSeparators" -> ", "]
         #[rustfmt::skip]
         let mathematica = [
             (-10.                , 1e-50 , -1.)                  , 
@@ -625,6 +628,9 @@ mod tests {
 
     #[test]
     fn erfc_works_3() {
+        // Mathematica:
+        // res = Table[{x, N[Erfc[x], 100]}, {x, -10, 10, 0.2}]
+        // Export["test.txt", res, "Table", "FieldSeparators" -> ", "]
         #[rustfmt::skip]
         let mathematica = [
             (-10.                , 1e-50 , 2.)                      , 

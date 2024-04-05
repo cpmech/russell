@@ -383,7 +383,7 @@ pub fn erfc(x: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::{erf, erfc};
-    use crate::approx_eq;
+    use crate::{approx_eq, assert_alike};
 
     #[test]
     fn erf_works_1() {
@@ -732,6 +732,87 @@ mod tests {
         for (x, tol, reference) in mathematica {
             // println!("x = {:?}", x);
             approx_eq(erfc(x), reference, tol);
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////
+    // The code below is based on all_test.go file from Go (1.22.1) //
+    //////////////////////////////////////////////////////////////////
+    // Copyright 2009 The Go Authors. All rights reserved.          //
+    // Use of this source code is governed by a BSD-style           //
+    // license that can be found in the LICENSE file.               //
+    //////////////////////////////////////////////////////////////////
+
+    const VALUES: [f64; 10] = [
+        4.9790119248836735e+00,
+        7.7388724745781045e+00,
+        -2.7688005719200159e-01,
+        -5.0106036182710749e+00,
+        9.6362937071984173e+00,
+        2.9263772392439646e+00,
+        5.2290834314593066e+00,
+        2.7279399104360102e+00,
+        1.8253080916808550e+00,
+        -8.6859247685756013e+00,
+    ];
+
+    const SOLUTION_ERF: [f64; 10] = [
+        5.1865354817738701906913566e-01,
+        7.2623875834137295116929844e-01,
+        -3.123458688281309990629839e-02,
+        -5.2143121110253302920437013e-01,
+        8.2704742671312902508629582e-01,
+        3.2101767558376376743993945e-01,
+        5.403990312223245516066252e-01,
+        3.0034702916738588551174831e-01,
+        2.0369924417882241241559589e-01,
+        -7.8069386968009226729944677e-01,
+    ];
+
+    const SOLUTION_ERFC: [f64; 10] = [
+        4.8134645182261298093086434e-01,
+        2.7376124165862704883070156e-01,
+        1.0312345868828130999062984e+00,
+        1.5214312111025330292043701e+00,
+        1.7295257328687097491370418e-01,
+        6.7898232441623623256006055e-01,
+        4.596009687776754483933748e-01,
+        6.9965297083261411448825169e-01,
+        7.9630075582117758758440411e-01,
+        1.7806938696800922672994468e+00,
+    ];
+
+    const SC_VALUES_ERF: [f64; 7] = [f64::NEG_INFINITY, -0.0, 0.0, f64::INFINITY, f64::NAN, -1000.0, 1000.0];
+
+    const SC_SOLUTION_ERF: [f64; 7] = [-1.0, -0.0, 0.0, 1.0, f64::NAN, -1.0, 1.0];
+
+    const SC_VALUES_ERFC: [f64; 5] = [f64::NEG_INFINITY, f64::INFINITY, f64::NAN, -1000.0, 1000.0];
+
+    const SC_SOLUTION_ERFC: [f64; 5] = [2.0, 0.0, f64::NAN, 2.0, 0.0];
+
+    #[test]
+    fn test_erf() {
+        for (i, v) in VALUES.iter().enumerate() {
+            let a = *v / 10.0;
+            let f = erf(a);
+            approx_eq(SOLUTION_ERF[i], f, 1e-17);
+        }
+        for (i, v) in SC_VALUES_ERF.iter().enumerate() {
+            let f = erf(*v);
+            assert_alike(SC_SOLUTION_ERF[i], f);
+        }
+    }
+
+    #[test]
+    fn test_erfc() {
+        for (i, v) in VALUES.iter().enumerate() {
+            let a = *v / 10.0;
+            let f = erfc(a);
+            approx_eq(SOLUTION_ERFC[i], f, 1e-15);
+        }
+        for (i, v) in SC_VALUES_ERFC.iter().enumerate() {
+            let f = erfc(*v);
+            assert_alike(SC_SOLUTION_ERFC[i], f);
         }
     }
 }

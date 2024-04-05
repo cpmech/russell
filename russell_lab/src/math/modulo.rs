@@ -87,7 +87,7 @@ mod tests {
         1.314075231424398637614104e+00,
     ];
 
-    const VALUES_SC: [[f64; 2]; 34] = [
+    const SC_VALUES: [[f64; 2]; 34] = [
         [f64::NEG_INFINITY, f64::NEG_INFINITY],
         [f64::NEG_INFINITY, -PI],
         [f64::NEG_INFINITY, 0.0],
@@ -124,7 +124,7 @@ mod tests {
         [f64::NAN, f64::NAN],
     ];
 
-    const SOLUTION_SC: [f64; 34] = [
+    const SC_SOLUTION: [f64; 34] = [
         f64::NAN, // modulo(-Inf, -Inf)
         f64::NAN, // modulo(-Inf, -PI)
         f64::NAN, // modulo(-Inf, 0)
@@ -167,9 +167,9 @@ mod tests {
             let f = modulo(10.0, *v);
             assert_eq!(SOLUTION[i], f);
         }
-        for (i, v) in VALUES_SC.iter().enumerate() {
+        for (i, v) in SC_VALUES.iter().enumerate() {
             let f = modulo(v[0], v[1]);
-            assert_alike(SOLUTION_SC[i], f);
+            assert_alike(SC_SOLUTION[i], f);
         }
         // verify precision of result for extreme inputs
         let f = modulo(5.9790119248836734e+200, 1.1258465975523544);

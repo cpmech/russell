@@ -39,32 +39,6 @@ const VALUES: [f64; 10] = [
 // to 26 digits (by using the "Digit number" drop-down control of each
 // calculator).
 
-const SOLUTION_ERF: [f64; 10] = [
-    5.1865354817738701906913566e-01,
-    7.2623875834137295116929844e-01,
-    -3.123458688281309990629839e-02,
-    -5.2143121110253302920437013e-01,
-    8.2704742671312902508629582e-01,
-    3.2101767558376376743993945e-01,
-    5.403990312223245516066252e-01,
-    3.0034702916738588551174831e-01,
-    2.0369924417882241241559589e-01,
-    -7.8069386968009226729944677e-01,
-];
-
-const SOLUTION_ERFC: [f64; 10] = [
-    4.8134645182261298093086434e-01,
-    2.7376124165862704883070156e-01,
-    1.0312345868828130999062984e+00,
-    1.5214312111025330292043701e+00,
-    1.7295257328687097491370418e-01,
-    6.7898232441623623256006055e-01,
-    4.596009687776754483933748e-01,
-    6.9965297083261411448825169e-01,
-    7.9630075582117758758440411e-01,
-    1.7806938696800922672994468e+00,
-];
-
 const SOLUTION_FREXP: [Pair; 10] = [
     Pair {
         f: 6.2237649061045918750e-01,
@@ -133,14 +107,6 @@ const SOLUTION_MODF: [[f64; 2]; 10] = [
     [1.0000000000000000e+00, 8.2530809168085506044576505e-01],
     [-8.0000000000000000e+00, -6.8592476857560136238589621e-01],
 ];
-
-const SPECIAL_CASES_ERF: [f64; 7] = [f64::NEG_INFINITY, -0.0, 0.0, f64::INFINITY, f64::NAN, -1000.0, 1000.0];
-
-const SPECIAL_CASES_SOLUTION_ERF: [f64; 7] = [-1.0, -0.0, 0.0, 1.0, f64::NAN, -1.0, 1.0];
-
-const SPECIAL_CASES_ERFC: [f64; 5] = [f64::NEG_INFINITY, f64::INFINITY, f64::NAN, -1000.0, 1000.0];
-
-const SPECIAL_CASES_SOLUTION_ERFC: [f64; 5] = [2.0, 0.0, f64::NAN, 2.0, 0.0];
 
 const SPECIAL_CASES_FREXP: [f64; 5] = [f64::NEG_INFINITY, -0.0, 0.0, f64::INFINITY, f64::NAN];
 
@@ -397,50 +363,6 @@ fn alike(a: f64, b: f64) -> bool {
         return a.is_sign_negative() == b.is_sign_negative();
     }
     false
-}
-
-#[test]
-fn test_erf() {
-    for i in 0..VALUES.len() {
-        let a = VALUES[i] / 10.0;
-        let f = math::erf(a);
-        if !very_close(SOLUTION_ERF[i], f) {
-            println!("erf({}) = {}, want {}", a, f, SOLUTION_ERF[i]);
-            panic!("erf failed");
-        }
-    }
-    for i in 0..(SPECIAL_CASES_ERF.len()) {
-        let f = math::erf(SPECIAL_CASES_ERF[i]);
-        if !alike(SPECIAL_CASES_SOLUTION_ERF[i], f) {
-            println!(
-                "erf({}) = {}, want {}",
-                SPECIAL_CASES_ERF[i], f, SPECIAL_CASES_SOLUTION_ERF[i]
-            );
-            panic!("erf special cases failed");
-        }
-    }
-}
-
-#[test]
-fn test_erfc() {
-    for i in 0..VALUES.len() {
-        let a = VALUES[i] / 10.0;
-        let f = math::erfc(a);
-        if !very_close(SOLUTION_ERFC[i], f) {
-            println!("erfc({}) = {}, want {}", a, f, SOLUTION_ERFC[i]);
-            panic!("erfc failed");
-        }
-    }
-    for i in 0..SPECIAL_CASES_ERFC.len() {
-        let f = math::erfc(SPECIAL_CASES_ERFC[i]);
-        if !alike(SPECIAL_CASES_SOLUTION_ERFC[i], f) {
-            println!(
-                "erfc({}) = {}, want {}",
-                SPECIAL_CASES_ERFC[i], f, SPECIAL_CASES_SOLUTION_ERFC[i]
-            );
-            panic!("erfc special cases failed");
-        }
-    }
 }
 
 #[test]

@@ -20,13 +20,13 @@
 ///
 /// ```
 /// # use russell_lab::math;
-/// let (integer, fractional) = math::split_integer_fractional(3.141593);
+/// let (integer, fractional) = math::split_float(3.141593);
 /// assert_eq!(
 ///     format!("integer = {:?}, fractional = {:.6}", integer, fractional),
 ///     "integer = 3.0, fractional = 0.141593"
 /// );
 /// ```
-pub fn split_integer_fractional(x: f64) -> (f64, f64) {
+pub fn split_float(x: f64) -> (f64, f64) {
     let mut u = x.to_bits();
     let e = ((u >> 52 & 0x7ff) as i32) - 0x3ff;
 
@@ -77,7 +77,7 @@ pub fn split_integer_fractional(x: f64) -> (f64, f64) {
 pub fn is_negative_integer(x: f64) -> bool {
     if f64::is_finite(x) {
         if x < 0.0 {
-            let (_, xf) = split_integer_fractional(x);
+            let (_, xf) = split_float(x);
             xf == 0.0
         } else {
             false
@@ -91,13 +91,13 @@ pub fn is_negative_integer(x: f64) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_negative_integer, split_integer_fractional};
+    use super::{is_negative_integer, split_float};
 
     #[test]
-    fn split_integer_fractional_works() {
+    fn split_float_works() {
         let values = [123.239459191, 3956969101.20101, -2.3303];
         for x in values {
-            let (integer, fractional) = split_integer_fractional(x);
+            let (integer, fractional) = split_float(x);
             assert_eq!(integer + fractional, x);
         }
 
@@ -114,10 +114,10 @@ mod tests {
         // // -inf = -inf + -0.000000
 
         // special cases
-        assert_eq!(split_integer_fractional(f64::NEG_INFINITY), (f64::NEG_INFINITY, -0.0)); // note that Go returns (-Inf, NaN); but the C code above returns (-Inf, -0.0)
-        assert_eq!(split_integer_fractional(-0.0), (-0.0, -0.0));
-        assert_eq!(split_integer_fractional(f64::INFINITY), (f64::INFINITY, 0.0)); // note that Go returns (Inf, NaN); but the C code above returns (Inf, 0.0)
-        let (integer, fractional) = split_integer_fractional(f64::NAN);
+        assert_eq!(split_float(f64::NEG_INFINITY), (f64::NEG_INFINITY, -0.0)); // note that Go returns (-Inf, NaN); but the C code above returns (-Inf, -0.0)
+        assert_eq!(split_float(-0.0), (-0.0, -0.0));
+        assert_eq!(split_float(f64::INFINITY), (f64::INFINITY, 0.0)); // note that Go returns (Inf, NaN); but the C code above returns (Inf, 0.0)
+        let (integer, fractional) = split_float(f64::NAN);
         assert!(integer.is_nan());
         assert!(fractional.is_nan());
     }
@@ -183,9 +183,9 @@ mod tests {
     ];
 
     #[test]
-    fn test_split_integer_fraction() {
+    fn test_split_float() {
         for (i, v) in VALUES.iter().enumerate() {
-            let (f, g) = split_integer_fractional(*v);
+            let (f, g) = split_float(*v);
             assert_eq!(SOLUTION[i][0], f);
             assert_eq!(SOLUTION[i][1], g);
         }

@@ -1,4 +1,4 @@
-use super::{frexp, ldexp, PI};
+use super::{modulo, PI};
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -380,43 +380,6 @@ fn sin_pi(x_in: f64) -> f64 {
         x = f64::sin(PI * (x - 2.0));
     }
     -x
-}
-
-/// Returns the floating-point remainder of x/y
-///
-/// The magnitude of the result is less than y and its sign agrees with that of x
-///
-/// # Special cases
-///
-/// * `modulo(±Inf, y) = NaN`
-/// * `modulo(NaN, y) = NaN`
-/// * `modulo(x, 0) = NaN`
-/// * `modulo(x, ±Inf) = x`
-/// * `modulo(x, NaN) = NaN`
-fn modulo(x: f64, y: f64) -> f64 {
-    if y == 0.0 || f64::is_infinite(x) || f64::is_nan(x) || f64::is_nan(y) {
-        return f64::NAN;
-    }
-    let y = f64::abs(y);
-
-    let (y_frac, y_exp) = frexp(y);
-    let mut r = x;
-    if x < 0.0 {
-        r = -x;
-    }
-
-    while r >= y {
-        let (r_frac, mut r_exp) = frexp(r);
-        if r_frac < y_frac {
-            r_exp = r_exp - 1;
-        }
-        r = r - ldexp(y, r_exp - y_exp);
-    }
-
-    if x < 0.0 {
-        r = -r;
-    }
-    r
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

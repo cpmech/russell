@@ -387,8 +387,8 @@ fn sin_pi(x_in: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::ln_gamma;
-    use crate::approx_eq;
     use crate::math::ONE_BY_3;
+    use crate::{approx_eq, assert_alike};
 
     #[test]
     fn ln_gamma_works() {
@@ -412,6 +412,73 @@ mod tests {
         for (x, tol, reference) in mathematica {
             // println!("x = {:?}", x);
             approx_eq(ln_gamma(x).0, reference, tol)
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////
+    // The code below is based on all_test.go file from Go (1.22.1) //
+    //////////////////////////////////////////////////////////////////
+    // Copyright 2009 The Go Authors. All rights reserved.          //
+    // Use of this source code is governed by a BSD-style           //
+    // license that can be found in the LICENSE file.               //
+    //////////////////////////////////////////////////////////////////
+
+    struct Fi {
+        f: f64,
+        i: i32,
+    }
+
+    const VALUES: [f64; 10] = [
+        4.9790119248836735e+00,
+        7.7388724745781045e+00,
+        -2.7688005719200159e-01,
+        -5.0106036182710749e+00,
+        9.6362937071984173e+00,
+        2.9263772392439646e+00,
+        5.2290834314593066e+00,
+        2.7279399104360102e+00,
+        1.8253080916808550e+00,
+        -8.6859247685756013e+00,
+    ];
+
+    #[rustfmt::skip]
+    const SOLUTION: [Fi; 10] = [
+        Fi { f: 3.146492141244545774319734e+00,  i: 1 },
+        Fi { f: 8.003414490659126375852113e+00,  i: 1 },
+        Fi { f: 1.517575735509779707488106e+00,  i: -1 },
+        Fi { f: -2.588480028182145853558748e-01, i: 1 },
+        Fi { f: 1.1989897050205555002007985e+01, i: 1 },
+        Fi { f: 6.262899811091257519386906e-01,  i: 1 },
+        Fi { f: 3.5287924899091566764846037e+00, i: 1 },
+        Fi { f: 4.5725644770161182299423372e-01, i: 1 },
+        Fi { f: -6.363667087767961257654854e-02, i: 1 },
+        Fi { f: -1.077385130910300066425564e+01, i: -1 },
+    ];
+
+    const VALUES_SC: [f64; 7] = [f64::NEG_INFINITY, -3.0, 0.0, 1.0, 2.0, f64::INFINITY, f64::NAN];
+
+    #[rustfmt::skip]
+    const SOLUTION_SC: [Fi; 7] = [
+        Fi { f: f64::NEG_INFINITY, i: 1 },
+        Fi { f: f64::INFINITY, i: 1 },
+        Fi { f: f64::INFINITY, i: 1 },
+        Fi { f: 0.0, i: 1 },
+        Fi { f: 0.0, i: 1 },
+        Fi { f: f64::INFINITY, i: 1 },
+        Fi { f: f64::NAN, i: 1 },
+    ];
+
+    #[test]
+    fn test_ln_gamma() {
+        for (i, v) in VALUES.iter().enumerate() {
+            let (f, s) = ln_gamma(*v);
+            approx_eq(SOLUTION[i].f, f, 1e-14);
+            assert_eq!(SOLUTION[i].i, s);
+        }
+        for (i, v) in VALUES_SC.iter().enumerate() {
+            let (f, s) = ln_gamma(*v);
+            assert_alike(SOLUTION_SC[i].f, f);
+            assert_eq!(SOLUTION_SC[i].i, s);
         }
     }
 }

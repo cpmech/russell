@@ -1,4 +1,4 @@
-#![allow(unused, non_upper_case_globals)]
+#![allow(non_upper_case_globals)]
 
 use russell_lab::math;
 
@@ -63,19 +63,6 @@ const SOLUTION_ERFC: [f64; 10] = [
     6.9965297083261411448825169e-01,
     7.9630075582117758758440411e-01,
     1.7806938696800922672994468e+00,
-];
-
-const SOLUTION_ERF_INV: [f64; 10] = [
-    4.746037673358033586786350696e-01,
-    8.559054432692110956388764172e-01,
-    -2.45427830571707336251331946e-02,
-    -4.78116683518973366268905506e-01,
-    1.479804430319470983648120853e+00,
-    2.654485787128896161882650211e-01,
-    5.027444534221520197823192493e-01,
-    2.466703532707627818954585670e-01,
-    1.632011465103005426240343116e-01,
-    -1.06672334642196900710000389e+00,
 ];
 
 const SOLUTION_FREXP: [Pair; 10] = [
@@ -186,49 +173,6 @@ const SOLUTION_BESSEL_JM3: [f64; 10] = [
     -2.3762660886100206491674503e-01,
 ];
 
-const SOLUTION_LN_GAMMA: [Pair; 10] = [
-    Pair {
-        f: 3.146492141244545774319734e+00,
-        i: 1,
-    },
-    Pair {
-        f: 8.003414490659126375852113e+00,
-        i: 1,
-    },
-    Pair {
-        f: 1.517575735509779707488106e+00,
-        i: -1,
-    },
-    Pair {
-        f: -2.588480028182145853558748e-01,
-        i: 1,
-    },
-    Pair {
-        f: 1.1989897050205555002007985e+01,
-        i: 1,
-    },
-    Pair {
-        f: 6.262899811091257519386906e-01,
-        i: 1,
-    },
-    Pair {
-        f: 3.5287924899091566764846037e+00,
-        i: 1,
-    },
-    Pair {
-        f: 4.5725644770161182299423372e-01,
-        i: 1,
-    },
-    Pair {
-        f: -6.363667087767961257654854e-02,
-        i: 1,
-    },
-    Pair {
-        f: -1.077385130910300066425564e+01,
-        i: -1,
-    },
-];
-
 const SOLUTION_MODF: [[f64; 2]; 10] = [
     [4.0000000000000000e+00, 9.7901192488367350108546816e-01],
     [7.0000000000000000e+00, 7.3887247457810456552351752e-01],
@@ -301,14 +245,6 @@ const SPECIAL_CASES_SOLUTION_ERF: [f64; 7] = [-1.0, -0.0, 0.0, 1.0, f64::NAN, -1
 const SPECIAL_CASES_ERFC: [f64; 5] = [f64::NEG_INFINITY, f64::INFINITY, f64::NAN, -1000.0, 1000.0];
 
 const SPECIAL_CASES_SOLUTION_ERFC: [f64; 5] = [2.0, 0.0, f64::NAN, 2.0, 0.0];
-
-const SPECIAL_CASES_ERF_INV: [f64; 6] = [1.0, -1.0, 0.0, f64::NEG_INFINITY, f64::INFINITY, f64::NAN];
-
-const SPECIAL_CASES_SOLUTION_ERF_INV: [f64; 6] = [f64::INFINITY, f64::NEG_INFINITY, 0.0, f64::NAN, f64::NAN, f64::NAN];
-
-const SPECIAL_CASES_ERFC_INV: [f64; 6] = [0.0, 2.0, 1.0, f64::INFINITY, f64::NEG_INFINITY, f64::NAN];
-
-const SPECIAL_CASES_SOLUTION_ERFC_INV: [f64; 6] = [f64::INFINITY, f64::NEG_INFINITY, 0.0, f64::NAN, f64::NAN, f64::NAN];
 
 const SPECIAL_CASES_FREXP: [f64; 5] = [f64::NEG_INFINITY, -0.0, 0.0, f64::INFINITY, f64::NAN];
 
@@ -452,21 +388,6 @@ const SPECIAL_CASES_SOLUTION_LDEXP: [f64; 13] = [
     f64::NAN,
     f64::INFINITY,
     0.0,
-];
-
-const SC_LN_GAMMA: [f64; 7] = [f64::NEG_INFINITY, -3.0, 0.0, 1.0, 2.0, f64::INFINITY, f64::NAN];
-
-const SC_SOLUTION_LN_GAMMA: [Pair; 7] = [
-    Pair {
-        f: f64::NEG_INFINITY,
-        i: 1,
-    },
-    Pair { f: f64::INFINITY, i: 1 },
-    Pair { f: f64::INFINITY, i: 1 },
-    Pair { f: 0.0, i: 1 },
-    Pair { f: 0.0, i: 1 },
-    Pair { f: f64::INFINITY, i: 1 },
-    Pair { f: f64::NAN, i: 1 },
 ];
 
 const SC_BESSEL_Y0: [f64; 5] = [f64::NEG_INFINITY, 0.0, f64::INFINITY, f64::NAN, -1.0];
@@ -650,86 +571,6 @@ fn test_erfc() {
     }
 }
 
-// #[test]
-fn test_erf_inv() {
-    for i in 0..VALUES.len() {
-        let a = VALUES[i] / 10.0;
-        let f = math::erf_inv(a);
-        if !very_close(SOLUTION_ERF_INV[i], f) {
-            println!("erf_inv({}) = {}, want {}", a, f, SOLUTION_ERF_INV[i]);
-            panic!("erf_inv failed");
-        }
-    }
-    for i in 0..SPECIAL_CASES_ERF_INV.len() {
-        let f = math::erf_inv(SPECIAL_CASES_ERF_INV[i]);
-        if !alike(SPECIAL_CASES_SOLUTION_ERF_INV[i], f) {
-            println!(
-                "erf_inv({}) = {}, want {}",
-                SPECIAL_CASES_ERF_INV[i], f, SPECIAL_CASES_SOLUTION_ERF_INV[i]
-            );
-            panic!("erf_inv special cases failed");
-        }
-    }
-    let mut x = -0.9;
-    while x <= 0.90 {
-        let f = math::erf(math::erf_inv(x));
-        if !close(x, f) {
-            println!("erf(erf_inv({})) = {}, want {}", x, f, x);
-            panic!("erf(erf_inv(x)) = x failed");
-        }
-        x += 1e-2;
-    }
-    let mut x = -0.9;
-    while x <= 0.90 {
-        let f = math::erf_inv(math::erf(x));
-        if !close(x, f) {
-            println!("erf_inv(erf({})) = {}, want {}", x, f, x);
-            panic!("erf_inv(erf(x)) = x failed");
-        }
-        x += 1e-2;
-    }
-}
-
-// #[test]
-fn test_erfc_inv() {
-    for i in 0..VALUES.len() {
-        let a = 1.0 - (VALUES[i] / 10.0);
-        let f = math::erfc_inv(a);
-        if !very_close(SOLUTION_ERF_INV[i], f) {
-            println!("erfc_inv({}) = {}, want {}", a, f, SOLUTION_ERF_INV[i]);
-            panic!("erfc_inv failed");
-        }
-    }
-    for i in 0..SPECIAL_CASES_ERFC_INV.len() {
-        let f = math::erfc_inv(SPECIAL_CASES_ERFC_INV[i]);
-        if !alike(SPECIAL_CASES_SOLUTION_ERFC_INV[i], f) {
-            println!(
-                "erfc_inv({}) = {}, want {}",
-                SPECIAL_CASES_ERFC_INV[i], f, SPECIAL_CASES_SOLUTION_ERFC_INV[i]
-            );
-            panic!("erfc_inv special cases failed");
-        }
-    }
-    let mut x = 0.1;
-    while x <= 1.9 {
-        let f = math::erfc(math::erfc_inv(x));
-        if !close(x, f) {
-            println!("erfc(erfc_inv({})) = {}, want {}", x, f, x);
-            panic!("erfc(erfc_inv(x)) = x");
-        }
-        x += 1e-2;
-    }
-    let mut x = 0.1;
-    while x <= 1.9 {
-        let f = math::erfc_inv(math::erfc(x));
-        if !close(x, f) {
-            println!("erfc_inv(erfc({})) = {}, want {}", x, f, x);
-            panic!("erfc_inv(erfc(x)) = x");
-        }
-        x += 1e-2;
-    }
-}
-
 #[test]
 fn test_frexp() {
     for i in 0..VALUES.len() {
@@ -853,30 +694,6 @@ fn test_gamma() {
         if !ok {
             println!("gamma({}) = {}, want {}", g[0], f, g[1]);
             panic!("gamma special cases failed");
-        }
-    }
-}
-
-#[test]
-fn test_ln_gamma() {
-    for i in 0..VALUES.len() {
-        let (f, s) = math::ln_gamma(VALUES[i]);
-        if !close(SOLUTION_LN_GAMMA[i].f, f) || SOLUTION_LN_GAMMA[i].i != s {
-            println!(
-                "ln_gamma({}) = {}, {}, want {}, {}",
-                VALUES[i], f, s, SOLUTION_LN_GAMMA[i].f, SOLUTION_LN_GAMMA[i].i
-            );
-            panic!("ln_gamma failed");
-        }
-    }
-    for i in 0..SC_LN_GAMMA.len() {
-        let (f, s) = math::ln_gamma(SC_LN_GAMMA[i]);
-        if !alike(SC_SOLUTION_LN_GAMMA[i].f, f) || SC_SOLUTION_LN_GAMMA[i].i != s {
-            println!(
-                "ln_gamma({}) = {}, {}, want {}, {}",
-                SC_LN_GAMMA[i], f, s, SC_SOLUTION_LN_GAMMA[i].f, SC_SOLUTION_LN_GAMMA[i].i
-            );
-            panic!("ln_gamma special cases failed");
         }
     }
 }

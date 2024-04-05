@@ -152,7 +152,7 @@ pub fn erfc_inv(x: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::{erf_inv, erfc_inv};
-    use crate::{approx_eq, assert_alike};
+    use crate::{approx_eq, assert_alike, math::erf, math::erfc};
 
     #[test]
     fn erf_inv_works_1() {
@@ -263,7 +263,28 @@ mod tests {
             approx_eq(erfc_inv(x), reference, tol);
         }
     }
-    /*
+
+    //////////////////////////////////////////////////////////////////
+    // The code below is based on all_test.go file from Go (1.22.1) //
+    //////////////////////////////////////////////////////////////////
+    // Copyright 2009 The Go Authors. All rights reserved.          //
+    // Use of this source code is governed by a BSD-style           //
+    // license that can be found in the LICENSE file.               //
+    //////////////////////////////////////////////////////////////////
+
+    const VALUES: [f64; 10] = [
+        4.9790119248836735e+00,
+        7.7388724745781045e+00,
+        -2.7688005719200159e-01,
+        -5.0106036182710749e+00,
+        9.6362937071984173e+00,
+        2.9263772392439646e+00,
+        5.2290834314593066e+00,
+        2.7279399104360102e+00,
+        1.8253080916808550e+00,
+        -8.6859247685756013e+00,
+    ];
+
     const SOLUTION_ERF_INV: [f64; 10] = [
         4.746037673358033586786350696e-01,
         8.559054432692110956388764172e-01,
@@ -277,94 +298,63 @@ mod tests {
         -1.06672334642196900710000389e+00,
     ];
 
+    const SC_VALUES_ERF_INV: [f64; 6] = [1.0, -1.0, 0.0, f64::NEG_INFINITY, f64::INFINITY, f64::NAN];
 
-    const SPECIAL_CASES_ERF_INV: [f64; 6] = [1.0, -1.0, 0.0, f64::NEG_INFINITY, f64::INFINITY, f64::NAN];
+    const SC_SOLUTION_ERF_INV: [f64; 6] = [f64::INFINITY, f64::NEG_INFINITY, 0.0, f64::NAN, f64::NAN, f64::NAN];
 
-    const SPECIAL_CASES_SOLUTION_ERF_INV: [f64; 6] = [f64::INFINITY, f64::NEG_INFINITY, 0.0, f64::NAN, f64::NAN, f64::NAN];
+    const SC_VALUES_ERFC_INV: [f64; 6] = [0.0, 2.0, 1.0, f64::INFINITY, f64::NEG_INFINITY, f64::NAN];
 
-    const SPECIAL_CASES_ERFC_INV: [f64; 6] = [0.0, 2.0, 1.0, f64::INFINITY, f64::NEG_INFINITY, f64::NAN];
+    const SC_SOLUTION_ERFC_INV: [f64; 6] = [f64::INFINITY, f64::NEG_INFINITY, 0.0, f64::NAN, f64::NAN, f64::NAN];
 
-    const SPECIAL_CASES_SOLUTION_ERFC_INV: [f64; 6] = [f64::INFINITY, f64::NEG_INFINITY, 0.0, f64::NAN, f64::NAN, f64::NAN];
-
-    // #[test]
+    #[test]
     fn test_erf_inv() {
-        for i in 0..VALUES.len() {
-            let a = VALUES[i] / 10.0;
-            let f = math::erf_inv(a);
-            if !very_close(SOLUTION_ERF_INV[i], f) {
-                println!("erf_inv({}) = {}, want {}", a, f, SOLUTION_ERF_INV[i]);
-                panic!("erf_inv failed");
-            }
+        for (i, v) in VALUES.iter().enumerate() {
+            let a = *v / 10.0;
+            let f = erf_inv(a);
+            approx_eq(SOLUTION_ERF_INV[i], f, 1e-15);
         }
-        for i in 0..SPECIAL_CASES_ERF_INV.len() {
-            let f = math::erf_inv(SPECIAL_CASES_ERF_INV[i]);
-            if !alike(SPECIAL_CASES_SOLUTION_ERF_INV[i], f) {
-                println!(
-                    "erf_inv({}) = {}, want {}",
-                    SPECIAL_CASES_ERF_INV[i], f, SPECIAL_CASES_SOLUTION_ERF_INV[i]
-                );
-                panic!("erf_inv special cases failed");
-            }
+        for (i, v) in SC_VALUES_ERF_INV.iter().enumerate() {
+            let f = erf_inv(*v);
+            assert_alike(SC_SOLUTION_ERF_INV[i], f);
+        }
+        let mut x = -0.9;
+        let dx = 0.3;
+        while x <= 0.90 {
+            let f = erf(erf_inv(x));
+            approx_eq(x, f, 1e-15);
+            x += dx;
         }
         let mut x = -0.9;
         while x <= 0.90 {
-            let f = math::erf(math::erf_inv(x));
-            if !close(x, f) {
-                println!("erf(erf_inv({})) = {}, want {}", x, f, x);
-                panic!("erf(erf_inv(x)) = x failed");
-            }
-            x += 1e-2;
-        }
-        let mut x = -0.9;
-        while x <= 0.90 {
-            let f = math::erf_inv(math::erf(x));
-            if !close(x, f) {
-                println!("erf_inv(erf({})) = {}, want {}", x, f, x);
-                panic!("erf_inv(erf(x)) = x failed");
-            }
-            x += 1e-2;
+            let f = erf_inv(erf(x));
+            approx_eq(x, f, 1e-15);
+            x += dx;
         }
     }
 
-    // #[test]
+    #[test]
     fn test_erfc_inv() {
-        for i in 0..VALUES.len() {
-            let a = 1.0 - (VALUES[i] / 10.0);
-            let f = math::erfc_inv(a);
-            if !very_close(SOLUTION_ERF_INV[i], f) {
-                println!("erfc_inv({}) = {}, want {}", a, f, SOLUTION_ERF_INV[i]);
-                panic!("erfc_inv failed");
-            }
+        for (i, v) in VALUES.iter().enumerate() {
+            let a = 1.0 - (*v / 10.0);
+            let f = erfc_inv(a);
+            approx_eq(SOLUTION_ERF_INV[i], f, 1e-15);
         }
-        for i in 0..SPECIAL_CASES_ERFC_INV.len() {
-            let f = math::erfc_inv(SPECIAL_CASES_ERFC_INV[i]);
-            if !alike(SPECIAL_CASES_SOLUTION_ERFC_INV[i], f) {
-                println!(
-                    "erfc_inv({}) = {}, want {}",
-                    SPECIAL_CASES_ERFC_INV[i], f, SPECIAL_CASES_SOLUTION_ERFC_INV[i]
-                );
-                panic!("erfc_inv special cases failed");
-            }
+        for (i, v) in SC_VALUES_ERFC_INV.iter().enumerate() {
+            let f = erfc_inv(*v);
+            assert_alike(SC_SOLUTION_ERFC_INV[i], f);
+        }
+        let mut x = 0.1;
+        let dx = 0.3;
+        while x <= 1.9 {
+            let f = erfc(erfc_inv(x));
+            approx_eq(x, f, 1e-15);
+            x += dx;
         }
         let mut x = 0.1;
         while x <= 1.9 {
-            let f = math::erfc(math::erfc_inv(x));
-            if !close(x, f) {
-                println!("erfc(erfc_inv({})) = {}, want {}", x, f, x);
-                panic!("erfc(erfc_inv(x)) = x");
-            }
-            x += 1e-2;
-        }
-        let mut x = 0.1;
-        while x <= 1.9 {
-            let f = math::erfc_inv(math::erfc(x));
-            if !close(x, f) {
-                println!("erfc_inv(erfc({})) = {}, want {}", x, f, x);
-                panic!("erfc_inv(erfc(x)) = x");
-            }
-            x += 1e-2;
+            let f = erfc_inv(erfc(x));
+            approx_eq(x, f, 1e-14);
+            x += dx;
         }
     }
-
-    */
 }

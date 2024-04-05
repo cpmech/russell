@@ -215,24 +215,24 @@ pub fn ln_gamma(x_in: f64) -> (f64, i32) {
         return (f64::INFINITY, 1);
     }
 
-    let mut neg = false;
+    let mut negative = false;
     let mut x = x_in;
     if x < 0.0 {
         x = -x;
-        neg = true;
+        negative = true;
     }
 
     let mut sign = 1;
     if x < TINY {
         // if |x| < 2**-70, return -log(|x|)
-        if neg {
+        if negative {
             sign = -1;
         }
         return (-f64::ln(x), sign);
     }
 
-    let mut nadj: f64 = 0.0;
-    if neg {
+    let mut n_adj: f64 = 0.0;
+    if negative {
         if x >= TWO_52 {
             // |x| >= 2**52, must be -integer
             return (f64::INFINITY, sign);
@@ -241,7 +241,7 @@ pub fn ln_gamma(x_in: f64) -> (f64, i32) {
         if t == 0.0 {
             return (f64::INFINITY, sign); // -integer case
         }
-        nadj = f64::ln(PI / f64::abs(t * x));
+        n_adj = f64::ln(PI / f64::abs(t * x));
         if t < 0.0 {
             sign = -1;
         }
@@ -334,8 +334,8 @@ pub fn ln_gamma(x_in: f64) -> (f64, i32) {
         // 2**58 <= x <= Inf
         lgamma = x * (f64::ln(x) - 1.0);
     }
-    if neg {
-        lgamma = nadj - lgamma;
+    if negative {
+        lgamma = n_adj - lgamma;
     }
     (lgamma, sign)
 }
@@ -379,7 +379,7 @@ fn sin_pi(x_in: f64) -> f64 {
     } else {
         x = f64::sin(PI * (x - 2.0));
     }
-    return -x;
+    -x
 }
 
 /// Returns the floating-point remainder of x/y
@@ -399,18 +399,18 @@ fn modulo(x: f64, y: f64) -> f64 {
     }
     let y = f64::abs(y);
 
-    let (yfr, yexp) = frexp(y);
+    let (y_frac, y_exp) = frexp(y);
     let mut r = x;
     if x < 0.0 {
         r = -x;
     }
 
     while r >= y {
-        let (rfr, mut rexp) = frexp(r);
-        if rfr < yfr {
-            rexp = rexp - 1;
+        let (r_frac, mut r_exp) = frexp(r);
+        if r_frac < y_frac {
+            r_exp = r_exp - 1;
         }
-        r = r - ldexp(y, rexp - yexp);
+        r = r - ldexp(y, r_exp - y_exp);
     }
 
     if x < 0.0 {

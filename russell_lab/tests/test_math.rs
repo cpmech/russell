@@ -397,17 +397,17 @@ const VALUES_FOR_GAMMA: [[f64; 2]; 71] = [
     [-127.45117632943295, 1.183111089623681e-214],
 ];
 
-const vfbessel_j0SC: [f64; 4] = [f64::NEG_INFINITY, 0.0, f64::INFINITY, f64::NAN];
+const SPECIAL_CASES_BESSEL_J0: [f64; 4] = [f64::NEG_INFINITY, 0.0, f64::INFINITY, f64::NAN];
 
-const bessel_j0SC: [f64; 4] = [0.0, 1.0, 0.0, f64::NAN];
+const SPECIAL_CASES_SOLUTION_BESSEL_J0: [f64; 4] = [0.0, 1.0, 0.0, f64::NAN];
 
-const bessel_j1SC: [f64; 4] = [0.0, 0.0, 0.0, f64::NAN];
+const SPECIAL_CASES_BESSEL_J1: [f64; 4] = [0.0, 0.0, 0.0, f64::NAN];
 
-const bessel_j2SC: [f64; 4] = [0.0, 0.0, 0.0, f64::NAN];
+const SPECIAL_CASES_SOLUTION_BESSEL_J2: [f64; 4] = [0.0, 0.0, 0.0, f64::NAN];
 
-const bessel_jM3SC: [f64; 4] = [0.0, 0.0, 0.0, f64::NAN];
+const SPECIAL_CASES_BESSEL_JM3: [f64; 4] = [0.0, 0.0, 0.0, f64::NAN];
 
-const vfldexpSC: [Pair; 11] = [
+const SPECIAL_CASES_LDEXP: [Pair; 11] = [
     Pair { f: 0.0, i: 0 },
     Pair { f: 0.0, i: -1075 },
     Pair { f: 0.0, i: 1024 },
@@ -438,7 +438,7 @@ const vfldexpSC: [Pair; 11] = [
     // },
 ];
 
-const ldexpSC: [f64; 13] = [
+const SPECIAL_CASES_SOLUTION_LDEXP: [f64; 13] = [
     0.0,
     0.0,
     0.0,
@@ -454,9 +454,9 @@ const ldexpSC: [f64; 13] = [
     0.0,
 ];
 
-const vflgammaSC: [f64; 7] = [f64::NEG_INFINITY, -3.0, 0.0, 1.0, 2.0, f64::INFINITY, f64::NAN];
+const SC_LN_GAMMA: [f64; 7] = [f64::NEG_INFINITY, -3.0, 0.0, 1.0, 2.0, f64::INFINITY, f64::NAN];
 
-const lgammaSC: [Pair; 7] = [
+const SC_SOLUTION_LN_GAMMA: [Pair; 7] = [
     Pair {
         f: f64::NEG_INFINITY,
         i: 1,
@@ -469,7 +469,7 @@ const lgammaSC: [Pair; 7] = [
     Pair { f: f64::NAN, i: 1 },
 ];
 
-const vfbessel_y0SC: [f64; 5] = [f64::NEG_INFINITY, 0.0, f64::INFINITY, f64::NAN, -1.0];
+const SC_BESSEL_Y0: [f64; 5] = [f64::NEG_INFINITY, 0.0, f64::INFINITY, f64::NAN, -1.0];
 
 const bessel_y0SC: [f64; 5] = [f64::NAN, f64::NEG_INFINITY, 0.0, f64::NAN, f64::NAN];
 
@@ -786,12 +786,12 @@ fn test_ldexp() {
             panic!("ldexp special cases failed");
         }
     }
-    for i in 0..vfldexpSC.len() {
-        let f = math::ldexp(vfldexpSC[i].f, vfldexpSC[i].i);
-        if !alike(ldexpSC[i], f) {
+    for i in 0..SPECIAL_CASES_LDEXP.len() {
+        let f = math::ldexp(SPECIAL_CASES_LDEXP[i].f, SPECIAL_CASES_LDEXP[i].i);
+        if !alike(SPECIAL_CASES_SOLUTION_LDEXP[i], f) {
             println!(
                 "ldexp({}, {}) = {}, want {}",
-                vfldexpSC[i].f, vfldexpSC[i].i, f, ldexpSC[i]
+                SPECIAL_CASES_LDEXP[i].f, SPECIAL_CASES_LDEXP[i].i, f, SPECIAL_CASES_SOLUTION_LDEXP[i]
             );
             panic!("ldexp from frexp failed");
         }
@@ -857,7 +857,7 @@ fn test_gamma() {
     }
 }
 
-// #[test]
+#[test]
 fn test_ln_gamma() {
     for i in 0..VALUES.len() {
         let (f, s) = math::ln_gamma(VALUES[i]);
@@ -869,12 +869,12 @@ fn test_ln_gamma() {
             panic!("ln_gamma failed");
         }
     }
-    for i in 0..vflgammaSC.len() {
-        let (f, s) = math::ln_gamma(vflgammaSC[i]);
-        if !alike(lgammaSC[i].f, f) || lgammaSC[i].i != s {
+    for i in 0..SC_LN_GAMMA.len() {
+        let (f, s) = math::ln_gamma(SC_LN_GAMMA[i]);
+        if !alike(SC_SOLUTION_LN_GAMMA[i].f, f) || SC_SOLUTION_LN_GAMMA[i].i != s {
             println!(
                 "ln_gamma({}) = {}, {}, want {}, {}",
-                vflgammaSC[i], f, s, lgammaSC[i].f, lgammaSC[i].i
+                SC_LN_GAMMA[i], f, s, SC_SOLUTION_LN_GAMMA[i].f, SC_SOLUTION_LN_GAMMA[i].i
             );
             panic!("ln_gamma special cases failed");
         }
@@ -890,10 +890,13 @@ fn test_bessel_j0() {
             panic!("bessel_j0 failed");
         }
     }
-    for i in 0..vfbessel_j0SC.len() {
-        let f = math::bessel_j0(vfbessel_j0SC[i]);
-        if !alike(bessel_j0SC[i], f) {
-            println!("bessel_j0({}) = {}, want {}", vfbessel_j0SC[i], f, bessel_j0SC[i]);
+    for i in 0..SPECIAL_CASES_BESSEL_J0.len() {
+        let f = math::bessel_j0(SPECIAL_CASES_BESSEL_J0[i]);
+        if !alike(SPECIAL_CASES_SOLUTION_BESSEL_J0[i], f) {
+            println!(
+                "bessel_j0({}) = {}, want {}",
+                SPECIAL_CASES_BESSEL_J0[i], f, SPECIAL_CASES_SOLUTION_BESSEL_J0[i]
+            );
             panic!("bessel_j0 special cases failed");
         }
     }
@@ -908,10 +911,13 @@ fn test_bessel_j1() {
             panic!("bessel_j1 failed");
         }
     }
-    for i in 0..vfbessel_j0SC.len() {
-        let f = math::bessel_j1(vfbessel_j0SC[i]);
-        if !alike(bessel_j1SC[i], f) {
-            println!("bessel_j1({}) = {}, want {}", vfbessel_j0SC[i], f, bessel_j1SC[i]);
+    for i in 0..SPECIAL_CASES_BESSEL_J0.len() {
+        let f = math::bessel_j1(SPECIAL_CASES_BESSEL_J0[i]);
+        if !alike(SPECIAL_CASES_BESSEL_J1[i], f) {
+            println!(
+                "bessel_j1({}) = {}, want {}",
+                SPECIAL_CASES_BESSEL_J0[i], f, SPECIAL_CASES_BESSEL_J1[i]
+            );
             panic!("bessel_j1 special cases failed");
         }
     }
@@ -931,15 +937,21 @@ fn test_bessel_jn() {
             panic!("bessel_jn(-3, x) failed");
         }
     }
-    for i in 0..vfbessel_j0SC.len() {
-        let f = math::bessel_jn(2, vfbessel_j0SC[i]);
-        if !alike(bessel_j2SC[i], f) {
-            println!("bessel_jn(2, {}) = {}, want {}", vfbessel_j0SC[i], f, bessel_j2SC[i]);
+    for i in 0..SPECIAL_CASES_BESSEL_J0.len() {
+        let f = math::bessel_jn(2, SPECIAL_CASES_BESSEL_J0[i]);
+        if !alike(SPECIAL_CASES_SOLUTION_BESSEL_J2[i], f) {
+            println!(
+                "bessel_jn(2, {}) = {}, want {}",
+                SPECIAL_CASES_BESSEL_J0[i], f, SPECIAL_CASES_SOLUTION_BESSEL_J2[i]
+            );
             panic!("bessel_jn(2, x) special cases failed");
         }
-        let f = math::bessel_jn(-3, vfbessel_j0SC[i]);
-        if !alike(bessel_jM3SC[i], f) {
-            println!("bessel_jn(-3, {}) = {}, want {}", vfbessel_j0SC[i], f, bessel_jM3SC[i]);
+        let f = math::bessel_jn(-3, SPECIAL_CASES_BESSEL_J0[i]);
+        if !alike(SPECIAL_CASES_BESSEL_JM3[i], f) {
+            println!(
+                "bessel_jn(-3, {}) = {}, want {}",
+                SPECIAL_CASES_BESSEL_J0[i], f, SPECIAL_CASES_BESSEL_JM3[i]
+            );
             panic!("bessel_jn(-3, x) special cases failed");
         }
     }
@@ -955,10 +967,10 @@ fn test_bessel_y0() {
             panic!("bessel_y0 failed");
         }
     }
-    for i in 0..vfbessel_y0SC.len() {
-        let f = math::bessel_y0(vfbessel_y0SC[i]);
+    for i in 0..SC_BESSEL_Y0.len() {
+        let f = math::bessel_y0(SC_BESSEL_Y0[i]);
         if !alike(bessel_y0SC[i], f) {
-            println!("bessel_y0({}) = {}, want {}", vfbessel_y0SC[i], f, bessel_y0SC[i]);
+            println!("bessel_y0({}) = {}, want {}", SC_BESSEL_Y0[i], f, bessel_y0SC[i]);
             panic!("bessel_y0 special cases failed");
         }
     }
@@ -974,10 +986,10 @@ fn test_bessel_y1() {
             panic!("bessel_y1 failed");
         }
     }
-    for i in 0..vfbessel_y0SC.len() {
-        let f = math::bessel_y1(vfbessel_y0SC[i]);
+    for i in 0..SC_BESSEL_Y0.len() {
+        let f = math::bessel_y1(SC_BESSEL_Y0[i]);
         if !alike(bessel_y1SC[i], f) {
-            println!("bessel_y1({}) = {}, want {}", vfbessel_y0SC[i], f, bessel_y1SC[i]);
+            println!("bessel_y1({}) = {}, want {}", SC_BESSEL_Y0[i], f, bessel_y1SC[i]);
             panic!("bessel_y1 special cases failed");
         }
     }
@@ -998,15 +1010,15 @@ fn test_bessel_yn() {
             panic!("bessel_yn(-3, x) failed");
         }
     }
-    for i in 0..vfbessel_y0SC.len() {
-        let f = math::bessel_yn(2, vfbessel_y0SC[i]);
+    for i in 0..SC_BESSEL_Y0.len() {
+        let f = math::bessel_yn(2, SC_BESSEL_Y0[i]);
         if !alike(bessel_y2SC[i], f) {
-            println!("bessel_yn(2, {}) = {}, want {}", vfbessel_y0SC[i], f, bessel_y2SC[i]);
+            println!("bessel_yn(2, {}) = {}, want {}", SC_BESSEL_Y0[i], f, bessel_y2SC[i]);
             panic!("bessel_yn(2, x) special cases failed");
         }
-        let f = math::bessel_yn(-3, vfbessel_y0SC[i]);
+        let f = math::bessel_yn(-3, SC_BESSEL_Y0[i]);
         if !alike(bessel_yM3SC[i], f) {
-            println!("bessel_yn(-3, {}) = {}, want {}", vfbessel_y0SC[i], f, bessel_yM3SC[i]);
+            println!("bessel_yn(-3, {}) = {}, want {}", SC_BESSEL_Y0[i], f, bessel_yM3SC[i]);
             panic!("bessel_yn(-3, x) special cases failed");
         }
     }

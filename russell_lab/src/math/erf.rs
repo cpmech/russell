@@ -589,6 +589,7 @@ mod tests {
         assert_eq!(erfc(80.0), 2.3100265595063985852034904366341042118385080919280966e-2782);
         assert_eq!(erfc(f64::INFINITY), 0.0);
         assert_eq!(erfc(f64::NEG_INFINITY), 2.0);
+        assert_eq!(erfc(-30.0), 2.0);
     }
 
     #[test]

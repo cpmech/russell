@@ -102,23 +102,23 @@ fn stirling(x: f64) -> (f64, f64) {
 /// * `Γ(x)    = NaN  for integer x < 0`
 /// * `Γ(-Inf) = NaN`
 /// * `Γ(NaN)  = NaN`
-pub fn gamma(x_in: f64) -> f64 {
+pub fn gamma(x: f64) -> f64 {
     // special cases
-    if is_negative_integer(x_in) || x_in == f64::NEG_INFINITY || f64::is_nan(x_in) {
+    if is_negative_integer(x) || x == f64::NEG_INFINITY || f64::is_nan(x) {
         return f64::NAN;
-    } else if x_in == f64::INFINITY {
+    } else if x == f64::INFINITY {
         return f64::INFINITY;
-    } else if x_in == 0.0 {
-        if f64::is_sign_negative(x_in) {
+    } else if x == 0.0 {
+        if f64::is_sign_negative(x) {
             return f64::NEG_INFINITY;
         }
         return f64::INFINITY;
     }
-    let mut q = f64::abs(x_in);
+    let mut q = f64::abs(x);
     let mut p = f64::floor(q);
     if q > 33.0 {
-        if x_in >= 0.0 {
-            let (y1, y2) = stirling(x_in);
+        if x >= 0.0 {
+            let (y1, y2) = stirling(x);
             return y1 * y2;
         }
         // Note: x is negative but (checked above) not a negative integer,
@@ -153,7 +153,7 @@ pub fn gamma(x_in: f64) -> f64 {
     }
 
     // Reduce argument
-    let mut xx = x_in;
+    let mut xx = x;
     let mut z = 1.0;
     while xx >= 3.0 {
         xx = xx - 1.0;

@@ -230,7 +230,7 @@ pub fn erf(x: f64) -> f64 {
     }
     if x < 0.84375 {
         // |x| < 0.84375
-        let mut temp: f64;
+        let temp: f64;
         if x < SMALL {
             // |x| < 2**-28
             if x < VERY_TINY {
@@ -253,12 +253,12 @@ pub fn erf(x: f64) -> f64 {
     if x < 1.25 {
         // 0.84375 <= |x| < 1.25
         let s = x - 1.0;
-        let P = PA0 + s * (PA1 + s * (PA2 + s * (PA3 + s * (PA4 + s * (PA5 + s * PA6)))));
-        let Q = 1.0 + s * (QA1 + s * (QA2 + s * (QA3 + s * (QA4 + s * (QA5 + s * QA6)))));
+        let pp = PA0 + s * (PA1 + s * (PA2 + s * (PA3 + s * (PA4 + s * (PA5 + s * PA6)))));
+        let qq = 1.0 + s * (QA1 + s * (QA2 + s * (QA3 + s * (QA4 + s * (QA5 + s * QA6)))));
         if sign {
-            return -ERX - P / Q;
+            return -ERX - pp / qq;
         }
-        return ERX + P / Q;
+        return ERX + pp / qq;
     }
     if x >= 6.0 {
         // inf > |x| >= 6
@@ -268,19 +268,19 @@ pub fn erf(x: f64) -> f64 {
         return 1.0;
     }
     let s = 1.0 / (x * x);
-    let mut R: f64;
-    let mut S: f64;
+    let rr: f64;
+    let ss: f64;
     if x < 1.0 / 0.35 {
         // |x| < 1 / 0.35  ~ 2.857143
-        R = RA0 + s * (RA1 + s * (RA2 + s * (RA3 + s * (RA4 + s * (RA5 + s * (RA6 + s * RA7))))));
-        S = 1.0 + s * (SA1 + s * (SA2 + s * (SA3 + s * (SA4 + s * (SA5 + s * (SA6 + s * (SA7 + s * SA8)))))));
+        rr = RA0 + s * (RA1 + s * (RA2 + s * (RA3 + s * (RA4 + s * (RA5 + s * (RA6 + s * RA7))))));
+        ss = 1.0 + s * (SA1 + s * (SA2 + s * (SA3 + s * (SA4 + s * (SA5 + s * (SA6 + s * (SA7 + s * SA8)))))));
     } else {
         // |x| >= 1 / 0.35  ~ 2.857143
-        R = RB0 + s * (RB1 + s * (RB2 + s * (RB3 + s * (RB4 + s * (RB5 + s * RB6)))));
-        S = 1.0 + s * (SB1 + s * (SB2 + s * (SB3 + s * (SB4 + s * (SB5 + s * (SB6 + s * SB7))))));
+        rr = RB0 + s * (RB1 + s * (RB2 + s * (RB3 + s * (RB4 + s * (RB5 + s * RB6)))));
+        ss = 1.0 + s * (SB1 + s * (SB2 + s * (SB3 + s * (SB4 + s * (SB5 + s * (SB6 + s * SB7))))));
     }
     let z = f64::from_bits(f64::to_bits(x) & 0xffffffff00000000); // pseudo-single (20-bit) precision x
-    let r = f64::exp(-z * z - 0.5625) * f64::exp((z - x) * (z + x) + R / S);
+    let r = f64::exp(-z * z - 0.5625) * f64::exp((z - x) * (z + x) + rr / ss);
     if sign {
         return r / x - 1.0;
     }
@@ -317,7 +317,7 @@ pub fn erfc(x: f64) -> f64 {
     }
     if x < 0.84375 {
         // |x| < 0.84375
-        let mut temp: f64;
+        let temp: f64;
         if x < TINY {
             // |x| < 2**-56
             temp = x;
@@ -341,32 +341,32 @@ pub fn erfc(x: f64) -> f64 {
     if x < 1.25 {
         // 0.84375 <= |x| < 1.25
         let s = x - 1.0;
-        let P = PA0 + s * (PA1 + s * (PA2 + s * (PA3 + s * (PA4 + s * (PA5 + s * PA6)))));
-        let Q = 1.0 + s * (QA1 + s * (QA2 + s * (QA3 + s * (QA4 + s * (QA5 + s * QA6)))));
+        let pp = PA0 + s * (PA1 + s * (PA2 + s * (PA3 + s * (PA4 + s * (PA5 + s * PA6)))));
+        let qq = 1.0 + s * (QA1 + s * (QA2 + s * (QA3 + s * (QA4 + s * (QA5 + s * QA6)))));
         if sign {
-            return 1.0 + ERX + P / Q;
+            return 1.0 + ERX + pp / qq;
         }
-        return 1.0 - ERX - P / Q;
+        return 1.0 - ERX - pp / qq;
     }
     if x < 28.0 {
         // |x| < 28
         let s = 1.0 / (x * x);
-        let mut R: f64;
-        let mut S: f64;
+        let rr: f64;
+        let ss: f64;
         if x < 1.0 / 0.35 {
             // |x| < 1 / 0.35 ~ 2.857143
-            R = RA0 + s * (RA1 + s * (RA2 + s * (RA3 + s * (RA4 + s * (RA5 + s * (RA6 + s * RA7))))));
-            S = 1.0 + s * (SA1 + s * (SA2 + s * (SA3 + s * (SA4 + s * (SA5 + s * (SA6 + s * (SA7 + s * SA8)))))));
+            rr = RA0 + s * (RA1 + s * (RA2 + s * (RA3 + s * (RA4 + s * (RA5 + s * (RA6 + s * RA7))))));
+            ss = 1.0 + s * (SA1 + s * (SA2 + s * (SA3 + s * (SA4 + s * (SA5 + s * (SA6 + s * (SA7 + s * SA8)))))));
         } else {
             // |x| >= 1 / 0.35 ~ 2.857143
             if sign && x > 6.0 {
                 return 2.0; // x < -6
             }
-            R = RB0 + s * (RB1 + s * (RB2 + s * (RB3 + s * (RB4 + s * (RB5 + s * RB6)))));
-            S = 1.0 + s * (SB1 + s * (SB2 + s * (SB3 + s * (SB4 + s * (SB5 + s * (SB6 + s * SB7))))));
+            rr = RB0 + s * (RB1 + s * (RB2 + s * (RB3 + s * (RB4 + s * (RB5 + s * RB6)))));
+            ss = 1.0 + s * (SB1 + s * (SB2 + s * (SB3 + s * (SB4 + s * (SB5 + s * (SB6 + s * SB7))))));
         }
         let z = f64::from_bits(f64::to_bits(x) & 0xffffffff00000000); // pseudo-single (20-bit) precision x
-        let r = f64::exp(-z * z - 0.5625) * f64::exp((z - x) * (z + x) + R / S);
+        let r = f64::exp(-z * z - 0.5625) * f64::exp((z - x) * (z + x) + rr / ss);
         if sign {
             return 2.0 - r / x;
         }

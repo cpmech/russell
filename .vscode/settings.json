@@ -1,5 +1,7 @@
 {
   "cSpell.words": [
+    "Abramowitz",
+    "acosh",
     "aiᵢⱼ",
     "alphai",
     "alphar",
@@ -10,6 +12,7 @@
     "blasint",
     "brusselator",
     "bweuler",
+    "cmath",
     "condest",
     "Demmel",
     "devel",
@@ -37,6 +40,7 @@
     "Fehlberg",
     "fftw",
     "Flannery",
+    "frexp",
     "FSAL",
     "fweuler",
     "gfortran",
@@ -51,6 +55,7 @@
     "jobvr",
     "jobz",
     "lcov",
+    "ldexp",
     "ldvl",
     "ldvr",
     "ldvt",
@@ -65,6 +70,7 @@
     "memcheck",
     "Merson",
     "msgpass",
+    "msun",
     "nelt",
     "Nørsett",
     "nstage",
@@ -75,6 +81,9 @@
     "powi",
     "PREORDER",
     "pthread",
+    "pzero",
+    "qone",
+    "qzero",
     "Radau",
     "RINFOG",
     "rowcol",
@@ -83,6 +92,7 @@
     "rustup",
     "rwork",
     "Schur",
+    "Stegun",
     "substeps",
     "Teukolsky",
     "tgamma",
@@ -113,5 +123,9 @@
     "zscal",
     "zsyrk",
     "zticks"
-  ]
+  ],
+  "rust-analyzer.linkedProjects": [
+    "./russell_lab/Cargo.toml"
+  ],
+  "rust-analyzer.showUnlinkedFileNotification": false
 }

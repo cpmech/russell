@@ -1,3 +1,5 @@
+//! This module implements a thin wrapper to FFTW
+
 use crate::StrError;
 use crate::SUCCESSFUL_EXIT;
 use crate::{complex_vec_copy, to_i32, CcBool, ComplexMatrix, ComplexVector, Stopwatch};

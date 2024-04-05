@@ -81,6 +81,7 @@
 /// Defines the error output as a static string
 pub type StrError = &'static str;
 
+pub mod algo;
 pub mod base;
 pub mod check;
 pub mod fftw;
@@ -89,6 +90,7 @@ pub mod math;
 pub mod matrix;
 pub mod matvec;
 pub mod vector;
+// pub use crate::algo::*;
 pub use crate::base::*;
 pub use crate::check::*;
 pub use crate::fftw::*;

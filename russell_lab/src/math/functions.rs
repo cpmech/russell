@@ -24,7 +24,7 @@ pub fn sign(x: f64) -> f64 {
     }
 }
 
-// Implements the ramp function (Macaulay brackets)
+/// Implements the ramp function (Macaulay brackets)
 ///
 /// ```text
 /// ramp(x) = │ 0   if x < 0
@@ -167,7 +167,7 @@ pub fn suq_sin(x: f64, k: f64) -> f64 {
     sign(f64::sin(x)) * f64::powf(f64::abs(f64::sin(x)), k)
 }
 
-/// Implements the superquadric auxiliary involving cos(x)
+/// Implements the superquadric function involving cos(x)
 ///
 /// ```text
 /// suq_cos(x;k) = sign(cos(x)) · |cos(x)|ᵏ
@@ -177,6 +177,52 @@ pub fn suq_sin(x: f64, k: f64) -> f64 {
 #[inline]
 pub fn suq_cos(x: f64, k: f64) -> f64 {
     sign(f64::cos(x)) * f64::powf(f64::abs(f64::cos(x)), k)
+}
+
+const FACTORIAL_22: [f64; 23] = [
+    1.0,                      // 0
+    1.0,                      // 1
+    2.0,                      // 2
+    6.0,                      // 3
+    24.0,                     // 4
+    120.0,                    // 5
+    720.0,                    // 6
+    5040.0,                   // 7
+    40320.0,                  // 8
+    362880.0,                 // 9
+    3628800.0,                // 10
+    39916800.0,               // 11
+    479001600.0,              // 12
+    6227020800.0,             // 13
+    87178291200.0,            // 14
+    1307674368000.0,          // 15
+    20922789888000.0,         // 16
+    355687428096000.0,        // 17
+    6402373705728000.0,       // 18
+    121645100408832000.0,     // 19
+    2432902008176640000.0,    // 20
+    51090942171709440000.0,   // 21
+    1124000727777607680000.0, // 22
+];
+
+/// Returns the factorial of n smaller than or equal to 22 by table lookup
+///
+/// # Panics
+///
+/// Will panic if n > 22
+///
+/// # Reference
+///
+/// According to the reference, factorials up to 22! have exact double precision representations
+/// (52 bits of mantissa, not counting powers of two that are absorbed into the exponent)
+///
+/// * Press WH, Teukolsky SA, Vetterling WT, Flannery BP (2007) Numerical Recipes: The Art of
+///   Scientific Computing. Third Edition. Cambridge University Press. 1235p.
+pub fn factorial_lookup_22(n: usize) -> f64 {
+    if n > 22 {
+        panic!("factorial_lookup_22 requires n ≤ 22");
+    }
+    FACTORIAL_22[n]
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -265,5 +311,22 @@ mod tests {
         approx_eq(suq_cos(PI / 2.0, 2.0), 0.0, 1e-14);
         approx_eq(suq_cos(PI / 4.0, 2.0), 0.5, 1e-14);
         approx_eq(suq_cos(-PI / 4.0, 2.0), 0.5, 1e-14);
+    }
+
+    #[test]
+    #[should_panic(expected = "factorial_lookup_22 requires n ≤ 22")]
+    fn factorial_lookup_22_captures_error() {
+        factorial_lookup_22(23);
+    }
+
+    #[test]
+    fn factorial_lookup_22_works() {
+        assert_eq!(factorial_lookup_22(0), 1.0);
+        assert_eq!(factorial_lookup_22(1), 1.0);
+        assert_eq!(factorial_lookup_22(2), 2.0);
+        assert_eq!(factorial_lookup_22(3), 6.0);
+        assert_eq!(factorial_lookup_22(4), 24.0);
+        assert_eq!(factorial_lookup_22(10), 3628800.0,);
+        assert_eq!(factorial_lookup_22(22), 1124000727_7776076800_00.0);
     }
 }

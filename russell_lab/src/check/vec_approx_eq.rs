@@ -2,7 +2,9 @@ use num_traits::{Num, NumCast};
 
 /// Panics if two vectors are not approximately equal to each other
 ///
-/// Panics also if the vector dimensions differ
+/// **Note:** Will also panic if NaN or Inf is found.
+///
+/// **Note:** Will also panic if the vector dimensions are different.
 pub fn vec_approx_eq<T>(u: &[T], v: &[T], tol: f64)
 where
     T: Num + NumCast + Copy,
@@ -13,6 +15,12 @@ where
     }
     for i in 0..m {
         let diff = f64::abs(u[i].to_f64().unwrap() - v[i].to_f64().unwrap());
+        if diff.is_nan() {
+            panic!("vec_approx_eq found NaN");
+        }
+        if diff.is_infinite() {
+            panic!("vec_approx_eq found Inf");
+        }
         if diff > tol {
             panic!("vectors are not approximately equal. @ {} diff = {:?}", i, diff);
         }
@@ -24,6 +32,24 @@ where
 #[cfg(test)]
 mod tests {
     use super::vec_approx_eq;
+
+    #[test]
+    #[should_panic(expected = "vec_approx_eq found NaN")]
+    fn panics_on_nan() {
+        vec_approx_eq(&[f64::NAN], &[2.5], 1e-1);
+    }
+
+    #[test]
+    #[should_panic(expected = "vec_approx_eq found Inf")]
+    fn panics_on_inf() {
+        vec_approx_eq(&[f64::INFINITY], &[2.5], 1e-1);
+    }
+
+    #[test]
+    #[should_panic(expected = "vec_approx_eq found Inf")]
+    fn panics_on_neg_inf() {
+        vec_approx_eq(&[f64::NEG_INFINITY], &[2.5], 1e-1);
+    }
 
     #[test]
     #[should_panic(expected = "vector dimensions differ. 2 != 3")]

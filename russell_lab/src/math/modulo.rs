@@ -1,5 +1,13 @@
 use super::{frexp, ldexp};
 
+//////////////////////////////////////////////////////////////////
+// The code is based on mod.go file from Go (1.22.1)            //
+//////////////////////////////////////////////////////////////////
+// Copyright 2009 The Go Authors. All rights reserved.          //
+// Use of this source code is governed by a BSD-style           //
+// license that can be found in the LICENSE file.               //
+//////////////////////////////////////////////////////////////////
+
 /// Returns the floating-point remainder of x/y
 ///
 /// The magnitude of the result is less than y and its sign agrees with that of x
@@ -42,7 +50,7 @@ pub fn modulo(x: f64, y: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::modulo;
-    use crate::math::testing::{alike, MATH_TEST_VALUES};
+    use crate::assert_alike;
     use crate::math::PI;
 
     //////////////////////////////////////////////////////////////////
@@ -52,6 +60,19 @@ mod tests {
     // Use of this source code is governed by a BSD-style           //
     // license that can be found in the LICENSE file.               //
     //////////////////////////////////////////////////////////////////
+
+    const VALUES: [f64; 10] = [
+        4.9790119248836735e+00,
+        7.7388724745781045e+00,
+        -2.7688005719200159e-01,
+        -5.0106036182710749e+00,
+        9.6362937071984173e+00,
+        2.9263772392439646e+00,
+        5.2290834314593066e+00,
+        2.7279399104360102e+00,
+        1.8253080916808550e+00,
+        -8.6859247685756013e+00,
+    ];
 
     const SOLUTION: [f64; 10] = [
         4.197615023265299782906368e-02,
@@ -142,28 +163,16 @@ mod tests {
 
     #[test]
     fn test_modulo() {
-        for (i, v) in MATH_TEST_VALUES.iter().enumerate() {
+        for (i, v) in VALUES.iter().enumerate() {
             let f = modulo(10.0, *v);
-            if SOLUTION[i] != f {
-                println!("modulo(10.0, {}) = {}; want {}", v, f, SOLUTION[i]);
-                panic!("modulo failed");
-            }
+            assert_eq!(SOLUTION[i], f);
         }
         for (i, v) in VALUES_SC.iter().enumerate() {
             let f = modulo(v[0], v[1]);
-            if !alike(SOLUTION_SC[i], f) {
-                println!("modulo({}, {}) = {}; want {}", v[0], v[1], f, SOLUTION[i]);
-                panic!("modulo special case failed");
-            }
+            assert_alike(SOLUTION_SC[i], f);
         }
         // verify precision of result for extreme inputs
         let f = modulo(5.9790119248836734e+200, 1.1258465975523544);
-        if 0.6447968302508578 != f {
-            println!(
-                "modulo(5.9790119248836734e+200, 1.1258465975523544) = {}; want 0.6447968302508578",
-                f
-            );
-            panic!("modulo extreme input failed");
-        }
+        assert_eq!(0.6447968302508578, f);
     }
 }

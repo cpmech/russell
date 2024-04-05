@@ -15,7 +15,6 @@ mod gamma;
 mod integer_floats;
 mod ln_gamma;
 mod modulo;
-mod testing;
 pub use crate::math::bessel_0::*;
 pub use crate::math::bessel_1::*;
 pub use crate::math::bessel_mod::*;

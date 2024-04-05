@@ -443,7 +443,7 @@ fn qzero(x: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::{bessel_j0, bessel_y0, pzero, qzero, TWO_129};
-    use crate::approx_eq;
+    use crate::{approx_eq, assert_alike};
 
     #[test]
     #[should_panic(expected = "INTERNAL ERROR: x must be ≥ 2.0 for pzero")]
@@ -602,5 +602,85 @@ mod tests {
         // println!("Y0(x) = {:?}", bessel_y0(8.988465674311579e307));
         // Reference value from Go 1.22.1
         approx_eq(bessel_y0(f64::MAX / 2.0), 5.936112522662019e-155, 1e-310);
+    }
+
+    //////////////////////////////////////////////////////////////////
+    // The code below is based on all_test.go file from Go (1.22.1) //
+    //////////////////////////////////////////////////////////////////
+    // Copyright 2009 The Go Authors. All rights reserved.          //
+    // Use of this source code is governed by a BSD-style           //
+    // license that can be found in the LICENSE file.               //
+    //////////////////////////////////////////////////////////////////
+
+    const VALUES: [f64; 10] = [
+        4.9790119248836735e+00,
+        7.7388724745781045e+00,
+        -2.7688005719200159e-01,
+        -5.0106036182710749e+00,
+        9.6362937071984173e+00,
+        2.9263772392439646e+00,
+        5.2290834314593066e+00,
+        2.7279399104360102e+00,
+        1.8253080916808550e+00,
+        -8.6859247685756013e+00,
+    ];
+
+    const SOLUTION_J0: [f64; 10] = [
+        -1.8444682230601672018219338e-01,
+        2.27353668906331975435892e-01,
+        9.809259936157051116270273e-01,
+        -1.741170131426226587841181e-01,
+        -2.1389448451144143352039069e-01,
+        -2.340905848928038763337414e-01,
+        -1.0029099691890912094586326e-01,
+        -1.5466726714884328135358907e-01,
+        3.252650187653420388714693e-01,
+        -8.72218484409407250005360235e-03,
+    ];
+
+    const SOLUTION_Y0: [f64; 10] = [
+        -3.053399153780788357534855e-01,
+        1.7437227649515231515503649e-01,
+        -8.6221781263678836910392572e-01,
+        -3.100664880987498407872839e-01,
+        1.422200649300982280645377e-01,
+        4.000004067997901144239363e-01,
+        -3.3340749753099352392332536e-01,
+        4.5399790746668954555205502e-01,
+        4.8290004112497761007536522e-01,
+        2.7036697826604756229601611e-01,
+    ];
+
+    const SC_VALUES_J0: [f64; 4] = [f64::NEG_INFINITY, 0.0, f64::INFINITY, f64::NAN];
+
+    const SC_SOLUTION_J0: [f64; 4] = [0.0, 1.0, 0.0, f64::NAN];
+
+    const SC_VALUES_Y0: [f64; 5] = [f64::NEG_INFINITY, 0.0, f64::INFINITY, f64::NAN, -1.0];
+
+    const SC_SOLUTION_Y0: [f64; 5] = [f64::NAN, f64::NEG_INFINITY, 0.0, f64::NAN, f64::NAN];
+
+    #[test]
+    fn test_bessel_j0() {
+        for (i, v) in VALUES.iter().enumerate() {
+            let f = bessel_j0(*v);
+            approx_eq(SOLUTION_J0[i], f, 1e-16);
+        }
+        for (i, v) in SC_VALUES_J0.iter().enumerate() {
+            let f = bessel_j0(*v);
+            assert_alike(SC_SOLUTION_J0[i], f);
+        }
+    }
+
+    #[test]
+    fn test_bessel_y0() {
+        for (i, v) in VALUES.iter().enumerate() {
+            let a = f64::abs(*v);
+            let f = bessel_y0(a);
+            approx_eq(SOLUTION_Y0[i], f, 1e-15);
+        }
+        for (i, v) in SC_VALUES_Y0.iter().enumerate() {
+            let f = bessel_y0(*v);
+            assert_alike(SC_SOLUTION_Y0[i], f);
+        }
     }
 }

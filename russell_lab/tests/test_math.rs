@@ -121,58 +121,6 @@ const SOLUTION_GAMMA: [f64; 10] = [
     -2.093995902923148389186189429e-05,
 ];
 
-const SOLUTION_BESSEL_J0: [f64; 10] = [
-    -1.8444682230601672018219338e-01,
-    2.27353668906331975435892e-01,
-    9.809259936157051116270273e-01,
-    -1.741170131426226587841181e-01,
-    -2.1389448451144143352039069e-01,
-    -2.340905848928038763337414e-01,
-    -1.0029099691890912094586326e-01,
-    -1.5466726714884328135358907e-01,
-    3.252650187653420388714693e-01,
-    -8.72218484409407250005360235e-03,
-];
-
-const SOLUTION_BESSEL_J1: [f64; 10] = [
-    -3.251526395295203422162967e-01,
-    1.893581711430515718062564e-01,
-    -1.3711761352467242914491514e-01,
-    3.287486536269617297529617e-01,
-    1.3133899188830978473849215e-01,
-    3.660243417832986825301766e-01,
-    -3.4436769271848174665420672e-01,
-    4.329481396640773768835036e-01,
-    5.8181350531954794639333955e-01,
-    -2.7030574577733036112996607e-01,
-];
-
-const SOLUTION_BESSEL_J2: [f64; 10] = [
-    5.3837518920137802565192769e-02,
-    -1.7841678003393207281244667e-01,
-    9.521746934916464142495821e-03,
-    4.28958355470987397983072e-02,
-    2.4115371837854494725492872e-01,
-    4.842458532394520316844449e-01,
-    -3.142145220618633390125946e-02,
-    4.720849184745124761189957e-01,
-    3.122312022520957042957497e-01,
-    7.096213118930231185707277e-02,
-];
-
-const SOLUTION_BESSEL_JM3: [f64; 10] = [
-    -3.684042080996403091021151e-01,
-    2.8157665936340887268092661e-01,
-    4.401005480841948348343589e-04,
-    3.629926999056814081597135e-01,
-    3.123672198825455192489266e-02,
-    -2.958805510589623607540455e-01,
-    -3.2033177696533233403289416e-01,
-    -2.592737332129663376736604e-01,
-    -1.0241334641061485092351251e-01,
-    -2.3762660886100206491674503e-01,
-];
-
 const SOLUTION_MODF: [[f64; 2]; 10] = [
     [4.0000000000000000e+00, 9.7901192488367350108546816e-01],
     [7.0000000000000000e+00, 7.3887247457810456552351752e-01],
@@ -184,58 +132,6 @@ const SOLUTION_MODF: [[f64; 2]; 10] = [
     [2.0000000000000000e+00, 7.2793991043601025126008608e-01],
     [1.0000000000000000e+00, 8.2530809168085506044576505e-01],
     [-8.0000000000000000e+00, -6.8592476857560136238589621e-01],
-];
-
-const SOLUTION_BESSEL_Y0: [f64; 10] = [
-    -3.053399153780788357534855e-01,
-    1.7437227649515231515503649e-01,
-    -8.6221781263678836910392572e-01,
-    -3.100664880987498407872839e-01,
-    1.422200649300982280645377e-01,
-    4.000004067997901144239363e-01,
-    -3.3340749753099352392332536e-01,
-    4.5399790746668954555205502e-01,
-    4.8290004112497761007536522e-01,
-    2.7036697826604756229601611e-01,
-];
-
-const SOLUTION_BESSEL_Y1: [f64; 10] = [
-    0.15494213737457922210218611,
-    -0.2165955142081145245075746,
-    -2.4644949631241895201032829,
-    0.1442740489541836405154505,
-    0.2215379960518984777080163,
-    0.3038800915160754150565448,
-    0.0691107642452362383808547,
-    0.2380116417809914424860165,
-    -0.20849492979459761009678934,
-    0.0242503179793232308250804,
-];
-
-const SOLUTION_BESSEL_Y2: [f64; 10] = [
-    0.3675780219390303613394936,
-    -0.23034826393250119879267257,
-    -16.939677983817727205631397,
-    0.367653980523052152867791,
-    -0.0962401471767804440353136,
-    -0.1923169356184851105200523,
-    0.35984072054267882391843766,
-    -0.2794987252299739821654982,
-    -0.7113490692587462579757954,
-    -0.2647831587821263302087457,
-];
-
-const SOLUTION_BESSEL_YM3: [f64; 10] = [
-    -0.14035984421094849100895341,
-    -0.097535139617792072703973,
-    242.25775994555580176377379,
-    -0.1492267014802818619511046,
-    0.26148702629155918694500469,
-    0.56675383593895176530394248,
-    -0.206150264009006981070575,
-    0.64784284687568332737963658,
-    1.3503631555901938037008443,
-    0.1461869756579956803341844,
 ];
 
 const SPECIAL_CASES_ERF: [f64; 7] = [f64::NEG_INFINITY, -0.0, 0.0, f64::INFINITY, f64::NAN, -1000.0, 1000.0];
@@ -333,16 +229,6 @@ const VALUES_FOR_GAMMA: [[f64; 2]; 71] = [
     [-127.45117632943295, 1.183111089623681e-214],
 ];
 
-const SPECIAL_CASES_BESSEL_J0: [f64; 4] = [f64::NEG_INFINITY, 0.0, f64::INFINITY, f64::NAN];
-
-const SPECIAL_CASES_SOLUTION_BESSEL_J0: [f64; 4] = [0.0, 1.0, 0.0, f64::NAN];
-
-const SPECIAL_CASES_BESSEL_J1: [f64; 4] = [0.0, 0.0, 0.0, f64::NAN];
-
-const SPECIAL_CASES_SOLUTION_BESSEL_J2: [f64; 4] = [0.0, 0.0, 0.0, f64::NAN];
-
-const SPECIAL_CASES_BESSEL_JM3: [f64; 4] = [0.0, 0.0, 0.0, f64::NAN];
-
 const SPECIAL_CASES_LDEXP: [Pair; 11] = [
     Pair { f: 0.0, i: 0 },
     Pair { f: 0.0, i: -1075 },
@@ -389,16 +275,6 @@ const SPECIAL_CASES_SOLUTION_LDEXP: [f64; 13] = [
     f64::INFINITY,
     0.0,
 ];
-
-const SC_BESSEL_Y0: [f64; 5] = [f64::NEG_INFINITY, 0.0, f64::INFINITY, f64::NAN, -1.0];
-
-const bessel_y0SC: [f64; 5] = [f64::NAN, f64::NEG_INFINITY, 0.0, f64::NAN, f64::NAN];
-
-const bessel_y1SC: [f64; 5] = [f64::NAN, f64::NEG_INFINITY, 0.0, f64::NAN, f64::NAN];
-
-const bessel_y2SC: [f64; 5] = [f64::NAN, f64::NEG_INFINITY, 0.0, f64::NAN, f64::NAN];
-
-const bessel_yM3SC: [f64; 5] = [f64::NAN, f64::INFINITY, 0.0, f64::NAN, f64::NAN];
 
 // arguments and expected results for boundary cases
 const SmallestNonzeroFloat64: f64 =
@@ -512,10 +388,6 @@ fn close(a: f64, b: f64) -> bool {
 
 fn very_close(a: f64, b: f64) -> bool {
     tolerance(a, b, 4e-16)
-}
-
-fn so_close(a: f64, b: f64, e: f64) -> bool {
-    tolerance(a, b, e)
 }
 
 fn alike(a: f64, b: f64) -> bool {
@@ -695,153 +567,5 @@ fn test_gamma() {
             println!("gamma({}) = {}, want {}", g[0], f, g[1]);
             panic!("gamma special cases failed");
         }
-    }
-}
-
-#[test]
-fn test_bessel_j0() {
-    for i in 0..VALUES.len() {
-        let f = math::bessel_j0(VALUES[i]);
-        if !so_close(SOLUTION_BESSEL_J0[i], f, 4e-14) {
-            println!("bessel_j0({}) = {}, want {}", VALUES[i], f, SOLUTION_BESSEL_J0[i]);
-            panic!("bessel_j0 failed");
-        }
-    }
-    for i in 0..SPECIAL_CASES_BESSEL_J0.len() {
-        let f = math::bessel_j0(SPECIAL_CASES_BESSEL_J0[i]);
-        if !alike(SPECIAL_CASES_SOLUTION_BESSEL_J0[i], f) {
-            println!(
-                "bessel_j0({}) = {}, want {}",
-                SPECIAL_CASES_BESSEL_J0[i], f, SPECIAL_CASES_SOLUTION_BESSEL_J0[i]
-            );
-            panic!("bessel_j0 special cases failed");
-        }
-    }
-}
-
-#[test]
-fn test_bessel_j1() {
-    for i in 0..VALUES.len() {
-        let f = math::bessel_j1(VALUES[i]);
-        if !close(SOLUTION_BESSEL_J1[i], f) {
-            println!("bessel_j1({}) = {}, want {}", VALUES[i], f, SOLUTION_BESSEL_J1[i]);
-            panic!("bessel_j1 failed");
-        }
-    }
-    for i in 0..SPECIAL_CASES_BESSEL_J0.len() {
-        let f = math::bessel_j1(SPECIAL_CASES_BESSEL_J0[i]);
-        if !alike(SPECIAL_CASES_BESSEL_J1[i], f) {
-            println!(
-                "bessel_j1({}) = {}, want {}",
-                SPECIAL_CASES_BESSEL_J0[i], f, SPECIAL_CASES_BESSEL_J1[i]
-            );
-            panic!("bessel_j1 special cases failed");
-        }
-    }
-}
-
-#[test]
-fn test_bessel_jn() {
-    for i in 0..VALUES.len() {
-        let f = math::bessel_jn(2, VALUES[i]);
-        if !close(SOLUTION_BESSEL_J2[i], f) {
-            println!("bessel_jn(2, {}) = {}, want {}", VALUES[i], f, SOLUTION_BESSEL_J2[i]);
-            panic!("bessel_jn(2, x) failed");
-        }
-        let f = math::bessel_jn(-3, VALUES[i]);
-        if !close(SOLUTION_BESSEL_JM3[i], f) {
-            println!("bessel_Jn(-3, {}) = {}, want {}", VALUES[i], f, SOLUTION_BESSEL_JM3[i]);
-            panic!("bessel_jn(-3, x) failed");
-        }
-    }
-    for i in 0..SPECIAL_CASES_BESSEL_J0.len() {
-        let f = math::bessel_jn(2, SPECIAL_CASES_BESSEL_J0[i]);
-        if !alike(SPECIAL_CASES_SOLUTION_BESSEL_J2[i], f) {
-            println!(
-                "bessel_jn(2, {}) = {}, want {}",
-                SPECIAL_CASES_BESSEL_J0[i], f, SPECIAL_CASES_SOLUTION_BESSEL_J2[i]
-            );
-            panic!("bessel_jn(2, x) special cases failed");
-        }
-        let f = math::bessel_jn(-3, SPECIAL_CASES_BESSEL_J0[i]);
-        if !alike(SPECIAL_CASES_BESSEL_JM3[i], f) {
-            println!(
-                "bessel_jn(-3, {}) = {}, want {}",
-                SPECIAL_CASES_BESSEL_J0[i], f, SPECIAL_CASES_BESSEL_JM3[i]
-            );
-            panic!("bessel_jn(-3, x) special cases failed");
-        }
-    }
-}
-
-#[test]
-fn test_bessel_y0() {
-    for i in 0..VALUES.len() {
-        let a = f64::abs(VALUES[i]);
-        let f = math::bessel_y0(a);
-        if !close(SOLUTION_BESSEL_Y0[i], f) {
-            println!("bessel_y0({}) = {}, want {}", a, f, SOLUTION_BESSEL_Y0[i]);
-            panic!("bessel_y0 failed");
-        }
-    }
-    for i in 0..SC_BESSEL_Y0.len() {
-        let f = math::bessel_y0(SC_BESSEL_Y0[i]);
-        if !alike(bessel_y0SC[i], f) {
-            println!("bessel_y0({}) = {}, want {}", SC_BESSEL_Y0[i], f, bessel_y0SC[i]);
-            panic!("bessel_y0 special cases failed");
-        }
-    }
-}
-
-#[test]
-fn test_bessel_y1() {
-    for i in 0..VALUES.len() {
-        let a = f64::abs(VALUES[i]);
-        let f = math::bessel_y1(a);
-        if !so_close(SOLUTION_BESSEL_Y1[i], f, 2e-14) {
-            println!("bessel_y1({}) = {}, want {}", a, f, SOLUTION_BESSEL_Y1[i]);
-            panic!("bessel_y1 failed");
-        }
-    }
-    for i in 0..SC_BESSEL_Y0.len() {
-        let f = math::bessel_y1(SC_BESSEL_Y0[i]);
-        if !alike(bessel_y1SC[i], f) {
-            println!("bessel_y1({}) = {}, want {}", SC_BESSEL_Y0[i], f, bessel_y1SC[i]);
-            panic!("bessel_y1 special cases failed");
-        }
-    }
-}
-
-#[test]
-fn test_bessel_yn() {
-    for i in 0..VALUES.len() {
-        let a = f64::abs(VALUES[i]);
-        let f = math::bessel_yn(2, a);
-        if !close(SOLUTION_BESSEL_Y2[i], f) {
-            println!("bessel_yn(2, {}) = {}, want {}", a, f, SOLUTION_BESSEL_Y2[i]);
-            panic!("bessel_yn(2, x) failed");
-        }
-        let f = math::bessel_yn(-3, a);
-        if !close(SOLUTION_BESSEL_YM3[i], f) {
-            println!("bessel_yn(-3, {}) = {}, want {}", a, f, SOLUTION_BESSEL_YM3[i]);
-            panic!("bessel_yn(-3, x) failed");
-        }
-    }
-    for i in 0..SC_BESSEL_Y0.len() {
-        let f = math::bessel_yn(2, SC_BESSEL_Y0[i]);
-        if !alike(bessel_y2SC[i], f) {
-            println!("bessel_yn(2, {}) = {}, want {}", SC_BESSEL_Y0[i], f, bessel_y2SC[i]);
-            panic!("bessel_yn(2, x) special cases failed");
-        }
-        let f = math::bessel_yn(-3, SC_BESSEL_Y0[i]);
-        if !alike(bessel_yM3SC[i], f) {
-            println!("bessel_yn(-3, {}) = {}, want {}", SC_BESSEL_Y0[i], f, bessel_yM3SC[i]);
-            panic!("bessel_yn(-3, x) special cases failed");
-        }
-    }
-    let f = math::bessel_yn(0, 0.0);
-    if !alike(f64::NEG_INFINITY, f) {
-        println!("bessel_yn(0, 0) = {}, want {}", f, f64::NEG_INFINITY);
-        panic!("bessel_yn(0, 0) failed");
     }
 }

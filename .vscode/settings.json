@@ -37,6 +37,7 @@
     "dsyrk",
     "dtype",
     "dznrm2",
+    "erfinv",
     "FACCON",
     "Fehlberg",
     "fftw",

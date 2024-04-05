@@ -121,80 +121,80 @@
 //              erfc(0) = 1, erfc(inf) = 0, erfc(-inf) = 2,
 //              erfc/erf(NaN) is NaN
 
-const erx: f64 = 8.45062911510467529297e-01; // 0x3FEB0AC160000000
+const ERX: f64 = 8.45062911510467529297e-01; // 0x3FEB0AC160000000
 
 // coefficients for approximation to  erf in [0, 0.84375]
-const efx: f64 = 1.28379167095512586316e-01; // 0x3FC06EBA8214DB69
-const efx8: f64 = 1.02703333676410069053e+00; // 0x3FF06EBA8214DB69
-const pp0: f64 = 1.28379167095512558561e-01; // 0x3FC06EBA8214DB68
-const pp1: f64 = -3.25042107247001499370e-01; // 0xBFD4CD7D691CB913
-const pp2: f64 = -2.84817495755985104766e-02; // 0xBF9D2A51DBD7194F
-const pp3: f64 = -5.77027029648944159157e-03; // 0xBF77A291236668E4
-const pp4: f64 = -2.37630166566501626084e-05; // 0xBEF8EAD6120016AC
-const qq1: f64 = 3.97917223959155352819e-01; // 0x3FD97779CDDADC09
-const qq2: f64 = 6.50222499887672944485e-02; // 0x3FB0A54C5536CEBA
-const qq3: f64 = 5.08130628187576562776e-03; // 0x3F74D022C4D36B0F
-const qq4: f64 = 1.32494738004321644526e-04; // 0x3F215DC9221C1A10
-const qq5: f64 = -3.96022827877536812320e-06; // 0xBED09C4342A26120
+const EFX: f64 = 1.28379167095512586316e-01; // 0x3FC06EBA8214DB69
+const EFX8: f64 = 1.02703333676410069053e+00; // 0x3FF06EBA8214DB69
+const PP0: f64 = 1.28379167095512558561e-01; // 0x3FC06EBA8214DB68
+const PP1: f64 = -3.25042107247001499370e-01; // 0xBFD4CD7D691CB913
+const PP2: f64 = -2.84817495755985104766e-02; // 0xBF9D2A51DBD7194F
+const PP3: f64 = -5.77027029648944159157e-03; // 0xBF77A291236668E4
+const PP4: f64 = -2.37630166566501626084e-05; // 0xBEF8EAD6120016AC
+const QQ1: f64 = 3.97917223959155352819e-01; // 0x3FD97779CDDADC09
+const QQ2: f64 = 6.50222499887672944485e-02; // 0x3FB0A54C5536CEBA
+const QQ3: f64 = 5.08130628187576562776e-03; // 0x3F74D022C4D36B0F
+const QQ4: f64 = 1.32494738004321644526e-04; // 0x3F215DC9221C1A10
+const QQ5: f64 = -3.96022827877536812320e-06; // 0xBED09C4342A26120
 
 // coefficients for approximation to  erf  in [0.84375, 1.25]
-const pa0: f64 = -2.36211856075265944077e-03; // 0xBF6359B8BEF77538
-const pa1: f64 = 4.14856118683748331666e-01; // 0x3FDA8D00AD92B34D
-const pa2: f64 = -3.72207876035701323847e-01; // 0xBFD7D240FBB8C3F1
-const pa3: f64 = 3.18346619901161753674e-01; // 0x3FD45FCA805120E4
-const pa4: f64 = -1.10894694282396677476e-01; // 0xBFBC63983D3E28EC
-const pa5: f64 = 3.54783043256182359371e-02; // 0x3FA22A36599795EB
-const pa6: f64 = -2.16637559486879084300e-03; // 0xBF61BF380A96073F
-const qa1: f64 = 1.06420880400844228286e-01; // 0x3FBB3E6618EEE323
-const qa2: f64 = 5.40397917702171048937e-01; // 0x3FE14AF092EB6F33
-const qa3: f64 = 7.18286544141962662868e-02; // 0x3FB2635CD99FE9A7
-const qa4: f64 = 1.26171219808761642112e-01; // 0x3FC02660E763351F
-const qa5: f64 = 1.36370839120290507362e-02; // 0x3F8BEDC26B51DD1C
-const qa6: f64 = 1.19844998467991074170e-02; // 0x3F888B545735151D
+const PA0: f64 = -2.36211856075265944077e-03; // 0xBF6359B8BEF77538
+const PA1: f64 = 4.14856118683748331666e-01; // 0x3FDA8D00AD92B34D
+const PA2: f64 = -3.72207876035701323847e-01; // 0xBFD7D240FBB8C3F1
+const PA3: f64 = 3.18346619901161753674e-01; // 0x3FD45FCA805120E4
+const PA4: f64 = -1.10894694282396677476e-01; // 0xBFBC63983D3E28EC
+const PA5: f64 = 3.54783043256182359371e-02; // 0x3FA22A36599795EB
+const PA6: f64 = -2.16637559486879084300e-03; // 0xBF61BF380A96073F
+const QA1: f64 = 1.06420880400844228286e-01; // 0x3FBB3E6618EEE323
+const QA2: f64 = 5.40397917702171048937e-01; // 0x3FE14AF092EB6F33
+const QA3: f64 = 7.18286544141962662868e-02; // 0x3FB2635CD99FE9A7
+const QA4: f64 = 1.26171219808761642112e-01; // 0x3FC02660E763351F
+const QA5: f64 = 1.36370839120290507362e-02; // 0x3F8BEDC26B51DD1C
+const QA6: f64 = 1.19844998467991074170e-02; // 0x3F888B545735151D
 
 // coefficients for approximation to  erfc in [1.25, 1/0.35]
-const ra0: f64 = -9.86494403484714822705e-03; // 0xBF843412600D6435
-const ra1: f64 = -6.93858572707181764372e-01; // 0xBFE63416E4BA7360
-const ra2: f64 = -1.05586262253232909814e+01; // 0xC0251E0441B0E726
-const ra3: f64 = -6.23753324503260060396e+01; // 0xC04F300AE4CBA38D
-const ra4: f64 = -1.62396669462573470355e+02; // 0xC0644CB184282266
-const ra5: f64 = -1.84605092906711035994e+02; // 0xC067135CEBCCABB2
-const ra6: f64 = -8.12874355063065934246e+01; // 0xC054526557E4D2F2
-const ra7: f64 = -9.81432934416914548592e+00; // 0xC023A0EFC69AC25C
-const sa1: f64 = 1.96512716674392571292e+01; // 0x4033A6B9BD707687
-const sa2: f64 = 1.37657754143519042600e+02; // 0x4061350C526AE721
-const sa3: f64 = 4.34565877475229228821e+02; // 0x407B290DD58A1A71
-const sa4: f64 = 6.45387271733267880336e+02; // 0x40842B1921EC2868
-const sa5: f64 = 4.29008140027567833386e+02; // 0x407AD02157700314
-const sa6: f64 = 1.08635005541779435134e+02; // 0x405B28A3EE48AE2C
-const sa7: f64 = 6.57024977031928170135e+00; // 0x401A47EF8E484A93
-const sa8: f64 = -6.04244152148580987438e-02; // 0xBFAEEFF2EE749A62
+const RA0: f64 = -9.86494403484714822705e-03; // 0xBF843412600D6435
+const RA1: f64 = -6.93858572707181764372e-01; // 0xBFE63416E4BA7360
+const RA2: f64 = -1.05586262253232909814e+01; // 0xC0251E0441B0E726
+const RA3: f64 = -6.23753324503260060396e+01; // 0xC04F300AE4CBA38D
+const RA4: f64 = -1.62396669462573470355e+02; // 0xC0644CB184282266
+const RA5: f64 = -1.84605092906711035994e+02; // 0xC067135CEBCCABB2
+const RA6: f64 = -8.12874355063065934246e+01; // 0xC054526557E4D2F2
+const RA7: f64 = -9.81432934416914548592e+00; // 0xC023A0EFC69AC25C
+const SA1: f64 = 1.96512716674392571292e+01; // 0x4033A6B9BD707687
+const SA2: f64 = 1.37657754143519042600e+02; // 0x4061350C526AE721
+const SA3: f64 = 4.34565877475229228821e+02; // 0x407B290DD58A1A71
+const SA4: f64 = 6.45387271733267880336e+02; // 0x40842B1921EC2868
+const SA5: f64 = 4.29008140027567833386e+02; // 0x407AD02157700314
+const SA6: f64 = 1.08635005541779435134e+02; // 0x405B28A3EE48AE2C
+const SA7: f64 = 6.57024977031928170135e+00; // 0x401A47EF8E484A93
+const SA8: f64 = -6.04244152148580987438e-02; // 0xBFAEEFF2EE749A62
 
 // coefficients for approximation to  erfc in [1/.35, 28]
-const rb0: f64 = -9.86494292470009928597e-03; // 0xBF84341239E86F4A
-const rb1: f64 = -7.99283237680523006574e-01; // 0xBFE993BA70C285DE
-const rb2: f64 = -1.77579549177547519889e+01; // 0xC031C209555F995A
-const rb3: f64 = -1.60636384855821916062e+02; // 0xC064145D43C5ED98
-const rb4: f64 = -6.37566443368389627722e+02; // 0xC083EC881375F228
-const rb5: f64 = -1.02509513161107724954e+03; // 0xC09004616A2E5992
-const rb6: f64 = -4.83519191608651397019e+02; // 0xC07E384E9BDC383F
-const sb1: f64 = 3.03380607434824582924e+01; // 0x403E568B261D5190
-const sb2: f64 = 3.25792512996573918826e+02; // 0x40745CAE221B9F0A
-const sb3: f64 = 1.53672958608443695994e+03; // 0x409802EB189D5118
-const sb4: f64 = 3.19985821950859553908e+03; // 0x40A8FFB7688C246A
-const sb5: f64 = 2.55305040643316442583e+03; // 0x40A3F219CEDF3BE6
-const sb6: f64 = 4.74528541206955367215e+02; // 0x407DA874E79FE763
-const sb7: f64 = -2.24409524465858183362e+01; // 0xC03670E242712D62
+const RB0: f64 = -9.86494292470009928597e-03; // 0xBF84341239E86F4A
+const RB1: f64 = -7.99283237680523006574e-01; // 0xBFE993BA70C285DE
+const RB2: f64 = -1.77579549177547519889e+01; // 0xC031C209555F995A
+const RB3: f64 = -1.60636384855821916062e+02; // 0xC064145D43C5ED98
+const RB4: f64 = -6.37566443368389627722e+02; // 0xC083EC881375F228
+const RB5: f64 = -1.02509513161107724954e+03; // 0xC09004616A2E5992
+const RB6: f64 = -4.83519191608651397019e+02; // 0xC07E384E9BDC383F
+const SB1: f64 = 3.03380607434824582924e+01; // 0x403E568B261D5190
+const SB2: f64 = 3.25792512996573918826e+02; // 0x40745CAE221B9F0A
+const SB3: f64 = 1.53672958608443695994e+03; // 0x409802EB189D5118
+const SB4: f64 = 3.19985821950859553908e+03; // 0x40A8FFB7688C246A
+const SB5: f64 = 2.55305040643316442583e+03; // 0x40A3F219CEDF3BE6
+const SB6: f64 = 4.74528541206955367215e+02; // 0x407DA874E79FE763
+const SB7: f64 = -2.24409524465858183362e+01; // 0xC03670E242712D62
 
-const VeryTiny: f64 = 2.848094538889218e-306; // 0x0080000000000000
+const VERY_TINY: f64 = 2.848094538889218e-306; // 0x0080000000000000
 
 // 2**-56
 // Mathematica: N[2^-56, 50]
-const Tiny: f64 = 1.3877787807814456755295395851135253906250000000000e-17;
+const TINY: f64 = 1.3877787807814456755295395851135253906250000000000e-17;
 
 // 2**-28
 // Mathematica: N[2^-28, 50]
-const Small: f64 = 3.7252902984619140625000000000000000000000000000000e-9;
+const SMALL: f64 = 3.7252902984619140625000000000000000000000000000000e-9;
 
 /// Evaluates the error function
 ///
@@ -231,17 +231,17 @@ pub fn erf(x: f64) -> f64 {
     if x < 0.84375 {
         // |x| < 0.84375
         let mut temp: f64;
-        if x < Small {
+        if x < SMALL {
             // |x| < 2**-28
-            if x < VeryTiny {
-                temp = 0.125 * (8.0 * x + efx8 * x); // avoid underflow
+            if x < VERY_TINY {
+                temp = 0.125 * (8.0 * x + EFX8 * x); // avoid underflow
             } else {
-                temp = x + efx * x;
+                temp = x + EFX * x;
             }
         } else {
             let z = x * x;
-            let r = pp0 + z * (pp1 + z * (pp2 + z * (pp3 + z * pp4)));
-            let s = 1.0 + z * (qq1 + z * (qq2 + z * (qq3 + z * (qq4 + z * qq5))));
+            let r = PP0 + z * (PP1 + z * (PP2 + z * (PP3 + z * PP4)));
+            let s = 1.0 + z * (QQ1 + z * (QQ2 + z * (QQ3 + z * (QQ4 + z * QQ5))));
             let y = r / s;
             temp = x + x * y;
         }
@@ -253,12 +253,12 @@ pub fn erf(x: f64) -> f64 {
     if x < 1.25 {
         // 0.84375 <= |x| < 1.25
         let s = x - 1.0;
-        let P = pa0 + s * (pa1 + s * (pa2 + s * (pa3 + s * (pa4 + s * (pa5 + s * pa6)))));
-        let Q = 1.0 + s * (qa1 + s * (qa2 + s * (qa3 + s * (qa4 + s * (qa5 + s * qa6)))));
+        let P = PA0 + s * (PA1 + s * (PA2 + s * (PA3 + s * (PA4 + s * (PA5 + s * PA6)))));
+        let Q = 1.0 + s * (QA1 + s * (QA2 + s * (QA3 + s * (QA4 + s * (QA5 + s * QA6)))));
         if sign {
-            return -erx - P / Q;
+            return -ERX - P / Q;
         }
-        return erx + P / Q;
+        return ERX + P / Q;
     }
     if x >= 6.0 {
         // inf > |x| >= 6
@@ -272,12 +272,12 @@ pub fn erf(x: f64) -> f64 {
     let mut S: f64;
     if x < 1.0 / 0.35 {
         // |x| < 1 / 0.35  ~ 2.857143
-        R = ra0 + s * (ra1 + s * (ra2 + s * (ra3 + s * (ra4 + s * (ra5 + s * (ra6 + s * ra7))))));
-        S = 1.0 + s * (sa1 + s * (sa2 + s * (sa3 + s * (sa4 + s * (sa5 + s * (sa6 + s * (sa7 + s * sa8)))))));
+        R = RA0 + s * (RA1 + s * (RA2 + s * (RA3 + s * (RA4 + s * (RA5 + s * (RA6 + s * RA7))))));
+        S = 1.0 + s * (SA1 + s * (SA2 + s * (SA3 + s * (SA4 + s * (SA5 + s * (SA6 + s * (SA7 + s * SA8)))))));
     } else {
         // |x| >= 1 / 0.35  ~ 2.857143
-        R = rb0 + s * (rb1 + s * (rb2 + s * (rb3 + s * (rb4 + s * (rb5 + s * rb6)))));
-        S = 1.0 + s * (sb1 + s * (sb2 + s * (sb3 + s * (sb4 + s * (sb5 + s * (sb6 + s * sb7))))));
+        R = RB0 + s * (RB1 + s * (RB2 + s * (RB3 + s * (RB4 + s * (RB5 + s * RB6)))));
+        S = 1.0 + s * (SB1 + s * (SB2 + s * (SB3 + s * (SB4 + s * (SB5 + s * (SB6 + s * SB7))))));
     }
     let z = f64::from_bits(f64::to_bits(x) & 0xffffffff00000000); // pseudo-single (20-bit) precision x
     let r = f64::exp(-z * z - 0.5625) * f64::exp((z - x) * (z + x) + R / S);
@@ -318,13 +318,13 @@ pub fn erfc(x: f64) -> f64 {
     if x < 0.84375 {
         // |x| < 0.84375
         let mut temp: f64;
-        if x < Tiny {
+        if x < TINY {
             // |x| < 2**-56
             temp = x;
         } else {
             let z = x * x;
-            let r = pp0 + z * (pp1 + z * (pp2 + z * (pp3 + z * pp4)));
-            let s = 1.0 + z * (qq1 + z * (qq2 + z * (qq3 + z * (qq4 + z * qq5))));
+            let r = PP0 + z * (PP1 + z * (PP2 + z * (PP3 + z * PP4)));
+            let s = 1.0 + z * (QQ1 + z * (QQ2 + z * (QQ3 + z * (QQ4 + z * QQ5))));
             let y = r / s;
             if x < 0.25 {
                 // |x| < 1/4
@@ -341,12 +341,12 @@ pub fn erfc(x: f64) -> f64 {
     if x < 1.25 {
         // 0.84375 <= |x| < 1.25
         let s = x - 1.0;
-        let P = pa0 + s * (pa1 + s * (pa2 + s * (pa3 + s * (pa4 + s * (pa5 + s * pa6)))));
-        let Q = 1.0 + s * (qa1 + s * (qa2 + s * (qa3 + s * (qa4 + s * (qa5 + s * qa6)))));
+        let P = PA0 + s * (PA1 + s * (PA2 + s * (PA3 + s * (PA4 + s * (PA5 + s * PA6)))));
+        let Q = 1.0 + s * (QA1 + s * (QA2 + s * (QA3 + s * (QA4 + s * (QA5 + s * QA6)))));
         if sign {
-            return 1.0 + erx + P / Q;
+            return 1.0 + ERX + P / Q;
         }
-        return 1.0 - erx - P / Q;
+        return 1.0 - ERX - P / Q;
     }
     if x < 28.0 {
         // |x| < 28
@@ -355,15 +355,15 @@ pub fn erfc(x: f64) -> f64 {
         let mut S: f64;
         if x < 1.0 / 0.35 {
             // |x| < 1 / 0.35 ~ 2.857143
-            R = ra0 + s * (ra1 + s * (ra2 + s * (ra3 + s * (ra4 + s * (ra5 + s * (ra6 + s * ra7))))));
-            S = 1.0 + s * (sa1 + s * (sa2 + s * (sa3 + s * (sa4 + s * (sa5 + s * (sa6 + s * (sa7 + s * sa8)))))));
+            R = RA0 + s * (RA1 + s * (RA2 + s * (RA3 + s * (RA4 + s * (RA5 + s * (RA6 + s * RA7))))));
+            S = 1.0 + s * (SA1 + s * (SA2 + s * (SA3 + s * (SA4 + s * (SA5 + s * (SA6 + s * (SA7 + s * SA8)))))));
         } else {
             // |x| >= 1 / 0.35 ~ 2.857143
             if sign && x > 6.0 {
                 return 2.0; // x < -6
             }
-            R = rb0 + s * (rb1 + s * (rb2 + s * (rb3 + s * (rb4 + s * (rb5 + s * rb6)))));
-            S = 1.0 + s * (sb1 + s * (sb2 + s * (sb3 + s * (sb4 + s * (sb5 + s * (sb6 + s * sb7))))));
+            R = RB0 + s * (RB1 + s * (RB2 + s * (RB3 + s * (RB4 + s * (RB5 + s * RB6)))));
+            S = 1.0 + s * (SB1 + s * (SB2 + s * (SB3 + s * (SB4 + s * (SB5 + s * (SB6 + s * SB7))))));
         }
         let z = f64::from_bits(f64::to_bits(x) & 0xffffffff00000000); // pseudo-single (20-bit) precision x
         let r = f64::exp(-z * z - 0.5625) * f64::exp((z - x) * (z + x) + R / S);

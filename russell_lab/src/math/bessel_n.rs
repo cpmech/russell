@@ -1,7 +1,7 @@
 use super::{bessel_j0, bessel_j1, bessel_y0, bessel_y1, SQRT_PI};
 
-//// This implementation is based on j1.go file from Go (1.22.1),
-//// which, in turn, is based on the FreeBSD code as explained below.
+// This implementation is based on j1.go file from Go (1.22.1),
+// which, in turn, is based on the FreeBSD code as explained below.
 //
 // Copyright 2010 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style

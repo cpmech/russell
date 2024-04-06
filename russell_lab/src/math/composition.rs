@@ -1,3 +1,10 @@
+// Part of the code is based on files frexp.go and ldexp.go from Go (1.22.1),
+// having the following copyright notice:
+//
+// Copyright 2010 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 /// (modf) Splits a floating-point number into an integer and a fractional part
 ///
 /// Returns `(integer, fractional)` where:

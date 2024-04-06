@@ -163,18 +163,17 @@ pub fn float_decompose(x: f64) -> (f64, i32) {
 /// assert_eq!(math::float_compose(8.0, -3), 1.0); // 8 · 2⁻³
 /// assert_eq!(math::float_compose(8.0, -4), 0.5); // 8 · 2⁻⁴
 /// ```
-pub fn float_compose(frac: f64, exp: i32) -> f64 {
+pub fn float_compose(mantissa: f64, exponent: i32) -> f64 {
     // handle special cases
-    if frac == 0.0 || f64::is_infinite(frac) || f64::is_nan(frac) {
-        return frac;
+    if mantissa == 0.0 || f64::is_infinite(mantissa) || f64::is_nan(mantissa) {
+        return mantissa;
     }
     // computations
-    let x = frac;
-    let mut n = exp;
+    let mut n = exponent;
     let x1p1023 = f64::from_bits(0x7fe0000000000000); // 0x1p1023 === 2 ^ 1023
     let x1p53 = f64::from_bits(0x4340000000000000); // 0x1p53 === 2 ^ 53
     let x1p_1022 = f64::from_bits(0x0010000000000000); // 0x1p-1022 === 2 ^ (-1022)
-    let mut y = x;
+    let mut y = mantissa;
     if n > 1023 {
         y *= x1p1023;
         n -= 1023;

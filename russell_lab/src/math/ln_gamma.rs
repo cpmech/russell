@@ -383,7 +383,7 @@ fn sin_pi(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{ln_gamma, TINY, TWO_52};
+    use super::{ln_gamma, TINY, TWO_52, Y_MIN};
     use crate::math::ONE_BY_3;
     use crate::{approx_eq, assert_alike};
 
@@ -429,6 +429,11 @@ mod tests {
         let (y, s) = ln_gamma(x);
         assert_eq!(y, f64::INFINITY);
         assert_eq!(s, 1);
+
+        let x = Y_MIN - 1.0 + 0.27; // 0.7316321449683623
+        ln_gamma(x);
+        // Mathematica: NumberForm[N[LogGamma[0.7316321449683623], 50], 50]
+        approx_eq(ln_gamma(x).0, 0.2236602461341474, 1e-16);
     }
 
     // The code below is based on all_test.go file from Go (1.22.1)

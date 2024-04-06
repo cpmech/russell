@@ -107,6 +107,8 @@ pub fn gamma(x: f64) -> f64 {
         }
         return f64::INFINITY;
     }
+
+    // handle large |x|
     let q = f64::abs(x);
     let mut p = f64::floor(q);
     if q > 33.0 {
@@ -124,7 +126,7 @@ pub fn gamma(x: f64) -> f64 {
         }
         let mut z = q - p;
         if z > 0.5 {
-            p = p + 1.0;
+            p += 1.0;
             z = q - p;
         }
         z = q * f64::sin(PI * z);
@@ -146,13 +148,14 @@ pub fn gamma(x: f64) -> f64 {
         return (sign_gam as f64) * z;
     }
 
-    // Reduce argument
+    // reduce argument
     let mut xx = x;
     let mut z = 1.0;
     while xx >= 3.0 {
-        xx = xx - 1.0;
-        z = z * xx;
+        xx -= 1.0;
+        z *= xx;
     }
+
     while xx < 0.0 {
         if xx > -1e-09 {
             if xx == 0.0 {
@@ -160,9 +163,10 @@ pub fn gamma(x: f64) -> f64 {
             }
             return z / ((1.0 + EULER * xx) * xx);
         }
-        z = z / xx;
-        xx = xx + 1.0;
+        z /= xx;
+        xx += 1.0;
     }
+
     while xx < 2.0 {
         if xx < 1e-09 {
             if xx == 0.0 {
@@ -170,14 +174,15 @@ pub fn gamma(x: f64) -> f64 {
             }
             return z / ((1.0 + EULER * xx) * xx);
         }
-        z = z / xx;
-        xx = xx + 1.0;
+        z /= xx;
+        xx += 1.0;
     }
 
     if xx == 2.0 {
         return z;
     }
 
+    // results
     let y = xx - 2.0;
     let pp = (((((y * GP[0] + GP[1]) * y + GP[2]) * y + GP[3]) * y + GP[4]) * y + GP[5]) * y + GP[6];
     let qq = ((((((y * GQ[0] + GQ[1]) * y + GQ[2]) * y + GQ[3]) * y + GQ[4]) * y + GQ[5]) * y + GQ[6]) * y + GQ[7];

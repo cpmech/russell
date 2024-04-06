@@ -1,4 +1,4 @@
-use super::{is_negative_integer, EULER, PI};
+use super::{float_is_neg_int, EULER, PI};
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -104,7 +104,7 @@ fn stirling(x: f64) -> (f64, f64) {
 /// * `Γ(NaN)  = NaN`
 pub fn gamma(x: f64) -> f64 {
     // special cases
-    if is_negative_integer(x) || x == f64::NEG_INFINITY || f64::is_nan(x) {
+    if float_is_neg_int(x) || x == f64::NEG_INFINITY || f64::is_nan(x) {
         return f64::NAN;
     } else if x == f64::INFINITY {
         return f64::INFINITY;

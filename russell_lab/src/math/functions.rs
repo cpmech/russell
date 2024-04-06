@@ -1,4 +1,4 @@
-/// Implements the sign function
+/// Evaluates the sign function
 ///
 /// ```text
 ///           │ -1   if x < 0
@@ -24,7 +24,7 @@ pub fn sign(x: f64) -> f64 {
     }
 }
 
-/// Implements the ramp function (Macaulay brackets)
+/// Evaluates the ramp function (Macaulay brackets)
 ///
 /// ```text
 /// ramp(x) = │ 0   if x < 0
@@ -51,7 +51,7 @@ pub fn ramp(x: f64) -> f64 {
     }
 }
 
-/// Implements the Heaviside step function (derivative of ramp(x))
+/// Evaluates the Heaviside step function (derivative of ramp(x))
 ///
 /// ```text
 ///                │ 0    if x < 0
@@ -73,7 +73,7 @@ pub fn heaviside(x: f64) -> f64 {
     }
 }
 
-/// Implements the boxcar function
+/// Evaluates the boxcar function
 ///
 /// ```text
 ///                 │ 0    if x < a or  x > b
@@ -97,7 +97,7 @@ pub fn boxcar(x: f64, a: f64, b: f64) -> f64 {
     }
 }
 
-/// Implements the standard logistic function
+/// Evaluates the standard logistic function
 ///
 /// ```text
 ///                   1
@@ -120,7 +120,7 @@ pub fn logistic_deriv(x: f64) -> f64 {
     f * (1.0 - f)
 }
 
-/// Implements a smooth ramp function
+/// Evaluates the smooth ramp function
 ///
 /// ```text
 ///                  │ 0   if -β·x > 500
@@ -155,7 +155,7 @@ pub fn smooth_ramp_deriv2(x: f64, beta: f64) -> f64 {
     beta * f64::exp(beta * x) / f64::powf(f64::exp(beta * x) + 1.0, 2.0)
 }
 
-/// Implements the superquadric function involving sin(x)
+/// Evaluates the superquadric function involving sin(x)
 ///
 /// ```text
 /// suq_sin(x;k) = sign(sin(x)) · |sin(x)|ᵏ
@@ -167,7 +167,7 @@ pub fn suq_sin(x: f64, k: f64) -> f64 {
     sign(f64::sin(x)) * f64::powf(f64::abs(f64::sin(x)), k)
 }
 
-/// Implements the superquadric function involving cos(x)
+/// Evaluates the superquadric function involving cos(x)
 ///
 /// ```text
 /// suq_cos(x;k) = sign(cos(x)) · |cos(x)|ᵏ

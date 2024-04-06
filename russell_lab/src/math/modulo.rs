@@ -1,4 +1,4 @@
-use super::{frexp, ldexp};
+use super::{float_compose, float_decompose};
 
 //////////////////////////////////////////////////////////////////
 // The code is based on mod.go file from Go (1.22.1)            //
@@ -25,18 +25,18 @@ pub fn modulo(x: f64, y: f64) -> f64 {
     }
     let y = f64::abs(y);
 
-    let (y_frac, y_exp) = frexp(y);
+    let (y_frac, y_exp) = float_decompose(y);
     let mut r = x;
     if x < 0.0 {
         r = -x;
     }
 
     while r >= y {
-        let (r_frac, mut r_exp) = frexp(r);
+        let (r_frac, mut r_exp) = float_decompose(r);
         if r_frac < y_frac {
             r_exp = r_exp - 1;
         }
-        r = r - ldexp(y, r_exp - y_exp);
+        r = r - float_compose(y, r_exp - y_exp);
     }
 
     if x < 0.0 {

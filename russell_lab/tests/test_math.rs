@@ -264,7 +264,7 @@ fn alike(a: f64, b: f64) -> bool {
 #[test]
 fn test_frexp() {
     for i in 0..VALUES.len() {
-        let (f, j) = math::frexp(VALUES[i]);
+        let (f, j) = math::float_decompose(VALUES[i]);
         if !very_close(SOLUTION_FREXP[i].f, f) || SOLUTION_FREXP[i].i != j {
             println!(
                 "frexp({}) = ({}, {}); want ({}, {})",
@@ -274,7 +274,7 @@ fn test_frexp() {
         }
     }
     for i in 0..SPECIAL_CASES_FREXP.len() {
-        let (f, j) = math::frexp(SPECIAL_CASES_FREXP[i]);
+        let (f, j) = math::float_decompose(SPECIAL_CASES_FREXP[i]);
         if !alike(SPECIAL_CASES_SOLUTION_FREXP[i].f, f) || SPECIAL_CASES_SOLUTION_FREXP[i].i != j {
             println!(
                 "frexp({}) = ({}, {}); want ({}, {})",
@@ -284,7 +284,7 @@ fn test_frexp() {
         }
     }
     for i in 0..vffrexpBC.len() {
-        let (f, j) = math::frexp(vffrexpBC[i]);
+        let (f, j) = math::float_decompose(vffrexpBC[i]);
         if !alike(frexpBC[i].f, f) || frexpBC[i].i != j {
             println!(
                 "frexp({}) = ({}, {}); want ({}, {})",
@@ -298,7 +298,7 @@ fn test_frexp() {
 #[test]
 fn test_ldexp() {
     for i in 0..VALUES.len() {
-        let f = math::ldexp(SOLUTION_FREXP[i].f, SOLUTION_FREXP[i].i);
+        let f = math::float_compose(SOLUTION_FREXP[i].f, SOLUTION_FREXP[i].i);
         if !very_close(VALUES[i], f) {
             println!(
                 "ldexp({}, {}) = {}, want {}",
@@ -308,7 +308,7 @@ fn test_ldexp() {
         }
     }
     for i in 0..SPECIAL_CASES_FREXP.len() {
-        let f = math::ldexp(SPECIAL_CASES_SOLUTION_FREXP[i].f, SPECIAL_CASES_SOLUTION_FREXP[i].i);
+        let f = math::float_compose(SPECIAL_CASES_SOLUTION_FREXP[i].f, SPECIAL_CASES_SOLUTION_FREXP[i].i);
         if !alike(SPECIAL_CASES_FREXP[i], f) {
             println!(
                 "ldexp({}, {}) = {}, want {}",
@@ -318,7 +318,7 @@ fn test_ldexp() {
         }
     }
     for i in 0..SPECIAL_CASES_LDEXP.len() {
-        let f = math::ldexp(SPECIAL_CASES_LDEXP[i].f, SPECIAL_CASES_LDEXP[i].i);
+        let f = math::float_compose(SPECIAL_CASES_LDEXP[i].f, SPECIAL_CASES_LDEXP[i].i);
         if !alike(SPECIAL_CASES_SOLUTION_LDEXP[i], f) {
             println!(
                 "ldexp({}, {}) = {}, want {}",
@@ -328,7 +328,7 @@ fn test_ldexp() {
         }
     }
     for i in 0..vffrexpBC.len() {
-        let f = math::ldexp(frexpBC[i].f, frexpBC[i].i);
+        let f = math::float_compose(frexpBC[i].f, frexpBC[i].i);
         if !alike(vffrexpBC[i], f) {
             println!(
                 "ldexp({}, {}) = {}, want {}",
@@ -338,7 +338,7 @@ fn test_ldexp() {
         }
     }
     for i in 0..vfldexpBC.len() {
-        let f = math::ldexp(vfldexpBC[i].f, vfldexpBC[i].i);
+        let f = math::float_compose(vfldexpBC[i].f, vfldexpBC[i].i);
         if !alike(ldexpBC[i], f) {
             println!(
                 "Ldexp({}, {}) = {}, want {}",

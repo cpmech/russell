@@ -20,13 +20,13 @@
 ///
 /// ```
 /// # use russell_lab::math;
-/// let (integer, fractional) = math::split_float(3.141593);
+/// let (integer, fractional) = math::float_split(3.141593);
 /// assert_eq!(
 ///     format!("integer = {:?}, fractional = {:.6}", integer, fractional),
 ///     "integer = 3.0, fractional = 0.141593"
 /// );
 /// ```
-pub fn split_float(x: f64) -> (f64, f64) {
+pub fn float_split(x: f64) -> (f64, f64) {
     let mut u = x.to_bits();
     let e = ((u >> 52 & 0x7ff) as i32) - 0x3ff;
 
@@ -59,7 +59,7 @@ pub fn split_float(x: f64) -> (f64, f64) {
     (integer, x - integer)
 }
 
-/// Reports whether x is a negative integer or not
+/// Reports whether a floating-point number corresponds to a negative integer or not
 ///
 /// # Special cases
 ///
@@ -70,14 +70,14 @@ pub fn split_float(x: f64) -> (f64, f64) {
 ///
 /// ```
 /// # use russell_lab::math;
-/// assert_eq!(math::is_negative_integer(-1.23), false);
-/// assert_eq!(math::is_negative_integer(2.0), false);
-/// assert_eq!(math::is_negative_integer(-2.0), true);
+/// assert_eq!(math::float_is_neg_int(-1.23), false);
+/// assert_eq!(math::float_is_neg_int(2.0), false);
+/// assert_eq!(math::float_is_neg_int(-2.0), true);
 /// ```
-pub fn is_negative_integer(x: f64) -> bool {
+pub fn float_is_neg_int(x: f64) -> bool {
     if f64::is_finite(x) {
         if x < 0.0 {
-            let (_, xf) = split_float(x);
+            let (_, xf) = float_split(x);
             xf == 0.0
         } else {
             false
@@ -87,7 +87,7 @@ pub fn is_negative_integer(x: f64) -> bool {
     }
 }
 
-/// (frexp) Decompose a floating-point number into a mantissa and exponent parts
+/// (frexp) Decomposes a floating-point number into a mantissa and exponent parts
 ///
 /// Returns `(mantissa, exponent)` satisfying:
 ///
@@ -99,10 +99,10 @@ pub fn is_negative_integer(x: f64) -> bool {
 ///
 /// # Special cases
 ///
-///	* `decompose_f64(±0.0) = (±0.0, 0)`
-///	* `decompose_f64(±Inf) = (±Inf, 0)`
-///	* `decompose_f64(NaN)  = (NaN,  0)`
-pub fn frexp(x: f64) -> (f64, i32) {
+///	* `float_decompose(±0.0) = (±0.0, 0)`
+///	* `float_decompose(±Inf) = (±Inf, 0)`
+///	* `float_decompose(NaN)  = (NaN,  0)`
+pub fn float_decompose(x: f64) -> (f64, i32) {
     // handle special cases
     if x == 0.0 || f64::is_infinite(x) || f64::is_nan(x) {
         return (x, 0);
@@ -113,7 +113,7 @@ pub fn frexp(x: f64) -> (f64, i32) {
     if ee == 0 {
         if x != 0.0 {
             let x1p64 = f64::from_bits(0x43f0000000000000);
-            let (x, e) = frexp(x * x1p64);
+            let (x, e) = float_decompose(x * x1p64);
             return (x, e - 64);
         }
         return (x, 0);
@@ -126,7 +126,7 @@ pub fn frexp(x: f64) -> (f64, i32) {
     (f64::from_bits(y), e)
 }
 
-/// (ldexp) Compose a floating-point number from a mantissa and exponent
+/// (ldexp) Composes a floating-point number from a mantissa and exponent
 ///
 /// Returns:
 ///
@@ -136,10 +136,10 @@ pub fn frexp(x: f64) -> (f64, i32) {
 ///
 /// # Special cases
 ///
-/// * `compose_f64(±0.0, exponent) = ±0.0`
-/// * `compose_f64(±Inf, exponent) = ±Inf`
-/// * `compose_f64(NaN,  exponent) = NaN`
-pub fn ldexp(frac: f64, exp: i32) -> f64 {
+/// * `float_compose(±0.0, exponent) = ±0.0`
+/// * `float_compose(±Inf, exponent) = ±Inf`
+/// * `float_compose(NaN,  exponent) = NaN`
+pub fn float_compose(frac: f64, exp: i32) -> f64 {
     // handle special cases
     if frac == 0.0 || f64::is_infinite(frac) || f64::is_nan(frac) {
         return frac;
@@ -181,14 +181,14 @@ pub fn ldexp(frac: f64, exp: i32) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{frexp, is_negative_integer, ldexp, split_float};
+    use super::{float_compose, float_decompose, float_is_neg_int, float_split};
     use crate::{approx_eq, assert_alike};
 
     #[test]
-    fn split_float_works() {
+    fn float_split_works() {
         let values = [123.239459191, 3956969101.20101, -2.3303];
         for x in values {
-            let (integer, fractional) = split_float(x);
+            let (integer, fractional) = float_split(x);
             assert_eq!(integer + fractional, x);
         }
 
@@ -205,16 +205,16 @@ mod tests {
         // // -inf = -inf + -0.000000
 
         // special cases
-        assert_eq!(split_float(f64::NEG_INFINITY), (f64::NEG_INFINITY, -0.0)); // note that Go returns (-Inf, NaN); but the C code above returns (-Inf, -0.0)
-        assert_eq!(split_float(-0.0), (-0.0, -0.0));
-        assert_eq!(split_float(f64::INFINITY), (f64::INFINITY, 0.0)); // note that Go returns (Inf, NaN); but the C code above returns (Inf, 0.0)
-        let (integer, fractional) = split_float(f64::NAN);
+        assert_eq!(float_split(f64::NEG_INFINITY), (f64::NEG_INFINITY, -0.0)); // note that Go returns (-Inf, NaN); but the C code above returns (-Inf, -0.0)
+        assert_eq!(float_split(-0.0), (-0.0, -0.0));
+        assert_eq!(float_split(f64::INFINITY), (f64::INFINITY, 0.0)); // note that Go returns (Inf, NaN); but the C code above returns (Inf, 0.0)
+        let (integer, fractional) = float_split(f64::NAN);
         assert!(integer.is_nan());
         assert!(fractional.is_nan());
     }
 
     #[test]
-    fn verify_function_is_sign_negative() {
+    fn verify_go_sign_bit_function() {
         // Go uses `sign_bit := f64::to_bits(x) & (1 << 63) != 0`
         // In rust, we write `sign_bit = f64::is_sign_negative(x)`
         let values = [1.0, -1.0, f64::NEG_INFINITY, f64::INFINITY, f64::NAN];
@@ -224,39 +224,39 @@ mod tests {
     }
 
     #[test]
-    fn is_negative_integer_works() {
+    fn float_is_neg_int_works() {
         // true
-        assert_eq!(is_negative_integer(-3.0), true);
-        assert_eq!(is_negative_integer(-10.0), true);
-        assert_eq!(is_negative_integer(f64::MIN), true);
+        assert_eq!(float_is_neg_int(-3.0), true);
+        assert_eq!(float_is_neg_int(-10.0), true);
+        assert_eq!(float_is_neg_int(f64::MIN), true);
         // false
-        assert_eq!(is_negative_integer(-3.14), false);
-        assert_eq!(is_negative_integer(-0.0), false);
-        assert_eq!(is_negative_integer(0.0), false);
-        assert_eq!(is_negative_integer(1.0), false);
-        assert_eq!(is_negative_integer(f64::NEG_INFINITY), false);
-        assert_eq!(is_negative_integer(f64::INFINITY), false);
-        assert_eq!(is_negative_integer(f64::NAN), false);
+        assert_eq!(float_is_neg_int(-3.14), false);
+        assert_eq!(float_is_neg_int(-0.0), false);
+        assert_eq!(float_is_neg_int(0.0), false);
+        assert_eq!(float_is_neg_int(1.0), false);
+        assert_eq!(float_is_neg_int(f64::NEG_INFINITY), false);
+        assert_eq!(float_is_neg_int(f64::INFINITY), false);
+        assert_eq!(float_is_neg_int(f64::NAN), false);
     }
 
     #[test]
-    fn frexp_works() {
-        assert_eq!(frexp(-0.0), (-0.0, 0));
-        assert_eq!(frexp(0.0), (0.0, 0));
-        assert_eq!(frexp(f64::NEG_INFINITY), (f64::NEG_INFINITY, 0));
-        assert_eq!(frexp(f64::INFINITY), (f64::INFINITY, 0));
-        assert!(frexp(f64::NAN).0.is_nan());
-        assert_eq!(frexp(8.0), (0.5, 4));
+    fn float_decompose_works() {
+        assert_eq!(float_decompose(-0.0), (-0.0, 0));
+        assert_eq!(float_decompose(0.0), (0.0, 0));
+        assert_eq!(float_decompose(f64::NEG_INFINITY), (f64::NEG_INFINITY, 0));
+        assert_eq!(float_decompose(f64::INFINITY), (f64::INFINITY, 0));
+        assert!(float_decompose(f64::NAN).0.is_nan());
+        assert_eq!(float_decompose(8.0), (0.5, 4));
     }
 
     #[test]
-    fn ldexp_works() {
-        assert_eq!(ldexp(-0.0, 0), -0.0);
-        assert_eq!(ldexp(0.0, 0), 0.0);
-        assert_eq!(ldexp(f64::NEG_INFINITY, 0), f64::NEG_INFINITY);
-        assert_eq!(ldexp(f64::INFINITY, 0), f64::INFINITY);
-        assert!(ldexp(f64::NAN, 0).is_nan());
-        assert_eq!(ldexp(0.5, 4), 8.0);
+    fn float_compose_works() {
+        assert_eq!(float_compose(-0.0, 0), -0.0);
+        assert_eq!(float_compose(0.0, 0), 0.0);
+        assert_eq!(float_compose(f64::NEG_INFINITY, 0), f64::NEG_INFINITY);
+        assert_eq!(float_compose(f64::INFINITY, 0), f64::INFINITY);
+        assert!(float_compose(f64::NAN, 0).is_nan());
+        assert_eq!(float_compose(0.5, 4), 8.0);
     }
 
     //////////////////////////////////////////////////////////////////
@@ -294,9 +294,9 @@ mod tests {
     ];
 
     #[test]
-    fn test_split_float() {
+    fn test_float_split() {
         for (i, v) in VALUES.iter().enumerate() {
-            let (f, g) = split_float(*v);
+            let (f, g) = float_split(*v);
             assert_eq!(SOLUTION_MODF[i][0], f);
             assert_eq!(SOLUTION_MODF[i][1], g);
         }
@@ -422,49 +422,49 @@ mod tests {
     ];
 
     #[test]
-    fn test_frexp() {
+    fn test_float_decompose() {
         for (i, v) in VALUES.iter().enumerate() {
-            let (f, e) = frexp(*v);
+            let (f, e) = float_decompose(*v);
             approx_eq(SOLUTION_FREXP[i].f, f, 1e-50);
             assert_eq!(SOLUTION_FREXP[i].i, e);
         }
         // special cases
         for (i, v) in SC_VALUES_FREXP.iter().enumerate() {
-            let (f, e) = frexp(*v);
+            let (f, e) = float_decompose(*v);
             assert_alike(SC_SOLUTION_FREXP[i].f, f);
             assert_eq!(SC_SOLUTION_FREXP[i].i, e);
         }
         // boundary cases
         for (i, v) in BC_VALUES_FREXP.iter().enumerate() {
-            let (f, e) = frexp(*v);
+            let (f, e) = float_decompose(*v);
             assert_alike(BC_SOLUTION_FREXP[i].f, f);
             assert_eq!(BC_SOLUTION_FREXP[i].i, e);
         }
     }
 
     #[test]
-    fn test_ldexp() {
+    fn test_float_compose() {
         // test composition from FREXP data
         for (i, v) in VALUES.iter().enumerate() {
-            let f = ldexp(SOLUTION_FREXP[i].f, SOLUTION_FREXP[i].i);
+            let f = float_compose(SOLUTION_FREXP[i].f, SOLUTION_FREXP[i].i);
             approx_eq(*v, f, 1e-50);
         }
         for (i, v) in SC_VALUES_FREXP.iter().enumerate() {
-            let f = ldexp(SC_SOLUTION_FREXP[i].f, SC_SOLUTION_FREXP[i].i);
+            let f = float_compose(SC_SOLUTION_FREXP[i].f, SC_SOLUTION_FREXP[i].i);
             assert_alike(*v, f);
         }
         for (i, v) in BC_VALUES_FREXP.iter().enumerate() {
-            let f = ldexp(BC_SOLUTION_FREXP[i].f, BC_SOLUTION_FREXP[i].i);
+            let f = float_compose(BC_SOLUTION_FREXP[i].f, BC_SOLUTION_FREXP[i].i);
             assert_alike(*v, f);
         }
         // special cases
         for (i, v) in SC_VALUES_LDEXP.iter().enumerate() {
-            let f = ldexp(v.f, v.i);
+            let f = float_compose(v.f, v.i);
             assert_alike(SC_SOLUTION_LDEXP[i], f);
         }
         // boundary cases
         for (i, v) in BC_VALUES_LDEXP.iter().enumerate() {
-            let f = ldexp(v.f, v.i);
+            let f = float_compose(v.f, v.i);
             assert_alike(BC_SOLUTION_LDEXP[i], f);
         }
     }

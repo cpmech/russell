@@ -161,7 +161,12 @@ pub fn float_decompose(x: f64) -> (f64, i32) {
 /// ```
 /// # use russell_lab::math;
 /// let x = 0.5 * 2.0 * 2.0 * 2.0 * 2.0;
-/// assert_eq!(math::float_compose(0.5, 4), x);
+/// assert_eq!(math::float_compose(0.5,  4), x);
+/// assert_eq!(math::float_compose(8.0,  0), 8.0); // 8 · 2⁰
+/// assert_eq!(math::float_compose(8.0, -1), 4.0); // 8 · 2⁻¹
+/// assert_eq!(math::float_compose(8.0, -2), 2.0); // 8 · 2⁻²
+/// assert_eq!(math::float_compose(8.0, -3), 1.0); // 8 · 2⁻³
+/// assert_eq!(math::float_compose(8.0, -4), 0.5); // 8 · 2⁻⁴
 /// ```
 pub fn float_compose(frac: f64, exp: i32) -> f64 {
     // handle special cases
@@ -281,6 +286,14 @@ mod tests {
         assert_eq!(float_compose(f64::INFINITY, 0), f64::INFINITY);
         assert!(float_compose(f64::NAN, 0).is_nan());
         assert_eq!(float_compose(0.5, 4), 8.0);
+        assert_eq!(float_compose(1.0, 3), 8.0);
+        assert_eq!(float_compose(2.0, 2), 8.0);
+        assert_eq!(float_compose(4.0, 1), 8.0);
+        assert_eq!(float_compose(8.0, 0), 8.0);
+        assert_eq!(float_compose(8.0, -1), 4.0);
+        assert_eq!(float_compose(8.0, -2), 2.0);
+        assert_eq!(float_compose(8.0, -3), 1.0);
+        assert_eq!(float_compose(8.0, -4), 0.5);
     }
 
     //////////////////////////////////////////////////////////////////

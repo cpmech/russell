@@ -8,6 +8,10 @@ use super::PI;
 ///         ⎩       cos [n⋅acos ( x)]   if |x| ≤ 1
 /// ```
 ///
+/// See: <https://mathworld.wolfram.com/ChebyshevPolynomialoftheFirstKind.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Chebyshev_polynomials>
+///
 /// | n | Tₙ(x)               | dTₙ/dx(x)         | d²Tₙ/dx²(x)     |
 /// |:-:|:--------------------|:------------------|:----------------|
 /// | 0 | 1                   | 0                 | 0               |
@@ -16,6 +20,7 @@ use super::PI;
 /// | 3 | -3 x + 4 x³         | -3 + 12 x²        | 24 x            |
 /// | 4 | 1 - 8 x² + 8 x⁴     | -16 x + 32 x³     | -16 + 96 x²     |
 /// | 5 | 5 x - 20 x³ + 16 x⁵ | 5 - 60 x² + 80 x⁴ | -120 x + 320 x³ |
+/// |...| ...                 | ...               | ....            |
 pub fn chebyshev_tn(n: usize, x: f64) -> f64 {
     if n == 0 {
         return 1.0;
@@ -45,6 +50,12 @@ pub fn chebyshev_tn(n: usize, x: f64) -> f64 {
 ///   dx
 /// ```
 ///
+/// This is the first derivative of [chebyshev_tn]
+///
+/// See: <https://mathworld.wolfram.com/ChebyshevPolynomialoftheFirstKind.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Chebyshev_polynomials>
+///
 /// | n | Tₙ(x)               | dTₙ/dx(x)         | d²Tₙ/dx²(x)     |
 /// |:-:|:--------------------|:------------------|:----------------|
 /// | 0 | 1                   | 0                 | 0               |
@@ -53,6 +64,7 @@ pub fn chebyshev_tn(n: usize, x: f64) -> f64 {
 /// | 3 | -3 x + 4 x³         | -3 + 12 x²        | 24 x            |
 /// | 4 | 1 - 8 x² + 8 x⁴     | -16 x + 32 x³     | -16 + 96 x²     |
 /// | 5 | 5 x - 20 x³ + 16 x⁵ | 5 - 60 x² + 80 x⁴ | -120 x + 320 x³ |
+/// |...| ...                 | ...               | ....            |
 pub fn chebyshev_tn_deriv1(n: usize, x: f64) -> f64 {
     let p = n as f64;
     if x > -1.0 && x < 1.0 {
@@ -88,6 +100,12 @@ pub fn chebyshev_tn_deriv1(n: usize, x: f64) -> f64 {
 ///   dx²
 /// ```
 ///
+/// This is the second derivative of [chebyshev_tn] and the first derivative of [chebyshev_tn_deriv1]
+///
+/// See: <https://mathworld.wolfram.com/ChebyshevPolynomialoftheFirstKind.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Chebyshev_polynomials>
+///
 /// | n | Tₙ(x)               | dTₙ/dx(x)         | d²Tₙ/dx²(x)     |
 /// |:-:|:--------------------|:------------------|:----------------|
 /// | 0 | 1                   | 0                 | 0               |
@@ -96,6 +114,7 @@ pub fn chebyshev_tn_deriv1(n: usize, x: f64) -> f64 {
 /// | 3 | -3 x + 4 x³         | -3 + 12 x²        | 24 x            |
 /// | 4 | 1 - 8 x² + 8 x⁴     | -16 x + 32 x³     | -16 + 96 x²     |
 /// | 5 | 5 x - 20 x³ + 16 x⁵ | 5 - 60 x² + 80 x⁴ | -120 x + 320 x³ |
+/// |...| ...                 | ...               | ....            |
 pub fn chebyshev_tn_deriv2(n: usize, x: f64) -> f64 {
     let p = n as f64;
     let pp = p * p;

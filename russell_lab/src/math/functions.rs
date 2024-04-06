@@ -1,9 +1,9 @@
 /// Evaluates the sign function
 ///
 /// ```text
-///           │ -1   if x < 0
-/// sign(x) = ┤  0   if x = 0
-///           │  1   if x > 0
+///           ⎧ -1   if x < 0
+/// sign(x) = ⎨  0   if x = 0
+///           ⎩  1   if x > 0
 ///
 ///           |x|    x
 /// sign(x) = ——— = ———
@@ -12,7 +12,9 @@
 /// sign(x) = 2 · heaviside(x) - 1
 /// ```
 ///
-/// Reference: <https://en.wikipedia.org/wiki/Sign_function>
+/// See: <https://mathworld.wolfram.com/Sign.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Sign_function>
 #[inline]
 pub fn sign(x: f64) -> f64 {
     if x < 0.0 {
@@ -27,8 +29,9 @@ pub fn sign(x: f64) -> f64 {
 /// Evaluates the ramp function (Macaulay brackets)
 ///
 /// ```text
-/// ramp(x) = │ 0   if x < 0
-///           │ x   otherwise
+///           ⎧ 0   if x < 0
+/// ramp(x) = ⎨
+///           ⎩ x   otherwise
 ///
 /// ramp(x) = max(x, 0)
 ///
@@ -41,7 +44,9 @@ pub fn sign(x: f64) -> f64 {
 /// ramp(x) = x · heaviside(x)
 /// ```
 ///
-/// Reference: <https://en.wikipedia.org/wiki/Ramp_function>
+/// See: <https://mathworld.wolfram.com/RampFunction.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Ramp_function>
 #[inline]
 pub fn ramp(x: f64) -> f64 {
     if x < 0.0 {
@@ -54,14 +59,16 @@ pub fn ramp(x: f64) -> f64 {
 /// Evaluates the Heaviside step function (derivative of ramp(x))
 ///
 /// ```text
-///                │ 0    if x < 0
-/// heaviside(x) = ┤ 1/2  if x = 0
-///                │ 1    if x > 0
+///                ⎧ 0    if x < 0
+/// heaviside(x) = ⎨ 1/2  if x = 0
+///                ⎩ 1    if x > 0
 ///
 /// heaviside(x) = ½ + ½ · sign(x)
 /// ```
 ///
-/// Reference: <https://en.wikipedia.org/wiki/Heaviside_step_function>
+/// See: <https://mathworld.wolfram.com/HeavisideStepFunction.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Heaviside_step_function>
 #[inline]
 pub fn heaviside(x: f64) -> f64 {
     if x < 0.0 {
@@ -76,16 +83,18 @@ pub fn heaviside(x: f64) -> f64 {
 /// Evaluates the boxcar function
 ///
 /// ```text
-///                 │ 0    if x < a or  x > b
-/// boxcar(x;a,b) = ┤ 1/2  if x = a or  x = b
-///                 │ 1    if x > a and x < b
+///                   ⎧ 0    if x < a or  x > b
+/// boxcar(x; a, b) = ⎨ 1/2  if x = a or  x = b
+///                   ⎩ 1    if x > a and x < b
 ///
-/// boxcar(x;a,b) = heaviside(x-a) - heaviside(x-b)
+/// boxcar(x; a, b) = heaviside(x - a) - heaviside(x - b)
 /// ```
 ///
-/// Note: `a ≤ x ≤ b` with `b ≥ a` **not** being checked.
+/// Note: `a ≤ x ≤ b` with `b ≥ a` are **not checked**.
 ///
-/// Reference: <https://en.wikipedia.org/wiki/Boxcar_function>
+/// See <https://mathworld.wolfram.com/BoxcarFunction.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Boxcar_function>
 #[inline]
 pub fn boxcar(x: f64, a: f64, b: f64) -> f64 {
     if x < a || x > b {
@@ -97,7 +106,7 @@ pub fn boxcar(x: f64, a: f64, b: f64) -> f64 {
     }
 }
 
-/// Evaluates the standard logistic function
+/// Evaluates the standard logistic (sigmoid) function
 ///
 /// ```text
 ///                   1
@@ -105,7 +114,9 @@ pub fn boxcar(x: f64, a: f64, b: f64) -> f64 {
 ///               1 + exp(-x)
 /// ```
 ///
-/// Reference: <https://en.wikipedia.org/wiki/Logistic_function>
+/// See: <https://mathworld.wolfram.com/SigmoidFunction.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Logistic_function>
 #[inline]
 pub fn logistic(x: f64) -> f64 {
     1.0 / (1.0 + f64::exp(-x))
@@ -123,12 +134,18 @@ pub fn logistic_deriv(x: f64) -> f64 {
 /// Evaluates the smooth ramp function
 ///
 /// ```text
-///                  │ 0   if -β·x > 500
-///                  |
-/// smooth_ramp(x) = │     log(1 + exp(-β·x))
+///                  ⎧ 0   if -β·x > 500
+///                  │
+/// smooth_ramp(x) = ⎨     log(1 + exp(-β·x))
 ///                  │ x + ——————————————————  otherwise
-///                  │            β
+///                  ⎩            β
 /// ```
+///
+/// This function was used in the following paper:
+///
+/// * Pedroso DM, Zhang Y, and Ehlers W (2017) Solution of liquid-gas-solid coupled equations
+///   for porous media considering dynamics and hysteretic retention behavior,
+///   [Journal of Engineering Mechanics](https://ascelibrary.org/doi/10.1061/%28ASCE%29EM.1943-7889.0001208)
 #[inline]
 pub fn smooth_ramp(x: f64, beta: f64) -> f64 {
     if -beta * x > 500.0 {
@@ -179,6 +196,7 @@ pub fn suq_cos(x: f64, k: f64) -> f64 {
     sign(f64::cos(x)) * f64::powf(f64::abs(f64::cos(x)), k)
 }
 
+/// Holds factorial numbers up to 22! (exact double precision)
 const FACTORIAL_22: [f64; 23] = [
     1.0,                      // 0
     1.0,                      // 1
@@ -206,6 +224,10 @@ const FACTORIAL_22: [f64; 23] = [
 ];
 
 /// Returns the factorial of n smaller than or equal to 22 by table lookup
+///
+/// See: <https://mathworld.wolfram.com/Factorial.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Factorial>
 ///
 /// # Panics
 ///

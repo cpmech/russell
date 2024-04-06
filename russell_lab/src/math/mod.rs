@@ -1,4 +1,4 @@
-//! This module implements some mathematical functions
+//! This module implements mathematical (specialized) functions and constants
 
 mod bessel_0;
 mod bessel_1;

@@ -114,25 +114,20 @@ pub fn float_is_neg_int(x: f64) -> bool {
 /// let x = 0.5 * 2.0 * 2.0 * 2.0 * 2.0;
 /// assert_eq!(math::float_decompose(x), (0.5, 4));
 /// ```
-pub fn float_decompose(x: f64) -> (f64, i32) {
+pub fn float_decompose(x_in: f64) -> (f64, i32) {
     // handle special cases
-    if x == 0.0 || f64::is_infinite(x) || f64::is_nan(x) {
-        return (x, 0);
+    if x_in == 0.0 || f64::is_infinite(x_in) || f64::is_nan(x_in) {
+        return (x_in, 0);
     }
+    // normalize
+    let (x, mut e) = if f64::abs(x_in) < f64::MIN_POSITIVE {
+        (x_in * ((1_u64 << 52) as f64), -52)
+    } else {
+        (x_in, 0)
+    };
     // computations
     let mut y = x.to_bits();
-    let ee = ((y >> 52) & 0x7ff) as i32;
-    if ee == 0 {
-        if x != 0.0 {
-            let x1p64 = f64::from_bits(0x43f0000000000000);
-            let (x, e) = float_decompose(x * x1p64);
-            return (x, e - 64);
-        }
-        return (x, 0);
-    } else if ee == 0x7ff {
-        return (x, 0);
-    }
-    let e = ee - 0x3fe;
+    e += ((y >> 52) & 0x7ff) as i32 - 0x3fe;
     y &= 0x800fffffffffffff;
     y |= 0x3fe0000000000000;
     (f64::from_bits(y), e)

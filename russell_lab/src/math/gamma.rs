@@ -107,7 +107,7 @@ pub fn gamma(x: f64) -> f64 {
         }
         return f64::INFINITY;
     }
-    let mut q = f64::abs(x);
+    let q = f64::abs(x);
     let mut p = f64::floor(q);
     if q > 33.0 {
         if x >= 0.0 {
@@ -129,6 +129,10 @@ pub fn gamma(x: f64) -> f64 {
         }
         z = q * f64::sin(PI * z);
         if z == 0.0 {
+            // This branch seems unreachable because:
+            // q sin(π z) == 0 can only happen if z is an integer (note that q = |x| > 33)
+            // However, x < 0 (otherwise the stirling exit happens) and
+            // negative negative integers yield NaN (already captured above)
             return (sign_gam as f64) * f64::INFINITY;
         }
         let (sq1, sq2) = stirling(q);
@@ -174,10 +178,10 @@ pub fn gamma(x: f64) -> f64 {
         return z;
     }
 
-    xx = xx - 2.0;
-    p = (((((xx * GP[0] + GP[1]) * xx + GP[2]) * xx + GP[3]) * xx + GP[4]) * xx + GP[5]) * xx + GP[6];
-    q = ((((((xx * GQ[0] + GQ[1]) * xx + GQ[2]) * xx + GQ[3]) * xx + GQ[4]) * xx + GQ[5]) * xx + GQ[6]) * xx + GQ[7];
-    z * p / q
+    let y = xx - 2.0;
+    let pp = (((((y * GP[0] + GP[1]) * y + GP[2]) * y + GP[3]) * y + GP[4]) * y + GP[5]) * y + GP[6];
+    let qq = ((((((y * GQ[0] + GQ[1]) * y + GQ[2]) * y + GQ[3]) * y + GQ[4]) * y + GQ[5]) * y + GQ[6]) * y + GQ[7];
+    z * pp / qq
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

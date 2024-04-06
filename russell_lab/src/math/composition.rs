@@ -8,7 +8,7 @@
 ///
 /// # Notes
 ///
-/// * This function is also known as **modf**
+/// * This function is also known as **modf** in [C/C++](https://cplusplus.com/reference/cmath/modf/) and [Go](https://pkg.go.dev/math@go1.22.2#Modf)
 /// * Both integer and fractional values will have the same sign as x
 ///
 /// # Special cases
@@ -97,11 +97,23 @@ pub fn float_is_neg_int(x: f64) -> bool {
 ///
 /// with the absolute value of mantissa in the interval `[0.5, 1)`
 ///
+/// # Notes
+///
+/// * This function is also known as **frexp** in [C/C++](https://cplusplus.com/reference/cmath/frexp/) and [Go](https://pkg.go.dev/math@go1.22.2#Frexp)
+///
 /// # Special cases
 ///
 ///	* `float_decompose(±0.0) = (±0.0, 0)`
 ///	* `float_decompose(±Inf) = (±Inf, 0)`
 ///	* `float_decompose(NaN)  = (NaN,  0)`
+///
+/// # Examples
+///
+/// ```
+/// # use russell_lab::math;
+/// let x = 0.5 * 2.0 * 2.0 * 2.0 * 2.0;
+/// assert_eq!(math::float_decompose(x), (0.5, 4));
+/// ```
 pub fn float_decompose(x: f64) -> (f64, i32) {
     // handle special cases
     if x == 0.0 || f64::is_infinite(x) || f64::is_nan(x) {
@@ -134,11 +146,23 @@ pub fn float_decompose(x: f64) -> (f64, i32) {
 /// x = mantissa · 2^exponent
 /// ```
 ///
+/// # Notes
+///
+/// * This function is also known as **ldexp** in [C/C++](https://cplusplus.com/reference/cmath/ldexp/) and [Go](https://pkg.go.dev/math@go1.22.2#Ldexp)
+///
 /// # Special cases
 ///
 /// * `float_compose(±0.0, exponent) = ±0.0`
 /// * `float_compose(±Inf, exponent) = ±Inf`
 /// * `float_compose(NaN,  exponent) = NaN`
+///
+/// # Examples
+///
+/// ```
+/// # use russell_lab::math;
+/// let x = 0.5 * 2.0 * 2.0 * 2.0 * 2.0;
+/// assert_eq!(math::float_compose(0.5, 4), x);
+/// ```
 pub fn float_compose(frac: f64, exp: i32) -> f64 {
     // handle special cases
     if frac == 0.0 || f64::is_infinite(frac) || f64::is_nan(frac) {

@@ -71,6 +71,10 @@ const F7: f64 = 2.891024605872965461538222e-15;
 ///
 /// **Note:** x must be in `[-1, +1]` with `x = ±1` being `±Inf`.
 ///
+/// See: <https://mathworld.wolfram.com/InverseErf.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Error_function>
+///
 /// # Special cases
 ///
 /// * `erf_inv(NaN)  = NaN`
@@ -145,7 +149,8 @@ pub fn erfc_inv(x: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::{erf_inv, erfc_inv};
-    use crate::{approx_eq, assert_alike, math::erf, math::erfc};
+    use crate::math::{erf, erfc};
+    use crate::{approx_eq, assert_alike};
 
     #[test]
     fn erf_inv_works_1() {
@@ -202,6 +207,29 @@ mod tests {
             // println!("x = {:?}", x);
             approx_eq(erf_inv(x), reference, tol);
         }
+    }
+
+    #[test]
+    fn erf_inv_works_2() {
+        // Special case: should yield sqrt(LN2 - ln(1.0 - x)) == 5.0
+        let x = 1.0 - 2.0 * f64::exp(-25.0);
+
+        // Mathematica: N[1 - 2/E^25, 50]
+        let xm = 0.99999999997222411227007195881067647250782628617920;
+        assert_eq!(x, xm);
+
+        // Mathematica: N[InverseErf[1 - 2/E^25], 50]
+        let ym = 4.7078495219130335562325296830779236928390597996186;
+        let y5 = erf_inv(x);
+        approx_eq(y5, ym, 1e-7); // "only" 1e-6
+
+        // need a tiny little more x to make sqrt(LN2 - ln(1.0 - xx)) > 5.0
+        let x = x + 1e-16;
+        let y5plus = erf_inv(x);
+        approx_eq(y5plus, y5, 1e-6);
+
+        // Mathematica: NumberForm[N[InverseErf[0.99999999999], 50], 50]
+        approx_eq(erf_inv(0.99999999999), 4.812924058944833, 1e-15);
     }
 
     #[test]

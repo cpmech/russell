@@ -254,10 +254,10 @@ pub fn ln_gamma(x: f64) -> (f64, i32) {
         // use lgamma(x) = lgamma(x+1) - log(x)
         let (y, i) = if xx <= 0.9 {
             lgamma = -f64::ln(xx);
-            if xx >= (Y_MIN - 1.0 + 0.27) {
+            if xx >= Y_MIN - 1.0 + 0.27 {
                 // 0.7316 <= x <=  0.9
                 (1.0 - xx, 0)
-            } else if xx >= (Y_MIN - 1.0 - 0.27) {
+            } else if xx >= Y_MIN - 1.0 - 0.27 {
                 // 0.2316 <= x < 0.7316
                 (xx - (TC - 1.0), 1)
             } else {
@@ -266,10 +266,10 @@ pub fn ln_gamma(x: f64) -> (f64, i32) {
             }
         } else {
             lgamma = 0.0;
-            if xx >= (Y_MIN + 0.27) {
+            if xx >= Y_MIN + 0.27 {
                 // 1.7316 <= x < 2
                 (2.0 - xx, 0)
-            } else if xx >= (Y_MIN - 0.27) {
+            } else if xx >= Y_MIN - 0.27 {
                 // 1.2316 <= x < 1.7316
                 (xx - TC, 1)
             } else {
@@ -414,26 +414,54 @@ mod tests {
 
     #[test]
     fn ln_gamma_works_special_case() {
+        //
+        // xx < TINY  and  non-negative
+        //
         let x = TINY / 2.0;
         let (y, s) = ln_gamma(x);
-        // Mathematica: N[LogGamma[2^-71], 50]
-        approx_eq(y, 49.213449819756116968623236163187614885368991246517, 1e-50);
+        approx_eq(y, 49.213449819756116968623236163187614885368991246517, 1e-50); // Mathematica: N[LogGamma[2^-71], 50]
         assert_eq!(s, 1);
 
-        // Mathematica: N[LogGamma[-2^-71], 50] (using the real part of the result)
+        //
+        // xx < TINY  and  negative
+        //
         let (y, s) = ln_gamma(-x);
-        approx_eq(y, 49.213449819756116968623725083873457781352028127685, 1e-50);
+        approx_eq(y, 49.213449819756116968623725083873457781352028127685, 1e-50); // Mathematica: N[LogGamma[-2^-71], 50] (using the real part of the result)
         assert_eq!(s, -1);
 
+        //
+        // negative  and  xx >= TWO_52
+        //
         let x = -TWO_52;
-        let (y, s) = ln_gamma(x);
-        assert_eq!(y, f64::INFINITY);
-        assert_eq!(s, 1);
+        assert_eq!(ln_gamma(x), (f64::INFINITY, 1));
 
+        //
+        // xx < 2.0  and  xx <= 0.9  and  xx >= Y_MIN - 1.0 + 0.27
+        //
         // 0.7316321449683623
         let x = Y_MIN - 1.0 + 0.27;
-        // Mathematica: NumberForm[N[LogGamma[0.7316321449683623], 50], 50]
-        approx_eq(ln_gamma(x).0, 0.2236602461341474, 1e-16);
+        approx_eq(ln_gamma(x).0, 0.2236602461341474, 1e-16); // Mathematica: NumberForm[N[LogGamma[0.7316321449683623], 50], 50]
+
+        //
+        // xx < 2.0  and  xx > 0.9  and  xx >= Y_MIN + 0.27
+        //
+        // 1.7316321449683623
+        let x = Y_MIN + 0.27;
+        approx_eq(ln_gamma(x).0, -0.0888171793955331, 1e-16);
+
+        //
+        // xx < 2.0  and  xx > 0.9  and  xx < Y_MIN + 0.27  and  xx >= Y_MIN - 0.27
+        //
+        // 1.1916321449683622
+        let x = Y_MIN - 0.27;
+        approx_eq(ln_gamma(x).0, -0.0829109295390456, 1e-14);
+
+        //
+        // xx < 2.0  and  xx > 0.9  and  xx < Y_MIN + 0.27  and  xx < Y_MIN - 0.27
+        //
+        // 1.1816321449683622
+        let x = Y_MIN - 0.27 - 0.01;
+        approx_eq(ln_gamma(x).0, -0.07984971231516993, 1e-50);
     }
 
     // The code below is based on all_test.go file from Go (1.22.1)

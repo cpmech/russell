@@ -129,10 +129,7 @@ pub fn gamma(x: f64) -> f64 {
         }
         z = q * f64::sin(PI * z);
         if z == 0.0 {
-            if sign_gam < 0 {
-                return f64::NEG_INFINITY;
-            }
-            return f64::INFINITY;
+            return (sign_gam as f64) * f64::INFINITY;
         }
         let (sq1, sq2) = stirling(q);
         let abs_z = f64::abs(z);

@@ -383,7 +383,7 @@ fn sin_pi(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{ln_gamma, TINY, TWO_52, Y_MIN};
+    use super::{ln_gamma, TINY, TWO_52, TWO_58, Y_MIN};
     use crate::math::ONE_BY_3;
     use crate::{approx_eq, assert_alike};
 
@@ -413,7 +413,7 @@ mod tests {
     }
 
     #[test]
-    fn ln_gamma_works_special_case() {
+    fn ln_gamma_branches_work() {
         //
         // xx < TINY  and  non-negative
         //
@@ -447,21 +447,44 @@ mod tests {
         //
         // 1.7316321449683623
         let x = Y_MIN + 0.27;
-        approx_eq(ln_gamma(x).0, -0.0888171793955331, 1e-16);
+        approx_eq(ln_gamma(x).0, -0.0888171793955331, 1e-16); // Mathematica: NumberForm[N[LogGamma[1.7316321449683623], 50], 50]
 
         //
         // xx < 2.0  and  xx > 0.9  and  xx < Y_MIN + 0.27  and  xx >= Y_MIN - 0.27
         //
         // 1.1916321449683622
         let x = Y_MIN - 0.27;
-        approx_eq(ln_gamma(x).0, -0.0829109295390456, 1e-14);
+        approx_eq(ln_gamma(x).0, -0.0829109295390456, 1e-14); // Mathematica: NumberForm[N[LogGamma[1.1916321449683622], 50], 50]
 
         //
         // xx < 2.0  and  xx > 0.9  and  xx < Y_MIN + 0.27  and  xx < Y_MIN - 0.27
         //
         // 1.1816321449683622
         let x = Y_MIN - 0.27 - 0.01;
-        approx_eq(ln_gamma(x).0, -0.07984971231516993, 1e-50);
+        approx_eq(ln_gamma(x).0, -0.07984971231516993, 1e-50); // Mathematica: NumberForm[N[LogGamma[1.1816321449683622], 50], 50]
+
+        //
+        // xx > 2.0  and  xx < 8.0
+        //
+        approx_eq(ln_gamma(2.1).0, 0.04543773854448518, 1e-50); // Mathematica: NumberForm[N[LogGamma[2.1], 50], 50]
+
+        //
+        // xx > 2.0  and  xx >= 8.0  and  xx < TWO_58
+        //
+        approx_eq(
+            ln_gamma(8.0).0,
+            8.5251613610654143001655310363471250507596677369369,
+            1e-14,
+        ); // Mathematica: NumberForm[N[LogGamma[8], 50], 50]
+
+        //
+        // xx > 2.0  and  xx >= 8.0  and  xx >= TWO_58
+        //
+        approx_eq(
+            ln_gamma(TWO_58).0,
+            1.1299361833563194928501116868607855707791504631856e19,
+            1e-50,
+        ); // Mathematica: NumberForm[N[LogGamma[2^58], 50], 50]
     }
 
     // The code below is based on all_test.go file from Go (1.22.1)

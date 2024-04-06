@@ -1,34 +1,27 @@
 use super::{modulo, PI};
 
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-//// This implementation is based on gamma.go file from Go (1.22.1),     ////
-//// which, in turn, is based on the code described below.               ////
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-//                                                                         //
-// Copyright 2010 The Go Authors. All rights reserved.                     //
-// Use of this source code is governed by a BSD-style                      //
-// license that can be found in the LICENSE file.                          //
-//                                                                         //
-// Floating-point logarithm of the Gamma function.                         //
-//                                                                         //
-// The original C code and the long comment below are                      //
-// from FreeBSD's /usr/src/lib/msun/src/e_lgamma_r.c and                   //
-// came with this notice. The go code is a simplified                      //
-// version of the original C.                                              //
-//                                                                         //
-// ====================================================                    //
-// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.       //
-//                                                                         //
-// Developed at SunPro, a Sun Microsystems, Inc. business.                 //
-// Permission to use, copy, modify, and distribute this                    //
-// software is freely granted, provided that this notice                   //
-// is preserved.                                                           //
-// ====================================================                    //
-//                                                                         //
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
+// This implementation is based on gamma.go file from Go (1.22.1),
+// which, in turn, is based on the code described below.
+//
+// Copyright 2010 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+//
+// Floating-point logarithm of the Gamma function.
+//
+// The original C code and the long comment below are
+// from FreeBSD's /usr/src/lib/msun/src/e_lgamma_r.c and
+// came with this notice. The go code is a simplified
+// version of the original C.
+//
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
 
 // Method:
 //   1. Argument Reduction for 0 < x <= 8
@@ -415,13 +408,7 @@ mod tests {
         }
     }
 
-    //////////////////////////////////////////////////////////////////
-    // The code below is based on all_test.go file from Go (1.22.1) //
-    //////////////////////////////////////////////////////////////////
-    // Copyright 2009 The Go Authors. All rights reserved.          //
-    // Use of this source code is governed by a BSD-style           //
-    // license that can be found in the LICENSE file.               //
-    //////////////////////////////////////////////////////////////////
+    // The code below is based on all_test.go file from Go (1.22.1)
 
     struct Fi {
         f: f64,

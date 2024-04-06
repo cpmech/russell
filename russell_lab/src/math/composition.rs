@@ -290,13 +290,7 @@ mod tests {
         assert_eq!(float_compose(8.0, -4), 0.5);
     }
 
-    //////////////////////////////////////////////////////////////////
-    // The code below is based on all_test.go file from Go (1.22.1) //
-    //////////////////////////////////////////////////////////////////
-    // Copyright 2009 The Go Authors. All rights reserved.          //
-    // Use of this source code is governed by a BSD-style           //
-    // license that can be found in the LICENSE file.               //
-    //////////////////////////////////////////////////////////////////
+    // The code below is based on all_test.go file from Go (1.22.1)
 
     const VALUES: [f64; 10] = [
         4.9790119248836735e+00,

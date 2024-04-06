@@ -1,12 +1,10 @@
 use super::{float_compose, float_decompose};
 
-//////////////////////////////////////////////////////////////////
-// The code is based on mod.go file from Go (1.22.1)            //
-//////////////////////////////////////////////////////////////////
-// Copyright 2009 The Go Authors. All rights reserved.          //
-// Use of this source code is governed by a BSD-style           //
-// license that can be found in the LICENSE file.               //
-//////////////////////////////////////////////////////////////////
+// The code is based on mod.go file from Go (1.22.1)
+//
+// Copyright 2009 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 
 /// Returns the floating-point remainder of x/y
 ///
@@ -53,13 +51,7 @@ mod tests {
     use crate::assert_alike;
     use crate::math::PI;
 
-    //////////////////////////////////////////////////////////////////
-    // The code below is based on all_test.go file from Go (1.22.1) //
-    //////////////////////////////////////////////////////////////////
-    // Copyright 2009 The Go Authors. All rights reserved.          //
-    // Use of this source code is governed by a BSD-style           //
-    // license that can be found in the LICENSE file.               //
-    //////////////////////////////////////////////////////////////////
+    // The code below is based on all_test.go file from Go (1.22.1)
 
     const VALUES: [f64; 10] = [
         4.9790119248836735e+00,

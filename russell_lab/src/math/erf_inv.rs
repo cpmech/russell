@@ -1,24 +1,17 @@
 use super::LN2;
 
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-//// This implementation is based on erfinv.go file from Go (1.22.1),    ////
-//// which, in turn, is based on the code described below.               ////
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-//                                                                         //
-// Copyright 2017 The Go Authors. All rights reserved.                     //
-// Use of this source code is governed by a BSD-style                      //
-// license that can be found in the LICENSE file.                          //
-//                                                                         //
-// Inverse of the floating-point error function.                           //
-//                                                                         //
-// This implementation is based on the rational approximation              //
-// of percentage points of normal distribution available from              //
-// https://www.jstor.org/stable/2347330.                                   //
-//                                                                         //
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
+// This implementation is based on erfinv.go file from Go (1.22.1),
+// which, in turn, is based on the code described below.
+//
+// Copyright 2017 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+//
+// Inverse of the floating-point error function.
+//
+// This implementation is based on the rational approximation
+// of percentage points of normal distribution available from
+// https://www.jstor.org/stable/2347330.
 
 // Coefficients for approximation to erf in |x| <= 0.85
 const A0: f64 = 1.1975323115670912564578e0;
@@ -264,13 +257,7 @@ mod tests {
         }
     }
 
-    //////////////////////////////////////////////////////////////////
-    // The code below is based on all_test.go file from Go (1.22.1) //
-    //////////////////////////////////////////////////////////////////
-    // Copyright 2009 The Go Authors. All rights reserved.          //
-    // Use of this source code is governed by a BSD-style           //
-    // license that can be found in the LICENSE file.               //
-    //////////////////////////////////////////////////////////////////
+    // The code below is based on all_test.go file from Go (1.22.1)
 
     const VALUES: [f64; 10] = [
         4.9790119248836735e+00,

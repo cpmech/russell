@@ -1,35 +1,26 @@
 use super::{float_is_neg_int, EULER, PI};
 
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-//// This implementation is based on gamma.go file from Go (1.22.1),     ////
-//// which, in turn, is based on the code described below.               ////
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-//                                                                         //
-// Copyright 2010 The Go Authors. All rights reserved.                     //
-// Use of this source code is governed by a BSD-style                      //
-// license that can be found in the LICENSE file.                          //
-//                                                                         //
-// The original C code, the long comment, and the constants                //
-// below are from http://netlib.sandia.gov/cephes/cprob/gamma.c.           //
-// The go code is a simplified version of the original C.                  //
-//                                                                         //
-//      tgamma.c                                                           //
-//                                                                         //
-// Cephes Math Library Release 2.8:  June, 2000                            //
-// Copyright 1984, 1987, 1989, 1992, 2000 by Stephen L. Moshier            //
-//                                                                         //
-// The readme file at http://netlib.sandia.gov/cephes/ says:               //
-//    Some software in this archive may be from the book _Methods and      //
-// Programs for Mathematical Functions_ (Prentice-Hall or Simon & Schuster //
-// International, 1989) or from the Cephes Mathematical Library, a         //
-// commercial product. In either event, it is copyrighted by the author.   //
-// What you see here may be used freely but it comes with no support or    //
-// guarantee.                                                              //
-//                                                                         //
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
+// This implementation is based on gamma.go file from Go (1.22.1),
+// which, in turn, is based on the code described below.
+//
+// Copyright 2010 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+//
+// The original C code, the long comment, and the constants
+// below are from http://netlib.sandia.gov/cephes/cprob/gamma.c.
+// The go code is a simplified version of the original C.
+//
+// Cephes Math Library Release 2.8:  June, 2000
+// Copyright 1984, 1987, 1989, 1992, 2000 by Stephen L. Moshier
+//
+// The readme file at http://netlib.sandia.gov/cephes/ says:
+//    Some software in this archive may be from the book _Methods and
+// Programs for Mathematical Functions_ (Prentice-Hall or Simon & Schuster
+// International, 1989) or from the Cephes Mathematical Library, a
+// commercial product. In either event, it is copyrighted by the author.
+// What you see here may be used freely but it comes with no support or
+// guarantee.
 
 const GP: [f64; 7] = [
     1.60119522476751861407e-04,
@@ -232,13 +223,7 @@ mod tests {
         approx_eq(gamma(150.0 + 1.0e-12), 3.8089226376496421386707466577615064443807882167327097140e+260, 1e248);
     }
 
-    //////////////////////////////////////////////////////////////////
-    // The code below is based on all_test.go file from Go (1.22.1) //
-    //////////////////////////////////////////////////////////////////
-    // Copyright 2009 The Go Authors. All rights reserved.          //
-    // Use of this source code is governed by a BSD-style           //
-    // license that can be found in the LICENSE file.               //
-    //////////////////////////////////////////////////////////////////
+    // The code below is based on all_test.go file from Go (1.22.1)
 
     const VALUES: [f64; 10] = [
         4.9790119248836735e+00,

@@ -197,7 +197,9 @@ const SMALL: f64 = 3.7252902984619140625000000000000000000000000000000e-9;
 ///              0
 /// ```
 ///
-/// See: <https://en.wikipedia.org/wiki/Error_function>
+/// See: <https://mathworld.wolfram.com/Erf.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Error_function>
 ///
 /// # Special cases
 ///
@@ -284,7 +286,9 @@ pub fn erf(x: f64) -> f64 {
 /// erfc(z) = 1 - erf(z)
 /// ```
 ///
-/// See: <https://en.wikipedia.org/wiki/Error_function>
+/// See: <https://mathworld.wolfram.com/Erfc.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Error_function>
 ///
 /// # Special cases
 ///

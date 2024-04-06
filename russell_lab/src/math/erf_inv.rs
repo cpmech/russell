@@ -81,7 +81,7 @@ const F7: f64 = 2.891024605872965461538222e-15;
 /// * `erf_inv(-1.0) = -Inf`
 /// * `erf_inv(1.0)  = +Inf`
 /// * `erf_inv(x)    = NaN   if x < -1 or x > 1`
-fn erf_inv(x: f64) -> f64 {
+pub fn erf_inv(x: f64) -> f64 {
     // special cases
     if f64::is_nan(x) {
         return f64::NAN;
@@ -133,6 +133,10 @@ fn erf_inv(x: f64) -> f64 {
 /// Evaluates the inverse of the complementary error function
 ///
 /// **Note:** x must be in `[0, 2]` with `x = 0` being `Inf` and `x = 2` being `-Inf`.
+///
+/// See: <https://mathworld.wolfram.com/InverseErfc.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Error_function>
 ///
 /// # Special cases
 ///

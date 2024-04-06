@@ -83,7 +83,9 @@ fn stirling(x: f64) -> (f64, f64) {
 
 /// Evaluates the Gamma function Γ(x)
 ///
-/// Reference: <https://www.cplusplus.com/reference/cmath/tgamma/>
+/// See: <https://mathworld.wolfram.com/GammaFunction.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Gamma_function>
 ///
 /// # Special cases
 ///

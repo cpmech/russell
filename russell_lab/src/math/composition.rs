@@ -20,8 +20,8 @@
 ///
 /// # Special cases
 ///
-/// * `mod_f(±Inf) = ±Inf, NaN`
-/// * `mod_f(NaN) = NaN, NaN`
+/// * `float_split(±Inf) = ±Inf, NaN`
+/// * `float_split(NaN) = NaN, NaN`
 ///
 /// # Examples
 ///
@@ -70,8 +70,8 @@ pub fn float_split(x: f64) -> (f64, f64) {
 ///
 /// # Special cases
 ///
-/// * `is_negative_integer(NaN)  = false`
-/// * `is_negative_integer(±Inf) = false`
+/// * `float_is_neg_int(NaN)  = false`
+/// * `float_is_neg_int(±Inf) = false`
 ///
 /// # Examples
 ///

@@ -191,8 +191,12 @@ const TT: f64 = -3.63867699703950536541e-18; // 0xBC50C7CAA48A971F
 ///
 /// Returns `(ln_gamma_x, sign)` where the sign is -1 or 1.
 ///
+/// See: <https://mathworld.wolfram.com/LogGammaFunction.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Gamma_function>
+///
 /// # Special cases
-//
+///
 /// * `ln(Γ(+Inf))     = +Inf`
 /// * `ln(Γ(0))        = +Inf`
 /// * `ln(Γ(-integer)) = +Inf`

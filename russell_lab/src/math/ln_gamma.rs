@@ -234,7 +234,7 @@ pub fn ln_gamma(x: f64) -> (f64, i32) {
             // |x| >= 2**52, must be -integer
             return (f64::INFINITY, sign);
         }
-        let t = sin_pi(xx);
+        let t = sin_pi_times_neg_x_given_abs_x(xx);
         if t == 0.0 {
             return (f64::INFINITY, sign); // -integer case
         }
@@ -337,23 +337,24 @@ pub fn ln_gamma(x: f64) -> (f64, i32) {
     (lgamma, sign)
 }
 
-// helper function for negative x
-fn sin_pi(x: f64) -> f64 {
-    if x < 0.25 {
-        return -f64::sin(PI * x);
+/// Computes sin(π x) for negative x, but x given in absolute value
+fn sin_pi_times_neg_x_given_abs_x(abs_x: f64) -> f64 {
+    assert!(abs_x >= 0.0);
+    if abs_x < 0.25 {
+        // using sin(-θ) = -sin(θ) with θ = π|x|
+        return -f64::sin(PI * abs_x);
     }
-
     // argument reduction
-    let mut xx = x;
+    let mut xx = abs_x;
     let mut z = f64::floor(xx);
     let mut n: i32;
     if z != xx {
-        // inexact
+        // not integer
         xx = modulo(xx, 2.0);
         n = (xx * 4.0) as i32;
     } else {
         if xx >= TWO_53 {
-            // x must be even
+            // xx must be even
             xx = 0.0;
             n = 0;
         } else {
@@ -365,27 +366,68 @@ fn sin_pi(x: f64) -> f64 {
             n <<= 2;
         }
     }
+    // results
     if n == 0 {
-        xx = f64::sin(PI * xx);
+        -f64::sin(PI * xx)
     } else if n == 1 || n == 2 {
-        xx = f64::cos(PI * (0.5 - xx));
+        -f64::cos(PI * (0.5 - xx))
     } else if n == 3 || n == 4 {
-        xx = f64::sin(PI * (1.0 - xx));
+        -f64::sin(PI * (1.0 - xx))
     } else if n == 5 || n == 6 {
-        xx = -f64::cos(PI * (xx - 1.5));
+        f64::cos(PI * (xx - 1.5))
     } else {
-        xx = f64::sin(PI * (xx - 2.0));
+        -f64::sin(PI * (xx - 2.0))
     }
-    -xx
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::{ln_gamma, TINY, TWO_52, TWO_58, Y_MIN};
-    use crate::math::ONE_BY_3;
+    use super::{ln_gamma, sin_pi_times_neg_x_given_abs_x, TINY, TWO_52, TWO_53, TWO_58, Y_MIN};
+    use crate::math::{ONE_BY_3, PI};
     use crate::{approx_eq, assert_alike};
+
+    #[test]
+    fn sin_pi_times_neg_x_given_abs_x_works() {
+        // abs_x < 0.25
+        approx_eq(sin_pi_times_neg_x_given_abs_x(0.15), f64::sin(-PI * 0.15), 1e-50);
+        // n = 0
+        approx_eq(sin_pi_times_neg_x_given_abs_x(2.0), f64::sin(-PI * 2.0), 1e-15);
+        // n = 1
+        approx_eq(sin_pi_times_neg_x_given_abs_x(0.25), f64::sin(-PI * 0.25), 1e-15);
+        // n = 2
+        approx_eq(sin_pi_times_neg_x_given_abs_x(0.5), f64::sin(-PI * 0.5), 1e-15);
+        // n = 3
+        approx_eq(sin_pi_times_neg_x_given_abs_x(0.75), f64::sin(-PI * 0.75), 1e-15);
+        // n = 4
+        approx_eq(sin_pi_times_neg_x_given_abs_x(1.0), f64::sin(-PI * 1.0), 1e-15);
+        // n = 5
+        approx_eq(sin_pi_times_neg_x_given_abs_x(1.25), f64::sin(-PI * 1.25), 1e-15);
+        // n = 6
+        approx_eq(sin_pi_times_neg_x_given_abs_x(1.5), f64::sin(-PI * 1.5), 1e-15);
+        // n = 7
+        approx_eq(sin_pi_times_neg_x_given_abs_x(1.75), f64::sin(-PI * 1.75), 1e-15);
+        // n = 7 again
+        approx_eq(sin_pi_times_neg_x_given_abs_x(1.9), f64::sin(-PI * 1.9), 1e-15);
+
+        // abs_x >= TWO_53
+        // this case shows that we cannot use f64::sin(-PI * TWO_53) directly
+        let res = sin_pi_times_neg_x_given_abs_x(TWO_53);
+        // println!("res = {:?} =? {:?}", res, f64::sin(-PI * TWO_53));
+        assert_eq!(res, 0.0);
+        assert_eq!(res.is_sign_negative(), true);
+        // Note that:
+        //     Mathematica: NumberForm[N[Sin[-Pi  2^53], 50], 50]
+        //         0
+        //     println!("{:?}", f64::sin(-PI * TWO_53));
+        //         0.8925928909876197
+
+        // abs_x < TWO_53  and  >= TWO_52
+        let res = sin_pi_times_neg_x_given_abs_x(TWO_52);
+        assert_eq!(res, 0.0);
+        assert_eq!(res.is_sign_negative(), true);
+    }
 
     #[test]
     fn ln_gamma_works() {
@@ -485,6 +527,38 @@ mod tests {
             1.1299361833563194928501116868607855707791504631856e19,
             1e-50,
         ); // Mathematica: NumberForm[N[LogGamma[2^58], 50], 50]
+
+        //
+        // sin_pi_times_neg_x_given_abs_x
+        // xx < 0  and x |x| < TWO_52  and  x < 0.25
+        //
+        // Mathematica: using the real part of NumberForm[N[LogGamma[-0.24], 50], 50]
+        let (y, s) = ln_gamma(-0.24);
+        approx_eq(y, 1.619664916633736, 1e-15); // real part
+        assert_eq!(s, -1);
+
+        //
+        // sin_pi_times_neg_x_given_abs_x
+        // boundary 0.25
+        //
+        // Mathematica: using the real part of NumberForm[N[LogGamma[-0.25], 50], 50]
+        let (y, s) = ln_gamma(-0.25);
+        approx_eq(y, 1.589575312551186, 1e-50); // real part
+        assert_eq!(s, -1);
+
+        //
+        // sin_pi_times_neg_x_given_abs_x:
+        // n == 6
+        //
+        // Mathematica: using the real part of NumberForm[N[LogGamma[-1.5], 50], 50]
+        let (y, s) = ln_gamma(-1.5);
+        approx_eq(y, 0.860047015376481, 1e-15); // real part
+        assert_eq!(s, 1);
+
+        assert_eq!(ln_gamma(-2.0).0, f64::INFINITY);
+
+        // Mathematica: using the real part of NumberForm[N[LogGamma[-2.5], 50], 50]
+        approx_eq(ln_gamma(-2.5).0, -0.05624371649767435, 1e-15); // real part
     }
 
     // The code below is based on all_test.go file from Go (1.22.1)

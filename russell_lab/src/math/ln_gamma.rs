@@ -430,8 +430,8 @@ mod tests {
         assert_eq!(y, f64::INFINITY);
         assert_eq!(s, 1);
 
-        let x = Y_MIN - 1.0 + 0.27; // 0.7316321449683623
-        ln_gamma(x);
+        // 0.7316321449683623
+        let x = Y_MIN - 1.0 + 0.27;
         // Mathematica: NumberForm[N[LogGamma[0.7316321449683623], 50], 50]
         approx_eq(ln_gamma(x).0, 0.2236602461341474, 1e-16);
     }

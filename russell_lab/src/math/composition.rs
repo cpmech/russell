@@ -168,36 +168,36 @@ pub fn float_compose(mantissa: f64, exponent: i32) -> f64 {
     if mantissa == 0.0 || f64::is_infinite(mantissa) || f64::is_nan(mantissa) {
         return mantissa;
     }
-    // computations
-    let mut n = exponent;
-    let x1p1023 = f64::from_bits(0x7fe0000000000000); // 0x1p1023 === 2 ^ 1023
-    let x1p53 = f64::from_bits(0x4340000000000000); // 0x1p53 === 2 ^ 53
-    let x1p_1022 = f64::from_bits(0x0010000000000000); // 0x1p-1022 === 2 ^ (-1022)
-    let mut y = mantissa;
-    if n > 1023 {
-        y *= x1p1023;
-        n -= 1023;
-        if n > 1023 {
-            y *= x1p1023;
-            n -= 1023;
-            if n > 1023 {
-                n = 1023;
-            }
-        }
-    } else if n < -1022 {
-        /* make sure final n < -53 to avoid double
-        rounding in the subnormal range */
-        y *= x1p_1022 * x1p53;
-        n += 1022 - 53;
-        if n < -1022 {
-            y *= x1p_1022 * x1p53;
-            n += 1022 - 53;
-            if n < -1022 {
-                n = -1022;
-            }
-        }
+    // normalize
+    let (frac, e) = if f64::abs(mantissa) < f64::MIN_POSITIVE {
+        (mantissa * ((1_u64 << 52) as f64), -52)
+    } else {
+        (mantissa, 0)
+    };
+    // composition
+    let mut exp = exponent + e;
+    let mut x = frac.to_bits();
+    exp += ((x >> 52) & 0x7ff) as i32 - 0x3ff;
+    if exp < -1075 {
+        return f64::copysign(0.0, frac); // underflow
     }
-    y * f64::from_bits(((0x3ff + n) as u64) << 52)
+    if exp > 1023 {
+        // overflow
+        if frac < 0.0 {
+            return f64::NEG_INFINITY;
+        }
+        return f64::INFINITY;
+    }
+    // de-normalize
+    let mut m = 1.0;
+    if exp < -1022 {
+        exp += 53;
+        m = 1.0 / ((1_u64 << 53) as f64); // 2**-53
+    }
+    // results
+    x &= 0x800fffffffffffff;
+    x |= ((exp + 1023) as u64) << 52;
+    m * f64::from_bits(x)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

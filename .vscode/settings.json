@@ -15,6 +15,7 @@
     "Cephes",
     "cmath",
     "condest",
+    "copysign",
     "Demmel",
     "devel",
     "dgeev",

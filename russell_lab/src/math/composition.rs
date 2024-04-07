@@ -66,7 +66,7 @@ pub fn float_split(x: f64) -> (f64, f64) {
     (integer, x - integer)
 }
 
-/// Reports whether a floating-point number corresponds to a negative integer or not
+/// Reports whether a floating-point number corresponds to a negative integer number or not
 ///
 /// # Special cases
 ///
@@ -89,6 +89,30 @@ pub fn float_is_neg_int(x: f64) -> bool {
         } else {
             false
         }
+    } else {
+        false
+    }
+}
+
+/// Reports whether a floating-point number corresponds to an integer number or not
+///
+/// # Special cases
+///
+/// * `float_is_neg_int(NaN)  = false`
+/// * `float_is_neg_int(±Inf) = false`
+///
+/// # Examples
+///
+/// ```
+/// # use russell_lab::math;
+/// assert_eq!(math::float_is_integer(-1.23), false);
+/// assert_eq!(math::float_is_integer(-2.0), true);
+/// assert_eq!(math::float_is_integer(3.0), true);
+/// ```
+pub fn float_is_integer(x: f64) -> bool {
+    if f64::is_finite(x) {
+        let (_, xf) = float_split(x);
+        xf == 0.0
     } else {
         false
     }
@@ -211,7 +235,7 @@ pub fn float_compose(mantissa: f64, exponent: i32) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{float_compose, float_decompose, float_is_neg_int, float_split};
+    use super::{float_compose, float_decompose, float_is_integer, float_is_neg_int, float_split};
     use crate::{approx_eq, assert_alike};
 
     #[test]
@@ -267,6 +291,25 @@ mod tests {
         assert_eq!(float_is_neg_int(f64::NEG_INFINITY), false);
         assert_eq!(float_is_neg_int(f64::INFINITY), false);
         assert_eq!(float_is_neg_int(f64::NAN), false);
+    }
+
+    #[test]
+    fn float_is_integer_works() {
+        // true
+        assert_eq!(float_is_integer(-3.0), true);
+        assert_eq!(float_is_integer(-10.0), true);
+        assert_eq!(float_is_integer(f64::MIN), true);
+        assert_eq!(float_is_integer(f64::MAX), true);
+        assert_eq!(float_is_integer(3.0), true);
+        assert_eq!(float_is_integer(10.0), true);
+        assert_eq!(float_is_integer(-0.0), true);
+        assert_eq!(float_is_integer(0.0), true);
+        // false
+        assert_eq!(float_is_integer(-3.14), false);
+        assert_eq!(float_is_integer(3.14), false);
+        assert_eq!(float_is_integer(f64::NEG_INFINITY), false);
+        assert_eq!(float_is_integer(f64::INFINITY), false);
+        assert_eq!(float_is_integer(f64::NAN), false);
     }
 
     #[test]

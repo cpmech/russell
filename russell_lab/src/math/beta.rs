@@ -73,7 +73,7 @@ const ASYMPTOTIC_FACTOR: f64 = 1e6;
 /// B(1, 1)   = 1
 /// B(-1, 1)  = -1
 /// ```
-pub fn beta_function(a: f64, b: f64) -> f64 {
+pub fn beta(a: f64, b: f64) -> f64 {
     // special cases
     if f64::is_nan(a) || f64::is_nan(b) {
         return f64::NAN;
@@ -166,7 +166,7 @@ fn beta_negative_integer(a_int: f64, b: f64) -> f64 {
     let b_int = (b as i32) as f64;
     if b == b_int && 1.0 - a_int - b > 0.0 {
         let sign = if (b_int as i32) % 2 == 0 { 1.0 } else { -1.0 };
-        sign * beta_function(1.0 - a_int - b, b)
+        sign * beta(1.0 - a_int - b, b)
     } else {
         f64::INFINITY
     }
@@ -190,16 +190,16 @@ fn ln_beta_asymptotic(a: f64, b: f64) -> (f64, i32) {
 
 #[cfg(test)]
 mod tests {
-    use super::{beta_function, ASYMPTOTIC_FACTOR};
+    use super::{beta, ASYMPTOTIC_FACTOR};
     use crate::approx_eq;
     use crate::math::PI;
 
     #[test]
     fn beta_function_works_1() {
-        approx_eq(beta_function(0.5, 0.5), PI, 1e-15);
-        assert_eq!(beta_function(1.0, 1.0), 1.0);
-        assert_eq!(beta_function(-1.0, 1.0), -1.0);
-        approx_eq(beta_function(1.0, -0.5), -2.0, 1e-15);
+        approx_eq(beta(0.5, 0.5), PI, 1e-15);
+        assert_eq!(beta(1.0, 1.0), 1.0);
+        assert_eq!(beta(-1.0, 1.0), -1.0);
+        approx_eq(beta(1.0, -0.5), -2.0, 1e-15);
         let aa = [1.0, 3.0, 10.0];
         let bb = [5.0, 2.0, 11.0, -0.5];
         let wx_maxima_solution = [
@@ -210,7 +210,7 @@ mod tests {
         for (i, a) in aa.iter().enumerate() {
             for (j, b) in bb.iter().enumerate() {
                 let tol = if i == 2 && j == 3 { 5e-14 } else { 1e-15 };
-                let beta = beta_function(*a, *b);
+                let beta = beta(*a, *b);
                 // println!("a = {:?}, b = {:?}, B(a,b) = {:?}", a, b, beta);
                 approx_eq(beta, wx_maxima_solution[i][j], tol);
             }
@@ -220,22 +220,22 @@ mod tests {
     #[test]
     fn beta_function_handle_branches_1() {
         // c = a + b = -3 yielding Gamma(c) = NaN
-        assert_eq!(beta_function(-1.4, -1.6), 0.0);
-        assert_eq!(beta_function(-1.5, -1.5 + f64::EPSILON), 0.0);
-        approx_eq(beta_function(-1.5, -1.5 + 10.0 * f64::EPSILON), 0.0, 1e-13);
+        assert_eq!(beta(-1.4, -1.6), 0.0);
+        assert_eq!(beta(-1.5, -1.5 + f64::EPSILON), 0.0);
+        approx_eq(beta(-1.5, -1.5 + 10.0 * f64::EPSILON), 0.0, 1e-13);
 
         let tiny_neg_int = -f64::trunc(f64::MAX);
         // a <= 0.0  and  a == floor(a)  and  a != int(a)
-        assert_eq!(beta_function(tiny_neg_int, 3.145), f64::INFINITY);
+        assert_eq!(beta(tiny_neg_int, 3.145), f64::INFINITY);
 
         // b <= 0.0  and  b == floor(b)  and  b != int(b)
-        assert_eq!(beta_function(3.145, tiny_neg_int), f64::INFINITY);
+        assert_eq!(beta(3.145, tiny_neg_int), f64::INFINITY);
 
         // in beta_negative_integer
-        assert_eq!(beta_function(1.6, -2.0), f64::INFINITY);
+        assert_eq!(beta(1.6, -2.0), f64::INFINITY);
 
         // int the recursion loop
-        assert_eq!(beta_function(-2.0, -2.0), f64::INFINITY);
+        assert_eq!(beta(-2.0, -2.0), f64::INFINITY);
     }
 
     #[test]
@@ -244,7 +244,7 @@ mod tests {
         let b = 1.0;
         let a = ASYMPTOTIC_FACTOR * f64::abs(b) + 1.0; // 1_000_001
         approx_eq(
-            beta_function(a, b),
+            beta(a, b),
             9.9999900000099999900000099999900000099999900000100e-7,
             1e-21,
         ); // Mathematica: N[Beta[1000001, 1], 50]
@@ -252,13 +252,13 @@ mod tests {
         // abs(a) > ASYMPTOTIC_FACTOR * abs(b) && a > ASYMPTOTIC_FACTOR
         let b = -0.5;
         let a = ASYMPTOTIC_FACTOR * f64::abs(b) + 1.0; // 500_001
-        approx_eq(beta_function(a, b), -2506.62890, 1e-6); // Mathematica: NumberForm[N[Beta[500001, -0.5], 50], 50]
+        approx_eq(beta(a, b), -2506.62890, 1e-6); // Mathematica: NumberForm[N[Beta[500001, -0.5], 50], 50]
 
         // f64::abs(cc) > GAMMA_MAX || f64::abs(aa) > GAMMA_MAX || f64::abs(bb) > GAMMA_MAX
         let a = 172.0; // > GAMMA_MAX
         let b = 1.0;
         approx_eq(
-            beta_function(a, b),
+            beta(a, b),
             0.0058139534883720930232558139534883720930232558139535,
             1e-15,
         ); // Mathematica: NumberForm[N[Beta[172, 1], 50], 50]
@@ -268,7 +268,7 @@ mod tests {
         let b = -172.5;
         // Mathematica: NumberForm[N[Beta[1000, -172.5], 50], 50]
         //   -4.35702817322*10^(198)
-        approx_eq(beta_function(a, b) / 1e198, -4.35702817322, 1e-11);
+        approx_eq(beta(a, b) / 1e198, -4.35702817322, 1e-11);
 
         // f64::abs(cc) > GAMMA_MAX || f64::abs(aa) > GAMMA_MAX || f64::abs(bb) > GAMMA_MAX
         // and ll > LN_MAX
@@ -276,17 +276,17 @@ mod tests {
         let b = -172.5;
         // Mathematica: NumberForm[N[Beta[4500, -172.5], 50], 50]
         //   -5.8238626991*10^(316)
-        assert_eq!(beta_function(a, b), f64::NEG_INFINITY);
+        assert_eq!(beta(a, b), f64::NEG_INFINITY);
     }
 
     #[test]
     fn beta_function_special_cases() {
-        assert!(beta_function(f64::NAN, 3.145).is_nan());
-        assert!(beta_function(f64::INFINITY, 3.145).is_nan());
-        assert!(beta_function(f64::NEG_INFINITY, 3.145).is_nan());
-        assert!(beta_function(3.145, f64::NAN).is_nan());
-        assert!(beta_function(3.145, f64::INFINITY).is_nan());
-        assert!(beta_function(3.145, f64::NEG_INFINITY).is_nan());
+        assert!(beta(f64::NAN, 3.145).is_nan());
+        assert!(beta(f64::INFINITY, 3.145).is_nan());
+        assert!(beta(f64::NEG_INFINITY, 3.145).is_nan());
+        assert!(beta(3.145, f64::NAN).is_nan());
+        assert!(beta(3.145, f64::INFINITY).is_nan());
+        assert!(beta(3.145, f64::NEG_INFINITY).is_nan());
     }
 
     #[test]
@@ -454,9 +454,9 @@ mod tests {
         for (a, b, reference) in mathematica {
             // println!("a = {:?}, b = {:?}", a, b);
             if reference == f64::INFINITY {
-                assert_eq!(beta_function(a, b), f64::INFINITY);
+                assert_eq!(beta(a, b), f64::INFINITY);
             } else {
-                approx_eq(beta_function(a, b), reference, 1e-13);
+                approx_eq(beta(a, b), reference, 1e-13);
             }
         }
     }

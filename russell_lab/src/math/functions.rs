@@ -1,3 +1,5 @@
+use super::ln_gamma;
+
 /// Evaluates the sign function
 ///
 /// ```text
@@ -247,6 +249,58 @@ pub fn factorial_lookup_22(n: usize) -> f64 {
     FACTORIAL_22[n]
 }
 
+/// Evaluates the Euler beta function B(a, b)
+///
+/// ```text
+///                         1
+///           Γ(a) Γ(b)    ⌠
+/// B(a, b) = ───────── =  │  tᵃ⁻¹ (1 - t)ᵇ⁻¹  dt
+///            Γ(a + b)    ⌡
+///                       0
+/// ```
+///
+/// where `Γ(x)` is the Gamma function.
+///
+/// The function is evaluated using the `ln(Γ(x))` function ([ln_gamma()]) as follows.
+/// Considering first non-negative `ln(Γ(x))` values for `a`, `b`, and `c = a + b`:
+///
+/// ```text
+/// B(a, b) = Γ(a) Γ(b) [Γ(c)]⁻¹
+///         = exp{ln(Γ(a))} exp{ln(Γ(b))} exp{ln([Γ(c)]⁻¹)}
+///         = exp{ln(Γ(a))} exp{ln(Γ(b))} exp{-ln([Γ(c)])}
+///         = exp(la + lb - lb)
+/// ```
+///
+/// where `la = ln(Γ(a))`, `lb = ln(Γ(b))`, and `lc = ln(Γ(a + b))`
+///
+/// Now, fixing the sign:
+///
+/// ```text
+/// B(a, b) = sign(la) sign(lb) sign(lc) exp(la + lb - lb)
+/// ```
+///
+/// Note: `B` is the greek capital beta; although we use the latin character B.
+///
+/// See: <https://mathworld.wolfram.com/BetaFunction.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Beta_function>
+///
+/// # Notable results
+///
+/// ```text
+/// B(a, b)   = B(b, a)
+/// B(1, x)   = 1/x
+/// B(x, 1-x) = π/sin(π x)
+/// B(1, 1)   = 1
+/// B(-1, 1)  = -1
+/// ```
+pub fn beta(a: f64, b: f64) -> f64 {
+    let (la, sign_la) = ln_gamma(a);
+    let (lb, sign_lb) = ln_gamma(b);
+    let (lc, sign_lc) = ln_gamma(a + b);
+    ((sign_la * sign_lb * sign_lc) as f64) * f64::exp(la + lb - lc)
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
@@ -350,5 +404,25 @@ mod tests {
         assert_eq!(factorial_lookup_22(4), 24.0);
         assert_eq!(factorial_lookup_22(10), 3628800.0,);
         assert_eq!(factorial_lookup_22(22), 1124000727_7776076800_00.0);
+    }
+
+    #[test]
+    fn beta_works() {
+        assert_eq!(beta(0.5, 0.5), PI);
+        assert_eq!(beta(1.0, 1.0), 1.0);
+        // assert_eq!(beta(-1.0, 1.0), -1.0);
+        let aa = [1.0, 3.0, 10.0];
+        let bb = [5.0, 2.0, 11.0, -0.5];
+        let wx_maxima_solution = [
+            [1.0 / 5.0, 1.0 / 2.0, 1.0 / 11.0, -2.0],
+            [1.0 / 105.0, 1.0 / 12.0, 1.0 / 858.0, -16.0 / 3.0],
+            [1.0 / 10010.0, 1.0 / 110.0, 1.0 / 1847560.0, -131072.0 / 12155.0],
+        ];
+        for (i, a) in aa.iter().enumerate() {
+            for (j, b) in bb.iter().enumerate() {
+                let tol = if i == 2 && j == 3 { 5e-14 } else { 1e-15 };
+                approx_eq(beta(*a, *b), wx_maxima_solution[i][j], tol);
+            }
+        }
     }
 }

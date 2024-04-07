@@ -26,7 +26,53 @@ const LN_MAX: f64 = 7.09782712893383996732e2; // ln(DBL_MAX)
 
 const ASYMPTOTIC_FACTOR: f64 = 1e6;
 
-/// Evaluates the beta function
+/// Evaluates the Euler beta function B(a, b)
+///
+/// ```text
+///                         1
+///           Γ(a) Γ(b)    ⌠
+/// B(a, b) = ───────── =  │  tᵃ⁻¹ (1 - t)ᵇ⁻¹  dt
+///            Γ(a + b)    ⌡
+///                       0
+/// ```
+///
+/// where `Γ(x)` is the Gamma function.
+///
+/// The function is evaluated using either the Γ(x) ([gamma()]) function or the
+/// `ln(Γ(x))` ([ln_gamma()]) function--see below.
+///
+/// Considering first non-negative `ln(Γ(x))` values for `a`, `b`, and `c = a + b`:
+///
+/// ```text
+/// B(a, b) = Γ(a) Γ(b) [Γ(c)]⁻¹
+///         = exp{ln(Γ(a))} exp{ln(Γ(b))} exp{ln([Γ(c)]⁻¹)}
+///         = exp{ln(Γ(a))} exp{ln(Γ(b))} exp{-ln([Γ(c)])}
+///         = exp(la + lb - lb)
+/// ```
+///
+/// where `la = ln(Γ(a))`, `lb = ln(Γ(b))`, and `lc = ln(Γ(a + b))`
+///
+/// Now, fixing the sign:
+///
+/// ```text
+/// B(a, b) = sign(la) sign(lb) sign(lc) exp(la + lb - lb)
+/// ```
+///
+/// Note: `B` is the greek capital beta; although we use the latin character B.
+///
+/// See: <https://mathworld.wolfram.com/BetaFunction.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Beta_function>
+///
+/// # Notable results
+///
+/// ```text
+/// B(a, b)   = B(b, a)
+/// B(1, x)   = 1/x
+/// B(x, 1-x) = π/sin(π x)
+/// B(1, 1)   = 1
+/// B(-1, 1)  = -1
+/// ```
 pub fn beta_function(a: f64, b: f64) -> f64 {
     // special cases
     if f64::is_nan(a) || f64::is_nan(b) {

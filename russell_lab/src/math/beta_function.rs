@@ -191,7 +191,7 @@ fn ln_beta_asymptotic(a: f64, b: f64) -> (f64, i32) {
 
 #[cfg(test)]
 mod tests {
-    use super::beta_function;
+    use super::{beta_function, ASYMPTOTIC_FACTOR};
     use crate::approx_eq;
     use crate::math::PI;
 
@@ -219,9 +219,11 @@ mod tests {
     }
 
     #[test]
-    fn beta_function_handle_branches() {
+    fn beta_function_handle_branches_1() {
         // c = a + b = -3 yielding Gamma(c) = NaN
         assert_eq!(beta_function(-1.4, -1.6), 0.0);
+        assert_eq!(beta_function(-1.5, -1.5 + f64::EPSILON), 0.0);
+        approx_eq(beta_function(-1.5, -1.5 + 10.0 * f64::EPSILON), 0.0, 1e-13);
 
         let tiny_neg_int = -f64::trunc(f64::MAX);
         // a <= 0.0  and  a == floor(a)  and  a != int(a)
@@ -235,6 +237,40 @@ mod tests {
 
         // int the recursion loop
         assert_eq!(beta_function(-2.0, -2.0), f64::INFINITY);
+    }
+
+    #[test]
+    fn beta_function_handle_branches_2() {
+        // abs(a) > ASYMPTOTIC_FACTOR * abs(b) && a > ASYMPTOTIC_FACTOR
+        let b = 1.0;
+        let a = ASYMPTOTIC_FACTOR * f64::abs(b) + 1.0; // 1_000_001
+        approx_eq(
+            beta_function(a, b),
+            9.9999900000099999900000099999900000099999900000100e-7,
+            1e-21,
+        ); // Mathematica: N[Beta[1000001, 1], 50]
+
+        // abs(a) > ASYMPTOTIC_FACTOR * abs(b) && a > ASYMPTOTIC_FACTOR
+        let b = -0.5;
+        let a = ASYMPTOTIC_FACTOR * f64::abs(b) + 1.0; // 500_001
+        approx_eq(beta_function(a, b), -2506.62890, 1e-6); // Mathematica: NumberForm[N[Beta[500001, -0.5], 50], 50]
+
+        // f64::abs(cc) > GAMMA_MAX || f64::abs(aa) > GAMMA_MAX || f64::abs(bb) > GAMMA_MAX
+        let a = 172.0; // > GAMMA_MAX
+        let b = 1.0;
+        approx_eq(
+            beta_function(a, b),
+            0.0058139534883720930232558139534883720930232558139535,
+            1e-15,
+        ); // Mathematica: NumberForm[N[Beta[172, 1], 50], 50]
+
+        // f64::abs(cc) > GAMMA_MAX || f64::abs(aa) > GAMMA_MAX || f64::abs(bb) > GAMMA_MAX
+        // let a = 4500.0;
+        let a = 1000.0;
+        let b = -172.5;
+        // Mathematica: NumberForm[N[Beta[1000, -172.5], 50], 50]
+        //   -4.35702817322*10^(198)
+        approx_eq(beta_function(a, b) / 1e198, -4.35702817322, 1e-11);
     }
 
     #[test]

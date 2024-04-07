@@ -146,9 +146,8 @@ pub fn beta_function(a: f64, b: f64) -> f64 {
 
     // use the gamma identity
     let gc = gamma(cc);
-    if gc == 0.0 {
-        return f64::INFINITY;
-    }
+    // the gamma function has no zeros, so there is no need to check for gc == 0.0
+    // if gc == 0.0 { return f64::INFINITY; }
     let ga = gamma(aa);
     let gb = gamma(bb);
     let mut ans: f64;
@@ -265,12 +264,19 @@ mod tests {
         ); // Mathematica: NumberForm[N[Beta[172, 1], 50], 50]
 
         // f64::abs(cc) > GAMMA_MAX || f64::abs(aa) > GAMMA_MAX || f64::abs(bb) > GAMMA_MAX
-        // let a = 4500.0;
         let a = 1000.0;
         let b = -172.5;
         // Mathematica: NumberForm[N[Beta[1000, -172.5], 50], 50]
         //   -4.35702817322*10^(198)
         approx_eq(beta_function(a, b) / 1e198, -4.35702817322, 1e-11);
+
+        // f64::abs(cc) > GAMMA_MAX || f64::abs(aa) > GAMMA_MAX || f64::abs(bb) > GAMMA_MAX
+        // and ll > LN_MAX
+        let a = 4500.0;
+        let b = -172.5;
+        // Mathematica: NumberForm[N[Beta[4500, -172.5], 50], 50]
+        //   -5.8238626991*10^(316)
+        assert_eq!(beta_function(a, b), f64::NEG_INFINITY);
     }
 
     #[test]

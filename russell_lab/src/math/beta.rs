@@ -1,4 +1,4 @@
-use super::{float_is_negative_integer, gamma, ln_gamma};
+use super::{float_is_neg_integer, gamma, ln_gamma};
 
 // The code here is partially based on the beta.c file from Cephes
 //
@@ -134,7 +134,7 @@ pub fn beta(a: f64, b: f64) -> f64 {
     }
 
     // handle negative integer cc (yields undefined Gamma; NaN)
-    if float_is_negative_integer(cc) {
+    if float_is_neg_integer(cc) {
         // this case is not handled by Cephes; but it works in Cephes because their Gamma returns Inf for neg ints
         // in this case, the "horns" of the Gamma function on the negative axis
         // are "upside" and "downside" @ negative integers; thus, Gamma(neg_int) is undefined

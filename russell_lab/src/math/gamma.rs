@@ -92,9 +92,19 @@ fn stirling(x: f64) -> (f64, f64) {
 /// * `Γ(+Inf) = +Inf`
 /// * `Γ(+0)   = +Inf`
 /// * `Γ(-0)   = -Inf`
-/// * `Γ(x)    = NaN  for integer x < 0`
+/// * `Γ(x)    = NaN` for integer `x < 0`
 /// * `Γ(-Inf) = NaN`
 /// * `Γ(NaN)  = NaN`
+///
+/// # Notes
+///
+/// The Gamma function is undefined at zero and for negative integers.
+///
+/// The plot of Γ(x) exhibits upside and downside "horns" on the negative axis.
+/// When x is a negative integer, the horns' "spikes" do not match because
+/// one is up and the other is down, illustrating the undefined case.
+///
+/// The same situations happens for `x == 0.0`
 pub fn gamma(x: f64) -> f64 {
     // special cases
     if float_is_neg_int(x) || x == f64::NEG_INFINITY || f64::is_nan(x) {

@@ -320,13 +320,8 @@ mod tests {
 
     #[test]
     fn beta_function_handle_branches_1() {
-        // c = a + b = -3 yielding Gamma(c) = NaN
-        assert_eq!(beta(-1.4, -1.6), 0.0);
-        assert_eq!(beta(-1.5, -1.5 + f64::EPSILON), 0.0);
-        approx_eq(beta(-1.5, -1.5 + 10.0 * f64::EPSILON), 0.0, 1e-13);
-
-        let tiny_neg_int = -f64::trunc(f64::MAX);
         // a <= 0.0  and  a == floor(a)  and  a != int(a)
+        let tiny_neg_int = -f64::trunc(f64::MAX);
         assert_eq!(beta(tiny_neg_int, 3.145), f64::INFINITY);
 
         // b <= 0.0  and  b == floor(b)  and  b != int(b)
@@ -337,6 +332,12 @@ mod tests {
 
         // int the recursion loop
         assert_eq!(beta(-2.0, -2.0), f64::INFINITY);
+
+        // c = a + b = -3 yielding Gamma(c) = NaN
+        assert_eq!(beta(-1.4, -1.6), 0.0);
+        assert_eq!(beta(-1.5, -1.5 + f64::EPSILON), 0.0);
+        // this case won't trigger the branch mentioned above
+        approx_eq(beta(-1.5, -1.5 + 10.0 * f64::EPSILON), 0.0, 1e-13);
     }
 
     #[test]
@@ -560,6 +561,44 @@ mod tests {
                 approx_eq(beta(a, b), reference, 1e-13);
             }
         }
+    }
+
+    #[test]
+    fn ln_beta_function_special_cases() {
+        assert!(ln_beta(f64::NAN, 3.145).is_nan());
+        assert!(ln_beta(f64::INFINITY, 3.145).is_nan());
+        assert!(ln_beta(f64::NEG_INFINITY, 3.145).is_nan());
+        assert!(ln_beta(3.145, f64::NAN).is_nan());
+        assert!(ln_beta(3.145, f64::INFINITY).is_nan());
+        assert!(ln_beta(3.145, f64::NEG_INFINITY).is_nan());
+    }
+
+    #[test]
+    fn ln_beta_function_handle_branches_1() {
+        // a <= 0.0  and  a == floor(a)  and  a != int(a)
+        let tiny_neg_int = -f64::trunc(f64::MAX);
+        assert_eq!(ln_beta(tiny_neg_int, 3.145), f64::INFINITY);
+
+        // b <= 0.0  and  b == floor(b)  and  b != int(b)
+        assert_eq!(ln_beta(3.145, tiny_neg_int), f64::INFINITY);
+
+        // in ln_beta_negative_integer
+        assert_eq!(ln_beta(1.6, -2.0), f64::INFINITY);
+
+        // int the recursion loop
+        assert_eq!(ln_beta(-2.0, -2.0), f64::INFINITY);
+
+        // c = a + b = -3 yielding Gamma(c) = NaN
+        assert_eq!(ln_beta(-1.4, -1.6), 0.0);
+        assert_eq!(ln_beta(-1.5, -1.5 + f64::EPSILON), 0.0);
+
+        // this case won't trigger the branch mentioned above
+        // Mathematica (real part): N[Log[Beta[-1.5, -1.5 + 10^-14]], 50]
+        // Note that this case leads to a near zero value in:
+        //    ln(-(-3.2739458967974178E-13))
+        // Mathematica yields: -3.28156*10^-13 with N[Beta[-1.5, -1.5 + 10^-14], 50]
+        // thus, taking the ln of such small number becomes difficult to compare with high precision
+        approx_eq(ln_beta(-1.5, -1.5 + 1e-14), -28.7453, 0.0025);
     }
 
     #[test]

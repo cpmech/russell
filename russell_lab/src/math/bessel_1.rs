@@ -1,34 +1,27 @@
 use super::{PI, SQRT_PI, TWO_129, TWO_M27};
 
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-//// This implementation is based on j1.go file from Go (1.22.1),     ////
-//// which, in turn, is based on the FreeBSD code as explained below. ////
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-//                                                                      //
-// Copyright 2010 The Go Authors. All rights reserved.                  //
-// Use of this source code is governed by a BSD-style                   //
-// license that can be found in the LICENSE file.                       //
-//                                                                      //
-// Bessel function of the first and second kinds of order one.          //
-//                                                                      //
-// The original C code and the long comment below are                   //
-// from FreeBSD's /usr/src/lib/msun/src/e_j1.c and                      //
-// came with this notice. The go code is a simplified                   //
-// version of the original C.                                           //
-//                                                                      //
-// ====================================================                 //
-// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.    //
-//                                                                      //
-// Developed at SunPro, a Sun Microsystems, Inc. business.              //
-// Permission to use, copy, modify, and distribute this                 //
-// software is freely granted, provided that this notice                //
-// is preserved.                                                        //
-// ====================================================                 //
-//                                                                      //
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
+// This implementation is based on j1.go file from Go (1.22.1),
+// which, in turn, is based on the FreeBSD code as explained below.
+//
+// Copyright 2010 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+//
+// Bessel function of the first and second kinds of order one.
+//
+// The original C code and the long comment below are
+// from FreeBSD's /usr/src/lib/msun/src/e_j1.c and
+// came with this notice. The go code is a simplified
+// version of the original C.
+//
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
 
 // R0/S0 on [0, 2]
 const R00: f64 = -6.25000000000000000000e-02; // 0xBFB0000000000000
@@ -446,7 +439,7 @@ fn qone(x: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::{bessel_j1, bessel_y1, pone, qone, TWO_129, TWO_M54};
-    use crate::approx_eq;
+    use crate::{approx_eq, assert_alike};
 
     #[test]
     #[should_panic(expected = "INTERNAL ERROR: x must be ≥ 2.0 for pone")]
@@ -615,5 +608,77 @@ mod tests {
             -1.146832227844531729100095246803011708838780681972379423086390888013625612852380226098068118499203402e16,
             1e-100,
         );
+    }
+
+    // The code below is based on all_test.go file from Go (1.22.1)
+
+    const VALUES: [f64; 10] = [
+        4.9790119248836735e+00,
+        7.7388724745781045e+00,
+        -2.7688005719200159e-01,
+        -5.0106036182710749e+00,
+        9.6362937071984173e+00,
+        2.9263772392439646e+00,
+        5.2290834314593066e+00,
+        2.7279399104360102e+00,
+        1.8253080916808550e+00,
+        -8.6859247685756013e+00,
+    ];
+
+    const SOLUTION_J1: [f64; 10] = [
+        -3.251526395295203422162967e-01,
+        1.893581711430515718062564e-01,
+        -1.3711761352467242914491514e-01,
+        3.287486536269617297529617e-01,
+        1.3133899188830978473849215e-01,
+        3.660243417832986825301766e-01,
+        -3.4436769271848174665420672e-01,
+        4.329481396640773768835036e-01,
+        5.8181350531954794639333955e-01,
+        -2.7030574577733036112996607e-01,
+    ];
+
+    const SOLUTION_Y1: [f64; 10] = [
+        0.15494213737457922210218611,
+        -0.2165955142081145245075746,
+        -2.4644949631241895201032829,
+        0.1442740489541836405154505,
+        0.2215379960518984777080163,
+        0.3038800915160754150565448,
+        0.0691107642452362383808547,
+        0.2380116417809914424860165,
+        -0.20849492979459761009678934,
+        0.0242503179793232308250804,
+    ];
+
+    const SC_VALUES: [f64; 4] = [f64::NEG_INFINITY, 0.0, f64::INFINITY, f64::NAN];
+
+    const SC_SOLUTION_J1: [f64; 4] = [0.0, 0.0, 0.0, f64::NAN];
+
+    const SC_SOLUTION_Y1: [f64; 5] = [f64::NAN, f64::NEG_INFINITY, 0.0, f64::NAN, f64::NAN];
+
+    #[test]
+    fn test_bessel_j1() {
+        for (i, v) in VALUES.iter().enumerate() {
+            let f = bessel_j1(*v);
+            approx_eq(SOLUTION_J1[i], f, 1e-15);
+        }
+        for (i, v) in SC_VALUES.iter().enumerate() {
+            let f = bessel_j1(*v);
+            assert_alike(SC_SOLUTION_J1[i], f);
+        }
+    }
+
+    #[test]
+    fn test_bessel_y1() {
+        for (i, v) in VALUES.iter().enumerate() {
+            let a = f64::abs(*v);
+            let f = bessel_y1(a);
+            approx_eq(SOLUTION_Y1[i], f, 1e-15);
+        }
+        for (i, v) in SC_VALUES.iter().enumerate() {
+            let f = bessel_y1(*v);
+            assert_alike(SC_SOLUTION_Y1[i], f);
+        }
     }
 }

@@ -1,20 +1,34 @@
-//! This module implements some mathematical functions
+//! This module implements mathematical (specialized) functions and constants
 
 mod bessel_0;
 mod bessel_1;
 mod bessel_mod;
 mod bessel_n;
+mod beta;
 mod chebyshev;
+mod complex;
+mod composition;
 mod constants;
 mod elliptic;
+mod erf;
+mod erf_inv;
 mod functions;
-mod functions_cmath;
+mod gamma;
+mod ln_gamma;
+mod modulo;
 pub use crate::math::bessel_0::*;
 pub use crate::math::bessel_1::*;
 pub use crate::math::bessel_mod::*;
 pub use crate::math::bessel_n::*;
+pub use crate::math::beta::*;
 pub use crate::math::chebyshev::*;
+pub use crate::math::complex::*;
+pub use crate::math::composition::*;
 pub use crate::math::constants::*;
 pub use crate::math::elliptic::*;
+pub use crate::math::erf::*;
+pub use crate::math::erf_inv::*;
 pub use crate::math::functions::*;
-pub use crate::math::functions_cmath::*;
+pub use crate::math::gamma::*;
+pub use crate::math::ln_gamma::*;
+pub use crate::math::modulo::*;

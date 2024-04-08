@@ -1,4 +1,4 @@
-use super::{frexp, ldexp};
+use super::{float_compose, float_decompose};
 
 /// Evaluates the modified Bessel function I0(x) for any real x
 ///
@@ -83,12 +83,12 @@ pub fn bessel_in(n: usize, x: f64) -> f64 {
         let bim = bip + (j as f64) * tox * bi;
         bip = bi;
         bi = bim;
-        let (_, k) = frexp(bi);
+        let (_, k) = float_decompose(bi);
         if k > HALF_MAX_EXP {
             // re-normalize to prevent overflows
-            ans = ldexp(ans, -HALF_MAX_EXP);
-            bi = ldexp(bi, -HALF_MAX_EXP);
-            bip = ldexp(bip, -HALF_MAX_EXP);
+            ans = float_compose(ans, -HALF_MAX_EXP);
+            bi = float_compose(bi, -HALF_MAX_EXP);
+            bip = float_compose(bip, -HALF_MAX_EXP);
         }
         if j == n {
             ans = bip;

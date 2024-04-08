@@ -1,4 +1,4 @@
-//! This module implements the "base" functionality
+//! This module implements a "base" functionality to help other modules
 
 mod as_array;
 mod auxiliary_blas;

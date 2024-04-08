@@ -1,34 +1,27 @@
 use super::{bessel_j0, bessel_j1, bessel_y0, bessel_y1, SQRT_PI};
 
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-//// This implementation is based on j1.go file from Go (1.22.1),     ////
-//// which, in turn, is based on the FreeBSD code as explained below. ////
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-//                                                                      //
-// Copyright 2010 The Go Authors. All rights reserved.                  //
-// Use of this source code is governed by a BSD-style                   //
-// license that can be found in the LICENSE file.                       //
-//                                                                      //
-// Bessel function of the first and second kinds of order n.            //
-//                                                                      //
-// The original C code and the long comment below are                   //
-// from FreeBSD's /usr/src/lib/msun/src/e_jn.c and                      //
-// came with this notice. The go code is a simplified                   //
-// version of the original C.                                           //
-//                                                                      //
-// ====================================================                 //
-// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.    //
-//                                                                      //
-// Developed at SunPro, a Sun Microsystems, Inc. business.              //
-// Permission to use, copy, modify, and distribute this                 //
-// software is freely granted, provided that this notice                //
-// is preserved.                                                        //
-// ====================================================                 //
-//                                                                      //
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
+// This implementation is based on j1.go file from Go (1.22.1),
+// which, in turn, is based on the FreeBSD code as explained below.
+//
+// Copyright 2010 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+//
+// Bessel function of the first and second kinds of order n.
+//
+// The original C code and the long comment below are
+// from FreeBSD's /usr/src/lib/msun/src/e_jn.c and
+// came with this notice. The go code is a simplified
+// version of the original C.
+//
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
 //
 // Special cases:
 //      y0(0)=y1(0)=yn(n,0) = -inf with division by zero signal;
@@ -340,7 +333,7 @@ pub fn bessel_yn(n: i32, x: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::{bessel_jn, bessel_yn, TWO_302};
-    use crate::approx_eq;
+    use crate::{approx_eq, assert_alike};
 
     #[test]
     fn bessel_jn_handles_special_cases() {
@@ -606,5 +599,127 @@ mod tests {
         // x < TWO_302, check infinite b
         //
         assert_eq!(bessel_yn(20, f64::EPSILON), f64::NEG_INFINITY);
+    }
+
+    // The code below is based on all_test.go file from Go (1.22.1)
+
+    const VALUES: [f64; 10] = [
+        4.9790119248836735e+00,
+        7.7388724745781045e+00,
+        -2.7688005719200159e-01,
+        -5.0106036182710749e+00,
+        9.6362937071984173e+00,
+        2.9263772392439646e+00,
+        5.2290834314593066e+00,
+        2.7279399104360102e+00,
+        1.8253080916808550e+00,
+        -8.6859247685756013e+00,
+    ];
+
+    const SOLUTION_J2: [f64; 10] = [
+        5.3837518920137802565192769e-02,
+        -1.7841678003393207281244667e-01,
+        9.521746934916464142495821e-03,
+        4.28958355470987397983072e-02,
+        2.4115371837854494725492872e-01,
+        4.842458532394520316844449e-01,
+        -3.142145220618633390125946e-02,
+        4.720849184745124761189957e-01,
+        3.122312022520957042957497e-01,
+        7.096213118930231185707277e-02,
+    ];
+
+    const SOLUTION_JM3: [f64; 10] = [
+        -3.684042080996403091021151e-01,
+        2.8157665936340887268092661e-01,
+        4.401005480841948348343589e-04,
+        3.629926999056814081597135e-01,
+        3.123672198825455192489266e-02,
+        -2.958805510589623607540455e-01,
+        -3.2033177696533233403289416e-01,
+        -2.592737332129663376736604e-01,
+        -1.0241334641061485092351251e-01,
+        -2.3762660886100206491674503e-01,
+    ];
+
+    const SOLUTION_Y2: [f64; 10] = [
+        0.3675780219390303613394936,
+        -0.23034826393250119879267257,
+        -16.939677983817727205631397,
+        0.367653980523052152867791,
+        -0.0962401471767804440353136,
+        -0.1923169356184851105200523,
+        0.35984072054267882391843766,
+        -0.2794987252299739821654982,
+        -0.7113490692587462579757954,
+        -0.2647831587821263302087457,
+    ];
+
+    const SOLUTION_YM3: [f64; 10] = [
+        -0.14035984421094849100895341,
+        -0.097535139617792072703973,
+        242.25775994555580176377379,
+        -0.1492267014802818619511046,
+        0.26148702629155918694500469,
+        0.56675383593895176530394248,
+        -0.206150264009006981070575,
+        0.64784284687568332737963658,
+        1.3503631555901938037008443,
+        0.1461869756579956803341844,
+    ];
+
+    const SC_VALUES_J2: [f64; 4] = [f64::NEG_INFINITY, 0.0, f64::INFINITY, f64::NAN];
+
+    const SC_SOLUTION_J2: [f64; 4] = [0.0, 0.0, 0.0, f64::NAN];
+
+    const SC_SOLUTION_JM3: [f64; 4] = [0.0, 0.0, 0.0, f64::NAN];
+
+    const SC_VALUES_YN: [f64; 5] = [f64::NEG_INFINITY, 0.0, f64::INFINITY, f64::NAN, -1.0];
+
+    const SC_SOLUTION_Y2: [f64; 5] = [f64::NAN, f64::NEG_INFINITY, 0.0, f64::NAN, f64::NAN];
+
+    const SC_SOLUTION_YM3: [f64; 5] = [f64::NAN, f64::INFINITY, 0.0, f64::NAN, f64::NAN];
+
+    #[test]
+    fn test_bessel_jn() {
+        for (i, v) in VALUES.iter().enumerate() {
+            // j2
+            let f = bessel_jn(2, *v);
+            approx_eq(SOLUTION_J2[i], f, 1e-15);
+            // jm3
+            let f = bessel_jn(-3, *v);
+            approx_eq(SOLUTION_JM3[i], f, 1e-15);
+        }
+        for (i, v) in SC_VALUES_J2.iter().enumerate() {
+            // j2
+            let f = bessel_jn(2, *v);
+            assert_alike(SC_SOLUTION_J2[i], f);
+            // jm3
+            let f = bessel_jn(-3, *v);
+            assert_alike(SC_SOLUTION_JM3[i], f);
+        }
+    }
+
+    #[test]
+    fn test_bessel_yn() {
+        for (i, v) in VALUES.iter().enumerate() {
+            let a = f64::abs(*v);
+            // y2
+            let f = bessel_yn(2, a);
+            approx_eq(SOLUTION_Y2[i], f, 1e-14);
+            // y3
+            let f = bessel_yn(-3, a);
+            approx_eq(SOLUTION_YM3[i], f, 1e-13);
+        }
+        for (i, v) in SC_VALUES_YN.iter().enumerate() {
+            // y2
+            let f = bessel_yn(2, *v);
+            assert_alike(SC_SOLUTION_Y2[i], f);
+            // ym3
+            let f = bessel_yn(-3, *v);
+            assert_alike(SC_SOLUTION_YM3[i], f);
+        }
+        // (0, 0)
+        assert_alike(f64::NEG_INFINITY, bessel_yn(0, 0.0));
     }
 }

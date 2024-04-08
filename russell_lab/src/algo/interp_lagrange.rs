@@ -69,6 +69,10 @@ pub enum GridType {
 /// ```text
 /// ηk = Σ ln(|xk-xl|) (k≠l)
 ///
+///      N+1    N+1
+/// ηk =  Σ      Σ    ln(|xk - xj|) ()
+///      k=0  j=0,j≠k
+///
 ///       a ⋅ b             k+N
 /// λk =  —————     a = (-1)
 ///        lf0
@@ -195,6 +199,9 @@ impl InterpLagrange {
         };
 
         // compute η
+        //      N+1    N+1
+        // ηk =  Σ      Σ    ln(|xk - xj|) ()
+        //      k=0  j=0,j≠k
         for k in 0..o.np1 {
             for j in 0..o.np1 {
                 if j != k {
@@ -583,6 +590,7 @@ impl InterpLagrange {
 #[cfg(test)]
 mod tests {
     use super::{GridType, InterpLagrange};
+    use crate::{approx_eq, Vector};
 
     #[test]
     fn new_works() {
@@ -597,5 +605,51 @@ mod tests {
         assert_eq!(lag.Lam.len(), 3);
         assert_eq!(lag.D1.dims(), (0, 0));
         assert_eq!(lag.D2.dims(), (0, 0));
+    }
+
+    #[test]
+    fn cardinal_polynomials_work() {
+        // allocate structure
+        let N = 5;
+        let mut o = InterpLagrange::new(N, GridType::Uniform).unwrap();
+        approx_eq(o.EstimateLebesgue(), 3.106301040275436e+00, 1e-15);
+
+        // check Kronecker property (barycentric)
+        o.Bary = true;
+        for i in 0..(N + 1) {
+            for (j, x) in o.X.iter().enumerate() {
+                let li = o.L(i, *x);
+                let mut ana = 1.0;
+                if i != j {
+                    ana = 0.0;
+                }
+                approx_eq(li, ana, 1e-17);
+            }
+        }
+
+        // check Kronecker property
+        o.Bary = false;
+        for i in 0..(N + 1) {
+            for (j, x) in o.X.iter().enumerate() {
+                let li = o.L(i, *x);
+                let mut ana = 1.0;
+                if i != j {
+                    ana = 0.0;
+                }
+                approx_eq(li, ana, 1e-17);
+            }
+        }
+
+        // compare formulae
+        let xx = Vector::linspace(-1.0, 1.0, 11).unwrap();
+        for x in xx {
+            for i in 0..(N + 1) {
+                o.Bary = true;
+                let li1 = o.L(i, x);
+                o.Bary = false;
+                let li2 = o.L(i, x);
+                approx_eq(li1, li2, 1e-15);
+            }
+        }
     }
 }

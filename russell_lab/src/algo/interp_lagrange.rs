@@ -320,20 +320,20 @@ impl InterpLagrange {
 
     /// Evaluates the function f(x[i]) over all nodes
     ///
-    /// The function is `(x: f64, i: usize) -> f64`
+    /// The function is `(i: usize, x: f64) -> f64`
     ///
     /// # Output
     ///
     /// The results are stores in the `U` variable
     pub fn CalcU<F>(&mut self, mut f: F)
     where
-        F: FnMut(f64, usize) -> f64,
+        F: FnMut(usize, f64) -> f64,
     {
         if self.U.dim() != self.np1 {
             self.U = Vector::new(self.np1);
         }
         for i in 0..self.np1 {
-            self.U[i] = f(self.X[i], i);
+            self.U[i] = f(i, self.X[i]);
         }
     }
 
@@ -475,12 +475,12 @@ impl InterpLagrange {
     ///
     /// # Input
     ///
-    /// * `dfdxAna` -- function `(x: f64, i: usize) -> f64`
+    /// * `dfdxAna` -- function `(i: usize, x: f64) -> f64`
     ///
     /// NOTE: U and D1 matrix must be computed previously
     pub fn CalcErrorD1<F>(&self, mut dfdxAna: F) -> f64
     where
-        F: FnMut(f64, usize) -> f64,
+        F: FnMut(usize, f64) -> f64,
     {
         // derivative of interpolation @ x_i
         let mut v = Vector::new(self.np1);
@@ -489,7 +489,7 @@ impl InterpLagrange {
         // compute error
         let mut maxDiff = 0.0;
         for i in 0..self.np1 {
-            let vana = dfdxAna(self.X[i], i);
+            let vana = dfdxAna(i, self.X[i]);
             let diff = f64::abs(v[i] - vana);
             if diff > maxDiff {
                 maxDiff = diff;
@@ -504,12 +504,12 @@ impl InterpLagrange {
     ///
     /// # Input
     ///
-    /// * `dfdxAna` -- function `(x: f64, i: usize) -> f64`
+    /// * `dfdxAna` -- function `(i: usize, x: f64) -> f64`
     ///
     /// NOTE: U and D2 matrix must be computed previously
     pub fn CalcErrorD2<F>(&self, mut d2fdx2Ana: F) -> f64
     where
-        F: FnMut(f64, usize) -> f64,
+        F: FnMut(usize, f64) -> f64,
     {
         // derivative of interpolation @ x_i
         let mut v = Vector::new(self.np1);
@@ -518,7 +518,7 @@ impl InterpLagrange {
         // compute error
         let mut maxDiff = 0.0;
         for i in 0..self.np1 {
-            let vana = d2fdx2Ana(self.X[i], i);
+            let vana = d2fdx2Ana(i, self.X[i]);
             let diff = f64::abs(v[i] - vana);
             if diff > maxDiff {
                 maxDiff = diff;
@@ -583,6 +583,23 @@ impl InterpLagrange {
         }
         (maxerr, xloc)
     }
+
+    /// Executes a loop over the grid points
+    ///
+    /// Loops over `(i: usize, x: f64)`
+    ///
+    /// # Input
+    ///
+    /// * `callback` -- a function of `(i, x)` where `i` is the point number,
+    ///   and `x` is the Cartesian coordinates of the point.
+    pub fn loop_over_grid_points<F>(&self, mut callback: F)
+    where
+        F: FnMut(usize, f64),
+    {
+        for i in 0..self.np1 {
+            callback(i, self.X[i]);
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -592,33 +609,41 @@ mod tests {
     use super::{GridType, InterpLagrange};
     use crate::{approx_eq, Vector};
 
-    #[test]
-    fn new_works() {
-        let lag = InterpLagrange::new(2, GridType::Uniform).unwrap();
-        assert_eq!(lag.N, 2);
-        assert_eq!(lag.np1, 3);
-        assert_eq!(lag.X, &[-1.0, 0.0, 1.0]);
-        assert_eq!(lag.U.dim(), 0);
-        assert_eq!(lag.Bary, true);
-        assert_eq!(lag.UseEta, true);
-        assert_eq!(lag.Eta.len(), 3);
-        assert_eq!(lag.Lam.len(), 3);
-        assert_eq!(lag.D1.dims(), (0, 0));
-        assert_eq!(lag.D2.dims(), (0, 0));
+    fn check_lambda(N: usize, grid_type: GridType, tol: f64) {
+        let interp = InterpLagrange::new(N, grid_type).unwrap();
+        let m = f64::powf(2.0, (interp.N as f64) - 1.0) / (interp.N as f64);
+        for i in 0..(interp.N + 1) {
+            let mut d = 1.0;
+            for j in 0..(interp.N + 1) {
+                if i != j {
+                    d *= interp.X[i] - interp.X[j]
+                }
+            }
+            approx_eq(interp.Lam[i], 1.0 / d / m, tol);
+        }
     }
 
-    #[test]
-    fn cardinal_polynomials_work() {
-        // allocate structure
-        let N = 5;
-        let mut o = InterpLagrange::new(N, GridType::Uniform).unwrap();
-        approx_eq(o.EstimateLebesgue(), 3.106301040275436e+00, 1e-15);
+    fn check_ell(N: usize, grid_type: GridType, tol_comparison: f64) {
+        let mut interp = InterpLagrange::new(N, grid_type).unwrap();
+
+        // check Kronecker property (standard)
+        interp.Bary = false;
+        for i in 0..(N + 1) {
+            for (j, x) in interp.X.iter().enumerate() {
+                let li = interp.L(i, *x);
+                let mut ana = 1.0;
+                if i != j {
+                    ana = 0.0;
+                }
+                approx_eq(li, ana, 1e-17);
+            }
+        }
 
         // check Kronecker property (barycentric)
-        o.Bary = true;
+        interp.Bary = true;
         for i in 0..(N + 1) {
-            for (j, x) in o.X.iter().enumerate() {
-                let li = o.L(i, *x);
+            for (j, x) in interp.X.iter().enumerate() {
+                let li = interp.L(i, *x);
                 let mut ana = 1.0;
                 if i != j {
                     ana = 0.0;
@@ -627,29 +652,167 @@ mod tests {
             }
         }
 
-        // check Kronecker property
-        o.Bary = false;
-        for i in 0..(N + 1) {
-            for (j, x) in o.X.iter().enumerate() {
-                let li = o.L(i, *x);
-                let mut ana = 1.0;
-                if i != j {
-                    ana = 0.0;
-                }
-                approx_eq(li, ana, 1e-17);
-            }
-        }
-
-        // compare formulae
-        let xx = Vector::linspace(-1.0, 1.0, 11).unwrap();
+        // compare standard and barycentric (L)
+        let xx = Vector::linspace(-1.0, 1.0, 20).unwrap();
         for x in xx {
             for i in 0..(N + 1) {
-                o.Bary = true;
-                let li1 = o.L(i, x);
-                o.Bary = false;
-                let li2 = o.L(i, x);
-                approx_eq(li1, li2, 1e-15);
+                interp.Bary = true;
+                let li1 = interp.L(i, x);
+                interp.Bary = false;
+                let li2 = interp.L(i, x);
+                approx_eq(li1, li2, tol_comparison);
             }
         }
     }
+
+    fn check_execute<F>(N: usize, grid_type: GridType, tol_comparison: f64, mut f: F)
+    where
+        F: Copy + FnMut(usize, f64) -> f64,
+    {
+        // calculate U
+        let mut interp = InterpLagrange::new(N, grid_type).unwrap();
+        interp.CalcU(f);
+
+        // check interpolation (standard)
+        interp.Bary = false;
+        interp.loop_over_grid_points(|i, x| {
+            approx_eq(interp.I(x), f(i, x), 1e-17);
+        });
+
+        // check interpolation (barycentric)
+        interp.Bary = true;
+        interp.loop_over_grid_points(|i, x| {
+            approx_eq(interp.I(x), f(i, x), 1e-17);
+        });
+
+        // compare standard and barycentric (I)
+        let xx = Vector::linspace(-1.0, 1.0, 20).unwrap();
+        for x in xx {
+            for _ in 0..(interp.N + 1) {
+                interp.Bary = false;
+                let i1 = interp.I(x);
+                interp.Bary = true;
+                let i2 = interp.I(x);
+                approx_eq(i1, i2, tol_comparison);
+            }
+        }
+    }
+
+    #[test]
+    fn new_works() {
+        let interp = InterpLagrange::new(2, GridType::Uniform).unwrap();
+        assert_eq!(interp.N, 2);
+        assert_eq!(interp.np1, 3);
+        assert_eq!(interp.X, &[-1.0, 0.0, 1.0]);
+        assert_eq!(interp.U.dim(), 0);
+        assert_eq!(interp.Bary, true);
+        assert_eq!(interp.UseEta, true);
+        assert_eq!(interp.Eta.len(), 3);
+        assert_eq!(interp.Lam.len(), 3);
+        assert_eq!(interp.D1.dims(), (0, 0));
+        assert_eq!(interp.D2.dims(), (0, 0));
+    }
+
+    #[test]
+    fn calc_u_and_i_works() {
+        let f = |_, x| f64::cos(f64::exp(2.0 * x));
+        let mut interp = InterpLagrange::new(5, GridType::Uniform).unwrap();
+        interp.CalcU(f);
+        interp.loop_over_grid_points(|i, x| assert_eq!(interp.I(x), f(i, x)));
+    }
+
+    #[test]
+    fn lambda_works() {
+        for n in 1..20 {
+            check_lambda(n, GridType::Uniform, 1e-12);
+        }
+        for n in 1..20 {
+            check_lambda(n, GridType::ChebyshevGauss, 1e-14);
+        }
+        for n in 1..20 {
+            check_lambda(n, GridType::ChebyshevGaussLobatto, 1e-14);
+        }
+    }
+
+    #[test]
+    fn ell_works() {
+        for n in 1..20 {
+            check_ell(n, GridType::Uniform, 1e-11);
+        }
+        for n in 1..20 {
+            check_ell(n, GridType::ChebyshevGauss, 1e-14);
+        }
+        for n in 1..20 {
+            check_ell(n, GridType::ChebyshevGaussLobatto, 1e-14);
+        }
+    }
+
+    #[test]
+    fn execute_works() {
+        let f = |_, x| f64::cos(f64::exp(2.0 * x));
+        for n in 1..20 {
+            check_execute(n, GridType::Uniform, 1e-13, f);
+        }
+        for n in 1..20 {
+            check_execute(n, GridType::ChebyshevGauss, 1e-14, f);
+        }
+        for n in 1..20 {
+            check_execute(n, GridType::ChebyshevGaussLobatto, 1e-14, f);
+        }
+    }
+
+    #[test]
+    fn runge_equation_works() {
+        // Runge equation
+        let f = |_, x| 1.0 / (1.0 + 16.0 * x * x);
+        let mut interp = InterpLagrange::new(8, GridType::Uniform).unwrap();
+        interp.CalcU(f);
+        interp.loop_over_grid_points(|i, x| assert_eq!(interp.I(x), f(i, x)));
+    }
+
+    #[test]
+    fn lebesgue_works_uniform() {
+        let N = 5;
+        let interp = InterpLagrange::new(N, GridType::Uniform).unwrap();
+        approx_eq(interp.EstimateLebesgue(), 3.106301040275436e+00, 1e-15);
+    }
+
+    #[test]
+    fn lebesgue_works_chebyshev_gauss() {
+        // Runge equation
+        let f = |_, x| 1.0 / (1.0 + 16.0 * x * x);
+        let mut interp = InterpLagrange::new(8, GridType::ChebyshevGauss).unwrap();
+        interp.CalcU(f);
+        interp.loop_over_grid_points(|i, x| assert_eq!(interp.I(x), f(i, x)));
+        let n_and_lebesgue = [
+            (4, 1.988854381999833e+00),
+            (8, 2.361856787767076e+00),
+            (24, 3.011792612349363e+00),
+        ];
+        for (n, lambda_times_n) in n_and_lebesgue {
+            let interp = InterpLagrange::new(n, GridType::ChebyshevGauss).unwrap();
+            approx_eq(interp.EstimateLebesgue(), lambda_times_n, 1e-14);
+        }
+    }
+
+    #[test]
+    fn lebesgue_works_chebyshev_gauss_lobatto() {
+        // Runge equation
+        let f = |_, x| 1.0 / (1.0 + 16.0 * x * x);
+        let mut interp = InterpLagrange::new(8, GridType::ChebyshevGaussLobatto).unwrap();
+        interp.CalcU(f);
+        interp.loop_over_grid_points(|i, x| assert_eq!(interp.I(x), f(i, x)));
+        let n_and_lebesgue = [
+            (4, 1.798761778849085e+00),
+            (8, 2.274730699116020e+00),
+            (24, 2.984443326362511e+00),
+        ];
+        for (n, lambda_times_n) in n_and_lebesgue {
+            let interp = InterpLagrange::new(n, GridType::ChebyshevGaussLobatto).unwrap();
+            approx_eq(interp.EstimateLebesgue(), lambda_times_n, 1e-14);
+        }
+    }
+
+    #[test]
+    fn lambda_and_interp_work() {}
 }

@@ -5,7 +5,7 @@ use num_complex::Complex64;
 /// Calculates:
 ///
 /// ```text
-///        __
+///        ＿
 /// iⁿ = (√-1)ⁿ
 /// ```
 ///
@@ -26,7 +26,7 @@ use num_complex::Complex64;
 /// i⁻⁵ = -i   i⁻⁶  = -1   i⁻⁷  = i   i⁻⁸  = 1
 /// i⁻⁹ = -i   i⁻¹⁰ = -1   i⁻¹¹ = i   i⁻¹² = 1
 /// ```
-pub fn complex_i_pow_n(n: i32) -> Complex64 {
+pub fn i_pow_n(n: i32) -> Complex64 {
     if n == 0 {
         Complex64::new(1.0, 0.0)
     } else if n > 0 {
@@ -51,8 +51,8 @@ pub fn complex_i_pow_n(n: i32) -> Complex64 {
 /// Calculates:
 ///
 /// ```text
-///                  __            __
-/// (x ⋅ i)ⁿ = (x ⋅ √-1)ⁿ = xⁿ ⋅ (√-1)ⁿ
+///                    ＿
+/// (x ⋅ i)ⁿ =  xⁿ ⋅ (√-1)ⁿ
 /// ```
 ///
 /// Some results with positive n:
@@ -72,7 +72,7 @@ pub fn complex_i_pow_n(n: i32) -> Complex64 {
 /// (x⋅i)⁻⁵ = -x⁵⋅i   (x⋅i)⁻⁶  = -x⁶    (x⋅i)⁻⁷  = x⁷ ⋅i   (x⋅i)⁻⁸  =  x⁸
 /// (x⋅i)⁻⁹ = -x⁹⋅i   (x⋅i)⁻¹⁰ = -x¹⁰   (x⋅i)⁻¹¹ = x¹¹⋅i   (x⋅i)⁻¹² = x¹²
 /// ```
-pub fn complex_real_times_i_pow_n(x: f64, n: i32) -> Complex64 {
+pub fn x_times_i_pow_n(x: f64, n: i32) -> Complex64 {
     if n == 0 {
         Complex64::new(1.0, 0.0)
     } else if n > 0 {
@@ -98,29 +98,29 @@ pub fn complex_real_times_i_pow_n(x: f64, n: i32) -> Complex64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{complex_i_pow_n, complex_real_times_i_pow_n};
+    use super::{i_pow_n, x_times_i_pow_n};
     use crate::math::PI;
     use num_complex::Complex64;
 
     #[test]
-    fn complex_i_pow_n_works() {
+    fn i_pow_n_works() {
         let mut n: i32 = -12;
         let i = Complex64::new(0.0, 1.0);
         while n < 12 {
             // println!("n = {:>3}", n);
-            assert_eq!(complex_i_pow_n(n), i.powi(n));
+            assert_eq!(i_pow_n(n), i.powi(n));
             n += 1;
         }
     }
 
     #[test]
-    fn complex_real_times_i_pow_n_works() {
+    fn x_times_i_pow_n_works() {
         let mut n: i32 = -12;
         let i = Complex64::new(0.0, 1.0);
         let x = PI;
         while n < 12 {
-            println!("n = {:>3}", n);
-            assert_eq!(complex_real_times_i_pow_n(x, n), x.powi(n) * i.powi(n));
+            // println!("n = {:>3}", n);
+            assert_eq!(x_times_i_pow_n(x, n), x.powi(n) * i.powi(n));
             n += 1;
         }
     }

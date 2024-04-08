@@ -161,12 +161,113 @@ pub fn beta(a: f64, b: f64) -> f64 {
     ans
 }
 
+/// Evaluates the natural logarithm of the Beta function B(a, b)
+///
+/// See [beta()] for further details.
+pub fn ln_beta(a: f64, b: f64) -> f64 {
+    // special cases
+    if f64::is_nan(a) || f64::is_nan(b) {
+        return f64::NAN;
+    } else if f64::is_infinite(a) || f64::is_infinite(b) {
+        // Mathematica:
+        //   Table[FunctionExpand[ Beta[a, b]], {a, {-\[Infinity], \[Infinity]}}, {b, {-\[Infinity], \ \[Infinity]}}]
+        //   {{Indeterminate, Indeterminate}, {Indeterminate, Indeterminate}}
+        return f64::NAN;
+    }
+
+    // handle negative integer a
+    if a <= 0.0 {
+        if a == f64::floor(a) {
+            // the condition below checks for overflow, not only integer
+            // because only overflows yield `a == floor(a) && a != int(a)`
+            if a == (a as i32) as f64 {
+                // ok
+                return ln_beta_negative_integer(a, b);
+            } else {
+                // overflow
+                return f64::INFINITY;
+            }
+        }
+    }
+
+    // handle negative integer b
+    if b <= 0.0 {
+        if b == f64::floor(b) {
+            if b == (b as i32) as f64 {
+                return ln_beta_negative_integer(b, a);
+            } else {
+                return f64::INFINITY;
+            }
+        }
+    }
+
+    // maybe swap a and b
+    let (aa, bb) = if f64::abs(a) < f64::abs(b) { (b, a) } else { (a, b) };
+
+    // avoid loss of precision in ln_gamma(a + b) - ln_gamma(a)
+    if f64::abs(aa) > ASYMPTOTIC_FACTOR * f64::abs(bb) && aa > ASYMPTOTIC_FACTOR {
+        let (ll, sign) = ln_beta_asymptotic(aa, bb);
+        return (sign as f64) * ll;
+    }
+
+    // use the ln_gamma identity
+    let cc = aa + bb;
+    if f64::abs(cc) > GAMMA_MAX || f64::abs(aa) > GAMMA_MAX || f64::abs(bb) > GAMMA_MAX {
+        let (la, _) = ln_gamma(aa);
+        let (lb, _) = ln_gamma(bb);
+        let (lc, _) = ln_gamma(cc);
+        let ll = la + lb - lc;
+        return ll;
+    }
+
+    // handle negative integer cc (yields undefined Gamma; NaN)
+    if float_is_neg_integer(cc) {
+        // this case is not handled by Cephes; but it works in Cephes because their Gamma returns Inf for neg ints
+        // in this case, the "horns" of the Gamma function on the negative axis
+        // are "upside" and "downside" @ negative integers; thus, Gamma(neg_int) is undefined
+        // however, Gamma(cc) being the denominator of Beta(a,b) and since neg_int a and b
+        // have been already handled, the division of Gamma(a)*Gamma(b) by either
+        // -Inf or Inf will yield Beta(a,b) = 0
+        return 0.0;
+    }
+
+    // use the gamma identity
+    let gc = gamma(cc);
+    // the gamma function has no zeros, so there is no need to check for gc == 0.0
+    // if gc == 0.0 { return f64::INFINITY; }
+    let ga = gamma(aa);
+    let gb = gamma(bb);
+    let mut ans: f64;
+    if f64::abs(f64::abs(ga) - f64::abs(gc)) > f64::abs(f64::abs(gb) - f64::abs(gc)) {
+        ans = gb / gc;
+        ans *= ga;
+    } else {
+        ans = ga / gc;
+        ans *= gb;
+    };
+    if ans < 0.0 {
+        f64::ln(-ans)
+    } else {
+        f64::ln(ans)
+    }
+}
+
 /// Handles the special case with a negative integer argument
 fn beta_negative_integer(a_int: f64, b: f64) -> f64 {
     let b_int = (b as i32) as f64;
     if b == b_int && 1.0 - a_int - b > 0.0 {
         let sign = if (b_int as i32) % 2 == 0 { 1.0 } else { -1.0 };
         sign * beta(1.0 - a_int - b, b)
+    } else {
+        f64::INFINITY
+    }
+}
+
+/// Handles the special case with a negative integer argument (ln version)
+fn ln_beta_negative_integer(a_int: f64, b: f64) -> f64 {
+    let b_int = (b as i32) as f64;
+    if b == b_int && 1.0 - a_int - b > 0.0 {
+        ln_beta(1.0 - a_int - b, b)
     } else {
         f64::INFINITY
     }
@@ -190,9 +291,9 @@ fn ln_beta_asymptotic(a: f64, b: f64) -> (f64, i32) {
 
 #[cfg(test)]
 mod tests {
-    use super::{beta, ASYMPTOTIC_FACTOR};
+    use super::{beta, ln_beta, ASYMPTOTIC_FACTOR};
     use crate::approx_eq;
-    use crate::math::PI;
+    use crate::math::{gamma, ln_gamma, PI};
 
     #[test]
     fn beta_function_works_1() {
@@ -459,5 +560,24 @@ mod tests {
                 approx_eq(beta(a, b), reference, 1e-13);
             }
         }
+    }
+
+    #[test]
+    fn test_beta_scipy() {
+        // values from SciPy test_basic.py file
+        assert_eq!(beta(-1.0, 2.0), f64::INFINITY);
+        assert_eq!(beta(1.0, 1.0), 1.0);
+        assert_eq!(beta(-100.3, 1e-200), gamma(1e-200));
+        approx_eq(beta(0.0342, 171.0), 24.070498359873497, 1e-14);
+        assert_eq!(beta(2.0, 4.0), (gamma(2.0) * gamma(4.0)) / gamma(6.0));
+    }
+
+    #[test]
+    fn test_ln_beta_scipy() {
+        // values from SciPy test_basic.py file
+        assert_eq!(ln_beta(1.0, 1.0), 0.0);
+        assert_eq!(ln_beta(-100.3, 1e-200), ln_gamma(1e-200).0);
+        approx_eq(ln_beta(0.0342, 170.0), 3.1811881124242447, 1e-14);
+        assert_eq!(ln_beta(2.0, 4.0), f64::ln(f64::abs(beta(2.0, 4.0))));
     }
 }

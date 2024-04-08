@@ -1,4 +1,4 @@
-//! This module implements algorithms build from base and the vector-matrix routines
+//! This module implements algorithms built from base, math, and vector-matrix routines
 
-// mod interp_lagrange;
-// pub use crate::algo::interp_lagrange::*;
+mod interp_lagrange;
+pub use crate::algo::interp_lagrange::*;

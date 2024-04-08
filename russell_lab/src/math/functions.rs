@@ -1,3 +1,26 @@
+/// Calculates negative one raised to the power of n  
+///
+/// Calculates:
+///
+/// ```text
+///           ⎧  1  if n is even
+/// (-1)ⁿ = = ⎨
+///           ⎩ -1  if n is odd
+/// ```
+#[inline]
+pub fn neg_one_pow_n(n: i32) -> f64 {
+    // this formula works for negative integers as well, e.g.,
+    // Mathematica: Simplify[(-1)^n == (-1)^-n, Assumptions -> {n \[Element] Integers}]
+    //   True
+    if n & 1 == 0 {
+        // even
+        1.0
+    } else {
+        // odd
+        -1.0
+    }
+}
+
 /// Evaluates the sign function
 ///
 /// ```text
@@ -254,6 +277,15 @@ mod tests {
     use super::*;
     use crate::{approx_eq, deriv_approx_eq};
     use std::f64::consts::PI;
+
+    #[test]
+    fn neg_one_pow_n_works() {
+        let mut n: i32 = -12;
+        while n < 12 {
+            assert_eq!(neg_one_pow_n(n), f64::powi(-1.0, n));
+            n += 1;
+        }
+    }
 
     #[test]
     fn sign_ramp_heaviside_boxcar_work() {

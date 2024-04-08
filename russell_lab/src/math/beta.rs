@@ -222,13 +222,11 @@ pub fn ln_beta(a: f64, b: f64) -> f64 {
 
     // handle negative integer cc (yields undefined Gamma; NaN)
     if float_is_neg_integer(cc) {
-        // this case is not handled by Cephes; but it works in Cephes because their Gamma returns Inf for neg ints
-        // in this case, the "horns" of the Gamma function on the negative axis
-        // are "upside" and "downside" @ negative integers; thus, Gamma(neg_int) is undefined
-        // however, Gamma(cc) being the denominator of Beta(a,b) and since neg_int a and b
-        // have been already handled, the division of Gamma(a)*Gamma(b) by either
-        // -Inf or Inf will yield Beta(a,b) = 0
-        return 0.0;
+        // beta(a, b) returns 0.0 here, thus ln(0.0) = indeterminate
+        // however, following the "numerical" approach, we return -Inf instead
+        // noting that f64::exp(f64::NEG_INFINITY)) = 0.0
+        // this is the same case in Mathematica: Log[0] = -Inf
+        return f64::NEG_INFINITY;
     }
 
     // use the gamma identity
@@ -245,6 +243,14 @@ pub fn ln_beta(a: f64, b: f64) -> f64 {
         ans = ga / gc;
         ans *= gb;
     };
+
+    // handle near zero results
+    if f64::abs(ans) < 10.0 * f64::EPSILON {
+        // noting that f64::exp(f64::NEG_INFINITY))
+        return f64::NEG_INFINITY;
+    }
+
+    // results
     if ans < 0.0 {
         f64::ln(-ans)
     } else {
@@ -292,8 +298,9 @@ fn ln_beta_asymptotic(a: f64, b: f64) -> (f64, i32) {
 #[cfg(test)]
 mod tests {
     use super::{beta, ln_beta, ASYMPTOTIC_FACTOR};
-    use crate::approx_eq;
     use crate::math::{gamma, ln_gamma, PI};
+    use crate::{approx_eq, cpx};
+    use num_complex::Complex64;
 
     #[test]
     fn beta_function_works_1() {
@@ -588,9 +595,10 @@ mod tests {
         // int the recursion loop
         assert_eq!(ln_beta(-2.0, -2.0), f64::INFINITY);
 
-        // c = a + b = -3 yielding Gamma(c) = NaN
-        assert_eq!(ln_beta(-1.4, -1.6), 0.0);
-        assert_eq!(ln_beta(-1.5, -1.5 + f64::EPSILON), 0.0);
+        // c = a + b = -3 yielding Gamma(c) = NaN, thus B(a,b) = 0
+        // then, ln(B(a,b)) must be indeterminate; however f64::exp(f64::NEG_INFINITY))
+        assert_eq!(ln_beta(-1.4, -1.6), f64::NEG_INFINITY);
+        assert_eq!(ln_beta(-1.5, -1.5 + f64::EPSILON), f64::NEG_INFINITY);
 
         // this case won't trigger the branch mentioned above
         // Mathematica (real part): N[Log[Beta[-1.5, -1.5 + 10^-14]], 50]
@@ -599,10 +607,238 @@ mod tests {
         // Mathematica yields: -3.28156*10^-13 with N[Beta[-1.5, -1.5 + 10^-14], 50]
         // thus, taking the ln of such small number becomes difficult to compare with high precision
         approx_eq(ln_beta(-1.5, -1.5 + 1e-14), -28.7453, 0.0025);
+
+        // abs(ans) < 10.0 * EPSILON
+        assert_eq!(ln_beta(-1.4, 0.4), f64::NEG_INFINITY);
+    }
+
+    #[test]
+    fn ln_beta_function_handle_branches_2() {
+        // abs(a) > ASYMPTOTIC_FACTOR * abs(b) && a > ASYMPTOTIC_FACTOR
+        let b = 1.0;
+        let a = ASYMPTOTIC_FACTOR * f64::abs(b) + 1.0; // 1_000_001
+        approx_eq(
+            ln_beta(a, b),
+            -13.815511557963774104441281811439718578773275741296,
+            1e-50,
+        ); // Mathematica: N[Log[Beta[1000001, 1]], 50]
+
+        // abs(a) > ASYMPTOTIC_FACTOR * abs(b) && a > ASYMPTOTIC_FACTOR
+        let b = -0.5;
+        let a = ASYMPTOTIC_FACTOR * f64::abs(b) + 1.0; // 500_001
+        approx_eq(ln_beta(a, b), 7.8266940622246768167, 1e-9); // Mathematica (real part): NumberForm[N[Log[Beta[500001, -0.5]], 50], 50]
+
+        // f64::abs(cc) > GAMMA_MAX || f64::abs(aa) > GAMMA_MAX || f64::abs(bb) > GAMMA_MAX
+        let a = 172.0; // > GAMMA_MAX
+        let b = 1.0;
+        approx_eq(
+            ln_beta(a, b),
+            -5.1474944768134530423073067562622001717101364536021,
+            1e-12,
+        ); // Mathematica: NumberForm[N[Log[Beta[172, 1]], 50], 50]
+
+        // f64::abs(cc) > GAMMA_MAX || f64::abs(aa) > GAMMA_MAX || f64::abs(bb) > GAMMA_MAX
+        let a = 1000.0;
+        let b = -172.5;
+        // Mathematica (real part): NumberForm[N[Log[Beta[1000, -172.5]], 50], 50]
+        //    457.383638626133 + 3.141592653590 I
+        approx_eq(ln_beta(a, b), 457.383638626133, 1e-12);
+
+        // f64::abs(cc) > GAMMA_MAX || f64::abs(aa) > GAMMA_MAX || f64::abs(bb) > GAMMA_MAX
+        let a = 4500.0;
+        let b = -172.5;
+        // Mathematica (real part): NumberForm[N[Log[Beta[4500, -172.5]], 50], 50]
+        // 729.37885312172 + 3.14159265359 I
+        approx_eq(ln_beta(a, b), 729.37885312172, 1e-11);
+    }
+
+    #[test]
+    fn ln_beta_works() {
+        // Mathematica:
+        // res = Table[{a, b, NumberForm[Log[Beta[a, b]], 50]}, {a, -2, 2, 0.3}, {b, -2, 2, 0.4}];
+        // tab = Flatten[res, {{1, 2}, {3}}];
+        // Export["test.txt", tab, "Table", "FieldSeparators" -> ", "]
+        #[rustfmt::skip]
+        let mathematica = [
+            (-2.  , -2.  , cpx!(f64::INFINITY         , 0.0)),
+            (-2.  , -1.6 , cpx!(f64::INFINITY         , 0.0)),
+            (-2.  , -1.2 , cpx!(f64::INFINITY         , 0.0)),
+            (-2.  , -0.8 , cpx!(f64::INFINITY         , 0.0)),
+            (-2.  , -0.4 , cpx!(f64::INFINITY         , 0.0)),
+            (-2.  , 0.   , cpx!(f64::INFINITY         , 0.0)),
+            (-2.  , 0.4  , cpx!(f64::INFINITY         , 0.0)),
+            (-2.  , 0.8  , cpx!(f64::INFINITY         , 0.0)),
+            (-2.  , 1.2  , cpx!(f64::INFINITY         , 0.0)),
+            (-2.  , 1.6  , cpx!(f64::INFINITY         , 0.0)),
+            (-2.  , 2.   , cpx!(-0.6931471805599453   , 0.0)),
+            (-1.7 , -2.  , cpx!(f64::INFINITY         , 0.0)),
+            (-1.7 , -1.6 , cpx!(2.583700304934103     , 0.0)),
+            (-1.7 , -1.2 , cpx!(1.849512177507412     , 3.141592653589793)),
+            (-1.7 , -0.8 , cpx!(2.725295777937305     , 0.0)),
+            (-1.7 , -0.4 , cpx!(0.7046554694429367    , 0.0)),
+            (-1.7 , 0.   , cpx!(f64::INFINITY         , 0.0)),
+            (-1.7 , 0.4  , cpx!(0.516046719006308     , 0.0)),
+            (-1.7 , 0.8  , cpx!(-1.284168801297555    , 3.141592653589793)),
+            (-1.7 , 1.2  , cpx!(-0.4290415257933239   , 3.141592653589793)),
+            (-1.7 , 1.6  , cpx!(-1.559708410730908    , 3.141592653589793)),
+            (-1.7 , 2.   , cpx!(-0.173953307123438    , 0.0)),
+            (-1.4 , -2.  , cpx!(f64::INFINITY         , 0.0)),
+            (-1.4 , -1.6 , cpx!(f64::NEG_INFINITY     , 0.0)), // <<<<<<<< Indeterminate
+            (-1.4 , -1.2 , cpx!(2.675240020167558     , 3.141592653589793)),
+            (-1.4 , -0.8 , cpx!(1.934541053391456     , 0.0)),
+            (-1.4 , -0.4 , cpx!(1.133156234422692     , 3.141592653589793)),
+            (-1.4 , 0.   , cpx!(f64::INFINITY         , 0.0)),
+            (-1.4 , 0.8  , cpx!(-0.1773914097457596   , 3.141592653589793)),
+            (-1.4 , 1.2  , cpx!(-0.868819327515078    , 3.141592653589793)),
+            (-1.4 , 1.6  , cpx!(-0.6586032348053622   , 0.0)),
+            (-1.4 , 2.   , cpx!(0.5798184952529425    , 0.0)),
+            (-1.1 , -2.  , cpx!(f64::INFINITY         , 0.0)),
+            (-1.1 , -1.6 , cpx!(3.182558050462147     , 3.141592653589793)),
+            (-1.1 , -1.2 , cpx!(3.483260523509437     , 3.141592653589793)),
+            (-1.1 , -0.8 , cpx!(2.304639245449818     , 3.141592653589793)),
+            (-1.1 , -0.4 , cpx!(2.728128727491371     , 3.141592653589793)),
+            (-1.1 , 0.   , cpx!(f64::INFINITY         , 0.0)),
+            (-1.1 , 0.4  , cpx!(1.617856031869438     , 3.141592653589793)),
+            (-1.1 , 0.8  , cpx!(0.960870780466696     , 3.141592653589793)),
+            (-1.1 , 1.2  , cpx!(-0.06443558881305882  , 0.0)),
+            (-1.1 , 1.6  , cpx!(1.588694444303006     , 0.0)),
+            (-1.1 , 2.   , cpx!(2.20727491318972      , 0.0)),
+            (-0.8 , -2.  , cpx!(f64::INFINITY         , 0.0)),
+            (-0.8 , -1.6 , cpx!(2.482123569998756     , 0.0)),
+            (-0.8 , -1.2 , cpx!(f64::NEG_INFINITY     , 0.0)), // <<<<<<<<< Indeterminate
+            (-0.8 , -0.8 , cpx!(2.656914935267949     , 0.0)),
+            (-0.8 , -0.4 , cpx!(1.482555929648401     , 0.0)),
+            (-0.8 , 0.   , cpx!(f64::INFINITY         , 0.0)),
+            (-0.8 , 0.4  , cpx!(1.229360601503387     , 0.0)),
+            (-0.8 , 1.2  , cpx!(0.865155466039895     , 3.141592653589793)),
+            (-0.8 , 1.6  , cpx!(1.482555929648401     , 3.141592653589793)),
+            (-0.8 , 2.   , cpx!(1.83258146374831      , 3.141592653589793)),
+            (-0.5 , -2.  , cpx!(f64::INFINITY         , 0.0)),
+            (-0.5 , -1.6 , cpx!(0.5712981275115984    , 0.0)),
+            (-0.5 , -1.2 , cpx!(1.922843469829991     , 3.141592653589793)),
+            (-0.5 , -0.8 , cpx!(1.810243710839527     , 0.0)),
+            (-0.5 , -0.4 , cpx!(0.2219635460360049    , 3.141592653589793)),
+            (-0.5 , 0.   , cpx!(f64::INFINITY         , 0.0)),
+            (-0.5 , 0.4  , cpx!(-0.3067713915423637   , 0.0)),
+            (-0.5 , 0.8  , cpx!(0.3217738070664081    , 3.141592653589793)),
+            (-0.5 , 1.2  , cpx!(0.919270786949663     , 3.141592653589793)),
+            (-0.5 , 1.6  , cpx!(1.202792799047729     , 3.141592653589793)),
+            (-0.5 , 2.   , cpx!(1.386294361119891     , 3.141592653589793)),
+            (-0.2 , -2.  , cpx!(f64::INFINITY         , 0.0)),
+            (-0.2 , -1.6 , cpx!(1.4395766942131       , 3.141592653589793)),
+            (-0.2 , -1.2 , cpx!(2.362621271551744     , 3.141592653589793)),
+            (-0.2 , -0.8 , cpx!(f64::NEG_INFINITY     , 0.0)), // <<<<<<<<< Indeterminate
+            (-0.2 , -0.4 , cpx!(1.768518739309553     , 3.141592653589793)),
+            (-0.2 , 0.   , cpx!(f64::INFINITY         , 0.0)),
+            (-0.2 , 0.4  , cpx!(1.034111586104937     , 3.141592653589793)),
+            (-0.2 , 0.8  , cpx!(1.51532341116454      , 3.141592653589793)),
+            (-0.2 , 1.2  , cpx!(1.676123500830621     , 3.141592653589793)),
+            (-0.2 , 1.6  , cpx!(1.768518739309553     , 3.141592653589793)),
+            (-0.2 , 2.   , cpx!(1.832581463748309     , 3.141592653589793)),
+            (0.1  , -2.  , cpx!(f64::INFINITY         , 0.0)),
+            (0.1  , -1.6 , cpx!(2.230165448579763     , 0.0)),
+            (0.1  , -1.2 , cpx!(1.558237532849723     , 0.0)),
+            (0.1  , -0.8 , cpx!(2.547447086722392     , 0.0)),
+            (0.1  , -0.4 , cpx!(2.102397190819993     , 0.0)),
+            (0.1  , 0.   , cpx!(f64::INFINITY         , 0.0)),
+            (0.1  , 0.4  , cpx!(2.477025526511289     , 0.0)),
+            (0.1  , 0.8  , cpx!(2.3383960903993       , 0.0)),
+            (0.1  , 1.2  , cpx!(2.27551337123875      , 0.0)),
+            (0.1  , 1.6  , cpx!(2.235928583444515     , 0.0)),
+            (0.1  , 2.   , cpx!(2.20727491318972      , 0.0)),
+            (0.4  , -2.  , cpx!(f64::INFINITY         , 0.0)),
+            (0.4  , -1.6 , cpx!(0.05500159588384033   , 0.0)),
+            (0.4  , -1.2 , cpx!(0.6286464779967731    , 3.141592653589793)),
+            (0.4  , -0.8 , cpx!(1.229360601503387     , 0.0)),
+            (0.4  , -0.4 , cpx!(f64::NEG_INFINITY     , 0.0)), // <<<<<<<<< Indeterminate
+            (0.4  , 0.   , cpx!(f64::INFINITY         , 0.0)),
+            (0.4  , 0.4  , cpx!(1.44129595700373      , 0.0)),
+            (0.4  , 0.8  , cpx!(1.034111586104937     , 0.0)),
+            (0.4  , 1.2  , cpx!(0.823895493395224     , 0.0)),
+            (0.4  , 1.6  , cpx!(0.6840860520050283    , 0.0)),
+            (0.4  , 2.   , cpx!(0.5798184952529425    , 0.0)),
+            (0.7  , -2.  , cpx!(f64::INFINITY         , 0.0)),
+            (0.7  , -1.6 , cpx!(-1.25970610863833     , 3.141592653589793)),
+            (0.7  , -1.2 , cpx!(0.5745311570870046    , 3.141592653589793)),
+            (0.7  , -0.8 , cpx!(-0.3608867124521278   , 0.0)),
+            (0.7  , -0.4 , cpx!(0.4795938416569809    , 3.141592653589793)),
+            (0.7  , 0.   , cpx!(f64::INFINITY         , 0.0)),
+            (0.7  , 0.4  , cpx!(1.10741750549329      , 0.0)),
+            (0.7  , 0.8  , cpx!(0.5337091625667494    , 0.0)),
+            (0.7  , 1.2  , cpx!(0.2144774324514342    , 0.0)),
+            (0.7  , 1.6  , cpx!(-0.005913974124719426 , 0.0)),
+            (0.7  , 2.   , cpx!(-0.1739533071234375   , 0.0)),
+            (1.   , -2.  , cpx!(-0.6931471805599453   , 3.141592653589793)),
+            (1.   , -1.6 , cpx!(-0.4700036292457356   , 3.141592653589793)),
+            (1.   , -1.2 , cpx!(-0.1823215567939546   , 3.141592653589793)),
+            (1.   , -0.8 , cpx!(0.2231435513142099    , 3.141592653589793)),
+            (1.   , -0.4 , cpx!(0.916290731874155     , 3.141592653589793)),
+            (1.   , 0.   , cpx!(f64::INFINITY         , 0.0)),
+            (1.   , 0.4  , cpx!(0.916290731874154     , 0.0)),
+            (1.   , 0.8  , cpx!(0.2231435513142094    , 0.0)),
+            (1.   , 1.2  , cpx!(-0.1823215567939547   , 0.0)),
+            (1.   , 1.6  , cpx!(-0.4700036292457356   , 0.0)),
+            (1.   , 2.   , cpx!(-0.6931471805599453   , 0.0)),
+            (1.3  , -2.  , cpx!(f64::INFINITY         , 0.0)),
+            (1.3  , -1.6 , cpx!(-0.7355150481434235   , 3.141592653589793)),
+            (1.3  , -1.2 , cpx!(-0.7817114272020849   , 0.0)),
+            (1.3  , -0.8 , cpx!(1.066667621312433     , 3.141592653589793)),
+            (1.3  , -0.4 , cpx!(1.139973540700787     , 3.141592653589793)),
+            (1.3  , 0.   , cpx!(f64::INFINITY         , 0.0)),
+            (1.3  , 0.4  , cpx!(0.7843107056009885    , 0.0)),
+            (1.3  , 0.8  , cpx!(-0.001552869652508344 , 0.0)),
+            (1.3  , 1.2  , cpx!(-0.4782317699840955   , 0.0)),
+            (1.3  , 1.6  , cpx!(-0.823636185453927    , 0.0)),
+            (1.3  , 2.   , cpx!(-1.095273387402595    , 0.0)),
+            (1.6  , -2.  , cpx!(f64::INFINITY         , 0.0)),
+            (1.6  , -1.2 , cpx!(0.6699064506414425    , 0.0)),
+            (1.6  , -0.8 , cpx!(1.4825559296484       , 3.141592653589793)),
+            (1.6  , -0.4 , cpx!(1.28730691424995      , 3.141592653589793)),
+            (1.6  , 0.   , cpx!(f64::INFINITY         , 0.0)),
+            (1.6  , 0.4  , cpx!(0.6840860520050271    , 0.0)),
+            (1.6  , 0.8  , cpx!(-0.1773914097457602   , 0.0)),
+            (1.6  , 1.2  , cpx!(-0.7146686476878184   , 0.0)),
+            (1.6  , 1.6  , cpx!(-1.11058835854842     , 0.0)),
+            (1.6  , 2.   , cpx!(-1.425515074273171    , 0.0)),
+            (1.9  , -2.  , cpx!(f64::INFINITY         , 0.0)),
+            (1.9  , -1.6 , cpx!(-0.2972824585191205   , 0.0)),
+            (1.9  , -1.2 , cpx!(1.279324511585233     , 0.0)),
+            (1.9  , -0.8 , cpx!(1.75809553908175      , 3.141592653589793)),
+            (1.9  , -0.4 , cpx!(1.396322551655552     , 3.141592653589793)),
+            (1.9  , 0.   , cpx!(f64::INFINITY         , 0.0)),
+            (1.9  , 0.4  , cpx!(0.6035040868190688    , 0.0)),
+            (1.9  , 0.8  , cpx!(-0.3217451511783506   , 0.0)),
+            (1.9  , 1.2  , cpx!(-0.911733449200262    , 0.0)),
+            (1.9  , 1.6  , cpx!(-1.352549643966914    , 0.0)),
+            (1.9  , 2.   , cpx!(-1.706564623164823    , 0.0)),
+        ];
+        for (a, b, reference) in mathematica {
+            // println!("a = {:?}, b = {:?}", a, b);
+            if !reference.re.is_finite() {
+                assert_eq!(ln_beta(a, b), reference.re);
+            } else {
+                approx_eq(ln_beta(a, b), reference.re, 1e-14);
+            }
+        }
+
+        // The following three cases yield slightly different results
+        // For instance, our Mathematica code computes Beta[-1.4, 0.3999999999999999]
+        // instead of Beta[-1.4, 0.4] because we used Table[..., {a, ...}, {b, -2, 2, 0.4}]
+        // This leads to Log[Beta[-1.4, 0.3999999999999999]] = -33.53395420578821 + 3.141592653589793 I
+        // On the other hand, if we run Mathematica with Log[Beta[-1.4, 0.4]] we get Indeterminate, as expected
+        // Since we manually wrote [-1.4, 0.4, ... ] in the coded above, we now
+        // compare ln_beta with the directly typed Mathematica commands:
+        // Log[Beta[-1.4, 0.4]], Log[Beta[-0.8, 0.8]], Log[Beta[1.6, -1.6]]
+        // all returning Indeterminate, as expected
+        assert_eq!(ln_beta(-1.4, 0.4), f64::NEG_INFINITY);
+        assert_eq!(ln_beta(-0.8, 0.8), f64::NEG_INFINITY);
+        assert_eq!(ln_beta(1.6, -1.6), f64::NEG_INFINITY);
     }
 
     #[test]
     fn test_beta_scipy() {
+        println!("{:?}", f64::exp(f64::NEG_INFINITY));
+
         // values from SciPy test_basic.py file
         assert_eq!(beta(-1.0, 2.0), f64::INFINITY);
         assert_eq!(beta(1.0, 1.0), 1.0);

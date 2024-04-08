@@ -1,10 +1,11 @@
 use num_complex::Complex64;
 
-/// Calculates the imaginary unit (i) raised to the n power
+/// Calculates the imaginary unit (i) raised to power of n
 ///
-/// Computes:
+/// Calculates:
 ///
 /// ```text
+///        __
 /// iⁿ = (√-1)ⁿ
 /// ```
 ///
@@ -25,22 +26,70 @@ use num_complex::Complex64;
 /// i⁻⁵ = -i   i⁻⁶  = -1   i⁻⁷  = i   i⁻⁸  = 1
 /// i⁻⁹ = -i   i⁻¹⁰ = -1   i⁻¹¹ = i   i⁻¹² = 1
 /// ```
-pub fn complex_imag_powi(n: i32) -> Complex64 {
+pub fn complex_i_pow_n(n: i32) -> Complex64 {
     if n == 0 {
         Complex64::new(1.0, 0.0)
     } else if n > 0 {
         match n % 4 {
-            1 => Complex64::new(0.0, 1.0),  // i
+            1 => Complex64::new(0.0, 1.0),  //  i
             2 => Complex64::new(-1.0, 0.0), // -1
             3 => Complex64::new(0.0, -1.0), // -i
-            _ => Complex64::new(1.0, 0.0),  // 1
+            _ => Complex64::new(1.0, 0.0),  //  1
         }
     } else {
         match (-n) % 4 {
             1 => Complex64::new(0.0, -1.0), // -i
             2 => Complex64::new(-1.0, 0.0), // -1
-            3 => Complex64::new(0.0, 1.0),  // i
-            _ => Complex64::new(1.0, 0.0),  // 1
+            3 => Complex64::new(0.0, 1.0),  //  i
+            _ => Complex64::new(1.0, 0.0),  //  1
+        }
+    }
+}
+
+/// Calculates a real number x times the imaginary unit (i) raised to the power of n
+///
+/// Calculates:
+///
+/// ```text
+///                  __            __
+/// (x ⋅ i)ⁿ = (x ⋅ √-1)ⁿ = xⁿ ⋅ (√-1)ⁿ
+/// ```
+///
+/// Some results with positive n:
+///
+/// ```text
+///           odd             even                odd            even
+/// (x⋅i)¹ = x¹⋅i   (x⋅i)²  = -x²    (x⋅i)³  = -x³ ⋅i   (x⋅i)⁴  =  x⁴
+/// (x⋅i)⁵ = x⁵⋅i   (x⋅i)⁶  = -x⁶    (x⋅i)⁷  = -x⁷ ⋅i   (x⋅i)⁸  =  x⁸
+/// (x⋅i)⁹ = x⁹⋅i   (x⋅i)¹⁰ = -x¹⁰   (x⋅i)¹¹ = -x¹¹⋅i   (x⋅i)¹² = x¹²
+/// ```
+///
+/// Some results with negative n (even n yields the same results as above; odd n yields the negative of the above results):
+///
+/// ```text
+///             odd              even                odd             even
+/// (x⋅i)⁻¹ = -x¹⋅i   (x⋅i)⁻²  = -x²    (x⋅i)⁻³  = x³ ⋅i   (x⋅i)⁻⁴  =  x⁴
+/// (x⋅i)⁻⁵ = -x⁵⋅i   (x⋅i)⁻⁶  = -x⁶    (x⋅i)⁻⁷  = x⁷ ⋅i   (x⋅i)⁻⁸  =  x⁸
+/// (x⋅i)⁻⁹ = -x⁹⋅i   (x⋅i)⁻¹⁰ = -x¹⁰   (x⋅i)⁻¹¹ = x¹¹⋅i   (x⋅i)⁻¹² = x¹²
+/// ```
+pub fn complex_real_times_i_pow_n(x: f64, n: i32) -> Complex64 {
+    if n == 0 {
+        Complex64::new(1.0, 0.0)
+    } else if n > 0 {
+        let xn = f64::powi(x, n);
+        match n % 4 {
+            1 => Complex64::new(0.0, xn),  //  i⋅xn
+            2 => Complex64::new(-xn, 0.0), // -1⋅xn
+            3 => Complex64::new(0.0, -xn), // -i⋅xn
+            _ => Complex64::new(xn, 0.0),  //  1⋅xn
+        }
+    } else {
+        let xn = f64::powi(x, n);
+        match (-n) % 4 {
+            1 => Complex64::new(0.0, -xn), // -i⋅xn
+            2 => Complex64::new(-xn, 0.0), // -1⋅xn
+            3 => Complex64::new(0.0, xn),  //  i⋅xn
+            _ => Complex64::new(xn, 0.0),  //  1⋅xn
         }
     }
 }
@@ -49,16 +98,29 @@ pub fn complex_imag_powi(n: i32) -> Complex64 {
 
 #[cfg(test)]
 mod tests {
-    use super::complex_imag_powi;
+    use super::{complex_i_pow_n, complex_real_times_i_pow_n};
+    use crate::math::PI;
     use num_complex::Complex64;
 
     #[test]
-    fn complex_imag_powi_works() {
+    fn complex_i_pow_n_works() {
         let mut n: i32 = -12;
         let i = Complex64::new(0.0, 1.0);
         while n < 12 {
             // println!("n = {:>3}", n);
-            assert_eq!(complex_imag_powi(n), i.powi(n));
+            assert_eq!(complex_i_pow_n(n), i.powi(n));
+            n += 1;
+        }
+    }
+
+    #[test]
+    fn complex_real_times_i_pow_n_works() {
+        let mut n: i32 = -12;
+        let i = Complex64::new(0.0, 1.0);
+        let x = PI;
+        while n < 12 {
+            println!("n = {:>3}", n);
+            assert_eq!(complex_real_times_i_pow_n(x, n), x.powi(n) * i.powi(n));
             n += 1;
         }
     }

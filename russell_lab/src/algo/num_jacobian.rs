@@ -1,5 +1,5 @@
 use crate::StrError;
-use crate::{deriv_central5, Matrix, Vector};
+use crate::{deriv1_central5, Matrix, Vector};
 
 /// Computes the Jacobian matrix of a vector function using 5-point finite differences
 ///
@@ -104,7 +104,7 @@ where
         extra.i = i;
         for j in 0..ndim {
             extra.j = j;
-            let res = deriv_central5(y_at[j], &mut extra, |yj: f64, extra: &mut Extra| {
+            let res = deriv1_central5(y_at[j], &mut extra, |yj: f64, extra: &mut Extra| {
                 let original = extra.y[extra.j];
                 extra.y[extra.j] = yj;
                 function(&mut extra.f, extra.x, &extra.y, args)?;

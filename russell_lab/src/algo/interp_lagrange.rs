@@ -570,7 +570,7 @@ impl InterpLagrange {
 #[cfg(test)]
 mod tests {
     use super::{GridType, InterpLagrange};
-    use crate::{approx_eq, deriv_central5, Vector};
+    use crate::{approx_eq, deriv1_central5, Vector};
 
     fn check_lambda(N: usize, grid_type: GridType, tol: f64) {
         let interp = InterpLagrange::new(N, grid_type).unwrap();
@@ -670,7 +670,7 @@ mod tests {
         for i in 0..np1 {
             let xi = interp.X[i];
             for j in 0..np1 {
-                let ana = deriv_central5(xi, args, |x, _| Ok(interp.L(j, x))).unwrap();
+                let ana = deriv1_central5(xi, args, |x, _| Ok(interp.L(j, x))).unwrap();
                 approx_eq(interp.D1.get(i, j), ana, tol);
             }
         }

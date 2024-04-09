@@ -200,7 +200,7 @@ mod tests {
         deriv1_invariant_jj2, deriv1_invariant_jj3, deriv1_invariant_lode, deriv1_invariant_sigma_d,
         deriv1_invariant_sigma_m, deriv1_norm, Mandel, SampleTensor2, SamplesTensor2, StrError,
     };
-    use russell_lab::{deriv_central5, mat_approx_eq, Matrix};
+    use russell_lab::{deriv1_central5, mat_approx_eq, Matrix};
 
     // Defines f(σ)
     #[derive(Clone, Copy)]
@@ -305,7 +305,7 @@ mod tests {
             for j in 0..3 {
                 args.j = j;
                 let x = args.sigma_mat.get(i, j);
-                let res = deriv_central5(x, &mut args, f_sigma).unwrap();
+                let res = deriv1_central5(x, &mut args, f_sigma).unwrap();
                 num_deriv.set(i, j, res);
             }
         }
@@ -323,7 +323,7 @@ mod tests {
         for m in 0..sigma.vec.dim() {
             args.m = m;
             let x = args.sigma.vec[m];
-            let res = deriv_central5(x, &mut args, f_sigma_mandel).unwrap();
+            let res = deriv1_central5(x, &mut args, f_sigma_mandel).unwrap();
             num_deriv.vec[m] = res;
         }
         num_deriv.to_matrix()

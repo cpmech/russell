@@ -477,7 +477,7 @@ mod tests {
         AuxDeriv2InvariantJ3, AuxDeriv2InvariantLode, AuxDeriv2InvariantSigmaD, Mandel, SamplesTensor2, StrError,
         MN_TO_IJKL, SQRT_2,
     };
-    use russell_lab::{approx_eq, deriv_central5, mat_approx_eq, Matrix};
+    use russell_lab::{approx_eq, deriv1_central5, mat_approx_eq, Matrix};
 
     // Holds arguments for numerical differentiation corresponding to ∂aiᵢⱼ/∂aₖₗ
     struct ArgsNumDerivInverse {
@@ -530,7 +530,7 @@ mod tests {
             for n in 0..9 {
                 (args.i, args.j, args.k, args.l) = MN_TO_IJKL[m][n];
                 let x = args.a_mat.get(args.k, args.l);
-                let res = deriv_central5(x, &mut args, component_of_inverse).unwrap();
+                let res = deriv1_central5(x, &mut args, component_of_inverse).unwrap();
                 num_deriv.set(m, n, res);
             }
         }
@@ -550,7 +550,7 @@ mod tests {
             for n in 0..9 {
                 args.n = n;
                 let x = args.a.vec[args.n];
-                let res = deriv_central5(x, &mut args, component_of_inverse_mandel).unwrap();
+                let res = deriv1_central5(x, &mut args, component_of_inverse_mandel).unwrap();
                 num_deriv.mat.set(m, n, res);
             }
         }
@@ -578,7 +578,7 @@ mod tests {
             for n in 0..6 {
                 args.n = n;
                 let x = args.a.vec[args.n];
-                let res = deriv_central5(x, &mut args, component_of_inverse_mandel).unwrap();
+                let res = deriv1_central5(x, &mut args, component_of_inverse_mandel).unwrap();
                 num_deriv.mat.set(m, n, res);
             }
         }
@@ -747,7 +747,7 @@ mod tests {
             for n in 0..9 {
                 (args.i, args.j, args.k, args.l) = MN_TO_IJKL[m][n];
                 let x = args.a_mat.get(args.k, args.l);
-                let res = deriv_central5(x, &mut args, component_of_squared).unwrap();
+                let res = deriv1_central5(x, &mut args, component_of_squared).unwrap();
                 num_deriv.set(m, n, res);
             }
         }
@@ -767,7 +767,7 @@ mod tests {
             for n in 0..9 {
                 args.n = n;
                 let x = args.a.vec[args.n];
-                let res = deriv_central5(x, &mut args, component_of_squared_mandel).unwrap();
+                let res = deriv1_central5(x, &mut args, component_of_squared_mandel).unwrap();
                 num_deriv.mat.set(m, n, res);
             }
         }
@@ -795,7 +795,7 @@ mod tests {
             for n in 0..6 {
                 args.n = n;
                 let x = args.a.vec[args.n];
-                let res = deriv_central5(x, &mut args, component_of_squared_mandel).unwrap();
+                let res = deriv1_central5(x, &mut args, component_of_squared_mandel).unwrap();
                 num_deriv.mat.set(m, n, res);
             }
         }
@@ -1001,7 +1001,7 @@ mod tests {
             for n in 0..6 {
                 args.n = n;
                 let x = args.sigma.vec[args.n];
-                let res = deriv_central5(x, &mut args, component_of_deriv1_inv_mandel).unwrap();
+                let res = deriv1_central5(x, &mut args, component_of_deriv1_inv_mandel).unwrap();
                 num_deriv.mat.set(m, n, res);
             }
         }

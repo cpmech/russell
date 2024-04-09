@@ -1,4 +1,4 @@
-use crate::{deriv_central5, StrError};
+use crate::{deriv1_central5, StrError};
 
 /// Panics if derivative is not approximately equal to a numerical derivative
 ///
@@ -20,7 +20,7 @@ where
         panic!("the derivative is Inf");
     }
 
-    let dfdx_num = deriv_central5(at_x, args, f)
+    let dfdx_num = deriv1_central5(at_x, args, f)
         .map_err(|e| format!("the function returned an error: {}", e))
         .unwrap();
 

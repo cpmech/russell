@@ -9,7 +9,15 @@ const C2: f64 = -1.0 / 5.0;
 const C1: f64 = 8.0 / 5.0;
 const C0: f64 = -205.0 / 72.0;
 
-/// Computes the second derivative using central difference with 8 points
+/// Approximates the second derivative using central difference with 8 points
+///
+/// Given `f(x)`, approximate:
+///
+/// ```text
+/// d²f │   
+/// ——— │   
+/// dx² │x=at_x
+/// ```
 pub fn deriv2_central8<F, A>(at_x: f64, args: &mut A, mut f: F) -> Result<f64, StrError>
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,

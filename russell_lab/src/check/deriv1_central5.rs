@@ -3,7 +3,15 @@ use crate::StrError;
 /// Initial stepsize h for deriv_central5
 const STEPSIZE_CENTRAL5: f64 = 1e-3;
 
-/// Computes the numerical derivative and errors using central differences with 5 points
+/// Approximates the first derivative using central differences with 5 points (with errors)
+///
+/// Given `f(x)`, approximate:
+///
+/// ```text
+/// df │   
+/// —— │   
+/// dx │x=at_x
+/// ```
 ///
 /// # Input
 ///
@@ -25,23 +33,7 @@ const STEPSIZE_CENTRAL5: f64 = 1e-3;
 /// # Notes
 ///
 /// * Computes the derivative using the 5-point rule (at_x-h, at_x-h/2, at_x, at_x+h/2, at_x+h)
-///
-/// # Example
-///
-/// ```
-/// use russell_lab::*;
-/// struct Arguments {}
-/// let f = |x: f64, _: &mut Arguments| Ok(f64::exp(-2.0 * x));
-/// let args = &mut Arguments {};
-/// let at_x = 1.0;
-/// let h = 1e-3;
-/// let (d, err, rerr) = deriv_and_errors_central5(at_x, args, h, f).unwrap();
-/// let d_correct = -2.0 * f64::exp(-2.0 * at_x);
-/// assert!(f64::abs(d - d_correct) < 1e-13);
-/// assert!(err < 1e-6);
-/// assert!(rerr < 1e-12);
-/// ```
-pub fn deriv_and_errors_central5<F, A>(at_x: f64, args: &mut A, h: f64, mut f: F) -> Result<(f64, f64, f64), StrError>
+fn deriv1_and_errors_central5<F, A>(at_x: f64, args: &mut A, h: f64, mut f: F) -> Result<(f64, f64, f64), StrError>
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
@@ -65,7 +57,15 @@ where
     Ok((dfdx, abs_trunc_err, abs_round_err))
 }
 
-/// Computes the numerical derivative using central differences with 5 points
+/// Approximates the first derivative using central differences with 5 points
+///
+/// Given `f(x)`, approximate:
+///
+/// ```text
+/// df │   
+/// —— │   
+/// dx │x=at_x
+/// ```
 ///
 /// # Input
 ///
@@ -87,22 +87,33 @@ where
 /// # Example
 ///
 /// ```
-/// use russell_lab::*;
-/// struct Arguments {}
-/// let f = |x: f64, _: &mut Arguments| Ok(f64::exp(-2.0 * x));
-/// let args = &mut Arguments {};
-/// let at_x = 1.0;
-/// let d = deriv_central5(at_x, args, f).unwrap();
-/// let d_correct = -2.0 * f64::exp(-2.0 * at_x);
-/// assert!(f64::abs(d - d_correct) < 1e-11);
+/// use russell_lab::{deriv1_central5, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     // arguments
+///     struct Args {}
+///     let args = &mut Args {};
+///
+///     // function
+///     let f = |x: f64, _: &mut Args| Ok(f64::exp(-2.0 * x));
+///
+///     // numerical derivative
+///     let at_x = 1.0;
+///     let num = deriv1_central5(at_x, args, f)?;
+///
+///     // check
+///     let ana = -2.0 * f64::exp(-2.0 * at_x);
+///     assert!(f64::abs(num - ana) < 1e-11);
+///     Ok(())
+/// }
 /// ```
-pub fn deriv_central5<F, A>(at_x: f64, args: &mut A, mut f: F) -> Result<f64, StrError>
+pub fn deriv1_central5<F, A>(at_x: f64, args: &mut A, mut f: F) -> Result<f64, StrError>
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
     // trial derivative
     let h = STEPSIZE_CENTRAL5;
-    let (dfdx, err, rerr) = deriv_and_errors_central5(at_x, args, h, &mut f)?;
+    let (dfdx, err, rerr) = deriv1_and_errors_central5(at_x, args, h, &mut f)?;
     let err_total = err + rerr;
 
     // done with zero-error
@@ -117,7 +128,7 @@ where
 
     // improved derivative
     let h_improv = h * f64::powf(rerr / (2.0 * err), 1.0 / 3.0);
-    let (dfdx_improv, err_improv, rerr_improv) = deriv_and_errors_central5(at_x, args, h_improv, &mut f)?;
+    let (dfdx_improv, err_improv, rerr_improv) = deriv1_and_errors_central5(at_x, args, h_improv, &mut f)?;
     let err_total_improv = err_improv + rerr_improv;
 
     // ignore improved estimate because of larger error
@@ -138,7 +149,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{deriv_and_errors_central5, deriv_central5};
+    use super::{deriv1_and_errors_central5, deriv1_central5};
     use crate::StrError;
     use std::f64::consts::PI;
 
@@ -241,7 +252,7 @@ mod tests {
     }
 
     #[test]
-    fn deriv_and_errors_central5_works() {
+    fn deriv1_and_errors_central5_works() {
         let tests = gen_functions();
         println!(
             "{:>10}{:>15}{:>22}{:>11}{:>10}{:>10}",
@@ -249,7 +260,7 @@ mod tests {
         );
         for test in &tests {
             let args = &mut Arguments {};
-            let (d, err, rerr) = deriv_and_errors_central5(test.at_x, args, 1e-3, test.f).unwrap();
+            let (d, err, rerr) = deriv1_and_errors_central5(test.at_x, args, 1e-3, test.f).unwrap();
             let d_correct = (test.g)(test.at_x, args).unwrap();
             println!(
                 "{:>10}{:15.9}{:22}{:11.2e}{:10.2e}{:10.2e}",
@@ -267,7 +278,7 @@ mod tests {
     }
 
     #[test]
-    fn deriv_central5_works() {
+    fn deriv1_central5_works() {
         let tests = gen_functions();
         println!(
             "{:>10}{:>15}{:>22}{:>11}",
@@ -276,7 +287,7 @@ mod tests {
         // for test in &[&tests[2]] {
         for test in &tests {
             let args = &mut Arguments {};
-            let d = deriv_central5(test.at_x, args, test.f).unwrap();
+            let d = deriv1_central5(test.at_x, args, test.f).unwrap();
             let d_correct = (test.g)(test.at_x, args).unwrap();
             println!(
                 "{:>10}{:15.9}{:22}{:11.2e}",

@@ -1,7 +1,7 @@
 use crate::StrError;
 
 /// Initial stepsize h for deriv_central5
-pub const STEPSIZE_CENTRAL5: f64 = 1e-3;
+const STEPSIZE_CENTRAL5: f64 = 1e-3;
 
 /// Computes the numerical derivative and errors using central differences with 5 points
 ///
@@ -287,10 +287,5 @@ mod tests {
             );
             assert!(f64::abs(d - d_correct) < test.improv_tol_diff);
         }
-    }
-
-    #[test]
-    fn deriv_central5_propagates_errors() {
-        //
     }
 }

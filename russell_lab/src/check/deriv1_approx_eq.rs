@@ -1,14 +1,22 @@
 use crate::{deriv1_central5, StrError};
 
-/// Panics if derivative is not approximately equal to a numerical derivative
+/// Panics if the first derivative is not approximately equal to a numerical derivative
+///
+/// Checking:
+///
+/// ```text
+/// df │   
+/// —— │   
+/// dx │x=at_x
+/// ```
+///
+/// The numerical derivative is computed using a using central differences with 5 points
 ///
 /// # Panics
 ///
 /// 1. Will panic if NAN, INFINITY, or NEG_INFINITY is found
 /// 2. Will panic if the absolute difference of derivative values is greater than the tolerance
 /// 3. Will panic if the function `f` returns an error
-///
-/// **Note:** Will also panic if NaN or Inf is found
 pub fn deriv1_approx_eq<F, A>(dfdx: f64, at_x: f64, args: &mut A, tol: f64, f: F)
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
@@ -109,8 +117,7 @@ mod tests {
         let f = |x: f64, _: &mut Arguments| Ok(x * x / 2.0);
         let args = &mut Arguments {};
         let at_x = 1.5;
-        let dfdx = 1.501;
-        deriv1_approx_eq(dfdx, at_x, args, 1e-2, f);
-        deriv1_approx_eq(dfdx, at_x, args, 1e-2, f);
+        let ana = 1.501; // dfdx = x
+        deriv1_approx_eq(ana, at_x, args, 1e-2, f);
     }
 }

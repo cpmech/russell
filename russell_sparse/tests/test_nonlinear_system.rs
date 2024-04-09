@@ -1,4 +1,4 @@
-use russell_lab::algo::fdm5_jacobian;
+use russell_lab::algo::num_jacobian;
 use russell_lab::*;
 use russell_sparse::prelude::*;
 use russell_sparse::StrError;
@@ -44,7 +44,7 @@ fn check_jacobian() {
     let args = &mut Args {};
     let neq = 4;
     let uu = Vector::from(&[1.0, -3.0, 7.0, -2.5]);
-    let jj_num = fdm5_jacobian(neq, 0.0, &uu, 1.0, args, |r, _, u, _| {
+    let jj_num = num_jacobian(neq, 0.0, &uu, 1.0, args, |r, _, u, _| {
         calc_residual(r, u);
         Ok(())
     })

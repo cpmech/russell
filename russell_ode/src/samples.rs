@@ -1351,7 +1351,7 @@ impl Samples {
 #[cfg(test)]
 mod tests {
     use super::Samples;
-    use russell_lab::algo::fdm5_jacobian;
+    use russell_lab::algo::num_jacobian;
     use russell_lab::{mat_approx_eq, vec_approx_eq, Vector};
     use russell_sparse::{CooMatrix, Genie, Sym};
 
@@ -1371,7 +1371,7 @@ mod tests {
         (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
+        let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1396,7 +1396,7 @@ mod tests {
         (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
+        let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1415,7 +1415,7 @@ mod tests {
         (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
+        let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1436,7 +1436,7 @@ mod tests {
         (system.jacobian)(&mut jj, jac_alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, x0, &y0, jac_alpha, &mut args, system.function).unwrap();
+        let num = num_jacobian(system.ndim, x0, &y0, jac_alpha, &mut args, system.function).unwrap();
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1457,7 +1457,7 @@ mod tests {
         (system.jacobian)(&mut jj, jac_alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, x0, &y0, jac_alpha, &mut args, system.function).unwrap();
+        let num = num_jacobian(system.ndim, x0, &y0, jac_alpha, &mut args, system.function).unwrap();
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1481,7 +1481,7 @@ mod tests {
             (system.jacobian)(&mut jj, jac_alpha, t, &y0, &mut args).unwrap();
 
             // compute the numerical Jacobian matrix
-            let num = fdm5_jacobian(system.ndim, t, &y0, jac_alpha, &mut args, &system.function).unwrap();
+            let num = num_jacobian(system.ndim, t, &y0, jac_alpha, &mut args, &system.function).unwrap();
 
             // check the Jacobian matrix
             let ana = jj.as_dense();
@@ -1501,7 +1501,7 @@ mod tests {
         (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
+        let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1526,7 +1526,7 @@ mod tests {
         (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
+        let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1545,7 +1545,7 @@ mod tests {
         (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
+        let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1564,7 +1564,7 @@ mod tests {
         (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
+        let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1583,7 +1583,7 @@ mod tests {
         (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
+        let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1602,7 +1602,7 @@ mod tests {
         (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
+        let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1634,7 +1634,7 @@ mod tests {
         (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
+        let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
 
         // check the Jacobian matrix
         let ana = jj.as_dense();
@@ -1659,7 +1659,7 @@ mod tests {
         (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
-        let num = fdm5_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
+        let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
 
         // check the Jacobian matrix
         let ana = jj.as_dense();

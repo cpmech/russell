@@ -59,7 +59,7 @@ use crate::{deriv_central5, Matrix, Vector};
 ///     ]);
 ///
 ///     // numerical Jacobian
-///     let jj_num = algo::fdm5_jacobian(y.dim(), x, &y, alpha, args, |f, x, y, _| {
+///     let jj_num = algo::num_jacobian(y.dim(), x, &y, alpha, args, |f, x, y, _| {
 ///         f[0] = x + y[0] - y[1];
 ///         f[1] = y[0] * y[1];
 ///         Ok(())
@@ -70,7 +70,7 @@ use crate::{deriv_central5, Matrix, Vector};
 ///     Ok(())
 /// }
 /// ```
-pub fn fdm5_jacobian<F, A>(
+pub fn num_jacobian<F, A>(
     ndim: usize,
     x_at: f64,
     y_at: &Vector,
@@ -117,11 +117,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::fdm5_jacobian;
+    use super::num_jacobian;
     use crate::{mat_approx_eq, Matrix, Vector};
 
     #[test]
-    fn fdm5_jacobian_works() {
+    fn num_jacobian_works() {
         struct Args {
             count: usize,
         }
@@ -134,7 +134,7 @@ mod tests {
             [0.0, alpha * (x * y[2] * y[2]), alpha * (2.0 * x * y[1] * y[2])],
             [alpha * (-y[1] * y[2]), alpha * (-y[0] * y[2]), alpha * (-y[0] * y[1])],
         ]);
-        let jj_num = fdm5_jacobian(y.dim(), x, &y, 2.0, args, |f, x, y, args| {
+        let jj_num = num_jacobian(y.dim(), x, &y, 2.0, args, |f, x, y, args| {
             args.count += 1;
             f[0] = x + y[0] - y[1] + y[2];
             f[1] = x * y[1] * y[2] * y[2];

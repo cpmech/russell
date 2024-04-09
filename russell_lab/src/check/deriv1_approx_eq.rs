@@ -9,7 +9,7 @@ use crate::{deriv1_central5, StrError};
 /// 3. Will panic if the function `f` returns an error
 ///
 /// **Note:** Will also panic if NaN or Inf is found
-pub fn deriv_approx_eq<F, A>(dfdx: f64, at_x: f64, args: &mut A, tol: f64, f: F)
+pub fn deriv1_approx_eq<F, A>(dfdx: f64, at_x: f64, args: &mut A, tol: f64, f: F)
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
@@ -42,7 +42,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::deriv_approx_eq;
+    use super::deriv1_approx_eq;
     use crate::StrError;
 
     struct Arguments {}
@@ -61,21 +61,21 @@ mod tests {
     #[should_panic(expected = "the function returned an error: NOT HERE")]
     fn panics_on_function_error() {
         let args = &mut Arguments {};
-        deriv_approx_eq(0.0, 1.5, args, 1e-1, &placeholder);
+        deriv1_approx_eq(0.0, 1.5, args, 1e-1, &placeholder);
     }
 
     #[test]
     #[should_panic(expected = "the derivative is NaN")]
     fn panics_on_nan_1() {
         let args = &mut Arguments {};
-        deriv_approx_eq(f64::NAN, 1.5, args, 1e-1, &placeholder);
+        deriv1_approx_eq(f64::NAN, 1.5, args, 1e-1, &placeholder);
     }
 
     #[test]
     #[should_panic(expected = "the derivative is Inf")]
     fn panics_on_inf_1() {
         let args = &mut Arguments {};
-        deriv_approx_eq(f64::INFINITY, 1.5, args, 1e-1, &placeholder);
+        deriv1_approx_eq(f64::INFINITY, 1.5, args, 1e-1, &placeholder);
     }
 
     #[test]
@@ -83,7 +83,7 @@ mod tests {
     fn panics_on_nan_2() {
         let f = |_: f64, _: &mut Arguments| Ok(f64::NAN);
         let args = &mut Arguments {};
-        deriv_approx_eq(0.0, 1.5, args, 1e-1, f);
+        deriv1_approx_eq(0.0, 1.5, args, 1e-1, f);
     }
 
     #[test]
@@ -91,7 +91,7 @@ mod tests {
     fn panics_on_inf_2() {
         let f = |_: f64, _: &mut Arguments| Ok(f64::INFINITY); // yields NaN in central deriv because of Inf - Inf
         let args = &mut Arguments {};
-        deriv_approx_eq(0.0, 1.5, args, 1e-1, f);
+        deriv1_approx_eq(0.0, 1.5, args, 1e-1, f);
     }
 
     #[test]
@@ -101,7 +101,7 @@ mod tests {
         let args = &mut Arguments {};
         let at_x = 1.5;
         let dfdx = 1.51;
-        deriv_approx_eq(dfdx, at_x, args, 1e-2, f);
+        deriv1_approx_eq(dfdx, at_x, args, 1e-2, f);
     }
 
     #[test]
@@ -110,7 +110,7 @@ mod tests {
         let args = &mut Arguments {};
         let at_x = 1.5;
         let dfdx = 1.501;
-        deriv_approx_eq(dfdx, at_x, args, 1e-2, f);
-        deriv_approx_eq(dfdx, at_x, args, 1e-2, f);
+        deriv1_approx_eq(dfdx, at_x, args, 1e-2, f);
+        deriv1_approx_eq(dfdx, at_x, args, 1e-2, f);
     }
 }

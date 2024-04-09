@@ -275,7 +275,7 @@ pub fn factorial_lookup_22(n: usize) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{approx_eq, deriv_approx_eq};
+    use crate::{approx_eq, deriv1_approx_eq};
     use std::f64::consts::PI;
 
     #[test]
@@ -320,7 +320,7 @@ mod tests {
             let l = logistic(x);
             let d = logistic_deriv(x);
             approx_eq(l, 0.5 + 0.5 * f64::tanh(x / 2.0), 1e-14);
-            deriv_approx_eq(d, x, args, 1e-10, f);
+            deriv1_approx_eq(d, x, args, 1e-10, f);
         }
     }
 
@@ -343,8 +343,8 @@ mod tests {
         for x in xx {
             let d = smooth_ramp_deriv(x, beta);
             let d2 = smooth_ramp_deriv2(x, beta);
-            deriv_approx_eq(d, x, args, 1e-9, f);
-            deriv_approx_eq(d2, x, args, 1e-9, g);
+            deriv1_approx_eq(d, x, args, 1e-9, f);
+            deriv1_approx_eq(d2, x, args, 1e-9, g);
         }
     }
 

@@ -116,7 +116,7 @@ fn main() -> Result<(), StrError> {
     let mut x = Vector::new(ndim);
     umfpack.solve(&mut x, &coo, &b, false)?;
     let correct = vec![3.0, 2.0, 4.0];
-    vec_approx_eq(x.as_data(), &correct, 1e-14);
+    vec_approx_eq(&x, &correct, 1e-14);
     Ok(())
 }
 ```

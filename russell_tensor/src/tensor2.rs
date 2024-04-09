@@ -894,7 +894,7 @@ impl Tensor2 {
     ///         [1.2, 2.2, 3.2],
     ///         [1.3, 2.3, 3.3],
     ///     ], Mandel::General)?;
-    ///     vec_approx_eq(&at.vec.as_data(), &at_correct.vec.as_data(), 1e-15);
+    ///     vec_approx_eq(&at.vec, &at_correct.vec, 1e-15);
     ///     Ok(())
     /// }
     /// ```
@@ -1057,7 +1057,7 @@ impl Tensor2 {
     ///         [ 72.0, 123.0, 100.0],
     ///         [ 42.0,  70.0,  63.0],
     ///     ], Mandel::General)?;
-    ///     vec_approx_eq(&a2.vec.as_data(), &a2_correct.vec.as_data(), 1e-13);
+    ///     vec_approx_eq(&a2.vec, &a2_correct.vec, 1e-13);
     ///
     ///     Ok(())
     /// }
@@ -1866,7 +1866,7 @@ mod tests {
             -2.0 / SQRT_2,
             -4.0 / SQRT_2,
         ];
-        vec_approx_eq(tt.vec.as_data(), correct, 1e-15);
+        vec_approx_eq(&tt.vec, correct, 1e-15);
 
         // general (using nested Vec)
         let mut tt = Tensor2::new(Mandel::General);
@@ -1884,7 +1884,7 @@ mod tests {
             -2.0 / SQRT_2,
             -4.0 / SQRT_2,
         ];
-        vec_approx_eq(tt.vec.as_data(), correct, 1e-15);
+        vec_approx_eq(&tt.vec, correct, 1e-15);
 
         // symmetric 3D
         let mut tt = Tensor2::new(Mandel::Symmetric);
@@ -1892,7 +1892,7 @@ mod tests {
         tt.set_matrix(&[[1.0, 4.0, 6.0], [4.0, 2.0, 5.0], [6.0, 5.0, 3.0]])
             .unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2];
-        vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
+        vec_approx_eq(&tt.vec, correct, 1e-14);
 
         // symmetric 2D
         let mut tt = Tensor2::new(Mandel::Symmetric2D);
@@ -1900,7 +1900,7 @@ mod tests {
         tt.set_matrix(&[[1.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 3.0]])
             .unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2];
-        vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
+        vec_approx_eq(&tt.vec, correct, 1e-14);
     }
 
     #[test]
@@ -1983,7 +1983,7 @@ mod tests {
             -2.0 / SQRT_2,
             -4.0 / SQRT_2,
         ];
-        vec_approx_eq(tt.vec.as_data(), correct, 1e-15);
+        vec_approx_eq(&tt.vec, correct, 1e-15);
 
         // symmetric 3D
         #[rustfmt::skip]
@@ -1994,7 +1994,7 @@ mod tests {
         ];
         let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2];
-        vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
+        vec_approx_eq(&tt.vec, correct, 1e-14);
 
         // symmetric 2D
         #[rustfmt::skip]
@@ -2005,7 +2005,7 @@ mod tests {
         ];
         let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric2D).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2];
-        vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
+        vec_approx_eq(&tt.vec, correct, 1e-14);
     }
 
     #[test]

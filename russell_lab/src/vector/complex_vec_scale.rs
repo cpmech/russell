@@ -54,6 +54,6 @@ mod tests {
         let mut u = ComplexVector::from(&[6.0, 9.0, 12.0]);
         complex_vec_scale(&mut u, cpx!(1.0 / 3.0, 0.0));
         let correct = &[cpx!(2.0, 0.0), cpx!(3.0, 0.0), cpx!(4.0, 0.0)];
-        complex_vec_approx_eq(u.as_data(), correct, 1e-15);
+        complex_vec_approx_eq(&u, correct, 1e-15);
     }
 }

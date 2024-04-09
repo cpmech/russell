@@ -222,7 +222,7 @@ mod tests {
         let (nit, l, v) = calc_eigen(data);
         assert_eq!(nit, 1);
         mat_approx_eq(&v, &[[1.0]], 1e-15);
-        vec_approx_eq(l.as_data(), &[2.0], 1e-15);
+        vec_approx_eq(&l, &[2.0], 1e-15);
 
         // 2x2 matrix
         let data = &[[2.0, 1.0], [1.0, 2.0]];
@@ -233,7 +233,7 @@ mod tests {
             &[[1.0 / SQRT_2, 1.0 / SQRT_2], [-1.0 / SQRT_2, 1.0 / SQRT_2]],
             1e-15,
         );
-        vec_approx_eq(l.as_data(), &[1.0, 3.0], 1e-15);
+        vec_approx_eq(&l, &[1.0, 3.0], 1e-15);
     }
 
     #[test]
@@ -255,7 +255,7 @@ mod tests {
         let (nit, l, v) = calc_eigen(data);
         assert_eq!(nit, 1);
         mat_approx_eq(&v, correct, 1e-15);
-        vec_approx_eq(l.as_data(), &[0.0, 0.0, 0.0], 1e-15);
+        vec_approx_eq(&l, &[0.0, 0.0, 0.0], 1e-15);
 
         // 2-repeated, with one zero diagonal entry
         #[rustfmt::skip]
@@ -267,7 +267,7 @@ mod tests {
         let (nit, l, v) = calc_eigen(data);
         assert_eq!(nit, 1);
         mat_approx_eq(&v, correct, 1e-15);
-        vec_approx_eq(l.as_data(), &[2.0, 2.0, 0.0], 1e-15);
+        vec_approx_eq(&l, &[2.0, 2.0, 0.0], 1e-15);
         check_eigen_sym(data, &v, &l, 1e-15);
 
         // 3-repeated / diagonal
@@ -280,7 +280,7 @@ mod tests {
         let (nit, l, v) = calc_eigen(data);
         assert_eq!(nit, 1);
         mat_approx_eq(&v, correct, 1e-15);
-        vec_approx_eq(l.as_data(), &[2.0, 2.0, 2.0], 1e-15);
+        vec_approx_eq(&l, &[2.0, 2.0, 2.0], 1e-15);
         check_eigen_sym(data, &v, &l, 1e-15);
     }
 
@@ -302,7 +302,7 @@ mod tests {
             [0.0, -1.0*d, 2.0*d],
         ];
         mat_approx_eq(&v, correct, 1e-15);
-        vec_approx_eq(l.as_data(), &[2.0, 1.0, 11.0], 1e-15);
+        vec_approx_eq(&l, &[2.0, 1.0, 11.0], 1e-15);
         check_eigen_sym(data, &v, &l, 1e-15);
     }
 
@@ -324,7 +324,7 @@ mod tests {
         ];
         mat_approx_eq(&v, correct, 1e-15);
         vec_approx_eq(
-            l.as_data(),
+            &l,
             &[
                 -1.55809924785903786e+00,
                 6.69537390404459476e+00,
@@ -357,7 +357,7 @@ mod tests {
         ];
         mat_approx_eq(&v, correct, 1e-13);
         vec_approx_eq(
-            l.as_data(),
+            &l,
             &[
                 -2.485704750172629e+00,
                 1.244545682971212e+01,

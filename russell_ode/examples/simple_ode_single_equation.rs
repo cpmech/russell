@@ -32,7 +32,7 @@ fn main() -> Result<(), StrError> {
 
     // check the results
     let y_ana = Vector::from(&[f64::exp(x1) - x1 - 1.0]);
-    vec_approx_eq(y.as_data(), y_ana.as_data(), 1e-7);
+    vec_approx_eq(&y, &y_ana, 1e-7);
 
     // print stats
     println!("{}", solver.stats());

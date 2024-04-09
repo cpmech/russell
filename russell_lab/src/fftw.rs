@@ -422,12 +422,12 @@ mod tests {
         // check naive solution
         let uu_naive = naive_dft_1d(&u);
         println!("uu_naive =\n{}", uu_naive);
-        complex_vec_approx_eq(uu_naive.as_data(), uu_correct, 1e-14);
+        complex_vec_approx_eq(&uu_naive, uu_correct, 1e-14);
 
         // direct DFT
         fft.dft_1d(&mut uu, &u, false).unwrap();
         println!("uu =\n{}", uu);
-        complex_vec_approx_eq(uu.as_data(), uu_correct, 1e-15);
+        complex_vec_approx_eq(&uu, uu_correct, 1e-15);
         println!("time (copy) = {}", format_nanoseconds(fft.get_ns_copy()));
         println!("time (dft)  = {}", format_nanoseconds(fft.get_ns_dft()));
 
@@ -436,7 +436,7 @@ mod tests {
         fft.dft_1d(&mut u_times_n, &uu, true).unwrap();
         println!("u_times_n =\n{}", u_times_n);
         complex_vec_scale(&mut u_times_n, cpx!(1.0 / (u.dim() as f64), 0.0));
-        complex_vec_approx_eq(u_times_n.as_data(), u.as_data(), 1e-14);
+        complex_vec_approx_eq(&u_times_n, &u, 1e-14);
     }
 
     #[test]

@@ -151,7 +151,7 @@ mod tests {
         let data = &[[2.0]];
         let (l, v) = calc_eigen_lower(data);
         mat_approx_eq(&v, &[[1.0]], 1e-15);
-        vec_approx_eq(l.as_data(), &[2.0], 1e-15);
+        vec_approx_eq(&l, &[2.0], 1e-15);
 
         // 2x2 matrix
         let data = &[[2.0, 1.0], [1.0, 2.0]];
@@ -161,7 +161,7 @@ mod tests {
             &[[-1.0 / SQRT_2, 1.0 / SQRT_2], [1.0 / SQRT_2, 1.0 / SQRT_2]],
             1e-15,
         );
-        vec_approx_eq(l.as_data(), &[1.0, 3.0], 1e-15);
+        vec_approx_eq(&l, &[1.0, 3.0], 1e-15);
     }
 
     #[test]
@@ -183,8 +183,8 @@ mod tests {
         ];
         mat_approx_eq(&v, correct, 1e-15);
         mat_approx_eq(&vv, correct, 1e-15);
-        vec_approx_eq(l.as_data(), &[0.0, 0.0, 0.0], 1e-15);
-        vec_approx_eq(ll.as_data(), &[0.0, 0.0, 0.0], 1e-15);
+        vec_approx_eq(&l, &[0.0, 0.0, 0.0], 1e-15);
+        vec_approx_eq(&ll, &[0.0, 0.0, 0.0], 1e-15);
 
         // 2-repeated, with one zero diagonal entry
         #[rustfmt::skip]
@@ -203,8 +203,8 @@ mod tests {
         ];
         mat_approx_eq(&v, correct, 1e-15);
         mat_approx_eq(&vv, correct, 1e-15);
-        vec_approx_eq(l.as_data(), &[0.0, 2.0, 2.0], 1e-15);
-        vec_approx_eq(ll.as_data(), &[0.0, 2.0, 2.0], 1e-15);
+        vec_approx_eq(&l, &[0.0, 2.0, 2.0], 1e-15);
+        vec_approx_eq(&ll, &[0.0, 2.0, 2.0], 1e-15);
         check_eigen_sym(data, &v, &l, 1e-15);
 
         // 3-repeated / diagonal
@@ -224,8 +224,8 @@ mod tests {
         ];
         mat_approx_eq(&v, correct, 1e-15);
         mat_approx_eq(&vv, correct, 1e-15);
-        vec_approx_eq(l.as_data(), &[2.0, 2.0, 2.0], 1e-15);
-        vec_approx_eq(ll.as_data(), &[2.0, 2.0, 2.0], 1e-15);
+        vec_approx_eq(&l, &[2.0, 2.0, 2.0], 1e-15);
+        vec_approx_eq(&ll, &[2.0, 2.0, 2.0], 1e-15);
         check_eigen_sym(data, &v, &l, 1e-15);
     }
 
@@ -246,7 +246,7 @@ mod tests {
             [ 1.0*d, 0.0, 2.0*d],
         ];
         mat_approx_eq(&v, correct, 1e-15);
-        vec_approx_eq(l.as_data(), &[1.0, 2.0, 11.0], 1e-15);
+        vec_approx_eq(&l, &[1.0, 2.0, 11.0], 1e-15);
         check_eigen_sym(data, &v, &l, 1e-15);
     }
 

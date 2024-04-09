@@ -809,7 +809,7 @@ mod tests {
 
         // solve works
         solver.solve(&mut x, &mat, &rhs, false).unwrap();
-        vec_approx_eq(x.as_data(), x_correct, 1e-14);
+        vec_approx_eq(&x, x_correct, 1e-14);
 
         // check ordering and scaling
         assert_eq!(solver.effective_ordering, 4); // Pord
@@ -828,7 +828,7 @@ mod tests {
         // calling solve again works
         let mut x_again = Vector::new(5);
         solver.solve(&mut x_again, &mat, &rhs, false).unwrap();
-        vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
+        vec_approx_eq(&x_again, x_correct, 1e-14);
 
         // solve with positive-definite matrix works
         let (coo_pd_lower, _, _, _) = Samples::mkl_positive_definite_5x5_lower();
@@ -842,7 +842,7 @@ mod tests {
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
         solver.solve(&mut x, &mat_pd_lower, &rhs, false).unwrap();
         let x_correct = &[-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
-        vec_approx_eq(x.as_data(), x_correct, 1e-10);
+        vec_approx_eq(&x, x_correct, 1e-10);
     }
 
     #[test]
@@ -867,12 +867,12 @@ mod tests {
 
         // solve works
         solver.solve(&mut x, &mat, &rhs, false).unwrap();
-        vec_approx_eq(x.as_data(), x_correct, 1e-11);
+        vec_approx_eq(&x, x_correct, 1e-11);
 
         // calling solve again works
         let mut x_again = Vector::new(5);
         solver.solve(&mut x_again, &mat, &rhs, false).unwrap();
-        vec_approx_eq(x_again.as_data(), x_correct, 1e-11);
+        vec_approx_eq(&x_again, x_correct, 1e-11);
     }
 
     #[test]

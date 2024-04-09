@@ -60,13 +60,13 @@ extern "C" {
 ///     let mut v = ComplexVector::new(a.ncol());
 ///     let one = cpx!(1.0, 0.0);
 ///     complex_vec_mat_mul(&mut v, one, &u, &a).unwrap();
-///     let correct = &[
+///     let correct = [
 ///         cpx!(155.0, 0.0),
 ///         cpx!(-62.0, 0.0),
 ///         cpx!(0.0, 0.0),
 ///         cpx!(31.0, 0.0),
 ///     ];
-///     complex_vec_approx_eq(v.as_data(), correct, 1e-15);
+///     complex_vec_approx_eq(&v, &correct, 1e-15);
 ///     Ok(())
 /// }
 /// ```
@@ -150,7 +150,7 @@ mod tests {
         let one = cpx!(1.0, 0.0);
         complex_vec_mat_mul(&mut v, one, &u, &a).unwrap();
         let correct = &[cpx!(155.0, 0.0), cpx!(-62.0, 0.0), cpx!(0.0, 0.0), cpx!(31.0, 0.0)];
-        complex_vec_approx_eq(v.as_data(), correct, 1e-15);
+        complex_vec_approx_eq(&v, correct, 1e-15);
     }
 
     #[test]

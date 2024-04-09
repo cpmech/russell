@@ -27,7 +27,7 @@
 //!     approx_eq(0.0000123, 0.000012, 1e-6);
 //!
 //!     // check vector of float point numbers
-//!     vec_approx_eq(&[0.01, 0.012], &[0.012, 0.01], 1e-2);
+//!     array_approx_eq(&[0.01, 0.012], &[0.012, 0.01], 1e-2);
 //!
 //!     // check derivative using central differences
 //!     struct Arguments {}
@@ -50,7 +50,7 @@
 //! fn main() {
 //!     let a = [0.123456789, 0.123456789, 0.123456789];
 //!     let b = [0.12345678,  0.1234567,   0.123456];
-//!     vec_approx_eq(&a, &b, 1e-6);
+//!     array_approx_eq(&a, &b, 1e-6);
 //! }
 //! ```
 //!
@@ -69,7 +69,7 @@
 //!         Complex64::new(0.12345678, 5.01),
 //!         Complex64::new(0.1234567, 5.01),
 //!         Complex64::new(0.123456, 5.01)];
-//!     complex_vec_approx_eq(a, b, 1e-6);
+//!     complex_array_approx_eq(a, b, 1e-6);
 //! }
 //! ```
 //!

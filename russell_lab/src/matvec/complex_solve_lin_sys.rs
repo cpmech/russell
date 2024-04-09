@@ -83,7 +83,7 @@ extern "C" {
 ///         cpx!(0.0, 6.0),
 ///     ]);
 ///     println!("expected =\n{:.3}", correct);
-///     complex_vec_approx_eq(b.as_data(), correct.as_data(), 1e-13);
+///     complex_vec_approx_eq(&b, &correct, 1e-13);
 ///     Ok(())
 /// }
 /// ```
@@ -183,7 +183,7 @@ mod tests {
             cpx!(  62.0 / 49.0, 0.0),
             cpx!(  23.0 / 14.0, 0.0),
         ];
-        complex_vec_approx_eq(b.as_data(), x_correct, 1e-13);
+        complex_vec_approx_eq(&b, x_correct, 1e-13);
     }
 
     #[test]
@@ -211,7 +211,7 @@ mod tests {
             cpx!( 3.0, 0.0),
             cpx!(-5.0, 0.0),
         ];
-        complex_vec_approx_eq(b.as_data(), x_correct, 1e-14);
+        complex_vec_approx_eq(&b, x_correct, 1e-14);
     }
 
     #[test]
@@ -263,7 +263,7 @@ mod tests {
         // run test
         // solve b := x := A⁻¹ b
         complex_solve_lin_sys(&mut b, &mut a).unwrap();
-        complex_vec_approx_eq(b.as_data(), x_correct, 0.00049);
+        complex_vec_approx_eq(&b, x_correct, 0.00049);
 
         // compare with python results
         let x_python = &[
@@ -273,6 +273,6 @@ mod tests {
             cpx!(8.999787912842375e+00, -6.662818244209770e-05),
             cpx!(1.000001132800243e+01, -1.774987242230929e+01),
         ];
-        complex_vec_approx_eq(b.as_data(), x_python, 1e-13);
+        complex_vec_approx_eq(&b, x_python, 1e-13);
     }
 }

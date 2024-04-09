@@ -953,11 +953,11 @@ mod tests {
         let mut v = NumVector::<f64>::new(coo.nrow);
         coo.mat_vec_mul(&mut v, 2.0, &u).unwrap();
         let correct_v = &[2.8, 0.28, 28.0];
-        vec_approx_eq(v.as_data(), correct_v, 1e-15);
+        vec_approx_eq(&v, correct_v, 1e-15);
 
         // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
         coo.mat_vec_mul(&mut v, 2.0, &u).unwrap();
-        vec_approx_eq(v.as_data(), correct_v, 1e-15);
+        vec_approx_eq(&v, correct_v, 1e-15);
 
         // single component matrix
         let mut single = NumCooMatrix::<f64>::new(1, 1, 1, Sym::No).unwrap();
@@ -1000,7 +1000,7 @@ mod tests {
         let mut v = NumVector::<f64>::new(coo.nrow);
         coo.mat_vec_mul(&mut v, 2.0, &u).unwrap();
         let correct_v = &[-4.0, 8.0, 6.0, -10.0, 2.0];
-        vec_approx_eq(v.as_data(), correct_v, 1e-14);
+        vec_approx_eq(&v, correct_v, 1e-14);
     }
 
     #[test]
@@ -1045,7 +1045,7 @@ mod tests {
         let mut v = NumVector::<f64>::new(coo.nrow);
         coo.mat_vec_mul(&mut v, 2.0, &u).unwrap();
         let correct_v = &[-4.0, 8.0, 6.0, -10.0, 2.0];
-        vec_approx_eq(v.as_data(), correct_v, 1e-14);
+        vec_approx_eq(&v, correct_v, 1e-14);
     }
 
     #[test]
@@ -1064,7 +1064,7 @@ mod tests {
         let mut v = NumVector::<f64>::new(coo.nrow);
         coo.mat_vec_mul(&mut v, 2.0, &u).unwrap();
         let correct_v = &[4.0, 8.0, 12.0];
-        vec_approx_eq(v.as_data(), correct_v, 1e-15);
+        vec_approx_eq(&v, correct_v, 1e-15);
     }
 
     #[test]
@@ -1083,10 +1083,10 @@ mod tests {
             cpx!(-64.0, 112.0),
             cpx!(-2.0, 6.0),
         ];
-        complex_vec_approx_eq(v.as_data(), correct, 1e-15);
+        complex_vec_approx_eq(&v, correct, 1e-15);
         // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
         coo.mat_vec_mul(&mut v, cpx!(2.0, 4.0), &u).unwrap();
-        complex_vec_approx_eq(v.as_data(), correct, 1e-15);
+        complex_vec_approx_eq(&v, correct, 1e-15);
     }
 
     #[test]

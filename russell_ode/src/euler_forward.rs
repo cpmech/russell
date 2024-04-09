@@ -88,7 +88,7 @@ where
 mod tests {
     use super::EulerForward;
     use crate::{no_jacobian, HasJacobian, Method, NoArgs, OdeSolverTrait, Params, Samples, System, Workspace};
-    use russell_lab::{vec_approx_eq, Vector};
+    use russell_lab::{array_approx_eq, Vector};
 
     #[test]
     fn euler_forward_works() {
@@ -165,9 +165,9 @@ mod tests {
             0.1519409284924678,
             0.229961828459045,
         ];
-        vec_approx_eq(&xx, xx_correct, 1e-15);
-        vec_approx_eq(&yy_num, yy_correct, 1e-15);
-        vec_approx_eq(&errors, errors_correct, 1e-15);
+        array_approx_eq(&xx, xx_correct, 1e-15);
+        array_approx_eq(&yy_num, yy_correct, 1e-15);
+        array_approx_eq(&errors, errors_correct, 1e-15);
     }
 
     #[test]

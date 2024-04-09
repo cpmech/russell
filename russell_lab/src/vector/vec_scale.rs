@@ -50,6 +50,6 @@ mod tests {
         let mut u = Vector::from(&[6.0, 9.0, 12.0]);
         vec_scale(&mut u, 1.0 / 3.0);
         let correct = &[2.0, 3.0, 4.0];
-        vec_approx_eq(u.as_data(), correct, 1e-15);
+        vec_approx_eq(&u, correct, 1e-15);
     }
 }

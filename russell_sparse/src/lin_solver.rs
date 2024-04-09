@@ -143,7 +143,7 @@ impl<'a> LinSolver<'a> {
     ///     let mut x = Vector::new(ndim);
     ///     LinSolver::compute(Genie::Umfpack, &mut x, &mut mat, &rhs, None)?;
     ///     let correct = vec![3.0, 2.0, 4.0];
-    ///     vec_approx_eq(x.as_data(), &correct, 1e-14);
+    ///     vec_approx_eq(&x, &correct, 1e-14);
     ///     Ok(())
     /// }
     /// ```
@@ -186,7 +186,7 @@ mod tests {
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
         LinSolver::compute(Genie::Klu, &mut x, &mut mat, &rhs, None).unwrap();
         let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
-        vec_approx_eq(x.as_data(), &x_correct, 1e-10);
+        vec_approx_eq(&x, &x_correct, 1e-10);
     }
 
     #[test]
@@ -198,7 +198,7 @@ mod tests {
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
         LinSolver::compute(Genie::Mumps, &mut x, &mut mat, &rhs, None).unwrap();
         let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
-        vec_approx_eq(x.as_data(), &x_correct, 1e-10);
+        vec_approx_eq(&x, &x_correct, 1e-10);
     }
 
     #[test]
@@ -209,6 +209,6 @@ mod tests {
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
         LinSolver::compute(Genie::Umfpack, &mut x, &mut mat, &rhs, None).unwrap();
         let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
-        vec_approx_eq(x.as_data(), &x_correct, 1e-10);
+        vec_approx_eq(&x, &x_correct, 1e-10);
     }
 }

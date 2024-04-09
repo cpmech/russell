@@ -131,17 +131,17 @@ mod tests {
         let mut v = Vector::new(a.nrow());
         mat_vec_mul_update(&mut v, 1.0, &a, &u, 0.0).unwrap();
         let correct = &[4.0, 8.0, 12.0];
-        vec_approx_eq(v.as_data(), correct, 1e-15);
+        vec_approx_eq(&v, correct, 1e-15);
 
         let mut v = Vector::from(&[100.0, 200.0, 300.0]);
         mat_vec_mul_update(&mut v, 1.0, &a, &u, 0.0).unwrap();
         let correct = &[4.0, 8.0, 12.0];
-        vec_approx_eq(v.as_data(), correct, 1e-15);
+        vec_approx_eq(&v, correct, 1e-15);
 
         let mut v = Vector::from(&[100.0, 200.0, 300.0]);
         mat_vec_mul_update(&mut v, 1.0, &a, &u, 1.0).unwrap();
         let correct = &[104.0, 208.0, 312.0];
-        vec_approx_eq(v.as_data(), correct, 1e-15);
+        vec_approx_eq(&v, correct, 1e-15);
     }
 
     #[test]

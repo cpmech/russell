@@ -103,7 +103,7 @@ use russell_sparse::CooMatrix;
 ///
 ///     // check the results
 ///     let y_ana = Vector::from(&[f64::exp(x1) - x1 - 1.0]);
-///     vec_approx_eq(y.as_data(), y_ana.as_data(), 1e-5);
+///     vec_approx_eq(&y, &y_ana, 1e-5);
 ///
 ///     // print stats
 ///     println!("{}", solver.stats());
@@ -408,7 +408,7 @@ mod tests {
     use super::OdeSolver;
     use crate::{no_jacobian, HasJacobian, NoArgs, OutCallback, OutCount, OutData, Output};
     use crate::{Method, Params, Samples, System};
-    use russell_lab::{approx_eq, vec_approx_eq, Vector};
+    use russell_lab::{approx_eq, array_approx_eq, vec_approx_eq, Vector};
     use russell_sparse::Genie;
 
     #[test]
@@ -489,7 +489,7 @@ mod tests {
         let mut solver = OdeSolver::new(params, &system).unwrap();
         let mut y = y0.clone();
         solver.solve(&mut y, x0, x1, None, None, &mut args).unwrap();
-        vec_approx_eq(y.as_data(), &[1.0], 1e-15);
+        vec_approx_eq(&y, &[1.0], 1e-15);
     }
 
     #[test]
@@ -501,7 +501,7 @@ mod tests {
         let mut solver = OdeSolver::new(params, &system).unwrap();
         solver.solve(&mut y0, 0.0, 1.0, None, None, &mut args).unwrap();
         assert_eq!(solver.work.stats.n_accepted, 1);
-        vec_approx_eq(y0.as_data(), &[1.0], 1e-15);
+        vec_approx_eq(&y0, &[1.0], 1e-15);
     }
 
     #[test]
@@ -511,7 +511,7 @@ mod tests {
         params.step.h_ini = 0.1;
         let mut solver = OdeSolver::new(params, &system).unwrap();
         solver.solve(&mut y0, 0.0, 0.3, None, None, &mut args).unwrap();
-        vec_approx_eq(y0.as_data(), &[0.3], 1e-15);
+        vec_approx_eq(&y0, &[0.3], 1e-15);
     }
 
     #[test]
@@ -585,11 +585,11 @@ mod tests {
             .unwrap();
 
         // check
-        vec_approx_eq(y.as_data(), &[0.4], 1e-15);
-        vec_approx_eq(&out.step_h, &[0.2, 0.2, 0.2], 1e-15);
-        vec_approx_eq(&out.step_x, &[0.0, 0.2, 0.4], 1e-15);
-        vec_approx_eq(&out.step_y.get(&0).unwrap(), &[0.0, 0.2, 0.4], 1e-15);
-        vec_approx_eq(&out.step_global_error, &[0.0, 0.0, 0.0], 1e-15);
+        vec_approx_eq(&y, &[0.4], 1e-15);
+        array_approx_eq(&out.step_h, &[0.2, 0.2, 0.2], 1e-15);
+        array_approx_eq(&out.step_x, &[0.0, 0.2, 0.4], 1e-15);
+        array_approx_eq(&out.step_y.get(&0).unwrap(), &[0.0, 0.2, 0.4], 1e-15);
+        array_approx_eq(&out.step_global_error, &[0.0, 0.0, 0.0], 1e-15);
 
         // check count file
         let count = OutCount::read_json(format!("{}_count.json", path_key).as_str()).unwrap();
@@ -614,7 +614,7 @@ mod tests {
             .set_step_callback(false, cb);
         let mut y = y0.clone();
         solver.solve(&mut y, 0.0, 0.4, None, Some(&mut out), &mut args).unwrap();
-        vec_approx_eq(y.as_data(), &[0.4], 1e-15);
+        vec_approx_eq(&y, &[0.4], 1e-15);
         assert_eq!(out.step_h.len(), 0);
         assert_eq!(out.step_x.len(), 0);
         assert_eq!(out.step_y.len(), 0);
@@ -683,10 +683,10 @@ mod tests {
             .unwrap();
 
         // check
-        vec_approx_eq(y.as_data(), &[0.4], 1e-15);
+        vec_approx_eq(&y, &[0.4], 1e-15);
         assert_eq!(&out.dense_step_index, &[0, 1, 2, 2, 2]);
-        vec_approx_eq(&out.dense_x, &[0.0, 0.1, 0.2, 0.3, 0.4], 1e-15);
-        vec_approx_eq(&out.dense_y.get(&0).unwrap(), &[0.0, 0.1, 0.2, 0.3, 0.4], 1e-15);
+        array_approx_eq(&out.dense_x, &[0.0, 0.1, 0.2, 0.3, 0.4], 1e-15);
+        array_approx_eq(&out.dense_y.get(&0).unwrap(), &[0.0, 0.1, 0.2, 0.3, 0.4], 1e-15);
 
         // check count file
         let count = OutCount::read_json(format!("{}_count.json", path_key).as_str()).unwrap();
@@ -711,7 +711,7 @@ mod tests {
         out.set_dense_callback(false, H_OUT, cb).unwrap();
         let mut y = y0.clone();
         solver.solve(&mut y, 0.0, 0.4, None, Some(&mut out), &mut args).unwrap();
-        vec_approx_eq(y.as_data(), &[0.4], 1e-15);
+        vec_approx_eq(&y, &[0.4], 1e-15);
         assert_eq!(out.dense_step_index.len(), 0);
         assert_eq!(out.dense_x.len(), 0);
         assert_eq!(out.dense_y.len(), 0);

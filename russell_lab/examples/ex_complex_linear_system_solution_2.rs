@@ -45,6 +45,6 @@ fn main() -> Result<(), StrError> {
     println!("a ⋅ x = b = \n{:.3}", ax);
 
     // check
-    complex_vec_approx_eq(ax.as_data(), b_copy.as_data(), 1e-13);
+    complex_vec_approx_eq(&ax, &b_copy, 1e-13);
     Ok(())
 }

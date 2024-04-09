@@ -99,7 +99,7 @@ mod tests {
             cpx!(-1.0,0.0), cpx!(-2.0,0.0), cpx!(-3.0,0.0), cpx!(-4.0,0.0),
             cpx!(-1.0,0.0), cpx!(-2.0,0.0), cpx!(-3.0,0.0), cpx!(-4.0,0.0),
         ];
-        complex_vec_approx_eq(w.as_data(), correct, 1e-15);
+        complex_vec_approx_eq(&w, correct, 1e-15);
     }
 
     #[test]
@@ -118,7 +118,7 @@ mod tests {
                 correct[i] = cpx!(i as f64, i as f64);
             }
             complex_vec_add(&mut w, alpha, &u, beta, &v).unwrap();
-            complex_vec_approx_eq(w.as_data(), &correct, 1e-15);
+            complex_vec_approx_eq(&w, &correct, 1e-15);
         }
     }
 }

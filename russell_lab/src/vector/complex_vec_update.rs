@@ -72,13 +72,13 @@ mod tests {
         let mut v = ComplexVector::from(&[cpx!(100.0, 0.0), cpx!(200.0, 0.0), cpx!(300.0, 0.0)]);
         complex_vec_update(&mut v, cpx!(2.0, 0.0), &u).unwrap();
         let correct = &[cpx!(120.0, 0.0), cpx!(240.0, 0.0), cpx!(360.0, 0.0)];
-        complex_vec_approx_eq(v.as_data(), correct, 1e-15);
+        complex_vec_approx_eq(&v, correct, 1e-15);
 
         // real and imag
         let u = ComplexVector::from(&[cpx!(10.0, 3.0), cpx!(20.0, 2.0), cpx!(30.0, 1.0)]);
         let mut v = ComplexVector::from(&[cpx!(100.0, 30.0), cpx!(200.0, 20.0), cpx!(300.0, 10.0)]);
         complex_vec_update(&mut v, cpx!(2.0, -2.0), &u).unwrap();
         let correct = &[cpx!(126.0, 16.0), cpx!(244.0, -16.0), cpx!(362.0, -48.0)];
-        complex_vec_approx_eq(v.as_data(), correct, 1e-15);
+        complex_vec_approx_eq(&v, correct, 1e-15);
     }
 }

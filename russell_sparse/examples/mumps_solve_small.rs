@@ -50,7 +50,7 @@ fn main() -> Result<(), StrError> {
 
     // check the results
     let correct = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-    vec_approx_eq(x.as_data(), &correct, 1e-14);
+    vec_approx_eq(&x, &correct, 1e-14);
 
     // analysis
     let a = coo.as_dense();

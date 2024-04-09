@@ -1401,7 +1401,7 @@ mod tests {
         let mut y0_correct = Vector::new(y0.dim());
         y_fn_x(&mut y0_correct, x0, &mut args);
         println!("y0 = {:?} = {:?}", y0_correct.as_data(), y0.as_data());
-        vec_approx_eq(y0.as_data(), y0_correct.as_data(), 1e-15);
+        vec_approx_eq(&y0, &y0_correct, 1e-15);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
@@ -1426,7 +1426,7 @@ mod tests {
         let mut y0_correct = Vector::new(y0.dim());
         y_fn_x(&mut y0_correct, x0, &mut args);
         println!("y0 = {:?} = {:?}", y0_correct.as_data(), y0.as_data());
-        vec_approx_eq(y0.as_data(), y0_correct.as_data(), 1e-15);
+        vec_approx_eq(&y0, &y0_correct, 1e-15);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
@@ -1556,7 +1556,7 @@ mod tests {
         let mut y0_correct = Vector::new(y0.dim());
         y_fn_x(&mut y0_correct, x0, &mut args);
         println!("y0 = {:?} = {:?}", y0_correct.as_data(), y0.as_data());
-        vec_approx_eq(y0.as_data(), y0_correct.as_data(), 1e-15);
+        vec_approx_eq(&y0, &y0_correct, 1e-15);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
@@ -1664,7 +1664,7 @@ mod tests {
         let mut y0_correct = Vector::new(y0.dim());
         y_fn_x(&mut y0_correct, x0, &mut args);
         println!("y0 = {:?} = {:?}", y0_correct.as_data(), y0.as_data());
-        vec_approx_eq(y0.as_data(), y0_correct.as_data(), 1e-15);
+        vec_approx_eq(&y0, &y0_correct, 1e-15);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
@@ -1689,7 +1689,7 @@ mod tests {
         let mut y0_correct = Vector::new(y0.dim());
         y_fn_x(&mut y0_correct, x0, &mut args);
         println!("y0 = {:?} = {:?}", y0_correct.as_data(), y0.as_data());
-        vec_approx_eq(y0.as_data(), y0_correct.as_data(), 1e-15);
+        vec_approx_eq(&y0, &y0_correct, 1e-15);
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();

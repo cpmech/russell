@@ -167,13 +167,13 @@
 //!     let mut x1 = Vector::new(ndim);
 //!     solver.actual.solve(&mut x1, &coo, &rhs1, false)?;
 //!     let correct = vec![3.0, 2.0, 4.0];
-//!     vec_approx_eq(x1.as_data(), &correct, 1e-14);
+//!     vec_approx_eq(&x1, &correct, 1e-14);
 //!
 //!     // calculate the solution again
 //!     let mut x2 = Vector::new(ndim);
 //!     solver.actual.solve(&mut x2, &coo, &rhs2, false)?;
 //!     let correct = vec![6.0, 4.0, 8.0];
-//!     vec_approx_eq(x2.as_data(), &correct, 1e-14);
+//!     vec_approx_eq(&x2, &correct, 1e-14);
 //!     Ok(())
 //! }
 //! ```
@@ -232,7 +232,7 @@
 //!
 //!     // check the results
 //!     let correct = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-//!     vec_approx_eq(x.as_data(), &correct, 1e-14);
+//!     vec_approx_eq(&x, &correct, 1e-14);
 //!
 //!     // analysis
 //!     let mut stats = StatsLinSol::new();

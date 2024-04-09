@@ -164,7 +164,7 @@ mod tests {
               62.0 / 49.0,
               23.0 / 14.0,
         ];
-        vec_approx_eq(b.as_data(), x_correct, 1e-13);
+        vec_approx_eq(&b, x_correct, 1e-13);
     }
 
     #[test]
@@ -192,7 +192,7 @@ mod tests {
              3.0,
             -5.0,
         ];
-        vec_approx_eq(b.as_data(), x_correct, 1e-14);
+        vec_approx_eq(&b, x_correct, 1e-14);
     }
 
     #[test]

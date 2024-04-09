@@ -23,8 +23,8 @@ fn main() -> Result<(), StrError> {
     mat_svd(&mut s, &mut u, &mut vt, &mut a)?;
 
     // check
-    let s_correct = &[2.0, 2.0 / math::SQRT_3, 2.0 / math::SQRT_3];
-    vec_approx_eq(s.as_data(), s_correct, 1e-14);
+    let s_correct = [2.0, 2.0 / math::SQRT_3, 2.0 / math::SQRT_3];
+    vec_approx_eq(&s, &s_correct, 1e-14);
 
     // check SVD: a == u * s * vt
     let mut usv = Matrix::new(m, n);

@@ -27,6 +27,6 @@ fn test_complex_umfpack() -> Result<(), StrError> {
     let mut solver = ComplexSolverUMFPACK::new()?;
     solver.factorize(&mut mat, None)?;
     solver.solve(&mut x, &mut mat, &rhs, false)?;
-    complex_vec_approx_eq(x.as_data(), x_correct.as_data(), 1e-14);
+    complex_vec_approx_eq(&x, &x_correct, 1e-14);
     Ok(())
 }

@@ -206,7 +206,7 @@ mod tests {
         let data = &[[cpx!(2.0, 0.0)]];
         let (l, v) = calc_eigen_lower(data);
         complex_mat_approx_eq(&v, &[[cpx!(1.0, 0.0)]], 1e-15);
-        vec_approx_eq(l.as_data(), &[2.0], 1e-15);
+        vec_approx_eq(&l, &[2.0], 1e-15);
 
         // 2x2 matrix
         let data = &[[cpx!(2.0, 0.0), cpx!(1.0, 0.0)], [cpx!(1.0, 0.0), cpx!(2.0, 0.0)]];
@@ -219,7 +219,7 @@ mod tests {
             ],
             1e-15,
         );
-        vec_approx_eq(l.as_data(), &[1.0, 3.0], 1e-15);
+        vec_approx_eq(&l, &[1.0, 3.0], 1e-15);
     }
 
     #[test]
@@ -241,8 +241,8 @@ mod tests {
         ];
         complex_mat_approx_eq(&v, correct, 1e-15);
         complex_mat_approx_eq(&vv, correct, 1e-15);
-        vec_approx_eq(l.as_data(), &[0.0, 0.0, 0.0], 1e-15);
-        vec_approx_eq(ll.as_data(), &[0.0, 0.0, 0.0], 1e-15);
+        vec_approx_eq(&l, &[0.0, 0.0, 0.0], 1e-15);
+        vec_approx_eq(&ll, &[0.0, 0.0, 0.0], 1e-15);
 
         // 2-repeated, with one zero diagonal entry
         #[rustfmt::skip]
@@ -261,8 +261,8 @@ mod tests {
         ];
         complex_mat_approx_eq(&v, correct, 1e-15);
         complex_mat_approx_eq(&vv, correct, 1e-15);
-        vec_approx_eq(l.as_data(), &[0.0, 2.0, 2.0], 1e-15);
-        vec_approx_eq(ll.as_data(), &[0.0, 2.0, 2.0], 1e-15);
+        vec_approx_eq(&l, &[0.0, 2.0, 2.0], 1e-15);
+        vec_approx_eq(&ll, &[0.0, 2.0, 2.0], 1e-15);
         let l_cpx = ComplexVector::from(&l);
         complex_check_eigen(data, &v, &l_cpx, 1e-15);
 
@@ -283,8 +283,8 @@ mod tests {
         ]);
         complex_mat_approx_eq(&v, &correct, 1e-15);
         complex_mat_approx_eq(&vv, &correct, 1e-15);
-        vec_approx_eq(l.as_data(), &[2.0, 2.0, 2.0], 1e-15);
-        vec_approx_eq(ll.as_data(), &[2.0, 2.0, 2.0], 1e-15);
+        vec_approx_eq(&l, &[2.0, 2.0, 2.0], 1e-15);
+        vec_approx_eq(&ll, &[2.0, 2.0, 2.0], 1e-15);
         let l_cpx = ComplexVector::from(&l);
         complex_check_eigen(data, &v, &l_cpx, 1e-15);
     }
@@ -306,7 +306,7 @@ mod tests {
             [cpx!( 1.0*d, 0.0), cpx!(0.0, 0.0), cpx!(2.0*d, 0.0)],
         ]);
         complex_mat_approx_eq(&v, &correct, 1e-15);
-        vec_approx_eq(l.as_data(), &[1.0, 2.0, 11.0], 1e-15);
+        vec_approx_eq(&l, &[1.0, 2.0, 11.0], 1e-15);
         let l_cpx = ComplexVector::from(&l);
         complex_check_eigen(data, &v, &l_cpx, 1e-15);
     }
@@ -337,14 +337,14 @@ mod tests {
         // lower
         let mut l = Vector::new(3);
         complex_mat_eigen_herm(&mut l, &mut a_lower, false).unwrap();
-        vec_approx_eq(l.as_data(), l_correct, 1e-15);
+        vec_approx_eq(&l, l_correct, 1e-15);
         let v = &a_lower;
         let l_cpx = ComplexVector::from(&l);
         complex_check_eigen(a_herm, v, &l_cpx, 1e-15);
         // upper
         let mut l = Vector::new(3);
         complex_mat_eigen_herm(&mut l, &mut a_upper, true).unwrap();
-        vec_approx_eq(l.as_data(), l_correct, 1e-15);
+        vec_approx_eq(&l, l_correct, 1e-15);
         let v = &a_upper;
         let l_cpx = ComplexVector::from(&l);
         complex_check_eigen(a_herm, v, &l_cpx, 1e-15);

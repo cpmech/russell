@@ -107,7 +107,7 @@ fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
             "{:>4}{:>13.6}{:>13.6}{:>13.6}{:>13.6}{:>15.6e}",
             it, uu[0], uu[1], uu[2], uu[3], err
         );
-        vec_approx_eq(uu.as_data(), &uu_ref[it], 1e-6);
+        vec_approx_eq(&uu, &uu_ref[it], 1e-6);
         if err < 1e-13 {
             break;
         }

@@ -329,12 +329,12 @@ mod tests {
     fn chebyshev_gauss_points_works() {
         let xx = chebyshev_gauss_points(1);
         let xx_ref = vec![-1.0 / SQRT_2, 1.0 / SQRT_2];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
 
         let xx = chebyshev_gauss_points(2);
         let xx_ref = vec![-SQRT_3 / 2.0, 0.0, SQRT_3 / 2.0];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
 
         let xx = chebyshev_gauss_points(3);
@@ -344,7 +344,7 @@ mod tests {
             3.826834323650897e-01,
             9.238795325112867e-01,
         ];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
 
         let xx = chebyshev_gauss_points(4);
@@ -355,7 +355,7 @@ mod tests {
             5.877852522924730e-01,
             9.510565162951535e-01,
         ];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
 
         let xx = chebyshev_gauss_points(5);
@@ -367,7 +367,7 @@ mod tests {
             7.071067811865475e-01,
             9.659258262890682e-01,
         ];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
 
         let xx = chebyshev_gauss_points(6);
@@ -380,7 +380,7 @@ mod tests {
             7.818314824680298e-01,
             9.749279121818236e-01,
         ];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
 
         let xx = chebyshev_gauss_points(7);
@@ -394,7 +394,7 @@ mod tests {
             8.314696123025453e-01,
             9.807852804032304e-01,
         ];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
 
         let xx = chebyshev_gauss_points(8);
@@ -409,7 +409,7 @@ mod tests {
             8.660254037844387e-01,
             9.848077530122080e-01,
         ];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
 
         let xx = chebyshev_gauss_points(9);
@@ -425,7 +425,7 @@ mod tests {
             8.910065241883678e-01,
             9.876883405951377e-01,
         ];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
     }
 
@@ -433,17 +433,17 @@ mod tests {
     fn chebyshev_lobatto_points_works() {
         let xx = chebyshev_lobatto_points(1);
         let xx_ref = vec![-1.0, 1.0];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
 
         let xx = chebyshev_lobatto_points(2);
         let xx_ref = vec![-1.0, 0.0, 1.0];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
 
         let xx = chebyshev_lobatto_points(3);
         let xx_ref = vec![-1.0, -0.5, 0.5, 1.0];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
 
         let xx = chebyshev_lobatto_points(4);
@@ -454,7 +454,7 @@ mod tests {
             7.071067811865475e-01,
             1.000000000000000e+00,
         ];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
 
         let xx = chebyshev_lobatto_points(5);
@@ -466,7 +466,7 @@ mod tests {
             8.090169943749473e-01,
             1.000000000000000e+00,
         ];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
 
         let xx = chebyshev_lobatto_points(6);
@@ -479,7 +479,7 @@ mod tests {
             8.660254037844385e-01,
             1.000000000000000e+00,
         ];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
 
         let xx = chebyshev_lobatto_points(7);
@@ -493,7 +493,7 @@ mod tests {
             9.009688679024190e-01,
             1.000000000000000e+00,
         ];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
 
         let xx = chebyshev_lobatto_points(8);
@@ -508,7 +508,7 @@ mod tests {
             9.238795325112867e-01,
             1.000000000000000e+00,
         ];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
 
         let xx = chebyshev_lobatto_points(9);
@@ -524,7 +524,7 @@ mod tests {
             9.396926207859083e-01,
             1.000000000000000e+00,
         ];
-        vec_approx_eq(xx.as_data(), &xx_ref, 1e-15);
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);
     }
 }

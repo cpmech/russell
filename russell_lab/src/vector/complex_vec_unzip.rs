@@ -75,7 +75,7 @@ mod tests {
         let mut real = Vector::new(3);
         let mut imag = Vector::new(3);
         complex_vec_unzip(&mut real, &mut imag, &v).unwrap();
-        vec_approx_eq(real.as_data(), &[1.0, 2.0, 3.0], 1e-15);
-        vec_approx_eq(imag.as_data(), &[4.0, 5.0, 6.0], 1e-15);
+        vec_approx_eq(&real, &[1.0, 2.0, 3.0], 1e-15);
+        vec_approx_eq(&imag, &[4.0, 5.0, 6.0], 1e-15);
     }
 }

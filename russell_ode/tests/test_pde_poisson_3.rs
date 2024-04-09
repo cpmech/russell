@@ -70,7 +70,7 @@ fn test_pde_poisson_3() {
     fdm.loop_over_grid_points(|i, x, y| {
         phi_correct[i] = analytical(x, y);
     });
-    vec_approx_eq(phi.as_data(), phi_correct.as_data(), 1e-15);
+    vec_approx_eq(&phi, &phi_correct, 1e-15);
 
     // plot results
     if SAVE_FIGURE {

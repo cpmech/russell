@@ -1641,7 +1641,7 @@ mod tests {
             [ 84.0,  69.0, 54.0],
             [138.0, 114.0, 90.0],
         ], Mandel::General).unwrap();
-        vec_approx_eq(c.vec.as_data(), correct.vec.as_data(), 1e-13);
+        vec_approx_eq(&c.vec, &correct.vec, 1e-13);
 
         // sym-3D . sym-3D
         #[rustfmt::skip]
@@ -1664,7 +1664,7 @@ mod tests {
             [52.0, 44.0, 37.0],
             [61.0, 52.0, 59.0],
         ], Mandel::General).unwrap();
-        vec_approx_eq(c.vec.as_data(), correct.vec.as_data(), 1e-13);
+        vec_approx_eq(&c.vec, &correct.vec, 1e-13);
 
         // sym-2D . sym-2D
         #[rustfmt::skip]
@@ -1687,7 +1687,7 @@ mod tests {
             [22.0, 24.0, 0.0],
             [ 0.0,  0.0, 3.0],
         ], Mandel::General).unwrap();
-        vec_approx_eq(c.vec.as_data(), correct.vec.as_data(), 1e-13);
+        vec_approx_eq(&c.vec, &correct.vec, 1e-13);
     }
 
     #[test]
@@ -1715,7 +1715,7 @@ mod tests {
         let u = Vector::from(&[-2.0, -3.0, -4.0]);
         let mut v = Vector::new(3);
         t2_dot_vec(&mut v, 2.0, &a, &u).unwrap();
-        vec_approx_eq(v.as_data(), &[-40.0, -94.0, -148.0], 1e-13);
+        vec_approx_eq(&v, &[-40.0, -94.0, -148.0], 1e-13);
 
         // sym-3D . vec
         #[rustfmt::skip]
@@ -1727,7 +1727,7 @@ mod tests {
         let u = Vector::from(&[-2.0, -3.0, -4.0]);
         let mut v = Vector::new(3);
         t2_dot_vec(&mut v, 2.0, &a, &u).unwrap();
-        vec_approx_eq(v.as_data(), &[-40.0, -86.0, -120.0], 1e-13);
+        vec_approx_eq(&v, &[-40.0, -86.0, -120.0], 1e-13);
 
         // sym-2D . vec
         #[rustfmt::skip]
@@ -1739,7 +1739,7 @@ mod tests {
         let u = Vector::from(&[-2.0, -3.0]);
         let mut v = Vector::new(2);
         t2_dot_vec(&mut v, 2.0, &a, &u).unwrap();
-        vec_approx_eq(v.as_data(), &[-16.0, -38.0], 1e-13);
+        vec_approx_eq(&v, &[-16.0, -38.0], 1e-13);
     }
 
     #[test]
@@ -1767,7 +1767,7 @@ mod tests {
         ], Mandel::General).unwrap();
         let mut v = Vector::new(3);
         vec_dot_t2(&mut v, 2.0, &u, &a).unwrap();
-        vec_approx_eq(v.as_data(), &[-84.0, -102.0, -120.0], 1e-13);
+        vec_approx_eq(&v, &[-84.0, -102.0, -120.0], 1e-13);
 
         // sym-3D . vec
         let u = Vector::from(&[-2.0, -3.0, -4.0]);
@@ -1779,7 +1779,7 @@ mod tests {
         ], Mandel::Symmetric).unwrap();
         let mut v = Vector::new(3);
         vec_dot_t2(&mut v, 2.0, &u, &a).unwrap();
-        vec_approx_eq(v.as_data(), &[-40.0, -86.0, -120.0], 1e-13);
+        vec_approx_eq(&v, &[-40.0, -86.0, -120.0], 1e-13);
 
         // sym-2D . vec
         let u = Vector::from(&[-2.0, -3.0]);
@@ -1791,7 +1791,7 @@ mod tests {
         ], Mandel::Symmetric2D).unwrap();
         let mut v = Vector::new(2);
         vec_dot_t2(&mut v, 2.0, &u, &a).unwrap();
-        vec_approx_eq(v.as_data(), &[-16.0, -38.0], 1e-13);
+        vec_approx_eq(&v, &[-16.0, -38.0], 1e-13);
     }
 
     #[test]
@@ -1861,7 +1861,7 @@ mod tests {
             6.0 * SQRT_2,
             12.0 * SQRT_2,
         ];
-        vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
+        vec_approx_eq(&tt.vec, correct, 1e-14);
 
         // symmetric 3D
         let u = Vector::from(&[-2.0, -3.0, -4.0]);
@@ -1869,7 +1869,7 @@ mod tests {
         let mut tt = Tensor2::new(Mandel::Symmetric);
         vec_dyad_vec(&mut tt, 2.0, &u, &v).unwrap();
         let correct = &[-8.0, -18.0, -32.0, -12.0 * SQRT_2, -24.0 * SQRT_2, -16.0 * SQRT_2];
-        vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
+        vec_approx_eq(&tt.vec, correct, 1e-14);
 
         // symmetric 2D
         let u = Vector::from(&[-2.0, -3.0]);
@@ -1877,7 +1877,7 @@ mod tests {
         let mut tt = Tensor2::new(Mandel::Symmetric2D);
         vec_dyad_vec(&mut tt, 2.0, &u, &v).unwrap();
         let correct = &[-8.0, -18.0, 0.0, -12.0 * SQRT_2];
-        vec_approx_eq(tt.vec.as_data(), correct, 1e-14);
+        vec_approx_eq(&tt.vec, correct, 1e-14);
     }
 
     #[test]

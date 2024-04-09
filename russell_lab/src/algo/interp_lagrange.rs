@@ -100,12 +100,13 @@ pub enum GridType {
 /// ```
 ///
 /// # References
-/// * Canuto C, Hussaini MY, Quarteroni A, Zang TA (2006) Spectral Methods: Fundamentals in
-///   Single Domains. Springer. 563p
-/// * Berrut JP, Trefethen LN (2004) Barycentric Lagrange Interpolation,
-///   SIAM Review Vol. 46, No. 3, pp. 501-517
-/// * Costa B, Don WS (2000) On the computation of high order pseudospectral derivatives,
-///   Applied Numerical Mathematics, 33:151-159.
+///
+/// 1. Canuto C, Hussaini MY, Quarteroni A, Zang TA (2006) Spectral Methods: Fundamentals in
+///    Single Domains. Springer. 563p
+/// 2. Berrut JP, Trefethen LN (2004) Barycentric Lagrange Interpolation,
+///    SIAM Review Vol. 46, No. 3, pp. 501-517
+/// 3. Costa B, Don WS (2000) On the computation of high order pseudospectral derivatives,
+///    Applied Numerical Mathematics, 33:151-159.
 #[derive(Clone, Debug)]
 pub struct InterpLagrange {
     // general
@@ -355,12 +356,12 @@ impl InterpLagrange {
     /// Computes:
     ///
     /// ```text
-    ///  d I{f}(x)  │         N
-    /// ——————————— │      =  Σ   D1_kj ⋅ f(x_j)
-    ///      dx     │x=x_k   j=0
+    /// dI{f}(x) │       N  dℓⱼ(x) │
+    /// ———————— │    =  Σ  —————— │   ⋅ f(xⱼ)  =  D1ₖⱼ ⋅ f(xⱼ)
+    ///    dx    │x=xₖ  j=0   dx   │x=xₖ          
     /// ```
     ///
-    /// See: Berrut and Trefethen (2004)
+    /// See Eq (3) of Reference #3
     pub fn CalcD1(&mut self) {
         // allocate matrix
         self.D1 = Matrix::new(self.np1, self.np1);
@@ -398,14 +399,16 @@ impl InterpLagrange {
     /// CalcD2 calculates the second derivative of the L function
     ///
     /// ```text
-    ///         d²ℓ_l  |
-    /// D2_jl = —————— |
-    ///          dx²   |x=x_j
+    /// d²I{f}(x) │       N  d²ℓⱼ(x) │    
+    /// ————————— │    =  Σ  ——————— │   ⋅ f(xⱼ)  =  D2ₖⱼ f(xⱼ)
+    ///    dx²    │x=xₖ  j=0   dx²   │x=xₖ
     /// ```
+    ///
+    /// See Eq (10) of Reference #3
     ///
     /// TODO:
     /// 1. Impl flag "already_calculated"
-    /// 2. Handle the below
+    /// 2. Handle the note below
     ///
     /// NOTE: this function will call CalcD1() because the D1 values required to compute D2
     pub fn CalcD2(&mut self) {
@@ -567,7 +570,7 @@ impl InterpLagrange {
 #[cfg(test)]
 mod tests {
     use super::{GridType, InterpLagrange};
-    use crate::{approx_eq, Vector};
+    use crate::{approx_eq, deriv_central5, Vector};
 
     fn check_lambda(N: usize, grid_type: GridType, tol: f64) {
         let interp = InterpLagrange::new(N, grid_type).unwrap();
@@ -658,23 +661,68 @@ mod tests {
         }
     }
 
-    /*
-    fn check_deriv1(nn: usize, grid_type: GridType, tol: f64) {
-        struct Args {
-
-        }
+    fn check_deriv1(n: usize, grid_type: GridType, tol: f64) {
+        let mut interp = InterpLagrange::new(n, grid_type).unwrap();
+        interp.CalcD1();
+        struct Args {}
         let args = &mut Args {};
-        let np1 = nn + 1;
-        let mut dd1_num = Matrix::new(np1, np1);
-        for i in 0..np1{
-            for j in 0..np1{
+        let np1 = n + 1;
+        for i in 0..np1 {
+            let xi = interp.X[i];
+            for j in 0..np1 {
+                let ana = deriv_central5(xi, args, |x, _| Ok(interp.L(j, x))).unwrap();
+                approx_eq(interp.D1.get(i, j), ana, tol);
+            }
+        }
+    }
 
+    /*
+    fn check_deriv2(n: usize, grid_type: GridType, tol: f64) {
+        let mut interp = InterpLagrange::new(n, grid_type).unwrap();
+        interp.CalcD1();
+        interp.CalcD2();
+        struct Args {}
+        let args = &mut Args {};
+        let np1 = n + 1;
+        for i in 0..np1 {
+            let xi = interp.X[i];
+            for j in 0..np1 {
+                let ana = deriv_central5(xi, args, |x, _| Ok(interp.D(j, x))).unwrap();
+                approx_eq(interp.D1.get(i, j), ana, tol);
             }
         }
     }
     */
 
-    // fn check_deriv2(nn: usize, grid_type: GridType, tol: f64) { }
+    #[test]
+    fn d1_matrix_is_ok() {
+        #[rustfmt::skip]
+        let n_and_tols = [
+            (2, 1e-12),
+            (5, 1e-9),
+            (10, 1e-8),
+        ];
+        for (n, tol) in n_and_tols {
+            // println!("n = {:?}", n);
+            check_deriv1(n, GridType::ChebyshevGauss, tol);
+        }
+    }
+
+    /*
+    #[test]
+    fn d2_matrix_is_ok() {
+        #[rustfmt::skip]
+        let n_and_tols = [
+            (2, 1e-12),
+            (5, 1e-9),
+            (10, 1e-8),
+        ];
+        for (n, tol) in n_and_tols {
+            println!("n = {:?}", n);
+            check_deriv2(n, GridType::ChebyshevGaussLobatto, tol);
+        }
+    }
+    */
 
     #[test]
     fn new_works() {

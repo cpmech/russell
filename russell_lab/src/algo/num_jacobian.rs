@@ -3,6 +3,10 @@ use crate::{deriv_central5, Matrix, Vector};
 
 /// Computes the Jacobian matrix of a vector function using 5-point finite differences
 ///
+/// Use the function as `|f, x, y, args| Ok(())`
+///
+/// Or `|f: &mut Vector, x: f64, y: &Vector, args: &mut A| Ok(())`
+///
 /// Given the vector function:
 ///
 /// ```text

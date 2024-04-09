@@ -2,7 +2,7 @@ use super::ComplexMatrix;
 use crate::AsArray2D;
 use num_complex::Complex64;
 
-/// Panics if two vectors are not approximately equal to each other
+/// Panics if two matrices are not approximately equal to each other
 ///
 /// **Note:** Will also panic if NaN or Inf is found.
 ///

@@ -198,7 +198,7 @@ mod tests {
     use super::Tensor2;
     use crate::{
         deriv1_invariant_jj2, deriv1_invariant_jj3, deriv1_invariant_lode, deriv1_invariant_sigma_d,
-        deriv1_invariant_sigma_m, deriv1_norm, Mandel, SampleTensor2, SamplesTensor2,
+        deriv1_invariant_sigma_m, deriv1_norm, Mandel, SampleTensor2, SamplesTensor2, StrError,
     };
     use russell_lab::{deriv_central5, mat_approx_eq, Matrix};
 
@@ -258,7 +258,7 @@ mod tests {
     }
 
     // computes f(σ) for varying components x = σᵢⱼ
-    fn f_sigma(x: f64, args: &mut ArgsNumDeriv) -> f64 {
+    fn f_sigma(x: f64, args: &mut ArgsNumDeriv) -> Result<f64, StrError> {
         let original = args.sigma_mat.get(args.i, args.j);
         args.sigma_mat.set(args.i, args.j, x);
         args.sigma.set_matrix(&args.sigma_mat).unwrap();
@@ -271,11 +271,11 @@ mod tests {
             F::Lode => args.sigma.invariant_lode().unwrap(),
         };
         args.sigma_mat.set(args.i, args.j, original);
-        res
+        Ok(res)
     }
 
     // computes f(σ) for varying components x = σₘ
-    fn f_sigma_mandel(x: f64, args: &mut ArgsNumDerivMandel) -> f64 {
+    fn f_sigma_mandel(x: f64, args: &mut ArgsNumDerivMandel) -> Result<f64, StrError> {
         let original = args.sigma.vec[args.m];
         args.sigma.vec[args.m] = x;
         let res = match args.fn_name {
@@ -287,7 +287,7 @@ mod tests {
             F::Lode => args.sigma.invariant_lode().unwrap(),
         };
         args.sigma.vec[args.m] = original;
-        res
+        Ok(res)
     }
 
     // computes ∂f/∂σᵢⱼ and returns as a 3x3 matrix of (standard) components
@@ -305,7 +305,7 @@ mod tests {
             for j in 0..3 {
                 args.j = j;
                 let x = args.sigma_mat.get(i, j);
-                let res = deriv_central5(x, &mut args, f_sigma);
+                let res = deriv_central5(x, &mut args, f_sigma).unwrap();
                 num_deriv.set(i, j, res);
             }
         }
@@ -323,7 +323,7 @@ mod tests {
         for m in 0..sigma.vec.dim() {
             args.m = m;
             let x = args.sigma.vec[m];
-            let res = deriv_central5(x, &mut args, f_sigma_mandel);
+            let res = deriv_central5(x, &mut args, f_sigma_mandel).unwrap();
             num_deriv.vec[m] = res;
         }
         num_deriv.to_matrix()

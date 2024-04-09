@@ -1,4 +1,4 @@
-use crate::deriv_central5;
+use crate::{deriv_central5, StrError};
 
 /// Panics if derivative is not approximately equal to a numerical derivative
 ///
@@ -6,11 +6,12 @@ use crate::deriv_central5;
 ///
 /// 1. Will panic if NAN, INFINITY, or NEG_INFINITY is found
 /// 2. Will panic if the absolute difference of derivative values is greater than the tolerance
+/// 3. Will panic if the function `f` returns an error
 ///
 /// **Note:** Will also panic if NaN or Inf is found
 pub fn deriv_approx_eq<F, A>(dfdx: f64, at_x: f64, args: &mut A, tol: f64, f: F)
 where
-    F: FnMut(f64, &mut A) -> f64,
+    F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
     if dfdx.is_nan() {
         panic!("the derivative is NaN");
@@ -19,7 +20,9 @@ where
         panic!("the derivative is Inf");
     }
 
-    let dfdx_num = deriv_central5(at_x, args, f);
+    let dfdx_num = deriv_central5(at_x, args, f)
+        .map_err(|e| format!("the function returned an error: {}", e))
+        .unwrap();
 
     if dfdx_num.is_nan() {
         panic!("the numerical derivative is NaN");
@@ -40,18 +43,25 @@ where
 #[cfg(test)]
 mod tests {
     use super::deriv_approx_eq;
+    use crate::StrError;
 
     struct Arguments {}
 
-    fn placeholder(_: f64, _: &mut Arguments) -> f64 {
-        panic!("NOT HERE");
+    fn placeholder(_: f64, _: &mut Arguments) -> Result<f64, StrError> {
+        Err("NOT HERE")
     }
 
     #[test]
-    #[should_panic(expected = "NOT HERE")]
-    fn placeholder_panics() {
+    fn placeholder_returns_error() {
         let args = &mut Arguments {};
-        placeholder(0.0, args);
+        assert_eq!(placeholder(0.0, args).err(), Some("NOT HERE"));
+    }
+
+    #[test]
+    #[should_panic(expected = "the function returned an error: NOT HERE")]
+    fn panics_on_function_error() {
+        let args = &mut Arguments {};
+        deriv_approx_eq(0.0, 1.5, args, 1e-1, &placeholder);
     }
 
     #[test]
@@ -71,7 +81,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "the numerical derivative is NaN")]
     fn panics_on_nan_2() {
-        let f = |_: f64, _: &mut Arguments| f64::NAN;
+        let f = |_: f64, _: &mut Arguments| Ok(f64::NAN);
         let args = &mut Arguments {};
         deriv_approx_eq(0.0, 1.5, args, 1e-1, f);
     }
@@ -79,7 +89,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "the numerical derivative is NaN")]
     fn panics_on_inf_2() {
-        let f = |_: f64, _: &mut Arguments| f64::INFINITY; // yields NaN in central deriv because of Inf - Inf
+        let f = |_: f64, _: &mut Arguments| Ok(f64::INFINITY); // yields NaN in central deriv because of Inf - Inf
         let args = &mut Arguments {};
         deriv_approx_eq(0.0, 1.5, args, 1e-1, f);
     }
@@ -87,7 +97,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "derivative is not approximately equal to numerical value. diff = ")]
     fn panics_on_different_deriv() {
-        let f = |x: f64, _: &mut Arguments| x * x / 2.0;
+        let f = |x: f64, _: &mut Arguments| Ok(x * x / 2.0);
         let args = &mut Arguments {};
         let at_x = 1.5;
         let dfdx = 1.51;
@@ -96,7 +106,7 @@ mod tests {
 
     #[test]
     fn accepts_approx_equal_deriv() {
-        let f = |x: f64, _: &mut Arguments| x * x / 2.0;
+        let f = |x: f64, _: &mut Arguments| Ok(x * x / 2.0);
         let args = &mut Arguments {};
         let at_x = 1.5;
         let dfdx = 1.501;

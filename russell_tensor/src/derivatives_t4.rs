@@ -474,8 +474,8 @@ mod tests {
         deriv1_invariant_jj2, deriv1_invariant_jj3, deriv1_invariant_lode, deriv1_invariant_sigma_d,
         deriv2_invariant_jj2, deriv2_invariant_jj3, deriv2_invariant_lode, deriv2_invariant_sigma_d,
         deriv_inverse_tensor, deriv_inverse_tensor_sym, deriv_squared_tensor, deriv_squared_tensor_sym,
-        AuxDeriv2InvariantJ3, AuxDeriv2InvariantLode, AuxDeriv2InvariantSigmaD, Mandel, SamplesTensor2, MN_TO_IJKL,
-        SQRT_2,
+        AuxDeriv2InvariantJ3, AuxDeriv2InvariantLode, AuxDeriv2InvariantSigmaD, Mandel, SamplesTensor2, StrError,
+        MN_TO_IJKL, SQRT_2,
     };
     use russell_lab::{approx_eq, deriv_central5, mat_approx_eq, Matrix};
 
@@ -498,21 +498,21 @@ mod tests {
         n: usize,    // index of ∂aiₘ/∂aₙ (Mandel components)
     }
 
-    fn component_of_inverse(x: f64, args: &mut ArgsNumDerivInverse) -> f64 {
+    fn component_of_inverse(x: f64, args: &mut ArgsNumDerivInverse) -> Result<f64, StrError> {
         let original = args.a_mat.get(args.k, args.l);
         args.a_mat.set(args.k, args.l, x);
         args.a.set_matrix(&args.a_mat).unwrap();
         args.a.inverse(&mut args.ai, 1e-10).unwrap().unwrap();
         args.a_mat.set(args.k, args.l, original);
-        args.ai.get(args.i, args.j)
+        Ok(args.ai.get(args.i, args.j))
     }
 
-    fn component_of_inverse_mandel(x: f64, args: &mut ArgsNumDerivInverseMandel) -> f64 {
+    fn component_of_inverse_mandel(x: f64, args: &mut ArgsNumDerivInverseMandel) -> Result<f64, StrError> {
         let original = args.a.vec[args.n];
         args.a.vec[args.n] = x;
         args.a.inverse(&mut args.ai, 1e-10).unwrap().unwrap();
         args.a.vec[args.n] = original;
-        args.ai.vec[args.m]
+        Ok(args.ai.vec[args.m])
     }
 
     fn numerical_deriv_inverse(a: &Tensor2) -> Matrix {
@@ -530,7 +530,7 @@ mod tests {
             for n in 0..9 {
                 (args.i, args.j, args.k, args.l) = MN_TO_IJKL[m][n];
                 let x = args.a_mat.get(args.k, args.l);
-                let res = deriv_central5(x, &mut args, component_of_inverse);
+                let res = deriv_central5(x, &mut args, component_of_inverse).unwrap();
                 num_deriv.set(m, n, res);
             }
         }
@@ -550,7 +550,7 @@ mod tests {
             for n in 0..9 {
                 args.n = n;
                 let x = args.a.vec[args.n];
-                let res = deriv_central5(x, &mut args, component_of_inverse_mandel);
+                let res = deriv_central5(x, &mut args, component_of_inverse_mandel).unwrap();
                 num_deriv.mat.set(m, n, res);
             }
         }
@@ -578,7 +578,7 @@ mod tests {
             for n in 0..6 {
                 args.n = n;
                 let x = args.a.vec[args.n];
-                let res = deriv_central5(x, &mut args, component_of_inverse_mandel);
+                let res = deriv_central5(x, &mut args, component_of_inverse_mandel).unwrap();
                 num_deriv.mat.set(m, n, res);
             }
         }
@@ -715,21 +715,21 @@ mod tests {
         n: usize,    // index of ∂aiₘ/∂aₙ (Mandel components)
     }
 
-    fn component_of_squared(x: f64, args: &mut ArgsNumDerivSquared) -> f64 {
+    fn component_of_squared(x: f64, args: &mut ArgsNumDerivSquared) -> Result<f64, StrError> {
         let original = args.a_mat.get(args.k, args.l);
         args.a_mat.set(args.k, args.l, x);
         args.a.set_matrix(&args.a_mat).unwrap();
         args.a.squared(&mut args.a2).unwrap();
         args.a_mat.set(args.k, args.l, original);
-        args.a2.get(args.i, args.j)
+        Ok(args.a2.get(args.i, args.j))
     }
 
-    fn component_of_squared_mandel(x: f64, args: &mut ArgsNumDerivSquaredMandel) -> f64 {
+    fn component_of_squared_mandel(x: f64, args: &mut ArgsNumDerivSquaredMandel) -> Result<f64, StrError> {
         let original = args.a.vec[args.n];
         args.a.vec[args.n] = x;
         args.a.squared(&mut args.a2).unwrap();
         args.a.vec[args.n] = original;
-        args.a2.vec[args.m]
+        Ok(args.a2.vec[args.m])
     }
 
     fn numerical_deriv_squared(a: &Tensor2) -> Matrix {
@@ -747,7 +747,7 @@ mod tests {
             for n in 0..9 {
                 (args.i, args.j, args.k, args.l) = MN_TO_IJKL[m][n];
                 let x = args.a_mat.get(args.k, args.l);
-                let res = deriv_central5(x, &mut args, component_of_squared);
+                let res = deriv_central5(x, &mut args, component_of_squared).unwrap();
                 num_deriv.set(m, n, res);
             }
         }
@@ -767,7 +767,7 @@ mod tests {
             for n in 0..9 {
                 args.n = n;
                 let x = args.a.vec[args.n];
-                let res = deriv_central5(x, &mut args, component_of_squared_mandel);
+                let res = deriv_central5(x, &mut args, component_of_squared_mandel).unwrap();
                 num_deriv.mat.set(m, n, res);
             }
         }
@@ -795,7 +795,7 @@ mod tests {
             for n in 0..6 {
                 args.n = n;
                 let x = args.a.vec[args.n];
-                let res = deriv_central5(x, &mut args, component_of_squared_mandel);
+                let res = deriv_central5(x, &mut args, component_of_squared_mandel).unwrap();
                 num_deriv.mat.set(m, n, res);
             }
         }
@@ -957,7 +957,7 @@ mod tests {
         n: usize,       // index of [dInvariant²/dσ⊗dσ]ₘₙ (Mandel components)
     }
 
-    fn component_of_deriv1_inv_mandel(x: f64, args: &mut ArgsNumDeriv2InvariantMandel) -> f64 {
+    fn component_of_deriv1_inv_mandel(x: f64, args: &mut ArgsNumDeriv2InvariantMandel) -> Result<f64, StrError> {
         let original = args.sigma.vec[args.n];
         args.sigma.vec[args.n] = x;
         match args.inv {
@@ -975,7 +975,7 @@ mod tests {
             }
         };
         args.sigma.vec[args.n] = original;
-        args.d1.vec[args.m]
+        Ok(args.d1.vec[args.m])
     }
 
     fn numerical_deriv2_inv_sym_mandel(sigma: &Tensor2, inv: Invariant) -> Matrix {
@@ -1001,7 +1001,7 @@ mod tests {
             for n in 0..6 {
                 args.n = n;
                 let x = args.sigma.vec[args.n];
-                let res = deriv_central5(x, &mut args, component_of_deriv1_inv_mandel);
+                let res = deriv_central5(x, &mut args, component_of_deriv1_inv_mandel).unwrap();
                 num_deriv.mat.set(m, n, res);
             }
         }

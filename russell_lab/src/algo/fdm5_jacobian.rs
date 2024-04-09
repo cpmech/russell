@@ -63,14 +63,21 @@ use crate::{deriv_central5, Matrix, Vector};
 ///         f[0] = x + y[0] - y[1];
 ///         f[1] = y[0] * y[1];
 ///         Ok(())
-///     });
+///     })?;
 ///
 ///     // check the results
 ///     mat_approx_eq(&jj_ana, &jj_num, 1e-11);
 ///     Ok(())
 /// }
 /// ```
-pub fn fdm5_jacobian<F, A>(ndim: usize, x_at: f64, y_at: &Vector, alpha: f64, args: &mut A, function: F) -> Matrix
+pub fn fdm5_jacobian<F, A>(
+    ndim: usize,
+    x_at: f64,
+    y_at: &Vector,
+    alpha: f64,
+    args: &mut A,
+    function: F,
+) -> Result<Matrix, StrError>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
@@ -96,14 +103,14 @@ where
             let res = deriv_central5(y_at[j], &mut extra, |yj: f64, extra: &mut Extra| {
                 let original = extra.y[extra.j];
                 extra.y[extra.j] = yj;
-                function(&mut extra.f, extra.x, &extra.y, args).unwrap();
+                function(&mut extra.f, extra.x, &extra.y, args)?;
                 extra.y[extra.j] = original;
-                extra.f[extra.i]
-            });
+                Ok(extra.f[extra.i])
+            })?;
             jac.set(i, j, res * alpha);
         }
     }
-    jac
+    Ok(jac)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -133,7 +140,8 @@ mod tests {
             f[1] = x * y[1] * y[2] * y[2];
             f[2] = x - y[0] * y[1] * y[2];
             Ok(())
-        });
+        })
+        .unwrap();
         mat_approx_eq(&jj_ana, &jj_num, 1e-10);
         assert_eq!(args.count, 36);
     }

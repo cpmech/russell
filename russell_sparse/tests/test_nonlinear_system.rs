@@ -1,3 +1,4 @@
+use russell_lab::algo::fdm5_jacobian;
 use russell_lab::*;
 use russell_sparse::prelude::*;
 use russell_sparse::StrError;
@@ -39,33 +40,15 @@ fn calc_jacobian(jj: &mut CooMatrix, uu: &Vector) -> Result<(), StrError> {
 
 #[test]
 fn check_jacobian() {
+    struct Args {}
+    let args = &mut Args {};
     let neq = 4;
     let uu = Vector::from(&[1.0, -3.0, 7.0, -2.5]);
-    struct Argument {
-        uu: Vector,
-        rr: Vector,
-    }
-    let mut args = Argument {
-        uu: uu.clone(),
-        rr: Vector::new(neq),
-    };
-    let mut jj_num = Matrix::new(neq, neq);
-    for i in 0..neq {
-        for j in 0..neq {
-            let at_u = uu[j];
-            jj_num.set(
-                i,
-                j,
-                deriv_central5(at_u, &mut args, |u, a| {
-                    let original = a.uu[j];
-                    a.uu[j] = u;
-                    calc_residual(&mut a.rr, &a.uu);
-                    a.uu[j] = original;
-                    a.rr[i]
-                }),
-            );
-        }
-    }
+    let jj_num = fdm5_jacobian(neq, 0.0, &uu, 1.0, args, |r, _, u, _| {
+        calc_residual(r, u);
+        Ok(())
+    })
+    .unwrap();
     let nnz = neq * neq;
     let mut jj_tri = CooMatrix::new(neq, neq, nnz, Sym::No).unwrap();
     calc_jacobian(&mut jj_tri, &uu).unwrap();

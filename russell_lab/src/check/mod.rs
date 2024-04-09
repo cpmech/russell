@@ -31,7 +31,7 @@
 //!
 //!     // check derivative using central differences
 //!     struct Arguments {}
-//!     let f = |x: f64, _: &mut Arguments| -x;
+//!     let f = |x: f64, _: &mut Arguments| Ok(-x);
 //!     let args = &mut Arguments {};
 //!     let at_x = 8.0;
 //!     let dfdx = -1.01;
@@ -81,7 +81,7 @@
 //! struct Arguments {}
 //!
 //! fn main() {
-//!     let f = |x: f64, _: &mut Arguments| -x;
+//!     let f = |x: f64, _: &mut Arguments| Ok(-x);
 //!     let args = &mut Arguments {};
 //!     let at_x = 8.0;
 //!     let dfdx = -1.01;

@@ -50,7 +50,7 @@ fn main() -> Result<(), StrError> {
     mat_scale(&mut jj_ana, alpha);
 
     // numerical Jacobian
-    let jj_num = algo::fdm5_jacobian(y.dim(), x, &y, alpha, args, function);
+    let jj_num = algo::fdm5_jacobian(y.dim(), x, &y, alpha, args, function)?;
 
     // check analytical versus numerical
     mat_approx_eq(&jj_ana, &jj_num, 1e-10);

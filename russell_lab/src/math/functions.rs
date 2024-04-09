@@ -314,7 +314,7 @@ mod tests {
     fn logistic_and_deriv_work() {
         struct Arguments {}
         let args = &mut Arguments {};
-        let f = |x: f64, _: &mut Arguments| logistic(x);
+        let f = |x: f64, _: &mut Arguments| Ok(logistic(x));
         let xx = [-2.0, -1.6, -1.2, -0.8, -0.4, 0.0, 0.4, 0.8, 1.2, 1.6, 2.0];
         for x in xx {
             let l = logistic(x);
@@ -337,8 +337,8 @@ mod tests {
             beta: f64,
         }
         let args = &mut Arguments { beta };
-        let f = |x: f64, args: &mut Arguments| smooth_ramp(x, args.beta);
-        let g = |x: f64, args: &mut Arguments| smooth_ramp_deriv(x, args.beta);
+        let f = |x: f64, args: &mut Arguments| Ok(smooth_ramp(x, args.beta));
+        let g = |x: f64, args: &mut Arguments| Ok(smooth_ramp_deriv(x, args.beta));
         let xx = [-2.0, -1.6, -1.2, -0.8, -0.4, 0.0, 0.4, 0.8, 1.2, 1.6, 2.0];
         for x in xx {
             let d = smooth_ramp_deriv(x, beta);

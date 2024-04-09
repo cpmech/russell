@@ -7,6 +7,32 @@ use num_traits::{Num, NumCast};
 /// 1. Will panic if the dimensions are different
 /// 2. Will panic if NaN or Inf is found
 /// 3. Will panic if the absolute difference of components is greater than the tolerance
+///
+/// # Examples
+///
+/// ## Accepts small error
+///
+/// ```
+/// use russell_lab::array_approx_eq;
+///
+/// fn main() {
+///     let u = vec![3.0000001, 2.0];
+///     let v = vec![3.0,       2.0];
+///     array_approx_eq(&u, &v, 1e-6);
+/// }
+/// ```
+///
+/// ## Panics on different value
+///
+/// ```should_panic
+/// use russell_lab::array_approx_eq;
+///
+/// fn main() {
+///     let u = vec![3.0000001, 2.0];
+///     let v = vec![4.0,       2.0];
+///     array_approx_eq(&u, &v, 1e-6);
+/// }
+/// ```
 pub fn array_approx_eq<T>(u: &[T], v: &[T], tol: f64)
 where
     T: Num + NumCast + Copy,

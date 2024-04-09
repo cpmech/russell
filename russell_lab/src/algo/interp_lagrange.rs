@@ -110,59 +110,20 @@ pub enum GridType {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct InterpLagrange {
     // general
-    N: usize,    // degree: N = len(X)-1
-    np1: usize,  // number of points N + 1
-    X: Vec<f64>, // grid points: len(X) = P+1; generated in [-1, 1]
-    U: Vector,   // function evaluated @ nodes: f(x_i)
+    N: usize,   // degree: N = len(X)-1
+    np1: usize, // number of points N + 1
+    X: Vector,  // grid points: len(X) = P+1; generated in [-1, 1]
+    U: Vector,  // function evaluated @ nodes: f(x_i)
 
     // barycentric
-    Bary: bool,    // [default=true] use barycentric weights
-    UseEta: bool,  // [default=true] use ηk when computing D1
-    Eta: Vec<f64>, // sum of log of differences: ηk = Σ ln(|xk-xl|) (k≠l)
-    Lam: Vec<f64>, // normalized barycentric weights λk = pow(-1, k+N) ⋅ ηk / (2ⁿ⁻¹/n)
+    Bary: bool,   // [default=true] use barycentric weights
+    UseEta: bool, // [default=true] use ηk when computing D1
+    Eta: Vector,  // sum of log of differences: ηk = Σ ln(|xk-xl|) (k≠l)
+    Lam: Vector,  // normalized barycentric weights λk = pow(-1, k+N) ⋅ ηk / (2ⁿ⁻¹/n)
 
     // computed
     D1: Matrix, // (dℓj/dx)(xi)
     D2: Matrix, // (d²ℓj/dx²)(xi)
-}
-
-// Holds interpolators; e.g. for 2D or 3D applications
-pub type InterpLagrangeSet = Vec<InterpLagrange>;
-
-// impl InterpLagrangeSet {
-//     // Allocates a new instance
-//     pub fn new(ndim: usize, degrees: &[usize], grid_types: &[GridType]) -> Self {
-//         let lis = vec![InterpLagrange; ndim];
-//         for i in 0..ndim {
-//             lis[i] = InterpLagrange::new(degrees[i], grid_types[i]);
-//         }
-//         lis
-//     }
-// }
-
-fn uniform_grid(N: usize) -> Vec<f64> {
-    let mut res = vec![0.0; N + 1];
-    let count = N + 1;
-    let start = -1.0;
-    let stop = 1.0;
-    if count == 0 {
-        return res;
-    }
-    res[0] = start;
-    if count == 1 {
-        return res;
-    }
-    res[count - 1] = stop;
-    if count == 2 {
-        return res;
-    }
-    let den = (count - 1) as f64;
-    let step = (stop - start) / den;
-    for i in 1..count {
-        let p = i as f64;
-        res[i] = start + p * step;
-    }
-    res
 }
 
 impl InterpLagrange {
@@ -185,15 +146,15 @@ impl InterpLagrange {
             N,
             np1: N + 1,
             X: match grid_type {
-                GridType::Uniform => uniform_grid(N),
+                GridType::Uniform => Vector::linspace(-1.0, 1.0, N + 1).unwrap(),
                 GridType::ChebyshevGauss => chebyshev_gauss_points(N),
                 GridType::ChebyshevGaussLobatto => chebyshev_lobatto_points(N),
             },
             U: Vector::new(0),
             Bary: true,
             UseEta: true,
-            Eta: vec![0.0; N + 1],
-            Lam: vec![0.0; N + 1],
+            Eta: Vector::new(N + 1),
+            Lam: Vector::new(N + 1),
             D1: Matrix::new(0, 0),
             D2: Matrix::new(0, 0),
         };
@@ -629,8 +590,8 @@ mod tests {
         // check Kronecker property (standard)
         interp.Bary = false;
         for i in 0..(N + 1) {
-            for (j, x) in interp.X.iter().enumerate() {
-                let li = interp.L(i, *x);
+            for j in 0..(N + 1) {
+                let li = interp.L(i, interp.X[j]);
                 let mut ana = 1.0;
                 if i != j {
                     ana = 0.0;
@@ -642,8 +603,8 @@ mod tests {
         // check Kronecker property (barycentric)
         interp.Bary = true;
         for i in 0..(N + 1) {
-            for (j, x) in interp.X.iter().enumerate() {
-                let li = interp.L(i, *x);
+            for j in 0..(N + 1) {
+                let li = interp.L(i, interp.X[j]);
                 let mut ana = 1.0;
                 if i != j {
                     ana = 0.0;
@@ -698,17 +659,21 @@ mod tests {
         }
     }
 
+    // fn check_deriv1(nn: usize, grid_type: GridType, tol: f64) { }
+
+    // fn check_deriv2(nn: usize, grid_type: GridType, tol: f64) { }
+
     #[test]
     fn new_works() {
         let interp = InterpLagrange::new(2, GridType::Uniform).unwrap();
         assert_eq!(interp.N, 2);
         assert_eq!(interp.np1, 3);
-        assert_eq!(interp.X, &[-1.0, 0.0, 1.0]);
+        assert_eq!(interp.X.as_data(), &[-1.0, 0.0, 1.0]);
         assert_eq!(interp.U.dim(), 0);
         assert_eq!(interp.Bary, true);
         assert_eq!(interp.UseEta, true);
-        assert_eq!(interp.Eta.len(), 3);
-        assert_eq!(interp.Lam.len(), 3);
+        assert_eq!(interp.Eta.dim(), 3);
+        assert_eq!(interp.Lam.dim(), 3);
         assert_eq!(interp.D1.dims(), (0, 0));
         assert_eq!(interp.D2.dims(), (0, 0));
     }

@@ -3,9 +3,49 @@ use crate::AsArray2D;
 
 /// Panics if two matrices are not approximately equal to each other
 ///
-/// **Note:** Will also panic if NaN or Inf is found.
+/// # Panics
 ///
-/// **Note:** Will also panic if the dimensions are different.
+/// 1. Will panic if the dimensions are different
+/// 2. Will panic if NAN, INFINITY, or NEG_INFINITY is found
+/// 3. Will panic if the absolute difference of components is greater than the tolerance
+///
+/// # Examples
+///
+/// ## Accepts small error
+///
+/// ```
+/// use russell_lab::{mat_approx_eq, Matrix};
+///
+/// fn main() {
+///     let a = Matrix::from(&[
+///         [1.0, 2.0],
+///         [3.0, 4.0],
+///     ]);
+///     let b = Matrix::from(&[
+///         [1.01, 2.01],
+///         [3.01, 4.01],
+///     ]);
+///     mat_approx_eq(&a, &b, 0.011);
+/// }
+/// ```
+///
+/// ## Panics on different values
+///
+/// ```should_panic
+/// use russell_lab::{mat_approx_eq, Matrix};
+///
+/// fn main() {
+///     let a = Matrix::from(&[
+///         [1.0, 2.0],
+///         [3.0, 4.0],
+///     ]);
+///     let b = Matrix::from(&[
+///         [1.01, 2.01],
+///         [3.01, 4.01],
+///     ]);
+///     mat_approx_eq(&a, &b, 0.001);
+/// }
+/// ```
 pub fn mat_approx_eq<'a, T>(a: &Matrix, b: &'a T, tol: f64)
 where
     T: AsArray2D<'a, f64>,

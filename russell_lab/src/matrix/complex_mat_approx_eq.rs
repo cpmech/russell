@@ -4,9 +4,72 @@ use num_complex::Complex64;
 
 /// Panics if two matrices are not approximately equal to each other
 ///
-/// **Note:** Will also panic if NaN or Inf is found.
+/// # Panics
 ///
-/// **Note:** Will also panic if the dimensions are different.
+/// 1. Will panic if the dimensions are different
+/// 2. Will panic if NAN, INFINITY, or NEG_INFINITY is found
+/// 3. Will panic if the absolute difference of components is greater than the tolerance
+///
+/// # Examples
+///
+/// ## Accepts small error
+///
+/// ```
+/// use russell_lab::{complex_mat_approx_eq, cpx, ComplexMatrix};
+/// use num_complex::Complex64;
+///
+/// fn main() {
+///     let a = ComplexMatrix::from(&[
+///         [cpx!(1.0, -1.0), cpx!(2.0, -2.0)],
+///         [cpx!(3.0, -3.0), cpx!(4.0, -4.0)],
+///     ]);
+///     let b = &[
+///         [cpx!(1.01, -1.01), cpx!(2.01, -2.01)],
+///         [cpx!(3.01, -3.01), cpx!(4.01, -4.01)],
+///     ];
+///     complex_mat_approx_eq(&a, b, 0.011);
+/// }
+/// ```
+///
+/// ## Panics on different values
+///
+/// ### Real part
+///
+/// ```should_panic
+/// use russell_lab::{complex_mat_approx_eq, cpx, ComplexMatrix};
+/// use num_complex::Complex64;
+///
+/// fn main() {
+///     let a = ComplexMatrix::from(&[
+///         [cpx!(1.0, 0.0), cpx!(2.0, 0.0)],
+///         [cpx!(3.0, 0.0), cpx!(4.0, 0.0)],
+///     ]);
+///     let b = &[
+///         [cpx!(2.5, 0.0), cpx!(1.0, 0.0)],
+///         [cpx!(1.5, 0.0), cpx!(2.0, 0.0)],
+///     ];
+///     complex_mat_approx_eq(&a, b, 1e-15);
+/// }
+/// ```
+///
+/// ### Imaginary part
+///
+/// ```should_panic
+/// use russell_lab::{complex_mat_approx_eq, cpx, ComplexMatrix};
+/// use num_complex::Complex64;
+///
+/// fn main() {
+///     let a = ComplexMatrix::from(&[
+///         [cpx!(0.0, 1.0), cpx!(0.0, 2.0)],
+///         [cpx!(0.0, 3.0), cpx!(0.0, 4.0)],
+///     ]);
+///     let b = &[
+///         [cpx!(0.0, 2.5), cpx!(0.0, 1.0)],
+///         [cpx!(0.0, 1.5), cpx!(0.0, 2.0)],
+///     ];
+///     complex_mat_approx_eq(&a, b, 1e-15);
+/// }
+/// ```
 pub fn complex_mat_approx_eq<'a, T>(a: &ComplexMatrix, b: &'a T, tol: f64)
 where
     T: AsArray2D<'a, Complex64>,
@@ -138,7 +201,10 @@ mod tests {
     #[test]
     #[should_panic(expected = "complex matrices are not approximately equal. @ (0,0) diff_re = 1.5")]
     fn complex_mat_approx_eq_works_3() {
-        let a = ComplexMatrix::from(&[[1.0, 2.0], [3.0, 4.0]]);
+        let a = ComplexMatrix::from(&[
+            [cpx!(1.0, 0.0), cpx!(2.0, 0.0)], //
+            [cpx!(3.0, 0.0), cpx!(4.0, 0.0)], //
+        ]);
         let b = &[
             [cpx!(2.5, 0.0), cpx!(1.0, 0.0)], //
             [cpx!(1.5, 0.0), cpx!(2.0, 0.0)], //

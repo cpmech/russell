@@ -90,16 +90,16 @@
 //! ```
 
 mod approx_eq;
+mod array_approx_eq;
 mod assert_alike;
 mod complex_approx_eq;
-mod complex_vec_approx_eq;
+mod complex_array_approx_eq;
 mod deriv_approx_eq;
 mod num_deriv;
-mod vec_approx_eq;
 pub use crate::check::approx_eq::*;
+pub use crate::check::array_approx_eq::*;
 pub use crate::check::assert_alike::*;
 pub use crate::check::complex_approx_eq::*;
-pub use crate::check::complex_vec_approx_eq::*;
+pub use crate::check::complex_array_approx_eq::*;
 pub use crate::check::deriv_approx_eq::*;
 pub use crate::check::num_deriv::*;
-pub use crate::check::vec_approx_eq::*;

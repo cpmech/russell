@@ -3,10 +3,9 @@
 use crate::math::{chebyshev_gauss_points, chebyshev_lobatto_points, neg_one_pow_n};
 use crate::StrError;
 use crate::{mat_vec_mul, Matrix, Vector};
-use serde::{Deserialize, Serialize};
 
 /// Defines the type of the interpolation grid in 1D
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GridType {
     Uniform,
     ChebyshevGauss,
@@ -107,7 +106,7 @@ pub enum GridType {
 ///   SIAM Review Vol. 46, No. 3, pp. 501-517
 /// * Costa B, Don WS (2000) On the computation of high order pseudospectral derivatives,
 ///   Applied Numerical Mathematics, 33:151-159.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
 pub struct InterpLagrange {
     // general
     N: usize,   // degree: N = len(X)-1
@@ -659,7 +658,21 @@ mod tests {
         }
     }
 
-    // fn check_deriv1(nn: usize, grid_type: GridType, tol: f64) { }
+    /*
+    fn check_deriv1(nn: usize, grid_type: GridType, tol: f64) {
+        struct Args {
+
+        }
+        let args = &mut Args {};
+        let np1 = nn + 1;
+        let mut dd1_num = Matrix::new(np1, np1);
+        for i in 0..np1{
+            for j in 0..np1{
+
+            }
+        }
+    }
+    */
 
     // fn check_deriv2(nn: usize, grid_type: GridType, tol: f64) { }
 

@@ -2,7 +2,10 @@ use num_traits::{Num, NumCast};
 
 /// Panics if two numbers are not approximately equal to each other
 ///
-/// **Note:** Will also panic if NaN or Inf is found
+/// # Panics
+///
+/// 1. Will panic if NaN or Inf is found
+/// 2. Will panic if the absolute difference is greater than the tolerance
 ///
 /// # Input
 ///
@@ -15,7 +18,7 @@ use num_traits::{Num, NumCast};
 /// ## Accepts small error
 ///
 /// ```
-/// use russell_lab::*;
+/// use russell_lab::approx_eq;
 ///
 /// fn main() {
 ///     let a = 3.0000001;
@@ -27,7 +30,7 @@ use num_traits::{Num, NumCast};
 /// ## Panics on different value
 ///
 /// ```should_panic
-/// use russell_lab::*;
+/// use russell_lab::approx_eq;
 ///
 /// fn main() {
 ///     let a = 1.0;
@@ -39,13 +42,21 @@ pub fn approx_eq<T>(a: T, b: T, tol: f64)
 where
     T: Num + NumCast + Copy,
 {
-    let diff = f64::abs(a.to_f64().unwrap() - b.to_f64().unwrap());
-    if diff.is_nan() {
-        panic!("approx_eq found NaN");
+    let aa = a.to_f64().unwrap();
+    let bb = b.to_f64().unwrap();
+    if aa.is_nan() {
+        panic!("the first number is NaN");
     }
-    if diff.is_infinite() {
-        panic!("approx_eq found Inf");
+    if bb.is_nan() {
+        panic!("the second number is NaN");
     }
+    if aa.is_infinite() {
+        panic!("the first number is Inf");
+    }
+    if bb.is_infinite() {
+        panic!("the second number is Inf");
+    }
+    let diff = f64::abs(aa - bb);
     if diff > tol {
         panic!("numbers are not approximately equal. diff = {:?}", diff);
     }
@@ -58,21 +69,39 @@ mod tests {
     use super::approx_eq;
 
     #[test]
-    #[should_panic(expected = "approx_eq found NaN")]
-    fn panics_on_nan() {
+    #[should_panic(expected = "the first number is NaN")]
+    fn panics_on_nan_1() {
         approx_eq(f64::NAN, 2.5, 1e-1);
     }
 
     #[test]
-    #[should_panic(expected = "approx_eq found Inf")]
-    fn panics_on_inf() {
+    #[should_panic(expected = "the second number is NaN")]
+    fn panics_on_nan_2() {
+        approx_eq(2.5, f64::NAN, 1e-1);
+    }
+
+    #[test]
+    #[should_panic(expected = "the first number is Inf")]
+    fn panics_on_inf_1() {
         approx_eq(f64::INFINITY, 2.5, 1e-1);
     }
 
     #[test]
-    #[should_panic(expected = "approx_eq found Inf")]
-    fn panics_on_neg_inf() {
+    #[should_panic(expected = "the second number is Inf")]
+    fn panics_on_inf_2() {
+        approx_eq(2.5, f64::INFINITY, 1e-1);
+    }
+
+    #[test]
+    #[should_panic(expected = "the first number is Inf")]
+    fn panics_on_inf_3() {
         approx_eq(f64::NEG_INFINITY, 2.5, 1e-1);
+    }
+
+    #[test]
+    #[should_panic(expected = "the second number is Inf")]
+    fn panics_on_inf_4() {
+        approx_eq(2.5, f64::NEG_INFINITY, 1e-1);
     }
 
     #[test]

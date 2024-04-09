@@ -4,7 +4,7 @@ use num_traits::{Num, NumCast};
 ///
 /// # Panics
 ///
-/// 1. Will panic if NaN or Inf is found
+/// 1. Will panic if NAN, INFINITY, or NEG_INFINITY is found
 /// 2. Will panic if the absolute difference is greater than the tolerance
 ///
 /// # Input

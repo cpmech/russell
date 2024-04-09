@@ -4,7 +4,7 @@ use crate::deriv_central5;
 ///
 /// # Panics
 ///
-/// 1. Will panic if NaN or Inf is found
+/// 1. Will panic if NAN, INFINITY, or NEG_INFINITY is found
 /// 2. Will panic if the absolute difference of derivative values is greater than the tolerance
 ///
 /// **Note:** Will also panic if NaN or Inf is found

@@ -6,7 +6,7 @@ use crate::{array_approx_eq, AsArray1D};
 /// # Panics
 ///
 /// 1. Will panic if the dimensions are different
-/// 2. Will panic if NaN or Inf is found
+/// 2. Will panic if NAN, INFINITY, or NEG_INFINITY is found
 /// 3. Will panic if the absolute difference of components is greater than the tolerance
 ///
 /// # Examples

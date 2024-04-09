@@ -570,7 +570,7 @@ impl InterpLagrange {
 #[cfg(test)]
 mod tests {
     use super::{GridType, InterpLagrange};
-    use crate::{approx_eq, deriv1_central5, Vector};
+    use crate::{approx_eq, deriv1_approx_eq, deriv2_approx_eq, Vector};
 
     fn check_lambda(N: usize, grid_type: GridType, tol: f64) {
         let interp = InterpLagrange::new(N, grid_type).unwrap();
@@ -661,69 +661,6 @@ mod tests {
         }
     }
 
-    fn check_deriv1(n: usize, grid_type: GridType, tol: f64) {
-        let mut interp = InterpLagrange::new(n, grid_type).unwrap();
-        interp.CalcD1();
-        struct Args {}
-        let args = &mut Args {};
-        let np1 = n + 1;
-        for i in 0..np1 {
-            let xi = interp.X[i];
-            for j in 0..np1 {
-                let ana = deriv1_central5(xi, args, |x, _| Ok(interp.L(j, x))).unwrap();
-                approx_eq(interp.D1.get(i, j), ana, tol);
-            }
-        }
-    }
-
-    /*
-    fn check_deriv2(n: usize, grid_type: GridType, tol: f64) {
-        let mut interp = InterpLagrange::new(n, grid_type).unwrap();
-        interp.CalcD1();
-        interp.CalcD2();
-        struct Args {}
-        let args = &mut Args {};
-        let np1 = n + 1;
-        for i in 0..np1 {
-            let xi = interp.X[i];
-            for j in 0..np1 {
-                let ana = deriv_central5(xi, args, |x, _| Ok(interp.D(j, x))).unwrap();
-                approx_eq(interp.D1.get(i, j), ana, tol);
-            }
-        }
-    }
-    */
-
-    #[test]
-    fn d1_matrix_is_ok() {
-        #[rustfmt::skip]
-        let n_and_tols = [
-            (2, 1e-12),
-            (5, 1e-9),
-            (10, 1e-8),
-        ];
-        for (n, tol) in n_and_tols {
-            // println!("n = {:?}", n);
-            check_deriv1(n, GridType::ChebyshevGauss, tol);
-        }
-    }
-
-    /*
-    #[test]
-    fn d2_matrix_is_ok() {
-        #[rustfmt::skip]
-        let n_and_tols = [
-            (2, 1e-12),
-            (5, 1e-9),
-            (10, 1e-8),
-        ];
-        for (n, tol) in n_and_tols {
-            println!("n = {:?}", n);
-            check_deriv2(n, GridType::ChebyshevGaussLobatto, tol);
-        }
-    }
-    */
-
     #[test]
     fn new_works() {
         let interp = InterpLagrange::new(2, GridType::Uniform).unwrap();
@@ -794,6 +731,63 @@ mod tests {
         let mut interp = InterpLagrange::new(8, GridType::Uniform).unwrap();
         interp.CalcU(f);
         interp.loop_over_grid_points(|i, x| assert_eq!(interp.I(x), f(i, x)));
+    }
+
+    fn check_deriv1(n: usize, grid_type: GridType, tol: f64) {
+        let mut interp = InterpLagrange::new(n, grid_type).unwrap();
+        interp.CalcD1();
+        struct Args {}
+        let args = &mut Args {};
+        let np1 = n + 1;
+        for i in 0..np1 {
+            let xi = interp.X[i];
+            for j in 0..np1 {
+                deriv1_approx_eq(interp.D1.get(i, j), xi, args, tol, |x, _| Ok(interp.L(j, x)));
+            }
+        }
+    }
+
+    fn check_deriv2(n: usize, grid_type: GridType, tol: f64) {
+        let mut interp = InterpLagrange::new(n, grid_type).unwrap();
+        interp.CalcD1();
+        interp.CalcD2();
+        struct Args {}
+        let args = &mut Args {};
+        let np1 = n + 1;
+        for i in 0..np1 {
+            let xi = interp.X[i];
+            for j in 0..np1 {
+                deriv2_approx_eq(interp.D2.get(i, j), xi, args, tol, |x, _| Ok(interp.L(j, x)));
+            }
+        }
+    }
+
+    #[test]
+    fn d1_matrix_is_ok() {
+        #[rustfmt::skip]
+        let n_and_tols = [
+            (2, 1e-12),
+            (5, 1e-8),
+            (10, 1e-8),
+        ];
+        for (n, tol) in n_and_tols {
+            // println!("n = {:?}", n);
+            check_deriv1(n, GridType::ChebyshevGauss, tol);
+        }
+    }
+
+    #[test]
+    fn d2_matrix_is_ok() {
+        #[rustfmt::skip]
+        let n_and_tols = [
+            (2, 1e-9),
+            (5, 1e-9),
+            (10, 1e-9),
+        ];
+        for (n, tol) in n_and_tols {
+            // println!("n = {:?}", n);
+            check_deriv2(n, GridType::ChebyshevGauss, tol);
+        }
     }
 
     #[test]

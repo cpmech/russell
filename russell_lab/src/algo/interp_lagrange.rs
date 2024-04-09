@@ -250,7 +250,7 @@ impl InterpLagrange {
     ///
     /// # Input
     ///
-    /// * `i` -- index of X[i] point
+    /// * `i` -- index of the Xᵢ point
     /// * `x` -- where to evaluate the polynomial
     ///
     /// # Output
@@ -279,7 +279,7 @@ impl InterpLagrange {
         }
     }
 
-    /// Evaluates the function f(x[i]) over all nodes
+    /// Evaluates the function f(x) over all nodes
     ///
     /// The function is `(i: usize, x: f64) -> f64`
     ///
@@ -326,7 +326,7 @@ impl InterpLagrange {
     /// TODO: calculate U first automatically
     /// Maybe get U as an input argument instead
     ///
-    /// NOTE: U[i] = f(x[i]) must be calculated with o.CalcU or set first
+    /// NOTE: Uᵢ = f(xᵢ) must be calculated with o.CalcU or set first
     pub fn I(&self, x: f64) -> f64 {
         if self.Bary {
             // barycentric formula

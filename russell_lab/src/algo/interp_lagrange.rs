@@ -572,6 +572,8 @@ mod tests {
     use super::{GridType, InterpLagrange};
     use crate::{approx_eq, deriv1_approx_eq, deriv2_approx_eq, Vector};
 
+    // --- auxiliary: essential -----------------------------------------------------------------------
+
     fn check_lambda(N: usize, grid_type: GridType, tol: f64) {
         let interp = InterpLagrange::new(N, grid_type).unwrap();
         let m = f64::powf(2.0, (interp.N as f64) - 1.0) / (interp.N as f64);
@@ -661,6 +663,68 @@ mod tests {
         }
     }
 
+    // --- auxiliary: differentiation -----------------------------------------------------------------
+
+    fn check_dd1_matrix(n: usize, grid_type: GridType, tol: f64) {
+        let mut interp = InterpLagrange::new(n, grid_type).unwrap();
+        interp.CalcD1();
+        struct Args {}
+        let args = &mut Args {};
+        let np1 = n + 1;
+        for i in 0..np1 {
+            let xi = interp.X[i];
+            for j in 0..np1 {
+                deriv1_approx_eq(interp.D1.get(i, j), xi, args, tol, |x, _| Ok(interp.L(j, x)));
+            }
+        }
+    }
+
+    fn check_dd2_matrix(n: usize, grid_type: GridType, tol: f64) {
+        let mut interp = InterpLagrange::new(n, grid_type).unwrap();
+        interp.CalcD2();
+        struct Args {}
+        let args = &mut Args {};
+        let np1 = n + 1;
+        for i in 0..np1 {
+            let xi = interp.X[i];
+            for j in 0..np1 {
+                deriv2_approx_eq(interp.D2.get(i, j), xi, args, tol, |x, _| Ok(interp.L(j, x)));
+            }
+        }
+    }
+
+    fn check_dd1_error<F, G>(nn: usize, grid_type: GridType, use_eta: bool, tol: f64, f: F, dfdx_ana: G)
+    where
+        F: FnMut(usize, f64) -> f64,
+        G: FnMut(usize, f64) -> f64,
+    {
+        let mut interp = InterpLagrange::new(nn, grid_type).unwrap();
+        interp.CalcU(f);
+        interp.UseEta = use_eta;
+        interp.CalcD1();
+        let max_diff = interp.CalcErrorD1(dfdx_ana);
+        if max_diff > tol {
+            panic!("D1⋅U failed; max_diff = {:?}", max_diff);
+        }
+    }
+
+    fn check_dd2_error<F, H>(nn: usize, grid_type: GridType, use_eta: bool, tol: f64, f: F, d2fdx2_ana: H)
+    where
+        F: FnMut(usize, f64) -> f64,
+        H: FnMut(usize, f64) -> f64,
+    {
+        let mut interp = InterpLagrange::new(nn, grid_type).unwrap();
+        interp.CalcU(f);
+        interp.UseEta = use_eta;
+        interp.CalcD2();
+        let max_diff = interp.CalcErrorD2(d2fdx2_ana);
+        if max_diff > tol {
+            panic!("D2⋅U failed; max_diff = {:?}", max_diff);
+        }
+    }
+
+    // --- tests --------------------------------------------------------------------------------------
+
     #[test]
     fn new_works() {
         let interp = InterpLagrange::new(2, GridType::Uniform).unwrap();
@@ -733,37 +797,8 @@ mod tests {
         interp.loop_over_grid_points(|i, x| assert_eq!(interp.I(x), f(i, x)));
     }
 
-    fn check_deriv1(n: usize, grid_type: GridType, tol: f64) {
-        let mut interp = InterpLagrange::new(n, grid_type).unwrap();
-        interp.CalcD1();
-        struct Args {}
-        let args = &mut Args {};
-        let np1 = n + 1;
-        for i in 0..np1 {
-            let xi = interp.X[i];
-            for j in 0..np1 {
-                deriv1_approx_eq(interp.D1.get(i, j), xi, args, tol, |x, _| Ok(interp.L(j, x)));
-            }
-        }
-    }
-
-    fn check_deriv2(n: usize, grid_type: GridType, tol: f64) {
-        let mut interp = InterpLagrange::new(n, grid_type).unwrap();
-        interp.CalcD1();
-        interp.CalcD2();
-        struct Args {}
-        let args = &mut Args {};
-        let np1 = n + 1;
-        for i in 0..np1 {
-            let xi = interp.X[i];
-            for j in 0..np1 {
-                deriv2_approx_eq(interp.D2.get(i, j), xi, args, tol, |x, _| Ok(interp.L(j, x)));
-            }
-        }
-    }
-
     #[test]
-    fn d1_matrix_is_ok() {
+    fn dd1_matrix_is_ok() {
         #[rustfmt::skip]
         let n_and_tols = [
             (2, 1e-12),
@@ -772,12 +807,12 @@ mod tests {
         ];
         for (n, tol) in n_and_tols {
             // println!("n = {:?}", n);
-            check_deriv1(n, GridType::ChebyshevGauss, tol);
+            check_dd1_matrix(n, GridType::ChebyshevGauss, tol);
         }
     }
 
     #[test]
-    fn d2_matrix_is_ok() {
+    fn dd2_matrix_is_ok() {
         #[rustfmt::skip]
         let n_and_tols = [
             (2, 1e-9),
@@ -786,7 +821,40 @@ mod tests {
         ];
         for (n, tol) in n_and_tols {
             // println!("n = {:?}", n);
-            check_deriv2(n, GridType::ChebyshevGauss, tol);
+            check_dd2_matrix(n, GridType::ChebyshevGauss, tol);
+        }
+    }
+
+    #[test]
+    fn dd1_times_uu_is_ok() {
+        let f = |_, x| f64::powf(x, 8.0);
+        let g = |_, x| 8.0 * f64::powf(x, 7.0);
+        for (nn, grid_type, use_eta, tol) in [
+            (8, GridType::Uniform, false, 1e-13),
+            (8, GridType::Uniform, true, 1e-13),
+            (8, GridType::ChebyshevGauss, false, 1e-13),
+            (8, GridType::ChebyshevGauss, true, 1e-14),
+            (8, GridType::ChebyshevGaussLobatto, false, 1e-13),
+            (8, GridType::ChebyshevGaussLobatto, true, 1e-13),
+        ] {
+            check_dd1_error(nn, grid_type, use_eta, tol, f, g);
+        }
+    }
+
+    #[test]
+    fn dd2_times_uu_is_ok() {
+        let f = |_, x| f64::powf(x, 8.0);
+        // let g = |_, x| 8.0 * f64::powf(x, 7.0);
+        let h = |_, x| 56.0 * f64::powf(x, 6.0);
+        for (nn, grid_type, use_eta, tol) in [
+            (8, GridType::Uniform, false, 1e-11),
+            (8, GridType::Uniform, true, 1e-11),
+            (8, GridType::ChebyshevGauss, false, 1e-12),
+            (8, GridType::ChebyshevGauss, true, 1e-12),
+            (8, GridType::ChebyshevGaussLobatto, false, 1e-12),
+            (8, GridType::ChebyshevGaussLobatto, true, 1e-12),
+        ] {
+            check_dd2_error(nn, grid_type, use_eta, tol, f, h);
         }
     }
 
@@ -832,7 +900,4 @@ mod tests {
             approx_eq(interp.EstimateLebesgue(), lambda_times_n, 1e-14);
         }
     }
-
-    #[test]
-    fn lambda_and_interp_work() {}
 }

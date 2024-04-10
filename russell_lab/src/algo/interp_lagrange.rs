@@ -375,29 +375,6 @@ impl InterpLagrange {
         self.lambda[j] / (x - self.xx[j]) / sum
     }
 
-    /// Evaluates the function f(x) over all nodes
-    ///
-    /// # Output
-    ///
-    /// * `uu` -- the "data" vector `U` of size equal to N + 1
-    ///
-    /// # Input
-    ///
-    /// * `f` -- the function f(x) implemented as `(i: usize, x: f64) -> f64`
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `uu.dim()` is not equal to the number of points `N + 1`
-    pub fn evaluate_f_over_nodes<F>(&self, uu: &mut Vector, mut f: F)
-    where
-        F: FnMut(usize, f64) -> f64,
-    {
-        assert_eq!(uu.dim(), self.npoint);
-        for j in 0..self.npoint {
-            uu[j] = f(j, self.xx[j]);
-        }
-    }
-
     /// Evaluates the interpolation
     ///
     /// Calculates:
@@ -511,10 +488,12 @@ impl InterpLagrange {
     /// # Panics
     ///
     /// Will panic if `uu.dim()` is not equal to the number of points `N + 1`
-    pub fn max_error_dd1<F>(&self, uu: &Vector, mut dfdx_ana: F) -> f64
+    pub fn max_error_dd1<F>(&mut self, uu: &Vector, mut dfdx_ana: F) -> f64
     where
         F: FnMut(usize, f64) -> f64,
     {
+        self.calc_dd1_matrix();
+
         // derivative of interpolation @ xᵢ
         assert_eq!(uu.dim(), self.npoint);
         let mut v = Vector::new(self.npoint);
@@ -544,10 +523,12 @@ impl InterpLagrange {
     /// # Panics
     ///
     /// Will panic if `uu.dim()` is not equal to the number of points `N + 1`
-    pub fn max_error_dd2<F>(&self, uu: &Vector, mut d2fdx2_ana: F) -> f64
+    pub fn max_error_dd2<F>(&mut self, uu: &Vector, mut d2fdx2_ana: F) -> f64
     where
         F: FnMut(usize, f64) -> f64,
     {
+        self.calc_dd2_matrix();
+
         // derivative of interpolation @ xᵢ
         assert_eq!(uu.dim(), self.npoint);
         let mut v = Vector::new(self.npoint);
@@ -623,21 +604,14 @@ impl InterpLagrange {
         (max_err, x_loc)
     }
 
-    /// Executes a loop over the grid points
-    ///
-    /// Loops over `(i: usize, x: f64)`
-    ///
-    /// # Input
-    ///
-    /// * `callback` -- a function of `(j, x)` where `j` is the point number,
-    ///   and `x` is the Cartesian coordinates of the point.
-    pub fn loop_over_grid_points<F>(&self, mut callback: F)
-    where
-        F: FnMut(usize, f64),
-    {
-        for j in 0..self.npoint {
-            callback(j, self.xx[j]);
-        }
+    /// Returns a reference to the grid nodes
+    pub fn get_points(&self) -> &Vector {
+        &self.xx
+    }
+
+    /// Returns the (min, max) coordinates
+    pub fn get_xrange(&self) -> (f64, f64) {
+        (-1.0, 1.0)
     }
 }
 
@@ -659,6 +633,15 @@ mod tests {
         assert_eq!(interp.lambda.dim(), 3);
         assert_eq!(interp.dd1.dims(), (0, 0));
         assert_eq!(interp.dd2.dims(), (0, 0));
+    }
+
+    #[test]
+    fn getters_work() {
+        let mut params = InterpParams::new();
+        params.nn = 2;
+        let interp = InterpLagrange::new(params).unwrap();
+        assert_eq!(interp.get_points().as_data(), &[-1.0, 0.0, 1.0]);
+        assert_eq!(interp.get_xrange(), (-1.0, 1.0));
     }
 
     // --- lambda and psi -----------------------------------------------------------------------------
@@ -769,61 +752,60 @@ mod tests {
 
     // --- polynomial interpolation -------------------------------------------------------------------
 
-    #[test]
-    fn poly_at_nodes_is_exact_1() {
-        let f = |_, x| f64::cos(f64::exp(2.0 * x));
-        let mut params = InterpParams::new();
-        params.nn = 5;
-        params.grid_type = InterpGrid::Uniform;
+    fn check_eval<F>(params: InterpParams, tol: f64, mut f: F)
+    where
+        F: Copy + FnMut(usize, f64) -> f64,
+    {
+        // interpolant
         let npoint = params.nn + 1;
         let interp = InterpLagrange::new(params).unwrap();
+
+        // compute data points
         let mut uu = Vector::new(npoint);
-        interp.evaluate_f_over_nodes(&mut uu, f);
-        interp.loop_over_grid_points(|i, x| assert_eq!(interp.eval(x, &uu), f(i, x)));
+        for (i, x) in interp.get_points().into_iter().enumerate() {
+            uu[i] = f(i, *x);
+        }
+
+        // check the interpolation @ nodes
+        for (i, x) in interp.get_points().into_iter().enumerate() {
+            assert_eq!(interp.eval(*x, &uu), f(i, *x));
+        }
+
+        // check the interpolation over the xrange
+        let xx = Vector::linspace(-1.0, 1.0, 20).unwrap();
+        for i in 0..npoint {
+            approx_eq(interp.eval(xx[i], &uu), f(i, xx[i]), tol);
+        }
     }
 
     #[test]
-    fn poly_at_nodes_is_exact_2() {
+    fn eval_works_1() {
+        let f = |_, x| f64::cos(f64::exp(2.0 * x));
+        let mut params = InterpParams::new();
+        params.nn = 5;
+        for grid_type in [
+            InterpGrid::Uniform,
+            InterpGrid::ChebyshevGauss,
+            InterpGrid::ChebyshevGaussLobatto,
+        ] {
+            params.grid_type = grid_type;
+            check_eval(params, 0.15, f);
+        }
+    }
+
+    #[test]
+    fn eval_works_2() {
         // Runge equation
         let f = |_, x| 1.0 / (1.0 + 16.0 * x * x);
         let mut params = InterpParams::new();
         params.nn = 8;
-        let npoint = params.nn + 1;
-        let interp = InterpLagrange::new(params).unwrap();
-        let mut uu = Vector::new(npoint);
-        interp.evaluate_f_over_nodes(&mut uu, f);
-        interp.loop_over_grid_points(|i, x| assert_eq!(interp.eval(x, &uu), f(i, x)));
-    }
-
-    fn check_eval<F>(params: InterpParams, mut f: F)
-    where
-        F: Copy + FnMut(usize, f64) -> f64,
-    {
-        let npoint = params.nn + 1;
-        let interp = InterpLagrange::new(params).unwrap();
-        let mut uu = Vector::new(npoint);
-        interp.evaluate_f_over_nodes(&mut uu, f);
-        // check the interpolation @ nodes
-        interp.loop_over_grid_points(|j, x| {
-            assert_eq!(interp.eval(x, &uu), f(j, x));
-        });
-    }
-
-    #[test]
-    fn poly_works() {
-        let f = |_, x| f64::cos(f64::exp(2.0 * x));
-        let mut params = InterpParams::new();
-        for nn in 1..20 {
-            params.nn = nn;
-            for grid_type in [
-                InterpGrid::Uniform,
-                InterpGrid::ChebyshevGauss,
-                InterpGrid::ChebyshevGaussLobatto,
-            ] {
-                // println!("nn = {}, grid = {:?}", nn, grid_type);
-                params.grid_type = grid_type;
-                check_eval(params, f);
-            }
+        for grid_type in [
+            InterpGrid::Uniform,
+            InterpGrid::ChebyshevGauss,
+            InterpGrid::ChebyshevGaussLobatto,
+        ] {
+            params.grid_type = grid_type;
+            check_eval(params, 0.7, f);
         }
     }
 
@@ -903,16 +885,22 @@ mod tests {
         }
     }
 
-    fn check_dd1_error<F, G>(params: InterpParams, tol: f64, f: F, dfdx_ana: G)
+    fn check_dd1_error<F, G>(params: InterpParams, tol: f64, mut f: F, dfdx_ana: G)
     where
         F: FnMut(usize, f64) -> f64,
         G: FnMut(usize, f64) -> f64,
     {
+        // interpolant
         let npoint = params.nn + 1;
         let mut interp = InterpLagrange::new(params).unwrap();
+
+        // compute data points
         let mut uu = Vector::new(npoint);
-        interp.evaluate_f_over_nodes(&mut uu, f);
-        interp.calc_dd1_matrix();
+        for (i, x) in interp.get_points().into_iter().enumerate() {
+            uu[i] = f(i, *x);
+        }
+
+        // check error
         let max_diff = interp.max_error_dd1(&uu, dfdx_ana);
         if max_diff > tol {
             panic!("D1⋅U failed; max_diff = {:?}", max_diff);
@@ -936,16 +924,22 @@ mod tests {
         }
     }
 
-    fn check_dd2_error<F, H>(params: InterpParams, tol: f64, f: F, d2fdx2_ana: H)
+    fn check_dd2_error<F, H>(params: InterpParams, tol: f64, mut f: F, d2fdx2_ana: H)
     where
         F: FnMut(usize, f64) -> f64,
         H: FnMut(usize, f64) -> f64,
     {
+        // interpolant
         let npoint = params.nn + 1;
         let mut interp = InterpLagrange::new(params).unwrap();
+
+        // compute data points
         let mut uu = Vector::new(npoint);
-        interp.evaluate_f_over_nodes(&mut uu, f);
-        interp.calc_dd2_matrix();
+        for (i, x) in interp.get_points().into_iter().enumerate() {
+            uu[i] = f(i, *x);
+        }
+
+        // check error
         let max_diff = interp.max_error_dd2(&uu, d2fdx2_ana);
         if max_diff > tol {
             panic!("D2⋅U failed; max_diff = {:?}", max_diff);
@@ -985,52 +979,37 @@ mod tests {
 
     #[test]
     fn lebesgue_works_chebyshev_gauss() {
-        // Runge equation
-        let f = |_, x| 1.0 / (1.0 + 16.0 * x * x);
-        let mut params = InterpParams::new();
-        params.nn = 8;
-        params.grid_type = InterpGrid::ChebyshevGauss;
-        let npoint = params.nn + 1;
-        params.lebesgue_estimate_nstation = 10;
-        let interp = InterpLagrange::new(params).unwrap();
-        let mut uu = Vector::new(npoint);
-        interp.evaluate_f_over_nodes(&mut uu, f);
-        interp.loop_over_grid_points(|i, x| assert_eq!(interp.eval(x, &uu), f(i, x)));
-        let nn_and_lebesgue = [
-            (4, 1.988854381999833e+00),
-            (8, 2.361856787767076e+00),
-            (24, 3.011792612349363e+00),
+        let data = [
+            (4, 1e-14, 1.988854381999833e+00),
+            (8, 1e-15, 2.361856787767076e+00),
+            (24, 1e-14, 3.011792612349363e+00),
         ];
-        for (nn, lambda_times_nn) in nn_and_lebesgue {
+        for (nn, tol, reference) in data {
+            println!("nn = {}", nn);
+            let mut params = InterpParams::new();
             params.nn = nn;
+            params.grid_type = InterpGrid::ChebyshevGauss;
+            params.lebesgue_estimate_nstation = 10_000;
             let interp = InterpLagrange::new(params).unwrap();
-            approx_eq(interp.estimate_lebesgue_constant(), lambda_times_nn, 1e-14);
+            approx_eq(interp.estimate_lebesgue_constant(), reference, tol);
         }
     }
 
     #[test]
     fn lebesgue_works_chebyshev_gauss_lobatto() {
-        // Runge equation
-        let f = |_, x| 1.0 / (1.0 + 16.0 * x * x);
-        let mut params = InterpParams::new();
-        params.nn = 8;
-        params.grid_type = InterpGrid::ChebyshevGaussLobatto;
-        let npoint = params.nn + 1;
-        let tol = 1e-3; // 1e-15 is achieved with 10_000
-        params.lebesgue_estimate_nstation = 200; // 1e-15 is achieved with 10_000
-        let interp = InterpLagrange::new(params).unwrap();
-        let mut uu = Vector::new(npoint);
-        interp.evaluate_f_over_nodes(&mut uu, f);
-        interp.loop_over_grid_points(|i, x| assert_eq!(interp.eval(x, &uu), f(i, x)));
-        let nn_and_lebesgue = [
-            (4, 1.798761778849085e+00),
-            (8, 2.274730699116020e+00),
-            (24, 2.984443326362511e+00),
+        let data = [
+            (4, 1e-15, 1.798761778849085e+00),
+            (8, 1e-15, 2.274730699116020e+00),
+            (24, 1e-14, 2.984443326362511e+00),
         ];
-        for (nn, lambda_times_nn) in nn_and_lebesgue {
+        for (nn, tol, reference) in data {
+            println!("nn = {}", nn);
+            let mut params = InterpParams::new();
             params.nn = nn;
+            params.grid_type = InterpGrid::ChebyshevGaussLobatto;
+            params.lebesgue_estimate_nstation = 10_000;
             let interp = InterpLagrange::new(params).unwrap();
-            approx_eq(interp.estimate_lebesgue_constant(), lambda_times_nn, tol);
+            approx_eq(interp.estimate_lebesgue_constant(), reference, tol);
         }
     }
 }

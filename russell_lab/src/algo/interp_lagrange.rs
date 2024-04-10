@@ -12,31 +12,33 @@ pub enum GridType {
     ChebyshevGaussLobatto,
 }
 
-/// Implements Lagrange interpolators associated with a grid X
+/// Implements a polynomial interpolant in Lagrange Form
 ///
-/// An interpolant I^X_N{f} (associated with a grid X; of degree N; with N+1 points)
-/// is expressed in the Lagrange form as follows:
+/// A polynomial interpolant `I^X_N{f}` (associated with a grid X; of degree N; with N+1 points)
+/// is expressed in the Lagrange form as(see Eq 3.31 of Ref #4):
 ///
 /// ```text
-///              N
-///  X          ————             X
-/// I {f}(x) =  \     f(x[i]) ⋅ ℓ (x)
-///  N          /                i
-///             ————
-///             i = 0
+///                        N
+///                      —————
+///           X          \             X
+/// pn(x) := I {f}(x) =  /      u  ⋅  ℓ (x)
+///           N          —————   j     j
+///                      j = 0
+///
+/// with uⱼ := f(xⱼ)
 /// ```
 ///
-/// where `ℓ^X_i(x)` is the i-th Lagrange cardinal polynomial associated with grid X and given by:
+/// where `ℓ^X_j(x)` is the j-th Lagrange cardinal polynomial associated with grid X and given by (see Eq 3.32 of Ref #4):
 ///
 /// ```text
-///          N
-///  N      ━━━━    x  -  X[j]
-/// ℓ (x) = ┃  ┃  —————————————
-///  i      ┃  ┃   X[i] - X[j]
-///        j = 0
-///        j ≠ i
+///                      N
+///                    ━━━━━
+///             X      ┃   ┃  x  - Xᵢ
+/// ell (x) := ℓ (x) = ┃   ┃  ———————
+///    j        j      i = 0  Xⱼ - Xᵢ
+///                    i ≠ j
 ///
-/// 0 ≤ i ≤ N
+/// 0 ≤ j ≤ N
 /// ```
 ///
 /// or, barycentric form:
@@ -107,6 +109,8 @@ pub enum GridType {
 ///    SIAM Review Vol. 46, No. 3, pp. 501-517
 /// 3. Costa B, Don WS (2000) On the computation of high order pseudospectral derivatives,
 ///    Applied Numerical Mathematics, 33:151-159.
+/// 4. Kopriva DA (2009) Implementing Spectral Methods for Partial Differential Equations
+///    Springer, 404p
 #[derive(Clone, Debug)]
 pub struct InterpLagrange {
     // general

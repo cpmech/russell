@@ -331,7 +331,7 @@ impl InterpLagrange {
         Ok(interp)
     }
 
-    /// Computes the i-th polynomial associated with grid X
+    /// Computes the i-th polynomial associated with grid X (barycentric form)
     ///
     /// Calculates `pⱼ` in:
     ///
@@ -363,7 +363,7 @@ impl InterpLagrange {
     /// # Panics
     ///
     /// This function will panic if `j > N`.
-    pub fn poly(&self, j: usize, x: f64) -> f64 {
+    pub fn psi(&self, j: usize, x: f64) -> f64 {
         assert!(j <= self.params.nn);
         if f64::abs(x - self.xx[j]) < 10.0 * f64::EPSILON {
             return 1.0;
@@ -398,7 +398,7 @@ impl InterpLagrange {
         }
     }
 
-    /// Performs the interpolation
+    /// Evaluates the interpolation
     ///
     /// Calculates:
     ///
@@ -417,11 +417,11 @@ impl InterpLagrange {
     /// # Panics
     ///
     /// Will panic if `uu.dim()` is not equal to the number of points `N + 1`
-    pub fn execute(&self, x: f64, uu: &Vector) -> f64 {
+    pub fn eval(&self, x: f64, uu: &Vector) -> f64 {
         assert_eq!(uu.dim(), self.npoint);
         let mut res = 0.0;
         for j in 0..self.npoint {
-            res += uu[j] * self.poly(j, x);
+            res += uu[j] * self.psi(j, x);
         }
         res
     }
@@ -571,9 +571,9 @@ impl InterpLagrange {
         let mut lambda_times_nn = 0.0;
         for j in 0..n_station {
             let x = -1.0 + 2.0 * (j as f64) / ((n_station - 1) as f64);
-            let mut sum = f64::abs(self.poly(0, x));
+            let mut sum = f64::abs(self.psi(0, x));
             for i in 1..self.npoint {
-                sum += f64::abs(self.poly(i, x));
+                sum += f64::abs(self.psi(i, x));
             }
             if sum > lambda_times_nn {
                 lambda_times_nn = sum;
@@ -613,7 +613,7 @@ impl InterpLagrange {
         for i in 0..self.params.error_estimate_nstation {
             let x = -1.0 + 2.0 * (i as f64) / den;
             let fx = f(x, i);
-            let ix = self.execute(x, uu);
+            let ix = self.eval(x, uu);
             let e = f64::abs(fx - ix);
             if e > max_err {
                 max_err = e;
@@ -712,7 +712,7 @@ mod tests {
         for i in 0..npoint {
             let mut sum = 0.0;
             for j in 0..npoint {
-                let psi = interp.poly(i, interp.xx[j]);
+                let psi = interp.psi(i, interp.xx[j]);
                 let mut ana = 1.0;
                 if i != j {
                     ana = 0.0;
@@ -738,7 +738,7 @@ mod tests {
         let xx = Vector::linspace(-1.0, 1.0, 20).unwrap();
         for x in xx {
             for j in 0..npoint {
-                let psi_j = interp.poly(j, x);
+                let psi_j = interp.psi(j, x);
                 let mut ell_j = 1.0;
                 for k in 0..npoint {
                     if j != k {
@@ -779,7 +779,7 @@ mod tests {
         let interp = InterpLagrange::new(params).unwrap();
         let mut uu = Vector::new(npoint);
         interp.evaluate_f_over_nodes(&mut uu, f);
-        interp.loop_over_grid_points(|i, x| assert_eq!(interp.execute(x, &uu), f(i, x)));
+        interp.loop_over_grid_points(|i, x| assert_eq!(interp.eval(x, &uu), f(i, x)));
     }
 
     #[test]
@@ -792,10 +792,10 @@ mod tests {
         let interp = InterpLagrange::new(params).unwrap();
         let mut uu = Vector::new(npoint);
         interp.evaluate_f_over_nodes(&mut uu, f);
-        interp.loop_over_grid_points(|i, x| assert_eq!(interp.execute(x, &uu), f(i, x)));
+        interp.loop_over_grid_points(|i, x| assert_eq!(interp.eval(x, &uu), f(i, x)));
     }
 
-    fn check_execute<F>(params: InterpParams, mut f: F)
+    fn check_eval<F>(params: InterpParams, mut f: F)
     where
         F: Copy + FnMut(usize, f64) -> f64,
     {
@@ -805,7 +805,7 @@ mod tests {
         interp.evaluate_f_over_nodes(&mut uu, f);
         // check the interpolation @ nodes
         interp.loop_over_grid_points(|j, x| {
-            assert_eq!(interp.execute(x, &uu), f(j, x));
+            assert_eq!(interp.eval(x, &uu), f(j, x));
         });
     }
 
@@ -822,7 +822,7 @@ mod tests {
             ] {
                 // println!("nn = {}, grid = {:?}", nn, grid_type);
                 params.grid_type = grid_type;
-                check_execute(params, f);
+                check_eval(params, f);
             }
         }
     }
@@ -838,7 +838,7 @@ mod tests {
         for i in 0..npoint {
             let xi = interp.xx[i];
             for j in 0..npoint {
-                deriv1_approx_eq(interp.dd1.get(i, j), xi, args, tol, |x, _| Ok(interp.poly(j, x)));
+                deriv1_approx_eq(interp.dd1.get(i, j), xi, args, tol, |x, _| Ok(interp.psi(j, x)));
             }
         }
     }
@@ -882,7 +882,7 @@ mod tests {
         for i in 0..npoint {
             let xi = interp.xx[i];
             for j in 0..npoint {
-                deriv2_approx_eq(interp.dd2.get(i, j), xi, args, tol, |x, _| Ok(interp.poly(j, x)));
+                deriv2_approx_eq(interp.dd2.get(i, j), xi, args, tol, |x, _| Ok(interp.psi(j, x)));
             }
         }
     }
@@ -995,7 +995,7 @@ mod tests {
         let interp = InterpLagrange::new(params).unwrap();
         let mut uu = Vector::new(npoint);
         interp.evaluate_f_over_nodes(&mut uu, f);
-        interp.loop_over_grid_points(|i, x| assert_eq!(interp.execute(x, &uu), f(i, x)));
+        interp.loop_over_grid_points(|i, x| assert_eq!(interp.eval(x, &uu), f(i, x)));
         let nn_and_lebesgue = [
             (4, 1.988854381999833e+00),
             (8, 2.361856787767076e+00),
@@ -1021,7 +1021,7 @@ mod tests {
         let interp = InterpLagrange::new(params).unwrap();
         let mut uu = Vector::new(npoint);
         interp.evaluate_f_over_nodes(&mut uu, f);
-        interp.loop_over_grid_points(|i, x| assert_eq!(interp.execute(x, &uu), f(i, x)));
+        interp.loop_over_grid_points(|i, x| assert_eq!(interp.eval(x, &uu), f(i, x)));
         let nn_and_lebesgue = [
             (4, 1.798761778849085e+00),
             (8, 2.274730699116020e+00),

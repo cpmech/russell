@@ -563,47 +563,6 @@ impl InterpLagrange {
         lambda_times_nn
     }
 
-    /// Estimates the maximum error of the interpolation
-    ///
-    /// Computes:
-    ///
-    /// ```text
-    /// max_err = max(|f(x) - I{f}(x)|)
-    /// ```
-    ///
-    /// # Input
-    ///
-    /// * `uu` -- the "data" vector `U` of size equal to N + 1
-    /// * `f` -- function `(x: f64, i: usize) -> f64`
-    ///
-    /// # Output
-    ///
-    /// Returns `(max_err, x_loc)` where `x_loc` is the location of the max error
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `uu.dim()` is not equal to the number of points `N + 1`
-    pub fn estimate_max_err<F>(&self, uu: &Vector, mut f: F) -> (f64, f64)
-    where
-        F: FnMut(f64, usize) -> f64,
-    {
-        assert_eq!(uu.dim(), self.npoint);
-        let mut max_err = 0.0;
-        let mut x_loc = 0.0;
-        let den = (self.params.error_estimate_nstation - 1) as f64;
-        for i in 0..self.params.error_estimate_nstation {
-            let x = -1.0 + 2.0 * (i as f64) / den;
-            let fx = f(x, i);
-            let ix = self.eval(x, uu);
-            let e = f64::abs(fx - ix);
-            if e > max_err {
-                max_err = e;
-                x_loc = x;
-            }
-        }
-        (max_err, x_loc)
-    }
-
     /// Returns a reference to the grid nodes
     pub fn get_points(&self) -> &Vector {
         &self.xx

@@ -244,26 +244,6 @@ impl InterpLagrange {
         Ok(interp)
     }
 
-    /// Computes the generating (nodal) polynomial associated with grid X
-    ///
-    /// The nodal polynomial is the unique polynomial of degree N+1 and
-    /// leading coefficient whose zeros are the N+1 nodes of X.
-    ///
-    /// ```text
-    ///	         N
-    ///	 X      ━━━━
-    ///	ω (x) = ┃  ┃ (x - X[i])
-    ///	N+1     ┃  ┃
-    ///	       i = 0
-    /// ```
-    pub fn Om(&self, x: f64) -> f64 {
-        let mut ω = 1.0;
-        for i in 0..self.npoint {
-            ω *= x - self.xx[i];
-        }
-        ω
-    }
-
     /// Computes the i-th Lagrange cardinal polynomial associated with grid X
     ///
     /// Computes:

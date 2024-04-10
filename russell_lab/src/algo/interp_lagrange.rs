@@ -58,12 +58,22 @@ pub enum GridType {
 /// with uⱼ := f(xⱼ)
 /// ```
 ///
+/// where (see Eq 2.4.34 of Ref #1, page 90; and Eq 3.34 of Ref #2, page 74)
+///
+/// ```text
+///             1
+/// λⱼ = ————————————————
+///         N
+///         𝚷   (Xⱼ - Xᵢ)
+///      i=0,i≠j
+/// ```
+///
 /// Let us define (see Eq 2.4.34 of Ref #1, page 90):
 ///
 /// ```text
-///                        λⱼ
-///                      ——————
-///                      x - Xⱼ
+///                         λⱼ
+///                       ——————
+///                       x - Xⱼ
 /// bee (x) := ψ (x) = ———————————
 ///    j        j       N     λₖ
 ///                     Σ   ——————
@@ -177,7 +187,7 @@ impl InterpLagrange {
             D2: Matrix::new(0, 0),
         };
 
-        // compute η
+        // compute eta
         //      N+1    N+1
         // ηk =  Σ      Σ    ln(|xk - xj|) ()
         //      k=0  j=0,j≠k
@@ -201,7 +211,7 @@ impl InterpLagrange {
             (f64::powf(2.0, n - 1.0) / n, 0.0, 0.0)
         };
 
-        // compute λk
+        // compute lambda
         for k in 0..o.np1 {
             let a = neg_one_pow_n((k + o.N) as i32);
             let m = -o.Eta[k];

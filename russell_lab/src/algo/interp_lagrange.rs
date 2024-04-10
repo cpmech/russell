@@ -15,7 +15,8 @@ pub enum GridType {
 /// Implements a polynomial interpolant in Lagrange Form
 ///
 /// A polynomial interpolant `I^X_N{f}` for the function `f(x)`, associated with a grid `X`, of degree `N`,
-/// and with `N+1` points, is expressed in the Lagrange form as (see Eq 3.31 of Ref #4):
+/// and with `N+1` points, is expressed in the Lagrange form as
+/// (see Eq 2.2.19 of Ref #1, page 73; and Eq 3.31 of Ref #2, page 73):
 ///
 /// ```text
 ///                         N
@@ -28,7 +29,8 @@ pub enum GridType {
 /// with uⱼ := f(xⱼ)
 /// ```
 ///
-/// where `ℓ^X_j(x)` is the j-th Lagrange cardinal polynomial associated with grid X and given by (see Eq 3.32 of Ref #4):
+/// where `ℓ^X_j(x)` is the j-th Lagrange cardinal polynomial associated with grid X and given by
+/// (see Eq 2.3.27 of Ref #1, page 80; and Eq 3.32 of Ref #2, page 74):
 ///
 /// ```text
 ///                      N
@@ -41,7 +43,8 @@ pub enum GridType {
 /// 0 ≤ j ≤ N
 /// ```
 ///
-/// In barycentric form, the interpolant is expressed as (see Eq 3.36 of Ref #4):
+/// In barycentric form, the interpolant is expressed as
+/// (see Eq 3.36 of Ref #2, page 74):
 ///
 /// ```text
 ///                       N       λⱼ 
@@ -55,19 +58,19 @@ pub enum GridType {
 /// with uⱼ := f(xⱼ)
 /// ```
 ///
-/// Let us define:
+/// Let us define (see Eq 2.4.34 of Ref #1, page 90):
 ///
 /// ```text
-///                 λⱼ
-///               ——————
-///               x - Xⱼ
-/// bee (x) := ———————————
-///    j        N     λₖ
-///             Σ   ——————
-///            k=0  x - Xₖ
+///                        λⱼ
+///                      ——————
+///                      x - Xⱼ
+/// bee (x) := ψ (x) = ———————————
+///    j        j       N     λₖ
+///                     Σ   ——————
+///                    k=0  x - Xₖ
 /// ```
 ///
-/// Then,
+/// Then:
 ///
 /// ```text
 ///           N
@@ -116,12 +119,12 @@ pub enum GridType {
 ///
 /// 1. Canuto C, Hussaini MY, Quarteroni A, Zang TA (2006) Spectral Methods: Fundamentals in
 ///    Single Domains. Springer. 563p
-/// 2. Berrut JP, Trefethen LN (2004) Barycentric Lagrange Interpolation,
-///    SIAM Review Vol. 46, No. 3, pp. 501-517
+/// 2. Kopriva DA (2009) Implementing Spectral Methods for Partial Differential Equations
+///    Springer, 404p
 /// 3. Costa B, Don WS (2000) On the computation of high order pseudospectral derivatives,
 ///    Applied Numerical Mathematics, 33:151-159.
-/// 4. Kopriva DA (2009) Implementing Spectral Methods for Partial Differential Equations
-///    Springer, 404p
+/// 4. Berrut JP, Trefethen LN (2004) Barycentric Lagrange Interpolation,
+///    SIAM Review Vol. 46, No. 3, pp. 501-517
 #[derive(Clone, Debug)]
 pub struct InterpLagrange {
     // general

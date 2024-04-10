@@ -14,16 +14,16 @@ pub enum GridType {
 
 /// Implements a polynomial interpolant in Lagrange Form
 ///
-/// A polynomial interpolant `I^X_N{f}` (associated with a grid X; of degree N; with N+1 points)
-/// is expressed in the Lagrange form as(see Eq 3.31 of Ref #4):
+/// A polynomial interpolant `I^X_N{f}` for the function `f(x)`, associated with a grid `X`, of degree `N`,
+/// and with `N+1` points, is expressed in the Lagrange form as (see Eq 3.31 of Ref #4):
 ///
 /// ```text
-///                        N
-///                      —————
-///           X          \             X
-/// pn(x) := I {f}(x) =  /      u  ⋅  ℓ (x)
-///           N          —————   j     j
-///                      j = 0
+///                         N
+///                       —————
+///            X          \             X
+/// pnu(x) := I {f}(x) =  /      u  ⋅  ℓ (x)
+///            N          —————   j     j
+///                       j = 0
 ///
 /// with uⱼ := f(xⱼ)
 /// ```
@@ -41,42 +41,53 @@ pub enum GridType {
 /// 0 ≤ j ≤ N
 /// ```
 ///
-/// or, barycentric form:
+/// In barycentric form, the interpolant is expressed as (see Eq 3.36 of Ref #4):
 ///
 /// ```text
-///              N   λ[i] ⋅ f[i]
-///              Σ   ———————————
-///  X          i=0   x - x[i]
-/// I {f}(x) = ——————————————————
-///  N            N     λ[i]
-///               Σ   ————————
-///              i=0  x - x[i]
+///                       N       λⱼ 
+///                       Σ  uⱼ ——————
+///            X         j=0    x - Xⱼ
+/// pnu(x) := I {f}(x) = —————————————
+///            N           N     λₖ
+///                        Σ   ——————
+///                       k=0  x - Xₖ
+///
+/// with uⱼ := f(xⱼ)
 /// ```
 ///
-/// with:
+/// Let us define:
 ///
 /// ```text
-///              λ[i]
-///            ————————
-///  N         x - x[i]
-/// ℓ (x) = ———————————————
-///  i        N     λ[k]
-///           Σ   ————————
-///          k=0  x - x[k]
+///                 λⱼ
+///               ——————
+///               x - Xⱼ
+/// bee (x) := ———————————
+///    j        N     λₖ
+///             Σ   ——————
+///            k=0  x - Xₖ
 /// ```
 ///
-/// The barycentric weights `λk` are normalized and computed from `ηk` as follows:
+/// Then,
 ///
 /// ```text
-/// ηk = Σ ln(|xk-xl|) (k≠l)
+///           N
+/// pnu(x) =  Σ  uⱼ ⋅ pⱼ(x)
+///          j=0
 ///
-///      N+1    N+1
-/// ηk =  Σ      Σ    ln(|xk - xj|) ()
+/// with pⱼ(x) = ell[j](x) = bee[j](x)
+/// ```
+///
+/// An option to normalize the barycentric weights `λₖ` is available---they are
+/// normalized and computed from `η` as follows:
+///
+/// ```text
+///       N      N
+/// ηₖ =  Σ      Σ    ln(|Xₖ - Xⱼ|)
 ///      k=0  j=0,j≠k
 ///
-///       a ⋅ b             k+N
-/// λk =  —————     a = (-1)
-///        lf0
+///      a ⋅ b                  k+N
+/// λₖ = —————   with   a = (-1)
+///       lf0
 ///
 /// b = exp(m),  m = -ηk, and lf0 = 2ⁿ⁻¹/n
 /// ```

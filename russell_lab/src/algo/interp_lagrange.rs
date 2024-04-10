@@ -35,10 +35,10 @@ pub enum GridType {
 /// ```text
 ///                      N
 ///                    ━━━━━
-///             X      ┃   ┃  x  - Xᵢ
+///             X      ┃   ┃  x  - Xₖ
 /// ell (x) := ℓ (x) = ┃   ┃  ———————
-///    j        j      i = 0  Xⱼ - Xᵢ
-///                    i ≠ j
+///    j        j      k = 0  Xⱼ - Xₖ
+///                    k ≠ j
 ///
 /// 0 ≤ j ≤ N
 /// ```
@@ -64,8 +64,8 @@ pub enum GridType {
 ///             1
 /// λⱼ = ————————————————
 ///         N
-///         𝚷   (Xⱼ - Xᵢ)
-///      i=0,i≠j
+///         𝚷   (Xⱼ - Xₖ)
+///      k=0,k≠j
 /// ```
 ///
 /// Let us define (see Eq 2.4.34 of Ref #1, page 90):
@@ -90,22 +90,18 @@ pub enum GridType {
 /// with pⱼ(x) = ell[j](x) = bee[j](x)
 /// ```
 ///
-/// An option to normalize the barycentric weights `λₖ` is available---they are
-/// normalized and computed from `η` as follows:
+/// To minimize round-off problems, an option to normalize the barycentric weights `λₖ` is available.
+/// The strategy is to normalize lambda using the so-called eta-factors (`η`) as follows (See Ref #3 and #4).
 ///
 /// ```text
-///       N      N
-/// ηₖ =  Σ      Σ    ln(|Xₖ - Xⱼ|)
-///      k=0  j=0,j≠k
-///
 ///      a ⋅ b                  k+N
 /// λₖ = —————   with   a = (-1)
 ///       lf0
 ///
-/// b = exp(m),  m = -ηk, and lf0 = 2ⁿ⁻¹/n
+/// b = exp(m),  m = -ηk,  and  lf0 = 2ⁿ⁻¹/n
 /// ```
 ///
-/// or, if N > 700:
+/// For higher degrees, e.g., N > 700, the alternative normalization can be applied:
 ///
 /// ```text
 ///      ⎛ a ⋅ b ⎞   ⎛  b  ⎞   ⎛  b  ⎞
@@ -117,13 +113,21 @@ pub enum GridType {
 ///
 /// # Properties
 ///
-/// The Lagrange polynomial `ℓᵢ` corresponding to node xᵢ has the property:
+/// The Lagrange polynomial `ℓᵢ` corresponding to node xᵢ has the Kronecker property:
 ///
 /// ```text
-///          ⎧ 1  if i = j
-/// ℓᵢ(xⱼ) = ⎨
-///          ⎩ 0  if i ≠ j
+///                    ⎧ 1  if i = j
+/// pᵢ(xⱼ) := ℓᵢ(xⱼ) = ⎨
+///                    ⎩ 0  if i ≠ j
 /// ```
+///
+/// Also:
+///
+/// ```text
+///  N
+///  Σ  pⱼ(x) = 1
+/// j=0
+/// ``` 
 ///
 /// # References
 ///
@@ -133,7 +137,9 @@ pub enum GridType {
 ///    Springer, 404p
 /// 3. Costa B, Don WS (2000) On the computation of high order pseudospectral derivatives,
 ///    Applied Numerical Mathematics, 33:151-159.
-/// 4. Berrut JP, Trefethen LN (2004) Barycentric Lagrange Interpolation,
+/// 4. Baltensperger R, Trummer MR (2003) Spectral differencing with a twist,
+///    SIAM Journal of Scientific Computing, 24(5):1465-1487
+/// 5. Berrut JP, Trefethen LN (2004) Barycentric Lagrange Interpolation,
 ///    SIAM Review Vol. 46, No. 3, pp. 501-517
 #[derive(Clone, Debug)]
 pub struct InterpLagrange {

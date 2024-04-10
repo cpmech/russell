@@ -47,7 +47,7 @@ pub enum GridType {
 /// (see Eq 3.36 of Ref #2, page 74):
 ///
 /// ```text
-///                       N       λⱼ 
+///                       N       λⱼ
 ///                       Σ  uⱼ ——————
 ///            X         j=0    x - Xⱼ
 /// pnu(x) := I {f}(x) = —————————————
@@ -127,7 +127,7 @@ pub enum GridType {
 ///  N
 ///  Σ  pⱼ(x) = 1
 /// j=0
-/// ``` 
+/// ```
 ///
 /// # References
 ///
@@ -143,21 +143,35 @@ pub enum GridType {
 ///    SIAM Review Vol. 46, No. 3, pp. 501-517
 #[derive(Clone, Debug)]
 pub struct InterpLagrange {
-    // general
-    N: usize,   // degree: N = len(X)-1
-    np1: usize, // number of points N + 1
-    X: Vector,  // grid points: len(X) = P+1; generated in [-1, 1]
-    U: Vector,  // function evaluated @ nodes: f(x_i)
+    /// Degree N of the polynomial (equal to `npoint - 1`)
+    nn: usize,
 
-    // barycentric
-    Bary: bool,   // [default=true] use barycentric weights
-    UseEta: bool, // [default=true] use ηk when computing D1
-    Eta: Vector,  // sum of log of differences: ηk = Σ ln(|xk-xl|) (k≠l)
-    Lam: Vector,  // normalized barycentric weights λk = pow(-1, k+N) ⋅ ηk / (2ⁿ⁻¹/n)
+    /// number of points (equal to `nn + 1`)
+    npoint: usize,
 
-    // computed
-    D1: Matrix, // (dℓj/dx)(xi)
-    D2: Matrix, // (d²ℓj/dx²)(xi)
+    /// Point coordinates in `[-1, 1]`
+    xx: Vector,
+
+    /// TODO: remove this
+    uu: Vector, // function evaluated @ nodes: f(x_i)
+
+    /// Use the barycentric formula (default == true)
+    barycentric: bool,
+
+    /// Use the eta normalization (default == true)
+    use_eta: bool,
+
+    /// Eta coefficients to normalize lambda
+    eta: Vector,
+
+    /// Lambda coefficients of the barycentric formula
+    lambda: Vector,
+
+    /// Matrix with the first-order derivative coefficients `(dℓⱼ/dx)(xₖ)`
+    dd1: Matrix,
+
+    /// Matrix with the second-order derivative coefficients `(d²ℓⱼ/dx²)(xₖ)`
+    dd2: Matrix,
 }
 
 impl InterpLagrange {
@@ -165,74 +179,69 @@ impl InterpLagrange {
     ///
     /// # Input
     ///
-    ///	* n -- degree
-    /// * grid_type -- 1D grid type
-    ///
-    ///	**Note:** the grid will be generated in [-1, 1]
-    pub fn new(N: usize, grid_type: GridType) -> Result<Self, StrError> {
+    ///	* `nn` -- degree
+    /// * `grid_type` -- 1D grid type
+    pub fn new(nn: usize, grid_type: GridType) -> Result<Self, StrError> {
         // check
-        if N < 1 || N > 2048 {
+        if nn < 1 || nn > 2048 {
             return Err("N must be in [1, 2048]");
         }
 
         // allocate
-        let mut o = InterpLagrange {
-            N,
-            np1: N + 1,
-            X: match grid_type {
-                GridType::Uniform => Vector::linspace(-1.0, 1.0, N + 1).unwrap(),
-                GridType::ChebyshevGauss => chebyshev_gauss_points(N),
-                GridType::ChebyshevGaussLobatto => chebyshev_lobatto_points(N),
+        let mut interp = InterpLagrange {
+            nn,
+            npoint: nn + 1,
+            xx: match grid_type {
+                GridType::Uniform => Vector::linspace(-1.0, 1.0, nn + 1).unwrap(),
+                GridType::ChebyshevGauss => chebyshev_gauss_points(nn),
+                GridType::ChebyshevGaussLobatto => chebyshev_lobatto_points(nn),
             },
-            U: Vector::new(0),
-            Bary: true,
-            UseEta: true,
-            Eta: Vector::new(N + 1),
-            Lam: Vector::new(N + 1),
-            D1: Matrix::new(0, 0),
-            D2: Matrix::new(0, 0),
+            uu: Vector::new(0),
+            barycentric: true,
+            use_eta: true,
+            eta: Vector::new(nn + 1),
+            lambda: Vector::new(nn + 1),
+            dd1: Matrix::new(0, 0),
+            dd2: Matrix::new(0, 0),
         };
 
         // compute eta
-        //      N+1    N+1
-        // ηk =  Σ      Σ    ln(|xk - xj|) ()
-        //      k=0  j=0,j≠k
-        for k in 0..o.np1 {
-            for j in 0..o.np1 {
+        for k in 0..interp.npoint {
+            for j in 0..interp.npoint {
                 if j != k {
-                    o.Eta[k] += f64::ln(f64::abs(o.X[k] - o.X[j]));
+                    interp.eta[k] += f64::ln(f64::abs(interp.xx[k] - interp.xx[j]));
                 }
             }
         }
 
         // lambda factors
-        let n = o.N as f64;
-        let (lf0, lf1, lf2) = if o.N > 700 {
+        let nnf = interp.nn as f64;
+        let (lf0, lf1, lf2) = if interp.nn > 700 {
             (
-                f64::powf(2.0, n / 3.0),
-                f64::powf(2.0, n / 3.0),
-                f64::powf(2.0, n / 3.0 - 1.0) / n,
+                f64::powf(2.0, nnf / 3.0),
+                f64::powf(2.0, nnf / 3.0),
+                f64::powf(2.0, nnf / 3.0 - 1.0) / nnf,
             )
         } else {
-            (f64::powf(2.0, n - 1.0) / n, 0.0, 0.0)
+            (f64::powf(2.0, nnf - 1.0) / nnf, 0.0, 0.0)
         };
 
         // compute lambda
-        for k in 0..o.np1 {
-            let a = neg_one_pow_n((k + o.N) as i32);
-            let m = -o.Eta[k];
-            if o.N > 700 {
+        for k in 0..interp.npoint {
+            let a = neg_one_pow_n((k + interp.nn) as i32);
+            let m = -interp.eta[k];
+            if interp.nn > 700 {
                 let b = f64::exp(m / 3.0);
-                o.Lam[k] = a * b / lf0;
-                o.Lam[k] *= b / lf1;
-                o.Lam[k] *= b / lf2;
+                interp.lambda[k] = a * b / lf0;
+                interp.lambda[k] *= b / lf1;
+                interp.lambda[k] *= b / lf2;
             } else {
                 let b = f64::exp(m);
-                o.Lam[k] = a * b / lf0;
+                interp.lambda[k] = a * b / lf0;
             }
-            assert!(o.Lam[k].is_finite());
+            assert!(interp.lambda[k].is_finite());
         }
-        Ok(o)
+        Ok(interp)
     }
 
     /// Computes the generating (nodal) polynomial associated with grid X
@@ -249,8 +258,8 @@ impl InterpLagrange {
     /// ```
     pub fn Om(&self, x: f64) -> f64 {
         let mut ω = 1.0;
-        for i in 0..self.np1 {
-            ω *= x - self.X[i];
+        for i in 0..self.npoint {
+            ω *= x - self.xx[i];
         }
         ω
     }
@@ -290,23 +299,23 @@ impl InterpLagrange {
     /// # Output
     ///
     /// Returns `ℓ^X_i(x)`
-    pub fn L(&self, i: usize, x: f64) -> f64 {
-        if self.Bary {
+    pub fn ell(&self, i: usize, x: f64) -> f64 {
+        if self.barycentric {
             // barycentric formula
-            if f64::abs(x - self.X[i]) < 10.0 * f64::EPSILON {
+            if f64::abs(x - self.xx[i]) < 10.0 * f64::EPSILON {
                 return 1.0;
             }
             let mut sum = 0.0;
-            for k in 0..self.np1 {
-                sum += self.Lam[k] / (x - self.X[k]);
+            for k in 0..self.npoint {
+                sum += self.lambda[k] / (x - self.xx[k]);
             }
-            self.Lam[i] / (x - self.X[i]) / sum
+            self.lambda[i] / (x - self.xx[i]) / sum
         } else {
             // standard formula
             let mut res = 1.0;
-            for j in 0..self.np1 {
+            for j in 0..self.npoint {
                 if i != j {
-                    res *= (x - self.X[j]) / (self.X[i] - self.X[j]);
+                    res *= (x - self.xx[j]) / (self.xx[i] - self.xx[j]);
                 }
             }
             res
@@ -324,11 +333,11 @@ impl InterpLagrange {
     where
         F: FnMut(usize, f64) -> f64,
     {
-        if self.U.dim() != self.np1 {
-            self.U = Vector::new(self.np1);
+        if self.uu.dim() != self.npoint {
+            self.uu = Vector::new(self.npoint);
         }
-        for i in 0..self.np1 {
-            self.U[i] = f(i, self.X[i]);
+        for i in 0..self.npoint {
+            self.uu[i] = f(i, self.xx[i]);
         }
     }
 
@@ -362,24 +371,24 @@ impl InterpLagrange {
     ///
     /// NOTE: Uᵢ = f(xᵢ) must be calculated with o.CalcU or set first
     pub fn I(&self, x: f64) -> f64 {
-        if self.Bary {
+        if self.barycentric {
             // barycentric formula
             let mut num = 0.0;
             let mut den = 0.0;
-            for i in 0..self.np1 {
-                let dx = x - self.X[i];
+            for i in 0..self.npoint {
+                let dx = x - self.xx[i];
                 if f64::abs(dx) < 10.0 * f64::EPSILON {
-                    return self.U[i];
+                    return self.uu[i];
                 }
-                num += self.U[i] * self.Lam[i] / dx;
-                den += self.Lam[i] / dx;
+                num += self.uu[i] * self.lambda[i] / dx;
+                den += self.lambda[i] / dx;
             }
             num / den
         } else {
             // standard formula
             let mut res = 0.0;
-            for i in 0..self.np1 {
-                res += self.U[i] * self.L(i, x);
+            for i in 0..self.npoint {
+                res += self.uu[i] * self.ell(i, x);
             }
             res
         }
@@ -398,34 +407,34 @@ impl InterpLagrange {
     /// See Eq (3) of Reference #3
     pub fn CalcD1(&mut self) {
         // allocate matrix
-        self.D1 = Matrix::new(self.np1, self.np1);
+        self.dd1 = Matrix::new(self.npoint, self.npoint);
 
-        if self.UseEta {
+        if self.use_eta {
             // calculate D1 using ηk
-            for k in 0..self.np1 {
+            for k in 0..self.npoint {
                 let mut sumRow = 0.0;
-                for j in 0..self.np1 {
+                for j in 0..self.npoint {
                     if k != j {
-                        let r = neg_one_pow_n((k + j) as i32) * f64::exp(self.Eta[k] - self.Eta[j]);
-                        let v = r / (self.X[k] - self.X[j]);
-                        self.D1.set(k, j, v);
+                        let r = neg_one_pow_n((k + j) as i32) * f64::exp(self.eta[k] - self.eta[j]);
+                        let v = r / (self.xx[k] - self.xx[j]);
+                        self.dd1.set(k, j, v);
                         sumRow += v;
                     }
                 }
-                self.D1.set(k, k, -sumRow);
+                self.dd1.set(k, k, -sumRow);
             }
         } else {
             // calculate D1 using λk
-            for k in 0..self.np1 {
+            for k in 0..self.npoint {
                 let mut sumRow = 0.0;
-                for j in 0..self.np1 {
+                for j in 0..self.npoint {
                     if k != j {
-                        let v = (self.Lam[j] / self.Lam[k]) / (self.X[k] - self.X[j]);
-                        self.D1.set(k, j, v);
+                        let v = (self.lambda[j] / self.lambda[k]) / (self.xx[k] - self.xx[j]);
+                        self.dd1.set(k, j, v);
                         sumRow += v;
                     }
                 }
-                self.D1.set(k, k, -sumRow);
+                self.dd1.set(k, k, -sumRow);
             }
         }
     }
@@ -450,19 +459,19 @@ impl InterpLagrange {
         self.CalcD1();
 
         // allocate matrix
-        self.D2 = Matrix::new(self.np1, self.np1);
+        self.dd2 = Matrix::new(self.npoint, self.npoint);
 
         // compute D2 from D1 values using Eqs. (9) and (13) of [3]
-        for k in 0..self.np1 {
+        for k in 0..self.npoint {
             let mut sumRow = 0.0;
-            for j in 0..self.np1 {
+            for j in 0..self.npoint {
                 if k != j {
-                    let v = 2.0 * self.D1.get(k, j) * (self.D1.get(k, k) - 1.0 / (self.X[k] - self.X[j]));
-                    self.D2.set(k, j, v);
+                    let v = 2.0 * self.dd1.get(k, j) * (self.dd1.get(k, k) - 1.0 / (self.xx[k] - self.xx[j]));
+                    self.dd2.set(k, j, v);
                     sumRow += v;
                 }
             }
-            self.D2.set(k, k, -sumRow);
+            self.dd2.set(k, k, -sumRow);
         }
     }
 
@@ -480,13 +489,13 @@ impl InterpLagrange {
         F: FnMut(usize, f64) -> f64,
     {
         // derivative of interpolation @ x_i
-        let mut v = Vector::new(self.np1);
-        mat_vec_mul(&mut v, 1.0, &self.D1, &self.U).unwrap();
+        let mut v = Vector::new(self.npoint);
+        mat_vec_mul(&mut v, 1.0, &self.dd1, &self.uu).unwrap();
 
         // compute error
         let mut maxDiff = 0.0;
-        for i in 0..self.np1 {
-            let vana = dfdxAna(i, self.X[i]);
+        for i in 0..self.npoint {
+            let vana = dfdxAna(i, self.xx[i]);
             let diff = f64::abs(v[i] - vana);
             if diff > maxDiff {
                 maxDiff = diff;
@@ -509,13 +518,13 @@ impl InterpLagrange {
         F: FnMut(usize, f64) -> f64,
     {
         // derivative of interpolation @ x_i
-        let mut v = Vector::new(self.np1);
-        mat_vec_mul(&mut v, 1.0, &self.D2, &self.U).unwrap();
+        let mut v = Vector::new(self.npoint);
+        mat_vec_mul(&mut v, 1.0, &self.dd2, &self.uu).unwrap();
 
         // compute error
         let mut maxDiff = 0.0;
-        for i in 0..self.np1 {
-            let vana = d2fdx2Ana(i, self.X[i]);
+        for i in 0..self.npoint {
+            let vana = d2fdx2Ana(i, self.xx[i]);
             let diff = f64::abs(v[i] - vana);
             if diff > maxDiff {
                 maxDiff = diff;
@@ -532,9 +541,9 @@ impl InterpLagrange {
         let mut ΛN = 0.0;
         for j in 0..n_station {
             let x = -1.0 + 2.0 * (j as f64) / ((n_station - 1) as f64);
-            let mut sum = f64::abs(self.L(0, x));
-            for i in 1..self.np1 {
-                sum += f64::abs(self.L(i, x));
+            let mut sum = f64::abs(self.ell(0, x));
+            for i in 1..self.npoint {
+                sum += f64::abs(self.ell(i, x));
             }
             if sum > ΛN {
                 ΛN = sum;
@@ -593,8 +602,8 @@ impl InterpLagrange {
     where
         F: FnMut(usize, f64),
     {
-        for i in 0..self.np1 {
-            callback(i, self.X[i]);
+        for i in 0..self.npoint {
+            callback(i, self.xx[i]);
         }
     }
 }
@@ -610,15 +619,15 @@ mod tests {
 
     fn check_lambda(N: usize, grid_type: GridType, tol: f64) {
         let interp = InterpLagrange::new(N, grid_type).unwrap();
-        let m = f64::powf(2.0, (interp.N as f64) - 1.0) / (interp.N as f64);
-        for i in 0..(interp.N + 1) {
+        let m = f64::powf(2.0, (interp.nn as f64) - 1.0) / (interp.nn as f64);
+        for i in 0..(interp.nn + 1) {
             let mut d = 1.0;
-            for j in 0..(interp.N + 1) {
+            for j in 0..(interp.nn + 1) {
                 if i != j {
-                    d *= interp.X[i] - interp.X[j]
+                    d *= interp.xx[i] - interp.xx[j]
                 }
             }
-            approx_eq(interp.Lam[i], 1.0 / d / m, tol);
+            approx_eq(interp.lambda[i], 1.0 / d / m, tol);
         }
     }
 
@@ -626,10 +635,10 @@ mod tests {
         let mut interp = InterpLagrange::new(N, grid_type).unwrap();
 
         // check Kronecker property (standard)
-        interp.Bary = false;
+        interp.barycentric = false;
         for i in 0..(N + 1) {
             for j in 0..(N + 1) {
-                let li = interp.L(i, interp.X[j]);
+                let li = interp.ell(i, interp.xx[j]);
                 let mut ana = 1.0;
                 if i != j {
                     ana = 0.0;
@@ -639,10 +648,10 @@ mod tests {
         }
 
         // check Kronecker property (barycentric)
-        interp.Bary = true;
+        interp.barycentric = true;
         for i in 0..(N + 1) {
             for j in 0..(N + 1) {
-                let li = interp.L(i, interp.X[j]);
+                let li = interp.ell(i, interp.xx[j]);
                 let mut ana = 1.0;
                 if i != j {
                     ana = 0.0;
@@ -655,10 +664,10 @@ mod tests {
         let xx = Vector::linspace(-1.0, 1.0, 20).unwrap();
         for x in xx {
             for i in 0..(N + 1) {
-                interp.Bary = true;
-                let li1 = interp.L(i, x);
-                interp.Bary = false;
-                let li2 = interp.L(i, x);
+                interp.barycentric = true;
+                let li1 = interp.ell(i, x);
+                interp.barycentric = false;
+                let li2 = interp.ell(i, x);
                 approx_eq(li1, li2, tol_comparison);
             }
         }
@@ -673,13 +682,13 @@ mod tests {
         interp.CalcU(f);
 
         // check interpolation (standard)
-        interp.Bary = false;
+        interp.barycentric = false;
         interp.loop_over_grid_points(|i, x| {
             approx_eq(interp.I(x), f(i, x), 1e-17);
         });
 
         // check interpolation (barycentric)
-        interp.Bary = true;
+        interp.barycentric = true;
         interp.loop_over_grid_points(|i, x| {
             approx_eq(interp.I(x), f(i, x), 1e-17);
         });
@@ -687,10 +696,10 @@ mod tests {
         // compare standard and barycentric (I)
         let xx = Vector::linspace(-1.0, 1.0, 20).unwrap();
         for x in xx {
-            for _ in 0..(interp.N + 1) {
-                interp.Bary = false;
+            for _ in 0..(interp.nn + 1) {
+                interp.barycentric = false;
                 let i1 = interp.I(x);
-                interp.Bary = true;
+                interp.barycentric = true;
                 let i2 = interp.I(x);
                 approx_eq(i1, i2, tol_comparison);
             }
@@ -706,9 +715,9 @@ mod tests {
         let args = &mut Args {};
         let np1 = n + 1;
         for i in 0..np1 {
-            let xi = interp.X[i];
+            let xi = interp.xx[i];
             for j in 0..np1 {
-                deriv1_approx_eq(interp.D1.get(i, j), xi, args, tol, |x, _| Ok(interp.L(j, x)));
+                deriv1_approx_eq(interp.dd1.get(i, j), xi, args, tol, |x, _| Ok(interp.ell(j, x)));
             }
         }
     }
@@ -720,9 +729,9 @@ mod tests {
         let args = &mut Args {};
         let np1 = n + 1;
         for i in 0..np1 {
-            let xi = interp.X[i];
+            let xi = interp.xx[i];
             for j in 0..np1 {
-                deriv2_approx_eq(interp.D2.get(i, j), xi, args, tol, |x, _| Ok(interp.L(j, x)));
+                deriv2_approx_eq(interp.dd2.get(i, j), xi, args, tol, |x, _| Ok(interp.ell(j, x)));
             }
         }
     }
@@ -734,7 +743,7 @@ mod tests {
     {
         let mut interp = InterpLagrange::new(nn, grid_type).unwrap();
         interp.CalcU(f);
-        interp.UseEta = use_eta;
+        interp.use_eta = use_eta;
         interp.CalcD1();
         let max_diff = interp.CalcErrorD1(dfdx_ana);
         if max_diff > tol {
@@ -749,7 +758,7 @@ mod tests {
     {
         let mut interp = InterpLagrange::new(nn, grid_type).unwrap();
         interp.CalcU(f);
-        interp.UseEta = use_eta;
+        interp.use_eta = use_eta;
         interp.CalcD2();
         let max_diff = interp.CalcErrorD2(d2fdx2_ana);
         if max_diff > tol {
@@ -762,16 +771,16 @@ mod tests {
     #[test]
     fn new_works() {
         let interp = InterpLagrange::new(2, GridType::Uniform).unwrap();
-        assert_eq!(interp.N, 2);
-        assert_eq!(interp.np1, 3);
-        assert_eq!(interp.X.as_data(), &[-1.0, 0.0, 1.0]);
-        assert_eq!(interp.U.dim(), 0);
-        assert_eq!(interp.Bary, true);
-        assert_eq!(interp.UseEta, true);
-        assert_eq!(interp.Eta.dim(), 3);
-        assert_eq!(interp.Lam.dim(), 3);
-        assert_eq!(interp.D1.dims(), (0, 0));
-        assert_eq!(interp.D2.dims(), (0, 0));
+        assert_eq!(interp.nn, 2);
+        assert_eq!(interp.npoint, 3);
+        assert_eq!(interp.xx.as_data(), &[-1.0, 0.0, 1.0]);
+        assert_eq!(interp.uu.dim(), 0);
+        assert_eq!(interp.barycentric, true);
+        assert_eq!(interp.use_eta, true);
+        assert_eq!(interp.eta.dim(), 3);
+        assert_eq!(interp.lambda.dim(), 3);
+        assert_eq!(interp.dd1.dims(), (0, 0));
+        assert_eq!(interp.dd2.dims(), (0, 0));
     }
 
     #[test]

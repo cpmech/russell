@@ -27,22 +27,26 @@ pub struct InterpParams {
 
     /// Number of stations (points) for the Lebesgue estimate (e.g., 10,000)
     pub lebesgue_estimate_nstation: usize,
-
-    /// Number of stations (points) for the interpolation error estimate (e.g., 10,000)
-    pub error_estimate_nstation: usize,
 }
 
 impl InterpParams {
     /// Allocates a new instance with default values
-    pub fn new() -> Self {
-        InterpParams {
-            nn: 20,
+    ///
+    /// # Input
+    ///
+    /// * `nn` -- the polynomial degree `N`; thus the number of grid nodes will be `N + 1`.
+    ///   **Note:** `nn` must be in `[1, 2048]`
+    pub fn new(nn: usize) -> Result<Self, StrError> {
+        if nn < 1 || nn > 2048 {
+            return Err("the polynomial degree must be in [1, 2048]");
+        }
+        Ok(InterpParams {
+            nn,
             grid_type: InterpGrid::ChebyshevGaussLobatto,
             no_eta_normalization: false,
             eta_cutoff: 700,
             lebesgue_estimate_nstation: 10_000,
-            error_estimate_nstation: 10_000,
-        }
+        })
     }
 
     /// Validates the parameters
@@ -52,9 +56,6 @@ impl InterpParams {
         }
         if self.lebesgue_estimate_nstation < 2 {
             return Err("lebesgue_estimate_nstation must be ≥ 2");
-        }
-        if self.error_estimate_nstation < 2 {
-            return Err("error_estimate_nstation must be ≥ 2");
         }
         Ok(())
     }
@@ -583,8 +584,7 @@ mod tests {
 
     #[test]
     fn new_works() {
-        let mut params = InterpParams::new();
-        params.nn = 2;
+        let params = InterpParams::new(2).unwrap();
         let interp = InterpLagrange::new(params).unwrap();
         assert_eq!(interp.npoint, 3);
         assert_eq!(interp.xx.as_data(), &[-1.0, 0.0, 1.0]);
@@ -596,8 +596,7 @@ mod tests {
 
     #[test]
     fn getters_work() {
-        let mut params = InterpParams::new();
-        params.nn = 2;
+        let params = InterpParams::new(2).unwrap();
         let interp = InterpLagrange::new(params).unwrap();
         assert_eq!(interp.get_points().as_data(), &[-1.0, 0.0, 1.0]);
         assert_eq!(interp.get_xrange(), (-1.0, 1.0));
@@ -629,7 +628,7 @@ mod tests {
 
     #[test]
     fn lambda_is_correct() {
-        let mut params = InterpParams::new();
+        let mut params = InterpParams::new(1).unwrap();
         for nn in 1..20 {
             params.nn = nn;
             for (tol, grid_type) in [
@@ -694,7 +693,7 @@ mod tests {
 
     #[test]
     fn psi_is_correct() {
-        let mut params = InterpParams::new();
+        let mut params = InterpParams::new(1).unwrap();
         for nn in 1..20 {
             params.nn = nn;
             for (tol, grid_type) in [
@@ -740,8 +739,7 @@ mod tests {
     #[test]
     fn eval_works_1() {
         let f = |_, x| f64::cos(f64::exp(2.0 * x));
-        let mut params = InterpParams::new();
-        params.nn = 5;
+        let mut params = InterpParams::new(5).unwrap();
         for grid_type in [
             InterpGrid::Uniform,
             InterpGrid::ChebyshevGauss,
@@ -756,8 +754,7 @@ mod tests {
     fn eval_works_2() {
         // Runge equation
         let f = |_, x| 1.0 / (1.0 + 16.0 * x * x);
-        let mut params = InterpParams::new();
-        params.nn = 8;
+        let mut params = InterpParams::new(8).unwrap();
         for grid_type in [
             InterpGrid::Uniform,
             InterpGrid::ChebyshevGauss,
@@ -793,7 +790,7 @@ mod tests {
             (5, 1e-9),
             (10, 1e-8),
         ];
-        let mut params = InterpParams::new();
+        let mut params = InterpParams::new(1).unwrap();
         for (nn, tol) in nn_and_tols {
             params.nn = nn;
             // println!("nn = {:?}", nn);
@@ -836,7 +833,7 @@ mod tests {
             (5, 1e-8),
             (10, 1e-8),
         ];
-        let mut params = InterpParams::new();
+        let mut params = InterpParams::new(1).unwrap();
         for (nn, tol) in nn_and_tols {
             params.nn = nn;
             // println!("nn = {:?}", nn);
@@ -868,7 +865,7 @@ mod tests {
 
     #[test]
     fn dd1_times_uu_works() {
-        let mut params = InterpParams::new();
+        let mut params = InterpParams::new(1).unwrap();
         let f = |_, x| f64::powf(x, 8.0);
         let g = |_, x| 8.0 * f64::powf(x, 7.0);
         for (nn, grid_type, tol) in [
@@ -907,7 +904,7 @@ mod tests {
 
     #[test]
     fn dd2_times_uu_works() {
-        let mut params = InterpParams::new();
+        let mut params = InterpParams::new(1).unwrap();
         let f = |_, x| f64::powf(x, 8.0);
         // let g = |_, x| 8.0 * f64::powf(x, 7.0);
         let h = |_, x| 56.0 * f64::powf(x, 6.0);
@@ -927,8 +924,7 @@ mod tests {
 
     #[test]
     fn lebesgue_works_uniform() {
-        let mut params = InterpParams::new();
-        params.nn = 5;
+        let mut params = InterpParams::new(5).unwrap();
         params.grid_type = InterpGrid::Uniform;
         let tol = 1e-3;
         params.lebesgue_estimate_nstation = 210; // 1e-15 is achieved with 10_000
@@ -938,6 +934,7 @@ mod tests {
 
     #[test]
     fn lebesgue_works_chebyshev_gauss() {
+        let mut params = InterpParams::new(1).unwrap();
         let data = [
             (4, 1e-14, 1.988854381999833e+00),
             (8, 1e-15, 2.361856787767076e+00),
@@ -945,7 +942,6 @@ mod tests {
         ];
         for (nn, tol, reference) in data {
             println!("nn = {}", nn);
-            let mut params = InterpParams::new();
             params.nn = nn;
             params.grid_type = InterpGrid::ChebyshevGauss;
             params.lebesgue_estimate_nstation = 10_000;
@@ -956,6 +952,7 @@ mod tests {
 
     #[test]
     fn lebesgue_works_chebyshev_gauss_lobatto() {
+        let mut params = InterpParams::new(1).unwrap();
         let data = [
             (4, 1e-15, 1.798761778849085e+00),
             (8, 1e-15, 2.274730699116020e+00),
@@ -963,7 +960,6 @@ mod tests {
         ];
         for (nn, tol, reference) in data {
             println!("nn = {}", nn);
-            let mut params = InterpParams::new();
             params.nn = nn;
             params.grid_type = InterpGrid::ChebyshevGaussLobatto;
             params.lebesgue_estimate_nstation = 10_000;

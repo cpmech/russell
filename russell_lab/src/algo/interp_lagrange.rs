@@ -755,7 +755,7 @@ mod tests {
         }
     }
 
-    fn _check_dd2_matrix(params: InterpParams, tol: f64) {
+    fn check_dd2_matrix(params: InterpParams, tol: f64) {
         let npoint = params.nn + 1;
         let mut interp = InterpLagrange::new(params).unwrap();
         interp.calc_dd2_matrix();
@@ -785,7 +785,7 @@ mod tests {
         }
     }
 
-    fn _check_dd2_error<F, H>(params: InterpParams, tol: f64, f: F, d2fdx2_ana: H)
+    fn check_dd2_error<F, H>(params: InterpParams, tol: f64, f: F, d2fdx2_ana: H)
     where
         F: FnMut(usize, f64) -> f64,
         H: FnMut(usize, f64) -> f64,
@@ -925,6 +925,22 @@ mod tests {
     }
 
     #[test]
+    fn dd2_matrix_works() {
+        #[rustfmt::skip]
+        let nn_and_tols = [
+            (2, 1e-9),
+            (5, 1e-8),
+            (10, 1e-8),
+        ];
+        let mut params = InterpParams::new();
+        for (nn, tol) in nn_and_tols {
+            params.nn = nn;
+            // println!("nn = {:?}", nn);
+            check_dd2_matrix(params, tol);
+        }
+    }
+
+    #[test]
     fn dd1_times_uu_works() {
         let mut params = InterpParams::new();
         let f = |_, x| f64::powf(x, 8.0);
@@ -934,9 +950,28 @@ mod tests {
             (8, InterpGrid::ChebyshevGauss, 1e-14),
             (8, InterpGrid::ChebyshevGaussLobatto, 1e-13),
         ] {
+            // println!("nn = {}, grid = {:?}", nn, grid_type);
             params.nn = nn;
             params.grid_type = grid_type;
             check_dd1_error(params, tol, f, g);
+        }
+    }
+
+    #[test]
+    fn dd2_times_uu_works() {
+        let mut params = InterpParams::new();
+        let f = |_, x| f64::powf(x, 8.0);
+        // let g = |_, x| 8.0 * f64::powf(x, 7.0);
+        let h = |_, x| 56.0 * f64::powf(x, 6.0);
+        for (nn, grid_type, tol) in [
+            (8, InterpGrid::Uniform, 1e-11),
+            (8, InterpGrid::ChebyshevGauss, 1e-12),
+            (8, InterpGrid::ChebyshevGaussLobatto, 1e-12),
+        ] {
+            // println!("nn = {}, grid = {:?}", nn, grid_type);
+            params.nn = nn;
+            params.grid_type = grid_type;
+            check_dd2_error(params, tol, f, h);
         }
     }
 

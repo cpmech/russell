@@ -21,6 +21,7 @@ num-traits = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]
+plotpy = "0.6"
 serde_json = "1.0"
 serial_test = "3.0"
 

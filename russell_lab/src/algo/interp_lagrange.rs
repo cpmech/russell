@@ -548,17 +548,17 @@ impl InterpLagrange {
                     sum += self.lambda[j] / (self.xx[k] - self.xx[j]);
                 }
             }
-            let dkk = -sum / self.lambda[k];
+            let d1kk = -sum / self.lambda[k];
             // compute the second derivative
             sum = 0.0;
             for j in 0..self.npoint {
                 if j != k {
                     let dx = self.xx[k] - self.xx[j];
-                    let dkj = (self.lambda[j] / self.lambda[k]) / dx;
-                    sum += dkj * (dkk - 1.0 / dx) * (uu[j] - uu[k]);
+                    let d1kj = (self.lambda[j] / self.lambda[k]) / dx;
+                    sum += d1kj * (d1kk - 1.0 / dx) * (uu[k] - uu[j]);
                 }
             }
-            2.0 * sum
+            -2.0 * sum
         } else {
             let pnu_x = self.eval(x, uu);
             let d_pnu_x = self.eval_deriv1(x, uu);

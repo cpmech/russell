@@ -822,25 +822,23 @@ mod tests {
     #[test]
     fn dd1_matrix_works() {
         // with eta
-        #[rustfmt::skip]
-        let nn_and_tols = [
-            (2, 1e-12),
-            (5, 1e-9),
-            (10, 1e-8),
-        ];
+        let nn_and_tols = [(2, 1e-12), (5, 1e-9), (10, 1e-8)];
         let mut params = InterpParams::new(1).unwrap();
         for (nn, tol) in nn_and_tols {
             params.nn = nn;
             // println!("nn = {:?}", nn);
             check_dd1_matrix(params, tol);
         }
+        // with eta and low cutoff
+        let nn_and_tols = [(2, 1e-12), (5, 1e-9), (10, 1e-8)];
+        params.eta_cutoff = 0;
+        for (nn, tol) in nn_and_tols {
+            params.nn = nn;
+            // println!("nn = {:?}", nn);
+            check_dd1_matrix(params, tol);
+        }
         // no eta
-        #[rustfmt::skip]
-        let nn_and_tols = [
-            (2, 1e-12),
-            (5, 1e-9),
-            (10, 1e-8),
-        ];
+        let nn_and_tols = [(2, 1e-12), (5, 1e-9), (10, 1e-8)];
         params.no_eta_normalization = true;
         for (nn, tol) in nn_and_tols {
             params.nn = nn;
@@ -956,6 +954,32 @@ mod tests {
             params.grid_type = grid_type;
             check_dd2_error(params, tol, f, h);
         }
+    }
+
+    #[test]
+    fn dd_matrices_are_computed_just_once() {
+        // interpolant
+        let nn = 8;
+        let npoint = nn + 1;
+        let params = InterpParams::new(nn).unwrap();
+        let mut interp = InterpLagrange::new(params).unwrap();
+
+        // calculate D1 and D2
+        interp.calc_dd1_matrix();
+        interp.calc_dd2_matrix();
+
+        // data values
+        let f = |_, x| f64::powf(x, 8.0);
+        let g = |_, x| 8.0 * f64::powf(x, 7.0);
+        let h = |_, x| 56.0 * f64::powf(x, 6.0);
+        let mut uu = Vector::new(npoint);
+        for (i, x) in interp.get_points().into_iter().enumerate() {
+            uu[i] = f(i, *x);
+        }
+
+        // check (derivative should not be computed again; use debug)
+        approx_eq(interp.max_error_dd1(&uu, g), 0.0, 1e-13);
+        approx_eq(interp.max_error_dd2(&uu, h), 0.0, 1e-12);
     }
 
     // --- Lebesgue -----------------------------------------------------------------------------------

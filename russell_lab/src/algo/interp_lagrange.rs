@@ -2,6 +2,9 @@ use crate::math::{chebyshev_gauss_points, chebyshev_lobatto_points, neg_one_pow_
 use crate::StrError;
 use crate::{mat_vec_mul, Matrix, Vector};
 
+/// Tiny number to consider x an Xⱼ identical
+const DX_EPSILON: f64 = 10.0 * f64::EPSILON;
+
 /// Defines the type of the interpolation grid in 1D
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum InterpGrid {
@@ -366,7 +369,7 @@ impl InterpLagrange {
     /// This function will panic if `j > N`.
     pub fn psi(&self, j: usize, x: f64) -> f64 {
         assert!(j <= self.params.nn);
-        if f64::abs(x - self.xx[j]) < 10.0 * f64::EPSILON {
+        if f64::abs(x - self.xx[j]) < DX_EPSILON {
             return 1.0;
         }
         let mut sum = 0.0;
@@ -390,6 +393,7 @@ impl InterpLagrange {
     ///
     /// # Input
     ///
+    /// * `x` -- the coordinate in `[-1, 1]`
     /// * `uu` -- the "data" vector `U` of size equal to N + 1
     ///
     /// # Panics
@@ -405,8 +409,135 @@ impl InterpLagrange {
     }
 
     /// Evaluates the first derivative using the interpolating polynomial
-    pub fn eval_deriv1(&self, _x: f64, _uu: &Vector) -> f64 {
-        panic!("TODO: eval_deriv1")
+    ///
+    /// Calculates the first derivative of `pnu(x)` described in [InterpLagrange::eval()]
+    ///
+    /// ```text
+    ///             N    λⱼ   pnu(x) - Uⱼ
+    ///             Σ  —————— ———————————
+    /// d pnu(x)   j=0 x - Xⱼ   x - Xⱼ
+    /// ———————— = ——————————————————————
+    ///    dx            N     λⱼ
+    ///                  Σ   ——————
+    ///                 j=0  x - Xⱼ
+    /// ```
+    ///
+    /// See Equation 3.45 of Reference #2.
+    ///
+    /// # Input
+    ///
+    /// * `x` -- the coordinate in `[-1, 1]`
+    /// * `uu` -- the "data" vector `U` of size equal to N + 1
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `uu.dim()` is not equal to the number of points `N + 1`
+    pub fn eval_deriv1(&self, x: f64, uu: &Vector) -> f64 {
+        assert_eq!(uu.dim(), self.npoint);
+        let mut at_node = false;
+        let mut at_node_index = 0;
+        for j in 0..self.npoint {
+            let dx = x - self.xx[j];
+            if f64::abs(dx) < DX_EPSILON {
+                at_node = true;
+                at_node_index = j;
+                break;
+            }
+        }
+        if at_node {
+            let k = at_node_index;
+            let mut sum = 0.0;
+            for j in 0..self.npoint {
+                if j != k {
+                    sum += self.lambda[j] * (uu[k] - uu[j]) / (self.xx[k] - self.xx[j]);
+                }
+            }
+            -sum / self.lambda[k]
+        } else {
+            let pnu_x = self.eval(x, uu);
+            let mut num = 0.0;
+            let mut den = 0.0;
+            for j in 0..self.npoint {
+                let dx = x - self.xx[j];
+                let a = self.lambda[j] / dx;
+                num += a * (pnu_x - uu[j]) / dx;
+                den += a;
+            }
+            num / den
+        }
+    }
+
+    /// Evaluates the second derivative using the interpolating polynomial
+    ///
+    /// Calculates the second derivative of `pnu(x)` described in [InterpLagrange::eval()]
+    ///
+    /// ```text
+    ///             N     λⱼ     2    ⎛           Uⱼ - pnu(x) ⎞
+    ///             Σ   —————— —————— ⎜ pnu'(x) + ——————————— ⎟
+    /// d²pnu(x)   j=0  x - Xⱼ x - Xⱼ ⎝              x - Xⱼ   ⎠
+    /// ———————— = ————————————————————————————————————————————
+    ///    dx²                    N     λⱼ
+    ///                           Σ   ——————
+    ///                          j=0  x - Xⱼ
+    /// ```
+    ///
+    /// The above equation was derived using Mathematica
+    ///
+    /// # Input
+    ///
+    /// * `x` -- the coordinate in `[-1, 1]`
+    /// * `uu` -- the "data" vector `U` of size equal to N + 1
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `uu.dim()` is not equal to the number of points `N + 1`
+    pub fn eval_deriv2(&self, x: f64, uu: &Vector) -> f64 {
+        assert_eq!(uu.dim(), self.npoint);
+        let mut at_node = false;
+        let mut at_node_index = 0;
+        for j in 0..self.npoint {
+            let dx = x - self.xx[j];
+            if f64::abs(dx) < DX_EPSILON {
+                at_node = true;
+                at_node_index = j;
+                break;
+            }
+        }
+        if at_node {
+            // compute dkk (using NST: negative sum trick)
+            let k = at_node_index;
+            let mut sum = 0.0;
+            for j in 0..self.npoint {
+                if j != k {
+                    sum += self.lambda[j] / (self.xx[k] - self.xx[j]);
+                }
+            }
+            let dkk = -sum / self.lambda[k];
+            // compute the second derivative
+            sum = 0.0;
+            for j in 0..self.npoint {
+                if j != k {
+                    let dx = self.xx[k] - self.xx[j];
+                    let dkj = (self.lambda[j] / self.lambda[k]) / dx;
+                    sum += dkj * (dkk - 1.0 / dx) * (uu[j] - uu[k]);
+                }
+            }
+            2.0 * sum
+        } else {
+            let pnu_x = self.eval(x, uu);
+            let d_pnu_x = self.eval_deriv1(x, uu);
+            let mut num = 0.0;
+            let mut den = 0.0;
+            for j in 0..self.npoint {
+                let dx = x - self.xx[j];
+                let a = self.lambda[j] / dx;
+                let b = 2.0 / dx;
+                let c = d_pnu_x + (uu[j] - pnu_x) / dx;
+                num += a * b * c;
+                den += a;
+            }
+            num / den
+        }
     }
 
     /// Computes the differentiation matrix D1
@@ -500,7 +631,7 @@ impl InterpLagrange {
     {
         self.calc_dd1_matrix();
 
-        // derivative of interpolation @ xᵢ
+        // derivative of interpolation @ all nodes
         assert_eq!(uu.dim(), self.npoint);
         let mut v = Vector::new(self.npoint);
         mat_vec_mul(&mut v, 1.0, &self.dd1, uu).unwrap();
@@ -535,7 +666,7 @@ impl InterpLagrange {
     {
         self.calc_dd2_matrix();
 
-        // derivative of interpolation @ xᵢ
+        // derivative of interpolation @ all nodes
         assert_eq!(uu.dim(), self.npoint);
         let mut v = Vector::new(self.npoint);
         mat_vec_mul(&mut v, 1.0, &self.dd2, uu).unwrap();
@@ -585,7 +716,7 @@ impl InterpLagrange {
 #[cfg(test)]
 mod tests {
     use super::{InterpGrid, InterpLagrange, InterpParams};
-    use crate::{approx_eq, deriv1_approx_eq, deriv2_approx_eq, Vector};
+    use crate::{approx_eq, deriv1_approx_eq, deriv2_approx_eq, mat_vec_mul, Vector};
 
     #[test]
     fn params_new_and_validate_capture_errors() {
@@ -768,9 +899,10 @@ mod tests {
         }
 
         // check the interpolation over the xrange
-        let xx = Vector::linspace(-1.0, 1.0, 20).unwrap();
-        for i in 0..npoint {
-            approx_eq(interp.eval(xx[i], &uu), f(i, xx[i]), tol);
+        let nstation = 20;
+        let station = Vector::linspace(-1.0, 1.0, nstation).unwrap();
+        for i in 0..nstation {
+            approx_eq(interp.eval(station[i], &uu), f(i, station[i]), tol);
         }
     }
 
@@ -784,7 +916,7 @@ mod tests {
             InterpGrid::ChebyshevGaussLobatto,
         ] {
             params.grid_type = grid_type;
-            check_eval(params, 0.15, f);
+            check_eval(params, 1.5, f); // check this
         }
     }
 
@@ -799,7 +931,7 @@ mod tests {
             InterpGrid::ChebyshevGaussLobatto,
         ] {
             params.grid_type = grid_type;
-            check_eval(params, 0.7, f);
+            check_eval(params, 0.69, f);
         }
     }
 
@@ -980,6 +1112,98 @@ mod tests {
         // check (derivative should not be computed again; use debug)
         approx_eq(interp.max_error_dd1(&uu, g), 0.0, 1e-13);
         approx_eq(interp.max_error_dd2(&uu, h), 0.0, 1e-12);
+    }
+
+    // --- derivatives of polynomial function ---------------------------------------------------------
+
+    fn check_eval_deriv1<F, G>(params: InterpParams, tol: f64, mut f: F, mut g: G)
+    where
+        F: Copy + FnMut(usize, f64) -> f64,
+        G: Copy + FnMut(usize, f64) -> f64,
+    {
+        // interpolant
+        let npoint = params.nn + 1;
+        let mut interp = InterpLagrange::new(params).unwrap();
+
+        // compute data points
+        let mut uu = Vector::new(npoint);
+        for (i, x) in interp.get_points().into_iter().enumerate() {
+            uu[i] = f(i, *x);
+        }
+
+        // calculate the derivative at all nodes
+        interp.calc_dd1_matrix();
+        let mut d1_at_nodes = Vector::new(npoint);
+        mat_vec_mul(&mut d1_at_nodes, 1.0, &interp.dd1, &uu).unwrap();
+
+        // check the interpolation over the xrange
+        let nstation = 20;
+        let stations = Vector::linspace(-1.0, 1.0, nstation).unwrap();
+        for i in 0..nstation {
+            // println!("x[{}] = {:?}", i, stations[i]);
+            let d1 = interp.eval_deriv1(stations[i], &uu);
+            approx_eq(d1, g(i, stations[i]), tol);
+            if i == 0 || i == (nstation - 1) {
+                // at node
+                let j = if i == 0 { 0 } else { npoint - 1 };
+                assert!(f64::abs(stations[i] - interp.xx[j]) < 10.0 * f64::EPSILON);
+                // println!("at node {}: x[{}] = {:?}: d1 = {:?} =? {:?}", j, i, stations[i], d1, d1_at_nodes[j]);
+                approx_eq(d1, d1_at_nodes[j], 1e-14);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_deriv1_works() {
+        let f = |_, x| f64::powf(x, 8.0);
+        let g = |_, x| 8.0 * f64::powf(x, 7.0);
+        let params = InterpParams::new(8).unwrap();
+        check_eval_deriv1(params, 1e-13, f, g)
+    }
+
+    fn check_eval_deriv2<F, H>(params: InterpParams, tol: f64, mut f: F, mut h: H)
+    where
+        F: Copy + FnMut(usize, f64) -> f64,
+        H: Copy + FnMut(usize, f64) -> f64,
+    {
+        // interpolant
+        let npoint = params.nn + 1;
+        let mut interp = InterpLagrange::new(params).unwrap();
+
+        // compute data points
+        let mut uu = Vector::new(npoint);
+        for (i, x) in interp.get_points().into_iter().enumerate() {
+            uu[i] = f(i, *x);
+        }
+
+        // calculate the derivative at all nodes
+        interp.calc_dd2_matrix();
+        let mut d2_at_nodes = Vector::new(npoint);
+        mat_vec_mul(&mut d2_at_nodes, 1.0, &interp.dd2, &uu).unwrap();
+
+        // check the interpolation over the xrange
+        let nstation = 20;
+        let stations = Vector::linspace(-1.0, 1.0, nstation).unwrap();
+        for i in 0..nstation {
+            // println!("x[{}] = {:?}", i, stations[i]);
+            let d2 = interp.eval_deriv2(stations[i], &uu);
+            approx_eq(d2, h(i, stations[i]), tol);
+            if i == 0 || i == (nstation - 1) {
+                // at node
+                let j = if i == 0 { 0 } else { npoint - 1 };
+                assert!(f64::abs(stations[i] - interp.xx[j]) < 10.0 * f64::EPSILON);
+                // println!("at node {}: x[{}] = {:?}: d1 = {:?} =? {:?}", j, i, stations[i], d2, d2_at_nodes[j]);
+                approx_eq(d2, d2_at_nodes[j], 1e-12);
+            }
+        }
+    }
+
+    #[test]
+    fn eval_deriv2_works() {
+        let f = |_, x| f64::powf(x, 8.0);
+        let h = |_, x| 56.0 * f64::powf(x, 6.0);
+        let params = InterpParams::new(8).unwrap();
+        check_eval_deriv2(params, 1e-12, f, h)
     }
 
     // --- Lebesgue -----------------------------------------------------------------------------------

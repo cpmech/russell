@@ -70,7 +70,7 @@ impl InterpParams {
 ///
 /// A polynomial interpolant `I^X_N{f}` for the function `f(x)`, associated with a grid `X`, of degree `N`,
 /// and with `N+1` points, is expressed in the Lagrange form as
-/// (see Eq 2.2.19 of Ref #1, page 73; and Eq 3.31 of Ref #2, page 73):
+/// (see Eq 2.2.19 of Reference #1, page 73; and Eq 3.31 of Reference #2, page 73):
 ///
 /// ```text
 ///                         N
@@ -84,7 +84,7 @@ impl InterpParams {
 /// ```
 ///
 /// where `ℓ^X_j(x)` is the j-th Lagrange cardinal polynomial associated with grid X and given by
-/// (see Eq 2.3.27 of Ref #1, page 80; and Eq 3.32 of Ref #2, page 74):
+/// (see Eq 2.3.27 of Reference #1, page 80; and Eq 3.32 of Reference #2, page 74):
 ///
 /// ```text
 ///           N
@@ -98,7 +98,7 @@ impl InterpParams {
 /// ```
 ///
 /// In barycentric form, the interpolant is expressed as
-/// (see Eq 3.36 of Ref #2, page 74):
+/// (see Eq 3.36 of Reference #2, page 74):
 ///
 /// ```text
 ///                       N       λⱼ
@@ -112,7 +112,7 @@ impl InterpParams {
 /// with Uⱼ := f(xⱼ)
 /// ```
 ///
-/// where (see Eq 2.4.34 of Ref #1, page 90; and Eq 3.34 of Ref #2, page 74)
+/// where (see Eq 2.4.34 of Reference #1, page 90; and Eq 3.34 of Reference #2, page 74)
 ///
 /// ```text
 ///             1
@@ -122,7 +122,7 @@ impl InterpParams {
 ///      k=0,k≠j
 /// ```
 ///
-/// Let us define (see Eq 2.4.34 of Ref #1, page 90):
+/// Let us define (see Eq 2.4.34 of Reference #1, page 90):
 ///
 /// ```text
 ///              λⱼ
@@ -145,7 +145,7 @@ impl InterpParams {
 /// ```
 ///
 /// To minimize round-off problems, an option to normalize the barycentric weights `λₖ` is available.
-/// The strategy is to normalize lambda using the so-called eta-factors (`η`) as follows (See Ref #3 and #4).
+/// The strategy is to normalize lambda using the so-called eta-factors (`η`) as follows (See Reference #3 and #4).
 /// First the eta coefficients are computed:
 ///
 /// ```text
@@ -412,6 +412,8 @@ impl InterpLagrange {
     ///
     /// Calculates the first derivative of `pnu(x)` described in [InterpLagrange::eval()]
     ///
+    /// For `x` not coinciding with any node:
+    ///
     /// ```text
     ///             N    λⱼ   pnu(x) - Uⱼ
     ///             Σ  —————— ———————————
@@ -423,6 +425,17 @@ impl InterpLagrange {
     /// ```
     ///
     /// See Equation 3.45 of Reference #2.
+    ///
+    /// If `x` coincides with a node
+    ///
+    /// ```text
+    /// d pnu(Xₖ)     1   N     Uₖ - Uⱼ
+    /// ————————— = - ——  Σ  λⱼ ———————
+    ///     dx        λₖ j=0    Xₖ - Xⱼ
+    ///                  j≠k
+    /// ```
+    ///
+    /// See Equation 3.46 of Reference #2. See also [InterpLagrange::calc_dd1_matrix()].
     ///
     /// # Input
     ///
@@ -471,6 +484,8 @@ impl InterpLagrange {
     ///
     /// Calculates the second derivative of `pnu(x)` described in [InterpLagrange::eval()]
     ///
+    /// For `x` not coinciding with any node:
+    ///
     /// ```text
     ///             N     λⱼ     2    ⎛           Uⱼ - pnu(x) ⎞
     ///             Σ   —————— —————— ⎜ pnu'(x) + ——————————— ⎟
@@ -481,7 +496,28 @@ impl InterpLagrange {
     ///                          j=0  x - Xⱼ
     /// ```
     ///
-    /// The above equation was derived using Mathematica
+    /// Note: The above equation was derived using Mathematica.
+    ///
+    /// If `x` coincides with a node (see [InterpLagrange::calc_dd2_matrix()]):
+    ///
+    /// ```text
+    /// d²pnu(Xₖ)        N
+    /// ————————— = - 2  Σ  D1ₖⱼ [D1ₖₖ - (Xₖ - Xⱼ)⁻¹] (Uₖ - Uⱼ)
+    ///    dx²          j=0
+    ///                 j≠k
+    /// ```
+    ///
+    /// where:
+    ///
+    /// ```text
+    /// D1ₖⱼ = (λⱼ/λₖ) / (Xₖ-Xⱼ)
+    ///
+    /// and
+    ///
+    /// D1ₖₖ = - Σ_(j=0,j≠k)^N D1ₖⱼ   (negative sum trick)
+    /// ```
+    ///
+    /// See also [InterpLagrange::calc_dd1_matrix()].
     ///
     /// # Input
     ///
@@ -558,7 +594,7 @@ impl InterpLagrange {
     ///        ⎩ - Σ_(m=0,m≠k)^N D1ₖₘ  if k = j  (negative sum trick, NST)
     /// ```
     ///
-    /// See Eqs 6, 7, and 9 in Ref #3. Note that `cⱼ = λⱼ⁻¹` in Ref #3;
+    /// See Eqs 6, 7, and 9 in Reference #3. Note that `cⱼ = λⱼ⁻¹` in Reference #3;
     pub fn calc_dd1_matrix(&mut self) {
         // allocate matrix
         if self.dd1.dims().0 == self.npoint {
@@ -614,7 +650,7 @@ impl InterpLagrange {
     ///        ⎩ - Σ_(m=0,m≠k)^N D2ₖₘ         if k = j  (negative sum trick, NST)
     /// ```
     ///
-    /// See Eqs 9 and 13 in Ref #3.
+    /// See Eqs 9 and 13 in Reference #3.
     pub fn calc_dd2_matrix(&mut self) {
         // calculate D1
         self.calc_dd1_matrix();
@@ -625,7 +661,7 @@ impl InterpLagrange {
         }
         self.dd2 = Matrix::new(self.npoint, self.npoint);
 
-        // compute D2 from D1 (recursion formula; see Eqs 9 and 13 of Ref #3)
+        // compute D2 from D1 (recursion formula; see Eqs 9 and 13 of Reference #3)
         for k in 0..self.npoint {
             let mut row_sum = 0.0;
             for j in 0..self.npoint {

@@ -542,11 +542,23 @@ impl InterpLagrange {
 
     /// Computes the differentiation matrix D1
     ///
+    /// Calculates:
+    ///
     /// ```text
     /// dI{f}(x) │       N  dℓⱼ(x) │
     /// ———————— │    =  Σ  —————— │   ⋅ f(xⱼ)  =  D1ₖⱼ ⋅ f(xⱼ)
     ///    dx    │x=xₖ  j=0   dx   │x=xₖ          
     /// ```
+    ///
+    /// Where (no_eta form):
+    ///
+    /// ```text
+    ///        ⎧ (λⱼ/λₖ) / (Xₖ-Xⱼ)     if k ≠ j
+    /// D1ₖⱼ = ⎨
+    ///        ⎩ - Σ_(m=0,m≠k)^N D1ₖₘ  if k = j  (negative sum trick, NST)
+    /// ```
+    ///
+    /// See Eqs 6, 7, and 9 in Ref #3. Note that `cⱼ = λⱼ⁻¹` in Ref #3;
     pub fn calc_dd1_matrix(&mut self) {
         // allocate matrix
         if self.dd1.dims().0 == self.npoint {
@@ -586,11 +598,23 @@ impl InterpLagrange {
 
     /// Computes the differentiation matrix D2
     ///
+    /// Calculates:
+    ///
     /// ```text
     /// d²I{f}(x) │       N  d²ℓⱼ(x) │    
     /// ————————— │    =  Σ  ——————— │   ⋅ f(xⱼ)  =  D2ₖⱼ f(xⱼ)
     ///    dx²    │x=xₖ  j=0   dx²   │x=xₖ
     /// ```
+    ///
+    /// Where (recursive formula):
+    ///
+    /// ```text
+    ///        ⎧ 2 D1ₖⱼ [D1ₖₖ - (Xₖ - Xⱼ)⁻¹]  if k ≠ j
+    /// D2ₖⱼ = ⎨
+    ///        ⎩ - Σ_(m=0,m≠k)^N D2ₖₘ         if k = j  (negative sum trick, NST)
+    /// ```
+    ///
+    /// See Eqs 9 and 13 in Ref #3.
     pub fn calc_dd2_matrix(&mut self) {
         // calculate D1
         self.calc_dd1_matrix();

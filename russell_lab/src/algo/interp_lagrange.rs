@@ -1,6 +1,6 @@
 use crate::math::{chebyshev_gauss_points, chebyshev_lobatto_points, neg_one_pow_n};
 use crate::StrError;
-use crate::{mat_vec_mul, Matrix, Vector};
+use crate::{Matrix, Vector};
 
 /// Tiny number to consider x an Xⱼ identical
 const DX_EPSILON: f64 = 10.0 * f64::EPSILON;
@@ -695,80 +695,6 @@ impl InterpLagrange {
         }
     }
 
-    /// Computes the maximum error due to differentiation using the D1 matrix
-    ///
-    /// # Input
-    ///
-    /// * `uu` -- the "data" vector `U` of size equal to N + 1
-    /// * `dfdx_ana` -- function `(i: usize, x: f64) -> f64` with the analytical solution
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `uu.dim()` is not equal to the number of points `N + 1`
-    pub fn max_error_dd1<F>(&mut self, uu: &Vector, mut dfdx_ana: F) -> Result<f64, StrError>
-    where
-        F: FnMut(usize, f64) -> f64,
-    {
-        // check
-        if uu.dim() != self.npoint {
-            return Err("the dimension of the data vector U must be equal to N + 1");
-        }
-
-        // derivative of interpolation @ all nodes
-        self.calc_dd1_matrix();
-        let mut v = Vector::new(self.npoint);
-        mat_vec_mul(&mut v, 1.0, &self.dd1, uu).unwrap();
-
-        // compute error
-        let mut max_err = 0.0;
-        for i in 0..self.npoint {
-            let v_ana = dfdx_ana(i, self.xx[i]);
-            let diff = f64::abs(v[i] - v_ana);
-            if diff > max_err {
-                max_err = diff;
-            }
-        }
-        Ok(max_err)
-    }
-
-    /// Computes the maximum error due to differentiation using the D2 matrix
-    ///
-    /// Computes the error @ `X[i]`
-    ///
-    /// # Input
-    ///
-    /// * `uu` -- the "data" vector `U` of size equal to `N + 1`
-    /// * `d2fdx2_ana` -- function `(i: usize, x: f64) -> f64` with the analytical solutions
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `uu.dim()` is not equal to the number of points `N + 1`
-    pub fn max_error_dd2<F>(&mut self, uu: &Vector, mut d2fdx2_ana: F) -> Result<f64, StrError>
-    where
-        F: FnMut(usize, f64) -> f64,
-    {
-        // check
-        if uu.dim() != self.npoint {
-            return Err("the dimension of the data vector U must be equal to N + 1");
-        }
-
-        // derivative of interpolation @ all nodes
-        self.calc_dd2_matrix();
-        let mut v = Vector::new(self.npoint);
-        mat_vec_mul(&mut v, 1.0, &self.dd2, uu).unwrap();
-
-        // compute error
-        let mut max_err = 0.0;
-        for i in 0..self.npoint {
-            let v_ana = d2fdx2_ana(i, self.xx[i]);
-            let diff = f64::abs(v[i] - v_ana);
-            if diff > max_err {
-                max_err = diff;
-            }
-        }
-        Ok(max_err)
-    }
-
     /// Estimates the Lebesgue constant ΛN
     pub fn estimate_lebesgue_constant(&self) -> f64 {
         let n_station = self.params.lebesgue_estimate_nstation;
@@ -1109,7 +1035,7 @@ mod tests {
         }
     }
 
-    fn check_dd1_error<F, G>(params: InterpParams, tol: f64, mut f: F, dfdx_ana: G)
+    fn check_dd1_error<F, G>(params: InterpParams, tol: f64, mut f: F, mut g: G)
     where
         F: FnMut(usize, f64) -> f64,
         G: FnMut(usize, f64) -> f64,
@@ -1124,9 +1050,21 @@ mod tests {
             uu[i] = f(i, *x);
         }
 
-        // check error
-        let max_diff = interp.max_error_dd1(&uu, dfdx_ana).unwrap();
-        approx_eq(max_diff, 0.0, tol);
+        // derivative of interpolation @ all nodes
+        interp.calc_dd1_matrix();
+        let mut num = Vector::new(npoint);
+        mat_vec_mul(&mut num, 1.0, &interp.dd1, &uu).unwrap();
+
+        // check the maximum error due to differentiation using the D1 matrix
+        let mut max_err = 0.0;
+        for i in 0..npoint {
+            let ana = g(i, interp.xx[i]);
+            let diff = f64::abs(num[i] - ana);
+            if diff > max_err {
+                max_err = diff;
+            }
+        }
+        approx_eq(max_err, 0.0, tol);
     }
 
     #[test]
@@ -1146,7 +1084,7 @@ mod tests {
         }
     }
 
-    fn check_dd2_error<F, H>(params: InterpParams, tol: f64, mut f: F, d2fdx2_ana: H)
+    fn check_dd2_error<F, H>(params: InterpParams, tol: f64, mut f: F, mut h: H)
     where
         F: FnMut(usize, f64) -> f64,
         H: FnMut(usize, f64) -> f64,
@@ -1161,9 +1099,21 @@ mod tests {
             uu[i] = f(i, *x);
         }
 
-        // check error
-        let max_diff = interp.max_error_dd2(&uu, d2fdx2_ana).unwrap();
-        approx_eq(max_diff, 0.0, tol);
+        // derivative of interpolation @ all nodes
+        interp.calc_dd2_matrix();
+        let mut num = Vector::new(npoint);
+        mat_vec_mul(&mut num, 1.0, &interp.dd2, &uu).unwrap();
+
+        // check the maximum error due to differentiation using the D2 matrix
+        let mut max_err = 0.0;
+        for i in 0..npoint {
+            let ana = h(i, interp.xx[i]);
+            let diff = f64::abs(num[i] - ana);
+            if diff > max_err {
+                max_err = diff;
+            }
+        }
+        approx_eq(max_err, 0.0, tol);
     }
 
     #[test]
@@ -1188,7 +1138,6 @@ mod tests {
     fn dd_matrices_are_computed_just_once() {
         // interpolant
         let nn = 8;
-        let npoint = nn + 1;
         let params = InterpParams::new(nn).unwrap();
         let mut interp = InterpLagrange::new(params).unwrap();
 
@@ -1196,18 +1145,9 @@ mod tests {
         interp.calc_dd1_matrix();
         interp.calc_dd2_matrix();
 
-        // data values
-        let f = |_, x| f64::powf(x, 8.0);
-        let g = |_, x| 8.0 * f64::powf(x, 7.0);
-        let h = |_, x| 56.0 * f64::powf(x, 6.0);
-        let mut uu = Vector::new(npoint);
-        for (i, x) in interp.get_points().into_iter().enumerate() {
-            uu[i] = f(i, *x);
-        }
-
-        // check (derivative should not be computed again; use debug)
-        approx_eq(interp.max_error_dd1(&uu, g).unwrap(), 0.0, 1e-13);
-        approx_eq(interp.max_error_dd2(&uu, h).unwrap(), 0.0, 1e-12);
+        // D1 and D2 should not be computed again; use debug
+        interp.calc_dd1_matrix();
+        interp.calc_dd2_matrix();
     }
 
     // --- derivatives of polynomial function ---------------------------------------------------------
@@ -1367,7 +1307,7 @@ mod tests {
     #[test]
     fn functions_check_ranges() {
         let params = InterpParams::new(2).unwrap();
-        let mut interp = InterpLagrange::new(params).unwrap();
+        let interp = InterpLagrange::new(params).unwrap();
         let uu = Vector::new(0);
         // psi
         assert_eq!(interp.psi(100, -1.0).err(), Some("j must be in 0 ≤ j ≤ N"));
@@ -1388,18 +1328,6 @@ mod tests {
         assert_eq!(interp.eval_deriv2(-2.0, &uu).err(), Some("x must be in -1 ≤ x ≤ 1"));
         assert_eq!(
             interp.eval_deriv2(-1.0, &uu).err(),
-            Some("the dimension of the data vector U must be equal to N + 1")
-        );
-        // max_error_dd1
-        let f = |_, _| 0.0;
-        assert_eq!(f(0, 0.0), 0.0);
-        assert_eq!(
-            interp.max_error_dd1(&uu, f).err(),
-            Some("the dimension of the data vector U must be equal to N + 1")
-        );
-        // max_error_dd2
-        assert_eq!(
-            interp.max_error_dd2(&uu, f).err(),
             Some("the dimension of the data vector U must be equal to N + 1")
         );
     }

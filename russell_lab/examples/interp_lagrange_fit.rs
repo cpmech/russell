@@ -18,7 +18,7 @@ fn main() -> Result<(), StrError> {
         uu[i] = f64::sin(x);
     }
 
-    // evaluated the polynomial over [a, b]
+    // evaluate the polynomial over [a, b]
     let n_poly = 100;
     let poly_x = Vector::linspace(a, b, n_poly)?;
     let mut poly_y = Vector::new(n_poly);
@@ -39,6 +39,6 @@ fn main() -> Result<(), StrError> {
     let mut plot = Plot::new();
     plot.add(&curve1)
         .add(&curve2)
-        .save("/tmp/russell_lab/ex_interp_lagrange_polyfit.svg")?;
+        .save("/tmp/russell_lab/ex_interp_lagrange_fit.svg")?;
     Ok(())
 }

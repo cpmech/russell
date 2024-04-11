@@ -1361,4 +1361,46 @@ mod tests {
             approx_eq(interp.estimate_lebesgue_constant(), reference, tol);
         }
     }
+
+    // --- errors -------------------------------------------------------------------------------------
+
+    #[test]
+    fn functions_check_ranges() {
+        let params = InterpParams::new(2).unwrap();
+        let mut interp = InterpLagrange::new(params).unwrap();
+        let uu = Vector::new(0);
+        // psi
+        assert_eq!(interp.psi(100, -1.0).err(), Some("j must be in 0 ≤ j ≤ N"));
+        assert_eq!(interp.psi(0, -2.0).err(), Some("x must be in -1 ≤ x ≤ 1"));
+        // eval
+        assert_eq!(interp.eval(-2.0, &uu).err(), Some("x must be in -1 ≤ x ≤ 1"));
+        assert_eq!(
+            interp.eval(-1.0, &uu).err(),
+            Some("the dimension of the data vector U must be equal to N + 1")
+        );
+        // eval_deriv1
+        assert_eq!(interp.eval_deriv1(-2.0, &uu).err(), Some("x must be in -1 ≤ x ≤ 1"));
+        assert_eq!(
+            interp.eval_deriv1(-1.0, &uu).err(),
+            Some("the dimension of the data vector U must be equal to N + 1")
+        );
+        // eval_deriv2
+        assert_eq!(interp.eval_deriv2(-2.0, &uu).err(), Some("x must be in -1 ≤ x ≤ 1"));
+        assert_eq!(
+            interp.eval_deriv2(-1.0, &uu).err(),
+            Some("the dimension of the data vector U must be equal to N + 1")
+        );
+        // max_error_dd1
+        let f = |_, _| 0.0;
+        assert_eq!(f(0, 0.0), 0.0);
+        assert_eq!(
+            interp.max_error_dd1(&uu, f).err(),
+            Some("the dimension of the data vector U must be equal to N + 1")
+        );
+        // max_error_dd2
+        assert_eq!(
+            interp.max_error_dd2(&uu, f).err(),
+            Some("the dimension of the data vector U must be equal to N + 1")
+        );
+    }
 }

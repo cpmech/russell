@@ -452,12 +452,20 @@ impl InterpLagrange {
         }
         let mut at_node = false;
         let mut at_node_index = 0;
-        for j in 0..self.npoint {
-            let dx = x - self.xx[j];
-            if f64::abs(dx) < DX_EPSILON {
-                at_node = true;
-                at_node_index = j;
-                break;
+        if x == -1.0 {
+            at_node = true;
+            at_node_index = 0;
+        } else if x == 1.0 {
+            at_node = true;
+            at_node_index = self.params.nn;
+        } else {
+            for j in 0..self.npoint {
+                let dx = x - self.xx[j];
+                if f64::abs(dx) < DX_EPSILON {
+                    at_node = true;
+                    at_node_index = j;
+                    break;
+                }
             }
         }
         if at_node {
@@ -535,12 +543,20 @@ impl InterpLagrange {
         }
         let mut at_node = false;
         let mut at_node_index = 0;
-        for j in 0..self.npoint {
-            let dx = x - self.xx[j];
-            if f64::abs(dx) < DX_EPSILON {
-                at_node = true;
-                at_node_index = j;
-                break;
+        if x == -1.0 {
+            at_node = true;
+            at_node_index = 0;
+        } else if x == 1.0 {
+            at_node = true;
+            at_node_index = self.params.nn;
+        } else {
+            for j in 0..self.npoint {
+                let dx = x - self.xx[j];
+                if f64::abs(dx) < DX_EPSILON {
+                    at_node = true;
+                    at_node_index = j;
+                    break;
+                }
             }
         }
         if at_node {
@@ -1231,6 +1247,12 @@ mod tests {
                 approx_eq(d1, d1_at_nodes[j], 1e-14);
             }
         }
+
+        // check at node near the middle
+        let x_mid = interp.xx[params.nn / 2];
+        // println!("x_mid = {:?}", x_mid);
+        let d1 = interp.eval_deriv1(x_mid, &uu).unwrap();
+        approx_eq(d1, g(params.nn / 2, x_mid), tol);
     }
 
     #[test]
@@ -1276,6 +1298,12 @@ mod tests {
                 approx_eq(d2, d2_at_nodes[j], 1e-12);
             }
         }
+
+        // check at node near the middle
+        let x_mid = interp.xx[params.nn / 2];
+        // println!("x_mid = {:?}", x_mid);
+        let d2 = interp.eval_deriv2(x_mid, &uu).unwrap();
+        approx_eq(d2, h(params.nn / 2, x_mid), tol);
     }
 
     #[test]

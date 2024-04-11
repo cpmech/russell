@@ -1086,9 +1086,7 @@ mod tests {
 
         // check error
         let max_diff = interp.max_error_dd1(&uu, dfdx_ana);
-        if max_diff > tol {
-            panic!("D1⋅U failed; max_diff = {:?}", max_diff);
-        }
+        approx_eq(max_diff, 0.0, tol);
     }
 
     #[test]
@@ -1125,9 +1123,7 @@ mod tests {
 
         // check error
         let max_diff = interp.max_error_dd2(&uu, d2fdx2_ana);
-        if max_diff > tol {
-            panic!("D2⋅U failed; max_diff = {:?}", max_diff);
-        }
+        approx_eq(max_diff, 0.0, tol);
     }
 
     #[test]

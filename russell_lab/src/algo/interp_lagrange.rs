@@ -404,6 +404,11 @@ impl InterpLagrange {
         res
     }
 
+    /// Evaluates the first derivative using the interpolating polynomial
+    pub fn eval_deriv1(&self, _x: f64, _uu: &Vector) -> f64 {
+        panic!("TODO: eval_deriv1")
+    }
+
     /// Computes the differentiation matrix D1
     ///
     /// ```text
@@ -581,6 +586,39 @@ impl InterpLagrange {
 mod tests {
     use super::{InterpGrid, InterpLagrange, InterpParams};
     use crate::{approx_eq, deriv1_approx_eq, deriv2_approx_eq, Vector};
+
+    #[test]
+    fn params_new_and_validate_capture_errors() {
+        assert_eq!(
+            InterpParams::new(0).err(),
+            Some("the polynomial degree must be in [1, 2048]")
+        );
+        assert_eq!(
+            InterpParams::new(2049).err(),
+            Some("the polynomial degree must be in [1, 2048]")
+        );
+        let params = InterpParams {
+            nn: 0,
+            grid_type: InterpGrid::Uniform,
+            no_eta_normalization: false,
+            eta_cutoff: 0,
+            lebesgue_estimate_nstation: 2,
+        };
+        assert_eq!(
+            params.validate().err(),
+            Some("the polynomial degree must be in [1, 2048]")
+        );
+    }
+
+    #[test]
+    fn new_captures_errors() {
+        let mut params = InterpParams::new(1).unwrap();
+        params.lebesgue_estimate_nstation = 1;
+        assert_eq!(
+            InterpLagrange::new(params).err(),
+            Some("lebesgue_estimate_nstation must be ≥ 2")
+        );
+    }
 
     #[test]
     fn new_works() {

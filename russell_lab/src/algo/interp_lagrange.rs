@@ -362,21 +362,22 @@ impl InterpLagrange {
     /// # Input
     ///
     /// * `j` -- index of the Xⱼ point; must satisfy 0 ≤ j ≤ N
-    /// * `x` -- the coordinate to evaluate the polynomial
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if `j > N`.
-    pub fn psi(&self, j: usize, x: f64) -> f64 {
-        assert!(j <= self.params.nn);
+    /// * `x` -- the coordinate to evaluate the polynomial; must satisfy -1 ≤ j ≤ 1
+    pub fn psi(&self, j: usize, x: f64) -> Result<f64, StrError> {
+        if j > self.params.nn {
+            return Err("j must be in 0 ≤ j ≤ N");
+        }
+        if x < -1.0 || x > 1.0 {
+            return Err("x must be in -1 ≤ x ≤ 1");
+        }
         if f64::abs(x - self.xx[j]) < DX_EPSILON {
-            return 1.0;
+            return Ok(1.0);
         }
         let mut sum = 0.0;
         for k in 0..self.npoint {
             sum += self.lambda[k] / (x - self.xx[k]);
         }
-        self.lambda[j] / (x - self.xx[j]) / sum
+        Ok(self.lambda[j] / (x - self.xx[j]) / sum)
     }
 
     /// Evaluates the interpolation
@@ -393,19 +394,20 @@ impl InterpLagrange {
     ///
     /// # Input
     ///
-    /// * `x` -- the coordinate in `[-1, 1]`
-    /// * `uu` -- the "data" vector `U` of size equal to N + 1
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `uu.dim()` is not equal to the number of points `N + 1`
-    pub fn eval(&self, x: f64, uu: &Vector) -> f64 {
-        assert_eq!(uu.dim(), self.npoint);
+    /// * `x` -- the coordinate to evaluate the polynomial; must satisfy -1 ≤ j ≤ 1
+    /// * `uu` -- the "data" vector `U` of size equal to `N + 1`
+    pub fn eval(&self, x: f64, uu: &Vector) -> Result<f64, StrError> {
+        if x < -1.0 || x > 1.0 {
+            return Err("x must be in -1 ≤ x ≤ 1");
+        }
+        if uu.dim() != self.npoint {
+            return Err("the dimension of the data vector U must be equal to N + 1");
+        }
         let mut res = 0.0;
         for j in 0..self.npoint {
-            res += uu[j] * self.psi(j, x);
+            res += uu[j] * self.psi(j, x).unwrap();
         }
-        res
+        Ok(res)
     }
 
     /// Evaluates the first derivative using the interpolating polynomial
@@ -439,14 +441,15 @@ impl InterpLagrange {
     ///
     /// # Input
     ///
-    /// * `x` -- the coordinate in `[-1, 1]`
-    /// * `uu` -- the "data" vector `U` of size equal to N + 1
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `uu.dim()` is not equal to the number of points `N + 1`
-    pub fn eval_deriv1(&self, x: f64, uu: &Vector) -> f64 {
-        assert_eq!(uu.dim(), self.npoint);
+    /// * `x` -- the coordinate to evaluate the derivative; must satisfy -1 ≤ j ≤ 1
+    /// * `uu` -- the "data" vector `U` of size equal to `N + 1`
+    pub fn eval_deriv1(&self, x: f64, uu: &Vector) -> Result<f64, StrError> {
+        if x < -1.0 || x > 1.0 {
+            return Err("x must be in -1 ≤ x ≤ 1");
+        }
+        if uu.dim() != self.npoint {
+            return Err("the dimension of the data vector U must be equal to N + 1");
+        }
         let mut at_node = false;
         let mut at_node_index = 0;
         for j in 0..self.npoint {
@@ -465,9 +468,9 @@ impl InterpLagrange {
                     sum += self.lambda[j] * (uu[k] - uu[j]) / (self.xx[k] - self.xx[j]);
                 }
             }
-            -sum / self.lambda[k]
+            Ok(-sum / self.lambda[k])
         } else {
-            let pnu_x = self.eval(x, uu);
+            let pnu_x = self.eval(x, uu).unwrap();
             let mut num = 0.0;
             let mut den = 0.0;
             for j in 0..self.npoint {
@@ -476,7 +479,7 @@ impl InterpLagrange {
                 num += a * (pnu_x - uu[j]) / dx;
                 den += a;
             }
-            num / den
+            Ok(num / den)
         }
     }
 
@@ -521,14 +524,15 @@ impl InterpLagrange {
     ///
     /// # Input
     ///
-    /// * `x` -- the coordinate in `[-1, 1]`
-    /// * `uu` -- the "data" vector `U` of size equal to N + 1
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `uu.dim()` is not equal to the number of points `N + 1`
-    pub fn eval_deriv2(&self, x: f64, uu: &Vector) -> f64 {
-        assert_eq!(uu.dim(), self.npoint);
+    /// * `x` -- the coordinate to evaluate the derivative; must satisfy -1 ≤ j ≤ 1
+    /// * `uu` -- the "data" vector `U` of size equal to `N + 1`
+    pub fn eval_deriv2(&self, x: f64, uu: &Vector) -> Result<f64, StrError> {
+        if x < -1.0 || x > 1.0 {
+            return Err("x must be in -1 ≤ x ≤ 1");
+        }
+        if uu.dim() != self.npoint {
+            return Err("the dimension of the data vector U must be equal to N + 1");
+        }
         let mut at_node = false;
         let mut at_node_index = 0;
         for j in 0..self.npoint {
@@ -558,10 +562,10 @@ impl InterpLagrange {
                     sum += d1kj * (d1kk - 1.0 / dx) * (uu[k] - uu[j]);
                 }
             }
-            -2.0 * sum
+            Ok(-2.0 * sum)
         } else {
-            let pnu_x = self.eval(x, uu);
-            let d_pnu_x = self.eval_deriv1(x, uu);
+            let pnu_x = self.eval(x, uu).unwrap();
+            let d_pnu_x = self.eval_deriv1(x, uu).unwrap();
             let mut num = 0.0;
             let mut den = 0.0;
             for j in 0..self.npoint {
@@ -572,7 +576,7 @@ impl InterpLagrange {
                 num += a * b * c;
                 den += a;
             }
-            num / den
+            Ok(num / den)
         }
     }
 
@@ -685,14 +689,17 @@ impl InterpLagrange {
     /// # Panics
     ///
     /// Will panic if `uu.dim()` is not equal to the number of points `N + 1`
-    pub fn max_error_dd1<F>(&mut self, uu: &Vector, mut dfdx_ana: F) -> f64
+    pub fn max_error_dd1<F>(&mut self, uu: &Vector, mut dfdx_ana: F) -> Result<f64, StrError>
     where
         F: FnMut(usize, f64) -> f64,
     {
-        self.calc_dd1_matrix();
+        // check
+        if uu.dim() != self.npoint {
+            return Err("the dimension of the data vector U must be equal to N + 1");
+        }
 
         // derivative of interpolation @ all nodes
-        assert_eq!(uu.dim(), self.npoint);
+        self.calc_dd1_matrix();
         let mut v = Vector::new(self.npoint);
         mat_vec_mul(&mut v, 1.0, &self.dd1, uu).unwrap();
 
@@ -705,7 +712,7 @@ impl InterpLagrange {
                 max_err = diff;
             }
         }
-        max_err
+        Ok(max_err)
     }
 
     /// Computes the maximum error due to differentiation using the D2 matrix
@@ -714,20 +721,23 @@ impl InterpLagrange {
     ///
     /// # Input
     ///
-    /// * `uu` -- the "data" vector `U` of size equal to N + 1
+    /// * `uu` -- the "data" vector `U` of size equal to `N + 1`
     /// * `d2fdx2_ana` -- function `(i: usize, x: f64) -> f64` with the analytical solutions
     ///
     /// # Panics
     ///
     /// Will panic if `uu.dim()` is not equal to the number of points `N + 1`
-    pub fn max_error_dd2<F>(&mut self, uu: &Vector, mut d2fdx2_ana: F) -> f64
+    pub fn max_error_dd2<F>(&mut self, uu: &Vector, mut d2fdx2_ana: F) -> Result<f64, StrError>
     where
         F: FnMut(usize, f64) -> f64,
     {
-        self.calc_dd2_matrix();
+        // check
+        if uu.dim() != self.npoint {
+            return Err("the dimension of the data vector U must be equal to N + 1");
+        }
 
         // derivative of interpolation @ all nodes
-        assert_eq!(uu.dim(), self.npoint);
+        self.calc_dd2_matrix();
         let mut v = Vector::new(self.npoint);
         mat_vec_mul(&mut v, 1.0, &self.dd2, uu).unwrap();
 
@@ -740,7 +750,7 @@ impl InterpLagrange {
                 max_err = diff;
             }
         }
-        max_err
+        Ok(max_err)
     }
 
     /// Estimates the Lebesgue constant ΛN
@@ -749,9 +759,9 @@ impl InterpLagrange {
         let mut lambda_times_nn = 0.0;
         for j in 0..n_station {
             let x = -1.0 + 2.0 * (j as f64) / ((n_station - 1) as f64);
-            let mut sum = f64::abs(self.psi(0, x));
+            let mut sum = f64::abs(self.psi(0, x).unwrap());
             for i in 1..self.npoint {
-                sum += f64::abs(self.psi(i, x));
+                sum += f64::abs(self.psi(i, x).unwrap());
             }
             if sum > lambda_times_nn {
                 lambda_times_nn = sum;
@@ -882,7 +892,7 @@ mod tests {
         for i in 0..npoint {
             let mut sum = 0.0;
             for j in 0..npoint {
-                let psi = interp.psi(i, interp.xx[j]);
+                let psi = interp.psi(i, interp.xx[j]).unwrap();
                 let mut ana = 1.0;
                 if i != j {
                     ana = 0.0;
@@ -908,7 +918,7 @@ mod tests {
         let xx = Vector::linspace(-1.0, 1.0, 20).unwrap();
         for x in xx {
             for j in 0..npoint {
-                let psi_j = interp.psi(j, x);
+                let psi_j = interp.psi(j, x).unwrap();
                 let mut ell_j = 1.0;
                 for k in 0..npoint {
                     if j != k {
@@ -955,14 +965,14 @@ mod tests {
 
         // check the interpolation @ nodes
         for (i, x) in interp.get_points().into_iter().enumerate() {
-            assert_eq!(interp.eval(*x, &uu), f(i, *x));
+            assert_eq!(interp.eval(*x, &uu).unwrap(), f(i, *x));
         }
 
         // check the interpolation over the xrange
         let nstation = 20;
         let station = Vector::linspace(-1.0, 1.0, nstation).unwrap();
         for i in 0..nstation {
-            approx_eq(interp.eval(station[i], &uu), f(i, station[i]), tol);
+            approx_eq(interp.eval(station[i], &uu).unwrap(), f(i, station[i]), tol);
         }
     }
 
@@ -1006,7 +1016,14 @@ mod tests {
         for i in 0..npoint {
             let xi = interp.xx[i];
             for j in 0..npoint {
-                deriv1_approx_eq(interp.dd1.get(i, j), xi, args, tol, |x, _| Ok(interp.psi(j, x)));
+                if i == 0 || i == params.nn {
+                    // TODO: find another method because we
+                    // cannot use central differences @ x=-1 and x=1
+                } else {
+                    deriv1_approx_eq(interp.dd1.get(i, j), xi, args, tol, |x, _| {
+                        Ok(interp.psi(j, x).unwrap())
+                    });
+                }
             }
         }
     }
@@ -1048,7 +1065,14 @@ mod tests {
         for i in 0..npoint {
             let xi = interp.xx[i];
             for j in 0..npoint {
-                deriv2_approx_eq(interp.dd2.get(i, j), xi, args, tol, |x, _| Ok(interp.psi(j, x)));
+                if i == 0 || i == params.nn {
+                    // TODO: find another method because we
+                    // cannot use central differences @ x=-1 and x=1
+                } else {
+                    deriv2_approx_eq(interp.dd2.get(i, j), xi, args, tol, |x, _| {
+                        Ok(interp.psi(j, x).unwrap())
+                    });
+                }
             }
         }
     }
@@ -1085,7 +1109,7 @@ mod tests {
         }
 
         // check error
-        let max_diff = interp.max_error_dd1(&uu, dfdx_ana);
+        let max_diff = interp.max_error_dd1(&uu, dfdx_ana).unwrap();
         approx_eq(max_diff, 0.0, tol);
     }
 
@@ -1122,7 +1146,7 @@ mod tests {
         }
 
         // check error
-        let max_diff = interp.max_error_dd2(&uu, d2fdx2_ana);
+        let max_diff = interp.max_error_dd2(&uu, d2fdx2_ana).unwrap();
         approx_eq(max_diff, 0.0, tol);
     }
 
@@ -1166,8 +1190,8 @@ mod tests {
         }
 
         // check (derivative should not be computed again; use debug)
-        approx_eq(interp.max_error_dd1(&uu, g), 0.0, 1e-13);
-        approx_eq(interp.max_error_dd2(&uu, h), 0.0, 1e-12);
+        approx_eq(interp.max_error_dd1(&uu, g).unwrap(), 0.0, 1e-13);
+        approx_eq(interp.max_error_dd2(&uu, h).unwrap(), 0.0, 1e-12);
     }
 
     // --- derivatives of polynomial function ---------------------------------------------------------
@@ -1197,7 +1221,7 @@ mod tests {
         let stations = Vector::linspace(-1.0, 1.0, nstation).unwrap();
         for i in 0..nstation {
             // println!("x[{}] = {:?}", i, stations[i]);
-            let d1 = interp.eval_deriv1(stations[i], &uu);
+            let d1 = interp.eval_deriv1(stations[i], &uu).unwrap();
             approx_eq(d1, g(i, stations[i]), tol);
             if i == 0 || i == (nstation - 1) {
                 // at node
@@ -1242,7 +1266,7 @@ mod tests {
         let stations = Vector::linspace(-1.0, 1.0, nstation).unwrap();
         for i in 0..nstation {
             // println!("x[{}] = {:?}", i, stations[i]);
-            let d2 = interp.eval_deriv2(stations[i], &uu);
+            let d2 = interp.eval_deriv2(stations[i], &uu).unwrap();
             approx_eq(d2, h(i, stations[i]), tol);
             if i == 0 || i == (nstation - 1) {
                 // at node

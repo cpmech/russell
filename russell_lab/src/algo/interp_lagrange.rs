@@ -893,7 +893,7 @@ mod tests {
 
     fn check_eval<F>(params: InterpParams, tol: f64, mut f: F)
     where
-        F: Copy + FnMut(usize, f64) -> f64,
+        F: Copy + FnMut(f64) -> f64,
     {
         // interpolant
         let npoint = params.nn + 1;
@@ -902,25 +902,25 @@ mod tests {
         // compute data points
         let mut uu = Vector::new(npoint);
         for (i, x) in interp.get_points().into_iter().enumerate() {
-            uu[i] = f(i, *x);
+            uu[i] = f(*x);
         }
 
         // check the interpolation @ nodes
-        for (i, x) in interp.get_points().into_iter().enumerate() {
-            assert_eq!(interp.eval(*x, &uu).unwrap(), f(i, *x));
+        for x in interp.get_points() {
+            assert_eq!(interp.eval(*x, &uu).unwrap(), f(*x));
         }
 
         // check the interpolation over the xrange
         let nstation = 20;
         let station = Vector::linspace(-1.0, 1.0, nstation).unwrap();
         for i in 0..nstation {
-            approx_eq(interp.eval(station[i], &uu).unwrap(), f(i, station[i]), tol);
+            approx_eq(interp.eval(station[i], &uu).unwrap(), f(station[i]), tol);
         }
     }
 
     #[test]
     fn eval_works_1() {
-        let f = |_, x| f64::cos(f64::exp(2.0 * x));
+        let f = |x| f64::cos(f64::exp(2.0 * x));
         let mut params = InterpParams::new(5).unwrap();
         for grid_type in [
             InterpGrid::Uniform,
@@ -935,7 +935,7 @@ mod tests {
     #[test]
     fn eval_works_2() {
         // Runge equation
-        let f = |_, x| 1.0 / (1.0 + 16.0 * x * x);
+        let f = |x| 1.0 / (1.0 + 16.0 * x * x);
         let mut params = InterpParams::new(8).unwrap();
         for grid_type in [
             InterpGrid::Uniform,
@@ -1037,8 +1037,8 @@ mod tests {
 
     fn check_dd1_error<F, G>(params: InterpParams, tol: f64, mut f: F, mut g: G)
     where
-        F: FnMut(usize, f64) -> f64,
-        G: FnMut(usize, f64) -> f64,
+        F: FnMut(f64) -> f64,
+        G: FnMut(f64) -> f64,
     {
         // interpolant
         let npoint = params.nn + 1;
@@ -1047,7 +1047,7 @@ mod tests {
         // compute data points
         let mut uu = Vector::new(npoint);
         for (i, x) in interp.get_points().into_iter().enumerate() {
-            uu[i] = f(i, *x);
+            uu[i] = f(*x);
         }
 
         // derivative of interpolation @ all nodes
@@ -1058,7 +1058,7 @@ mod tests {
         // check the maximum error due to differentiation using the D1 matrix
         let mut max_err = 0.0;
         for i in 0..npoint {
-            let ana = g(i, interp.xx[i]);
+            let ana = g(interp.xx[i]);
             let diff = f64::abs(num[i] - ana);
             if diff > max_err {
                 max_err = diff;
@@ -1070,8 +1070,8 @@ mod tests {
     #[test]
     fn dd1_times_uu_works() {
         let mut params = InterpParams::new(1).unwrap();
-        let f = |_, x| f64::powf(x, 8.0);
-        let g = |_, x| 8.0 * f64::powf(x, 7.0);
+        let f = |x| f64::powf(x, 8.0);
+        let g = |x| 8.0 * f64::powf(x, 7.0);
         for (nn, grid_type, tol) in [
             (8, InterpGrid::Uniform, 1e-13),
             (8, InterpGrid::ChebyshevGauss, 1e-14),
@@ -1086,8 +1086,8 @@ mod tests {
 
     fn check_dd2_error<F, H>(params: InterpParams, tol: f64, mut f: F, mut h: H)
     where
-        F: FnMut(usize, f64) -> f64,
-        H: FnMut(usize, f64) -> f64,
+        F: FnMut(f64) -> f64,
+        H: FnMut(f64) -> f64,
     {
         // interpolant
         let npoint = params.nn + 1;
@@ -1096,7 +1096,7 @@ mod tests {
         // compute data points
         let mut uu = Vector::new(npoint);
         for (i, x) in interp.get_points().into_iter().enumerate() {
-            uu[i] = f(i, *x);
+            uu[i] = f(*x);
         }
 
         // derivative of interpolation @ all nodes
@@ -1107,7 +1107,7 @@ mod tests {
         // check the maximum error due to differentiation using the D2 matrix
         let mut max_err = 0.0;
         for i in 0..npoint {
-            let ana = h(i, interp.xx[i]);
+            let ana = h(interp.xx[i]);
             let diff = f64::abs(num[i] - ana);
             if diff > max_err {
                 max_err = diff;
@@ -1119,9 +1119,8 @@ mod tests {
     #[test]
     fn dd2_times_uu_works() {
         let mut params = InterpParams::new(1).unwrap();
-        let f = |_, x| f64::powf(x, 8.0);
-        // let g = |_, x| 8.0 * f64::powf(x, 7.0);
-        let h = |_, x| 56.0 * f64::powf(x, 6.0);
+        let f = |x| f64::powf(x, 8.0);
+        let h = |x| 56.0 * f64::powf(x, 6.0);
         for (nn, grid_type, tol) in [
             (8, InterpGrid::Uniform, 1e-11),
             (8, InterpGrid::ChebyshevGauss, 1e-12),
@@ -1154,8 +1153,8 @@ mod tests {
 
     fn check_eval_deriv1<F, G>(params: InterpParams, tol: f64, mut f: F, mut g: G)
     where
-        F: Copy + FnMut(usize, f64) -> f64,
-        G: Copy + FnMut(usize, f64) -> f64,
+        F: Copy + FnMut(f64) -> f64,
+        G: Copy + FnMut(f64) -> f64,
     {
         // interpolant
         let npoint = params.nn + 1;
@@ -1164,7 +1163,7 @@ mod tests {
         // compute data points
         let mut uu = Vector::new(npoint);
         for (i, x) in interp.get_points().into_iter().enumerate() {
-            uu[i] = f(i, *x);
+            uu[i] = f(*x);
         }
 
         // calculate the derivative at all nodes
@@ -1178,7 +1177,7 @@ mod tests {
         for i in 0..nstation {
             // println!("x[{}] = {:?}", i, stations[i]);
             let d1 = interp.eval_deriv1(stations[i], &uu).unwrap();
-            approx_eq(d1, g(i, stations[i]), tol);
+            approx_eq(d1, g(stations[i]), tol);
             if i == 0 || i == (nstation - 1) {
                 // at node
                 let j = if i == 0 { 0 } else { npoint - 1 };
@@ -1192,21 +1191,21 @@ mod tests {
         let x_mid = interp.xx[params.nn / 2];
         // println!("x_mid = {:?}", x_mid);
         let d1 = interp.eval_deriv1(x_mid, &uu).unwrap();
-        approx_eq(d1, g(params.nn / 2, x_mid), tol);
+        approx_eq(d1, g(x_mid), tol);
     }
 
     #[test]
     fn eval_deriv1_works() {
-        let f = |_, x| f64::powf(x, 8.0);
-        let g = |_, x| 8.0 * f64::powf(x, 7.0);
+        let f = |x| f64::powf(x, 8.0);
+        let g = |x| 8.0 * f64::powf(x, 7.0);
         let params = InterpParams::new(8).unwrap();
         check_eval_deriv1(params, 1e-13, f, g)
     }
 
     fn check_eval_deriv2<F, H>(params: InterpParams, tol: f64, mut f: F, mut h: H)
     where
-        F: Copy + FnMut(usize, f64) -> f64,
-        H: Copy + FnMut(usize, f64) -> f64,
+        F: Copy + FnMut(f64) -> f64,
+        H: Copy + FnMut(f64) -> f64,
     {
         // interpolant
         let npoint = params.nn + 1;
@@ -1215,7 +1214,7 @@ mod tests {
         // compute data points
         let mut uu = Vector::new(npoint);
         for (i, x) in interp.get_points().into_iter().enumerate() {
-            uu[i] = f(i, *x);
+            uu[i] = f(*x);
         }
 
         // calculate the derivative at all nodes
@@ -1229,7 +1228,7 @@ mod tests {
         for i in 0..nstation {
             // println!("x[{}] = {:?}", i, stations[i]);
             let d2 = interp.eval_deriv2(stations[i], &uu).unwrap();
-            approx_eq(d2, h(i, stations[i]), tol);
+            approx_eq(d2, h(stations[i]), tol);
             if i == 0 || i == (nstation - 1) {
                 // at node
                 let j = if i == 0 { 0 } else { npoint - 1 };
@@ -1243,13 +1242,13 @@ mod tests {
         let x_mid = interp.xx[params.nn / 2];
         // println!("x_mid = {:?}", x_mid);
         let d2 = interp.eval_deriv2(x_mid, &uu).unwrap();
-        approx_eq(d2, h(params.nn / 2, x_mid), tol);
+        approx_eq(d2, h(x_mid), tol);
     }
 
     #[test]
     fn eval_deriv2_works() {
-        let f = |_, x| f64::powf(x, 8.0);
-        let h = |_, x| 56.0 * f64::powf(x, 6.0);
+        let f = |x| f64::powf(x, 8.0);
+        let h = |x| 56.0 * f64::powf(x, 6.0);
         let params = InterpParams::new(8).unwrap();
         check_eval_deriv2(params, 1e-12, f, h)
     }

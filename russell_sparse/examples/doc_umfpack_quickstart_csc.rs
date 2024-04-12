@@ -43,7 +43,7 @@ fn main() -> Result<(), StrError> {
 
     // check the results
     let correct = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-    vec_approx_eq(x.as_data(), &correct, 1e-14);
+    vec_approx_eq(&x, &correct, 1e-14);
 
     // solve again with doubled rhs vector
     let b_times_2 = b.get_mapped(|x| x * 2.0);
@@ -51,6 +51,6 @@ fn main() -> Result<(), StrError> {
 
     // check the results (again)
     let correct = vec![2.0, 4.0, 6.0, 8.0, 10.0];
-    vec_approx_eq(x.as_data(), &correct, 1e-14);
+    vec_approx_eq(&x, &correct, 1e-14);
     Ok(())
 }

@@ -97,9 +97,9 @@ extern "C" {
 ///     let alpha_real_ref = &[3.2763146931828615, 0.3047159998456623, -1.0016572343394645];
 ///     let alpha_imag_ref = &[0.0, 0.0, 0.0];
 ///     let beta_ref = &[1.7653454701233677, 3.1289910426065792, 1.810364282360633];
-///     vec_approx_eq(alpha_real.as_data(), alpha_real_ref, 1e-14);
-///     vec_approx_eq(alpha_imag.as_data(), alpha_imag_ref, 1e-14);
-///     vec_approx_eq(beta.as_data(), beta_ref, 1e-14);
+///     vec_approx_eq(&alpha_real, alpha_real_ref, 1e-14);
+///     vec_approx_eq(&alpha_imag, alpha_imag_ref, 1e-14);
+///     vec_approx_eq(&beta, beta_ref, 1e-14);
 ///     Ok(())
 /// }
 /// ```
@@ -258,9 +258,9 @@ pub fn mat_gen_eigen(
 ///     let alpha_real_ref = &[-0.42598156773255, 2.347519413393596, 1.0];
 ///     let alpha_imag_ref = &[0.0, 0.0, 0.0];
 ///     let beta_ref = &[1.1638032861331697, 1.718503482358399, 3.0];
-///     vec_approx_eq(alpha_real.as_data(), alpha_real_ref, 1e-14);
-///     vec_approx_eq(alpha_imag.as_data(), alpha_imag_ref, 1e-14);
-///     vec_approx_eq(beta.as_data(), beta_ref, 1e-14);
+///     vec_approx_eq(&alpha_real, alpha_real_ref, 1e-14);
+///     vec_approx_eq(&alpha_imag, alpha_imag_ref, 1e-14);
+///     vec_approx_eq(&beta, beta_ref, 1e-14);
 ///     Ok(())
 /// }
 /// ```
@@ -565,9 +565,9 @@ mod tests {
         let alpha_real_ref = &[-5.040877033060623, 1.9878762745291856, 4.490731195102491];
         let alpha_imag_ref = &[0.0, 0.0, 0.0];
         let beta_ref = &[1.0510183823362071, 12.076677914155423, 0.0];
-        vec_approx_eq(alpha_real.as_data(), alpha_real_ref, 1e-14);
-        vec_approx_eq(alpha_imag.as_data(), alpha_imag_ref, 1e-14);
-        vec_approx_eq(beta.as_data(), beta_ref, 1e-14);
+        vec_approx_eq(&alpha_real, alpha_real_ref, 1e-14);
+        vec_approx_eq(&alpha_imag, alpha_imag_ref, 1e-14);
+        vec_approx_eq(&beta, beta_ref, 1e-14);
         let v_ref = Matrix::from(&[
             [0.7711213016981152, 0.1548092699389088, 0.5000000000000012],
             [0.4700458576415154, -1.0, -1.0],
@@ -622,9 +622,9 @@ mod tests {
         let alpha_real_ref = &[7.950050, -0.277338, 2.149669, 6.720718, 10.987556];
         let alpha_imag_ref = &[0.0, 0.0, 0.0, 0.0, 0.0];
         let beta_ref = &[0.374183, 1.480299, 1.636872, 1.213574, 0.908837];
-        vec_approx_eq(alpha_real.as_data(), alpha_real_ref, 1e-6);
-        vec_approx_eq(alpha_imag.as_data(), alpha_imag_ref, 1e-15);
-        vec_approx_eq(beta.as_data(), beta_ref, 1e-6);
+        vec_approx_eq(&alpha_real, alpha_real_ref, 1e-6);
+        vec_approx_eq(&alpha_imag, alpha_imag_ref, 1e-15);
+        vec_approx_eq(&beta, beta_ref, 1e-6);
         // check the definition: a ⋅ vj = lj ⋅ b ⋅ vj
         check_gen_eigen(&a_data, &b_data, &v, &alpha_real, &alpha_imag, &beta, 1e-13);
     }

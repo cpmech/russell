@@ -76,6 +76,9 @@ pub trait AsArray1D<'a, U: 'a> {
 
     /// Returns the value at index i
     fn at(&self, i: usize) -> U;
+
+    /// Returns a reference to itself as a slice
+    fn as_slice(&self) -> &[U];
 }
 
 /// Defines a heap-allocated 1D array (vector)
@@ -88,6 +91,9 @@ where
     }
     fn at(&self, i: usize) -> U {
         self[i]
+    }
+    fn as_slice(&self) -> &[U] {
+        self
     }
 }
 
@@ -102,6 +108,9 @@ where
     fn at(&self, i: usize) -> U {
         self[i]
     }
+    fn as_slice(&self) -> &[U] {
+        self
+    }
 }
 
 /// Defines a stack-allocated (fixed-size) 1D array
@@ -114,6 +123,9 @@ where
     }
     fn at(&self, i: usize) -> U {
         self[i]
+    }
+    fn as_slice(&self) -> &[U] {
+        self
     }
 }
 
@@ -259,6 +271,7 @@ mod tests {
             write!(&mut buf, "{},", array.at(i)).unwrap();
         }
         write!(&mut buf, "\n").unwrap();
+        assert_eq!(array.size(), array.as_slice().len());
         buf
     }
 

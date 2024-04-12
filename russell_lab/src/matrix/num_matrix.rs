@@ -946,7 +946,7 @@ where
 {
     #[inline]
     fn size(&self) -> (usize, usize) {
-        self.dims()
+        (self.nrow, self.ncol)
     }
     #[inline]
     fn at(&self, i: usize, j: usize) -> T {

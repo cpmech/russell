@@ -812,7 +812,7 @@ mod tests {
     use super::NumCsrMatrix;
     use crate::{CooMatrix, Samples, Sym};
     use num_complex::Complex64;
-    use russell_lab::{complex_vec_approx_eq, cpx, vec_approx_eq, ComplexVector, Matrix, Vector};
+    use russell_lab::{array_approx_eq, complex_vec_approx_eq, cpx, vec_approx_eq, ComplexVector, Matrix, Vector};
 
     #[test]
     fn new_captures_errors() {
@@ -977,7 +977,7 @@ mod tests {
             assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
             let nnz = csr.row_pointers[csr.nrow] as usize;
             assert_eq!(&csr.col_indices[0..nnz], &csr_correct.col_indices);
-            vec_approx_eq(&csr.values[0..nnz], &csr_correct.values, 1e-15);
+            array_approx_eq(&csr.values[0..nnz], &csr_correct.values, 1e-15);
         }
     }
 
@@ -988,7 +988,7 @@ mod tests {
         assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
         let nnz = csr.row_pointers[csr.nrow] as usize;
         assert_eq!(&csr.col_indices[0..nnz], &csr_correct.col_indices);
-        vec_approx_eq(&csr.values[0..nnz], &csr_correct.values, 1e-15);
+        array_approx_eq(&csr.values[0..nnz], &csr_correct.values, 1e-15);
     }
 
     #[test]
@@ -1011,13 +1011,13 @@ mod tests {
         assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
         let nnz = csr.row_pointers[csr.nrow] as usize;
         assert_eq!(&csr.col_indices[0..nnz], &csr_correct.col_indices);
-        vec_approx_eq(&csr.values[0..nnz], &csr_correct.values, 1e-15);
+        array_approx_eq(&csr.values[0..nnz], &csr_correct.values, 1e-15);
 
         csr.update_from_coo(&coo).unwrap();
         assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
         let nnz = csr.row_pointers[csr.nrow] as usize;
         assert_eq!(&csr.col_indices[0..nnz], &csr_correct.col_indices);
-        vec_approx_eq(&csr.values[0..nnz], &csr_correct.values, 1e-15);
+        array_approx_eq(&csr.values[0..nnz], &csr_correct.values, 1e-15);
     }
 
     #[test]
@@ -1085,7 +1085,7 @@ mod tests {
             let csr = NumCsrMatrix::<f64>::from_csc(&csc).unwrap();
             assert_eq!(&csr.row_pointers, &csr_correct.row_pointers);
             assert_eq!(&csr.col_indices, &csr_correct.col_indices);
-            vec_approx_eq(&csr.values, &csr_correct.values, 1e-15);
+            array_approx_eq(&csr.values, &csr_correct.values, 1e-15);
         }
     }
 
@@ -1179,10 +1179,10 @@ mod tests {
         let mut v = Vector::new(csr.nrow);
         csr.mat_vec_mul(&mut v, 2.0, &u).unwrap();
         let correct = &[8.0, 16.0, 24.0];
-        vec_approx_eq(v.as_data(), correct, 1e-15);
+        vec_approx_eq(&v, correct, 1e-15);
         // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
         csr.mat_vec_mul(&mut v, 2.0, &u).unwrap();
-        vec_approx_eq(v.as_data(), correct, 1e-15);
+        vec_approx_eq(&v, correct, 1e-15);
     }
 
     #[test]
@@ -1191,13 +1191,13 @@ mod tests {
         let u = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
         let mut v = Vector::new(5);
         csr.mat_vec_mul(&mut v, 2.0, &u).unwrap();
-        vec_approx_eq(v.as_data(), &[96.0, 5.0, 84.0, 6.5, 166.0], 1e-15);
+        vec_approx_eq(&v, &[96.0, 5.0, 84.0, 6.5, 166.0], 1e-15);
         // another test
         let (_, _, csr, _) = Samples::lower_symmetric_5x5();
         let u = Vector::from(&[-629.0 / 98.0, 237.0 / 49.0, -53.0 / 49.0, 62.0 / 49.0, 23.0 / 14.0]);
         let mut v = Vector::new(5);
         csr.mat_vec_mul(&mut v, 2.0, &u).unwrap();
-        vec_approx_eq(v.as_data(), &[-4.0, 8.0, 6.0, -10.0, 2.0], 1e-14);
+        vec_approx_eq(&v, &[-4.0, 8.0, 6.0, -10.0, 2.0], 1e-14);
     }
 
     #[test]
@@ -1216,10 +1216,10 @@ mod tests {
             cpx!(-64.0, 112.0),
             cpx!(-2.0, 6.0),
         ];
-        complex_vec_approx_eq(v.as_data(), correct, 1e-15);
+        complex_vec_approx_eq(&v, correct, 1e-15);
         // call mat_vec_mul again to make sure the vector is filled with zeros before the sum
         csr.mat_vec_mul(&mut v, cpx!(2.0, 4.0), &u).unwrap();
-        complex_vec_approx_eq(v.as_data(), correct, 1e-15);
+        complex_vec_approx_eq(&v, correct, 1e-15);
     }
 
     #[test]

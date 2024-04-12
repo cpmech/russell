@@ -75,5 +75,5 @@ fn test_pde_laplace_1() {
     let x_correct = [
         1.0, 1.0, 1.0, 1.0, 1.0, 1.25, 1.5, 2.0, 1.0, 1.5, 1.75, 2.0, 2.0, 2.0, 2.0, 2.0,
     ];
-    vec_approx_eq(&x.as_data(), &x_correct, 1e-15);
+    vec_approx_eq(&x, &x_correct, 1e-15);
 }

@@ -1,3 +1,26 @@
+/// Calculates negative one raised to the power of n  
+///
+/// Calculates:
+///
+/// ```text
+///           ⎧  1  if n is even
+/// (-1)ⁿ = = ⎨
+///           ⎩ -1  if n is odd
+/// ```
+#[inline]
+pub fn neg_one_pow_n(n: i32) -> f64 {
+    // this formula works for negative integers as well, e.g.,
+    // Mathematica: Simplify[(-1)^n == (-1)^-n, Assumptions -> {n \[Element] Integers}]
+    //   True
+    if n & 1 == 0 {
+        // even
+        1.0
+    } else {
+        // odd
+        -1.0
+    }
+}
+
 /// Evaluates the sign function
 ///
 /// ```text
@@ -252,8 +275,17 @@ pub fn factorial_lookup_22(n: usize) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{approx_eq, deriv_approx_eq};
+    use crate::{approx_eq, deriv1_approx_eq};
     use std::f64::consts::PI;
+
+    #[test]
+    fn neg_one_pow_n_works() {
+        let mut n: i32 = -12;
+        while n < 12 {
+            assert_eq!(neg_one_pow_n(n), f64::powi(-1.0, n));
+            n += 1;
+        }
+    }
 
     #[test]
     fn sign_ramp_heaviside_boxcar_work() {
@@ -282,13 +314,13 @@ mod tests {
     fn logistic_and_deriv_work() {
         struct Arguments {}
         let args = &mut Arguments {};
-        let f = |x: f64, _: &mut Arguments| logistic(x);
+        let f = |x: f64, _: &mut Arguments| Ok(logistic(x));
         let xx = [-2.0, -1.6, -1.2, -0.8, -0.4, 0.0, 0.4, 0.8, 1.2, 1.6, 2.0];
         for x in xx {
             let l = logistic(x);
             let d = logistic_deriv(x);
             approx_eq(l, 0.5 + 0.5 * f64::tanh(x / 2.0), 1e-14);
-            deriv_approx_eq(d, x, args, 1e-10, f);
+            deriv1_approx_eq(d, x, args, 1e-10, f);
         }
     }
 
@@ -305,14 +337,14 @@ mod tests {
             beta: f64,
         }
         let args = &mut Arguments { beta };
-        let f = |x: f64, args: &mut Arguments| smooth_ramp(x, args.beta);
-        let g = |x: f64, args: &mut Arguments| smooth_ramp_deriv(x, args.beta);
+        let f = |x: f64, args: &mut Arguments| Ok(smooth_ramp(x, args.beta));
+        let g = |x: f64, args: &mut Arguments| Ok(smooth_ramp_deriv(x, args.beta));
         let xx = [-2.0, -1.6, -1.2, -0.8, -0.4, 0.0, 0.4, 0.8, 1.2, 1.6, 2.0];
         for x in xx {
             let d = smooth_ramp_deriv(x, beta);
             let d2 = smooth_ramp_deriv2(x, beta);
-            deriv_approx_eq(d, x, args, 1e-9, f);
-            deriv_approx_eq(d2, x, args, 1e-9, g);
+            deriv1_approx_eq(d, x, args, 1e-9, f);
+            deriv1_approx_eq(d2, x, args, 1e-9, g);
         }
     }
 

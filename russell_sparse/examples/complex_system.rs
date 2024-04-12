@@ -101,7 +101,7 @@ fn solve(genie: Genie) -> Result<(), StrError> {
         cpx!(9.0, 0.00),
         cpx!(10.0, -17.75),
     ];
-    complex_vec_approx_eq(x.as_data(), x_correct, 1e-3);
+    complex_vec_approx_eq(&x, x_correct, 1e-3);
     Ok(())
 }
 

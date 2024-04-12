@@ -369,7 +369,7 @@ mod tests {
         complex_mat_eigen(&mut l, &mut v, &mut a).unwrap();
         let s3 = f64::sqrt(3.0);
         let l_correct = &[cpx!(-0.5, s3 / 2.0), cpx!(-0.5, -s3 / 2.0), cpx!(1.0, 0.0)];
-        complex_vec_approx_eq(l.as_data(), l_correct, 1e-15);
+        complex_vec_approx_eq(&l, l_correct, 1e-15);
         complex_check_eigen(&data, &v, &l, 1e-15);
     }
 
@@ -389,7 +389,7 @@ mod tests {
         let mut v = ComplexMatrix::new(m, m);
         complex_mat_eigen(&mut l, &mut v, &mut a).unwrap();
         let l_correct = &[cpx!(3.0, 0.0), cpx!(3.0, 0.0), cpx!(2.0, 0.0), cpx!(2.0, 0.0)];
-        complex_vec_approx_eq(l.as_data(), l_correct, 1e-15);
+        complex_vec_approx_eq(&l, l_correct, 1e-15);
         complex_check_eigen(&data, &v, &l, 1e-15);
     }
 
@@ -409,7 +409,7 @@ mod tests {
         complex_mat_eigen_lr(&mut l, &mut u, &mut v, &mut a).unwrap();
         let s3 = f64::sqrt(3.0);
         let l_correct = &[cpx!(-0.5, s3 / 2.0), cpx!(-0.5, -s3 / 2.0), cpx!(1.0, 0.0)];
-        complex_vec_approx_eq(l.as_data(), l_correct, 1e-15);
+        complex_vec_approx_eq(&l, l_correct, 1e-15);
         complex_check_eigen(&data, &v, &l, 1e-15);
     }
 
@@ -434,6 +434,6 @@ mod tests {
             cpx!(3.0000, 7.0000),
             cpx!(1.0000, 5.0000),
         ];
-        complex_vec_approx_eq(l.as_data(), l_correct, 1e-13);
+        complex_vec_approx_eq(&l, l_correct, 1e-13);
     }
 }

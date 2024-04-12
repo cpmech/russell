@@ -169,7 +169,7 @@ mod tests {
                 }
 
                 // check eigenvalues
-                vec_approx_eq(spec.lambda.as_data(), &correct_lambda, tol_lambda);
+                vec_approx_eq(&spec.lambda, &correct_lambda, tol_lambda);
 
                 // check eigenprojectors
                 let pp0 = spec.projectors[0].to_matrix();

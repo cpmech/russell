@@ -499,7 +499,7 @@ mod tests {
         let mut ax = Vector::new(1);
         for mat in [&coo_mat, &csc_mat, &csr_mat] {
             mat.mat_vec_mul(&mut ax, 2.0, &x).unwrap();
-            vec_approx_eq(&ax.as_data(), &[80.0], 1e-15);
+            vec_approx_eq(&ax, &[80.0], 1e-15);
             assert_eq!(
                 mat.mat_vec_mul(&mut wrong, 1.0, &x).err(),
                 Some("v vector is incompatible")

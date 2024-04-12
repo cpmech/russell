@@ -575,12 +575,12 @@ mod tests {
 
         solver.factorize(&mut mat, Some(params)).unwrap();
         solver.solve(&mut x, &mut mat, &rhs, false).unwrap();
-        vec_approx_eq(x.as_data(), x_correct, 1e-14);
+        vec_approx_eq(&x, x_correct, 1e-14);
 
         // calling solve again works
         let mut x_again = Vector::new(5);
         solver.solve(&mut x_again, &mut mat, &rhs, false).unwrap();
-        vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
+        vec_approx_eq(&x_again, x_correct, 1e-14);
 
         // update stats
         let mut stats = StatsLinSol::new();
@@ -604,12 +604,12 @@ mod tests {
 
         solver.factorize(&mut mat, Some(params)).unwrap();
         solver.solve(&mut x, &mut mat, &rhs, false).unwrap();
-        vec_approx_eq(x.as_data(), x_correct, 1e-10);
+        vec_approx_eq(&x, x_correct, 1e-10);
 
         // calling solve again works
         let mut x_again = Vector::new(5);
         solver.solve(&mut x_again, &mut mat, &rhs, false).unwrap();
-        vec_approx_eq(x_again.as_data(), x_correct, 1e-10);
+        vec_approx_eq(&x_again, x_correct, 1e-10);
 
         // update stats
         let mut stats = StatsLinSol::new();

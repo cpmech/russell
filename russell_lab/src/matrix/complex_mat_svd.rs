@@ -221,7 +221,7 @@ mod tests {
             2.0 / f64::sqrt(3.0),
             2.0 / f64::sqrt(3.0),
         ];
-        vec_approx_eq(s.as_data(), s_correct, 1e-14);
+        vec_approx_eq(&s, s_correct, 1e-14);
 
         // check SVD
         let mut usv = ComplexMatrix::new(m, n);
@@ -263,7 +263,7 @@ mod tests {
             sqrt2,
             sqrt2,
         ];
-        vec_approx_eq(s.as_data(), s_correct, 1e-14);
+        vec_approx_eq(&s, s_correct, 1e-14);
 
         // check SVD
         let mut usv = ComplexMatrix::new(m, n);
@@ -332,7 +332,7 @@ mod tests {
             [cpx!( 0.4846, 0.0000), cpx!(-0.7774,-0.0071), cpx!( 0.3987, 0.0425)],
             [cpx!(-0.8105, 0.0000), cpx!(-0.2267,-0.0041), cpx!( 0.5375, 0.0533)],
         ]);
-        vec_approx_eq(s.as_data(), s_ref, 1e-6);
+        vec_approx_eq(&s, s_ref, 1e-6);
         complex_mat_approx_eq(&u, &u_ref, 1e-4);
         complex_mat_approx_eq(&vh, &vh_ref, 1e-4);
     }

@@ -25,6 +25,6 @@ fn main() -> Result<(), StrError> {
             half_a_times_u[i] += 0.5 * a.get(i, j) * u[j];
         }
     }
-    vec_approx_eq(v.as_data(), half_a_times_u.as_data(), 1e-14);
+    vec_approx_eq(&v, &half_a_times_u, 1e-14);
     Ok(())
 }

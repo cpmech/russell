@@ -191,7 +191,7 @@ where
 mod tests {
     use super::EulerBackward;
     use crate::{HasJacobian, Method, OdeSolverTrait, Params, Samples, System, Workspace};
-    use russell_lab::{vec_approx_eq, Vector};
+    use russell_lab::{array_approx_eq, Vector};
 
     // Mathematica code:
     //
@@ -308,11 +308,11 @@ mod tests {
         }
 
         // compare with Mathematica results
-        vec_approx_eq(&xx, &XX_MATH, 1e-15);
-        vec_approx_eq(&yy0_num, &YY0_MATH, 1e-15);
-        vec_approx_eq(&yy1_num, &YY1_MATH, 1e-14);
-        vec_approx_eq(&err_y0, &ERR_Y0_MATH, 1e-15);
-        vec_approx_eq(&err_y1, &ERR_Y1_MATH, 1e-14);
+        array_approx_eq(&xx, &XX_MATH, 1e-15);
+        array_approx_eq(&yy0_num, &YY0_MATH, 1e-15);
+        array_approx_eq(&yy1_num, &YY1_MATH, 1e-14);
+        array_approx_eq(&err_y0, &ERR_Y0_MATH, 1e-15);
+        array_approx_eq(&err_y1, &ERR_Y1_MATH, 1e-14);
     }
 
     #[test]
@@ -358,11 +358,11 @@ mod tests {
         }
 
         // compare with Mathematica results
-        vec_approx_eq(&xx, &XX_MATH, 1e-15);
-        vec_approx_eq(&yy0_num, &YY0_MATH, 1e-7);
-        vec_approx_eq(&yy1_num, &YY1_MATH, 1e-6);
-        vec_approx_eq(&err_y0, &ERR_Y0_MATH, 1e-7);
-        vec_approx_eq(&err_y1, &ERR_Y1_MATH, 1e-6);
+        array_approx_eq(&xx, &XX_MATH, 1e-15);
+        array_approx_eq(&yy0_num, &YY0_MATH, 1e-7);
+        array_approx_eq(&yy1_num, &YY1_MATH, 1e-6);
+        array_approx_eq(&err_y0, &ERR_Y0_MATH, 1e-7);
+        array_approx_eq(&err_y1, &ERR_Y1_MATH, 1e-6);
     }
 
     #[test]

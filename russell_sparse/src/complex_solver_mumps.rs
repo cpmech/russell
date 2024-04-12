@@ -649,7 +649,7 @@ mod tests {
 
         // solve works
         solver.solve(&mut x, &mat, &rhs, false).unwrap();
-        complex_vec_approx_eq(x.as_data(), x_correct, 1e-14);
+        complex_vec_approx_eq(&x, x_correct, 1e-14);
 
         // check ordering and scaling
         assert_eq!(solver.effective_ordering, 4); // Pord
@@ -669,7 +669,7 @@ mod tests {
         // calling solve again works
         let mut x_again = ComplexVector::new(3);
         solver.solve(&mut x_again, &mat, &rhs, false).unwrap();
-        complex_vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
+        complex_vec_approx_eq(&x_again, x_correct, 1e-14);
 
         // solve with positive-definite matrix works
         params.positive_definite = true;
@@ -701,6 +701,6 @@ mod tests {
             cpx!(398.0, 0.0),
             cpx!(123.0 / 2.0, 0.0),
         ];
-        complex_vec_approx_eq(x.as_data(), x_correct, 1e-10);
+        complex_vec_approx_eq(&x, x_correct, 1e-10);
     }
 }

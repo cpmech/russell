@@ -59,7 +59,7 @@ extern "C" {
 ///         cpx!(1.5, 0.0),
 ///         cpx!(8.0, 0.0),
 ///     ];
-///     complex_vec_approx_eq(v.as_data(), correct, 1e-15);
+///     complex_vec_approx_eq(&v, correct, 1e-15);
 ///     Ok(())
 /// }
 /// ```
@@ -143,7 +143,7 @@ mod tests {
         let one = cpx!(1.0, 0.0);
         complex_mat_vec_mul(&mut v, one, &a, &u).unwrap();
         let correct = &[cpx!(4.0, 0.0), cpx!(8.0, 0.0), cpx!(12.0, 0.0)];
-        complex_vec_approx_eq(v.as_data(), correct, 1e-15);
+        complex_vec_approx_eq(&v, correct, 1e-15);
     }
 
     #[test]

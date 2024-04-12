@@ -36,8 +36,8 @@ fn main() -> Result<(), StrError> {
         8.865457108365517,
         16.094837112029339,
     ];
-    vec_approx_eq(l_lower.as_data(), l_correct, 1e-14);
-    vec_approx_eq(l_upper.as_data(), l_correct, 1e-14);
+    vec_approx_eq(&l_lower, l_correct, 1e-14);
+    vec_approx_eq(&l_upper, l_correct, 1e-14);
 
     // check eigen-decomposition
     // A ⋅ v[col] = λ[col] ⋅ v[col]

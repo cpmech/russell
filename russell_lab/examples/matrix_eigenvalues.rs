@@ -49,8 +49,8 @@ fn main() -> Result<(), StrError> {
         -4.007924719897546e-01,
         0.0,
     ];
-    vec_approx_eq(l_real.as_data(), lambda_real_correct, 1e-14);
-    vec_approx_eq(l_imag.as_data(), lambda_imag_correct, 1e-14);
+    vec_approx_eq(&l_real, lambda_real_correct, 1e-14);
+    vec_approx_eq(&l_imag, lambda_imag_correct, 1e-14);
 
     // check the eigen-decomposition (similarity transformation)
     // ```text

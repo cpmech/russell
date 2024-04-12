@@ -267,7 +267,7 @@ mod tests {
             2.0 / f64::sqrt(3.0),
             2.0 / f64::sqrt(3.0),
         ];
-        vec_approx_eq(s.as_data(), s_correct, 1e-14);
+        vec_approx_eq(&s, s_correct, 1e-14);
 
         // check SVD
         let mut usv = Matrix::new(m, n);
@@ -309,7 +309,7 @@ mod tests {
             sqrt2,
             sqrt2,
         ];
-        vec_approx_eq(s.as_data(), s_correct, 1e-14);
+        vec_approx_eq(&s, s_correct, 1e-14);
 
         // check SVD
         let mut usv = Matrix::new(m, n);

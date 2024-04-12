@@ -65,6 +65,6 @@ mod tests {
         let mut v = Vector::from(&[100.0, 200.0, 300.0]);
         vec_copy(&mut v, &u).unwrap();
         let correct = &[1.0, 2.0, 3.0];
-        vec_approx_eq(v.as_data(), correct, 1e-15);
+        vec_approx_eq(&v, correct, 1e-15);
     }
 }

@@ -3,7 +3,10 @@ use num_traits::{Num, NumCast};
 
 /// Panics if two numbers are not approximately equal to each other
 ///
-/// **Note:** Will also panic if NaN or Inf is found
+/// # Panics
+///
+/// 1. Will panic if NAN, INFINITY, or NEG_INFINITY is found
+/// 2. Will panic if the absolute difference of each real/imag part is greater than the tolerance
 ///
 /// # Input
 ///
@@ -16,36 +19,40 @@ use num_traits::{Num, NumCast};
 /// ## Accepts small error
 ///
 /// ```
-/// use russell_lab::*;
+/// use russell_lab::{complex_approx_eq, cpx};
 /// use num_complex::Complex64;
 ///
 /// fn main() {
-///     let a = Complex64::new(3.0000001, 2.0000001);
-///     let b = Complex64::new(3.0, 2.0);
+///     let a = cpx!(3.0000001, 2.0000001);
+///     let b = cpx!(3.0, 2.0);
 ///     complex_approx_eq(a, b, 1e-6);
 /// }
 /// ```
 ///
 /// ## Panics on different values
 ///
+/// ### Real part
+///
 /// ```should_panic
-/// use russell_lab::*;
+/// use russell_lab::{complex_approx_eq, cpx};
 /// use num_complex::Complex64;
 ///
 /// fn main() {
-///     let a = Complex64::new(1.0, 3.0);
-///     let b = Complex64::new(2.0, 3.0);
+///     let a = cpx!(1.0, 3.0);
+///     let b = cpx!(2.0, 3.0);
 ///     complex_approx_eq(a, b, 1e-6);
 /// }
 /// ```
 ///
+/// ### Imaginary part
+///
 /// ```should_panic
-/// use russell_lab::*;
+/// use russell_lab::{complex_approx_eq, cpx};
 /// use num_complex::Complex64;
 ///
 /// fn main() {
-///     let a = Complex64::new(1.0, 3.0);
-///     let b = Complex64::new(1.0, 4.0);
+///     let a = cpx!(1.0, 3.0);
+///     let b = cpx!(1.0, 4.0);
 ///     complex_approx_eq(a, b, 1e-6);
 /// }
 /// ```
@@ -53,23 +60,44 @@ pub fn complex_approx_eq<T>(a: Complex<T>, b: Complex<T>, tol: f64)
 where
     T: Num + NumCast + Copy,
 {
-    let diff_re = f64::abs(a.re.to_f64().unwrap() - b.re.to_f64().unwrap());
-    if diff_re.is_nan() {
-        panic!("complex_approx_eq found NaN");
+    let aa_re = a.re.to_f64().unwrap();
+    let bb_re = b.re.to_f64().unwrap();
+
+    if aa_re.is_nan() {
+        panic!("the real part of the first number is NaN");
     }
-    if diff_re.is_infinite() {
-        panic!("complex_approx_eq found Inf");
+    if bb_re.is_nan() {
+        panic!("the real part of the second number is NaN");
     }
+    if aa_re.is_infinite() {
+        panic!("the real part of the first number is Inf");
+    }
+    if bb_re.is_infinite() {
+        panic!("the real part of the second number is Inf");
+    }
+
+    let aa_im = a.im.to_f64().unwrap();
+    let bb_im = b.im.to_f64().unwrap();
+
+    if aa_im.is_nan() {
+        panic!("the imaginary part of the first number is NaN");
+    }
+    if bb_im.is_nan() {
+        panic!("the imaginary part of the second number is NaN");
+    }
+    if aa_im.is_infinite() {
+        panic!("the imaginary part of the first number is Inf");
+    }
+    if bb_im.is_infinite() {
+        panic!("the imaginary part of the second number is Inf");
+    }
+
+    let diff_re = f64::abs(aa_re - bb_re);
     if diff_re > tol {
         panic!("complex numbers are not approximately equal. diff_re = {:?}", diff_re);
     }
-    let diff_im = f64::abs(a.im.to_f64().unwrap() - b.im.to_f64().unwrap());
-    if diff_im.is_nan() {
-        panic!("complex_approx_eq found NaN");
-    }
-    if diff_im.is_infinite() {
-        panic!("complex_approx_eq found Inf");
-    }
+
+    let diff_im = f64::abs(aa_im - bb_im);
     if diff_im > tol {
         panic!("complex numbers are not approximately equal. diff_im = {:?}", diff_im);
     }
@@ -83,40 +111,80 @@ mod tests {
     use num_complex::{Complex32, Complex64};
 
     #[test]
-    #[should_panic(expected = "complex_approx_eq found NaN")]
-    fn panics_on_nan_real() {
+    #[should_panic(expected = "the real part of the first number is NaN")]
+    fn panics_on_nan_real_1() {
         complex_approx_eq(Complex64::new(f64::NAN, 0.0), Complex64::new(2.5, 0.0), 1e-1);
     }
 
     #[test]
-    #[should_panic(expected = "complex_approx_eq found Inf")]
-    fn panics_on_inf_real() {
+    #[should_panic(expected = "the real part of the second number is NaN")]
+    fn panics_on_nan_real_2() {
+        complex_approx_eq(Complex64::new(2.5, 0.0), Complex64::new(f64::NAN, 0.0), 1e-1);
+    }
+
+    #[test]
+    #[should_panic(expected = "the real part of the first number is Inf")]
+    fn panics_on_inf_real_1() {
         complex_approx_eq(Complex64::new(f64::INFINITY, 0.0), Complex64::new(2.5, 0.0), 1e-1);
     }
 
     #[test]
-    #[should_panic(expected = "complex_approx_eq found Inf")]
-    fn panics_on_neg_inf_real() {
+    #[should_panic(expected = "the real part of the second number is Inf")]
+    fn panics_on_inf_real_2() {
+        complex_approx_eq(Complex64::new(2.5, 0.0), Complex64::new(f64::INFINITY, 0.0), 1e-1);
+    }
+
+    #[test]
+    #[should_panic(expected = "the real part of the first number is Inf")]
+    fn panics_on_inf_real_3() {
         complex_approx_eq(Complex64::new(f64::NEG_INFINITY, 0.0), Complex64::new(2.5, 0.0), 1e-1);
     }
 
     #[test]
-    #[should_panic(expected = "complex_approx_eq found NaN")]
-    fn panics_on_nan_imag() {
-        complex_approx_eq(Complex64::new(2.5, f64::NAN), Complex64::new(2.5, 0.0), 1e-1);
+    #[should_panic(expected = "the real part of the second number is Inf")]
+    fn panics_on_inf_real_4() {
+        complex_approx_eq(Complex64::new(2.5, 0.0), Complex64::new(f64::NEG_INFINITY, 0.0), 1e-1);
+    }
+
+    // ------
+
+    #[test]
+    #[should_panic(expected = "the imaginary part of the first number is NaN")]
+    fn panics_on_nan_imag_1() {
+        complex_approx_eq(Complex64::new(0.0, f64::NAN), Complex64::new(2.5, 0.0), 1e-1);
     }
 
     #[test]
-    #[should_panic(expected = "complex_approx_eq found Inf")]
-    fn panics_on_inf_imag() {
-        complex_approx_eq(Complex64::new(2.5, f64::INFINITY), Complex64::new(2.5, 0.0), 1e-1);
+    #[should_panic(expected = "the imaginary part of the second number is NaN")]
+    fn panics_on_nan_imag_2() {
+        complex_approx_eq(Complex64::new(2.5, 0.0), Complex64::new(0.0, f64::NAN), 1e-1);
     }
 
     #[test]
-    #[should_panic(expected = "complex_approx_eq found Inf")]
-    fn panics_on_neg_inf_imag() {
-        complex_approx_eq(Complex64::new(2.5, f64::NEG_INFINITY), Complex64::new(2.5, 0.0), 1e-1);
+    #[should_panic(expected = "the imaginary part of the first number is Inf")]
+    fn panics_on_inf_imag_1() {
+        complex_approx_eq(Complex64::new(0.0, f64::INFINITY), Complex64::new(2.5, 0.0), 1e-1);
     }
+
+    #[test]
+    #[should_panic(expected = "the imaginary part of the second number is Inf")]
+    fn panics_on_inf_imag_2() {
+        complex_approx_eq(Complex64::new(2.5, 0.0), Complex64::new(0.0, f64::INFINITY), 1e-1);
+    }
+
+    #[test]
+    #[should_panic(expected = "the imaginary part of the first number is Inf")]
+    fn panics_on_inf_imag_3() {
+        complex_approx_eq(Complex64::new(0.0, f64::NEG_INFINITY), Complex64::new(2.5, 0.0), 1e-1);
+    }
+
+    #[test]
+    #[should_panic(expected = "the imaginary part of the second number is Inf")]
+    fn panics_on_inf_imag_4() {
+        complex_approx_eq(Complex64::new(2.5, 0.0), Complex64::new(0.0, f64::NEG_INFINITY), 1e-1);
+    }
+
+    // ------
 
     #[test]
     #[should_panic(expected = "complex numbers are not approximately equal. diff_re = 0.5")]

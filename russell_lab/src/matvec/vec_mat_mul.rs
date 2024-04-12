@@ -138,7 +138,7 @@ mod tests {
         let mut v = Vector::new(a.ncol());
         vec_mat_mul(&mut v, 1.0, &u, &a).unwrap();
         let correct = &[155.0, -62.0, 0.0, 31.0];
-        vec_approx_eq(v.as_data(), correct, 1e-15);
+        vec_approx_eq(&v, correct, 1e-15);
     }
 
     #[test]

@@ -52,7 +52,7 @@ fn test_solver(genie: Genie) {
 
     println!("x =\n{}", x);
     let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
-    vec_approx_eq(x.as_data(), x_correct, 1e-14);
+    vec_approx_eq(&x, x_correct, 1e-14);
 }
 
 fn test_complex_solver(genie: Genie) {
@@ -107,7 +107,7 @@ fn test_complex_solver(genie: Genie) {
 
     println!("x =\n{}", x);
     let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
-    complex_vec_approx_eq(x.as_data(), x_correct, 1e-14);
+    complex_vec_approx_eq(&x, x_correct, 1e-14);
 }
 
 fn test_solver_singular(genie: Genie) {

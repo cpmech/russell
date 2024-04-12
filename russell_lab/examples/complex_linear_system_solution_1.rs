@@ -35,6 +35,6 @@ fn main() -> Result<(), StrError> {
         cpx!(0.0, 6.0),   //
     ]);
     println!("expected =\n{:.3}", correct);
-    complex_vec_approx_eq(b.as_data(), correct.as_data(), 1e-14);
+    complex_vec_approx_eq(&b, &correct, 1e-14);
     Ok(())
 }

@@ -526,12 +526,12 @@ mod tests {
 
         solver.factorize(&mut mat, Some(params)).unwrap();
         solver.solve(&mut x, &mut mat, &rhs, false).unwrap();
-        complex_vec_approx_eq(x.as_data(), x_correct, 1e-14);
+        complex_vec_approx_eq(&x, x_correct, 1e-14);
 
         // calling solve again works
         let mut x_again = ComplexVector::new(3);
         solver.solve(&mut x_again, &mut mat, &rhs, false).unwrap();
-        complex_vec_approx_eq(x_again.as_data(), x_correct, 1e-14);
+        complex_vec_approx_eq(&x_again, x_correct, 1e-14);
 
         // update stats
         let mut stats = StatsLinSol::new();

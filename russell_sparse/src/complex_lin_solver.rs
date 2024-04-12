@@ -149,7 +149,7 @@ mod tests {
         let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
         ComplexLinSolver::compute(Genie::Klu, &mut x, &mut mat, &rhs, None).unwrap();
         let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
-        complex_vec_approx_eq(x.as_data(), x_correct, 1e-15);
+        complex_vec_approx_eq(&x, x_correct, 1e-15);
     }
 
     #[test]
@@ -161,7 +161,7 @@ mod tests {
         let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
         ComplexLinSolver::compute(Genie::Mumps, &mut x, &mut mat, &rhs, None).unwrap();
         let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
-        complex_vec_approx_eq(x.as_data(), x_correct, 1e-15);
+        complex_vec_approx_eq(&x, x_correct, 1e-15);
     }
 
     #[test]
@@ -172,6 +172,6 @@ mod tests {
         let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
         ComplexLinSolver::compute(Genie::Umfpack, &mut x, &mut mat, &rhs, None).unwrap();
         let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
-        complex_vec_approx_eq(x.as_data(), x_correct, 1e-15);
+        complex_vec_approx_eq(&x, x_correct, 1e-15);
     }
 }

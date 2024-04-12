@@ -547,8 +547,8 @@ mod tests {
         let s3 = f64::sqrt(3.0);
         let l_real_correct = &[-0.5, -0.5, 1.0];
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
-        vec_approx_eq(l_real.as_data(), l_real_correct, 1e-15);
-        vec_approx_eq(l_imag.as_data(), l_imag_correct, 1e-15);
+        vec_approx_eq(&l_real, l_real_correct, 1e-15);
+        vec_approx_eq(&l_imag, l_imag_correct, 1e-15);
         check_eigen(&data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
     }
 
@@ -580,8 +580,8 @@ mod tests {
             [1.0, -1.0,  os3, -os3],
         ];
         let v_imag_correct = Matrix::new(4, 4);
-        vec_approx_eq(l_real.as_data(), l_real_correct, 1e-15);
-        vec_approx_eq(l_imag.as_data(), l_imag_correct, 1e-15);
+        vec_approx_eq(&l_real, l_real_correct, 1e-15);
+        vec_approx_eq(&l_imag, l_imag_correct, 1e-15);
         mat_approx_eq(&v_real, v_real_correct, 1e-15);
         mat_approx_eq(&v_imag, &v_imag_correct, 1e-15);
         check_eigen_sym(&data, &v_real, &l_real, 1e-15);
@@ -616,8 +616,8 @@ mod tests {
         let s3 = f64::sqrt(3.0);
         let l_real_correct = &[-0.5, -0.5, 1.0];
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
-        vec_approx_eq(l_real.as_data(), l_real_correct, 1e-15);
-        vec_approx_eq(l_imag.as_data(), l_imag_correct, 1e-15);
+        vec_approx_eq(&l_real, l_real_correct, 1e-15);
+        vec_approx_eq(&l_imag, l_imag_correct, 1e-15);
         check_eigen(&data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
     }
 }

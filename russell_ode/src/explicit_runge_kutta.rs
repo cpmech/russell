@@ -381,7 +381,7 @@ where
 mod tests {
     use super::ExplicitRungeKutta;
     use crate::{no_jacobian, ErkDenseOut, HasJacobian, Method, OdeSolverTrait, Params, Samples, System, Workspace};
-    use russell_lab::{approx_eq, vec_approx_eq, Vector};
+    use russell_lab::{approx_eq, array_approx_eq, Vector};
 
     #[test]
     fn constants_are_consistent() {
@@ -590,9 +590,9 @@ mod tests {
             0.01020636849246781,
             0.01557366525904502,
         ];
-        vec_approx_eq(&xx, xx_correct, 1e-15);
-        vec_approx_eq(&yy_num, yy_correct, 1e-15);
-        vec_approx_eq(&errors, errors_correct, 1e-15);
+        array_approx_eq(&xx, xx_correct, 1e-15);
+        array_approx_eq(&yy_num, yy_correct, 1e-15);
+        array_approx_eq(&errors, errors_correct, 1e-15);
     }
 
     #[test]
@@ -682,9 +682,9 @@ mod tests {
             0.00002010271390617824,
             0.00003069185310988765,
         ];
-        vec_approx_eq(&xx, xx_correct, 1e-15);
-        vec_approx_eq(&yy_num, yy_correct, 1e-15);
-        vec_approx_eq(&errors, errors_correct, 1e-15);
+        array_approx_eq(&xx, xx_correct, 1e-15);
+        array_approx_eq(&yy_num, yy_correct, 1e-15);
+        array_approx_eq(&errors, errors_correct, 1e-15);
     }
 
     #[test]
@@ -733,7 +733,7 @@ mod tests {
             0.201006676700,
             0.200250418651,
         ];
-        vec_approx_eq(&kh, kh_correct, 1e-12);
+        array_approx_eq(&kh, kh_correct, 1e-12);
     }
 
     #[test]

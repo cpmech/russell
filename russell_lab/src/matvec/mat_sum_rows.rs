@@ -65,6 +65,6 @@ mod tests {
         let mut v = Vector::new(a.ncol());
         mat_sum_rows(&mut v, &a).unwrap();
         let correct = &[30.0, -12.0, 0.0, 6.0];
-        vec_approx_eq(v.as_data(), correct, 1e-15);
+        vec_approx_eq(&v, correct, 1e-15);
     }
 }

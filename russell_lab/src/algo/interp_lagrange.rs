@@ -730,6 +730,9 @@ impl InterpLagrange {
 mod tests {
     use super::{InterpGrid, InterpLagrange, InterpParams};
     use crate::{approx_eq, deriv1_approx_eq, deriv2_approx_eq, mat_vec_mul, Vector};
+    use plotpy::{Curve, Plot};
+
+    const SAVE_FIGURE: bool = false;
 
     #[test]
     fn params_validate_capture_errors() {
@@ -875,7 +878,7 @@ mod tests {
 
     // --- polynomial interpolation -------------------------------------------------------------------
 
-    fn check_eval<F>(nn: usize, params: InterpParams, tol: f64, mut f: F)
+    fn check_eval<F>(nn: usize, params: InterpParams, tol: f64, name: &str, mut f: F)
     where
         F: Copy + FnMut(f64) -> f64,
     {
@@ -898,36 +901,78 @@ mod tests {
         let nstation = 20;
         let station = Vector::linspace(-1.0, 1.0, nstation).unwrap();
         for i in 0..nstation {
+            // println!("err = {:?}", f64::abs(interp.eval(station[i], &uu).unwrap() - f(station[i])));
             approx_eq(interp.eval(station[i], &uu).unwrap(), f(station[i]), tol);
+        }
+
+        // plot
+        if SAVE_FIGURE {
+            let x_original = Vector::linspace(-1.0, 1.0, 101).unwrap();
+            let y_original = x_original.get_mapped(|x| f(x));
+            let y_approx = station.get_mapped(|x| interp.eval(x, &uu).unwrap());
+            let mut curve1 = Curve::new();
+            let mut curve2 = Curve::new();
+            curve1
+                .set_label("exact")
+                .set_line_width(2.0)
+                .draw(x_original.as_data(), y_original.as_data());
+            curve2
+                .set_label("interpolated")
+                .set_line_style("--")
+                .set_marker_style("o")
+                .set_marker_void(true)
+                .draw(station.as_data(), y_approx.as_data());
+            let mut plot = Plot::new();
+            let grid = format!("{:?}", params.grid_type).to_lowercase();
+            let path = format!("/tmp/russell_lab/check_eval_{}_nn{}_{}.svg", name, nn, grid);
+            plot.add(&curve1)
+                .add(&curve2)
+                .legend()
+                .grid_and_labels("$x$", "$f(x)$")
+                .save(path.as_str())
+                .unwrap();
         }
     }
 
     #[test]
     fn eval_works_1() {
+        // Reference:
+        // * Gourgoulhon E (2005), An introduction to polynomial interpolation,
+        //   School on spectral methods: Application to General Relativity and Field Theory
+        //   Meudon, 14-18 November 2005
         let f = |x| f64::cos(f64::exp(2.0 * x));
         let mut params = InterpParams::new();
-        for grid_type in [
-            InterpGrid::Uniform,
-            InterpGrid::ChebyshevGauss,
-            InterpGrid::ChebyshevGaussLobatto,
+        for (nn, tol, grid_type) in [
+            (4, 1.379, InterpGrid::Uniform), // ~1.4; see page 15 of the Reference
+            (6, 1.054, InterpGrid::Uniform), // ~1.05; see page 15 of the Reference
+            (4, 1.14, InterpGrid::ChebyshevGauss),
+            (4, 1.08, InterpGrid::ChebyshevGaussLobatto),
         ] {
+            // println!("N = {}, grid = {:?}", nn, grid_type);
             params.grid_type = grid_type;
-            check_eval(5, params, 1.5, f); // TODO: check this
+            check_eval(nn, params, tol, "cos-exp", f);
         }
     }
 
     #[test]
     fn eval_works_2() {
         // Runge equation
+        // Reference:
+        // * Gourgoulhon E (2005), An introduction to polynomial interpolation,
+        //   School on spectral methods: Application to General Relativity and Field Theory
+        //   Meudon, 14-18 November 2005
         let f = |x| 1.0 / (1.0 + 16.0 * x * x);
         let mut params = InterpParams::new();
-        for grid_type in [
-            InterpGrid::Uniform,
-            InterpGrid::ChebyshevGauss,
-            InterpGrid::ChebyshevGaussLobatto,
+        for (nn, tol, grid_type) in [
+            (4, 0.385, InterpGrid::Uniform), // ~0.39; see page 16 of the Reference
+            (6, 0.486, InterpGrid::Uniform), // ~0.49; see page 16 of the Reference
+            (8, 0.690, InterpGrid::Uniform), // ~0.73; see page 16 of the Reference
+            (4, 0.69, InterpGrid::ChebyshevGauss),
+            (4, 0.69, InterpGrid::ChebyshevGaussLobatto),
         ] {
+            // println!("N = {}, grid = {:?}", nn, grid_type);
             params.grid_type = grid_type;
-            check_eval(8, params, 0.69, f);
+            check_eval(nn, params, tol, "runge", f);
         }
     }
 

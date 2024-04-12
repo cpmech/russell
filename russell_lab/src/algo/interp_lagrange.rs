@@ -783,15 +783,19 @@ impl InterpLagrange {
     }
 
     /// Returns the D1 matrix (calculate it if needed)
-    pub fn get_dd1(&mut self) -> &Matrix {
-        self.calc_dd1_matrix();
-        &self.dd1
+    pub fn get_dd1(&self) -> Result<&Matrix, StrError> {
+        if self.dd1.dims().0 == 0 {
+            return Err("calc_dd1_matrix must be called first");
+        }
+        Ok(&self.dd1)
     }
 
     /// Returns the D2 matrix (calculate it if needed)
-    pub fn get_dd2(&mut self) -> &Matrix {
-        self.calc_dd2_matrix();
-        &self.dd2
+    pub fn get_dd2(&self) -> Result<&Matrix, StrError> {
+        if self.dd2.dims().0 == 0 {
+            return Err("calc_dd2_matrix must be called first");
+        }
+        Ok(&self.dd2)
     }
 }
 

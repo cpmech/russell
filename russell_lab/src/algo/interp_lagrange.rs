@@ -964,10 +964,12 @@ mod tests {
         let f = |x| 1.0 / (1.0 + 16.0 * x * x);
         let mut params = InterpParams::new();
         for (nn, tol, grid_type) in [
-            (4, 0.385, InterpGrid::Uniform), // ~0.39; see page 16 of the Reference
-            (6, 0.486, InterpGrid::Uniform), // ~0.49; see page 16 of the Reference
-            (8, 0.690, InterpGrid::Uniform), // ~0.73; see page 16 of the Reference
-            (4, 0.69, InterpGrid::ChebyshevGauss),
+            (4, 0.385, InterpGrid::Uniform),        // ~0.39; see page 16 of the Reference
+            (6, 0.486, InterpGrid::Uniform),        // ~0.49; see page 16 of the Reference
+            (8, 0.690, InterpGrid::Uniform),        // ~0.73; see page 16 of the Reference
+            (4, 0.308, InterpGrid::ChebyshevGauss), // ~0.31; see page 21 of the Reference
+            (6, 0.175, InterpGrid::ChebyshevGauss), // ~0.18; see page 21 of the Reference
+            // (24, 1.5e-3, InterpGrid::ChebyshevGauss), // ~2e-3; see page 21 of the Reference
             (4, 0.69, InterpGrid::ChebyshevGaussLobatto),
         ] {
             // println!("N = {}, grid = {:?}", nn, grid_type);

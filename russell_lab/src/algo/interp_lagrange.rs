@@ -27,6 +27,9 @@ pub struct InterpParams {
 
     /// Number of stations (points) for the Lebesgue estimate (e.g., 10,000)
     pub lebesgue_estimate_nstation: usize,
+
+    /// Number of stations (points) for the error estimate (e.g., 1,000)
+    pub error_estimate_nstation: usize,
 }
 
 impl InterpParams {
@@ -37,6 +40,7 @@ impl InterpParams {
             no_eta_normalization: false,
             eta_cutoff: 700,
             lebesgue_estimate_nstation: 10_000,
+            error_estimate_nstation: 1_000,
         }
     }
 
@@ -44,6 +48,9 @@ impl InterpParams {
     fn validate(&self) -> Result<(), StrError> {
         if self.lebesgue_estimate_nstation < 2 {
             return Err("lebesgue_estimate_nstation must be ≥ 2");
+        }
+        if self.error_estimate_nstation < 2 {
+            return Err("error_estimate_nstation must be ≥ 2");
         }
         Ok(())
     }
@@ -713,6 +720,58 @@ impl InterpLagrange {
         lambda_times_nn
     }
 
+    /// Estimates the max errors by comparing the interpolation against a reference (e.g., analytical) solution
+    ///
+    /// Returns `(err_f, err_g, err_h)` where:
+    ///
+    /// * `exclude_boundaries` -- do not compute the DERIVATIVE errors at boundaries.
+    ///   Still, the error at boundaries will be computed for the function `f`.
+    /// * `err_f` -- is the max interpolation in `[-1, 1]`
+    /// * `err_g` -- is the max error on the first derivative in `[-1, 1]`
+    /// * `err_h` -- is the max error on the second derivative in `[-1, 1]`
+    pub fn estimate_max_error<F, G, H>(
+        &mut self,
+        exclude_boundaries: bool,
+        mut f: F,
+        mut g: G,
+        mut h: H,
+    ) -> (f64, f64, f64)
+    where
+        F: Copy + FnMut(f64) -> f64,
+        G: Copy + FnMut(f64) -> f64,
+        H: Copy + FnMut(f64) -> f64,
+    {
+        // calculate Uⱼ = f(xⱼ)
+        let mut uu = Vector::new(self.npoint);
+        for j in 0..self.npoint {
+            uu[j] = f(self.xx[j]);
+        }
+
+        // find maximum errors
+        let (mut err_f, mut err_g, mut err_h) = (0.0, 0.0, 0.0);
+        let nstation = self.params.error_estimate_nstation;
+        let stations = Vector::linspace(-1.0, 1.0, nstation).unwrap();
+        for p in 0..nstation {
+            let fi = self.eval(stations[p], &uu).unwrap();
+            let gi = self.eval_deriv1(stations[p], &uu).unwrap();
+            let hi = self.eval_deriv2(stations[p], &uu).unwrap();
+            err_f = f64::max(err_f, f64::abs(fi - f(stations[p])));
+            if exclude_boundaries {
+                if p == 0 || p == nstation - 1 {
+                    continue;
+                }
+            }
+            err_g = f64::max(err_g, f64::abs(gi - g(stations[p])));
+            err_h = f64::max(err_h, f64::abs(hi - h(stations[p])));
+        }
+        (err_f, err_g, err_h)
+    }
+
+    /// Returns the polynomial degree N
+    pub fn get_degree(&self) -> usize {
+        self.nn
+    }
+
     /// Returns a reference to the grid nodes
     pub fn get_points(&self) -> &Vector {
         &self.xx
@@ -721,6 +780,18 @@ impl InterpLagrange {
     /// Returns the (min, max) coordinates
     pub fn get_xrange(&self) -> (f64, f64) {
         (-1.0, 1.0)
+    }
+
+    /// Returns the D1 matrix (calculate it if needed)
+    pub fn get_dd1(&mut self) -> &Matrix {
+        self.calc_dd1_matrix();
+        &self.dd1
+    }
+
+    /// Returns the D2 matrix (calculate it if needed)
+    pub fn get_dd2(&mut self) -> &Matrix {
+        self.calc_dd2_matrix();
+        &self.dd2
     }
 }
 

@@ -16,9 +16,6 @@ pub enum InterpGrid {
 /// Holds additional parameters for the interpolation functions
 #[derive(Clone, Copy, Debug)]
 pub struct InterpParams {
-    /// Polynomial degree `N` satisfying `1 ≤ N ≤ 2048`
-    pub nn: usize,
-
     /// The type of grid
     pub grid_type: InterpGrid,
 
@@ -33,30 +30,18 @@ pub struct InterpParams {
 }
 
 impl InterpParams {
-    /// Allocates a new instance with default values
-    ///
-    /// # Input
-    ///
-    /// * `nn` -- the polynomial degree `N`; thus the number of grid nodes will be `N + 1`.
-    ///   **Note:** `nn` must be in `[1, 2048]`
-    pub fn new(nn: usize) -> Result<Self, StrError> {
-        if nn < 1 || nn > 2048 {
-            return Err("the polynomial degree must be in [1, 2048]");
-        }
-        Ok(InterpParams {
-            nn,
+    /// Allocates a new instance
+    pub fn new() -> Self {
+        InterpParams {
             grid_type: InterpGrid::ChebyshevGaussLobatto,
             no_eta_normalization: false,
             eta_cutoff: 700,
             lebesgue_estimate_nstation: 10_000,
-        })
+        }
     }
 
     /// Validates the parameters
     fn validate(&self) -> Result<(), StrError> {
-        if self.nn < 1 || self.nn > 2048 {
-            return Err("the polynomial degree must be in [1, 2048]");
-        }
         if self.lebesgue_estimate_nstation < 2 {
             return Err("lebesgue_estimate_nstation must be ≥ 2");
         }
@@ -221,6 +206,9 @@ impl InterpParams {
 ///    SIAM Review Vol. 46, No. 3, pp. 501-517
 #[derive(Clone, Debug)]
 pub struct InterpLagrange {
+    /// Polynomial degree `N` satisfying `1 ≤ N ≤ 2048`
+    nn: usize,
+
     /// Additional parameters
     params: InterpParams,
 
@@ -245,21 +233,34 @@ pub struct InterpLagrange {
 
 impl InterpLagrange {
     /// Allocates a new instance
-    pub fn new(params: InterpParams) -> Result<Self, StrError> {
+    ///
+    /// # Input
+    ///
+    /// * `nn` -- the polynomial degree `N`; thus the number of grid nodes will be `N + 1`.
+    ///   **Note:** `nn` must be in `[1, 2048]`
+    pub fn new(nn: usize, params: Option<InterpParams>) -> Result<Self, StrError> {
         // check the parameters
-        params.validate()?;
+        if nn < 1 || nn > 2048 {
+            return Err("the polynomial degree must be in [1, 2048]");
+        }
+        let par = match params {
+            Some(p) => p,
+            None => InterpParams::new(),
+        };
+        par.validate()?;
 
         // interp struct
-        let npoint = params.nn + 1;
+        let npoint = nn + 1;
         let mut interp = InterpLagrange {
-            params,
+            nn,
+            params: par,
             npoint,
-            xx: match params.grid_type {
+            xx: match par.grid_type {
                 InterpGrid::Uniform => Vector::linspace(-1.0, 1.0, npoint).unwrap(),
-                InterpGrid::ChebyshevGauss => chebyshev_gauss_points(params.nn),
-                InterpGrid::ChebyshevGaussLobatto => chebyshev_lobatto_points(params.nn),
+                InterpGrid::ChebyshevGauss => chebyshev_gauss_points(nn),
+                InterpGrid::ChebyshevGaussLobatto => chebyshev_lobatto_points(nn),
             },
-            eta: Vector::new(if params.no_eta_normalization { 0 } else { npoint }),
+            eta: Vector::new(if par.no_eta_normalization { 0 } else { npoint }),
             lambda: Vector::new(npoint),
             dd1: Matrix::new(0, 0), // indicates: "not computed yet"
             dd2: Matrix::new(0, 0), // indicates: "not computed yet"
@@ -273,7 +274,7 @@ impl InterpLagrange {
         //         𝚷   (Xⱼ - Xₖ)
         //      k=0,k≠j
         //
-        if params.no_eta_normalization {
+        if par.no_eta_normalization {
             for j in 0..npoint {
                 let mut prod = 1.0;
                 for k in 0..npoint {
@@ -298,8 +299,8 @@ impl InterpLagrange {
                 }
             }
             // factors
-            let nnf = params.nn as f64;
-            let (c0, c1, c2) = if params.nn > params.eta_cutoff {
+            let nnf = nn as f64;
+            let (c0, c1, c2) = if nn > par.eta_cutoff {
                 (
                     f64::powf(2.0, nnf / 3.0),
                     f64::powf(2.0, nnf / 3.0),
@@ -310,9 +311,9 @@ impl InterpLagrange {
             };
             // lambda
             for j in 0..npoint {
-                let aj = neg_one_pow_n((j + params.nn) as i32);
+                let aj = neg_one_pow_n((j + nn) as i32);
                 let mj = -interp.eta[j];
-                if params.nn > params.eta_cutoff {
+                if nn > par.eta_cutoff {
                     //      ⎛ aⱼ bⱼ ⎞   ⎛ bⱼ ⎞   ⎛ bⱼ ⎞
                     // λⱼ = ⎜ ————— ⎟ ⋅ ⎜ —— ⎟ ⋅ ⎜ —— ⎟
                     //      ⎝   c0  ⎠   ⎝ c1 ⎠   ⎝ c2 ⎠
@@ -364,7 +365,7 @@ impl InterpLagrange {
     /// * `j` -- index of the Xⱼ point; must satisfy 0 ≤ j ≤ N
     /// * `x` -- the coordinate to evaluate the polynomial; must satisfy -1 ≤ j ≤ 1
     pub fn psi(&self, j: usize, x: f64) -> Result<f64, StrError> {
-        if j > self.params.nn {
+        if j > self.nn {
             return Err("j must be in 0 ≤ j ≤ N");
         }
         if x < -1.0 || x > 1.0 {
@@ -457,7 +458,7 @@ impl InterpLagrange {
             at_node_index = 0;
         } else if x == 1.0 {
             at_node = true;
-            at_node_index = self.params.nn;
+            at_node_index = self.nn;
         } else {
             for j in 0..self.npoint {
                 let dx = x - self.xx[j];
@@ -548,7 +549,7 @@ impl InterpLagrange {
             at_node_index = 0;
         } else if x == 1.0 {
             at_node = true;
-            at_node_index = self.params.nn;
+            at_node_index = self.nn;
         } else {
             for j in 0..self.npoint {
                 let dx = x - self.xx[j];
@@ -731,42 +732,33 @@ mod tests {
     use crate::{approx_eq, deriv1_approx_eq, deriv2_approx_eq, mat_vec_mul, Vector};
 
     #[test]
-    fn params_new_and_validate_capture_errors() {
-        assert_eq!(
-            InterpParams::new(0).err(),
-            Some("the polynomial degree must be in [1, 2048]")
-        );
-        assert_eq!(
-            InterpParams::new(2049).err(),
-            Some("the polynomial degree must be in [1, 2048]")
-        );
-        let params = InterpParams {
-            nn: 0,
-            grid_type: InterpGrid::Uniform,
-            no_eta_normalization: false,
-            eta_cutoff: 0,
-            lebesgue_estimate_nstation: 2,
-        };
-        assert_eq!(
-            params.validate().err(),
-            Some("the polynomial degree must be in [1, 2048]")
-        );
+    fn params_validate_capture_errors() {
+        let mut params = InterpParams::new();
+        params.lebesgue_estimate_nstation = 0;
+        assert_eq!(params.validate().err(), Some("lebesgue_estimate_nstation must be ≥ 2"));
     }
 
     #[test]
     fn new_captures_errors() {
-        let mut params = InterpParams::new(1).unwrap();
-        params.lebesgue_estimate_nstation = 1;
         assert_eq!(
-            InterpLagrange::new(params).err(),
+            InterpLagrange::new(0, None).err(),
+            Some("the polynomial degree must be in [1, 2048]")
+        );
+        assert_eq!(
+            InterpLagrange::new(0, None).err(),
+            Some("the polynomial degree must be in [1, 2048]")
+        );
+        let mut params = InterpParams::new();
+        params.lebesgue_estimate_nstation = 0;
+        assert_eq!(
+            InterpLagrange::new(2, Some(params)).err(),
             Some("lebesgue_estimate_nstation must be ≥ 2")
         );
     }
 
     #[test]
     fn new_works() {
-        let params = InterpParams::new(2).unwrap();
-        let interp = InterpLagrange::new(params).unwrap();
+        let interp = InterpLagrange::new(2, None).unwrap();
         assert_eq!(interp.npoint, 3);
         assert_eq!(interp.xx.as_data(), &[-1.0, 0.0, 1.0]);
         assert_eq!(interp.eta.dim(), 3);
@@ -777,24 +769,18 @@ mod tests {
 
     #[test]
     fn getters_work() {
-        let params = InterpParams::new(2).unwrap();
-        let interp = InterpLagrange::new(params).unwrap();
+        let interp = InterpLagrange::new(2, None).unwrap();
         assert_eq!(interp.get_points().as_data(), &[-1.0, 0.0, 1.0]);
         assert_eq!(interp.get_xrange(), (-1.0, 1.0));
     }
 
     // --- lambda and psi -----------------------------------------------------------------------------
 
-    fn check_lambda(params: InterpParams, tol: f64) {
-        let nnf = params.nn as f64;
-        let npoint = params.nn + 1;
-        let interp = InterpLagrange::new(params).unwrap();
-        // ```text
-        //      N-1
-        //     2
-        // m = ————    TODO: check this formula
-        //      N
-        // ```
+    fn check_lambda(nn: usize, params: InterpParams, tol: f64) {
+        let nnf = nn as f64;
+        let npoint = nn + 1;
+        let interp = InterpLagrange::new(nn, Some(params)).unwrap();
+        // Add reference to this formula
         let m = f64::powf(2.0, nnf - 1.0) / nnf;
         for i in 0..npoint {
             let mut d = 1.0;
@@ -809,9 +795,8 @@ mod tests {
 
     #[test]
     fn lambda_is_correct() {
-        let mut params = InterpParams::new(1).unwrap();
+        let mut params = InterpParams::new();
         for nn in 1..20 {
-            params.nn = nn;
             for (tol, grid_type) in [
                 (1e-12, InterpGrid::Uniform),
                 (1e-14, InterpGrid::ChebyshevGauss),
@@ -819,16 +804,16 @@ mod tests {
             ] {
                 // println!("nn = {}, grid = {:?}", nn, grid_type);
                 params.grid_type = grid_type;
-                check_lambda(params, tol);
+                check_lambda(nn, params, tol);
             }
         }
     }
 
-    fn check_psi(params: InterpParams, tol_comparison: f64) {
-        let npoint = params.nn + 1;
+    fn check_psi(nn: usize, params: InterpParams, tol_comparison: f64) {
+        let npoint = nn + 1;
 
         // interpolant
-        let interp = InterpLagrange::new(params).unwrap();
+        let interp = InterpLagrange::new(nn, Some(params)).unwrap();
 
         // check Kronecker property (barycentric)
         for i in 0..npoint {
@@ -874,9 +859,8 @@ mod tests {
 
     #[test]
     fn psi_is_correct() {
-        let mut params = InterpParams::new(1).unwrap();
+        let mut params = InterpParams::new();
         for nn in 1..20 {
-            params.nn = nn;
             for (tol, grid_type) in [
                 (1e-11, InterpGrid::Uniform),
                 (1e-14, InterpGrid::ChebyshevGauss),
@@ -884,20 +868,20 @@ mod tests {
             ] {
                 // println!("nn = {}, grid = {:?}", nn, grid_type);
                 params.grid_type = grid_type;
-                check_psi(params, tol);
+                check_psi(nn, params, tol);
             }
         }
     }
 
     // --- polynomial interpolation -------------------------------------------------------------------
 
-    fn check_eval<F>(params: InterpParams, tol: f64, mut f: F)
+    fn check_eval<F>(nn: usize, params: InterpParams, tol: f64, mut f: F)
     where
         F: Copy + FnMut(f64) -> f64,
     {
         // interpolant
-        let npoint = params.nn + 1;
-        let interp = InterpLagrange::new(params).unwrap();
+        let npoint = nn + 1;
+        let interp = InterpLagrange::new(nn, Some(params)).unwrap();
 
         // compute data points
         let mut uu = Vector::new(npoint);
@@ -921,14 +905,14 @@ mod tests {
     #[test]
     fn eval_works_1() {
         let f = |x| f64::cos(f64::exp(2.0 * x));
-        let mut params = InterpParams::new(5).unwrap();
+        let mut params = InterpParams::new();
         for grid_type in [
             InterpGrid::Uniform,
             InterpGrid::ChebyshevGauss,
             InterpGrid::ChebyshevGaussLobatto,
         ] {
             params.grid_type = grid_type;
-            check_eval(params, 1.5, f); // TODO: check this
+            check_eval(5, params, 1.5, f); // TODO: check this
         }
     }
 
@@ -936,29 +920,29 @@ mod tests {
     fn eval_works_2() {
         // Runge equation
         let f = |x| 1.0 / (1.0 + 16.0 * x * x);
-        let mut params = InterpParams::new(8).unwrap();
+        let mut params = InterpParams::new();
         for grid_type in [
             InterpGrid::Uniform,
             InterpGrid::ChebyshevGauss,
             InterpGrid::ChebyshevGaussLobatto,
         ] {
             params.grid_type = grid_type;
-            check_eval(params, 0.69, f);
+            check_eval(8, params, 0.69, f);
         }
     }
 
     // --- derivatives --------------------------------------------------------------------------------
 
-    fn check_dd1_matrix(params: InterpParams, tol: f64) {
-        let npoint = params.nn + 1;
-        let mut interp = InterpLagrange::new(params).unwrap();
+    fn check_dd1_matrix(nn: usize, params: InterpParams, tol: f64) {
+        let npoint = nn + 1;
+        let mut interp = InterpLagrange::new(nn, Some(params)).unwrap();
         interp.calc_dd1_matrix();
         struct Args {}
         let args = &mut Args {};
         for i in 0..npoint {
             let xi = interp.xx[i];
             for j in 0..npoint {
-                if i == 0 || i == params.nn {
+                if i == 0 || i == nn {
                     // TODO: find another method because we
                     // cannot use central differences @ x=-1 and x=1
                 } else {
@@ -974,40 +958,37 @@ mod tests {
     fn dd1_matrix_works() {
         // with eta
         let nn_and_tols = [(2, 1e-12), (5, 1e-9), (10, 1e-8)];
-        let mut params = InterpParams::new(1).unwrap();
+        let mut params = InterpParams::new();
         for (nn, tol) in nn_and_tols {
-            params.nn = nn;
             // println!("nn = {:?}", nn);
-            check_dd1_matrix(params, tol);
+            check_dd1_matrix(nn, params, tol);
         }
         // with eta and low cutoff
         let nn_and_tols = [(2, 1e-12), (5, 1e-9), (10, 1e-8)];
         params.eta_cutoff = 0;
         for (nn, tol) in nn_and_tols {
-            params.nn = nn;
             // println!("nn = {:?}", nn);
-            check_dd1_matrix(params, tol);
+            check_dd1_matrix(nn, params, tol);
         }
         // no eta
         let nn_and_tols = [(2, 1e-12), (5, 1e-9), (10, 1e-8)];
         params.no_eta_normalization = true;
         for (nn, tol) in nn_and_tols {
-            params.nn = nn;
             // println!("nn = {:?}", nn);
-            check_dd1_matrix(params, tol);
+            check_dd1_matrix(nn, params, tol);
         }
     }
 
-    fn check_dd2_matrix(params: InterpParams, tol: f64) {
-        let npoint = params.nn + 1;
-        let mut interp = InterpLagrange::new(params).unwrap();
+    fn check_dd2_matrix(nn: usize, params: InterpParams, tol: f64) {
+        let npoint = nn + 1;
+        let mut interp = InterpLagrange::new(nn, Some(params)).unwrap();
         interp.calc_dd2_matrix();
         struct Args {}
         let args = &mut Args {};
         for i in 0..npoint {
             let xi = interp.xx[i];
             for j in 0..npoint {
-                if i == 0 || i == params.nn {
+                if i == 0 || i == nn {
                     // TODO: find another method because we
                     // cannot use central differences @ x=-1 and x=1
                 } else {
@@ -1027,22 +1008,21 @@ mod tests {
             (5, 1e-8),
             (10, 1e-8),
         ];
-        let mut params = InterpParams::new(1).unwrap();
+        let params = InterpParams::new();
         for (nn, tol) in nn_and_tols {
-            params.nn = nn;
             // println!("nn = {:?}", nn);
-            check_dd2_matrix(params, tol);
+            check_dd2_matrix(nn, params, tol);
         }
     }
 
-    fn check_dd1_error<F, G>(params: InterpParams, tol: f64, mut f: F, mut g: G)
+    fn check_dd1_error<F, G>(nn: usize, params: InterpParams, tol: f64, mut f: F, mut g: G)
     where
         F: FnMut(f64) -> f64,
         G: FnMut(f64) -> f64,
     {
         // interpolant
-        let npoint = params.nn + 1;
-        let mut interp = InterpLagrange::new(params).unwrap();
+        let npoint = nn + 1;
+        let mut interp = InterpLagrange::new(nn, Some(params)).unwrap();
 
         // compute data points
         let mut uu = Vector::new(npoint);
@@ -1069,7 +1049,7 @@ mod tests {
 
     #[test]
     fn dd1_times_uu_works() {
-        let mut params = InterpParams::new(1).unwrap();
+        let mut params = InterpParams::new();
         let f = |x| f64::powf(x, 8.0);
         let g = |x| 8.0 * f64::powf(x, 7.0);
         for (nn, grid_type, tol) in [
@@ -1078,20 +1058,19 @@ mod tests {
             (8, InterpGrid::ChebyshevGaussLobatto, 1e-13),
         ] {
             // println!("nn = {}, grid = {:?}", nn, grid_type);
-            params.nn = nn;
             params.grid_type = grid_type;
-            check_dd1_error(params, tol, f, g);
+            check_dd1_error(nn, params, tol, f, g);
         }
     }
 
-    fn check_dd2_error<F, H>(params: InterpParams, tol: f64, mut f: F, mut h: H)
+    fn check_dd2_error<F, H>(nn: usize, params: InterpParams, tol: f64, mut f: F, mut h: H)
     where
         F: FnMut(f64) -> f64,
         H: FnMut(f64) -> f64,
     {
         // interpolant
-        let npoint = params.nn + 1;
-        let mut interp = InterpLagrange::new(params).unwrap();
+        let npoint = nn + 1;
+        let mut interp = InterpLagrange::new(nn, Some(params)).unwrap();
 
         // compute data points
         let mut uu = Vector::new(npoint);
@@ -1118,7 +1097,7 @@ mod tests {
 
     #[test]
     fn dd2_times_uu_works() {
-        let mut params = InterpParams::new(1).unwrap();
+        let mut params = InterpParams::new();
         let f = |x| f64::powf(x, 8.0);
         let h = |x| 56.0 * f64::powf(x, 6.0);
         for (nn, grid_type, tol) in [
@@ -1127,18 +1106,15 @@ mod tests {
             (8, InterpGrid::ChebyshevGaussLobatto, 1e-12),
         ] {
             // println!("nn = {}, grid = {:?}", nn, grid_type);
-            params.nn = nn;
             params.grid_type = grid_type;
-            check_dd2_error(params, tol, f, h);
+            check_dd2_error(nn, params, tol, f, h);
         }
     }
 
     #[test]
     fn dd_matrices_are_computed_just_once() {
         // interpolant
-        let nn = 8;
-        let params = InterpParams::new(nn).unwrap();
-        let mut interp = InterpLagrange::new(params).unwrap();
+        let mut interp = InterpLagrange::new(2, None).unwrap();
 
         // calculate D1 and D2
         interp.calc_dd1_matrix();
@@ -1151,14 +1127,14 @@ mod tests {
 
     // --- derivatives of polynomial function ---------------------------------------------------------
 
-    fn check_eval_deriv1<F, G>(params: InterpParams, tol: f64, mut f: F, mut g: G)
+    fn check_eval_deriv1<F, G>(nn: usize, params: InterpParams, tol: f64, mut f: F, mut g: G)
     where
         F: Copy + FnMut(f64) -> f64,
         G: Copy + FnMut(f64) -> f64,
     {
         // interpolant
-        let npoint = params.nn + 1;
-        let mut interp = InterpLagrange::new(params).unwrap();
+        let npoint = nn + 1;
+        let mut interp = InterpLagrange::new(nn, Some(params)).unwrap();
 
         // compute data points
         let mut uu = Vector::new(npoint);
@@ -1188,7 +1164,7 @@ mod tests {
         }
 
         // check at node near the middle
-        let x_mid = interp.xx[params.nn / 2];
+        let x_mid = interp.xx[nn / 2];
         // println!("x_mid = {:?}", x_mid);
         let d1 = interp.eval_deriv1(x_mid, &uu).unwrap();
         approx_eq(d1, g(x_mid), tol);
@@ -1198,18 +1174,18 @@ mod tests {
     fn eval_deriv1_works() {
         let f = |x| f64::powf(x, 8.0);
         let g = |x| 8.0 * f64::powf(x, 7.0);
-        let params = InterpParams::new(8).unwrap();
-        check_eval_deriv1(params, 1e-13, f, g)
+        let params = InterpParams::new();
+        check_eval_deriv1(8, params, 1e-13, f, g)
     }
 
-    fn check_eval_deriv2<F, H>(params: InterpParams, tol: f64, mut f: F, mut h: H)
+    fn check_eval_deriv2<F, H>(nn: usize, params: InterpParams, tol: f64, mut f: F, mut h: H)
     where
         F: Copy + FnMut(f64) -> f64,
         H: Copy + FnMut(f64) -> f64,
     {
         // interpolant
-        let npoint = params.nn + 1;
-        let mut interp = InterpLagrange::new(params).unwrap();
+        let npoint = nn + 1;
+        let mut interp = InterpLagrange::new(nn, Some(params)).unwrap();
 
         // compute data points
         let mut uu = Vector::new(npoint);
@@ -1239,7 +1215,7 @@ mod tests {
         }
 
         // check at node near the middle
-        let x_mid = interp.xx[params.nn / 2];
+        let x_mid = interp.xx[nn / 2];
         // println!("x_mid = {:?}", x_mid);
         let d2 = interp.eval_deriv2(x_mid, &uu).unwrap();
         approx_eq(d2, h(x_mid), tol);
@@ -1249,54 +1225,52 @@ mod tests {
     fn eval_deriv2_works() {
         let f = |x| f64::powf(x, 8.0);
         let h = |x| 56.0 * f64::powf(x, 6.0);
-        let params = InterpParams::new(8).unwrap();
-        check_eval_deriv2(params, 1e-12, f, h)
+        let params = InterpParams::new();
+        check_eval_deriv2(8, params, 1e-12, f, h)
     }
 
     // --- Lebesgue -----------------------------------------------------------------------------------
 
     #[test]
     fn lebesgue_works_uniform() {
-        let mut params = InterpParams::new(5).unwrap();
+        let mut params = InterpParams::new();
         params.grid_type = InterpGrid::Uniform;
-        let tol = 1e-3;
         params.lebesgue_estimate_nstation = 210; // 1e-15 is achieved with 10_000
-        let interp = InterpLagrange::new(params).unwrap();
+        let tol = 1e-3;
+        let interp = InterpLagrange::new(5, Some(params)).unwrap();
         approx_eq(interp.estimate_lebesgue_constant(), 3.106301040275436e+00, tol);
     }
 
     #[test]
     fn lebesgue_works_chebyshev_gauss() {
-        let mut params = InterpParams::new(1).unwrap();
+        let mut params = InterpParams::new();
         let data = [
             (4, 1e-14, 1.988854381999833e+00),
             (8, 1e-15, 2.361856787767076e+00),
             (24, 1e-14, 3.011792612349363e+00),
         ];
         for (nn, tol, reference) in data {
-            println!("nn = {}", nn);
-            params.nn = nn;
+            // println!("nn = {}", nn);
             params.grid_type = InterpGrid::ChebyshevGauss;
             params.lebesgue_estimate_nstation = 10_000;
-            let interp = InterpLagrange::new(params).unwrap();
+            let interp = InterpLagrange::new(nn, Some(params)).unwrap();
             approx_eq(interp.estimate_lebesgue_constant(), reference, tol);
         }
     }
 
     #[test]
     fn lebesgue_works_chebyshev_gauss_lobatto() {
-        let mut params = InterpParams::new(1).unwrap();
+        let mut params = InterpParams::new();
         let data = [
             (4, 1e-15, 1.798761778849085e+00),
             (8, 1e-15, 2.274730699116020e+00),
             (24, 1e-14, 2.984443326362511e+00),
         ];
         for (nn, tol, reference) in data {
-            println!("nn = {}", nn);
-            params.nn = nn;
+            // println!("nn = {}", nn);
             params.grid_type = InterpGrid::ChebyshevGaussLobatto;
             params.lebesgue_estimate_nstation = 10_000;
-            let interp = InterpLagrange::new(params).unwrap();
+            let interp = InterpLagrange::new(nn, Some(params)).unwrap();
             approx_eq(interp.estimate_lebesgue_constant(), reference, tol);
         }
     }
@@ -1305,8 +1279,7 @@ mod tests {
 
     #[test]
     fn functions_check_ranges() {
-        let params = InterpParams::new(2).unwrap();
-        let interp = InterpLagrange::new(params).unwrap();
+        let interp = InterpLagrange::new(2, None).unwrap();
         let uu = Vector::new(0);
         // psi
         assert_eq!(interp.psi(100, -1.0).err(), Some("j must be in 0 ≤ j ≤ N"));

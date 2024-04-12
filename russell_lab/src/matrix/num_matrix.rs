@@ -237,6 +237,35 @@ where
         }
     }
 
+    /// Returns a new matrix that is initialized from a callback function (map)
+    ///
+    /// The function maps the indices to the value, e.g., `|i, j| (i + j) as f64`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use russell_lab::NumMatrix;
+    /// let u = NumMatrix::<f64>::initialized(3, 2, |i, j| (i + j) as f64);
+    /// assert_eq!(
+    ///     format!("{}", u),
+    ///     "┌     ┐\n\
+    ///      │ 0 1 │\n\
+    ///      │ 1 2 │\n\
+    ///      │ 2 3 │\n\
+    ///      └     ┘"
+    /// );
+    /// ```
+    pub fn initialized<F>(nrow: usize, ncol: usize, mut function: F) -> Self
+    where
+        F: FnMut(usize, usize) -> T,
+    {
+        let data: Vec<T> = (0..(nrow * ncol))
+            .into_iter()
+            .map(|p| function(p % nrow, p / nrow))
+            .collect();
+        NumMatrix { nrow, ncol, data }
+    }
+
     /// Creates new matrix from given data
     ///
     /// # Notes
@@ -978,6 +1007,24 @@ mod tests {
     fn filled_works() {
         let a = NumMatrix::<f64>::filled(2, 2, 3.0);
         assert_eq!(a.data, &[3.0, 3.0, 3.0, 3.0]);
+    }
+
+    #[test]
+    fn initialized_works() {
+        // 0 0 0
+        // 1 1 1
+        let a = NumMatrix::<usize>::initialized(2, 3, |i, _| i);
+        assert_eq!(a.data, &[0, 1, 0, 1, 0, 1]);
+
+        // 0 1 2
+        // 0 1 2
+        let a = NumMatrix::<usize>::initialized(2, 3, |_, j| j);
+        assert_eq!(a.data, &[0, 0, 1, 1, 2, 2]);
+
+        // 11 12 13 14
+        // 21 22 23 24
+        let a = NumMatrix::<f64>::initialized(2, 4, |i, j| (10 * (i + 1) + (j + 1)) as f64);
+        assert_eq!(a.data, &[11.0, 21.0, 12.0, 22.0, 13.0, 23.0, 14.0, 24.0])
     }
 
     #[test]

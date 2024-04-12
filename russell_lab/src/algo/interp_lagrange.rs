@@ -946,7 +946,7 @@ mod tests {
             (4, 1.379, InterpGrid::Uniform), // ~1.4; see page 15 of the Reference
             (6, 1.054, InterpGrid::Uniform), // ~1.05; see page 15 of the Reference
             (4, 1.14, InterpGrid::ChebyshevGauss),
-            (4, 1.08, InterpGrid::ChebyshevGaussLobatto),
+            (4, 1.08, InterpGrid::ChebyshevGaussLobatto), // compare with Fig on page 42 of Reference
         ] {
             // println!("N = {}, grid = {:?}", nn, grid_type);
             params.grid_type = grid_type;

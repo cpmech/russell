@@ -804,10 +804,8 @@ impl InterpLagrange {
 #[cfg(test)]
 mod tests {
     use super::{InterpGrid, InterpLagrange, InterpParams};
-    use crate::{approx_eq, deriv1_approx_eq, deriv2_approx_eq, mat_vec_mul, Vector};
-    use plotpy::{Curve, Plot};
-
-    const SAVE_FIGURE: bool = false;
+    use crate::{approx_eq, deriv1_approx_eq, deriv2_approx_eq, mat_vec_mul, math::SQRT_3, Vector};
+    // use plotpy::{Curve, Plot};
 
     #[test]
     fn new_works() {
@@ -921,7 +919,7 @@ mod tests {
 
     // --- polynomial interpolation -------------------------------------------------------------------
 
-    fn check_eval<F>(nn: usize, params: InterpParams, tol: f64, name: &str, mut f: F)
+    fn check_eval<F>(nn: usize, params: InterpParams, tol: f64, _name: &str, mut f: F)
     where
         F: Copy + FnMut(f64) -> f64,
     {
@@ -949,32 +947,30 @@ mod tests {
         }
 
         // plot
-        if SAVE_FIGURE {
-            let x_original = Vector::linspace(-1.0, 1.0, 101).unwrap();
-            let y_original = x_original.get_mapped(|x| f(x));
-            let y_approx = station.get_mapped(|x| interp.eval(x, &uu).unwrap());
-            let mut curve1 = Curve::new();
-            let mut curve2 = Curve::new();
-            curve1
-                .set_label("exact")
-                .set_line_width(2.0)
-                .draw(x_original.as_data(), y_original.as_data());
-            curve2
-                .set_label("interpolated")
-                .set_line_style("--")
-                .set_marker_style("o")
-                .set_marker_void(true)
-                .draw(station.as_data(), y_approx.as_data());
-            let mut plot = Plot::new();
-            let grid = format!("{:?}", params.grid_type).to_lowercase();
-            let path = format!("/tmp/russell_lab/check_eval_{}_nn{}_{}.svg", name, nn, grid);
-            plot.add(&curve1)
-                .add(&curve2)
-                .legend()
-                .grid_and_labels("$x$", "$f(x)$")
-                .save(path.as_str())
-                .unwrap();
-        }
+        // let x_original = Vector::linspace(-1.0, 1.0, 101).unwrap();
+        // let y_original = x_original.get_mapped(|x| f(x));
+        // let y_approx = station.get_mapped(|x| interp.eval(x, &uu).unwrap());
+        // let mut curve1 = Curve::new();
+        // let mut curve2 = Curve::new();
+        // curve1
+        //     .set_label("exact")
+        //     .set_line_width(2.0)
+        //     .draw(x_original.as_data(), y_original.as_data());
+        // curve2
+        //     .set_label("interpolated")
+        //     .set_line_style("--")
+        //     .set_marker_style("o")
+        //     .set_marker_void(true)
+        //     .draw(station.as_data(), y_approx.as_data());
+        // let mut plot = Plot::new();
+        // let grid = format!("{:?}", params.grid_type).to_lowercase();
+        // let path = format!("/tmp/russell_lab/check_eval_{}_nn{}_{}.svg", name, nn, grid);
+        // plot.add(&curve1)
+        //     .add(&curve2)
+        //     .legend()
+        //     .grid_and_labels("$x$", "$f(x)$")
+        //     .save(path.as_str())
+        //     .unwrap();
     }
 
     #[test]
@@ -1363,6 +1359,76 @@ mod tests {
             let interp = InterpLagrange::new(nn, Some(params)).unwrap();
             approx_eq(interp.estimate_lebesgue_constant(), reference, tol);
         }
+    }
+
+    // --- estimate max error -------------------------------------------------------------------------
+
+    #[test]
+    fn estimate_max_error_works() {
+        let f = |x| x * x * x;
+        let g = |x| 3.0 * x * x;
+        let h = |x| 6.0 * x;
+        let mut params = InterpParams::new();
+        params.error_estimate_nstation = 21;
+        let mut interp = InterpLagrange::new(2, Some(params)).unwrap();
+
+        let (err_f, err_g, err_h) = interp.estimate_max_error(false, f, g, h);
+        approx_eq(err_f, 2.0 * SQRT_3 / 9.0, 9.1e-4); // max @ ±1/sqrt3
+        assert_eq!(err_g, 2.0); // max diff @ ±1
+        assert_eq!(err_h, 6.0); // max diff @ ±1
+
+        // plot
+        // let mut uu = Vector::new(interp.get_degree() + 1);
+        // for (i, x) in interp.get_points().into_iter().enumerate() {
+        //     uu[i] = f(*x);
+        // }
+        // let mut curve_f = Curve::new();
+        // let mut curve_g = Curve::new();
+        // let mut curve_h = Curve::new();
+        // let nstation = 41;
+        // let stations = Vector::linspace(-1.0, 1.0, nstation).unwrap();
+        // let mut ff_ana = Vector::new(nstation);
+        // let mut gg_ana = Vector::new(nstation);
+        // let mut hh_ana = Vector::new(nstation);
+        // let mut ff_num = Vector::new(nstation);
+        // let mut gg_num = Vector::new(nstation);
+        // let mut hh_num = Vector::new(nstation);
+        // for i in 0..nstation {
+        //     ff_ana[i] = f(stations[i]);
+        //     gg_ana[i] = g(stations[i]);
+        //     hh_ana[i] = h(stations[i]);
+        //     ff_num[i] = interp.eval(stations[i], &uu).unwrap();
+        //     gg_num[i] = interp.eval_deriv1(stations[i], &uu).unwrap();
+        //     hh_num[i] = interp.eval_deriv2(stations[i], &uu).unwrap();
+        // }
+        // curve_f.draw(stations.as_data(), ff_ana.as_data());
+        // curve_g.draw(stations.as_data(), gg_ana.as_data());
+        // curve_h.draw(stations.as_data(), hh_ana.as_data());
+        // curve_f.draw(stations.as_data(), ff_num.as_data());
+        // curve_g.draw(stations.as_data(), gg_num.as_data());
+        // curve_h.draw(stations.as_data(), hh_num.as_data());
+        // let mut plot = Plot::new();
+        // plot.set_vertical_gap(0.3)
+        //     .set_subplot(3, 1, 1)
+        //     .add(&curve_f)
+        //     .grid_and_labels("x", "f(x)")
+        //     .set_subplot(3, 1, 2)
+        //     .add(&curve_g)
+        //     .grid_and_labels("x", "g(x)")
+        //     .set_subplot(3, 1, 3)
+        //     .add(&curve_h)
+        //     .grid_and_labels("x", "h(x)")
+        //     .set_figure_size_points(400.0, 600.0)
+        //     .save("/tmp/russell_lab/estimate_max_error_works.svg")
+        //     .unwrap();
+
+        // poor estimate due to only 3 stations--ignoring the boundaries (where the g and h errors are max)
+        params.error_estimate_nstation = 3;
+        let mut interp = InterpLagrange::new(2, Some(params)).unwrap();
+        let (err_f, err_g, err_h) = interp.estimate_max_error(true, f, g, h);
+        assert_eq!(err_f, 0.0);
+        assert_eq!(err_g, 1.0);
+        assert_eq!(err_h, 0.0);
     }
 
     // --- getters ------------------------------------------------------------------------------------

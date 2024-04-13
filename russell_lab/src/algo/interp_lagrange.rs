@@ -810,31 +810,6 @@ mod tests {
     const SAVE_FIGURE: bool = false;
 
     #[test]
-    fn params_validate_capture_errors() {
-        let mut params = InterpParams::new();
-        params.lebesgue_estimate_nstation = 0;
-        assert_eq!(params.validate().err(), Some("lebesgue_estimate_nstation must be ≥ 2"));
-    }
-
-    #[test]
-    fn new_captures_errors() {
-        assert_eq!(
-            InterpLagrange::new(0, None).err(),
-            Some("the polynomial degree must be in [1, 2048]")
-        );
-        assert_eq!(
-            InterpLagrange::new(0, None).err(),
-            Some("the polynomial degree must be in [1, 2048]")
-        );
-        let mut params = InterpParams::new();
-        params.lebesgue_estimate_nstation = 0;
-        assert_eq!(
-            InterpLagrange::new(2, Some(params)).err(),
-            Some("lebesgue_estimate_nstation must be ≥ 2")
-        );
-    }
-
-    #[test]
     fn new_works() {
         let interp = InterpLagrange::new(2, None).unwrap();
         assert_eq!(interp.npoint, 3);
@@ -843,13 +818,6 @@ mod tests {
         assert_eq!(interp.lambda.dim(), 3);
         assert_eq!(interp.dd1.dims(), (0, 0));
         assert_eq!(interp.dd2.dims(), (0, 0));
-    }
-
-    #[test]
-    fn getters_work() {
-        let interp = InterpLagrange::new(2, None).unwrap();
-        assert_eq!(interp.get_points().as_data(), &[-1.0, 0.0, 1.0]);
-        assert_eq!(interp.get_xrange(), (-1.0, 1.0));
     }
 
     // --- lambda and psi -----------------------------------------------------------------------------
@@ -1397,7 +1365,49 @@ mod tests {
         }
     }
 
+    // --- getters ------------------------------------------------------------------------------------
+
+    #[test]
+    fn getters_work() {
+        let mut interp = InterpLagrange::new(2, None).unwrap();
+        assert_eq!(interp.get_degree(), 2);
+        assert_eq!(interp.get_points().as_data(), &[-1.0, 0.0, 1.0]);
+        assert_eq!(interp.get_xrange(), (-1.0, 1.0));
+        interp.calc_dd1_matrix();
+        interp.calc_dd2_matrix();
+        assert_eq!(interp.get_dd1().unwrap().dims(), (3, 3));
+        assert_eq!(interp.get_dd2().unwrap().dims(), (3, 3));
+    }
+
     // --- errors -------------------------------------------------------------------------------------
+
+    #[test]
+    fn params_validate_capture_errors() {
+        let mut params = InterpParams::new();
+        params.lebesgue_estimate_nstation = 0;
+        assert_eq!(params.validate().err(), Some("lebesgue_estimate_nstation must be ≥ 2"));
+        params.lebesgue_estimate_nstation = 2;
+        params.error_estimate_nstation = 0;
+        assert_eq!(params.validate().err(), Some("error_estimate_nstation must be ≥ 2"));
+    }
+
+    #[test]
+    fn new_captures_errors() {
+        assert_eq!(
+            InterpLagrange::new(0, None).err(),
+            Some("the polynomial degree must be in [1, 2048]")
+        );
+        assert_eq!(
+            InterpLagrange::new(0, None).err(),
+            Some("the polynomial degree must be in [1, 2048]")
+        );
+        let mut params = InterpParams::new();
+        params.lebesgue_estimate_nstation = 0;
+        assert_eq!(
+            InterpLagrange::new(2, Some(params)).err(),
+            Some("lebesgue_estimate_nstation must be ≥ 2")
+        );
+    }
 
     #[test]
     fn functions_check_ranges() {
@@ -1424,5 +1434,8 @@ mod tests {
             interp.eval_deriv2(-1.0, &uu).err(),
             Some("the dimension of the data vector U must be equal to N + 1")
         );
+        // get_dd1
+        assert_eq!(interp.get_dd1().err(), Some("calc_dd1_matrix must be called first"));
+        assert_eq!(interp.get_dd2().err(), Some("calc_dd2_matrix must be called first"));
     }
 }

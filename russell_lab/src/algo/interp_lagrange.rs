@@ -720,7 +720,41 @@ impl InterpLagrange {
         lambda_times_nn
     }
 
-    /// Estimates the max errors by comparing the interpolation against a reference (e.g., analytical) solution
+    /// Estimates the max error by comparing the interpolation against a reference solution
+    ///
+    /// **Note:** The error is calculated by the max abs difference between the interpolation
+    /// and the reference (e.g., analytical) solution at discrete points. The points are generated
+    /// from -1.0 to 1.0, totalling [InterpParams::error_estimate_nstation] points.
+    ///
+    /// # Output
+    ///
+    /// * `err_f` -- is the max interpolation in `[-1, 1]`
+    pub fn estimate_max_error<F>(&mut self, mut f: F) -> f64
+    where
+        F: FnMut(f64) -> f64,
+    {
+        // calculate Uⱼ = f(xⱼ)
+        let mut uu = Vector::new(self.npoint);
+        for j in 0..self.npoint {
+            uu[j] = f(self.xx[j]);
+        }
+
+        // find maximum errors
+        let mut err_f = 0.0;
+        let nstation = self.params.error_estimate_nstation;
+        let stations = Vector::linspace(-1.0, 1.0, nstation).unwrap();
+        for p in 0..nstation {
+            let fi = self.eval(stations[p], &uu).unwrap();
+            err_f = f64::max(err_f, f64::abs(fi - f(stations[p])));
+        }
+        err_f
+    }
+
+    /// Estimates the max errors (with derivatives) by comparing the interpolation against a reference solution
+    ///
+    /// **Note:** The error is calculated by the max abs difference between the interpolation
+    /// and the reference (e.g., analytical) solution at discrete points. The points are generated
+    /// from -1.0 to 1.0, totalling [InterpParams::error_estimate_nstation] points.
     ///
     /// Returns `(err_f, err_g, err_h)` where:
     ///
@@ -729,7 +763,7 @@ impl InterpLagrange {
     /// * `err_f` -- is the max interpolation in `[-1, 1]`
     /// * `err_g` -- is the max error on the first derivative in `[-1, 1]`
     /// * `err_h` -- is the max error on the second derivative in `[-1, 1]`
-    pub fn estimate_max_error<F, G, H>(
+    pub fn estimate_max_error_all<F, G, H>(
         &mut self,
         exclude_boundaries: bool,
         mut f: F,
@@ -737,9 +771,9 @@ impl InterpLagrange {
         mut h: H,
     ) -> (f64, f64, f64)
     where
-        F: Copy + FnMut(f64) -> f64,
-        G: Copy + FnMut(f64) -> f64,
-        H: Copy + FnMut(f64) -> f64,
+        F: FnMut(f64) -> f64,
+        G: FnMut(f64) -> f64,
+        H: FnMut(f64) -> f64,
     {
         // calculate Uⱼ = f(xⱼ)
         let mut uu = Vector::new(self.npoint);
@@ -1364,7 +1398,7 @@ mod tests {
     // --- estimate max error -------------------------------------------------------------------------
 
     #[test]
-    fn estimate_max_error_works() {
+    fn estimate_max_error_all_works() {
         let f = |x| x * x * x;
         let g = |x| 3.0 * x * x;
         let h = |x| 6.0 * x;
@@ -1372,7 +1406,9 @@ mod tests {
         params.error_estimate_nstation = 21;
         let mut interp = InterpLagrange::new(2, Some(params)).unwrap();
 
-        let (err_f, err_g, err_h) = interp.estimate_max_error(false, f, g, h);
+        let just_err_f = interp.estimate_max_error(f);
+        let (err_f, err_g, err_h) = interp.estimate_max_error_all(false, f, g, h);
+        assert_eq!(just_err_f, err_f);
         approx_eq(err_f, 2.0 * SQRT_3 / 9.0, 9.1e-4); // max @ ±1/sqrt3
         assert_eq!(err_g, 2.0); // max diff @ ±1
         assert_eq!(err_h, 6.0); // max diff @ ±1
@@ -1419,13 +1455,13 @@ mod tests {
         //     .add(&curve_h)
         //     .grid_and_labels("x", "h(x)")
         //     .set_figure_size_points(400.0, 600.0)
-        //     .save("/tmp/russell_lab/estimate_max_error_works.svg")
+        //     .save("/tmp/russell_lab/estimate_max_error_all_works.svg")
         //     .unwrap();
 
         // poor estimate due to only 3 stations--ignoring the boundaries (where the g and h errors are max)
         params.error_estimate_nstation = 3;
         let mut interp = InterpLagrange::new(2, Some(params)).unwrap();
-        let (err_f, err_g, err_h) = interp.estimate_max_error(true, f, g, h);
+        let (err_f, err_g, err_h) = interp.estimate_max_error_all(true, f, g, h);
         assert_eq!(err_f, 0.0);
         assert_eq!(err_g, 1.0);
         assert_eq!(err_h, 0.0);

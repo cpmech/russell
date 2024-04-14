@@ -7,7 +7,7 @@ pub type NoArgs = u8;
 
 /// Holds parameters for a bracket algorithm
 #[derive(Clone, Copy, Debug)]
-pub struct BracketParams {
+pub struct BracketMinParams {
     /// Max number of iterations
     ///
     /// ```text
@@ -16,10 +16,10 @@ pub struct BracketParams {
     pub n_iteration_max: usize,
 }
 
-impl BracketParams {
+impl BracketMinParams {
     /// Allocates a new instance
     pub fn new() -> Self {
-        BracketParams { n_iteration_max: 200 }
+        BracketMinParams { n_iteration_max: 200 }
     }
 
     /// Validates the parameters
@@ -33,7 +33,7 @@ impl BracketParams {
 
 /// Holds statistics for a bracket algorithm
 #[derive(Clone, Copy, Debug)]
-pub struct BracketStats {
+pub struct BracketMinStats {
     /// Number of calls to f(x) (function evaluations)
     pub n_function: usize,
 
@@ -41,10 +41,10 @@ pub struct BracketStats {
     pub n_iterations: usize,
 }
 
-impl BracketStats {
+impl BracketMinStats {
     /// Allocates a new instance
-    pub fn new() -> BracketStats {
-        BracketStats {
+    pub fn new() -> BracketMinStats {
+        BracketMinStats {
             n_function: 0,
             n_iterations: 0,
         }
@@ -61,7 +61,7 @@ impl BracketStats {
 ///	A minimum is bracketed by a triple of points `a`, `b`, and `c`, such that
 /// `f(b) < f(a)` and `f(b) < f(c)`, with `a < b < c`.
 #[derive(Clone, Copy, Debug)]
-pub struct Bracket {
+pub struct BracketMin {
     /// Holds the point `a`
     pub a: f64,
 
@@ -111,10 +111,10 @@ const NEAR_IDENTICAL: f64 = 10.0 * f64::EPSILON;
 pub fn try_bracket_min<F, A>(
     a0: f64,
     b0: f64,
-    params: Option<BracketParams>,
+    params: Option<BracketMinParams>,
     args: &mut A,
     mut f: F,
-) -> Result<(Bracket, BracketStats), StrError>
+) -> Result<(BracketMin, BracketMinStats), StrError>
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
@@ -126,12 +126,12 @@ where
     // parameters
     let par = match params {
         Some(p) => p,
-        None => BracketParams::new(),
+        None => BracketMinParams::new(),
     };
     par.validate()?;
 
     // allocate stats struct
-    let stats = BracketStats::new();
+    let stats = BracketMinStats::new();
 
     panic!("TODO")
 }
@@ -148,7 +148,7 @@ pub(super) fn swap(a: &mut f64, b: &mut f64) {
 
 #[cfg(test)]
 mod tests {
-    use super::{swap, try_bracket_min, Bracket, BracketParams, NoArgs};
+    use super::{swap, try_bracket_min, BracketMin, BracketMinParams, NoArgs};
     use crate::algo::testing::get_functions;
     use crate::approx_eq;
 
@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn params_validate_captures_errors() {
-        let mut params = BracketParams::new();
+        let mut params = BracketMinParams::new();
         params.n_iteration_max = 0;
         assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 2"));
     }
@@ -176,7 +176,7 @@ mod tests {
             try_bracket_min(0.0, f64::EPSILON, None, args, f).err(),
             Some("a0 must be different than b0")
         );
-        let mut params = BracketParams::new();
+        let mut params = BracketMinParams::new();
         params.n_iteration_max = 0;
         assert_eq!(
             try_bracket_min(0.0, 1.0, Some(params), args, f).err(),
@@ -213,7 +213,7 @@ mod tests {
         assert_eq!(try_bracket_min(0.0, 1.0, None, args, f).err(), Some("stop"));
     }
 
-    fn check_consistency(bracket: &Bracket) {
+    fn check_consistency(bracket: &BracketMin) {
         if bracket.a >= bracket.b {
             panic!("a should be smaller than b");
         }

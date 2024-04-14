@@ -1,4 +1,4 @@
-use super::{Bracket, NoArgs};
+use super::{BracketMin, NoArgs};
 use crate::StrError;
 
 /// Holds f(x) functions for tests
@@ -6,8 +6,8 @@ use crate::StrError;
 pub(super) struct TestFunction {
     pub name: &'static str,                               // name
     pub f: fn(f64, &mut NoArgs) -> Result<f64, StrError>, // f(x)
-    pub local_min_1: Bracket,                             // local min (in given range)
-    pub local_min_2: Option<Bracket>,                     // another local min (in given range)
+    pub local_min_1: BracketMin,                          // local min (in given range)
+    pub local_min_2: Option<BracketMin>,                  // another local min (in given range)
 }
 
 /// Allocates f(x) test functions
@@ -17,7 +17,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "x² - 1",
             f: |x, _| Ok(x * x - 1.0),
-            local_min_1: Bracket {
+            local_min_1: BracketMin {
                 a: -5.0,
                 b: 0.0,
                 c: 5.0,
@@ -30,7 +30,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "-1 / (1 + 16 x²)", // Runge equation
             f: |x, _| Ok(-1.0 / (1.0 + 16.0 * x * x)),
-            local_min_1: Bracket {
+            local_min_1: BracketMin {
                 a: -2.0,
                 b: 0.0,
                 c: 2.0,
@@ -43,7 +43,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "x⁵ + 3x⁴ - 2x³ + x - 1",
             f: |x, _| Ok(f64::powi(x, 5) + 3.0 * f64::powi(x, 4) - 2.0 * f64::powi(x, 3) + x - 1.0),
-            local_min_1: Bracket {
+            local_min_1: BracketMin {
                 a: -2.0,
                 b: -0.326434701525930898665902357162,
                 c: 2.0,
@@ -56,7 +56,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "(x - 1)² + 5 sin(x)",
             f: |x, _| Ok(f64::powi(x - 1.0, 2) + 5.0 * f64::sin(x)),
-            local_min_1: Bracket {
+            local_min_1: BracketMin {
                 a: -2.0,
                 b: -0.779014930395140333216421108317,
                 c: 2.0,
@@ -64,7 +64,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
                 fb: -0.347999771320472050094111906591,
                 fc: 5.54648713412840847698009932956,
             },
-            local_min_2: Some(Bracket {
+            local_min_2: Some(BracketMin {
                 a: 2.0,
                 b: 3.41029230994771356210845446934,
                 c: 5.0,

@@ -98,6 +98,7 @@ mod deriv1_approx_eq;
 mod deriv1_central5;
 mod deriv2_approx_eq;
 mod deriv2_central8;
+mod testing;
 pub use crate::check::approx_eq::*;
 pub use crate::check::array_approx_eq::*;
 pub use crate::check::assert_alike::*;

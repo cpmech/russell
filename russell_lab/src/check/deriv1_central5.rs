@@ -150,116 +150,17 @@ where
 #[cfg(test)]
 mod tests {
     use super::{deriv1_and_errors_central5, deriv1_central5};
-    use crate::StrError;
-    use std::f64::consts::PI;
-
-    struct Arguments {}
-
-    struct TestFunction {
-        pub name: &'static str,                                  // name
-        pub f: fn(f64, &mut Arguments) -> Result<f64, StrError>, // f(x)
-        pub g: fn(f64, &mut Arguments) -> Result<f64, StrError>, // g=df/dx
-        pub at_x: f64,                                           // @x value
-        pub tol_diff: f64,                                       // tolerance for |num - ana|
-        pub tol_err: f64,                                        // tolerance for truncation error
-        pub tol_rerr: f64,                                       // tolerance for rounding error
-        pub improv_tol_diff: f64,                                // tolerance for |num - ana|
-    }
-
-    fn gen_functions() -> Vec<TestFunction> {
-        vec![
-            TestFunction {
-                name: "x",
-                f: |x, _| Ok(x),
-                g: |_, _| Ok(1.0),
-                at_x: 0.0,
-                tol_diff: 1e-15,
-                tol_err: 1e-15,
-                tol_rerr: 1e-15,
-                improv_tol_diff: 1e-15,
-            },
-            TestFunction {
-                name: "x²",
-                f: |x, _| Ok(x * x),
-                g: |x, _| Ok(2.0 * x),
-                at_x: 1.0,
-                tol_diff: 1e-12,
-                tol_err: 1e-13,
-                tol_rerr: 1e-11,
-                improv_tol_diff: 1e-12,
-            },
-            TestFunction {
-                name: "exp(x)",
-                f: |x, _| Ok(f64::exp(x)),
-                g: |x, _| Ok(f64::exp(x)),
-                at_x: 2.0,
-                tol_diff: 1e-11,
-                tol_err: 1e-5,
-                tol_rerr: 1e-10,
-                improv_tol_diff: 1e-10, // worse
-            },
-            TestFunction {
-                name: "exp(-x²)",
-                f: |x, _| Ok(f64::exp(-x * x)),
-                g: |x, _| Ok(-2.0 * x * f64::exp(-x * x)),
-                at_x: 2.0,
-                tol_diff: 1e-13,
-                tol_err: 1e-6,
-                tol_rerr: 1e-13,
-                improv_tol_diff: 1e-11, // worse
-            },
-            TestFunction {
-                name: "1/x",
-                f: |x, _| Ok(1.0 / x),
-                g: |x, _| Ok(-1.0 / (x * x)),
-                at_x: 0.2,
-                tol_diff: 1e-8,
-                tol_err: 1e-3,
-                tol_rerr: 1e-11,
-                improv_tol_diff: 1e-9, // better
-            },
-            TestFunction {
-                name: "x⋅√x",
-                f: |x, _| Ok(x * f64::sqrt(x)),
-                g: |x, _| Ok(1.5 * f64::sqrt(x)),
-                at_x: 25.0,
-                tol_diff: 1e-10,
-                tol_err: 1e-9,
-                tol_rerr: 1e-9,
-                improv_tol_diff: 1e-10,
-            },
-            TestFunction {
-                name: "sin(1/x)",
-                f: |x, _| Ok(f64::sin(1.0 / x)),
-                g: |x, _| Ok(-f64::cos(1.0 / x) / (x * x)),
-                at_x: 0.5,
-                tol_diff: 1e-10,
-                tol_err: 1e-4,
-                tol_rerr: 1e-11,
-                improv_tol_diff: 1e-10,
-            },
-            TestFunction {
-                name: "cos(π⋅x/2)",
-                f: |x, _| Ok(f64::cos(PI * x / 2.0)),
-                g: |x, _| Ok(-f64::sin(PI * x / 2.0) * PI / 2.0),
-                at_x: 1.0,
-                tol_diff: 1e-12,
-                tol_err: 1e-6,
-                tol_rerr: 1e-12,
-                improv_tol_diff: 1e-10, // worse
-            },
-        ]
-    }
+    use crate::check::testing;
 
     #[test]
     fn deriv1_and_errors_central5_works() {
-        let tests = gen_functions();
+        let tests = testing::get_functions();
         println!(
             "{:>10}{:>15}{:>22}{:>11}{:>10}{:>10}",
             "function", "numerical", "analytical", "|num-ana|", "err", "rerr"
         );
         for test in &tests {
-            let args = &mut Arguments {};
+            let args = &mut 0;
             let (d, err, rerr) = deriv1_and_errors_central5(test.at_x, args, 1e-3, test.f).unwrap();
             let d_correct = (test.g)(test.at_x, args).unwrap();
             println!(
@@ -271,22 +172,22 @@ mod tests {
                 err,
                 rerr,
             );
-            assert!(f64::abs(d - d_correct) < test.tol_diff);
-            assert!(err < test.tol_err);
-            assert!(rerr < test.tol_rerr);
+            assert!(f64::abs(d - d_correct) < test.tol_g);
+            assert!(err < test.tol_g_err);
+            assert!(rerr < test.tol_g_rerr);
         }
     }
 
     #[test]
     fn deriv1_central5_works() {
-        let tests = gen_functions();
+        let tests = testing::get_functions();
         println!(
             "{:>10}{:>15}{:>22}{:>11}",
             "function", "numerical", "analytical", "|num-ana|"
         );
         // for test in &[&tests[2]] {
         for test in &tests {
-            let args = &mut Arguments {};
+            let args = &mut 0;
             let d = deriv1_central5(test.at_x, args, test.f).unwrap();
             let d_correct = (test.g)(test.at_x, args).unwrap();
             println!(
@@ -296,7 +197,7 @@ mod tests {
                 d_correct,
                 f64::abs(d - d_correct),
             );
-            assert!(f64::abs(d - d_correct) < test.improv_tol_diff);
+            assert!(f64::abs(d - d_correct) < test.improv_tol_g_diff);
         }
     }
 }

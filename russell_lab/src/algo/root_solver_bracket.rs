@@ -306,7 +306,7 @@ mod tests {
     }
 
     #[test]
-    fn try_bracket_min_captures_errors() {
+    fn try_bracket_min_captures_errors_1() {
         let f = |x, _: &mut NoArgs| Ok(x * x - 1.0);
         let args = &mut 0;
         assert_eq!(
@@ -319,6 +319,34 @@ mod tests {
             try_bracket_min(0.0, 1.0, Some(params), args, f).err(),
             Some("n_iteration_max must be ≥ 2")
         );
+    }
+
+    #[test]
+    fn try_bracket_min_captures_errors_2() {
+        struct Args {
+            count: usize,
+            target: usize,
+        }
+        let f = |x, args: &mut Args| {
+            let res = if args.count == args.target {
+                Err("stop")
+            } else {
+                Ok(x * x - 1.0)
+            };
+            args.count += 1;
+            res
+        };
+        let args = &mut Args { count: 0, target: 0 };
+        // first function call
+        assert_eq!(try_bracket_min(0.0, 1.0, None, args, f).err(), Some("stop"));
+        // second function call
+        args.count = 0;
+        args.target = 1;
+        assert_eq!(try_bracket_min(0.0, 1.0, None, args, f).err(), Some("stop"));
+        // third function call
+        args.count = 0;
+        args.target = 2;
+        assert_eq!(try_bracket_min(0.0, 1.0, None, args, f).err(), Some("stop"));
     }
 
     fn check_consistency(bracket: &Bracket) {

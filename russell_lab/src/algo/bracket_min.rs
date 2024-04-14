@@ -1,10 +1,5 @@
+use super::{AlgoStats, UNINITIALIZED};
 use crate::StrError;
-
-/// Constant to indicate an uninitialized value
-const UNINITIALIZED: f64 = f64::INFINITY;
-
-/// Indicates that no arguments are needed
-pub type NoArgs = u8;
 
 /// Holds parameters for a bracket algorithm
 #[derive(Clone, Copy, Debug)]
@@ -47,26 +42,6 @@ impl BracketMinParams {
             return Err("n_iteration_max must be ≥ 2");
         }
         Ok(())
-    }
-}
-
-/// Holds statistics for a bracket algorithm
-#[derive(Clone, Copy, Debug)]
-pub struct BracketMinStats {
-    /// Number of calls to f(x) (function evaluations)
-    pub n_function: usize,
-
-    /// Number of iterations
-    pub n_iterations: usize,
-}
-
-impl BracketMinStats {
-    /// Allocates a new instance
-    pub fn new() -> BracketMinStats {
-        BracketMinStats {
-            n_function: 0,
-            n_iterations: 0,
-        }
     }
 }
 
@@ -135,7 +110,7 @@ pub fn try_bracket_min<F, A>(
     params: Option<BracketMinParams>,
     args: &mut A,
     mut f: F,
-) -> Result<(BracketMin, BracketMinStats), StrError>
+) -> Result<(BracketMin, AlgoStats), StrError>
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
@@ -147,7 +122,7 @@ where
     par.validate()?;
 
     // allocate stats struct
-    let mut stats = BracketMinStats::new();
+    let mut stats = AlgoStats::new();
 
     // initialization
     let mut step = par.initial_step;
@@ -211,8 +186,9 @@ pub(super) fn swap(a: &mut f64, b: &mut f64) {
 
 #[cfg(test)]
 mod tests {
-    use super::{swap, try_bracket_min, BracketMin, BracketMinParams, NoArgs};
+    use super::{swap, try_bracket_min, BracketMin, BracketMinParams};
     use crate::algo::testing::get_functions;
+    use crate::algo::NoArgs;
     use crate::approx_eq;
 
     #[test]

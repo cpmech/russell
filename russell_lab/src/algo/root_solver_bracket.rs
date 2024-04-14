@@ -270,18 +270,9 @@ pub(super) fn shift3(a: &mut f64, b: &mut f64, c: &mut f64, d: f64) {
 
 #[cfg(test)]
 mod tests {
-    use super::{shift3, swap, try_bracket_min, Bracket, BracketParams};
-    use crate::{algo::testing::get_functions, approx_eq};
-
-    #[test]
-    fn params_validate_capture_errors() {
-        let mut params = BracketParams::new();
-        params.n_iteration_max = 0;
-        assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 2"));
-        params.n_iteration_max = 2;
-        params.ratio_limit = 0.0;
-        assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 10.0"));
-    }
+    use super::{shift3, swap, try_bracket_min, Bracket, BracketParams, NoArgs};
+    use crate::algo::testing::get_functions;
+    use crate::approx_eq;
 
     #[test]
     fn swap_works() {
@@ -302,6 +293,32 @@ mod tests {
         assert_eq!(a, 2.0);
         assert_eq!(b, 3.0);
         assert_eq!(c, 4.0);
+    }
+
+    #[test]
+    fn params_validate_captures_errors() {
+        let mut params = BracketParams::new();
+        params.n_iteration_max = 0;
+        assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 2"));
+        params.n_iteration_max = 2;
+        params.ratio_limit = 0.0;
+        assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 10.0"));
+    }
+
+    #[test]
+    fn try_bracket_min_captures_errors() {
+        let f = |x, _: &mut NoArgs| Ok(x * x - 1.0);
+        let args = &mut 0;
+        assert_eq!(
+            try_bracket_min(0.0, f64::EPSILON, None, args, f).err(),
+            Some("a0 must be different than b0")
+        );
+        let mut params = BracketParams::new();
+        params.n_iteration_max = 0;
+        assert_eq!(
+            try_bracket_min(0.0, 1.0, Some(params), args, f).err(),
+            Some("n_iteration_max must be ≥ 2")
+        );
     }
 
     fn check_consistency(bracket: &Bracket) {

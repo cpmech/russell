@@ -194,6 +194,32 @@ where
         NumVector { data }
     }
 
+    /// Returns a new vector that is initialized from a callback function (map)
+    ///
+    /// The function maps the index to the value, e.g., `|i| (i as f64)`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use russell_lab::NumVector;
+    /// let u = NumVector::<f64>::initialized(3, |i| (1 + 2 * i) as f64);
+    /// assert_eq!(
+    ///     format!("{}", u),
+    ///     "┌   ┐\n\
+    ///      │ 1 │\n\
+    ///      │ 3 │\n\
+    ///      │ 5 │\n\
+    ///      └   ┘"
+    /// );
+    /// ```
+    pub fn initialized<F>(dim: usize, function: F) -> Self
+    where
+        F: FnMut(usize) -> T,
+    {
+        let data: Vec<T> = (0..dim).into_iter().map(function).collect();
+        NumVector { data }
+    }
+
     /// Returns evenly spaced numbers over a specified closed interval
     ///
     /// # Panics
@@ -748,6 +774,12 @@ mod tests {
         let z_data = [100.0, 200.0, 300.0];
         let z = NumVector::<f64>::from(&z_data);
         assert_eq!(z.data, &[100.0, 200.0, 300.0]);
+    }
+
+    #[test]
+    fn initialized_works() {
+        let u = NumVector::<f64>::initialized(3, |i| i as f64);
+        assert_eq!(u.data, &[0.0, 1.0, 2.0]);
     }
 
     #[test]

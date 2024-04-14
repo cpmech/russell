@@ -6,6 +6,10 @@ pub const PI: f64 =
 pub const SQRT_PI: f64 =
     1.772453850905516027298167483341145182797549456122387128213807789852911284591032181374950656738544665_f64;
 
+/// (e) Napier constant https://oeis.org/A001113
+pub const NAPIER: f64 =
+    2.71828182845904523536028747135266249775724709369995957496696762772407663035354759457138217852516642742746_f64;
+
 /// Euler constant <https://oeis.org/A001620>
 pub const EULER: f64 =
     0.577215664901532860606512090082402431042159335939923598805767234884867726777664670936947063291746749_f64;
@@ -64,12 +68,13 @@ mod tests {
         COS_PI_BY_8, ONE_BY_3, ONE_BY_SQRT_2, PI, SIN_PI_BY_8, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6,
         SQRT_PI, TWO_BY_3,
     };
-    use crate::approx_eq;
+    use crate::{approx_eq, math::NAPIER};
 
     #[test]
     fn constants_are_correct() {
         assert_eq!(PI, std::f64::consts::PI);
         approx_eq(SQRT_PI, f64::sqrt(PI), 1e-15);
+        assert_eq!(NAPIER, f64::exp(1.0));
         assert_eq!(SQRT_2, std::f64::consts::SQRT_2);
         assert_eq!(SQRT_3, f64::sqrt(3.0));
         assert_eq!(SQRT_6, f64::sqrt(6.0));

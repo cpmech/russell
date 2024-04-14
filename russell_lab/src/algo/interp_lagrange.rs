@@ -1484,7 +1484,7 @@ mod tests {
     // --- errors -------------------------------------------------------------------------------------
 
     #[test]
-    fn params_validate_capture_errors() {
+    fn params_validate_captures_errors() {
         let mut params = InterpParams::new();
         params.lebesgue_estimate_nstation = 0;
         assert_eq!(params.validate().err(), Some("lebesgue_estimate_nstation must be ≥ 2"));

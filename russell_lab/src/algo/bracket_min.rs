@@ -1,6 +1,7 @@
-#![allow(unused)]
-
 use crate::StrError;
+
+/// Constant to indicate an uninitialized value
+const UNINITIALIZED: f64 = f64::INFINITY;
 
 /// Indicates that no arguments are needed
 pub type NoArgs = u8;
@@ -14,12 +15,22 @@ pub struct BracketMinParams {
     /// n_iteration_max ≥ 2
     /// ```
     pub n_iteration_max: usize,
+
+    /// e.g., 1e-2
+    pub initial_step: f64,
+
+    /// e.g., 2.0
+    pub expansion_factor: f64,
 }
 
 impl BracketMinParams {
     /// Allocates a new instance
     pub fn new() -> Self {
-        BracketMinParams { n_iteration_max: 200 }
+        BracketMinParams {
+            n_iteration_max: 20,
+            initial_step: 1e-2,
+            expansion_factor: 2.0,
+        }
     }
 
     /// Validates the parameters
@@ -81,10 +92,10 @@ pub struct BracketMin {
     pub fc: f64,
 }
 
-/// Tolerance to compare nearly identical points
-const NEAR_IDENTICAL: f64 = 10.0 * f64::EPSILON;
-
 /// Tries to bracket the minimum of f(x)
+///
+/// **Note:** This function is suitable for *unimodal functions*---it may fail otherwise.
+/// The code is based on the one presented in Chapter 3 (page 36) of the Reference.
 ///
 /// Searches (iteratively) for `a`, `b` and `c` such that:
 ///
@@ -98,19 +109,21 @@ const NEAR_IDENTICAL: f64 = 10.0 * f64::EPSILON;
 ///
 /// # Input
 ///
-/// `a0` -- The initial point (must be different than `b0`)
-/// `b0` -- The initial point (must be different than `a0`)
+/// `x_guess` -- a starting guess
 /// `params` -- Optional parameters
-///
-/// Note that `a0 < b0` and `b0 > a0` are accepted (they will be swapped internally).
 ///
 /// # Output
 ///
-/// * `maybe_optimal` -- holds the `a`, `b`, and `c` points and the functions evaluated at those points.
-/// * `stats` -- holds some statistics
+/// Returns `(bracket, stats)` where:
+///
+/// * `bracket` -- the `a`, `b`, and `c` points and the functions evaluated at those points.
+/// * `stats` -- some statistics about the computations
+///
+/// # Reference
+///
+/// * Kochenderfer MJ and Wheeler TA (2019) Algorithms for Optimization, The MIT Press, 512p
 pub fn try_bracket_min<F, A>(
-    a0: f64,
-    b0: f64,
+    x_guess: f64,
     params: Option<BracketMinParams>,
     args: &mut A,
     mut f: F,
@@ -118,11 +131,6 @@ pub fn try_bracket_min<F, A>(
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
-    // check
-    if f64::abs(a0 - b0) < NEAR_IDENTICAL {
-        return Err("a0 must be different than b0");
-    }
-
     // parameters
     let par = match params {
         Some(p) => p,
@@ -131,9 +139,52 @@ where
     par.validate()?;
 
     // allocate stats struct
-    let stats = BracketMinStats::new();
+    let mut stats = BracketMinStats::new();
 
-    panic!("TODO")
+    // initialization
+    let mut step = par.initial_step;
+    let (mut a, mut b) = (x_guess, x_guess + step);
+    let (mut fa, mut fb) = (f(a, args)?, f(b, args)?);
+    stats.n_function += 2;
+
+    // swap values (make sure to go "downhill")
+    if fb > fa {
+        swap(&mut a, &mut b);
+        swap(&mut fa, &mut fb);
+        step = -step;
+    }
+
+    // iterations
+    let mut converged = false;
+    let mut c = UNINITIALIZED;
+    let mut fc = UNINITIALIZED;
+    for _ in 0..par.n_iteration_max {
+        stats.n_iterations += 1;
+        stats.n_function += 1;
+        c = b + step;
+        fc = f(c, args)?;
+        if fc > fb {
+            converged = true;
+            break;
+        }
+        a = b;
+        b = c;
+        fa = fb;
+        fb = fc;
+        step *= par.expansion_factor;
+    }
+
+    // check
+    if !converged {
+        return Err("try_bracket_min failed to converge");
+    }
+
+    // done
+    if a > c {
+        swap(&mut a, &mut c);
+        swap(&mut fa, &mut fc);
+    }
+    Ok((BracketMin { a, b, c, fa, fb, fc }, stats))
 }
 
 /// Swaps two numbers
@@ -172,20 +223,15 @@ mod tests {
     fn try_bracket_min_captures_errors_1() {
         let f = |x, _: &mut NoArgs| Ok(x * x - 1.0);
         let args = &mut 0;
-        assert_eq!(
-            try_bracket_min(0.0, f64::EPSILON, None, args, f).err(),
-            Some("a0 must be different than b0")
-        );
         let mut params = BracketMinParams::new();
         params.n_iteration_max = 0;
         assert_eq!(
-            try_bracket_min(0.0, 1.0, Some(params), args, f).err(),
+            try_bracket_min(0.0, Some(params), args, f).err(),
             Some("n_iteration_max must be ≥ 2")
         );
     }
 
     #[test]
-    #[should_panic]
     fn try_bracket_min_captures_errors_2() {
         struct Args {
             count: usize,
@@ -202,15 +248,15 @@ mod tests {
         };
         let args = &mut Args { count: 0, target: 0 };
         // first function call
-        assert_eq!(try_bracket_min(0.0, 1.0, None, args, f).err(), Some("stop"));
+        assert_eq!(try_bracket_min(0.0, None, args, f).err(), Some("stop"));
         // second function call
         args.count = 0;
         args.target = 1;
-        assert_eq!(try_bracket_min(0.0, 1.0, None, args, f).err(), Some("stop"));
+        assert_eq!(try_bracket_min(0.0, None, args, f).err(), Some("stop"));
         // third function call
         args.count = 0;
         args.target = 2;
-        assert_eq!(try_bracket_min(0.0, 1.0, None, args, f).err(), Some("stop"));
+        assert_eq!(try_bracket_min(0.0, None, args, f).err(), Some("stop"));
     }
 
     fn check_consistency(bracket: &BracketMin) {
@@ -229,17 +275,14 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn try_bracket_min_works_1() {
         let args = &mut 0;
         for test in &get_functions() {
-            let loc_1 = &test.local_min_1;
-            let (bracket, _stats) = try_bracket_min(loc_1.a, loc_1.b, None, args, test.f).unwrap();
-            // println!("\n\n========================================================================================");
+            let (bracket, _stats) = try_bracket_min(0.0, None, args, test.f).unwrap();
+            println!("\n\n========================================================================================");
             println!("\n{}", test.name);
             println!("\n{:?}", _stats);
             println!("\n{:?}", bracket);
-            println!("\n{:?}", loc_1);
             check_consistency(&bracket);
             approx_eq((test.f)(bracket.a, args).unwrap(), bracket.fa, 1e-15);
             approx_eq((test.f)(bracket.b, args).unwrap(), bracket.fb, 1e-15);

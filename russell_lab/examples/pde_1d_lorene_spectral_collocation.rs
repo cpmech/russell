@@ -3,7 +3,7 @@ use russell_lab::algo::{InterpLagrange, InterpParams};
 use russell_lab::math::NAPIER;
 use russell_lab::{format_scientific, solve_lin_sys, vec_max_abs_diff, Matrix, StrError, Vector};
 
-const PATH_KEY: &str = "/tmp/russell_lab/pde_1d_spectral_collocation_1";
+const PATH_KEY: &str = "/tmp/russell_lab/pde_1d_lorene_spectral_collocation";
 
 /// Runs the simulation
 ///

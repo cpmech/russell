@@ -729,7 +729,7 @@ impl InterpLagrange {
     /// # Output
     ///
     /// * `err_f` -- is the max interpolation in `[-1, 1]`
-    pub fn estimate_max_error<F>(&mut self, mut f: F) -> f64
+    pub fn estimate_max_error<F>(&self, mut f: F) -> f64
     where
         F: FnMut(f64) -> f64,
     {
@@ -764,7 +764,7 @@ impl InterpLagrange {
     /// * `err_g` -- is the max error on the first derivative in `[-1, 1]`
     /// * `err_h` -- is the max error on the second derivative in `[-1, 1]`
     pub fn estimate_max_error_all<F, G, H>(
-        &mut self,
+        &self,
         exclude_boundaries: bool,
         mut f: F,
         mut g: G,
@@ -1404,7 +1404,7 @@ mod tests {
         let h = |x| 6.0 * x;
         let mut params = InterpParams::new();
         params.error_estimate_nstation = 21;
-        let mut interp = InterpLagrange::new(2, Some(params)).unwrap();
+        let interp = InterpLagrange::new(2, Some(params)).unwrap();
 
         let just_err_f = interp.estimate_max_error(f);
         let (err_f, err_g, err_h) = interp.estimate_max_error_all(false, f, g, h);
@@ -1460,7 +1460,7 @@ mod tests {
 
         // poor estimate due to only 3 stations--ignoring the boundaries (where the g and h errors are max)
         params.error_estimate_nstation = 3;
-        let mut interp = InterpLagrange::new(2, Some(params)).unwrap();
+        let interp = InterpLagrange::new(2, Some(params)).unwrap();
         let (err_f, err_g, err_h) = interp.estimate_max_error_all(true, f, g, h);
         assert_eq!(err_f, 0.0);
         assert_eq!(err_g, 1.0);

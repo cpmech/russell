@@ -270,8 +270,18 @@ pub(super) fn shift3(a: &mut f64, b: &mut f64, c: &mut f64, d: f64) {
 
 #[cfg(test)]
 mod tests {
-    use super::{shift3, swap, try_bracket_min, Bracket};
+    use super::{shift3, swap, try_bracket_min, Bracket, BracketParams};
     use crate::{algo::testing::get_functions, approx_eq};
+
+    #[test]
+    fn params_validate_capture_errors() {
+        let mut params = BracketParams::new();
+        params.n_iteration_max = 0;
+        assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 2"));
+        params.n_iteration_max = 2;
+        params.ratio_limit = 0.0;
+        assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 10.0"));
+    }
 
     #[test]
     fn swap_works() {

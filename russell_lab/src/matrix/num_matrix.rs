@@ -1087,6 +1087,11 @@ mod tests {
                 0.0, 0.0, 6.0, // third column
             ]
         );
+        // empty matrix
+        let a_data: [[f64; 0]; 1] = [[]];
+        let a = NumMatrix::<f64>::from_lower(&a_data).unwrap();
+        assert_eq!(a.dims(), (0, 0));
+        assert_eq!(a.data.len(), 0);
     }
 
     #[test]
@@ -1116,6 +1121,11 @@ mod tests {
                 3.0, 5.0, 6.0, // third column
             ]
         );
+        // empty matrix
+        let a_data: [[f64; 0]; 1] = [[]];
+        let a = NumMatrix::<f64>::from_upper(&a_data).unwrap();
+        assert_eq!(a.dims(), (0, 0));
+        assert_eq!(a.data.len(), 0);
     }
 
     #[test]

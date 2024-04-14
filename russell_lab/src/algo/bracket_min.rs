@@ -223,6 +223,7 @@ mod tests {
     fn try_bracket_min_captures_errors_1() {
         let f = |x, _: &mut NoArgs| Ok(x * x - 1.0);
         let args = &mut 0;
+        assert_eq!(f(1.0, args).unwrap(), 0.0);
         let mut params = BracketMinParams::new();
         params.n_iteration_max = 0;
         assert_eq!(
@@ -260,27 +261,20 @@ mod tests {
     }
 
     fn check_consistency(bracket: &BracketMin) {
-        if bracket.a >= bracket.b {
-            panic!("a should be smaller than b");
-        }
-        if bracket.c <= bracket.b {
-            panic!("c should be greater than b");
-        }
-        if bracket.fa < bracket.fb {
-            panic!("fa should be greater than or equal to fb");
-        }
-        if bracket.fc < bracket.fb {
-            panic!("fc should be greater than or equal to fb");
-        }
+        assert!(bracket.a < bracket.b);
+        assert!(bracket.b < bracket.c);
+        assert!(bracket.fa > bracket.fb);
+        assert!(bracket.fc > bracket.fb);
     }
 
     #[test]
     fn try_bracket_min_works_1() {
         let args = &mut 0;
-        for test in &get_functions() {
-            let (bracket, _stats) = try_bracket_min(0.0, None, args, test.f).unwrap();
+        for (i, test) in get_functions().iter().enumerate() {
             println!("\n\n========================================================================================");
             println!("\n{}", test.name);
+            let x_guess = if i % 2 == 0 { -0.1 } else { 0.1 };
+            let (bracket, _stats) = try_bracket_min(x_guess, None, args, test.f).unwrap();
             println!("\n{:?}", _stats);
             println!("\n{:?}", bracket);
             check_consistency(&bracket);
@@ -288,5 +282,18 @@ mod tests {
             approx_eq((test.f)(bracket.b, args).unwrap(), bracket.fb, 1e-15);
             approx_eq((test.f)(bracket.c, args).unwrap(), bracket.fc, 1e-15);
         }
+    }
+
+    #[test]
+    fn try_bracket_min_fails_on_non_converged() {
+        let f = |x, _: &mut NoArgs| Ok(f64::powi(x - 1.0, 2) + 5.0 * f64::sin(x));
+        let args = &mut 0;
+        assert!(f(1.0, args).unwrap() > 0.0);
+        let mut params = BracketMinParams::new();
+        params.n_iteration_max = 2;
+        assert_eq!(
+            try_bracket_min(0.0, Some(params), args, f).err(),
+            Some("try_bracket_min failed to converge")
+        );
     }
 }

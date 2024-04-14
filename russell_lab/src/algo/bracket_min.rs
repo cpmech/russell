@@ -16,11 +16,18 @@ pub struct BracketMinParams {
     /// ```
     pub n_iteration_max: usize,
 
+    /// Initial step
+    ///
     /// e.g., 1e-2
     pub initial_step: f64,
 
+    /// Step expansion factor
+    ///
     /// e.g., 2.0
     pub expansion_factor: f64,
+
+    /// Uses a nonlinear step
+    pub nonlinear_step: bool,
 }
 
 impl BracketMinParams {
@@ -30,6 +37,7 @@ impl BracketMinParams {
             n_iteration_max: 20,
             initial_step: 1e-2,
             expansion_factor: 2.0,
+            nonlinear_step: true,
         }
     }
 
@@ -158,7 +166,7 @@ where
     let mut converged = false;
     let mut c = UNINITIALIZED;
     let mut fc = UNINITIALIZED;
-    for _ in 0..par.n_iteration_max {
+    for k in 0..par.n_iteration_max {
         stats.n_iterations += 1;
         stats.n_function += 1;
         c = b + step;
@@ -171,7 +179,11 @@ where
         b = c;
         fa = fb;
         fb = fc;
-        step *= par.expansion_factor;
+        if par.nonlinear_step {
+            step *= par.expansion_factor * f64::powf(2.0, k as f64);
+        } else {
+            step *= par.expansion_factor;
+        }
     }
 
     // check
@@ -291,6 +303,7 @@ mod tests {
         assert!(f(1.0, args).unwrap() > 0.0);
         let mut params = BracketMinParams::new();
         params.n_iteration_max = 2;
+        params.nonlinear_step = false;
         assert_eq!(
             try_bracket_min(0.0, Some(params), args, f).err(),
             Some("try_bracket_min failed to converge")

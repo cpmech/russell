@@ -116,6 +116,7 @@ impl Stats {
         self.nanos_total = 0;
     }
 
+    /// Stops the stopwatch and updates step nanoseconds
     pub(crate) fn stop_sw_step(&mut self) {
         let nanos = self.sw_step.stop();
         if nanos > self.nanos_step_max {
@@ -123,6 +124,7 @@ impl Stats {
         }
     }
 
+    /// Stops the stopwatch and updates Jacobian nanoseconds
     pub(crate) fn stop_sw_jacobian(&mut self) {
         let nanos = self.sw_jacobian.stop();
         if nanos > self.nanos_jacobian_max {
@@ -130,6 +132,7 @@ impl Stats {
         }
     }
 
+    /// Stops the stopwatch and updates factor nanoseconds
     pub(crate) fn stop_sw_factor(&mut self) {
         let nanos = self.sw_factor.stop();
         if nanos > self.nanos_factor_max {
@@ -137,6 +140,7 @@ impl Stats {
         }
     }
 
+    /// Stops the stopwatch and updates lin_sol nanoseconds
     pub(crate) fn stop_sw_lin_sol(&mut self) {
         let nanos = self.sw_lin_sol.stop();
         if nanos > self.nanos_lin_sol_max {
@@ -144,17 +148,20 @@ impl Stats {
         }
     }
 
+    /// Stops the stopwatch and updates total nanoseconds
     pub(crate) fn stop_sw_total(&mut self) {
         let nanos = self.sw_total.stop();
         self.nanos_total = nanos;
     }
 
+    /// Stops the stopwatch and updates n_iterations_max nanoseconds
     pub(crate) fn update_n_iterations_max(&mut self) {
         if self.n_iterations > self.n_iterations_max {
             self.n_iterations_max = self.n_iterations;
         }
     }
 
+    /// Returns a pretty formatted string with the stats
     pub fn summary(&self) -> String {
         let mut buffer = String::new();
         if self.method.information().implicit {

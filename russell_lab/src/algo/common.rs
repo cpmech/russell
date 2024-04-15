@@ -42,18 +42,18 @@ pub struct Bracket {
     /// Holds the lower bound
     pub a: f64,
 
-    /// Holds the root or optimal coordinate
-    pub x_target: f64,
-
     /// Holds the upper bound
     pub b: f64,
 
     /// Holds the function evaluated at the lower bound
     pub fa: f64,
 
-    /// Holds the function evaluated at the root or optimal coordinate
-    pub fx_target: f64,
-
     /// Holds the function evaluated at the upper bound
     pub fb: f64,
+
+    /// Holds the root or optimal coordinate
+    pub x_target: f64,
+
+    /// Holds the function evaluated at the root or optimal coordinate
+    pub fx_target: f64,
 }

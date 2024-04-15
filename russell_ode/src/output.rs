@@ -291,7 +291,7 @@ impl<A> Output<A> {
     /// # Input
     ///
     /// * `enable` -- Enable/disable the output
-    /// * `h_out` -- is the stepsize (possibly different than the actual `h` stepsize) for the equally spaced "dense" results
+    /// * `h_out` -- is the stepsize (possibly different from the actual `h` stepsize) for the equally spaced "dense" results
     ///
     /// **Note:** The same `h_out` is used for the callback, file, and "recording" options
     pub fn set_dense_callback(
@@ -317,7 +317,7 @@ impl<A> Output<A> {
     /// # Input
     ///
     /// * `enable` -- Enable/disable the output
-    /// * `h_out` -- is the stepsize (possibly different than the actual `h` stepsize) for the equally spaced "dense" results
+    /// * `h_out` -- is the stepsize (possibly different from the actual `h` stepsize) for the equally spaced "dense" results
     /// * `filepath_without_extension` -- E.g. `/tmp/russell_ode/my_simulation`
     ///
     /// **Note:** The same `h_out` is used for the callback, file, and "recording" options
@@ -348,7 +348,7 @@ impl<A> Output<A> {
     /// # Input
     ///
     /// * `enable` -- Enable/disable the output
-    /// * `h_out` -- is the stepsize (possibly different than the actual `h` stepsize) for the equally spaced "dense" results
+    /// * `h_out` -- is the stepsize (possibly different from the actual `h` stepsize) for the equally spaced "dense" results
     /// * `selected_y_components` -- Specifies which components of the `y` vector are to be saved
     ///
     /// # Results

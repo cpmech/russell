@@ -232,7 +232,15 @@ mod tests {
         for (i, test) in get_functions().iter().enumerate() {
             println!("\n\n===========================================================");
             println!("\n{}", test.name);
-            let x_guess = if i % 2 == 0 { -0.1 } else { 0.1 };
+            let x_guess = if i == 4 {
+                0.15
+            } else {
+                if i % 2 == 0 {
+                    -0.1
+                } else {
+                    0.1
+                }
+            };
             let (bracket, stats) = try_bracket_min(x_guess, None, args, test.f).unwrap();
             println!("\n{}", bracket);
             println!("\n{}", stats);

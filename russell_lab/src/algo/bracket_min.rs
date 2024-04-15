@@ -230,7 +230,7 @@ mod tests {
     fn try_bracket_min_works_1() {
         let args = &mut 0;
         for (i, test) in get_functions().iter().enumerate() {
-            println!("\n\n========================================================================================");
+            println!("\n\n===========================================================");
             println!("\n{}", test.name);
             let x_guess = if i % 2 == 0 { -0.1 } else { 0.1 };
             let (bracket, stats) = try_bracket_min(x_guess, None, args, test.f).unwrap();

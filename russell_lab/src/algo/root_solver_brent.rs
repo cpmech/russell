@@ -287,7 +287,7 @@ mod tests {
     fn root_solver_brent_works_1() {
         let args = &mut 0;
         for test in &get_functions() {
-            println!("\n\n========================================================================================");
+            println!("\n\n===========================================================");
             println!("\n{}", test.name);
             if let Some(bracket) = test.root1 {
                 let (xo, stats) = root_solver_brent(bracket.a, bracket.b, None, args, test.f).unwrap();

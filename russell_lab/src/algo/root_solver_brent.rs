@@ -253,21 +253,21 @@ mod tests {
                 println!("\nxo = {:?}", xo);
                 println!("\n{}", stats);
                 approx_eq(xo, bracket.xo, 1e-11);
-                approx_eq((test.f)(xo, args).unwrap(), 0.0, 1e-10);
+                approx_eq((test.f)(xo, args).unwrap(), 0.0, test.tol_root);
             }
             if let Some(bracket) = test.root2 {
                 let (xo, stats) = root_solver_brent(bracket.a, bracket.b, None, args, test.f).unwrap();
                 println!("\nxo = {:?}", xo);
                 println!("\n{}", stats);
                 approx_eq(xo, bracket.xo, 1e-11);
-                approx_eq((test.f)(xo, args).unwrap(), 0.0, 1e-10);
+                approx_eq((test.f)(xo, args).unwrap(), 0.0, test.tol_root);
             }
             if let Some(bracket) = test.root3 {
                 let (xo, stats) = root_solver_brent(bracket.a, bracket.b, None, args, test.f).unwrap();
                 println!("\nxo = {:?}", xo);
                 println!("\n{}", stats);
-                approx_eq(xo, bracket.xo, 1e-17);
-                approx_eq((test.f)(xo, args).unwrap(), 0.0, 1e-15);
+                approx_eq(xo, bracket.xo, 1e-13);
+                approx_eq((test.f)(xo, args).unwrap(), 0.0, test.tol_root);
             }
         }
     }

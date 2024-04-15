@@ -299,6 +299,14 @@ mod tests {
                 approx_eq(xo, bracket.xo, test.tol_min);
                 approx_eq((test.f)(xo, args).unwrap(), bracket.fxo, 1e-15);
             }
+            if let Some(bracket) = test.min3 {
+                let (a, b) = (bracket.a, bracket.b);
+                let (xo, stats) = min_solver_brent(a, b, None, args, test.f).unwrap();
+                println!("\nxo = {:?}", xo);
+                println!("\n{}", stats);
+                approx_eq(xo, bracket.xo, test.tol_min);
+                approx_eq((test.f)(xo, args).unwrap(), bracket.fxo, 1e-15);
+            }
         }
     }
 

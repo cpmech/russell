@@ -46,7 +46,7 @@ impl RootSolverParams {
 /// * `xa` -- initial "bracket" coordinate such that `f(xa) * f(xb) < 0`
 /// * `xb` -- initial "bracket" coordinate such that `f(xa) * f(xb) < 0`
 ///
-/// **Note:** `xa` must be different than `xb`
+/// **Note:** `xa` must be different from `xb`
 ///
 /// # Details
 ///
@@ -87,7 +87,7 @@ where
 {
     // check
     if f64::abs(xa - xb) < 10.0 * f64::EPSILON {
-        return Err("xa must be different than xb");
+        return Err("xa must be different from xb");
     }
 
     // parameters
@@ -229,6 +229,14 @@ mod tests {
         let f = |x, _: &mut NoArgs| Ok(x * x - 1.0);
         let args = &mut 0;
         assert_eq!(f(1.0, args).unwrap(), 0.0);
+        assert_eq!(
+            root_solver_brent(-0.5, -0.5, None, args, f).err(),
+            Some("xa must be different from xb")
+        );
+        assert_eq!(
+            root_solver_brent(-0.5, -0.5 - 10.0 * f64::EPSILON, None, args, f).err(),
+            Some("xa and xb must bracket the root and f(xa) * f(xb) < 0")
+        );
         let mut params = RootSolverParams::new();
         params.n_iteration_max = 0;
         assert_eq!(

@@ -312,4 +312,17 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn root_solver_brent_fails_on_non_converged() {
+        let f = |x, _: &mut NoArgs| Ok(f64::powi(x - 1.0, 2) + 5.0 * f64::sin(x));
+        let args = &mut 0;
+        assert!(f(1.0, args).unwrap() > 0.0);
+        let mut params = RootSolverParams::new();
+        params.n_iteration_max = 2;
+        assert_eq!(
+            root_solver_brent(-2.0, -0.7, Some(params), args, f).err(),
+            Some("root_solver_brent failed to converge")
+        );
+    }
 }

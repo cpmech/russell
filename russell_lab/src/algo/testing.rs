@@ -11,16 +11,19 @@ pub(super) struct TestFunction {
     pub f: fn(f64, &mut NoArgs) -> Result<f64, StrError>,
 
     /// Holds a bracketed local minimum
-    pub min_1: Option<Bracket>,
+    pub min1: Option<Bracket>,
 
     // Holds another bracketed local minimum
-    pub min_2: Option<Bracket>,
+    pub min2: Option<Bracket>,
 
     /// Holds a bracketed root
-    pub root_1: Option<Bracket>,
+    pub root1: Option<Bracket>,
 
     /// Holds another bracketed root
-    pub root_2: Option<Bracket>,
+    pub root2: Option<Bracket>,
+
+    /// Holds another bracketed root
+    pub root3: Option<Bracket>,
 }
 
 /// Allocates f(x) test functions
@@ -30,69 +33,122 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "x² - 1",
             f: |x, _| Ok(x * x - 1.0),
-            min_1: Some(Bracket {
+            min1: Some(Bracket {
                 a: -5.0,
-                x_target: 0.0,
                 b: 5.0,
                 fa: 24.0,
-                fx_target: -1.0,
                 fb: 24.0,
+                x_target: 0.0,
+                fx_target: -1.0,
             }),
-            min_2: None,
-            root_1: None,
-            root_2: None,
+            min2: None,
+            root1: Some(Bracket {
+                a: -2.0,
+                b: 0.0,
+                fa: 3.0,
+                fb: -1.0,
+                x_target: -1.0,
+                fx_target: 0.0,
+            }),
+            root2: Some(Bracket {
+                a: 0.0,
+                b: 2.0,
+                fa: -1.0,
+                fb: 3.0,
+                x_target: 1.0,
+                fx_target: 0.0,
+            }),
+            root3: None,
         },
         TestFunction {
             name: "-1 / (1 + 16 x²)", // Runge equation
             f: |x, _| Ok(-1.0 / (1.0 + 16.0 * x * x)),
-            min_1: Some(Bracket {
+            min1: Some(Bracket {
                 a: -2.0,
-                x_target: 0.0,
                 b: 2.0,
                 fa: -1.0 / 65.0,
-                fx_target: -1.0,
                 fb: -1.0 / 65.0,
+                x_target: 0.0,
+                fx_target: -1.0,
             }),
-            min_2: None,
-            root_1: None, // no roots possible
-            root_2: None, // no roots possible
+            min2: None,
+            root1: None, // no roots possible
+            root2: None, // no roots possible
+            root3: None, // no roots possible
         },
         TestFunction {
             name: "x⁵ + 3x⁴ - 2x³ + x - 1",
             f: |x, _| Ok(f64::powi(x, 5) + 3.0 * f64::powi(x, 4) - 2.0 * f64::powi(x, 3) + x - 1.0),
-            min_1: Some(Bracket {
+            min1: Some(Bracket {
                 a: -2.0,
-                x_target: -0.326434701525930898665902357162,
                 b: 2.0,
                 fa: 29.0,
-                fx_target: -1.22650698564642753377955683652,
                 fb: 65.0,
+                x_target: -0.326434701525930898665902357162,
+                fx_target: -1.22650698564642753377955683652,
             }),
-            min_2: None,
-            root_1: None,
-            root_2: None,
+            min2: None,
+            root1: Some(Bracket {
+                a: -4.0,
+                b: -2.0,
+                fa: -133.0,
+                fb: 29.0,
+                x_target: -3.53652558839295230222542848627,
+                fx_target: 0.0,
+            }),
+            root2: Some(Bracket {
+                a: -2.0,
+                b: 0.0,
+                fa: 29.0,
+                fb: -1.0,
+                x_target: -0.781407421874263267559694073091,
+                fx_target: 0.0,
+            }),
+            root3: Some(Bracket {
+                a: 0.0,
+                b: 2.0,
+                fa: -1.0,
+                fb: 65.0,
+                x_target: 0.727096464661451721867714112038,
+                fx_target: 0.0,
+            }),
         },
         TestFunction {
             name: "(x - 1)² + 5 sin(x)",
             f: |x, _| Ok(f64::powi(x - 1.0, 2) + 5.0 * f64::sin(x)),
-            min_1: Some(Bracket {
+            min1: Some(Bracket {
                 a: -2.0,
-                x_target: -0.779014930395140333216421108317,
                 b: 2.0,
                 fa: 4.45351286587159152301990067044,
-                fx_target: -0.347999771320472050094111906591,
                 fb: 5.54648713412840847698009932956,
+                x_target: -0.779014930395140333216421108317,
+                fx_target: -0.347999771320472050094111906591,
             }),
-            min_2: Some(Bracket {
+            min2: Some(Bracket {
                 a: 2.0,
-                x_target: 3.41029230994771356210845446934,
                 b: 5.0,
                 fa: 5.54648713412840847698009932956,
-                fx_target: 4.48211912850661077326295235125,
                 fb: 11.2053786266843076555342279692,
+                x_target: 3.41029230994771356210845446934,
+                fx_target: 4.48211912850661077326295235125,
             }),
-            root_1: None,
-            root_2: None,
+            root1: Some(Bracket {
+                a: -2.0,
+                b: -0.7,
+                fa: 4.4535128658715915230199006704,
+                fb: -0.3310884361884554,
+                x_target: -1.12294626691885210931752137234,
+                fx_target: 0.0,
+            }),
+            root2: Some(Bracket {
+                a: -0.7,
+                b: 1.0,
+                fa: -0.3310884361884554,
+                fb: 4.20735492403948253326251160815,
+                x_target: -0.407207140869762981181312249859,
+                fx_target: 0.0,
+            }),
+            root3: None,
         },
     ]
 }
@@ -102,26 +158,59 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
 #[cfg(test)]
 mod tests {
     use super::get_functions;
+    use crate::algo::Bracket;
     use crate::approx_eq;
+
+    fn check_consistency_min(bracket: &Bracket) {
+        assert!(bracket.a < bracket.x_target);
+        assert!(bracket.x_target < bracket.b);
+        assert!(bracket.fa > bracket.fx_target);
+        assert!(bracket.fb > bracket.fx_target);
+    }
+
+    fn check_consistency_root(bracket: &Bracket) {
+        assert!(bracket.a < bracket.x_target);
+        assert!(bracket.x_target < bracket.b);
+        assert!(bracket.fa * bracket.fb < 0.0);
+    }
 
     #[test]
     fn functions_are_consistent() {
         let args = &mut 0;
         for func in &get_functions() {
-            println!("{}", func.name);
-            if let Some(bracket) = &func.min_1 {
-                assert!(bracket.b > bracket.x_target);
-                assert!(bracket.x_target > bracket.a);
+            println!("\n{}", func.name);
+            if let Some(bracket) = &func.min1 {
+                check_consistency_min(bracket);
                 assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
+                assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
                 approx_eq(bracket.fx_target, (func.f)(bracket.x_target, args).unwrap(), 1e-15);
-                assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
             }
-            if let Some(bracket) = &func.min_2 {
-                assert!(bracket.b > bracket.x_target);
-                assert!(bracket.x_target > bracket.a);
+            if let Some(bracket) = &func.min2 {
+                check_consistency_min(bracket);
                 assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
-                assert_eq!(bracket.fx_target, (func.f)(bracket.x_target, args).unwrap());
                 assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
+                assert_eq!(bracket.fx_target, (func.f)(bracket.x_target, args).unwrap());
+            }
+            if let Some(bracket) = &func.root1 {
+                check_consistency_root(bracket);
+                assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
+                assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
+                approx_eq((func.f)(bracket.x_target, args).unwrap(), 0.0, 1e-13);
+                assert_eq!(bracket.fx_target, 0.0);
+            }
+            if let Some(bracket) = &func.root2 {
+                check_consistency_root(bracket);
+                assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
+                assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
+                approx_eq((func.f)(bracket.x_target, args).unwrap(), 0.0, 1e-20);
+                assert_eq!(bracket.fx_target, 0.0);
+            }
+            if let Some(bracket) = &func.root3 {
+                check_consistency_root(bracket);
+                assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
+                assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
+                approx_eq((func.f)(bracket.x_target, args).unwrap(), 0.0, 1e-15);
+                assert_eq!(bracket.fx_target, 0.0);
             }
         }
     }

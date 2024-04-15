@@ -197,7 +197,7 @@ where
 mod tests {
     use super::min_solver_brent;
     use crate::algo::testing::get_functions;
-    use crate::algo::NoArgs;
+    use crate::algo::{AlgoParams, NoArgs};
     use crate::approx_eq;
 
     #[test]
@@ -209,6 +209,42 @@ mod tests {
             min_solver_brent(-0.5, -0.5, None, args, f).err(),
             Some("xa must be different from xb")
         );
+        let mut params = AlgoParams::new();
+        params.n_iteration_max = 0;
+        assert_eq!(
+            min_solver_brent(-0.5, 2.0, Some(params), args, f).err(),
+            Some("n_iteration_max must be ≥ 2")
+        );
+    }
+
+    #[test]
+    fn min_solver_brent_captures_errors_2() {
+        struct Args {
+            count: usize,
+            target: usize,
+        }
+        let f = |x, args: &mut Args| {
+            let res = if args.count == args.target {
+                Err("stop")
+            } else {
+                Ok(x * x - 1.0)
+            };
+            args.count += 1;
+            res
+        };
+        let args = &mut Args { count: 0, target: 0 };
+        // first function call
+        assert_eq!(min_solver_brent(-0.5, 2.0, None, args, f).err(), Some("stop"));
+        // second function call
+        args.count = 0;
+        args.target = 1;
+        assert_eq!(min_solver_brent(-0.5, 2.0, None, args, f).err(), Some("stop"));
+        /*
+        // third function call
+        args.count = 0;
+        args.target = 2;
+        assert_eq!(min_solver_brent(-0.5, 2.0, None, args, f).err(), Some("stop"));
+        */
     }
 
     #[test]
@@ -264,5 +300,18 @@ mod tests {
                 approx_eq((test.f)(xo, args).unwrap(), bracket.fxo, 1e-15);
             }
         }
+    }
+
+    #[test]
+    fn min_solver_brent_fails_on_non_converged() {
+        let f = |x, _: &mut NoArgs| Ok(x * x - 1.0);
+        let args = &mut 0;
+        assert_eq!(f(0.0, args).unwrap(), -1.0);
+        let mut params = AlgoParams::new();
+        params.n_iteration_max = 2;
+        assert_eq!(
+            min_solver_brent(-5.0, 5.0, Some(params), args, f).err(),
+            Some("min_solver_brent failed to converge")
+        );
     }
 }

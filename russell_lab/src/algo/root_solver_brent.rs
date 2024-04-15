@@ -188,9 +188,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{root_solver_brent, AlgoParams};
+    use super::root_solver_brent;
     use crate::algo::testing::get_functions;
-    use crate::algo::NoArgs;
+    use crate::algo::{AlgoParams, NoArgs};
     use crate::approx_eq;
 
     #[test]

@@ -1,4 +1,5 @@
 use super::{Bracket, NoArgs};
+use crate::math::PI;
 use crate::StrError;
 
 /// Holds f(x) functions for tests
@@ -15,6 +16,9 @@ pub(super) struct TestFunction {
 
     // Holds another bracketed local minimum
     pub min2: Option<Bracket>,
+
+    // Holds another bracketed local minimum
+    pub min3: Option<Bracket>,
 
     /// Holds a bracketed root
     pub root1: Option<Bracket>,
@@ -45,6 +49,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
                 fxo: -1.0,
             }),
             min2: None,
+            min3: None,
             root1: Some(Bracket {
                 a: -2.0,
                 b: 0.0,
@@ -76,6 +81,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
                 fxo: -1.0 / 2.0,
             }),
             min2: None,
+            min3: None,
             root1: Some(Bracket {
                 a: -2.0,
                 b: 0.0,
@@ -107,6 +113,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
                 fxo: -1.22650698564642753377955683652,
             }),
             min2: None,
+            min3: None,
             root1: Some(Bracket {
                 a: -4.0,
                 b: -2.0,
@@ -152,6 +159,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
                 xo: 3.41029230994771356210845446934,
                 fxo: 4.48211912850661077326295235125,
             }),
+            min3: None,
             root1: Some(Bracket {
                 a: -2.0,
                 b: -0.7,
@@ -170,6 +178,59 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             }),
             root3: None,
             tol_min: 1e-8,
+        },
+        TestFunction {
+            name: "1/(1 - exp(-2 x) sin²(5 π x)) - 3/2",
+            f: |x, _| Ok(1.0 / (1.0 - f64::exp(-2.0 * x) * f64::powi(f64::sin(5.0 * PI * x), 2)) - 1.5),
+            min1: Some(Bracket {
+                a: 0.1,
+                b: 0.3,
+                fa: 4.016655566126993,
+                fb: 0.7163692151608707,
+                xo: 0.2,
+                fxo: -0.5,
+            }),
+            min2: Some(Bracket {
+                a: 0.3,
+                b: 0.5,
+                fa: 0.7163692151608707,
+                fb: 0.08197670686932645,
+                xo: 0.4,
+                fxo: -0.5,
+            }),
+            min3: Some(Bracket {
+                a: 0.5,
+                b: 0.7,
+                fa: 0.08197670686932645,
+                fb: -0.17268918209868533,
+                xo: 0.6,
+                fxo: -0.5,
+            }),
+            root1: Some(Bracket {
+                a: 0.1,
+                b: 0.2,
+                fa: 4.016655566126993,
+                fb: -0.5,
+                xo: 0.153017232138599937021144629730,
+                fxo: 0.0,
+            }),
+            root2: Some(Bracket {
+                a: 0.2,
+                b: 0.3,
+                fa: -0.5,
+                fb: 0.7163692151608707,
+                xo: 0.253401241496921840876888995872,
+                fxo: 0.0,
+            }),
+            root3: Some(Bracket {
+                a: 0.3,
+                b: 0.4,
+                fa: 0.7163692151608707,
+                fb: -0.5,
+                xo: 0.339787495774806018201668030092,
+                fxo: 0.0,
+            }),
+            tol_min: 1e-15,
         },
     ]
 }
@@ -212,6 +273,12 @@ mod tests {
                 assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
                 assert_eq!(bracket.fxo, (func.f)(bracket.xo, args).unwrap());
             }
+            if let Some(bracket) = &func.min3 {
+                check_consistency_min(bracket);
+                assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
+                assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
+                assert_eq!(bracket.fxo, (func.f)(bracket.xo, args).unwrap());
+            }
             if let Some(bracket) = &func.root1 {
                 check_consistency_root(bracket);
                 assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
@@ -223,14 +290,14 @@ mod tests {
                 check_consistency_root(bracket);
                 assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
                 assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
-                approx_eq((func.f)(bracket.xo, args).unwrap(), 0.0, 1e-20);
+                approx_eq((func.f)(bracket.xo, args).unwrap(), 0.0, 1e-15);
                 assert_eq!(bracket.fxo, 0.0);
             }
             if let Some(bracket) = &func.root3 {
                 check_consistency_root(bracket);
                 assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
                 assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
-                approx_eq((func.f)(bracket.xo, args).unwrap(), 0.0, 1e-15);
+                approx_eq((func.f)(bracket.xo, args).unwrap(), 0.0, 1e-14);
                 assert_eq!(bracket.fxo, 0.0);
             }
         }

@@ -13,16 +13,16 @@ const GSR: f64 = 0.38196601125010515179541316563436188227969082019424;
 ///
 /// # Input
 ///
-/// * `xa` -- initial "bracket" coordinate such that `f(xa) × f(xb) < 0`
-/// * `xb` -- initial "bracket" coordinate such that `f(xa) × f(xb) < 0`
+/// * `xa` -- first coordinate of the "bracket" containing the local minimum
+/// * `xb` -- second coordinate of the "bracket" containing the local minimum
 ///
-/// **Note:** `xa` must be different from `xb`
+/// **Note:** `xa < xb` or `xa > xb` are accepted. However, `xa` must be different from `xb`.
 ///
 /// # Output
 ///
 /// Returns `(xo, stats)` where:
 ///
-/// * `xo` -- is the root such that `f(xo) = 0`
+/// * `xo` -- is the coordinate of the minimum
 /// * `stats` -- some statistics regarding the computations
 ///
 /// # Details
@@ -59,8 +59,8 @@ const GSR: f64 = 0.38196601125010515179541316563436188227969082019424;
 /// within the given range, The code returns 'a' (if f(a) < f(b)), otherwise
 /// it returns the right range boundary value b.
 pub fn min_solver_brent<F, A>(
-    xa_in: f64,
-    xb_in: f64,
+    xa: f64,
+    xb: f64,
     params: Option<AlgoParams>,
     args: &mut A,
     mut f: F,
@@ -69,7 +69,7 @@ where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
     // check
-    if f64::abs(xa_in - xb_in) < 10.0 * f64::EPSILON {
+    if f64::abs(xa - xb) < 10.0 * f64::EPSILON {
         return Err("xa must be different from xb");
     }
 
@@ -84,9 +84,8 @@ where
     let mut stats = AlgoStats::new();
 
     // initialization
-    let mut xa = xa_in;
-    let mut xb = xb_in;
-    let mut v = xa + GSR * (xb - xa);
+    let (mut a, mut b) = if xa < xb { (xa, xb) } else { (xb, xa) };
+    let mut v = a + GSR * (b - a);
     let mut fv = f(v, args)?;
     stats.n_function += 1;
 
@@ -102,8 +101,8 @@ where
         stats.n_iterations += 1;
 
         // auxiliary variables
-        let del = xb - xa;
-        let mid = (xa + xb) / 2.0;
+        let del = b - a;
+        let mid = (a + b) / 2.0;
         let tol = SQRT_EPSILON * f64::abs(x) + par.tolerance / 3.0;
 
         // converged?
@@ -113,9 +112,9 @@ where
         }
 
         // gold section step
-        let mut tmp = xa - x;
+        let mut tmp = a - x;
         if x < mid {
-            tmp = xb - x;
+            tmp = b - x;
         }
         let mut step_new = GSR * tmp;
 
@@ -130,7 +129,7 @@ where
             } else {
                 q = -q;
             }
-            if f64::abs(p) < f64::abs(step_new * q) && p > q * (xa - x + 2.0 * tol) && p < q * (xb - x - 2.0 * tol) {
+            if f64::abs(p) < f64::abs(step_new * q) && p > q * (a - x + 2.0 * tol) && p < q * (b - x - 2.0 * tol) {
                 step_new = p / q;
             }
         }
@@ -152,9 +151,9 @@ where
         // t is a better approximation
         if ft <= fx {
             if t < x {
-                xb = x;
+                b = x;
             } else {
-                xa = x;
+                a = x;
             }
             v = w;
             w = x;
@@ -166,9 +165,9 @@ where
         // x remains the better approx
         } else {
             if t < x {
-                xa = t;
+                a = t;
             } else {
-                xb = t;
+                b = t;
             }
             if ft <= fw || w == x {
                 v = w;
@@ -196,8 +195,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    #![allow(unused)]
-    use super::{min_solver_brent, AlgoParams};
+    use super::min_solver_brent;
     use crate::algo::testing::get_functions;
     use crate::algo::NoArgs;
     use crate::approx_eq;
@@ -238,18 +236,28 @@ mod tests {
         //     nfev: 41
         // ```
         let args = &mut 0;
-        for test in &get_functions() {
+        for (i, test) in get_functions().iter().enumerate() {
             println!("\n\n===========================================================");
             println!("\n{}", test.name);
             if let Some(bracket) = test.min1 {
-                let (xo, stats) = min_solver_brent(bracket.a, bracket.b, None, args, test.f).unwrap();
+                let (a, b) = if i % 2 == 0 {
+                    (bracket.a, bracket.b)
+                } else {
+                    (bracket.b, bracket.a)
+                };
+                let (xo, stats) = min_solver_brent(a, b, None, args, test.f).unwrap();
                 println!("\nxo = {:?}", xo);
                 println!("\n{}", stats);
                 approx_eq(xo, bracket.xo, test.tol_min);
                 approx_eq((test.f)(xo, args).unwrap(), bracket.fxo, 1e-15);
             }
             if let Some(bracket) = test.min2 {
-                let (xo, stats) = min_solver_brent(bracket.a, bracket.b, None, args, test.f).unwrap();
+                let (a, b) = if i % 2 == 0 {
+                    (bracket.a, bracket.b)
+                } else {
+                    (bracket.b, bracket.a)
+                };
+                let (xo, stats) = min_solver_brent(a, b, None, args, test.f).unwrap();
                 println!("\nxo = {:?}", xo);
                 println!("\n{}", stats);
                 approx_eq(xo, bracket.xo, test.tol_min);

@@ -1,4 +1,4 @@
-use super::{AlgoStats, UNINITIALIZED};
+use super::{AlgoStats, Bracket, UNINITIALIZED};
 use crate::StrError;
 
 /// Holds parameters for a bracket algorithm
@@ -45,50 +45,20 @@ impl BracketMinParams {
     }
 }
 
-/// Holds the results of a root or minimum bracketing algorithm
-///
-/// The goal is to bracket a root or minimum of a function.
-///
-///	A root of a function is bracketed by a pair of points, `a` and `b`, such that
-/// the function has opposite sign at those two points, i.e., `f(a) * f(b) < 0.0`
-///
-///	A minimum is bracketed by a triple of points `a`, `b`, and `c`, such that
-/// `f(b) < f(a)` and `f(b) < f(c)`, with `a < b < c`.
-#[derive(Clone, Copy, Debug)]
-pub struct BracketMin {
-    /// Holds the point `a`
-    pub a: f64,
-
-    /// Holds the point `b`
-    pub b: f64,
-
-    /// Holds the point `c`
-    pub c: f64,
-
-    /// Holds the function evaluation `f(x=a)`
-    pub fa: f64,
-
-    /// Holds the function evaluation `f(x=b)`
-    pub fb: f64,
-
-    /// Holds the function evaluation `f(x=c)`
-    pub fc: f64,
-}
-
 /// Tries to bracket the minimum of f(x)
 ///
 /// **Note:** This function is suitable for *unimodal functions*---it may fail otherwise.
 /// The code is based on the one presented in Chapter 3 (page 36) of the Reference.
 ///
-/// Searches (iteratively) for `a`, `b` and `c` such that:
+/// Searches (iteratively) for `a`, `b` and `x_target` such that:
 ///
 /// ```text
-/// f(b) < f(a)  and  f(b) < f(c)
+/// f(x_target) < f(a)  and  f(x_target) < f(b)
 ///
-/// with a < b < c
+/// with a < x_target < b
 /// ```
 ///
-/// I.e., `f(b)` is the minimum in the `[a, b]` interval.
+/// Thus, `f(x_target)` is the minimum of `f(x)` in the `[a, b]` interval.
 ///
 /// # Input
 ///
@@ -99,8 +69,8 @@ pub struct BracketMin {
 ///
 /// Returns `(bracket, stats)` where:
 ///
-/// * `bracket` -- the `a`, `b`, and `c` points and the functions evaluated at those points.
-/// * `stats` -- some statistics about the computations
+/// * `bracket` -- holds the results
+/// * `stats` -- holds statistics about the computations
 ///
 /// # Reference
 ///
@@ -110,7 +80,7 @@ pub fn try_bracket_min<F, A>(
     params: Option<BracketMinParams>,
     args: &mut A,
     mut f: F,
-) -> Result<(BracketMin, AlgoStats), StrError>
+) -> Result<(Bracket, AlgoStats), StrError>
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
@@ -126,34 +96,34 @@ where
 
     // initialization
     let mut step = par.initial_step;
-    let (mut a, mut b) = (x_guess, x_guess + step);
-    let (mut fa, mut fb) = (f(a, args)?, f(b, args)?);
+    let (mut a, mut x_target) = (x_guess, x_guess + step);
+    let (mut fa, mut fx_target) = (f(a, args)?, f(x_target, args)?);
     stats.n_function += 2;
 
     // swap values (make sure to go "downhill")
-    if fb > fa {
-        swap(&mut a, &mut b);
-        swap(&mut fa, &mut fb);
+    if fx_target > fa {
+        swap(&mut a, &mut x_target);
+        swap(&mut fa, &mut fx_target);
         step = -step;
     }
 
     // iterations
     let mut converged = false;
-    let mut c = UNINITIALIZED;
-    let mut fc = UNINITIALIZED;
+    let mut b = UNINITIALIZED;
+    let mut fb = UNINITIALIZED;
     for k in 0..par.n_iteration_max {
         stats.n_iterations += 1;
         stats.n_function += 1;
-        c = b + step;
-        fc = f(c, args)?;
-        if fc > fb {
+        b = x_target + step;
+        fb = f(b, args)?;
+        if fb > fx_target {
             converged = true;
             break;
         }
-        a = b;
-        b = c;
-        fa = fb;
-        fb = fc;
+        a = x_target;
+        fa = fx_target;
+        x_target = b;
+        fx_target = fb;
         if par.nonlinear_step {
             step *= par.expansion_factor * f64::powf(2.0, k as f64);
         } else {
@@ -167,11 +137,21 @@ where
     }
 
     // done
-    if a > c {
-        swap(&mut a, &mut c);
-        swap(&mut fa, &mut fc);
+    if a > b {
+        swap(&mut a, &mut b);
+        swap(&mut fa, &mut fb);
     }
-    Ok((BracketMin { a, b, c, fa, fb, fc }, stats))
+    Ok((
+        Bracket {
+            a,
+            x_target,
+            b,
+            fa,
+            fx_target,
+            fb,
+        },
+        stats,
+    ))
 }
 
 /// Swaps two numbers
@@ -186,7 +166,7 @@ pub(super) fn swap(a: &mut f64, b: &mut f64) {
 
 #[cfg(test)]
 mod tests {
-    use super::{swap, try_bracket_min, BracketMin, BracketMinParams};
+    use super::{swap, try_bracket_min, Bracket, BracketMinParams};
     use crate::algo::testing::get_functions;
     use crate::algo::NoArgs;
     use crate::approx_eq;
@@ -248,11 +228,11 @@ mod tests {
         assert_eq!(try_bracket_min(0.0, None, args, f).err(), Some("stop"));
     }
 
-    fn check_consistency(bracket: &BracketMin) {
-        assert!(bracket.a < bracket.b);
-        assert!(bracket.b < bracket.c);
-        assert!(bracket.fa > bracket.fb);
-        assert!(bracket.fc > bracket.fb);
+    fn check_consistency(bracket: &Bracket) {
+        assert!(bracket.a < bracket.x_target);
+        assert!(bracket.x_target < bracket.b);
+        assert!(bracket.fa > bracket.fx_target);
+        assert!(bracket.fb > bracket.fx_target);
     }
 
     #[test]
@@ -267,8 +247,8 @@ mod tests {
             println!("\n{:?}", bracket);
             check_consistency(&bracket);
             approx_eq((test.f)(bracket.a, args).unwrap(), bracket.fa, 1e-15);
+            approx_eq((test.f)(bracket.x_target, args).unwrap(), bracket.fx_target, 1e-15);
             approx_eq((test.f)(bracket.b, args).unwrap(), bracket.fb, 1e-15);
-            approx_eq((test.f)(bracket.c, args).unwrap(), bracket.fc, 1e-15);
         }
     }
 

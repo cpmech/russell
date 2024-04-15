@@ -27,3 +27,33 @@ impl AlgoStats {
         }
     }
 }
+
+/// Holds the results of a root finding or minimum bracketing algorithm
+///
+/// The root yields `f(x_target) = 0.0`. The root is bracketed by a pair of points,
+/// `a` and `b`, such that the function has opposite sign at those two points,
+/// i.e., `f(a) f(b) < 0.0`.
+///
+/// The (local) minimum yields `f(x_target) = min{f(x)} in [a, b]`. The (local) minimum is
+/// bracketed  by a triple of points `a`, `x_target`, and `c`, such that `f(x_target) < f(a)`
+/// and `f(x_target) < f(b)`, with `a < x_target < b`.
+#[derive(Clone, Copy, Debug)]
+pub struct Bracket {
+    /// Holds the lower bound
+    pub a: f64,
+
+    /// Holds the root or optimal coordinate
+    pub x_target: f64,
+
+    /// Holds the upper bound
+    pub b: f64,
+
+    /// Holds the function evaluated at the lower bound
+    pub fa: f64,
+
+    /// Holds the function evaluated at the root or optimal coordinate
+    pub fx_target: f64,
+
+    /// Holds the function evaluated at the upper bound
+    pub fb: f64,
+}

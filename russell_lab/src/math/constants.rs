@@ -6,7 +6,7 @@ pub const PI: f64 =
 pub const SQRT_PI: f64 =
     1.772453850905516027298167483341145182797549456122387128213807789852911284591032181374950656738544665_f64;
 
-/// (e) Napier constant https://oeis.org/A001113
+/// (e) Napier constant <https://oeis.org/A001113>
 pub const NAPIER: f64 =
     2.71828182845904523536028747135266249775724709369995957496696762772407663035354759457138217852516642742746_f64;
 
@@ -60,15 +60,22 @@ pub const LN2: f64 =
 /// ln(10.0) <https://oeis.org/A002392>
 pub const LN10: f64 = 2.30258509299404568401799145468436420760110148862877297603332790096757260967735248023599f64;
 
+/// sqrt(EPSILON) = sqrt(powi(2,-52))
+pub const SQRT_EPSILON: f64 = 1.49011611938476562500000e-8f64;
+
+/// (1+sqrt(5))/2 <https://oeis.org/A001622>
+pub const GOLDEN_RATIO: f64 =
+    1.61803398874989484820458683436563811772030917980576286213544862270526046281890244970720720418939113748475f64;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
     use super::{
-        COS_PI_BY_8, ONE_BY_3, ONE_BY_SQRT_2, PI, SIN_PI_BY_8, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6,
-        SQRT_PI, TWO_BY_3,
+        COS_PI_BY_8, GOLDEN_RATIO, NAPIER, ONE_BY_3, ONE_BY_SQRT_2, PI, SIN_PI_BY_8, SQRT_2, SQRT_2_BY_3, SQRT_3,
+        SQRT_3_BY_2, SQRT_6, SQRT_EPSILON, SQRT_PI, TWO_BY_3,
     };
-    use crate::{approx_eq, math::NAPIER};
+    use crate::approx_eq;
 
     #[test]
     fn constants_are_correct() {
@@ -85,5 +92,8 @@ mod tests {
         assert_eq!(ONE_BY_SQRT_2, std::f64::consts::FRAC_1_SQRT_2);
         assert_eq!(COS_PI_BY_8, f64::cos(std::f64::consts::PI / 8.0));
         assert_eq!(SIN_PI_BY_8, f64::sin(std::f64::consts::PI / 8.0));
+        assert_eq!(f64::EPSILON, f64::powi(2.0, -52));
+        assert_eq!(SQRT_EPSILON, f64::sqrt(f64::EPSILON));
+        assert_eq!(GOLDEN_RATIO, (1.0 + f64::sqrt(5.0)) / 2.0);
     }
 }

@@ -1,13 +1,11 @@
-#![allow(non_snake_case)]
-
 use super::{AlgoParams, AlgoStats};
 use crate::math::SQRT_EPSILON;
 use crate::StrError;
 
-/// Golden section ratio: (3 - sqrt(5)) / 2 (not the golden ratio)
+/// Golden section ratio: (3 - sqrt(5)) / 2
 const GSR: f64 = 0.38196601125010515179541316563436188227969082019424;
 
-/// Employs Brent's method to find the roots of an equation
+/// Employs Brent's method to find the minimum of a function
 ///
 /// See: <https://mathworld.wolfram.com/BrentsMethod.html>
 ///
@@ -104,70 +102,60 @@ where
         stats.n_iterations += 1;
 
         // auxiliary variables
-        let rng = xb - xa;
-        let midRng = (xa + xb) / 2.0;
-        let tolAct = SQRT_EPSILON * f64::abs(x) + par.tolerance / 3.0;
+        let del = xb - xa;
+        let mid = (xa + xb) / 2.0;
+        let tol = SQRT_EPSILON * f64::abs(x) + par.tolerance / 3.0;
 
         // converged?
-        if f64::abs(x - midRng) + rng / 2.0 <= 2.0 * tolAct {
+        if f64::abs(x - mid) + del / 2.0 <= 2.0 * tol {
             converged = true;
             break;
         }
 
-        // Obtain the gold section step
+        // gold section step
         let mut tmp = xa - x;
-        if x < midRng {
+        if x < mid {
             tmp = xb - x;
         }
-        let mut newStep = GSR * tmp;
+        let mut step_new = GSR * tmp;
 
-        // decide if the interpolation can be tried
-        if f64::abs(x - w) >= tolAct {
-            // if x and w are distinct interpolation may be tried
-
+        // try interpolation
+        if f64::abs(x - w) >= tol {
             let t = (x - w) * (fx - fv);
             let q = (x - v) * (fx - fw);
             let mut p = (x - v) * q - (x - w) * t;
             let mut q = 2.0 * (q - t);
-
             if q > 0.0 {
-                // q was calculated with the op positive sign; make q positive and assign possible minus to p
                 p = -p;
             } else {
                 q = -q;
             }
-
-            // x+p/q falls in [a,b] not too close to a and b, and isn't too large
-            if f64::abs(p) < f64::abs(newStep * q) && p > q * (xa - x + 2.0 * tolAct) && p < q * (xb - x - 2.0 * tolAct)
-            {
-                newStep = p / q; // it is accepted
-                                 // if p/q is too large then the gold section procedure can reduce [a,b] rng to more extent
+            if f64::abs(p) < f64::abs(step_new * q) && p > q * (xa - x + 2.0 * tol) && p < q * (xb - x - 2.0 * tol) {
+                step_new = p / q;
             }
         }
 
-        // adjust the step to be not less than tolerance
-        if f64::abs(newStep) < tolAct {
-            if newStep > 0.0 {
-                newStep = tolAct;
+        // adjust the step
+        if f64::abs(step_new) < tol {
+            if step_new > 0.0 {
+                step_new = tol;
             } else {
-                newStep = -tolAct;
+                step_new = -tol;
             }
         }
 
-        // obtain the next approximation to min and reduce the enveloping rng
-        let t = x + newStep; // tentative point for the min  */
+        // next approximation
+        let t = x + step_new;
         let ft = f(t, args)?;
         stats.n_function += 1;
 
         // t is a better approximation
         if ft <= fx {
             if t < x {
-                // reduce the range so that t would fall within it
                 xb = x;
             } else {
                 xa = x;
             }
-            // assign the best approx to x
             v = w;
             w = x;
             x = t;
@@ -178,7 +166,6 @@ where
         // x remains the better approx
         } else {
             if t < x {
-                // reduce the range enclosing x
                 xa = t;
             } else {
                 xb = t;
@@ -197,7 +184,7 @@ where
 
     // check
     if !converged {
-        return Err("root_solver_brent failed to converge");
+        return Err("min_solver_brent failed to converge");
     }
 
     // done
@@ -255,6 +242,13 @@ mod tests {
             println!("\n\n===========================================================");
             println!("\n{}", test.name);
             if let Some(bracket) = test.min1 {
+                let (xo, stats) = min_solver_brent(bracket.a, bracket.b, None, args, test.f).unwrap();
+                println!("\nxo = {:?}", xo);
+                println!("\n{}", stats);
+                approx_eq(xo, bracket.xo, test.tol_min);
+                approx_eq((test.f)(xo, args).unwrap(), bracket.fxo, 1e-15);
+            }
+            if let Some(bracket) = test.min2 {
                 let (xo, stats) = min_solver_brent(bracket.a, bracket.b, None, args, test.f).unwrap();
                 println!("\nxo = {:?}", xo);
                 println!("\n{}", stats);

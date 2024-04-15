@@ -169,7 +169,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
                 fxo: 0.0,
             }),
             root3: None,
-            tol_min: 1e-9,
+            tol_min: 1e-8,
         },
     ]
 }

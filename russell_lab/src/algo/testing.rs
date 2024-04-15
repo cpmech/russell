@@ -61,20 +61,34 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             root3: None,
         },
         TestFunction {
-            name: "-1 / (1 + 16 x²)", // Runge equation
-            f: |x, _| Ok(-1.0 / (1.0 + 16.0 * x * x)),
+            name: "1/2 - 1/(1 + 16 x²)", // (shifted) Runge equation
+            f: |x, _| Ok(1.0 / 2.0 - 1.0 / (1.0 + 16.0 * x * x)),
             min1: Some(Bracket {
                 a: -2.0,
                 b: 2.0,
-                fa: -1.0 / 65.0,
-                fb: -1.0 / 65.0,
+                fa: 63.0 / 130.0,
+                fb: 63.0 / 130.0,
                 xo: 0.0,
-                fxo: -1.0,
+                fxo: -1.0 / 2.0,
             }),
             min2: None,
-            root1: None, // no roots possible
-            root2: None, // no roots possible
-            root3: None, // no roots possible
+            root1: Some(Bracket {
+                a: -2.0,
+                b: 0.0,
+                fa: 63.0 / 130.0,
+                fb: -1.0 / 2.0,
+                xo: -1.0 / 4.0,
+                fxo: 0.0,
+            }),
+            root2: Some(Bracket {
+                a: 0.0,
+                b: 2.0,
+                fa: -1.0 / 2.0,
+                fb: 63.0 / 130.0,
+                xo: 1.0 / 4.0,
+                fxo: 0.0,
+            }),
+            root3: None,
         },
         TestFunction {
             name: "x⁵ + 3x⁴ - 2x³ + x - 1",

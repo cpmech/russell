@@ -214,6 +214,7 @@ where
     }
 
     // done
+    stats.stop_sw_total();
     Ok((b, stats))
 }
 
@@ -289,23 +290,23 @@ mod tests {
             println!("\n\n========================================================================================");
             println!("\n{}", test.name);
             if let Some(bracket) = test.root1 {
-                let (xo, _stats) = root_solver_brent(bracket.a, bracket.b, None, args, test.f).unwrap();
-                println!("\n{:?}", _stats);
+                let (xo, stats) = root_solver_brent(bracket.a, bracket.b, None, args, test.f).unwrap();
                 println!("\nxo = {:?}", xo);
+                println!("\n{}", stats);
                 approx_eq(xo, bracket.xo, 1e-11);
                 approx_eq((test.f)(xo, args).unwrap(), 0.0, 1e-10);
             }
             if let Some(bracket) = test.root2 {
-                let (xo, _stats) = root_solver_brent(bracket.a, bracket.b, None, args, test.f).unwrap();
-                println!("\n{:?}", _stats);
+                let (xo, stats) = root_solver_brent(bracket.a, bracket.b, None, args, test.f).unwrap();
                 println!("\nxo = {:?}", xo);
+                println!("\n{}", stats);
                 approx_eq(xo, bracket.xo, 1e-11);
                 approx_eq((test.f)(xo, args).unwrap(), 0.0, 1e-10);
             }
             if let Some(bracket) = test.root3 {
-                let (xo, _stats) = root_solver_brent(bracket.a, bracket.b, None, args, test.f).unwrap();
-                println!("\n{:?}", _stats);
+                let (xo, stats) = root_solver_brent(bracket.a, bracket.b, None, args, test.f).unwrap();
                 println!("\nxo = {:?}", xo);
+                println!("\n{}", stats);
                 approx_eq(xo, bracket.xo, 1e-17);
                 approx_eq((test.f)(xo, args).unwrap(), 0.0, 1e-15);
             }

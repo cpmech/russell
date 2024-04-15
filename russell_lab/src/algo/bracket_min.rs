@@ -141,6 +141,7 @@ where
         swap(&mut a, &mut b);
         swap(&mut fa, &mut fb);
     }
+    stats.stop_sw_total();
     Ok((Bracket { a, b, fa, fb, xo, fxo }, stats))
 }
 
@@ -232,9 +233,9 @@ mod tests {
             println!("\n\n========================================================================================");
             println!("\n{}", test.name);
             let x_guess = if i % 2 == 0 { -0.1 } else { 0.1 };
-            let (bracket, _stats) = try_bracket_min(x_guess, None, args, test.f).unwrap();
-            println!("\n{:?}", _stats);
-            println!("\n{:?}", bracket);
+            let (bracket, stats) = try_bracket_min(x_guess, None, args, test.f).unwrap();
+            println!("\n{}", bracket);
+            println!("\n{}", stats);
             check_consistency(&bracket);
             approx_eq((test.f)(bracket.a, args).unwrap(), bracket.fa, 1e-15);
             approx_eq((test.f)(bracket.b, args).unwrap(), bracket.fb, 1e-15);

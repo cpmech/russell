@@ -144,11 +144,11 @@ where
     Ok((
         Bracket {
             a,
-            x_target,
             b,
             fa,
-            fx_target,
             fb,
+            x_target,
+            fx_target,
         },
         stats,
     ))
@@ -247,8 +247,8 @@ mod tests {
             println!("\n{:?}", bracket);
             check_consistency(&bracket);
             approx_eq((test.f)(bracket.a, args).unwrap(), bracket.fa, 1e-15);
-            approx_eq((test.f)(bracket.x_target, args).unwrap(), bracket.fx_target, 1e-15);
             approx_eq((test.f)(bracket.b, args).unwrap(), bracket.fb, 1e-15);
+            approx_eq((test.f)(bracket.x_target, args).unwrap(), bracket.fx_target, 1e-15);
         }
     }
 

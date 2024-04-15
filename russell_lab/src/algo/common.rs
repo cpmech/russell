@@ -1,4 +1,4 @@
-use crate::{format_nanoseconds, Stopwatch};
+use crate::{format_nanoseconds, Stopwatch, StrError};
 use std::fmt::{self, Write};
 
 /// Constant to indicate an uninitialized value
@@ -6,6 +6,40 @@ pub(crate) const UNINITIALIZED: f64 = f64::INFINITY;
 
 /// Indicates that no arguments are needed
 pub type NoArgs = u8;
+
+/// Holds parameters for generic algorithms
+#[derive(Clone, Copy, Debug)]
+pub struct AlgoParams {
+    /// Max number of iterations
+    ///
+    /// ```text
+    /// n_iteration_max ≥ 2
+    /// ```
+    pub n_iteration_max: usize,
+
+    /// Tolerance
+    ///
+    /// e.g., 1e-10
+    pub tolerance: f64,
+}
+
+impl AlgoParams {
+    /// Allocates a new instance
+    pub fn new() -> Self {
+        AlgoParams {
+            n_iteration_max: 100,
+            tolerance: 1e-10,
+        }
+    }
+
+    /// Validates the parameters
+    pub fn validate(&self) -> Result<(), StrError> {
+        if self.n_iteration_max < 2 {
+            return Err("n_iteration_max must be ≥ 2");
+        }
+        Ok(())
+    }
+}
 
 /// Holds statistics for a bracket algorithm
 #[derive(Clone, Copy, Debug)]
@@ -123,7 +157,14 @@ impl fmt::Display for Bracket {
 
 #[cfg(test)]
 mod tests {
-    use super::{AlgoStats, Bracket};
+    use super::{AlgoParams, AlgoStats, Bracket};
+
+    #[test]
+    fn algo_params_captures_errors() {
+        let mut params = AlgoParams::new();
+        params.n_iteration_max = 0;
+        assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 2"));
+    }
 
     #[test]
     fn stats_summary_and_display_work() {

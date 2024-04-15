@@ -24,6 +24,9 @@ pub(super) struct TestFunction {
 
     /// Holds another bracketed root
     pub root3: Option<Bracket>,
+
+    /// Tolerance for checking the minimum (using Brent's method)
+    pub tol_min: f64,
 }
 
 /// Allocates f(x) test functions
@@ -59,6 +62,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
                 fxo: 0.0,
             }),
             root3: None,
+            tol_min: 1e-10,
         },
         TestFunction {
             name: "1/2 - 1/(1 + 16 x²)", // (shifted) Runge equation
@@ -89,6 +93,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
                 fxo: 0.0,
             }),
             root3: None,
+            tol_min: 1e-8,
         },
         TestFunction {
             name: "x⁵ + 3x⁴ - 2x³ + x - 1",
@@ -126,6 +131,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
                 xo: 0.727096464661451721867714112038,
                 fxo: 0.0,
             }),
+            tol_min: 1e-8,
         },
         TestFunction {
             name: "(x - 1)² + 5 sin(x)",
@@ -163,6 +169,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
                 fxo: 0.0,
             }),
             root3: None,
+            tol_min: 1e-9,
         },
     ]
 }

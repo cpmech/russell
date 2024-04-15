@@ -43,10 +43,17 @@ impl RootSolverParams {
 ///
 /// # Input
 ///
-/// * `xa` -- initial "bracket" coordinate such that `f(xa) * f(xb) < 0`
-/// * `xb` -- initial "bracket" coordinate such that `f(xa) * f(xb) < 0`
+/// * `xa` -- initial "bracket" coordinate such that `f(xa) × f(xb) < 0`
+/// * `xb` -- initial "bracket" coordinate such that `f(xa) × f(xb) < 0`
 ///
 /// **Note:** `xa` must be different from `xb`
+///
+/// # Output
+///
+/// Returns `(xo, stats)` where:
+///
+/// * `xo` -- is the root such that `f(xo) = 0`
+/// * `stats` -- some statistics regarding the computations
 ///
 /// # Details
 ///
@@ -71,7 +78,7 @@ impl RootSolverParams {
 /// resulting in the interpolation (if a,b, and c are all different
 /// the quadric interpolation is utilized, otherwise the linear one).
 /// If the latter (i.e. obtained by the interpolation) point is
-/// reasonable (i.e. lies within the current interval [b,c] not being
+/// reasonable (i.e. lies within the current interval `[b,c]` not being
 /// too close to the boundaries) it is accepted. The bisection result
 /// is used in the other case. Therefore, the range of uncertainty is
 /// ensured to be reduced at least by the factor 1.6
@@ -109,7 +116,7 @@ where
 
     // check
     if fa * fb >= -f64::EPSILON {
-        return Err("xa and xb must bracket the root and f(xa) * f(xb) < 0");
+        return Err("xa and xb must bracket the root and f(xa) × f(xb) < 0");
     }
 
     // solve
@@ -205,6 +212,8 @@ where
     if !converged {
         return Err("root_solver_brent failed to converge");
     }
+
+    // done
     Ok((b, stats))
 }
 
@@ -235,7 +244,7 @@ mod tests {
         );
         assert_eq!(
             root_solver_brent(-0.5, -0.5 - 10.0 * f64::EPSILON, None, args, f).err(),
-            Some("xa and xb must bracket the root and f(xa) * f(xb) < 0")
+            Some("xa and xb must bracket the root and f(xa) × f(xb) < 0")
         );
         let mut params = RootSolverParams::new();
         params.n_iteration_max = 0;
@@ -271,5 +280,35 @@ mod tests {
         args.count = 0;
         args.target = 2;
         assert_eq!(root_solver_brent(-0.5, 2.0, None, args, f).err(), Some("stop"));
+    }
+
+    #[test]
+    fn root_solver_brent_works_1() {
+        let args = &mut 0;
+        for test in &get_functions() {
+            println!("\n\n========================================================================================");
+            println!("\n{}", test.name);
+            if let Some(bracket) = test.root1 {
+                let (xo, _stats) = root_solver_brent(bracket.a, bracket.b, None, args, test.f).unwrap();
+                println!("\n{:?}", _stats);
+                println!("\nxo = {:?}", xo);
+                approx_eq(xo, bracket.xo, 1e-11);
+                approx_eq((test.f)(xo, args).unwrap(), 0.0, 1e-10);
+            }
+            if let Some(bracket) = test.root2 {
+                let (xo, _stats) = root_solver_brent(bracket.a, bracket.b, None, args, test.f).unwrap();
+                println!("\n{:?}", _stats);
+                println!("\nxo = {:?}", xo);
+                approx_eq(xo, bracket.xo, 1e-11);
+                approx_eq((test.f)(xo, args).unwrap(), 0.0, 1e-10);
+            }
+            if let Some(bracket) = test.root3 {
+                let (xo, _stats) = root_solver_brent(bracket.a, bracket.b, None, args, test.f).unwrap();
+                println!("\n{:?}", _stats);
+                println!("\nxo = {:?}", xo);
+                approx_eq(xo, bracket.xo, 1e-17);
+                approx_eq((test.f)(xo, args).unwrap(), 0.0, 1e-15);
+            }
+        }
     }
 }

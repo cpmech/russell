@@ -38,8 +38,8 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
                 b: 5.0,
                 fa: 24.0,
                 fb: 24.0,
-                x_target: 0.0,
-                fx_target: -1.0,
+                xo: 0.0,
+                fxo: -1.0,
             }),
             min2: None,
             root1: Some(Bracket {
@@ -47,16 +47,16 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
                 b: 0.0,
                 fa: 3.0,
                 fb: -1.0,
-                x_target: -1.0,
-                fx_target: 0.0,
+                xo: -1.0,
+                fxo: 0.0,
             }),
             root2: Some(Bracket {
                 a: 0.0,
                 b: 2.0,
                 fa: -1.0,
                 fb: 3.0,
-                x_target: 1.0,
-                fx_target: 0.0,
+                xo: 1.0,
+                fxo: 0.0,
             }),
             root3: None,
         },
@@ -68,8 +68,8 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
                 b: 2.0,
                 fa: -1.0 / 65.0,
                 fb: -1.0 / 65.0,
-                x_target: 0.0,
-                fx_target: -1.0,
+                xo: 0.0,
+                fxo: -1.0,
             }),
             min2: None,
             root1: None, // no roots possible
@@ -84,8 +84,8 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
                 b: 2.0,
                 fa: 29.0,
                 fb: 65.0,
-                x_target: -0.326434701525930898665902357162,
-                fx_target: -1.22650698564642753377955683652,
+                xo: -0.326434701525930898665902357162,
+                fxo: -1.22650698564642753377955683652,
             }),
             min2: None,
             root1: Some(Bracket {
@@ -93,24 +93,24 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
                 b: -2.0,
                 fa: -133.0,
                 fb: 29.0,
-                x_target: -3.53652558839295230222542848627,
-                fx_target: 0.0,
+                xo: -3.53652558839295230222542848627,
+                fxo: 0.0,
             }),
             root2: Some(Bracket {
                 a: -2.0,
                 b: 0.0,
                 fa: 29.0,
                 fb: -1.0,
-                x_target: -0.781407421874263267559694073091,
-                fx_target: 0.0,
+                xo: -0.781407421874263267559694073091,
+                fxo: 0.0,
             }),
             root3: Some(Bracket {
                 a: 0.0,
                 b: 2.0,
                 fa: -1.0,
                 fb: 65.0,
-                x_target: 0.727096464661451721867714112038,
-                fx_target: 0.0,
+                xo: 0.727096464661451721867714112038,
+                fxo: 0.0,
             }),
         },
         TestFunction {
@@ -121,32 +121,32 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
                 b: 2.0,
                 fa: 4.45351286587159152301990067044,
                 fb: 5.54648713412840847698009932956,
-                x_target: -0.779014930395140333216421108317,
-                fx_target: -0.347999771320472050094111906591,
+                xo: -0.779014930395140333216421108317,
+                fxo: -0.347999771320472050094111906591,
             }),
             min2: Some(Bracket {
                 a: 2.0,
                 b: 5.0,
                 fa: 5.54648713412840847698009932956,
                 fb: 11.2053786266843076555342279692,
-                x_target: 3.41029230994771356210845446934,
-                fx_target: 4.48211912850661077326295235125,
+                xo: 3.41029230994771356210845446934,
+                fxo: 4.48211912850661077326295235125,
             }),
             root1: Some(Bracket {
                 a: -2.0,
                 b: -0.7,
                 fa: 4.4535128658715915230199006704,
                 fb: -0.3310884361884554,
-                x_target: -1.12294626691885210931752137234,
-                fx_target: 0.0,
+                xo: -1.12294626691885210931752137234,
+                fxo: 0.0,
             }),
             root2: Some(Bracket {
                 a: -0.7,
                 b: 1.0,
                 fa: -0.3310884361884554,
                 fb: 4.20735492403948253326251160815,
-                x_target: -0.407207140869762981181312249859,
-                fx_target: 0.0,
+                xo: -0.407207140869762981181312249859,
+                fxo: 0.0,
             }),
             root3: None,
         },
@@ -162,15 +162,15 @@ mod tests {
     use crate::approx_eq;
 
     fn check_consistency_min(bracket: &Bracket) {
-        assert!(bracket.a < bracket.x_target);
-        assert!(bracket.x_target < bracket.b);
-        assert!(bracket.fa > bracket.fx_target);
-        assert!(bracket.fb > bracket.fx_target);
+        assert!(bracket.a < bracket.xo);
+        assert!(bracket.xo < bracket.b);
+        assert!(bracket.fa > bracket.fxo);
+        assert!(bracket.fb > bracket.fxo);
     }
 
     fn check_consistency_root(bracket: &Bracket) {
-        assert!(bracket.a < bracket.x_target);
-        assert!(bracket.x_target < bracket.b);
+        assert!(bracket.a < bracket.xo);
+        assert!(bracket.xo < bracket.b);
         assert!(bracket.fa * bracket.fb < 0.0);
     }
 
@@ -183,34 +183,34 @@ mod tests {
                 check_consistency_min(bracket);
                 assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
                 assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
-                approx_eq(bracket.fx_target, (func.f)(bracket.x_target, args).unwrap(), 1e-15);
+                approx_eq(bracket.fxo, (func.f)(bracket.xo, args).unwrap(), 1e-15);
             }
             if let Some(bracket) = &func.min2 {
                 check_consistency_min(bracket);
                 assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
                 assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
-                assert_eq!(bracket.fx_target, (func.f)(bracket.x_target, args).unwrap());
+                assert_eq!(bracket.fxo, (func.f)(bracket.xo, args).unwrap());
             }
             if let Some(bracket) = &func.root1 {
                 check_consistency_root(bracket);
                 assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
                 assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
-                approx_eq((func.f)(bracket.x_target, args).unwrap(), 0.0, 1e-13);
-                assert_eq!(bracket.fx_target, 0.0);
+                approx_eq((func.f)(bracket.xo, args).unwrap(), 0.0, 1e-13);
+                assert_eq!(bracket.fxo, 0.0);
             }
             if let Some(bracket) = &func.root2 {
                 check_consistency_root(bracket);
                 assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
                 assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
-                approx_eq((func.f)(bracket.x_target, args).unwrap(), 0.0, 1e-20);
-                assert_eq!(bracket.fx_target, 0.0);
+                approx_eq((func.f)(bracket.xo, args).unwrap(), 0.0, 1e-20);
+                assert_eq!(bracket.fxo, 0.0);
             }
             if let Some(bracket) = &func.root3 {
                 check_consistency_root(bracket);
                 assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
                 assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
-                approx_eq((func.f)(bracket.x_target, args).unwrap(), 0.0, 1e-15);
-                assert_eq!(bracket.fx_target, 0.0);
+                approx_eq((func.f)(bracket.xo, args).unwrap(), 0.0, 1e-15);
+                assert_eq!(bracket.fxo, 0.0);
             }
         }
     }

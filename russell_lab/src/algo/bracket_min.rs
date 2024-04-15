@@ -50,15 +50,15 @@ impl BracketMinParams {
 /// **Note:** This function is suitable for *unimodal functions*---it may fail otherwise.
 /// The code is based on the one presented in Chapter 3 (page 36) of the Reference.
 ///
-/// Searches (iteratively) for `a`, `b` and `x_target` such that:
+/// Searches (iteratively) for `a`, `b` and `xo` such that:
 ///
 /// ```text
-/// f(x_target) < f(a)  and  f(x_target) < f(b)
+/// f(xo) < f(a)  and  f(xo) < f(b)
 ///
-/// with a < x_target < b
+/// with a < xo < b
 /// ```
 ///
-/// Thus, `f(x_target)` is the minimum of `f(x)` in the `[a, b]` interval.
+/// Thus, `f(xo)` is the minimum of `f(x)` in the `[a, b]` interval.
 ///
 /// # Input
 ///
@@ -96,14 +96,14 @@ where
 
     // initialization
     let mut step = par.initial_step;
-    let (mut a, mut x_target) = (x_guess, x_guess + step);
-    let (mut fa, mut fx_target) = (f(a, args)?, f(x_target, args)?);
+    let (mut a, mut xo) = (x_guess, x_guess + step);
+    let (mut fa, mut fxo) = (f(a, args)?, f(xo, args)?);
     stats.n_function += 2;
 
     // swap values (make sure to go "downhill")
-    if fx_target > fa {
-        swap(&mut a, &mut x_target);
-        swap(&mut fa, &mut fx_target);
+    if fxo > fa {
+        swap(&mut a, &mut xo);
+        swap(&mut fa, &mut fxo);
         step = -step;
     }
 
@@ -114,16 +114,16 @@ where
     for k in 0..par.n_iteration_max {
         stats.n_iterations += 1;
         stats.n_function += 1;
-        b = x_target + step;
+        b = xo + step;
         fb = f(b, args)?;
-        if fb > fx_target {
+        if fb > fxo {
             converged = true;
             break;
         }
-        a = x_target;
-        fa = fx_target;
-        x_target = b;
-        fx_target = fb;
+        a = xo;
+        fa = fxo;
+        xo = b;
+        fxo = fb;
         if par.nonlinear_step {
             step *= par.expansion_factor * f64::powf(2.0, k as f64);
         } else {
@@ -141,17 +141,7 @@ where
         swap(&mut a, &mut b);
         swap(&mut fa, &mut fb);
     }
-    Ok((
-        Bracket {
-            a,
-            b,
-            fa,
-            fb,
-            x_target,
-            fx_target,
-        },
-        stats,
-    ))
+    Ok((Bracket { a, b, fa, fb, xo, fxo }, stats))
 }
 
 /// Swaps two numbers
@@ -229,10 +219,10 @@ mod tests {
     }
 
     fn check_consistency(bracket: &Bracket) {
-        assert!(bracket.a < bracket.x_target);
-        assert!(bracket.x_target < bracket.b);
-        assert!(bracket.fa > bracket.fx_target);
-        assert!(bracket.fb > bracket.fx_target);
+        assert!(bracket.a < bracket.xo);
+        assert!(bracket.xo < bracket.b);
+        assert!(bracket.fa > bracket.fxo);
+        assert!(bracket.fb > bracket.fxo);
     }
 
     #[test]
@@ -248,7 +238,7 @@ mod tests {
             check_consistency(&bracket);
             approx_eq((test.f)(bracket.a, args).unwrap(), bracket.fa, 1e-15);
             approx_eq((test.f)(bracket.b, args).unwrap(), bracket.fb, 1e-15);
-            approx_eq((test.f)(bracket.x_target, args).unwrap(), bracket.fx_target, 1e-15);
+            approx_eq((test.f)(bracket.xo, args).unwrap(), bracket.fxo, 1e-15);
         }
     }
 

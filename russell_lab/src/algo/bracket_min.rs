@@ -1,4 +1,4 @@
-use super::{AlgoStats, Bracket, UNINITIALIZED};
+use super::{Bracket, Stats, UNINITIALIZED};
 use crate::StrError;
 
 /// Holds parameters for a bracket algorithm
@@ -82,7 +82,7 @@ pub fn try_bracket_min<F, A>(
     params: Option<BracketMinParams>,
     args: &mut A,
     mut f: F,
-) -> Result<(Bracket, AlgoStats), StrError>
+) -> Result<(Bracket, Stats), StrError>
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
@@ -94,7 +94,7 @@ where
     par.validate()?;
 
     // allocate stats struct
-    let mut stats = AlgoStats::new();
+    let mut stats = Stats::new();
 
     // initialization
     let mut step = par.initial_step;

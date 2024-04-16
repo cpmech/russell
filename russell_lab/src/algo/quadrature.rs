@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use super::{AlgoParams, AlgoStats};
+use super::{Params, Stats};
 use crate::StrError;
 
 /// Integrates a function f(x) using numerical quadrature
@@ -32,10 +32,10 @@ use crate::StrError;
 pub fn quadrature<F, A>(
     lb: f64,
     ub: f64,
-    params: Option<AlgoParams>,
+    params: Option<Params>,
     args: &mut A,
     mut f: F,
-) -> Result<(f64, AlgoStats), StrError>
+) -> Result<(f64, Stats), StrError>
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {

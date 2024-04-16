@@ -1,4 +1,4 @@
-use super::{AlgoParams, AlgoStats};
+use super::{Params, Stats};
 use crate::math::SQRT_EPSILON;
 use crate::StrError;
 
@@ -64,10 +64,10 @@ const GSR: f64 = 0.38196601125010515179541316563436188227969082019424;
 pub fn min_solver_brent<F, A>(
     xa: f64,
     xb: f64,
-    params: Option<AlgoParams>,
+    params: Option<Params>,
     args: &mut A,
     mut f: F,
-) -> Result<(f64, AlgoStats), StrError>
+) -> Result<(f64, Stats), StrError>
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
@@ -79,12 +79,12 @@ where
     // parameters
     let par = match params {
         Some(p) => p,
-        None => AlgoParams::new(),
+        None => Params::new(),
     };
     par.validate()?;
 
     // allocate stats struct
-    let mut stats = AlgoStats::new();
+    let mut stats = Stats::new();
 
     // initialization
     let (mut a, mut b) = if xa < xb { (xa, xb) } else { (xb, xa) };
@@ -200,7 +200,7 @@ where
 mod tests {
     use super::min_solver_brent;
     use crate::algo::testing::get_functions;
-    use crate::algo::{AlgoParams, NoArgs};
+    use crate::algo::{NoArgs, Params};
     use crate::approx_eq;
 
     #[test]
@@ -212,7 +212,7 @@ mod tests {
             min_solver_brent(-0.5, -0.5, None, args, f).err(),
             Some("xa must be different from xb")
         );
-        let mut params = AlgoParams::new();
+        let mut params = Params::new();
         params.n_iteration_max = 0;
         assert_eq!(
             min_solver_brent(-0.5, 2.0, Some(params), args, f).err(),
@@ -318,7 +318,7 @@ mod tests {
         let f = |x, _: &mut NoArgs| Ok(x * x - 1.0);
         let args = &mut 0;
         assert_eq!(f(0.0, args).unwrap(), -1.0);
-        let mut params = AlgoParams::new();
+        let mut params = Params::new();
         params.n_iteration_max = 2;
         assert_eq!(
             min_solver_brent(-5.0, 5.0, Some(params), args, f).err(),

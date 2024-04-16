@@ -4,12 +4,12 @@ use std::fmt::{self, Write};
 /// Constant to indicate an uninitialized value
 pub(crate) const UNINITIALIZED: f64 = f64::INFINITY;
 
-/// Indicates that no arguments are needed
+/// Indicates that no extra arguments for f(x) are needed
 pub type NoArgs = u8;
 
 /// Holds parameters for generic algorithms
 #[derive(Clone, Copy, Debug)]
-pub struct AlgoParams {
+pub struct Params {
     /// Max number of iterations
     ///
     /// ```text
@@ -23,10 +23,10 @@ pub struct AlgoParams {
     pub tolerance: f64,
 }
 
-impl AlgoParams {
+impl Params {
     /// Allocates a new instance
     pub fn new() -> Self {
-        AlgoParams {
+        Params {
             n_iteration_max: 100,
             tolerance: 1e-10,
         }
@@ -41,9 +41,9 @@ impl AlgoParams {
     }
 }
 
-/// Holds statistics for a bracket algorithm
+/// Holds statistics for generic algorithms
 #[derive(Clone, Copy, Debug)]
-pub struct AlgoStats {
+pub struct Stats {
     /// Number of calls to f(x) (function evaluations)
     pub n_function: usize,
 
@@ -90,10 +90,10 @@ pub struct Bracket {
     pub fxo: f64,
 }
 
-impl AlgoStats {
+impl Stats {
     /// Allocates a new instance
-    pub fn new() -> AlgoStats {
-        AlgoStats {
+    pub fn new() -> Stats {
+        Stats {
             n_function: 0,
             n_jacobian: 0,
             n_iterations: 0,
@@ -122,7 +122,7 @@ impl AlgoStats {
     }
 }
 
-impl fmt::Display for AlgoStats {
+impl fmt::Display for Stats {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -157,18 +157,18 @@ impl fmt::Display for Bracket {
 
 #[cfg(test)]
 mod tests {
-    use super::{AlgoParams, AlgoStats, Bracket};
+    use super::{Bracket, Params, Stats};
 
     #[test]
     fn algo_params_captures_errors() {
-        let mut params = AlgoParams::new();
+        let mut params = Params::new();
         params.n_iteration_max = 0;
         assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 2"));
     }
 
     #[test]
     fn stats_summary_and_display_work() {
-        let stats = AlgoStats::new();
+        let stats = Stats::new();
         assert_eq!(
             format!("{}", stats),
             "Number of function evaluations   = 0\n\

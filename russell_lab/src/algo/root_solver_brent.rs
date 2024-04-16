@@ -1,4 +1,4 @@
-use super::{AlgoParams, AlgoStats};
+use super::{Params, Stats};
 use crate::StrError;
 
 /// Employs Brent's method to find the roots of an equation
@@ -54,10 +54,10 @@ use crate::StrError;
 pub fn root_solver_brent<F, A>(
     xa: f64,
     xb: f64,
-    params: Option<AlgoParams>,
+    params: Option<Params>,
     args: &mut A,
     mut f: F,
-) -> Result<(f64, AlgoStats), StrError>
+) -> Result<(f64, Stats), StrError>
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
@@ -69,12 +69,12 @@ where
     // parameters
     let par = match params {
         Some(p) => p,
-        None => AlgoParams::new(),
+        None => Params::new(),
     };
     par.validate()?;
 
     // allocate stats struct
-    let mut stats = AlgoStats::new();
+    let mut stats = Stats::new();
 
     // initialization
     let (mut a, mut b) = (xa, xb);
@@ -193,7 +193,7 @@ where
 mod tests {
     use super::root_solver_brent;
     use crate::algo::testing::get_functions;
-    use crate::algo::{AlgoParams, NoArgs};
+    use crate::algo::{NoArgs, Params};
     use crate::approx_eq;
 
     #[test]
@@ -209,7 +209,7 @@ mod tests {
             root_solver_brent(-0.5, -0.5 - 10.0 * f64::EPSILON, None, args, f).err(),
             Some("xa and xb must bracket the root and f(xa) × f(xb) < 0")
         );
-        let mut params = AlgoParams::new();
+        let mut params = Params::new();
         params.n_iteration_max = 0;
         assert_eq!(
             root_solver_brent(-0.5, 2.0, Some(params), args, f).err(),
@@ -280,7 +280,7 @@ mod tests {
         let f = |x, _: &mut NoArgs| Ok(f64::powi(x - 1.0, 2) + 5.0 * f64::sin(x));
         let args = &mut 0;
         assert!(f(1.0, args).unwrap() > 0.0);
-        let mut params = AlgoParams::new();
+        let mut params = Params::new();
         params.n_iteration_max = 2;
         assert_eq!(
             root_solver_brent(-2.0, -0.7, Some(params), args, f).err(),

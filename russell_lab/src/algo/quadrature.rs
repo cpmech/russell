@@ -438,7 +438,7 @@ const G14_W: [f64; 7] = [
 #[cfg(test)]
 mod tests {
     use super::{QuadParams, Quadrature};
-    use crate::algo::testing::get_functions;
+    use crate::algo::testing::get_test_functions;
     use crate::approx_eq;
     use crate::base::format_fortran;
     use crate::math::PI;
@@ -540,7 +540,7 @@ mod tests {
     fn quadrature_works_4() {
         let mut quad = Quadrature::new();
         let args = &mut 0;
-        for test in &get_functions() {
+        for test in &get_test_functions() {
             println!("\n===================================================================");
             println!("\n{}", test.name);
             if let Some(data) = test.integral {

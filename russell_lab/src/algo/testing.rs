@@ -46,7 +46,7 @@ pub struct TestFunction {
 }
 
 /// Allocates test functions
-pub fn get_functions() -> Vec<TestFunction> {
+pub fn get_test_functions() -> Vec<TestFunction> {
     vec![
         TestFunction {
             name: "0: f(x) = undefined",
@@ -405,7 +405,7 @@ pub fn get_functions() -> Vec<TestFunction> {
 
 #[cfg(test)]
 mod tests {
-    use super::get_functions;
+    use super::get_test_functions;
     use crate::algo::Bracket;
     use crate::approx_eq;
 
@@ -425,7 +425,7 @@ mod tests {
     #[test]
     fn functions_are_consistent() {
         let args = &mut 0;
-        for (i, func) in get_functions().iter().enumerate() {
+        for (i, func) in get_test_functions().iter().enumerate() {
             println!("\n{}", func.name);
             if i == 0 {
                 assert_eq!((func.f)(0.0, args).err(), Some("stop"));

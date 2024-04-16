@@ -192,7 +192,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::root_solver_brent;
-    use crate::algo::testing::get_functions;
+    use crate::algo::testing::get_test_functions;
     use crate::algo::{NoArgs, Params};
     use crate::approx_eq;
 
@@ -248,7 +248,7 @@ mod tests {
     #[test]
     fn root_solver_brent_works_1() {
         let args = &mut 0;
-        for test in &get_functions() {
+        for test in &get_test_functions() {
             println!("\n===================================================================");
             println!("\n{}", test.name);
             if let Some(bracket) = test.root1 {

@@ -160,7 +160,7 @@ pub(super) fn swap(a: &mut f64, b: &mut f64) {
 #[cfg(test)]
 mod tests {
     use super::{swap, try_bracket_min, Bracket, BracketMinParams};
-    use crate::algo::testing::get_functions;
+    use crate::algo::testing::get_test_functions;
     use crate::algo::NoArgs;
     use crate::approx_eq;
 
@@ -231,7 +231,7 @@ mod tests {
     #[test]
     fn try_bracket_min_works_1() {
         let args = &mut 0;
-        for (i, test) in get_functions().iter().enumerate() {
+        for (i, test) in get_test_functions().iter().enumerate() {
             if test.min1.is_none() {
                 continue;
             }

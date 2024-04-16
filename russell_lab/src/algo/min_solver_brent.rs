@@ -199,7 +199,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::min_solver_brent;
-    use crate::algo::testing::get_functions;
+    use crate::algo::testing::get_test_functions;
     use crate::algo::{NoArgs, Params};
     use crate::approx_eq;
 
@@ -275,7 +275,7 @@ mod tests {
         //     nfev: 41
         // ```
         let args = &mut 0;
-        for (i, test) in get_functions().iter().enumerate() {
+        for (i, test) in get_test_functions().iter().enumerate() {
             println!("\n===================================================================");
             println!("\n{}", test.name);
             if let Some(bracket) = test.min1 {

@@ -60,6 +60,7 @@ const D1MACH5: f64 = 0.30102999566398119521373889472449; // !! machine constant
 const M_ERR: f64 = 3.0;
 
 /// Holds parameters for the quadrature functions
+#[derive(Clone, Copy, Debug)]
 pub struct QuadParams {
     /// Max number of iterations
     ///
@@ -83,7 +84,7 @@ impl QuadParams {
         QuadParams {
             n_iteration_max: 300,
             tolerance: 1e-10,
-            n_gauss: 6,
+            n_gauss: 10,
         }
     }
 
@@ -445,72 +446,93 @@ mod tests {
     fn quadrature_works_1() {
         // compare with Fortran code
         // f(x) = sin(x)
+        let ii_ana = 2.0;
 
         let mut params = QuadParams::new();
         params.tolerance = 100_000.0 * f64::EPSILON;
 
         let mut quad = Quadrature::new();
         let args = &mut 0;
-        let (ii, stats) = quad
-            .integrate(0.0, PI, Some(params), args, |x, _| Ok(f64::sin(x)))
-            .unwrap();
 
-        println!("I = {}", ii);
-        println!("\n{}", stats);
+        for (n_gauss, n_f_eval) in [(6, 42), (8, 24), (10, 30), (12, 36), (14, 42)] {
+            params.n_gauss = n_gauss;
 
-        let ii_ana = 2.0;
-        approx_eq(ii, ii_ana, 1e-15);
-        assert_eq!(stats.n_function, 42);
+            let (ii, stats) = quad
+                .integrate(0.0, PI, Some(params), args, |x, _| Ok(f64::sin(x)))
+                .unwrap();
+
+            println!("\n=================================================");
+            println!("\nn_gauss = {}", n_gauss);
+            println!("\nI = {}", ii);
+            println!("\n{}", stats);
+
+            approx_eq(ii, ii_ana, 1e-15);
+            assert_eq!(stats.n_function, n_f_eval);
+            if n_gauss > 6 {
+                assert_eq!(stats.n_iterations, 1);
+            }
+        }
     }
 
     #[test]
     fn quadrature_works_2() {
         // compare with Fortran code
         // f(x) = 0.092834 sin(77.0001 + 19.87 x) in [-2.34567, 12.34567]
-
         let a = -2.34567;
         let b = 12.34567;
         let amp = 0.092834;
         let freq = 19.87;
         let phase = 77.0001;
+        let ii_ana = (amp * (f64::cos(a * freq + phase) - f64::cos(b * freq + phase))) / freq;
 
         let mut params = QuadParams::new();
         params.tolerance = 100_000.0 * f64::EPSILON;
 
         let mut quad = Quadrature::new();
         let args = &mut 0;
-        let (ii, stats) = quad
-            .integrate(a, b, Some(params), args, |x, _| Ok(amp * f64::sin(freq * x + phase)))
-            .unwrap();
 
-        println!("I = {}", ii);
-        println!("\n{}", stats);
+        for (n_gauss, n_f_eval) in [(6, 3066), (8, 2040), (10, 1270), (12, 1476), (14, 882)] {
+            params.n_gauss = n_gauss;
 
-        let ii_ana = (amp * (f64::cos(a * freq + phase) - f64::cos(b * freq + phase))) / freq;
-        approx_eq(ii, ii_ana, 1e-15);
-        assert_eq!(stats.n_function, 3066);
+            let (ii, stats) = quad
+                .integrate(a, b, Some(params), args, |x, _| Ok(amp * f64::sin(freq * x + phase)))
+                .unwrap();
+
+            println!("\n=================================================");
+            println!("\nn_gauss = {}", n_gauss);
+            println!("\nI = {}", ii);
+            println!("\n{}", stats);
+
+            approx_eq(ii, ii_ana, 1e-15);
+            assert_eq!(stats.n_function, n_f_eval);
+        }
     }
 
     #[test]
     fn quadrature_works_3() {
         // compare with Fortran code
         // f(x) = log(2 Cos(x/2))
+        let ii_ana = 0.0;
 
         let mut params = QuadParams::new();
         params.tolerance = 100_000.0 * f64::EPSILON;
 
         let mut quad = Quadrature::new();
         let args = &mut 0;
-        let (ii, stats) = quad
-            .integrate(-PI, PI, Some(params), args, |x, _| Ok(f64::ln(2.0 * f64::cos(x / 2.0))))
-            .unwrap();
 
-        println!("I = {}", format_fortran(ii));
-        println!("\n{}", stats);
+        for (n_gauss, n_f_eval) in [(6, 1674), (8, 2040), (10, 2550), (12, 3060), (14, 3570)] {
+            params.n_gauss = n_gauss;
 
-        let ii_ana = 0.0;
-        approx_eq(ii, ii_ana, 1e-10);
-        assert_eq!(stats.n_function, 1674);
+            let (ii, stats) = quad
+                .integrate(-PI, PI, Some(params), args, |x, _| Ok(f64::ln(2.0 * f64::cos(x / 2.0))))
+                .unwrap();
+
+            println!("I = {}", format_fortran(ii));
+            println!("\n{}", stats);
+
+            approx_eq(ii, ii_ana, 1e-10);
+            assert_eq!(stats.n_function, n_f_eval);
+        }
     }
 
     #[test]
@@ -518,9 +540,6 @@ mod tests {
         let mut quad = Quadrature::new();
         let args = &mut 0;
         for (i, test) in get_functions().iter().enumerate() {
-            if test.integral.is_none() {
-                continue;
-            }
             println!("\n\n===========================================================");
             println!("\n{}: {}", i, test.name);
             if let Some(data) = test.integral {

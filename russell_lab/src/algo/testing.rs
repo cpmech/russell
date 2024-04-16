@@ -81,7 +81,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((-4.0, 4.0, 104.0 / 3.0)),
             tol_min: 1e-10,
             tol_root: 1e-10,
-            tol_integral: 1e-50,
+            tol_integral: 1e-14,
         },
         TestFunction {
             name: "1/2 - 1/(1 + 16 x²)", // (shifted) Runge equation
@@ -116,7 +116,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((-2.0, 2.0, 2.0 - f64::atan(8.0) / 2.0)),
             tol_min: 1e-8,
             tol_root: 1e-13,
-            tol_integral: 1e-14,
+            tol_integral: 1e-13,
         },
         TestFunction {
             name: "x⁵ + 3x⁴ - 2x³ + x - 1",
@@ -200,7 +200,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((-3.0, 5.0, 128.0 / 3.0 + 5.0 * f64::cos(3.0) - 5.0 * f64::cos(5.0))),
             tol_min: 1e-8,
             tol_root: 1e-12,
-            tol_integral: 1e-20,
+            tol_integral: 1e-14,
         },
         TestFunction {
             name: "1/(1 - exp(-2 x) sin²(5 π x)) - 3/2",

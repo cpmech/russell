@@ -38,9 +38,6 @@ use crate::StrError;
 // quadrature-fortran includes code from SLATEC, a public domain library.
 
 /// Unknown definition
-const N_LMN: usize = 1; // !! ??
-
-/// Unknown definition
 const KMX: usize = 5000; // !! ??
 
 /// Unknown definition
@@ -190,7 +187,6 @@ impl Quadrature {
         let nbits = anib as usize;
         let nlmx = usize::min(60, (nbits * 5) / 8);
         let mut lmx = nlmx;
-        let mut lmn = N_LMN;
         if ub != 0.0 {
             if f64::copysign(1.0, ub) * lb > 0.0 {
                 let c = f64::abs(1.0 - lb / ub);
@@ -204,7 +200,6 @@ impl Quadrature {
                     if lmx < 1 {
                         return Err("the lower and upper bounds must be different from each other");
                     }
-                    lmn = usize::min(lmn, lmx);
                 }
             }
         }

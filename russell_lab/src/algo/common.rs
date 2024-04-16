@@ -53,6 +53,9 @@ pub struct Stats {
     /// Number of iterations
     pub n_iterations: usize,
 
+    /// Holds an estimate of the absolute or relative error (depending on the algorithm)
+    pub error_estimate: f64,
+
     /// Holds the total nanoseconds during a computation
     pub nanos_total: u128,
 
@@ -97,6 +100,7 @@ impl Stats {
             n_function: 0,
             n_jacobian: 0,
             n_iterations: 0,
+            error_estimate: UNINITIALIZED,
             nanos_total: 0,
             sw_total: Stopwatch::new(),
         }
@@ -110,12 +114,18 @@ impl Stats {
     /// Returns a pretty formatted string with the stats
     pub fn summary(&self) -> String {
         let mut buffer = String::new();
+        let est_err = if self.error_estimate == UNINITIALIZED {
+            "unavailable".to_string()
+        } else {
+            format!("{}", self.error_estimate)
+        };
         write!(
             &mut buffer,
             "Number of function evaluations   = {}\n\
              Number of Jacobian evaluations   = {}\n\
-             Number of iterations             = {}",
-            self.n_function, self.n_jacobian, self.n_iterations,
+             Number of iterations             = {}\n\
+             Error estimate                   = {}",
+            self.n_function, self.n_jacobian, self.n_iterations, est_err
         )
         .unwrap();
         buffer
@@ -174,6 +184,7 @@ mod tests {
             "Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of iterations             = 0\n\
+             Error estimate                   = unavailable\n\
              Total computation time           = 0ns"
         );
     }

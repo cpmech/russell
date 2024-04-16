@@ -62,8 +62,10 @@ impl BracketMinParams {
 ///
 /// # Input
 ///
-/// `x_guess` -- a starting guess
-/// `params` -- Optional parameters
+/// * `x_guess` -- a starting guess
+/// * `params` -- optional control parameters
+/// * `args` -- extra arguments for the callback function
+/// * `f` -- is the callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
 ///
 /// # Output
 ///

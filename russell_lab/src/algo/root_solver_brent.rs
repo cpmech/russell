@@ -11,6 +11,9 @@ use crate::StrError;
 ///
 /// * `xa` -- initial "bracket" coordinate such that `f(xa) × f(xb) < 0`
 /// * `xb` -- initial "bracket" coordinate such that `f(xa) × f(xb) < 0`
+/// * `params` -- optional control parameters
+/// * `args` -- extra arguments for the callback function
+/// * `f` -- is the callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
 ///
 /// **Note:** `xa` must be different from `xb`
 ///

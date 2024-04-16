@@ -15,6 +15,9 @@ const GSR: f64 = 0.38196601125010515179541316563436188227969082019424;
 ///
 /// * `xa` -- first coordinate of the "bracket" containing the local minimum
 /// * `xb` -- second coordinate of the "bracket" containing the local minimum
+/// * `params` -- optional control parameters
+/// * `args` -- extra arguments for the callback function
+/// * `f` -- is the callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
 ///
 /// **Note:** `xa < xb` or `xa > xb` are accepted. However, `xa` must be different from `xb`.
 ///

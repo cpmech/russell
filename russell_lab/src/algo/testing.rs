@@ -49,7 +49,21 @@ pub(super) struct TestFunction {
 pub(super) fn get_functions() -> Vec<TestFunction> {
     vec![
         TestFunction {
-            name: "x² - 1",
+            name: "0: f(x) = undefined",
+            f: |_, _| Err("stop"),
+            min1: None,
+            min2: None,
+            min3: None,
+            root1: None,
+            root2: None,
+            root3: None,
+            integral: None,
+            tol_min: 0.0,
+            tol_root: 0.0,
+            tol_integral: 1e-10,
+        },
+        TestFunction {
+            name: "1: f(x) = x² - 1",
             f: |x, _| Ok(x * x - 1.0),
             min1: Some(Bracket {
                 a: -5.0,
@@ -84,7 +98,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_integral: 1e-14,
         },
         TestFunction {
-            name: "1/2 - 1/(1 + 16 x²)", // (shifted) Runge equation
+            name: "2: f(x) = 1/2 - 1/(1 + 16 x²)", // (shifted) Runge equation
             f: |x, _| Ok(1.0 / 2.0 - 1.0 / (1.0 + 16.0 * x * x)),
             min1: Some(Bracket {
                 a: -2.0,
@@ -119,7 +133,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_integral: 1e-13,
         },
         TestFunction {
-            name: "x⁵ + 3x⁴ - 2x³ + x - 1",
+            name: "3: f(x) = x⁵ + 3x⁴ - 2x³ + x - 1",
             f: |x, _| Ok(f64::powi(x, 5) + 3.0 * f64::powi(x, 4) - 2.0 * f64::powi(x, 3) + x - 1.0),
             min1: Some(Bracket {
                 a: -2.0,
@@ -161,7 +175,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_integral: 1e-13,
         },
         TestFunction {
-            name: "(x - 1)² + 5 sin(x)",
+            name: "4: f(x) = (x - 1)² + 5 sin(x)",
             f: |x, _| Ok(f64::powi(x - 1.0, 2) + 5.0 * f64::sin(x)),
             min1: Some(Bracket {
                 a: -2.0,
@@ -203,7 +217,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_integral: 1e-14,
         },
         TestFunction {
-            name: "1/(1 - exp(-2 x) sin²(5 π x)) - 3/2",
+            name: "5: f(x) = 1/(1 - exp(-2 x) sin²(5 π x)) - 3/2",
             f: |x, _| Ok(1.0 / (1.0 - f64::exp(-2.0 * x) * f64::powi(f64::sin(5.0 * PI * x), 2)) - 1.5),
             min1: Some(Bracket {
                 a: 0.1,
@@ -259,7 +273,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_integral: 1e-14,
         },
         TestFunction {
-            name: "sin(x) in [0, π]",
+            name: "6: f(x) = sin(x) in [0, π]",
             f: |x, _| Ok(f64::sin(x)),
             min1: None,
             min2: None,
@@ -273,7 +287,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_integral: 1e-15,
         },
         TestFunction {
-            name: "sin(x) in [0, π/2]",
+            name: "7: f(x) = sin(x) in [0, π/2]",
             f: |x, _| Ok(f64::sin(x)),
             min1: None,
             min2: None,
@@ -287,7 +301,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_integral: 1e-15,
         },
         TestFunction {
-            name: "sin(x) in [-1, 1]",
+            name: "8: f(x) = sin(x) in [-1, 1]",
             f: |x, _| Ok(f64::sin(x)),
             min1: None,
             min2: None,
@@ -301,7 +315,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_integral: 1e-20,
         },
         TestFunction {
-            name: "0.092834 sin(77.0001 + 19.87 x) in [-2.34567, 12.34567]",
+            name: "9: f(x) = 0.092834 sin(77.0001 + 19.87 x) in [-2.34567, 12.34567]",
             f: |x, _| Ok(0.092834 * f64::sin(77.0001 + 19.87 * x)),
             min1: None,
             min2: None,
@@ -315,7 +329,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_integral: 1e-15,
         },
         TestFunction {
-            name: "0.092834 sin[7.0001 + 1.87 x) in [-2.34567, 1.34567]",
+            name: "10: f(x) = 0.092834 sin[7.0001 + 1.87 x) in [-2.34567, 1.34567]",
             f: |x, _| Ok(0.092834 * f64::sin(7.0001 + 1.87 * x)),
             min1: None,
             min2: None,
@@ -329,7 +343,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_integral: 1e-16,
         },
         TestFunction {
-            name: "(2 x⁵ - x + 3)/x²",
+            name: "11: f(x) = (2 x⁵ - x + 3)/x²",
             f: |x, _| Ok((2.0 * f64::powi(x, 5) - x + 3.0) / (x * x)),
             min1: None,
             min2: None,
@@ -343,7 +357,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_integral: 1e-13,
         },
         TestFunction {
-            name: "3/exp(-x) - 1/(3x)",
+            name: "12: f(x) = 3/exp(-x) - 1/(3x)",
             f: |x, _| Ok(3.0 / f64::exp(-x) - 1.0 / (3.0 * x)),
             min1: None,
             min2: None,
@@ -357,7 +371,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_integral: 1e-14,
         },
         TestFunction {
-            name: "log(2 Cos(x/2))",
+            name: "13: f(x) = log(2 Cos(x/2))",
             f: |x, _| Ok(f64::ln(2.0 * f64::cos(x / 2.0))),
             min1: None,
             min2: None,
@@ -371,7 +385,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_integral: 1e-10,
         },
         TestFunction {
-            name: "exp(x)",
+            name: "14: f(x) = exp(x)",
             f: |x, _| Ok(f64::exp(x)),
             min1: None,
             min2: None,
@@ -411,8 +425,12 @@ mod tests {
     #[test]
     fn functions_are_consistent() {
         let args = &mut 0;
-        for func in &get_functions() {
+        for (i, func) in get_functions().iter().enumerate() {
             println!("\n{}", func.name);
+            if i == 0 {
+                assert_eq!((func.f)(0.0, args).err(), Some("stop"));
+            }
+            assert_eq!(format!("{}", i), func.name.split(":").next().unwrap()); // make sure index is correct
             if let Some(bracket) = &func.min1 {
                 check_consistency_min(bracket);
                 assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
@@ -453,5 +471,6 @@ mod tests {
                 assert_eq!(bracket.fxo, 0.0);
             }
         }
+        println!();
     }
 }

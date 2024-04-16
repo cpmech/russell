@@ -276,10 +276,7 @@ mod tests {
         // ```
         let args = &mut 0;
         for (i, test) in get_functions().iter().enumerate() {
-            if test.min1.is_none() {
-                continue;
-            }
-            println!("\n\n===========================================================");
+            println!("\n===================================================================");
             println!("\n{}", test.name);
             if let Some(bracket) = test.min1 {
                 let (a, b) = if i % 2 == 0 {
@@ -314,6 +311,7 @@ mod tests {
                 approx_eq((test.f)(xo, args).unwrap(), bracket.fxo, 1e-15);
             }
         }
+        println!("\n===================================================================\n");
     }
 
     #[test]

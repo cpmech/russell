@@ -249,10 +249,7 @@ mod tests {
     fn root_solver_brent_works_1() {
         let args = &mut 0;
         for test in &get_functions() {
-            if test.root1.is_none() {
-                continue;
-            }
-            println!("\n\n===========================================================");
+            println!("\n===================================================================");
             println!("\n{}", test.name);
             if let Some(bracket) = test.root1 {
                 let (xo, stats) = root_solver_brent(bracket.a, bracket.b, None, args, test.f).unwrap();
@@ -276,6 +273,7 @@ mod tests {
                 approx_eq((test.f)(xo, args).unwrap(), 0.0, test.tol_root);
             }
         }
+        println!("\n===================================================================\n");
     }
 
     #[test]

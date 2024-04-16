@@ -235,7 +235,7 @@ mod tests {
             if test.min1.is_none() {
                 continue;
             }
-            println!("\n\n===========================================================");
+            println!("\n===================================================================");
             println!("\n{}", test.name);
             let x_guess = if i == 4 {
                 0.15
@@ -254,6 +254,7 @@ mod tests {
             approx_eq((test.f)(bracket.b, args).unwrap(), bracket.fb, 1e-15);
             approx_eq((test.f)(bracket.xo, args).unwrap(), bracket.fxo, 1e-15);
         }
+        println!("\n===================================================================\n");
     }
 
     #[test]

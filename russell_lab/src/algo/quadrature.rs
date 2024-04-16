@@ -540,9 +540,9 @@ mod tests {
     fn quadrature_works_4() {
         let mut quad = Quadrature::new();
         let args = &mut 0;
-        for (i, test) in get_functions().iter().enumerate() {
-            println!("\n\n===========================================================");
-            println!("\n{}: {}", i, test.name);
+        for test in &get_functions() {
+            println!("\n===================================================================");
+            println!("\n{}", test.name);
             if let Some(data) = test.integral {
                 let (ii, stats) = quad.integrate(data.0, data.1, None, args, test.f).unwrap();
                 println!("\nI = {}", ii);
@@ -550,6 +550,7 @@ mod tests {
                 approx_eq(ii, data.2, test.tol_integral);
             }
         }
+        println!("\n===================================================================\n");
     }
 
     #[test]

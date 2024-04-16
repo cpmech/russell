@@ -39,6 +39,9 @@ pub(super) struct TestFunction {
 
     /// Tolerance for checking the root (using Brent's method)
     pub tol_root: f64,
+
+    /// Tolerance for checking the integral
+    pub tol_integral: f64,
 }
 
 /// Allocates f(x) test functions
@@ -78,6 +81,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((-4.0, 4.0, 104.0 / 3.0)),
             tol_min: 1e-10,
             tol_root: 1e-10,
+            tol_integral: 1e-50,
         },
         TestFunction {
             name: "1/2 - 1/(1 + 16 x²)", // (shifted) Runge equation
@@ -112,6 +116,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((-2.0, 2.0, 2.0 - f64::atan(8.0) / 2.0)),
             tol_min: 1e-8,
             tol_root: 1e-13,
+            tol_integral: 1e-14,
         },
         TestFunction {
             name: "x⁵ + 3x⁴ - 2x³ + x - 1",
@@ -153,6 +158,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((-3.0, 2.0, 475.0 / 6.0)),
             tol_min: 1e-8,
             tol_root: 1e-11,
+            tol_integral: 1e-13,
         },
         TestFunction {
             name: "(x - 1)² + 5 sin(x)",
@@ -194,6 +200,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((-3.0, 5.0, 128.0 / 3.0 + 5.0 * f64::cos(3.0) - 5.0 * f64::cos(5.0))),
             tol_min: 1e-8,
             tol_root: 1e-12,
+            tol_integral: 1e-20,
         },
         TestFunction {
             name: "1/(1 - exp(-2 x) sin²(5 π x)) - 3/2",
@@ -249,6 +256,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((0.0, 1.0, 16.0 / 3.0 - 5.0 * f64::cos(1.0))),
             tol_min: 1e-9,
             tol_root: 1e-12,
+            tol_integral: 1e-20,
         },
         TestFunction {
             name: "sin(x) in [0, π]",
@@ -262,6 +270,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((0.0, PI, 2.0)),
             tol_min: 0.0,
             tol_root: 0.0,
+            tol_integral: 1e-15,
         },
         TestFunction {
             name: "sin(x) in [0, π/2]",
@@ -275,6 +284,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((0.0, PI / 2.0, 1.0)),
             tol_min: 0.0,
             tol_root: 0.0,
+            tol_integral: 1e-15,
         },
         TestFunction {
             name: "sin(x) in [-1, 1]",
@@ -288,6 +298,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((-1.0, 1.0, 0.0)),
             tol_min: 0.0,
             tol_root: 0.0,
+            tol_integral: 1e-20,
         },
         TestFunction {
             name: "0.092834 sin(77.0001 + 19.87 x) in [-2.34567, 12.34567]",
@@ -301,6 +312,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((-2.34567, 12.34567, 0.00378787099369719)),
             tol_min: 0.0,
             tol_root: 0.0,
+            tol_integral: 1e-20,
         },
         TestFunction {
             name: "0.092834 sin[7.0001 + 1.87 x) in [-2.34567, 1.34567]",
@@ -314,6 +326,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((-2.34567, 1.34567, 0.00654937363510264)),
             tol_min: 0.0,
             tol_root: 0.0,
+            tol_integral: 1e-16,
         },
         TestFunction {
             name: "(2 x⁵ - x + 3)/x²",
@@ -327,6 +340,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((1.0, 2.0, 9.0 - LN2)),
             tol_min: 0.0,
             tol_root: 0.0,
+            tol_integral: 1e-13,
         },
         TestFunction {
             name: "3/exp(-x) - 1/(3x)",
@@ -340,6 +354,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((-20.0, -1.0, 3.0 / NAPIER - 3.0 / f64::exp(20.0) + f64::ln(20.0) / 3.0)),
             tol_min: 0.0,
             tol_root: 0.0,
+            tol_integral: 1e-14,
         },
         TestFunction {
             name: "log(2 Cos(x/2))",
@@ -353,6 +368,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((-PI, PI, 0.0)),
             tol_min: 0.0,
             tol_root: 0.0,
+            tol_integral: 1e-20,
         },
         TestFunction {
             name: "exp(x)",
@@ -366,6 +382,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((0.0, 10.1, f64::exp(10.1) - f64::exp(0.0))), // exp(b) - exp(a)
             tol_min: 0.0,
             tol_root: 0.0,
+            tol_integral: 1e-10,
         },
     ]
 }

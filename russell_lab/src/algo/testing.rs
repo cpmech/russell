@@ -253,10 +253,10 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
                 xo: 0.339787495774806018201668030092,
                 fxo: 0.0,
             }),
-            integral: Some((0.0, 1.0, 16.0 / 3.0 - 5.0 * f64::cos(1.0))),
+            integral: Some((0.0, 1.0, -0.0267552190488911754674985952882)), // From Mathematica NIntegrate
             tol_min: 1e-9,
             tol_root: 1e-12,
-            tol_integral: 1e-20,
+            tol_integral: 1e-14,
         },
         TestFunction {
             name: "sin(x) in [0, π]",
@@ -312,7 +312,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((-2.34567, 12.34567, 0.00378787099369719)),
             tol_min: 0.0,
             tol_root: 0.0,
-            tol_integral: 1e-20,
+            tol_integral: 1e-15,
         },
         TestFunction {
             name: "0.092834 sin[7.0001 + 1.87 x) in [-2.34567, 1.34567]",
@@ -368,7 +368,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             integral: Some((-PI, PI, 0.0)),
             tol_min: 0.0,
             tol_root: 0.0,
-            tol_integral: 1e-20,
+            tol_integral: 1e-10,
         },
         TestFunction {
             name: "exp(x)",

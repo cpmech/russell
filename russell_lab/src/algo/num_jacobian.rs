@@ -149,4 +149,14 @@ mod tests {
         mat_approx_eq(&jj_ana, &jj_num, 1e-10);
         assert_eq!(args.count, 36);
     }
+
+    #[test]
+    fn num_jacobian_captures_errors() {
+        let y = Vector::new(1);
+        let args = &mut 0;
+        assert_eq!(
+            num_jacobian(1, 0.0, &y, 2.0, args, |_, _, _, _| { Err("stop") }).err(),
+            Some("stop")
+        );
+    }
 }

@@ -21,6 +21,9 @@ pub struct Params {
     ///
     /// e.g., 1e-10
     pub tolerance: f64,
+
+    /// Number of Gauss points
+    pub npoint: usize,
 }
 
 impl Params {
@@ -29,6 +32,7 @@ impl Params {
         Params {
             n_iteration_max: 100,
             tolerance: 1e-10,
+            npoint: 6,
         }
     }
 

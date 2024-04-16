@@ -232,6 +232,9 @@ mod tests {
     fn try_bracket_min_works_1() {
         let args = &mut 0;
         for (i, test) in get_functions().iter().enumerate() {
+            if test.min1.is_none() {
+                continue;
+            }
             println!("\n\n===========================================================");
             println!("\n{}", test.name);
             let x_guess = if i == 4 {

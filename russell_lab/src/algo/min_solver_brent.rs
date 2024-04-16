@@ -276,6 +276,9 @@ mod tests {
         // ```
         let args = &mut 0;
         for (i, test) in get_functions().iter().enumerate() {
+            if test.min1.is_none() {
+                continue;
+            }
             println!("\n\n===========================================================");
             println!("\n{}", test.name);
             if let Some(bracket) = test.min1 {

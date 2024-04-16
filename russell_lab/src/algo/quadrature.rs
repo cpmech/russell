@@ -1,8 +1,6 @@
-#![allow(unused, non_snake_case, non_upper_case_globals)]
-
 use super::Stats;
 use crate::math::{LN2, SQRT_2};
-use crate::{format_fortran, StrError};
+use crate::StrError;
 
 // The quadrature function below is based on the Fortran function named
 // dgauss_generic by Jacob Williams (the function is, in turn, based on SLATEC)
@@ -39,19 +37,23 @@ use crate::{format_fortran, StrError};
 //
 // quadrature-fortran includes code from SLATEC, a public domain library.
 
-const nlmn: usize = 1; // !! ??
+/// Unknown definition
+const N_LMN: usize = 1; // !! ??
 
-const kmx: usize = 5000; // !! ??
+/// Unknown definition
+const KMX: usize = 5000; // !! ??
 
-const kml: usize = 6; // !! ??
+/// Unknown definition
+const KML: usize = 6; // !! ??
 
-const magic: f64 = 0.30102000_f64; // !! ??
+/// Unknown definition
+const MAGIC: f64 = 0.30102000_f64; // !! ??
 
-const iwork: usize = 60; // !! size of the work arrays. ?? Why 60 ??
+/// Size of the workspace arrays
+const N_WORK: usize = 60; // !! size of the work arrays. ?? Why 60 ??
 
-const d1mach4: f64 = f64::EPSILON; // bb**(1-digits(one)) !! machine constant
-
-const d1mach5: f64 = 0.30102999566398119521373889472449; // log10(2) = log10(bb)           !! machine constant
+/// log10(2)
+const D1MACH5: f64 = 0.30102999566398119521373889472449; // !! machine constant
 
 /// Multiplier for the error estimate comparison
 ///
@@ -93,6 +95,9 @@ impl QuadParams {
         if self.n_iteration_max < 2 {
             return Err("n_iteration_max must be ≥ 2");
         }
+        if self.tolerance < 10.0 * f64::EPSILON {
+            return Err("the tolerance must be ≥ 10.0 * f64::EPSILON");
+        }
         let ok = match self.n_gauss {
             6 | 8 | 10 | 12 | 14 => true,
             _ => false,
@@ -117,11 +122,11 @@ impl Quadrature {
     /// Allocates a new instance
     pub fn new() -> Self {
         Quadrature {
-            aa: vec![0.0; iwork + 1], // +1 so we can use Fortran's one-based indexing
-            hh: vec![0.0; iwork + 1],
-            vl: vec![0.0; iwork + 1],
-            gr: vec![0.0; iwork + 1],
-            lr: vec![0; iwork + 1],
+            aa: vec![0.0; N_WORK + 1], // +1 so we can use Fortran's one-based indexing
+            hh: vec![0.0; N_WORK + 1],
+            vl: vec![0.0; N_WORK + 1],
+            gr: vec![0.0; N_WORK + 1],
+            lr: vec![0; N_WORK + 1],
         }
     }
 
@@ -180,23 +185,23 @@ impl Quadrature {
         // initialization
         let mut ans = 0.0;
         let mut err = 0.0;
-        let mut k = f64::MANTISSA_DIGITS as f64;
-        let mut anib = d1mach5 * k / magic;
-        let mut nbits = anib as usize;
-        let mut nlmx = usize::min(60, (nbits * 5) / 8);
+        let k = f64::MANTISSA_DIGITS as f64;
+        let mut anib = D1MACH5 * k / MAGIC;
+        let nbits = anib as usize;
+        let nlmx = usize::min(60, (nbits * 5) / 8);
         let mut lmx = nlmx;
-        let mut lmn = nlmn;
-        if (ub != 0.0) {
-            if (f64::copysign(1.0, ub) * lb > 0.0) {
+        let mut lmn = N_LMN;
+        if ub != 0.0 {
+            if f64::copysign(1.0, ub) * lb > 0.0 {
                 let c = f64::abs(1.0 - lb / ub);
-                if (c <= 0.1) {
-                    if (c <= 0.0) {
+                if c <= 0.1 {
+                    if c <= 0.0 {
                         return Ok((ans, stats));
                     }
                     anib = 0.5 - f64::ln(c) / LN2;
                     let nib = anib as usize;
                     lmx = usize::min(nlmx, nbits - nib - 7);
-                    if (lmx < 1) {
+                    if lmx < 1 {
                         return Err("the lower and upper bounds must be different from each other");
                     }
                     lmn = usize::min(lmn, lmx);
@@ -204,8 +209,8 @@ impl Quadrature {
             }
         }
         let mut tol = f64::max(f64::abs(par.tolerance), f64::powf(2.0, 5.0 - nbits as f64)) / 2.0;
-        if (par.tolerance == 0.0) {
-            tol = f64::sqrt(d1mach4);
+        if par.tolerance == 0.0 {
+            tol = f64::sqrt(f64::EPSILON);
         }
         let mut eps = tol;
         self.hh[1] = (ub - lb) / 4.0;
@@ -239,16 +244,16 @@ impl Quadrature {
             stats.n_function += par.n_gauss;
 
             k += 16;
-            area += (f64::abs(gl) + f64::abs(self.gr[l]) - f64::abs(est));
+            area += f64::abs(gl) + f64::abs(self.gr[l]) - f64::abs(est);
             let glr = gl + self.gr[l];
             let ee = f64::abs(est - glr) * ef;
             let ae = f64::max(eps * area, tol * f64::abs(glr));
-            if (ee - ae > 0.0) {
+            if ee - ae > 0.0 {
                 // consider the left half of this level
-                if (k > kmx) {
-                    lmx = kml;
+                if k > KMX {
+                    lmx = KML;
                 }
-                if (l >= lmx) {
+                if l >= lmx {
                     mxl = 1;
                 } else {
                     l += 1;
@@ -262,19 +267,19 @@ impl Quadrature {
                 }
             }
 
-            err += (est - glr);
-            if (self.lr[l] > 0) {
+            err += est - glr;
+            if self.lr[l] > 0 {
                 // return one level
                 ans = glr;
                 loop {
-                    if (l <= 1) {
+                    if l <= 1 {
                         converged = true;
                         break;
                     }
                     l -= 1;
                     eps *= 2.0;
                     ef *= SQRT_2;
-                    if (self.lr[l] <= 0) {
+                    if self.lr[l] <= 0 {
                         self.vl[l] = self.vl[l + 1] + ans;
                         est = self.gr[l - 1];
                         self.lr[l] = 1;
@@ -302,7 +307,8 @@ impl Quadrature {
         }
 
         // done
-        if ((mxl != 0) && (f64::abs(err) > M_ERR * tol * area)) {
+        stats.stop_sw_total();
+        if (mxl != 0) && (f64::abs(err) > M_ERR * tol * area) {
             Err("cannot achieve the desired tolerance")
         } else {
             Ok((ans, stats))
@@ -311,7 +317,7 @@ impl Quadrature {
 }
 
 /// Performs a Gaussian quadrature
-fn gauss<F, A>(npoint: usize, x: f64, h: f64, args: &mut A, mut f: &mut F) -> Result<f64, StrError>
+fn gauss<F, A>(npoint: usize, x: f64, h: f64, args: &mut A, f: &mut F) -> Result<f64, StrError>
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
@@ -435,7 +441,6 @@ const G14_W: [f64; 7] = [
 mod tests {
     use super::{QuadParams, Quadrature};
     use crate::algo::testing::get_functions;
-    use crate::algo::NoArgs;
     use crate::approx_eq;
     use crate::base::format_fortran;
     use crate::math::PI;

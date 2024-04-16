@@ -206,10 +206,7 @@ impl Quadrature {
             }
         }
 
-        let mut tol = f64::max(f64::abs(par.tolerance), f64::powf(2.0, 5.0 - n_bit as f64)) / 2.0;
-        if par.tolerance == 0.0 {
-            tol = f64::sqrt(f64::EPSILON);
-        }
+        let tol = f64::max(f64::abs(par.tolerance), f64::powf(2.0, 5.0 - n_bit as f64)) / 2.0;
         let mut eps = tol;
         self.hh[1] = (ub - lb) / 4.0;
         self.aa[1] = lb;

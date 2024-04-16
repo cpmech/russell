@@ -40,15 +40,18 @@ use crate::{format_fortran, StrError};
 // quadrature-fortran includes code from SLATEC, a public domain library.
 
 const nlmn: usize = 1; // !! ??
-const kmx: usize = 5000; // !! ??
-const kml: usize = 6; // !! ??
-const magic: f64 = 0.30102000_f64; // !! ??
-const iwork: usize = 60; // !! size of the work arrays. ?? Why 60 ??
-                         // const bb       :f64   = f64::RADIX; // = 2; radix(one)          !! machine constant
-const d1mach4: f64 = f64::EPSILON; // bb**(1-digits(one)) !! machine constant
-const d1mach5: f64 = 0.30102999566398119521373889472449; // log10(2) = log10(bb)           !! machine constant
 
-const N_SUB_ITERATIONS: usize = 20;
+const kmx: usize = 5000; // !! ??
+
+const kml: usize = 6; // !! ??
+
+const magic: f64 = 0.30102000_f64; // !! ??
+
+const iwork: usize = 60; // !! size of the work arrays. ?? Why 60 ??
+
+const d1mach4: f64 = f64::EPSILON; // bb**(1-digits(one)) !! machine constant
+
+const d1mach5: f64 = 0.30102999566398119521373889472449; // log10(2) = log10(bb)           !! machine constant
 
 /// Multiplier for the error estimate comparison
 ///
@@ -209,6 +212,7 @@ impl Quadrature {
         self.aa[1] = lb;
         self.lr[1] = 1;
         let mut l = 1;
+
         let mut est = gauss(
             par.n_gauss,
             self.aa[l] + 2.0 * self.hh[l],
@@ -216,6 +220,8 @@ impl Quadrature {
             args,
             &mut f,
         )?;
+        stats.n_function += par.n_gauss;
+
         let mut k = 8;
         let mut area = f64::abs(est);
         let mut ef = 0.5;
@@ -227,7 +233,11 @@ impl Quadrature {
             stats.n_iterations += 1;
 
             let gl = gauss(par.n_gauss, self.aa[l] + self.hh[l], self.hh[l], args, &mut f)?;
+            stats.n_function += par.n_gauss;
+
             self.gr[l] = gauss(par.n_gauss, self.aa[l] + 3.0 * self.hh[l], self.hh[l], args, &mut f)?;
+            stats.n_function += par.n_gauss;
+
             k += 16;
             area += (f64::abs(gl) + f64::abs(self.gr[l]) - f64::abs(est));
             let glr = gl + self.gr[l];
@@ -427,66 +437,93 @@ mod tests {
     use crate::algo::testing::get_functions;
     use crate::algo::NoArgs;
     use crate::approx_eq;
+    use crate::base::format_fortran;
     use crate::math::PI;
 
     #[test]
     fn quadrature_works_1() {
-        let amp = 1.0;
-        let freq = 1.0;
-        let phase = 0.0;
-        let f = |x, _: &mut NoArgs| Ok(amp * f64::sin(freq * x + phase));
-        let ii_ana = |a: f64, b: f64| (amp * (f64::cos(a * freq + phase) - f64::cos(b * freq + phase))) / freq;
-        let mut quad = Quadrature::new();
-        let args = &mut 0;
+        // compare with Fortran code
+        // f(x) = sin(x)
+
         let mut params = QuadParams::new();
         params.tolerance = 100_000.0 * f64::EPSILON;
-        let (ii, stats) = quad.integrate(0.0, PI, Some(params), args, f).unwrap();
+
+        let mut quad = Quadrature::new();
+        let args = &mut 0;
+        let (ii, stats) = quad
+            .integrate(0.0, PI, Some(params), args, |x, _| Ok(f64::sin(x)))
+            .unwrap();
+
         println!("I = {}", ii);
         println!("\n{}", stats);
-        approx_eq(ii, 2.0, 1e-15);
+
+        let ii_ana = 2.0;
+        approx_eq(ii, ii_ana, 1e-15);
+        assert_eq!(stats.n_function, 42);
     }
 
     #[test]
     fn quadrature_works_2() {
+        // compare with Fortran code
+        // f(x) = 0.092834 sin(77.0001 + 19.87 x) in [-2.34567, 12.34567]
+
         let a = -2.34567;
         let b = 12.34567;
         let amp = 0.092834;
         let freq = 19.87;
         let phase = 77.0001;
-        let f = |x, _: &mut NoArgs| Ok(amp * f64::sin(freq * x + phase));
-        let mut quad = Quadrature::new();
-        let args = &mut 0;
+
         let mut params = QuadParams::new();
         params.tolerance = 100_000.0 * f64::EPSILON;
-        params.n_iteration_max = 300;
-        let (ii, stats) = quad.integrate(a, b, Some(params), args, f).unwrap();
+
+        let mut quad = Quadrature::new();
+        let args = &mut 0;
+        let (ii, stats) = quad
+            .integrate(a, b, Some(params), args, |x, _| Ok(amp * f64::sin(freq * x + phase)))
+            .unwrap();
+
         println!("I = {}", ii);
         println!("\n{}", stats);
+
         let ii_ana = (amp * (f64::cos(a * freq + phase) - f64::cos(b * freq + phase))) / freq;
         approx_eq(ii, ii_ana, 1e-15);
+        assert_eq!(stats.n_function, 3066);
     }
 
     #[test]
     fn quadrature_works_3() {
+        // compare with Fortran code
+        // f(x) = log(2 Cos(x/2))
+
+        let mut params = QuadParams::new();
+        params.tolerance = 100_000.0 * f64::EPSILON;
+
+        let mut quad = Quadrature::new();
+        let args = &mut 0;
+        let (ii, stats) = quad
+            .integrate(-PI, PI, Some(params), args, |x, _| Ok(f64::ln(2.0 * f64::cos(x / 2.0))))
+            .unwrap();
+
+        println!("I = {}", format_fortran(ii));
+        println!("\n{}", stats);
+
+        let ii_ana = 0.0;
+        approx_eq(ii, ii_ana, 1e-10);
+        assert_eq!(stats.n_function, 1674);
+    }
+
+    #[test]
+    fn quadrature_works_all_functions() {
         let mut quad = Quadrature::new();
         let args = &mut 0;
         for (i, test) in get_functions().iter().enumerate() {
             if test.integral.is_none() {
                 continue;
             }
-            // if i != 12 {
-            //     continue;
-            // }
-            // if i == 4 || i == 8 || i == 12 {
-            //     continue; // TODO: check why it fails
-            // }
             println!("\n\n===========================================================");
             println!("\n{}: {}", i, test.name);
-            let mut params = QuadParams::new();
-            // params.tolerance = 2.2e-11; //100_000.0 * f64::EPSILON;
-            params.tolerance = 1.0e-10;
             if let Some(data) = test.integral {
-                let (ii, stats) = quad.integrate(data.0, data.1, Some(params), args, test.f).unwrap();
+                let (ii, stats) = quad.integrate(data.0, data.1, None, args, test.f).unwrap();
                 println!("\nI = {}", ii);
                 println!("\n{}", stats);
                 approx_eq(ii, data.2, test.tol_integral);

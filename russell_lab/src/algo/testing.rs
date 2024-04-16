@@ -2,9 +2,8 @@ use super::{Bracket, NoArgs};
 use crate::math::{LN2, NAPIER, PI};
 use crate::StrError;
 
-/// Holds f(x) functions for tests
-#[allow(unused)]
-pub(super) struct TestFunction {
+/// Holds an f(x) function that is useful for testing
+pub struct TestFunction {
     /// Holds the name of the function
     pub name: &'static str,
 
@@ -31,7 +30,9 @@ pub(super) struct TestFunction {
 
     /// Holds the result of the integration `ii = ∫_a^b f(x) dx`
     ///
-    /// The data is `(a, b, ii)`
+    /// The data is `(a, b, ii)` where `a` and `b` are the lower
+    /// and upper bounds of integration, respectively, and `ii`
+    /// is the result of integration.
     pub integral: Option<(f64, f64, f64)>,
 
     /// Tolerance for checking the minimum (using Brent's method)
@@ -44,9 +45,8 @@ pub(super) struct TestFunction {
     pub tol_integral: f64,
 }
 
-/// Allocates f(x) test functions
-#[allow(dead_code)]
-pub(super) fn get_functions() -> Vec<TestFunction> {
+/// Allocates test functions
+pub fn get_functions() -> Vec<TestFunction> {
     vec![
         TestFunction {
             name: "0: f(x) = undefined",

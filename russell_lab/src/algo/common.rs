@@ -124,7 +124,7 @@ impl Stats {
         let est_err = if self.error_estimate == UNINITIALIZED {
             "unavailable".to_string()
         } else {
-            format!("{}", self.error_estimate)
+            format!("{:.2e}", self.error_estimate)
         };
         write!(
             &mut buffer,

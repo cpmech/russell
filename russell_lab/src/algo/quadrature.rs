@@ -304,6 +304,7 @@ impl Quadrature {
         }
 
         // done
+        stats.error_estimate = err;
         stats.stop_sw_total();
         if (mxl != 0) && (f64::abs(err) > M_ERR * tol * area) {
             Err("cannot achieve the desired tolerance")

@@ -183,10 +183,12 @@ impl Quadrature {
         let mut ans = 0.0;
         let mut err = 0.0;
         let k = f64::MANTISSA_DIGITS as f64;
-        let mut anib = D1MACH5 * k / MAGIC;
-        let nbits = anib as usize;
-        let nlmx = usize::min(60, (nbits * 5) / 8);
-        let mut lmx = nlmx;
+        let mut n_ib = D1MACH5 * k / MAGIC;
+        let n_bit = n_ib as usize;
+        let n_lmx = usize::min(60, (n_bit * 5) / 8);
+        let mut lmx = n_lmx;
+
+        // check
         if ub != 0.0 {
             if f64::copysign(1.0, ub) * lb > 0.0 {
                 let c = f64::abs(1.0 - lb / ub);
@@ -194,16 +196,17 @@ impl Quadrature {
                     if c <= 0.0 {
                         return Ok((ans, stats));
                     }
-                    anib = 0.5 - f64::ln(c) / LN2;
-                    let nib = anib as usize;
-                    lmx = usize::min(nlmx, nbits - nib - 7);
+                    n_ib = 0.5 - f64::ln(c) / LN2;
+                    let nib = n_ib as usize;
+                    lmx = usize::min(n_lmx, n_bit - nib - 7);
                     if lmx < 1 {
                         return Err("the lower and upper bounds must be different from each other");
                     }
                 }
             }
         }
-        let mut tol = f64::max(f64::abs(par.tolerance), f64::powf(2.0, 5.0 - nbits as f64)) / 2.0;
+
+        let mut tol = f64::max(f64::abs(par.tolerance), f64::powf(2.0, 5.0 - n_bit as f64)) / 2.0;
         if par.tolerance == 0.0 {
             tol = f64::sqrt(f64::EPSILON);
         }
@@ -243,6 +246,7 @@ impl Quadrature {
             let glr = gl + self.gr[l];
             let ee = f64::abs(est - glr) * ef;
             let ae = f64::max(eps * area, tol * f64::abs(glr));
+
             if ee - ae > 0.0 {
                 // consider the left half of this level
                 if k > KMX {

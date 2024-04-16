@@ -133,17 +133,17 @@ impl Quadrature {
     /// Approximates:
     ///
     /// ```text
-    ///        ub
+    ///        b
     ///       ⌠
     /// I  =  │  f(x) dx
     ///       ⌡
-    ///     lb
+    ///      a
     /// ```
     ///
     /// # Input
     ///
-    /// * `lb` -- the lower bound
-    /// * `ub` -- the upper bound
+    /// * `a` -- the lower bound
+    /// * `b` -- the upper bound
     /// * `params` -- optional control parameters
     /// * `args` -- extra arguments for the callback function
     /// * `f` -- is the callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
@@ -152,12 +152,12 @@ impl Quadrature {
     ///
     /// Returns `(ii, stats)` where:
     ///
-    /// * `ans` -- the result `I` of the integration: `I = ∫_lb^ub f(x) dx`
+    /// * `ans` -- the result `I` of the integration: `I = ∫_a^b f(x) dx`
     /// * `stats` -- some statistics about the computations, including the estimated error
     pub fn integrate<F, A>(
         &mut self,
-        lb: f64,
-        ub: f64,
+        a: f64,
+        b: f64,
         params: Option<QuadParams>,
         args: &mut A,
         mut f: F,
@@ -166,7 +166,7 @@ impl Quadrature {
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
         // check
-        if f64::abs(ub - lb) < 10.0 * f64::EPSILON {
+        if f64::abs(b - a) < 10.0 * f64::EPSILON {
             return Err("the lower and upper bounds must be different from each other");
         }
 
@@ -190,9 +190,9 @@ impl Quadrature {
         let mut lmx = n_lmx;
 
         // check
-        if ub != 0.0 {
-            if f64::copysign(1.0, ub) * lb > 0.0 {
-                let c = f64::abs(1.0 - lb / ub);
+        if b != 0.0 {
+            if f64::copysign(1.0, b) * a > 0.0 {
+                let c = f64::abs(1.0 - a / b);
                 if c <= 0.1 {
                     if c <= 0.0 {
                         return Ok((ans, stats));
@@ -209,8 +209,8 @@ impl Quadrature {
 
         let tol = f64::max(f64::abs(par.tolerance), f64::powf(2.0, 5.0 - n_bit as f64)) / 2.0;
         let mut eps = tol;
-        self.hh[1] = (ub - lb) / 4.0;
-        self.aa[1] = lb;
+        self.hh[1] = (b - a) / 4.0;
+        self.aa[1] = a;
         self.lr[1] = 1;
         let mut l = 1;
 
@@ -536,7 +536,7 @@ mod tests {
     }
 
     #[test]
-    fn quadrature_works_all_functions() {
+    fn quadrature_works_4() {
         let mut quad = Quadrature::new();
         let args = &mut 0;
         for (i, test) in get_functions().iter().enumerate() {
@@ -549,5 +549,15 @@ mod tests {
                 approx_eq(ii, data.2, test.tol_integral);
             }
         }
+    }
+
+    #[test]
+    fn quadrature_works_5() {
+        // check that ∫_a^b f(x) dx = - ∫_b^a f(x) dx
+        let mut quad = Quadrature::new();
+        let args = &mut 0;
+        let (ii, _) = quad.integrate(0.0, PI, None, args, |x, _| Ok(f64::sin(x))).unwrap();
+        let (mii, _) = quad.integrate(PI, 0.0, None, args, |x, _| Ok(f64::sin(x))).unwrap();
+        assert_eq!(ii, -mii);
     }
 }

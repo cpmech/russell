@@ -41,6 +41,9 @@ impl Params {
         if self.n_iteration_max < 2 {
             return Err("n_iteration_max must be ≥ 2");
         }
+        if self.tolerance < 10.0 * f64::EPSILON {
+            return Err("the tolerance must be ≥ 10.0 * f64::EPSILON");
+        }
         Ok(())
     }
 }
@@ -178,6 +181,12 @@ mod tests {
         let mut params = Params::new();
         params.n_iteration_max = 0;
         assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 2"));
+        params.n_iteration_max = 2;
+        params.tolerance = 0.0;
+        assert_eq!(
+            params.validate().err(),
+            Some("the tolerance must be ≥ 10.0 * f64::EPSILON")
+        );
     }
 
     #[test]

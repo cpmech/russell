@@ -1,4 +1,5 @@
-use super::Stats;
+use super::{Quadrature, Stats};
+use crate::math::{float_split, PI};
 use crate::StrError;
 
 /// Implements algorithms for finding the roots of an equation
@@ -15,6 +16,9 @@ pub struct RootSolver {
     ///
     /// e.g., 1e-10
     pub tolerance: f64,
+
+    /// Small positive constant for the Kronecker-Picard formula
+    gamma: f64,
 }
 
 impl RootSolver {
@@ -23,6 +27,7 @@ impl RootSolver {
         RootSolver {
             n_iteration_max: 100,
             tolerance: 1e-10,
+            gamma: 1e-8,
         }
     }
 
@@ -35,6 +40,73 @@ impl RootSolver {
             return Err("the tolerance must be ≥ 10.0 * f64::EPSILON");
         }
         Ok(())
+    }
+
+    /// Counts the number of roots using Kronecker-Picard formula
+    ///
+    /// Counts the number of roots in the interval `[a, b]`
+    ///
+    /// # Input
+    ///
+    /// * `xa` -- lower bound
+    /// * `xb` -- upper bound
+    /// * `args` -- extra arguments for the callback functions
+    /// * `f` -- is the callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
+    /// * `g` -- is the callback function implementing `df/dx(x)` as `g(x, args)`; it returns `g @ x` or it may return an error.
+    /// * `h` -- is the callback function implementing `d²f/dx²(x)` as `h(x, args)`; it returns `h @ x` or it may return an error.
+    ///
+    /// # Output
+    ///
+    /// Returns `(number_of_roots, stats)` where
+    ///
+    /// * `number_of_roots` -- is the number of roots in the interval
+    /// * `stats` -- some statistics about the computations
+    ///   **Note:** The error_estimate field of `stats` will contain the fractional part of the number of roots
+    pub fn count<F, G, H, A>(
+        &self,
+        xa: f64,
+        xb: f64,
+        args: &mut A,
+        mut f: F,
+        mut g: G,
+        mut h: H,
+    ) -> Result<(usize, Stats), StrError>
+    where
+        F: FnMut(f64, &mut A) -> Result<f64, StrError>,
+        G: FnMut(f64, &mut A) -> Result<f64, StrError>,
+        H: FnMut(f64, &mut A) -> Result<f64, StrError>,
+    {
+        // apply the Kronecker-Picard formula
+        let mut quad = Quadrature::new();
+        let (kp, mut stats) = quad.integrate(xa, xb, args, |x, ar| {
+            let fx = f(x, ar)?;
+            let gx = g(x, ar)?;
+            let hx = h(x, ar)?;
+            let den = fx * fx + self.gamma * self.gamma * gx * gx;
+            if den == 0.0 {
+                return Err("Kronecker-Picard formula failed due to zero denominator");
+            }
+            Ok((fx * hx - gx * gx) / den)
+        })?;
+        stats.n_function *= 3; // (multiply by 3 because of f, g, and h)
+
+        // compute the number of roots
+        let fa = f(xa, args)?;
+        let fb = f(xb, args)?;
+        let ga = g(xa, args)?;
+        let gb = g(xb, args)?;
+        let nr = -(self.gamma * kp + f64::atan2(self.gamma * gb, fb) - f64::atan2(self.gamma * ga, fa)) / PI;
+        stats.n_function += 4;
+
+        // save the fractional part of nr as error estimate in stats
+        let (nnr, error) = float_split(f64::ceil(nr));
+        stats.error_estimate = error;
+
+        // truncate nr
+        let number_of_roots = nnr as usize;
+
+        // done
+        Ok((number_of_roots, stats))
     }
 
     /// Employs Brent's method to find the roots of an equation
@@ -234,6 +306,16 @@ mod tests {
             solver.validate_params().err(),
             Some("the tolerance must be ≥ 10.0 * f64::EPSILON")
         );
+    }
+
+    #[test]
+    fn count_works() {
+        let f = |x, _: &mut NoArgs| Ok(x);
+        let g = |_, _: &mut NoArgs| Ok(1.0);
+        let h = |_, _: &mut NoArgs| Ok(0.0);
+        let args = &mut 0;
+        let solver = RootSolver::new();
+        solver.count(0.0, 1.0, args, f, g, h).unwrap();
     }
 
     #[test]

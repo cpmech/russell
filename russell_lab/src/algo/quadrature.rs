@@ -201,7 +201,7 @@ impl Quadrature {
                     let nib = n_ib as usize;
                     lmx = usize::min(n_lmx, n_bit - nib - 7);
                     if lmx < 1 {
-                        return Err("the lower and upper bounds must be different from each other");
+                        return Err("the lower and upper bounds must not be so close one from another");
                     }
                 }
             }
@@ -442,7 +442,7 @@ mod tests {
     use crate::algo::NoArgs;
     use crate::approx_eq;
     use crate::base::format_fortran;
-    use crate::math::PI;
+    use crate::math::{PI, SQRT_2};
 
     #[test]
     fn quad_params_captures_errors() {
@@ -631,5 +631,32 @@ mod tests {
         let (ii, _) = quad.integrate(0.0, PI, None, args, |x, _| Ok(f64::sin(x))).unwrap();
         let (mii, _) = quad.integrate(PI, 0.0, None, args, |x, _| Ok(f64::sin(x))).unwrap();
         assert_eq!(ii, -mii);
+    }
+
+    #[test]
+    fn quadrature_edge_cases_work() {
+        let mut quad = Quadrature::new();
+        let args = &mut 0;
+
+        //
+        // c <= 0.1
+        //
+        let b = 1.0;
+        let a = 0.9 * b;
+        let (ii, stats) = quad.integrate(a, b, None, args, |x, _| Ok(x)).unwrap();
+        println!("\nI = {}", ii);
+        println!("\n{}", stats);
+        approx_eq(ii, 0.095, 1e-15);
+
+        //
+        // n_bit - nib - 7 = 46 - nib = 0
+        //
+        let c = 1.0 / (35184372088832.0 * SQRT_2);
+        let b = 1.0;
+        let a = (1.0 - c) * b;
+        assert_eq!(
+            quad.integrate(a, b, None, args, |x, _| Ok(x)).err(),
+            Some("the lower and upper bounds must not be so close one from another")
+        );
     }
 }

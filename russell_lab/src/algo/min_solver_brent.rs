@@ -242,12 +242,6 @@ mod tests {
         args.count = 0;
         args.target = 1;
         assert_eq!(min_solver_brent(-0.5, 2.0, None, args, f).err(), Some("stop"));
-        /*
-        // third function call
-        args.count = 0;
-        args.target = 2;
-        assert_eq!(min_solver_brent(-0.5, 2.0, None, args, f).err(), Some("stop"));
-        */
     }
 
     #[test]

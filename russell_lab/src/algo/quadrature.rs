@@ -444,6 +444,23 @@ mod tests {
     use crate::math::PI;
 
     #[test]
+    fn quad_params_captures_errors() {
+        let mut params = QuadParams::new();
+        params.n_iteration_max = 0;
+        assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 2"));
+        params.n_iteration_max = 2;
+        params.tolerance = 0.0;
+        assert_eq!(
+            params.validate().err(),
+            Some("the tolerance must be ≥ 10.0 * f64::EPSILON")
+        );
+        params.n_iteration_max = 2;
+        params.tolerance = 1e-7;
+        params.n_gauss = 7;
+        assert_eq!(params.validate().err(), Some("n_gauss must be 6, 8, 10, 12, or 14"));
+    }
+
+    #[test]
     fn quadrature_works_1() {
         // compare with Fortran code
         // f(x) = sin(x)

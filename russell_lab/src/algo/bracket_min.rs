@@ -1,4 +1,4 @@
-use super::{AlgoStats, Bracket, UNINITIALIZED};
+use super::{Bracket, Stats, UNINITIALIZED};
 use crate::StrError;
 
 /// Holds parameters for a bracket algorithm
@@ -62,8 +62,10 @@ impl BracketMinParams {
 ///
 /// # Input
 ///
-/// `x_guess` -- a starting guess
-/// `params` -- Optional parameters
+/// * `x_guess` -- a starting guess
+/// * `params` -- optional control parameters
+/// * `args` -- extra arguments for the callback function
+/// * `f` -- is the callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
 ///
 /// # Output
 ///
@@ -80,7 +82,7 @@ pub fn try_bracket_min<F, A>(
     params: Option<BracketMinParams>,
     args: &mut A,
     mut f: F,
-) -> Result<(Bracket, AlgoStats), StrError>
+) -> Result<(Bracket, Stats), StrError>
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
@@ -92,7 +94,7 @@ where
     par.validate()?;
 
     // allocate stats struct
-    let mut stats = AlgoStats::new();
+    let mut stats = Stats::new();
 
     // initialization
     let mut step = par.initial_step;
@@ -158,7 +160,7 @@ pub(super) fn swap(a: &mut f64, b: &mut f64) {
 #[cfg(test)]
 mod tests {
     use super::{swap, try_bracket_min, Bracket, BracketMinParams};
-    use crate::algo::testing::get_functions;
+    use crate::algo::testing::get_test_functions;
     use crate::algo::NoArgs;
     use crate::approx_eq;
 
@@ -229,8 +231,11 @@ mod tests {
     #[test]
     fn try_bracket_min_works_1() {
         let args = &mut 0;
-        for (i, test) in get_functions().iter().enumerate() {
-            println!("\n\n===========================================================");
+        for (i, test) in get_test_functions().iter().enumerate() {
+            if test.min1.is_none() {
+                continue;
+            }
+            println!("\n===================================================================");
             println!("\n{}", test.name);
             let x_guess = if i == 4 {
                 0.15
@@ -249,6 +254,7 @@ mod tests {
             approx_eq((test.f)(bracket.b, args).unwrap(), bracket.fb, 1e-15);
             approx_eq((test.f)(bracket.xo, args).unwrap(), bracket.fxo, 1e-15);
         }
+        println!("\n===================================================================\n");
     }
 
     #[test]

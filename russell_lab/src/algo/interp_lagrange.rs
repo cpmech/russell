@@ -726,17 +726,22 @@ impl InterpLagrange {
     /// and the reference (e.g., analytical) solution at discrete points. The points are generated
     /// from -1.0 to 1.0, totalling [InterpParams::error_estimate_nstation] points.
     ///
+    /// # Input
+    ///
+    /// * `args` -- extra arguments for the callback function
+    /// * `f` -- is the callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
+    ///
     /// # Output
     ///
     /// * `err_f` -- is the max interpolation in `[-1, 1]`
-    pub fn estimate_max_error<F>(&self, mut f: F) -> f64
+    pub fn estimate_max_error<F, A>(&self, args: &mut A, mut f: F) -> Result<f64, StrError>
     where
-        F: FnMut(f64) -> f64,
+        F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
         // calculate Uⱼ = f(xⱼ)
         let mut uu = Vector::new(self.npoint);
         for j in 0..self.npoint {
-            uu[j] = f(self.xx[j]);
+            uu[j] = f(self.xx[j], args)?;
         }
 
         // find maximum errors
@@ -745,9 +750,9 @@ impl InterpLagrange {
         let stations = Vector::linspace(-1.0, 1.0, nstation).unwrap();
         for p in 0..nstation {
             let fi = self.eval(stations[p], &uu).unwrap();
-            err_f = f64::max(err_f, f64::abs(fi - f(stations[p])));
+            err_f = f64::max(err_f, f64::abs(fi - f(stations[p], args)?));
         }
-        err_f
+        Ok(err_f)
     }
 
     /// Estimates the max errors (with derivatives) by comparing the interpolation against a reference solution
@@ -756,29 +761,39 @@ impl InterpLagrange {
     /// and the reference (e.g., analytical) solution at discrete points. The points are generated
     /// from -1.0 to 1.0, totalling [InterpParams::error_estimate_nstation] points.
     ///
+    /// # Input
+    ///
+    /// * `exclude_boundaries` -- do not compute the *derivative* errors at boundaries.
+    ///   Still, the error at boundaries will be computed for the function `f`.
+    /// * `args` -- extra arguments for the callback functions
+    /// * `f` -- is the callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
+    /// * `g` -- is the callback function implementing `df/dx(x)` as `g(x, args)`; it returns `g @ x` or it may return an error.
+    /// * `h` -- is the callback function implementing `d²f/dx²(x)` as `h(x, args)`; it returns `h @ x` or it may return an error.
+    ///
+    /// # Output
+    ///
     /// Returns `(err_f, err_g, err_h)` where:
     ///
-    /// * `exclude_boundaries` -- do not compute the DERIVATIVE errors at boundaries.
-    ///   Still, the error at boundaries will be computed for the function `f`.
     /// * `err_f` -- is the max interpolation in `[-1, 1]`
     /// * `err_g` -- is the max error on the first derivative in `[-1, 1]`
     /// * `err_h` -- is the max error on the second derivative in `[-1, 1]`
-    pub fn estimate_max_error_all<F, G, H>(
+    pub fn estimate_max_error_all<F, G, H, A>(
         &self,
         exclude_boundaries: bool,
+        args: &mut A,
         mut f: F,
         mut g: G,
         mut h: H,
-    ) -> (f64, f64, f64)
+    ) -> Result<(f64, f64, f64), StrError>
     where
-        F: FnMut(f64) -> f64,
-        G: FnMut(f64) -> f64,
-        H: FnMut(f64) -> f64,
+        F: FnMut(f64, &mut A) -> Result<f64, StrError>,
+        G: FnMut(f64, &mut A) -> Result<f64, StrError>,
+        H: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
         // calculate Uⱼ = f(xⱼ)
         let mut uu = Vector::new(self.npoint);
         for j in 0..self.npoint {
-            uu[j] = f(self.xx[j]);
+            uu[j] = f(self.xx[j], args)?;
         }
 
         // find maximum errors
@@ -789,16 +804,16 @@ impl InterpLagrange {
             let fi = self.eval(stations[p], &uu).unwrap();
             let gi = self.eval_deriv1(stations[p], &uu).unwrap();
             let hi = self.eval_deriv2(stations[p], &uu).unwrap();
-            err_f = f64::max(err_f, f64::abs(fi - f(stations[p])));
+            err_f = f64::max(err_f, f64::abs(fi - f(stations[p], args)?));
             if exclude_boundaries {
                 if p == 0 || p == nstation - 1 {
                     continue;
                 }
             }
-            err_g = f64::max(err_g, f64::abs(gi - g(stations[p])));
-            err_h = f64::max(err_h, f64::abs(hi - h(stations[p])));
+            err_g = f64::max(err_g, f64::abs(gi - g(stations[p], args)?));
+            err_h = f64::max(err_h, f64::abs(hi - h(stations[p], args)?));
         }
-        (err_f, err_g, err_h)
+        Ok((err_f, err_g, err_h))
     }
 
     /// Returns the polynomial degree N
@@ -838,7 +853,9 @@ impl InterpLagrange {
 #[cfg(test)]
 mod tests {
     use super::{InterpGrid, InterpLagrange, InterpParams};
-    use crate::{approx_eq, deriv1_approx_eq, deriv2_approx_eq, mat_vec_mul, math::SQRT_3, Vector};
+    use crate::algo::NoArgs;
+    use crate::math::SQRT_3;
+    use crate::{approx_eq, deriv1_approx_eq, deriv2_approx_eq, mat_vec_mul, Vector};
     // use plotpy::{Curve, Plot};
 
     #[test]
@@ -1399,15 +1416,16 @@ mod tests {
 
     #[test]
     fn estimate_max_error_all_works() {
-        let f = |x| x * x * x;
-        let g = |x| 3.0 * x * x;
-        let h = |x| 6.0 * x;
+        let f = |x, _: &mut NoArgs| Ok(x * x * x);
+        let g = |x, _: &mut NoArgs| Ok(3.0 * x * x);
+        let h = |x, _: &mut NoArgs| Ok(6.0 * x);
         let mut params = InterpParams::new();
         params.error_estimate_nstation = 21;
         let interp = InterpLagrange::new(2, Some(params)).unwrap();
 
-        let just_err_f = interp.estimate_max_error(f);
-        let (err_f, err_g, err_h) = interp.estimate_max_error_all(false, f, g, h);
+        let args = &mut 0;
+        let just_err_f = interp.estimate_max_error(args, f).unwrap();
+        let (err_f, err_g, err_h) = interp.estimate_max_error_all(false, args, f, g, h).unwrap();
         assert_eq!(just_err_f, err_f);
         approx_eq(err_f, 2.0 * SQRT_3 / 9.0, 9.1e-4); // max @ ±1/sqrt3
         assert_eq!(err_g, 2.0); // max diff @ ±1
@@ -1461,10 +1479,63 @@ mod tests {
         // poor estimate due to only 3 stations--ignoring the boundaries (where the g and h errors are max)
         params.error_estimate_nstation = 3;
         let interp = InterpLagrange::new(2, Some(params)).unwrap();
-        let (err_f, err_g, err_h) = interp.estimate_max_error_all(true, f, g, h);
+        let (err_f, err_g, err_h) = interp.estimate_max_error_all(true, args, f, g, h).unwrap();
         assert_eq!(err_f, 0.0);
         assert_eq!(err_g, 1.0);
         assert_eq!(err_h, 0.0);
+    }
+
+    #[test]
+    fn estimate_functions_capture_errors() {
+        struct Args {
+            counter: usize,
+            target: usize,
+        }
+        let args = &mut Args { counter: 0, target: 0 };
+
+        let f = |_, _: &mut Args| Ok(0.0);
+        let g = |_, _: &mut Args| Ok(0.0);
+        let h = |_, _: &mut Args| Ok(0.0);
+        assert!(h(0.0, args).is_ok());
+
+        let f_err = |_, a: &mut Args| {
+            let res = if a.counter == a.target { Err("f: stop") } else { Ok(0.0) };
+            a.counter += 1;
+            res
+        };
+        let g_err = |_, _: &mut Args| Err("g: stop");
+        let h_err = |_, _: &mut Args| Err("h: stop");
+
+        let nn = 1;
+        let npoint = nn + 1;
+        let interp = InterpLagrange::new(nn, None).unwrap();
+
+        assert_eq!(interp.estimate_max_error(args, f_err).err(), Some("f: stop"));
+        args.counter = 0;
+        args.target = npoint;
+        assert_eq!(interp.estimate_max_error(args, f_err).err(), Some("f: stop"));
+
+        args.counter = 0;
+        args.target = 0;
+        assert_eq!(
+            interp.estimate_max_error_all(true, args, f_err, g, h).err(),
+            Some("f: stop")
+        );
+        args.counter = 0;
+        args.target = npoint;
+        assert_eq!(
+            interp.estimate_max_error_all(true, args, f_err, g, h).err(),
+            Some("f: stop")
+        );
+
+        assert_eq!(
+            interp.estimate_max_error_all(true, args, f, g_err, h).err(),
+            Some("g: stop")
+        );
+        assert_eq!(
+            interp.estimate_max_error_all(true, args, f, g, h_err).err(),
+            Some("h: stop")
+        );
     }
 
     // --- getters ------------------------------------------------------------------------------------

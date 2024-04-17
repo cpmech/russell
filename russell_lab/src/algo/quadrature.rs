@@ -437,7 +437,7 @@ const G14_W: [f64; 7] = [
 
 #[cfg(test)]
 mod tests {
-    use super::{QuadParams, Quadrature};
+    use super::{gauss, QuadParams, Quadrature};
     use crate::algo::testing::get_test_functions;
     use crate::algo::NoArgs;
     use crate::approx_eq;
@@ -459,6 +459,34 @@ mod tests {
         params.tolerance = 1e-7;
         params.n_gauss = 7;
         assert_eq!(params.validate().err(), Some("n_gauss must be 6, 8, 10, 12, or 14"));
+    }
+
+    #[test]
+    fn gauss_captures_errors() {
+        struct Args {
+            count: usize,
+            target: usize,
+        }
+        let mut f = |x, a: &mut Args| {
+            if a.count == a.target {
+                return Err("stop");
+            }
+            a.count += 1;
+            Ok(x)
+        };
+        let args = &mut Args { count: 0, target: 0 };
+        assert_eq!(
+            gauss(7, 0.0, 0.0, args, &mut f).err(),
+            Some("n_gauss must be 6, 8, 10, 12, or 14")
+        );
+        for n_gauss in [6, 8, 10, 12, 14] {
+            args.count = 0;
+            args.target = 0;
+            assert_eq!(gauss(n_gauss, 0.0, 0.0, args, &mut f).err(), Some("stop"));
+            args.count = 0;
+            args.target = 1;
+            assert_eq!(gauss(n_gauss, 0.0, 0.0, args, &mut f).err(), Some("stop"));
+        }
     }
 
     #[test]

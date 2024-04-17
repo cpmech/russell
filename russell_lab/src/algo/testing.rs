@@ -53,33 +53,33 @@ pub struct TestFunction {
 
 /// Generates f(x) functions for testing
 ///
-/// ![001](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_001.svg
+/// ![001](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_001.svg)
 ///
-/// ![002](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_002.svg
+/// ![002](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_002.svg)
 ///
-/// ![003](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_003.svg
+/// ![003](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_003.svg)
 ///
-/// ![004](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_004.svg
+/// ![004](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_004.svg)
 ///
-/// ![005](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_005.svg
+/// ![005](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_005.svg)
 ///
-/// ![006](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_006.svg
+/// ![006](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_006.svg)
 ///
-/// ![007](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_007.svg
+/// ![007](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_007.svg)
 ///
-/// ![008](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_008.svg
+/// ![008](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_008.svg)
 ///
-/// ![009](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_009.svg
+/// ![009](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_009.svg)
 ///
-/// ![010](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_010.svg
+/// ![010](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_010.svg)
 ///
-/// ![011](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_011.svg
+/// ![011](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_011.svg)
 ///
-/// ![012](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_012.svg
+/// ![012](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_012.svg)
 ///
-/// ![013](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_013.svg
+/// ![013](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_013.svg)
 ///
-/// ![014](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_014.svg
+/// ![014](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_014.svg)
 pub fn get_test_functions() -> Vec<TestFunction> {
     vec![
         TestFunction {

@@ -7,7 +7,7 @@ pub(crate) const UNINITIALIZED: f64 = f64::INFINITY;
 /// Indicates that no extra arguments for f(x) are needed
 pub type NoArgs = u8;
 
-/// Holds statistics for generic algorithms
+/// Holds generic statistics for the algorithms
 #[derive(Clone, Copy, Debug)]
 pub struct Stats {
     /// Number of calls to f(x) (function evaluations)

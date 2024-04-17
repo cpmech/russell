@@ -1,7 +1,7 @@
 use super::Stats;
 use crate::StrError;
 
-/// Holds parameters for the root solver
+/// Implements algorithms for finding the roots of an equation
 #[derive(Clone, Copy, Debug)]
 pub struct RootSolver {
     /// Max number of iterations

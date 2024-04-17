@@ -300,7 +300,7 @@ impl Quadrature {
 
         // check
         if !converged {
-            return Err("quadrature failed to converge");
+            return Err("integrate failed to converge");
         }
 
         // done
@@ -439,6 +439,7 @@ const G14_W: [f64; 7] = [
 mod tests {
     use super::{QuadParams, Quadrature};
     use crate::algo::testing::get_test_functions;
+    use crate::algo::NoArgs;
     use crate::approx_eq;
     use crate::base::format_fortran;
     use crate::math::PI;
@@ -458,6 +459,30 @@ mod tests {
         params.tolerance = 1e-7;
         params.n_gauss = 7;
         assert_eq!(params.validate().err(), Some("n_gauss must be 6, 8, 10, 12, or 14"));
+    }
+
+    #[test]
+    fn quadrature_captures_errors_1() {
+        let f = |x, _: &mut NoArgs| Ok(f64::sin(x * x - 1.0));
+        let args = &mut 0;
+        let mut quad = Quadrature::new();
+        assert_eq!(
+            quad.integrate(0.0, 0.0, None, args, f).err(),
+            Some("the lower and upper bounds must be different from each other")
+        );
+        let mut params = QuadParams::new();
+        params.n_iteration_max = 0;
+        assert_eq!(
+            quad.integrate(0.0, 1.0, Some(params), args, f).err(),
+            Some("n_iteration_max must be ≥ 2")
+        );
+        let mut params = QuadParams::new();
+        params.n_iteration_max = 2;
+        params.n_gauss = 6;
+        assert_eq!(
+            quad.integrate(-5.0, 5.0, Some(params), args, f).err(),
+            Some("integrate failed to converge")
+        );
     }
 
     #[test]

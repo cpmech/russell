@@ -635,6 +635,7 @@ mod tests {
 
     #[test]
     fn quadrature_edge_cases_work() {
+        let f = |x, _: &mut NoArgs| Ok(x);
         let mut quad = Quadrature::new();
         let args = &mut 0;
 
@@ -643,7 +644,7 @@ mod tests {
         //
         let b = 1.0;
         let a = 0.9 * b;
-        let (ii, stats) = quad.integrate(a, b, None, args, |x, _| Ok(x)).unwrap();
+        let (ii, stats) = quad.integrate(a, b, None, args, f).unwrap();
         println!("\nI = {}", ii);
         println!("\n{}", stats);
         approx_eq(ii, 0.095, 1e-15);
@@ -655,7 +656,7 @@ mod tests {
         let b = 1.0;
         let a = (1.0 - c) * b;
         assert_eq!(
-            quad.integrate(a, b, None, args, |x, _| Ok(x)).err(),
+            quad.integrate(a, b, None, args, f).err(),
             Some("the lower and upper bounds must not be so close one from another")
         );
     }

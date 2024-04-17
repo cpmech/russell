@@ -1,9 +1,46 @@
-use super::{Params, Stats};
+use super::Stats;
 use crate::math::SQRT_EPSILON;
 use crate::StrError;
 
 /// Golden section ratio: (3 - sqrt(5)) / 2
 const GSR: f64 = 0.38196601125010515179541316563436188227969082019424;
+
+/// Holds parameters for the minimization solver
+#[derive(Clone, Copy, Debug)]
+pub struct MinSolverParams {
+    /// Max number of iterations
+    ///
+    /// ```text
+    /// n_iteration_max ≥ 2
+    /// ```
+    pub n_iteration_max: usize,
+
+    /// Tolerance
+    ///
+    /// e.g., 1e-10
+    pub tolerance: f64,
+}
+
+impl MinSolverParams {
+    /// Allocates a new instance
+    pub fn new() -> Self {
+        MinSolverParams {
+            n_iteration_max: 100,
+            tolerance: 1e-10,
+        }
+    }
+
+    /// Validates the parameters
+    pub fn validate(&self) -> Result<(), StrError> {
+        if self.n_iteration_max < 2 {
+            return Err("n_iteration_max must be ≥ 2");
+        }
+        if self.tolerance < 10.0 * f64::EPSILON {
+            return Err("the tolerance must be ≥ 10.0 * f64::EPSILON");
+        }
+        Ok(())
+    }
+}
 
 /// Employs Brent's method to find the minimum of a function
 ///
@@ -64,7 +101,7 @@ const GSR: f64 = 0.38196601125010515179541316563436188227969082019424;
 pub fn min_solver_brent<F, A>(
     xa: f64,
     xb: f64,
-    params: Option<Params>,
+    params: Option<MinSolverParams>,
     args: &mut A,
     mut f: F,
 ) -> Result<(f64, Stats), StrError>
@@ -79,7 +116,7 @@ where
     // parameters
     let par = match params {
         Some(p) => p,
-        None => Params::new(),
+        None => MinSolverParams::new(),
     };
     par.validate()?;
 
@@ -198,10 +235,23 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::min_solver_brent;
+    use super::{min_solver_brent, MinSolverParams};
     use crate::algo::testing::get_test_functions;
-    use crate::algo::{NoArgs, Params};
+    use crate::algo::NoArgs;
     use crate::approx_eq;
+
+    #[test]
+    fn min_solver_params_captures_errors() {
+        let mut params = MinSolverParams::new();
+        params.n_iteration_max = 0;
+        assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 2"));
+        params.n_iteration_max = 2;
+        params.tolerance = 0.0;
+        assert_eq!(
+            params.validate().err(),
+            Some("the tolerance must be ≥ 10.0 * f64::EPSILON")
+        );
+    }
 
     #[test]
     fn min_solver_brent_captures_errors_1() {
@@ -212,7 +262,7 @@ mod tests {
             min_solver_brent(-0.5, -0.5, None, args, f).err(),
             Some("xa must be different from xb")
         );
-        let mut params = Params::new();
+        let mut params = MinSolverParams::new();
         params.n_iteration_max = 0;
         assert_eq!(
             min_solver_brent(-0.5, 2.0, Some(params), args, f).err(),
@@ -313,7 +363,7 @@ mod tests {
         let f = |x, _: &mut NoArgs| Ok(x * x - 1.0);
         let args = &mut 0;
         assert_eq!(f(0.0, args).unwrap(), -1.0);
-        let mut params = Params::new();
+        let mut params = MinSolverParams::new();
         params.n_iteration_max = 2;
         assert_eq!(
             min_solver_brent(-5.0, 5.0, Some(params), args, f).err(),

@@ -194,9 +194,18 @@ impl Quadrature {
             if f64::copysign(1.0, b) * a > 0.0 {
                 let c = f64::abs(1.0 - a / b);
                 if c <= 0.1 {
-                    if c <= 0.0 {
-                        return Ok((ans, stats));
-                    }
+                    //
+                    // Important: the following (removed) branching is not possible:
+                    //
+                    // if c <= 0.0 {
+                    //     return Ok((ans, stats));
+                    // }
+                    //
+                    // because c is never negative and a/b cannot be 1.0 (yielding c == 0.0)
+                    // Note that a and b have already been checked above, validating:
+                    //
+                    // f64::abs(b - a) >= 10.0 * f64::EPSILON
+                    //
                     n_ib = 0.5 - f64::ln(c) / LN2;
                     let nib = n_ib as usize;
                     lmx = usize::min(n_lmx, n_bit - nib - 7);

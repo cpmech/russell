@@ -594,6 +594,8 @@ mod tests {
             println!("\n{}", func.name);
             if i == 0 {
                 assert_eq!((func.f)(0.0, args).err(), Some("stop"));
+                assert_eq!((func.g)(0.0, args).err(), Some("stop"));
+                assert_eq!((func.h)(0.0, args).err(), Some("stop"));
             } else {
                 let at_x = (func.range.0 + func.range.1) / 2.0;
                 let num = (func.g)(at_x, args).unwrap();

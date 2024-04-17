@@ -10,6 +10,12 @@ pub struct TestFunction {
     /// Holds the f(x) function
     pub f: fn(f64, &mut NoArgs) -> Result<f64, StrError>,
 
+    /// Holds the first derivative of f(x) w.r.t x
+    pub g: fn(f64, &mut NoArgs) -> Result<f64, StrError>,
+
+    /// Holds the second derivative of f(x) w.r.t x
+    pub h: fn(f64, &mut NoArgs) -> Result<f64, StrError>,
+
     /// Holds the range of interest of f(x)
     ///
     /// The values are `(xmin, xmax)` and are useful for
@@ -85,6 +91,8 @@ pub fn get_test_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "0: f(x) = undefined",
             f: |_, _| Err("stop"),
+            g: |_, _| Err("stop"),
+            h: |_, _| Err("stop"),
             range: (-5.0, 5.0),
             min1: None,
             min2: None,
@@ -100,6 +108,8 @@ pub fn get_test_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "1: f(x) = x² - 1",
             f: |x, _| Ok(x * x - 1.0),
+            g: |x, _| Ok(2.0 * x),
+            h: |_, _| Ok(2.0),
             range: (-5.0, 5.0),
             min1: Some(Bracket {
                 a: -5.0,
@@ -136,6 +146,11 @@ pub fn get_test_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "2: f(x) = 1/2 - 1/(1 + 16 x²)", // (shifted) Runge equation
             f: |x, _| Ok(1.0 / 2.0 - 1.0 / (1.0 + 16.0 * x * x)),
+            g: |x, _| Ok((32.0 * x) / f64::powi(1.0 + 16.0 * f64::powi(x, 2), 2)),
+            h: |x, _| {
+                Ok((-2048.0 * f64::powi(x, 2)) / f64::powi(1.0 + 16.0 * f64::powi(x, 2), 3)
+                    + 32.0 / f64::powi(1.0 + 16.0 * f64::powi(x, 2), 2))
+            },
             range: (-2.0, 2.0),
             min1: Some(Bracket {
                 a: -2.0,
@@ -172,6 +187,8 @@ pub fn get_test_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "3: f(x) = x⁵ + 3x⁴ - 2x³ + x - 1",
             f: |x, _| Ok(f64::powi(x, 5) + 3.0 * f64::powi(x, 4) - 2.0 * f64::powi(x, 3) + x - 1.0),
+            g: |x, _| Ok(1.0 - 6.0 * f64::powi(x, 2) + 12.0 * f64::powi(x, 3) + 5.0 * f64::powi(x, 4)),
+            h: |x, _| Ok(-12.0 * x + 36.0 * f64::powi(x, 2) + 20.0 * f64::powi(x, 3)),
             range: (-3.6, 2.0),
             min1: Some(Bracket {
                 a: -2.0,
@@ -215,6 +232,8 @@ pub fn get_test_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "4: f(x) = (x - 1)² + 5 sin(x)",
             f: |x, _| Ok(f64::powi(x - 1.0, 2) + 5.0 * f64::sin(x)),
+            g: |x, _| Ok(2.0 * (-1.0 + x) + 5.0 * f64::cos(x)),
+            h: |x, _| Ok(2.0 - 5.0 * f64::sin(x)),
             range: (-2.8, 5.0),
             min1: Some(Bracket {
                 a: -2.0,
@@ -258,6 +277,28 @@ pub fn get_test_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "5: f(x) = 1/(1 - exp(-2 x) sin²(5 π x)) - 3/2",
             f: |x, _| Ok(1.0 / (1.0 - f64::exp(-2.0 * x) * f64::powi(f64::sin(5.0 * PI * x), 2)) - 1.5),
+            g: |x, _| {
+                let s5px = f64::sin(5.0 * PI * x);
+                let s5px2 = f64::powi(s5px, 2);
+                let c5px = f64::cos(5.0 * PI * x);
+                let e2x = f64::exp(2.0 * x);
+                Ok(-(((-10.0 * PI * c5px * s5px) / e2x + (2.0 * s5px2) / e2x) / f64::powi(1.0 - s5px2 / e2x, 2)))
+            },
+            h: |x, _| {
+                let s5px = f64::sin(5.0 * PI * x);
+                let s5px2 = f64::powi(s5px, 2);
+                let c5px = f64::cos(5.0 * PI * x);
+                let e2x = f64::exp(2.0 * x);
+                let pi2 = f64::powi(PI, 2);
+                Ok(
+                    (2.0 * f64::powi((-10.0 * PI * c5px * s5px) / e2x + (2.0 * s5px2) / e2x, 2))
+                        / f64::powi(1.0 - s5px2 / e2x, 3)
+                        - ((-50.0 * pi2 * f64::powi(c5px, 2)) / e2x + (40.0 * PI * c5px * s5px) / e2x
+                            - (4.0 * s5px2) / e2x
+                            + (50.0 * pi2 * s5px2) / e2x)
+                            / f64::powi(1.0 - s5px2 / e2x, 2),
+                )
+            },
             range: (0.0, 1.0),
             min1: Some(Bracket {
                 a: 0.1,
@@ -315,6 +356,8 @@ pub fn get_test_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "6: f(x) = sin(x) in [0, π]",
             f: |x, _| Ok(f64::sin(x)),
+            g: |x, _| Ok(f64::cos(x)),
+            h: |x, _| Ok(-f64::sin(x)),
             range: (0.0, PI),
             min1: None,
             min2: None,
@@ -330,6 +373,8 @@ pub fn get_test_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "7: f(x) = sin(x) in [0, π/2]",
             f: |x, _| Ok(f64::sin(x)),
+            g: |x, _| Ok(f64::cos(x)),
+            h: |x, _| Ok(-f64::sin(x)),
             range: (0.0, PI / 2.0),
             min1: None,
             min2: None,
@@ -345,6 +390,8 @@ pub fn get_test_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "8: f(x) = sin(x) in [-1, 1]",
             f: |x, _| Ok(f64::sin(x)),
+            g: |x, _| Ok(f64::cos(x)),
+            h: |x, _| Ok(-f64::sin(x)),
             range: (-1.0, 1.0),
             min1: None,
             min2: None,
@@ -367,6 +414,8 @@ pub fn get_test_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "9: f(x) = 0.092834 sin(77.0001 + 19.87 x) in [-2.34567, 12.34567]",
             f: |x, _| Ok(0.092834 * f64::sin(77.0001 + 19.87 * x)),
+            g: |x, _| Ok(1.84461158 * f64::cos(77.0001 + 19.87 * x)),
+            h: |x, _| Ok(-36.6524320946 * f64::sin(77.0001 + 19.87 * x)),
             range: (-2.34567, 12.34567),
             min1: None,
             min2: None,
@@ -382,6 +431,8 @@ pub fn get_test_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "10: f(x) = 0.092834 sin[7.0001 + 1.87 x) in [-2.34567, 1.34567]",
             f: |x, _| Ok(0.092834 * f64::sin(7.0001 + 1.87 * x)),
+            g: |x, _| Ok(0.17359958 * f64::cos(7.0001 + 1.87 * x)),
+            h: |x, _| Ok(-0.32463121460000005 * f64::sin(7.0001 + 1.87 * x)),
             range: (-2.5, 1.5),
             min1: Some(Bracket {
                 a: -2.0,
@@ -425,6 +476,14 @@ pub fn get_test_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "11: f(x) = (2 x⁵ - x + 3)/x²",
             f: |x, _| Ok((2.0 * f64::powi(x, 5) - x + 3.0) / (x * x)),
+            g: |x, _| {
+                Ok((-1.0 + 10.0 * f64::powi(x, 4)) / f64::powi(x, 2)
+                    - (2.0 * (3.0 - x + 2.0 * f64::powi(x, 5))) / f64::powi(x, 3))
+            },
+            h: |x, _| {
+                Ok(40.0 * x - (4.0 * (-1.0 + 10.0 * f64::powi(x, 4))) / f64::powi(x, 3)
+                    + (6.0 * (3.0 - x + 2.0 * f64::powi(x, 5))) / f64::powi(x, 4))
+            },
             range: (1.0, 2.0),
             min1: None,
             min2: None,
@@ -440,6 +499,8 @@ pub fn get_test_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "12: f(x) = 3/exp(-x) - 1/(3x)",
             f: |x, _| Ok(3.0 / f64::exp(-x) - 1.0 / (3.0 * x)),
+            g: |x, _| Ok(3.0 * f64::exp(x) + 1.0 / (3.0 * f64::powi(x, 2))),
+            h: |x, _| Ok(3.0 * f64::exp(x) - 2.0 / (3.0 * f64::powi(x, 3))),
             range: (-20.0, -1.0),
             min1: None,
             min2: None,
@@ -453,8 +514,10 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             tol_integral: 1e-14,
         },
         TestFunction {
-            name: "13: f(x) = log(2 Cos(x/2))",
+            name: "13: f(x) = log(2 f64::cos(x/2))",
             f: |x, _| Ok(f64::ln(2.0 * f64::cos(x / 2.0))),
+            g: |x, _| Ok(-0.5 * f64::tan(x / 2.0)),
+            h: |x, _| Ok(-0.25 * f64::powi(1.0 / f64::cos(x / 2.0), 2)),
             range: (-PI, PI),
             min1: None,
             min2: None,
@@ -484,6 +547,8 @@ pub fn get_test_functions() -> Vec<TestFunction> {
         TestFunction {
             name: "14: f(x) = exp(x)",
             f: |x, _| Ok(f64::exp(x)),
+            g: |x, _| Ok(f64::exp(x)),
+            h: |x, _| Ok(f64::exp(x)),
             range: (0.0, 10.1),
             min1: None,
             min2: None,

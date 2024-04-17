@@ -570,7 +570,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
 mod tests {
     use super::get_test_functions;
     use crate::algo::Bracket;
-    use crate::approx_eq;
+    use crate::{approx_eq, deriv1_approx_eq, deriv2_approx_eq};
     // use crate::Vector;
     // use plotpy::{Curve, Legend, Plot, RayEndpoint};
 
@@ -594,6 +594,12 @@ mod tests {
             println!("\n{}", func.name);
             if i == 0 {
                 assert_eq!((func.f)(0.0, args).err(), Some("stop"));
+            } else {
+                let at_x = (func.range.0 + func.range.1) / 2.0;
+                let num = (func.g)(at_x, args).unwrap();
+                deriv1_approx_eq(num, at_x, args, 1e-8, func.f);
+                let num = (func.h)(at_x, args).unwrap();
+                deriv2_approx_eq(num, at_x, args, 1e-7, func.f);
             }
             assert_eq!(format!("{}", i), func.name.split(":").next().unwrap()); // make sure index is correct
             if let Some(bracket) = &func.min1 {

@@ -1,7 +1,7 @@
 use super::{Bracket, Stats, UNINITIALIZED};
 use crate::StrError;
 
-/// Implements algorithms for bracketing the local minima of f(x)
+/// Implements algorithms for bracketing a local minimum of f(x)
 #[derive(Clone, Copy, Debug)]
 pub struct MinBracketing {
     /// Max number of iterations

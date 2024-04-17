@@ -523,6 +523,35 @@ mod tests {
     }
 
     #[test]
+    fn quadrature_captures_errors_2() {
+        struct Args {
+            count: usize,
+            target: usize,
+        }
+        let f = |x, a: &mut Args| {
+            if a.count == a.target {
+                return Err("stop");
+            };
+            a.count += 1;
+            Ok(x)
+        };
+        let args = &mut Args { count: 0, target: 0 };
+        let mut quad = Quadrature::new();
+        let mut params = QuadParams::new();
+        params.n_gauss = 6;
+        // first call to gauss
+        assert_eq!(quad.integrate(0.0, 1.0, Some(params), args, f).err(), Some("stop"));
+        // second call to gauss
+        args.count = 0;
+        args.target = 6;
+        assert_eq!(quad.integrate(0.0, 1.0, Some(params), args, f).err(), Some("stop"));
+        // third call to gauss
+        args.count = 0;
+        args.target = 12;
+        assert_eq!(quad.integrate(0.0, 1.0, Some(params), args, f).err(), Some("stop"));
+    }
+
+    #[test]
     fn quadrature_works_1() {
         // compare with Fortran code
         // f(x) = sin(x)

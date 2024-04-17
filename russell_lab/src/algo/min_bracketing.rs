@@ -165,9 +165,9 @@ mod tests {
 
     #[test]
     fn validate_params_works() {
-        let mut params = MinBracketing::new();
-        params.n_iteration_max = 0;
-        assert_eq!(params.validate_params().err(), Some("n_iteration_max must be ≥ 2"));
+        let mut solver = MinBracketing::new();
+        solver.n_iteration_max = 0;
+        assert_eq!(solver.validate_params().err(), Some("n_iteration_max must be ≥ 2"));
     }
 
     #[test]
@@ -175,9 +175,9 @@ mod tests {
         let f = |x, _: &mut NoArgs| Ok(x * x - 1.0);
         let args = &mut 0;
         assert_eq!(f(1.0, args).unwrap(), 0.0);
-        let mut params = MinBracketing::new();
-        params.n_iteration_max = 0;
-        assert_eq!(params.basic(0.0, args, f).err(), Some("n_iteration_max must be ≥ 2"));
+        let mut solver = MinBracketing::new();
+        solver.n_iteration_max = 0;
+        assert_eq!(solver.basic(0.0, args, f).err(), Some("n_iteration_max must be ≥ 2"));
     }
 
     #[test]
@@ -196,17 +196,17 @@ mod tests {
             res
         };
         let args = &mut Args { count: 0, target: 0 };
-        let params = MinBracketing::new();
+        let solver = MinBracketing::new();
         // first function call
-        assert_eq!(params.basic(0.0, args, f).err(), Some("stop"));
+        assert_eq!(solver.basic(0.0, args, f).err(), Some("stop"));
         // second function call
         args.count = 0;
         args.target = 1;
-        assert_eq!(params.basic(0.0, args, f).err(), Some("stop"));
+        assert_eq!(solver.basic(0.0, args, f).err(), Some("stop"));
         // third function call
         args.count = 0;
         args.target = 2;
-        assert_eq!(params.basic(0.0, args, f).err(), Some("stop"));
+        assert_eq!(solver.basic(0.0, args, f).err(), Some("stop"));
     }
 
     fn check_consistency(bracket: &Bracket) {
@@ -219,7 +219,7 @@ mod tests {
     #[test]
     fn basic_works_1() {
         let args = &mut 0;
-        let params = MinBracketing::new();
+        let solver = MinBracketing::new();
         for (i, test) in get_test_functions().iter().enumerate() {
             if test.min1.is_none() {
                 continue;
@@ -235,7 +235,7 @@ mod tests {
                     0.1
                 }
             };
-            let (bracket, stats) = params.basic(x_guess, args, test.f).unwrap();
+            let (bracket, stats) = solver.basic(x_guess, args, test.f).unwrap();
             println!("\n{}", bracket);
             println!("\n{}", stats);
             check_consistency(&bracket);
@@ -251,11 +251,11 @@ mod tests {
         let f = |x, _: &mut NoArgs| Ok(f64::powi(x - 1.0, 2) + 5.0 * f64::sin(x));
         let args = &mut 0;
         assert!(f(1.0, args).unwrap() > 0.0);
-        let mut params = MinBracketing::new();
-        params.n_iteration_max = 2;
-        params.nonlinear_step = false;
+        let mut solver = MinBracketing::new();
+        solver.n_iteration_max = 2;
+        solver.nonlinear_step = false;
         assert_eq!(
-            params.basic(0.0, args, f).err(),
+            solver.basic(0.0, args, f).err(),
             Some("try_bracket_min failed to converge")
         );
     }

@@ -1,4 +1,4 @@
-use crate::{format_nanoseconds, Stopwatch, StrError};
+use crate::{format_nanoseconds, Stopwatch};
 use std::fmt::{self, Write};
 
 /// Constant to indicate an uninitialized value
@@ -6,47 +6,6 @@ pub(crate) const UNINITIALIZED: f64 = f64::INFINITY;
 
 /// Indicates that no extra arguments for f(x) are needed
 pub type NoArgs = u8;
-
-/// Holds parameters for generic algorithms
-#[derive(Clone, Copy, Debug)]
-pub struct Params {
-    /// Max number of iterations
-    ///
-    /// ```text
-    /// n_iteration_max ≥ 2
-    /// ```
-    pub n_iteration_max: usize,
-
-    /// Tolerance
-    ///
-    /// e.g., 1e-10
-    pub tolerance: f64,
-
-    /// Number of Gauss points
-    pub npoint: usize,
-}
-
-impl Params {
-    /// Allocates a new instance
-    pub fn new() -> Self {
-        Params {
-            n_iteration_max: 100,
-            tolerance: 1e-10,
-            npoint: 6,
-        }
-    }
-
-    /// Validates the parameters
-    pub fn validate(&self) -> Result<(), StrError> {
-        if self.n_iteration_max < 2 {
-            return Err("n_iteration_max must be ≥ 2");
-        }
-        if self.tolerance < 10.0 * f64::EPSILON {
-            return Err("the tolerance must be ≥ 10.0 * f64::EPSILON");
-        }
-        Ok(())
-    }
-}
 
 /// Holds statistics for generic algorithms
 #[derive(Clone, Copy, Debug)]
@@ -174,20 +133,7 @@ impl fmt::Display for Bracket {
 
 #[cfg(test)]
 mod tests {
-    use super::{Bracket, Params, Stats};
-
-    #[test]
-    fn algo_params_captures_errors() {
-        let mut params = Params::new();
-        params.n_iteration_max = 0;
-        assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 2"));
-        params.n_iteration_max = 2;
-        params.tolerance = 0.0;
-        assert_eq!(
-            params.validate().err(),
-            Some("the tolerance must be ≥ 10.0 * f64::EPSILON")
-        );
-    }
+    use super::{Bracket, Stats};
 
     #[test]
     fn stats_summary_and_display_work() {

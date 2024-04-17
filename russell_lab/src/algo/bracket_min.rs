@@ -3,7 +3,7 @@ use crate::StrError;
 
 /// Holds parameters for a bracket algorithm
 #[derive(Clone, Copy, Debug)]
-pub struct BracketMinParams {
+pub struct BracketMin {
     /// Max number of iterations
     ///
     /// ```text
@@ -25,10 +25,10 @@ pub struct BracketMinParams {
     pub nonlinear_step: bool,
 }
 
-impl BracketMinParams {
-    /// Allocates a new instance
+impl BracketMin {
+    /// Allocates a new instance with default parameters
     pub fn new() -> Self {
-        BracketMinParams {
+        BracketMin {
             n_iteration_max: 20,
             initial_step: 1e-2,
             expansion_factor: 2.0,
@@ -43,108 +43,98 @@ impl BracketMinParams {
         }
         Ok(())
     }
-}
 
-/// Tries to bracket the minimum of f(x)
-///
-/// **Note:** This function is suitable for *unimodal functions*---it may fail otherwise.
-/// The code is based on the one presented in Chapter 3 (page 36) of the Reference.
-///
-/// Searches (iteratively) for `a`, `b` and `xo` such that:
-///
-/// ```text
-/// f(xo) < f(a)  and  f(xo) < f(b)
-///
-/// with a < xo < b
-/// ```
-///
-/// Thus, `f(xo)` is the minimum of `f(x)` in the `[a, b]` interval.
-///
-/// # Input
-///
-/// * `x_guess` -- a starting guess
-/// * `params` -- optional control parameters
-/// * `args` -- extra arguments for the callback function
-/// * `f` -- is the callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
-///
-/// # Output
-///
-/// Returns `(bracket, stats)` where:
-///
-/// * `bracket` -- holds the results
-/// * `stats` -- holds statistics about the computations
-///
-/// # Reference
-///
-/// * Kochenderfer MJ and Wheeler TA (2019) Algorithms for Optimization, The MIT Press, 512p
-pub fn try_bracket_min<F, A>(
-    x_guess: f64,
-    params: Option<BracketMinParams>,
-    args: &mut A,
-    mut f: F,
-) -> Result<(Bracket, Stats), StrError>
-where
-    F: FnMut(f64, &mut A) -> Result<f64, StrError>,
-{
-    // parameters
-    let par = match params {
-        Some(p) => p,
-        None => BracketMinParams::new(),
-    };
-    par.validate()?;
+    /// Tries to bracket the minimum of f(x)
+    ///
+    /// **Note:** This function is suitable for *unimodal functions*---it may fail otherwise.
+    /// The code is based on the one presented in Chapter 3 (page 36) of the Reference.
+    ///
+    /// Searches (iteratively) for `a`, `b` and `xo` such that:
+    ///
+    /// ```text
+    /// f(xo) < f(a)  and  f(xo) < f(b)
+    ///
+    /// with a < xo < b
+    /// ```
+    ///
+    /// Thus, `f(xo)` is the minimum of `f(x)` in the `[a, b]` interval.
+    ///
+    /// # Input
+    ///
+    /// * `x_guess` -- a starting guess
+    /// * `args` -- extra arguments for the callback function
+    /// * `f` -- is the callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
+    ///
+    /// # Output
+    ///
+    /// Returns `(bracket, stats)` where:
+    ///
+    /// * `bracket` -- holds the results
+    /// * `stats` -- holds statistics about the computations
+    ///
+    /// # Reference
+    ///
+    /// * Kochenderfer MJ and Wheeler TA (2019) Algorithms for Optimization, The MIT Press, 512p
+    pub fn try_bracket_min<F, A>(&self, x_guess: f64, args: &mut A, mut f: F) -> Result<(Bracket, Stats), StrError>
+    where
+        F: FnMut(f64, &mut A) -> Result<f64, StrError>,
+    {
+        // validate parameters
+        self.validate()?;
 
-    // allocate stats struct
-    let mut stats = Stats::new();
+        // allocate stats struct
+        let mut stats = Stats::new();
 
-    // initialization
-    let mut step = par.initial_step;
-    let (mut a, mut xo) = (x_guess, x_guess + step);
-    let (mut fa, mut fxo) = (f(a, args)?, f(xo, args)?);
-    stats.n_function += 2;
+        // initialization
+        let mut step = self.initial_step;
+        let (mut a, mut xo) = (x_guess, x_guess + step);
+        let (mut fa, mut fxo) = (f(a, args)?, f(xo, args)?);
+        stats.n_function += 2;
 
-    // swap values (make sure to go "downhill")
-    if fxo > fa {
-        swap(&mut a, &mut xo);
-        swap(&mut fa, &mut fxo);
-        step = -step;
-    }
-
-    // iterations
-    let mut converged = false;
-    let mut b = UNINITIALIZED;
-    let mut fb = UNINITIALIZED;
-    for k in 0..par.n_iteration_max {
-        stats.n_iterations += 1;
-        stats.n_function += 1;
-        b = xo + step;
-        fb = f(b, args)?;
-        if fb > fxo {
-            converged = true;
-            break;
+        // swap values (make sure to go "downhill")
+        if fxo > fa {
+            swap(&mut a, &mut xo);
+            swap(&mut fa, &mut fxo);
+            step = -step;
         }
-        a = xo;
-        fa = fxo;
-        xo = b;
-        fxo = fb;
-        if par.nonlinear_step {
-            step *= par.expansion_factor * f64::powf(2.0, k as f64);
-        } else {
-            step *= par.expansion_factor;
+
+        // iterations
+        let mut converged = false;
+        let mut b = UNINITIALIZED;
+        let mut fb = UNINITIALIZED;
+        for k in 0..self.n_iteration_max {
+            stats.n_iterations += 1;
+            stats.n_function += 1;
+            b = xo + step;
+            fb = f(b, args)?;
+            if fb > fxo {
+                converged = true;
+                break;
+            }
+            a = xo;
+            fa = fxo;
+            xo = b;
+            fxo = fb;
+            if self.nonlinear_step {
+                step *= self.expansion_factor * f64::powf(2.0, k as f64);
+            } else {
+                step *= self.expansion_factor;
+            }
         }
-    }
 
-    // check
-    if !converged {
-        return Err("try_bracket_min failed to converge");
-    }
+        // check
+        if !converged {
+            return Err("try_bracket_min failed to converge");
+        }
 
-    // done
-    if a > b {
-        swap(&mut a, &mut b);
-        swap(&mut fa, &mut fb);
+        // done
+        if a > b {
+            swap(&mut a, &mut b);
+            swap(&mut fa, &mut fb);
+        }
+        stats.stop_sw_total();
+        Ok((Bracket { a, b, fa, fb, xo, fxo }, stats))
     }
-    stats.stop_sw_total();
-    Ok((Bracket { a, b, fa, fb, xo, fxo }, stats))
 }
 
 /// Swaps two numbers
@@ -159,7 +149,7 @@ pub(super) fn swap(a: &mut f64, b: &mut f64) {
 
 #[cfg(test)]
 mod tests {
-    use super::{swap, try_bracket_min, Bracket, BracketMinParams};
+    use super::{swap, Bracket, BracketMin};
     use crate::algo::testing::get_test_functions;
     use crate::algo::NoArgs;
     use crate::approx_eq;
@@ -174,8 +164,8 @@ mod tests {
     }
 
     #[test]
-    fn params_validate_captures_errors() {
-        let mut params = BracketMinParams::new();
+    fn validate_captures_errors() {
+        let mut params = BracketMin::new();
         params.n_iteration_max = 0;
         assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 2"));
     }
@@ -185,10 +175,10 @@ mod tests {
         let f = |x, _: &mut NoArgs| Ok(x * x - 1.0);
         let args = &mut 0;
         assert_eq!(f(1.0, args).unwrap(), 0.0);
-        let mut params = BracketMinParams::new();
+        let mut params = BracketMin::new();
         params.n_iteration_max = 0;
         assert_eq!(
-            try_bracket_min(0.0, Some(params), args, f).err(),
+            params.try_bracket_min(0.0, args, f).err(),
             Some("n_iteration_max must be ≥ 2")
         );
     }
@@ -209,16 +199,17 @@ mod tests {
             res
         };
         let args = &mut Args { count: 0, target: 0 };
+        let params = BracketMin::new();
         // first function call
-        assert_eq!(try_bracket_min(0.0, None, args, f).err(), Some("stop"));
+        assert_eq!(params.try_bracket_min(0.0, args, f).err(), Some("stop"));
         // second function call
         args.count = 0;
         args.target = 1;
-        assert_eq!(try_bracket_min(0.0, None, args, f).err(), Some("stop"));
+        assert_eq!(params.try_bracket_min(0.0, args, f).err(), Some("stop"));
         // third function call
         args.count = 0;
         args.target = 2;
-        assert_eq!(try_bracket_min(0.0, None, args, f).err(), Some("stop"));
+        assert_eq!(params.try_bracket_min(0.0, args, f).err(), Some("stop"));
     }
 
     fn check_consistency(bracket: &Bracket) {
@@ -231,6 +222,7 @@ mod tests {
     #[test]
     fn try_bracket_min_works_1() {
         let args = &mut 0;
+        let params = BracketMin::new();
         for (i, test) in get_test_functions().iter().enumerate() {
             if test.min1.is_none() {
                 continue;
@@ -246,7 +238,7 @@ mod tests {
                     0.1
                 }
             };
-            let (bracket, stats) = try_bracket_min(x_guess, None, args, test.f).unwrap();
+            let (bracket, stats) = params.try_bracket_min(x_guess, args, test.f).unwrap();
             println!("\n{}", bracket);
             println!("\n{}", stats);
             check_consistency(&bracket);
@@ -262,11 +254,11 @@ mod tests {
         let f = |x, _: &mut NoArgs| Ok(f64::powi(x - 1.0, 2) + 5.0 * f64::sin(x));
         let args = &mut 0;
         assert!(f(1.0, args).unwrap() > 0.0);
-        let mut params = BracketMinParams::new();
+        let mut params = BracketMin::new();
         params.n_iteration_max = 2;
         params.nonlinear_step = false;
         assert_eq!(
-            try_bracket_min(0.0, Some(params), args, f).err(),
+            params.try_bracket_min(0.0, args, f).err(),
             Some("try_bracket_min failed to converge")
         );
     }

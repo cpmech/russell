@@ -166,6 +166,13 @@ impl Quadrature {
         // allocate stats struct
         let mut stats = Stats::new();
 
+        // clear the workspace
+        self.aa.fill(0.0);
+        self.hh.fill(0.0);
+        self.vl.fill(0.0);
+        self.gr.fill(0.0);
+        self.lr.fill(0);
+
         // initialization
         let mut ans = 0.0;
         let mut err = 0.0;
@@ -644,6 +651,21 @@ mod tests {
         let (ii, _) = quad.integrate(0.0, PI, args, |x, _| Ok(f64::sin(x))).unwrap();
         let (mii, _) = quad.integrate(PI, 0.0, args, |x, _| Ok(f64::sin(x))).unwrap();
         assert_eq!(ii, -mii);
+    }
+
+    #[test]
+    fn integrate_works_6() {
+        // integrate twice works
+        let mut quad = Quadrature::new();
+        let args = &mut 0;
+
+        // first
+        let (ii, _) = quad.integrate(0.0, PI, args, |x, _| Ok(f64::sin(x))).unwrap();
+        approx_eq(ii, 2.0, 1e-15);
+
+        // second
+        let (ii, _) = quad.integrate(0.0, PI, args, |x, _| Ok(f64::sin(x))).unwrap();
+        approx_eq(ii, 2.0, 1e-15);
     }
 
     #[test]

@@ -22,6 +22,9 @@ pub struct TestFunction {
     /// plotting the function, for instance.
     pub range: (f64, f64),
 
+    /// Holds the number of roots in the specified range
+    pub n_root: usize,
+
     /// Holds a bracketed local minimum
     pub min1: Option<Bracket>,
 
@@ -94,6 +97,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             g: |_, _| Err("stop"),
             h: |_, _| Err("stop"),
             range: (-5.0, 5.0),
+            n_root: 0,
             min1: None,
             min2: None,
             min3: None,
@@ -111,6 +115,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             g: |x, _| Ok(2.0 * x),
             h: |_, _| Ok(2.0),
             range: (-5.0, 5.0),
+            n_root: 2,
             min1: Some(Bracket {
                 a: -5.0,
                 b: 5.0,
@@ -152,6 +157,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
                     + 32.0 / f64::powi(1.0 + 16.0 * f64::powi(x, 2), 2))
             },
             range: (-2.0, 2.0),
+            n_root: 2,
             min1: Some(Bracket {
                 a: -2.0,
                 b: 2.0,
@@ -190,6 +196,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             g: |x, _| Ok(1.0 - 6.0 * f64::powi(x, 2) + 12.0 * f64::powi(x, 3) + 5.0 * f64::powi(x, 4)),
             h: |x, _| Ok(-12.0 * x + 36.0 * f64::powi(x, 2) + 20.0 * f64::powi(x, 3)),
             range: (-3.6, 2.0),
+            n_root: 3,
             min1: Some(Bracket {
                 a: -2.0,
                 b: 2.0,
@@ -235,6 +242,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             g: |x, _| Ok(2.0 * (-1.0 + x) + 5.0 * f64::cos(x)),
             h: |x, _| Ok(2.0 - 5.0 * f64::sin(x)),
             range: (-2.8, 5.0),
+            n_root: 2,
             min1: Some(Bracket {
                 a: -2.0,
                 b: 2.0,
@@ -300,6 +308,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
                 )
             },
             range: (0.0, 1.0),
+            n_root: 6,
             min1: Some(Bracket {
                 a: 0.1,
                 b: 0.3,
@@ -359,6 +368,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             g: |x, _| Ok(f64::cos(x)),
             h: |x, _| Ok(-f64::sin(x)),
             range: (0.0, PI),
+            n_root: 2,
             min1: None,
             min2: None,
             min3: None,
@@ -376,6 +386,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             g: |x, _| Ok(f64::cos(x)),
             h: |x, _| Ok(-f64::sin(x)),
             range: (0.0, PI / 2.0),
+            n_root: 1,
             min1: None,
             min2: None,
             min3: None,
@@ -393,6 +404,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             g: |x, _| Ok(f64::cos(x)),
             h: |x, _| Ok(-f64::sin(x)),
             range: (-1.0, 1.0),
+            n_root: 1,
             min1: None,
             min2: None,
             min3: None,
@@ -417,6 +429,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             g: |x, _| Ok(1.84461158 * f64::cos(77.0001 + 19.87 * x)),
             h: |x, _| Ok(-36.6524320946 * f64::sin(77.0001 + 19.87 * x)),
             range: (-2.34567, 12.34567),
+            n_root: 93,
             min1: None,
             min2: None,
             min3: None,
@@ -434,6 +447,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             g: |x, _| Ok(0.17359958 * f64::cos(7.0001 + 1.87 * x)),
             h: |x, _| Ok(-0.32463121460000005 * f64::sin(7.0001 + 1.87 * x)),
             range: (-2.5, 1.5),
+            n_root: 3,
             min1: Some(Bracket {
                 a: -2.0,
                 b: 1.0,
@@ -485,6 +499,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
                     + (6.0 * (3.0 - x + 2.0 * f64::powi(x, 5))) / f64::powi(x, 4))
             },
             range: (1.0, 2.0),
+            n_root: 0,
             min1: None,
             min2: None,
             min3: None,
@@ -502,6 +517,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             g: |x, _| Ok(3.0 * f64::exp(x) + 1.0 / (3.0 * f64::powi(x, 2))),
             h: |x, _| Ok(3.0 * f64::exp(x) - 2.0 / (3.0 * f64::powi(x, 3))),
             range: (-20.0, -1.0),
+            n_root: 0,
             min1: None,
             min2: None,
             min3: None,
@@ -518,7 +534,8 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             f: |x, _| Ok(f64::ln(2.0 * f64::cos(x / 2.0))),
             g: |x, _| Ok(-0.5 * f64::tan(x / 2.0)),
             h: |x, _| Ok(-0.25 * f64::powi(1.0 / f64::cos(x / 2.0), 2)),
-            range: (-PI, PI),
+            range: (-0.995 * PI, 0.995 * PI),
+            n_root: 2,
             min1: None,
             min2: None,
             min3: None,
@@ -550,6 +567,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             g: |x, _| Ok(f64::exp(x)),
             h: |x, _| Ok(f64::exp(x)),
             range: (0.0, 10.1),
+            n_root: 0,
             min1: None,
             min2: None,
             min3: None,

@@ -1,9 +1,33 @@
 use super::{Quadrature, Stats};
-use crate::math::{float_split, PI};
+use crate::math::{PI, SQRT_EPSILON};
 use crate::StrError;
 
+/// Defines the min distance between roots
+///
+/// This constant is critical to counting the number of roots with
+/// the Kronecker-Picard formula---it must be `≥ 1e-7`
+pub const ROOTS_MIN_DISTANCE: f64 = 1e-7;
+
+/// Defines the γ constant for the Kronecker-Picard formula
+///
+/// This constant must be calibrated alongside [KP_CUTOFF] and it affects the
+/// convergence of the quadrature method. Note that the Kronecker-Picard (KP)
+/// algorithm is quite sensitive near the boundaries coinciding with two roots,
+/// since the KP formula is only defined for the open interval (a, b). For example,
+/// the function `f(x) = sin(x) in [0, π]` poses challenge to the algorithm because
+/// `f(a) ≈ 0` and `f(b) ≈ 0`.
+///
+/// # Requirements
+///
+/// 1. `γ` must be a positive number close to 1.0, but small
+/// 2. `γ` must be small enough to yield the number of roots close to an integer
+/// 3. `γ` must not be too small otherwise the quadrature fails to converge
+// const KP_GAMMA: f64 = 0.05; // ok
+// const KP_GAMMA: f64 = 0.05; // ok
+const KP_GAMMA: f64 = 0.05; // ok
+
 /// Implements algorithms for finding the roots of an equation
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct RootSolver {
     /// Max number of iterations
     ///
@@ -17,8 +41,8 @@ pub struct RootSolver {
     /// e.g., 1e-10
     pub tolerance: f64,
 
-    /// Small positive constant for the Kronecker-Picard formula
-    gamma: f64,
+    /// Integrator for the Kronecker-Picard formula (if count is called)
+    quadrature: Option<Quadrature>,
 }
 
 impl RootSolver {
@@ -27,7 +51,7 @@ impl RootSolver {
         RootSolver {
             n_iteration_max: 100,
             tolerance: 1e-10,
-            gamma: 1e-8,
+            quadrature: None,
         }
     }
 
@@ -44,12 +68,19 @@ impl RootSolver {
 
     /// Counts the number of roots using Kronecker-Picard formula
     ///
-    /// Counts the number of roots in the interval `[a, b]`
+    /// Counts the number of roots in the open interval `(a, b)`;
+    /// i.e., the roots must not on the boundaries.
+    ///
+    /// # Requirements
+    ///
+    /// 1. `b > a + SQRT_EPSILON`
+    ///
+    /// where `SQRT_EPSILON = f64::sqrt(EPSILON) ≈ 1.5e-8`
     ///
     /// # Input
     ///
-    /// * `xa` -- lower bound
-    /// * `xb` -- upper bound
+    /// * `a` -- lower bound
+    /// * `b` -- upper bound
     /// * `args` -- extra arguments for the callback functions
     /// * `f` -- is the callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
     /// * `g` -- is the callback function implementing `df/dx(x)` as `g(x, args)`; it returns `g @ x` or it may return an error.
@@ -61,9 +92,8 @@ impl RootSolver {
     ///
     /// * `number_of_roots` -- is the number of roots in the interval
     /// * `stats` -- some statistics about the computations
-    ///   **Note:** The error_estimate field of `stats` will contain the fractional part of the number of roots
     pub fn count<F, G, H, A>(
-        &self,
+        &mut self,
         xa: f64,
         xb: f64,
         args: &mut A,
@@ -76,34 +106,78 @@ impl RootSolver {
         G: FnMut(f64, &mut A) -> Result<f64, StrError>,
         H: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
+        // check
+        let (mut a, mut b) = (xa, xb);
+        if b <= a + SQRT_EPSILON {
+            return Err("b must satisfy: b > a + SQRT_EPSILON");
+        }
+
+        // shrink the interval so `[a, b]` becomes `(a, b)`
+        let mut number_of_roots = 0;
+        let mut fa = f(a, args)?;
+        if f64::abs(fa) <= SQRT_EPSILON {
+            number_of_roots += 1;
+            a += 1e-3;
+            fa = f(a, args)?;
+        }
+        let mut fb = f(b, args)?;
+        if f64::abs(fb) <= SQRT_EPSILON {
+            number_of_roots += 1;
+            b -= 1e-3;
+            fb = f(b, args)?;
+        }
+
+        // mutable reference to Quadrature (allocates it first if needed)
+        if self.quadrature.is_none() {
+            self.quadrature = Some(Quadrature::new());
+            let q = self.quadrature.as_mut().unwrap();
+            q.n_iteration_max = 500;
+            q.tolerance = 1e-10;
+            q.n_gauss = 10;
+        };
+        let quad = self.quadrature.as_mut().unwrap();
+
         // apply the Kronecker-Picard formula
-        let mut quad = Quadrature::new();
-        let (kp, mut stats) = quad.integrate(xa, xb, args, |x, ar| {
+        let gg = KP_GAMMA * KP_GAMMA;
+        let (kp, mut stats) = quad.integrate(a, b, args, |x, ar| {
             let fx = f(x, ar)?;
             let gx = g(x, ar)?;
             let hx = h(x, ar)?;
-            let den = fx * fx + self.gamma * self.gamma * gx * gx;
-            if den == 0.0 {
-                return Err("Kronecker-Picard formula failed due to zero denominator");
-            }
-            Ok((fx * hx - gx * gx) / den)
+            let num = fx * hx - gx * gx;
+            let den = fx * fx + gg * gx * gx;
+            Ok(num / den)
         })?;
-        stats.n_function *= 3; // (multiply by 3 because of f, g, and h)
+        stats.n_function *= 3; // multiply by 3 because of f, g, and h in the integral
 
         // compute the number of roots
-        let fa = f(xa, args)?;
-        let fb = f(xb, args)?;
-        let ga = g(xa, args)?;
-        let gb = g(xb, args)?;
-        let nr = -(self.gamma * kp + f64::atan2(self.gamma * gb, fb) - f64::atan2(self.gamma * ga, fa)) / PI;
-        stats.n_function += 4;
+        let ga = g(a, args)?;
+        let gb = g(b, args)?;
+        let num = KP_GAMMA * (fa * gb - fb * ga);
+        let den = fa * fb + gg * ga * gb;
+        // println!("den = {}", den);
+        let act = f64::atan(num / den);
+        // let act = f64::atan2(num, den);
+        println!("act/PI: {}, {}", act / PI, f64::atan2(num, den) / PI);
+        let nr = (f64::atan(num / den) - KP_GAMMA * kp) / PI;
+        let nr2 = (f64::atan2(num, den) - KP_GAMMA * kp) / PI;
 
-        // save the fractional part of nr as error estimate in stats
-        let (nnr, error) = float_split(f64::ceil(nr));
-        stats.error_estimate = error;
+        // round nr
+        let diff = f64::abs(nr - 1.0);
+        println!("kkp = {}", -KP_GAMMA * kp / PI);
+        println!("nr = {}, nr2 = {}", nr, nr2);
+        if nr != nr2 {
+            println!("😨");
+        }
+        let nr_round = if diff < 2.0 * f64::EPSILON {
+            1.0
+        } else if nr < 1.0 {
+            0.0
+        } else {
+            f64::round(nr)
+        };
 
         // truncate nr
-        let number_of_roots = nnr as usize;
+        number_of_roots += nr_round as usize;
 
         // done
         Ok((number_of_roots, stats))
@@ -309,13 +383,44 @@ mod tests {
     }
 
     #[test]
-    fn count_works() {
+    fn count_works_1() {
         let f = |x, _: &mut NoArgs| Ok(x);
         let g = |_, _: &mut NoArgs| Ok(1.0);
         let h = |_, _: &mut NoArgs| Ok(0.0);
         let args = &mut 0;
-        let solver = RootSolver::new();
-        solver.count(0.0, 1.0, args, f, g, h).unwrap();
+        let mut solver = RootSolver::new();
+        let (nr, stats) = solver.count(0.0, 1.0, args, f, g, h).unwrap();
+        println!("\nnr = {:?}", nr);
+        println!("\n{}", stats);
+        assert_eq!(nr, 1);
+    }
+
+    #[test]
+    fn count_works_2() {
+        let args = &mut 0;
+        let mut solver = RootSolver::new();
+        for (i, test) in get_test_functions().iter().enumerate() {
+            if i == 0 {
+                // if i != 3 {
+                // if i != 5 {
+                // if i != 6 {
+                // if i != 7 {
+                // if i != 8 {
+                // if i != 9 {
+                // if i != 13 {
+                // if i != 14 {
+                continue;
+            }
+            println!("\n===================================================================");
+            println!("\n{}", test.name);
+            let (nr, _stats) = solver
+                .count(test.range.0, test.range.1, args, test.f, test.g, test.h)
+                .unwrap();
+            println!("\nnr = {:?} ({})", nr, test.n_root);
+            // println!("\n{}", stats);
+            // assert_eq!(nr, test.n_root);
+        }
+        println!("\n===================================================================\n");
     }
 
     #[test]

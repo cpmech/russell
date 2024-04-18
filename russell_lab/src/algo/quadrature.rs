@@ -59,9 +59,9 @@ const D1MACH5: f64 = 0.30102999566398119521373889472449; // !! machine constant
 /// with tolerance = 2.2e-11. The same behavior arises in the original Fortran code.
 const M_ERR: f64 = 3.0;
 
-/// Holds parameters for the quadrature functions
-#[derive(Clone, Copy, Debug)]
-pub struct QuadParams {
+/// Implements numerical integration using adaptive Gaussian quadrature
+#[derive(Clone, Debug)]
+pub struct Quadrature {
     /// Max number of iterations
     ///
     /// ```text
@@ -76,15 +76,35 @@ pub struct QuadParams {
 
     /// Number of Gauss points in {6, 8, 10, 12, 14}
     pub n_gauss: usize,
+
+    /// Workspace variable with len() = N_WORK + 1 so we can use Fortran's one-based indexing
+    aa: Vec<f64>,
+
+    /// Workspace variable with len() = N_WORK + 1 so we can use Fortran's one-based indexing
+    hh: Vec<f64>,
+
+    /// Workspace variable with len() = N_WORK + 1 so we can use Fortran's one-based indexing
+    vl: Vec<f64>,
+
+    /// Workspace variable with len() = N_WORK + 1 so we can use Fortran's one-based indexing
+    gr: Vec<f64>,
+
+    /// Workspace variable with len() = N_WORK + 1 so we can use Fortran's one-based indexing
+    lr: Vec<i32>,
 }
 
-impl QuadParams {
+impl Quadrature {
     /// Allocates a new instance
     pub fn new() -> Self {
-        QuadParams {
+        Quadrature {
             n_iteration_max: 300,
             tolerance: 1e-10,
             n_gauss: 10,
+            aa: vec![0.0; N_WORK + 1], // +1 so we can use Fortran's one-based indexing
+            hh: vec![0.0; N_WORK + 1], // +1 so we can use Fortran's one-based indexing
+            vl: vec![0.0; N_WORK + 1], // +1 so we can use Fortran's one-based indexing
+            gr: vec![0.0; N_WORK + 1], // +1 so we can use Fortran's one-based indexing
+            lr: vec![0; N_WORK + 1],   // +1 so we can use Fortran's one-based indexing
         }
     }
 
@@ -105,28 +125,6 @@ impl QuadParams {
         }
         Ok(())
     }
-}
-
-/// Implements numerical integration using adaptive Gaussian quadrature
-pub struct Quadrature {
-    aa: Vec<f64>, // with len() +1 so we can use Fortran's one-based indexing
-    hh: Vec<f64>,
-    vl: Vec<f64>,
-    gr: Vec<f64>,
-    lr: Vec<i32>,
-}
-
-impl Quadrature {
-    /// Allocates a new instance
-    pub fn new() -> Self {
-        Quadrature {
-            aa: vec![0.0; N_WORK + 1], // +1 so we can use Fortran's one-based indexing
-            hh: vec![0.0; N_WORK + 1],
-            vl: vec![0.0; N_WORK + 1],
-            gr: vec![0.0; N_WORK + 1],
-            lr: vec![0; N_WORK + 1],
-        }
-    }
 
     /// Integrates a function f(x) using numerical quadrature
     ///
@@ -144,7 +142,6 @@ impl Quadrature {
     ///
     /// * `a` -- the lower bound
     /// * `b` -- the upper bound
-    /// * `params` -- optional control parameters
     /// * `args` -- extra arguments for the callback function
     /// * `f` -- is the callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
     ///
@@ -154,14 +151,7 @@ impl Quadrature {
     ///
     /// * `ans` -- the result `I` of the integration: `I = ∫_a^b f(x) dx`
     /// * `stats` -- some statistics about the computations, including the estimated error
-    pub fn integrate<F, A>(
-        &mut self,
-        a: f64,
-        b: f64,
-        params: Option<QuadParams>,
-        args: &mut A,
-        mut f: F,
-    ) -> Result<(f64, Stats), StrError>
+    pub fn integrate<F, A>(&mut self, a: f64, b: f64, args: &mut A, mut f: F) -> Result<(f64, Stats), StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
@@ -170,15 +160,18 @@ impl Quadrature {
             return Err("the lower and upper bounds must be different from each other");
         }
 
-        // parameters
-        let par = match params {
-            Some(p) => p,
-            None => QuadParams::new(),
-        };
-        par.validate()?;
+        // validate the parameters
+        self.validate()?;
 
         // allocate stats struct
         let mut stats = Stats::new();
+
+        // clear the workspace
+        self.aa.fill(0.0);
+        self.hh.fill(0.0);
+        self.vl.fill(0.0);
+        self.gr.fill(0.0);
+        self.lr.fill(0);
 
         // initialization
         let mut ans = 0.0;
@@ -216,7 +209,7 @@ impl Quadrature {
             }
         }
 
-        let tol = f64::max(f64::abs(par.tolerance), f64::powf(2.0, 5.0 - n_bit as f64)) / 2.0;
+        let tol = f64::max(f64::abs(self.tolerance), f64::powf(2.0, 5.0 - n_bit as f64)) / 2.0;
         let mut eps = tol;
         self.hh[1] = (b - a) / 4.0;
         self.aa[1] = a;
@@ -224,13 +217,13 @@ impl Quadrature {
         let mut l = 1;
 
         let mut est = gauss(
-            par.n_gauss,
+            self.n_gauss,
             self.aa[l] + 2.0 * self.hh[l],
             2.0 * self.hh[l],
             args,
             &mut f,
         )?;
-        stats.n_function += par.n_gauss;
+        stats.n_function += self.n_gauss;
 
         let mut k = 8;
         let mut area = f64::abs(est);
@@ -239,14 +232,14 @@ impl Quadrature {
 
         // compute refined estimates, estimate the error, etc.
         let mut converged = false;
-        for _ in 0..par.n_iteration_max {
+        for _ in 0..self.n_iteration_max {
             stats.n_iterations += 1;
 
-            let gl = gauss(par.n_gauss, self.aa[l] + self.hh[l], self.hh[l], args, &mut f)?;
-            stats.n_function += par.n_gauss;
+            let gl = gauss(self.n_gauss, self.aa[l] + self.hh[l], self.hh[l], args, &mut f)?;
+            stats.n_function += self.n_gauss;
 
-            self.gr[l] = gauss(par.n_gauss, self.aa[l] + 3.0 * self.hh[l], self.hh[l], args, &mut f)?;
-            stats.n_function += par.n_gauss;
+            self.gr[l] = gauss(self.n_gauss, self.aa[l] + 3.0 * self.hh[l], self.hh[l], args, &mut f)?;
+            stats.n_function += self.n_gauss;
 
             k += 16;
             area += f64::abs(gl) + f64::abs(self.gr[l]) - f64::abs(est);
@@ -316,7 +309,7 @@ impl Quadrature {
         stats.error_estimate = err;
         stats.stop_sw_total();
         if (mxl != 0) && (f64::abs(err) > M_ERR * tol * area) {
-            Err("cannot achieve the desired tolerance")
+            Err("quadrature.integrate cannot achieve the desired tolerance")
         } else {
             Ok((ans, stats))
         }
@@ -446,7 +439,7 @@ const G14_W: [f64; 7] = [
 
 #[cfg(test)]
 mod tests {
-    use super::{gauss, QuadParams, Quadrature};
+    use super::{gauss, Quadrature};
     use crate::algo::testing::get_test_functions;
     use crate::algo::NoArgs;
     use crate::approx_eq;
@@ -454,20 +447,20 @@ mod tests {
     use crate::math::{PI, SQRT_2};
 
     #[test]
-    fn quad_params_captures_errors() {
-        let mut params = QuadParams::new();
-        params.n_iteration_max = 0;
-        assert_eq!(params.validate().err(), Some("n_iteration_max must be ≥ 2"));
-        params.n_iteration_max = 2;
-        params.tolerance = 0.0;
+    fn validate_params_works() {
+        let mut quad = Quadrature::new();
+        quad.n_iteration_max = 0;
+        assert_eq!(quad.validate().err(), Some("n_iteration_max must be ≥ 2"));
+        quad.n_iteration_max = 2;
+        quad.tolerance = 0.0;
         assert_eq!(
-            params.validate().err(),
+            quad.validate().err(),
             Some("the tolerance must be ≥ 10.0 * f64::EPSILON")
         );
-        params.n_iteration_max = 2;
-        params.tolerance = 1e-7;
-        params.n_gauss = 7;
-        assert_eq!(params.validate().err(), Some("n_gauss must be 6, 8, 10, 12, or 14"));
+        quad.n_iteration_max = 2;
+        quad.tolerance = 1e-7;
+        quad.n_gauss = 7;
+        assert_eq!(quad.validate().err(), Some("n_gauss must be 6, 8, 10, 12, or 14"));
     }
 
     #[test]
@@ -499,31 +492,29 @@ mod tests {
     }
 
     #[test]
-    fn quadrature_captures_errors_1() {
+    fn integrate_captures_errors_1() {
         let f = |x, _: &mut NoArgs| Ok(f64::sin(x * x - 1.0));
         let args = &mut 0;
         let mut quad = Quadrature::new();
         assert_eq!(
-            quad.integrate(0.0, 0.0, None, args, f).err(),
+            quad.integrate(0.0, 0.0, args, f).err(),
             Some("the lower and upper bounds must be different from each other")
         );
-        let mut params = QuadParams::new();
-        params.n_iteration_max = 0;
+        quad.n_iteration_max = 0;
         assert_eq!(
-            quad.integrate(0.0, 1.0, Some(params), args, f).err(),
+            quad.integrate(0.0, 1.0, args, f).err(),
             Some("n_iteration_max must be ≥ 2")
         );
-        let mut params = QuadParams::new();
-        params.n_iteration_max = 2;
-        params.n_gauss = 6;
+        quad.n_iteration_max = 2;
+        quad.n_gauss = 6;
         assert_eq!(
-            quad.integrate(-5.0, 5.0, Some(params), args, f).err(),
+            quad.integrate(-5.0, 5.0, args, f).err(),
             Some("integrate failed to converge")
         );
     }
 
     #[test]
-    fn quadrature_captures_errors_2() {
+    fn integrate_captures_errors_2() {
         struct Args {
             count: usize,
             target: usize,
@@ -537,38 +528,33 @@ mod tests {
         };
         let args = &mut Args { count: 0, target: 0 };
         let mut quad = Quadrature::new();
-        let mut params = QuadParams::new();
-        params.n_gauss = 6;
+        quad.n_gauss = 6;
         // first call to gauss
-        assert_eq!(quad.integrate(0.0, 1.0, Some(params), args, f).err(), Some("stop"));
+        assert_eq!(quad.integrate(0.0, 1.0, args, f).err(), Some("stop"));
         // second call to gauss
         args.count = 0;
         args.target = 6;
-        assert_eq!(quad.integrate(0.0, 1.0, Some(params), args, f).err(), Some("stop"));
+        assert_eq!(quad.integrate(0.0, 1.0, args, f).err(), Some("stop"));
         // third call to gauss
         args.count = 0;
         args.target = 12;
-        assert_eq!(quad.integrate(0.0, 1.0, Some(params), args, f).err(), Some("stop"));
+        assert_eq!(quad.integrate(0.0, 1.0, args, f).err(), Some("stop"));
     }
 
     #[test]
-    fn quadrature_works_1() {
+    fn integrate_works_1() {
         // compare with Fortran code
         // f(x) = sin(x)
         let ii_ana = 2.0;
 
-        let mut params = QuadParams::new();
-        params.tolerance = 100_000.0 * f64::EPSILON;
-
         let mut quad = Quadrature::new();
+        quad.tolerance = 100_000.0 * f64::EPSILON;
         let args = &mut 0;
 
         for (n_gauss, n_f_eval) in [(6, 42), (8, 24), (10, 30), (12, 36), (14, 42)] {
-            params.n_gauss = n_gauss;
+            quad.n_gauss = n_gauss;
 
-            let (ii, stats) = quad
-                .integrate(0.0, PI, Some(params), args, |x, _| Ok(f64::sin(x)))
-                .unwrap();
+            let (ii, stats) = quad.integrate(0.0, PI, args, |x, _| Ok(f64::sin(x))).unwrap();
 
             println!("\n=================================================");
             println!("\nn_gauss = {}", n_gauss);
@@ -584,7 +570,7 @@ mod tests {
     }
 
     #[test]
-    fn quadrature_works_2() {
+    fn integrate_works_2() {
         // compare with Fortran code
         // f(x) = 0.092834 sin(77.0001 + 19.87 x) in [-2.34567, 12.34567]
         let a = -2.34567;
@@ -594,17 +580,15 @@ mod tests {
         let phase = 77.0001;
         let ii_ana = (amp * (f64::cos(a * freq + phase) - f64::cos(b * freq + phase))) / freq;
 
-        let mut params = QuadParams::new();
-        params.tolerance = 100_000.0 * f64::EPSILON;
-
         let mut quad = Quadrature::new();
+        quad.tolerance = 100_000.0 * f64::EPSILON;
         let args = &mut 0;
 
         for (n_gauss, n_f_eval) in [(6, 3066), (8, 2040), (10, 1270), (12, 1476), (14, 882)] {
-            params.n_gauss = n_gauss;
+            quad.n_gauss = n_gauss;
 
             let (ii, stats) = quad
-                .integrate(a, b, Some(params), args, |x, _| Ok(amp * f64::sin(freq * x + phase)))
+                .integrate(a, b, args, |x, _| Ok(amp * f64::sin(freq * x + phase)))
                 .unwrap();
 
             println!("\n=================================================");
@@ -618,22 +602,20 @@ mod tests {
     }
 
     #[test]
-    fn quadrature_works_3() {
+    fn integrate_works_3() {
         // compare with Fortran code
         // f(x) = log(2 Cos(x/2))
         let ii_ana = 0.0;
 
-        let mut params = QuadParams::new();
-        params.tolerance = 100_000.0 * f64::EPSILON;
-
         let mut quad = Quadrature::new();
+        quad.tolerance = 100_000.0 * f64::EPSILON;
         let args = &mut 0;
 
         for (n_gauss, n_f_eval) in [(6, 1674), (8, 2040), (10, 2550), (12, 3060), (14, 3570)] {
-            params.n_gauss = n_gauss;
+            quad.n_gauss = n_gauss;
 
             let (ii, stats) = quad
-                .integrate(-PI, PI, Some(params), args, |x, _| Ok(f64::ln(2.0 * f64::cos(x / 2.0))))
+                .integrate(-PI, PI, args, |x, _| Ok(f64::ln(2.0 * f64::cos(x / 2.0))))
                 .unwrap();
 
             println!("I = {}", format_fortran(ii));
@@ -645,14 +627,14 @@ mod tests {
     }
 
     #[test]
-    fn quadrature_works_4() {
+    fn integrate_works_4() {
         let mut quad = Quadrature::new();
         let args = &mut 0;
         for test in &get_test_functions() {
             println!("\n===================================================================");
             println!("\n{}", test.name);
             if let Some(data) = test.integral {
-                let (ii, stats) = quad.integrate(data.0, data.1, None, args, test.f).unwrap();
+                let (ii, stats) = quad.integrate(data.0, data.1, args, test.f).unwrap();
                 println!("\nI = {}", ii);
                 println!("\n{}", stats);
                 approx_eq(ii, data.2, test.tol_integral);
@@ -662,17 +644,32 @@ mod tests {
     }
 
     #[test]
-    fn quadrature_works_5() {
+    fn integrate_works_5() {
         // check that ∫_a^b f(x) dx = - ∫_b^a f(x) dx
         let mut quad = Quadrature::new();
         let args = &mut 0;
-        let (ii, _) = quad.integrate(0.0, PI, None, args, |x, _| Ok(f64::sin(x))).unwrap();
-        let (mii, _) = quad.integrate(PI, 0.0, None, args, |x, _| Ok(f64::sin(x))).unwrap();
+        let (ii, _) = quad.integrate(0.0, PI, args, |x, _| Ok(f64::sin(x))).unwrap();
+        let (mii, _) = quad.integrate(PI, 0.0, args, |x, _| Ok(f64::sin(x))).unwrap();
         assert_eq!(ii, -mii);
     }
 
     #[test]
-    fn quadrature_edge_cases_work() {
+    fn integrate_works_6() {
+        // integrate twice works
+        let mut quad = Quadrature::new();
+        let args = &mut 0;
+
+        // first
+        let (ii, _) = quad.integrate(0.0, PI, args, |x, _| Ok(f64::sin(x))).unwrap();
+        approx_eq(ii, 2.0, 1e-15);
+
+        // second
+        let (ii, _) = quad.integrate(0.0, PI, args, |x, _| Ok(f64::sin(x))).unwrap();
+        approx_eq(ii, 2.0, 1e-15);
+    }
+
+    #[test]
+    fn integrate_edge_cases_work() {
         let f = |x, _: &mut NoArgs| Ok(x);
         let mut quad = Quadrature::new();
         let args = &mut 0;
@@ -682,7 +679,7 @@ mod tests {
         //
         let b = 1.0;
         let a = 0.9 * b;
-        let (ii, stats) = quad.integrate(a, b, None, args, f).unwrap();
+        let (ii, stats) = quad.integrate(a, b, args, f).unwrap();
         println!("\nI = {}", ii);
         println!("\n{}", stats);
         approx_eq(ii, 0.095, 1e-15);
@@ -694,7 +691,7 @@ mod tests {
         let b = 1.0;
         let a = (1.0 - c) * b;
         assert_eq!(
-            quad.integrate(a, b, None, args, f).err(),
+            quad.integrate(a, b, args, f).err(),
             Some("the lower and upper bounds must not be so close one from another")
         );
     }

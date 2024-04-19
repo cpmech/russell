@@ -22,7 +22,7 @@
     * [(ode) Solve the brusselator ODE system](#brusselator)
     * [(stat) Generate the Frechet distribution](#frechet)
     * [(tensor) Allocate second-order tensors](#tensor)
-* [Todo list](#todo)
+* [TODO list / Roadmap](#todo)
 
 <a name="introduction"></a>
 
@@ -602,7 +602,7 @@ fn main() -> Result<(), StrError> {
 
 <a name="todo"></a>
 
-## Todo list
+## TODO list / Roadmap
 
 - [ ] Improve `russell_lab`
     - [x] Implement more integration tests for linear algebra
@@ -613,7 +613,10 @@ fn main() -> Result<(), StrError> {
     - [x] Wrap Intel MKL (option for OpenBLAS)
     - [x] Add more complex number functions
     - [x] Add fundamental functions to `russell_lab`
+        - [x] Implement the Bessel functions
         - [x] Implement the modified Bessel functions
+        - [x] Implement the elliptical integral functions
+        - [x] Implement Beta, Gamma and Erf functions (and associated)
     - [ ] Implement some numerical methods in `russell_lab`
         - [x] Implement Brent's solver
         - [ ] Implement a solver for the cubic equation
@@ -622,11 +625,14 @@ fn main() -> Result<(), StrError> {
         - [ ] Implement Newton's method for nonlinear systems
         - [x] Implement numerical quadrature
     - [ ] Add interpolation and polynomials to `russell_lab`
-        - [ ] Implement Chebyshev interpolation and polynomials
+        - [x] Implement Chebyshev polynomials
+        - [ ] Implement Chebyshev interpolation
         - [ ] Implement Orthogonal polynomials
         - [x] Implement Lagrange interpolation
+        - [ ] Implement Fourier interpolation
     - [x] Implement FFT
         - [x] Partially wrap FFTW (with warnings about it being thread-unsafe)
+        - [ ] Implement a Rust-native FFT solver
 - [x] Improve `russell_sparse`
     - [x] Wrap the KLU solver (in addition to MUMPS and UMFPACK)
     - [x] Implement the Compressed Sparse Column format (CSC)
@@ -646,5 +652,5 @@ fn main() -> Result<(), StrError> {
     - [x] Implement some high-order derivatives
     - [ ] Implement standard continuum mechanics tensors
 - [ ] Study the possibility to install Russell on Windows and macOS 
-    - [ ] Use Intel MKL on Windows
+    - [ ] Install Intel MKL on Windows
     - [ ] Install MUMPS and UMFPACK on Windows and macOS

@@ -30,8 +30,6 @@
 
 **Russell** (Rust Scientific Library) assists in developing high-performance computations involving linear algebra, sparse linear systems, differential equations, statistics, and continuum mechanics using the Rust programming language. The applications built with Russell revolve around the computational mechanics discipline; however, since Russell deals with fundamental mathematics and numerics, it is also helpful for other disciplines.
 
-At this moment, Russell works on Linux (Debian/Ubuntu; and maybe Arch). It has some limited functionality on macOS too. In the future, we plan to enable Russell on Windows; however, this will take time because some essential libraries are not easily available on Windows.
-
 <a name="crates"></a> 
 
 ## Crates
@@ -73,13 +71,13 @@ External associated and recommended crates:
 - [tritet](https://github.com/cpmech/tritet) Triangle and tetrahedron mesh generators (with Triangle and Tetgen)
 - [gemlab](https://github.com/cpmech/gemlab) Geometry, meshes, and numerical integration for finite element analyses
 
-
-
 <a name="installation"></a>
 
-## Installation on Debian/Ubuntu/Linux
+## Installation
 
-### TLDR
+At this moment, Russell works on **Linux** (Debian/Ubuntu; and maybe Arch). It has some limited functionality on macOS too. In the future, we plan to enable Russell on Windows; however, this will take time because some essential libraries are not easily available on Windows.
+
+### TLDR (Debian/Ubuntu/Linux)
 
 First:
 
@@ -99,6 +97,7 @@ Then:
 
 ```bash
 cargo add russell_lab
+cargo add russell_sparse # etc.
 ```
 
 ### Details

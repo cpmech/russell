@@ -22,7 +22,7 @@
     * [(ode) Solve the brusselator ODE system](#brusselator)
     * [(stat) Generate the Frechet distribution](#frechet)
     * [(tensor) Allocate second-order tensors](#tensor)
-* [TODO list / Roadmap](#todo)
+* [Roadmap](#roadmap)
 
 <a name="introduction"></a>
 
@@ -602,7 +602,7 @@ fn main() -> Result<(), StrError> {
 
 <a name="todo"></a>
 
-## TODO list / Roadmap
+## Roadmap
 
 - [ ] Improve `russell_lab`
     - [x] Implement more integration tests for linear algebra
@@ -617,13 +617,16 @@ fn main() -> Result<(), StrError> {
         - [x] Implement the modified Bessel functions
         - [x] Implement the elliptical integral functions
         - [x] Implement Beta, Gamma and Erf functions (and associated)
+        - [ ] Implement orthogonal polynomial functions
     - [ ] Implement some numerical methods in `russell_lab`
         - [x] Implement Brent's solver
         - [ ] Implement a solver for the cubic equation
         - [x] Implement numerical derivation
         - [x] Implement numerical Jacobian function
+        - [ ] Implement line search
         - [ ] Implement Newton's method for nonlinear systems
         - [x] Implement numerical quadrature
+        - [ ] Implement multidimensional data interpolation
     - [ ] Add interpolation and polynomials to `russell_lab`
         - [x] Implement Chebyshev polynomials
         - [ ] Implement Chebyshev interpolation

@@ -1,4 +1,4 @@
-# Russell Lab - Matrix-vector laboratory including linear algebra tools
+# Russell Lab - Scientific lab with special math functions, linear algebra, quadrature, interpolation, derivatives
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 

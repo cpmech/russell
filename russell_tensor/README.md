@@ -1,4 +1,4 @@
-# Russell Tensor - Tensor analysis structures and functions for continuum mechanics
+# Russell Tensor - Tensor analysis, calculus, and functions for continuum mechanics
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 

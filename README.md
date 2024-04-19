@@ -612,19 +612,19 @@ fn main() -> Result<(), StrError> {
         - [x] Implement dggev, zggev, zheev, and zgeev
     - [x] Wrap Intel MKL (option for OpenBLAS)
     - [x] Add more complex number functions
-    - [ ] Add fundamental functions to `russell_lab`
-        - [ ] Implement the modified Bessel functions
+    - [x] Add fundamental functions to `russell_lab`
+        - [x] Implement the modified Bessel functions
     - [ ] Implement some numerical methods in `russell_lab`
-        - [ ] Implement Brent's solver
+        - [x] Implement Brent's solver
         - [ ] Implement a solver for the cubic equation
         - [x] Implement numerical derivation
-        - [ ] Implement numerical Jacobian function
+        - [x] Implement numerical Jacobian function
         - [ ] Implement Newton's method for nonlinear systems
-        - [ ] Implement numerical quadrature
+        - [x] Implement numerical quadrature
     - [ ] Add interpolation and polynomials to `russell_lab`
         - [ ] Implement Chebyshev interpolation and polynomials
         - [ ] Implement Orthogonal polynomials
-        - [ ] Implement Lagrange interpolation
+        - [x] Implement Lagrange interpolation
     - [x] Implement FFT
         - [x] Partially wrap FFTW (with warnings about it being thread-unsafe)
 - [x] Improve `russell_sparse`

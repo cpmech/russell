@@ -642,6 +642,9 @@ fn main() -> Result<(), StrError> {
 - [x] Improve `russell_ode`
     - [x] Implement explicit Runge-Kutta solvers
     - [x] Implement Radau5 for DAEs
+    - [ ] Implement extrapolation methods
+    - [ ] Implement multi-step methods
+    - [ ] Implement general linear methods
 - [ ] Improve `russell_stat`
     - [x] Add probability distribution functions
     - [x] Implement drawing of ASCII histograms
@@ -651,6 +654,7 @@ fn main() -> Result<(), StrError> {
     - [x] Implement first and second-order derivatives of invariants
     - [x] Implement some high-order derivatives
     - [ ] Implement standard continuum mechanics tensors
-- [ ] Study the possibility to install Russell on Windows and macOS 
+- [ ] General improvements
+    - [ ] Study the possibility to install Russell on Windows and macOS 
     - [ ] Install Intel MKL on Windows
     - [ ] Install MUMPS and UMFPACK on Windows and macOS

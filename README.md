@@ -28,11 +28,9 @@
 
 ## Introduction
 
-**Russell** (Rust Scientific Library) assists in developing scientific computations using the Rust language.
+**Russell** (Rust Scientific Library) assists in developing high-performance computations involving linear algebra, sparse linear systems, differential equations, statistics, and continuum mechanics using the Rust programming language. The applications built with Russell revolve around the computational mechanics discipline; however, since Russell deals with fundamental mathematics and numerics, it is also helpful for other disciplines.
 
-The "main" crate here is [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab), a **mat**rix-vector **lab**oratory, which provides the fundamental `Vector` and `Matrix` structures and several functions to perform linear algebra computations. Thus, we recommend looking at [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab) first.
-
-Next, we recommend looking at the [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) crate, which implements sparse matrix structures such as COO (coordinates), CSC (compressed sparse column), and CSR (compressed sparse row) formats. `russell_sparse` also wraps powerful linear system solvers such as [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS](https://mumps-solver.org).
+At this moment, Russell works on Linux (Debian/Ubuntu; and maybe Arch). It has some limited functionality on macOS too. In the future, we plan to enable Russell on Windows; however, this will take time because some essential libraries are not easily available on Windows.
 
 <a name="crates"></a> 
 
@@ -80,6 +78,30 @@ External associated and recommended crates:
 <a name="installation"></a>
 
 ## Installation on Debian/Ubuntu/Linux
+
+### TLDR
+
+First:
+
+```bash
+sudo apt-get install -y --no-install-recommends \
+    g++ \
+    gdb \
+    gfortran \
+    libfftw3-dev \
+    liblapacke-dev \
+    libmumps-seq-dev \
+    libopenblas-dev \
+    libsuitesparse-dev
+```
+
+Then:
+
+```bash
+cargo add russell_lab
+```
+
+### Details
 
 **Russell** depends on external (non-Rust) packages for linear algebra and the solution of large sparse linear systems. The following libraries are required:
 

@@ -1,4 +1,4 @@
-# Russell Lab - Scientific lab with special math functions, linear algebra, quadrature, interpolation, derivatives
+# Russell Lab - Scientific lab with special math functions, linear algebra, interpolation, quadrature, num derivation
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 

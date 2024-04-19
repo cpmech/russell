@@ -17,7 +17,37 @@ Documentation:
 
 - [russell_tensor documentation](https://docs.rs/russell_tensor)
 
-## <a name="installation"></a> Installation on Debian/Ubuntu/Linux
+
+
+<a name="installation"></a>
+
+## Installation
+
+At this moment, Russell works on **Linux** (Debian/Ubuntu; and maybe Arch). It has some limited functionality on macOS too. In the future, we plan to enable Russell on Windows; however, this will take time because some essential libraries are not easily available on Windows.
+
+### TLDR (Debian/Ubuntu/Linux)
+
+First:
+
+```bash
+sudo apt-get install -y --no-install-recommends \
+    g++ \
+    gdb \
+    gfortran \
+    libfftw3-dev \
+    liblapacke-dev \
+    libmumps-seq-dev \
+    libopenblas-dev \
+    libsuitesparse-dev
+```
+
+Then:
+
+```bash
+cargo add russell_tensor
+```
+
+## Details
 
 This crate depends on `russell_lab`, which, in turn, depends on an efficient BLAS library such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
 

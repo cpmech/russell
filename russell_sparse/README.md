@@ -1,4 +1,4 @@
-# Russell Sparse - Sparse matrix tools and solvers
+# Russell Sparse - Solvers for large sparse linear systems (wraps MUMPS and UMFPACK)
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 

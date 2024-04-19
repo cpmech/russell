@@ -376,7 +376,7 @@ fn main() -> Result<(), StrError> {
     //  3  .  4  .  6
     //  . -1 -3  2  .
     //  .  .  1  .  .
-    //  . 4  2  .  1
+    //  .  4  2  .  1
     let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, Sym::No)?;
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate

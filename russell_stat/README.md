@@ -1,4 +1,4 @@
-# Russell Stat - Statistics calculations, probability distributions, and pseudo random numbers
+# Russell Stat - Statistics calculations and (engineering) probability distributions
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 

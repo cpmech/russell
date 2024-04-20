@@ -1,5 +1,7 @@
 # Russell Stat - Statistics calculations and (engineering) probability distributions
 
+[![documentation](https://img.shields.io/badge/russell_stat-documentation-blue)](https://docs.rs/russell_stat)
+
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
 ## Contents
@@ -11,12 +13,22 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## <a name="introduction"></a> Introduction
 
-This crate implements structures and functions to work with statistics and probability distributions. Internally, we wrap and use the [rand_distr](https://docs.rs/rand_distr/latest/rand_distr/) crate for generating samples.
+This library assists in developing statistical computations and simulations aiming at engineering applications, such as reliability analyses. This library provides a light interface to [rand_distr](https://crates.io/crates/rand_distr) and implements extra functionality.
 
-Documentation:
+Some essential distributions considered in this library are those classified as [Extreme Value Distribution](https://en.wikipedia.org/wiki/Generalized_extreme_value_distribution).
 
-- [russell_stat documentation](https://docs.rs/russell_stat)
+The figure below shows an application in structural safety (see Reference #1) using first-order reliability modeling (see Reference #2).
 
+![Collage Structural Safety](data/figures/collage-structural-safety.png)
+
+### Documentation
+
+[![documentation](https://img.shields.io/badge/russell_stat-documentation-blue)](https://docs.rs/russell_stat)
+
+### References
+
+1. Pedroso DM (2017) [FORM reliability analysis using a parallel evolutionary algorithm](https://www.sciencedirect.com/science/article/abs/pii/S0167473017300012), Structural Safety, 65:84-99
+2. Zhang et al. (2023) [Geotechnical Reliability Analysis: Theories, Methods, and Algorithms](https://link.springer.com/book/10.1007/978-981-19-6254-7), Springer, 323p
 
 
 <a name="installation"></a>

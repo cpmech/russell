@@ -17,7 +17,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
     * [Solution of a 1D PDE using spectral collocation](#ex-spectral-collocation)
     * [Computing the pseudo-inverse matrix](#ex-local-minumum)
     * [Computing eigenvalues and eigenvectors](#ex-eigenvalues)
-    * [Finding a local minimum](#ex-local-minimum)
+    * [Finding a local minimum and a root](#ex-local-minimum)
     * [Cholesky factorization](#ex-cholesky)
 * [About the column major representation](#col-major)
 * [Benchmarks](#benchmarks)
@@ -167,28 +167,13 @@ Results:
 
 <a name="ex-local-minimum"></a>
 
-### Finding a local minimum
+### Finding a local minimum and a root
 
-This example finds the local minimum between 0.1 and 0.3 for the function illustrated below
+This example finds the local minimum between 0.1 and 0.3 and the root between 0.3 and 0.4 for the function illustrated below
 
 ![finding a local minimum](data/figures/test_function_005.svg)
 
-```rust
-use russell_lab::algo::MinSolver;
-use russell_lab::math::PI;
-use russell_lab::StrError;
-
-fn main() -> Result<(), StrError> {
-    let args = &mut 0;
-    let solver = MinSolver::new();
-    let (xo, stats) = solver.brent(0.1, 0.3, args, |x, _| {
-        Ok(1.0 / (1.0 - f64::exp(-2.0 * x) * f64::powi(f64::sin(5.0 * PI * x), 2)) - 1.5)
-    })?;
-    println!("\nx_optimal = {:?}", xo);
-    println!("\n{}", stats);
-    Ok(())
-}
-```
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_min_and_root_solver_brent.rs)
 
 The output looks like:
 
@@ -199,7 +184,15 @@ Number of function evaluations   = 18
 Number of Jacobian evaluations   = 0
 Number of iterations             = 18
 Error estimate                   = unavailable
-Total computation time           = 5.523µs
+Total computation time           = 6.11µs
+
+x_root = 0.3397874957748173
+
+Number of function evaluations   = 10
+Number of Jacobian evaluations   = 0
+Number of iterations             = 9
+Error estimate                   = unavailable
+Total computation time           = 907ns
 ```
 
 

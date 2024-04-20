@@ -1,5 +1,7 @@
 # Russell ODE - Solvers for ordinary differential equations and differential algebraic equations
 
+[![documentation: ode](https://img.shields.io/badge/russell_ode-documentation-blue)](https://docs.rs/russell_ode)
+
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
 ## Contents
@@ -26,6 +28,10 @@ This library implements (in pure Rust) solvers to ordinary differential equation
 The code in this library is based on Hairer-Nørsett-Wanner books and respective Fortran codes (see references [1] and [2]). The code for Dormand-Prince 5(4) and Dormand-Prince 8(5,3) are fairly different from the Fortran counterparts. The code for Radau5 follows closely reference [2]; however some small differences are considered. Despite the coding differences, the numeric results match the Fortran results quite well.
 
 The ODE/DAE system can be easily defined using the System data structure; [see the examples below](#examples).
+
+### Documentation
+
+[![documentation: ode](https://img.shields.io/badge/russell_ode-documentation-blue)](https://docs.rs/russell_ode)
 
 ### References
 

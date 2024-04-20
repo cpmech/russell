@@ -1,5 +1,7 @@
 # Russell Tensor - Tensor analysis, calculus, and functions for continuum mechanics
 
+[![documentation: tensor](https://img.shields.io/badge/russell_tensor-documentation-blue)](https://docs.rs/russell_tensor)
+
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
 ## Contents
@@ -13,9 +15,9 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 This crate implements structures and functions to perform tensor analysis in continuum mechanics. We give focus to second and fourth order tensors expressed by their components placed in a vector or matrix. We also consider the Mandel basis.
 
-Documentation:
+### Documentation
 
-- [russell_tensor documentation](https://docs.rs/russell_tensor)
+[![documentation: tensor](https://img.shields.io/badge/russell_tensor-documentation-blue)](https://docs.rs/russell_tensor)
 
 
 

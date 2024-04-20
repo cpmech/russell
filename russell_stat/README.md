@@ -1,6 +1,6 @@
 # Russell Stat - Statistics calculations and (engineering) probability distributions
 
-[![documentation](https://img.shields.io/badge/russell_stat-documentation-blue)](https://docs.rs/russell_stat)
+[![documentation: stat](https://img.shields.io/badge/russell_stat-documentation-blue)](https://docs.rs/russell_stat)
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
@@ -23,12 +23,13 @@ The figure below shows an application in structural safety (see Reference #1) us
 
 ### Documentation
 
-[![documentation](https://img.shields.io/badge/russell_stat-documentation-blue)](https://docs.rs/russell_stat)
+[![documentation: stat](https://img.shields.io/badge/russell_stat-documentation-blue)](https://docs.rs/russell_stat)
 
 ### References
 
 1. Pedroso DM (2017) [FORM reliability analysis using a parallel evolutionary algorithm](https://www.sciencedirect.com/science/article/abs/pii/S0167473017300012), Structural Safety, 65:84-99
 2. Zhang et al. (2023) [Geotechnical Reliability Analysis: Theories, Methods, and Algorithms](https://link.springer.com/book/10.1007/978-981-19-6254-7), Springer, 323p
+
 
 
 <a name="installation"></a>

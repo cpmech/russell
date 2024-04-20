@@ -1,5 +1,7 @@
 # Russell Lab - Scientific lab with special math functions, linear algebra, interpolation, quadrature, num derivation
 
+[![documentation: lab](https://img.shields.io/badge/russell_lab-documentation-blue)](https://docs.rs/russell_lab)
+
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
 ## Contents
@@ -43,9 +45,11 @@ There are many functions for linear algebra, such as (for Real and Complex types
 * Reading writing files, `linspace`, grid generators, Stopwatch, linear fitting, and more
 * Checking results, comparing float point numbers, and verifying the correctness of derivatives; see `russell_lab::check`
 
-See the documentation for further information:
+### Documentation
 
-- [russell_lab documentation](https://docs.rs/russell_lab) - Contains the API reference and examples
+[![documentation: lab](https://img.shields.io/badge/russell_lab-documentation-blue)](https://docs.rs/russell_lab)
+
+
 
 <a name="installation"></a>
 

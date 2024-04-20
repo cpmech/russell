@@ -1,6 +1,6 @@
 //! Russell - Rust Scientific Library
 //!
-//! `russell_ode`: Numerical solvers for systems of ordinary differential equations (ODEs) and differential algebraic equations (DAE)
+//! `russell_ode`: Solvers for ordinary differential equations and differential algebraic equations
 //!
 //! **Important:** This crate depends on external libraries (non-Rust). Thus, please check the [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell).
 //!

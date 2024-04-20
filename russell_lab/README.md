@@ -4,6 +4,8 @@
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
+
+
 ## Contents
 
 * [Introduction](#introduction)
@@ -11,11 +13,20 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 * [Setting Cargo.toml](#cargo)
 * [Complex numbers](#complex-numbers)
 * [Examples](#examples)
+    * [Lagrange interpolation with Chebyshev-Gauss-Lobatto grid](#example1)
+    * [Solution of a 1D PDE using spectral collocation](#example2)
+    * [Computing the pseudo-inverse matrix](#example3)
+    * [Computing eigenvalues and eigenvectors](#example4)
+    * [Cholesky factorization](#example5)
 * [About the column major representation](#col-major)
 * [Benchmarks](#benchmarks)
-* [For developers](#developers)
+* [Notes for developers](#developers)
 
-## <a name="introduction"></a> Introduction
+
+
+<a name="introduction"></a>
+
+## Introduction
 
 This library implements specialized mathematical functions (e.g., Bessel, Erf, Gamma) and functions to perform linear algebra computations (e.g., Matrix, Vector, Matrix-Vector, Eigen-decomposition, SVD). This library also implements a set of helpful function for comparing floating-point numbers, measuring computer time, reading table-formatted data, and more.
 
@@ -113,12 +124,19 @@ use num_complex::Complex64;
 
 This line will bring `Complex64` to the scope. For convenience the (russell_lab) macro `cpx!` may be used to allocate complex numbers.
 
-## <a name="examples"></a> Examples
+
+
+<a name="examples"></a>
+
+## Examples
 
 See also:
 
 * [russell_lab/examples](https://github.com/cpmech/russell/tree/main/russell_lab/examples)
 
+
+
+<a name="example1"></a>
 
 ### Lagrange interpolation with Chebyshev-Gauss-Lobatto grid
 
@@ -126,11 +144,29 @@ This example illustrates the interpolation of Runge equation.
 
 [See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_interpolation_lagrange.rs)
 
-Output:
+Results:
 
 ![algo_interpolation_lagrange](data/figures/algo_interpolation_lagrange.svg)
 
-### Compute the pseudo-inverse matrix
+
+
+<a name="example2"></a>
+
+### Solution of a 1D PDE using spectral collocation
+
+This example illustrates the solution of a 1D PDE using the spectral collocation method. It employs the InterpLagrange struct.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_lorene_1d_pde_spectral_collocation.rs)
+
+Results:
+
+![algo_lorene_1d_pde_spectral_collocation](data/figures/algo_lorene_1d_pde_spectral_collocation.svg)
+
+
+
+<a name="example3"></a>
+
+### Computing the pseudo-inverse matrix
 
 ```rust
 use russell_lab::{mat_pseudo_inverse, Matrix, StrError};
@@ -185,7 +221,11 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-### Compute eigenvalues
+
+
+<a name="example4"></a>
+
+### Computing eigenvalues and eigenvectors
 
 ```rust
 use russell_lab::*;
@@ -238,6 +278,10 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
+
+
+<a name="example5"></a>
+
 ### Cholesky factorization
 
 ```rust
@@ -287,7 +331,11 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-## <a name="col-major"></a> About the column major representation
+
+
+<a name="col-major"></a>
+
+## About the column major representation
 
 Only the COL-MAJOR representation is considered here.
 
@@ -306,7 +354,11 @@ COL-MAJOR IS ADOPTED HERE
 
 The main reason to use the **col-major** representation is to make the code work better with BLAS/LAPACK written in Fortran. Although those libraries have functions to handle row-major data, they usually add an overhead due to temporary memory allocation and copies, including transposing matrices. Moreover, the row-major versions of some BLAS/LAPACK libraries produce incorrect results (notably the DSYEV).
 
-## <a name="benchmarks"></a> Benchmarks
+
+
+<a name="benchmarks"></a>
+
+## Benchmarks
 
 Need to install:
 
@@ -328,9 +380,11 @@ Comparison of the performances of `mat_eigen_sym_jacobi` (Jacobi rotation) versu
 
 ![Jacobi Rotation versus LAPACK DSYEV (1-32)](data/figures/bench_mat_eigen_sym_1-32.svg)
 
-## <a name="developers"></a> For developers
 
-Notes for developers:
+
+<a name="developers"></a>
+
+## Notes for developers
 
 * The `c_code` directory contains a thin wrapper to the BLAS libraries (OpenBLAS or Intel MKL)
 * The `c_code` directory also contains a wrapper to the C math functions

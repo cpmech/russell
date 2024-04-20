@@ -651,6 +651,7 @@ fn main() -> Result<(), StrError> {
 - [ ] Improve `russell_stat`
     - [x] Add probability distribution functions
     - [x] Implement drawing of ASCII histograms
+    - [ ] Implement FORM (first-order reliability method)
     - [ ] Add more examples
 - [ ] Improve `russell_tensor`
     - [x] Implement functions to calculate invariants

@@ -13,11 +13,12 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 * [Setting Cargo.toml](#cargo)
 * [Complex numbers](#complex-numbers)
 * [Examples](#examples)
-    * [Lagrange interpolation with Chebyshev-Gauss-Lobatto grid](#example1)
-    * [Solution of a 1D PDE using spectral collocation](#example2)
-    * [Computing the pseudo-inverse matrix](#example3)
-    * [Computing eigenvalues and eigenvectors](#example4)
-    * [Cholesky factorization](#example5)
+    * [Lagrange interpolation with Chebyshev-Gauss-Lobatto grid](#ex-lagrange-interpolation)
+    * [Solution of a 1D PDE using spectral collocation](#ex-spectral-collocation)
+    * [Computing the pseudo-inverse matrix](#ex-local-minumum)
+    * [Computing eigenvalues and eigenvectors](#ex-eigenvalues)
+    * [Finding a local minimum](#ex-local-minimum)
+    * [Cholesky factorization](#ex-cholesky)
 * [About the column major representation](#col-major)
 * [Benchmarks](#benchmarks)
 * [Notes for developers](#developers)
@@ -136,7 +137,7 @@ See also:
 
 
 
-<a name="example1"></a>
+<a name="ex-lagrange-interpolation"></a>
 
 ### Lagrange interpolation with Chebyshev-Gauss-Lobatto grid
 
@@ -150,7 +151,7 @@ Results:
 
 
 
-<a name="example2"></a>
+<a name="ex-spectral-collocation"></a>
 
 ### Solution of a 1D PDE using spectral collocation
 
@@ -164,7 +165,46 @@ Results:
 
 
 
-<a name="example3"></a>
+<a name="ex-local-minimum"></a>
+
+### Finding a local minimum
+
+This example finds the local minimum between 0.1 and 0.3 for the function illustrated below
+
+![finding a local minimum](data/figures/test_function_005.svg)
+
+```rust
+use russell_lab::algo::MinSolver;
+use russell_lab::math::PI;
+use russell_lab::StrError;
+
+fn main() -> Result<(), StrError> {
+    let args = &mut 0;
+    let solver = MinSolver::new();
+    let (xo, stats) = solver.brent(0.1, 0.3, args, |x, _| {
+        Ok(1.0 / (1.0 - f64::exp(-2.0 * x) * f64::powi(f64::sin(5.0 * PI * x), 2)) - 1.5)
+    })?;
+    println!("\nx_optimal = {:?}", xo);
+    println!("\n{}", stats);
+    Ok(())
+}
+```
+
+The output looks like:
+
+```text
+x_optimal = 0.20000000003467466
+
+Number of function evaluations   = 18
+Number of Jacobian evaluations   = 0
+Number of iterations             = 18
+Error estimate                   = unavailable
+Total computation time           = 5.523µs
+```
+
+
+
+<a name="ex-pseudo-inverse"></a>
 
 ### Computing the pseudo-inverse matrix
 
@@ -223,7 +263,7 @@ fn main() -> Result<(), StrError> {
 
 
 
-<a name="example4"></a>
+<a name="ex-eigenvalue"></a>
 
 ### Computing eigenvalues and eigenvectors
 
@@ -280,7 +320,7 @@ fn main() -> Result<(), StrError> {
 
 
 
-<a name="example5"></a>
+<a name="ex-cholesky"></a>
 
 ### Cholesky factorization
 

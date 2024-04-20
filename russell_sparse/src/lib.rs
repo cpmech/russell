@@ -1,6 +1,6 @@
 //! Russell - Rust Scientific Library
 //!
-//! `russell_sparse`: Sparse matrix tools and solvers
+//! `russell_sparse`: Solvers for large sparse linear systems (wraps MUMPS and UMFPACK)
 //!
 //! **Important:** This crate depends on external libraries (non-Rust). Thus, please check the [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell).
 //!
@@ -12,7 +12,7 @@
 //! * [NumCscMatrix] (CSC) -- Compressed Sparse Column matrix
 //! * [NumCsrMatrix] (CSR) -- Compressed Sparse Row matrix
 //!
-//! Additionally, to unify the handling of the above data structures, this implements:
+//! Additionally, to unify the handling of the above data structures, the library implements:
 //!
 //! * [NumSparseMatrix] -- Either a COO, CSC, or CSR matrix. We recommend using `NumSparseMatrix` solely, if possible.
 //!

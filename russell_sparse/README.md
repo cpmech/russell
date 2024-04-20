@@ -1,5 +1,7 @@
 # Russell Sparse - Solvers for large sparse linear systems (wraps MUMPS and UMFPACK)
 
+[![documentation: sparse](https://img.shields.io/badge/russell_sparse-documentation-blue)](https://docs.rs/russell_sparse)
+
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
 ## Contents
@@ -14,15 +16,15 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## <a name="introduction"></a> Introduction
 
-This crate implements tools for handling sparse matrices and functions to solve large sparse systems using the best libraries out there, such as [UMFPACK (recommended)](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS (for very large systems)](https://mumps-solver.org).
+This library implements tools for handling sparse matrices and functions to solve large sparse systems using the best libraries out there, such as [UMFPACK (recommended)](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS (for very large systems)](https://mumps-solver.org).
 
-We have three storage formats for sparse matrices:
+This library implements three storage formats for sparse matrices:
 
 * COO: COOrdinates matrix, also known as a sparse triplet.
 * CSC: Compressed Sparse Column matrix
 * CSR: Compressed Sparse Row matrix
 
-Additionally, to unify the handling of the above sparse matrix data structures, we have:
+Additionally, to unify the handling of the above sparse matrix data structures, this library implements:
 
 * SparseMatrix: Either a COO, CSC, or CSR matrix
 
@@ -32,9 +34,9 @@ This library also provides functions to read and write Matrix Market files conta
 
 ![readme-vismatrix](https://raw.githubusercontent.com/cpmech/russell/main/russell_sparse/data/figures/readme-vismatrix.png)
 
-See the documentation for further information:
+### Documentation
 
-- [russell_sparse documentation](https://docs.rs/russell_sparse) - Contains the API reference and examples
+[![documentation: sparse](https://img.shields.io/badge/russell_sparse-documentation-blue)](https://docs.rs/russell_sparse)
 
 
 

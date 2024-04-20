@@ -119,6 +119,17 @@ See also:
 
 * [russell_lab/examples](https://github.com/cpmech/russell/tree/main/russell_lab/examples)
 
+
+### Lagrange interpolation with Chebyshev-Gauss-Lobatto grid
+
+This example illustrates the interpolation of Runge equation.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_interpolation_lagrange.rs)
+
+Output:
+
+![algo_interpolation_lagrange](data/figures/algo_interpolation_lagrange.svg)
+
 ### Compute the pseudo-inverse matrix
 
 ```rust

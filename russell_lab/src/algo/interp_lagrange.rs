@@ -821,6 +821,11 @@ impl InterpLagrange {
         self.nn
     }
 
+    /// Returns the polynomial degree N
+    pub fn get_grid_type(&self) -> InterpGrid {
+        self.params.grid_type
+    }
+
     /// Returns a reference to the grid nodes
     pub fn get_points(&self) -> &Vector {
         &self.xx
@@ -1544,6 +1549,7 @@ mod tests {
     fn getters_work() {
         let mut interp = InterpLagrange::new(2, None).unwrap();
         assert_eq!(interp.get_degree(), 2);
+        assert_eq!(interp.get_grid_type(), InterpGrid::ChebyshevGaussLobatto);
         assert_eq!(interp.get_points().as_data(), &[-1.0, 0.0, 1.0]);
         assert_eq!(interp.get_xrange(), (-1.0, 1.0));
         interp.calc_dd1_matrix();

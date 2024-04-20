@@ -17,20 +17,20 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## <a name="introduction"></a> Introduction
 
-This crate implements specialized mathematical functions (e.g., Bessel, Erf, Gamma) and functions to perform linear algebra computations (e.g., Matrix, Vector, Matrix-Vector, Eigen-decomposition, SVD). This crate also implements a set of helpful function for comparing floating-point numbers, measuring computer time, reading table-formatted data, and more.
+This library implements specialized mathematical functions (e.g., Bessel, Erf, Gamma) and functions to perform linear algebra computations (e.g., Matrix, Vector, Matrix-Vector, Eigen-decomposition, SVD). This library also implements a set of helpful function for comparing floating-point numbers, measuring computer time, reading table-formatted data, and more.
 
-The code shall be implemented in *native Rust* code as much as possible. However, thin interfaces ("wrappers") are implemented for some of the best tools available in numerical mathematics, including [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
+The code shall be implemented in *native Rust* code as much as possible. However, light interfaces ("wrappers") are implemented for some of the best tools available in numerical mathematics, including [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
 
 The code is organized in modules:
 
-* `check` -- implements functions to assist in unit and integration testing
-* `base` -- implements a "base" functionality to help other modules
-* `math` -- implements mathematical (specialized) functions and constants
-* `vector` -- implements the [NumVector] struct and associated functions
-* `matrix` -- implements the [NumMatrix] struct and associated functions
-* `matvec` -- implements functions operating on matrices and vectors
-* `fftw` -- implements a think wrap to a few [FFTW](https://www.fftw.org/) routines. Warning: these routines are thread-unsafe
-* `algo` -- implements algorithms that depend on the other modules (e.g, Lagrange interpolation)
+* `algo` -- algorithms that depend on the other modules (e.g, Lagrange interpolation)
+* `base` -- "base" functionality to help other modules
+* `check` -- functions to assist in unit and integration testing
+* `fftw` -- light interface to a few [FFTW](https://www.fftw.org/) routines. Warning: these routines are thread-unsafe
+* `math` -- mathematical (specialized) functions and constants
+* `matrix` -- [NumMatrix] struct and associated functions
+* `matvec` -- functions operating on matrices and vectors
+* `vector` -- [NumVector] struct and associated functions
 
 For linear algebra, the main structures are `NumVector` and `NumMatrix`, that are generic Vector and Matrix structures. The Matrix data is stored as [column-major](#col-major). The `Vector` and `Matrix` are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.
 

@@ -1,16 +1,12 @@
 //! Russell - Rust Scientific Library
 //!
-//! `russell_stat`: Statistics calculations, probability distributions, and pseudo random numbers
+//! `russell_stat`: Statistics calculations and (engineering) probability distributions
 //!
 //! **Important:** This crate depends on external libraries (non-Rust). Thus, please check the [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell).
 //!
-//! # Introduction
+//! This library assists in developing statistical computations and simulations aiming at engineering applications, such as reliability analyses. This library provides a light interface to [rand_distr](https://crates.io/crates/rand_distr) and implements extra functionality.
 //!
-//! TODO
-//!
-//! # Examples
-//!
-//! TODO
+//! Some essential distributions considered in this library are those classified as [Extreme Value Distribution](https://en.wikipedia.org/wiki/Generalized_extreme_value_distribution).
 
 /// Defines the error output as a static string
 pub type StrError = &'static str;

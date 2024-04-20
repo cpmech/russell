@@ -1,6 +1,6 @@
 //! Russell - Rust Scientific Library
 //!
-//! `russell_lab`: Matrix-vector laboratory including linear algebra tools
+//! `russell_lab`: Scientific lab with special math functions, linear algebra, interpolation, quadrature, num derivation
 //!
 //! **Important:** This crate depends on external libraries (non-Rust). Thus, please check the [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell).
 //!
@@ -12,14 +12,14 @@
 //!
 //! The code is organized in modules:
 //!
-//! * [check] -- implements functions to assist in unit and integration testing
-//! * [base] -- implements a "base" functionality to help other modules
-//! * [math] -- implements mathematical (specialized) functions and constants
-//! * [vector] -- implements the [NumVector] struct and associated functions
-//! * [matrix] -- implements the [NumMatrix] struct and associated functions
-//! * [matvec] -- implements functions operating on matrices and vectors
-//! * [fftw] -- implements a think wrap to a few [FFTW](https://www.fftw.org/) routines. Warning: these routines are thread-unsafe
-//! * [algo] -- implements algorithms that depend on the other modules (e.g, Lagrange interpolation)
+//! * `algo` -- algorithms that depend on the other modules (e.g, Lagrange interpolation)
+//! * `base` -- "base" functionality to help other modules
+//! * `check` -- functions to assist in unit and integration testing
+//! * `fftw` -- light interface to a few [FFTW](https://www.fftw.org/) routines. Warning: these routines are thread-unsafe
+//! * `math` -- mathematical (specialized) functions and constants
+//! * `matrix` -- [NumMatrix] struct and associated functions
+//! * `matvec` -- functions operating on matrices and vectors
+//! * `vector` -- [NumVector] struct and associated functions
 //!
 //! For linear algebra, the main structures are [NumVector] and [NumMatrix], that are generic Vector and Matrix structures. The Matrix data is stored as **column-major**. The [Vector] and [Matrix] are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.
 //!

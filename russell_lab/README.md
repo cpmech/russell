@@ -28,6 +28,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Computing the pseudo-inverse matrix](#computing-the-pseudo-inverse-matrix)
   - [Computing eigenvalues and eigenvectors](#computing-eigenvalues-and-eigenvectors)
   - [Cholesky factorization](#cholesky-factorization)
+  - [Simple discrete Fourier transform](#simple-discrete-fourier-transform)
 - [About the column major representation](#about-the-column-major-representation)
 - [Benchmarks](#benchmarks)
   - [Jacobi Rotation versus LAPACK DSYEV](#jacobi-rotation-versus-lapack-dsyev)
@@ -642,6 +643,18 @@ fn main() -> Result<(), StrError> {
     Ok(())
 }
 ```
+
+
+
+### Simple discrete Fourier transform
+
+Generate a signal with a 50 Hz sinusoid of amplitude 0.7 and a 120 Hz sinusoid of amplitude 1.0. Then, use [FFTW](https://www.fftw.org/) to determine the spectrum.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/fftw_simple_example.rs)
+
+The output is illustrated below:
+
+![Simple FFTw example](data/figures/fftw_simple_example.svg)
 
 
 

@@ -26,6 +26,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Numerical integration: perimeter of ellipse](#numerical-integration-perimeter-of-ellipse)
   - [Finding a local minimum and a root](#finding-a-local-minimum-and-a-root)
   - [Computing the pseudo-inverse matrix](#computing-the-pseudo-inverse-matrix)
+  - [Matrix visualization](#matrix-visualization)
   - [Computing eigenvalues and eigenvectors](#computing-eigenvalues-and-eigenvectors)
   - [Cholesky factorization](#cholesky-factorization)
   - [Simple discrete Fourier transform](#simple-discrete-fourier-transform)
@@ -537,6 +538,19 @@ fn main() -> Result<(), StrError> {
     Ok(())
 }
 ```
+
+
+### Matrix visualization
+
+We can use the fantastic tool named [vismatrix](https://github.com/cpmech/vismatrix/) to visualize the pattern of non-zero values of a matrix. With `vismatrix`, we can click on each circle and investigate the numeric values as well.
+
+The function `mat_write_vismatrix` writes the input data file for `vismatrix`.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/matrix_visualization.rs)
+
+Output:
+
+![Matrix visualization](data/figures/matrix_vizualization.png)
 
 
 

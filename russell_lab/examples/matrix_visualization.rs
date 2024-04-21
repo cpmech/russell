@@ -1,5 +1,11 @@
 use russell_lab::{mat_write_vismatrix, Matrix, StrError};
 
+// After generating the "dot-smat" file, run the following command:
+//
+// ```bash
+// vismatrix /tmp/russell_lab/matrix_visualization.smat
+// ```
+
 fn main() -> Result<(), StrError> {
     // the code below is the JavaScript one by George Reith from
     // https://codegolf.stackexchange.com/questions/16587/print-a-smiley-face

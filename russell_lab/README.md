@@ -548,6 +548,12 @@ The function `mat_write_vismatrix` writes the input data file for `vismatrix`.
 
 [See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/matrix_visualization.rs)
 
+After generating the "dot-smat" file, run the following command:
+
+```bash
+vismatrix /tmp/russell_lab/matrix_visualization.smat
+```
+
 Output:
 
 ![Matrix visualization](data/figures/matrix_vizualization.png)

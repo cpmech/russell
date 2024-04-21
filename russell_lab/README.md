@@ -15,6 +15,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 * [Examples](#examples)
     * [Lagrange interpolation with Chebyshev-Gauss-Lobatto grid](#ex-lagrange-interpolation)
     * [Solution of a 1D PDE using spectral collocation](#ex-spectral-collocation)
+    * [Numerical integration: perimeter of an ellipse](#ex-num-integration)
     * [Computing the pseudo-inverse matrix](#ex-local-minumum)
     * [Computing eigenvalues and eigenvectors](#ex-eigenvalues)
     * [Finding a local minimum and a root](#ex-local-minimum)
@@ -162,6 +163,45 @@ This example illustrates the solution of a 1D PDE using the spectral collocation
 Results:
 
 ![algo_lorene_1d_pde_spectral_collocation](data/figures/algo_lorene_1d_pde_spectral_collocation.svg)
+
+
+
+<a name="ex-ex-num-integration"></a>
+
+### Numerical integration: perimeter of an ellipse
+
+```rust
+use russell_lab::algo::Quadrature;
+use russell_lab::math::{elliptic_e, PI};
+use russell_lab::{approx_eq, StrError};
+
+fn main() -> Result<(), StrError> {
+    //  Determine the perimeter P of an ellipse of length 2 and width 1
+    //
+    //      2π
+    //     ⌠   ____________________
+    // P = │ \╱ ¼ sin²(θ) + cos²(θ)  dθ
+    //     ⌡
+    //    0
+
+    let mut quad = Quadrature::new();
+    let args = &mut 0;
+    let (perimeter, _) = quad.integrate(0.0, 2.0 * PI, args, |theta, _| {
+        Ok(f64::sqrt(
+            0.25 * f64::powi(f64::sin(theta), 2) + f64::powi(f64::cos(theta), 2),
+        ))
+    })?;
+    println!("\nperimeter = {}", perimeter);
+
+    // complete elliptic integral of the second kind E(0.75)
+    let ee = elliptic_e(PI / 2.0, 0.75)?;
+
+    // reference solution
+    let ref_perimeter = 4.0 * ee;
+    approx_eq(perimeter, ref_perimeter, 1e-14);
+    Ok(())
+}
+```
 
 
 

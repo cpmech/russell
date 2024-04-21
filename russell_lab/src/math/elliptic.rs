@@ -52,6 +52,9 @@ pub fn elliptic_f(phi: f64, m: f64) -> Result<f64, StrError> {
     }
     let s = f64::sin(phi);
     let mss = m * s * s;
+    if mss > 1.0 {
+        return Err("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1");
+    }
     if f64::abs(mss - 1.0) < 10.0 * f64::EPSILON {
         return Ok(f64::INFINITY);
     }
@@ -111,6 +114,9 @@ pub fn elliptic_e(phi: f64, m: f64) -> Result<f64, StrError> {
     let c = f64::cos(phi);
     let cc = c * c;
     let mss = m * s * s;
+    if mss > 1.0 {
+        return Err("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1");
+    }
     let q = 1.0 - mss;
     let ans = s * (rf(cc, q, 1.0)? - mss * rd(cc, q, 1.0)? / 3.0);
     Ok(ans)
@@ -168,6 +174,9 @@ pub fn elliptic_pi(n: f64, phi: f64, m: f64) -> Result<f64, StrError> {
     }
     let s = f64::sin(phi);
     let mss = m * s * s;
+    if mss > 1.0 {
+        return Err("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1");
+    }
     if f64::abs(mss - 1.0) < 10.0 * f64::EPSILON {
         return Ok(f64::INFINITY);
     }
@@ -534,6 +543,10 @@ mod tests {
             elliptic_f(PI / 2.0 + 1.0, 1.0).err(),
             Some("phi must be in 0 ≤ phi ≤ π/2")
         );
+        assert_eq!(
+            elliptic_f(PI / 2.0, 1.1).err(),
+            Some("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1")
+        );
     }
 
     #[test]
@@ -593,6 +606,10 @@ mod tests {
         assert_eq!(
             elliptic_e(PI / 2.0 + 1.0, 1.0).err(),
             Some("phi must be in 0 ≤ phi ≤ π/2")
+        );
+        assert_eq!(
+            elliptic_e(PI / 2.0, 1.1).err(),
+            Some("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1")
         );
     }
 
@@ -660,6 +677,14 @@ mod tests {
         assert_eq!(
             elliptic_pi(2.0, PI / 2.0 + 1.0, 1.0).err(),
             Some("phi must be in 0 ≤ phi ≤ π/2")
+        );
+        assert_eq!(
+            elliptic_pi(0.5, PI / 2.0, 1.1).err(),
+            Some("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1")
+        );
+        assert_eq!(
+            elliptic_pi(0.5, PI / 2.0, 1.1).err(),
+            Some("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1")
         );
     }
 

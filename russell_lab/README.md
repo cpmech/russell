@@ -18,6 +18,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 - [Examples](#examples)
   - [Running an example with Intel MKL](#running-an-example-with-intel-mkl)
   - [Bessel functions](#bessel-functions)
+  - [Linear fitting](#linear-fitting)
   - [Lagrange interpolation](#lagrange-interpolation)
   - [Solution of a 1D PDE using spectral collocation](#solution-of-a-1d-pde-using-spectral-collocation)
   - [Numerical integration: perimeter of an ellipse](#numerical-integration-perimeter-of-an-ellipse)
@@ -232,6 +233,33 @@ fn main() -> Result<(), StrError> {
 Output:
 
 ![Bessel functions](data/figures/math_bessel_functions_1.svg)
+
+
+
+### Linear fitting
+
+Fit a line through a set of points. The line has slope `m` and intercepts the y axis at `x=0` with `y(x=0) = c`.
+
+```rust
+use russell_lab::algo::linear_fitting;
+use russell_lab::{approx_eq, StrError, Vector};
+
+fn main() -> Result<(), StrError> {
+    // model: c is the y value @ x = 0; m is the slope
+    let x = Vector::from(&[0.0, 1.0, 3.0, 5.0]);
+    let y = Vector::from(&[1.0, 0.0, 2.0, 4.0]);
+    let (c, m) = linear_fitting(&x, &y, false)?;
+    println!("c = {}, m = {}", c, m);
+    approx_eq(c, 0.1864406779661015, 1e-15);
+    approx_eq(m, 0.6949152542372882, 1e-15);
+    Ok(())
+}
+```
+
+Results:
+
+![Linear fitting](data/figures/algo_linear_fitting_1.svg)
+
 
 
 

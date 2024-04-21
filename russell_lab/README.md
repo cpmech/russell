@@ -454,8 +454,8 @@ fn main() -> Result<(), StrError> {
     let mut a_v = Matrix::new(m, m);
     let mut v_l = Matrix::new(m, m);
     let mut err = Matrix::filled(m, m, f64::MAX);
-    mat_mat_mul(&mut a_v, 1.0, &a_copy, &v_real)?;
-    mat_mat_mul(&mut v_l, 1.0, &v_real, &lam)?;
+    mat_mat_mul(&mut a_v, 1.0, &a_copy, &v_real, 0.0)?;
+    mat_mat_mul(&mut v_l, 1.0, &v_real, &lam, 0.0)?;
     mat_add(&mut err, 1.0, &a_v, -1.0, &v_l)?;
     approx_eq(mat_norm(&err, Norm::Max), 0.0, 1e-15);
     Ok(())

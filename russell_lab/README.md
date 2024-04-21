@@ -12,8 +12,8 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Documentation](#documentation)
 - [Installation](#installation)
   - [TL;DR (Debian/Ubuntu/Linux)](#tldr-debianubuntulinux)
-- [Details](#details)
-- [Setting Cargo.toml](#setting-cargotoml)
+  - [Details](#details)
+  - [Setting Cargo.toml up](#setting-cargotoml-up)
 - [Complex numbers](#complex-numbers)
 - [Examples](#examples)
   - [Running an example with Intel MKL](#running-an-example-with-intel-mkl)
@@ -101,7 +101,7 @@ cargo add russell_lab
 
 
 
-## Details
+### Details
 
 This crate depends on an efficient BLAS library such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
 
@@ -110,7 +110,7 @@ This crate depends on an efficient BLAS library such as [OpenBLAS](https://githu
 
 
 
-## Setting Cargo.toml
+### Setting Cargo.toml up
 
 [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab)
 

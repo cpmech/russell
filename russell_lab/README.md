@@ -271,7 +271,7 @@ fn main() -> Result<(), StrError> {
     for x in xx {
         let dfdx = g(x, args)?;
         let d2dfx2 = h(x, args)?;
-        println!("{:>4}{:>23}{:23}", x, dfdx, d2dfx2);
+        println!("{:>4}{:>23}{:>23}", x, dfdx, d2dfx2);
         deriv1_approx_eq(dfdx, x, args, 1e-10, f);
         deriv2_approx_eq(d2dfx2, x, args, 1e-9, f);
     }
@@ -282,7 +282,7 @@ fn main() -> Result<(), StrError> {
 Output:
 
 ```text
-  x                  df/dx                d²f/dx²
+   x                  df/dx                d²f/dx²
   -2   -0.01514792899408284  -0.022255803368229403
 -1.5   -0.03506208911614317   -0.06759718081851025
   -1   -0.11072664359861592   -0.30612660289029103

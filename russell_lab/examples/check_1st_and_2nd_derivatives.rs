@@ -21,7 +21,7 @@ fn main() -> Result<(), StrError> {
     for x in xx {
         let dfdx = g(x, args)?;
         let d2dfx2 = h(x, args)?;
-        println!("{:>4}{:>23}{:23}", x, dfdx, d2dfx2);
+        println!("{:>4}{:>23}{:>23}", x, dfdx, d2dfx2);
         deriv1_approx_eq(dfdx, x, args, 1e-10, f);
         deriv2_approx_eq(d2dfx2, x, args, 1e-9, f);
     }

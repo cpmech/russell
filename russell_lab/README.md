@@ -158,6 +158,32 @@ Results:
 
 This example illustrates the solution of a 1D PDE using the spectral collocation method. It employs the InterpLagrange struct.
 
+```text
+d²u     du          x
+——— - 4 —— + 4 u = e  + C
+dx²     dx
+
+    -4 e
+C = ——————
+    1 + e²
+
+x ∈ [-1, 1]
+```
+
+Boundary conditions:
+
+```text
+u(-1) = 0  and  u(1) = 0
+```
+
+Reference solution:
+
+```text
+        x   sinh(1)  2x   C
+u(x) = e  - ——————— e   + —
+            sinh(2)       4
+```
+
 [See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_lorene_1d_pde_spectral_collocation.rs)
 
 Results:

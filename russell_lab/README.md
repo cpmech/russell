@@ -13,6 +13,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 * [Setting Cargo.toml](#cargo)
 * [Complex numbers](#complex-numbers)
 * [Examples](#examples)
+    * [Running an example with Intel MKL](#ex-base-auxiliary)
     * [Lagrange interpolation with Chebyshev-Gauss-Lobatto grid](#ex-lagrange-interpolation)
     * [Solution of a 1D PDE using spectral collocation](#ex-spectral-collocation)
     * [Numerical integration: perimeter of an ellipse](#ex-num-integration)
@@ -135,6 +136,54 @@ This line will bring `Complex64` to the scope. For convenience the (russell_lab)
 See also:
 
 * [russell_lab/examples](https://github.com/cpmech/russell/tree/main/russell_lab/examples)
+
+
+
+<a name="ex-base-auxiliary"></a>
+
+### Running an example with Intel MKL
+
+Consider the following [code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/base_auxiliary_blas.rs):
+
+```rust
+use russell_lab::*;
+
+fn main() -> Result<(), StrError> {
+    println!("Using Intel MKL  = {}", using_intel_mkl());
+    println!("BLAS num threads = {}", get_num_threads());
+    set_num_threads(2);
+    println!("BLAS num threads = {}", get_num_threads());
+    Ok(())
+}
+```
+
+First, run the example without Intel MKL (default):
+
+```bash
+cargo run --example base_auxiliary_blas
+```
+
+The output looks like this:
+
+```text
+Using Intel MKL  = false
+BLAS num threads = 24
+BLAS num threads = 2
+```
+
+Second, run the code with the `intel_mkl` feature:
+
+```bash
+cargo run --example base_auxiliary_blas --features intel_mk
+```
+
+Then, the output looks like this:
+
+```text
+Using Intel MKL  = true
+BLAS num threads = 24
+BLAS num threads = 2
+```
 
 
 

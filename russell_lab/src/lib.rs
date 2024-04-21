@@ -1,6 +1,6 @@
 //! Russell - Rust Scientific Library
 //!
-//! `russell_lab`: Scientific lab with special math functions, linear algebra, interpolation, quadrature, num derivation
+//! `russell_lab`: Scientific laboratory for linear algebra and numerical mathematics
 //!
 //! **Important:** This crate depends on external libraries (non-Rust). Thus, please check the [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell).
 //!

@@ -1,4 +1,4 @@
-# Russell Lab - Scientific lab with special math functions, linear algebra, interpolation, quadrature, num derivation
+# Russell Lab - Scientific laboratory for linear algebra and numerical mathematics <!-- omit from toc --> 
 
 [![documentation: lab](https://img.shields.io/badge/russell_lab-documentation-blue)](https://docs.rs/russell_lab)
 
@@ -6,28 +6,31 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 
 
-## Contents
+## Contents <!-- omit from toc --> 
 
-* [Introduction](#introduction)
-* [Installation](#installation)
-* [Setting Cargo.toml](#cargo)
-* [Complex numbers](#complex-numbers)
-* [Examples](#examples)
-    * [Running an example with Intel MKL](#ex-base-auxiliary)
-    * [Lagrange interpolation with Chebyshev-Gauss-Lobatto grid](#ex-lagrange-interpolation)
-    * [Solution of a 1D PDE using spectral collocation](#ex-spectral-collocation)
-    * [Numerical integration: perimeter of an ellipse](#ex-num-integration)
-    * [Computing the pseudo-inverse matrix](#ex-local-minumum)
-    * [Computing eigenvalues and eigenvectors](#ex-eigenvalues)
-    * [Finding a local minimum and a root](#ex-local-minimum)
-    * [Cholesky factorization](#ex-cholesky)
-* [About the column major representation](#col-major)
-* [Benchmarks](#benchmarks)
-* [Notes for developers](#developers)
+- [Introduction](#introduction)
+  - [Documentation](#documentation)
+- [Installation](#installation)
+  - [TL;DR (Debian/Ubuntu/Linux)](#tldr-debianubuntulinux)
+- [Details](#details)
+- [Setting Cargo.toml](#setting-cargotoml)
+- [Complex numbers](#complex-numbers)
+- [Examples](#examples)
+  - [Running an example with Intel MKL](#running-an-example-with-intel-mkl)
+  - [Bessel functions](#bessel-functions)
+  - [Lagrange interpolation](#lagrange-interpolation)
+  - [Solution of a 1D PDE using spectral collocation](#solution-of-a-1d-pde-using-spectral-collocation)
+  - [Numerical integration: perimeter of an ellipse](#numerical-integration-perimeter-of-an-ellipse)
+  - [Finding a local minimum and a root](#finding-a-local-minimum-and-a-root)
+  - [Computing the pseudo-inverse matrix](#computing-the-pseudo-inverse-matrix)
+  - [Computing eigenvalues and eigenvectors](#computing-eigenvalues-and-eigenvectors)
+  - [Cholesky factorization](#cholesky-factorization)
+- [About the column major representation](#about-the-column-major-representation)
+- [Benchmarks](#benchmarks)
+  - [Jacobi Rotation versus LAPACK DSYEV](#jacobi-rotation-versus-lapack-dsyev)
+- [Notes for developers](#notes-for-developers)
 
 
-
-<a name="introduction"></a>
 
 ## Introduction
 
@@ -37,14 +40,14 @@ The code shall be implemented in *native Rust* code as much as possible. However
 
 The code is organized in modules:
 
-* `algo` -- algorithms that depend on the other modules (e.g, Lagrange interpolation)
-* `base` -- "base" functionality to help other modules
-* `check` -- functions to assist in unit and integration testing
-* `fftw` -- light interface to a few [FFTW](https://www.fftw.org/) routines. Warning: these routines are thread-unsafe
-* `math` -- mathematical (specialized) functions and constants
-* `matrix` -- [NumMatrix] struct and associated functions
-* `matvec` -- functions operating on matrices and vectors
-* `vector` -- [NumVector] struct and associated functions
+* `algo` — algorithms that depend on the other modules (e.g, Lagrange interpolation)
+* `base` — "base" functionality to help other modules
+* `check` — functions to assist in unit and integration testing
+* `fftw` — light interface to a few [FFTW](https://www.fftw.org/) routines. Warning: these routines are thread-unsafe
+* `math` — mathematical (specialized) functions and constants
+* `matrix` — [NumMatrix] struct and associated functions
+* `matvec` — functions operating on matrices and vectors
+* `vector` — [NumVector] struct and associated functions
 
 For linear algebra, the main structures are `NumVector` and `NumMatrix`, that are generic Vector and Matrix structures. The Matrix data is stored as [column-major](#col-major). The `Vector` and `Matrix` are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.
 
@@ -65,13 +68,11 @@ There are many functions for linear algebra, such as (for Real and Complex types
 
 
 
-<a name="installation"></a>
-
 ## Installation
 
 At this moment, Russell works on **Linux** (Debian/Ubuntu; and maybe Arch). It has some limited functionality on macOS too. In the future, we plan to enable Russell on Windows; however, this will take time because some essential libraries are not easily available on Windows.
 
-### TLDR (Debian/Ubuntu/Linux)
+### TL;DR (Debian/Ubuntu/Linux)
 
 First:
 
@@ -93,13 +94,18 @@ Then:
 cargo add russell_lab
 ```
 
+
+
 ## Details
 
 This crate depends on an efficient BLAS library such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
 
 [The root README file presents the steps to install the required dependencies.](https://github.com/cpmech/russell)
 
-## <a name="cargo"></a> Setting Cargo.toml
+
+
+
+## Setting Cargo.toml
 
 [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab)
 
@@ -117,7 +123,9 @@ Or, considering the optional _features_ ([see more about these here](https://git
 russell_lab = { version = "*", features = ["intel_mkl"] }
 ```
 
-## <a name="complex-numbers"></a> Complex numbers
+
+
+## Complex numbers
 
 **Note:** For the functions dealing with complex numbers, the following line must be added to all derived code:
 
@@ -129,8 +137,6 @@ This line will bring `Complex64` to the scope. For convenience the (russell_lab)
 
 
 
-<a name="examples"></a>
-
 ## Examples
 
 See also:
@@ -138,8 +144,6 @@ See also:
 * [russell_lab/examples](https://github.com/cpmech/russell/tree/main/russell_lab/examples)
 
 
-
-<a name="ex-base-auxiliary"></a>
 
 ### Running an example with Intel MKL
 
@@ -187,11 +191,53 @@ BLAS num threads = 2
 
 
 
-<a name="ex-lagrange-interpolation"></a>
+### Bessel functions
 
-### Lagrange interpolation with Chebyshev-Gauss-Lobatto grid
+Plotting the Bessel J0, J1, and J2 functions:
 
-This example illustrates the interpolation of Runge equation.
+```rust
+use plotpy::{Curve, Plot};
+use russell_lab::math::{bessel_j0, bessel_j1, bessel_jn, GOLDEN_RATIO};
+use russell_lab::{StrError, Vector};
+
+const OUT_DIR: &str = "/tmp/russell_lab/";
+
+fn main() -> Result<(), StrError> {
+    // values
+    let xx = Vector::linspace(0.0, 15.0, 101)?;
+    let j0 = xx.get_mapped(|x| bessel_j0(x));
+    let j1 = xx.get_mapped(|x| bessel_j1(x));
+    let j2 = xx.get_mapped(|x| bessel_jn(2, x));
+    // plot
+    if false { // <<< remove this condition
+    let mut curve_j0 = Curve::new();
+    let mut curve_j1 = Curve::new();
+    let mut curve_j2 = Curve::new();
+    curve_j0.set_label("J0").draw(xx.as_data(), j0.as_data());
+    curve_j1.set_label("J1").draw(xx.as_data(), j1.as_data());
+    curve_j2.set_label("J2").draw(xx.as_data(), j2.as_data());
+    let mut plot = Plot::new();
+    let path = format!("{}/math_bessel_functions_1.svg", OUT_DIR);
+    plot.add(&curve_j0)
+        .add(&curve_j1)
+        .add(&curve_j2)
+        .grid_labels_legend("$x$", "$J_0(x),\\,J_1(x),\\,J_2(x)$")
+        .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
+        .save(path.as_str())?;
+    }
+    Ok(())
+}
+```
+
+Output:
+
+![Bessel functions](data/figures/math_bessel_functions_1.svg)
+
+
+
+### Lagrange interpolation
+
+This example illustrates the use of `InterpLagrange` with at Chebyshev-Gauss-Lobatto grid to interpolate Runge's equation.
 
 [See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_interpolation_lagrange.rs)
 
@@ -200,8 +246,6 @@ Results:
 ![algo_interpolation_lagrange](data/figures/algo_interpolation_lagrange.svg)
 
 
-
-<a name="ex-spectral-collocation"></a>
 
 ### Solution of a 1D PDE using spectral collocation
 
@@ -241,8 +285,6 @@ Results:
 
 
 
-<a name="ex-ex-num-integration"></a>
-
 ### Numerical integration: perimeter of an ellipse
 
 ```rust
@@ -280,8 +322,6 @@ fn main() -> Result<(), StrError> {
 
 
 
-<a name="ex-local-minimum"></a>
-
 ### Finding a local minimum and a root
 
 This example finds the local minimum between 0.1 and 0.3 and the root between 0.3 and 0.4 for the function illustrated below
@@ -311,8 +351,6 @@ Total computation time           = 907ns
 ```
 
 
-
-<a name="ex-pseudo-inverse"></a>
 
 ### Computing the pseudo-inverse matrix
 
@@ -371,8 +409,6 @@ fn main() -> Result<(), StrError> {
 
 
 
-<a name="ex-eigenvalue"></a>
-
 ### Computing eigenvalues and eigenvectors
 
 ```rust
@@ -428,8 +464,6 @@ fn main() -> Result<(), StrError> {
 
 
 
-<a name="ex-cholesky"></a>
-
 ### Cholesky factorization
 
 ```rust
@@ -481,8 +515,6 @@ fn main() -> Result<(), StrError> {
 
 
 
-<a name="col-major"></a>
-
 ## About the column major representation
 
 Only the COL-MAJOR representation is considered here.
@@ -504,8 +536,6 @@ The main reason to use the **col-major** representation is to make the code work
 
 
 
-<a name="benchmarks"></a>
-
 ## Benchmarks
 
 Need to install:
@@ -520,6 +550,8 @@ Run the benchmarks with:
 bash ./zscripts/benchmark.bash
 ```
 
+
+
 ### Jacobi Rotation versus LAPACK DSYEV
 
 Comparison of the performances of `mat_eigen_sym_jacobi` (Jacobi rotation) versus `mat_eigen_sym` (calling LAPACK DSYEV).
@@ -529,8 +561,6 @@ Comparison of the performances of `mat_eigen_sym_jacobi` (Jacobi rotation) versu
 ![Jacobi Rotation versus LAPACK DSYEV (1-32)](data/figures/bench_mat_eigen_sym_1-32.svg)
 
 
-
-<a name="developers"></a>
 
 ## Notes for developers
 

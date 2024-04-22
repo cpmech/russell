@@ -1,7 +1,7 @@
 use crate::StrError;
 
-/// Stepsize h for deriv2_central8
-const STEPSIZE_CENTRAL8: f64 = 1e-3;
+/// Stepsize h for deriv2_central9
+const STEPSIZE_CENTRAL9: f64 = 1e-3;
 
 const C4: f64 = -1.0 / 560.0;
 const C3: f64 = 8.0 / 315.0;
@@ -9,7 +9,7 @@ const C2: f64 = -1.0 / 5.0;
 const C1: f64 = 8.0 / 5.0;
 const C0: f64 = -205.0 / 72.0;
 
-/// Approximates the second derivative using central difference with 8 points
+/// Approximates the second derivative using central difference with 9 points
 ///
 /// Given `f(x)`, approximate:
 ///
@@ -18,11 +18,11 @@ const C0: f64 = -205.0 / 72.0;
 /// ——— │   
 /// dx² │x=at_x
 /// ```
-pub fn deriv2_central8<F, A>(at_x: f64, args: &mut A, mut f: F) -> Result<f64, StrError>
+pub fn deriv2_central9<F, A>(at_x: f64, args: &mut A, mut f: F) -> Result<f64, StrError>
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
-    let h = STEPSIZE_CENTRAL8;
+    let h = STEPSIZE_CENTRAL9;
     let hh = h * h;
     let fm4 = f(at_x - 4.0 * h, args)?;
     let fm3 = f(at_x - 3.0 * h, args)?;
@@ -42,12 +42,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::deriv2_central8;
+    use super::deriv2_central9;
     use crate::check::approx_eq;
     use crate::check::testing;
 
     #[test]
-    fn deriv2_central8_works() {
+    fn deriv2_central9_works() {
         let tests = testing::get_functions();
         println!(
             "{:>10}{:>15}{:>22}{:>11}",
@@ -56,7 +56,7 @@ mod tests {
         // for test in &[&tests[2]] {
         for test in &tests {
             let args = &mut 0;
-            let num = deriv2_central8(test.at_x, args, test.f).unwrap();
+            let num = deriv2_central9(test.at_x, args, test.f).unwrap();
             let ana = (test.h)(test.at_x, args).unwrap();
             println!("{:>10}{:15.9}{:22}{:11.2e}", test.name, num, ana, f64::abs(num - ana),);
             approx_eq(num, ana, test.tol_h);

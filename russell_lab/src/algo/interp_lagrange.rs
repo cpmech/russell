@@ -860,7 +860,10 @@ mod tests {
     use super::{InterpGrid, InterpLagrange, InterpParams};
     use crate::algo::NoArgs;
     use crate::math::SQRT_3;
-    use crate::{approx_eq, deriv1_approx_eq, deriv1_approx_eq_bw, deriv1_approx_eq_fw, deriv2_approx_eq};
+    use crate::{
+        approx_eq, deriv1_approx_eq, deriv1_approx_eq_bw, deriv1_approx_eq_fw, deriv2_approx_eq, deriv2_approx_eq_bw,
+        deriv2_approx_eq_fw,
+    };
     use crate::{mat_vec_mul, Vector};
     // use plotpy::{Curve, Plot};
 
@@ -1136,9 +1139,14 @@ mod tests {
         for i in 0..npoint {
             let xi = interp.xx[i];
             for j in 0..npoint {
-                if i == 0 || i == nn {
-                    // TODO: find another method because we
-                    // cannot use central differences @ x=-1 and x=1
+                if i == 0 {
+                    deriv2_approx_eq_fw(interp.dd2.get(i, j), xi, args, tol, |x, _| {
+                        Ok(interp.psi(j, x).unwrap())
+                    });
+                } else if i == nn {
+                    deriv2_approx_eq_bw(interp.dd2.get(i, j), xi, args, tol, |x, _| {
+                        Ok(interp.psi(j, x).unwrap())
+                    });
                 } else {
                     deriv2_approx_eq(interp.dd2.get(i, j), xi, args, tol, |x, _| {
                         Ok(interp.psi(j, x).unwrap())
@@ -1152,13 +1160,13 @@ mod tests {
     fn dd2_matrix_works() {
         #[rustfmt::skip]
         let nn_and_tols = [
-            (2, 1e-9),
-            (5, 1e-8),
+            (2, 1e-8),
+            (5, 1e-7),
             (10, 1e-8),
         ];
         let params = InterpParams::new();
         for (nn, tol) in nn_and_tols {
-            // println!("nn = {:?}", nn);
+            println!("nn = {:?}", nn);
             check_dd2_matrix(nn, params, tol);
         }
     }

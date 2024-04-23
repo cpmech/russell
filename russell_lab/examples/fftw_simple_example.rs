@@ -23,8 +23,8 @@ fn main() -> Result<(), StrError> {
 
     // perform the DFT on the original signal
     let mut fft = FFTw::new();
-    let mut zz_ori = ComplexVector::new(L);
-    fft.dft_1d(&mut zz_ori, &z, false)?;
+    let mut zz = ComplexVector::new(L);
+    fft.dft_1d(&mut zz, &z, false)?;
 
     // process the results
     const M: usize = L / 2 + 1;
@@ -32,7 +32,7 @@ fn main() -> Result<(), StrError> {
     let mut ff = vec![0.0; M]; // frequency domain f
     let den = L as f64;
     for i in 0..M {
-        pp[i] = 2.0 * zz_ori[i].norm() / den;
+        pp[i] = 2.0 * zz[i].norm() / den;
         ff[i] = F * (i as f64) / den;
     }
 

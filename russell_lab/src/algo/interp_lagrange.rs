@@ -860,7 +860,8 @@ mod tests {
     use super::{InterpGrid, InterpLagrange, InterpParams};
     use crate::algo::NoArgs;
     use crate::math::SQRT_3;
-    use crate::{approx_eq, deriv1_approx_eq, deriv2_approx_eq, mat_vec_mul, Vector};
+    use crate::{approx_eq, deriv1_approx_eq, deriv1_approx_eq_bw, deriv1_approx_eq_fw, deriv2_approx_eq};
+    use crate::{mat_vec_mul, Vector};
     // use plotpy::{Curve, Plot};
 
     #[test]
@@ -1084,9 +1085,14 @@ mod tests {
         for i in 0..npoint {
             let xi = interp.xx[i];
             for j in 0..npoint {
-                if i == 0 || i == nn {
-                    // TODO: find another method because we
-                    // cannot use central differences @ x=-1 and x=1
+                if i == 0 {
+                    deriv1_approx_eq_fw(interp.dd1.get(i, j), xi, args, tol, |x, _| {
+                        Ok(interp.psi(j, x).unwrap())
+                    });
+                } else if i == nn {
+                    deriv1_approx_eq_bw(interp.dd1.get(i, j), xi, args, tol, |x, _| {
+                        Ok(interp.psi(j, x).unwrap())
+                    });
                 } else {
                     deriv1_approx_eq(interp.dd1.get(i, j), xi, args, tol, |x, _| {
                         Ok(interp.psi(j, x).unwrap())
@@ -1099,21 +1105,21 @@ mod tests {
     #[test]
     fn dd1_matrix_works() {
         // with eta
-        let nn_and_tols = [(2, 1e-12), (5, 1e-9), (10, 1e-8)];
+        let nn_and_tols = [(2, 1e-11), (5, 1e-9), (10, 1e-8)];
         let mut params = InterpParams::new();
         for (nn, tol) in nn_and_tols {
             // println!("nn = {:?}", nn);
             check_dd1_matrix(nn, params, tol);
         }
         // with eta and low cutoff
-        let nn_and_tols = [(2, 1e-12), (5, 1e-9), (10, 1e-8)];
+        let nn_and_tols = [(2, 1e-11), (5, 1e-9), (10, 1e-8)];
         params.eta_cutoff = 0;
         for (nn, tol) in nn_and_tols {
             // println!("nn = {:?}", nn);
             check_dd1_matrix(nn, params, tol);
         }
         // no eta
-        let nn_and_tols = [(2, 1e-12), (5, 1e-9), (10, 1e-8)];
+        let nn_and_tols = [(2, 1e-11), (5, 1e-9), (10, 1e-8)];
         params.no_eta_normalization = true;
         for (nn, tol) in nn_and_tols {
             // println!("nn = {:?}", nn);

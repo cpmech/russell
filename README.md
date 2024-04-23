@@ -1,40 +1,52 @@
-# Russell - Rust Scientific Library
+# Russell - Rust Scientific Library <!-- omit from toc --> 
 
 [![codecov](https://codecov.io/gh/cpmech/russell/graph/badge.svg?token=PQWSKMZQXT)](https://codecov.io/gh/cpmech/russell)
 [![Test & Coverage](https://github.com/cpmech/russell/actions/workflows/test_and_coverage.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_and_coverage.yml)
 [![Test with local libs](https://github.com/cpmech/russell/actions/workflows/test_with_local_libs.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_with_local_libs.yml)
 [![Test with Intel MKL](https://github.com/cpmech/russell/actions/workflows/test_with_intel_mkl.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_with_intel_mkl.yml)
 
+[![documentation: lab](https://img.shields.io/badge/russell_lab-documentation-blue)](https://docs.rs/russell_lab)
+[![documentation: ode](https://img.shields.io/badge/russell_ode-documentation-blue)](https://docs.rs/russell_ode)
+[![documentation: sparse](https://img.shields.io/badge/russell_sparse-documentation-blue)](https://docs.rs/russell_sparse)
+[![documentation: stat](https://img.shields.io/badge/russell_stat-documentation-blue)](https://docs.rs/russell_stat)
+[![documentation: tensor](https://img.shields.io/badge/russell_tensor-documentation-blue)](https://docs.rs/russell_tensor)
+
 ![Logo](logo.svg)
 
-## Contents
+## Contents <!-- omit from toc --> 
 
-* [Introduction](#introduction)
-* [Crates](#crates)
-* [Installation on Debian/Ubuntu/Linux](#installation)
-* [Installation on macOS](#macos)
-* [Number of threads](#threads)
-* [Examples](#examples)
-    * [(lab) Singular value decomposition](#svd)
-    * [(lab) Cholesky factorization](#cholesky)
-    * [(lab) Solve a tiny (dense) linear system](#dense-lin-sys)
-    * [(sparse) Solve a small sparse linear system](#sparse-lin-sys)
-    * [(ode) Solve the brusselator ODE system](#brusselator)
-    * [(stat) Generate the Frechet distribution](#frechet)
-    * [(tensor) Allocate second-order tensors](#tensor)
-* [Roadmap](#roadmap)
+- [Introduction](#introduction)
+- [Installation](#installation)
+  - [TL;DR (Debian/Ubuntu/Linux)](#tldr-debianubuntulinux)
+  - [Details](#details)
+  - [Case A: OpenBLAS](#case-a-openblas)
+    - [Default Debian packages](#default-debian-packages)
+    - [Locally compiled libraries](#locally-compiled-libraries)
+  - [Case B: Intel MKL](#case-b-intel-mkl)
+  - [Installation on macOS](#installation-on-macos)
+  - [Number of threads](#number-of-threads)
+- [Examples](#examples)
+  - [(lab) Solution of a 1D PDE using spectral collocation](#lab-solution-of-a-1d-pde-using-spectral-collocation)
+  - [(lab) Matrix visualization](#lab-matrix-visualization)
+  - [(lab) Singular value decomposition](#lab-singular-value-decomposition)
+  - [(lab) Cholesky factorization](#lab-cholesky-factorization)
+  - [(lab) Solve a tiny (dense) linear system](#lab-solve-a-tiny-dense-linear-system)
+  - [(sparse) Solve a small sparse linear system using UMFPACK](#sparse-solve-a-small-sparse-linear-system-using-umfpack)
+  - [(ode) Brusselator ODE](#ode-brusselator-ode)
+  - [(ode) Brusselator PDE](#ode-brusselator-pde)
+  - [(stat) Generate the Frechet distribution](#stat-generate-the-frechet-distribution)
+  - [(tensor) Allocate second-order tensors](#tensor-allocate-second-order-tensors)
+- [Roadmap](#roadmap)
 
-<a name="introduction"></a>
+
 
 ## Introduction
 
 **Russell** (Rust Scientific Library) assists in developing high-performance computations involving linear algebra, sparse linear systems, differential equations, statistics, and continuum mechanics using the Rust programming language. The applications built with Russell revolve around the computational mechanics discipline; however, since Russell deals with fundamental mathematics and numerics, it is also helpful for other disciplines.
 
-<a name="crates"></a> 
 
-## Crates
 
-Available crates:
+Available libraries:
 
 - [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab) [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab) Scientific laboratory with special math functions, linear algebra, interpolation, quadrature, numerical derivation, and more
 - [![Crates.io](https://img.shields.io/crates/v/russell_ode.svg)](https://crates.io/crates/russell_ode) [russell_ode](https://github.com/cpmech/russell/tree/main/russell_ode) Solvers for ordinary differential equations (ODEs) and differential algebraic equations (DAEs) 
@@ -70,13 +82,13 @@ External associated and recommended crates:
 - [tritet](https://github.com/cpmech/tritet) Triangle and tetrahedron mesh generators (with Triangle and Tetgen)
 - [gemlab](https://github.com/cpmech/gemlab) Geometry, meshes, and numerical integration for finite element analyses
 
-<a name="installation"></a>
+
 
 ## Installation
 
 At this moment, Russell works on **Linux** (Debian/Ubuntu; and maybe Arch). It has some limited functionality on macOS too. In the future, we plan to enable Russell on Windows; however, this will take time because some essential libraries are not easily available on Windows.
 
-### TLDR (Debian/Ubuntu/Linux)
+### TL;DR (Debian/Ubuntu/Linux)
 
 First:
 
@@ -124,7 +136,7 @@ Run:
 bash case-a-openblas-debian.bash
 ```
 
-#### Locally compiled libraries (feature = local_libs)
+#### Locally compiled libraries
 
 Run:
 
@@ -134,7 +146,7 @@ bash case-a-openblas-local-libs.bash
 
 Then, add `local_libs` to your Cargo.toml or use `cargo build --features local_libs`
 
-### Case B: Intel MKL (feature = intel_mkl)
+### Case B: Intel MKL
 
 Run:
 
@@ -144,13 +156,11 @@ bash case-b-intel-mkl-local-libs.bash
 
 Then, add `intel_mkl` to your Cargo.toml or use `cargo build --features intel_mkl` (note that the `local_libs` feature will be automatically enabled).
 
-### Resulting files
-
 If locally compiled, the above scripts will save the resulting files in `/usr/local/lib/{mumps,umfpack}` and `/usr/local/include/{mumps,umfpack}`.
 
-<a name="macos"></a>
 
-## Installation on macOS
+
+### Installation on macOS
 
 Currently, only OpenBLAS has been tested on macOS.
 
@@ -166,9 +176,9 @@ Next, we must set the `LIBRARY_PATH`:
 export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/lapack/lib:$(brew --prefix)/opt/openblas/lib
 ```
 
-<a name="threads"></a>
 
-## Number of threads
+
+### Number of threads
 
 By default, OpenBLAS will use all available threads, including Hyper-Threads that may worsen the performance. Thus, it is best to set the following environment variable:
 
@@ -184,7 +194,7 @@ Furthermore, if working on a multi-threaded application where the solver should 
 export OPENBLAS_NUM_THREADS=1
 ```
 
-<a name="examples"></a>
+
 
 ## Examples
 
@@ -204,7 +214,65 @@ use num_complex::Complex64;
 
 This line will bring `Complex64` to the scope. For convenience the (russell_lab) macro `cpx!` may be used to allocate complex numbers.
 
-<a name="svd"></a>
+
+
+### (lab) Solution of a 1D PDE using spectral collocation
+
+This example illustrates the solution of a 1D PDE using the spectral collocation method. It employs the InterpLagrange struct.
+
+```text
+d²u     du          x
+——— - 4 —— + 4 u = e  + C
+dx²     dx
+
+    -4 e
+C = ——————
+    1 + e²
+
+x ∈ [-1, 1]
+```
+
+Boundary conditions:
+
+```text
+u(-1) = 0  and  u(1) = 0
+```
+
+Reference solution:
+
+```text
+        x   sinh(1)  2x   C
+u(x) = e  - ——————— e   + —
+            sinh(2)       4
+```
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_lorene_1d_pde_spectral_collocation.rs)
+
+Results:
+
+![algo_lorene_1d_pde_spectral_collocation](russell_lab/data/figures/algo_lorene_1d_pde_spectral_collocation.svg)
+
+
+
+### (lab) Matrix visualization
+
+We can use the fantastic tool named [vismatrix](https://github.com/cpmech/vismatrix/) to visualize the pattern of non-zero values of a matrix. With `vismatrix`, we can click on each circle and investigate the numeric values as well.
+
+The function `mat_write_vismatrix` writes the input data file for `vismatrix`.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/matrix_visualization.rs)
+
+After generating the "dot-smat" file, run the following command:
+
+```bash
+vismatrix /tmp/russell_lab/matrix_visualization.smat
+```
+
+Output:
+
+![Matrix visualization](russell_lab/data/figures/matrix_vizualization.png)
+
+
 
 ### (lab) Singular value decomposition
 
@@ -257,7 +325,7 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-<a name="cholesky"></a>
+
 
 ### (lab) Cholesky factorization
 
@@ -326,7 +394,7 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-<a name="dense-lin-sys"></a>
+
 
 ### (lab) Solve a tiny (dense) linear system
 
@@ -356,7 +424,9 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-### <a name="sparse-lin-sys"></a> (sparse) Solve a small sparse linear system using UMFPACK
+
+
+### (sparse) Solve a small sparse linear system using UMFPACK
 
 ```rust
 use russell_lab::*;
@@ -422,9 +492,9 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-<a name="brusselator"></a>
 
-### (ode) Solve the brusselator ODE system
+
+### (ode) Brusselator ODE
 
 The system is:
 
@@ -470,7 +540,33 @@ A plot of the (dense) solution is shown below:
 
 ![Brusselator results: DoPri8](russell_ode/data/figures/brusselator_dopri8.svg)
 
-<a name="frechet"></a>
+
+
+### (ode) Brusselator PDE
+
+This example solves the Brusselator PDE described in (Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II Stiff and Differential-Algebraic Problems. Second Revised Edition. Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p).
+
+See the code [brusselator_pde_radau5_2nd.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_radau5_2nd.rs).
+
+The results are shown below for the `U` field:
+
+![brusselator_pde_radau5_2nd_u.jpg](russell_ode/data/figures/brusselator_pde_radau5_2nd_u.jpg)
+
+And below for the `V` field:
+
+![brusselator_pde_radau5_2nd_v.jpg](russell_ode/data/figures/brusselator_pde_radau5_2nd_v.jpg)
+
+The code [brusselator_pde_2nd_comparison.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_2nd_comparison.rs) compares `russell` results with Mathematica results.
+
+The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `U` field:
+
+![comparison U](russell_ode/data/figures/brusselator_pde_2nd_comparison_t1_u.svg)
+
+The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `V` field:
+
+![comparison V](russell_ode/data/figures/brusselator_pde_2nd_comparison_t1_v.svg)
+
+
 
 ### (stat) Generate the Frechet distribution
 
@@ -529,7 +625,7 @@ std_dev = 312.7131690782321
       sum = 9008
 ```
 
-<a name="tensor"></a>
+
 
 ### (tensor) Allocate second-order tensors
 
@@ -600,7 +696,7 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-<a name="todo"></a>
+
 
 ## Roadmap
 
@@ -651,6 +747,7 @@ fn main() -> Result<(), StrError> {
 - [ ] Improve `russell_stat`
     - [x] Add probability distribution functions
     - [x] Implement drawing of ASCII histograms
+    - [ ] Implement FORM (first-order reliability method)
     - [ ] Add more examples
 - [ ] Improve `russell_tensor`
     - [x] Implement functions to calculate invariants

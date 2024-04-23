@@ -821,6 +821,11 @@ impl InterpLagrange {
         self.nn
     }
 
+    /// Returns the polynomial degree N
+    pub fn get_grid_type(&self) -> InterpGrid {
+        self.params.grid_type
+    }
+
     /// Returns a reference to the grid nodes
     pub fn get_points(&self) -> &Vector {
         &self.xx
@@ -855,7 +860,11 @@ mod tests {
     use super::{InterpGrid, InterpLagrange, InterpParams};
     use crate::algo::NoArgs;
     use crate::math::SQRT_3;
-    use crate::{approx_eq, deriv1_approx_eq, deriv2_approx_eq, mat_vec_mul, Vector};
+    use crate::{
+        approx_eq, deriv1_approx_eq, deriv1_approx_eq_bw, deriv1_approx_eq_fw, deriv2_approx_eq, deriv2_approx_eq_bw,
+        deriv2_approx_eq_fw,
+    };
+    use crate::{mat_vec_mul, Vector};
     // use plotpy::{Curve, Plot};
 
     #[test]
@@ -1079,9 +1088,14 @@ mod tests {
         for i in 0..npoint {
             let xi = interp.xx[i];
             for j in 0..npoint {
-                if i == 0 || i == nn {
-                    // TODO: find another method because we
-                    // cannot use central differences @ x=-1 and x=1
+                if i == 0 {
+                    deriv1_approx_eq_fw(interp.dd1.get(i, j), xi, args, tol, |x, _| {
+                        Ok(interp.psi(j, x).unwrap())
+                    });
+                } else if i == nn {
+                    deriv1_approx_eq_bw(interp.dd1.get(i, j), xi, args, tol, |x, _| {
+                        Ok(interp.psi(j, x).unwrap())
+                    });
                 } else {
                     deriv1_approx_eq(interp.dd1.get(i, j), xi, args, tol, |x, _| {
                         Ok(interp.psi(j, x).unwrap())
@@ -1094,21 +1108,21 @@ mod tests {
     #[test]
     fn dd1_matrix_works() {
         // with eta
-        let nn_and_tols = [(2, 1e-12), (5, 1e-9), (10, 1e-8)];
+        let nn_and_tols = [(2, 1e-11), (5, 1e-9), (10, 1e-8)];
         let mut params = InterpParams::new();
         for (nn, tol) in nn_and_tols {
             // println!("nn = {:?}", nn);
             check_dd1_matrix(nn, params, tol);
         }
         // with eta and low cutoff
-        let nn_and_tols = [(2, 1e-12), (5, 1e-9), (10, 1e-8)];
+        let nn_and_tols = [(2, 1e-11), (5, 1e-9), (10, 1e-8)];
         params.eta_cutoff = 0;
         for (nn, tol) in nn_and_tols {
             // println!("nn = {:?}", nn);
             check_dd1_matrix(nn, params, tol);
         }
         // no eta
-        let nn_and_tols = [(2, 1e-12), (5, 1e-9), (10, 1e-8)];
+        let nn_and_tols = [(2, 1e-11), (5, 1e-9), (10, 1e-8)];
         params.no_eta_normalization = true;
         for (nn, tol) in nn_and_tols {
             // println!("nn = {:?}", nn);
@@ -1125,9 +1139,14 @@ mod tests {
         for i in 0..npoint {
             let xi = interp.xx[i];
             for j in 0..npoint {
-                if i == 0 || i == nn {
-                    // TODO: find another method because we
-                    // cannot use central differences @ x=-1 and x=1
+                if i == 0 {
+                    deriv2_approx_eq_fw(interp.dd2.get(i, j), xi, args, tol, |x, _| {
+                        Ok(interp.psi(j, x).unwrap())
+                    });
+                } else if i == nn {
+                    deriv2_approx_eq_bw(interp.dd2.get(i, j), xi, args, tol, |x, _| {
+                        Ok(interp.psi(j, x).unwrap())
+                    });
                 } else {
                     deriv2_approx_eq(interp.dd2.get(i, j), xi, args, tol, |x, _| {
                         Ok(interp.psi(j, x).unwrap())
@@ -1141,13 +1160,13 @@ mod tests {
     fn dd2_matrix_works() {
         #[rustfmt::skip]
         let nn_and_tols = [
-            (2, 1e-9),
-            (5, 1e-8),
+            (2, 1e-8),
+            (5, 1e-7),
             (10, 1e-8),
         ];
         let params = InterpParams::new();
         for (nn, tol) in nn_and_tols {
-            // println!("nn = {:?}", nn);
+            println!("nn = {:?}", nn);
             check_dd2_matrix(nn, params, tol);
         }
     }
@@ -1544,6 +1563,7 @@ mod tests {
     fn getters_work() {
         let mut interp = InterpLagrange::new(2, None).unwrap();
         assert_eq!(interp.get_degree(), 2);
+        assert_eq!(interp.get_grid_type(), InterpGrid::ChebyshevGaussLobatto);
         assert_eq!(interp.get_points().as_data(), &[-1.0, 0.0, 1.0]);
         assert_eq!(interp.get_xrange(), (-1.0, 1.0));
         interp.calc_dd1_matrix();

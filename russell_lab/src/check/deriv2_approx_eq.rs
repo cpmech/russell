@@ -1,6 +1,6 @@
-use crate::{deriv2_central8, StrError};
+use crate::{deriv2_central9, StrError};
 
-/// Panics if the second derivative is not approximately equal to a numerical derivative
+/// Panics if the second derivative is not approximately equal to a numerical derivative (central differences)
 ///
 /// Checking:
 ///
@@ -10,7 +10,7 @@ use crate::{deriv2_central8, StrError};
 /// dx² │x=at_x
 /// ```
 ///
-/// The numerical derivative is computed using a using central differences with 8 points
+/// The numerical derivative is computed using a using central differences with 9 points
 ///
 /// # Panics
 ///
@@ -28,7 +28,7 @@ where
         panic!("the derivative is Inf");
     }
 
-    let dfdx_num = deriv2_central8(at_x, args, f)
+    let dfdx_num = deriv2_central9(at_x, args, f)
         .map_err(|e| format!("the function returned an error: {}", e))
         .unwrap();
 

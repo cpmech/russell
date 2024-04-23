@@ -437,7 +437,6 @@ where
                 None => (&self.w0, &self.w1, &self.w2),
             };
             {
-                // TODO: use rustfmt::skip
                 let (k0, k1, k2) = (&self.k0, &self.k1, &self.k2);
                 for m in 0..ndim {
                     self.v0[m] = TI[0][0] * k0[m] + TI[0][1] * k1[m] + TI[0][2] * k2[m] - gamma * l0[m];

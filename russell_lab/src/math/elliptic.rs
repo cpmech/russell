@@ -16,6 +16,12 @@ use crate::StrError;
 ///
 /// **Important:** Note that `m = k²`, where `k` is sometimes used in other libraries.
 ///
+/// The complete elliptic integral of the first kind is given by
+///
+/// ```text
+/// K(m) = F(π/2, m)
+/// ```
+///
 /// # Input
 ///
 /// * `phi` -- Must satisfy: `0 ≤ φ ≤ π/2`
@@ -46,6 +52,9 @@ pub fn elliptic_f(phi: f64, m: f64) -> Result<f64, StrError> {
     }
     let s = f64::sin(phi);
     let mss = m * s * s;
+    if mss > 1.0 {
+        return Err("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1");
+    }
     if f64::abs(mss - 1.0) < 10.0 * f64::EPSILON {
         return Ok(f64::INFINITY);
     }
@@ -67,6 +76,12 @@ pub fn elliptic_f(phi: f64, m: f64) -> Result<f64, StrError> {
 /// ```
 ///
 /// **Important:** Note that `m = k²`, where `k` is sometimes used in other libraries.
+///
+/// The complete elliptic integral of the second kind is given by
+///
+/// ```text
+/// E(m) = E(π/2, m)
+/// ```
 ///
 /// # Input
 ///
@@ -99,6 +114,9 @@ pub fn elliptic_e(phi: f64, m: f64) -> Result<f64, StrError> {
     let c = f64::cos(phi);
     let cc = c * c;
     let mss = m * s * s;
+    if mss > 1.0 {
+        return Err("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1");
+    }
     let q = 1.0 - mss;
     let ans = s * (rf(cc, q, 1.0)? - mss * rd(cc, q, 1.0)? / 3.0);
     Ok(ans)
@@ -118,6 +136,12 @@ pub fn elliptic_e(phi: f64, m: f64) -> Result<f64, StrError> {
 /// ```
 ///
 /// **Important:** Note that `m = k²`, where `k` is sometimes used in other libraries.
+///
+/// The complete elliptic integral of the third kind is given by
+///
+/// ```text
+/// Π(n, m) = Π(n, π/2, m)
+/// ```
 ///
 /// # Input
 ///
@@ -150,6 +174,9 @@ pub fn elliptic_pi(n: f64, phi: f64, m: f64) -> Result<f64, StrError> {
     }
     let s = f64::sin(phi);
     let mss = m * s * s;
+    if mss > 1.0 {
+        return Err("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1");
+    }
     if f64::abs(mss - 1.0) < 10.0 * f64::EPSILON {
         return Ok(f64::INFINITY);
     }
@@ -516,6 +543,10 @@ mod tests {
             elliptic_f(PI / 2.0 + 1.0, 1.0).err(),
             Some("phi must be in 0 ≤ phi ≤ π/2")
         );
+        assert_eq!(
+            elliptic_f(PI / 2.0, 1.1).err(),
+            Some("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1")
+        );
     }
 
     #[test]
@@ -575,6 +606,10 @@ mod tests {
         assert_eq!(
             elliptic_e(PI / 2.0 + 1.0, 1.0).err(),
             Some("phi must be in 0 ≤ phi ≤ π/2")
+        );
+        assert_eq!(
+            elliptic_e(PI / 2.0, 1.1).err(),
+            Some("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1")
         );
     }
 
@@ -642,6 +677,14 @@ mod tests {
         assert_eq!(
             elliptic_pi(2.0, PI / 2.0 + 1.0, 1.0).err(),
             Some("phi must be in 0 ≤ phi ≤ π/2")
+        );
+        assert_eq!(
+            elliptic_pi(0.5, PI / 2.0, 1.1).err(),
+            Some("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1")
+        );
+        assert_eq!(
+            elliptic_pi(0.5, PI / 2.0, 1.1).err(),
+            Some("m must satisfy: 0 ≤ m·sin²(φ) ≤ 1")
         );
     }
 
@@ -778,5 +821,40 @@ mod tests {
             // println!("n = {}, phi = {}π/8, k = {:?}", n, 8.0 * phi / PI, k);
             approx_eq(elliptic_pi(n, phi, k * k).unwrap(), reference, tol);
         }
+    }
+
+    #[test]
+    fn complete_integrals_work() {
+        let phi = PI / 2.0;
+        let m = 0.75;
+        // println!("{}", m * f64::powi(f64::sin(phi), 2));
+
+        // Complete elliptic integral of the first kind
+        // K(m) = F(π/2, m)
+        // m must satisfy: `0 ≤ m·sin²(φ) ≤ 1`
+        approx_eq(
+            elliptic_f(phi, m).unwrap(),
+            2.1565156474996432354386749988003220288641102164928,
+            1e-50,
+        ); // Mathematica: N[EllipticK[3/4], 50]
+
+        // Complete elliptic integral of the second kind
+        // E(m) = E(π/2, m)
+        // m must satisfy: `0 ≤ m·sin²(φ) ≤ 1`
+        approx_eq(
+            elliptic_e(phi, m).unwrap(),
+            1.2110560275684595248035628995489786764942397997358,
+            1e-15,
+        ); // Mathematica: N[EllipticE[3/4], 50]
+
+        // Complete elliptic integral of the third kind
+        // Π(n, m) = Π(n, π/2, m)
+        // m must satisfy: `0 ≤ m·sin²(φ) ≤ 1`
+        let n = 0.5;
+        approx_eq(
+            elliptic_pi(n, phi, m).unwrap(),
+            3.2347734712494648531580124982004830432961653247392,
+            1e-50,
+        ); // Mathematica: N[EllipticPi[1/2, 3/4], 50]
     }
 }

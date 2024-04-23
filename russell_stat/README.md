@@ -1,31 +1,53 @@
-# Russell Stat - Statistics calculations and (engineering) probability distributions
+# Russell Stat - Statistics calculations and (engineering) probability distributions <!-- omit from toc --> 
+
+[![documentation: stat](https://img.shields.io/badge/russell_stat-documentation-blue)](https://docs.rs/russell_stat)
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
-## Contents
+## Contents <!-- omit from toc --> 
 
-* [Introduction](#introduction)
-* [Installation](#installation)
-* [Setting Cargo.toml](#cargo)
-* [Examples](#examples)
+- [Introduction](#introduction)
+  - [Documentation](#documentation)
+  - [References](#references)
+- [Installation](#installation)
+  - [TL;DR (Debian/Ubuntu/Linux)](#tldr-debianubuntulinux)
+  - [Details](#details)
+  - [Setting Cargo.toml](#setting-cargotoml)
+- [Examples](#examples)
+  - [Frechet distribution](#frechet-distribution)
+  - [Gumbel distribution](#gumbel-distribution)
+  - [Normal distribution](#normal-distribution)
+  - [Lognormal distribution](#lognormal-distribution)
+  - [Uniform distribution](#uniform-distribution)
 
-## <a name="introduction"></a> Introduction
-
-This crate implements structures and functions to work with statistics and probability distributions. Internally, we wrap and use the [rand_distr](https://docs.rs/rand_distr/latest/rand_distr/) crate for generating samples.
-
-Documentation:
-
-- [russell_stat documentation](https://docs.rs/russell_stat)
 
 
+## Introduction
 
-<a name="installation"></a>
+This library assists in developing statistical computations and simulations aiming at engineering applications, such as reliability analyses. This library provides a light interface to [rand_distr](https://crates.io/crates/rand_distr) and implements extra functionality.
+
+Some essential distributions considered in this library are those classified as [Extreme Value Distribution](https://en.wikipedia.org/wiki/Generalized_extreme_value_distribution).
+
+The figure below shows an application in structural safety (see Reference #1) using first-order reliability modeling (see Reference #2).
+
+![Collage Structural Safety](data/figures/collage-structural-safety.png)
+
+### Documentation
+
+[![documentation: stat](https://img.shields.io/badge/russell_stat-documentation-blue)](https://docs.rs/russell_stat)
+
+### References
+
+1. Pedroso DM (2017) [FORM reliability analysis using a parallel evolutionary algorithm](https://www.sciencedirect.com/science/article/abs/pii/S0167473017300012), Structural Safety, 65:84-99
+2. Zhang et al. (2023) [Geotechnical Reliability Analysis: Theories, Methods, and Algorithms](https://link.springer.com/book/10.1007/978-981-19-6254-7), Springer, 323p
+
+
 
 ## Installation
 
 At this moment, Russell works on **Linux** (Debian/Ubuntu; and maybe Arch). It has some limited functionality on macOS too. In the future, we plan to enable Russell on Windows; however, this will take time because some essential libraries are not easily available on Windows.
 
-### TLDR (Debian/Ubuntu/Linux)
+### TL;DR (Debian/Ubuntu/Linux)
 
 First:
 
@@ -47,13 +69,13 @@ Then:
 cargo add russell_stat
 ```
 
-## Details
+### Details
 
 This crate depends on `russell_lab`, which, in turn, depends on an efficient BLAS library such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
 
 [The root README file presents the steps to install the required dependencies.](https://github.com/cpmech/russell)
 
-## <a name="cargo"></a> Setting Cargo.toml
+### Setting Cargo.toml
 
 [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat)
 
@@ -71,7 +93,9 @@ Or, considering the optional _features_ ([see more about these here](https://git
 russell_stat = { version = "*", features = ["intel_mkl"] }
 ```
 
-## <a name="examples"></a> Examples
+
+
+## Examples
 
 * [russell_stat/examples](https://github.com/cpmech/russell/tree/main/russell_stat/examples)
 

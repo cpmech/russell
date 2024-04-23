@@ -12,10 +12,15 @@ use crate::{StrError, Vector};
 ///
 /// * `(c, m)` -- the y(x=0)=c intersect and the slope m
 ///
-/// NOTE: this function returns `(0.0, f64::INFINITY)` in two situations:
+/// # Special cases
+///
+/// This function returns `(0.0, f64::INFINITY)` in two situations:
 ///
 /// * If `pass_through_zero == True` and `sum(X) == 0`
 /// * If `pass_through_zero == False` and the line is vertical (null denominator)
+///
+/// # Examples
+///
 pub fn linear_fitting(x: &Vector, y: &Vector, pass_through_zero: bool) -> Result<(f64, f64), StrError> {
     // dimension
     let nn = x.dim();

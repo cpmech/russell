@@ -1,31 +1,54 @@
-# Russell ODE - Solvers for ordinary differential equations and differential algebraic equations
+# Russell ODE - Solvers for ordinary differential equations and differential algebraic equations <!-- omit from toc --> 
+
+[![documentation: ode](https://img.shields.io/badge/russell_ode-documentation-blue)](https://docs.rs/russell_ode)
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
-## Contents
+## Contents <!-- omit from toc --> 
 
-* [Introduction](#introduction)
-* [Installation](#installation)
-* [Setting Cargo.toml](#cargo)
-* [Examples](#examples)
-    * [Simple ODE with a single equation](#simple-single)
-    * [Simple system with mass matrix](#simple-mass)
-    * [Brusselator ODE](#brusselator-ode)
-    * [Brusselator PDE](#brusselator-pde)
-    * [Arenstorf orbits](#arenstorf)
-    * [Hairer-Wanner equation (1.1)](#hairer-wanner-eq1)
-    * [Robertson's equation](#robertson)
-    * [Van der Pol's equation](#van-der-pol)
-    * [One-transistor amplifier](#amplifier1t)
-    * [PDE: discrete Laplacian (2D)](#laplacian)
+- [Introduction](#introduction)
+  - [Documentation](#documentation)
+  - [References](#references)
+- [Installation](#installation)
+  - [TL;DR (Debian/Ubuntu/Linux)](#tldr-debianubuntulinux)
+  - [Details](#details)
+  - [Setting Cargo.toml](#setting-cargotoml)
+- [Examples](#examples)
+  - [Simple ODE with a single equation](#simple-ode-with-a-single-equation)
+  - [Simple system with mass matrix](#simple-system-with-mass-matrix)
+  - [Brusselator ODE](#brusselator-ode)
+    - [Solving with DoPri8 -- 8(5,3) -- dense output](#solving-with-dopri8----853----dense-output)
+    - [Variable step sizes](#variable-step-sizes)
+    - [Fixed step sizes](#fixed-step-sizes)
+  - [Brusselator PDE](#brusselator-pde)
+    - [First book](#first-book)
+    - [Second book](#second-book)
+  - [Arenstorf orbits](#arenstorf-orbits)
+  - [Hairer-Wanner Equation (1.1)](#hairer-wanner-equation-11)
+  - [Robertson's Equation](#robertsons-equation)
+  - [Van der Pol's Equation](#van-der-pols-equation)
+    - [DoPri5](#dopri5)
+    - [Radau5](#radau5)
+  - [One-transistor amplifier](#one-transistor-amplifier)
+  - [PDE: discrete Laplacian operator in 2D](#pde-discrete-laplacian-operator-in-2d)
+    - [Laplace equation](#laplace-equation)
+    - [Poisson equation 1](#poisson-equation-1)
+    - [Poisson equation 2](#poisson-equation-2)
+    - [Poisson equation 3](#poisson-equation-3)
 
-## <a name="introduction"></a> Introduction
+
+
+## Introduction
 
 This library implements (in pure Rust) solvers to ordinary differential equations (ODEs) and differential algebraic equations (DAEs). Specifically, this library implements several explicit Runge-Kutta methods (e.g., Dormand-Prince formulae) and two implicit Runge-Kutta methods, namely the Backward Euler and the Radau IIA of fifth-order (aka Radau5). The Radau5 solver is able to solver DAEs of Index-1, by accepting the so-called *mass matrix*.
 
 The code in this library is based on Hairer-Nørsett-Wanner books and respective Fortran codes (see references [1] and [2]). The code for Dormand-Prince 5(4) and Dormand-Prince 8(5,3) are fairly different from the Fortran counterparts. The code for Radau5 follows closely reference [2]; however some small differences are considered. Despite the coding differences, the numeric results match the Fortran results quite well.
 
 The ODE/DAE system can be easily defined using the System data structure; [see the examples below](#examples).
+
+### Documentation
+
+[![documentation: ode](https://img.shields.io/badge/russell_ode-documentation-blue)](https://docs.rs/russell_ode)
 
 ### References
 
@@ -40,14 +63,11 @@ The ODE/DAE system can be easily defined using the System data structure; [see t
 
 
 
-
-<a name="installation"></a>
-
 ## Installation
 
 At this moment, Russell works on **Linux** (Debian/Ubuntu; and maybe Arch). It has some limited functionality on macOS too. In the future, we plan to enable Russell on Windows; however, this will take time because some essential libraries are not easily available on Windows.
 
-### TLDR (Debian/Ubuntu/Linux)
+### TL;DR (Debian/Ubuntu/Linux)
 
 First:
 
@@ -69,13 +89,13 @@ Then:
 cargo add russell_ode
 ```
 
-## Details
+### Details
 
 This crate depends on `russell_lab`, which, in turn, depends on an efficient BLAS library such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
 
 [The root README file presents the steps to install the required dependencies.](https://github.com/cpmech/russell)
 
-## <a name="cargo"></a> Setting Cargo.toml
+### Setting Cargo.toml
 
 [![Crates.io](https://img.shields.io/crates/v/russell_ode.svg)](https://crates.io/crates/russell_ode)
 
@@ -93,14 +113,18 @@ Or, considering the optional _features_ ([see more about these here](https://git
 russell_ode = { version = "*", features = ["intel_mkl"] }
 ```
 
-## <a name="examples"></a> Examples
+
+
+## Examples
 
 This section illustrates how to use `russell_ode`. More examples:
 
 * [Examples on how to define the ODE/DAE system](https://github.com/cpmech/russell/tree/main/russell_ode/src/samples.rs)
 * [Examples directory](https://github.com/cpmech/russell/tree/main/russell_ode/examples)
 
-### <a name="simple-single"></a> Simple ODE with a single equation
+
+
+### Simple ODE with a single equation
 
 Solve the simple ODE with Dormand-Prince 8(5,3):
 
@@ -172,7 +196,9 @@ Max time spent on a step         = 7.483µs
 Total time                       = 65.462µs
 ```
 
-### <a name="simple-mass"></a> Simple system with mass matrix
+
+
+### Simple system with mass matrix
 
 Solve with Radau5:
 
@@ -312,7 +338,9 @@ Max time spent on lin solution   = 53.101µs
 Total time                       = 2.653323ms
 ```
 
-### <a name="brusselator-ode"></a> Brusselator ODE
+
+
+### Brusselator ODE
 
 This example corresponds to Fig 16.4 on page 116 of Reference #1. The problem is defined in Eq (16.12) on page 116 of Reference #1.
 
@@ -427,7 +455,9 @@ And the convergence plot is:
 
 ![Brusselator results: fix step](data/figures/brusselator_ode_fix_step.svg)
 
-### <a name="brusselator-pde"></a> Brusselator PDE
+
+
+### Brusselator PDE
 
 This example corresponds to Fig 10.4(a,b) on pages 250 and 251 of Reference #1.
 The problem is defined in Eqs (10.10-10.14) on pages 248 and 249 of Reference #1.
@@ -640,7 +670,9 @@ The figure below shows the `russell` (black dashed lines) and Mathematica (red s
 
 ![comparison V](data/figures/brusselator_pde_2nd_comparison_t1_v.svg)
 
-### <a name="arenstorf"></a> Arenstorf orbits
+
+
+### Arenstorf orbits
 
 This example corresponds to Fig 0.1 on page 130 of Reference #1. The problem is defined in Eqs (0.1) and (0.2) on page 129 and 130 of Reference #1.
 
@@ -692,7 +724,9 @@ The results are plotted below:
 
 ![Arenstorf Orbit: DoPri8](data/figures/arenstorf_dopri8.svg)
 
-### <a name="hairer-wanner-eq1"></a> Hairer-Wanner Equation (1.1)
+
+
+### Hairer-Wanner Equation (1.1)
 
 This example corresponds to Fig 1.1 and Fig 1.2 on page 2 of Reference #2. The problem is defined in Eq (1.1) on page 2 of Reference #2.
 
@@ -722,7 +756,9 @@ The results are show below:
 
 ![Hairer-Wanner Eq(1.1)](data/figures/hairer_wanner_eq1.svg)
 
-### <a name="robertson"></a> Robertson's Equation
+
+
+### Robertson's Equation
 
 This example corresponds to Fig 1.3 on page 4 of Reference #2. The problem is defined in Eq (1.4) on page 3 of Reference #2.
 
@@ -793,7 +829,9 @@ The step sizes from the DoPri solution with Tol = 1e-2 are illustrated below:
 
 ![Robertson's Equation - Step Sizes](data/figures/robertson_b.svg)
 
-### <a name="van-der-pol"></a> Van der Pol's Equation
+
+
+### Van der Pol's Equation
 
 This example corresponds Eq (1.5') on page 5 of Reference #2.
 
@@ -876,7 +914,9 @@ The results are show below:
 
 ![Van der Pol's Equation - Radau5](data/figures/van_der_pol_radau5.svg)
 
-### <a name="amplifier1t"></a> One-transistor amplifier
+
+
+### One-transistor amplifier
 
 This example corresponds to Fig 1.3 on page 377 and Fig 1.4 on page 379 of Reference #2. The problem is defined in Eq (1.14) on page 377 of Reference #2.
 
@@ -967,7 +1007,9 @@ The results are plotted below:
 
 ![One-transistor Amplifier - Radau5](data/figures/amplifier1t_radau5.svg)
 
-### <a name="laplacian"></a> PDE: discrete Laplacian operator in 2D
+
+
+### PDE: discrete Laplacian operator in 2D
 
 For convenience (e.g., in benchmarks), `russell_ode` implements a discrete Laplacian operator (2D) based on the Finite Differences Method.
 

@@ -32,7 +32,8 @@
   - [(lab) Cholesky factorization](#lab-cholesky-factorization)
   - [(lab) Solve a tiny (dense) linear system](#lab-solve-a-tiny-dense-linear-system)
   - [(sparse) Solve a small sparse linear system using UMFPACK](#sparse-solve-a-small-sparse-linear-system-using-umfpack)
-  - [(ode) Solve the brusselator ODE system](#ode-solve-the-brusselator-ode-system)
+  - [(ode) Brusselator ODE](#ode-brusselator-ode)
+  - [(ode) Brusselator PDE](#ode-brusselator-pde)
   - [(stat) Generate the Frechet distribution](#stat-generate-the-frechet-distribution)
   - [(tensor) Allocate second-order tensors](#tensor-allocate-second-order-tensors)
 - [Roadmap](#roadmap)
@@ -493,7 +494,7 @@ fn main() -> Result<(), StrError> {
 
 
 
-### (ode) Solve the brusselator ODE system
+### (ode) Brusselator ODE
 
 The system is:
 
@@ -538,6 +539,32 @@ fn main() -> Result<(), StrError> {
 A plot of the (dense) solution is shown below:
 
 ![Brusselator results: DoPri8](russell_ode/data/figures/brusselator_dopri8.svg)
+
+
+
+### (ode) Brusselator PDE
+
+This example solves the Brusselator PDE described in (Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II Stiff and Differential-Algebraic Problems. Second Revised Edition. Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p).
+
+See the code [brusselator_pde_radau5_2nd.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_radau5_2nd.rs).
+
+The results are shown below for the `U` field:
+
+![brusselator_pde_radau5_2nd_u.jpg](russell_ode/data/figures/brusselator_pde_radau5_2nd_u.jpg)
+
+And below for the `V` field:
+
+![brusselator_pde_radau5_2nd_v.jpg](russell_ode/data/figures/brusselator_pde_radau5_2nd_v.jpg)
+
+The code [brusselator_pde_2nd_comparison.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/brusselator_pde_2nd_comparison.rs) compares `russell` results with Mathematica results.
+
+The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `U` field:
+
+![comparison U](russell_ode/data/figures/brusselator_pde_2nd_comparison_t1_u.svg)
+
+The figure below shows the `russell` (black dashed lines) and Mathematica (red solid lines) results for the `V` field:
+
+![comparison V](russell_ode/data/figures/brusselator_pde_2nd_comparison_t1_v.svg)
 
 
 

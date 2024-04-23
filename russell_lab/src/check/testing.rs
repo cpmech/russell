@@ -17,6 +17,7 @@ pub(super) struct TestFunction {
     pub tol_g_rerr: f64,                                  // tolerance for rounding error
     pub improv_tol_g_diff: f64,                           // tolerance for |num - ana|
     pub tol_h: f64,                                       // tolerance for |num - ana|
+    pub tol_h_one_sided: f64,                             // tolerance for |num - ana| (forward/backward differences)
 }
 
 /// Allocates f(x) test functions
@@ -34,6 +35,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_g_rerr: 1e-15,
             improv_tol_g_diff: 1e-15,
             tol_h: 1e-13,
+            tol_h_one_sided: 1e-11,
         },
         TestFunction {
             name: "x²",
@@ -46,6 +48,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_g_rerr: 1e-11,
             improv_tol_g_diff: 1e-12,
             tol_h: 1e-9,
+            tol_h_one_sided: 1e-7,
         },
         TestFunction {
             name: "exp(x)",
@@ -58,6 +61,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_g_rerr: 1e-10,
             improv_tol_g_diff: 1e-10, // worse
             tol_h: 1e-8,
+            tol_h_one_sided: 1e-6,
         },
         TestFunction {
             name: "exp(-x²)",
@@ -70,6 +74,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_g_rerr: 1e-13,
             improv_tol_g_diff: 1e-11, // worse
             tol_h: 1e-11,
+            tol_h_one_sided: 1e-8,
         },
         TestFunction {
             name: "1/x",
@@ -82,6 +87,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_g_rerr: 1e-11,
             improv_tol_g_diff: 1e-9, // better
             tol_h: 1e-8,
+            tol_h_one_sided: 1e-7,
         },
         TestFunction {
             name: "x⋅√x",
@@ -94,6 +100,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_g_rerr: 1e-9,
             improv_tol_g_diff: 1e-10,
             tol_h: 1e-7,
+            tol_h_one_sided: 1e-6,
         },
         TestFunction {
             name: "sin(1/x)",
@@ -106,6 +113,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_g_rerr: 1e-11,
             improv_tol_g_diff: 1e-10,
             tol_h: 1e-9,
+            tol_h_one_sided: 1e-8,
         },
         TestFunction {
             name: "cos(π⋅x/2)",
@@ -118,6 +126,7 @@ pub(super) fn get_functions() -> Vec<TestFunction> {
             tol_g_rerr: 1e-12,
             improv_tol_g_diff: 1e-10, // worse
             tol_h: 1e-14,
+            tol_h_one_sided: 1e-7,
         },
     ]
 }

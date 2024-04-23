@@ -53,7 +53,6 @@ mod tests {
             "{:>10}{:>15}{:>22}{:>11}",
             "function", "numerical", "analytical", "|num-ana|"
         );
-        // for test in &[&tests[2]] {
         for test in &tests {
             let args = &mut 0;
             let num = deriv2_central9(test.at_x, args, test.f).unwrap();

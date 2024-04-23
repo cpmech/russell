@@ -1,17 +1,28 @@
-# Russell Stat - Statistics calculations and (engineering) probability distributions
+# Russell Stat - Statistics calculations and (engineering) probability distributions <!-- omit from toc --> 
 
 [![documentation: stat](https://img.shields.io/badge/russell_stat-documentation-blue)](https://docs.rs/russell_stat)
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
-## Contents
+## Contents <!-- omit from toc --> 
 
-* [Introduction](#introduction)
-* [Installation](#installation)
-* [Setting Cargo.toml](#cargo)
-* [Examples](#examples)
+- [Introduction](#introduction)
+  - [Documentation](#documentation)
+  - [References](#references)
+- [Installation](#installation)
+  - [TL;DR (Debian/Ubuntu/Linux)](#tldr-debianubuntulinux)
+  - [Details](#details)
+  - [Setting Cargo.toml](#setting-cargotoml)
+- [Examples](#examples)
+  - [Frechet distribution](#frechet-distribution)
+  - [Gumbel distribution](#gumbel-distribution)
+  - [Normal distribution](#normal-distribution)
+  - [Lognormal distribution](#lognormal-distribution)
+  - [Uniform distribution](#uniform-distribution)
 
-## <a name="introduction"></a> Introduction
+
+
+## Introduction
 
 This library assists in developing statistical computations and simulations aiming at engineering applications, such as reliability analyses. This library provides a light interface to [rand_distr](https://crates.io/crates/rand_distr) and implements extra functionality.
 
@@ -32,13 +43,11 @@ The figure below shows an application in structural safety (see Reference #1) us
 
 
 
-<a name="installation"></a>
-
 ## Installation
 
 At this moment, Russell works on **Linux** (Debian/Ubuntu; and maybe Arch). It has some limited functionality on macOS too. In the future, we plan to enable Russell on Windows; however, this will take time because some essential libraries are not easily available on Windows.
 
-### TLDR (Debian/Ubuntu/Linux)
+### TL;DR (Debian/Ubuntu/Linux)
 
 First:
 
@@ -60,13 +69,13 @@ Then:
 cargo add russell_stat
 ```
 
-## Details
+### Details
 
 This crate depends on `russell_lab`, which, in turn, depends on an efficient BLAS library such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
 
 [The root README file presents the steps to install the required dependencies.](https://github.com/cpmech/russell)
 
-## <a name="cargo"></a> Setting Cargo.toml
+### Setting Cargo.toml
 
 [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat)
 
@@ -84,7 +93,9 @@ Or, considering the optional _features_ ([see more about these here](https://git
 russell_stat = { version = "*", features = ["intel_mkl"] }
 ```
 
-## <a name="examples"></a> Examples
+
+
+## Examples
 
 * [russell_stat/examples](https://github.com/cpmech/russell/tree/main/russell_stat/examples)
 

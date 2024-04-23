@@ -1,17 +1,23 @@
-# Russell Tensor - Tensor analysis, calculus, and functions for continuum mechanics
+# Russell Tensor - Tensor analysis, calculus, and functions for continuum mechanics <!-- omit from toc --> 
 
 [![documentation: tensor](https://img.shields.io/badge/russell_tensor-documentation-blue)](https://docs.rs/russell_tensor)
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
-## Contents
+## Contents <!-- omit from toc --> 
 
-* [Introduction](#introduction)
-* [Installation](#installation)
-* [Setting Cargo.toml](#cargo)
-* [Examples](#examples)
+- [Introduction](#introduction)
+  - [Documentation](#documentation)
+- [Installation](#installation)
+  - [TL;DR (Debian/Ubuntu/Linux)](#tldr-debianubuntulinux)
+- [Details](#details)
+  - [Setting Cargo.toml](#setting-cargotoml)
+- [Examples](#examples)
+  - [Allocating Second Order Tensors](#allocating-second-order-tensors)
 
-## <a name="introduction"></a> Introduction
+
+
+## Introduction
 
 This library implements structures and functions for tensor analysis and calculus. The library focuses on applications in engineering and [Continuum Mechanics](Continuum Mechanics). The essential functionality for the targeted applications includes second-order and fourth-order tensors, scalar "invariants," and derivatives.
 
@@ -23,13 +29,11 @@ This library implements derivatives for scalar functions with respect to tensors
 
 
 
-<a name="installation"></a>
-
 ## Installation
 
 At this moment, Russell works on **Linux** (Debian/Ubuntu; and maybe Arch). It has some limited functionality on macOS too. In the future, we plan to enable Russell on Windows; however, this will take time because some essential libraries are not easily available on Windows.
 
-### TLDR (Debian/Ubuntu/Linux)
+### TL;DR (Debian/Ubuntu/Linux)
 
 First:
 
@@ -57,7 +61,7 @@ This crate depends on `russell_lab`, which, in turn, depends on an efficient BLA
 
 [The root README file presents the steps to install the required dependencies.](https://github.com/cpmech/russell)
 
-## <a name="cargo"></a> Setting Cargo.toml
+### Setting Cargo.toml
 
 [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor)
 
@@ -75,7 +79,9 @@ Or, considering the optional _features_ ([see more about these here](https://git
 russell_tensor = { version = "*", features = ["intel_mkl"] }
 ```
 
-## <a name="examples"></a> Examples
+
+
+## Examples
 
 * [russell_tensor/examples](https://github.com/cpmech/russell/tree/main/russell_tensor/examples)
 

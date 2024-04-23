@@ -26,6 +26,8 @@
   - [Installation on macOS](#installation-on-macos)
   - [Number of threads](#number-of-threads)
 - [Examples](#examples)
+  - [(lab) Solution of a 1D PDE using spectral collocation](#lab-solution-of-a-1d-pde-using-spectral-collocation)
+  - [(lab) Matrix visualization](#lab-matrix-visualization)
   - [(lab) Singular value decomposition](#lab-singular-value-decomposition)
   - [(lab) Cholesky factorization](#lab-cholesky-factorization)
   - [(lab) Solve a tiny (dense) linear system](#lab-solve-a-tiny-dense-linear-system)
@@ -210,6 +212,64 @@ use num_complex::Complex64;
 ```
 
 This line will bring `Complex64` to the scope. For convenience the (russell_lab) macro `cpx!` may be used to allocate complex numbers.
+
+
+
+### (lab) Solution of a 1D PDE using spectral collocation
+
+This example illustrates the solution of a 1D PDE using the spectral collocation method. It employs the InterpLagrange struct.
+
+```text
+d²u     du          x
+——— - 4 —— + 4 u = e  + C
+dx²     dx
+
+    -4 e
+C = ——————
+    1 + e²
+
+x ∈ [-1, 1]
+```
+
+Boundary conditions:
+
+```text
+u(-1) = 0  and  u(1) = 0
+```
+
+Reference solution:
+
+```text
+        x   sinh(1)  2x   C
+u(x) = e  - ——————— e   + —
+            sinh(2)       4
+```
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_lorene_1d_pde_spectral_collocation.rs)
+
+Results:
+
+![algo_lorene_1d_pde_spectral_collocation](russell_lab/data/figures/algo_lorene_1d_pde_spectral_collocation.svg)
+
+
+
+### (lab) Matrix visualization
+
+We can use the fantastic tool named [vismatrix](https://github.com/cpmech/vismatrix/) to visualize the pattern of non-zero values of a matrix. With `vismatrix`, we can click on each circle and investigate the numeric values as well.
+
+The function `mat_write_vismatrix` writes the input data file for `vismatrix`.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/matrix_visualization.rs)
+
+After generating the "dot-smat" file, run the following command:
+
+```bash
+vismatrix /tmp/russell_lab/matrix_visualization.smat
+```
+
+Output:
+
+![Matrix visualization](russell_lab/data/figures/matrix_vizualization.png)
 
 
 

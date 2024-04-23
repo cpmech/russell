@@ -540,6 +540,7 @@ fn main() -> Result<(), StrError> {
 ```
 
 
+
 ### Matrix visualization
 
 We can use the fantastic tool named [vismatrix](https://github.com/cpmech/vismatrix/) to visualize the pattern of non-zero values of a matrix. With `vismatrix`, we can click on each circle and investigate the numeric values as well.

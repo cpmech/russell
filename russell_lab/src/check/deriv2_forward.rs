@@ -1,7 +1,7 @@
 use crate::StrError;
 
-/// Stepsize h for deriv2_forward9
-const STEPSIZE_FORWARD9: f64 = 1e-3;
+/// Stepsize h for deriv2_forward8
+const STEPSIZE_FORWARD8: f64 = 1e-3;
 
 const C0: f64 = 469.0 / 90.0;
 const C1: f64 = -223.0 / 10.0;
@@ -12,7 +12,7 @@ const C5: f64 = -201.0 / 10.0;
 const C6: f64 = 1019.0 / 180.0;
 const C7: f64 = -7.0 / 10.0;
 
-/// Approximates the second derivative using forward difference with 9 points
+/// Approximates the second derivative using forward difference with 8 points
 ///
 /// Given `f(x)`, approximate:
 ///
@@ -21,11 +21,11 @@ const C7: f64 = -7.0 / 10.0;
 /// ——— │   
 /// dx² │x=at_x
 /// ```
-pub fn deriv2_forward9<F, A>(at_x: f64, args: &mut A, mut f: F) -> Result<f64, StrError>
+pub fn deriv2_forward8<F, A>(at_x: f64, args: &mut A, mut f: F) -> Result<f64, StrError>
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
-    let h = STEPSIZE_FORWARD9;
+    let h = STEPSIZE_FORWARD8;
     let hh = h * h;
     let f0 = f(at_x, args)?;
     let f1 = f(at_x + h, args)?;
@@ -43,7 +43,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::deriv2_forward9;
+    use super::deriv2_forward8;
     use crate::check::approx_eq;
     use crate::check::testing;
 
@@ -56,7 +56,7 @@ mod tests {
         );
         for test in &tests {
             let args = &mut 0;
-            let num = deriv2_forward9(test.at_x, args, test.f).unwrap();
+            let num = deriv2_forward8(test.at_x, args, test.f).unwrap();
             let ana = (test.h)(test.at_x, args).unwrap();
             println!("{:>10}{:15.9}{:22}{:11.2e}", test.name, num, ana, f64::abs(num - ana),);
             approx_eq(num, ana, test.tol_h_one_sided);

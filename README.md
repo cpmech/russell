@@ -1,4 +1,4 @@
-# Russell - Rust Scientific Library
+# Russell - Rust Scientific Library <!-- omit from toc --> 
 
 [![codecov](https://codecov.io/gh/cpmech/russell/graph/badge.svg?token=PQWSKMZQXT)](https://codecov.io/gh/cpmech/russell)
 [![Test & Coverage](https://github.com/cpmech/russell/actions/workflows/test_and_coverage.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_and_coverage.yml)
@@ -13,34 +13,37 @@
 
 ![Logo](logo.svg)
 
-## Contents
+## Contents <!-- omit from toc --> 
 
-* [Introduction](#introduction)
-* [Crates](#crates)
-* [Installation on Debian/Ubuntu/Linux](#installation)
-* [Installation on macOS](#macos)
-* [Number of threads](#threads)
-* [Examples](#examples)
-    * [(lab) Singular value decomposition](#svd)
-    * [(lab) Cholesky factorization](#cholesky)
-    * [(lab) Solve a tiny (dense) linear system](#dense-lin-sys)
-    * [(sparse) Solve a small sparse linear system](#sparse-lin-sys)
-    * [(ode) Solve the brusselator ODE system](#brusselator)
-    * [(stat) Generate the Frechet distribution](#frechet)
-    * [(tensor) Allocate second-order tensors](#tensor)
-* [Roadmap](#roadmap)
+- [Introduction](#introduction)
+- [Installation](#installation)
+  - [TL;DR (Debian/Ubuntu/Linux)](#tldr-debianubuntulinux)
+  - [Details](#details)
+  - [Case A: OpenBLAS](#case-a-openblas)
+    - [Default Debian packages](#default-debian-packages)
+    - [Locally compiled libraries](#locally-compiled-libraries)
+  - [Case B: Intel MKL](#case-b-intel-mkl)
+  - [Installation on macOS](#installation-on-macos)
+  - [Number of threads](#number-of-threads)
+- [Examples](#examples)
+  - [(lab) Singular value decomposition](#lab-singular-value-decomposition)
+  - [(lab) Cholesky factorization](#lab-cholesky-factorization)
+  - [(lab) Solve a tiny (dense) linear system](#lab-solve-a-tiny-dense-linear-system)
+  - [(sparse) Solve a small sparse linear system using UMFPACK](#sparse-solve-a-small-sparse-linear-system-using-umfpack)
+  - [(ode) Solve the brusselator ODE system](#ode-solve-the-brusselator-ode-system)
+  - [(stat) Generate the Frechet distribution](#stat-generate-the-frechet-distribution)
+  - [(tensor) Allocate second-order tensors](#tensor-allocate-second-order-tensors)
+- [Roadmap](#roadmap)
 
-<a name="introduction"></a>
+
 
 ## Introduction
 
 **Russell** (Rust Scientific Library) assists in developing high-performance computations involving linear algebra, sparse linear systems, differential equations, statistics, and continuum mechanics using the Rust programming language. The applications built with Russell revolve around the computational mechanics discipline; however, since Russell deals with fundamental mathematics and numerics, it is also helpful for other disciplines.
 
-<a name="crates"></a> 
 
-## Crates
 
-Available crates:
+Available libraries:
 
 - [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab) [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab) Scientific laboratory with special math functions, linear algebra, interpolation, quadrature, numerical derivation, and more
 - [![Crates.io](https://img.shields.io/crates/v/russell_ode.svg)](https://crates.io/crates/russell_ode) [russell_ode](https://github.com/cpmech/russell/tree/main/russell_ode) Solvers for ordinary differential equations (ODEs) and differential algebraic equations (DAEs) 
@@ -76,13 +79,13 @@ External associated and recommended crates:
 - [tritet](https://github.com/cpmech/tritet) Triangle and tetrahedron mesh generators (with Triangle and Tetgen)
 - [gemlab](https://github.com/cpmech/gemlab) Geometry, meshes, and numerical integration for finite element analyses
 
-<a name="installation"></a>
+
 
 ## Installation
 
 At this moment, Russell works on **Linux** (Debian/Ubuntu; and maybe Arch). It has some limited functionality on macOS too. In the future, we plan to enable Russell on Windows; however, this will take time because some essential libraries are not easily available on Windows.
 
-### TLDR (Debian/Ubuntu/Linux)
+### TL;DR (Debian/Ubuntu/Linux)
 
 First:
 
@@ -130,7 +133,7 @@ Run:
 bash case-a-openblas-debian.bash
 ```
 
-#### Locally compiled libraries (feature = local_libs)
+#### Locally compiled libraries
 
 Run:
 
@@ -140,7 +143,7 @@ bash case-a-openblas-local-libs.bash
 
 Then, add `local_libs` to your Cargo.toml or use `cargo build --features local_libs`
 
-### Case B: Intel MKL (feature = intel_mkl)
+### Case B: Intel MKL
 
 Run:
 
@@ -150,13 +153,11 @@ bash case-b-intel-mkl-local-libs.bash
 
 Then, add `intel_mkl` to your Cargo.toml or use `cargo build --features intel_mkl` (note that the `local_libs` feature will be automatically enabled).
 
-### Resulting files
-
 If locally compiled, the above scripts will save the resulting files in `/usr/local/lib/{mumps,umfpack}` and `/usr/local/include/{mumps,umfpack}`.
 
-<a name="macos"></a>
 
-## Installation on macOS
+
+### Installation on macOS
 
 Currently, only OpenBLAS has been tested on macOS.
 
@@ -172,9 +173,9 @@ Next, we must set the `LIBRARY_PATH`:
 export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/lapack/lib:$(brew --prefix)/opt/openblas/lib
 ```
 
-<a name="threads"></a>
 
-## Number of threads
+
+### Number of threads
 
 By default, OpenBLAS will use all available threads, including Hyper-Threads that may worsen the performance. Thus, it is best to set the following environment variable:
 
@@ -190,7 +191,7 @@ Furthermore, if working on a multi-threaded application where the solver should 
 export OPENBLAS_NUM_THREADS=1
 ```
 
-<a name="examples"></a>
+
 
 ## Examples
 
@@ -210,7 +211,7 @@ use num_complex::Complex64;
 
 This line will bring `Complex64` to the scope. For convenience the (russell_lab) macro `cpx!` may be used to allocate complex numbers.
 
-<a name="svd"></a>
+
 
 ### (lab) Singular value decomposition
 
@@ -263,7 +264,7 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-<a name="cholesky"></a>
+
 
 ### (lab) Cholesky factorization
 
@@ -332,7 +333,7 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-<a name="dense-lin-sys"></a>
+
 
 ### (lab) Solve a tiny (dense) linear system
 
@@ -362,7 +363,9 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-### <a name="sparse-lin-sys"></a> (sparse) Solve a small sparse linear system using UMFPACK
+
+
+### (sparse) Solve a small sparse linear system using UMFPACK
 
 ```rust
 use russell_lab::*;
@@ -428,7 +431,7 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-<a name="brusselator"></a>
+
 
 ### (ode) Solve the brusselator ODE system
 
@@ -476,7 +479,7 @@ A plot of the (dense) solution is shown below:
 
 ![Brusselator results: DoPri8](russell_ode/data/figures/brusselator_dopri8.svg)
 
-<a name="frechet"></a>
+
 
 ### (stat) Generate the Frechet distribution
 
@@ -535,7 +538,7 @@ std_dev = 312.7131690782321
       sum = 9008
 ```
 
-<a name="tensor"></a>
+
 
 ### (tensor) Allocate second-order tensors
 
@@ -606,7 +609,7 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-<a name="roadmap"></a>
+
 
 ## Roadmap
 

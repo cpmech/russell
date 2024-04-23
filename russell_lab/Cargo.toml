@@ -19,6 +19,7 @@ criterion = "0.5"
 num-complex = { version = "0.4", features = ["serde"] }
 num-traits = "0.2"
 serde = { version = "1.0", features = ["derive"] }
+rustfft = "6.2"
 
 [dev-dependencies]
 plotpy = "0.6"

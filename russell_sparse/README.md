@@ -1,20 +1,25 @@
-# Russell Sparse - Solvers for large sparse linear systems (wraps MUMPS and UMFPACK)
+# Russell Sparse - Solvers for large sparse linear systems (wraps MUMPS and UMFPACK) <!-- omit from toc --> 
 
 [![documentation: sparse](https://img.shields.io/badge/russell_sparse-documentation-blue)](https://docs.rs/russell_sparse)
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
-## Contents
+## Contents <!-- omit from toc --> 
 
-* [Introduction](#introduction)
-* [Installation](#installation)
-* [Setting Cargo.toml](#cargo)
-* [Examples](#examples)
-* [Tools](#tools)
-* [MUMPS + OpenBLAS issue](#issues)
-* [For developers](#developers)
+- [Introduction](#introduction)
+  - [Documentation](#documentation)
+- [Installation](#installation)
+  - [TL;DR (Debian/Ubuntu/Linux)](#tldr-debianubuntulinux)
+  - [Details](#details)
+  - [Setting Cargo.toml](#setting-cargotoml)
+- [Examples](#examples)
+  - [Solve a tiny sparse linear system using UMFPACK](#solve-a-tiny-sparse-linear-system-using-umfpack)
+- [Tools](#tools)
+- [MUMPS + OpenBLAS issue](#mumps--openblas-issue)
+  - [References](#references)
+- [For developers](#for-developers)
 
-## <a name="introduction"></a> Introduction
+## Introduction
 
 This library implements tools for handling sparse matrices and functions to solve large sparse systems using the best libraries out there, such as [UMFPACK (recommended)](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS (for very large systems)](https://mumps-solver.org).
 
@@ -40,13 +45,11 @@ This library also provides functions to read and write Matrix Market files conta
 
 
 
-<a name="installation"></a>
-
 ## Installation
 
 At this moment, Russell works on **Linux** (Debian/Ubuntu; and maybe Arch). It has some limited functionality on macOS too. In the future, we plan to enable Russell on Windows; however, this will take time because some essential libraries are not easily available on Windows.
 
-### TLDR (Debian/Ubuntu/Linux)
+### TL;DR (Debian/Ubuntu/Linux)
 
 First:
 
@@ -68,13 +71,13 @@ Then:
 cargo add russell_sparse
 ```
 
-## Details
+### Details
 
 This crate depends on `russell_lab`, which, in turn, depends on an efficient BLAS library such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html). This crate also depends on [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS](https://mumps-solver.org).
 
 [The root README file presents the steps to install the required dependencies.](https://github.com/cpmech/russell)
 
-## <a name="cargo"></a> Setting Cargo.toml
+### Setting Cargo.toml
 
 [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse)
 
@@ -92,7 +95,9 @@ Or, considering the optional _features_ ([see more about these here](https://git
 russell_sparse = { version = "*", features = ["local_libs", "intel_mkl"] }
 ```
 
-## <a name="examples"></a> Examples
+
+
+## Examples
 
 See also:
 
@@ -157,7 +162,9 @@ See [russell_sparse documentation](https://docs.rs/russell_sparse) for more exam
 
 See also the folder `examples`.
 
-## <a name="tools"></a> Tools
+
+
+## Tools
 
 This crate includes a tool named `solve_matrix_market` to study the performance of the available sparse solvers (currently MUMPS and UMFPACK).
 
@@ -262,11 +269,13 @@ The output looks like this:
 }
 ```
 
-## <a name="issues"></a> MUMPS + OpenBLAS issue
+
+
+## MUMPS + OpenBLAS issue
 
 We found that MUMPS + OpenBLAS becomes very, very slow when the number of OpenMP threads is left automatic, i.e., using the available number of threads. Thus, with OpenBLAS, it is recommended to set LinSolParams.mumps_num_threads = 1 (this is automatically set when using OpenBLAS).
 
-This issue has also been discovered by [1](#ref1), who states (page 72) _"We have observed that multi-threading of OpenBLAS library in MUMPS leads to multiple thread conflicts which sometimes result in significant slow-down of the solver."_
+This issue has also been discovered by Reference #1, who states (page 72) _"We have observed that multi-threading of OpenBLAS library in MUMPS leads to multiple thread conflicts which sometimes result in significant slow-down of the solver."_
 
 Therefore, we have to take one of the two approaches:
 
@@ -289,9 +298,11 @@ Also, to reproduce the issue, we need:
 
 ### References
 
-1. <a name="ref1"></a> Dorozhinskii R (2019) [Configuration of a linear solver for linearly implicit time integration and efficient data transfer in parallel thermo-hydraulic computations](https://mediatum.ub.tum.de/doc/1486743/1486743.pdf). _Master's Thesis in Computational Science and Engineering._ Department of Informatics Technical University of Munich.
+1. Dorozhinskii R (2019) [Configuration of a linear solver for linearly implicit time integration and efficient data transfer in parallel thermo-hydraulic computations](https://mediatum.ub.tum.de/doc/1486743/1486743.pdf). _Master's Thesis in Computational Science and Engineering._ Department of Informatics Technical University of Munich.
 
-## <a name="developers"></a> For developers
+
+
+## For developers
 
 * The `c_code` directory contains a thin wrapper to the sparse solvers (MUMPS, UMFPACK)
 * The `build.rs` file uses the crate `cc` to build the C-wrappers

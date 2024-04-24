@@ -211,6 +211,40 @@ impl InterpParams {
 ///    SIAM Journal of Scientific Computing, 24(5):1465-1487
 /// 5. Berrut JP, Trefethen LN (2004) Barycentric Lagrange Interpolation,
 ///    SIAM Review Vol. 46, No. 3, pp. 501-517
+///
+/// # Examples
+///
+/// ## Approximate a function and derivatives
+///
+/// ```
+/// use russell_lab::algo::InterpLagrange;
+/// use russell_lab::{approx_eq, StrError, Vector};
+///
+/// fn main() -> Result<(), StrError> {
+///     // function (with df/dx = 2x and d²f/dx² = 2)
+///     let f = |x| x * x;
+///
+///     // interpolant
+///     let degree = 10;
+///     let npoint = degree + 1;
+///     let interp = InterpLagrange::new(degree, None)?;
+///
+///     // compute data points
+///     let mut uu = Vector::new(npoint);
+///     for (i, x) in interp.get_points().into_iter().enumerate() {
+///         uu[i] = f(*x);
+///     }
+///
+///     // evaluate the interpolation at a given coordinate
+///     let y_approx = interp.eval(0.5, &uu)?;
+///     let dydx_approx = interp.eval_deriv1(0.5, &uu)?;
+///     let d2ydx2_approx = interp.eval_deriv2(0.5, &uu)?;
+///     approx_eq(y_approx, 0.25, 1e-15);
+///     approx_eq(dydx_approx, 1.0, 1e-15);
+///     approx_eq(d2ydx2_approx, 2.0, 1e-13);
+///     Ok(())
+/// }
+/// ```
 #[derive(Clone, Debug)]
 pub struct InterpLagrange {
     /// Polynomial degree `N` satisfying `1 ≤ N ≤ 2048`
@@ -404,6 +438,34 @@ impl InterpLagrange {
     ///
     /// * `x` -- the coordinate to evaluate the polynomial; must satisfy -1 ≤ j ≤ 1
     /// * `uu` -- the "data" vector `U` of size equal to `N + 1`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::algo::InterpLagrange;
+    /// use russell_lab::{approx_eq, StrError, Vector};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // function
+    ///     let f = |x| x * x;
+    ///
+    ///     // interpolant
+    ///     let degree = 10;
+    ///     let npoint = degree + 1;
+    ///     let interp = InterpLagrange::new(degree, None)?;
+    ///
+    ///     // compute data points
+    ///     let mut uu = Vector::new(npoint);
+    ///     for (i, x) in interp.get_points().into_iter().enumerate() {
+    ///         uu[i] = f(*x);
+    ///     }
+    ///
+    ///     // evaluate the interpolation at a given coordinate
+    ///     let y_approx = interp.eval(0.5, &uu)?;
+    ///     approx_eq(y_approx, 0.25, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn eval(&self, x: f64, uu: &Vector) -> Result<f64, StrError> {
         if x < -1.0 || x > 1.0 {
             return Err("x must be in -1 ≤ x ≤ 1");
@@ -451,6 +513,34 @@ impl InterpLagrange {
     ///
     /// * `x` -- the coordinate to evaluate the derivative; must satisfy -1 ≤ j ≤ 1
     /// * `uu` -- the "data" vector `U` of size equal to `N + 1`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::algo::InterpLagrange;
+    /// use russell_lab::{approx_eq, StrError, Vector};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // function (with df/dx = 2x and d²f/dx² = 2)
+    ///     let f = |x| x * x;
+    ///
+    ///     // interpolant
+    ///     let degree = 10;
+    ///     let npoint = degree + 1;
+    ///     let interp = InterpLagrange::new(degree, None)?;
+    ///
+    ///     // compute data points
+    ///     let mut uu = Vector::new(npoint);
+    ///     for (i, x) in interp.get_points().into_iter().enumerate() {
+    ///         uu[i] = f(*x);
+    ///     }
+    ///
+    ///     // evaluate the interpolation at a given coordinate
+    ///     let dydx_approx = interp.eval_deriv1(0.5, &uu)?;
+    ///     approx_eq(dydx_approx, 1.0, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn eval_deriv1(&self, x: f64, uu: &Vector) -> Result<f64, StrError> {
         if x < -1.0 || x > 1.0 {
             return Err("x must be in -1 ≤ x ≤ 1");
@@ -542,6 +632,34 @@ impl InterpLagrange {
     ///
     /// * `x` -- the coordinate to evaluate the derivative; must satisfy -1 ≤ j ≤ 1
     /// * `uu` -- the "data" vector `U` of size equal to `N + 1`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::algo::InterpLagrange;
+    /// use russell_lab::{approx_eq, StrError, Vector};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // function (with df/dx = 2x and d²f/dx² = 2)
+    ///     let f = |x| x * x;
+    ///
+    ///     // interpolant
+    ///     let degree = 10;
+    ///     let npoint = degree + 1;
+    ///     let interp = InterpLagrange::new(degree, None)?;
+    ///
+    ///     // compute data points
+    ///     let mut uu = Vector::new(npoint);
+    ///     for (i, x) in interp.get_points().into_iter().enumerate() {
+    ///         uu[i] = f(*x);
+    ///     }
+    ///
+    ///     // evaluate the interpolation at a given coordinate
+    ///     let d2ydx2_approx = interp.eval_deriv2(0.5, &uu)?;
+    ///     approx_eq(d2ydx2_approx, 2.0, 1e-13);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn eval_deriv2(&self, x: f64, uu: &Vector) -> Result<f64, StrError> {
         if x < -1.0 || x > 1.0 {
             return Err("x must be in -1 ≤ x ≤ 1");

@@ -97,7 +97,6 @@ sudo apt-get install -y --no-install-recommends \
     g++ \
     gdb \
     gfortran \
-    libfftw3-dev \
     liblapacke-dev \
     libmumps-seq-dev \
     libopenblas-dev \
@@ -729,9 +728,6 @@ fn main() -> Result<(), StrError> {
         - [ ] Implement Orthogonal polynomials
         - [x] Implement Lagrange interpolation
         - [ ] Implement Fourier interpolation
-    - [x] Implement FFT
-        - [x] Partially wrap FFTW (with warnings about it being thread-unsafe)
-        - [ ] Implement a Rust-native FFT solver
 - [x] Improve `russell_sparse`
     - [x] Wrap the KLU solver (in addition to MUMPS and UMFPACK)
     - [x] Implement the Compressed Sparse Column format (CSC)

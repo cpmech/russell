@@ -15,12 +15,12 @@ keywords = ["matrix", "vector", "linspace"]
 intel_mkl = []
 
 [dependencies]
-criterion = "0.5"
 num-complex = { version = "0.4", features = ["serde"] }
 num-traits = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]
+criterion = "0.5"
 plotpy = "0.6"
 serde_json = "1.0"
 serial_test = "3.0"
@@ -29,5 +29,5 @@ serial_test = "3.0"
 cc = "1.0"
 
 [[bench]]
-name = "lab_benches"
+name = "matvec_benchmark"
 harness = false

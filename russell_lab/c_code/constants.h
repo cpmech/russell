@@ -21,7 +21,3 @@
 #define SVD_CODE_S 1
 #define SVD_CODE_O 2
 #define SVD_CODE_N 3
-
-// Error codes
-#define SUCCESSFUL_EXIT 0
-#define UNKNOWN_ERROR 1

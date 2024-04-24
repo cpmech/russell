@@ -14,7 +14,6 @@ sudo apt-get install -y --no-install-recommends \
     g++ \
     gdb \
     gfortran \
-    libfftw3-dev \
     liblapacke-dev \
     libmumps-seq-dev \
     libopenblas-dev \

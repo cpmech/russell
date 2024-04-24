@@ -29,7 +29,6 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Matrix visualization](#matrix-visualization)
   - [Computing eigenvalues and eigenvectors](#computing-eigenvalues-and-eigenvectors)
   - [Cholesky factorization](#cholesky-factorization)
-  - [Simple discrete Fourier transform](#simple-discrete-fourier-transform)
 - [About the column major representation](#about-the-column-major-representation)
 - [Benchmarks](#benchmarks)
   - [Jacobi Rotation versus LAPACK DSYEV](#jacobi-rotation-versus-lapack-dsyev)
@@ -48,7 +47,6 @@ The code is organized in modules:
 * `algo` — algorithms that depend on the other modules (e.g, Lagrange interpolation)
 * `base` — "base" functionality to help other modules
 * `check` — functions to assist in unit and integration testing
-* `fftw` — light interface to a few [FFTW](https://www.fftw.org/) routines. Warning: these routines are thread-unsafe
 * `math` — mathematical (specialized) functions and constants
 * `matrix` — [NumMatrix] struct and associated functions
 * `matvec` — functions operating on matrices and vectors
@@ -86,7 +84,6 @@ sudo apt-get install -y --no-install-recommends \
     g++ \
     gdb \
     gfortran \
-    libfftw3-dev \
     liblapacke-dev \
     libmumps-seq-dev \
     libopenblas-dev \
@@ -664,18 +661,6 @@ fn main() -> Result<(), StrError> {
     Ok(())
 }
 ```
-
-
-
-### Simple discrete Fourier transform
-
-Generate a signal with a 50 Hz sinusoid of amplitude 0.7 and a 120 Hz sinusoid of amplitude 1.0. Then, use [FFTW](https://www.fftw.org/) to determine the spectrum.
-
-[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/fftw_simple_example.rs)
-
-The output is illustrated below:
-
-![Simple FFTw example](data/figures/fftw_simple_example.svg)
 
 
 

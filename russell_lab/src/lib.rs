@@ -15,7 +15,6 @@
 //! * `algo` -- algorithms that depend on the other modules (e.g, Lagrange interpolation)
 //! * `base` -- "base" functionality to help other modules
 //! * `check` -- functions to assist in unit and integration testing
-//! * `fftw` -- light interface to a few [FFTW](https://www.fftw.org/) routines. Warning: these routines are thread-unsafe
 //! * `math` -- mathematical (specialized) functions and constants
 //! * `matrix` -- [NumMatrix] struct and associated functions
 //! * `matvec` -- functions operating on matrices and vectors
@@ -97,7 +96,6 @@ pub type StrError = &'static str;
 pub mod algo;
 pub mod base;
 pub mod check;
-pub mod fftw;
 mod internal;
 pub mod math;
 pub mod matrix;
@@ -106,7 +104,6 @@ pub mod vector;
 // pub use crate::algo::*;
 pub use crate::base::*;
 pub use crate::check::*;
-pub use crate::fftw::*;
 use crate::internal::*;
 pub use crate::matrix::*;
 pub use crate::matvec::*;

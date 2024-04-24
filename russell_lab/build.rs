@@ -39,10 +39,6 @@ fn handle_intel_mkl() {
 }
 
 fn main() {
-    // fftw and math functions
-    cc::Build::new().file("c_code/interface_fftw.c").compile("c_code");
-    println!("cargo:rustc-link-lib=fftw3");
-
     // BLAS functions
     handle_intel_mkl();
 }

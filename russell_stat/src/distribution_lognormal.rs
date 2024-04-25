@@ -93,7 +93,7 @@ impl ProbabilityDistribution for DistributionLognormal {
 
 #[cfg(test)]
 mod tests {
-    use crate::{DistributionLognormal, ProbabilityDistribution};
+    use crate::{get_rng, DistributionLognormal, ProbabilityDistribution};
     use russell_lab::approx_eq;
 
     // Data from the following R-code (run with Rscript lognormal.R):
@@ -286,7 +286,7 @@ mod tests {
     #[test]
     fn sample_works() {
         let d = DistributionLognormal::new(1.0, 2.0).unwrap();
-        let mut rng = rand::thread_rng();
+        let mut rng = get_rng();
         d.sample(&mut rng);
     }
 }

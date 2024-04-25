@@ -101,11 +101,11 @@ russell_stat = { version = "*", features = ["intel_mkl"] }
 ### Frechet distribution
 
 ```rust
-use russell_stat::{statistics, DistributionFrechet, Histogram, ProbabilityDistribution, StrError};
+use russell_stat::*;
 
 fn main() -> Result<(), StrError> {
     // generate samples
-    let mut rng = rand::thread_rng();
+    let mut rng = get_rng();
     let dist = DistributionFrechet::new(0.0, 1.0, 1.0)?;
     let nsamples = 10_000;
     let mut data = vec![0.0; nsamples];
@@ -156,11 +156,11 @@ std_dev = 137.11729225249485
 ### Gumbel distribution
 
 ```rust
-use russell_stat::{statistics, DistributionGumbel, Histogram, ProbabilityDistribution, StrError};
+use russell_stat::*;
 
 fn main() -> Result<(), StrError> {
     // generate samples
-    let mut rng = rand::thread_rng();
+    let mut rng = get_rng();
     let dist = DistributionGumbel::new(0.5, 2.0)?;
     let nsamples = 10_000;
     let mut data = vec![0.0; nsamples];
@@ -212,11 +212,11 @@ std_dev = 2.5805268053167527
 ### Normal distribution
 
 ```rust
-use russell_stat::{statistics, DistributionNormal, Histogram, ProbabilityDistribution, StrError};
+use russell_stat::*;
 
 fn main() -> Result<(), StrError> {
     // generate samples
-    let mut rng = rand::thread_rng();
+    let mut rng = get_rng();
     let dist = DistributionNormal::new(0.0, 1.0)?;
     let nsamples = 10_000;
     let mut data = vec![0.0; nsamples];
@@ -268,11 +268,11 @@ std_dev = 0.9760553437435371
 ### Lognormal distribution
 
 ```rust
-use russell_stat::{statistics, DistributionLognormal, Histogram, ProbabilityDistribution, StrError};
+use russell_stat::*;
 
 fn main() -> Result<(), StrError> {
     // generate samples
-    let mut rng = rand::thread_rng();
+    let mut rng = get_rng();
     let dist = DistributionLognormal::new(0.0, 0.25)?;
     let nsamples = 10_000;
     let mut data = vec![0.0; nsamples];
@@ -329,11 +329,11 @@ std_dev = 0.2610005570820734
 ### Uniform distribution 
 
 ```rust
-use russell_stat::{statistics, DistributionUniform, Histogram, ProbabilityDistribution, StrError};
+use russell_stat::*;
 
 fn main() -> Result<(), StrError> {
     // generate samples
-    let mut rng = rand::thread_rng();
+    let mut rng = get_rng();
     let dist = DistributionUniform::new(-10.0, 10.0)?;
     let nsamples = 10_000;
     let mut data = vec![0.0; nsamples];

@@ -644,7 +644,7 @@ use russell_stat::*;
 
 fn main() -> Result<(), StrError> {
     // generate samples
-    let mut rng = rand::thread_rng();
+    let mut rng = get_rng();
     let dist = DistributionFrechet::new(0.0, 1.0, 1.0)?;
     let nsamples = 10_000;
     let mut data = vec![0.0; nsamples];

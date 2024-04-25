@@ -11,6 +11,17 @@
 /// Defines the error output as a static string
 pub type StrError = &'static str;
 
+use rand::rngs::ThreadRng;
+
+/// Returns the thread-local random number generator, seeded by the system
+///
+/// See more information here: [rand::thread_rng()]
+#[inline]
+pub fn get_rng() -> ThreadRng {
+    // re-exported for convenience
+    rand::thread_rng()
+}
+
 mod distribution_frechet;
 mod distribution_gumbel;
 mod distribution_lognormal;

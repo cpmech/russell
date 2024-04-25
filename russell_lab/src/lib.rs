@@ -12,13 +12,13 @@
 //!
 //! The code is organized in modules:
 //!
-//! * `algo` -- algorithms that depend on the other modules (e.g, Lagrange interpolation)
-//! * `base` -- "base" functionality to help other modules
-//! * `check` -- functions to assist in unit and integration testing
-//! * `math` -- mathematical (specialized) functions and constants
-//! * `matrix` -- [NumMatrix] struct and associated functions
-//! * `matvec` -- functions operating on matrices and vectors
-//! * `vector` -- [NumVector] struct and associated functions
+//! * [algo] -- algorithms that depend on the other modules (e.g, Lagrange interpolation)
+//! * [base] -- "base" functionality to help other modules
+//! * [check] -- functions to assist in unit and integration testing
+//! * [math] -- mathematical (specialized) functions and constants
+//! * [matrix] -- [NumMatrix] struct and associated functions
+//! * [matvec] -- functions operating on matrices and vectors
+//! * [vector] -- [NumVector] struct and associated functions
 //!
 //! For linear algebra, the main structures are [NumVector] and [NumMatrix], that are generic Vector and Matrix structures. The Matrix data is stored as **column-major**. The [Vector] and [Matrix] are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.
 //!
@@ -30,7 +30,7 @@
 //! * Matrix addition ([mat_add()]), multiplication ([mat_mat_mul()], [mat_t_mat_mul()]), copy ([mat_copy()]), singular-value decomposition ([mat_svd()]), eigenvalues ([mat_eigen()], [mat_eigen_sym()]), pseudo-inverse ([mat_pseudo_inverse()]), inverse ([mat_inverse()]), norms ([mat_norm()]), and more
 //! * Matrix-vector multiplication ([mat_vec_mul()])
 //! * Solution of dense linear systems with symmetric ([mat_cholesky()]) or non-symmetric ([solve_lin_sys()]) coefficient matrices
-//! * Reading writing files ([read_table()]) , linspace ([NumVector::linspace()]), grid generators ([generate2d()]), [generate3d()]), [linear_fitting()], [Stopwatch] and more
+//! * Reading writing files ([read_table()]) , linspace ([NumVector::linspace()]), grid generators ([generate2d()]), [generate3d()]), [Stopwatch] and more
 //! * Checking results, comparing float point numbers, and verifying the correctness of derivatives; see [crate::check]
 //!
 //! **Note:** For the functions dealing with complex numbers, the following line must be added to all derived code:
@@ -41,51 +41,44 @@
 //!
 //! This line will bring [num_complex::Complex64] to the scope. For convenience the (russell_lab) macro [crate::cpx!] may be used to allocate complex numbers.
 //!
-//! # Example - Cholesky factorization
+//! # Examples
+//!
+//! ## (matrix) Eigen-decomposition of a small matrix
 //!
 //! ```
-//! use russell_lab::{mat_cholesky, Matrix, StrError};
+//! use russell_lab::{mat_eigen, Matrix, Vector};
+//! use russell_lab::StrError;
 //!
 //! fn main() -> Result<(), StrError> {
-//!     // set matrix
-//!     let sym = 0.0;
-//!     #[rustfmt::skip]
-//!     let mut a = Matrix::from(&[
-//!         [  4.0,   sym,   sym],
-//!         [ 12.0,  37.0,   sym],
-//!         [-16.0, -43.0,  98.0],
-//!     ]);
-//!
-//!     // perform factorization
-//!     mat_cholesky(&mut a, false)?;
-//!
-//!     // define alias (for convenience)
-//!     let l = &a;
-//!
-//!     // compare with solution
-//!     let l_correct = "┌          ┐\n\
-//!                      │  2  0  0 │\n\
-//!                      │  6  1  0 │\n\
-//!                      │ -8  5  3 │\n\
-//!                      └          ┘";
-//!     assert_eq!(format!("{}", l), l_correct);
-//!
-//!     // check:  l ⋅ lᵀ = a
+//!     let data = [
+//!         [2.0, 0.0, 0.0],
+//!         [0.0, 3.0, 4.0],
+//!         [0.0, 4.0, 9.0],
+//!     ];
+//!     let mut a = Matrix::from(&data);
 //!     let m = a.nrow();
-//!     let mut l_lt = Matrix::new(m, m);
-//!     for i in 0..m {
-//!         for j in 0..m {
-//!             for k in 0..m {
-//!                 l_lt.add(i, j, l.get(i, k) * l.get(j, k));
-//!             }
-//!         }
-//!     }
-//!     let l_lt_correct = "┌             ┐\n\
-//!                         │   4  12 -16 │\n\
-//!                         │  12  37 -43 │\n\
-//!                         │ -16 -43  98 │\n\
-//!                         └             ┘";
-//!     assert_eq!(format!("{}", l_lt), l_lt_correct);
+//!     let mut l_real = Vector::new(m);
+//!     let mut l_imag = Vector::new(m);
+//!     let mut v_real = Matrix::new(m, m);
+//!     let mut v_imag = Matrix::new(m, m);
+//!     mat_eigen(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut a)?;
+//!     println!("eigenvalues =\n{}", l_real);
+//!     println!("eigenvectors =\n{}", v_real);
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ## (math) Bessel functions
+//!
+//! ```
+//! use russell_lab::math;
+//! use russell_lab::{Vector, StrError};
+//!
+//! fn main() -> Result<(), StrError> {
+//!     let xx = Vector::linspace(0.0, 15.0, 101)?;
+//!     let j0 = xx.get_mapped(|x| math::bessel_j0(x));
+//!     let j1 = xx.get_mapped(|x| math::bessel_j1(x));
+//!     let j2 = xx.get_mapped(|x| math::bessel_jn(2, x));
 //!     Ok(())
 //! }
 //! ```

@@ -63,44 +63,42 @@ impl MinSolver {
     ///
     /// * `xo` -- is the coordinate of the minimum
     /// * `stats` -- some statistics regarding the computations
-    ///
-    /// # Details
-    ///
-    /// Based on ZEROIN C math library: <http://www.netlib.org/c/>
-    /// By: Oleg Keselyov <oleg@ponder.csci.unt.edu, oleg@unt.edu> May 23, 1991
-    ///
-    /// G.Forsythe, M.Malcolm, C.Moler, Computer methods for mathematical
-    /// computations. M., Mir, 1980, p.180 of the Russian edition
-    ///
-    /// The function makes use of the "gold section" procedure combined with
-    /// the parabolic interpolation.
-    /// At every step program operates three abscissae - x,v, and w.
-    /// * x - the last and the best approximation to the minimum location,
-    ///       i.e. f(x) <= f(a) or/and f(x) <= f(b)
-    ///       (if the function f has a local minimum in (a,b), then the both
-    ///       conditions are fulfilled after one or two steps).
-    ///
-    /// v,w are previous approximations to the minimum location. They may
-    /// coincide with a, b, or x (although the algorithm tries to make all
-    /// u, v, and w distinct). Points x, v, and w are used to construct
-    /// interpolating parabola whose minimum will be treated as a new
-    /// approximation to the minimum location if the former falls within
-    /// `[a,b]` and reduces the range enveloping minimum more efficient than
-    /// the gold section procedure.
-    ///
-    /// When f(x) has a second derivative positive at the minimum location
-    /// (not coinciding with a or b) the procedure converges super-linearly
-    /// at a rate order about 1.324
-    ///
-    /// The function always obtains a local minimum which coincides with
-    /// the global one only if a function under investigation being
-    /// uni-modular. If a function being examined possesses no local minimum
-    /// within the given range, The code returns 'a' (if f(a) < f(b)), otherwise
-    /// it returns the right range boundary value b.
     pub fn brent<F, A>(&self, xa: f64, xb: f64, args: &mut A, mut f: F) -> Result<(f64, Stats), StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
+        // Based on ZEROIN C math library: <http://www.netlib.org/c/>
+        // By: Oleg Keselyov <oleg@ponder.csci.unt.edu, oleg@unt.edu> May 23, 1991
+        //
+        // G.Forsythe, M.Malcolm, C.Moler, Computer methods for mathematical
+        // computations. M., Mir, 1980, p.180 of the Russian edition
+        //
+        // The function makes use of the "gold section" procedure combined with
+        // the parabolic interpolation.
+        // At every step program operates three abscissae - x,v, and w.
+        // * x - the last and the best approximation to the minimum location,
+        //       i.e. f(x) <= f(a) or/and f(x) <= f(b)
+        //       (if the function f has a local minimum in (a,b), then the both
+        //       conditions are fulfilled after one or two steps).
+        //
+        // v,w are previous approximations to the minimum location. They may
+        // coincide with a, b, or x (although the algorithm tries to make all
+        // u, v, and w distinct). Points x, v, and w are used to construct
+        // interpolating parabola whose minimum will be treated as a new
+        // approximation to the minimum location if the former falls within
+        // `[a,b]` and reduces the range enveloping minimum more efficient than
+        // the gold section procedure.
+        //
+        // When f(x) has a second derivative positive at the minimum location
+        // (not coinciding with a or b) the procedure converges super-linearly
+        // at a rate order about 1.324
+        //
+        // The function always obtains a local minimum which coincides with
+        // the global one only if a function under investigation being
+        // uni-modular. If a function being examined possesses no local minimum
+        // within the given range, The code returns 'a' (if f(a) < f(b)), otherwise
+        // it returns the right range boundary value b.
+
         // check
         if f64::abs(xa - xb) < 10.0 * f64::EPSILON {
             return Err("xa must be different from xb");

@@ -12,13 +12,15 @@
 //!
 //! The code is organized in modules:
 //!
-//! * [algo] -- algorithms that depend on the other modules (e.g, Lagrange interpolation)
-//! * [base] -- "base" functionality to help other modules
-//! * [check] -- functions to assist in unit and integration testing
-//! * [math] -- mathematical (specialized) functions and constants
-//! * [matrix] -- [NumMatrix] struct and associated functions
-//! * [matvec] -- functions operating on matrices and vectors
-//! * [vector] -- [NumVector] struct and associated functions
+//! * [algo] -- Structs and algorithms that roughly depend on the other modules
+//! * [base] -- "Base" functionality to help other modules
+//! * [check] -- Functions to assist in unit and integration testing
+//! * [math] (*not re-exported*) -- Mathematical "special" functions and constants
+//! * [matrix] -- Matrix struct and associated functions
+//! * [matvec] -- Functions operating on matrices and vectors
+//! * [vector] -- Vector struct and associated functions
+//!
+//! ## Linear algebra
 //!
 //! For linear algebra, the main structures are [NumVector] and [NumMatrix], that are generic Vector and Matrix structures. The Matrix data is stored as **column-major**. The [Vector] and [Matrix] are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.
 //!
@@ -32,6 +34,8 @@
 //! * Solution of dense linear systems with symmetric ([mat_cholesky()]) or non-symmetric ([solve_lin_sys()]) coefficient matrices
 //! * Reading writing files ([read_table()]) , linspace ([NumVector::linspace()]), grid generators ([generate2d()]), [generate3d()]), [Stopwatch] and more
 //! * Checking results, comparing float point numbers, and verifying the correctness of derivatives; see [crate::check]
+//!
+//! ## Complex numbers
 //!
 //! **Note:** For the functions dealing with complex numbers, the following line must be added to all derived code:
 //!
@@ -94,7 +98,7 @@ pub mod math;
 pub mod matrix;
 pub mod matvec;
 pub mod vector;
-// pub use crate::algo::*;
+pub use crate::algo::*;
 pub use crate::base::*;
 pub use crate::check::*;
 use crate::internal::*;

@@ -1,5 +1,5 @@
-use russell_lab::algo::Quadrature;
 use russell_lab::math::{elliptic_e, PI};
+use russell_lab::Quadrature;
 use russell_lab::{approx_eq, StrError};
 
 fn main() -> Result<(), StrError> {

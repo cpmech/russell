@@ -32,6 +32,7 @@
   - [(lab) Singular value decomposition](#lab-singular-value-decomposition)
   - [(lab) Cholesky factorization](#lab-cholesky-factorization)
   - [(lab) Solve a tiny (dense) linear system](#lab-solve-a-tiny-dense-linear-system)
+  - [(lab) Read a table-formatted data file](#lab-read-a-table-formatted-data-file)
   - [(sparse) Solve a small sparse linear system using UMFPACK](#sparse-solve-a-small-sparse-linear-system-using-umfpack)
   - [(ode) Brusselator ODE](#ode-brusselator-ode)
   - [(ode) Brusselator PDE](#ode-brusselator-pde)
@@ -442,6 +443,55 @@ fn main() -> Result<(), StrError> {
                      │   2.000 │\n\
                      └         ┘";
     assert_eq!(format!("{:.3}", b), x_correct);
+    Ok(())
+}
+```
+
+
+
+### (lab) Read a table-formatted data file
+
+The goal is to read the following file (`clay-data.txt`):
+
+```text
+# Fujinomori clay test results
+
+     sr        ea        er   # header
+1.00000  -6.00000   0.10000   
+2.00000   7.00000   0.20000   
+3.00000   8.00000   0.20000   # << look at this line
+
+# comments plus new lines are OK
+
+4.00000   9.00000   0.40000   
+5.00000  10.00000   0.50000   
+
+# bye
+```
+
+The code below illustrates how to do it.
+
+Each column (`sr`, `ea`, `er`) is accessible via the `get` method of the [HashMap].
+
+```rust
+use russell_lab::{read_table, StrError};
+use std::collections::HashMap;
+use std::env;
+use std::path::PathBuf;
+
+fn main() -> Result<(), StrError> {
+    // get the asset's full path
+    let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let full_path = root.join("data/tables/clay-data.txt");
+
+    // read the file
+    let labels = &["sr", "ea", "er"];
+    let table: HashMap<String, Vec<f64>> = read_table(&full_path, Some(labels))?;
+
+    // check the columns
+    assert_eq!(table.get("sr").unwrap(), &[1.0, 2.0, 3.0, 4.0, 5.0]);
+    assert_eq!(table.get("ea").unwrap(), &[-6.0, 7.0, 8.0, 9.0, 10.0]);
+    assert_eq!(table.get("er").unwrap(), &[0.1, 0.2, 0.2, 0.4, 0.5]);
     Ok(())
 }
 ```

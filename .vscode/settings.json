@@ -38,6 +38,7 @@
     "dsyev",
     "dsyrk",
     "dtype",
+    "dydx",
     "dznrm2",
     "erfinv",
     "FACCON",

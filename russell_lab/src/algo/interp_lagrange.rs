@@ -741,6 +741,29 @@ impl InterpLagrange {
     /// ```
     ///
     /// See Eqs 6, 7, and 9 in Reference #3. Note that `cⱼ = λⱼ⁻¹` in Reference #3;
+    ///
+    /// # Examples
+    ///
+    /// ```
+    ///
+    /// use russell_lab::algo::InterpLagrange;
+    /// use russell_lab::{mat_approx_eq, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let degree = 2;
+    ///     let mut interp = InterpLagrange::new(degree, None)?;
+    ///     interp.calc_dd1_matrix();
+    ///     let dd1 = interp.get_dd1()?;
+    ///     #[rustfmt::skip]
+    ///     let correct = [
+    ///         [-1.5,  2.0, -0.5],
+    ///         [-0.5,  0.0,  0.5],
+    ///         [ 0.5, -2.0,  1.5],
+    ///     ];
+    ///     mat_approx_eq(&dd1, &correct, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn calc_dd1_matrix(&mut self) {
         // allocate matrix
         if self.dd1.dims().0 == self.npoint {
@@ -797,6 +820,31 @@ impl InterpLagrange {
     /// ```
     ///
     /// See Eqs 9 and 13 in Reference #3.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::algo::InterpLagrange;
+    /// use russell_lab::{mat_approx_eq, mat_mat_mul, Matrix, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // allocate the interpolant
+    ///     let degree = 2;
+    ///     let mut interp = InterpLagrange::new(degree, None)?;
+    ///
+    ///     // calculate the D1 and D2 matrices
+    ///     interp.calc_dd1_matrix();
+    ///     interp.calc_dd2_matrix();
+    ///     let dd1 = interp.get_dd1()?;
+    ///     let dd2 = interp.get_dd2()?;
+    ///
+    ///     // compare D2 with the D1 matrix squared
+    ///     let mut dd1_squared = Matrix::new(degree + 1, degree + 1);
+    ///     mat_mat_mul(&mut dd1_squared, 1.0, &dd1, &dd1, 0.0)?;
+    ///     mat_approx_eq(&dd2, &dd1_squared, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn calc_dd2_matrix(&mut self) {
         // calculate D1
         self.calc_dd1_matrix();

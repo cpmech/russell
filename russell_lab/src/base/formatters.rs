@@ -24,10 +24,11 @@ fn format_nanoseconds_in_seconds(buf: &mut String, value: u128) {
 ///
 /// This function may panic if the write! macro fails (rarely)
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::format_nanoseconds;
+///
 /// let res = format_nanoseconds(3_723_000_000_000);
 /// assert_eq!(res, "1h2m3s");
 /// ```
@@ -67,6 +68,15 @@ pub fn format_nanoseconds(nanoseconds: u128) -> String {
 }
 
 /// Formats a number using the scientific notation
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::format_scientific;
+///
+/// let res = format_scientific(3_723_000.0, 10, 3);
+/// assert_eq!(res, " 3.723E+06");
+/// ```
 pub fn format_scientific(num: f64, width: usize, precision: usize) -> String {
     // based on <https://stackoverflow.com/questions/65264069/alignment-of-floating-point-numbers-printed-in-scientific-notation>
     const EXP_PAD: usize = 2;
@@ -82,6 +92,19 @@ pub fn format_scientific(num: f64, width: usize, precision: usize) -> String {
 }
 
 /// Formats a number using the scientific notation as in Fortran with the ES23.15 format
+///
+/// This function is useful to compare results with those computed by a Fortran routine.
+///
+/// **Note:** This function calls [format_scientific()] with `width = 23` and `precision = 15`.
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::format_fortran;
+///
+/// let res = format_fortran(3_723_000.0);
+/// assert_eq!(res, "  3.723000000000000E+06");
+/// ```
 pub fn format_fortran(num: f64) -> String {
     format_scientific(num, 23, 15)
 }

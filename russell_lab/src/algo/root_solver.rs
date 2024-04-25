@@ -59,6 +59,23 @@ impl RootSolver {
     ///
     /// * `xo` -- is the root such that `f(xo) = 0`
     /// * `stats` -- some statistics regarding the computations
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::{approx_eq, RootSolver, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let args = &mut 0;
+    ///     let solver = RootSolver::new();
+    ///     let (xa, xb) = (-4.0, 0.0);
+    ///     let (xo, stats) = solver.brent(xa, xb, args, |x, _| Ok(4.0 - x * x))?;
+    ///     println!("\nroot = {:?}", xo);
+    ///     println!("\n{}", stats);
+    ///     approx_eq(xo, -2.0, 1e-10);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn brent<F, A>(&self, xa: f64, xb: f64, args: &mut A, mut f: F) -> Result<(f64, Stats), StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,

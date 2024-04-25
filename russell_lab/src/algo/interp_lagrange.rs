@@ -279,6 +279,27 @@ impl InterpLagrange {
     ///
     /// * `nn` -- the polynomial degree `N`; thus the number of grid nodes will be `N + 1`.
     ///   **Note:** `nn` must be in `[1, 2048]`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::algo::InterpLagrange;
+    /// use russell_lab::{InterpGrid, InterpParams, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // use Chebyshev-Gauss grid
+    ///     let mut params = InterpParams::new();
+    ///     params.grid_type = InterpGrid::ChebyshevGauss;
+    ///
+    ///     // interpolant
+    ///     let nn = 3; // degree
+    ///     let interp = InterpLagrange::new(nn, Some(params)).unwrap();
+    ///
+    ///     // print the grid points
+    ///     println!("{:?}", interp.get_points());
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn new(nn: usize, params: Option<InterpParams>) -> Result<Self, StrError> {
         // check the parameters
         if nn < 1 || nn > 2048 {
@@ -405,6 +426,47 @@ impl InterpLagrange {
     ///
     /// * `j` -- index of the Xⱼ point; must satisfy 0 ≤ j ≤ N
     /// * `x` -- the coordinate to evaluate the polynomial; must satisfy -1 ≤ j ≤ 1
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::algo::InterpLagrange;
+    /// use russell_lab::{approx_eq, InterpGrid, InterpParams, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // interpolant
+    ///     let nn = 3; // degree
+    ///     let interp = InterpLagrange::new(nn, None).unwrap();
+    ///
+    ///     // Cardinal form:
+    ///     //
+    ///     // ```text
+    ///     //           N
+    ///     //         ━━━━━
+    ///     //  X      ┃   ┃  x  - Xₖ
+    ///     // ℓ (x) = ┃   ┃  ———————
+    ///     //  j      k = 0  Xⱼ - Xₖ
+    ///     //         k ≠ j
+    ///     // ```
+    ///
+    ///     // compare barycentric versus cardinal
+    ///     let xx = interp.get_points();
+    ///     let npoint = xx.dim(); // == nn + 1
+    ///     for x in xx {
+    ///         for j in 0..npoint {
+    ///             let psi_j = interp.psi(j, *x).unwrap();
+    ///             let mut ell_j = 1.0;
+    ///             for k in 0..npoint {
+    ///                 if j != k {
+    ///                     ell_j *= (x - xx[k]) / (xx[j] - xx[k]);
+    ///                 }
+    ///             }
+    ///             approx_eq(psi_j, ell_j, 1e-15);
+    ///         }
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn psi(&self, j: usize, x: f64) -> Result<f64, StrError> {
         if j > self.nn {
             return Err("j must be in 0 ≤ j ≤ N");

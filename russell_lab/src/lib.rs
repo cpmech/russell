@@ -33,7 +33,7 @@
 //! * Matrix-vector multiplication ([mat_vec_mul()])
 //! * Solution of dense linear systems with symmetric ([mat_cholesky()]) or non-symmetric ([solve_lin_sys()]) coefficient matrices
 //! * Reading writing files ([read_table()]) , linspace ([NumVector::linspace()]), grid generators ([generate2d()]), [generate3d()]), [Stopwatch] and more
-//! * Checking results, comparing float point numbers, and verifying the correctness of derivatives; see [crate::check]
+//! * Checking results, comparing floating point numbers, and verifying the correctness of derivatives; see [crate::check]
 //!
 //! ## Complex numbers
 //!

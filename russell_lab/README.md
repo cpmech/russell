@@ -63,7 +63,7 @@ There are many functions for linear algebra, such as (for Real and Complex types
 * Matrix-vector multiplication, and more
 * Solution of dense linear systems with symmetric or non-symmetric coefficient matrices, and more
 * Reading writing files, `linspace`, grid generators, Stopwatch, linear fitting, and more
-* Checking results, comparing float point numbers, and verifying the correctness of derivatives; see `russell_lab::check`
+* Checking results, comparing floating point numbers, and verifying the correctness of derivatives; see `russell_lab::check`
 
 ### Documentation
 

@@ -816,7 +816,6 @@ impl InterpLagrange {
     ///     let mut interp = InterpLagrange::new(degree, None)?;
     ///     interp.calc_dd1_matrix();
     ///     let dd1 = interp.get_dd1()?;
-    ///     #[rustfmt::skip]
     ///     let correct = [
     ///         [-1.5,  2.0, -0.5],
     ///         [-0.5,  0.0,  0.5],

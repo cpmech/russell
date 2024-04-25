@@ -26,6 +26,7 @@
   - [Installation on macOS](#installation-on-macos)
   - [Number of threads](#number-of-threads)
 - [Examples](#examples)
+  - [(lab) Numerical integration (quadrature)](#lab-numerical-integration-quadrature)
   - [(lab) Solution of a 1D PDE using spectral collocation](#lab-solution-of-a-1d-pde-using-spectral-collocation)
   - [(lab) Matrix visualization](#lab-matrix-visualization)
   - [(lab) Singular value decomposition](#lab-singular-value-decomposition)
@@ -212,6 +213,28 @@ use num_complex::Complex64;
 ```
 
 This line will bring `Complex64` to the scope. For convenience the (russell_lab) macro `cpx!` may be used to allocate complex numbers.
+
+
+
+### (lab) Numerical integration (quadrature)
+
+The code below approximates the area of a semicircle of unitary radius.
+
+```rust
+use russell_lab::math::PI;
+use russell_lab::{approx_eq, Quadrature, StrError};
+
+fn main() -> Result<(), StrError> {
+    let mut quad = Quadrature::new();
+    let args = &mut 0;
+    let (a, b) = (-1.0, 1.0);
+    let (area, stats) = quad.integrate(a, b, args, |x, _| Ok(f64::sqrt(1.0 - x * x)))?;
+    println!("\narea = {}", area);
+    println!("\n{}", stats);
+    approx_eq(area, PI / 2.0, 1e-13);
+    Ok(())
+}
+```
 
 
 

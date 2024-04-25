@@ -63,6 +63,23 @@ impl MinSolver {
     ///
     /// * `xo` -- is the coordinate of the minimum
     /// * `stats` -- some statistics regarding the computations
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::{approx_eq, MinSolver, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let args = &mut 0;
+    ///     let solver = MinSolver::new();
+    ///     let (xa, xb) = (-4.0, 4.0);
+    ///     let (xo, stats) = solver.brent(xa, xb, args, |x, _| Ok(4.0 + f64::powi(1.0 - x, 2)))?;
+    ///     println!("\noptimal = {:?}", xo);
+    ///     println!("\n{}", stats);
+    ///     approx_eq(xo, 1.0, 1e-7);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn brent<F, A>(&self, xa: f64, xb: f64, args: &mut A, mut f: F) -> Result<(f64, Stats), StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,

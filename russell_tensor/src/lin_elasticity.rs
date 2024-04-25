@@ -26,7 +26,7 @@ impl LinElasticity {
     /// * `plane_stress` -- if `two_dim == 2`, specifies a Plane-Stress problem.
     ///                     Note: if true, this flag automatically turns `two_dim` to true.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::LinElasticity;
@@ -103,7 +103,7 @@ impl LinElasticity {
 
     /// Sets the Young's modulus and Poisson's coefficient
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::LinElasticity;
@@ -163,7 +163,7 @@ impl LinElasticity {
     /// σ = D : ε
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::LinElasticity;
@@ -202,7 +202,7 @@ impl LinElasticity {
     ///
     /// * `strain` -- the strain tensor ε
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, LinElasticity, StrError, Tensor2};
@@ -301,7 +301,7 @@ impl LinElasticity {
     ///
     /// * Returns the `εzz` (out-of-plane) component
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, LinElasticity, StrError, Tensor2};

@@ -280,7 +280,7 @@ impl InterpLagrange {
     /// * `nn` -- the polynomial degree `N`; thus the number of grid nodes will be `N + 1`.
     ///   **Note:** `nn` must be in `[1, 2048]`
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::algo::InterpLagrange;
@@ -427,7 +427,7 @@ impl InterpLagrange {
     /// * `j` -- index of the Xⱼ point; must satisfy 0 ≤ j ≤ N
     /// * `x` -- the coordinate to evaluate the polynomial; must satisfy -1 ≤ j ≤ 1
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::algo::InterpLagrange;
@@ -882,7 +882,7 @@ impl InterpLagrange {
     ///
     /// See Eqs 9 and 13 in Reference #3.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::algo::InterpLagrange;

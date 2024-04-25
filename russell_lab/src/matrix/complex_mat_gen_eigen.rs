@@ -61,7 +61,7 @@ extern "C" {
 /// * `a` -- (m,m) general matrix (will be modified)
 /// * `b` -- (m,m) general matrix (will be modified)
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use num_complex::Complex64;
@@ -213,7 +213,7 @@ pub fn complex_mat_gen_eigen(
 ///
 /// * The matrix `a` will be modified
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use num_complex::Complex64;

@@ -4,7 +4,7 @@ use crate::StrError;
 
 /// Zips two arrays (real and imag) to make a new ComplexMatrix
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::*;

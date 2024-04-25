@@ -16,7 +16,7 @@ extern "C" {
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d7/db2/zaxpy_8f.html>
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{cpx, complex_vec_update, ComplexVector, StrError};

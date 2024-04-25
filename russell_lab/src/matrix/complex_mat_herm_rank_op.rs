@@ -53,7 +53,7 @@ extern "C" {
 /// * `upper` -- whether the upper triangle of `a` must be considered instead of the lower triangle
 /// * `second_case` -- indicates the second case illustrated above
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use num_complex::Complex64;

@@ -7,7 +7,7 @@ use crate::{add_arrays, StrError};
 /// c := α⋅a + β⋅b
 /// ```
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{mat_add, Matrix, StrError};

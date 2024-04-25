@@ -32,7 +32,7 @@ extern "C" {
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d7/d2b/dgemm_8f.html>
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{mat_t_mat_mul, Matrix, StrError};

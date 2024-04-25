@@ -15,7 +15,7 @@ use std::fmt::{self, Write};
 ///
 /// bin_i corresponds to station_i <= x < station_(i+1)
 ///
-/// # Example
+/// # Examples
 /// ```
 /// use russell_stat::{Histogram, StrError};
 ///

@@ -15,7 +15,7 @@ extern "C" {
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d9/dcd/daxpy_8f.html>
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{mat_update, Matrix, StrError};

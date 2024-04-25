@@ -2,7 +2,7 @@ use russell_lab::Matrix;
 
 /// Defines a trait to handle 2D arrays
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::Matrix;

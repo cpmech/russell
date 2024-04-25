@@ -8,7 +8,7 @@ use num_complex::Complex64;
 /// w := α⋅u + β⋅v
 /// ```
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use num_complex::Complex64;

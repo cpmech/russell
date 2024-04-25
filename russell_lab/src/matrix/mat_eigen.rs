@@ -70,7 +70,7 @@ extern "C" {
 /// err := a⋅v - v⋅λ
 /// ```
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::*;
@@ -215,7 +215,7 @@ pub fn mat_eigen(
 ///
 /// * The matrix `a` will be modified
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use num_complex::Complex64;

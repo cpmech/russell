@@ -5,7 +5,7 @@ use num_complex::Complex64;
 
 /// Zips two arrays (real and imag) to make a new ComplexMatrix
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::*;

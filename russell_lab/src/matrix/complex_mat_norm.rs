@@ -31,7 +31,7 @@ extern "C" {
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::*;

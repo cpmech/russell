@@ -1,6 +1,6 @@
 /// Defines a trait to handle 1D arrays
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::AsArray1D;
@@ -131,7 +131,7 @@ where
 
 /// Defines a trait to handle 2D arrays
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::AsArray2D;

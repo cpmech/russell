@@ -169,7 +169,7 @@ where
 {
     /// Creates new (nrow x ncol) NumMatrix filled with zeros
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
@@ -191,7 +191,7 @@ where
 
     /// Creates new identity (square) matrix
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
@@ -218,7 +218,7 @@ where
 
     /// Creates new matrix completely filled with the same value
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
@@ -273,7 +273,7 @@ where
     /// * For variable-length rows, the number of columns is defined by the first row
     /// * The next rows must have at least the same number of columns as the first row
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
@@ -462,7 +462,7 @@ where
 
     /// Creates new diagonal matrix with given diagonal data
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
@@ -494,7 +494,7 @@ where
     ///
     /// * `full_path` -- may be a String, &str, or Path
     ///
-    /// # Example
+    /// # Examples
     ///
     /// The code below will read the following file:
     ///
@@ -601,7 +601,7 @@ where
 
     /// Returns the number of rows
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
@@ -615,7 +615,7 @@ where
 
     /// Returns the number of columns
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
@@ -629,7 +629,7 @@ where
 
     /// Returns the dimensions (nrow, ncol) of this matrix
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
@@ -647,7 +647,7 @@ where
     /// u[i][j] := value
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
@@ -681,7 +681,7 @@ where
     /// COL-MAJOR IS ADOPTED HERE
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
@@ -712,7 +712,7 @@ where
     /// COL-MAJOR IS ADOPTED HERE
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
@@ -728,7 +728,7 @@ where
 
     /// Returns the (i,j) component
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
@@ -751,7 +751,7 @@ where
 
     /// Change the (i,j) component
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
@@ -783,7 +783,7 @@ where
     /// aᵢⱼ += value
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
@@ -815,7 +815,7 @@ where
     /// aᵢⱼ *= value
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
@@ -843,7 +843,7 @@ where
 
     /// Extracts a row given its index
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
@@ -873,7 +873,7 @@ where
 
     /// Extracts a column given its index
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;
@@ -908,7 +908,7 @@ where
 {
     /// Generates a string representation of the NumMatrix
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumMatrix;

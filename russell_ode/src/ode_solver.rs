@@ -62,7 +62,7 @@ use russell_sparse::CooMatrix;
 ///    Stiff and Differential-Algebraic Problems. Second Revised Edition.
 ///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{vec_approx_eq, StrError, Vector};

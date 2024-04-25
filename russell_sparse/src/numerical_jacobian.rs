@@ -45,7 +45,7 @@ use russell_lab::Vector;
 /// * `function` -- The `f(f: &mut Vector, x: f64, y: &Vector, args: &mut A)` function
 /// * `args` -- Extra arguments for the `f` function
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::mat_approx_eq;

@@ -6,7 +6,7 @@ use crate::StrError;
 /// **Note:** (from Rust's internals) There is no need to handle NaN separately because,
 /// if an element is NaN, the function is_finite() returns false, exactly as desired.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{vec_all_finite, Vector, StrError};

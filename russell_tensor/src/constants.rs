@@ -371,7 +371,7 @@ pub const P_SYMDEV: [[f64; 9]; 9] = [
 /// └   ┘    └    ┘
 /// ```
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_tensor::M_TO_IJ;
@@ -411,7 +411,7 @@ pub const M_TO_IJ: [(usize, usize); 9] = [
 ///                 └    ┘    └   ┘
 /// ```
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_tensor::IJ_TO_M;
@@ -439,7 +439,7 @@ pub const IJ_TO_M: [[usize; 3]; 3] = [
 ///                 └    ┘    └   ┘
 /// ```
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_tensor::IJ_TO_M_SYM;
@@ -472,7 +472,7 @@ pub const IJ_TO_M_SYM: [[usize; 3]; 3] = [
 ///      8  0   8  1   8  2    8  3   8  4   8  5    8  6   8  7   8  8
 /// ```
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_tensor::MN_TO_IJKL;
@@ -511,7 +511,7 @@ pub const MN_TO_IJKL: [[(usize,usize,usize,usize); 9]; 9] = [
 ///      8  0   8  1   8  2    8  3   8  4   8  5    8  6   8  7   8  8
 /// ```
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_tensor::IJKL_TO_MN;
@@ -552,7 +552,7 @@ pub const IJKL_TO_MN: [[[[(usize, usize); 3]; 3]; 3]; 3] = [
 ///      8  0   8  1   8  2    8  3   8  4   8  5
 /// ```
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_tensor::IJKL_TO_MN_SYM;

@@ -22,7 +22,7 @@ impl VerifyLinSys {
     ///          (m,n)  (n)  (m)
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::{Matrix, Vector};

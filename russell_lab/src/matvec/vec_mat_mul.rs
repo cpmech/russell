@@ -42,7 +42,7 @@ extern "C" {
 /// The length of vector `u` must equal the number of rows of matrix `a` and
 /// the length of vector `v` must equal the number of columns of matrix `a`.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{vec_mat_mul, Matrix, Vector, StrError};

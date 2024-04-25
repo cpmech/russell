@@ -10,7 +10,7 @@ use russell_lab::{mat_mat_mul, mat_vec_mul, mat_vec_mul_update, vec_inner, vec_m
 ///
 /// Note: this function works with mixed symmetry types.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::approx_eq;
@@ -51,7 +51,7 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 /// Even if `A` and `B` are symmetric, the result `C` may not be symmetric.
 /// Thus, `C` must be a General tensor.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_tensor::{t2_dot_t2, Mandel, Tensor2, StrError};
@@ -135,7 +135,7 @@ pub fn t2_dot_t2(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) -> Result<(), Str
 /// v = α a · u
 /// ```
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::Vector;
@@ -186,7 +186,7 @@ pub fn t2_dot_vec(v: &mut Vector, alpha: f64, a: &Tensor2, u: &Vector) -> Result
 /// v = α u · a
 /// ```
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::Vector;
@@ -245,7 +245,7 @@ pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) -> Result
 ///   make sure that the you expect `u ⊗ v` to be symmetric when passing
 ///   a symmetric tensor `T`.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::Vector;
@@ -319,7 +319,7 @@ pub fn vec_dyad_vec(tt: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Res
 ///
 /// Note: this function does NOT work with mixed symmetry types.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_tensor::{t2_dyad_t2, Mandel, Tensor2, Tensor4, StrError};
@@ -1299,7 +1299,7 @@ pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Result
 ///
 /// Note: this function does NOT work with mixed symmetry types.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_tensor::{t4_ddot_t2, Mandel, Tensor2, Tensor4, StrError};
@@ -1350,7 +1350,7 @@ pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) -> Res
 ///
 /// Note: this function does NOT work with mixed symmetry types.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_tensor::{t4_ddot_t2_update, Mandel, Tensor2, Tensor4, StrError};
@@ -1405,7 +1405,7 @@ pub fn t4_ddot_t2_update(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2,
 ///
 /// Note: this function does NOT work with mixed symmetry types.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_tensor::{t2_ddot_t4, Mandel, Tensor2, Tensor4, StrError};
@@ -1456,7 +1456,7 @@ pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) -> Res
 ///
 /// Note: this function does NOT work with mixed symmetry types.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::approx_eq;

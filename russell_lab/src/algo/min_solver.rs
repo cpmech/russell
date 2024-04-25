@@ -64,7 +64,7 @@ impl MinSolver {
     /// * `xo` -- is the coordinate of the minimum
     /// * `stats` -- some statistics regarding the computations
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::{approx_eq, MinSolver, StrError};

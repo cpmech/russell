@@ -34,7 +34,7 @@ extern "C" {
 /// ‖u‖_1 := sum_i |uᵢ|
 /// ```
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use num_complex::Complex64;

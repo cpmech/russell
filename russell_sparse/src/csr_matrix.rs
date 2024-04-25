@@ -8,7 +8,7 @@ use std::ops::{AddAssign, MulAssign};
 
 /// Holds the arrays needed for a CSR (compressed sparse row) matrix
 ///
-/// # Example
+/// # Examples
 ///
 /// The sparse matrix is (dots indicate zero values);
 ///
@@ -723,7 +723,7 @@ where
     ///
     /// Returns `(nrow, ncol, nnz, symmetry)`
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_sparse::prelude::*;

@@ -8,7 +8,7 @@ use std::ops::{AddAssign, MulAssign};
 
 /// Holds the arrays needed for a CSC (compressed sparse column) matrix
 ///
-/// # Example (from UMFPACK QuickStart.pdf)
+/// # Examples (from UMFPACK QuickStart.pdf)
 ///
 /// The sparse matrix is (dots indicate zero values);
 ///
@@ -749,7 +749,7 @@ where
     ///
     /// Returns `(nrow, ncol, nnz, symmetry)`
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_sparse::prelude::*;

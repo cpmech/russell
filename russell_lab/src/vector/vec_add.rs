@@ -7,7 +7,7 @@ use crate::{add_arrays, StrError};
 /// w := α⋅u + β⋅v
 /// ```
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{vec_add, Vector, StrError};

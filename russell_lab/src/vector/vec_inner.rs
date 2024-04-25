@@ -19,7 +19,7 @@ extern "C" {
 ///
 /// The lengths of both vectors may be different; the smallest length will be selected.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{vec_inner, Vector};

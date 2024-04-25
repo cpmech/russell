@@ -74,7 +74,7 @@ impl Tensor2 {
     ///
     /// * `mandel` -- the [Mandel] representation
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, StrError, Tensor2};
@@ -178,7 +178,7 @@ impl Tensor2 {
     /// * If 2D, `data[1][2]` and `data[0][2]` must be equal to zero
     ///
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, StrError, Tensor2, SQRT_2};
@@ -284,7 +284,7 @@ impl Tensor2 {
     /// * If symmetric, the off-diagonal components must equal each other
     /// * If 2D, `data[1][2]` and `data[0][2]` must be equal to zero
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, StrError, Tensor2, SQRT_2};
@@ -365,7 +365,7 @@ impl Tensor2 {
 
     /// Returns a new identity tensor
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, Tensor2};
@@ -397,7 +397,7 @@ impl Tensor2 {
 
     /// Returns the (i,j) component (standard; not Mandel)
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -451,7 +451,7 @@ impl Tensor2 {
 
     /// Returns a matrix (standard components; not Mandel) representing this tensor
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, Tensor2, StrError};
@@ -502,7 +502,7 @@ impl Tensor2 {
     ///
     /// This function works only if the Tensor is Symmetric2D
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, Tensor2, StrError};
@@ -537,7 +537,7 @@ impl Tensor2 {
 
     /// Returns a General Tensor2 regardless of this tensor's Mandel type
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, Tensor2, StrError, SQRT_2};
@@ -614,7 +614,7 @@ impl Tensor2 {
     /// The tensor must be symmetric and (i,j) must correspond to the possible
     /// combination due to the space dimension, otherwise a panic may occur.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, Tensor2, StrError};
@@ -676,7 +676,7 @@ impl Tensor2 {
     ///
     /// This function will panic also if i > j (lower-diagonal)
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, Tensor2, StrError};
@@ -714,7 +714,7 @@ impl Tensor2 {
 
     /// Sets this tensor equal to another one
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, Tensor2, StrError};
@@ -767,7 +767,7 @@ impl Tensor2 {
 
     /// Adds another tensor to this one
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, Tensor2, StrError};
@@ -821,7 +821,7 @@ impl Tensor2 {
 
     /// Calculates the determinant
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -873,7 +873,7 @@ impl Tensor2 {
     ///
     /// * `ai` -- a Tensor2 with matching dimensions to hold the transpose tensor
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::vec_approx_eq;
@@ -937,7 +937,7 @@ impl Tensor2 {
     /// * If the determinant is zero, the inverse is not computed and returns `None`
     /// * Otherwise, the inverse is computed and returns the determinant
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::{approx_eq, mat_approx_eq, mat_mat_mul, Matrix};
@@ -1036,7 +1036,7 @@ impl Tensor2 {
     ///
     /// * `a2` -- a Tensor2 with matching dimensions to hold the squared tensor
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::vec_approx_eq;
@@ -1137,7 +1137,7 @@ impl Tensor2 {
     /// tr(σ) = σ:I = Σᵢ σᵢᵢ
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -1165,7 +1165,7 @@ impl Tensor2 {
     /// norm(σ) = √(σ:σ)
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -1203,7 +1203,7 @@ impl Tensor2 {
     /// dev(σ) = σ - ⅓ tr(σ) I
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -1268,7 +1268,7 @@ impl Tensor2 {
     /// r = ‖s‖ =
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -1321,7 +1321,7 @@ impl Tensor2 {
     /// det( σ - ⅓ tr(σ) I )
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -1383,7 +1383,7 @@ impl Tensor2 {
     /// I1 = trace(σ)
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -1410,7 +1410,7 @@ impl Tensor2 {
     /// I2 = ½ (trace(σ))² - ½ trace(σ·σ)
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -1445,7 +1445,7 @@ impl Tensor2 {
     /// I3 = determinant(σ)
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -1488,7 +1488,7 @@ impl Tensor2 {
     ///
     /// where `r = ‖s‖` is the radius on the octahedral plane.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -1533,7 +1533,7 @@ impl Tensor2 {
     /// J3 = IIIₛ = determinant(s)
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -1564,7 +1564,7 @@ impl Tensor2 {
     ///
     /// where `d = trace(σ) √3` is the distance from the octahedral plane to the origin.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -1596,7 +1596,7 @@ impl Tensor2 {
     ///
     /// where `r = ‖s‖` is the radius on the octahedral plane.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -1623,7 +1623,7 @@ impl Tensor2 {
     /// εv = trace(ε) = d √3
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -1650,7 +1650,7 @@ impl Tensor2 {
     /// εd = norm(dev(ε)) × √2/√3 = r √2/√3
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -1683,7 +1683,7 @@ impl Tensor2 {
     ///
     /// If `J2 > TOL_J2`, returns `l`. Otherwise, returns None.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;

@@ -17,7 +17,7 @@ pub struct Statistics {
 
 /// Calculates basic statistics of a dataset
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_stat::statistics;

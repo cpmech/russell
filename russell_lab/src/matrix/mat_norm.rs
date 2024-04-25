@@ -23,7 +23,7 @@ extern "C" {
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/dc/d09/dlange_8f.html>
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::*;

@@ -18,7 +18,7 @@ use std::ops::{Index, IndexMut};
 ///   operate on Vectors and Matrices; e.g., `vec_add`, `vec_inner`, `vec_outer`,
 ///   `vec_copy`, `mat_vec_mul`, and others.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{vec_add, NumVector, StrError};
@@ -102,7 +102,7 @@ where
 {
     /// Creates a new (zeroed) vector
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumVector;
@@ -122,7 +122,7 @@ where
 
     /// Creates new vector completely filled with the same value
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumVector;
@@ -140,7 +140,7 @@ where
 
     /// Creates a vector from data
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumVector;
@@ -226,7 +226,7 @@ where
     ///
     /// This function may panic if `count` cannot be cast as the number type of `start` and `stop`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::{NumVector, StrError};
@@ -274,7 +274,7 @@ where
     ///
     /// This function may panic if `count` cannot be cast as the number type of `start` and `stop`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::{NumVector, StrError};
@@ -321,7 +321,7 @@ where
 
     /// Returns the dimension (size) of this vector
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumVector;
@@ -339,7 +339,7 @@ where
     /// u[i] := value
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumVector;
@@ -357,7 +357,7 @@ where
 
     /// Returns an access to the underlying data
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumVector;
@@ -371,7 +371,7 @@ where
 
     /// Returns a mutable access to the underlying data
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumVector;
@@ -387,7 +387,7 @@ where
 
     /// Returns the i-th component
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumVector;
@@ -406,7 +406,7 @@ where
 
     /// Change the i-th component
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumVector;
@@ -434,7 +434,7 @@ where
     /// u := map(function(ui))
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumVector;
@@ -462,7 +462,7 @@ where
     /// u := map(function(i, ui))
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumVector;
@@ -486,7 +486,7 @@ where
 
     /// Returns a mapped version of this vector
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use russell_lab::NumVector;
@@ -528,7 +528,7 @@ where
 {
     /// Generates a string representation of the NumVector
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::NumVector;
@@ -584,7 +584,7 @@ where
 
 /// Allows to access NumVector components using indices
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::NumVector;
@@ -610,7 +610,7 @@ where
 
 /// Allows to change NumVector components using indices
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::NumVector;
@@ -638,7 +638,7 @@ where
 
 /// Allows to iterate over NumVector components (move version)
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::NumVector;
@@ -660,7 +660,7 @@ where
 
 /// Allows to iterate over NumVector components (borrow version)
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::NumVector;
@@ -684,7 +684,7 @@ where
 
 /// Allows to iterate over NumVector components (mutable version)
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::NumVector;

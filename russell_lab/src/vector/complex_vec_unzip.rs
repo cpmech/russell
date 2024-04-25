@@ -4,7 +4,7 @@ use crate::Vector;
 
 /// Zips two arrays (real and imag) to make a new ComplexVector
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::*;

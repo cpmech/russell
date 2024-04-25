@@ -50,7 +50,7 @@ extern "C" {
 /// * The matrix `a` will be modified
 /// * The computed eigenvectors are normalized to have Euclidean norm equal to 1 and largest component real
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use num_complex::Complex64;
@@ -178,7 +178,7 @@ pub fn complex_mat_eigen(l: &mut ComplexVector, v: &mut ComplexMatrix, a: &mut C
 /// * The matrix `a` will be modified
 /// * The computed eigenvectors are normalized to have Euclidean norm equal to 1 and largest component real
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use num_complex::Complex64;

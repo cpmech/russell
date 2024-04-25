@@ -17,7 +17,7 @@ extern "C" {
 ///
 /// See also <https://www.netlib.org/lapack/explore-html/d2/d74/zscal_8f.html>
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use num_complex::Complex64;

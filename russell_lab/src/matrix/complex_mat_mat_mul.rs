@@ -32,7 +32,7 @@ extern "C" {
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d7/d76/zgemm_8f.html>
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use num_complex::Complex64;

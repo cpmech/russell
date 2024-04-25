@@ -16,7 +16,7 @@ extern "C" {
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d6/d53/zcopy_8f.html>
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use num_complex::Complex64;

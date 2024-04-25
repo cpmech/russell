@@ -125,7 +125,7 @@ impl Tensor4 {
     ///
     /// * `mandel` -- the [Mandel] representation
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, StrError, Tensor4};
@@ -182,7 +182,7 @@ impl Tensor4 {
     ///   respect to an orthonormal Cartesian basis
     /// * `mandel` -- the [Mandel] representation
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, Tensor4, StrError};
@@ -322,7 +322,7 @@ impl Tensor4 {
     ///   even if it corresponds to a minor-symmetric tensor.
     /// * `mandel` -- the [Mandel] representation
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, MN_TO_IJKL, Tensor4, StrError};
@@ -452,7 +452,7 @@ impl Tensor4 {
 
     /// Returns the (i,j,k,l) component (standard; not Mandel)
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -575,7 +575,7 @@ impl Tensor4 {
 
     /// Returns a nested array (standard components; not Mandel) representing this tensor
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
@@ -634,7 +634,7 @@ impl Tensor4 {
 
     /// Returns a matrix (standard components; not Mandel) representing this tensor
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, MN_TO_IJKL, Tensor4, StrError};
@@ -683,7 +683,7 @@ impl Tensor4 {
     /// The tensor must be symmetric and (i,j) must correspond to the possible
     /// combination due to the space dimension, otherwise a panic may occur.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_tensor::{Mandel, MN_TO_IJKL, Tensor4};
@@ -726,7 +726,7 @@ impl Tensor4 {
 
     /// Sets this tensor equal to another one
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::mat_approx_eq;

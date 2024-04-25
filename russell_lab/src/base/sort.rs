@@ -1,6 +1,16 @@
 use std::mem;
 
 /// Sorts 2 values in ascending order
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::sort2;
+///
+/// let mut numbers = (3.0, 2.0);
+/// sort2(&mut numbers);
+/// assert_eq!(numbers, (2.0, 3.0));
+/// ```
 pub fn sort2<T>(x: &mut (T, T))
 where
     T: PartialOrd,
@@ -11,6 +21,16 @@ where
 }
 
 /// Sorts 3 values in ascending order
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::sort3;
+///
+/// let mut numbers = (1.0, 3.0, 2.0);
+/// sort3(&mut numbers);
+/// assert_eq!(numbers, (1.0, 2.0, 3.0));
+/// ```
 pub fn sort3<T>(x: &mut (T, T, T))
 where
     T: PartialOrd,
@@ -27,6 +47,16 @@ where
 }
 
 /// Sorts 4 values in ascending order
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::sort4;
+///
+/// let mut numbers = (1.0, 3.0, 2.0, 0.0);
+/// sort4(&mut numbers);
+/// assert_eq!(numbers, (0.0, 1.0, 2.0, 3.0));
+/// ```
 pub fn sort4<T>(x: &mut (T, T, T, T))
 where
     T: PartialOrd,

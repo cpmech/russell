@@ -1,6 +1,5 @@
 use super::ComplexVector;
-use crate::{complex_array_approx_eq, AsArray1D};
-use num_complex::Complex64;
+use crate::{complex_array_approx_eq, AsArray1D, Complex64};
 
 /// Panics if two complex vectors are not approximately equal to each other
 ///
@@ -15,8 +14,7 @@ use num_complex::Complex64;
 /// ## Accepts small error
 ///
 /// ```
-/// use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
-/// use num_complex::Complex64;
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let a = ComplexVector::from(&[cpx!(3.0000001, 2.0000001), cpx!(1.0, 2.0)]);
@@ -30,8 +28,7 @@ use num_complex::Complex64;
 /// ### Real part
 ///
 /// ```should_panic
-/// use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
-/// use num_complex::Complex64;
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let a = ComplexVector::from(&[cpx!(1.0, 3.0), cpx!(1.0, 2.0)]);
@@ -43,8 +40,7 @@ use num_complex::Complex64;
 /// ### Imaginary part
 ///
 /// ```should_panic
-/// use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
-/// use num_complex::Complex64;
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let a = ComplexVector::from(&[cpx!(1.0, 3.0), cpx!(1.0, 2.0)]);

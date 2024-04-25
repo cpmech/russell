@@ -19,7 +19,6 @@
 //! ### Check floating point numbers (complex)
 //!
 //! ```
-//! use num_complex::Complex64;
 //! use russell_lab::*;
 //!
 //! fn main() {
@@ -57,7 +56,6 @@
 //! ### Check vectors of floating point numbers (complex)
 //!
 //! ```rust
-//! use num_complex::Complex64;
 //! use russell_lab::*;
 //!
 //! fn main() {

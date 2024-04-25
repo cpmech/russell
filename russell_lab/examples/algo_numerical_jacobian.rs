@@ -1,6 +1,5 @@
 use russell_lab::math::PI;
-use russell_lab::{mat_approx_eq, mat_scale, num_jacobian};
-use russell_lab::{Matrix, StrError, Vector};
+use russell_lab::*;
 
 fn main() -> Result<(), StrError> {
     // Given the vector function:

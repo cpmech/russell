@@ -1,7 +1,5 @@
 use super::ComplexMatrix;
-use crate::{to_i32, CcBool, ComplexVector, StrError, C_FALSE, C_TRUE};
-use num_complex::Complex64;
-use num_traits::Zero;
+use crate::{cpx, to_i32, CcBool, Complex64, ComplexVector, StrError, C_FALSE, C_TRUE};
 
 extern "C" {
     // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices
@@ -64,7 +62,6 @@ extern "C" {
 /// # Examples
 ///
 /// ```
-/// use num_complex::Complex64;
 /// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
@@ -89,13 +86,11 @@ extern "C" {
 ///     println!("v =\n{:.6}", v);
 ///     // compare with reference
 ///     // (https://www.ibm.com/docs/en/essl/6.2)
-///     #[rustfmt::skip]
 ///     let alpha_ref = &[
 ///         cpx!( 15.863783, 41.115283),
 ///         cpx!(-12.917205, 19.973815),
 ///         cpx!(  3.215518, -4.912439),
 ///     ];
-///     #[rustfmt::skip]
 ///     let beta_ref = &[
 ///         cpx!(1.668461, 0.0),
 ///         cpx!(2.024212, 0.0),
@@ -130,8 +125,8 @@ pub fn complex_mat_gen_eigen(
     let ldv = m_i32;
     const EXTRA: i32 = 1;
     let lwork = 2 * m_i32 + EXTRA;
-    let mut u = vec![Complex64::zero(); ldu as usize];
-    let mut work = vec![Complex64::zero(); lwork as usize];
+    let mut u = vec![cpx!(0.0, 0.0); ldu as usize];
+    let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 8 * m];
     let mut info = 0;
     unsafe {
@@ -216,7 +211,6 @@ pub fn complex_mat_gen_eigen(
 /// # Examples
 ///
 /// ```
-/// use num_complex::Complex64;
 /// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
@@ -285,7 +279,7 @@ pub fn complex_mat_gen_eigen_lr(
     let ldv = m_i32;
     const EXTRA: i32 = 1;
     let lwork = 2 * m_i32 + EXTRA;
-    let mut work = vec![Complex64::zero(); lwork as usize];
+    let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 8 * m];
     let mut info = 0;
     unsafe {
@@ -324,8 +318,7 @@ pub fn complex_mat_gen_eigen_lr(
 mod tests {
     use super::{complex_mat_gen_eigen, complex_mat_gen_eigen_lr};
     use crate::matrix::testing::complex_check_gen_eigen;
-    use crate::{complex_vec_approx_eq, cpx, ComplexMatrix, ComplexVector};
-    use num_complex::Complex64;
+    use crate::{complex_vec_approx_eq, cpx, Complex64, ComplexMatrix, ComplexVector};
 
     #[test]
     fn complex_mat_gen_eigen_captures_errors() {

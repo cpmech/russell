@@ -1,4 +1,4 @@
-use russell_lab::{mat_write_vismatrix, Matrix, StrError};
+use russell_lab::*;
 
 // After generating the "dot-smat" file, run the following command:
 //

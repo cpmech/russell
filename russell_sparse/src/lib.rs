@@ -19,7 +19,7 @@
 //! For convenience, this crate defines the following type aliases for Real and Complex matrices (with double precision):
 //!
 //! * [CooMatrix], [CscMatrix], [CsrMatrix], [SparseMatrix] -- For real numbers represented by `f64`
-//! * [ComplexCooMatrix], [ComplexCscMatrix], [ComplexCsrMatrix], [ComplexSparseMatrix] -- For complex numbers represented by [num_complex::Complex64]
+//! * [ComplexCooMatrix], [ComplexCscMatrix], [ComplexCsrMatrix], [ComplexSparseMatrix] -- For complex numbers represented by [russell_lab::Complex64]
 //!
 //! The COO matrix is the best when we need to update the values of the matrix because it has easy access to the triples (i, j, aij). For instance, the repetitive access is the primary use case for codes based on the finite element method (FEM) for approximating partial differential equations. Moreover, the COO matrix allows storing duplicate entries; for example, the triple `(0, 0, 123.0)` can be stored as two triples `(0, 0, 100.0)` and `(0, 0, 23.0)`. Again, this is the primary need for FEM codes because of the so-called assembly process where elements add to the same positions in the "global stiffness" matrix. Nonetheless, the duplicate entries must be summed up at some stage for the linear solver (e.g., MUMPS, UMFPACK). These linear solvers also use the more memory-efficient storage formats CSC and CSR. The following is the default input for these solvers:
 //!
@@ -63,16 +63,6 @@
 //! This library also provides functions to read and write Matrix Market files containing (huge) sparse matrices that can be used in performance benchmarking or other studies. The [read_matrix_market()] function reads a Matrix Market file and returns a [CooMatrix]. To write a Matrix Market file, we can use [CscMatrix::write_matrix_market()] (and similar), which automatically converts COO to CSC or COO to CSR, also performing the sum of duplicates. The `write_matrix_market` can also writs an SMAT file (almost like the Matrix Market format) without the header and with zero-based indices. The SMAT file can be given to the fantastic [Vismatrix](https://github.com/cpmech/vismatrix) tool to visualize the sparse matrix structure and values interactively; see the example below.
 //!
 //! ![doc-example-vismatrix](https://raw.githubusercontent.com/cpmech/russell/main/russell_sparse/data/figures/doc-example-vismatrix.png)
-//!
-//! # Complex numbers
-//!
-//! **Note:** For the functions dealing with complex numbers, the following line must be added to all derived code:
-//!
-//! ```rust
-//! use num_complex::Complex64;
-//! ```
-//!
-//! This line will bring `Complex64` to the scope. For convenience the (russell_lab) macro `cpx!` may be used to allocate complex numbers.
 //!
 //! # Examples
 //!

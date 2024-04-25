@@ -207,14 +207,6 @@ See also:
 * [russell_stat/examples](https://github.com/cpmech/russell/tree/main/russell_stat/examples)
 * [russell_tensor/examples](https://github.com/cpmech/russell/tree/main/russell_tensor/examples)
 
-**Note:** For the functions dealing with complex numbers, the following line must be added to all derived code:
-
-```rust
-use num_complex::Complex64;
-```
-
-This line will bring `Complex64` to the scope. For convenience the (russell_lab) macro `cpx!` may be used to allocate complex numbers.
-
 
 
 ### (lab) Numerical integration (quadrature)

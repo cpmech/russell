@@ -1,6 +1,5 @@
 use super::ComplexMatrix;
-use crate::to_i32;
-use num_complex::Complex64;
+use crate::{to_i32, Complex64};
 
 extern "C" {
     // Scales a vector by a constant
@@ -20,7 +19,6 @@ extern "C" {
 /// # Examples
 ///
 /// ```
-/// use num_complex::Complex64;
 /// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
@@ -55,8 +53,7 @@ pub fn complex_mat_scale(a: &mut ComplexMatrix, alpha: Complex64) {
 #[cfg(test)]
 mod tests {
     use super::{complex_mat_scale, ComplexMatrix};
-    use crate::{complex_mat_approx_eq, cpx};
-    use num_complex::Complex64;
+    use crate::{complex_mat_approx_eq, cpx, Complex64};
 
     #[test]
     fn complex_mat_scale_works() {

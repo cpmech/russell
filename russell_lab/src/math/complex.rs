@@ -1,4 +1,4 @@
-use num_complex::Complex64;
+use crate::Complex64;
 
 /// Calculates the imaginary unit (i) raised to power of n
 ///
@@ -100,7 +100,7 @@ pub fn x_times_i_pow_n(x: f64, n: i32) -> Complex64 {
 mod tests {
     use super::{i_pow_n, x_times_i_pow_n};
     use crate::math::PI;
-    use num_complex::Complex64;
+    use crate::Complex64;
 
     #[test]
     fn i_pow_n_works() {

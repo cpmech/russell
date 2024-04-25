@@ -1,5 +1,4 @@
-use crate::NumVector;
-use num_complex::Complex64;
+use crate::{Complex64, NumVector};
 
 /// Defines an alias to NumVector with f64
 pub type Vector = NumVector<f64>;

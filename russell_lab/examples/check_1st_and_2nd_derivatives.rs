@@ -1,6 +1,4 @@
-use russell_lab::algo::NoArgs;
-use russell_lab::check::{deriv1_approx_eq, deriv2_approx_eq};
-use russell_lab::{StrError, Vector};
+use russell_lab::*;
 
 fn main() -> Result<(), StrError> {
     // f(x)

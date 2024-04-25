@@ -14,7 +14,6 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [TL;DR (Debian/Ubuntu/Linux)](#tldr-debianubuntulinux)
   - [Details](#details)
   - [Setting Cargo.toml up](#setting-cargotoml-up)
-- [Complex numbers](#complex-numbers)
 - [Examples](#examples)
   - [Running an example with Intel MKL](#running-an-example-with-intel-mkl)
   - [Sorting small tuples](#sorting-small-tuples)
@@ -124,18 +123,6 @@ Or, considering the optional _features_ ([see more about these here](https://git
 [dependencies]
 russell_lab = { version = "*", features = ["intel_mkl"] }
 ```
-
-
-
-## Complex numbers
-
-**Note:** For the functions dealing with complex numbers, the following line must be added to all derived code:
-
-```rust
-use num_complex::Complex64;
-```
-
-This line will bring `Complex64` to the scope. For convenience the (russell_lab) macro `cpx!` may be used to allocate complex numbers.
 
 
 

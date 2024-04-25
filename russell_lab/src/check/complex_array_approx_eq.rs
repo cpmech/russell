@@ -14,8 +14,7 @@ use num_traits::{Num, NumCast};
 /// ## Accepts small error
 ///
 /// ```
-/// use russell_lab::{complex_array_approx_eq, cpx};
-/// use num_complex::Complex64;
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let a = vec![cpx!(3.0000001, 2.0000001), cpx!(1.0, 2.0)];
@@ -29,8 +28,7 @@ use num_traits::{Num, NumCast};
 /// ### Real part
 ///
 /// ```should_panic
-/// use russell_lab::{complex_array_approx_eq, cpx};
-/// use num_complex::Complex64;
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let a = vec![cpx!(1.0, 3.0), cpx!(1.0, 2.0)];
@@ -42,8 +40,7 @@ use num_traits::{Num, NumCast};
 /// ### Imaginary part
 ///
 /// ```should_panic
-/// use russell_lab::{complex_array_approx_eq, cpx};
-/// use num_complex::Complex64;
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let a = vec![cpx!(1.0, 3.0), cpx!(1.0, 2.0)];
@@ -109,7 +106,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::complex_array_approx_eq;
-    use num_complex::Complex64;
+    use crate::Complex64;
 
     #[test]
     #[should_panic(expected = "NaN found in the first vector (real)")]

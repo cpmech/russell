@@ -1,6 +1,6 @@
 use plotpy::{Curve, Plot};
 use russell_lab::math::{bessel_j0, bessel_j1, bessel_jn, GOLDEN_RATIO};
-use russell_lab::{StrError, Vector};
+use russell_lab::*;
 
 const OUT_DIR: &str = "/tmp/russell_lab/";
 

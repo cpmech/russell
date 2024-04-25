@@ -1,7 +1,6 @@
 use crate::matrix::ComplexMatrix;
 use crate::vector::ComplexVector;
-use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_NO_TRANS};
-use num_complex::Complex64;
+use crate::{to_i32, Complex64, StrError, CBLAS_COL_MAJOR, CBLAS_NO_TRANS};
 
 extern "C" {
     // Performs one of the matrix-vector multiplication
@@ -39,7 +38,6 @@ extern "C" {
 /// # Examples
 ///
 /// ```
-/// use num_complex::Complex64;
 /// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
@@ -109,9 +107,8 @@ pub fn complex_mat_vec_mul(
 
 #[cfg(test)]
 mod tests {
-    use super::{complex_mat_vec_mul, ComplexMatrix, ComplexVector};
-    use crate::{complex_vec_approx_eq, cpx};
-    use num_complex::Complex64;
+    use super::complex_mat_vec_mul;
+    use crate::{complex_vec_approx_eq, cpx, Complex64, ComplexMatrix, ComplexVector};
 
     #[test]
     fn complex_mat_vec_mul_fails_on_wrong_dims() {

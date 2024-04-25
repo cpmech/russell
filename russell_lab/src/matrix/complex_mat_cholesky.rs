@@ -1,6 +1,5 @@
 use super::ComplexMatrix;
-use crate::{to_i32, CcBool, StrError, C_FALSE, C_TRUE};
-use num_complex::Complex64;
+use crate::{to_i32, CcBool, Complex64, StrError, C_FALSE, C_TRUE};
 
 extern "C" {
     // Computes the Cholesky factorization of a complex Hermitian positive definite matrix A.
@@ -40,7 +39,6 @@ extern "C" {
 /// # Examples
 ///
 /// ```
-/// use num_complex::Complex64;
 /// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
@@ -113,10 +111,10 @@ pub fn complex_mat_cholesky(a: &mut ComplexMatrix, upper: bool) -> Result<(), St
 
 #[cfg(test)]
 mod tests {
-    use super::{complex_mat_cholesky, ComplexMatrix};
+    use super::complex_mat_cholesky;
+    use crate::math::SQRT_2;
     use crate::matrix::testing::check_hermitian_uplo;
-    use crate::{complex_mat_approx_eq, cpx, math};
-    use num_complex::Complex64;
+    use crate::{complex_mat_approx_eq, cpx, Complex64, ComplexMatrix};
 
     fn calc_l_times_lt(l_and_a: &ComplexMatrix) -> ComplexMatrix {
         let m = l_and_a.nrow();
@@ -279,14 +277,13 @@ mod tests {
         // Cholesky factorization with full matrix => lower
         let mut l_and_a = a_full.clone();
         complex_mat_cholesky(&mut l_and_a, false).unwrap(); // l := lower(l_and_a), a := upper(l_and_a)
-        let sqrt2 = math::SQRT_2;
         #[rustfmt::skip]
         let l_and_a_correct = ComplexMatrix::from(&[
-            [    sqrt2,                 a01,                a02,                     a03,   a04],
-            [1.0/sqrt2,  f64::sqrt(3.0/2.0),                a12,                     a13,   a14],
-            [1.0/sqrt2,  f64::sqrt(3.0/2.0),     f64::sqrt(7.0),                     a23,   a24],
-            [3.0/sqrt2, -1.0/f64::sqrt(6.0),                0.0,      f64::sqrt(7.0/3.0),   a34],
-            [    sqrt2,                 0.0, 4.0/f64::sqrt(7.0), -2.0*f64::sqrt(3.0/7.0), sqrt2],
+            [    SQRT_2,                 a01,                a02,                     a03,    a04],
+            [1.0/SQRT_2,  f64::sqrt(3.0/2.0),                a12,                     a13,    a14],
+            [1.0/SQRT_2,  f64::sqrt(3.0/2.0),     f64::sqrt(7.0),                     a23,    a24],
+            [3.0/SQRT_2, -1.0/f64::sqrt(6.0),                0.0,      f64::sqrt(7.0/3.0),    a34],
+            [    SQRT_2,                 0.0, 4.0/f64::sqrt(7.0), -2.0*f64::sqrt(3.0/7.0), SQRT_2],
         ]);
         complex_mat_approx_eq(&l_and_a, &l_and_a_correct, 1e-14);
         let l_lt = calc_l_times_lt(&l_and_a);

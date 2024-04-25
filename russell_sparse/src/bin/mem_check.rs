@@ -1,6 +1,4 @@
-use num_complex::Complex64;
-use russell_lab::vec_approx_eq;
-use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector, Vector};
+use russell_lab::{complex_vec_approx_eq, cpx, vec_approx_eq, Complex64, ComplexVector, Vector};
 use russell_sparse::prelude::*;
 use russell_sparse::Samples;
 

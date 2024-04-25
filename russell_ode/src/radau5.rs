@@ -1,8 +1,7 @@
 use crate::StrError;
 use crate::{OdeSolverTrait, Params, System, Workspace};
-use num_complex::Complex64;
 use russell_lab::math::SQRT_6;
-use russell_lab::{complex_vec_zip, cpx, format_fortran, vec_copy, ComplexVector, Vector};
+use russell_lab::{complex_vec_zip, cpx, format_fortran, vec_copy, Complex64, ComplexVector, Vector};
 use russell_sparse::{numerical_jacobian, ComplexCscMatrix, CscMatrix};
 use russell_sparse::{ComplexLinSolver, ComplexSparseMatrix, CooMatrix, Genie, LinSolver, SparseMatrix};
 use std::thread;

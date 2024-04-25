@@ -1,9 +1,8 @@
 use crate::{
     approx_eq, complex_mat_add, complex_mat_approx_eq, complex_mat_mat_mul, complex_mat_norm, complex_mat_zip,
-    complex_vec_zip, cpx, mat_add, mat_mat_mul, mat_norm, AsArray2D, ComplexMatrix, ComplexVector, Matrix, Norm,
-    Vector,
+    complex_vec_zip, cpx, mat_add, mat_mat_mul, mat_norm, AsArray2D, Complex64, ComplexMatrix, ComplexVector, Matrix,
+    Norm, Vector,
 };
-use num_complex::Complex64;
 
 /// Checks Hermitian matrix given by the lower and upper parts
 #[allow(dead_code)]
@@ -218,8 +217,7 @@ pub(crate) fn complex_check_gen_eigen<'a, T>(
 #[cfg(test)]
 mod tests {
     use super::{check_eigen, check_eigen_sym, complex_check_eigen};
-    use crate::{cpx, ComplexMatrix, ComplexVector, Matrix, Vector};
-    use num_complex::Complex64;
+    use crate::{cpx, Complex64, ComplexMatrix, ComplexVector, Matrix, Vector};
 
     #[test]
     #[should_panic]

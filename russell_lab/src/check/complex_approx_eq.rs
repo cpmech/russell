@@ -19,8 +19,7 @@ use num_traits::{Num, NumCast};
 /// ## Accepts small error
 ///
 /// ```
-/// use russell_lab::{complex_approx_eq, cpx};
-/// use num_complex::Complex64;
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let a = cpx!(3.0000001, 2.0000001);
@@ -34,8 +33,7 @@ use num_traits::{Num, NumCast};
 /// ### Real part
 ///
 /// ```should_panic
-/// use russell_lab::{complex_approx_eq, cpx};
-/// use num_complex::Complex64;
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let a = cpx!(1.0, 3.0);
@@ -47,8 +45,7 @@ use num_traits::{Num, NumCast};
 /// ### Imaginary part
 ///
 /// ```should_panic
-/// use russell_lab::{complex_approx_eq, cpx};
-/// use num_complex::Complex64;
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let a = cpx!(1.0, 3.0);

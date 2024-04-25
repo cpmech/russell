@@ -37,13 +37,18 @@
 //!
 //! ## Complex numbers
 //!
-//! **Note:** For the functions dealing with complex numbers, the following line must be added to all derived code:
+//! For convenience, this library re-exports:
+//!
+//! * `num_complex::Complex64` -- Needed for ComplexMatrix, ComplexVector and complex functions
+//! * `num_complex::ComplexFloat` -- Needed for the intrinsic Complex64 operators such as `abs()` an others
+//!
+//! When using the [crate::cpx!] macro, the `Complex64` type must be imported as well. For example:
 //!
 //! ```
-//! use num_complex::Complex64;
-//! ```
+//! use russell_lab::{cpx, Complex64};
 //!
-//! This line will bring [num_complex::Complex64] to the scope. For convenience the (russell_lab) macro [crate::cpx!] may be used to allocate complex numbers.
+//! println!("{}", cpx!(1.0, 2.0));
+//! ```
 //!
 //! # Examples
 //!
@@ -89,6 +94,10 @@
 
 /// Defines the error output as a static string
 pub type StrError = &'static str;
+
+/// Defines complex numbers with f64-real and f64-imaginary parts
+pub use num_complex::Complex64;
+pub use num_complex::ComplexFloat;
 
 pub mod algo;
 pub mod base;

@@ -16,7 +16,6 @@ local_libs = []
 intel_mkl = ["local_libs", "russell_lab/intel_mkl"]
 
 [dependencies]
-num-complex = { version = "0.4", features = ["serde"] }
 num-traits = "0.2"
 russell_lab = { path = "../russell_lab", version = "1.0.0" }
 structopt = "0.3"

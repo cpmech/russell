@@ -1,5 +1,5 @@
 use plotpy::{Curve, Plot};
-use russell_lab::{InterpLagrange, StrError, Vector};
+use russell_lab::*;
 
 // Runge equation
 // Reference:

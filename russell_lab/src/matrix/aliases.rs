@@ -1,5 +1,4 @@
-use crate::NumMatrix;
-use num_complex::Complex64;
+use crate::{Complex64, NumMatrix};
 
 /// Defines an alias to NumMatrix with f64
 pub type Matrix = NumMatrix<f64>;

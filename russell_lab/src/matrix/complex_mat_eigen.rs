@@ -1,7 +1,5 @@
 use super::ComplexMatrix;
-use crate::{to_i32, CcBool, ComplexVector, StrError, C_FALSE, C_TRUE};
-use num_complex::Complex64;
-use num_traits::Zero;
+use crate::{cpx, to_i32, CcBool, Complex64, ComplexVector, StrError, C_FALSE, C_TRUE};
 
 extern "C" {
     // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices
@@ -53,7 +51,6 @@ extern "C" {
 /// # Examples
 ///
 /// ```
-/// use num_complex::Complex64;
 /// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
@@ -110,8 +107,8 @@ pub fn complex_mat_eigen(l: &mut ComplexVector, v: &mut ComplexMatrix, a: &mut C
     let ldv = m_i32;
     const EXTRA: i32 = 1;
     let lwork = 2 * m_i32 + EXTRA;
-    let mut u = vec![Complex64::zero(); ldu as usize];
-    let mut work = vec![Complex64::zero(); lwork as usize];
+    let mut u = vec![cpx!(0.0, 0.0); ldu as usize];
+    let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 2 * m];
     let mut info = 0;
     unsafe {
@@ -181,7 +178,6 @@ pub fn complex_mat_eigen(l: &mut ComplexVector, v: &mut ComplexMatrix, a: &mut C
 /// # Examples
 ///
 /// ```
-/// use num_complex::Complex64;
 /// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
@@ -250,7 +246,7 @@ pub fn complex_mat_eigen_lr(
     let ldv = m_i32;
     const EXTRA: i32 = 1;
     let lwork = 2 * m_i32 + EXTRA;
-    let mut work = vec![Complex64::zero(); lwork as usize];
+    let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 2 * m];
     let mut info = 0;
     unsafe {
@@ -287,8 +283,7 @@ pub fn complex_mat_eigen_lr(
 mod tests {
     use super::{complex_mat_eigen, complex_mat_eigen_lr};
     use crate::matrix::testing::complex_check_eigen;
-    use crate::{complex_vec_approx_eq, cpx, ComplexMatrix, ComplexVector};
-    use num_complex::Complex64;
+    use crate::{complex_vec_approx_eq, cpx, Complex64, ComplexMatrix, ComplexVector};
 
     #[test]
     fn complex_mat_eigen_fails_on_non_square() {

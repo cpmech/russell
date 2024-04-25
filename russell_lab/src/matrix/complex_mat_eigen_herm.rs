@@ -1,7 +1,5 @@
 use super::ComplexMatrix;
-use crate::{to_i32, CcBool, StrError, Vector, C_FALSE, C_TRUE};
-use num_complex::Complex64;
-use num_traits::Zero;
+use crate::{cpx, to_i32, CcBool, Complex64, StrError, Vector, C_FALSE, C_TRUE};
 
 extern "C" {
     // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for HE matrices
@@ -53,7 +51,6 @@ extern "C" {
 /// # Examples
 ///
 /// ```
-/// use num_complex::Complex64;
 /// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
@@ -120,7 +117,7 @@ pub fn complex_mat_eigen_herm(l: &mut Vector, a: &mut ComplexMatrix, upper: bool
     let lda = m_i32;
     const EXTRA: i32 = 1;
     let lwork = 2 * m_i32 + EXTRA;
-    let mut work = vec![Complex64::zero(); lwork as usize];
+    let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 3 * m];
     let mut info = 0;
     unsafe {
@@ -155,8 +152,7 @@ mod tests {
     use crate::math::SQRT_2;
     use crate::matrix::testing::complex_check_eigen;
     use crate::{complex_mat_approx_eq, cpx, vec_approx_eq};
-    use crate::{AsArray2D, ComplexMatrix, ComplexVector, Vector};
-    use num_complex::Complex64;
+    use crate::{AsArray2D, Complex64, ComplexMatrix, ComplexVector, Vector};
 
     fn calc_eigen_lower<'a, T>(data: &'a T) -> (Vector, ComplexMatrix)
     where

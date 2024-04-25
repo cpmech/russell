@@ -1,6 +1,5 @@
 use super::ComplexMatrix;
-use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_CONJ_TRANS, CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_UPPER};
-use num_complex::Complex64;
+use crate::{to_i32, Complex64, StrError, CBLAS_COL_MAJOR, CBLAS_CONJ_TRANS, CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_UPPER};
 
 extern "C" {
     // Performs one of the hermitian rank k operations
@@ -56,7 +55,6 @@ extern "C" {
 /// # Examples
 ///
 /// ```
-/// use num_complex::Complex64;
 /// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
@@ -147,8 +145,7 @@ pub fn complex_mat_herm_rank_op(
 mod tests {
     use super::{complex_mat_herm_rank_op, ComplexMatrix};
     use crate::matrix::testing::check_hermitian_uplo;
-    use crate::{complex_mat_approx_eq, cpx};
-    use num_complex::Complex64;
+    use crate::{complex_mat_approx_eq, cpx, Complex64};
 
     #[test]
     fn complex_mat_herm_rank_op_fail_on_wrong_dims() {

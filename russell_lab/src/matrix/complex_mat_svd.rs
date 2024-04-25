@@ -1,8 +1,6 @@
 use crate::matrix::ComplexMatrix;
 use crate::vector::Vector;
-use crate::{to_i32, StrError, SVD_CODE_A};
-use num_complex::Complex64;
-use num_traits::Zero;
+use crate::{cpx, to_i32, Complex64, StrError, SVD_CODE_A};
 
 extern "C" {
     // Computes the singular value decomposition (SVD)
@@ -55,7 +53,6 @@ extern "C" {
 /// # Examples
 ///
 /// ```
-/// use num_complex::Complex64;
 /// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
@@ -117,7 +114,7 @@ pub fn complex_mat_svd(
     let ldvt = n_i32;
     const EXTRA: i32 = 1;
     let lwork = 2 * to_i32(min_mn) + to_i32(max_mn) + EXTRA;
-    let mut work = vec![Complex64::zero(); lwork as usize];
+    let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 5 * min_mn];
     let mut info = 0;
     unsafe {
@@ -154,8 +151,7 @@ pub fn complex_mat_svd(
 #[cfg(test)]
 mod tests {
     use super::complex_mat_svd;
-    use crate::{complex_mat_approx_eq, cpx, vec_approx_eq, ComplexMatrix, Vector};
-    use num_complex::Complex64;
+    use crate::{complex_mat_approx_eq, cpx, vec_approx_eq, Complex64, ComplexMatrix, Vector};
 
     #[test]
     fn complex_mat_svd_fails_on_wrong_dims() {

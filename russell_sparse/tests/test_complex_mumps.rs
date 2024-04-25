@@ -1,7 +1,5 @@
-use num_complex::Complex64;
 use russell_lab::*;
 use russell_sparse::prelude::*;
-use russell_sparse::StrError;
 use serial_test::serial;
 
 #[test]

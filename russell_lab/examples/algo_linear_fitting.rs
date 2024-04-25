@@ -1,6 +1,6 @@
 use plotpy::{Curve, Plot, RayEndpoint};
 use russell_lab::math::GOLDEN_RATIO;
-use russell_lab::{approx_eq, linear_fitting, StrError, Vector};
+use russell_lab::*;
 
 const OUT_DIR: &str = "/tmp/russell_lab/";
 

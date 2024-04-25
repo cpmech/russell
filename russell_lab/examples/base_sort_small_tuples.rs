@@ -1,5 +1,4 @@
-use russell_lab::base::{sort2, sort3, sort4};
-use russell_lab::StrError;
+use russell_lab::*;
 
 fn main() -> Result<(), StrError> {
     // sorting slices with the standard function

@@ -1,6 +1,5 @@
 use super::ComplexVector;
-use crate::to_i32;
-use num_complex::Complex64;
+use crate::{to_i32, Complex64};
 
 extern "C" {
     // Scales a vector by a constant
@@ -19,8 +18,7 @@ extern "C" {
 /// # Examples
 ///
 /// ```
-/// use num_complex::Complex64;
-/// use russell_lab::{complex_vec_scale, cpx, ComplexVector};
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let mut u = ComplexVector::from(&[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)]);
@@ -46,8 +44,7 @@ pub fn complex_vec_scale(v: &mut ComplexVector, alpha: Complex64) {
 #[cfg(test)]
 mod tests {
     use super::complex_vec_scale;
-    use crate::{complex_vec_approx_eq, cpx, ComplexVector};
-    use num_complex::Complex64;
+    use crate::{complex_vec_approx_eq, cpx, Complex64, ComplexVector};
 
     #[test]
     fn complex_vec_scale_works() {

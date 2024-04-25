@@ -1,6 +1,5 @@
 use super::ComplexMatrix;
-use crate::{add_arrays_complex, StrError};
-use num_complex::Complex64;
+use crate::{add_arrays_complex, Complex64, StrError};
 
 /// Performs the addition of two matrices
 ///
@@ -11,7 +10,6 @@ use num_complex::Complex64;
 /// # Examples
 ///
 /// ```
-/// use num_complex::Complex64;
 /// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
@@ -54,8 +52,7 @@ pub fn complex_mat_add(
 #[cfg(test)]
 mod tests {
     use super::{complex_mat_add, ComplexMatrix};
-    use crate::{complex_mat_approx_eq, cpx};
-    use num_complex::Complex64;
+    use crate::{complex_mat_approx_eq, cpx, Complex64};
 
     #[test]
     fn complex_mat_add_fails_on_wrong_dims() {

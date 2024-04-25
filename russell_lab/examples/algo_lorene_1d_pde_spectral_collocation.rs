@@ -1,7 +1,6 @@
 use plotpy::{Curve, Plot};
 use russell_lab::math::NAPIER;
-use russell_lab::{format_scientific, solve_lin_sys, vec_max_abs_diff};
-use russell_lab::{InterpLagrange, InterpParams, Matrix, StrError, Vector};
+use russell_lab::*;
 
 const PATH_KEY: &str = "/tmp/russell_lab/pde_1d_lorene_spectral_collocation";
 

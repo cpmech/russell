@@ -132,8 +132,7 @@ impl<'a> ComplexLinSolver<'a> {
 mod tests {
     use super::ComplexLinSolver;
     use crate::{ComplexSparseMatrix, Genie, Samples};
-    use num_complex::Complex64;
-    use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
+    use russell_lab::{complex_vec_approx_eq, cpx, Complex64, ComplexVector};
     use serial_test::serial;
 
     #[test]

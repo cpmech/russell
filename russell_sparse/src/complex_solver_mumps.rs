@@ -7,8 +7,7 @@ use super::{
 };
 use crate::auxiliary_and_constants::*;
 use crate::StrError;
-use num_complex::Complex64;
-use russell_lab::{complex_vec_copy, using_intel_mkl, ComplexVector, Stopwatch};
+use russell_lab::{complex_vec_copy, using_intel_mkl, Complex64, ComplexVector, Stopwatch};
 
 /// Opaque struct holding a C-pointer to InterfaceComplexMUMPS
 ///

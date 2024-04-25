@@ -1,5 +1,5 @@
 use crate::{NumCooMatrix, NumCscMatrix, NumCsrMatrix, NumSparseMatrix};
-use num_complex::Complex64;
+use russell_lab::Complex64;
 
 /// Defines an alias to NumCooMatrix with f64
 pub type CooMatrix = NumCooMatrix<f64>;

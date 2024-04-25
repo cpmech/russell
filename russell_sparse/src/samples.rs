@@ -1,7 +1,6 @@
 use crate::{ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix};
 use crate::{CooMatrix, CscMatrix, CsrMatrix, Sym};
-use num_complex::Complex64;
-use russell_lab::cpx;
+use russell_lab::{cpx, Complex64};
 
 const PLACEHOLDER: f64 = f64::MAX;
 
@@ -1509,10 +1508,9 @@ impl Samples {
 mod tests {
     use super::Samples;
     use crate::{NumCooMatrix, NumCscMatrix, NumCsrMatrix};
-    use num_complex::Complex64;
     use num_traits::{Num, NumCast};
     use russell_lab::{approx_eq, mat_approx_eq, mat_inverse, Matrix};
-    use russell_lab::{complex_approx_eq, complex_mat_approx_eq, complex_mat_inverse, cpx, ComplexMatrix};
+    use russell_lab::{complex_approx_eq, complex_mat_approx_eq, complex_mat_inverse, cpx, Complex64, ComplexMatrix};
     use serde::de::DeserializeOwned;
     use serde::Serialize;
     use std::ops::{AddAssign, MulAssign};

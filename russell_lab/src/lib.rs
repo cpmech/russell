@@ -107,13 +107,6 @@ pub use crate::matvec::*;
 pub use crate::vector::*;
 
 // run code from README file
+#[doc = include_str!("../README.md")]
 #[cfg(doctest)]
-mod test_readme {
-    macro_rules! external_doc_test {
-        ($x:expr) => {
-            #[doc = $x]
-            extern "C" {}
-        };
-    }
-    external_doc_test!(include_str!("../README.md"));
-}
+pub struct ReadmeDoctest;

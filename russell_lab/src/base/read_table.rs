@@ -20,6 +20,53 @@ use std::str::FromStr;
 /// * Lines starting with '#' or empty lines are ignored
 /// * The end of the row (line) may contain comments too and will cause to stop reading data,
 ///   thus, the '#' marker in a row (line) must be at the end of the line.
+///
+/// # Examples
+///
+/// The goal is to read the following file (`clay-data.txt`):
+///
+/// ```text
+/// # Fujinomori clay test results
+///
+///      sr        ea        er   # header
+/// 1.00000  -6.00000   0.10000   
+/// 2.00000   7.00000   0.20000   
+/// 3.00000   8.00000   0.20000   # << look at this line
+///
+/// # comments plus new lines are OK
+///
+/// 4.00000   9.00000   0.40000   
+/// 5.00000  10.00000   0.50000   
+///
+/// # bye
+/// ```
+///
+/// The code below illustrates how to do it.
+///
+/// Each column (`sr`, `ea`, `er`) is accessible via the `get` method of the [HashMap].
+///
+/// ```
+/// use russell_lab::{read_table, StrError};
+/// use std::collections::HashMap;
+/// use std::env;
+/// use std::path::PathBuf;
+///
+/// fn main() -> Result<(), StrError> {
+///     // get the asset's full path
+///     let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+///     let full_path = root.join("data/tables/clay-data.txt");
+///
+///     // read the file
+///     let labels = &["sr", "ea", "er"];
+///     let table: HashMap<String, Vec<f64>> = read_table(&full_path, Some(labels))?;
+///
+///     // check the columns
+///     assert_eq!(table.get("sr").unwrap(), &[1.0, 2.0, 3.0, 4.0, 5.0]);
+///     assert_eq!(table.get("ea").unwrap(), &[-6.0, 7.0, 8.0, 9.0, 10.0]);
+///     assert_eq!(table.get("er").unwrap(), &[0.1, 0.2, 0.2, 0.4, 0.5]);
+///     Ok(())
+/// }
+/// ```
 pub fn read_table<T, P>(full_path: &P, labels: Option<&[&str]>) -> Result<HashMap<String, Vec<T>>, StrError>
 where
     T: FromStr,
@@ -164,7 +211,7 @@ mod tests {
 
     #[test]
     fn read_table_works() {
-        let full_path = "./data/tables/ok2.txt";
+        let full_path = "./data/tables/clay-data.txt";
         let mut table: HashMap<String, Vec<f64>>;
         table = read_table(full_path, None).unwrap();
         let mut labels: Vec<_> = table.keys().collect();

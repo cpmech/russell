@@ -32,7 +32,7 @@ fn main() -> Result<(), StrError> {
         .save(path.as_str())?;
 
     // superquadric
-    if false {
+    if true {
         let (n_alpha, n_theta) = (201, 201);
         let (alpha_min, alpha_max) = (-PI, PI);
         let (theta_min, theta_max) = (-PI / 2.0, PI / 2.0);

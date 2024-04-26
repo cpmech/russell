@@ -22,6 +22,16 @@ use crate::Vector;
 /// | 4 | 1 - 8 x² + 8 x⁴     | -16 x + 32 x³     | -16 + 96 x²     |
 /// | 5 | 5 x - 20 x³ + 16 x⁵ | 5 - 60 x² + 80 x⁴ | -120 x + 320 x³ |
 /// |...| ...                 | ...               | ....            |
+///
+/// # Examples
+///
+/// ![Tn](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_chebyshev_functions_tn.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::chebyshev_tn(4, 0.25), 0.53125000000000000, 1e-15);
+/// ```
 pub fn chebyshev_tn(n: usize, x: f64) -> f64 {
     if n == 0 {
         return 1.0;
@@ -66,6 +76,16 @@ pub fn chebyshev_tn(n: usize, x: f64) -> f64 {
 /// | 4 | 1 - 8 x² + 8 x⁴     | -16 x + 32 x³     | -16 + 96 x²     |
 /// | 5 | 5 x - 20 x³ + 16 x⁵ | 5 - 60 x² + 80 x⁴ | -120 x + 320 x³ |
 /// |...| ...                 | ...               | ....            |
+///
+/// # Examples
+///
+/// ![dTn/dx](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_chebyshev_functions_dtn.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::chebyshev_tn_deriv1(4, 0.25), -3.5, 1e-15);
+/// ```
 pub fn chebyshev_tn_deriv1(n: usize, x: f64) -> f64 {
     let p = n as f64;
     if x > -1.0 && x < 1.0 {
@@ -116,6 +136,16 @@ pub fn chebyshev_tn_deriv1(n: usize, x: f64) -> f64 {
 /// | 4 | 1 - 8 x² + 8 x⁴     | -16 x + 32 x³     | -16 + 96 x²     |
 /// | 5 | 5 x - 20 x³ + 16 x⁵ | 5 - 60 x² + 80 x⁴ | -120 x + 320 x³ |
 /// |...| ...                 | ...               | ....            |
+///
+/// # Examples
+///
+/// ![d2Tn/dx2](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_chebyshev_functions_d2tn.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::chebyshev_tn_deriv2(4, 0.25), -10.0, 1e-15);
+/// ```
 pub fn chebyshev_tn_deriv2(n: usize, x: f64) -> f64 {
     let p = n as f64;
     let pp = p * p;

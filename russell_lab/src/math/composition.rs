@@ -66,7 +66,7 @@ pub fn float_split(x: f64) -> (f64, f64) {
     (integer, x - integer)
 }
 
-/// Reports whether a floating-point number corresponds to a negative integer number or not
+/// Reports if a floating-point number corresponds to a negative integer
 ///
 /// # Special cases
 ///
@@ -94,7 +94,7 @@ pub fn float_is_neg_integer(x: f64) -> bool {
     }
 }
 
-/// Reports whether a floating-point number corresponds to an integer number or not
+/// Reports if a floating-point number corresponds to an integer
 ///
 /// # Special cases
 ///

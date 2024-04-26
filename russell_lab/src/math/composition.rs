@@ -26,7 +26,8 @@
 /// # Examples
 ///
 /// ```
-/// # use russell_lab::math;
+/// use russell_lab::math;
+///
 /// let (integer, fractional) = math::float_split(3.141593);
 /// assert_eq!(
 ///     format!("integer = {:?}, fractional = {:.6}", integer, fractional),
@@ -76,7 +77,8 @@ pub fn float_split(x: f64) -> (f64, f64) {
 /// # Examples
 ///
 /// ```
-/// # use russell_lab::math;
+/// use russell_lab::math;
+///
 /// assert_eq!(math::float_is_neg_integer(-1.23), false);
 /// assert_eq!(math::float_is_neg_integer(2.0), false);
 /// assert_eq!(math::float_is_neg_integer(-2.0), true);
@@ -104,7 +106,8 @@ pub fn float_is_neg_integer(x: f64) -> bool {
 /// # Examples
 ///
 /// ```
-/// # use russell_lab::math;
+/// use russell_lab::math;
+///
 /// assert_eq!(math::float_is_integer(-1.23), false);
 /// assert_eq!(math::float_is_integer(-2.0), true);
 /// assert_eq!(math::float_is_integer(3.0), true);
@@ -141,7 +144,8 @@ pub fn float_is_integer(x: f64) -> bool {
 /// # Examples
 ///
 /// ```
-/// # use russell_lab::math;
+/// use russell_lab::math;
+///
 /// let x = 0.5 * 2.0 * 2.0 * 2.0 * 2.0;
 /// assert_eq!(math::float_decompose(x), (0.5, 4));
 /// ```
@@ -185,7 +189,8 @@ pub fn float_decompose(x: f64) -> (f64, i32) {
 /// # Examples
 ///
 /// ```
-/// # use russell_lab::math;
+/// use russell_lab::math;
+///
 /// let x = 0.5 * 2.0 * 2.0 * 2.0 * 2.0;
 /// assert_eq!(math::float_compose(0.5,  4), x);
 /// assert_eq!(math::float_compose(8.0,  0), 8.0); // 8 · 2⁰

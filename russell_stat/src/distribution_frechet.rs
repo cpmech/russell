@@ -6,6 +6,8 @@ use russell_lab::math::gamma;
 const FRECHET_MIN_DELTA_X: f64 = 1e-15;
 
 /// Defines the Frechet / Type II Extreme Value Distribution (largest value)
+///
+/// See: <https://en.wikipedia.org/wiki/Fr%C3%A9chet_distribution>
 pub struct DistributionFrechet {
     location: f64, // location parameter
     scale: f64,    // scale parameter
@@ -15,7 +17,7 @@ pub struct DistributionFrechet {
 }
 
 impl DistributionFrechet {
-    /// Creates a new Frechet distribution
+    /// Allocates a new instance
     ///
     /// # Input
     ///

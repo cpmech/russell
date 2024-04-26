@@ -19,3 +19,6 @@ russell_lab = { path = "../russell_lab", version = "1.0.0" }
 num-traits = "0.2"
 rand = "0.8.5"
 rand_distr = "0.4.3"
+
+[dev-dependencies]
+plotpy = "0.6"

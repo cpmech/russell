@@ -81,6 +81,18 @@ const F7: f64 = 2.891024605872965461538222e-15;
 /// * `erf_inv(-1.0) = -Inf`
 /// * `erf_inv(1.0)  = +Inf`
 /// * `erf_inv(x)    = NaN   if x < -1 or x > 1`
+///
+/// # Examples
+///
+/// ![erf_inv](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_erf_erfc_functions_erf_inv.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// let y = 0.4769362762044699;
+/// approx_eq(math::erf_inv(-0.5), -y, 1e-15);
+/// approx_eq(math::erf_inv( 0.5),  y, 1e-15);
+/// ```
 pub fn erf_inv(x: f64) -> f64 {
     // special cases
     if f64::is_nan(x) {
@@ -144,6 +156,17 @@ pub fn erf_inv(x: f64) -> f64 {
 /// * `erfc_inv(2.0) = -Inf`
 /// * `erfc_inv(x)   = NaN  if x < 0 or x > 2`
 /// * `erfc_inv(NaN) = NaN`
+///
+/// # Examples
+///
+/// ![erfc_inv](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_erf_erfc_functions_erfc_inv.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::erfc_inv(0.5), 0.4769362762044699, 1e-15);
+/// approx_eq(math::erfc_inv(1.0), 0.0, 1e-15);
+/// ```
 pub fn erfc_inv(x: f64) -> f64 {
     erf_inv(1.0 - x)
 }

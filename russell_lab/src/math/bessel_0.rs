@@ -40,11 +40,25 @@ const S04: f64 = 1.16614003333790000205e-09; // 0x3E1408BCF4745D8F
 
 /// Evaluates the Bessel function J0(x) for any real x
 ///
-/// Special cases:
+/// See: <https://mathworld.wolfram.com/BesselFunctionoftheFirstKind.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Bessel_function>
+///
+/// # Special cases
 ///
 ///	* `J0(NaN)  = NaN`
 ///	* `J0(±Inf) = 0.0`
 ///	* `J0(0.0)  = 1.0`
+///
+/// # Examples
+///
+/// ![Bessel J0](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_bessel_functions_j0.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::bessel_j0(2.0), 0.22389077914123567, 1e-15);
+/// ```
 pub fn bessel_j0(x: f64) -> f64 {
     //
     // For tiny x, use j0(x) = 1 - x**2/4 + x**4/64 - ...
@@ -141,12 +155,26 @@ const V04: f64 = 4.41110311332675467403e-10; // 0x3DFE50183BD6D9EF
 
 /// Evaluates the Bessel function Y0(x) for positive real x
 ///
-/// Special cases:
+/// See: <https://mathworld.wolfram.com/BesselFunctionoftheSecondKind.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Bessel_function>
+///
+/// # Special cases
 ///
 /// * `Y0(x < 0.0) = NaN`
 /// * `Y0(NaN)     = NaN`
 /// * `Y0(+Inf)    = 0.0`
 /// * `Y0(0.0)     = -Inf`
+///
+/// # Examples
+///
+/// ![Bessel Y0](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_bessel_functions_y0.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::bessel_y0(2.0), 0.51037567264974512, 1e-15);
+/// ```
 pub fn bessel_y0(x: f64) -> f64 {
     //
     // For x<2. Since

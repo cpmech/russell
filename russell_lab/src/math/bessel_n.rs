@@ -56,10 +56,24 @@ const LOWER_X_TO_OVERFLOW_EXP: f64 = 7.09782712893383973096e+02;
 
 /// Evaluates the Bessel function Jn(x) for any real x
 ///
-/// Special cases:
+/// See: <https://mathworld.wolfram.com/BesselFunctionoftheFirstKind.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Bessel_function>
+///
+/// # Special cases
 ///
 ///	* `Jn(n, NaN)  = NaN`
 ///	* `Jn(n, ±Inf) = 0.0`
+///
+/// # Examples
+///
+/// ![Bessel J2](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_bessel_functions_j2.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::bessel_jn(2, 2.0), 0.35283402861563772, 1e-15);
+/// ```
 pub fn bessel_jn(n: i32, x: f64) -> f64 {
     if f64::is_nan(x) {
         return f64::NAN;
@@ -243,13 +257,27 @@ pub fn bessel_jn(n: i32, x: f64) -> f64 {
 
 /// Evaluates the Bessel function Yn(x) for positive real x
 ///
-/// Special cases:
+/// See: <https://mathworld.wolfram.com/BesselFunctionoftheSecondKind.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Bessel_function>
+///
+/// # Special cases
 ///
 /// * `Yn(n     , x < 0.0) = NaN`
 /// * `Yn(n     , NaN    ) = NaN`
 /// * `Yn(n     , +Inf   ) = 0.0`
 /// * `Yn(n < 0 , 0.0    ) = +Inf if n is odd, -Inf if n is even`
 /// * `Yn(n ≥ 0 , 0.0    ) = -Inf`
+///
+/// # Examples
+///
+/// ![Bessel Y2](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_bessel_functions_y2.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::bessel_yn(2, 2.0), -0.61740810419068267, 1e-15);
+/// ```
 pub fn bessel_yn(n: i32, x: f64) -> f64 {
     if x < 0.0 || f64::is_nan(x) {
         return f64::NAN;

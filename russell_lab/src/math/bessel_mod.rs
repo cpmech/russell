@@ -2,10 +2,24 @@ use super::{float_compose, float_decompose};
 
 /// Evaluates the modified Bessel function I0(x) for any real x
 ///
-/// Special cases:
+/// See: <https://mathworld.wolfram.com/ModifiedBesselFunctionoftheFirstKind.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Bessel_function>
+///
+/// # Special cases
 ///
 ///	* `I0(NaN) = NaN`
 ///	* `I0(0.0) = 1.0`
+///
+/// # Examples
+///
+/// ![Bessel I0](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_bessel_mod_functions_i0.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::bessel_i0(2.0), 2.2795853023360673, 1e-15);
+/// ```
 pub fn bessel_i0(x: f64) -> f64 {
     if f64::is_nan(x) {
         return f64::NAN;
@@ -25,10 +39,24 @@ pub fn bessel_i0(x: f64) -> f64 {
 
 /// Evaluates the modified Bessel function I1(x) for any real x
 ///
-/// Special cases:
+/// See: <https://mathworld.wolfram.com/ModifiedBesselFunctionoftheFirstKind.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Bessel_function>
+///
+/// # Special cases
 ///
 ///	* `I1(NaN) = NaN`
 ///	* `I1(0.0) = 0.0`
+///
+/// # Examples
+///
+/// ![Bessel I1](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_bessel_mod_functions_i1.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::bessel_i1(2.0), 1.5906368546373291, 1e-15);
+/// ```
 pub fn bessel_i1(x: f64) -> f64 {
     if f64::is_nan(x) {
         return f64::NAN;
@@ -59,10 +87,24 @@ const HALF_MAX_EXP: i32 = f64::MAX_EXP / 2;
 
 /// Evaluates the modified Bessel function In(x) for any real x and n ≥ 0
 ///
-/// Special cases:
+/// See: <https://mathworld.wolfram.com/ModifiedBesselFunctionoftheFirstKind.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Bessel_function>
+///
+/// # Special cases
 ///
 ///	* `In(NaN)       = NaN`
 /// * `In(small(x²)) = 0.0`
+///
+/// # Examples
+///
+/// ![Bessel I2](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_bessel_mod_functions_i2.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::bessel_in(2, 2.0), 0.68894844769873820, 1e-15);
+/// ```
 pub fn bessel_in(n: usize, x: f64) -> f64 {
     if f64::is_nan(x) {
         return f64::NAN;
@@ -105,11 +147,25 @@ pub fn bessel_in(n: usize, x: f64) -> f64 {
 
 /// Evaluates the modified Bessel function K0(x) for positive real x
 ///
-/// Special cases:
+/// See: <https://mathworld.wolfram.com/ModifiedBesselFunctionoftheSecondKind.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Bessel_function>
+///
+/// # Special cases
 ///
 ///	* `K0(NaN)     = NaN`
 /// * `K0(x < 0.0) = NaN`
 /// * `K0(0.0)     = Inf`
+///
+/// # Examples
+///
+/// ![Bessel K0](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_bessel_mod_functions_k0.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::bessel_k0(2.0), 0.11389387274953344, 1e-15);
+/// ```
 pub fn bessel_k0(x: f64) -> f64 {
     if f64::is_nan(x) || x < 0.0 {
         return f64::NAN;
@@ -129,11 +185,25 @@ pub fn bessel_k0(x: f64) -> f64 {
 
 /// Evaluates the modified Bessel function K1(x) for positive real x
 ///
-/// Special cases:
+/// See: <https://mathworld.wolfram.com/ModifiedBesselFunctionoftheSecondKind.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Bessel_function>
+///
+/// # Special cases
 ///
 ///	* `K1(NaN)     = NaN`
 /// * `K1(x < 0.0) = NaN`
 /// * `K1(0.0)     = Inf`
+///
+/// # Examples
+///
+/// ![Bessel K1](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_bessel_mod_functions_k1.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::bessel_k1(2.0), 0.13986588181652243, 1e-15);
+/// ```
 pub fn bessel_k1(x: f64) -> f64 {
     if f64::is_nan(x) || x < 0.0 {
         return f64::NAN;
@@ -153,11 +223,25 @@ pub fn bessel_k1(x: f64) -> f64 {
 
 /// Evaluates the modified Bessel function Kn(x) for positive x and n ≥ 0
 ///
-/// Special cases:
+/// See: <https://mathworld.wolfram.com/ModifiedBesselFunctionoftheSecondKind.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Bessel_function>
+///
+/// # Special cases
 ///
 ///	* `Kn(NaN)     = NaN`
 /// * `Kn(x < 0.0) = NaN`
 /// * `Kn(0.0)     = Inf`
+///
+/// # Examples
+///
+/// ![Bessel K2](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_bessel_mod_functions_k2.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::bessel_kn(2, 2.0), 0.25375975456605586, 1e-15);
+/// ```
 pub fn bessel_kn(n: i32, x: f64) -> f64 {
     if f64::is_nan(x) || x < 0.0 {
         return f64::NAN;

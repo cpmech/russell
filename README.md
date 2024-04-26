@@ -27,15 +27,15 @@
   - [Number of threads](#number-of-threads)
 - [Examples](#examples)
   - [(lab) Numerical integration (quadrature)](#lab-numerical-integration-quadrature)
-  - [(lab) Solution of a 1D PDE using spectral collocation](#lab-solution-of-a-1d-pde-using-spectral-collocation)
+  - [(lab) Solution of PDEs using spectral collocation](#lab-solution-of-pdes-using-spectral-collocation)
   - [(lab) Matrix visualization](#lab-matrix-visualization)
   - [(lab) Singular value decomposition](#lab-singular-value-decomposition)
   - [(lab) Cholesky factorization](#lab-cholesky-factorization)
-  - [(lab) Solve a tiny (dense) linear system](#lab-solve-a-tiny-dense-linear-system)
-  - [(lab) Read a table-formatted data file](#lab-read-a-table-formatted-data-file)
-  - [(sparse) Solve a small sparse linear system using UMFPACK](#sparse-solve-a-small-sparse-linear-system-using-umfpack)
-  - [(ode) Brusselator ODE](#ode-brusselator-ode)
-  - [(ode) Brusselator PDE](#ode-brusselator-pde)
+  - [(lab) Solution of a (dense) linear system](#lab-solution-of-a-dense-linear-system)
+  - [(lab) Reading table-formatted data files](#lab-reading-table-formatted-data-files)
+  - [(sparse) Solution of a sparse linear system](#sparse-solution-of-a-sparse-linear-system)
+  - [(ode) Solution of the Brusselator ODE](#ode-solution-of-the-brusselator-ode)
+  - [(ode) Solution of the Brusselator PDE](#ode-solution-of-the-brusselator-pde)
   - [(stat) Generate the Frechet distribution](#stat-generate-the-frechet-distribution)
   - [(tensor) Allocate second-order tensors](#tensor-allocate-second-order-tensors)
 - [Roadmap](#roadmap)
@@ -231,7 +231,7 @@ fn main() -> Result<(), StrError> {
 
 
 
-### (lab) Solution of a 1D PDE using spectral collocation
+### (lab) Solution of PDEs using spectral collocation
 
 This example illustrates the solution of a 1D PDE using the spectral collocation method. It employs the InterpLagrange struct.
 
@@ -411,7 +411,7 @@ fn main() -> Result<(), StrError> {
 
 
 
-### (lab) Solve a tiny (dense) linear system
+### (lab) Solution of a (dense) linear system
 
 ```rust
 use russell_lab::{solve_lin_sys, Matrix, Vector, StrError};
@@ -441,7 +441,7 @@ fn main() -> Result<(), StrError> {
 
 
 
-### (lab) Read a table-formatted data file
+### (lab) Reading table-formatted data files
 
 The goal is to read the following file (`clay-data.txt`):
 
@@ -490,7 +490,7 @@ fn main() -> Result<(), StrError> {
 
 
 
-### (sparse) Solve a small sparse linear system using UMFPACK
+### (sparse) Solution of a sparse linear system
 
 ```rust
 use russell_lab::*;
@@ -558,7 +558,7 @@ fn main() -> Result<(), StrError> {
 
 
 
-### (ode) Brusselator ODE
+### (ode) Solution of the Brusselator ODE
 
 The system is:
 
@@ -609,7 +609,7 @@ A plot of the (dense) solution is shown below:
 
 
 
-### (ode) Brusselator PDE
+### (ode) Solution of the Brusselator PDE
 
 This example solves the Brusselator PDE described in (Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II Stiff and Differential-Algebraic Problems. Second Revised Edition. Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p).
 

@@ -26,6 +26,23 @@ use crate::StrError;
 /// # Note
 ///
 /// This function is not as optimized (e.g., multi-threaded) as it could be.
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::*;
+///
+/// fn main() -> Result<(), StrError> {
+///     let a = Matrix::from(&[
+///         [1.0, 2.0, 3.0], //
+///         [2.1, 1.2, 0.3], //
+///     ]);
+///     let mut v = Vector::new(3); // 3 columns
+///     mat_sum_rows(&mut v, &a)?;
+///     assert_eq!(v.as_data(), &[3.1, 3.2, 3.3]);
+///     Ok(())
+/// }
+/// ```
 pub fn mat_sum_rows(v: &mut Vector, a: &Matrix) -> Result<(), StrError> {
     let (m, n) = a.dims();
     if v.dim() != n {

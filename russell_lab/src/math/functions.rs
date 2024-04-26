@@ -7,6 +7,17 @@
 /// (-1)ⁿ = = ⎨
 ///           ⎩ -1  if n is odd
 /// ```
+///
+/// {1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1}
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::math;
+///
+/// let v: Vec<_> = (0..11).into_iter().map(|n| math::neg_one_pow_n(n)).collect();
+/// assert_eq!(&v, &[1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0]);
+/// ```
 #[inline]
 pub fn neg_one_pow_n(n: i32) -> f64 {
     // this formula works for negative integers as well, e.g.,
@@ -38,6 +49,18 @@ pub fn neg_one_pow_n(n: i32) -> f64 {
 /// See: <https://mathworld.wolfram.com/Sign.html>
 ///
 /// See also: <https://en.wikipedia.org/wiki/Sign_function>
+///
+/// # Examples
+///
+/// ![sign](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_plot_functions_sign.svg)
+///
+/// ```
+/// use russell_lab::math;
+///
+/// assert_eq!(math::sign(-0.5), -1.0);
+/// assert_eq!(math::sign( 0.0),  0.0);
+/// assert_eq!(math::sign( 0.5),  1.0);
+/// ```
 #[inline]
 pub fn sign(x: f64) -> f64 {
     if x < 0.0 {
@@ -70,6 +93,18 @@ pub fn sign(x: f64) -> f64 {
 /// See: <https://mathworld.wolfram.com/RampFunction.html>
 ///
 /// See also: <https://en.wikipedia.org/wiki/Ramp_function>
+///
+/// # Examples
+///
+/// ![ramp](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_plot_functions_ramp.svg)
+///
+/// ```
+/// use russell_lab::math;
+///
+/// assert_eq!(math::ramp(-0.5), 0.0);
+/// assert_eq!(math::ramp( 0.0), 0.0);
+/// assert_eq!(math::ramp( 0.5), 0.5);
+/// ```
 #[inline]
 pub fn ramp(x: f64) -> f64 {
     if x < 0.0 {
@@ -92,6 +127,18 @@ pub fn ramp(x: f64) -> f64 {
 /// See: <https://mathworld.wolfram.com/HeavisideStepFunction.html>
 ///
 /// See also: <https://en.wikipedia.org/wiki/Heaviside_step_function>
+///
+/// # Examples
+///
+/// ![heaviside](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_plot_functions_heaviside.svg)
+///
+/// ```
+/// use russell_lab::math;
+///
+/// assert_eq!(math::heaviside(-0.5), 0.0);
+/// assert_eq!(math::heaviside( 0.0), 0.5);
+/// assert_eq!(math::heaviside( 0.5), 1.0);
+/// ```
 #[inline]
 pub fn heaviside(x: f64) -> f64 {
     if x < 0.0 {
@@ -109,17 +156,55 @@ pub fn heaviside(x: f64) -> f64 {
 ///                   ⎧ 0    if x < a or  x > b
 /// boxcar(x; a, b) = ⎨ 1/2  if x = a or  x = b
 ///                   ⎩ 1    if x > a and x < b
-///
-/// boxcar(x; a, b) = heaviside(x - a) - heaviside(x - b)
+/// with b > a
 /// ```
-///
-/// Note: `a ≤ x ≤ b` with `b ≥ a` are **not checked**.
 ///
 /// See <https://mathworld.wolfram.com/BoxcarFunction.html>
 ///
 /// See also: <https://en.wikipedia.org/wiki/Boxcar_function>
+///
+/// # Panics
+///
+/// **Warning:** This function panics if the `a ≥ b`.
+///
+/// # Relation with the Heaviside function
+///
+/// Note that:
+///
+/// ```text
+/// boxcar(x; a, b) = heaviside(x - a) - heaviside(x - b)
+/// ```
+///
+/// Considering that `b > a`, the difference `H(x - a) - H(x - b)` can be tabulated as follows:
+///
+/// |             |          | `x < b`         | `x = b`               | `x > b`             |
+/// |:-----------:|:--------:|:---------------:|:---------------------:|:-------------------:|
+/// |             | `H(x-a)` | `H(x-b)=0 `     | `H(x-b)=1/2 `         | `H(x-b)=1 `         |
+/// | **`x < a`** | `0`      | `  0 - 0 = 0`   | impossible            | impossible          |
+/// | **`x = a`** | `1/2`    | `1/2 - 0 = 1/2` | `1/2 - 1/2 = 0`       | impossible          |
+/// | **`x > a`** | `1`      | `  1 - 0 = 1`   | `  1 - 1/2 = 1/2`     | `1 - 1 = 0`         |
+///
+/// which corresponds to the definition of the `boxcar(x; a, b)` function given earlier.
+///
+/// # Examples
+///
+/// ![boxcar](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_plot_functions_boxcar.svg)
+///
+/// ```
+/// use russell_lab::math;
+///
+/// let (a, b) = (1.0, 2.0);
+/// assert_eq!(math::boxcar(      0.0, a, b), 0.0);
+/// assert_eq!(math::boxcar(        a, a, b), 0.5);
+/// assert_eq!(math::boxcar((a+b)/2.0, a, b), 1.0);
+/// assert_eq!(math::boxcar(        b, a, b), 0.5);
+/// assert_eq!(math::boxcar(      3.0, a, b), 0.0);
+/// ```
 #[inline]
 pub fn boxcar(x: f64, a: f64, b: f64) -> f64 {
+    if a >= b {
+        panic!("b must be greater than a");
+    }
     if x < a || x > b {
         0.0
     } else if x > a && x < b {
@@ -140,6 +225,17 @@ pub fn boxcar(x: f64, a: f64, b: f64) -> f64 {
 /// See: <https://mathworld.wolfram.com/SigmoidFunction.html>
 ///
 /// See also: <https://en.wikipedia.org/wiki/Logistic_function>
+///
+/// # Examples
+///
+/// ![logistic](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_plot_functions_logistic.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::logistic(-2.0), 0.11920292202211756, 1e-15);
+/// approx_eq(math::logistic( 2.0), 0.88079707797788244, 1e-15);
+/// ```
 #[inline]
 pub fn logistic(x: f64) -> f64 {
     1.0 / (1.0 + f64::exp(-x))
@@ -148,8 +244,20 @@ pub fn logistic(x: f64) -> f64 {
 /// Returns the first derivative of the standard logistic function
 ///
 /// Reference: <https://en.wikipedia.org/wiki/Logistic_function>
+///
+/// # Examples
+///
+/// ![logistic_deriv1](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_plot_functions_logistic_deriv1.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// let y = 0.10499358540350652;
+/// approx_eq(math::logistic_deriv1(-2.0), y, 1e-15);
+/// approx_eq(math::logistic_deriv1( 2.0), y, 1e-15);
+/// ```
 #[inline]
-pub fn logistic_deriv(x: f64) -> f64 {
+pub fn logistic_deriv1(x: f64) -> f64 {
     let f = logistic(x);
     f * (1.0 - f)
 }
@@ -162,6 +270,7 @@ pub fn logistic_deriv(x: f64) -> f64 {
 /// smooth_ramp(x) = ⎨     log(1 + exp(-β·x))
 ///                  │ x + ——————————————————  otherwise
 ///                  ⎩            β
+/// with β > 0
 /// ```
 ///
 /// This function was used in the following paper:
@@ -169,6 +278,18 @@ pub fn logistic_deriv(x: f64) -> f64 {
 /// * Pedroso DM, Zhang Y, and Ehlers W (2017) Solution of liquid-gas-solid coupled equations
 ///   for porous media considering dynamics and hysteretic retention behavior,
 ///   [Journal of Engineering Mechanics](https://ascelibrary.org/doi/10.1061/%28ASCE%29EM.1943-7889.0001208)
+///
+/// # Examples
+///
+/// ![smooth_ramp](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_plot_functions_smooth_ramp.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// let beta = 10.0;
+/// approx_eq(math::smooth_ramp(-2.0, beta), 0.0, 1e-9);
+/// approx_eq(math::smooth_ramp( 2.0, beta), 2.0, 1e-9);
+/// ```
 #[inline]
 pub fn smooth_ramp(x: f64, beta: f64) -> f64 {
     if -beta * x > 500.0 {
@@ -178,8 +299,22 @@ pub fn smooth_ramp(x: f64, beta: f64) -> f64 {
 }
 
 /// Returns the first derivative of smooth_ramp
+///
+/// See [smooth_ramp()] for further information.
+///
+/// # Examples
+///
+/// ![smooth_ramp_deriv1](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_plot_functions_smooth_ramp_deriv1.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// let beta = 10.0;
+/// approx_eq(math::smooth_ramp_deriv1(-2.0, beta), 0.0, 1e-8);
+/// approx_eq(math::smooth_ramp_deriv1( 2.0, beta), 1.0, 1e-8);
+/// ```
 #[inline]
-pub fn smooth_ramp_deriv(x: f64, beta: f64) -> f64 {
+pub fn smooth_ramp_deriv1(x: f64, beta: f64) -> f64 {
     if -beta * x > 500.0 {
         return 0.0;
     }
@@ -187,6 +322,20 @@ pub fn smooth_ramp_deriv(x: f64, beta: f64) -> f64 {
 }
 
 /// Returns the second derivative of smooth_ramp
+///
+/// See [smooth_ramp()] for further information.
+///
+/// # Examples
+///
+/// ![smooth_ramp_deriv2](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_plot_functions_smooth_ramp_deriv2.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// let beta = 10.0;
+/// approx_eq(math::smooth_ramp_deriv2(-2.0, beta), 0.0, 1e-7);
+/// approx_eq(math::smooth_ramp_deriv2( 2.0, beta), 0.0, 1e-7);
+/// ```
 #[inline]
 pub fn smooth_ramp_deriv2(x: f64, beta: f64) -> f64 {
     if beta * x > 500.0 {
@@ -202,6 +351,22 @@ pub fn smooth_ramp_deriv2(x: f64, beta: f64) -> f64 {
 /// ```
 ///
 /// `suq_sin(x;k)` is the `f(ω;m)` function from <https://en.wikipedia.org/wiki/Superquadrics>
+///
+/// # Examples
+///
+/// ![suq_sin](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_plot_functions_suq_sin.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::suq_sin(-math::PI / 2.0, 2.0), -1.0, 1e-15);
+/// approx_eq(math::suq_sin(            0.0, 2.0),  0.0, 1e-15);
+/// approx_eq(math::suq_sin( math::PI / 2.0, 2.0),  1.0, 1e-15);
+/// ```
+///
+/// This function is useful to plot superquadric surfaces as shown below (see the examples directory).
+///
+/// ![superquadric](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_plot_functions_superquadric.jpg)
 #[inline]
 pub fn suq_sin(x: f64, k: f64) -> f64 {
     sign(f64::sin(x)) * f64::powf(f64::abs(f64::sin(x)), k)
@@ -214,6 +379,22 @@ pub fn suq_sin(x: f64, k: f64) -> f64 {
 /// ```
 ///
 /// `suq_cos(x;k)` is the `g(ω;m)` function from <https://en.wikipedia.org/wiki/Superquadrics>
+///
+/// # Examples
+///
+/// ![suq_cos](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_plot_functions_suq_cos.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::suq_cos(-math::PI / 2.0, 2.0), 0.0, 1e-15);
+/// approx_eq(math::suq_cos(            0.0, 2.0), 1.0, 1e-15);
+/// approx_eq(math::suq_cos( math::PI / 2.0, 2.0), 0.0, 1e-15);
+/// ```
+///
+/// This function is useful to plot superquadric surfaces as shown below (see the examples directory).
+///
+/// ![superquadric](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_plot_functions_superquadric.jpg)
 #[inline]
 pub fn suq_cos(x: f64, k: f64) -> f64 {
     sign(f64::cos(x)) * f64::powf(f64::abs(f64::cos(x)), k)
@@ -263,6 +444,18 @@ const FACTORIAL_22: [f64; 23] = [
 ///
 /// * Press WH, Teukolsky SA, Vetterling WT, Flannery BP (2007) Numerical Recipes: The Art of
 ///   Scientific Computing. Third Edition. Cambridge University Press. 1235p.
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::math;
+///
+/// assert_eq!(math::factorial_lookup_22(0), 1.0);
+/// assert_eq!(math::factorial_lookup_22(1), 1.0);
+/// assert_eq!(math::factorial_lookup_22(2), 2.0);
+/// assert_eq!(math::factorial_lookup_22(3), 6.0);
+/// assert_eq!(math::factorial_lookup_22(22), 1_124_000_727_777_607_680_000.0);
+/// ```
 pub fn factorial_lookup_22(n: usize) -> f64 {
     if n > 22 {
         panic!("factorial_lookup_22 requires n ≤ 22");
@@ -285,6 +478,12 @@ mod tests {
             assert_eq!(neg_one_pow_n(n), f64::powi(-1.0, n));
             n += 1;
         }
+    }
+
+    #[test]
+    #[should_panic(expected = "b must be greater than a")]
+    fn boxcar_panics_on_incorrect_input() {
+        boxcar(0.0, 0.0, 0.0);
     }
 
     #[test]
@@ -318,7 +517,7 @@ mod tests {
         let xx = [-2.0, -1.6, -1.2, -0.8, -0.4, 0.0, 0.4, 0.8, 1.2, 1.6, 2.0];
         for x in xx {
             let l = logistic(x);
-            let d = logistic_deriv(x);
+            let d = logistic_deriv1(x);
             approx_eq(l, 0.5 + 0.5 * f64::tanh(x / 2.0), 1e-14);
             deriv1_approx_eq(d, x, args, 1e-10, f);
         }
@@ -328,8 +527,8 @@ mod tests {
     fn smooth_ramp_and_deriv_work() {
         assert_eq!(smooth_ramp(-1.0, 500.1), 0.0);
         assert_eq!(smooth_ramp(-1.0, 499.9), 0.0);
-        assert_eq!(smooth_ramp_deriv(-1.0, 500.1), 0.0);
-        approx_eq(smooth_ramp_deriv(-1.0, 499.99), 0.0, 1e-15);
+        assert_eq!(smooth_ramp_deriv1(-1.0, 500.1), 0.0);
+        approx_eq(smooth_ramp_deriv1(-1.0, 499.99), 0.0, 1e-15);
         assert_eq!(smooth_ramp_deriv2(1.0, 500.1), 0.0);
         approx_eq(smooth_ramp_deriv2(1.0, 499.99), 0.0, 1e-15);
         let beta = 2.0;
@@ -338,10 +537,10 @@ mod tests {
         }
         let args = &mut Arguments { beta };
         let f = |x: f64, args: &mut Arguments| Ok(smooth_ramp(x, args.beta));
-        let g = |x: f64, args: &mut Arguments| Ok(smooth_ramp_deriv(x, args.beta));
+        let g = |x: f64, args: &mut Arguments| Ok(smooth_ramp_deriv1(x, args.beta));
         let xx = [-2.0, -1.6, -1.2, -0.8, -0.4, 0.0, 0.4, 0.8, 1.2, 1.6, 2.0];
         for x in xx {
-            let d = smooth_ramp_deriv(x, beta);
+            let d = smooth_ramp_deriv1(x, beta);
             let d2 = smooth_ramp_deriv2(x, beta);
             deriv1_approx_eq(d, x, args, 1e-9, f);
             deriv1_approx_eq(d2, x, args, 1e-9, g);

@@ -9,6 +9,8 @@ pub struct MinBracketing {
     /// ```text
     /// n_iteration_max ≥ 2
     /// ```
+    ///
+    /// e.g., 100
     pub n_iteration_max: usize,
 
     /// Initial step
@@ -20,19 +22,15 @@ pub struct MinBracketing {
     ///
     /// e.g., 2.0
     pub expansion_factor: f64,
-
-    /// Uses a nonlinear step
-    pub nonlinear_step: bool,
 }
 
 impl MinBracketing {
     /// Allocates a new instance with default parameters
     pub fn new() -> Self {
         MinBracketing {
-            n_iteration_max: 20,
+            n_iteration_max: 100,
             initial_step: 1e-2,
             expansion_factor: 2.0,
-            nonlinear_step: true,
         }
     }
 
@@ -75,6 +73,39 @@ impl MinBracketing {
     /// # Reference
     ///
     /// * Kochenderfer MJ and Wheeler TA (2019) Algorithms for Optimization, The MIT Press, 512p
+    ///
+    /// # Examples
+    ///
+    /// ![004](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_004.svg)
+    ///
+    /// ```
+    /// use russell_lab::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // "4: f(x) = (x - 1)² + 5 sin(x)"
+    ///     let f = |x: f64, _: &mut NoArgs| Ok(f64::powi(x - 1.0, 2) + 5.0 * f64::sin(x));
+    ///     let args = &mut 0;
+    ///
+    ///     // bracketing
+    ///     let bracketing = MinBracketing::new();
+    ///     let (bracket, stats) = bracketing.basic(-3.0, args, f)?;
+    ///     println!("\n(a, b) = ({}, {})", bracket.a, bracket.b);
+    ///     println!("\n{}", stats);
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// The output looks like:
+    ///
+    /// ```text
+    /// (a, b) = (-1.7200000000000002, 2.12)
+    ///
+    /// Number of function evaluations   = 11
+    /// Number of Jacobian evaluations   = 0
+    /// Number of iterations             = 9
+    /// Error estimate                   = unavailable
+    /// Total computation time           = 7.293µs
+    /// ```
     pub fn basic<F, A>(&self, x_guess: f64, args: &mut A, mut f: F) -> Result<(Bracket, Stats), StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
@@ -102,7 +133,7 @@ impl MinBracketing {
         let mut converged = false;
         let mut b = UNINITIALIZED;
         let mut fb = UNINITIALIZED;
-        for k in 0..self.n_iteration_max {
+        for _ in 0..self.n_iteration_max {
             stats.n_iterations += 1;
             stats.n_function += 1;
             b = xo + step;
@@ -115,11 +146,7 @@ impl MinBracketing {
             fa = fxo;
             xo = b;
             fxo = fb;
-            if self.nonlinear_step {
-                step *= self.expansion_factor * f64::powf(2.0, k as f64);
-            } else {
-                step *= self.expansion_factor;
-            }
+            step *= self.expansion_factor;
         }
 
         // check
@@ -253,7 +280,6 @@ mod tests {
         assert!(f(1.0, args).unwrap() > 0.0);
         let mut solver = MinBracketing::new();
         solver.n_iteration_max = 2;
-        solver.nonlinear_step = false;
         assert_eq!(
             solver.basic(0.0, args, f).err(),
             Some("try_bracket_min failed to converge")

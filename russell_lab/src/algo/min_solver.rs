@@ -66,8 +66,10 @@ impl MinSolver {
     ///
     /// # Examples
     ///
+    /// ## Simple quadratic equation
+    ///
     /// ```
-    /// use russell_lab::{approx_eq, MinSolver, StrError};
+    /// use russell_lab::*;
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let args = &mut 0;
@@ -77,6 +79,28 @@ impl MinSolver {
     ///     println!("\noptimal = {:?}", xo);
     ///     println!("\n{}", stats);
     ///     approx_eq(xo, 1.0, 1e-7);
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// ## Test function number four
+    ///
+    /// ![004](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_004.svg)
+    ///
+    /// ```
+    /// use russell_lab::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // "4: f(x) = (x - 1)² + 5 sin(x)"
+    ///     let f = |x: f64, _: &mut NoArgs| Ok(f64::powi(x - 1.0, 2) + 5.0 * f64::sin(x));
+    ///     let args = &mut 0;
+    ///
+    ///     // minimize
+    ///     let solver = MinSolver::new();
+    ///     let (xo, stats) = solver.brent(-2.0, 2.0, args, f)?;
+    ///     println!("\noptimal = {}", xo);
+    ///     println!("\n{}", stats);
+    ///     approx_eq(xo, -0.7790149303951403, 1e-8);
     ///     Ok(())
     /// }
     /// ```

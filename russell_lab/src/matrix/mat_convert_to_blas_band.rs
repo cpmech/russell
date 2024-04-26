@@ -57,6 +57,36 @@ use crate::StrError;
 ///
 /// * <https://www.ibm.com/docs/en/essl/6.1?topic=representation-blas-general-band-storage-mode#am5gr_upbsm>
 ///
+/// # Examples
+///
+/// ```
+/// use russell_lab::*;
+///
+/// fn main() -> Result<(), StrError> {
+///     let ____ = 0.0;
+///     #[rustfmt::skip]
+///     let dense = Matrix::from(&[
+///         [11.0, 12.0, 13.0, ____, ____, ____, ____],
+///         [21.0, 22.0, 23.0, 24.0, ____, ____, ____],
+///         [____, 32.0, 33.0, 34.0, 35.0, ____, ____],
+///         [____, ____, 43.0, 44.0, 45.0, 46.0, ____],
+///         [____, ____, ____, 54.0, 55.0, 56.0, 57.0],
+///     ]);
+///     #[rustfmt::skip]
+///     let band_correct = Matrix::from(&[
+///         [____, ____, 13.0, 24.0, 35.0, 46.0, 57.0],
+///         [____, 12.0, 23.0, 34.0, 45.0, 56.0, ____],
+///         [11.0, 22.0, 33.0, 44.0, 55.0, ____, ____],
+///         [21.0, 32.0, 43.0, 54.0, ____, ____, ____],
+///     ]);
+///     let n = dense.dims().1;
+///     let (ml, mu) = (1, 2);
+///     let mut band = Matrix::new(ml + mu + 1, n);
+///     mat_convert_to_blas_band(&mut band, &dense, ml, mu).unwrap();
+///     assert_eq!(band.as_data(), band_correct.as_data());
+///     Ok(())
+/// }
+/// ```
 pub fn mat_convert_to_blas_band(band: &mut Matrix, dense: &Matrix, ml: usize, mu: usize) -> Result<(), StrError> {
     let (m, n) = dense.dims();
     let (mb, nb) = band.dims();

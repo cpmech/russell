@@ -3,7 +3,11 @@ use rand::Rng;
 use rand_distr::{Distribution, Normal};
 use russell_lab::math::{erf, SQRT_2, SQRT_PI};
 
-/// Defines the Normal distribution
+/// Implements the Normal distribution
+///
+/// See: <https://en.wikipedia.org/wiki/Normal_distribution>
+///
+/// ![Normal](https://raw.githubusercontent.com/cpmech/russell/main/russell_stat/data/figures/plot_distribution_functions_normal.svg)
 pub struct DistributionNormal {
     mu: f64,  // μ: mean
     sig: f64, // σ: standard deviation
@@ -14,7 +18,7 @@ pub struct DistributionNormal {
 }
 
 impl DistributionNormal {
-    /// Creates a new Normal distribution
+    /// Allocates a new instance
     ///
     /// # Input
     ///
@@ -32,12 +36,12 @@ impl DistributionNormal {
 }
 
 impl ProbabilityDistribution for DistributionNormal {
-    /// Implements the Probability Density Function (CDF)
+    /// Evaluates the Probability Density Function (CDF)
     fn pdf(&self, x: f64) -> f64 {
         self.a * f64::exp(self.b * f64::powf(x - self.mu, 2.0))
     }
 
-    /// Implements the Cumulative Density Function (CDF)
+    /// Evaluates the Cumulative Density Function (CDF)
     fn cdf(&self, x: f64) -> f64 {
         (1.0 + erf((x - self.mu) / (self.sig * SQRT_2))) / 2.0
     }

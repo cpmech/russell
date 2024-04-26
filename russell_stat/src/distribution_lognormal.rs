@@ -5,7 +5,11 @@ use russell_lab::math::{erf, SQRT_2, SQRT_PI};
 
 const LOGNORMAL_MIN_X: f64 = 1e-15;
 
-/// Defines the Lognormal distribution
+/// Implements the Lognormal distribution
+///
+/// See: <https://en.wikipedia.org/wiki/Log-normal_distribution>
+///
+/// ![Lognormal](https://raw.githubusercontent.com/cpmech/russell/main/russell_stat/data/figures/plot_distribution_functions_lognormal.svg)
 pub struct DistributionLognormal {
     mu_logx: f64,  // mean (μ) of log(x)
     sig_logx: f64, // standard deviation (σ) of log(x)
@@ -16,7 +20,7 @@ pub struct DistributionLognormal {
 }
 
 impl DistributionLognormal {
-    /// Creates a new Lognormal distribution
+    /// Allocates a new instance
     ///
     /// # Input
     ///
@@ -56,7 +60,7 @@ impl DistributionLognormal {
 }
 
 impl ProbabilityDistribution for DistributionLognormal {
-    /// Implements the Probability Density Function (CDF)
+    /// Evaluates the Probability Density Function (CDF)
     fn pdf(&self, x: f64) -> f64 {
         if x < LOGNORMAL_MIN_X {
             return 0.0;
@@ -64,7 +68,7 @@ impl ProbabilityDistribution for DistributionLognormal {
         self.a * f64::exp(self.b * f64::powf(f64::ln(x) - self.mu_logx, 2.0)) / x
     }
 
-    /// Implements the Cumulative Density Function (CDF)
+    /// Evaluates the Cumulative Density Function (CDF)
     fn cdf(&self, x: f64) -> f64 {
         if x < LOGNORMAL_MIN_X {
             return 0.0;

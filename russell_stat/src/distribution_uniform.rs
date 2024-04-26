@@ -2,7 +2,11 @@ use crate::{ProbabilityDistribution, StrError};
 use rand::Rng;
 use rand_distr::{Distribution, Uniform};
 
-/// Defines the Uniform / Type II Extreme Value Distribution (largest value)
+/// Implements the continuous Uniform distribution
+///
+/// See: <https://en.wikipedia.org/wiki/Continuous_uniform_distribution>
+///
+/// ![Uniform](https://raw.githubusercontent.com/cpmech/russell/main/russell_stat/data/figures/plot_distribution_functions_uniform.svg)
 pub struct DistributionUniform {
     xmin: f64, // min x value
     xmax: f64, // max x value
@@ -11,7 +15,7 @@ pub struct DistributionUniform {
 }
 
 impl DistributionUniform {
-    /// Creates a new Uniform distribution
+    /// Allocates a new instance
     ///
     /// # Input
     ///
@@ -30,7 +34,7 @@ impl DistributionUniform {
 }
 
 impl ProbabilityDistribution for DistributionUniform {
-    /// Implements the Probability Density Function (CDF)
+    /// Evaluates the Probability Density Function (CDF)
     fn pdf(&self, x: f64) -> f64 {
         if x < self.xmin {
             return 0.0;
@@ -41,7 +45,7 @@ impl ProbabilityDistribution for DistributionUniform {
         1.0 / (self.xmax - self.xmin)
     }
 
-    /// Implements the Cumulative Density Function (CDF)
+    /// Evaluates the Cumulative Density Function (CDF)
     fn cdf(&self, x: f64) -> f64 {
         if x < self.xmin {
             return 0.0;

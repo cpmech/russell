@@ -5,11 +5,15 @@ use russell_lab::math::gamma;
 
 const FRECHET_MIN_DELTA_X: f64 = 1e-15;
 
-/// Defines the Frechet / Type II Extreme Value Distribution (largest value)
+/// Implements the Frechet distribution
+///
+/// This is a Type II Extreme Value Distribution (largest value)
 ///
 /// See: <https://en.wikipedia.org/wiki/Fr%C3%A9chet_distribution>
+///
+/// ![Frechet](https://raw.githubusercontent.com/cpmech/russell/main/russell_stat/data/figures/plot_distribution_functions_frechet.svg)
 pub struct DistributionFrechet {
-    location: f64, // location parameter
+    location: f64, // location of the minimum value
     scale: f64,    // scale parameter
     shape: f64,    // shape parameter
 
@@ -34,7 +38,7 @@ impl DistributionFrechet {
 }
 
 impl ProbabilityDistribution for DistributionFrechet {
-    /// Implements the Probability Density Function (CDF)
+    /// Evaluates the Probability Density Function (CDF)
     fn pdf(&self, x: f64) -> f64 {
         if x - self.location < FRECHET_MIN_DELTA_X {
             return 0.0;
@@ -43,7 +47,7 @@ impl ProbabilityDistribution for DistributionFrechet {
         f64::exp(-f64::powf(z, -self.shape)) * f64::powf(z, -1.0 - self.shape) * self.shape / self.scale
     }
 
-    /// Implements the Cumulative Density Function (CDF)
+    /// Evaluates the Cumulative Density Function (CDF)
     fn cdf(&self, x: f64) -> f64 {
         if x - self.location < FRECHET_MIN_DELTA_X {
             return 0.0;

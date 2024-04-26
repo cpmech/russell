@@ -3,7 +3,13 @@ use rand::Rng;
 use rand_distr::{Distribution, Gumbel};
 use russell_lab::math::{EULER, PI, SQRT_6};
 
-/// Defines the Gumbel / Type I Extreme Value Distribution (largest value)
+/// Implements the Gumbel distribution
+///
+/// This is a Type I Extreme Value Distribution (largest value)
+///
+/// See: <https://en.wikipedia.org/wiki/Gumbel_distribution>
+///
+/// ![Gumbel](https://raw.githubusercontent.com/cpmech/russell/main/russell_stat/data/figures/plot_distribution_functions_gumbel.svg)
 pub struct DistributionGumbel {
     location: f64, // location: characteristic largest value
     scale: f64,    // scale: measure of dispersion of the largest value
@@ -12,7 +18,7 @@ pub struct DistributionGumbel {
 }
 
 impl DistributionGumbel {
-    /// Creates a new Gumbel distribution
+    /// Allocates a new instance
     ///
     /// # Input
     ///
@@ -44,13 +50,13 @@ impl DistributionGumbel {
 }
 
 impl ProbabilityDistribution for DistributionGumbel {
-    /// Implements the Probability Density Function (CDF)
+    /// Evaluates the Probability Density Function (CDF)
     fn pdf(&self, x: f64) -> f64 {
         let mz = (self.location - x) / self.scale;
         f64::exp(mz) * f64::exp(-f64::exp(mz)) / self.scale
     }
 
-    /// Implements the Cumulative Density Function (CDF)
+    /// Evaluates the Cumulative Density Function (CDF)
     fn cdf(&self, x: f64) -> f64 {
         let mz = (self.location - x) / self.scale;
         f64::exp(-f64::exp(mz))

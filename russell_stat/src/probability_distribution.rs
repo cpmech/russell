@@ -2,10 +2,10 @@ use rand::Rng;
 
 /// Defines the Probability Distribution trait
 pub trait ProbabilityDistribution {
-    /// Implements the Probability Density Function (CDF)
+    /// Evaluates the Probability Density Function (CDF)
     fn pdf(&self, x: f64) -> f64;
 
-    /// Implements the Cumulative Density Function (CDF)
+    /// Evaluates the Cumulative Density Function (CDF)
     fn cdf(&self, x: f64) -> f64;
 
     /// Returns the Mean

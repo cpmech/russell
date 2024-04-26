@@ -73,6 +73,16 @@ const ASYMPTOTIC_FACTOR: f64 = 1e6;
 /// B(1, 1)   = 1
 /// B(-1, 1)  = -1
 /// ```
+///
+/// # Examples
+///
+/// ![Beta](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_beta_gamma_functions_bb.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::beta(0.5, 2.0), 1.3333333333333333, 1e-15);
+/// ```
 pub fn beta(a: f64, b: f64) -> f64 {
     // special cases
     if f64::is_nan(a) || f64::is_nan(b) {
@@ -163,7 +173,27 @@ pub fn beta(a: f64, b: f64) -> f64 {
 
 /// Evaluates the natural logarithm of the Beta function B(a, b)
 ///
+/// **Note:** This function returns the *real* part of `ln(B(a, b))`. I.e, it returns:
+///
+/// ```text
+/// Real[ln(B(a, b))]
+/// ```
+///
 /// See [beta()] for further details.
+///
+/// See: <https://mathworld.wolfram.com/BetaFunction.html>
+///
+/// See also: <https://en.wikipedia.org/wiki/Beta_function>
+///
+/// # Examples
+///
+/// ![ln_beta](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_beta_gamma_functions_lb.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::ln_beta(0.5, 2.0), 0.28768207245178093, 1e-15);
+/// ```
 pub fn ln_beta(a: f64, b: f64) -> f64 {
     // special cases
     if f64::is_nan(a) || f64::is_nan(b) {

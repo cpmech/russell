@@ -191,6 +191,12 @@ const TT: f64 = -3.63867699703950536541e-18; // 0xBC50C7CAA48A971F
 ///
 /// Returns `(ln_gamma_x, sign)` where the sign is -1 or 1.
 ///
+/// **Note:** This function returns the *real* part of `ln(Γ(x))`. I.e, it returns:
+///
+/// ```text
+/// Real[ln(Γ(x))]
+/// ```
+///
 /// See: <https://mathworld.wolfram.com/LogGammaFunction.html>
 ///
 /// See also: <https://en.wikipedia.org/wiki/Gamma_function>
@@ -202,6 +208,18 @@ const TT: f64 = -3.63867699703950536541e-18; // 0xBC50C7CAA48A971F
 /// * `ln(Γ(-integer)) = +Inf`
 /// * `ln(Γ(-Inf))     = -Inf`
 /// * `ln(Γ(NaN))      = NaN`
+///
+/// # Examples
+///
+/// ![ln_gamma](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_beta_gamma_functions_lg.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::ln_gamma(1.0).0, 0.0, 1e-15);
+/// approx_eq(math::ln_gamma(1.5).0, -0.1207822376352452, 1e-15);
+/// approx_eq(math::ln_gamma(2.0).0, 0.0, 1e-15);
+/// ```
 pub fn ln_gamma(x: f64) -> (f64, i32) {
     // special cases
     if f64::is_nan(x) {

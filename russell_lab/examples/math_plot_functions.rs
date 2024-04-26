@@ -19,7 +19,7 @@ fn main() -> Result<(), StrError> {
     plot.add(&curve)
         .grid_and_labels("$x$", "$\\mathrm{sign}(x)$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // ramp(x)
     let y_ramp = xa.get_mapped(|x| math::ramp(x));
@@ -30,7 +30,7 @@ fn main() -> Result<(), StrError> {
     plot.add(&curve)
         .grid_and_labels("$x$", "$\\mathrm{ramp}(x)$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // heaviside(x)
     let y_heaviside = xa.get_mapped(|x| math::heaviside(x));
@@ -41,7 +41,7 @@ fn main() -> Result<(), StrError> {
     plot.add(&curve)
         .grid_and_labels("$x$", "$\\mathrm{heaviside}(x)$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // boxcar(x)
     let (a, b) = (1.0, 2.0);
@@ -51,9 +51,9 @@ fn main() -> Result<(), StrError> {
     let mut plot = Plot::new();
     let path = format!("{}/math_plot_functions_boxcar.svg", OUT_DIR);
     plot.add(&curve)
-        .grid_and_labels("$x$", format!("$\\mathrm{{boxcar}}_{{({},{})}}(x)$", a, b).as_str())
+        .grid_and_labels("$x$", &format!("$\\mathrm{{boxcar}}_{{({},{})}}(x)$", a, b))
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // logistic(x)
     let y_logistic = xc.get_mapped(|x| math::logistic(x));
@@ -64,7 +64,7 @@ fn main() -> Result<(), StrError> {
     plot.add(&curve)
         .grid_and_labels("$x$", "$\\mathrm{logistic}(x)$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // logistic_deriv1(x)
     let y_logistic_deriv1 = xc.get_mapped(|x| math::logistic_deriv1(x));
@@ -77,7 +77,7 @@ fn main() -> Result<(), StrError> {
     plot.add(&curve)
         .grid_and_labels("$x$", "$\\frac{d\\mathrm{logistic}(x)}{dx}$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // smooth_ramp(x)
     let beta = 10.0;
@@ -88,14 +88,14 @@ fn main() -> Result<(), StrError> {
     text.set_bbox(true)
         .set_bbox_facecolor("pink")
         .set_bbox_edgecolor("black");
-    text.draw(-1.0, 0.85, format!("$\\beta = {}$", beta).as_str());
+    text.draw(-1.0, 0.85, &format!("$\\beta = {}$", beta));
     let mut plot = Plot::new();
     let path = format!("{}/math_plot_functions_smooth_ramp.svg", OUT_DIR);
     plot.add(&curve)
         .add(&text)
         .grid_and_labels("$x$", "$\\mathrm{SmoothRamp}(x)$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // smooth_ramp_deriv1(x)
     let beta = 10.0;
@@ -110,7 +110,7 @@ fn main() -> Result<(), StrError> {
         .add(&text)
         .grid_and_labels("$x$", "$\\frac{d\\mathrm{SmoothRamp}(x)}{dx}$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // smooth_ramp_deriv2(x)
     let beta = 10.0;
@@ -125,7 +125,7 @@ fn main() -> Result<(), StrError> {
         .add(&text)
         .grid_and_labels("$x$", "$\\frac{d^2\\mathrm{SmoothRamp}(x)}{dx^2}$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     Ok(())
 }

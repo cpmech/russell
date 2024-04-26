@@ -753,7 +753,7 @@ mod tests {
                     .add(&legend)
                     .grid_and_labels("$x$", "$f(x)$")
                     .set_figure_size_points(600.0, 350.0)
-                    .save(path.as_str())
+                    .save(&path)
                     .unwrap();
             }
             */

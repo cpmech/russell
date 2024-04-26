@@ -35,6 +35,6 @@ fn main() -> Result<(), StrError> {
         .add(&curve_fit)
         .grid_and_labels("x", "y")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
     Ok(())
 }

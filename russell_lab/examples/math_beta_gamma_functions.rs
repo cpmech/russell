@@ -45,7 +45,7 @@ fn main() -> Result<(), StrError> {
         .set_yrange(-10.0, 10.0)
         .grid_labels_legend("$x$", "$B\\left(\\frac{1}{2},x\\right)$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // plot ln_beta
     let mut curve = Curve::new();
@@ -59,7 +59,7 @@ fn main() -> Result<(), StrError> {
             "${\\mathrm{Real}}\\left[\\log_e(B\\left(\\frac{1}{2},x\\right)\\right]$",
         )
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // plot gamma
     let mut curve = Curve::new();
@@ -71,7 +71,7 @@ fn main() -> Result<(), StrError> {
         .set_yrange(-20.0, 20.0)
         .grid_labels_legend("$x$", "$\\Gamma(x)$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // plot ln_gamma
     let mut curve = Curve::new();
@@ -83,6 +83,6 @@ fn main() -> Result<(), StrError> {
         // .set_yrange(-2.0, 3.0)
         .grid_labels_legend("$x$", "${\\mathrm{Real}}\\left[\\log_e(\\Gamma(x)\\right]$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
     Ok(())
 }

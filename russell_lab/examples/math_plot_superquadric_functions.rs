@@ -16,9 +16,9 @@ fn main() -> Result<(), StrError> {
     let mut plot = Plot::new();
     let path = format!("{}/math_plot_functions_suq_sin.svg", OUT_DIR);
     plot.add(&curve)
-        .grid_and_labels("$x$", format!("$\\mathrm{{SuqSin}}_{}(x)$", k).as_str())
+        .grid_and_labels("$x$", &format!("$\\mathrm{{SuqSin}}_{}(x)$", k))
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // suq_cos(x)
     let y_suq_cos = xa.get_mapped(|x| math::suq_cos(x, k));
@@ -27,9 +27,9 @@ fn main() -> Result<(), StrError> {
     let mut plot = Plot::new();
     let path = format!("{}/math_plot_functions_suq_cos.svg", OUT_DIR);
     plot.add(&curve)
-        .grid_and_labels("$x$", format!("$\\mathrm{{SuqCos}}_{}(x)$", k).as_str())
+        .grid_and_labels("$x$", &format!("$\\mathrm{{SuqCos}}_{}(x)$", k))
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // superquadric
     if true {
@@ -62,7 +62,7 @@ fn main() -> Result<(), StrError> {
         let path = format!("{}/math_plot_functions_superquadric.svg", OUT_DIR);
         plot.set_equal_axes(true)
             .set_figure_size_points(800.0, 800.0)
-            .save(path.as_str())?;
+            .save(&path)?;
     }
     Ok(())
 }

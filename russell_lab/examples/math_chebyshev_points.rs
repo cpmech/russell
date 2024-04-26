@@ -47,7 +47,7 @@ fn main() -> Result<(), StrError> {
     text.set_bbox(true)
         .set_bbox_facecolor("pink")
         .set_bbox_edgecolor("black");
-    text.draw(-1.0, 4.0, format!("$N = {}$", nn).as_str());
+    text.draw(-1.0, 4.0, &format!("$N = {}$", nn));
 
     // save figure
     let path = format!("{}/math_chebyshev_points.svg", OUT_DIR);
@@ -60,7 +60,7 @@ fn main() -> Result<(), StrError> {
         .set_hide_yticks()
         .set_yrange(-5.0, 5.0)
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     Ok(())
 }

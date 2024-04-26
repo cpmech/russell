@@ -36,7 +36,7 @@ fn main() -> Result<(), StrError> {
     plot.add(&curve)
         .grid_labels_legend("$x$", "$\\mathrm{erf}(x)$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // plot erfc
     let mut curve = Curve::new();
@@ -47,7 +47,7 @@ fn main() -> Result<(), StrError> {
     plot.add(&curve)
         .grid_labels_legend("$x$", "$\\mathrm{erfc}(x)$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // plot erf_inv
     let mut curve = Curve::new();
@@ -58,7 +58,7 @@ fn main() -> Result<(), StrError> {
     plot.add(&curve)
         .grid_labels_legend("$x$", "$\\mathrm{erf}^{-1}(x)$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // plot erfc_inv
     let mut curve = Curve::new();
@@ -69,6 +69,6 @@ fn main() -> Result<(), StrError> {
     plot.add(&curve)
         .grid_labels_legend("$x$", "$\\mathrm{erfc}^{-1}(x)$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
     Ok(())
 }

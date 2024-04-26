@@ -18,9 +18,9 @@ fn main() -> Result<(), StrError> {
         let mut curve_yy = Curve::new();
         let mut curve_gg = Curve::new();
         let mut curve_hh = Curve::new();
-        curve_yy.set_label(format!("$T_{}$", n).as_str());
-        curve_gg.set_label(format!("$\\frac{{dT_{}}}{{dx}}$", n).as_str());
-        curve_hh.set_label(format!("$\\frac{{d^2T_{}}}{{dx^2}}$", n).as_str());
+        curve_yy.set_label(&format!("$T_{}$", n));
+        curve_gg.set_label(&format!("$\\frac{{dT_{}}}{{dx}}$", n));
+        curve_hh.set_label(&format!("$\\frac{{d^2T_{}}}{{dx^2}}$", n));
         curve_yy.draw(xx.as_data(), yy.as_data());
         curve_gg.draw(xx.as_data(), gg.as_data());
         curve_hh.draw(xx.as_data(), hh.as_data());
@@ -38,7 +38,7 @@ fn main() -> Result<(), StrError> {
         .add(&legend)
         .grid_and_labels("$x$", "$T_n(x)$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // save dTn/dx figure
     let path = format!("{}/math_chebyshev_functions_dtn.svg", OUT_DIR);
@@ -49,7 +49,7 @@ fn main() -> Result<(), StrError> {
         .add(&legend)
         .grid_and_labels("$x$", "$\\frac{dT_n(x)}{dx}$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
 
     // save d2Tn/dx2 figure
     let path = format!("{}/math_chebyshev_functions_d2tn.svg", OUT_DIR);
@@ -60,6 +60,6 @@ fn main() -> Result<(), StrError> {
         .add(&legend)
         .grid_and_labels("$x$", "$\\frac{dT^2_n(x)}{dx^2}$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
     Ok(())
 }

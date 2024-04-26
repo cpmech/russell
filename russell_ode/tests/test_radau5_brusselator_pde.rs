@@ -80,11 +80,11 @@ fn test_radau5_brusselator_pde() {
             let path = format!("/tmp/russell_ode/test_radau5_brusselator_pde_{}.svg", field);
             plot.add(&surf1)
                 .add(&surf2)
-                .set_title(format!("{} @ t = {}", field.to_uppercase(), t1).as_str())
+                .set_title(&format!("{} @ t = {}", field.to_uppercase(), t1))
                 .set_label_z(&field.to_uppercase())
                 .set_save_pad_inches(0.3)
                 .set_figure_size_points(600.0, 600.0)
-                .save(path.as_str())
+                .save(&path)
                 .unwrap();
         };
         plot(false);
@@ -105,7 +105,7 @@ struct ReferenceData {
 impl ReferenceData {
     pub fn read(rel_path: &str) -> Self {
         let full_path = format!("{}/{}", env::var("CARGO_MANIFEST_DIR").unwrap(), rel_path);
-        let path = Path::new(full_path.as_str()).to_path_buf();
+        let path = Path::new(&full_path).to_path_buf();
         let input = File::open(path).map_err(|_| "cannot open file").unwrap();
         let buffered = BufReader::new(input);
         let data = serde_json::from_reader(buffered)

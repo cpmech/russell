@@ -1256,7 +1256,7 @@ mod tests {
         //     .add(&curve2)
         //     .legend()
         //     .grid_and_labels("$x$", "$f(x)$")
-        //     .save(path.as_str())
+        //     .save(&path)
         //     .unwrap();
     }
 

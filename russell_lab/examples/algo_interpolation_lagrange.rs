@@ -48,7 +48,7 @@ fn main() -> Result<(), StrError> {
     plot.add(&curve1)
         .add(&curve2)
         .legend()
-        .set_title(format!("N = {}; {}", degree, grid).as_str())
+        .set_title(&format!("N = {}; {}", degree, grid))
         .grid_and_labels("$x$", "$f(x)$")
         .save(path)
         .unwrap();

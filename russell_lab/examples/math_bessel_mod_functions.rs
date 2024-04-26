@@ -23,7 +23,7 @@ fn main() -> Result<(), StrError> {
         let n = k % 3;
         let mut curve = Curve::new();
         curve
-            .set_label(format!("{}{}", s, n).as_str())
+            .set_label(&format!("{}{}", s, n))
             .set_line_color(colors[k])
             .set_line_width(2.5)
             .draw(x.as_data(), y.as_data());
@@ -33,9 +33,9 @@ fn main() -> Result<(), StrError> {
         //     plot.set_yrange(-1.0, 0.5);
         // }
         plot.add(&curve)
-            .grid_labels_legend("$x$", format!("${}_{}(x)$", s, n).as_str())
+            .grid_labels_legend("$x$", &format!("${}_{}(x)$", s, n))
             .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-            .save(path.as_str())?;
+            .save(&path)?;
     }
     Ok(())
 }

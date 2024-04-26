@@ -313,7 +313,7 @@ fn main() -> Result<(), StrError> {
         .add(&curve_j2)
         .grid_labels_legend("$x$", "$J_0(x),\\,J_1(x),\\,J_2(x)$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
     }
     Ok(())
 }

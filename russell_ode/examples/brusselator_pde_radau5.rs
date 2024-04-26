@@ -40,7 +40,7 @@ fn main() -> Result<(), StrError> {
 
     // save problem data
     let problem_data = ProblemData { alpha, npoint };
-    problem_data.write_json(format!("{}_problem_data.json", PATH_KEY).as_str())?;
+    problem_data.write_json(&format!("{}_problem_data.json", PATH_KEY))?;
     Ok(())
 }
 

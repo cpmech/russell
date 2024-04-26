@@ -73,7 +73,7 @@ struct ReferenceData {
 impl ReferenceData {
     pub fn read(rel_path: &str) -> Result<Self, StrError> {
         let full_path = format!("{}/{}", env::var("CARGO_MANIFEST_DIR").unwrap(), rel_path);
-        let path = Path::new(full_path.as_str()).to_path_buf();
+        let path = Path::new(&full_path).to_path_buf();
         let input = File::open(path).map_err(|_| "cannot open file")?;
         let buffered = BufReader::new(input);
         let data = serde_json::from_reader(buffered).map_err(|_| "cannot parse JSON file")?;

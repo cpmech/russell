@@ -114,9 +114,9 @@ fn main() -> Result<(), StrError> {
         .add(&curve_num2)
         .legend()
         .grid_and_labels("$x$", "$u(x)$")
-        .set_title(format!("N = {}, error ={}", nn, format_scientific(max_diff.1, 8, 1)).as_str())
+        .set_title(&format!("N = {}, error ={}", nn, format_scientific(max_diff.1, 8, 1)))
         .set_figure_size_points(500.0, 300.0)
-        .save(format!("{}.svg", PATH_KEY).as_str())?;
+        .save(&format!("{}.svg", PATH_KEY))?;
 
     Ok(())
 }

@@ -26,6 +26,15 @@ use crate::Complex64;
 /// i⁻⁵ = -i   i⁻⁶  = -1   i⁻⁷  = i   i⁻⁸  = 1
 /// i⁻⁹ = -i   i⁻¹⁰ = -1   i⁻¹¹ = i   i⁻¹² = 1
 /// ```
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::{cpx, Complex64, math};
+///
+/// assert_eq!(math::i_pow_n(2), cpx!(-1.0,  0.0));
+/// assert_eq!(math::i_pow_n(3), cpx!( 0.0, -1.0));
+/// ```
 pub fn i_pow_n(n: i32) -> Complex64 {
     if n == 0 {
         Complex64::new(1.0, 0.0)

@@ -36,7 +36,7 @@ impl DistributionNormal {
 }
 
 impl ProbabilityDistribution for DistributionNormal {
-    /// Evaluates the Probability Density Function (CDF)
+    /// Evaluates the Probability Density Function (PDF)
     fn pdf(&self, x: f64) -> f64 {
         self.a * f64::exp(self.b * f64::powf(x - self.mu, 2.0))
     }

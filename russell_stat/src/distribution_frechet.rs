@@ -38,7 +38,7 @@ impl DistributionFrechet {
 }
 
 impl ProbabilityDistribution for DistributionFrechet {
-    /// Evaluates the Probability Density Function (CDF)
+    /// Evaluates the Probability Density Function (PDF)
     ///
     /// # Examples
     ///

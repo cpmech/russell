@@ -34,7 +34,7 @@ impl DistributionUniform {
 }
 
 impl ProbabilityDistribution for DistributionUniform {
-    /// Evaluates the Probability Density Function (CDF)
+    /// Evaluates the Probability Density Function (PDF)
     fn pdf(&self, x: f64) -> f64 {
         if x < self.xmin {
             return 0.0;

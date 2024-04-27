@@ -2,7 +2,7 @@ use rand::Rng;
 
 /// Defines the Probability Distribution trait
 pub trait ProbabilityDistribution {
-    /// Evaluates the Probability Density Function (CDF)
+    /// Evaluates the Probability Density Function (PDF)
     ///
     /// The probability density function `f(x)` is such that
     /// (see Eq 9 on page 1033 of the Reference):

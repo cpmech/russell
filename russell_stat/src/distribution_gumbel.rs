@@ -50,7 +50,7 @@ impl DistributionGumbel {
 }
 
 impl ProbabilityDistribution for DistributionGumbel {
-    /// Evaluates the Probability Density Function (CDF)
+    /// Evaluates the Probability Density Function (PDF)
     ///
     /// ```
     /// use russell_lab::approx_eq;

@@ -35,6 +35,18 @@ impl DistributionUniform {
 
 impl ProbabilityDistribution for DistributionUniform {
     /// Evaluates the Probability Density Function (PDF)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionUniform::new(1.0, 2.0)?;
+    ///     assert_eq!(dist.pdf(1.5), 1.0);
+    ///     Ok(())
+    /// }
+    /// ```
     fn pdf(&self, x: f64) -> f64 {
         if x < self.xmin {
             return 0.0;
@@ -46,6 +58,18 @@ impl ProbabilityDistribution for DistributionUniform {
     }
 
     /// Evaluates the Cumulative Distribution Function (CDF)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionUniform::new(1.0, 2.0)?;
+    ///     assert_eq!(dist.cdf(1.5), 0.5);
+    ///     Ok(())
+    /// }
+    /// ```
     fn cdf(&self, x: f64) -> f64 {
         if x < self.xmin {
             return 0.0;
@@ -57,16 +81,53 @@ impl ProbabilityDistribution for DistributionUniform {
     }
 
     /// Returns the Mean
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionUniform::new(1.0, 2.0)?;
+    ///     assert_eq!(dist.mean(), 1.5);
+    ///     Ok(())
+    /// }
+    /// ```
     fn mean(&self) -> f64 {
         (self.xmin + self.xmax) / 2.0
     }
 
     /// Returns the Variance
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionUniform::new(1.0, 2.0)?;
+    ///     assert_eq!(dist.variance(), 1.0 / 12.0);
+    ///     Ok(())
+    /// }
+    /// ```
     fn variance(&self) -> f64 {
         (self.xmax - self.xmin) * (self.xmax - self.xmin) / 12.0
     }
 
     /// Generates a pseudo-random number belonging to this probability distribution
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionUniform::new(1.0, 2.0)?;
+    ///     let mut rng = get_rng();
+    ///     println!("sample = {}", dist.sample(&mut rng));
+    ///     Ok(())
+    /// }
+    /// ```
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64 {
         self.sampler.sample(rng)
     }

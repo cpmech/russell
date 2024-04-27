@@ -5,7 +5,7 @@ pub trait ProbabilityDistribution {
     /// Evaluates the Probability Density Function (CDF)
     fn pdf(&self, x: f64) -> f64;
 
-    /// Evaluates the Cumulative Density Function (CDF)
+    /// Evaluates the Cumulative Distribution Function (CDF)
     fn cdf(&self, x: f64) -> f64;
 
     /// Returns the Mean

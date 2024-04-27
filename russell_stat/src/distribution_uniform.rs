@@ -45,7 +45,7 @@ impl ProbabilityDistribution for DistributionUniform {
         1.0 / (self.xmax - self.xmin)
     }
 
-    /// Evaluates the Cumulative Density Function (CDF)
+    /// Evaluates the Cumulative Distribution Function (CDF)
     fn cdf(&self, x: f64) -> f64 {
         if x < self.xmin {
             return 0.0;

@@ -56,7 +56,7 @@ impl ProbabilityDistribution for DistributionGumbel {
         f64::exp(mz) * f64::exp(-f64::exp(mz)) / self.scale
     }
 
-    /// Evaluates the Cumulative Density Function (CDF)
+    /// Evaluates the Cumulative Distribution Function (CDF)
     fn cdf(&self, x: f64) -> f64 {
         let mz = (self.location - x) / self.scale;
         f64::exp(-f64::exp(mz))

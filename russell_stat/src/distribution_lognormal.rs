@@ -68,7 +68,7 @@ impl ProbabilityDistribution for DistributionLognormal {
         self.a * f64::exp(self.b * f64::powf(f64::ln(x) - self.mu_logx, 2.0)) / x
     }
 
-    /// Evaluates the Cumulative Density Function (CDF)
+    /// Evaluates the Cumulative Distribution Function (CDF)
     fn cdf(&self, x: f64) -> f64 {
         if x < LOGNORMAL_MIN_X {
             return 0.0;

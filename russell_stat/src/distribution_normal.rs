@@ -41,7 +41,7 @@ impl ProbabilityDistribution for DistributionNormal {
         self.a * f64::exp(self.b * f64::powf(x - self.mu, 2.0))
     }
 
-    /// Evaluates the Cumulative Density Function (CDF)
+    /// Evaluates the Cumulative Distribution Function (CDF)
     fn cdf(&self, x: f64) -> f64 {
         (1.0 + erf((x - self.mu) / (self.sig * SQRT_2))) / 2.0
     }

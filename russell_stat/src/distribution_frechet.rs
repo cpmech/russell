@@ -39,6 +39,52 @@ impl DistributionFrechet {
 
 impl ProbabilityDistribution for DistributionFrechet {
     /// Evaluates the Probability Density Function (CDF)
+    ///
+    /// The probability density function `f(x)` is such that
+    /// (see Eq 9 on page 1033 of the Reference):
+    ///
+    /// ```text
+    ///                 b
+    ///                ⌠
+    /// P(a < X ≤ b) = │ f(v) dv = F(b) - F(a)
+    ///                ⌡
+    ///               a
+    ///
+    /// with b > a
+    /// ```
+    ///
+    /// where `X` is the continuous random variable, `P(a < X ≤ b)` is the probability that `X` is in the
+    /// semi-open interval `(a, b]`, and `F(x)` is the cumulative probability distribution (CDF).
+    ///
+    /// Note that, for continuous random variables, the following probabilities are all the same
+    /// (page 1033 of the reference):
+    ///
+    /// ```text
+    /// prob = P(a < X < b)
+    ///      = P(a < X ≤ b)
+    ///      = P(a ≤ X < b)
+    ///      = P(a ≤ X ≤ b)
+    /// ```
+    ///
+    /// # References
+    ///
+    /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
+    ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::math::NAPIER;
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let (location, scale, shape) = (0.0, 1.0, 2.0);
+    ///     let dist = DistributionFrechet::new(location, scale, shape)?;
+    ///     assert_eq!(dist.pdf(1.0), 2.0 / NAPIER);
+    ///     // Mathematica: PDF[FrechetDistribution[2, 1], 1] == 2/E
+    ///     Ok(())
+    /// }
+    /// ```
     fn pdf(&self, x: f64) -> f64 {
         if x - self.location < FRECHET_MIN_DELTA_X {
             return 0.0;
@@ -47,7 +93,44 @@ impl ProbabilityDistribution for DistributionFrechet {
         f64::exp(-f64::powf(z, -self.shape)) * f64::powf(z, -1.0 - self.shape) * self.shape / self.scale
     }
 
-    /// Evaluates the Cumulative Density Function (CDF)
+    /// Evaluates the Cumulative Distribution Function (CDF)
+    ///
+    /// The cumulative distribution function (or simply *distribution*) `F(x)` is such that
+    /// (see Eq 1 on page 1029 of the Reference):
+    ///
+    /// ```text
+    ///             x
+    ///            ⌠
+    /// P(X ≤ x) = │ f(v) dv = F(x)
+    ///            ⌡
+    ///          -∞
+    /// ```
+    ///
+    /// where `X` is the continuous random variable, `P(X ≤ x)` is the probability that `X`
+    /// assumes values not exceeding `x`, and `f(x)` is the  probability density function (PDF).
+    ///
+    /// # References
+    ///
+    /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
+    ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // Example from <https://reference.wolfram.com/language/ref/FrechetDistribution.html>
+    ///     let (location, scale, shape) = (0.0, 6.3, 0.71);
+    ///     let dist = DistributionFrechet::new(location, scale, shape)?;
+    ///     let p_xx_less_than_30 = dist.cdf(30.0);
+    ///     let p_xx_greater_than_30 = 1.0 - p_xx_less_than_30;
+    ///     println!("P(X > 30) = {}", p_xx_greater_than_30);
+    ///     approx_eq(p_xx_greater_than_30, 0.2812192884182272, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     fn cdf(&self, x: f64) -> f64 {
         if x - self.location < FRECHET_MIN_DELTA_X {
             return 0.0;
@@ -57,6 +140,21 @@ impl ProbabilityDistribution for DistributionFrechet {
     }
 
     /// Returns the Mean
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::{approx_eq, math::SQRT_PI};
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let (location, scale, shape) = (0.0, 3.0, 2.0);
+    ///     let dist = DistributionFrechet::new(location, scale, shape)?;
+    ///     approx_eq(dist.mean(), 3.0 * SQRT_PI, 1e-15);
+    ///     // Mathematica: Mean[FrechetDistribution[2, 3]]
+    ///     Ok(())
+    /// }
+    /// ```
     fn mean(&self) -> f64 {
         if self.shape > 1.0 {
             return self.location + self.scale * gamma(1.0 - 1.0 / self.shape);
@@ -65,16 +163,44 @@ impl ProbabilityDistribution for DistributionFrechet {
     }
 
     /// Returns the Variance
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let (location, scale, shape) = (0.0, 3.0, 4.0);
+    ///     let dist = DistributionFrechet::new(location, scale, shape)?;
+    ///     approx_eq(dist.variance(), 2.4372698060239768, 1e-14);
+    ///     // Mathematica: N[Variance[FrechetDistribution[4, 3]], 17]
+    ///     Ok(())
+    /// }
+    /// ```
     fn variance(&self) -> f64 {
         if self.shape > 2.0 {
-            return self.scale
-                * self.scale
-                * (gamma(1.0 - 2.0 / self.shape) - f64::powf(gamma(1.0 - 1.0 / self.shape), 2.0));
+            let ss = self.scale * self.scale;
+            return ss * (gamma(1.0 - 2.0 / self.shape) - f64::powi(gamma(1.0 - 1.0 / self.shape), 2));
         }
         f64::INFINITY
     }
 
     /// Generates a pseudo-random number belonging to this probability distribution
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let (location, scale, shape) = (0.0, 3.0, 4.0);
+    ///     let dist = DistributionFrechet::new(location, scale, shape)?;
+    ///     let mut rng = get_rng();
+    ///     println!("sample = {}", dist.sample(&mut rng));
+    ///     Ok(())
+    /// }
+    /// ```
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64 {
         self.sampler.sample(rng)
     }

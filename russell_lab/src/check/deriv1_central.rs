@@ -84,7 +84,7 @@ where
 /// * Computes the derivative using the 5-point rule (at_x-h, at_x-h/2, at_x, at_x+h/2, at_x+h)
 /// * A pre-selected stepsize is scaled based on error estimates
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{deriv1_central5, StrError};

@@ -77,7 +77,7 @@ fn main() -> Result<(), StrError> {
     // Radau5 curve
     let mut curve1 = Curve::new();
     curve1
-        .set_label(format!("Radau5, n_accepted = {}", n_accepted1).as_str())
+        .set_label(&format!("Radau5, n_accepted = {}", n_accepted1))
         .set_marker_style("o")
         .draw(&out1.step_x, out1.step_y.get(&sel).unwrap());
 
@@ -86,10 +86,10 @@ fn main() -> Result<(), StrError> {
     let mut curve3 = Curve::new();
     let mut curve4 = Curve::new();
     curve2
-        .set_label(format!("DoPri5, Tol = 1e-2, n_accepted = {}", n_accepted2).as_str())
+        .set_label(&format!("DoPri5, Tol = 1e-2, n_accepted = {}", n_accepted2))
         .draw(&out2.step_x, out2.step_y.get(&sel).unwrap());
     curve3
-        .set_label(format!("DoPri5, Tol = 1e-3, n_accepted = {}", n_accepted3).as_str())
+        .set_label(&format!("DoPri5, Tol = 1e-3, n_accepted = {}", n_accepted3))
         .draw(&out3.step_x, out3.step_y.get(&sel).unwrap());
     curve4.draw(&out3.step_x, &out3.step_h);
 
@@ -100,7 +100,7 @@ fn main() -> Result<(), StrError> {
         .add(&curve1)
         .add(&curve2)
         .add(&curve3)
-        .grid_and_labels("$x$", format!("$y_{}$", sel).as_str())
+        .grid_and_labels("$x$", &format!("$y_{}$", sel))
         .legend()
         .set_ymin(0.000032)
         .set_figure_size_points(600.0, 400.0)

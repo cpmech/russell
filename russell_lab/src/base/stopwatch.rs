@@ -76,7 +76,7 @@ impl Stopwatch {
     ///
     /// The method `stop` (or `stop_and_reset`) must be called to measure the elapsed time. Until then, the displayed elapsed time is zero, even though the stopwatch has already started.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::Stopwatch;
@@ -97,7 +97,7 @@ impl Stopwatch {
     ///
     /// Returns the elapsed time in nanoseconds
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::Stopwatch;
@@ -117,7 +117,7 @@ impl Stopwatch {
 
     /// Resets the stopwatch to zero elapsed time
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::Stopwatch;
@@ -141,7 +141,7 @@ impl Stopwatch {
     ///
     /// Returns the elapsed time
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::Stopwatch;

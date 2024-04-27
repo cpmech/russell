@@ -5,7 +5,11 @@ use russell_lab::math::{erf, SQRT_2, SQRT_PI};
 
 const LOGNORMAL_MIN_X: f64 = 1e-15;
 
-/// Defines the Lognormal distribution
+/// Implements the Lognormal distribution
+///
+/// See: <https://en.wikipedia.org/wiki/Log-normal_distribution>
+///
+/// ![Lognormal](https://raw.githubusercontent.com/cpmech/russell/main/russell_stat/data/figures/plot_distribution_functions_lognormal.svg)
 pub struct DistributionLognormal {
     mu_logx: f64,  // mean (μ) of log(x)
     sig_logx: f64, // standard deviation (σ) of log(x)
@@ -16,7 +20,7 @@ pub struct DistributionLognormal {
 }
 
 impl DistributionLognormal {
-    /// Creates a new Lognormal distribution
+    /// Allocates a new instance
     ///
     /// # Input
     ///
@@ -56,7 +60,21 @@ impl DistributionLognormal {
 }
 
 impl ProbabilityDistribution for DistributionLognormal {
-    /// Implements the Probability Density Function (CDF)
+    /// Evaluates the Probability Density Function (PDF)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionLognormal::new(1.0, 0.5)?;
+    ///     approx_eq(dist.pdf(2.0), 0.33046456598348394, 1e-15);
+    ///     // Mathematica: N[PDF[LogNormalDistribution[1, 1/2], 2], 17]
+    ///     Ok(())
+    /// }
+    /// ```
     fn pdf(&self, x: f64) -> f64 {
         if x < LOGNORMAL_MIN_X {
             return 0.0;
@@ -64,7 +82,21 @@ impl ProbabilityDistribution for DistributionLognormal {
         self.a * f64::exp(self.b * f64::powf(f64::ln(x) - self.mu_logx, 2.0)) / x
     }
 
-    /// Implements the Cumulative Density Function (CDF)
+    /// Evaluates the Cumulative Distribution Function (CDF)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionLognormal::new(1.0, 0.5)?;
+    ///     approx_eq(dist.cdf(2.0),0.26970493073490951, 1e-15);
+    ///     // Mathematica: N[CDF[LogNormalDistribution[1, 1/2], 2], 17]
+    ///     Ok(())
+    /// }
+    /// ```
     fn cdf(&self, x: f64) -> f64 {
         if x < LOGNORMAL_MIN_X {
             return 0.0;
@@ -73,17 +105,58 @@ impl ProbabilityDistribution for DistributionLognormal {
     }
 
     /// Returns the Mean
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionLognormal::new(1.0, 0.5)?;
+    ///     approx_eq(dist.mean(), 3.0802168489180312, 1e-15);
+    ///     // Mathematica: N[Mean[LogNormalDistribution[1, 1/2]], 17]
+    ///     Ok(())
+    /// }
+    /// ```
     fn mean(&self) -> f64 {
         f64::exp(self.mu_logx + self.sig_logx * self.sig_logx / 2.0)
     }
 
     /// Returns the Variance
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionLognormal::new(1.0, 0.5)?;
+    ///     approx_eq(dist.variance(), 2.6947581243449477, 1e-15);
+    ///     // Mathematica: N[Variance[LogNormalDistribution[1, 1/2]], 17]
+    ///     Ok(())
+    /// }
+    /// ```
     fn variance(&self) -> f64 {
         let ss = self.sig_logx * self.sig_logx;
         (f64::exp(ss) - 1.0) * f64::exp(2.0 * self.mu_logx + ss)
     }
 
     /// Generates a pseudo-random number belonging to this probability distribution
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionLognormal::new(1.0, 0.5)?;
+    ///     let mut rng = get_rng();
+    ///     println!("sample = {}", dist.sample(&mut rng));
+    ///     Ok(())
+    /// }
+    /// ```
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64 {
         self.sampler.sample(rng)
     }
@@ -93,7 +166,7 @@ impl ProbabilityDistribution for DistributionLognormal {
 
 #[cfg(test)]
 mod tests {
-    use crate::{DistributionLognormal, ProbabilityDistribution};
+    use crate::{get_rng, DistributionLognormal, ProbabilityDistribution};
     use russell_lab::approx_eq;
 
     // Data from the following R-code (run with Rscript lognormal.R):
@@ -286,7 +359,7 @@ mod tests {
     #[test]
     fn sample_works() {
         let d = DistributionLognormal::new(1.0, 2.0).unwrap();
-        let mut rng = rand::thread_rng();
+        let mut rng = get_rng();
         d.sample(&mut rng);
     }
 }

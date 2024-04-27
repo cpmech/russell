@@ -62,7 +62,7 @@ use russell_sparse::CooMatrix;
 ///    Stiff and Differential-Algebraic Problems. Second Revised Edition.
 ///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{vec_approx_eq, StrError, Vector};
@@ -592,12 +592,12 @@ mod tests {
         array_approx_eq(&out.step_global_error, &[0.0, 0.0, 0.0], 1e-15);
 
         // check count file
-        let count = OutCount::read_json(format!("{}_count.json", path_key).as_str()).unwrap();
+        let count = OutCount::read_json(&format!("{}_count.json", path_key)).unwrap();
         assert_eq!(count.n, 3);
 
         // check output files
         for i in 0..count.n {
-            let res = OutData::read_json(format!("{}_{}.json", path_key, i).as_str()).unwrap();
+            let res = OutData::read_json(&format!("{}_{}.json", path_key, i)).unwrap();
             assert_eq!(res.h, 0.2);
             approx_eq(res.x, (i as f64) * 0.2, 1e-15);
             approx_eq(res.y[0], (i as f64) * 0.2, 1e-15);
@@ -689,12 +689,12 @@ mod tests {
         array_approx_eq(&out.dense_y.get(&0).unwrap(), &[0.0, 0.1, 0.2, 0.3, 0.4], 1e-15);
 
         // check count file
-        let count = OutCount::read_json(format!("{}_count.json", path_key).as_str()).unwrap();
+        let count = OutCount::read_json(&format!("{}_count.json", path_key)).unwrap();
         assert_eq!(count.n, 5);
 
         // check output files
         for i in 0..count.n {
-            let res = OutData::read_json(format!("{}_{}.json", path_key, i).as_str()).unwrap();
+            let res = OutData::read_json(&format!("{}_{}.json", path_key, i)).unwrap();
             assert_eq!(res.h, 0.2); // fixed h, not h_out
             approx_eq(res.x, (i as f64) * H_OUT, 1e-15);
             approx_eq(res.y[0], (i as f64) * H_OUT, 1e-15);

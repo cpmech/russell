@@ -26,14 +26,16 @@
   - [Installation on macOS](#installation-on-macos)
   - [Number of threads](#number-of-threads)
 - [Examples](#examples)
-  - [(lab) Solution of a 1D PDE using spectral collocation](#lab-solution-of-a-1d-pde-using-spectral-collocation)
+  - [(lab) Numerical integration (quadrature)](#lab-numerical-integration-quadrature)
+  - [(lab) Solution of PDEs using spectral collocation](#lab-solution-of-pdes-using-spectral-collocation)
   - [(lab) Matrix visualization](#lab-matrix-visualization)
   - [(lab) Singular value decomposition](#lab-singular-value-decomposition)
   - [(lab) Cholesky factorization](#lab-cholesky-factorization)
-  - [(lab) Solve a tiny (dense) linear system](#lab-solve-a-tiny-dense-linear-system)
-  - [(sparse) Solve a small sparse linear system using UMFPACK](#sparse-solve-a-small-sparse-linear-system-using-umfpack)
-  - [(ode) Brusselator ODE](#ode-brusselator-ode)
-  - [(ode) Brusselator PDE](#ode-brusselator-pde)
+  - [(lab) Solution of a (dense) linear system](#lab-solution-of-a-dense-linear-system)
+  - [(lab) Reading table-formatted data files](#lab-reading-table-formatted-data-files)
+  - [(sparse) Solution of a sparse linear system](#sparse-solution-of-a-sparse-linear-system)
+  - [(ode) Solution of the Brusselator ODE](#ode-solution-of-the-brusselator-ode)
+  - [(ode) Solution of the Brusselator PDE](#ode-solution-of-the-brusselator-pde)
   - [(stat) Generate the Frechet distribution](#stat-generate-the-frechet-distribution)
   - [(tensor) Allocate second-order tensors](#tensor-allocate-second-order-tensors)
 - [Roadmap](#roadmap)
@@ -205,17 +207,31 @@ See also:
 * [russell_stat/examples](https://github.com/cpmech/russell/tree/main/russell_stat/examples)
 * [russell_tensor/examples](https://github.com/cpmech/russell/tree/main/russell_tensor/examples)
 
-**Note:** For the functions dealing with complex numbers, the following line must be added to all derived code:
+
+
+### (lab) Numerical integration (quadrature)
+
+The code below approximates the area of a semicircle of unitary radius.
 
 ```rust
-use num_complex::Complex64;
+use russell_lab::math::PI;
+use russell_lab::{approx_eq, Quadrature, StrError};
+
+fn main() -> Result<(), StrError> {
+    let mut quad = Quadrature::new();
+    let args = &mut 0;
+    let (a, b) = (-1.0, 1.0);
+    let (area, stats) = quad.integrate(a, b, args, |x, _| Ok(f64::sqrt(1.0 - x * x)))?;
+    println!("\narea = {}", area);
+    println!("\n{}", stats);
+    approx_eq(area, PI / 2.0, 1e-13);
+    Ok(())
+}
 ```
 
-This line will bring `Complex64` to the scope. For convenience the (russell_lab) macro `cpx!` may be used to allocate complex numbers.
 
 
-
-### (lab) Solution of a 1D PDE using spectral collocation
+### (lab) Solution of PDEs using spectral collocation
 
 This example illustrates the solution of a 1D PDE using the spectral collocation method. It employs the InterpLagrange struct.
 
@@ -395,7 +411,7 @@ fn main() -> Result<(), StrError> {
 
 
 
-### (lab) Solve a tiny (dense) linear system
+### (lab) Solution of a (dense) linear system
 
 ```rust
 use russell_lab::{solve_lin_sys, Matrix, Vector, StrError};
@@ -425,7 +441,56 @@ fn main() -> Result<(), StrError> {
 
 
 
-### (sparse) Solve a small sparse linear system using UMFPACK
+### (lab) Reading table-formatted data files
+
+The goal is to read the following file (`clay-data.txt`):
+
+```text
+# Fujinomori clay test results
+
+     sr        ea        er   # header
+1.00000  -6.00000   0.10000   
+2.00000   7.00000   0.20000   
+3.00000   8.00000   0.20000   # << look at this line
+
+# comments plus new lines are OK
+
+4.00000   9.00000   0.40000   
+5.00000  10.00000   0.50000   
+
+# bye
+```
+
+The code below illustrates how to do it.
+
+Each column (`sr`, `ea`, `er`) is accessible via the `get` method of the [HashMap].
+
+```rust
+use russell_lab::{read_table, StrError};
+use std::collections::HashMap;
+use std::env;
+use std::path::PathBuf;
+
+fn main() -> Result<(), StrError> {
+    // get the asset's full path
+    let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let full_path = root.join("data/tables/clay-data.txt");
+
+    // read the file
+    let labels = &["sr", "ea", "er"];
+    let table: HashMap<String, Vec<f64>> = read_table(&full_path, Some(labels))?;
+
+    // check the columns
+    assert_eq!(table.get("sr").unwrap(), &[1.0, 2.0, 3.0, 4.0, 5.0]);
+    assert_eq!(table.get("ea").unwrap(), &[-6.0, 7.0, 8.0, 9.0, 10.0]);
+    assert_eq!(table.get("er").unwrap(), &[0.1, 0.2, 0.2, 0.4, 0.5]);
+    Ok(())
+}
+```
+
+
+
+### (sparse) Solution of a sparse linear system
 
 ```rust
 use russell_lab::*;
@@ -493,7 +558,7 @@ fn main() -> Result<(), StrError> {
 
 
 
-### (ode) Brusselator ODE
+### (ode) Solution of the Brusselator ODE
 
 The system is:
 
@@ -512,7 +577,10 @@ use russell_ode::prelude::*;
 
 fn main() -> Result<(), StrError> {
     // get the ODE system
-    let (system, x0, y0, mut args, y_ref) = Samples::brusselator_ode();
+    let (system, x0, mut y0, mut args, y_ref) = Samples::brusselator_ode();
+
+    // final x
+    let x1 = 20.0;
 
     // solver
     let params = Params::new(Method::DoPri8);
@@ -525,7 +593,7 @@ fn main() -> Result<(), StrError> {
     out.set_dense_recording(true, h_out, selected_y_components)?;
 
     // solve the problem
-    solver.solve(&mut y0, x0, data.x1, None, Some(&mut out), &mut args)?;
+    solver.solve(&mut y0, x0, x1, None, Some(&mut out), &mut args)?;
 
     // print the results and stats
     println!("y_russell     = {:?}", y0.as_data());
@@ -541,7 +609,7 @@ A plot of the (dense) solution is shown below:
 
 
 
-### (ode) Brusselator PDE
+### (ode) Solution of the Brusselator PDE
 
 This example solves the Brusselator PDE described in (Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II Stiff and Differential-Algebraic Problems. Second Revised Edition. Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p).
 
@@ -576,7 +644,7 @@ use russell_stat::*;
 
 fn main() -> Result<(), StrError> {
     // generate samples
-    let mut rng = rand::thread_rng();
+    let mut rng = get_rng();
     let dist = DistributionFrechet::new(0.0, 1.0, 1.0)?;
     let nsamples = 10_000;
     let mut data = vec![0.0; nsamples];

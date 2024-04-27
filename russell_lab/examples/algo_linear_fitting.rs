@@ -1,7 +1,6 @@
 use plotpy::{Curve, Plot, RayEndpoint};
-use russell_lab::algo::linear_fitting;
 use russell_lab::math::GOLDEN_RATIO;
-use russell_lab::{approx_eq, StrError, Vector};
+use russell_lab::*;
 
 const OUT_DIR: &str = "/tmp/russell_lab/";
 
@@ -36,6 +35,6 @@ fn main() -> Result<(), StrError> {
         .add(&curve_fit)
         .grid_and_labels("x", "y")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
     Ok(())
 }

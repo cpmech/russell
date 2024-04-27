@@ -15,7 +15,7 @@ extern "C" {
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d4/dd0/dscal_8f.html>
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{vec_scale, Vector};

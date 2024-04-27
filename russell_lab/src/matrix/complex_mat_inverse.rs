@@ -1,6 +1,5 @@
 use super::{complex_mat_copy, ComplexMatrix};
-use crate::{cpx, to_i32, StrError};
-use num_complex::Complex64;
+use crate::{cpx, to_i32, Complex64, StrError};
 
 extern "C" {
     // Computes the LU factorization of a general (m,n) matrix
@@ -46,8 +45,7 @@ const ZERO_DETERMINANT_NORM: f64 = 1e-15;
 /// # Examples
 ///
 /// ```
-/// use num_complex::Complex64;
-/// use russell_lab::{cpx, complex_mat_inverse, ComplexMatrix, StrError};
+/// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // set matrix
@@ -215,8 +213,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
 #[cfg(test)]
 mod tests {
     use super::{complex_mat_inverse, ComplexMatrix, ZERO_DETERMINANT_NORM};
-    use crate::{complex_approx_eq, complex_mat_approx_eq, cpx};
-    use num_complex::Complex64;
+    use crate::{complex_approx_eq, complex_mat_approx_eq, cpx, Complex64};
 
     /// Computes a⋅ai that should equal I for a square matrix
     fn get_a_times_ai(a: &ComplexMatrix, ai: &ComplexMatrix) -> ComplexMatrix {

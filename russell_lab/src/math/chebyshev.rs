@@ -22,6 +22,16 @@ use crate::Vector;
 /// | 4 | 1 - 8 x² + 8 x⁴     | -16 x + 32 x³     | -16 + 96 x²     |
 /// | 5 | 5 x - 20 x³ + 16 x⁵ | 5 - 60 x² + 80 x⁴ | -120 x + 320 x³ |
 /// |...| ...                 | ...               | ....            |
+///
+/// # Examples
+///
+/// ![Tn](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_chebyshev_functions_tn.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::chebyshev_tn(4, 0.25), 0.53125000000000000, 1e-15);
+/// ```
 pub fn chebyshev_tn(n: usize, x: f64) -> f64 {
     if n == 0 {
         return 1.0;
@@ -66,6 +76,16 @@ pub fn chebyshev_tn(n: usize, x: f64) -> f64 {
 /// | 4 | 1 - 8 x² + 8 x⁴     | -16 x + 32 x³     | -16 + 96 x²     |
 /// | 5 | 5 x - 20 x³ + 16 x⁵ | 5 - 60 x² + 80 x⁴ | -120 x + 320 x³ |
 /// |...| ...                 | ...               | ....            |
+///
+/// # Examples
+///
+/// ![dTn/dx](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_chebyshev_functions_dtn.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::chebyshev_tn_deriv1(4, 0.25), -3.5, 1e-15);
+/// ```
 pub fn chebyshev_tn_deriv1(n: usize, x: f64) -> f64 {
     let p = n as f64;
     if x > -1.0 && x < 1.0 {
@@ -116,6 +136,16 @@ pub fn chebyshev_tn_deriv1(n: usize, x: f64) -> f64 {
 /// | 4 | 1 - 8 x² + 8 x⁴     | -16 x + 32 x³     | -16 + 96 x²     |
 /// | 5 | 5 x - 20 x³ + 16 x⁵ | 5 - 60 x² + 80 x⁴ | -120 x + 320 x³ |
 /// |...| ...                 | ...               | ....            |
+///
+/// # Examples
+///
+/// ![d2Tn/dx2](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_chebyshev_functions_d2tn.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::chebyshev_tn_deriv2(4, 0.25), -10.0, 1e-15);
+/// ```
 pub fn chebyshev_tn_deriv2(n: usize, x: f64) -> f64 {
     let p = n as f64;
     let pp = p * p;
@@ -150,14 +180,51 @@ pub fn chebyshev_tn_deriv2(n: usize, x: f64) -> f64 {
     (pp * f64::cosh(p * f64::acosh(x))) / d - (p * x * f64::sinh(p * f64::acosh(x))) / f64::powf(d, 1.5)
 }
 
-/// Computes Chebyshev-Gauss points with symmetry
+/// Computes Chebyshev-Gauss points
+///
+/// The point coordinates are given by:
 ///
 /// ```text
-///             ⎛  (2i+1)⋅π  ⎞
-/// X[i] = -cos ⎜ —————————— ⎟
-///             ⎝   2N + 2   ⎠
+///           ⎛  (2j+1)⋅π  ⎞
+/// Xⱼ = -cos ⎜ —————————— ⎟
+///           ⎝   2N + 2   ⎠
 ///
-/// i = 0 ... N
+/// j = 0 ... N
+/// ```
+///
+/// The weights are not returned but can be calculated by:
+///
+/// ```text
+///        π
+/// wⱼ = —————
+///      N + 2
+/// ```
+///
+/// See equation (2.4.12) on page 85 of the Reference #1 (with reversed ordering of nodes from +1 to -1).
+///
+/// **Note:** This function enforces the symmetry of the sequence of points.
+///
+/// # References
+///
+/// 1. Canuto C, Hussaini MY, Quarteroni A, Zang TA (2006) Spectral Methods: Fundamentals in
+///    Single Domains. Springer. 563p
+///
+/// # Examples
+///
+/// ![Chebyshev points](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_chebyshev_points.svg)
+///
+/// ```
+/// use russell_lab::math;
+///
+/// let xx = math::chebyshev_gauss_points(8);
+/// println!("\nChebyshev-Gauss points =\n{:.3?}", xx.as_data());
+/// ```
+///
+/// The output looks like:
+///
+/// ```text
+/// Chebyshev-Gauss points =
+/// [-0.985, -0.866, -0.643, -0.342, 0.000, 0.342, 0.643, 0.866, 0.985]
 /// ```
 pub fn chebyshev_gauss_points(nn: usize) -> Vector {
     let mut xx = Vector::new(nn + 1);
@@ -177,32 +244,65 @@ pub fn chebyshev_gauss_points(nn: usize) -> Vector {
     xx
 }
 
-/// Computes Chebyshev-Gauss-Lobatto points with symmetry
+/// Computes Chebyshev-Gauss-Lobatto points
 ///
-/// Uses the sin(x) function:
+/// The point coordinates are given by (using the sin(x) function by default):
 ///
 /// ```text
-///             ⎛  π⋅(N-2i)  ⎞
-/// X[i] = -sin ⎜ —————————— ⎟
-///             ⎝    2⋅N     ⎠
+///           ⎛  π⋅(N-2j)  ⎞
+/// Xⱼ = -sin ⎜ —————————— ⎟
+///           ⎝    2⋅N     ⎠
 ///
-/// i = 0 ... N
+/// j = 0 ... N
 /// ```
 ///
 /// Another option is:
 ///
 /// ```text
-///             ⎛  i⋅π  ⎞
-/// X[i] = -cos ⎜ ————— ⎟
-///             ⎝   N   ⎠
+///           ⎛  j⋅π  ⎞
+/// Xⱼ = -cos ⎜ ————— ⎟
+///           ⎝   N   ⎠
 ///
-/// i = 0 ... N
+/// j = 0 ... N
 /// ```
 ///
-/// # Reference
+/// The weights are not returned but can be calculated by:
 ///
-/// * Baltensperger R and Trummer MR (2003) Spectral differencing with a twist,
-///   SIAM Journal Scientific Computation 24(5):1465-1487
+/// ```text
+///      ⎧ π / (2⋅N)  j = 0,N
+/// wⱼ = ⎨
+///      ⎩ π / N      j = 1,...,N-1
+/// ```
+///
+/// See equation (2.4.14) on page 86 of the Reference #1 (with reversed ordering of nodes from +1 to -1).
+/// See also equation (1) of the Reference #2
+///
+/// **Note:** This function enforces the symmetry of the sequence of points.
+///
+/// # References
+///
+/// 1. Canuto C, Hussaini MY, Quarteroni A, Zang TA (2006) Spectral Methods: Fundamentals in
+///    Single Domains. Springer. 563p
+/// 2. Baltensperger R and Trummer MR (2003) Spectral differencing with a twist,
+///    SIAM Journal Scientific Computation 24(5):1465-1487
+///
+/// # Examples
+///
+/// ![Chebyshev points](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_chebyshev_points.svg)
+///
+/// ```
+/// use russell_lab::math;
+///
+/// let xx = math::chebyshev_lobatto_points(8);
+/// println!("\nChebyshev-Gauss-Lobatto points =\n{:.3?}\n", xx.as_data());
+/// ```
+///
+/// The output looks like:
+///
+/// ```text
+/// Chebyshev-Gauss-Lobatto points =
+/// [-1.000, -0.924, -0.707, -0.383, 0.000, 0.383, 0.707, 0.924, 1.000]
+/// ```
 pub fn chebyshev_lobatto_points(nn: usize) -> Vector {
     let mut xx = Vector::new(nn + 1);
     xx[0] = -1.0;

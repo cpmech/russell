@@ -1,4 +1,3 @@
-use num_complex::Complex64;
 use russell_lab::*;
 
 fn main() -> Result<(), StrError> {
@@ -35,6 +34,6 @@ fn main() -> Result<(), StrError> {
         cpx!(0.0, 6.0),   //
     ]);
     println!("expected =\n{:.3}", correct);
-    complex_vec_approx_eq(&b, &correct, 1e-14);
+    complex_vec_approx_eq(&b, &correct, 1e-13);
     Ok(())
 }

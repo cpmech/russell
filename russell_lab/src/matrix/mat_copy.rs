@@ -15,7 +15,7 @@ extern "C" {
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/da/d6c/dcopy_8f.html>
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{mat_copy, Matrix, StrError};

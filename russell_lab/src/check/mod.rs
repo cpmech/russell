@@ -2,7 +2,7 @@
 //!
 //! # Examples
 //!
-//! ### Check float point numbers (real)
+//! ### Check floating point numbers (real)
 //!
 //! ```rust
 //! use russell_lab::*;
@@ -16,17 +16,16 @@
 //! }
 //! ```
 //!
-//! ### Check float point numbers (complex)
+//! ### Check floating point numbers (complex)
 //!
 //! ```
-//! use num_complex::Complex64;
 //! use russell_lab::*;
 //!
 //! fn main() {
-//!     // check float point number
+//!     // check floating point number
 //!     approx_eq(0.0000123, 0.000012, 1e-6);
 //!
-//!     // check vector of float point numbers
+//!     // check vector of floating point numbers
 //!     array_approx_eq(&[0.01, 0.012], &[0.012, 0.01], 1e-2);
 //!
 //!     // check derivative using central differences
@@ -42,7 +41,7 @@
 //! }
 //! ```
 //!
-//! ### Check vectors of float point numbers (real)
+//! ### Check vectors of floating point numbers (real)
 //!
 //! ```rust
 //! use russell_lab::*;
@@ -54,10 +53,9 @@
 //! }
 //! ```
 //!
-//! ### Check vectors of float point numbers (complex)
+//! ### Check vectors of floating point numbers (complex)
 //!
 //! ```rust
-//! use num_complex::Complex64;
 //! use russell_lab::*;
 //!
 //! fn main() {

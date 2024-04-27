@@ -1,6 +1,5 @@
 use super::ComplexMatrix;
-use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_NO_TRANS};
-use num_complex::Complex64;
+use crate::{to_i32, Complex64, StrError, CBLAS_COL_MAJOR, CBLAS_NO_TRANS};
 
 extern "C" {
     // Performs the matrix-matrix multiplication
@@ -32,10 +31,9 @@ extern "C" {
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d7/d76/zgemm_8f.html>
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
-/// use num_complex::Complex64;
 /// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
@@ -115,9 +113,8 @@ pub fn complex_mat_mat_mul(
 
 #[cfg(test)]
 mod tests {
-    use super::{complex_mat_mat_mul, ComplexMatrix};
-    use crate::{complex_mat_approx_eq, cpx};
-    use num_complex::Complex64;
+    use super::complex_mat_mat_mul;
+    use crate::{complex_mat_approx_eq, cpx, Complex64, ComplexMatrix};
 
     #[test]
     fn mat_mat_mul_fails_on_wrong_dims() {

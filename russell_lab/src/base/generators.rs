@@ -13,7 +13,7 @@ use crate::Matrix;
 ///
 /// * `x`, `y` -- (`ny` by `nx`) matrices
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::generate2d;
@@ -77,7 +77,7 @@ pub fn generate2d(xmin: f64, xmax: f64, ymin: f64, ymax: f64, nx: usize, ny: usi
 ///
 /// * `x`, `y`, `z` -- (`ny` by `nx`) matrices
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::generate3d;

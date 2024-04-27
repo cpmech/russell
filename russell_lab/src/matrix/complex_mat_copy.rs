@@ -1,6 +1,5 @@
 use super::ComplexMatrix;
-use crate::{to_i32, StrError};
-use num_complex::Complex64;
+use crate::{to_i32, Complex64, StrError};
 
 extern "C" {
     // Copies a vector into another
@@ -16,11 +15,10 @@ extern "C" {
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d6/d53/zcopy_8f.html>
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
-/// use num_complex::Complex64;
-/// use russell_lab::{cpx, complex_mat_copy, ComplexMatrix, StrError};
+/// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let a = ComplexMatrix::from(&[
@@ -56,9 +54,8 @@ pub fn complex_mat_copy(b: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<(), 
 
 #[cfg(test)]
 mod tests {
-    use super::{complex_mat_copy, ComplexMatrix};
-    use crate::{complex_mat_approx_eq, cpx};
-    use num_complex::Complex64;
+    use super::complex_mat_copy;
+    use crate::{complex_mat_approx_eq, cpx, Complex64, ComplexMatrix};
 
     #[test]
     fn complex_mat_copy_fails_on_wrong_dimensions() {

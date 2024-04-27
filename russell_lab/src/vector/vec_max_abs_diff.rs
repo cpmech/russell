@@ -13,7 +13,7 @@ use crate::StrError;
 ///
 /// This function may be slow for large vectors.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::*;

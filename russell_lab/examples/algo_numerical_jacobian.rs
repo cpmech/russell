@@ -1,4 +1,5 @@
-use russell_lab::{algo, mat_approx_eq, mat_scale, math, Matrix, StrError, Vector};
+use russell_lab::math::PI;
+use russell_lab::*;
 
 fn main() -> Result<(), StrError> {
     // Given the vector function:
@@ -23,7 +24,7 @@ fn main() -> Result<(), StrError> {
 
     // current time-position
     let x = 0.5;
-    let y = Vector::from(&[math::PI, -math::PI / 2.0, math::PI / 4.0, math::PI / 2.0]);
+    let y = Vector::from(&[PI, -PI / 2.0, PI / 4.0, PI / 2.0]);
 
     // function
     let function = |f: &mut Vector, x: f64, y: &Vector, args: &mut Args| {
@@ -50,7 +51,7 @@ fn main() -> Result<(), StrError> {
     mat_scale(&mut jj_ana, alpha);
 
     // numerical Jacobian
-    let jj_num = algo::num_jacobian(y.dim(), x, &y, alpha, args, function)?;
+    let jj_num = num_jacobian(y.dim(), x, &y, alpha, args, function)?;
 
     // check analytical versus numerical
     mat_approx_eq(&jj_ana, &jj_num, 1e-10);

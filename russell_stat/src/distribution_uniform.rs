@@ -2,7 +2,11 @@ use crate::{ProbabilityDistribution, StrError};
 use rand::Rng;
 use rand_distr::{Distribution, Uniform};
 
-/// Defines the Uniform / Type II Extreme Value Distribution (largest value)
+/// Implements the continuous Uniform distribution
+///
+/// See: <https://en.wikipedia.org/wiki/Continuous_uniform_distribution>
+///
+/// ![Uniform](https://raw.githubusercontent.com/cpmech/russell/main/russell_stat/data/figures/plot_distribution_functions_uniform.svg)
 pub struct DistributionUniform {
     xmin: f64, // min x value
     xmax: f64, // max x value
@@ -11,7 +15,7 @@ pub struct DistributionUniform {
 }
 
 impl DistributionUniform {
-    /// Creates a new Uniform distribution
+    /// Allocates a new instance
     ///
     /// # Input
     ///
@@ -30,7 +34,19 @@ impl DistributionUniform {
 }
 
 impl ProbabilityDistribution for DistributionUniform {
-    /// Implements the Probability Density Function (CDF)
+    /// Evaluates the Probability Density Function (PDF)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionUniform::new(1.0, 2.0)?;
+    ///     assert_eq!(dist.pdf(1.5), 1.0);
+    ///     Ok(())
+    /// }
+    /// ```
     fn pdf(&self, x: f64) -> f64 {
         if x < self.xmin {
             return 0.0;
@@ -41,7 +57,19 @@ impl ProbabilityDistribution for DistributionUniform {
         1.0 / (self.xmax - self.xmin)
     }
 
-    /// Implements the Cumulative Density Function (CDF)
+    /// Evaluates the Cumulative Distribution Function (CDF)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionUniform::new(1.0, 2.0)?;
+    ///     assert_eq!(dist.cdf(1.5), 0.5);
+    ///     Ok(())
+    /// }
+    /// ```
     fn cdf(&self, x: f64) -> f64 {
         if x < self.xmin {
             return 0.0;
@@ -53,16 +81,53 @@ impl ProbabilityDistribution for DistributionUniform {
     }
 
     /// Returns the Mean
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionUniform::new(1.0, 2.0)?;
+    ///     assert_eq!(dist.mean(), 1.5);
+    ///     Ok(())
+    /// }
+    /// ```
     fn mean(&self) -> f64 {
         (self.xmin + self.xmax) / 2.0
     }
 
     /// Returns the Variance
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionUniform::new(1.0, 2.0)?;
+    ///     assert_eq!(dist.variance(), 1.0 / 12.0);
+    ///     Ok(())
+    /// }
+    /// ```
     fn variance(&self) -> f64 {
         (self.xmax - self.xmin) * (self.xmax - self.xmin) / 12.0
     }
 
     /// Generates a pseudo-random number belonging to this probability distribution
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionUniform::new(1.0, 2.0)?;
+    ///     let mut rng = get_rng();
+    ///     println!("sample = {}", dist.sample(&mut rng));
+    ///     Ok(())
+    /// }
+    /// ```
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64 {
         self.sampler.sample(rng)
     }

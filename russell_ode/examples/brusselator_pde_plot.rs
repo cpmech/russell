@@ -26,14 +26,14 @@ fn main() -> Result<(), StrError> {
 
     // read summary
     println!("... generating figures ...");
-    let count = OutCount::read_json(format!("{}_count.json", path_key).as_str())?;
+    let count = OutCount::read_json(&format!("{}_count.json", path_key))?;
     let mut uu_plot = Graph::new(opt.second_book, &path_key, count.n)?;
     let mut vv_plot = Graph::new(opt.second_book, &path_key, count.n)?;
 
     // loop over time stations
     for idx in 0..count.n {
         let path = format!("{}_{}.json", path_key, idx);
-        let res = OutData::read_json(path.as_str())?;
+        let res = OutData::read_json(&path)?;
         uu_plot.draw(res.x, &res.y, false)?;
         vv_plot.draw(res.x, &res.y, true)?;
     }
@@ -77,7 +77,7 @@ struct Graph {
 
 impl Graph {
     pub fn new(second_book: bool, path_key: &String, n_files: usize) -> Result<Self, StrError> {
-        let problem_data = ProblemData::read_json(format!("{}_problem_data.json", path_key).as_str())?;
+        let problem_data = ProblemData::read_json(&format!("{}_problem_data.json", path_key))?;
         let alpha = problem_data.alpha;
         let npoint = problem_data.npoint;
         let fdm = PdeDiscreteLaplacian2d::new(alpha, alpha, 0.0, 1.0, 0.0, 1.0, npoint, npoint)?;
@@ -131,7 +131,7 @@ impl Graph {
         }
         surf.draw(&self.grid_x, &self.grid_y, &self.grid_z);
         let title = format!("{} @ t = {:?}", field, t);
-        self.plot.add(&surf).set_title(title.as_str()).set_camera(30.0, 210.0);
+        self.plot.add(&surf).set_title(&title).set_camera(30.0, 210.0);
         if self.second_book {
             self.plot
                 .set_hide_xticks()
@@ -165,6 +165,6 @@ impl Graph {
         } else {
             (1000.0, 1500.0)
         };
-        self.plot.set_figure_size_points(width, height).save(path.as_str())
+        self.plot.set_figure_size_points(width, height).save(&path)
     }
 }

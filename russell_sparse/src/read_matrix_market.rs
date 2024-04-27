@@ -1,7 +1,6 @@
 use super::{CooMatrix, MMsym, Sym};
 use crate::{ComplexCooMatrix, StrError};
-use num_complex::Complex64;
-use russell_lab::cpx;
+use russell_lab::{cpx, Complex64};
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -196,7 +195,7 @@ impl MatrixMarketData {
 /// 2. Swap the lower triangle with the upper triangle, i.e., return an upper triangular matrix
 /// 3. Duplicate the data to make a full matrix, i.e., return a full matrix (e.g., for UMFPACK solver)
 ///
-/// # Example of MatrixMarket file
+/// # Examples of MatrixMarket file
 ///
 /// ```text
 /// %%MatrixMarket matrix coordinate real general
@@ -254,7 +253,7 @@ impl MatrixMarketData {
 ///
 /// # Examples
 ///
-/// ## Example 1 - General matrix
+/// ## Examples 1 - General matrix
 ///
 /// Given the following `ok_simple_general.mtx` file:
 ///
@@ -295,7 +294,7 @@ impl MatrixMarketData {
 /// }
 /// ```
 ///
-/// ## Example 2 - Symmetric matrix
+/// ## Examples 2 - Symmetric matrix
 ///
 /// Given the following `ok_simple_symmetric.mtx` file:
 ///
@@ -469,8 +468,7 @@ where
 mod tests {
     use super::{read_matrix_market, MatrixMarketData};
     use crate::{MMsym, Sym};
-    use num_complex::Complex64;
-    use russell_lab::{cpx, Matrix};
+    use russell_lab::{cpx, Complex64, Matrix};
 
     #[test]
     fn parse_header_captures_errors() {

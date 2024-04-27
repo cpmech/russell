@@ -11,6 +11,17 @@
 /// Defines the error output as a static string
 pub type StrError = &'static str;
 
+use rand::rngs::ThreadRng;
+
+/// Returns the thread-local random number generator, seeded by the system
+///
+/// See more information here: [rand::thread_rng()]
+#[inline]
+pub fn get_rng() -> ThreadRng {
+    // re-exported for convenience
+    rand::thread_rng()
+}
+
 mod distribution_frechet;
 mod distribution_gumbel;
 mod distribution_lognormal;
@@ -29,13 +40,6 @@ pub use crate::probability_distribution::*;
 pub use crate::statistics::*;
 
 // run code from README file
+#[doc = include_str!("../README.md")]
 #[cfg(doctest)]
-mod test_readme {
-    macro_rules! external_doc_test {
-        ($x:expr) => {
-            #[doc = $x]
-            extern "C" {}
-        };
-    }
-    external_doc_test!(include_str!("../README.md"));
-}
+pub struct ReadmeDoctest;

@@ -1,4 +1,4 @@
-use num_complex::Complex64;
+use crate::Complex64;
 
 /// Calculates the imaginary unit (i) raised to power of n
 ///
@@ -25,6 +25,17 @@ use num_complex::Complex64;
 /// i⁻¹ = -i   i⁻²  = -1   i⁻³  = i   i⁻⁴  = 1
 /// i⁻⁵ = -i   i⁻⁶  = -1   i⁻⁷  = i   i⁻⁸  = 1
 /// i⁻⁹ = -i   i⁻¹⁰ = -1   i⁻¹¹ = i   i⁻¹² = 1
+/// ```
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::{cpx, Complex64, math};
+///
+/// assert_eq!(math::i_pow_n( 2), cpx!(-1.0,  0.0));
+/// assert_eq!(math::i_pow_n( 3), cpx!( 0.0, -1.0));
+/// assert_eq!(math::i_pow_n(-2), cpx!(-1.0,  0.0));
+/// assert_eq!(math::i_pow_n(-3), cpx!( 0.0,  1.0));
 /// ```
 pub fn i_pow_n(n: i32) -> Complex64 {
     if n == 0 {
@@ -72,6 +83,17 @@ pub fn i_pow_n(n: i32) -> Complex64 {
 /// (x⋅i)⁻⁵ = -x⁵⋅i   (x⋅i)⁻⁶  = -x⁶    (x⋅i)⁻⁷  = x⁷ ⋅i   (x⋅i)⁻⁸  =  x⁸
 /// (x⋅i)⁻⁹ = -x⁹⋅i   (x⋅i)⁻¹⁰ = -x¹⁰   (x⋅i)⁻¹¹ = x¹¹⋅i   (x⋅i)⁻¹² = x¹²
 /// ```
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::{cpx, Complex64, math};
+///
+/// assert_eq!(math::x_times_i_pow_n( 2.0,  2), cpx!(-4.0,  0.0));
+/// assert_eq!(math::x_times_i_pow_n(-2.0,  3), cpx!( 0.0,  8.0));
+/// assert_eq!(math::x_times_i_pow_n( 2.0, -2), cpx!(-0.25, 0.0));
+/// assert_eq!(math::x_times_i_pow_n(-2.0, -3), cpx!( 0.0, -0.125));
+/// ```
 pub fn x_times_i_pow_n(x: f64, n: i32) -> Complex64 {
     if n == 0 {
         Complex64::new(1.0, 0.0)
@@ -100,7 +122,7 @@ pub fn x_times_i_pow_n(x: f64, n: i32) -> Complex64 {
 mod tests {
     use super::{i_pow_n, x_times_i_pow_n};
     use crate::math::PI;
-    use num_complex::Complex64;
+    use crate::Complex64;
 
     #[test]
     fn i_pow_n_works() {

@@ -1,6 +1,5 @@
 use super::ComplexVector;
-use crate::{add_arrays_complex, StrError};
-use num_complex::Complex64;
+use crate::{add_arrays_complex, Complex64, StrError};
 
 /// Performs the addition of two vectors
 ///
@@ -8,10 +7,9 @@ use num_complex::Complex64;
 /// w := α⋅u + β⋅v
 /// ```
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
-/// use num_complex::Complex64;
 /// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
@@ -45,9 +43,8 @@ pub fn complex_vec_add(
 
 #[cfg(test)]
 mod tests {
-    use super::{complex_vec_add, ComplexVector};
-    use crate::{complex_vec_approx_eq, cpx, MAX_DIM_FOR_NATIVE_BLAS};
-    use num_complex::Complex64;
+    use super::complex_vec_add;
+    use crate::{complex_vec_approx_eq, cpx, Complex64, ComplexVector, MAX_DIM_FOR_NATIVE_BLAS};
 
     #[test]
     fn complex_vec_add_fail_on_wrong_dims() {

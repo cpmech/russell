@@ -42,6 +42,42 @@ extern "C" {
 ///
 /// * `l` -- (lambda) will hold the eigenvalues
 /// * `a` -- will hold the eigenvectors as columns
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::{mat_eigen_sym, Matrix, Vector};
+/// use russell_lab::StrError;
+///
+/// fn main() -> Result<(), StrError> {
+///     // set matrix
+///     let sym = 0.0;
+///     let data = [
+///         [2.0, sym, sym],
+///         [0.0, 3.0, sym],
+///         [0.0, 4.0, 9.0],
+///     ];
+///     let mut a = Matrix::from(&data);
+///
+///     // perform the eigen-decomposition
+///     let upper = false;
+///     let mut l = Vector::new(3);
+///     mat_eigen_sym(&mut l, &mut a, upper)?;
+///     println!("eigenvalues =\n{}", l);
+///     println!("eigenvectors =\n{:.5}", a);
+///
+///     // check results
+///     assert_eq!(
+///         format!("{}", l),
+///         "┌    ┐\n\
+///          │  1 │\n\
+///          │  2 │\n\
+///          │ 11 │\n\
+///          └    ┘"
+///     );
+///     Ok(())
+/// }
+/// ```
 pub fn mat_eigen_sym(l: &mut Vector, a: &mut Matrix, upper: bool) -> Result<(), StrError> {
     let (m, n) = a.dims();
     if m != n {

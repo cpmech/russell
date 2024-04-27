@@ -5,17 +5,24 @@ use crate::StrError;
 /// Sums the rows of a matrix
 ///
 /// ```text
-/// vⱼ = Σ_i aᵢⱼ
+///      m-1
+/// vⱼ =  Σ  aᵢⱼ
+///      i=0
+///
+/// 0 ≤ j ≤ n-1
 /// ```
 ///
+/// Sum downwards:
+///
 /// ```text
-///  _                                             _
-/// |      a00      a01      a02  ...      a0(n-1)  |
-/// |      a10      a11      a12  ...      a1(n-1)  |
-/// |                             ...               |
-/// |_ a(m-1)0  a(m-1)1  a(m-1)2  ...  a(m-1)(n-1) _|
-///                           =
-/// [       v0       v1       v2  ...       v(n-1)  ]
+/// ┌                                       ┐
+/// │    a₀₀     a₀₁     a₀₂  ···    a₀·ₙ₋₁ │
+/// │    a₁₀     a₁₁     a₁₂  ···    a₁·ₙ₋₁ │
+/// │                         ···           │
+/// │ aₘ₋₁·₀  aₘ₋₁·₁  aₘ₋₁·₂  ···  aₘ₋₁·ₙ₋₁ │
+/// └                                       ┘
+///                     =
+/// [     v₀      v₁      v₂  ···      vₙ₋₁ ]
 /// ```
 ///
 /// # Input
@@ -26,6 +33,23 @@ use crate::StrError;
 /// # Note
 ///
 /// This function is not as optimized (e.g., multi-threaded) as it could be.
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::*;
+///
+/// fn main() -> Result<(), StrError> {
+///     let a = Matrix::from(&[
+///         [1.0, 2.0, 3.0], //
+///         [2.1, 1.2, 0.3], //
+///     ]);
+///     let mut v = Vector::new(3); // 3 columns
+///     mat_sum_rows(&mut v, &a)?;
+///     assert_eq!(v.as_data(), &[3.1, 3.2, 3.3]);
+///     Ok(())
+/// }
+/// ```
 pub fn mat_sum_rows(v: &mut Vector, a: &Matrix) -> Result<(), StrError> {
     let (m, n) = a.dims();
     if v.dim() != n {

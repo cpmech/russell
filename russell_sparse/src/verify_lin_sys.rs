@@ -1,7 +1,6 @@
 use super::{ComplexSparseMatrix, SparseMatrix};
 use crate::StrError;
-use num_complex::Complex64;
-use russell_lab::{complex_vec_norm, complex_vec_update, cpx, ComplexVector};
+use russell_lab::{complex_vec_norm, complex_vec_update, cpx, Complex64, ComplexVector};
 use russell_lab::{find_index_abs_max, vec_norm, vec_update, Norm, Vector};
 use serde::{Deserialize, Serialize};
 
@@ -22,7 +21,7 @@ impl VerifyLinSys {
     ///          (m,n)  (n)  (m)
     /// ```
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::{Matrix, Vector};
@@ -153,8 +152,7 @@ impl VerifyLinSys {
 mod tests {
     use super::VerifyLinSys;
     use crate::{ComplexSparseMatrix, Samples, SparseMatrix, Sym};
-    use num_complex::Complex64;
-    use russell_lab::{approx_eq, cpx, ComplexVector, Vector};
+    use russell_lab::{approx_eq, cpx, Complex64, ComplexVector, Vector};
 
     #[test]
     fn from_captures_errors() {

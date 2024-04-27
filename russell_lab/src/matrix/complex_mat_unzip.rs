@@ -1,14 +1,11 @@
-use crate::ComplexMatrix;
-use crate::Matrix;
-use crate::StrError;
+use crate::{ComplexMatrix, Matrix, StrError};
 
 /// Zips two arrays (real and imag) to make a new ComplexMatrix
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::*;
-/// use num_complex::Complex64;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let a = ComplexMatrix::from(&[
@@ -56,8 +53,7 @@ pub fn complex_mat_unzip(real: &mut Matrix, imag: &mut Matrix, a: &ComplexMatrix
 #[cfg(test)]
 mod tests {
     use super::complex_mat_unzip;
-    use crate::{cpx, mat_approx_eq, ComplexMatrix, Matrix};
-    use num_complex::Complex64;
+    use crate::{cpx, mat_approx_eq, Complex64, ComplexMatrix, Matrix};
 
     #[test]
     fn complex_mat_unzip_handles_errors() {

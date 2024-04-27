@@ -21,6 +21,21 @@ use crate::{StrError, Vector};
 ///
 /// # Examples
 ///
+/// ![Linear fitting](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/algo_linear_fitting_1.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, linear_fitting, StrError, Vector};
+///
+/// fn main() -> Result<(), StrError> {
+///     // model: c is the y value @ x = 0; m is the slope
+///     let x = Vector::from(&[0.0, 1.0, 3.0, 5.0]);
+///     let y = Vector::from(&[1.0, 0.0, 2.0, 4.0]);
+///     let (c, m) = linear_fitting(&x, &y, false)?;
+///     approx_eq(c, 0.1864406779661015, 1e-15);
+///     approx_eq(m, 0.6949152542372882, 1e-15);
+///     Ok(())
+/// }
+/// ```
 pub fn linear_fitting(x: &Vector, y: &Vector, pass_through_zero: bool) -> Result<(f64, f64), StrError> {
     // dimension
     let nn = x.dim();

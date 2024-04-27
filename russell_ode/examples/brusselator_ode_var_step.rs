@@ -78,7 +78,7 @@ fn main() -> Result<(), StrError> {
         let mut curve = Curve::new();
         curve
             .set_label(&name)
-            .set_marker_style(format!("${}_{}$", name.get(..1).unwrap(), info.order).as_str())
+            .set_marker_style(&format!("${}_{}$", name.get(..1).unwrap(), info.order))
             .set_marker_size(12.0)
             .draw(&n_f_eval, &errors);
         plot.add(&curve);

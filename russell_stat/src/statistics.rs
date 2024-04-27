@@ -1,6 +1,8 @@
 use std::fmt;
 
 /// Holds basic statistics of a dataset
+///
+/// **Note:** The [statistics()] function allocates a new [Statistics] structure
 pub struct Statistics {
     /// Minimum value
     pub min: f64,
@@ -17,7 +19,7 @@ pub struct Statistics {
 
 /// Calculates basic statistics of a dataset
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_stat::statistics;

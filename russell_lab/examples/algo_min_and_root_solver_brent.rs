@@ -1,6 +1,5 @@
-use russell_lab::algo::{MinSolver, RootSolver};
 use russell_lab::math::PI;
-use russell_lab::StrError;
+use russell_lab::*;
 
 fn main() -> Result<(), StrError> {
     let args = &mut 0;

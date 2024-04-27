@@ -3,8 +3,7 @@ use super::{ComplexLinSolTrait, ComplexSparseMatrix, LinSolParams, StatsLinSol, 
 use super::{KLU_ORDERING_AMD, KLU_ORDERING_COLAMD, KLU_SCALE_MAX, KLU_SCALE_NONE, KLU_SCALE_SUM};
 use crate::auxiliary_and_constants::*;
 use crate::StrError;
-use num_complex::Complex64;
-use russell_lab::{complex_vec_copy, ComplexVector, Stopwatch};
+use russell_lab::{complex_vec_copy, Complex64, ComplexVector, Stopwatch};
 
 /// Opaque struct holding a C-pointer to InterfaceComplexKLU
 ///

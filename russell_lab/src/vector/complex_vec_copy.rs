@@ -1,6 +1,5 @@
 use super::ComplexVector;
-use crate::{to_i32, StrError};
-use num_complex::Complex64;
+use crate::{to_i32, Complex64, StrError};
 
 extern "C" {
     // Copies a vector into another
@@ -16,7 +15,7 @@ extern "C" {
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d6/d53/zcopy_8f.html>
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::*;
@@ -51,8 +50,7 @@ pub fn complex_vec_copy(v: &mut ComplexVector, u: &ComplexVector) -> Result<(), 
 #[cfg(test)]
 mod tests {
     use super::{complex_vec_copy, ComplexVector};
-    use crate::{complex_vec_approx_eq, cpx};
-    use num_complex::Complex64;
+    use crate::{complex_vec_approx_eq, cpx, Complex64};
 
     #[test]
     fn complex_vec_copy_fails_on_wrong_dims() {

@@ -3,7 +3,11 @@ use rand::Rng;
 use rand_distr::{Distribution, Normal};
 use russell_lab::math::{erf, SQRT_2, SQRT_PI};
 
-/// Defines the Normal distribution
+/// Implements the Normal distribution
+///
+/// See: <https://en.wikipedia.org/wiki/Normal_distribution>
+///
+/// ![Normal](https://raw.githubusercontent.com/cpmech/russell/main/russell_stat/data/figures/plot_distribution_functions_normal.svg)
 pub struct DistributionNormal {
     mu: f64,  // μ: mean
     sig: f64, // σ: standard deviation
@@ -14,7 +18,7 @@ pub struct DistributionNormal {
 }
 
 impl DistributionNormal {
-    /// Creates a new Normal distribution
+    /// Allocates a new instance
     ///
     /// # Input
     ///
@@ -32,27 +36,90 @@ impl DistributionNormal {
 }
 
 impl ProbabilityDistribution for DistributionNormal {
-    /// Implements the Probability Density Function (CDF)
+    /// Evaluates the Probability Density Function (PDF)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionNormal::new(0.1, 0.9)?;
+    ///     approx_eq(dist.pdf(1.0), 0.268856360576826, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     fn pdf(&self, x: f64) -> f64 {
         self.a * f64::exp(self.b * f64::powf(x - self.mu, 2.0))
     }
 
-    /// Implements the Cumulative Density Function (CDF)
+    /// Evaluates the Cumulative Distribution Function (CDF)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionNormal::new(0.1, 0.9)?;
+    ///     approx_eq(dist.cdf(1.0), 0.841344746068543, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     fn cdf(&self, x: f64) -> f64 {
         (1.0 + erf((x - self.mu) / (self.sig * SQRT_2))) / 2.0
     }
 
     /// Returns the Mean
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionNormal::new(0.1, 0.9)?;
+    ///     assert_eq!(dist.mean(), 0.1);
+    ///     Ok(())
+    /// }
+    /// ```
     fn mean(&self) -> f64 {
         self.mu
     }
 
     /// Returns the Variance
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionNormal::new(0.1, 0.9)?;
+    ///     assert_eq!(dist.variance(), 0.9 * 0.9);
+    ///     Ok(())
+    /// }
+    /// ```
     fn variance(&self) -> f64 {
         self.sig * self.sig
     }
 
     /// Generates a pseudo-random number belonging to this probability distribution
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionNormal::new(0.1, 0.9)?;
+    ///     let mut rng = get_rng();
+    ///     println!("sample = {}", dist.sample(&mut rng));
+    ///     Ok(())
+    /// }
+    /// ```
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64 {
         self.sampler.sample(rng)
     }
@@ -62,7 +129,7 @@ impl ProbabilityDistribution for DistributionNormal {
 
 #[cfg(test)]
 mod tests {
-    use crate::{DistributionNormal, ProbabilityDistribution};
+    use crate::{get_rng, DistributionNormal, ProbabilityDistribution};
     use russell_lab::approx_eq;
 
     // Data from the following R-code (run with Rscript normal.R):
@@ -276,7 +343,7 @@ mod tests {
     #[test]
     fn sample_works() {
         let d = DistributionNormal::new(1.0, 2.0).unwrap();
-        let mut rng = rand::thread_rng();
+        let mut rng = get_rng();
         d.sample(&mut rng);
     }
 }

@@ -7,8 +7,7 @@ use super::{
 };
 use crate::auxiliary_and_constants::*;
 use crate::StrError;
-use num_complex::Complex64;
-use russell_lab::{ComplexVector, Stopwatch};
+use russell_lab::{Complex64, ComplexVector, Stopwatch};
 
 /// Opaque struct holding a C-pointer to InterfaceComplexUMFPACK
 ///

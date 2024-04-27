@@ -59,7 +59,7 @@ extern "C" {
 /// * `a` -- (m,m) general matrix (will be modified)
 /// * `b` -- (m,m) general matrix (will be modified)
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::*;
@@ -210,7 +210,7 @@ pub fn mat_gen_eigen(
 ///
 /// * The matrix `a` will be modified
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::*;

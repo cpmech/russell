@@ -1,8 +1,8 @@
-use russell_stat::{statistics, DistributionLognormal, Histogram, ProbabilityDistribution, StrError};
+use russell_stat::*;
 
 fn main() -> Result<(), StrError> {
     // generate samples
-    let mut rng = rand::thread_rng();
+    let mut rng = get_rng();
     let dist = DistributionLognormal::new(0.0, 0.25)?;
     let nsamples = 10_000;
     let mut data = vec![0.0; nsamples];

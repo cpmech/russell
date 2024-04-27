@@ -1,6 +1,5 @@
-use russell_lab::algo::Quadrature;
 use russell_lab::math::{elliptic_e, PI};
-use russell_lab::{approx_eq, StrError};
+use russell_lab::*;
 
 fn main() -> Result<(), StrError> {
     //  Determine the perimeter P of an ellipse of length 2 and width 1

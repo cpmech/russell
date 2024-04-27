@@ -1,6 +1,5 @@
 use super::ComplexMatrix;
-use crate::{to_i32, StrError};
-use num_complex::Complex64;
+use crate::{to_i32, Complex64, StrError};
 
 extern "C" {
     // Computes constant times a vector plus a vector
@@ -16,11 +15,10 @@ extern "C" {
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d7/db2/zaxpy_8f.html>
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
-/// use russell_lab::{cpx, complex_mat_update, ComplexMatrix, StrError};
-/// use num_complex::Complex64;
+/// use russell_lab::*;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let a = ComplexMatrix::from(&[
@@ -57,8 +55,7 @@ pub fn complex_mat_update(b: &mut ComplexMatrix, alpha: Complex64, a: &ComplexMa
 #[cfg(test)]
 mod tests {
     use super::complex_mat_update;
-    use crate::{complex_mat_approx_eq, cpx, ComplexMatrix};
-    use num_complex::Complex64;
+    use crate::{complex_mat_approx_eq, cpx, Complex64, ComplexMatrix};
 
     #[test]
     fn complex_mat_update_fail_on_wrong_dims() {

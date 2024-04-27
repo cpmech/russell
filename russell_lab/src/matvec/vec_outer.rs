@@ -33,7 +33,7 @@ extern "C" {
 /// The rows of matrix a must equal the length of vector u and
 /// the columns of matrix a must equal the length of vector v
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{vec_outer, Matrix, Vector, StrError};

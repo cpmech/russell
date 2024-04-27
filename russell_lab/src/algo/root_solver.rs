@@ -60,37 +60,52 @@ impl RootSolver {
     /// * `xo` -- is the root such that `f(xo) = 0`
     /// * `stats` -- some statistics regarding the computations
     ///
-    /// # Details
+    /// # Examples
     ///
-    /// Based on ZEROIN C math library: <http://www.netlib.org/c/>
-    /// By: Oleg Keselyov <oleg@ponder.csci.unt.edu, oleg@unt.edu> May 23, 1991
+    /// ```
+    /// use russell_lab::{approx_eq, RootSolver, StrError};
     ///
-    /// G.Forsythe, M.Malcolm, C.Moler, Computer methods for mathematical
-    /// computations. M., Mir, 1980, p.180 of the Russian edition
-    ///
-    /// The function makes use of the bisection procedure combined with
-    /// the linear or quadric inverse interpolation.
-    /// At every step program operates on three abscissae - a, b, and c.
-    ///
-    /// * b - the last and the best approximation to the root
-    /// * a - the last but one approximation
-    /// * c - the last but one or even earlier approximation than a that
-    ///     1. |f(b)| <= |f(c)|
-    ///     2. f(b) and f(c) have opposite signs, i.e. b and c confine the root
-    ///
-    /// At every step Zeroin selects one of the two new approximations, the
-    /// former being obtained by the bisection procedure and the latter
-    /// resulting in the interpolation (if a,b, and c are all different
-    /// the quadric interpolation is utilized, otherwise the linear one).
-    /// If the latter (i.e. obtained by the interpolation) point is
-    /// reasonable (i.e. lies within the current interval `[b,c]` not being
-    /// too close to the boundaries) it is accepted. The bisection result
-    /// is used in the other case. Therefore, the range of uncertainty is
-    /// ensured to be reduced at least by the factor 1.6
+    /// fn main() -> Result<(), StrError> {
+    ///     let args = &mut 0;
+    ///     let solver = RootSolver::new();
+    ///     let (xa, xb) = (-4.0, 0.0);
+    ///     let (xo, stats) = solver.brent(xa, xb, args, |x, _| Ok(4.0 - x * x))?;
+    ///     println!("\nroot = {:?}", xo);
+    ///     println!("\n{}", stats);
+    ///     approx_eq(xo, -2.0, 1e-10);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn brent<F, A>(&self, xa: f64, xb: f64, args: &mut A, mut f: F) -> Result<(f64, Stats), StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
+        // Based on ZEROIN C math library: <http://www.netlib.org/c/>
+        // By: Oleg Keselyov <oleg@ponder.csci.unt.edu, oleg@unt.edu> May 23, 1991
+        //
+        // G.Forsythe, M.Malcolm, C.Moler, Computer methods for mathematical
+        // computations. M., Mir, 1980, p.180 of the Russian edition
+        //
+        // The function makes use of the bisection procedure combined with
+        // the linear or quadric inverse interpolation.
+        // At every step program operates on three abscissae - a, b, and c.
+        //
+        // * b - the last and the best approximation to the root
+        // * a - the last but one approximation
+        // * c - the last but one or even earlier approximation than a that
+        //     1. |f(b)| <= |f(c)|
+        //     2. f(b) and f(c) have opposite signs, i.e. b and c confine the root
+        //
+        // At every step Zeroin selects one of the two new approximations, the
+        // former being obtained by the bisection procedure and the latter
+        // resulting in the interpolation (if a,b, and c are all different
+        // the quadric interpolation is utilized, otherwise the linear one).
+        // If the latter (i.e. obtained by the interpolation) point is
+        // reasonable (i.e. lies within the current interval `[b,c]` not being
+        // too close to the boundaries) it is accepted. The bisection result
+        // is used in the other case. Therefore, the range of uncertainty is
+        // ensured to be reduced at least by the factor 1.6
+
         // check
         if f64::abs(xa - xb) < 10.0 * f64::EPSILON {
             return Err("xa must be different from xb");

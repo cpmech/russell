@@ -1,6 +1,5 @@
 use super::ComplexMatrix;
-use crate::AsArray2D;
-use num_complex::Complex64;
+use crate::{AsArray2D, Complex64};
 
 /// Panics if two matrices are not approximately equal to each other
 ///
@@ -15,8 +14,7 @@ use num_complex::Complex64;
 /// ## Accepts small error
 ///
 /// ```
-/// use russell_lab::{complex_mat_approx_eq, cpx, ComplexMatrix};
-/// use num_complex::Complex64;
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let a = ComplexMatrix::from(&[
@@ -36,8 +34,7 @@ use num_complex::Complex64;
 /// ### Real part
 ///
 /// ```should_panic
-/// use russell_lab::{complex_mat_approx_eq, cpx, ComplexMatrix};
-/// use num_complex::Complex64;
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let a = ComplexMatrix::from(&[
@@ -55,8 +52,7 @@ use num_complex::Complex64;
 /// ### Imaginary part
 ///
 /// ```should_panic
-/// use russell_lab::{complex_mat_approx_eq, cpx, ComplexMatrix};
-/// use num_complex::Complex64;
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let a = ComplexMatrix::from(&[
@@ -119,8 +115,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::{complex_mat_approx_eq, ComplexMatrix};
-    use crate::cpx;
-    use num_complex::Complex64;
+    use crate::{cpx, Complex64};
 
     #[test]
     #[should_panic(expected = "complex_mat_approx_eq found NaN (real)")]

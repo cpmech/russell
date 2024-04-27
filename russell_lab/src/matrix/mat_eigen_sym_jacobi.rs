@@ -1,6 +1,12 @@
 use super::Matrix;
 use crate::{StrError, Vector};
 
+/// Defines the tolerance to accept a diagonal matrix
+const TOLERANCE: f64 = 1e-15;
+
+/// Defines the max number of iterations
+const N_MAX_ITERATIONS: usize = 20;
+
 /// Performs the Jacobi transformation of a symmetric matrix to find its eigenvectors and eigenvalues
 ///
 /// The Jacobi method consists of a sequence of orthogonal similarity transformations. Each
@@ -36,17 +42,42 @@ use crate::{StrError, Vector};
 ///    by a significant constant factor, than the QR method.
 /// 4. This function is recommended for small matrices only, e.g., dim ≤ 32
 ///
-/// # Reference
+/// # Examples
 ///
-/// This code is based on Section 11.1 Jacobi Transformations (page 574) of Numerical Recipes.
+/// ```
+/// use russell_lab::{mat_eigen_sym_jacobi, Matrix, Vector};
+/// use russell_lab::StrError;
 ///
-/// * Press WH, Teukolsky SA, Vetterling WT and Flannery BP (2007),
-///   Numerical Recipes in C: The Art of Scientific Computing, 3rd Edition
+/// fn main() -> Result<(), StrError> {
+///     // set matrix
+///     let data = [
+///         [2.0, 0.0, 0.0],
+///         [0.0, 3.0, 4.0],
+///         [0.0, 4.0, 9.0],
+///     ];
+///     let mut a = Matrix::from(&data);
+///
+///     // perform the eigen-decomposition
+///     let upper = false;
+///     let mut l = Vector::new(3);
+///     let mut v = Matrix::new(3, 3);
+///     mat_eigen_sym_jacobi(&mut l, &mut v, &mut a)?;
+///     println!("eigenvalues =\n{}", l);
+///     println!("eigenvectors =\n{:.5}", v);
+///
+///     // check results
+///     assert_eq!(
+///         format!("{}", l),
+///         "┌    ┐\n\
+///          │  2 │\n\
+///          │  1 │\n\
+///          │ 11 │\n\
+///          └    ┘"
+///     );
+///     Ok(())
+/// }
+/// ```
 pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> Result<usize, StrError> {
-    // constants
-    const TOLERANCE: f64 = 1e-15;
-    const N_MAX_ITERATIONS: usize = 20;
-
     // check
     let (m, n) = a.dims();
     if m != n {

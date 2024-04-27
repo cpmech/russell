@@ -27,7 +27,7 @@ const SINGLE_VALUE_RCOND: f64 = 1e-15;
 ///
 /// * `a` -- (m,n) matrix, symmetric or not (WARNING: it will be modified)
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{mat_pseudo_inverse, Matrix, StrError};

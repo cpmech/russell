@@ -14,7 +14,6 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [TL;DR (Debian/Ubuntu/Linux)](#tldr-debianubuntulinux)
   - [Details](#details)
   - [Setting Cargo.toml up](#setting-cargotoml-up)
-- [Complex numbers](#complex-numbers)
 - [Examples](#examples)
   - [Running an example with Intel MKL](#running-an-example-with-intel-mkl)
   - [Sorting small tuples](#sorting-small-tuples)
@@ -29,6 +28,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Matrix visualization](#matrix-visualization)
   - [Computing eigenvalues and eigenvectors](#computing-eigenvalues-and-eigenvectors)
   - [Cholesky factorization](#cholesky-factorization)
+  - [Read a table-formatted data file](#read-a-table-formatted-data-file)
 - [About the column major representation](#about-the-column-major-representation)
 - [Benchmarks](#benchmarks)
   - [Jacobi Rotation versus LAPACK DSYEV](#jacobi-rotation-versus-lapack-dsyev)
@@ -63,7 +63,7 @@ There are many functions for linear algebra, such as (for Real and Complex types
 * Matrix-vector multiplication, and more
 * Solution of dense linear systems with symmetric or non-symmetric coefficient matrices, and more
 * Reading writing files, `linspace`, grid generators, Stopwatch, linear fitting, and more
-* Checking results, comparing float point numbers, and verifying the correctness of derivatives; see `russell_lab::check`
+* Checking results, comparing floating point numbers, and verifying the correctness of derivatives; see `russell_lab::check`
 
 ### Documentation
 
@@ -124,18 +124,6 @@ Or, considering the optional _features_ ([see more about these here](https://git
 [dependencies]
 russell_lab = { version = "*", features = ["intel_mkl"] }
 ```
-
-
-
-## Complex numbers
-
-**Note:** For the functions dealing with complex numbers, the following line must be added to all derived code:
-
-```rust
-use num_complex::Complex64;
-```
-
-This line will bring `Complex64` to the scope. For convenience the (russell_lab) macro `cpx!` may be used to allocate complex numbers.
 
 
 
@@ -325,7 +313,7 @@ fn main() -> Result<(), StrError> {
         .add(&curve_j2)
         .grid_labels_legend("$x$", "$J_0(x),\\,J_1(x),\\,J_2(x)$")
         .set_figure_size_points(GOLDEN_RATIO * 280.0, 280.0)
-        .save(path.as_str())?;
+        .save(&path)?;
     }
     Ok(())
 }
@@ -658,6 +646,55 @@ fn main() -> Result<(), StrError> {
                         │ -16 -43  98 │\n\
                         └             ┘";
     assert_eq!(format!("{}", l_lt), l_lt_correct);
+    Ok(())
+}
+```
+
+
+
+### Read a table-formatted data file
+
+The goal is to read the following file (`clay-data.txt`):
+
+```text
+# Fujinomori clay test results
+
+     sr        ea        er   # header
+1.00000  -6.00000   0.10000   
+2.00000   7.00000   0.20000   
+3.00000   8.00000   0.20000   # << look at this line
+
+# comments plus new lines are OK
+
+4.00000   9.00000   0.40000   
+5.00000  10.00000   0.50000   
+
+# bye
+```
+
+The code below illustrates how to do it.
+
+Each column (`sr`, `ea`, `er`) is accessible via the `get` method of the [HashMap].
+
+```rust
+use russell_lab::{read_table, StrError};
+use std::collections::HashMap;
+use std::env;
+use std::path::PathBuf;
+
+fn main() -> Result<(), StrError> {
+    // get the asset's full path
+    let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let full_path = root.join("data/tables/clay-data.txt");
+
+    // read the file
+    let labels = &["sr", "ea", "er"];
+    let table: HashMap<String, Vec<f64>> = read_table(&full_path, Some(labels))?;
+
+    // check the columns
+    assert_eq!(table.get("sr").unwrap(), &[1.0, 2.0, 3.0, 4.0, 5.0]);
+    assert_eq!(table.get("ea").unwrap(), &[-6.0, 7.0, 8.0, 9.0, 10.0]);
+    assert_eq!(table.get("er").unwrap(), &[0.1, 0.2, 0.2, 0.4, 0.5]);
     Ok(())
 }
 ```

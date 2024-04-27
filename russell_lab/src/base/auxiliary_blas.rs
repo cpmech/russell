@@ -11,11 +11,27 @@ extern "C" {
 }
 
 /// Returns whether the code was compiled with Intel MKL or not
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::using_intel_mkl;
+///
+/// println!("{}", using_intel_mkl());
+/// ```
 pub fn using_intel_mkl() -> bool {
     unsafe { c_using_intel_mkl() == C_TRUE }
 }
 
 /// Sets the number of threads allowed for the BLAS routines
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::set_num_threads;
+///
+/// set_num_threads(2);
+/// ```
 pub fn set_num_threads(n: usize) {
     let n_i32 = to_i32(n);
     unsafe {
@@ -24,13 +40,28 @@ pub fn set_num_threads(n: usize) {
 }
 
 /// Gets the number of threads available to the BLAS routines
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::get_num_threads;
+///
+/// println!("{}", get_num_threads());
+/// ```
 pub fn get_num_threads() -> usize {
     unsafe { c_get_num_threads() as usize }
 }
 
-/// Finds the index of the first element having maximum absolute value (IDAMAX)
+/// (idamax) Finds the index of the first element having maximum absolute value
 ///
-/// Also known as `idamax`.
+/// # Examples
+///
+/// ```
+/// use russell_lab::find_index_abs_max;
+///
+/// let u = &[1.0, 22.0, 0.0, 8.0, 3.0];
+/// assert_eq!(find_index_abs_max(u), 1);
+/// ```
 pub fn find_index_abs_max(x: &[f64]) -> usize {
     let n = to_i32(x.len());
     unsafe {

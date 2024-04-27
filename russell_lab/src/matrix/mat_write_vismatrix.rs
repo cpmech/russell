@@ -41,7 +41,7 @@ use std::path::Path;
 /// }
 /// ```
 ///
-/// ![vismatrix](https://raw.githubusercontent.com/cpmech/russell_lab/main/data/figures/test_mat_write_vismatrix.png)
+/// ![vismatrix](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_mat_write_vismatrix.png)
 pub fn mat_write_vismatrix<P>(full_path: &P, a: &Matrix, tol: f64) -> Result<(), StrError>
 where
     P: AsRef<OsStr> + ?Sized,

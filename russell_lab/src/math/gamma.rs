@@ -105,6 +105,16 @@ fn stirling(x: f64) -> (f64, f64) {
 /// one is up and the other is down, illustrating the undefined case.
 ///
 /// The same situations happens for `x == 0.0`
+///
+/// # Examples
+///
+/// ![Gamma](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_beta_gamma_functions_gg.svg)
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::gamma(2.0), 1.0, 1e-15);
+/// ```
 pub fn gamma(x: f64) -> f64 {
     // special cases
     if float_is_neg_integer(x) || x == f64::NEG_INFINITY || f64::is_nan(x) {

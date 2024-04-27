@@ -1,11 +1,8 @@
-use crate::ComplexMatrix;
-use crate::Matrix;
-use crate::StrError;
-use num_complex::Complex64;
+use crate::{Complex64, ComplexMatrix, Matrix, StrError};
 
 /// Zips two arrays (real and imag) to make a new ComplexMatrix
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::*;

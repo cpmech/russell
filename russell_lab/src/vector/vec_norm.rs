@@ -17,7 +17,7 @@ extern "C" {
 
 /// Returns the vector norm
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use russell_lab::{vec_norm, Norm, Vector};

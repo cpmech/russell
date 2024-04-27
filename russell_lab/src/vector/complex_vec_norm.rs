@@ -1,6 +1,5 @@
 use super::ComplexVector;
-use crate::{to_i32, Norm};
-use num_complex::Complex64;
+use crate::{to_i32, Complex64, Norm};
 
 extern "C" {
     // Computes the Euclidean norm
@@ -34,11 +33,10 @@ extern "C" {
 /// ‖u‖_1 := sum_i |uᵢ|
 /// ```
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
-/// use num_complex::Complex64;
-/// use russell_lab::{approx_eq, complex_vec_norm, Norm, ComplexVector, cpx};
+/// use russell_lab::*;
 ///
 /// fn main() {
 ///     let u = ComplexVector::from(&[cpx!(1.0, 1.0), cpx!(3.0, 1.0), cpx!(5.0, -1.0)]);
@@ -75,8 +73,7 @@ pub fn complex_vec_norm(v: &ComplexVector, kind: Norm) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::complex_vec_norm;
-    use crate::{approx_eq, cpx, ComplexVector, Norm};
-    use num_complex::Complex64;
+    use crate::{approx_eq, cpx, Complex64, ComplexVector, Norm};
 
     #[test]
     fn complex_vec_norm_works() {

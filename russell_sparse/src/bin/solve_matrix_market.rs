@@ -1,5 +1,4 @@
-use num_complex::Complex64;
-use russell_lab::{cpx, set_num_threads, using_intel_mkl, ComplexVector, Stopwatch, StrError, Vector};
+use russell_lab::{cpx, set_num_threads, using_intel_mkl, Complex64, ComplexVector, Stopwatch, StrError, Vector};
 use russell_sparse::prelude::*;
 use structopt::StructOpt;
 

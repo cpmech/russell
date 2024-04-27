@@ -64,43 +64,82 @@ impl MinSolver {
     /// * `xo` -- is the coordinate of the minimum
     /// * `stats` -- some statistics regarding the computations
     ///
-    /// # Details
+    /// # Examples
     ///
-    /// Based on ZEROIN C math library: <http://www.netlib.org/c/>
-    /// By: Oleg Keselyov <oleg@ponder.csci.unt.edu, oleg@unt.edu> May 23, 1991
+    /// ## Simple quadratic equation
     ///
-    /// G.Forsythe, M.Malcolm, C.Moler, Computer methods for mathematical
-    /// computations. M., Mir, 1980, p.180 of the Russian edition
+    /// ```
+    /// use russell_lab::*;
     ///
-    /// The function makes use of the "gold section" procedure combined with
-    /// the parabolic interpolation.
-    /// At every step program operates three abscissae - x,v, and w.
-    /// * x - the last and the best approximation to the minimum location,
-    ///       i.e. f(x) <= f(a) or/and f(x) <= f(b)
-    ///       (if the function f has a local minimum in (a,b), then the both
-    ///       conditions are fulfilled after one or two steps).
+    /// fn main() -> Result<(), StrError> {
+    ///     let args = &mut 0;
+    ///     let solver = MinSolver::new();
+    ///     let (xa, xb) = (-4.0, 4.0);
+    ///     let (xo, stats) = solver.brent(xa, xb, args, |x, _| Ok(4.0 + f64::powi(1.0 - x, 2)))?;
+    ///     println!("\noptimal = {:?}", xo);
+    ///     println!("\n{}", stats);
+    ///     approx_eq(xo, 1.0, 1e-7);
+    ///     Ok(())
+    /// }
+    /// ```
     ///
-    /// v,w are previous approximations to the minimum location. They may
-    /// coincide with a, b, or x (although the algorithm tries to make all
-    /// u, v, and w distinct). Points x, v, and w are used to construct
-    /// interpolating parabola whose minimum will be treated as a new
-    /// approximation to the minimum location if the former falls within
-    /// `[a,b]` and reduces the range enveloping minimum more efficient than
-    /// the gold section procedure.
+    /// ## Test function number four
     ///
-    /// When f(x) has a second derivative positive at the minimum location
-    /// (not coinciding with a or b) the procedure converges super-linearly
-    /// at a rate order about 1.324
+    /// ![004](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/test_function_004.svg)
     ///
-    /// The function always obtains a local minimum which coincides with
-    /// the global one only if a function under investigation being
-    /// uni-modular. If a function being examined possesses no local minimum
-    /// within the given range, The code returns 'a' (if f(a) < f(b)), otherwise
-    /// it returns the right range boundary value b.
+    /// ```
+    /// use russell_lab::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // "4: f(x) = (x - 1)² + 5 sin(x)"
+    ///     let f = |x: f64, _: &mut NoArgs| Ok(f64::powi(x - 1.0, 2) + 5.0 * f64::sin(x));
+    ///     let args = &mut 0;
+    ///
+    ///     // minimize
+    ///     let solver = MinSolver::new();
+    ///     let (xo, stats) = solver.brent(-2.0, 2.0, args, f)?;
+    ///     println!("\noptimal = {}", xo);
+    ///     println!("\n{}", stats);
+    ///     approx_eq(xo, -0.7790149303951403, 1e-8);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn brent<F, A>(&self, xa: f64, xb: f64, args: &mut A, mut f: F) -> Result<(f64, Stats), StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
+        // Based on ZEROIN C math library: <http://www.netlib.org/c/>
+        // By: Oleg Keselyov <oleg@ponder.csci.unt.edu, oleg@unt.edu> May 23, 1991
+        //
+        // G.Forsythe, M.Malcolm, C.Moler, Computer methods for mathematical
+        // computations. M., Mir, 1980, p.180 of the Russian edition
+        //
+        // The function makes use of the "gold section" procedure combined with
+        // the parabolic interpolation.
+        // At every step program operates three abscissae - x,v, and w.
+        // * x - the last and the best approximation to the minimum location,
+        //       i.e. f(x) <= f(a) or/and f(x) <= f(b)
+        //       (if the function f has a local minimum in (a,b), then the both
+        //       conditions are fulfilled after one or two steps).
+        //
+        // v,w are previous approximations to the minimum location. They may
+        // coincide with a, b, or x (although the algorithm tries to make all
+        // u, v, and w distinct). Points x, v, and w are used to construct
+        // interpolating parabola whose minimum will be treated as a new
+        // approximation to the minimum location if the former falls within
+        // `[a,b]` and reduces the range enveloping minimum more efficient than
+        // the gold section procedure.
+        //
+        // When f(x) has a second derivative positive at the minimum location
+        // (not coinciding with a or b) the procedure converges super-linearly
+        // at a rate order about 1.324
+        //
+        // The function always obtains a local minimum which coincides with
+        // the global one only if a function under investigation being
+        // uni-modular. If a function being examined possesses no local minimum
+        // within the given range, The code returns 'a' (if f(a) < f(b)), otherwise
+        // it returns the right range boundary value b.
+
         // check
         if f64::abs(xa - xb) < 10.0 * f64::EPSILON {
             return Err("xa must be different from xb");

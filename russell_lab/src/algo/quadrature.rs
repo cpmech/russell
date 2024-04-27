@@ -151,6 +151,25 @@ impl Quadrature {
     ///
     /// * `ans` -- the result `I` of the integration: `I = ∫_a^b f(x) dx`
     /// * `stats` -- some statistics about the computations, including the estimated error
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::math::PI;
+    /// use russell_lab::{approx_eq, Quadrature, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // area of semicircle of unitary radius
+    ///     let mut quad = Quadrature::new();
+    ///     let args = &mut 0;
+    ///     let (a, b) = (-1.0, 1.0);
+    ///     let (area, stats) = quad.integrate(a, b, args, |x, _| Ok(f64::sqrt(1.0 - x * x)))?;
+    ///     println!("\narea = {}", area);
+    ///     println!("\n{}", stats);
+    ///     approx_eq(area, PI / 2.0, 1e-13);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn integrate<F, A>(&mut self, a: f64, b: f64, args: &mut A, mut f: F) -> Result<(f64, Stats), StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,

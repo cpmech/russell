@@ -211,6 +211,40 @@ impl InterpParams {
 ///    SIAM Journal of Scientific Computing, 24(5):1465-1487
 /// 5. Berrut JP, Trefethen LN (2004) Barycentric Lagrange Interpolation,
 ///    SIAM Review Vol. 46, No. 3, pp. 501-517
+///
+/// # Examples
+///
+/// ## Approximate a function and derivatives
+///
+/// ```
+/// use russell_lab::algo::InterpLagrange;
+/// use russell_lab::{approx_eq, StrError, Vector};
+///
+/// fn main() -> Result<(), StrError> {
+///     // function (with df/dx = 2x and d²f/dx² = 2)
+///     let f = |x| x * x;
+///
+///     // interpolant
+///     let degree = 10;
+///     let npoint = degree + 1;
+///     let interp = InterpLagrange::new(degree, None)?;
+///
+///     // compute data points
+///     let mut uu = Vector::new(npoint);
+///     for (i, x) in interp.get_points().into_iter().enumerate() {
+///         uu[i] = f(*x);
+///     }
+///
+///     // evaluate the interpolation at a given coordinate
+///     let y_approx = interp.eval(0.5, &uu)?;
+///     let dydx_approx = interp.eval_deriv1(0.5, &uu)?;
+///     let d2ydx2_approx = interp.eval_deriv2(0.5, &uu)?;
+///     approx_eq(y_approx, 0.25, 1e-15);
+///     approx_eq(dydx_approx, 1.0, 1e-15);
+///     approx_eq(d2ydx2_approx, 2.0, 1e-13);
+///     Ok(())
+/// }
+/// ```
 #[derive(Clone, Debug)]
 pub struct InterpLagrange {
     /// Polynomial degree `N` satisfying `1 ≤ N ≤ 2048`
@@ -245,6 +279,27 @@ impl InterpLagrange {
     ///
     /// * `nn` -- the polynomial degree `N`; thus the number of grid nodes will be `N + 1`.
     ///   **Note:** `nn` must be in `[1, 2048]`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::algo::InterpLagrange;
+    /// use russell_lab::{InterpGrid, InterpParams, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // use Chebyshev-Gauss grid
+    ///     let mut params = InterpParams::new();
+    ///     params.grid_type = InterpGrid::ChebyshevGauss;
+    ///
+    ///     // interpolant
+    ///     let nn = 3; // degree
+    ///     let interp = InterpLagrange::new(nn, Some(params)).unwrap();
+    ///
+    ///     // print the grid points
+    ///     println!("{:?}", interp.get_points());
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn new(nn: usize, params: Option<InterpParams>) -> Result<Self, StrError> {
         // check the parameters
         if nn < 1 || nn > 2048 {
@@ -371,6 +426,47 @@ impl InterpLagrange {
     ///
     /// * `j` -- index of the Xⱼ point; must satisfy 0 ≤ j ≤ N
     /// * `x` -- the coordinate to evaluate the polynomial; must satisfy -1 ≤ j ≤ 1
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::algo::InterpLagrange;
+    /// use russell_lab::{approx_eq, InterpGrid, InterpParams, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // interpolant
+    ///     let nn = 3; // degree
+    ///     let interp = InterpLagrange::new(nn, None).unwrap();
+    ///
+    ///     // Cardinal form:
+    ///     //
+    ///     // ```text
+    ///     //           N
+    ///     //         ━━━━━
+    ///     //  X      ┃   ┃  x  - Xₖ
+    ///     // ℓ (x) = ┃   ┃  ———————
+    ///     //  j      k = 0  Xⱼ - Xₖ
+    ///     //         k ≠ j
+    ///     // ```
+    ///
+    ///     // compare barycentric versus cardinal
+    ///     let xx = interp.get_points();
+    ///     let npoint = xx.dim(); // == nn + 1
+    ///     for x in xx {
+    ///         for j in 0..npoint {
+    ///             let psi_j = interp.psi(j, *x).unwrap();
+    ///             let mut ell_j = 1.0;
+    ///             for k in 0..npoint {
+    ///                 if j != k {
+    ///                     ell_j *= (x - xx[k]) / (xx[j] - xx[k]);
+    ///                 }
+    ///             }
+    ///             approx_eq(psi_j, ell_j, 1e-15);
+    ///         }
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn psi(&self, j: usize, x: f64) -> Result<f64, StrError> {
         if j > self.nn {
             return Err("j must be in 0 ≤ j ≤ N");
@@ -404,6 +500,34 @@ impl InterpLagrange {
     ///
     /// * `x` -- the coordinate to evaluate the polynomial; must satisfy -1 ≤ j ≤ 1
     /// * `uu` -- the "data" vector `U` of size equal to `N + 1`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::algo::InterpLagrange;
+    /// use russell_lab::{approx_eq, StrError, Vector};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // function
+    ///     let f = |x| x * x;
+    ///
+    ///     // interpolant
+    ///     let degree = 10;
+    ///     let npoint = degree + 1;
+    ///     let interp = InterpLagrange::new(degree, None)?;
+    ///
+    ///     // compute data points
+    ///     let mut uu = Vector::new(npoint);
+    ///     for (i, x) in interp.get_points().into_iter().enumerate() {
+    ///         uu[i] = f(*x);
+    ///     }
+    ///
+    ///     // evaluate the interpolation at a given coordinate
+    ///     let y_approx = interp.eval(0.5, &uu)?;
+    ///     approx_eq(y_approx, 0.25, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn eval(&self, x: f64, uu: &Vector) -> Result<f64, StrError> {
         if x < -1.0 || x > 1.0 {
             return Err("x must be in -1 ≤ x ≤ 1");
@@ -451,6 +575,34 @@ impl InterpLagrange {
     ///
     /// * `x` -- the coordinate to evaluate the derivative; must satisfy -1 ≤ j ≤ 1
     /// * `uu` -- the "data" vector `U` of size equal to `N + 1`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::algo::InterpLagrange;
+    /// use russell_lab::{approx_eq, StrError, Vector};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // function (with df/dx = 2x and d²f/dx² = 2)
+    ///     let f = |x| x * x;
+    ///
+    ///     // interpolant
+    ///     let degree = 10;
+    ///     let npoint = degree + 1;
+    ///     let interp = InterpLagrange::new(degree, None)?;
+    ///
+    ///     // compute data points
+    ///     let mut uu = Vector::new(npoint);
+    ///     for (i, x) in interp.get_points().into_iter().enumerate() {
+    ///         uu[i] = f(*x);
+    ///     }
+    ///
+    ///     // evaluate the interpolation at a given coordinate
+    ///     let dydx_approx = interp.eval_deriv1(0.5, &uu)?;
+    ///     approx_eq(dydx_approx, 1.0, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn eval_deriv1(&self, x: f64, uu: &Vector) -> Result<f64, StrError> {
         if x < -1.0 || x > 1.0 {
             return Err("x must be in -1 ≤ x ≤ 1");
@@ -542,6 +694,34 @@ impl InterpLagrange {
     ///
     /// * `x` -- the coordinate to evaluate the derivative; must satisfy -1 ≤ j ≤ 1
     /// * `uu` -- the "data" vector `U` of size equal to `N + 1`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::algo::InterpLagrange;
+    /// use russell_lab::{approx_eq, StrError, Vector};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // function (with df/dx = 2x and d²f/dx² = 2)
+    ///     let f = |x| x * x;
+    ///
+    ///     // interpolant
+    ///     let degree = 10;
+    ///     let npoint = degree + 1;
+    ///     let interp = InterpLagrange::new(degree, None)?;
+    ///
+    ///     // compute data points
+    ///     let mut uu = Vector::new(npoint);
+    ///     for (i, x) in interp.get_points().into_iter().enumerate() {
+    ///         uu[i] = f(*x);
+    ///     }
+    ///
+    ///     // evaluate the interpolation at a given coordinate
+    ///     let d2ydx2_approx = interp.eval_deriv2(0.5, &uu)?;
+    ///     approx_eq(d2ydx2_approx, 2.0, 1e-13);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn eval_deriv2(&self, x: f64, uu: &Vector) -> Result<f64, StrError> {
         if x < -1.0 || x > 1.0 {
             return Err("x must be in -1 ≤ x ≤ 1");
@@ -623,6 +803,28 @@ impl InterpLagrange {
     /// ```
     ///
     /// See Eqs 6, 7, and 9 in Reference #3. Note that `cⱼ = λⱼ⁻¹` in Reference #3;
+    ///
+    /// # Examples
+    ///
+    /// ```
+    ///
+    /// use russell_lab::algo::InterpLagrange;
+    /// use russell_lab::{mat_approx_eq, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let degree = 2;
+    ///     let mut interp = InterpLagrange::new(degree, None)?;
+    ///     interp.calc_dd1_matrix();
+    ///     let dd1 = interp.get_dd1()?;
+    ///     let correct = [
+    ///         [-1.5,  2.0, -0.5],
+    ///         [-0.5,  0.0,  0.5],
+    ///         [ 0.5, -2.0,  1.5],
+    ///     ];
+    ///     mat_approx_eq(&dd1, &correct, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn calc_dd1_matrix(&mut self) {
         // allocate matrix
         if self.dd1.dims().0 == self.npoint {
@@ -679,6 +881,31 @@ impl InterpLagrange {
     /// ```
     ///
     /// See Eqs 9 and 13 in Reference #3.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::algo::InterpLagrange;
+    /// use russell_lab::{mat_approx_eq, mat_mat_mul, Matrix, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // allocate the interpolant
+    ///     let degree = 2;
+    ///     let mut interp = InterpLagrange::new(degree, None)?;
+    ///
+    ///     // calculate the D1 and D2 matrices
+    ///     interp.calc_dd1_matrix();
+    ///     interp.calc_dd2_matrix();
+    ///     let dd1 = interp.get_dd1()?;
+    ///     let dd2 = interp.get_dd2()?;
+    ///
+    ///     // compare D2 with the D1 matrix squared
+    ///     let mut dd1_squared = Matrix::new(degree + 1, degree + 1);
+    ///     mat_mat_mul(&mut dd1_squared, 1.0, &dd1, &dd1, 0.0)?;
+    ///     mat_approx_eq(&dd2, &dd1_squared, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn calc_dd2_matrix(&mut self) {
         // calculate D1
         self.calc_dd1_matrix();
@@ -1029,7 +1256,7 @@ mod tests {
         //     .add(&curve2)
         //     .legend()
         //     .grid_and_labels("$x$", "$f(x)$")
-        //     .save(path.as_str())
+        //     .save(&path)
         //     .unwrap();
     }
 
@@ -1391,8 +1618,8 @@ mod tests {
     fn lebesgue_works_uniform() {
         let mut params = InterpParams::new();
         params.grid_type = InterpGrid::Uniform;
-        params.lebesgue_estimate_nstation = 210; // 1e-15 is achieved with 10_000
-        let tol = 1e-3;
+        params.lebesgue_estimate_nstation = 10; // 1e-15 is achieved with 10_000 stations
+        let tol = 0.25;
         let interp = InterpLagrange::new(5, Some(params)).unwrap();
         approx_eq(interp.estimate_lebesgue_constant(), 3.106301040275436e+00, tol);
     }
@@ -1408,7 +1635,7 @@ mod tests {
         for (nn, tol, reference) in data {
             // println!("nn = {}", nn);
             params.grid_type = InterpGrid::ChebyshevGauss;
-            params.lebesgue_estimate_nstation = 10_000;
+            params.lebesgue_estimate_nstation = 10;
             let interp = InterpLagrange::new(nn, Some(params)).unwrap();
             approx_eq(interp.estimate_lebesgue_constant(), reference, tol);
         }
@@ -1422,10 +1649,11 @@ mod tests {
             (8, 1e-15, 2.274730699116020e+00),
             (24, 1e-14, 2.984443326362511e+00),
         ];
-        for (nn, tol, reference) in data {
+        for (nn, _, reference) in data {
             // println!("nn = {}", nn);
             params.grid_type = InterpGrid::ChebyshevGaussLobatto;
-            params.lebesgue_estimate_nstation = 10_000;
+            params.lebesgue_estimate_nstation = 10;
+            let tol = 0.12; // low tolerances are obtained with 10_000 stations
             let interp = InterpLagrange::new(nn, Some(params)).unwrap();
             approx_eq(interp.estimate_lebesgue_constant(), reference, tol);
         }

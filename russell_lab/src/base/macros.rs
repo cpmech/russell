@@ -1,8 +1,13 @@
-/// Calls Complex64::new(real, imag)
+/// Allocates a new Complex64 number
+///
+/// This macro simply calls `Complex64::new(real, imag)`
+///
+/// **Note:** When using this macro, the `Complex64` type must be imported as well.
+///
+/// # Examples
 ///
 /// ```
-/// use russell_lab::cpx;
-/// use num_complex::Complex64;
+/// use russell_lab::{cpx, Complex64};
 ///
 /// let x = cpx!(1.0, 2.0);
 /// let y = cpx!(3.0, 4.0);
@@ -21,7 +26,7 @@ macro_rules! cpx {
 
 #[cfg(test)]
 mod tests {
-    use num_complex::Complex64;
+    use crate::{cpx, Complex64};
 
     #[test]
     fn cpx_works() {

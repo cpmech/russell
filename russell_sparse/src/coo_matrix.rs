@@ -290,7 +290,7 @@ where
     /// * `j` -- column index (indices start at zero; zero-based)
     /// * `aij` -- the value A(i,j)
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::vec_approx_eq;
@@ -350,7 +350,7 @@ where
     ///
     /// This function allows using `put` all over again.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_sparse::prelude::*;
@@ -495,7 +495,7 @@ where
     ///
     /// This method is not highly efficient but should useful in verifications.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_lab::{Matrix, Vector};
@@ -617,7 +617,7 @@ where
     ///
     /// Returns `(nrow, ncol, nnz, sym)`
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use russell_sparse::prelude::*;
@@ -682,8 +682,7 @@ where
 mod tests {
     use super::NumCooMatrix;
     use crate::{Samples, Sym};
-    use num_complex::Complex64;
-    use russell_lab::{complex_vec_approx_eq, cpx, vec_approx_eq, ComplexVector, NumMatrix, NumVector};
+    use russell_lab::{complex_vec_approx_eq, cpx, vec_approx_eq, Complex64, ComplexVector, NumMatrix, NumVector};
 
     #[test]
     fn new_captures_errors() {

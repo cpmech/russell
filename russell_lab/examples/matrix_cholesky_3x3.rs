@@ -1,4 +1,4 @@
-use russell_lab::{mat_cholesky, Matrix, StrError};
+use russell_lab::*;
 
 fn main() -> Result<(), StrError> {
     // set matrix

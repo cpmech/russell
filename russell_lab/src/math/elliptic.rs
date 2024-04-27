@@ -37,6 +37,20 @@ use crate::StrError;
 ///
 /// * Press WH, Teukolsky SA, Vetterling WT, Flannery BP (2007) Numerical Recipes: The Art of
 ///   Scientific Computing. Third Edition. Cambridge University Press. 1235p.
+///
+/// # Examples
+///
+/// ![Elliptic F](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_elliptic_functions_f.svg)
+///
+/// ```
+/// use russell_lab::*;
+///
+/// fn main() -> Result<(), StrError> {
+///     approx_eq(math::elliptic_f(math::PI / 4.0, 0.5)?, 0.82601787624924519, 1e-15);
+///     // Mathematica: N[EllipticF[Pi/4, 1/2], 17]
+///     Ok(())
+/// }
+/// ```
 pub fn elliptic_f(phi: f64, m: f64) -> Result<f64, StrError> {
     if phi < 0.0 || m < 0.0 {
         return Err("phi and m must be non-negative");
@@ -97,6 +111,20 @@ pub fn elliptic_f(phi: f64, m: f64) -> Result<f64, StrError> {
 ///
 /// * Press WH, Teukolsky SA, Vetterling WT, Flannery BP (2007) Numerical Recipes: The Art of
 ///   Scientific Computing. Third Edition. Cambridge University Press. 1235p.
+///
+/// # Examples
+///
+/// ![Elliptic E](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_elliptic_functions_e.svg)
+///
+/// ```
+/// use russell_lab::*;
+///
+/// fn main() -> Result<(), StrError> {
+///     approx_eq(math::elliptic_e(math::PI / 4.0, 0.5)?, 0.74818650417766138, 1e-15);
+///     // Mathematica: N[EllipticE[Pi/4, 1/2], 17]
+///     Ok(())
+/// }
+/// ```
 pub fn elliptic_e(phi: f64, m: f64) -> Result<f64, StrError> {
     if phi < 0.0 || m < 0.0 {
         return Err("phi and m must be non-negative");
@@ -162,6 +190,20 @@ pub fn elliptic_e(phi: f64, m: f64) -> Result<f64, StrError> {
 ///   Scientific Computing. Third Edition. Cambridge University Press. 1235p.
 /// * Abramowitz M, Stegun IA (1972) Handbook of Mathematical Functions with Formulas, Graphs,
 ///   and Mathematical Tables. U.S. Department of Commerce, NIST
+///
+/// # Examples
+///
+/// ![Elliptic Pi](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_elliptic_functions_pi.svg)
+///
+/// ```
+/// use russell_lab::*;
+///
+/// fn main() -> Result<(), StrError> {
+///     approx_eq(math::elliptic_pi(1.0, math::PI / 4.0, 0.5)?, 1.0616956754627997, 1e-15);
+///     // Mathematica: N[EllipticPi[1, Pi/4, 1/2], 17]
+///     Ok(())
+/// }
+/// ```
 pub fn elliptic_pi(n: f64, phi: f64, m: f64) -> Result<f64, StrError> {
     if phi < 0.0 || m < 0.0 {
         return Err("phi and m must be non-negative");

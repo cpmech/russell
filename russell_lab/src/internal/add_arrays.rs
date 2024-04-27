@@ -1,6 +1,6 @@
 use super::{to_i32, MAX_DIM_FOR_NATIVE_BLAS};
+use crate::Complex64;
 use crate::StrError;
-use num_complex::Complex64;
 
 extern "C" {
     // real ------------------------------------------------------------------------------------------------------

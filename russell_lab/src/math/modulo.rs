@@ -6,9 +6,11 @@ use super::{float_compose, float_decompose};
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-/// Returns the floating-point remainder of x/y
+/// (fmod) Returns the floating-point remainder of x/y
 ///
 /// The magnitude of the result is less than y and its sign agrees with that of x
+///
+/// See also: <https://cplusplus.com/reference/cmath/fmod/>
 ///
 /// # Special cases
 ///
@@ -17,6 +19,15 @@ use super::{float_compose, float_decompose};
 /// * `modulo(x, 0) = NaN`
 /// * `modulo(x, ±Inf) = x`
 /// * `modulo(x, NaN) = NaN`
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::{approx_eq, math};
+///
+/// approx_eq(math::modulo( 5.3, 2.0), 1.3, 1e-15);
+/// approx_eq(math::modulo(18.5, 4.2), 1.7, 1e-15);
+/// ```
 pub fn modulo(x: f64, y: f64) -> f64 {
     if y == 0.0 || f64::is_infinite(x) || f64::is_nan(x) || f64::is_nan(y) {
         return f64::NAN;

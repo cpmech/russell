@@ -1,5 +1,3 @@
-use num_complex::Complex64;
-use num_complex::ComplexFloat; // need the Trait to use abs()
 use russell_lab::*;
 
 fn main() -> Result<(), StrError> {

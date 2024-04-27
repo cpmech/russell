@@ -51,28 +51,104 @@ impl DistributionGumbel {
 
 impl ProbabilityDistribution for DistributionGumbel {
     /// Evaluates the Probability Density Function (CDF)
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let (location, scale) = (2.0, 3.0);
+    ///     let dist = DistributionGumbel::new(location, scale)?;
+    ///     approx_eq(dist.pdf(1.0), 0.11522236828583457, 1e-15);
+    ///     // R:
+    ///     //   library(evd)
+    ///     //   format(dgumbel(1.0, 2.0, 3.0), digits=17)
+    ///     // Mathematica:
+    ///     //   N[PDF[GumbelDistribution[-2, 3], -1], 17]
+    ///     Ok(())
+    /// }
+    /// ```
     fn pdf(&self, x: f64) -> f64 {
         let mz = (self.location - x) / self.scale;
         f64::exp(mz) * f64::exp(-f64::exp(mz)) / self.scale
     }
 
     /// Evaluates the Cumulative Distribution Function (CDF)
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let (location, scale) = (2.0, 3.0);
+    ///     let dist = DistributionGumbel::new(location, scale)?;
+    ///     approx_eq(dist.cdf(1.0), 0.24768130366579455, 1e-15);
+    ///     // R:
+    ///     //   library(evd)
+    ///     //   format(pgumbel(1.0, 2.0, 3.0), digits=17)
+    ///     // Mathematica:
+    ///     //   N[1 - CDF[GumbelDistribution[-2, 3], -1], 17]
+    ///     Ok(())
+    /// }
+    /// ```
     fn cdf(&self, x: f64) -> f64 {
         let mz = (self.location - x) / self.scale;
         f64::exp(-f64::exp(mz))
     }
 
     /// Returns the Mean
+    ///
+    /// ```
+    /// use russell_lab::{approx_eq, math::EULER};
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let (location, scale) = (2.0, 3.0);
+    ///     let dist = DistributionGumbel::new(location, scale)?;
+    ///     approx_eq(dist.mean(), location + EULER * scale, 1e-15);
+    ///     // Mathematica: -Mean[GumbelDistribution[-location, scale]]
+    ///     Ok(())
+    /// }
+    /// ```
     fn mean(&self) -> f64 {
         self.location + EULER * self.scale
     }
 
     /// Returns the Variance
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let (location, scale) = (2.0, 3.0);
+    ///     let dist = DistributionGumbel::new(location, scale)?;
+    ///     approx_eq(dist.variance(), 14.804406601634038, 1e-14);
+    ///     // Mathematica: N[Variance[GumbelDistribution[-2, 3]], 17]
+    ///     Ok(())
+    /// }
+    /// ```
     fn variance(&self) -> f64 {
         self.scale * self.scale * PI * PI / 6.0
     }
 
     /// Generates a pseudo-random number belonging to this probability distribution
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let (location, scale) = (2.0, 3.0);
+    ///     let dist = DistributionGumbel::new(location, scale)?;
+    ///     let mut rng = get_rng();
+    ///     println!("sample = {}", dist.sample(&mut rng));
+    ///     Ok(())
+    /// }
+    /// ```
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64 {
         self.sampler.sample(rng)
     }

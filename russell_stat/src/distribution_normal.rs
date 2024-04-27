@@ -37,26 +37,89 @@ impl DistributionNormal {
 
 impl ProbabilityDistribution for DistributionNormal {
     /// Evaluates the Probability Density Function (PDF)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionNormal::new(0.1, 0.9)?;
+    ///     approx_eq(dist.pdf(1.0), 0.268856360576826, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     fn pdf(&self, x: f64) -> f64 {
         self.a * f64::exp(self.b * f64::powf(x - self.mu, 2.0))
     }
 
     /// Evaluates the Cumulative Distribution Function (CDF)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionNormal::new(0.1, 0.9)?;
+    ///     approx_eq(dist.cdf(1.0), 0.841344746068543, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     fn cdf(&self, x: f64) -> f64 {
         (1.0 + erf((x - self.mu) / (self.sig * SQRT_2))) / 2.0
     }
 
     /// Returns the Mean
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionNormal::new(0.1, 0.9)?;
+    ///     assert_eq!(dist.mean(), 0.1);
+    ///     Ok(())
+    /// }
+    /// ```
     fn mean(&self) -> f64 {
         self.mu
     }
 
     /// Returns the Variance
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionNormal::new(0.1, 0.9)?;
+    ///     assert_eq!(dist.variance(), 0.9 * 0.9);
+    ///     Ok(())
+    /// }
+    /// ```
     fn variance(&self) -> f64 {
         self.sig * self.sig
     }
 
     /// Generates a pseudo-random number belonging to this probability distribution
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_stat::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let dist = DistributionNormal::new(0.1, 0.9)?;
+    ///     let mut rng = get_rng();
+    ///     println!("sample = {}", dist.sample(&mut rng));
+    ///     Ok(())
+    /// }
+    /// ```
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64 {
         self.sampler.sample(rng)
     }

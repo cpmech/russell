@@ -1,0 +1,29 @@
+FROM rockylinux/rockylinux
+
+# initalize
+RUN dnf update -y
+RUN dnf check-update 
+RUN dnf install epel-release -y
+RUN crb enable
+RUN dnf install cmake gcc make curl clang -y
+
+# dependencies
+RUN dnf install -y \
+  gcc-toolset-13 \
+  lapack-devel \
+  MUMPS-devel \
+  openblas-devel \
+  openmpi \
+  openmpi-devel \
+  suitesparse-devel
+
+# install rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# copy files
+COPY . /tmp/russell
+WORKDIR /tmp/russell
+
+# run tests
+#RUN cargo test

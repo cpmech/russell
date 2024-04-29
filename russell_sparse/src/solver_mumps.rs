@@ -1,5 +1,5 @@
 use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, StatsLinSol, Sym};
-use crate::auxiliary_and_constants::*;
+use crate::constants::*;
 use crate::StrError;
 use russell_lab::{using_intel_mkl, vec_copy, Stopwatch, Vector};
 use serde::{Deserialize, Serialize};
@@ -623,6 +623,7 @@ pub(crate) fn handle_mumps_error_code(err: i32) -> StrError {
         ERROR_NEED_INITIALIZATION => "MUMPS failed because INITIALIZATION is needed",
         ERROR_NEED_FACTORIZATION => "MUMPS failed because FACTORIZATION is needed",
         ERROR_ALREADY_INITIALIZED => "MUMPS failed because INITIALIZATION has been completed already",
+        ERROR_MPI_INIT_FAILED => "Cannot initialize MPI for MUMPS",
         _ => "Error: unknown error returned by c-code (MUMPS)",
     }
 }

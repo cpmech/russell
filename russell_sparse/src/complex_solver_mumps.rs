@@ -5,7 +5,7 @@ use super::{
     MUMPS_ORDERING_QAMD, MUMPS_ORDERING_SCOTCH, MUMPS_SCALING_AUTO, MUMPS_SCALING_COLUMN, MUMPS_SCALING_DIAGONAL,
     MUMPS_SCALING_NO, MUMPS_SCALING_ROW_COL, MUMPS_SCALING_ROW_COL_ITER, MUMPS_SCALING_ROW_COL_RIG,
 };
-use crate::auxiliary_and_constants::*;
+use crate::constants::*;
 use crate::StrError;
 use russell_lab::{complex_vec_copy, using_intel_mkl, Complex64, ComplexVector, Stopwatch};
 

@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "mpi.h"
+
 #include "dmumps_c.h"
 
 #include "constants.h"
@@ -103,13 +105,22 @@ int32_t solver_mumps_initialize(struct InterfaceMUMPS *solver,
         return ERROR_ALREADY_INITIALIZED;
     }
 
-    solver->data.comm_fortran = MUMPS_IGNORED;
+    solver->data.comm_fortran = MUMPS_FORTRAN_COMM;
     solver->data.par = MUMPS_PAR_HOST_ALSO_WORKS;
     solver->data.sym = 0; // unsymmetric (page 27)
     if (general_symmetric == C_TRUE) {
         solver->data.sym = 2; // general symmetric (page 27)
     } else if (positive_definite == C_TRUE) {
         solver->data.sym = 1; // symmetric positive-definite (page 27)
+    }
+
+    int flag = 0;
+    MPI_Initialized(&flag);
+    if (flag != 1) {
+        int status = MPI_Init(NULL, NULL); // initializes the MPI execution environment
+        if (status != MPI_SUCCESS) {
+            return ERROR_MPI_INIT_FAILED;
+        }
     }
 
     set_mumps_verbose(&solver->data, C_FALSE);

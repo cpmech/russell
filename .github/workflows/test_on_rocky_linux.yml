@@ -2,5 +2,9 @@ name: Test on Rocky Linux
 on: [pull_request]
 jobs:
   test_on_rocky_linux:
-    using: 'docker'
-    image: 'Dockerfile.Rocky'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build docker image
+        run: |
+          bash zscripts/docker-build-image rocky

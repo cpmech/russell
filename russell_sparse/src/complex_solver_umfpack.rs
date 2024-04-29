@@ -5,7 +5,7 @@ use super::{
     UMFPACK_ORDERING_NONE, UMFPACK_SCALE_MAX, UMFPACK_SCALE_NONE, UMFPACK_SCALE_SUM, UMFPACK_STRATEGY_AUTO,
     UMFPACK_STRATEGY_SYMMETRIC, UMFPACK_STRATEGY_UNSYMMETRIC,
 };
-use crate::auxiliary_and_constants::*;
+use crate::constants::*;
 use crate::StrError;
 use russell_lab::{Complex64, ComplexVector, Stopwatch};
 
@@ -366,7 +366,7 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.main.solver = if cfg!(local_umfpack) {
+        stats.main.solver = if cfg!(feature = "local_libs")  {
             "UMFPACK-local".to_string()
         } else {
             "UMFPACK".to_string()

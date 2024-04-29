@@ -57,7 +57,7 @@ sudo apt-get install -y --no-install-recommends \
     gdb \
     gfortran \
     liblapacke-dev \
-    libmumps-seq-dev \
+    libmumps-dev \
     libopenblas-dev \
     libsuitesparse-dev
 ```

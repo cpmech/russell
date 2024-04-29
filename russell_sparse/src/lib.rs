@@ -238,12 +238,12 @@
 pub type StrError = &'static str;
 
 mod aliases;
-mod auxiliary_and_constants;
 mod complex_coo_matrix;
 mod complex_lin_solver;
 mod complex_solver_klu;
 mod complex_solver_mumps;
 mod complex_solver_umfpack;
+mod constants;
 mod coo_matrix;
 mod csc_matrix;
 mod csr_matrix;
@@ -262,11 +262,11 @@ mod stats_lin_sol;
 mod verify_lin_sys;
 mod write_matrix_market;
 pub use crate::aliases::*;
-use crate::auxiliary_and_constants::*;
 pub use crate::complex_lin_solver::*;
 pub use crate::complex_solver_klu::*;
 pub use crate::complex_solver_mumps::*;
 pub use crate::complex_solver_umfpack::*;
+use crate::constants::*;
 pub use crate::coo_matrix::*;
 pub use crate::csc_matrix::*;
 pub use crate::csr_matrix::*;

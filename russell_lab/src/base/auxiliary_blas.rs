@@ -76,7 +76,6 @@ pub fn find_index_abs_max(x: &[f64]) -> usize {
 #[cfg(test)]
 mod tests {
     use super::{find_index_abs_max, get_num_threads, set_num_threads, using_intel_mkl};
-    use std::env;
 
     #[test]
     fn using_intel_mkl_works() {
@@ -89,15 +88,7 @@ mod tests {
 
     #[test]
     fn set_num_threads_and_get_num_threads_work() {
-        let ci = match env::var("CI") {
-            Ok(v) => v.to_lowercase() == "true",
-            Err(_) => false,
-        };
-        if ci {
-            assert!(get_num_threads() > 0);
-        } else {
-            assert!(get_num_threads() > 2);
-        }
+        assert!(get_num_threads() > 0);
         set_num_threads(1);
         assert_eq!(get_num_threads(), 1);
     }

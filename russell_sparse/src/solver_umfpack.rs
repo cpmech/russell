@@ -1,5 +1,5 @@
 use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, StatsLinSol, Sym};
-use crate::auxiliary_and_constants::*;
+use crate::constants::*;
 use crate::StrError;
 use russell_lab::{Stopwatch, Vector};
 
@@ -346,7 +346,7 @@ impl LinSolTrait for SolverUMFPACK {
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.main.solver = if cfg!(local_umfpack) {
+        stats.main.solver = if cfg!(feature = "local_libs")  {
             "UMFPACK-local".to_string()
         } else {
             "UMFPACK".to_string()

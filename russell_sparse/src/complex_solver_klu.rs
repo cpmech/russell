@@ -1,7 +1,7 @@
 use super::{handle_klu_error_code, klu_ordering, klu_scaling};
 use super::{ComplexLinSolTrait, ComplexSparseMatrix, LinSolParams, StatsLinSol, Sym};
 use super::{KLU_ORDERING_AMD, KLU_ORDERING_COLAMD, KLU_SCALE_MAX, KLU_SCALE_NONE, KLU_SCALE_SUM};
-use crate::auxiliary_and_constants::*;
+use crate::constants::*;
 use crate::StrError;
 use russell_lab::{complex_vec_copy, Complex64, ComplexVector, Stopwatch};
 
@@ -307,7 +307,7 @@ impl ComplexLinSolTrait for ComplexSolverKLU {
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.main.solver = if cfg!(local_umfpack) {
+        stats.main.solver = if cfg!(feature = "local_libs")  {
             "KLU-local".to_string()
         } else {
             "KLU".to_string()

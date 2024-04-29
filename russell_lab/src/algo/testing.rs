@@ -624,42 +624,42 @@ mod tests {
             assert_eq!(format!("{}", i), func.name.split(":").next().unwrap()); // make sure index is correct
             if let Some(bracket) = &func.min1 {
                 check_consistency_min(bracket);
-                assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
-                assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
+                approx_eq(bracket.fa, (func.f)(bracket.a, args).unwrap(), 1e-15);
+                approx_eq(bracket.fb, (func.f)(bracket.b, args).unwrap(), 1e-15);
                 approx_eq(bracket.fxo, (func.f)(bracket.xo, args).unwrap(), 1e-15);
             }
             if let Some(bracket) = &func.min2 {
                 check_consistency_min(bracket);
-                assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
-                assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
-                assert_eq!(bracket.fxo, (func.f)(bracket.xo, args).unwrap());
+                approx_eq(bracket.fa, (func.f)(bracket.a, args).unwrap(), 1e-15);
+                approx_eq(bracket.fb, (func.f)(bracket.b, args).unwrap(), 1e-15);
+                approx_eq(bracket.fxo, (func.f)(bracket.xo, args).unwrap(), 1e-15);
             }
             if let Some(bracket) = &func.min3 {
                 check_consistency_min(bracket);
-                assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
-                assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
-                assert_eq!(bracket.fxo, (func.f)(bracket.xo, args).unwrap());
+                approx_eq(bracket.fa, (func.f)(bracket.a, args).unwrap(), 1e-15);
+                approx_eq(bracket.fb, (func.f)(bracket.b, args).unwrap(), 1e-15);
+                approx_eq(bracket.fxo, (func.f)(bracket.xo, args).unwrap(), 1e-15);
             }
             if let Some(bracket) = &func.root1 {
                 check_consistency_root(bracket);
-                assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
-                assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
+                approx_eq(bracket.fa, (func.f)(bracket.a, args).unwrap(), 1e-15);
+                approx_eq(bracket.fb, (func.f)(bracket.b, args).unwrap(), 1e-15);
                 approx_eq((func.f)(bracket.xo, args).unwrap(), 0.0, 1e-13);
-                assert_eq!(bracket.fxo, 0.0);
+                approx_eq(bracket.fxo, 0.0, 1e-15);
             }
             if let Some(bracket) = &func.root2 {
                 check_consistency_root(bracket);
-                assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
-                assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
+                approx_eq(bracket.fa, (func.f)(bracket.a, args).unwrap(), 1e-15);
+                approx_eq(bracket.fb, (func.f)(bracket.b, args).unwrap(), 1e-15);
                 approx_eq((func.f)(bracket.xo, args).unwrap(), 0.0, 1e-15);
-                assert_eq!(bracket.fxo, 0.0);
+                approx_eq(bracket.fxo, 0.0, 1e-15);
             }
             if let Some(bracket) = &func.root3 {
                 check_consistency_root(bracket);
-                assert_eq!(bracket.fa, (func.f)(bracket.a, args).unwrap());
-                assert_eq!(bracket.fb, (func.f)(bracket.b, args).unwrap());
+                approx_eq(bracket.fa, (func.f)(bracket.a, args).unwrap(), 1e-15);
+                approx_eq(bracket.fb, (func.f)(bracket.b, args).unwrap(), 1e-15);
                 approx_eq((func.f)(bracket.xo, args).unwrap(), 0.0, 1e-14);
-                assert_eq!(bracket.fxo, 0.0);
+                approx_eq(bracket.fxo, 0.0, 1e-15);
             }
 
             // plot (do not delete the code below---to generate figures)

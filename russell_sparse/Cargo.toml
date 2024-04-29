@@ -13,7 +13,7 @@ keywords = ["matrix", "sparse", "solver"]
 
 [features]
 local_libs = []
-intel_mkl = ["local_libs", "russell_lab/intel_mkl"]
+intel_mkl = ["russell_lab/intel_mkl"]
 
 [dependencies]
 num-traits = "0.2"

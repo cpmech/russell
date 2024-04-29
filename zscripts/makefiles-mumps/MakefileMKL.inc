@@ -1,9 +1,7 @@
 #
-#  This file is part of MUMPS 5.6.1, released
-#  on Tue Jul 11 07:51:28 UTC 2023
+#  This file is part of MUMPS 5.6.2, released
+#  on Wed Oct 11 09:36:25 UTC 2023
 #
-# These settings for a PC under Debian/linux with standard packages :
-# metis (parmetis), scotch (ptscotch), openmpi 
 
 # must be at the top
 PLAT = _cpmech
@@ -19,7 +17,7 @@ IPORD    = -I$(topdir)/PORD/include/
 LPORD    = -L$(LPORDDIR) -lpord$(PLAT)
 
 LMETISDIR = /usr/lib 
-IMETIS    = -I/usr/include/metis
+IMETIS    = -I/usr/include
 
 LMETIS    = -L$(LMETISDIR) -lmetis
 
@@ -43,15 +41,18 @@ LIBEXT  = .a
 OUTC    = -o 
 OUTF    = -o 
 RM = /bin/rm -f
-CC = gcc
-FC = ifort
-FL = ifort
+CC = mpicc
+FC = mpiifort
+FL = mpiifort
 AR = ar vr 
 RANLIB = ranlib
 MKLROOT=/opt/intel/oneapi/mkl/latest/lib/intel64
 LAPACK = -L$(MKLROOT) -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core
+SCALAP = -L$(MKLROOT) -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
 
+INCPAR = # not needed with mpif90/mpicc:  -I/usr/include/openmpi
 
+LIBPAR = $(SCALAP) $(LAPACK)
 
 INCSEQ = -I$(topdir)/libseq
 LIBSEQ  = $(LAPACK) -L$(topdir)/libseq -lmpiseq$(PLAT)
@@ -68,7 +69,8 @@ OPTF    = -O -nofor-main -fopenmp -DGEMMT_AVAILABLE  -diag-disable=10448
 OPTL    = -O -nofor-main -fopenmp
 OPTC    = -O -fopenmp
 #End Optimized options
- 
-INCS = $(INCSEQ)
-LIBS = $(LIBSEQ)
-LIBSEQNEEDED = libseqneeded
+
+INCS = $(INCPAR)
+LIBS = $(LIBPAR)
+LIBSEQNEEDED =
+

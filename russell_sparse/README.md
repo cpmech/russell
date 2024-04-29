@@ -9,8 +9,6 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 - [Introduction](#introduction)
   - [Documentation](#documentation)
 - [Installation](#installation)
-  - [TL;DR (Debian/Ubuntu/Linux)](#tldr-debianubuntulinux)
-  - [Details](#details)
   - [Setting Cargo.toml](#setting-cargotoml)
 - [Examples](#examples)
   - [Solve a tiny sparse linear system using UMFPACK](#solve-a-tiny-sparse-linear-system-using-umfpack)
@@ -47,34 +45,9 @@ This library also provides functions to read and write Matrix Market files conta
 
 ## Installation
 
-At this moment, Russell works on **Linux** (Debian/Ubuntu; and maybe Arch). It has some limited functionality on macOS too. In the future, we plan to enable Russell on Windows; however, this will take time because some essential libraries are not easily available on Windows.
+This crate depends on some non-rust high-performance libraries. [See the main README file for the steps to install these dependencies.](https://github.com/cpmech/russell)
 
-### TL;DR (Debian/Ubuntu/Linux)
 
-First:
-
-```bash
-sudo apt-get install -y --no-install-recommends \
-    g++ \
-    gdb \
-    gfortran \
-    liblapacke-dev \
-    libmumps-dev \
-    libopenblas-dev \
-    libsuitesparse-dev
-```
-
-Then:
-
-```bash
-cargo add russell_sparse
-```
-
-### Details
-
-This crate depends on `russell_lab`, which, in turn, depends on an efficient BLAS library such as [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html). This crate also depends on [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS](https://mumps-solver.org).
-
-[The root README file presents the steps to install the required dependencies.](https://github.com/cpmech/russell)
 
 ### Setting Cargo.toml
 

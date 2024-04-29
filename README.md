@@ -18,6 +18,7 @@
 - [Introduction](#introduction)
 - [Installation](#installation)
   - [Debian/Ubuntu Linux](#debianubuntu-linux)
+  - [Arch Linux](#arch-linux)
   - [Rocky Linux](#rocky-linux)
   - [macOS](#macos)
   - [Number of threads](#number-of-threads)
@@ -168,6 +169,12 @@ source /opt/intel/oneapi/setvars.sh
 Then, add `intel_mkl` to your Cargo.toml or use `cargo build --features intel_mkl` (note that the `local_libs` feature will be automatically enabled).
 
 If locally compiled, the above scripts will save the resulting files in `/usr/local/lib/{mumps,umfpack}` and `/usr/local/include/{mumps,umfpack}`.
+
+
+
+### Arch Linux
+
+TODO
 
 
 

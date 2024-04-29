@@ -1,3 +1,5 @@
+// validate intel source command --------------------------------------------------------------------------
+
 #[cfg(feature = "intel_mkl")]
 use std::env;
 
@@ -12,88 +14,128 @@ fn validate_intel_setvars_completed() {
     }
 }
 
-#[cfg(not(feature = "intel_mkl"))] // OpenBLAS + OpenMPI
+#[cfg(not(feature = "intel_mkl"))]
 fn validate_intel_setvars_completed() {}
 
-#[cfg(feature = "intel_mkl")]
-fn get_mpi_include_dirs() -> Vec<String> {
-    vec!["/opt/intel/oneapi/mpi/latest/include/".to_string()]
+// information --------------------------------------------------------------------------------------------
+
+// (default) Returns the directories and libraries
+// returns `(inc_dirs, lib_dirs, libs)`
+#[cfg(not(feature = "local_libs"))]
+#[cfg(not(feature = "intel_mkl"))]
+fn get_information() -> (Vec<&'static str>, Vec<&'static str>, Vec<&'static str>) {
+    (
+        // inc_dirs
+        vec![
+            "/usr/lib/x86_64-linux-gnu/openmpi/include", // Ubuntu
+            "/usr/include/openmpi-x86_64",               // Rocky
+            "/usr/include",                              // Ubuntu
+            "/usr/include/MUMPS",                        // Rocky
+            "/usr/include/suitesparse",                  // Ubuntu + Rocky
+        ],
+        // lib_dirs
+        vec![
+            "/usr/lib/x86_64-linux-gnu/openmpi/lib", // Ubuntu
+            "/usr/lib64/openmpi/lib",                // Rocky
+        ],
+        // libs
+        vec![
+            "mpi",     //
+            "dmumps",  //
+            "zmumps",  //
+            "umfpack", //
+            "klu",     //
+        ],
+    )
 }
 
-#[cfg(not(feature = "intel_mkl"))] // OpenBLAS + OpenMPI
-fn get_mpi_include_dirs() -> Vec<String> {
-    vec!["/usr/lib/x86_64-linux-gnu/openmpi/include".to_string()]
-}
-
-#[cfg(feature = "intel_mkl")]
-fn get_mpi_link_dirs() -> Vec<String> {
-    vec!["/opt/intel/oneapi/mpi/latest/lib/".to_string()]
-}
-
-#[cfg(not(feature = "intel_mkl"))] // OpenBLAS + OpenMPI
-fn get_mpi_link_dirs() -> Vec<String> {
-    vec!["/usr/lib/x86_64-linux-gnu/openmpi".to_string()]
-}
-
+// (local_libs) Returns the directories and libraries
+// returns `(inc_dirs, lib_dirs, libs)`
 #[cfg(feature = "local_libs")]
-fn compile_libs() {
-    // local MUMPS
-    cc::Build::new()
-        .file("c_code/interface_complex_mumps.c")
-        .file("c_code/interface_mumps.c")
-        .includes(get_mpi_include_dirs())
-        .include("/usr/local/include/mumps")
-        .compile("c_code_interface_mumps");
-    for d in get_mpi_link_dirs() {
-        println!("cargo:rustc-link-search=native={d}");
-    }
-    println!("cargo:rustc-link-search=native=/usr/local/lib/mumps");
-    println!("cargo:rustc-link-lib=dylib=dmumps_cpmech");
-    println!("cargo:rustc-link-lib=dylib=zmumps_cpmech");
-    println!("cargo:rustc-link-lib=dylib=mpi");
-    println!("cargo:rustc-cfg=local_mumps");
-    // local UMFPACK and KLU
-    cc::Build::new()
-        .file("c_code/interface_complex_umfpack.c")
-        .file("c_code/interface_complex_klu.c")
-        .file("c_code/interface_umfpack.c")
-        .file("c_code/interface_klu.c")
-        .include("/usr/local/include/umfpack")
-        .compile("c_code_interface_umfpack");
-    println!("cargo:rustc-link-search=native=/usr/local/lib/umfpack");
-    println!("cargo:rustc-link-lib=dylib=umfpack");
-    println!("cargo:rustc-link-lib=dylib=klu");
-    println!("cargo:rustc-cfg=local_umfpack");
+#[cfg(not(feature = "intel_mkl"))]
+fn get_information() -> (Vec<&'static str>, Vec<&'static str>, Vec<&'static str>) {
+    (
+        // inc_dirs
+        vec![
+            "/usr/lib/x86_64-linux-gnu/openmpi/include", // Ubuntu
+            "/usr/local/include/mumps",                  // Ubuntu
+            "/usr/local/include/umfpack",                // Ubuntu
+        ],
+        // lib_dirs
+        vec![
+            "/usr/lib/x86_64-linux-gnu/openmpi/lib", // Ubuntu
+            "/usr/local/lib/mumps",                  // Ubuntu
+            "/usr/local/lib/umfpack",                // Ubuntu
+        ],
+        // libs
+        vec![
+            "mpi",           //
+            "dmumps_cpmech", //
+            "zmumps_cpmech", //
+            "umfpack",       //
+            "klu",           //
+        ],
+    )
 }
 
-#[cfg(not(feature = "local_libs"))] // Libraries from the distribution
-fn compile_libs() {
+// (intel_mkl) Returns the directories and libraries
+// returns `(inc_dirs, lib_dirs, libs)`
+#[cfg(feature = "intel_mkl")]
+fn get_information() -> (Vec<&'static str>, Vec<&'static str>, Vec<&'static str>) {
+    (
+        // inc_dirs
+        vec![
+            "/opt/intel/oneapi/mpi/latest/include", // Ubuntu
+            "/usr/local/include/mumps",             // Ubuntu
+            "/usr/local/include/umfpack",           // Ubuntu
+        ],
+        // lib_dirs
+        vec![
+            "/opt/intel/oneapi/mpi/latest/lib", // Ubuntu
+            "/usr/local/lib/mumps",             // Ubuntu
+            "/usr/local/lib/umfpack",           // Ubuntu
+        ],
+        // libs
+        vec![
+            "mpi",           //
+            "dmumps_cpmech", //
+            "zmumps_cpmech", //
+            "umfpack",       //
+            "klu",           //
+        ],
+    )
+}
+
+// main ---------------------------------------------------------------------------------------------------
+
+fn main() {
+    // validate intel setvars
+    validate_intel_setvars_completed();
+
+    // information
+    let (inc_dirs, lib_dirs, libs) = get_information();
+
     // MUMPS
     cc::Build::new()
         .file("c_code/interface_complex_mumps.c")
         .file("c_code/interface_mumps.c")
-        .includes(get_mpi_include_dirs())
-        .include("/usr/include/mumps")
+        .includes(&inc_dirs)
         .compile("c_code_interface_mumps");
-    for d in get_mpi_link_dirs() {
-        println!("cargo:rustc-link-search=native={d}");
-    }
-    println!("cargo:rustc-link-lib=dylib=dmumps");
-    println!("cargo:rustc-link-lib=dylib=zmumps");
-    println!("cargo:rustc-link-lib=dylib=mpi");
+
     // UMFPACK and KLU
     cc::Build::new()
         .file("c_code/interface_complex_umfpack.c")
         .file("c_code/interface_complex_klu.c")
         .file("c_code/interface_umfpack.c")
         .file("c_code/interface_klu.c")
-        .include("/usr/include/suitesparse")
+        .includes(&inc_dirs)
         .compile("c_code_interface_umfpack");
-    println!("cargo:rustc-link-lib=dylib=umfpack");
-    println!("cargo:rustc-link-lib=dylib=klu");
-}
 
-fn main() {
-    validate_intel_setvars_completed();
-    compile_libs();
+    // libraries
+    for d in &lib_dirs {
+        println!("cargo:rustc-link-search=native={}", *d);
+    }
+    for l in &libs {
+        println!("cargo:rustc-link-lib=dylib={}", *l);
+    }
 }

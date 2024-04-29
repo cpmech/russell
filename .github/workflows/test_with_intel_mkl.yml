@@ -10,5 +10,6 @@ jobs:
           bash case-b-intel-mkl-local-libs.bash
       - name: Run tests
         run: |
+          source /opt/intel/oneapi/setvars.sh
           RUST_BACKTRACE=1 cargo test --features intel_mkl
 

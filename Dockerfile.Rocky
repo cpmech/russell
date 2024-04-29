@@ -1,6 +1,6 @@
 FROM rockylinux/rockylinux
 
-# initalize
+# initialize
 RUN dnf update -y
 RUN dnf check-update 
 RUN dnf install epel-release -y
@@ -13,7 +13,6 @@ RUN dnf install -y \
   lapack-devel \
   MUMPS-devel \
   openblas-devel \
-  openmpi \
   openmpi-devel \
   suitesparse-devel
 
@@ -25,5 +24,9 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 COPY . /tmp/russell
 WORKDIR /tmp/russell
 
+# set environment variables
+ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/lib64/openmpi/lib"
+ENV PSM3_DEVICES='self,shm'
+
 # run tests
-#RUN cargo test
+RUN cargo test

@@ -17,13 +17,9 @@
 
 - [Introduction](#introduction)
 - [Installation](#installation)
-  - [TL;DR (Debian/Ubuntu/Linux)](#tldr-debianubuntulinux)
-  - [Details](#details)
-  - [Case A: OpenBLAS](#case-a-openblas)
-    - [Default Debian packages](#default-debian-packages)
-    - [Locally compiled libraries](#locally-compiled-libraries)
-  - [Case B: Intel MKL](#case-b-intel-mkl)
-  - [Installation on macOS](#installation-on-macos)
+  - [Debian/Ubuntu Linux](#debianubuntu-linux)
+  - [Rocky Linux](#rocky-linux)
+  - [macOS](#macos)
   - [Number of threads](#number-of-threads)
 - [Examples](#examples)
   - [(lab) Numerical integration (quadrature)](#lab-numerical-integration-quadrature)
@@ -96,7 +92,7 @@ External associated and recommended crates:
 
 At this moment, Russell works on **Linux** (Debian/Ubuntu; and maybe Arch). It has some limited functionality on macOS too. In the future, we plan to enable Russell on Windows; however, this will take time because some essential libraries are not easily available on Windows.
 
-### TL;DR (Debian/Ubuntu/Linux)
+### Debian/Ubuntu Linux
 
 First:
 
@@ -118,7 +114,9 @@ cargo add russell_lab
 cargo add russell_sparse # etc.
 ```
 
-### Details
+
+
+#### Further details <!-- omit from toc -->
 
 **Russell** depends on external (non-Rust) packages for linear algebra and the solution of large sparse linear systems. The following libraries are required:
 
@@ -133,9 +131,9 @@ In summary, the following options are available:
 * **Case A:** OpenBLAS with locally compiled libraries
 * **Case B:** Intel MKL with locally compiled libraries
 
-### Case A: OpenBLAS
+##### Case A: OpenBLAS <!-- omit from toc -->
 
-#### Default Debian packages
+*Default Debian packages*
 
 Run:
 
@@ -143,7 +141,7 @@ Run:
 bash case-a-openblas-debian.bash
 ```
 
-#### Locally compiled libraries
+*Locally compiled libraries*
 
 Run:
 
@@ -153,7 +151,7 @@ bash case-a-openblas-local-libs.bash
 
 Then, add `local_libs` to your Cargo.toml or use `cargo build --features local_libs`
 
-### Case B: Intel MKL
+##### Case B: Intel MKL <!-- omit from toc -->
 
 Run:
 
@@ -173,7 +171,54 @@ If locally compiled, the above scripts will save the resulting files in `/usr/lo
 
 
 
-### Installation on macOS
+### Rocky Linux
+
+First:
+
+```bash
+# initialize
+dnf update -y
+dnf check-update 
+dnf install epel-release -y
+crb enable
+
+# required by rust
+dnf install cmake gcc make curl clang -y
+
+# dependencies
+dnf install -y \
+  gcc-toolset-13 \
+  lapack-devel \
+  MUMPS-devel \
+  openblas-devel \
+  openmpi-devel \
+  suitesparse-devel
+```
+
+Second:
+
+```bash
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/lib64/openmpi/lib"
+export PSM3_DEVICES='self,shm'
+```
+
+Then:
+
+```bash
+cargo add russell_lab
+cargo add russell_sparse # etc.
+```
+
+#### Further details <!-- omit from toc -->
+
+Note that there are two issues regarding OpenMPI on Rocky Linux (and similar distributions):
+
+1. `libmpi.so` cannot be found. [There is an issue with OpenMPI and rpath](https://stackoverflow.com/questions/14769599/mpi-error-loading-shared-libraries). Currently, there is [no way to fix build.rs](https://github.com/rust-lang/cargo/issues/5077). Thus, the `LD_LIBRARY_PATH` environment variable needs to be updated.
+2. . [There is an issue related to "PSM3"](https://github.com/easybuilders/easybuild-easyconfigs/issues/18925). The recommended workaround is to set the `PSM3_DEVICES` environment variable.
+
+
+
+### macOS
 
 Currently, only OpenBLAS has been tested on macOS.
 

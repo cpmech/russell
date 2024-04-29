@@ -1,0 +1,6 @@
+name: Test on Rocky Linux
+on: [pull_request]
+jobs:
+  test_on_rocky_linux:
+    using: 'docker'
+    image: 'Dockerfile.Rocky'

@@ -7,4 +7,4 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build docker image
         run: |
-          bash zscripts/docker-build-image rocky
+          bash zscripts/docker-build-image.bash rocky

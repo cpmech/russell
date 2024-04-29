@@ -1,12 +1,7 @@
 #
-#  This file is part of MUMPS 5.6.1, released
-#  on Tue Jul 11 07:51:28 UTC 2023
+#  This file is part of MUMPS 5.6.2, released
+#  on Wed Oct 11 09:36:25 UTC 2023
 #
-# These settings for a PC under Debian/linux with standard packages :
-# metis (parmetis), scotch (ptscotch), openmpi, gfortran
-
-# packages installation: 
-# apt-get install gcc gfortran libmetis-dev libopenblas-dev
 
 # must be at the top
 PLAT = _cpmech
@@ -22,7 +17,7 @@ IPORD    = -I$(topdir)/PORD/include/
 LPORD    = -L$(LPORDDIR) -lpord$(PLAT)
 
 LMETISDIR = /usr/lib 
-IMETIS    = -I/usr/include/metis
+IMETIS    = -I/usr/include
 
 LMETIS    = -L$(LMETISDIR) -lmetis
 
@@ -46,14 +41,17 @@ LIBEXT  = .a
 OUTC    = -o 
 OUTF    = -o 
 RM = /bin/rm -f
-CC = gcc
-FC = gfortran
-FL = gfortran
+CC = mpicc
+FC = mpif90
+FL = mpif90
 AR = ar vr 
 RANLIB = ranlib
 LAPACK = -llapack
+SCALAP  = -lscalapack-openmpi # -lblacs-openmpi
 
+INCPAR = # not needed with mpif90/mpicc:  -I/usr/include/openmpi
 
+LIBPAR = $(SCALAP) $(LAPACK) # not needed with mpif90/mpicc: -lmpi_mpifh -lmpi
 
 INCSEQ = -I$(topdir)/libseq
 LIBSEQ  = $(LAPACK) -L$(topdir)/libseq -lmpiseq$(PLAT)
@@ -71,7 +69,8 @@ OPTF    = -O -fopenmp -fallow-argument-mismatch
 OPTL    = -O -fopenmp
 OPTC    = -O -fopenmp
 #End Optimized options
- 
-INCS = $(INCSEQ)
-LIBS = $(LIBSEQ)
-LIBSEQNEEDED = libseqneeded
+
+INCS = $(INCPAR)
+LIBS = $(LIBPAR)
+LIBSEQNEEDED =
+

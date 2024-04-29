@@ -20,6 +20,8 @@ sudo apt-get install -y --no-install-recommends \
     liblapacke-dev \
     libmetis-dev \
     libopenblas-dev \
+    libopenmpi-dev \
+    libscalapack-mpi-dev \
     make \
     patch
 

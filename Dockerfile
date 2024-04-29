@@ -19,7 +19,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
   gdb \
   gfortran \
   liblapacke-dev \
-  libmumps-seq-dev \
+  libmumps-dev \
   libopenblas-dev \
   libsuitesparse-dev \
   && apt-get clean && rm -rf /var/lib/apt/lists/*

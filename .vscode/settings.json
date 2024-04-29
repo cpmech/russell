@@ -70,6 +70,7 @@
     "ldvt",
     "lgamma",
     "libmetis",
+    "libscalapack",
     "linalg",
     "lredrhs",
     "lrhs",
@@ -110,6 +111,7 @@
     "rwork",
     "Schur",
     "Schuster",
+    "setvars",
     "SLATEC",
     "Stegun",
     "substeps",
@@ -144,9 +146,5 @@
     "zscal",
     "zsyrk",
     "zticks"
-  ],
-  "rust-analyzer.linkedProjects": [
-    "./russell_lab/Cargo.toml"
-  ],
-  "rust-analyzer.showUnlinkedFileNotification": false
+  ]
 }

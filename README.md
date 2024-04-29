@@ -78,6 +78,12 @@ russell_stat = { version = "*", features = ["intel_mkl"] }
 russell_tensor = { version = "*", features = ["intel_mkl"] }
 ```
 
+**Note:** To use the `intel_mkl` feature, the following command must be executed first:
+
+```bash
+source /opt/intel/oneapi/setvars.sh
+```
+
 External associated and recommended crates:
 
 - [plotpy](https://github.com/cpmech/plotpy) Plotting tools using Python3/Matplotlib as an engine (for quality graphics)
@@ -100,7 +106,7 @@ sudo apt-get install -y --no-install-recommends \
     gdb \
     gfortran \
     liblapacke-dev \
-    libmumps-seq-dev \
+    libmumps-dev \
     libopenblas-dev \
     libsuitesparse-dev
 ```
@@ -153,6 +159,12 @@ Run:
 
 ```bash
 bash case-b-intel-mkl-local-libs.bash
+```
+
+**Note:** To use the `intel_mkl` feature, the following command must be executed first:
+
+```bash
+source /opt/intel/oneapi/setvars.sh
 ```
 
 Then, add `intel_mkl` to your Cargo.toml or use `cargo build --features intel_mkl` (note that the `local_libs` feature will be automatically enabled).

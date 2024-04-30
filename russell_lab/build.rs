@@ -33,12 +33,14 @@ fn compile_blas() {
     cc::Build::new()
         .file("c_code/interface_blas.c")
         .includes(&[
-            "/usr/include/openblas", // Arch
-            "/opt/homebrew/include", // macOS
+            "/usr/include/openblas",              // Arch
+            "/opt/homebrew/opt/lapack/include",   // macOS
+            "/opt/homebrew/opt/openblas/include", // macOS
         ])
         .compile("c_code_interface_blas");
     for d in &[
-        "/opt/homebrew/lib", // macOS
+        "/opt/homebrew/opt/lapack/lib",   // macOS
+        "/opt/homebrew/opt/openblas/lib", // macOS
     ] {
         println!("cargo:rustc-link-search=native={}", *d);
     }

@@ -7,10 +7,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Compile MUMPS
         run: |
-          bash zscripts/compile-and-install-mumps.bash
+          bash zscripts/compile-and-install-mumps.bash mkl
       - name: Compile SuiteSparse
         run: |
-          bash zscripts/compile-and-install-suitesparse.bash
+          bash zscripts/compile-and-install-suitesparse.bash mkl
       - name: Run tests
         run: |
           source /opt/intel/oneapi/setvars.sh

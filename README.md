@@ -22,6 +22,9 @@
   - [Rocky Linux](#rocky-linux)
   - [Arch Linux](#arch-linux)
   - [macOS](#macos)
+  - [Optional feature "local\_suitesparse"](#optional-feature-local_suitesparse)
+  - [Optional feature "with\_mumps"](#optional-feature-with_mumps)
+  - [Optional feature "intel\_mkl"](#optional-feature-intel_mkl)
   - [Number of threads](#number-of-threads)
 - [Examples](#examples)
   - [(lab) Numerical integration (quadrature)](#lab-numerical-integration-quadrature)
@@ -65,21 +68,16 @@ russell_stat = "*"
 russell_tensor = "*"
 ```
 
-Or, considering the optional _features_ (see more about these next):
+All crates have an option to use [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) instead of the default [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS). For instance, the `features` keyword may be configured as follows:
+
 
 ```toml
 [dependencies]
 russell_lab = { version = "*", features = ["intel_mkl"] }
-russell_sparse = { version = "*", features = ["local_libs", "intel_mkl"] }
+russell_sparse = { version = "*", features = ["intel_mkl"] }
 russell_ode = { version = "*", features = ["intel_mkl"] }
 russell_stat = { version = "*", features = ["intel_mkl"] }
 russell_tensor = { version = "*", features = ["intel_mkl"] }
-```
-
-**Note:** To use the `intel_mkl` feature, the following command must be executed first:
-
-```bash
-source /opt/intel/oneapi/setvars.sh
 ```
 
 External associated and recommended crates:
@@ -92,17 +90,18 @@ External associated and recommended crates:
 
 ## Installation
 
-Russell requires some non-Rust libraries (e.g., [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS), [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html), [MUMPS](https://mumps-solver.org), [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse)) to achieve the max performance. These libraries can be installed as explained next.
+Russell requires some non-Rust libraries (e.g., [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS), [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html), [MUMPS](https://mumps-solver.org), [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse)) to achieve the max performance. These libraries can be installed as explained in each subsection next.
 
-After installing the dependencies (see next subsections), you may add each crate using:
+After installing the dependencies, you may add each crate using:
 
 ```bash
 cargo add russell_lab
 cargo add russell_sparse # etc.
 ```
 
-
 ### Debian/Ubuntu Linux
+
+Required libraries:
 
 ```bash
 # install libraries for russell
@@ -114,6 +113,8 @@ sudo apt-get install -y --no-install-recommends \
 ```
 
 ### Rocky Linux
+
+Required libraries:
 
 ```bash
 # initialize
@@ -133,11 +134,13 @@ dnf install -y \
 
 ### Arch Linux
 
+Required libraries:
+
 ```bash
 # install libraries for russell
-RUN yay -Y --gendb --noconfirm && yay -Y --devel --save
-RUN yay -Syu blas-openblas --noconfirm
-RUN yay -Syu suitesparse --noconfirm
+yay -Y --gendb --noconfirm && yay -Y --devel --save
+yay -Syu blas-openblas --noconfirm
+yay -Syu suitesparse --noconfirm
 ```
 
 ### macOS
@@ -156,11 +159,34 @@ Next, we must set the `LIBRARY_PATH`:
 export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/lapack/lib:$(brew --prefix)/opt/openblas/lib
 ```
 
+### Optional feature "local_suitesparse"
 
+`russell_sparse` allows the use of a locally compiled SuiteSparse, installed in `/usr/local/include/suitesparse` and `/usr/local/lib/suitesparse`. This option is defined by the `local_suitesparse` feature. The [compile-and-install-suitesparse](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-suitesparse.bash) script may be used in this case:
+
+```bash
+bash zscripts/compile-and-install-suitesparse.bash
+```
+
+### Optional feature "with_mumps"
+
+`russell_sparse` has an optional feature named `with_mumps` which enables the MUMPS solver. To use this feature, MUMPS needs to be locally compiled first. The [compile-and-install-mumps](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-mumps.bash) script may be used in this case:
+
+```bash
+bash zscripts/compile-and-install-mumps.bash
+```
+
+### Optional feature "intel_mkl"
+
+To enable Intel MKL (and disable OpenBLAS), the optional `intel_mkl` feature may be used. In this case SuiteSparse (and MUMPS) must be locally compiled (with Intel MKL). This step can be easily accomplished by the [compile-and-install-suitesparse](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-suitesparse.bash) and [compile-and-install-mumps](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-mumps.bash) scripts, called with the **mkl** argument. For example:
+
+```bash
+bash zscripts/compile-and-install-suitesparse.bash mkl
+bash zscripts/compile-and-install-mumps.bash mkl
+```
 
 ### Number of threads
 
-By default, OpenBLAS will use all available threads, including Hyper-Threads that may worsen the performance. Thus, it is best to set the following environment variable:
+By default, OpenBLAS will use all available threads, including Hyper-Threads that may worsen the performance. Thus, it is recommended to set the following environment variable:
 
 ```bash
 export OPENBLAS_NUM_THREADS=<real-core-number>

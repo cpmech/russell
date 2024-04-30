@@ -7,14 +7,21 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Libraries
         run: |
-          bash case-a-openblas-debian.bash
+          apt-get update -y && \
+          apt-get install -y --no-install-recommends \
+              liblapacke-dev \
+              libopenblas-dev \
+              libsuitesparse-dev
+      - name: Compile MUMPS
+        run: |
+          bash zscripts/compile-and-install-mumps.bash
       - name: Install Rust
         run: |
           rustup toolchain install nightly --component llvm-tools-preview
           rustup default nightly
       - name: Run tests
         run: |
-          RUST_BACKTRACE=1 cargo test
+          RUST_BACKTRACE=1 cargo test --features with_mumps
       - name: Install cargo-llvm-cov
         run: |
           curl -LsSf https://github.com/taiki-e/cargo-llvm-cov/releases/latest/download/cargo-llvm-cov-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin

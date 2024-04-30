@@ -107,7 +107,6 @@ Required libraries:
 
 ```bash
 # install libraries for russell
-sudo apt-get update -y && \
 sudo apt-get install -y --no-install-recommends \
     liblapacke-dev \
     libopenblas-dev \
@@ -123,9 +122,6 @@ Required libraries:
 dnf update -y
 dnf install epel-release -y
 crb enable
-
-# required by rust
-dnf install cmake gcc make curl clang -y
 
 # install libraries for russell
 dnf install -y \
@@ -150,6 +146,7 @@ yay -Syu suitesparse --noconfirm
 First, install [Homebrew](https://brew.sh/). Then, run:
 
 ```bash
+# install libraries for russell
 brew install lapack openblas suite-sparse
 ```
 

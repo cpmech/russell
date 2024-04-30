@@ -7,7 +7,6 @@ pub(crate) const ERROR_NOT_AVAILABLE: i32 = 400000;
 pub(crate) const ERROR_NEED_INITIALIZATION: i32 = 500000;
 pub(crate) const ERROR_NEED_FACTORIZATION: i32 = 600000;
 pub(crate) const ERROR_ALREADY_INITIALIZED: i32 = 700000;
-pub(crate) const ERROR_MPI_INIT_FAILED: i32 = 800000;
 
 /// Represents the type of boolean flags interchanged with the C-code
 pub(crate) type CcBool = i32;

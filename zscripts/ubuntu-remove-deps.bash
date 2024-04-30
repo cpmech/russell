@@ -5,7 +5,6 @@ set -e
 sudo apt-get remove \
     gfortran \
     liblapacke-dev \
-    libmumps-dev \
+    libmetis-dev \
     libopenblas-dev \
     libsuitesparse-dev
-

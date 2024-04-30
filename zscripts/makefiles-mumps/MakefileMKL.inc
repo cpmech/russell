@@ -41,18 +41,13 @@ LIBEXT  = .a
 OUTC    = -o 
 OUTF    = -o 
 RM = /bin/rm -f
-CC = mpicc
-FC = mpiifort
-FL = mpiifort
+CC = gcc
+FC = ifort
+FL = ifort
 AR = ar vr 
 RANLIB = ranlib
 MKLROOT=/opt/intel/oneapi/mkl/latest/lib/intel64
 LAPACK = -L$(MKLROOT) -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core
-SCALAP = -L$(MKLROOT) -lmkl_scalapack_lp64 -lmkl_blacs_intelmpi_lp64
-
-INCPAR = # not needed with mpif90/mpicc:  -I/usr/include/openmpi
-
-LIBPAR = $(SCALAP) $(LAPACK)
 
 INCSEQ = -I$(topdir)/libseq
 LIBSEQ  = $(LAPACK) -L$(topdir)/libseq -lmpiseq$(PLAT)
@@ -70,7 +65,6 @@ OPTL    = -O -nofor-main -fopenmp
 OPTC    = -O -fopenmp
 #End Optimized options
 
-INCS = $(INCPAR)
-LIBS = $(LIBPAR)
-LIBSEQNEEDED =
-
+INCS = $(INCSEQ)
+LIBS = $(LIBSEQ)
+LIBSEQNEEDED = libseqneeded

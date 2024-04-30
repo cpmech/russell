@@ -10,7 +10,6 @@
 #define ERROR_NEED_INITIALIZATION 500000
 #define ERROR_NEED_FACTORIZATION 600000
 #define ERROR_ALREADY_INITIALIZED 700000
-#define ERROR_MPI_INIT_FAILED 800000
 #define C_TRUE 1
 #define C_FALSE 0
 
@@ -31,8 +30,7 @@
 
 // MUMPS ---------------------------------------------------------------------------------------------
 
-#define MUMPS_FORTRAN_COMM -987654 // use Fortran communicator
-#define MUMPS_IGNORED 0            // ignored flag
+#define MUMPS_IGNORED 0 // to ignore the Fortran communicator since we're not using MPI
 
 #define MUMPS_JOB_INITIALIZE -1 // section 5.1.1, page 24
 #define MUMPS_JOB_TERMINATE -2  // section 5.1.1, page 24

@@ -5,11 +5,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Libraries
+      - name: Compile MUMPS
         run: |
-          bash case-b-intel-mkl-local-libs.bash
+          bash zscripts/compile-and-install-mumps.bash mkl
+      - name: Compile SuiteSparse
+        run: |
+          bash zscripts/compile-and-install-suitesparse.bash mkl
       - name: Run tests
         run: |
           source /opt/intel/oneapi/setvars.sh
-          RUST_BACKTRACE=1 cargo test --features intel_mkl
+          RUST_BACKTRACE=1 cargo test --features local_suitesparse,with_mumps,intel_mkl
 

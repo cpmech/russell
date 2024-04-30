@@ -41,17 +41,12 @@ LIBEXT  = .a
 OUTC    = -o 
 OUTF    = -o 
 RM = /bin/rm -f
-CC = mpicc
-FC = mpif90
-FL = mpif90
+CC = gcc
+FC = gfortran
+FL = gfortran
 AR = ar vr 
 RANLIB = ranlib
 LAPACK = -llapack
-SCALAP  = -lscalapack-openmpi # -lblacs-openmpi
-
-INCPAR = # not needed with mpif90/mpicc:  -I/usr/include/openmpi
-
-LIBPAR = $(SCALAP) $(LAPACK) # not needed with mpif90/mpicc: -lmpi_mpifh -lmpi
 
 INCSEQ = -I$(topdir)/libseq
 LIBSEQ  = $(LAPACK) -L$(topdir)/libseq -lmpiseq$(PLAT)
@@ -70,7 +65,6 @@ OPTL    = -O -fopenmp
 OPTC    = -O -fopenmp
 #End Optimized options
 
-INCS = $(INCPAR)
-LIBS = $(LIBPAR)
-LIBSEQNEEDED =
-
+INCS = $(INCSEQ)
+LIBS = $(LIBSEQ)
+LIBSEQNEEDED = libseqneeded

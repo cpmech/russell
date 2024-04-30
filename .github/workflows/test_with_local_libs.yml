@@ -5,9 +5,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Libraries
+      - name: Compile MUMPS
         run: |
-          bash case-a-openblas-local-libs.bash
+          bash zscripts/compile-and-install-mumps.bash
+      - name: Compile SuiteSparse
+        run: |
+          bash zscripts/compile-and-install-suitesparse.bash
       - name: Run tests
         run: |
-          RUST_BACKTRACE=1 cargo test --features local_libs
+          RUST_BACKTRACE=1 cargo test --features local_suitesparse,with_mumps

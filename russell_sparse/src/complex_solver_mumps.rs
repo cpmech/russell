@@ -404,11 +404,7 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.main.solver = if cfg!(feature = "local_libs")  {
-            "MUMPS-local".to_string()
-        } else {
-            "MUMPS".to_string()
-        };
+        stats.main.solver = "MUMPS".to_string();
         stats.determinant.mantissa_real = self.determinant_coefficient_real;
         stats.determinant.mantissa_imag = self.determinant_coefficient_imag;
         stats.determinant.base = 2.0;

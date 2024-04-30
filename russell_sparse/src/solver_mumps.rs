@@ -2,7 +2,6 @@ use super::{LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, StatsLin
 use crate::constants::*;
 use crate::StrError;
 use russell_lab::{using_intel_mkl, vec_copy, Stopwatch, Vector};
-use serde::{Deserialize, Serialize};
 
 /// Opaque struct holding a C-pointer to InterfaceMUMPS
 ///
@@ -58,56 +57,6 @@ extern "C" {
         error_analysis_option: i32,
         verbose: CcBool,
     ) -> i32;
-}
-
-/// Holds the results of MUMPS error analysis ("stats")
-///
-/// See page 40 of MUMPS User's guide
-///
-/// MUMPS: computes the backward errors omega1 and omega2 (page 14):
-///
-/// ```text
-///                                       |b - A · x_bar|ᵢ
-/// omega1 = largest_scaled_residual_of ————————————————————
-///                                     (|b| + |A| |x_bar|)ᵢ
-///
-///                                            |b - A · x_bar|ᵢ
-/// omega2 = largest_scaled_residual_of ——————————————————————————————————
-///                                     (|A| |x_approx|)ᵢ + ‖Aᵢ‖∞ ‖x_bar‖∞
-///
-/// where x_bar is the actual (approximate) solution returned by the linear solver
-/// ```
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct StatsLinSolMUMPS {
-    /// Holds the infinite norm of the input matrix, RINFOG(4)
-    pub inf_norm_a: f64,
-
-    /// Holds the infinite norm of the computed solution, RINFOG(5)
-    pub inf_norm_x: f64,
-
-    /// Holds the scaled residual, RINFOG(6)
-    pub scaled_residual: f64,
-
-    /// Holds the backward error estimate omega1, RINFOG(7)
-    pub backward_error_omega1: f64,
-
-    /// Holds the backward error estimate omega2, RINFOG(8)
-    pub backward_error_omega2: f64,
-
-    /// Holds the normalized variation of the solution vector, RINFOG(9)
-    ///
-    /// Requires the full "stat" analysis.
-    pub normalized_delta_x: f64,
-
-    /// Holds the condition number1, RINFOG(10)
-    ///
-    /// Requires the full "stat" analysis.
-    pub condition_number1: f64,
-
-    /// Holds the condition number2, RINFOG(11)
-    ///
-    /// Requires the full "stat" analysis.
-    pub condition_number2: f64,
 }
 
 /// Wraps the MUMPS solver for (very large) sparse linear systems
@@ -435,11 +384,7 @@ impl LinSolTrait for SolverMUMPS {
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.main.solver = if cfg!(feature = "local_libs")  {
-            "MUMPS-local".to_string()
-        } else {
-            "MUMPS".to_string()
-        };
+        stats.main.solver = "MUMPS".to_string();
         stats.determinant.mantissa_real = self.determinant_coefficient;
         stats.determinant.mantissa_imag = 0.0;
         stats.determinant.base = 2.0;
@@ -623,7 +568,6 @@ pub(crate) fn handle_mumps_error_code(err: i32) -> StrError {
         ERROR_NEED_INITIALIZATION => "MUMPS failed because INITIALIZATION is needed",
         ERROR_NEED_FACTORIZATION => "MUMPS failed because FACTORIZATION is needed",
         ERROR_ALREADY_INITIALIZED => "MUMPS failed because INITIALIZATION has been completed already",
-        ERROR_MPI_INIT_FAILED => "Cannot initialize MPI for MUMPS",
         _ => "Error: unknown error returned by c-code (MUMPS)",
     }
 }

@@ -10,6 +10,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Documentation](#documentation)
 - [Installation](#installation)
   - [Setting Cargo.toml](#setting-cargotoml)
+  - [Optional features](#optional-features)
 - [Examples](#examples)
   - [Solve a tiny sparse linear system using UMFPACK](#solve-a-tiny-sparse-linear-system-using-umfpack)
 - [Tools](#tools)
@@ -47,8 +48,6 @@ This library also provides functions to read and write Matrix Market files conta
 
 This crate depends on some non-rust high-performance libraries. [See the main README file for the steps to install these dependencies.](https://github.com/cpmech/russell)
 
-
-
 ### Setting Cargo.toml
 
 [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse)
@@ -60,12 +59,15 @@ This crate depends on some non-rust high-performance libraries. [See the main RE
 russell_sparse = "*"
 ```
 
-Or, considering the optional _features_ ([see more about these here](https://github.com/cpmech/russell)):
+### Optional features
 
-```toml
-[dependencies]
-russell_sparse = { version = "*", features = ["local_libs", "intel_mkl"] }
-```
+The following (Rust) features are available:
+
+* `local_suitesparse`: Use a locally compiled version of SuiteSparse
+* `with_mumps`: Enable the MUMPS solver (locally compiled)
+* `intel_mkl`: Use Intel MKL instead of OpenBLAS
+
+Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 
 
 

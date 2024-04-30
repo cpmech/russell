@@ -4,6 +4,7 @@
 [![Test & Coverage](https://github.com/cpmech/russell/actions/workflows/test_and_coverage.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_and_coverage.yml)
 [![Test with local libs](https://github.com/cpmech/russell/actions/workflows/test_with_local_libs.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_with_local_libs.yml)
 [![Test with Intel MKL](https://github.com/cpmech/russell/actions/workflows/test_with_intel_mkl.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_with_intel_mkl.yml)
+[![Test on Arch Linux](https://github.com/cpmech/russell/actions/workflows/test_on_arch_linux.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_arch_linux.yml)
 [![Test on Rocky Linux](https://github.com/cpmech/russell/actions/workflows/test_on_rocky_linux.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_rocky_linux.yml)
 
 [![documentation: lab](https://img.shields.io/badge/russell_lab-documentation-blue)](https://docs.rs/russell_lab)
@@ -20,7 +21,11 @@
 - [Installation](#installation)
   - [Debian/Ubuntu Linux](#debianubuntu-linux)
   - [Rocky Linux](#rocky-linux)
+  - [Arch Linux](#arch-linux)
   - [macOS](#macos)
+  - [Optional feature "local\_suitesparse"](#optional-feature-local_suitesparse)
+  - [Optional feature "with\_mumps"](#optional-feature-with_mumps)
+  - [Optional feature "intel\_mkl"](#optional-feature-intel_mkl)
   - [Number of threads](#number-of-threads)
 - [Examples](#examples)
   - [(lab) Numerical integration (quadrature)](#lab-numerical-integration-quadrature)
@@ -64,21 +69,16 @@ russell_stat = "*"
 russell_tensor = "*"
 ```
 
-Or, considering the optional _features_ (see more about these next):
+All crates have an option to use [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) instead of the default [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS). For instance, the `features` keyword may be configured as follows:
+
 
 ```toml
 [dependencies]
 russell_lab = { version = "*", features = ["intel_mkl"] }
-russell_sparse = { version = "*", features = ["local_libs", "intel_mkl"] }
+russell_sparse = { version = "*", features = ["intel_mkl"] }
 russell_ode = { version = "*", features = ["intel_mkl"] }
 russell_stat = { version = "*", features = ["intel_mkl"] }
 russell_tensor = { version = "*", features = ["intel_mkl"] }
-```
-
-**Note:** To use the `intel_mkl` feature, the following command must be executed first:
-
-```bash
-source /opt/intel/oneapi/setvars.sh
 ```
 
 External associated and recommended crates:
@@ -91,133 +91,58 @@ External associated and recommended crates:
 
 ## Installation
 
-At this moment, Russell works on **Linux** (Debian/Ubuntu; and maybe Arch). It has some limited functionality on macOS too. In the future, we plan to enable Russell on Windows; however, this will take time because some essential libraries are not easily available on Windows.
+Russell requires some non-Rust libraries (e.g., [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS), [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html), [MUMPS](https://mumps-solver.org), [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse)) to achieve the max performance. These libraries can be installed as explained in each subsection next.
 
-### Debian/Ubuntu Linux
-
-First:
-
-```bash
-sudo apt-get install -y --no-install-recommends \
-    g++ \
-    gdb \
-    gfortran \
-    liblapacke-dev \
-    libmumps-dev \
-    libopenblas-dev \
-    libsuitesparse-dev
-```
-
-Then:
+After installing the dependencies, you may add each crate using:
 
 ```bash
 cargo add russell_lab
 cargo add russell_sparse # etc.
 ```
 
+### Debian/Ubuntu Linux
 
-
-#### Further details <!-- omit from toc -->
-
-**Russell** depends on external (non-Rust) packages for linear algebra and the solution of large sparse linear systems. The following libraries are required:
-
-* [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) or [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html)
-* [MUMPS](https://mumps-solver.org) and [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse)
-
-Note that MUMPS in Debian lacks some features (e.g., Metis). Also, MUMPS in Debian is linked with OpenMPI, which may cause issues when using other MPI libraries (see, e.g., [msgpass](https://github.com/cpmech/msgpass)). Thus, an option is available to use **locally compiled** MUMPS (and UMFPACK). Furthermore, when using Intel MKL, MUMPS and UMFPACK must be locally compiled because they need to be linked with the MKL libraries.
-
-In summary, the following options are available:
-
-* **Case A:** OpenBLAS with the default Debian libraries
-* **Case A:** OpenBLAS with locally compiled libraries
-* **Case B:** Intel MKL with locally compiled libraries
-
-##### Case A: OpenBLAS <!-- omit from toc -->
-
-*Default Debian packages*
-
-Run:
+Required libraries:
 
 ```bash
-bash case-a-openblas-debian.bash
+# install libraries for russell
+sudo apt-get update -y && \
+sudo apt-get install -y --no-install-recommends \
+    liblapacke-dev \
+    libopenblas-dev \
+    libsuitesparse-dev
 ```
-
-*Locally compiled libraries*
-
-Run:
-
-```bash
-bash case-a-openblas-local-libs.bash
-```
-
-Then, add `local_libs` to your Cargo.toml or use `cargo build --features local_libs`
-
-##### Case B: Intel MKL <!-- omit from toc -->
-
-Run:
-
-```bash
-bash case-b-intel-mkl-local-libs.bash
-```
-
-**Note:** To use the `intel_mkl` feature, the following command must be executed first:
-
-```bash
-source /opt/intel/oneapi/setvars.sh
-```
-
-Then, add `intel_mkl` to your Cargo.toml or use `cargo build --features intel_mkl` (note that the `local_libs` feature will be automatically enabled).
-
-If locally compiled, the above scripts will save the resulting files in `/usr/local/lib/{mumps,umfpack}` and `/usr/local/include/{mumps,umfpack}`.
-
-
 
 ### Rocky Linux
 
-First:
+Required libraries:
 
 ```bash
 # initialize
 dnf update -y
-dnf check-update 
 dnf install epel-release -y
 crb enable
 
 # required by rust
 dnf install cmake gcc make curl clang -y
 
-# dependencies
+# install libraries for russell
 dnf install -y \
-  gcc-toolset-13 \
   lapack-devel \
-  MUMPS-devel \
   openblas-devel \
-  openmpi-devel \
   suitesparse-devel
 ```
 
-Second:
+### Arch Linux
+
+Required libraries:
 
 ```bash
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/lib64/openmpi/lib"
-export PSM3_DEVICES='self,shm'
+# install libraries for russell
+yay -Y --gendb --noconfirm && yay -Y --devel --save
+yay -Syu blas-openblas --noconfirm
+yay -Syu suitesparse --noconfirm
 ```
-
-Then:
-
-```bash
-cargo add russell_lab
-cargo add russell_sparse # etc.
-```
-
-#### Further details <!-- omit from toc -->
-
-Note that there are two issues regarding OpenMPI on Rocky Linux (and similar distributions):
-
-1. `libmpi.so` cannot be found. [There is an issue with OpenMPI and rpath](https://stackoverflow.com/questions/14769599/mpi-error-loading-shared-libraries). Currently, there is [no way to fix build.rs](https://github.com/rust-lang/cargo/issues/5077). Thus, the `LD_LIBRARY_PATH` environment variable needs to be updated.
-2. . [There is an issue related to "PSM3"](https://github.com/easybuilders/easybuild-easyconfigs/issues/18925). The recommended workaround is to set the `PSM3_DEVICES` environment variable.
-
-
 
 ### macOS
 
@@ -235,11 +160,34 @@ Next, we must set the `LIBRARY_PATH`:
 export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/lapack/lib:$(brew --prefix)/opt/openblas/lib
 ```
 
+### Optional feature "local_suitesparse"
 
+`russell_sparse` allows the use of a locally compiled SuiteSparse, installed in `/usr/local/include/suitesparse` and `/usr/local/lib/suitesparse`. This option is defined by the `local_suitesparse` feature. The [compile-and-install-suitesparse](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-suitesparse.bash) script may be used in this case:
+
+```bash
+bash zscripts/compile-and-install-suitesparse.bash
+```
+
+### Optional feature "with_mumps"
+
+`russell_sparse` has an optional feature named `with_mumps` which enables the MUMPS solver. To use this feature, MUMPS needs to be locally compiled first. The [compile-and-install-mumps](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-mumps.bash) script may be used in this case:
+
+```bash
+bash zscripts/compile-and-install-mumps.bash
+```
+
+### Optional feature "intel_mkl"
+
+To enable Intel MKL (and disable OpenBLAS), the optional `intel_mkl` feature may be used. In this case SuiteSparse (and MUMPS) must be locally compiled (with Intel MKL). This step can be easily accomplished by the [compile-and-install-suitesparse](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-suitesparse.bash) and [compile-and-install-mumps](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-mumps.bash) scripts, called with the **mkl** argument. For example:
+
+```bash
+bash zscripts/compile-and-install-suitesparse.bash mkl
+bash zscripts/compile-and-install-mumps.bash mkl
+```
 
 ### Number of threads
 
-By default, OpenBLAS will use all available threads, including Hyper-Threads that may worsen the performance. Thus, it is best to set the following environment variable:
+By default, OpenBLAS will use all available threads, including Hyper-Threads that may worsen the performance. Thus, it is recommended to set the following environment variable:
 
 ```bash
 export OPENBLAS_NUM_THREADS=<real-core-number>

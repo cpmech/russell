@@ -12,7 +12,8 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "sparse", "solver"]
 
 [features]
-local_libs = []
+local_suitesparse = []
+with_mumps = []
 intel_mkl = ["russell_lab/intel_mkl"]
 
 [dependencies]

@@ -11,6 +11,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [References](#references)
 - [Installation](#installation)
   - [Setting Cargo.toml](#setting-cargotoml)
+  - [Optional features](#optional-features)
 - [Examples](#examples)
   - [Simple ODE with a single equation](#simple-ode-with-a-single-equation)
   - [Simple system with mass matrix](#simple-system-with-mass-matrix)
@@ -78,12 +79,14 @@ This crate depends on some non-rust high-performance libraries. [See the main RE
 russell_ode = "*"
 ```
 
-Or, considering the optional _features_ ([see more about these here](https://github.com/cpmech/russell)):
+### Optional features
 
-```toml
-[dependencies]
-russell_ode = { version = "*", features = ["intel_mkl"] }
-```
+The following (Rust) features are available:
+
+* `intel_mkl`: Use Intel MKL instead of OpenBLAS
+
+Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
+
 
 
 

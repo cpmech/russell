@@ -823,6 +823,5 @@ fn main() -> Result<(), StrError> {
     - [x] Implement some high-order derivatives
     - [ ] Implement standard continuum mechanics tensors
 - [ ] General improvements
-    - [ ] Study the possibility to install Russell on Windows and macOS 
-    - [ ] Install Intel MKL on Windows
-    - [ ] Install MUMPS and UMFPACK on Windows and macOS
+    - [ ] Compile on macOS
+    - [ ] Study the possibility to install Russell on Windows

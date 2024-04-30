@@ -400,7 +400,7 @@ mod tests {
             (1, 10.0, 1e-50,  0.043472746168861436669748768025859288306272867118599),
         ];
         for (n, x, tol, reference) in mathematica {
-            // println!("n = {}, x = {:?}", n, x);
+            println!("n = {}, x = {:?}", n, x);
             approx_eq(bessel_jn(n, x), reference, tol);
         }
     }
@@ -466,7 +466,7 @@ mod tests {
             (-2, 18.0, 1e-18, -0.0075325148878013995602951948173734514372299122116846),
         ];
         for (n, x, tol, reference) in mathematica {
-            // println!("n = {}, x = {:?}", n, x);
+            println!("n = {}, x = {:?}", n, x);
             approx_eq(bessel_jn(n, x), reference, tol);
         }
     }

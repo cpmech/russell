@@ -14,5 +14,4 @@ jobs:
           brew install lapack openblas suite-sparse
       - name: Run tests
         run: |
-          ls /opt/homebrew/include
           RUST_BACKTRACE=1 cargo test

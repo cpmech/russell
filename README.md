@@ -153,12 +153,6 @@ First, install [Homebrew](https://brew.sh/). Then, run:
 brew install lapack openblas suite-sparse
 ```
 
-Next, we must set the `LIBRARY_PATH`:
-
-```bash
-export LIBRARY_PATH=$LIBRARY_PATH:$(brew --prefix)/opt/lapack/lib:$(brew --prefix)/opt/openblas/lib
-```
-
 ### Optional feature "local_suitesparse"
 
 `russell_sparse` allows the use of a locally compiled SuiteSparse, installed in `/usr/local/include/suitesparse` and `/usr/local/lib/suitesparse`. This option is defined by the `local_suitesparse` feature. The [compile-and-install-suitesparse](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-suitesparse.bash) script may be used in this case:

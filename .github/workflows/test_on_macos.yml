@@ -1,5 +1,5 @@
 name: Test on macOS
-on: [pull_request]
+on: [pull_request, push]
 jobs:
   test_on_macos:
     runs-on: macos-latest

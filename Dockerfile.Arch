@@ -26,7 +26,7 @@ RUN yay -Syu suitesparse --noconfirm
 
 # install rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
+ENV PATH="/home/user/.cargo/bin:${PATH}"
 
 # copy files
 COPY --chown=user:user . russell

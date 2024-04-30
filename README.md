@@ -146,12 +146,10 @@ yay -Syu suitesparse --noconfirm
 
 ### macOS
 
-Currently, only OpenBLAS has been tested on macOS.
-
 First, install [Homebrew](https://brew.sh/). Then, run:
 
 ```bash
-brew install lapack openblas
+brew install lapack openblas suite-sparse
 ```
 
 Next, we must set the `LIBRARY_PATH`:

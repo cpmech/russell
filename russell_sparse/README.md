@@ -1,6 +1,6 @@
 # Russell Sparse - Solvers for large sparse linear systems (wraps MUMPS and UMFPACK) <!-- omit from toc --> 
 
-[![documentation: sparse](https://img.shields.io/badge/russell_sparse-documentation-blue)](https://docs.rs/russell_sparse)
+[![documentation](https://docs.rs/russell_sparse/badge.svg)](https://docs.rs/russell_sparse/)
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
@@ -11,7 +11,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 - [Installation](#installation)
   - [Setting Cargo.toml](#setting-cargotoml)
   - [Optional features](#optional-features)
-- [Examples](#examples)
+- [🌟 Examples](#-examples)
   - [Solve a tiny sparse linear system using UMFPACK](#solve-a-tiny-sparse-linear-system-using-umfpack)
 - [Tools](#tools)
 - [MUMPS + OpenBLAS issue](#mumps--openblas-issue)
@@ -40,7 +40,7 @@ This library also provides functions to read and write Matrix Market files conta
 
 ### Documentation
 
-[![documentation: sparse](https://img.shields.io/badge/russell_sparse-documentation-blue)](https://docs.rs/russell_sparse)
+* [![documentation](https://docs.rs/russell_sparse/badge.svg)](https://docs.rs/russell_sparse/) — [russell_sparse documentation](https://docs.rs/russell_sparse/)
 
 
 
@@ -71,11 +71,12 @@ Note that the [main README file](https://github.com/cpmech/russell) presents the
 
 
 
-## Examples
+## 🌟 Examples
 
-See also:
+This section illustrates how to use `russell_sparse`. See also:
 
-* [russell_sparse/examples](https://github.com/cpmech/russell/tree/main/russell_sparse/examples)
+* [More examples on the documentation](https://docs.rs/russell_sparse/)
+* [Examples directory](https://github.com/cpmech/russell/tree/main/russell_sparse/examples)
 
 
 

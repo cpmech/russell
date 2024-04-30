@@ -1,6 +1,7 @@
 # Russell Lab - Scientific laboratory for linear algebra and numerical mathematics <!-- omit from toc --> 
 
-[![documentation: lab](https://img.shields.io/badge/russell_lab-documentation-blue)](https://docs.rs/russell_lab)
+[![documentation](https://docs.rs/russell_lab/badge.svg)](https://docs.rs/russell_lab/)
+
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
@@ -13,7 +14,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 - [Installation](#installation)
   - [Setting Cargo.toml up](#setting-cargotoml-up)
   - [Optional features](#optional-features)
-- [Examples](#examples)
+- [🌟 Examples](#-examples)
   - [Running an example with Intel MKL](#running-an-example-with-intel-mkl)
   - [Sorting small tuples](#sorting-small-tuples)
   - [Check first and second derivatives](#check-first-and-second-derivatives)
@@ -66,7 +67,7 @@ There are many functions for linear algebra, such as (for Real and Complex types
 
 ### Documentation
 
-[![documentation: lab](https://img.shields.io/badge/russell_lab-documentation-blue)](https://docs.rs/russell_lab)
+* [![documentation](https://docs.rs/russell_lab/badge.svg)](https://docs.rs/russell_lab/) — [russell_lab documentation](https://docs.rs/russell_lab/)
 
 
 
@@ -97,11 +98,12 @@ Note that the [main README file](https://github.com/cpmech/russell) presents the
 
 
 
-## Examples
+## 🌟 Examples
 
-See also:
+This section illustrates how to use `russell_lab`. See also:
 
-* [russell_lab/examples](https://github.com/cpmech/russell/tree/main/russell_lab/examples)
+* [More examples on the documentation](https://docs.rs/russell_lab/)
+* [Examples directory](https://github.com/cpmech/russell/tree/main/russell_lab/examples)
 
 
 

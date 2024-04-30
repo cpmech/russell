@@ -1,6 +1,6 @@
 # Russell ODE - Solvers for ordinary differential equations and differential algebraic equations <!-- omit from toc --> 
 
-[![documentation: ode](https://img.shields.io/badge/russell_ode-documentation-blue)](https://docs.rs/russell_ode)
+[![documentation](https://docs.rs/russell_ode/badge.svg)](https://docs.rs/russell_ode/)
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
@@ -12,7 +12,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 - [Installation](#installation)
   - [Setting Cargo.toml](#setting-cargotoml)
   - [Optional features](#optional-features)
-- [Examples](#examples)
+- [🌟 Examples](#-examples)
   - [Simple ODE with a single equation](#simple-ode-with-a-single-equation)
   - [Simple system with mass matrix](#simple-system-with-mass-matrix)
   - [Brusselator ODE](#brusselator-ode)
@@ -47,7 +47,7 @@ The ODE/DAE system can be easily defined using the System data structure; [see t
 
 ### Documentation
 
-[![documentation: ode](https://img.shields.io/badge/russell_ode-documentation-blue)](https://docs.rs/russell_ode)
+* [![documentation](https://docs.rs/russell_ode/badge.svg)](https://docs.rs/russell_ode/) — [russell_ode documentation](https://docs.rs/russell_ode/)
 
 ### References
 
@@ -90,10 +90,11 @@ Note that the [main README file](https://github.com/cpmech/russell) presents the
 
 
 
-## Examples
+## 🌟 Examples
 
-This section illustrates how to use `russell_ode`. More examples:
+This section illustrates how to use `russell_ode`. See also:
 
+* [More examples on the documentation](https://docs.rs/russell_ode/)
 * [Examples on how to define the ODE/DAE system](https://github.com/cpmech/russell/tree/main/russell_ode/src/samples.rs)
 * [Examples directory](https://github.com/cpmech/russell/tree/main/russell_ode/examples)
 

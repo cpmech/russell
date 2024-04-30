@@ -1,6 +1,6 @@
 # Russell Tensor - Tensor analysis, calculus, and functions for continuum mechanics <!-- omit from toc --> 
 
-[![documentation: tensor](https://img.shields.io/badge/russell_tensor-documentation-blue)](https://docs.rs/russell_tensor)
+[![documentation](https://docs.rs/russell_tensor/badge.svg)](https://docs.rs/russell_tensor/)
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
@@ -11,7 +11,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 - [Installation](#installation)
   - [Setting Cargo.toml](#setting-cargotoml)
   - [Optional features](#optional-features)
-- [Examples](#examples)
+- [🌟 Examples](#-examples)
   - [Allocating Second Order Tensors](#allocating-second-order-tensors)
 
 
@@ -24,7 +24,7 @@ This library implements derivatives for scalar functions with respect to tensors
 
 ### Documentation
 
-[![documentation: tensor](https://img.shields.io/badge/russell_tensor-documentation-blue)](https://docs.rs/russell_tensor)
+* [![documentation](https://docs.rs/russell_tensor/badge.svg)](https://docs.rs/russell_tensor/) — [russell_tensor documentation](https://docs.rs/russell_tensor/)
 
 
 
@@ -55,9 +55,12 @@ Note that the [main README file](https://github.com/cpmech/russell) presents the
 
 
 
-## Examples
+## 🌟 Examples
 
-* [russell_tensor/examples](https://github.com/cpmech/russell/tree/main/russell_tensor/examples)
+This section illustrates how to use `russell_tensor`. See also:
+
+* [More examples on the documentation](https://docs.rs/russell_tensor/)
+* [Examples directory](https://github.com/cpmech/russell/tree/main/russell_tensor/examples)
 
 ### Allocating Second Order Tensors
 

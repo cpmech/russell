@@ -1,6 +1,6 @@
 # Russell Stat - Statistics calculations and (engineering) probability distributions <!-- omit from toc --> 
 
-[![documentation: stat](https://img.shields.io/badge/russell_stat-documentation-blue)](https://docs.rs/russell_stat)
+[![documentation](https://docs.rs/russell_stat/badge.svg)](https://docs.rs/russell_stat/)
 
 _This crate is part of [Russell - Rust Scientific Library](https://github.com/cpmech/russell)_
 
@@ -12,7 +12,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 - [Installation](#installation)
   - [Setting Cargo.toml](#setting-cargotoml)
   - [Optional features](#optional-features)
-- [Examples](#examples)
+- [🌟 Examples](#-examples)
   - [Frechet distribution](#frechet-distribution)
   - [Gumbel distribution](#gumbel-distribution)
   - [Normal distribution](#normal-distribution)
@@ -33,7 +33,7 @@ The figure below shows an application in structural safety (see Reference #1) us
 
 ### Documentation
 
-[![documentation: stat](https://img.shields.io/badge/russell_stat-documentation-blue)](https://docs.rs/russell_stat)
+* [![documentation](https://docs.rs/russell_stat/badge.svg)](https://docs.rs/russell_stat/) — [russell_stat documentation](https://docs.rs/russell_stat/)
 
 ### References
 
@@ -69,9 +69,12 @@ Note that the [main README file](https://github.com/cpmech/russell) presents the
 
 
 
-## Examples
+## 🌟 Examples
 
-* [russell_stat/examples](https://github.com/cpmech/russell/tree/main/russell_stat/examples)
+This section illustrates how to use `russell_stat`. See also:
+
+* [More examples on the documentation](https://docs.rs/russell_stat/)
+* [Examples directory](https://github.com/cpmech/russell/tree/main/russell_stat/examples)
 
 ### Frechet distribution
 

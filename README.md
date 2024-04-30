@@ -1,6 +1,21 @@
 # Russell - Rust Scientific Library <!-- omit from toc --> 
 
+<h1 align="center">
+  <a href="https://github.com/cpmech/russell"><img src="logo.svg" alt="Russell" width="368px"></a>
+<br>
+</h1>
+
+<p align="center">
+  <b>Numerical mathematics, ordinary differential equations, special math functions, high-performance linear algebra (sparse)</b><br />
+</p>
+
+---
+
 [![codecov](https://codecov.io/gh/cpmech/russell/graph/badge.svg?token=PQWSKMZQXT)](https://codecov.io/gh/cpmech/russell)
+[![Track Awesome List](https://www.trackawesomelist.com/badge.svg)](https://www.trackawesomelist.com/rust-unofficial/awesome-rust/)
+
+---
+
 [![Test & Coverage](https://github.com/cpmech/russell/actions/workflows/test_and_coverage.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_and_coverage.yml)
 [![Test with local libs](https://github.com/cpmech/russell/actions/workflows/test_with_local_libs.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_with_local_libs.yml)
 [![Test with Intel MKL](https://github.com/cpmech/russell/actions/workflows/test_with_intel_mkl.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_with_intel_mkl.yml)
@@ -8,13 +23,15 @@
 [![Test on Rocky Linux](https://github.com/cpmech/russell/actions/workflows/test_on_rocky_linux.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_rocky_linux.yml)
 [![Test on macOS](https://github.com/cpmech/russell/actions/workflows/test_on_macos.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_macos.yml)
 
+---
+
 [![documentation: lab](https://img.shields.io/badge/russell_lab-documentation-blue)](https://docs.rs/russell_lab)
 [![documentation: ode](https://img.shields.io/badge/russell_ode-documentation-blue)](https://docs.rs/russell_ode)
 [![documentation: sparse](https://img.shields.io/badge/russell_sparse-documentation-blue)](https://docs.rs/russell_sparse)
 [![documentation: stat](https://img.shields.io/badge/russell_stat-documentation-blue)](https://docs.rs/russell_stat)
 [![documentation: tensor](https://img.shields.io/badge/russell_tensor-documentation-blue)](https://docs.rs/russell_tensor)
 
-![Logo](logo.svg)
+---
 
 ## Contents <!-- omit from toc --> 
 
@@ -28,7 +45,7 @@
   - [Optional feature "with\_mumps"](#optional-feature-with_mumps)
   - [Optional feature "intel\_mkl"](#optional-feature-intel_mkl)
   - [Number of threads](#number-of-threads)
-- [Examples](#examples)
+- [🌟 Examples](#-examples)
   - [(lab) Numerical integration (quadrature)](#lab-numerical-integration-quadrature)
   - [(lab) Solution of PDEs using spectral collocation](#lab-solution-of-pdes-using-spectral-collocation)
   - [(lab) Matrix visualization](#lab-matrix-visualization)
@@ -193,7 +210,7 @@ export OPENBLAS_NUM_THREADS=1
 
 
 
-## Examples
+## 🌟 Examples
 
 See also:
 

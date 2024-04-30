@@ -1,9 +1,9 @@
 #[cfg(feature = "intel_mkl")]
 const MKL_VERSION: &str = "2023.2.0";
 
+// Intel MKL
 #[cfg(feature = "intel_mkl")]
-fn handle_intel_mkl() {
-    // Intel MKL
+fn compile_blas() {
     cc::Build::new()
         .file("c_code/interface_blas.c")
         .include(format!("/opt/intel/oneapi/mkl/{}/include", MKL_VERSION))
@@ -27,18 +27,25 @@ fn handle_intel_mkl() {
     println!("cargo:rustc-cfg=use_intel_mkl");
 }
 
+// OpenBLAS
 #[cfg(not(feature = "intel_mkl"))]
-fn handle_intel_mkl() {
-    // OpenBLAS
+fn compile_blas() {
     cc::Build::new()
         .file("c_code/interface_blas.c")
-        .include("/usr/include/openblas") // for archlinux
+        .includes(&[
+            "/usr/include/openblas", // Arch
+            "/opt/homebrew/include", // macOS
+        ])
         .compile("c_code_interface_blas");
+    for d in &[
+        "/opt/homebrew/lib", // macOS
+    ] {
+        println!("cargo:rustc-link-search=native={}", *d);
+    }
     println!("cargo:rustc-link-lib=dylib=openblas");
     println!("cargo:rustc-link-lib=dylib=lapack");
 }
 
 fn main() {
-    // BLAS functions
-    handle_intel_mkl();
+    compile_blas();
 }

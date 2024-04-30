@@ -818,5 +818,5 @@ fn main() -> Result<(), StrError> {
     - [x] Implement some high-order derivatives
     - [ ] Implement standard continuum mechanics tensors
 - [ ] General improvements
-    - [ ] Compile on macOS
+    - [x] Compile on macOS
     - [ ] Study the possibility to install Russell on Windows

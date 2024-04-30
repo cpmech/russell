@@ -1,5 +1,9 @@
-use super::{ComplexSolverMUMPS, ComplexSolverUMFPACK, ComplexSparseMatrix, Genie, LinSolParams, StatsLinSol};
-use crate::{ComplexSolverKLU, StrError};
+#[cfg(feature = "with_mumps")]
+use super::ComplexSolverUMFPACK;
+
+use super::{ComplexSparseMatrix, Genie, LinSolParams, StatsLinSol};
+use crate::StrError;
+use crate::{ComplexSolverKLU, ComplexSolverUMFPACK};
 use russell_lab::ComplexVector;
 
 /// Defines a unified interface for complex linear system solvers
@@ -75,10 +79,25 @@ impl<'a> ComplexLinSolver<'a> {
     /// # Input
     ///
     /// * `genie` -- the actual implementation that does all the magic
+    #[cfg(feature = "with_mumps")]
     pub fn new(genie: Genie) -> Result<Self, StrError> {
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
             Genie::Klu => Box::new(ComplexSolverKLU::new()?),
             Genie::Mumps => Box::new(ComplexSolverMUMPS::new()?),
+            Genie::Umfpack => Box::new(ComplexSolverUMFPACK::new()?),
+        };
+        Ok(ComplexLinSolver { actual })
+    }
+
+    /// Allocates a new instance
+    ///
+    /// # Input
+    ///
+    /// * `genie` -- the actual implementation that does all the magic
+    pub fn new(genie: Genie) -> Result<Self, StrError> {
+        let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
+            Genie::Klu => Box::new(ComplexSolverKLU::new()?),
+            Genie::Mumps => return Err("MUMPS solver is not available"),
             Genie::Umfpack => Box::new(ComplexSolverUMFPACK::new()?),
         };
         Ok(ComplexLinSolver { actual })
@@ -133,12 +152,9 @@ mod tests {
     use super::ComplexLinSolver;
     use crate::{ComplexSparseMatrix, Genie, Samples};
     use russell_lab::{complex_vec_approx_eq, cpx, Complex64, ComplexVector};
-    use serial_test::serial;
 
-    #[test]
-    fn complex_lin_solver_new_works() {
-        ComplexLinSolver::new(Genie::Umfpack).unwrap();
-    }
+    #[cfg(feature = "with_mumps")]
+    use serial_test::serial;
 
     #[test]
     fn complex_lin_solver_compute_works_klu() {
@@ -153,6 +169,7 @@ mod tests {
 
     #[test]
     #[serial]
+    #[cfg(feature = "with_mumps")]
     fn complex_lin_solver_compute_works_mumps() {
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
         let mut mat = ComplexSparseMatrix::from_coo(coo);

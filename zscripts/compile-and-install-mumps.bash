@@ -2,6 +2,12 @@
 
 set -e
 
+# fake sudo function to be used by docker build
+sudo () {
+  [[ $EUID = 0 ]] || set -- command sudo "$@"
+  "$@"
+}
+
 # the first argument is the "mkl" option
 BLAS_LIB=${1:-""}
 
@@ -12,16 +18,27 @@ INCDIR=$PREFIX/include/mumps
 LIBDIR=$PREFIX/lib/mumps
 PDIR=`pwd`/zscripts/makefiles-mumps
 
+# install dependencies
+sudo apt-get update -y &&
+sudo apt-get install -y --no-install-recommends \
+    cmake \
+    curl \
+    g++ \
+    libmetis-dev \
+    make
+if [ "${BLAS_LIB}" = "mkl" ]; then
+    bash zscripts/install-intel-mkl-and-ifort-debian.bash
+else
+    sudo apt-get install -y --no-install-recommends \
+        gfortran \
+        liblapacke-dev \
+        libopenblas-dev
+fi
+
 # source Intel oneAPI vars (ifort)
 if [ "${BLAS_LIB}" = "mkl" ]; then
     source /opt/intel/oneapi/setvars.sh
 fi
-
-# fake sudo function to be used by docker build
-sudo () {
-  [[ $EUID = 0 ]] || set -- command sudo "$@"
-  "$@"
-}
 
 # download the source code
 MUMPS_GZ=mumps_$VERSION.orig.tar.gz

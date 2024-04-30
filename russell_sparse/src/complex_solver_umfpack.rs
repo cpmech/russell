@@ -366,7 +366,7 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.main.solver = if cfg!(feature = "local_libs")  {
+        stats.main.solver = if cfg!(feature = "local_suitesparse") {
             "UMFPACK-local".to_string()
         } else {
             "UMFPACK".to_string()

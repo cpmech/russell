@@ -91,19 +91,17 @@ External associated and recommended crates:
 
 ## Installation
 
-At this moment, Russell works on **Linux** (Debian/Ubuntu; and maybe Arch). It has some limited functionality on macOS too. In the future, we plan to enable Russell on Windows; however, this will take time because some essential libraries are not easily available on Windows.
+Russell requires some non-Rust libraries (e.g., [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS), [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html), [MUMPS](https://mumps-solver.org), [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse)) to achieve the max performance. These libraries can be installed as explained next.
 
 ### Debian/Ubuntu Linux
 
 First:
 
 ```bash
+sudo apt-get update -y && \
 sudo apt-get install -y --no-install-recommends \
-    g++ \
-    gdb \
-    gfortran \
+    build-essential \
     liblapacke-dev \
-    libmumps-dev \
     libopenblas-dev \
     libsuitesparse-dev
 ```
@@ -114,61 +112,6 @@ Then:
 cargo add russell_lab
 cargo add russell_sparse # etc.
 ```
-
-
-
-#### Further details <!-- omit from toc -->
-
-**Russell** depends on external (non-Rust) packages for linear algebra and the solution of large sparse linear systems. The following libraries are required:
-
-* [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) or [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html)
-* [MUMPS](https://mumps-solver.org) and [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse)
-
-Note that MUMPS in Debian lacks some features (e.g., Metis). Also, MUMPS in Debian is linked with OpenMPI, which may cause issues when using other MPI libraries (see, e.g., [msgpass](https://github.com/cpmech/msgpass)). Thus, an option is available to use **locally compiled** MUMPS (and UMFPACK). Furthermore, when using Intel MKL, MUMPS and UMFPACK must be locally compiled because they need to be linked with the MKL libraries.
-
-In summary, the following options are available:
-
-* **Case A:** OpenBLAS with the default Debian libraries
-* **Case A:** OpenBLAS with locally compiled libraries
-* **Case B:** Intel MKL with locally compiled libraries
-
-##### Case A: OpenBLAS <!-- omit from toc -->
-
-*Default Debian packages*
-
-Run:
-
-```bash
-bash case-a-openblas-debian.bash
-```
-
-*Locally compiled libraries*
-
-Run:
-
-```bash
-bash case-a-openblas-local-libs.bash
-```
-
-Then, add `local_libs` to your Cargo.toml or use `cargo build --features local_libs`
-
-##### Case B: Intel MKL <!-- omit from toc -->
-
-Run:
-
-```bash
-bash case-b-intel-mkl-local-libs.bash
-```
-
-**Note:** To use the `intel_mkl` feature, the following command must be executed first:
-
-```bash
-source /opt/intel/oneapi/setvars.sh
-```
-
-Then, add `intel_mkl` to your Cargo.toml or use `cargo build --features intel_mkl` (note that the `local_libs` feature will be automatically enabled).
-
-If locally compiled, the above scripts will save the resulting files in `/usr/local/lib/{mumps,umfpack}` and `/usr/local/include/{mumps,umfpack}`.
 
 
 

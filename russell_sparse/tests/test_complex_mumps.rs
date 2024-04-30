@@ -1,3 +1,5 @@
+#![cfg(feature = "with_mumps")]
+
 use russell_lab::*;
 use russell_sparse::prelude::*;
 use serial_test::serial;

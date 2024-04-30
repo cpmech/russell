@@ -739,6 +739,8 @@ mod tests {
     use crate::{HasJacobian, Method, OdeSolverTrait, Params, Samples, System, Workspace};
     use russell_lab::{format_fortran, format_scientific, Vector};
     use russell_sparse::Genie;
+
+    #[cfg(feature = "with_mumps")]
     use serial_test::serial;
 
     // IMPORTANT:
@@ -882,64 +884,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
-    fn radau5_works_mass_matrix() {
-        for symmetric in [true, false] {
-            for genie in [Genie::Umfpack, Genie::Mumps] {
-                // problem
-                let (system, x0, y0, mut args, y_fn_x) = Samples::simple_system_with_mass_matrix(symmetric, genie);
-                let ndim = system.ndim;
-
-                // allocate structs
-                let mut params = Params::new(Method::Radau5);
-                params.newton.genie = genie;
-                let mut solver = Radau5::new(params, &system);
-                let mut work = Workspace::new(Method::Radau5);
-
-                // message
-                println!("\nsymmetric = {:?} --- {:?}", symmetric, genie);
-                println!("{:>4}{:>10}{:>10}{:>10}", "step", "err_y0", "err_y1", "err_y2");
-
-                // numerical approximation
-                let h = 0.1;
-                let mut x = x0;
-                let mut y = y0.clone();
-                let mut y_ana = Vector::new(ndim);
-                for n in 0..4 {
-                    // call step
-                    solver.step(&mut work, x, &y, h, &mut args).unwrap();
-
-                    // important: update n_accepted (must precede `accept`)
-                    work.stats.n_accepted += 1;
-
-                    // call accept
-                    solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
-
-                    // important: save previous stepsize and relative error (must succeed `accept`)
-                    work.h_prev = h;
-                    work.rel_error_prev = f64::max(params.step.rel_error_prev_min, work.rel_error);
-
-                    // check the results
-                    y_fn_x(&mut y_ana, x, &mut args);
-                    let err_y0 = f64::abs(y[0] - y_ana[0]);
-                    let err_y1 = f64::abs(y[1] - y_ana[1]);
-                    let err_y2 = f64::abs(y[2] - y_ana[2]);
-                    println!(
-                        "{:>4}{}{}{}",
-                        n,
-                        format_scientific(err_y0, 10, 2),
-                        format_scientific(err_y1, 10, 2),
-                        format_scientific(err_y2, 10, 2)
-                    );
-                    assert!(err_y0 < 1e-9);
-                    assert!(err_y1 < 1e-9);
-                    assert!(err_y2 < 1e-8);
-                }
-            }
-        }
-    }
-
-    #[test]
     fn radau5_handles_errors() {
         struct Args {
             count_f: usize,
@@ -985,5 +929,119 @@ mod tests {
         );
 
         solver.update_params(params);
+    }
+
+    #[test]
+    fn radau5_works_mass_matrix() {
+        let genie = Genie::Umfpack;
+        for symmetric in [true, false] {
+            // problem
+            let (system, x0, y0, mut args, y_fn_x) = Samples::simple_system_with_mass_matrix(symmetric, genie);
+            let ndim = system.ndim;
+
+            // allocate structs
+            let mut params = Params::new(Method::Radau5);
+            params.newton.genie = genie;
+            let mut solver = Radau5::new(params, &system);
+            let mut work = Workspace::new(Method::Radau5);
+
+            // message
+            println!("\nsymmetric = {:?} --- {:?}", symmetric, genie);
+            println!("{:>4}{:>10}{:>10}{:>10}", "step", "err_y0", "err_y1", "err_y2");
+
+            // numerical approximation
+            let h = 0.1;
+            let mut x = x0;
+            let mut y = y0.clone();
+            let mut y_ana = Vector::new(ndim);
+            for n in 0..4 {
+                // call step
+                solver.step(&mut work, x, &y, h, &mut args).unwrap();
+
+                // important: update n_accepted (must precede `accept`)
+                work.stats.n_accepted += 1;
+
+                // call accept
+                solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
+
+                // important: save previous stepsize and relative error (must succeed `accept`)
+                work.h_prev = h;
+                work.rel_error_prev = f64::max(params.step.rel_error_prev_min, work.rel_error);
+
+                // check the results
+                y_fn_x(&mut y_ana, x, &mut args);
+                let err_y0 = f64::abs(y[0] - y_ana[0]);
+                let err_y1 = f64::abs(y[1] - y_ana[1]);
+                let err_y2 = f64::abs(y[2] - y_ana[2]);
+                println!(
+                    "{:>4}{}{}{}",
+                    n,
+                    format_scientific(err_y0, 10, 2),
+                    format_scientific(err_y1, 10, 2),
+                    format_scientific(err_y2, 10, 2)
+                );
+                assert!(err_y0 < 1e-9);
+                assert!(err_y1 < 1e-9);
+                assert!(err_y2 < 1e-8);
+            }
+        }
+    }
+
+    #[test]
+    #[serial]
+    #[cfg(feature = "with_mumps")]
+    fn radau5_works_mass_matrix_mumps() {
+        let genie = Genie::Mumps;
+        for symmetric in [true, false] {
+            // problem
+            let (system, x0, y0, mut args, y_fn_x) = Samples::simple_system_with_mass_matrix(symmetric, genie);
+            let ndim = system.ndim;
+
+            // allocate structs
+            let mut params = Params::new(Method::Radau5);
+            params.newton.genie = genie;
+            let mut solver = Radau5::new(params, &system);
+            let mut work = Workspace::new(Method::Radau5);
+
+            // message
+            println!("\nsymmetric = {:?} --- {:?}", symmetric, genie);
+            println!("{:>4}{:>10}{:>10}{:>10}", "step", "err_y0", "err_y1", "err_y2");
+
+            // numerical approximation
+            let h = 0.1;
+            let mut x = x0;
+            let mut y = y0.clone();
+            let mut y_ana = Vector::new(ndim);
+            for n in 0..4 {
+                // call step
+                solver.step(&mut work, x, &y, h, &mut args).unwrap();
+
+                // important: update n_accepted (must precede `accept`)
+                work.stats.n_accepted += 1;
+
+                // call accept
+                solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();
+
+                // important: save previous stepsize and relative error (must succeed `accept`)
+                work.h_prev = h;
+                work.rel_error_prev = f64::max(params.step.rel_error_prev_min, work.rel_error);
+
+                // check the results
+                y_fn_x(&mut y_ana, x, &mut args);
+                let err_y0 = f64::abs(y[0] - y_ana[0]);
+                let err_y1 = f64::abs(y[1] - y_ana[1]);
+                let err_y2 = f64::abs(y[2] - y_ana[2]);
+                println!(
+                    "{:>4}{}{}{}",
+                    n,
+                    format_scientific(err_y0, 10, 2),
+                    format_scientific(err_y1, 10, 2),
+                    format_scientific(err_y2, 10, 2)
+                );
+                assert!(err_y0 < 1e-9);
+                assert!(err_y1 < 1e-9);
+                assert!(err_y2 < 1e-8);
+            }
+        }
     }
 }

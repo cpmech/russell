@@ -1,5 +1,8 @@
+#[cfg(feature = "with_mumps")]
+use super::SolverMUMPS;
+
 use super::{Genie, LinSolParams, SparseMatrix, StatsLinSol};
-use super::{SolverKLU, SolverMUMPS, SolverUMFPACK};
+use super::{SolverKLU, SolverUMFPACK};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -70,10 +73,25 @@ impl<'a> LinSolver<'a> {
     /// # Input
     ///
     /// * `genie` -- the actual implementation that does all the magic
+    #[cfg(feature = "with_mumps")]
     pub fn new(genie: Genie) -> Result<Self, StrError> {
         let actual: Box<dyn Send + LinSolTrait> = match genie {
             Genie::Klu => Box::new(SolverKLU::new()?),
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
+            Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
+        };
+        Ok(LinSolver { actual })
+    }
+
+    /// Allocates a new instance
+    ///
+    /// # Input
+    ///
+    /// * `genie` -- the actual implementation that does all the magic
+    pub fn new(genie: Genie) -> Result<Self, StrError> {
+        let actual: Box<dyn Send + LinSolTrait> = match genie {
+            Genie::Klu => Box::new(SolverKLU::new()?),
+            Genie::Mumps => return Err("MUMPS solver is not available"),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
         };
         Ok(LinSolver { actual })
@@ -169,14 +187,9 @@ mod tests {
     use super::LinSolver;
     use crate::{Genie, Samples, SparseMatrix};
     use russell_lab::{vec_approx_eq, Vector};
-    use serial_test::serial;
 
-    #[test]
-    fn lin_solver_new_works() {
-        LinSolver::new(Genie::Klu).unwrap();
-        LinSolver::new(Genie::Mumps).unwrap();
-        LinSolver::new(Genie::Umfpack).unwrap();
-    }
+    #[cfg(feature = "with_mumps")]
+    use serial_test::serial;
 
     #[test]
     fn lin_solver_compute_works_klu() {
@@ -191,6 +204,7 @@ mod tests {
 
     #[test]
     #[serial]
+    #[cfg(feature = "with_mumps")]
     fn lin_solver_compute_works_mumps() {
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(true, false);
         let mut mat = SparseMatrix::from_coo(coo);

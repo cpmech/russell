@@ -19,9 +19,7 @@ sudo apt-get update -y && \
 sudo apt-get install -y --no-install-recommends \
     intel-oneapi-compiler-fortran-$VERSION \
     intel-oneapi-mkl-$VERSION \
-    intel-oneapi-mkl-devel-$VERSION \
-    intel-oneapi-mpi \
-    intel-oneapi-mpi-devel
+    intel-oneapi-mkl-devel-$VERSION
 
 LIBDIR1="/opt/intel/oneapi/mkl/$VERSION/lib/intel64"
 LIBDIR2="/opt/intel/oneapi/compiler/$VERSION/linux/compiler/lib/intel64_lin"

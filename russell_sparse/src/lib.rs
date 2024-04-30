@@ -241,7 +241,6 @@ mod aliases;
 mod complex_coo_matrix;
 mod complex_lin_solver;
 mod complex_solver_klu;
-mod complex_solver_mumps;
 mod complex_solver_umfpack;
 mod constants;
 mod coo_matrix;
@@ -255,16 +254,15 @@ pub mod prelude;
 mod read_matrix_market;
 mod samples;
 mod solver_klu;
-mod solver_mumps;
 mod solver_umfpack;
 mod sparse_matrix;
 mod stats_lin_sol;
+mod stats_lin_sol_mumps;
 mod verify_lin_sys;
 mod write_matrix_market;
 pub use crate::aliases::*;
 pub use crate::complex_lin_solver::*;
 pub use crate::complex_solver_klu::*;
-pub use crate::complex_solver_mumps::*;
 pub use crate::complex_solver_umfpack::*;
 use crate::constants::*;
 pub use crate::coo_matrix::*;
@@ -277,11 +275,23 @@ pub use crate::numerical_jacobian::*;
 pub use crate::read_matrix_market::*;
 pub use crate::samples::*;
 pub use crate::solver_klu::*;
-pub use crate::solver_mumps::*;
 pub use crate::solver_umfpack::*;
 pub use crate::sparse_matrix::*;
 pub use crate::stats_lin_sol::*;
+pub use crate::stats_lin_sol_mumps::*;
 pub use crate::verify_lin_sys::*;
+
+#[cfg(feature = "with_mumps")]
+mod complex_solver_mumps;
+
+#[cfg(feature = "with_mumps")]
+mod solver_mumps;
+
+#[cfg(feature = "with_mumps")]
+pub use crate::complex_solver_mumps::*;
+
+#[cfg(feature = "with_mumps")]
+pub use crate::solver_mumps::*;
 
 // run code from README file
 #[doc = include_str!("../README.md")]

@@ -1,7 +1,10 @@
+#![allow(unused)]
+
 use russell_lab::*;
 use russell_sparse::prelude::*;
 use russell_sparse::StrError;
 
+#[cfg(feature = "with_mumps")]
 fn main() -> Result<(), StrError> {
     // constants
     let ndim = 5; // number of rows = number of columns
@@ -86,4 +89,9 @@ fn main() -> Result<(), StrError> {
     println!("               cond1 = {:?}", &s.condition_number1);
     println!("               cond2 = {:?}", &s.condition_number2);
     Ok(())
+}
+
+#[cfg(not(feature = "with_mumps"))]
+fn main() {
+    println!("MUMPS is not available");
 }

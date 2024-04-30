@@ -7,10 +7,14 @@ fn main() {
         "/usr/lib/x86_64-linux-gnu/", // Debian
         "/usr/lib/",                  // Arch
         "/usr/lib64/",                // Rocky
+        "/opt/homebrew/lib",          // macOS
     ];
 
     #[cfg(not(feature = "local_suitesparse"))]
-    let inc_dirs = vec!["/usr/include/suitesparse/"];
+    let inc_dirs = vec![
+        "/usr/include/suitesparse/", // Linux
+        "/opt/homebrew/include",     // macOS
+    ];
 
     #[cfg(feature = "local_suitesparse")]
     let lib_dirs = vec!["/usr/local/lib/suitesparse"];

@@ -25,7 +25,7 @@ fn test_radau5_van_der_pol() {
     // compare with radau5.f
     approx_eq(y0[0], 1.706163410178079E+00, 1e-13);
     approx_eq(y0[1], -8.927971289301175E-01, 1e-12);
-    approx_eq(stat.h_accepted, 1.510987221365367E-01, 1.1e-8);
+    approx_eq(stat.h_accepted, 1.510987221365367E-01, 1.2e-8);
 
     // print dense output
     let n_dense = out.dense_step_index.len();

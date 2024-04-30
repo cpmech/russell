@@ -13,8 +13,8 @@ BLAS_LIB=${1:-""}
 
 # options
 PREFIX="/usr/local"
-INCDIR=$PREFIX/include/umfpack
-LIBDIR=$PREFIX/lib/umfpack
+INCDIR=$PREFIX/include/suitesparse
+LIBDIR=$PREFIX/lib/suitesparse
 
 # install dependencies
 sudo apt-get update -y &&
@@ -78,8 +78,8 @@ sudo cp -av include/suitesparse/*.h $INCDIR/
 
 # copy libray files
 sudo mkdir -p $LIBDIR/
-sudo cp -av lib/* /usr/local/lib/umfpack
+sudo cp -av lib/* /usr/local/lib/suitesparse
 
 # update ldconfig
-echo "${LIBDIR}" | sudo tee /etc/ld.so.conf.d/umfpack.conf >/dev/null
+echo "${LIBDIR}" | sudo tee /etc/ld.so.conf.d/suitesparse.conf >/dev/null
 sudo ldconfig

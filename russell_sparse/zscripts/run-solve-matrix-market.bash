@@ -1,17 +1,25 @@
 #!/bin/bash
 
-INTEL_MKL=${1:-""} # 0 or 1 to use intel_mkl
-LOCAL_LIBS=${2:-""} # 0 or 1 to use local libs
+LOCAL_SUITESPARSE=${1:-""}
+WITH_MUMPS=${2:-""}
+INTEL_MKL=${3:-""}
 
-FEAT=""
-if [ "${INTEL_MKL}" = "1" ]; then
-    FEAT="--features intel_mkl"
+FEATURES=""
+if [ "$LOCAL_SUITESPARSE" = "1" ]; then
+    FEATURES="${FEATURES},local_suitesparse"
 fi
-if [ "${LOCAL_LIBS}" = "1" ]; then
-    FEAT="${FEAT} --features local_libs"
+if [ "$WITH_MUMPS" = "1" ]; then
+    FEATURES="${FEATURES},with_mumps"
+fi
+if [ "$INTEL_MKL" = "1" ]; then
+    FEATURES="${FEATURES},intel_mkl"
 fi
 
-cargo build --release $FEAT
+cargo run --release --features "$FEATURES" --bin solve_matrix_market -- \
+    data/matrix_market/bfwb62.mtx
 
-cargo run --release $FEAT --bin solve_matrix_market -- data/matrix_market/bfwb62.mtx
-cargo run --release $FEAT --bin solve_matrix_market -- data/matrix_market/bfwb62.mtx --genie mumps
+if [ "$WITH_MUMPS" = "1" ]; then
+    cargo run --release --features "$FEATURES" --bin solve_matrix_market -- \
+    data/matrix_market/bfwb62.mtx \
+    --genie mummps
+fi

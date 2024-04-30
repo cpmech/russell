@@ -20,6 +20,7 @@
 - [Installation](#installation)
   - [Debian/Ubuntu Linux](#debianubuntu-linux)
   - [Rocky Linux](#rocky-linux)
+  - [Arch Linux](#arch-linux)
   - [macOS](#macos)
   - [Number of threads](#number-of-threads)
 - [Examples](#examples)
@@ -93,20 +94,7 @@ External associated and recommended crates:
 
 Russell requires some non-Rust libraries (e.g., [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS), [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html), [MUMPS](https://mumps-solver.org), [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse)) to achieve the max performance. These libraries can be installed as explained next.
 
-### Debian/Ubuntu Linux
-
-First:
-
-```bash
-sudo apt-get update -y && \
-sudo apt-get install -y --no-install-recommends \
-    build-essential \
-    liblapacke-dev \
-    libopenblas-dev \
-    libsuitesparse-dev
-```
-
-Then:
+After installing the dependencies (see next subsections), you may add each crate using:
 
 ```bash
 cargo add russell_lab
@@ -114,53 +102,43 @@ cargo add russell_sparse # etc.
 ```
 
 
+### Debian/Ubuntu Linux
+
+```bash
+# install libraries for russell
+sudo apt-get update -y && \
+sudo apt-get install -y --no-install-recommends \
+    liblapacke-dev \
+    libopenblas-dev \
+    libsuitesparse-dev
+```
 
 ### Rocky Linux
-
-First:
 
 ```bash
 # initialize
 dnf update -y
-dnf check-update 
 dnf install epel-release -y
 crb enable
 
 # required by rust
 dnf install cmake gcc make curl clang -y
 
-# dependencies
+# install libraries for russell
 dnf install -y \
-  gcc-toolset-13 \
   lapack-devel \
-  MUMPS-devel \
   openblas-devel \
-  openmpi-devel \
   suitesparse-devel
 ```
 
-Second:
+### Arch Linux
 
 ```bash
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/lib64/openmpi/lib"
-export PSM3_DEVICES='self,shm'
+# install libraries for russell
+RUN yay -Y --gendb --noconfirm && yay -Y --devel --save
+RUN yay -Syu blas-openblas --noconfirm
+RUN yay -Syu suitesparse --noconfirm
 ```
-
-Then:
-
-```bash
-cargo add russell_lab
-cargo add russell_sparse # etc.
-```
-
-#### Further details <!-- omit from toc -->
-
-Note that there are two issues regarding OpenMPI on Rocky Linux (and similar distributions):
-
-1. `libmpi.so` cannot be found. [There is an issue with OpenMPI and rpath](https://stackoverflow.com/questions/14769599/mpi-error-loading-shared-libraries). Currently, there is [no way to fix build.rs](https://github.com/rust-lang/cargo/issues/5077). Thus, the `LD_LIBRARY_PATH` environment variable needs to be updated.
-2. . [There is an issue related to "PSM3"](https://github.com/easybuilders/easybuild-easyconfigs/issues/18925). The recommended workaround is to set the `PSM3_DEVICES` environment variable.
-
-
 
 ### macOS
 

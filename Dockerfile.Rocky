@@ -2,18 +2,14 @@ FROM rockylinux/rockylinux
 
 # initialize
 RUN dnf update -y
-RUN dnf check-update 
 RUN dnf install epel-release -y
 RUN crb enable
 RUN dnf install cmake gcc make curl clang -y
 
 # dependencies
 RUN dnf install -y \
-  gcc-toolset-13 \
   lapack-devel \
-  MUMPS-devel \
   openblas-devel \
-  openmpi-devel \
   suitesparse-devel
 
 # install rust
@@ -23,10 +19,6 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 # copy files
 COPY . /tmp/russell
 WORKDIR /tmp/russell
-
-# set environment variables
-ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/lib64/openmpi/lib"
-ENV PSM3_DEVICES='self,shm'
 
 # run tests
 RUN cargo test

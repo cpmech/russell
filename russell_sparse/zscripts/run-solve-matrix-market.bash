@@ -21,5 +21,5 @@ cargo run --release --features "$FEATURES" --bin solve_matrix_market -- \
 if [ "$WITH_MUMPS" = "1" ]; then
     cargo run --release --features "$FEATURES" --bin solve_matrix_market -- \
     data/matrix_market/bfwb62.mtx \
-    --genie mummps
+    --genie mumps
 fi

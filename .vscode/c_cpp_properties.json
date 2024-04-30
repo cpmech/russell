@@ -5,12 +5,8 @@
       "includePath": [
         "${default}",
         "/usr/include",
-        "/usr/include/mumps",
-        "/usr/lib/x86_64-linux-gnu/openmpi/include",
-        "/usr/include/suitesparse",
-        "/opt/intel/oneapi/mkl/latest/include",
         "/usr/local/include/mumps",
-        "/usr/local/include/umfpack"
+        "/usr/local/include/suitesparse"
       ],
       "defines": [
         "USE_INTEL_MKL"

@@ -73,22 +73,14 @@ impl<'a> LinSolver<'a> {
     /// # Input
     ///
     /// * `genie` -- the actual implementation that does all the magic
-    #[cfg(feature = "with_mumps")]
     pub fn new(genie: Genie) -> Result<Self, StrError> {
+        #[cfg(feature = "with_mumps")]
         let actual: Box<dyn Send + LinSolTrait> = match genie {
             Genie::Klu => Box::new(SolverKLU::new()?),
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
         };
-        Ok(LinSolver { actual })
-    }
-
-    /// Allocates a new instance
-    ///
-    /// # Input
-    ///
-    /// * `genie` -- the actual implementation that does all the magic
-    pub fn new(genie: Genie) -> Result<Self, StrError> {
+        #[cfg(not(feature = "with_mumps"))]
         let actual: Box<dyn Send + LinSolTrait> = match genie {
             Genie::Klu => Box::new(SolverKLU::new()?),
             Genie::Mumps => return Err("MUMPS solver is not available"),

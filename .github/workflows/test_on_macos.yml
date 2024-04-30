@@ -14,6 +14,15 @@ jobs:
           brew install lapack openblas suite-sparse
       - name: Run tests
         run: |
+          echo
+          echo
           sudo find /opt -iname *cblas.h*
+          echo
+          echo
           sudo find /opt -iname *umfpack*
+          echo
+          echo
+          ls /opt/homebrew
+          echo
+          echo
           RUST_BACKTRACE=1 cargo test

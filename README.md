@@ -6,7 +6,7 @@
 </h1>
 
 <p align="center">
-  <b>Numerical mathematics, ordinary differential equations, special math functions, high-performance linear algebra (sparse)</b><br />
+  <b>Numerical mathematics, ordinary differential equations, special math functions, high-performance (sparse) linear algebra</b><br />
 </p>
 
 ---

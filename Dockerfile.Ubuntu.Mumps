@@ -29,5 +29,8 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 COPY . /tmp/russell
 WORKDIR /tmp/russell
 
+# compile MUMPS
+RUN bash zscripts/compile-and-install-mumps.bash
+
 # run tests
-RUN cargo test
+RUN cargo test --features with_mumps

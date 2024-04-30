@@ -11,6 +11,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [References](#references)
 - [Installation](#installation)
   - [Setting Cargo.toml](#setting-cargotoml)
+  - [Optional features](#optional-features)
 - [Examples](#examples)
   - [Frechet distribution](#frechet-distribution)
   - [Gumbel distribution](#gumbel-distribution)
@@ -58,12 +59,13 @@ This crate depends on some non-rust high-performance libraries. [See the main RE
 russell_stat = "*"
 ```
 
-Or, considering the optional _features_ ([see more about these here](https://github.com/cpmech/russell)):
+### Optional features
 
-```toml
-[dependencies]
-russell_stat = { version = "*", features = ["intel_mkl"] }
-```
+The following (Rust) features are available:
+
+* `intel_mkl`: Use Intel MKL instead of OpenBLAS
+
+Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 
 
 

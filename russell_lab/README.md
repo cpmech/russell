@@ -12,6 +12,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Documentation](#documentation)
 - [Installation](#installation)
   - [Setting Cargo.toml up](#setting-cargotoml-up)
+  - [Optional features](#optional-features)
 - [Examples](#examples)
   - [Running an example with Intel MKL](#running-an-example-with-intel-mkl)
   - [Sorting small tuples](#sorting-small-tuples)
@@ -86,12 +87,13 @@ This crate depends on some non-rust high-performance libraries. [See the main RE
 russell_lab = "*"
 ```
 
-Or, considering the optional _features_ ([see more about these here](https://github.com/cpmech/russell)):
+### Optional features
 
-```toml
-[dependencies]
-russell_lab = { version = "*", features = ["intel_mkl"] }
-```
+The following (Rust) features are available:
+
+* `intel_mkl`: Use Intel MKL instead of OpenBLAS
+
+Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 
 
 

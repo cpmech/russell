@@ -13,9 +13,9 @@ RUN apt-get update -y && \
 
 # essential tools
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
+  build-essential \
   ca-certificates \
   curl \
-  build-essential \
   liblapacke-dev \
   libopenblas-dev \
   libsuitesparse-dev \

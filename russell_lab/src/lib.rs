@@ -24,18 +24,9 @@
 //!
 //! For linear algebra, the main structures are [NumVector] and [NumMatrix], that are generic Vector and Matrix structures. The Matrix data is stored as **column-major**. The [Vector] and [Matrix] are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.
 //!
-//! The linear algebra functions currently handle only `(f64, i32)` pairs, i.e., accessing the `(double, int)` C functions. We also consider `(Complex64, i32)` pairs.
+//! The figure below illustrates the base structures (struct) for linear algebra computations. The vector and matrix structures are generic but require the type parameter to implement a set of traits. The essential trait is the `Num` trait provided by the `num-traits` crate. This trait allows vectors and matrices in Russell to hold any numerical type. The `Copy` trait enables the possibility of cloning vectors and matrices directly; however, for efficiency, the BLAS functions can be called instead. `DeserializedOwned` and `Serialize` allow vectors and matrices to be serialized/deserialized, a feature that propagates for all other structures depending on `NumVector` and `NumMatrix`. This feature allows, for instance, writing and reading JSON files with simulation results. `NumCast` is required by `NumVector` because the `linspace` member function needs to cast the number of grid points to the final type (e.g., `f64`). `NumMatrix` requires the `AddAssign` and `MulAssign` traits to implement the convenience member functions named `add` and `mul`.
 //!
-//! There are many functions for linear algebra, such as (for Real and Complex types):
-//!
-//! * Vector addition ([vec_add()]), copy ([vec_copy()]), inner ([vec_inner()]) and outer ([vec_outer()]) products, norms ([vec_norm()]), and more
-//! * Matrix addition ([mat_add()]), multiplication ([mat_mat_mul()], [mat_t_mat_mul()]), copy ([mat_copy()]), singular-value decomposition ([mat_svd()]), eigenvalues ([mat_eigen()], [mat_eigen_sym()]), pseudo-inverse ([mat_pseudo_inverse()]), inverse ([mat_inverse()]), norms ([mat_norm()]), and more
-//! * Matrix-vector multiplication ([mat_vec_mul()])
-//! * Solution of dense linear systems with symmetric ([mat_cholesky()]) or non-symmetric ([solve_lin_sys()]) coefficient matrices
-//! * Reading writing files ([read_table()]) , linspace ([NumVector::linspace()]), grid generators ([generate2d()]), [generate3d()]), [Stopwatch] and more
-//! * Checking results, comparing floating point numbers, and verifying the correctness of derivatives; see [crate::check]
-//!
-//! Currently, the BLAS/LAPACK functions wrapped by `russell_lab` deal with `f64` (`D` keyword in BLAS) and `Complex64` (`Z` keyword in BLAS) types only. These functions operate on Vector, Matrix, ComplexVector, and ComplexMatrix. These types are simple aliases for NumVector and NumMatrix.
+//! ![Vector-Matrix](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/vector-matrix.svg)
 //!
 //! `NumVector` has a single data member named `data` (a `Vec<T>`) holding all elements. Thus, `NumVector` wraps the native Rust vector struct. `NumVector` implements various methods, including functions for constructing and transforming vectors. One helpful method is `linspace` to generate a sequence of equally spaced numbers. `NumVector` implements the `Index` trait, allowing the access of elements using the `[i]` notation where `i` is the index.
 //!
@@ -70,7 +61,16 @@
 //!
 //! Finally, `NumVector` and `NumMatrix` implement the `Display` trait, allowing them to be pretty printed.
 //!
-//! ### Mat-Vec functions
+//! ### Functionality
+//!
+//! The linear algebra functions currently handle only `(f64, i32)` pairs, i.e., accessing the `(double, int)` C functions. We also consider `(Complex64, i32)` pairs.
+//!
+//! There are many functions for linear algebra, such as (for Real and Complex types):
+//!
+//! * Vector addition ([vec_add()]), copy ([vec_copy()]), inner ([vec_inner()]) and outer ([vec_outer()]) products, norms ([vec_norm()]), and more
+//! * Matrix addition ([mat_add()]), multiplication ([mat_mat_mul()], [mat_t_mat_mul()]), copy ([mat_copy()]), singular-value decomposition ([mat_svd()]), eigenvalues ([mat_eigen()], [mat_eigen_sym()]), pseudo-inverse ([mat_pseudo_inverse()]), inverse ([mat_inverse()]), norms ([mat_norm()]), and more
+//! * Matrix-vector multiplication ([mat_vec_mul()])
+//! * Solution of dense linear systems with symmetric ([mat_cholesky()]) or non-symmetric ([solve_lin_sys()]) coefficient matrices
 //!
 //! The `russell_lab` functions are higher-level than the BLAS/LAPACK counterparts, thus losing some of the generality of BLAS/LAPACK. Each BLAS/LAPACK function wrapped by `russell_lab` is carefully documented and thoroughly tested.
 //!

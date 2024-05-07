@@ -72,6 +72,8 @@
 //!
 //! ### Mat-Vec functions
 //!
+//! The `russell_lab` functions are higher-level than the BLAS/LAPACK counterparts, thus losing some of the generality of BLAS/LAPACK. Each BLAS/LAPACK function wrapped by `russell_lab` is carefully documented and thoroughly tested.
+//!
 //! `russell_lab` implements functions organized in the `vector`, `matvec`, and `matrix` directories. These directories correspond to the BLAS terminology as Level 1, Level 2, and Level 3.
 //!
 //! All vector functions are prefixed with `vec_` and `complex_vec_`, whereas all matrix functions are prefixed with `mat_` and `complex_mat_`. The `matvec` functions have varied names, albeit descriptive.

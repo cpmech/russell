@@ -35,6 +35,51 @@
 //! * Reading writing files ([read_table()]) , linspace ([NumVector::linspace()]), grid generators ([generate2d()]), [generate3d()]), [Stopwatch] and more
 //! * Checking results, comparing floating point numbers, and verifying the correctness of derivatives; see [crate::check]
 //!
+//! Currently, the BLAS/LAPACK functions wrapped by `russell_lab` deal with `f64` (`D` keyword in BLAS) and `Complex64` (`Z` keyword in BLAS) types only. These functions operate on Vector, Matrix, ComplexVector, and ComplexMatrix. These types are simple aliases for NumVector and NumMatrix.
+//!
+//! `NumVector` has a single data member named `data` (a `Vec<T>`) holding all elements. Thus, `NumVector` wraps the native Rust vector struct. `NumVector` implements various methods, including functions for constructing and transforming vectors. One helpful method is `linspace` to generate a sequence of equally spaced numbers. `NumVector` implements the `Index` trait, allowing the access of elements using the `[i]` notation where `i` is the index.
+//!
+//! `NumMatrix` stores all entries in the *column-major* representation. The main reason for using the column-major representation is to make the code work directly with Fortran routines, such as the BLAS/LAPACK functions. It is worth noting that BLAS/LAPACK have functions that accept row-major matrices. Nonetheless, these functions add an overhead due to temporary memory allocation and copies, including transposing matrices.
+//!
+//! Thus, column-major data storage is essential. However, this requirement yields an undesirable side effect. Unfortunately, it is no longer possible to use the Index trait to access matrix elements using a notation such as `a[i][j]` as in other languages. Alternatively, `russell_lab` implements member functions `get(i, j)` and `set(i, j, value)` to access and update matrix elements.
+//!
+//! `NumMatrix` also implements the `AsArray2D` trait, allowing matrices to be constructed from fixed-size nested lists of elements (stack-allocated), growable nested arrays of type `Vec<Vec<T>>` (heap-allocated) and slices that are views into an array. For example, matrices can be created as follows:
+//!
+//! ```
+//! use russell_lab::{NumMatrix, StrError};
+//!
+//! fn main() -> Result<(), StrError> {
+//!     let a = NumMatrix::<i32>::from(&[
+//!         [1, 2, 3], //
+//!         [4, 5, 6], //
+//!         [7, 8, 9], //
+//!     ]);
+//!     println!("{}", a);
+//!     assert_eq!(
+//!         format!("{}", a),
+//!         "┌       ┐\n\
+//!          │ 1 2 3 │\n\
+//!          │ 4 5 6 │\n\
+//!          │ 7 8 9 │\n\
+//!          └       ┘"
+//!     );
+//!     assert_eq!(a.as_data(), &[1, 4, 7, 2, 5, 8, 3, 6, 9]);
+//!     Ok(())
+//! }
+//! ```
+//!
+//! Finally, `NumVector` and `NumMatrix` implement the `Display` trait, allowing them to be pretty printed.
+//!
+//! ### Mat-Vec functions
+//!
+//! `russell_lab` implements functions organized in the `vector`, `matvec`, and `matrix` directories. These directories correspond to the BLAS terminology as Level 1, Level 2, and Level 3.
+//!
+//! All vector functions are prefixed with `vec_` and `complex_vec_`, whereas all matrix functions are prefixed with `mat_` and `complex_mat_`. The `matvec` functions have varied names, albeit descriptive.
+//!
+//! `russell_lab` implements several other interfaces to BLAS/LAPACK. However, some functions are complemented with native Rust code to provide a higher-level interface or improve the functionality. For instance, after calling the DGEEV function, `mat_eigen` post-processes the results via the `dgeev_data` function to extract the results from LAPACK's compact representation, generating a more convenient interface to the user.
+//!
+//! An example of added functionality is the `mat_pseudo_inverse` function, which computes the pseudo-inverse of a rectangular matrix using the singular-value decomposition. This function is based on the singular-value decomposition routine provided by LAPACK.
+//!
 //! ## Complex numbers
 //!
 //! For convenience, this library re-exports:

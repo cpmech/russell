@@ -10,7 +10,7 @@
 //!
 //! # Introduction
 //!
-//! This library implements (**natively**) numerical solver solvers for systems of ordinary equations (ODEs) and differential-algebraic equation systems (DAEs) of Index-1. One advantage of a native implementation is the "safety aspects" enforced by Rust. Moreover, we implement thread-safe code. For example, the performance is improved when the real-based linear and complex-based linear systems are factorized concurrently, as in our Radau5.
+//! This library implements (**natively**) numerical solvers for systems of ordinary equations (ODEs) and differential-algebraic equation systems (DAEs) of Index-1. One advantage of a native implementation is the "safety aspects" enforced by Rust. Moreover, we implement thread-safe code. For example, the performance is improved when the real-based linear and complex-based linear systems are factorized concurrently, as in our Radau5.
 //!
 //! The principal structs are:
 //!

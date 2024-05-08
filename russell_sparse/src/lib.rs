@@ -6,11 +6,13 @@
 //!
 //! # Introduction
 //!
-//! This crate implements three storage formats for sparse matrices:
+//! This crate implements three storage formats for sparse matrices (see the figure below):
 //!
 //! * [NumCooMatrix] (COO) -- COOrdinates matrix, also known as a sparse triplet.
 //! * [NumCscMatrix] (CSC) -- Compressed Sparse Column matrix
 //! * [NumCsrMatrix] (CSR) -- Compressed Sparse Row matrix
+//!
+//! ![Sparse-Matrix](https://raw.githubusercontent.com/cpmech/russell/main/russell_sparse/data/figures/sparse-matrix.svg)
 //!
 //! Additionally, to unify the handling of the above data structures, the library implements:
 //!

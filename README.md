@@ -66,7 +66,7 @@
 
 **Russell** (Rust Scientific Library) assists in developing high-performance computations involving linear algebra, sparse linear systems, differential equations, statistics, and continuum mechanics using the Rust programming language. The applications built with Russell revolve around the computational mechanics discipline; however, since Russell deals with fundamental mathematics and numerics, it is also helpful for other disciplines.
 
-
+Russell aims to deliver efficient, reliable, and easy-to-maintain code. Thus, Russell implements several unit and integration tests and requires test coverage to be over 95%. For the sake of code maintenance, Russell avoids overcomplicated Rust constructions. Nonetheless, Russell considers a good range of Rust concepts, such as generics and traits, and convenient/powerful constructs, such as enums, options, and results. Another goal of Russell is to publish examples of all computations in the documentation to assist the user/developer.
 
 Available libraries:
 

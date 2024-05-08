@@ -39,9 +39,15 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Introduction
 
-This library implements (in pure Rust) solvers to ordinary differential equations (ODEs) and differential algebraic equations (DAEs). Specifically, this library implements several explicit Runge-Kutta methods (e.g., Dormand-Prince formulae) and two implicit Runge-Kutta methods, namely the Backward Euler and the Radau IIA of fifth-order (aka Radau5). The Radau5 solver is able to solver DAEs of Index-1, by accepting the so-called *mass matrix*.
+This library implements (in native Rust) solvers for ordinary differential equations (ODEs) and differential algebraic equations (DAEs). Specifically, it implements several explicit Runge-Kutta methods (e.g., Dormand-Prince formulae) and two implicit Runge-Kutta methods, namely the Backward Euler and the Radau IIA of fifth-order (aka Radau5). The Radau5 solver can solve DAEs of Index-1 by accepting the so-called mass matrix.
 
-The code in this library is based on Hairer-Nørsett-Wanner books and respective Fortran codes (see references [1] and [2]). The code for Dormand-Prince 5(4) and Dormand-Prince 8(5,3) are fairly different from the Fortran counterparts. The code for Radau5 follows closely reference [2]; however some small differences are considered. Despite the coding differences, the numeric results match the Fortran results quite well.
+The code in this library is based on Hairer-Nørsett-Wanner books and respective Fortran codes (see references [1] and [2]). However, the implementations of Dormand-Prince 5(4) and Dormand-Prince 8(5,3) are different from the Fortran counterparts. The code for Radau5 follows closely reference [2]; however, some minor differences are considered. Despite the coding differences, the numeric results match the Fortran results quite well.
+
+The recommended methods are:
+
+* `DoPri5` for ODE systems and non-stiff problems using moderate tolerances
+* `DoPri8` for ODE systems and non-stiff problems using strict tolerances
+* `Radau5` for ODE and DAE systems, possibly stiff, with moderate to strict tolerances
 
 The ODE/DAE system can be easily defined using the System data structure; [see the examples below](#examples).
 

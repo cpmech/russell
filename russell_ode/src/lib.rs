@@ -10,15 +10,17 @@
 //!
 //! # Introduction
 //!
-//! This library implements (**natively**) numerical solver solvers for systems of ordinary equations (ODEs) and differential-algebraic equation systems (DAEs) of Index-1. One advantage of a native implementation is the "safety aspects" enforced by Rust. Moreover, we implement thread-safe code. For example, the performance is improved when the real-based linear and complex-based linear systems are factorized concurrently, as in our Radau5.
+//! This library implements (**natively**) numerical solvers for systems of ordinary equations (ODEs) and differential-algebraic equation systems (DAEs) of Index-1. One advantage of a native implementation is the "safety aspects" enforced by Rust. Moreover, we implement thread-safe code. For example, the performance is improved when the real-based linear and complex-based linear systems are factorized concurrently, as in our Radau5.
 //!
-//! The principal structs are:
+//! The principal structs are (see the figure below):
 //!
 //! * [System] defines the ODE or DAE system
 //! * [OdeSolver] implements the "time-stepping" loop and calls the *actual* numerical solver
 //! * [Params] holds numeric parameters needed by all methods
 //! * (optional) [Output] holds the results from accepted steps (all methods) or the *dense output* (DoPri5, DoPri8, and Radau5 only)
 //! * (optional) [Stats] holds statistics and benchmarking data
+//!
+//! ![ODE principal structs](https://raw.githubusercontent.com/cpmech/russell/main/russell_ode/data/figures/ode-principal-structs.svg)
 //!
 //! The [System] struct holds the number of equations (system dimension), the right-hand side function `f(x, y)`, an optional function to compute the Jacobian matrix, and, also optionally, the mass matrix.
 //!

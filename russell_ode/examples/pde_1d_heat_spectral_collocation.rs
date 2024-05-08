@@ -1,6 +1,6 @@
 use plotpy::{Curve, Plot, SuperTitleParams};
 use russell_lab::algo::{InterpGrid, InterpLagrange, InterpParams};
-use russell_lab::math::PI;
+use russell_lab::math::{GOLDEN_RATIO, PI};
 use russell_lab::{mat_vec_mul, StrError, Vector};
 use russell_ode::{no_jacobian, HasJacobian, Method, NoArgs, OdeSolver, Params, System};
 
@@ -61,6 +61,7 @@ struct Args {
 ///
 /// * Kopriva DA (2009) Implementing Spectral Methods for Partial Differential Equations
 ///   Springer, 404p
+#[rustfmt::skip]
 fn run(
     nn: usize,
     grid_type: InterpGrid,
@@ -69,15 +70,16 @@ fn run(
     calc_errors: bool,
 ) -> Result<(f64, f64, f64), StrError> {
     // ODE system
-    let ndim = nn + 1;
+    let ndim = nn + 1; // degree N plus one
     let system = System::new(
         ndim,
-        |dudt: &mut Vector, _: f64, u: &Vector, args: &mut Args| {
-            mat_vec_mul(dudt, 1.0, args.interp.get_dd2()?, u)?;
-            dudt[0] = 0.0; // homogeneous boundary conditions
-            dudt[nn] = 0.0; // homogeneous boundary conditions
+        |dudt, _, u, args: &mut Args| {
+            let dd2 = args.interp.get_dd2()?;
+            mat_vec_mul(dudt, 1.0, dd2, u)?;
+            dudt[0] = 0.0; // homogeneous BCs
+            dudt[nn] = 0.0; // homogeneous BCs
             Ok(())
-        }, //
+        },
         no_jacobian,
         HasJacobian::No,
         None,
@@ -100,7 +102,8 @@ fn run(
     // initial conditions
     let (t0, t1) = (0.0, 0.1);
     let xx = args.interp.get_points().clone();
-    let mut uu = xx.get_mapped(|x| f64::sin(PI * (x + 1.0)));
+    let mut uu = xx.get_mapped(
+        |x| f64::sin((x + 1.0) * PI));
 
     // solve the problem
     ode.solve(&mut uu, t0, t1, None, None, &mut args)?;
@@ -199,6 +202,14 @@ fn main() -> Result<(), StrError> {
         curve_f.draw(&nn_values, &ef_values);
         curve_g.draw(&nn_values, &eg_values);
         curve_h.draw(&nn_values, &eh_values);
+        let mut plot_f = Plot::new();
+        plot_f
+            .set_log_y(true)
+            .add(&curve_f)
+            .legend()
+            .grid_and_labels("$N$", "$err(u)$")
+            .set_figure_size_points(GOLDEN_RATIO * 250.0, 250.0)
+            .save(format!("{}_f_errors.svg", PATH_KEY).as_str())?;
         let mut plot = Plot::new();
         let mut spp = SuperTitleParams::new();
         spp.set_y(0.95);

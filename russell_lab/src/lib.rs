@@ -6,7 +6,7 @@
 //!
 //! # Introduction
 //!
-//! This crate implements specialized mathematical functions (e.g., Bessel, Chebyshev, Erf, Gamma, Heaviside, Logistic, ...) and functions to perform linear algebra computations (e.g., Matrix, Vector, Matrix-Vector, Eigen-decomposition, SVD, Inverse, ...). This crate also implements a set of helpful function for comparing floating-point numbers, measuring computer time, reading table-formatted data, and more.
+//! This crate extends Rust with scientific computing capabilities, such as special mathematical functions (e.g., Bessel, beta, elliptic integral, erf, erfc, gamma), auxiliary mathematical functions (e.g., ramp, Heaviside, boxcar, logistic), numeric constants (e.g., SQRT_PI, EULER, NAPIER), numerical differentiation (e.g., to check analytical derivatives), functions to validate calculations, code performance measurement, least-square fitting, reading/writing table-formatted data, generation of grid coordinates for plotting, interpolation, and others. This crate also implements several functions to perform linear algebra computations (e.g., Matrix, Vector, Matrix-Vector, Eigen-decomposition, SVD, Inverse, and more).
 //!
 //! The code shall be implemented in *native Rust* code as much as possible. However, thin interfaces ("wrappers") are implemented for some of the best tools available in numerical mathematics, including [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
 //!

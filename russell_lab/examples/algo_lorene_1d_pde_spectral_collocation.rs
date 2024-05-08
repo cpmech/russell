@@ -41,11 +41,11 @@ const PATH_KEY: &str = "/tmp/russell_lab/pde_1d_lorene_spectral_collocation";
 /// * Gourgoulhon E (2005), An introduction to polynomial interpolation,
 ///   School on spectral methods: Application to General Relativity and Field Theory
 ///   Meudon, 14-18 November 2005
+#[rustfmt::skip]
 fn main() -> Result<(), StrError> {
     // interpolant
     let nn = 16;
-    let params = InterpParams::new();
-    let mut interp = InterpLagrange::new(nn, Some(params))?;
+    let mut interp = InterpLagrange::new(nn, None)?;
 
     // D1 and D2 matrices
     interp.calc_dd1_matrix();
@@ -54,32 +54,35 @@ fn main() -> Result<(), StrError> {
     let dd2 = interp.get_dd2()?;
 
     // source term (right-hand side)
+    const C: f64 = -4.0 * NAPIER / (1.0 + NAPIER*NAPIER);
     let xx = interp.get_points();
     let npoint = xx.dim();
-    let mut b = Vector::initialized(npoint, |i| f64::exp(xx[i]) + CC);
-    b[0] = 0.0;
-    b[nn] = 0.0;
+    let mut b = Vector::initialized(
+        npoint, |i| f64::exp(xx[i]) + C,
+    );
+    b[0] = 0.0; // BCs
+    b[nn] = 0.0; // BCs
 
     // discrete differential operator
     let mut aa = Matrix::new(npoint, npoint);
     for i in 1..nn {
         for j in 1..nn {
             let o = if i == j { 1.0 } else { 0.0 };
-            aa.set(i, j, dd2.get(i, j) - 4.0 * dd1.get(i, j) + 4.0 * o);
+            aa.set(i, j, dd2.get(i, j) 
+                 - 4.0 * dd1.get(i, j) + 4.0 * o);
         }
     }
-    aa.set(0, 0, 1.0);
-    aa.set(nn, nn, 1.0);
+    aa.set(0, 0, 1.0); // BCs
+    aa.set(nn, nn, 1.0); // BCs
 
     // linear system
     solve_lin_sys(&mut b, &mut aa)?;
     let uu = &b;
 
     // analytical solution
-    const CC: f64 = -4.0 * NAPIER / (1.0 + NAPIER * NAPIER);
     let sh1 = f64::sinh(1.0);
     let sh2 = f64::sinh(2.0);
-    let analytical = |x| f64::exp(x) - f64::exp(2.0 * x) * sh1 / sh2 + CC / 4.0;
+    let analytical = |x| f64::exp(x) - f64::exp(2.0 * x) * sh1 / sh2 + C / 4.0;
 
     // error at nodes
     let uu_ana = xx.get_mapped(analytical);

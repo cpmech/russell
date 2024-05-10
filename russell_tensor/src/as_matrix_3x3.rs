@@ -1,6 +1,6 @@
 use russell_lab::Matrix;
 
-/// Defines a trait to handle 2D arrays
+/// Defines a trait to handle 3x3 matrices
 ///
 /// # Examples
 ///
@@ -97,9 +97,8 @@ impl AsMatrix3x3 for Matrix {
 
 #[cfg(test)]
 mod tests {
-    use russell_lab::Matrix;
-
     use super::AsMatrix3x3;
+    use russell_lab::Matrix;
 
     fn flatten(mat: &dyn AsMatrix3x3) -> Vec<f64> {
         let mut res = vec![0.0; 9];

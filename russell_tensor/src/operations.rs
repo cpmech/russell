@@ -1578,6 +1578,49 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) -> R
     mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, 0.0)
 }
 
+/// Computes Tensor2 double-dot Tensor4 double-dot Tensor2
+///
+/// Computes:
+///
+/// ```text
+/// s = a : D : b
+/// ```
+///
+/// Note: this function does NOT work with mixed symmetry types.
+///
+/// For example, the Lagrange multiplier in Plasticity needs this operation.
+#[inline]
+pub fn t2_ddot_t4_ddot_t2(a: &Tensor2, dd: &Tensor4, b: &Tensor2, workspace: &mut Tensor2) -> Result<f64, StrError> {
+    if workspace.mandel() != a.mandel() {
+        return Err("tensors must have the same Mandel representation");
+    }
+    t4_ddot_t2(workspace, 1.0, dd, b)?; // D : b
+    Ok(t2_ddot_t2(a, workspace)) // a : D : b
+}
+
+/// Computes Tensor4 double-dot Tensor2 dyadic Tensor2 double-dot Tensor4
+///
+/// Computes:
+///
+/// ```text
+/// D += α (D : a) ⊗ (b : D)
+/// ```
+///
+/// Note: this function does NOT work with mixed symmetry types.
+#[inline]
+pub fn t4_ddot_t2_dyad_t2_ddot_t4(
+    dd: &mut Tensor4,
+    alpha: f64,
+    a: &Tensor2,
+    b: &Tensor2,
+    workspace1: &mut Tensor2,
+    workspace2: &mut Tensor2,
+) -> Result<(), StrError> {
+    t4_ddot_t2(workspace1, 1.0, dd, a)?; // D : a
+    t2_ddot_t4(workspace2, 1.0, b, dd)?; // b : D
+    t2_dyad_t2_update(dd, alpha, workspace1, workspace2) // D += α (D : a) ⊗ (b : D)
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
@@ -2760,5 +2803,59 @@ mod tests {
              │    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0 │\n\
              └                                                                ┘"
         );
+    }
+
+    #[test]
+    fn t2_ddot_t4_ddot_t2_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ], Mandel::General).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [9.0, 8.0, 7.0],
+            [6.0, 5.0, 4.0],
+            [3.0, 2.0, 1.0],
+        ], Mandel::General).unwrap();
+        let mat = Matrix::filled(9, 9, -1.0);
+        let dd = Tensor4::from_matrix(&mat, Mandel::General).unwrap();
+        let mut aux = Tensor2::new(Mandel::General);
+        let s = t2_ddot_t4_ddot_t2(&a, &dd, &b, &mut aux).unwrap();
+        approx_eq(s, -2025.0, 1e-15);
+    }
+
+    #[test]
+    fn t4_ddot_t2_dyad_t2_ddot_t4_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ], Mandel::General).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [9.0, 8.0, 7.0],
+            [6.0, 5.0, 4.0],
+            [3.0, 2.0, 1.0],
+        ], Mandel::General).unwrap();
+        let mat = Matrix::filled(9, 9, -1.0);
+        let mut dd = Tensor4::from_matrix(&mat, Mandel::General).unwrap();
+        let mut aux1 = Tensor2::new(Mandel::General);
+        let mut aux2 = Tensor2::new(Mandel::General);
+        t4_ddot_t2_dyad_t2_ddot_t4(&mut dd, 2.0, &a, &b, &mut aux1, &mut aux2).unwrap();
+        let correct = [
+            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
+            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
+            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
+            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
+            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
+            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
+            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
+            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
+            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
+        ];
+        mat_approx_eq(&dd.to_matrix(), &correct, 1e-12);
     }
 }

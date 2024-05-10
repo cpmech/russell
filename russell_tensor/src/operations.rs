@@ -1,6 +1,8 @@
 use super::{Tensor2, Tensor4};
 use crate::{StrError, SQRT_2};
-use russell_lab::{mat_mat_mul, mat_vec_mul, mat_vec_mul_update, vec_inner, vec_mat_mul, vec_outer, Vector};
+use russell_lab::{
+    mat_mat_mul, mat_vec_mul, mat_vec_mul_update, vec_inner, vec_mat_mul, vec_outer, vec_outer_update, Vector,
+};
 
 /// Performs the double-dot (ddot) operation between two Tensor2 (inner product)
 ///
@@ -360,6 +362,68 @@ pub fn vec_dyad_vec(tt: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Res
 #[inline]
 pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) -> Result<(), StrError> {
     vec_outer(&mut dd.mat, alpha, &a.vec, &b.vec)
+}
+
+/// Performs the dyadic product between two Tensor2 resulting in a Tensor4 (with update)
+///
+/// ```text
+/// D += α a ⊗ b
+/// ```
+///
+/// ```text
+/// With orthonormal Cartesian components:
+///
+/// Dᵢⱼₖₗ += α aᵢⱼ bₖₗ
+/// ```
+///
+/// Note: this function does NOT work with mixed symmetry types.
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::Matrix;
+/// use russell_tensor::{t2_dyad_t2_update, Mandel, StrError, Tensor2, Tensor4};
+///
+/// fn main() -> Result<(), StrError> {
+///     #[rustfmt::skip]
+///     let a = Tensor2::from_matrix(&[
+///         [ 1.0, 10.0, 0.0],
+///         [ 2.0,  1.0, 0.0],
+///         [ 0.0,  0.0, 2.0],
+///     ], Mandel::General)?;
+///
+///     #[rustfmt::skip]
+///     let b = Tensor2::from_matrix(&[
+///         [1.0, 4.0, 6.0],
+///         [7.0, 2.0, 5.0],
+///         [9.0, 8.0, 3.0],
+///     ], Mandel::General)?;
+///
+///     let mat = Matrix::filled(9, 9, 0.5);
+///     let mut dd = Tensor4::from_matrix(&mat, Mandel::General)?;
+///     t2_dyad_t2_update(&mut dd, 1.0, &a, &b)?;
+///
+///     println!("{:.1}", dd.to_matrix());
+///     assert_eq!(
+///         format!("{:.1}", dd.to_matrix()),
+///         "┌                                              ┐\n\
+///          │  1.5  2.5  3.5  4.5  5.5  6.5  7.5  8.5  9.5 │\n\
+///          │  1.5  2.5  3.5  4.5  5.5  6.5  7.5  8.5  9.5 │\n\
+///          │  2.5  4.5  6.5  8.5 10.5 12.5 14.5 16.5 18.5 │\n\
+///          │ 10.5 20.5 30.5 40.5 50.5 60.5 70.5 80.5 90.5 │\n\
+///          │  0.5  0.5  0.5  0.5  0.5  0.5  0.5  0.5  0.5 │\n\
+///          │  0.5  0.5  0.5  0.5  0.5  0.5  0.5  0.5  0.5 │\n\
+///          │  2.5  4.5  6.5  8.5 10.5 12.5 14.5 16.5 18.5 │\n\
+///          │  0.5  0.5  0.5  0.5  0.5  0.5  0.5  0.5  0.5 │\n\
+///          │  0.5  0.5  0.5  0.5  0.5  0.5  0.5  0.5  0.5 │\n\
+///          └                                              ┘"
+///     );
+///     Ok(())
+/// }
+/// ```
+#[inline]
+pub fn t2_dyad_t2_update(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) -> Result<(), StrError> {
+    vec_outer_update(&mut dd.mat, alpha, &a.vec, &b.vec)
 }
 
 /// Performs the overbar dyadic product between two Tensor2 resulting in a (general) Tensor4
@@ -1974,6 +2038,39 @@ mod tests {
              │ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 │\n\
              └                                     ┘"
         );
+    }
+
+    #[test]
+    fn t2_dyad_t2_update_works() {
+        // general dyad general
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ], Mandel::General).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [0.5, 0.5, 0.5],
+            [0.5, 0.5, 0.5],
+            [0.5, 0.5, 0.5],
+        ], Mandel::General).unwrap();
+        let mat = Matrix::filled(9, 9, 0.1);
+        let mut dd = Tensor4::from_matrix(&mat, Mandel::General).unwrap();
+        t2_dyad_t2_update(&mut dd, 2.0, &a, &b).unwrap();
+        let mat = dd.to_matrix();
+        let correct = "┌                                     ┐\n\
+                       │ 1.1 1.1 1.1 1.1 1.1 1.1 1.1 1.1 1.1 │\n\
+                       │ 5.1 5.1 5.1 5.1 5.1 5.1 5.1 5.1 5.1 │\n\
+                       │ 9.1 9.1 9.1 9.1 9.1 9.1 9.1 9.1 9.1 │\n\
+                       │ 2.1 2.1 2.1 2.1 2.1 2.1 2.1 2.1 2.1 │\n\
+                       │ 6.1 6.1 6.1 6.1 6.1 6.1 6.1 6.1 6.1 │\n\
+                       │ 3.1 3.1 3.1 3.1 3.1 3.1 3.1 3.1 3.1 │\n\
+                       │ 4.1 4.1 4.1 4.1 4.1 4.1 4.1 4.1 4.1 │\n\
+                       │ 8.1 8.1 8.1 8.1 8.1 8.1 8.1 8.1 8.1 │\n\
+                       │ 7.1 7.1 7.1 7.1 7.1 7.1 7.1 7.1 7.1 │\n\
+                       └                                     ┘";
+        assert_eq!(format!("{:.1}", mat), correct);
     }
 
     fn check_dyad(s: f64, a_ten: &Tensor2, b_ten: &Tensor2, dd_ten: &Tensor4, tol: f64) {

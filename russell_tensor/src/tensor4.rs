@@ -1,5 +1,5 @@
 use super::{IJKL_TO_MN, IJKL_TO_MN_SYM, MN_TO_IJKL, SQRT_2};
-use crate::{Mandel, StrError, ONE_BY_3, TWO_BY_3};
+use crate::{AsMatrix9x9, Mandel, StrError, ONE_BY_3, TWO_BY_3};
 use russell_lab::{mat_copy, Matrix};
 use serde::{Deserialize, Serialize};
 
@@ -353,7 +353,7 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_matrix(inp: &[[f64; 9]; 9], mandel: Mandel) -> Result<Self, StrError> {
+    pub fn from_matrix(inp: &dyn AsMatrix9x9, mandel: Mandel) -> Result<Self, StrError> {
         let dim = mandel.dim();
         let mut mat = Matrix::new(dim, dim);
         if dim == 4 || dim == 6 {
@@ -368,21 +368,24 @@ impl Tensor4 {
                             let (u, v) = IJKL_TO_MN[j][i][l][k];
                             // check minor-symmetry
                             if i > j || k > l {
-                                if inp[m][n] != inp[p][q] || inp[m][n] != inp[r][s] || inp[m][n] != inp[u][v] {
+                                if inp.at(m, n) != inp.at(p, q)
+                                    || inp.at(m, n) != inp.at(r, s)
+                                    || inp.at(m, n) != inp.at(u, v)
+                                {
                                     return Err("minor-symmetric Tensor4 does not pass symmetry check");
                                 }
                             } else {
                                 if m > max || n > max {
-                                    if inp[m][n] != 0.0 {
+                                    if inp.at(m, n) != 0.0 {
                                         return Err("cannot define 2D Tensor4 due to non-zero values");
                                     }
                                     continue;
                                 } else if m < 3 && n < 3 {
-                                    mat.set(m, n, inp[m][n]);
+                                    mat.set(m, n, inp.at(m, n));
                                 } else if m > 2 && n > 2 {
-                                    mat.set(m, n, 2.0 * inp[m][n]);
+                                    mat.set(m, n, 2.0 * inp.at(m, n));
                                 } else {
-                                    mat.set(m, n, SQRT_2 * inp[m][n]);
+                                    mat.set(m, n, SQRT_2 * inp.at(m, n));
                                 }
                             }
                         }
@@ -398,49 +401,49 @@ impl Tensor4 {
                             // ** i == j **
                             // 1
                             if i == j && k == l {
-                                mat.set(m, n, inp[m][n]);
+                                mat.set(m, n, inp.at(m, n));
                             // 2
                             } else if i == j && k < l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
-                                mat.set(m, n, (inp[m][n] + inp[p][q]) / SQRT_2);
+                                mat.set(m, n, (inp.at(m, n) + inp.at(p, q)) / SQRT_2);
                             // 3
                             } else if i == j && k > l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
-                                mat.set(m, n, (inp[p][q] - inp[m][n]) / SQRT_2);
+                                mat.set(m, n, (inp.at(p, q) - inp.at(m, n)) / SQRT_2);
                             // ** i < j **
                             // 4
                             } else if i < j && k == l {
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
-                                mat.set(m, n, (inp[m][n] + inp[r][s]) / SQRT_2);
+                                mat.set(m, n, (inp.at(m, n) + inp.at(r, s)) / SQRT_2);
                             // 5
                             } else if i < j && k < l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
                                 let (u, v) = IJKL_TO_MN[j][i][l][k];
-                                mat.set(m, n, (inp[m][n] + inp[p][q] + inp[r][s] + inp[u][v]) / 2.0);
+                                mat.set(m, n, (inp.at(m, n) + inp.at(p, q) + inp.at(r, s) + inp.at(u, v)) / 2.0);
                             // 6
                             } else if i < j && k > l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
                                 let (u, v) = IJKL_TO_MN[j][i][l][k];
-                                mat.set(m, n, (inp[p][q] - inp[m][n] + inp[u][v] - inp[r][s]) / 2.0);
+                                mat.set(m, n, (inp.at(p, q) - inp.at(m, n) + inp.at(u, v) - inp.at(r, s)) / 2.0);
                             // ** i > j **
                             // 7
                             } else if i > j && k == l {
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
-                                mat.set(m, n, (inp[r][s] - inp[m][n]) / SQRT_2);
+                                mat.set(m, n, (inp.at(r, s) - inp.at(m, n)) / SQRT_2);
                             // 8
                             } else if i > j && k < l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
                                 let (u, v) = IJKL_TO_MN[j][i][l][k];
-                                mat.set(m, n, (inp[r][s] + inp[u][v] - inp[m][n] - inp[p][q]) / 2.0);
+                                mat.set(m, n, (inp.at(r, s) + inp.at(u, v) - inp.at(m, n) - inp.at(p, q)) / 2.0);
                             // 9
                             } else if i > j && k > l {
                                 let (p, q) = IJKL_TO_MN[i][j][l][k];
                                 let (r, s) = IJKL_TO_MN[j][i][k][l];
                                 let (u, v) = IJKL_TO_MN[j][i][l][k];
-                                mat.set(m, n, (inp[u][v] - inp[r][s] - inp[p][q] + inp[m][n]) / 2.0);
+                                mat.set(m, n, (inp.at(u, v) - inp.at(r, s) - inp.at(p, q) + inp.at(m, n)) / 2.0);
                             }
                         }
                     }

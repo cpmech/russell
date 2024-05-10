@@ -12,6 +12,7 @@
 pub type StrError = &'static str;
 
 mod as_matrix_3x3;
+mod as_matrix_9x9;
 mod constants;
 mod derivatives_t2;
 mod derivatives_t4;
@@ -24,6 +25,7 @@ mod spectral2;
 mod tensor2;
 mod tensor4;
 pub use crate::as_matrix_3x3::*;
+pub use crate::as_matrix_9x9::*;
 pub use crate::constants::*;
 pub use crate::derivatives_t2::*;
 pub use crate::derivatives_t4::*;

@@ -1,6 +1,6 @@
 use super::{IJKL_TO_MN, IJKL_TO_MN_SYM, MN_TO_IJKL, SQRT_2};
 use crate::{AsMatrix9x9, Mandel, StrError, ONE_BY_3, TWO_BY_3};
-use russell_lab::{mat_copy, Matrix};
+use russell_lab::{mat_copy, mat_update, Matrix};
 use serde::{Deserialize, Serialize};
 
 /// Implements a fourth order-tensor, minor-symmetric or not
@@ -231,13 +231,13 @@ impl Tensor4 {
                                     || inp[i][j][k][l] != inp[i][j][l][k]
                                     || inp[i][j][k][l] != inp[j][i][l][k]
                                 {
-                                    return Err("minor-symmetric Tensor4 does not pass symmetry check");
+                                    return Err("the input data does not correspond to a symmetric tensor");
                                 }
                             } else {
                                 let (m, n) = IJKL_TO_MN[i][j][k][l];
                                 if m > max || n > max {
                                     if inp[i][j][k][l] != 0.0 {
-                                        return Err("cannot define 2D Tensor4 due to non-zero values");
+                                        return Err("the input data does not correspond to a 2D symmetric tensor");
                                     }
                                     continue;
                                 } else if m < 3 && n < 3 {
@@ -322,6 +322,10 @@ impl Tensor4 {
     ///   even if it corresponds to a minor-symmetric tensor.
     /// * `mandel` -- the [Mandel] representation
     ///
+    /// # Panics
+    ///
+    /// This function panics if the input matrix is not (9 x 9)
+    ///
     /// # Examples
     ///
     /// ```
@@ -372,12 +376,12 @@ impl Tensor4 {
                                     || inp.at(m, n) != inp.at(r, s)
                                     || inp.at(m, n) != inp.at(u, v)
                                 {
-                                    return Err("minor-symmetric Tensor4 does not pass symmetry check");
+                                    return Err("the input data does not correspond to a symmetric tensor");
                                 }
                             } else {
                                 if m > max || n > max {
                                     if inp.at(m, n) != 0.0 {
-                                        return Err("cannot define 2D Tensor4 due to non-zero values");
+                                        return Err("the input data does not correspond to a 2D symmetric tensor");
                                     }
                                     continue;
                                 } else if m < 3 && n < 3 {
@@ -574,6 +578,56 @@ impl Tensor4 {
                 }
             }
         }
+    }
+
+    /// Adds another tensor to this one
+    ///
+    /// ```text
+    /// self += α other
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_tensor::{Mandel, MN_TO_IJKL, Tensor4, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut inp = [[0.0; 9]; 9];
+    ///     for m in 0..4 {
+    ///         for n in 0..4 {
+    ///             let (i, j, k, l) = MN_TO_IJKL[m][n];
+    ///             inp[m][n] = 1.0;
+    ///         }
+    ///     }
+    ///
+    ///     let mut dd = Tensor4::new(Mandel::General);
+    ///     let ee = Tensor4::from_matrix(&inp, Mandel::General)?;
+    ///     dd.update(2.0, &ee)?;
+    ///
+    ///     assert_eq!(
+    ///         format!("{:.0}", dd.to_matrix()),
+    ///         "┌                   ┐\n\
+    ///          │ 2 2 2 2 0 0 0 0 0 │\n\
+    ///          │ 2 2 2 2 0 0 0 0 0 │\n\
+    ///          │ 2 2 2 2 0 0 0 0 0 │\n\
+    ///          │ 2 2 2 2 0 0 0 0 0 │\n\
+    ///          │ 0 0 0 0 0 0 0 0 0 │\n\
+    ///          │ 0 0 0 0 0 0 0 0 0 │\n\
+    ///          │ 0 0 0 0 0 0 0 0 0 │\n\
+    ///          │ 0 0 0 0 0 0 0 0 0 │\n\
+    ///          │ 0 0 0 0 0 0 0 0 0 │\n\
+    ///          └                   ┘"
+    ///     );
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn update(&mut self, alpha: f64, other: &Tensor4) -> Result<(), StrError> {
+        if other.mandel() != self.mandel() {
+            return Err("tensors are incompatible");
+        }
+        mat_update(&mut self.mat, alpha, &other.mat).unwrap();
+        Ok(())
     }
 
     /// Returns a nested array (standard components; not Mandel) representing this tensor
@@ -1150,10 +1204,16 @@ mod tests {
     #[test]
     fn from_array_fails_captures_errors() {
         let res = Tensor4::from_array(&SamplesTensor4::SAMPLE1, Mandel::Symmetric);
-        assert_eq!(res.err(), Some("minor-symmetric Tensor4 does not pass symmetry check"));
+        assert_eq!(
+            res.err(),
+            Some("the input data does not correspond to a symmetric tensor")
+        );
 
         let res = Tensor4::from_array(&SamplesTensor4::SYM_SAMPLE1, Mandel::Symmetric2D);
-        assert_eq!(res.err(), Some("cannot define 2D Tensor4 due to non-zero values"));
+        assert_eq!(
+            res.err(),
+            Some("the input data does not correspond to a 2D symmetric tensor")
+        );
     }
 
     #[test]
@@ -1188,13 +1248,19 @@ mod tests {
         let mut inp = [[0.0; 9]; 9];
         inp[0][3] = 1e-15;
         let res = Tensor4::from_matrix(&inp, Mandel::Symmetric);
-        assert_eq!(res.err(), Some("minor-symmetric Tensor4 does not pass symmetry check"));
+        assert_eq!(
+            res.err(),
+            Some("the input data does not correspond to a symmetric tensor")
+        );
 
         inp[0][3] = 0.0;
         inp[0][4] = 1.0;
         inp[0][7] = 1.0;
         let res = Tensor4::from_matrix(&inp, Mandel::Symmetric2D);
-        assert_eq!(res.err(), Some("cannot define 2D Tensor4 due to non-zero values"));
+        assert_eq!(
+            res.err(),
+            Some("the input data does not correspond to a 2D symmetric tensor")
+        );
     }
 
     #[test]
@@ -1261,6 +1327,26 @@ mod tests {
                 for k in 0..3 {
                     for l in 0..3 {
                         approx_eq(dd.get(i, j, k, l), SamplesTensor4::SYM_2D_SAMPLE1[i][j][k][l], 1e-14);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn update_works() {
+        let mut dd = Tensor4::new(Mandel::Symmetric2D);
+        let ee = Tensor4::from_array(&SamplesTensor4::SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
+        dd.update(2.0, &ee).unwrap();
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    for l in 0..3 {
+                        approx_eq(
+                            dd.get(i, j, k, l),
+                            2.0 * SamplesTensor4::SYM_2D_SAMPLE1[i][j][k][l],
+                            1e-14,
+                        );
                     }
                 }
             }

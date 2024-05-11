@@ -26,6 +26,10 @@ use russell_lab::{
 ///     m
 /// ```
 ///
+/// # Panics
+///
+/// The [crate::Mandel] representation must be the same for all tensors; otherwise this function will panic.
+///
 /// # Examples
 ///
 /// ```
@@ -45,18 +49,16 @@ use russell_lab::{
 ///         [0.0,  4.0, 1.0],
 ///     ], Mandel::General)?;
 ///
-///     let res = t2_ddot_t2(&a.to_general(), &b)?;
+///     let res = t2_ddot_t2(&a.to_general(), &b);
 ///
 ///     approx_eq(res, 8.0, 1e-15);
 ///     Ok(())
 /// }
 /// ```
 #[inline]
-pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> Result<f64, StrError> {
-    if a.vec.dim() != b.vec.dim() {
-        return Err("tensors are incompatible");
-    }
-    Ok(vec_inner(&a.vec, &b.vec))
+pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
+    assert_eq!(a.vec.dim(), b.vec.dim());
+    vec_inner(&a.vec, &b.vec)
 }
 
 /// Performs the single dot operation between two Tensor2 (matrix multiplication)
@@ -1794,7 +1796,7 @@ mod tests {
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
         ], Mandel::General).unwrap();
-        let s = t2_ddot_t2(&a, &b).unwrap();
+        let s = t2_ddot_t2(&a, &b);
         assert_eq!(s, 165.0);
 
         // sym-3D : sym-3D
@@ -1810,7 +1812,7 @@ mod tests {
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
         ], Mandel::Symmetric).unwrap();
-        let s = t2_ddot_t2(&a, &b).unwrap();
+        let s = t2_ddot_t2(&a, &b);
         approx_eq(s, 162.0, 1e-13);
 
         // sym-3D : general
@@ -1826,7 +1828,7 @@ mod tests {
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
         ], Mandel::General).unwrap();
-        let s = t2_ddot_t2(&a.to_general(), &b).unwrap(); // TODO
+        let s = t2_ddot_t2(&a.to_general(), &b);
         approx_eq(s, 168.0, 1e-13);
 
         // sym-2D : sym-2D
@@ -1842,7 +1844,7 @@ mod tests {
             [5.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],
         ], Mandel::Symmetric2D).unwrap();
-        let s = t2_ddot_t2(&a, &b).unwrap();
+        let s = t2_ddot_t2(&a, &b);
         approx_eq(s, 50.0, 1e-13);
 
         // sym-2D : sym-3D
@@ -1858,7 +1860,7 @@ mod tests {
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
         ], Mandel::Symmetric).unwrap();
-        let s = t2_ddot_t2(&a.to_general(), &b.to_general()).unwrap();
+        let s = t2_ddot_t2(&a.to_general(), &b.to_general());
         approx_eq(s, 50.0, 1e-13);
     }
 

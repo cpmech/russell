@@ -6,11 +6,25 @@ use russell_lab::{
 
 /// Performs the double-dot (ddot) operation between two Tensor2 (inner product)
 ///
+/// Computes:
+///
 /// ```text
 /// s = a : b
 /// ```
 ///
-/// Note: this function works with mixed symmetry types.
+/// With orthonormal Cartesian components:
+///
+/// ```text
+/// s = Σ Σ aᵢⱼ bᵢⱼ
+///     i j
+/// ```
+///
+/// Or, in Mandel basis:
+///
+/// ```text
+/// s = Σ aₘ bₘ
+///     m
+/// ```
 ///
 /// # Examples
 ///
@@ -31,27 +45,37 @@ use russell_lab::{
 ///         [0.0,  4.0, 1.0],
 ///     ], Mandel::General)?;
 ///
-///     let res = t2_ddot_t2(&a, &b);
+///     let res = t2_ddot_t2(&a.to_general(), &b)?;
 ///
 ///     approx_eq(res, 8.0, 1e-15);
 ///     Ok(())
 /// }
 /// ```
 #[inline]
-pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
-    vec_inner(&a.vec, &b.vec)
+pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> Result<f64, StrError> {
+    if a.vec.dim() != b.vec.dim() {
+        return Err("tensors are incompatible");
+    }
+    Ok(vec_inner(&a.vec, &b.vec))
 }
 
 /// Performs the single dot operation between two Tensor2 (matrix multiplication)
 ///
+/// Computes:
+///
 /// ```text
-/// C = A · B
+/// c = a · b
 /// ```
 ///
-/// # Note
+/// With orthonormal Cartesian components:
+/// 
+/// ```text
+/// cᵢⱼ = Σ aᵢₖ bₖⱼ
+///       k
+/// ```
 ///
-/// Even if `A` and `B` are symmetric, the result `C` may not be symmetric.
-/// Thus, `C` must be a General tensor.
+/// **Important:** Even if `a` and `b` are symmetric, the result `c`
+/// may not be symmetric. Therefore, `c` must be a General tensor.
 ///
 /// # Examples
 ///
@@ -85,17 +109,17 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 /// }
 /// ```
 #[rustfmt::skip]
-pub fn t2_dot_t2(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) -> Result<(), StrError> {
-    let dim = aa.vec.dim();
-    if cc.vec.dim() != 9 {
-        return Err("C tensor must be General");
+pub fn t2_dot_t2(c: &mut Tensor2, a: &Tensor2, b: &Tensor2) -> Result<(), StrError> {
+    let dim = a.vec.dim();
+    if c.vec.dim() != 9 {
+        return Err("'c' tensor must be General");
     }
-    if bb.vec.dim() != dim {
-        return Err("A and B tensors must be compatible");
+    if b.vec.dim() != dim {
+        return Err("'a' and 'b' tensors must be compatible");
     }
-    let a = &aa.vec;
-    let b = &bb.vec;
-    let c = &mut cc.vec;
+    let a = &a.vec;
+    let b = &b.vec;
+    let c = &mut c.vec;
     let tsq2 = 2.0 * SQRT_2;
     if dim == 4 {
         c[0] = a[0] * b[0] + (a[3] * b[3]) / 2.0;
@@ -133,8 +157,17 @@ pub fn t2_dot_t2(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) -> Result<(), Str
 
 /// Performs the single dot operation between a Tensor2 and a vector
 ///
+/// Computes:
+///
 /// ```text
 /// v = α a · u
+/// ```
+///
+/// With orthonormal Cartesian components:
+///
+/// ```text
+/// vᵢ = α Σ aᵢⱼ uⱼ
+///        j
 /// ```
 ///
 /// # Examples
@@ -184,8 +217,17 @@ pub fn t2_dot_vec(v: &mut Vector, alpha: f64, a: &Tensor2, u: &Vector) -> Result
 
 /// Performs the single dot operation between a vector and a Tensor2
 ///
+/// Computes:
+///
 /// ```text
 /// v = α u · a
+/// ```
+///
+/// With orthonormal Cartesian components:
+///
+/// ```text
+/// vⱼ = α Σ uᵢ aᵢⱼ
+///        i
 /// ```
 ///
 /// # Examples
@@ -235,17 +277,21 @@ pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) -> Result
 
 /// Performs the dyadic product between two vectors resulting in a second-order tensor
 ///
+/// Computes:
+///
 /// ```text
 /// T = α u ⊗ v
 /// ```
 ///
-/// # Notes
+/// With orthonormal Cartesian components:
 ///
-/// * Note that, in general, the dyadic product between two vectors
-///   may result in a **non-symmetric** second-order tensor. Therefore,
-///   if the input tensor `T` is symmetric, an error may occur. Thus,
-///   make sure that the you expect `u ⊗ v` to be symmetric when passing
-///   a symmetric tensor `T`.
+/// ```text
+/// Tᵢⱼ = α uᵢ vⱼ
+/// ```
+///
+/// **Important:** The dyadic product between two vectors may result in a **non-symmetric**
+/// second-order tensor. Therefore, if the input tensor `T` is symmetric, an error may occur.
+/// Thus, make sure that the you expect `u ⊗ v` to be symmetric when passing a symmetric tensor `T`.
 ///
 /// # Examples
 ///
@@ -307,19 +353,23 @@ pub fn vec_dyad_vec(tt: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Res
     Ok(())
 }
 
-/// Performs the dyadic product between two Tensor2 resulting in a Tensor4
+/// Performs the dyadic product between two Tensor2 resulting a Tensor4
 ///
 /// ```text
 /// D = α a ⊗ b
 /// ```
 ///
-/// ```text
 /// With orthonormal Cartesian components:
 ///
+/// ```text
 /// Dᵢⱼₖₗ = α aᵢⱼ bₖₗ
 /// ```
 ///
-/// Note: this function does NOT work with mixed symmetry types.
+/// Or, in Mandel basis:
+///
+/// ```text
+/// Dₘₙ = α aₘ bₙ
+/// ```
 ///
 /// # Examples
 ///
@@ -366,17 +416,23 @@ pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) -> Res
 
 /// Performs the dyadic product between two Tensor2 resulting in a Tensor4 (with update)
 ///
+/// Computes:
+///
 /// ```text
 /// D += α a ⊗ b
 /// ```
 ///
-/// ```text
 /// With orthonormal Cartesian components:
 ///
+/// ```text
 /// Dᵢⱼₖₗ += α aᵢⱼ bₖₗ
 /// ```
 ///
-/// Note: this function does NOT work with mixed symmetry types.
+/// Or, in Mandel basis:
+///
+/// ```text
+/// Dₘₙ += α aₘ bₙ
+/// ```
 ///
 /// # Examples
 ///
@@ -428,18 +484,20 @@ pub fn t2_dyad_t2_update(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2)
 
 /// Performs the overbar dyadic product between two Tensor2 resulting in a (general) Tensor4
 ///
+/// Computes:
+///
 /// ```text
 ///         _
 /// D = s A ⊗ B
 /// ```
-///
-/// ```text
+/// 
 /// With orthonormal Cartesian components:
 ///
+/// ```text
 /// Dᵢⱼₖₗ = s Aᵢₖ Bⱼₗ
 /// ```
 ///
-/// **Important:** The result is **not** necessarily minor-symmetric; therefore `dd` must be General.
+/// **Important:** The result is **not** necessarily minor-symmetric; therefore `D` must be General.
 #[rustfmt::skip]
 pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Result<(), StrError> {
     if dd.mat.dims().1 != 9 {
@@ -728,18 +786,20 @@ pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Resu
 
 /// Performs the underbar dyadic product between two Tensor2 resulting in a (general) Tensor4
 ///
+/// Computes:
+///
 /// ```text
 /// D = s A ⊗ B
 ///         ‾
 /// ```
-///
-/// ```text
+/// 
 /// With orthonormal Cartesian components:
 ///
+/// ```text
 /// Dᵢⱼₖₗ = s Aᵢₗ Bⱼₖ
 /// ```
 ///
-/// **Important:** The result is **not** necessarily minor-symmetric; therefore `dd` must be General.
+/// **Important:** The result is **not** necessarily minor-symmetric; therefore `D` must be General.
 #[rustfmt::skip]
 pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Result<(), StrError> {
     if dd.mat.dims().1 != 9 {
@@ -1028,17 +1088,21 @@ pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Resu
 
 /// Performs the self-sum-dyadic (ssd) operation with a Tensor2 yielding a minor-symmetric Tensor4
 ///
+/// Computes:
+///
 /// ```text
 ///          _
 /// D = s (A ⊗ A + A ⊗ A)
 ///                  ‾
 /// ```
-///
-/// ```text
+/// 
 /// With orthonormal Cartesian components:
 ///
+/// ```text
 /// Dᵢⱼₖₗ = s (Aᵢₖ Aⱼₗ + Aᵢₗ Aⱼₖ)
 /// ```
+/// 
+/// **Important:** Even if `A` is Symmetric 2D, the result may not be expressed by a Symmetric 2D Tensor4.
 ///
 /// # Output
 ///
@@ -1047,10 +1111,6 @@ pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Resu
 /// # Input
 ///
 /// * `aa` -- Second-order tensor, symmetric or not.
-///
-/// # Note
-///
-/// Even if `A` is Symmetric 2D, the result may not be expressed by a Symmetric 2D Tensor4.
 #[rustfmt::skip]
 pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) -> Result<(), StrError> {
     if dd.mat.dims().1 != 6 {
@@ -1190,17 +1250,21 @@ pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) -> Result<(), StrError> {
 
 /// Performs the quad-sum-dyadic (qsd) operation with two Tensor2 yielding a minor-symmetric Tensor4
 ///
+/// Computes:
+///
 /// ```text
 ///          _               _
 /// D = s (A ⊗ B + A ⊗ B + B ⊗ A + B ⊗ A)
 ///                  ‾               ‾
 /// ```
-///
-/// ```text
+/// 
 /// With orthonormal Cartesian components:
 ///
+/// ```text
 /// Dᵢⱼₖₗ = s (Aᵢₖ Bⱼₗ + Aᵢₗ Bⱼₖ + Bᵢₖ Aⱼₗ + Bᵢₗ Aⱼₖ)
 /// ```
+///
+/// **Important:** Even if `A` and `B` are Symmetric 2D, the result may not be expressed by a Symmetric 2D Tensor4.
 ///
 /// # Output
 ///
@@ -1210,10 +1274,6 @@ pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) -> Result<(), StrError> {
 ///
 /// * `aa` -- Second-order tensor, symmetric or not (with the same Mandel type as `bb`)
 /// * `bb` -- Second-order tensor, symmetric or not (with the same Mandel type as `aa`)
-///
-/// # Note
-///
-/// Even if `A` and `B` are Symmetric 2D, the result may not be expressed by a Symmetric 2D Tensor4.
 #[rustfmt::skip]
 pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Result<(), StrError> {
     if dd.mat.dims().1 != 6 {
@@ -1361,7 +1421,19 @@ pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) -> Result
 /// b = α D : a
 /// ```
 ///
-/// Note: this function does NOT work with mixed symmetry types.
+/// With orthonormal Cartesian components:
+///
+/// ```text
+/// bᵢⱼ = α Σ Σ Dᵢⱼₖₗ aₖₗ
+///         k l
+/// ```
+///
+/// Or, in Mandel basis:
+///
+/// ```text
+/// bₘ = α Σ Dₘₙ aₙ
+///        n
+/// ```
 ///
 /// # Examples
 ///
@@ -1408,11 +1480,25 @@ pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) -> Res
 
 /// Performs the double-dot (ddot) operation between a Tensor4 and a Tensor2 with update
 ///
+/// Computes:
+///
 /// ```text
 /// b = α D : a + β b
 /// ```
 ///
-/// Note: this function does NOT work with mixed symmetry types.
+/// With orthonormal Cartesian components:
+///
+/// ```text
+/// bᵢⱼ = α Σ Σ Dᵢⱼₖₗ aₖₗ + β bᵢⱼ
+///         k l
+/// ```
+///
+/// Or, in Mandel basis:
+///
+/// ```text
+/// bₘ = α Σ Dₘₙ aₙ + β bₘ
+///        n
+/// ```
 ///
 /// # Examples
 ///
@@ -1463,11 +1549,18 @@ pub fn t4_ddot_t2_update(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2,
 
 /// Performs the double-dot (ddot) operation between a Tensor2 and a Tensor4
 ///
+/// Computes:
+///
 /// ```text
 /// b = α a : D
 /// ```
 ///
-/// Note: this function does NOT work with mixed symmetry types.
+/// With orthonormal Cartesian components:
+///
+/// ```text
+/// bₖₗ = α Σ Σ aᵢⱼ Dᵢⱼₖₗ
+///         i j
+/// ```
 ///
 /// # Examples
 ///
@@ -1514,11 +1607,25 @@ pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) -> Res
 
 /// Performs the double-dot (ddot) operation between two Tensor4
 ///
+/// Computes:
+///
 /// ```text
 /// E = α C : D
 /// ```
 ///
-/// Note: this function does NOT work with mixed symmetry types.
+/// With orthonormal Cartesian components:
+///
+/// ```text
+/// Eᵢⱼₖₗ = α Σ Σ Cᵢⱼₛₜ : Dₛₜₖₗ
+///           s t
+/// ```
+///
+/// Or, in Mandel basis:
+///
+/// ```text
+/// Eₘₙ = α Σ Cₘₐ  Dₐₙ
+///         m
+/// ```
 ///
 /// # Examples
 ///
@@ -1586,16 +1693,33 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) -> R
 /// s = a : D : b
 /// ```
 ///
-/// Note: this function does NOT work with mixed symmetry types.
+/// With orthonormal Cartesian components:
 ///
-/// For example, the Lagrange multiplier in Plasticity needs this operation.
-#[inline]
-pub fn t2_ddot_t4_ddot_t2(a: &Tensor2, dd: &Tensor4, b: &Tensor2, workspace: &mut Tensor2) -> Result<f64, StrError> {
-    if workspace.mandel() != a.mandel() {
-        return Err("tensors must have the same Mandel representation");
+/// ```text
+/// s = Σ Σ Σ Σ aᵢⱼ Dᵢⱼₖₗ bₖₗ
+///     i j k l
+/// ```
+///
+/// Or, in Mandel basis:
+///
+/// ```text
+/// s = Σ Σ aₘ Dₘₙ bₙ
+///     m n
+/// ```
+///
+/// Note: the Lagrange multiplier in Plasticity needs this operation.
+pub fn t2_ddot_t4_ddot_t2(a: &Tensor2, dd: &Tensor4, b: &Tensor2) -> Result<f64, StrError> {
+    let dim = a.vec.dim();
+    if b.vec.dim() != dim || dd.mat.dims().0 != dim {
+        return Err("tensors are incompatible");
     }
-    t4_ddot_t2(workspace, 1.0, dd, b)?; // D : b
-    Ok(t2_ddot_t2(a, workspace)) // a : D : b
+    let mut s = 0.0;
+    for m in 0..dim {
+        for n in 0..dim {
+            s += a.vec[m] * dd.mat.get(m, n) * b.vec[n];
+        }
+    }
+    Ok(s)
 }
 
 /// Computes Tensor4 double-dot Tensor2 dyadic Tensor2 double-dot Tensor4
@@ -1603,22 +1727,48 @@ pub fn t2_ddot_t4_ddot_t2(a: &Tensor2, dd: &Tensor4, b: &Tensor2, workspace: &mu
 /// Computes:
 ///
 /// ```text
-/// D += α (D : a) ⊗ (b : D)
+/// E = α (D : a) ⊗ (b : D)
 /// ```
 ///
-/// Note: this function does NOT work with mixed symmetry types.
+/// With orthonormal Cartesian components:
+///
+/// ```text
+/// Eᵢⱼₖₗ = α Σ Σ Σ Σ (Dᵢⱼₛₜ aₛₜ) (bₒₚ Dₒₚₖₗ)
+///           s t o p
+/// ```
+///
+/// Or, in Mandel basis:
+///
+/// ```text
+/// Eₘₙ = α Σ Σ (Dₘₐ aₐ) (bₑ Dₑₙ)
+///         a e
+/// ```
+///
+/// Note: the elastoplastic modulus in Plasticity needs this operation.
 #[inline]
 pub fn t4_ddot_t2_dyad_t2_ddot_t4(
-    dd: &mut Tensor4,
+    ee: &mut Tensor4,
     alpha: f64,
     a: &Tensor2,
     b: &Tensor2,
-    workspace1: &mut Tensor2,
-    workspace2: &mut Tensor2,
+    dd: &Tensor4,
 ) -> Result<(), StrError> {
-    t4_ddot_t2(workspace1, 1.0, dd, a)?; // D : a
-    t2_ddot_t4(workspace2, 1.0, b, dd)?; // b : D
-    t2_dyad_t2_update(dd, alpha, workspace1, workspace2) // D += α (D : a) ⊗ (b : D)
+    let dim = a.vec.dim();
+    if b.vec.dim() != dim || dd.mat.dims().0 != dim {
+        return Err("tensors are incompatible");
+    }
+    ee.mat.fill(0.0);
+    for m in 0..dim {
+        for n in 0..dim {
+            for p in 0..dim {
+                for q in 0..dim {
+                    ee.mat
+                        .add(m, n, alpha * dd.mat.get(m, p) * a.vec[p] * b.vec[q] * dd.mat.get(q, n));
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1644,7 +1794,7 @@ mod tests {
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
         ], Mandel::General).unwrap();
-        let s = t2_ddot_t2(&a, &b);
+        let s = t2_ddot_t2(&a, &b).unwrap();
         assert_eq!(s, 165.0);
 
         // sym-3D : sym-3D
@@ -1660,7 +1810,7 @@ mod tests {
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
         ], Mandel::Symmetric).unwrap();
-        let s = t2_ddot_t2(&a, &b);
+        let s = t2_ddot_t2(&a, &b).unwrap();
         approx_eq(s, 162.0, 1e-13);
 
         // sym-3D : general
@@ -1676,7 +1826,7 @@ mod tests {
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
         ], Mandel::General).unwrap();
-        let s = t2_ddot_t2(&a, &b);
+        let s = t2_ddot_t2(&a.to_general(), &b).unwrap(); // TODO
         approx_eq(s, 168.0, 1e-13);
 
         // sym-2D : sym-2D
@@ -1692,7 +1842,7 @@ mod tests {
             [5.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],
         ], Mandel::Symmetric2D).unwrap();
-        let s = t2_ddot_t2(&a, &b);
+        let s = t2_ddot_t2(&a, &b).unwrap();
         approx_eq(s, 50.0, 1e-13);
 
         // sym-2D : sym-3D
@@ -1708,7 +1858,7 @@ mod tests {
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
         ], Mandel::Symmetric).unwrap();
-        let s = t2_ddot_t2(&a, &b);
+        let s = t2_ddot_t2(&a.to_general(), &b.to_general()).unwrap();
         approx_eq(s, 50.0, 1e-13);
     }
 
@@ -1717,11 +1867,11 @@ mod tests {
         let a = Tensor2::new(Mandel::Symmetric);
         let b = Tensor2::new(Mandel::General);
         let mut c = Tensor2::new(Mandel::Symmetric);
-        assert_eq!(t2_dot_t2(&mut c, &a, &b).err(), Some("C tensor must be General"));
+        assert_eq!(t2_dot_t2(&mut c, &a, &b).err(), Some("'c' tensor must be General"));
         let mut c = Tensor2::new(Mandel::General);
         assert_eq!(
             t2_dot_t2(&mut c, &a, &b).err(),
-            Some("A and B tensors must be compatible")
+            Some("'a' and 'b' tensors must be compatible")
         );
     }
 
@@ -2821,8 +2971,7 @@ mod tests {
         ], Mandel::General).unwrap();
         let mat = Matrix::filled(9, 9, -1.0);
         let dd = Tensor4::from_matrix(&mat, Mandel::General).unwrap();
-        let mut aux = Tensor2::new(Mandel::General);
-        let s = t2_ddot_t4_ddot_t2(&a, &dd, &b, &mut aux).unwrap();
+        let s = t2_ddot_t4_ddot_t2(&a, &dd, &b).unwrap();
         approx_eq(s, -2025.0, 1e-15);
     }
 
@@ -2841,21 +2990,21 @@ mod tests {
             [3.0, 2.0, 1.0],
         ], Mandel::General).unwrap();
         let mat = Matrix::filled(9, 9, -1.0);
-        let mut dd = Tensor4::from_matrix(&mat, Mandel::General).unwrap();
-        let mut aux1 = Tensor2::new(Mandel::General);
-        let mut aux2 = Tensor2::new(Mandel::General);
-        t4_ddot_t2_dyad_t2_ddot_t4(&mut dd, 2.0, &a, &b, &mut aux1, &mut aux2).unwrap();
+        let dd = Tensor4::from_matrix(&mat, Mandel::General).unwrap();
+        let mut ee = Tensor4::new(Mandel::General);
+        t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &a, &b, &dd).unwrap();
+        println!("{}", ee.to_matrix());
         let correct = [
-            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
-            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
-            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
-            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
-            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
-            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
-            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
-            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
-            [4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049., 4049.],
+            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
+            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
+            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
+            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
+            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
+            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
+            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
+            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
+            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
         ];
-        mat_approx_eq(&dd.to_matrix(), &correct, 1e-12);
+        mat_approx_eq(&ee.to_matrix(), &correct, 1e-11);
     }
 }

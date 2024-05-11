@@ -2972,6 +2972,13 @@ mod tests {
         let dd = Tensor4::from_matrix(&mat, Mandel::General).unwrap();
         let s = t2_ddot_t4_ddot_t2(&a, &dd, &b).unwrap();
         approx_eq(s, -2025.0, 1e-15);
+
+        let b = Tensor2::from_matrix(
+            &[[-1.0, -2.0, 0.0], [-2.0, 2.0, 0.0], [0.0, 0.0, -3.0]],
+            Mandel::Symmetric2D,
+        )
+        .unwrap();
+        assert_eq!(t2_ddot_t4_ddot_t2(&a, &dd, &b).err(), Some("tensors are incompatible"));
     }
 
     #[test]
@@ -2992,7 +2999,6 @@ mod tests {
         let dd = Tensor4::from_matrix(&mat, Mandel::General).unwrap();
         let mut ee = Tensor4::new(Mandel::General);
         t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &a, &b, &dd).unwrap();
-        println!("{}", ee.to_matrix());
         let correct = [
             [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
             [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
@@ -3005,5 +3011,15 @@ mod tests {
             [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
         ];
         mat_approx_eq(&ee.to_matrix(), &correct, 1e-11);
+
+        let b = Tensor2::from_matrix(
+            &[[-1.0, -2.0, 0.0], [-2.0, 2.0, 0.0], [0.0, 0.0, -3.0]],
+            Mandel::Symmetric2D,
+        )
+        .unwrap();
+        assert_eq!(
+            t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &a, &b, &dd).err(),
+            Some("tensors are incompatible")
+        );
     }
 }

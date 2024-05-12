@@ -786,9 +786,13 @@ impl Tensor2 {
 
     /// Sets this tensor equal to another one
     ///
+    /// ```text
+    /// self := other
+    /// ```
+    ///
     /// # Panics
     ///
-    /// A panic will occur if the tensors have different [Mandel]
+    /// A panic will occur if the tensors have different [Mandel].
     ///
     /// # Examples
     ///
@@ -846,7 +850,7 @@ impl Tensor2 {
     ///
     /// # Panics
     ///
-    /// A panic will occur if the tensors have different [Mandel]
+    /// A panic will occur if the tensors have different [Mandel].
     ///
     /// # Examples
     ///

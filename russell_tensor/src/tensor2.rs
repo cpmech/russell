@@ -65,6 +65,9 @@ pub struct Tensor2 {
     /// * Symmetric in 3D: `vec.dim = 6`
     /// * Symmetric in 2D: `vec.dim = 4`
     pub vec: Vector,
+
+    /// Holds the Mandel enum
+    mandel: Mandel,
 }
 
 impl Tensor2 {
@@ -93,6 +96,7 @@ impl Tensor2 {
     pub fn new(mandel: Mandel) -> Self {
         Tensor2 {
             vec: Vector::new(mandel.dim()),
+            mandel,
         }
     }
 
@@ -160,9 +164,8 @@ impl Tensor2 {
     }
 
     /// Returns the Mandel representation associated with this Tensor2
-    #[inline]
     pub fn mandel(&self) -> Mandel {
-        Mandel::new(self.vec.dim())
+        self.mandel
     }
 
     /// Sets the Tensor2 with standard components given in matrix form
@@ -356,7 +359,6 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    #[inline]
     pub fn from_matrix(tt: &dyn AsMatrix3x3, mandel: Mandel) -> Result<Self, StrError> {
         let mut res = Tensor2::new(mandel);
         res.set_matrix(tt)?;
@@ -596,7 +598,6 @@ impl Tensor2 {
     }
 
     /// Set all values to zero
-    #[inline]
     pub fn clear(&mut self) {
         self.vec.fill(0.0);
     }
@@ -767,6 +768,10 @@ impl Tensor2 {
 
     /// Adds another tensor to this one
     ///
+    /// ```text
+    /// self += α other
+    /// ```
+    ///
     /// # Examples
     ///
     /// ```
@@ -797,7 +802,6 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    #[inline]
     pub fn add(&mut self, alpha: f64, other: &Tensor2) -> Result<(), StrError> {
         let dim = self.vec.dim();
         if other.vec.dim() != dim {
@@ -1154,7 +1158,6 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    #[inline]
     pub fn trace(&self) -> f64 {
         self.vec[0] + self.vec[1] + self.vec[2]
     }
@@ -1399,7 +1402,6 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    #[inline]
     pub fn invariant_ii1(&self) -> f64 {
         self.trace()
     }
@@ -1461,7 +1463,6 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    #[inline]
     pub fn invariant_ii3(&self) -> f64 {
         self.determinant()
     }
@@ -1549,7 +1550,6 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    #[inline]
     pub fn invariant_jj3(&self) -> f64 {
         self.deviator_determinant()
     }
@@ -1580,7 +1580,6 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    #[inline]
     pub fn invariant_sigma_m(&self) -> f64 {
         self.trace() / 3.0
     }
@@ -1612,7 +1611,6 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    #[inline]
     pub fn invariant_sigma_d(&self) -> f64 {
         self.deviator_norm() * SQRT_3_BY_2
     }
@@ -1639,7 +1637,6 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    #[inline]
     pub fn invariant_eps_v(&self) -> f64 {
         self.trace()
     }
@@ -1666,7 +1663,6 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    #[inline]
     pub fn invariant_eps_d(&self) -> f64 {
         self.deviator_norm() * SQRT_2_BY_3
     }
@@ -1732,7 +1728,6 @@ impl Tensor2 {
     /// r = ‖dev(T)‖
     /// l = cos(3θ) = (3 √3 J3)/(2 pow(J2,1.5))
     /// ```
-    #[inline]
     pub fn invariants_octahedral(&self) -> (f64, f64, Option<f64>) {
         let distance = self.invariant_ii1() / SQRT_3;
         let radius = self.deviator_norm();

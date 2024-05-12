@@ -39,13 +39,13 @@ impl Spectral2 {
     ///
     /// TODO: Rewrite this function to avoid temporary memory allocation
     pub fn decompose(&mut self, tt: &Tensor2) -> Result<(), StrError> {
-        if tt.mandel() != self.mandel {
+        if tt.mandel != self.mandel {
             return Err("the mandel representation is incompatible");
         }
         let dim = tt.vec.dim();
         if dim == 4 {
             // eigenvalues and eigenvectors
-            let (t22, mut a) = tt.to_matrix_2d();
+            let (t22, mut a) = tt.as_matrix_2d();
             let mut l = Vector::new(2);
             let mut v = Matrix::new(2, 2);
             mat_eigen_sym_jacobi(&mut l, &mut v, &mut a)?;
@@ -64,7 +64,7 @@ impl Spectral2 {
             self.projectors[2].vec[2] = 1.0;
         } else {
             // eigenvalues and eigenvectors
-            let mut a = tt.to_matrix();
+            let mut a = tt.as_matrix();
             let mut v = Matrix::new(3, 3);
             mat_eigen_sym_jacobi(&mut self.lambda, &mut v, &mut a)?;
 
@@ -83,7 +83,7 @@ impl Spectral2 {
 
     /// Composes a new tensor from the eigenprojectors and diagonal values (lambda)
     pub fn compose(&self, composed: &mut Tensor2, lambda: &Vector) -> Result<(), StrError> {
-        if composed.mandel() != self.mandel {
+        if composed.mandel != self.mandel {
             return Err("the mandel representation is incompatible");
         }
         if lambda.dim() != 3 {
@@ -155,26 +155,26 @@ mod tests {
         if let Some(correct_lambda) = sample.eigenvalues {
             if let Some(correct_projectors) = sample.eigenprojectors {
                 // perform spectral decomposition of symmetric matrix
-                let mandel = spec.projectors[0].mandel();
+                let mandel = spec.projectors[0].mandel;
                 let tt = Tensor2::from_matrix(&sample.matrix, mandel).unwrap();
                 spec.decompose(&tt).unwrap();
 
                 // print results
                 if verbose {
-                    println!("a =\n{}", tt.to_matrix());
+                    println!("a =\n{}", tt.as_matrix());
                     println!("λ = {}, {}, {}", spec.lambda[0], spec.lambda[1], spec.lambda[2]);
-                    println!("P0 =\n{}", spec.projectors[0].to_matrix());
-                    println!("P1 =\n{}", spec.projectors[1].to_matrix());
-                    println!("P2 =\n{}", spec.projectors[2].to_matrix());
+                    println!("P0 =\n{}", spec.projectors[0].as_matrix());
+                    println!("P1 =\n{}", spec.projectors[1].as_matrix());
+                    println!("P2 =\n{}", spec.projectors[2].as_matrix());
                 }
 
                 // check eigenvalues
                 vec_approx_eq(&spec.lambda, &correct_lambda, tol_lambda);
 
                 // check eigenprojectors
-                let pp0 = spec.projectors[0].to_matrix();
-                let pp1 = spec.projectors[1].to_matrix();
-                let pp2 = spec.projectors[2].to_matrix();
+                let pp0 = spec.projectors[0].as_matrix();
+                let pp1 = spec.projectors[1].as_matrix();
+                let pp2 = spec.projectors[2].as_matrix();
                 let correct0 = Matrix::from(&correct_projectors[0]);
                 let correct1 = Matrix::from(&correct_projectors[1]);
                 let correct2 = Matrix::from(&correct_projectors[2]);
@@ -185,7 +185,7 @@ mod tests {
                 // compose
                 let mut tt_new = Tensor2::new(mandel);
                 spec.compose(&mut tt_new, &spec.lambda).unwrap();
-                let a_new = tt_new.to_matrix();
+                let a_new = tt_new.as_matrix();
                 let a = Matrix::from(&sample.matrix);
                 mat_approx_eq(&a, &a_new, tol_spectral);
             }

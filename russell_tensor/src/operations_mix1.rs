@@ -451,21 +451,21 @@ pub fn t2_ddot_t4_ddot_t2(a: &Tensor2, dd: &Tensor4, b: &Tensor2) -> f64 {
 /// Computes:
 ///
 /// ```text
-/// E = α (D : a) ⊗ (b : D)
+/// E = α D + β (D : a) ⊗ (b : D)
 /// ```
 ///
 /// With orthonormal Cartesian components:
 ///
 /// ```text
-/// Eᵢⱼₖₗ = α Σ Σ Σ Σ (Dᵢⱼₛₜ aₛₜ) (bₒₚ Dₒₚₖₗ)
-///           s t o p
+/// Eᵢⱼₖₗ = α Dᵢⱼₖₗ + β Σ Σ Σ Σ (Dᵢⱼₛₜ aₛₜ) (bₒₚ Dₒₚₖₗ)
+///                     s t o p
 /// ```
 ///
 /// Or, in Mandel basis:
 ///
 /// ```text
-/// Eₘₙ = α Σ Σ (Dₘₐ aₐ) (bₑ Dₑₙ)
-///         a e
+/// Eₘₙ = α Dₘₙ + β Σ Σ (Dₘₐ aₐ) (bₑ Dₑₙ)
+///                 a e
 /// ```
 ///
 /// Note: the elastoplastic modulus in Plasticity needs this operation.
@@ -476,26 +476,27 @@ pub fn t2_ddot_t4_ddot_t2(a: &Tensor2, dd: &Tensor4, b: &Tensor2) -> f64 {
 ///
 /// # Input
 ///
-/// * `alpha` -- the scalar multiplier
+/// * `alpha` -- the first scalar multiplier
+/// * `dd` -- the fourth-order tensor; with the same [Mandel] as the other tensors
+/// * `beta` -- the second scalar multiplier
 /// * `a` -- the first second-order tensor; with the same [Mandel] as the other tensors
 /// * `b` -- the second second-order tensor; with the same [Mandel] as the other tensors
-/// * `dd` -- the fourth-order tensor; with the same [Mandel] as the other tensors
 ///
 /// # Panics
 ///
 /// A panic will occur the tensors have different [Mandel]
-pub fn t4_ddot_t2_dyad_t2_ddot_t4(ee: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2, dd: &Tensor4) {
+pub fn t4_ddot_t2_dyad_t2_ddot_t4(ee: &mut Tensor4, alpha: f64, dd: &Tensor4, beta: f64, a: &Tensor2, b: &Tensor2) {
     assert_eq!(a.mandel, dd.mandel);
     assert_eq!(b.mandel, dd.mandel);
     assert_eq!(ee.mandel, dd.mandel);
     let dim = a.vec.dim();
-    ee.mat.fill(0.0);
     for m in 0..dim {
         for n in 0..dim {
+            ee.mat.set(m, n, alpha * dd.mat.get(m, n));
             for p in 0..dim {
                 for q in 0..dim {
                     ee.mat
-                        .add(m, n, alpha * dd.mat.get(m, p) * a.vec[p] * b.vec[q] * dd.mat.get(q, n));
+                        .add(m, n, beta * dd.mat.get(m, p) * a.vec[p] * b.vec[q] * dd.mat.get(q, n));
                 }
             }
         }
@@ -953,7 +954,7 @@ mod tests {
         let b = Tensor2::new(Mandel::Symmetric2D);
         let dd = Tensor4::new(Mandel::Symmetric2D);
         let mut ee = Tensor4::new(Mandel::Symmetric2D);
-        t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &a, &b, &dd);
+        t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &dd, 3.0, &a, &b);
     }
 
     #[test]
@@ -963,7 +964,7 @@ mod tests {
         let b = Tensor2::new(Mandel::Symmetric); // wrong; it must be the same as `ee`
         let dd = Tensor4::new(Mandel::Symmetric2D);
         let mut ee = Tensor4::new(Mandel::Symmetric2D);
-        t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &a, &b, &dd);
+        t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &dd, 3.0, &a, &b);
     }
 
     #[test]
@@ -973,11 +974,11 @@ mod tests {
         let b = Tensor2::new(Mandel::Symmetric2D);
         let dd = Tensor4::new(Mandel::Symmetric); // wrong; it must be the same as `ee`
         let mut ee = Tensor4::new(Mandel::Symmetric2D);
-        t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &a, &b, &dd);
+        t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &dd, 3.0, &a, &b);
     }
 
     #[test]
-    fn t4_ddot_t2_dyad_t2_ddot_t4_works() {
+    fn t4_ddot_t2_dyad_t2_ddot_t4_works1() {
         #[rustfmt::skip]
         let a = Tensor2::from_matrix(&[
             [1.0, 2.0, 3.0],
@@ -993,18 +994,66 @@ mod tests {
         let mat = Matrix::filled(9, 9, -1.0);
         let dd = Tensor4::from_matrix(&mat, Mandel::General).unwrap();
         let mut ee = Tensor4::new(Mandel::General);
-        t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &a, &b, &dd);
+        t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &dd, 3.0, &a, &b);
         let correct = [
-            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
-            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
-            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
-            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
-            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
-            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
-            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
-            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
-            [4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050., 4050.],
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
         ];
-        mat_approx_eq(&ee.as_matrix(), &correct, 1e-11);
+        mat_approx_eq(&ee.as_matrix(), &correct, 1e-15);
     }
+
+    /*
+    #[test]
+    fn t4_ddot_t2_dyad_t2_ddot_t4_works2() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 2.0, 3.0],
+            [2.0, 5.0, 6.0],
+            [3.0, 6.0, 9.0],
+        ], Mandel::Symmetric).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [1.0, 4.0, 5.0],
+            [4.0, 2.0, 6.0],
+            [5.0, 6.0, 3.0],
+        ], Mandel::Symmetric).unwrap();
+        let dd = Tensor4::from_matrix(
+            &[
+                [1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [2.0, 4.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [3.0, 3.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            ],
+            Mandel::Symmetric,
+        )
+        .unwrap();
+        let mut ee = Tensor4::new(Mandel::Symmetric);
+        t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &dd, 3.0, &a, &b);
+        println!("{}", ee.as_matrix());
+        let correct = [
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
+            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
+        ];
+        mat_approx_eq(&ee.as_matrix(), &correct, 1e-15);
+    }
+    */
 }

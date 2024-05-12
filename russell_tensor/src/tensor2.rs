@@ -518,7 +518,7 @@ impl Tensor2 {
     ///         [0.0,  0.0, 1.0],
     ///     ], Mandel::Symmetric2D)?;
     ///     let mut mat = Matrix::new(3, 3);
-    ///     a.to_matrix&mut mat);
+    ///     a.to_matrix(&mut mat);
     ///     assert_eq!(
     ///         format!("{:.1}", mat),
     ///         "┌                ┐\n\
@@ -748,7 +748,7 @@ impl Tensor2 {
     ///     a.sym_set(2, 2, 3.0);
     ///     a.sym_set(0, 1, 4.0);
     ///     assert_eq!(
-    ///         format!("{:.1}", a.to_matrix()),
+    ///         format!("{:.1}", a.as_matrix()),
     ///         "┌             ┐\n\
     ///          │ 1.0 4.0 0.0 │\n\
     ///          │ 4.0 2.0 0.0 │\n\
@@ -764,7 +764,7 @@ impl Tensor2 {
     ///     b.sym_set(1, 0, 4.0);
     ///     b.sym_set(2, 0, 5.0);
     ///     assert_eq!(
-    ///         format!("{:.1}", b.to_matrix()),
+    ///         format!("{:.1}", b.as_matrix()),
     ///         "┌             ┐\n\
     ///          │ 1.0 4.0 5.0 │\n\
     ///          │ 4.0 2.0 0.0 │\n\
@@ -816,7 +816,7 @@ impl Tensor2 {
     ///     a.sym_add(0, 1, 2.0, 10.0);
     ///
     ///     assert_eq!(
-    ///         format!("{:.1}", a.to_matrix()),
+    ///         format!("{:.1}", a.as_matrix()),
     ///         "┌                ┐\n\
     ///          │  1.0 22.0  3.0 │\n\
     ///          │ 22.0  5.0  6.0 │\n\
@@ -867,7 +867,7 @@ impl Tensor2 {
     ///     a.mirror(&b);
     ///
     ///     assert_eq!(
-    ///         format!("{:.1}", a.to_matrix()),
+    ///         format!("{:.1}", a.as_matrix()),
     ///         "┌                ┐\n\
     ///          │ 10.0 20.0 30.0 │\n\
     ///          │ 40.0 50.0 60.0 │\n\
@@ -922,10 +922,10 @@ impl Tensor2 {
     ///         [70.0, 80.0, 90.0],
     ///     ], Mandel::General)?;
     ///
-    ///     a.add(2.0, &b);
+    ///     a.update(2.0, &b);
     ///
     ///     assert_eq!(
-    ///         format!("{:.1}", a.to_matrix()),
+    ///         format!("{:.1}", a.as_matrix()),
     ///         "┌                   ┐\n\
     ///          │  21.0  42.0  63.0 │\n\
     ///          │  84.0 105.0 126.0 │\n\
@@ -1025,14 +1025,14 @@ impl Tensor2 {
     ///     ], Mandel::General)?;
     ///
     ///     let mut at = Tensor2::new(Mandel::General);
-    ///     a.transpose(&mut at)?;
+    ///     a.transpose(&mut at);
     ///
     ///     let at_correct = Tensor2::from_matrix(&[
     ///         [1.1, 2.1, 3.1],
     ///         [1.2, 2.2, 3.2],
     ///         [1.3, 2.3, 3.3],
     ///     ], Mandel::General)?;
-    ///     vec_approx_eq(&at.vector(), &at_correct.vector(), 1e-15);
+    ///     vec_approx_eq(at.vector(), at_correct.vector(), 1e-15);
     ///     Ok(())
     /// }
     /// ```
@@ -1091,14 +1091,14 @@ impl Tensor2 {
     ///
     ///     let mut ai = Tensor2::new(Mandel::General);
     ///
-    ///     if let Some(det) = a.inverse(&mut ai, 1e-10)? {
+    ///     if let Some(det) = a.inverse(&mut ai, 1e-10) {
     ///         assert_eq!(det, 827.0);
     ///     } else {
     ///         panic!("determinant is zero");
     ///     }
     ///
-    ///     let a_mat = a.to_matrix();
-    ///     let ai_mat = ai.to_matrix();
+    ///     let a_mat = a.as_matrix();
+    ///     let ai_mat = ai.as_matrix();
     ///     let mut a_times_ai = Matrix::new(3, 3);
     ///     mat_mat_mul(&mut a_times_ai, 1.0, &a_mat, &ai_mat, 0.0)?;
     ///
@@ -1191,14 +1191,14 @@ impl Tensor2 {
     ///     ], Mandel::General)?;
     ///
     ///     let mut a2 = Tensor2::new(Mandel::General);
-    ///     a.squared(&mut a2)?;
+    ///     a.squared(&mut a2);
     ///
     ///     let a2_correct = Tensor2::from_matrix(&[
     ///         [200.0, 330.0, 270.0],
     ///         [ 72.0, 123.0, 100.0],
     ///         [ 42.0,  70.0,  63.0],
     ///     ], Mandel::General)?;
-    ///     vec_approx_eq(&a2.vector(), &a2_correct.vec, 1e-13);
+    ///     vec_approx_eq(a2.vector(), a2_correct.vector(), 1e-13);
     ///
     ///     Ok(())
     /// }
@@ -1362,11 +1362,11 @@ impl Tensor2 {
     ///     ], Mandel::General)?;
     ///
     ///     let mut dev = Tensor2::new(Mandel::General);
-    ///     a.deviator(&mut dev).unwrap();
+    ///     a.deviator(&mut dev);
     ///     approx_eq(dev.trace(), 0.0, 1e-15);
     ///
     ///     assert_eq!(
-    ///         format!("{:.1}", dev.to_matrix()),
+    ///         format!("{:.1}", dev.as_matrix()),
     ///         "┌                ┐\n\
     ///          │ -4.0  2.0  3.0 │\n\
     ///          │  4.0  0.0  6.0 │\n\
@@ -1424,11 +1424,11 @@ impl Tensor2 {
     ///     ], Mandel::General)?;
     ///
     ///     let mut dev = Tensor2::new(Mandel::General);
-    ///     a.deviator(&mut dev).unwrap();
+    ///     a.deviator(&mut dev);
     ///     approx_eq(dev.trace(), 0.0, 1e-15);
     ///
     ///     assert_eq!(
-    ///         format!("{:.1}", dev.to_matrix()),
+    ///         format!("{:.1}", dev.as_matrix()),
     ///         "┌                ┐\n\
     ///          │ -5.0  1.0  2.0 │\n\
     ///          │  3.0  1.0  4.0 │\n\
@@ -1477,11 +1477,11 @@ impl Tensor2 {
     ///     ], Mandel::General)?;
     ///
     ///     let mut dev = Tensor2::new(Mandel::General);
-    ///     a.deviator(&mut dev).unwrap();
+    ///     a.deviator(&mut dev);
     ///     approx_eq(dev.trace(), 0.0, 1e-15);
     ///
     ///     assert_eq!(
-    ///         format!("{:.1}", dev.to_matrix()),
+    ///         format!("{:.1}", dev.as_matrix()),
     ///         "┌                ┐\n\
     ///          │ -5.0  1.0  2.0 │\n\
     ///          │  3.0  1.0  4.0 │\n\

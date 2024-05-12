@@ -57,7 +57,7 @@ use russell_lab::{StrError, Vector};
 ///         [0.0,  4.0, 1.0],
 ///     ], Mandel::General)?;
 ///
-///     let res = t2_ddot_t2(&a.to_general(), &b);
+///     let res = t2_ddot_t2(&a.as_general(), &b);
 ///
 ///     approx_eq(res, 8.0, 1e-15);
 ///     Ok(())
@@ -121,7 +121,7 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 ///     let mut c = Tensor2::new(Mandel::General);
 ///     t2_dot_t2(&mut c, &a, &b);
 ///     assert_eq!(
-///         format!("{:.1}", c.to_matrix()),
+///         format!("{:.1}", c.as_matrix()),
 ///         "┌                ┐\n\
 ///          │  4.0  1.0  5.0 │\n\
 ///          │ -2.0  3.0 -5.0 │\n\
@@ -364,7 +364,7 @@ pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) {
 ///     vec_dyad_vec(&mut tt, 1.0, &u, &v)?;
 ///
 ///     assert_eq!(
-///         format!("{:.1}", tt.to_matrix()),
+///         format!("{:.1}", tt.as_matrix()),
 ///         "┌             ┐\n\
 ///          │ 2.0 2.0 2.0 │\n\
 ///          │ 2.0 2.0 2.0 │\n\
@@ -461,7 +461,7 @@ pub fn vec_dyad_vec(a: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Resu
 ///     t2_dyad_t2(&mut dd, 1.0, &a, &b);
 ///
 ///     assert_eq!(
-///         format!("{:.1}", dd.to_matrix()),
+///         format!("{:.1}", dd.as_matrix()),
 ///         "┌                                                       ┐\n\
 ///          │   1.0   2.0   3.0   4.0   5.0   6.0   7.0   8.0   9.0 │\n\
 ///          │  -1.0  -2.0  -3.0  -4.0  -5.0  -6.0  -7.0  -8.0  -9.0 │\n\
@@ -539,11 +539,10 @@ pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
 ///
 ///     let mat = Matrix::filled(9, 9, 0.5);
 ///     let mut dd = Tensor4::from_matrix(&mat, Mandel::General)?;
-///     t2_dyad_t2_update(&mut dd, 1.0, &a, &b)?;
+///     t2_dyad_t2_update(&mut dd, 1.0, &a, &b);
 ///
-///     println!("{:.1}", dd.to_matrix());
 ///     assert_eq!(
-///         format!("{:.1}", dd.to_matrix()),
+///         format!("{:.1}", dd.as_matrix()),
 ///         "┌                                              ┐\n\
 ///          │  1.5  2.5  3.5  4.5  5.5  6.5  7.5  8.5  9.5 │\n\
 ///          │  1.5  2.5  3.5  4.5  5.5  6.5  7.5  8.5  9.5 │\n\
@@ -1579,7 +1578,7 @@ pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
 ///     t4_ddot_t2(&mut b, 1.0, &dd, &a);
 ///
 ///     assert_eq!(
-///         format!("{:.1}", b.to_matrix()),
+///         format!("{:.1}", b.as_matrix()),
 ///         "┌                      ┐\n\
 ///          │  285.0 2850.0    0.0 │\n\
 ///          │ -570.0 -285.0    0.0 │\n\
@@ -1661,10 +1660,10 @@ pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) {
 ///         [0.0, 1.0, 0.0],
 ///         [0.0, 0.0, 1.0],
 ///     ], Mandel::General)?;
-///     t4_ddot_t2_update(&mut b, 1.0, &dd, &a, 1000.0)?;
+///     t4_ddot_t2_update(&mut b, 1.0, &dd, &a, 1000.0);
 ///
 ///     assert_eq!(
-///         format!("{:.1}", b.to_matrix()),
+///         format!("{:.1}", b.as_matrix()),
 ///         "┌                      ┐\n\
 ///          │ 1285.0 2850.0    0.0 │\n\
 ///          │ -570.0  715.0    0.0 │\n\
@@ -1734,10 +1733,10 @@ pub fn t4_ddot_t2_update(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2,
 ///     ], Mandel::General)?;
 ///
 ///     let mut b = Tensor2::new(Mandel::General);
-///     t2_ddot_t4(&mut b, 1.0, &a, &dd)?;
+///     t2_ddot_t4(&mut b, 1.0, &a, &dd);
 ///
 ///     assert_eq!(
-///         format!("{:.1}", b.to_matrix()),
+///         format!("{:.1}", b.as_matrix()),
 ///         "┌                   ┐\n\
 ///          │  31.0 124.0 186.0 │\n\
 ///          │ 217.0  62.0 155.0 │\n\
@@ -1827,9 +1826,9 @@ pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) {
 ///     )?;
 ///
 ///     let mut ee = Tensor4::new(Mandel::General);
-///     t4_ddot_t4(&mut ee, 1.0, &cc, &dd)?;
+///     t4_ddot_t4(&mut ee, 1.0, &cc, &dd);
 ///
-///     let out = ee.to_matrix();
+///     let out = ee.as_matrix();
 ///     for i in 0..9 {
 ///         for j in 0..9 {
 ///             if i == j {

@@ -127,13 +127,13 @@ impl Tensor4 {
     ///
     /// fn main() {
     ///     let cc = Tensor4::new(Mandel::General);
-    ///     assert_eq!(cc.mat.dims(), (9,9));
+    ///     assert_eq!(cc.matrix().dims(), (9,9));
     ///
     ///     let dd = Tensor4::new(Mandel::Symmetric);
-    ///     assert_eq!(dd.mat.dims(), (6,6));
+    ///     assert_eq!(dd.matrix().dims(), (6,6));
     ///
     ///     let ee = Tensor4::new(Mandel::Symmetric2D);
-    ///     assert_eq!(ee.mat.dims(), (4,4));
+    ///     assert_eq!(ee.matrix().dims(), (4,4));
     /// }
     /// ```
     pub fn new(mandel: Mandel) -> Self {
@@ -200,7 +200,7 @@ impl Tensor4 {
     ///     }
     ///     let dd = Tensor4::from_array(&inp, Mandel::General)?;
     ///     assert_eq!(
-    ///         format!("{:.0}", dd.to_matrix()),
+    ///         format!("{:.0}", dd.as_matrix()),
     ///         "┌                                              ┐\n\
     ///          │ 1111 1122 1133 1112 1123 1113 1121 1132 1131 │\n\
     ///          │ 2211 2222 2233 2212 2223 2213 2221 2232 2231 │\n\
@@ -341,7 +341,7 @@ impl Tensor4 {
     ///     }
     ///     let dd = Tensor4::from_matrix(&inp, Mandel::General)?;
     ///     assert_eq!(
-    ///         format!("{:.0}", dd.to_matrix()),
+    ///         format!("{:.0}", dd.as_matrix()),
     ///         "┌                                              ┐\n\
     ///          │ 1111 1122 1133 1112 1123 1113 1121 1132 1131 │\n\
     ///          │ 2211 2222 2233 2212 2223 2213 2221 2232 2231 │\n\
@@ -610,7 +610,7 @@ impl Tensor4 {
     ///     dd.update(2.0, &ee);
     ///
     ///     assert_eq!(
-    ///         format!("{:.0}", dd.to_matrix()),
+    ///         format!("{:.0}", dd.as_matrix()),
     ///         "┌                   ┐\n\
     ///          │ 2 2 2 2 0 0 0 0 0 │\n\
     ///          │ 2 2 2 2 0 0 0 0 0 │\n\
@@ -851,7 +851,7 @@ impl Tensor4 {
     ///         }
     ///     }
     ///     assert_eq!(
-    ///         format!("{:.0}", dd.to_matrix()),
+    ///         format!("{:.0}", dd.as_matrix()),
     ///         "┌                                              ┐\n\
     ///          │ 1111 1122 1133 1112    0    0 1112    0    0 │\n\
     ///          │ 2211 2222 2233 2212    0    0 2212    0    0 │\n\
@@ -908,9 +908,9 @@ impl Tensor4 {
     ///     ], Mandel::General)?;
     ///
     ///     let mut ee = Tensor4::new(Mandel::General);
-    ///     ee.mirror(&dd)?;
+    ///     ee.mirror(&dd);
     ///
-    ///     mat_approx_eq(&dd.mat, &ee.mat, 1e-15);
+    ///     mat_approx_eq(dd.matrix(), ee.matrix(), 1e-15);
     ///     Ok(())
     /// }
     /// ```

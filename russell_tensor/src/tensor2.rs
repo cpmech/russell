@@ -49,14 +49,6 @@ use serde::{Deserialize, Serialize};
 /// └             ┘    01 │ T01 * √2 │ 3
 ///                       └          ┘
 /// ```
-///
-/// # Notes
-///
-/// * The tensor is represented as a 9D, 6D or 4D vector and saved as `vec`
-/// * You may perform operations on `vec` directly because it is isomorphic with the tensor itself
-/// * For example, the norm of the tensor equals `vec.norm()`
-/// * However, you must be careful when setting a single component of `vec` directly
-///   because the Mandel representation may become inconsistent (with incorrect values).
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Tensor2 {
     /// Holds the components in Mandel basis as a vector.
@@ -64,10 +56,10 @@ pub struct Tensor2 {
     /// * General: `vec.dim = 9`
     /// * Symmetric in 3D: `vec.dim = 6`
     /// * Symmetric in 2D: `vec.dim = 4`
-    pub vec: Vector,
+    pub(crate) vec: Vector,
 
     /// Holds the Mandel enum
-    mandel: Mandel,
+    pub(crate) mandel: Mandel,
 }
 
 impl Tensor2 {

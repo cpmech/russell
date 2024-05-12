@@ -100,14 +100,6 @@ use serde::{Deserialize, Serialize};
 ///    ----------------------------------------
 ///      3 0       3 1       3 2        3 3    
 /// ```
-///
-/// # Notes
-///
-/// * The tensor is represented as a (9D x 9D), (6D x 6D) or (4D x 4D) matrix and saved as `mat`
-/// * You may perform operations on `mat` directly because it is isomorphic with the tensor itself
-/// * For example, the norm of the tensor equals `mat.norm()`
-/// * However, you must be careful when setting a single component of `mat` directly
-///   because you may "break" the Mandel representation.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Tensor4 {
     /// Holds the components in Mandel basis as matrix.
@@ -115,10 +107,10 @@ pub struct Tensor4 {
     /// * General: `(nrow,ncol) = (9,9)`
     /// * Minor-symmetric in 3D: `(nrow,ncol) = (6,6)`
     /// * Minor-symmetric in 2D: `(nrow,ncol) = (4,4)`
-    pub mat: Matrix,
+    pub(crate) mat: Matrix,
 
     /// Holds the Mandel enum
-    mandel: Mandel,
+    pub(crate) mandel: Mandel,
 }
 
 impl Tensor4 {
@@ -1302,7 +1294,7 @@ impl Tensor4 {
         self.mat.set(2, 1, -ONE_BY_3);
         self.mat.set(2, 2, TWO_BY_3);
         self.mat.set(3, 3, 1.0);
-        if self.mandel().dim() > 4 {
+        if self.mandel.dim() > 4 {
             self.mat.set(4, 4, 1.0);
             self.mat.set(5, 5, 1.0);
         }

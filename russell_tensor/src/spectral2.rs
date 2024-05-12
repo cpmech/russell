@@ -36,8 +36,6 @@ impl Spectral2 {
     /// # Results
     ///
     /// The results are available in [Spectral2::lambda] and [Spectral2::projectors].
-    ///
-    /// TODO: Rewrite this function to avoid temporary memory allocation
     pub fn decompose(&mut self, tt: &Tensor2) -> Result<(), StrError> {
         if tt.mandel != self.mandel {
             return Err("the mandel representation is incompatible");
@@ -144,14 +142,7 @@ mod tests {
         );
     }
 
-    fn check(
-        spec: &mut Spectral2,
-        sample: &SampleTensor2,
-        tol_lambda: f64,
-        tol_proj: f64,
-        tol_spectral: f64,
-        verbose: bool,
-    ) {
+    fn check(spec: &mut Spectral2, sample: &SampleTensor2, tol_lambda: f64, tol_proj: f64, tol_spectral: f64) {
         if let Some(correct_lambda) = sample.eigenvalues {
             if let Some(correct_projectors) = sample.eigenprojectors {
                 // perform spectral decomposition of symmetric matrix
@@ -160,13 +151,11 @@ mod tests {
                 spec.decompose(&tt).unwrap();
 
                 // print results
-                if verbose {
-                    println!("a =\n{}", tt.as_matrix());
-                    println!("λ = {}, {}, {}", spec.lambda[0], spec.lambda[1], spec.lambda[2]);
-                    println!("P0 =\n{}", spec.projectors[0].as_matrix());
-                    println!("P1 =\n{}", spec.projectors[1].as_matrix());
-                    println!("P2 =\n{}", spec.projectors[2].as_matrix());
-                }
+                // println!("a =\n{}", tt.as_matrix());
+                // println!("λ = {}, {}, {}", spec.lambda[0], spec.lambda[1], spec.lambda[2]);
+                // println!("P0 =\n{}", spec.projectors[0].as_matrix());
+                // println!("P1 =\n{}", spec.projectors[1].as_matrix());
+                // println!("P2 =\n{}", spec.projectors[2].as_matrix());
 
                 // check eigenvalues
                 vec_approx_eq(&spec.lambda, &correct_lambda, tol_lambda);
@@ -195,23 +184,23 @@ mod tests {
     #[test]
     fn decompose_and_compose_work_3d() {
         let mut spec = Spectral2::new(false);
-        check(&mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, false);
-        check(&mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, false);
-        check(&mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15, false);
-        check(&mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15, false);
-        check(&mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15, false);
-        check(&mut spec, &SamplesTensor2::TENSOR_U, 1e-13, 1e-15, 1e-14, false);
-        check(&mut spec, &SamplesTensor2::TENSOR_S, 1e-13, 1e-14, 1e-14, false);
+        check(&mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
+        check(&mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
+        check(&mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
+        check(&mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15);
+        check(&mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15);
+        check(&mut spec, &SamplesTensor2::TENSOR_U, 1e-13, 1e-15, 1e-14);
+        check(&mut spec, &SamplesTensor2::TENSOR_S, 1e-13, 1e-14, 1e-14);
     }
 
     #[test]
     fn decompose_and_compose_work_2d() {
         let mut spec = Spectral2::new(true);
-        check(&mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, false);
-        check(&mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, false);
-        check(&mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15, false);
-        check(&mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15, false);
-        check(&mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15, false);
+        check(&mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
+        check(&mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
+        check(&mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
+        check(&mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15);
+        check(&mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15);
     }
 
     #[test]

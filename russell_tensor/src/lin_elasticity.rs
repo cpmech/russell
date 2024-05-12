@@ -196,11 +196,15 @@ impl LinElasticity {
     ///
     /// # Output
     ///
-    /// * `stress` -- the stress tensor σ
+    /// * `stress` -- the stress tensor σ; with the same [Mandel] as `strain`
     ///
     /// # Input
     ///
-    /// * `strain` -- the strain tensor ε
+    /// * `strain` -- the strain tensor ε; with the same [Mandel] as `stress`
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if the tensors have different [Mandel]
     ///
     /// # Examples
     ///
@@ -287,8 +291,8 @@ impl LinElasticity {
     ///     Ok(())
     /// }
     /// ```
-    pub fn calc_stress(&self, stress: &mut Tensor2, strain: &Tensor2) -> Result<(), StrError> {
-        t4_ddot_t2(stress, 1.0, &self.dd, strain)
+    pub fn calc_stress(&self, stress: &mut Tensor2, strain: &Tensor2) {
+        t4_ddot_t2(stress, 1.0, &self.dd, strain);
     }
 
     /// Calculates and sets the out-of-plane strain in the Plane-Stress case
@@ -373,7 +377,7 @@ mod tests {
         // plane-stress
         // from Bhatti page 511 (Young divided by 1000)
         let ela = LinElasticity::new(3000.0, 0.2, false, true);
-        let out = ela.dd.to_matrix();
+        let out = ela.dd.as_matrix();
         assert_eq!(
             format!("{}", out),
             "┌                                              ┐\n\
@@ -392,7 +396,7 @@ mod tests {
         // plane-strain
         // from Bhatti page 519
         let ela = LinElasticity::new(30000.0, 0.3, true, false);
-        let out = ela.dd.to_matrix();
+        let out = ela.dd.as_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                                                                         ┐\n\
@@ -455,8 +459,8 @@ mod tests {
             Mandel::Symmetric2D,
         ).unwrap();
         let mut stress = Tensor2::new(Mandel::Symmetric2D);
-        ela.calc_stress(&mut stress, &strain).unwrap();
-        let out = stress.to_matrix();
+        ela.calc_stress(&mut stress, &strain);
+        let out = stress.as_matrix();
         assert_eq!(
             format!("{:.3}", out),
             "┌                            ┐\n\
@@ -479,8 +483,8 @@ mod tests {
             Mandel::Symmetric2D,
         ).unwrap();
         let mut stress = Tensor2::new(Mandel::Symmetric2D);
-        ela.calc_stress(&mut stress, &strain).unwrap();
-        let out = stress.to_matrix();
+        ela.calc_stress(&mut stress, &strain);
+        let out = stress.as_matrix();
         assert_eq!(
             format!("{:.6}", out),
             "┌                               ┐\n\
@@ -494,7 +498,7 @@ mod tests {
         // sum of first 3 rows = 1800
         // sum of other rows = 720
         let ela = LinElasticity::new(900.0, 0.25, false, false);
-        let out = ela.dd.to_matrix();
+        let out = ela.dd.as_matrix();
         assert_eq!(
             format!("{}", out),
             "┌                                              ┐\n\
@@ -516,8 +520,8 @@ mod tests {
             [1.0, 1.0, 1.0]],
         Mandel::Symmetric).unwrap();
         let mut stress = Tensor2::new(Mandel::Symmetric);
-        ela.calc_stress(&mut stress, &strain).unwrap();
-        let out = stress.to_matrix();
+        ela.calc_stress(&mut stress, &strain);
+        let out = stress.as_matrix();
         assert_eq!(
             format!("{:.0}", out),
             "┌                ┐\n\

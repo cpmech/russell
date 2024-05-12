@@ -633,7 +633,7 @@ impl Tensor4 {
         Ok(())
     }
 
-    /// Returns a nested array (standard components; not Mandel) representing this tensor
+    /// Returns a 3x3x3x3 array with the standard components
     ///
     /// # Examples
     ///
@@ -651,7 +651,7 @@ impl Tensor4 {
     ///     }
     ///
     ///     let dd = Tensor4::from_matrix(&inp, Mandel::General)?;
-    ///     let arr = dd.to_array();
+    ///     let arr = dd.as_array();
     ///
     ///     for m in 0..9 {
     ///         for n in 0..9 {
@@ -665,6 +665,46 @@ impl Tensor4 {
     /// ```
     pub fn as_array(&self) -> Vec<Vec<Vec<Vec<f64>>>> {
         let mut dd = vec![vec![vec![vec![0.0; 3]; 3]; 3]; 3];
+        self.to_array(&mut dd);
+        dd
+    }
+
+    /// Converts this tensor to a 3x3x3x3 array with the standard components
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if the array is not 3x3x3x3, i.e., `vec![vec![vec![vec![0.0; 3]; 3]; 3]; 3]`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_tensor::{Mandel, MN_TO_IJKL, Tensor4, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut inp = [[0.0; 9]; 9];
+    ///     for m in 0..9 {
+    ///         for n in 0..9 {
+    ///             let (i, j, k, l) = MN_TO_IJKL[m][n];
+    ///             inp[m][n] = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+    ///         }
+    ///     }
+    ///
+    ///     let dd = Tensor4::from_matrix(&inp, Mandel::General)?;
+    ///     let mut arr = vec![vec![vec![vec![0.0; 3]; 3]; 3]; 3];
+    ///     dd.to_array(&mut arr);
+    ///
+    ///     for m in 0..9 {
+    ///         for n in 0..9 {
+    ///             let (i, j, k, l) = MN_TO_IJKL[m][n];
+    ///             let val = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+    ///             approx_eq(arr[i][j][k][l], val, 1e-12);
+    ///         }
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn to_array(&self, dd: &mut Vec<Vec<Vec<Vec<f64>>>>) {
         let dim = self.mat.dims().0;
         if dim < 9 {
             for m in 0..dim {
@@ -689,10 +729,11 @@ impl Tensor4 {
                 }
             }
         }
-        dd
     }
 
-    /// Returns a matrix (standard components; not Mandel) representing this tensor
+    /// Returns a 9x9 matrix with the standard components
+    ///
+    /// **Note:** The matrix will have the standard components (not Mandel) and 9x9 dimension.
     ///
     /// # Examples
     ///
@@ -709,7 +750,7 @@ impl Tensor4 {
     ///     }
     ///     let dd = Tensor4::from_matrix(&inp, Mandel::General)?;
     ///     assert_eq!(
-    ///         format!("{:.0}", dd.to_matrix()),
+    ///         format!("{:.0}", dd.as_matrix()),
     ///         "┌                                              ┐\n\
     ///          │ 1111 1122 1133 1112 1123 1113 1121 1132 1131 │\n\
     ///          │ 2211 2222 2233 2212 2223 2213 2221 2232 2231 │\n\
@@ -726,14 +767,63 @@ impl Tensor4 {
     /// }
     /// ```
     pub fn as_matrix(&self) -> Matrix {
-        let mut res = Matrix::new(9, 9);
+        let mut mat = Matrix::new(9, 9);
+        self.to_matrix(&mut mat);
+        mat
+    }
+
+    /// Converts this tensor to a 9x9 matrix with the standard components
+    ///
+    /// # Input
+    ///
+    /// * `mat` -- The resulting 9x9 matrix.
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if the matrix is not 9x9
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::Matrix;
+    /// use russell_tensor::{Mandel, MN_TO_IJKL, Tensor4, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut inp = [[0.0; 9]; 9];
+    ///     for m in 0..9 {
+    ///         for n in 0..9 {
+    ///             let (i, j, k, l) = MN_TO_IJKL[m][n];
+    ///             inp[m][n] = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
+    ///         }
+    ///     }
+    ///     let dd = Tensor4::from_matrix(&inp, Mandel::General)?;
+    ///     let mut mat = Matrix::new(9, 9);
+    ///     dd.to_matrix(&mut mat);
+    ///     assert_eq!(
+    ///         format!("{:.0}", mat),
+    ///         "┌                                              ┐\n\
+    ///          │ 1111 1122 1133 1112 1123 1113 1121 1132 1131 │\n\
+    ///          │ 2211 2222 2233 2212 2223 2213 2221 2232 2231 │\n\
+    ///          │ 3311 3322 3333 3312 3323 3313 3321 3332 3331 │\n\
+    ///          │ 1211 1222 1233 1212 1223 1213 1221 1232 1231 │\n\
+    ///          │ 2311 2322 2333 2312 2323 2313 2321 2332 2331 │\n\
+    ///          │ 1311 1322 1333 1312 1323 1313 1321 1332 1331 │\n\
+    ///          │ 2111 2122 2133 2112 2123 2113 2121 2132 2131 │\n\
+    ///          │ 3211 3222 3233 3212 3223 3213 3221 3232 3231 │\n\
+    ///          │ 3111 3122 3133 3112 3123 3113 3121 3132 3131 │\n\
+    ///          └                                              ┘"
+    ///     );
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn to_matrix(&self, mat: &mut Matrix) {
+        assert_eq!(mat.dims(), (9, 9));
         for m in 0..9 {
             for n in 0..9 {
                 let (i, j, k, l) = MN_TO_IJKL[m][n];
-                res.set(m, n, self.get(i, j, k, l));
+                mat.set(m, n, self.get(i, j, k, l));
             }
         }
-        res
     }
 
     /// Sets the (i,j,k,l) component of a minor-symmetric Tensor4
@@ -1395,7 +1485,7 @@ mod tests {
     }
 
     #[test]
-    fn to_array_works() {
+    fn as_array_and_to_array_work() {
         // general
         let dd = Tensor4::from_array(&SamplesTensor4::SAMPLE1, Mandel::General).unwrap();
         let res = dd.as_array();
@@ -1437,7 +1527,7 @@ mod tests {
     }
 
     #[test]
-    fn to_matrix_works() {
+    fn as_matrix_and_to_matrix_work() {
         // general
         let dd = Tensor4::from_array(&SamplesTensor4::SAMPLE1, Mandel::General).unwrap();
         let mat = dd.as_matrix();

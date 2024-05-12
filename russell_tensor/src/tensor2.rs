@@ -2835,11 +2835,8 @@ mod tests {
         let s = &SamplesTensor2::TENSOR_T;
         let tt = Tensor2::from_matrix(&s.matrix, Mandel::General).unwrap();
         let mut tti = Tensor2::new(Mandel::General);
-        if let Some(det) = tt.inverse(&mut tti, 1e-10) {
-            assert_eq!(det, s.determinant);
-        } else {
-            panic!("zero determinant found");
-        }
+        let det = tt.inverse(&mut tti, 1e-10).unwrap();
+        assert_eq!(det, s.determinant);
         check_inverse(&tt, &tti, 1e-15);
 
         // symmetric 3D with zero determinant
@@ -2853,11 +2850,8 @@ mod tests {
         let s = &SamplesTensor2::TENSOR_U;
         let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric).unwrap();
         let mut tti = Tensor2::new(Mandel::Symmetric);
-        if let Some(det) = tt.inverse(&mut tti, 1e-10) {
-            approx_eq(det, s.determinant, 1e-14);
-        } else {
-            panic!("zero determinant found");
-        }
+        let det = tt.inverse(&mut tti, 1e-10).unwrap();
+        approx_eq(det, s.determinant, 1e-14);
         check_inverse(&tt, &tti, 1e-13);
 
         // symmetric 2D with zero determinant
@@ -2871,11 +2865,8 @@ mod tests {
         let s = &SamplesTensor2::TENSOR_Y;
         let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric2D).unwrap();
         let mut tti = Tensor2::new(Mandel::Symmetric2D);
-        if let Some(det) = tt.inverse(&mut tti, 1e-10) {
-            assert_eq!(det, s.determinant);
-        } else {
-            panic!("zero determinant found");
-        }
+        let det = tt.inverse(&mut tti, 1e-10).unwrap();
+        assert_eq!(det, s.determinant);
         check_inverse(&tt, &tti, 1e-15);
     }
 
@@ -3049,23 +3040,20 @@ mod tests {
         tol_det: f64,
         tol_dev_norm: f64,
         tol_dev_det: f64,
-        verbose: bool,
     ) {
         let tt = Tensor2::from_matrix(&sample.matrix, mandel).unwrap();
-        if verbose {
-            println!("{}", sample.desc);
-            println!("    err(norm) = {:?}", tt.norm() - sample.norm);
-            println!("    err(trace) = {:?}", tt.trace() - sample.trace);
-            println!("    err(determinant) = {:?}", tt.determinant() - sample.determinant);
-            println!(
-                "    err(deviator_norm) = {:?}",
-                tt.deviator_norm() - sample.deviator_norm
-            );
-            println!(
-                "    err(deviator_determinant) = {:?}",
-                tt.deviator_determinant() - sample.deviator_determinant
-            );
-        }
+        // println!("{}", sample.desc);
+        // println!("    err(norm) = {:?}", tt.norm() - sample.norm);
+        // println!("    err(trace) = {:?}", tt.trace() - sample.trace);
+        // println!("    err(determinant) = {:?}", tt.determinant() - sample.determinant);
+        // println!(
+        //     "    err(deviator_norm) = {:?}",
+        //     tt.deviator_norm() - sample.deviator_norm
+        // );
+        // println!(
+        //     "    err(deviator_determinant) = {:?}",
+        //     tt.deviator_determinant() - sample.deviator_determinant
+        // );
         approx_eq(tt.norm(), sample.norm, tol_norm);
         approx_eq(tt.trace(), sample.trace, tol_trace);
         approx_eq(tt.determinant(), sample.determinant, tol_det);
@@ -3076,66 +3064,51 @@ mod tests {
     #[test]
     #[rustfmt::skip]
     fn properties_are_correct() {
-        let verb = false;
         //                                                       norm   trace  det dev_norm dev_det
-        check_sample(&SamplesTensor2::TENSOR_O, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15, verb);
-        check_sample(&SamplesTensor2::TENSOR_I, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15, verb);
-        check_sample(&SamplesTensor2::TENSOR_X, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13, verb);
-        check_sample(&SamplesTensor2::TENSOR_Y, Mandel::General, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15, verb);
-        check_sample(&SamplesTensor2::TENSOR_Z, Mandel::General, 1e-15, 1e-15, 1e-14, 1e-14, 1e-15, verb);
-        check_sample(&SamplesTensor2::TENSOR_U, Mandel::General, 1e-13, 1e-15, 1e-14, 1e-14, 1e-13, verb);
-        check_sample(&SamplesTensor2::TENSOR_S, Mandel::General, 1e-13, 1e-15, 1e-14, 1e-15, 1e-13, verb);
-        check_sample(&SamplesTensor2::TENSOR_R, Mandel::General, 1e-13, 1e-15, 1e-13, 1e-13, 1e-15, verb);
-        check_sample(&SamplesTensor2::TENSOR_T, Mandel::General, 1e-13, 1e-15, 1e-15, 1e-14, 1e-15, verb);
-
-        let verb = false;
+        check_sample(&SamplesTensor2::TENSOR_O, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_I, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_X, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13);
+        check_sample(&SamplesTensor2::TENSOR_Y, Mandel::General, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_Z, Mandel::General, 1e-15, 1e-15, 1e-14, 1e-14, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_U, Mandel::General, 1e-13, 1e-15, 1e-14, 1e-14, 1e-13);
+        check_sample(&SamplesTensor2::TENSOR_S, Mandel::General, 1e-13, 1e-15, 1e-14, 1e-15, 1e-13);
+        check_sample(&SamplesTensor2::TENSOR_R, Mandel::General, 1e-13, 1e-15, 1e-13, 1e-13, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_T, Mandel::General, 1e-13, 1e-15, 1e-15, 1e-14, 1e-15);
         //                                                         norm   trace  det dev_norm dev_det
-        check_sample(&SamplesTensor2::TENSOR_O, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15, verb);
-        check_sample(&SamplesTensor2::TENSOR_I, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15, verb);
-        check_sample(&SamplesTensor2::TENSOR_X, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13, verb);
-        check_sample(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15, verb);
-        check_sample(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14, verb);
-        check_sample(&SamplesTensor2::TENSOR_U, Mandel::Symmetric, 1e-13, 1e-15, 1e-14, 1e-14, 1e-13, verb);
-        check_sample(&SamplesTensor2::TENSOR_S, Mandel::Symmetric, 1e-13, 1e-15, 1e-14, 1e-15, 1e-13, verb);
-
-        let verb = false;
+        check_sample(&SamplesTensor2::TENSOR_O, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_I, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_X, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13);
+        check_sample(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14);
+        check_sample(&SamplesTensor2::TENSOR_U, Mandel::Symmetric, 1e-13, 1e-15, 1e-14, 1e-14, 1e-13);
+        check_sample(&SamplesTensor2::TENSOR_S, Mandel::Symmetric, 1e-13, 1e-15, 1e-14, 1e-15, 1e-13);
         //                                                           norm   trace  det dev_norm dev_det
-        check_sample(&SamplesTensor2::TENSOR_O, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15, verb);
-        check_sample(&SamplesTensor2::TENSOR_I, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15, verb);
-        check_sample(&SamplesTensor2::TENSOR_X, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13, verb);
-        check_sample(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric2D, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15, verb);
-        check_sample(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14, verb);
+        check_sample(&SamplesTensor2::TENSOR_O, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_I, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_X, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13);
+        check_sample(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric2D, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14);
     }
 
     /// --- PRINCIPAL INVARIANTS -------------------------------------------------------------------------------------------
 
-    fn check_iis(
-        sample: &SampleTensor2,
-        mandel: Mandel,
-        tol_a: f64,
-        tol_b: f64,
-        tol_c: f64,
-        tol_d: f64,
-        verbose: bool,
-    ) {
+    fn check_iis(sample: &SampleTensor2, mandel: Mandel, tol_a: f64, tol_b: f64, tol_c: f64, tol_d: f64) {
         let tt = Tensor2::from_matrix(&sample.matrix, mandel).unwrap();
         let jj2 = -sample.deviator_second_invariant;
         let jj3 = sample.deviator_determinant;
-        if verbose {
-            println!("{}", sample.desc);
-            println!("    err(I1) = {:?}", f64::abs(tt.invariant_ii1() - sample.trace));
-            println!(
-                "    err(I2) = {:?}",
-                f64::abs(tt.invariant_ii2() - sample.second_invariant)
-            );
-            println!("    err(I3) = {:?}", f64::abs(tt.invariant_ii3() - sample.determinant));
-            println!("    err(J2) = {:?}", f64::abs(tt.invariant_jj2() - jj2));
-            println!("    err(J3) = {:?}", f64::abs(tt.invariant_jj3() - jj3));
-            if mandel == Mandel::Symmetric || mandel == Mandel::Symmetric2D {
-                let norm_s = tt.deviator_norm();
-                println!("    err(J2 - ½‖s‖²) = {:?}", f64::abs(jj2 - norm_s * norm_s / 2.0));
-            }
-        }
+        // println!("{}", sample.desc);
+        // println!("    err(I1) = {:?}", f64::abs(tt.invariant_ii1() - sample.trace));
+        // println!(
+        //     "    err(I2) = {:?}",
+        //     f64::abs(tt.invariant_ii2() - sample.second_invariant)
+        // );
+        // println!("    err(I3) = {:?}", f64::abs(tt.invariant_ii3() - sample.determinant));
+        // println!("    err(J2) = {:?}", f64::abs(tt.invariant_jj2() - jj2));
+        // println!("    err(J3) = {:?}", f64::abs(tt.invariant_jj3() - jj3));
+        // if mandel == Mandel::Symmetric || mandel == Mandel::Symmetric2D {
+        //     let norm_s = tt.deviator_norm();
+        //     println!("    err(J2 - ½‖s‖²) = {:?}", f64::abs(jj2 - norm_s * norm_s / 2.0));
+        // }
         approx_eq(tt.invariant_ii1(), sample.trace, tol_a);
         approx_eq(tt.invariant_ii2(), sample.second_invariant, tol_b);
         approx_eq(tt.invariant_ii3(), sample.determinant, tol_b);
@@ -3150,32 +3123,29 @@ mod tests {
     #[test]
     #[rustfmt::skip]
     fn principal_invariants_are_correct() {
-        let verb = false;
-        check_iis(&SamplesTensor2::TENSOR_O, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, verb);
-        check_iis(&SamplesTensor2::TENSOR_I, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, verb);
-        check_iis(&SamplesTensor2::TENSOR_X, Mandel::General, 1e-15, 1e-15, 1e-13, 1e-13, verb);
-        check_iis(&SamplesTensor2::TENSOR_Y, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, verb);
-        check_iis(&SamplesTensor2::TENSOR_Z, Mandel::General, 1e-15, 1e-14, 1e-15, 1e-15, verb);
-        check_iis(&SamplesTensor2::TENSOR_U, Mandel::General, 1e-15, 1e-14, 1e-13, 1e-13, verb);
-        check_iis(&SamplesTensor2::TENSOR_S, Mandel::General, 1e-15, 1e-14, 1e-13, 1e-13, verb);
-        check_iis(&SamplesTensor2::TENSOR_R, Mandel::General, 1e-15, 1e-13, 1e-15, 1e-15, verb);
-        check_iis(&SamplesTensor2::TENSOR_T, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, verb);
+        check_iis(&SamplesTensor2::TENSOR_O, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_I, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_X, Mandel::General, 1e-15, 1e-15, 1e-13, 1e-13);
+        check_iis(&SamplesTensor2::TENSOR_Y, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_Z, Mandel::General, 1e-15, 1e-14, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_U, Mandel::General, 1e-15, 1e-14, 1e-13, 1e-13);
+        check_iis(&SamplesTensor2::TENSOR_S, Mandel::General, 1e-15, 1e-14, 1e-13, 1e-13);
+        check_iis(&SamplesTensor2::TENSOR_R, Mandel::General, 1e-15, 1e-13, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_T, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15);
 
-        let verb = false;
-        check_iis(&SamplesTensor2::TENSOR_O, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, verb);
-        check_iis(&SamplesTensor2::TENSOR_I, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, verb);
-        check_iis(&SamplesTensor2::TENSOR_X, Mandel::Symmetric, 1e-15, 1e-15, 1e-13, 1e-15, verb);
-        check_iis(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric, 1e-13, 1e-15, 1e-15, 1e-15, verb);
-        check_iis(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric, 1e-15, 1e-14, 1e-14, 1e-15, verb);
-        check_iis(&SamplesTensor2::TENSOR_U, Mandel::Symmetric, 1e-15, 1e-14, 1e-13, 1e-13, verb);
-        check_iis(&SamplesTensor2::TENSOR_S, Mandel::Symmetric, 1e-15, 1e-14, 1e-13, 1e-14, verb);
+        check_iis(&SamplesTensor2::TENSOR_O, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_I, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_X, Mandel::Symmetric, 1e-15, 1e-15, 1e-13, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric, 1e-13, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric, 1e-15, 1e-14, 1e-14, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_U, Mandel::Symmetric, 1e-15, 1e-14, 1e-13, 1e-13);
+        check_iis(&SamplesTensor2::TENSOR_S, Mandel::Symmetric, 1e-15, 1e-14, 1e-13, 1e-14);
 
-        let verb = false;
-        check_iis(&SamplesTensor2::TENSOR_O, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, verb);
-        check_iis(&SamplesTensor2::TENSOR_I, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, verb);
-        check_iis(&SamplesTensor2::TENSOR_X, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-13, 1e-15, verb);
-        check_iis(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, verb);
-        check_iis(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric2D, 1e-15, 1e-14, 1e-15, 1e-15, verb);
+        check_iis(&SamplesTensor2::TENSOR_O, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_I, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_X, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-13, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric2D, 1e-15, 1e-14, 1e-15, 1e-15);
     }
 
     /// --- OCTAHEDRAL INVARIANTS ------------------------------------------------------------------------------------------
@@ -3185,19 +3155,11 @@ mod tests {
     }
 
     fn check_lode(l: Option<f64>, correct: f64, tol: f64, must_be_none: bool) {
-        match l {
-            Some(ll) => {
-                if must_be_none {
-                    panic!("Lode invariant must be None");
-                } else {
-                    approx_eq(ll, correct, tol);
-                }
-            }
-            None => {
-                if !must_be_none {
-                    panic!("Lode invariant must not be None");
-                }
-            }
+        if must_be_none {
+            assert!(l.is_none());
+        } else {
+            let lode = l.unwrap();
+            approx_eq(lode, correct, tol);
         }
     }
 

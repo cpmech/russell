@@ -1,5 +1,7 @@
+use serde::{Deserialize, Serialize};
+
 /// Specifies the Mandel representation
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Mandel {
     /// General representation of a 3×3 Tensor2 as a 9D vector
     ///

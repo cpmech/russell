@@ -802,7 +802,7 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn add(&mut self, alpha: f64, other: &Tensor2) -> Result<(), StrError> {
+    pub fn update(&mut self, alpha: f64, other: &Tensor2) -> Result<(), StrError> {
         let dim = self.vec.dim();
         if other.vec.dim() != dim {
             return Err("tensors are incompatible");
@@ -2343,7 +2343,7 @@ mod tests {
         let mut a = Tensor2::new(Mandel::General);
         let b = Tensor2::new(Mandel::Symmetric);
         assert_eq!(a.mirror(&b).err(), Some("tensors are incompatible"));
-        assert_eq!(a.add(1.0, &b).err(), Some("tensors are incompatible"));
+        assert_eq!(a.update(1.0, &b).err(), Some("tensors are incompatible"));
     }
 
     #[test]
@@ -2363,7 +2363,7 @@ mod tests {
         )
         .unwrap();
         a.mirror(&b).unwrap();
-        a.add(10.0, &c).unwrap();
+        a.update(10.0, &c).unwrap();
         let out = a.to_matrix();
         assert_eq!(
             format!("{:.1}", out),
@@ -2389,7 +2389,7 @@ mod tests {
         )
         .unwrap();
         a.mirror(&b).unwrap();
-        a.add(10.0, &c).unwrap();
+        a.update(10.0, &c).unwrap();
         let out = a.to_matrix();
         assert_eq!(
             format!("{:.1}", out),
@@ -2415,7 +2415,7 @@ mod tests {
         )
         .unwrap();
         a.mirror(&b).unwrap();
-        a.add(10.0, &c).unwrap();
+        a.update(10.0, &c).unwrap();
         let out = a.to_matrix();
         assert_eq!(
             format!("{:.1}", out),

@@ -625,7 +625,7 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn add(&mut self, alpha: f64, other: &Tensor4) -> Result<(), StrError> {
+    pub fn update(&mut self, alpha: f64, other: &Tensor4) -> Result<(), StrError> {
         if other.mandel() != self.mandel() {
             return Err("tensors are incompatible");
         }
@@ -1378,7 +1378,7 @@ mod tests {
     fn update_works() {
         let mut dd = Tensor4::new(Mandel::Symmetric2D);
         let ee = Tensor4::from_array(&SamplesTensor4::SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
-        dd.add(2.0, &ee).unwrap();
+        dd.update(2.0, &ee).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {

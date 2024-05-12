@@ -169,6 +169,11 @@ impl Tensor4 {
         self.mandel
     }
 
+    /// Returns an access to the underlying Mandel matrix
+    pub fn matrix(&self) -> &Matrix {
+        &self.mat
+    }
+
     /// Creates a new Tensor4 constructed from a nested array
     ///
     /// # Input
@@ -1311,33 +1316,33 @@ mod tests {
     use russell_lab::{approx_eq, mat_approx_eq};
 
     #[test]
-    fn new_and_mandel_work() {
+    fn new_and_getters_work() {
         // general
         let dd = Tensor4::new(Mandel::General);
-        assert_eq!(dd.mat.as_data().len(), 81);
+        assert_eq!(dd.matrix().as_data().len(), 81);
         assert_eq!(dd.mandel(), Mandel::General);
 
         // symmetric
         let dd = Tensor4::new(Mandel::Symmetric);
-        assert_eq!(dd.mat.as_data().len(), 36);
         assert_eq!(dd.mandel(), Mandel::Symmetric);
+        assert_eq!(dd.matrix().as_data().len(), 36);
         let dd = Tensor4::new_sym(false);
-        assert_eq!(dd.mat.as_data().len(), 36);
         assert_eq!(dd.mandel(), Mandel::Symmetric);
+        assert_eq!(dd.matrix().as_data().len(), 36);
         let dd = Tensor4::new_sym_ndim(3);
-        assert_eq!(dd.mat.as_data().len(), 36);
         assert_eq!(dd.mandel(), Mandel::Symmetric);
+        assert_eq!(dd.matrix().as_data().len(), 36);
 
         // symmetric 2d
         let dd = Tensor4::new(Mandel::Symmetric2D);
-        assert_eq!(dd.mat.as_data().len(), 16);
         assert_eq!(dd.mandel(), Mandel::Symmetric2D);
+        assert_eq!(dd.matrix().as_data().len(), 16);
         let dd = Tensor4::new_sym(true);
-        assert_eq!(dd.mat.as_data().len(), 16);
         assert_eq!(dd.mandel(), Mandel::Symmetric2D);
+        assert_eq!(dd.matrix().as_data().len(), 16);
         let dd = Tensor4::new_sym_ndim(2);
-        assert_eq!(dd.mat.as_data().len(), 16);
         assert_eq!(dd.mandel(), Mandel::Symmetric2D);
+        assert_eq!(dd.matrix().as_data().len(), 16);
     }
 
     #[test]

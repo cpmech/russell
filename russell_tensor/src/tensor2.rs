@@ -76,13 +76,13 @@ impl Tensor2 {
     ///
     /// fn main() {
     ///     let a = Tensor2::new(Mandel::General);
-    ///     assert_eq!(a.vec.as_data(), &[0.0,0.0,0.0,  0.0,0.0,0.0,  0.0,0.0,0.0]);
+    ///     assert_eq!(a.vector().as_data(), &[0.0,0.0,0.0,  0.0,0.0,0.0,  0.0,0.0,0.0]);
     ///
     ///     let b = Tensor2::new(Mandel::Symmetric);
-    ///     assert_eq!(b.vec.as_data(), &[0.0,0.0,0.0,  0.0,0.0,0.0]);
+    ///     assert_eq!(b.vector().as_data(), &[0.0,0.0,0.0,  0.0,0.0,0.0]);
     ///
     ///     let c = Tensor2::new(Mandel::Symmetric2D);
-    ///     assert_eq!(c.vec.as_data(), &[0.0,0.0,0.0,  0.0]);
+    ///     assert_eq!(c.vector().as_data(), &[0.0,0.0,0.0,  0.0]);
     /// }
     /// ```
     pub fn new(mandel: Mandel) -> Self {
@@ -160,6 +160,11 @@ impl Tensor2 {
         self.mandel
     }
 
+    /// Returns an access to the underlying Mandel vector
+    pub fn vector(&self) -> &Vector {
+        &self.vec
+    }
+
     /// Sets the Tensor2 with standard components given in matrix form
     ///
     /// # Input
@@ -187,7 +192,7 @@ impl Tensor2 {
     ///         [SQRT_2 * 7.0, SQRT_2 * 8.0, 9.0],
     ///     ])?;
     ///     assert_eq!(
-    ///         format!("{:.1}", a.vec),
+    ///         format!("{:.1}", a.vector()),
     ///         "┌      ┐\n\
     ///          │  1.0 │\n\
     ///          │  5.0 │\n\
@@ -209,7 +214,7 @@ impl Tensor2 {
     ///             [6.0 / SQRT_2, 5.0 / SQRT_2, 3.0],
     ///     ])?;
     ///     assert_eq!(
-    ///         format!("{:.1}", b.vec),
+    ///         format!("{:.1}", b.vector()),
     ///         "┌     ┐\n\
     ///          │ 1.0 │\n\
     ///          │ 2.0 │\n\
@@ -228,7 +233,7 @@ impl Tensor2 {
     ///             [       0.0,        0.0, 3.0],
     ///     ])?;
     ///     assert_eq!(
-    ///         format!("{:.1}", c.vec),
+    ///         format!("{:.1}", c.vector()),
     ///         "┌     ┐\n\
     ///          │ 1.0 │\n\
     ///          │ 2.0 │\n\
@@ -299,7 +304,7 @@ impl Tensor2 {
     ///         Mandel::General,
     ///     )?;
     ///     assert_eq!(
-    ///         format!("{:.1}", a.vec),
+    ///         format!("{:.1}", a.vector()),
     ///         "┌      ┐\n\
     ///          │  1.0 │\n\
     ///          │  5.0 │\n\
@@ -323,7 +328,7 @@ impl Tensor2 {
     ///         Mandel::Symmetric,
     ///     )?;
     ///     assert_eq!(
-    ///         format!("{:.1}", b.vec),
+    ///         format!("{:.1}", b.vector()),
     ///         "┌     ┐\n\
     ///          │ 1.0 │\n\
     ///          │ 2.0 │\n\
@@ -344,7 +349,7 @@ impl Tensor2 {
     ///         Mandel::Symmetric2D,
     ///     )?;
     ///     assert_eq!(
-    ///         format!("{:.1}", c.vec),
+    ///         format!("{:.1}", c.vector()),
     ///         "┌     ┐\n\
     ///          │ 1.0 │\n\
     ///          │ 2.0 │\n\
@@ -371,7 +376,7 @@ impl Tensor2 {
     /// let ii = Tensor2::identity(Mandel::General);
     ///
     /// assert_eq!(
-    ///     format!("{}", ii.vec),
+    ///     format!("{}", ii.vector()),
     ///     "┌   ┐\n\
     ///      │ 1 │\n\
     ///      │ 1 │\n\
@@ -607,7 +612,7 @@ impl Tensor2 {
     ///         [0.0,        0.0,        4.0],
     ///     ], Mandel::Symmetric2D)?;
     ///     assert_eq!(
-    ///         format!("{:.2}", tt.vec),
+    ///         format!("{:.2}", tt.vector()),
     ///         "┌      ┐\n\
     ///          │ 1.00 │\n\
     ///          │ 3.00 │\n\
@@ -618,7 +623,7 @@ impl Tensor2 {
     ///
     ///     let tt_gen = tt.as_general();
     ///     assert_eq!(
-    ///         format!("{:.2}", tt_gen.vec),
+    ///         format!("{:.2}", tt_gen.vector()),
     ///         "┌      ┐\n\
     ///          │ 1.00 │\n\
     ///          │ 3.00 │\n\
@@ -675,7 +680,7 @@ impl Tensor2 {
     ///         [0.0,        0.0,        4.0],
     ///     ], Mandel::Symmetric2D)?;
     ///     assert_eq!(
-    ///         format!("{:.2}", tt.vec),
+    ///         format!("{:.2}", tt.vector()),
     ///         "┌      ┐\n\
     ///          │ 1.00 │\n\
     ///          │ 3.00 │\n\
@@ -686,7 +691,7 @@ impl Tensor2 {
     ///
     ///     let tt_sym = tt.sym2d_as_symmetric();
     ///     assert_eq!(
-    ///         format!("{:.2}", tt_sym.vec),
+    ///         format!("{:.2}", tt_sym.vector()),
     ///         "┌      ┐\n\
     ///          │ 1.00 │\n\
     ///          │ 3.00 │\n\
@@ -1027,7 +1032,7 @@ impl Tensor2 {
     ///         [1.2, 2.2, 3.2],
     ///         [1.3, 2.3, 3.3],
     ///     ], Mandel::General)?;
-    ///     vec_approx_eq(&at.vec, &at_correct.vec, 1e-15);
+    ///     vec_approx_eq(&at.vector(), &at_correct.vector(), 1e-15);
     ///     Ok(())
     /// }
     /// ```
@@ -1193,7 +1198,7 @@ impl Tensor2 {
     ///         [ 72.0, 123.0, 100.0],
     ///         [ 42.0,  70.0,  63.0],
     ///     ], Mandel::General)?;
-    ///     vec_approx_eq(&a2.vec, &a2_correct.vec, 1e-13);
+    ///     vec_approx_eq(&a2.vector(), &a2_correct.vec, 1e-13);
     ///
     ///     Ok(())
     /// }
@@ -1879,40 +1884,40 @@ mod tests {
     use russell_lab::{approx_eq, mat_approx_eq, mat_mat_mul, math::PI, vec_approx_eq, Matrix};
 
     #[test]
-    fn new_and_mandel_work() {
+    fn new_and_getters_work() {
         // general
         let tt = Tensor2::new(Mandel::General);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-        assert_eq!(tt.vec.as_data(), correct);
         assert_eq!(tt.mandel(), Mandel::General);
+        assert_eq!(tt.vector().as_data(), correct);
 
         // symmetric 3D
         let tt = Tensor2::new(Mandel::Symmetric);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-        assert_eq!(tt.vec.as_data(), correct);
         assert_eq!(tt.mandel(), Mandel::Symmetric);
+        assert_eq!(tt.vector().as_data(), correct);
 
         let tt = Tensor2::new_sym(false);
-        assert_eq!(tt.vec.as_data(), correct);
         assert_eq!(tt.mandel(), Mandel::Symmetric);
+        assert_eq!(tt.vector().as_data(), correct);
 
         let tt = Tensor2::new_sym_ndim(3);
-        assert_eq!(tt.vec.as_data(), correct);
         assert_eq!(tt.mandel(), Mandel::Symmetric);
+        assert_eq!(tt.vector().as_data(), correct);
 
         // symmetric 2D
         let tt = Tensor2::new(Mandel::Symmetric2D);
         let correct = &[0.0, 0.0, 0.0, 0.0];
-        assert_eq!(tt.vec.as_data(), correct);
         assert_eq!(tt.mandel(), Mandel::Symmetric2D);
+        assert_eq!(tt.vector().as_data(), correct);
 
         let tt = Tensor2::new_sym(true);
-        assert_eq!(tt.vec.as_data(), correct);
         assert_eq!(tt.mandel(), Mandel::Symmetric2D);
+        assert_eq!(tt.vector().as_data(), correct);
 
         let tt = Tensor2::new_sym_ndim(2);
-        assert_eq!(tt.vec.as_data(), correct);
         assert_eq!(tt.mandel(), Mandel::Symmetric2D);
+        assert_eq!(tt.vector().as_data(), correct);
     }
 
     #[test]

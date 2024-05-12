@@ -316,7 +316,7 @@ impl Tensor4 {
         Ok(Tensor4 { mat, mandel })
     }
 
-    /// Creates a new Tensor4 constructed from a matrix with standard components
+    /// Creates a new Tensor4 constructed from a 9x9 matrix with standard components
     ///
     /// # Input
     ///
@@ -327,7 +327,7 @@ impl Tensor4 {
     ///
     /// # Panics
     ///
-    /// This function panics if the input matrix is not (9 x 9)
+    /// A panic will occur if the matrix is not 9x9.
     ///
     /// # Examples
     ///
@@ -589,6 +589,10 @@ impl Tensor4 {
     /// self += α other
     /// ```
     ///
+    /// # Panics
+    ///
+    /// A panic will occur if the tensors have different [Mandel].
+    ///
     /// # Examples
     ///
     /// ```
@@ -606,7 +610,7 @@ impl Tensor4 {
     ///
     ///     let mut dd = Tensor4::new(Mandel::General);
     ///     let ee = Tensor4::from_matrix(&inp, Mandel::General)?;
-    ///     dd.update(2.0, &ee)?;
+    ///     dd.update(2.0, &ee);
     ///
     ///     assert_eq!(
     ///         format!("{:.0}", dd.to_matrix()),
@@ -625,12 +629,9 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn update(&mut self, alpha: f64, other: &Tensor4) -> Result<(), StrError> {
-        if other.mandel() != self.mandel() {
-            return Err("tensors are incompatible");
-        }
+    pub fn update(&mut self, alpha: f64, other: &Tensor4) {
+        assert_eq!(other.mandel, self.mandel);
         mat_update(&mut self.mat, alpha, &other.mat).unwrap();
-        Ok(())
     }
 
     /// Returns a 3x3x3x3 array with the standard components
@@ -776,7 +777,7 @@ impl Tensor4 {
     ///
     /// # Input
     ///
-    /// * `mat` -- The resulting 9x9 matrix.
+    /// * `mat` -- the resulting 9x9 matrix
     ///
     /// # Panics
     ///
@@ -828,10 +829,15 @@ impl Tensor4 {
 
     /// Sets the (i,j,k,l) component of a minor-symmetric Tensor4
     ///
+    /// # Notes
+    ///
+    /// 1. The tensor must be symmetric and (i,j) must correspond to the possible
+    ///    combination due to the space dimension, otherwise a panic may occur.
+    ///
     /// # Panics
     ///
-    /// The tensor must be symmetric and (i,j) must correspond to the possible
-    /// combination due to the space dimension, otherwise a panic may occur.
+    /// 1. A panic will occur if the tensor is [Mandel::General]
+    /// 2. A panic will occur if the indices are out of range
     ///
     /// # Examples
     ///
@@ -864,6 +870,7 @@ impl Tensor4 {
     /// }
     /// ```
     pub fn sym_set(&mut self, i: usize, j: usize, k: usize, l: usize, value: f64) {
+        assert!(self.mandel != Mandel::General);
         let (m, n) = IJKL_TO_MN_SYM[i][j][k][l];
         if m < 3 && n < 3 {
             self.mat.set(m, n, value);
@@ -875,6 +882,14 @@ impl Tensor4 {
     }
 
     /// Sets this tensor equal to another one
+    ///
+    /// ```text
+    /// self := other
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if the tensors have different [Mandel].
     ///
     /// # Examples
     ///
@@ -902,8 +917,9 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn mirror(&mut self, other: &Tensor4) -> Result<(), StrError> {
-        mat_copy(&mut self.mat, &other.mat)
+    pub fn mirror(&mut self, other: &Tensor4) {
+        assert_eq!(other.mandel, self.mandel);
+        mat_copy(&mut self.mat, &other.mat).unwrap();
     }
 
     /// Returns the fourth-order identity tensor (II)
@@ -1465,10 +1481,18 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn update_panics_on_incorrect_input() {
+        let mut dd = Tensor4::new(Mandel::Symmetric2D);
+        let ee = Tensor4::new(Mandel::Symmetric);
+        dd.update(2.0, &ee);
+    }
+
+    #[test]
     fn update_works() {
         let mut dd = Tensor4::new(Mandel::Symmetric2D);
         let ee = Tensor4::from_array(&SamplesTensor4::SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
-        dd.update(2.0, &ee).unwrap();
+        dd.update(2.0, &ee);
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -1682,6 +1706,20 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "self.mandel != Mandel::General")]
+    fn sym_set_panics_on_non_sym() {
+        let mut dd = Tensor4::new(Mandel::General);
+        dd.sym_set(0, 0, 0, 0, 1.0);
+    }
+
+    #[test]
+    #[should_panic(expected = "the len is 3 but the index is 3")]
+    fn sym_set_panics_on_incorrect_indices() {
+        let mut dd = Tensor4::new(Mandel::Symmetric2D);
+        dd.sym_set(0, 0, 0, 3, 5.0);
+    }
+
+    #[test]
     fn sym_set_works() {
         let dd = generate_dd();
         assert_eq!(
@@ -1701,10 +1739,11 @@ mod tests {
     }
 
     #[test]
-    fn mirror_captures_errors() {
+    #[should_panic]
+    fn mirror_panics_on_incorrect_input() {
         let dd = Tensor4::new(Mandel::Symmetric);
         let mut ee = Tensor4::new(Mandel::General);
-        assert_eq!(ee.mirror(&dd).err(), Some("matrices are incompatible"));
+        ee.mirror(&dd);
     }
 
     #[test]
@@ -1725,7 +1764,7 @@ mod tests {
         )
         .unwrap();
         let mut ee = Tensor4::new(Mandel::General);
-        ee.mirror(&dd).unwrap();
+        ee.mirror(&dd);
         mat_approx_eq(&dd.mat, &ee.mat, 1e-15);
     }
 

@@ -653,6 +653,62 @@ impl Tensor2 {
         res
     }
 
+    /// Returns a Symmetric tensor from a Symmetric2D tensor
+    ///
+    /// # Output
+    ///
+    /// Returns a [Mandel::Symmetric] tensor if this tensor is [Mandel::Symmetric2D].
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if this tensor is not [Mandel::Symmetric2D].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_tensor::{Mandel, Tensor2, StrError, SQRT_2};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let tt = Tensor2::from_matrix(&[
+    ///         [1.0,        2.0/SQRT_2, 0.0],
+    ///         [2.0/SQRT_2, 3.0,        0.0],
+    ///         [0.0,        0.0,        4.0],
+    ///     ], Mandel::Symmetric2D)?;
+    ///     assert_eq!(
+    ///         format!("{:.2}", tt.vec),
+    ///         "┌      ┐\n\
+    ///          │ 1.00 │\n\
+    ///          │ 3.00 │\n\
+    ///          │ 4.00 │\n\
+    ///          │ 2.00 │\n\
+    ///          └      ┘"
+    ///     );
+    ///
+    ///     let tt_sym = tt.sym2d_as_symmetric();
+    ///     assert_eq!(
+    ///         format!("{:.2}", tt_sym.vec),
+    ///         "┌      ┐\n\
+    ///          │ 1.00 │\n\
+    ///          │ 3.00 │\n\
+    ///          │ 4.00 │\n\
+    ///          │ 2.00 │\n\
+    ///          │ 0.00 │\n\
+    ///          │ 0.00 │\n\
+    ///          └      ┘"
+    ///     );
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn sym2d_as_symmetric(&self) -> Tensor2 {
+        assert_eq!(self.mandel, Mandel::Symmetric2D);
+        let mut res = Tensor2::new(Mandel::Symmetric);
+        res.vec[0] = self.vec[0];
+        res.vec[1] = self.vec[1];
+        res.vec[2] = self.vec[2];
+        res.vec[3] = self.vec[3];
+        res
+    }
+
     /// Set all values to zero
     pub fn clear(&mut self) {
         self.vec.fill(0.0);
@@ -2345,6 +2401,43 @@ mod tests {
                 approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
             }
         }
+    }
+
+    #[test]
+    #[should_panic]
+    fn sym2d_as_symmetric_panics_on_non_sym2d() {
+        let tt = Tensor2::new(Mandel::Symmetric);
+        tt.sym2d_as_symmetric();
+    }
+
+    #[test]
+    fn sym2d_as_symmetric_works() {
+        let tt = Tensor2::from_matrix(
+            &[[1.0, 2.0 / SQRT_2, 0.0], [2.0 / SQRT_2, 3.0, 0.0], [0.0, 0.0, 4.0]],
+            Mandel::Symmetric2D,
+        )
+        .unwrap();
+        let tt_sym = tt.sym2d_as_symmetric();
+        assert_eq!(
+            format!("{:.2}", tt.vec),
+            "┌      ┐\n\
+             │ 1.00 │\n\
+             │ 3.00 │\n\
+             │ 4.00 │\n\
+             │ 2.00 │\n\
+             └      ┘"
+        );
+        assert_eq!(
+            format!("{:.2}", tt_sym.vec),
+            "┌      ┐\n\
+             │ 1.00 │\n\
+             │ 3.00 │\n\
+             │ 4.00 │\n\
+             │ 2.00 │\n\
+             │ 0.00 │\n\
+             │ 0.00 │\n\
+             └      ┘"
+        );
     }
 
     #[test]

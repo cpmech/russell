@@ -116,6 +116,9 @@ pub struct Tensor4 {
     /// * Minor-symmetric in 3D: `(nrow,ncol) = (6,6)`
     /// * Minor-symmetric in 2D: `(nrow,ncol) = (4,4)`
     pub mat: Matrix,
+
+    /// Holds the Mandel enum
+    mandel: Mandel,
 }
 
 impl Tensor4 {
@@ -145,6 +148,7 @@ impl Tensor4 {
         let dim = mandel.dim();
         Tensor4 {
             mat: Matrix::new(dim, dim),
+            mandel,
         }
     }
 
@@ -169,9 +173,8 @@ impl Tensor4 {
     }
 
     /// Returns the Mandel representation associated with this Tensor4
-    #[inline]
     pub fn mandel(&self) -> Mandel {
-        Mandel::new(self.mat.nrow())
+        self.mandel
     }
 
     /// Creates a new Tensor4 constructed from a nested array
@@ -310,7 +313,7 @@ impl Tensor4 {
                 }
             }
         }
-        Ok(Tensor4 { mat })
+        Ok(Tensor4 { mat, mandel })
     }
 
     /// Creates a new Tensor4 constructed from a matrix with standard components
@@ -454,7 +457,7 @@ impl Tensor4 {
                 }
             }
         }
-        Ok(Tensor4 { mat })
+        Ok(Tensor4 { mat, mandel })
     }
 
     /// Returns the (i,j,k,l) component (standard; not Mandel)
@@ -622,7 +625,7 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn update(&mut self, alpha: f64, other: &Tensor4) -> Result<(), StrError> {
+    pub fn add(&mut self, alpha: f64, other: &Tensor4) -> Result<(), StrError> {
         if other.mandel() != self.mandel() {
             return Err("tensors are incompatible");
         }
@@ -841,6 +844,7 @@ impl Tensor4 {
         Tensor4 {
             //                       1    2    3    4    5    6    7    8    9
             mat: Matrix::diagonal(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]),
+            mandel: Mandel::General,
         }
     }
 
@@ -870,7 +874,10 @@ impl Tensor4 {
     ///        └                        ┘
     /// ```
     pub fn constant_tt() -> Self {
-        let mut tt = Tensor4 { mat: Matrix::new(9, 9) };
+        let mut tt = Tensor4 {
+            mat: Matrix::new(9, 9),
+            mandel: Mandel::General,
+        };
         tt.mat.set(0, 0, 1.0);
         tt.mat.set(1, 1, 1.0);
         tt.mat.set(2, 2, 1.0);
@@ -908,8 +915,15 @@ impl Tensor4 {
     ///        └                     ┘
     /// ```
     pub fn constant_jj(reduced_6x6: bool) -> Self {
-        let n = if reduced_6x6 { 6 } else { 9 };
-        let mut jj = Tensor4 { mat: Matrix::new(n, n) };
+        let (n, mandel) = if reduced_6x6 {
+            (6, Mandel::Symmetric)
+        } else {
+            (9, Mandel::General)
+        };
+        let mut jj = Tensor4 {
+            mat: Matrix::new(n, n),
+            mandel,
+        };
         jj.mat.set(0, 0, 1.0);
         jj.mat.set(0, 1, 1.0);
         jj.mat.set(0, 2, 1.0);
@@ -947,8 +961,15 @@ impl Tensor4 {
     ///          └                     ┘
     /// ```
     pub fn constant_pp_iso(reduced_6x6: bool) -> Self {
-        let n = if reduced_6x6 { 6 } else { 9 };
-        let mut pp_iso = Tensor4 { mat: Matrix::new(n, n) };
+        let (n, mandel) = if reduced_6x6 {
+            (6, Mandel::Symmetric)
+        } else {
+            (9, Mandel::General)
+        };
+        let mut pp_iso = Tensor4 {
+            mat: Matrix::new(n, n),
+            mandel,
+        };
         pp_iso.mat.set(0, 0, ONE_BY_3);
         pp_iso.mat.set(0, 1, ONE_BY_3);
         pp_iso.mat.set(0, 2, ONE_BY_3);
@@ -987,8 +1008,15 @@ impl Tensor4 {
     ///          └                     ┘
     /// ```
     pub fn constant_pp_sym(reduced_6x6: bool) -> Self {
-        let n = if reduced_6x6 { 6 } else { 9 };
-        let mut pp_sym = Tensor4 { mat: Matrix::new(n, n) };
+        let (n, mandel) = if reduced_6x6 {
+            (6, Mandel::Symmetric)
+        } else {
+            (9, Mandel::General)
+        };
+        let mut pp_sym = Tensor4 {
+            mat: Matrix::new(n, n),
+            mandel,
+        };
         pp_sym.mat.set(0, 0, 1.0);
         pp_sym.mat.set(1, 1, 1.0);
         pp_sym.mat.set(2, 2, 1.0);
@@ -1024,7 +1052,10 @@ impl Tensor4 {
     ///           └                     ┘
     /// ```
     pub fn constant_pp_skew() -> Self {
-        let mut pp_skew = Tensor4 { mat: Matrix::new(9, 9) };
+        let mut pp_skew = Tensor4 {
+            mat: Matrix::new(9, 9),
+            mandel: Mandel::General,
+        };
         pp_skew.mat.set(6, 6, 1.0);
         pp_skew.mat.set(7, 7, 1.0);
         pp_skew.mat.set(8, 8, 1.0);
@@ -1056,7 +1087,10 @@ impl Tensor4 {
     ///          └                        ┘
     /// ```
     pub fn constant_pp_dev() -> Self {
-        let mut pp_dev = Tensor4 { mat: Matrix::new(9, 9) };
+        let mut pp_dev = Tensor4 {
+            mat: Matrix::new(9, 9),
+            mandel: Mandel::General,
+        };
         pp_dev.mat.set(0, 0, TWO_BY_3);
         pp_dev.mat.set(0, 1, -ONE_BY_3);
         pp_dev.mat.set(0, 2, -ONE_BY_3);
@@ -1101,8 +1135,15 @@ impl Tensor4 {
     ///             └                        ┘
     /// ```
     pub fn constant_pp_symdev(reduced_6x6: bool) -> Self {
-        let n = if reduced_6x6 { 6 } else { 9 };
-        let mut pp_symdev = Tensor4 { mat: Matrix::new(n, n) };
+        let (n, mandel) = if reduced_6x6 {
+            (6, Mandel::Symmetric)
+        } else {
+            (9, Mandel::General)
+        };
+        let mut pp_symdev = Tensor4 {
+            mat: Matrix::new(n, n),
+            mandel,
+        };
         pp_symdev.mat.set(0, 0, TWO_BY_3);
         pp_symdev.mat.set(0, 1, -ONE_BY_3);
         pp_symdev.mat.set(0, 2, -ONE_BY_3);
@@ -1337,7 +1378,7 @@ mod tests {
     fn update_works() {
         let mut dd = Tensor4::new(Mandel::Symmetric2D);
         let ee = Tensor4::from_array(&SamplesTensor4::SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
-        dd.update(2.0, &ee).unwrap();
+        dd.add(2.0, &ee).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -1663,6 +1704,7 @@ mod tests {
     fn constant_ii_works() {
         let ii = Tensor4::constant_ii();
         assert_eq!(ii.mat.dims(), (9, 9));
+        assert_eq!(ii.mandel, Mandel::General);
         for i in 0..9 {
             for j in 0..9 {
                 assert_eq!(ii.mat.get(i, j), IDENTITY4[i][j]);
@@ -1673,6 +1715,8 @@ mod tests {
     #[test]
     fn constant_tt_works() {
         let tt = Tensor4::constant_tt();
+        assert_eq!(tt.mat.dims(), (9, 9));
+        assert_eq!(tt.mandel, Mandel::General);
         for i in 0..9 {
             for j in 0..9 {
                 assert_eq!(tt.mat.get(i, j), TRANSPOSITION[i][j]);
@@ -1683,6 +1727,8 @@ mod tests {
     #[test]
     fn constant_jj_works() {
         let jj = Tensor4::constant_jj(false);
+        assert_eq!(jj.mat.dims(), (9, 9));
+        assert_eq!(jj.mandel, Mandel::General);
         for i in 0..9 {
             for j in 0..9 {
                 assert_eq!(jj.mat.get(i, j), TRACE_PROJECTION[i][j]);
@@ -1699,12 +1745,16 @@ mod tests {
     #[test]
     fn constant_pp_iso_works() {
         let pp_iso = Tensor4::constant_pp_iso(false);
+        assert_eq!(pp_iso.mat.dims(), (9, 9));
+        assert_eq!(pp_iso.mandel, Mandel::General);
         for i in 0..9 {
             for j in 0..9 {
                 assert_eq!(pp_iso.mat.get(i, j), P_ISO[i][j]);
             }
         }
         let pp_iso = Tensor4::constant_pp_iso(true);
+        assert_eq!(pp_iso.mat.dims(), (6, 6));
+        assert_eq!(pp_iso.mandel, Mandel::Symmetric);
         for i in 0..6 {
             for j in 0..6 {
                 assert_eq!(pp_iso.mat.get(i, j), P_ISO[i][j]);
@@ -1715,12 +1765,16 @@ mod tests {
     #[test]
     fn constant_pp_sym_works() {
         let pp_sym = Tensor4::constant_pp_sym(false);
+        assert_eq!(pp_sym.mat.dims(), (9, 9));
+        assert_eq!(pp_sym.mandel, Mandel::General);
         for i in 0..9 {
             for j in 0..9 {
                 assert_eq!(pp_sym.mat.get(i, j), P_SYM[i][j]);
             }
         }
         let pp_sym = Tensor4::constant_pp_sym(true);
+        assert_eq!(pp_sym.mat.dims(), (6, 6));
+        assert_eq!(pp_sym.mandel, Mandel::Symmetric);
         for i in 0..6 {
             for j in 0..6 {
                 assert_eq!(pp_sym.mat.get(i, j), P_SYM[i][j]);
@@ -1731,6 +1785,8 @@ mod tests {
     #[test]
     fn constant_pp_skew_works() {
         let pp_skew = Tensor4::constant_pp_skew();
+        assert_eq!(pp_skew.mat.dims(), (9, 9));
+        assert_eq!(pp_skew.mandel, Mandel::General);
         for i in 0..9 {
             for j in 0..9 {
                 assert_eq!(pp_skew.mat.get(i, j), P_SKEW[i][j]);
@@ -1741,6 +1797,8 @@ mod tests {
     #[test]
     fn constant_pp_dev_works() {
         let pp_dev = Tensor4::constant_pp_dev();
+        assert_eq!(pp_dev.mat.dims(), (9, 9));
+        assert_eq!(pp_dev.mandel, Mandel::General);
         for i in 0..9 {
             for j in 0..9 {
                 assert_eq!(pp_dev.mat.get(i, j), P_DEV[i][j]);
@@ -1752,6 +1810,7 @@ mod tests {
     fn constant_pp_symdev_works() {
         let pp_symdev = Tensor4::constant_pp_symdev(false);
         assert_eq!(pp_symdev.mat.dims(), (9, 9));
+        assert_eq!(pp_symdev.mandel, Mandel::General);
         for i in 0..9 {
             for j in 0..9 {
                 assert_eq!(pp_symdev.mat.get(i, j), P_SYMDEV[i][j]);
@@ -1759,6 +1818,7 @@ mod tests {
         }
         let pp_symdev = Tensor4::constant_pp_symdev(true);
         assert_eq!(pp_symdev.mat.dims(), (6, 6));
+        assert_eq!(pp_symdev.mandel, Mandel::Symmetric);
         for i in 0..6 {
             for j in 0..6 {
                 assert_eq!(pp_symdev.mat.get(i, j), P_SYMDEV[i][j]);
@@ -1771,6 +1831,7 @@ mod tests {
         let mut pp_symdev = Tensor4::new(Mandel::General);
         pp_symdev.set_pp_symdev();
         assert_eq!(pp_symdev.mat.dims(), (9, 9));
+        assert_eq!(pp_symdev.mandel, Mandel::General);
         for i in 0..9 {
             for j in 0..9 {
                 assert_eq!(pp_symdev.mat.get(i, j), P_SYMDEV[i][j]);
@@ -1779,6 +1840,7 @@ mod tests {
         let mut pp_symdev = Tensor4::new(Mandel::Symmetric);
         pp_symdev.set_pp_symdev();
         assert_eq!(pp_symdev.mat.dims(), (6, 6));
+        assert_eq!(pp_symdev.mandel, Mandel::Symmetric);
         for i in 0..6 {
             for j in 0..6 {
                 assert_eq!(pp_symdev.mat.get(i, j), P_SYMDEV[i][j]);
@@ -1787,6 +1849,7 @@ mod tests {
         let mut pp_symdev = Tensor4::new(Mandel::Symmetric2D);
         pp_symdev.set_pp_symdev();
         assert_eq!(pp_symdev.mat.dims(), (4, 4));
+        assert_eq!(pp_symdev.mandel, Mandel::Symmetric2D);
         for i in 0..4 {
             for j in 0..4 {
                 assert_eq!(pp_symdev.mat.get(i, j), P_SYMDEV[i][j]);

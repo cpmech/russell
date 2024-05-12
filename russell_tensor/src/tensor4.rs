@@ -174,6 +174,11 @@ impl Tensor4 {
         &self.mat
     }
 
+    /// Returns a mutable access to the underlying Mandel matrix
+    pub fn matrix_mut(&mut self) -> &mut Matrix {
+        &mut self.mat
+    }
+
     /// Creates a new Tensor4 constructed from a nested array
     ///
     /// # Input
@@ -1318,9 +1323,10 @@ mod tests {
     #[test]
     fn new_and_getters_work() {
         // general
-        let dd = Tensor4::new(Mandel::General);
+        let mut dd = Tensor4::new(Mandel::General);
         assert_eq!(dd.matrix().as_data().len(), 81);
         assert_eq!(dd.mandel(), Mandel::General);
+        dd.matrix_mut().set(0, 0, 1.0);
 
         // symmetric
         let dd = Tensor4::new(Mandel::Symmetric);

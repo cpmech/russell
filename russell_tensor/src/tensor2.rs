@@ -165,6 +165,11 @@ impl Tensor2 {
         &self.vec
     }
 
+    /// Returns a mutable access to the underlying Mandel vector
+    pub fn vector_mut(&mut self) -> &mut Vector {
+        &mut self.vec
+    }
+
     /// Sets the Tensor2 with standard components given in matrix form
     ///
     /// # Input
@@ -1886,10 +1891,11 @@ mod tests {
     #[test]
     fn new_and_getters_work() {
         // general
-        let tt = Tensor2::new(Mandel::General);
+        let mut tt = Tensor2::new(Mandel::General);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.mandel(), Mandel::General);
         assert_eq!(tt.vector().as_data(), correct);
+        tt.vector_mut()[0] = 1.0;
 
         // symmetric 3D
         let tt = Tensor2::new(Mandel::Symmetric);

@@ -663,7 +663,7 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn to_array(&self) -> Vec<Vec<Vec<Vec<f64>>>> {
+    pub fn as_array(&self) -> Vec<Vec<Vec<Vec<f64>>>> {
         let mut dd = vec![vec![vec![vec![0.0; 3]; 3]; 3]; 3];
         let dim = self.mat.dims().0;
         if dim < 9 {
@@ -725,7 +725,7 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn to_matrix(&self) -> Matrix {
+    pub fn as_matrix(&self) -> Matrix {
         let mut res = Matrix::new(9, 9);
         for m in 0..9 {
             for n in 0..9 {
@@ -1398,7 +1398,7 @@ mod tests {
     fn to_array_works() {
         // general
         let dd = Tensor4::from_array(&SamplesTensor4::SAMPLE1, Mandel::General).unwrap();
-        let res = dd.to_array();
+        let res = dd.as_array();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -1411,7 +1411,7 @@ mod tests {
 
         // symmetric 3D
         let dd = Tensor4::from_array(&SamplesTensor4::SYM_SAMPLE1, Mandel::Symmetric).unwrap();
-        let res = dd.to_array();
+        let res = dd.as_array();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -1424,7 +1424,7 @@ mod tests {
 
         // symmetric 2D
         let dd = Tensor4::from_array(&SamplesTensor4::SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
-        let res = dd.to_array();
+        let res = dd.as_array();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -1440,7 +1440,7 @@ mod tests {
     fn to_matrix_works() {
         // general
         let dd = Tensor4::from_array(&SamplesTensor4::SAMPLE1, Mandel::General).unwrap();
-        let mat = dd.to_matrix();
+        let mat = dd.as_matrix();
         for m in 0..9 {
             for n in 0..9 {
                 approx_eq(mat.get(m, n), SamplesTensor4::SAMPLE1_STD_MATRIX[m][n], 1e-13);
@@ -1449,7 +1449,7 @@ mod tests {
 
         // symmetric 3D
         let dd = Tensor4::from_array(&SamplesTensor4::SYM_SAMPLE1, Mandel::Symmetric).unwrap();
-        let mat = dd.to_matrix();
+        let mat = dd.as_matrix();
         assert_eq!(mat.dims(), (9, 9));
         for m in 0..9 {
             for n in 0..9 {
@@ -1459,7 +1459,7 @@ mod tests {
 
         // symmetric 2D
         let dd = Tensor4::from_array(&SamplesTensor4::SYM_2D_SAMPLE1, Mandel::Symmetric2D).unwrap();
-        let mat = dd.to_matrix();
+        let mat = dd.as_matrix();
         assert_eq!(mat.dims(), (9, 9));
         for m in 0..9 {
             for n in 0..9 {
@@ -1489,7 +1489,7 @@ mod tests {
             ],
         ];
         let dd = Tensor4::from_array(data, Mandel::General).unwrap();
-        let m1 = dd.to_matrix();
+        let m1 = dd.as_matrix();
         let correct = &[
             [18.0, 10.0, 2.0, 16.0, 8.0, 14.0, 12.0, 4.0, 6.0],
             [90.0, 50.0, 10.0, 80.0, 40.0, 70.0, 60.0, 20.0, 30.0],
@@ -1503,7 +1503,7 @@ mod tests {
         ];
         mat_approx_eq(&m1, correct, 1e-13);
         let ee = Tensor4::from_matrix(correct, Mandel::General).unwrap();
-        let m2 = ee.to_matrix();
+        let m2 = ee.as_matrix();
         mat_approx_eq(&m2, correct, 1e-13);
 
         // Symmetric 3D
@@ -1525,7 +1525,7 @@ mod tests {
             ],
         ];
         let dd = Tensor4::from_array(data, Mandel::Symmetric).unwrap();
-        let m1 = dd.to_matrix();
+        let m1 = dd.as_matrix();
         let correct = &[
             [6.0, 4.0, 2.0, 10.0, 8.0, 12.0, 10.0, 8.0, 12.0],
             [12.0, 8.0, 4.0, 20.0, 16.0, 24.0, 20.0, 16.0, 24.0],
@@ -1539,7 +1539,7 @@ mod tests {
         ];
         mat_approx_eq(&m1, correct, 1e-13);
         let ee = Tensor4::from_matrix(correct, Mandel::Symmetric).unwrap();
-        let m2 = ee.to_matrix();
+        let m2 = ee.as_matrix();
         mat_approx_eq(&m2, correct, 1e-13);
 
         // Symmetric 2D
@@ -1561,7 +1561,7 @@ mod tests {
             ],
         ];
         let dd = Tensor4::from_array(data, Mandel::Symmetric2D).unwrap();
-        let m1 = dd.to_matrix();
+        let m1 = dd.as_matrix();
         let correct = &[
             [6.0, 4.0, 2.0, 8.0, 0.0, 0.0, 8.0, 0.0, 0.0],
             [12.0, 8.0, 4.0, 16.0, 0.0, 0.0, 16.0, 0.0, 0.0],
@@ -1575,7 +1575,7 @@ mod tests {
         ];
         mat_approx_eq(&m1, correct, 1e-13);
         let ee = Tensor4::from_matrix(correct, Mandel::Symmetric2D).unwrap();
-        let m2 = ee.to_matrix();
+        let m2 = ee.as_matrix();
         mat_approx_eq(&m2, correct, 1e-13);
     }
 
@@ -1595,7 +1595,7 @@ mod tests {
     fn sym_set_works() {
         let dd = generate_dd();
         assert_eq!(
-            format!("{:.0}", dd.to_matrix()),
+            format!("{:.0}", dd.as_matrix()),
             "┌                                              ┐\n\
              │ 1111 1122 1133 1112 1123 1113 1112 1123 1113 │\n\
              │ 2211 2222 2233 2212 2223 2213 2212 2223 2213 │\n\
@@ -1646,7 +1646,7 @@ mod tests {
         let mut cloned = dd.clone();
         cloned.mat.set(0, 0, 9999.0);
         assert_eq!(
-            format!("{:.0}", dd.to_matrix()),
+            format!("{:.0}", dd.as_matrix()),
             "┌                                              ┐\n\
              │ 1111 1122 1133 1112 1123 1113 1112 1123 1113 │\n\
              │ 2211 2222 2233 2212 2223 2213 2212 2223 2213 │\n\
@@ -1660,7 +1660,7 @@ mod tests {
              └                                              ┘"
         );
         assert_eq!(
-            format!("{:.0}", cloned.to_matrix()),
+            format!("{:.0}", cloned.as_matrix()),
             "┌                                              ┐\n\
              │ 9999 1122 1133 1112 1123 1113 1112 1123 1113 │\n\
              │ 2211 2222 2233 2212 2223 2213 2212 2223 2213 │\n\
@@ -1679,7 +1679,7 @@ mod tests {
         // deserialize
         let from_json: Tensor4 = serde_json::from_str(&json).unwrap();
         assert_eq!(
-            format!("{:.0}", from_json.to_matrix()),
+            format!("{:.0}", from_json.as_matrix()),
             "┌                                              ┐\n\
              │ 1111 1122 1133 1112 1123 1113 1112 1123 1113 │\n\
              │ 2211 2222 2233 2212 2223 2213 2212 2223 2213 │\n\

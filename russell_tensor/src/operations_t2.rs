@@ -1,7 +1,22 @@
 use super::Tensor2;
 use crate::{Mandel, SQRT_2};
-use russell_lab::vec_inner;
+use russell_lab::{vec_add, vec_inner};
 use russell_lab::{StrError, Vector};
+
+/// Adds two second-order tensors
+///
+/// ```text
+/// c := α⋅a + β⋅b
+/// ```
+///
+/// # Panics
+///
+/// A panic will occur the tensors have different [Mandel]
+pub fn t2_add(c: &mut Tensor2, alpha: f64, a: &Tensor2, beta: f64, b: &Tensor2) {
+    assert_eq!(b.mandel, a.mandel);
+    assert_eq!(c.mandel, a.mandel);
+    vec_add(&mut c.vec, alpha, &a.vec, beta, &b.vec).unwrap();
+}
 
 /// Performs the double-dot (ddot) operation between two Tensor2 (inner product)
 ///
@@ -414,7 +429,50 @@ pub fn vec_dyad_vec(a: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Resu
 mod tests {
     use super::*;
     use crate::Mandel;
-    use russell_lab::{approx_eq, vec_approx_eq};
+    use russell_lab::{approx_eq, mat_approx_eq, vec_approx_eq};
+
+    #[test]
+    #[should_panic]
+    fn t2_add_panics_on_different_mandel1() {
+        let a = Tensor2::new(Mandel::Symmetric2D);
+        let b = Tensor2::new(Mandel::Symmetric); // wrong; it must be the same as `a`
+        let mut c = Tensor2::new(Mandel::Symmetric2D);
+        t2_add(&mut c, 2.0, &a, 3.0, &b);
+    }
+
+    #[test]
+    #[should_panic]
+    fn t2_add_panics_on_different_mandel2() {
+        let a = Tensor2::new(Mandel::Symmetric2D);
+        let b = Tensor2::new(Mandel::Symmetric2D);
+        let mut c = Tensor2::new(Mandel::Symmetric); // wrong; it must be the same as `a`
+        t2_add(&mut c, 2.0, &a, 3.0, &b);
+    }
+
+    #[test]
+    fn t2_add_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ], Mandel::Symmetric2D).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [3.0, 5.0, 0.0],
+            [5.0, 2.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ], Mandel::Symmetric2D).unwrap();
+        let mut c = Tensor2::new(Mandel::Symmetric2D);
+        t2_add(&mut c, 2.0, &a, 3.0, &b);
+        #[rustfmt::skip]
+        let correct = &[
+            [11.0, 23.0, 0.0],
+            [23.0, 10.0, 0.0],
+            [ 0.0,  0.0, 9.0],
+        ];
+        mat_approx_eq(&c.as_matrix(), correct, 1e-14);
+    }
 
     #[test]
     #[should_panic]

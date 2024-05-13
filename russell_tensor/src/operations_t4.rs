@@ -1,8 +1,23 @@
 use super::Tensor4;
-use russell_lab::mat_mat_mul;
+use russell_lab::{mat_add, mat_mat_mul};
 
 #[allow(unused)]
 use crate::Mandel; // for documentation
+
+/// Adds two fourth-order tensors
+///
+/// ```text
+/// c := α⋅a + β⋅b
+/// ```
+///
+/// # Panics
+///
+/// A panic will occur the tensors have different [Mandel]
+pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) {
+    assert_eq!(b.mandel, a.mandel);
+    assert_eq!(c.mandel, a.mandel);
+    mat_add(&mut c.mat, alpha, &a.mat, beta, &b.mat).unwrap();
+}
 
 /// Performs the double-dot (ddot) operation between two Tensor4
 ///
@@ -147,7 +162,48 @@ pub fn t4_ddot_t4_update(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor
 mod tests {
     use super::*;
     use crate::{Mandel, SamplesTensor4};
-    use russell_lab::Matrix;
+    use russell_lab::{mat_approx_eq, Matrix};
+
+    #[test]
+    #[should_panic]
+    fn t4_add_panics_on_different_mandel1() {
+        let a = Tensor4::new(Mandel::Symmetric2D);
+        let b = Tensor4::new(Mandel::Symmetric); // wrong; it must be the same as `a`
+        let mut c = Tensor4::new(Mandel::Symmetric2D);
+        t4_add(&mut c, 2.0, &a, 3.0, &b);
+    }
+
+    #[test]
+    #[should_panic]
+    fn t4_add_panics_on_different_mandel2() {
+        let a = Tensor4::new(Mandel::Symmetric2D);
+        let b = Tensor4::new(Mandel::Symmetric2D);
+        let mut c = Tensor4::new(Mandel::Symmetric); // wrong; it must be the same as `a`
+        t4_add(&mut c, 2.0, &a, 3.0, &b);
+    }
+
+    #[test]
+    fn t4_add_works() {
+        let mut a = Tensor4::new(Mandel::Symmetric2D);
+        let mut b = Tensor4::new(Mandel::Symmetric2D);
+        let mut c = Tensor4::new(Mandel::Symmetric2D);
+        a.sym_set(0, 0, 0, 0, 1.0);
+        b.sym_set(0, 0, 0, 0, 1.0);
+        t4_add(&mut c, 2.0, &a, 3.0, &b);
+        #[rustfmt::skip]
+        let correct = &[
+            [5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        ];
+        mat_approx_eq(&c.as_matrix(), correct, 1e-14);
+    }
 
     #[test]
     #[should_panic]

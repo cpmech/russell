@@ -9,9 +9,6 @@ pub struct LinElasticity {
     /// Holds the Poisson's coefficient
     poisson: f64,
 
-    /// Holds the Mandel representation enum
-    mandel: Mandel,
-
     /// Holds the plane-stress flag
     plane_stress: bool,
 
@@ -23,17 +20,6 @@ pub struct LinElasticity {
     /// σ = D : ε
     /// ```
     dd: Tensor4,
-
-    /// Holds the elastic Compliance modulus
-    ///
-    /// The Compliance modulus `C` is such that:
-    ///
-    /// ```text
-    /// ε = C : σ
-    /// ```
-    ///
-    /// The compliance modulus is calculate as `C = D⁻¹`
-    cc: Option<Tensor4>,
 }
 
 impl LinElasticity {
@@ -54,7 +40,7 @@ impl LinElasticity {
     ///
     /// // 3D
     /// let ela = LinElasticity::new(900.0, 0.25, false, false);
-    /// let dd = ela.get_rigidity().as_matrix();
+    /// let dd = ela.get_modulus().as_matrix();
     /// assert_eq!(
     ///     format!("{}", dd),
     ///     "┌                                              ┐\n\
@@ -72,7 +58,7 @@ impl LinElasticity {
     ///
     /// // 2D plane-strain
     /// let ela = LinElasticity::new(900.0, 0.25, true, false);
-    /// let dd = ela.get_rigidity().as_matrix();
+    /// let dd = ela.get_modulus().as_matrix();
     /// assert_eq!(
     ///     format!("{}", dd),
     ///     "┌                                              ┐\n\
@@ -90,7 +76,7 @@ impl LinElasticity {
     ///
     /// // 2D plane-stress
     /// let ela = LinElasticity::new(3000.0, 0.2, false, true);
-    /// let dd = ela.get_rigidity().as_matrix();
+    /// let dd = ela.get_modulus().as_matrix();
     /// assert_eq!(
     ///     format!("{}", dd),
     ///     "┌                                              ┐\n\
@@ -115,13 +101,16 @@ impl LinElasticity {
         let mut res = LinElasticity {
             young,
             poisson,
-            mandel,
             plane_stress,
             dd: Tensor4::new(mandel),
-            cc: None,
         };
         res.calc_rigidity();
         res
+    }
+
+    /// Returns the Mandel representation
+    pub fn mandel(&self) -> Mandel {
+        self.dd.mandel
     }
 
     /// Sets the Young's modulus and Poisson's coefficient
@@ -134,7 +123,7 @@ impl LinElasticity {
     /// let plane_stress = true;
     /// let mut ela = LinElasticity::new(3000.0, 0.2, two_dim, plane_stress);
     /// ela.set_young_poisson(6000.0, 0.2);
-    /// let dd = ela.get_rigidity().as_matrix();
+    /// let dd = ela.get_modulus().as_matrix();
     /// assert_eq!(
     ///     format!("{}", dd),
     ///     "┌                                              ┐\n\
@@ -154,9 +143,6 @@ impl LinElasticity {
         self.young = young;
         self.poisson = poisson;
         self.calc_rigidity();
-        if self.cc.is_some() {
-            self.calc_compliance();
-        }
     }
 
     /// Sets the bulk (K) and shear (G) moduli
@@ -164,9 +150,6 @@ impl LinElasticity {
         self.young = 9.0 * bulk * shear / (3.0 * bulk + shear);
         self.poisson = (3.0 * bulk - 2.0 * shear) / (6.0 * bulk + 2.0 * shear);
         self.calc_rigidity();
-        if self.cc.is_some() {
-            self.calc_compliance();
-        }
     }
 
     /// Returns the Young's modulus and Poisson's coefficient
@@ -199,7 +182,7 @@ impl LinElasticity {
     /// ```
     /// use russell_tensor::LinElasticity;
     /// let ela = LinElasticity::new(3000.0, 0.2, false, true);
-    /// let out = ela.get_rigidity().as_matrix();
+    /// let out = ela.get_modulus().as_matrix();
     /// assert_eq!(
     ///     format!("{}", out),
     ///     "┌                                              ┐\n\
@@ -215,24 +198,8 @@ impl LinElasticity {
     ///      └                                              ┘"
     /// );
     /// ```
-    pub fn get_rigidity(&self) -> &Tensor4 {
+    pub fn get_modulus(&self) -> &Tensor4 {
         &self.dd
-    }
-
-    /// Calculates and returns an access to the elastic compliance modulus
-    ///
-    /// The Compliance modulus `C` is such that:
-    ///
-    /// ```text
-    /// ε = C : σ
-    /// ```
-    ///
-    /// The compliance modulus is calculate as `C = D⁻¹`
-    pub fn get_compliance(&mut self) -> &Tensor4 {
-        if self.cc.is_none() {
-            self.calc_compliance();
-        }
-        self.cc.as_ref().unwrap()
     }
 
     /// Calculates stress from strain
@@ -275,7 +242,7 @@ impl LinElasticity {
     ///     // sum of first 3 rows = 1800
     ///     // sum of other rows = 720
     ///     let ela = LinElasticity::new(900.0, 0.25, false, false);
-    ///     let out = ela.get_rigidity().as_matrix();
+    ///     let out = ela.get_modulus().as_matrix();
     ///     assert_eq!(
     ///         format!("{}", out),
     ///         "┌                                              ┐\n\
@@ -307,7 +274,7 @@ impl LinElasticity {
     ///     // sum of first 3 rows = 1800
     ///     // sum of other rows = 720
     ///     let ela = LinElasticity::new(900.0, 0.25, true, false);
-    ///     let out = ela.get_rigidity().as_matrix();
+    ///     let out = ela.get_modulus().as_matrix();
     ///     println!("{}", out);
     ///     assert_eq!(
     ///         format!("{}", out),
@@ -382,6 +349,52 @@ impl LinElasticity {
         Ok(eps_zz)
     }
 
+    /// Calculates the elastic compliance modulus
+    ///
+    /// **Note:** The compliance modulus is not available for plane-stress.
+    ///
+    /// The Compliance modulus `C` is such that:
+    ///
+    /// ```text
+    /// ε = C : σ
+    /// ```
+    ///
+    /// The compliance modulus is calculate as `C = D⁻¹`
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if `cc` has a different [Mandel] than `dd`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::mat_approx_eq;
+    /// use russell_tensor::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // calculate C
+    ///     let ela = LinElasticity::new(900.0, 0.25, false, false);
+    ///     let mut cc = Tensor4::new(ela.mandel());
+    ///     ela.calc_compliance(&mut cc).unwrap();
+    ///
+    ///     // check
+    ///     let (kk, gg) = ela.get_bulk_shear();
+    ///     let psd = Tensor4::constant_pp_symdev(true);
+    ///     let piso = Tensor4::constant_pp_iso(true);
+    ///     let mut correct = Tensor4::new(Mandel::Symmetric);
+    ///     t4_add(&mut correct, 1.0 / (3.0 * kk), &piso, 1.0 / (2.0 * gg), &psd);
+    ///     mat_approx_eq(cc.matrix(), correct.matrix(), 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn calc_compliance(&self, cc: &mut Tensor4) -> Result<(), StrError> {
+        if self.plane_stress {
+            return Err("The compliance modulus is not available for plane-stress");
+        }
+        let _ = mat_inverse(&mut cc.mat, &self.dd.mat).map_err(|_| "cannot invert the rigidity modulus D")?;
+        Ok(())
+    }
+
     /// Calculates the rigidity modulus
     fn calc_rigidity(&mut self) {
         if self.plane_stress {
@@ -409,18 +422,6 @@ impl LinElasticity {
             self.dd.mat.set(5, 5, self.dd.mat.get(3, 3));
         }
     }
-
-    /// Calculates the compliance modulus
-    fn calc_compliance(&mut self) {
-        let cc = match self.cc.as_mut() {
-            Some(c) => c,
-            None => {
-                self.cc = Some(Tensor4::new(self.mandel));
-                self.cc.as_mut().unwrap()
-            }
-        };
-        mat_inverse(&mut cc.mat, &self.dd.mat).unwrap();
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -428,8 +429,8 @@ impl LinElasticity {
 #[cfg(test)]
 mod tests {
     use super::LinElasticity;
-    use crate::{Mandel, Tensor2};
-    use russell_lab::approx_eq;
+    use crate::{t4_add, Mandel, Tensor2, Tensor4};
+    use russell_lab::{approx_eq, mat_approx_eq};
 
     #[test]
     fn new_works() {
@@ -499,7 +500,7 @@ mod tests {
     #[test]
     fn get_modulus_works() {
         let ela = LinElasticity::new(3000.0, 0.2, false, true);
-        let dd = ela.get_rigidity();
+        let dd = ela.get_modulus();
         assert_eq!(dd.mat.get(0, 0), 3125.0);
     }
 
@@ -621,5 +622,46 @@ mod tests {
         ).unwrap();
         let eps_zz = ela.out_of_plane_strain(&stress).unwrap();
         approx_eq(eps_zz, 0.0050847, 1e-4);
+    }
+
+    #[test]
+    fn calc_compliance_modulus_handles_errors() {
+        let ela = LinElasticity::new(900.0, 0.25, false, true); // plane-stress
+        let mut cc = Tensor4::new(ela.mandel());
+        assert_eq!(
+            ela.calc_compliance(&mut cc).err(),
+            Some("The compliance modulus is not available for plane-stress")
+        );
+        let ela = LinElasticity::new(0.0, 0.0, true, false); // two-dim
+        assert_eq!(
+            ela.calc_compliance(&mut cc).err(),
+            Some("cannot invert the rigidity modulus D")
+        );
+    }
+
+    #[test]
+    fn compliance_modulus_works() {
+        // calculate C
+        let mut ela = LinElasticity::new(900.0, 0.25, false, false);
+        let mut cc = Tensor4::new(ela.mandel());
+        ela.calc_compliance(&mut cc).unwrap();
+
+        // check
+        let (kk, gg) = ela.get_bulk_shear();
+        let psd = Tensor4::constant_pp_symdev(true);
+        let piso = Tensor4::constant_pp_iso(true);
+        let mut correct = Tensor4::new(Mandel::Symmetric);
+        t4_add(&mut correct, 1.0 / (3.0 * kk), &piso, 1.0 / (2.0 * gg), &psd);
+        mat_approx_eq(&cc.mat, &correct.mat, 1e-15);
+
+        // change parameters
+        let (kk, gg) = (1.0 / 6.0, 1.0 / 4.0);
+        ela.set_bulk_shear(kk, gg);
+        ela.calc_compliance(&mut cc).unwrap();
+
+        // check again
+        t4_add(&mut correct, 1.0 / (3.0 * kk), &piso, 1.0 / (2.0 * gg), &psd);
+        // println!("{}", cc.as_matrix());
+        mat_approx_eq(&cc.mat, &correct.mat, 1e-15);
     }
 }

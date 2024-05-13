@@ -160,6 +160,11 @@ impl Tensor2 {
         self.mandel
     }
 
+    /// Returns the Mandel vector dimension (4, 6, or 9)
+    pub fn dim(&self) -> usize {
+        self.vec.dim()
+    }
+
     /// Returns an access to the underlying Mandel vector
     pub fn vector(&self) -> &Vector {
         &self.vec
@@ -1894,6 +1899,7 @@ mod tests {
         let mut tt = Tensor2::new(Mandel::General);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.mandel(), Mandel::General);
+        assert_eq!(tt.dim(), 9);
         assert_eq!(tt.vector().as_data(), correct);
         tt.vector_mut()[0] = 1.0;
 
@@ -1901,28 +1907,34 @@ mod tests {
         let tt = Tensor2::new(Mandel::Symmetric);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.mandel(), Mandel::Symmetric);
+        assert_eq!(tt.dim(), 6);
         assert_eq!(tt.vector().as_data(), correct);
 
         let tt = Tensor2::new_sym(false);
         assert_eq!(tt.mandel(), Mandel::Symmetric);
+        assert_eq!(tt.dim(), 6);
         assert_eq!(tt.vector().as_data(), correct);
 
         let tt = Tensor2::new_sym_ndim(3);
         assert_eq!(tt.mandel(), Mandel::Symmetric);
+        assert_eq!(tt.dim(), 6);
         assert_eq!(tt.vector().as_data(), correct);
 
         // symmetric 2D
         let tt = Tensor2::new(Mandel::Symmetric2D);
         let correct = &[0.0, 0.0, 0.0, 0.0];
         assert_eq!(tt.mandel(), Mandel::Symmetric2D);
+        assert_eq!(tt.dim(), 4);
         assert_eq!(tt.vector().as_data(), correct);
 
         let tt = Tensor2::new_sym(true);
         assert_eq!(tt.mandel(), Mandel::Symmetric2D);
+        assert_eq!(tt.dim(), 4);
         assert_eq!(tt.vector().as_data(), correct);
 
         let tt = Tensor2::new_sym_ndim(2);
         assert_eq!(tt.mandel(), Mandel::Symmetric2D);
+        assert_eq!(tt.dim(), 4);
         assert_eq!(tt.vector().as_data(), correct);
     }
 

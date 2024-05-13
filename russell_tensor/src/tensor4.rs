@@ -169,6 +169,11 @@ impl Tensor4 {
         self.mandel
     }
 
+    /// Returns the Mandel matrix dimension (4, 6, or 9)
+    pub fn dim(&self) -> usize {
+        self.mat.dims().0
+    }
+
     /// Returns an access to the underlying Mandel matrix
     pub fn matrix(&self) -> &Matrix {
         &self.mat
@@ -1325,29 +1330,40 @@ mod tests {
         // general
         let mut dd = Tensor4::new(Mandel::General);
         assert_eq!(dd.matrix().as_data().len(), 81);
+        assert_eq!(dd.dim(), 9);
         assert_eq!(dd.mandel(), Mandel::General);
         dd.matrix_mut().set(0, 0, 1.0);
 
         // symmetric
         let dd = Tensor4::new(Mandel::Symmetric);
         assert_eq!(dd.mandel(), Mandel::Symmetric);
+        assert_eq!(dd.dim(), 6);
         assert_eq!(dd.matrix().as_data().len(), 36);
+
         let dd = Tensor4::new_sym(false);
         assert_eq!(dd.mandel(), Mandel::Symmetric);
+        assert_eq!(dd.dim(), 6);
         assert_eq!(dd.matrix().as_data().len(), 36);
+
         let dd = Tensor4::new_sym_ndim(3);
         assert_eq!(dd.mandel(), Mandel::Symmetric);
+        assert_eq!(dd.dim(), 6);
         assert_eq!(dd.matrix().as_data().len(), 36);
 
         // symmetric 2d
         let dd = Tensor4::new(Mandel::Symmetric2D);
         assert_eq!(dd.mandel(), Mandel::Symmetric2D);
+        assert_eq!(dd.dim(), 4);
         assert_eq!(dd.matrix().as_data().len(), 16);
+
         let dd = Tensor4::new_sym(true);
         assert_eq!(dd.mandel(), Mandel::Symmetric2D);
+        assert_eq!(dd.dim(), 4);
         assert_eq!(dd.matrix().as_data().len(), 16);
+
         let dd = Tensor4::new_sym_ndim(2);
         assert_eq!(dd.mandel(), Mandel::Symmetric2D);
+        assert_eq!(dd.dim(), 4);
         assert_eq!(dd.matrix().as_data().len(), 16);
     }
 

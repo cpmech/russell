@@ -1,6 +1,6 @@
 use super::{IJKL_TO_MN, IJKL_TO_MN_SYM, MN_TO_IJKL, SQRT_2};
 use crate::{AsMatrix9x9, Mandel, StrError, ONE_BY_3, TWO_BY_3};
-use russell_lab::{mat_copy, mat_update, Matrix};
+use russell_lab::{mat_update, Matrix};
 use serde::{Deserialize, Serialize};
 
 /// Implements a fourth order-tensor, minor-symmetric or not
@@ -888,10 +888,10 @@ impl Tensor4 {
         }
     }
 
-    /// Sets this tensor equal to another one
+    /// Sets this tensor equal to another tensor
     ///
     /// ```text
-    /// self := other
+    /// self := α other
     /// ```
     ///
     /// # Panics
@@ -905,7 +905,7 @@ impl Tensor4 {
     /// use russell_tensor::{Mandel, Tensor4, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let dd = Tensor4::from_matrix(&[
+    ///     let data = &[
     ///         [  1.0,  2.0,  3.0,  4.0,  5.0,  6.0,  7.0,  8.0,  9.0],
     ///         [ -1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0, -8.0, -9.0],
     ///         [  2.0,  4.0,  6.0,  8.0, 10.0, 12.0, 14.0, 16.0, 18.0],
@@ -915,18 +915,24 @@ impl Tensor4 {
     ///         [ -2.0, -4.0, -6.0, -8.0,-10.0,-12.0,-14.0,-16.0,-18.0],
     ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
     ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
-    ///     ], Mandel::General)?;
-    ///
+    ///     ];
+    ///     let dd = Tensor4::from_matrix(data, Mandel::General)?;
     ///     let mut ee = Tensor4::new(Mandel::General);
-    ///     ee.mirror(&dd);
     ///
-    ///     mat_approx_eq(dd.matrix(), ee.matrix(), 1e-15);
+    ///     ee.set_tensor(1.0, &dd);
+    ///
+    ///     mat_approx_eq(&dd.as_matrix(), data, 1e-14);
     ///     Ok(())
     /// }
     /// ```
-    pub fn mirror(&mut self, other: &Tensor4) {
+    pub fn set_tensor(&mut self, alpha: f64, other: &Tensor4) {
         assert_eq!(other.mandel, self.mandel);
-        mat_copy(&mut self.mat, &other.mat).unwrap();
+        let dim = self.mat.dims().0;
+        for i in 0..dim {
+            for j in 0..dim {
+                self.mat.set(i, j, alpha * other.mat.get(i, j));
+            }
+        }
     }
 
     /// Returns the fourth-order identity tensor (II)
@@ -1323,7 +1329,7 @@ mod tests {
     use super::{Tensor4, MN_TO_IJKL};
     use crate::{Mandel, SamplesTensor4};
     use crate::{IDENTITY4, P_DEV, P_ISO, P_SKEW, P_SYM, P_SYMDEV, TRACE_PROJECTION, TRANSPOSITION};
-    use russell_lab::{approx_eq, mat_approx_eq};
+    use russell_lab::{approx_eq, mat_approx_eq, Matrix};
 
     #[test]
     fn new_and_getters_work() {
@@ -1759,16 +1765,16 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn mirror_panics_on_incorrect_input() {
+    fn set_tensor_panics_on_incorrect_input() {
         let dd = Tensor4::new(Mandel::Symmetric);
         let mut ee = Tensor4::new(Mandel::General);
-        ee.mirror(&dd);
+        ee.set_tensor(2.0, &dd);
     }
 
     #[test]
-    fn mirror_works() {
-        let dd = Tensor4::from_matrix(
-            &[
+    fn set_tensor_works() {
+        #[rustfmt::skip]
+        let dd = Tensor4::from_matrix(&[
                 [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
                 [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0],
                 [9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0],
@@ -1778,13 +1784,22 @@ mod tests {
                 [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
                 [6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0],
                 [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
-            ],
-            Mandel::General,
-        )
-        .unwrap();
+        ], Mandel::General).unwrap();
         let mut ee = Tensor4::new(Mandel::General);
-        ee.mirror(&dd);
-        mat_approx_eq(&dd.mat, &ee.mat, 1e-15);
+        ee.set_tensor(2.0, &dd);
+        #[rustfmt::skip]
+        let correct = Matrix::from(&[
+            [ 2.0,  2.0,  2.0,  2.0,  2.0,  2.0,  2.0,  2.0,  2.0],
+            [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0],
+            [18.0, 18.0, 18.0, 18.0, 18.0, 18.0, 18.0, 18.0, 18.0],
+            [ 4.0,  4.0,  4.0,  4.0,  4.0,  4.0,  4.0,  4.0,  4.0],
+            [12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0],
+            [ 6.0,  6.0,  6.0,  6.0,  6.0,  6.0,  6.0,  6.0,  6.0],
+            [ 4.0,  4.0,  4.0,  4.0,  4.0,  4.0,  4.0,  4.0,  4.0],
+            [12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0],
+            [ 6.0,  6.0,  6.0,  6.0,  6.0,  6.0,  6.0,  6.0,  6.0],
+        ]);
+        mat_approx_eq(&ee.as_matrix(), &correct, 1e-14);
     }
 
     #[test]

@@ -29,7 +29,7 @@ pub fn deriv1_norm(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
     let dim = d1.vec.dim();
     let n = sigma.norm();
     if n > 0.0 {
-        d1.mirror(sigma);
+        d1.set_tensor(1.0, sigma);
         for i in 0..dim {
             d1.vec[i] /= n;
         }

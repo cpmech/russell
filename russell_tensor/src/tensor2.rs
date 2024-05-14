@@ -847,10 +847,75 @@ impl Tensor2 {
         }
     }
 
-    /// Sets this tensor equal to another one
+    /// Sets this tensor equal to another tensor (given as a Mandel vector)
     ///
     /// ```text
-    /// self := other
+    /// self := α other
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if the other tensor has an incorrect dimension.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::Vector;
+    /// use russell_tensor::{Mandel, Tensor2, StrError, SQRT_2};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut a = Tensor2::from_matrix(&[
+    ///         [1.0, 2.0, 3.0],
+    ///         [4.0, 5.0, 6.0],
+    ///         [7.0, 8.0, 9.0],
+    ///     ], Mandel::General)?;
+    ///     let v_mandel = &Vector::from(&[
+    ///         1.0,
+    ///         5.0,
+    ///         9.0,
+    ///         6.0 / SQRT_2,
+    ///         14.0 / SQRT_2,
+    ///         10.0 / SQRT_2,
+    ///         -2.0 / SQRT_2,
+    ///         -2.0 / SQRT_2,
+    ///         -4.0 / SQRT_2,
+    ///     ]);
+    ///
+    ///     a.set_mandel_vector(2.0, &v_mandel);
+    ///
+    ///     assert_eq!(
+    ///         format!("{:.1}", a.as_matrix()),
+    ///         "┌                ┐\n\
+    ///          │  2.0  4.0  6.0 │\n\
+    ///          │  8.0 10.0 12.0 │\n\
+    ///          │ 14.0 16.0 18.0 │\n\
+    ///          └                ┘"
+    ///     );
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn set_mandel_vector(&mut self, alpha: f64, other: &Vector) {
+        assert_eq!(self.mandel.dim(), other.dim());
+        let dim = self.vec.dim();
+        self.vec[0] = alpha * other[0];
+        self.vec[1] = alpha * other[1];
+        self.vec[2] = alpha * other[2];
+        self.vec[3] = alpha * other[3];
+        if dim > 4 {
+            self.vec[4] = alpha * other[4];
+            self.vec[5] = alpha * other[5];
+        }
+        if dim > 6 {
+            self.vec[6] = alpha * other[6];
+            self.vec[7] = alpha * other[7];
+            self.vec[8] = alpha * other[8];
+        }
+    }
+
+    /// Sets this tensor equal to another tensor
+    ///
+    /// ```text
+    /// self := α other
     /// ```
     ///
     /// # Panics
@@ -874,34 +939,34 @@ impl Tensor2 {
     ///         [70.0, 80.0, 90.0],
     ///     ], Mandel::General)?;
     ///
-    ///     a.mirror(&b);
+    ///     a.set_tensor(2.0, &b);
     ///
     ///     assert_eq!(
     ///         format!("{:.1}", a.as_matrix()),
-    ///         "┌                ┐\n\
-    ///          │ 10.0 20.0 30.0 │\n\
-    ///          │ 40.0 50.0 60.0 │\n\
-    ///          │ 70.0 80.0 90.0 │\n\
-    ///          └                ┘"
+    ///         "┌                   ┐\n\
+    ///          │  20.0  40.0  60.0 │\n\
+    ///          │  80.0 100.0 120.0 │\n\
+    ///          │ 140.0 160.0 180.0 │\n\
+    ///          └                   ┘"
     ///     );
     ///     Ok(())
     /// }
     /// ```
-    pub fn mirror(&mut self, other: &Tensor2) {
+    pub fn set_tensor(&mut self, alpha: f64, other: &Tensor2) {
         assert_eq!(self.mandel, other.mandel);
         let dim = self.vec.dim();
-        self.vec[0] = other.vec[0];
-        self.vec[1] = other.vec[1];
-        self.vec[2] = other.vec[2];
-        self.vec[3] = other.vec[3];
+        self.vec[0] = alpha * other.vec[0];
+        self.vec[1] = alpha * other.vec[1];
+        self.vec[2] = alpha * other.vec[2];
+        self.vec[3] = alpha * other.vec[3];
         if dim > 4 {
-            self.vec[4] = other.vec[4];
-            self.vec[5] = other.vec[5];
+            self.vec[4] = alpha * other.vec[4];
+            self.vec[5] = alpha * other.vec[5];
         }
         if dim > 6 {
-            self.vec[6] = other.vec[6];
-            self.vec[7] = other.vec[7];
-            self.vec[8] = other.vec[8];
+            self.vec[6] = alpha * other.vec[6];
+            self.vec[7] = alpha * other.vec[7];
+            self.vec[8] = alpha * other.vec[8];
         }
     }
 
@@ -1891,7 +1956,7 @@ impl Tensor2 {
 mod tests {
     use super::Tensor2;
     use crate::{Mandel, SampleTensor2, SamplesTensor2, IDENTITY2, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2};
-    use russell_lab::{approx_eq, mat_approx_eq, mat_mat_mul, math::PI, vec_approx_eq, Matrix};
+    use russell_lab::{approx_eq, mat_approx_eq, mat_mat_mul, math::PI, vec_approx_eq, Matrix, Vector};
 
     #[test]
     fn new_and_getters_work() {
@@ -2582,10 +2647,59 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn mirror_panics_panics_on_incorrect_input() {
+    fn set_mandel_vector_panics_panics_on_incorrect_input() {
+        let mut a = Tensor2::new(Mandel::Symmetric2D);
+        let b = Vector::new(1);
+        a.set_mandel_vector(2.0, &b);
+    }
+
+    #[test]
+    fn set_mandel_vector_works() {
+        // general
+        let mut tt = Tensor2::new(Mandel::General);
+        const NOISE: f64 = 1234.568;
+        tt.vec.fill(NOISE);
+        tt.set_mandel_vector(
+            2.0,
+            &Vector::from(&[
+                1.0,
+                5.0,
+                9.0,
+                6.0 / SQRT_2,
+                14.0 / SQRT_2,
+                10.0 / SQRT_2,
+                -2.0 / SQRT_2,
+                -2.0 / SQRT_2,
+                -4.0 / SQRT_2,
+            ]),
+        );
+        let correct = &[[2.0, 4.0, 6.0], [8.0, 10.0, 12.0], [14.0, 16.0, 18.0]];
+        mat_approx_eq(&tt.as_matrix(), correct, 1e-14);
+
+        // symmetric 3D
+        let mut tt = Tensor2::new(Mandel::Symmetric);
+        tt.vec.fill(NOISE);
+        tt.set_mandel_vector(
+            2.0,
+            &Vector::from(&[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2]),
+        );
+        let correct = &[[2.0, 8.0, 12.0], [8.0, 4.0, 10.0], [12.0, 10.0, 6.0]];
+        mat_approx_eq(&tt.as_matrix(), correct, 1e-14);
+
+        // symmetric 2D
+        let mut tt = Tensor2::new(Mandel::Symmetric2D);
+        tt.vec.fill(NOISE);
+        tt.set_mandel_vector(2.0, &Vector::from(&[1.0, 2.0, 3.0, 4.0 * SQRT_2]));
+        let correct = &[[2.0, 8.0, 0.0], [8.0, 4.0, 0.0], [0.0, 0.0, 6.0]];
+        mat_approx_eq(&tt.as_matrix(), correct, 1e-14);
+    }
+
+    #[test]
+    #[should_panic]
+    fn set_tensor_panics_panics_on_incorrect_input() {
         let mut a = Tensor2::new(Mandel::General);
         let b = Tensor2::new(Mandel::Symmetric);
-        a.mirror(&b);
+        a.set_tensor(2.0, &b);
     }
 
     #[test]
@@ -2597,7 +2711,7 @@ mod tests {
     }
 
     #[test]
-    fn mirror_and_update_work() {
+    fn set_tensor_and_update_work() {
         // general
         let mut a = Tensor2::new(Mandel::General);
         #[rustfmt::skip]
@@ -2612,15 +2726,15 @@ mod tests {
             Mandel::General,
         )
         .unwrap();
-        a.mirror(&b);
+        a.set_tensor(2.0, &b);
         a.update(10.0, &c);
         let out = a.as_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                      ┐\n\
-             │ 1001.0 1003.0 1001.0 │\n\
-             │ 1002.0 1002.0 1002.0 │\n\
-             │ 1003.0 1001.0 1003.0 │\n\
+             │ 1002.0 1006.0 1002.0 │\n\
+             │ 1004.0 1004.0 1004.0 │\n\
+             │ 1006.0 1002.0 1006.0 │\n\
              └                      ┘"
         );
 
@@ -2638,15 +2752,15 @@ mod tests {
             Mandel::Symmetric,
         )
         .unwrap();
-        a.mirror(&b);
+        a.set_tensor(2.0, &b);
         a.update(10.0, &c);
         let out = a.as_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                      ┐\n\
-             │ 1001.0 1003.0 1001.0 │\n\
-             │ 1003.0 1002.0 1002.0 │\n\
-             │ 1001.0 1002.0 1003.0 │\n\
+             │ 1002.0 1006.0 1002.0 │\n\
+             │ 1006.0 1004.0 1004.0 │\n\
+             │ 1002.0 1004.0 1006.0 │\n\
              └                      ┘"
         );
 
@@ -2664,15 +2778,15 @@ mod tests {
             Mandel::Symmetric2D,
         )
         .unwrap();
-        a.mirror(&b);
+        a.set_tensor(2.0, &b);
         a.update(10.0, &c);
         let out = a.as_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                      ┐\n\
-             │ 1001.0 1003.0    0.0 │\n\
-             │ 1003.0 1002.0    0.0 │\n\
-             │    0.0    0.0 1003.0 │\n\
+             │ 1002.0 1006.0    0.0 │\n\
+             │ 1006.0 1004.0    0.0 │\n\
+             │    0.0    0.0 1006.0 │\n\
              └                      ┘"
         );
     }

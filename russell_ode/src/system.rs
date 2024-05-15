@@ -249,7 +249,7 @@ mod tests {
     use russell_sparse::{CooMatrix, Sym};
 
     #[test]
-    fn ode_system_most_none_works() {
+    fn ode_system_works() {
         struct Args {
             n_function_eval: usize,
             more_data_goes_here: bool,
@@ -281,7 +281,7 @@ mod tests {
     }
 
     #[test]
-    fn ode_system_some_none_works() {
+    fn ode_system_set_jacobian_works() {
         struct Args {
             n_function_eval: usize,
             n_jacobian_eval: usize,
@@ -347,6 +347,10 @@ mod tests {
         assert_eq!(
             system.mass_put(0, 0, 1.0).err(),
             Some("mass matrix has not been initialized/enabled")
+        );
+        assert_eq!(
+            system.init_mass_matrix(1).err(),
+            Some("the Jacobian function must be enabled first")
         );
     }
 }

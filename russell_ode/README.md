@@ -90,6 +90,8 @@ russell_ode = "*"
 The following (Rust) features are available:
 
 * `intel_mkl`: Use Intel MKL instead of OpenBLAS
+* `local_suitesparse`: Use a locally compiled version of SuiteSparse
+* `with_mumps`: Enable the MUMPS solver (locally compiled)
 
 Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 

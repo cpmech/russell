@@ -79,7 +79,7 @@ mod tests {
 
     #[test]
     fn using_intel_mkl_works() {
-        if cfg!(use_intel_mkl) {
+        if cfg!(feature = "intel_mkl") {
             assert!(using_intel_mkl());
         } else {
             assert!(!using_intel_mkl());

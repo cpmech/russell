@@ -1,5 +1,5 @@
 use crate::StrError;
-use crate::{HasJacobian, NoArgs, PdeDiscreteLaplacian2d, Side, System, YxFunction};
+use crate::{HasJacobian, NoArgs, PdeDiscreteLaplacian2d, Side, System};
 use russell_lab::math::PI;
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, Genie, Sym};
@@ -53,7 +53,7 @@ impl Samples {
         f64,
         Vector,
         NoArgs,
-        YxFunction<NoArgs>,
+        impl Fn(&mut Vector, f64, &mut NoArgs),
     ) {
         // system
         let ndim = 1;
@@ -169,7 +169,7 @@ impl Samples {
         f64,
         Vector,
         NoArgs,
-        YxFunction<NoArgs>,
+        impl Fn(&mut Vector, f64, &mut NoArgs),
     ) {
         // selected symmetric option (for both Mass and Jacobian matrices)
         let sym = genie.symmetry(symmetric);
@@ -820,7 +820,7 @@ impl Samples {
         f64,
         Vector,
         NoArgs,
-        YxFunction<NoArgs>,
+        impl Fn(&mut Vector, f64, &mut NoArgs),
     ) {
         // constants
         const L: f64 = -50.0; // lambda
@@ -1225,7 +1225,7 @@ impl Samples {
         f64,
         Vector,
         NoArgs,
-        YxFunction<NoArgs>,
+        impl Fn(&mut Vector, f64, &mut NoArgs),
     ) {
         // system
         let ndim = 1;
@@ -1306,7 +1306,7 @@ impl Samples {
         f64,
         Vector,
         NoArgs,
-        YxFunction<NoArgs>,
+        impl Fn(&mut Vector, f64, &mut NoArgs),
     ) {
         // system
         let ndim = 2;

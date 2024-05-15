@@ -8,11 +8,6 @@ use std::io::BufReader;
 use std::marker::PhantomData;
 use std::path::Path;
 
-/// Defines a function to compute y(x) (e.g, the analytical solution)
-///
-/// Use `|y, x, args|` or `|y: &mut Vector, x: f64, args, &mut A|`
-pub type YxFunction<A> = fn(&mut Vector, f64, &mut A);
-
 /// Holds the data generated at an accepted step or during the dense output
 #[derive(Clone, Debug, Deserialize)]
 pub struct OutData {
@@ -129,7 +124,7 @@ pub struct Output<'a, A> {
     y_aux: Vector,
 
     /// Holds the y(x) function (e.g., to compute the correct/analytical solution)
-    yx_function: Option<YxFunction<A>>,
+    yx_function: Option<Box<dyn Fn(&mut Vector, f64, &mut A) + 'a>>,
 
     /// Handles the generic argument
     phantom: PhantomData<fn() -> A>,
@@ -374,8 +369,10 @@ impl<'a, A> Output<'a, A> {
     }
 
     /// Sets the function to compute the correct/reference results y(x)
-    pub fn set_yx_correct(&mut self, y_fn_x: fn(&mut Vector, f64, &mut A)) -> &mut Self {
-        self.yx_function = Some(y_fn_x);
+    ///
+    /// Use `|y, x, args|` or `|y: &mut Vector, x: f64, args, &mut A|`
+    pub fn set_yx_correct(&mut self, y_fn_x: impl Fn(&mut Vector, f64, &mut A) + 'a) -> &mut Self {
+        self.yx_function = Some(Box::new(y_fn_x));
         self
     }
 

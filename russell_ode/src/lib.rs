@@ -179,7 +179,7 @@
 //!     // solve from x = 0 to x = 2
 //!     let x1 = 2.0;
 //!     let mut args = 0;
-//!     solver.solve(&mut y, x, x1, None, None, &mut args)?;
+//!     solver.solve(&mut y, x, x1, None, &mut args)?;
 //!     println!("y =\n{}", y);
 //!     Ok(())
 //! }

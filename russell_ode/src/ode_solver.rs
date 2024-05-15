@@ -99,7 +99,7 @@ use russell_sparse::CooMatrix;
 ///     // solve from x = 0 to x = 1
 ///     let x1 = 1.0;
 ///     let mut args = 0;
-///     solver.solve(&mut y, x, x1, None, None, &mut args)?;
+///     solver.solve(&mut y, x, x1, None, &mut args)?;
 ///
 ///     // check the results
 ///     let y_ana = Vector::from(&[f64::exp(x1) - x1 - 1.0]);

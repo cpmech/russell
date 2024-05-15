@@ -14,11 +14,11 @@ fn test_radau5_robertson_small_h() {
     params.step.h_ini = 1e-6;
     params.debug = true;
 
-    // allocate the solver
-    let mut solver = OdeSolver::new(params, &system).unwrap();
-
     // this will cause h to become too small
     params.set_tolerances(1e-2, 1e-2, None).unwrap();
+
+    // allocate the solver
+    let mut solver = OdeSolver::new(params, &system).unwrap();
 
     // solve the ODE system
     let res = solver.solve(&mut y0, x0, x1, None, &mut args);
@@ -27,8 +27,6 @@ fn test_radau5_robertson_small_h() {
 
     // get statistics
     let stat = solver.stats();
-
-    println!("TODO");
 
     // print and check statistics
     println!("{}", stat.summary());

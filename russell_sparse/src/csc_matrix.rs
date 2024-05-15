@@ -637,7 +637,7 @@ where
     ///
     /// # Input
     ///
-    /// * `a` -- where to store the dense matrix; must be (nrow, ncol)
+    /// * `a` -- where to store the dense matrix; it must be (nrow, ncol)
     ///
     /// # Examples
     ///

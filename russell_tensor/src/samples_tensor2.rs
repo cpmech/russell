@@ -272,21 +272,15 @@ mod tests {
     use russell_lab::{mat_approx_eq, Matrix};
 
     fn check_spectral(sample: &SampleTensor2, tolerance: f64) {
-        match sample.eigenvalues {
-            Some(l) => match sample.eigenprojectors {
-                Some(pps) => {
-                    let mut m = Matrix::new(3, 3);
-                    for i in 0..3 {
-                        for j in 0..3 {
-                            m.set(i, j, l[0] * pps[0][i][j] + l[1] * pps[1][i][j] + l[2] * pps[2][i][j]);
-                        }
-                    }
-                    mat_approx_eq(&m, &sample.matrix, tolerance);
-                }
-                None => panic!("eigenprojectors are not available for this tensor"),
-            },
-            None => panic!("eigenvalues are not available for this tensor"),
+        let l = sample.eigenvalues.unwrap();
+        let pps = sample.eigenprojectors.unwrap();
+        let mut m = Matrix::new(3, 3);
+        for i in 0..3 {
+            for j in 0..3 {
+                m.set(i, j, l[0] * pps[0][i][j] + l[1] * pps[1][i][j] + l[2] * pps[2][i][j]);
+            }
         }
+        mat_approx_eq(&m, &sample.matrix, tolerance);
     }
 
     #[test]

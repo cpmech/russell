@@ -326,7 +326,7 @@ impl LinSolTrait for SolverMUMPS {
     ///
     /// # Input
     ///
-    /// * `mat` -- the coefficient matrix A; must be square and, if symmetric, [Sym::YesLower].
+    /// * `mat` -- the coefficient matrix A; it must be square and, if symmetric, [Sym::YesLower].
     /// * `rhs` -- the right-hand side vector with know values an dimension equal to mat.nrow
     /// * `verbose` -- shows messages
     ///

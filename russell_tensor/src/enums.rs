@@ -1,5 +1,7 @@
+use serde::{Deserialize, Serialize};
+
 /// Specifies the Mandel representation
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Mandel {
     /// General representation of a 3×3 Tensor2 as a 9D vector
     ///
@@ -77,6 +79,15 @@ impl Mandel {
             Mandel::Symmetric2D => true,
         }
     }
+
+    /// Returns whether the Mandel vector or matrix corresponds a symmetric tensor or not
+    pub fn symmetric(&self) -> bool {
+        if *self == Mandel::General {
+            false
+        } else {
+            true
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -103,11 +114,17 @@ mod tests {
 
     #[test]
     fn member_functions_work() {
+        // dim
         assert_eq!(Mandel::General.dim(), 9);
         assert_eq!(Mandel::Symmetric.dim(), 6);
         assert_eq!(Mandel::Symmetric2D.dim(), 4);
+        // two_dim
         assert_eq!(Mandel::General.two_dim(), false);
         assert_eq!(Mandel::Symmetric.two_dim(), false);
         assert_eq!(Mandel::Symmetric2D.two_dim(), true);
+        // symmetric
+        assert_eq!(Mandel::General.symmetric(), false);
+        assert_eq!(Mandel::Symmetric.symmetric(), true);
+        assert_eq!(Mandel::Symmetric2D.symmetric(), true);
     }
 }

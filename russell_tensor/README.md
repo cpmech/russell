@@ -78,7 +78,7 @@ fn main() -> Result<(), StrError> {
         Mandel::General,
     )?;
     assert_eq!(
-        format!("{:.1}", a.vec),
+        format!("{:.1}", a.vector()),
         "┌      ┐\n\
          │  1.0 │\n\
          │  5.0 │\n\
@@ -102,7 +102,7 @@ fn main() -> Result<(), StrError> {
         Mandel::Symmetric,
     )?;
     assert_eq!(
-        format!("{:.1}", b.vec),
+        format!("{:.1}", b.vector()),
         "┌     ┐\n\
          │ 1.0 │\n\
          │ 2.0 │\n\
@@ -119,7 +119,7 @@ fn main() -> Result<(), StrError> {
         Mandel::Symmetric2D,
     )?;
     assert_eq!(
-        format!("{:.1}", c.vec),
+        format!("{:.1}", c.vector()),
         "┌     ┐\n\
          │ 1.0 │\n\
          │ 2.0 │\n\

@@ -24,7 +24,6 @@ fn compile_blas() {
     println!("cargo:rustc-link-lib=m");
     println!("cargo:rustc-link-lib=dl");
     println!("cargo:rustc-link-lib=iomp5");
-    println!("cargo:rustc-cfg=use_intel_mkl");
 }
 
 // OpenBLAS

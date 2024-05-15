@@ -99,7 +99,7 @@ use russell_sparse::CooMatrix;
 ///     // solve from x = 0 to x = 1
 ///     let x1 = 1.0;
 ///     let mut args = 0;
-///     solver.solve(&mut y, x, x1, None, None, &mut args)?;
+///     solver.solve(&mut y, x, x1, None, &mut args)?;
 ///
 ///     // check the results
 ///     let y_ana = Vector::from(&[f64::exp(x1) - x1 - 1.0]);
@@ -432,7 +432,7 @@ impl<'a, A> OdeSolver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::OdeSolver;
-    use crate::{no_jacobian, HasJacobian, NoArgs, OutCallback, OutCount, OutData};
+    use crate::{no_jacobian, HasJacobian, NoArgs, OutCount, OutData, Stats};
     use crate::{Method, Params, Samples, System};
     use russell_lab::{approx_eq, array_approx_eq, vec_approx_eq, Vector};
     use russell_sparse::Genie;
@@ -628,7 +628,7 @@ mod tests {
         }
 
         // define the callback function
-        let cb: OutCallback<NoArgs> = |_stats, _h, _x, _y, _args| Err("unreachable");
+        let cb = |_stats: &Stats, _h: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| Err("unreachable");
         assert_eq!(cb(&solver.stats(), 0.0, 0.0, &y0, &mut args).err(), Some("unreachable"));
 
         // run again without step output
@@ -736,7 +736,7 @@ mod tests {
         }
 
         // define the callback function
-        let cb: OutCallback<NoArgs> = |_stats, _h, _x, _y, _args| Err("unreachable");
+        let cb = |_stats: &Stats, _h: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| Err("unreachable");
         assert_eq!(cb(&solver.stats(), 0.0, 0.0, &y0, &mut args).err(), Some("unreachable"));
 
         // run again without dense output

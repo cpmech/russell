@@ -90,6 +90,8 @@ russell_ode = "*"
 The following (Rust) features are available:
 
 * `intel_mkl`: Use Intel MKL instead of OpenBLAS
+* `local_suitesparse`: Use a locally compiled version of SuiteSparse
+* `with_mumps`: Enable the MUMPS solver (locally compiled)
 
 Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 
@@ -148,7 +150,7 @@ fn main() -> Result<(), StrError> {
     // solve from x = 0 to x = 1
     let x1 = 1.0;
     let mut args = 0;
-    solver.solve(&mut y, x, x1, None, None, &mut args)?;
+    solver.solve(&mut y, x, x1, None, &mut args)?;
     println!("y =\n{}", y);
 
     // check the results
@@ -280,7 +282,7 @@ fn main() -> Result<(), StrError> {
     // solve from x = 0 to x = 20
     let x1 = 20.0;
     let mut args = 0;
-    solver.solve(&mut y, x, x1, None, None, &mut args)?;
+    solver.solve(&mut y, x, x1, None, &mut args)?;
     println!("y =\n{}", y);
 
     // check the results

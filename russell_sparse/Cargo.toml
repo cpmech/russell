@@ -12,9 +12,9 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "sparse", "solver"]
 
 [features]
+intel_mkl = ["russell_lab/intel_mkl"]
 local_suitesparse = []
 with_mumps = []
-intel_mkl = ["russell_lab/intel_mkl"]
 
 [dependencies]
 num-traits = "0.2"

@@ -13,6 +13,8 @@ keywords = ["differential", "numerical", "solver"]
 
 [features]
 intel_mkl = ["russell_lab/intel_mkl", "russell_sparse/intel_mkl"]
+local_suitesparse = ["russell_sparse/local_suitesparse"]
+with_mumps = ["russell_sparse/with_mumps"]
 
 [dependencies]
 russell_lab = { path = "../russell_lab", version = "1.0.0" }

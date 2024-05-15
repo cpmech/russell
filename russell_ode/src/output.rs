@@ -13,13 +13,6 @@ use std::path::Path;
 /// Use `|y, x, args|` or `|y: &mut Vector, x: f64, args, &mut A|`
 pub type YxFunction<A> = fn(&mut Vector, f64, &mut A);
 
-/// Defines a callback function to be executed during the output of results (accepted step or dense output)
-///
-/// Use `|stats, h, x, y, args|` or `|stats: &Stats, h: f64, x: f64, y: &Vector, args: &mut A|`
-///
-/// The function may return `true` to stop the computations
-pub type OutCallback<A> = fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError>;
-
 /// Holds the data generated at an accepted step or during the dense output
 #[derive(Clone, Debug, Deserialize)]
 pub struct OutData {
@@ -95,7 +88,7 @@ pub struct Output<'a, A> {
     dense_last_x: f64,
 
     /// Holds a callback function for the dense output
-    dense_callback: Option<OutCallback<A>>,
+    dense_callback: Option<Box<dyn Fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError> + 'a>>,
 
     /// Save the results to a file (dense)
     dense_file_key: Option<String>,
@@ -302,14 +295,14 @@ impl<'a, A> Output<'a, A> {
         &mut self,
         enable: bool,
         h_out: f64,
-        callback: OutCallback<A>,
+        callback: impl Fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError> + 'a,
     ) -> Result<&mut Self, StrError> {
         if h_out <= f64::EPSILON {
             return Err("h_out must be > EPSILON");
         }
         self.dense_h_out = h_out;
         if enable {
-            self.dense_callback = Some(callback);
+            self.dense_callback = Some(Box::new(callback));
         } else {
             self.dense_callback = None;
         }
@@ -423,7 +416,7 @@ impl<'a, A> Output<'a, A> {
         //
         // step output: callback
         if let Some(cb) = self.step_callback.as_ref() {
-            let stop = (cb)(&work.stats, h, x, y, args)?;
+            let stop = cb(&work.stats, h, x, y, args)?;
             if stop {
                 return Ok(stop);
             }
@@ -462,7 +455,7 @@ impl<'a, A> Output<'a, A> {
                 self.dense_last_x = x;
 
                 // first dense output: callback
-                if let Some(cb) = self.dense_callback {
+                if let Some(cb) = self.dense_callback.as_ref() {
                     let stop = cb(&work.stats, h, x, y, args)?;
                     if stop {
                         return Ok(stop);
@@ -502,7 +495,7 @@ impl<'a, A> Output<'a, A> {
                     solver.dense_output(y_out, x_out, x, y, h);
 
                     // subsequent dense output: callback
-                    if let Some(cb) = self.dense_callback {
+                    if let Some(cb) = self.dense_callback.as_ref() {
                         let stop = cb(&work.stats, h, x_out, y_out, args)?;
                         if stop {
                             return Ok(stop);
@@ -561,7 +554,7 @@ impl<'a, A> Output<'a, A> {
         }
 
         // dense output: callback
-        if let Some(cb) = self.dense_callback {
+        if let Some(cb) = self.dense_callback.as_ref() {
             cb(&work.stats, h, x, y, args)?;
         }
 

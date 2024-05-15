@@ -1,19 +1,20 @@
 use russell_lab::{vec_approx_eq, StrError, Vector};
 use russell_ode::prelude::*;
-use russell_sparse::CooMatrix;
+use russell_sparse::{CooMatrix, Sym};
 
 fn main() -> Result<(), StrError> {
     // ODE system
     let ndim = 3;
     let jac_nnz = 4;
-    let mut system = System::new(
-        ndim,
-        |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
-            f[0] = -y[0] + y[1];
-            f[1] = y[0] + y[1];
-            f[2] = 1.0 / (1.0 + x);
-            Ok(())
-        },
+    let mut system = System::new(ndim, |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+        f[0] = -y[0] + y[1];
+        f[1] = y[0] + y[1];
+        f[2] = 1.0 / (1.0 + x);
+        Ok(())
+    });
+    system.set_jacobian(
+        Some(jac_nnz),
+        Sym::No,
         move |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
             jj.reset();
             jj.put(0, 0, alpha * (-1.0)).unwrap();
@@ -22,9 +23,6 @@ fn main() -> Result<(), StrError> {
             jj.put(1, 1, alpha * (1.0)).unwrap();
             Ok(())
         },
-        HasJacobian::Yes,
-        Some(jac_nnz),
-        None,
     );
 
     // mass matrix

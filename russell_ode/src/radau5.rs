@@ -3,7 +3,7 @@ use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::math::SQRT_6;
 use russell_lab::{complex_vec_zip, cpx, format_fortran, vec_copy, Complex64, ComplexVector, Vector};
 use russell_sparse::{numerical_jacobian, ComplexCscMatrix, CscMatrix};
-use russell_sparse::{ComplexLinSolver, ComplexSparseMatrix, CooMatrix, Genie, LinSolver, SparseMatrix};
+use russell_sparse::{ComplexLinSolver, ComplexSparseMatrix, Genie, LinSolver, SparseMatrix};
 use std::thread;
 
 /// Implements the Radau5 method (Radau IIA) (implicit, order 5, embedded) for ODEs and DAEs
@@ -24,16 +24,15 @@ use std::thread;
 /// 2. E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
 ///    Stiff and Differential-Algebraic Problems. Second Revised Edition.
 ///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-pub(crate) struct Radau5<'a, F, J, A>
+pub(crate) struct Radau5<'a, F, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Holds the parameters
     params: Params,
 
     /// ODE system
-    system: &'a System<F, J, A>,
+    system: &'a System<'a, F, A>,
 
     /// Holds the Jacobian matrix. J = df/dy
     jj: SparseMatrix,
@@ -119,13 +118,12 @@ where
     dw12: ComplexVector, // packed (dw1, dw2)
 }
 
-impl<'a, F, J, A> Radau5<'a, F, J, A>
+impl<'a, F, A> Radau5<'a, F, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(params: Params, system: &'a System<F, J, A>) -> Self {
+    pub fn new(params: Params, system: &'a System<'a, F, A>) -> Self {
         let ndim = system.ndim;
         let mass_nnz = match system.mass_matrix.as_ref() {
             Some(mass) => mass.get_info().2,
@@ -198,7 +196,7 @@ where
         } else if !self.jacobian_computed {
             work.stats.sw_jacobian.reset();
             work.stats.n_jacobian += 1;
-            if self.params.newton.use_numerical_jacobian || !self.system.jac_available {
+            if self.params.newton.use_numerical_jacobian || self.system.jacobian.is_none() {
                 work.stats.n_function += self.system.ndim;
                 let y_mut = &mut self.w0; // workspace (mutable y)
                 let w1 = &mut self.dw0; // workspace
@@ -206,7 +204,7 @@ where
                 vec_copy(y_mut, y).unwrap();
                 numerical_jacobian(jj, 1.0, x, y_mut, w1, w2, args, &self.system.function)?;
             } else {
-                (self.system.jacobian)(jj, 1.0, x, y, args)?;
+                (self.system.jacobian.as_ref().unwrap())(jj, 1.0, x, y, args)?;
             }
             self.jacobian_computed = true;
             work.stats.stop_sw_jacobian();
@@ -329,10 +327,9 @@ where
     }
 }
 
-impl<'a, F, J, A> OdeSolverTrait<A> for Radau5<'a, F, J, A>
+impl<'a, F, A> OdeSolverTrait<A> for Radau5<'a, F, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
@@ -736,9 +733,9 @@ const TI: [[f64; 3]; 3] = [
 #[cfg(test)]
 mod tests {
     use super::Radau5;
-    use crate::{HasJacobian, Method, OdeSolverTrait, Params, Samples, System, Workspace};
+    use crate::{Method, OdeSolverTrait, Params, Samples, System, Workspace};
     use russell_lab::{format_fortran, format_scientific, Vector};
-    use russell_sparse::Genie;
+    use russell_sparse::{Genie, Sym};
 
     #[cfg(feature = "with_mumps")]
     use serial_test::serial;
@@ -888,28 +885,22 @@ mod tests {
         struct Args {
             count_f: usize,
         }
-        let system = System::new(
-            1,
-            |f, _, _, args: &mut Args| {
-                f[0] = 1.0;
-                args.count_f += 1;
-                if args.count_f == 1 {
-                    Err("f: stop (count = 1; initialize)")
-                } else if args.count_f == 4 {
-                    Err("f: stop (count = 4; num-jacobian)")
-                } else {
-                    Ok(())
-                }
-            },
-            |jj, alpha, _x, _y, _args: &mut Args| {
-                jj.reset();
-                jj.put(0, 0, alpha * (0.0)).unwrap();
-                Err("jj: stop")
-            },
-            HasJacobian::Yes,
-            None,
-            None,
-        );
+        let mut system = System::new(1, |f, _, _, args: &mut Args| {
+            f[0] = 1.0;
+            args.count_f += 1;
+            if args.count_f == 1 {
+                Err("f: stop (count = 1; initialize)")
+            } else if args.count_f == 4 {
+                Err("f: stop (count = 4; num-jacobian)")
+            } else {
+                Ok(())
+            }
+        });
+        system.set_jacobian(None, Sym::No, |jj, alpha, _x, _y, _args: &mut Args| {
+            jj.reset();
+            jj.put(0, 0, alpha * (0.0)).unwrap();
+            Err("jj: stop")
+        });
         let params = Params::new(Method::Radau5);
         let mut solver = Radau5::new(params, &system);
         let mut work = Workspace::new(Method::Radau5);

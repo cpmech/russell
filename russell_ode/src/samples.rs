@@ -1,5 +1,5 @@
 use crate::StrError;
-use crate::{HasJacobian, NoArgs, PdeDiscreteLaplacian2d, Side, System};
+use crate::{NoArgs, PdeDiscreteLaplacian2d, Side, System};
 use russell_lab::math::PI;
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, Genie, Sym};
@@ -36,20 +36,13 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
+    /// * `system` -- the ODE system
     /// * `x0` -- initial x
     /// * `y0` -- initial y
     /// * `args` -- is a placeholder variable with the arguments to F and J
     /// * `y_fn_x` -- is a function to compute the analytical solution
-    pub fn simple_equation_constant() -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
+    pub fn simple_equation_constant<'a>() -> (
+        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
         f64,
         Vector,
         NoArgs,
@@ -58,20 +51,18 @@ impl Samples {
         // system
         let ndim = 1;
         let jac_nnz = 1; // CooMatrix requires at least one value (thus the 0.0 must be stored)
-        let system = System::new(
-            ndim,
-            |f: &mut Vector, _x: f64, _y: &Vector, _args: &mut NoArgs| {
-                f[0] = 1.0;
-                Ok(())
-            },
+        let mut system = System::new(ndim, |f: &mut Vector, _x: f64, _y: &Vector, _args: &mut NoArgs| {
+            f[0] = 1.0;
+            Ok(())
+        });
+        system.set_jacobian(
+            Some(jac_nnz),
+            Sym::No,
             |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
                 jj.reset();
                 jj.put(0, 0, 0.0 * alpha).unwrap();
                 Ok(())
             },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
         );
 
         // initial values
@@ -144,10 +135,7 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
+    /// * `system` -- the ODE system
     /// * `x0` -- initial x
     /// * `y0` -- initial y
     /// * `args` -- is a placeholder variable with the arguments to F and J
@@ -157,15 +145,11 @@ impl Samples {
     ///
     /// * Mathematica, Numerical Solution of Differential-Algebraic Equations: Solving Systems with a Mass Matrix
     /// <https://reference.wolfram.com/language/tutorial/NDSolveDAE.html>
-    pub fn simple_system_with_mass_matrix(
+    pub fn simple_system_with_mass_matrix<'a>(
         symmetric: bool,
         genie: Genie,
     ) -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
+        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
         f64,
         Vector,
         NoArgs,
@@ -178,14 +162,15 @@ impl Samples {
         // system
         let ndim = 3;
         let jac_nnz = if triangular { 3 } else { 4 };
-        let mut system = System::new(
-            ndim,
-            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
-                f[0] = -y[0] + y[1];
-                f[1] = y[0] + y[1];
-                f[2] = 1.0 / (1.0 + x);
-                Ok(())
-            },
+        let mut system = System::new(ndim, |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+            f[0] = -y[0] + y[1];
+            f[1] = y[0] + y[1];
+            f[2] = 1.0 / (1.0 + x);
+            Ok(())
+        });
+        system.set_jacobian(
+            Some(jac_nnz),
+            sym,
             move |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
                 jj.reset();
                 jj.put(0, 0, alpha * (-1.0)).unwrap();
@@ -196,9 +181,6 @@ impl Samples {
                 jj.put(1, 1, alpha * (1.0)).unwrap();
                 Ok(())
             },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            if sym == Sym::No { None } else { Some(sym) },
         );
 
         // mass matrix
@@ -256,10 +238,7 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
+    /// * `system` -- the ODE system
     /// * `x0` -- initial x
     /// * `y0` -- initial y
     /// * `args` -- is a placeholder variable with the arguments to F and J
@@ -270,12 +249,8 @@ impl Samples {
     /// * Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
     ///   Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
     ///   in Computational Mathematics, 528p
-    pub fn brusselator_ode() -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
+    pub fn brusselator_ode<'a>() -> (
+        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
         f64,
         Vector,
         NoArgs,
@@ -284,13 +259,14 @@ impl Samples {
         // system
         let ndim = 2;
         let jac_nnz = 4;
-        let system = System::new(
-            ndim,
-            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
-                f[0] = 1.0 - 4.0 * y[0] + y[0] * y[0] * y[1];
-                f[1] = 3.0 * y[0] - y[0] * y[0] * y[1];
-                Ok(())
-            },
+        let mut system = System::new(ndim, |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
+            f[0] = 1.0 - 4.0 * y[0] + y[0] * y[0] * y[1];
+            f[1] = 3.0 * y[0] - y[0] * y[0] * y[1];
+            Ok(())
+        });
+        system.set_jacobian(
+            Some(jac_nnz),
+            Sym::No,
             |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
                 jj.reset();
                 jj.put(0, 0, alpha * (-4.0 + 2.0 * y[0] * y[1])).unwrap();
@@ -299,9 +275,6 @@ impl Samples {
                 jj.put(1, 1, alpha * (-y[0] * y[0])).unwrap();
                 Ok(())
             },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
         );
 
         // initial values
@@ -499,10 +472,7 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
-    ///     * `A` -- is the discrete Laplacian `PdeDiscreteLaplacian2d`
+    /// * `system` -- the ODE system
     /// * `t0` -- initial t
     /// * `yy0` -- initial `Y0 = [U0, V0]ᵀ`
     /// * `args: PdeDiscreteLaplacian2d` -- the discrete Laplacian
@@ -515,15 +485,15 @@ impl Samples {
     /// 2. Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///    Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn brusselator_pde(
+    pub fn brusselator_pde<'a>(
         alpha: f64,
         npoint: usize,
         second_book: bool,
         ignore_diffusion: bool,
     ) -> (
         System<
+            'a,
             impl Fn(&mut Vector, f64, &Vector, &mut PdeDiscreteLaplacian2d) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut PdeDiscreteLaplacian2d) -> Result<(), StrError>,
             PdeDiscreteLaplacian2d,
         >,
         f64,
@@ -547,34 +517,35 @@ impl Samples {
         };
 
         // system
-        let system = System::new(
-            ndim,
-            move |f, t, yy, fdm: &mut PdeDiscreteLaplacian2d| {
-                fdm.loop_over_grid_points(|m, x, y| {
-                    let um = yy[m];
-                    let vm = yy[s + m];
-                    let um2 = um * um;
-                    f[m] = 1.0 - 4.4 * um + um2 * vm;
-                    f[s + m] = 3.4 * um - um2 * vm;
-                    if !ignore_diffusion {
-                        fdm.loop_over_coef_mat_row(m, |k, amk| {
-                            let uk = yy[k];
-                            let vk = yy[s + k];
-                            f[m] += amk * uk;
-                            f[s + m] += amk * vk;
-                        });
+        let mut system = System::new(ndim, move |f, t, yy, fdm: &mut PdeDiscreteLaplacian2d| {
+            fdm.loop_over_grid_points(|m, x, y| {
+                let um = yy[m];
+                let vm = yy[s + m];
+                let um2 = um * um;
+                f[m] = 1.0 - 4.4 * um + um2 * vm;
+                f[s + m] = 3.4 * um - um2 * vm;
+                if !ignore_diffusion {
+                    fdm.loop_over_coef_mat_row(m, |k, amk| {
+                        let uk = yy[k];
+                        let vk = yy[s + k];
+                        f[m] += amk * uk;
+                        f[s + m] += amk * vk;
+                    });
+                }
+                if second_book {
+                    if t >= 1.1 {
+                        let dx = x - 0.3;
+                        let dy = y - 0.6;
+                        let inhomogeneity = if dx * dx + dy * dy <= 0.01 { 5.0 } else { 0.0 };
+                        f[m] += inhomogeneity;
                     }
-                    if second_book {
-                        if t >= 1.1 {
-                            let dx = x - 0.3;
-                            let dy = y - 0.6;
-                            let inhomogeneity = if dx * dx + dy * dy <= 0.01 { 5.0 } else { 0.0 };
-                            f[m] += inhomogeneity;
-                        }
-                    }
-                });
-                Ok(())
-            },
+                }
+            });
+            Ok(())
+        });
+        system.set_jacobian(
+            Some(jac_nnz),
+            Sym::No,
             move |jj, aa, _x, yy, fdm: &mut PdeDiscreteLaplacian2d| {
                 jj.reset();
                 let mut nnz_count = 0;
@@ -598,9 +569,6 @@ impl Samples {
                 assert_eq!(nnz_count, jac_nnz);
                 Ok(())
             },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
         );
 
         // discrete laplacian
@@ -667,10 +635,7 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
+    /// * `system` -- the ODE system
     /// * `x0` -- initial x
     /// * `y0` -- initial y
     /// * `x1` -- final x
@@ -682,12 +647,8 @@ impl Samples {
     /// * Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
     ///   Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
     ///   in Computational Mathematics, 528p
-    pub fn arenstorf() -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
+    pub fn arenstorf<'a>() -> (
+        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
         f64,
         Vector,
         f64,
@@ -701,19 +662,20 @@ impl Samples {
         // system
         let ndim = 4;
         let jac_nnz = 8;
-        let system = System::new(
-            ndim,
-            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
-                let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
-                let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
-                let d0 = t0 * f64::sqrt(t0);
-                let d1 = t1 * f64::sqrt(t1);
-                f[0] = y[2];
-                f[1] = y[3];
-                f[2] = y[0] + 2.0 * y[3] - MD * (y[0] + MU) / d0 - MU * (y[0] - MD) / d1;
-                f[3] = y[1] - 2.0 * y[2] - MD * y[1] / d0 - MU * y[1] / d1;
-                Ok(())
-            },
+        let mut system = System::new(ndim, |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
+            let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
+            let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
+            let d0 = t0 * f64::sqrt(t0);
+            let d1 = t1 * f64::sqrt(t1);
+            f[0] = y[2];
+            f[1] = y[3];
+            f[2] = y[0] + 2.0 * y[3] - MD * (y[0] + MU) / d0 - MU * (y[0] - MD) / d1;
+            f[3] = y[1] - 2.0 * y[2] - MD * y[1] / d0 - MU * y[1] / d1;
+            Ok(())
+        });
+        system.set_jacobian(
+            Some(jac_nnz),
+            Sym::No,
             |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
                 let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
                 let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
@@ -749,9 +711,6 @@ impl Samples {
                 jj.put(3, 2, -2.0 * alpha).unwrap();
                 Ok(())
             },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
         );
 
         // initial values and final x
@@ -797,10 +756,7 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
+    /// * `system` -- the ODE system
     /// * `x0` -- initial x
     /// * `y0` -- initial y
     /// * `args` -- is a placeholder variable with the arguments to F and J
@@ -811,12 +767,8 @@ impl Samples {
     /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn hairer_wanner_eq1() -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
+    pub fn hairer_wanner_eq1<'a>() -> (
+        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
         f64,
         Vector,
         NoArgs,
@@ -828,20 +780,18 @@ impl Samples {
         // system
         let ndim = 1;
         let jac_nnz = 1;
-        let system = System::new(
-            ndim,
-            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
-                f[0] = L * (y[0] - f64::cos(x));
-                Ok(())
-            },
+        let mut system = System::new(ndim, |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+            f[0] = L * (y[0] - f64::cos(x));
+            Ok(())
+        });
+        system.set_jacobian(
+            Some(jac_nnz),
+            Sym::No,
             |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
                 jj.reset();
                 jj.put(0, 0, alpha * L).unwrap();
                 Ok(())
             },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
         );
 
         // initial values
@@ -877,10 +827,7 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
+    /// * `system` -- the ODE system
     /// * `x0` -- initial x
     /// * `y0` -- initial y
     /// * `args` -- is a placeholder variable with the arguments to F and J
@@ -890,12 +837,8 @@ impl Samples {
     /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn robertson() -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
+    pub fn robertson<'a>() -> (
+        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
         f64,
         Vector,
         NoArgs,
@@ -903,14 +846,15 @@ impl Samples {
         // system
         let ndim = 3;
         let jac_nnz = 7;
-        let system = System::new(
-            ndim,
-            |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
-                f[0] = -0.04 * y[0] + 1.0e4 * y[1] * y[2];
-                f[1] = 0.04 * y[0] - 1.0e4 * y[1] * y[2] - 3.0e7 * y[1] * y[1];
-                f[2] = 3.0e7 * y[1] * y[1];
-                Ok(())
-            },
+        let mut system = System::new(ndim, |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
+            f[0] = -0.04 * y[0] + 1.0e4 * y[1] * y[2];
+            f[1] = 0.04 * y[0] - 1.0e4 * y[1] * y[2] - 3.0e7 * y[1] * y[1];
+            f[2] = 3.0e7 * y[1] * y[1];
+            Ok(())
+        });
+        system.set_jacobian(
+            Some(jac_nnz),
+            Sym::No,
             |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
                 jj.reset();
                 jj.put(0, 0, -0.04 * alpha).unwrap();
@@ -922,9 +866,6 @@ impl Samples {
                 jj.put(2, 1, 6.0e7 * y[1] * alpha).unwrap();
                 Ok(())
             },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
         );
 
         // initial values
@@ -962,10 +903,7 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
+    /// * `system` -- the ODE system
     /// * `x0` -- initial x
     /// * `y0` -- initial y
     /// * `x1` -- final x
@@ -976,15 +914,11 @@ impl Samples {
     /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn van_der_pol(
+    pub fn van_der_pol<'a>(
         epsilon: f64,
         stationary: bool,
     ) -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
+        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
         f64,
         Vector,
         f64,
@@ -1008,13 +942,14 @@ impl Samples {
         // system
         let ndim = 2;
         let jac_nnz = 3;
-        let system = System::new(
-            ndim,
-            move |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
-                f[0] = y[1];
-                f[1] = ((1.0 - y[0] * y[0]) * y[1] - y[0]) / eps;
-                Ok(())
-            },
+        let mut system = System::new(ndim, move |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
+            f[0] = y[1];
+            f[1] = ((1.0 - y[0] * y[0]) * y[1] - y[0]) / eps;
+            Ok(())
+        });
+        system.set_jacobian(
+            Some(jac_nnz),
+            Sym::No,
             move |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
                 jj.reset();
                 jj.put(0, 1, 1.0 * alpha).unwrap();
@@ -1022,9 +957,6 @@ impl Samples {
                 jj.put(1, 1, alpha * (1.0 - y[0] * y[0]) / eps).unwrap();
                 Ok(())
             },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
         );
 
         // results
@@ -1097,10 +1029,7 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
+    /// * `system` -- the ODE system
     /// * `x0` -- initial x
     /// * `y0` -- initial y
     /// * `args` -- is a placeholder variable with the arguments to F and J
@@ -1110,12 +1039,8 @@ impl Samples {
     /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn amplifier1t() -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
+    pub fn amplifier1t<'a>() -> (
+        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
         f64,
         Vector,
         NoArgs,
@@ -1134,18 +1059,19 @@ impl Samples {
         // system
         let ndim = 5;
         let jac_nnz = 9;
-        let mut system = System::new(
-            ndim,
-            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
-                let ue = A * f64::sin(OM * x);
-                let g12 = BETA * (f64::exp((y[1] - y[2]) / UF) - 1.0);
-                f[0] = (y[0] - ue) / R;
-                f[1] = (2.0 * y[1] - UB) / S + GAMMA * g12;
-                f[2] = y[2] / S - g12;
-                f[3] = (y[3] - UB) / S + ALPHA * g12;
-                f[4] = y[4] / S;
-                Ok(())
-            },
+        let mut system = System::new(ndim, |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+            let ue = A * f64::sin(OM * x);
+            let g12 = BETA * (f64::exp((y[1] - y[2]) / UF) - 1.0);
+            f[0] = (y[0] - ue) / R;
+            f[1] = (2.0 * y[1] - UB) / S + GAMMA * g12;
+            f[2] = y[2] / S - g12;
+            f[3] = (y[3] - UB) / S + ALPHA * g12;
+            f[4] = y[4] / S;
+            Ok(())
+        });
+        system.set_jacobian(
+            Some(jac_nnz),
+            Sym::No,
             |jj: &mut CooMatrix, aa: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
                 let h12 = BETA * f64::exp((y[1] - y[2]) / UF) / UF;
                 jj.reset();
@@ -1160,9 +1086,6 @@ impl Samples {
                 jj.put(4, 4, aa * (1.0 / S)).unwrap();
                 Ok(())
             },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
         );
 
         // mass matrix
@@ -1203,10 +1126,7 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
+    /// * `system` -- the ODE system
     /// * `x0` -- initial x
     /// * `y0` -- initial y
     /// * `args` -- is a placeholder variable with the arguments to F and J
@@ -1216,12 +1136,8 @@ impl Samples {
     ///
     /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
     ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
-    pub fn kreyszig_eq6_page902() -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
+    pub fn kreyszig_eq6_page902<'a>() -> (
+        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
         f64,
         Vector,
         NoArgs,
@@ -1230,20 +1146,18 @@ impl Samples {
         // system
         let ndim = 1;
         let jac_nnz = 1;
-        let system = System::new(
-            ndim,
-            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
-                f[0] = x + y[0];
-                Ok(())
-            },
+        let mut system = System::new(ndim, |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+            f[0] = x + y[0];
+            Ok(())
+        });
+        system.set_jacobian(
+            Some(jac_nnz),
+            Sym::No,
             |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
                 jj.reset();
                 jj.put(0, 0, 1.0 * alpha).unwrap();
                 Ok(())
             },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
         );
 
         // initial values
@@ -1284,10 +1198,7 @@ impl Samples {
     ///
     /// # Output
     ///
-    /// * `system: System<F, J, A>` with:
-    ///     * `F` -- is a function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    ///     * `J` -- is a function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
-    ///     * `A` -- is `NoArgs`
+    /// * `system` -- the ODE system
     /// * `x0` -- initial x
     /// * `y0` -- initial y
     /// * `args` -- is a placeholder variable with the arguments to F and J
@@ -1297,12 +1208,8 @@ impl Samples {
     ///
     /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
     ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
-    pub fn kreyszig_ex4_page920() -> (
-        System<
-            impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut NoArgs) -> Result<(), StrError>,
-            NoArgs,
-        >,
+    pub fn kreyszig_ex4_page920<'a>() -> (
+        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
         f64,
         Vector,
         NoArgs,
@@ -1311,13 +1218,14 @@ impl Samples {
         // system
         let ndim = 2;
         let jac_nnz = 3;
-        let system = System::new(
-            ndim,
-            |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
-                f[0] = y[1];
-                f[1] = -10.0 * y[0] - 11.0 * y[1] + 10.0 * x + 11.0;
-                Ok(())
-            },
+        let mut system = System::new(ndim, |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+            f[0] = y[1];
+            f[1] = -10.0 * y[0] - 11.0 * y[1] + 10.0 * x + 11.0;
+            Ok(())
+        });
+        system.set_jacobian(
+            Some(jac_nnz),
+            Sym::No,
             |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
                 jj.reset();
                 jj.put(0, 1, 1.0 * alpha).unwrap();
@@ -1325,9 +1233,6 @@ impl Samples {
                 jj.put(1, 1, -11.0 * alpha).unwrap();
                 Ok(())
             },
-            HasJacobian::Yes,
-            Some(jac_nnz),
-            None,
         );
 
         // initial values
@@ -1368,7 +1273,8 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
+        let jacobian = system.jacobian.as_ref().unwrap();
+        (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
         let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
@@ -1393,7 +1299,8 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
+        let jacobian = system.jacobian.as_ref().unwrap();
+        (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
         let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
@@ -1412,7 +1319,8 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
+        let jacobian = system.jacobian.as_ref().unwrap();
+        (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
         let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
@@ -1433,7 +1341,8 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, jac_alpha, x0, &y0, &mut args).unwrap();
+        let jacobian = system.jacobian.as_ref().unwrap();
+        (jacobian)(&mut jj, jac_alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
         let num = num_jacobian(system.ndim, x0, &y0, jac_alpha, &mut args, system.function).unwrap();
@@ -1454,7 +1363,8 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, jac_alpha, x0, &y0, &mut args).unwrap();
+        let jacobian = system.jacobian.as_ref().unwrap();
+        (jacobian)(&mut jj, jac_alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
         let num = num_jacobian(system.ndim, x0, &y0, jac_alpha, &mut args, system.function).unwrap();
@@ -1478,7 +1388,8 @@ mod tests {
             // compute the analytical Jacobian matrix
             let jac_alpha = 2.0;
             let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-            (system.jacobian)(&mut jj, jac_alpha, t, &y0, &mut args).unwrap();
+            let jacobian = system.jacobian.as_ref().unwrap();
+            (jacobian)(&mut jj, jac_alpha, t, &y0, &mut args).unwrap();
 
             // compute the numerical Jacobian matrix
             let num = num_jacobian(system.ndim, t, &y0, jac_alpha, &mut args, &system.function).unwrap();
@@ -1498,7 +1409,8 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
+        let jacobian = system.jacobian.as_ref().unwrap();
+        (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
         let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
@@ -1523,7 +1435,8 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
+        let jacobian = system.jacobian.as_ref().unwrap();
+        (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
         let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
@@ -1542,7 +1455,8 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
+        let jacobian = system.jacobian.as_ref().unwrap();
+        (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
         let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
@@ -1561,7 +1475,8 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
+        let jacobian = system.jacobian.as_ref().unwrap();
+        (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
         let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
@@ -1580,7 +1495,8 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
+        let jacobian = system.jacobian.as_ref().unwrap();
+        (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
         let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
@@ -1599,7 +1515,8 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
+        let jacobian = system.jacobian.as_ref().unwrap();
+        (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
         let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
@@ -1631,7 +1548,8 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
+        let jacobian = system.jacobian.as_ref().unwrap();
+        (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
         let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();
@@ -1656,7 +1574,8 @@ mod tests {
 
         // compute the analytical Jacobian matrix
         let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
-        (system.jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
+        let jacobian = system.jacobian.as_ref().unwrap();
+        (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
         // compute the numerical Jacobian matrix
         let num = num_jacobian(system.ndim, x0, &y0, alpha, &mut args, system.function).unwrap();

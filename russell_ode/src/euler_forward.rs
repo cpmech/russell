@@ -1,19 +1,17 @@
 use crate::StrError;
 use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::{vec_add, vec_copy, Vector};
-use russell_sparse::CooMatrix;
 
 /// Implements the forward Euler method (explicit, order 1, conditionally stable)
 ///
 /// **Warning:** This method is interesting for didactic purposes only
 /// and should not be used in production codes.
-pub(crate) struct EulerForward<'a, F, J, A>
+pub(crate) struct EulerForward<'a, F, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// ODE system
-    system: &'a System<F, J, A>,
+    system: &'a System<'a, F, A>,
 
     /// Vector holding the function evaluation
     ///
@@ -24,13 +22,12 @@ where
     w: Vector,
 }
 
-impl<'a, F, J, A> EulerForward<'a, F, J, A>
+impl<'a, F, A> EulerForward<'a, F, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(system: &'a System<F, J, A>) -> Self {
+    pub fn new(system: &'a System<'a, F, A>) -> Self {
         let ndim = system.ndim;
         EulerForward {
             system,
@@ -40,10 +37,9 @@ where
     }
 }
 
-impl<'a, F, J, A> OdeSolverTrait<A> for EulerForward<'a, F, J, A>
+impl<'a, F, A> OdeSolverTrait<A> for EulerForward<'a, F, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
@@ -87,7 +83,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::EulerForward;
-    use crate::{no_jacobian, HasJacobian, Method, NoArgs, OdeSolverTrait, Params, Samples, System, Workspace};
+    use crate::{Method, NoArgs, OdeSolverTrait, Params, Samples, System, Workspace};
     use russell_lab::{array_approx_eq, Vector};
 
     #[test]
@@ -172,17 +168,10 @@ mod tests {
 
     #[test]
     fn euler_forward_handles_errors() {
-        let system = System::new(
-            1,
-            |f, _, _, _: &mut NoArgs| {
-                f[0] = 1.0;
-                Err("stop")
-            },
-            no_jacobian,
-            HasJacobian::No,
-            None,
-            None,
-        );
+        let system = System::new(1, |f, _, _, _: &mut NoArgs| {
+            f[0] = 1.0;
+            Err("stop")
+        });
         let mut solver = EulerForward::new(&system);
         let mut work = Workspace::new(Method::FwEuler);
         let x = 0.0;

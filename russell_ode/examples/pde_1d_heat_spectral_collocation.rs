@@ -2,7 +2,7 @@ use plotpy::{Curve, Plot, SuperTitleParams};
 use russell_lab::algo::{InterpGrid, InterpLagrange, InterpParams};
 use russell_lab::math::{GOLDEN_RATIO, PI};
 use russell_lab::{mat_vec_mul, StrError, Vector};
-use russell_ode::{no_jacobian, HasJacobian, Method, NoArgs, OdeSolver, Params, System};
+use russell_ode::{Method, NoArgs, OdeSolver, Params, System};
 
 const PATH_KEY: &str = "/tmp/russell_ode/pde_1d_heat_spectral_collocation";
 
@@ -80,10 +80,6 @@ fn run(
             dudt[nn] = 0.0; // homogeneous BCs
             Ok(())
         },
-        no_jacobian,
-        HasJacobian::No,
-        None,
-        None,
     );
 
     // ODE solver

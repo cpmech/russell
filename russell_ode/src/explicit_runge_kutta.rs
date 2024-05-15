@@ -2,7 +2,6 @@ use crate::constants::*;
 use crate::StrError;
 use crate::{detect_stiffness, ErkDenseOut, Information, Method, OdeSolverTrait, Params, System, Workspace};
 use russell_lab::{format_fortran, vec_copy, vec_update, Matrix, Vector};
-use russell_sparse::CooMatrix;
 
 /// Implements several explicit Runge-Kutta methods
 ///
@@ -21,16 +20,15 @@ use russell_sparse::CooMatrix;
 /// 2. E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
 ///    Stiff and Differential-Algebraic Problems. Second Revised Edition.
 ///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-pub(crate) struct ExplicitRungeKutta<'a, F, J, A>
+pub(crate) struct ExplicitRungeKutta<'a, F, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Holds the parameters
     params: Params,
 
     /// ODE system
-    system: &'a System<F, J, A>,
+    system: &'a System<'a, F, A>,
 
     /// Information such as implicit, embedded, etc.
     info: Information,
@@ -80,13 +78,12 @@ where
     dense_out: Option<ErkDenseOut>,
 }
 
-impl<'a, F, J, A> ExplicitRungeKutta<'a, F, J, A>
+impl<'a, F, A> ExplicitRungeKutta<'a, F, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(params: Params, system: &'a System<F, J, A>) -> Result<Self, StrError> {
+    pub fn new(params: Params, system: &'a System<'a, F, A>) -> Result<Self, StrError> {
         // Runge-Kutta coefficients
         #[rustfmt::skip]
         let (aa, bb, cc) = match params.method {
@@ -156,10 +153,9 @@ where
     }
 }
 
-impl<'a, F, J, A> OdeSolverTrait<A> for ExplicitRungeKutta<'a, F, J, A>
+impl<'a, F, A> OdeSolverTrait<A> for ExplicitRungeKutta<'a, F, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
@@ -380,7 +376,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::ExplicitRungeKutta;
-    use crate::{no_jacobian, ErkDenseOut, HasJacobian, Method, OdeSolverTrait, Params, Samples, System, Workspace};
+    use crate::{ErkDenseOut, Method, OdeSolverTrait, Params, Samples, System, Workspace};
     use russell_lab::{approx_eq, array_approx_eq, Vector};
 
     #[test]
@@ -389,14 +385,7 @@ mod tests {
         for method in Method::erk_methods() {
             println!("\n... {:?} ...", method);
             let params = Params::new(method);
-            let system = System::new(
-                1,
-                |_, _, _, _args: &mut Args| Ok(()),
-                no_jacobian,
-                HasJacobian::No,
-                None,
-                None,
-            );
+            let system = System::new(1, |_, _, _, _args: &mut Args| Ok(()));
             let erk = ExplicitRungeKutta::new(params, &system).unwrap();
             let nstage = erk.nstage;
             assert_eq!(erk.aa.dims(), (nstage, nstage));
@@ -698,18 +687,11 @@ mod tests {
         //
         // y(x) = tan(x) + x + 1
         // ```
-        let system = System::new(
-            1,
-            |f, x, y, _: &mut u8| {
-                let d = y[0] - x - 1.0;
-                f[0] = d * d + 2.0;
-                Ok(())
-            },
-            no_jacobian,
-            HasJacobian::No,
-            None,
-            None,
-        );
+        let system = System::new(1, |f, x, y, _: &mut u8| {
+            let d = y[0] - x - 1.0;
+            f[0] = d * d + 2.0;
+            Ok(())
+        });
 
         // allocate solver
         let params = Params::new(Method::Fehlberg4);
@@ -741,30 +723,23 @@ mod tests {
         struct Args {
             count_f: usize,
         }
-        let system = System::new(
-            1,
-            |f, _, _, args: &mut Args| {
-                f[0] = 1.0;
-                args.count_f += 1;
-                if args.count_f == 1 {
-                    Err("f: count = 1")
-                } else if args.count_f == 3 {
-                    Err("f: count = 3")
-                } else if args.count_f == 4 {
-                    Err("f: count = 4 (dense output)")
-                } else if args.count_f == 6 {
-                    Err("f: count = 6 (dense output)")
-                } else if args.count_f == 8 {
-                    Err("f: count = 8 (dense output)")
-                } else {
-                    Ok(())
-                }
-            },
-            no_jacobian,
-            HasJacobian::No,
-            None,
-            None,
-        );
+        let system = System::new(1, |f, _, _, args: &mut Args| {
+            f[0] = 1.0;
+            args.count_f += 1;
+            if args.count_f == 1 {
+                Err("f: count = 1")
+            } else if args.count_f == 3 {
+                Err("f: count = 3")
+            } else if args.count_f == 4 {
+                Err("f: count = 4 (dense output)")
+            } else if args.count_f == 6 {
+                Err("f: count = 6 (dense output)")
+            } else if args.count_f == 8 {
+                Err("f: count = 8 (dense output)")
+            } else {
+                Ok(())
+            }
+        });
 
         assert_eq!(
             ExplicitRungeKutta::new(Params::new(Method::Radau5), &system).err(),

@@ -58,7 +58,7 @@
 //!
 //! where `[J]` is the Jacobian matrix.
 //!
-//! **Note:** The Jacobian function is not required for explicit Runge-Kutta methods (see [Method] and [Information]). Thus, one may simply pass the [no_jacobian] function and set [HasJacobian::No] in the system.
+//! **Note:** The Jacobian function is not required for explicit Runge-Kutta methods (see [Method] and [Information]).
 //!
 //! The flag [ParamsNewton::use_numerical_jacobian] may be set to true to compute the Jacobian matrix numerically. This option works with or without specifying the analytical Jacobian function.
 //!
@@ -130,22 +130,23 @@
 //! Code:
 //!
 //! ```
-//! use russell_lab::{vec_max_abs_diff, StrError, Vector};
+//! use russell_lab::{StrError, Vector};
 //! use russell_ode::prelude::*;
-//! use russell_sparse::CooMatrix;
+//! use russell_sparse::{CooMatrix, Sym};
 //!
 //! fn main() -> Result<(), StrError> {
 //!     // DAE system
 //!     let ndim = 3;
 //!     let jac_nnz = 4; // number of non-zero values in the Jacobian
-//!     let mut system = System::new(
-//!         ndim,
-//!         |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
-//!             f[0] = -y[0] + y[1];
-//!             f[1] = y[0] + y[1];
-//!             f[2] = 1.0 / (1.0 + x);
-//!             Ok(())
-//!         },
+//!     let mut system = System::new(ndim, |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
+//!         f[0] = -y[0] + y[1];
+//!         f[1] = y[0] + y[1];
+//!         f[2] = 1.0 / (1.0 + x);
+//!         Ok(())
+//!     });
+//!     system.set_jacobian(
+//!         Some(jac_nnz),
+//!         Sym::No,
 //!         move |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
 //!             jj.reset();
 //!             jj.put(0, 0, alpha * (-1.0)).unwrap();
@@ -154,9 +155,6 @@
 //!             jj.put(1, 1, alpha * (1.0)).unwrap();
 //!             Ok(())
 //!         },
-//!         HasJacobian::Yes,
-//!         Some(jac_nnz),
-//!         None,
 //!     );
 //!
 //!     // mass matrix

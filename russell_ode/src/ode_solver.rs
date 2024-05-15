@@ -3,7 +3,6 @@ use crate::{EulerBackward, EulerForward, ExplicitRungeKutta, Radau5};
 use crate::{Method, OdeSolverTrait, Params, Stats, System, Workspace};
 use crate::{Output, StrError};
 use russell_lab::{vec_all_finite, Vector};
-use russell_sparse::CooMatrix;
 
 /// Implements a numerical solver for systems of ODEs
 ///
@@ -32,8 +31,7 @@ use russell_sparse::CooMatrix;
 /// where `[J]` is the scaled Jacobian matrix and `α` is a scaling coefficient.
 ///
 /// **Note:** The Jacobian function is not required for explicit Runge-Kutta methods
-/// (see [crate::Method] and [crate::Information]). Thus, one may simply pass the [crate::no_jacobian]
-/// function and set [crate::HasJacobian::No] in the system.
+/// (see [crate::Method] and [crate::Information]).
 ///
 /// The flag [crate::ParamsNewton::use_numerical_jacobian] may be set to true to compute the
 /// Jacobian matrix numerically. This option works with or without specifying the analytical
@@ -67,26 +65,21 @@ use russell_sparse::CooMatrix;
 /// ```
 /// use russell_lab::{vec_approx_eq, StrError, Vector};
 /// use russell_ode::prelude::*;
+/// use russell_sparse::Sym;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // ODE system
 ///     let ndim = 1;
 ///     let jac_nnz = 1;
-///     let system = System::new(
-///         ndim,
-///         |f, x, y, _args: &mut NoArgs| {
-///             f[0] = x + y[0];
-///             Ok(())
-///         },
-///         |jj, alpha, _x, _y, _args: &mut NoArgs| {
-///             jj.reset();
-///             jj.put(0, 0, alpha * (1.0))?;
-///             Ok(())
-///         },
-///         HasJacobian::Yes,
-///         Some(jac_nnz),
-///         None,
-///     );
+///     let mut system = System::new(ndim, |f, x, y, _args: &mut NoArgs| {
+///         f[0] = x + y[0];
+///         Ok(())
+///     });
+///     system.set_jacobian(Some(jac_nnz), Sym::No, |jj, alpha, _x, _y, _args: &mut NoArgs| {
+///         jj.reset();
+///         jj.put(0, 0, alpha * (1.0))?;
+///         Ok(())
+///     });
 ///
 ///     // solver
 ///     let params = Params::new(Method::Radau5);
@@ -143,12 +136,10 @@ impl<'a, A> OdeSolver<'a, A> {
     /// The generic arguments here are:
     ///
     /// * `F` -- function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    /// * `J` -- function to compute the Jacobian: `(jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A)`
-    /// * `A` -- generic argument to assist in the `F` and `J` functions. It may be simply [crate::NoArgs] indicating that no arguments are needed.
-    pub fn new<F, J>(params: Params, system: &'a System<F, J, A>) -> Result<Self, StrError>
+    /// * `A` -- generic argument to assist in the `F` and Jacobian functions. It may be simply [crate::NoArgs] indicating that no arguments are needed.
+    pub fn new<F>(params: Params, system: &'a System<'a, F, A>) -> Result<Self, StrError>
     where
         F: 'a + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-        J: 'a + Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
         A: 'a,
     {
         if system.mass_matrix.is_some() && params.method != Method::Radau5 {
@@ -432,8 +423,8 @@ impl<'a, A> OdeSolver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::OdeSolver;
-    use crate::{no_jacobian, HasJacobian, NoArgs, OutCount, OutData, Stats};
     use crate::{Method, Params, Samples, System};
+    use crate::{NoArgs, OutCount, OutData, Stats};
     use russell_lab::{approx_eq, array_approx_eq, vec_approx_eq, Vector};
     use russell_sparse::Genie;
 
@@ -838,21 +829,14 @@ mod tests {
 
         // system
         let ndim = 1;
-        let system = System::new(
-            ndim,
-            |f: &mut Vector, _x: f64, _y: &Vector, args: &mut Args| {
-                if args.f_count == args.f_barrier {
-                    return Err("f: artificial error");
-                }
-                f[0] = 1.0;
-                args.f_count += 1;
-                Ok(())
-            },
-            no_jacobian,
-            HasJacobian::No,
-            None,
-            None,
-        );
+        let system = System::new(ndim, |f: &mut Vector, _x: f64, _y: &Vector, args: &mut Args| {
+            if args.f_count == args.f_barrier {
+                return Err("f: artificial error");
+            }
+            f[0] = 1.0;
+            args.f_count += 1;
+            Ok(())
+        });
 
         // initial values and final x
         let x0 = 0.0;

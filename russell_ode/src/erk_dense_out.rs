@@ -2,7 +2,6 @@ use crate::StrError;
 use crate::{Method, System};
 use crate::{DORMAND_PRINCE_5_D, DORMAND_PRINCE_8_AD, DORMAND_PRINCE_8_CD, DORMAND_PRINCE_8_D};
 use russell_lab::Vector;
-use russell_sparse::CooMatrix;
 
 /// Handles the dense output of explicit Runge-Kutta methods
 pub(crate) struct ErkDenseOut {
@@ -58,9 +57,9 @@ impl ErkDenseOut {
     }
 
     /// Updates the data and returns the number of function evaluations
-    pub(crate) fn update<'a, F, J, A>(
+    pub(crate) fn update<'a, F, A>(
         &mut self,
-        system: &System<F, J, A>,
+        system: &System<F, A>,
         x: f64,
         y: &Vector,
         h: f64,
@@ -70,7 +69,6 @@ impl ErkDenseOut {
     ) -> Result<usize, StrError>
     where
         F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-        J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
     {
         let mut n_function_eval = 0;
 
@@ -240,7 +238,7 @@ impl ErkDenseOut {
 #[cfg(test)]
 mod tests {
     use super::ErkDenseOut;
-    use crate::{no_jacobian, HasJacobian, Method, System};
+    use crate::{Method, System};
     use russell_lab::Vector;
 
     #[test]
@@ -309,21 +307,14 @@ mod tests {
             count: usize,
             fail: usize,
         }
-        let mut system = System::new(
-            1,
-            |_f: &mut Vector, _x: f64, _y: &Vector, args: &mut Args| {
-                args.count += 1;
-                if args.count == args.fail {
-                    Err("STOP")
-                } else {
-                    Ok(())
-                }
-            },
-            no_jacobian,
-            HasJacobian::No,
-            None,
-            None,
-        );
+        let mut system = System::new(1, |_f: &mut Vector, _x: f64, _y: &Vector, args: &mut Args| {
+            args.count += 1;
+            if args.count == args.fail {
+                Err("STOP")
+            } else {
+                Ok(())
+            }
+        });
         let mut out = ErkDenseOut::new(Method::DoPri8, system.ndim).unwrap();
         let mut args = Args { count: 0, fail: 1 };
         let h = 0.1;

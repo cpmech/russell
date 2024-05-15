@@ -1,19 +1,18 @@
 use crate::StrError;
 use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::{vec_copy, vec_rms_scaled, vec_update, Vector};
-use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, SparseMatrix};
+use russell_sparse::{numerical_jacobian, LinSolver, SparseMatrix};
 
 /// Implements the backward Euler (implicit) solver (implicit, order 1, unconditionally stable)
-pub(crate) struct EulerBackward<'a, F, J, A>
+pub(crate) struct EulerBackward<'a, F, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Holds the parameters
     params: Params,
 
     /// ODE system
-    system: &'a System<F, J, A>,
+    system: &'a System<'a, F, A>,
 
     /// Vector holding the function evaluation
     ///
@@ -36,13 +35,12 @@ where
     solver: LinSolver<'a>,
 }
 
-impl<'a, F, J, A> EulerBackward<'a, F, J, A>
+impl<'a, F, A> EulerBackward<'a, F, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Allocates a new instance
-    pub fn new(params: Params, system: &'a System<F, J, A>) -> Self {
+    pub fn new(params: Params, system: &'a System<'a, F, A>) -> Self {
         let ndim = system.ndim;
         let jac_nnz = if params.newton.use_numerical_jacobian {
             ndim * ndim
@@ -63,10 +61,9 @@ where
     }
 }
 
-impl<'a, F, J, A> OdeSolverTrait<A> for EulerBackward<'a, F, J, A>
+impl<'a, F, A> OdeSolverTrait<A> for EulerBackward<'a, F, A>
 where
     F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    J: Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
@@ -115,13 +112,13 @@ where
 
                 // calculate J_new := h J
                 let kk = self.kk.get_coo_mut().unwrap();
-                if self.params.newton.use_numerical_jacobian || !self.system.jac_available {
+                if self.params.newton.use_numerical_jacobian || self.system.jacobian.is_none() {
                     work.stats.n_function += ndim;
                     let w1 = &mut self.k; // workspace
                     let w2 = &mut self.dy; // workspace
                     numerical_jacobian(kk, h, x_new, y_new, w1, w2, args, &self.system.function)?;
                 } else {
-                    (self.system.jacobian)(kk, h, x_new, y_new, args)?;
+                    (self.system.jacobian.as_ref().unwrap())(kk, h, x_new, y_new, args)?;
                 }
 
                 // add diagonal entries => calculate K = h J_new - I
@@ -190,8 +187,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::EulerBackward;
-    use crate::{HasJacobian, Method, OdeSolverTrait, Params, Samples, System, Workspace};
+    use crate::{Method, OdeSolverTrait, Params, Samples, System, Workspace};
     use russell_lab::{array_approx_eq, Vector};
+    use russell_sparse::Sym;
 
     // Mathematica code:
     //
@@ -383,28 +381,22 @@ mod tests {
         struct Args {
             count_f: usize,
         }
-        let system = System::new(
-            1,
-            |f, _, _, args: &mut Args| {
-                f[0] = 1.0;
-                args.count_f += 1;
-                if args.count_f == 1 {
-                    Err("f: stop (count = 1)")
-                } else if args.count_f == 4 {
-                    Err("f: stop (count = 4; num-jacobian)")
-                } else {
-                    Ok(())
-                }
-            },
-            |jj, alpha, _x, _y, _args: &mut Args| {
-                jj.reset();
-                jj.put(0, 0, alpha * (0.0)).unwrap();
-                Err("jj: stop")
-            },
-            HasJacobian::Yes,
-            None,
-            None,
-        );
+        let mut system = System::new(1, |f, _, _, args: &mut Args| {
+            f[0] = 1.0;
+            args.count_f += 1;
+            if args.count_f == 1 {
+                Err("f: stop (count = 1)")
+            } else if args.count_f == 4 {
+                Err("f: stop (count = 4; num-jacobian)")
+            } else {
+                Ok(())
+            }
+        });
+        system.set_jacobian(None, Sym::No, |jj, alpha, _x, _y, _args: &mut Args| {
+            jj.reset();
+            jj.put(0, 0, alpha * (0.0)).unwrap();
+            Err("jj: stop")
+        });
         let params = Params::new(Method::BwEuler);
         let mut solver = EulerBackward::new(params, &system);
         let mut work = Workspace::new(Method::BwEuler);

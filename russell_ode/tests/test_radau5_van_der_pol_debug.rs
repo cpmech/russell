@@ -12,9 +12,11 @@ fn test_radau5_van_der_pol_debug() {
     params.step.h_ini = 1e-6;
     params.debug = true;
 
-    // solve the ODE system
+    // allocate the solver
     let mut solver = OdeSolver::new(params, &system).unwrap();
-    solver.solve(&mut y0, x0, x1, None, None, &mut args).unwrap();
+
+    // solve the ODE system
+    solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();

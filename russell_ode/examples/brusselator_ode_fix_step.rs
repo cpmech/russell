@@ -55,7 +55,7 @@ fn main() -> Result<(), StrError> {
         print!("{:>w$}", name, w = w1);
         for i in 0..hh.len() {
             let mut y = y0.clone();
-            solver.solve(&mut y, x0, x1, Some(hh[i]), None, &mut args).unwrap();
+            solver.solve(&mut y, x0, x1, Some(hh[i]), &mut args).unwrap();
 
             // compare with the reference solution
             let (_, err) = vec_max_abs_diff(&y, &y_ref)?;

@@ -12,10 +12,12 @@ fn test_dopri5_arenstorf_debug() {
     params.set_tolerances(1e-7, 1e-7, None).unwrap();
     params.debug = true;
 
-    // solve the ODE system
+    // allocate the solver
     let mut solver = OdeSolver::new(params, &system).unwrap();
+
+    // solve the ODE system
     let y = &mut y0;
-    solver.solve(y, x0, x1, None, None, &mut args).unwrap();
+    solver.solve(y, x0, x1, None, &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();

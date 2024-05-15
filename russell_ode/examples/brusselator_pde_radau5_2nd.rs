@@ -26,14 +26,15 @@ fn main() -> Result<(), StrError> {
     let mut params = Params::new(Method::Radau5);
     params.set_tolerances(1e-4, 1e-4, None)?;
 
+    // allocate the solver
+    let mut solver = OdeSolver::new(params, &system)?;
+
     // output
-    let mut out = Output::new();
     let h_out = 1.0;
-    out.set_dense_file_writing(true, h_out, PATH_KEY)?;
+    solver.enable_output().set_dense_file_writing(true, h_out, PATH_KEY)?;
 
     // solve the ODE system
-    let mut solver = OdeSolver::new(params, &system)?;
-    solver.solve(&mut yy0, t0, t1, None, Some(&mut out), &mut args)?;
+    solver.solve(&mut yy0, t0, t1, None, &mut args)?;
 
     // get statistics
     let stat = solver.stats();

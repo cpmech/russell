@@ -21,19 +21,20 @@ fn main() -> Result<(), StrError> {
     let (system, x0, _, x1, mut args) = Samples::van_der_pol(EPS, false);
     let mut y0 = Vector::from(&[2.0, -0.6]);
 
-    // solver
+    // set configuration parameters
     let mut params = Params::new(Method::Radau5);
     params.step.h_ini = 1e-4;
     params.set_tolerances(1e-4, 1e-4, None)?;
+
+    // allocate the solver
     let mut solver = OdeSolver::new(params, &system)?;
 
     // enable step output
-    let mut out = Output::new();
     let selected_y_components = &[0, 1];
-    out.set_step_recording(true, selected_y_components);
+    solver.enable_output().set_step_recording(true, selected_y_components);
 
     // solve the problem
-    solver.solve(&mut y0, x0, x1, None, Some(&mut out), &mut args)?;
+    solver.solve(&mut y0, x0, x1, None, &mut args)?;
     println!("y =\n{}", y0);
 
     // print stats
@@ -46,12 +47,12 @@ fn main() -> Result<(), StrError> {
         .set_marker_color("red")
         .set_marker_line_color("red")
         .set_marker_style(".")
-        .draw(&out.step_x, out.step_y.get(&0).unwrap());
+        .draw(&solver.out().step_x, solver.out().step_y.get(&0).unwrap());
     curve2
         .set_marker_color("green")
         .set_marker_line_color("green")
         .set_marker_style(".")
-        .draw(&out.step_x, &out.step_h);
+        .draw(&solver.out().step_x, &solver.out().step_h);
 
     // save figure
     let mut plot = Plot::new();

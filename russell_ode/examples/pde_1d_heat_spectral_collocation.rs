@@ -106,7 +106,7 @@ fn run(
         |x| f64::sin((x + 1.0) * PI));
 
     // solve the problem
-    ode.solve(&mut uu, t0, t1, None, None, &mut args)?;
+    ode.solve(&mut uu, t0, t1, None,  &mut args)?;
 
     // print stats
     if print_stats {

@@ -15,9 +15,11 @@ fn test_radau5_robertson_debug() {
     params.set_tolerances(1e-8, 1e-2, None).unwrap();
     params.debug = true;
 
-    // solve the ODE system
+    // allocate the solver
     let mut solver = OdeSolver::new(params, &system).unwrap();
-    solver.solve(&mut y0, x0, x1, None, None, &mut args).unwrap();
+
+    // solve the ODE system
+    solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();

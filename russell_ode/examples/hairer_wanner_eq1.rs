@@ -30,25 +30,26 @@ fn main() -> Result<(), StrError> {
     let mut fweuler = OdeSolver::new(Params::new(Method::FwEuler), &system)?;
 
     // solve the problem with BwEuler and h = 0.5
-    let mut out1 = Output::new();
-    out1.set_step_recording(true, &[0]);
+    bweuler.enable_output().set_step_recording(true, &[0]);
     let h = 0.5;
     let mut y = y0.clone();
-    bweuler.solve(&mut y, x0, x1, Some(h), Some(&mut out1), &mut args)?;
+    bweuler.solve(&mut y, x0, x1, Some(h), &mut args)?;
 
     // solve the problem with FwEuler and h = 1.974/50.0
-    let mut out2 = Output::new();
-    out2.set_step_recording(true, &[0]);
+    fweuler.enable_output().set_step_recording(true, &[0]);
     let h = 1.974 / 50.0;
     let mut y = y0.clone();
-    fweuler.solve(&mut y, x0, x1, Some(h), Some(&mut out2), &mut args)?;
+    fweuler.solve(&mut y, x0, x1, Some(h), &mut args)?;
+
+    // save the results for later
+    let out2_x = fweuler.out().step_x.clone();
+    let out2_y = fweuler.out().step_y.get(&0).unwrap().clone();
 
     // solve the problem with FwEuler and h = 1.875/50.0
-    let mut out3 = Output::new();
-    out3.set_step_recording(true, &[0]);
+    fweuler.enable_output().clear().set_step_recording(true, &[0]);
     let h = 1.875 / 50.0;
     let mut y = y0.clone();
-    fweuler.solve(&mut y, x0, x1, Some(h), Some(&mut out3), &mut args)?;
+    fweuler.solve(&mut y, x0, x1, Some(h), &mut args)?;
 
     // analytical solution
     let mut y_aux = Vector::new(system.get_ndim());
@@ -67,17 +68,15 @@ fn main() -> Result<(), StrError> {
     let mut curve1 = Curve::new();
     curve1
         .set_label("BwEuler h = 0.5")
-        .draw(&out1.step_x, out1.step_y.get(&0).unwrap());
+        .draw(&bweuler.out().step_x, bweuler.out().step_y.get(&0).unwrap());
 
     // FwEuler curves
     let mut curve2 = Curve::new();
     let mut curve3 = Curve::new();
-    curve2
-        .set_label("FwEuler h = 1.974/50")
-        .draw(&out2.step_x, out2.step_y.get(&0).unwrap());
+    curve2.set_label("FwEuler h = 1.974/50").draw(&out2_x, &out2_y);
     curve3
         .set_label("FwEuler h = 1.875/50")
-        .draw(&out3.step_x, out3.step_y.get(&0).unwrap());
+        .draw(&fweuler.out().step_x, fweuler.out().step_y.get(&0).unwrap());
 
     // save figure
     let mut plot = Plot::new();

@@ -21,10 +21,12 @@ fn main() {
     let mut params = Params::new(Method::Radau5);
     params.set_tolerances(1e-4, 1e-4, None).unwrap();
 
-    // solve the ODE system
+    // allocate the solver
     let mut solver = OdeSolver::new(params, &system).unwrap();
+
+    // solve the ODE system
     let mut yy = yy0.clone();
-    solver.solve(&mut yy, t0, t1, None, None, &mut args).unwrap();
+    solver.solve(&mut yy, t0, t1, None, &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();

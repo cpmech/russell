@@ -54,10 +54,10 @@ pub struct OutCount {
 ///
 /// * `A` -- Is auxiliary argument for the `F`, `J`, `YxFunction`, and `OutCallback` functions.
 ///   It may be simply [crate::NoArgs] indicating that no arguments are effectively used.
-pub struct Output<A> {
+pub struct Output<'a, A> {
     // --- step --------------------------------------------------------------------------------------------
     /// Holds a callback function called on an accepted step
-    step_callback: Option<OutCallback<A>>,
+    step_callback: Option<Box<dyn Fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError> + 'a>>,
 
     /// Save the results to a file (step)
     step_file_key: Option<String>,
@@ -188,7 +188,7 @@ impl OutCount {
     }
 }
 
-impl<A> Output<A> {
+impl<'a, A> Output<'a, A> {
     /// Allocates a new instance
     pub fn new() -> Self {
         const EMPTY: usize = 0;
@@ -234,9 +234,13 @@ impl<A> Output<A> {
     ///
     /// * `enable` -- Enable/disable the output
     /// * `callback` -- Function to be executed on an accepted step
-    pub fn set_step_callback(&mut self, enable: bool, callback: OutCallback<A>) -> &mut Self {
+    pub fn set_step_callback(
+        &mut self,
+        enable: bool,
+        callback: impl Fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError> + 'a,
+    ) -> &mut Self {
         if enable {
-            self.step_callback = Some(callback);
+            self.step_callback = Some(Box::new(callback));
         } else {
             self.step_callback = None;
         }
@@ -388,7 +392,7 @@ impl<A> Output<A> {
     }
 
     /// Clears the results
-    pub fn clear(&mut self) {
+    pub fn clear(&mut self) -> &mut Self {
         // step
         self.step_h.clear();
         self.step_x.clear();
@@ -402,10 +406,11 @@ impl<A> Output<A> {
         self.stiff_step_index.clear();
         self.stiff_x.clear();
         self.stiff_h_times_rho.clear();
+        self
     }
 
     /// Executes the output at an accepted step
-    pub(crate) fn execute<'a>(
+    pub(crate) fn execute(
         &mut self,
         work: &Workspace,
         h: f64,
@@ -417,8 +422,8 @@ impl<A> Output<A> {
         // --- step --------------------------------------------------------------------------------------------
         //
         // step output: callback
-        if let Some(cb) = self.step_callback {
-            let stop = cb(&work.stats, h, x, y, args)?;
+        if let Some(cb) = self.step_callback.as_ref() {
+            let stop = (cb)(&work.stats, h, x, y, args)?;
             if stop {
                 return Ok(stop);
             }
@@ -592,6 +597,8 @@ impl<A> Output<A> {
 
 #[cfg(test)]
 mod tests {
+    use crate::NoArgs;
+
     use super::*;
 
     #[test]
@@ -657,10 +664,10 @@ mod tests {
 
     #[test]
     fn set_methods_handle_errors() {
-        struct Args {}
-        let mut out: Output<Args> = Output::new();
+        let mut out = Output::new();
         assert_eq!(
-            out.set_dense_callback(true, 0.0, |_, _, _, _, _| Ok(false)).err(),
+            out.set_dense_callback(true, 0.0, |_, _, _, _, _: &mut NoArgs| Ok(false))
+                .err(),
             Some("h_out must be > EPSILON")
         );
         let path_key = "/tmp/russell_ode/test_output_errors";

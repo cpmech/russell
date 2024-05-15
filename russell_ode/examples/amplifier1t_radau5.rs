@@ -24,14 +24,15 @@ fn main() -> Result<(), StrError> {
     let mut solver = OdeSolver::new(params, &system)?;
 
     // enable dense output
-    let mut out = Output::new();
     let h_out = 0.0001;
     let selected_y_components = &[0, 4];
-    out.set_dense_recording(true, h_out, selected_y_components)?;
+    solver
+        .enable_output()
+        .set_dense_recording(true, h_out, selected_y_components)?;
 
     // solve the problem
     let x1 = 0.2;
-    solver.solve(&mut y0, x0, x1, None, Some(&mut out), &mut args)?;
+    solver.solve(&mut y0, x0, x1, None, &mut args)?;
 
     // print the results and stats
     let y_ref = &[
@@ -74,9 +75,9 @@ fn main() -> Result<(), StrError> {
         .set_marker_style("+")
         .set_line_style("None");
 
-    curve1.draw(&out.dense_x, out.dense_y.get(&0).unwrap());
+    curve1.draw(&solver.out().dense_x, solver.out().dense_y.get(&0).unwrap());
     curve2.draw(&math.x, &math.y0);
-    curve3.draw(&out.dense_x, out.dense_y.get(&4).unwrap());
+    curve3.draw(&solver.out().dense_x, solver.out().dense_y.get(&4).unwrap());
     curve4.draw(&math.x, &math.y4);
 
     // save figure

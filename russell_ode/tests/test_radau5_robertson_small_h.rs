@@ -14,12 +14,14 @@ fn test_radau5_robertson_small_h() {
     params.step.h_ini = 1e-6;
     params.debug = true;
 
+    // allocate the solver
+    let mut solver = OdeSolver::new(params, &system).unwrap();
+
     // this will cause h to become too small
     params.set_tolerances(1e-2, 1e-2, None).unwrap();
 
     // solve the ODE system
-    let mut solver = OdeSolver::new(params, &system).unwrap();
-    let res = solver.solve(&mut y0, x0, x1, None, None, &mut args);
+    let res = solver.solve(&mut y0, x0, x1, None, &mut args);
     assert_eq!(res.err(), Some("the stepsize becomes too small"));
     println!("ERROR: THE STEPSIZE BECOMES TOO SMALL");
 

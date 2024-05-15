@@ -16,7 +16,7 @@ fn test_bweuler_hairer_wanner_eq1() {
 
     // solve the ODE system
     let h_equal = Some(1.875 / 50.0);
-    solver.solve(&mut y0, x0, x1, h_equal, None, &mut args).unwrap();
+    solver.solve(&mut y0, x0, x1, h_equal, &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();
@@ -59,7 +59,7 @@ fn test_bweuler_hairer_wanner_eq1_num_jac() {
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system).unwrap();
     let h_equal = Some(1.875 / 50.0);
-    solver.solve(&mut y0, x0, x1, h_equal, None, &mut args).unwrap();
+    solver.solve(&mut y0, x0, x1, h_equal, &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();
@@ -102,7 +102,7 @@ fn test_bweuler_hairer_wanner_eq1_modified_newton() {
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system).unwrap();
     let h_equal = Some(1.875 / 50.0);
-    solver.solve(&mut y0, x0, x1, h_equal, None, &mut args).unwrap();
+    solver.solve(&mut y0, x0, x1, h_equal, &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();

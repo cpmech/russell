@@ -100,7 +100,7 @@ fn main() -> Result<(), StrError> {
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, &system)?;
-    solver.solve(&mut yy0, t0, t1, None, None, &mut args)?;
+    solver.solve(&mut yy0, t0, t1, None, &mut args)?;
 
     // print stat
     let stat = solver.stats();

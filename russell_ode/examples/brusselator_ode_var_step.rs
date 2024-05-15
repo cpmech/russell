@@ -61,7 +61,7 @@ fn main() -> Result<(), StrError> {
 
             // call solve
             let mut y = y0.clone();
-            solver.solve(&mut y, x0, x1, None, None, &mut args).unwrap();
+            solver.solve(&mut y, x0, x1, None, &mut args).unwrap();
 
             // compare with the reference solution
             let (_, err) = vec_max_abs_diff(&y, &y_ref)?;

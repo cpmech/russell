@@ -1,5 +1,5 @@
 use russell_lab::{approx_eq, format_fortran};
-use russell_ode::{Method, OdeSolver, Output, Params, Samples};
+use russell_ode::{Method, OdeSolver, Params, Samples};
 
 #[test]
 fn test_radau5_van_der_pol() {
@@ -11,13 +11,14 @@ fn test_radau5_van_der_pol() {
     let mut params = Params::new(Method::Radau5);
     params.step.h_ini = 1e-6;
 
+    // allocate the solver
+    let mut solver = OdeSolver::new(params, &system).unwrap();
+
     // enable dense output with 0.2 spacing
-    let mut out = Output::new();
-    out.set_dense_recording(true, 0.2, &[0, 1]).unwrap();
+    solver.enable_output().set_dense_recording(true, 0.2, &[0, 1]).unwrap();
 
     // solve the ODE system
-    let mut solver = OdeSolver::new(params, &system).unwrap();
-    solver.solve(&mut y0, x0, x1, None, Some(&mut out), &mut args).unwrap();
+    solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();
@@ -28,14 +29,14 @@ fn test_radau5_van_der_pol() {
     approx_eq(stat.h_accepted, 1.510987221365367E-01, 1.2e-8);
 
     // print dense output
-    let n_dense = out.dense_step_index.len();
+    let n_dense = solver.out().dense_step_index.len();
     for i in 0..n_dense {
         println!(
             "step ={:>4}, x ={:5.2}, y ={}{}",
-            out.dense_step_index[i],
-            out.dense_x[i],
-            format_fortran(out.dense_y.get(&0).unwrap()[i]),
-            format_fortran(out.dense_y.get(&1).unwrap()[i]),
+            solver.out().dense_step_index[i],
+            solver.out().dense_x[i],
+            format_fortran(solver.out().dense_y.get(&0).unwrap()[i]),
+            format_fortran(solver.out().dense_y.get(&1).unwrap()[i]),
         );
     }
 

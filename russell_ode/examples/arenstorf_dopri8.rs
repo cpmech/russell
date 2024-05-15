@@ -19,19 +19,22 @@ fn main() -> Result<(), StrError> {
     // get the ODE system
     let (system, x0, mut y0, x1, mut args, y_ref) = Samples::arenstorf();
 
-    // solver
+    // set configuration parameters
     let params = Params::new(Method::DoPri8);
+
+    // allocate the solver
     let mut solver = OdeSolver::new(params, &system)?;
 
     // enable dense output
-    let mut out = Output::new();
     let h_out = 0.01;
     let selected_y_components = &[0, 1];
-    out.set_dense_recording(true, h_out, selected_y_components)?;
+    solver
+        .enable_output()
+        .set_dense_recording(true, h_out, selected_y_components)?;
 
     // solve the problem
     let y = &mut y0;
-    solver.solve(y, x0, x1, None, Some(&mut out), &mut args)?;
+    solver.solve(y, x0, x1, None, &mut args)?;
 
     // print the results and stats
     println!("y_russell     = {:?}", y.as_data());
@@ -46,7 +49,10 @@ fn main() -> Result<(), StrError> {
     let mut curve2 = Curve::new();
     curve1.set_label("russell");
     curve2.set_label("mathematica");
-    curve1.draw(out.dense_y.get(&0).unwrap(), out.dense_y.get(&1).unwrap());
+    curve1.draw(
+        solver.out().dense_y.get(&0).unwrap(),
+        solver.out().dense_y.get(&1).unwrap(),
+    );
     curve2.set_marker_style(".").set_line_style("None");
     curve2.draw(&math.y0, &math.y1);
 

@@ -1,5 +1,5 @@
 use russell_lab::{approx_eq, format_fortran, format_scientific};
-use russell_ode::{Method, OdeSolver, Output, Params, Samples};
+use russell_ode::{Method, OdeSolver, Params, Samples};
 
 #[test]
 fn test_radau5_amplifier1t() {
@@ -14,13 +14,17 @@ fn test_radau5_amplifier1t() {
     params.step.h_ini = 1e-6;
     params.set_tolerances(1e-4, 1e-4, None).unwrap();
 
+    // allocate the solver
+    let mut solver = OdeSolver::new(params, &system).unwrap();
+
     // enable output of accepted steps
-    let mut out = Output::new();
-    out.set_dense_recording(true, 0.001, &[0, 4]).unwrap();
+    solver
+        .enable_output()
+        .set_dense_recording(true, 0.001, &[0, 4])
+        .unwrap();
 
     // solve the ODE system
-    let mut solver = OdeSolver::new(params, &system).unwrap();
-    solver.solve(&mut y0, x0, x1, None, Some(&mut out), &mut args).unwrap();
+    solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();
@@ -34,17 +38,17 @@ fn test_radau5_amplifier1t() {
     approx_eq(stat.h_accepted, 7.791381954171996E-04, 1e-6);
 
     // compare dense output with Mathematica
-    let n_dense = out.dense_step_index.len();
+    let n_dense = solver.out().dense_step_index.len();
     for i in 0..n_dense {
-        approx_eq(out.dense_x[i], X_MATH[i], 1e-15);
-        let diff0 = f64::abs(out.dense_y.get(&0).unwrap()[i] - Y0_MATH[i]);
-        let diff4 = f64::abs(out.dense_y.get(&4).unwrap()[i] - Y4_MATH[i]);
+        approx_eq(solver.out().dense_x[i], X_MATH[i], 1e-15);
+        let diff0 = f64::abs(solver.out().dense_y.get(&0).unwrap()[i] - Y0_MATH[i]);
+        let diff4 = f64::abs(solver.out().dense_y.get(&4).unwrap()[i] - Y4_MATH[i]);
         println!(
             "step ={:>4}, x ={:7.4}, y1and5 ={}{}, diff1and5 ={}{}",
-            out.dense_step_index[i],
-            out.dense_x[i],
-            format_fortran(out.dense_y.get(&0).unwrap()[i]),
-            format_fortran(out.dense_y.get(&4).unwrap()[i]),
+            solver.out().dense_step_index[i],
+            solver.out().dense_x[i],
+            format_fortran(solver.out().dense_y.get(&0).unwrap()[i]),
+            format_fortran(solver.out().dense_y.get(&4).unwrap()[i]),
             format_scientific(diff0, 8, 1),
             format_scientific(diff4, 8, 1)
         );

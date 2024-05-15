@@ -600,10 +600,9 @@ fn main() -> Result<(), StrError> {
     let mut solver = OdeSolver::new(params, &system)?;
 
     // enable dense output
-    let mut out = Output::new();
     let h_out = 0.01;
     let selected_y_components = &[0, 1];
-    out.set_dense_recording(true, h_out, selected_y_components)?;
+    solver.enable_output().set_dense_recording(true, h_out, selected_y_components)?;
 
     // solve the problem
     solver.solve(&mut y0, x0, x1, None, Some(&mut out), &mut args)?;

@@ -1,5 +1,5 @@
 use russell_lab::{approx_eq, array_approx_eq, format_fortran, Vector};
-use russell_ode::{Method, OdeSolver, Output, Params, Samples};
+use russell_ode::{Method, OdeSolver, Params, Samples};
 
 #[test]
 fn test_dopri8_van_der_pol_debug() {
@@ -17,15 +17,17 @@ fn test_dopri8_van_der_pol_debug() {
     params.stiffness.stop_with_error = false;
     params.stiffness.save_results = true;
 
+    // allocate the solver
+    let mut solver = OdeSolver::new(params, &system).unwrap();
+
     // output (to save stiff stations)
-    let mut out = Output::new();
+    solver.enable_output();
 
     // solve the ODE system
     let mut y0 = Vector::from(&[2.0, 0.0]);
     let x0 = 0.0;
     let x1 = 2.0;
-    let mut solver = OdeSolver::new(params, &system).unwrap();
-    solver.solve(&mut y0, x0, x1, None, Some(&mut out), &mut args).unwrap();
+    solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();
@@ -46,9 +48,9 @@ fn test_dopri8_van_der_pol_debug() {
     assert_eq!(stat.n_rejected, 20);
 
     // check stiffness results
-    assert_eq!(out.stiff_step_index, &[21, 109, 196]);
+    assert_eq!(solver.out().stiff_step_index, &[21, 109, 196]);
     array_approx_eq(
-        &out.stiff_x,
+        &solver.out().stiff_x,
         &[1.563905377322407E-02, 8.759592223459979E-01, 1.749270939102191E+00],
         1e-7,
     );

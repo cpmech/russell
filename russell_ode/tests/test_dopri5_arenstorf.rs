@@ -1,5 +1,5 @@
 use russell_lab::{approx_eq, format_fortran};
-use russell_ode::{Method, OdeSolver, Output, Params, Samples};
+use russell_ode::{Method, OdeSolver, Params, Samples};
 
 #[test]
 fn test_dopri5_arenstorf() {
@@ -11,14 +11,18 @@ fn test_dopri5_arenstorf() {
     params.step.h_ini = 1e-4;
     params.set_tolerances(1e-7, 1e-7, None).unwrap();
 
+    // allocate the solver
+    let mut solver = OdeSolver::new(params, &system).unwrap();
+
     // enable dense output with 1.0 spacing
-    let mut out = Output::new();
-    out.set_dense_recording(true, 1.0, &[0, 1, 2, 3]).unwrap();
+    solver
+        .enable_output()
+        .set_dense_recording(true, 1.0, &[0, 1, 2, 3])
+        .unwrap();
 
     // solve the ODE system
-    let mut solver = OdeSolver::new(params, &system).unwrap();
     let y = &mut y0;
-    solver.solve(y, x0, x1, None, Some(&mut out), &mut args).unwrap();
+    solver.solve(y, x0, x1, None, &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();
@@ -31,16 +35,16 @@ fn test_dopri5_arenstorf() {
     approx_eq(stat.h_accepted, 5.258587607119909E-04, 1e-10);
 
     // print dense output
-    let n_dense = out.dense_step_index.len();
+    let n_dense = solver.out().dense_step_index.len();
     for i in 0..n_dense {
         println!(
             "step ={:>4}, x ={:6.2}, y ={}{}{}{}",
-            out.dense_step_index[i],
-            out.dense_x[i],
-            format_fortran(out.dense_y.get(&0).unwrap()[i]),
-            format_fortran(out.dense_y.get(&1).unwrap()[i]),
-            format_fortran(out.dense_y.get(&2).unwrap()[i]),
-            format_fortran(out.dense_y.get(&3).unwrap()[i]),
+            solver.out().dense_step_index[i],
+            solver.out().dense_x[i],
+            format_fortran(solver.out().dense_y.get(&0).unwrap()[i]),
+            format_fortran(solver.out().dense_y.get(&1).unwrap()[i]),
+            format_fortran(solver.out().dense_y.get(&2).unwrap()[i]),
+            format_fortran(solver.out().dense_y.get(&3).unwrap()[i]),
         );
     }
 

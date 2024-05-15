@@ -50,27 +50,28 @@ fn main() -> Result<(), StrError> {
     let sel = 1;
 
     // solve the problem with Radau5
-    let mut out1 = Output::new();
-    out1.set_step_recording(true, &[sel]);
+    radau5.enable_output().set_step_recording(true, &[sel]);
     let mut y = y0.clone();
-    radau5.solve(&mut y, x0, x1, None, Some(&mut out1), &mut args)?;
+    radau5.solve(&mut y, x0, x1, None, &mut args)?;
     println!("{}", radau5.stats());
     let n_accepted1 = radau5.stats().n_accepted;
 
     // solve the problem with DoPri5 and Tol = 1e-2
-    let mut out2 = Output::new();
-    out2.set_step_recording(true, &[sel]);
+    dopri5.enable_output().set_step_recording(true, &[sel]);
     let mut y = y0.clone();
-    dopri5.solve(&mut y, x0, x1, None, Some(&mut out2), &mut args)?;
+    dopri5.solve(&mut y, x0, x1, None, &mut args)?;
     println!("\nTol = 1e-2\n{}", dopri5.stats());
     let n_accepted2 = dopri5.stats().n_accepted;
 
-    // solve the problem with DoPri5 and Tol = 1e-3
-    let mut out3 = Output::new();
-    out3.set_step_recording(true, &[sel]);
+    // save the results for later
+    let out2_x = dopri5.out().step_x.clone();
+    let out2_y = dopri5.out().step_y.get(&sel).unwrap().clone();
+
+    // solve the problem again with DoPri5 and Tol = 1e-3
+    dopri5.enable_output().clear().set_step_recording(true, &[sel]);
     let mut y = y0.clone();
     dopri5.update_params(params3)?;
-    dopri5.solve(&mut y, x0, x1, None, Some(&mut out3), &mut args)?;
+    dopri5.solve(&mut y, x0, x1, None, &mut args)?;
     println!("\nTol = 1e-3\n{}", dopri5.stats());
     let n_accepted3 = dopri5.stats().n_accepted;
 
@@ -79,7 +80,7 @@ fn main() -> Result<(), StrError> {
     curve1
         .set_label(&format!("Radau5, n_accepted = {}", n_accepted1))
         .set_marker_style("o")
-        .draw(&out1.step_x, out1.step_y.get(&sel).unwrap());
+        .draw(&radau5.out().step_x, radau5.out().step_y.get(&sel).unwrap());
 
     // DoPri5 curves
     let mut curve2 = Curve::new();
@@ -87,11 +88,11 @@ fn main() -> Result<(), StrError> {
     let mut curve4 = Curve::new();
     curve2
         .set_label(&format!("DoPri5, Tol = 1e-2, n_accepted = {}", n_accepted2))
-        .draw(&out2.step_x, out2.step_y.get(&sel).unwrap());
+        .draw(&out2_x, &out2_y);
     curve3
         .set_label(&format!("DoPri5, Tol = 1e-3, n_accepted = {}", n_accepted3))
-        .draw(&out3.step_x, out3.step_y.get(&sel).unwrap());
-    curve4.draw(&out3.step_x, &out3.step_h);
+        .draw(&dopri5.out().step_x, dopri5.out().step_y.get(&sel).unwrap());
+    curve4.draw(&dopri5.out().step_x, &dopri5.out().step_h);
 
     // save figures
     let mut plot1 = Plot::new();

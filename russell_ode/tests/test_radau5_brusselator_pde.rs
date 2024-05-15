@@ -20,10 +20,12 @@ fn test_radau5_brusselator_pde() {
     let mut params = Params::new(Method::Radau5);
     params.set_tolerances(1e-3, 1e-3, None).unwrap();
 
-    // solve the ODE system
+    // allocate the solver
     let mut solver = OdeSolver::new(params, &system).unwrap();
+
+    // solve the ODE system
     let yy = &mut yy0;
-    solver.solve(yy, t0, t1, None, None, &mut args).unwrap();
+    solver.solve(yy, t0, t1, None, &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();

@@ -1,5 +1,5 @@
 use russell_lab::{approx_eq, format_fortran, Vector};
-use russell_ode::{Method, OdeSolver, Output, Params, Samples};
+use russell_ode::{Method, OdeSolver, Params, Samples};
 
 #[test]
 fn test_dopri8_van_der_pol() {
@@ -12,16 +12,17 @@ fn test_dopri8_van_der_pol() {
     params.step.h_ini = 1e-6;
     params.set_tolerances(1e-9, 1e-9, None).unwrap();
 
+    // allocate the solver
+    let mut solver = OdeSolver::new(params, &system).unwrap();
+
     // enable dense output with 0.2 spacing
-    let mut out = Output::new();
-    out.set_dense_recording(true, 0.1, &[0, 1]).unwrap();
+    solver.enable_output().set_dense_recording(true, 0.1, &[0, 1]).unwrap();
 
     // solve the ODE system
     let mut y0 = Vector::from(&[2.0, 0.0]);
     let x0 = 0.0;
     let x1 = 2.0;
-    let mut solver = OdeSolver::new(params, &system).unwrap();
-    solver.solve(&mut y0, x0, x1, None, Some(&mut out), &mut args).unwrap();
+    solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
 
     // get statistics
     let stat = solver.stats();
@@ -32,14 +33,14 @@ fn test_dopri8_van_der_pol() {
     approx_eq(stat.h_accepted, 8.656983588595286E-04, 1e-5);
 
     // print dense output
-    let n_dense = out.dense_step_index.len();
+    let n_dense = solver.out().dense_step_index.len();
     for i in 0..n_dense {
         println!(
             "step ={:>4}, x ={:5.2}, y ={}{}",
-            out.dense_step_index[i],
-            out.dense_x[i],
-            format_fortran(out.dense_y.get(&0).unwrap()[i]),
-            format_fortran(out.dense_y.get(&1).unwrap()[i]),
+            solver.out().dense_step_index[i],
+            solver.out().dense_x[i],
+            format_fortran(solver.out().dense_y.get(&0).unwrap()[i]),
+            format_fortran(solver.out().dense_y.get(&1).unwrap()[i]),
         );
     }
 

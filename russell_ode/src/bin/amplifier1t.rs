@@ -13,14 +13,15 @@ fn main() -> Result<(), StrError> {
     params.step.h_ini = 1e-6;
     params.set_tolerances(1e-4, 1e-4, None)?;
 
+    // allocate the solver
+    let mut solver = OdeSolver::new(params, &system)?;
+
     // enable dense output
-    let mut out = Output::new();
-    out.set_dense_recording(true, 0.001, &[0, 4])?;
+    solver.enable_output().set_dense_recording(true, 0.001, &[0, 4])?;
 
     // solve the ODE system
     let y = &mut y0;
-    let mut solver = OdeSolver::new(params, &system)?;
-    solver.solve(y, x0, x1, None, Some(&mut out), &mut args)?;
+    solver.solve(y, x0, x1, None, &mut args)?;
 
     // compare with radau5.f
     approx_eq(y[0], -2.226517868073645E-02, 1e-10);

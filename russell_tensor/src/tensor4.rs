@@ -5,11 +5,9 @@ use serde::{Deserialize, Serialize};
 
 /// Implements a fourth order-tensor, minor-symmetric or not
 ///
-/// Internally, the components are converted to the Mandel basis. On the Mandel basis,
-/// depending on the symmetry, we may store fewer components. Also, we may store
-/// only 16 components of Minor-Symmetric 2D tensors.
+/// Internally, the components are converted to the Mandel basis as follows.
 ///
-/// First, we consider the following mapping to the Mandel space:
+/// First, the following mapping to the Mandel space is considered:
 ///
 /// ```text
 /// i=j & k=l:  Mijkl := Dijkl

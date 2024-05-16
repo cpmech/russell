@@ -365,7 +365,7 @@ where
         }
     }
 
-    // symmetry option
+    // symmetric type
     let sym = if data.symmetric {
         if data.m != data.n {
             return Err("MatrixMarket data is invalid: the number of rows must equal the number of columns for symmetric matrices");

@@ -199,7 +199,7 @@ where
     /// * `row_indices` -- (len = nnz) Is the array of row indices
     /// * `col_indices` -- (len = nnz) Is the array of columns indices
     /// * `values` -- (len = nnz) Is the array of non-zero values
-    /// * `symmetric` -- Defines the symmetry/storage, if any
+    /// * `symmetric` -- Indicates that this matrix is symmetric (with the storage type)
     ///
     /// # Examples
     ///
@@ -575,7 +575,7 @@ where
             return Err("matrices must have the same ncol");
         }
         if other.symmetric != self.symmetric {
-            return Err("matrices must have the same symmetry");
+            return Err("matrices must have the same symmetric type");
         }
         self.reset();
         for p in 0..other.nnz {
@@ -603,7 +603,7 @@ where
             return Err("matrices must have the same ncol");
         }
         if other.symmetric != self.symmetric {
-            return Err("matrices must have the same symmetry");
+            return Err("matrices must have the same symmetric type");
         }
         for p in 0..other.nnz {
             let i = other.indices_i[p] as usize;
@@ -613,7 +613,7 @@ where
         Ok(())
     }
 
-    /// Returns information about the dimensions and symmetry type
+    /// Returns information about the dimensions and symmetric type
     ///
     /// Returns `(nrow, ncol, nnz, sym)`
     ///
@@ -1104,7 +1104,7 @@ mod tests {
         assert_eq!(a_1x2.assign(2, &b_1x3).err(), Some("matrices must have the same ncol"));
         assert_eq!(
             a_1x2.assign(2, &b_1x2_sym).err(),
-            Some("matrices must have the same symmetry")
+            Some("matrices must have the same symmetric type")
         );
         assert_eq!(
             a_1x2.assign(2, &b_1x2).err(),
@@ -1154,7 +1154,7 @@ mod tests {
         assert_eq!(a_1x2.augment(2, &b_1x3).err(), Some("matrices must have the same ncol"));
         assert_eq!(
             a_1x2.augment(2, &b_1x2_sym).err(),
-            Some("matrices must have the same symmetry")
+            Some("matrices must have the same symmetric type")
         );
         assert_eq!(
             a_1x2.augment(2, &b_1x2).err(),

@@ -240,27 +240,31 @@ fn main() -> Result<(), StrError> {
         f[2] = 1.0 / (1.0 + x);
         Ok(())
     });
+
+
+    // function to compute the Jacobian matrix
+    let symmetric = Sym::No;
     system.set_jacobian(
         Some(jac_nnz),
-        Sym::No,
+        symmetric,
         move |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
             jj.reset();
-            jj.put(0, 0, alpha * (-1.0)).unwrap();
-            jj.put(0, 1, alpha * (1.0)).unwrap();
-            jj.put(1, 0, alpha * (1.0)).unwrap();
-            jj.put(1, 1, alpha * (1.0)).unwrap();
+            jj.put(0, 0, alpha * (-1.0))?;
+            jj.put(0, 1, alpha * (1.0))?;
+            jj.put(1, 0, alpha * (1.0))?;
+            jj.put(1, 1, alpha * (1.0))?;
             Ok(())
         },
-    );
+    )?;
 
     // mass matrix
     let mass_nnz = 5;
-    system.init_mass_matrix(mass_nnz).unwrap();
-    system.mass_put(0, 0, 1.0).unwrap();
-    system.mass_put(0, 1, 1.0).unwrap();
-    system.mass_put(1, 0, 1.0).unwrap();
-    system.mass_put(1, 1, -1.0).unwrap();
-    system.mass_put(2, 2, 1.0).unwrap();
+    system.init_mass_matrix(mass_nnz, symmetric)?;
+    system.mass_put(0, 0, 1.0)?;
+    system.mass_put(0, 1, 1.0)?;
+    system.mass_put(1, 0, 1.0)?;
+    system.mass_put(1, 1, -1.0)?;
+    system.mass_put(2, 2, 1.0)?;
 
     // solver
     let params = Params::new(Method::Radau5);

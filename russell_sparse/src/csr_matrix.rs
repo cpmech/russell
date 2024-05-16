@@ -342,7 +342,7 @@ where
 
     /// Updates this CSR matrix from a COO matrix with a compatible structure
     ///
-    /// **Note:** The COO matrix must match the symmetry, nrow, and ncol values of the CSR matrix.
+    /// **Note:** The COO matrix must match the symmetric type, nrow, and ncol values of the CSR matrix.
     /// Also, the `nnz` (may include duplicates) of the COO matrix must match `col_indices.len() = values.len()`.
     ///
     /// **Note:** The final nnz may be smaller than the initial nnz because duplicates
@@ -350,7 +350,7 @@ where
     pub fn update_from_coo(&mut self, coo: &NumCooMatrix<T>) -> Result<(), StrError> {
         // check dimensions
         if coo.symmetric != self.symmetric {
-            return Err("coo.symmetry must be equal to csr.symmetry");
+            return Err("coo.symmetric must be equal to csr.symmetric");
         }
         if coo.nrow != self.nrow {
             return Err("coo.nrow must be equal to csr.nrow");
@@ -719,9 +719,9 @@ where
         Ok(())
     }
 
-    /// Returns information about the dimensions and symmetry type
+    /// Returns information about the dimensions and symmetric type
     ///
-    /// Returns `(nrow, ncol, nnz, symmetry)`
+    /// Returns `(nrow, ncol, nnz, sym)`
     ///
     /// # Examples
     ///
@@ -999,7 +999,7 @@ mod tests {
         let mut csr = NumCsrMatrix::<f64>::from_coo(&coo).unwrap();
         let yes = Sym::YesLower;
         let no = Sym::No;
-        assert_eq!(csr.update_from_coo(&CooMatrix { symmetric: yes,  nrow: 1, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.symmetry must be equal to csr.symmetry"));
+        assert_eq!(csr.update_from_coo(&CooMatrix { symmetric: yes,  nrow: 1, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.symmetric must be equal to csr.symmetric"));
         assert_eq!(csr.update_from_coo(&CooMatrix { symmetric: no, nrow: 2, ncol: 2, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.nrow must be equal to csr.nrow"));
         assert_eq!(csr.update_from_coo(&CooMatrix { symmetric: no, nrow: 1, ncol: 1, nnz: 1, max_nnz: 1, indices_i: vec![0], indices_j: vec![0], values: vec![0.0] }).err(), Some("coo.ncol must be equal to csr.ncol"));
         assert_eq!(csr.update_from_coo(&CooMatrix { symmetric: no, nrow: 1, ncol: 2, nnz: 3, max_nnz: 3, indices_i: vec![0,0,0], indices_j: vec![0,0,0], values: vec![0.0,0.0,0.0] }).err(), Some("coo.nnz must be equal to nnz(dup) = self.col_indices.len() = csr.values.len()"));

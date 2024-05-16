@@ -55,7 +55,7 @@
 //! * `nrow` -- number of rows
 //! * `ncol` -- number of columns
 //! * `nnz` -- number of non-zero values
-//! * `symmetry` -- symmetry type
+//! * `symmetric` -- the [Sym] type
 //! * the locations of the non-zero values
 //!
 //! If neither the structure nor the values of the coefficient matrix change, we can call `solve` repeatedly if needed (e.g., in a simulation of linear dynamics using the FEM).

@@ -335,15 +335,15 @@ mod tests {
         let alpha = 0.5;
 
         // lower triangular -----------------------------------------------------------
-        let symmetry = Sym::YesLower;
+        let symmetric = Sym::YesLower;
 
-        let mut jj_ana = CooMatrix::new(ndim, ndim, jac_nnz, symmetry).unwrap();
+        let mut jj_ana = CooMatrix::new(ndim, ndim, jac_nnz, symmetric).unwrap();
         jacobian(&mut jj_ana, alpha, x, &y, &mut args);
         let mat_jj_ana = jj_ana.as_dense();
         println!("analytical:\n{}", mat_jj_ana);
 
         let jac_num_nnz = (ndim + ndim * ndim) / 2;
-        let mut jj_num = CooMatrix::new(ndim, ndim, jac_num_nnz, symmetry).unwrap();
+        let mut jj_num = CooMatrix::new(ndim, ndim, jac_num_nnz, symmetric).unwrap();
         let mut w1 = Vector::new(ndim);
         let mut w2 = Vector::new(ndim);
         numerical_jacobian(&mut jj_num, alpha, x, &mut y, &mut w1, &mut w2, &mut args, function).unwrap();
@@ -355,15 +355,15 @@ mod tests {
 
         // upper triangular -----------------------------------------------------------
         args.n_function_calls = 0;
-        let symmetry = Sym::YesUpper;
+        let symmetric = Sym::YesUpper;
 
-        let mut jj_ana = CooMatrix::new(ndim, ndim, jac_nnz, symmetry).unwrap();
+        let mut jj_ana = CooMatrix::new(ndim, ndim, jac_nnz, symmetric).unwrap();
         jacobian(&mut jj_ana, alpha, x, &y, &mut args);
         let mat_jj_ana = jj_ana.as_dense();
         println!("analytical:\n{}", mat_jj_ana);
 
         let jac_num_nnz = (ndim + ndim * ndim) / 2;
-        let mut jj_num = CooMatrix::new(ndim, ndim, jac_num_nnz, symmetry).unwrap();
+        let mut jj_num = CooMatrix::new(ndim, ndim, jac_num_nnz, symmetric).unwrap();
         let mut w1 = Vector::new(ndim);
         let mut w2 = Vector::new(ndim);
         numerical_jacobian(&mut jj_num, alpha, x, &mut y, &mut w1, &mut w2, &mut args, function).unwrap();

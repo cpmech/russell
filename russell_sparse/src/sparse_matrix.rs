@@ -193,7 +193,7 @@ where
         }
     }
 
-    /// Returns information about the dimensions and symmetry type
+    /// Returns information about the dimensions and symmetric type
     ///
     /// Returns `(nrow, ncol, nnz, sym)`
     ///

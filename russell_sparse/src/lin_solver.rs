@@ -111,8 +111,8 @@ impl<'a> LinSolver<'a> {
     ///
     /// # Notes
     ///
-    /// 1. For symmetric matrices, `MUMPS` requires that the symmetry/storage be Lower or Full.
-    /// 2. For symmetric matrices, `UMFPACK` requires that the symmetry/storage be Full.
+    /// 1. For symmetric matrices, `MUMPS` requires [crate::Sym::YesLower]
+    /// 2. For symmetric matrices, `UMFPACK` requires [crate::Sym::YesFull]
     /// 4. This function calls the actual implementation (genie) via the functions `factorize`, and `solve`.
     /// 5. This function is best for a **single-use**, whereas the actual
     ///    solver should be considered for a recurrent use (e.g., inside a loop).

@@ -21,10 +21,10 @@ pub enum Genie {
     Umfpack,
 }
 
-/// Specifies the type of matrix symmetry
+/// Indicates whether the matrix is symmetric or not (includes the storage type)
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Sym {
-    /// Unknown symmetry (possibly unsymmetric)
+    /// Not symmetric or unknown
     No,
 
     /// Symmetric with full representation (i.e., not triangular)
@@ -153,8 +153,8 @@ impl Genie {
         }
     }
 
-    /// Returns the solver's required symmetry-representation
-    pub fn symmetry(&self, symmetric: bool) -> Sym {
+    /// Returns the solver's required Sym type
+    pub fn get_sym(&self, symmetric: bool) -> Sym {
         if symmetric {
             match self {
                 Genie::Klu => Sym::YesFull,
@@ -234,15 +234,15 @@ mod tests {
         let from_json: Genie = serde_json::from_str(&json).unwrap();
         assert_eq!(from_json, genie);
 
-        let symmetry = Sym::YesLower;
-        let copy = symmetry;
-        let clone = symmetry.clone();
-        assert_eq!(format!("{:?}", symmetry), "YesLower");
+        let symmetric = Sym::YesLower;
+        let copy = symmetric;
+        let clone = symmetric.clone();
+        assert_eq!(format!("{:?}", symmetric), "YesLower");
         assert_eq!(copy, Sym::YesLower);
         assert_eq!(clone, Sym::YesLower);
-        let json = serde_json::to_string(&symmetry).unwrap();
+        let json = serde_json::to_string(&symmetric).unwrap();
         let from_json: Sym = serde_json::from_str(&json).unwrap();
-        assert_eq!(from_json, symmetry);
+        assert_eq!(from_json, symmetric);
 
         let handling = MMsym::LeaveAsLower;
         let copy = handling;
@@ -340,17 +340,17 @@ mod tests {
 
         let genie = Genie::Mumps;
         assert_eq!(genie.to_string(), "mumps");
-        assert_eq!(genie.symmetry(false), Sym::No);
-        assert_eq!(genie.symmetry(true), Sym::YesLower);
+        assert_eq!(genie.get_sym(false), Sym::No);
+        assert_eq!(genie.get_sym(true), Sym::YesLower);
 
         let genie = Genie::Umfpack;
         assert_eq!(genie.to_string(), "umfpack");
-        assert_eq!(genie.symmetry(false,), Sym::No);
-        assert_eq!(genie.symmetry(true), Sym::YesFull);
+        assert_eq!(genie.get_sym(false,), Sym::No);
+        assert_eq!(genie.get_sym(true), Sym::YesFull);
     }
 
     #[test]
-    fn symmetry_functions_work() {
+    fn sym_functions_work() {
         assert_eq!(Sym::No.triangular(), false);
         assert_eq!(Sym::YesFull.triangular(), false);
         assert_eq!(Sym::YesLower.triangular(), true);

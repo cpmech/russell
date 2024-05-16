@@ -1,5 +1,6 @@
 use crate::CooMatrix;
 use crate::StrError;
+use crate::Sym;
 use russell_lab::Vector;
 
 /// Computes the Jacobian matrix of a vector function using first-order finite differences
@@ -26,13 +27,34 @@ use russell_lab::Vector;
 ///         Δyⱼ
 /// ```
 ///
-/// **Note:** `function` will be called `1 + ndim` times.
+/// # Notes
+///
+/// 1. `function` will be called `1 + ndim` times.
+/// 2. The numerical Jacobian is only first-order accurate.
 ///
 /// # Output
 ///
 /// * `jj` -- Is the resulting numerical Jacobian matrix, which must be square, i.e., `nrow = ncol = ndim`.
-///   The condition `max_nnz ≥ ndim · ndim` is required even though there may be zero values.
-///   Note that the numerical algorithm cannot know which elements are zero in advance.
+///   The number of non-zeros must be at least `ndim * ndim` for [Sym::No] and [Sym::YesFull]
+///   or at least `(ndim + ndim * ndim) / 2` for [Sym::YesLower] and [Sym::YesUpper]; i.e.,
+///   the number of non-zeros (`max_nnz`) allocated in `jj` must satisfy the following constraints
+///   (see the table below):
+///
+/// ```text
+///           ⎧ (ndim + ndim²) / 2  if triangular
+/// max_nnz ≥ ⎨
+///           ⎩ ndim²               otherwise
+/// ```
+///
+/// The above constraints are required because, even though there may be zero values,
+/// the numerical algorithm cannot detect zero values in advance.
+///
+/// | matrix (`n = ndim`)                                          |`n`|`n²`|`(n + n²) / 2`|
+/// |:-----------------------------------------------------------------:|:-:|:--:|:------------:|
+/// |<pre>1</pre>                                                       | 1 |  1 |            1 |
+/// |<pre>1 2<br>· 3</pre>                                              | 2 |  4 |            3 |
+/// |<pre>1 2 3<br>· 4 5<br>· · 6</pre>                                 | 3 |  9 |            6 |
+/// |<pre> 1  2  3  4<br> ·  5  6  7<br> ·  ·  8  9<br> ·  ·  · 10</pre>| 4 | 16 |           10 |
 ///
 /// # Input
 ///
@@ -113,8 +135,16 @@ where
         return Err("the Jacobian matrix must be square");
     }
     let ndim = jj.nrow;
-    if jj.max_nnz < ndim * ndim {
-        return Err("the max number of non-zero values in the numerical Jacobian matrix must be at least ndim * ndim");
+    if jj.symmetric.triangular() {
+        if jj.max_nnz < (ndim + ndim * ndim) / 2 {
+            return Err(
+                "the max number of non-zero values in the numerical (triangular) Jacobian matrix must be at least (ndim + ndim²) / 2",
+            );
+        }
+    } else {
+        if jj.max_nnz < ndim * ndim {
+            return Err("the max number of non-zero values in the numerical Jacobian matrix must be at least ndim²");
+        }
     }
     if y.dim() != ndim {
         return Err("the y-vector must have dim = ndim");
@@ -130,7 +160,12 @@ where
         let delta_yj = f64::sqrt(f64::EPSILON * f64::max(THRESHOLD, f64::abs(y[j])));
         y[j] += delta_yj; // Yⱼ := yⱼ + Δyⱼ
         function(w2, x, y, args)?; // F := f(x, y + Δy)
-        for i in 0..ndim {
+        let (start, endp1) = match jj.symmetric {
+            Sym::YesLower => (j, ndim),
+            Sym::YesUpper => (0, j + 1),
+            Sym::YesFull | Sym::No => (0, ndim),
+        };
+        for i in start..endp1 {
             let delta_fi = w2[i] - w1[i]; // Δfᵢ := Fᵢ - fᵢ
             jj.put(i, j, alpha * delta_fi / delta_yj).unwrap(); // Δfᵢ/Δyⱼ
         }
@@ -159,6 +194,23 @@ mod tests {
         assert_eq!(
             numerical_jacobian(&mut jj, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
             Some("the Jacobian matrix must be square")
+        );
+        let nnz_wrong = 2; // nnz_correct = 3 = (ndim + ndim * ndim)/2
+        let mut jj = CooMatrix::new(2, 2, nnz_wrong, Sym::YesLower).unwrap();
+        assert_eq!(
+            numerical_jacobian(&mut jj, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
+            Some("the max number of non-zero values in the numerical (triangular) Jacobian matrix must be at least (ndim + ndim²) / 2")
+        );
+        let mut jj = CooMatrix::new(2, 2, nnz_wrong, Sym::YesUpper).unwrap();
+        assert_eq!(
+            numerical_jacobian(&mut jj, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
+            Some("the max number of non-zero values in the numerical (triangular) Jacobian matrix must be at least (ndim + ndim²) / 2")
+        );
+        let nnz_wrong = 3; // nnz_correct = 4 = ndim * ndim
+        let mut jj = CooMatrix::new(2, 2, nnz_wrong, Sym::No).unwrap();
+        assert_eq!(
+            numerical_jacobian(&mut jj, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
+            Some("the max number of non-zero values in the numerical Jacobian matrix must be at least ndim²")
         );
         let mut jj = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
         assert_eq!(
@@ -190,16 +242,16 @@ mod tests {
         }
         let mut args = Args { n_function_calls: 0 };
 
-        let function = |f: &mut Vector, _x: f64, y: &Vector, args: &mut Args| {
+        let function = |f: &mut Vector, _x: f64, y: &Vector, a: &mut Args| {
             f[0] = 2.0 * y[0] + 3.0 * y[1] * y[2] - 4.0 * f64::cos(y[3]);
             f[1] = -3.0 * y[1] - 4.0 * f64::exp(y[3] / (1.0 + y[1]));
             f[2] = y[2] * y[2];
             f[3] = -y[0] + 5.0 * (1.0 - y[0] * y[0]) * y[1] - 6.0 * y[2];
-            args.n_function_calls += 1;
+            a.n_function_calls += 1;
             Ok(())
         };
 
-        let jacobian = |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut Args| {
+        let jacobian = |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _a: &mut Args| {
             let d = 1.0 + y[1];
             let e = f64::exp(y[3] / d);
             let dd = d * d;
@@ -240,5 +292,85 @@ mod tests {
         let mat_jj_num = jj_num.as_dense();
         // println!("numerical:\n{}", mat_jj_num);
         mat_approx_eq(&mat_jj_num, &mat_jj_ana, 1e-6);
+    }
+
+    #[test]
+    fn numerical_jacobian_symmetric_works() {
+        struct Args {
+            n_function_calls: usize,
+        }
+        let mut args = Args { n_function_calls: 0 };
+
+        // system
+        let function = |f: &mut Vector, x: f64, y: &Vector, a: &mut Args| {
+            f[0] = -y[0] + y[1];
+            f[1] = y[0] + y[1];
+            f[2] = 1.0 / (1.0 + x);
+            a.n_function_calls += 1;
+            Ok(())
+        };
+
+        // ```text
+        //          ┌          ┐   ┌          ┐
+        //     df   │ -1  1  0 │   │ -1  *  * │
+        // J = —— = │  1  1  0 │ = │  1  1  * │
+        //     dy   │  0  0  0 │   │  0  0  0 │
+        //          └          ┘   └          ┘
+        // ```
+        let jacobian = |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _a: &mut Args| {
+            jj.reset();
+            jj.put(0, 0, alpha * (-1.0)).unwrap();
+            jj.put(1, 1, alpha * (1.0)).unwrap();
+            if jj.symmetric == Sym::YesLower {
+                jj.put(1, 0, alpha * (1.0)).unwrap();
+            } else {
+                jj.put(0, 1, alpha * (1.0)).unwrap();
+            }
+        };
+
+        let ndim = 3;
+        let jac_nnz = 3;
+        let x = 1.0;
+        let mut y = Vector::from(&[1.0, 2.0, 3.0]);
+        let alpha = 0.5;
+
+        // lower triangular -----------------------------------------------------------
+        let symmetry = Sym::YesLower;
+
+        let mut jj_ana = CooMatrix::new(ndim, ndim, jac_nnz, symmetry).unwrap();
+        jacobian(&mut jj_ana, alpha, x, &y, &mut args);
+        let mat_jj_ana = jj_ana.as_dense();
+        println!("analytical:\n{}", mat_jj_ana);
+
+        let jac_num_nnz = (ndim + ndim * ndim) / 2;
+        let mut jj_num = CooMatrix::new(ndim, ndim, jac_num_nnz, symmetry).unwrap();
+        let mut w1 = Vector::new(ndim);
+        let mut w2 = Vector::new(ndim);
+        numerical_jacobian(&mut jj_num, alpha, x, &mut y, &mut w1, &mut w2, &mut args, function).unwrap();
+        assert_eq!(args.n_function_calls, 1 + ndim);
+
+        let mat_jj_num = jj_num.as_dense();
+        println!("numerical:\n{}", mat_jj_num);
+        mat_approx_eq(&mat_jj_num, &mat_jj_ana, 1e-8);
+
+        // upper triangular -----------------------------------------------------------
+        args.n_function_calls = 0;
+        let symmetry = Sym::YesUpper;
+
+        let mut jj_ana = CooMatrix::new(ndim, ndim, jac_nnz, symmetry).unwrap();
+        jacobian(&mut jj_ana, alpha, x, &y, &mut args);
+        let mat_jj_ana = jj_ana.as_dense();
+        println!("analytical:\n{}", mat_jj_ana);
+
+        let jac_num_nnz = (ndim + ndim * ndim) / 2;
+        let mut jj_num = CooMatrix::new(ndim, ndim, jac_num_nnz, symmetry).unwrap();
+        let mut w1 = Vector::new(ndim);
+        let mut w2 = Vector::new(ndim);
+        numerical_jacobian(&mut jj_num, alpha, x, &mut y, &mut w1, &mut w2, &mut args, function).unwrap();
+        assert_eq!(args.n_function_calls, 1 + ndim);
+
+        let mat_jj_num = jj_num.as_dense();
+        println!("numerical:\n{}", mat_jj_num);
+        mat_approx_eq(&mat_jj_num, &mat_jj_ana, 1e-8);
     }
 }

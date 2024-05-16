@@ -6,9 +6,7 @@ use serde::{Deserialize, Serialize};
 
 /// Implements a second-order tensor, symmetric or not
 ///
-/// Internally, the components are converted to the Mandel basis. On the Mandel basis,
-/// depending on the symmetry, we may store fewer components. Also, we may store
-/// only 4 components of Symmetric 2D tensors.
+/// Internally, the components are converted to the Mandel basis as follows.
 ///
 /// **General:**
 ///

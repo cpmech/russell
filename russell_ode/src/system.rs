@@ -272,6 +272,39 @@ mod tests {
     use russell_sparse::{CooMatrix, Sym};
 
     #[test]
+    fn ode_system_handles_errors() {
+        let mut system = System::new(1, |f, _, _, _: &mut NoArgs| {
+            f[0] = 1.0;
+            Ok(())
+        });
+        let mut f = Vector::new(1);
+        let x = 0.0;
+        let y = Vector::new(1);
+        let mut args = 0;
+        (system.function)(&mut f, x, &y, &mut args).unwrap();
+        assert_eq!(
+            system.mass_put(0, 0, 1.0).err(),
+            Some("mass matrix has not been initialized/enabled")
+        );
+        let cb = |_: &mut CooMatrix, _: f64, _: f64, _: &Vector, _: &mut NoArgs| Ok(());
+        let mut jj = CooMatrix::new(1, 1, 1, Sym::YesLower).unwrap();
+        let y = Vector::new(1);
+        (cb)(&mut jj, 0.0, 0.0, &y, &mut 0).unwrap();
+        system.set_jacobian(None, Sym::YesLower, cb).unwrap();
+        assert_eq!(
+            system.init_mass_matrix(1, Sym::YesUpper).err(),
+            Some("the mass matrix must have the same symmetric type as the Jacobian matrix")
+        );
+        system.sym_jac = None;
+        system.init_mass_matrix(1, Sym::YesLower).unwrap();
+        assert_eq!(
+            system.set_jacobian(None, Sym::YesUpper, cb).err(),
+            Some("the Jacobian matrix must have the same symmetric type as the mass matrix")
+        );
+        system.set_jacobian(None, Sym::YesLower, cb).unwrap(); // ok
+    }
+
+    #[test]
     fn ode_system_works() {
         struct Args {
             n_function_eval: usize,
@@ -357,22 +390,5 @@ mod tests {
         assert_eq!(args.n_jacobian_eval, 1);
         assert_eq!(args.more_data_goes_here_fn, true);
         assert_eq!(args.more_data_goes_here_jj, true);
-    }
-
-    #[test]
-    fn ode_system_handles_errors() {
-        let mut system = System::new(1, |f, _, _, _: &mut NoArgs| {
-            f[0] = 1.0;
-            Ok(())
-        });
-        let mut f = Vector::new(1);
-        let x = 0.0;
-        let y = Vector::new(1);
-        let mut args = 0;
-        (system.function)(&mut f, x, &y, &mut args).unwrap();
-        assert_eq!(
-            system.mass_put(0, 0, 1.0).err(),
-            Some("mass matrix has not been initialized/enabled")
-        );
     }
 }

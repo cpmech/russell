@@ -50,20 +50,24 @@ impl Samples {
     ) {
         // system
         let ndim = 1;
-        let jac_nnz = 1; // CooMatrix requires at least one value (thus the 0.0 must be stored)
         let mut system = System::new(ndim, |f: &mut Vector, _x: f64, _y: &Vector, _args: &mut NoArgs| {
             f[0] = 1.0;
             Ok(())
         });
-        system.set_jacobian(
-            Some(jac_nnz),
-            Sym::No,
-            |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
-                jj.reset();
-                jj.put(0, 0, 0.0 * alpha).unwrap();
-                Ok(())
-            },
-        );
+
+        // function to compute the Jacobian matrix
+        let jac_nnz = 1; // CooMatrix requires at least one value (thus the 0.0 must be stored)
+        system
+            .set_jacobian(
+                Some(jac_nnz),
+                Sym::No,
+                |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
+                    jj.reset();
+                    jj.put(0, 0, 0.0 * alpha).unwrap();
+                    Ok(())
+                },
+            )
+            .unwrap();
 
         // initial values
         let x0 = 0.0;
@@ -129,7 +133,7 @@ impl Samples {
     ///
     /// # Input
     ///
-    /// * `symmetric` -- considers the symmetry of the Jacobian and Mass matrices
+    /// * `symmetric` -- specifies the symmetric type of the Jacobian and Mass matrices
     /// * `genie` -- if symmetric, this information is required to decide on the lower-triangle/full
     ///   representation which is consistent with the linear solver employed
     ///
@@ -155,37 +159,41 @@ impl Samples {
         NoArgs,
         impl Fn(&mut Vector, f64, &mut NoArgs),
     ) {
-        // selected symmetric option (for both Mass and Jacobian matrices)
-        let sym = genie.symmetry(symmetric);
+        // selected symmetric type (for both Mass and Jacobian matrices)
+        let sym = genie.get_sym(symmetric);
         let triangular = sym.triangular();
 
         // system
         let ndim = 3;
-        let jac_nnz = if triangular { 3 } else { 4 };
         let mut system = System::new(ndim, |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
             f[0] = -y[0] + y[1];
             f[1] = y[0] + y[1];
             f[2] = 1.0 / (1.0 + x);
             Ok(())
         });
-        system.set_jacobian(
-            Some(jac_nnz),
-            sym,
-            move |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
-                jj.reset();
-                jj.put(0, 0, alpha * (-1.0)).unwrap();
-                if !triangular {
-                    jj.put(0, 1, alpha * (1.0)).unwrap();
-                }
-                jj.put(1, 0, alpha * (1.0)).unwrap();
-                jj.put(1, 1, alpha * (1.0)).unwrap();
-                Ok(())
-            },
-        );
+
+        // function to compute the Jacobian matrix
+        let jac_nnz = if triangular { 3 } else { 4 };
+        system
+            .set_jacobian(
+                Some(jac_nnz),
+                sym,
+                move |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
+                    jj.reset();
+                    jj.put(0, 0, alpha * (-1.0)).unwrap();
+                    if !triangular {
+                        jj.put(0, 1, alpha * (1.0)).unwrap();
+                    }
+                    jj.put(1, 0, alpha * (1.0)).unwrap();
+                    jj.put(1, 1, alpha * (1.0)).unwrap();
+                    Ok(())
+                },
+            )
+            .unwrap();
 
         // mass matrix
         let mass_nnz = if triangular { 4 } else { 5 };
-        system.init_mass_matrix(mass_nnz).unwrap();
+        system.init_mass_matrix(mass_nnz, sym).unwrap();
         system.mass_put(0, 0, 1.0).unwrap();
         if !triangular {
             system.mass_put(0, 1, 1.0).unwrap();
@@ -264,18 +272,22 @@ impl Samples {
             f[1] = 3.0 * y[0] - y[0] * y[0] * y[1];
             Ok(())
         });
-        system.set_jacobian(
-            Some(jac_nnz),
-            Sym::No,
-            |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
-                jj.reset();
-                jj.put(0, 0, alpha * (-4.0 + 2.0 * y[0] * y[1])).unwrap();
-                jj.put(0, 1, alpha * (y[0] * y[0])).unwrap();
-                jj.put(1, 0, alpha * (3.0 - 2.0 * y[0] * y[1])).unwrap();
-                jj.put(1, 1, alpha * (-y[0] * y[0])).unwrap();
-                Ok(())
-            },
-        );
+
+        // function to compute the Jacobian matrix
+        system
+            .set_jacobian(
+                Some(jac_nnz),
+                Sym::No,
+                |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
+                    jj.reset();
+                    jj.put(0, 0, alpha * (-4.0 + 2.0 * y[0] * y[1])).unwrap();
+                    jj.put(0, 1, alpha * (y[0] * y[0])).unwrap();
+                    jj.put(1, 0, alpha * (3.0 - 2.0 * y[0] * y[1])).unwrap();
+                    jj.put(1, 1, alpha * (-y[0] * y[0])).unwrap();
+                    Ok(())
+                },
+            )
+            .unwrap();
 
         // initial values
         let x0 = 0.0;
@@ -543,33 +555,37 @@ impl Samples {
             });
             Ok(())
         });
-        system.set_jacobian(
-            Some(jac_nnz),
-            Sym::No,
-            move |jj, aa, _x, yy, fdm: &mut PdeDiscreteLaplacian2d| {
-                jj.reset();
-                let mut nnz_count = 0;
-                for m in 0..s {
-                    let um = yy[m];
-                    let vm = yy[s + m];
-                    let um2 = um * um;
-                    jj.put(m, m, aa * (-4.4 + 2.0 * um * vm)).unwrap();
-                    jj.put(m, s + m, aa * (um2)).unwrap();
-                    jj.put(s + m, m, aa * (3.4 - 2.0 * um * vm)).unwrap();
-                    jj.put(s + m, s + m, aa * (-um2)).unwrap();
-                    nnz_count += 4;
-                    if !ignore_diffusion {
-                        fdm.loop_over_coef_mat_row(m, |n, amn| {
-                            jj.put(m, n, aa * (amn)).unwrap();
-                            jj.put(s + m, s + n, aa * (amn)).unwrap();
-                            nnz_count += 2;
-                        });
+
+        // function to compute the Jacobian matrix
+        system
+            .set_jacobian(
+                Some(jac_nnz),
+                Sym::No,
+                move |jj, aa, _x, yy, fdm: &mut PdeDiscreteLaplacian2d| {
+                    jj.reset();
+                    let mut nnz_count = 0;
+                    for m in 0..s {
+                        let um = yy[m];
+                        let vm = yy[s + m];
+                        let um2 = um * um;
+                        jj.put(m, m, aa * (-4.4 + 2.0 * um * vm)).unwrap();
+                        jj.put(m, s + m, aa * (um2)).unwrap();
+                        jj.put(s + m, m, aa * (3.4 - 2.0 * um * vm)).unwrap();
+                        jj.put(s + m, s + m, aa * (-um2)).unwrap();
+                        nnz_count += 4;
+                        if !ignore_diffusion {
+                            fdm.loop_over_coef_mat_row(m, |n, amn| {
+                                jj.put(m, n, aa * (amn)).unwrap();
+                                jj.put(s + m, s + n, aa * (amn)).unwrap();
+                                nnz_count += 2;
+                            });
+                        }
                     }
-                }
-                assert_eq!(nnz_count, jac_nnz);
-                Ok(())
-            },
-        );
+                    assert_eq!(nnz_count, jac_nnz);
+                    Ok(())
+                },
+            )
+            .unwrap();
 
         // discrete laplacian
         let mut fdm = PdeDiscreteLaplacian2d::new(kx, ky, xmin, xmax, ymin, ymax, nx, ny).unwrap();
@@ -661,7 +677,6 @@ impl Samples {
 
         // system
         let ndim = 4;
-        let jac_nnz = 8;
         let mut system = System::new(ndim, |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
             let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
             let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
@@ -673,45 +688,50 @@ impl Samples {
             f[3] = y[1] - 2.0 * y[2] - MD * y[1] / d0 - MU * y[1] / d1;
             Ok(())
         });
-        system.set_jacobian(
-            Some(jac_nnz),
-            Sym::No,
-            |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
-                let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
-                let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
-                let s0 = f64::sqrt(t0);
-                let s1 = f64::sqrt(t1);
-                let d0 = t0 * s0;
-                let d1 = t1 * s1;
-                let dd0 = d0 * d0;
-                let dd1 = d1 * d1;
-                let a = y[0] + MU;
-                let b = y[0] - MD;
-                let c = -MD / d0 - MU / d1;
-                let dj00 = 3.0 * a * s0;
-                let dj01 = 3.0 * y[1] * s0;
-                let dj10 = 3.0 * b * s1;
-                let dj11 = 3.0 * y[1] * s1;
-                jj.reset();
-                jj.put(0, 2, 1.0 * alpha).unwrap();
-                jj.put(1, 3, 1.0 * alpha).unwrap();
-                jj.put(2, 0, (1.0 + a * dj00 * MD / dd0 + b * dj10 * MU / dd1 + c) * alpha)
+
+        // function to compute the Jacobian matrix
+        let jac_nnz = 8;
+        system
+            .set_jacobian(
+                Some(jac_nnz),
+                Sym::No,
+                |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
+                    let t0 = (y[0] + MU) * (y[0] + MU) + y[1] * y[1];
+                    let t1 = (y[0] - MD) * (y[0] - MD) + y[1] * y[1];
+                    let s0 = f64::sqrt(t0);
+                    let s1 = f64::sqrt(t1);
+                    let d0 = t0 * s0;
+                    let d1 = t1 * s1;
+                    let dd0 = d0 * d0;
+                    let dd1 = d1 * d1;
+                    let a = y[0] + MU;
+                    let b = y[0] - MD;
+                    let c = -MD / d0 - MU / d1;
+                    let dj00 = 3.0 * a * s0;
+                    let dj01 = 3.0 * y[1] * s0;
+                    let dj10 = 3.0 * b * s1;
+                    let dj11 = 3.0 * y[1] * s1;
+                    jj.reset();
+                    jj.put(0, 2, 1.0 * alpha).unwrap();
+                    jj.put(1, 3, 1.0 * alpha).unwrap();
+                    jj.put(2, 0, (1.0 + a * dj00 * MD / dd0 + b * dj10 * MU / dd1 + c) * alpha)
+                        .unwrap();
+                    jj.put(2, 1, (a * dj01 * MD / dd0 + b * dj11 * MU / dd1) * alpha)
+                        .unwrap();
+                    jj.put(2, 3, 2.0 * alpha).unwrap();
+                    jj.put(3, 0, (dj00 * y[1] * MD / dd0 + dj10 * y[1] * MU / dd1) * alpha)
+                        .unwrap();
+                    jj.put(
+                        3,
+                        1,
+                        (1.0 + dj01 * y[1] * MD / dd0 + dj11 * y[1] * MU / dd1 + c) * alpha,
+                    )
                     .unwrap();
-                jj.put(2, 1, (a * dj01 * MD / dd0 + b * dj11 * MU / dd1) * alpha)
-                    .unwrap();
-                jj.put(2, 3, 2.0 * alpha).unwrap();
-                jj.put(3, 0, (dj00 * y[1] * MD / dd0 + dj10 * y[1] * MU / dd1) * alpha)
-                    .unwrap();
-                jj.put(
-                    3,
-                    1,
-                    (1.0 + dj01 * y[1] * MD / dd0 + dj11 * y[1] * MU / dd1 + c) * alpha,
-                )
-                .unwrap();
-                jj.put(3, 2, -2.0 * alpha).unwrap();
-                Ok(())
-            },
-        );
+                    jj.put(3, 2, -2.0 * alpha).unwrap();
+                    Ok(())
+                },
+            )
+            .unwrap();
 
         // initial values and final x
         let x0 = 0.0;
@@ -779,20 +799,24 @@ impl Samples {
 
         // system
         let ndim = 1;
-        let jac_nnz = 1;
         let mut system = System::new(ndim, |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
             f[0] = L * (y[0] - f64::cos(x));
             Ok(())
         });
-        system.set_jacobian(
-            Some(jac_nnz),
-            Sym::No,
-            |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
-                jj.reset();
-                jj.put(0, 0, alpha * L).unwrap();
-                Ok(())
-            },
-        );
+
+        // function to compute the Jacobian matrix
+        let jac_nnz = 1;
+        system
+            .set_jacobian(
+                Some(jac_nnz),
+                Sym::No,
+                |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
+                    jj.reset();
+                    jj.put(0, 0, alpha * L).unwrap();
+                    Ok(())
+                },
+            )
+            .unwrap();
 
         // initial values
         let x0 = 0.0;
@@ -845,28 +869,32 @@ impl Samples {
     ) {
         // system
         let ndim = 3;
-        let jac_nnz = 7;
         let mut system = System::new(ndim, |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
             f[0] = -0.04 * y[0] + 1.0e4 * y[1] * y[2];
             f[1] = 0.04 * y[0] - 1.0e4 * y[1] * y[2] - 3.0e7 * y[1] * y[1];
             f[2] = 3.0e7 * y[1] * y[1];
             Ok(())
         });
-        system.set_jacobian(
-            Some(jac_nnz),
-            Sym::No,
-            |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
-                jj.reset();
-                jj.put(0, 0, -0.04 * alpha).unwrap();
-                jj.put(0, 1, 1.0e4 * y[2] * alpha).unwrap();
-                jj.put(0, 2, 1.0e4 * y[1] * alpha).unwrap();
-                jj.put(1, 0, 0.04 * alpha).unwrap();
-                jj.put(1, 1, (-1.0e4 * y[2] - 6.0e7 * y[1]) * alpha).unwrap();
-                jj.put(1, 2, (-1.0e4 * y[1]) * alpha).unwrap();
-                jj.put(2, 1, 6.0e7 * y[1] * alpha).unwrap();
-                Ok(())
-            },
-        );
+
+        // function to compute the Jacobian matrix
+        let jac_nnz = 7;
+        system
+            .set_jacobian(
+                Some(jac_nnz),
+                Sym::No,
+                |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
+                    jj.reset();
+                    jj.put(0, 0, -0.04 * alpha).unwrap();
+                    jj.put(0, 1, 1.0e4 * y[2] * alpha).unwrap();
+                    jj.put(0, 2, 1.0e4 * y[1] * alpha).unwrap();
+                    jj.put(1, 0, 0.04 * alpha).unwrap();
+                    jj.put(1, 1, (-1.0e4 * y[2] - 6.0e7 * y[1]) * alpha).unwrap();
+                    jj.put(1, 2, (-1.0e4 * y[1]) * alpha).unwrap();
+                    jj.put(2, 1, 6.0e7 * y[1] * alpha).unwrap();
+                    Ok(())
+                },
+            )
+            .unwrap();
 
         // initial values
         let x0 = 0.0;
@@ -941,23 +969,27 @@ impl Samples {
 
         // system
         let ndim = 2;
-        let jac_nnz = 3;
         let mut system = System::new(ndim, move |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
             f[0] = y[1];
             f[1] = ((1.0 - y[0] * y[0]) * y[1] - y[0]) / eps;
             Ok(())
         });
-        system.set_jacobian(
-            Some(jac_nnz),
-            Sym::No,
-            move |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
-                jj.reset();
-                jj.put(0, 1, 1.0 * alpha).unwrap();
-                jj.put(1, 0, alpha * (-2.0 * y[0] * y[1] - 1.0) / eps).unwrap();
-                jj.put(1, 1, alpha * (1.0 - y[0] * y[0]) / eps).unwrap();
-                Ok(())
-            },
-        );
+
+        // function to compute the Jacobian matrix
+        let jac_nnz = 3;
+        system
+            .set_jacobian(
+                Some(jac_nnz),
+                Sym::No,
+                move |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
+                    jj.reset();
+                    jj.put(0, 1, 1.0 * alpha).unwrap();
+                    jj.put(1, 0, alpha * (-2.0 * y[0] * y[1] - 1.0) / eps).unwrap();
+                    jj.put(1, 1, alpha * (1.0 - y[0] * y[0]) / eps).unwrap();
+                    Ok(())
+                },
+            )
+            .unwrap();
 
         // results
         let args = 0;
@@ -1058,7 +1090,6 @@ impl Samples {
 
         // system
         let ndim = 5;
-        let jac_nnz = 9;
         let mut system = System::new(ndim, |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
             let ue = A * f64::sin(OM * x);
             let g12 = BETA * (f64::exp((y[1] - y[2]) / UF) - 1.0);
@@ -1069,31 +1100,37 @@ impl Samples {
             f[4] = y[4] / S;
             Ok(())
         });
-        system.set_jacobian(
-            Some(jac_nnz),
-            Sym::No,
-            |jj: &mut CooMatrix, aa: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
-                let h12 = BETA * f64::exp((y[1] - y[2]) / UF) / UF;
-                jj.reset();
-                jj.put(0, 0, aa * (1.0 / R)).unwrap();
-                jj.put(1, 1, aa * (2.0 / S + GAMMA * h12)).unwrap();
-                jj.put(1, 2, aa * (-GAMMA * h12)).unwrap();
-                jj.put(2, 1, aa * (-h12)).unwrap();
-                jj.put(2, 2, aa * (1.0 / S + h12)).unwrap();
-                jj.put(3, 1, aa * (ALPHA * h12)).unwrap();
-                jj.put(3, 2, aa * (-ALPHA * h12)).unwrap();
-                jj.put(3, 3, aa * (1.0 / S)).unwrap();
-                jj.put(4, 4, aa * (1.0 / S)).unwrap();
-                Ok(())
-            },
-        );
+
+        // function to compute the Jacobian matrix
+        let jac_nnz = 9;
+        let symmetric = Sym::No;
+        system
+            .set_jacobian(
+                Some(jac_nnz),
+                symmetric,
+                |jj: &mut CooMatrix, aa: f64, _x: f64, y: &Vector, _args: &mut NoArgs| {
+                    let h12 = BETA * f64::exp((y[1] - y[2]) / UF) / UF;
+                    jj.reset();
+                    jj.put(0, 0, aa * (1.0 / R)).unwrap();
+                    jj.put(1, 1, aa * (2.0 / S + GAMMA * h12)).unwrap();
+                    jj.put(1, 2, aa * (-GAMMA * h12)).unwrap();
+                    jj.put(2, 1, aa * (-h12)).unwrap();
+                    jj.put(2, 2, aa * (1.0 / S + h12)).unwrap();
+                    jj.put(3, 1, aa * (ALPHA * h12)).unwrap();
+                    jj.put(3, 2, aa * (-ALPHA * h12)).unwrap();
+                    jj.put(3, 3, aa * (1.0 / S)).unwrap();
+                    jj.put(4, 4, aa * (1.0 / S)).unwrap();
+                    Ok(())
+                },
+            )
+            .unwrap();
 
         // mass matrix
         const C1: f64 = 1e-6;
         const C2: f64 = 2e-6;
         const C3: f64 = 3e-6;
         let mass_nnz = 9;
-        system.init_mass_matrix(mass_nnz).unwrap();
+        system.init_mass_matrix(mass_nnz, symmetric).unwrap();
         system.mass_put(0, 0, -C1).unwrap();
         system.mass_put(0, 1, C1).unwrap();
         system.mass_put(1, 0, C1).unwrap();
@@ -1145,20 +1182,24 @@ impl Samples {
     ) {
         // system
         let ndim = 1;
-        let jac_nnz = 1;
         let mut system = System::new(ndim, |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
             f[0] = x + y[0];
             Ok(())
         });
-        system.set_jacobian(
-            Some(jac_nnz),
-            Sym::No,
-            |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
-                jj.reset();
-                jj.put(0, 0, 1.0 * alpha).unwrap();
-                Ok(())
-            },
-        );
+
+        // function to compute the Jacobian matrix
+        let jac_nnz = 1;
+        system
+            .set_jacobian(
+                Some(jac_nnz),
+                Sym::No,
+                |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
+                    jj.reset();
+                    jj.put(0, 0, 1.0 * alpha).unwrap();
+                    Ok(())
+                },
+            )
+            .unwrap();
 
         // initial values
         let x0 = 0.0;
@@ -1217,23 +1258,27 @@ impl Samples {
     ) {
         // system
         let ndim = 2;
-        let jac_nnz = 3;
         let mut system = System::new(ndim, |f: &mut Vector, x: f64, y: &Vector, _args: &mut NoArgs| {
             f[0] = y[1];
             f[1] = -10.0 * y[0] - 11.0 * y[1] + 10.0 * x + 11.0;
             Ok(())
         });
-        system.set_jacobian(
-            Some(jac_nnz),
-            Sym::No,
-            |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
-                jj.reset();
-                jj.put(0, 1, 1.0 * alpha).unwrap();
-                jj.put(1, 0, -10.0 * alpha).unwrap();
-                jj.put(1, 1, -11.0 * alpha).unwrap();
-                Ok(())
-            },
-        );
+
+        // function to compute the Jacobian matrix
+        let jac_nnz = 3;
+        system
+            .set_jacobian(
+                Some(jac_nnz),
+                Sym::No,
+                |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
+                    jj.reset();
+                    jj.put(0, 1, 1.0 * alpha).unwrap();
+                    jj.put(1, 0, -10.0 * alpha).unwrap();
+                    jj.put(1, 1, -11.0 * alpha).unwrap();
+                    Ok(())
+                },
+            )
+            .unwrap();
 
         // initial values
         let x0 = 0.0;
@@ -1272,7 +1317,7 @@ mod tests {
         vec_approx_eq(&y0, &y0_correct, 1e-15);
 
         // compute the analytical Jacobian matrix
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.symmetric).unwrap();
         let jacobian = system.jacobian.as_ref().unwrap();
         (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
@@ -1298,7 +1343,7 @@ mod tests {
         vec_approx_eq(&y0, &y0_correct, 1e-15);
 
         // compute the analytical Jacobian matrix
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.symmetric).unwrap();
         let jacobian = system.jacobian.as_ref().unwrap();
         (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
@@ -1318,7 +1363,7 @@ mod tests {
         let (system, x0, y0, mut args, _) = Samples::brusselator_ode();
 
         // compute the analytical Jacobian matrix
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.symmetric).unwrap();
         let jacobian = system.jacobian.as_ref().unwrap();
         (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
@@ -1340,7 +1385,7 @@ mod tests {
         let (system, x0, y0, mut args) = Samples::brusselator_pde(2e-3, 3, second_book, ignore_diffusion);
 
         // compute the analytical Jacobian matrix
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.symmetric).unwrap();
         let jacobian = system.jacobian.as_ref().unwrap();
         (jacobian)(&mut jj, jac_alpha, x0, &y0, &mut args).unwrap();
 
@@ -1362,7 +1407,7 @@ mod tests {
         let (system, x0, y0, mut args) = Samples::brusselator_pde(2e-3, 3, second_book, ignore_diffusion);
 
         // compute the analytical Jacobian matrix
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.symmetric).unwrap();
         let jacobian = system.jacobian.as_ref().unwrap();
         (jacobian)(&mut jj, jac_alpha, x0, &y0, &mut args).unwrap();
 
@@ -1387,7 +1432,7 @@ mod tests {
         for t in [0.9, 1.2] {
             // compute the analytical Jacobian matrix
             let jac_alpha = 2.0;
-            let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+            let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.symmetric).unwrap();
             let jacobian = system.jacobian.as_ref().unwrap();
             (jacobian)(&mut jj, jac_alpha, t, &y0, &mut args).unwrap();
 
@@ -1408,7 +1453,7 @@ mod tests {
         let (system, x0, y0, _, mut args, _) = Samples::arenstorf();
 
         // compute the analytical Jacobian matrix
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.symmetric).unwrap();
         let jacobian = system.jacobian.as_ref().unwrap();
         (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
@@ -1434,7 +1479,7 @@ mod tests {
         vec_approx_eq(&y0, &y0_correct, 1e-15);
 
         // compute the analytical Jacobian matrix
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.symmetric).unwrap();
         let jacobian = system.jacobian.as_ref().unwrap();
         (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
@@ -1454,7 +1499,7 @@ mod tests {
         let (system, x0, y0, mut args) = Samples::robertson();
 
         // compute the analytical Jacobian matrix
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.symmetric).unwrap();
         let jacobian = system.jacobian.as_ref().unwrap();
         (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
@@ -1474,7 +1519,7 @@ mod tests {
         let (system, x0, y0, _, mut args) = Samples::van_der_pol(0.03, false);
 
         // compute the analytical Jacobian matrix
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.symmetric).unwrap();
         let jacobian = system.jacobian.as_ref().unwrap();
         (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
@@ -1494,7 +1539,7 @@ mod tests {
         let (system, x0, y0, _, mut args) = Samples::van_der_pol(1.0, true);
 
         // compute the analytical Jacobian matrix
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.symmetric).unwrap();
         let jacobian = system.jacobian.as_ref().unwrap();
         (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
@@ -1514,7 +1559,7 @@ mod tests {
         let (system, x0, y0, mut args) = Samples::amplifier1t();
 
         // compute the analytical Jacobian matrix
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.symmetric).unwrap();
         let jacobian = system.jacobian.as_ref().unwrap();
         (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
@@ -1547,7 +1592,7 @@ mod tests {
         vec_approx_eq(&y0, &y0_correct, 1e-15);
 
         // compute the analytical Jacobian matrix
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.symmetric).unwrap();
         let jacobian = system.jacobian.as_ref().unwrap();
         (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 
@@ -1573,7 +1618,7 @@ mod tests {
         vec_approx_eq(&y0, &y0_correct, 1e-15);
 
         // compute the analytical Jacobian matrix
-        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.jac_sym).unwrap();
+        let mut jj = CooMatrix::new(system.ndim, system.ndim, system.jac_nnz, system.symmetric).unwrap();
         let jacobian = system.jacobian.as_ref().unwrap();
         (jacobian)(&mut jj, alpha, x0, &y0, &mut args).unwrap();
 

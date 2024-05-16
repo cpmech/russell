@@ -79,8 +79,14 @@ where
     /// Number of non-zeros in the Jacobian matrix
     pub(crate) jac_nnz: usize,
 
-    /// Symmetric flag for the Jacobian and mass matrices
-    pub(crate) jac_sym: Sym,
+    /// Symmetric type of the Jacobian matrix (for error checking; to make sure it is equal to sym_mass)
+    sym_jac: Option<Sym>,
+
+    /// Symmetric type of the mass matrix (for error checking; to make sure it is equal to sym_jacobian)
+    sym_mass: Option<Sym>,
+
+    /// Symmetric type of the Jacobian and mass matrices
+    pub(crate) symmetric: Sym,
 
     /// Holds the mass matrix
     pub(crate) mass_matrix: Option<CooMatrix>,
@@ -161,7 +167,9 @@ where
             function,
             jacobian: None,
             jac_nnz: ndim * ndim,
-            jac_sym: Sym::No,
+            sym_jac: None,
+            sym_mass: None,
+            symmetric: Sym::No,
             mass_matrix: None,
             phantom: PhantomData,
         }
@@ -173,42 +181,57 @@ where
     ///
     /// # Input
     ///
-    /// * `jac_nnz` -- the number of non-zeros in the Jacobian; use None to indicate a dense matrix (i.e., nnz = ndim * ndim)
-    /// * `jac_sym` -- specifies the symmetric flag for the Jacobian and mass matrices
+    /// * `jac_nnz` -- the number of non-zeros in the Jacobian; use None to indicate a dense matrix with:
+    ///     * `nnz = (ndim + ndim²) / 2` if triangular
+    ///     * `nnz = ndim²` otherwise
+    /// * `symmetric` -- specifies the symmetric type of the Jacobian and **mass** matrices
     /// * `callback` -- the function to calculate the Jacobian matrix
     pub fn set_jacobian(
         &mut self,
         jac_nnz: Option<usize>,
-        jac_sym: Sym,
+        symmetric: Sym,
         callback: impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError> + 'a,
-    ) {
+    ) -> Result<(), StrError> {
+        if let Some(sym) = self.sym_mass {
+            if symmetric != sym {
+                return Err("the Jacobian matrix must have the same symmetric type as the mass matrix");
+            }
+        }
         self.jac_nnz = if let Some(nnz) = jac_nnz {
             nnz
         } else {
-            self.ndim * self.ndim
+            if symmetric.triangular() {
+                (self.ndim + self.ndim * self.ndim) / 2
+            } else {
+                self.ndim * self.ndim
+            }
         };
-        self.jac_sym = jac_sym;
+        self.sym_jac = Some(symmetric);
+        self.symmetric = symmetric;
         self.jacobian = Some(Box::new(callback));
+        Ok(())
     }
 
     /// Initializes and enables the mass matrix
-    ///
-    /// **Important:** The Jacobian callback function must be set first. The symmetry
-    /// of the mass matrix must be the same as the symmetry of the Jacobian matrix.
     ///
     /// **Note:** Even if the (analytical) Jacobian function is not configured,
     /// a numerical Jacobian matrix may be computed (see [crate::Params] and [crate::ParamsNewton]).
     ///
     /// # Input
     ///
-    /// * `max_nnz` -- Max number of non-zero values
+    /// * `max_nnz` -- max number of non-zero values
+    /// * `symmetric` -- specifies the symmetric type for the mass and **Jacobian** matrices
     ///
     /// Use [System::mass_put] to "put" elements into the mass matrix.
-    pub fn init_mass_matrix(&mut self, max_nnz: usize) -> Result<(), StrError> {
-        if self.jacobian.is_none() {
-            return Err("the Jacobian function must be enabled first");
+    pub fn init_mass_matrix(&mut self, max_nnz: usize, symmetric: Sym) -> Result<(), StrError> {
+        if let Some(sym) = self.sym_jac {
+            if symmetric != sym {
+                return Err("the mass matrix must have the same symmetric type as the Jacobian matrix");
+            }
         }
-        self.mass_matrix = Some(CooMatrix::new(self.ndim, self.ndim, max_nnz, self.jac_sym).unwrap());
+        self.sym_mass = Some(symmetric);
+        self.symmetric = symmetric;
+        self.mass_matrix = Some(CooMatrix::new(self.ndim, self.ndim, max_nnz, self.symmetric).unwrap());
         Ok(())
     }
 
@@ -301,18 +324,21 @@ mod tests {
             args.more_data_goes_here_fn = true;
             Ok(())
         });
-        system.set_jacobian(Some(2), Sym::No, |jj, alpha, x, _y, args: &mut Args| {
-            args.n_jacobian_eval += 1;
-            jj.reset();
-            jj.put(0, 1, alpha * (-x)).unwrap();
-            jj.put(1, 0, alpha * (x)).unwrap();
-            args.more_data_goes_here_jj = true;
-            Ok(())
-        });
+        let symmetric = Sym::No;
+        system
+            .set_jacobian(Some(2), symmetric, |jj, alpha, x, _y, args: &mut Args| {
+                args.n_jacobian_eval += 1;
+                jj.reset();
+                jj.put(0, 1, alpha * (-x)).unwrap();
+                jj.put(1, 0, alpha * (x)).unwrap();
+                args.more_data_goes_here_jj = true;
+                Ok(())
+            })
+            .unwrap();
         // analytical_solution:
         // y[0] = f64::cos(x * x / 2.0) - 2.0 * f64::sin(x * x / 2.0);
         // y[1] = 2.0 * f64::cos(x * x / 2.0) + f64::sin(x * x / 2.0);
-        system.init_mass_matrix(2).unwrap(); // diagonal mass matrix => OK, but not needed
+        system.init_mass_matrix(2, symmetric).unwrap(); // diagonal mass matrix => OK, but not needed
         system.mass_put(0, 0, 1.0).unwrap();
         system.mass_put(1, 1, 1.0).unwrap();
         // call system function
@@ -347,10 +373,6 @@ mod tests {
         assert_eq!(
             system.mass_put(0, 0, 1.0).err(),
             Some("mass matrix has not been initialized/enabled")
-        );
-        assert_eq!(
-            system.init_mass_matrix(1).err(),
-            Some("the Jacobian function must be enabled first")
         );
     }
 }

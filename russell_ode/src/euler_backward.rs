@@ -55,7 +55,7 @@ where
             w: Vector::new(ndim),
             r: Vector::new(ndim),
             dy: Vector::new(ndim),
-            kk: SparseMatrix::new_coo(ndim, ndim, nnz, system.jac_sym).unwrap(),
+            kk: SparseMatrix::new_coo(ndim, ndim, nnz, system.symmetric).unwrap(),
             solver: LinSolver::new(params.newton.genie).unwrap(),
         }
     }
@@ -392,11 +392,13 @@ mod tests {
                 Ok(())
             }
         });
-        system.set_jacobian(None, Sym::No, |jj, alpha, _x, _y, _args: &mut Args| {
-            jj.reset();
-            jj.put(0, 0, alpha * (0.0)).unwrap();
-            Err("jj: stop")
-        });
+        system
+            .set_jacobian(None, Sym::No, |jj, alpha, _x, _y, _args: &mut Args| {
+                jj.reset();
+                jj.put(0, 0, alpha * (0.0)).unwrap();
+                Err("jj: stop")
+            })
+            .unwrap();
         let params = Params::new(Method::BwEuler);
         let mut solver = EulerBackward::new(params, &system);
         let mut work = Workspace::new(Method::BwEuler);

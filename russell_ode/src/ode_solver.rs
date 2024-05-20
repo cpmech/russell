@@ -405,17 +405,17 @@ impl<'a, A> OdeSolver<'a, A> {
         &mut self.output
     }
 
-    /// TODO
+    /// Returns an access to the output during accepted steps: stepsizes (h)
     pub fn out_step_h(&self) -> &Vec<f64> {
         &self.output.step_h
     }
 
-    /// TODO
+    /// Returns an access to the output during accepted steps: x values
     pub fn out_step_x(&self) -> &Vec<f64> {
         &self.output.step_x
     }
 
-    /// TODO
+    /// Returns an access to the output during accepted steps: y values
     ///
     /// # Panics
     ///
@@ -424,32 +424,43 @@ impl<'a, A> OdeSolver<'a, A> {
         &self.output.step_y.get(&m).unwrap()
     }
 
-    /// TODO
+    /// Returns an access to the output during accepted steps: global error
     pub fn out_step_global_error(&self) -> &Vec<f64> {
         &self.output.step_global_error
     }
 
-    /// TODO
+    /// Returns an access to the dense output: x values
     pub fn out_dense_x(&self) -> &Vec<f64> {
         &self.output.dense_x
     }
 
-    /// TODO
+    /// Returns an access to the dense output: y values
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if `m` is out of range
     pub fn out_dense_y(&self, m: usize) -> &Vec<f64> {
         &self.output.dense_y.get(&m).unwrap()
     }
 
-    /// TODO
+    /// Returns an access to the stiffness detection results: accepted step index
+    ///
+    /// This is the index of the accepted step for which stiffness has been detected.
     pub fn out_stiff_step_index(&self) -> &Vec<usize> {
         &self.output.stiff_step_index
     }
 
-    /// TODO
+    /// Returns an access to the stiffness detection results: x values
     pub fn out_stiff_x(&self) -> &Vec<f64> {
         &self.output.stiff_x
     }
 
-    /// TODO
+    /// Returns an access to the stiffness detection results: h times ρ
+    ///
+    /// `h·ρ` is the approximation of the boundary of the stability region.
+    ///
+    /// Note: `ρ` is an approximation of `|λ|`, where `λ` is the dominant eigenvalue of the Jacobian
+    /// (see Hairer-Wanner Part II page 22).
     pub fn out_stiff_h_times_rho(&self) -> &Vec<f64> {
         &self.output.stiff_h_times_rho
     }

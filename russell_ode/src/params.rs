@@ -315,7 +315,7 @@ impl ParamsStiffness {
         let h_times_lambda_max = match method {
             Method::DoPri5 => 3.25, // line 482 of dopri5.f
             Method::DoPri8 => 6.1,  // line 674 of dopri8.f
-            _ => f64::MAX,          // undetermined
+            _ => f64::NEG_INFINITY, // undetermined
         };
         ParamsStiffness {
             enabled: false,
@@ -326,6 +326,21 @@ impl ParamsStiffness {
             skip_first_n_accepted_step: 10,
             h_times_rho_max: h_times_lambda_max,
         }
+    }
+
+    /// Returns the maximum stepsize times rho (h·ρ) for which stiffness is detected
+    ///
+    /// `h·ρ` is the approximation of the boundary of the stability region.
+    ///
+    /// Note: `ρ` is an approximation of `|λ|`, where `λ` is the dominant eigenvalue of the Jacobian
+    /// (see Hairer-Wanner Part II page 22).
+    ///
+    /// Values:
+    ///
+    /// * DoPri5 -- `max(h·ρ) = 3.25`
+    /// * DoPri8 -- `max(h·ρ) = 6.10`
+    pub fn get_h_times_rho_max(&self) -> f64 {
+        self.h_times_rho_max
     }
 }
 
@@ -533,6 +548,18 @@ mod tests {
         params.set_tolerances(0.2, 0.3, None).unwrap();
         assert_eq!(params.tol.abs, 0.2);
         assert_eq!(params.tol.rel, 0.3);
+    }
+
+    #[test]
+    fn params_stiffness_returns_h_times_rho() {
+        let params = ParamsStiffness::new(Method::DoPri5);
+        assert_eq!(params.get_h_times_rho_max(), 3.25);
+
+        let params = ParamsStiffness::new(Method::DoPri8);
+        assert_eq!(params.get_h_times_rho_max(), 6.1);
+
+        let params = ParamsStiffness::new(Method::Radau5);
+        assert_eq!(params.get_h_times_rho_max(), f64::NEG_INFINITY);
     }
 
     #[test]

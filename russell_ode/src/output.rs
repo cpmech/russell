@@ -66,19 +66,19 @@ pub struct Output<'a, A> {
     step_recording: bool,
 
     /// Holds the stepsize computed at accepted steps
-    pub step_h: Vec<f64>,
+    pub(crate) step_h: Vec<f64>,
 
     /// Holds the x values computed at accepted steps
-    pub step_x: Vec<f64>,
+    pub(crate) step_x: Vec<f64>,
 
     /// Holds the selected y components computed at accepted steps
-    pub step_y: HashMap<usize, Vec<f64>>,
+    pub(crate) step_y: HashMap<usize, Vec<f64>>,
 
     /// Holds the global error computed at accepted steps (if the YxFunction is available)
     ///
     /// The global error is the maximum absolute difference between the numerical results and
     /// the ones computed by `YxFunction` (see [russell_lab::vec_max_abs_diff])
-    pub step_global_error: Vec<f64>,
+    pub(crate) step_global_error: Vec<f64>,
 
     // --- dense -------------------------------------------------------------------------------------------
     /// Holds a callback function for the dense output
@@ -100,26 +100,26 @@ pub struct Output<'a, A> {
     dense_index: usize,
 
     /// Holds the x values (specified by the user)
-    pub dense_x: Vec<f64>,
+    pub(crate) dense_x: Vec<f64>,
 
     /// Holds the selected y components computed during the dense output
-    pub dense_y: HashMap<usize, Vec<f64>>,
+    pub(crate) dense_y: HashMap<usize, Vec<f64>>,
 
     // --- stiffness ---------------------------------------------------------------------------------------
     /// Records the stations where stiffness has been detected
-    pub(crate) stiff_recording: bool,
+    stiff_recording: bool,
 
     /// Holds the indices of the accepted steps where stiffness has been detected
-    pub stiff_step_index: Vec<usize>,
+    pub(crate) stiff_step_index: Vec<usize>,
 
     /// Holds the x stations where stiffness has been detected
-    pub stiff_x: Vec<f64>,
+    pub(crate) stiff_x: Vec<f64>,
 
     /// Holds the h·ρ values where stiffness has been (firstly) detected
     ///
     /// Note: ρ is the approximation of |λ|, where λ is the dominant eigenvalue of the Jacobian
     /// (see Hairer-Wanner Part II page 22)
-    pub stiff_h_times_rho: Vec<f64>,
+    pub(crate) stiff_h_times_rho: Vec<f64>,
 
     // --- auxiliary ---------------------------------------------------------------------------------------
     /// Holds an auxiliary y vector (e.g., to compute the analytical solution or the dense output)
@@ -372,8 +372,9 @@ impl<'a, A> Output<'a, A> {
     /// Initializes the output structure with initial and final x values
     ///
     /// **Note:** This function also clears the previous results.
-    pub(crate) fn initialize(&mut self, x0: f64, x1: f64) -> Result<(), StrError> {
+    pub(crate) fn initialize(&mut self, x0: f64, x1: f64, stiff_recording: bool) -> Result<(), StrError> {
         assert!(x1 > x0);
+        self.stiff_recording = stiff_recording;
         // clear previous results
         if self.initialized {
             if self.step_recording {
@@ -767,7 +768,7 @@ mod tests {
         out.set_dense_recording(&[0]);
         assert_eq!(&out.dense_x, &[0.0, 3.0, 4.0, 0.0]);
         assert_eq!(
-            out.initialize(3.0, 4.0).err(),
+            out.initialize(3.0, 4.0, false).err(),
             Some("the first interior x_out for dense output must be > x0")
         );
 
@@ -775,7 +776,7 @@ mod tests {
         out.set_dense_recording(&[0]);
         assert_eq!(&out.dense_x, &[0.0, 3.1, 4.0, 5.0, 0.0]);
         assert_eq!(
-            out.initialize(3.0, 4.0).err(),
+            out.initialize(3.0, 4.0, false).err(),
             Some("the last interior x_out for dense output must be < x1")
         );
     }
@@ -786,12 +787,12 @@ mod tests {
 
         // without h_out and x_out
         out.set_dense_recording(&[0]);
-        out.initialize(3.0, 4.0).unwrap();
+        out.initialize(3.0, 4.0, false).unwrap();
         assert_eq!(&out.dense_x, &[3.0, 4.0]);
 
         // with h_out
         out.set_dense_h_out(0.1).unwrap();
-        out.initialize(3.0, 4.0).unwrap();
+        out.initialize(3.0, 4.0, false).unwrap();
         array_approx_eq(
             &out.dense_x,
             &[3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4.0],
@@ -800,14 +801,14 @@ mod tests {
 
         // with empty x_out
         out.set_dense_x_out(&[]).unwrap();
-        out.initialize(3.0, 4.0).unwrap();
+        out.initialize(3.0, 4.0, false).unwrap();
         assert_eq!(&out.dense_x, &[3.0, 4.0]);
         let y0_out = out.dense_y.get(&0).unwrap();
         assert_eq!(y0_out.len(), 2);
 
         // with x_out
         out.set_dense_x_out(&[3.5, 3.8]).unwrap();
-        out.initialize(3.0, 4.0).unwrap();
+        out.initialize(3.0, 4.0, false).unwrap();
         assert_eq!(&out.dense_x, &[3.0, 3.5, 3.8, 4.0]);
         let y0_out = out.dense_y.get(&0).unwrap();
         assert_eq!(y0_out.len(), 4);
@@ -820,7 +821,7 @@ mod tests {
         // first call
         out.set_step_recording(&[0]);
         assert_eq!(out.step_y.len(), 1);
-        out.initialize(1.0, 2.0).unwrap();
+        out.initialize(1.0, 2.0, false).unwrap();
 
         // write some values
         out.step_h.push(11.11);
@@ -829,7 +830,7 @@ mod tests {
         out.step_global_error.push(44.44);
 
         // initialize again
-        out.initialize(1.0, 2.0).unwrap();
+        out.initialize(1.0, 2.0, false).unwrap();
         assert_eq!(out.step_y.len(), 1);
 
         // check empty arrays
@@ -842,10 +843,9 @@ mod tests {
     #[test]
     fn initialize_with_stiff_recording_works() {
         let mut out = Output::<'_, NoArgs>::new();
-        out.stiff_recording = true;
 
         // first call
-        out.initialize(1.0, 2.0).unwrap();
+        out.initialize(1.0, 2.0, true).unwrap();
 
         // write some values
         out.stiff_h_times_rho.push(11.11);
@@ -853,7 +853,7 @@ mod tests {
         out.stiff_x.push(33.33);
 
         // initialize again
-        out.initialize(1.0, 2.0).unwrap();
+        out.initialize(1.0, 2.0, true).unwrap();
 
         // check empty arrays
         assert_eq!(out.stiff_h_times_rho.len(), 0);

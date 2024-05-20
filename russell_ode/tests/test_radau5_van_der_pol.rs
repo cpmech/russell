@@ -33,13 +33,13 @@ fn test_radau5_van_der_pol() {
     approx_eq(stat.h_accepted, 1.510987221365367E-01, 1.2e-8);
 
     // print dense output
-    let n_dense = solver.out().dense_x.len();
+    let n_dense = solver.out_dense_x().len();
     for i in 0..n_dense {
         println!(
             "x ={:5.2}, y ={}{}",
-            solver.out().dense_x[i],
-            format_fortran(solver.out().dense_y.get(&0).unwrap()[i]),
-            format_fortran(solver.out().dense_y.get(&1).unwrap()[i]),
+            solver.out_dense_x()[i],
+            format_fortran(solver.out_dense_y(0)[i]),
+            format_fortran(solver.out_dense_y(1)[i]),
         );
     }
 

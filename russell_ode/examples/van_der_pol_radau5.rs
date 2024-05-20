@@ -47,12 +47,12 @@ fn main() -> Result<(), StrError> {
         .set_marker_color("red")
         .set_marker_line_color("red")
         .set_marker_style(".")
-        .draw(&solver.out().step_x, solver.out().step_y.get(&0).unwrap());
+        .draw(solver.out_step_x(), solver.out_step_y(0));
     curve2
         .set_marker_color("green")
         .set_marker_line_color("green")
         .set_marker_style(".")
-        .draw(&solver.out().step_x, &solver.out().step_h);
+        .draw(solver.out_step_x(), solver.out_step_h());
 
     // save figure
     let mut plot = Plot::new();

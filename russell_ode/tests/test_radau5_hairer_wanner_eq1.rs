@@ -40,12 +40,12 @@ fn test_radau5_hairer_wanner_eq1() {
     approx_eq(y0[0], y1_correct[0], 3e-5);
 
     // print dense output
-    let n_dense = solver.out().dense_x.len();
+    let n_dense = solver.out_dense_x().len();
     for i in 0..n_dense {
         println!(
             "x ={:5.2}, y ={}",
-            solver.out().dense_x[i],
-            format_fortran(solver.out().dense_y.get(&0).unwrap()[i])
+            solver.out_dense_x()[i],
+            format_fortran(solver.out_dense_y(0)[i])
         );
     }
 

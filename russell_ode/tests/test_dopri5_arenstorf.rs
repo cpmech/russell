@@ -36,15 +36,15 @@ fn test_dopri5_arenstorf() {
     approx_eq(stat.h_accepted, 5.258587607119909E-04, 1e-10);
 
     // print dense output
-    let n_dense = solver.out().dense_x.len();
+    let n_dense = solver.out_dense_x().len();
     for i in 0..n_dense {
         println!(
             "x ={:6.2}, y ={}{}{}{}",
-            solver.out().dense_x[i],
-            format_fortran(solver.out().dense_y.get(&0).unwrap()[i]),
-            format_fortran(solver.out().dense_y.get(&1).unwrap()[i]),
-            format_fortran(solver.out().dense_y.get(&2).unwrap()[i]),
-            format_fortran(solver.out().dense_y.get(&3).unwrap()[i]),
+            solver.out_dense_x()[i],
+            format_fortran(solver.out_dense_y(0)[i]),
+            format_fortran(solver.out_dense_y(1)[i]),
+            format_fortran(solver.out_dense_y(2)[i]),
+            format_fortran(solver.out_dense_y(3)[i]),
         );
     }
 

@@ -64,8 +64,8 @@ fn main() -> Result<(), StrError> {
     let n_accepted2 = dopri5.stats().n_accepted;
 
     // save the results for later
-    let out2_x = dopri5.out().step_x.clone();
-    let out2_y = dopri5.out().step_y.get(&sel).unwrap().clone();
+    let out2_x = dopri5.out_step_x().clone();
+    let out2_y = dopri5.out_step_y(sel).clone();
 
     // solve the problem again with DoPri5 and Tol = 1e-3
     let mut y = y0.clone();
@@ -79,7 +79,7 @@ fn main() -> Result<(), StrError> {
     curve1
         .set_label(&format!("Radau5, n_accepted = {}", n_accepted1))
         .set_marker_style("o")
-        .draw(&radau5.out().step_x, radau5.out().step_y.get(&sel).unwrap());
+        .draw(radau5.out_step_x(), radau5.out_step_y(sel));
 
     // DoPri5 curves
     let mut curve2 = Curve::new();
@@ -90,8 +90,8 @@ fn main() -> Result<(), StrError> {
         .draw(&out2_x, &out2_y);
     curve3
         .set_label(&format!("DoPri5, Tol = 1e-3, n_accepted = {}", n_accepted3))
-        .draw(&dopri5.out().step_x, dopri5.out().step_y.get(&sel).unwrap());
-    curve4.draw(&dopri5.out().step_x, &dopri5.out().step_h);
+        .draw(dopri5.out_step_x(), dopri5.out_step_y(sel));
+    curve4.draw(dopri5.out_step_x(), dopri5.out_step_h());
 
     // save figures
     let mut plot1 = Plot::new();

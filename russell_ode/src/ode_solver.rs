@@ -232,11 +232,10 @@ impl<'a, A> OdeSolver<'a, A> {
 
         // first output
         if self.output_enabled {
-            self.output.initialize(x0, x1)?;
+            self.output.initialize(x0, x1, self.params.stiffness.save_results)?;
             if self.output.with_dense_output() {
                 self.actual.enable_dense_output()?;
             }
-            self.output.stiff_recording = self.params.stiffness.save_results;
             let stop = self.output.execute(&self.work, h, x, y, &self.actual, args)?;
             if stop {
                 return Ok(());
@@ -406,16 +405,53 @@ impl<'a, A> OdeSolver<'a, A> {
         &mut self.output
     }
 
-    /// Returns a read-only access to the output struct
+    /// TODO
+    pub fn out_step_h(&self) -> &Vec<f64> {
+        &self.output.step_h
+    }
+
+    /// TODO
+    pub fn out_step_x(&self) -> &Vec<f64> {
+        &self.output.step_x
+    }
+
+    /// TODO
     ///
     /// # Panics
     ///
-    /// A panic may occur if the output has not been enabled yet via [OdeSolver::enable_output].
-    pub fn out(&self) -> &Output<'a, A> {
-        if !self.output_enabled {
-            panic!("the output needs to be enabled first");
-        }
-        &self.output
+    /// A panic will occur if `m` is out of range
+    pub fn out_step_y(&self, m: usize) -> &Vec<f64> {
+        &self.output.step_y.get(&m).unwrap()
+    }
+
+    /// TODO
+    pub fn out_step_global_error(&self) -> &Vec<f64> {
+        &self.output.step_global_error
+    }
+
+    /// TODO
+    pub fn out_dense_x(&self) -> &Vec<f64> {
+        &self.output.dense_x
+    }
+
+    /// TODO
+    pub fn out_dense_y(&self, m: usize) -> &Vec<f64> {
+        &self.output.dense_y.get(&m).unwrap()
+    }
+
+    /// TODO
+    pub fn out_stiff_step_index(&self) -> &Vec<usize> {
+        &self.output.stiff_step_index
+    }
+
+    /// TODO
+    pub fn out_stiff_x(&self) -> &Vec<f64> {
+        &self.output.stiff_x
+    }
+
+    /// TODO
+    pub fn out_stiff_h_times_rho(&self) -> &Vec<f64> {
+        &self.output.stiff_h_times_rho
     }
 }
 
@@ -602,10 +638,10 @@ mod tests {
 
         // check
         vec_approx_eq(&y, &[0.4], 1e-15);
-        array_approx_eq(&solver.out().step_h, &[0.2, 0.2, 0.2], 1e-15);
-        array_approx_eq(&solver.out().step_x, &[0.0, 0.2, 0.4], 1e-15);
-        array_approx_eq(&solver.out().step_y.get(&0).unwrap(), &[0.0, 0.2, 0.4], 1e-15);
-        array_approx_eq(&solver.out().step_global_error, &[0.0, 0.0, 0.0], 1e-15);
+        array_approx_eq(&solver.out_step_h(), &[0.2, 0.2, 0.2], 1e-15);
+        array_approx_eq(&solver.out_step_x(), &[0.0, 0.2, 0.4], 1e-15);
+        array_approx_eq(&solver.out_step_y(0), &[0.0, 0.2, 0.4], 1e-15);
+        array_approx_eq(&solver.out_step_global_error(), &[0.0, 0.0, 0.0], 1e-15);
 
         // check count file
         let count = OutCount::read_json(&format!("{}_count.json", path_key)).unwrap();
@@ -676,8 +712,8 @@ mod tests {
         // check
         vec_approx_eq(&y, &[x1], 1e-15);
         let correct = &[0.0, 0.2, 0.4, 0.6, 0.8, 1.0];
-        array_approx_eq(&solver.out().dense_x, correct, 1e-15);
-        array_approx_eq(&solver.out().dense_y.get(&0).unwrap(), correct, 1e-15);
+        array_approx_eq(&solver.out_dense_x(), correct, 1e-15);
+        array_approx_eq(&solver.out_dense_y(0), correct, 1e-15);
     }
 
     #[test]
@@ -711,12 +747,8 @@ mod tests {
 
         // check
         vec_approx_eq(&y, &[0.4], 1e-15);
-        array_approx_eq(&solver.out().dense_x, &[0.0, 0.1, 0.2, 0.3, 0.4], 1e-15);
-        array_approx_eq(
-            &solver.out().dense_y.get(&0).unwrap(),
-            &[0.0, 0.1, 0.2, 0.3, 0.4],
-            1e-15,
-        );
+        array_approx_eq(&solver.out_dense_x(), &[0.0, 0.1, 0.2, 0.3, 0.4], 1e-15);
+        array_approx_eq(&solver.out_dense_y(0), &[0.0, 0.1, 0.2, 0.3, 0.4], 1e-15);
 
         // check count file
         let count = OutCount::read_json(&format!("{}_count.json", path_key)).unwrap();
@@ -815,8 +847,8 @@ mod tests {
         // check
         vec_approx_eq(&y, &[x1], 1e-15);
         let correct = &[-1.0, -0.5, 0.0, 0.5, 1.0];
-        assert_eq!(&solver.out().dense_x, correct);
-        array_approx_eq(&solver.out().dense_y.get(&0).unwrap(), correct, 1e-15);
+        assert_eq!(solver.out_dense_x(), correct);
+        array_approx_eq(solver.out_dense_y(0), correct, 1e-15);
     }
 
     #[test]

@@ -48,9 +48,9 @@ fn test_dopri8_van_der_pol_debug() {
     assert_eq!(stat.n_rejected, 20);
 
     // check stiffness results
-    assert_eq!(solver.out().stiff_step_index, &[21, 109, 196]);
+    assert_eq!(solver.out_stiff_step_index(), &[21, 109, 196]);
     array_approx_eq(
-        &solver.out().stiff_x,
+        &solver.out_stiff_x(),
         &[1.563905377322407E-02, 8.759592223459979E-01, 1.749270939102191E+00],
         1e-7,
     );

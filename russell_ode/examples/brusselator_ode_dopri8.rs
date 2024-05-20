@@ -52,10 +52,7 @@ fn main() -> Result<(), StrError> {
     let mut curve2 = Curve::new();
     curve1.set_label("russell");
     curve2.set_label("mathematica");
-    curve1.draw(
-        solver.out().dense_y.get(&0).unwrap(),
-        solver.out().dense_y.get(&1).unwrap(),
-    );
+    curve1.draw(solver.out_dense_y(0), solver.out_dense_y(1));
     curve2.set_marker_style(".").set_line_style("None");
     curve2.draw(&math.y0, &math.y1);
 

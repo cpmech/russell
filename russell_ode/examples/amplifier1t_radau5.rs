@@ -76,9 +76,9 @@ fn main() -> Result<(), StrError> {
         .set_marker_style("+")
         .set_line_style("None");
 
-    curve1.draw(&solver.out().dense_x, solver.out().dense_y.get(&0).unwrap());
+    curve1.draw(solver.out_dense_x(), solver.out_dense_y(0));
     curve2.draw(&math.x, &math.y0);
-    curve3.draw(&solver.out().dense_x, solver.out().dense_y.get(&4).unwrap());
+    curve3.draw(solver.out_dense_x(), solver.out_dense_y(4));
     curve4.draw(&math.x, &math.y4);
 
     // save figure

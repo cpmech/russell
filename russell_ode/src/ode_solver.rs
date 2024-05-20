@@ -535,6 +535,27 @@ mod tests {
     }
 
     #[test]
+    fn out_initialize_errors_are_captured() {
+        let (system, _, mut y0, mut args, _) = Samples::simple_equation_constant();
+        let params = Params::new(Method::DoPri5);
+        let mut solver = OdeSolver::new(params, &system).unwrap();
+        solver
+            .enable_output()
+            .set_dense_x_out(&[0.0, 1.0])
+            .unwrap()
+            .set_dense_recording(&[0]);
+        assert_eq!(
+            solver.solve(&mut y0, 0.0, 1.0, None, &mut args).err(),
+            Some("the first interior x_out for dense output must be > x0")
+        );
+        solver.enable_output().set_dense_x_out(&[0.1, 1.0]).unwrap();
+        assert_eq!(
+            solver.solve(&mut y0, 0.0, 1.0, None, &mut args).err(),
+            Some("the last interior x_out for dense output must be < x1")
+        );
+    }
+
+    #[test]
     fn solve_with_n_equal_steps_works() {
         // solve the ODE system (will run with N_EQUAL_STEPS)
         let (system, x0, y0, mut args, _) = Samples::simple_equation_constant();
@@ -672,11 +693,22 @@ mod tests {
         let mut y = y0.clone();
         solver.solve(&mut y, 0.0, 0.4, None, &mut args).unwrap();
         assert!(y[0] > 0.0 && y[0] < 0.4);
+    }
 
-        // run again and stop due to error
+    #[test]
+    fn solve_with_step_captures_errors() {
+        // system and solver
+        let (system, _, y0, mut args, _) = Samples::simple_equation_constant();
+        let params = Params::new(Method::FwEuler);
+        let mut solver = OdeSolver::new(params, &system).unwrap();
+
+        // output
+        solver.enable_output().set_step_recording(&[0]);
+
+        // solve and stop due to error on the first accepted step
         solver.enable_output().set_step_callback(|stats, _h, _x, _y, _args| {
-            if stats.n_accepted > 0 {
-                Err("stop with error")
+            if stats.n_accepted == 0 {
+                Err("stop with error (first accepted step)")
             } else {
                 Ok(false) // do not stop
             }
@@ -684,7 +716,21 @@ mod tests {
         let mut y = y0.clone();
         assert_eq!(
             solver.solve(&mut y, 0.0, 0.4, None, &mut args).err(),
-            Some("stop with error")
+            Some("stop with error (first accepted step)")
+        );
+
+        // solve again and stop due to error on the next steps
+        solver.enable_output().set_step_callback(|stats, _h, _x, _y, _args| {
+            if stats.n_accepted > 0 {
+                Err("stop with error (subsequent steps)")
+            } else {
+                Ok(false) // do not stop
+            }
+        });
+        let mut y = y0.clone();
+        assert_eq!(
+            solver.solve(&mut y, 0.0, 0.4, None, &mut args).err(),
+            Some("stop with error (subsequent steps)")
         );
     }
 

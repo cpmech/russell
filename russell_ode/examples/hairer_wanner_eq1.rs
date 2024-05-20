@@ -30,13 +30,13 @@ fn main() -> Result<(), StrError> {
     let mut fweuler = OdeSolver::new(Params::new(Method::FwEuler), &system)?;
 
     // solve the problem with BwEuler and h = 0.5
-    bweuler.enable_output().set_step_recording(true, &[0]);
+    bweuler.enable_output().set_step_recording(&[0]);
     let h = 0.5;
     let mut y = y0.clone();
     bweuler.solve(&mut y, x0, x1, Some(h), &mut args)?;
 
     // solve the problem with FwEuler and h = 1.974/50.0
-    fweuler.enable_output().set_step_recording(true, &[0]);
+    fweuler.enable_output().set_step_recording(&[0]);
     let h = 1.974 / 50.0;
     let mut y = y0.clone();
     fweuler.solve(&mut y, x0, x1, Some(h), &mut args)?;
@@ -46,7 +46,6 @@ fn main() -> Result<(), StrError> {
     let out2_y = fweuler.out().step_y.get(&0).unwrap().clone();
 
     // solve the problem with FwEuler and h = 1.875/50.0
-    fweuler.enable_output().clear().set_step_recording(true, &[0]);
     let h = 1.875 / 50.0;
     let mut y = y0.clone();
     fweuler.solve(&mut y, x0, x1, Some(h), &mut args)?;

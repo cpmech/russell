@@ -17,8 +17,12 @@ fn test_dopri5_hairer_wanner_eq1() {
     // allocate the solver
     let mut solver = OdeSolver::new(params, &system).unwrap();
 
-    // enable dense output with 0.1 spacing
-    solver.enable_output().set_dense_recording(true, 0.1, &[0]).unwrap();
+    // enable dense output
+    solver
+        .enable_output()
+        .set_dense_h_out(0.1)
+        .unwrap()
+        .set_dense_recording(&[0]);
 
     // solve the ODE system
     solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
@@ -35,11 +39,10 @@ fn test_dopri5_hairer_wanner_eq1() {
     approx_eq(y0[0], y1_correct[0], 4e-5);
 
     // print dense output
-    let n_dense = solver.out().dense_step_index.len();
+    let n_dense = solver.out().dense_x.len();
     for i in 0..n_dense {
         println!(
-            "step ={:>4}, x ={:6.2}, y ={}",
-            solver.out().dense_step_index[i],
+            "x ={:6.2}, y ={}",
             solver.out().dense_x[i],
             format_fortran(solver.out().dense_y.get(&0).unwrap()[i]),
         );

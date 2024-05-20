@@ -50,14 +50,14 @@ fn main() -> Result<(), StrError> {
     let sel = 1;
 
     // solve the problem with Radau5
-    radau5.enable_output().set_step_recording(true, &[sel]);
+    radau5.enable_output().set_step_recording(&[sel]);
     let mut y = y0.clone();
     radau5.solve(&mut y, x0, x1, None, &mut args)?;
     println!("{}", radau5.stats());
     let n_accepted1 = radau5.stats().n_accepted;
 
     // solve the problem with DoPri5 and Tol = 1e-2
-    dopri5.enable_output().set_step_recording(true, &[sel]);
+    dopri5.enable_output().set_step_recording(&[sel]);
     let mut y = y0.clone();
     dopri5.solve(&mut y, x0, x1, None, &mut args)?;
     println!("\nTol = 1e-2\n{}", dopri5.stats());
@@ -68,7 +68,6 @@ fn main() -> Result<(), StrError> {
     let out2_y = dopri5.out().step_y.get(&sel).unwrap().clone();
 
     // solve the problem again with DoPri5 and Tol = 1e-3
-    dopri5.enable_output().clear().set_step_recording(true, &[sel]);
     let mut y = y0.clone();
     dopri5.update_params(params3)?;
     dopri5.solve(&mut y, x0, x1, None, &mut args)?;

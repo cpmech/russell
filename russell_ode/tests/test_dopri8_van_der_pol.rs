@@ -15,8 +15,12 @@ fn test_dopri8_van_der_pol() {
     // allocate the solver
     let mut solver = OdeSolver::new(params, &system).unwrap();
 
-    // enable dense output with 0.2 spacing
-    solver.enable_output().set_dense_recording(true, 0.1, &[0, 1]).unwrap();
+    // enable dense output
+    solver
+        .enable_output()
+        .set_dense_h_out(0.1)
+        .unwrap()
+        .set_dense_recording(&[0, 1]);
 
     // solve the ODE system
     let mut y0 = Vector::from(&[2.0, 0.0]);
@@ -33,11 +37,10 @@ fn test_dopri8_van_der_pol() {
     approx_eq(stat.h_accepted, 8.656983588595286E-04, 1e-5);
 
     // print dense output
-    let n_dense = solver.out().dense_step_index.len();
+    let n_dense = solver.out().dense_x.len();
     for i in 0..n_dense {
         println!(
-            "step ={:>4}, x ={:5.2}, y ={}{}",
-            solver.out().dense_step_index[i],
+            "x ={:5.2}, y ={}{}",
             solver.out().dense_x[i],
             format_fortran(solver.out().dense_y.get(&0).unwrap()[i]),
             format_fortran(solver.out().dense_y.get(&1).unwrap()[i]),

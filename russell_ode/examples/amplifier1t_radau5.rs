@@ -28,7 +28,8 @@ fn main() -> Result<(), StrError> {
     let selected_y_components = &[0, 4];
     solver
         .enable_output()
-        .set_dense_recording(true, h_out, selected_y_components)?;
+        .set_dense_h_out(h_out)?
+        .set_dense_recording(selected_y_components);
 
     // solve the problem
     let x1 = 0.2;

@@ -31,7 +31,7 @@ fn main() -> Result<(), StrError> {
 
     // enable step output
     let selected_y_components = &[0, 1];
-    solver.enable_output().set_step_recording(true, selected_y_components);
+    solver.enable_output().set_step_recording(selected_y_components);
 
     // solve the problem
     solver.solve(&mut y0, x0, x1, None, &mut args)?;

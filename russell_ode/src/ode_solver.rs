@@ -706,13 +706,9 @@ mod tests {
         solver.enable_output().set_step_recording(&[0]);
 
         // solve and stop due to error on the first accepted step
-        solver.enable_output().set_step_callback(|stats, _h, _x, _y, _args| {
-            if stats.n_accepted == 0 {
-                Err("stop with error (first accepted step)")
-            } else {
-                Ok(false) // do not stop
-            }
-        });
+        solver
+            .enable_output()
+            .set_step_callback(|_stats, _h, _x, _y, _args| Err("stop with error (first accepted step)"));
         let mut y = y0.clone();
         assert_eq!(
             solver.solve(&mut y, 0.0, 0.4, None, &mut args).err(),

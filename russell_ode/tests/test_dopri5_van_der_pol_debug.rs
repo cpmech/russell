@@ -54,4 +54,14 @@ fn test_dopri5_van_der_pol_debug() {
         &[1.216973774601867E-02, 8.717646581250652E-01, 1.744401291692531E+00],
         1e-12,
     );
+    println!("h·ρ = {:?}", solver.out_stiff_h_times_rho()[32]);
+    println!("h·ρ = {:?}", solver.out_stiff_h_times_rho()[189]);
+    println!("h·ρ = {:?}", solver.out_stiff_h_times_rho()[357]);
+    let max_h_rho = params.stiffness.get_h_times_rho_max();
+    assert_eq!(max_h_rho, 3.25);
+    assert!(solver.out_stiff_h_times_rho()[0] < max_h_rho);
+    assert!(solver.out_stiff_h_times_rho()[32] > max_h_rho);
+    assert!(solver.out_stiff_h_times_rho()[189] > max_h_rho);
+    assert!(solver.out_stiff_h_times_rho()[357] > max_h_rho);
+    assert!(*solver.out_stiff_h_times_rho().last().unwrap() < max_h_rho);
 }

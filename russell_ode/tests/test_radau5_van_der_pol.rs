@@ -14,8 +14,12 @@ fn test_radau5_van_der_pol() {
     // allocate the solver
     let mut solver = OdeSolver::new(params, &system).unwrap();
 
-    // enable dense output with 0.2 spacing
-    solver.enable_output().set_dense_recording(true, 0.2, &[0, 1]).unwrap();
+    // enable dense output
+    solver
+        .enable_output()
+        .set_dense_h_out(0.2)
+        .unwrap()
+        .set_dense_recording(&[0, 1]);
 
     // solve the ODE system
     solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
@@ -29,14 +33,13 @@ fn test_radau5_van_der_pol() {
     approx_eq(stat.h_accepted, 1.510987221365367E-01, 1.2e-8);
 
     // print dense output
-    let n_dense = solver.out().dense_step_index.len();
+    let n_dense = solver.out_dense_x().len();
     for i in 0..n_dense {
         println!(
-            "step ={:>4}, x ={:5.2}, y ={}{}",
-            solver.out().dense_step_index[i],
-            solver.out().dense_x[i],
-            format_fortran(solver.out().dense_y.get(&0).unwrap()[i]),
-            format_fortran(solver.out().dense_y.get(&1).unwrap()[i]),
+            "x ={:5.2}, y ={}{}",
+            solver.out_dense_x()[i],
+            format_fortran(solver.out_dense_y(0)[i]),
+            format_fortran(solver.out_dense_y(1)[i]),
         );
     }
 

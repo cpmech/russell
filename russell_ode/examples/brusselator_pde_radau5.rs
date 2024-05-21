@@ -30,7 +30,10 @@ fn main() -> Result<(), StrError> {
 
     // output
     let h_out = 0.5;
-    solver.enable_output().set_dense_file_writing(true, h_out, PATH_KEY)?;
+    solver
+        .enable_output()
+        .set_dense_h_out(h_out)?
+        .set_dense_file_writing(PATH_KEY)?;
 
     // solve the ODE system
     solver.solve(&mut yy0, t0, t1, None, &mut args)?;

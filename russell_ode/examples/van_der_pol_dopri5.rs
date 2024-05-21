@@ -37,8 +37,9 @@ fn main() -> Result<(), StrError> {
     let selected_y_components = &[0, 1];
     solver
         .enable_output()
-        .set_step_recording(true, selected_y_components)
-        .set_dense_recording(true, h_out, selected_y_components)?;
+        .set_dense_h_out(h_out)?
+        .set_step_recording(selected_y_components)
+        .set_dense_recording(selected_y_components);
 
     // solve the problem
     solver.solve(&mut y0, x0, x1, None, &mut args)?;
@@ -54,17 +55,17 @@ fn main() -> Result<(), StrError> {
     let mut curve4 = Curve::new();
     curve1
         .set_line_color("black")
-        .draw(&solver.out().dense_x, solver.out().dense_y.get(&0).unwrap());
+        .draw(solver.out_dense_x(), solver.out_dense_y(0));
     curve2
         .set_marker_style(".")
         .set_marker_color("cyan")
-        .draw(&solver.out().step_x, solver.out().step_y.get(&0).unwrap());
+        .draw(solver.out_step_x(), solver.out_step_y(0));
     curve3.set_line_color("red").set_line_style("--");
-    for i in 0..solver.out().stiff_x.len() {
-        curve3.draw_ray(solver.out().stiff_x[i], 0.0, RayEndpoint::Vertical);
+    for i in 0..solver.out_stiff_x().len() {
+        curve3.draw_ray(solver.out_stiff_x()[i], 0.0, RayEndpoint::Vertical);
     }
-    let fac: Vec<_> = solver.out().stiff_h_times_rho.iter().map(|hr| hr / 3.3).collect();
-    curve4.set_marker_style(".").draw(&solver.out().step_x, &fac);
+    let fac: Vec<_> = solver.out_stiff_h_times_rho().iter().map(|hr| hr / 3.3).collect();
+    curve4.set_marker_style(".").draw(solver.out_step_x(), &fac);
 
     // save figure
     let mut plot = Plot::new();

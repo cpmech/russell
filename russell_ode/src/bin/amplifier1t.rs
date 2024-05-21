@@ -17,7 +17,11 @@ fn main() -> Result<(), StrError> {
     let mut solver = OdeSolver::new(params, &system)?;
 
     // enable dense output
-    solver.enable_output().set_dense_recording(true, 0.001, &[0, 4])?;
+    let h_out = 0.001;
+    solver
+        .enable_output()
+        .set_dense_h_out(h_out)?
+        .set_dense_recording(&[0, 4]);
 
     // solve the ODE system
     let y = &mut y0;

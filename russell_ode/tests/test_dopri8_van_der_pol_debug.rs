@@ -48,10 +48,20 @@ fn test_dopri8_van_der_pol_debug() {
     assert_eq!(stat.n_rejected, 20);
 
     // check stiffness results
-    assert_eq!(solver.out().stiff_step_index, &[21, 109, 196]);
+    assert_eq!(solver.out_stiff_step_index(), &[21, 109, 196]);
     array_approx_eq(
-        &solver.out().stiff_x,
+        &solver.out_stiff_x(),
         &[1.563905377322407E-02, 8.759592223459979E-01, 1.749270939102191E+00],
         1e-7,
     );
+    println!("h·ρ = {:?}", solver.out_stiff_h_times_rho()[21]);
+    println!("h·ρ = {:?}", solver.out_stiff_h_times_rho()[109]);
+    println!("h·ρ = {:?}", solver.out_stiff_h_times_rho()[196]);
+    let max_h_rho = params.stiffness.get_h_times_rho_max();
+    assert_eq!(max_h_rho, 6.1);
+    assert!(solver.out_stiff_h_times_rho()[0] < max_h_rho);
+    assert!(solver.out_stiff_h_times_rho()[21] > max_h_rho);
+    assert!(solver.out_stiff_h_times_rho()[109] > max_h_rho);
+    assert!(solver.out_stiff_h_times_rho()[196] > max_h_rho);
+    assert!(*solver.out_stiff_h_times_rho().last().unwrap() < max_h_rho);
 }

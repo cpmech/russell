@@ -20,8 +20,9 @@ fn test_radau5_amplifier1t() {
     // enable output of accepted steps
     solver
         .enable_output()
-        .set_dense_recording(true, 0.001, &[0, 4])
-        .unwrap();
+        .set_dense_h_out(0.001)
+        .unwrap()
+        .set_dense_recording(&[0, 4]);
 
     // solve the ODE system
     solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
@@ -38,17 +39,16 @@ fn test_radau5_amplifier1t() {
     approx_eq(stat.h_accepted, 7.791381954171996E-04, 1e-6);
 
     // compare dense output with Mathematica
-    let n_dense = solver.out().dense_step_index.len();
+    let n_dense = solver.out_dense_x().len();
     for i in 0..n_dense {
-        approx_eq(solver.out().dense_x[i], X_MATH[i], 1e-15);
-        let diff0 = f64::abs(solver.out().dense_y.get(&0).unwrap()[i] - Y0_MATH[i]);
-        let diff4 = f64::abs(solver.out().dense_y.get(&4).unwrap()[i] - Y4_MATH[i]);
+        approx_eq(solver.out_dense_x()[i], X_MATH[i], 1e-15);
+        let diff0 = f64::abs(solver.out_dense_y(0)[i] - Y0_MATH[i]);
+        let diff4 = f64::abs(solver.out_dense_y(4)[i] - Y4_MATH[i]);
         println!(
-            "step ={:>4}, x ={:7.4}, y1and5 ={}{}, diff1and5 ={}{}",
-            solver.out().dense_step_index[i],
-            solver.out().dense_x[i],
-            format_fortran(solver.out().dense_y.get(&0).unwrap()[i]),
-            format_fortran(solver.out().dense_y.get(&4).unwrap()[i]),
+            "x ={:7.4}, y1and5 ={}{}, diff1and5 ={}{}",
+            solver.out_dense_x()[i],
+            format_fortran(solver.out_dense_y(0)[i]),
+            format_fortran(solver.out_dense_y(4)[i]),
             format_scientific(diff0, 8, 1),
             format_scientific(diff4, 8, 1)
         );

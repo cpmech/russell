@@ -43,6 +43,15 @@ pub struct OutCount {
 /// * `A` -- Is auxiliary argument for the `F`, `J`, `YxFunction`, and `OutCallback` functions.
 ///   It may be simply [crate::NoArgs] indicating that no arguments are effectively used.
 pub struct Output<'a, A> {
+    /// Indicates whether the solver called initialize or not
+    initialized: bool,
+
+    /// Holds the initial x given to the solve function (set by the initialize function)
+    x0: f64,
+
+    /// Holds the final x given to the solve function (set by the initialize function)
+    x1: f64,
+
     // --- step --------------------------------------------------------------------------------------------
     /// Holds a callback function called on an accepted step
     step_callback: Option<Box<dyn Fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError> + 'a>>,
@@ -57,31 +66,21 @@ pub struct Output<'a, A> {
     step_recording: bool,
 
     /// Holds the stepsize computed at accepted steps
-    pub step_h: Vec<f64>,
+    pub(crate) step_h: Vec<f64>,
 
     /// Holds the x values computed at accepted steps
-    pub step_x: Vec<f64>,
+    pub(crate) step_x: Vec<f64>,
 
     /// Holds the selected y components computed at accepted steps
-    pub step_y: HashMap<usize, Vec<f64>>,
+    pub(crate) step_y: HashMap<usize, Vec<f64>>,
 
     /// Holds the global error computed at accepted steps (if the YxFunction is available)
     ///
     /// The global error is the maximum absolute difference between the numerical results and
     /// the ones computed by `YxFunction` (see [russell_lab::vec_max_abs_diff])
-    pub step_global_error: Vec<f64>,
+    pub(crate) step_global_error: Vec<f64>,
 
     // --- dense -------------------------------------------------------------------------------------------
-    /// Holds the stepsize to perform the dense output
-    ///
-    /// **Note:** The same `h_out` is used for the callback, file, and "recording" options
-    dense_h_out: f64,
-
-    /// Holds the last x at the dense output
-    ///
-    /// This value is needed to update `x_out` in a subsequent dense output, e.g., `x_out = dense_last_x + dense_h_out`
-    dense_last_x: f64,
-
     /// Holds a callback function for the dense output
     dense_callback: Option<Box<dyn Fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError> + 'a>>,
 
@@ -94,30 +93,33 @@ pub struct Output<'a, A> {
     /// Tells Output to record the dense output
     dense_recording: bool,
 
-    /// Holds the indices of the accepted steps at the time the dense output was computed
-    pub dense_step_index: Vec<usize>,
+    /// Uniform stepsize for dense output
+    dense_h_out: Option<f64>,
 
-    /// Holds the x values computed during the dense output
-    pub dense_x: Vec<f64>,
+    /// Holds the current index of the dense output station
+    dense_index: usize,
+
+    /// Holds the x values (specified by the user)
+    pub(crate) dense_x: Vec<f64>,
 
     /// Holds the selected y components computed during the dense output
-    pub dense_y: HashMap<usize, Vec<f64>>,
+    pub(crate) dense_y: HashMap<usize, Vec<f64>>,
 
     // --- stiffness ---------------------------------------------------------------------------------------
     /// Records the stations where stiffness has been detected
-    pub(crate) stiff_record: bool,
+    stiff_recording: bool,
 
     /// Holds the indices of the accepted steps where stiffness has been detected
-    pub stiff_step_index: Vec<usize>,
+    pub(crate) stiff_step_index: Vec<usize>,
 
     /// Holds the x stations where stiffness has been detected
-    pub stiff_x: Vec<f64>,
+    pub(crate) stiff_x: Vec<f64>,
 
     /// Holds the h·ρ values where stiffness has been (firstly) detected
     ///
     /// Note: ρ is the approximation of |λ|, where λ is the dominant eigenvalue of the Jacobian
     /// (see Hairer-Wanner Part II page 22)
-    pub stiff_h_times_rho: Vec<f64>,
+    pub(crate) stiff_h_times_rho: Vec<f64>,
 
     // --- auxiliary ---------------------------------------------------------------------------------------
     /// Holds an auxiliary y vector (e.g., to compute the analytical solution or the dense output)
@@ -178,9 +180,12 @@ impl OutCount {
 
 impl<'a, A> Output<'a, A> {
     /// Allocates a new instance
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         const EMPTY: usize = 0;
         Output {
+            initialized: false,
+            x0: 0.0,
+            x1: 0.0,
             // step
             step_callback: None,
             step_file_key: None,
@@ -191,17 +196,16 @@ impl<'a, A> Output<'a, A> {
             step_y: HashMap::new(),
             step_global_error: Vec::new(),
             // dense
-            dense_h_out: f64::MAX,
-            dense_last_x: 0.0,
             dense_callback: None,
             dense_file_key: None,
             dense_file_count: 0,
             dense_recording: false,
-            dense_step_index: Vec::new(),
+            dense_h_out: None,
+            dense_index: 0,
             dense_x: Vec::new(),
             dense_y: HashMap::new(),
             // stiffness
-            stiff_record: false,
+            stiff_recording: false,
             stiff_step_index: Vec::new(),
             stiff_x: Vec::new(),
             stiff_h_times_rho: Vec::new(),
@@ -220,18 +224,12 @@ impl<'a, A> Output<'a, A> {
     ///
     /// # Input
     ///
-    /// * `enable` -- Enable/disable the output
-    /// * `callback` -- Function to be executed on an accepted step
+    /// * `callback` -- function to be executed on an accepted step
     pub fn set_step_callback(
         &mut self,
-        enable: bool,
         callback: impl Fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError> + 'a,
     ) -> &mut Self {
-        if enable {
-            self.step_callback = Some(Box::new(callback));
-        } else {
-            self.step_callback = None;
-        }
+        self.step_callback = Some(Box::new(callback));
         self
     }
 
@@ -239,15 +237,9 @@ impl<'a, A> Output<'a, A> {
     ///
     /// # Input
     ///
-    /// * `enable` -- Enable/disable the output
-    /// * `filepath_without_extension` -- E.g. `/tmp/russell_ode/my_simulation`
-    pub fn set_step_file_writing(&mut self, enable: bool, filepath_without_extension: &str) -> &mut Self {
-        self.step_file_count = 0;
-        if enable {
-            self.step_file_key = Some(filepath_without_extension.to_string());
-        } else {
-            self.step_file_key = None;
-        }
+    /// * `filepath_without_extension` -- example: `/tmp/russell_ode/my_simulation`
+    pub fn set_step_file_writing(&mut self, filepath_without_extension: &str) -> &mut Self {
+        self.step_file_key = Some(filepath_without_extension.to_string());
         self
     }
 
@@ -255,23 +247,59 @@ impl<'a, A> Output<'a, A> {
     ///
     /// # Input
     ///
-    /// * `enable` -- Enable/disable the output
-    /// * `selected_y_components` -- Specifies which elements of the `y` vector are to be saved
+    /// * `selected_y_components` -- specifies which elements of the `y` vector are to be saved
     ///
     /// # Results
     ///
     /// * The results will be recorded in the `step_h`, `step_x`, and `step_y` arrays
     /// * If `YxFunction` is provided, the global error will be recorded in the `step_global_error` array
     /// * The global error is the maximum absolute difference between the numerical and analytical solution
-    pub fn set_step_recording(&mut self, enable: bool, selected_y_components: &[usize]) -> &mut Self {
-        self.step_recording = enable;
-        self.step_y.clear();
-        if enable {
-            for m in selected_y_components {
-                self.step_y.insert(*m, Vec::new());
-            }
+    pub fn set_step_recording(&mut self, selected_y_components: &[usize]) -> &mut Self {
+        self.step_recording = true;
+        for m in selected_y_components {
+            self.step_y.insert(*m, Vec::new());
         }
         self
+    }
+
+    /// Sets the stepsize for dense output
+    ///
+    /// # Input
+    ///
+    /// * `h_out` -- stepsize; it must be > 10.0 * f64::EPSILON
+    pub fn set_dense_h_out(&mut self, h_out: f64) -> Result<&mut Self, StrError> {
+        if h_out <= 10.0 * f64::EPSILON {
+            return Err("h_out must be > 10.0 * EPSILON");
+        }
+        self.dense_h_out = Some(h_out);
+        Ok(self)
+    }
+
+    /// Sets the x stations for dense output
+    ///
+    /// # Input
+    ///
+    /// * `interior_x_out` -- specifies the interior x-stations for output (excluding x0 and x1).
+    ///   The stations must be in `(x0, x1)` and must be sorted in ascending order
+    ///
+    /// **Note:** The same `x_out` is used for the `callback`, `file`, and `recording` options
+    pub fn set_dense_x_out(&mut self, interior_x_out: &[f64]) -> Result<&mut Self, StrError> {
+        let n_int = interior_x_out.len();
+        let n = n_int + 2;
+        self.dense_x = vec![0.0; n];
+        for k in 0..n_int {
+            if k > 0 {
+                if interior_x_out[k] < interior_x_out[k - 1] {
+                    return Err("the dense output stations x must be sorted in ascending order in (x0, x1)");
+                }
+                if interior_x_out[k] - interior_x_out[k - 1] <= 10.0 * f64::EPSILON {
+                    return Err("the x spacing must be > 10.0 * EPSILON");
+                }
+            }
+            self.dense_x[1 + k] = interior_x_out[k];
+        }
+        self.dense_h_out = None;
+        Ok(self)
     }
 
     /// Sets a callback function called on the dense output
@@ -280,92 +308,57 @@ impl<'a, A> Output<'a, A> {
     ///
     /// The function may return `true` to stop the computations
     ///
+    /// **Note:** Make sure to call [Output::set_dense_h_out()] or [Output::set_dense_x_out()] to set the spacing.
+    /// Otherwise, only the initial (x0) and final (x1) stations will be output.
+    ///
     /// # Input
     ///
-    /// * `enable` -- Enable/disable the output
-    /// * `h_out` -- is the stepsize (possibly different from the actual `h` stepsize) for the equally spaced "dense" results
-    ///
-    /// **Note:** The same `h_out` is used for the callback, file, and "recording" options
+    /// * `callback` -- function to be executed on the selected output stations
     pub fn set_dense_callback(
         &mut self,
-        enable: bool,
-        h_out: f64,
         callback: impl Fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError> + 'a,
-    ) -> Result<&mut Self, StrError> {
-        if h_out <= f64::EPSILON {
-            return Err("h_out must be > EPSILON");
-        }
-        self.dense_h_out = h_out;
-        if enable {
-            self.dense_callback = Some(Box::new(callback));
-        } else {
-            self.dense_callback = None;
-        }
-        Ok(self)
+    ) -> &mut Self {
+        self.dense_callback = Some(Box::new(callback));
+        self
     }
 
     /// Sets the generation of files with the results from the dense output
     ///
+    /// **Note:** Make sure to call [Output::set_dense_h_out()] or [Output::set_dense_x_out()] to set the spacing.
+    /// Otherwise, only the initial (x0) and final (x1) stations will be output.
+    ///
     /// # Input
     ///
-    /// * `enable` -- Enable/disable the output
-    /// * `h_out` -- is the stepsize (possibly different from the actual `h` stepsize) for the equally spaced "dense" results
-    /// * `filepath_without_extension` -- E.g. `/tmp/russell_ode/my_simulation`
+    /// * `filepath_without_extension` -- example: `/tmp/russell_ode/my_simulation`
     ///
-    /// **Note:** The same `h_out` is used for the callback, file, and "recording" options
-    pub fn set_dense_file_writing(
-        &mut self,
-        enable: bool,
-        h_out: f64,
-        filepath_without_extension: &str,
-    ) -> Result<&mut Self, StrError> {
-        if h_out <= f64::EPSILON {
-            return Err("h_out must be > EPSILON");
-        }
+    /// **Note:** The same `x_out` is used for the callback, file, and "recording" options
+    pub fn set_dense_file_writing(&mut self, filepath_without_extension: &str) -> Result<&mut Self, StrError> {
         if filepath_without_extension.len() < 4 {
             return Err("the length of the filepath without extension must be at least 4");
         }
-        self.dense_h_out = h_out;
-        self.dense_file_count = 0;
-        if enable {
-            self.dense_file_key = Some(filepath_without_extension.to_string());
-        } else {
-            self.dense_file_key = None;
-        }
+        self.dense_file_key = Some(filepath_without_extension.to_string());
         Ok(self)
     }
 
     /// Sets the recording of results at a predefined dense sequence of steps
     ///
+    /// **Note:** Make sure to call [Output::set_dense_h_out()] or [Output::set_dense_x_out()] to set the spacing.
+    /// Otherwise, only the initial (x0) and final (x1) stations will be output.
+    ///
     /// # Input
     ///
-    /// * `enable` -- Enable/disable the output
-    /// * `h_out` -- is the stepsize (possibly different from the actual `h` stepsize) for the equally spaced "dense" results
     /// * `selected_y_components` -- Specifies which components of the `y` vector are to be saved
     ///
     /// # Results
     ///
     /// * The results will be recorded in the `dense_x` and `dense_y` arrays
     /// * The indices of the associated accepted step will be recorded in the `dense_step_index` array
-    ///
-    /// **Note:** The same `h_out` is used for the callback, file, and "recording" options
-    pub fn set_dense_recording(
-        &mut self,
-        enable: bool,
-        h_out: f64,
-        selected_y_components: &[usize],
-    ) -> Result<&mut Self, StrError> {
-        if h_out <= f64::EPSILON {
-            return Err("h_out must be > EPSILON");
+    pub fn set_dense_recording(&mut self, selected_y_components: &[usize]) -> &mut Self {
+        self.dense_recording = true;
+        for m in selected_y_components {
+            self.dense_y.insert(*m, Vec::new());
         }
-        self.dense_recording = enable;
-        self.dense_h_out = h_out;
-        if enable {
-            for m in selected_y_components {
-                self.dense_y.insert(*m, Vec::new());
-            }
-        }
-        Ok(self)
+        self
     }
 
     /// Sets the function to compute the correct/reference results y(x)
@@ -376,27 +369,76 @@ impl<'a, A> Output<'a, A> {
         self
     }
 
+    /// Initializes the output structure with initial and final x values
+    ///
+    /// **Note:** This function also clears the previous results.
+    pub(crate) fn initialize(&mut self, x0: f64, x1: f64, stiff_recording: bool) -> Result<(), StrError> {
+        assert!(x1 > x0);
+        self.stiff_recording = stiff_recording;
+        // clear previous results
+        if self.initialized {
+            if self.step_recording {
+                self.step_h.clear();
+                self.step_x.clear();
+                self.step_global_error.clear();
+                for (_, ym) in self.step_y.iter_mut() {
+                    ym.clear();
+                }
+            }
+            if self.stiff_recording {
+                self.stiff_step_index.clear();
+                self.stiff_x.clear();
+                self.stiff_h_times_rho.clear();
+            }
+        }
+        // handle dense output stations
+        if self.with_dense_output() {
+            if let Some(h_out) = self.dense_h_out {
+                // uniform spacing
+                let n = ((x1 - x0) / h_out) as usize + 1;
+                if self.dense_x.len() != n {
+                    self.dense_x.resize(n, 0.0);
+                }
+                self.dense_x[0] = x0;
+                self.dense_x[n - 1] = x1;
+                for i in 1..(n - 1) {
+                    self.dense_x[i] = self.dense_x[i - 1] + h_out;
+                }
+            } else {
+                // user-defined spacing
+                if self.dense_x.len() == 0 {
+                    self.dense_x = vec![0.0; 2]; // just x0 and x1
+                }
+                let n = self.dense_x.len();
+                self.dense_x[0] = x0;
+                self.dense_x[n - 1] = x1;
+                if n > 2 {
+                    if self.dense_x[1] <= x0 {
+                        return Err("the first interior x_out for dense output must be > x0");
+                    }
+                    if self.dense_x[n - 2] >= x1 {
+                        return Err("the last interior x_out for dense output must be < x1");
+                    }
+                }
+            }
+            // allocate vectors in dense_y
+            let n = self.dense_x.len();
+            for (_, ym) in self.dense_y.iter_mut() {
+                if ym.len() != n {
+                    ym.resize(n, 0.0);
+                }
+            }
+        }
+        // set initialized
+        self.x0 = x0;
+        self.x1 = x1;
+        self.initialized = true;
+        Ok(())
+    }
+
     /// Indicates whether dense output is enabled or not
     pub(crate) fn with_dense_output(&self) -> bool {
         self.dense_callback.is_some() || self.dense_file_key.is_some() || self.dense_recording
-    }
-
-    /// Clears the results
-    pub fn clear(&mut self) -> &mut Self {
-        // step
-        self.step_h.clear();
-        self.step_x.clear();
-        self.step_y.clear();
-        self.step_global_error.clear();
-        // dense
-        self.dense_step_index.clear();
-        self.dense_x.clear();
-        self.dense_y.clear();
-        // stiffness
-        self.stiff_step_index.clear();
-        self.stiff_x.clear();
-        self.stiff_h_times_rho.clear();
-        self
     }
 
     /// Executes the output at an accepted step
@@ -409,6 +451,8 @@ impl<'a, A> Output<'a, A> {
         solver: &Box<dyn OdeSolverTrait<A> + 'a>,
         args: &mut A,
     ) -> Result<bool, StrError> {
+        assert!(self.initialized);
+
         // --- step --------------------------------------------------------------------------------------------
         //
         // step output: callback
@@ -448,8 +492,8 @@ impl<'a, A> Output<'a, A> {
         //
         if self.with_dense_output() {
             if work.stats.n_accepted == 0 {
-                // record last x for subsequent calculations
-                self.dense_last_x = x;
+                // initial station
+                self.dense_index = 0;
 
                 // first dense output: callback
                 if let Some(cb) = self.dense_callback.as_ref() {
@@ -469,12 +513,13 @@ impl<'a, A> Output<'a, A> {
 
                 // first dense output: record results
                 if self.dense_recording {
-                    self.dense_step_index.push(work.stats.n_accepted);
-                    self.dense_x.push(x);
                     for (m, ym) in self.dense_y.iter_mut() {
-                        ym.push(y[*m]);
+                        ym[self.dense_index] = y[*m];
                     }
                 }
+
+                // next station
+                self.dense_index += 1;
             } else {
                 // maybe allocate y_aux
                 if self.y_aux.dim() != y.dim() {
@@ -482,11 +527,16 @@ impl<'a, A> Output<'a, A> {
                 }
                 let y_out = &mut self.y_aux;
 
-                // loop over h_out increments
-                let mut x_out = self.dense_last_x + self.dense_h_out;
-                while x_out < x {
-                    // record last x for subsequent calculations
-                    self.dense_last_x = x_out;
+                // loop over stations
+                let n_out = self.dense_x.len() - 1; // -1 because x1 is handled by last()
+                while self.dense_index < n_out {
+                    // check range
+                    let x_out = self.dense_x[self.dense_index];
+
+                    // exit if the requested station is > x
+                    if x_out > x {
+                        break; // not yet
+                    }
 
                     // interpolate y_out
                     solver.dense_output(y_out, x_out, x, y, h);
@@ -509,21 +559,19 @@ impl<'a, A> Output<'a, A> {
 
                     // subsequent dense output: record results
                     if self.dense_recording {
-                        self.dense_step_index.push(work.stats.n_accepted);
-                        self.dense_x.push(x_out);
                         for (m, ym) in self.dense_y.iter_mut() {
-                            ym.push(y_out[*m]);
+                            ym[self.dense_index] = y_out[*m];
                         }
                     }
 
                     // next station
-                    x_out += self.dense_h_out;
+                    self.dense_index += 1;
                 }
             }
         }
 
         // stiffness results
-        if self.stiff_record {
+        if self.stiff_recording {
             self.stiff_h_times_rho.push(work.stiff_h_times_rho);
             if work.stiff_detected {
                 self.stiff_step_index.push(work.stats.n_accepted);
@@ -537,6 +585,8 @@ impl<'a, A> Output<'a, A> {
 
     /// Saves the results at the end of the simulation (and generates count files)
     pub(crate) fn last(&mut self, work: &Workspace, h: f64, x: f64, y: &Vector, args: &mut A) -> Result<(), StrError> {
+        // --- step --------------------------------------------------------------------------------------------
+        //
         // "step output: callback" and "step output: write file"
         // There is no need to handle these cases because the `step` method
         // already handled these options at the last (accepted) step
@@ -550,33 +600,37 @@ impl<'a, A> Output<'a, A> {
             count.write_json(&full_path)?;
         }
 
-        // dense output: callback
-        if let Some(cb) = self.dense_callback.as_ref() {
-            cb(&work.stats, h, x, y, args)?;
-        }
+        // --- dense -------------------------------------------------------------------------------------------
+        //
+        if self.with_dense_output() {
+            // check
+            assert_eq!(self.dense_index, self.dense_x.len() - 1);
 
-        // dense output: write file
-        if let Some(fp) = &self.dense_file_key {
-            // data
-            let full_path = format!("{}_{}.json", fp, self.dense_file_count).to_string();
-            let results = OutDataRef { h, x, y };
-            results.write_json(&full_path)?;
-            self.dense_file_count += 1;
-            self.dense_last_x = x;
-            // count
-            let full_path = format!("{}_count.json", fp).to_string();
-            let count = OutCount {
-                n: self.dense_file_count,
-            };
-            count.write_json(&full_path)?;
-        }
+            // dense output: callback
+            if let Some(cb) = self.dense_callback.as_ref() {
+                cb(&work.stats, h, x, y, args)?;
+            }
 
-        // dense output: record results
-        if self.dense_recording {
-            self.dense_step_index.push(work.stats.n_accepted);
-            self.dense_x.push(x);
-            for (m, ym) in self.dense_y.iter_mut() {
-                ym.push(y[*m]);
+            // dense output: write file
+            if let Some(fp) = &self.dense_file_key {
+                // data
+                let full_path = format!("{}_{}.json", fp, self.dense_file_count).to_string();
+                let results = OutDataRef { h, x, y };
+                results.write_json(&full_path)?;
+                self.dense_file_count += 1;
+                // count
+                let full_path = format!("{}_count.json", fp).to_string();
+                let count = OutCount {
+                    n: self.dense_file_count,
+                };
+                count.write_json(&full_path)?;
+            }
+
+            // dense output: record results
+            if self.dense_recording {
+                for (m, ym) in self.dense_y.iter_mut() {
+                    ym[self.dense_index] = y[*m];
+                }
             }
         }
         Ok(())
@@ -587,9 +641,9 @@ impl<'a, A> Output<'a, A> {
 
 #[cfg(test)]
 mod tests {
-    use crate::NoArgs;
-
     use super::*;
+    use crate::NoArgs;
+    use russell_lab::array_approx_eq;
 
     #[test]
     fn derive_methods_work() {
@@ -653,25 +707,157 @@ mod tests {
     }
 
     #[test]
-    fn set_methods_handle_errors() {
-        let mut out = Output::new();
+    fn set_dense_h_out_captures_errors() {
+        let mut out = Output::<'_, NoArgs>::new();
         assert_eq!(
-            out.set_dense_callback(true, 0.0, |_, _, _, _, _: &mut NoArgs| Ok(false))
-                .err(),
-            Some("h_out must be > EPSILON")
+            out.set_dense_h_out(f64::EPSILON).err(),
+            Some("h_out must be > 10.0 * EPSILON")
         );
-        let path_key = "/tmp/russell_ode/test_output_errors";
+    }
+
+    #[test]
+    fn set_dense_h_out_works() {
+        let mut out = Output::<'_, NoArgs>::new();
+        assert!(out.dense_h_out.is_none());
+        out.set_dense_h_out(0.1).unwrap();
+        assert_eq!(out.dense_h_out, Some(0.1));
+    }
+
+    #[test]
+    fn set_dense_x_out_captures_errors() {
+        let mut out = Output::<'_, NoArgs>::new();
         assert_eq!(
-            out.set_dense_file_writing(true, 0.0, path_key).err(),
-            Some("h_out must be > EPSILON")
+            out.set_dense_x_out(&[2.0, 1.0]).err(),
+            Some("the dense output stations x must be sorted in ascending order in (x0, x1)")
         );
         assert_eq!(
-            out.set_dense_file_writing(true, 0.1, "no").err(),
+            out.set_dense_x_out(&[1.0, 1.0]).err(),
+            Some("the x spacing must be > 10.0 * EPSILON")
+        );
+        assert_eq!(
+            out.set_dense_x_out(&[1.0, 1.0 + f64::EPSILON]).err(),
+            Some("the x spacing must be > 10.0 * EPSILON")
+        );
+    }
+
+    #[test]
+    fn set_dense_x_out_works() {
+        let mut out = Output::<'_, NoArgs>::new();
+
+        out.set_dense_x_out(&[1.0, 2.0]).unwrap();
+        assert_eq!(&out.dense_x, &[0.0, 1.0, 2.0, 0.0]);
+
+        out.set_dense_x_out(&[]).unwrap();
+        assert_eq!(&out.dense_x, &[0.0, 0.0]);
+    }
+
+    #[test]
+    fn set_dense_file_writing_captures_errors() {
+        let mut out = Output::<'_, NoArgs>::new();
+        assert_eq!(
+            out.set_dense_file_writing("no").err(),
             Some("the length of the filepath without extension must be at least 4")
         );
+    }
+
+    #[test]
+    fn initialize_captures_errors() {
+        let mut out = Output::<'_, NoArgs>::new();
+
+        out.set_dense_x_out(&[3.0, 4.0]).unwrap();
+        out.set_dense_recording(&[0]);
+        assert_eq!(&out.dense_x, &[0.0, 3.0, 4.0, 0.0]);
         assert_eq!(
-            out.set_dense_recording(true, 0.0, &[]).err(),
-            Some("h_out must be > EPSILON")
+            out.initialize(3.0, 4.0, false).err(),
+            Some("the first interior x_out for dense output must be > x0")
         );
+
+        out.set_dense_x_out(&[3.1, 4.0, 5.0]).unwrap();
+        out.set_dense_recording(&[0]);
+        assert_eq!(&out.dense_x, &[0.0, 3.1, 4.0, 5.0, 0.0]);
+        assert_eq!(
+            out.initialize(3.0, 4.0, false).err(),
+            Some("the last interior x_out for dense output must be < x1")
+        );
+    }
+
+    #[test]
+    fn initialize_with_dense_output_works() {
+        let mut out = Output::<'_, NoArgs>::new();
+
+        // without h_out and x_out
+        out.set_dense_recording(&[0]);
+        out.initialize(3.0, 4.0, false).unwrap();
+        assert_eq!(&out.dense_x, &[3.0, 4.0]);
+
+        // with h_out
+        out.set_dense_h_out(0.1).unwrap();
+        out.initialize(3.0, 4.0, false).unwrap();
+        array_approx_eq(
+            &out.dense_x,
+            &[3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4.0],
+            1e-15,
+        );
+
+        // with empty x_out
+        out.set_dense_x_out(&[]).unwrap();
+        out.initialize(3.0, 4.0, false).unwrap();
+        assert_eq!(&out.dense_x, &[3.0, 4.0]);
+        let y0_out = out.dense_y.get(&0).unwrap();
+        assert_eq!(y0_out.len(), 2);
+
+        // with x_out
+        out.set_dense_x_out(&[3.5, 3.8]).unwrap();
+        out.initialize(3.0, 4.0, false).unwrap();
+        assert_eq!(&out.dense_x, &[3.0, 3.5, 3.8, 4.0]);
+        let y0_out = out.dense_y.get(&0).unwrap();
+        assert_eq!(y0_out.len(), 4);
+    }
+
+    #[test]
+    fn initialize_with_step_output_works() {
+        let mut out = Output::<'_, NoArgs>::new();
+
+        // first call
+        out.set_step_recording(&[0]);
+        assert_eq!(out.step_y.len(), 1);
+        out.initialize(1.0, 2.0, false).unwrap();
+
+        // write some values
+        out.step_h.push(11.11);
+        out.step_x.push(22.22);
+        out.step_y.get_mut(&0).unwrap().push(33.33);
+        out.step_global_error.push(44.44);
+
+        // initialize again
+        out.initialize(1.0, 2.0, false).unwrap();
+        assert_eq!(out.step_y.len(), 1);
+
+        // check empty arrays
+        assert_eq!(out.step_h.len(), 0);
+        assert_eq!(out.step_x.len(), 0);
+        assert_eq!(out.step_y.get_mut(&0).unwrap().len(), 0);
+        assert_eq!(out.step_global_error.len(), 0);
+    }
+
+    #[test]
+    fn initialize_with_stiff_recording_works() {
+        let mut out = Output::<'_, NoArgs>::new();
+
+        // first call
+        out.initialize(1.0, 2.0, true).unwrap();
+
+        // write some values
+        out.stiff_h_times_rho.push(11.11);
+        out.stiff_step_index.push(22);
+        out.stiff_x.push(33.33);
+
+        // initialize again
+        out.initialize(1.0, 2.0, true).unwrap();
+
+        // check empty arrays
+        assert_eq!(out.stiff_h_times_rho.len(), 0);
+        assert_eq!(out.stiff_step_index.len(), 0);
+        assert_eq!(out.stiff_x.len(), 0);
     }
 }

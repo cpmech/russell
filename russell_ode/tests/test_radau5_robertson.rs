@@ -18,7 +18,7 @@ fn test_radau5_robertson() {
     let mut solver = OdeSolver::new(params, &system).unwrap();
 
     // enable output of accepted steps
-    solver.enable_output().set_step_recording(true, &[0, 1, 2]);
+    solver.enable_output().set_step_recording(&[0, 1, 2]);
 
     // solve the ODE system
     solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
@@ -33,15 +33,15 @@ fn test_radau5_robertson() {
     approx_eq(stat.h_accepted, 8.160578540333708E-01, 1e-10);
 
     // print the results at accepted steps
-    let n_step = solver.out().step_x.len();
+    let n_step = solver.out_step_x().len();
     for i in 0..n_step {
         println!(
             "step ={:>4}, x ={:5.2}, y ={}{}{}",
             i,
-            solver.out().step_x[i],
-            format_fortran(solver.out().step_y.get(&0).unwrap()[i]),
-            format_fortran(solver.out().step_y.get(&1).unwrap()[i]),
-            format_fortran(solver.out().step_y.get(&2).unwrap()[i]),
+            solver.out_step_x()[i],
+            format_fortran(solver.out_step_y(0)[i]),
+            format_fortran(solver.out_step_y(1)[i]),
+            format_fortran(solver.out_step_y(2)[i]),
         );
     }
 

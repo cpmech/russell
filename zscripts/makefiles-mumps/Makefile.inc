@@ -1,13 +1,13 @@
 #
-#  This file is part of MUMPS 5.6.2, released
-#  on Wed Oct 11 09:36:25 UTC 2023
+#  This file is part of MUMPS 5.7.1, released
+#  on Thu May  2 10:15:09 UTC 2024
 #
 
 # must be at the top
 PLAT = _cpmech
 
 # Begin orderings
-LSCOTCHDIR = 
+SCOTCHDIR = 
 ISCOTCH   = 
 
 LSCOTCH   = 
@@ -33,6 +33,7 @@ IORDERINGSC = $(IMETIS) $(IPORD) $(ISCOTCH)
 
 LIBEXT_SHARED  = .so
 SONAME = -soname
+SHARED_OPT = -shared
 FPIC_OPT = -fPIC
 # Adapt/uncomment RPATH_OPT to avoid modifying
 # LD_LIBRARY_PATH in case of shared libraries
@@ -58,8 +59,6 @@ LIBOTHERS = -lpthread
 CDEFS   = -DAdd_
 
 #Begin Optimized options
-#OPTF    = -O -fopenmp
-# Use the line below if your version of gfortran is >= 10
 OPTF    = -O -fopenmp -fallow-argument-mismatch
 OPTL    = -O -fopenmp
 OPTC    = -O -fopenmp

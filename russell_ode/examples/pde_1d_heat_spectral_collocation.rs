@@ -85,7 +85,7 @@ fn run(
     // ODE solver
     let mut params = Params::new(Method::DoPri8);
     params.set_tolerances(1e-10, 1e-10, None)?;
-    let mut ode = OdeSolver::new(params, &system)?;
+    let mut ode = OdeSolver::new(params, system)?;
 
     // interpolant
     let mut par = InterpParams::new();

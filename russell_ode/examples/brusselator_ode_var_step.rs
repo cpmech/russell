@@ -44,7 +44,7 @@ fn main() -> Result<(), StrError> {
     for method in &[Method::Radau5, Method::Merson4, Method::DoPri5, Method::DoPri8] {
         // allocate the solver
         let params = Params::new(*method);
-        let mut solver = OdeSolver::new(params, &system)?;
+        let mut solver = OdeSolver::new(params, system.clone())?;
 
         // arrays holding the results
         let mut n_f_eval = vec![0.0; tols.len()];

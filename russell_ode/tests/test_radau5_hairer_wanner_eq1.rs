@@ -15,7 +15,7 @@ fn test_radau5_hairer_wanner_eq1() {
     params.step.h_ini = 1e-4;
 
     // allocate the solver
-    let mut solver = OdeSolver::new(params, &system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
 
     // enable dense output
     solver

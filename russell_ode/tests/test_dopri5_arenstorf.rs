@@ -12,7 +12,7 @@ fn test_dopri5_arenstorf() {
     params.set_tolerances(1e-7, 1e-7, None).unwrap();
 
     // allocate the solver
-    let mut solver = OdeSolver::new(params, &system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
 
     // enable dense output with 1.0 spacing
     solver

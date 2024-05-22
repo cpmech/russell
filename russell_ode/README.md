@@ -134,7 +134,7 @@ fn main() -> Result<(), StrError> {
 
     // solver
     let params = Params::new(Method::DoPri8);
-    let mut solver = OdeSolver::new(params, &system)?;
+    let mut solver = OdeSolver::new(params, system)?;
 
     // initial values
     let x = 0.0;
@@ -269,7 +269,7 @@ fn main() -> Result<(), StrError> {
 
     // solver
     let params = Params::new(Method::Radau5);
-    let mut solver = OdeSolver::new(params, &system)?;
+    let mut solver = OdeSolver::new(params, system)?;
 
     // initial values
     let x = 0.0;

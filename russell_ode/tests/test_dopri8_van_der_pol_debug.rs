@@ -18,7 +18,7 @@ fn test_dopri8_van_der_pol_debug() {
     params.stiffness.save_results = true;
 
     // allocate the solver
-    let mut solver = OdeSolver::new(params, &system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
 
     // output (to save stiff stations)
     solver.enable_output();

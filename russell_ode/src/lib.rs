@@ -172,7 +172,7 @@
 //!
 //!     // solver
 //!     let params = Params::new(Method::Radau5);
-//!     let mut solver = OdeSolver::new(params, &system)?;
+//!     let mut solver = OdeSolver::new(params, system)?;
 //!
 //!     // initial values
 //!     let x = 0.0;

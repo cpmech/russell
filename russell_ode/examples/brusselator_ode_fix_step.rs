@@ -44,7 +44,7 @@ fn main() -> Result<(), StrError> {
     for method in Method::erk_methods() {
         // allocate the solver
         let params = Params::new(method);
-        let mut solver = OdeSolver::new(params, &system)?;
+        let mut solver = OdeSolver::new(params, system.clone())?;
 
         // arrays holding the results
         let mut n_f_eval = vec![0.0; hh.len()];

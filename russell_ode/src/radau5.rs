@@ -29,7 +29,7 @@ pub(crate) struct Radau5<'a, A> {
     params: Params,
 
     /// ODE system
-    system: &'a System<'a, A>,
+    system: System<'a, A>,
 
     /// Holds the mass matrix
     mass: Option<CooMatrix>,
@@ -120,7 +120,7 @@ pub(crate) struct Radau5<'a, A> {
 
 impl<'a, A> Radau5<'a, A> {
     /// Allocates a new instance
-    pub fn new(params: Params, system: &'a System<'a, A>) -> Self {
+    pub fn new(params: Params, system: System<'a, A>) -> Self {
         let ndim = system.ndim;
         let (mass, mass_nnz) = match system.calc_mass.as_ref() {
             Some(calc) => {
@@ -140,14 +140,15 @@ impl<'a, A> Radau5<'a, A> {
             system.jac_nnz
         };
         let nnz = mass_nnz + jac_nnz;
+        let sym = system.symmetric;
         let theta = params.radau5.theta_max;
         Radau5 {
             params,
             system,
             mass,
-            jj: SparseMatrix::new_coo(ndim, ndim, jac_nnz, system.symmetric).unwrap(),
-            kk_real: SparseMatrix::new_coo(ndim, ndim, nnz, system.symmetric).unwrap(),
-            kk_comp: ComplexSparseMatrix::new_coo(ndim, ndim, nnz, system.symmetric).unwrap(),
+            jj: SparseMatrix::new_coo(ndim, ndim, jac_nnz, sym).unwrap(),
+            kk_real: SparseMatrix::new_coo(ndim, ndim, nnz, sym).unwrap(),
+            kk_comp: ComplexSparseMatrix::new_coo(ndim, ndim, nnz, sym).unwrap(),
             solver_real: LinSolver::new(params.newton.genie).unwrap(),
             solver_comp: ComplexLinSolver::new(params.newton.genie).unwrap(),
             reuse_jacobian: false,
@@ -208,7 +209,7 @@ impl<'a, A> Radau5<'a, A> {
                 let w1 = &mut self.dw0; // workspace
                 let w2 = &mut self.dw1; // workspace
                 vec_copy(y_mut, y).unwrap();
-                numerical_jacobian(jj, 1.0, x, y_mut, w1, w2, args, &self.system.function)?;
+                numerical_jacobian(jj, 1.0, x, y_mut, w1, w2, args, self.system.function.as_ref())?;
             } else {
                 (self.system.jacobian.as_ref().unwrap())(jj, 1.0, x, y, args)?;
             }
@@ -756,7 +757,7 @@ mod tests {
 
         // allocate structs
         let params = Params::new(Method::Radau5);
-        let mut solver = Radau5::new(params, &system);
+        let mut solver = Radau5::new(params, system);
         let mut work = Workspace::new(Method::Radau5);
 
         // message
@@ -825,7 +826,7 @@ mod tests {
         // allocate structs
         let mut params = Params::new(Method::Radau5);
         params.newton.use_numerical_jacobian = true;
-        let mut solver = Radau5::new(params, &system);
+        let mut solver = Radau5::new(params, system);
         let mut work = Workspace::new(Method::Radau5);
 
         // message
@@ -907,7 +908,7 @@ mod tests {
             })
             .unwrap();
         let params = Params::new(Method::Radau5);
-        let mut solver = Radau5::new(params, &system);
+        let mut solver = Radau5::new(params, system);
         let mut work = Workspace::new(Method::Radau5);
         let x = 0.0;
         let y = Vector::from(&[0.0]);
@@ -940,7 +941,7 @@ mod tests {
                 let mut params = Params::new(Method::Radau5);
                 params.newton.genie = genie;
                 params.newton.use_numerical_jacobian = numerical;
-                let mut solver = Radau5::new(params, &system);
+                let mut solver = Radau5::new(params, system);
                 let mut work = Workspace::new(Method::Radau5);
 
                 // message
@@ -1004,7 +1005,7 @@ mod tests {
                 let mut params = Params::new(Method::Radau5);
                 params.newton.genie = genie;
                 params.newton.use_numerical_jacobian = numerical;
-                let mut solver = Radau5::new(params, &system);
+                let mut solver = Radau5::new(params, system);
                 let mut work = Workspace::new(Method::Radau5);
 
                 // message

@@ -13,7 +13,7 @@ fn test_dopri8_van_der_pol() {
     params.set_tolerances(1e-9, 1e-9, None).unwrap();
 
     // allocate the solver
-    let mut solver = OdeSolver::new(params, &system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
 
     // enable dense output
     solver

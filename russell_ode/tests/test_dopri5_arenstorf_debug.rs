@@ -13,7 +13,7 @@ fn test_dopri5_arenstorf_debug() {
     params.debug = true;
 
     // allocate the solver
-    let mut solver = OdeSolver::new(params, &system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
 
     // solve the ODE system
     let y = &mut y0;

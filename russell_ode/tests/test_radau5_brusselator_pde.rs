@@ -21,7 +21,7 @@ fn test_radau5_brusselator_pde() {
     params.set_tolerances(1e-3, 1e-3, None).unwrap();
 
     // allocate the solver
-    let mut solver = OdeSolver::new(params, &system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
 
     // solve the ODE system
     let yy = &mut yy0;

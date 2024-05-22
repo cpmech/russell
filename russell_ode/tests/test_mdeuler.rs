@@ -15,7 +15,7 @@ fn test_mdeuler_hairer_wanner_eq1() {
     params.step.h_ini = 1e-4;
 
     // solve the ODE system
-    let mut solver = OdeSolver::new(params, &system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
     solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
 
     // get statistics

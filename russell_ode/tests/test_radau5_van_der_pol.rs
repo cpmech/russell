@@ -12,7 +12,7 @@ fn test_radau5_van_der_pol() {
     params.step.h_ini = 1e-6;
 
     // allocate the solver
-    let mut solver = OdeSolver::new(params, &system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
 
     // enable dense output
     solver

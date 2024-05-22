@@ -1,7 +1,7 @@
 use crate::StrError;
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, Sym};
-use std::marker::PhantomData;
+use std::sync::Arc;
 
 /// Indicates that the system functions do not require extra arguments
 pub type NoArgs = u8;
@@ -66,13 +66,13 @@ pub struct System<'a, A> {
     pub(crate) ndim: usize,
 
     /// ODE system function
-    pub(crate) function: Box<dyn Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + 'a>,
+    pub(crate) function: Arc<dyn Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + 'a>,
 
     /// Jacobian function
-    pub(crate) jacobian: Option<Box<dyn Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError> + 'a>>,
+    pub(crate) jacobian: Option<Arc<dyn Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError> + 'a>>,
 
     /// Calc mass matrix function
-    pub(crate) calc_mass: Option<Box<dyn Fn(&mut CooMatrix) + 'a>>,
+    pub(crate) calc_mass: Option<Arc<dyn Fn(&mut CooMatrix) + 'a>>,
 
     /// Number of non-zeros in the Jacobian matrix
     pub(crate) jac_nnz: usize,
@@ -88,9 +88,6 @@ pub struct System<'a, A> {
 
     /// Symmetric type of the Jacobian and mass matrices
     pub(crate) symmetric: Sym,
-
-    /// Handle generic argument
-    phantom: PhantomData<fn() -> A>,
 }
 
 impl<'a, A> System<'a, A> {
@@ -157,7 +154,7 @@ impl<'a, A> System<'a, A> {
     pub fn new(ndim: usize, function: impl Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + 'a) -> Self {
         System {
             ndim,
-            function: Box::new(function),
+            function: Arc::new(function),
             jacobian: None,
             calc_mass: None,
             jac_nnz: ndim * ndim,
@@ -165,7 +162,21 @@ impl<'a, A> System<'a, A> {
             sym_jac: None,
             sym_mass: None,
             symmetric: Sym::No,
-            phantom: PhantomData,
+        }
+    }
+
+    /// Returns a copy of this struct
+    pub fn clone(&self) -> Self {
+        System {
+            ndim: self.ndim,
+            function: self.function.clone(),
+            jacobian: self.jacobian.clone(),
+            calc_mass: self.calc_mass.clone(),
+            jac_nnz: self.jac_nnz,
+            mass_nnz: self.mass_nnz,
+            sym_jac: self.sym_jac,
+            sym_mass: self.sym_mass,
+            symmetric: self.symmetric,
         }
     }
 
@@ -202,7 +213,7 @@ impl<'a, A> System<'a, A> {
         };
         self.sym_jac = Some(symmetric);
         self.symmetric = symmetric;
-        self.jacobian = Some(Box::new(callback));
+        self.jacobian = Some(Arc::new(callback));
         Ok(())
     }
 
@@ -237,7 +248,7 @@ impl<'a, A> System<'a, A> {
         };
         self.sym_mass = Some(symmetric);
         self.symmetric = symmetric;
-        self.calc_mass = Some(Box::new(callback));
+        self.calc_mass = Some(Arc::new(callback));
         Ok(())
     }
 
@@ -328,6 +339,14 @@ mod tests {
         println!("n_function_eval = {}", args.n_function_eval);
         assert_eq!(args.n_function_eval, 1);
         assert_eq!(args.more_data_goes_here, true);
+        // clone
+        let clone = system.clone();
+        assert_eq!(clone.ndim, 2);
+        assert_eq!(clone.jac_nnz, 4);
+        assert_eq!(clone.mass_nnz, 0);
+        assert_eq!(clone.sym_jac, None);
+        assert_eq!(clone.sym_mass, None);
+        assert_eq!(clone.symmetric, Sym::No);
     }
 
     #[test]

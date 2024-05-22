@@ -14,7 +14,7 @@ fn test_fweuler_hairer_wanner_eq1() {
     let params = Params::new(Method::FwEuler);
 
     // solve the ODE system
-    let mut solver = OdeSolver::new(params, &system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
     let h_equal = Some(1.875 / 50.0);
     solver.solve(&mut y0, x0, x1, h_equal, &mut args).unwrap();
 

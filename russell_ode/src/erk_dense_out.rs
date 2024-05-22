@@ -57,19 +57,16 @@ impl ErkDenseOut {
     }
 
     /// Updates the data and returns the number of function evaluations
-    pub(crate) fn update<'a, F, A>(
+    pub(crate) fn update<'a, A>(
         &mut self,
-        system: &System<F, A>,
+        system: &System<A>,
         x: f64,
         y: &Vector,
         h: f64,
         w: &Vector,
         k: &Vec<Vector>,
         args: &mut A,
-    ) -> Result<usize, StrError>
-    where
-        F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-    {
+    ) -> Result<usize, StrError> {
         let mut n_function_eval = 0;
 
         if self.method == Method::DoPri5 {

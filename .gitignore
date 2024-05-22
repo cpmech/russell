@@ -12,3 +12,4 @@ good.mtx
 bad.mtx
 good.smat
 bad.smat
+rustc-ice-*.txt

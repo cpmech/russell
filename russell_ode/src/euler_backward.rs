@@ -4,15 +4,12 @@ use russell_lab::{vec_copy, vec_rms_scaled, vec_update, Vector};
 use russell_sparse::{numerical_jacobian, LinSolver, SparseMatrix};
 
 /// Implements the backward Euler (implicit) solver (implicit, order 1, unconditionally stable)
-pub(crate) struct EulerBackward<'a, F, A>
-where
-    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-{
+pub(crate) struct EulerBackward<'a, A> {
     /// Holds the parameters
     params: Params,
 
     /// ODE system
-    system: &'a System<'a, F, A>,
+    system: &'a System<'a, A>,
 
     /// Vector holding the function evaluation
     ///
@@ -35,12 +32,9 @@ where
     solver: LinSolver<'a>,
 }
 
-impl<'a, F, A> EulerBackward<'a, F, A>
-where
-    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-{
+impl<'a, A> EulerBackward<'a, A> {
     /// Allocates a new instance
-    pub fn new(params: Params, system: &'a System<'a, F, A>) -> Self {
+    pub fn new(params: Params, system: &'a System<'a, A>) -> Self {
         let ndim = system.ndim;
         let jac_nnz = if params.newton.use_numerical_jacobian {
             ndim * ndim
@@ -61,10 +55,7 @@ where
     }
 }
 
-impl<'a, F, A> OdeSolverTrait<A> for EulerBackward<'a, F, A>
-where
-    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-{
+impl<'a, A> OdeSolverTrait<A> for EulerBackward<'a, A> {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
         Err("dense output is not available for the BwEuler method")

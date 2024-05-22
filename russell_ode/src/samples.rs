@@ -1,4 +1,3 @@
-use crate::StrError;
 use crate::{NoArgs, PdeDiscreteLaplacian2d, Side, System};
 use russell_lab::math::PI;
 use russell_lab::Vector;
@@ -42,7 +41,7 @@ impl Samples {
     /// * `args` -- is a placeholder variable with the arguments to F and J
     /// * `y_fn_x` -- is a function to compute the analytical solution
     pub fn simple_equation_constant<'a>() -> (
-        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
+        System<'a, NoArgs>,
         f64,
         Vector,
         NoArgs,
@@ -153,7 +152,7 @@ impl Samples {
         symmetric: bool,
         genie: Genie,
     ) -> (
-        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
+        System<'a, NoArgs>,
         f64,
         Vector,
         NoArgs,
@@ -257,13 +256,7 @@ impl Samples {
     /// * Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
     ///   Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
     ///   in Computational Mathematics, 528p
-    pub fn brusselator_ode<'a>() -> (
-        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
-        f64,
-        Vector,
-        NoArgs,
-        Vector,
-    ) {
+    pub fn brusselator_ode<'a>() -> (System<'a, NoArgs>, f64, Vector, NoArgs, Vector) {
         // system
         let ndim = 2;
         let jac_nnz = 4;
@@ -502,16 +495,7 @@ impl Samples {
         npoint: usize,
         second_book: bool,
         ignore_diffusion: bool,
-    ) -> (
-        System<
-            'a,
-            impl Fn(&mut Vector, f64, &Vector, &mut PdeDiscreteLaplacian2d) -> Result<(), StrError>,
-            PdeDiscreteLaplacian2d,
-        >,
-        f64,
-        Vector,
-        PdeDiscreteLaplacian2d,
-    ) {
+    ) -> (System<'a, PdeDiscreteLaplacian2d>, f64, Vector, PdeDiscreteLaplacian2d) {
         // constants
         let (kx, ky) = (alpha, alpha);
         let (xmin, xmax) = (0.0, 1.0);
@@ -663,14 +647,7 @@ impl Samples {
     /// * Hairer E, Nørsett, SP, Wanner G (2008) Solving Ordinary Differential Equations I.
     ///   Non-stiff Problems. Second Revised Edition. Corrected 3rd printing 2008. Springer Series
     ///   in Computational Mathematics, 528p
-    pub fn arenstorf<'a>() -> (
-        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
-        f64,
-        Vector,
-        f64,
-        NoArgs,
-        Vector,
-    ) {
+    pub fn arenstorf<'a>() -> (System<'a, NoArgs>, f64, Vector, f64, NoArgs, Vector) {
         // constants
         const MU: f64 = 0.012277471;
         const MD: f64 = 1.0 - MU;
@@ -788,7 +765,7 @@ impl Samples {
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
     pub fn hairer_wanner_eq1<'a>() -> (
-        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
+        System<'a, NoArgs>,
         f64,
         Vector,
         NoArgs,
@@ -861,12 +838,7 @@ impl Samples {
     /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn robertson<'a>() -> (
-        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
-        f64,
-        Vector,
-        NoArgs,
-    ) {
+    pub fn robertson<'a>() -> (System<'a, NoArgs>, f64, Vector, NoArgs) {
         // system
         let ndim = 3;
         let mut system = System::new(ndim, |f: &mut Vector, _x: f64, y: &Vector, _args: &mut NoArgs| {
@@ -942,16 +914,7 @@ impl Samples {
     /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn van_der_pol<'a>(
-        epsilon: f64,
-        stationary: bool,
-    ) -> (
-        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
-        f64,
-        Vector,
-        f64,
-        NoArgs,
-    ) {
+    pub fn van_der_pol<'a>(epsilon: f64, stationary: bool) -> (System<'a, NoArgs>, f64, Vector, f64, NoArgs) {
         // constants
         let x0 = 0.0;
         let mut y0 = Vector::from(&[2.0, -0.6]);
@@ -1071,12 +1034,7 @@ impl Samples {
     /// * Hairer E, Wanner G (2002) Solving Ordinary Differential Equations II.
     ///   Stiff and Differential-Algebraic Problems. Second Revised Edition.
     ///   Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-    pub fn amplifier1t<'a>() -> (
-        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
-        f64,
-        Vector,
-        NoArgs,
-    ) {
+    pub fn amplifier1t<'a>() -> (System<'a, NoArgs>, f64, Vector, NoArgs) {
         // constants
         const ALPHA: f64 = 0.99;
         const GAMMA: f64 = 1.0 - ALPHA;
@@ -1174,7 +1132,7 @@ impl Samples {
     /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
     ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
     pub fn kreyszig_eq6_page902<'a>() -> (
-        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
+        System<'a, NoArgs>,
         f64,
         Vector,
         NoArgs,
@@ -1250,7 +1208,7 @@ impl Samples {
     /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
     ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
     pub fn kreyszig_ex4_page920<'a>() -> (
-        System<'a, impl Fn(&mut Vector, f64, &Vector, &mut NoArgs) -> Result<(), StrError>, NoArgs>,
+        System<'a, NoArgs>,
         f64,
         Vector,
         NoArgs,

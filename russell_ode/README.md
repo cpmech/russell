@@ -259,12 +259,13 @@ fn main() -> Result<(), StrError> {
 
     // mass matrix
     let mass_nnz = 5;
-    system.init_mass_matrix(mass_nnz, symmetric)?;
-    system.mass_put(0, 0, 1.0)?;
-    system.mass_put(0, 1, 1.0)?;
-    system.mass_put(1, 0, 1.0)?;
-    system.mass_put(1, 1, -1.0)?;
-    system.mass_put(2, 2, 1.0)?;
+    system.set_mass(Some(mass_nnz), symmetric, |mm: &mut CooMatrix| {
+        mm.put(0, 0, 1.0).unwrap();
+        mm.put(0, 1, 1.0).unwrap();
+        mm.put(1, 0, 1.0).unwrap();
+        mm.put(1, 1, -1.0).unwrap();
+        mm.put(2, 2, 1.0).unwrap();
+    })?;
 
     // solver
     let params = Params::new(Method::Radau5);

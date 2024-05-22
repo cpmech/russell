@@ -71,8 +71,14 @@ pub struct System<'a, A> {
     /// Jacobian function
     pub(crate) jacobian: Option<Box<dyn Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError> + 'a>>,
 
+    /// Calc mass matrix function
+    pub(crate) calc_mass: Option<Box<dyn Fn(&mut CooMatrix) + 'a>>,
+
     /// Number of non-zeros in the Jacobian matrix
     pub(crate) jac_nnz: usize,
+
+    /// Number of non-zeros in the mass matrix
+    pub(crate) mass_nnz: usize,
 
     /// Symmetric type of the Jacobian matrix (for error checking; to make sure it is equal to sym_mass)
     sym_jac: Option<Sym>,
@@ -82,9 +88,6 @@ pub struct System<'a, A> {
 
     /// Symmetric type of the Jacobian and mass matrices
     pub(crate) symmetric: Sym,
-
-    /// Holds the mass matrix
-    pub(crate) mass_matrix: Option<CooMatrix>,
 
     /// Handle generic argument
     phantom: PhantomData<fn() -> A>,
@@ -156,11 +159,12 @@ impl<'a, A> System<'a, A> {
             ndim,
             function: Box::new(function),
             jacobian: None,
+            calc_mass: None,
             jac_nnz: ndim * ndim,
+            mass_nnz: 0,
             sym_jac: None,
             sym_mass: None,
             symmetric: Sym::No,
-            mass_matrix: None,
             phantom: PhantomData,
         }
     }
@@ -171,14 +175,14 @@ impl<'a, A> System<'a, A> {
     ///
     /// # Input
     ///
-    /// * `jac_nnz` -- the number of non-zeros in the Jacobian; use None to indicate a dense matrix with:
+    /// * `nnz` -- the number of non-zeros in the Jacobian; use None to indicate a dense matrix with:
     ///     * `nnz = (ndim + ndim²) / 2` if triangular
     ///     * `nnz = ndim²` otherwise
     /// * `symmetric` -- specifies the symmetric type of the Jacobian and **mass** matrices
     /// * `callback` -- the function to calculate the Jacobian matrix
     pub fn set_jacobian(
         &mut self,
-        jac_nnz: Option<usize>,
+        nnz: Option<usize>,
         symmetric: Sym,
         callback: impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError> + 'a,
     ) -> Result<(), StrError> {
@@ -187,8 +191,8 @@ impl<'a, A> System<'a, A> {
                 return Err("the Jacobian matrix must have the same symmetric type as the mass matrix");
             }
         }
-        self.jac_nnz = if let Some(nnz) = jac_nnz {
-            nnz
+        self.jac_nnz = if let Some(value) = nnz {
+            value
         } else {
             if symmetric.triangular() {
                 (self.ndim + self.ndim * self.ndim) / 2
@@ -202,43 +206,39 @@ impl<'a, A> System<'a, A> {
         Ok(())
     }
 
-    /// Initializes and enables the mass matrix
-    ///
-    /// **Note:** Even if the (analytical) Jacobian function is not configured,
-    /// a numerical Jacobian matrix may be computed (see [crate::Params] and [crate::ParamsNewton]).
+    /// Sets a function to calculate the constant mass matrix
     ///
     /// # Input
     ///
-    /// * `max_nnz` -- max number of non-zero values
+    /// * `nnz` -- the number of non-zeros in the mass matrix; use None to indicate a dense matrix with:
+    ///     * `nnz = (ndim + ndim²) / 2` if triangular
+    ///     * `nnz = ndim²` otherwise
     /// * `symmetric` -- specifies the symmetric type for the mass and **Jacobian** matrices
-    ///
-    /// Use [System::mass_put] to "put" elements into the mass matrix.
-    pub fn init_mass_matrix(&mut self, max_nnz: usize, symmetric: Sym) -> Result<(), StrError> {
+    /// * `callback` -- the function to calculate the mass matrix (will be called just once)
+    pub fn set_mass(
+        &mut self,
+        nnz: Option<usize>,
+        symmetric: Sym,
+        callback: impl Fn(&mut CooMatrix) + 'a,
+    ) -> Result<(), StrError> {
         if let Some(sym) = self.sym_jac {
             if symmetric != sym {
                 return Err("the mass matrix must have the same symmetric type as the Jacobian matrix");
             }
         }
+        self.mass_nnz = if let Some(value) = nnz {
+            value
+        } else {
+            if symmetric.triangular() {
+                (self.ndim + self.ndim * self.ndim) / 2
+            } else {
+                self.ndim * self.ndim
+            }
+        };
         self.sym_mass = Some(symmetric);
         self.symmetric = symmetric;
-        self.mass_matrix = Some(CooMatrix::new(self.ndim, self.ndim, max_nnz, self.symmetric).unwrap());
+        self.calc_mass = Some(Box::new(callback));
         Ok(())
-    }
-
-    /// Puts a new element in the mass matrix (duplicates allowed)
-    ///
-    /// See also [russell_sparse::CooMatrix::put].
-    ///
-    /// # Input
-    ///
-    /// * `i` -- row index (indices start at zero; zero-based)
-    /// * `j` -- column index (indices start at zero; zero-based)
-    /// * `value` -- the value M(i,j)
-    pub fn mass_put(&mut self, i: usize, j: usize, value: f64) -> Result<(), StrError> {
-        match self.mass_matrix.as_mut() {
-            Some(mass) => mass.put(i, j, value),
-            None => Err("mass matrix has not been initialized/enabled"),
-        }
     }
 
     /// Returns the dimension of the ODE system
@@ -249,6 +249,11 @@ impl<'a, A> System<'a, A> {
     /// Returns the number of non-zero values in the Jacobian matrix
     pub fn get_jac_nnz(&self) -> usize {
         self.jac_nnz
+    }
+
+    /// Returns the number of non-zero values in the mass matrix
+    pub fn get_mass_nnz(&self) -> usize {
+        self.mass_nnz
     }
 }
 
@@ -272,26 +277,25 @@ mod tests {
         let y = Vector::new(1);
         let mut args = 0;
         (system.function)(&mut f, x, &y, &mut args).unwrap();
-        assert_eq!(
-            system.mass_put(0, 0, 1.0).err(),
-            Some("mass matrix has not been initialized/enabled")
-        );
-        let cb = |_: &mut CooMatrix, _: f64, _: f64, _: &Vector, _: &mut NoArgs| Ok(());
+        let jac_cb = |_: &mut CooMatrix, _: f64, _: f64, _: &Vector, _: &mut NoArgs| Ok(());
+        let mas_cb = |_: &mut CooMatrix| ();
         let mut jj = CooMatrix::new(1, 1, 1, Sym::YesLower).unwrap();
+        let mut mm = CooMatrix::new(1, 1, 1, Sym::YesLower).unwrap();
         let y = Vector::new(1);
-        (cb)(&mut jj, 0.0, 0.0, &y, &mut 0).unwrap();
-        system.set_jacobian(None, Sym::YesLower, cb).unwrap();
+        (jac_cb)(&mut jj, 0.0, 0.0, &y, &mut 0).unwrap();
+        (mas_cb)(&mut mm);
+        system.set_jacobian(None, Sym::YesLower, jac_cb).unwrap();
         assert_eq!(
-            system.init_mass_matrix(1, Sym::YesUpper).err(),
+            system.set_mass(None, Sym::YesUpper, mas_cb).err(),
             Some("the mass matrix must have the same symmetric type as the Jacobian matrix")
         );
         system.sym_jac = None;
-        system.init_mass_matrix(1, Sym::YesLower).unwrap();
+        system.set_mass(None, Sym::YesLower, mas_cb).unwrap();
         assert_eq!(
-            system.set_jacobian(None, Sym::YesUpper, cb).err(),
+            system.set_jacobian(None, Sym::YesUpper, jac_cb).err(),
             Some("the Jacobian matrix must have the same symmetric type as the mass matrix")
         );
-        system.set_jacobian(None, Sym::YesLower, cb).unwrap(); // ok
+        system.set_jacobian(None, Sym::YesLower, jac_cb).unwrap(); // ok
     }
 
     #[test]
@@ -361,9 +365,6 @@ mod tests {
         // analytical_solution:
         // y[0] = f64::cos(x * x / 2.0) - 2.0 * f64::sin(x * x / 2.0);
         // y[1] = 2.0 * f64::cos(x * x / 2.0) + f64::sin(x * x / 2.0);
-        system.init_mass_matrix(2, symmetric).unwrap(); // diagonal mass matrix => OK, but not needed
-        system.mass_put(0, 0, 1.0).unwrap();
-        system.mass_put(1, 1, 1.0).unwrap();
         // call system function
         let x = 0.0;
         let y = Vector::new(2);
@@ -380,5 +381,26 @@ mod tests {
         assert_eq!(args.n_jacobian_eval, 1);
         assert_eq!(args.more_data_goes_here_fn, true);
         assert_eq!(args.more_data_goes_here_jj, true);
+    }
+
+    #[test]
+    fn ode_system_set_mass_works() {
+        let mut system = System::new(2, |f, _, _, _: &mut NoArgs| {
+            f[0] = 1.0;
+            f[1] = 1.0;
+            Ok(())
+        });
+        let mut f = Vector::new(2);
+        let x = 0.0;
+        let y = Vector::new(2);
+        let mut args = 0;
+        (system.function)(&mut f, x, &y, &mut args).unwrap();
+        let mas_cb = |_: &mut CooMatrix| ();
+        let mut mm = CooMatrix::new(2, 2, 4, Sym::YesLower).unwrap();
+        (mas_cb)(&mut mm);
+        system.set_mass(None, Sym::YesLower, mas_cb).unwrap();
+        assert_eq!(system.get_mass_nnz(), 3);
+        system.set_mass(None, Sym::No, mas_cb).unwrap();
+        assert_eq!(system.get_mass_nnz(), 4);
     }
 }

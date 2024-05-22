@@ -139,7 +139,7 @@ impl<'a, A> OdeSolver<'a, A> {
     where
         A: 'a,
     {
-        if system.mass_matrix.is_some() && params.method != Method::Radau5 {
+        if system.calc_mass.is_some() && params.method != Method::Radau5 {
             return Err("the method must be Radau5 for systems with a mass matrix");
         }
         params.validate()?;

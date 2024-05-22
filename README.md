@@ -597,7 +597,7 @@ fn main() -> Result<(), StrError> {
 
     // solver
     let params = Params::new(Method::DoPri8);
-    let mut solver = OdeSolver::new(params, &system)?;
+    let mut solver = OdeSolver::new(params, system)?;
 
     // enable dense output
     let h_out = 0.01;

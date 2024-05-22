@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::BufReader;
-use std::marker::PhantomData;
 use std::path::Path;
 
 /// Holds the data generated at an accepted step or during the dense output
@@ -125,9 +124,6 @@ pub struct Output<'a, A> {
 
     /// Holds the y(x) function (e.g., to compute the correct/analytical solution)
     yx_function: Option<Box<dyn Fn(&mut Vector, f64, &mut A) + 'a>>,
-
-    /// Handles the generic argument
-    phantom: PhantomData<fn() -> A>,
 }
 
 impl OutData {
@@ -210,7 +206,6 @@ impl<'a, A> Output<'a, A> {
             // auxiliary
             y_aux: Vector::new(EMPTY),
             yx_function: None,
-            phantom: PhantomData,
         }
     }
 

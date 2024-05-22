@@ -22,7 +22,7 @@ fn main() {
     params.set_tolerances(1e-4, 1e-4, None).unwrap();
 
     // allocate the solver
-    let mut solver = OdeSolver::new(params, &system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
 
     // solve the ODE system
     let mut yy = yy0.clone();

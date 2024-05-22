@@ -83,7 +83,7 @@ use russell_lab::{vec_all_finite, Vector};
 ///
 ///     // solver
 ///     let params = Params::new(Method::Radau5);
-///     let mut solver = OdeSolver::new(params, &system)?;
+///     let mut solver = OdeSolver::new(params, system)?;
 ///
 ///     // initial values
 ///     let x = 0.0;
@@ -135,14 +135,14 @@ impl<'a, A> OdeSolver<'a, A> {
     ///
     /// * `A` -- generic argument to assist in the f(x,y) and Jacobian functions.
     ///   It may be simply [NoArgs] indicating that no arguments are needed.
-    pub fn new(params: Params, system: &'a System<'a, A>) -> Result<Self, StrError>
+    pub fn new(params: Params, system: System<'a, A>) -> Result<Self, StrError>
     where
         A: 'a,
     {
-        if system.mass_matrix.is_some() && params.method != Method::Radau5 {
+        params.validate()?;
+        if system.calc_mass.is_some() && params.method != Method::Radau5 {
             return Err("the method must be Radau5 for systems with a mass matrix");
         }
-        params.validate()?;
         let ndim = system.ndim;
         let actual: Box<dyn OdeSolverTrait<A>> = if params.method == Method::Radau5 {
             Box::new(Radau5::new(params, system))
@@ -478,13 +478,13 @@ mod tests {
         let (system, _, _, _, _) = Samples::simple_system_with_mass_matrix(false, Genie::Umfpack);
         let mut params = Params::new(Method::MdEuler);
         assert_eq!(
-            OdeSolver::new(params, &system).err(),
+            OdeSolver::new(params, system).err(),
             Some("the method must be Radau5 for systems with a mass matrix")
         );
         let (system, _, _, _, _) = Samples::simple_equation_constant();
         params.step.m_max = 0.0; // wrong
         assert_eq!(
-            OdeSolver::new(params, &system).err(),
+            OdeSolver::new(params, system).err(),
             Some("parameter must satisfy: 0.001 ≤ m_min < 0.5 and m_min < m_max")
         );
     }
@@ -492,14 +492,15 @@ mod tests {
     #[test]
     fn solve_captures_errors() {
         let (system, _, _, mut args, _) = Samples::simple_equation_constant();
+        let ndim = system.ndim;
         let params = Params::new(Method::FwEuler);
-        let mut solver = OdeSolver::new(params, &system).unwrap();
-        let mut y0 = Vector::new(system.ndim + 1); // wrong dim
+        let mut solver = OdeSolver::new(params, system).unwrap();
+        let mut y0 = Vector::new(ndim + 1); // wrong dim
         assert_eq!(
             solver.solve(&mut y0, 0.0, 1.0, None, &mut args).err(),
             Some("y0.dim() must be equal to ndim")
         );
-        let mut y0 = Vector::new(system.ndim);
+        let mut y0 = Vector::new(ndim);
         assert_eq!(
             solver.solve(&mut y0, 0.0, 0.0, None, &mut args).err(),
             Some("x1 must be greater than x0")
@@ -517,13 +518,13 @@ mod tests {
         // it becomes stiff and yield infinite results
         let (system, _, mut y0, mut args, _) = Samples::brusselator_ode();
         let params = Params::new(Method::FwEuler);
-        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut solver = OdeSolver::new(params, system.clone()).unwrap();
         assert_eq!(
             solver.solve(&mut y0, 0.0, 9.0, Some(1.0), &mut args).err(),
             Some("an element of the vector is either infinite or NaN")
         );
         let params = Params::new(Method::MdEuler);
-        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut solver = OdeSolver::new(params, system).unwrap();
         assert_eq!(
             solver.solve(&mut y0, 0.0, 1.0, None, &mut args).err(),
             Some("an element of the vector is either infinite or NaN")
@@ -535,7 +536,7 @@ mod tests {
         let (system, _, mut y0, mut args, _) = Samples::simple_equation_constant();
         let mut params = Params::new(Method::MdEuler);
         params.step.n_step_max = 1; // will make the solver to fail (too few steps)
-        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut solver = OdeSolver::new(params, system).unwrap();
         assert_eq!(
             solver.solve(&mut y0, 0.0, 1.0, None, &mut args).err(),
             Some("variable stepping did not converge")
@@ -546,7 +547,7 @@ mod tests {
     fn out_initialize_errors_are_captured() {
         let (system, _, mut y0, mut args, _) = Samples::simple_equation_constant();
         let params = Params::new(Method::DoPri5);
-        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut solver = OdeSolver::new(params, system).unwrap();
         solver
             .enable_output()
             .set_dense_x_out(&[0.0, 1.0])
@@ -569,7 +570,7 @@ mod tests {
         let (system, x0, y0, mut args, _) = Samples::simple_equation_constant();
         let x1 = 1.0;
         let params = Params::new(Method::FwEuler);
-        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut solver = OdeSolver::new(params, system).unwrap();
         let mut y = y0.clone();
         solver.solve(&mut y, x0, x1, None, &mut args).unwrap();
         vec_approx_eq(&y, &[1.0], 1e-15);
@@ -581,7 +582,7 @@ mod tests {
         let (system, _, mut y0, mut args, _) = Samples::simple_equation_constant();
         let mut params = Params::new(Method::DoPri5);
         params.step.h_ini = 20.0; // will be truncated to 1 yielding a single step
-        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut solver = OdeSolver::new(params, system).unwrap();
         solver.solve(&mut y0, 0.0, 1.0, None, &mut args).unwrap();
         assert_eq!(solver.work.stats.n_accepted, 1);
         vec_approx_eq(&y0, &[1.0], 1e-15);
@@ -592,7 +593,7 @@ mod tests {
         let (system, _, mut y0, mut args, _) = Samples::simple_equation_constant();
         let mut params = Params::new(Method::MdEuler);
         params.step.h_ini = 0.1;
-        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut solver = OdeSolver::new(params, system).unwrap();
         solver.solve(&mut y0, 0.0, 0.3, None, &mut args).unwrap();
         vec_approx_eq(&y0, &[0.3], 1e-15);
     }
@@ -603,11 +604,11 @@ mod tests {
         let mut params = Params::new(Method::MdEuler);
         params.step.n_step_max = 0;
         assert_eq!(
-            OdeSolver::new(params, &system).err(),
+            OdeSolver::new(params, system.clone()).err(),
             Some("parameter must satisfy: n_step_max ≥ 1")
         );
         params.step.n_step_max = 1000;
-        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut solver = OdeSolver::new(params, system).unwrap();
         assert_eq!(solver.params.step.n_step_max, 1000);
         params.step.n_step_max = 2; // this will not change the solver until update_params is called
         assert_eq!(solver.params.step.n_step_max, 1000);
@@ -631,7 +632,7 @@ mod tests {
         let (system, x0, mut y0, mut args, _) = Samples::simple_equation_constant();
         let x1 = 1.0;
         let params = Params::new(Method::FwEuler);
-        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut solver = OdeSolver::new(params, system).unwrap();
         solver.enable_output().set_dense_recording(&[0]);
         assert_eq!(
             solver.solve(&mut y0, x0, x1, None, &mut args).err(),
@@ -644,7 +645,7 @@ mod tests {
         // system and solver
         let (system, _, y0, mut args, y_fn_x) = Samples::simple_equation_constant();
         let params = Params::new(Method::DoPri5);
-        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut solver = OdeSolver::new(params, system).unwrap();
 
         // output
         let path_key = "/tmp/russell_ode/test_solve_step_output_works";
@@ -708,7 +709,7 @@ mod tests {
         // system and solver
         let (system, _, y0, mut args, _) = Samples::simple_equation_constant();
         let params = Params::new(Method::FwEuler);
-        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut solver = OdeSolver::new(params, system).unwrap();
 
         // output
         solver.enable_output().set_step_recording(&[0]);
@@ -743,7 +744,7 @@ mod tests {
         // system and solver
         let (system, _, _, mut args, _) = Samples::simple_equation_constant();
         let params = Params::new(Method::DoPri5);
-        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut solver = OdeSolver::new(params, system).unwrap();
 
         // output
         solver
@@ -771,7 +772,7 @@ mod tests {
         // system and solver
         let (system, _, y0, mut args, y_fn_x) = Samples::simple_equation_constant();
         let params = Params::new(Method::DoPri5);
-        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut solver = OdeSolver::new(params, system).unwrap();
 
         // output
         const H_OUT: f64 = 0.1;
@@ -874,7 +875,7 @@ mod tests {
         // system and solver
         let (system, _, _, mut args, _) = Samples::simple_equation_constant();
         let params = Params::new(Method::DoPri5);
-        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut solver = OdeSolver::new(params, system).unwrap();
 
         // interior output stations and selected y component
         let interior_x_out = &[-0.5, 0.0, 0.5];
@@ -936,7 +937,7 @@ mod tests {
         // parameters and solver
         let mut params = Params::new(Method::DoPri8);
         params.step.h_ini = 0.2;
-        let mut solver = OdeSolver::new(params, &system).unwrap();
+        let mut solver = OdeSolver::new(params, system).unwrap();
 
         // output
         solver.enable_output().set_dense_h_out(0.1).unwrap().set_dense_callback(

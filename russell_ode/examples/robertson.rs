@@ -43,8 +43,8 @@ fn main() -> Result<(), StrError> {
     params3.erk.lund_beta = 0.0;
 
     // solvers
-    let mut radau5 = OdeSolver::new(params1, &system)?;
-    let mut dopri5 = OdeSolver::new(params2, &system)?;
+    let mut radau5 = OdeSolver::new(params1, system.clone())?;
+    let mut dopri5 = OdeSolver::new(params2, system)?;
 
     // selected component for output
     let sel = 1;

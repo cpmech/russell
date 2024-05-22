@@ -8,7 +8,7 @@ use russell_lab::{vec_add, vec_copy, Vector};
 /// and should not be used in production codes.
 pub(crate) struct EulerForward<'a, A> {
     /// ODE system
-    system: &'a System<'a, A>,
+    system: System<'a, A>,
 
     /// Vector holding the function evaluation
     ///
@@ -21,7 +21,7 @@ pub(crate) struct EulerForward<'a, A> {
 
 impl<'a, A> EulerForward<'a, A> {
     /// Allocates a new instance
-    pub fn new(system: &'a System<'a, A>) -> Self {
+    pub fn new(system: System<'a, A>) -> Self {
         let ndim = system.ndim;
         EulerForward {
             system,
@@ -86,7 +86,7 @@ mod tests {
         let ndim = system.ndim;
 
         // allocate structs
-        let mut solver = EulerForward::new(&system);
+        let mut solver = EulerForward::new(system);
         let mut work = Workspace::new(Method::FwEuler);
 
         // check dense output availability
@@ -163,7 +163,7 @@ mod tests {
             f[0] = 1.0;
             Err("stop")
         });
-        let mut solver = EulerForward::new(&system);
+        let mut solver = EulerForward::new(system);
         let mut work = Workspace::new(Method::FwEuler);
         let x = 0.0;
         let y = Vector::from(&[0.0]);

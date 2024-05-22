@@ -18,7 +18,7 @@ fn test_radau5_robertson_small_h() {
     params.set_tolerances(1e-2, 1e-2, None).unwrap();
 
     // allocate the solver
-    let mut solver = OdeSolver::new(params, &system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
 
     // solve the ODE system
     let res = solver.solve(&mut y0, x0, x1, None, &mut args);

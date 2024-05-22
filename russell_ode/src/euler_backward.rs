@@ -9,7 +9,7 @@ pub(crate) struct EulerBackward<'a, A> {
     params: Params,
 
     /// ODE system
-    system: &'a System<'a, A>,
+    system: System<'a, A>,
 
     /// Vector holding the function evaluation
     ///
@@ -34,7 +34,7 @@ pub(crate) struct EulerBackward<'a, A> {
 
 impl<'a, A> EulerBackward<'a, A> {
     /// Allocates a new instance
-    pub fn new(params: Params, system: &'a System<'a, A>) -> Self {
+    pub fn new(params: Params, system: System<'a, A>) -> Self {
         let ndim = system.ndim;
         let jac_nnz = if params.newton.use_numerical_jacobian {
             ndim * ndim
@@ -42,6 +42,7 @@ impl<'a, A> EulerBackward<'a, A> {
             system.jac_nnz
         };
         let nnz = jac_nnz + ndim; // +ndim corresponds to the diagonal I matrix
+        let sym = system.symmetric;
         EulerBackward {
             params,
             system,
@@ -49,7 +50,7 @@ impl<'a, A> EulerBackward<'a, A> {
             w: Vector::new(ndim),
             r: Vector::new(ndim),
             dy: Vector::new(ndim),
-            kk: SparseMatrix::new_coo(ndim, ndim, nnz, system.symmetric).unwrap(),
+            kk: SparseMatrix::new_coo(ndim, ndim, nnz, sym).unwrap(),
             solver: LinSolver::new(params.newton.genie).unwrap(),
         }
     }
@@ -107,7 +108,7 @@ impl<'a, A> OdeSolverTrait<A> for EulerBackward<'a, A> {
                     work.stats.n_function += ndim;
                     let w1 = &mut self.k; // workspace
                     let w2 = &mut self.dy; // workspace
-                    numerical_jacobian(kk, h, x_new, y_new, w1, w2, args, &self.system.function)?;
+                    numerical_jacobian(kk, h, x_new, y_new, w1, w2, args, self.system.function.as_ref())?;
                 } else {
                     (self.system.jacobian.as_ref().unwrap())(kk, h, x_new, y_new, args)?;
                 }
@@ -260,7 +261,7 @@ mod tests {
 
         // allocate structs
         let params = Params::new(Method::BwEuler);
-        let mut solver = EulerBackward::new(params, &system);
+        let mut solver = EulerBackward::new(params, system);
         let mut work = Workspace::new(Method::BwEuler);
 
         // check dense output availability
@@ -315,7 +316,7 @@ mod tests {
         // allocate structs
         let mut params = Params::new(Method::BwEuler);
         params.newton.use_numerical_jacobian = true;
-        let mut solver = EulerBackward::new(params, &system);
+        let mut solver = EulerBackward::new(params, system);
         let mut work = Workspace::new(Method::BwEuler);
 
         // numerical approximation
@@ -359,7 +360,7 @@ mod tests {
         let mut params = Params::new(Method::BwEuler);
         let (system, x0, y0, mut args, _) = Samples::kreyszig_ex4_page920();
         params.newton.n_iteration_max = 0;
-        let mut solver = EulerBackward::new(params, &system);
+        let mut solver = EulerBackward::new(params, system);
         let mut work = Workspace::new(Method::BwEuler);
         assert_eq!(
             solver.step(&mut work, x0, &y0, 0.1, &mut args).err(),
@@ -391,7 +392,7 @@ mod tests {
             })
             .unwrap();
         let params = Params::new(Method::BwEuler);
-        let mut solver = EulerBackward::new(params, &system);
+        let mut solver = EulerBackward::new(params, system);
         let mut work = Workspace::new(Method::BwEuler);
         let x = 0.0;
         let y = Vector::from(&[0.0]);

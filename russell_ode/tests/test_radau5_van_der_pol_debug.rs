@@ -13,7 +13,7 @@ fn test_radau5_van_der_pol_debug() {
     params.debug = true;
 
     // allocate the solver
-    let mut solver = OdeSolver::new(params, &system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
 
     // solve the ODE system
     solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();

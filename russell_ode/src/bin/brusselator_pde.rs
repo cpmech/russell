@@ -99,7 +99,9 @@ fn main() -> Result<(), StrError> {
     }
 
     // solve the ODE system
-    let mut solver = OdeSolver::new(params, &system)?;
+    let ndim = system.get_ndim();
+    let jac_nnz = system.get_jac_nnz();
+    let mut solver = OdeSolver::new(params, system)?;
     solver.solve(&mut yy0, t0, t1, None, &mut args)?;
 
     // print stat
@@ -108,8 +110,8 @@ fn main() -> Result<(), StrError> {
     println!("Number of points along x and y   = {}", opt.npoint);
     println!("Tolerance (abs_tol = rel_tol)    = {}", format_scientific(tol, 8, 2));
     println!("Concurrent real and complex sys  = {}", !opt.serial);
-    println!("Problem dimension (ndim)         = {}", system.get_ndim());
-    println!("Number of non-zeros (jac_nnz)    = {}", system.get_jac_nnz());
+    println!("Problem dimension (ndim)         = {}", ndim);
+    println!("Number of non-zeros (jac_nnz)    = {}", jac_nnz);
     println!("Number of BLAS threads           = {}", get_num_threads());
     println!("Linear solver                    = {:?}", params.newton.genie);
     println!("{}", stat);

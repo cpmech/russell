@@ -12,7 +12,7 @@ fn test_bweuler_hairer_wanner_eq1() {
 
     // set configuration parameters
     let params = Params::new(Method::BwEuler);
-    let mut solver = OdeSolver::new(params, &system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
 
     // solve the ODE system
     let h_equal = Some(1.875 / 50.0);
@@ -57,7 +57,7 @@ fn test_bweuler_hairer_wanner_eq1_num_jac() {
     params.newton.use_numerical_jacobian = true;
 
     // solve the ODE system
-    let mut solver = OdeSolver::new(params, &system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
     let h_equal = Some(1.875 / 50.0);
     solver.solve(&mut y0, x0, x1, h_equal, &mut args).unwrap();
 
@@ -100,7 +100,7 @@ fn test_bweuler_hairer_wanner_eq1_modified_newton() {
     params.bweuler.use_modified_newton = true;
 
     // solve the ODE system
-    let mut solver = OdeSolver::new(params, &system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
     let h_equal = Some(1.875 / 50.0);
     solver.solve(&mut y0, x0, x1, h_equal, &mut args).unwrap();
 

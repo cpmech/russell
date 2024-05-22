@@ -21,13 +21,14 @@ use russell_ode::prelude::*;
 fn main() -> Result<(), StrError> {
     // get the ODE system
     let (system, x0, y0, mut args, y_fn_x) = Samples::hairer_wanner_eq1();
+    let ndim = system.get_ndim();
 
     // final x
     let x1 = 1.5;
 
     // solvers
-    let mut bweuler = OdeSolver::new(Params::new(Method::BwEuler), &system)?;
-    let mut fweuler = OdeSolver::new(Params::new(Method::FwEuler), &system)?;
+    let mut bweuler = OdeSolver::new(Params::new(Method::BwEuler), system.clone())?;
+    let mut fweuler = OdeSolver::new(Params::new(Method::FwEuler), system)?;
 
     // solve the problem with BwEuler and h = 0.5
     bweuler.enable_output().set_step_recording(&[0]);
@@ -51,7 +52,7 @@ fn main() -> Result<(), StrError> {
     fweuler.solve(&mut y, x0, x1, Some(h), &mut args)?;
 
     // analytical solution
-    let mut y_aux = Vector::new(system.get_ndim());
+    let mut y_aux = Vector::new(ndim);
     let mut x_ana1 = Vector::linspace(0.0, 0.2, 20)?; // small stepsizes
     let mut x_ana2 = Vector::linspace(0.201, x1, 20)?; // larger stepsizes
     x_ana1.as_mut_data().append(x_ana2.as_mut_data()); // merge the two vectors

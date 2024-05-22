@@ -25,7 +25,7 @@ pub(crate) struct ExplicitRungeKutta<'a, A> {
     params: Params,
 
     /// ODE system
-    system: &'a System<'a, A>,
+    system: System<'a, A>,
 
     /// Information such as implicit, embedded, etc.
     info: Information,
@@ -77,7 +77,7 @@ pub(crate) struct ExplicitRungeKutta<'a, A> {
 
 impl<'a, A> ExplicitRungeKutta<'a, A> {
     /// Allocates a new instance
-    pub fn new(params: Params, system: &'a System<'a, A>) -> Result<Self, StrError> {
+    pub fn new(params: Params, system: System<'a, A>) -> Result<Self, StrError> {
         // Runge-Kutta coefficients
         #[rustfmt::skip]
         let (aa, bb, cc) = match params.method {
@@ -377,7 +377,7 @@ mod tests {
             println!("\n... {:?} ...", method);
             let params = Params::new(method);
             let system = System::new(1, |_, _, _, _args: &mut Args| Ok(()));
-            let erk = ExplicitRungeKutta::new(params, &system).unwrap();
+            let erk = ExplicitRungeKutta::new(params, system).unwrap();
             let nstage = erk.nstage;
             assert_eq!(erk.aa.dims(), (nstage, nstage));
             assert_eq!(erk.bb.dim(), nstage);
@@ -502,7 +502,7 @@ mod tests {
 
         // allocate structs
         let params = Params::new(Method::MdEuler); // aka the Improved Euler in Kreyszig's book
-        let mut solver = ExplicitRungeKutta::new(params, &system).unwrap();
+        let mut solver = ExplicitRungeKutta::new(params, system).unwrap();
         let mut work = Workspace::new(Method::FwEuler);
 
         // check dense output availability
@@ -585,7 +585,7 @@ mod tests {
 
         // allocate structs
         let params = Params::new(Method::Rk4); // aka the Classical RK in Kreyszig's book
-        let mut solver = ExplicitRungeKutta::new(params, &system).unwrap();
+        let mut solver = ExplicitRungeKutta::new(params, system).unwrap();
         let mut work = Workspace::new(Method::FwEuler);
 
         // check dense output availability
@@ -686,7 +686,7 @@ mod tests {
 
         // allocate solver
         let params = Params::new(Method::Fehlberg4);
-        let mut solver = ExplicitRungeKutta::new(params, &system).unwrap();
+        let mut solver = ExplicitRungeKutta::new(params, system).unwrap();
         let mut work = Workspace::new(Method::FwEuler);
 
         // perform one step (compute k)
@@ -733,20 +733,20 @@ mod tests {
         });
 
         assert_eq!(
-            ExplicitRungeKutta::new(Params::new(Method::Radau5), &system).err(),
+            ExplicitRungeKutta::new(Params::new(Method::Radau5), system.clone()).err(),
             Some("cannot use Radau5 with ExplicitRungeKutta")
         );
         assert_eq!(
-            ExplicitRungeKutta::new(Params::new(Method::BwEuler), &system).err(),
+            ExplicitRungeKutta::new(Params::new(Method::BwEuler), system.clone()).err(),
             Some("cannot use BwEuler with ExplicitRungeKutta")
         );
         assert_eq!(
-            ExplicitRungeKutta::new(Params::new(Method::FwEuler), &system).err(),
+            ExplicitRungeKutta::new(Params::new(Method::FwEuler), system.clone()).err(),
             Some("cannot use FwEuler with ExplicitRungeKutta")
         );
 
         let params = Params::new(Method::DoPri8);
-        let mut solver = ExplicitRungeKutta::new(params, &system).unwrap();
+        let mut solver = ExplicitRungeKutta::new(params, system).unwrap();
         let mut work = Workspace::new(Method::DoPri8);
         let mut x = 0.0;
         let mut y = Vector::from(&[0.0]);
@@ -782,7 +782,7 @@ mod tests {
         for method in Method::erk_methods() {
             let params = Params::new(method);
             let mut work = Workspace::new(method);
-            let mut solver = ExplicitRungeKutta::new(params, &system).unwrap();
+            let mut solver = ExplicitRungeKutta::new(params, system.clone()).unwrap();
             solver.step(&mut work, x, &y, h, &mut args).unwrap();
             work.stats.n_accepted += 1; // important (must precede accept)
             solver.accept(&mut work, &mut x, &mut y, h, &mut args).unwrap();

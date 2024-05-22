@@ -15,7 +15,7 @@ fn test_radau5_robertson() {
     params.set_tolerances(1e-8, 1e-2, None).unwrap();
 
     // allocate the solver
-    let mut solver = OdeSolver::new(params, &system).unwrap();
+    let mut solver = OdeSolver::new(params, system).unwrap();
 
     // enable output of accepted steps
     solver.enable_output().set_step_recording(&[0, 1, 2]);

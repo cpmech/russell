@@ -30,7 +30,7 @@ fn main() -> Result<(), StrError> {
     params.set_tolerances(1e-5, 1e-5, None)?;
 
     // allocate the solver
-    let mut solver = OdeSolver::new(params, &system)?;
+    let mut solver = OdeSolver::new(params, system)?;
 
     // enable step and dense output
     let h_out = 0.01;

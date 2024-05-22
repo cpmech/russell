@@ -26,7 +26,7 @@ fn main() -> Result<(), StrError> {
     let params = Params::new(Method::DoPri8);
 
     // allocate the solver
-    let mut solver = OdeSolver::new(params, &system)?;
+    let mut solver = OdeSolver::new(params, system)?;
 
     // enable dense output
     let h_out = 0.01;

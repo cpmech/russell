@@ -2,7 +2,7 @@ use crate::StrError;
 use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::math::SQRT_6;
 use russell_lab::{complex_vec_zip, cpx, format_fortran, vec_copy, Complex64, ComplexVector, Vector};
-use russell_sparse::{numerical_jacobian, ComplexCscMatrix, CscMatrix};
+use russell_sparse::{numerical_jacobian, ComplexCscMatrix, CooMatrix, CscMatrix};
 use russell_sparse::{ComplexLinSolver, ComplexSparseMatrix, Genie, LinSolver, SparseMatrix};
 use std::thread;
 
@@ -29,7 +29,10 @@ pub(crate) struct Radau5<'a, A> {
     params: Params,
 
     /// ODE system
-    system: &'a System<'a, A>,
+    system: System<'a, A>,
+
+    /// Holds the mass matrix
+    mass: Option<CooMatrix>,
 
     /// Holds the Jacobian matrix. J = df/dy
     jj: SparseMatrix,
@@ -117,11 +120,15 @@ pub(crate) struct Radau5<'a, A> {
 
 impl<'a, A> Radau5<'a, A> {
     /// Allocates a new instance
-    pub fn new(params: Params, system: &'a System<'a, A>) -> Self {
+    pub fn new(params: Params, system: System<'a, A>) -> Self {
         let ndim = system.ndim;
-        let mass_nnz = match system.mass_matrix.as_ref() {
-            Some(mass) => mass.get_info().2,
-            None => ndim,
+        let (mass, mass_nnz) = match system.calc_mass.as_ref() {
+            Some(calc) => {
+                let mut mm = CooMatrix::new(ndim, ndim, system.mass_nnz, system.symmetric).unwrap();
+                (calc)(&mut mm);
+                (Some(mm), system.mass_nnz)
+            }
+            None => (None, ndim), // ndim => diagonal
         };
         let jac_nnz = if params.newton.use_numerical_jacobian {
             if system.symmetric.triangular() {
@@ -133,13 +140,15 @@ impl<'a, A> Radau5<'a, A> {
             system.jac_nnz
         };
         let nnz = mass_nnz + jac_nnz;
+        let sym = system.symmetric;
         let theta = params.radau5.theta_max;
         Radau5 {
             params,
             system,
-            jj: SparseMatrix::new_coo(ndim, ndim, jac_nnz, system.symmetric).unwrap(),
-            kk_real: SparseMatrix::new_coo(ndim, ndim, nnz, system.symmetric).unwrap(),
-            kk_comp: ComplexSparseMatrix::new_coo(ndim, ndim, nnz, system.symmetric).unwrap(),
+            mass,
+            jj: SparseMatrix::new_coo(ndim, ndim, jac_nnz, sym).unwrap(),
+            kk_real: SparseMatrix::new_coo(ndim, ndim, nnz, sym).unwrap(),
+            kk_comp: ComplexSparseMatrix::new_coo(ndim, ndim, nnz, sym).unwrap(),
             solver_real: LinSolver::new(params.newton.genie).unwrap(),
             solver_comp: ComplexLinSolver::new(params.newton.genie).unwrap(),
             reuse_jacobian: false,
@@ -200,7 +209,7 @@ impl<'a, A> Radau5<'a, A> {
                 let w1 = &mut self.dw0; // workspace
                 let w2 = &mut self.dw1; // workspace
                 vec_copy(y_mut, y).unwrap();
-                numerical_jacobian(jj, 1.0, x, y_mut, w1, w2, args, &self.system.function)?;
+                numerical_jacobian(jj, 1.0, x, y_mut, w1, w2, args, self.system.function.as_ref())?;
             } else {
                 (self.system.jacobian.as_ref().unwrap())(jj, 1.0, x, y, args)?;
             }
@@ -214,7 +223,7 @@ impl<'a, A> Radau5<'a, A> {
         let gamma = GAMMA / h;
         kk_real.assign(-1.0, jj).unwrap(); // K_real = -J
         kk_comp.assign_real(-1.0, 0.0, jj).unwrap(); // K_comp = -J
-        match self.system.mass_matrix.as_ref() {
+        match self.mass.as_ref() {
             Some(mass) => {
                 kk_real.augment(gamma, mass).unwrap(); // K_real += γ M
                 kk_comp.augment_real(alpha, beta, mass).unwrap(); // K_comp += (α + βi) M
@@ -418,7 +427,7 @@ impl<'a, A> OdeSolverTrait<A> for Radau5<'a, A> {
             (self.system.function)(&mut self.k2, u2, &self.v2, args)?;
 
             // compute the right-hand side vectors
-            let (l0, l1, l2) = match self.system.mass_matrix.as_ref() {
+            let (l0, l1, l2) = match self.mass.as_ref() {
                 Some(mass) => {
                     mass.mat_vec_mul(&mut self.dw0, 1.0, &self.w0).unwrap(); // dw0 := M ⋅ w0
                     mass.mat_vec_mul(&mut self.dw1, 1.0, &self.w1).unwrap(); // dw1 := M ⋅ w1
@@ -538,7 +547,7 @@ impl<'a, A> OdeSolverTrait<A> for Radau5<'a, A> {
         let err = &mut self.dw0; // error variable
 
         // compute ez, mez and rhs
-        match self.system.mass_matrix.as_ref() {
+        match self.mass.as_ref() {
             Some(mass) => {
                 for m in 0..ndim {
                     ez[m] = E0 * self.z0[m] + E1 * self.z1[m] + E2 * self.z2[m];
@@ -748,7 +757,7 @@ mod tests {
 
         // allocate structs
         let params = Params::new(Method::Radau5);
-        let mut solver = Radau5::new(params, &system);
+        let mut solver = Radau5::new(params, system);
         let mut work = Workspace::new(Method::Radau5);
 
         // message
@@ -817,7 +826,7 @@ mod tests {
         // allocate structs
         let mut params = Params::new(Method::Radau5);
         params.newton.use_numerical_jacobian = true;
-        let mut solver = Radau5::new(params, &system);
+        let mut solver = Radau5::new(params, system);
         let mut work = Workspace::new(Method::Radau5);
 
         // message
@@ -899,7 +908,7 @@ mod tests {
             })
             .unwrap();
         let params = Params::new(Method::Radau5);
-        let mut solver = Radau5::new(params, &system);
+        let mut solver = Radau5::new(params, system);
         let mut work = Workspace::new(Method::Radau5);
         let x = 0.0;
         let y = Vector::from(&[0.0]);
@@ -932,7 +941,7 @@ mod tests {
                 let mut params = Params::new(Method::Radau5);
                 params.newton.genie = genie;
                 params.newton.use_numerical_jacobian = numerical;
-                let mut solver = Radau5::new(params, &system);
+                let mut solver = Radau5::new(params, system);
                 let mut work = Workspace::new(Method::Radau5);
 
                 // message
@@ -996,7 +1005,7 @@ mod tests {
                 let mut params = Params::new(Method::Radau5);
                 params.newton.genie = genie;
                 params.newton.use_numerical_jacobian = numerical;
-                let mut solver = Radau5::new(params, &system);
+                let mut solver = Radau5::new(params, system);
                 let mut work = Workspace::new(Method::Radau5);
 
                 // message

@@ -24,15 +24,12 @@ use std::thread;
 /// 2. E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
 ///    Stiff and Differential-Algebraic Problems. Second Revised Edition.
 ///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-pub(crate) struct Radau5<'a, F, A>
-where
-    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-{
+pub(crate) struct Radau5<'a, A> {
     /// Holds the parameters
     params: Params,
 
     /// ODE system
-    system: &'a System<'a, F, A>,
+    system: &'a System<'a, A>,
 
     /// Holds the Jacobian matrix. J = df/dy
     jj: SparseMatrix,
@@ -118,12 +115,9 @@ where
     dw12: ComplexVector, // packed (dw1, dw2)
 }
 
-impl<'a, F, A> Radau5<'a, F, A>
-where
-    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-{
+impl<'a, A> Radau5<'a, A> {
     /// Allocates a new instance
-    pub fn new(params: Params, system: &'a System<'a, F, A>) -> Self {
+    pub fn new(params: Params, system: &'a System<'a, A>) -> Self {
         let ndim = system.ndim;
         let mass_nnz = match system.mass_matrix.as_ref() {
             Some(mass) => mass.get_info().2,
@@ -331,10 +325,7 @@ where
     }
 }
 
-impl<'a, F, A> OdeSolverTrait<A> for Radau5<'a, F, A>
-where
-    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-{
+impl<'a, A> OdeSolverTrait<A> for Radau5<'a, A> {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
         Ok(())

@@ -133,13 +133,10 @@ impl<'a, A> OdeSolver<'a, A> {
     ///
     /// # Generics
     ///
-    /// The generic arguments here are:
-    ///
-    /// * `F` -- function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    /// * `A` -- generic argument to assist in the `F` and Jacobian functions. It may be simply [crate::NoArgs] indicating that no arguments are needed.
-    pub fn new<F>(params: Params, system: &'a System<'a, F, A>) -> Result<Self, StrError>
+    /// * `A` -- generic argument to assist in the f(x,y) and Jacobian functions.
+    ///   It may be simply [NoArgs] indicating that no arguments are needed.
+    pub fn new(params: Params, system: &'a System<'a, A>) -> Result<Self, StrError>
     where
-        F: 'a + Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
         A: 'a,
     {
         if system.mass_matrix.is_some() && params.method != Method::Radau5 {

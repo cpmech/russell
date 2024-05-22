@@ -20,15 +20,12 @@ use russell_lab::{format_fortran, vec_copy, vec_update, Matrix, Vector};
 /// 2. E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
 ///    Stiff and Differential-Algebraic Problems. Second Revised Edition.
 ///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-pub(crate) struct ExplicitRungeKutta<'a, F, A>
-where
-    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-{
+pub(crate) struct ExplicitRungeKutta<'a, A> {
     /// Holds the parameters
     params: Params,
 
     /// ODE system
-    system: &'a System<'a, F, A>,
+    system: &'a System<'a, A>,
 
     /// Information such as implicit, embedded, etc.
     info: Information,
@@ -78,12 +75,9 @@ where
     dense_out: Option<ErkDenseOut>,
 }
 
-impl<'a, F, A> ExplicitRungeKutta<'a, F, A>
-where
-    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-{
+impl<'a, A> ExplicitRungeKutta<'a, A> {
     /// Allocates a new instance
-    pub fn new(params: Params, system: &'a System<'a, F, A>) -> Result<Self, StrError> {
+    pub fn new(params: Params, system: &'a System<'a, A>) -> Result<Self, StrError> {
         // Runge-Kutta coefficients
         #[rustfmt::skip]
         let (aa, bb, cc) = match params.method {
@@ -153,10 +147,7 @@ where
     }
 }
 
-impl<'a, F, A> OdeSolverTrait<A> for ExplicitRungeKutta<'a, F, A>
-where
-    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-{
+impl<'a, A> OdeSolverTrait<A> for ExplicitRungeKutta<'a, A> {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
         self.dense_out = Some(ErkDenseOut::new(self.params.method, self.system.ndim)?);

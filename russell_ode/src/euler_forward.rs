@@ -6,12 +6,9 @@ use russell_lab::{vec_add, vec_copy, Vector};
 ///
 /// **Warning:** This method is interesting for didactic purposes only
 /// and should not be used in production codes.
-pub(crate) struct EulerForward<'a, F, A>
-where
-    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-{
+pub(crate) struct EulerForward<'a, A> {
     /// ODE system
-    system: &'a System<'a, F, A>,
+    system: &'a System<'a, A>,
 
     /// Vector holding the function evaluation
     ///
@@ -22,12 +19,9 @@ where
     w: Vector,
 }
 
-impl<'a, F, A> EulerForward<'a, F, A>
-where
-    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-{
+impl<'a, A> EulerForward<'a, A> {
     /// Allocates a new instance
-    pub fn new(system: &'a System<'a, F, A>) -> Self {
+    pub fn new(system: &'a System<'a, A>) -> Self {
         let ndim = system.ndim;
         EulerForward {
             system,
@@ -37,10 +31,7 @@ where
     }
 }
 
-impl<'a, F, A> OdeSolverTrait<A> for EulerForward<'a, F, A>
-where
-    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-{
+impl<'a, A> OdeSolverTrait<A> for EulerForward<'a, A> {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError> {
         Err("dense output is not available for the FwEuler method")

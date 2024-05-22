@@ -38,10 +38,8 @@ pub struct OutCount {
 ///
 /// # Generics
 ///
-/// The generic arguments are:
-///
-/// * `A` -- Is auxiliary argument for the `F`, `J`, `YxFunction`, and `OutCallback` functions.
-///   It may be simply [crate::NoArgs] indicating that no arguments are effectively used.
+/// * `A` -- generic argument to assist in the f(x,y) and Jacobian functions.
+///   It may be simply [crate::NoArgs] indicating that no arguments are needed.
 pub struct Output<'a, A> {
     /// Indicates whether the solver called initialize or not
     initialized: bool,

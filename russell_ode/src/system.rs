@@ -37,10 +37,8 @@ pub type NoArgs = u8;
 ///
 /// # Generics
 ///
-/// The generic arguments here are:
-///
-/// * `F` -- function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-/// * `A` -- generic argument to assist in the `F` and Jacobian functions. It may be simply [NoArgs] indicating that no arguments are needed.
+/// * `A` -- generic argument to assist in the f(x,y) and Jacobian functions.
+///   It may be simply [NoArgs] indicating that no arguments are needed.
 ///
 /// # Important
 ///
@@ -63,15 +61,12 @@ pub type NoArgs = u8;
 /// 2. E. Hairer, G. Wanner (2002) Solving Ordinary Differential Equations II.
 ///    Stiff and Differential-Algebraic Problems. Second Revised Edition.
 ///    Corrected 2nd printing 2002. Springer Series in Computational Mathematics, 614p
-pub struct System<'a, F, A>
-where
-    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-{
+pub struct System<'a, A> {
     /// System dimension
     pub(crate) ndim: usize,
 
     /// ODE system function
-    pub(crate) function: F,
+    pub(crate) function: Box<dyn Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + 'a>,
 
     /// Jacobian function
     pub(crate) jacobian: Option<Box<dyn Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError> + 'a>>,
@@ -95,10 +90,7 @@ where
     phantom: PhantomData<fn() -> A>,
 }
 
-impl<'a, F, A> System<'a, F, A>
-where
-    F: Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
-{
+impl<'a, A> System<'a, A> {
     /// Allocates a new instance
     ///
     /// # Input
@@ -111,10 +103,8 @@ where
     ///
     /// # Generics
     ///
-    /// The generic arguments here are:
-    ///
-    /// * `F` -- function to compute the `f` vector: `(f: &mut Vector, x: f64, y: &Vector, args: &mut A)`
-    /// * `A` -- generic argument to assist in the `F` and Jacobian functions. It may be simply [NoArgs] indicating that no arguments are needed.
+    /// * `A` -- generic argument to assist in the f(x,y) and Jacobian functions.
+    ///   It may be simply [NoArgs] indicating that no arguments are needed.
     ///
     /// # Examples
     ///
@@ -161,10 +151,10 @@ where
     ///     Ok(())
     /// }
     /// ```
-    pub fn new(ndim: usize, function: F) -> Self {
+    pub fn new(ndim: usize, function: impl Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + 'a) -> Self {
         System {
             ndim,
-            function,
+            function: Box::new(function),
             jacobian: None,
             jac_nnz: ndim * ndim,
             sym_jac: None,

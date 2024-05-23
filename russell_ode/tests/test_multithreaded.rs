@@ -1,8 +1,8 @@
+use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 use russell_lab::{approx_eq, Vector};
 use russell_ode::{Method, NoArgs, OdeSolver, Params, System};
-use std::thread;
 
-struct Simulator<'a> {
+struct SimData<'a> {
     solver: OdeSolver<'a, NoArgs>,
     x0: f64,
     x1: f64,
@@ -10,14 +10,14 @@ struct Simulator<'a> {
     a: u8,
 }
 
-impl<'a> Simulator<'a> {
+impl<'a> SimData<'a> {
     fn new(method: Method) -> Self {
         let system = System::new(1, |f: &mut Vector, _x: f64, _y: &Vector, _args: &mut u8| {
             f[0] = 1.0;
             Ok(())
         });
         let params = Params::new(method);
-        Simulator {
+        SimData {
             solver: OdeSolver::new(params, system).unwrap(),
             x0: 0.0,
             x1: 1.5,
@@ -27,31 +27,38 @@ impl<'a> Simulator<'a> {
     }
 }
 
+struct Simulator<'a> {
+    data: SimData<'a>,
+}
+
+impl<'a> Simulator<'a> {
+    fn new(method: Method) -> Self {
+        Simulator {
+            data: SimData::new(method),
+        }
+    }
+}
+
+trait Runner: Send {
+    fn run_and_check(&mut self);
+}
+
+impl<'a> Runner for Simulator<'a> {
+    fn run_and_check(&mut self) {
+        self.data
+            .solver
+            .solve(&mut self.data.y, self.data.x0, self.data.x1, None, &mut self.data.a)
+            .unwrap();
+        approx_eq(self.data.y[0], self.data.x1, 1e-15);
+    }
+}
+
 #[test]
 fn test_multithreaded() {
-    // run two simulations concurrently
-    thread::scope(|scope| {
-        let first = scope.spawn(move || {
-            let mut sim = Simulator::new(Method::FwEuler);
-            sim.solver.solve(&mut sim.y, sim.x0, sim.x1, None, &mut sim.a).unwrap();
-            approx_eq(sim.y[0], sim.x1, 1e-15);
-        });
-        let second = scope.spawn(move || {
-            let mut sim = Simulator::new(Method::MdEuler);
-            sim.solver.solve(&mut sim.y, sim.x0, sim.x1, None, &mut sim.a).unwrap();
-            approx_eq(sim.y[0], sim.x1, 1e-15);
-        });
-        let err1 = first.join();
-        let err2 = second.join();
-        if err1.is_err() && err2.is_err() {
-            Err("first and second failed")
-        } else if err1.is_err() {
-            Err("first failed")
-        } else if err2.is_err() {
-            Err("second failed")
-        } else {
-            Ok(())
-        }
-    })
-    .unwrap();
+    // run simulations concurrently
+    let mut runners: Vec<Box<dyn Runner>> = vec![
+        Box::new(Simulator::new(Method::FwEuler)),
+        Box::new(Simulator::new(Method::MdEuler)),
+    ];
+    runners.par_iter_mut().for_each(|r| r.run_and_check());
 }

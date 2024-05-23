@@ -25,4 +25,5 @@ structopt = "0.3"
 
 [dev-dependencies]
 plotpy = "0.6"
+rayon = "1.10"
 serial_test = "3.0"

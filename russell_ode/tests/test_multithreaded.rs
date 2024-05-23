@@ -1,37 +1,45 @@
 use russell_lab::{approx_eq, Vector};
-use russell_ode::{Method, OdeSolver, Params, System};
+use russell_ode::{Method, NoArgs, OdeSolver, Params, System};
 use std::thread;
+
+struct Simulator<'a> {
+    solver: OdeSolver<'a, NoArgs>,
+    x0: f64,
+    x1: f64,
+    y: Vector,
+    a: u8,
+}
+
+impl<'a> Simulator<'a> {
+    fn new(method: Method) -> Self {
+        let system = System::new(1, |f: &mut Vector, _x: f64, _y: &Vector, _args: &mut u8| {
+            f[0] = 1.0;
+            Ok(())
+        });
+        let params = Params::new(method);
+        Simulator {
+            solver: OdeSolver::new(params, system).unwrap(),
+            x0: 0.0,
+            x1: 1.5,
+            y: Vector::from(&[0.0]),
+            a: 0,
+        }
+    }
+}
 
 #[test]
 fn test_multithreaded() {
-    // system
-    let system = System::new(1, |f: &mut Vector, _x: f64, _y: &Vector, _args: &mut u8| {
-        f[0] = 1.0;
-        Ok(())
-    });
-    let system_clone = system.clone();
-
-    // solve two systems concurrently
+    // run two simulations concurrently
     thread::scope(|scope| {
         let first = scope.spawn(move || {
-            let params = Params::new(Method::FwEuler);
-            let mut solver = OdeSolver::new(params, system).unwrap();
-            let x0 = 0.0;
-            let x1 = 1.5;
-            let mut y0 = Vector::from(&[x0]);
-            let mut args = 0;
-            solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
-            approx_eq(y0[0], x1, 1e-15);
+            let mut sim = Simulator::new(Method::FwEuler);
+            sim.solver.solve(&mut sim.y, sim.x0, sim.x1, None, &mut sim.a).unwrap();
+            approx_eq(sim.y[0], sim.x1, 1e-15);
         });
         let second = scope.spawn(move || {
-            let params = Params::new(Method::MdEuler);
-            let mut solver = OdeSolver::new(params, system_clone).unwrap();
-            let x0 = 0.0;
-            let x1 = 1.5;
-            let mut y0 = Vector::from(&[x0]);
-            let mut args = 0;
-            solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
-            approx_eq(y0[0], x1, 1e-15);
+            let mut sim = Simulator::new(Method::MdEuler);
+            sim.solver.solve(&mut sim.y, sim.x0, sim.x1, None, &mut sim.a).unwrap();
+            approx_eq(sim.y[0], sim.x1, 1e-15);
         });
         let err1 = first.join();
         let err2 = second.join();

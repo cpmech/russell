@@ -7,7 +7,7 @@ use crate::StrError;
 use russell_lab::Vector;
 
 /// Defines a unified interface for linear system solvers
-pub trait LinSolTrait {
+pub trait LinSolTrait: Send {
     /// Performs the factorization (and analysis/initialization if needed)
     ///
     /// # Input

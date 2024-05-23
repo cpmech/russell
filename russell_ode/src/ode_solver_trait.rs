@@ -3,7 +3,7 @@ use crate::{Params, Workspace};
 use russell_lab::Vector;
 
 /// Defines the numerical solver
-pub(crate) trait OdeSolverTrait<A> {
+pub(crate) trait OdeSolverTrait<A>: Send {
     /// Enables dense output
     fn enable_dense_output(&mut self) -> Result<(), StrError>;
 

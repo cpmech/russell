@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::BufReader;
 use std::path::Path;
+use std::sync::Arc;
 
 /// Holds the data generated at an accepted step or during the dense output
 #[derive(Clone, Debug, Deserialize)]
@@ -51,7 +52,7 @@ pub struct Output<'a, A> {
 
     // --- step --------------------------------------------------------------------------------------------
     /// Holds a callback function called on an accepted step
-    step_callback: Option<Box<dyn Fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError> + 'a>>,
+    step_callback: Option<Arc<dyn Fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError> + Send + Sync + 'a>>,
 
     /// Save the results to a file (step)
     step_file_key: Option<String>,
@@ -79,7 +80,7 @@ pub struct Output<'a, A> {
 
     // --- dense -------------------------------------------------------------------------------------------
     /// Holds a callback function for the dense output
-    dense_callback: Option<Box<dyn Fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError> + 'a>>,
+    dense_callback: Option<Arc<dyn Fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError> + Send + Sync + 'a>>,
 
     /// Save the results to a file (dense)
     dense_file_key: Option<String>,
@@ -123,7 +124,7 @@ pub struct Output<'a, A> {
     y_aux: Vector,
 
     /// Holds the y(x) function (e.g., to compute the correct/analytical solution)
-    yx_function: Option<Box<dyn Fn(&mut Vector, f64, &mut A) + 'a>>,
+    yx_function: Option<Arc<dyn Fn(&mut Vector, f64, &mut A) + Send + Sync + 'a>>,
 }
 
 impl OutData {
@@ -220,9 +221,9 @@ impl<'a, A> Output<'a, A> {
     /// * `callback` -- function to be executed on an accepted step
     pub fn set_step_callback(
         &mut self,
-        callback: impl Fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError> + 'a,
+        callback: impl Fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError> + Send + Sync + 'a,
     ) -> &mut Self {
-        self.step_callback = Some(Box::new(callback));
+        self.step_callback = Some(Arc::new(callback));
         self
     }
 
@@ -309,9 +310,9 @@ impl<'a, A> Output<'a, A> {
     /// * `callback` -- function to be executed on the selected output stations
     pub fn set_dense_callback(
         &mut self,
-        callback: impl Fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError> + 'a,
+        callback: impl Fn(&Stats, f64, f64, &Vector, &mut A) -> Result<bool, StrError> + Send + Sync + 'a,
     ) -> &mut Self {
-        self.dense_callback = Some(Box::new(callback));
+        self.dense_callback = Some(Arc::new(callback));
         self
     }
 
@@ -357,8 +358,8 @@ impl<'a, A> Output<'a, A> {
     /// Sets the function to compute the correct/reference results y(x)
     ///
     /// Use `|y, x, args|` or `|y: &mut Vector, x: f64, args, &mut A|`
-    pub fn set_yx_correct(&mut self, y_fn_x: impl Fn(&mut Vector, f64, &mut A) + 'a) -> &mut Self {
-        self.yx_function = Some(Box::new(y_fn_x));
+    pub fn set_yx_correct(&mut self, y_fn_x: impl Fn(&mut Vector, f64, &mut A) + Send + Sync + 'a) -> &mut Self {
+        self.yx_function = Some(Arc::new(y_fn_x));
         self
     }
 

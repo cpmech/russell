@@ -66,13 +66,14 @@ pub struct System<'a, A> {
     pub(crate) ndim: usize,
 
     /// ODE system function
-    pub(crate) function: Arc<dyn Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + 'a>,
+    pub(crate) function: Arc<dyn Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>,
 
     /// Jacobian function
-    pub(crate) jacobian: Option<Arc<dyn Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError> + 'a>>,
+    pub(crate) jacobian:
+        Option<Arc<dyn Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
 
     /// Calc mass matrix function
-    pub(crate) calc_mass: Option<Arc<dyn Fn(&mut CooMatrix) + 'a>>,
+    pub(crate) calc_mass: Option<Arc<dyn Fn(&mut CooMatrix) + Send + Sync + 'a>>,
 
     /// Number of non-zeros in the Jacobian matrix
     pub(crate) jac_nnz: usize,
@@ -151,7 +152,10 @@ impl<'a, A> System<'a, A> {
     ///     Ok(())
     /// }
     /// ```
-    pub fn new(ndim: usize, function: impl Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + 'a) -> Self {
+    pub fn new(
+        ndim: usize,
+        function: impl Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a,
+    ) -> Self {
         System {
             ndim,
             function: Arc::new(function),
@@ -195,7 +199,7 @@ impl<'a, A> System<'a, A> {
         &mut self,
         nnz: Option<usize>,
         symmetric: Sym,
-        callback: impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError> + 'a,
+        callback: impl Fn(&mut CooMatrix, f64, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a,
     ) -> Result<(), StrError> {
         if let Some(sym) = self.sym_mass {
             if symmetric != sym {
@@ -230,7 +234,7 @@ impl<'a, A> System<'a, A> {
         &mut self,
         nnz: Option<usize>,
         symmetric: Sym,
-        callback: impl Fn(&mut CooMatrix) + 'a,
+        callback: impl Fn(&mut CooMatrix) + Send + Sync + 'a,
     ) -> Result<(), StrError> {
         if let Some(sym) = self.sym_jac {
             if symmetric != sym {

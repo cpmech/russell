@@ -7,7 +7,7 @@ use crate::{ComplexSolverKLU, ComplexSolverUMFPACK};
 use russell_lab::ComplexVector;
 
 /// Defines a unified interface for complex linear system solvers
-pub trait ComplexLinSolTrait {
+pub trait ComplexLinSolTrait: Send {
     /// Performs the factorization (and analysis/initialization if needed)
     ///
     /// # Input

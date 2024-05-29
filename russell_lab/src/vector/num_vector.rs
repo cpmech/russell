@@ -453,6 +453,10 @@ where
 
     /// Scales this vector
     ///
+    /// ```text
+    /// u := alpha * u
+    /// ```
+    ///
     /// # Examples
     ///
     /// ```

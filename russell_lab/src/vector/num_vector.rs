@@ -428,6 +428,29 @@ where
         self.data[i] = value;
     }
 
+    /// Copy another vector into this one
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use russell_lab::NumVector;
+    /// let mut u = NumVector::<f64>::from(&[1.0, 2.0]);
+    /// u.set_vector(&[-3.0, -4.0]);
+    /// let correct = "┌    ┐\n\
+    ///                │ -3 │\n\
+    ///                │ -4 │\n\
+    ///                └    ┘";
+    /// assert_eq!(format!("{}", u), correct);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the other vector has a different length than this one
+    pub fn set_vector(&mut self, other: &[T]) {
+        assert_eq!(other.len(), self.data.len());
+        self.data.copy_from_slice(other);
+    }
+
     /// Applies a function over all components of this vector
     ///
     /// ```text
@@ -885,6 +908,20 @@ mod tests {
         u.set(0, -1.0);
         u.set(1, -2.0);
         assert_eq!(u.data, &[-1.0, -2.0]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn set_vector_panics_on_wrong_len() {
+        let mut u = NumVector::<f64>::from(&[1.0, 2.0]);
+        u.set_vector(&[8.0, 9.0, 10.0]);
+    }
+
+    #[test]
+    fn set_vector_works() {
+        let mut u = NumVector::<f64>::from(&[1.0, 2.0]);
+        u.set_vector(&[8.0, 9.0]);
+        assert_eq!(u.data, &[8.0, 9.0]);
     }
 
     #[test]

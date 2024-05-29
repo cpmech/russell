@@ -879,7 +879,7 @@ impl Tensor2 {
     ///         -4.0 / SQRT_2,
     ///     ]);
     ///
-    ///     a.set_mandel_vector(2.0, &v_mandel);
+    ///     a.set_mandel_vector(2.0, v_mandel.as_data());
     ///
     ///     assert_eq!(
     ///         format!("{:.1}", a.as_matrix()),
@@ -892,8 +892,8 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn set_mandel_vector(&mut self, alpha: f64, other: &Vector) {
-        assert_eq!(self.mandel.dim(), other.dim());
+    pub fn set_mandel_vector(&mut self, alpha: f64, other: &[f64]) {
+        assert_eq!(self.mandel.dim(), other.len());
         let dim = self.vec.dim();
         self.vec[0] = alpha * other[0];
         self.vec[1] = alpha * other[1];
@@ -2648,7 +2648,7 @@ mod tests {
     fn set_mandel_vector_panics_panics_on_incorrect_input() {
         let mut a = Tensor2::new(Mandel::Symmetric2D);
         let b = Vector::new(1);
-        a.set_mandel_vector(2.0, &b);
+        a.set_mandel_vector(2.0, b.as_data());
     }
 
     #[test]
@@ -2659,7 +2659,7 @@ mod tests {
         tt.vec.fill(NOISE);
         tt.set_mandel_vector(
             2.0,
-            &Vector::from(&[
+            &[
                 1.0,
                 5.0,
                 9.0,
@@ -2669,7 +2669,7 @@ mod tests {
                 -2.0 / SQRT_2,
                 -2.0 / SQRT_2,
                 -4.0 / SQRT_2,
-            ]),
+            ],
         );
         let correct = &[[2.0, 4.0, 6.0], [8.0, 10.0, 12.0], [14.0, 16.0, 18.0]];
         mat_approx_eq(&tt.as_matrix(), correct, 1e-14);
@@ -2679,7 +2679,7 @@ mod tests {
         tt.vec.fill(NOISE);
         tt.set_mandel_vector(
             2.0,
-            &Vector::from(&[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2]),
+            &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2],
         );
         let correct = &[[2.0, 8.0, 12.0], [8.0, 4.0, 10.0], [12.0, 10.0, 6.0]];
         mat_approx_eq(&tt.as_matrix(), correct, 1e-14);
@@ -2687,7 +2687,7 @@ mod tests {
         // symmetric 2D
         let mut tt = Tensor2::new(Mandel::Symmetric2D);
         tt.vec.fill(NOISE);
-        tt.set_mandel_vector(2.0, &Vector::from(&[1.0, 2.0, 3.0, 4.0 * SQRT_2]));
+        tt.set_mandel_vector(2.0, &[1.0, 2.0, 3.0, 4.0 * SQRT_2]);
         let correct = &[[2.0, 8.0, 0.0], [8.0, 4.0, 0.0], [0.0, 0.0, 6.0]];
         mat_approx_eq(&tt.as_matrix(), correct, 1e-14);
     }

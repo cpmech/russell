@@ -387,6 +387,10 @@ where
 
     /// Returns the i-th component
     ///
+    /// # Panics
+    ///
+    /// This function may panic if the index is out-of-bounds.
+    ///
     /// # Examples
     ///
     /// ```
@@ -394,10 +398,6 @@ where
     /// let u = NumVector::<f64>::from(&[1.0, 2.0]);
     /// assert_eq!(u.get(1), 2.0);
     /// ```
-    ///
-    /// # Panics
-    ///
-    /// This function may panic if the index is out-of-bounds.
     #[inline]
     pub fn get(&self, i: usize) -> T {
         assert!(i < self.data.len());
@@ -405,6 +405,10 @@ where
     }
 
     /// Change the i-th component
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the index is out-of-bounds.
     ///
     /// # Examples
     ///
@@ -418,10 +422,6 @@ where
     ///                └    ┘";
     /// assert_eq!(format!("{}", u), correct);
     /// ```
-    ///
-    /// # Panics
-    ///
-    /// This function may panic if the index is out-of-bounds.
     #[inline]
     pub fn set(&mut self, i: usize, value: T) {
         assert!(i < self.data.len());
@@ -429,6 +429,10 @@ where
     }
 
     /// Copy another vector into this one
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the other vector has a different length than this one
     ///
     /// # Examples
     ///
@@ -442,13 +446,66 @@ where
     ///                └    ┘";
     /// assert_eq!(format!("{}", u), correct);
     /// ```
-    ///
-    /// # Panics
-    ///
-    /// This function may panic if the other vector has a different length than this one
     pub fn set_vector(&mut self, other: &[T]) {
         assert_eq!(other.len(), self.data.len());
         self.data.copy_from_slice(other);
+    }
+
+    /// Splits this vector into another two vectors
+    ///
+    /// **Requirements:** `u.len() + v.len() == self.len()`
+    ///
+    /// This function is the opposite of [NumVector::join2()]
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the sum of the lengths of u and v are different that this vector's length
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use russell_lab::NumVector;
+    /// let w = NumVector::<f64>::from(&[1.0, 2.0, 3.0]);
+    /// let mut u = NumVector::<f64>::new(2);
+    /// let mut v = NumVector::<f64>::new(1);
+    ///
+    /// w.split2(u.as_mut_data(), v.as_mut_data());
+    ///
+    /// assert_eq!(u.as_data(), &[1.0, 2.0]);
+    /// assert_eq!(v.as_data(), &[3.0]);
+    /// ```
+    pub fn split2(&self, u: &mut [T], v: &mut [T]) {
+        assert_eq!(u.len() + v.len(), self.data.len());
+        u.copy_from_slice(&self.data[..u.len()]);
+        v.copy_from_slice(&self.data[u.len()..]);
+    }
+
+    /// Joins two vectors into this one
+    ///
+    /// **Requirements:** `u.len() + v.len() == self.len()`
+    ///
+    /// This function is the opposite of [NumVector::split2()]
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the sum of the lengths of u and v are different that this vector's length
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use russell_lab::NumVector;
+    /// let mut w = NumVector::<f64>::new(3);
+    /// let u = NumVector::<f64>::from(&[1.0, 2.0]);
+    /// let v = NumVector::<f64>::from(&[3.0]);
+    ///
+    /// w.join2(u.as_data(), v.as_data());
+    ///
+    /// assert_eq!(w.as_data(), &[1.0, 2.0, 3.0]);
+    /// ```
+    pub fn join2(&mut self, u: &[T], v: &[T]) {
+        assert_eq!(u.len() + v.len(), self.data.len());
+        (&mut self.data[..u.len()]).copy_from_slice(u);
+        (&mut self.data[u.len()..]).copy_from_slice(v);
     }
 
     /// Scales this vector
@@ -631,6 +688,10 @@ where
 
 /// Allows to access NumVector components using indices
 ///
+/// # Panics
+///
+/// The index function may panic if the index is out-of-bounds.
+///
 /// # Examples
 ///
 /// ```
@@ -640,10 +701,6 @@ where
 /// assert_eq!(u[1],  1.2);
 /// assert_eq!(u[2],  2.0);
 /// ```
-///
-/// # Panics
-///
-/// The index function may panic if the index is out-of-bounds.
 impl<T> Index<usize> for NumVector<T>
 where
     T: MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
@@ -657,6 +714,10 @@ where
 
 /// Allows to change NumVector components using indices
 ///
+/// # Panics
+///
+/// The index function may panic if the index is out-of-bounds.
+///
 /// # Examples
 ///
 /// ```
@@ -669,10 +730,6 @@ where
 /// assert_eq!(u[1],  11.2);
 /// assert_eq!(u[2],  22.0);
 /// ```
-///
-/// # Panics
-///
-/// The index function may panic if the index is out-of-bounds.
 impl<T> IndexMut<usize> for NumVector<T>
 where
     T: MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
@@ -946,6 +1003,43 @@ mod tests {
         let mut u = NumVector::<f64>::from(&[1.0, 2.0]);
         u.set_vector(&[8.0, 9.0]);
         assert_eq!(u.data, &[8.0, 9.0]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn split2_panics_on_wrong_lengths() {
+        let w = NumVector::<f64>::from(&[1.0, 2.0, 3.0]);
+        let mut u = NumVector::<f64>::new(2);
+        let mut v = NumVector::<f64>::new(2); // WRONG length
+        w.split2(u.as_mut_data(), v.as_mut_data());
+    }
+
+    #[test]
+    fn split2_works() {
+        let w = NumVector::<f64>::from(&[4.0, 5.0, -6.0]);
+        let mut u = NumVector::<f64>::new(2);
+        let mut v = NumVector::<f64>::new(1);
+        w.split2(u.as_mut_data(), v.as_mut_data());
+        assert_eq!(u.as_data(), &[4.0, 5.0]);
+        assert_eq!(v.as_data(), &[-6.0]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn join2_panics_on_wrong_lengths() {
+        let mut w = NumVector::<f64>::new(2); // WRONG length
+        let u = NumVector::<f64>::from(&[1.0, 2.0]);
+        let v = NumVector::<f64>::from(&[3.0]);
+        w.join2(u.as_data(), v.as_data());
+    }
+
+    #[test]
+    fn join2_works() {
+        let mut w = NumVector::<f64>::new(4);
+        let u = NumVector::<f64>::from(&[9.0, -1.0, 7.0]);
+        let v = NumVector::<f64>::from(&[8.0]);
+        w.join2(u.as_data(), v.as_data());
+        assert_eq!(w.as_data(), &[9.0, -1.0, 7.0, 8.0]);
     }
 
     #[test]

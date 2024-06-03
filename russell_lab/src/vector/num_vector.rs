@@ -4,7 +4,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fmt::{self, Write};
-use std::ops::{Index, IndexMut};
+use std::ops::{Index, IndexMut, MulAssign};
 
 /// Implements a vector with numeric components for linear algebra
 ///
@@ -90,7 +90,7 @@ use std::ops::{Index, IndexMut};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct NumVector<T>
 where
-    T: Num + NumCast + Copy + DeserializeOwned + Serialize,
+    T: MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     #[serde(bound(deserialize = "Vec<T>: Deserialize<'de>"))]
     data: Vec<T>,
@@ -98,7 +98,7 @@ where
 
 impl<T> NumVector<T>
 where
-    T: Num + NumCast + Copy + DeserializeOwned + Serialize,
+    T: MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     /// Creates a new (zeroed) vector
     ///
@@ -387,6 +387,10 @@ where
 
     /// Returns the i-th component
     ///
+    /// # Panics
+    ///
+    /// This function may panic if the index is out-of-bounds.
+    ///
     /// # Examples
     ///
     /// ```
@@ -394,10 +398,6 @@ where
     /// let u = NumVector::<f64>::from(&[1.0, 2.0]);
     /// assert_eq!(u.get(1), 2.0);
     /// ```
-    ///
-    /// # Panics
-    ///
-    /// This function may panic if the index is out-of-bounds.
     #[inline]
     pub fn get(&self, i: usize) -> T {
         assert!(i < self.data.len());
@@ -405,6 +405,10 @@ where
     }
 
     /// Change the i-th component
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the index is out-of-bounds.
     ///
     /// # Examples
     ///
@@ -418,14 +422,114 @@ where
     ///                └    ┘";
     /// assert_eq!(format!("{}", u), correct);
     /// ```
-    ///
-    /// # Panics
-    ///
-    /// This function may panic if the index is out-of-bounds.
     #[inline]
     pub fn set(&mut self, i: usize, value: T) {
         assert!(i < self.data.len());
         self.data[i] = value;
+    }
+
+    /// Copy another vector into this one
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the other vector has a different length than this one
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use russell_lab::NumVector;
+    /// let mut u = NumVector::<f64>::from(&[1.0, 2.0]);
+    /// u.set_vector(&[-3.0, -4.0]);
+    /// let correct = "┌    ┐\n\
+    ///                │ -3 │\n\
+    ///                │ -4 │\n\
+    ///                └    ┘";
+    /// assert_eq!(format!("{}", u), correct);
+    /// ```
+    pub fn set_vector(&mut self, other: &[T]) {
+        assert_eq!(other.len(), self.data.len());
+        self.data.copy_from_slice(other);
+    }
+
+    /// Splits this vector into another two vectors
+    ///
+    /// **Requirements:** `u.len() + v.len() == self.len()`
+    ///
+    /// This function is the opposite of [NumVector::join2()]
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the sum of the lengths of u and v are different that this vector's length
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use russell_lab::NumVector;
+    /// let w = NumVector::<f64>::from(&[1.0, 2.0, 3.0]);
+    /// let mut u = NumVector::<f64>::new(2);
+    /// let mut v = NumVector::<f64>::new(1);
+    ///
+    /// w.split2(u.as_mut_data(), v.as_mut_data());
+    ///
+    /// assert_eq!(u.as_data(), &[1.0, 2.0]);
+    /// assert_eq!(v.as_data(), &[3.0]);
+    /// ```
+    pub fn split2(&self, u: &mut [T], v: &mut [T]) {
+        assert_eq!(u.len() + v.len(), self.data.len());
+        u.copy_from_slice(&self.data[..u.len()]);
+        v.copy_from_slice(&self.data[u.len()..]);
+    }
+
+    /// Joins two vectors into this one
+    ///
+    /// **Requirements:** `u.len() + v.len() == self.len()`
+    ///
+    /// This function is the opposite of [NumVector::split2()]
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the sum of the lengths of u and v are different that this vector's length
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use russell_lab::NumVector;
+    /// let mut w = NumVector::<f64>::new(3);
+    /// let u = NumVector::<f64>::from(&[1.0, 2.0]);
+    /// let v = NumVector::<f64>::from(&[3.0]);
+    ///
+    /// w.join2(u.as_data(), v.as_data());
+    ///
+    /// assert_eq!(w.as_data(), &[1.0, 2.0, 3.0]);
+    /// ```
+    pub fn join2(&mut self, u: &[T], v: &[T]) {
+        assert_eq!(u.len() + v.len(), self.data.len());
+        (&mut self.data[..u.len()]).copy_from_slice(u);
+        (&mut self.data[u.len()..]).copy_from_slice(v);
+    }
+
+    /// Scales this vector
+    ///
+    /// ```text
+    /// u := alpha * u
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use russell_lab::NumVector;
+    /// let mut u = NumVector::<f64>::from(&[1.0, 2.0]);
+    /// u.scale(2.0);
+    /// let correct = "┌   ┐\n\
+    ///                │ 2 │\n\
+    ///                │ 4 │\n\
+    ///                └   ┘";
+    /// assert_eq!(format!("{}", u), correct);
+    /// ```
+    pub fn scale(&mut self, alpha: T) {
+        for i in 0..self.data.len() {
+            self.data[i] *= alpha;
+        }
     }
 
     /// Applies a function over all components of this vector
@@ -524,7 +628,7 @@ where
 
 impl<T> fmt::Display for NumVector<T>
 where
-    T: Num + NumCast + Copy + DeserializeOwned + Serialize + fmt::Display,
+    T: MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize + fmt::Display,
 {
     /// Generates a string representation of the NumVector
     ///
@@ -584,6 +688,10 @@ where
 
 /// Allows to access NumVector components using indices
 ///
+/// # Panics
+///
+/// The index function may panic if the index is out-of-bounds.
+///
 /// # Examples
 ///
 /// ```
@@ -593,13 +701,9 @@ where
 /// assert_eq!(u[1],  1.2);
 /// assert_eq!(u[2],  2.0);
 /// ```
-///
-/// # Panics
-///
-/// The index function may panic if the index is out-of-bounds.
 impl<T> Index<usize> for NumVector<T>
 where
-    T: Num + NumCast + Copy + DeserializeOwned + Serialize,
+    T: MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     type Output = T;
     #[inline]
@@ -609,6 +713,10 @@ where
 }
 
 /// Allows to change NumVector components using indices
+///
+/// # Panics
+///
+/// The index function may panic if the index is out-of-bounds.
 ///
 /// # Examples
 ///
@@ -622,13 +730,9 @@ where
 /// assert_eq!(u[1],  11.2);
 /// assert_eq!(u[2],  22.0);
 /// ```
-///
-/// # Panics
-///
-/// The index function may panic if the index is out-of-bounds.
 impl<T> IndexMut<usize> for NumVector<T>
 where
-    T: Num + NumCast + Copy + DeserializeOwned + Serialize,
+    T: MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
@@ -649,7 +753,7 @@ where
 /// ```
 impl<T> IntoIterator for NumVector<T>
 where
-    T: Num + NumCast + Copy + DeserializeOwned + Serialize,
+    T: MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     type Item = T;
     type IntoIter = std::vec::IntoIter<Self::Item>;
@@ -673,7 +777,7 @@ where
 /// ```
 impl<'a, T> IntoIterator for &'a NumVector<T>
 where
-    T: Num + NumCast + Copy + DeserializeOwned + Serialize,
+    T: MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     type Item = &'a T;
     type IntoIter = std::slice::Iter<'a, T>;
@@ -698,7 +802,7 @@ where
 /// ```
 impl<'a, T> IntoIterator for &'a mut NumVector<T>
 where
-    T: Num + NumCast + Copy + DeserializeOwned + Serialize,
+    T: MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     type Item = &'a mut T;
     type IntoIter = std::slice::IterMut<'a, T>;
@@ -710,7 +814,7 @@ where
 /// Allows accessing NumVector as an Array1D
 impl<'a, T: 'a> AsArray1D<'a, T> for NumVector<T>
 where
-    T: Num + NumCast + Copy + DeserializeOwned + Serialize,
+    T: MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     #[inline]
     fn size(&self) -> usize {
@@ -885,6 +989,64 @@ mod tests {
         u.set(0, -1.0);
         u.set(1, -2.0);
         assert_eq!(u.data, &[-1.0, -2.0]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn set_vector_panics_on_wrong_len() {
+        let mut u = NumVector::<f64>::from(&[1.0, 2.0]);
+        u.set_vector(&[8.0, 9.0, 10.0]);
+    }
+
+    #[test]
+    fn set_vector_works() {
+        let mut u = NumVector::<f64>::from(&[1.0, 2.0]);
+        u.set_vector(&[8.0, 9.0]);
+        assert_eq!(u.data, &[8.0, 9.0]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn split2_panics_on_wrong_lengths() {
+        let w = NumVector::<f64>::from(&[1.0, 2.0, 3.0]);
+        let mut u = NumVector::<f64>::new(2);
+        let mut v = NumVector::<f64>::new(2); // WRONG length
+        w.split2(u.as_mut_data(), v.as_mut_data());
+    }
+
+    #[test]
+    fn split2_works() {
+        let w = NumVector::<f64>::from(&[4.0, 5.0, -6.0]);
+        let mut u = NumVector::<f64>::new(2);
+        let mut v = NumVector::<f64>::new(1);
+        w.split2(u.as_mut_data(), v.as_mut_data());
+        assert_eq!(u.as_data(), &[4.0, 5.0]);
+        assert_eq!(v.as_data(), &[-6.0]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn join2_panics_on_wrong_lengths() {
+        let mut w = NumVector::<f64>::new(2); // WRONG length
+        let u = NumVector::<f64>::from(&[1.0, 2.0]);
+        let v = NumVector::<f64>::from(&[3.0]);
+        w.join2(u.as_data(), v.as_data());
+    }
+
+    #[test]
+    fn join2_works() {
+        let mut w = NumVector::<f64>::new(4);
+        let u = NumVector::<f64>::from(&[9.0, -1.0, 7.0]);
+        let v = NumVector::<f64>::from(&[8.0]);
+        w.join2(u.as_data(), v.as_data());
+        assert_eq!(w.as_data(), &[9.0, -1.0, 7.0, 8.0]);
+    }
+
+    #[test]
+    fn scale_works() {
+        let mut u = NumVector::<f64>::from(&[2.0, 4.0]);
+        u.scale(0.5);
+        assert_eq!(u.data, &[1.0, 2.0]);
     }
 
     #[test]

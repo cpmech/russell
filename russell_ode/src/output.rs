@@ -389,7 +389,7 @@ impl<'a, A> Output<'a, A> {
         if self.with_dense_output() {
             if let Some(h_out) = self.dense_h_out {
                 // uniform spacing
-                let n = ((x1 - x0) / h_out) as usize + 1;
+                let n = usize::max(2, ((x1 - x0) / h_out) as usize + 1); // at least 2 (first and last) are required
                 if self.dense_x.len() != n {
                     self.dense_x.resize(n, 0.0);
                 }
@@ -806,6 +806,14 @@ mod tests {
         assert_eq!(&out.dense_x, &[3.0, 3.5, 3.8, 4.0]);
         let y0_out = out.dense_y.get(&0).unwrap();
         assert_eq!(y0_out.len(), 4);
+    }
+
+    #[test]
+    fn initialize_with_dense_output_works_at_least_two_stations() {
+        let mut out = Output::<'_, NoArgs>::new();
+        out.set_dense_h_out(0.5).unwrap().set_dense_recording(&[0]);
+        out.initialize(0.99, 1.0, false).unwrap();
+        assert_eq!(out.dense_x.len(), 2);
     }
 
     #[test]

@@ -134,7 +134,7 @@ impl<'a, A> OdeSolver<'a, A> {
     /// # Generics
     ///
     /// * `A` -- generic argument to assist in the f(x,y) and Jacobian functions.
-    ///   It may be simply [NoArgs] indicating that no arguments are needed.
+    ///   It may be simply [crate::NoArgs] indicating that no arguments are needed.
     pub fn new(params: Params, system: System<'a, A>) -> Result<Self, StrError>
     where
         A: 'a,

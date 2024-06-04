@@ -43,12 +43,12 @@ fn main() -> Result<(), StrError> {
     let na = 1 + np;
     let mut aa = Matrix::new(na, na);
     let mut bb = Matrix::new(na, na);
-    for k in 0..np {
-        let wk = lambda[k];
-        aa.set(0, 1 + k, -uu[k]);
-        aa.set(1 + k, 0, wk);
-        aa.set(1 + k, 1 + k, yy[k]);
-        bb.set(1 + k, 1 + k, 1.0);
+    for j in 0..np {
+        let wj = lambda[j];
+        aa.set(0, 1 + j, -uu[j]);
+        aa.set(1 + j, 0, wj);
+        aa.set(1 + j, 1 + j, yy[j]);
+        bb.set(1 + j, 1 + j, 1.0);
     }
     println!("A =\n{:.3}", aa);
     println!("B =\n{:.3}", bb);

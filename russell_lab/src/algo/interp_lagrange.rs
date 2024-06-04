@@ -1063,6 +1063,11 @@ impl InterpLagrange {
         (-1.0, 1.0)
     }
 
+    /// Returns and access to the barycentric coefficients
+    pub fn get_lambda(&self) -> &Vector {
+        &self.lambda
+    }
+
     /// Returns the D1 matrix (calculate it if needed)
     pub fn get_dd1(&self) -> Result<&Matrix, StrError> {
         if self.dd1.dims().0 == 0 {
@@ -1794,6 +1799,7 @@ mod tests {
         assert_eq!(interp.get_grid_type(), InterpGrid::ChebyshevGaussLobatto);
         assert_eq!(interp.get_points().as_data(), &[-1.0, 0.0, 1.0]);
         assert_eq!(interp.get_xrange(), (-1.0, 1.0));
+        assert_eq!(interp.get_lambda().dim(), 3);
         interp.calc_dd1_matrix();
         interp.calc_dd2_matrix();
         assert_eq!(interp.get_dd1().unwrap().dims(), (3, 3));

@@ -11,10 +11,16 @@ pub struct MultiRootSolverInterp {
     /// Companion matrix B
     bb: Matrix,
 
-    // For the generalized eigenvalues
+    /// Real part of the denominator to calculate the eigenvalues
     alpha_real: Vector,
+
+    /// Imaginary part of the denominator to calculate the eigenvalues
     alpha_imag: Vector,
+
+    /// Denominators to calculate the eigenvalues
     beta: Vector,
+
+    /// The eigenvectors (as columns)
     v: Matrix,
 
     /// Possible roots
@@ -57,8 +63,8 @@ impl MultiRootSolverInterp {
         }
         Ok(MultiRootSolverInterp {
             npoint,
-            aa: Matrix::new(nc, nc),
-            bb: Matrix::new(nc, nc),
+            aa,
+            bb,
             alpha_real: Vector::new(nc),
             alpha_imag: Vector::new(nc),
             beta: Vector::new(nc),
@@ -98,14 +104,19 @@ impl MultiRootSolverInterp {
     /// # Input
     ///
     /// * `uu` -- holds the function evaluations at the grid points
+    /// * `xa` -- the lower bound (must `be < xb`)
+    /// * `xb` -- the upper bound (must `be > xa`)
     ///
     /// # Output
     ///
-    /// Returns the roots
+    /// Returns the roots, sorted in ascending order
     pub fn find(&mut self, uu: &Vector, xa: f64, xb: f64) -> Result<&[f64], StrError> {
         // check
         if uu.dim() != self.npoint {
             return Err("U vector must have the same dimension as the grid points vector");
+        }
+        if xb <= xa {
+            return Err("xb must be greater than xa");
         }
 
         // companion matrix
@@ -135,6 +146,10 @@ impl MultiRootSolverInterp {
                 nroot += 1;
             }
         }
+        for i in nroot..nc {
+            self.roots[i] = f64::MAX;
+        }
+        self.roots.as_mut_data().sort_by(|a, b| a.partial_cmp(b).unwrap());
         Ok(&self.roots.as_data()[..nroot])
     }
 }

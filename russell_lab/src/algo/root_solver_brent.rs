@@ -1,9 +1,9 @@
 use super::Stats;
 use crate::StrError;
 
-/// Implements algorithms for finding the roots of an equation
+/// Implements Brent's method for finding a bracketed root of an equation
 #[derive(Clone, Debug)]
-pub struct RootSolver {
+pub struct RootSolverBrent {
     /// Max number of iterations
     ///
     /// ```text
@@ -17,10 +17,10 @@ pub struct RootSolver {
     pub tolerance: f64,
 }
 
-impl RootSolver {
+impl RootSolverBrent {
     /// Allocates a new instance
     pub fn new() -> Self {
-        RootSolver {
+        RootSolverBrent {
             n_iteration_max: 100,
             tolerance: 1e-10,
         }
@@ -63,20 +63,20 @@ impl RootSolver {
     /// # Examples
     ///
     /// ```
-    /// use russell_lab::{approx_eq, RootSolver, StrError};
+    /// use russell_lab::{approx_eq, RootSolverBrent, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let args = &mut 0;
-    ///     let solver = RootSolver::new();
+    ///     let solver = RootSolverBrent::new();
     ///     let (xa, xb) = (-4.0, 0.0);
-    ///     let (xo, stats) = solver.brent(xa, xb, args, |x, _| Ok(4.0 - x * x))?;
+    ///     let (xo, stats) = solver.find(xa, xb, args, |x, _| Ok(4.0 - x * x))?;
     ///     println!("\nroot = {:?}", xo);
     ///     println!("\n{}", stats);
     ///     approx_eq(xo, -2.0, 1e-10);
     ///     Ok(())
     /// }
     /// ```
-    pub fn brent<F, A>(&self, xa: f64, xb: f64, args: &mut A, mut f: F) -> Result<(f64, Stats), StrError>
+    pub fn find<F, A>(&self, xa: f64, xb: f64, args: &mut A, mut f: F) -> Result<(f64, Stats), StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
@@ -233,14 +233,14 @@ impl RootSolver {
 
 #[cfg(test)]
 mod tests {
-    use super::RootSolver;
+    use super::RootSolverBrent;
     use crate::algo::testing::get_test_functions;
     use crate::algo::NoArgs;
     use crate::approx_eq;
 
     #[test]
     fn validate_params_captures_errors() {
-        let mut solver = RootSolver::new();
+        let mut solver = RootSolverBrent::new();
         solver.n_iteration_max = 0;
         assert_eq!(solver.validate_params().err(), Some("n_iteration_max must be ≥ 2"));
         solver.n_iteration_max = 2;
@@ -255,19 +255,19 @@ mod tests {
     fn brent_captures_errors_1() {
         let f = |x, _: &mut NoArgs| Ok(x * x - 1.0);
         let args = &mut 0;
-        let mut solver = RootSolver::new();
+        let mut solver = RootSolverBrent::new();
         assert_eq!(f(1.0, args).unwrap(), 0.0);
         assert_eq!(
-            solver.brent(-0.5, -0.5, args, f).err(),
+            solver.find(-0.5, -0.5, args, f).err(),
             Some("xa must be different from xb")
         );
         assert_eq!(
-            solver.brent(-0.5, -0.5 - 10.0 * f64::EPSILON, args, f).err(),
+            solver.find(-0.5, -0.5 - 10.0 * f64::EPSILON, args, f).err(),
             Some("xa and xb must bracket the root and f(xa) × f(xb) < 0")
         );
         solver.n_iteration_max = 0;
         assert_eq!(
-            solver.brent(-0.5, 2.0, args, f).err(),
+            solver.find(-0.5, 2.0, args, f).err(),
             Some("n_iteration_max must be ≥ 2")
         );
     }
@@ -288,42 +288,42 @@ mod tests {
             res
         };
         let args = &mut Args { count: 0, target: 0 };
-        let solver = RootSolver::new();
+        let solver = RootSolverBrent::new();
         // first function call
-        assert_eq!(solver.brent(-0.5, 2.0, args, f).err(), Some("stop"));
+        assert_eq!(solver.find(-0.5, 2.0, args, f).err(), Some("stop"));
         // second function call
         args.count = 0;
         args.target = 1;
-        assert_eq!(solver.brent(-0.5, 2.0, args, f).err(), Some("stop"));
+        assert_eq!(solver.find(-0.5, 2.0, args, f).err(), Some("stop"));
         // third function call
         args.count = 0;
         args.target = 2;
-        assert_eq!(solver.brent(-0.5, 2.0, args, f).err(), Some("stop"));
+        assert_eq!(solver.find(-0.5, 2.0, args, f).err(), Some("stop"));
     }
 
     #[test]
     fn brent_works_1() {
         let args = &mut 0;
-        let solver = RootSolver::new();
+        let solver = RootSolverBrent::new();
         for test in &get_test_functions() {
             println!("\n===================================================================");
             println!("\n{}", test.name);
             if let Some(bracket) = test.root1 {
-                let (xo, stats) = solver.brent(bracket.a, bracket.b, args, test.f).unwrap();
+                let (xo, stats) = solver.find(bracket.a, bracket.b, args, test.f).unwrap();
                 println!("\nxo = {:?}", xo);
                 println!("\n{}", stats);
                 approx_eq(xo, bracket.xo, 1e-11);
                 approx_eq((test.f)(xo, args).unwrap(), 0.0, test.tol_root);
             }
             if let Some(bracket) = test.root2 {
-                let (xo, stats) = solver.brent(bracket.a, bracket.b, args, test.f).unwrap();
+                let (xo, stats) = solver.find(bracket.a, bracket.b, args, test.f).unwrap();
                 println!("\nxo = {:?}", xo);
                 println!("\n{}", stats);
                 approx_eq(xo, bracket.xo, 1e-11);
                 approx_eq((test.f)(xo, args).unwrap(), 0.0, test.tol_root);
             }
             if let Some(bracket) = test.root3 {
-                let (xo, stats) = solver.brent(bracket.a, bracket.b, args, test.f).unwrap();
+                let (xo, stats) = solver.find(bracket.a, bracket.b, args, test.f).unwrap();
                 println!("\nxo = {:?}", xo);
                 println!("\n{}", stats);
                 approx_eq(xo, bracket.xo, 1e-13);
@@ -338,10 +338,10 @@ mod tests {
         let f = |x, _: &mut NoArgs| Ok(f64::powi(x - 1.0, 2) + 5.0 * f64::sin(x));
         let args = &mut 0;
         assert!(f(1.0, args).unwrap() > 0.0);
-        let mut solver = RootSolver::new();
+        let mut solver = RootSolverBrent::new();
         solver.n_iteration_max = 2;
         assert_eq!(
-            solver.brent(-2.0, -0.7, args, f).err(),
+            solver.find(-2.0, -0.7, args, f).err(),
             Some("brent solver failed to converge")
         );
     }
